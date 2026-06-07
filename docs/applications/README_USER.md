@@ -394,8 +394,9 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 4. **🔒 Confidentialité & Audit** — section dédiée à la transparence : journal réseau live, doc « Que fait l'app sur le réseau ? », et toggle « Mode hors-ligne strict ». Voir section dédiée plus bas.
 
 5. **🎨 Affichage** — toggles d'interface :
-   - **⚪ Afficher les ronds aux intersections de tracés** — affiche un cercle plein coloré au croisement de 2 tracés. Décocher pour aérer visuellement les plans très denses. Effet immédiat.
    - **🔆 Garder l'écran allumé** — empêche la mise en veille automatique de ton écran tant que MyKTAMap est ouvert (Wake Lock API). Utile en sortie cataphile pour ne pas avoir à toucher le tel toutes les 30 sec. Re-acquisition auto au retour d'arrière-plan (visibilitychange). Toggle masqué automatiquement sur les navigateurs qui ne supportent pas l'API (Firefox notamment). Le même toggle est aussi accessible dans **⚙️ Réglages** en mode carte (cf section dédiée).
+
+> 💡 **Depuis v1.36.2** : l'option « Afficher les ronds aux intersections de tracés » n'est **plus dans Configuration home** mais dans **⚙️ Réglages en mode carte** (per-plan). Chaque plan a maintenant son propre réglage — pratique pour désactiver les cercles uniquement sur tes plans très denses sans toucher les autres.
 
 6. **📚 Plans serveur** — checkbox **"🚫 Ne pas charger les plans serveur au démarrage"** :
    - **Désactive l'auto-discovery** du fichier `data/index.json` au boot de l'app — l'app ne va plus interroger le serveur pour lister les plans de démo ou les plans publics hébergés.
@@ -2680,7 +2681,7 @@ Si malgré le mode Performance, ton plan crashe encore (typiquement plans 4000+ 
 |---|---|---|
 | 🪜 **Décimer les tracés au dézoom** | Simplifie les polylines au zoom out | Tracés moins lisses au dézoom |
 | ⚡ **Désactiver animations zoom/pan** | Transitions instantanées au lieu d'animées | Visuel plus abrupt — **reload requis** |
-| 🎯 **Désactiver cercles intersections** | Plus de cercles aux carrefours au-delà de 50 routes (vs 200) | Carrefours moins visibles |
+| 🎯 **Désactiver cercles intersections** | Plus de cercles aux carrefours au-delà de 50 routes (vs 500) | Carrefours moins visibles |
 | 🚫 **Désactiver popups sur calques de données** | Pas de popup au clic sur les markers des calques (puits, etc.) | Utilise 🔍 Recherche pour interagir |
 | 🐢 **Auto-save lent (30s)** | Sauvegarde toutes les 30s au lieu de 1.5s | Risque de perdre 30s de modifs si crash |
 | 👁️ **Ne rendre que les tracés visibles** | Skip les routes hors écran | Pop-in léger au pan |
@@ -2760,10 +2761,13 @@ Accédez aux paramètres en cliquant sur **⚙️** :
 - **Détection des pas** : sensibilité (`stepThreshold`), taille du pas (`stepLength`), cooldown anti-rebond
 - **Échelle (px/m)** avec bouton **🎯 Calibrer** : calcule l'échelle correcte à partir d'une distance mesurée
 
-### 🔍 Affichage (préférence globale, partagée entre tous les plans)
-- **Icônes adaptatives au zoom** (`scaledMarkers`) : les icônes des points (puits, accès, signalétique, etc.) gardent une taille relative au plan constante. Au dézoom, elles rétrécissent ; au zoom in, elles grossissent. Reload requis au toggle.
-- **Afficher les ronds aux intersections de tracés** : cercle plein coloré au croisement de 2 tracés. Décocher pour aérer visuellement les plans très denses. Effet immédiat (sans reload).
-- **🔆 Garder l'écran allumé** : active la Wake Lock API pour empêcher la mise en veille automatique de l'écran tant que l'app est ouverte. Re-acquisition auto au retour d'arrière-plan. Masqué si le navigateur ne supporte pas l'API. Le même toggle est aussi disponible dans **⚙️ Configuration** sur la page d'accueil.
+### 🔍 Affichage
+- **Icônes adaptatives au zoom** (`scaledMarkers`) — *préférence globale* : les icônes des points (puits, accès, signalétique, etc.) gardent une taille relative au plan constante. Au dézoom, elles rétrécissent ; au zoom in, elles grossissent. Reload requis au toggle.
+- **⚪ Afficher les ronds aux intersections de tracés (ce plan)** — *per-plan depuis v1.36.2* : cercle plein coloré au croisement de 2 tracés (vert × violet → jaune, etc.). Décocher pour aérer visuellement les plans très denses, ou si le calcul ralentit l'affichage. **Effet immédiat**, sauvegardé par plan (un autre plan garde son propre réglage). Avant v1.36.2 cette option était dans Configuration home et globale à tous les plans.
+- **🧭 Calibration du Nord (ce plan)** — *per-plan depuis v1.37.0* : utile quand le HAUT du plan **n'est pas** le Nord vrai (photo aérienne au cadrage arbitraire, plan cataphile sans rosace alignée). Champ angle [0,360[ en degrés ou bouton **📐 Calibrer (2 clics)** qui ouvre un picker WYSIWYG : clique d'abord le SUD du plan, puis le NORD, une flèche pointillée Sud→Nord s'affiche, et l'angle est calculé automatiquement. **Effet** : rotation icône tracker + sens de marche s'adaptent → le tracker pointe dans la bonne direction RELATIVE AU PLAN. La boussole physique 🧭 continue de pointer le vrai Nord magnétique (= comportement attendu d'une boussole). **Sauvegardé par plan**, **effet immédiat** sans reload. Bouton ↺ Reset pour revenir au default (0 = Nord vers le haut du plan).
+
+> 💡 **Auteur de plan v1.37.0** : pour embarquer durablement le Nord ou un **PDF Histoire** dans le ZIP du plan (cross-utilisateurs), passe par le **générateur avancé** (champ "🧭 Orientation Nord" dans Tracking + section "📖 PDF Histoire" optionnelle). Pour un PDF Histoire chargé juste côté session (ton navigateur), continue d'utiliser le bouton d'import de la modale **📖 Mode Histoire** (status bar) — inchangé depuis v1.34.20.
+- **🔆 Garder l'écran allumé** — *préférence globale* : active la Wake Lock API pour empêcher la mise en veille automatique de l'écran tant que l'app est ouverte. Re-acquisition auto au retour d'arrière-plan. Masqué si le navigateur ne supporte pas l'API. Le même toggle est aussi disponible dans **⚙️ Configuration** sur la page d'accueil.
 
 ### 🎬 Mode présentation
 
@@ -2952,6 +2956,8 @@ Tu peux aussi **pinner** une version exacte au lieu de `latest` :
 
 > 🔒 **Aucune donnée envoyée ailleurs**. L'image embarque l'app vanilla, exactement comme la version officielle, mais servie depuis ton propre matériel. C'est même un peu plus offline-friendly que la prod (pas de fetch occasionnel vers `gstatic.com` pour le ping de connectivité — le module `networkAudit.js` reste actif si tu veux vérifier).
 
+> 📖 **Tu n'as jamais utilisé Docker ?** Un guide pas-à-pas dédié existe : **[`docs/applications/DOCKER_INSTALL.md`](DOCKER_INSTALL.md)** — installation Docker Desktop (Windows/Mac/Linux), démarrage du daemon, troubleshooting des erreurs courantes (cert auto-signé, conflits de port, WSL 2), alternatives sans Docker.
+
 > 📚 **Détails techniques** : voir `docs/architecture/docker-selfhost.md` dans le dépôt GitHub.
 
 ---
@@ -3052,12 +3058,16 @@ Aux anciens qui ont relevé les galeries au crayon, plan en main, génération a
 
 MyKTAMap repose entièrement sur des **briques open-source**. Sans ces projets, l'app n'existerait simplement pas :
 
-- 🍃 **[Leaflet](https://leafletjs.com/)** — moteur cartographique interactif. Cœur de l'affichage des plans.
-- 📦 **[JSZip](https://stuk.github.io/jszip/)** — lecture et écriture des archives `.zip` côté navigateur (plans, sessions, exports).
-- 📤 **[jsPDF](https://github.com/parallax/jsPDF)** — génération de PDF imprimables (A0 → A4, portrait/paysage).
-- 🧭 **Algorithme de Dijkstra** (1959) — calcul du plus court chemin pour les itinéraires assistés.
+- 🍃 **[Leaflet](https://leafletjs.com/)** *(BSD 2-Clause)* — moteur cartographique interactif. Cœur de l'affichage des plans. Merci à **Vladimir Agafonkin** et aux nombreux contributeurs du projet.
+- 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin qui projette une image comme parallélogramme via 3 coins (transform CSS matrix). Utilisé pour le calage **2 ancres** des calques image (v1.38+) et pour la projection des plans MyKTAMap **sur la Vue OSM** (v1.39+). Merci à **Iván Sánchez Ortega** pour ce plugin élégant.
+- 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL au choix)* — lecture et écriture des archives `.zip` côté navigateur (plans, sessions, exports, extraction partielle pour la mini-carte de la HOME). Merci à **Stuart Knightley** et aux contributeurs.
+- 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — génération de PDF imprimables (A0 → A4, portrait/paysage, page miniature Mode Secours, embed Mode Histoire).
+- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & ses contributeurs** — sous licence **[ODbL](https://opendatacommons.org/licenses/odbl/)** pour les données et **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** pour la cartographie. Données cartographiques mondiales affichées dans la **Vue OSM** (modale plan + widget HOME, depuis v1.39+) **uniquement quand tu l'actives via l'opt-in dédié**. L'app affiche l'attribution `© OpenStreetMap contributors` dans le coin de chaque carte OSM, **comme la licence ODbL l'exige**. Hébergement des tuiles : **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (fondation non-commerciale, politique de logs publique, pas de tracking publicitaire). Sans ce bien commun monumental — bâti depuis 2004 par des **milliers de bénévoles** qui cartographient le monde rue par rue — la Vue OSM n'existerait pas.
+- 🧭 **Algorithme de Dijkstra** (1959) — calcul du plus court chemin pour les itinéraires assistés. Edsger W. Dijkstra (1930-2002) : merci pour cette idée vieille de plus de 60 ans qui sous-tend encore Google Maps, OpenStreetMap routing, et chaque GPS du monde.
 - 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — format d'échange avec TopoDroid, OsmAnd, Strava, Garmin et l'écosystème outdoor.
-- 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API. Maintenus par des milliers de personnes qu'on ne croisera jamais et à qui on doit énormément.
+- 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintenus par des milliers de personnes qu'on ne croisera jamais et à qui on doit énormément.
+
+> 📜 **Conformité licences** : les fichiers vendored (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`) conservent leur header de licence d'origine. Pour le détail réseau (quand chaque ressource est contactée), voir l'**[Audit réseau](./NETWORK_AUDIT.md)** (accessible aussi depuis la modale Audit dans l'app).
 
 ### À l'écosystème PWA
 
@@ -3075,7 +3085,7 @@ Pour avoir pris 10 minutes à lire au lieu de cliquer aveuglément. C'est exacte
 
 ---
 
-**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
+**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM opt-in) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
 
 *MyKTAMap — Guide Utilisateur*
 *Ces lieux sont fragiles. La discrétion est une forme de respect.*

@@ -25,7 +25,15 @@
 // modes urgence (carte 12) pour bien différencier les 3 modes "urgence" :
 // ⛑️ Je suis perdu (moi) / 🚨 Panique (moi) / 🚨 Mode Secours (équipe).
 //
-// Plan des 23 cartes :
+// 🆕 v1.40.32 (KARMA "on doit pouvoir enrichir le On Boarding avec la partie
+// OSM et Histoire (peut être d'autres oublis)") : 23 → 25 cards.
+// - Nouvelle carte 23 « 🌍 Vue OSM » (v1.39+) — plan projeté sur OpenStreetMap
+// - Nouvelle carte 24 « 📖 Mode Histoire » (v1.34.19+) — note libre + PDF embed
+// - Carte 12 (Modes urgence) enrichie avec 🚨 Sortie d'urgence (v1.35.0)
+// - Carte 25 (ex-23 ⚙️ Config) enrichie avec 🎤 Commande vocale (v1.34.0) +
+//   🪫 Vibration haptique (v1.34.26).
+//
+// Plan des 25 cartes :
 //   1. 🌟 Bienvenue
 //   2. 🛡️ Privacy & offline-first
 //   3. 🗂️ Charger un plan existant
@@ -37,8 +45,8 @@
 //   9. 🏛️ Structures (piliers / murs / fronts)
 //   10. 🏷️ Légende personnalisable (cascade 3 niveaux)
 //   11. 🧭 Tracker PDR + Replay
-//   12. ⛑️🚨 Modes urgence
-//   13. 🚨 Mode Secours (coordination équipes)              ← v1.25.3
+//   12. ⛑️🚨 Modes urgence (Perdu / Panique / Sortie d'urgence)   ← enrichi v1.40.32
+//   13. 🚨 Mode Secours (coordination équipes)
 //   14. 🔍 Recherche unifiée Ctrl+K
 //   15. ⭐ Favoris
 //   16. 🗺️ Itinéraire pathfinder + évitements
@@ -48,7 +56,9 @@
 //   20. 💾 Exports session JSON / KMZ / GPX
 //   21. 🖼️ Exports images PNG / PDF
 //   22. 🛡️ Sauvegardes auto + Undo Ctrl+Z
-//   23. ⚙️ Config & outils annexes
+//   23. 🌍 Vue OSM (modale + widget HOME)                         ← v1.40.32
+//   24. 📖 Mode Histoire (note libre + PDF embed)                 ← v1.40.32
+//   25. ⚙️ Config & outils annexes (+ 🎤 Vocale, 🪫 Vibration)    ← enrichi v1.40.32
 //
 // API : window.Tutorial = { ouvrir, fermer, isFirstLaunch, markAsSeen }
 //
@@ -352,9 +362,9 @@
     // ─── 12/23 — Modes urgence ───
     {
       emoji: "⛑️",
-      titre: "Modes urgence (Je suis perdu / Panique)",
+      titre: "Modes urgence (Perdu / Panique / Sortie)",
       texte:
-        "<p>2 modes complémentaires, en <strong>fin du flyout Tracker</strong> avec fond rouge distinctif :</p>" +
+        "<p>3 modes complémentaires, en <strong>fin du flyout Tracker</strong> avec fond rouge distinctif :</p>" +
         "<ul>" +
           "<li>⛑️ <strong>Je suis perdu</strong> : tu sais à peu près où tu es passé mais pas où tu es " +
             "<em>maintenant</em>. L'app calcule une <strong>zone probable</strong> (cercle de recherche) " +
@@ -364,11 +374,17 @@
           "<li>🚨 <strong>Mode urgence XL (panique)</strong> : tu sais où tu es (le tracker l'affiche) " +
             "mais tu paniques et tu as besoin d'infos vitales en GROS. Affiche en plein écran tes coords " +
             "GPS + cap boussole + niveau batterie, masque tout le reste de l'UI. Conserve ton autonomie.</li>" +
+          // 🆕 v1.40.32 — Ajout du 3e mode urgence (Sortie d'urgence v1.35.0, oublié à l'onboarding)
+          "<li>🚨 <strong>Sortie d'urgence</strong> <em>(v1.35+)</em> : tu veux <strong>sortir vite</strong>. " +
+            "L'app calcule via pathfinder l'itinéraire optimal depuis ta position vers le <strong>POI Sortie " +
+            "le plus proche</strong> (tag <code>sortie</code> dans les POI du plan). Affiche distance + ETA + " +
+            "itinéraire tracé. Idéal quand la batterie baisse, la marée monte, ou un orage approche en surface.</li>" +
         "</ul>" +
-        "<p>💡 <strong>Différence essentielle</strong> :</p>" +
+        "<p>💡 <strong>3 cas d'usage différents</strong> :</p>" +
         "<ul>" +
-          "<li>⛑️ = je ne sais PAS où je suis → calcul d'une zone</li>" +
-          "<li>🚨 = je sais où je suis → affichage XL pour communiquer la position</li>" +
+          "<li>⛑️ = je ne sais PAS où je suis → calcul d'une zone de recherche</li>" +
+          "<li>🚨 panique = je sais où je suis → affichage XL pour communiquer la position</li>" +
+          "<li>🚨 sortie = je sais où je suis → me guide vers la sortie la plus proche</li>" +
         "</ul>" +
         "<p>🔆 <strong>Wake Lock</strong> : pendant le mode urgence, l'écran ne s'éteint plus (API Wake " +
         "Lock du navigateur). Tu peux aussi l'activer en permanence depuis ⚙️ Configuration → " +
@@ -710,7 +726,71 @@
         "Tu peux toujours récupérer en exportant manuellement le JSON.</p>"
     },
 
-    // ─── 23/23 — Outils annexes ───
+    // ─── 23/25 — Vue OSM (v1.39+) ───
+    // 🆕 v1.40.32 — Ajout post-livraison Vue OSM (KARMA "on doit pouvoir
+    // enrichir le On Boarding avec la partie OSM et Histoire"). Carte dense
+    // couvrant les 2 contextes (modale plan + widget HOME) + opt-in strict +
+    // garantie offline-first préservée.
+    {
+      emoji: "🌍",
+      titre: "Vue OSM — ton plan projeté sur OpenStreetMap",
+      texte:
+        "<p>Si ton plan est <strong>géoréférencé GPS</strong> (calibration 2 points lat/lng), tu peux " +
+        "le projeter sur <strong>OpenStreetMap</strong> pour voir où il est dans le monde réel — utile " +
+        "pour situer l'entrée d'un site, repérer la voirie en surface, briefer un secours qui ne connaît " +
+        "pas la cavité.</p>" +
+        "<p>🌍 <strong>2 contextes d'utilisation</strong> :</p>" +
+        "<ul>" +
+          "<li><strong>Modale plein écran</strong> (depuis le mode carte) : bouton 🌍 dans la sidebar → " +
+            "modale Vue OSM avec ton plan en overlay transparent (slider opacité), tes POI, tes tracés, " +
+            "tes zones et structures. Tuiles V2 du plan + filtres par catégorie + multi-niveau M-LVL.</li>" +
+          "<li><strong>Widget HOME</strong> : mini-carte intégrée à ta page d'accueil avec sélecteur de " +
+            "plan + bouton ⛶ plein écran. Tu vois tes plans georef du tour d'œil sans devoir charger.</li>" +
+        "</ul>" +
+        "<p>📍 <strong>Bouton « Ma position GPS »</strong> dans les 2 contextes : fix ponctuel à la " +
+        "demande (pas de watch continu = 0 impact batterie), marker bleu cyan + cercle de précision. " +
+        "Garde-fou : refus si tu es à des km du plan (ex : plan Catacombes Paris quand tu es à Lyon).</p>" +
+        "<p>🏷️ <strong>Filtre par tag</strong> : chips dans le bandeau (POI par catégorie). Cohérent " +
+        "avec le filtre du mode carte mais indépendant (filtre OSM local à la modale ou au widget).</p>" +
+        "<p>🛡️ <strong>Opt-in strict</strong> : Vue OSM contacte <code>tile.openstreetmap.org</code> " +
+        "pour les tuiles cartographiques. C'est <strong>désactivé par défaut</strong> (philosophie " +
+        "offline-first). Active-le dans <strong>⚙️ Configuration → 🌐 Autoriser la Vue OSM</strong>. " +
+        "Tes données plan ne quittent JAMAIS ton navigateur — seules les tuiles publiques OSM sont " +
+        "demandées, comme n'importe quel client web standard. Modes <em>hors-ligne strict</em> et " +
+        "<em>incognito</em> bloquent automatiquement la Vue OSM par cohérence.</p>",
+      hint: "Attribution © OpenStreetMap contributors affichée dans le coin des cartes — obligation ODbL respectée. Sans calibration GPS du plan, la Vue OSM n'est pas disponible (rien à projeter)."
+    },
+
+    // ─── 24/25 — Mode Histoire (v1.34.19+) ───
+    // 🆕 v1.40.32 — Ajout post-livraison Mode Histoire (oublié à l'onboarding
+    // depuis v1.34.19). Carte présente la note libre + PDF embed comme une
+    // feature de session : tu racontes le plan, tu l'illustre par un PDF.
+    {
+      emoji: "📖",
+      titre: "Mode Histoire — Note libre + PDF du plan",
+      texte:
+        "<p>Le <strong>Mode Histoire</strong> te permet de raconter ton plan : contexte historique, " +
+        "anecdotes, sources, témoignages, mode d'emploi spécifique au site.</p>" +
+        "<p>📖 <strong>2 formats complémentaires</strong> :</p>" +
+        "<ul>" +
+          "<li><strong>Note libre</strong> (éditeur Markdown inline) : titres, listes, liens, gras / " +
+            "italique, blocs code. Sauvegarde auto, persistée localement par plan.</li>" +
+          "<li><strong>PDF embarqué</strong> : importe un PDF (topo originale, plan IGN historique, " +
+            "compte-rendu de sortie, étude géologique…). L'app le stocke en IndexedDB et l'affiche " +
+            "intégré (iframe sandboxée) dans la modale Histoire.</li>" +
+        "</ul>" +
+        "<p>📖 <strong>Accès</strong> : bouton <strong>📖</strong> dans la sidebar (à côté des stats), " +
+        "même taille que les autres chips header. Visible quand le plan a une note OU un PDF associé. " +
+        "Sinon, le bouton ouvre directement la modale d'édition pour démarrer.</p>" +
+        "<p>💾 <strong>Inclus dans tes exports</strong> : la note libre et le PDF Histoire sont " +
+        "embarqués dans les exports <strong>MKMSESSION</strong> (Full session ZIP) — tu peux donc " +
+        "transmettre tout le contexte avec ta session.</p>" +
+        "<p>🔇 <strong>100% local</strong> : le PDF reste en IndexedDB sur ton appareil, jamais " +
+        "transmis nulle part. Si tu changes d'appareil, importe-le depuis ton MKMSESSION.</p>",
+      hint: "Idéal pour les plans hérités d'un ancien collègue : tu peux raconter l'histoire du site et joindre la topo originale dans un seul \"sac\" exportable."
+    },
+
+    // ─── 25/25 — Outils annexes ───
     {
       emoji: "⚙️",
       titre: "Configuration & outils annexes",
@@ -735,6 +815,15 @@
         "performance, M-LVL si applicable, etc.).</p>" +
         "<p>🔐 <strong>Code d'accès local optionnel</strong> : PIN 4-6 chiffres + Face ID / Touch ID / " +
         "Windows Hello (WebAuthn). Protection au démarrage de l'app, idéal si tu prêtes ton téléphone.</p>" +
+        // 🆕 v1.40.32 — Mention commande vocale (oubliée à l'onboarding depuis v1.34.0)
+        "<p>🎤 <strong>Commande vocale</strong> <em>(v1.34+)</em> : bouton micro flottant en bas-droite " +
+        "du mode carte. Dis « <em>aller à [POI]</em> », « <em>activer tracker</em> », « <em>sortie d'urgence</em> » " +
+        "et l'app exécute. Utilise la Web Speech API native du navigateur, <strong>aucun audio</strong> " +
+        "ne quitte ton appareil. Auto-stop après commande exécutée pour économiser la batterie. iOS Safari " +
+        "supporté (avec libération propre du micro au stop).</p>" +
+        // 🆕 v1.40.32 — Mention vibration haptique + thème clair (déjà mentionnés mais brièvement)
+        "<p>🪫 <strong>Vibration haptique</strong> <em>(v1.34.26+)</em> : toggle dans Configuration. " +
+        "Vibre sur 5 events critiques (arrivée à destination, mode urgence, etc.). Discret, non intrusif.</p>" +
         "<p>📋 <strong>Rapports de crash</strong> : si l'app a été tuée par l'OS (OOM mobile typiquement), " +
         "le rapport est archivé dans 📊 Inspecteur mémoire → section Derniers crashs. Copiable pour " +
         "envoi à l'auteur via la page de contact.</p>" +

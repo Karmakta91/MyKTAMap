@@ -314,12 +314,18 @@ function _typeGagnant(typeA, typeB) {
 // + calque masque + pathfinder via getAllEmbeddedRoads" comme alternative
 // (cf README_USER section "Optimiser ton plan").
 // Seuil dynamique selon le toggle PerfUltra.noIntersect : 50 en mode aggressive,
-// 200 en mode normal. Lu à chaque appel pour réagir aux changements à chaud.
+// 500 en mode normal. Lu à chaque appel pour réagir aux changements à chaud.
+// 🆕 v1.36.2 — seuil 200 → 500 (cause racine bug "ronds disparus") : les plans
+// denses récents (Catacombes 2024+, cf KARMA report) dépassaient silencieusement
+// les 200 routes ; le pre-check à _calculerIntersectionsRoads renvoyait [] sans
+// alerter l'user (juste console.warn jamais lu). Avec 500 on couvre la grande
+// majorité des plans réels. Pour les très gros (>500), un toast UI explicite
+// est désormais affiché au lieu du silence.
 function _roadIntersectionMaxRoads() {
   if (window.PerfUltra && window.PerfUltra.get("noIntersect")) return 50;
-  return 200;
+  return 500;
 }
-const ROAD_INTERSECTION_MAX_ROADS = 200; // gardé pour rétro-compat des logs
+const ROAD_INTERSECTION_MAX_ROADS = 500; // gardé pour rétro-compat des logs
 
 // =========================
 // 🚀 PerfUltra : décimation polylines (Ramer-Douglas-Peucker)
@@ -565,10 +571,16 @@ function _renderIntersections() {
   intersectionLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
   intersectionLayers = [];
 
-  // 🆕 v1.9.2 : APP_CONFIG.showRoadIntersections (default true) — l'user peut
-  // désactiver l'affichage. Le calcul reste accessible via
+  // 🆕 v1.9.2 — toggle on/off des cercles d'intersection. Default true.
+  // 🆕 v1.36.2 — l'option est désormais PER-PLAN (déplacée de Configuration
+  // home vers ⚙️ Réglages map mode). Helper `getPlanShowsIntersections()`
+  // (cf js/config.js) lit la pref per-plan, fallback sur la pref globale
+  // historique, fallback default true. Le calcul reste accessible via
   // window.computeRoadIntersections pour les exports (KMZ) indépendamment.
-  if (!(window.APP_CONFIG && window.APP_CONFIG.showRoadIntersections !== false)) return;
+  const _shows = (typeof window.getPlanShowsIntersections === "function")
+    ? window.getPlanShowsIntersections()
+    : (window.APP_CONFIG && window.APP_CONFIG.showRoadIntersections !== false);
+  if (!_shows) return;
 
   const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   const _vis  = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))

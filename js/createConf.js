@@ -398,10 +398,27 @@ function afficherPlanner() {
 
             <label class="kta-cfg-label">Cooldown (ms)</label>
             <input class="kta-cfg-input" id="pl_stepCooldown" type="number" value="400">
+
+            <!-- 🧭 v1.37.0 — Calibration Nord du plan. Embed dans
+                 plan-config.json > plan.northOffsetDeg UNIQUEMENT si ≠ 0
+                 (rétrocompat stricte : plans Nord-haut → champ absent →
+                 lecteurs v1.36.x continuent de marcher à l'identique). -->
+            <label class="kta-cfg-label">
+              🧭 Orientation Nord (°)
+              <span class="kta-planner-hint">(0 = haut = Nord, sens horaire)</span>
+            </label>
+            <input class="kta-cfg-input" id="pl_northOffset" type="number" min="0" max="359" step="1" value="0">
           </div>
           <div class="kta-planner-tracking-actions">
             <button type="button" class="kta-planner-add-btn" id="pl_resetStartCenter" title="Remet la position de départ au centre du plan (W/2 × H/2)">🎯 Recentrer la position de départ</button>
           </div>
+          <p class="kta-planner-hint" style="margin:8px 0 0; font-size:11.5px; color:#8892a4;">
+            🧭 <strong>Nord</strong> : laisse 0 si le haut du plan = Nord vrai (cas standard).
+            Pour les plans dont le Nord est ailleurs (photo aérienne décalée, plan cataphile
+            sans rosace alignée), indique l'angle CW entre le haut du plan et le Nord vrai.
+            <strong>Effet</strong> : tracker (rotation + sens de marche) + boussole.
+            L'utilisateur final pourra surcharger ce réglage per-plan via ⚙️ Réglages.
+          </p>
         </div>
 
         <!-- 6. ICÔNES & TAGS -->
@@ -502,6 +519,32 @@ function afficherPlanner() {
           <div id="pl_geo_status" style="font-size:12px; color:#8892a4; margin:6px 2px 0; min-height:18px;"></div>
         </div>
 
+        <!-- 📖 v1.37.0 — PDF Histoire (optionnel, avancé). Embed dans le ZIP
+             sous data/histoire.pdf + écrit plan-config.json > plan.histoirePdf
+             = "data/histoire.pdf". Lu au runtime par js/modeHistoire.js (modale
+             Mode Histoire avec iframe PDF). Si absent : modale Histoire propose
+             import session via IDB (compat v1.34.20 inchangée). -->
+        <div class="kta-aide-section kta-pl-col-right" data-planner-advanced="1">
+          <div class="kta-aide-section-titre">📖 PDF Histoire <span class="kta-planner-hint">(optionnel)</span></div>
+          <p class="kta-planner-info">
+            PDF qui raconte l'histoire du site (genèse, plans d'archive, anecdotes…).
+            Embarqué dans le ZIP du plan, lu par le <strong>Mode Histoire</strong> (modale
+            📖 dans le status bar). Lecture <strong>100% offline</strong>, jamais transmis
+            au serveur.
+          </p>
+          <div class="kta-planner-upload-ligne">
+            <span class="kta-cfg-label">Fichier PDF</span>
+            <label class="kta-planner-upload-btn" for="pl_histoirePdf">📂 Choisir</label>
+            <input type="file" id="pl_histoirePdf" accept="application/pdf" style="display:none">
+            <span class="kta-planner-upload-nom" id="pl_histoirePdf_nom">Aucun fichier</span>
+            <button type="button" class="kta-planner-add-btn" id="pl_histoirePdf_retirer" style="display:none;">🗑 Retirer</button>
+          </div>
+          <p class="kta-planner-hint" style="margin:6px 0 0; font-size:11.5px; color:#8892a4;">
+            En <strong>mode Modifier</strong>, l'éventuel PDF existant est conservé sauf
+            si tu choisis un nouveau fichier OU cliques 🗑 Retirer.
+          </p>
+        </div>
+
         <div id="kta-planner-erreur" class="kta-conv-erreur kta-pl-col-full" style="display:none;"></div>
 
         <div class="kta-conv-actions kta-pl-col-full" style="margin-top:16px;">
@@ -572,6 +615,30 @@ function afficherPlanner() {
 
   _bindUploadLabel("pl_baseImage", "pl_baseImage_nom");
   _bindUploadLabel("pl_collision", "pl_collision_nom");
+  // 📖 v1.37.0 — PDF Histoire (générateur avancé). Sync nom uploaded +
+  // bouton "🗑 Retirer" qui marque l'intention de retirer (data-retire=1)
+  // pour signaler à _genererZip de NE PAS conserver le PDF du ZIP source
+  // (mode Modifier). Choisir un nouveau fichier réinitialise le flag retire.
+  _bindUploadLabel("pl_histoirePdf", "pl_histoirePdf_nom");
+  (function _bindHistoirePdfControls() {
+    const inp     = document.getElementById("pl_histoirePdf");
+    const nom     = document.getElementById("pl_histoirePdf_nom");
+    const btnDel  = document.getElementById("pl_histoirePdf_retirer");
+    if (!inp || !nom || !btnDel) return;
+    inp.addEventListener("change", function() {
+      // Reset le flag "retirer" si l'user choisit un nouveau fichier
+      btnDel.dataset.retire = "";
+      btnDel.style.display = "";
+    });
+    btnDel.addEventListener("click", function() {
+      // Marque l'intention de retirer (lecture dans _genererZip)
+      btnDel.dataset.retire = "1";
+      try { inp.value = ""; } catch(e) {}
+      nom.textContent = "Aucun fichier (retiré)";
+      nom.dataset.existing = "";
+      btnDel.style.display = "none";
+    });
+  })();
 
   // Auto-détection des dimensions du plan depuis l'image principale uploadée.
   // Met à jour les champs hidden pl_width / pl_height + le display visuel
@@ -946,6 +1013,34 @@ function _preRemplirFormulaire(config) {
   sv("pl_stepLength",    t.stepLength    ?? 0.7);
   sv("pl_stepThreshold", t.stepThreshold ?? 13);
   sv("pl_stepCooldown",  t.stepCooldown  ?? 400);
+  // 🧭 v1.37.0 — Pré-remplissage Nord depuis plan.northOffsetDeg (default 0
+  // si champ absent → rétrocompat stricte plans v1.36.x).
+  sv("pl_northOffset", (plan.northOffsetDeg != null && Number.isFinite(Number(plan.northOffsetDeg))) ? plan.northOffsetDeg : 0);
+
+  // 📖 v1.37.0 — Pré-remplissage PDF Histoire depuis plan.histoirePdf
+  // (chemin relatif ZIP, type "data/<nom>.pdf"). Sauvegarde le nom dans
+  // dataset.existing pour que _genererZip puisse le ré-embarquer depuis
+  // _plannerOrigAssets si l'user n'a pas changé/retiré le PDF.
+  const histNomEl = document.getElementById("pl_histoirePdf_nom");
+  const histBtnDel = document.getElementById("pl_histoirePdf_retirer");
+  if (histNomEl) {
+    if (plan.histoirePdf) {
+      const _histBase = String(plan.histoirePdf).split("/").pop();
+      histNomEl.textContent = "📄 " + _histBase + " (depuis ZIP)";
+      histNomEl.dataset.existing = _histBase;
+      if (histBtnDel) {
+        histBtnDel.style.display = "";
+        histBtnDel.dataset.retire = "";
+      }
+    } else {
+      histNomEl.textContent = "Aucun fichier";
+      histNomEl.dataset.existing = "";
+      if (histBtnDel) {
+        histBtnDel.style.display = "none";
+        histBtnDel.dataset.retire = "";
+      }
+    }
+  }
   // 🏗️ Multi-niveau : pre-coche la case si le plan-config importé contient
   // `plan.multiLevel: true`. Sinon laisse decochee (defaut HTML). Absence
   // du champ = false implicite (retro-compat plans v147 et avant).
@@ -1315,6 +1410,20 @@ function _ajouterImageLayer(prefill) {
         ${p.file ? "📄 " + p.file.split("/").pop() : "Aucun fichier"}
       </span>
     </div>
+    <!-- 🆕 v1.38.1 — Section calibration 2 ancres (embarquée durablement dans plan-config.json).
+         Hint auto-affiché : dims layer vs dims plan → ✅ inutile / ⚠️ utile. Stocké dans item._calibration. -->
+    <div class="kta-planner-calib-section" style="margin-top:8px; padding:6px 8px; background:rgba(255,255,255,0.02); border-radius:6px; border:1px dashed rgba(255,255,255,0.1);">
+      <div style="font-size:11.5px; color:#8892a4; margin-bottom:4px;">
+        📐 <strong>Calibration 2 ancres</strong>
+        <span style="color:#f4c542;">⚠️ Calibre UNIQUEMENT si les dimensions du calque diffèrent du plan principal — sinon tu fausserais l'alignement.</span>
+      </div>
+      <div id="${id}_calib_hint" style="font-size:11px; color:#8892a4; margin-bottom:4px; min-height:14px;">⏳ Choisis un fichier image pour analyser les dimensions…</div>
+      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+        <button type="button" class="kta-planner-add-btn" id="${id}_calib_btn" disabled>📐 Calibrer (2 ancres)</button>
+        <button type="button" class="kta-planner-add-btn" id="${id}_calib_reset_btn" style="display:none;">↺ Reset</button>
+        <span id="${id}_calib_status" style="font-size:11.5px; color:#7dd87d; flex:1 1 100%;"></span>
+      </div>
+    </div>
   `;
 
   list.appendChild(item);
@@ -1323,6 +1432,152 @@ function _ajouterImageLayer(prefill) {
     item.remove();
     if (!list.querySelector(".kta-planner-layer-item"))
       list.innerHTML = '<p class="kta-planner-empty">Aucun calque image</p>';
+  });
+
+  // 🆕 v1.38.1 — Calibration state stocké sur l'item DOM
+  item._calibration = p.calibration || null;
+
+  const hintEl   = item.querySelector("#" + id + "_calib_hint");
+  const calibBtn = item.querySelector("#" + id + "_calib_btn");
+  const resetBtn = item.querySelector("#" + id + "_calib_reset_btn");
+  const statusEl = item.querySelector("#" + id + "_calib_status");
+
+  function _refreshCalibUI() {
+    if (item._calibration) {
+      statusEl.innerHTML = "✅ Calibration enregistrée (sera embedée dans le ZIP)";
+      resetBtn.style.display = "";
+    } else {
+      statusEl.innerHTML = "";
+      resetBtn.style.display = "none";
+    }
+  }
+  _refreshCalibUI();
+
+  // Helpers pour récupérer l'URL et les dims de l'image layer (mode Nouveau =
+  // File via input ; mode Modifier = File depuis _plannerOrigAssets via nom).
+  function _getLayerSourceInfo() {
+    return new Promise(function(resolve) {
+      const fileInput = document.getElementById(id + "_file");
+      const file = (fileInput && fileInput.files && fileInput.files[0]) ? fileInput.files[0] : null;
+      let url = null, fileForDims = null;
+      if (file) {
+        url = URL.createObjectURL(file);
+        fileForDims = file;
+      } else {
+        // Mode Modifier : chercher le nom existant dans _plannerOrigAssets
+        const nomTxt = (document.getElementById(id + "_file_nom")?.textContent || "").replace(/^[✅📄]\s/u, "").trim();
+        if (nomTxt && _plannerOrigAssets[nomTxt]) {
+          fileForDims = _plannerOrigAssets[nomTxt];
+          url = URL.createObjectURL(fileForDims);
+        }
+      }
+      if (!url) { resolve(null); return; }
+      // Charger l'image pour récupérer les dims naturelles
+      const tmpImg = new Image();
+      tmpImg.onload = function() {
+        resolve({ url: url, width: tmpImg.naturalWidth, height: tmpImg.naturalHeight, blobUrl: url });
+      };
+      tmpImg.onerror = function() {
+        try { URL.revokeObjectURL(url); } catch(e) {}
+        resolve(null);
+      };
+      tmpImg.src = url;
+    });
+  }
+
+  function _refreshDimsHint() {
+    const planW = parseInt(document.getElementById("pl_width")?.value || "0", 10);
+    const planH = parseInt(document.getElementById("pl_height")?.value || "0", 10);
+    if (!planW || !planH) {
+      hintEl.innerHTML = '<span style="color:#8892a4;">⏳ Plan principal pas encore chargé (charge d\'abord l\'image principale).</span>';
+      calibBtn.disabled = true;
+      return;
+    }
+    _getLayerSourceInfo().then(function(info) {
+      if (!info) {
+        hintEl.innerHTML = '<span style="color:#8892a4;">⏳ Choisis un fichier image pour analyser les dimensions…</span>';
+        calibBtn.disabled = true;
+        return;
+      }
+      const sameDims = Math.abs(info.width - planW) <= 2 && Math.abs(info.height - planH) <= 2;
+      if (sameDims) {
+        hintEl.innerHTML = '<span style="color:#7dd87d;">✅ <strong>' + info.width + '×' + info.height + ' = plan principal</strong> — calibration <strong>inutile</strong>, laisse vide.</span>';
+        calibBtn.disabled = false;  // on autorise quand même au cas où
+      } else {
+        hintEl.innerHTML = '<span style="color:#f4c542;">⚠️ <strong>' + info.width + '×' + info.height + ' ≠ plan ' + planW + '×' + planH + '</strong> — calibration <strong>recommandée</strong>.</span>';
+        calibBtn.disabled = false;
+      }
+      // Libère le blob URL après usage (pas besoin de le garder, on en recréera un au picker)
+      try { URL.revokeObjectURL(info.url); } catch(e) {}
+    });
+  }
+
+  // Re-check dims quand l'user change l'image OU au boot si déjà uploadée
+  const fileInputEl = document.getElementById(id + "_file");
+  if (fileInputEl) fileInputEl.addEventListener("change", function() { _refreshDimsHint(); });
+  // Re-check aussi quand l'user change le plan principal (input pl_baseImage)
+  const baseImgEl = document.getElementById("pl_baseImage");
+  if (baseImgEl) baseImgEl.addEventListener("change", function() { _refreshDimsHint(); });
+  // Init immédiat (mode Modifier : on a déjà un fichier)
+  setTimeout(_refreshDimsHint, 50);
+
+  // Bouton "📐 Calibrer (2 ancres)" → ouvre le picker
+  calibBtn.addEventListener("click", function() {
+    if (!window.ImageLayerCalibrationPicker) {
+      alert("Module Picker indisponible.");
+      return;
+    }
+    const planW = parseInt(document.getElementById("pl_width")?.value || "0", 10);
+    const planH = parseInt(document.getElementById("pl_height")?.value || "0", 10);
+    if (!planW || !planH) {
+      alert("Charge d'abord une image principale (pour avoir les dimensions du plan).");
+      return;
+    }
+    // URL du plan principal (file uploadé OU mode Modifier via assets originaux)
+    let planUrl = null, planBlob = null;
+    const baseFile = (baseImgEl && baseImgEl.files && baseImgEl.files[0]) ? baseImgEl.files[0] : null;
+    if (baseFile) {
+      planUrl = URL.createObjectURL(baseFile);
+      planBlob = planUrl;
+    } else if (_plannerMode === "modifier") {
+      // Cherche la 1ère image dans _plannerOrigAssets qui n'est pas la collision
+      const collNomMod = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄]\s/u, "") || "";
+      const imgKey = Object.keys(_plannerOrigAssets).find(function(k) {
+        return /\.(png|jpg|jpeg|webp|gif)$/i.test(k) && k !== collNomMod;
+      });
+      if (imgKey) {
+        planUrl = URL.createObjectURL(_plannerOrigAssets[imgKey]);
+        planBlob = planUrl;
+      }
+    }
+    if (!planUrl) { alert("Image du plan principal indisponible."); return; }
+
+    _getLayerSourceInfo().then(function(info) {
+      if (!info) { alert("Image du calque indisponible."); try { URL.revokeObjectURL(planUrl); } catch(e) {} return; }
+      window.ImageLayerCalibrationPicker.open({
+        sourceUrl: info.url,
+        planUrl: planUrl,
+        planWidth: planW,
+        planHeight: planH,
+        existing: item._calibration
+      }).then(function(calib) {
+        try { URL.revokeObjectURL(info.url); } catch(e) {}
+        try { URL.revokeObjectURL(planUrl); } catch(e) {}
+        if (!calib) return;
+        item._calibration = calib;
+        _refreshCalibUI();
+      }).catch(function(e) {
+        try { URL.revokeObjectURL(info.url); } catch(e) {}
+        try { URL.revokeObjectURL(planUrl); } catch(e) {}
+        console.warn("[Planner calib] échec :", e);
+        alert("Picker indisponible : " + (e && e.message ? e.message : "erreur inconnue"));
+      });
+    });
+  });
+
+  resetBtn.addEventListener("click", function() {
+    item._calibration = null;
+    _refreshCalibUI();
   });
 }
 
@@ -2275,7 +2530,7 @@ async function _genererZip() {
       dataFolder.file(baseFile.name, await _lireFichier(baseFile));
     } else if (_plannerMode === "modifier") {
       // Chercher dans les assets originaux — prendre la première image non-collision
-      const collNom = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄] /, "") || "";
+      const collNom = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄]\s/u, "") || "";
       const imgKey  = Object.keys(_plannerOrigAssets).find(function(k) {
         return /\.(png|jpg|jpeg|webp|gif)$/i.test(k) && k !== collNom;
       });
@@ -2296,7 +2551,7 @@ async function _genererZip() {
       collisionName = "data/" + collFile.name;
       dataFolder.file(collFile.name, await _lireFichier(collFile));
     } else if (_plannerMode === "modifier") {
-      const collNom = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄] /, "") || "";
+      const collNom = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄]\s/u, "") || "";
       if (collNom && collNom !== "Aucun fichier" && _plannerOrigAssets[collNom]) {
         collisionName = "data/" + collNom;
         dataFolder.file(collNom, await _lireFichier(_plannerOrigAssets[collNom]));
@@ -2318,7 +2573,7 @@ async function _genererZip() {
                           ? document.getElementById(lid + "_level").value : "";
       const ilLevel = (ilLevelStr === "" || isNaN(parseInt(ilLevelStr, 10)))
                        ? 0 : parseInt(ilLevelStr, 10);
-      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").replace(/^[✅📄] /, "");
+      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").replace(/^[✅📄]\s/u, "");
       const ilFile  = _getFile(lid + "_file", nomTxt);
 
       if (!ilId) { _plannerErreur("Identifiant manquant sur calque image."); throw new Error("abort"); }
@@ -2348,7 +2603,15 @@ async function _genererZip() {
         _plannerErreur("Fichier manquant pour le calque \"" + ilId + "\"."); throw new Error("abort");
       }
 
-      imageLayers.push({ id: ilId, label: ilLabel, file: filePath, visible: ilVis, order: ilOrder, level: ilLevel });
+      const imageLayerObj = { id: ilId, label: ilLabel, file: filePath, visible: ilVis, order: ilOrder, level: ilLevel };
+      // 🆕 v1.38.1 — Embed la calibration 2 ancres dans plan-config.json si présente.
+      // Stockée sur le DOM element par _ajouterImageLayer (item._calibration), saisie via picker.
+      // Rétro-compat absolue : champ absent si pas calibré → comportement v1.37.x.
+      if (item._calibration && item._calibration.sourceA && item._calibration.targetA
+          && item._calibration.sourceB && item._calibration.targetB) {
+        imageLayerObj.calibration = item._calibration;
+      }
+      imageLayers.push(imageLayerObj);
     }
 
     // ── Calques données ──
@@ -2358,7 +2621,7 @@ async function _genererZip() {
       const dlId    = document.getElementById(lid + "_id").value.trim();
       const dlLabel = document.getElementById(lid + "_label").value.trim() || dlId;
       const dlVis   = document.getElementById(lid + "_visible").value === "true";
-      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").replace(/^[✅📄] /, "");
+      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").replace(/^[✅📄]\s/u, "");
       const dlFile  = _getFile(lid + "_file", dlId + ".json");
 
       if (!dlId) { _plannerErreur("Identifiant manquant sur calque données."); throw new Error("abort"); }
@@ -2630,6 +2893,38 @@ async function _genererZip() {
     };
     if (multiLevel)     planObj.multiLevel = true;
     if (tilingManifest) planObj.tiledV2    = true;
+
+    // 🧭 v1.37.0 — Calibration Nord. Embed UNIQUEMENT si ≠ 0 (rétrocompat
+    // stricte : plans v1.36.x sans champ continuent de produire un JSON
+    // équivalent). Normalisation [0, 360[ + parse robust (NaN → skip).
+    const _northRaw = parseFloat(document.getElementById("pl_northOffset")?.value || "0");
+    if (Number.isFinite(_northRaw) && _northRaw !== 0) {
+      const _northNorm = ((_northRaw % 360) + 360) % 360;
+      if (_northNorm !== 0) planObj.northOffsetDeg = _northNorm;
+    }
+
+    // 📖 v1.37.0 — PDF Histoire. 3 cas :
+    //  1. User a uploadé un nouveau PDF → embed dans data/histoire.pdf
+    //     + planObj.histoirePdf = "data/histoire.pdf"
+    //  2. Mode Modifier + PDF existant pas retiré + pas remplacé → on
+    //     conserve le nom & on re-embarque depuis _plannerOrigAssets
+    //  3. Sinon → champ absent (rétrocompat stricte)
+    const _histRetire     = (document.getElementById("pl_histoirePdf_retirer")?.dataset.retire === "1");
+    const _histNewFile    = _getFile("pl_histoirePdf", null);
+    const _histExistNom   = document.getElementById("pl_histoirePdf_nom")?.dataset.existing || "";
+    if (_histNewFile) {
+      // Cas 1 : nouveau PDF uploadé
+      const _histName = "histoire.pdf";  // nom normalisé pour le runtime
+      dataFolder.file(_histName, await _lireFichier(_histNewFile));
+      planObj.histoirePdf = "data/" + _histName;
+      console.log("[Planner] PDF Histoire embarqué :", _histName, "(taille " + _histNewFile.size + " bytes)");
+    } else if (!_histRetire && _histExistNom && _plannerOrigAssets[_histExistNom]) {
+      // Cas 2 : conservation du PDF existant (mode Modifier sans changement)
+      dataFolder.file(_histExistNom, await _lireFichier(_plannerOrigAssets[_histExistNom]));
+      planObj.histoirePdf = "data/" + _histExistNom;
+      console.log("[Planner] PDF Histoire conservé depuis ZIP source :", _histExistNom);
+    }
+    // Cas 3 : pas de PDF → planObj.histoirePdf absent (rétrocompat).
 
     // 🆕 v1.17.0 — Légende plan-level : si l'utilisateur a personnalisé
     // la légende dans le Générateur (section "🏷️ Légende du plan" en mode

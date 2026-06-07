@@ -70,6 +70,21 @@
     "myktamap_last_version_data"
   ];
 
+  // 🆕 v1.39.15 — Préfixes localStorage per-plan inclus dans la section
+  // "perPlanLs" (audit KARMA : la georef GPS, les calibrations de calques
+  // image et la note libre Mode Histoire n'étaient pas sauvegardés dans le
+  // profile exporté → perdus à reset/migration device).
+  //
+  // ⚠️ Si tu ajoutes un nouveau préfixe per-plan dans l'app, pense à
+  // l'ajouter ici sinon il sera ABSENT de l'export profile (= dette
+  // user-facing silencieuse).
+  const PER_PLAN_PREFIXES = [
+    "myktamap_kmz_calib_",        // GPS georef plan (pointA/B {x,y,lat,lng})
+    "myktamap_plan_prefs_",       // prefs cascade per-plan (calibrations image layers v1.38.0, Nord, etc.)
+    "myktamap_route_avoid_",      // avoidances itinéraire Pathfinder
+    "myktamap_note_libre_"        // note libre Mode Histoire (markdown user)
+  ];
+
   // ───────── HELPERS ─────────
 
   function _formatBytes(n) {
@@ -150,6 +165,32 @@
       } catch(e) {}
     });
     return prefs;
+  }
+
+  // 🆕 v1.39.15 — Scan localStorage pour tous les préfixes per-plan PER_PLAN_PREFIXES.
+  // Retourne un objet { "<full-ls-key>": <parsed-value-or-string> } prêt à être
+  // re-injecté tel quel via setItem au moment de l'import.
+  // Le format est PLATEAU et conserve la full key (préfixe + planId) pour
+  // robustesse : pas besoin de re-construire la key côté import, on loop juste
+  // sur les entries.
+  function _collectPerPlanLsKeys() {
+    const out = {};
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        const hit = PER_PLAN_PREFIXES.some(function(prefix) { return key.startsWith(prefix); });
+        if (!hit) continue;
+        const raw = localStorage.getItem(key);
+        if (raw == null) continue;
+        // Tente JSON, sinon raw string (note libre = markdown plain text)
+        const parsed = _safeJsonParse(raw);
+        out[key] = (parsed != null) ? parsed : raw;
+      }
+    } catch(e) {
+      console.warn("[ProfileExportImport] perPlanLs collect échec :", e);
+    }
+    return out;
   }
 
   function _collectFavoris() {
@@ -324,6 +365,7 @@
     };
     if (include.registry !== false)    profile.sections.registry    = _collectRegistry();
     if (include.preferences !== false) profile.sections.preferences = _collectPreferences();
+    if (include.perPlanLs !== false)   profile.sections.perPlanLs   = _collectPerPlanLsKeys(); // 🆕 v1.39.15
     if (include.favoris !== false)     profile.sections.favoris     = _collectFavoris();
     if (include.sessions !== false)    profile.sections.sessions    = _collectSessions();
     if (include.tutorial !== false)    profile.sections.tutorial    = _collectTutorial();
@@ -352,6 +394,12 @@
     sizes.preferences = {
       count: Object.keys(prefs).length,
       bytes: JSON.stringify(prefs).length
+    };
+    // 🆕 v1.39.15 — perPlanLs (georef GPS + calibrations layers + avoidances iti + note Histoire)
+    const perPlan = _collectPerPlanLsKeys();
+    sizes.perPlanLs = {
+      count: Object.keys(perPlan).length,
+      bytes: JSON.stringify(perPlan).length
     };
     // Favoris
     const favs = _collectFavoris();
@@ -505,6 +553,7 @@
       user:        s.user        ? ((s.user.surnom ? 1 : 0) + (s.user.photoData ? 1 : 0)) : 0,
       registry:    s.registry    ? ((s.registry.plans || []).length) : 0,
       preferences: s.preferences ? Object.keys(s.preferences).length : 0,
+      perPlanLs:   s.perPlanLs   ? Object.keys(s.perPlanLs).length : 0, // 🆕 v1.39.15
       favoris:     s.favoris     ? Object.keys(s.favoris.byPlan || {}).reduce(function(acc, pid) {
                      return acc + (s.favoris.byPlan[pid] || []).length;
                    }, 0) : 0,
@@ -531,8 +580,8 @@
     opts = opts || {};
     const mode = (opts.mode === "replace") ? "replace" : "merge";
     const include = opts.include || {
-      registry: true, preferences: true, favoris: true,
-      sessions: true, backups: true, tutorial: true,
+      registry: true, preferences: true, perPlanLs: true,
+      favoris: true, sessions: true, backups: true, tutorial: true,
       photos: false, crashes: false
     };
     const s = profile.sections;
@@ -582,6 +631,36 @@
         result.applied.preferences = Object.keys(s.preferences).length;
       } catch(e) {
         console.warn("[ProfileExportImport] apply preferences échec :", e);
+      }
+    }
+
+    // 🆕 v1.39.15 — ─── Per-plan localStorage keys (georef + calibrations + avoidances + notes) ───
+    // Sémantique merge vs replace :
+    //   - merge : skip une clé si déjà présente localement (= préserve les
+    //     changements locaux faits depuis l'export, ex: user a re-saisi sa
+    //     georef sur le device cible)
+    //   - replace : écrasement total (cohérent avec les autres sections en
+    //     mode replace)
+    // ⚠️ Garde anti-pollution : on filtre les keys contre PER_PLAN_PREFIXES
+    // au moment de la restauration, pour ne pas injecter une clé arbitraire
+    // si un profil édité à la main contient des clés hors préfixes attendus.
+    if (include.perPlanLs !== false && s.perPlanLs && typeof s.perPlanLs === "object") {
+      try {
+        let n = 0;
+        Object.keys(s.perPlanLs).forEach(function(key) {
+          if (!key) return;
+          const allowed = PER_PLAN_PREFIXES.some(function(prefix) { return key.startsWith(prefix); });
+          if (!allowed) return; // garde anti-pollution
+          if (mode === "merge" && localStorage.getItem(key) != null) return; // skip si déjà présent
+          const val = s.perPlanLs[key];
+          if (val == null) return;
+          localStorage.setItem(key,
+            typeof val === "string" ? val : JSON.stringify(val));
+          n++;
+        });
+        result.applied.perPlanLs = n;
+      } catch(e) {
+        console.warn("[ProfileExportImport] apply perPlanLs échec :", e);
       }
     }
 
@@ -810,6 +889,7 @@
     html += _renderSectionRow("user",        "👤", "Identité utilisateur",            sizes.user,        true,  "Surnom + photo de profil (image compressée 512px JPEG). Stockée dans l'IDB <code>myktamap_profile</code>.");
     html += _renderSectionRow("registry",    "🗂️", "Liste des plans (méta)",         sizes.registry,    true,  "Liste des plans connus (ID, nom, version, source). <strong>Sans</strong> les ZIPs binaires.");
     html += _renderSectionRow("preferences", "⚙️", "Préférences",                     sizes.preferences, true,  "Réglages utilisateur : thème, mode perf, debug, paranoia, mode Simple/Avancé Générateur, prefs Freehand, etc.");
+    html += _renderSectionRow("perPlanLs",   "📍", "Calibrations & prefs par plan",   sizes.perPlanLs,   true,  "<strong>Georef GPS</strong>, calibrations des calques image, prefs cascade (Nord, etc.), avoidances itinéraire et note libre Mode Histoire — par plan.");
     html += _renderSectionRow("favoris",     "⭐", "Favoris",                          sizes.favoris,     true,  "Tous les POI marqués favoris (tous plans confondus).");
     html += _renderSectionRow("sessions",    "💾", "Sessions actives",                sizes.sessions,    true,  "Annotations en cours sur chaque plan (slot localStorage par planId).");
     html += _renderSectionRow("backups",     "📦", "Snapshots IDB",                   sizes.backups,     true,  "10 derniers snapshots FIFO par plan (auto + manuels).");
@@ -1132,6 +1212,7 @@
     if (stats.user > 0)    html += _renderImportSection("user",     "👤", "Identité utilisateur", stats.user);
     html += _renderImportSection("registry",    "🗂️", "Liste des plans",     stats.registry);
     html += _renderImportSection("preferences", "⚙️", "Préférences",         stats.preferences);
+    if (stats.perPlanLs > 0) html += _renderImportSection("perPlanLs", "📍", "Calibrations & prefs par plan", stats.perPlanLs); // 🆕 v1.39.15
     html += _renderImportSection("favoris",     "⭐", "Favoris",              stats.favoris);
     html += _renderImportSection("sessions",    "💾", "Sessions actives",    stats.sessions);
     html += _renderImportSection("backups",     "📦", "Snapshots",           stats.backups);

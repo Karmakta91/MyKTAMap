@@ -193,6 +193,15 @@
       '<span class="kta-refonte-counter kta-refonte-counter-histoire" id="kta-refonte-counter-histoire" title="Mode Histoire — note libre + PDF" role="button" tabindex="0">' +
         '<span class="kta-refonte-counter-icon">📖</span>' +
       '</span>' +
+      // 🆕 v1.39.0 — Bouton 🌍 Vue OSM. Visible UNIQUEMENT si le plan a un
+      // georef GPS valide ET que l'user a opt-in dans Configuration home.
+      // Cliquer ouvre la modale OSM (plan calibré projeté sur OpenStreetMap).
+      // 🎨 v1.39.8 — Emoji change de 🗺️ vers 🌍 pour éviter le conflit visuel
+      // avec les boutons Légende (sidebar gauche) et Itinéraire (groupe Iti)
+      // qui utilisent déjà 🗺️. Le globe 🌍 colle bien à OSM (surface monde).
+      '<span class="kta-refonte-counter kta-refonte-counter-osm" id="kta-refonte-counter-osm" title="Vue OSM — plan au-dessus d\'OpenStreetMap" role="button" tabindex="0" style="display:none;">' +
+        '<span class="kta-refonte-counter-icon">🌍</span>' +
+      '</span>' +
       // 🆕 v1.35.0 — Bouton 🚨 Mode Sortie d\'urgence. Click ouvre la modale
       // qui identifie la sortie la plus proche (pathfinder + tags
       // Puits/Escalier/Cavage ouvert ou tag "entrée"). Cf js/sortieUrgence.js.
@@ -254,6 +263,41 @@
           _openHistoire();
         }
       });
+    }
+
+    // 🆕 v1.39.0 — Bouton 🗺️ Vue OSM : visible UNIQUEMENT si plan georef
+    // ET user opt-in dans Configuration home. Click ouvre la modale (carte
+    // EPSG:3857 + tile OSM + plan projeté). Cf js/osmView.js.
+    // 🐛 v1.39.0-fix1 (KARMA "pas icone en haut") : remplace les 2 setTimeout
+    // ponctuels par un polling permanent 2s (le check isAvailable est très
+    // léger ~0.3ms). Cause racine : `kta:planConfigReady` que j'écoutais
+    // n'est PAS dispatché par MyKTAMap (event fantôme). Sur mobile / gros
+    // plan, le chargement peut prendre > 3s → mes timeouts ratent. Polling
+    // permanent catch aussi le switch de plan + toggle opt-in sans event.
+    const osmBtn = document.getElementById("kta-refonte-counter-osm");
+    if (osmBtn) {
+      function _refreshOsmVisibility() {
+        const show = !!(window.OsmView && window.OsmView.isAvailable && window.OsmView.isAvailable());
+        osmBtn.style.display = show ? "" : "none";
+      }
+      function _openOsm() {
+        if (window.OsmView && typeof window.OsmView.open === "function") {
+          window.OsmView.open();
+        } else {
+          console.warn("[Refonte] OsmView indisponible");
+        }
+      }
+      osmBtn.addEventListener("click", _openOsm);
+      osmBtn.addEventListener("keydown", function(e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          _openOsm();
+        }
+      });
+      // Init + listeners + polling permanent (2s) qui catch tout
+      _refreshOsmVisibility();
+      window.addEventListener("kta:osmOptInChange", _refreshOsmVisibility);
+      setInterval(_refreshOsmVisibility, 2000);
     }
 
     // 🆕 v1.35.0 — Bouton 🚨 Sortie d'urgence : click déclenche la recherche

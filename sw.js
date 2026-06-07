@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.36.0";
+const CACHE_NAME = "myktamap-cache-v1.40.32";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -44,6 +44,11 @@ const ASSETS_TO_CACHE = [
   // README.md (GitHub) + CLAUDE.md (agents IA). Le reste dans docs/.
   "./docs/applications/README_USER.md",
   "./docs/applications/README_USER.en.md",
+  // 🆕 v1.36.1 : guide installation Docker pas-à-pas (FR + EN). Consultable
+  // offline pour l'user qui veut self-host mais n'a jamais utilisé Docker.
+  // Cf section "🐳 Self-host avec Docker" du README_USER qui linke ces docs.
+  "./docs/applications/DOCKER_INSTALL.md",
+  "./docs/applications/DOCKER_INSTALL.en.md",
   // Squelette enrichi pour la fonctionnalité 🤖 Aide IA (modale Téléchargement contexte IA)
   "./docs/applications/AI_CONTEXT.md",
   // Licence (consultable offline si l'utilisateur veut verifier les conditions d'usage)
@@ -123,6 +128,10 @@ const ASSETS_TO_CACHE = [
   "./js/utils.js",
   "./js/measure.js",
   "./js/tiling.js",
+  // 🆕 v1.38.0 — Helpers calage image layers (cascade per-plan, math 2 ancres → 3 coins)
+  "./js/imageLayerCalibration.js",
+  // 🆕 v1.38.0 — UI Picker calage image layers (modale split-screen 2 minimaps)
+  "./js/imageLayerCalibrationPicker.js",
   "./js/map.js",
   "./js/tracking.js",
   "./js/editor.js",
@@ -178,6 +187,9 @@ const ASSETS_TO_CACHE = [
   "./js/mdParser.js",
   "./js/modeHistoire.js",
   "./js/kmzExport.js",
+  // 🆕 v1.39.0 — Vue OSM (plan au-dessus OpenStreetMap)
+  "./js/osmView.js",
+  "./js/osmHomePreview.js",
   "./js/kmzImport.js",
   // 🆕 v1.14.0 : GPX import + export (réutilise calibrage KMZ)
   "./js/gpxIO.js",
@@ -220,6 +232,8 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.31.0 (P3 Lot 7) : Module extrait de interface.js — calibrage
   // échelle + reset complet + mise à jour douce + helpers ping
   "./js/interfaceMaintenance.js",
+  // 🧭 v1.37.0 : Picker calibration Nord 2 clics (chargé avant interfaceConfig)
+  "./js/northPicker.js",
   // 🆕 v1.31.0 (P3 Lot 9 — DERNIER LOT) : Module extrait de interface.js
   // — modale Réglages + sections Perf ULTRA + M-LVL + Géoref + helpers
   "./js/interfaceConfig.js",
@@ -243,6 +257,8 @@ const ASSETS_TO_CACHE = [
   "./lib/leaflet/leaflet.js",
   "./lib/leaflet/leaflet-src.js",
   "./lib/leaflet/leaflet-src.esm.js",
+  // 🆕 v1.38.0 — Plugin Leaflet.ImageOverlay.Rotated (vendored)
+  "./lib/leaflet-imageoverlay-rotated.js",
 
   // Images Leaflet
   "./lib/leaflet/images/layers.png",

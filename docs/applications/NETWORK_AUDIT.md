@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.36.0** (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.40.32** (7 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -89,7 +89,8 @@ envoyé** (réponse : rien, jamais).
 | `<origin>/alert.json` | `GET` | Au boot | Diffusion d'alertes publiques (incendie, fermeture site, etc.) | **Aucune** |
 | `<origin>/data/<plan>/*` | `GET` | Charge d'un plan serveur | Lecture des fichiers d'un plan (image + JSON) | **Aucune** |
 | `<origin>/docs/applications/README_USER.md`, `<origin>/docs/applications/AI_CONTEXT.md`, `<origin>/docs/NETWORK_AUDIT.*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
-| `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
+| `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update, avant ouverture Vue OSM | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
+| `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `GET` | **Uniquement** quand la modale **Vue OSM** est ouverte (cf v1.39.0, opt-in strict requis) | Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS | **Aucune** (cookies omis, juste les coordonnées géographiques `{z}/{x}/{y}` de la tuile, anonymisé par CDN OSM) |
 | `blob:<origin>/<uuid>` | `GET` | Chargement des tuiles V2 d'un plan tuilé | Déréférencer une tuile JPEG depuis le ZIP **déjà en mémoire** dans le navigateur | **Aucune** (blob URL = référence locale au navigateur, ne sort pas) |
 | `data:<mime>;base64,...` | `GET` | Icônes SVG inline, certains exports | Déréférencer une donnée encodée en base64 **dans le code de l'app** | **Aucune** (data URL = pas de fetch réseau réel) |
 
@@ -135,6 +136,107 @@ tenter la mise à jour douce.
 Si tu préfères ne pas faire ce ping du tout, **active le mode hors-ligne
 strict** (cf. plus bas) : il sera bloqué comme tout autre appel non
 local.
+
+### À propos des tuiles OSM `tile.openstreetmap.org` (depuis v1.39.0)
+
+**Avant v1.39.0** : l'app n'avait **aucun** appel sortant vers un domaine tiers,
+strictement same-origin + ping `/ping.html`. Depuis v1.39.0, l'app peut
+contacter `tile.openstreetmap.org` pour afficher la carte OSM **uniquement
+sous 3 conditions strictes simultanément réunies** :
+
+1. **Le plan a un georef GPS** (saisi via générateur avancé OU via Réglages
+   map mode → Géoréférencement). Sans georef, le bouton 🗺️ Vue OSM est
+   masqué côté UI et l'appel n'a aucun moyen de se déclencher.
+2. **L'utilisateur a activé le toggle « 🗺️ Autoriser la Vue OSM »** dans
+   ⚙️ Configuration home. **Default OFF**, persisté en `localStorage`
+   sous la clé `myktamap_osm_view_opt_in`. L'utilisateur peut le
+   désactiver à tout moment.
+3. **L'utilisateur charge effectivement la Vue OSM**. Deux contextes
+   possibles depuis v1.40.0 (= roadmap Step 4 Vue OSM HOME) :
+   - **Modale Vue OSM full-screen** (mode carte) : clic sur le bouton 🗺️
+     dans la status bar quand un plan est chargé. Couvre les tuiles plan
+     V2 projetées + POI + Tracker + Roads + Iti + Zones + Structures.
+   - **Widget mini-preview HOME** (page d'accueil) : si l'opt-in est ON,
+     la colonne 🌍 Vue OSM apparaît entre Mes plans et Ajouter, avec un
+     plan georef sélectionné par défaut (= lastOpened). Sinon la colonne
+     est **masquée entièrement** — aucune tuile OSM n'est requêtée même
+     visuellement.
+
+**Garanties supplémentaires** :
+- Le bouton modale et la colonne widget sont aussi masqués si « Mode
+  hors-ligne strict » OU « Mode incognito » sont actifs (extension
+  automatique de ces deux modes).
+- Modale et widget : masqués si `navigator.onLine === false` (hors-ligne
+  détecté par le navigateur).
+- Un ping `/ping.html` est effectué juste avant l'ouverture de la modale
+  Vue OSM : si Internet ne répond pas, la modale est annulée AVANT le
+  premier appel à OSM.
+- Les requêtes vers OSM sont faites en mode `cors` standard avec
+  `crossOrigin: true` côté Leaflet (cookies omis par défaut). **Aucune
+  donnée utilisateur n'est envoyée** : juste les coordonnées géographiques
+  `{z}/{x}/{y}` de la tuile, c'est-à-dire un quadrillage Web Mercator
+  standard partagé par tous les utilisateurs OSM.
+- **Cache PWA** : les tuiles OSM ne sont **PAS** mises en cache par le
+  Service Worker — elles ne survivent pas au plan switch ni au refresh.
+  Pas de stockage local persistant côté MyKTAMap.
+- **Widget HOME (depuis v1.40.0)** : extraction du ZIP du plan
+  sélectionné se fait **localement** dans le browser via JSZip (lecture
+  IDB blob ou FS handle). Aucune donnée plan n'est envoyée à OSM ou à
+  un tiers — uniquement les tuiles `{z}/{x}/{y}` sont demandées au CDN
+  OSM, identiques à celles affichées par tout client OSM standard.
+- **Bouton « 📍 Ma position » (depuis v1.40.18)** : disponible dans la
+  modale Vue OSM ET dans le widget HOME Vue OSM. **Fix GPS ponctuel à la
+  demande user** via `navigator.geolocation.getCurrentPosition()` — pas de
+  watch continu (`watchPosition`), pas d'usage batterie en continu. La
+  permission OS est demandée à la demande user (pas au boot), les
+  coordonnées sont affichées sur la carte (marker bleu cyan + cercle
+  d'incertitude) **uniquement en RAM**, ne sont **jamais** stockées en
+  localStorage / IndexedDB / cookie, ne sont **jamais** envoyées sur le
+  réseau (aucun fetch, aucun beacon). Au close de la modale / refresh
+  du widget, le marker est supprimé. Re-clic = nouveau fix, l'ancien est
+  remplacé.
+- **Garde-fou « GPS hors champ du plan » (depuis v1.40.21)** : après un fix GPS
+  reçu, si la position est **très loin** de la bbox du plan georef sélectionné
+  (>50% au-delà des bords), le marker n'est **pas affiché** + toast warn avec
+  la distance approximative au centre du plan. Garantit qu'un user à Paris ne
+  voit pas son fix s'afficher sur un plan des Catacombes de Lyon par erreur.
+  Marge ×1.5 (= `bounds.pad(0.5)`) choisie permissive pour ne pas rejeter les
+  fix légitimes en bordure de plan. Si la bbox plan n'est pas calculable (dims
+  manquantes, georef absente), fallback safe : on autorise (comportement
+  v1.40.18-20 préservé).
+- **Header serveur requis (depuis v1.40.20)** : pour que le bouton 📍 fonctionne,
+  le header `Permissions-Policy` côté Nginx doit autoriser `geolocation=(self)`.
+  Si le header est resté à `geolocation=()` (default v1.0-v1.40.19), l'API rejette
+  l'appel **avant même le prompt OS** avec une violation policy (`crbug.com/414348233`).
+  La config Nginx versionnée (`docs/nginx-csp-config.conf` et `docker/nginx-docker.conf`)
+  a été mise à jour. Restriction `(self)` choisie volontairement : seule notre origine
+  peut utiliser l'API, JAMAIS un iframe tiers (même si l'app n'en charge aucun).
+- **Gating Mode hors-ligne strict + Mode incognito (depuis v1.40.19)** :
+  la Vue OSM (modale ET widget HOME) respecte les modes vie privée :
+  - **Mode hors-ligne strict** activé → modale `osmView.js` bloquée à
+    l'ouverture (toast warn) + widget HOME affiche un message dédié
+    "🛡️ Hors-ligne strict actif" au lieu de la mini-carte (parité ajoutée
+    v1.40.19, le widget avait un trou v1.40.0-18).
+  - **Mode incognito** activé → idem (message "🕶️ Mode incognito actif"
+    dans le widget HOME, modale bloquée).
+  - **Bouton « 📍 Ma position »** : si l'user active strict offline ou
+    incognito PENDANT que la modale est ouverte (edge case toggle pendant
+    session), le bouton est désactivé visuellement (au build initial) ET
+    le clic est neutralisé runtime (toast warn + early return, jamais de
+    fix GPS). Note : `navigator.onLine === false` (Wi-Fi/4G coupé)
+    n'empêche **pas** le GPS — c'est l'intérêt principal (téléphone en
+    avion mais GPS du device parfaitement fonctionnel).
+
+**Politique de privacy OSM** : OpenStreetMap est une fondation
+non-commerciale (OpenStreetMap Foundation), les tuiles sont distribuées
+sous licence ODbL. Leur politique de logs CDN est publiée publiquement
+(`https://wiki.osmfoundation.org/wiki/Privacy_Policy`). Pas de tracking
+publicitaire, pas de monétisation, juste un référant HTTP standard et
+l'IP de la requête (comme toute requête web).
+
+Si tu préfères ne contacter aucun service tiers, **laisse le toggle OSM
+désactivé** : c'est le comportement par défaut et l'app reste 100% offline
+comme avant v1.39.0.
 
 ---
 
@@ -269,7 +371,7 @@ navigateur. Tableau exhaustif :
 
 | API | Quand | Permission requise ? | Donnée envoyée ? |
 |---|---|---|---|
-| **Geolocation API** | Calibrage KMZ + Mode urgence si l'user le déclenche | Oui (prompt navigateur explicite) | **Aucune** (lecture pure, jamais transmise) |
+| **Geolocation API** | Calibrage KMZ + Mode urgence + bouton 📍 « Ma position » dans la modale Vue OSM et le widget HOME Vue OSM *(v1.40.18)* si l'user le déclenche | Oui (prompt navigateur explicite à la demande, jamais au boot — header `Permissions-Policy: geolocation=(self)` côté Nginx depuis v1.40.20 ; restriction `(self)` = seule notre origine autorisée, JAMAIS un iframe tiers) | **Aucune** (lecture pure, jamais transmise, jamais stockée — coordonnées affichées sur la carte uniquement en RAM le temps de la session) |
 | **DeviceMotion / DeviceOrientation** | Tracker (PDR + boussole) | Oui sur iOS (prompt explicite via user gesture) | **Aucune** (lecture pure capteurs locaux) |
 | **Wake Lock API** *(NOUVEAU v1.21.1)* | Toggle ⚙️ Réglages → "Garder l'écran allumé" | Non (politique navigateur — accordée silencieusement en HTTPS si l'onglet a le focus) | **Aucune** (lock binaire) |
 | **Clipboard API** *(usage étendu v1.21.2)* | Bouton 📋 dans popup point (coords GPS) + 📋 Copier dans modale audit, inspecteur mémoire, etc. | Non en écriture user-initiated en HTTPS (silencieuse via `writeText`) | **Aucune** (l'app écrit dans le presse-papier, ne le lit jamais) |
@@ -367,6 +469,26 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.39.0 (Vue OSM — opt-in strict, plan calibré GPS au-dessus d'OpenStreetMap)** : nouvelle modale Leaflet EPSG:3857 avec tile layer OSM (`tile.openstreetmap.org`) + plan MyKTAMap projeté via georef GPS. **Premier appel sortant volontaire vers tile.openstreetmap.org dans l'app** — opt-in STRICT (3 garde-fous) : (1) toggle "Autoriser la Vue OSM" dans ⚙️ Configuration home (default OFF, persisté LS `myktamap_osm_view_opt_in`), (2) `confirm()` natif au premier lancement avec mention explicite du domaine contacté, (3) bouton masqué si plan sans georef OU si Mode hors-ligne strict OU si Mode incognito actifs. **Aucun appel sortant tant que la modale n'est pas ouverte ET le toggle activé**. **Liste blanche `connect-src` ÉTENDUE** : `'self'` + `https://www.gstatic.com` + `https://tile.openstreetmap.org` (uniquement effective côté serveur si l'auteur déploie la nouvelle CSP). **Liste blanche `img-src`** : ajout `https://tile.openstreetmap.org` (tiles OSM). **Verdict** : ✅ extension volontaire et opt-in du périmètre réseau, philosophie 100% offline préservée pour les users qui n'activent jamais le toggle.
+
+> **v1.38.3 (Fix effet de bord exports image vs calibration)** : KARMA contrôle terrain — bug détecté sur exports image (PNG simple/avancé + PDF + miniature Mode Secours) qui ignoraient la calibration 2 ancres et stretchaient les calques à pleine taille du plan. Fix : 2 nouveaux helpers `compute3CornersFromAnchorsPx` et `drawCalibratedImageLayer` dans `js/imageLayerCalibration.js`, branchés dans `js/utils.js > telechargerPlan` et `js/exporter.js > _genererCanvasExport` via canvas `ctx.transform()`. **KMZ/GPX n'étaient pas affectés** (kmzExport.js utilise seulement le baseImage en GroundOverlay, pas les calques ; gpxIO.js = coords uniquement). **Impact réseau** : ZÉRO — math pure côté canvas, pas de call sortant. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression, fix d'une régression silencieuse v1.38.0 sur le pipeline export.
+
+> **v1.38.2 (Simplification UI calibration calques image)** : KARMA feedback "on le fait que depuis générateur". Retrait du point d'entrée UI de la calibration calques image dans Réglages map mode (~175 lignes HTML + IIFE supprimées dans `js/interfaceConfig.js`). La calibration durable embedée dans plan-config.json (via générateur avancé) reste la source de vérité unique. Helpers + cascade runtime conservés pour rétrocompat des users qui auraient déjà calibré en session v1.38.0. **Impact réseau** : ZÉRO — retrait de UI, aucune logique réseau touchée. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression, simplification UX validée terrain.
+
+> **v1.38.1 (Lot D générateur avancé + hint dims auto)** : extension client-side de v1.38.0. Le picker calibration est maintenant accessible aussi depuis la section image layers du générateur avancé (`js/createConf.js > _ajouterImageLayer`) — auteur de plan peut embarquer durablement la calibration dans `plan-config.json > imageLayers[i].calibration`. Hint auto-actualisé ✅/⚠️ comparant les dims natives du calque vs plan principal (générateur ET Réglages map mode) pour éviter les calibrations inutiles. **Impact réseau** : ZÉRO — chargement local des dims via `new Image()` sur blob URLs, aucun call sortant. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression.
+
+> **v1.38.0 (Calage calques image avec 2 ancres + rotation)** : feature 100% client-side ajoutant un mécanisme de calibration des image layers. Nouveau plugin Leaflet vendoré (`lib/leaflet-imageoverlay-rotated.js`, BSD 2-clause, ~5 KB) + 2 modules clients (`js/imageLayerCalibration.js` ~200l math + cascade ; `js/imageLayerCalibrationPicker.js` ~280l UI picker modale split-screen). UI dans Réglages map mode : 2 mini-cartes Leaflet temporaires (CRS.Simple), workflow 4 clics (A gauche, A droite, B gauche, B droite) + preview. Persistance LS `myktamap_plan_prefs_<planId>.imageLayerCalibrations` (cascade > plan-config.json) — 100% client-side, jamais transmis. **Impact réseau** : ZÉRO nouveau call sortant, ZÉRO ressource externe (plugin vendoré dans `/lib`, déjà dans ASSETS_TO_CACHE PWA). Aucune modification de la liste blanche `connect-src`. Le picker utilise des `L.map` temporaires qui ne font que des `URL.createObjectURL`/local fetch des images déjà chargées dans le contexte plan. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression, philosophie 100% offline préservée, rétrocompat plans v1.37.x stricte (champ `calibration` absent → fallback bounds plan principal).
+
+> **v1.37.2 (Fix bug Ctrl+Z casse la suite d'un tracé)** : changement 100% client-side de `js/historyManager.js > _applyState()`. KARMA bug terrain : après Ctrl+Z pendant un dessin de tracé, le clic suivant était avorté en silence (`window.modeRoad` wipé par `resetRoads()`). Fix chirurgical : snapshot/restore de `modeRoad` autour de `resetRoads()/setRoads()`. **Impact réseau** : ZÉRO — aucun nouvel appel, aucune ressource externe, aucune modif de la liste blanche `connect-src`. Pure logique runtime client. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression, fix d'un bug UX terrain (latent depuis 11 versions, masqué par le fix v1.26.3-hotfix3 partiel).
+
+> **v1.37.1 (Fix bug récurrent mise à jour douce — purge totale caches)** : changement 100% client-side de la fonction `mettreAJourCodeSeul()` de `js/interfaceMaintenance.js`. Audit indépendant : la cause racine du bug "badge footer reste sur ancienne→nouvelle après reload" était dans `_getCacheNameFromSW()` (hotfix21) qui interrogeait le SW COURANT (= l'ancien) → préservait l'ancien cache à la purge → reload servait toujours l'ancienne version. Fix : purge TOTALE `caches.keys().map(caches.delete)` sans filter (pattern identique à killsw.html qui marche systématiquement). Le nouveau SW re-populera ses assets au reload via son install handler. **Impact réseau** : très léger surcoût ponctuel — 1 re-DL des ~100 assets PWA au reload (~3-8 sec sur fibre, qq sec de plus en mobile) UNIQUEMENT au moment du clic "Forcer la mise à jour". Pas de changement sur l'usage normal. Ping internet (5s avant action) conservé en garde-fou. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. Aucune nouvelle URL contactée, aucune ressource externe ajoutée. **Verdict** : ✅ aucune régression, fiabilité de la mise à jour douce sécurisée (élimine la cause racine du bug récurrent), philosophie 100% offline préservée.
+
+> **v1.37.0 (Calibration Nord per-plan + import PDF Histoire générateur + Réglages + fix CSS light planner-mode-btn)** : trois features 100% client-side. **(A) Nord per-plan** : nouveau champ optionnel `plan-config.json > plan.northOffsetDeg` (default absent = 0 = comportement v1.36.x intact). Cascade lecture LS `myktamap_plan_prefs_<planId>.northOffsetDeg` → `APP_CONFIG.northOffsetDeg` → 0. Helpers `window.getPlanNorthOffset/setPlanNorthOffset/resetPlanNorthOffset` dans `js/config.js`. UI : champ angle + bouton picker 2 clics dans ⚙️ Réglages map mode (nouveau module `js/northPicker.js`, ~210 lignes, autonome, click handler sur la map Leaflet, calcul via `atan2(dlng, dlat)` en CRS.Simple). Générateur avancé : champ `pl_northOffset` dans section Tracking, écrit dans plan-config UNIQUEMENT si ≠ 0. Application runtime : `_getCorrectedHeading()` reste en repère MONDE (boussole physique pointe le Nord vrai), `_getPlanRelHeading()` ajoute l'offset pour le marker tracker et le vecteur déplacement (repère plan). **(B) PDF Histoire générateur avancé** : nouvelle section UI dans `js/createConf.js` avec input PDF, embed dans `data/histoire.pdf` + écriture `plan.histoirePdf` si présent (cas 1 nouveau / cas 2 conservation mode Modifier via `_plannerOrigAssets` / cas 3 absent). Pas de duplication dans Réglages map mode : le mécanisme d'import côté session existe déjà dans la modale 📖 Mode Histoire (onglet PDF, v1.34.20) → IDB locale `myktamap_histoire_pdfs`. **(C) Fix CSS** : `box-shadow` + `font-weight:700` ajoutés à `.kta-planner-mode-btn.kta-actif` en theme light (manquait le halo accent du dark mode). **Impact réseau** : ZÉRO sur les 3 features. Aucun nouvel appel sortant, aucune ressource externe, aucune modif de la liste blanche `connect-src`. Le picker Nord ne fait que des click handlers map. Le PDF Histoire est lu localement (FileReader → IDB), jamais transmis. Les LS prefs-plan et IDB histoire-pdfs sont 100% client. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression, philosophie 100% offline préservée, rétrocompat plans v1.36.x stricte (champs `northOffsetDeg` / `histoirePdf` absents → comportement identique).
+
+> **v1.36.2 (Fix ronds intersections + déplacement option per-plan)** : deux changements 100% client-side. (1) **Fix bug** : sur les plans denses (type Catacombes 2024+, > 200 tracés), les cercles aux intersections de tracés disparaissaient silencieusement — cause racine = seuil interne `ROAD_INTERSECTION_MAX_ROADS = 200` dans `js/road.js` qui faisait un short-circuit muet du calcul. Seuil remonté à **500** (couvre les plans actuels les plus denses + marge). (2) **Déplacement UX** : le toggle « ⚪ Afficher les ronds aux intersections de tracés » a été **retiré de Configuration home** (où il était global à tous les plans) et **déplacé per-plan dans ⚙️ Réglages mode carte**. Persistance via une nouvelle clé localStorage `myktamap_plan_prefs_<planId>` (objet `{showRoadIntersections: bool, …}`) — cascade de lecture : per-plan → APP_CONFIG global → default true. Nouveaux helpers `window.getPlanShowsIntersections(planId)` + `window.setPlanShowsIntersections(planId, value)` dans `js/config.js`. **Impact réseau** : ZÉRO — aucun nouvel appel, aucune ressource externe, aucune modification de la liste blanche `connect-src`. Stockage local uniquement (jamais transmis à un serveur tiers). **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression, fix d'un bug d'affichage + amélioration UX, philosophie 100% offline préservée.
+
+> **v1.36.1 (Guide d'installation Docker pas-à-pas FR + EN)** : nouveau document `docs/applications/DOCKER_INSTALL.md` + `.en.md` (~600 lignes chacun), consultable hors-ligne. Détaille l'installation Docker Desktop sur Windows/Mac/Linux + Raspberry Pi 64-bit, le démarrage du daemon (incluant la résolution de l'erreur classique `failed to connect to the docker API at npipe`), les 3 options pour lancer MyKTAMap (image ghcr.io, build local depuis ZIP, clone repo), l'acceptation du cert auto-signé selon le navigateur, les options avancées (volumes plans, cert user-fournit, hostname custom, port hôte), un troubleshooting complet, et des alternatives sans Docker (Python http.server, Nginx local, Caddy). Ajouté à `sw.js > ASSETS_TO_CACHE` pour consultation offline. Lien depuis la section "🐳 Self-host avec Docker" du `README_USER` FR + EN. **Impact réseau** : ZÉRO — pure refonte éditoriale + cache documentation. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression.
 
 > **v1.36.0 (Package Docker self-host — image OCI ghcr.io)** : nouvelle distribution complémentaire au ZIP selfhost — image Docker auto-suffisante publiée sur `ghcr.io/karmakta91/myktamap` à chaque tag. Multi-arch (`linux/amd64` + `linux/arm64`). Base `nginx:alpine` + `openssl` + `tini`. Entrypoint génère un cert TLS auto-signé au boot (CN=localhost, SAN=localhost+127.0.0.1+::1 + `MKM_HOSTNAME` env optionnel) sauf si l'user monte un volume `/etc/nginx/certs`. Ports non-privilégiés 8080 (redirect HTTPS 301) + 8443 (HTTPS). Config Nginx réutilise la **CSP stricte** identique à la prod (`docs/nginx-csp-config.conf`) : `default-src 'self'`, blob: autorisé uniquement pour les usages internes (tuiles V2, PDF Mode Histoire, Service Worker), `frame-ancestors 'none'`, `connect-src 'self' blob:`. Healthcheck `wget --no-check-certificate` interne. Workflow `.github/workflows/docker.yml` déclenché sur tag `v*.*.*` ou manuel. Push via `GITHUB_TOKEN` (pas de secret externe). **Impact réseau** : ZÉRO côté code client (l'image embarque exactement le même JS/CSS que la prod). Côté serveur self-host, l'image n'écoute que les ports exposés et ne fait aucune connexion sortante. **Plus restrictif que la prod** : pas de dépendance `gstatic.com/generate_204` côté serveur (qui n'a de sens qu'en environnement public Internet). **Sécurité supplémentaire** : `Permissions-Policy: microphone=(self)`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`. Pas de HSTS (cert auto-signé : on évite de forcer HTTPS persistant côté navigateur user). **Liste blanche `connect-src` inchangée côté JS** : `'self'` + `https://www.gstatic.com` (désactivable via mode hors-ligne strict opt-in). **Verdict** : ✅ aucune régression, distribution alternative au ZIP, philosophie 100% offline renforcée.
 

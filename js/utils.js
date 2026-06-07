@@ -2210,7 +2210,17 @@ async function telechargerPlan() {
         // si visible dans la carte on le dessine
         if (leafletLayerVisible) {
           const overlayImg = await loadImage(layerConfig.file);
-          ctx.drawImage(overlayImg, 0, 0, width, height);
+          // 🆕 v1.38.3 — Si l'image layer a une calibration 2 ancres (embed
+          // plan-config.json depuis v1.38.1), on respecte la transform pour
+          // que l'export simple reflète ce que l'user voit. Sinon : drawImage
+          // stretching plan principal (v1.37.x).
+          const calibrated = (layerConfig.calibration && window.ImageLayerCalibration
+                              && typeof window.ImageLayerCalibration.drawCalibratedImageLayer === "function")
+            ? window.ImageLayerCalibration.drawCalibratedImageLayer(ctx, overlayImg, layerConfig.calibration, width, height)
+            : false;
+          if (!calibrated) {
+            ctx.drawImage(overlayImg, 0, 0, width, height);
+          }
         }
       }
     }

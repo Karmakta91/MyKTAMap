@@ -414,8 +414,10 @@ function _ouvrirReadmeModal(html, opts) {
         <!-- 🆕 v1.9.2-fix17 (KARMA "rajoute dans le footer de la doc nos
              nouvelles citations") : élargi pour citer toutes les
              dépendances/algos majeurs, en cohérence avec le splash et
-             le footer du home. -->
-        <span>— 🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra</span>
+             le footer du home.
+             🆕 v1.40.29 — Rétabli 📤 jsPDF (oublié historiquement) + ajout
+             🌍 OSM. Cohérence stricte avec splash + loader HOME. -->
+        <span>— 🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🌍 OSM · 🧭 Dijkstra</span>
       </div>
     </div>
   `;
@@ -586,7 +588,7 @@ function afficherAide() {
             <strong style="color:#f4c542;">🚀 Mode Performance ULTRA :</strong> section dans la modale ⚙️ Réglages pour les
             gros plans / appareils faibles. Active le toggle <strong>🚀 ULTRA</strong> pour appliquer 6 optims agressives d'un coup,
             ou ajuste individuellement : <strong>🪜 Décimer les tracés au dézoom</strong>, <strong>⚡ Désactiver animations zoom/pan</strong>
-            (reload requis), <strong>🎯 Désactiver cercles intersections</strong> (seuil 50 vs 200), <strong>🚫 Désactiver popups
+            (reload requis), <strong>🎯 Désactiver cercles intersections</strong> (seuil 50 vs 500), <strong>🚫 Désactiver popups
             sur calques de données</strong> (utilise 🔍 Recherche à la place), <strong>🐢 Auto-save lent</strong> (30s vs 1.5s),
             <strong>👁️ Ne rendre que les tracés visibles</strong> (affichage optimisé de la zone visible). Aucune optim ne touche à l'image (déjà
             gérée par le mode performance au chargement). Persistance globale sur cet appareil, conservée entre sessions.

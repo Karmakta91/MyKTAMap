@@ -302,7 +302,20 @@
     }
 
     // 🧭 Heading (boussole)
-    const heading = (typeof window.getCurrentHeading === "function") ? window.getCurrentHeading() : null;
+    // 🧭 v1.37.0 — Bascule de getCurrentHeading() (Nord vrai) vers
+    // getPlanRelHeading() (Nord plan = avec offset calibré). KARMA feedback
+    // "fonctionne en map mais pas appliqué en mode urgence" : sans ce switch
+    // le rotor + triangle restaient orientés Nord vrai, donc incohérents avec
+    // la map principale (qui applique l'offset). Fallback safe sur
+    // getCurrentHeading si helper pas dispo (code chargé en cascade).
+    // Default offset=0 → strictement identique à getCurrentHeading() →
+    // rétrocompat plans Nord-haut intacte.
+    let heading = null;
+    if (typeof window.getPlanRelHeading === "function") {
+      heading = window.getPlanRelHeading();
+    } else if (typeof window.getCurrentHeading === "function") {
+      heading = window.getCurrentHeading();
+    }
     if (typeof heading === "number" && !isNaN(heading)) {
       // Throttle DOM update à 1° près (sinon ça flicker au moindre mouvement)
       const rounded = Math.round(heading);

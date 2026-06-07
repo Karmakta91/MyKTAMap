@@ -138,11 +138,12 @@
 
     <!-- Crédits librairies + algos — discret, en bas à GAUCHE pour
          libérer le bas-droit pour KARMA. Mention des libs majeures
-         (Leaflet mapping, JSZip ZIP I/O, jsPDF impression PDF) + de
-         l'algo Dijkstra du pathfinder (utilisé pour le calcul
-         d'itinéraires sur le réseau de tracés). KARMA s'en souvient :
-         "djakarta" était une confusion phonétique avec Dijkstra. -->
-    <div id="splashLeafletCredit">🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🧭 Dijkstra</div>
+         (Leaflet mapping, JSZip ZIP I/O, jsPDF impression PDF, OSM
+         tiles Vue OSM opt-in v1.39+) + de l'algo Dijkstra du pathfinder
+         (utilisé pour le calcul d'itinéraires sur le réseau de tracés).
+         KARMA s'en souvient : "djakarta" était une confusion phonétique
+         avec Dijkstra. 🆕 v1.40.29 — ajout 🌍 OSM. -->
+    <div id="splashLeafletCredit">🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🌍 OSM · 🧭 Dijkstra</div>
   </div>
 
   <!-- COPYRIGHT — watermark + console banner + détection DevTools (chargé EN PREMIER) -->
@@ -352,7 +353,29 @@
 
         </div><!-- /.loader-col-plans -->
 
-        <!-- ▬▬▬ COLONNE DROITE (40% PC) : 📦 Ajouter + ⚙️ Plus d'options ▬▬▬ -->
+        <!-- 🆕 v1.40.0 — COLONNE MILIEU (PC ≥1024px) : 🌍 Vue OSM mini-preview.
+             Mobile : section pile entre Mes plans et Ajouter.
+             Mode léger : marker pointA + marker pointB georef sur OSM (pas
+             d'extraction ZIP, pas de tuiles plan ni data layers — kept light
+             pour boot HOME rapide). Bouton ⛶ ouvre la modale Vue OSM
+             full-screen (charge le plan complet en map mode + déclenche open).
+             Comportement adaptatif :
+              - Pas opt-in OSM → message + bouton "Autoriser OSM"
+              - Aucun plan georef → message pédagogique + lien vers Générateur
+              - Sinon → carte + dropdown sélection plan -->
+        <div class="loader-col loader-col-osm">
+          <div id="ktaOsmHomeBox" class="kta-osm-home-box">
+            <div class="loader-section-head">
+              <span>🌍 Vue OSM</span>
+            </div>
+            <div id="ktaOsmHomeContent" class="kta-osm-home-content">
+              <!-- Rempli dynamiquement par js/osmHomePreview.js -->
+              <div class="kta-osm-home-loading">⏳ Préparation…</div>
+            </div>
+          </div>
+        </div><!-- /.loader-col-osm -->
+
+        <!-- ▬▬▬ COLONNE DROITE (PC) : 📦 Ajouter + ⚙️ Plus d'options ▬▬▬ -->
         <div class="loader-col loader-col-actions">
 
           <!-- 📦 CHARGER UN NOUVEAU PLAN — bloc cohérent -->
@@ -485,7 +508,11 @@
           <span class="kta-licence-community">· 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer">Licence pro</a></span>
         </div>
         <div class="kta-loader-credits">
-          🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🧭 Dijkstra
+          <!-- 🆕 v1.40.29 — ajout 🌍 OSM (Vue OSM v1.39+ opt-in). Affiché dans
+               le loader HOME, identique en mode community et pro (la mention
+               "💼 Licence pro" community-only est gérée par .kta-licence-community
+               au-dessus, pas ici). -->
+          🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🌍 OSM · 🧭 Dijkstra
         </div>
       </div>
     </div>
@@ -704,6 +731,14 @@
             <input type="checkbox" id="loaderNetParanoiaCb">
             <span><strong>🔒 Mode hors-ligne strict</strong> — bloque activement toute requête sortante non-whitelistée (l'app reste 100% fonctionnelle offline). Préférence persistée.</span>
           </label>
+          <!-- 🆕 v1.39.0 — Toggle opt-in "Vue OSM" (autorise tile.openstreetmap.org).
+               Par défaut OFF (philosophie 100% offline préservée). Si activé,
+               un bouton "🌍 Vue OSM" apparaît dans la status bar des plans
+               georef-calibrés (cf js/osmView.js). -->
+          <label class="kta-net-paranoia-toggle" style="margin-top:8px;">
+            <input type="checkbox" id="loaderOsmOptInCb">
+            <span><strong>🗺️ Autoriser la Vue OSM (OpenStreetMap)</strong> — permet le mode "plan au-dessus d'OSM" pour les plans calibrés GPS. Contacte <code>tile.openstreetmap.org</code> quand la modale Vue OSM est ouverte. Préférence persistée (default OFF).</span>
+          </label>
         </div>
 
         <!-- 🎨 Affichage : choix interface (depuis v1.8.1-refonte-8)
@@ -726,15 +761,14 @@
           <!-- v1.14.19 (KARMA) : la checkbox « 📜 Utiliser l'ancienne interface »
                est retirée. La nouvelle interface (header bar + sidebars unifiées
                + status bar) est désormais imposée pour tout le monde. -->
-          <!-- 🆕 v1.9.2 : toggle "afficher les ronds aux intersections de tracés".
-               Pareil que dans ⚙️ Réglages map mode pour cohérence — l'user peut
-               basculer ici aussi sans avoir à charger un plan. Sera appliqué
-               au prochain renderRoads (= au chargement du plan si toggle fait
-               ici depuis la home). -->
-          <label class="kta-net-paranoia-toggle" style="margin-top:10px; background: rgba(140, 180, 255, 0.06); border-color: rgba(140, 180, 255, 0.22);">
-            <input type="checkbox" id="loaderShowIntersectionsCb" checked>
-            <span><strong>⚪ Afficher les ronds aux intersections de tracés</strong> — cercle plein coloré au croisement de 2 tracés. <strong>Décocher</strong> pour aérer visuellement les plans très denses. Effet immédiat.</span>
-          </label>
+          <!-- 🆕 v1.9.2 → 🗑️ v1.36.2 : le toggle "⚪ Afficher les ronds aux
+               intersections de tracés" a été RETIRÉ de Configuration home et
+               déplacé dans ⚙️ Réglages map mode (per-plan). Raison KARMA :
+               l'option est devenue plan-dépendante (un plan dense peut nécessiter
+               de désactiver les ronds, un plan léger n'a pas besoin). Stockage
+               LS per-plan + fallback global rétrocompat pour préserver le choix
+               historique des users qui avaient désactivé globalement. -->
+
           <!-- 🆕 v1.13.0-fix2 (KARMA "possibilité d'activer ou non depuis le conf home") :
                toggle thème clair / sombre accessible depuis la home aussi
                (en plus du toggle dans ⚙️ Paramètres > Thème en mode carte).
@@ -818,6 +852,30 @@
           </p>
           <button class="loader-btn-secondary" type="button" id="loaderForceUpdateBtn" style="width:100%;">
             🔄 Forcer la mise à jour
+          </button>
+        </div>
+
+        <!-- 🆘 v1.37.0 — Kill SW (option intermédiaire entre la mise à jour
+             douce ci-dessus et le reset complet ci-dessous). Ouvre killsw.html
+             dans le même onglet : page autonome qui désinscrit proprement le
+             Service Worker, purge les caches PWA, mais préserve TOUTES les
+             données utilisateur (localStorage, IndexedDB, sessions, plans,
+             prefs). À utiliser si la "mise à jour douce" ne propage pas la
+             nouvelle version (badge footer reste sur "ancienne → nouvelle"
+             même après reload). Évite d'avoir à faire un Reset complet
+             irréversible juste pour débloquer un SW coincé. -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">🆘 Désinscrire le Service Worker</div>
+          <p class="kta-loader-perf-hint" style="margin-bottom:8px;">
+            À essayer si la mise à jour douce ci-dessus n'a pas suffi (badge
+            footer toujours sur « ancienne → nouvelle » après reload). Désinscrit
+            le SW et purge les caches PWA — au prochain chargement, un SW tout
+            neuf prend le relais. <strong>Tes données restent intactes</strong>
+            (plans, sessions, préférences, code d'accès). Moins destructif que
+            le Reset complet ci-dessous.
+          </p>
+          <button class="loader-btn-secondary" type="button" id="loaderKillSwBtn" style="width:100%;">
+            🆘 Ouvrir l'outil Kill SW
           </button>
         </div>
 
@@ -971,6 +1029,12 @@
   <!-- Leaflet -->
   <script src="lib/leaflet/leaflet.js" defer></script>
 
+  <!-- 🆕 v1.38.0 — Plugin Leaflet.ImageOverlay.Rotated (vendored, BSD 2-clause).
+       Permet de rendre une image en parallélogramme via 3 coins (rotation +
+       scale 2D). Utilisé par js/imageLayerCalibration.js pour les image
+       layers calibrés via 2 ancres source/target. -->
+  <script src="lib/leaflet-imageoverlay-rotated.js" defer></script>
+
   <!-- JSZip -->
   <script src="lib/jszip.min.js" defer></script>
 
@@ -979,6 +1043,11 @@
   <script src="js/utils.js" defer></script>
   <script src="js/measure.js" defer></script>
   <script src="js/tiling.js" defer></script>
+  <!-- 🆕 v1.38.0 — Helpers calage image layers (cascade per-plan, math 2 ancres
+       → 3 coins). Chargé AVANT js/map.js qui en dépend. -->
+  <script src="js/imageLayerCalibration.js" defer></script>
+  <!-- 🆕 v1.38.0 — UI Picker calage image layers (modale split-screen 2 minimaps Leaflet) -->
+  <script src="js/imageLayerCalibrationPicker.js" defer></script>
   <script src="js/map.js" defer></script>
   <script src="js/tracking.js" defer></script>
   <script src="js/editor.js" defer></script>
@@ -1076,6 +1145,11 @@
        js/modeHistoire.js. -->
   <script src="js/modeHistoire.js" defer></script>
   <script src="js/kmzExport.js" defer></script>
+  <!-- 🆕 v1.39.0 — Mode Vue OSM (plan au-dessus d'OpenStreetMap). Chargé
+       APRÈS kmzExport (dépend de KmzExport.buildTransform/planToGps) et
+       APRÈS imageLayerCalibration (utilise compute3CornersFromAnchorsPx). -->
+  <script src="js/osmView.js" defer></script>
+  <script src="js/osmHomePreview.js" defer></script>
   <script src="js/kmzImport.js" defer></script>
   <!-- 🆕 v1.14.0 : GPX import + export (réutilise la calibration KMZ existante
        via window.KmzExport.planToGps / gpsToPlan). Doit charger APRÈS
@@ -1149,6 +1223,11 @@
        mettreAJourCodeSeul (mise à jour douce) + helpers ping
        connectivité (_pingInternet). -->
   <script src="js/interfaceMaintenance.js" defer></script>
+
+  <!-- 🧭 v1.37.0 — Picker calibration Nord 2 clics. Chargé AVANT
+       interfaceConfig.js qui en dépend (window.openNorthCalibrationPicker
+       est requis par le handler du bouton "📐 Calibrer (2 clics)"). -->
+  <script src="js/northPicker.js" defer></script>
 
   <!-- 🆕 v1.31.0 (P3 Lot 9 — DERNIER LOT) : Module extrait de
        interface.js — modale Réglages complète + sections Perf ULTRA +
@@ -4533,6 +4612,58 @@
         });
       }
 
+      // 🆘 v1.37.0 — Bouton "Désinscrire le Service Worker" (kill SW).
+      // Double garde-fou :
+      //   1. Ping Internet AVANT la modale — refus immédiat si offline ou
+      //      serveur KO (car re-download des assets requis au prochain boot).
+      //      Sans Internet l'app deviendrait inutilisable après le kill.
+      //   2. Modale de confirmation (pattern Promise-based aligné sur
+      //      _afficherConfirmForceUpdate) — l'user doit valider explicitement.
+      const killSwBtn = document.getElementById("loaderKillSwBtn");
+      if (killSwBtn) {
+        killSwBtn.addEventListener("click", async function() {
+          // 🆘 v1.37.0 — Overlay "Vérification…" pendant le ping (5s max).
+          // Sinon l'user ne voit RIEN se passer entre clic et résultat
+          // (KARMA "l'user sais pas qu'il se passe un truc"). Pattern
+          // overlay simple créé inline + auto-remove dans le finally.
+          const waitOverlay = document.createElement("div");
+          waitOverlay.className = "kta-modal-overlay";
+          waitOverlay.style.cssText = "z-index:100050;";  // au-dessus de la modale Config
+          waitOverlay.innerHTML =
+            '<div class="kta-modal" style="max-width:340px;">' +
+              '<div class="kta-modal-icon" style="font-size:32px;">⏳</div>' +
+              '<div class="kta-modal-titre">Vérification de la connexion…</div>' +
+              '<div class="kta-modal-texte" style="font-size:13px; color:#8892a4;">Test du serveur MyKTAMap (jusqu\'à 5 s).</div>' +
+            '</div>';
+          document.documentElement.appendChild(waitOverlay);
+
+          // Garde-fou 1 : ping Internet. Refuser si offline.
+          // Si _pingInternet n'est pas exposé (timing de chargement),
+          // fallback sur navigator.onLine (moins fiable, juste OS-level).
+          let online;
+          try {
+            if (typeof window._pingInternet === "function") {
+              online = await window._pingInternet();
+            } else {
+              online = (typeof navigator !== "undefined") ? navigator.onLine : true;
+            }
+          } catch(e) { online = false; }
+
+          // Retire l'overlay d'attente (que la suite soit refus ou modale conf)
+          try { waitOverlay.remove(); } catch(e) {}
+
+          if (!online) {
+            _afficherKillSwOfflineRefus();
+            return;
+          }
+          // Garde-fou 2 : confirmation utilisateur.
+          _afficherConfirmKillSw().then(function(ok) {
+            if (!ok) return;
+            window.location.href = "killsw.html";
+          });
+        });
+      }
+
       // ═══════════════════════════════════════════════════════════════
       // 🔐 CODE D'ACCÈS LOCAL (v1.9.4 — PIN/biométrie optionnel)
       // ═══════════════════════════════════════════════════════════════
@@ -4887,31 +5018,10 @@
       // le monde. Le handler du checkbox #loaderLegacyCb est supprimé
       // en même temps que la checkbox elle-même côté HTML.
 
-      // 🆕 v1.9.2 : Toggle "afficher les ronds aux intersections de tracés"
-      // Pareil que dans ⚙️ Réglages map mode (cf. interface.js > afficherConfig)
-      // L'état est lu depuis APP_CONFIG.showRoadIntersections (default true).
-      // Au toggle : on délègue à setShowRoadIntersections qui persiste + appelle
-      // renderRoads() à chaud si la carte est chargée. Depuis le loader (pas
-      // de plan chargé), renderRoads est no-op, mais la pref est persistée et
-      // sera appliquée au prochain chargement de plan.
-      const showInterCb = document.getElementById("loaderShowIntersectionsCb");
-      if (showInterCb) {
-        try {
-          showInterCb.checked = !window.APP_CONFIG || window.APP_CONFIG.showRoadIntersections !== false;
-        } catch(e) {}
+      // 🗑️ v1.36.2 : handler du toggle #loaderShowIntersectionsCb supprimé.
+      // L'option "afficher les ronds aux intersections" est passée de globale
+      // à per-plan (Réglages map mode). Cf js/config.js > getPlanShowsIntersections.
 
-        showInterCb.addEventListener("change", function() {
-          if (typeof window.setShowRoadIntersections === "function") {
-            window.setShowRoadIntersections(showInterCb.checked);
-          } else if (window.APP_CONFIG) {
-            // Fallback : set direct + persistance manuelle
-            window.APP_CONFIG.showRoadIntersections = !!showInterCb.checked;
-            if (typeof window.sauvegarderPrefsUtilisateur === "function") {
-              window.sauvegarderPrefsUtilisateur();
-            }
-          }
-        });
-      }
 
       // 🆕 v1.13.0-fix2 (KARMA "possibilité d'activer ou non depuis le conf home") :
       // toggle thème CLAIR / SOMBRE — accessible UNIQUEMENT depuis la modale
@@ -5077,6 +5187,15 @@
           if (window.NetworkAudit) {
             window.NetworkAudit.setParanoia(paranoiaCb.checked);
           }
+        });
+      }
+
+      // 🆕 v1.39.0 — Toggle "🗺️ Autoriser la Vue OSM"
+      const osmOptInCb = document.getElementById("loaderOsmOptInCb");
+      if (osmOptInCb && window.OsmView) {
+        osmOptInCb.checked = window.OsmView.isOptedIn();
+        osmOptInCb.addEventListener("change", function() {
+          window.OsmView.setOptedIn(osmOptInCb.checked);
         });
       }
 
@@ -5377,6 +5496,142 @@
           document.getElementById("kta-fu-cancel").addEventListener("click", function() { _close(false); });
           document.getElementById("kta-fu-ok").addEventListener("click", function() { _close(true); });
         });
+      }
+
+      // 🆘 v1.37.0 — Modale de confirmation pour le bouton "Kill SW"
+      // (ouverture de killsw.html depuis Configuration home). Calque du
+      // pattern _afficherConfirmForceUpdate ci-dessus. Accent orange (entre
+      // bleu info et rouge danger) car action plus impactante que la mise à
+      // jour douce (re-download complet au prochain boot) mais pas
+      // destructive pour les données utilisateur. Promise<bool>.
+      function _afficherConfirmKillSw() {
+        return new Promise(function(resolve) {
+          const existing = document.getElementById("kta-killsw-confirm");
+          if (existing) existing.remove();
+
+          const overlay = document.createElement("div");
+          overlay.id = "kta-killsw-confirm";
+          overlay.className = "kta-readme-modal-overlay";
+          overlay.style.display = "flex";
+
+          overlay.innerHTML =
+            '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(255,180,128,0.4); box-shadow:0 0 32px rgba(255,180,128,0.18);">' +
+              '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,180,128,0.25);">' +
+                '<div class="kta-readme-modal-titre" style="color:#ffb380;">🆘 Désinscrire le Service Worker ?</div>' +
+                '<button class="kta-panneau-close" type="button" id="kta-ks-close" aria-label="Fermer">✕</button>' +
+              '</div>' +
+              '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
+                '<p style="margin:0 0 14px 0; line-height:1.55;">' +
+                  'Tu vas ouvrir la page <code style="color:#ffb380;">killsw.html</code> qui ' +
+                  '<strong>désinscrit le Service Worker</strong> et <strong>purge les caches PWA</strong>. ' +
+                  'Au prochain chargement, un SW tout neuf prend le relais avec la dernière version du serveur.' +
+                '</p>' +
+                '<div style="background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
+                  '<div style="font-weight:600; color:#8cb4ff; margin-bottom:6px;">✅ Préservé (données utilisateur)</div>' +
+                  '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
+                    '<li>Tes plans mémorisés</li>' +
+                    '<li>Sessions auto-save</li>' +
+                    '<li>Préférences (perf, debug, etc.)</li>' +
+                    '<li>Code d\'accès communautaire</li>' +
+                    '<li>Photos / annotations</li>' +
+                  '</ul>' +
+                '</div>' +
+                '<div style="background:rgba(255,180,128,0.06); border:1px solid rgba(255,180,128,0.22); border-radius:8px; padding:10px 14px; margin-bottom:14px;">' +
+                  '<div style="font-weight:600; color:#ffb380; margin-bottom:6px;">⚠️ Effets</div>' +
+                  '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
+                    '<li><strong>Re-download complet</strong> des assets au prochain boot (HTML/JS/CSS/icônes)</li>' +
+                    '<li>Nécessite une <strong>connexion Internet</strong> au retour sur l\'app</li>' +
+                    '<li>Mode hors-ligne indisponible jusqu\'au prochain boot complet</li>' +
+                  '</ul>' +
+                '</div>' +
+                '<p style="margin:0; font-style:italic; color:#8892a4; font-size:13px;">' +
+                  'À utiliser si la <strong>mise à jour douce</strong> n\'a pas suffi (badge footer reste sur ' +
+                  '« ancienne → nouvelle » après reload). Moins destructif que le Reset complet.' +
+                '</p>' +
+              '</div>' +
+              '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end;">' +
+                '<button class="kta-btn kta-btn-ghost" type="button" id="kta-ks-cancel">Annuler</button>' +
+                '<button class="kta-btn kta-btn-primary" type="button" id="kta-ks-ok" style="background:#ffb380; color:#1a1f2e;">🆘 Continuer</button>' +
+              '</div>' +
+            '</div>';
+          document.documentElement.appendChild(overlay);
+
+          function _close(result) {
+            try { overlay.remove(); } catch(e) {}
+            document.removeEventListener("keydown", _onKey);
+            resolve(result);
+          }
+          function _onKey(e) {
+            if (e.key === "Escape") _close(false);
+          }
+          document.addEventListener("keydown", _onKey);
+
+          overlay.addEventListener("click", function(e) {
+            if (e.target === overlay) _close(false);
+          });
+          document.getElementById("kta-ks-close").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-ks-cancel").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-ks-ok").addEventListener("click", function() { _close(true); });
+        });
+      }
+
+      // 🆘 v1.37.0 — Modale de refus offline pour Kill SW.
+      // Équivalent compact de _softUpdateOfflineWarning (interfaceMaintenance.js)
+      // adapté au cas Kill SW : action ANNULÉE car re-download des assets
+      // requis au prochain boot. Sans Internet → app inutilisable post-kill.
+      // Pas de bouton "Continuer quand même" (cas trop dangereux). L'user
+      // doit retrouver une connexion avant de relancer la désinscription.
+      function _afficherKillSwOfflineRefus() {
+        const existing = document.getElementById("kta-killsw-offline");
+        if (existing) existing.remove();
+
+        const overlay = document.createElement("div");
+        overlay.id = "kta-killsw-offline";
+        overlay.className = "kta-readme-modal-overlay";
+        overlay.style.display = "flex";
+
+        overlay.innerHTML =
+          '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(255,107,107,0.4); box-shadow:0 0 32px rgba(255,107,107,0.18);">' +
+            '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,107,107,0.25);">' +
+              '<div class="kta-readme-modal-titre" style="color:#ff6b6b;">❌ Désinscription refusée — pas de connexion</div>' +
+              '<button class="kta-panneau-close" type="button" id="kta-kso-close" aria-label="Fermer">✕</button>' +
+            '</div>' +
+            '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
+              '<p style="margin:0 0 14px 0; line-height:1.55;">' +
+                'Internet ou le serveur MyKTAMap ne répond pas. La désinscription du Service Worker ' +
+                'est <strong>annulée</strong> pour ta sécurité — sinon l\'app deviendrait inutilisable ' +
+                'au prochain chargement (re-download des assets impossible).' +
+              '</p>' +
+              '<div style="background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:8px; padding:10px 14px; margin-bottom:14px;">' +
+                '<div style="font-weight:600; color:#8cb4ff; margin-bottom:6px;">✅ Aucune perte de données</div>' +
+                '<p style="margin:0; line-height:1.55;">Rien n\'a été touché. Tes plans, sessions et préférences sont intacts. L\'app continue de fonctionner sur la version actuellement en cache.</p>' +
+              '</div>' +
+              '<p style="margin:0; font-style:italic; color:#8892a4; font-size:13px;">' +
+                'Reconnecte-toi à Internet (Wi-Fi / 4G), vérifie que ' +
+                '<code>myktamap.fr</code> répond bien, puis relance la désinscription depuis ' +
+                '<strong>⚙️ Configuration → 🆘 Désinscrire le Service Worker</strong>.' +
+              '</p>' +
+            '</div>' +
+            '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end;">' +
+              '<button class="kta-btn kta-btn-primary" type="button" id="kta-kso-ok">OK</button>' +
+            '</div>' +
+          '</div>';
+        document.documentElement.appendChild(overlay);
+
+        function _close() {
+          try { overlay.remove(); } catch(e) {}
+          document.removeEventListener("keydown", _onKey);
+        }
+        function _onKey(e) {
+          if (e.key === "Escape") _close();
+        }
+        document.addEventListener("keydown", _onKey);
+
+        overlay.addEventListener("click", function(e) {
+          if (e.target === overlay) _close();
+        });
+        document.getElementById("kta-kso-close").addEventListener("click", _close);
+        document.getElementById("kta-kso-ok").addEventListener("click", _close);
       }
 
       // Exposer chargerPlanDuRegistre globalement pour que le panneau "plan switcher" du titre puisse l'appeler
