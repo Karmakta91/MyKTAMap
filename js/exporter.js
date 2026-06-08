@@ -2636,7 +2636,9 @@
       const GROUPES_ICONES = [
         { titre: "🕳️ Puits",        cles: ["pa", "pb", "pc", "pe", "ps"] },
         { titre: "🪜 Accès",         cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
-        { titre: "⚠️ Signalétique", cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] }
+        { titre: "⚠️ Signalétique", cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] },
+        // 🆕 v1.41.0 D — Catégorie Secours (Vue OSM × Mode Secours).
+        { titre: "🚨 Secours",       cles: ["entree_plan"] }
       ];
       const clesGroupees = new Set(GROUPES_ICONES.flatMap(function(g) { return g.cles; }));
 

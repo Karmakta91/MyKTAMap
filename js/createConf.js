@@ -25,7 +25,17 @@ const PLANNER_DEFAULT_ICONS = {
   chatiere: "icon/chatiere.png",
   passage:  "icon/passage.png",
   danger:   "icon/danger.png",
-  plaque:   "icon/plaque.png"
+  plaque:   "icon/plaque.png",
+  // 🆕 v1.41.0 D — Point d'entrée du plan (Vue OSM × Mode Secours).
+  //    SVG inline → pas de fichier PNG nécessaire (cf js/map.js TAGS_BUILTIN).
+  entree_plan: 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">' +
+      '<circle cx="25" cy="25" r="23" fill="#f4c542" stroke="#1a1f2e" stroke-width="2.5"/>' +
+      '<rect x="17" y="13" width="16" height="26" fill="#1a1f2e" rx="1"/>' +
+      '<rect x="19" y="15" width="12" height="22" fill="#f4c542" rx="0.5"/>' +
+      '<circle cx="28.5" cy="26" r="1.5" fill="#1a1f2e"/>' +
+    '</svg>'
+  )
 };
 
 const PLANNER_EDITOR_JSON   = JSON.stringify({ type: "editor", version: 1, data: [] }, null, 2);
@@ -959,6 +969,27 @@ async function _chargerZipModifier(file) {
   _plannerZipStatus("⏳ Extraction en cours…", false);
   try {
     if (typeof JSZip === "undefined") throw new Error("JSZip non chargé");
+
+    // 🆕 v1.42.1 — Kill-switch anti-fuite aussi côté générateur. Si l'attaquant
+    // tente de modifier un ZIP révoqué via le générateur (= changer 1 truc + ré-exporter
+    // pour propager une version dérivée), on bloque dès l'import. L'attaquant devra
+    // décompresser le ZIP manuellement + tout refaire à la main pour rester actif.
+    // Friction max sans perdre en simplicité côté users légitimes (même UX que loader).
+    if (window.PlanDenylist && typeof window.PlanDenylist.isPlanDenied === "function") {
+      try {
+        const denyCheck = await window.PlanDenylist.isPlanDenied(file);
+        if (denyCheck && denyCheck.denied) {
+          console.warn("[Planner] ZIP refusé (denylist) :", denyCheck.sha256, "- raison :", denyCheck.reason);
+          _plannerZipStatus("⛔ ZIP révoqué par l'auteur — modification refusée.", true);
+          window.PlanDenylist.showDeniedModal(denyCheck, null);
+          return;  // STOP : pas d'extraction, formulaire intact
+        }
+      } catch(eDeny) {
+        // Fail-safe : log mais ne bloque pas (cf doctrine v1.42.0)
+        console.warn("[Planner] Check denylist échec — modification autorisée :", eDeny.message);
+      }
+    }
+
     const zip = await JSZip.loadAsync(file);
     let planConfigFile = null;
     _plannerOrigAssets = {};

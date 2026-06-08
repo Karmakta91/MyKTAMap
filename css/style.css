@@ -2666,9 +2666,16 @@ img.kta-popup-photo-mini:focus-visible {
   /* 🆕 v1.9.2-fullscreen : double déclaration vh/dvh. La modale est cap
      à 88% du viewport — sur iOS PWA avec cover, `dvh` correspond à
      l'écran physique entier (le `vh` historique pouvait exclure la
-     zone home indicator iOS 15-). */
-  height: min(88vh, 920px);
-  height: min(88dvh, 920px);
+     zone home indicator iOS 15-).
+     🐛 v1.40.38 (KARMA "modal bcp trop long, on a eu le cas plein de
+     fois") : passage `height` → `max-height` pour que le contenu
+     détermine la hauteur naturellement. Les modales longues (doc, aide,
+     audit) atteignent toujours 88vh et scrollent en interne via
+     `.kta-readme-modal-corps { flex:1; overflow-y:auto }`. Les modales
+     courtes (Plan introuvable, confirmations, etc.) prennent leur taille
+     naturelle au lieu de forcer 88vh avec espace vide en bas. */
+  max-height: min(88vh, 920px);
+  max-height: min(88dvh, 920px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2684,25 +2691,28 @@ img.kta-popup-photo-mini:focus-visible {
    RÈGLE : ne s'applique QUE sur PC (≥1024px) — mobile inchangé. */
 /* 🆕 v1.9.2-fullscreen : tous les paliers PC ont la double déclaration
    vh/dvh pour profiter de l'écran physique entier sur iOS PWA avec cover. */
+/* 🐛 v1.40.38 — Idem fix base : height → max-height pour autoriser le
+   shrink au contenu sur modales courtes. Les modales longues atteignent
+   le plafond naturellement. */
 @media (min-width: 1024px) {
   .kta-readme-modal-boite {
     width: min(1400px, 96vw);
-    height: min(92vh, 1100px);
-    height: min(92dvh, 1100px);
+    max-height: min(92vh, 1100px);
+    max-height: min(92dvh, 1100px);
   }
 }
 @media (min-width: 1440px) {
   .kta-readme-modal-boite {
     width: min(1700px, 96vw);
-    height: min(94vh, 1300px);
-    height: min(94dvh, 1300px);
+    max-height: min(94vh, 1300px);
+    max-height: min(94dvh, 1300px);
   }
 }
 @media (min-width: 1920px) {
   .kta-readme-modal-boite {
     width: min(2000px, 95vw);
-    height: min(95vh, 1500px);
-    height: min(95dvh, 1500px);
+    max-height: min(95vh, 1500px);
+    max-height: min(95dvh, 1500px);
   }
 }
 
@@ -3998,7 +4008,10 @@ html.kta-theme-light .kta-readme-lang-btn:hover {
    l'animation translateY peut faire son travail sans conflit. */
 #splashLicense {
   position: absolute;
-  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  /* 🆕 v1.43.20 — Remonté de 70px → 82px depuis que le crédit splash
+     occupe 2 lignes (40px de hauteur au lieu de 20px). Sinon la 1re
+     ligne des libs chevauchait avec "Édition pro / Licence active". */
+  bottom: calc(82px + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   padding: 0 28px;
@@ -4124,15 +4137,16 @@ body.kta-theme-light .splash-license-detail-pro {
   font-size: 11px;
   color: #6c7689;
   letter-spacing: 0.02em;
-  /* 🆕 v1.9.2-fix18 (KARMA "le karma est légèrement plus haut que les
-     libs, doit être au même alignement") : on fixe la hauteur effective
-     du crédit à 20px = hauteur de #splashKarmaImg. Les deux éléments
-     ont ainsi leur "boîte" de la même hauteur visuelle → centres et
-     bords alignés à la même ligne de base. */
-  height: 20px;
+  /* 🆕 v1.43.19 — Layout 2 lignes de 3 libs (KARMA "3 et en dessous 3").
+     Le `<br>` HTML force le split. Hauteur 20px → 40px pour accueillir
+     les 2 lignes. line-height: 20px par ligne. Logo KARMA (height: 20px)
+     reste à bottom: 28px → aligné avec la 2e ligne du crédit, comme avant.
+     `text-align: left` pour aligner les 2 lignes à gauche (pas centré
+     sinon ça wobbles visuellement avec des longueurs de ligne différentes). */
+  height: 40px;
   line-height: 20px;
-  display: flex;
-  align-items: center;
+  display: block;
+  text-align: left;
   user-select: none;
   pointer-events: none;
   white-space: nowrap;
@@ -4158,11 +4172,13 @@ body.kta-theme-light .splash-license-detail-pro {
   #splashKarmaImg { height: 18px; }
   #splashLeafletCredit {
     font-size: 10px;
-    /* Alignement avec karma image à la même hauteur (18px sur mobile) */
-    height: 18px;
+    /* 🆕 v1.43.19 — Mobile : 2 lignes de 18px = 36px total.
+       KARMA logo (18px) reste aligné avec la 2e ligne. */
+    height: 36px;
     line-height: 18px;
   }
-  #splashLicense { bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+  /* 🆕 v1.43.20 — Mobile : remonté 56px → 78px (crédit splash 2 lignes = 36px). */
+  #splashLicense { bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Mode paysage mobile : compact */
@@ -4175,12 +4191,14 @@ body.kta-theme-light .splash-license-detail-pro {
   .splash-scale-labels { font-size: 8px; height: 10px; }
   #splashKarmaImg { height: 16px; }
   #splashLeafletCredit {
-    height: 16px;
+    /* 🆕 v1.43.19 — Landscape compact : 2 lignes de 16px = 32px total. */
+    height: 32px;
     line-height: 16px;
   }
   #splashLicense {
     font-size: 10px;
-    bottom: calc(46px + env(safe-area-inset-bottom, 0px));
+    /* 🆕 v1.43.20 — Landscape compact : remonté 46px → 70px (crédit 2 lignes = 32px). */
+    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -4522,6 +4540,22 @@ body.kta-theme-light .splash-license-detail-pro {
   background: #f4c542;
   color: #1a1f2e;
 }
+/* 🆕 v1.43.9 — Layout mobile widget OSM Home (KARMA "icône agrandir passe à
+ * la ligne sur mobile") : sur petit écran, on force le sélecteur de plan
+ * à prendre toute la largeur (= ligne 1 seul), puis le slider opacité et
+ * les 3 boutons (📍 GPS, 💾 Save Offline, ⛶ Plein écran) se groupent
+ * proprement sur la ligne 2 grâce au flex-wrap déjà actif. Aucun
+ * changement sur PC (largeur ≥ 601 px). */
+@media (max-width: 600px) {
+  .kta-osm-home-bandeau select {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  /* Centre les contrôles secondaires sur la 2e ligne pour un rendu propre */
+  .kta-osm-home-bandeau {
+    justify-content: flex-start;
+  }
+}
 .kta-osm-home-map {
   flex: 1 1 auto;
   min-height: 220px;
@@ -4788,6 +4822,28 @@ html.kta-theme-light .kta-osm-home-empty strong {
   padding: 6px 12px;
   font-size: 14px;
   font-weight: 700;
+}
+/* 🆕 v1.43.15 — En fullscreen, position du bouton ⛶ / ✕ (= #ktaOsmHomeFullBtn)
+ * en haut à droite, plus visible et intuitif (KARMA "croix à une position pas
+ * intuitive"). On le sort du flow flex pour le coller au coin de l'écran.
+ * 🐛 v1.43.16 — KARMA "la croix est trop grosse" : padding 10×14 → 4×9,
+ * font 18 → 13 (= taille bouton standard du bandeau, juste mieux placé). */
+.kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 10001;
+  padding: 4px 9px;
+  font-size: 13px;
+  font-weight: 700;
+  background: rgba(244, 197, 66, 0.95);
+  color: #1a1f2e;
+  border: 1px solid rgba(244, 197, 66, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  border-radius: 5px;
+}
+.kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn:hover {
+  background: #f4c542;
 }
 /* Empêche le scroll du body pendant le fullscreen (sinon Leaflet wheel
    peut faire défiler la page derrière). */
@@ -8001,9 +8057,10 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
 .kta-readme-back-top:active { transform: translateY(1px); }
 
 /* RESPONSIVE — sous 800px : sidebar bascule en haut (si visible) */
+/* 🐛 v1.40.38 — height → max-height pour cohérence avec les autres breakpoints */
 @media (max-width: 800px) {
   .kta-readme-modal-boite {
-    height: 92vh;
+    max-height: 92vh;
   }
   .kta-readme-modal-layout {
     flex-direction: column;
@@ -16900,6 +16957,43 @@ html.kta-theme-light .kta-net-cell-method {
 /* ============================================================
    👤 USER PROFILE — Bandeau loader + Modale détails (Karma_dev)
    ============================================================ */
+
+/* 🆕 v1.40.42 + v1.40.49 — Wrapper `.kta-loader-top-row` qui groupe
+   profile-bar + resumeBox sur 1 ligne PC (≥1024px). Mobile : display:contents
+   (stack vertical naturel).
+   v1.40.49 : Grid identique à .loader-grid dessous (2fr 3fr 2fr) → bouton
+   Reprendre occupe la col 3 = largeur de "Ajouter un plan" (KARMA "le bouton
+   reprendre doit rentrer dans le carré rouge" qui était col 3). width:100%
+   sur le bouton pour qu'il remplisse vraiment la cellule horizontalement. */
+.kta-loader-top-row {
+  display: contents;
+}
+@media (min-width: 1024px) {
+  .kta-loader-top-row {
+    display: grid;
+    grid-template-columns: 2fr 3fr 2fr;   /* identique .loader-grid pour alignement */
+    gap: 0 24px;
+    align-items: stretch;
+    margin-bottom: 18px;
+  }
+  .kta-loader-top-row .kta-loader-profile-bar {
+    grid-column: 1 / span 2;              /* cols 1+2 = "Mes plans" + "Vue OSM" */
+    margin: 0;
+  }
+  .kta-loader-top-row #resumeBox {
+    grid-column: 3;                       /* col 3 = "Ajouter un plan" */
+    margin: 0;
+    display: flex !important;
+    align-items: stretch;
+  }
+  .kta-loader-top-row #resumeBox[style*="display:none"],
+  .kta-loader-top-row #resumeBox[style*="display: none"] {
+    display: none !important;
+  }
+  .kta-loader-top-row #resumeBox .loader-btn-resume {
+    width: 100%;                          /* remplit la largeur de la cellule col 3 */
+  }
+}
 
 /* ─── BANDEAU EN-TÊTE LOADER ─── */
 .kta-loader-profile-bar {

@@ -8,7 +8,2541 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.40.32` (07/06/2026) — **Enrichissement Onboarding : 2 nouvelles cartes (🌍 Vue OSM, 📖 Mode Histoire) + enrichissements (🚨 Sortie urgence, 🎤 Vocale)** :
+**📦 Version courante** : `v1.43.8` (08/06/2026) — **💾 Cache OSM offline « Save Offline » + robustesse SW (consolidation v1.43.0 → v1.43.8)** :
+
+KARMA : besoin de garder la Vue OSM consultable hors-ligne (descente cata, terrain sans réseau). Solution introduite en v1.43.0 puis durcie sur 8 patches successifs : un bouton « 💾 Save Offline » dans les 3 contextes Vue OSM (modale plan georef + widget HOME + Mode Secours), qui télécharge les tuiles `tile.openstreetmap.org` de la vue actuelle dans un store IndexedDB local, servies ensuite **de manière transparente** par le Service Worker.
+
+🎯 **Fonctionnalité majeure (consolidation v1.43.0 → v1.43.8)** :
+- **3 contextes UI partagent le même store IDB** : modale Vue OSM, widget HOME, Mode Secours (🌍 → modale). Cacher depuis l'un = visible depuis tous.
+- **Offline intelligent** : si le plan courant a des tuiles cachées (détection any-zoom via `hasCacheForBbox`), la modale Vue OSM s'ouvre sans demander de réseau, sans ping, sans toast d'erreur — même en mode avion.
+- **Robustesse SW** : self-heal au boot (retry x3 sur app shell critique) + interception transparente OSM (`X-OSM-Cache: hit`) + cohérence cross-context via event `kta:osmOptInChange`.
+- **Privacy stricte** : aucune nouvelle URL réseau (juste pré-déclenchement des requêtes OSM existantes). Cache 100% local, jamais transmis. Bouton masqué en strict-offline / incognito.
+- **UX clarifiée** : widget HOME affiche un overlay « plan non caché » si aucune tuile dispo pour la bbox courante (plus de tuiles cassées en mode avion).
+
+🎯 **Architecture** :
+
+```
+js/osmTilesCache.js (NOUVEAU, ~280 lignes)
+  ├─ IDB : "myktamap_osm_tiles" (DB v1) > store "tiles" { key: "z/x/y", blob, addedAt }
+  ├─ API : init / cacheVisibleTiles / getCachedTile / hasCachedTile /
+  │        getStats / hasCacheForBbox(bbox, zoom?) / clear / enumerateTilesForBbox
+  └─ Constante MAX_TILES_PER_CACHE = 200 (politique OSM)
+
+sw.js (modifié)
+  ├─ fetch handler intercepte tile.openstreetmap.org/{z}/{x}/{y}.png
+  │  ├─ Hit IDB → new Response(blob, {200, X-OSM-Cache:hit})
+  │  └─ Miss → fetch réseau normal (offline = 504)
+  └─ Install + activate : CRITICAL_APP_SHELL + _cacheWithRetry (3 essais) + self-heal
+
+osmView.js (modifié)
+  ├─ Bouton bandeau « 💾 Save Offline » (juste après 📍 Moi) + span stats
+  ├─ open() async : await _recheckCachedForCurrentPlan() JIT
+  ├─ Gate offline : _isOnlineOrCached = _isOnline OR _planHasCachedTiles
+  ├─ Bypass _pingThenOpen si _planHasCachedTiles === true
+  └─ Exposé : window.OsmView.recheckOfflineCache + event kta:osmOptInChange
+
+osmHomePreview.js (modifié)
+  ├─ Bouton « 💾 » bandeau compact
+  ├─ Flag _anyCachePresent + overlay « plan non caché » via hasCacheForBbox(bboxA↔B)
+  └─ Listener kta:osmOptInChange pour refresh immédiat
+```
+
+🛡️ **Garde-fous** :
+- **Politique OSM** : `MAX_TILES_PER_CACHE = 200` par clic, 3 niveaux de zoom (actuel ±1), conforme [OSM Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/).
+- **Cache 100% local** : IndexedDB client only, jamais synchronisé ni transmis, pas de cookie/tracking.
+- **Privacy** : strict-offline et incognito masquent le bouton « Save Offline » (les tuiles seraient bloquées par le gate avant même le SW).
+- **Isolation cache global** : store unique, mais clés `z/x/y` géographiques disjointes par plan → pas de collision Paris↔Lyon. Dédup auto si plans overlap.
+- **Audit réseau** : aucune nouvelle surface (URLs `tile.openstreetmap.org/{z}/{x}/{y}.png` déjà documentées dans `NETWORK_AUDIT.md`).
+
+### Évolution v1.43.1 → v1.43.8 (8 patches)
+
+| Version | Fix |
+|---|---|
+| **v1.43.1** | Gate offline : `open()` async + `_recheck...()` JIT awaité avant le gate (fix flag stale au boot) |
+| **v1.43.2** | Dispatch event `kta:osmOptInChange` au toggle → refresh immédiat bouton 🌍 (plus d'attente polling 2s) |
+| **v1.43.3** | Widget HOME : flag `_anyCachePresent` + overlay « plan non caché » via `hasCacheForBbox(bboxA↔B)`. Cache global partagé : plan caché côté modale OSM → détecté côté Home |
+| **v1.43.4** | UX : repositionnement bouton « 💾 » juste après « 📍 Moi » |
+| **v1.43.5** | SW robustesse : `CRITICAL_APP_SHELL` + `_cacheWithRetry` (3 essais) + self-heal au activate |
+| **v1.43.6** | `hasCacheForBbox(bbox, zoom?)` mode any-zoom : scan 10→18 sur le centre si zoom omis (fix faux-négatif quand cache fait à zoom ≠ 14) |
+| **v1.43.7** | Bypass `_pingThenOpen()` si `_planHasCachedTiles === true` (fix toast « Internet ne répond pas » en mode avion) |
+| **v1.43.8** | Renommage label « Cacher offline » → **« Save Offline »** (UX international) |
+
+🧪 **Tests à faire**
+1. **Cache modale** : ouvrir Vue OSM sur plan georef → clic « 💾 Save Offline » → progress bar (X/200) → stats mises à jour
+2. **Cache widget HOME** : sur Home → clic « 💾 » dans bandeau OSM → stats mises à jour → overlay « plan non caché » disparaît
+3. **Mode avion ouverture** : couper réseau / mode avion → ouvrir Vue OSM sur plan caché → ouverture instantanée, pas de toast « Internet ne répond pas » (v1.43.7) + tuiles servies depuis IDB
+4. **Cross-context** : cacher depuis modale Vue OSM Plan A → revenir Home → widget HOME détecte cache (v1.43.3)
+5. **Mode Secours** : déclencher 🌍 → modale Vue OSM s'ouvre → bouton « Save Offline » présent
+6. **Reload après cache** : F5 → ouvrir Vue OSM offline → tuiles cachées servies immédiatement (persistance IDB OK)
+7. **Cache à zoom non-14** : cacher en zoomant beaucoup (z=16) ou peu (z=12) → gate offline reconnaît quand même (v1.43.6 any-zoom)
+8. **Toggle opt-in** : Config → toggle Vue OSM OFF puis ON → bouton 🌍 carte se met à jour < 1s (v1.43.2)
+
+---
+
+**📦 v1.42.15** (08/06/2026) — **🐛 Fix re-render Mode Secours après ajout entree/sortie/intermediaire + audit réseau enrichi (denylist.json)** :
+
+KARMA : *« audit bien à jour ? aussi petit bug quand on ajoute une entrée sortie à un groupe de secours, ça ne se met pas à jour de suite, il faut calculer itinéraire pour voir ce qu'on a saisi apparaître »*.
+
+🎯 **Cause bug** — Dans `_appliquerWaypoint(groupeId, role, idx, wp)` (js/secoursMode.js ligne 8727), après `updateGroupe` + `_scheduleAutoRecalc`, **manque un `_switchView("edit")`** pour re-render la fiche groupe. Le state était bien muté en mémoire, mais la fiche affichée à l'écran ne se rafraîchissait pas → user devait cliquer « 🗺️ Calculer itinéraire » qui déclenche un re-render indirect.
+
+À noter : `_clearWaypoint` (juste en-dessous ligne 8767) avait déjà `_switchView("edit")` en fin. Oubli historique sur la version "ajout".
+
+🔧 **Fix v1.42.15** — Ajout d'1 ligne :
+
+```js
+function _appliquerWaypoint(groupeId, role, idx, wp) {
+  // ... mutations ...
+  updateGroupe(_currentScenarioId, groupeId, { entree: wp });  // OU sortie OU intermediaires
+  _scheduleAutoRecalc(_currentScenarioId, groupeId);
+  _switchView("edit");  // 🆕 v1.42.15 — re-render immédiat (était oublié, cf _clearWaypoint)
+}
+```
+
+🎯 **Audit réseau enrichi** — Ajout de l'endpoint `denylist.json` qui était manquant. Mis à jour dans `NETWORK_AUDIT.md` + `NETWORK_AUDIT.html` :
+
+| Endpoint | Méthode | Quand | Pourquoi | Données envoyées |
+|----------|---------|-------|----------|------------------|
+| `<origin>/denylist.json` | `GET` (cache:no-store SW) | Au boot + 1×/24h cache LS | Kill-switch anti-fuite (v1.42.0+) | **Aucune** (lecture seule liste publique, hashes calculés 100% client-side via `crypto.subtle.digest`) |
+
+🛡️ **Pas de régression** :
+- Fix bug : 1 ligne ajoutée dans `_appliquerWaypoint`. Aucun autre impact. Comportement de l'app inchangé hors re-render plus rapide.
+- Audit : juste 1 ligne ajoutée au tableau (+ idem HTML). Le reste du document inchangé.
+
+🧪 **Tests à faire**
+1. **Bug fix** : Mode Secours → édit équipe → ajouter entrée via picker → la valeur apparait immédiatement dans la fiche (avant : invisible jusqu'à clic « 🗺️ Calc. itinéraire »)
+2. **Audit** : modale Audit réseau → chercher `denylist.json` → ligne présente avec "Aucune" donnée envoyée
+
+📋 **Vérification audit complète** — Surfaces réseau actives en v1.42.x :
+
+| URL | Documenté |
+|-----|-----------|
+| `<origin>/*` (HTML/JS/CSS/SW assets) | ✅ |
+| `<origin>/version.json` | ✅ |
+| `<origin>/alert.json` | ✅ |
+| `<origin>/denylist.json` | ✅ **(ajouté v1.42.15)** |
+| `<origin>/Licence-pro.json` | ✅ (documenté plus loin) |
+| `<origin>/data/<plan>/*` | ✅ |
+| `<origin>/ping.html` | ✅ |
+| `https://tile.openstreetmap.org/{z}/{x}/{y}.png` (Vue OSM) | ✅ |
+| `blob:<origin>/<uuid>` | ✅ |
+| `data:<mime>;base64,...` | ✅ |
+
+→ **Audit complet** pour toutes les versions v1.42.x. `html2canvas` est une lib vendored localement (`lib/html2canvas.min.js`) — aucune surface réseau supplémentaire.
+
+---
+
+**📦 v1.42.14** (08/06/2026) — **☀️ Support thème clair pour les 4 modales récentes (Briefing options, overlay capture, denylist denied/purged)** :
+
+KARMA : *« assure toi que pour ces modal le mode clair est bien géré »*.
+
+🎯 **Cause** — Mes 4 modales récentes utilisent des `style.cssText` inline avec couleurs sombres hardcodées (`#1f2a47`, `#e8eaf0`, etc.). En thème clair cataphile (`body.kta-theme-light`), elles restent sombres → contraste/charte cassés.
+
+🔧 **Fix v1.42.14** — Helper de détection thème + palette adaptée par modale :
+
+```js
+function _isLightTheme() {
+  return document.body.classList.contains("kta-theme-light") ||
+         document.documentElement.classList.contains("kta-theme-light");
+}
+
+// À la création de chaque modale :
+const isLight = _isLightTheme();
+const pal = isLight ? { /* charte clair cataphile */ } : { /* dark défaut */ };
+overlay.style.cssText = "...background:" + pal.backdrop + ";";
+box.style.cssText = "...color:" + pal.txMain + ";";
+// ... etc
+```
+
+📊 **4 modales adaptées**
+
+| Modale | Fichier | Dark (défaut) | Light cataphile |
+|---|---|---|---|
+| Options Briefing pompiers | secoursMode.js | Fond bleu nuit `#1f2a47`, texte clair, accent jaune `#f4c542` | Fond beige `#fdf8eb`, texte sombre `#2a2620`, accent ambré `#b8860b` |
+| Overlay « Génération… » | secoursMode.js | Fond `#0a0d18`, accent `#f4c542` | Fond `#fdf8eb`, accent `#b8860b` |
+| Modale Plan révoqué (rouge) | planDenylist.js | Fond rouge sombre, texte blanc | Fond rosé clair, texte rouge sombre — **rouge danger préservé** dans les 2 thèmes (sémantique critique) |
+| Modale Plans purgés au boot (orange) | planDenylist.js | Fond ambré sombre, texte clair | Fond crème ambré, texte sombre — **orange préservé** (sémantique alerte douce) |
+
+🎨 **Palette light cataphile** (selon `--kta-light-*` du `css/style.css`) :
+- Fond beige `#fdf8eb` à `#f5ecd6`
+- Texte principal `#2a2620`
+- Texte secondaire `#5a4f40`
+- Accent ambré `#b8860b` (or)
+- Bordures `rgba(154,135,84,0.40)`
+
+🛡️ **Sémantique préservée** — Les couleurs **rouge danger** (Plan révoqué) et **orange alerte** (Plans purgés) restent dominantes dans les 2 thèmes (juste les fonds/textes s'adaptent). On ne mélange jamais une modale danger avec la charte UI : la couleur sémantique gagne.
+
+🛡️ **Pas de régression** — détection au moment du render via `classList.contains`. Si le thème change entre 2 ouvertures de la même modale, la prochaine ouverture utilise la nouvelle palette. Pas de listener `MutationObserver` nécessaire (modales transitoires).
+
+🧪 **Tests à faire**
+1. **Dark (défaut)** : ouvrir les 4 modales → couleurs identiques aux versions précédentes ✅
+2. **Light** : Home → Configuration → ☀️ Activer thème CLAIR → reload → ouvrir 4 modales → palette beige cataphile, lisibles
+3. **Switch thème runtime** : ne s'applique qu'à la prochaine ouverture (pattern OK pour des modales)
+
+---
+
+**📦 v1.42.13** (08/06/2026) — **🎨 Overlay capture OSM contextualisé : texte adapté Briefing pompiers vs Rapport** :
+
+KARMA : *« le truc de chargement de génération de briefing pompier est top, mais on affiche la même chose quand on export via rapport pdf »*.
+
+🎯 **Cause** — L'overlay « 🚒 Génération du Briefing pompiers… » s'affichait aussi pendant l'export Rapport (même flow `_drawBriefingSurfacePage` → `_captureOsmCanvasForBriefing`), mais avec un texte non adapté au contexte.
+
+🔧 **Fix v1.42.13** — Paramètre `overlayContext` propagé depuis le caller :
+
+```js
+// secoursMode.js : 2 contextes prédéfinis
+const _ctx = (overlayContext === "rapport")
+  ? { icon: "📤", title: "Génération du rapport en cours…",
+      sub: "Capture de la Vue OSM pour la page de briefing surface…" }
+  : { icon: "🚒", title: "Génération du Briefing pompiers…",
+      sub: "Capture de la Vue OSM en cours (plan + données projetées)…" };
+
+overlay.innerHTML =
+  '<div style="font-size:42px;animation:kta-spin…">🛰️</div>' +
+  '<div>' + _ctx.icon + ' ' + _ctx.title + '</div>' +
+  '<div>' + _ctx.sub + '</div>';
+```
+
+📐 **Propagation 8e arg** (`overlayContext`) :
+```
+genererRapportPDF() ──► _drawBriefingSurfacePage(..., options=null, "rapport")
+                                            │
+genererBriefingPompiersPDF() ──► _drawBriefingSurfacePage(..., options, "briefing")
+                                            │
+                                            ▼
+                       _captureOsmCanvasForBriefing(scenario, plan, options, overlayContext)
+                                            │
+                                            ▼
+                       overlay.innerHTML = textes selon overlayContext
+```
+
+📊 **Comparaison overlays**
+
+| Source | Icône | Titre | Sous-titre |
+|--------|-------|-------|-----------|
+| Bouton 🚒 Briefing pompiers | 🚒 | Génération du Briefing pompiers… | Capture de la Vue OSM en cours (plan + données projetées)… |
+| Bouton 📤 Rapport global / Rapport équipe | 📤 | Génération du rapport en cours… | Capture de la Vue OSM pour la page de briefing surface… |
+
+🛡️ **Pas de régression** — paramètre optionnel avec default `"briefing"` (backward-compat).
+
+🧪 **Test** : Mode Secours → 📤 Rapport global → exporter PDF → overlay « 📤 Génération du rapport en cours… » (au lieu de « 🚒 Briefing pompiers »).
+
+---
+
+**📦 v1.42.12** (08/06/2026) — **🛠️ Fix ratio image Briefing PDF (était hardcoded 3:2 → étirement si viewport modale ≠ 3:2)** :
+
+KARMA après v1.42.11 : *« presque parfait, j'ai l'impression que l'image est étiré dans le PDF »*.
+
+🎯 **Cause** — Dans `_drawBriefingSurfacePage` (v1.42.5), le ratio image PDF était hardcoded à `800/1200` (3:2 du render offscreen). Mais depuis v1.42.10/11, on capture la **modale Vue OSM** dont la taille dépend du viewport (16:9 desktop, 9:16 mobile portrait, 21:9 ultrawide...). Résultat : ratio image PDF ≠ ratio image source → étirement vertical ou horizontal.
+
+🔧 **Fix v1.42.12** — Lire les vraies dims de l'image capturée :
+
+```js
+async function _getImageDataUrlDims(dataUrl) {
+  return new Promise(function(resolve) {
+    const img = new Image();
+    img.onload = function() {
+      resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    };
+    img.onerror = function() { resolve(null); };
+    img.src = dataUrl;
+  });
+}
+
+// Dans _drawBriefingSurfacePage, avant pdf.addImage :
+const realDims = await _getImageDataUrlDims(imgData);
+const ratio = realDims ? (realDims.w / realDims.h) : (1200 / 800);  // fallback
+
+const availW = pageW - 2 * margin;     // 182mm A4
+const availH = pageH - y - 80;          // garde 80mm pour reste
+// Contrainte width OU height selon ce qui touche en premier
+let finalW = availW;
+let finalH = finalW / ratio;
+if (finalH > availH) {
+  finalH = availH;
+  finalW = finalH * ratio;
+}
+const offsetX = margin + (availW - finalW) / 2;  // centré horizontalement
+pdf.addImage(imgData, "JPEG", offsetX, y, finalW, finalH);
+```
+
+🎨 **Bénéfice UX** :
+- Si capture **landscape large** (ex: 1920×1080) → tient sur la largeur, hauteur réduite proportionnellement, centré horizontalement
+- Si capture **portrait** (ex: 800×1400 mobile) → tient sur la hauteur dispo, largeur réduite, centré horizontalement
+- Aucune déformation : aspect ratio natif préservé
+
+🛡️ **Fail-safe** — si `_getImageDataUrlDims` retourne null (rare), fallback sur ratio hardcoded 3:2 (= comportement v1.42.11).
+
+🛡️ **Pas de régression** :
+- Capture offscreen 1200×800 (3:2) → ratio identique au hardcoded précédent, rendu inchangé
+- Capture modale 16:9 → image plus large que haute, centrée horizontalement, marges gauche/droite
+- Capture portrait → image moins large, marges gauche/droite
+
+🧪 **Tests à faire**
+1. Capture sur desktop 1920×1080 → image dans PDF garde le ratio 16:9, ne touche pas les bords latéraux
+2. Capture sur mobile portrait (Vue OSM en mode mobile) → image plus haute que large, centrée
+3. Capture sur tablette 4:3 → image proche du carré, centrée
+
+---
+
+**📦 v1.42.11** (08/06/2026) — **🚒 Briefing pompiers : modale d'options de couches OSM avant capture** :
+
+KARMA : *« ajoute la possibilité de ne pas tout afficher dans le pdf, donc on clique sur briefing, un modal on choisie ce que on affiche (comme en mode OSM PLAN/HOME) »*.
+
+🔧 **Fix v1.42.11** — Workflow modifié :
+
+```
+[Clic 🚒 Briefing pompiers]
+   ↓
+_afficherModaleBriefingOptions(scenarioId)
+   ↓
+[Modale avec 8 toggles couches OSM (Plan/POI/Tracé/Routes/Iti/Zones/Struct/Secours)]
+   ↓
+[Clic « Générer PDF »]
+   ↓
+genererBriefingPompiersPDF(scenarioId, options)
+   ↓
+_drawBriefingSurfacePage(..., options)
+   ↓
+_captureOsmCanvasForBriefing(scenario, plan, options)
+   ↓
+1. Overlay opaque "Génération en cours…"
+2. OsmView.open()
+3. _applyOsmLayerOptions(options) ← simule clics sur checkboxes selon options
+4. Wait tile loaded + render
+5. html2canvas
+6. OsmView.close()
+   ↓
+[PDF avec capture respectant les choix user]
+```
+
+📐 **Architecture modale**
+
+```
+┌─────────────────────────────────────────────┐
+│  🚒  Briefing pompiers                       │
+│      Choisis ce qui apparaît sur la carte… │
+├─────────────────────────────────────────────┤
+│  🗺️ Couches Vue OSM                          │
+│  ☑️ 🖼️ Plan      ☑️ 📍 POI                   │
+│  ☑️ 📡 Tracé    ☑️ 🛣️ Routes                 │
+│  ☑️ 🧭 Iti      ☑️ 🌐 Zones                  │
+│  ☑️ 🏗️ Struct   ☑️ 🚨 Secours                │
+├─────────────────────────────────────────────┤
+│  Les sections texte (équipes GPS, POI       │
+│  critiques, liens OSM) sont toujours       │
+│  incluses dans le PDF.                      │
+├─────────────────────────────────────────────┤
+│         [Annuler]   [📄 Générer le PDF]    │
+└─────────────────────────────────────────────┘
+       z-index 100001 (au-dessus tout Mode Secours)
+```
+
+🛠️ **Helper `_applyOsmLayerOptions(opts)`** : itère sur les 8 IDs checkboxes Vue OSM (`kta-osm-plan-toggle`, `kta-osm-poi-toggle`, etc.), compare `checkbox.checked` à `opts.show<Name>`, simule `.click()` si différent. Idempotent. Réutilise les listeners change existants de Vue OSM (qui appliquent le toggle au map Leaflet).
+
+⏱️ **Petit délai 400ms** après `OsmView.open()` avant d'appliquer les options, le temps que le DOM des toggles soit injecté par OsmView (CSS visible mais event listeners attachés après le HTML rendu).
+
+🛡️ **Fail-safe** :
+- Annuler la modale → ne génère pas de PDF
+- Si option = `undefined` pour un toggle → on ne touche pas son état (= respect du défaut Vue OSM)
+- Si checkbox `kta-osm-secours-toggle` absente (pas de scénario Secours actif) → skip silencieux
+- Si `_applyOsmLayerOptions` exception → log warning, capture quand même
+
+🛡️ **Pas de régression** :
+- Si l'user annule la modale → rien ne se passe (= safe)
+- Si options non passées (rétrocompat appel direct `genererBriefingPompiersPDF(id)`) → comportement v1.42.10 inchangé (tout affiché par défaut)
+- Sections texte du PDF (équipes GPS, POI critiques, liens) toujours incluses (pas de toggle dessus pour MVP)
+
+🧪 **Tests à faire**
+
+1. **Cas nominal** : clic 🚒 → modale apparait → décocher quelques toggles (ex: 🏗️ Struct, 🌐 Zones) → Générer → overlay → PDF avec capture sans Struct/Zones ✅
+2. **Tout coché** (default) : PDF = comportement v1.42.10 ✅
+3. **Tout décoché** : capture juste tuiles OSM + bbox (équivalent fallback offscreen sur le rendu visible)
+4. **Annuler** : rien ne se passe, pas de PDF généré
+5. **Click backdrop** (à côté de la modale) : ferme = annuler
+
+📋 **Roadmap v1.43+** si tu veux plus :
+- Toggles pour sections texte (équipes/POI critiques/liens) pour ne pas tout inclure
+- Mémoriser les derniers choix en `localStorage` pour pré-remplir la modale au prochain clic
+- Filtre par tag spécifique (= chips OSM tags filter) dans la modale
+
+---
+
+**📦 v1.42.10** (08/06/2026) — **🚒 Briefing pompiers : capture Vue OSM COMPLÈTE via open/close masqué sous overlay** :
+
+KARMA après v1.42.9 : *« donc toujours pas la carte et nos data »* + choix design `1` (render offscreen complet) au lieu de `2` (auto open/close) ou `3` (toast).
+
+🎯 **Investigation du "vrai offscreen" (option 1 stricte)** — L'idée « render offscreen complet » nécessite de reproduire :
+- Plan rotated en V2 (multiples tuiles JPEG dans le ZIP) ou V1 (image unique)
+- Data layers POI/tracés/zones/structures (chacun sa source globale)
+- Projection plan→GPS (helper privé `_buildProjection`)
+- Style cascade (LegendCustomization)
+- Filtres M-LVL actifs
+
+→ Refactor d'osmView.js pour rendre dans un container paramétrable + 200-300 lignes de duplication minimum. Trop pour un patch isolé.
+
+🔧 **Compromis pragmatique v1.42.10** — **option 1 UX, option 2 implémentation** :
+- L'user voit l'expérience « option 1 » : pas besoin d'ouvrir Vue OSM manuellement, juste cliquer 🚒, attendre ~5-10s, PDF arrive
+- Sous le capot c'est de l' « auto open/close » mais avec **overlay opaque** au z-index 1000000 qui masque TOTALEMENT le clignotement de Vue OSM. L'user voit juste un écran de chargement.
+
+```js
+async function _captureOsmCanvasForBriefing(scenario, plan) {
+  // CAS 1 : Vue OSM déjà ouverte → capture DOM direct (v1.42.8, rare)
+  // CAS 2 : Vue OSM fermée → open/close masqué sous overlay
+
+  if (window.OsmView.isAvailable() && window.OsmView.isOptedIn()) {
+    const overlay = createOpaqueOverlay("🚒 Génération du Briefing pompiers…");
+    document.body.appendChild(overlay);
+
+    try {
+      window.OsmView.open();           // modale sous overlay (invisible)
+      await waitForReady(12000);       // poll tile-loaded + plan + safety
+      const canvas = await html2canvas(mapDiv, {useCORS:true, ...});
+      return canvas.toDataURL("image/jpeg", 0.85);
+    } finally {
+      window.OsmView.close();
+      overlay.remove();
+    }
+  }
+  // ... fallback offscreen v1.42.5 si OsmView indispo ou pas opt-in
+}
+```
+
+🎨 **UX overlay** (z-index 1000000, dessus tout) :
+- Fond `#0a0d18` opaque
+- Icône 🛰️ tournante (animation `kta-spin 1.4s`)
+- Texte « 🚒 Génération du Briefing pompiers… »
+- Sous-texte explicatif jaune charte
+
+⏱️ **Attente robuste** (poll 200ms, safety 12s) :
+- Détecte `.leaflet-tile-loaded` (tuiles OSM chargées)
+- Détecte `.leaflet-image-layer` ou markers (plan rotated + data rendus)
+- +1.5s de marge pour render final
+- Si tiles OK mais pas d'overlay détecté après 4s → capture quand même (cas plan sans data)
+
+🛡️ **Garde-fous** :
+- `OsmView.isAvailable()` → vérifie georef + V2 + offline
+- `OsmView.isOptedIn()` → user a accepté tile.openstreetmap.org au moins 1×
+- Si OsmView indispo OU pas opt-in → fallback offscreen v1.42.5 (tuiles + bbox + équipes sans plan)
+- Vue OSM fermée systématiquement dans `finally` (même si exception)
+- Overlay retiré systématiquement
+
+📊 **Stratégie de capture v1.42.10**
+
+| État Vue OSM | Action |
+|---|---|
+| Déjà ouverte (rare hors Mode Secours) | Capture DOM direct (~500ms) |
+| Fermée + OsmView dispo + opt-in | **Open/close masqué sous overlay (~5-10s)** ✅ nouveau |
+| Fermée + OsmView indispo (pas de georef) | Fallback offscreen v1.42.5 (tuiles + bbox + équipes) |
+| Fermée + pas opt-in | Fallback offscreen (l'user doit accepter OSM 1× via le bouton 🌍) |
+
+🛡️ **Pas de régression** :
+- Si user a déjà accepté OSM au moins 1× → capture complète automatique
+- Sinon → fallback offscreen (= v1.42.5/8, capture limitée mais fonctionnelle)
+- Si tout échoue → fallback texte/lien (= v1.41.x)
+- Vue OSM est toujours fermée correctement (même si exception)
+- Mode Secours modale reste intacte derrière l'overlay
+
+🧪 **Tests à faire**
+1. **Cas nominal** (user a déjà ouvert Vue OSM une fois pour opt-in) : 🚒 → overlay 5-10s → PDF avec capture COMPLÈTE (plan + POI + tracés + zones + équipes)
+2. **Cas premier usage** (jamais ouvert Vue OSM) : 🚒 → fallback offscreen (tuiles + bbox + équipes) + console warning
+3. **Cas mode strict offline** : 🚒 → fallback texte/lien (OsmView.isAvailable false)
+4. **Mobile** : tester si overlay opaque masque bien (z-index 1000000 doit suffire)
+5. **Annulation** : ne pas pouvoir annuler en cours (= acceptable, ~10s max)
+
+🎓 **Pattern UX retenu** — Quand une feature nécessite de « charger » une vue UI pendant ~5-10s, masquer totalement le clignotement via un overlay opaque animé. L'user perçoit ça comme un "spinner moderne" plutôt qu'un bug d'affichage.
+
+📋 **Roadmap si on veut PLUS** (v1.43+) :
+- Refactor osmView.js pour exposer `OsmView.renderToCanvas({width, height}): Promise<dataURL>` qui rend dans un container offscreen vraiment. Permet de capturer SANS ouvrir la modale du tout (= 0 risque que l'user voie quelque chose). Estimation : ~300 lignes refactor.
+
+---
+
+**📦 v1.42.9** (08/06/2026) — **🛠️ Hotfix CSP : ajout `tile.openstreetmap.org` (sans sous-domaine) en plus du wildcard `*.`** :
+
+KARMA après v1.42.7 (CSP avec wildcard `*.tile.openstreetmap.org`) : tuiles OSM en NOIR.
+
+🎯 **Cause** — Les URLs OSM utilisées par Leaflet dans l'app sont sous le format **direct** `https://tile.openstreetmap.org/{z}/{x}/{y}.png` (sans sous-domaine `a/b/c`). Le wildcard CSP `https://*.tile.openstreetmap.org` **n'autorise QUE les sous-domaines** (`a.tile.openstreetmap.org`, etc.) — pas le domaine racine. D'où blocage de toutes les tuiles.
+
+Erreur console :
+```
+Loading the image 'https://tile.openstreetmap.org/14/8297/5637.png' violates the following
+Content Security Policy directive: "img-src 'self' data: blob: https://*.tile.openstreetmap.org"
+```
+
+🔧 **Fix v1.42.9** — Autoriser les **2 formats** dans la CSP (safety + futur-proof si on switch sur `{s}.` sous-domaine plus tard) :
+
+```diff
+-img-src 'self' data: blob: https://*.tile.openstreetmap.org;
++img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org;
+...
+-connect-src 'self' blob: https://*.tile.openstreetmap.org;
++connect-src 'self' blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org;
+```
+
+| Fichier | Modifié |
+|---------|---------|
+| `docs/nginx-csp-config.conf` (prod KARMA) | ✅ |
+| `docker/nginx-docker.conf` (self-host community) | ✅ |
+| Commentaire `img-src` enrichi | ✅ explique le pourquoi des 2 formats |
+
+⚠️ **Action manuelle KARMA** : éditer la config nginx active sur le serveur, remplacer la CSP par la nouvelle (avec les 2 formats), puis `nginx -t && nginx -s reload`.
+
+🎓 **Pattern retenu** — Le wildcard `*.domain.tld` dans CSP **ne match QUE les sous-domaines** (au moins 1 label avant). Pour autoriser aussi le domaine racine, lister les 2 explicitement. Spec : [W3C CSP3 §6.6.2.5](https://www.w3.org/TR/CSP3/#match-url-to-source-expression).
+
+🛡️ **Pas de régression** — uniquement extension de la CSP (plus permissive d'une URL). Tous les autres usages restent intacts.
+
+🧪 **Test après push nginx** :
+1. Reload Vue OSM (modale + Home) → tuiles OSM s'affichent à nouveau ✅
+2. Briefing pompiers PDF → capture OSM marche (v1.42.5+8) ✅
+
+---
+
+**📦 v1.42.8** (08/06/2026) — **🚒 Briefing pompiers : capture DOM de la modale Vue OSM si ouverte (plan + data layers + zones inclus)** :
+
+KARMA après test v1.42.7 : *« bon on a bien le OSM mais pas notre plan et data par dessus html2canvas.min.js:20 Canvas2D: ... willReadFrequently »*.
+
+🎯 **Cause** — En v1.42.5, le helper `_captureOsmCanvasForBriefing` faisait un **render offscreen** dédié avec juste tuiles OSM + bbox + markers GPS équipes. Ne reproduisait PAS le plan rotated ni les data layers (POI/tracés/zones) car ça aurait nécessité ~300 lignes de duplication du code Vue OSM (`Leaflet.ImageOverlay.Rotated` + projection plan→GPS + style cascade).
+
+Le warning `willReadFrequently` est **interne à html2canvas**, totalement non-bloquant. Pas de fix côté nous (on n'a pas la main sur le canvas créé par html2canvas).
+
+🔧 **Fix v1.42.8** — Approche hybride : capture la **modale Vue OSM** si elle est ouverte (= reproduit l'écran tel quel, contenu complet) :
+
+```js
+async function _captureOsmCanvasForBriefing(scenario, plan) {
+  if (typeof window.html2canvas !== "function") return null;
+
+  // 🆕 v1.42.8 — Si la modale Vue OSM est OUVERTE → capture son DOM directement
+  const mapDiv = document.getElementById("kta-osm-map");
+  if (mapDiv && mapDiv.querySelector(".leaflet-tile-loaded")) {
+    try {
+      console.log("[Briefing] Modale Vue OSM détectée ouverte — capture DOM direct");
+      const canvas = await window.html2canvas(mapDiv, {
+        useCORS: true, backgroundColor: "#ffffff", logging: false, scale: 1
+      });
+      return canvas.toDataURL("image/jpeg", 0.85);
+    } catch(e) {
+      console.warn("[Briefing] Capture modale échec, bascule offscreen :", e.message);
+      // Continue vers fallback offscreen ↓
+    }
+  }
+  // Fallback offscreen (v1.42.5) : tuiles + bbox + équipes seulement
+  // ... code inchangé
+}
+```
+
+🎯 **Workflow KARMA recommandé**
+
+| User flow | Capture PDF |
+|-----------|-------------|
+| Clique 🚒 directement | Fallback offscreen : OSM + bbox + équipes (= ce qui marche aujourd'hui) |
+| **Ouvre Vue OSM** → ajuste opacité/filtres → **clique 🚒** | **Capture DOM modale complète** : plan rotated + POI + tracés + zones + structures + équipes |
+
+→ Pour avoir TOUT dans le PDF, **ouvrir la Vue OSM avant** de cliquer 🚒 Briefing pompiers. C'est le pattern naturel : l'user prépare sa vue (filtres tags, niveau M-LVL, opacité), vérifie que ça lui plaît, puis exporte le PDF qui reproduit fidèlement.
+
+🛡️ **Test de détection robuste** — `mapDiv.querySelector(".leaflet-tile-loaded")` garantit qu'au moins 1 tuile est chargée (pas de capture sur map vide). Sinon → bascule offscreen.
+
+🛡️ **Pas de régression** :
+- Si modale OSM fermée → comportement v1.42.5/7 inchangé (fallback offscreen)
+- Si modale ouverte mais capture échoue → bascule offscreen automatique
+- Si tout échoue → fallback texte/lien v1.41.x
+
+⚠️ **Warning `willReadFrequently`** — interne à html2canvas, non-bloquant. Le canvas que html2canvas crée pour son rendu déclenche ce warning Chrome (heuristique perf). Pas de fix côté nous. KARMA peut ignorer.
+
+🧪 **Tests à faire**
+
+1. **Sans Vue OSM ouverte** : 🚒 Briefing → PDF avec capture simple (= v1.42.7, tuiles + bbox + équipes) ✅
+2. **Vue OSM OUVERTE** → ajuster l'opacité plan, filtrer tags, activer/désactiver layers → cliquer 🚒 Briefing → PDF avec capture **complète** : plan + data + équipes tels qu'à l'écran ✅
+3. **Console** : log `[Briefing] Modale Vue OSM détectée ouverte — capture DOM direct` si modale ouverte
+4. **Mobile** : tester perf html2canvas sur le DOM modale (peut être plus gros qu'offscreen 1200×800)
+
+🎓 **Pattern retenu** — Approche hybride : capture DOM natif si UI dispo (= 1 source de vérité, l'user contrôle ce qu'il voit), sinon render offscreen synthétique en fallback. Évite de dupliquer ~300 lignes de logic Vue OSM tout en garantissant un PDF informatif dans tous les cas.
+
+📋 **Si KARMA veut TOUJOURS la capture complète sans avoir à ouvrir Vue OSM** : roadmap v1.43+ → render offscreen complet avec plan rotated + POI/tracés/zones. ~300 lignes ajout. Pas urgent vu la solution hybride.
+
+---
+
+**📦 v1.42.7** (08/06/2026) — **🛠️ Fix CSP nginx : autoriser `tile.openstreetmap.org` dans `img-src` + `connect-src` (bloquait capture html2canvas v1.42.5)** :
+
+KARMA après test v1.42.5 (capture Briefing pompiers PDF) : *« Loading the image 'tile.openstreetmap.org/...' violates the following Content Security Policy directive: "img-src 'self' data: blob:" »*.
+
+🎯 **Cause** — `html2canvas` avec `useCORS:true` fait un **fetch CORS** des tuiles OSM pour les re-charger comme images crossOrigin (nécessaire pour `canvas.toDataURL` sans SecurityError). La CSP nginx serveur a `img-src 'self' data: blob:` + `connect-src 'self' blob:` → bloque les requêtes vers `tile.openstreetmap.org`.
+
+Pourquoi Vue OSM modale marche quand même ? Leaflet charge les tuiles via `<img>` direct (sans CORS), donc passe à travers certaines configs CSP permissives. Mais html2canvas exige le fetch CORS explicite → déclenche la violation CSP.
+
+🔧 **Fix v1.42.7** — Mise à jour CSP dans **2 fichiers de config nginx** :
+
+```nginx
+# AVANT
+add_header Content-Security-Policy
+  "default-src 'self';
+   img-src 'self' data: blob:;
+   connect-src 'self' blob:;
+   ..." always;
+
+# APRÈS (v1.42.7)
+add_header Content-Security-Policy
+  "default-src 'self';
+   img-src 'self' data: blob: https://*.tile.openstreetmap.org;
+   connect-src 'self' blob: https://*.tile.openstreetmap.org;
+   ..." always;
+```
+
+| Fichier | Modifié |
+|---------|---------|
+| `docs/nginx-csp-config.conf` (prod KARMA) | ✅ |
+| `docker/nginx-docker.conf` (self-host community) | ✅ |
+| Commentaire `img-src` enrichi | ✅ Vue OSM + capture Briefing pompiers PDF expliquée |
+
+⚠️ **Action manuelle KARMA** : la config nginx active sur **devmap.is-underground.fr** + **myktamap.fr** doit être mise à jour côté serveur (les fichiers du repo sont une référence, pas la config active). Sans ça, le fix v1.42.7 ne change rien chez l'user (le bug CSP persiste).
+
+```bash
+# Sur le serveur prod (KARMA) :
+# 1. Récupérer la nouvelle CSP depuis docs/nginx-csp-config.conf
+# 2. Éditer la config nginx active (ex: /etc/nginx/sites-enabled/myktamap.conf)
+# 3. Tester la syntaxe : nginx -t
+# 4. Reload : nginx -s reload
+```
+
+🛡️ **Pas de régression** — uniquement ajout de l'URL `tile.openstreetmap.org` aux 2 directives concernées. Tous les autres usages restent intacts.
+
+🛡️ **Fail-safe code** — même sans la nouvelle CSP, le PDF Briefing pompiers se génère encore (sans image) grâce au try/catch dans `_drawBriefingSurfacePage` (v1.42.5). L'user voit juste l'erreur console + fallback texte/lien.
+
+🌐 **Surfaces réseau** — `tile.openstreetmap.org` n'est PAS une nouvelle surface (déjà utilisée par Vue OSM modale + Home depuis v1.39+). Le fix CSP rend juste cette surface explicitement autorisée pour le contexte CORS (html2canvas).
+
+🧪 **Tests à faire**
+1. **Avant push CSP serveur** : tenter Briefing PDF → erreur CSP console + PDF sans image (fallback OK)
+2. **Après push CSP serveur** + reload app : tenter Briefing PDF → pas d'erreur CSP + PDF avec image OSM
+3. **Vérifier Vue OSM modale** : continue de marcher comme avant (pas de régression)
+
+🎓 **Pattern à retenir** — Quand on ajoute une lib qui fait du fetch CORS sur une URL externe, vérifier la CSP `connect-src` en plus de `img-src`. Différence subtile : `<img src="...">` direct = `img-src` only ; `fetch(url, {mode:'cors'})` = `connect-src` aussi.
+
+---
+
+**📦 v1.42.6** (07/06/2026) — **📖 Rattrapage docs v1.42.3 + v1.42.4 + v1.42.5 (audit boot, opacité 50%, capture canvas)** :
+
+🔧 **Synchronisation effectuée**
+
+| Axe | Fichier | Ajout |
+|-----|---------|-------|
+| 📱 In-app | `README_USER.md` | Sous-section « 🔄 Audit automatique au démarrage (depuis v1.42.3) » dans la section « 🛡️ Plans révoqués » — explique le check post-boot + modale orange |
+| 📱 In-app | `README_USER.en.md` | Traduit EN (« 🔄 Automatic boot audit since v1.42.3 ») |
+| 📱 In-app | `js/interfaceDocs.js` | Ajout mention audit auto v1.42.3 dans le paragraphe Plans révoqués existant (couleur orange `#e9a13b` pour le distinguer du rouge denied) |
+| 📱 In-app | `AI_CONTEXT.md` | 4 entrées tableau histo : v1.42.2 (docs sync précédent) + v1.42.3 (audit boot + cache hash + modale orange) + v1.42.4 (opacité 50% Vue OSM) + v1.42.5 (capture canvas html2canvas) |
+| 🤖 Archi IA | `docs/architecture/security-legal.md` | Section 80 enrichie : 80.13 audit boot complet (cycle vie, cache hash, perf, UX modale orange, persistance LS, fail-safe) + 80.14 capture canvas (lib externe, render offscreen, intégration, fail-safe, limitations, réutilisabilité) |
+| 🔒 Audit | `NETWORK_AUDIT.md/html` | Headers bumpés (surface réseau tile.openstreetmap.org déjà documentée pour Vue OSM modale et Home) |
+| 📖 Dev | `README.md` | Entrée journal v1.42.6 |
+
+🛡️ **Pas de régression** — uniquement ajouts docs + headers version. Modification code uniquement dans `js/interfaceDocs.js` (1 paragraphe HTML enrichi, vérifié `node -c`).
+
+🎓 **Pattern KARMA**
+- ✅ **User-facing** : audit boot expliqué dans la section existante « 🛡️ Plans révoqués » (continuité éditoriale, pas de duplication)
+- ✅ **In-app** : 1 phrase orange ajoutée au paragraphe existant (cohérence visuelle UX)
+- ✅ **AI context** : 4 entrées tableau histo concises avec détails techniques (API, cycle de vie, lib externe, fail-safe)
+- ✅ **Archi** : section 80 enrichie de 80.13 (audit boot) + 80.14 (capture canvas) — réutilise la structure existante (12 sous-sections → 14)
+
+📋 **Couverture finale sprint v1.40.32 → v1.42.6**
+
+| Sprint | Versions | Sync docs |
+|--------|----------|-----------|
+| Layout HOME PC + Mode Secours base | v1.40.32-49 | v1.41.5 (rattrapage retroactif) |
+| Synergie OSM × Mode Secours | v1.41.0-4 | v1.41.5 |
+| Kill-switch anti-fuite | v1.42.0-2 | v1.42.2 (in-stream) |
+| Audit boot + opacité + capture | v1.42.3-5 | **v1.42.6** (ce bump) |
+
+→ **Sprint clos, docs alignées sur les 4 axes** (user FR+EN, in-app, AI context, archi). Prêt pour push quand KARMA décide.
+
+---
+
+**📦 v1.42.5** (07/06/2026) — **🚒 Capture canvas OSM dans Briefing pompiers PDF (lib html2canvas vendored)** :
+
+KARMA : *« 1: lib dl est importé »* après ajout `lib/html2canvas.min.js` (~50 KB BSD/MIT).
+
+🎯 **Cible** — En v1.42.x, le PDF Briefing pompiers contenait juste des liens cliquables OSM/Google Maps + bbox texte. Maintenant : **vraie image de carte** en haut de page, avec zone du plan (cadre jaune) + équipes GPS surface (points colorés palette OTAN) + label centre du plan. Aucune dépendance à l'état de la Vue OSM modale (= marche toujours).
+
+🔧 **Architecture v1.42.5**
+
+| Composant | Fichier | Rôle |
+|-----------|---------|------|
+| Lib externe | `lib/html2canvas.min.js` (~50 KB BSD/MIT) | Capture DOM → canvas → dataURL |
+| Helper async | `js/secoursMode.js > _captureOsmCanvasForBriefing(scenario, plan)` | Render offscreen Leaflet + html2canvas |
+| Intégration | `_drawBriefingSurfacePage` (devenue async) | Insertion image au début de la page, fallback texte si KO |
+| Register HTML | `index.html` | `<script src="lib/html2canvas.min.js" defer>` après jsPDF |
+| Register SW | `sw.js > ASSETS_TO_CACHE` | `./lib/html2canvas.min.js` |
+
+🎨 **Contenu de la capture (1200×800 px)**
+
+- **Tuiles OSM** depuis `tile.openstreetmap.org` avec `crossOrigin: "anonymous"` (CORS OK)
+- **Rectangle bbox du plan** en jaune charte `#f4c542` semi-transparent (opacity 0.15)
+- **Label centre** « 📍 [Nom du plan] » fond sombre + bordure jaune
+- **Cercles colorés équipes** (palette OTAN) + tooltip avec nom équipe pour chaque `surfaceGps` renseigné
+- Pas de plan rotated superposé (MVP — nécessiterait accès image source + 3-coin projection, ajout possible en v1.42.6+)
+
+⏱️ **Cycle de génération**
+
+```
+[Clic 🚒 Briefing pompiers]
+   ↓
+genererBriefingPompiersPDF(scenarioId)
+   ↓
+_drawBriefingSurfacePage(...) async
+   ↓
+_captureOsmCanvasForBriefing(scenario, plan)
+   ↓
+1. Crée div hidden 1200×800 (left:-99999px)
+2. Init L.map() dedans, fitBounds(bbox)
+3. Tile layer OSM + crossOrigin
+4. Rectangle bbox + label centre + markers équipes
+5. await tileLayer "load" event (safety 7s)
+6. await html2canvas(div, {useCORS:true})
+7. canvas.toDataURL("image/jpeg", 0.85)
+8. Cleanup (map.remove + div.removeChild)
+   ↓
+pdf.addImage(dataURL, "JPEG", x, y, w, h)
+   ↓
+[PDF téléchargé avec image]
+```
+
+Durée typique : 3-7s selon réseau (fetch tuiles OSM) + ~500ms capture.
+
+🛡️ **Fail-safe gracieux**
+
+| Cas | Comportement |
+|-----|--------------|
+| `html2canvas` non chargé | Skip capture, log warning, fallback texte/lien (= v1.41.x) |
+| `OsmView.getPlanGpsBbox()` retourne null (pas de georef) | Skip capture, fallback |
+| Tuiles OSM timeout (cellular très lent) | Safety 7s puis capture quand même (carte partielle) |
+| Exception html2canvas | Catch, log, fallback texte |
+| `pdf.addImage` exception | Catch, ne casse pas le PDF (juste pas d'image) |
+
+→ Le PDF s'exporte TOUJOURS, l'image est un bonus. Si toutes les conditions sont OK, image incluse ; sinon, version texte comme avant.
+
+📊 **Évolution Briefing pompiers PDF v1.41.0 → v1.42.5**
+
+| Version | Contenu PDF |
+|---------|-------------|
+| v1.41.0 | Texte uniquement : bbox + liens cliquables OSM/Google Maps |
+| v1.41.1-4 | Idem + extension aux 3 vues Live + lazy projection + fix tags |
+| v1.42.0-2 | Idem + kill-switch hooks (pas de changement PDF) |
+| **v1.42.5** | **+ vraie image carte OSM** (1200×800 → ~180×120mm A4) avec bbox plan + équipes GPS |
+
+🛡️ **Pas de régression** — fonctions touchées :
+- `_drawBriefingSurfacePage` devenue `async` (+ `await` ajouté aux 2 callers : `genererRapportPDF` + `genererBriefingPompiersPDF`)
+- Helper `_captureOsmCanvasForBriefing` ajouté (nouveau)
+- Si `html2canvas` indispo ou erreur → fallback complet sur le contenu texte (= comportement v1.41.x)
+- Capture en container `left:-99999px` invisible UI (pas de flash visuel pour l'user pendant les ~5s)
+
+🌐 **Surfaces réseau ajoutées (NETWORK_AUDIT)**
+
+| URL | Fréquence | Volume |
+|-----|-----------|--------|
+| `https://{a\|b\|c}.tile.openstreetmap.org/{z}/{x}/{y}.png` | À chaque génération PDF Briefing | ~10-50 tuiles (~200KB-1MB) |
+
+→ Surface DÉJÀ documentée pour Vue OSM modale (v1.39+) et Vue OSM Home widget (v1.40+). Ce v1.42.5 ne fait que l'utiliser dans un nouveau contexte (PDF). Pas de nouvelle URL.
+
+🧪 **Tests à faire**
+
+1. **Cas nominal** : Mode Secours → 🚒 Briefing pompiers → PDF téléchargé → page 1 contient image OSM en haut + sections texte
+2. **Vérifier équipes GPS** : avec 2-3 équipes ayant `surfaceGps` renseigné → cercles colorés visibles sur la carte
+3. **Cas sans georef** : plan sans `osmGeoref` configuré → capture skip → PDF avec texte seulement (comme v1.41.x)
+4. **Cas mode offline strict** : tile fetch échoue → safety 7s → capture quand même (carte vide ou partielle) OU fallback texte
+5. **Perf** : génération doit être ≤10s, sinon log warning à investiguer
+6. **Mobile** : tester sur téléphone, html2canvas peut être plus lent
+
+🎓 **Pattern KARMA**
+- ✅ Lib externe vendored (offline, 0 CDN)
+- ✅ Fail-safe gracieux : 0 changement comportement si lib KO
+- ✅ Helper isolé, réutilisable pour autres exports image PDF (v2 : capture Vue OSM modale → toBlob pour partage social ?)
+- ✅ Réutilise registres existants (PALETTE, _escHtml, OsmView.getPlanGpsBbox)
+
+---
+
+**📦 v1.42.4** (07/06/2026) — **🎚️ Vue OSM (modale + home) : opacité plan default 50% (vs 100% modale / 70% home)** :
+
+KARMA : *« en OSM, PLAN et HOME, met par default opacity de l'image a 50%, l'option modifiable je parle »*.
+
+🔧 **Fix v1.42.4** — 3 valeurs touchées :
+
+```js
+// js/osmView.js (modale plan)
+let _opacity = 0.5;              // était 1.0 (100%)
+// + slider value + label dynamiques basés sur _opacity (au lieu de hardcoded "100")
+
+// js/osmHomePreview.js (widget HOME)
+let _planOpacity = 0.5;          // était 0.7 (70%)
+// (le slider lit déjà Math.round(_planOpacity * 100), pas de modif nécessaire)
+```
+
+🎯 **Cohérence** : les 2 modules ont désormais le **même default**. Avant : modale à 100% (plan masque OSM totalement) + home à 70%. Maintenant : 50/50 dans les 2 → on lit immédiatement les rues + le plan superposé. Toujours modifiable via le slider 🎚️ du bandeau.
+
+🛡️ **Pas de régression** — uniquement modif de valeurs init. Sliders inchangés (lecture dynamique), comportement runtime identique. Si user a déjà manipulé le slider dans la session courante, sa valeur est respectée (l'init ne s'applique qu'au 1er affichage).
+
+🧪 **Test** :
+- Ouvrir Vue OSM (modale plan) → opacité 50% au boot, slider à mi-course, label « 50% »
+- Widget Home → idem
+- Manipuler le slider → ça marche comme avant
+
+---
+
+**📦 v1.42.3** (07/06/2026) — **🛡️ Kill-switch : audit boot des plans LOCAUX déjà importés + cache hash + modale orange notif** :
+
+KARMA après v1.42.2 (kill-switch fonctionnel à l'import) : *« 3, 1 »* (= audit boot d'abord, capture canvas PDF ensuite).
+
+🎯 **Cible** — En v1.42.0-2, le check denylist ne se faisait QU'à l'import d'un nouveau ZIP. Si KARMA révoque un plan **après** que l'user l'ait déjà importé, le plan reste accessible indéfiniment. Solution : au boot, hash tous les plans locaux + check + purge auto si match.
+
+🔧 **Implémentation v1.42.3**
+
+| Composant | Fichier | Rôle |
+|-----------|---------|------|
+| `auditPlansLocaux()` | `js/planDenylist.js` | Audit séquentiel asynchrone des plans `type:"local"` du PlanRegistry — lookup O(1) via index hash → entry |
+| Cache hash | `PlanRegistry` `plan.sha256` (champ optionnel) | Persisté à l'import via `addOrUpdate({id, sha256})` — évite le re-hash au prochain boot |
+| Notif user | `showPurgedNotifModal(purgedList)` | Modale ORANGE (vs rouge denied) listant les plans purgés au dernier boot, bouton « Compris » qui clear LS |
+| Storage purges | `localStorage["myktamap_denylist_purged_at_boot"]` | Persiste entre boots pour notif différée si user ferme avant de voir |
+| Hook boot | `js/main.js` (post `init()`) | Delay 2s anti-blocage, `setTimeout` non-bloquant |
+| Hook import | `index.html > chargerZipFichier` (succès) | `_cacheHashAfterLoad()` persist le hash dans le registry |
+
+🛡️ **Privacy stricte préservée** — tout reste local, 0 envoi serveur. Le hash est calculé via `crypto.subtle.digest` sur l'appareil. Le PlanRegistry stocke en localStorage (= user-readable, non-tracking).
+
+📊 **Cycle de vie v1.42.3**
+
+```
+[Boot app]
+   ↓
+PlanDenylist.init()  ──── fetch denylist.json (cache 24h)
+   ↓
+Affiche notif si purgés au boot précédent (LS persistant)
+   ↓
+setTimeout 2s
+   ↓
+auditPlansLocaux()
+   ↓
+Pour chaque plan type:"local" :
+   ↓
+   plan.sha256 en cache ? ──── Oui → check direct denyByHash[hash]
+   ↓ Non                            ↓
+   getBlob(id) → computeSha256()    Match ?
+   ↓                                ↓ Oui → remove + ajoute purges[]
+   Cache via addOrUpdate(sha256)    ↓ Non → suivant
+   ↓
+   yield setTimeout(10) anti-freeze
+   ↓
+Save purges[] en LS
+   ↓
+showPurgedNotifModal(purges) si non-vide
+```
+
+🎨 **UX modale orange (vs rouge denied)** :
+- Couleur charte : `#e9a13b` (orange ambré, vs rouge `#d32f2f` pour denied actif)
+- Icône `⚠️` (vs `⛔`)
+- Pas pulsante (moins urgent que denied)
+- Liste détaillée : nom plan + motif + SHA-256 tronqué + date purge
+- Bouton « Compris » `#e9a13b` (action acquittée, pas dangereux)
+
+🛡️ **Performance**
+- **Skip total si denylist vide** : 0 charge inutile (cas commun, 99% des sessions)
+- **Cache hash dans registry** : 1 seul hash par plan dans sa vie → boots suivants quasi-instantanés
+- **Audit séquentiel async** : await yield 10ms entre plans → pas de freeze main thread
+- **Lookup O(1)** : index `denyByHash[sha256]` au lieu de scan linéaire
+- **Delay 2s post-boot** : laisse le main thread libre pour le rendu initial
+
+🧪 **Tests à faire**
+1. **Test 1 — Plan importé AVANT révocation** :
+   - Importer `plan_testban.zip` (hash supprimé temporairement de denylist côté serveur)
+   - Vérifier ouverture OK
+   - Remettre le hash dans `denylist.json` serveur
+   - Recharger → modale orange au boot annonce la purge
+   - Plan disparu de la liste
+2. **Test 2 — Cache hash post-import** : ouvrir DevTools Application → localStorage → `myktamap_plans` → vérifier que les plans ont un champ `sha256`
+3. **Test 3 — Audit avec denylist vide** : console log `[PlanDenylist] AUDIT BOOT terminé — 0 plan(s) audité(s), 0 purge(s)` (skip immédiat)
+4. **Test 4 — Notif persistante** : si user ferme l'app sans cliquer « Compris », la modale doit se ré-afficher au prochain boot
+
+🛡️ **Pas de régression**
+- Module isolé `js/planDenylist.js` (uniquement ajouts, +250 lignes)
+- 2 hooks dans `main.js` + `index.html` (fail-safe try/catch)
+- 0 impact si module indispo ou denylist vide
+- Cache hash dans registry : champ optionnel, plans pré-v1.42.3 sans `sha256` sont hashés au 1er audit
+
+🎓 **Pattern KARMA respecté**
+- ✅ Module standalone autonome
+- ✅ Privacy stricte (0 envoi)
+- ✅ Fail-safe (autorise par défaut en cas d'erreur)
+- ✅ Cohérent avec doctrine community 100% offline
+- ✅ UX différenciée (orange notif vs rouge action active)
+
+📦 **Prochaines étapes** :
+- **v1.42.4** : sync docs (README user FR+EN + interfaceDocs + AI_CONTEXT + security-legal §80.x)
+- **v1.42.5+** : étape 1 du backlog (capture canvas réelle Vue OSM dans PDF Briefing pompiers)
+
+---
+
+**📦 v1.42.2** (07/06/2026) — **📖 Rattrapage dette docs v1.42 (kill-switch anti-fuite)** :
+
+KARMA après validation test réel du kill-switch (plan_testban.zip → modale rouge OK) : *« sync doc »*. Application de la règle « Bump = sync docs sur 4 axes » du CLAUDE.md.
+
+🔧 **Synchronisation effectuée**
+
+| Axe | Fichier | Type d'ajout |
+|-----|---------|--------------|
+| 📱 In-app | `docs/applications/README_USER.md` | Nouvelle section « 🛡️ Plans révoqués (kill-switch anti-fuite, depuis v1.42.0) » sous Alertes publiques — UX user, privacy, propagation cache, limitation byte-perfect, contact auteur pour révocation |
+| 📱 In-app | `docs/applications/README_USER.en.md` | Idem traduit EN (« Revoked plans (anti-leak kill-switch, since v1.42.0) ») |
+| 📱 In-app | `js/interfaceDocs.js` (Aide intégrée) | Paragraphe « 🛡️ Plans révoqués (anti-fuite v1.42) » ajouté juste après le paragraphe Alertes publiques dans la section accueil — concis, lien vers `denylist.json` public |
+| 📱 In-app | `docs/applications/AI_CONTEXT.md` | 3 entrées tableau histo (v1.41.5 + v1.42.0 + v1.42.1) avec API publique + format JSON + comportement fail-safe |
+| 🤖 Archi IA | `docs/architecture/security-legal.md` | Nouvelle section 80 (12 sous-sections) : 80.1 vision/menace, 80.2 archi, 80.3 API publique, 80.4 format JSON, 80.5 cycle de vie, 80.6 fail-safe modes, 80.7 privacy & audit, 80.8 UX modale, 80.9 workflow KARMA, 80.10 limitations, 80.11 à ne pas faire, 80.12 tests réels v1.42.x |
+| 🔒 Audit | `NETWORK_AUDIT.md/html` | Headers bumpés (la surface réseau `/denylist.json` était déjà documentée en v1.42.0) |
+| 📖 Dev | `README.md` | Entrée journal v1.42.2 + tableau récap des changements |
+
+🛡️ **Pas de régression** — uniquement ajouts docs + headers version. 0 modification code applicatif sauf 1 bloc HTML dans `js/interfaceDocs.js` (vérifié `node -c`).
+
+🎓 **Pattern KARMA respecté** :
+- ✅ **User-facing** : section dédiée dans README user FR+EN avec UX flow détaillé + assurance privacy + contact auteur
+- ✅ **In-app** : 1 paragraphe concis dans l'Aide intégrée, accessible depuis la modale ❓ (cohérent avec le pattern des alertes publiques)
+- ✅ **AI context** : 3 entrées tableau histo avec détails techniques pour assistants IA externes
+- ✅ **Architecture** : section 80 ultra-détaillée pour Claude futur (12 sous-sections couvrant vision, archi, API, fail-safe, privacy, workflow, limitations, à-ne-pas-faire, tests)
+
+🎯 **Workflow KARMA documenté de bout en bout** :
+
+```bash
+# 1. Hash du ZIP fuité
+sha256sum plan-qui-a-fuite.zip
+# → copier le hash hex 64 chars
+
+# 2. Éditer denylist.json sur le serveur (FTP)
+{
+  "version": 1, "updated": "<ISO now>",
+  "deny": [{ "sha256": "<hash>", "reason": "<motif>", "addedAt": "<ISO now>" }]
+}
+
+# 3. Push FTP → propagation max 24h (immédiate pour users qui rouvrent)
+```
+
+🧪 **Tests à faire**
+- Doc user FR (modale Documentation, langue FR) : section « 🛡️ Plans révoqués » visible et lisible
+- Doc user EN (toggle 🇬🇧) : section « Revoked plans » visible et alignée
+- Aide intégrée (modale ❓ Aide) : paragraphe rouge `#d32f2f` visible dans la section accueil
+- Audit réseau : header version bumpé à v1.42.2
+
+---
+
+**📦 v1.42.1** (07/06/2026) — **🛡️ Kill-switch anti-fuite étendu : check aussi dans le générateur de plan (mode « Modifier un ZIP existant »)** :
+
+KARMA après v1.42.0 : *« on peut aussi refuser dans le générateur en import de zip :) si un malin tente la modification directe via zip (il devra décompresser + manuel) »*.
+
+🎯 **Cible** — En v1.42.0, le check denylist était posé uniquement sur `chargerZipFichier` (loader principal). Mais le générateur de plan (mode « Modifier un plan existant ») permet d'importer un ZIP existant → l'éditer → ré-exporter. Un attaquant pouvait donc :
+1. Récupérer le ZIP fuité
+2. L'importer dans le générateur (= bypass du loader principal)
+3. Modifier 1 truc (nom, version…)
+4. Ré-exporter → **nouveau hash SHA-256** → contournement de la denylist
+
+🔧 **Fix v1.42.1** — Hook denylist également dans `_chargerZipModifier(file)` (js/createConf.js), même pattern que v1.42.0 :
+
+```js
+async function _chargerZipModifier(file) {
+  _plannerZipStatus("⏳ Extraction en cours…", false);
+  try {
+    if (typeof JSZip === "undefined") throw new Error("JSZip non chargé");
+
+    // 🆕 v1.42.1 — Check denylist AVANT extraction (même UX que loader)
+    if (window.PlanDenylist) {
+      try {
+        const denyCheck = await window.PlanDenylist.isPlanDenied(file);
+        if (denyCheck && denyCheck.denied) {
+          _plannerZipStatus("⛔ ZIP révoqué par l'auteur — modification refusée.", true);
+          window.PlanDenylist.showDeniedModal(denyCheck, null);
+          return;  // STOP : pas d'extraction, formulaire intact
+        }
+      } catch(eDeny) { console.warn(...); }  // fail-safe
+    }
+
+    const zip = await JSZip.loadAsync(file);
+    // ... reste inchangé
+  }
+}
+```
+
+🛡️ **Effet anti-attaquant**
+
+| Voie d'entrée v1.42.0 | Bloqué ? | v1.42.1 |
+|----------------------|----------|---------|
+| Loader principal (`chargerZipFichier`) | ✅ | ✅ |
+| Générateur — « Modifier un ZIP existant » | ❌ (contournement) | ✅ |
+| Décompression manuelle ZIP + édition fichiers à la main | ❌ | ❌ (= friction max acceptable) |
+| Modification 1 byte → ré-zip avec autre outil | ❌ (nouveau hash) | ❌ (limitation hash byte-perfect, assumée) |
+
+→ **Friction max** : un attaquant qui veut propager une variante du plan fuité ne peut plus utiliser le générateur intégré. Il doit décompresser manuellement, comprendre la structure (`plan-config.json` + assets), modifier à la main, recompresser. Réservé aux gens techniques motivés → réduit drastiquement la diffusion accidentelle.
+
+🛡️ **Pas de régression**
+- 1 seul fichier modifié : `js/createConf.js > _chargerZipModifier` (+11 lignes try/catch fail-safe)
+- Si `PlanDenylist` indispo ou hash impossible → fallback autorise (cohérent v1.42.0)
+- L'UX message d'erreur réutilise le système `_plannerZipStatus` existant + la modale rouge `PlanDenylist.showDeniedModal` partagée
+
+🧪 **Tests à faire**
+1. **Import normal** d'un ZIP non-fuité dans le générateur → comportement inchangé
+2. **Simulation deny** : ajouter le hash d'un ZIP test à `localStorage["myktamap_denylist_cache"]` → tenter de l'importer via le générateur → modale rouge attendue + status « ⛔ ZIP révoqué »
+3. **Bouton « Compris »** dans la modale : pas de plan local supprimé (planId null car générateur), juste reload de la page
+
+🎓 **Pattern unifié** — Le module `PlanDenylist` est désormais hooké aux **2 points d'entrée ZIP** de l'application (loader + générateur). Si KARMA ajoute un 3e point d'entrée plus tard (ex : drag&drop direct, partage via Web Share Target…), il suffit d'appeler `await window.PlanDenylist.isPlanDenied(file)` avant `JSZip.loadAsync(file)`. Pattern réutilisable.
+
+---
+
+**📦 v1.42.0** (07/06/2026) — **🛡️ Kill-switch anti-fuite : denylist serveur + SHA-256 ZIP client-side + modale rouge bloquante + auto-purge plan** :
+
+KARMA : *« chaque zip a son empreinte (unique) si un zip fuite massivement et que j'ai l'info, on "deny" liste rouge l'empreinte. refus d'ouverture dans l'application, suppression de la liste des plans »*. Validation reco `1a 2a 3a 4a 5a`.
+
+🎯 **Cible** — Permettre à KARMA de bloquer l'ouverture des plans ZIP qui fuitent publiquement (sur Telegram, forums, etc.). Le ZIP reste accessible chez l'attaquant (rien à faire pour ça), mais les **utilisateurs légitimes de MyKTAMap qui le téléchargent par erreur** seront bloqués + averti que c'est une fuite reconnue.
+
+🔧 **Architecture (MVP propre, 100% client-side)**
+
+| Composant | Fichier | Rôle |
+|-----------|---------|------|
+| Module kill-switch | `js/planDenylist.js` (nouveau, ~330 lignes) | Fetch denylist · hash SHA-256 · check · modale rouge |
+| Liste deny | `denylist.json` (racine serveur, vide à la release) | Format `{version, updated, deny: [{sha256, reason, addedAt}]}` |
+| Hook chargement | `index.html > chargerZipFichier` | Check AVANT `extraireZip` — fail-safe si module indispo |
+| Init au boot | `js/main.js` (après `AlertChecker.check()`) | Fetch initial async + cache 24h |
+| Register SW | `sw.js > ASSETS_TO_CACHE` | Ajout `js/planDenylist.js` (mais PAS `denylist.json`) |
+| Bypass cache SW | `sw.js > fetch handler` | `denylist.json` → `cache: "no-store"` + fallback `{deny:[]}` offline |
+
+🛡️ **Privacy stricte (KARMA reco 3a)**
+- **Aucun hash envoyé au serveur** — 0 fingerprinting des plans owned par l'user
+- **Seule la denylist publique est fetched** — info publique, anyone peut la lire (audit possible)
+- Cache 24h en `localStorage["myktamap_denylist_cache"]` → marche offline avec la dernière liste connue
+
+🔐 **Format `denylist.json`**
+
+```json
+{
+  "version": 1,
+  "updated": "2026-06-07T14:00:00Z",
+  "deny": [
+    {
+      "sha256": "abc123...64 chars hex",
+      "reason": "Fuite publique constatée le 05/06/2026 sur Telegram",
+      "addedAt": "2026-06-07T13:50:00Z"
+    }
+  ]
+}
+```
+
+→ KARMA édite ce fichier sur le serveur, propagation auto chez tous les users sous 24h max (cache TTL) ou immédiatement au prochain boot (refetch background).
+
+🧬 **Hash SHA-256**
+```js
+async function computeSha256(blob) {
+  const buf = await blob.arrayBuffer();
+  const digest = await window.crypto.subtle.digest("SHA-256", buf);
+  // Conversion ArrayBuffer → hex string (64 chars)
+  return Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, "0")).join("");
+}
+```
+
+→ Utilise `SubtleCrypto` natif (HTTPS requis — graceful fallback en dev HTTP local : warning + autorise l'ouverture).
+
+🚫 **Comportement au match (KARMA reco 4a)**
+
+```
+chargerZipFichier(zipFile, ...) {
+  // 🆕 v1.42.0 — Check denylist AVANT extraction
+  const check = await window.PlanDenylist.isPlanDenied(zipFile);
+  if (check.denied) {
+    setStatus("⛔ Plan révoqué par l'auteur.", true);
+    window.PlanDenylist.showDeniedModal(check, planId);
+    return;  // STOP : pas d'extraction, pas de chargement
+  }
+  // ... reste du pipeline inchangé
+}
+```
+
+UI : **modale rouge bloquante** (z-index 100000), animation pulse 2s, contenu :
+- Titre « ⛔ Plan révoqué »
+- Sous-titre « Ce plan a été retiré par l'auteur ou a fuité publiquement »
+- Bloc raison (lue depuis `denylist.json`) sur fond rouge
+- Détails techniques : date ajout + empreinte SHA-256 (12 premiers + 8 derniers chars, anti-doxxing)
+- Bouton « Compris, supprimer ce plan » → `PlanRegistry.remove(planId)` + `location.reload()`
+
+🌐 **Surfaces réseau ajoutées (NETWORK_AUDIT)**
+
+| URL | Fréquence | Volume | Données envoyées |
+|-----|-----------|--------|------------------|
+| `GET /denylist.json` | Au boot (fetch async) + 1×/24h | ~1-5 KB | Aucune (statique, public) |
+
+→ **0 nouvelle surface qui envoie des données utilisateur**. Identique au pattern `alert.json` et `Licence-pro.json` (fichiers de control serveur fetchés en read-only).
+
+🧪 **Tests à faire**
+
+1. **Boot normal** : denylist vide (0 entrée) → import ZIP → ouverture autorisée comme avant
+2. **Hash test** : ouvrir DevTools console, taper :
+   ```js
+   const f = document.querySelector("#zipFileInput").files[0];
+   window.PlanDenylist.computeSha256(f).then(console.log);
+   ```
+   → doit afficher un hash hex 64 chars
+3. **Simulation deny** : éditer `localStorage["myktamap_denylist_cache"]` pour ajouter le hash d'un plan local → recharger → tenter d'ouvrir ce plan → modale rouge attendue
+4. **Action « Compris » dans modale** : plan disparait de la liste + page rechargée
+5. **Offline** : denylist absente du cache → boot OK, check de plans = fail-safe (autorise l'ouverture + warning console)
+6. **Plan serveur** : pas concerné (architecture serveur fetch par fichier, pas de ZIP unique → pas de hash possible). C'est OK car les plans serveur sont publics par définition.
+
+🛡️ **Pas de régression**
+- Module isolé en `js/planDenylist.js` (rien d'autre touché côté JS sauf 1 ligne d'init dans main.js)
+- Hook dans `chargerZipFichier` : 11 lignes en try/catch fail-safe — si module indispo ou hash impossible → autorise comme avant
+- SW : 1 nouvelle règle bypass `denylist.json` (pattern identique à Licence-pro.json)
+- HTML : 1 ligne `<script>` ajoutée
+
+🎓 **Pattern KARMA respecté**
+- ✅ Module standalone, API publique propre (`window.PlanDenylist.{init, isPlanDenied, refresh, showDeniedModal, computeSha256}`)
+- ✅ Privacy stricte (0 envoi serveur, audit possible côté client)
+- ✅ Fail-safe en cas d'erreur (mieux vaut autoriser un plan suspect que bloquer tous les plans en cas de bug)
+- ✅ Pattern existant réutilisé (alertChecker.js pour fetch, Licence-pro.json pour bypass SW)
+- ✅ Cohérent avec doctrine community 100% offline (marche sans réseau avec cache stale)
+
+📦 **Workflow KARMA pour ajouter une fuite à la denylist**
+
+1. Récupérer le SHA-256 du ZIP qui a fuité (via DevTools console sur le plan importé ou via `sha256sum fichier.zip` en CLI)
+2. Éditer `denylist.json` sur le serveur :
+   ```json
+   {
+     "version": 1,
+     "updated": "<ISO now>",
+     "deny": [
+       { "sha256": "<hash>", "reason": "<motif court>", "addedAt": "<ISO now>" }
+     ]
+   }
+   ```
+3. Push FTP serveur → propagation immédiate (au prochain boot user) + max 24h (cache TTL)
+4. Optionnel : mentionner publiquement la révocation (forum, GitHub) pour transparence
+
+🚨 **Limitations assumées**
+- Ne bloque que les ZIP **byte-perfect** (un re-zip ou édition d'1 byte = nouveau hash). C'est OK pour « fuite massive » (un attaquant ne re-zippera pas) mais pas pour des dérivations actives.
+- Ne purge pas les fichiers déjà extraits sur la carte si l'user a déjà chargé le plan AVANT la révocation (chargement courant non interrompu). KARMA peut ajouter un check au boot des plans serveur si nécessaire.
+- Plans **serveur** non couverts (pas de hash ZIP unique). Si KARMA veut bloquer un plan serveur, il suffit de retirer le fichier côté serveur (404 = chargement échoue naturellement).
+
+---
+
+**📦 v1.41.5** (07/06/2026) — **Rattrapage dette docs v1.41 (README user FR/EN, Aide intégrée, AI_CONTEXT, archi vue-osm + secours)** :
+
+KARMA : *« Fait un tour des doc, readme user, contexte IA et met les a jours »*. Application stricte de la règle « Bump = sync docs sur 4 axes » du CLAUDE.md.
+
+🔧 **Synchronisation effectuée**
+
+| Axe | Fichier | Type d'ajout |
+|-----|---------|--------------|
+| 📱 In-app | `docs/applications/README_USER.md` | Nouvelle sous-section "🚨 Mode Secours × 🌍 Vue OSM — Coordination secours externes (v1.41)" — 6 sous-points (tag entree_plan, GPS surface, Vue OSM partout, Briefing pompiers PDF, page Briefing surface dans rapport, fix chips tags) |
+| 📱 In-app | `docs/applications/README_USER.en.md` | Idem traduit EN ("Rescue Mode × OSM View — External rescue coordination") |
+| 📱 In-app | `js/interfaceDocs.js` (Aide intégrée) | Nouveau bloc « 🌍 État 3 — BRIEFING SECOURS EXTERNES (Vue OSM × Mode Secours, v1.41) » dans la section Mode Secours, 5 puces (🚪 / 📍 / 🌍 / 🚒 / 📤) |
+| 📱 In-app | `docs/applications/AI_CONTEXT.md` | Tableau histo enrichi : 5 nouvelles entrées (v1.41.0 / v1.41.1 / v1.41.2 / v1.41.3 / v1.41.4) + ligne récap condensée *v1.30 → v1.40* |
+| 🤖 Archi IA | `docs/architecture/vue-osm.md` | Nouvelle section 7 (4 sous-sections) : 7.1 API étendue, 7.2 lazy build projection, 7.3 fix chips tags + pattern grep avant usage, 7.4 nouveau tag entree_plan |
+| 🤖 Archi IA | `docs/architecture/secours.md` | Nouvelle section 79 (7 sous-sections) : 79.1 étape A, 79.2 étape D, 79.3 étape E (data model), 79.4 étape B (page PDF), 79.5 étape C (briefing dédié), 79.6 hotfixes v1.41.1-4, 79.7 roadmap restante |
+
+🛡️ **Pas de régression** — uniquement ajouts docs + headers version bumpés (sw.js, copyright.js, version.json, NETWORK_AUDIT.md, NETWORK_AUDIT.html, README.md). 0 modification de code applicatif sauf le bloc d'aide dans `js/interfaceDocs.js` (HTML pur, vérifié `node -c`).
+
+🎓 **Pattern KARMA respecté** :
+- ✅ User-facing (README user FR+EN) — vulgarisation pédagogique
+- ✅ In-app (Aide intégrée) — concis, accessible depuis modale ❓
+- ✅ AI context (AI_CONTEXT.md) — détail technique pour assistants IA externes
+- ✅ Architecture (vue-osm.md + secours.md) — détails internes pour Claude futur
+
+> ⚠️ **Dette résiduelle assumée** : le tableau histo AI_CONTEXT.md s'arrêtait à v1.29.2 — j'ai ajouté UNE ligne récap condensée pour v1.30 → v1.40 (rattrapage exhaustif hors scope ce sprint, à faire si besoin). Les détails de ces versions intermédiaires restent dans le journal `README.md`.
+
+---
+
+**📦 v1.41.4** (07/06/2026) — **VRAI FIX Vue OSM chips tags : source corrigée (window.getAllEmbeddedPoints au lieu de _dataLayersByPlan inexistant)** :
+
+KARMA après test v1.41.3 (capture montrant seulement 3 chips : pe / epure / vehicule) : *« il en manque toujours plein »*.
+
+🎯 **Cause racine** — Le fix v1.41.3 retirait le filtre level mais ne corrigeait pas le VRAI bug : `_enumerateOsmTags` itérait sur `window._dataLayersByPlan[planId]` qui **N'EXISTE NULLE PART** dans l'application. Cet objet n'est défini/peuplé par aucun module (seulement référencé dans osmView.js et secoursMode.js). Donc seuls les points de `getEditorPoints()` (= la session active = ~3 tags) étaient comptés. Les POI des calques data du plan-config étaient totalement oubliés.
+
+**Comment c'est passé inaperçu pendant 7 versions ?** Le bug est dans une fonction privée v1.40.17 qui n'avait jamais été testée par KARMA (chips peu visibles, ou avec plans où la session contenait tous les tags). Découvert seulement maintenant en croisant avec les nouvelles features Vue OSM × Mode Secours.
+
+🔧 **Fix v1.41.4** — Switch sur `window.getAllEmbeddedPoints()` (= API officielle, même source utilisée par `_collectVisiblePoi` ligne 450 pour le rendu des markers OSM, par `gpxIO.js`, par `sessionExporter.js`) :
+
+```js
+function _enumerateOsmTags() {
+  const counts = {};
+  // Session + POI principaux (getEditorPoints → listePoints)
+  if (typeof window.getEditorPoints === "function") {
+    const session = window.getEditorPoints() || [];
+    for (const p of session) {
+      if (!p || typeof p.x !== "number") continue;
+      const t = (Array.isArray(p.tags) && p.tags[0]) || "default";
+      counts[t] = (counts[t] || 0) + 1;
+    }
+  }
+  // 🆕 v1.41.4 — VRAI registre data layers (avant : _dataLayersByPlan inexistant)
+  if (typeof window.getAllEmbeddedPoints === "function") {
+    const embedded = window.getAllEmbeddedPoints() || [];
+    for (const p of embedded) {
+      if (!p || typeof p.x !== "number") continue;
+      const t = (Array.isArray(p.tags) && p.tags[0]) || "default";
+      counts[t] = (counts[t] || 0) + 1;
+    }
+  }
+  return counts;
+}
+```
+
+🛡️ **Cohérence parfaite chips ↔ rendu** — `_collectVisiblePoi` (qui rend les markers sur la carte OSM) utilise exactement la même API `getAllEmbeddedPoints`. Donc tout tag listé dans les chips correspond à des markers réellement rendables sur la carte (et inversement).
+
+📊 **Évolution v1.41.0 → v1.41.4**
+
+| Version | Source data layers | Résultat |
+|---------|-------------------|----------|
+| v1.41.0–2 | `_dataLayersByPlan[planId]` (n'existe pas) + filtre level | Chips réduits à session × level |
+| v1.41.3 | `_dataLayersByPlan` (toujours inexistant) sans filtre level | Toujours réduits à la session (3 tags) |
+| **v1.41.4** | **`getAllEmbeddedPoints()`** (API officielle) | **Tous les tags du plan** ✅ |
+
+🧪 **Tests à faire**
+- **Plan KARMA** (qui ne montrait que pe/epure/vehicule) → maintenant chips listent tous les tags : pa, pc, pb, cao, caf, danger, info, salle, etc.
+- **Cliquer un chip** : seuls les POI du tag sélectionné sont visibles sur la carte OSM
+- **Cliquer "Tout"** : tous les POI redeviennent visibles
+- **Multi-niveaux** : chips inchangées au switch M-LVL (= comportement v1.41.3 préservé)
+
+🛡️ **Pas de régression** — uniquement modification de `_enumerateOsmTags()` (changement de source de data). Le rendu via `_collectVisiblePoi` est inchangé.
+
+🎓 **Leçon retenue** — Quand un fix ne marche pas après 1 ou 2 tentatives, **investiguer la source de la donnée** avant de toucher au filtrage. J'aurais dû vérifier dès v1.41.0 que `_dataLayersByPlan` existait. Pattern à appliquer : `grep -r "<symbol_name>"` pour valider qu'un global est bien défini quelque part.
+
+---
+
+**📦 v1.41.3** (07/06/2026) — **Fix Vue OSM modale : chips filtre par tag affichent tous les tags du plan (sans filtre level)** :
+
+KARMA après test v1.41.2 : *« en mode OSM plan, il manque plein de tag pour les filtres contrairement a home »*.
+
+🎯 **Cause** — Dans `osmView.js` (modale Vue OSM), `_enumerateOsmTags()` appliquait `_isLevelAllowed(p)` sur CHAQUE POI avant de compter son tag → seuls les tags du niveau M-LVL actif étaient comptés et affichés dans les chips de filtre. Si user en niveau 0 mais POI taggés "salle" / "elec" / "danger" en niveau 1, ces chips disparaissaient.
+
+`osmHomePreview.js` (widget HOME) lui itère sur tous les data layers SANS filtre level (`_collectAvailableTags`) → tous les tags présents dans le plan apparaissent.
+
+🔧 **Fix v1.41.3** — Retire le filtre `_isLevelAllowed(p)` dans `_enumerateOsmTags` :
+
+```js
+function _enumerateOsmTags() {
+  const counts = {};
+  if (typeof window.getEditorPoints === "function") {
+    const session = window.getEditorPoints() || [];
+    for (const p of session) {
+      if (!p || typeof p.x !== "number") continue;
+      // ⛔ AVANT : if (!_isLevelAllowed(p)) continue;
+      // → tags des autres niveaux disparaissaient des chips
+      const t = (Array.isArray(p.tags) && p.tags[0]) || "default";
+      counts[t] = (counts[t] || 0) + 1;
+    }
+  }
+  // idem pour data layers
+}
+```
+
+🛡️ **Le filtre level reste appliqué au rendu** — `_renderPoi` continue d'utiliser `_isLevelAllowed` pour DESSINER les markers (donc seuls les POI du niveau actif sont visibles sur la carte). Mais la LISTE des chips reflète maintenant tous les tags du plan → user peut filtrer même les tags d'autres niveaux (qui apparaitront s'il change de niveau).
+
+📊 **Comportement aligné Home ↔ Plan**
+
+| Mode | Source tags chips | Avant v1.41.3 | Après v1.41.3 |
+|------|------------------|---------------|---------------|
+| Home (`osmHomePreview`) | Tous data layers du ZIP | ✅ tous tags | ✅ tous tags |
+| Plan (`osmView` modale) | listePoints + data layers en mémoire | ❌ filtré par level | ✅ tous tags |
+
+🧪 **Tests à faire**
+- **Plan multi-niveaux** avec POI taggés différemment par niveau → ouvrir Vue OSM → chips contiennent TOUS les tags peu importe le M-LVL actif
+- **Switch M-LVL** : les chips ne changent pas (avant : elles se réduisaient au niveau actif) ✅
+- **Filtre** : cliquer un chip cache les POI non-correspondants → comportement inchangé ✅
+- **Mode mono-niveau** : chips inchangées (avant : pareil) ✅
+
+🛡️ **Pas de régression** — uniquement modification de `_enumerateOsmTags()` (retrait de 2 lignes de filtre). Le rendu et le filtrage runtime sont inchangés.
+
+🎓 **Pattern à retenir** — Quand une UI propose des filtres, la liste des valeurs filtrables doit refléter **tout ce qui existe** dans la donnée, pas un sous-ensemble pré-filtré. Sinon l'user perd des options qu'il ne peut plus activer.
+
+---
+
+**📦 v1.41.2** (07/06/2026) — **Fix Briefing pompiers : la carte OSM s'affiche même si Vue OSM n'a jamais été ouverte (lazy build de la projection)** :
+
+KARMA après test v1.41.1 : *« le briefing pompier n'affiche pas les OSM pourtant bien georef et fonctionnel »*.
+
+🎯 **Cause** — En v1.41.0/41.1, `OsmView.getPlanGpsBbox()` retournait `null` si `_proj` (la projection georef interne d'osmView.js) n'était pas initialisé. Or `_proj` n'est créé qu'au premier `open()` de la modale Vue OSM. Cas KARMA : plan avec georef OK + Vue OSM fonctionnelle MAIS modale jamais ouverte dans la session → `_proj === null` → bbox null → PDF affichait "(!) Vue OSM non initialisée".
+
+Symptôme observé : "le briefing pompier n'affiche pas les OSM pourtant bien georef et fonctionnel" → la georef est dans le JSON du plan, mais notre helper ne savait pas la lire sans passer par l'ouverture de la modale.
+
+🔧 **Fix v1.41.2** — Lazy build de la projection dans `_getPlanGpsBbox()` :
+
+```js
+function _getPlanGpsBbox() {
+  // 🆕 v1.41.2 — Lazy build : si _proj pas initialisé (modale jamais
+  // ouverte), on construit la projection à la volée. _buildProjection()
+  // est PUR (lit georef + KmzExport), pas d'effet de bord. Permet à
+  // Briefing pompiers PDF de fonctionner sans pré-requis UI.
+  let proj = _proj;
+  if (!proj || typeof proj.planToLatLng !== "function") {
+    proj = _buildProjection();
+    if (!proj || typeof proj.planToLatLng !== "function") return null;
+  }
+  const cfg = window.APP_CONFIG || {};
+  const w = cfg.imageWidth, h = cfg.imageHeight;
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
+  const corners = [
+    proj.planToLatLng(0, 0),
+    proj.planToLatLng(w, 0),
+    proj.planToLatLng(w, h),
+    proj.planToLatLng(0, h)
+  ].filter(function(ll) {
+    return ll && Number.isFinite(ll.lat) && Number.isFinite(ll.lng);
+  });
+  if (corners.length < 2) return null;
+  try { return L.latLngBounds(corners); } catch(e) { return null; }
+}
+```
+
+🛡️ **Robuste** — `_buildProjection()` est une fonction pure : lit `_getEffectiveGeoref()` (qui consulte `PLAN_CONFIG.osmGeoref`) + `KmzExport.buildTransform`. Aucune dépendance à l'état UI de la modale. Le `_proj` qui était stocké en cache servait juste de mémoïsation pour les handlers zoom/move.
+
+🧪 **Tests à faire**
+- **Cas KARMA** : plan georef OK, modale Vue OSM JAMAIS ouverte dans la session → 🚒 Briefing pompiers → PDF contient bbox + liens cliquables OSM/Google Maps ✅
+- **Cas modale déjà ouverte** : ouvrir Vue OSM, fermer, exporter Briefing → toujours OK (`_proj` cache utilisé) ✅
+- **Cas plan sans georef** : pas de `osmGeoref` dans PLAN_CONFIG → `_buildProjection()` retourne null → PDF affiche message "Vue OSM non initialisée" + instructions
+- **Pas de régression** : page rapport post-mission "Briefing surface" affiche aussi la bbox correctement
+
+🛡️ **Pas de régression** — uniquement modification de `_getPlanGpsBbox()` (ajout d'une branche lazy). Le cache `_proj` est toujours utilisé en premier (pas de perte perf). `_buildProjection()` est pur (pas d'effet de bord).
+
+🎓 **Pattern à retenir** — Quand un helper exposé publiquement dépend d'un état initialisé par une UI (modale, etc.), prévoir un fallback lazy qui calcule à la demande. Évite les "marche que si on a cliqué sur X avant" qui sont des UX rates pour des features pourtant fonctionnelles.
+
+---
+
+**📦 v1.41.1** (07/06/2026) — **Mode Secours : boutons 🌍 Vue OSM + 🚒 Briefing pompiers accessibles aussi depuis les 3 vues Live (Opérateur, Équipier, Secouriste)** :
+
+KARMA après test v1.41.0 (capture vue Opérateur surface, footer avec ⏸ Pause / 🗺️ Carte globale / 📤 Rapport global / 📥 Importer / ➕ Ajouter phase / ⏸ Voir édition / 🛑 Terminer) : *« rajoute le mode OSM depuis opérateur de surface pareil pour équipier secouriste »*.
+
+🎯 **Précision** — En v1.41.0 les boutons 🌍 Vue OSM et 🚒 Briefing pompiers n'étaient ajoutés QUE dans les bandeaux Mode Secours (vue Edit). Hors une fois la mission lancée, l'utilisateur est dans une vue Live (Opérateur/Équipier/Secouriste) → boutons inaccessibles sans revenir à l'édition via « ⏸ Voir l'édition ». Friction inutile pour les pompiers qui débarquent en cours de mission.
+
+🔧 **Fix v1.41.1** — Ajout des 2 boutons dans les 3 footers Live + handlers communs :
+
+```js
+// js/secoursMode.js — 3 footers Live (Équipier, Opérateur, Secouriste) :
+'<button data-action="ouvrir-vue-osm">🌍 Vue OSM</button>' +
+'<button data-action="briefing-pompiers">🚒 Briefing pompiers</button>' +
+
+// js/secoursMode.js — _bindLiveCommonHandlers (handlers communs aux 3 vues Live) :
+corps.querySelectorAll('[data-action="ouvrir-vue-osm"]').forEach(function(btn) {
+  btn.addEventListener("click", _ouvrirVueOsmDepuisSecours);
+});
+corps.querySelectorAll('[data-action="briefing-pompiers"]').forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    genererBriefingPompiersPDF(s.id);
+  });
+});
+```
+
+🛡️ **Réutilise les handlers v1.41.0** — `_ouvrirVueOsmDepuisSecours` (gating natif déjà géré : opt-in, strict offline, incognito, online, georef présent) et `genererBriefingPompiersPDF(s.id)` (helper v1.41.0). 0 duplication de logique.
+
+📊 **Footers Live finalisés**
+
+| Vue | Avant v1.41.1 | Après v1.41.1 |
+|-----|---------------|---------------|
+| Équipier | ⏸ Pause / 📤 Rapport / ⏸ Voir édition / 🛑 Terminer | + 🌍 Vue OSM / 🚒 Briefing pompiers |
+| Opérateur | ⏸ Pause / 🗺️ Carte globale / 📤 Rapport global / 📥 Importer / ➕ Phase / ⏸ Voir édition / 🛑 Terminer | + 🌍 Vue OSM / 🚒 Briefing pompiers |
+| Secouriste | ⏸ Pause / 📤 Rapport / ⏸ Voir édition / 🛑 Terminer | + 🌍 Vue OSM / 🚒 Briefing pompiers |
+
+🧪 **Tests à faire**
+- **Vue Opérateur surface** : lancer plan en mode Opérateur → footer contient 🌍 + 🚒 → clic Vue OSM ouvre modale OSM correctement → clic Briefing pompiers télécharge PDF
+- **Vue Équipier** : passer en mode Équipier → footer contient les 2 boutons → idem
+- **Vue Secouriste libre** : passer en mode Secouriste → footer contient les 2 boutons → idem
+- **Mobile** : les boutons ajoutés à des footers déjà chargés peuvent passer en `flex-wrap: wrap` — à vérifier que ça reste lisible
+- **Pas de régression** : tous les autres boutons des 3 footers fonctionnent toujours
+
+🛡️ **Pas de régression** — uniquement ajouts JS (3 boutons HTML + 2 handlers commun). HTML/CSS existants inchangés. 0 logique modifiée.
+
+---
+
+**📦 v1.41.0** (07/06/2026) — **Synergie Vue OSM × Mode Secours : étapes B+C+D+E livrées d'un coup (briefing pompiers, GPS équipes, POI entrée plan, page rapport)** :
+
+KARMA après v1.40.x : *« fait tout d'un coup et on testera »* après confirmation reco `1a 2a 3a 4a` pour les 4 étapes :
+- **D** : tag built-in `entree_plan` 🚪 (catégorie 🚨 Secours)
+- **E** : champ `surfaceGps {lat, lng}` par équipe + UI input + export JSON natif
+- **B** : page "Briefing surface" ajoutée au rapport PDF post-mission
+- **C** : bouton 🚒 Briefing pompiers dans bandeau Mode Secours → PDF dédié
+
+🎯 **Limitation assumée (MVP)** — La capture du canvas Leaflet de la Vue OSM dans le PDF aurait nécessité une lib externe (html2canvas/leaflet-image, non dispo dans `lib/`). Choix : utiliser des **liens cliquables OSM/Google Maps** dans le PDF à la place. Les pompiers cliquent depuis leur PC pour ouvrir la carte. Léger, robuste, 100% offline.
+
+🔧 **Architecture des changements**
+
+| Étape | Fichier | Type | Description |
+|-------|---------|------|-------------|
+| **D** | `js/map.js` (TAGS_BUILTIN) | Ajout | Tag `entree_plan` + icône SVG inline (porte stylisée jaune charte) |
+| **D** | `js/editor.js` (EDITOR_TAG_LABELS) | Ajout | Label "🚪 Point d'entrée du plan" |
+| **D** | `js/interfaceLegende.js` (LEGENDE_LABELS + 2 GROUPES) | Ajout | Catégorie "🚨 Secours" (légende app + légende exporter) |
+| **D** | `js/exporter.js` (GROUPES_ICONES) | Ajout | Même catégorie pour export PNG/PDF |
+| **D** | `js/createConf.js` (PLANNER_DEFAULT_ICONS) | Ajout | Dispo dans générateur de plan |
+| **E** | `js/secoursMode.js` (addGroupe) | Champ | `surfaceGps: null` à l'init équipe |
+| **E** | `js/secoursMode.js` (updateGroupe whitelist) | Validation | `{lat ∈ [-90,90], lng ∈ [-180,180]}` ou `null` |
+| **E** | `js/secoursMode.js` (UI _renderGroupeForm) | Input | Champ texte "📍 GPS surface" placeholder "lat, lng" |
+| **E** | `js/secoursMode.js` (handler edit-surface-gps) | Listener | Parse + validation + toast erreur si format invalide |
+| **B+C** | `js/osmView.js` (window.OsmView) | Expose | `getPlanGpsBbox` public pour accès bbox depuis secoursMode |
+| **B+C** | `js/secoursMode.js` (`_drawBriefingSurfacePage`) | Helper | Page A4 partagée (infos + bbox + lien OSM + équipes + POI critiques) |
+| **B** | `js/secoursMode.js` (`genererRapportPDF`) | Insertion | Appelle `_drawBriefingSurfacePage` après briefing global |
+| **C** | `js/secoursMode.js` (`genererBriefingPompiersPDF`) | Fonction | PDF dédié 1+ page(s) via `_drawBriefingSurfacePage` |
+| **C** | `js/secoursMode.js` (bandeaux PLAN ACTIF + TERMINÉ) | Bouton | "🚒 Briefing pompiers" à côté de "🌍 Vue OSM" |
+| **C** | `js/secoursMode.js` (handler briefing-pompiers) | Listener | Appelle `genererBriefingPompiersPDF(s.id)` |
+| **C** | `js/secoursMode.js` (window.SecoursMode) | API | `genererBriefingPompiersPDF` exposé publiquement |
+
+📊 **Contenu du PDF Briefing surface**
+
+```
+┌────────────────────────────────────────────────────────────┐
+│ BRIEFING SURFACE                                            │
+│ Page à transmettre aux secours externes (pompiers, GRIMP)  │
+├────────────────────────────────────────────────────────────┤
+│ INFOS                                                       │
+│ Scenario : Recherche Marc — 15/06/2026                     │
+│ Plan     : Four à Chaux Oise                               │
+│ Genere le 07/06/2026 à 14:32                               │
+├────────────────────────────────────────────────────────────┤
+│ LOCALISATION SUR LA CARTE                                  │
+│ Centre du plan : 49.123456, 2.654321                       │
+│ Bbox : sud-ouest 49.12, 2.65 / nord-est 49.13, 2.66        │
+│ > Ouvrir sur OpenStreetMap (centre du plan)                │
+│ > Ouvrir sur Google Maps (zoom 17)                         │
+├────────────────────────────────────────────────────────────┤
+│ EQUIPES SUR PLACE (GPS surface)                            │
+│ - Équipe Alpha                                              │
+│   Membres : Léa, Tom                                        │
+│   GPS surface : 49.123, 2.654                              │
+│   > Voir position equipe sur OSM                           │
+│ - Équipe Bravo                                              │
+│   Membres : Sam, Léo                                        │
+│   GPS surface : non renseigne                              │
+├────────────────────────────────────────────────────────────┤
+│ POI CRITIQUES (acces / sorties)                            │
+│ Point d'entree (urgence pompiers) (1) :                    │
+│   - Cavage principal Oise (niveau 0)                       │
+│ Cavage ouvert (3) :                                         │
+│   - Cavage Nord                                             │
+│   - Cavage Est                                              │
+│   - ...                                                     │
+└────────────────────────────────────────────────────────────┘
+```
+
+🛡️ **Garde-fous** :
+- Si Vue OSM jamais ouverte → message "Vue OSM non initialisée" + instructions pour générer la georef
+- Si aucun POI tagué `entree_plan` → astuce dans le PDF pour expliquer comment en créer un
+- Si équipe sans `surfaceGps` → mention "non renseigné" + indique champ optionnel
+- Validation stricte format GPS dans `updateGroupe` (range check) + toast si format invalide à la saisie
+
+🧪 **Tests à faire**
+- **D Tag entrée_plan**
+  - Édite un POI dans plan → onglet Tag, voir « 🚪 Point d'entrée du plan »
+  - Légende app → catégorie « 🚨 Secours » avec porte SVG jaune
+  - Export PNG/PDF → catégorie présente dans la légende exportée
+- **E GPS équipes**
+  - Mode Secours → édite une équipe → champ « 📍 GPS surface » visible
+  - Saisir « 48.85, 2.35 » → blur → pas d'erreur, valeur conservée
+  - Saisir « foo, bar » → toast erreur format
+  - Saisir « 200, 300 » (hors range) → toast erreur format
+  - Saisir vide → reset à null
+  - Export JSON `.mkmsec.json` → `surfaceGps: {lat, lng}` présent
+- **B Page Briefing dans rapport**
+  - Mode Secours → Lancer plan → Arrêter → 📤 Voir le rapport → Exporter PDF
+  - Page 2 du PDF = « BRIEFING SURFACE » avec sections INFOS / LOCALISATION / EQUIPES / POI
+- **C Briefing pompiers**
+  - Mode Secours plan actif → bandeau bleu → bouton 🚒 Briefing pompiers
+  - PDF téléchargé `Briefing_pompiers_<scenario>_<date>.pdf` 1 page
+  - Lien OSM clickable depuis lecteur PDF
+  - Idem post-mission (bandeau PLAN TERMINÉ → bouton accessible aussi)
+
+🎓 **Décisions prises (pragmatisme MVP)** :
+- **SVG inline pour icône `entree_plan`** : pas besoin de créer `icon/entree.png` (impossible via mes outils). KARMA peut remplacer par vrai PNG après et ajouter au `sw.js` ASSETS_TO_CACHE.
+- **Liens OSM/Google Maps au lieu de capture canvas** : évite d'ajouter html2canvas (~50KB) à `lib/`. Si KARMA veut une vraie capture image plus tard → ajouter la lib + écrire `_captureOsmCanvas()` en bonus.
+- **Pas de modale dédiée pour Briefing pompiers** : export PDF direct au clic. Si KARMA veut une preview avant export → ajouter une modale avec aperçu.
+
+🛡️ **Pas de régression** — tous les ajouts. Aucune fonction existante modifiée à part :
+- `genererRapportPDF` : ajout d'un `try/catch` qui ajoute 1 page (échec silencieux + log si problème)
+- 2 bandeaux Mode Secours : ajout d'un bouton (pas de modif des existants)
+
+---
+
+**📦 v1.40.49** (07/06/2026) — **HOME PC : bouton Reprendre prend largeur col 3 (= « Ajouter un plan ») via grid 2fr 3fr 2fr + width 100%** :
+
+KARMA après rollback v1.40.48 (capture avec carré rouge tracé autour de la zone que doit occuper le bouton) : *« maintenant le bouton reprendre doit rentrer dans le carré rouge »*.
+
+🎯 **Cible visuelle** — Le carré rouge tracé correspond à la **colonne « Ajouter un plan »** (col 3 du `.loader-grid` dessous). Le bouton Reprendre doit avoir la **même largeur** que cette colonne pour un alignement vertical propre.
+
+🔧 **Fix v1.40.49** — Grid 2fr 3fr 2fr (= .loader-grid) + width 100% sur bouton :
+
+```css
+@media (min-width: 1024px) {
+  .kta-loader-top-row {
+    display: grid;
+    grid-template-columns: 2fr 3fr 2fr;     /* identique .loader-grid */
+    gap: 0 24px;
+    align-items: stretch;
+    margin-bottom: 18px;
+  }
+  .kta-loader-top-row .kta-loader-profile-bar {
+    grid-column: 1 / span 2;                /* cols 1+2 */
+    margin: 0;
+  }
+  .kta-loader-top-row #resumeBox {
+    grid-column: 3;                         /* col 3 = "Ajouter un plan" */
+    margin: 0;
+    display: flex !important;
+    align-items: stretch;
+  }
+  .kta-loader-top-row #resumeBox .loader-btn-resume {
+    width: 100%;                            /* remplit largeur cellule col 3 */
+  }
+}
+```
+
+🛡️ **Pas de min-height cette fois** — bouton garde sa hauteur naturelle (~44px). Si KARMA veut aussi égaliser la hauteur, ce sera un autre bump avec valeur précise.
+
+📊 **Layout PC final**
+
+```
+┌────────────────────────────────────────────┬──────────────────────┐
+│  BIENVENUE / Mon profil                    │  ▶️ Reprendre [plan] │  ← top-row
+├──────────────┬─────────────────────────────┼──────────────────────┤
+│  📚 Mes plans │  🌍 Vue OSM                 │  📦 Ajouter un plan  │  ← loader-grid
+└──────────────┴─────────────────────────────┴──────────────────────┘
+   col 1 (2fr)         col 2 (3fr)                   col 3 (2fr)
+```
+
+Reprendre = largeur col 3 = même largeur que « Ajouter un plan » dessous (alignement vertical pixel-perfect).
+
+🧪 **Tests à faire**
+- **PC ≥ 1024px avec plan récent** : bouton Reprendre **largeur = col 3** (= "Ajouter un plan" dessous)
+- **Alignement vertical** : bord gauche du bouton aligné avec bord gauche de "Ajouter un plan"
+- **PC sans plan récent** : col 3 vide (resumeBox display:none)
+- **Mobile < 1024px** : stack vertical inchangé
+
+🛡️ **Pas de régression** — uniquement CSS (1 bloc remplacé). HTML wrapper v1.40.42 inchangé. 0 JS touché.
+
+---
+
+**📦 v1.40.48** (07/06/2026) — **HOME PC : ROLLBACK fix v1.40.43→47 sur top-row, retour au flex row simple de v1.40.42** :
+
+KARMA après test v1.40.47 (capture profile compact + bouton match) : *« ca va pas du tout rollback tes fix à .42 »*.
+
+🎯 **Décision** — Les 5 itérations v1.40.43-47 (grid, stretch CSS, min-height, profile compact) ne convergent pas vers ce que KARMA veut visuellement. Rollback complet à l'état v1.40.42 = flex row simple, profile prend la place restante, bouton garde sa taille naturelle. Pas de match de hauteur forcé.
+
+🔧 **Fix v1.40.48** — Retour au CSS minimal de v1.40.42 :
+
+```css
+.kta-loader-top-row {
+  display: contents;
+}
+@media (min-width: 1024px) {
+  .kta-loader-top-row {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 24px;
+    margin-bottom: 18px;
+  }
+  .kta-loader-top-row .kta-loader-profile-bar {
+    flex: 1 1 auto;          /* prend la place restante */
+    margin: 0;
+  }
+  .kta-loader-top-row #resumeBox {
+    flex: 0 0 auto;          /* taille naturelle (largeur du texte bouton) */
+    margin: 0;
+  }
+}
+```
+
+🛡️ **Supprimé v1.40.48** :
+- Grid `2fr 3fr 2fr` (v1.40.43, 45) → retour à flex
+- Grid `1fr 1fr` (v1.40.44) → retour à flex
+- `align-self: stretch` + `flex: 1 1 auto` + `min-height: 100%` sur bouton (v1.40.45) → supprimés
+- `min-height: 86px` sur bouton (v1.40.46) → supprimé
+- Profile compact override (avatar 40, padding 8, font sizes) (v1.40.47) → supprimé
+- `min-height: 56px` sur bouton (v1.40.47) → supprimé
+
+📊 **Évolution finale**
+
+| Version | Stratégie |
+|---------|-----------|
+| v1.40.42 | flex row (profile flex:1, resume auto) ✅ |
+| v1.40.43 | grid 2fr 3fr 2fr (aligné « Ajouter un plan ») |
+| v1.40.44 | grid 1fr 1fr (50/50) |
+| v1.40.45 | + stretch CSS (raté) |
+| v1.40.46 | + min-height 86px (trop gros) |
+| v1.40.47 | + profile compact (KARMA n'aime pas) |
+| **v1.40.48** | **ROLLBACK à v1.40.42** ✅ |
+
+🎓 **Leçon retenue** — Quand 5 itérations consécutives n'aboutissent pas, **arrêter et demander une mockup ou description précise** au lieu d'empiler des tentatives basées sur des interprétations. Ce sprint a brûlé 5 versions pour rien — KARMA a perdu du temps à tester chacune. Si une 2e itération ne marche pas, demander précision avant la 3e.
+
+🧪 **Tests à faire**
+- **PC ≥ 1024px avec plan récent** : profile-bar à gauche (large) + bouton Reprendre à droite (étroit, largeur du texte) sur **1 ligne** — comme v1.40.42 originale
+- **PC sans plan récent** : profile occupe toute la largeur (resumeBox display:none)
+- **Mobile < 1024px** : stack vertical inchangé
+
+🛡️ **Pas de régression** — uniquement CSS (1 bloc remplacé, beaucoup de propriétés supprimées). HTML wrapper v1.40.42 inchangé. 0 JS touché.
+
+---
+
+**📦 v1.40.47** (07/06/2026) — **HOME PC : profile-bar COMPACT (avatar 40 + padding 8) au lieu d'épaissir le bouton** :
+
+KARMA après v1.40.46 (capture : bouton désormais aussi haut que profile mais profile prend trop de place) : *« tu accumules des fix pour rien, mets profil plus fin »*.
+
+🎯 **Insight KARMA** — Plutôt que d'**épaissir** le bouton Reprendre pour matcher profile-bar (= cumul de fix stretch qui ne marchait pas + min-height qui forçait), il faut **amincir** profile-bar pour matcher la taille naturelle du bouton. Logique inversée, beaucoup plus propre.
+
+🔧 **Fix v1.40.47** — Override compact de profile-bar UNIQUEMENT dans le contexte `.kta-loader-top-row` PC + min-height bouton réduit pour match :
+
+```css
+@media (min-width: 1024px) {
+  /* Profile-bar compact (override @media >=769) */
+  .kta-loader-top-row .kta-loader-profile-bar {
+    padding: 8px 14px !important;       /* était 14×18 */
+    gap: 10px !important;               /* était 16 */
+  }
+  .kta-loader-top-row .kta-loader-profile-bar .kta-loader-profile-avatar-wrap {
+    width: 40px !important;             /* était 58 */
+    height: 40px !important;
+  }
+  .kta-loader-top-row .kta-loader-profile-bar .kta-loader-profile-avatar-initial {
+    font-size: 18px !important;         /* était 25 */
+  }
+  .kta-loader-top-row .kta-loader-profile-bar .kta-loader-profile-greeting {
+    font-size: 10px !important;
+  }
+  .kta-loader-top-row .kta-loader-profile-bar .kta-loader-profile-surnom {
+    font-size: 15px !important;         /* était 18 */
+  }
+  /* Hauteur profile-bar compact : avatar 40 + padding 8×2 = 56px */
+
+  /* Bouton min-height 56px (était 86 en v1.40.46) → match exact profile compact */
+  .kta-loader-top-row #resumeBox .loader-btn-resume {
+    min-height: 56px;                   /* 🆕 réduit (était 86) */
+    ...
+  }
+}
+```
+
+🛡️ **Pourquoi `!important` ?** Le profile-bar a un override `@media (min-width: 769px)` qui set padding 14×18 + avatar 58. Mon override est dans `@media (min-width: 1024px)` (subset) avec selecteur `.kta-loader-top-row .kta-loader-profile-bar` (specificity 0,2,0). Le >=769 a `.kta-loader-profile-bar` (specificity 0,1,0). Donc mon selecteur gagne par specificity SEUL... mais le `!important` rend explicite l'override des cascades de la profile-bar standalone, plus safe.
+
+🛡️ **Scope strict** — Tous mes overrides sont préfixés par `.kta-loader-top-row .kta-loader-profile-bar` → ils ne s'appliquent QUE dans le contexte top-row PC. Le profile-bar standalone (mobile, autres contextes hypothétiques) garde sa taille originale.
+
+📊 **Évolution v1.40.42 → 47**
+
+| Version | Strategy | Profile height | Bouton height | Match |
+|---------|----------|---------------|---------------|-------|
+| v1.40.42 | flex row | ~86px | ~44px (auto) | ❌ |
+| v1.40.43 | grid 2fr 3fr 2fr | ~86px | ~44px (auto) | ❌ |
+| v1.40.44 | grid 1fr 1fr | ~86px | ~44px (auto) | ❌ |
+| v1.40.45 | + stretch CSS | ~86px | ~44px (stretch fail) | ❌ |
+| v1.40.46 | + min-height 86px | ~86px | 86px | ✅ trop gros |
+| **v1.40.47** | **+ profile compact 56px** | **56px** | **56px** | **✅ propre** |
+
+🧪 **Tests à faire**
+- **PC ≥ 1024px avec plan récent** : profile et Reprendre **même hauteur compacte** (~56px)
+- **Profile reste lisible** : avatar 40 visible, surnom 15px confortable
+- **Aligné horizontalement** avec « Ajouter un plan » dessous (col 3)
+- **Mobile < 1024px** : profile-bar garde ses dimensions originales (avatar 44/58, padding 10/14) — overrides hors media query
+
+🛡️ **Pas de régression** — uniquement CSS (1 bloc remplacé). HTML wrapper v1.40.42 inchangé. 0 JS touché. Profile-bar standalone (autres contextes) inchangée.
+
+🎓 **Leçon retenue** — Quand 2 éléments côte à côte ont des tailles très différentes, demander si on grandit le petit OU rétrécit le grand. KARMA a choisi rétrécir → moins de risque que ça casse ailleurs.
+
+---
+
+**📦 v1.40.46** (07/06/2026) — **HOME PC : min-height explicite 86px sur bouton Reprendre (stretch CSS v1.40.45 ne propageait pas)** :
+
+KARMA après test v1.40.45 (capture avec 2 traits rouges verticaux montrant bouton Reprendre ~50% hauteur profile-bar) : *« rb ok mais on se comprend pas, je veux juste icone un peu moins fin, regarde les trait rouge pas de meme longueur »*.
+
+🎯 **Cause** — Mon stretch CSS v1.40.45 (`align-self: stretch` + `flex: 1 1 auto` + `min-height: 100%`) ne propageait pas correctement à travers la cascade `grid (top-row) → flex (#resumeBox) → button`. Plusieurs raisons possibles :
+
+- `min-height: 100%` résout à **0** quand le parent n'a pas de `height` explicite définie (seulement computed via grid stretch).
+- L'inline `style="display:block"` ajouté par JS (ligne 2060 de `index.html` : `resumeBox.style.display = "block"`) interfère potentiellement avec ma règle `display: flex !important` malgré le `!important`.
+- L'élément avec `padding: 12px 16px` a une hauteur intrinsèque de ~44px qui n'est pas étirée comme prévu par `align-self: stretch` quand combinée avec `min-height: 100%` qui résout à 0.
+
+🔧 **Fix v1.40.46** — Solution pragmatique : `min-height` en pixels explicites, fini la cascade stretch fragile :
+
+```css
+.kta-loader-top-row #resumeBox .loader-btn-resume {
+  width: 100%;
+  min-height: 86px;        /* 🆕 match profile-bar PC (avatar 58 + padding 14×2) */
+  display: flex;           /* centrage vertical texte dans bouton plus haut */
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+```
+
+🛡️ **Pourquoi 86px ?** `.kta-loader-profile-bar` a un override `@media (min-width: 769px)` qui set `padding: 14px 18px` + `avatar 58×58px`. Hauteur totale = 58 + 14×2 = 86px. Le breakpoint top-row est ≥1024 (subset de ≥769) donc le profile-bar a toujours 86px à cette taille.
+
+🧪 **Tests à faire**
+- **PC ≥ 1024px avec plan récent** : bouton Reprendre **AUSSI HAUT** que profile-bar à gauche (= 86px)
+- **Texte vertical centré** dans le bouton (icône ▶️ + "Reprendre Four a Chaux (V5.3)" milieu vertical)
+- **Aligné horizontalement** avec « Ajouter un plan » dessous (col 3 du loader-grid)
+- **Mobile < 1024px** : stack vertical, bouton garde sa hauteur naturelle (pas de min-height appliqué hors media query)
+
+🛡️ **Pas de régression** — uniquement CSS (1 bloc remplacé). HTML wrapper v1.40.42 inchangé. 0 JS touché.
+
+🎓 **Leçon retenue** — `min-height: 100%` est un piège classique CSS : résout à 0 si le parent n'a pas de `height` explicite. Préférer des valeurs en pixels quand l'objectif est visuel ("aussi haut que X") plutôt que de batailler avec la propagation stretch dans une cascade grid → flex → bloc.
+
+---
+
+**📦 v1.40.45** (07/06/2026) — **HOME PC : rollback v1.40.44 (grid 2fr 3fr 2fr) + fix HAUTEUR bouton Reprendre = hauteur profile-bar** :
+
+KARMA après test v1.40.44 (capture montrant bouton Reprendre moins haut que profile) : *« rollback, je parle pas de la longueur mais de la largeur »* — où "longueur" = dimension horizontale (largeur du bouton, que j'ai modifiée à tort) et "largeur" = dimension verticale (hauteur du bouton, qu'il fallait fixer).
+
+🎯 **Cause double**
+
+1. **Mauvaise interprétation v1.40.44** : j'ai compris "Reprendre plus longue (même que profile)" comme "même **largeur horizontale** que profile" → grille `1fr 1fr` (50/50). En réalité KARMA voulait dire "même **hauteur verticale** que profile" (le bouton apparaissait plus court).
+
+2. **Bouton réellement moins haut** : `.kta-loader-profile-bar` contient un avatar 52×52 + padding 12×2 = ~76px de hauteur. `.loader-btn-resume` n'a que `padding: 12px 16px` + font 14px = ~44px. Même avec `align-items: stretch` sur la grille, le bouton ne s'étirait pas vraiment dans le cellule (problème de propagation `height: 100%` à travers `display: block` enfant d'un flex container).
+
+🔧 **Fix v1.40.45** — Rollback grille + propagation stretch garantie :
+
+```css
+@media (min-width: 1024px) {
+  .kta-loader-top-row {
+    display: grid;
+    grid-template-columns: 2fr 3fr 2fr;   /* rollback v1.40.43 layout */
+    gap: 0 24px;
+    align-items: stretch;
+    margin-bottom: 18px;
+  }
+  .kta-loader-top-row .kta-loader-profile-bar {
+    grid-column: 1 / span 2;
+    margin: 0;
+    align-self: stretch;                  /* 🆕 explicit (default mais safety) */
+  }
+  .kta-loader-top-row #resumeBox {
+    grid-column: 3;
+    margin: 0;
+    display: flex !important;
+    align-items: stretch;
+    align-self: stretch;                  /* 🆕 cellule prend hauteur row */
+    min-width: 0;
+  }
+  .kta-loader-top-row #resumeBox .loader-btn-resume {
+    flex: 1 1 auto;                       /* 🆕 prend toute la largeur cellule */
+    align-self: stretch;                  /* 🆕 prend toute la hauteur cellule */
+    width: 100%;
+    min-height: 100%;                     /* 🆕 safety supplémentaire */
+    display: flex;                        /* 🆕 permet centrage vertical du texte */
+    align-items: center;                  /* 🆕 texte centré dans bouton plus haut */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-sizing: border-box;
+  }
+}
+```
+
+🛡️ **Pourquoi 5 propriétés pour stretcher ?** Belt-and-braces : `align-self: stretch` au niveau cellule grid (resumeBox) + `align-items: stretch` au niveau flex parent + `align-self: stretch` au niveau bouton + `flex: 1 1 auto` + `min-height: 100%`. Garantit le stretch peu importe quel mode de layout cascade le navigateur applique.
+
+📊 **Évolution v1.40.42 → 45**
+
+| Version | Grille top-row | Profile width | Reprendre width | Reprendre height |
+|---------|---------------|---------------|-----------------|------------------|
+| v1.40.42 | flex row | flex:1 (large) | auto (étroit) | ~44px (court) |
+| v1.40.43 | grid 2fr 3fr 2fr | cols 1+2 (71%) | col 3 (29%) | ~44px (court ❌) |
+| v1.40.44 | grid 1fr 1fr | 50% | 50% | ~44px (court ❌) |
+| **v1.40.45** | **grid 2fr 3fr 2fr** | **cols 1+2 (71%)** | **col 3 (29%)** | **= profile (~76px) ✅** |
+
+📊 **Layout PC final v1.40.45**
+
+```
+┌──────────────────────────────────────────┬────────────────────┐
+│  BIENVENUE / Mon profil [chips stats]    │   ▶️ Reprendre […]  │  ← top-row
+│  (hauteur = avatar 52 + padding ≈ 76px)  │   (HAUTEUR = 76px ✅)│
+├──────────────┬───────────────────────────┼────────────────────┤
+│  📚 Mes plans │  🌍 Vue OSM               │  📦 Ajouter un plan │  ← loader-grid
+└──────────────┴───────────────────────────┴────────────────────┘
+   col 1 (2fr)            col 2 (3fr)            col 3 (2fr)
+```
+
+🧪 **Tests à faire**
+- **PC ≥ 1024px avec plan récent** : bouton Reprendre **AUSSI HAUT** que profile-bar à gauche (76px sur PC, scale-down responsive sur mobile)
+- **Aligné horizontalement** avec « Ajouter un plan » dessous (même bord gauche, même largeur col 3)
+- **Texte vertical centré** dans le bouton plus haut (pas collé en haut)
+- **Mobile < 1024px** : stack vertical inchangé
+
+🛡️ **Pas de régression** — uniquement CSS (1 bloc remplacé). HTML wrapper v1.40.42 inchangé. 0 JS touché.
+
+🎓 **Leçon apprise** — KARMA utilise "longueur"/"largeur" parfois inversés (pour lui largeur = épaisseur/hauteur d'un bouton horizontal). Toujours demander précision ou regarder attentivement la capture avant de coder.
+
+---
+
+**📦 v1.40.44** (07/06/2026) — **HOME PC : `profile-bar` et `Reprendre` strictement même largeur (grille 1fr 1fr)** :
+
+KARMA après test v1.40.43 (capture avec rectangle rouge sur Reprendre qui dépasse à droite) : *« presque, juste la box Reprendre plus longue (même que profile) »*.
+
+🎯 **Cause** — v1.40.43 utilisait `grid-template-columns: 2fr 3fr 2fr` pour aligner Reprendre sur la colonne « Ajouter un plan » du `.loader-grid` dessous (profile = cols 1+2 = 71%, reprendre = col 3 = 29%). KARMA préfère que les 2 boxes soient strictement égales (50/50) plutôt que cet alignement vertical avec la grille du dessous.
+
+🔧 **Fix v1.40.44** — Grille simplifiée à `1fr 1fr` + safety anti-débordement :
+
+```css
+@media (min-width: 1024px) {
+  .kta-loader-top-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;       /* 🆕 50/50 (v1.40.43 : 2fr 3fr 2fr) */
+    gap: 0 24px;
+    align-items: stretch;
+    margin-bottom: 18px;
+  }
+  .kta-loader-top-row .kta-loader-profile-bar { margin: 0; }
+  .kta-loader-top-row #resumeBox {
+    margin: 0;
+    display: flex !important;
+    align-items: stretch;
+    min-width: 0;                         /* permet shrink si nom plan très long */
+  }
+  .kta-loader-top-row #resumeBox .loader-btn-resume {
+    width: 100%;
+    height: 100%;
+    white-space: nowrap;
+    overflow: hidden;                     /* 🆕 safety anti-dépassement */
+    text-overflow: ellipsis;              /* 🆕 "Reprendre Cavages Très …" */
+    box-sizing: border-box;               /* 🆕 padding/border inclus dans width */
+  }
+}
+```
+
+🛡️ **Bonus anti-dépassement** — ajout `overflow:hidden + text-overflow:ellipsis + box-sizing:border-box + min-width:0` pour garantir que le bouton **ne déborde jamais** de sa cellule même avec un nom de plan très long.
+
+📊 **Layout PC final v1.40.44**
+
+```
+┌────────────────────────────┬────────────────────────────┐
+│  BIENVENUE / Mon profil    │   ▶️ Reprendre [plan]       │  ← top-row 1fr 1fr (50/50)
+├──────────────┬─────────────┼────────────────────────────┤
+│  📚 Mes plans │  🌍 Vue OSM │  📦 Ajouter un plan         │  ← loader-grid 2fr 3fr 2fr
+└──────────────┴─────────────┴────────────────────────────┘
+```
+
+Les 2 lignes utilisent désormais **2 grilles différentes** (50/50 en haut, 2fr 3fr 2fr en bas). Pas d'alignement vertical avec « Ajouter un plan », mais équilibre profile/reprendre = ce que KARMA préfère visuellement.
+
+🧪 **Tests à faire**
+- **PC ≥ 1024px avec plan récent** : profile et Reprendre **exactement même largeur** (50/50)
+- **PC ≥ 1024px sans plan récent** : col 2 vide (resumeBox display:none), profile col 1 seul
+- **PC avec nom plan très long** : ellipsis à droite du bouton, pas de débordement
+- **Mobile < 1024px** : stack vertical inchangé (display:contents)
+- **Resize** : transition fluide au breakpoint 1024px
+
+🛡️ **Pas de régression** — uniquement CSS (1 bloc remplacé). HTML wrapper v1.40.42 inchangé. 0 JS touché.
+
+📊 **Évolution v1.40.42 → 43 → 44**
+
+| Version | Grille top-row | Profile | Reprendre |
+|---------|---------------|---------|-----------|
+| v1.40.42 | flex row | flex:1 (large) | auto (étroit) |
+| v1.40.43 | grid 2fr 3fr 2fr | cols 1+2 (71%) | col 3 (29%) |
+| **v1.40.44** | **grid 1fr 1fr** | **50%** | **50%** ✅ |
+
+---
+
+**📦 v1.40.43** (07/06/2026) — **HOME PC : `Reprendre` aligné sur la colonne « Ajouter un plan » via grille identique 2fr 3fr 2fr** :
+
+KARMA après test v1.40.42 : *« ok dans l'idée, mais reprendre doit être aussi large que Profile (pas long) et reprendre commence aligné en vertical à Ajouter plan »*.
+
+🎯 **Précision** — v1.40.42 utilisait `flex` row avec `profile: flex 1` (large) + `resume: flex auto` (étroit, ≈ largeur texte bouton). Mais KARMA veut que :
+- **Reprendre** ait la même largeur que la colonne **« Ajouter un plan »** (col 3 du `.loader-grid` dessous)
+- **Alignement vertical parfait** entre le bouton Reprendre et le titre Ajouter un plan
+
+Cause : `.loader-grid` (ligne 4294) utilise `grid-template-columns: 2fr 3fr 2fr` → col 1 (Mes plans) + col 2 (Vue OSM) + col 3 (Ajouter un plan). Avec un flex top-row, aucun lien avec cette grille → résumé décalé.
+
+🔧 **Fix v1.40.43** — Remplacement `display:flex` → `display:grid` avec **la même grille** :
+
+```css
+@media (min-width: 1024px) {
+  .kta-loader-top-row {
+    display: grid;
+    grid-template-columns: 2fr 3fr 2fr;   /* identique à .loader-grid ! */
+    gap: 0 24px;
+    align-items: stretch;
+    margin-bottom: 18px;
+  }
+  .kta-loader-top-row .kta-loader-profile-bar {
+    grid-column: 1 / span 2;              /* cols 1+2 = Mes plans + Vue OSM */
+  }
+  .kta-loader-top-row #resumeBox {
+    grid-column: 3;                       /* col 3 = Ajouter un plan */
+  }
+  .kta-loader-top-row #resumeBox .loader-btn-resume {
+    width: 100%;                           /* remplit la cellule grid col 3 */
+    height: 100%;                          /* hauteur égale au profile-bar */
+  }
+}
+```
+
+**Mécanique** : grid identique à `.loader-grid` → les cellules s'alignent verticalement à la pixel près entre les 2 niveaux (top-row + grid dessous). Le bouton Reprendre a maintenant exactement la largeur de la cellule col 3 = "Ajouter un plan".
+
+📊 **Layout PC final**
+
+```
+┌────────────────────────────┬──────────────────────────┐
+│  BIENVENUE / Mon profil    │   ▶️ Reprendre [plan]    │  ← top-row
+├──────────────┬─────────────┼──────────────────────────┤
+│  📚 Mes plans │  🌍 Vue OSM │  📦 Ajouter un plan      │  ← loader-grid
+│              │             │                          │
+│  …           │  …          │  …                       │
+└──────────────┴─────────────┴──────────────────────────┘
+   col 1 (2fr)   col 2 (3fr)         col 3 (2fr)
+```
+
+Profile prend **cols 1+2** (sur 5fr de largeur sur 7), Reprendre prend **col 3** (2fr sur 7). Alignement vertical parfait avec la colonne « Ajouter un plan » dessous, comme demandé.
+
+🧪 **Tests à faire**
+- **PC ≥ 1024px avec plan récent** : bouton Reprendre s'aligne pixel-perfect avec « Ajouter un plan » dessous (même bord gauche, même largeur)
+- **PC ≥ 1024px sans plan récent** : col 3 vide (resumeBox display:none), profile occupe cols 1+2 → état acceptable visuellement (col 3 vide ≈ stack mobile)
+- **Mobile < 1024px** : stack vertical inchangé (display:contents)
+- **Resize** : transition fluide au breakpoint 1024px, le bouton se relocalise sous le profile en mobile
+
+🛡️ **Pas de régression** — uniquement CSS (1 bloc remplacé). HTML wrapper v1.40.42 inchangé. 0 JS touché.
+
+🎓 **Pattern à retenir** : pour aligner verticalement 2 layouts différents (top-row 2 cellules + grid 3 cellules dessous), utiliser **le même `grid-template-columns`** sur les 2 et faire spanner les cellules du top-row avec `grid-column: 1 / span 2`. Solution élégante 100% CSS.
+
+---
+
+**📦 v1.40.42** (07/06/2026) — **HOME PC : `profile-bar` + `resumeBox` sur la même ligne (wrapper `kta-loader-top-row`)** :
+
+KARMA : *« aussi, en home sur pc uniquement (pas de changement sur mobile) on peut faire un truc comme ça, profile et reprendre sur la même ligne »* + capture d'écran.
+
+🎯 **Avant** : 2 lignes verticales PC + grand vide à droite du bandeau profil :
+```
+┌───────────────────────────────────────┬─────────────────────┐
+│ BIENVENUE / Mon profil                │  3h 37min · 160 MB  │  ← bandeau 100%
+└───────────────────────────────────────┴─────────────────────┘
+                ┌─────────────────────┐
+                │ ▶️ Reprendre [plan] │                          ← centré
+                └─────────────────────┘
+```
+
+🎯 **Après** : 1 ligne PC, alignement profile + reprendre :
+```
+┌──────────────────────────────┬───────────────┬─────────────────┐
+│ BIENVENUE / Mon profil       │ ▶️ Reprendre  │ 3h 37min 160MB  │
+└──────────────────────────────┴───────────────┴─────────────────┘
+```
+
+🔧 **Fix v1.40.42** — 2 modifs minimales
+
+**HTML** (`index.html` ~ligne 301) : nouveau wrapper `<div class="kta-loader-top-row">` qui regroupe `#kta-loader-profile-bar` + `#resumeBox`. Tout le reste du HTML interne est inchangé.
+
+**CSS** (`css/style.css` ~ligne 16910, juste avant `.kta-loader-profile-bar`) : nouvelle règle `.kta-loader-top-row` :
+- **Mobile (default)** : `display: contents` → wrapper transparent → les 2 enfants se comportent comme avant (margin-bottom individuels respectés, stack vertical naturel). **Zéro régression mobile**.
+- **PC (≥ 1024px)** : `display: flex; flex-direction: row; align-items: stretch; gap: 14px; margin-bottom: 18px`
+  - `.kta-loader-profile-bar { flex: 1 1 auto; margin: 0 }` → prend tout l'espace dispo (gauche)
+  - `#resumeBox { flex: 0 0 auto; margin: 0; display: flex; align-items: center }` → taille naturelle (droite)
+  - `.loader-btn-resume { height: 100%; white-space: nowrap }` → bouton aligné verticalement + 1 seule ligne (pas de wrap du texte plan)
+
+**Garde-fou cas plan absent** : `#resumeBox[style*="display:none"]` reste caché en PC → la profile-bar reprend toute la largeur via `flex: 1 1 auto`. Pas de "trou" visuel si pas de plan récent.
+
+📊 **Avant / Après**
+
+| Vue | Avant v1.40.42 | Après v1.40.42 |
+|---|---|---|
+| PC ≥ 1024px sans plan récent | Profile-bar pleine largeur ✅ | Profile-bar pleine largeur ✅ (inchangé) |
+| PC ≥ 1024px avec plan récent | Profile-bar + saut ligne + Reprendre centré ❌ | Profile-bar (gauche flex:1) + Reprendre (droite auto) sur 1 ligne ✅ |
+| Mobile < 1024px | Stack vertical ✅ | Stack vertical ✅ (inchangé via display:contents) |
+
+🧪 **Tests à faire**
+- **PC ≥ 1024px avec plan récent** : profil à gauche, "▶️ Reprendre [plan]" à droite alignés verticalement
+- **PC ≥ 1024px sans plan récent** : profil seul pleine largeur (resumeBox masqué)
+- **Mobile < 1024px** : profil + resume en stack vertical comme avant
+- **Resize** : transitions fluides au franchissement du breakpoint 1024px
+- **Thème clair** : alignement préservé, juste les couleurs changent (héritées des règles existantes profile-bar / resumeBox)
+- **Le bouton Reprendre clique toujours** correctement (le JS event handler existant `#resumeBtn` est inchangé)
+
+🛡️ **Pas de régression** — 2 modifs minimales (1 wrapper HTML + 1 bloc CSS). `display: contents` garantit la non-régression mobile (mécanisme CSS standard "wrapper transparent"). Aucun JS touché — tous les sélecteurs `#kta-loader-profile-bar` et `#resumeBox` continuent de fonctionner identique.
+
+🎓 **Pattern à retenir** : `display: contents` est la solution canonique pour avoir un wrapper HTML qui n'ajoute aucune box en mobile et qui devient flex/grid en PC sans casser le layout existant. Idéal pour adapter un layout par media query sans toucher au JS ni à la structure interne des composants.
+
+---
+
+**📦 v1.40.41** (07/06/2026) — **Hotfix mobile : invalidateSize widget HOME OSM ne suffisait pas — combo ResizeObserver + multi-timeouts** :
+
+KARMA après test v1.40.40 : *« ça le fait que sur mobile le bug, sur PC ça semble ok, pour le dernier truc opacity au premier chargement je sens pas de mieux côté mobile »*.
+
+🎯 **Cause racine** (v1.40.40 insuffisant sur mobile)
+
+v1.40.40 ajoutait `requestAnimationFrame + setTimeout(250ms)` après création de la map Leaflet → suffisant sur PC où le DOM se stabilise rapidement. Mais sur **mobile**, plusieurs facteurs ralentissent la stabilisation du container :
+- PWA cold cache → CSS plus long à parser
+- Layout reflow plus lent (CPU mobile)
+- Grid responsive HOME se réorganise (3 col PC → pile mobile)
+- Service Worker peut servir les CSS de façon asynchrone
+
+Résultat : le container `#ktaOsmHomeMap` n'a pas encore ses dimensions finales 250ms après l'instanciation Leaflet. Mes 2 invalidations ratent → Leaflet garde sa taille initiale erronée → tuiles manquantes.
+
+🔧 **Fix v1.40.41** — Combo 3 stratégies redondantes pour couvrir tous les cas mobile
+
+```js
+function _safeInvalidate() {
+  if (_mapInstance) { try { _mapInstance.invalidateSize(); } catch(e) {} }
+}
+
+// Stratégie 1 — raf : tentative immédiate après prochain paint
+requestAnimationFrame(_safeInvalidate);
+
+// Stratégie 2 — multi-timeouts échelonnés : couvre les boots progressivement
+// plus lents (PC, mobile rapide, mobile cold cache, mobile vraiment lent)
+setTimeout(_safeInvalidate, 100);
+setTimeout(_safeInvalidate, 500);
+setTimeout(_safeInvalidate, 1500);
+
+// Stratégie 3 — ResizeObserver : réagit aux vrais changements de dimensions
+// du container. Sémantiquement la solution propre (vs polling aveugle).
+// Auto-disconnect après 3 invalidations ou 5 sec (évite leak Observer).
+if (typeof ResizeObserver !== "undefined") {
+  let nInvalidations = 0;
+  const ro = new ResizeObserver(function() {
+    _safeInvalidate();
+    nInvalidations++;
+    if (nInvalidations >= 3) { try { ro.disconnect(); } catch(_) {} }
+  });
+  try { ro.observe(mapDiv); } catch(_) {}
+  setTimeout(function() { try { ro.disconnect(); } catch(_) {} }, 5000);
+}
+```
+
+📊 **Avant / Après** (mobile cold boot)
+
+| Phase | v1.40.40 | v1.40.41 |
+|---|---|---|
+| T+0ms : map créée | ❌ Container 0×0 → Leaflet tile request vide | ❌ Idem (état de départ) |
+| T+16ms (raf) | ⚠️ invalidateSize mais container pas encore dimensionné | ⚠️ Idem |
+| T+100ms | — | ✅ invalidateSize (1ère chance) |
+| T+250ms | ⚠️ invalidateSize mais souvent CSS pas encore appliqué côté mobile | — |
+| T+500ms | ❌ Plus rien, tuiles ratées | ✅ invalidateSize (2e chance) |
+| T+1500ms | ❌ Idem | ✅ invalidateSize (safety net mobile lent) |
+| ResizeObserver | ❌ Absent | ✅ Trigger à CHAQUE changement de dimensions, jusqu'à 3 invalidations |
+
+📊 **Coût** : ~4 invalidations max + 1 ResizeObserver pendant 5s max. Négligeable côté perf, garantit que les tuiles se chargent même sur mobile très lent.
+
+🧪 **Tests à faire**
+- **Mobile cold boot** (kill app + relance) → widget HOME OSM affiche les tuiles dans les 1-2 secondes max, pas besoin de passer en fullscreen ✅
+- **Mobile orientation rotation** : si tu tournes le téléphone après le boot, le ResizeObserver re-invalide auto (mais déjà disconnect après 3 trigger, pas de leak)
+- **PC** : inchangé, raf + invalidations rapides
+- **Tablet** : devrait être intermédiaire entre PC et mobile, couvert
+- Vérifier console : pas de warning Leaflet "Map container not visible" ou "Leaflet: setView called on a map with no center or zoom" persistant
+
+🛡️ **Pas de régression** — pure addition de safety net. Si tout marchait déjà après 250ms (PC, mobile rapide), les invalidations 500ms / 1500ms sont silencieuses (no-op, Leaflet skip si déjà à la bonne taille). ResizeObserver disconnect auto pour pas leaker.
+
+🎓 **Pattern pour modules futurs** : toute carte Leaflet créée dans un container à dimensions différées (sidebar, modale, tabs, widget grid, surtout sur mobile) doit utiliser ce combo (raf + multi-timeouts + ResizeObserver). À documenter dans `gotchas.md` si récurrent.
+
+---
+
+**📦 v1.40.40** (07/06/2026) — **2 hotfix Vue OSM : popup POI modale (description manquante) + tuiles OSM widget HOME (invalidateSize au boot)** :
+
+KARMA : *« en mode HOME OSM on a bien Titre/description/tag, mais pas en mode MAP. aussi je vois un petit bug d'affichage, au chargement de l'application et plus présent une fois OSM affiché en plein écran. les tuiles OSM ne se chargent pas, bug opacity »*.
+
+🎯 **Bug 1 — Popup POI modale Vue OSM sans description / tag (asymétrie avec widget HOME)**
+
+**Cause racine** : `_collectVisiblePoi()` dans `osmView.js` ligne 423 normalise les POI session + data layers en objets avec format `{ x, y, nom, tags, level, _source, _ref }`. **Le champ `description` n'était PAS copié** (oubli depuis v1.39.12 Step 1). Puis ligne 501 le popup lit `p.description` → toujours `undefined` → tombe sur le fallback tag (cf v1.40.25 cascade desc → tag).
+
+Côté **widget HOME** (`osmHomePreview.js`), on itère **directement** sur `layer.points` sans copie filtrée → `p.description` accessible naturellement → ça marchait. D'où l'asymétrie KARMA observée.
+
+**Fix v1.40.40** : ajout de `description: (typeof p.description === "string") ? p.description : ""` dans les 2 push de `_collectVisiblePoi` (session + data layers). Commentaire format unifié mis à jour pour mentionner le nouveau champ.
+
+```diff
+  out.push({
+    x: p.x, y: p.y,
+    nom: p.nom || p.label || "",
+    tags: Array.isArray(p.tags) ? p.tags : [],
+    level: (typeof p.level === "number") ? p.level : 0,
++   description: (typeof p.description === "string") ? p.description : "",
+    _source: "session", _ref: p
+  });
+```
+
+🎯 **Bug 2 — Tuiles OSM widget HOME ne se chargent pas au boot (fix accidentel en passant fullscreen)**
+
+**Cause racine** : `_initMiniMap()` crée la map Leaflet **avant** que le container DOM soit dimensionné. Au boot de la HOME, le layout se rend progressivement (sidebar, grille 3 colonnes, etc.) → le container `#ktaOsmHomeMap` n'a pas encore ses dimensions finales au moment où Leaflet est instancié. Conséquence : Leaflet calcule mal le viewport → ne demande que les tuiles visibles dans son viewport interne (souvent 0) → tuiles manquantes / opacity à 0.
+
+Quand l'user clique ⛶ fullscreen, le container change de dimensions → Leaflet recalcule via `invalidateSize` interne → tuiles chargées. D'où le "fix accidentel après plein écran" décrit par KARMA.
+
+**Fix v1.40.40** : ajout d'une **double invalidation** après création de la map :
+1. `requestAnimationFrame(() => _mapInstance.invalidateSize())` → couvre le cas normal (frame suivant après le paint initial)
+2. `setTimeout(..., 250ms)` → safety net pour boot lent (mobile cold cache, container pas encore dimensionné à l'animation frame)
+
+```js
+requestAnimationFrame(function() {
+  if (_mapInstance) try { _mapInstance.invalidateSize(); } catch(e) {}
+});
+setTimeout(function() {
+  if (_mapInstance) try { _mapInstance.invalidateSize(); } catch(e) {}
+}, 250);
+```
+
+Pattern standard Leaflet recommandé par la doc officielle pour les maps initialisées dans des containers à dimensions différées (sidebar, modale, tabs, etc.).
+
+📊 **Avant / Après**
+
+| Bug | Avant v1.40.40 | Après v1.40.40 |
+|---|---|---|
+| Popup POI modale Vue OSM avec description | ❌ `default · niveau X` seulement (fallback tag) | ✅ Description en ligne 2 + `🏷️ tag` mini ligne 3 (cohérent widget HOME) |
+| Popup POI modale Vue OSM sans description | ✅ `tag · niveau X` (inchangé) | ✅ Idem |
+| Tuiles OSM widget HOME au 1er boot | ❌ Manquantes / opacity 0 jusqu'au 1er passage fullscreen | ✅ Toutes chargées au boot via double invalidateSize |
+| Widget HOME après fullscreen | ✅ OK | ✅ OK (inchangé) |
+
+🧪 **Tests à faire**
+- **Bug 1** : ouvrir modale Vue OSM, cliquer un POI qui a une description (dans tes data layers) → popup affiche `Nom` gras + `Description complète · niveau X` + `🏷️ tag` mini en bas
+- **Bug 1 fallback** : cliquer un POI sans description → `Nom` + `tag · niveau X` (= ancien comportement préservé)
+- **Bug 2** : recharger l'app (Ctrl+F5 pour bypass cache SW v1.40.39) → widget HOME OSM affiche les tuiles OpenStreetMap **immédiatement** au premier affichage, plus besoin de passer en fullscreen
+- **Mobile** (cold boot lent) : le double invalidateSize (raf + 250ms) couvre le cas où le DOM se rend très tard
+
+🛡️ **Pas de régression** — 2 fixes isolés (1 ajout champ dans normalisation + 2 appels invalidateSize). Aucun changement de logique core / réseau / sécurité.
+
+🎓 **Leçons** :
+1. **Bug 1** : quand on normalise des données via copie d'objet, **toujours documenter le format exhaustivement** + tester que tous les champs consommés downstream sont bien copiés. Le commentaire ligne 422 disait "{ x, y, nom, tags, level, _source }" → ne mentionnait pas description → l'oubli est passé inaperçu en revue. À ajouter dans `gotchas.md`.
+2. **Bug 2** : pour toute carte Leaflet créée dans un container à dimensions différées (sidebar, modale, tabs, widget intégré dans layout grid), **toujours** appeler `map.invalidateSize()` après le prochain frame + un timeout safety net. Pattern récurrent à généraliser.
+
+---
+
+**📦 v1.40.39** (07/06/2026) — **Vue OSM modale : bandeau toggles débordait horizontalement (flex-wrap manquant)** :
+
+KARMA : *« bug du OSM en mode plan, les filtres sortent de la fenêtre on les voit apparaître un peu en horizontal »*.
+
+🎯 **Cause racine**
+
+Le bandeau ligne 1 de la modale Vue OSM contenait :
+- 1 label "🎚️ Opacité plan :" + 1 slider + 1 valeur "%"
+- 2 boutons "🎯 Plan" + "📡 Tracker" + "📍 Moi"
+- **~8 toggles** : 🖼️ Plan, 📍 POI, 📡 Tracé, 🛣️ Routes, 🧭 Iti, 🌐 Zones, 🏗️ Struct, 🚨 Secours (conditionnel v1.40.34)
+- 1 attribution OSM
+
+Total ≈ **13 éléments** dans un `<div style="display:flex; gap:10px;">` **sans `flex-wrap: wrap`**. Sur écran < 1500px ou avec le toggle Secours actif, ça déborde horizontalement → certains toggles sortent du viewport modale (clipped par `overflow: hidden` du wrapper modal).
+
+**Asymétrie** : les bandeaux ligne 2 (chips multi-LVL) et ligne 3 (chips tag) avaient déjà `flex-wrap: wrap` (lignes 1560 et 1566). Seul le bandeau principal ligne 1502 manquait le wrap. Le widget HOME (CSS `.kta-osm-home-toggles` ligne 4556) avait aussi déjà le wrap.
+
+🔧 **Fix v1.40.39** dans `js/osmView.js` ligne 1502
+
+```diff
+- '<div style="display:flex; gap:10px; align-items:center; ...">' +
++ '<div style="display:flex; flex-wrap:wrap; gap:10px; row-gap:6px; align-items:center; ...">' +
+```
+
+- `flex-wrap: wrap` → les éléments passent à la ligne suivante quand ils débordent
+- `row-gap: 6px` → léger espacement vertical entre lignes pour aérer quand ça wrap (sinon les toggles collent les uns aux autres verticalement)
+
+📊 **Avant / Après**
+
+| Cas écran | Avant v1.40.39 | Après v1.40.39 |
+|---|---|---|
+| Desktop ≥ 1800px sans Secours actif | ✅ 1 ligne, tout tient | ✅ 1 ligne (inchangé) |
+| Desktop 1280-1800px avec Secours actif | ❌ Débordement à droite (Struct + Secours hors viewport) | ✅ Wrap propre sur 2 lignes |
+| Laptop ~1024px | ❌ Débordement sévère (plusieurs toggles cachés) | ✅ Wrap sur 2-3 lignes selon contenu |
+| Modale réduite (resize) | ❌ Débordement | ✅ Adaptation dynamique |
+
+🧪 **Tests à faire**
+- Modale Vue OSM en WQHD (2560px) sans Mode Secours actif → 1 seule ligne de toggles (inchangé)
+- Avec Mode Secours actif → toggle `🚨 Secours` visible, tout tient ou wrap proprement
+- Resize la fenêtre browser → le bandeau wrap sans clipper
+- Mobile (modale plein écran) : déjà petit, wrap inévitable, vérifier que c'est propre
+- Modale ligne 2 (chips multi-LVL) et ligne 3 (chips tag) : déjà wrap, inchangé
+
+🛡️ **Pas de régression** — 1 ligne de style inline modifiée, juste ajout de 2 propriétés CSS au flex container. Aucun impact JS / réseau / sécurité.
+
+🎓 **Pattern à retenir** : tout bandeau `display: flex` qui peut avoir un nombre variable d'éléments **doit** avoir `flex-wrap: wrap` + `row-gap` pour gérer le wrap proprement. À ajouter dans `gotchas.md` si je suis pas encore là (un autre cas similaire avait été corrigé en hotfix2 Mode Secours v1.22).
+
+---
+
+**📦 v1.40.38** (07/06/2026) — **Fix générique modales courtes : `height: 88vh` → `max-height: 88vh` sur `.kta-readme-modal-boite`** :
+
+KARMA : *« Données du plan introuvables, bug de modal bcp trop long on a eu le cas plein de fois sur d'autre problème connu »* + *« le modal prend toute la longueur pour rien »*.
+
+🎯 **Cause racine** (pattern récurrent enfin identifié)
+
+La classe partagée `.kta-readme-modal-boite` (utilisée par TOUTES les modales : Documentation, Audit réseau, Aide, Plan introuvable, confirmations, etc.) avait :
+
+```css
+.kta-readme-modal-boite {
+  height: min(88vh, 920px);   /* ❌ hauteur FORCÉE à 88vh */
+  height: min(88dvh, 920px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+```
+
+Et en media queries PC (3 paliers : 1024px, 1440px, 1920px) + responsive < 800px : même pattern `height: 92vh / 94vh / 95vh`.
+
+**Le problème** : `height` force la boîte à occuper 88vh **quel que soit le contenu**. Modale courte type "Plan introuvable" (header + 4 lignes + 3 boutons = ~250px) prend **toute la hauteur écran** avec espace vide énorme en bas. Pattern user "modal bcp trop long pour rien".
+
+**Preuve que c'est récurrent** : ligne 15716 du CSS a déjà un fix ad-hoc identique pour `#kta-session-export-modal` :
+```css
+#kta-session-export-modal .kta-readme-modal-boite {
+  height: auto !important;
+  max-height: 90vh !important;
+  ...
+}
+```
+→ Cette même modale a déjà eu le bug avant. KARMA avait dû ajouter un override custom. **Le fix générique en v1.40.38 étend ce pattern à TOUTES les modales d'un coup.**
+
+🔧 **Fix v1.40.38** dans `css/style.css`
+
+**5 règles** modifiées (base + 4 media queries) : remplacement systématique de `height:` par `max-height:` sur `.kta-readme-modal-boite`. La boîte peut désormais shrink au contenu (modales courtes) tout en restant plafonnée (modales longues).
+
+```diff
+.kta-readme-modal-boite {
+  width: min(960px, 96vw);
+- height: min(88vh, 920px);
+- height: min(88dvh, 920px);
++ max-height: min(88vh, 920px);
++ max-height: min(88dvh, 920px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+```
+
+Idem pour media queries (1024px, 1440px, 1920px, max-800px).
+
+🧠 **Comportement flex column avec max-height (modales doc longues toujours OK)**
+
+- Boîte sans `height` mais `max-height: 88vh` + `display: flex; flex-direction: column`
+- `.kta-readme-modal-corps` a `flex: 1; overflow-y: auto` (ligne 2991)
+- **Modale courte (250px contenu)** : boîte adopte la hauteur naturelle du contenu (header + corps + footer), pas d'espace vide ✅
+- **Modale longue (5000px contenu)** : boîte plafonnée à 88vh = ~800px, header (50px) + corps (`flex:1` = 750px disponibles, scroll interne via `overflow-y: auto` du corps) ✅
+
+📊 **Avant / Après**
+
+| Modale (PC 1920×1080) | Avant v1.40.38 | Après v1.40.38 |
+|---|---|---|
+| Plan introuvable (~250px contenu) | ❌ 950px (95vh forcé, ~700px vide) | ✅ ~250px (adapté contenu) |
+| Documentation (long, ~3000px contenu) | ✅ 950px scroll interne | ✅ 950px scroll interne (inchangé) |
+| Audit réseau (long, ~2500px) | ✅ 950px scroll | ✅ 950px scroll (inchangé) |
+| Configuration loader (moyen, ~800px) | ❌ 950px (espace vide en bas) | ✅ ~800px adapté |
+| Vue OSM (custom width 1800px, height 92vh inline) | ✅ Inchangé (override inline) | ✅ Inchangé (override inline) |
+| `#kta-session-export-modal` (custom 90vh) | ✅ Override ad-hoc déjà OK | ✅ Override ad-hoc devient redondant mais sans effet (safe) |
+
+📋 **Sites enrichis** : 1 seul fichier `css/style.css`, 5 règles modifiées. Tous les autres ID-spécifiques (`#kta-session-export-modal` ligne 15716, `#loaderNetLogModal` ligne 14422, etc.) qui font juste des color/background overrides sont **inchangés** (pas de conflict).
+
+🧪 **Tests à faire**
+- **Charger profil + cliquer plan qui n'est plus en LS** → modale "⚠️ Données du plan introuvables" → hauteur adaptée au contenu (4 lignes + 3 boutons), plus d'espace vide en bas ✅
+- **Ouvrir 📖 Documentation** → modale prend 88vh comme avant, scroll interne intact ✅
+- **Ouvrir 🔒 Audit réseau** → 88vh + scroll OK ✅
+- **Modales sur mobile** (≤ 800px) : Plan introuvable adapte la hauteur au contenu, Documentation prend 92vh
+- **Vue OSM modale** : conserve son `height: 92vh` inline → comportement inchangé
+- **Modale export session** : `#kta-session-export-modal` garde son override `90vh max-height` (redondant mais inoffensif)
+
+🛡️ **Pas de régression** — 1 fichier touché (`style.css`), 5 règles modifiées, pattern identique à un fix ad-hoc déjà validé (ligne 15716). Le `flex: 1` du `.kta-readme-modal-corps` continue de fonctionner pour les modales longues (rempli l'espace résiduel jusqu'au max-height + scroll interne).
+
+🎓 **Leçon pour `gotchas.md`** : sur les flex containers à hauteur dynamique, **toujours** préférer `max-height` à `height` quand le contenu peut varier. Sinon le container force sa hauteur quel que soit le contenu et on a un espace vide pour les cas courts. Pattern récurrent depuis v1.9.2 (export modale a eu fix ad-hoc précédent ligne 15716).
+
+---
+
+**📦 v1.40.37** (07/06/2026) — **Vue OSM (modale + widget HOME) : persistance des couleurs natives roads + zones (avec custom legend)** :
+
+KARMA : *« fait en sorte, en mode OSM PLAN/HOME que la couleur des routes, zone, ... persiste »*.
+
+🎯 **Diagnostic**
+
+Avant v1.40.37, Vue OSM faisait :
+- **Roads modale** : `road.color || "#8892a4"` → fallback gris si pas de `color` explicite (cas des roads issues de data layers sans couleur set)
+- **Zones modale** : `z.color || "#8892a4"` → idem fallback gris
+- **Roads widget HOME** : `r.color || ROAD_STYLES_DATA_HOME[r.type] || "#8892a4"` → couvrait built-in mais **pas** LegendCustomization (types custom `cust-*`)
+- **Zones widget HOME** : `z.color || "#8892a4"` → pas de fallback type-based, pas de custom legend
+
+Donc une zone "remblais" sans `z.color` explicite (cas data layers JSON typique) apparaissait en **gris** au lieu de gris-noir charte. Idem zones effondrement, eau, etc. Et les types **custom** définis par l'user dans la légende n'étaient jamais respectés.
+
+🔧 **Fix v1.40.37** — Cascade de résolution couleur "comme sur la map principale" :
+
+```
+1. road/zone.color explicite (data layer JSON ou session avec override)
+2. ROAD_STYLES_OSM / ZONE_STYLES_OSM[type] (built-in natif)
+3. window.LegendCustomization.findCustomEntry(type) (custom legend, persistance user)
+4. fallback gris muet "#8892a4"
+```
+
+Aligné comportementalement sur `road.js > _resolveRoadStyle` (ligne 79). Code dupliqué localement dans chaque module Vue OSM (modale + widget HOME) pour éviter le couplage modulaire fort — `road.js` et `zones.js` n'exposent pas leurs `ROAD_STYLES` / `ZONE_STYLES` sur `window`.
+
+**Modale OsmView** (`js/osmView.js`) :
+- Nouveaux mappings `ROAD_STYLES_OSM` (5 types : principal, secondaire, chemin, jonction, itinerary) + `ZONE_STYLES_OSM` (4 types : eau, remblais, effondrement, inaccessible) en haut du module
+- Nouveaux helpers `_resolveRoadColor(road)` + `_resolveZoneColors(z)` qui appliquent la cascade
+- `_renderRoads` ligne 996 : `road.color || "#8892a4"` → `_resolveRoadColor(road)`
+- `_renderZones` ligne 1141-1142 : `z.color/z.fillColor || ...` → `_resolveZoneColors(z)` qui retourne `{ stroke, fill }`
+
+**Widget HOME** (`js/osmHomePreview.js`) :
+- `ROAD_STYLES_DATA_HOME` étendu avec `itinerary` (cohérence cyan)
+- Nouveau `ZONE_STYLES_DATA_HOME` (4 types built-in)
+- Helpers `_resolveRoadColorHome(r)` + `_resolveZoneColorsHome(z)` (même cascade)
+- `_renderDataLayersOnMiniMap` ~lignes 833 + 847 : helpers branchés sur les boucles roads + zones
+
+**Note pattern SVG** : la couleur native `inaccessible` dans `zones.js` utilise un `fillColor: "url(#kta-pattern-inaccessible)"` (pattern SVG hatching). Ce pattern n'est pas défini dans la modale Vue OSM, donc on fallback sur un orange uni `#b8743c` qui reste lisible. Trade-off acceptable pour cohérence visuelle (l'user voit toujours une zone marquée distinctement).
+
+📊 **Avant / Après** (data layer typique avec roads et zones sans `color` explicite)
+
+| Cas | Avant v1.40.37 | Après v1.40.37 |
+|---|---|---|
+| Road type "principal" sans color | ❌ Gris `#8892a4` | ✅ Vert `#00ff00` |
+| Road type "secondaire" sans color | ❌ Gris | ✅ Violet `#b000ff` |
+| Road type "chemin" sans color | ❌ Gris | ✅ Jaune `#ffff00` |
+| Road type "jonction" sans color | ❌ Gris | ✅ Magenta `#ff4ecb` |
+| Road type **custom** `cust-xxx` legend | ❌ Gris | ✅ Couleur custom user (via LegendCustomization) |
+| Zone type "eau" sans color | ❌ Gris uni | ✅ Bleu (stroke `#0066aa`, fill `#3aa9e8`) |
+| Zone type "remblais" sans color | ❌ Gris | ✅ Gris-noir charte (stroke `#3a3a44`, fill `#5a5a68`) |
+| Zone type "effondrement" sans color | ❌ Gris | ✅ Rouge (stroke `#cc0000`, fill `#ff3333`) |
+| Zone type "inaccessible" sans color | ❌ Gris | ✅ Brun-orange (stroke `#5a0a0a`, fill `#b8743c` — pattern non porté en OSM) |
+| Zone type **custom** legend | ❌ Gris | ✅ Couleurs custom user |
+| Road/zone avec `color`/`fillColor` explicite (data avec override) | ✅ Couleur explicite | ✅ Couleur explicite (inchangé, priorité 1 de cascade) |
+
+🛡️ **Tolérance double format zones** : `_resolveZoneColors` retourne `{ stroke, fill }` même si la zone source a juste `color` ou juste `fillColor` (fallback miroir) — pas de polygon "transparent" possible.
+
+🧪 **Tests à faire**
+- **Plan avec data layers JSON** classique (roads + zones sans `color` explicite) → ouvrir Vue OSM modale → routes en vert/violet/jaune, zones en bleu/gris/rouge/orange selon type
+- Idem **widget HOME** : mêmes couleurs cohérentes avec la map principale
+- **Plan avec custom legend** (user a défini des roads ou zones `cust-...` avec couleur custom) → Vue OSM doit afficher ces couleurs custom (pas le gris fallback)
+- **Plan avec override explicite** (data layer qui fournit `road.color: "#abc"`) → cette couleur explicite l'emporte sur le mapping type-based
+- Toggle thème clair / sombre → couleurs natives inchangées (= cohérent avec map principale)
+- M-LVL : filtre par niveau → couleurs respectées niveau par niveau
+
+🛡️ **Pas de régression** — fix isolé sur 2 modules. 0 modification de `road.js` ou `zones.js` (pas de nouvel export global, pas de couplage). Aucune régression possible sur le rendu map principale.
+
+🎓 **Leçon** : quand un module ré-implémente le rendu d'un autre module (cas Vue OSM qui projette des roads/zones de la map principale), ne pas se contenter de `obj.color || fallback`. Toujours appliquer la **cascade complète** explicite → built-in type → custom legend → fallback. Pattern à généraliser pour futurs modules cross-référence visuelle.
+
+---
+
+**📦 v1.40.36** (07/06/2026) — **Hotfix Vue OSM × Mode Secours : palette d'équipes mal lue (objet {hex, nom} vs string)** :
+
+KARMA après test v1.40.34 : *« bcp mieu secour avec zone mais seule la première équipe a sa couleur le reste en blanc »*.
+
+🎯 **Cause racine**
+
+`SecoursMode.PALETTE` (cf `secoursMode.js` ligne 132) est un **tableau d'objets** `[{hex: "#ff4444", nom: "Alpha"}, ...]` et **non** un tableau de strings hex. Mon code v1.40.34 le traitait comme array de strings :
+
+```js
+const color = palette[(g.couleurIdx || 0) % palette.length];
+// → color = { hex: "#ff4444", nom: "Alpha" }   (objet, pas string!)
+```
+
+Quand on passe cet objet à Leaflet via `color: color, fillColor: color`, Leaflet fait `String({hex:...}) === "[object Object]"` → CSS invalide → Leaflet retombe sur `currentColor` ou défaut transparent/blanc.
+
+**Pourquoi la 1ère équipe semblait avoir sa couleur** : artefact probable d'un `couleurIdx === undefined` côté data (équipe créée sans assignment) qui passait par un autre fallback, ou interaction CSS résiduelle avec le contour blanc `#fff` des markers. Dans tous les cas, le fix s'applique à toutes les équipes.
+
+🔧 **Fix v1.40.36** dans `js/osmView.js _renderSecoursLayer` :
+
+```js
+// AVANT (v1.40.34) :
+const color = palette[(g.couleurIdx || 0) % palette.length];   // ❌ objet entier
+
+// APRÈS (v1.40.36) :
+const SECOURS_FALLBACK_HEX = ["#ff4444", "#4488ff", "#44cc44", "#ffcc00",
+                              "#ff4ecb", "#00d4ff", "#ff8c00", "#9d44ff",
+                              "#8b5a2b", "#404040"];
+
+function _resolveEquipeColor(couleurIdx) {
+  const entry = palette[(couleurIdx || 0) % palette.length];
+  if (!entry) return SECOURS_FALLBACK_HEX[0];
+  if (typeof entry === "string") return entry;          // tolère fallback string array
+  if (entry && typeof entry === "object"
+      && typeof entry.hex === "string") return entry.hex; // ✅ format officiel PALETTE
+  return SECOURS_FALLBACK_HEX[0];
+}
+
+const color = _resolveEquipeColor(g.couleurIdx);   // ✅ vrai hex string
+```
+
+📊 **Avant / Après**
+
+| Cas | Avant v1.40.36 | Après v1.40.36 |
+|---|---|---|
+| Équipe 1 (Alpha, idx=0) | Couleur cassée / fallback | ✅ Rouge vif `#ff4444` |
+| Équipe 2 (Bravo, idx=1) | ❌ Blanc | ✅ Bleu `#4488ff` |
+| Équipe 3 (Charlie, idx=2) | ❌ Blanc | ✅ Vert `#44cc44` |
+| ... | ... | ... |
+| Équipe 11+ | Wrap modulo | ✅ Wrap modulo correct |
+
+🛡️ **Tolérance double format** : la nouvelle fonction `_resolveEquipeColor` accepte aussi un palette de strings hex (au cas où un patch futur change PALETTE en `["#ff4444", ...]` directement), évitant un re-bug similaire en cas de refacto Mode Secours.
+
+🧪 **Tests à faire**
+- Scénario Mode Secours avec **3+ équipes** (Alpha, Bravo, Charlie minimum) → ouvrir Vue OSM via 🌍
+- Vérifier que **chaque équipe** a sa couleur Alpha (rouge), Bravo (bleu), Charlie (vert) → zones + iti + markers entrée/sortie
+- Tooltips au hover affichent le bon nom d'équipe
+- Toggle `🚨 Secours` ON/OFF → tout disparaît/réapparaît avec les bonnes couleurs
+
+🛡️ **Pas de régression** — fix isolé sur 1 fonction (~12 lignes), 0 changement de logique pathfinder ou Mode Secours.
+
+🎓 **Leçon** : toujours vérifier le **format réel** d'une API publique exposée par un autre module avant de l'utiliser. Le commentaire de `secoursMode.js` aurait pu être plus explicite ("PALETTE = tableau d'objets {hex, nom}, pas de strings"). À ajouter à `gotchas.md` si pattern récurrent ? Cas isolé, je laisse.
+
+---
+
+**📦 v1.40.35** (07/06/2026) — **Hotfix Mode Sortie d'urgence : conversion pixels → mètres oubliée (distance affichée × scale)** :
+
+KARMA : *« bug dans le mode secour sortie plus proche on affiche des valeurs de distance totalement différente de ce que on affiche en path finder (qui est bon). Cavage : Oise 4.63 km au lieu de 944,5m dans mon cas »*.
+
+🎯 **Cause racine** (classique d'oubli d'unité)
+
+| Fichier | Comportement |
+|---|---|
+| `js/utils.js` ligne 136 | `formatDistance(distM, decimalsM)` attend **mètres** (commentaire explicite ligne 131) |
+| `js/measure.js` ligne 106 | ✅ `const distM = distPx / APP_CONFIG.scale;` AVANT `formatDistance` |
+| `js/lostMode.js` ligne 168 | ✅ `const distM = distPx / _scale();` AVANT `formatDistance` |
+| `js/sortieUrgence.js` ligne 108 (avant fix) | ❌ `window.formatDistance(distPx, 0)` directement — **conversion oubliée** |
+
+Le pathfinder retourne un path en **pixels plan**, et `_calculerDistPathfinder` cumule les distances euclidiennes en pixels (`distPx: d`). Sans la division par `APP_CONFIG.scale` (px par mètre), `formatDistance` interprète le nombre comme mètres → affichage gonflé du ratio scale.
+
+Sur le plan **Cavage Oise** de KARMA, `APP_CONFIG.scale ≈ 4.9` → 944.5 m réels × 4.9 ≈ 4628 m → affiché "4.63 km".
+
+🔧 **Fix v1.40.35** dans `js/sortieUrgence.js` ligne 106
+
+```diff
+- function _formatDist(distPx) {
+-   if (typeof window.formatDistance === "function") {
+-     return window.formatDistance(distPx, 0);   // ❌ distPx interprété comme m
+-   }
+-   return Math.round(distPx) + " px";
+- }
++ function _formatDist(distPx) {
++   const scale = (window.APP_CONFIG && typeof window.APP_CONFIG.scale === "number"
++                  && window.APP_CONFIG.scale > 0)
++                   ? window.APP_CONFIG.scale
++                   : 1;
++   const distM = distPx / scale;
++   if (typeof window.formatDistance === "function") {
++     return window.formatDistance(distM, 0);
++   }
++   if (scale === 1) return Math.round(distPx) + " px";
++   return distM < 1000
++     ? distM.toFixed(0) + " m"
++     : (distM / 1000).toFixed(2) + " km";
++ }
+```
+
+Cohérent avec le pattern de `lostMode.js` et `measure.js`. Le fallback `scale = 1` (= si `APP_CONFIG.scale` indispo) revient au comportement précédent (affichage "px") pour ne pas masquer un bug de configuration.
+
+📊 **Avant / Après** (exemple Cavage Oise, KARMA)
+
+| | Avant v1.40.35 | Après v1.40.35 |
+|---|---|---|
+| Distance brute pathfinder (pixels) | 4628 px | 4628 px |
+| `APP_CONFIG.scale` (px/m) | ~4.9 | ~4.9 |
+| Distance affichée Sortie urgence | ❌ **"4.63 km"** | ✅ **"944 m"** |
+| Distance affichée pathfinder normal | ✅ "944 m" (déjà bon) | ✅ "944 m" (inchangé) |
+| Cohérence entre les 2 modules | ❌ | ✅ |
+
+🔍 **Audit global** (vérifié par grep) : tous les autres usages de `distPx` dans `sortieUrgence.js` (lignes 245 + 285) passent par `_formatDist` → fix global avec **une seule modif**. Le tri ligne 187 utilise `distPx - distPx` (cohérence préservée, l'unité n'importe pas tant qu'elle est cohérente).
+
+🧪 **Tests à faire**
+- Plan Cavage Oise + position tracker à 944 m d'une sortie → mode `🚨 Sortie urgence` affiche **"944 m"** (et plus "4.63 km")
+- Vérifier que la même distance s'affiche identique côté pathfinder normal (`🗺️ Itinéraire`)
+- Cas court (< 1 km) : affichage `XXX m`
+- Cas long (> 1 km) : affichage `X.XX km`
+- Plan sans `APP_CONFIG.scale` défini (cas dégénéré théorique) → fallback `Math.round(distPx) + " px"`
+- Multi-sorties : toutes leurs distances respectives correctes et triées par ordre croissant
+
+🛡️ **Pas de régression** — fix isolé sur 1 fonction (`_formatDist`), 0 changement de logique de calcul du pathfinder. Aucun changement réseau/sécurité.
+
+🎓 **Leçon (à noter dans `gotchas.md` si tu veux)** : `window.formatDistance` attend des **mètres**, pas des pixels. Toujours diviser par `APP_CONFIG.scale` avant l'appel. Sites à risque : tout nouveau module qui consomme une distance du pathfinder doit appliquer cette conversion. Reference patterns dans `lostMode.js` ligne 168 et `measure.js` ligne 106.
+
+---
+
+**📦 v1.40.34** (07/06/2026) — **Synergie Vue OSM × Mode Secours — étape A v2 : layer "🚨 Secours" (zones + itinéraires équipes) dans la modale Vue OSM** :
+
+KARMA après test v1.40.33 : *« en vue OSM on n'affiche pas les zone des équipes, itinéraire »*.
+
+🎯 **Diagnostic** : Mode Secours rend son overlay équipes (zones colorées + itinéraires) sur la **map principale Leaflet** uniquement, pas sur la **modale Vue OSM** (osmView.js). Donc en ouvrant Vue OSM depuis Mode Secours, on ne voit que les POI/roads standards du plan, pas le contexte équipes.
+
+🔧 **Fix v1.40.34** — Nouveau layer `_secoursLayer` dans `osmView.js`
+
+**Côté données** : réutilisation directe de l'API publique `window.SecoursMode` (`getCurrentScenarioId`, `get`, `PALETTE`) — pas besoin de toucher `secoursMode.js`. Schéma scenario.groupes utilisé : `couleurIdx`, `zoneType`, `zonePolygon`, `itineraireSuggere`, `entree`, `sortie`, `distanceM`, `nom`.
+
+**Côté rendu** (osmView.js, ~150 lignes) :
+- Helper `_renderSecoursLayer()` projette pour chaque équipe :
+  - **Zone d'intervention** polygone (`zonePolygon`) → `L.polygon` couleur équipe + `fillOpacity: 0.18` + tooltip "🚨 Zone — {nom}"
+  - **Itinéraire suggéré** (`itineraireSuggere`) → `L.polyline` couleur équipe + `dashArray: "8 4"` + `weight: 4` + tooltip "🧭 Itinéraire — {nom} (distance)"
+  - **Marker entrée** (●) → `L.circleMarker` couleur équipe + tooltip "🚪 Entrée — {nom}"
+  - **Marker sortie** (▲) → `L.divIcon` triangle CSS couleur équipe + tooltip "🏁 Sortie — {nom}"
+- Couleur via `SecoursMode.PALETTE[couleurIdx]` avec fallback statique
+- Filtre M-LVL respecté point par point (`_isLevelAllowed`)
+- Helper `_hasActiveSecoursScenario()` détecte si un scénario est courant
+
+**Hooks intégration** (3 sites) :
+1. **Au `open()`** de la modale Vue OSM : auto-render si scénario actif (`if (_secoursVisible && _hasActiveSecoursScenario()) _renderSecoursLayer()`)
+2. **Au refresh M-LVL** (`_refreshLevelFilteredLayers`) : re-render pour respecter les niveaux visibles
+3. **Au `close()`** : cleanup `_secoursLayer.clearLayers() + null`
+
+**Toggle UI** :
+- Bouton `🚨 Secours` dans le bandeau Vue OSM, à côté de `🌐 Zones` / `🏗️ Struct`
+- **Visible UNIQUEMENT si scénario actif** (sinon masqué, pas de bandeau pollué inutilement)
+- Fond rouge léger `rgba(255,80,80,0.15)` + padding pour signaler le contexte critique
+- État par défaut : ON si scénario actif
+
+📊 **Avant / Après**
+
+| Affichage Vue OSM (modale plein écran) | Avant v1.40.34 | Après v1.40.34 |
+|---|---|---|
+| Tuiles plan + OSM | ✅ | ✅ |
+| POI session/data | ✅ | ✅ |
+| Roads + iti pathfinder global | ✅ | ✅ |
+| Zones du plan + Structures | ✅ | ✅ |
+| **Zones d'intervention par équipe Mode Secours** | ❌ | ✅ Polygones couleur équipe |
+| **Itinéraires par équipe Mode Secours** | ❌ | ✅ Polylines dashed couleur équipe |
+| **Markers entrée/sortie par équipe** | ❌ | ✅ ● entrée + ▲ sortie couleur équipe |
+| Toggle dédié | ❌ | ✅ `🚨 Secours` (conditionnel) |
+
+🧪 **Tests à faire**
+- Créer un scénario Mode Secours avec 2-3 équipes (couleurs différentes), définir une zone polygone + des entrée/sortie pour chacune, calculer leur itinéraire suggéré → Lancer le plan
+- Ouvrir Vue OSM depuis bandeau "PLAN ACTIF" (bouton 🌍 v1.40.33) → la modale Vue OSM affiche le toggle `🚨 Secours` activé par défaut
+- Vérifier que chaque équipe a sa zone (semi-transparent), son iti (dashed) et ses markers entrée/sortie dans sa couleur
+- Décocher `🚨 Secours` → tout disparaît instantanément (cleanup propre)
+- Multi-LVL : si plan multi-niveau, changer le niveau visible via chips → zones/iti se re-filtrent automatiquement
+- Tooltip au hover sur chaque élément → nom de l'équipe + détails
+
+🔜 **Étapes suivantes** (rappel roadmap A→E) :
+- **B** : page Vue OSM dans le rapport PDF post-mission (screenshot Leaflet + jsPDF.addImage)
+- **C** : export 🚒 Briefing pompiers PDF dédié
+- **D** : POI 🚪 Point d'entrée du plan spécial
+- **E** : Position GPS surface des équipes (via canal JSON/PDF, pas QR car désactivé)
+
+🛡️ **Pas de régression** — addition pure dans `osmView.js` (~165 lignes). 0 modif `secoursMode.js` (réutilisation API publique existante). 0 changement réseau ou sécurité. Audit `NETWORK_AUDIT` headers bumpés à v1.40.34 pour alignement.
+
+---
+
+**📦 v1.40.33** (07/06/2026) — **Synergie Vue OSM × Mode Secours — étape A/5 : bouton « 🌍 Vue OSM » dans les bandeaux Mode Secours** :
+
+KARMA : *« maintenant je pense que avec le mode OSM, on peut faire une belle évolution du mode secours, sans trop se fatiguer »* + *« on fait A jusqu'à E step by step »*.
+
+🎯 **Roadmap synergie Vue OSM × Mode Secours** (5 étapes step-by-step)
+
+| Étape | Idée | Effort | Statut |
+|---|---|---|---|
+| **A** | Bouton 🌍 Vue OSM dans bandeau Mode Secours | Faible (~150 lignes) | ✅ **v1.40.33** |
+| B | Page Vue OSM dans rapport PDF post-mission | Faible (~80 lignes) | À venir |
+| C | Export 🚒 Briefing pompiers dédié (PDF compact) | Moyen (~250 lignes) | À venir |
+| D | POI 🚪 Point d'entrée du plan spécial | Très faible (~50 lignes) | À venir |
+| E | Position GPS surface des équipes (via canal JSON/PDF, **pas QR** car désactivé) | Moyen-haut (~300 lignes + UX) | À venir |
+
+🔧 **Implémentation étape A — v1.40.33** (`js/secoursMode.js`)
+
+**Insertions HTML (2 sites)** :
+1. Bandeau **"PLAN ACTIF"** (~ligne 5743) : bouton `🌍 Vue OSM` ajouté entre `▶️ Reprendre la vue Live` et `📤 Rapport`. Visible quand un plan de secours est en cours.
+2. Bandeau **"PLAN TERMINÉ"** (~ligne 5773) : même bouton, accessible pour le debrief post-mission entre `📤 Voir le rapport` et `🚀 Relancer`.
+
+Les 2 boutons sont stylés `kta-btn-secondary kta-btn-sm` (cohérent avec les autres boutons du bandeau), portent `data-action="ouvrir-vue-osm"`, et un `title` explicatif pour le hover.
+
+**Handler dispatcher** (~ligne 6822) : nouveau bloc `corps.querySelectorAll('[data-action="ouvrir-vue-osm"]').forEach(...)` qui branche le helper `_ouvrirVueOsmDepuisSecours` au click.
+
+**Helper privé `_ouvrirVueOsmDepuisSecours()`** (~70 lignes, posé juste avant `_afficherModaleRapport` pour cohérence helpers UI) :
+- Vérifie présence du module `window.OsmView` (module chargé ?)
+- **Pré-diagnostic explicite** : inspecte 5 raisons d'indisponibilité individuellement :
+  - Plan non géoréférencé (pas de `PLAN_CONFIG.plan.georef.pointA/B`)
+  - Opt-in Vue OSM désactivé (`OsmView.isOptedIn() === false`)
+  - Mode hors-ligne strict actif (`NetworkAudit.isStrictOfflineEnabled()`)
+  - Mode incognito actif (`IncognitoMode.isActive()`)
+  - Navigateur hors-ligne (`navigator.onLine === false`)
+- Si au moins une raison → toast warn diagnostic clair (concaténé) → guide l'user vers la résolution
+- Sinon → `window.OsmView.open()` standard. La modale Vue OSM gère sa propre stack z-index, ses tuiles, ses POI, ses layers. **0 code dupliqué**.
+
+📊 **Pourquoi cette synergie marche "sans trop se fatiguer"**
+
+- Réutilisation **95%** de l'infrastructure Vue OSM existante (modale, tuiles, POI auto-projetés, GPS bouton 📍, filtre tag, etc.)
+- 0 nouveau layer/state Mode Secours côté Vue OSM (les waypoints d'intervention sont déjà rendus comme POI standards du plan)
+- 0 modification de `osmView.js` ou `osmHomePreview.js`
+- Touche uniquement `secoursMode.js` (~85 lignes : 2× ~5 lignes HTML + 1× ~70 lignes helper + handler dispatcher)
+- Gating Vue OSM (opt-in, strict, incognito, online) **automatiquement respecté** car on délègue à `OsmView.isAvailable` + checks individuels pour diagnostic
+
+🧪 **Tests à faire**
+- Mode Secours **actif** sur plan georef : bandeau "PLAN ACTIF" affiche `🌍 Vue OSM` entre Reprendre et Rapport → click → modale Vue OSM s'ouvre normale avec waypoints/POI projetés.
+- Mode Secours **terminé** : bandeau "PLAN TERMINÉ" affiche `🌍 Vue OSM` entre Rapport et Relancer → click → idem.
+- **Plan NON georef** : click → toast `🌍 Vue OSM indisponible — plan non géoréférencé (configure pointA/pointB GPS dans le générateur avancé)`.
+- **Opt-in Vue OSM désactivé** : click → toast `🌍 Vue OSM indisponible — opt-in Vue OSM désactivé (→ ⚙️ Configuration → 🌍 Autoriser la Vue OSM)`.
+- **Strict offline** + Mode Secours : click → toast `🌍 Vue OSM indisponible — mode hors-ligne strict actif`.
+- **Incognito** : click → toast `🌍 Vue OSM indisponible — mode incognito actif`.
+- **Wi-Fi/4G coupé** : click → toast `🌍 Vue OSM indisponible — navigateur hors-ligne (tuiles OSM indisponibles)`.
+- Multiple raisons simultanées : toast concatène avec ` · ` séparateur.
+
+🛡️ **Pas de régression** — pure addition. Mode Secours sans plan georef ou sans opt-in : comportement v1.40.32 inchangé (les bandeaux sans le bouton — non, **avec** le bouton + toast diagnostic au click, plus user-friendly que silence).
+
+🔜 **Prochaine étape B** : page Vue OSM dans le rapport PDF post-mission (screenshot Leaflet existant à étendre + jsPDF.addImage). À démarrer quand tu valides A en testant.
+
+---
+
+**📦 v1.40.32** (07/06/2026) — **Enrichissement Onboarding : 2 nouvelles cartes (🌍 Vue OSM, 📖 Mode Histoire) + enrichissements (🚨 Sortie urgence, 🎤 Vocale)** :
 
 KARMA : *« On doit pouvoir enrichir le On Boarding avec la partie OSM et Histoire (peut être d'autres oublis) »*.
 

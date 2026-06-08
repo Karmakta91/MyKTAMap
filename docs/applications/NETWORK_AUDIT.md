@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.40.32** (7 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.43.21** (8 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -87,6 +87,7 @@ envoyé** (réponse : rien, jamais).
 | `<origin>/*` (HTML, JS, CSS, images, JSON) | `GET` | Au boot + cache PWA | Charger l'app | **Aucune** |
 | `<origin>/version.json` | `GET` | Au boot, puis check périodique | Détecter une nouvelle version dispo | **Aucune** |
 | `<origin>/alert.json` | `GET` | Au boot | Diffusion d'alertes publiques (incendie, fermeture site, etc.) | **Aucune** |
+| `<origin>/denylist.json` | `GET` (cache:no-store SW) | Au boot + 1×/24h (cache LS local) | Kill-switch anti-fuite : récupérer la liste publique des empreintes SHA-256 de plans révoqués par l'auteur (v1.42.0+) | **Aucune** (lecture seule d'une liste publique côté serveur ; les empreintes des plans owned ne sont JAMAIS envoyées, comparaison 100% client-side via `crypto.subtle.digest`) |
 | `<origin>/data/<plan>/*` | `GET` | Charge d'un plan serveur | Lecture des fichiers d'un plan (image + JSON) | **Aucune** |
 | `<origin>/docs/applications/README_USER.md`, `<origin>/docs/applications/AI_CONTEXT.md`, `<origin>/docs/NETWORK_AUDIT.*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
 | `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update, avant ouverture Vue OSM | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
@@ -176,9 +177,12 @@ sous 3 conditions strictes simultanément réunies** :
   donnée utilisateur n'est envoyée** : juste les coordonnées géographiques
   `{z}/{x}/{y}` de la tuile, c'est-à-dire un quadrillage Web Mercator
   standard partagé par tous les utilisateurs OSM.
-- **Cache PWA** : les tuiles OSM ne sont **PAS** mises en cache par le
-  Service Worker — elles ne survivent pas au plan switch ni au refresh.
-  Pas de stockage local persistant côté MyKTAMap.
+- **Cache PWA (jusqu'à v1.42.x)** : les tuiles OSM n'étaient **PAS** mises en
+  cache par le Service Worker — elles ne survivaient pas au plan switch ni au
+  refresh. **Comportement modifié depuis v1.43.0** : un cache offline OSM
+  **opt-in user** (bouton « 💾 Cacher pour offline ») a été ajouté. Détails
+  complets dans la sous-section dédiée plus bas (« Cache offline OSM (depuis
+  v1.43.0) »).
 - **Widget HOME (depuis v1.40.0)** : extraction du ZIP du plan
   sélectionné se fait **localement** dans le browser via JSZip (lecture
   IDB blob ou FS handle). Aucune donnée plan n'est envoyée à OSM ou à
@@ -226,6 +230,216 @@ sous 3 conditions strictes simultanément réunies** :
     fix GPS). Note : `navigator.onLine === false` (Wi-Fi/4G coupé)
     n'empêche **pas** le GPS — c'est l'intérêt principal (téléphone en
     avion mais GPS du device parfaitement fonctionnel).
+
+### Cache offline OSM / « Save Offline » (depuis v1.43.0, consolidé jusqu'à v1.43.21)
+
+**Nouveauté v1.43.0** : l'utilisateur peut maintenant **mémoriser les tuiles
+OSM affichées** pour les consulter hors-ligne plus tard. C'est une feature
+**100% locale, opt-in user explicite**, qui ne change **aucune** garantie
+réseau ni privacy de l'app.
+
+**Note — consolidation v1.43.0 → v1.43.8 (8 patches consécutifs)** : la
+feature a été stabilisée sur 8 versions sans **aucune** évolution de la
+surface réseau sortante. Toutes les modifications sont purement
+client-side (UX, gates, robustesse SW, fix de logique de cache). Récap :
+
+- **v1.43.0** — Feature de base : nouveau store IDB `myktamap_osm_tiles`,
+  intercept SW `tile.openstreetmap.org/{z}/{x}/{y}.png`, bouton 💾 « Cacher
+  pour offline ».
+- **v1.43.1** — Fix gate offline : recheck JIT du flag `navigator.onLine`
+  dans `open()` + passage de `open()` en async pour permettre la
+  vérification IDB pré-fetch.
+- **v1.43.2** — Fix dispatch d'event quand le flag de cache change
+  (synchronisation UI modale ↔ widget HOME).
+- **v1.43.3** — Widget HOME : overlay « plan non caché » + cache global
+  partagé per-plan (clé canonique partagée entre modale et widget).
+- **v1.43.4** — Repositionnement UX du bouton (cohérence visuelle avec les
+  autres contrôles de la modale).
+- **v1.43.5** — Robustesse Service Worker : pré-cache des assets critiques
+  de la feature + self-heal au `activate` (re-pré-cache si fichiers
+  manquants suite à un upgrade SW interrompu).
+- **v1.43.6** — Fix `hasCacheForBbox` any-zoom : le check couvre désormais
+  tous les zooms de 10 à 18 au lieu d'un hardcode z=14.
+- **v1.43.7** — Fix bypass `_pingThenOpen` si cache présent : on
+  n'effectue plus le ping `/ping.html` quand le cache local suffit (moins
+  d'appels réseau, ouverture instantanée hors-ligne).
+- **v1.43.8** — Renommage du label utilisateur « Cacher offline » →
+  « Save Offline » (cosmétique pure, aucun changement de comportement).
+- **v1.43.9** — UX mobile : media query CSS pour le bandeau du widget Vue
+  OSM Accueil (sélecteur de plan seul sur sa ligne, boutons groupés en
+  dessous). Strict cosmétique, aucun changement réseau.
+- **v1.43.10** — Robustesse cache : extension du `CRITICAL_APP_SHELL` à
+  4 docs consultables offline (`NETWORK_AUDIT.html`, `README_USER.md` FR/EN,
+  `AI_CONTEXT.md`). Ces fichiers bénéficient désormais du retry x3 à
+  l'install + self-heal au activate (cf v1.43.5). Aucun changement de
+  surface réseau — juste une garantie supplémentaire que ces pages sont
+  disponibles offline après update.
+- **v1.43.11** — Refonte stratégie cache SW suite à audit impartial.
+  **Fix A** : `caches.match()` scopé au `CACHE_NAME` courant uniquement
+  (avant : matchait dans tous les caches → risque de servir une entrée
+  d'un ancien cache pas encore supprimé par l'activate async). **Fix B** :
+  stratégie **network-first avec timeout 3s** pour les docs HTML/MD
+  (`/docs/applications/*.html` et `*.md`), au lieu du cache-first.
+  Garantit que les docs sont toujours fraîches en ligne (= règle le bug
+  récurrent « page audit pas à jour après update »), avec fallback cache
+  si le réseau échoue/timeout. **Surface réseau inchangée** : c'est juste
+  un ré-arbitrage interne SW entre cache local et fetch self-origin déjà
+  whitelistés (`myktamap.fr/docs/...`). Aucune nouvelle URL.
+- **v1.43.12** — Nouvel outil **🔧 Inspecteur Service Worker**
+  (`js/swInspector.js`) accessible depuis Configuration → Inspecteur →
+  « Voir l'état du cache (Service Worker) ». Compare la liste attendue
+  (`ASSETS_TO_CACHE`) avec ce qui est réellement en cache, affiche le diff
+  + verdict + bouton « Récupérer les fichiers manquants ». 2 nouveaux
+  message handlers SW : `GET_EXPECTED_ASSETS` (lecture) et
+  `REFETCH_MISSING_ASSETS` (action user explicite). **100% local**, aucun
+  appel externe ; le refetch utilise les mêmes URLs self-origin déjà
+  cataloguées. Aucune nouvelle surface réseau.
+- **v1.43.13** — **Auto-heal silencieux du cache au boot**. ~5 s après le
+  chargement de l'app, si toutes les conditions sont remplies, l'auto-heal
+  appelle automatiquement la même logique que le bouton « Récupérer
+  fichiers manquants » de l'Inspecteur SW. Conditions cumulatives :
+  (1) `navigator.onLine === true`, (2) Service Worker controller actif,
+  (3) **pas en Mode hors-ligne strict**, (4) **pas en Mode incognito**,
+  (5) pas déjà tiré cette session (`sessionStorage` anti-spam),
+  (6) cap à 100 fetches max (anti-DDoS sur cache cassé). Output en console
+  uniquement (pas de toast UI). Toutes les requêtes sont des `cache.add`
+  des assets `ASSETS_TO_CACHE` — donc 100 % self-origin sur la whitelist
+  existante. **Respect intégral des modes privacy** : strict offline +
+  incognito désactivent l'auto-heal.
+- **v1.43.14** — UX : ajout d'un bouton 🔼/🔽 dans le header de la modale
+  Vue OSM pour réduire/afficher les contrôles (opacité, actions, toggles,
+  niveaux M-LVL, tags). État persisté en localStorage
+  (`myktamap_osm_controls_collapsed`). Aucun impact réseau ni privacy.
+- **v1.43.15** — UX : même toggle 🔼/🔽 dans le bandeau du widget OSM
+  Accueil (`myktamap_osm_home_controls_collapsed`). + CSS : en mode plein
+  écran du widget, le bouton de fermeture ✕ est repositionné en haut à
+  droite avec fond jaune contrasté (avant : à la fin du bandeau actions,
+  peu intuitif). Aucun impact réseau ni privacy.
+- **v1.43.16** — Ajustement CSS : taille du bouton ✕ fullscreen widget
+  Home réduite (padding 10×14 → 4×9, font 18 → 13) suite à feedback user.
+  Aucun impact réseau ni privacy.
+- **v1.43.17** — Crédits : ajout de **📸 html2canvas** dans les 3 footers
+  citant les bibliothèques utilisées (splash de démarrage, footer du loader
+  accueil, footer de la modale Documentation). Cette lib est utilisée depuis
+  v1.42.5 pour la capture du rendu Leaflet de la Vue OSM dans le PDF
+  « Briefing pompiers » du Mode Secours. La lib est **vendored** dans
+  `lib/html2canvas.min.js`, exécutée 100% côté client, aucun appel réseau.
+  Aucun impact privacy.
+- **v1.43.18** — UX cosmétique : 2 corrections d'affichage des crédits libs.
+  Splash temporairement allégé à 5 libs (sans html2canvas) pour éviter
+  chevauchement avec le logo KARMA. Loader accueil + modale Documentation :
+  ajout de `&nbsp;` (espace non-sécable) entre chaque emoji et son nom de lib,
+  pour empêcher le wrap de couper la paire emoji↔nom. Aucun impact réseau.
+- **v1.43.19** — UX cosmétique : splash de démarrage refactorisé en
+  **2 lignes de 3 libs** (au lieu de 1 ligne de 5), permettant de réintégrer
+  📸 html2canvas tout en gardant le logo KARMA à droite comme avant.
+  CSS : hauteur du conteneur `#splashLeafletCredit` doublée (20→40px PC,
+  18→36px mobile, 16→32px landscape), `display: block` + `text-align: left`,
+  `<br>` HTML pour forcer le split après la 3e lib. Aucun impact réseau.
+- **v1.43.20** — UX cosmétique : `#splashLicense` (bloc « Édition pro /
+  Licence active » sur édition pro, équivalent sur community) remonté aux
+  3 breakpoints (PC 70→82px, mobile 56→78px, landscape 46→70px) pour éviter
+  le chevauchement visuel avec la 1re ligne du crédit splash, désormais à
+  2 lignes depuis v1.43.19. Aucun impact réseau.
+- **v1.43.21** — Hotfix critique : régression introduite en v1.43.18 sur la
+  modale Documentation (bouton « 📖 Doc » du loader). Cause racine : un
+  commentaire HTML inséré dans un template literal JavaScript contenait
+  des caractères backticks (`` ` ``) qui fermaient prématurément le
+  `modal.innerHTML = \`...\`` → HTML tronqué → modale cassée. Fix : les
+  backticks ont été remplacés par `&amp;nbsp;` dans le commentaire. Aucun
+  impact réseau, aucun impact privacy — bug de syntaxe JS pur, corrigé
+  côté client.
+
+**Confirmation privacy v1.43.0 → v1.43.21** : aucun de ces 22 patches
+n'ajoute de surface réseau sortante. Le cache reste 100% IndexedDB local,
+les requêtes vers `tile.openstreetmap.org` passent par le Service Worker
+qui sert depuis IDB ou laisse passer le fetch réseau standard. **AUCUN
+tracking, AUCUN header custom révélant l'usage offline, AUCUNE télémétrie**
+n'a été introduit·e sur la série.
+
+**Mécanisme** :
+
+- Nouveau module client `js/osmTilesCache.js` qui expose l'API
+  `window.OsmTilesCache` (`init` / `cacheVisibleTiles` / `getCachedTile` /
+  `getStats` / `hasCacheForBbox` / `clear`).
+- Nouveau store **IndexedDB** `myktamap_osm_tiles` (object store `tiles`,
+  schéma `{key: "z/x/y", blob, addedAt}`). Stocke les PNG de tuiles OSM en
+  blob, indexés par leur coordonnée Web Mercator standard `{z}/{x}/{y}`
+  (clé identique à l'URL CDN OSM, donc aucune donnée perso ne transite par
+  la clé). **Pur stockage local navigateur, jamais transmis nulle part.**
+- Le **Service Worker** `sw.js` intercepte les `fetch` sortants matchant
+  le pattern `tile.openstreetmap.org/{z}/{x}/{y}.png` : si la tuile est
+  présente en IDB, il retourne le blob directement (avec un header de
+  debug local `X-OSM-Cache: hit`) **sans toucher au réseau**. Sinon, il
+  laisse passer le `fetch` réseau normal (= comportement v1.42.x
+  conservé). **Aucune nouvelle URL n'est contactée par cette feature** —
+  c'est strictement un mécanisme de short-circuit local d'un fetch
+  existant déjà documenté dans la whitelist (`tile.openstreetmap.org`).
+
+**Déclenchement utilisateur** : le bouton « 💾 Cacher pour offline »
+apparaît dans **3 contextes** (tous opt-in user, tous post-v1.39.0 OSM
+opt-in) :
+
+1. **Modale Vue OSM** (`osmView.js`) — clic sur le bouton dans la modale
+   full-screen.
+2. **Widget OSM accueil** (`osmHomePreview.js`) — clic depuis la
+   mini-preview HOME.
+3. **Mode Secours** — accessible indirectement via les boutons 🌍 Vue OSM
+   du Mode Secours qui rouvrent la modale Vue OSM standard (pas de chemin
+   indépendant).
+
+Le cache est **GLOBAL** (partagé entre les 3 contextes) : si l'user a déjà
+caché une tuile depuis le widget HOME, elle est instantanément réutilisée
+dans la modale Vue OSM et inversement (même clé `z/x/y`, pas de
+duplication).
+
+**Cap conformité OSM** : `MAX_TILES_PER_CACHE = 200 tuiles par opération`.
+Conforme à la politique d'usage du CDN officiel
+(`https://operations.osmfoundation.org/policies/tiles/`) — pas de
+téléchargement massif en masse, pas d'épuisement des quotas tiers, pas de
+scraping. L'user qui veut cacher une zone plus grande doit déplacer la
+carte et relancer l'opération (paliers de 200).
+
+**Mode dégradé hors-ligne** : si l'utilisateur lance la Vue OSM **alors
+qu'il n'a pas Internet** mais qu'**un cache est déjà présent pour la bbox
+du plan**, la modale s'ouvre quand même (mode dégradé visuel avec tuiles
+cachées). La détection est faite par `_isOnlineOrCached()` (relaxation de
+l'ancien `_isOnline()` du v1.42.x). **Aucun appel réseau n'est tenté dans
+ce cas** — c'est lecture IDB pure. Si aucune tuile n'est cachée pour la
+bbox, le comportement v1.42.x est conservé (modale bloquée + toast warn).
+
+**Privacy — garanties** :
+
+- **Aucune donnée n'est envoyée** par cette feature. Les fetch vers
+  `tile.openstreetmap.org` qui se déclenchent lors de l'action « 💾 Cacher
+  pour offline » sont des `GET` HTTPS **standards**, strictement
+  identiques à une consultation OSM normale (= ceux déjà autorisés par la
+  whitelist `tile.openstreetmap.org` documentée plus haut).
+- **Aucun header custom** révélant l'usage offline n'est envoyé au CDN
+  OSM. Le header `X-OSM-Cache: hit` est ajouté **uniquement par le Service
+  Worker dans la réponse fournie au code applicatif** (debug local), il
+  n'est jamais émis dans une requête sortante.
+- **Pas de tracking, pas de télémétrie** : ni vers le serveur MyKTAMap
+  (qui n'a pas de backend applicatif), ni vers OSM (au-delà du `GET` brut
+  d'une tuile, identique à ce que fait n'importe quel client OSM).
+- **Le store `myktamap_osm_tiles` est strictement local** : inspectable
+  via F12 → Application → IndexedDB → `myktamap_osm_tiles` → store
+  `tiles`. Effaçable manuellement, ou via le bouton « 💥 Tout
+  réinitialiser » de ⚙️ Configuration, ou via le `OsmTilesCache.clear()`
+  exposé en console.
+- **Respect des modes vie privée** : le bouton « 💾 Cacher pour offline »
+  est masqué/désactivé si Mode hors-ligne strict OU Mode incognito sont
+  actifs (héritage automatique des gates `osmView.js` /
+  `osmHomePreview.js` v1.40.19).
+
+**Verdict réseau v1.43.21** : ✅ aucune nouvelle URL ajoutée à la liste
+blanche, aucune nouvelle catégorie de donnée envoyée, aucun service tiers
+contacté. Le périmètre réseau v1.42.x est **strictement conservé** sur
+toute la série v1.43.0 → v1.43.21. La whitelist endpoints reste inchangée
+(`tile.openstreetmap.org`, `denylist.json`, `ping.html`, `version.json` +
+assets app). Le seul changement est l'introduction d'un store IDB local
+de plus (cf. section « Stockage local »). La feature « Save Offline »
+n'ajoute **aucune** surface réseau sortante.
 
 **Politique de privacy OSM** : OpenStreetMap est une fondation
 non-commerciale (OpenStreetMap Foundation), les tuiles sont distribuées
@@ -424,6 +638,7 @@ navigateur. Tu peux les inspecter et les supprimer toi-même via `F12` :
 | **IndexedDB → `myktamap_photos`** (v1.10.0+) | Photos POI compressées localement, max 5/point | F12 → Application → IndexedDB |
 | **IndexedDB → `myktamap_crashes`** (v1.20.0+) | Crash reports OOM (archive auto FIFO 5) | F12 → Application → IndexedDB |
 | **IndexedDB → `myktamap_profile`** (v1.21.0+) | **NOUVEAU v1.21.0** — Surnom + photo profil utilisateur (1 seule entry `id="me"`, schema v1). Photo en Blob IDB, compressée canvas (max 512px JPEG q88). Jamais transmise. | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_osm_tiles`** (v1.43.0+) | **NOUVEAU v1.43.0** — Cache offline OSM opt-in user. Object store `tiles`, schéma `{key: "z/x/y", blob, addedAt}`. Stocke des PNG de tuiles `tile.openstreetmap.org` pour consultation hors-ligne (modale Vue OSM, widget HOME, Mode Secours via Vue OSM). Cap `MAX_TILES_PER_CACHE = 200/opération` conforme à la politique d'usage OSM. Cache **GLOBAL** partagé entre les 3 contextes (clé `z/x/y` identique, pas de duplication). **Local pur, jamais transmis**. Effaçable via "💥 Tout réinitialiser" ou `OsmTilesCache.clear()` console. | F12 → Application → IndexedDB |
 | **Cache Storage** | Assets PWA pour le mode hors-ligne | F12 → Application → Cache Storage |
 | **Service Worker** | Code du SW qui gère le cache | F12 → Application → Service Workers |
 
@@ -469,6 +684,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.43.0 (Cache offline OSM — opt-in user, IDB local pur, conformité usage CDN OSM)** : nouvelle feature client-side qui permet à l'utilisateur de **mémoriser les tuiles OSM affichées** pour consultation hors-ligne. Nouveau module `js/osmTilesCache.js` exposant `window.OsmTilesCache` (`init` / `cacheVisibleTiles` / `getCachedTile` / `getStats` / `hasCacheForBbox` / `clear`). **Nouveau store IndexedDB `myktamap_osm_tiles`** (object store `tiles`, schéma `{key: "z/x/y", blob, addedAt}`) — pur stockage local, jamais transmis. Le **Service Worker** `sw.js` intercepte les `fetch` matchant `tile.openstreetmap.org/{z}/{x}/{y}.png` : si présent en IDB, retourne le blob (header debug local `X-OSM-Cache: hit`), sinon laisse passer le réseau normal. Bouton **« 💾 Cacher pour offline »** dans **3 contextes** (Modale Vue OSM, Widget HOME, Mode Secours via Vue OSM). Cache **GLOBAL** partagé entre les 3 contextes (clé `z/x/y` identique, pas de duplication). **Cap `MAX_TILES_PER_CACHE = 200 tuiles/opération`** conforme à la politique d'usage du CDN officiel (`https://operations.osmfoundation.org/policies/tiles/`) — pas de scraping massif. **Mode dégradé** : si offline mais cache présent pour la bbox du plan, Vue OSM s'ouvre quand même (lecture IDB pure, aucun fetch réseau). `_isOnline()` relaxé en `_isOnlineOrCached()`. **Privacy** : ZÉRO donnée envoyée, ZÉRO header custom révélant l'usage offline dans les requêtes sortantes (le header `X-OSM-Cache` est ajouté UNIQUEMENT côté réponse SW au code applicatif). Les fetch vers `tile.openstreetmap.org` lors du caching sont des `GET` HTTPS standards strictement identiques à une consultation OSM normale. Bouton masqué/désactivé si Mode hors-ligne strict OU Mode incognito actifs (héritage gates `osmView.js`/`osmHomePreview.js` v1.40.19). **Impact whitelist `connect-src`** : ZÉRO — `tile.openstreetmap.org` était déjà whitelisté depuis v1.39.0, aucune nouvelle URL ajoutée. **Verdict** : ✅ aucune nouvelle surface réseau, philosophie "100% local, jamais de télémétrie" intégralement préservée, conformité usage OSM CDN respectée.
 
 > **v1.39.0 (Vue OSM — opt-in strict, plan calibré GPS au-dessus d'OpenStreetMap)** : nouvelle modale Leaflet EPSG:3857 avec tile layer OSM (`tile.openstreetmap.org`) + plan MyKTAMap projeté via georef GPS. **Premier appel sortant volontaire vers tile.openstreetmap.org dans l'app** — opt-in STRICT (3 garde-fous) : (1) toggle "Autoriser la Vue OSM" dans ⚙️ Configuration home (default OFF, persisté LS `myktamap_osm_view_opt_in`), (2) `confirm()` natif au premier lancement avec mention explicite du domaine contacté, (3) bouton masqué si plan sans georef OU si Mode hors-ligne strict OU si Mode incognito actifs. **Aucun appel sortant tant que la modale n'est pas ouverte ET le toggle activé**. **Liste blanche `connect-src` ÉTENDUE** : `'self'` + `https://www.gstatic.com` + `https://tile.openstreetmap.org` (uniquement effective côté serveur si l'auteur déploie la nouvelle CSP). **Liste blanche `img-src`** : ajout `https://tile.openstreetmap.org` (tiles OSM). **Verdict** : ✅ extension volontaire et opt-in du périmètre réseau, philosophie 100% offline préservée pour les users qui n'activent jamais le toggle.
 
@@ -736,7 +953,7 @@ Le document sera corrigé et le code patché en priorité absolue.
 
 ---
 
-*Dernière mise à jour : 3 juin 2026 — **v1.31.0** (Privacy & Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0. **Aucune nouvelle whitelist `connect-src`** entre v1.13.0 et v1.31.0 — l'app reste à `'self'` + `https://www.gstatic.com` (ping connectivité) sur toute la série. Historique cumulatif : v1.13.0 `themeManager.js` same-origin, v1.14.0/v1.15.0 `gpxIO.js`/`gpxImport.js` same-origin + fetch icônes cached SW, v1.16.0 `legendCustomization.js` / `favoris.js` / `sessionBackups.js` zéro fetch externe, v1.21.2 `userProfile.js` + `wakeLock.js` + `heatmap.js` réactivé + popup GPS `kta_copierGps` tous strictement client-side, v1.21.3 pack PATCH anti-crash 10 P0 purement runtime, v1.21.4 7 sujets 100 % locaux + **BONUS** pref `myktamap_skip_server_plans_v1` qui SUPPRIME le `fetch("data/index.json")` au boot si activée (premier opt-in qui RÉDUIT la surface réseau depuis l'introduction de l'audit), v1.21.5 → v1.25.3 Mode Secours Phases 1-3 + import `.mkmsec.json` strictement local, v1.25.3-hotfix17 **ROLLBACK QR Phase 4** (réduction nette ~150 KB libs locales du cache), hotfix18 `parseGpsCoords` + recherche par coords, hotfix19-20 kill switch URL `?killsw=1` + page `killsw.html` standalone, hotfix21 input GPS combiné + soft update optimisé via postMessage SW, v1.26.0 import `.mkmsec.report.json` strictement local, v1.26.1 banner cohérence échelle px/m ↔ géoréf 100 % client-side, v1.26.2 / v1.26.3 consolidation + nettoyage code mort + professionnalisation, v1.27.0 saisie assistée position tracker locale + conception nav intelligente (aucun code applicatif), v1.28.0 **navigation intelligente** (map-matching) — 100 % local : graphe en mémoire + calcul géométrique pur + capteurs déjà utilisés, v1.28.1 doc accessible depuis écrans de verrouillage + fix mailto footer (lien sortant, aucun fetch ajouté), **v1.28.2 → v1.28.5 mécanisme de licence pro complet** (4 patchs consécutifs) — détection serveur same-origin (déjà couvert par `connect-src 'self'`), mention splash CSS pure, import manuel depuis le profil et import depuis l'UnlockGate strictement locaux via `FileReader` + validation regex `MKTM-LIC-<32 hex>`, écriture dans `localStorage["__mktm_pro_license_local__"]`, **jamais transmis au serveur**, **v1.29.0** Mode Secours **multi-phases** (C1+C2+C3) + i18n P0 README EN — 100 % local, archive séparée des étapes par phase, fichier `docs/README_USER.en.md` same-origin via SW, **v1.29.1** consolidation 4 hotfix : CSS sélecteur affiné (refactor préventif), event sortant générique `mktm:secours-scenario-mutated` (no-op sans listener), suffixe visuel « -pro » sur splash/header (HTML/CSS additif, cosmétique pure) + pre-commit hook anti-fuite code propriétaire (tooling dev local, aucun impact runtime utilisateur), **v1.29.2** consolidation 3 hotfix UX licence pro : bypass gate communautaire si licence pro détectée (cohérent doctrine v1.28.5, aucun fetch ajouté), variants CSS thème clair pour le suffixe « -pro » (splash + header, orange charte #b8860b au lieu du jaune sombre peu lisible sur fond beige). Aucune permission ajoutée. Verdict global cumulatif : ✅ **MyKTAMap reste strictement offline-first** sur toute la série v1.13.0 → v1.29.2.)*
+*Dernière mise à jour : 8 juin 2026 — **v1.43.8** (consolidation Save Offline v1.43.0 → v1.43.8 — 8 patches consécutifs sans nouvelle surface réseau : v1.43.0 store IDB `myktamap_osm_tiles` + SW intercept + bouton 💾, v1.43.1 fix gate offline recheck JIT + open async, v1.43.2 fix dispatch event sur change de flag, v1.43.3 widget HOME overlay « plan non caché » + cache global partagé per-plan, v1.43.4 reposition UX bouton, v1.43.5 SW robustesse pré-cache critique + self-heal au activate, v1.43.6 fix `hasCacheForBbox` any-zoom 10→18 (plus de hardcode z=14), v1.43.7 fix bypass `_pingThenOpen` si cache présent, v1.43.8 renommage label « Cacher offline » → « Save Offline ». ZÉRO nouvelle URL contactée, ZÉRO header custom sortant, cap `MAX_TILES_PER_CACHE = 200/op` conforme politique d'usage OSM. Privacy & Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0. **Aucune nouvelle whitelist `connect-src`** entre v1.13.0 et v1.43.8 — l'app reste à `'self'` + `https://www.gstatic.com` (ping connectivité v1.0-v1.9.2 puis same-origin `/ping.html` v1.9.3+) + `https://tile.openstreetmap.org` (depuis v1.39.0, opt-in strict) sur toute la série. Historique cumulatif : v1.13.0 `themeManager.js` same-origin, v1.14.0/v1.15.0 `gpxIO.js`/`gpxImport.js` same-origin + fetch icônes cached SW, v1.16.0 `legendCustomization.js` / `favoris.js` / `sessionBackups.js` zéro fetch externe, v1.21.2 `userProfile.js` + `wakeLock.js` + `heatmap.js` réactivé + popup GPS `kta_copierGps` tous strictement client-side, v1.21.3 pack PATCH anti-crash 10 P0 purement runtime, v1.21.4 7 sujets 100 % locaux + **BONUS** pref `myktamap_skip_server_plans_v1` qui SUPPRIME le `fetch("data/index.json")` au boot si activée (premier opt-in qui RÉDUIT la surface réseau depuis l'introduction de l'audit), v1.21.5 → v1.25.3 Mode Secours Phases 1-3 + import `.mkmsec.json` strictement local, v1.25.3-hotfix17 **ROLLBACK QR Phase 4** (réduction nette ~150 KB libs locales du cache), hotfix18 `parseGpsCoords` + recherche par coords, hotfix19-20 kill switch URL `?killsw=1` + page `killsw.html` standalone, hotfix21 input GPS combiné + soft update optimisé via postMessage SW, v1.26.0 import `.mkmsec.report.json` strictement local, v1.26.1 banner cohérence échelle px/m ↔ géoréf 100 % client-side, v1.26.2 / v1.26.3 consolidation + nettoyage code mort + professionnalisation, v1.27.0 saisie assistée position tracker locale + conception nav intelligente (aucun code applicatif), v1.28.0 **navigation intelligente** (map-matching) — 100 % local : graphe en mémoire + calcul géométrique pur + capteurs déjà utilisés, v1.28.1 doc accessible depuis écrans de verrouillage + fix mailto footer (lien sortant, aucun fetch ajouté), **v1.28.2 → v1.28.5 mécanisme de licence pro complet** (4 patchs consécutifs) — détection serveur same-origin (déjà couvert par `connect-src 'self'`), mention splash CSS pure, import manuel depuis le profil et import depuis l'UnlockGate strictement locaux via `FileReader` + validation regex `MKTM-LIC-<32 hex>`, écriture dans `localStorage["__mktm_pro_license_local__"]`, **jamais transmis au serveur**, **v1.29.0** Mode Secours **multi-phases** (C1+C2+C3) + i18n P0 README EN — 100 % local, archive séparée des étapes par phase, fichier `docs/README_USER.en.md` same-origin via SW, **v1.29.1** consolidation 4 hotfix : CSS sélecteur affiné (refactor préventif), event sortant générique `mktm:secours-scenario-mutated` (no-op sans listener), suffixe visuel « -pro » sur splash/header (HTML/CSS additif, cosmétique pure) + pre-commit hook anti-fuite code propriétaire (tooling dev local, aucun impact runtime utilisateur), **v1.29.2** consolidation 3 hotfix UX licence pro : bypass gate communautaire si licence pro détectée (cohérent doctrine v1.28.5, aucun fetch ajouté), variants CSS thème clair pour le suffixe « -pro » (splash + header, orange charte #b8860b au lieu du jaune sombre peu lisible sur fond beige). Aucune permission ajoutée. **Verdict global cumulatif v1.43.8** : ✅ **MyKTAMap reste strictement offline-first** sur toute la série v1.13.0 → v1.43.8. La whitelist endpoints réseau est inchangée (`tile.openstreetmap.org`, `denylist.json`, `ping.html`, `version.json` + assets app same-origin). La feature « Save Offline » n'ajoute **aucune** surface réseau sortante.)*
 
 ---
 

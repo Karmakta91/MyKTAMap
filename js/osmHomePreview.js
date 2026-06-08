@@ -114,7 +114,7 @@
   // d'un nouveau plan = bloat RAM).
   let _tilesBlobUrls  = [];
   let _tilesLayer     = null;   // L.layerGroup pour les tuiles plan projetées
-  let _planOpacity    = 0.7;    // 🆕 v1.40.6 — opacité des tuiles (slider bandeau)
+  let _planOpacity    = 0.5;    // 🆕 v1.40.6 / v1.42.4 — opacité plan (slider bandeau). KARMA : default 50% (meilleur compromis lecture OSM + plan, cohérent avec modale plan).
 
   // Style structures aligné sur structures.js > STRUCTURE_STYLES (cf §3b OSM modal).
   // Variant LIGHT pour la mini-carte HOME (weight/fillOpacity allégés).
@@ -133,8 +133,54 @@
     "principal":  "#00ff00",  // vert
     "secondaire": "#b000ff",  // violet
     "chemin":     "#ffff00",  // jaune
-    "jonction":   "#ff4ecb"   // rose (dashed sur map principale, simplifié ici)
+    "jonction":   "#ff4ecb",  // rose (dashed sur map principale, simplifié ici)
+    "itinerary":  "#00d4ff"   // cyan (cohérence avec ITI_COLOR osmView.js)
   };
+  // 🆕 v1.40.37 — Mapping zones par type (aligné sur zones.js > ZONE_STYLES).
+  // KARMA : « fait en sorte que la couleur des routes, zone, ... persiste »
+  // Cascade : z.color/fillColor explicite > built-in type > custom legend > fallback gris.
+  const ZONE_STYLES_DATA_HOME = {
+    "eau":          { stroke: "#0066aa", fill: "#3aa9e8" },
+    "remblais":     { stroke: "#3a3a44", fill: "#5a5a68" },
+    "effondrement": { stroke: "#cc0000", fill: "#ff3333" },
+    "inaccessible": { stroke: "#5a0a0a", fill: "#b8743c" }
+  };
+  // Helper résolution couleur road (cascade complète)
+  function _resolveRoadColorHome(r) {
+    if (r && typeof r.color === "string" && r.color) return r.color;
+    if (r && r.type && ROAD_STYLES_DATA_HOME[r.type]) return ROAD_STYLES_DATA_HOME[r.type];
+    if (r && r.type && window.LegendCustomization
+        && typeof window.LegendCustomization.findCustomEntry === "function") {
+      try {
+        const e = window.LegendCustomization.findCustomEntry(r.type);
+        if (e && e.category === "traces" && e.lineColor) return e.lineColor;
+      } catch(_) {}
+    }
+    return "#8892a4";
+  }
+  // Helper résolution couleurs zone (stroke + fill, cascade complète)
+  function _resolveZoneColorsHome(z) {
+    if (z && (z.color || z.fillColor)) {
+      return {
+        stroke: z.color     || z.fillColor || "#8892a4",
+        fill:   z.fillColor || z.color     || "#8892a4"
+      };
+    }
+    if (z && z.type && ZONE_STYLES_DATA_HOME[z.type]) return ZONE_STYLES_DATA_HOME[z.type];
+    if (z && z.type && window.LegendCustomization
+        && typeof window.LegendCustomization.findCustomEntry === "function") {
+      try {
+        const e = window.LegendCustomization.findCustomEntry(z.type);
+        if (e && e.category === "zones") {
+          return {
+            stroke: e.lineColor || e.fillColor || "#8892a4",
+            fill:   e.fillColor || e.lineColor || "#8892a4"
+          };
+        }
+      } catch(_) {}
+    }
+    return { stroke: "#8892a4", fill: "#8892a4" };
+  }
   // 🆕 v1.40.13 — Tags built-in (aligné sur map.js > TAGS_BUILTIN). Utilisé
   // pour extraire les icônes par défaut du ZIP si le plan-config n'override pas.
   // Cohérence stricte avec map.js — si TAGS_BUILTIN change là-bas, sync ici.
@@ -172,6 +218,39 @@
   }
   function _isOnline() {
     return (typeof navigator === "undefined") || navigator.onLine !== false;
+  }
+
+  // 🆕 v1.43.3 — Cache OSM offline : flag sync « il existe au moins une
+  // tuile cachée globalement ». Sert au mount() pour décider si on bloque
+  // tout le widget offline (= cache vide partout) OU si on monte normalement
+  // et laisse selectPlan() arbitrer plan par plan.
+  // Refresh async via getStats() au boot + après chaque cache + via event.
+  let _anyCachePresent = false;
+  async function _refreshAnyCachePresent() {
+    try {
+      if (!window.OsmTilesCache) { _anyCachePresent = false; return; }
+      const s = await window.OsmTilesCache.getStats();
+      const before = _anyCachePresent;
+      _anyCachePresent = (s.count > 0);
+      // Si on passe de "rien" à "quelque chose" et qu'on est offline,
+      // remount le widget pour qu'il devienne accessible.
+      if (!before && _anyCachePresent && !_isOnline()) {
+        refresh();
+      }
+    } catch(e) {}
+  }
+
+  // 🆕 v1.43.3 — Helper bbox approximative d'un plan georef à partir des
+  // 2 points calibrés A↔B. Utilisé par hasCacheForBbox pour décider si
+  // un plan donné a des tuiles cachées.
+  function _bboxFromGeoref(georef) {
+    try {
+      if (!_isValidGeoref(georef)) return null;
+      return L.latLngBounds(
+        [georef.pointA.lat, georef.pointA.lng],
+        [georef.pointB.lat, georef.pointB.lng]
+      );
+    } catch(e) { return null; }
   }
   // 🆕 v1.40.19 — Parité gating modale OsmView : strict offline + incognito.
   // Le widget HOME avait un trou (v1.40.0-18) : il chargeait quand même les
@@ -337,38 +416,61 @@
         '<select id="ktaOsmHomePlanSelect" title="Sélectionner un plan georef">' +
           optionsHtml +
         '</select>' +
-        // v1.40.6 — Slider opacité plan (cohérent avec OsmView modale)
-        '<label style="display:inline-flex; align-items:center; gap:4px; font-size:11px;" title="Opacité de l\'image du plan sur OSM">' +
-          '<span style="opacity:0.7;">🎚️</span>' +
-          '<input type="range" id="ktaOsmHomeOpacity" min="0" max="100" value="' + Math.round(_planOpacity * 100) + '" style="width:60px; margin:0;">' +
-        '</label>' +
         // 🆕 v1.40.18 — Bouton "Ma position GPS" (1 fix ponctuel, 0 stockage)
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeMyGpsBtn" type="button" ' +
                 'title="Demander un fix GPS ponctuel (permission OS requise, aucune donnée envoyée ou stockée)" ' +
                 'style="background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.4); color: #00d4ff;">' +
           '📍' +
         '</button>' +
+        // 🆕 v1.43.0 — Bouton "Cacher tuiles offline" (cache partagé avec
+        // Vue OSM modale + Mode Secours, store IDB unique myktamap_osm_tiles).
+        '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeCacheBtn" type="button" ' +
+                'title="💾 Save Offline — Télécharger les tuiles OSM visibles pour consultation hors-réseau (cache partagé avec Vue OSM + Mode Secours)" ' +
+                'style="background: rgba(166,215,133,0.10); border-color: rgba(166,215,133,0.35); color: #a6d785;">' +
+          '💾' +
+        '</button>' +
+        // 🆕 v1.43.15 — Toggle "Réduire les contrôles" (= carte plein écran).
+        // Cache opacity + toggles catégorie + tagrow. Persiste en localStorage.
+        // Très utile sur mobile et en mode fullscreen où le bandeau prend
+        // beaucoup de place.
+        '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeToggleControlsBtn" type="button" ' +
+                'title="Réduire les contrôles (carte plein écran)" ' +
+                'style="background: rgba(140,180,255,0.10); border-color: rgba(140,180,255,0.35); color: #8cb4ff;">' +
+          '🔼' +
+        '</button>' +
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFullBtn" type="button" ' +
                 'title="Agrandir la carte en plein écran">' +
           '⛶' +
         '</button>' +
       '</div>' +
-      // 🆕 v1.40.12 — 2e ligne du bandeau : toggles catégorie (filtres)
-      '<div class="kta-osm-home-toggles">' +
-        _renderToggle("ktaOsmHomeShowTiles",  "🖼️", "Plan",   _showTiles,      "Afficher / masquer l\'image du plan") +
-        _renderToggle("ktaOsmHomeShowPoi",    "📍", "POI",    _showPoi,        "Afficher / masquer les POI") +
-        _renderToggle("ktaOsmHomeShowRoads",  "🛣️", "Routes", _showRoads,      "Afficher / masquer les routes") +
-        _renderToggle("ktaOsmHomeShowZones",  "🌐", "Zones",  _showZones,      "Afficher / masquer les zones") +
-        _renderToggle("ktaOsmHomeShowStruct", "🏗️", "Struct", _showStructures, "Afficher / masquer les structures") +
-      '</div>' +
-      // 🆕 v1.40.17 — 3e ligne du bandeau : filtre par tag (chips)
-      '<div class="kta-osm-home-tagrow">' +
-        '<span class="kta-osm-home-tagrow-label" title="Filtrer les POI par tag (clic = toggle)">🏷️</span>' +
-        '<div class="kta-osm-home-tagchips" id="ktaOsmHomeTagChips"></div>' +
+      // 🆕 v1.43.15 — Wrapper collapsible : opacity + toggles + tagrow.
+      // Cache par le bouton 🔼. La carte (.kta-osm-home-map) reste toujours
+      // visible et prend automatiquement la place via son flex:1 1 auto.
+      '<div id="ktaOsmHomeCollapsible">' +
+        // v1.40.6 — Slider opacité plan (cohérent avec OsmView modale)
+        '<div class="kta-osm-home-opacityrow" style="display:flex; align-items:center; gap:6px; padding:4px 8px; font-size:11px; color:#c8d0e0; border-bottom:1px solid rgba(140,180,255,0.10);" title="Opacité de l\'image du plan sur OSM">' +
+          '<span style="opacity:0.7;">🎚️ Opacité plan :</span>' +
+          '<input type="range" id="ktaOsmHomeOpacity" min="0" max="100" value="' + Math.round(_planOpacity * 100) + '" style="flex:1 1 auto; max-width:240px; margin:0;">' +
+        '</div>' +
+        // 🆕 v1.40.12 — Toggles catégorie (filtres)
+        '<div class="kta-osm-home-toggles">' +
+          _renderToggle("ktaOsmHomeShowTiles",  "🖼️", "Plan",   _showTiles,      "Afficher / masquer l\'image du plan") +
+          _renderToggle("ktaOsmHomeShowPoi",    "📍", "POI",    _showPoi,        "Afficher / masquer les POI") +
+          _renderToggle("ktaOsmHomeShowRoads",  "🛣️", "Routes", _showRoads,      "Afficher / masquer les routes") +
+          _renderToggle("ktaOsmHomeShowZones",  "🌐", "Zones",  _showZones,      "Afficher / masquer les zones") +
+          _renderToggle("ktaOsmHomeShowStruct", "🏗️", "Struct", _showStructures, "Afficher / masquer les structures") +
+        '</div>' +
+        // 🆕 v1.40.17 — Filtre par tag (chips)
+        '<div class="kta-osm-home-tagrow">' +
+          '<span class="kta-osm-home-tagrow-label" title="Filtrer les POI par tag (clic = toggle)">🏷️</span>' +
+          '<div class="kta-osm-home-tagchips" id="ktaOsmHomeTagChips"></div>' +
+        '</div>' +
       '</div>' +
       '<div class="kta-osm-home-map" id="ktaOsmHomeMap"></div>' +
       '<div class="kta-osm-home-footer">' +
-        '🔒 Tiles : tile.openstreetmap.org · ⛶ pour agrandir' +
+        '🔒 Tiles : tile.openstreetmap.org · ⛶ agrandir · ' +
+        // 🆕 v1.43.0 — Stats cache OSM offline (refresh dynamique)
+        '<span id="ktaOsmHomeCacheStats" title="Cache OSM offline (partagé avec Vue OSM + Mode Secours)">📦 …</span>' +
       '</div>';
 
     // Bind dropdown
@@ -387,6 +489,22 @@
     const myGpsBtn = container.querySelector("#ktaOsmHomeMyGpsBtn");
     if (myGpsBtn) {
       myGpsBtn.addEventListener("click", _showMyGpsPositionHome);
+    }
+    // 🆕 v1.43.0 — Bouton "Cacher tuiles offline" + refresh stats
+    const cacheBtn = container.querySelector("#ktaOsmHomeCacheBtn");
+    if (cacheBtn) {
+      cacheBtn.addEventListener("click", _runCacheTilesHome);
+    }
+    _refreshCacheStatsHome();
+
+    // 🆕 v1.43.15 — Toggle "Réduire les contrôles" du widget Home
+    const toggleCtrlBtn = container.querySelector("#ktaOsmHomeToggleControlsBtn");
+    if (toggleCtrlBtn) {
+      toggleCtrlBtn.addEventListener("click", function() {
+        _applyHomeControlsCollapsed(!_getHomeControlsCollapsed());
+      });
+      // Apply état initial immédiatement (avant mount carte Leaflet)
+      _applyHomeControlsCollapsed(_getHomeControlsCollapsed());
     }
     // v1.40.6 — Slider opacité tuiles plan
     const opacitySlider = container.querySelector("#ktaOsmHomeOpacity");
@@ -461,6 +579,43 @@
     _tilesLayer  = L.layerGroup().addTo(_mapInstance); // 🆕 v1.40.6 (en premier = en dessous des data)
     _dataLayer   = L.layerGroup().addTo(_mapInstance); // 🆕 v1.40.4 (au dessus des tuiles)
     _renderGeorefMarkers(georef);
+    // 🐛 v1.40.40-41 — KARMA : « les tuiles OSM ne se chargent pas au boot ».
+    // Cause racine : Leaflet calcule la taille du container AVANT que le DOM
+    // soit stable (HOME se rend progressivement, container `#ktaOsmHomeMap`
+    // pas encore dimensionné). v1.40.40 avait ajouté raf + setTimeout 250ms,
+    // suffisant sur PC mais PAS sur mobile (DOM lent, CSS différé, PWA cold
+    // cache → dimensions stables seulement après 500ms-1.5s).
+    //
+    // v1.40.41 — Mobile fix : combine 3 stratégies redondantes
+    //   1. requestAnimationFrame : tentative immédiate après le prochain paint
+    //   2. ResizeObserver : invalide CHAQUE fois que le container change de
+    //      dimensions (la vraie solution sémantique). Auto-disconnect après
+    //      3 invalidations ou 5 sec (évite leak Observer).
+    //   3. Multi-timeouts safety net : 100ms, 500ms, 1500ms — couvre tous les
+    //      cas où le ResizeObserver ne se déclenche pas (déjà stable mais
+    //      Leaflet avait raté son calcul initial à l'instanciation).
+    function _safeInvalidate() {
+      if (_mapInstance) { try { _mapInstance.invalidateSize(); } catch(e) {} }
+    }
+    requestAnimationFrame(_safeInvalidate);
+    setTimeout(_safeInvalidate, 100);
+    setTimeout(_safeInvalidate, 500);
+    setTimeout(_safeInvalidate, 1500);
+    // ResizeObserver : réagit aux vrais changements de dimensions du container.
+    // Sémantiquement la solution la plus propre (vs polling aveugle).
+    if (typeof ResizeObserver !== "undefined") {
+      let nInvalidations = 0;
+      const ro = new ResizeObserver(function() {
+        _safeInvalidate();
+        nInvalidations++;
+        if (nInvalidations >= 3) {
+          try { ro.disconnect(); } catch(_) {}
+        }
+      });
+      try { ro.observe(mapDiv); } catch(_) {}
+      // Safety cleanup après 5 sec si l'observer continue de trigger.
+      setTimeout(function() { try { ro.disconnect(); } catch(_) {} }, 5000);
+    }
     // 🆕 v1.40.4 — Lance l'extraction ZIP partielle async pour les data
     // embedded (POI/Roads/Zones/Structures). Si le ZIP est inaccessible
     // (plan serveur, blob purgé…), le widget reste OK avec juste les
@@ -824,30 +979,33 @@
         nPoi++;
       }
 
-      // Roads → _roadsSubLayer (🆕 v1.40.13 : couleur native via mapping
-      // ROAD_STYLES_DATA_HOME selon road.type, weight 2 → 3 pour ressortir)
+      // Roads → _roadsSubLayer (🆕 v1.40.37 : cascade couleur complète via
+      // _resolveRoadColorHome — explicit r.color > built-in type > custom
+      // legend > fallback gris. KARMA : « la couleur des routes... doit
+      // persister ». Inclut les types custom (cust-*) définis dans
+      // LegendCustomization, à l'identique de la map principale.)
       for (const r of layer.roads) {
         if (!Array.isArray(r.points) || r.points.length < 2) continue;
         if (r.type === "itinerary") continue;
         const lls = _projectPoints(r.points, proj);
         if (lls.length < 2) continue;
-        // Priorité : road.color natif (si présent dans JSON) > mapping par type > fallback gris
-        const color = r.color || ROAD_STYLES_DATA_HOME[r.type] || "#8892a4";
+        const color = _resolveRoadColorHome(r);
         L.polyline(lls, {
           color: color, weight: 3, opacity: 0.85, interactive: false
         }).addTo(_roadsSubLayer);
         nRoad++;
       }
 
-      // Zones → _zonesSubLayer
+      // Zones → _zonesSubLayer (🆕 v1.40.37 : idem cascade couleur via
+      // _resolveZoneColorsHome — couleurs natives ZONE_STYLES respectées
+      // et custom legend persistée.)
       for (const z of layer.zones) {
         if (!Array.isArray(z.points) || z.points.length < 3) continue;
         const lls = _projectPoints(z.points, proj);
         if (lls.length < 3) continue;
-        const stroke = z.color     || "#8892a4";
-        const fill   = z.fillColor || z.color || stroke;
+        const cols = _resolveZoneColorsHome(z);
         L.polygon(lls, {
-          color: stroke, fillColor: fill,
+          color: cols.stroke, fillColor: cols.fill,
           fillOpacity: (typeof z.fillOpacity === "number") ? z.fillOpacity * 0.7 : 0.25,
           weight: 1.5, opacity: 0.85, interactive: false
         }).addTo(_zonesSubLayer);
@@ -1337,10 +1495,19 @@
       _renderIncognito(container);
       return;
     }
-    // Cas 2 : hors-ligne → message
+    // Cas 2 : hors-ligne → message UNIQUEMENT si aucun cache OSM n'existe
+    // pour aucun plan (v1.43.3). Si au moins 1 tuile cachée → on laisse le
+    // widget se monter, selectPlan() arbitrera plan par plan (overlay
+    // dédié pour les plans non cachés).
     if (!_isOnline()) {
-      _renderOffline(container);
-      return;
+      // Refresh async la flag _anyCachePresent (fire-and-forget — si elle
+      // devient true, _refreshAnyCachePresent appelle refresh() qui re-monte
+      // le widget automatiquement).
+      _refreshAnyCachePresent();
+      if (!_anyCachePresent) {
+        _renderOffline(container);
+        return;
+      }
     }
     // Cas 3 : aucun plan georef → message pédagogique
     const plans = _listGeorefPlans();
@@ -1367,6 +1534,10 @@
     if (!sel) return;
     _saveLastSelected(planId);
     _renderGeorefMarkers(sel.georef);
+    // 🆕 v1.43.3 — Si offline, vérifier si ce plan a des tuiles cachées.
+    // Si non → overlay « ce plan n'est pas caché offline ». Si oui → render
+    // normal (les tuiles seront servies par le SW depuis IDB).
+    _maybeShowNotCachedOverlay(planId, sel.georef);
     // 🆕 v1.40.4 — Charge les data du nouveau plan + render
     _loadPlanDataForPreview(planId).then(function(data) {
       // Garde anti-race : si l'user a re-sélectionné un autre plan pendant
@@ -1398,8 +1569,201 @@
     setTimeout(mount, 100); // léger délai pour laisser PlanRegistry s'initialiser
   }
 
+  // ============================================================
+  // 🆕 v1.43.15 — Toggle "Réduire les contrôles" du widget Home
+  // ============================================================
+  // Cache opacity slider + toggles catégorie + tagrow pour avoir la carte
+  // en plein écran. État persisté en localStorage (clé séparée de la
+  // modale OSM car contexte UX différent : ici on est dans le widget Home
+  // qui peut être en mode mini OU en mode fullscreen).
+  const LS_HOME_COLLAPSED_KEY = "myktamap_osm_home_controls_collapsed";
+
+  function _getHomeControlsCollapsed() {
+    try { return localStorage.getItem(LS_HOME_COLLAPSED_KEY) === "1"; }
+    catch(e) { return false; }
+  }
+
+  function _applyHomeControlsCollapsed(collapsed) {
+    try { localStorage.setItem(LS_HOME_COLLAPSED_KEY, collapsed ? "1" : "0"); } catch(e) {}
+    const wrapper = document.getElementById("ktaOsmHomeCollapsible");
+    const btn     = document.getElementById("ktaOsmHomeToggleControlsBtn");
+    if (wrapper) wrapper.style.display = collapsed ? "none" : "";
+    if (btn) {
+      btn.textContent = collapsed ? "🔽" : "🔼";
+      btn.title = collapsed
+        ? "Afficher les contrôles"
+        : "Réduire les contrôles (carte plein écran)";
+    }
+    // Leaflet doit recalculer la taille du conteneur sinon les tuiles
+    // se chargent mal et les coords pixel sont fausses au switch.
+    if (_mapInstance && typeof _mapInstance.invalidateSize === "function") {
+      setTimeout(function() { try { _mapInstance.invalidateSize(); } catch(e) {} }, 80);
+    }
+  }
+
+  // ============================================================
+  // 🆕 v1.43.3 — Overlay "ce plan n'est pas caché offline"
+  // ============================================================
+  // Affiché par-dessus la mini-carte quand l'user sélectionne un plan
+  // qui n'a pas (encore) de tuiles cachées dans le store global, alors
+  // qu'on est offline. UX : message clair + suggestion d'action.
+
+  async function _maybeShowNotCachedOverlay(planId, georef) {
+    _clearNotCachedOverlay();
+    if (_isOnline()) return; // online → render normal, pas d'overlay
+    if (!window.OsmTilesCache) return;
+    const bbox = _bboxFromGeoref(georef);
+    if (!bbox) return;
+    try {
+      // 🐛 v1.43.6 — Mode any-zoom (omission du 2e arg) : scan 10→18 au lieu
+      // de tester uniquement zoom 14 (qui ratait les caches faits à d'autres
+      // zooms par l'user).
+      const has = await window.OsmTilesCache.hasCacheForBbox(bbox);
+      // Garde anti-race : l'user a peut-être sélectionné un autre plan
+      // pendant le lookup IDB.
+      if (planId !== _selectedPlanId) return;
+      if (has) return; // plan caché → render normal
+      _showNotCachedOverlay();
+    } catch(e) {}
+  }
+
+  function _showNotCachedOverlay() {
+    const mapDiv = document.getElementById("ktaOsmHomeMap");
+    if (!mapDiv) return;
+    let ov = mapDiv.querySelector(".kta-osm-home-notcached");
+    if (!ov) {
+      ov = document.createElement("div");
+      ov.className = "kta-osm-home-notcached";
+      ov.style.cssText =
+        "position:absolute; inset:0; background:rgba(10,13,24,0.92); " +
+        "color:#e8eaf0; display:flex; flex-direction:column; align-items:center; " +
+        "justify-content:center; text-align:center; padding:20px; z-index:500; " +
+        "border-radius:6px; gap:8px;";
+      ov.innerHTML =
+        '<div style="font-size:32px;">📴</div>' +
+        '<div style="font-weight:600; color:#f4c542;">Plan non disponible hors-ligne</div>' +
+        '<div style="font-size:12.5px; color:#c8d0e0; max-width:280px; line-height:1.4;">' +
+          'Aucune tuile OSM n\'a été téléchargée pour ce plan. ' +
+          'Reconnecte-toi puis clique <b>💾</b> dans le bandeau pour le pré-cacher.' +
+        '</div>';
+      mapDiv.style.position = "relative";
+      mapDiv.appendChild(ov);
+    }
+    ov.style.display = "flex";
+  }
+
+  function _clearNotCachedOverlay() {
+    const mapDiv = document.getElementById("ktaOsmHomeMap");
+    if (!mapDiv) return;
+    const ov = mapDiv.querySelector(".kta-osm-home-notcached");
+    if (ov) ov.style.display = "none";
+  }
+
+  // ============================================================
+  // 🆕 v1.43.0 — OSM TILES CACHE OFFLINE (widget Home)
+  // ============================================================
+  // Bouton 💾 du bandeau widget Home → délègue à OsmTilesCache.
+  // Cache GLOBAL partagé avec Vue OSM modale + Mode Secours
+  // (même store IDB myktamap_osm_tiles, indexé par z/x/y → aucune
+  // duplication même si l'user clic 💾 depuis 3 contextes différents).
+
+  async function _refreshCacheStatsHome() {
+    const span = document.getElementById("ktaOsmHomeCacheStats");
+    if (!span || !window.OsmTilesCache) return;
+    try {
+      const s = await window.OsmTilesCache.getStats();
+      if (s.count > 0) {
+        span.textContent = "📦 " + s.count + " tuiles · " + window.OsmTilesCache.formatBytes(s.sizeBytes);
+        span.style.color = "#a6d785";
+      } else {
+        span.textContent = "📦 cache vide";
+        span.style.opacity = "0.7";
+      }
+    } catch(e) {
+      span.textContent = "📦 ?";
+    }
+  }
+
+  async function _runCacheTilesHome() {
+    if (!window.OsmTilesCache || !_mapInstance) return;
+    const btn = document.getElementById("ktaOsmHomeCacheBtn");
+    if (!navigator.onLine) {
+      _showHomeToast("⚠️ Pas de connexion — impossible de télécharger.", 3500);
+      return;
+    }
+    const oldHtml = btn ? btn.innerHTML : null;
+    if (btn) { btn.disabled = true; btn.innerHTML = "⏳"; }
+    try {
+      const result = await window.OsmTilesCache.cacheVisibleTiles(_mapInstance, {
+        onProgress: function(done, total) {
+          if (btn) btn.innerHTML = "⏳" + done + "/" + total;
+        }
+      });
+      let msg = "✅ " + result.cached + " tuiles cachées";
+      if (result.skipped) msg += " (♻️" + result.skipped + " déjà)";
+      if (result.failed)  msg += " · ❌" + result.failed;
+      if (result.capped)  msg += " · cap 200";
+      _showHomeToast(msg, 4500);
+    } catch(e) {
+      _showHomeToast("❌ Erreur : " + (e.message || e), 4000);
+    } finally {
+      if (btn && oldHtml != null) { btn.disabled = false; btn.innerHTML = oldHtml; }
+      await _refreshCacheStatsHome();
+      // Notifie Vue OSM modale (gate offline) que le cache a changé
+      try {
+        if (window.OsmView && typeof window.OsmView.recheckOfflineCache === "function") {
+          window.OsmView.recheckOfflineCache();
+        }
+      } catch(e) {}
+      // 🆕 v1.43.3 — Refresh flag global + plan courant (= clear overlay
+      // si plan vient juste d'être caché)
+      _refreshAnyCachePresent();
+      if (_selectedPlanId) {
+        const plans = _listGeorefPlans();
+        const cur = plans.find(function(p) { return p.id === _selectedPlanId; });
+        if (cur) _maybeShowNotCachedOverlay(_selectedPlanId, cur.georef);
+      }
+    }
+  }
+
+  function _showHomeToast(msg, durationMs) {
+    durationMs = durationMs || 3500;
+    if (window.OOMGuard && window.OOMGuard.showToast) {
+      window.OOMGuard.showToast(msg, "info");
+      return;
+    }
+    // Fallback : inject bar dans le widget
+    const container = document.querySelector(".kta-osm-home-map");
+    if (!container) { console.log(msg); return; }
+    let bar = container.querySelector(".kta-osm-home-toast");
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.className = "kta-osm-home-toast";
+      bar.style.cssText =
+        "position:absolute; left:50%; bottom:8px; transform:translateX(-50%);" +
+        "background:rgba(20,25,40,0.95); color:#e8eaf0; padding:8px 14px;" +
+        "border-radius:6px; font-size:12px; z-index:1000; max-width:90%;" +
+        "border:1px solid rgba(140,180,255,0.25); text-align:center;";
+      container.style.position = "relative";
+      container.appendChild(bar);
+    }
+    bar.textContent = msg;
+    bar.style.display = "block";
+    clearTimeout(bar._t);
+    bar._t = setTimeout(function() { if (bar) bar.style.display = "none"; }, durationMs);
+  }
+
   // Listen opt-in changes pour refresh widget
   window.addEventListener("kta:osmOptInChange", refresh);
+
+  // 🆕 v1.43.3 — Init flag _anyCachePresent au boot (différé pour laisser
+  // OsmTilesCache.init() terminer). Si cache existant + offline → le
+  // _refreshAnyCachePresent() déclenchera refresh() automatiquement.
+  setTimeout(function() {
+    if (window.OsmTilesCache && typeof window.OsmTilesCache.init === "function") {
+      window.OsmTilesCache.init().then(_refreshAnyCachePresent);
+    }
+  }, 1500);
   // 🆕 v1.40.2 — Plus de hook auto-open (l'ancien flow basé sur sessionStorage
   // + simulation clic plan row + kta:planConfigReady ne marchait pas — sélecteurs
   // HTML faux). Le ⛶ déclenche maintenant openFullScreen() en local.

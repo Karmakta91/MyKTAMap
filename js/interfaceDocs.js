@@ -416,8 +416,14 @@ function _ouvrirReadmeModal(html, opts) {
              dépendances/algos majeurs, en cohérence avec le splash et
              le footer du home.
              🆕 v1.40.29 — Rétabli 📤 jsPDF (oublié historiquement) + ajout
-             🌍 OSM. Cohérence stricte avec splash + loader HOME. -->
-        <span>— 🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🌍 OSM · 🧭 Dijkstra</span>
+             🌍 OSM. Cohérence stricte avec splash + loader HOME.
+             🆕 v1.43.17 — Ajout 📸 html2canvas (utilisé depuis v1.42.5 pour
+             la capture du rendu Leaflet OSM dans le PDF Briefing pompiers
+             du Mode Secours). Cohérence stricte avec splash + loader HOME.
+             🆕 v1.43.18 — &amp;nbsp; entre emoji et nom pour empêcher le wrap
+             de couper une paire emoji-texte (cas du Home loader où
+             le 📸 et html2canvas se retrouvaient sur des lignes différentes). -->
+        <span>— 🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF · 🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</span>
       </div>
     </div>
   `;
@@ -566,6 +572,17 @@ function afficherAide() {
             Le bouton <strong>🚨</strong> dans le header du loader permet de re-consulter l'alerte à tout moment, OU de vérifier
             "✅ Aucune alerte en cours" si la situation est revenue à la normale. Une fois "J'ai compris" cliqué, la modale ne réapparaît plus
             au reload tant que l'alerte est la même — sauf si l'auteur en publie une nouvelle.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#d32f2f;">🛡️ Plans révoqués (anti-fuite v1.42) :</strong> si un plan ZIP fuite massivement (Telegram public,
+            forum, etc.), l'auteur peut le révoquer côté serveur. À l'import du ZIP, l'app calcule son <strong>empreinte SHA-256</strong>
+            <em>localement</em> et la compare à la liste publique <code>denylist.json</code> téléchargée au boot.
+            Si match → <strong>modale rouge bloquante</strong> avec motif + date + bouton « Compris, supprimer ce plan » qui retire
+            automatiquement le plan de ta liste. Couvre aussi le générateur (« Modifier un plan existant »).
+            <strong style="color:#e9a13b;">🔄 Audit auto au démarrage (v1.42.3) :</strong> les plans déjà importés sont aussi
+            vérifiés ~2s après le boot. Si l'un d'eux est révoqué depuis ton dernier import, il est supprimé automatiquement
+            et une <strong>modale orange</strong> t'en informe (motif + date). Privacy stricte : <strong>0 empreinte envoyée au serveur</strong>.
+            Liste consultable à <code>https://myktamap.fr/denylist.json</code>.
           </p>
         </div>
 
@@ -934,6 +951,23 @@ function afficherAide() {
             sévère retenu, photos dédupliquées). Sauvegarde automatique AVANT pour pouvoir annuler. Chip « 📥 importé » sur les cards d'équipe fusionnées.
             <span style="color:#a8b3c8;">La voie QR code a été testée puis abandonnée — le scan après compression WhatsApp était trop fragile sur les codes denses.</span>
             ⚠️ Comme tout : <strong>garde une boussole physique et une carte papier</strong>. Le téléphone peut tomber en panne. Le 🚨 est une aide à la coordination, PAS un substitut à la préparation.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:14px 0 8px; line-height:1.5;">
+            <strong style="color:#f4c542;">🌍 État 3 — BRIEFING SECOURS EXTERNES (Vue OSM × Mode Secours, v1.41)</strong> — coordination avec les secours externes (pompiers, GRIMP, SDIS).
+          </p>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🚪</span><span>Nouveau tag built-in <strong>Point d'entrée du plan</strong> (catégorie « 🚨 Secours » dans la légende) pour marquer les entrées principales d'urgence</span>
+            <span class="kta-aide-icone">📍</span><span><strong>GPS surface par équipe</strong> : champ « 📍 GPS surface » dans la fiche équipe (format « lat, lng » WGS84), pour PC secours / lieu de rdv pompiers</span>
+            <span class="kta-aide-icone">🌍</span><span>Bouton <strong>🌍 Vue OSM</strong> disponible dans bandeau Édition ET dans les 3 footers Live → montrer la position du plan sur OpenStreetMap sans quitter la vue active</span>
+            <span class="kta-aide-icone">🚒</span><span><strong>Briefing pompiers PDF dédié</strong> (bouton 🚒) : page A4 avec liens cliquables OSM + Google Maps + équipes + GPS surface + POI critiques (entrée plan / sortie urgence / cavages)</span>
+            <span class="kta-aide-icone">📤</span><span>Page <strong>« Briefing surface »</strong> automatiquement intégrée au rapport PDF post-mission</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:14px 0 0; line-height:1.5;">
+            <strong style="color:#8cb4ff;">💾 Save Offline — Vue OSM hors-ligne (v1.43)</strong> — bouton <strong>💾 Save Offline</strong> disponible dans la modale Vue OSM et dans le widget Vue OSM de l'accueil.
+            Un clic télécharge les tuiles OpenStreetMap couvrant la zone du plan et les range dans le stockage local du téléphone (200 tuiles max par clic, pour respecter la politique d'usage d'OSM — relance le bouton si tu veux étendre la couverture ou faire plusieurs zooms).
+            Une fois en cache, l'icône <strong>💾</strong> reste visible pour t'indiquer que la zone est sauvegardée, et la <strong>Vue OSM s'ouvre direct hors-réseau</strong> (souterrain, zone blanche, mode avion) — pas de message d'erreur, pas de tentative de connexion : l'app détecte qu'il y a du cache et affiche la carte instantanément.
+            Le cache est <strong>partagé</strong> entre la Vue OSM d'accueil, la modale Vue OSM et le Mode Secours — un seul Save Offline couvre les trois.
+            <span style="color:#a8b3c8;">Réflexe terrain : Save Offline avant de partir, quand tu as encore du réseau.</span>
           </p>
         </div>
 

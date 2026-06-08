@@ -103,11 +103,27 @@
 
   // Format distance pour UI (réutilise window.formatDistance si dispo,
   // sinon fallback simple en pixels).
+  // 🐛 v1.40.35 — KARMA bug "Cavage Oise : 4.63 km au lieu de 944,5 m" :
+  // `distPx` est une somme de distances euclidiennes en **pixels plan**
+  // (cf _calculerDistPathfinder ligne ~135) mais `window.formatDistance`
+  // attend des **mètres** (cf utils.js ligne 131). On oubliait la conversion
+  // `/ APP_CONFIG.scale` (pixels par mètre) — du coup la distance affichée
+  // était multipliée par le ratio scale (~4.9 sur le plan Oise).
+  // Cohérent avec lostMode.js et measure.js qui font cette conversion.
   function _formatDist(distPx) {
+    const scale = (window.APP_CONFIG && typeof window.APP_CONFIG.scale === "number"
+                   && window.APP_CONFIG.scale > 0)
+                    ? window.APP_CONFIG.scale
+                    : 1; // fallback si pas d'échelle (= distance brute en px)
+    const distM = distPx / scale;
     if (typeof window.formatDistance === "function") {
-      return window.formatDistance(distPx, 0);
+      return window.formatDistance(distM, 0);
     }
-    return Math.round(distPx) + " px";
+    // Fallback maison si formatDistance pas chargé
+    if (scale === 1) return Math.round(distPx) + " px";
+    return distM < 1000
+      ? distM.toFixed(0) + " m"
+      : (distM / 1000).toFixed(2) + " km";
   }
 
   // ========== PATHFINDER WRAP ==========

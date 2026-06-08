@@ -2595,7 +2595,13 @@
       distanceM:         null,
       dureeEstimeeMin:   null,
       statut:            "non_demarré",
-      observations:      ""
+      observations:      "",
+      // 🆕 v1.41.0 E — Position GPS surface de l'équipe (où elle est en
+      // surface = PC secours, lieu de rdv pompiers, etc.). Optionnel.
+      // Format {lat, lng} décimal (WGS84). null = non renseigné.
+      // Sérialisé naturellement dans export JSON .mkmsec.json + utilisé
+      // par le Briefing pompiers PDF (lien OSM clickable, marker carte).
+      surfaceGps:        null
     };
     s.groupes.push(groupe);
     // 🆕 v1.29.0 C1 — Affecte automatiquement le nouvel équipage à la phase
@@ -2652,6 +2658,19 @@
     if ("statut" in partial && typeof partial.statut === "string") g.statut = partial.statut;
     if ("observations" in partial && typeof partial.observations === "string") {
       g.observations = partial.observations;
+    }
+    // 🆕 v1.41.0 E — Position GPS surface équipe. Validation : {lat, lng}
+    // numériques bornés, sinon null. Accepte aussi explicit null pour reset.
+    if ("surfaceGps" in partial) {
+      const p = partial.surfaceGps;
+      if (p === null) {
+        g.surfaceGps = null;
+      } else if (p && typeof p === "object"
+                 && typeof p.lat === "number" && typeof p.lng === "number"
+                 && p.lat >= -90 && p.lat <= 90 && p.lng >= -180 && p.lng <= 180) {
+        g.surfaceGps = { lat: p.lat, lng: p.lng };
+      }
+      // sinon : valeur invalide ignorée (pas d'écrasement)
     }
     _commitMutation(s);
     return g;
@@ -3316,6 +3335,74 @@
     }
   }
 
+  // 🆕 v1.40.33 (Synergie A v1) ─────────────────────────────────
+  // Ouverture de la Vue OSM depuis le Mode Secours (bouton "🌍 Vue OSM"
+  // dans les bandeaux PLAN ACTIF et PLAN TERMINÉ). Réutilise complètement
+  // window.OsmView (osmView.js) : gating natif (opt-in, strict offline,
+  // incognito, navigateur online), modale plein écran, POI/roads/zones du
+  // plan automatiquement projetés sur OpenStreetMap.
+  //
+  // En cas d'indisponibilité : toast diagnostique précis pour guider l'user
+  // vers la résolution (calibration GPS manquante, opt-in désactivé,
+  // mode bloqué).
+  //
+  // Évolutions futures envisagées (B → E, step-by-step) : page Vue OSM dans
+  // le rapport PDF, export "🚒 Briefing pompiers" dédié, POI "🚪 Point
+  // d'entrée du plan" spécial, position GPS surface des équipes.
+  function _ouvrirVueOsmDepuisSecours() {
+    if (!window.OsmView || typeof window.OsmView.open !== "function") {
+      _toast("🌍 Vue OSM non disponible (module non chargé).", "warn");
+      return;
+    }
+    // Pré-diagnostic explicite pour message clair à l'user.
+    // window.OsmView.isAvailable() existe mais retourne juste true/false :
+    // on inspecte les raisons individuelles pour un toast diagnostic.
+    const reasons = [];
+    try {
+      // Plan georef requis (=  PLAN_CONFIG.plan.georef ou session LS dérivée)
+      const planCfg  = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
+      const hasInline = !!(planCfg && planCfg.georef
+        && planCfg.georef.pointA && planCfg.georef.pointB);
+      // Côté session : OsmView lit aussi le LS — déléguons via OsmView.isAvailable
+      // pour ne pas dupliquer la logique. Mais si NI inline NI sessions valides,
+      // on tag la raison explicitement.
+      if (!hasInline && (!window.OsmView.isAvailable || !window.OsmView.isAvailable())) {
+        // On laisse OsmView.isAvailable trancher pour les autres cas (opt-in,
+        // strict, incognito, online). Ce branch couvre juste "pas georef du tout".
+        reasons.push("plan non géoréférencé (configure pointA/pointB GPS dans le générateur avancé)");
+      }
+      if (window.OsmView.isOptedIn && typeof window.OsmView.isOptedIn === "function"
+          && !window.OsmView.isOptedIn()) {
+        reasons.push("opt-in Vue OSM désactivé (→ ⚙️ Configuration → 🌍 Autoriser la Vue OSM)");
+      }
+      if (window.NetworkAudit
+          && typeof window.NetworkAudit.isStrictOfflineEnabled === "function"
+          && window.NetworkAudit.isStrictOfflineEnabled()) {
+        reasons.push("mode hors-ligne strict actif");
+      }
+      if (window.IncognitoMode
+          && window.IncognitoMode.isActive
+          && window.IncognitoMode.isActive()) {
+        reasons.push("mode incognito actif");
+      }
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        reasons.push("navigateur hors-ligne (tuiles OSM indisponibles)");
+      }
+    } catch(e) { /* fallback : on tente quand même l'ouverture ci-dessous */ }
+
+    if (reasons.length > 0) {
+      _toast("🌍 Vue OSM indisponible — " + reasons.join(" · "), "warn");
+      return;
+    }
+    // Tout OK → ouverture standard. OsmView gère sa propre stack modale.
+    try {
+      window.OsmView.open();
+    } catch(e) {
+      console.warn("[secoursMode] Ouverture Vue OSM échouée :", e);
+      _toast("🌍 Erreur ouverture Vue OSM — vérifie la console.", "error");
+    }
+  }
+
   // ─── Modale UI rapport ──────────────────────────────────────
   // Ouvre la modale "Rapport au fil des étapes" avec aperçu compact + 3
   // formats au choix. Scope passé par l'appelant (vue Live ou bandeau Edit).
@@ -3575,6 +3662,20 @@
 
       _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
 
+      // 🆕 v1.41.0 B — Page "Briefing surface" (Vue OSM + équipes GPS + POI
+      // critiques). Utile pour debrief post-mission et briefing secours externes
+      // après mission. Insérée juste après le briefing global, avant les
+      // pages équipes. Fonction utilitaire partagée avec genererBriefingPompiersPDF.
+      // 🆕 v1.42.5 — async (capture OSM via html2canvas)
+      // 🆕 v1.42.13 — passe overlayContext="rapport" pour textes adaptés
+      try {
+        pdf.addPage();
+        await _drawBriefingSurfacePage(pdf, r.scenario, r.plan, pageW, pageH, margin, null, "rapport");
+        _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+      } catch (e) {
+        console.warn("[Rapport] Page Briefing surface échouée : " + (e && e.message));
+      }
+
       // ─── Pages équipes ou notes libres ───
       if (Array.isArray(r.equipesData) && r.equipesData.length > 0) {
         // 🆕 v1.26.0 Phase 4 C5 — Boucle async pour permettre l'await
@@ -3611,6 +3712,719 @@
     } catch(e) {
       console.warn("[SecoursMode] genererRapportPDF échec :", e);
       _toast("⚠️ Erreur génération PDF : " + e.message, "error");
+      return null;
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // 🆕 v1.42.5 — CAPTURE OSM POUR PDF BRIEFING POMPIERS
+  // ════════════════════════════════════════════════════════════════════════
+  //
+  // Render Leaflet offscreen + html2canvas → dataURL JPEG q85 pour injection
+  // dans le PDF Briefing. Marche TOUJOURS (n'a pas besoin que la Vue OSM
+  // modale soit ouverte).
+  //
+  // Stratégie :
+  //   1. Container hidden 1200×800 + Leaflet map dedans
+  //   2. Tile layer OSM avec crossOrigin (CORS OK sur tile.openstreetmap.org)
+  //   3. Rectangle bbox plan (jaune charte) + label centre
+  //   4. Markers GPS surface équipes (couleur palette OTAN)
+  //   5. Wait tiles load (event "load" ou safety 7s)
+  //   6. html2canvas capture → dataURL JPEG
+  //   7. Cleanup map + container
+  //
+  // Fail-safe : retourne null si lib html2canvas pas chargée OU pas de
+  // georef OU exception. Le caller (_drawBriefingSurfacePage) fallback
+  // automatiquement sur l'affichage texte/lien (= comportement v1.41.x).
+  //
+  // ⚠️ Pas de plan rotated superposé dans la capture (complexe, nécessite
+  // accès à l'image source du plan). MVP : juste tuiles OSM + bbox visible.
+  // 🆕 v1.42.14 — Helper : détecte si le thème clair est actif (cf themeManager.js).
+  // Utilisé par les modales/overlays récents pour adapter leurs styles inline.
+  function _isLightTheme() {
+    try {
+      return document.body.classList.contains("kta-theme-light") ||
+             document.documentElement.classList.contains("kta-theme-light");
+    } catch(e) { return false; }
+  }
+
+  // 🆕 v1.42.12 — Helper : récupère les dimensions natives d'une dataURL
+  // image (chargée dans une Image temporaire). Retourne {w, h} ou null.
+  // Utilisé pour préserver le ratio image dans pdf.addImage.
+  function _getImageDataUrlDims(dataUrl) {
+    return new Promise(function(resolve) {
+      if (!dataUrl) { resolve(null); return; }
+      const img = new Image();
+      img.onload = function() {
+        resolve({ w: img.naturalWidth || img.width, h: img.naturalHeight || img.height });
+      };
+      img.onerror = function() { resolve(null); };
+      img.src = dataUrl;
+    });
+  }
+
+  // 🆕 v1.42.11 — Helper : applique les options de couches Vue OSM sur les
+  // checkboxes du bandeau (simulate clic si l'état checked diffère de l'option).
+  // Idempotent : ne re-clique que si nécessaire.
+  function _applyOsmLayerOptions(opts) {
+    if (!opts) return;
+    const map = {
+      "kta-osm-plan-toggle":    opts.showPlan,
+      "kta-osm-poi-toggle":     opts.showPoi,
+      "kta-osm-tracker-toggle": opts.showTracker,
+      "kta-osm-road-toggle":    opts.showRoad,
+      "kta-osm-iti-toggle":     opts.showIti,
+      "kta-osm-zone-toggle":    opts.showZone,
+      "kta-osm-struct-toggle":  opts.showStruct,
+      "kta-osm-secours-toggle": opts.showSecours
+    };
+    for (const id in map) {
+      const want = map[id];
+      if (typeof want !== "boolean") continue;  // skip si option non définie
+      const cb = document.getElementById(id);
+      if (!cb) continue;  // toggle absent (cas Secours sans scénario actif)
+      if (cb.checked !== want) {
+        cb.click();  // déclenche le change listener qui applique le toggle
+      }
+    }
+  }
+
+  async function _captureOsmCanvasForBriefing(scenario, plan, options, overlayContext) {
+    if (typeof window.html2canvas !== "function") {
+      console.warn("[Briefing] html2canvas non chargé — capture skip (fallback liens)");
+      return null;
+    }
+    if (typeof window.L === "undefined") return null;
+
+    // 🆕 v1.42.13 — Textes overlay paramétrables selon le contexte d'appel :
+    //   - "briefing" (default) : appel depuis bouton 🚒 Briefing pompiers
+    //   - "rapport"            : appel depuis bouton 📤 Rapport global
+    const _ctx = (overlayContext === "rapport")
+      ? { icon: "📤", title: "Génération du rapport en cours…",
+          sub: "Capture de la Vue OSM pour la page de briefing surface. Patiente quelques secondes…" }
+      : { icon: "🚒", title: "Génération du Briefing pompiers…",
+          sub: "Capture de la Vue OSM en cours (plan + données projetées). Patiente quelques secondes…" };
+
+    // 🆕 v1.42.10 — Approche "open/close masqué" : ouvre Vue OSM sous un
+    // overlay opaque, capture le DOM Leaflet complet (plan rotated + data
+    // layers + zones + tracés + équipes), puis ferme. L'user ne voit JAMAIS
+    // la Vue OSM clignoter — juste l'overlay "Génération en cours…".
+    // Réutilise 100% du code Vue OSM existant (pas de duplication).
+    //
+    // CAS 1 : modale Vue OSM DÉJÀ OUVERTE (cas rare hors Mode Secours) →
+    //         capture DOM direct sans toucher à l'overlay (le user a déjà
+    //         ajusté ses filtres, on respecte).
+    // CAS 2 : modale Vue OSM FERMÉE (cas normal depuis Mode Secours) →
+    //         pose overlay opaque, ouvre Vue OSM derrière, attend tile load,
+    //         capture, ferme Vue OSM, retire overlay.
+
+    const mapDivExisting = document.getElementById("kta-osm-map");
+    if (mapDivExisting && mapDivExisting.querySelector(".leaflet-tile-loaded")) {
+      try {
+        console.log("[Briefing] Vue OSM déjà ouverte → capture DOM direct");
+        const canvas = await window.html2canvas(mapDivExisting, {
+          useCORS: true, allowTaint: false, backgroundColor: "#ffffff",
+          logging: false, scale: 1
+        });
+        return canvas.toDataURL("image/jpeg", 0.85);
+      } catch(e) {
+        console.warn("[Briefing] Capture DOM directe échec :", e.message);
+        // Continue vers approche open/close masqué ↓
+      }
+    }
+
+    // CAS 2 : Vue OSM fermée → on l'ouvre sous overlay opaque
+    if (!window.OsmView || typeof window.OsmView.open !== "function") {
+      console.warn("[Briefing] OsmView.open indisponible — fallback offscreen");
+    } else if (!window.OsmView.isAvailable || !window.OsmView.isAvailable()) {
+      console.warn("[Briefing] OsmView non disponible (pas de georef ?) — fallback offscreen");
+    } else if (!window.OsmView.isOptedIn || !window.OsmView.isOptedIn()) {
+      console.warn("[Briefing] OsmView pas opt-in — fallback offscreen (user doit accepter OSM 1×)");
+    } else {
+      // 🆕 v1.42.14 — Palette adaptée au thème actif
+      const isLightOv = _isLightTheme();
+      const ovBg     = isLightOv ? "#fdf8eb" : "#0a0d18";
+      const ovAccent = isLightOv ? "#b8860b" : "#f4c542";
+      const ovMuted  = isLightOv ? "#6b6354" : "#8892a4";
+
+      // Overlay opaque z-index TRÈS haut (au-dessus modales 99999 et OSM 99999+)
+      const overlay = document.createElement("div");
+      overlay.id = "kta-briefing-capture-overlay";
+      overlay.style.cssText = [
+        "position:fixed", "inset:0", "z-index:1000000",
+        "background:" + ovBg, "color:" + ovAccent,
+        "display:flex", "align-items:center", "justify-content:center",
+        "flex-direction:column", "gap:18px",
+        "font-family:system-ui,-apple-system,sans-serif",
+        "font-size:16px"
+      ].join(";");
+      overlay.innerHTML =
+        '<div style="font-size:42px;animation:kta-spin 1.4s linear infinite;">🛰️</div>' +
+        '<div style="font-weight:700;">' + _ctx.icon + ' ' + _escHtml(_ctx.title) + '</div>' +
+        '<div style="font-size:12px;color:' + ovMuted + ';max-width:340px;text-align:center;">' +
+          _escHtml(_ctx.sub) +
+        '</div>';
+      // Inject keyframe spin si pas déjà
+      if (!document.getElementById("kta-briefing-spin-kf")) {
+        const st = document.createElement("style");
+        st.id = "kta-briefing-spin-kf";
+        st.textContent = "@keyframes kta-spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }";
+        document.head.appendChild(st);
+      }
+      document.body.appendChild(overlay);
+
+      let captured = null;
+      try {
+        // Ouvre Vue OSM (modale s'affiche sous l'overlay — invisible à l'user)
+        window.OsmView.open();
+
+        // 🆕 v1.42.11 — Applique les options de couches choisies dans la modale
+        // Briefing options. Petite attente 400ms pour que le DOM des toggles
+        // soit injecté par OsmView.open(), puis simule les clics nécessaires.
+        if (options) {
+          await new Promise(function(r) { setTimeout(r, 400); });
+          try { _applyOsmLayerOptions(options); }
+          catch(e) { console.warn("[Briefing] _applyOsmLayerOptions échec :", e.message); }
+        }
+
+        // Attente robuste : poll tile-loaded + plan rotated rendu + petit délai
+        await new Promise(function(resolve) {
+          const startedAt = Date.now();
+          const tick = function() {
+            const map = document.getElementById("kta-osm-map");
+            if (map) {
+              const hasTiles    = !!map.querySelector(".leaflet-tile-loaded");
+              const hasOverlay  = !!map.querySelector(".leaflet-image-layer, .leaflet-overlay-pane svg path, .leaflet-marker-icon");
+              if (hasTiles && hasOverlay) {
+                // +1.5s pour render final (markers/polylines/etc.)
+                setTimeout(resolve, 1500);
+                return;
+              }
+              if (hasTiles && (Date.now() - startedAt > 4000)) {
+                // Tiles OK mais pas d'overlay détecté après 4s → on capture
+                // quand même (plan peut-être sans data layers).
+                setTimeout(resolve, 800);
+                return;
+              }
+            }
+            // Safety 12s
+            if (Date.now() - startedAt > 12000) { resolve(); return; }
+            setTimeout(tick, 200);
+          };
+          tick();
+        });
+
+        // Capture
+        const map = document.getElementById("kta-osm-map");
+        if (map) {
+          const canvas = await window.html2canvas(map, {
+            useCORS: true, allowTaint: false, backgroundColor: "#ffffff",
+            logging: false, scale: 1
+          });
+          captured = canvas.toDataURL("image/jpeg", 0.85);
+          console.log("[Briefing] Capture Vue OSM via open/close masqué : OK");
+        }
+      } catch(eCap) {
+        console.warn("[Briefing] Capture via open/close échec :", eCap.message);
+      } finally {
+        // Ferme Vue OSM (peu importe le résultat)
+        try { window.OsmView.close && window.OsmView.close(); } catch(e) {}
+        // Retire overlay
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      }
+
+      if (captured) return captured;
+      // Sinon → fallback offscreen ↓
+    }
+
+    // Fallback offscreen : tuiles OSM + bbox + équipes GPS seulement.
+    // Pas de plan rotated ni POI/tracés/zones (= MVP v1.42.5).
+    // Recommander à KARMA d'ouvrir Vue OSM AVANT le Briefing pour capture complète.
+    if (!window.OsmView || typeof window.OsmView.getPlanGpsBbox !== "function") {
+      return null;
+    }
+    const bbox = window.OsmView.getPlanGpsBbox();
+    if (!bbox || typeof bbox.getCenter !== "function") {
+      console.warn("[Briefing] Pas de bbox georef — capture skip");
+      return null;
+    }
+
+    const cont = document.createElement("div");
+    cont.style.cssText = "position:fixed;left:-99999px;top:0;width:1200px;height:800px;background:#fff;z-index:-1;pointer-events:none;";
+    document.body.appendChild(cont);
+
+    let map = null;
+    try {
+      map = L.map(cont, {
+        attributionControl: false,
+        zoomControl: false,
+        preferCanvas: true,
+        keyboard: false,
+        scrollWheelZoom: false,
+        dragging: false
+      });
+      map.fitBounds(bbox, { padding: [60, 60], maxZoom: 17 });
+
+      const tileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        crossOrigin: "anonymous"
+      });
+      tileLayer.addTo(map);
+
+      // Rectangle bbox plan (jaune charte semi-transparent)
+      L.rectangle(bbox, {
+        color: "#f4c542",
+        weight: 3,
+        fillColor: "#f4c542",
+        fillOpacity: 0.15,
+        interactive: false
+      }).addTo(map);
+
+      // Label centre du plan
+      const center = bbox.getCenter();
+      const planName = (plan && plan.name) || "Site";
+      L.marker(center, {
+        icon: L.divIcon({
+          className: "",
+          html: '<div style="background:#1a1f2e;color:#f4c542;padding:6px 14px;' +
+                'border-radius:6px;font-size:14px;font-weight:700;' +
+                'border:2px solid #f4c542;white-space:nowrap;' +
+                'box-shadow:0 2px 8px rgba(0,0,0,0.4);">📍 ' +
+                _escHtml(planName) + '</div>',
+          iconSize: [10, 10],
+          iconAnchor: [60, 5]
+        }),
+        interactive: false
+      }).addTo(map);
+
+      // Markers GPS surface équipes
+      if (scenario && Array.isArray(scenario.groupes)) {
+        for (const g of scenario.groupes) {
+          if (g.surfaceGps && typeof g.surfaceGps.lat === "number"
+              && typeof g.surfaceGps.lng === "number") {
+            const pal = PALETTE[(g.couleurIdx || 0) % PALETTE.length];
+            const hex = (pal && pal.hex) || "#8cb4ff";
+            L.circleMarker([g.surfaceGps.lat, g.surfaceGps.lng], {
+              radius: 10, color: "#fff", weight: 3,
+              fillColor: hex, fillOpacity: 1, interactive: false
+            }).addTo(map);
+            L.marker([g.surfaceGps.lat, g.surfaceGps.lng], {
+              icon: L.divIcon({
+                className: "",
+                html: '<div style="background:' + hex + ';color:#fff;' +
+                      'padding:3px 8px;border-radius:4px;font-size:11px;' +
+                      'font-weight:600;white-space:nowrap;' +
+                      'box-shadow:0 1px 4px rgba(0,0,0,0.5);">' +
+                      _escHtml(g.nom || "équipe") + '</div>',
+                iconSize: [10, 10],
+                iconAnchor: [-12, 8]
+              }),
+              interactive: false
+            }).addTo(map);
+          }
+        }
+      }
+
+      // Attente fin de chargement des tuiles (event "load" tileLayer +
+      // 600ms de marge pour render final). Safety timeout 7s pour cellular lent.
+      await new Promise(function(resolve) {
+        let done = false;
+        const finish = function() {
+          if (done) return;
+          done = true;
+          setTimeout(resolve, 600);
+        };
+        tileLayer.on("load", finish);
+        setTimeout(function() { if (!done) { done = true; resolve(); } }, 7000);
+      });
+
+      const canvas = await window.html2canvas(cont, {
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: "#ffffff",
+        width: 1200,
+        height: 800,
+        logging: false,
+        scale: 1
+      });
+
+      return canvas.toDataURL("image/jpeg", 0.85);
+    } catch(e) {
+      console.warn("[Briefing] Capture canvas exception :", e.message);
+      return null;
+    } finally {
+      if (map) { try { map.remove(); } catch(e) {} }
+      if (cont.parentNode) { try { cont.parentNode.removeChild(cont); } catch(e) {} }
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // 🆕 v1.41.0 B + C — Briefing surface (page PDF partagée)
+  // ════════════════════════════════════════════════════════════════════════
+  //
+  // Dessine une page A4 "Briefing surface" avec :
+  //   • [v1.42.5] Image capture OSM en haut de page (si lib html2canvas dispo
+  //     et georef OK) — sinon fallback texte/lien comme v1.41.x
+  //   • Titre + nom du scenario + nom du plan
+  //   • Lien OSM bbox (centre + zoom) si Vue OSM georef dispo
+  //   • Lien Google Maps en backup
+  //   • Liste équipes avec leur GPS surface (lien individuel OSM)
+  //   • POI critiques : Point d'entrée (tag 'entree_plan') + Sorties urgence
+  //     (tag 'sortieurgence' si exists) + Cavages (tags 'cao'/'caf')
+  //
+  // Réutilisée :
+  //   - dans genererRapportPDF (page insérée dans le rapport post-mission, B)
+  //   - dans genererBriefingPompiersPDF (PDF dédié export bouton bandeau, C)
+  //
+  // ⚠️ Helvetica latin1 → pas d'emoji dans pdf.text(). Textes ASCII pur.
+  // 🆕 v1.42.5 — Devenue ASYNC pour permettre await sur _captureOsmCanvasForBriefing.
+  // 🆕 v1.42.11 — Accepte 7e arg `options` pour piloter les couches OSM.
+  // 🆕 v1.42.13 — Accepte 8e arg `overlayContext` ("briefing"|"rapport") pour
+  // adapter les textes de l'overlay de capture.
+  async function _drawBriefingSurfacePage(pdf, scenario, plan, pageW, pageH, margin, options, overlayContext) {
+    let y = margin + 8;
+
+    // En-tête de la page
+    pdf.setFontSize(15); pdf.setFont(undefined, "bold");
+    pdf.text("BRIEFING SURFACE", margin, y); y += 7;
+    pdf.setFontSize(9); pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
+    pdf.text("Page a transmettre aux secours externes (pompiers, GRIMP, etc.)", margin, y);
+    pdf.setTextColor(0); pdf.setFont(undefined, "normal"); y += 8;
+
+    // 🆕 v1.42.5 — Tentative capture rendu OSM (offscreen Leaflet + html2canvas)
+    // injection en haut de page. Fail-safe : si KO, on garde la mise en page
+    // texte/lien standard (= comportement v1.41.x).
+    // 🆕 v1.42.11 — options { showPlan, showPoi, … } propagées à la capture
+    try {
+      const imgData = await _captureOsmCanvasForBriefing(scenario, plan, options, overlayContext);
+      if (imgData) {
+        // 🆕 v1.42.12 — Récupère les vraies dims de l'image capturée pour
+        // préserver son ratio dans le PDF. Sinon ratio hardcoded 3:2 = image
+        // déformée si la modale Vue OSM a un viewport différent (16:9, mobile,
+        // etc.). Compatible avec capture offscreen (1200×800) ET DOM modale.
+        const realDims = await _getImageDataUrlDims(imgData);
+        const ratio = (realDims && realDims.w > 0 && realDims.h > 0)
+                      ? (realDims.w / realDims.h)
+                      : (1200 / 800);  // fallback ratio offscreen
+
+        const availW = pageW - 2 * margin;                // largeur dispo
+        const availH = pageH - y - 80;                    // garde 80mm pour reste
+        // On contraint width OU height selon ce qui touche en premier
+        let finalW = availW;
+        let finalH = finalW / ratio;
+        if (finalH > availH) {
+          finalH = availH;
+          finalW = finalH * ratio;
+        }
+        const offsetX = margin + (availW - finalW) / 2;   // centré horizontalement
+
+        pdf.addImage(imgData, "JPEG", offsetX, y, finalW, finalH);
+        y += finalH + 3;
+        pdf.setFontSize(7); pdf.setTextColor(140);
+        pdf.text("Vue OpenStreetMap : zone du plan (cadre jaune) + position GPS surface des equipes (cercles colores).",
+                 margin, y);
+        pdf.setTextColor(0); y += 6;
+      }
+    } catch(eCap) {
+      console.warn("[Briefing] Capture OSM PDF skip :", eCap.message);
+    }
+
+    // Bloc INFOS
+    pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+    pdf.text("INFOS", margin, y); y += 6;
+    pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+    pdf.text("Scenario : " + ((scenario && scenario.nom) || "(sans nom)"), margin, y); y += 4;
+    pdf.text("Plan     : " + ((plan && plan.name) || "(non renseigne)"), margin, y); y += 4;
+    pdf.text("Genere le " + new Date().toLocaleString("fr-FR"), margin, y); y += 6;
+
+    // Bloc LOCALISATION (lien OSM + Google Maps)
+    pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+    pdf.text("LOCALISATION SUR LA CARTE", margin, y); y += 6;
+    pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+
+    let bbox = null;
+    if (window.OsmView && typeof window.OsmView.getPlanGpsBbox === "function") {
+      try { bbox = window.OsmView.getPlanGpsBbox(); } catch(e) { bbox = null; }
+    }
+    if (bbox && typeof bbox.getCenter === "function") {
+      const c = bbox.getCenter();
+      const south = bbox.getSouth(), north = bbox.getNorth();
+      const west = bbox.getWest(), east = bbox.getEast();
+      const latStr = c.lat.toFixed(6), lngStr = c.lng.toFixed(6);
+      pdf.text("Centre du plan : " + latStr + ", " + lngStr, margin, y); y += 4;
+      pdf.text("Bbox : sud-ouest " + south.toFixed(5) + ", " + west.toFixed(5)
+               + " / nord-est " + north.toFixed(5) + ", " + east.toFixed(5),
+               margin, y); y += 5;
+
+      // Lien OSM (osm.org centre + zoom 16)
+      const osmUrl = "https://www.openstreetmap.org/?mlat=" + latStr
+                   + "&mlon=" + lngStr + "#map=16/" + latStr + "/" + lngStr;
+      pdf.setTextColor(60, 110, 220);
+      pdf.textWithLink("> Ouvrir sur OpenStreetMap (centre du plan)", margin + 4, y,
+                       { url: osmUrl }); y += 4;
+      // Lien Google Maps backup
+      const gmUrl = "https://www.google.com/maps/@" + latStr + "," + lngStr + ",17z";
+      pdf.textWithLink("> Ouvrir sur Google Maps (zoom 17)", margin + 4, y,
+                       { url: gmUrl }); y += 4;
+      pdf.setTextColor(0); y += 2;
+    } else {
+      pdf.setTextColor(180, 80, 0);
+      pdf.text("(!) Vue OSM non initialisee (georef indisponible).", margin, y); y += 4;
+      pdf.setFontSize(8); pdf.setTextColor(120);
+      pdf.text("Pour ajouter une carte OSM cliquable : ouvre l'app, active la Vue OSM,", margin, y); y += 3;
+      pdf.text("puis regenere ce briefing. Sinon, transmets les coordonnees ci-dessous.", margin, y); y += 4;
+      pdf.setFontSize(9); pdf.setTextColor(0);
+    }
+    y += 4;
+
+    // Bloc EQUIPES + GPS SURFACE
+    pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+    pdf.text("EQUIPES SUR PLACE (GPS surface)", margin, y); y += 6;
+    pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+    const groupes = (scenario && Array.isArray(scenario.groupes)) ? scenario.groupes : [];
+    if (groupes.length === 0) {
+      pdf.setTextColor(120); pdf.setFont(undefined, "italic");
+      pdf.text("(aucune equipe definie dans ce scenario)", margin, y);
+      pdf.setTextColor(0); pdf.setFont(undefined, "normal"); y += 6;
+    } else {
+      groupes.forEach(function(g) {
+        if (y > pageH - 25) { pdf.addPage(); y = margin + 8; }
+        pdf.setFont(undefined, "bold");
+        pdf.text("- " + (g.nom || "(equipe)"), margin, y); y += 4;
+        pdf.setFont(undefined, "normal");
+        const membresStr = (Array.isArray(g.membres) && g.membres.length > 0)
+                           ? g.membres.join(", ") : "(membres non renseignes)";
+        pdf.text("  Membres : " + membresStr, margin + 2, y); y += 4;
+        if (g.surfaceGps && typeof g.surfaceGps.lat === "number"
+            && typeof g.surfaceGps.lng === "number") {
+          const gLat = g.surfaceGps.lat.toFixed(6);
+          const gLng = g.surfaceGps.lng.toFixed(6);
+          pdf.text("  GPS surface : " + gLat + ", " + gLng, margin + 2, y); y += 4;
+          const eqOsm = "https://www.openstreetmap.org/?mlat=" + gLat
+                      + "&mlon=" + gLng + "#map=17/" + gLat + "/" + gLng;
+          pdf.setTextColor(60, 110, 220);
+          pdf.textWithLink("  > Voir position equipe sur OSM", margin + 4, y,
+                           { url: eqOsm }); y += 4;
+          pdf.setTextColor(0);
+        } else {
+          pdf.setTextColor(150); pdf.setFont(undefined, "italic");
+          pdf.text("  GPS surface : non renseigne", margin + 2, y); y += 4;
+          pdf.setTextColor(0); pdf.setFont(undefined, "normal");
+        }
+        y += 1;
+      });
+    }
+    y += 4;
+
+    // Bloc POI CRITIQUES (entree_plan + sorties urgence + cavages)
+    if (y > pageH - 50) { pdf.addPage(); y = margin + 8; }
+    pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+    pdf.text("POI CRITIQUES (acces / sorties)", margin, y); y += 6;
+    pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+
+    const poiList = (window.listePoints && Array.isArray(window.listePoints))
+                    ? window.listePoints : [];
+    const critTags = ["entree_plan", "sortieurgence", "cao", "caf"];
+    const critLabels = {
+      entree_plan:    "Point d'entree (urgence pompiers)",
+      sortieurgence:  "Sortie urgence",
+      cao:            "Cavage ouvert",
+      caf:            "Cavage ferme"
+    };
+    const critByTag = {};
+    poiList.forEach(function(p) {
+      const t = p && p.tag;
+      if (t && critTags.indexOf(t) >= 0) {
+        if (!critByTag[t]) critByTag[t] = [];
+        critByTag[t].push(p);
+      }
+    });
+    let critFound = false;
+    critTags.forEach(function(t) {
+      const arr = critByTag[t] || [];
+      if (arr.length === 0) return;
+      critFound = true;
+      if (y > pageH - 20) { pdf.addPage(); y = margin + 8; }
+      pdf.setFont(undefined, "bold");
+      pdf.text(critLabels[t] + " (" + arr.length + ") :", margin, y); y += 4;
+      pdf.setFont(undefined, "normal");
+      arr.forEach(function(p) {
+        if (y > pageH - 15) { pdf.addPage(); y = margin + 8; }
+        const lvl = (typeof p.level === "number") ? " (niveau " + p.level + ")" : "";
+        pdf.text("  - " + (p.nom || p.id || "(sans nom)") + lvl, margin, y); y += 4;
+      });
+      y += 1;
+    });
+    if (!critFound) {
+      pdf.setTextColor(120); pdf.setFont(undefined, "italic");
+      pdf.text("(aucun POI critique tagge dans ce plan)", margin, y);
+      pdf.setTextColor(0); pdf.setFont(undefined, "normal"); y += 4;
+      pdf.setFontSize(8); pdf.setTextColor(150);
+      pdf.text("Astuce : tague les acces principaux avec '" + critLabels.entree_plan + "'", margin, y); y += 3;
+      pdf.text("via l'editeur de POI pour qu'ils apparaissent ici automatiquement.", margin, y); y += 3;
+      pdf.setFontSize(9); pdf.setTextColor(0);
+    }
+  }
+
+  // 🆕 v1.42.11 — Modale d'options affichée AVANT génération du PDF Briefing.
+  // Permet à l'user de choisir quels layers Vue OSM inclure dans la capture
+  // (Plan / POI / Tracé / Routes / Iti / Zones / Struct / Secours), comme dans
+  // le bandeau Vue OSM modale/Home. Au "Générer" → appel
+  // genererBriefingPompiersPDF(scenarioId, options).
+  function _afficherModaleBriefingOptions(scenarioId) {
+    const s = get(scenarioId);
+    if (!s) { _toast("⚠️ Scenario introuvable.", "error"); return; }
+
+    // Si une instance existe déjà, la retirer
+    const existing = document.getElementById("kta-briefing-options-modal");
+    if (existing) existing.remove();
+
+    const hasSecours = true;  // toujours afficher si on est dans Mode Secours
+
+    // 🆕 v1.42.14 — Palette adaptée au thème actif (dark / light cataphile)
+    const isLight = _isLightTheme();
+    const pal = isLight ? {
+      backdrop:  "rgba(245,235,208,0.85)",
+      boxBg:     "linear-gradient(135deg, #fdf8eb 0%, #f5ecd6 100%)",
+      boxBorder: "1px solid rgba(154,135,84,0.40)",
+      boxShadow: "0 8px 32px rgba(80,60,30,0.18)",
+      textMain:  "#2a2620",
+      textMuted: "#6b6354",
+      accent:    "#b8860b",
+      sectionBg: "rgba(255,255,255,0.55)",
+      sectionTitle: "#5a4f40"
+    } : {
+      backdrop:  "rgba(10,13,24,0.85)",
+      boxBg:     "linear-gradient(135deg, #1f2a47 0%, #161e35 100%)",
+      boxBorder: "1px solid rgba(140,180,255,0.30)",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+      textMain:  "#e8eaf0",
+      textMuted: "#8892a4",
+      accent:    "#f4c542",
+      sectionBg: "rgba(0,0,0,0.25)",
+      sectionTitle: "#c0c8d8"
+    };
+
+    const overlay = document.createElement("div");
+    overlay.id = "kta-briefing-options-modal";
+    overlay.style.cssText = [
+      "position:fixed", "inset:0", "z-index:100001",
+      "background:" + pal.backdrop, "backdrop-filter:blur(3px)",
+      "display:flex", "align-items:center", "justify-content:center",
+      "padding:20px", "font-family:system-ui,-apple-system,sans-serif"
+    ].join(";");
+
+    const box = document.createElement("div");
+    box.style.cssText = [
+      "max-width:520px", "width:100%",
+      "background:" + pal.boxBg,
+      "border:" + pal.boxBorder, "border-radius:12px",
+      "box-shadow:" + pal.boxShadow,
+      "color:" + pal.textMain, "padding:24px 28px"
+    ].join(";");
+
+    box.innerHTML =
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">' +
+        '<div style="font-size:32px;">🚒</div>' +
+        '<div>' +
+          '<div style="font-size:18px;font-weight:700;color:' + pal.accent + ';">Briefing pompiers</div>' +
+          '<div style="font-size:12px;color:' + pal.textMuted + ';margin-top:2px;">Choisis ce qui apparaît sur la carte OSM du PDF.</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="background:' + pal.sectionBg + ';border-radius:8px;padding:14px 16px;margin-bottom:14px;">' +
+        '<div style="font-size:13px;font-weight:600;color:' + pal.sectionTitle + ';margin-bottom:10px;">🗺️ Couches Vue OSM</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px;">' +
+          _renderToggleOpt("opt-plan",    "🖼️ Plan",    true) +
+          _renderToggleOpt("opt-poi",     "📍 POI",     true) +
+          _renderToggleOpt("opt-tracker", "📡 Tracé",   true) +
+          _renderToggleOpt("opt-road",    "🛣️ Routes",  true) +
+          _renderToggleOpt("opt-iti",     "🧭 Iti",     true) +
+          _renderToggleOpt("opt-zone",    "🌐 Zones",   true) +
+          _renderToggleOpt("opt-struct",  "🏗️ Struct",  true) +
+          (hasSecours ? _renderToggleOpt("opt-secours", "🚨 Secours", true) : "") +
+        '</div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:' + pal.textMuted + ';margin-bottom:14px;line-height:1.5;">' +
+        'Les sections texte (équipes GPS, POI critiques, liens OSM) sont toujours incluses dans le PDF.' +
+      '</div>' +
+      '<div style="display:flex;justify-content:flex-end;gap:10px;">' +
+        '<button class="kta-btn kta-btn-ghost" data-act="cancel" style="padding:9px 18px;">Annuler</button>' +
+        '<button class="kta-btn kta-btn-primary" data-act="generate" style="padding:9px 20px;font-weight:700;">📄 Générer le PDF</button>' +
+      '</div>';
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    box.querySelector('[data-act="cancel"]').addEventListener("click", function() {
+      overlay.remove();
+    });
+    box.querySelector('[data-act="generate"]').addEventListener("click", function() {
+      const opts = {
+        showPlan:    box.querySelector("#kta-bo-opt-plan").checked,
+        showPoi:     box.querySelector("#kta-bo-opt-poi").checked,
+        showTracker: box.querySelector("#kta-bo-opt-tracker").checked,
+        showRoad:    box.querySelector("#kta-bo-opt-road").checked,
+        showIti:     box.querySelector("#kta-bo-opt-iti").checked,
+        showZone:    box.querySelector("#kta-bo-opt-zone").checked,
+        showStruct:  box.querySelector("#kta-bo-opt-struct").checked,
+        showSecours: hasSecours ? box.querySelector("#kta-bo-opt-secours").checked : false
+      };
+      overlay.remove();
+      genererBriefingPompiersPDF(scenarioId, opts);
+    });
+    // Click backdrop = Annuler
+    overlay.addEventListener("click", function(e) {
+      if (e.target === overlay) overlay.remove();
+    });
+  }
+
+  // Helper template pour chip toggle Briefing options
+  function _renderToggleOpt(id, label, checked) {
+    return '<label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;padding:4px 0;">' +
+             '<input type="checkbox" id="kta-bo-' + id + '"' + (checked ? " checked" : "") + ' style="margin:0;cursor:pointer;">' +
+             _escHtml(label) +
+           '</label>';
+  }
+
+  // 🆕 v1.41.0 C — Genere un PDF "Briefing pompiers" dedie (page unique
+  // Briefing surface ci-dessus, exportee comme PDF separe).
+  // Appele depuis le handler bouton [data-action="briefing-pompiers"].
+  // 🆕 v1.42.11 — Accepte un 2e arg `options` : { showPlan, showPoi, showTracker,
+  // showRoad, showIti, showZone, showStruct, showSecours } pour piloter
+  // les couches Vue OSM lors de la capture. Passé à _captureOsmCanvasForBriefing
+  // via _drawBriefingSurfacePage.
+  async function genererBriefingPompiersPDF(scenarioId, options) {
+    const s = get(scenarioId);
+    if (!s) { _toast("⚠️ Scenario introuvable.", "error"); return null; }
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      _toast("⚠️ Export PDF indisponible. Recharge l'application.", "error");
+      return null;
+    }
+    try {
+      const pdf = new window.jspdf.jsPDF({ format: "a4", orientation: "portrait", unit: "mm" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 14;
+      const planMeta = {
+        name: (window.APP_CONFIG && window.APP_CONFIG.name) || "(plan)"
+      };
+      // 🆕 v1.42.5 — await pour la capture OSM via html2canvas
+      // 🆕 v1.42.11 — passe les options de layers à la capture
+      // 🆕 v1.42.13 — overlayContext="briefing" (= défaut), explicite pour lisibilité
+      await _drawBriefingSurfacePage(pdf, s, planMeta, pageW, pageH, margin, options, "briefing");
+      // Footer simple (pas de réutilisation du _drawRapportPDFFooter qui
+      // nécessite un objet reportData complet — on fait minimaliste ici).
+      pdf.setFontSize(7); pdf.setTextColor(140);
+      pdf.text("MyKTAMap v1.41.0 - Briefing pompiers (genere localement, aucune donnee transmise)",
+               margin, pageH - 6);
+      pdf.setTextColor(0);
+      const filename = "Briefing_pompiers_" + _slug(s.nom || "scenario") + "_" + _shortDate() + ".pdf";
+      pdf.save(filename);
+      _toast("✓ Briefing pompiers exporte : " + filename, "success");
+      return filename;
+    } catch(e) {
+      console.warn("[SecoursMode] genererBriefingPompiersPDF échec :", e);
+      _toast("⚠️ Erreur génération PDF briefing : " + e.message, "error");
       return null;
     }
   }
@@ -5653,6 +6467,18 @@
                     '<label>👥 Membres</label>' +
                     '<input type="text" data-action="edit-membres" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr((g.membres || []).join(", ")) + '" placeholder="ex: Léa, Tom (séparés par virgule)" maxlength="200">' +
                   '</div>' +
+                  // 🆕 v1.41.0 E — Position GPS surface équipe (PC secours, lieu rdv pompiers...).
+                  //    Format saisi : "lat, lng" décimal WGS84 (ex: "48.8566, 2.3522").
+                  //    Sérialisé en {lat, lng} dans le data model. Optionnel.
+                  //    Utilisé par Briefing pompiers PDF (lien OSM + marker carte).
+                  '<div class="kta-secours-groupe-row">' +
+                    '<label>📍 GPS surface</label>' +
+                    '<input type="text" data-action="edit-surface-gps" data-gid="' + _escAttr(g.id) + '" ' +
+                      'value="' + _escAttr(g.surfaceGps ? (g.surfaceGps.lat + ", " + g.surfaceGps.lng) : "") + '" ' +
+                      'placeholder="ex: 48.8566, 2.3522 (lat, lng — laisse vide si N/A)" ' +
+                      'pattern="^\\s*-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*\\s*$" ' +
+                      'maxlength="50" title="Format : latitude, longitude (décimal WGS84)">' +
+                  '</div>' +
                   '<div class="kta-secours-groupe-row">' +
                     '<label>🎨 Couleur</label>' +
                     '<select data-action="change-couleur" data-gid="' + _escAttr(g.id) + '">' +
@@ -5741,6 +6567,19 @@
                  '<button class="kta-btn kta-btn-primary" data-action="reprendre-live">' +
                    '▶️ Reprendre la vue Live' +
                  '</button>' +
+                 // 🆕 v1.40.33 (Synergie A v1) — Bouton "🌍 Vue OSM" depuis bandeau
+                 // Mode Secours actif. Au clic : ouvre la modale Vue OSM existante
+                 // (osmView.js) avec le plan georef projeté sur OpenStreetMap.
+                 // Utile pour briefer un secours externe qui ne connaît pas le site.
+                 // Gating natif (opt-in, strict offline, incognito, online) géré par
+                 // OsmView.isAvailable() — voir _ouvrirVueOsmDepuisSecours.
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="Voir le plan projeté sur OpenStreetMap (utile pour briefer des secours externes ou situer le site sur la carte)">' +
+                   '🌍 Vue OSM' +
+                 '</button>' +
+                 // 🆕 v1.41.0 C — Briefing pompiers PDF dédié (vue surface + équipes GPS + POI critiques).
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="Génère un PDF dédié au briefing des secours externes (vue surface OSM + équipes GPS + POI critiques)">' +
+                   '🚒 Briefing pompiers' +
+                 '</button>' +
                  // 🆕 v1.25.0 — Bouton Rapport accessible depuis vue Edit
                  // tant que execution active. Scope choisi = rôle courant.
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="edit-rapport" data-scope="' + _escAttr(exec.role) + '" title="Voir ou exporter le rapport actuel">' +
@@ -5770,6 +6609,14 @@
                '<div class="kta-secours-lancer-bandeau-actions">' +
                  '<button class="kta-btn kta-btn-primary" data-action="edit-rapport" data-scope="' + _escAttr(s.execution.role) + '">' +
                    '📤 Voir le rapport historique' +
+                 '</button>' +
+                 // 🆕 v1.40.33 (Synergie A v1) — Vue OSM accessible aussi pour debrief
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="Voir le plan projeté sur OpenStreetMap (debrief géographique, briefing secours externes)">' +
+                   '🌍 Vue OSM' +
+                 '</button>' +
+                 // 🆕 v1.41.0 C — Briefing pompiers accessible aussi post-mortem.
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="Génère un PDF dédié au briefing des secours externes">' +
+                   '🚒 Briefing pompiers' +
                  '</button>' +
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-lancer-modale" title="Relancer un nouveau plan (les observations actuelles seront écrasées)">' +
                    '🚀 Relancer' +
@@ -6119,6 +6966,13 @@
               '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="equipe" title="Générer un rapport de mon parcours (PDF, JSON ou texte)">' +
                 '📤 Rapport' +
               '</button>' +
+              // 🆕 v1.41.1 — Vue OSM + Briefing pompiers accessibles depuis vue Équipier.
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="Voir le plan projeté sur OpenStreetMap">' +
+                '🌍 Vue OSM' +
+              '</button>' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="Génère un PDF dédié au briefing des secours externes">' +
+                '🚒 Briefing pompiers' +
+              '</button>' +
               /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — bouton retiré.
                  Sera remplacé hotfix18 par "💾 Exporter mes obs (.json)"
                  + import via le bouton "📥 Importer" en haut vue Live
@@ -6208,6 +7062,13 @@
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-carte-globale">' +
                 '🗺️ Voir carte globale' +
+              '</button>' +
+              // 🆕 v1.41.1 — Vue OSM + Briefing pompiers accessibles depuis vue Opérateur.
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="Voir le plan projeté sur OpenStreetMap (briefing secours externes)">' +
+                '🌍 Vue OSM' +
+              '</button>' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="Génère un PDF dédié au briefing des secours externes">' +
+                '🚒 Briefing pompiers' +
               '</button>' +
               // 🆕 v1.25.0 — Bouton Rapport (mode Opérateur : scope = "operateur" → toutes équipes)
               '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="operateur" title="Générer un rapport global de toutes les équipes (PDF, JSON ou texte)">' +
@@ -6414,6 +7275,13 @@
               // 🆕 v1.25.0 — Bouton Rapport (mode Secouriste : scope = "secouriste" → notes libres)
               '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="secouriste" title="Générer un rapport de mes notes (PDF, JSON ou texte)">' +
                 '📤 Rapport' +
+              '</button>' +
+              // 🆕 v1.41.1 — Vue OSM + Briefing pompiers accessibles depuis vue Secouriste.
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="Voir le plan projeté sur OpenStreetMap">' +
+                '🌍 Vue OSM' +
+              '</button>' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="Génère un PDF dédié au briefing des secours externes">' +
+                '🚒 Briefing pompiers' +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
                 '⏸️ Voir l\'édition' +
@@ -6819,6 +7687,23 @@
           _afficherModaleRapport(s.id, scope);
         });
       });
+      // 🆕 v1.40.33 (Synergie A v1) — Bouton "🌍 Vue OSM" : ouvre la modale
+      // Vue OSM (osmView.js) avec le plan georef projeté sur OpenStreetMap.
+      // Utile pour briefer des secours externes, debriefer post-mission, ou
+      // situer le site géographiquement.
+      corps.querySelectorAll('[data-action="ouvrir-vue-osm"]').forEach(function(btn) {
+        btn.addEventListener("click", _ouvrirVueOsmDepuisSecours);
+      });
+      // 🆕 v1.41.0 C — Bouton "🚒 Briefing pompiers" : exporte un PDF dédié
+      // (vue surface OSM + équipes GPS + POI critiques). Utile pour transmettre
+      // aux secours externes avant ou pendant intervention.
+      // 🆕 v1.42.11 — Ouvre une modale d'options (choix des couches OSM à
+      // inclure dans la capture) AVANT la génération PDF.
+      corps.querySelectorAll('[data-action="briefing-pompiers"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          _afficherModaleBriefingOptions(s.id);
+        });
+      });
       // Toggle overlay carte — masque la modale pour voir le rendu Leaflet
       // (sinon la modale plein écran z-index 99999 cache toute la carte).
       // Floater "← Retour modale" pour réouvrir sans repasser par la sidebar.
@@ -7094,6 +7979,30 @@
           updateGroupe(s.id, inp.getAttribute("data-gid"), { membres: arr });
         });
       });
+      // 🆕 v1.41.0 E — Edit GPS surface équipe. Parse "lat, lng" → {lat, lng}.
+      //    Vide ou format invalide → null (équipe sans GPS surface assigné).
+      corps.querySelectorAll('[data-action="edit-surface-gps"]').forEach(function(inp) {
+        inp.addEventListener("blur", function() {
+          const raw = (inp.value || "").trim();
+          let gps = null;
+          if (raw) {
+            const m = raw.match(/^\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*$/);
+            if (m) {
+              const lat = parseFloat(m[1]);
+              const lng = parseFloat(m[2]);
+              if (Number.isFinite(lat) && Number.isFinite(lng)
+                  && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                gps = { lat: lat, lng: lng };
+              }
+            }
+            if (!gps) {
+              _toast("⚠️ Format GPS invalide (attendu : lat, lng — ex 48.85, 2.35).", "error");
+              return;
+            }
+          }
+          updateGroupe(s.id, inp.getAttribute("data-gid"), { surfaceGps: gps });
+        });
+      });
       // Change couleur
       corps.querySelectorAll('[data-action="change-couleur"]').forEach(function(sel) {
         sel.addEventListener("change", function() {
@@ -7255,6 +8164,20 @@
       btn.addEventListener("click", function() {
         const scope = btn.getAttribute("data-scope") || s.execution.role;
         _afficherModaleRapport(s.id, scope);
+      });
+    });
+    // 🆕 v1.41.1 — Bouton "🌍 Vue OSM" (commun aux 3 vues Live).
+    //    Réutilise _ouvrirVueOsmDepuisSecours qui gère le gating natif
+    //    (opt-in, strict offline, incognito, online, georef présent...).
+    corps.querySelectorAll('[data-action="ouvrir-vue-osm"]').forEach(function(btn) {
+      btn.addEventListener("click", _ouvrirVueOsmDepuisSecours);
+    });
+    // 🆕 v1.41.1 — Bouton "🚒 Briefing pompiers" (commun aux 3 vues Live).
+    //    Exporte un PDF dédié (vue surface OSM + équipes GPS + POI critiques).
+    // 🆕 v1.42.11 — Ouvre modale d'options de couches OSM avant génération.
+    corps.querySelectorAll('[data-action="briefing-pompiers"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        _afficherModaleBriefingOptions(s.id);
       });
     });
     /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — handler live-share-obs-qr retiré.
@@ -7820,6 +8743,11 @@
       updateGroupe(_currentScenarioId, groupeId, { intermediaires: arr });
     }
     _scheduleAutoRecalc(_currentScenarioId, groupeId);
+    // 🐛 v1.42.15 (KARMA "quand on ajoute une entrée sortie à un groupe de secours,
+    // ça ne se met pas à jour de suite, il faut calculer itinéraire pour voir
+    // ce qu'on a saisi") : oubli historique du re-render après mutation.
+    // Cohérent avec _clearWaypoint qui appelait déjà _switchView("edit") en fin.
+    _switchView("edit");
   }
 
   // 🆕 v1.22.0-fix2 — clear un waypoint (entree, sortie → null ; intermediaire → splice)
@@ -8829,6 +9757,8 @@
     recalculerItineraires:  recalculerItineraires,
     exporterPDF:            exporterPDF,
     exporterKMZ:            exporterKMZ,
+    // 🆕 v1.41.0 C — Briefing pompiers PDF dedie (Vue OSM × Mode Secours).
+    genererBriefingPompiersPDF: genererBriefingPompiersPDF,
     // Map overlay
     renderOverlay:          renderOverlay,
     clearOverlay:           clearOverlay,

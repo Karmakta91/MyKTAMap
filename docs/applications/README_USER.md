@@ -89,6 +89,47 @@ Au clic, le bouton 🚨 force le re-affichage de TOUTES les alertes actives en c
 
 > ⚠️ Ce système est destiné à des alertes **importantes pour la sécurité de la communauté**. Il ne sert pas à des messages commerciaux ou promotionnels.
 
+### 🛡️ Plans révoqués (kill-switch anti-fuite, depuis v1.42.0)
+
+Si un plan ZIP **fuite massivement** (= il a été diffusé hors de son groupe de confiance — Telegram public, forum, site warez…), l'auteur peut le **révoquer** : son empreinte est ajoutée à une liste publique côté serveur (`denylist.json`). L'application refusera alors automatiquement de l'ouvrir chez **tous les utilisateurs**.
+
+**Comment ça se passe pour toi si tu télécharges un plan révoqué par erreur** :
+
+1. Tu importes le ZIP dans l'app (loader principal OU générateur « Modifier un plan existant »)
+2. **Avant** d'ouvrir le ZIP, l'app calcule son **empreinte SHA-256** (localement, sur ton appareil)
+3. Si l'empreinte matche un plan révoqué, une **modale rouge bloquante** s'affiche :
+   - Titre : « ⛔ Plan révoqué »
+   - **Motif** : raison textuelle donnée par l'auteur (ex: « Fuite publique constatée le 05/06/2026 sur Telegram »)
+   - **Date d'ajout** à la liste de blocage
+   - **Empreinte SHA-256** (12 premiers + 8 derniers chars, anti-doxxing)
+   - Bouton « Compris, supprimer ce plan » → le plan est retiré automatiquement de ta liste, la page se recharge
+4. Le plan **n'est jamais ouvert** sur ton appareil
+
+**Privacy stricte** :
+- ✅ **Aucune empreinte n'est envoyée au serveur**. Seule la liste publique des plans révoqués est téléchargée, et la comparaison se fait 100% sur ton appareil.
+- ✅ L'auteur ne sait pas quels plans tu possèdes (= zéro tracking).
+- ✅ La liste `denylist.json` est publique : tu peux l'auditer toi-même à `https://myktamap.fr/denylist.json` (idem instance pro).
+
+**Cache & propagation** :
+- La liste de révocations est rafraîchie au boot de l'app puis mise en cache 24h.
+- En cas d'ajout urgent par l'auteur, la propagation est **immédiate** pour tous les users qui rouvrent l'app, et max 24h pour les autres.
+- En cas d'**absence de réseau**, l'app utilise la dernière liste connue (= le mécanisme reste actif offline).
+
+**Limitation assumée** : seules les fuites **byte-perfect** sont bloquées (= le ZIP exact). Si un attaquant ré-emballe le ZIP avec un autre outil ou modifie 1 byte, l'empreinte change. C'est suffisant pour bloquer la **diffusion accidentelle** d'un ZIP qui circule, mais pas une dérivation active intentionnelle (= friction max acceptable).
+
+> 💡 **Pour les auteurs de plans qui veulent révoquer un ZIP** : contacte KARMA (auteur de l'app) avec l'empreinte SHA-256 de ton ZIP (commande : `sha256sum ton-plan.zip`) + un motif court. La révocation est appliquée côté serveur sous quelques jours.
+
+#### 🔄 Audit automatique au démarrage (depuis v1.42.3)
+
+Si un plan que **tu avais déjà importé** est révoqué par l'auteur APRÈS ton import (entre 2 sessions), l'app le détecte automatiquement au prochain démarrage :
+
+- ~2 secondes après le boot, en arrière-plan, l'app calcule l'empreinte SHA-256 de chacun de tes plans locaux et compare à la liste publique
+- Si un match → le plan est **automatiquement supprimé** de ta liste
+- Une **modale orange** s'affiche listant les plans révoqués (nom + motif + date + empreinte tronquée) + bouton « Compris »
+- L'empreinte est mise en cache dans ta liste de plans → les boots suivants sont quasi-instantanés (pas de re-calcul)
+
+> ✅ **Privacy** : tout reste local, comme à l'import. Aucune empreinte n'est envoyée au serveur.
+
 ---
 
 ### 🌐 Migration vers `myktamap.fr`
@@ -1406,6 +1447,115 @@ Nouvelle section dans la modale 🗺️ Itinéraire :
 Default checked + 15 min (= comportement préservé). Modifiable → s'applique aussi au calc des durées Mode Secours (cross-feature).
 
 > ⚠️ Comme tous les outils numériques en sous-sol : **garde une boussole physique** et une carte papier dans ta poche. Le téléphone peut tomber en panne, le magnétomètre peut être faussé par du métal local, le tracker peut dériver. Le 🚨 est une aide à la lecture rapide d'infos, pas un substitut à la préparation.
+
+### 🚨 Mode Secours × 🌍 Vue OSM — Coordination secours externes (v1.41)
+
+Depuis v1.41.0, le Mode Secours est intégré avec la Vue OSM pour fournir aux **secours externes** (pompiers, GRIMP, SDIS) tout ce qu'il leur faut pour intervenir sur le site sans connaître les lieux.
+
+#### 🚪 Tag « Point d'entrée du plan »
+
+Nouveau tag built-in disponible dans la catégorie **🚨 Secours** de la légende et de l'éditeur de POI. Marque la (les) entrée(s) principale(s) du site pour les secours :
+
+- Icône SVG vectorielle (porte jaune sur fond noir)
+- Apparaît automatiquement dans le PDF Briefing pompiers (section « POI critiques »)
+- Visible sur la Vue OSM aussi (avec sa géoréférence GPS)
+
+> Pour taguer un POI : édite-le → menu Tag → catégorie « 🚨 Secours » → « 🚪 Point d'entrée du plan ». Tu peux avoir plusieurs entrées (entrée nord/sud/etc.).
+
+#### 📍 GPS surface des équipes
+
+Dans la fiche d'une équipe (Mode Secours → édition équipe), nouveau champ **📍 GPS surface** :
+
+```
+📍 GPS surface : [48.8566, 2.3522        ]
+                  ↑ format : lat, lng (décimal WGS84)
+```
+
+Renseigne la position GPS du PC secours, du lieu de rendez-vous avec les pompiers, ou tout point d'intérêt en surface lié à cette équipe. Optionnel.
+
+→ Cette donnée alimente le **PDF Briefing pompiers** (lien OSM clickable par équipe) et reste dans l'export `.mkmsec.json`.
+
+#### 🌍 Vue OSM accessible partout dans Mode Secours
+
+Le bouton **🌍 Vue OSM** est désormais présent dans :
+- La vue Édition (bandeau scénario)
+- Les 3 vues Live : 👤 Opérateur surface, 🚨 Équipier, 🚑 Secouriste libre
+
+Plus besoin de revenir à l'édition pour montrer la position du plan sur OpenStreetMap aux pompiers qui débarquent en cours de mission.
+
+#### 🚒 Briefing pompiers PDF dédié
+
+Nouveau bouton **🚒 Briefing pompiers** dans tous les bandeaux Mode Secours. Génère un PDF dédié spécialement conçu pour les secours externes, contenant :
+
+| Section | Contenu |
+|---------|---------|
+| **INFOS** | Nom scénario · nom plan · date génération |
+| **LOCALISATION** | Coordonnées GPS centre + bbox + **lien OpenStreetMap cliquable** + **lien Google Maps cliquable** |
+| **EQUIPES SUR PLACE** | Pour chaque équipe : nom + membres + GPS surface (si renseigné) + lien OSM individuel par équipe |
+| **POI CRITIQUES** | 🚪 Points d'entrée du plan · 🚨 Sorties urgence · 🪜 Cavages (ouverts/fermés) avec niveau M-LVL |
+
+> 💡 **Comment utiliser** : Le PDF s'imprime ou s'envoie par mail/Signal au chef de groupe pompiers AVANT son arrivée. Sur place, il clique les liens depuis son tél/PC pour ouvrir OSM ou Google Maps centrés sur ton site. Aucune installation MyKTAMap nécessaire chez lui.
+
+#### 📤 Page « Briefing surface » dans le rapport post-mission
+
+Le rapport PDF post-mission (généré au bouton 📤 Rapport) inclut désormais une nouvelle page « BRIEFING SURFACE » avec les mêmes infos. Utile pour debrief géographique avec les pompiers ou archivage du dossier d'intervention.
+
+#### 🏷️ Filtre tags Vue OSM corrigé
+
+Auparavant, les chips de filtre par tag dans la modale Vue OSM ne montraient que ~3 tags (bug de source de données). Depuis v1.41.4, **tous les tags présents** dans le plan sont listés, alignés avec le widget Vue OSM Home.
+
+#### 💾 Save Offline — Vue OSM hors-ligne (v1.43.0 → v1.43.8)
+
+Tu pars en sortie cataphile, ou tu te prépares à un Mode Secours dans une zone à cellular pourri ? Tu peux désormais **télécharger la carte OpenStreetMap autour de ton plan à l'avance**, et la consulter **sans Internet** une fois sur place.
+
+**À quoi ça sert** :
+
+- Tu ouvres la Vue OSM sur le terrain même sans réseau (sortie souterraine prolongée, Mode Secours en zone blanche, batterie qui force le mode avion data…)
+- Le fond de carte (rues, contours, repères de surface) reste affiché normalement → tu sais où tu es par rapport au plan sans dépendre de la 4G
+- Particulièrement utile **pour les pompiers / SDIS** auxquels tu présentes la Vue OSM à l'arrivée : la carte s'affiche immédiatement, pas d'attente de chargement
+
+**Comment l'activer** :
+
+Un bouton **💾 Save Offline** est disponible dans le bandeau de la Vue OSM. **Un clic suffit** :
+
+1. L'app télécharge les tuiles OpenStreetMap visibles autour de ton plan + quelques niveaux de zoom proches
+2. Le bandeau affiche après le téléchargement : **📦 N tuiles · X MB** (= ce qui est désormais dispo sur ton appareil)
+3. Tu peux refaire un clic plus tard si tu zoomes sur une autre zone que tu veux aussi sauvegarder
+
+> 💡 **Max ~200 tuiles par clic** (~5-10 MB) : c'est une limite stricte pour respecter la politique d'usage OpenStreetMap (= service gratuit financé par les dons, donc pas d'abus). Si tu veux sauvegarder une zone très large, fais plusieurs clics en déplaçant la vue.
+
+**Où c'est dispo** :
+
+Le bouton 💾 Save Offline est présent dans **3 contextes** — et le cache est **partagé** entre les trois :
+
+| Contexte | Quand l'utiliser |
+|---|---|
+| **🌍 Vue OSM modale** (mode carte) | Tu prépares une sortie : tu ouvres la Vue OSM, tu cadres la zone, tu cliques 💾 |
+| **🌍 Widget OSM de l'accueil** | Tu prépares tes plans depuis la home sans avoir à charger un plan en mode carte |
+| **🚨 Mode Secours** (bandeaux Création + Live) | Tu déclenches une mission : un coup de 💾 et toute l'équipe a la zone sur l'appareil avant de descendre |
+
+> ✅ **Cache partagé** : tu télécharges UNE fois → c'est dispo partout, pas de doublon. Pas besoin de recommencer le téléchargement à chaque mode.
+
+**Comportement intelligent hors-ligne** (v1.43.1 → v1.43.7) :
+
+Quand l'app détecte que t'as pas d'Internet, elle adapte le comportement de l'icône 🌍 selon ce qui est dispo sur ton appareil :
+
+| Internet | Plan sauvegardé | Icône 🌍 | Action |
+|---|---|---|---|
+| ✅ | – | visible | ouverture normale |
+| ❌ | ✅ | visible | ouverture directe depuis ton appareil (pas de test ping) |
+| ❌ | ❌ | masqué | re-connexion nécessaire — message clair "Plan non disponible hors-ligne, clique 💾 quand connecté" |
+
+Concrètement : si t'as sauvegardé ton plan la veille au Wi-Fi, l'icône 🌍 reste visible le lendemain en cellular pourri et la modale s'ouvre **direct** sans tenter un test réseau qui ralentirait tout. Si t'as oublié de sauvegarder, l'app te le dit clairement plutôt que de te laisser tourner en rond.
+
+**🔒 Tout reste local et privé** :
+
+- Les tuiles téléchargées sont **stockées 100 % sur ton appareil** (ton navigateur / la PWA installée)
+- **Rien n'est jamais transmis** à un serveur tiers, ni à l'auteur, ni à OpenStreetMap après le téléchargement initial
+- Aucune trace de ce que tu sauvegardes n'est tracée
+- Au prochain reset complet (💥 Tout réinitialiser), les tuiles sauvegardées sont effacées avec le reste
+
+> 💡 **Astuce sortie cataphile** : la veille de la sortie, ouvre la Vue OSM sur ton tel à la maison (Wi-Fi), zoome sur la zone de l'entrée + les rues autour, clique **💾 Save Offline**. Le lendemain en surface au point de RDV, même en cellular faible, la carte s'affiche instantanément.
 
 ### 🚨 Mode Secours — Exploitation terrain temps réel
 
@@ -3062,12 +3212,13 @@ MyKTAMap repose entièrement sur des **briques open-source**. Sans ces projets, 
 - 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin qui projette une image comme parallélogramme via 3 coins (transform CSS matrix). Utilisé pour le calage **2 ancres** des calques image (v1.38+) et pour la projection des plans MyKTAMap **sur la Vue OSM** (v1.39+). Merci à **Iván Sánchez Ortega** pour ce plugin élégant.
 - 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL au choix)* — lecture et écriture des archives `.zip` côté navigateur (plans, sessions, exports, extraction partielle pour la mini-carte de la HOME). Merci à **Stuart Knightley** et aux contributeurs.
 - 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — génération de PDF imprimables (A0 → A4, portrait/paysage, page miniature Mode Secours, embed Mode Histoire).
+- 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — capture du rendu DOM en image (canvas → PNG). Utilisée pour intégrer la **carte OSM Leaflet** dans les PDF **« Briefing pompiers »** du Mode Secours (depuis v1.42.5) : pile graphique webgl + tiles + overlays + plan projeté, le tout figé en une image embarquée dans le PDF remis aux secours externes. Merci à **Niklas von Hertzen** et aux contributeurs.
 - 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & ses contributeurs** — sous licence **[ODbL](https://opendatacommons.org/licenses/odbl/)** pour les données et **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** pour la cartographie. Données cartographiques mondiales affichées dans la **Vue OSM** (modale plan + widget HOME, depuis v1.39+) **uniquement quand tu l'actives via l'opt-in dédié**. L'app affiche l'attribution `© OpenStreetMap contributors` dans le coin de chaque carte OSM, **comme la licence ODbL l'exige**. Hébergement des tuiles : **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (fondation non-commerciale, politique de logs publique, pas de tracking publicitaire). Sans ce bien commun monumental — bâti depuis 2004 par des **milliers de bénévoles** qui cartographient le monde rue par rue — la Vue OSM n'existerait pas.
 - 🧭 **Algorithme de Dijkstra** (1959) — calcul du plus court chemin pour les itinéraires assistés. Edsger W. Dijkstra (1930-2002) : merci pour cette idée vieille de plus de 60 ans qui sous-tend encore Google Maps, OpenStreetMap routing, et chaque GPS du monde.
 - 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — format d'échange avec TopoDroid, OsmAnd, Strava, Garmin et l'écosystème outdoor.
 - 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintenus par des milliers de personnes qu'on ne croisera jamais et à qui on doit énormément.
 
-> 📜 **Conformité licences** : les fichiers vendored (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`) conservent leur header de licence d'origine. Pour le détail réseau (quand chaque ressource est contactée), voir l'**[Audit réseau](./NETWORK_AUDIT.md)** (accessible aussi depuis la modale Audit dans l'app).
+> 📜 **Conformité licences** : les fichiers vendored (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`) conservent leur header de licence d'origine. Pour le détail réseau (quand chaque ressource est contactée), voir l'**[Audit réseau](./NETWORK_AUDIT.md)** (accessible aussi depuis la modale Audit dans l'app).
 
 ### À l'écosystème PWA
 
@@ -3085,7 +3236,7 @@ Pour avoir pris 10 minutes à lire au lieu de cliquer aveuglément. C'est exacte
 
 ---
 
-**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM opt-in) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
+**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 📸 html2canvas (capture DOM pour PDF Briefing pompiers) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM opt-in) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
 
 *MyKTAMap — Guide Utilisateur*
 *Ces lieux sont fragiles. La discrétion est une forme de respect.*

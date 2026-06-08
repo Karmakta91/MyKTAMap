@@ -1360,6 +1360,40 @@ async function _splashEnd() {
     });
   }
 
+  // 🆕 v1.42.0 — Kill-switch anti-fuite (denylist.json côté serveur).
+  // Fetch initial async + cache 24h. Le check effectif a lieu au moment de
+  // chargerZipFichier() via window.PlanDenylist.isPlanDenied(zipFile).
+  // 🆕 v1.42.3 — Audit boot des plans LOCAUX déjà importés (delay 2s pour
+  // ne pas bloquer le boot principal). Si des plans sont purgés → modale
+  // orange affichée 1s après pour informer l'user. Cache hash dans le
+  // registry pour éviter le re-hash au prochain boot.
+  if (window.PlanDenylist && typeof window.PlanDenylist.init === "function") {
+    window.PlanDenylist.init().then(function() {
+      // Affiche la modale de notif si des plans ont été purgés au DERNIER boot
+      // (lecture LS — peut survenir aussi suite à audit en arrière-plan plus tôt)
+      const purged = window.PlanDenylist.getPurgedAtBoot();
+      if (purged && purged.length > 0) {
+        setTimeout(function() {
+          try { window.PlanDenylist.showPurgedNotifModal(purged); } catch(e) {}
+        }, 800);
+      }
+      // Lance l'audit en arrière-plan (delay 2s anti-blocage boot)
+      setTimeout(function() {
+        window.PlanDenylist.auditPlansLocaux().then(function(res) {
+          if (res.purged && res.purged.length > 0) {
+            console.warn("[Main] Audit denylist : " + res.purged.length + " plan(s) purgé(s) au boot — affichage notif");
+            // Affiche immédiatement la notif (la modale réutilise LS_PURGED)
+            try { window.PlanDenylist.showPurgedNotifModal(res.purged); } catch(e) {}
+          }
+        }).catch(function(e) {
+          console.warn("[Main] auditPlansLocaux error :", e);
+        });
+      }, 2000);
+    }).catch(function(e) {
+      console.warn("[Main] PlanDenylist init error :", e);
+    });
+  }
+
   // Auto-discovery serveur (data/index.json)
   // 🆕 v1.21.3 (KARMA "rajoute une option — ne pas charger les plan serveur
   // au démarrage") : skip total si l'user a coché la pref dans ⚙️ Configuration

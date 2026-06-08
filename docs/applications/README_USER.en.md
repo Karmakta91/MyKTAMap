@@ -89,6 +89,47 @@ When clicked, the 🚨 button forces the re-display of ALL active alerts in casc
 
 > ⚠️ This system is intended for alerts **important for community safety**. It is not used for commercial or promotional messages.
 
+### 🛡️ Revoked plans (anti-leak kill-switch, since v1.42.0)
+
+If a plan ZIP **leaks massively** (= it's been distributed outside its trusted group — public Telegram, forum, warez site…), the author can **revoke** it: its fingerprint is added to a public server-side list (`denylist.json`). The application will then automatically refuse to open it for **all users**.
+
+**What happens if you download a revoked plan by mistake**:
+
+1. You import the ZIP into the app (main loader OR generator "Modify existing plan")
+2. **Before** opening the ZIP, the app computes its **SHA-256 fingerprint** (locally, on your device)
+3. If the fingerprint matches a revoked plan, a **red blocking modal** appears:
+   - Title: "⛔ Plan revoked"
+   - **Reason**: text given by the author (e.g., "Public leak observed on 05/06/2026 on Telegram")
+   - **Date added** to the blocklist
+   - **SHA-256 fingerprint** (first 12 + last 8 chars, anti-doxxing)
+   - "Got it, delete this plan" button → the plan is automatically removed from your list, the page reloads
+4. The plan **is never opened** on your device
+
+**Strict privacy**:
+- ✅ **No fingerprint is sent to the server**. Only the public list of revoked plans is downloaded, and comparison happens 100% on your device.
+- ✅ The author doesn't know which plans you own (= zero tracking).
+- ✅ The `denylist.json` list is public: you can audit it yourself at `https://myktamap.fr/denylist.json` (same for pro instances).
+
+**Cache & propagation**:
+- The revocation list is refreshed at app boot then cached for 24h.
+- For urgent additions by the author, propagation is **immediate** for users reopening the app, max 24h for others.
+- When **offline**, the app uses the last known list (= mechanism stays active offline).
+
+**Assumed limitation**: only **byte-perfect** leaks are blocked (= the exact ZIP). If an attacker re-packs the ZIP with another tool or modifies 1 byte, the fingerprint changes. This is enough to block **accidental redistribution** of a circulating ZIP, but not an intentional active derivation (= acceptable max friction).
+
+> 💡 **For plan authors who want to revoke a ZIP**: contact KARMA (app author) with your ZIP's SHA-256 fingerprint (command: `sha256sum your-plan.zip`) + a short reason. Revocation is applied server-side within a few days.
+
+#### 🔄 Automatic boot audit (since v1.42.3)
+
+If a plan **you have already imported** is revoked by the author AFTER your import (between 2 sessions), the app detects it automatically at next startup:
+
+- ~2 seconds after boot, in the background, the app computes the SHA-256 fingerprint of each of your local plans and compares against the public list
+- If a match → plan is **automatically removed** from your list
+- An **orange modal** appears listing the revoked plans (name + reason + date + truncated fingerprint) + "Got it" button
+- The fingerprint is cached in your plan list → next boots are near-instant (no re-calc)
+
+> ✅ **Privacy**: everything stays local, like at import. No fingerprint is ever sent to the server.
+
 ---
 
 ### 🌐 Migration to `myktamap.fr`
@@ -1401,6 +1442,115 @@ New section in the 🗺️ Route modal:
 Default checked + 15 min (= preserved behavior). Modifiable → also applies to Rescue Mode duration calculations (cross-feature).
 
 > ⚠️ As with all digital tools underground: **keep a physical compass** and a paper map in your pocket. The phone can fail, the magnetometer can be distorted by local metal, the tracker can drift. The 🚨 is a quick info reading aid, not a substitute for preparation.
+
+### 🚨 Rescue Mode × 🌍 OSM View — External rescue coordination (v1.41)
+
+Since v1.41.0, Rescue Mode is integrated with the OSM View to provide **external rescue teams** (firefighters, GRIMP, SDIS) with everything they need to intervene on site without knowing the place.
+
+#### 🚪 "Plan entry point" tag
+
+New built-in tag available in the **🚨 Rescue** category of the legend and POI editor. Marks the main entrance(s) for rescue teams:
+
+- Vector SVG icon (yellow door on black background)
+- Automatically appears in the Firefighter Briefing PDF ("critical POIs" section)
+- Visible on the OSM View too (with its GPS georeference)
+
+> To tag a POI: edit it → Tag menu → "🚨 Rescue" category → "🚪 Plan entry point". You can have multiple entries (north/south/etc.).
+
+#### 📍 Team surface GPS
+
+In the team form (Rescue Mode → team edit), new **📍 Surface GPS** field:
+
+```
+📍 Surface GPS: [48.8566, 2.3522        ]
+                 ↑ format: lat, lng (decimal WGS84)
+```
+
+Enter the GPS position of the rescue HQ, firefighter rendezvous point, or any surface point of interest related to this team. Optional.
+
+→ This data feeds the **Firefighter Briefing PDF** (clickable OSM link per team) and stays in the `.mkmsec.json` export.
+
+#### 🌍 OSM View accessible everywhere in Rescue Mode
+
+The **🌍 OSM View** button is now present in:
+- The Edit view (scenario banner)
+- All 3 Live views: 👤 Surface Operator, 🚨 Field Team, 🚑 Free Rescuer
+
+No need to return to edit view to show the plan's location on OpenStreetMap to firefighters arriving mid-mission.
+
+#### 🚒 Dedicated Firefighter Briefing PDF
+
+New **🚒 Firefighter Briefing** button in all Rescue Mode banners. Generates a dedicated PDF specially designed for external rescue teams, containing:
+
+| Section | Content |
+|---------|---------|
+| **INFO** | Scenario name · plan name · generation date |
+| **LOCATION** | GPS center coordinates + bbox + **clickable OpenStreetMap link** + **clickable Google Maps link** |
+| **TEAMS ON SITE** | For each team: name + members + surface GPS (if set) + individual OSM link per team |
+| **CRITICAL POIs** | 🚪 Plan entry points · 🚨 Emergency exits · 🪜 Cavages (open/closed) with M-LVL level |
+
+> 💡 **How to use**: Print the PDF or send it by email/Signal to the firefighter group leader BEFORE arrival. On site, they click the links from their phone/PC to open OSM or Google Maps centered on your site. No MyKTAMap installation needed on their side.
+
+#### 📤 "Surface briefing" page in post-mission report
+
+The post-mission PDF report (generated via 📤 Report button) now includes a new "SURFACE BRIEFING" page with the same info. Useful for geographic debrief with firefighters or archiving the intervention file.
+
+#### 🏷️ OSM View tag filter fix
+
+Previously, the tag filter chips in the OSM View modal only showed ~3 tags (data source bug). Since v1.41.4, **all tags present** in the plan are listed, aligned with the OSM View Home widget.
+
+#### 💾 Save Offline — OSM View without Internet (v1.43.0 → v1.43.8)
+
+Heading out on a cataphile trip, or prepping for a Rescue Mode in an area with terrible cellular? You can now **download the OpenStreetMap tiles around your plan ahead of time**, and view them **with no Internet** once you're on site.
+
+**What it's for**:
+
+- You open the OSM View in the field even without network (long underground trip, Rescue Mode in a dead zone, low battery forcing data-saver mode…)
+- The basemap (streets, surface landmarks, contours) stays visible normally → you know where you are relative to the plan without depending on 4G
+- Especially useful **for firefighters / rescue teams** you show the OSM View to upon arrival: the map shows up instantly, no loading wait
+
+**How to enable it**:
+
+A **💾 Save Offline** button is available in the OSM View top bar. **One click is all it takes**:
+
+1. The app downloads the visible OpenStreetMap tiles around your plan + a few zoom levels close in
+2. After download, the bar shows: **📦 N tiles · X MB** (= what's now stored on your device)
+3. You can click again later if you zoom on another area you also want saved
+
+> 💡 **Max ~200 tiles per click** (~5-10 MB): this is a strict cap to respect the OpenStreetMap usage policy (= a free service funded by donations, so no abuse). To save a very wide area, do several clicks while moving the view around.
+
+**Where it's available**:
+
+The 💾 Save Offline button shows up in **3 contexts** — and the cache is **shared** across all three:
+
+| Context | When to use it |
+|---|---|
+| **🌍 OSM View modal** (map mode) | You're prepping a trip: open the OSM View, frame the zone, click 💾 |
+| **🌍 OSM widget on the home screen** | You're prepping your plans from home without having to load a plan in map mode |
+| **🚨 Rescue Mode** (Creation + Live banners) | You're triggering a mission: one 💾 click and the whole team has the zone on the device before going down |
+
+> ✅ **Shared cache**: you download ONCE → it's available everywhere, no duplicates. No need to redo the download per mode.
+
+**Smart offline behavior** (v1.43.1 → v1.43.7):
+
+When the app detects you have no Internet, it adapts the 🌍 icon behavior based on what's stored on your device:
+
+| Internet | Plan saved | 🌍 icon | Action |
+|---|---|---|---|
+| ✅ | – | visible | normal opening |
+| ❌ | ✅ | visible | direct opening from your device (no ping test) |
+| ❌ | ❌ | hidden | reconnection required — clear message "Plan not available offline, click 💾 when connected" |
+
+In practice: if you saved your plan the night before on Wi-Fi, the 🌍 icon stays visible the next day on weak cellular and the modal opens **directly** without a network test that would slow everything down. If you forgot to save, the app tells you clearly instead of leaving you spinning in circles.
+
+**🔒 Everything stays local and private**:
+
+- The downloaded tiles are **stored 100% on your device** (your browser / the installed PWA)
+- **Nothing is ever transmitted** to a third-party server, nor to the author, nor to OpenStreetMap after the initial download
+- No trace of what you save is ever tracked
+- On the next full reset (💥 Reset everything), saved tiles are erased along with the rest
+
+> 💡 **Cataphile trip tip**: the day before your trip, open the OSM View on your phone at home (Wi-Fi), zoom on the entrance area + nearby streets, click **💾 Save Offline**. The next day at the surface meeting point, even with weak cellular, the map shows up instantly.
 
 ### 🚨 Rescue Mode — Real-time field exploitation
 
@@ -3056,12 +3206,13 @@ MyKTAMap relies entirely on **open-source bricks**. Without these projects, the 
 - 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin that projects an image as a parallelogram via 3 corners (CSS matrix transform). Used for the **2-anchor** calibration of image layers (v1.38+) and for the projection of MyKTAMap plans **onto the OSM View** (v1.39+). Thanks to **Iván Sánchez Ortega** for this elegant plugin.
 - 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL dual)* — reading and writing of `.zip` archives on the browser side (maps, sessions, exports, partial extraction for the HOME mini-map). Thanks to **Stuart Knightley** and contributors.
 - 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — generation of printable PDFs (A0 → A4, portrait/landscape, miniature page Rescue Mode, embed Story Mode).
+- 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — DOM-to-image capture (canvas → PNG). Used to embed the **Leaflet OSM map** in the **« Firefighters Briefing »** PDFs of the Rescue Mode (since v1.42.5): the full graphic stack (tiles + overlays + projected plan) is captured as a frozen image and embedded in the PDF handed to external rescue teams. Thanks to **Niklas von Hertzen** and contributors.
 - 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & its contributors** — licensed under **[ODbL](https://opendatacommons.org/licenses/odbl/)** for data and **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** for cartography. Worldwide map data displayed in the **OSM View** (modal + HOME widget, since v1.39+) **only when you enable it via the dedicated opt-in**. The app shows the `© OpenStreetMap contributors` attribution in the corner of every OSM map, **as the ODbL license requires**. Tile hosting: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (non-commercial foundation, public logs policy, no advertising tracking). Without this monumental common good — built since 2004 by **thousands of volunteers** mapping the world street by street — the OSM View would not exist.
 - 🧭 **Dijkstra's algorithm** (1959) — shortest path calculation for assisted itineraries. Edsger W. Dijkstra (1930-2002): thanks for this 60+ year old idea that still underpins Google Maps, OpenStreetMap routing, and every GPS in the world.
 - 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — exchange format with TopoDroid, OsmAnd, Strava, Garmin and the outdoor ecosystem.
 - 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintained by thousands of people we will never meet and to whom we owe enormously.
 
-> 📜 **License compliance**: vendored files (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`) keep their original license header. For network details (when each resource is contacted), see the **[Network Audit](./NETWORK_AUDIT.md)** (also accessible from the Audit modal in the app).
+> 📜 **License compliance**: vendored files (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`) keep their original license header. For network details (when each resource is contacted), see the **[Network Audit](./NETWORK_AUDIT.md)** (also accessible from the Audit modal in the app).
 
 ### To the PWA ecosystem
 

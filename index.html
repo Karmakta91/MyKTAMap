@@ -143,7 +143,13 @@
          (utilisé pour le calcul d'itinéraires sur le réseau de tracés).
          KARMA s'en souvient : "djakarta" était une confusion phonétique
          avec Dijkstra. 🆕 v1.40.29 — ajout 🌍 OSM. -->
-    <div id="splashLeafletCredit">🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🌍 OSM · 🧭 Dijkstra</div>
+    <!-- v1.43.19 — Splash : 6 libs sur 2 lignes de 3 (KARMA "je voulais 3
+         et en dessous 3 et karma a droite comme avant"). Le `<br>` force
+         le split explicite après la 3e lib. Le CSS double la hauteur du
+         conteneur (#splashLeafletCredit) pour faire entrer les 2 lignes.
+         Logo KARMA reste à `bottom: 28px; right: 28px` (= aligné avec
+         la 2e ligne du crédit). -->
+    <div id="splashLeafletCredit">🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF<br>🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</div>
   </div>
 
   <!-- COPYRIGHT — watermark + console banner + détection DevTools (chargé EN PREMIER) -->
@@ -202,6 +208,12 @@
        n'importe où dans la chaîne — placé ici à côté de NetworkAudit pour
        cohérence « outils d'inspection & transparence ». Depuis v1.19.0. -->
   <script src="js/memInspector.js"></script>
+
+  <!-- 🆕 v1.43.12 — Inspecteur Service Worker. Diagnostic du cache PWA :
+       compare ASSETS_TO_CACHE (attendus, query SW via MessageChannel)
+       avec le contenu réel du cache courant (Cache API), affiche le diff
+       + verdict + bouton récupération des manquants. -->
+  <script src="js/swInspector.js"></script>
 
   <!-- 📊 STATS GLOBALES — Modale d'agrégation plan complet (session + data
        layers embedded). Sections : points par tag, tracés par type +
@@ -298,30 +310,40 @@
       <!-- 🆕 v1.21.1 (KARMA) : bouton ⚙️ Détails RETIRÉ — toute la box est
            cliquable pour ouvrir la modale Détails. Espace libéré utilisé
            pour 2 stats compactes adaptatives (temps app + Mo storage). -->
-      <div id="kta-loader-profile-bar" class="kta-loader-profile-bar" role="button"
-           tabindex="0" aria-label="Mon profil utilisateur" style="display:none;">
-        <div class="kta-loader-profile-avatar-wrap" id="kta-loader-profile-avatar">
-          <!-- contenu généré dynamiquement par _refreshProfileBar() -->
+      <!-- 🆕 v1.40.42 (KARMA "en home sur pc on peut mettre profile et reprendre
+           sur la meme ligne") : wrapper `.kta-loader-top-row` qui regroupe
+           profile-bar + resumeBox.
+           - PC (≥ 1024px) : display:flex row → profile (flex:1) + resume (auto)
+             côte-à-côte sur 1 ligne.
+           - Mobile : display:contents → wrapper transparent, comportement
+             v1.40.41 préservé (chaque enfant garde son margin-bottom + stack
+             vertical naturel). -->
+      <div class="kta-loader-top-row">
+        <div id="kta-loader-profile-bar" class="kta-loader-profile-bar" role="button"
+             tabindex="0" aria-label="Mon profil utilisateur" style="display:none;">
+          <div class="kta-loader-profile-avatar-wrap" id="kta-loader-profile-avatar">
+            <!-- contenu généré dynamiquement par _refreshProfileBar() -->
+          </div>
+          <div class="kta-loader-profile-info">
+            <div class="kta-loader-profile-greeting" id="kta-loader-profile-greeting">Bienvenue</div>
+            <div class="kta-loader-profile-surnom" id="kta-loader-profile-surnom">Mon profil</div>
+          </div>
+          <!-- 🆕 v1.21.1 : stats compactes (cachées mobile < 600px via CSS).
+               🆕 v1.21.3 (KARMA "on doit dans ce cas pouvoir choisir dans
+               profile les 2 ou 3 stats") : stats désormais rendues
+               DYNAMIQUEMENT via _renderProfileBarStatsSlots selon
+               localStorage["myktamap_loader_bar_stats_v1"]. Default :
+               ["time", "storage"]. Pool : time / storage / plans.
+               Cap dur 3 max (mobile). Section de choix dans modale Profil. -->
+          <div class="kta-loader-profile-stats" id="kta-loader-profile-stats" aria-hidden="true"></div>
         </div>
-        <div class="kta-loader-profile-info">
-          <div class="kta-loader-profile-greeting" id="kta-loader-profile-greeting">Bienvenue</div>
-          <div class="kta-loader-profile-surnom" id="kta-loader-profile-surnom">Mon profil</div>
-        </div>
-        <!-- 🆕 v1.21.1 : stats compactes (cachées mobile < 600px via CSS).
-             🆕 v1.21.3 (KARMA "on doit dans ce cas pouvoir choisir dans
-             profile les 2 ou 3 stats") : stats désormais rendues
-             DYNAMIQUEMENT via _renderProfileBarStatsSlots selon
-             localStorage["myktamap_loader_bar_stats_v1"]. Default :
-             ["time", "storage"]. Pool : time / storage / plans.
-             Cap dur 3 max (mobile). Section de choix dans modale Profil. -->
-        <div class="kta-loader-profile-stats" id="kta-loader-profile-stats" aria-hidden="true"></div>
-      </div>
 
-      <!-- ▶️ Reprendre le dernier plan (visible si lastPlanId existe) -->
-      <div id="resumeBox" style="display:none; margin-bottom:14px;">
-        <button id="resumeBtn" class="loader-btn-resume">
-          ▶️ Reprendre <strong id="resumeName"></strong>
-        </button>
+        <!-- ▶️ Reprendre le dernier plan (visible si lastPlanId existe) -->
+        <div id="resumeBox" style="display:none; margin-bottom:14px;">
+          <button id="resumeBtn" class="loader-btn-resume">
+            ▶️ Reprendre <strong id="resumeName"></strong>
+          </button>
+        </div>
       </div>
 
       <!-- ===== Layout 2 colonnes sur PC (≥1024px) — sur mobile/tablette
@@ -512,7 +534,11 @@
                le loader HOME, identique en mode community et pro (la mention
                "💼 Licence pro" community-only est gérée par .kta-licence-community
                au-dessus, pas ici). -->
-          🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🌍 OSM · 🧭 Dijkstra
+          <!-- 🆕 v1.43.18 — `&nbsp;` entre emoji et nom de chaque lib pour
+               empêcher le wrap de couper la paire (KARMA "à la ligne bizarre
+               avec html2canvas qui passe seul sur la 2e ligne"). Le séparateur
+               `·` reste sur espace normal pour permettre le wrap entre 2 libs. -->
+          🍃&nbsp;Leaflet · 📦&nbsp;JSZip · 📤&nbsp;jsPDF · 🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas
         </div>
       </div>
     </div>
@@ -702,6 +728,13 @@
           </p>
           <button class="loader-btn-secondary" type="button" id="loaderMemInspectorBtn" style="width:100%;">
             📊 Voir l'état mémoire
+          </button>
+          <!-- 🆕 v1.43.12 — Inspecteur Service Worker (cf js/swInspector.js).
+               Diagnostic du cache PWA : compare la liste ASSETS_TO_CACHE
+               attendue avec ce qui est réellement en cache. Verdict +
+               bouton pour récupérer les manquants. -->
+          <button class="loader-btn-secondary" type="button" id="loaderSwInspectorBtn" style="width:100%; margin-top:8px;">
+            🔧 Voir l'état du cache (Service Worker)
           </button>
         </div>
 
@@ -1113,6 +1146,10 @@
        chargée AVANT pdfExport.js (sinon window.jspdf n'existe pas et le
        module log un warn de disponibilité). -->
   <script src="lib/jspdf.umd.min.js" defer></script>
+  <!-- 🆕 v1.42.5 — html2canvas pour capture du rendu Leaflet OSM (PDF Briefing pompiers).
+       BSD 2-Clause MIT, vendored ~50KB. Utilisé UNIQUEMENT par secoursMode.js > _captureOsmCanvasForBriefing
+       (génération PDF dédié). Aucune dépendance runtime ailleurs. -->
+  <script src="lib/html2canvas.min.js" defer></script>
   <script src="js/pdfExport.js" defer></script>
   <script src="js/tableEditor.js" defer></script>
   <script src="js/searchPoints.js" defer></script>
@@ -1145,6 +1182,10 @@
        js/modeHistoire.js. -->
   <script src="js/modeHistoire.js" defer></script>
   <script src="js/kmzExport.js" defer></script>
+  <!-- 🆕 v1.43.0 — Cache OSM offline (IndexedDB partagé entre Vue OSM modale,
+       widget Home et Mode Secours). Doit charger AVANT osmView.js + osmHomePreview.js
+       (utilisé par leurs boutons "💾 Cacher offline"). -->
+  <script src="js/osmTilesCache.js" defer></script>
   <!-- 🆕 v1.39.0 — Mode Vue OSM (plan au-dessus d'OpenStreetMap). Chargé
        APRÈS kmzExport (dépend de KmzExport.buildTransform/planToGps) et
        APRÈS imageLayerCalibration (utilise compute3CornersFromAnchorsPx). -->
@@ -1160,6 +1201,9 @@
   <script src="js/gpxImport.js" defer></script>
   <script src="js/createConf.js" defer></script>
   <script src="js/planRegistry.js" defer></script>
+  <!-- 🆕 v1.42.0 — Kill-switch anti-fuite (denylist.json côté serveur). Charge
+       APRÈS planRegistry.js (dépend de window.PlanRegistry pour suppression). -->
+  <script src="js/planDenylist.js" defer></script>
   <script src="js/sessionPersist.js" defer></script>
   <script src="js/oomGuard.js" defer></script>
   <script src="js/pathfinder.js" defer></script>
@@ -1625,6 +1669,42 @@
         if (typeof window.startImportedPlan !== "function") {
           throw new Error("startImportedPlan introuvable");
         }
+        // 🆕 v1.42.0 — Kill-switch anti-fuite : check denylist AVANT extraction.
+        // Si le ZIP a une empreinte SHA-256 dans denylist.json côté serveur, on
+        // refuse l'ouverture, on supprime le plan du registre, on affiche
+        // une modale rouge explicative. Aucun hash envoyé au serveur (privacy).
+        // Fail-open si module/hash impossible : log warning + ouverture autorisée
+        // (pour ne pas bloquer le dev local sans HTTPS / SubtleCrypto).
+        let _denylistComputedHash = null;
+        if (window.PlanDenylist && typeof window.PlanDenylist.isPlanDenied === "function") {
+          try {
+            const denyCheck = await window.PlanDenylist.isPlanDenied(zipFile);
+            _denylistComputedHash = (denyCheck && denyCheck.sha256) || null;
+            if (denyCheck && denyCheck.denied) {
+              console.warn("[Loader] Plan refusé (denylist) :", denyCheck.sha256, "- raison :", denyCheck.reason);
+              _fermerOverlayChargement();
+              setStatus("⛔ Plan révoqué par l'auteur.", true);
+              const planId = (meta && meta.planId) || null;
+              window.PlanDenylist.showDeniedModal(denyCheck, planId);
+              return;  // STOP : pas d'extraction ni de chargement
+            }
+          } catch(eDeny) {
+            // Fail-safe : log mais ne bloque pas (denylist down ≠ refus auto)
+            console.warn("[Loader] Check denylist échec — chargement autorisé :", eDeny.message);
+          }
+        }
+        // 🆕 v1.42.3 — Cache le hash dans le PlanRegistry APRÈS chargement réussi
+        // pour que l'audit au prochain boot puisse skip le re-hash (perf gain).
+        // L'id du plan local est dispo dans meta.planId si le caller l'a passé,
+        // sinon on attendra l'audit suivant pour faire le hash (= sans regret).
+        const _cacheHashAfterLoad = function() {
+          try {
+            const pid = meta && meta.planId;
+            if (pid && _denylistComputedHash && window.PlanRegistry) {
+              window.PlanRegistry.addOrUpdate({ id: pid, sha256: _denylistComputedHash });
+            }
+          } catch(e) {}
+        };
         // 🌀 v152 : overlay plein écran visible avec spinner + message d'étape.
         // Plus visible que setStatus (qui écrit dans #loaderStatus tout en bas).
         // Particulièrement utile pour les plans V2 (extraction de 1000+ tuiles).
@@ -1662,6 +1742,9 @@
           }
 
           setStatus("Plan chargé avec succès.");
+          // 🆕 v1.42.3 — cache le hash SHA-256 dans le PlanRegistry pour
+          //    accélérer l'audit denylist au prochain boot.
+          _cacheHashAfterLoad();
           if (window.masquerLoader) window.masquerLoader();
         } finally {
           _fermerOverlayChargement();
@@ -5010,6 +5093,33 @@
           }
         });
       }
+
+      // 🆕 v1.43.12 — 🔧 Inspecteur Service Worker. Ouvre la modale de
+      // diagnostic du cache PWA : compare ASSETS_TO_CACHE (attendus) avec
+      // le contenu réel du cache. Verdict + bouton récupération manuels.
+      // Module js/swInspector.js chargé à proximité de memInspector.
+      const swInspectBtn = document.getElementById("loaderSwInspectorBtn");
+      if (swInspectBtn) {
+        swInspectBtn.addEventListener("click", function() {
+          if (window.SwInspector && typeof window.SwInspector.ouvrir === "function") {
+            window.SwInspector.ouvrir();
+          } else {
+            setStatus("Module SwInspector indisponible — recharge la page", true);
+          }
+        });
+      }
+
+      // 🆕 v1.43.13 — Auto-heal silencieux du cache SW. Tire ~5s après le
+      // boot pour laisser le SW finir son install. Garde-fous internes
+      // (online, SW ready, pas incognito/strict-offline, 1x par session,
+      // cap 100 fetches). Output en console uniquement, pas de toast user.
+      // Concept : si l'install initial a foiré sur 44 assets, l'user n'a
+      // plus à le savoir — le cache se répare tout seul au prochain boot.
+      setTimeout(function() {
+        if (window.SwInspector && typeof window.SwInspector.autoHealIfNeeded === "function") {
+          window.SwInspector.autoHealIfNeeded();
+        }
+      }, 5000);
 
       // ═══════════════════════════════════════════════════════════════
       // 🎨 AFFICHAGE — Toggle "Utiliser l'ancienne interface" (Legacy)

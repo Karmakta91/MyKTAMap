@@ -63,7 +63,9 @@ const LEGENDE_LABELS = {
   danger:   "Danger",
   plaque:   "Plaque indication",
   track:    "Position du tracker",
-  default:  "Point sans tag (défaut)"
+  default:  "Point sans tag (défaut)",
+  // 🆕 v1.41.0 D — Point d'entrée du plan (Vue OSM × Mode Secours).
+  entree_plan: "Point d'entrée du plan"
 };
 
 // Tag default → label spécial (pas dans la config par défaut)
@@ -107,7 +109,9 @@ function afficherLegende() {
     const GROUPES = [
       { titre: "🕳️ Puits",         cles: ["pa", "pb", "pc", "pe", "ps"] },
       { titre: "🪜 Accès",          cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
-      { titre: "⚠️ Signalétique",  cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] }
+      { titre: "⚠️ Signalétique",  cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] },
+      // 🆕 v1.41.0 D — Catégorie Secours (Vue OSM × Mode Secours).
+      { titre: "🚨 Secours",        cles: ["entree_plan"] }
     ];
 
     const clesGroupees = GROUPES.flatMap(function(g) { return g.cles; });
@@ -360,7 +364,9 @@ function afficherLegende() {
       const GROUPES2 = [
         { titre: "🕳️ Puits",         cles: ["pa", "pb", "pc", "pe", "ps"] },
         { titre: "🪜 Accès",          cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
-        { titre: "⚠️ Signalétique",  cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] }
+        { titre: "⚠️ Signalétique",  cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] },
+        // 🆕 v1.41.0 D — Catégorie Secours.
+        { titre: "🚨 Secours",        cles: ["entree_plan"] }
       ];
       const clesGroupees2 = GROUPES2.flatMap(function(g) { return g.cles; });
       function urlPourCle2(cle) {

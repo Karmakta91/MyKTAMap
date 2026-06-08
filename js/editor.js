@@ -35,7 +35,9 @@ const EDITOR_TAG_LABELS = {
   info:     "Information",
   elec:     "Électricité",
   epure:    "Épure",
-  plaque:   "Plaque indication"
+  plaque:   "Plaque indication",
+  // 🆕 v1.41.0 D — Point d'entrée du plan (Vue OSM × Mode Secours).
+  entree_plan: "🚪 Point d'entrée du plan"
 };
 
 const EDITOR_EXCLURE = ["default", "track"];
