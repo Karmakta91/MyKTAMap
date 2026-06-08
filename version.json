@@ -1,7 +1,7 @@
 {
-  "version": "v1.40.32",
-  "released": "2026-06-07",
+  "version": "v1.43.21",
+  "released": "2026-06-08",
   "notes": [
-    "🌍 Nouveau mode Vue OSM : un widget intégré à ta page d'accueil affiche tes plans géoréférencés projetés sur OpenStreetMap. Tu y retrouves l'image du plan en transparence, tes POI, tes tracés (routes, zones, structures), et des outils pratiques : slider d'opacité, sélecteur de plan et bouton plein écran."
+    "🐛 Hotfix critique : le bouton « 📖 Documentation utilisateur » ne fonctionnait plus depuis v1.43.18 (caractères backticks dans un commentaire à l'intérieur d'un template literal JavaScript = fermeture prématurée du HTML de la modale). La modale s'ouvre à nouveau normalement."
   ]
 }

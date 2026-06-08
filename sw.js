@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.40.32";
+const CACHE_NAME = "myktamap-cache-v1.43.21";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -99,6 +99,8 @@ const ASSETS_TO_CACHE = [
   "./js/crashReports.js",
   // 🆕 v1.19.0 : MemInspector — topo lisible mémoire (localStorage, IDB, cache, runtime, crashes)
   "./js/memInspector.js",
+  // 🆕 v1.43.12 : SwInspector — inspecteur cache Service Worker (diff attendus vs présents)
+  "./js/swInspector.js",
   // 🆕 v1.20.0 : StatsGlobales — modale stats agrégées plan complet (session + embedded)
   "./js/statsGlobales.js",
   // 🆕 v1.20.0 : Tutorial — onboarding cards premier-lancement (8 cards)
@@ -199,6 +201,8 @@ const ASSETS_TO_CACHE = [
   "./js/searchPoints.js",
   "./js/createConf.js",
   "./js/planRegistry.js",
+  "./js/planDenylist.js",
+  "./js/osmTilesCache.js",
   "./js/sessionPersist.js",
   "./js/oomGuard.js",
   "./js/pathfinder.js",
@@ -253,6 +257,8 @@ const ASSETS_TO_CACHE = [
   "./lib/jszip.min.js",
   // 🆕 v1.10.3 : jsPDF UMD pour l'export PDF imprimable.
   "./lib/jspdf.umd.min.js",
+  // 🆕 v1.42.5 : html2canvas pour capture du rendu Leaflet OSM (PDF Briefing pompiers).
+  "./lib/html2canvas.min.js",
   "./lib/leaflet/leaflet.css",
   "./lib/leaflet/leaflet.js",
   "./lib/leaflet/leaflet-src.js",
@@ -325,12 +331,69 @@ const ASSETS_TO_CACHE = [
 // INSTALL
 // =========================
 
+// 🛡️ v1.43.5 — App shell CRITIQUE (cache d'abord, avec retry x3). Si l'install
+// est interrompue (reload user, perte réseau brève, navigateur kill SW pour
+// quota), au moins ces assets seront en cache → fallback document offline du
+// fetch handler trouvera index.html. Le reste de ASSETS_TO_CACHE continue
+// best-effort après ce bloc.
+// Note : on garde tout ASSETS_TO_CACHE dans la boucle normale ensuite — le
+// pré-cache critique est un SUR-ENSEMBLE mais avec retry. Aucune perte.
+const CRITICAL_APP_SHELL = [
+  "./index.html",
+  "./",
+  "./css/style.css",
+  "./js/copyright.js",
+  "./js/main.js",
+  "./manifest.json",
+  // 🆕 v1.43.10 — Docs consultables offline (KARMA "page audit n'a pas
+  // été caché") : pages ouvertes depuis les modales in-app qui doivent
+  // être disponibles sans réseau. Sans retry+self-heal, un fetch d'install
+  // raté (FTP en cours de déploiement, réseau lent) laisse l'asset absent.
+  "./docs/applications/NETWORK_AUDIT.html",
+  "./docs/applications/README_USER.md",
+  "./docs/applications/README_USER.en.md",
+  "./docs/applications/AI_CONTEXT.md"
+];
+
+async function _cacheWithRetry(cache, asset, attempts) {
+  attempts = attempts || 3;
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await cache.add(new Request(asset, { cache: "reload" }));
+      const absUrl = _cacheKeyOf(asset);
+      if (absUrl) _staticAssetUrls.add(absUrl);
+      return true;
+    } catch (err) {
+      lastErr = err;
+      // Backoff léger pour laisser le réseau respirer (200ms, 500ms)
+      if (i < attempts - 1) {
+        await new Promise(function(r) { setTimeout(r, 200 * (i + 1)); });
+      }
+    }
+  }
+  console.warn("[SW] CRITIQUE non caché après", attempts, "essais :", asset, lastErr);
+  return false;
+}
+
 self.addEventListener("install", (event) => {
   console.log("[SW] Installation");
 
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
+      // ⚡ Phase 1 — App shell critique (retry x3). Garantit qu'index.html est
+      // cached même si l'install est interrompue après cette phase.
+      console.log("[SW] Phase 1 — App shell critique...");
+      for (const asset of CRITICAL_APP_SHELL) {
+        const ok = await _cacheWithRetry(cache, asset, 3);
+        if (ok) console.log("[SW] ✅ Critique caché :", asset);
+      }
+      console.log("[SW] Phase 1 OK. Phase 2 — reste assets...");
+
+      // Phase 2 — reste des assets (best-effort, pas de retry)
       for (const asset of ASSETS_TO_CACHE) {
+        // Skip ceux déjà cachés en phase 1 (évite double-fetch)
+        if (CRITICAL_APP_SHELL.indexOf(asset) !== -1) continue;
         try {
           // 🆕 v1.9.2-cache-fix (KARMA "déployé via FTP mais je vois
           // toujours v1.8.1") : `cache.add(url)` utilise le HTTP cache
@@ -387,6 +450,29 @@ self.addEventListener("activate", (event) => {
             return caches.delete(key);
           })
       );
+    }).then(async function() {
+      // 🛡️ v1.43.5 — Self-heal app shell. Si l'install a été interrompue
+      // (reload user pendant le pré-cache, navigateur a kill le SW pour
+      // quota, etc.), CRITICAL_APP_SHELL peut être absent. À l'activate,
+      // on vérifie et re-cache au besoin. Sans ça : page d'erreur
+      // "index.html non enregistré" persistante après update du SW.
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        for (const asset of CRITICAL_APP_SHELL) {
+          const cached = await cache.match(asset);
+          if (!cached) {
+            console.warn("[SW] Self-heal : " + asset + " absent du cache, re-fetch...");
+            try {
+              await _cacheWithRetry(cache, asset, 3);
+              console.log("[SW] Self-heal OK :", asset);
+            } catch (e) {
+              console.error("[SW] Self-heal ÉCHEC :", asset, e);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[SW] Self-heal activate erreur :", e);
+      }
     })
   );
 
@@ -434,6 +520,54 @@ self.addEventListener("message", (event) => {
     // mais permet un déclenchement explicite si jamais on retirait
     // skipWaiting() de install (rollout progressif futur).
     self.skipWaiting();
+    return;
+  }
+  // 🆕 v1.43.12 — Inspecteur Service Worker (cf js/swInspector.js).
+  // Retourne la liste des assets attendus + critiques pour permettre
+  // au client de comparer avec ce qui est vraiment en cache.
+  if (data.type === "GET_EXPECTED_ASSETS") {
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        type:      "EXPECTED_ASSETS",
+        cacheName: CACHE_NAME,
+        assets:    ASSETS_TO_CACHE.slice(),
+        critical:  CRITICAL_APP_SHELL.slice()
+      });
+    }
+    return;
+  }
+  // 🆕 v1.43.12 — Force re-fetch des assets manquants. Le client passe
+  // la liste à re-cacher (typiquement le diff calculé par SwInspector),
+  // on tente cache.add avec retry x3 pour chaque, on retourne le rapport.
+  if (data.type === "REFETCH_MISSING_ASSETS") {
+    const assets = Array.isArray(data.assets) ? data.assets : [];
+    caches.open(CACHE_NAME).then(async function(cache) {
+      const results = [];
+      for (const asset of assets) {
+        let ok = false;
+        let lastErr = null;
+        for (let i = 0; i < 3; i++) {
+          try {
+            await cache.add(new Request(asset, { cache: "reload" }));
+            ok = true;
+            const absUrl = _cacheKeyOf(asset);
+            if (absUrl) _staticAssetUrls.add(absUrl);
+            break;
+          } catch(e) {
+            lastErr = String(e && e.message || e);
+            if (i < 2) await new Promise(function(r) { setTimeout(r, 200 * (i + 1)); });
+          }
+        }
+        results.push({ asset: asset, ok: ok, error: ok ? null : lastErr });
+      }
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ type: "REFETCH_DONE", results: results });
+      }
+    }).catch(function(e) {
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ type: "REFETCH_DONE", error: String(e.message || e), results: [] });
+      }
+    });
     return;
   }
 });
@@ -485,6 +619,37 @@ function _scheduleEviction() {
   };
   // Délai pour debounce (évite N evictions consécutives sur burst de fetch)
   try { setTimeout(_run, 30000); } catch(e) { _run(); }
+}
+
+// 🆕 v1.43.0 — Helper IDB lookup pour OSM tiles cache (cf js/osmTilesCache.js).
+// Doit être appelé depuis le fetch handler. Retourne Promise<Blob | null>.
+// IDB ouvert à chaque appel (overhead minime — IDB est rapide pour lookup
+// par primary key). Pas de cache mémoire pour éviter divergence avec
+// l'IDB modifié côté app.
+function _osmTilesCacheLookup(z, x, y) {
+  return new Promise(function(resolve) {
+    if (!self.indexedDB) { resolve(null); return; }
+    let req;
+    try { req = self.indexedDB.open("myktamap_osm_tiles", 1); }
+    catch(e) { resolve(null); return; }
+    req.onerror = function() { resolve(null); };
+    req.onsuccess = function() {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("tiles")) { resolve(null); return; }
+      try {
+        const tx  = db.transaction("tiles", "readonly");
+        const st  = tx.objectStore("tiles");
+        const get = st.get(z + "/" + x + "/" + y);
+        get.onsuccess = function() {
+          const rec = get.result;
+          resolve(rec && rec.blob ? rec.blob : null);
+        };
+        get.onerror = function() { resolve(null); };
+      } catch(e) { resolve(null); }
+    };
+    // Pas d'upgradeneeded ici : si la DB n'existe pas encore (= jamais
+    // d'écriture côté app), on retourne juste null (miss).
+  });
 }
 
 self.addEventListener("fetch", (event) => {
@@ -541,8 +706,114 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // 🗺️ v1.43.0 — OSM TILES CACHE OFFLINE — Intercept des requêtes vers
+  // tile.openstreetmap.org pour servir depuis IndexedDB si l'user a
+  // pré-caché les tuiles via le bouton « 💾 Cacher pour offline » de
+  // Vue OSM (modale + Home widget). Permet d'utiliser Vue OSM en mode
+  // hors-réseau (= sortie terrain Mode Secours cellular faible/coupé).
+  // Architecture :
+  //   1. Match URL `*://*.tile.openstreetmap.org/{z}/{x}/{y}.png`
+  //   2. Lookup IDB store "myktamap_osm_tiles/tiles" (key="z/x/y")
+  //   3. Hit → return new Response(blob, {200, content-type:image/png})
+  //   4. Miss → fetch réseau (= comportement normal)
+  // Privacy : tout local, jamais transmis. Pattern cohérent avec
+  // Licence-pro.json et denylist.json (bypass conditionnel).
+  if (/(?:^https?:)?\/\/(?:[a-z]+\.)?tile\.openstreetmap\.org\/(\d+)\/(\d+)\/(\d+)\.png/.test(reqUrl)) {
+    const m = reqUrl.match(/(\d+)\/(\d+)\/(\d+)\.png/);
+    if (m) {
+      const z = m[1], x = m[2], y = m[3];
+      event.respondWith(
+        _osmTilesCacheLookup(z, x, y).then(function(blob) {
+          if (blob) {
+            return new Response(blob, {
+              status: 200,
+              headers: { "Content-Type": "image/png", "X-OSM-Cache": "hit" }
+            });
+          }
+          // Miss : fetch réseau normal (peut échouer si offline → tile vide)
+          return fetch(event.request, { mode: "cors", credentials: "omit" });
+        }).catch(function() {
+          // Fail-safe : tentative réseau ultime
+          return fetch(event.request, { mode: "cors", credentials: "omit" })
+            .catch(function() {
+              // Vraiment offline + pas en cache → réponse vide pour ne pas casser
+              return new Response("", { status: 504 });
+            });
+        })
+      );
+      return;
+    }
+  }
+
+  // 🛡️ v1.42.0 — Bypass cache TOTAL pour /denylist.json (kill-switch
+  // anti-fuite des plans qui ont leaké publiquement). Doit toujours être
+  // fetched live pour propager les updates sans devoir bump le CACHE_NAME.
+  //  - 404 attendu si aucune denylist publiée → aucun blocage actif
+  //  - 200 attendu si denylist publiée → check client-side au prochain load
+  // Le cache 24h côté client (localStorage) gère le mode offline.
+  // Pattern identique à Licence-pro.json — fichier de control serveur.
+  if (/\/denylist\.json(\?|$)/.test(reqUrl)) {
+    event.respondWith(
+      fetch(event.request, { cache: "no-store" })
+        .catch(() => new Response('{"version":1,"deny":[]}', {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        }))
+    );
+    return;
+  }
+
+  // 🛡️ v1.43.11 — STRATEGIE NETWORK-FIRST POUR LES DOCS (Fix B audit impartial)
+  // Bug observé (KARMA "audit pas à jour après bump") : les docs HTML/MD
+  // changent à chaque release MAIS notre cache-first les sert "stale" tant
+  // que CACHE_NAME ne change pas et que l'asset est piégé dans le cache.
+  // Plus grave : déploiement FTP non-atomique → pendant install, l'asset
+  // peut être en cours d'upload (fichier tronqué) → 3 retries `_cacheWithRetry`
+  // (0.7s) échouent → asset absent → fallback réseau ultérieur peut récupérer
+  // une version partielle et la cacher → version invalide piégée pour toujours.
+  //
+  // Fix : pour /docs/applications/*.html et *.md (= modale Documentation +
+  // Audit + README + AI Context), on fait du network-first avec timeout 3s
+  // et fallback cache. Garantit la fraîcheur en online (cas standard) +
+  // résilience offline (= cache valide servi seulement si réseau échoue).
+  // Le cache.put silencieux maintient le cache à jour pour l'usage offline.
+  if (/\/docs\/applications\/.*\.(html|md)(\?|$)/.test(reqUrl)) {
+    event.respondWith((async function() {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const networkPromise = fetch(event.request, { cache: "no-store" });
+        const timeoutPromise = new Promise(function(_, reject) {
+          setTimeout(function() { reject(new Error("network timeout")); }, 3000);
+        });
+        const networkResp = await Promise.race([networkPromise, timeoutPromise]);
+        if (networkResp && networkResp.ok) {
+          // Met à jour le cache silencieusement (best-effort)
+          try { cache.put(event.request, networkResp.clone()); } catch(e) {}
+          return networkResp;
+        }
+        // 304 / autres → fallback cache
+        throw new Error("non-ok status " + (networkResp && networkResp.status));
+      } catch (e) {
+        // Réseau KO ou timeout → fallback cache (peut être stale mais utilisable)
+        const cachedResp = await cache.match(event.request);
+        if (cachedResp) return cachedResp;
+        // Pas en cache + offline → réponse explicite (mieux que 504 vide)
+        return new Response(
+          "Document indisponible hors-ligne. Reconnecte-toi pour le consulter.",
+          { status: 504, headers: { "Content-Type": "text/plain; charset=utf-8" } }
+        );
+      }
+    })());
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    // 🛡️ v1.43.11 — Fix A audit impartial : on scope `caches.match()` au
+    // CACHE_NAME courant uniquement. Le `caches.match()` global cherche
+    // dans TOUS les caches existants — y compris d'anciens caches pas
+    // encore supprimés par l'activate (qui est async). Sans ce scope,
+    // le SW peut servir une entrée d'un ancien cache v1.43.x après bump.
+    caches.open(CACHE_NAME).then(function(c) { return c.match(event.request); }).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
@@ -587,10 +858,15 @@ self.addEventListener("fetch", (event) => {
           // échoué normal — c'est ce qu'attend le link.onerror de
           // _loadCssOnce (fallback dégradé) et les fetch métier .catch().
           if (event.request.destination === "document") {
-            return caches.match("./index.html")
-              .then((r) => r || caches.match("./"))
-              .then((r) => r || caches.match("/index.html"))
-              .then((r) => r || caches.match("/"))
+            // 🛡️ v1.43.11 — Fix A audit impartial : on scope tous les
+            // caches.match() au CACHE_NAME courant pour éviter de servir
+            // une entrée d'un ancien cache pas encore supprimé.
+            return caches.open(CACHE_NAME).then(function(c) {
+              return c.match("./index.html")
+                .then((r) => r || c.match("./"))
+                .then((r) => r || c.match("/index.html"))
+                .then((r) => r || c.match("/"));
+            })
               .then((r) => r || new Response(
                 "<!doctype html><html lang=fr><head><meta charset=utf-8>" +
                 "<title>MyKTAMap — Hors-ligne</title>" +

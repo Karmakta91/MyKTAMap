@@ -1314,3 +1314,77 @@ phase active, si phase déjà démarrée).
   (KARMA 5:b — feature standalone à valider d'abord).
 
 ---
+
+## 79. Synergie Vue OSM × Mode Secours (v1.41.0+)
+
+Roadmap 5 étapes A→E pour transformer Mode Secours en outil de coordination avec secours externes (pompiers, GRIMP, SDIS) via Vue OSM georef.
+
+### 79.1 Étape A (v1.40.33 + v1.40.34) — Liens bidirectionnels
+
+- **v1.40.33** : bouton 🌍 Vue OSM dans bandeau Mode Secours (vue Edit).
+- **v1.40.34** : layer 🚨 Secours dans Vue OSM (zones / itinéraires / markers équipes projetés via georef).
+
+### 79.2 Étape D (v1.41.0) — Tag POI « Point d'entrée du plan »
+
+Nouveau tag built-in `entree_plan` (catégorie « 🚨 Secours »), 7 sites touchés (cf skill `add-icon-tag`) :
+
+- `js/map.js > TAGS_BUILTIN` : SVG data URI (porte stylisée jaune), pas de PNG nécessaire
+- `js/editor.js > EDITOR_TAG_LABELS` : "🚪 Point d'entrée du plan"
+- `js/interfaceLegende.js > LEGENDE_LABELS` + 2× `GROUPES` (modale + helper)
+- `js/exporter.js > GROUPES_ICONES` : catégorie "🚨 Secours"
+- `js/createConf.js > PLANNER_DEFAULT_ICONS` : même SVG data URI
+- `sw.js > ASSETS_TO_CACHE` : **SKIPPED** (data URI inline, pas de fichier à cacher)
+
+Marker affiché normalement dans Vue OSM + reconnu par `_drawBriefingSurfacePage` comme POI critique.
+
+### 79.3 Étape E (v1.41.0) — Champ `surfaceGps` par équipe
+
+Schéma équipe étendu dans `js/secoursMode.js` :
+
+```js
+groupe.surfaceGps = null  // { lat, lng } | null
+```
+
+- `addGroupe` : init `null`
+- `updateGroupe` whitelist : validation range stricte (`lat ∈ [-90, 90]`, `lng ∈ [-180, 180]`), null explicit pour reset
+- UI form : input texte format `"lat, lng"` + handler `[data-action="edit-surface-gps"]` → parse regex + toast erreur si invalide
+- Sérialisation : automatique dans export `.mkmsec.json` (champ inclus dans le scenario JSON)
+
+Backward-compat : équipes pré-v1.41.0 ont implicitement `surfaceGps: undefined` → `_drawBriefingSurfacePage` affiche "non renseigne".
+
+### 79.4 Étape B (v1.41.0) — Page « Briefing surface » dans rapport PDF
+
+Helper partagé `_drawBriefingSurfacePage(pdf, scenario, plan, pageW, pageH, margin)` injecté dans `genererRapportPDF()` juste après le briefing global (try/catch silencieux pour ne pas casser l'export en cas d'erreur géoref).
+
+Sections de la page :
+
+1. **INFOS** — nom scenario + nom plan + date génération
+2. **LOCALISATION** — centre GPS + bbox + 2 liens cliquables (`pdf.textWithLink` vers OSM + Google Maps)
+3. **EQUIPES SUR PLACE** — pour chaque équipe : nom + membres + `surfaceGps` (si renseigné) + lien OSM individuel par équipe
+4. **POI CRITIQUES** — tag `entree_plan` + `sortieurgence` + `cao`/`caf`, groupés par tag (lecture `window.listePoints`)
+
+### 79.5 Étape C (v1.41.0) — `genererBriefingPompiersPDF()` dédié
+
+Fonction publique : `SecoursMode.genererBriefingPompiersPDF(scenarioId)` async → PDF dédié 1+ pages via `_drawBriefingSurfacePage`. Bouton 🚒 dans :
+
+- Bandeau Mode Secours (vue Edit, plan actif + plan terminé)
+- Footers des 3 vues Live (Équipier, Opérateur, Secouriste) via `_bindLiveCommonHandlers` (v1.41.1)
+
+Pas de capture canvas Leaflet (`html2canvas` non dispo dans `lib/`) — choix MVP : liens cliquables OSM/Google Maps suffisent pour briefing pompiers (ils cliquent depuis leur PC).
+
+### 79.6 Hotfixes v1.41.1 → v1.41.4
+
+| Version | Fix | Détail |
+|---------|-----|--------|
+| v1.41.1 | UX | Boutons 🌍 + 🚒 ajoutés dans les 3 footers Live + handlers communs `_bindLiveCommonHandlers` |
+| v1.41.2 | Robustesse | `OsmView.getPlanGpsBbox()` lazy build : appelle `_buildProjection()` à la volée si `_proj` null. Permet à `genererBriefingPompiersPDF` de marcher sans avoir ouvert la modale OSM avant. |
+| v1.41.3 | UX | Chips tags Vue OSM modale : retrait du filtre `_isLevelAllowed(p)` dans `_enumerateOsmTags` (insuffisant — fix réel en v1.41.4) |
+| v1.41.4 | Bug racine | `_enumerateOsmTags` itérait sur `window._dataLayersByPlan` qui n'existe nulle part dans l'app → seuls ~3 tags de la session étaient comptés. Switch sur `window.getAllEmbeddedPoints()` (API officielle, même source que `_collectVisiblePoi`). |
+
+### 79.7 Roadmap restante (post-v1.41)
+
+- **Capture canvas réelle** : si KARMA veut une vraie image de la Vue OSM dans le PDF (au lieu des liens cliquables), ajouter `html2canvas` à `lib/` (~50KB) + écrire `_captureOsmCanvas()` async qui rend le DOM Leaflet en image PNG → injecter via `pdf.addImage()`. Risque : CORS sur tuiles OSM, à gérer avec `crossOrigin: 'anonymous'`.
+- **GPS auto via navigator.geolocation** : permettre à un équipier sur le terrain de set son `surfaceGps` en 1 clic via le bouton GPS du navigateur (différent du PC chef qui saisit manuellement). Demanderait permission OS + UI dédiée.
+- **Multi-entrée_plan** : actuellement 0..N tags `entree_plan` possibles. Si KARMA veut limiter à 1 (= entrée principale unique), ajouter validation côté éditeur POI + warning si double tag.
+
+---

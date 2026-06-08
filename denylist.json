@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "updated": "2026-06-07T15:00:00Z",
+  "deny": [
+    {
+      "sha256": "9a7ca242dfa4e3029ffd7bb7a759ba13d17b52976fdddc498c8ae8a448b53979",
+      "reason": "Plan de test KARMA — kill-switch anti-fuite (v1.42.x). Ce ZIP est volontairement révoqué pour valider le mécanisme.",
+      "addedAt": "2026-06-07T15:00:00Z"
+    }
+  ]
+}

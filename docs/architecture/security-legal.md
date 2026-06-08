@@ -1021,3 +1021,315 @@ intercepte de toute façon les écritures.
   pas dans le pattern incognito, à débattre.
 
 ---
+
+## 80. Kill-switch anti-fuite (PlanDenylist, depuis v1.42.0)
+
+### 80.1 Vision et menace adressée
+
+**Menace** : un plan ZIP privé (cataphile, cavages sensibles) **fuite massivement** en dehors de son groupe de confiance (Telegram public, forum warez, etc.). Une fois diffusé, le ZIP est par nature impossible à retirer chez les destinataires. Mais l'auteur peut **réduire la propagation accidentelle** en empêchant son ouverture dans MyKTAMap.
+
+**Réponse** : kill-switch client-side qui :
+1. Télécharge une liste publique de SHA-256 révoqués (`/denylist.json`) au boot
+2. Hash localement chaque ZIP au moment de son import
+3. Si match → modale rouge bloquante + auto-purge du plan
+
+**Doctrine privacy stricte (KARMA reco 3a)** : aucune empreinte n'est envoyée au serveur. Seule la liste publique est téléchargée, comparaison 100% client. L'auteur ne sait JAMAIS quels plans un user possède.
+
+### 80.2 Architecture
+
+| Composant | Fichier | Rôle |
+|-----------|---------|------|
+| Module kill-switch | `js/planDenylist.js` (~330 l, IIFE) | API publique `window.PlanDenylist` |
+| Liste deny serveur | `denylist.json` (racine) | Format public `{version, updated, deny:[{sha256, reason, addedAt}]}` |
+| Hook loader | `index.html > chargerZipFichier` | 11 lignes try/catch AVANT `extraireZip` |
+| Hook générateur | `js/createConf.js > _chargerZipModifier` | Idem, mode « Modifier un plan existant » |
+| Init au boot | `js/main.js` après `AlertChecker.check()` | Fetch initial async + cache 24h |
+| Register SW | `sw.js > ASSETS_TO_CACHE` | `./js/planDenylist.js` ajouté |
+| Bypass SW | `sw.js > fetch handler` | `denylist.json` → `cache:"no-store"` + fallback `{deny:[]}` offline |
+
+### 80.3 API publique
+
+```js
+window.PlanDenylist = {
+  init():           Promise<denylist>      // fetch initial + cache 24h
+  isPlanDenied(blob): Promise<{denied, sha256, reason?, addedAt?, error?}>
+  refresh():        Promise<denylist>      // force re-fetch (bypass cache)
+  getDenylist():    denylist               // debug, snapshot mémoire
+  computeSha256(blob): Promise<string>     // 64-char hex
+  showDeniedModal(info, planId, onDismiss): void  // modale rouge bloquante
+}
+```
+
+### 80.4 Format `denylist.json`
+
+```json
+{
+  "version": 1,
+  "updated": "2026-06-07T15:00:00Z",
+  "deny": [
+    {
+      "sha256": "9a7ca242dfa4e3029ffd7bb7a759ba13d17b52976fdddc498c8ae8a448b53979",
+      "reason": "Fuite publique constatée le 05/06/2026 sur Telegram",
+      "addedAt": "2026-06-07T13:50:00Z"
+    }
+  ]
+}
+```
+
+**Validation côté client** : regex stricte `/^[a-f0-9]{64}$/i` sur chaque `sha256`. Les entrées invalides sont silencieusement filtrées au parse (= ne bloquent jamais).
+
+### 80.5 Cycle de vie
+
+```
+[Boot app]
+   ↓
+PlanDenylist.init()
+   ↓
+Cache LS hit ? ──── Oui → utilise immédiatement
+   ↓ Non                 + refetch BG si > 24h
+Fetch /denylist.json (cache:no-store)
+   ↓
+Parse + validation entrées
+   ↓
+Save LS { fetchedAt: now, payload }
+
+[Import ZIP via loader OU générateur]
+   ↓
+PlanDenylist.isPlanDenied(zipBlob)
+   ↓
+SubtleCrypto.digest("SHA-256", blob)
+   ↓
+hash hex 64 chars
+   ↓
+Lookup linéaire dans _denylist.deny
+   ↓
+Match ? ──── Oui → { denied: true, reason, addedAt, sha256 }
+   ↓ Non           → modale rouge + PlanRegistry.remove + reload
+{ denied: false, sha256 }
+   ↓
+Pipeline normal (extraireZip → startImportedPlan)
+```
+
+### 80.6 Fail-safe modes
+
+| Cas | Comportement | Justification |
+|-----|--------------|---------------|
+| Module non chargé | Hook absent → autorise | Backward-compat (vieille version d'app) |
+| `SubtleCrypto` indispo (HTTP local) | Log warning + autorise | Dev local sans HTTPS — sinon impossible de bosser |
+| Fetch denylist KO (offline / 404) | Utilise cache stale OU `{deny:[]}` | Pas de blocage massif si serveur down |
+| Cache LS corrompu | Reset au prochain refetch | Robustesse |
+| Hash exception | Log + autorise | Mieux qu'un blocage en faux positif |
+
+→ **Doctrine** : un kill-switch qui bloque par erreur tous les plans est pire qu'un kill-switch qui laisse passer un plan fuité. Fail-safe → autorise par défaut.
+
+### 80.7 Privacy & audit
+
+- **0 envoi serveur** : `crypto.subtle.digest` est 100% local. Aucune empreinte n'est jamais transmise.
+- **Liste publique** : `denylist.json` est lisible par anyone à l'URL publique. Audit trivial (genre `curl https://myktamap.fr/denylist.json`).
+- **Cache local** : `localStorage["myktamap_denylist_cache"]` = `{fetchedAt, payload}`. Lisible en DevTools, supprimable par l'user pour forcer un refetch.
+- **Pas de tracking** : aucun event analytique au check (succès OU échec). Le module est isolé.
+
+### 80.8 UX modale `showDeniedModal`
+
+- z-index 100000 (au-dessus de tout)
+- Fond `rgba(15,5,5,0.92)` + backdrop-filter blur
+- Box gradient rouge sombre, border `#d32f2f`, animation `kta-denylist-pulse 2s` (box-shadow rouge respirante)
+- Header : émoji ⛔ 42px + titre « Plan révoqué » + sous-titre
+- Bloc raison sur fond `rgba(0,0,0,0.35)` + border-left rouge
+- Détails techniques : date ajout + SHA-256 tronqué (12 premiers + 8 derniers chars, format `abc123def456…ghi78901`) — anti-doxxing
+- Bouton « Compris, supprimer ce plan » rouge `#d32f2f` → click :
+  1. `PlanRegistry.remove(planId)` (si planId fourni — null pour générateur)
+  2. Modale retirée
+  3. `location.reload()` (repart propre)
+
+### 80.9 Workflow KARMA pour révoquer un plan
+
+```bash
+# 1. Hash du ZIP fuité (CLI Linux/Mac/Git Bash Windows)
+sha256sum plan-qui-a-fuite.zip
+# → copier le hash hex 64 chars
+```
+
+```json
+// 2. Éditer denylist.json sur le serveur (FTP) :
+{
+  "version": 1,
+  "updated": "<ISO 8601 now>",
+  "deny": [
+    {
+      "sha256": "<hash copié>",
+      "reason": "<motif court visible par les users>",
+      "addedAt": "<ISO 8601 now>"
+    }
+  ]
+}
+```
+
+```
+3. Push FTP serveur → propagation :
+   - Immédiate pour les users qui rouvrent l'app (refetch background si cache > 24h)
+   - Max 24h pour les autres (cache LS expire)
+4. Optionnel : mentionner publiquement la révocation (forum, GitHub) pour transparence
+```
+
+**Pour révoquer côté instance pro (Docker self-host)** : éditer `denylist.json` du déploiement local. Pattern identique. Permet aux déployeurs de bloquer des plans spécifiques à leur communauté.
+
+### 80.10 Limitations assumées
+
+- **Byte-perfect uniquement** : modif 1 byte → nouveau hash. C'est OK pour fuite massive du ZIP exact, pas pour dérivation active. Friction max acceptable.
+- **Plans serveur non couverts** : architecture serveur fetch par fichier, pas de ZIP unique → pas de hash possible. Si besoin de révoquer un plan serveur → simplement retirer le fichier côté serveur (404 = chargement échoue naturellement).
+- **Chargement déjà en cours** : si l'user a déjà ouvert le plan AVANT la révocation, le chargement courant n'est pas interrompu. Purge au prochain ré-import. Acceptable car le plan est déjà sur l'appareil — la révocation empêche surtout la nouvelle propagation.
+- **Décompression manuelle** : un attaquant technique peut extraire le ZIP, modifier les fichiers, recompresser avec un autre outil. C'est volontaire — barrière contre les non-techniques, pas contre les motivés.
+
+### 80.11 À NE PAS faire
+
+- ❌ **Envoyer le hash au serveur** pour check distant (= fingerprinting des plans owned, violation privacy)
+- ❌ **Bloquer en cas d'erreur** (= un attaquant pourrait DDoS le serveur pour bloquer tous les imports légitimes)
+- ❌ **Cacher l'icône `denylist.json`** côté serveur (= principe de transparence : audit publique = audit possible)
+- ❌ **Cacher `denylist.json` dans le SW** (= retarderait la propagation des révocations)
+- ❌ **Hash autre que SHA-256** (collision improbable, standard SubtleCrypto, hex 64 chars facile à comparer)
+- ❌ **Réutiliser le LS_CACHE_KEY pour autre chose** (le module y dépose son cache, isolé)
+
+### 80.12 Tests réels (v1.42.x)
+
+KARMA a validé le mécanisme avec `plan_testban.zip` (hash `9a7ca242…b53979`) :
+1. Hash ajouté à `denylist.json` côté repo
+2. Push FTP serveur effectué
+3. Import via loader → modale rouge ✅
+4. Bouton « Compris, supprimer » → plan retiré + reload OK ✅
+5. Re-import après retrait du hash de `denylist.json` → autorisation normale ✅
+
+### 80.13 Audit boot des plans LOCAUX déjà importés (v1.42.3)
+
+**Menace adressée** : un plan importé par l'user AVANT que KARMA ajoute son hash à `denylist.json` reste utilisable indéfiniment (le check d'import ne re-tourne pas). Solution : audit au boot.
+
+**API** :
+```js
+window.PlanDenylist = {
+  // ... v1.42.0-2
+  auditPlansLocaux():    Promise<{audited, purged: [{id, name, sha256, reason, addedAt, purgedAt}]}>
+  getPurgedAtBoot():     Array<purgeEntry>           // lit LS
+  clearPurgedAtBoot():   boolean                     // efface LS
+  showPurgedNotifModal(purgedList): void             // modale orange ⚠️
+}
+```
+
+**Cycle de vie** :
+```
+[Boot app]
+  ↓
+PlanDenylist.init() → fetch denylist
+  ↓
+Si purges au boot précédent (LS) → showPurgedNotifModal (delay 800ms)
+  ↓
+setTimeout 2s (anti-blocage boot)
+  ↓
+auditPlansLocaux()
+  ↓
+denylist vide ? Oui → return { audited:0, reason:"denylist-empty" }
+  ↓
+Pour chaque plan type:"local" :
+  ↓
+  plan.sha256 cached ? Oui → check direct denyByHash[hash]
+  Non → getBlob + computeSha256 + addOrUpdate({id, sha256}) pour cacher
+  ↓
+  Match denylist ? Oui → PlanRegistry.remove + push purges[]
+  ↓
+  Yield setTimeout(10ms) anti-freeze
+  ↓
+Si purges.length > 0 → LS.setItem(LS_PURGED_KEY) + showPurgedNotifModal
+```
+
+**Cache hash** :
+- Champ `plan.sha256` ajouté au schema `PlanRegistry` (optionnel, persist via `localStorage["myktamap_plans"]`)
+- Calculé à l'**import** via `chargerZipFichier > _cacheHashAfterLoad()` (utilise le hash déjà computed par `isPlanDenied`)
+- OU calculé au **1er audit boot** si plan pré-v1.42.3 sans `sha256` → persisté pour les boots suivants
+- Plans serveur (type:"server") : pas concernés, hash impossible (pas de ZIP unique)
+
+**Performance** :
+- Skip total si denylist vide (cas commun, 99% des sessions) → 0 charge
+- Hash sequential async avec yield 10ms entre plans (anti-freeze main thread)
+- Lookup O(1) via `denyByHash[sha256.toLowerCase()]` (au lieu de scan linéaire N)
+- Cache hash → 1 seul calcul par plan dans sa vie
+
+**UX modale orange** (`showPurgedNotifModal`) :
+- z-index 99998 (juste sous denylist modale rouge à 100000)
+- Couleur charte `#e9a13b` (orange ambré, vs rouge `#d32f2f` pour denied actif)
+- Icône `⚠️` (vs `⛔`)
+- Pas pulsante (moins urgent que denied)
+- Liste : nom plan + motif + SHA-256 tronqué + date purge
+- Bouton « Compris » `#e9a13b` → `clearPurgedAtBoot()` + remove modale (pas de reload)
+
+**Persistance LS** :
+- Clé `myktamap_denylist_purged_at_boot` = `Array<{id, name, sha256, reason, addedAt, purgedAt}>`
+- Persiste entre boots → si user ferme l'app sans cliquer « Compris », ré-affichage au prochain boot
+- Cumulé entre audits successifs (pas écrasé) si plusieurs vagues de révocations
+
+**Fail-safe** :
+- Si `PlanRegistry` indispo → return `{ reason: "no-registry" }`
+- Si plan local sans blob (FS handle perdu, orphelin) → skip silencieux
+- Si hash exception → log warning + skip ce plan
+- Si `remove` exception → log + continue
+
+### 80.14 Capture canvas OSM dans PDF Briefing pompiers (v1.42.5)
+
+**Cible** : enrichir le PDF Briefing pompiers (v1.42.0 — texte+liens) avec une vraie image de carte OpenStreetMap.
+
+**Lib externe vendored** : `lib/html2canvas.min.js` (~50 KB, BSD/MIT) — registered dans :
+- `index.html` (après `lib/jspdf.umd.min.js`, defer)
+- `sw.js > ASSETS_TO_CACHE`
+
+**API** :
+```js
+async function _captureOsmCanvasForBriefing(scenario, plan): Promise<string | null>
+  // Retourne dataURL JPEG q85 OU null si échec
+```
+
+**Architecture du render offscreen** :
+1. Container div hidden 1200×800 (`position:fixed; left:-99999px; top:0; pointer-events:none`)
+2. `L.map(cont, {dragging:false, keyboard:false, scrollWheelZoom:false, attributionControl:false, zoomControl:false, preferCanvas:true})`
+3. `map.fitBounds(OsmView.getPlanGpsBbox(), {padding:[60,60], maxZoom:17})`
+4. `L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {crossOrigin:"anonymous"})`
+5. `L.rectangle(bbox)` jaune charte `#f4c542` semi-transparent (opacity 0.15)
+6. `L.marker(center)` divIcon label « 📍 [Nom plan] » fond `#1a1f2e` + bordure jaune
+7. Pour chaque équipe avec `surfaceGps` : `L.circleMarker` couleur PALETTE OTAN + divIcon label nom équipe
+8. `await new Promise(resolve => { tileLayer.on("load", () => setTimeout(resolve, 600)); setTimeout(resolve, 7000); /* safety */ })`
+9. `await window.html2canvas(cont, {useCORS:true, allowTaint:false, backgroundColor:"#ffffff", width:1200, height:800, scale:1})`
+10. `canvas.toDataURL("image/jpeg", 0.85)`
+11. Cleanup `map.remove()` + `cont.parentNode.removeChild(cont)`
+
+**Intégration `_drawBriefingSurfacePage`** :
+- Devenue **async** (auparavant sync). `await` ajouté aux 2 callers : `genererRapportPDF` + `genererBriefingPompiersPDF`.
+- Tentative capture en début de page :
+  ```js
+  const imgData = await _captureOsmCanvasForBriefing(scenario, plan);
+  if (imgData) {
+    const imgW = pageW - 2 * margin;                  // 182mm A4
+    const imgH = imgW * (800 / 1200);                 // 121mm (ratio 3:2)
+    const maxH = pageH - y - 80;                      // garde 80mm pour reste
+    const finalH = Math.min(imgH, maxH);
+    const finalW = finalH * (1200 / 800);
+    const offsetX = margin + (imgW - finalW) / 2;     // centré horizontal
+    pdf.addImage(imgData, "JPEG", offsetX, y, finalW, finalH);
+    y += finalH + 6;
+    pdf.setFontSize(7); pdf.setTextColor(140);
+    pdf.text("Vue OpenStreetMap : zone du plan (cadre jaune) + position GPS surface des equipes (cercles colores).", margin, y);
+  }
+  ```
+
+**Fail-safe gracieux** :
+- `html2canvas` non chargé → skip capture, fallback texte/lien (= v1.41.x)
+- `OsmView.getPlanGpsBbox()` retourne null (pas de georef) → skip capture
+- Tuiles OSM timeout (cellular très lent) → safety 7s puis capture quand même (carte partielle/vide)
+- Exception html2canvas → catch, log, fallback texte
+- `pdf.addImage` exception → catch, ne casse pas le PDF
+
+**Limitations assumées** :
+- Pas de plan rotated superposé dans la capture (= moins informatif visuellement que la modale Vue OSM). Nécessiterait accès à l'image source du plan (V1 : APP_CONFIG.image, V2 : tuiles) + projection 3-coin via `Leaflet.ImageOverlay.Rotated`. Reporté à v1.42.6+ si KARMA demande.
+- Pas de POI markers (entrée 🚪, sorties urgence) dans la capture. Markers seraient en coords plan → nécessite projection plan→GPS via `OsmView._proj.planToLatLng()`. Reporté.
+- Durée génération : 3-7s typique (fetch tuiles OSM + render html2canvas). Acceptable pour usage ponctuel (briefing pompiers = pas en boucle).
+
+**Réutilisabilité future** :
+- Le helper `_captureOsmCanvasForBriefing` est généralisable : `_captureOsmCanvas({bbox, markers, options}): Promise<dataURL>`. À factoriser si besoin pour Mode Histoire, partage social, etc.
+
+---

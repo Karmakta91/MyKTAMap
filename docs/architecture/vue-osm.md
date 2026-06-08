@@ -1,7 +1,7 @@
 # Architecture MyKTAMap — Vue OSM (modale + widget HOME)
 
-> Référence détaillée de la roadmap Vue OSM (v1.39.0 → v1.40.25). Lue à la demande.
-> Sections : §1 vision · §2 modale `osmView.js` · §3 widget `osmHomePreview.js` · §4 sécurité · §5 pièges connus
+> Référence détaillée de la roadmap Vue OSM (v1.39.0 → v1.43.8). Lue à la demande.
+> Sections : §1 vision · §2 modale `osmView.js` · §3 widget `osmHomePreview.js` · §4 sécurité · §5 pièges connus · §6 extension · §7 synergie Mode Secours · §8 cache OSM offline (v1.43.0 → v1.43.8)
 
 ---
 
@@ -323,3 +323,245 @@ Cache cleared au unload page (RAM-only, pas de LS). Re-sélection plan déjà vu
 1. Ajouter dans `map.js > TAGS_BUILTIN` (= source de vérité)
 2. Sync `osmHomePreview.js > TAGS_BUILTIN_HOME`
 3. S'assurer que `icon/<tag>.png` existe dans `sw.js > ASSETS_TO_CACHE` pour la cache PWA
+
+---
+
+## 7. Synergie Mode Secours × Vue OSM (v1.41.0+)
+
+### 7.1 API publique étendue
+
+```js
+window.OsmView = {
+  open, close, isAvailable, isOptedIn, setOptedIn,
+  // 🆕 v1.41.0 (B+C) — helper exposé pour briefing pompiers PDF
+  getPlanGpsBbox: _getPlanGpsBbox    // retourne L.latLngBounds | null
+}
+```
+
+### 7.2 Lazy build de la projection (v1.41.2)
+
+Avant v1.41.2, `_getPlanGpsBbox()` retournait `null` si `_proj` n'était pas initialisé (= modale jamais ouverte). Fix : si `_proj` null, appelle `_buildProjection()` à la volée.
+
+```js
+function _getPlanGpsBbox() {
+  let proj = _proj;
+  if (!proj || typeof proj.planToLatLng !== "function") {
+    proj = _buildProjection();  // 🆕 lazy : pure, lit PLAN_CONFIG.osmGeoref
+    if (!proj) return null;
+  }
+  // ... calcul bbox depuis 4 coins du plan via proj.planToLatLng
+}
+```
+
+`_buildProjection()` est **pur** (lit `_getEffectiveGeoref()` + `KmzExport.buildTransform`) → safe à appeler hors UI context. Le cache `_proj` reste utilisé en premier (perf identique pour ouvertures suivantes).
+
+**Cas d'usage** : `genererBriefingPompiersPDF(scenarioId)` (Mode Secours) appelle `OsmView.getPlanGpsBbox()` pour récupérer la bbox + centre afin de générer les liens cliquables OSM/Google Maps dans le PDF — sans avoir besoin que l'utilisateur ait ouvert la modale OSM au préalable.
+
+### 7.3 Fix chips tags Vue OSM (v1.41.3 → 41.4)
+
+**Bug racine** : `_enumerateOsmTags()` itérait sur `window._dataLayersByPlan[planId]` qui **n'est défini nulle part** dans l'app (jamais peuplé). Conséquence : seuls ~3 tags de la session étaient comptés, les POI des calques data étaient ignorés.
+
+**Fix** (v1.41.4) : utiliser `window.getAllEmbeddedPoints()` (API officielle, même source que `_collectVisiblePoi` pour le rendu markers OSM).
+
+```js
+function _enumerateOsmTags() {
+  const counts = {};
+  // Session + POI principaux
+  if (typeof window.getEditorPoints === "function") {
+    for (const p of (window.getEditorPoints() || [])) {
+      if (!p || typeof p.x !== "number") continue;
+      const t = (Array.isArray(p.tags) && p.tags[0]) || "default";
+      counts[t] = (counts[t] || 0) + 1;
+    }
+  }
+  // 🆕 v1.41.4 — Data layers via API officielle (avant : _dataLayersByPlan inexistant)
+  if (typeof window.getAllEmbeddedPoints === "function") {
+    for (const p of (window.getAllEmbeddedPoints() || [])) {
+      if (!p || typeof p.x !== "number") continue;
+      const t = (Array.isArray(p.tags) && p.tags[0]) || "default";
+      counts[t] = (counts[t] || 0) + 1;
+    }
+  }
+  return counts;
+}
+```
+
+**Pas de filtre `_isLevelAllowed`** (v1.41.3) : la liste des chips reflète TOUS les tags du plan peu importe le M-LVL actif (cohérent avec `osmHomePreview._collectAvailableTags`). Le filtre par level reste appliqué au RENDU des markers via `_renderPoi`.
+
+⚠️ **Pattern à retenir** : avant d'utiliser un global suspect, faire `grep -r "<symbol>"` pour valider qu'il est bien défini quelque part. Sinon = mort-vivant qui passe inaperçu pendant des versions.
+
+### 7.4 Nouveau tag built-in `entree_plan` (v1.41.0 D)
+
+Voir `add-icon-tag` skill pour les 7 sites à toucher. Particularité : icône SVG vectorielle inline (`data:image/svg+xml;utf8,...`) au lieu d'un fichier PNG → pas besoin d'ajouter à `sw.js > ASSETS_TO_CACHE`. Catégorie « 🚨 Secours » ajoutée dans `GROUPES` (interfaceLegende × 2) + `GROUPES_ICONES` (exporter).
+
+---
+
+## 8. Cache OSM offline (v1.43.0)
+
+### 8.1 Vue d'ensemble
+
+Permet à l'utilisateur de **précharger les tuiles `tile.openstreetmap.org`** correspondant à la vue actuelle, afin de garder la Vue OSM consultable **hors-ligne** (typique : descente en cata, terrain sans réseau). Disponible dans 3 contextes UI partageant le **même store IndexedDB** :
+
+| Contexte | Bouton UI | Module |
+|---|---|---|
+| Modale Vue OSM (plan georef) | Bandeau « 💾 Cacher offline » | `osmView.js` |
+| Widget Vue OSM HOME | Bandeau compact « 💾 » | `osmHomePreview.js` |
+| Mode Secours (icône 🌍) | Hérite modale Vue OSM (même bouton) | `secoursMode.js` → `OsmView.open` |
+
+### 8.2 Architecture modules
+
+```
+js/osmTilesCache.js (NOUVEAU, ~280 lignes)
+  ├─ IDB : "myktamap_osm_tiles" (DB v1) > store "tiles" { key: "z/x/y", blob: Blob, addedAt: ISO }
+  ├─ API : init() / cacheVisibleTiles(map, opts) / getCachedTile(z,x,y) / hasCachedTile /
+  │        getStats() / hasCacheForBbox(bbox, zoom) / clear() / enumerateTilesForBbox(bbox, zoom)
+  ├─ Helpers : _lat2tileY / _lng2tileX (slippy tilenames OSM convention)
+  └─ Constantes : MAX_TILES_PER_CACHE = 200 (politique OSM)
+
+sw.js (modifié)
+  └─ fetch handler : si URL match tile.openstreetmap.org/{z}/{x}/{y}.png
+     ├─ _osmTilesCacheLookup(z,x,y) → ouvre IDB local, retourne Blob ou null
+     ├─ hit → new Response(blob, {200, Content-Type:image/png, X-OSM-Cache:hit})
+     └─ miss → fetch réseau normal (fallback offline = 504)
+
+js/osmView.js (modifié)
+  ├─ Bouton bandeau "#kta-osm-cache-btn" + span stats "#kta-osm-cache-stats"
+  ├─ _runCacheOsmTiles(btn) → cacheVisibleTiles(_osmMap, {onProgress})
+  ├─ _refreshOsmCacheStats() → affiche stats dans bandeau
+  ├─ _planHasCachedTiles (bool sync) + _recheckCachedForCurrentPlan() (async)
+  ├─ _isOnlineOrCached() = _isOnline() OR _planHasCachedTiles
+  └─ isAvailable() utilise _isOnlineOrCached → autorise ouverture offline si cache présent
+  Exposé : window.OsmView.recheckOfflineCache
+
+js/osmHomePreview.js (modifié)
+  ├─ Bouton "#ktaOsmHomeCacheBtn" + span "#ktaOsmHomeCacheStats" dans footer
+  ├─ _runCacheTilesHome() / _refreshCacheStatsHome()
+  └─ Après cache → notifie OsmView.recheckOfflineCache() (sync gate offline modale)
+
+index.html : <script src="js/osmTilesCache.js" defer> AVANT osmView.js / osmHomePreview.js
+sw.js > ASSETS_TO_CACHE : ./js/osmTilesCache.js
+```
+
+### 8.3 API `window.OsmTilesCache`
+
+```js
+window.OsmTilesCache = {
+  init,                    // Promise<IDBDatabase> — idempotent
+  cacheVisibleTiles,       // (map, {onProgress, zoomDelta=1}) → Promise<{cached, skipped, total}>
+  getCachedTile,           // (z, x, y) → Promise<Blob|null>
+  hasCachedTile,           // (z, x, y) → Promise<boolean>
+  getStats,                // () → Promise<{count, sizeBytes, oldest, newest}>
+  hasCacheForBbox,         // (bbox: L.LatLngBounds, zoom: number) → Promise<boolean>
+  clear,                   // () → Promise<void>
+  enumerateTilesForBbox    // (bbox, zoom) → Array<{z, x, y}> (utilitaire, sync)
+}
+```
+
+**`cacheVisibleTiles(map, opts)`** : itère sur 3 niveaux de zoom (`zoomActuel - 1`, `zoomActuel`, `zoomActuel + 1`), énumère les tuiles couvrant `map.getBounds()`, plafonne à `MAX_TILES_PER_CACHE = 200` (politique OSM tile usage). Pour chaque tuile : skip si déjà en IDB, sinon `fetch()` puis `idb.put({key, blob, addedAt})`. Progress callback à chaque tuile pour mettre à jour le bouton.
+
+### 8.4 Service Worker — interception transparente
+
+Le SW intercepte les requêtes `tile.openstreetmap.org/{z}/{x}/{y}.png` **avant** qu'elles ne partent sur le réseau :
+
+```js
+// sw.js : fetch handler
+if (/tile\.openstreetmap\.org\/(\d+)\/(\d+)\/(\d+)\.png/.test(url)) {
+  const [, z, x, y] = url.match(...);
+  const cachedBlob = await _osmTilesCacheLookup(z, x, y);
+  if (cachedBlob) {
+    return new Response(cachedBlob, {
+      status: 200,
+      headers: { "Content-Type": "image/png", "X-OSM-Cache": "hit" }
+    });
+  }
+  return fetch(event.request);  // offline = 504 natif Leaflet
+}
+```
+
+Bénéfices :
+- **Zéro modification Leaflet** : `L.tileLayer` continue de demander `tile.openstreetmap.org/...` comme avant
+- **Transparence offline** : si la tuile est en IDB → servie instantanément ; sinon réseau ; sinon 504 (placeholder Leaflet)
+- **Header `X-OSM-Cache: hit`** pour debug DevTools
+
+### 8.5 Gate offline (autoriser ouverture sans réseau)
+
+Avant v1.43.0, `OsmView.isAvailable()` bloquait l'ouverture si `navigator.onLine === false`. Désormais :
+
+```js
+async function _isOnlineOrCached() {
+  if (_isOnline()) return true;
+  // Hors-ligne : tente d'ouvrir si on a déjà des tuiles cachées pour ce plan
+  return _planHasCachedTiles;
+}
+```
+
+`_planHasCachedTiles` est un **bool synchrone** (state local) recalculé par `_recheckCachedForCurrentPlan()` qui appelle `hasCacheForBbox(planBbox, baselineZoom)`. Lancé :
+- Au chargement d'un plan georef
+- Après chaque clic « 💾 Cacher offline » (modale ou widget HOME)
+- Sur demande externe via `window.OsmView.recheckOfflineCache()`
+
+Pattern **sync gate + async refresh** : permet à `isAvailable()` de rester synchrone pour les callers (notamment widget HOME et Mode Secours), tout en restant cohérent avec l'état IDB.
+
+### 8.6 Privacy & politique OSM
+
+| Aspect | Comportement |
+|---|---|
+| Surface réseau | Aucune nouvelle URL — uniquement les `GET https://tile.openstreetmap.org/{z}/{x}/{y}.png` existants, juste pré-déclenchés au moment du clic « Cacher » |
+| Cache local | 100% client (IndexedDB local), jamais transmis ni synchronisé |
+| Politique OSM | `MAX_TILES_PER_CACHE = 200` par clic + 3 niveaux de zoom seulement (actuel ±1) = bulk-download raisonnable, conforme à l'esprit du [Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/) |
+| Cookies / tracking | Idem que sans cache : `crossOrigin: true` mais pas de credentials |
+| Strict offline / Incognito | Le bouton « Cacher » est masqué/désactivé dans ces modes (les tuiles seraient bloquées par le gate `_isStrictOfflineOn` avant même d'arriver au SW) |
+
+### 8.7 Pièges & conventions
+
+⚠️ **Ordre de chargement** : `osmTilesCache.js` DOIT être chargé AVANT `osmView.js` et `osmHomePreview.js` dans `index.html` (sinon `window.OsmTilesCache` undefined au boot de la modale/widget).
+
+⚠️ **Service Worker activation** : après mise à jour du SW (`CACHE_NAME` bumpé), l'utilisateur DOIT rafraîchir/relancer la PWA pour que le nouveau fetch handler (interception OSM) soit actif. Avant ça, le cache IDB se remplit normalement mais les tuiles ne sont pas servies depuis l'IDB.
+
+⚠️ **Slippy tilenames OSM** : convention `z/x/y` avec `y` top-down ([wiki OSM](https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames)). Helpers `_lat2tileY` / `_lng2tileX` collés sur cette convention. Si on étend à d'autres providers (Mapbox, MapTiler…), vérifier leur convention de tile y (certains utilisent TMS bottom-up).
+
+⚠️ **Pas de TTL / LRU** sur le cache IDB v1.43.0 — l'user gère manuellement via bouton « Vider cache » futur (ou via DevTools). Acceptable car volume borné par `MAX_TILES_PER_CACHE = 200` par clic et l'user choisit explicitement quoi cacher.
+
+⚠️ **`hasCacheForBbox` est approximatif** : il vérifie que la bbox est couverte au zoom baseline (= au moment où l'utilisateur a cliqué « Cacher »). Si l'user a caché à un zoom différent de la bbox du plan, le gate peut renvoyer faux négatif → l'ouverture offline est refusée alors que des tuiles existent. Compromis acceptable car simple à debug ("tu n'as pas caché ce plan"). **→ Levé en v1.43.6 via mode any-zoom (cf §8.8)**.
+
+### 8.8 Évolution v1.43.1 → v1.43.8 — fixes & robustesse
+
+Suite à la sortie de v1.43.0, 8 patches successifs ont consolidé la feature (gates, UX, SW robustness, faux-négatifs offline). Récap :
+
+| Version | Sujet | Cause racine | Fix |
+|---|---|---|---|
+| **v1.43.1** | Gate offline async | `_isOnlineOrCached()` lisait `_planHasCachedTiles` au boot AVANT que `_recheckCachedForCurrentPlan()` ne se soit résolu → flag stale → ouverture refusée même avec cache présent | `open()` rendu async + `await _recheckCachedForCurrentPlan()` JIT juste avant le gate (recheck systématique au moment du clic, plus de course IDB) |
+| **v1.43.2** | Refresh immédiat bouton 🌍 | Toggle opt-in OSM via Configuration mettait à jour le LS, mais le bouton Vue OSM dans la map mode ne s'actualisait qu'au polling 2s suivant → ressentait laggy | Dispatch event `kta:osmOptInChange` chaque fois que `setOptedIn()` mute le flag + listener côté `main.js` qui appelle `_refreshOsmButton()` → refresh < 16ms |
+| **v1.43.3** | Widget HOME — overlay « plan non caché » | Le widget HOME affichait OSM même si l'utilisateur n'avait jamais caché le plan sélectionné → en mode avion = tuiles cassées sans feedback | Ajout flag `_anyCachePresent` + overlay pédagogique « 📴 Plan non caché — clique 💾 pour télécharger » via `hasCacheForBbox(bboxA↔B)`. **Cache global partagé** : un plan A caché côté modale OSM est automatiquement détecté par le widget HOME (et inversement) |
+| **v1.43.4** | UX position bouton | Bouton « 💾 » au milieu du bandeau, peu visible | Repositionnement juste après « 📍 Moi » (groupe d'actions utilisateur) |
+| **v1.43.5** | SW robustesse | Pertes réseau intermittentes au moment de l'install du SW → certains assets critiques de l'app shell loupés silencieusement → boot cassé hors-ligne ensuite | Ajout `CRITICAL_APP_SHELL` (sous-ensemble obligatoire) + helper `_cacheWithRetry` (3 essais avec backoff) au moment de l'install + **self-heal au `activate`** : si un asset critique manque, on retente avant d'autoriser le SW à servir |
+| **v1.43.6** | `hasCacheForBbox` any-zoom | Le hardcode `zoom=14` faisait des faux-négatifs : si l'user avait caché à zoom 12 ou 16 (selon `getBoundsZoom`), `hasCacheForBbox` cherchait à 14 et renvoyait false → gate offline refusait l'ouverture | Signature étendue `hasCacheForBbox(bbox, zoom?)` : si zoom omis, on scanne 10→18 sur le **centre de la bbox** et on renvoie true au premier hit. Levée du compromis §8.7 |
+| **v1.43.7** | Bypass `_pingThenOpen` | En mode avion, `_pingThenOpen()` (timeout 5s vers `ping.html`) affichait le toast « Internet ne répond pas » avant l'ouverture, alors qu'on a explicitement un cache local exploitable | Si `_planHasCachedTiles === true` → bypass complet du ping, on ouvre direct. Cohérent avec la sémantique « cache présent = autorisé même offline » |
+| **v1.43.8** | UX i18n label | « Cacher offline » = jargon FR ambigü (verbe « cacher » au sens dissimuler) | Renommage en **« Save Offline »** (terme international compris partout, partagé avec la convention Google Maps / OSM Editor) |
+
+### 8.9 Garanties d'isolation cache global
+
+KARMA : *« si je cache Paris depuis la modale, et que j'ouvre Lyon depuis le widget HOME, est-ce que je risque de voir les tuiles parisiennes ? »*. Réponse : **non**, voici pourquoi.
+
+**Le store IDB est GLOBAL (un seul store `tiles`)** :
+- Pas de partitionnement par `planId`
+- Une seule DB `myktamap_osm_tiles` partagée entre modale, widget HOME, Mode Secours
+
+**MAIS l'isolation est NATURELLE via l'indexation `z/x/y` géographique** :
+
+```
+Clé IDB = "z/x/y" (slippy tilenames OSM, EPSG:3857)
+  ├─ Plan Paris (lat ~48.85, lng ~2.35) → tuiles z=14, x∈[8290..8294], y∈[5635..5639]
+  ├─ Plan Lyon  (lat ~45.75, lng ~4.85) → tuiles z=14, x∈[8388..8392], y∈[5817..5821]
+  └─ Plan NYC   (lat ~40.71, lng ~-74)  → tuiles z=14, x∈[4824..4828], y∈[6157..6161]
+
+→ Clés disjointes par construction (positions géographiques différentes)
+→ Aucune collision possible, aucune fuite cross-plan
+```
+
+**Bénéfices concrets** :
+- ✅ **Dédup automatique** si 2 plans overlap géographiquement (e.g. deux plans dans Paris) → 1 seule copie de la tuile partagée
+- ✅ **Cacher depuis modale OSM = visible depuis widget Home** (et vice-versa) — c'est ce que KARMA voulait, et c'est ce qui rend la feature « universelle » (peu importe d'où l'user déclenche le cache, ça profite à tous les contextes Vue OSM)
+- ✅ **Pas de gestion de "qui possède quoi"** côté code : chaque plan demande ses tuiles via `hasCacheForBbox(planBbox)`, et la réponse dépend uniquement de la couverture géographique réelle
+
+**Limite** : pas de mécanisme « purge tuiles d'un plan spécifique » (volontaire — on purge tout via `clear()` ou rien). Si un user veut nettoyer les tuiles parisiennes après avoir supprimé son plan Paris, il faut « Vider le cache » global. Acceptable car les tuiles OSM sont publiques (pas de risque privacy) et borné (200 max par clic).
