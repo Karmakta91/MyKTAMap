@@ -2878,6 +2878,35 @@ _setGroupeModeActif("tracker", isTracking, null);
 // dans interface.js — aucune dep partagée avec l'itinéraire.
 
 // =========================
+// GUARD POPUP — modes suppression au clic (tracé / zone / structure)
+// =========================
+// 🐛 v1.44.3 — Les éléments session (polylines, zones, structures) ont une
+// popup d'annotation bindée via Leaflet bindPopup (cf utils.js >
+// attacherNotePopup). Au clic sur l'élément, le handler LAYER de Leaflet
+// ouvre la popup AVANT que le handler MAP du mode suppression ne tire —
+// résultat : l'élément est supprimé MAIS sa popup d'annotation s'ouvre
+// par-dessus (orpheline). Le fix intercepte au niveau map : tant qu'un
+// mode suppression est actif, toute popup qui s'ouvre est refermée
+// immédiatement. Helper mutualisé entre les 3 modes (install idempotent).
+// Limite connue : si deux modes suppression sont actifs simultanément
+// (quirk pré-existant, deux floaters empilés) et qu'un seul se désactive,
+// le guard tombe pour l'autre — cas marginal, même sévérité que le quirk.
+let _suppPopupGuardActif = false;
+function _onSuppPopupOpen(e) {
+  try { window.map.closePopup(e && e.popup); } catch(err) {}
+}
+function _installerSuppPopupGuard() {
+  if (_suppPopupGuardActif || !window.map) return;
+  _suppPopupGuardActif = true;
+  window.map.on("popupopen", _onSuppPopupOpen);
+}
+function _retirerSuppPopupGuard() {
+  if (!_suppPopupGuardActif) return;
+  _suppPopupGuardActif = false;
+  if (window.map) window.map.off("popupopen", _onSuppPopupOpen);
+}
+
+// =========================
 // SUPPRESSION D'UN TRACÉ — mode clic visuel sur la carte
 // =========================
 // Active un mode "selection visuelle" : un floater apparait en bas et invite
@@ -2911,6 +2940,7 @@ function _desactiverModeSuppressionTrace() {
     _suppTraceFloater.remove();
     _suppTraceFloater = null;
   }
+  _retirerSuppPopupGuard();  // 🐛 v1.44.3
 }
 
 window.activerModeSuppressionTraceClic = function() {
@@ -2942,6 +2972,9 @@ window.activerModeSuppressionTraceClic = function() {
 
   document.getElementById("kta-supp-trace-annuler")
     .addEventListener("click", _desactiverModeSuppressionTrace);
+
+  // 🐛 v1.44.3 — bloque l'ouverture des popups d'annotation pendant le mode
+  _installerSuppPopupGuard();
 
   // Tolerance de selection en pixels image (pas screen). Plus la tolerance
   // est grande, plus c'est facile de cliquer sans precision. 20 px est un
@@ -3041,6 +3074,7 @@ function _desactiverModeSuppressionZone() {
     _suppZoneFloater.remove();
     _suppZoneFloater = null;
   }
+  _retirerSuppPopupGuard();  // 🐛 v1.44.3
 }
 
 window.activerModeSuppressionZoneClic = function() {
@@ -3068,6 +3102,9 @@ window.activerModeSuppressionZoneClic = function() {
 
   document.getElementById("kta-supp-zone-annuler")
     .addEventListener("click", _desactiverModeSuppressionZone);
+
+  // 🐛 v1.44.3 — bloque l'ouverture des popups d'annotation pendant le mode
+  _installerSuppPopupGuard();
 
   // Tolerance pour le fallback "click pres du bord" (zone de petit polygon
   // sur lequel l'utilisateur clique a cote sans rentrer dedans).
@@ -3168,6 +3205,7 @@ function _desactiverModeSuppressionStructure() {
     _suppStructureFloater.remove();
     _suppStructureFloater = null;
   }
+  _retirerSuppPopupGuard();  // 🐛 v1.44.3
 }
 
 window.activerModeSuppressionStructureClic = function() {
@@ -3200,6 +3238,9 @@ window.activerModeSuppressionStructureClic = function() {
 
   document.getElementById("kta-supp-structure-annuler")
     .addEventListener("click", _desactiverModeSuppressionStructure);
+
+  // 🐛 v1.44.3 — bloque l'ouverture des popups d'annotation pendant le mode
+  _installerSuppPopupGuard();
 
   const TOLERANCE_BORD_PX  = 20;  // polygon fallback bord
   const TOLERANCE_TRACE_PX = 15;  // polyline (fronts)

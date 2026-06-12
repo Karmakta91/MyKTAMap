@@ -1,7 +1,7 @@
 {
-  "version": "v1.44.2",
+  "version": "v1.44.3",
   "released": "2026-06-10",
   "notes": [
-    "🐛 Suite du fix des ronds aux intersections : ils disparaissent maintenant aussi quand tu masques un calque de données entier dans le filtre (avant : seuls les tracés disparaissaient, les ronds restaient)."
+    "🐛 En mode suppression au clic (tracé, zone ou structure), la fenêtre d'annotation de l'élément ne s'ouvre plus par-dessus — l'élément est simplement supprimé, comme attendu."
   ]
 }

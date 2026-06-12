@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.44.2</strong> (10 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.44.3</strong> (10 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -700,6 +700,14 @@
     de surface réseau</strong> : même whitelist endpoints, même URLs self-origin,
     juste exécutées en parallèle.</li>
 
+    <li><strong>v1.44.3</strong> — Fix popup d'annotation en mode suppression
+    au clic : le clic sur un tracé/zone/structure en mode suppression ouvrait
+    aussi sa popup d'annotation (handler layer Leaflet <code>bindPopup</code>
+    tire avant le handler map du mode). Fix : guard map-level
+    <code>popupopen</code> mutualisé dans <code>interface.js</code>, installé
+    par les 3 modes suppression. <strong>Aucun changement de surface
+    réseau</strong>.</li>
+
     <li><strong>v1.44.2</strong> — Suite du fix ronds d'intersection : le
     toggle d'un calque DATA via le FilterPanel (<code>map.addLayer/removeLayer</code>
     direct) n'émettait pas les événements <code>overlayadd</code>/<code>overlayremove</code>
@@ -776,7 +784,7 @@
     réseau</strong> : pur hardening client.</li>
   </ul>
 
-  <p><strong>Confirmation privacy v1.43.0 → v1.44.2</strong> : aucun de ces 31 patches
+  <p><strong>Confirmation privacy v1.43.0 → v1.44.3</strong> : aucun de ces 32 patches
   n'ajoute de surface réseau sortante. Le cache reste 100% IndexedDB local, les
   requêtes vers <code>tile.openstreetmap.org</code> passent par le Service Worker qui
   sert depuis IDB ou laisse passer le fetch réseau standard. <strong>AUCUN tracking,
@@ -861,10 +869,10 @@
     v1.40.19).</li>
   </ul>
 
-  <p><strong>Verdict réseau v1.44.2</strong> : ✅ aucune nouvelle URL ajoutée à la liste
+  <p><strong>Verdict réseau v1.44.3</strong> : ✅ aucune nouvelle URL ajoutée à la liste
   blanche, aucune nouvelle catégorie de donnée envoyée, aucun service tiers contacté. Le
   périmètre réseau v1.42.x est <strong>strictement conservé</strong> sur toute la série
-  v1.43.0 → v1.44.2. La whitelist endpoints reste inchangée
+  v1.43.0 → v1.44.3. La whitelist endpoints reste inchangée
   (<code>tile.openstreetmap.org</code>, <code>denylist.json</code>, <code>ping.html</code>,
   <code>version.json</code> + assets app). Le seul changement est l'introduction d'un store
   IDB local de plus (cf. section « Stockage local »). La feature « Save Offline »

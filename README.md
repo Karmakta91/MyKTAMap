@@ -8,7 +8,10 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.44.2` (10/06/2026) — **🐛 Fix ronds d'intersection, suite : toggle calque data via FilterPanel** sur la base v1.44.1.
+**📦 Version courante** : `v1.44.3` (10/06/2026) — **🐛 Fix popup d'annotation en mode suppression au clic** sur la base v1.44.2.
+
+**🐛 v1.44.3 (10/06/2026)** — **Popup d'annotation vs mode suppression au clic** :
+- `interface.js` : au clic sur un élément en mode suppression (tracé/zone/structure), le handler LAYER Leaflet (`bindPopup` via `attacherNotePopup`) ouvrait la popup d'annotation AVANT le handler MAP du mode suppression → élément supprimé + popup orpheline par-dessus. Fix : guard map-level `popupopen` mutualisé (`_installerSuppPopupGuard`/`_retirerSuppPopupGuard`) installé par les 3 modes suppression — toute popup qui s'ouvre pendant le mode est refermée immédiatement.
 
 **🐛 v1.44.2 (10/06/2026)** — **Ronds d'intersection vs toggle calque data** (3e bug de la même famille, trouvé au test terrain de v1.44.1) :
 - `filterPanel.js` : `road.js` recalcule les intersections sur `overlayadd`/`overlayremove` — événements émis uniquement par le contrôle de couches Leaflet NATIF. Or le FilterPanel (v1.21.5) fait `map.addLayer/removeLayer` directement → aucun événement → cercles des roads embarquées du calque masqué persistaient. Fix : `_scheduleRoadsRecalc()` (renderRoads coalescé 150 ms) déclenché après chaque toggle de calque data. Le coalescing évite N renders d'affilée au « Tout afficher » (events synthétiques par checkbox).
