@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.43.21** (8 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.44.0** (9 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -231,7 +231,7 @@ sous 3 conditions strictes simultanément réunies** :
     n'empêche **pas** le GPS — c'est l'intérêt principal (téléphone en
     avion mais GPS du device parfaitement fonctionnel).
 
-### Cache offline OSM / « Save Offline » (depuis v1.43.0, consolidé jusqu'à v1.43.21)
+### Cache offline OSM / « Save Offline » (depuis v1.43.0, consolidé jusqu'à v1.43.25)
 
 **Nouveauté v1.43.0** : l'utilisateur peut maintenant **mémoriser les tuiles
 OSM affichées** pour les consulter hors-ligne plus tard. C'est une feature
@@ -349,8 +349,129 @@ client-side (UX, gates, robustesse SW, fix de logique de cache). Récap :
   backticks ont été remplacés par `&amp;nbsp;` dans le commentaire. Aucun
   impact réseau, aucun impact privacy — bug de syntaxe JS pur, corrigé
   côté client.
+- **v1.43.22** — **Inspecteur SW V2** : nouveau diagnostic des échecs
+  d'install dans le cache PWA. Architecture :
+  - Nouveau store IDB **`myktamap_sw_install_log/install_failures`**
+    (clé `asset`, valeur `{type, status, message, timestamp, phase}`).
+    Vidé au début de chaque install pour ne pas accumuler d'anciennes
+    erreurs résolues.
+  - Wrapper SW **`_cacheAddDiag(cache, asset, phase)`** qui remplace
+    `cache.add()` par un `fetch()` + analyse explicite de la réponse
+    + `cache.put()`. Catégorise précisément l'erreur : `404` (FTP partiel),
+    `5xx` / `4xx` (serveur en erreur), `network` (TypeError fetch = offline/DNS/CORS),
+    `quota` (QuotaExceededError sur `cache.put`), `parse`, `unknown`.
+  - Nouveau message handler **`GET_INSTALL_FAILURES`** côté SW : renvoie
+    l'historique des échecs au client (pattern MessageChannel identique
+    aux handlers existants).
+  - UI Inspecteur enrichie : pour chaque manquant, on affiche désormais
+    la cause (icône + label coloré). Stats agrégées (« 🚫 3 absents serveur
+    · 📡 1 erreur réseau ») + diagnostic textuel (« 🛠️ Diagnostic probable :
+    déploiement FTP partiel »).
+  - **Toast non-bloquant au boot** si l'auto-heal échoue sur > 10 assets
+    (1× par session via `sessionStorage`). Clic = ouverture directe de
+    l'Inspecteur SW.
 
-**Confirmation privacy v1.43.0 → v1.43.21** : aucun de ces 22 patches
+  **Aucun impact réseau supplémentaire** : `_cacheAddDiag` fait exactement
+  le même fetch que `cache.add()` (même URL, même méthode `cache: "reload"`),
+  juste en analysant la réponse au lieu de la consumer en boîte noire.
+  Les requêtes restent 100 % self-origin sur les URLs déjà déclarées dans
+  `ASSETS_TO_CACHE`. **Aucun impact privacy** : le log IDB reste 100 %
+  local (jamais transmis), le toast s'affiche uniquement côté client.
+  **Respect intégral des modes privacy** : strict offline + incognito
+  désactivent déjà l'auto-heal qui produirait le log.
+
+- **v1.43.23** — Auto-heal plus persistant : garde-fou `sessionStorage` rendu
+  intelligent. Au lieu de "1× par session brut" (qui bloquait le retry au reload
+  même si le précédent check avait échoué), on persiste maintenant le RÉSULTAT :
+  - dernier check OK → skip jusqu'à la prochaine session (anti-spam)
+  - dernier check avec échecs → **retire à chaque reload** (= retry jusqu'à
+    succès, car le serveur a peut-être été corrigé / le runtime cache a réglé
+    une partie). Aussi : si le SW n'est pas controller à T+5s (1er load post-update),
+    on re-programme un retry à T+10s au lieu d'abandonner. Aucun changement
+    de surface réseau — juste de la robustesse du flow auto-heal côté client.
+
+- **v1.43.24** — UX thème clair pour l'Inspecteur SW : refactor des scrollboxes
+  (styles inline → classe `.kta-sw-inspector-scrollbox` partagée) + ajout des
+  règles `body.kta-theme-light #kta-sw-inspector-*` dans `style-meminspector.css`
+  pour adapter modale + sections + textes au thème clair (fond beige, texte
+  sombre, code en accent doré). Aucun impact réseau.
+
+- **v1.43.25** — Performance install SW : phase 2 parallélisée en batchs de 10
+  via `Promise.allSettled` (au lieu de `for-of await` séquentiel). Sur ~150
+  assets, l'install passe de 30-60 s à 5-10 s sur connexion mobile → fenêtre
+  d'interruption (Safari iOS kill, reload user, throttling Chrome) drastiquement
+  réduite. Le handler `REFETCH_MISSING_ASSETS` (bouton "Récupérer manquants"
+  + auto-heal) est aussi parallélisé. Cleanup : retrait de
+  `lib/leaflet/leaflet-src.js` et `leaflet-src.esm.js` de `ASSETS_TO_CACHE`
+  (~1 MB total, versions non-minifiées jamais chargées par index.html en
+  runtime → inutiles dans le cache PWA, fichiers toujours présents sur le
+  serveur pour debug manuel). **Aucun changement de surface réseau** : même
+  whitelist endpoints, même URLs self-origin, juste exécutées en parallèle.
+
+- **v1.43.26** — Sprint hardening modales (top 10 fixes de l'audit perf/UX
+  modales, workflow adversarial verify) : 1️⃣ guard `getCurrentPosition`
+  callback après close `osmView` ; 2️⃣ `try/finally` revoke blob URL `imgUrl`
+  dans `_genererTuilesV2` (cleanup garanti même sur exception OOM/tainted) ;
+  3️⃣ Pattern B theming light pour sous-modales Mode Secours (Phase /
+  Debrief / Rapport) via overrides CSS ciblés dans `style-secours.css` ;
+  4️⃣ Escape listener auto-cleaned dans crash detail modal `memInspector` ;
+  5️⃣ bannière warning « rayon dépasse » Lost Mode → classe CSS + variant
+  light (`.kta-lost-warn-overflow`) ; 6️⃣ `_lastReport = null` au fermer
+  `memInspector` (libère snapshot crash reports volumineux) ; 7️⃣ Pattern A
+  anti-leak Esc listener orphelin sur ré-ouverture modale Phase
+  Mode Secours (ref module `_phaseModalEsc`) ; 8️⃣ `.finally()` cleanup
+  waitOverlay `_pingThenOpen` ; 9️⃣ `_searchTimeout` clear au close
+  Lost Mode (évite write sur DOM retiré) ; 🔟 refacto event delegation
+  pour M-LVL handlers `filterPanel` (plus de re-bind à chaque innerHTML
+  reflow). **Aucun changement de surface réseau** : pur hardening client.
+
+- **v1.43.27** — Hotfix sur la base de l'audit modales V2 (workflow multi-agents
+  adversarial verify, 87 raw → 61 confirmés post-v1.43.26) :
+  1️⃣ correction d'une régression introduite par v1.43.26 dans `osmView.js:2390`
+  (le commentaire promettait `.finally()` pour cleanup `waitOverlay` mais l'impl
+  utilisait toujours `then().catch()` SANS retirer l'overlay — chaque ouverture
+  Vue OSM laissait un `<div class="kta-modal-overlay">` orphelin dans le DOM) ;
+  2️⃣ Pattern C extension : guard `isConnected` après `await findByQuery` dans
+  `lostMode.js:997` (search autocomplete pouvait écrire dans DOM détaché si
+  close pendant le 200ms debounce) ;
+  3️⃣ Pattern D extension : `btn.disabled = true` dans `secoursMode.js:4400`
+  (Briefing Pompiers PDF, double-clic → 2 html2canvas concurrents) +
+  `_handleExport` rapport (3 boutons pdf/json/text disable mutuellement
+  pendant la génération) ;
+  4️⃣ Pattern C extension : guard `isConnected` après `await computeRoute`
+  Dijkstra dans `interfaceItineraire.js` (~1518) (crash sur `null.addEventListener`
+  si close pendant pathfinding 1-3 s) ;
+  5️⃣ refacto event delegation dans `filterPanel.js:559+` pour les sections
+  Image/Data/Tags/show-all/hide-all (cohérence avec M-LVL déjà délégué en
+  v1.43.26, élimine ~30 listeners individuels par ouvrir() → 2 listeners
+  délégués sur overlay).
+  **Aucun changement de surface réseau** : pur hardening client. Audit V2
+  complet sauvegardé dans `docs/audits/2026-06-09_audit-modales-v2.md`
+  (+ findings bruts JSON).
+
+- **v1.44.0** — Refonte du cycle de vie des modales : helper standalone
+  `js/modalLifecycle.js` (~250 lignes, zéro dépendance) qui tracke
+  automatiquement timers + listeners + blob URLs d'une modale et libère
+  tout au `close()`. **Migrations pilotes** : `memInspector` (complète :
+  ouverture/fermeture, `_refreshAndRender`, sous-modale crash detail,
+  event delegation `_bindCrashHandlers`), `swInspector` (complète :
+  ouverture/fermeture, `_collectAndRender` avec `guard`, `_handleRefetchClick`
+  avec `lockButton`), `lostMode` (partielle : `_lc.close()` au fermer +
+  `_lc.setTimeout` du bouton copy). **Patches non-pattern** : 3 high audit
+  V2 restants — `createConf:3062` try/finally garantit revoke blob URL ZIP
+  même si `a.click()` throw, `interfaceItineraire:963 + :1401` refacto
+  event delegation pour les listeners autocomplete avoid/waypoints
+  (1 listener délégué sur le conteneur stable au lieu de N par row dynamique).
+  **Quick wins audit V2** : GPS invalid input mark clear à chaque
+  validation (createConf), overrides CSS light theme pour `.kta-mem-loading`
+  et toast `#kta-sw-incomplet-toast`. **Hook lint advisory** :
+  `scripts/check-modal-lifecycle.js` advised dans `.githooks/pre-commit`
+  flag les natifs (setTimeout/addEventListener/createObjectURL) dans les
+  modules migrés. **Doc architecture** : `docs/architecture/modal-lifecycle.md`
+  (contrat complet + bonnes pratiques + plan migration). **Aucun changement
+  de surface réseau** : pur refactor client / hygiène mémoire.
+
+**Confirmation privacy v1.43.0 → v1.44.0** : aucun de ces 29 patches
 n'ajoute de surface réseau sortante. Le cache reste 100% IndexedDB local,
 les requêtes vers `tile.openstreetmap.org` passent par le Service Worker
 qui sert depuis IDB ou laisse passer le fetch réseau standard. **AUCUN
@@ -432,10 +553,10 @@ bbox, le comportement v1.42.x est conservé (modale bloquée + toast warn).
   actifs (héritage automatique des gates `osmView.js` /
   `osmHomePreview.js` v1.40.19).
 
-**Verdict réseau v1.43.21** : ✅ aucune nouvelle URL ajoutée à la liste
+**Verdict réseau v1.44.0** : ✅ aucune nouvelle URL ajoutée à la liste
 blanche, aucune nouvelle catégorie de donnée envoyée, aucun service tiers
 contacté. Le périmètre réseau v1.42.x est **strictement conservé** sur
-toute la série v1.43.0 → v1.43.21. La whitelist endpoints reste inchangée
+toute la série v1.43.0 → v1.44.0. La whitelist endpoints reste inchangée
 (`tile.openstreetmap.org`, `denylist.json`, `ping.html`, `version.json` +
 assets app). Le seul changement est l'introduction d'un store IDB local
 de plus (cf. section « Stockage local »). La feature « Save Offline »

@@ -259,6 +259,45 @@
   // masque les zones des autres équipes — utile navigation terrain à la
   // sortie pour une équipe spécifique.
   let _focusedGroupeId = null;
+  // 🆕 v1.43.26 — Pattern A (anti-leak) : référence module au listener Esc
+  // de la modale Phase, pour pouvoir le retirer si l'utilisateur ré-ouvre
+  // la modale sans l'avoir fermée (cas où oldModal.remove() retire le DOM
+  // mais laissait le keydown listener orphelin sur document).
+  let _phaseModalEsc = null;
+
+  // 🆕 v1.43.26 (Pattern A généralisé) — Helper mutualisé pour les sous-modales
+  // de Mode Secours. Gère le bind + cleanup automatique d'un éventuel listener
+  // Esc orphelin (cas ré-ouverture rapide sans close manuel). Retourne unbind().
+  //
+  // Usage :
+  //   const unbindEsc = _bindSubModalEsc(_close);
+  //   ... dans _close() : unbindEsc();
+  //
+  // Tracking flat (1 listener actif à la fois pour les sous-modales) :
+  //   - Si une sous-modale est déjà ouverte et qu'on en ouvre une 2e par-dessus,
+  //     l'ancien listener est retiré (l'ancienne modale aurait Esc inactif, mais
+  //     elle est masquée derrière la nouvelle de toute manière).
+  //   - Pas applicable à la modale Mode Secours PRINCIPALE (qui a son propre
+  //     pattern `_onKeyDown` plus large, gérant +touches).
+  let _activeSubModalEsc = null;
+  function _bindSubModalEsc(closeFn) {
+    // Cleanup éventuel listener orphelin d'une modale précédente
+    if (_activeSubModalEsc) {
+      document.removeEventListener("keydown", _activeSubModalEsc);
+      _activeSubModalEsc = null;
+    }
+    const listener = function(e) {
+      if (e.key === "Escape") {
+        try { closeFn(); } catch(_) {}
+      }
+    };
+    _activeSubModalEsc = listener;
+    document.addEventListener("keydown", listener);
+    return function unbind() {
+      document.removeEventListener("keydown", listener);
+      if (_activeSubModalEsc === listener) _activeSubModalEsc = null;
+    };
+  }
 
   // Listeners pour onChange — appelés après chaque mutation persistée.
   const _changeListeners = [];
@@ -2469,18 +2508,18 @@
     boite.innerHTML = inner;
     overlay.appendChild(boite);
 
+    // 🆕 v1.43.26 — Pattern A : helper mutualisé _bindSubModalEsc()
     function _close() {
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      document.removeEventListener("keydown", _onKey);
+      _unbindEsc();
     }
-    function _onKey(e) { if (e.key === "Escape") _close(); }
     overlay.addEventListener("click", function(e) {
       if (e.target === overlay) _close();
     });
     overlay.querySelectorAll('[data-action="close-rapport-result"]').forEach(function(btn) {
       btn.addEventListener("click", _close);
     });
-    document.addEventListener("keydown", _onKey);
+    const _unbindEsc = _bindSubModalEsc(_close);
     document.body.appendChild(overlay);
   }
 
@@ -3554,12 +3593,22 @@
 
     // Handler factorisé : génère data + appelle la fonction de format demandée
     function _handleExport(formatType) {
+      // 🆕 v1.43.27 (Pattern D) — Disable les 3 boutons d'export pendant la
+      // génération (genererRapportData = async lourd + chaque format est lui
+      // aussi async pour pdf/text). Sans ça, l'user qui double-clique ou clique
+      // un AUTRE format pendant la génération relance N exports concurrents.
+      const exportBtns = overlay.querySelectorAll('[data-action^="rapport-export"], [data-action="rapport-copy-text"]');
+      exportBtns.forEach(function(b) { b.disabled = true; });
+      function _restoreBtns() {
+        exportBtns.forEach(function(b) { b.disabled = false; });
+      }
       const cb = document.getElementById("kta-rapport-include-photos");
       const includePhotos = !!(cb && cb.checked);
       _toast("⏳ Génération du rapport en cours…", "info");
       genererRapportData(scenarioId, scope, { includePhotos: includePhotos }).then(function(data) {
         if (!data) {
           _toast("⚠️ Aucune donnée à exporter.", "error");
+          _restoreBtns();
           return;
         }
         if (formatType === "pdf") {
@@ -3580,9 +3629,11 @@
           });
         }
         _close();
+        // Pas besoin de _restoreBtns() : _close() retire l'overlay (et les btns).
       }).catch(function(e) {
         console.warn("[SecoursMode] genererRapportData échec :", e);
         _toast("⚠️ Erreur génération rapport : " + (e && e.message ? e.message : ""), "error");
+        _restoreBtns();
       });
     }
 
@@ -4359,6 +4410,14 @@
       overlay.remove();
     });
     box.querySelector('[data-act="generate"]').addEventListener("click", function() {
+      // 🆕 v1.43.27 (Pattern D) — Disable le bouton AVANT de lancer la génération
+      // PDF (lourd : html2canvas + jsPDF, plusieurs secondes). Sans ça, l'user
+      // qui double-clique nerveusement déclenche 2 générations parallèles qui
+      // se marchent dessus sur le canvas + double download.
+      const btnGen = this;
+      btnGen.disabled = true;
+      const originalText = btnGen.textContent;
+      btnGen.textContent = "⏳ Génération…";
       const opts = {
         showPlan:    box.querySelector("#kta-bo-opt-plan").checked,
         showPoi:     box.querySelector("#kta-bo-opt-poi").checked,
@@ -4370,6 +4429,9 @@
         showSecours: hasSecours ? box.querySelector("#kta-bo-opt-secours").checked : false
       };
       overlay.remove();
+      // Note : overlay déjà retiré → le bouton n'est plus dans le DOM, le
+      // disable est cosmétique mais le ralentit la fenêtre de double-clic
+      // entre clic et overlay.remove(). C'est suffisant pour le cas réel.
       genererBriefingPompiersPDF(scenarioId, opts);
     });
     // Click backdrop = Annuler
@@ -5954,9 +6016,13 @@
       _toast("⚠️ Phase introuvable.", "error");
       return;
     }
-    // Cleanup d'une modale précédente
+    // Cleanup d'une modale précédente (DOM + listener Esc orphelin v1.43.26)
     const oldModal = document.getElementById("kta-secours-phase-modal");
     if (oldModal) oldModal.remove();
+    if (_phaseModalEsc) {
+      document.removeEventListener("keydown", _phaseModalEsc);
+      _phaseModalEsc = null;
+    }
 
     const defaultNom = isEdit ? existingPhase.nom : ("Phase " + (s.phases.length + 1));
     const initialGroupeIds = isEdit ? (existingPhase.groupeIds || []).slice() : [];
@@ -6028,8 +6094,11 @@
     function _closeModal() {
       if (modal && modal.parentNode) modal.remove();
       document.removeEventListener("keydown", _onEsc);
+      // 🆕 v1.43.26 — Libère la ref module si c'est bien NOTRE listener.
+      if (_phaseModalEsc === _onEsc) _phaseModalEsc = null;
     }
     function _onEsc(e) { if (e.key === "Escape") _closeModal(); }
+    _phaseModalEsc = _onEsc;
     document.addEventListener("keydown", _onEsc);
 
     // Backdrop click = annuler
@@ -6174,12 +6243,12 @@
     const textArea = modal.querySelector("#kta-sec-debrief-text");
     if (textArea) textArea.focus();
 
+    // 🆕 v1.43.26 — Pattern A : helper mutualisé _bindSubModalEsc()
     function _closeModal() {
       if (modal && modal.parentNode) modal.remove();
-      document.removeEventListener("keydown", _onEsc);
+      _unbindEsc();
     }
-    function _onEsc(e) { if (e.key === "Escape") _closeModal(); }
-    document.addEventListener("keydown", _onEsc);
+    const _unbindEsc = _bindSubModalEsc(_closeModal);
     modal.addEventListener("click", function(e) { if (e.target === modal) _closeModal(); });
 
     modal.addEventListener("click", function(e) {
@@ -6279,15 +6348,15 @@
     const modal = document.getElementById("kta-secours-launchnext-modal");
     if (!modal) return;
 
+    // 🆕 v1.43.26 — Pattern A : helper mutualisé _bindSubModalEsc()
     function _closeModal() {
       if (modal && modal.parentNode) modal.remove();
-      document.removeEventListener("keydown", _onEsc);
+      _unbindEsc();
       // Quoi qu'il arrive, re-render la vue pour refléter la nouvelle phase
       // (si lancée) ou l'état "phase terminée" en attente.
       if (_activeView) _switchView(_activeView);
     }
-    function _onEsc(e) { if (e.key === "Escape") _closeModal(); }
-    document.addEventListener("keydown", _onEsc);
+    const _unbindEsc = _bindSubModalEsc(_closeModal);
     modal.addEventListener("click", function(e) { if (e.target === modal) _closeModal(); });
 
     modal.addEventListener("click", function(e) {
@@ -8589,16 +8658,16 @@
         '</div>' +
       '</div>';
 
+    // 🆕 v1.43.26 — Pattern A : helper mutualisé _bindSubModalEsc()
     function _close() {
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      document.removeEventListener("keydown", _onKey);
+      _unbindEsc();
     }
-    function _onKey(e) { if (e.key === "Escape") _close(); }
+    const _unbindEsc = _bindSubModalEsc(_close);
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
     overlay.querySelectorAll('[data-action="close-op-details"]').forEach(function(btn) {
       btn.addEventListener("click", _close);
     });
-    document.addEventListener("keydown", _onKey);
     document.body.appendChild(overlay);
   }
 

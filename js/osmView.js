@@ -755,6 +755,14 @@
     if (btn) { btn.disabled = true; btn.innerHTML = "⏳"; }
     navigator.geolocation.getCurrentPosition(
       function(pos) {
+        // 🆕 v1.43.26 — Guard : modale fermée pendant l'attente du fix GPS
+        // (user a cliqué ✕ ou Escape avant que la geoloc réponde) → on ne
+        // touche pas un DOM/state mort. Évite crash sur `_osmMap.setView(...)`
+        // si la carte a été destroyed par close().
+        if (!_modalEl || !_osmMap) {
+          console.log("[OsmView] geoloc callback : modale fermée avant fix, skip");
+          return;
+        }
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         const acc = pos.coords.accuracy || 0;
@@ -2379,8 +2387,15 @@
       ? pingFn()
       : Promise.resolve(navigator.onLine !== false);  // fallback si helper pas chargé
 
+    // 🆕 v1.43.26 — Cleanup waitOverlay centralisé via .finally() (au lieu
+    // de duplication then-catch). Garantit que l'overlay disparaît dans
+    // TOUS les chemins de sortie, y compris exceptions non-attendues.
+    // 🐛 v1.43.27 — Hotfix : le commentaire ci-dessus promettait `.finally()`
+    // mais l'implémentation v1.43.26 avait retiré les `waitOverlay.remove()`
+    // du then-catch SANS ajouter le `.finally()` correspondant → overlay
+    // jamais retiré du DOM. Audit V2 a flaggé. Fix : ajout effectif du
+    // `.finally()` qui remove l'overlay quoi qu'il arrive.
     pingPromise.then(function(online) {
-      try { waitOverlay.remove(); } catch(e) {}
       if (!online) {
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast("📴 Internet ne répond pas — Vue OSM impossible. Vérifie ta connexion.", "warn");
@@ -2393,11 +2408,16 @@
       _modalEl = _buildModal();
       setTimeout(_renderMap, 50);
     }).catch(function(e) {
-      try { waitOverlay.remove(); } catch(_) {}
       console.warn("[OsmView] ping failed :", e);
       if (window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast("⚠️ Échec vérification réseau — Vue OSM annulée.", "warn");
       }
+    }).finally(function() {
+      try {
+        if (waitOverlay && waitOverlay.parentNode) {
+          waitOverlay.parentNode.removeChild(waitOverlay);
+        }
+      } catch(_) {}
     });
   }
 

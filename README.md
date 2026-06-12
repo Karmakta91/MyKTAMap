@@ -8,7 +8,32 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.43.8` (08/06/2026) — **💾 Cache OSM offline « Save Offline » + robustesse SW (consolidation v1.43.0 → v1.43.8)** :
+**📦 Version courante** : `v1.44.0` (09/06/2026) — **🧰 Refonte interne du cycle de vie des modales (helper `ModalLifecycle`)** sur la base de la 1.43.x (`Save Offline` + robustesse SW + hardening modales v1.43.26-27). Voir `docs/architecture/modal-lifecycle.md` pour l'architecture, `docs/applications/NETWORK_AUDIT.md` pour le détail des patches v1.43.9 → v1.44.0, et `docs/audits/2026-06-09_audit-modales-v2.md` pour le rapport workflow d'audit.
+
+**🧰 v1.44.0 (09/06/2026)** — **Refonte interne ModalLifecycle** (helper standalone ~250 lignes, zéro dépendance, opt-in modale par modale) :
+- `js/modalLifecycle.js` : nouveau helper qui tracke timers + listeners + blob URLs d'une modale et libère tout automatiquement au `close()`
+- Migrations pilotes : `memInspector` (complète : ouverture/fermeture + `_refreshAndRender` + sous-modale crash detail + event delegation `_bindCrashHandlers`), `swInspector` (complète : `_collectAndRender` avec `guard` + `_handleRefetchClick` avec `lockButton`), `lostMode` (partielle : `_lc.close()` au fermer + `_lc.setTimeout` bouton copy)
+- 3 high audit V2 restants fixés : `createConf:3062` try/finally garantit revoke blob URL ZIP, `interfaceItineraire:963 + :1401` refacto event delegation autocomplete avoid/waypoints
+- Quick wins audit V2 : GPS invalid input mark clear avant chaque validation, overrides CSS light theme `.kta-mem-loading` + toast `#kta-sw-incomplet-toast`
+- Hook lint advisory `scripts/check-modal-lifecycle.js` (intégré `.githooks/pre-commit`) flag les natifs dans les modules migrés
+- Doc architecture `docs/architecture/modal-lifecycle.md` (contrat complet + bonnes pratiques + plan migration)
+
+**🩹 v1.43.27 (09/06/2026)** — **Hotfix audit modales V2** (workflow adversarial verify, 87 raw → 61 confirmés) :
+- `osmView:2390` — **régression v1.43.26 corrigée** : `.finally()` ajouté pour cleanup `waitOverlay` (avant : overlay orphelin dans le DOM à chaque ouverture Vue OSM)
+- `lostMode:997` — guard `isConnected` après `await findByQuery` (search autocomplete safe au close)
+- `secoursMode:4400` + `:3607` — `btn.disabled` PDF Briefing/Rapport (double-clic impossible)
+- `interfaceItineraire:1518` — guard `isConnected` après `await computeRoute` Dijkstra
+- `filterPanel:559+` — event delegation Image/Data/Tags/show-all/hide-all (cohérence M-LVL v1.43.26)
+
+**🧯 v1.43.26 (08/06/2026)** — **Top 10 audit modales** (workflow adversarial verify, 153 raw findings → 30 confirmés) :
+- `osmView` : guard `getCurrentPosition` callback après close + `.finally()` cleanup waitOverlay
+- `memInspector` : `_lastReport = null` au fermer + Escape listener auto-cleaned dans crash detail modal
+- `lostMode` : `_searchTimeout` clear au close + bannière warning « rayon dépasse » → classe CSS + theming light
+- `createConf` : try/finally blob URL `imgUrl` lors du tilage V2 (revoke garanti en cas d'exception)
+- `filterPanel` : refacto event delegation pour M-LVL handlers (plus de re-bind à chaque innerHTML reflow)
+- `secoursMode` : Pattern A (anti-leak Esc listener orphelin sur ré-ouverture modale Phase) + Pattern B (theming light pour sous-modales via `style-secours.css` overrides ciblés)
+
+**📦 Historique long** — `v1.43.0` (08/06/2026) : **💾 Cache OSM offline « Save Offline » + robustesse SW (consolidation v1.43.0 → v1.43.8)** :
 
 KARMA : besoin de garder la Vue OSM consultable hors-ligne (descente cata, terrain sans réseau). Solution introduite en v1.43.0 puis durcie sur 8 patches successifs : un bouton « 💾 Save Offline » dans les 3 contextes Vue OSM (modale plan georef + widget HOME + Mode Secours), qui télécharge les tuiles `tile.openstreetmap.org` de la vue actuelle dans un store IndexedDB local, servies ensuite **de manière transparente** par le Service Worker.
 

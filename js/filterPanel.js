@@ -130,29 +130,37 @@
     _bindLevelHandlers(sec);
   }
 
-  // Re-bind seulement les handlers de la section M-LVL (appelé après
-  // onLevelChange qui régénère le HTML). Évite de tout re-binder.
+  // 🆕 v1.43.26 — Refacto event delegation : au lieu de re-binder tous les
+  // boutons à chaque onLevelChange (qui faisait un innerHTML reflow + multi
+  // attaches de listeners sur les nouveaux noeuds), on attache UN SEUL
+  // listener click/change sur `sec` (le conteneur de section M-LVL, jamais
+  // remplacé). Comme la délégation lit `e.target.closest(...)`, ça continue
+  // de marcher après chaque innerHTML rebuild du body — sans accumulation
+  // de listeners.
   function _bindLevelHandlers(scope) {
-    scope.querySelectorAll('[data-lvl-active]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const lvl = parseInt(btn.getAttribute("data-lvl-active"), 10);
+    // Guard contre double-bind (sec ne change pas, donc 1 seul listener
+    // suffit pour toute la vie de la modale Filtres).
+    if (scope._levelHandlersBound) return;
+    scope._levelHandlersBound = true;
+
+    scope.addEventListener("click", function(e) {
+      // Actif level (chips numérotés "0", "1", "2"…)
+      const btnActive = e.target.closest('[data-lvl-active]');
+      if (btnActive && scope.contains(btnActive)) {
+        const lvl = parseInt(btnActive.getAttribute("data-lvl-active"), 10);
         if (isNaN(lvl) || !window.APP_CONFIG) return;
         window.APP_CONFIG.activeLevel = lvl;
         scope.querySelectorAll('[data-lvl-active]').forEach(function(b) {
-          b.classList.toggle("kta-fp-lvl-btn-active", b === btn);
+          b.classList.toggle("kta-fp-lvl-btn-active", b === btnActive);
         });
         if (typeof window._onLevelChange === "function") {
-          try { window._onLevelChange("active", lvl); } catch(e) {}
+          try { window._onLevelChange("active", lvl); } catch(_) {}
         }
-      });
-    });
-    scope.querySelectorAll('[data-lvl-visible]').forEach(function(cb) {
-      cb.addEventListener("change", function() {
-        _updateVisibleLevelsFromUI(_modal);
-      });
-    });
-    scope.querySelectorAll('[data-action="lvl-all"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
+        return;
+      }
+      // Quick action "Tous"
+      const btnAll = e.target.closest('[data-action="lvl-all"]');
+      if (btnAll && scope.contains(btnAll)) {
         const avail = window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels)
                       ? window.APP_CONFIG.availableLevels : [];
         scope.querySelectorAll('[data-lvl-visible]').forEach(function(cb) { cb.checked = true; });
@@ -160,10 +168,11 @@
         if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
         if (typeof window._onLevelChange === "function") window._onLevelChange("visible", avail);
         _refreshChipsState(_modal);
-      });
-    });
-    scope.querySelectorAll('[data-action="lvl-active-only"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
+        return;
+      }
+      // Quick action "Actif seul"
+      const btnOnly = e.target.closest('[data-action="lvl-active-only"]');
+      if (btnOnly && scope.contains(btnOnly)) {
         const active = window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number"
                        ? window.APP_CONFIG.activeLevel : 0;
         scope.querySelectorAll('[data-lvl-visible]').forEach(function(cb) {
@@ -173,7 +182,15 @@
         if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
         if (typeof window._onLevelChange === "function") window._onLevelChange("visible", [active]);
         _refreshChipsState(_modal);
-      });
+        return;
+      }
+    });
+
+    scope.addEventListener("change", function(e) {
+      const cb = e.target.closest('[data-lvl-visible]');
+      if (cb && scope.contains(cb)) {
+        _updateVisibleLevelsFromUI(_modal);
+      }
     });
   }
 
@@ -538,27 +555,44 @@
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
     document.addEventListener("keydown", _onKey);
 
-    // === Image layers ===
-    overlay.querySelectorAll('[data-img-layer]').forEach(function(cb) {
-      cb.addEventListener("change", function() {
-        const id = cb.getAttribute("data-img-layer");
+    // 🆕 v1.43.27 (Pattern 2 — extension du refactor M-LVL v1.43.26) :
+    // event delegation sur `overlay` pour les sections Image / Data / Tags /
+    // show-all / hide-all. Avant : N listeners individuels par section
+    // (cb.addEventListener × ~30 checkboxes). Maintenant : 2 listeners
+    // mutualisés (1 change, 1 click) qui dispatchent via e.target.dataset.
+    // Bénéfice : moins de bind à chaque ouvrir() + cohérence avec le pattern
+    // M-LVL déjà délégué (sec via `_bindLevelHandlers` v1.43.26).
+    overlay.addEventListener("change", function(e) {
+      const t = e.target;
+      if (!t || !t.matches) return;
+      // === Image layers ===
+      if (t.matches('[data-img-layer]')) {
+        const id = t.getAttribute("data-img-layer");
         if (!Array.isArray(window._ktaImageOverlays) || !window.map) return;
         const entry = window._ktaImageOverlays.find(function(e) { return e.id === id; });
         if (!entry || !entry.overlay) return;
-        if (cb.checked) { try { window.map.addLayer(entry.overlay); } catch(e) {} }
-        else            { try { window.map.removeLayer(entry.overlay); } catch(e) {} }
-      });
-    });
-
-    // === Data layers ===
-    overlay.querySelectorAll('[data-data-layer]').forEach(function(cb) {
-      cb.addEventListener("change", function() {
-        const id = cb.getAttribute("data-data-layer");
+        if (t.checked) { try { window.map.addLayer(entry.overlay); } catch(_) {} }
+        else           { try { window.map.removeLayer(entry.overlay); } catch(_) {} }
+        return;
+      }
+      // === Data layers ===
+      if (t.matches('[data-data-layer]')) {
+        const id = t.getAttribute("data-data-layer");
         const grp = (window.dataLayerGroups || {})[id];
         if (!grp || !window.map) return;
-        if (cb.checked) { try { window.map.addLayer(grp); } catch(e) {} }
-        else            { try { window.map.removeLayer(grp); } catch(e) {} }
-      });
+        if (t.checked) { try { window.map.addLayer(grp); } catch(_) {} }
+        else           { try { window.map.removeLayer(grp); } catch(_) {} }
+        return;
+      }
+      // === Tags + Types (set-based) ===
+      if (t.matches('[data-set][data-type]')) {
+        const setName = t.getAttribute("data-set");
+        const type    = t.getAttribute("data-type");
+        _toggle(setName, type, t.checked);
+        _refreshChipsState(overlay);
+        _updateStatus();
+        return;
+      }
     });
 
     // === Niveaux : actif (segmented) ===
@@ -611,36 +645,23 @@
       });
     });
 
-    // === Tags + Types (set-based) ===
-    overlay.querySelectorAll('[data-set][data-type]').forEach(function(cb) {
-      cb.addEventListener("change", function() {
-        const setName = cb.getAttribute("data-set");
-        const type    = cb.getAttribute("data-type");
-        _toggle(setName, type, cb.checked);
-        _refreshChipsState(overlay);
-        _updateStatus();
-      });
-    });
+    // 🆕 v1.43.27 — Tags+Types délégués via le listener `change` sur overlay
+    // (cf. bloc plus haut). Plus de forEach individuel.
 
-    // === Mini actions "Tout / Aucun" par section ===
-    overlay.querySelectorAll('[data-action="show-all"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        _toggleAll(btn.getAttribute("data-set"), true);
-        // Refresh UI : check toutes les boxes de cette section
-        const setName = btn.getAttribute("data-set");
-        overlay.querySelectorAll('[data-set="' + setName + '"][data-type]').forEach(function(cb) { cb.checked = true; });
+    // === Mini actions "Tout / Aucun" par section — délégation click ===
+    overlay.addEventListener("click", function(e) {
+      const t = e.target;
+      if (!t || !t.matches) return;
+      if (t.matches('[data-action="show-all"]') || t.matches('[data-action="hide-all"]')) {
+        const wantShow = t.matches('[data-action="show-all"]');
+        const setName  = t.getAttribute("data-set");
+        _toggleAll(setName, wantShow);
+        overlay.querySelectorAll('[data-set="' + setName + '"][data-type]').forEach(function(cb) {
+          cb.checked = wantShow;
+        });
         _refreshChipsState(overlay);
         _updateStatus();
-      });
-    });
-    overlay.querySelectorAll('[data-action="hide-all"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        _toggleAll(btn.getAttribute("data-set"), false);
-        const setName = btn.getAttribute("data-set");
-        overlay.querySelectorAll('[data-set="' + setName + '"][data-type]').forEach(function(cb) { cb.checked = false; });
-        _refreshChipsState(overlay);
-        _updateStatus();
-      });
+      }
     });
 
     // === Reset all ===

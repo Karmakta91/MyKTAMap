@@ -666,6 +666,14 @@ function _resetFlowConfirmation() {
 
     document.getElementById("cache-annuler-2").addEventListener("click", function () { overlay2.remove(); });
     document.getElementById("cache-confirmer-2").addEventListener("click", async function () {
+      // 🆕 v1.43.26 (Pattern D) — Disable IMMÉDIAT du bouton avant tout async
+      // (reset complet : SW unregister + caches.delete + localStorage.clear +
+      // IDB wipe). Sans ça, l'user qui re-clique pendant le wipe peut
+      // déclencher un 2e flow concurrent qui collide avec le 1er (en
+      // particulier les IDB ouvertes qui restent verrouillées).
+      const btn = this;
+      btn.disabled = true;
+      btn.textContent = "⏳ Nettoyage…";
       overlay2.remove();
       const overlayWait = document.createElement("div");
       overlayWait.className = "kta-modal-overlay";

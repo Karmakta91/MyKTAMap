@@ -1372,7 +1372,10 @@ function _ajouterIconRow(tag, defaultPath, file, isSysteme) {
     pathSpan.textContent = f.name;
     pathSpan.title = f.name;
     const url = URL.createObjectURL(f);
-    img.onload = function() { URL.revokeObjectURL(url); };
+    // 🆕 v1.43.26 — revoke aussi sur onerror (image corrompue / format inconnu),
+    // sinon fuite Blob URL si l'user charge un fichier non-décodable.
+    img.onload  = function() { URL.revokeObjectURL(url); };
+    img.onerror = function() { URL.revokeObjectURL(url); };
     img.src = url;
   });
 
@@ -2382,12 +2385,24 @@ function _detectContentBBox(img) {
 async function _genererTuilesV2(imageFile, zip, onProgress) {
   // Decode initial de l'image source (HTMLImageElement, pas de canvas)
   const imgUrl = URL.createObjectURL(imageFile);
-  const img = await new Promise(function(resolve, reject) {
-    const i = new Image();
-    i.onload  = function() { resolve(i); };
-    i.onerror = function() { reject(new Error("Image source non décodable")); };
-    i.src = imgUrl;
-  });
+  // 🆕 v1.43.26 — try/finally garantit que le blob URL est TOUJOURS revoké,
+  // même si une exception saute pendant le tilage (drawImage tainted, toBlob
+  // null, ajout ZIP OOM…). Avant : l'imgUrl restait référencée jusqu'à la
+  // fin de vie de l'onglet → MB en RAM pour rien sur les retries.
+  let img;
+  try {
+    img = await new Promise(function(resolve, reject) {
+      const i = new Image();
+      i.onload  = function() { resolve(i); };
+      i.onerror = function() { reject(new Error("Image source non décodable")); };
+      i.src = imgUrl;
+    });
+  } catch(e) {
+    URL.revokeObjectURL(imgUrl);
+    throw e;
+  }
+
+  try {
 
   // Auto-crop : si l'image a beaucoup de marges blanches, on tuile depuis la
   // zone utile uniquement. Sinon (bbox > 90% du canvas), on prend tout.
@@ -2500,9 +2515,8 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
     }
   }
 
-  // Cleanup
+  // Cleanup canvas (le revoke imgUrl est garanti dans le finally ci-dessous)
   tileCanvas.width = 0; tileCanvas.height = 0;
-  URL.revokeObjectURL(imgUrl);
 
   return {
     tilesCount: tilesDone,
@@ -2515,6 +2529,11 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
     },
     dims: { width: srcW, height: srcH, cropOffset: bbox ? { x: cropX, y: cropY } : null }
   };
+
+  } finally {
+    // 🆕 v1.43.26 — Revoke garanti même si une tuile throw au milieu du tilage.
+    URL.revokeObjectURL(imgUrl);
+  }
 }
 
 // =========================
@@ -2985,6 +3004,12 @@ async function _genererZip() {
     function _readGeoCoords(id, errId, label) {
       const el = document.getElementById(id);
       if (!el) return { empty: true, lat: null, lng: null };
+      // 🆕 v1.44.0 — Clear le mark d'erreur précédent avant nouvelle validation
+      // (sinon la classe reste sticky après une 1ère erreur, même si l'user a
+      // corrigé sa saisie). Audit V2 quick win #4.
+      el.classList.remove("kta-gps-invalid");
+      const errEl0 = errId ? document.getElementById(errId) : null;
+      if (errEl0) errEl0.style.display = "none";
       const v = String(el.value || "").trim();
       if (v === "") return { empty: true, lat: null, lng: null };
       const parsed = (typeof window.parseGpsCoords === "function")
@@ -3041,12 +3066,18 @@ async function _genererZip() {
     // ── Génération ──
     const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
     const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href = url;
-    a.download = "plan_" + name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() +
-                 (tilingV2On ? "_v2" : "") + ".zip";
-    a.click();
-    URL.revokeObjectURL(url);
+    // 🆕 v1.44.0 — try/finally garantit que le blob URL est TOUJOURS revoké,
+    // même si a.click() throw (browser strict, sandbox). Avant : si a.click()
+    // crashait, l'URL restait référencée jusqu'à la fin de vie de l'onglet.
+    try {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "plan_" + name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() +
+                   (tilingV2On ? "_v2" : "") + ".zip";
+      a.click();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
 
     const m = document.getElementById("kta-planner-modal");
     if (m) m.remove();
@@ -3254,7 +3285,20 @@ function _afficherImporterKmz(prefilledFile) {
 
   // Generate button
   document.getElementById("kta-kmz-imp-generer").addEventListener("click", async function() {
-    await _kmzImpGenerer();
+    // 🆕 v1.43.26 (Pattern D) — Disable bouton pendant la génération (lourd :
+    // parse KMZ + extraction assets + écriture ZIP). Sans ça, l'user qui
+    // double-clique nerveusement lance N générations parallèles → corruption
+    // de l'état + plusieurs ZIP empilés en download.
+    const btn = this;
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "⏳ Génération…";
+    try {
+      await _kmzImpGenerer();
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
   });
 }
 

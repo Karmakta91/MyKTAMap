@@ -1162,6 +1162,25 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   font-size: 13px;
   line-height: 1.5;
 }
+/* 🆕 v1.43.26 — Bannière warning Lost Mode "rayon dépasse la taille du plan".
+   Le inline style hardcoded (color #ffb088 sur fond orange clair) restait
+   illisible en thème clair → classe dédiée + variant light. */
+.kta-lost-warn-overflow {
+  margin-top: 6px;
+  background: rgba(255, 107, 53, 0.14);
+  border: 1px solid rgba(255, 107, 53, 0.45);
+  color: #ffb088;
+}
+body.kta-theme-light .kta-lost-warn-overflow,
+html.kta-theme-light .kta-lost-warn-overflow {
+  background: rgba(220, 80, 30, 0.10) !important;
+  border-color: rgba(220, 80, 30, 0.45) !important;
+  color: #b04a1a !important;
+}
+body.kta-theme-light .kta-lost-warn-overflow strong,
+html.kta-theme-light .kta-lost-warn-overflow strong {
+  color: #8a3611 !important;
+}
 .kta-lost-empty {
   color: #8892a4;
   font-style: italic;
@@ -18888,5 +18907,57 @@ html.kta-theme-light #ktaOsmHomeBox .loader-section-head {
   color: #2a2620 !important;
   font-size: 14px !important;
   font-weight: 700 !important;
+}
+
+/* =================================================================
+   🆕 v1.43.26 (extension Pattern B) — overrides theming light pour
+   inline-styles dark hardcodés communs dans toutes les modales.
+   =================================================================
+   La codebase a accumulé ~30 fichiers JS qui injectent des styles inline
+   avec `color:#8892a4` (texte secondaire), `rgba(255,255,255,0.08)`
+   (bordures séparateurs) et similaires — tous illisibles ou invisibles
+   en thème clair. Plutôt que de migrer modale par modale (très long, à
+   forte régression), on cible ici les inline-styles via attribute
+   selectors sur les overlays de modale CONNUS. Ça mutualise la
+   conversion sans toucher le JS et sans risquer de casser le mode dark.
+
+   Scope volontairement limité aux overlays modales (.kta-readme-modal-*,
+   .kta-poi-modal, .kta-itinerary-modal, .kta-modal-overlay) pour éviter
+   d'impacter les widgets/toasts/badges qui peuvent légitimement utiliser
+   ces couleurs même en thème clair (ex. footer Home).
+   ================================================================= */
+
+/* Texte secondaire gris pâle #8892a4 → gris foncé lisible en mode clair */
+body.kta-theme-light .kta-readme-modal-overlay *[style*="color:#8892a4"],
+html.kta-theme-light .kta-readme-modal-overlay *[style*="color:#8892a4"],
+body.kta-theme-light .kta-readme-modal-overlay *[style*="color: #8892a4"],
+html.kta-theme-light .kta-readme-modal-overlay *[style*="color: #8892a4"],
+body.kta-theme-light .kta-poi-modal *[style*="color:#8892a4"],
+html.kta-theme-light .kta-poi-modal *[style*="color:#8892a4"],
+body.kta-theme-light .kta-itinerary-modal *[style*="color:#8892a4"],
+html.kta-theme-light .kta-itinerary-modal *[style*="color:#8892a4"],
+body.kta-theme-light .kta-modal-overlay *[style*="color:#8892a4"],
+html.kta-theme-light .kta-modal-overlay *[style*="color:#8892a4"] {
+  color: #5a6878 !important;
+}
+
+/* Bordures rgba blanc semi-transparentes → gris foncé translucide */
+body.kta-theme-light .kta-readme-modal-overlay *[style*="rgba(255,255,255,0.08)"],
+html.kta-theme-light .kta-readme-modal-overlay *[style*="rgba(255,255,255,0.08)"],
+body.kta-theme-light .kta-readme-modal-overlay *[style*="rgba(255, 255, 255, 0.08)"],
+html.kta-theme-light .kta-readme-modal-overlay *[style*="rgba(255, 255, 255, 0.08)"],
+body.kta-theme-light .kta-poi-modal *[style*="rgba(255,255,255,0.08)"],
+html.kta-theme-light .kta-poi-modal *[style*="rgba(255,255,255,0.08)"],
+body.kta-theme-light .kta-itinerary-modal *[style*="rgba(255,255,255,0.08)"],
+html.kta-theme-light .kta-itinerary-modal *[style*="rgba(255,255,255,0.08)"] {
+  border-color: rgba(20, 30, 50, 0.14) !important;
+}
+
+/* Backgrounds très sombres explicites (rare mais existe sur quelques modales) */
+body.kta-theme-light .kta-readme-modal-overlay *[style*="background:#1a1f2e"],
+html.kta-theme-light .kta-readme-modal-overlay *[style*="background:#1a1f2e"],
+body.kta-theme-light .kta-readme-modal-overlay *[style*="background: #1a1f2e"],
+html.kta-theme-light .kta-readme-modal-overlay *[style*="background: #1a1f2e"] {
+  background: #f4ecd8 !important;
 }
 

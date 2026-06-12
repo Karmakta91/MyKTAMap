@@ -33,6 +33,11 @@
 
   const MODAL_ID = "kta-mem-inspector-modal";
 
+  // 🆕 v1.44.0 — Pilote ModalLifecycle : centralise timers + listeners +
+  // blob URLs de la modale principale (cleanup auto au close). Le helper est
+  // chargé avant memInspector dans index.html, donc on peut compter sur lui.
+  let _lc = null;
+
   // ========== HELPER : FORMAT BYTES ==========
   function _formatBytes(n) {
     if (n == null || isNaN(n)) return "—";
@@ -750,38 +755,41 @@
   }
 
   // ───────── HANDLERS CRASH REPORTS (v1.20.0) ─────────
-  // Bind après chaque render — les boutons sont dynamiques par crash report.
+  // 🆕 v1.44.0 — Refacto event delegation via _lc.delegate (UN listener par
+  // type d'event au lieu de N listeners ré-attachés à chaque rafraîchissement).
+  // Avant : à chaque _refreshAndRender(), forEach + addEventListener × ~30
+  // boutons = accumulation transitoire de closures + zombies sur DOM ancien.
+  // Maintenant : 1 listener click délégué sur #kta-mem-corps (jamais remplacé,
+  // seul son innerHTML l'est) qui dispatch via e.target.matches.
+  let _crashHandlersBound = false;
   function _bindCrashHandlers() {
-    document.querySelectorAll(".kta-mem-crash-view").forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const id = parseInt(btn.dataset.crashId, 10);
-        _afficherCrashDetail(id);
-      });
+    if (_crashHandlersBound || !_lc) return;
+    const corps = document.getElementById("kta-mem-corps");
+    if (!corps) return;
+    _crashHandlersBound = true;
+    _lc.delegate(corps, "click", ".kta-mem-crash-view", function() {
+      const id = parseInt(this.dataset.crashId, 10);
+      _afficherCrashDetail(id);
     });
-    document.querySelectorAll(".kta-mem-crash-copy").forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const id = parseInt(btn.dataset.crashId, 10);
-        _copierCrashReport(id, btn);
-      });
+    _lc.delegate(corps, "click", ".kta-mem-crash-copy", function() {
+      const id = parseInt(this.dataset.crashId, 10);
+      _copierCrashReport(id, this);
     });
-    document.querySelectorAll(".kta-mem-crash-del").forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const id = parseInt(btn.dataset.crashId, 10);
-        if (!confirm("Supprimer ce rapport de crash ?")) return;
-        if (window.CrashReports && typeof window.CrashReports.remove === "function") {
-          window.CrashReports.remove(id).then(_refreshAndRender);
-        }
-      });
+    _lc.delegate(corps, "click", ".kta-mem-crash-del", function() {
+      const id = parseInt(this.dataset.crashId, 10);
+      if (!confirm("Supprimer ce rapport de crash ?")) return;
+      if (window.CrashReports && typeof window.CrashReports.remove === "function") {
+        window.CrashReports.remove(id).then(_refreshAndRender);
+      }
     });
-    const clearAllBtn = document.getElementById("kta-mem-crash-clear-all");
-    if (clearAllBtn) {
-      clearAllBtn.addEventListener("click", function() {
-        if (!confirm("Vider TOUS les rapports de crash ?")) return;
-        if (window.CrashReports && typeof window.CrashReports.clearAll === "function") {
-          window.CrashReports.clearAll().then(_refreshAndRender);
-        }
-      });
-    }
+    _lc.delegate(corps, "click", "#kta-mem-crash-clear-all", function() {
+      if (!confirm("Vider TOUS les rapports de crash ?")) return;
+      if (window.CrashReports && typeof window.CrashReports.clearAll === "function") {
+        window.CrashReports.clearAll().then(_refreshAndRender);
+      }
+    });
+    // Reset le flag au close (au cas où la modale est ré-ouverte)
+    _lc.onClose(function() { _crashHandlersBound = false; });
   }
 
   function _afficherCrashDetail(id) {
@@ -805,12 +813,16 @@
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
-    const close = function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); };
-    overlay.querySelector(".kta-mem-crash-detail-close").addEventListener("click", close);
-    overlay.addEventListener("click", function(e) { if (e.target === overlay) close(); });
-    document.addEventListener("keydown", function _esc(e) {
-      if (e.key === "Escape") { close(); document.removeEventListener("keydown", _esc); }
-    });
+    // 🆕 v1.44.0 — Sous-lifecycle dédié pour cette sous-modale (au-dessus
+    // de la modale MemInspector principale). Cleanup auto au close().
+    const subLc = window.ModalLifecycle.attach(overlay, { label: "MemCrashDetail" });
+    const close = function() {
+      subLc.close();
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    };
+    subLc.on(overlay.querySelector(".kta-mem-crash-detail-close"), "click", close);
+    subLc.bindBackdropClick(close);
+    subLc.bindEscape(close);
   }
 
   function _copierCrashReport(id, btn) {
@@ -820,11 +832,13 @@
     if (!window.CrashReports || typeof window.CrashReports.formatReportText !== "function") return;
     const txt = window.CrashReports.formatReportText(entry);
     _copyToClipboard(txt).then(function() {
-      if (btn) {
-        const orig = btn.textContent;
-        btn.textContent = "✅ Copié !";
-        setTimeout(function() { if (btn) btn.textContent = orig; }, 1800);
-      }
+      if (!btn || !_lc || !_lc.alive) return;
+      const orig = btn.textContent;
+      btn.textContent = "✅ Copié !";
+      // 🆕 v1.44.0 — setTimeout tracked : cleared si modale fermée avant 1.8s.
+      _lc.setTimeout(function() {
+        if (btn.isConnected) btn.textContent = orig;
+      }, 1800);
     }).catch(function(e) {
       alert("Échec de la copie : " + (e.message || e));
     });
@@ -837,12 +851,19 @@
     if (!corps) return;
     corps.innerHTML = '<div class="kta-mem-loading">⏳ Collecte en cours…</div>';
     try {
-      _lastReport = await collecter();
+      // 🆕 v1.44.0 — Pattern C via _lc.guard : throw ModalClosedError si la
+      // modale a été fermée pendant l'await collecter() (200-800 ms typiques).
+      // On catch silencieusement plus bas.
+      const report = await (_lc ? _lc.guard(collecter()) : collecter());
+      _lastReport = report;
       corps.innerHTML = _renderReport(_lastReport);
       // 🆕 v1.20.0 — Bind handlers de la section Crash Reports (boutons
       // dynamiques par crash). Re-bindé à chaque render (rafraîchir, suppr…).
       _bindCrashHandlers();
     } catch(e) {
+      // 🆕 v1.44.0 — Modale fermée pendant l'await → silently return.
+      if (e && e.name === "ModalClosedError") return;
+      if (!corps.isConnected) return;
       corps.innerHTML = '<div class="kta-mem-warn">❌ Erreur lors de la collecte : ' + _escapeHtml(e.message || e) + '</div>';
     }
   }
@@ -855,21 +876,37 @@
     overlay.innerHTML = _buildModalHtml();
     document.documentElement.appendChild(overlay);
 
-    document.getElementById("kta-mem-close").addEventListener("click", fermer);
-    overlay.addEventListener("click", function(e) { if (e.target === overlay) fermer(); });
-    document.addEventListener("keydown", _onEscape);
+    // 🆕 v1.44.0 — ModalLifecycle attaché : remplace les addEventListener
+    // manuels, le _onEscape custom, et le setTimeout du bouton 📋 Copier.
+    // Tous les listeners + timers seront cleared automatiquement au close().
+    _lc = window.ModalLifecycle.attach(overlay, {
+      label: "MemInspector",
+      onClose: function() {
+        // 🆕 v1.43.26 — Libère le snapshot du dernier rapport (peut contenir
+        // crashReports avec stacks volumineuses + photos byteCount). Sinon
+        // il survit jusqu'à la prochaine ouverture.
+        _lastReport = null;
+      }
+    });
 
-    document.getElementById("kta-mem-refresh").addEventListener("click", _refreshAndRender);
-    document.getElementById("kta-mem-copy").addEventListener("click", function() {
+    _lc.on(document.getElementById("kta-mem-close"), "click", fermer);
+    _lc.bindBackdropClick(fermer);
+    _lc.bindEscape(fermer);
+
+    _lc.on(document.getElementById("kta-mem-refresh"), "click", _refreshAndRender);
+    _lc.on(document.getElementById("kta-mem-copy"), "click", function() {
       if (!_lastReport) return;
       const txt = getReportText(_lastReport);
       _copyToClipboard(txt).then(function() {
         const btn = document.getElementById("kta-mem-copy");
-        if (btn) {
-          const orig = btn.textContent;
-          btn.textContent = "✅ Copié !";
-          setTimeout(function() { if (btn) btn.textContent = orig; }, 1800);
-        }
+        if (!btn || !_lc || !_lc.alive) return;
+        const orig = btn.textContent;
+        btn.textContent = "✅ Copié !";
+        // 🆕 v1.44.0 — setTimeout tracked : si user ferme la modale dans les
+        // 1.8s, le timer est cleared (plus de write dans bouton détaché).
+        _lc.setTimeout(function() {
+          if (btn.isConnected) btn.textContent = orig;
+        }, 1800);
       }).catch(function(e) {
         alert("Échec de la copie : " + (e.message || e));
       });
@@ -878,14 +915,8 @@
     await _refreshAndRender();
   }
 
-  function _onEscape(e) {
-    if (e.key === "Escape" || e.key === "Esc") {
-      fermer();
-    }
-  }
-
   function fermer() {
-    document.removeEventListener("keydown", _onEscape);
+    if (_lc) { _lc.close(); _lc = null; }
     const ex = document.getElementById(MODAL_ID);
     if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
   }

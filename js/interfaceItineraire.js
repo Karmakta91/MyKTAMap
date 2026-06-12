@@ -960,27 +960,40 @@ function _bindAvoidSectionHandlers() {
                  '</div>';
         }).join("");
         searchRes.style.display = "block";
-        searchRes.querySelectorAll(".kta-iti-search-result").forEach(function(row, i) {
-          row.addEventListener("click", function() {
-            const it = results[i];
-            if (!it || !it.point) return;
-            const p = it.point;
-            const prefs2 = _getItiAvoidPrefs();
-            prefs2.points.push({
-              x:     p.x,
-              y:     p.y,
-              label: p.nom || p.id || ("(" + (p.x ?? 0).toFixed(0) + "," + (p.y ?? 0).toFixed(0) + ")"),
-              id:    p.id || null
-            });
-            _setItiAvoidPrefs(prefs2);
-            _rafraichirListeAvoidPoints();
-            searchInput.value = "";
-            searchRes.innerHTML = "";
-            searchRes.style.display = "none";
-          });
-        });
+        // 🆕 v1.44.0 — Event delegation sur searchRes (conteneur stable) au
+        // lieu de N listeners individuels par row (re-créés à chaque keypress).
+        // Évite l'accumulation transitoire de closures.
+        // On stocke `results` au scope du handler ; chaque row a son data-idx.
+        searchRes._lastResults = results;
       }, 150);
     });
+
+    // 🆕 v1.44.0 — Listener délégué attaché UNE FOIS au build de la modale
+    // (pas à chaque input). data-idx référence l'index dans `_lastResults`.
+    if (!searchRes._delegateBound) {
+      searchRes._delegateBound = true;
+      searchRes.addEventListener("click", function(e) {
+        const row = e.target && e.target.closest ? e.target.closest(".kta-iti-search-result") : null;
+        if (!row || !searchRes.contains(row)) return;
+        const idx = parseInt(row.getAttribute("data-idx"), 10);
+        const results = searchRes._lastResults || [];
+        const it = results[idx];
+        if (!it || !it.point) return;
+        const p = it.point;
+        const prefs2 = _getItiAvoidPrefs();
+        prefs2.points.push({
+          x:     p.x,
+          y:     p.y,
+          label: p.nom || p.id || ("(" + (p.x ?? 0).toFixed(0) + "," + (p.y ?? 0).toFixed(0) + ")"),
+          id:    p.id || null
+        });
+        _setItiAvoidPrefs(prefs2);
+        _rafraichirListeAvoidPoints();
+        searchInput.value = "";
+        searchRes.innerHTML = "";
+        searchRes.style.display = "none";
+      });
+    }
   }
 
   // 2. Ajout par ID texte
@@ -1398,24 +1411,39 @@ window.ouvrirItinerairModal = function() {
     }
     searchResults.style.display = "block";
 
-    Array.from(searchResults.querySelectorAll(".kta-iti-search-item")).forEach(function(el, idx) {
-      el.addEventListener("click", function() {
-        const it = limite[idx];
-        const p = it.point;
-        if (typeof p.x !== "number" || typeof p.y !== "number") return;
-        _itineraryWaypoints.push({
-          x:      p.x,
-          y:      p.y,
-          source: "search",
-          label:  (p.nom || p.id || "?") + " (" + (it.layerLabel || it.layerId) + ")"
-        });
-        _ajouterWaypointVisuel({ x: p.x, y: p.y }, _itineraryWaypoints.length);
-        _rafraichirListeWaypointsModale();
-        _majPanneauFloaterCount();
-        // Reset l'input pour faciliter un autre ajout
-        searchInput.value    = "";
-        searchResults.style.display = "none";
+    // 🆕 v1.44.0 — Event delegation (cohérence avec ligne ~963 idem).
+    // Stocke limite sur le conteneur, dispatch via data-idx.
+    searchResults._lastLimite = limite;
+  }
+
+  // 🆕 v1.44.0 — Listener délégué attaché UNE FOIS au build de la modale
+  // (pas à chaque keypress).
+  if (!searchResults._delegateBound) {
+    searchResults._delegateBound = true;
+    searchResults.addEventListener("click", function(e) {
+      const el = e.target && e.target.closest ? e.target.closest(".kta-iti-search-item") : null;
+      if (!el || !searchResults.contains(el)) return;
+      // Récupère l'index via la position de l'élément dans la liste (les items
+      // ne sont pas data-idx-isés ici, on calcule par index parmi les frères).
+      const items = Array.from(searchResults.querySelectorAll(".kta-iti-search-item"));
+      const idx = items.indexOf(el);
+      const limite = searchResults._lastLimite || [];
+      const it = limite[idx];
+      if (!it) return;
+      const p = it.point;
+      if (typeof p.x !== "number" || typeof p.y !== "number") return;
+      _itineraryWaypoints.push({
+        x:      p.x,
+        y:      p.y,
+        source: "search",
+        label:  (p.nom || p.id || "?") + " (" + (it.layerLabel || it.layerId) + ")"
       });
+      _ajouterWaypointVisuel({ x: p.x, y: p.y }, _itineraryWaypoints.length);
+      _rafraichirListeWaypointsModale();
+      _majPanneauFloaterCount();
+      // Reset l'input pour faciliter un autre ajout
+      searchInput.value    = "";
+      searchResults.style.display = "none";
     });
   }
 
@@ -1492,6 +1520,7 @@ window.ouvrirItinerairModal = function() {
   // Calculer (handler async depuis v169 : computeRoute peut await SearchPoints
   // si avoidTags non vide — l'await passe immediatement si pas d'avoidTags)
   document.getElementById("kta-iti-compute").addEventListener("click", async function() {
+    const btn   = this;
     const errEl = document.getElementById("kta-iti-error");
     const resEl = document.getElementById("kta-iti-result");
     errEl.style.display = "none";
@@ -1509,6 +1538,12 @@ window.ouvrirItinerairModal = function() {
       return;
     }
 
+    // 🆕 v1.43.26 (Pattern D) — Disable bouton pendant le pathfinding Dijkstra
+    // (peut prendre 1-3 s sur un grand graph). Sans ça, l'user qui double-clique
+    // lance 2 calculs concurrents qui se marchent dessus sur le road preview.
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "⏳ Calcul en cours…";
     try {
       // 🚫 v169 (Karma_dev) : lit les preferences d'evitement depuis localStorage
       // et les passe au Pathfinder. La logique 2-passes (fallback) est interne
@@ -1520,6 +1555,13 @@ window.ouvrirItinerairModal = function() {
         avoidTags:   avoidPrefs.tags   || [],
         avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
       });
+      // 🆕 v1.43.27 (Pattern C) — Guard : la modale peut avoir été fermée pendant
+      // l'await computeRoute() (Dijkstra peut prendre 1-3 s sur grand graph). Sans
+      // ça, on écrirait dans resEl détaché + on appellerait getElementById sur
+      // "kta-iti-save"/"kta-iti-discard" qui retourneraient null → crash sur
+      // .addEventListener. On vérifie via resEl qui était récupéré au début du
+      // handler (réf captée AVANT l'await).
+      if (!resEl.isConnected) return;
       // Conversion px → mètres via APP_CONFIG.scale (px/mètre)
       const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
       const distM = result.totalDistance / scale;
@@ -1591,6 +1633,10 @@ window.ouvrirItinerairModal = function() {
     } catch(err) {
       errEl.textContent = err.message || String(err);
       errEl.style.display = "block";
+    } finally {
+      // 🆕 v1.43.26 (Pattern D) — Restore bouton dans tous les chemins de sortie
+      btn.disabled = false;
+      btn.textContent = originalText;
     }
   });
 };

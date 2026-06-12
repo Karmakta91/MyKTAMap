@@ -209,6 +209,15 @@
        cohérence « outils d'inspection & transparence ». Depuis v1.19.0. -->
   <script src="js/memInspector.js"></script>
 
+  <!-- 🧰 v1.44.0 — Helper ModalLifecycle (cycle de vie unifié des modales).
+       Chargé AVANT toutes les modales qui l'utilisent (opt-in : memInspector,
+       swInspector, lostMode, secoursMode sous-modales pour v1.44.0 — les
+       autres modales migrent progressivement). Pas de dépendance, juste un
+       window.ModalLifecycle exposé. Voir docs/architecture/modal-lifecycle.md
+       pour le contrat complet (timers/listeners/blob URLs/btn disabled
+       cleanup automatique au close()). -->
+  <script src="js/modalLifecycle.js"></script>
+
   <!-- 🆕 v1.43.12 — Inspecteur Service Worker. Diagnostic du cache PWA :
        compare ASSETS_TO_CACHE (attendus, query SW via MessageChannel)
        avec le contenu réel du cache courant (Cache API), affiche le diff

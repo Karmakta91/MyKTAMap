@@ -89,6 +89,14 @@
   let _zoneOverflow     = false;  // true si le rayon dépasse la taille du plan
   let _lastClues        = "";     // texte des indices saisis (pour restauration)
   let _currentPreset    = _initialPreset;  // clé du preset actif (blesse/lente/normale/rapide)
+  // 🆕 v1.43.26 — Timeout debounce de la recherche autocomplete. Promu au
+  // scope module pour pouvoir être cleared au close (sinon le setTimeout
+  // continue de tourner et tente d'écrire dans `searchResults.innerHTML`
+  // alors que l'élément a déjà été retiré du DOM).
+  // 🆕 v1.44.0 — Migré progressivement vers _lc.setTimeout (tracking auto).
+  let _searchTimeout    = null;
+  // 🆕 v1.44.0 — Pilote ModalLifecycle de la modale Lost Mode.
+  let _lc               = null;
 
   function _getLostPreset() {
     return _currentPreset;
@@ -343,7 +351,7 @@
         _zoneLayer._renderer._update();
       }
       // Vérif post-attache : la layer existe-t-elle vraiment dans le DOM ?
-      setTimeout(function() {
+      setTimeout(function() { // lint-ok-modal-lifecycle (diagnostic post-render leaflet, hors lifecycle modale)
         const path = _zoneLayer._path;
         const bbox = path && path.getBoundingClientRect ? path.getBoundingClientRect() : null;
         console.log("[LostMode] Post-render check : _path =", !!path,
@@ -749,12 +757,17 @@
     }
 
     _active = false;
+    // 🆕 v1.43.26 — Cancel le debounce de la recherche autocomplete pour éviter
+    // qu'un setTimeout pending tente d'écrire dans un élément retiré du DOM.
+    if (_searchTimeout) { clearTimeout(_searchTimeout); _searchTimeout = null; }
+    // 🆕 v1.44.0 — Cleanup centralisé via ModalLifecycle (timers + listeners).
+    if (_lc) { _lc.close(); _lc = null; }
     const m = document.getElementById("kta-lost-modal");
     if (m) m.remove();
 
     // Vérification post-close après reflow
     if (keepLayers) {
-      setTimeout(function() {
+      setTimeout(function() { // lint-ok-modal-lifecycle (diagnostic post-close, modale déjà détruite)
         console.log("[LostMode] Post-close : _zoneLayer =", !!_zoneLayer,
                     "| in map ?", _zoneLayer && window.map && window.map.hasLayer(_zoneLayer),
                     "| _path =", _zoneLayer && _zoneLayer._path ? "présent" : "absent");
@@ -934,6 +947,12 @@
       '</div>';
     document.documentElement.appendChild(modal);
 
+    // 🆕 v1.44.0 — ModalLifecycle attaché : cleanup auto au close (listeners
+    // + timers + blob URLs si on en ajoute plus tard).
+    if (window.ModalLifecycle) {
+      _lc = window.ModalLifecycle.attach(modal, { label: "LostMode" });
+    }
+
     _bindModalEvents();
   }
 
@@ -981,14 +1000,20 @@
     // Recherche autocomplete position
     const searchInput   = document.getElementById("kta-lost-search");
     const searchResults = document.getElementById("kta-lost-search-results");
-    let searchTimeout   = null;
     searchInput.addEventListener("input", function() {
-      clearTimeout(searchTimeout);
+      // 🆕 v1.43.26 — utilise le `_searchTimeout` module-level (cleared au close)
+      clearTimeout(_searchTimeout);
       const q = searchInput.value.trim();
       if (q.length < 2) { searchResults.innerHTML = ""; return; }
-      searchTimeout = setTimeout(async function() {
+      _searchTimeout = setTimeout(async function() {
         try {
           const found = await window.SearchPoints.findByQuery(q);
+          // 🆕 v1.43.27 (Pattern C) — Guard : modale peut avoir été fermée
+          // pendant l'await findByQuery() (qui peut prendre 100-500 ms sur
+          // une grosse base de points). Sans guard, on écrirait dans un
+          // searchResults DOM-détaché + on appendrait des divs orphelins
+          // + les listeners click resteraient zombies.
+          if (!searchResults.isConnected) return;
           searchResults.innerHTML = "";
           found.slice(0, 8).forEach(function(item) {
             const p = item.point;
@@ -1092,7 +1117,10 @@
               '· ' + _speedKmH + ' km/h × ' + _elapsedMinutes + ' min' +
             '</span></div>';
     if (_zoneOverflow) {
-      html += '<div class="kta-lost-stat" style="margin-top:6px; background:rgba(255,107,53,0.14); border:1px solid rgba(255,107,53,0.45); color:#ffb088;">' +
+      // 🆕 v1.43.26 — Classe CSS dédiée au lieu de styles inline hardcodés (qui
+      // restaient illisibles en thème clair). Les overrides light vivent dans
+      // css/style.css sous body.kta-theme-light .kta-lost-warn-overflow.
+      html += '<div class="kta-lost-stat kta-lost-warn-overflow">' +
               '⚠️ Le rayon dépasse la taille du plan — tu pourrais être <strong>n\'importe où</strong> sur le plan. ' +
               'Réduis le temps écoulé ou la vitesse présumée si tu sais que ta progression a été plus lente, ou affine avec des indices visuels ci-dessous.' +
               '</div>';
@@ -1173,7 +1201,10 @@
         }
         const original = btn.textContent;
         btn.textContent = "✓ Copié !";
-        setTimeout(function() { btn.textContent = original; }, 1500);
+        // 🆕 v1.44.0 — setTimeout tracked : cleared si modale fermée avant 1.5s.
+        const restoreFn = function() { if (btn.isConnected) btn.textContent = original; };
+        if (_lc) _lc.setTimeout(restoreFn, 1500);
+        else     setTimeout(restoreFn, 1500); // lint-ok-modal-lifecycle (fallback si _lc null)
       } catch(e) {
         btn.textContent = "❌ Échec";
         console.warn("[LostMode] copy failed :", e);

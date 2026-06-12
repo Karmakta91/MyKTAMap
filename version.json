@@ -1,7 +1,8 @@
 {
-  "version": "v1.43.21",
-  "released": "2026-06-08",
+  "version": "v1.44.0",
+  "released": "2026-06-09",
   "notes": [
-    "🐛 Hotfix critique : le bouton « 📖 Documentation utilisateur » ne fonctionnait plus depuis v1.43.18 (caractères backticks dans un commentaire à l'intérieur d'un template literal JavaScript = fermeture prématurée du HTML de la modale). La modale s'ouvre à nouveau normalement."
+    "🧰 Refonte interne du cycle de vie des modales (nouveau helper ModalLifecycle) : quand tu fermes une modale, tout le ménage est fait automatiquement — les timers en cours s'arrêtent, les écouteurs sont retirés, les fichiers temporaires sont libérés. Tu ne devrais voir aucune différence visible, juste une app un peu plus saine en mémoire.",
+    "🛠️ Corrections fines sur le Mode Itinéraire et la création de plans : zone de recherche plus économe en ressources, message d'erreur GPS qui ne reste plus collé après correction, fichier ZIP toujours libéré même si le téléchargement échoue."
   ]
 }
