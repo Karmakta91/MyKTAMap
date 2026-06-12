@@ -563,13 +563,38 @@ function _targetLayerForRoad(roadType) {
 // NB : le filtre multi-niveau ci-dessous est un miroir de _passeFiltreNiveau
 // (closure interne à renderRoads) — gardé local pour ne pas toucher au chemin
 // des polylines (zéro régression). À mutualiser si la logique diverge.
+// 🐛 v1.44.1 — Helper de purge des cercles d'intersection (mutualisé entre
+// _renderIntersections et resetRoads). Bug pré-existant depuis v1.26.4-perf :
+// `layer.remove()` sur un L.circleMarker fait `this._map.removeLayer(this)`,
+// ce qui retire le layer de la MAP mais PAS du FeatureGroup parent
+// (`window.layerEditor`, cible de l'addTo ligne ~640). Le FeatureGroup
+// gardait sa référence interne → les anciens cercles s'accumulaient à
+// chaque re-render. Mesuré en session debug : 719 cercles fantômes dans
+// layerEditor pour 9 intersections réellement calculées (plan Catacombes,
+// après plusieurs toggles de filtre). Fix : retirer du FeatureGroup parent
+// quand le cercle y est (removeLayer propage aussi le retrait de la map),
+// fallback layer.remove() sinon.
+function _purgeIntersectionLayers() {
+  const grp = window.layerEditor;
+  intersectionLayers.forEach(layer => {
+    try {
+      if (grp && typeof grp.hasLayer === "function" && grp.hasLayer(layer)) {
+        grp.removeLayer(layer);
+      } else {
+        layer.remove();
+      }
+    } catch(e) {}
+  });
+  intersectionLayers = [];
+}
+
 function _renderIntersections() {
   // Up-to-date → on annule un éventuel débounce en attente (évite un 2e rendu).
   if (_interRenderTimer) { clearTimeout(_interRenderTimer); _interRenderTimer = null; }
 
   // Purge des cercles précédents (indépendante de roadLayers).
-  intersectionLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
-  intersectionLayers = [];
+  // 🐛 v1.44.1 — purge via helper (fix accumulation FeatureGroup, cf. supra).
+  _purgeIntersectionLayers();
 
   // 🆕 v1.9.2 — toggle on/off des cercles d'intersection. Default true.
   // 🆕 v1.36.2 — l'option est désormais PER-PLAN (déplacée de Configuration
@@ -598,11 +623,26 @@ function _renderIntersections() {
     return _vis.indexOf(lvl) >= 0;
   }
 
+  // 🐛 v1.44.1 — Filtre runtime par type de tracé (FilterPanel). Miroir exact
+  // de la logique de renderRoads (~ligne 790) : quand l'user décoche un type
+  // dans Filtres ≡, les polylines de ce type disparaissent — les cercles
+  // d'intersection impliquant ce type doivent disparaître aussi. Sans ce
+  // filtre, _renderIntersections recalculait sur TOUTES les roads et
+  // re-créait les cercles des types masqués. Bypass itinerary + currentRoad,
+  // cohérent avec renderRoads.
+  function _passeFiltreTag(road) {
+    if (!window._ktaRuntimeFilters || !window._ktaRuntimeFilters.roadTypes) return true;
+    if (road.type === "itinerary" || road === currentRoad) return true;
+    return window._ktaRuntimeFilters.roadTypes.has(road.type);
+  }
+
   const intersectionsTarget = window.layerEditor || window.map;
   const allRoads = roadsData.concat(_embeddedRoadsVisibles())
     .filter(function(r) {
       if (r.type === "itinerary" || r.type === "jonction") return false;
-      return _passe(r);
+      if (!_passe(r))           return false;
+      if (!_passeFiltreTag(r))  return false;
+      return true;
     });
   const intersections = _calculerIntersectionsRoads(allRoads);
   intersections.forEach(({ point, color }) => {
@@ -1051,9 +1091,10 @@ function resetRoads() {
   // 🆕 v1.26.4-perf : cercles d'intersection dans leur tableau séparé + timer
   // de débounce — purge explicite (sinon des cercles orphelins survivraient au
   // reset, et un débounce en vol re-rendrait sur un état déjà effacé).
+  // 🐛 v1.44.1 — purge via helper (fix accumulation FeatureGroup, cf.
+  // _purgeIntersectionLayers).
   if (_interRenderTimer) { clearTimeout(_interRenderTimer); _interRenderTimer = null; }
-  intersectionLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
-  intersectionLayers = [];
+  _purgeIntersectionLayers();
 
   // 🆕 v1.8.1 : déclencher les hooks de fin de render pour synchroniser
   // les UI dépendantes (panneau Distance totale + label distance itinéraire

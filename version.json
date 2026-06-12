@@ -1,8 +1,7 @@
 {
-  "version": "v1.44.0",
-  "released": "2026-06-09",
+  "version": "v1.44.1",
+  "released": "2026-06-10",
   "notes": [
-    "🧰 Refonte interne du cycle de vie des modales (nouveau helper ModalLifecycle) : quand tu fermes une modale, tout le ménage est fait automatiquement — les timers en cours s'arrêtent, les écouteurs sont retirés, les fichiers temporaires sont libérés. Tu ne devrais voir aucune différence visible, juste une app un peu plus saine en mémoire.",
-    "🛠️ Corrections fines sur le Mode Itinéraire et la création de plans : zone de recherche plus économe en ressources, message d'erreur GPS qui ne reste plus collé après correction, fichier ZIP toujours libéré même si le téléchargement échoue."
+    "🐛 Les ronds aux intersections des tracés se comportent enfin correctement : ils disparaissent quand tu décoches un type de tracé dans le filtre, et ils ne s'accumulent plus invisiblement en mémoire à chaque rafraîchissement de la carte (un vieux bug qui pouvait ralentir l'app sur les gros plans)."
   ]
 }

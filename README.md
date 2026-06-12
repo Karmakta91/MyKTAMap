@@ -8,7 +8,13 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.44.0` (09/06/2026) — **🧰 Refonte interne du cycle de vie des modales (helper `ModalLifecycle`)** sur la base de la 1.43.x (`Save Offline` + robustesse SW + hardening modales v1.43.26-27). Voir `docs/architecture/modal-lifecycle.md` pour l'architecture, `docs/applications/NETWORK_AUDIT.md` pour le détail des patches v1.43.9 → v1.44.0, et `docs/audits/2026-06-09_audit-modales-v2.md` pour le rapport workflow d'audit.
+**📦 Version courante** : `v1.44.1` (10/06/2026) — **🐛 Fix ronds d'intersection (filtre + accumulation FeatureGroup)** sur la base v1.44.0.
+
+**🐛 v1.44.1 (10/06/2026)** — **Fix ronds aux intersections des tracés** (2 bugs cumulés, pré-existants) :
+- `road.js` : `_renderIntersections` ignorait le filtre runtime par type de tracé (`_ktaRuntimeFilters.roadTypes`) → les cercles des types décochés dans Filtres ≡ restaient affichés. Nouveau `_passeFiltreTag()` miroir de la logique `renderRoads`.
+- `road.js` : `layer.remove()` retirait les cercles de la map mais **pas du FeatureGroup parent** (`layerEditor`) → accumulation silencieuse à chaque re-render (mesuré : 719 cercles fantômes pour 9 attendus sur plan dense). Nouveau helper `_purgeIntersectionLayers()` mutualisé (`_renderIntersections` + `resetRoads`) qui retire via `grp.removeLayer()`.
+
+**📦 v1.44.0** (09/06/2026) — **🧰 Refonte interne du cycle de vie des modales (helper `ModalLifecycle`)** sur la base de la 1.43.x (`Save Offline` + robustesse SW + hardening modales v1.43.26-27). Voir `docs/architecture/modal-lifecycle.md` pour l'architecture, `docs/applications/NETWORK_AUDIT.md` pour le détail des patches v1.43.9 → v1.44.0, et `docs/audits/2026-06-09_audit-modales-v2.md` pour le rapport workflow d'audit.
 
 **🧰 v1.44.0 (09/06/2026)** — **Refonte interne ModalLifecycle** (helper standalone ~250 lignes, zéro dépendance, opt-in modale par modale) :
 - `js/modalLifecycle.js` : nouveau helper qui tracke timers + listeners + blob URLs d'une modale et libère tout automatiquement au `close()`
