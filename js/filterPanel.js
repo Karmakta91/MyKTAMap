@@ -103,6 +103,30 @@
     }, 200);
   }
 
+  // 🐛 v1.44.1 — Recalcul des roads/intersections après toggle d'un calque
+  // DATA. Contexte : road.js écoute `overlayadd`/`overlayremove` (événements
+  // émis par le contrôle de couches Leaflet NATIF) pour recalculer les
+  // cercles d'intersection quand un calque devient visible/masqué. Or depuis
+  // la refonte Filtres (v1.21.5), le toggle passe par CE panel qui fait
+  // `map.addLayer/removeLayer` DIRECTEMENT → aucun événement émis → les
+  // cercles d'intersection des roads embarquées du calque masqué restaient
+  // affichés. Fix : on déclenche explicitement renderRoads() après le toggle.
+  // Coalescé à 150 ms : le bouton « Tout afficher » (reset-all) dispatch un
+  // event `change` synthétique PAR checkbox → sans coalescing on ferait
+  // N renderRoads d'affilée (O(N²) chacun sur plan dense).
+  let _roadsRecalcTimer = null;
+  function _scheduleRoadsRecalc() {
+    if (_roadsRecalcTimer) return;
+    _roadsRecalcTimer = setTimeout(function() {
+      _roadsRecalcTimer = null;
+      if (typeof window.renderRoads === "function") {
+        try { window.renderRoads(); } catch(e) {
+          console.warn("[FilterPanel] renderRoads post-toggle calque erreur :", e);
+        }
+      }
+    }, 150);
+  }
+
   function applyFilters() {
     // Appelle la cascade globale qui re-rend tous les modules concernés.
     // Définie dans interface.js > initInterface (cascade vers road / zones /
@@ -582,6 +606,10 @@
         if (!grp || !window.map) return;
         if (t.checked) { try { window.map.addLayer(grp); } catch(_) {} }
         else           { try { window.map.removeLayer(grp); } catch(_) {} }
+        // 🐛 v1.44.1 — recalcule roads + cercles d'intersection (les roads
+        // embarquées du calque masqué doivent disparaître du calcul, cf.
+        // _scheduleRoadsRecalc pour le contexte complet).
+        _scheduleRoadsRecalc();
         return;
       }
       // === Tags + Types (set-based) ===

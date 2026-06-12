@@ -8,7 +8,10 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.44.1` (10/06/2026) — **🐛 Fix ronds d'intersection (filtre + accumulation FeatureGroup)** sur la base v1.44.0.
+**📦 Version courante** : `v1.44.2` (10/06/2026) — **🐛 Fix ronds d'intersection, suite : toggle calque data via FilterPanel** sur la base v1.44.1.
+
+**🐛 v1.44.2 (10/06/2026)** — **Ronds d'intersection vs toggle calque data** (3e bug de la même famille, trouvé au test terrain de v1.44.1) :
+- `filterPanel.js` : `road.js` recalcule les intersections sur `overlayadd`/`overlayremove` — événements émis uniquement par le contrôle de couches Leaflet NATIF. Or le FilterPanel (v1.21.5) fait `map.addLayer/removeLayer` directement → aucun événement → cercles des roads embarquées du calque masqué persistaient. Fix : `_scheduleRoadsRecalc()` (renderRoads coalescé 150 ms) déclenché après chaque toggle de calque data. Le coalescing évite N renders d'affilée au « Tout afficher » (events synthétiques par checkbox).
 
 **🐛 v1.44.1 (10/06/2026)** — **Fix ronds aux intersections des tracés** (2 bugs cumulés, pré-existants) :
 - `road.js` : `_renderIntersections` ignorait le filtre runtime par type de tracé (`_ktaRuntimeFilters.roadTypes`) → les cercles des types décochés dans Filtres ≡ restaient affichés. Nouveau `_passeFiltreTag()` miroir de la logique `renderRoads`.

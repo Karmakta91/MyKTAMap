@@ -1,7 +1,7 @@
 {
-  "version": "v1.44.1",
+  "version": "v1.44.2",
   "released": "2026-06-10",
   "notes": [
-    "🐛 Les ronds aux intersections des tracés se comportent enfin correctement : ils disparaissent quand tu décoches un type de tracé dans le filtre, et ils ne s'accumulent plus invisiblement en mémoire à chaque rafraîchissement de la carte (un vieux bug qui pouvait ralentir l'app sur les gros plans)."
+    "🐛 Suite du fix des ronds aux intersections : ils disparaissent maintenant aussi quand tu masques un calque de données entier dans le filtre (avant : seuls les tracés disparaissaient, les ronds restaient)."
   ]
 }
