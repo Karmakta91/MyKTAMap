@@ -50,6 +50,15 @@
   // 🔢 Limite stricte (KARMA 3:b) — 50 actions FIFO
   const MAX_HISTORY = 50;
 
+  // 🌍 i18n — appelé au runtime (undo/redo), toujours après I18n.init().
+  // Fallback inline FR si I18n absent (jamais de crash, jamais de clé brute).
+  function _t(key) {
+    if (window.I18n && typeof window.I18n.t === "function") return window.I18n.t(key);
+    return key === "history.undone" ? "↩ Annulé : "
+         : key === "history.redone" ? "↪ Refait : "
+         : key;
+  }
+
   let undoStack = []; // [{label, snapshot, ts}]
   let redoStack = [];
 
@@ -211,7 +220,7 @@
     // redo pour rétablir l'état.
     redoStack.push({ label: entry.label, category: entry.category, snapshot: currentState, ts: Date.now() });
     if (redoStack.length > MAX_HISTORY) redoStack.shift();
-    _showToast("↩ Annulé : " + entry.label);
+    _showToast(_t("history.undone") + entry.label);
     _notify();
     _saveSession();
     return true;
@@ -224,7 +233,7 @@
     _applyState(entry.snapshot);
     undoStack.push({ label: entry.label, category: entry.category, snapshot: currentState, ts: Date.now() });
     if (undoStack.length > MAX_HISTORY) undoStack.shift();
-    _showToast("↪ Refait : " + entry.label);
+    _showToast(_t("history.redone") + entry.label);
     _notify();
     _saveSession();
     return true;

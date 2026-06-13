@@ -577,7 +577,7 @@
     // Record dans HistoryManager pour permettre Undo
     if (window.HistoryManager && _hb) {
       window.HistoryManager.record(
-        "Import GPX : " + points.length + " point(s), " + tracks.length + " tracé(s)",
+        window.I18n.t("history.action.importGpx", { points: points.length, tracks: tracks.length }),
         _hb
       );
     }

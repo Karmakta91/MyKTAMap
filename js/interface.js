@@ -2328,7 +2328,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   // window.modeRoad → on doit fermer le mode UI sans condition.
                   _fermerModeRoad();
                   if (window.HistoryManager && _hb) {
-                    window.HistoryManager.record("Supprimer tous les tracés", _hb);
+                    window.HistoryManager.record(window.I18n.t("history.action.deleteAllPaths"), _hb);
                   }
                 } }
             ]
@@ -2465,7 +2465,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   // le mode UI inconditionnellement.
                   _fermerModeZone();
                   if (window.HistoryManager && _hb) {
-                    window.HistoryManager.record("Supprimer toutes les zones", _hb);
+                    window.HistoryManager.record(window.I18n.t("history.action.deleteAllZones"), _hb);
                   }
                 } }
             ]
@@ -2635,7 +2635,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   if (window.resetStructures) window.resetStructures();
                   _fermerModeStructure();
                   if (window.HistoryManager && _hb) {
-                    window.HistoryManager.record("Supprimer toutes les structures", _hb);
+                    window.HistoryManager.record(window.I18n.t("history.action.deleteAllStructures"), _hb);
                   }
                 } }
             ]
@@ -3046,7 +3046,7 @@ window.activerModeSuppressionTraceClic = function() {
     _desactiverModeSuppressionTrace();
 
     if (window.HistoryManager && _historyBefore) {
-      window.HistoryManager.record("Supprimer tracé au clic (" + (closestRoad.type || "?") + ")", _historyBefore);
+      window.HistoryManager.record(window.I18n.t("history.action.deletePathClick", { type: (closestRoad.type || "?") }), _historyBefore);
     }
   };
 
@@ -3189,7 +3189,7 @@ window.activerModeSuppressionZoneClic = function() {
     _desactiverModeSuppressionZone();
 
     if (window.HistoryManager && _historyBefore) {
-      window.HistoryManager.record("Supprimer zone au clic (" + (foundZone.type || "?") + ")", _historyBefore);
+      window.HistoryManager.record(window.I18n.t("history.action.deleteZoneClick", { type: (foundZone.type || "?") }), _historyBefore);
     }
   };
 
@@ -3338,7 +3338,7 @@ window.activerModeSuppressionStructureClic = function() {
     _desactiverModeSuppressionStructure();
 
     if (window.HistoryManager && _historyBefore) {
-      window.HistoryManager.record("Supprimer structure au clic (" + (foundStruct.type || "?") + ")", _historyBefore);
+      window.HistoryManager.record(window.I18n.t("history.action.deleteStructureClick", { type: (foundStruct.type || "?") }), _historyBefore);
     }
   };
 

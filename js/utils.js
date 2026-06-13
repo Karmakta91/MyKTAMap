@@ -748,7 +748,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           }
           if (window.HistoryManager && _historyBefore && window.HistoryManager.record) {
             window.HistoryManager.record(
-              "Note " + titreType,
+              window.I18n.t("history.action.note", { type: titreType }),
               _historyBefore
             );
           }

@@ -177,7 +177,7 @@ function initZones() {
       if (dist <= CLOSE_TOLERANCE) {
         fermerZoneEnCours();
         if (window.HistoryManager && _historyBefore) {
-          window.HistoryManager.record("Fermer zone " + _typeLabel, _historyBefore, "zones");
+          window.HistoryManager.record(window.I18n.t("history.action.closeZone", { type: _typeLabel }), _historyBefore, "zones");
         }
         return;
       }
@@ -187,8 +187,8 @@ function initZones() {
     renderZones();
     if (window.HistoryManager && _historyBefore) {
       const lbl = _isNewZone
-        ? "Nouvelle zone " + _typeLabel
-        : "Sommet sur zone " + _typeLabel;
+        ? window.I18n.t("history.action.newZone", { type: _typeLabel })
+        : window.I18n.t("history.action.zoneVertex", { type: _typeLabel });
       window.HistoryManager.record(lbl, _historyBefore, "zones");
     }
   });
@@ -415,7 +415,7 @@ function removeLastZone() {
     currentZone = null;
     renderZones();
     if (window.HistoryManager && _historyBefore) {
-      window.HistoryManager.record("Supprimer zone en cours", _historyBefore, "zones");
+      window.HistoryManager.record(window.I18n.t("history.action.deleteCurrentZone"), _historyBefore, "zones");
     }
     return true;
   }
@@ -425,7 +425,7 @@ function removeLastZone() {
   renderZones();
   if (window.HistoryManager && _historyBefore) {
     const typeLabel = removed && removed.type ? removed.type : "zone";
-    window.HistoryManager.record("Supprimer dernière zone (" + typeLabel + ")", _historyBefore, "zones");
+    window.HistoryManager.record(window.I18n.t("history.action.deleteLastZone", { type: typeLabel }), _historyBefore, "zones");
   }
   return true;
 }
