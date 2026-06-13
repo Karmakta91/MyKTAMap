@@ -56,7 +56,8 @@
   // (sw.js). C'est TOUT.
   const AVAILABLE_LANGS = [
     { code: "fr", label: "Français", flag: "🇫🇷" },
-    { code: "en", label: "English",  flag: "🇬🇧" }
+    { code: "en", label: "English",  flag: "🇬🇧" },
+    { code: "es", label: "Español",  flag: "🇪🇸" }
   ];
 
   // Langue de référence / fallback universel. fr.json est toujours chargé.

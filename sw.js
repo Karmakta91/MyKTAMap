@@ -58,6 +58,7 @@ const ASSETS_TO_CACHE = [
   // Pour ajouter une langue : déposer lang/<code>.json + l'ajouter ici.
   "./lang/fr.json",
   "./lang/en.json",
+  "./lang/es.json",
   // Licence (consultable offline si l'utilisateur veut verifier les conditions d'usage)
   "./LICENSE",
   // 🆕 v1.8.0 : page de transparence détaillée pour l'audit réseau, en 2

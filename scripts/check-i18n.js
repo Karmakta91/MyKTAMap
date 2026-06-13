@@ -8,6 +8,8 @@
  *   2. Clés appelées mais absentes : tout I18n.t("clé") / data-i18n[-html|-title]="clé"
  *      dans js/*.js + index.html doit exister dans fr.json ET en.json.
  *   3. (Info) Clés orphelines : présentes dans le dico mais jamais appelées.
+ *   4. Langues WIP (es, …) : contrôle SOUPLE — couverture partielle tolérée
+ *      (clés manquantes → fallback fr), mais clé fantôme + {param} divergent = bloquants.
  *
  * Exit 1 si problème BLOQUANT (parité KO OU clé appelée manquante). Les
  * orphelines sont seulement informatives (exit 0).
@@ -124,6 +126,41 @@ const orphans = [...frKeys].filter(k =>
 if (orphans.length) {
   console.log("ℹ️  Clés dico jamais appelées (" + orphans.length + ") — info, pas bloquant" +
               (orphans.length <= 40 ? " :\n   " + orphans.join("\n   ") : " (liste tronquée)."));
+}
+
+// ---- 4. Langues additionnelles WIP (ex. es) : contrôle SOUPLE ----
+// fr/en = parité stricte (ci-dessus). Les autres dicos lang/<code>.json sont des
+// traductions en cours : couverture partielle TOLÉRÉE (clés manquantes → fr).
+// On vérifie quand même : aucune clé fantôme (absente de fr) + parité {param}.
+const EXTRA_LANGS = fs.readdirSync(LANG_DIR)
+  .filter(f => /^[a-z]{2}\.json$/.test(f))
+  .map(f => f.slice(0, 2))
+  .filter(code => code !== "fr" && code !== "en");
+for (const code of EXTRA_LANGS) {
+  const dict = loadJson(path.join(LANG_DIR, code + ".json"));
+  const dictKeys = new Set(Object.keys(dict));
+  const ghost = [...dictKeys].filter(k => !frKeys.has(k) && !k.startsWith("_meta"));
+  if (ghost.length) {
+    blocking++;
+    console.error("❌ Clés en " + code + ".json absentes de fr.json (" + ghost.length + ") :\n   " + ghost.slice(0, 40).join("\n   "));
+  }
+  const pm = [];
+  for (const k of dictKeys) {
+    if (k.startsWith("_meta") || !frKeys.has(k)) continue;
+    const pf = params(fr[k]), px = params(dict[k]);
+    const onlyFr = [...pf].filter(x => !px.has(x));
+    const onlyX  = [...px].filter(x => !pf.has(x));
+    if (onlyFr.length || onlyX.length) pm.push(k + " (fr-only: " + (onlyFr.join(",") || "-") + " | " + code + "-only: " + (onlyX.join(",") || "-") + ")");
+  }
+  if (pm.length) {
+    blocking++;
+    console.error("❌ Interpolations {param} divergentes fr/" + code + " (" + pm.length + ") :\n   " + pm.slice(0, 40).join("\n   "));
+  }
+  const translatable = [...frKeys].filter(k => !k.startsWith("_meta")).length;
+  const done = [...dictKeys].filter(k => !k.startsWith("_meta") && frKeys.has(k)).length;
+  const pct = translatable ? Math.round((done / translatable) * 1000) / 10 : 0;
+  console.log("ℹ️  " + code + ".json (WIP) : " + done + "/" + translatable + " clés traduites (" + pct + "%)" +
+              (ghost.length || pm.length ? "" : " — structure OK"));
 }
 
 if (blocking) { console.error("\n❌ check-i18n : " + blocking + " problème(s) bloquant(s)."); process.exit(1); }
