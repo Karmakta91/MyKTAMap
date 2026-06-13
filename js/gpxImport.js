@@ -69,15 +69,16 @@
   // EXTRACTION (file → parsed)
   // =========================================================================
   async function extraireGpx(file) {
-    if (!file || !(file instanceof Blob)) throw new Error("Fichier GPX invalide");
+    if (!file || !(file instanceof Blob)) throw new Error(window.I18n.t("gpx.err.fileInvalid"));
     const text = await file.text();
     const parser = new DOMParser();
     const gpxDoc = parser.parseFromString(text, "application/xml");
     const err = gpxDoc.querySelector("parsererror");
-    if (err) throw new Error("GPX mal formé : " + (err.textContent || "").split("\n")[0]);
+    if (err) throw new Error(window.I18n.t("gpx.err.malformedShort",
+      { detail: (err.textContent || "").split("\n")[0] }));
 
     if (!window.GpxIO || typeof window.GpxIO.parser !== "function") {
-      throw new Error("Module GpxIO non chargé — impossible de parser le GPX");
+      throw new Error(window.I18n.t("gpx.err.gpxioMissing"));
     }
     const parsed = window.GpxIO.parser(text);
     return { gpxDoc: gpxDoc, parsed: parsed, rawText: text };
@@ -137,7 +138,7 @@
         ctx.fillStyle = fills[color] || fills.sepia;
         ctx.fillRect(0, 0, width, height);
         canvas.toBlob(function(blob) {
-          if (!blob) reject(new Error("Échec génération canvas (toBlob null)"));
+          if (!blob) reject(new Error(window.I18n.t("gpx.err.canvasNull")));
           else resolve(blob);
         }, "image/png");
       } catch(e) { reject(e); }
@@ -242,12 +243,12 @@
   //   onTilingProgress: fn(done, total, currentZ) — pour overlay UI
   // }
   async function genererZipMyktamap(opts) {
-    if (typeof JSZip === "undefined") throw new Error("JSZip non chargé");
+    if (typeof JSZip === "undefined") throw new Error(window.I18n.t("gpx.err.jszip"));
     if (!opts || !opts.parsed || !opts.bounds) {
-      throw new Error("genererZipMyktamap : opts.parsed + opts.bounds requis");
+      throw new Error(window.I18n.t("gpx.err.genZipReq"));
     }
     if (!window.KmzExport || !window.KmzExport.buildTransform) {
-      throw new Error("Module KmzExport non chargé — impossible de calibrer");
+      throw new Error(window.I18n.t("gpx.err.kmzExportMissing"));
     }
 
     const W = opts.canvasWidth  || 4000;
@@ -269,7 +270,7 @@
       transform.imageW = W;
       transform.imageH = H;
     } catch(e) {
-      throw new Error("Calibrage automatique impossible : " + e.message);
+      throw new Error(window.I18n.t("gpx.err.autoCalib", { msg: e.message }));
     }
 
     // === Ingestion annotations ===

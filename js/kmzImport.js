@@ -81,7 +81,7 @@
   // convention ; on tolère d'autres noms si un seul .kml est présent.
   async function extraireKmz(file) {
     if (typeof JSZip === "undefined") {
-      throw new Error("JSZip non chargé — impossible d'extraire le KMZ");
+      throw new Error(window.I18n.t("kmz.err.jszipExtract"));
     }
     const zip = await JSZip.loadAsync(file);
 
@@ -93,7 +93,7 @@
         return /\.kml$/i.test(n) && !zip.files[n].dir;
       });
       if (kmlNames.length === 0) {
-        throw new Error("Aucun fichier .kml trouvé dans le KMZ");
+        throw new Error(window.I18n.t("kmz.err.noKml"));
       }
       // Préférer le plus court chemin (racine) si plusieurs
       kmlNames.sort(function(a, b) { return a.length - b.length; });
@@ -105,7 +105,8 @@
     const kmlDoc = parser.parseFromString(kmlText, "application/xml");
     const err = kmlDoc.querySelector("parsererror");
     if (err) {
-      throw new Error("KML invalide : " + (err.textContent || "XML parse error"));
+      throw new Error(window.I18n.t("kmz.err.kmlInvalid",
+        { msg: err.textContent || window.I18n.t("kmz.err.kmlParseError") }));
     }
 
     // Extraire tous les assets non-KML (images, icônes…)
@@ -268,10 +269,10 @@
   //   5. Inversion de y (axe image vers le bas)
   function buildTransform(corners, imageW, imageH) {
     if (!corners || !corners.nw || !corners.ne) {
-      throw new Error("buildTransform : 4 coins (sw/se/ne/nw) requis");
+      throw new Error(window.I18n.t("kmz.err.cornersRequired"));
     }
     if (!isFinite(imageW) || !isFinite(imageH) || imageW <= 0 || imageH <= 0) {
-      throw new Error("buildTransform : dimensions image invalides (" + imageW + "x" + imageH + ")");
+      throw new Error(window.I18n.t("kmz.err.imageDimsInvalid", { w: imageW, h: imageH }));
     }
 
     const nw = corners.nw;
@@ -287,7 +288,7 @@
 
     const lenTopMetres = Math.hypot(dxMetres, dyMetres);
     if (lenTopMetres < 0.1) {
-      throw new Error("Coins NW et NE quasi-identiques (largeur < 0.1 m) — KMZ non géolocalisé valablement");
+      throw new Error(window.I18n.t("kmz.err.cornersIdentical"));
     }
 
     const metresParPixel = lenTopMetres / imageW;
@@ -587,10 +588,10 @@
   // }
   async function genererZipMyktamap(opts) {
     if (typeof JSZip === "undefined") {
-      throw new Error("JSZip non chargé — impossible de générer le ZIP MyKTAMap");
+      throw new Error(window.I18n.t("kmz.err.jszipZipGen"));
     }
     if (!opts || !opts.baseImage || !opts.imageW || !opts.imageH) {
-      throw new Error("genererZipMyktamap : opts.baseImage + imageW + imageH requis");
+      throw new Error(window.I18n.t("kmz.err.genZipReq"));
     }
 
     const zip = new JSZip();
@@ -905,12 +906,12 @@
       img.onload = function() {
         const W = img.naturalWidth, H = img.naturalHeight;
         URL.revokeObjectURL(url);
-        if (!W || !H) reject(new Error("Image GroundOverlay sans dimensions"));
+        if (!W || !H) reject(new Error(window.I18n.t("kmz.err.imageNoDims")));
         else resolve({ width: W, height: H });
       };
       img.onerror = function() {
         URL.revokeObjectURL(url);
-        reject(new Error("Impossible de décoder l'image GroundOverlay"));
+        reject(new Error(window.I18n.t("kmz.err.imageDecode")));
       };
       img.src = url;
     });

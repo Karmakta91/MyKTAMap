@@ -69,7 +69,7 @@ window.SessionBackups = (function() {
       }
       const req = window.indexedDB.open(DB_NAME, DB_VERSION);
       req.onerror = function() {
-        reject(req.error || new Error("Échec ouverture IDB " + DB_NAME));
+        reject(req.error || new Error(window.I18n.t("backup.err_idb_open", { db: DB_NAME })));
       };
       req.onsuccess = function() {
         _db = req.result;
@@ -333,7 +333,7 @@ window.SessionBackups = (function() {
         const req = store.get(id);
         req.onsuccess = function() {
           if (!req.result) {
-            reject(new Error("Backup introuvable : " + id));
+            reject(new Error(window.I18n.t("backup.err_not_found", { id: id })));
             return;
           }
           resolve(req.result);
@@ -343,7 +343,7 @@ window.SessionBackups = (function() {
     }).then(function(entry) {
       const targetPlanId = (entry.payload && entry.payload.planId) || entry.planId;
       if (!targetPlanId) {
-        throw new Error("Backup sans planId (corrompu ?)");
+        throw new Error(window.I18n.t("backup.err_no_planid"));
       }
       try {
         // 🆕 v1.16.1 : slot per-plan
@@ -361,7 +361,7 @@ window.SessionBackups = (function() {
         }
         return { restored: true, entry: entry };
       } catch(e) {
-        throw new Error("Écriture localStorage échec : " + e.message);
+        throw new Error(window.I18n.t("backup.err_ls_write", { msg: e.message }));
       }
     });
   }

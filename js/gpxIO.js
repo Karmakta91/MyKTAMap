@@ -147,7 +147,7 @@
     if (!verifierCalibrage()) {
       return {
         ok:  false,
-        msg: "Le plan n'est pas calibré GPS. Calibre-le d'abord via 💾 Enregistrer session → onglet KMZ → 2 points GPS."
+        msg: window.I18n.t("gpx.notCalibrated")
       };
     }
     const t = _getTransform();
@@ -186,7 +186,7 @@
 
     return {
       ok:     true,
-      msg:    "Export GPX OK",
+      msg:    window.I18n.t("gpx.exportOk"),
       counts: {
         wpts: allPoints.length,
         trks: tracesAExporter.length
@@ -287,7 +287,7 @@
   // ============================================================
   function parser(xmlString) {
     if (!xmlString || typeof xmlString !== "string") {
-      throw new Error("Contenu GPX vide ou invalide");
+      throw new Error(window.I18n.t("gpx.err.contentEmpty"));
     }
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlString, "application/xml");
@@ -295,11 +295,12 @@
     // Détecte erreur de parsing (DOMParser ajoute un <parsererror> en cas de XML mal formé)
     const parseError = doc.querySelector("parsererror");
     if (parseError) {
-      throw new Error("Fichier GPX mal formé : " + parseError.textContent.split("\n")[0]);
+      throw new Error(window.I18n.t("gpx.err.malformed",
+        { detail: parseError.textContent.split("\n")[0] }));
     }
     const root = doc.documentElement;
     if (!root || root.nodeName.toLowerCase() !== "gpx") {
-      throw new Error("Le fichier n'est pas un GPX valide (élément racine attendu : <gpx>)");
+      throw new Error(window.I18n.t("gpx.err.notGpx"));
     }
 
     // Métadonnées (optionnel)
@@ -425,24 +426,24 @@
       if (!verifierCalibrage()) {
         return resolve({
           ok:  false,
-          msg: "Le plan n'est pas calibré GPS. Calibre-le d'abord via 💾 Enregistrer session → onglet KMZ → 2 points GPS pour pouvoir importer un GPX."
+          msg: window.I18n.t("gpx.notCalibratedImport")
         });
       }
 
       if (!file || !(file instanceof Blob)) {
-        return resolve({ ok: false, msg: "Aucun fichier sélectionné" });
+        return resolve({ ok: false, msg: window.I18n.t("gpx.noFileSelected") });
       }
 
       const reader = new FileReader();
       reader.onerror = function() {
-        resolve({ ok: false, msg: "Erreur lecture fichier" });
+        resolve({ ok: false, msg: window.I18n.t("gpx.readError") });
       };
       reader.onload = function(e) {
         let parsed;
         try {
           parsed = parser(e.target.result);
         } catch(err) {
-          return resolve({ ok: false, msg: "Erreur parsing GPX : " + err.message });
+          return resolve({ ok: false, msg: window.I18n.t("gpx.parseError", { msg: err.message }) });
         }
 
         const t = _getTransform();
@@ -533,7 +534,7 @@
           // Preview only — l'UI doit demander confirmation et rappeler
           return resolve({
             ok:      true,
-            msg:     "Preview généré",
+            msg:     window.I18n.t("gpx.previewGenerated"),
             preview: preview,
             // On stocke les nouveaux objets sur l'instance pour les commit
             // ultérieur via un second appel à _appliquerImport()
@@ -545,7 +546,7 @@
         _appliquerImport(nouveauxPoints, nouveauxTraces);
         resolve({
           ok:      true,
-          msg:     "Import GPX OK — " + preview.wpts + " point(s) et " + preview.trks + " tracé(s) ajoutés à la session",
+          msg:     window.I18n.t("gpx.importOk", { wpts: preview.wpts, trks: preview.trks }),
           counts:  preview,
           preview: preview
         });

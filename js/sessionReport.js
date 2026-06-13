@@ -764,53 +764,52 @@
     const modal = document.createElement("div");
     modal.id = "kta-report-modal";
     modal.className = "kta-readme-modal-overlay";
+    const T = window.I18n.t.bind(window.I18n);
     modal.innerHTML = '<div class="kta-readme-modal-boite kta-report-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">📋 Rapport de sortie</span>' +
-        '<button class="kta-panneau-close" id="kta-report-close" type="button">✕</button>' +
+        '<span class="kta-readme-modal-titre">📋 ' + T("report.title") + '</span>' +
+        '<button class="kta-panneau-close" id="kta-report-close" type="button" aria-label="' + T("report.close") + '">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">📅 Période</div>' +
+          '<div class="kta-aide-section-titre">📅 ' + T("report.period_title") + '</div>' +
           '<div class="kta-report-period">' +
-            '<label>Du <input class="kta-report-date" id="kta-report-start" type="date" value="' + startDateStr + '"></label>' +
-            '<label>Au <input class="kta-report-date" id="kta-report-end"   type="date" value="' + endDateStr   + '"></label>' +
+            '<label>' + T("report.period_from") + ' <input class="kta-report-date" id="kta-report-start" type="date" value="' + startDateStr + '"></label>' +
+            '<label>' + T("report.period_to") + ' <input class="kta-report-date" id="kta-report-end"   type="date" value="' + endDateStr   + '"></label>' +
           '</div>' +
           '<p class="kta-report-hint">' +
-            'Les POI et le tracker GPS sont filtrés par cette période. ' +
-            'Tracés, zones et structures n\'ont pas de timestamp dans le format et sont inclus en totalité.' +
+            T("report.period_hint") +
           '</p>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">👁️ Aperçu</div>' +
-          '<div id="kta-report-preview" class="kta-report-preview">⏳ Calcul…</div>' +
+          '<div class="kta-aide-section-titre">👁️ ' + T("report.preview_title") + '</div>' +
+          '<div id="kta-report-preview" class="kta-report-preview">⏳ ' + T("report.preview_computing") + '</div>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">📦 Sections à inclure</div>' +
-          _checkboxRow("kta-report-inc-points",  "📍 Points (POI)",         true) +
-          _checkboxRow("kta-report-inc-roads",   "🛣️ Tracés",               true) +
-          _checkboxRow("kta-report-inc-zones",   "⬛ Zones",                 true) +
-          _checkboxRow("kta-report-inc-struct",  "🏛️ Structures",           true) +
-          _checkboxRow("kta-report-inc-tracker", "🧭 Tracker GPS",          true) +
-          _checkboxRow("kta-report-inc-photos",  "📸 Photos (count seul)",  true) +
-          _checkboxRow("kta-report-inc-mapmini", "🗺️ Carte miniature (PDF)", true) +
-          _checkboxRow("kta-report-inc-heatmap", "🔥 Heatmap explorée (PDF)", true) +
+          '<div class="kta-aide-section-titre">📦 ' + T("report.sections_title") + '</div>' +
+          _checkboxRow("kta-report-inc-points",  "📍 " + T("report.sec_points"),  true) +
+          _checkboxRow("kta-report-inc-roads",   "🛣️ " + T("report.sec_roads"),   true) +
+          _checkboxRow("kta-report-inc-zones",   "⬛ " + T("report.sec_zones"),    true) +
+          _checkboxRow("kta-report-inc-struct",  "🏛️ " + T("report.sec_structures"), true) +
+          _checkboxRow("kta-report-inc-tracker", "🧭 " + T("report.sec_tracker"),  true) +
+          _checkboxRow("kta-report-inc-photos",  "📸 " + T("report.sec_photos"),   true) +
+          _checkboxRow("kta-report-inc-mapmini", "🗺️ " + T("report.sec_mapmini"),  true) +
+          _checkboxRow("kta-report-inc-heatmap", "🔥 " + T("report.sec_heatmap"),  true) +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">📝 Note libre (optionnelle)</div>' +
+          '<div class="kta-aide-section-titre">📝 ' + T("report.note_title") + '</div>' +
           '<textarea id="kta-report-note" class="kta-report-note" rows="4" ' +
-            'placeholder="Ex : Mission de reconnaissance section sud-est, accès par PA12. ' +
-            'RAS sur la zone. Prochain passage prévu vendredi pour relevés acoustiques."></textarea>' +
+            'placeholder="' + T("report.note_placeholder") + '"></textarea>' +
         '</div>' +
 
         '<div class="kta-report-actions">' +
-          '<button class="kta-btn kta-btn-primary" id="kta-report-btn-pdf"  type="button">📑 PDF</button>' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-report-btn-json" type="button">📄 JSON</button>' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-report-btn-text" type="button">📝 Texte</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-report-btn-pdf"  type="button">📑 ' + T("report.btn_pdf") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-report-btn-json" type="button">📄 ' + T("report.btn_json") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-report-btn-text" type="button">📝 ' + T("report.btn_text") + '</button>' +
         '</div>' +
         '<div id="kta-report-status" class="kta-report-status"></div>' +
 
@@ -867,19 +866,19 @@
       const duree = _calculerDureeTimelineMs(filtered.tracker.timeline);
       const preview = document.getElementById("kta-report-preview");
       if (preview) {
+        const T = window.I18n.t.bind(window.I18n);
         preview.innerHTML =
           '<div class="kta-report-preview-row">' +
-            '📍 <strong>' + filtered.points.length + '</strong> POI (filtrés)' +
-            ' · 🛣️ <strong>' + baseData.roads.length + '</strong> tracés' +
-            ' · ⬛ <strong>' + baseData.zones.length + '</strong> zones' +
+            '📍 <strong>' + filtered.points.length + '</strong> ' + T("report.preview_poi") +
+            ' · 🛣️ <strong>' + baseData.roads.length + '</strong> ' + T("report.preview_roads") +
+            ' · ⬛ <strong>' + baseData.zones.length + '</strong> ' + T("report.preview_zones") +
             (baseData.structures.length > 0 ? ' · 🏛️ <strong>' + baseData.structures.length + '</strong>' : '') +
           '</div>' +
           (filtered.tracker.timeline.length > 0 ?
             '<div class="kta-report-preview-row">' +
-              '🧭 ' + _formatDistance(distM) + ' parcourus en ' + _formatDuree(duree) +
-              ' (' + filtered.tracker.timeline.length + ' points tracker)' +
+              '🧭 ' + T("report.preview_tracker", { dist: _formatDistance(distM), duree: _formatDuree(duree), count: filtered.tracker.timeline.length }) +
             '</div>' :
-            '<div class="kta-report-preview-row kta-report-preview-dim">Aucun tracker GPS dans la période</div>'
+            '<div class="kta-report-preview-row kta-report-preview-dim">' + T("report.preview_no_tracker") + '</div>'
           );
       }
     }
@@ -892,7 +891,7 @@
     document.getElementById("kta-report-btn-text").addEventListener("click", function() {
       const opts = _readOpts();
       const filtered = _filtrerParPeriode(baseData, opts.startTs, opts.endTs);
-      _setStatus("⏳ Génération texte…");
+      _setStatus("⏳ " + window.I18n.t("report.status_gen_text"));
       baseData.photosPromise.then(function(photos) {
         opts.photosCount = photos.length;
         const txt = _genererTexte(filtered, opts);
@@ -900,12 +899,12 @@
         _telechargerTexte(txt, fn);
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(txt).then(function() {
-            _setStatus("✅ Texte téléchargé + copié dans le presse-papiers");
+            _setStatus("✅ " + window.I18n.t("report.status_text_ok_copied"));
           }).catch(function() {
-            _setStatus("✅ Texte téléchargé (presse-papiers indispo)");
+            _setStatus("✅ " + window.I18n.t("report.status_text_ok_noclip"));
           });
         } else {
-          _setStatus("✅ Texte téléchargé");
+          _setStatus("✅ " + window.I18n.t("report.status_text_ok"));
         }
       });
     });
@@ -913,7 +912,7 @@
     document.getElementById("kta-report-btn-json").addEventListener("click", function() {
       const opts = _readOpts();
       const filtered = _filtrerParPeriode(baseData, opts.startTs, opts.endTs);
-      _setStatus("⏳ Génération JSON…");
+      _setStatus("⏳ " + window.I18n.t("report.status_gen_json"));
       baseData.photosPromise.then(function(photos) {
         const payload = _genererJSON(filtered, opts);
         if (opts.includePhotos && photos.length > 0) {
@@ -926,14 +925,14 @@
         }
         const fn = _filename(filtered.plan.name, "json");
         _telechargerJSON(payload, fn);
-        _setStatus("✅ JSON téléchargé");
+        _setStatus("✅ " + window.I18n.t("report.status_json_ok"));
       });
     });
 
     document.getElementById("kta-report-btn-pdf").addEventListener("click", function() {
       const opts = _readOpts();
       const filtered = _filtrerParPeriode(baseData, opts.startTs, opts.endTs);
-      _setStatus("⏳ Génération PDF (carte + heatmap + stats)…");
+      _setStatus("⏳ " + window.I18n.t("report.status_gen_pdf"));
       Promise.all([
         baseData.photosPromise,
         (opts.includeMapMini !== false)
@@ -947,10 +946,10 @@
           const pdf = _genererPDF(filtered, opts, mapDataUrl);
           const fn = _filename(filtered.plan.name, "pdf");
           pdf.save(fn);
-          _setStatus("✅ PDF téléchargé");
+          _setStatus("✅ " + window.I18n.t("report.status_pdf_ok"));
         } catch (e) {
           console.error("[SessionReport] PDF KO :", e);
-          _setStatus("❌ Erreur PDF : " + (e.message || e), true);
+          _setStatus("❌ " + window.I18n.t("report.status_pdf_err", { error: (e.message || e) }), true);
         }
       });
     });
