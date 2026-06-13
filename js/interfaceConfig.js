@@ -863,7 +863,6 @@ function afficherConfig() {
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.affichage")}</div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">${window.I18n.t("config.display.titre")}</div>
           <label class="kta-perf-ultra-row kta-perf-ultra-row-danger" style="margin-top:0;">
             <input type="checkbox" id="cfg_scaledMarkers" ${c.scaledMarkers !== false ? "checked" : ""}>
             <span class="kta-perf-ultra-text">
