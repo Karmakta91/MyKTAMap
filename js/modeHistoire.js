@@ -204,18 +204,19 @@
   // ========== UI : MODALE ==========
   function _build() {
     if (_modal) return;
+    const t = function(k, p) { return window.I18n.t(k, p); };
     _modal = document.createElement("div");
     _modal.id = "kta-histoire-modal";
     _modal.className = "kta-readme-modal-overlay";
     _modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-histoire-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📖 Mode Histoire</span>' +
+          '<span class="kta-readme-modal-titre">' + t("histoire.modal.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-histoire-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-histoire-tabs" role="tablist">' +
-          '<button class="kta-histoire-tab" id="kta-histoire-tab-note" role="tab" type="button" data-mode="note">📝 Note libre</button>' +
-          '<button class="kta-histoire-tab" id="kta-histoire-tab-pdf" role="tab" type="button" data-mode="pdf">📚 Histoire</button>' +
+          '<button class="kta-histoire-tab" id="kta-histoire-tab-note" role="tab" type="button" data-mode="note">' + t("histoire.tab.note") + '</button>' +
+          '<button class="kta-histoire-tab" id="kta-histoire-tab-pdf" role="tab" type="button" data-mode="pdf">' + t("histoire.tab.pdf") + '</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-histoire-corps">' +
           // === ONGLET NOTE LIBRE (v1.34.30 — MD editor inline) ===
@@ -225,27 +226,27 @@
             // Header avec switch view/edit + status sauvegarde
             '<div class="kta-histoire-note-header">' +
               '<button class="kta-btn kta-btn-ghost kta-histoire-note-mode-btn" type="button" ' +
-                'id="kta-histoire-note-edit-btn" title="Éditer la note (Markdown)">✏️ Éditer</button>' +
+                'id="kta-histoire-note-edit-btn" title="' + t("histoire.note.editBtn.title") + '">' + t("histoire.note.editBtn") + '</button>' +
               '<button class="kta-btn kta-btn-ghost kta-histoire-note-mode-btn" type="button" ' +
-                'id="kta-histoire-note-view-btn" title="Aperçu rendu" style="display:none;">👁 Aperçu</button>' +
-              '<span class="kta-histoire-note-status" id="kta-histoire-note-status">Sauvé.</span>' +
+                'id="kta-histoire-note-view-btn" title="' + t("histoire.note.viewBtn.title") + '" style="display:none;">' + t("histoire.note.viewBtn") + '</button>' +
+              '<span class="kta-histoire-note-status" id="kta-histoire-note-status">' + t("histoire.note.status.saved") + '</span>' +
             '</div>' +
             // Mode VIEW : div avec MD rendu (par défaut visible)
             '<div id="kta-histoire-note-view" class="kta-histoire-note-rendered"></div>' +
             // Mode EDIT : toolbar + textarea (caché par défaut)
             '<div id="kta-histoire-note-edit" class="kta-histoire-note-edit-wrap" style="display:none;">' +
-              '<div class="kta-histoire-md-toolbar" role="toolbar" aria-label="Mise en forme Markdown">' +
-                '<button type="button" class="kta-md-tb-btn" data-md="bold" title="Gras (**texte**)"><strong>B</strong></button>' +
-                '<button type="button" class="kta-md-tb-btn" data-md="italic" title="Italique (*texte*)"><em>I</em></button>' +
-                '<button type="button" class="kta-md-tb-btn" data-md="h1" title="Titre (# H1)">H1</button>' +
-                '<button type="button" class="kta-md-tb-btn" data-md="h2" title="Sous-titre (## H2)">H2</button>' +
-                '<button type="button" class="kta-md-tb-btn" data-md="ul" title="Liste à puces (- item)">• Liste</button>' +
-                '<button type="button" class="kta-md-tb-btn" data-md="link" title="Lien [txt](url)">🔗 Lien</button>' +
-                '<button type="button" class="kta-md-tb-btn" data-md="code" title="Code (`code`)">&lt;/&gt;</button>' +
-                '<button type="button" class="kta-md-tb-btn" data-md="quote" title="Citation (> txt)">❝</button>' +
+              '<div class="kta-histoire-md-toolbar" role="toolbar" aria-label="' + t("histoire.md.toolbar.label") + '">' +
+                '<button type="button" class="kta-md-tb-btn" data-md="bold" title="' + t("histoire.md.bold.title") + '"><strong>B</strong></button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="italic" title="' + t("histoire.md.italic.title") + '"><em>I</em></button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="h1" title="' + t("histoire.md.h1.title") + '">H1</button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="h2" title="' + t("histoire.md.h2.title") + '">H2</button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="ul" title="' + t("histoire.md.ul.title") + '">' + t("histoire.md.ul.label") + '</button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="link" title="' + t("histoire.md.link.title") + '">' + t("histoire.md.link.label") + '</button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="code" title="' + t("histoire.md.code.title") + '">&lt;/&gt;</button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="quote" title="' + t("histoire.md.quote.title") + '">❝</button>' +
               '</div>' +
               '<textarea id="kta-histoire-note" class="kta-histoire-textarea" ' +
-                'placeholder="Tes notes libres sur ce plan (Markdown supporté : **gras**, *italique*, # titres, - listes, [liens](url)…). Sauvegarde automatique."' +
+                'placeholder="' + t("histoire.note.placeholder") + '"' +
                 'autocomplete="off" spellcheck="true"></textarea>' +
             '</div>' +
           '</div>' +
@@ -255,15 +256,15 @@
             '<div class="kta-histoire-pdf-toolbar" id="kta-histoire-pdf-toolbar" style="display:none;">' +
               '<span class="kta-histoire-pdf-meta" id="kta-histoire-pdf-meta"></span>' +
               '<input type="file" id="kta-histoire-pdf-input" accept="application/pdf,.pdf" style="display:none;">' +
-              '<button class="kta-btn kta-btn-ghost" type="button" id="kta-histoire-pdf-import">📥 Importer un PDF</button>' +
-              '<button class="kta-btn kta-btn-ghost" type="button" id="kta-histoire-pdf-replace" style="display:none;">🔄 Remplacer</button>' +
-              '<button class="kta-btn kta-btn-danger" type="button" id="kta-histoire-pdf-remove" style="display:none;">🗑️ Retirer</button>' +
+              '<button class="kta-btn kta-btn-ghost" type="button" id="kta-histoire-pdf-import">' + t("histoire.pdf.import") + '</button>' +
+              '<button class="kta-btn kta-btn-ghost" type="button" id="kta-histoire-pdf-replace" style="display:none;">' + t("histoire.pdf.replace") + '</button>' +
+              '<button class="kta-btn kta-btn-danger" type="button" id="kta-histoire-pdf-remove" style="display:none;">' + t("histoire.pdf.remove") + '</button>' +
             '</div>' +
             // Viewer wrap (iframe ou fallback)
             '<div id="kta-histoire-pdf-wrap" class="kta-histoire-pdf-wrap">' +
               '<div class="kta-histoire-pdf-empty" id="kta-histoire-pdf-empty">' +
-                '<p>📚 Aucun PDF d\'histoire pour ce plan.</p>' +
-                '<p style="font-size:12px; color:#8892a4;">Tu peux <strong>importer un PDF de session</strong> avec le bouton ci-dessus (1 PDF par plan, sauvegardé localement sur ton appareil — survit aux rechargements, supprimé seulement si tu choisis « 🗑️ Retirer » ou que tu vides les données du site).</p>' +
+                '<p>' + t("histoire.pdf.empty.titre") + '</p>' +
+                '<p style="font-size:12px; color:#8892a4;">' + t("histoire.pdf.empty.hint") + '</p>' +
               '</div>' +
             '</div>' +
           '</div>' +
@@ -308,11 +309,11 @@
 
     // Auto-save sur input + re-render preview (à la prochaine bascule view).
     ta.addEventListener("input", function() {
-      if (status) status.textContent = "Modifié…";
+      if (status) status.textContent = window.I18n.t("histoire.note.status.modified");
       if (_saveTimer) clearTimeout(_saveTimer);
       _saveTimer = setTimeout(function() {
         _saveNote(ta.value);
-        if (status) status.textContent = "Sauvé.";
+        if (status) status.textContent = window.I18n.t("histoire.note.status.saved");
       }, 500);
     });
 
@@ -331,7 +332,7 @@
         // pourrait afficher un rendu en retard d'1 keystroke).
         if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
         _saveNote(ta.value);
-        if (status) status.textContent = "Sauvé.";
+        if (status) status.textContent = window.I18n.t("histoire.note.status.saved");
         _refreshNoteView();
         _setNoteMode("view");
       });
@@ -367,7 +368,7 @@
         // Garde-fou : MIME / extension
         const isPdf = (f.type === "application/pdf") || /\.pdf$/i.test(f.name || "");
         if (!isPdf) {
-          alert("⚠️ Seul un fichier PDF est accepté.");
+          alert(window.I18n.t("histoire.pdf.err.onlyPdf"));
           fileInput.value = "";
           return;
         }
@@ -376,7 +377,7 @@
           _renderPdf({ force: true });
         }).catch(function(e) {
           console.error("[ModeHistoire] saveSessionPdf échec :", e);
-          alert("⚠️ Échec de l'enregistrement du PDF : " + (e.message || e));
+          alert(window.I18n.t("histoire.pdf.err.saveFail", { ko: (e.message || e) }));
           fileInput.value = "";
         });
       });
@@ -384,7 +385,7 @@
 
     if (btnRemove) {
       btnRemove.addEventListener("click", function() {
-        if (!confirm("Retirer le PDF d'histoire de ce plan ? (Tes notes restent intactes.)")) return;
+        if (!confirm(window.I18n.t("histoire.pdf.removeConfirm"))) return;
         _deleteSessionPdf().then(function() {
           _renderPdf({ force: true });
         }).catch(function(e) {
@@ -426,7 +427,7 @@
     if (!src || src.trim() === "") {
       // Note vide → placeholder doux (suggère le bouton Éditer).
       viewDiv.innerHTML = '<p class="kta-histoire-note-empty">' +
-        '<em>Aucune note libre pour ce plan. Clique sur <strong>✏️ Éditer</strong> pour en ajouter.</em>' +
+        window.I18n.t("histoire.note.empty") +
         '</p>';
       return;
     }
@@ -455,17 +456,17 @@
     let prefixLine = false;
 
     switch (kind) {
-      case "bold":   before = "**"; after = "**"; if (!sel) placeholder = "texte"; break;
-      case "italic": before = "*";  after = "*";  if (!sel) placeholder = "texte"; break;
-      case "code":   before = "`";  after = "`";  if (!sel) placeholder = "code";  break;
-      case "h1":     prefixLine = true; before = "# ";   if (!sel) placeholder = "Titre"; break;
-      case "h2":     prefixLine = true; before = "## ";  if (!sel) placeholder = "Sous-titre"; break;
-      case "ul":     prefixLine = true; before = "- ";   if (!sel) placeholder = "élément"; break;
-      case "quote":  prefixLine = true; before = "> ";   if (!sel) placeholder = "citation"; break;
+      case "bold":   before = "**"; after = "**"; if (!sel) placeholder = window.I18n.t("histoire.md.placeholder.text"); break;
+      case "italic": before = "*";  after = "*";  if (!sel) placeholder = window.I18n.t("histoire.md.placeholder.text"); break;
+      case "code":   before = "`";  after = "`";  if (!sel) placeholder = window.I18n.t("histoire.md.placeholder.code");  break;
+      case "h1":     prefixLine = true; before = "# ";   if (!sel) placeholder = window.I18n.t("histoire.md.placeholder.h1"); break;
+      case "h2":     prefixLine = true; before = "## ";  if (!sel) placeholder = window.I18n.t("histoire.md.placeholder.h2"); break;
+      case "ul":     prefixLine = true; before = "- ";   if (!sel) placeholder = window.I18n.t("histoire.md.placeholder.ul"); break;
+      case "quote":  prefixLine = true; before = "> ";   if (!sel) placeholder = window.I18n.t("histoire.md.placeholder.quote"); break;
       case "link":
         before = "[";
         after  = "](https://)";
-        if (!sel) placeholder = "texte du lien";
+        if (!sel) placeholder = window.I18n.t("histoire.md.placeholder.link");
         break;
       default: return;
     }
@@ -564,7 +565,7 @@
         if (btnRemove)  btnRemove.style.display  = "";
         if (meta) {
           const sizeKb = Math.round((sessionInfo.size || 0) / 1024);
-          meta.textContent = "📥 " + sessionInfo.name + " · " + sizeKb + " Ko (session)";
+          meta.textContent = window.I18n.t("histoire.pdf.meta", { name: sessionInfo.name, kb: sizeKb });
         }
         _displayPdfInWrap(sessionInfo.url, sessionInfo.name);
       } else {
@@ -592,9 +593,9 @@
     if (isIOS) {
       wrap.insertAdjacentHTML("beforeend",
         '<div class="kta-histoire-pdf-fallback">' +
-          '<p style="margin-bottom:12px;">📱 Sur iOS, le PDF s\'ouvre dans l\'app PDF de ton appareil.</p>' +
+          '<p style="margin-bottom:12px;">' + window.I18n.t("histoire.pdf.ios.info") + '</p>' +
           '<a class="kta-btn kta-btn-primary" href="' + url + '" download="' + safeName + '" target="_blank" rel="noopener noreferrer">' +
-            '📥 Ouvrir le PDF' +
+            window.I18n.t("histoire.pdf.ios.open") +
           '</a>' +
         '</div>'
       );
@@ -609,15 +610,15 @@
         '<div class="kta-histoire-pdf-actions">' +
           '<a class="kta-btn kta-btn-ghost kta-histoire-pdf-action-open" ' +
              'href="' + url + '" target="_blank" rel="noopener noreferrer" ' +
-             'title="Ouvrir le PDF dans un nouvel onglet (plein écran)">' +
-            '↗️ Ouvrir dans un onglet' +
+             'title="' + window.I18n.t("histoire.pdf.openTab.title") + '">' +
+            window.I18n.t("histoire.pdf.openTab") +
           '</a>' +
         '</div>'
       );
       const iframe = document.createElement("iframe");
       iframe.className = "kta-histoire-pdf-iframe";
       iframe.src = url;
-      iframe.title = "PDF Histoire — " + (name || "histoire.pdf");
+      iframe.title = window.I18n.t("histoire.pdf.iframe.title", { name: (name || "histoire.pdf") });
       iframe.setAttribute("allow", "fullscreen");
       wrap.appendChild(iframe);
     }

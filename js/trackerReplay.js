@@ -271,15 +271,24 @@
 
     if (_timeline.length < 2) {
       if (window.OOMGuard && window.OOMGuard.showToast) {
-        window.OOMGuard.showToast("Aucun parcours tracker à rejouer. Active le tracking (▶️) et marche un peu pour générer une timeline.", "warn");
+        window.OOMGuard.showToast(window.I18n.t("replay.empty.toast"), "warn");
       } else {
-        alert("Aucun parcours tracker à rejouer. Active le tracking (▶️) puis marche un peu pour générer une timeline.");
+        alert(window.I18n.t("replay.empty.alert"));
       }
       return;
     }
 
     _currentIdx = 0;
     _speed = 1;
+
+    const _distStr = (typeof window.getTrackingDistanceM === "function")
+      ? ((typeof window.formatDistance === "function" ? window.formatDistance(window.getTrackingDistanceM(), 1) : window.getTrackingDistanceM().toFixed(1) + " m"))
+      : "—";
+    const _exportInfo = window.I18n.t("replay.export.info", {
+      n: _timeline.length,
+      duree: _formatDelta(_timeline[_timeline.length - 1].deltaMs),
+      dist: _distStr
+    });
 
     const modal = document.createElement("div");
     modal.id = "kta-trkrepl-modal";
@@ -288,9 +297,9 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-trkrepl-modal-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🎬 Replay du parcours tracker</span>' +
+          '<span class="kta-readme-modal-titre">' + window.I18n.t("replay.modal.titre") + '</span>' +
           // 🆕 v1.11.3-fix : bouton ⛶ pour toggle mode compact / normal
-          '<button class="kta-trkrepl-btn-icon" id="kta-trkrepl-fullscreen" type="button" title="Réduire (mode floater)" style="margin-right:8px;">▭</button>' +
+          '<button class="kta-trkrepl-btn-icon" id="kta-trkrepl-fullscreen" type="button" title="' + window.I18n.t("replay.compact.reduce") + '" style="margin-right:8px;">▭</button>' +
           '<button class="kta-panneau-close" id="kta-trkrepl-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -298,12 +307,12 @@
           // Bloc info — horodatage live (KARMA 10:b)
           '<div class="kta-trkrepl-info">' +
             '<div class="kta-trkrepl-info-bloc">' +
-              '<div class="kta-trkrepl-info-label">🕐 Heure du point</div>' +
+              '<div class="kta-trkrepl-info-label">' + window.I18n.t("replay.info.heure") + '</div>' +
               '<div class="kta-trkrepl-info-value" id="kta-trkrepl-time">—</div>' +
               '<div class="kta-trkrepl-info-sub" id="kta-trkrepl-delta">—</div>' +
             '</div>' +
             '<div class="kta-trkrepl-info-bloc">' +
-              '<div class="kta-trkrepl-info-label">📍 Point</div>' +
+              '<div class="kta-trkrepl-info-label">' + window.I18n.t("replay.info.point") + '</div>' +
               '<div class="kta-trkrepl-info-value" id="kta-trkrepl-idx">— / —</div>' +
               '<div class="kta-trkrepl-info-sub" id="kta-trkrepl-type">—</div>' +
             '</div>' +
@@ -314,11 +323,11 @@
 
           // Contrôles play/pause/restart + vitesse
           '<div class="kta-trkrepl-controls">' +
-            '<button class="kta-trkrepl-btn" id="kta-trkrepl-restart" title="Retour au début">⏮️</button>' +
-            '<button class="kta-trkrepl-btn kta-trkrepl-btn-primary" id="kta-trkrepl-playpause" title="Play / Pause">▶️</button>' +
-            '<button class="kta-trkrepl-btn" id="kta-trkrepl-end" title="Aller à la fin">⏭️</button>' +
+            '<button class="kta-trkrepl-btn" id="kta-trkrepl-restart" title="' + window.I18n.t("replay.btn.restart") + '">⏮️</button>' +
+            '<button class="kta-trkrepl-btn kta-trkrepl-btn-primary" id="kta-trkrepl-playpause" title="' + window.I18n.t("replay.btn.playpause") + '">▶️</button>' +
+            '<button class="kta-trkrepl-btn" id="kta-trkrepl-end" title="' + window.I18n.t("replay.btn.end") + '">⏭️</button>' +
             '<div class="kta-trkrepl-speed">' +
-              '<span class="kta-trkrepl-speed-label">Vitesse</span>' +
+              '<span class="kta-trkrepl-speed-label">' + window.I18n.t("replay.speed.label") + '</span>' +
               '<select id="kta-trkrepl-speed-sel">' +
                 '<option value="0.5">0.5×</option>' +
                 '<option value="1" selected>1×</option>' +
@@ -331,14 +340,8 @@
 
           // Bouton export CSV
           '<div class="kta-trkrepl-export">' +
-            '<div class="kta-trkrepl-export-info">' +
-              '<strong>' + _timeline.length + '</strong> points · ' +
-              'durée ' + _formatDelta(_timeline[_timeline.length - 1].deltaMs) + ' · ' +
-              (typeof window.getTrackingDistanceM === "function"
-                ? ((typeof window.formatDistance === "function" ? window.formatDistance(window.getTrackingDistanceM(), 1) : window.getTrackingDistanceM().toFixed(1) + " m"))
-                : "—") + ' parcourus' +
-            '</div>' +
-            '<button class="kta-trkrepl-btn" id="kta-trkrepl-export-csv">📤 Exporter CSV</button>' +
+            '<div class="kta-trkrepl-export-info">' + _exportInfo + '</div>' +
+            '<button class="kta-trkrepl-btn" id="kta-trkrepl-export-csv">' + window.I18n.t("replay.export.btn") + '</button>' +
           '</div>' +
 
         '</div>' +
@@ -487,7 +490,7 @@
     if (deltaEl) deltaEl.textContent = _formatDelta(p.deltaMs);
     if (idxEl)   idxEl.textContent   = (_currentIdx + 1) + " / " + _timeline.length;
     if (typeEl)  typeEl.textContent  = _formatTypeIcon(p.type) + " " + p.type +
-                                       (Number.isInteger(p.level) ? " · Niv " + p.level : "");
+                                       (Number.isInteger(p.level) ? window.I18n.t("replay.info.levelSuffix", { lvl: p.level }) : "");
   }
 
   // ============================================================
@@ -534,7 +537,7 @@
     // Mise à jour du bouton ⛶/⛶
     const btnFs = document.getElementById("kta-trkrepl-fullscreen");
     if (btnFs) btnFs.textContent = compact ? "⛶" : "▭";
-    if (btnFs) btnFs.title = compact ? "Agrandir (mode normal)" : "Réduire (mode floater)";
+    if (btnFs) btnFs.title = compact ? window.I18n.t("replay.compact.enlarge") : window.I18n.t("replay.compact.reduce");
   }
 
   function _tickPlay() {
@@ -611,7 +614,7 @@
     setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
 
     if (window.OOMGuard && window.OOMGuard.showToast) {
-      window.OOMGuard.showToast("📤 Timeline exportée en CSV (" + _timeline.length + " points).", "info");
+      window.OOMGuard.showToast(window.I18n.t("replay.export.toast", { n: _timeline.length }), "info");
     }
   }
 

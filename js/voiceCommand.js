@@ -47,6 +47,25 @@
   // Detect SpeechRecognition (préfixe webkit pour Safari iOS)
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+  // Helper i18n défensif : appelé AU RENDU. Si window.I18n absent (chargement
+  // partiel / offline cassé), retombe sur la clé brute (signal de dette visible,
+  // jamais de crash). Interpolation via params {nom}.
+  function _t(key, params) {
+    if (window.I18n && typeof window.I18n.t === "function") {
+      return window.I18n.t(key, params);
+    }
+    return key;
+  }
+
+  // Résout le libellé affiché d'une commande AU RENDU : `labelKey` (built-ins,
+  // traduit via i18n) prioritaire, sinon `label` brut (modules tiers qui
+  // enregistrent une string fixe via registerCommand).
+  function _cmdLabel(cmd) {
+    if (!cmd) return "";
+    if (cmd.labelKey) return _t(cmd.labelKey);
+    return cmd.label || "";
+  }
+
   // ============================================================
   // MODULE STATE
   // ============================================================
@@ -123,10 +142,10 @@
 
     r.onerror = function(event) {
       console.warn("[VoiceCommand] onerror :", event.error);
-      let msg = "Erreur : " + event.error;
-      if (event.error === "no-speech") msg = "Aucune parole détectée";
-      else if (event.error === "not-allowed") msg = "Permission micro refusée";
-      else if (event.error === "audio-capture") msg = "Pas de micro disponible";
+      let msg = _t("voice.err.generic", { err: event.error });
+      if (event.error === "no-speech") msg = _t("voice.err.noSpeech");
+      else if (event.error === "not-allowed") msg = _t("voice.err.notAllowed");
+      else if (event.error === "audio-capture") msg = _t("voice.err.audioCapture");
       _updateLive(msg, "error");
       setTimeout(_hideLiveOverlay, 2500);
       _setListening(false);
@@ -154,7 +173,7 @@
     if (!_recognition) _recognition = _initRecognition();
     if (!_recognition || _isListening) return;
     _showLiveOverlay();
-    _updateLive("🎤 À l'écoute…", "listening");
+    _updateLive(_t("voice.live.listening"), "listening");
     try {
       _recognition.start();
       _setListening(true);
@@ -199,7 +218,7 @@
   function _onFinalTranscript(text) {
     const match = _matchCommand(text);
     if (match) {
-      _updateLive("✅ " + (match.cmd.label || text), "success");
+      _updateLive("✅ " + (_cmdLabel(match.cmd) || text), "success");
       let isAsync = false;
       try {
         const ret = match.cmd.handler(match.matches);
@@ -211,14 +230,14 @@
         if (ret && typeof ret.then === "function") isAsync = true;
       } catch(e) {
         console.error("[VoiceCommand] handler error :", e);
-        _updateLive("❌ Erreur : " + (e.message || e), "error");
+        _updateLive(_t("voice.err.handler", { err: (e.message || e) }), "error");
         setTimeout(_hideLiveOverlay, 2500);
         stopListening();
         return;
       }
       if (!isAsync) setTimeout(_hideLiveOverlay, 1500);
     } else {
-      _updateLive("❓ Commande inconnue : « " + text + " »", "unknown");
+      _updateLive(_t("voice.live.unknown", { text: text }), "unknown");
       setTimeout(_hideLiveOverlay, 2500);
     }
     // 🩹 v1.34.3 — STOP EXPLICITE après chaque transcript final.
@@ -245,9 +264,9 @@
     btn.id        = "kta-voice-mic";
     btn.className = "kta-voice-mic";
     btn.type      = "button";
-    btn.setAttribute("aria-label", "Commandes vocales — appuyer pour parler");
+    btn.setAttribute("aria-label", _t("voice.mic.aria"));
     btn.setAttribute("aria-pressed", "false");
-    btn.title     = "Commandes vocales (appuyer pour parler, « aide » pour la liste)";
+    btn.title     = _t("voice.mic.title");
     btn.innerHTML = "🎤";
     btn.addEventListener("click", function(e) {
       e.preventDefault();
@@ -275,8 +294,8 @@
     o.className = "kta-voice-live";
     o.innerHTML =
       '<div class="kta-voice-live-icon">🎤</div>' +
-      '<div class="kta-voice-live-text" id="kta-voice-live-text">À l\'écoute…</div>' +
-      '<button class="kta-voice-live-close" type="button" id="kta-voice-live-close" aria-label="Fermer">✕</button>';
+      '<div class="kta-voice-live-text" id="kta-voice-live-text">' + _t("voice.live.listeningShort") + '</div>' +
+      '<button class="kta-voice-live-close" type="button" id="kta-voice-live-close" aria-label="' + _t("voice.live.closeAria") + '">✕</button>';
     document.documentElement.appendChild(o);
     _liveOverlay = o;
     document.getElementById("kta-voice-live-close").addEventListener("click", function() {
@@ -339,7 +358,7 @@
     let listHtml = '<ul class="kta-voice-aide-list">';
     _commands.forEach(function(c) {
       listHtml += '<li>' +
-                    '<strong>' + (c.label || "(sans label)") + '</strong>' +
+                    '<strong>' + (_cmdLabel(c) || _t("voice.aide.noLabel")) + '</strong>' +
                     '<span class="kta-voice-aide-patterns">' + _patternsToHtml(c.patterns) + '</span>' +
                   '</li>';
     });
@@ -348,18 +367,16 @@
     m.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:560px;">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🎤 Commandes vocales disponibles</span>' +
+          '<span class="kta-readme-modal-titre">' + _t("voice.aide.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-voice-aide-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           '<p style="font-size:13px; color:#c8d0e0; line-height:1.6; margin-top:0;">' +
-            'Appuie sur le bouton 🎤 (en bas à droite) puis prononce une commande. ' +
-            'L\'app affiche en temps réel ce qu\'elle comprend.' +
+            _t("voice.aide.intro") +
           '</p>' +
           listHtml +
           '<p style="font-size:11.5px; color:#8892a4; font-style:italic; margin-top:14px; line-height:1.5;">' +
-            'Astuce : les modules tiers peuvent ajouter leurs commandes via ' +
-            '<code>window.VoiceCommand.registerCommand({...})</code>.' +
+            _t("voice.aide.hint") +
           '</p>' +
         '</div>' +
       '</div>';
@@ -411,7 +428,7 @@
         "rapproche", "rapprocher", "plus près", "approcher",
         "augmente le zoom", "augmenter le zoom", "monte le zoom"
       ],
-      label:    "Zoom avant",
+      labelKey: "voice.cmd.zoomIn",
       handler:  function() { if (window.map) window.map.zoomIn(); }
     });
     registerCommand({
@@ -420,7 +437,7 @@
         "diminuer", "diminue le zoom", "éloigne", "éloigner",
         "plus loin", "moins de zoom", "baisse le zoom", "baisser le zoom"
       ],
-      label:    "Zoom arrière",
+      labelKey: "voice.cmd.zoomOut",
       handler:  function() { if (window.map) window.map.zoomOut(); }
     });
     registerCommand({
@@ -430,7 +447,7 @@
         "vue large", "vue complète", "ramène la vue", "centre la carte",
         "centrer la carte"
       ],
-      label:    "Centrer la vue",
+      labelKey: "voice.cmd.center",
       handler:  function() {
         if (window.map && window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.convertCoord) {
           const W = window.PLAN_CONFIG.plan.imageWidth;
@@ -450,7 +467,7 @@
         "où est", "où sont", "find", "ouvre la barre de recherche",
         "lance la recherche", "lancer la recherche"
       ],
-      label:    "Ouvrir recherche",
+      labelKey: "voice.cmd.search",
       handler:  function() {
         if (typeof window.ouvrirRecherche === "function") window.ouvrirRecherche();
       }
@@ -464,7 +481,7 @@
         "place point", "place un point", "marquer point", "marquer ici",
         "ajouter un point", "mets un point", "met un point", "pose un point"
       ],
-      label:    "Ajouter point au centre",
+      labelKey: "voice.cmd.addPoint",
       handler:  function() {
         if (typeof window.ajouterPointEditor === "function" && window.map) {
           const center = window.map.getCenter();
@@ -500,7 +517,7 @@
       patterns: [
         /(?:aller\s+(?:à|a)|va\s+(?:à|a)|vas\s+(?:à|a)|emmène[-\s]?moi\s+(?:à|a)|emmene[-\s]?moi\s+(?:à|a)|guide[-\s]?moi\s+(?:vers|à|a)|naviguer\s+vers|navigue\s+vers|itin[ée]raire\s+(?:vers|jusqu[' ]à)|iti\s+vers|go\s+to|trace\s+moi\s+vers|trace\s+itin[ée]raire\s+vers)\s+(.+)/i
       ],
-      label:    "Itinéraire vers POI",
+      labelKey: "voice.cmd.route",
       handler:  function(matches) {
         // Le handler retourne une Promise → _onFinalTranscript skip auto-hide
         return (async function() {
@@ -508,14 +525,14 @@
           // Nettoie ponctuation finale ("aller à puits 25." → "puits 25")
           const query = rawQuery.replace(/[.?!,;:]+$/, "").trim();
           if (!query) {
-            _updateLive("❓ Précise une destination", "unknown");
+            _updateLive(_t("voice.route.noDest"), "unknown");
             setTimeout(_hideLiveOverlay, 2000);
             return;
           }
-          _updateLive("🔍 Recherche « " + query + " »…", "interim");
+          _updateLive(_t("voice.route.searching", { q: query }), "interim");
 
           if (!window.SearchPoints || typeof window.SearchPoints.findByQuery !== "function") {
-            _updateLive("❌ Module recherche indisponible", "error");
+            _updateLive(_t("voice.route.noSearchModule"), "error");
             setTimeout(_hideLiveOverlay, 2500);
             return;
           }
@@ -525,13 +542,13 @@
             results = await window.SearchPoints.findByQuery(query);
           } catch(e) {
             console.warn("[VoiceCommand] findByQuery KO :", e);
-            _updateLive("❌ Erreur recherche : " + (e.message || e), "error");
+            _updateLive(_t("voice.route.searchErr", { err: (e.message || e) }), "error");
             setTimeout(_hideLiveOverlay, 2500);
             return;
           }
 
           if (!results || results.length === 0) {
-            _updateLive("❓ « " + query + " » introuvable", "unknown");
+            _updateLive(_t("voice.route.notFound", { q: query }), "unknown");
             setTimeout(_hideLiveOverlay, 2500);
             return;
           }
@@ -544,7 +561,7 @@
           const x = first.x, y = first.y;
 
           if (typeof x !== "number" || typeof y !== "number") {
-            _updateLive("❌ Coordonnées POI invalides : " + nom, "error");
+            _updateLive(_t("voice.route.badCoords", { nom: nom }), "error");
             setTimeout(_hideLiveOverlay, 2500);
             return;
           }
@@ -554,25 +571,26 @@
                              ? window.getTrackingPosition()
                              : null;
           if (!trackerPos || typeof trackerPos.x !== "number") {
-            _updateLive("⚠️ Active d'abord le tracker GPS pour calculer un itinéraire", "error");
+            _updateLive(_t("voice.route.noTracker"), "error");
             setTimeout(_hideLiveOverlay, 3500);
             return;
           }
 
           if (typeof window.itineraireYAller !== "function") {
-            _updateLive("❌ Module itinéraire indisponible", "error");
+            _updateLive(_t("voice.route.noRouteModule"), "error");
             setTimeout(_hideLiveOverlay, 2500);
             return;
           }
 
-          _updateLive("🧭 Itinéraire vers " + nom + " (" +
-                      results.length + " résultat" + (results.length > 1 ? "s" : "") + ")",
-                      "success");
+          const countTxt = _t(results.length > 1 ? "voice.route.resultCountMany"
+                                                  : "voice.route.resultCountOne",
+                              { n: results.length });
+          _updateLive(_t("voice.route.going", { dest: nom, count: countTxt }), "success");
           try {
             window.itineraireYAller(x, y, nom);
           } catch(e) {
             console.error("[VoiceCommand] itineraireYAller KO :", e);
-            _updateLive("❌ Calcul itinéraire KO : " + (e.message || e), "error");
+            _updateLive(_t("voice.route.calcErr", { err: (e.message || e) }), "error");
             setTimeout(_hideLiveOverlay, 2500);
             return;
           }
@@ -590,7 +608,7 @@
         "lance le tracker", "lance tracker", "lancer le tracker",
         "suivi on", "suivi marche", "active le suivi"
       ],
-      label:    "Démarrer tracker",
+      labelKey: "voice.cmd.trackerStart",
       handler:  function() {
         if (typeof window.startTracking === "function") window.startTracking();
       }
@@ -605,7 +623,7 @@
         "stop suivi", "suivi off", "suivi stop", "couper tracker", "coupe tracker",
         "coupe le tracker"
       ],
-      label:    "Arrêter tracker",
+      labelKey: "voice.cmd.trackerStop",
       handler:  function() {
         if (typeof window.stopTracking === "function") window.stopTracking();
       }
@@ -619,7 +637,7 @@
         "ouvre l'urgence", "urgence", "alarme", "alerte", "sos",
         "appelle à l'aide", "appel à l'aide"
       ],
-      label:    "Mode urgence",
+      labelKey: "voice.cmd.emergency",
       handler:  function() {
         if (window.EmergencyMode && typeof window.EmergencyMode.activer === "function") {
           window.EmergencyMode.activer();
@@ -633,7 +651,7 @@
         "active secours", "activer secours", "active le secours", "activer le secours",
         "secours", "secourir"
       ],
-      label:    "Mode secours",
+      labelKey: "voice.cmd.rescue",
       handler:  function() {
         if (window.SecoursMode && typeof window.SecoursMode.ouvrir === "function") {
           window.SecoursMode.ouvrir();
@@ -648,7 +666,7 @@
         "passe en clair", "passer en clair", "mode jour", "thème jour",
         "passe en thème clair", "active mode clair", "clair"
       ],
-      label:    "Thème clair",
+      labelKey: "voice.cmd.themeLight",
       handler:  function() {
         if (window.ThemeManager && typeof window.ThemeManager.setTheme === "function") {
           window.ThemeManager.setTheme("light");
@@ -662,7 +680,7 @@
         "mode nuit", "thème nuit", "passe en thème sombre",
         "active mode sombre", "sombre"
       ],
-      label:    "Thème sombre",
+      labelKey: "voice.cmd.themeDark",
       handler:  function() {
         if (window.ThemeManager && typeof window.ThemeManager.setTheme === "function") {
           window.ThemeManager.setTheme("dark");
@@ -680,7 +698,7 @@
         "que puis-je dire", "que peut-on dire", "commandes disponibles",
         "show help", "help"
       ],
-      label:    "Aide commandes",
+      labelKey: "voice.cmd.help",
       handler:  function() { _afficherAideModale(); }
     });
     registerCommand({
@@ -689,7 +707,7 @@
         "tais-toi", "tais toi", "chut", "silence",
         "arrête l'écoute", "arrêter l'écoute", "stop écoute"
       ],
-      label:    "Stop écoute",
+      labelKey: "voice.cmd.stop",
       handler:  function() { stopListening(); }
     });
     registerCommand({
@@ -699,7 +717,7 @@
         "ferme la modale", "fermer la modale", "fermer cette fenêtre",
         "annuler modale", "quitter modale", "quitte la modale"
       ],
-      label:    "Fermer (Escape)",
+      labelKey: "voice.cmd.close",
       handler:  function() {
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
       }
@@ -715,7 +733,7 @@
         "où est la sortie", "ou est la sortie", "sors", "sortir d'ici",
         "urgence", "au secours sortie", "issue", "issue de secours"
       ],
-      label:    "Mode Sortie d'urgence",
+      labelKey: "voice.cmd.exit",
       handler:  function() {
         if (window.SortieUrgence && typeof window.SortieUrgence.declencher === "function") {
           window.SortieUrgence.declencher();
