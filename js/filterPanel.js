@@ -355,11 +355,11 @@
   function _renderTagsSection() {
     const tags = _enumerateTags();
     if (tags.length === 0) {
-      return '<div class="kta-fp-section-empty">Aucun point dans cette session.</div>';
+      return '<div class="kta-fp-section-empty">' + _escHtml(window.I18n.t("filter.empty.points")) + '</div>';
     }
     let html = '<div class="kta-fp-row-actions">' +
-                 '<button class="kta-fp-mini-btn" data-action="show-all" data-set="tags">👁️ Tout</button>' +
-                 '<button class="kta-fp-mini-btn" data-action="hide-all" data-set="tags">🚫 Aucun</button>' +
+                 '<button class="kta-fp-mini-btn" data-action="show-all" data-set="tags">' + window.I18n.t("filter.action.showAll") + '</button>' +
+                 '<button class="kta-fp-mini-btn" data-action="hide-all" data-set="tags">' + window.I18n.t("filter.action.hideAll") + '</button>' +
                '</div>';
     html += '<div class="kta-fp-chips-grid">';
     tags.forEach(function(t) {
@@ -384,7 +384,7 @@
     const counts = _enumerateTypes(category);
     const universe = Object.keys(counts);
     if (universe.length === 0) {
-      return '<div class="kta-fp-section-empty">Aucun élément dans cette session.</div>';
+      return '<div class="kta-fp-section-empty">' + _escHtml(window.I18n.t("filter.empty.items")) + '</div>';
     }
     // Tri : builtin en premier dans l'ordre déclaré, puis customs alphabétique
     const sortedKeys = [];
@@ -394,8 +394,8 @@
             .forEach(function(t) { sortedKeys.push(t); });
 
     let html = '<div class="kta-fp-row-actions">' +
-                 '<button class="kta-fp-mini-btn" data-action="show-all" data-set="' + setName + '">👁️ Tout</button>' +
-                 '<button class="kta-fp-mini-btn" data-action="hide-all" data-set="' + setName + '">🚫 Aucun</button>' +
+                 '<button class="kta-fp-mini-btn" data-action="show-all" data-set="' + setName + '">' + window.I18n.t("filter.action.showAll") + '</button>' +
+                 '<button class="kta-fp-mini-btn" data-action="hide-all" data-set="' + setName + '">' + window.I18n.t("filter.action.hideAll") + '</button>' +
                '</div>';
     html += '<div class="kta-fp-chips-grid">';
     const lcCat = (category === "roads") ? "traces" : category;
@@ -433,7 +433,7 @@
   function _renderImageLayersSection() {
     const pc = window.PLAN_CONFIG;
     if (!pc || !Array.isArray(pc.imageLayers) || pc.imageLayers.length === 0) {
-      return '<div class="kta-fp-section-empty">Aucun calque image.</div>';
+      return '<div class="kta-fp-section-empty">' + _escHtml(window.I18n.t("filter.empty.imageLayers")) + '</div>';
     }
     let html = '<div class="kta-fp-list">';
     pc.imageLayers.forEach(function(lc, idx) {
@@ -453,7 +453,7 @@
                           return entry && entry.overlay && window.map && window.map.hasLayer(entry.overlay);
                         })()
                       : (lc.visible !== false);
-      const label = lc.label || lc.id || ("Calque " + idx);
+      const label = lc.label || lc.id || window.I18n.t("filter.layer.default", { idx: idx });
       html += '<label class="kta-fp-row-cb">' +
                 '<input type="checkbox" data-img-layer="' + _escAttr(layerId) + '"' + (visible ? " checked" : "") + '>' +
                 '<span>🖼️ ' + _escHtml(label) + '</span>' +
@@ -467,7 +467,7 @@
     const groups = window.dataLayerGroups || {};
     const ids = Object.keys(groups);
     if (ids.length === 0) {
-      return '<div class="kta-fp-section-empty">Aucun calque de données.</div>';
+      return '<div class="kta-fp-section-empty">' + _escHtml(window.I18n.t("filter.empty.dataLayers")) + '</div>';
     }
     const pc = window.PLAN_CONFIG;
     const cfg = (pc && Array.isArray(pc.dataLayers)) ? pc.dataLayers : [];
@@ -475,7 +475,7 @@
     ids.forEach(function(id) {
       const visible = window.map && window.map.hasLayer(groups[id]);
       const lc = cfg.find(function(d) { return d.id === id; });
-      const label = (lc && lc.label) || (id === "editor" ? "Mes annotations" : id);
+      const label = (lc && lc.label) || (id === "editor" ? window.I18n.t("filter.dataLayer.editor") : id);
       html += '<label class="kta-fp-row-cb">' +
                 '<input type="checkbox" data-data-layer="' + _escAttr(id) + '"' + (visible ? " checked" : "") + '>' +
                 '<span>📊 ' + _escHtml(label) + '</span>' +
@@ -488,7 +488,7 @@
   function _renderLevelsSection() {
     const isML = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     if (!isML) {
-      return '<div class="kta-fp-section-empty">Plan mono-niveau — ce filtre est désactivé.</div>';
+      return '<div class="kta-fp-section-empty">' + _escHtml(window.I18n.t("filter.levels.mono")) + '</div>';
     }
     const avail = Array.isArray(window.APP_CONFIG.availableLevels)
                   ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; })
@@ -496,10 +496,10 @@
     const visible = Array.isArray(window.APP_CONFIG.visibleLevels) ? window.APP_CONFIG.visibleLevels : [0];
     const active  = (typeof window.APP_CONFIG.activeLevel === "number") ? window.APP_CONFIG.activeLevel : 0;
     let html = '<div class="kta-fp-lvl-active">';
-    html += '<span class="kta-fp-sublabel">Niveau actif (dessin)</span>';
+    html += '<span class="kta-fp-sublabel">' + _escHtml(window.I18n.t("filter.levels.activeLabel")) + '</span>';
     html += '<div class="kta-fp-lvl-segmented">';
     avail.forEach(function(lvl) {
-      const lblTxt = (lvl === 0) ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl));
+      const lblTxt = (lvl === 0) ? window.I18n.t("filter.levels.ground") : (lvl > 0 ? "+" + lvl : String(lvl));
       const isActive = (lvl === active);
       html += '<button type="button" class="kta-fp-lvl-btn ' + (isActive ? "kta-fp-lvl-btn-active" : "") +
               '" data-lvl-active="' + lvl + '">' + lblTxt + '</button>';
@@ -507,18 +507,18 @@
     html += '</div></div>';
 
     html += '<div class="kta-fp-lvl-visible">';
-    html += '<span class="kta-fp-sublabel">Niveaux visibles</span>';
+    html += '<span class="kta-fp-sublabel">' + _escHtml(window.I18n.t("filter.levels.visibleLabel")) + '</span>';
     html += '<div class="kta-fp-row-actions">' +
-              '<button class="kta-fp-mini-btn" data-action="lvl-all">👁️ Tous</button>' +
-              '<button class="kta-fp-mini-btn" data-action="lvl-active-only">🎯 Actif seul</button>' +
+              '<button class="kta-fp-mini-btn" data-action="lvl-all">' + window.I18n.t("filter.levels.allBtn") + '</button>' +
+              '<button class="kta-fp-mini-btn" data-action="lvl-active-only">' + window.I18n.t("filter.levels.activeOnlyBtn") + '</button>' +
             '</div>';
     html += '<div class="kta-fp-chips-grid">';
     avail.forEach(function(lvl) {
-      const lblTxt = (lvl === 0) ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl));
+      const lblTxt = (lvl === 0) ? window.I18n.t("filter.levels.ground") : (lvl > 0 ? "+" + lvl : String(lvl));
       const isVis = visible.indexOf(lvl) >= 0;
       html += '<label class="kta-fp-chip ' + (isVis ? "" : "kta-fp-chip-off") + '">' +
                 '<input type="checkbox" data-lvl-visible="' + lvl + '"' + (isVis ? " checked" : "") + '>' +
-                '<span class="kta-fp-chip-label">Niv ' + lblTxt + '</span>' +
+                '<span class="kta-fp-chip-label">' + window.I18n.t("filter.levels.chip", { lvl: lblTxt }) + '</span>' +
               '</label>';
     });
     html += '</div></div>';
@@ -537,14 +537,14 @@
     _modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-fp-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">≡ Filtres d\'affichage</span>' +
+          '<span class="kta-readme-modal-titre">' + window.I18n.t("filter.modal.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-fp-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-fp-corps">' +
           _renderAllSections() +
         '</div>' +
         '<div class="kta-fp-footer">' +
-          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-fp-reset-all">🔄 Tout afficher</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-fp-reset-all">' + window.I18n.t("filter.footer.resetAll") + '</button>' +
           '<span class="kta-fp-status" id="kta-fp-status"></span>' +
         '</div>' +
       '</div>';
@@ -554,13 +554,13 @@
   }
 
   function _renderAllSections() {
-    return _section("🖼️ Calques d'image",       "img",     _renderImageLayersSection()) +
-           _section("📊 Calques de données",     "data",    _renderDataLayersSection()) +
-           _section("🏗️ Niveaux M-LVL",          "lvl",     _renderLevelsSection()) +
-           _section("🏷️ Tags des points",         "tags",    _renderTagsSection()) +
-           _section("🛣️ Types de tracés",         "roads",   _renderTypesSection("roads",      "roadTypes",   ["principal", "secondaire", "chemin", "jonction"])) +
-           _section("⬛ Types de zones",          "zones",   _renderTypesSection("zones",      "zoneTypes",   ["eau", "remblais", "effondrement", "inaccessible"])) +
-           _section("🏛️ Types de structures",    "structs", _renderTypesSection("structures", "structTypes", ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]));
+    return _section(window.I18n.t("filter.section.imageLayers"),  "img",     _renderImageLayersSection()) +
+           _section(window.I18n.t("filter.section.dataLayers"),   "data",    _renderDataLayersSection()) +
+           _section(window.I18n.t("filter.section.levels"),       "lvl",     _renderLevelsSection()) +
+           _section(window.I18n.t("filter.section.tags"),         "tags",    _renderTagsSection()) +
+           _section(window.I18n.t("filter.section.roadTypes"),    "roads",   _renderTypesSection("roads",      "roadTypes",   ["principal", "secondaire", "chemin", "jonction"])) +
+           _section(window.I18n.t("filter.section.zoneTypes"),    "zones",   _renderTypesSection("zones",      "zoneTypes",   ["eau", "remblais", "effondrement", "inaccessible"])) +
+           _section(window.I18n.t("filter.section.structTypes"),  "structs", _renderTypesSection("structures", "structTypes", ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]));
   }
 
   function _section(title, id, contentHtml) {
@@ -748,15 +748,15 @@
     if (!el) return;
     const f = window._ktaRuntimeFilters;
     const active = [];
-    if (f.tags        !== null) active.push("tags");
-    if (f.roadTypes   !== null) active.push("tracés");
-    if (f.zoneTypes   !== null) active.push("zones");
-    if (f.structTypes !== null) active.push("structures");
+    if (f.tags        !== null) active.push(window.I18n.t("filter.status.tags"));
+    if (f.roadTypes   !== null) active.push(window.I18n.t("filter.status.roads"));
+    if (f.zoneTypes   !== null) active.push(window.I18n.t("filter.status.zones"));
+    if (f.structTypes !== null) active.push(window.I18n.t("filter.status.structs"));
     if (active.length === 0) {
-      el.textContent = "Aucun filtre actif";
+      el.textContent = window.I18n.t("filter.status.none");
       el.style.color = "#8892a4";
     } else {
-      el.textContent = "Filtres actifs : " + active.join(", ");
+      el.textContent = window.I18n.t("filter.status.active", { list: active.join(", ") });
       el.style.color = "#f4c542";
     }
   }

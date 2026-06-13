@@ -138,44 +138,44 @@
     header.id = "kta-refonte-header";
     header.className = "kta-refonte-header";
     header.innerHTML =
-      '<button class="kta-refonte-header-btn kta-refonte-header-home" id="kta-refonte-home" title="Retour à l\'accueil / Changer de plan" aria-label="Retour à l\'accueil">' +
+      '<button class="kta-refonte-header-btn kta-refonte-header-home" id="kta-refonte-home" title="' + window.I18n.t("ui.refonte.btn_home_title") + '" aria-label="' + window.I18n.t("ui.refonte.btn_home_aria") + '">' +
         '<img src="icon/mkm-full.png" alt="" class="kta-refonte-header-home-img" draggable="false">' +
       '</button>' +
       '<div class="kta-refonte-header-title-wrap">' +
-        '<button class="kta-refonte-header-title" id="kta-refonte-title-btn" title="Changer de plan">' +
+        '<button class="kta-refonte-header-title" id="kta-refonte-title-btn" title="' + window.I18n.t("ui.refonte.btn_switch_plan_title") + '">' +
           '<strong id="kta-refonte-plan-name">—</strong>' +
           '<span id="kta-refonte-plan-version"></span>' +
           '<span class="kta-refonte-header-chevron">▾</span>' +
         '</button>' +
       '</div>' +
-      '<button class="kta-refonte-header-btn kta-refonte-header-counters" id="kta-refonte-counters-btn" title="Résumé de la session" aria-label="Résumé">' +
+      '<button class="kta-refonte-header-btn kta-refonte-header-counters" id="kta-refonte-counters-btn" title="' + window.I18n.t("ui.refonte.btn_summary_title") + '" aria-label="' + window.I18n.t("ui.refonte.btn_summary_aria") + '">' +
         // 🆕 v1.11.1 V2 (KARMA "trop d\'icônes sur mobile") : chip résumé
         // unique 📊 visible UNIQUEMENT en mobile portrait. Sur desktop +
         // tablette + mobile landscape, les 5 chips individuels (points,
         // tracés, zones, structures, photos) + 🪫 batterie restent
         // affichés. CSS @media (max-width: 480px) bascule l\'affichage.
-        '<span class="kta-refonte-counter kta-refonte-counter-summary" id="kta-refonte-counter-summary" title="Détails de la session — cliquer pour ouvrir">' +
+        '<span class="kta-refonte-counter kta-refonte-counter-summary" id="kta-refonte-counter-summary" title="' + window.I18n.t("ui.refonte.counter_summary_title") + '">' +
           '<span class="kta-refonte-counter-icon">📊</span><span class="kta-refonte-counter-val" id="kta-refonte-counter-summary-val">·</span>' +
         '</span>' +
-        '<span class="kta-refonte-counter" id="kta-refonte-counter-points" title="Points">' +
+        '<span class="kta-refonte-counter" id="kta-refonte-counter-points" title="' + window.I18n.t("ui.refonte.counter_points_title") + '">' +
           '<span class="kta-refonte-counter-icon">📍</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
-        '<span class="kta-refonte-counter" id="kta-refonte-counter-roads" title="Tracés">' +
+        '<span class="kta-refonte-counter" id="kta-refonte-counter-roads" title="' + window.I18n.t("ui.refonte.counter_roads_title") + '">' +
           '<span class="kta-refonte-counter-icon">🛣</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
-        '<span class="kta-refonte-counter" id="kta-refonte-counter-zones" title="Zones">' +
+        '<span class="kta-refonte-counter" id="kta-refonte-counter-zones" title="' + window.I18n.t("ui.refonte.counter_zones_title") + '">' +
           '<span class="kta-refonte-counter-icon">⬛</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
         // 🆕 v1.9.3-A1.a : 4e compteur pour les structures (piliers + murs).
         // Si trop chargé visuellement en landscape phone, on pourra masquer
         // ce compteur sur petits écrans via CSS plus tard.
-        '<span class="kta-refonte-counter" id="kta-refonte-counter-structures" title="Structures (piliers + murs)">' +
+        '<span class="kta-refonte-counter" id="kta-refonte-counter-structures" title="' + window.I18n.t("ui.refonte.counter_structures_title") + '">' +
           '<span class="kta-refonte-counter-icon">🏛️</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
         // 🆕 v1.9.3-B1d+ : 5e compteur pour les photos. Lecture async IDB
         // dans updateCompteurs. Masqué via kta-refonte-counter-empty si 0
         // (cohérent avec les autres compteurs à 0).
-        '<span class="kta-refonte-counter" id="kta-refonte-counter-photos" title="Photos attachées aux points">' +
+        '<span class="kta-refonte-counter" id="kta-refonte-counter-photos" title="' + window.I18n.t("ui.refonte.counter_photos_title") + '">' +
           '<span class="kta-refonte-counter-icon">📸</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
       '</button>' +
@@ -190,7 +190,7 @@
       // 2 onglets (📝 Note libre + 📚 PDF embarqué/session). Toujours
       // visible (pas de gating sur API support comme la batterie).
       // Cf js/modeHistoire.js.
-      '<span class="kta-refonte-counter kta-refonte-counter-histoire" id="kta-refonte-counter-histoire" title="Mode Histoire — note libre + PDF" role="button" tabindex="0">' +
+      '<span class="kta-refonte-counter kta-refonte-counter-histoire" id="kta-refonte-counter-histoire" title="' + window.I18n.t("ui.refonte.counter_histoire_title") + '" role="button" tabindex="0">' +
         '<span class="kta-refonte-counter-icon">📖</span>' +
       '</span>' +
       // 🆕 v1.39.0 — Bouton 🌍 Vue OSM. Visible UNIQUEMENT si le plan a un
@@ -199,16 +199,16 @@
       // 🎨 v1.39.8 — Emoji change de 🗺️ vers 🌍 pour éviter le conflit visuel
       // avec les boutons Légende (sidebar gauche) et Itinéraire (groupe Iti)
       // qui utilisent déjà 🗺️. Le globe 🌍 colle bien à OSM (surface monde).
-      '<span class="kta-refonte-counter kta-refonte-counter-osm" id="kta-refonte-counter-osm" title="Vue OSM — plan au-dessus d\'OpenStreetMap" role="button" tabindex="0" style="display:none;">' +
+      '<span class="kta-refonte-counter kta-refonte-counter-osm" id="kta-refonte-counter-osm" title="' + window.I18n.t("ui.refonte.counter_osm_title") + '" role="button" tabindex="0" style="display:none;">' +
         '<span class="kta-refonte-counter-icon">🌍</span>' +
       '</span>' +
       // 🆕 v1.35.0 — Bouton 🚨 Mode Sortie d\'urgence. Click ouvre la modale
       // qui identifie la sortie la plus proche (pathfinder + tags
       // Puits/Escalier/Cavage ouvert ou tag "entrée"). Cf js/sortieUrgence.js.
-      '<span class="kta-refonte-counter kta-refonte-counter-sortie" id="kta-refonte-counter-sortie" title="Sortie d\'urgence — trouver la plus proche" role="button" tabindex="0">' +
+      '<span class="kta-refonte-counter kta-refonte-counter-sortie" id="kta-refonte-counter-sortie" title="' + window.I18n.t("ui.refonte.counter_sortie_title") + '" role="button" tabindex="0">' +
         '<span class="kta-refonte-counter-icon">🚨</span>' +
       '</span>' +
-      '<span class="kta-refonte-counter kta-refonte-counter-battery kta-refonte-header-battery" id="kta-refonte-counter-battery" title="Batterie" style="display:none;">' +
+      '<span class="kta-refonte-counter kta-refonte-counter-battery kta-refonte-header-battery" id="kta-refonte-counter-battery" title="' + window.I18n.t("ui.refonte.counter_battery_title") + '" style="display:none;">' +
         '<span class="kta-refonte-counter-icon" id="kta-refonte-battery-emoji">🔋</span><span class="kta-refonte-counter-val" id="kta-refonte-battery-val">—</span>' +
       '</span>';
 
@@ -376,7 +376,7 @@
     const nameEl = document.getElementById("kta-refonte-plan-name");
     const verEl  = document.getElementById("kta-refonte-plan-version");
     if (nameEl && pc && pc.plan) {
-      nameEl.textContent = pc.plan.name || "Plan";
+      nameEl.textContent = pc.plan.name || window.I18n.t("ui.refonte.label_plan_default");
     }
     if (verEl && pc && pc.plan && pc.plan.version) {
       verEl.textContent = pc.plan.version;
@@ -491,7 +491,7 @@
         // au clic on rouvre la modale itinéraire (équivalent ancien comportement
         // du label .kta-iti-distance en bottom-left qui était cliquable et qu'on
         // a masqué en mode refonte). Cursor pointer + title via CSS.
-        '<span class="kta-refonte-stat kta-refonte-stat-empty kta-refonte-stat-clickable" id="kta-refonte-stat-iti" title="Cliquer pour ouvrir le menu Itinéraire">' +
+        '<span class="kta-refonte-stat kta-refonte-stat-empty kta-refonte-stat-clickable" id="kta-refonte-stat-iti" title="' + window.I18n.t("ui.refonte.stat_iti_title") + '">' +
           '<span class="kta-refonte-stat-icon">🗺️</span><span class="kta-refonte-stat-val">—</span>' +
         '</span>' +
         // 🆕 v1.8.1-refonte-14 : tracker passé en icône BOUSSOLE 🧭 (au lieu
@@ -510,7 +510,7 @@
         // (contexte panique = on veut le voir en grand). Pas de redondance
         // dans la barre status.
       '</div>' +
-      '<button class="kta-refonte-statusbar-toggle" id="kta-refonte-statusbar-toggle" title="Réduire / agrandir la barre" aria-label="Toggle status bar">▾</button>';
+      '<button class="kta-refonte-statusbar-toggle" id="kta-refonte-statusbar-toggle" title="' + window.I18n.t("ui.refonte.statusbar_toggle_title") + '" aria-label="' + window.I18n.t("ui.refonte.statusbar_toggle_aria") + '">▾</button>';
 
     document.body.appendChild(bar);
     _statusBarEl = bar;
@@ -670,7 +670,7 @@
     const toggleBtn = document.getElementById("kta-refonte-statusbar-toggle");
     if (toggleBtn) {
       toggleBtn.textContent = _statusBarOpen ? "▾" : "▴";
-      toggleBtn.title = _statusBarOpen ? "Réduire la barre" : "Agrandir la barre";
+      toggleBtn.title = _statusBarOpen ? window.I18n.t("ui.refonte.statusbar_collapse") : window.I18n.t("ui.refonte.statusbar_expand");
     }
   }
 
@@ -779,8 +779,8 @@
         valEl.textContent = trackerActif ? "ON" : "OFF";
       }
       trackerEl.title = trackerActif
-        ? "Tracking GPS actif (cliquer pour gérer)"
-        : "Tracking GPS désactivé";
+        ? window.I18n.t("ui.refonte.tracker_on_title")
+        : window.I18n.t("ui.refonte.tracker_off_title");
     }
   }
 
@@ -820,8 +820,9 @@
 
     const isUnavailable = false;  // arrivée ici = état dispo
     const titleText = isUnavailable
-      ? "Batterie : non supporté par ce navigateur (Safari/Firefox récents)"
-      : "Batterie : " + state.label + (state.charging ? " — en charge" : "");
+      ? window.I18n.t("ui.refonte.battery_unavailable_title")
+      : window.I18n.t("ui.refonte.battery_title", { label: state.label }) +
+        (state.charging ? window.I18n.t("ui.refonte.battery_charging_suffix") : "");
 
     // Header chip (à droite du compteur 📸)
     const chip = document.getElementById("kta-refonte-counter-battery");
@@ -1146,24 +1147,29 @@
   // Génère le HTML du bloc "📊 Stats agrégées" — placé en TÊTE de la modale
   function _genererStatsAggregeesHTML(stats, multiLevel) {
     let h = '<div class="kta-refonte-stats-aggr">';
-    h += '<div class="kta-refonte-stats-aggr-titre">📊 Stats agrégées</div>';
+    h += '<div class="kta-refonte-stats-aggr-titre">📊 ' + window.I18n.t("ui.refonte.stats_aggr_titre") + '</div>';
 
     // Durée
     h += '<div class="kta-refonte-stats-row">';
-    h += '<span class="kta-refonte-stats-label">⏱️ Durée</span>';
+    h += '<span class="kta-refonte-stats-label">⏱️ ' + window.I18n.t("ui.refonte.stats_duration") + '</span>';
     h += '<span class="kta-refonte-stats-val">' + _formatDurationStats(stats.session.durationMs) + '</span>';
     h += '</div>';
 
     // 🛣 Tracés total + breakdown
     if (stats.roads.total > 0) {
       h += '<div class="kta-refonte-stats-row">';
-      h += '<span class="kta-refonte-stats-label">🛣 Tracés</span>';
-      h += '<span class="kta-refonte-stats-val"><strong>' + _fdistStats(stats.roads.distM) + '</strong> sur ' + stats.roads.total + ' tracé' + (stats.roads.total > 1 ? 's' : '') + '</span>';
+      h += '<span class="kta-refonte-stats-label">🛣 ' + window.I18n.t("ui.refonte.section_roads") + '</span>';
+      h += '<span class="kta-refonte-stats-val"><strong>' + _fdistStats(stats.roads.distM) + '</strong> ' + window.I18n.t("ui.refonte.stats_on_n_roads", { n: stats.roads.total }) + '</span>';
       h += '</div>';
       // Barres par type
       const totalRoadDist = stats.roads.distM || 1;
       const ROAD_COLORS = { principal: "#00ff00", secondaire: "#b000ff", chemin: "#ffff00", jonction: "#ff4ecb" };
-      const ROAD_LABELS = { principal: "Principal", secondaire: "Secondaire", chemin: "Chemin", jonction: "Jonction" };
+      const ROAD_LABELS = {
+        principal:  window.I18n.t("ui.refonte.label_road_principal"),
+        secondaire: window.I18n.t("ui.refonte.label_road_secondaire"),
+        chemin:     window.I18n.t("ui.refonte.label_road_chemin"),
+        jonction:   window.I18n.t("ui.refonte.label_road_jonction")
+      };
       Object.keys(stats.roads.byType).forEach(function(t) {
         const s = stats.roads.byType[t];
         const pct = (s.distM / totalRoadDist) * 100;
@@ -1178,12 +1184,17 @@
     // ⬛ Zones total + breakdown
     if (stats.zones.total > 0) {
       h += '<div class="kta-refonte-stats-row" style="margin-top:8px;">';
-      h += '<span class="kta-refonte-stats-label">⬛ Zones</span>';
-      h += '<span class="kta-refonte-stats-val"><strong>' + _fsurfStats(stats.zones.areaM2) + '</strong> sur ' + stats.zones.total + ' zone' + (stats.zones.total > 1 ? 's' : '') + '</span>';
+      h += '<span class="kta-refonte-stats-label">⬛ ' + window.I18n.t("ui.refonte.section_zones") + '</span>';
+      h += '<span class="kta-refonte-stats-val"><strong>' + _fsurfStats(stats.zones.areaM2) + '</strong> ' + window.I18n.t("ui.refonte.stats_on_n_zones", { n: stats.zones.total }) + '</span>';
       h += '</div>';
       const totalArea = stats.zones.areaM2 || 1;
       const ZONE_COLORS = { eau: "#3aa9e8", remblais: "#5a5a68", effondrement: "#ff3333", inaccessible: "#7a0000" };
-      const ZONE_LABELS = { eau: "Eau", remblais: "Remblais", effondrement: "Effondrement", inaccessible: "Inaccessible" };
+      const ZONE_LABELS = {
+        eau:          window.I18n.t("ui.refonte.label_zone_eau"),
+        remblais:     window.I18n.t("ui.refonte.label_zone_remblais"),
+        effondrement: window.I18n.t("ui.refonte.label_zone_effondrement"),
+        inaccessible: window.I18n.t("ui.refonte.label_zone_inaccessible")
+      };
       Object.keys(stats.zones.byType).forEach(function(t) {
         const z = stats.zones.byType[t];
         const pct = (z.areaM2 / totalArea) * 100;
@@ -1198,13 +1209,19 @@
     // 🏛️ Structures
     if (stats.structures.total > 0) {
       h += '<div class="kta-refonte-stats-row" style="margin-top:8px;">';
-      h += '<span class="kta-refonte-stats-label">🏛️ Structures</span>';
+      h += '<span class="kta-refonte-stats-label">🏛️ ' + window.I18n.t("ui.refonte.section_structures") + '</span>';
       const fronts = stats.structures.fronts_totalM;
-      const txt = stats.structures.total + ' structure' + (stats.structures.total > 1 ? 's' : '') +
-                  (fronts > 0 ? ' · fronts ' + _fdistStats(fronts) : '');
+      const txt = window.I18n.t("ui.refonte.stats_n_structures", { n: stats.structures.total }) +
+                  (fronts > 0 ? window.I18n.t("ui.refonte.stats_fronts_suffix", { dist: _fdistStats(fronts) }) : '');
       h += '<span class="kta-refonte-stats-val">' + txt + '</span>';
       h += '</div>';
-      const STRUCT_LABELS = { "pilier-1": "Pilier 1ère 🟡", "pilier-2": "Pilier 2e 🟠", "mur": "Mur 🔵", "front-1": "Front 1ère 🟨", "front-2": "Front 2e 🟧" };
+      const STRUCT_LABELS = {
+        "pilier-1": window.I18n.t("ui.refonte.label_struct_pilier1_short") + " 🟡",
+        "pilier-2": window.I18n.t("ui.refonte.label_struct_pilier2_short") + " 🟠",
+        "mur":      window.I18n.t("ui.refonte.label_struct_mur") + " 🔵",
+        "front-1":  window.I18n.t("ui.refonte.label_struct_front1_short") + " 🟨",
+        "front-2":  window.I18n.t("ui.refonte.label_struct_front2_short") + " 🟧"
+      };
       Object.keys(stats.structures.byType).forEach(function(t) {
         const s = stats.structures.byType[t];
         const detail = (t === "front-1" || t === "front-2")
@@ -1219,23 +1236,23 @@
 
     // 📸 Photos (placeholder — hydraté async dans _afficherModaleSessionDetail)
     h += '<div class="kta-refonte-stats-row" id="kta-stats-photos-row" style="margin-top:8px; display:none;">';
-    h += '<span class="kta-refonte-stats-label">📸 Photos</span>';
+    h += '<span class="kta-refonte-stats-label">📸 ' + window.I18n.t("ui.refonte.section_photos") + '</span>';
     h += '<span class="kta-refonte-stats-val" id="kta-stats-photos-val">…</span>';
     h += '</div>';
 
     // 🚶 Tracker
     if (stats.tracker.active) {
       h += '<div class="kta-refonte-stats-row" style="margin-top:8px;">';
-      h += '<span class="kta-refonte-stats-label">🚶 Tracker</span>';
-      h += '<span class="kta-refonte-stats-val">Actif · parcours ' + _fdistStats(stats.tracker.distM) + '</span>';
+      h += '<span class="kta-refonte-stats-label">🚶 ' + window.I18n.t("ui.refonte.section_tracker") + '</span>';
+      h += '<span class="kta-refonte-stats-val">' + window.I18n.t("ui.refonte.stats_tracker_active", { dist: _fdistStats(stats.tracker.distM) }) + '</span>';
       h += '</div>';
     }
 
     // 📐 Mesure de distance (polyline)
     if (stats.mesure.distance.points >= 2) {
       h += '<div class="kta-refonte-stats-row">';
-      h += '<span class="kta-refonte-stats-label">📐 Mesure distance</span>';
-      h += '<span class="kta-refonte-stats-val">' + _fdistStats(stats.mesure.distance.distM) + ' (' + stats.mesure.distance.points + ' pts)</span>';
+      h += '<span class="kta-refonte-stats-label">📐 ' + window.I18n.t("ui.refonte.stats_mesure_distance") + '</span>';
+      h += '<span class="kta-refonte-stats-val">' + _fdistStats(stats.mesure.distance.distM) + ' (' + window.I18n.t("ui.refonte.stats_n_pts", { n: stats.mesure.distance.points }) + ')</span>';
       h += '</div>';
     }
     // ⬛ Mesure de surface (polygone) — 🆕 v1.12.0-fix : 2 mesures coexistantes
@@ -1244,22 +1261,22 @@
         ? window.formatSurface(stats.mesure.surface.areaM2, 1)
         : (stats.mesure.surface.areaM2.toFixed(1) + " m²");
       h += '<div class="kta-refonte-stats-row">';
-      h += '<span class="kta-refonte-stats-label">⬛ Mesure surface</span>';
-      h += '<span class="kta-refonte-stats-val">' + surfTxt + ' (' + stats.mesure.surface.points + ' pts)</span>';
+      h += '<span class="kta-refonte-stats-label">⬛ ' + window.I18n.t("ui.refonte.stats_mesure_surface") + '</span>';
+      h += '<span class="kta-refonte-stats-val">' + surfTxt + ' (' + window.I18n.t("ui.refonte.stats_n_pts", { n: stats.mesure.surface.points }) + ')</span>';
       h += '</div>';
     }
 
     // 🏗️ Multi-niveau breakdown
     if (multiLevel && stats.byLevel) {
       h += '<div class="kta-refonte-stats-mlvl">';
-      h += '<div class="kta-refonte-stats-mlvl-titre">🏗️ Répartition par niveau</div>';
+      h += '<div class="kta-refonte-stats-mlvl-titre">🏗️ ' + window.I18n.t("ui.refonte.stats_mlvl_titre") + '</div>';
       const levels = Object.keys(stats.byLevel).map(Number).sort(function(a, b) { return a - b; });
       levels.forEach(function(lvl) {
         const b = stats.byLevel[lvl];
         const sum = b.points + b.roads + b.zones + b.structures;
         if (sum === 0) return;
         h += '<div class="kta-refonte-stats-mlvl-row">';
-        h += '<span class="kta-refonte-stats-mlvl-lbl">Niv ' + lvl + '</span>';
+        h += '<span class="kta-refonte-stats-mlvl-lbl">' + window.I18n.t("ui.refonte.label_level_short", { n: lvl }) + '</span>';
         h += '<span class="kta-refonte-stats-mlvl-val">' +
           (b.points     > 0 ? '📍' + b.points + ' ' : '') +
           (b.roads      > 0 ? '🛣' + b.roads + ' ' : '') +
@@ -1273,8 +1290,8 @@
 
     // Boutons Copier + Exporter
     h += '<div class="kta-refonte-stats-actions">';
-    h += '<button class="kta-btn kta-btn-ghost" id="kta-stats-copier" type="button">📋 Copier</button>';
-    h += '<button class="kta-btn kta-btn-ghost" id="kta-stats-exporter" type="button">📤 Exporter en TXT</button>';
+    h += '<button class="kta-btn kta-btn-ghost" id="kta-stats-copier" type="button">📋 ' + window.I18n.t("ui.refonte.btn_copy") + '</button>';
+    h += '<button class="kta-btn kta-btn-ghost" id="kta-stats-exporter" type="button">📤 ' + window.I18n.t("ui.refonte.btn_export_txt") + '</button>';
     h += '</div>';
 
     h += '</div>';  // .kta-refonte-stats-aggr
@@ -1284,14 +1301,14 @@
   // Génère un résumé TXT/MD copiable (boutons Copier + Exporter)
   function _genererStatsAggregeesTXT(stats, planName, multiLevel) {
     const lines = [];
-    lines.push("# 📊 MyKTAMap — Résumé de session");
-    if (planName) lines.push("Plan : " + planName);
-    lines.push("Date : " + new Date().toLocaleString("fr-FR"));
-    lines.push("Durée : " + _formatDurationStats(stats.session.durationMs));
+    lines.push("# 📊 " + window.I18n.t("ui.refonte.export_titre"));
+    if (planName) lines.push(window.I18n.t("ui.refonte.export_plan", { name: planName }));
+    lines.push(window.I18n.t("ui.refonte.export_date", { date: new Date().toLocaleString("fr-FR") }));
+    lines.push(window.I18n.t("ui.refonte.export_duration", { duration: _formatDurationStats(stats.session.durationMs) }));
     lines.push("");
     if (stats.roads.total > 0) {
-      lines.push("## 🛣 Tracés");
-      lines.push("Total : " + _fdistStats(stats.roads.distM) + " sur " + stats.roads.total + " tracé(s)");
+      lines.push("## 🛣 " + window.I18n.t("ui.refonte.section_roads"));
+      lines.push(window.I18n.t("ui.refonte.export_total_roads", { dist: _fdistStats(stats.roads.distM), n: stats.roads.total }));
       Object.keys(stats.roads.byType).forEach(function(t) {
         const s = stats.roads.byType[t];
         lines.push("- " + t + " : " + s.nb + " × " + _fdistStats(s.distM));
@@ -1299,8 +1316,8 @@
       lines.push("");
     }
     if (stats.zones.total > 0) {
-      lines.push("## ⬛ Zones");
-      lines.push("Total : " + _fsurfStats(stats.zones.areaM2) + " sur " + stats.zones.total + " zone(s)");
+      lines.push("## ⬛ " + window.I18n.t("ui.refonte.section_zones"));
+      lines.push(window.I18n.t("ui.refonte.export_total_zones", { surf: _fsurfStats(stats.zones.areaM2), n: stats.zones.total }));
       Object.keys(stats.zones.byType).forEach(function(t) {
         const z = stats.zones.byType[t];
         lines.push("- " + t + " : " + z.nb + " × " + _fsurfStats(z.areaM2));
@@ -1308,8 +1325,9 @@
       lines.push("");
     }
     if (stats.structures.total > 0) {
-      lines.push("## 🏛️ Structures");
-      lines.push("Total : " + stats.structures.total + (stats.structures.fronts_totalM > 0 ? " · fronts " + _fdistStats(stats.structures.fronts_totalM) : ""));
+      lines.push("## 🏛️ " + window.I18n.t("ui.refonte.section_structures"));
+      lines.push(window.I18n.t("ui.refonte.export_total_structures", { n: stats.structures.total }) +
+                 (stats.structures.fronts_totalM > 0 ? window.I18n.t("ui.refonte.stats_fronts_suffix", { dist: _fdistStats(stats.structures.fronts_totalM) }) : ""));
       Object.keys(stats.structures.byType).forEach(function(t) {
         const s = stats.structures.byType[t];
         const det = (t === "front-1" || t === "front-2")
@@ -1320,43 +1338,43 @@
       lines.push("");
     }
     if (stats.points.total > 0) {
-      lines.push("## 📍 Points");
-      lines.push("Total : " + stats.points.total);
+      lines.push("## 📍 " + window.I18n.t("ui.refonte.section_points"));
+      lines.push(window.I18n.t("ui.refonte.export_total_simple", { n: stats.points.total }));
       Object.keys(stats.points.byTag).forEach(function(tag) {
         lines.push("- " + tag + " : " + stats.points.byTag[tag]);
       });
       lines.push("");
     }
     if (stats.tracker.active) {
-      lines.push("## 🚶 Tracker");
-      lines.push("Actif · parcours " + _fdistStats(stats.tracker.distM));
+      lines.push("## 🚶 " + window.I18n.t("ui.refonte.section_tracker"));
+      lines.push(window.I18n.t("ui.refonte.stats_tracker_active", { dist: _fdistStats(stats.tracker.distM) }));
       lines.push("");
     }
     // 🆕 v1.12.0-fix : 2 mesures indépendantes — sortie séparée
     if (stats.mesure.distance.points >= 2) {
-      lines.push("## 📐 Mesure de distance");
-      lines.push(_fdistStats(stats.mesure.distance.distM) + " sur " + stats.mesure.distance.points + " points");
+      lines.push("## 📐 " + window.I18n.t("ui.refonte.export_mesure_distance_titre"));
+      lines.push(window.I18n.t("ui.refonte.export_mesure_distance", { dist: _fdistStats(stats.mesure.distance.distM), n: stats.mesure.distance.points }));
       lines.push("");
     }
     if (stats.mesure.surface.points >= 3) {
       const surfTxt = (typeof window.formatSurface === "function")
         ? window.formatSurface(stats.mesure.surface.areaM2, 1)
         : (stats.mesure.surface.areaM2.toFixed(1) + " m²");
-      lines.push("## ⬛ Mesure de surface");
-      lines.push(surfTxt + " sur " + stats.mesure.surface.points + " points");
+      lines.push("## ⬛ " + window.I18n.t("ui.refonte.export_mesure_surface_titre"));
+      lines.push(window.I18n.t("ui.refonte.export_mesure_surface", { surf: surfTxt, n: stats.mesure.surface.points }));
       lines.push("");
     }
     if (multiLevel && stats.byLevel) {
-      lines.push("## 🏗️ Répartition par niveau");
+      lines.push("## 🏗️ " + window.I18n.t("ui.refonte.stats_mlvl_titre"));
       const levels = Object.keys(stats.byLevel).map(Number).sort(function(a, b) { return a - b; });
       levels.forEach(function(lvl) {
         const b = stats.byLevel[lvl];
-        lines.push("- Niv " + lvl + " : " + b.points + " points, " + b.roads + " tracés, " + b.zones + " zones, " + b.structures + " structures");
+        lines.push("- " + window.I18n.t("ui.refonte.export_mlvl_row", { n: lvl, points: b.points, roads: b.roads, zones: b.zones, structures: b.structures }));
       });
       lines.push("");
     }
     lines.push("---");
-    lines.push("Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr");
+    lines.push(window.I18n.t("ui.refonte.export_footer"));
     return lines.join("\n");
   }
 
@@ -1414,18 +1432,18 @@
     // uniquement). Pour bien différencier les 2 vues à l'user.
     html += '<div class="kta-refonte-session-cta-stats-glob">' +
               '<button type="button" class="kta-btn kta-btn-primary" id="kta-refonte-session-open-stats-glob">' +
-                '📊 Voir les statistiques globales du plan (session + data layers embedded)' +
+                '📊 ' + window.I18n.t("ui.refonte.modal_cta_stats_glob") +
               '</button>' +
               '<div style="font-size:11.5px; color:#8892a4; margin-top:4px; text-align:center; font-style:italic;">' +
-                'Cette modale = SESSION uniquement &middot; Stats globales = SESSION + tous les calques data du plan' +
+                window.I18n.t("ui.refonte.modal_cta_stats_glob_hint") +
               '</div>' +
             '</div>';
 
     // 📍 Points
     html += '<div class="kta-refonte-session-section">';
-    html += '<div class="kta-refonte-session-section-titre">📍 Points ajoutés <span class="kta-refonte-session-badge">' + points.length + '</span></div>';
+    html += '<div class="kta-refonte-session-section-titre">📍 ' + window.I18n.t("ui.refonte.section_points_added") + ' <span class="kta-refonte-session-badge">' + points.length + '</span></div>';
     if (points.length === 0) {
-      html += '<div class="kta-refonte-session-empty">Aucun point ajouté pour le moment. Utilise ✏️ Édition pour en ajouter.</div>';
+      html += '<div class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.empty_points") + '</div>';
     } else {
       html += '<ul class="kta-refonte-session-list">';
       points.forEach(function(p) {
@@ -1435,7 +1453,7 @@
         // affichage à jour ici aussi. Fallback = tag brut si LC indispo OU
         // si tag inconnu. Si pas de tag → "—" pour la lisibilité.
         const tag    = rawTag ? _lcLabel("icones", rawTag, rawTag) : "—";
-        const nom    = p.nom || p.id || "(sans nom)";
+        const nom    = p.nom || p.id || window.I18n.t("ui.refonte.label_no_name");
         const coord  = Math.round(p.x || 0) + ", " + Math.round(p.y || 0);
         const level  = multiLevel ? ' · 🏗 N' + (p.level || 0) : '';
         html += '<li>' +
@@ -1451,9 +1469,9 @@
     const roadsNonIti = roads.filter(function(r) { return r.type !== "itinerary"; });
     const itineraire  = roads.find(function(r) { return r.type === "itinerary"; });
     html += '<div class="kta-refonte-session-section">';
-    html += '<div class="kta-refonte-session-section-titre">🛣 Tracés <span class="kta-refonte-session-badge">' + roadsNonIti.length + '</span></div>';
+    html += '<div class="kta-refonte-session-section-titre">🛣 ' + window.I18n.t("ui.refonte.section_roads") + ' <span class="kta-refonte-session-badge">' + roadsNonIti.length + '</span></div>';
     if (roadsNonIti.length === 0) {
-      html += '<div class="kta-refonte-session-empty">Aucun tracé. Utilise 🛣 Tracés pour dessiner.</div>';
+      html += '<div class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.empty_roads") + '</div>';
     } else {
       // Group par type pour résumé
       const byType = {};
@@ -1467,15 +1485,15 @@
       Object.keys(byType).forEach(function(t) {
         const stats = byType[t];
         // 🆕 v1.20.0-fix1+ : LC.getLabel("traces", t) respecte cascade session>plan>default
-        const fallback = t === "principal" ? "Principal" :
-                         t === "secondaire" ? "Secondaire" :
-                         t === "chemin" ? "Chemin" :
-                         t === "jonction" ? "Jonction interniveau" : t;
+        const fallback = t === "principal" ? window.I18n.t("ui.refonte.label_road_principal") :
+                         t === "secondaire" ? window.I18n.t("ui.refonte.label_road_secondaire") :
+                         t === "chemin" ? window.I18n.t("ui.refonte.label_road_chemin") :
+                         t === "jonction" ? window.I18n.t("ui.refonte.label_road_jonction_interniveau") : t;
         const tLabel = _lcLabel("traces", t, fallback);
         html += '<li>' +
           '<strong>' + _esc(tLabel) + '</strong>' +
           '<span class="kta-refonte-session-meta">' +
-            stats.nb + ' tracé' + (stats.nb > 1 ? 's' : '') + ' · ' + _formatDist(stats.distM) +
+            window.I18n.t("ui.refonte.label_n_roads", { n: stats.nb }) + ' · ' + _formatDist(stats.distM) +
           '</span>' +
         '</li>';
       });
@@ -1485,9 +1503,9 @@
 
     // ⬛ Zones
     html += '<div class="kta-refonte-session-section">';
-    html += '<div class="kta-refonte-session-section-titre">⬛ Zones <span class="kta-refonte-session-badge">' + zones.length + '</span></div>';
+    html += '<div class="kta-refonte-session-section-titre">⬛ ' + window.I18n.t("ui.refonte.section_zones") + ' <span class="kta-refonte-session-badge">' + zones.length + '</span></div>';
     if (zones.length === 0) {
-      html += '<div class="kta-refonte-session-empty">Aucune zone tracée. Utilise ⬛ Zones pour en délimiter.</div>';
+      html += '<div class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.empty_zones") + '</div>';
     } else {
       const zByType = {};
       zones.forEach(function(z) {
@@ -1499,10 +1517,10 @@
         // 🆕 v1.20.0-fix1+ : LC.getLabel("zones", t) respecte la cascade.
         // Emoji conservé en suffixe pour cohérence visuelle (LC.getLabel
         // ne renvoie que le label texte sans emoji décoratif).
-        const fallbackTxt = t === "eau" ? "Eau" :
-                            t === "remblais" ? "Remblais" :
-                            t === "effondrement" ? "Effondrement" :
-                            t === "inaccessible" ? "Inaccessible" : t;
+        const fallbackTxt = t === "eau" ? window.I18n.t("ui.refonte.label_zone_eau") :
+                            t === "remblais" ? window.I18n.t("ui.refonte.label_zone_remblais") :
+                            t === "effondrement" ? window.I18n.t("ui.refonte.label_zone_effondrement") :
+                            t === "inaccessible" ? window.I18n.t("ui.refonte.label_zone_inaccessible") : t;
         const emojiSuffix = t === "eau" ? " 🟦" :
                             t === "remblais" ? " ⬛" :
                             t === "effondrement" ? " 🟥" :
@@ -1511,7 +1529,7 @@
         const nb = zByType[t];
         html += '<li>' +
           '<strong>' + _esc(tLabel) + '</strong>' +
-          '<span class="kta-refonte-session-meta">' + nb + ' zone' + (nb > 1 ? 's' : '') + '</span>' +
+          '<span class="kta-refonte-session-meta">' + window.I18n.t("ui.refonte.label_n_zones", { n: nb }) + '</span>' +
         '</li>';
       });
       html += '</ul>';
@@ -1520,9 +1538,9 @@
 
     // 🏛️ Structures (v1.9.3-A1.a) — piliers + murs
     html += '<div class="kta-refonte-session-section">';
-    html += '<div class="kta-refonte-session-section-titre">🏛️ Structures <span class="kta-refonte-session-badge">' + structures.length + '</span></div>';
+    html += '<div class="kta-refonte-session-section-titre">🏛️ ' + window.I18n.t("ui.refonte.section_structures") + ' <span class="kta-refonte-session-badge">' + structures.length + '</span></div>';
     if (structures.length === 0) {
-      html += '<div class="kta-refonte-session-empty">Aucune structure tracée. Utilise 🏛️ Structures pour dessiner piliers et murs.</div>';
+      html += '<div class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.empty_structures") + '</div>';
     } else {
       const sByType = {};
       structures.forEach(function(s) {
@@ -1533,11 +1551,11 @@
       Object.keys(sByType).forEach(function(t) {
         // 🆕 v1.20.0-fix1+ : LC.getLabel("structures", t) respecte cascade.
         // Emoji conservé en suffixe (LC.getLabel = label texte sans emoji).
-        const fallbackTxt = t === "pilier-1" ? "Pilier 1ère masse" :
-                            t === "pilier-2" ? "Pilier 2e masse" :
-                            t === "mur"      ? "Mur" :
-                            t === "front-1"  ? "Front de taille 1ère masse" :
-                            t === "front-2"  ? "Front de taille 2e masse" : t;
+        const fallbackTxt = t === "pilier-1" ? window.I18n.t("ui.refonte.label_struct_pilier1") :
+                            t === "pilier-2" ? window.I18n.t("ui.refonte.label_struct_pilier2") :
+                            t === "mur"      ? window.I18n.t("ui.refonte.label_struct_mur") :
+                            t === "front-1"  ? window.I18n.t("ui.refonte.label_struct_front1") :
+                            t === "front-2"  ? window.I18n.t("ui.refonte.label_struct_front2") : t;
         const emojiSuffix = t === "pilier-1" ? " 🟡" :
                             t === "pilier-2" ? " 🟠" :
                             t === "mur"      ? " 🔵" :
@@ -1547,7 +1565,7 @@
         const nb = sByType[t];
         html += '<li>' +
           '<strong>' + _esc(tLabel) + '</strong>' +
-          '<span class="kta-refonte-session-meta">' + nb + ' structure' + (nb > 1 ? 's' : '') + '</span>' +
+          '<span class="kta-refonte-session-meta">' + window.I18n.t("ui.refonte.label_n_structures", { n: nb }) + '</span>' +
         '</li>';
       });
       html += '</ul>';
@@ -1558,8 +1576,8 @@
     // pour ne pas bloquer le render initial. Compteur "Chargement…" en
     // placeholder puis swap avec total / taille / breakdown par point.
     html += '<div class="kta-refonte-session-section" id="kta-refonte-session-photos-section">';
-    html += '<div class="kta-refonte-session-section-titre">📸 Photos <span class="kta-refonte-session-badge" id="kta-refonte-session-photos-badge">…</span></div>';
-    html += '<div id="kta-refonte-session-photos-body" class="kta-refonte-session-empty">Chargement…</div>';
+    html += '<div class="kta-refonte-session-section-titre">📸 ' + window.I18n.t("ui.refonte.section_photos") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-photos-badge">…</span></div>';
+    html += '<div id="kta-refonte-session-photos-body" class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.loading") + '</div>';
     html += '</div>';
 
     // 📐 Mesure simple (distance) + ⬛ Mesure de surface + 🗺️ Itinéraire + 🚶 Tracker
@@ -1570,7 +1588,7 @@
     const hasMesureSurf = mesureSurfDetail.length >= 3;
     if (hasMesureDist || hasMesureSurf || itineraire || tFoo) {
       html += '<div class="kta-refonte-session-section">';
-      html += '<div class="kta-refonte-session-section-titre">📊 Autres mesures</div>';
+      html += '<div class="kta-refonte-session-section-titre">📊 ' + window.I18n.t("ui.refonte.section_other_measures") + '</div>';
       html += '<ul class="kta-refonte-session-list">';
 
       // 📐 Mesure simple (polyline distance)
@@ -1582,8 +1600,8 @@
           total += Math.sqrt(dx*dx + dy*dy);
         }
         html += '<li>' +
-          '<strong>📐 Mesure simple</strong>' +
-          '<span class="kta-refonte-session-meta">' + _formatDist(total / scale) + ' (' + mesure.length + ' points)</span>' +
+          '<strong>📐 ' + window.I18n.t("ui.refonte.item_mesure_simple") + '</strong>' +
+          '<span class="kta-refonte-session-meta">' + _formatDist(total / scale) + ' (' + window.I18n.t("ui.refonte.label_n_points", { n: mesure.length }) + ')</span>' +
         '</li>';
       }
 
@@ -1596,8 +1614,8 @@
           ? window.formatSurface(surfM2, 1)
           : (surfM2 < 10000 ? Math.round(surfM2) + " m²" : (surfM2 / 10000).toFixed(2) + " ha");
         html += '<li>' +
-          '<strong>⬛ Mesure de surface</strong>' +
-          '<span class="kta-refonte-session-meta">' + surfTxt + ' (' + mesureSurfDetail.length + ' sommets)</span>' +
+          '<strong>⬛ ' + window.I18n.t("ui.refonte.item_mesure_surface") + '</strong>' +
+          '<span class="kta-refonte-session-meta">' + surfTxt + ' (' + window.I18n.t("ui.refonte.label_n_vertices", { n: mesureSurfDetail.length }) + ')</span>' +
         '</li>';
       }
 
@@ -1606,9 +1624,9 @@
         const distIti = _distRoad(itineraire);
         const nbWp = Array.isArray(itineraire.waypoints) ? itineraire.waypoints.length : 0;
         html += '<li>' +
-          '<strong>🗺️ Itinéraire actif</strong>' +
+          '<strong>🗺️ ' + window.I18n.t("ui.refonte.item_iti_active") + '</strong>' +
           '<span class="kta-refonte-session-meta">' +
-            _formatDist(distIti) + (nbWp > 0 ? ' · ' + nbWp + ' waypoint' + (nbWp > 1 ? 's' : '') : '') +
+            _formatDist(distIti) + (nbWp > 0 ? ' · ' + window.I18n.t("ui.refonte.label_n_waypoints", { n: nbWp }) : '') +
           '</span>' +
         '</li>';
       }
@@ -1617,9 +1635,9 @@
       if (tFoo) {
         const pos = window.getTrackingPosition();
         html += '<li>' +
-          '<strong>🚶 Tracker</strong>' +
+          '<strong>🚶 ' + window.I18n.t("ui.refonte.section_tracker") + '</strong>' +
           '<span class="kta-refonte-session-meta">' +
-            'Actif · (' + Math.round(pos.x) + ', ' + Math.round(pos.y) + ')' +
+            window.I18n.t("ui.refonte.item_tracker_pos", { x: Math.round(pos.x), y: Math.round(pos.y) }) +
           '</span>' +
         '</li>';
       }
@@ -1636,21 +1654,19 @@
     // anti-doublon par défaut). Compteur affiché : N favoris pour le plan
     // courant + total cross-plan.
     html += '<div class="kta-refonte-session-section" id="kta-refonte-session-favoris-section">';
-    html += '<div class="kta-refonte-session-section-titre">⭐ Favoris <span class="kta-refonte-session-badge" id="kta-refonte-session-favoris-badge">…</span></div>';
+    html += '<div class="kta-refonte-session-section-titre">⭐ ' + window.I18n.t("ui.refonte.section_favoris") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-favoris-badge">…</span></div>';
     html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
-              'Tes POI marqués favoris (entrée carrière, RDV, lieux d\'intérêt). ' +
-              'Stockés localement par appareil. Tu peux les <strong>partager</strong> ' +
-              'à un autre cataphile via export/import JSON.' +
+              window.I18n.t("ui.refonte.favoris_desc") +
             '</div>';
     html += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' +
               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-favoris-export-current">' +
-                '📤 Exporter (plan courant)' +
+                '📤 ' + window.I18n.t("ui.refonte.btn_fav_export_current") +
               '</button>' +
               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-favoris-export-all">' +
-                '📤 Exporter (tous les plans)' +
+                '📤 ' + window.I18n.t("ui.refonte.btn_fav_export_all") +
               '</button>' +
               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-favoris-import">' +
-                '📥 Importer un JSON' +
+                '📥 ' + window.I18n.t("ui.refonte.btn_fav_import") +
               '</button>' +
               '<input type="file" id="kta-refonte-session-favoris-import-file" accept=".json,application/json" style="display:none;">' +
             '</div>';
@@ -1663,22 +1679,20 @@
     // window.SessionBackups.listAll() après ouverture de la modale.
     // 2 boutons d'action en tête : 📦 Snapshot maintenant + 🗑️ Tout vider.
     html += '<div class="kta-refonte-session-section" id="kta-refonte-session-backups-section">';
-    html += '<div class="kta-refonte-session-section-titre">📦 Backups récents <span class="kta-refonte-session-badge" id="kta-refonte-session-backups-badge">…</span></div>';
+    html += '<div class="kta-refonte-session-section-titre">📦 ' + window.I18n.t("ui.refonte.section_backups") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-backups-badge">…</span></div>';
     html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
-              'Filet de sécurité : 10 derniers snapshots automatiques de ta session ' +
-              '(toutes plans confondus). Auto toutes les 5 min + avant chaque action ' +
-              'destructive. Tu peux restaurer un snapshot pour revenir à cet état (reload).' +
+              window.I18n.t("ui.refonte.backups_desc") +
             '</div>';
     html += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">' +
               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-backups-snapshot">' +
-                '📆 Snapshot maintenant' +
+                '📆 ' + window.I18n.t("ui.refonte.btn_snapshot_now") +
               '</button>' +
               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-backups-clearall">' +
-                '🗑️ Tout vider' +
+                '🗑️ ' + window.I18n.t("ui.refonte.btn_clear_all") +
               '</button>' +
             '</div>';
     html += '<div id="kta-refonte-session-backups-list">' +
-              '<div style="font-size:12px; color:#8892a4; font-style:italic;">Chargement…</div>' +
+              '<div style="font-size:12px; color:#8892a4; font-style:italic;">' + window.I18n.t("ui.refonte.loading") + '</div>' +
             '</div>';
     html += '</div>';
 
@@ -1690,8 +1704,8 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-refonte-session-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📊 Détails de la session</span>' +
-          '<button class="kta-panneau-close" id="kta-refonte-session-close" aria-label="Fermer">✕</button>' +
+          '<span class="kta-readme-modal-titre">📊 ' + window.I18n.t("ui.refonte.modal_session_titre") + '</span>' +
+          '<button class="kta-panneau-close" id="kta-refonte-session-close" aria-label="' + window.I18n.t("ui.refonte.btn_close_aria") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-refonte-session-corps">' +
           html +
@@ -1720,7 +1734,7 @@
           window.StatsGlobales.ouvrir();
         } else {
           if (window.OOMGuard && window.OOMGuard.showToast) {
-            window.OOMGuard.showToast("Module StatsGlobales indisponible — recharge la page", "warn");
+            window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_stats_glob_unavailable"), "warn");
           }
         }
       });
@@ -1735,12 +1749,12 @@
         const txt = _genererStatsAggregeesTXT(_stats, planName, multiLevel);
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(txt).then(function() {
-            if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast("📋 Résumé copié dans le presse-papier.", "info");
+            if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_copy_ok"), "info");
           }).catch(function() {
-            if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast("❌ Échec copie — copie manuelle requise.", "warn");
+            if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_copy_fail"), "warn");
           });
         } else {
-          if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast("Clipboard API indispo sur ce navigateur.", "warn");
+          if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_clipboard_unavailable"), "warn");
         }
       });
     }
@@ -1760,7 +1774,7 @@
         link.download = safePlan + "_stats_" + dateStr + ".txt";
         link.click();
         setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-        if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast("📤 Résumé exporté en TXT.", "info");
+        if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_export_ok"), "info");
       });
     }
 
@@ -1771,7 +1785,7 @@
       const badgeEl = document.getElementById("kta-refonte-session-backups-badge");
       if (!listEl || !badgeEl) return;
       if (!window.SessionBackups || typeof window.SessionBackups.listAll !== "function") {
-        listEl.innerHTML = '<div style="font-size:12px; color:#8892a4; font-style:italic;">Module SessionBackups indisponible.</div>';
+        listEl.innerHTML = '<div style="font-size:12px; color:#8892a4; font-style:italic;">' + window.I18n.t("ui.refonte.backups_module_unavailable") + '</div>';
         badgeEl.textContent = "—";
         return;
       }
@@ -1797,15 +1811,15 @@
         if (otherPlans > 0) {
           badgeEl.innerHTML = String(arr.length) +
             ' <span style="opacity:0.55; font-weight:400; font-size:0.85em;">' +
-            '(+' + otherPlans + ' autres plans)</span>';
+            window.I18n.t("ui.refonte.badge_other_plans", { n: otherPlans }) + '</span>';
         } else {
           badgeEl.textContent = String(arr.length);
         }
         if (arr.length === 0) {
-          const planSuffix = currentPlanId ? " pour ce plan" : "";
-          listEl.innerHTML = '<div style="font-size:12px; color:#8892a4; font-style:italic;">' +
-                               'Aucun snapshot' + planSuffix + ' pour le moment. Le 1<sup>er</sup> sera créé sous peu (auto 5 min).' +
-                             '</div>';
+          const emptyMsg = currentPlanId
+            ? window.I18n.t("ui.refonte.backups_empty_plan")
+            : window.I18n.t("ui.refonte.backups_empty");
+          listEl.innerHTML = '<div style="font-size:12px; color:#8892a4; font-style:italic;">' + emptyMsg + '</div>';
           return;
         }
         function _esc(s) {
@@ -1823,13 +1837,13 @@
           return j + "/" + m + "/" + a + " " + h + ":" + mn;
         }
         function _countContent(p) {
-          if (!p) return "vide";
+          if (!p) return window.I18n.t("ui.refonte.label_empty");
           const parts = [];
           if (p.editorPoints   && p.editorPoints.length)   parts.push(p.editorPoints.length + "📍");
           if (p.roads          && p.roads.length)          parts.push(p.roads.length + "🛣");
           if (p.zones          && p.zones.length)          parts.push(p.zones.length + "⬛");
           if (p.structures     && p.structures.length)     parts.push(p.structures.length + "🏛️");
-          return parts.length ? parts.join(" ") : "vide";
+          return parts.length ? parts.join(" ") : window.I18n.t("ui.refonte.label_empty");
         }
         // 🐛 v1.16.0-fix (KARMA "entre chaque snap, il y a bcp espace vide
         // inutile") : la classe .kta-refonte-session-list applique
@@ -1849,15 +1863,15 @@
                    '<strong>' + _fmtDate(b.createdAt) + '</strong>' +
                    ' <span class="kta-refonte-session-meta">' +
                      _countContent(b.payload) +
-                     ' · <em style="opacity:0.7;">' + _esc(b.reason || "auto") + '</em>' +
+                     ' · <em style="opacity:0.7;">' + _esc(b.reason || window.I18n.t("ui.refonte.label_backup_auto")) + '</em>' +
                    '</span>' +
                  '</span>' +
                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
-                   'data-backup-restore="' + b.id + '" title="Restaurer ce snapshot (recharge l\'app)">' +
-                   '↻ Restaurer' +
+                   'data-backup-restore="' + b.id + '" title="' + window.I18n.t("ui.refonte.btn_restore_title") + '">' +
+                   '↻ ' + window.I18n.t("ui.refonte.btn_restore") +
                  '</button>' +
                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
-                   'data-backup-remove="' + b.id + '" title="Supprimer ce snapshot">' +
+                   'data-backup-remove="' + b.id + '" title="' + window.I18n.t("ui.refonte.btn_remove_snapshot_title") + '">' +
                    '🗑️' +
                  '</button>' +
                '</li>';
@@ -1868,19 +1882,15 @@
         listEl.querySelectorAll("[data-backup-restore]").forEach(function(btn) {
           btn.addEventListener("click", function() {
             const id = Number(btn.getAttribute("data-backup-restore"));
-            const ok = window.confirm(
-              "Restaurer ce snapshot ?\n\n" +
-              "L'application va recharger. La session actuelle (non sauvegardée " +
-              "dans un autre backup) sera remplacée par l'état du snapshot."
-            );
+            const ok = window.confirm(window.I18n.t("ui.refonte.confirm_restore"));
             if (!ok) return;
             window.SessionBackups.restore(id).then(function() {
               if (window.OOMGuard && window.OOMGuard.showToast) {
-                window.OOMGuard.showToast("📦 Snapshot restauré — reload…", "info");
+                window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_restore_ok"), "info");
               }
               setTimeout(function() { location.reload(); }, 400);
             }).catch(function(err) {
-              alert("Échec restauration : " + (err && err.message ? err.message : err));
+              alert(window.I18n.t("ui.refonte.alert_restore_fail", { err: (err && err.message ? err.message : err) }));
             });
           });
         });
@@ -1893,8 +1903,8 @@
           });
         });
       }).catch(function(err) {
-        listEl.innerHTML = '<div style="font-size:12px; color:#ff8c8c;">Erreur chargement : ' +
-                            (err && err.message ? err.message : String(err)) + '</div>';
+        listEl.innerHTML = '<div style="font-size:12px; color:#ff8c8c;">' +
+                            window.I18n.t("ui.refonte.backups_load_error", { err: (err && err.message ? err.message : String(err)) }) + '</div>';
       });
     }
     _renderBackupsSection();
@@ -1907,12 +1917,12 @@
         window.SessionBackups.snapshot("manual").then(function(entry) {
           if (entry) {
             if (window.OOMGuard && window.OOMGuard.showToast) {
-              window.OOMGuard.showToast("📦 Snapshot créé.", "info");
+              window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_snapshot_created"), "info");
             }
             _renderBackupsSection();
           } else {
             if (window.OOMGuard && window.OOMGuard.showToast) {
-              window.OOMGuard.showToast("Aucun changement depuis le dernier snapshot — skip.", "info");
+              window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_snapshot_skip"), "info");
             }
           }
         });
@@ -1921,16 +1931,12 @@
     const _btnClearBk = document.getElementById("kta-refonte-session-backups-clearall");
     if (_btnClearBk) {
       _btnClearBk.addEventListener("click", function() {
-        const ok = window.confirm(
-          "Supprimer tous les snapshots ?\n\n" +
-          "Action irréversible. Tu perdras la capacité de revenir en arrière " +
-          "jusqu'au prochain auto-snapshot (~5 min)."
-        );
+        const ok = window.confirm(window.I18n.t("ui.refonte.confirm_clear_all"));
         if (!ok) return;
         window.SessionBackups.clearAll().then(function() {
           _renderBackupsSection();
           if (window.OOMGuard && window.OOMGuard.showToast) {
-            window.OOMGuard.showToast("🗑️ Backups effacés.", "info");
+            window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_backups_cleared"), "info");
           }
         });
       });
@@ -1955,24 +1961,24 @@
     if (_btnFavExportCur) {
       _btnFavExportCur.addEventListener("click", function() {
         if (!window.Favoris || typeof window.Favoris.exportToFile !== "function") {
-          _setFavStatus("Module Favoris indisponible", false); return;
+          _setFavStatus(window.I18n.t("ui.refonte.favoris_module_unavailable"), false); return;
         }
         const list = window.Favoris.getAll();
         if (!list || list.length === 0) {
-          _setFavStatus("Aucun favori sur le plan courant à exporter", false); return;
+          _setFavStatus(window.I18n.t("ui.refonte.favoris_none_current"), false); return;
         }
         try {
           window.Favoris.exportToFile({ scope: "current-plan" });
-          _setFavStatus("📤 Export plan courant : " + list.length + " favori" + (list.length > 1 ? "s" : "") + " téléchargé(s)", true);
+          _setFavStatus(window.I18n.t("ui.refonte.favoris_export_current_ok", { n: list.length }), true);
         } catch(e) {
-          _setFavStatus("Échec export : " + (e.message || e), false);
+          _setFavStatus(window.I18n.t("ui.refonte.favoris_export_fail", { err: (e.message || e) }), false);
         }
       });
     }
     if (_btnFavExportAll) {
       _btnFavExportAll.addEventListener("click", function() {
         if (!window.Favoris || typeof window.Favoris.exportToFile !== "function") {
-          _setFavStatus("Module Favoris indisponible", false); return;
+          _setFavStatus(window.I18n.t("ui.refonte.favoris_module_unavailable"), false); return;
         }
         try {
           const payload = window.Favoris.exportToFile({ scope: "all" });
@@ -1981,13 +1987,12 @@
           }, 0);
           const plans = Object.keys(payload.byPlan).length;
           if (total === 0) {
-            _setFavStatus("Aucun favori sur aucun plan à exporter", false);
+            _setFavStatus(window.I18n.t("ui.refonte.favoris_none_all"), false);
           } else {
-            _setFavStatus("📤 Export tous plans : " + total + " favori" + (total > 1 ? "s" : "") +
-                          " sur " + plans + " plan" + (plans > 1 ? "s" : "") + " téléchargé(s)", true);
+            _setFavStatus(window.I18n.t("ui.refonte.favoris_export_all_ok", { total: total, plans: plans }), true);
           }
         } catch(e) {
-          _setFavStatus("Échec export : " + (e.message || e), false);
+          _setFavStatus(window.I18n.t("ui.refonte.favoris_export_fail", { err: (e.message || e) }), false);
         }
       });
     }
@@ -1998,22 +2003,21 @@
         e.target.value = ""; // reset pour permettre re-sélection du même fichier
         if (!file) return;
         if (!window.Favoris || typeof window.Favoris.importFromFile !== "function") {
-          _setFavStatus("Module Favoris indisponible", false); return;
+          _setFavStatus(window.I18n.t("ui.refonte.favoris_module_unavailable"), false); return;
         }
-        _setFavStatus("⏳ Import en cours…", null);
+        _setFavStatus(window.I18n.t("ui.refonte.favoris_import_progress"), null);
         window.Favoris.importFromFile(file, { mode: "merge" }).then(function(res) {
           if (!res || !res.ok) {
-            _setFavStatus("❌ Import échoué : " + (res && res.error || "raison inconnue"), false);
+            _setFavStatus(window.I18n.t("ui.refonte.favoris_import_fail", { err: (res && res.error || window.I18n.t("ui.refonte.label_unknown_reason")) }), false);
             return;
           }
           const parts = [];
-          if (res.added > 0)    parts.push(res.added    + " ajouté"   + (res.added    > 1 ? "s" : ""));
-          if (res.skipped > 0)  parts.push(res.skipped  + " doublon"  + (res.skipped  > 1 ? "s skippé(s)" : " skippé"));
-          if (res.replaced > 0) parts.push(res.replaced + " remplacé" + (res.replaced > 1 ? "s" : ""));
-          if (parts.length === 0) parts.push("rien à importer (fichier vide ?)");
+          if (res.added > 0)    parts.push(window.I18n.t("ui.refonte.favoris_import_added", { n: res.added }));
+          if (res.skipped > 0)  parts.push(window.I18n.t("ui.refonte.favoris_import_skipped", { n: res.skipped }));
+          if (res.replaced > 0) parts.push(window.I18n.t("ui.refonte.favoris_import_replaced", { n: res.replaced }));
+          if (parts.length === 0) parts.push(window.I18n.t("ui.refonte.favoris_import_nothing"));
           _setFavStatus(
-            "✅ Import OK (" + (res.plansTouched.length) + " plan" + (res.plansTouched.length > 1 ? "s" : "") +
-            " touché) : " + parts.join(" · "),
+            window.I18n.t("ui.refonte.favoris_import_ok", { plans: res.plansTouched.length, details: parts.join(" · ") }),
             true
           );
           _hydrateFavorisBadge();
@@ -2041,7 +2045,7 @@
       } else if (currentN === totalN) {
         badge.textContent = currentN + "";
       } else {
-        badge.textContent = currentN + " (+ " + (totalN - currentN) + " autres plans)";
+        badge.textContent = currentN + " " + window.I18n.t("ui.refonte.badge_other_plans_paren", { n: (totalN - currentN) });
       }
     }
 
@@ -2064,7 +2068,7 @@
           if (n < 1024 * 1024) return Math.round(n / 1024) + " Ko";
           return (n / (1024 * 1024)).toFixed(1) + " Mo";
         };
-        val.innerHTML = "<strong>" + total + "</strong> photo" + (total > 1 ? "s" : "") + " · " + fmtBytes(totalSize);
+        val.innerHTML = window.I18n.t("ui.refonte.stats_photos_count", { n: total, size: fmtBytes(totalSize) });
       }).catch(function() { /* silent */ });
     }
 
@@ -2083,7 +2087,7 @@
 
     if (!window.MyKTAMapPhotos) {
       badge.textContent = "0";
-      body.textContent = "Stockage photo indisponible.";
+      body.textContent = window.I18n.t("ui.refonte.photos_storage_unavailable");
       return;
     }
 
@@ -2092,7 +2096,7 @@
       const total = arr.length;
       badge.textContent = total;
       if (total === 0) {
-        body.textContent = "Aucune photo attachée. Édite un point et ajoute des photos via 📷 / 🖼️.";
+        body.textContent = window.I18n.t("ui.refonte.photos_empty");
         return;
       }
       // Group par pointId pour breakdown
@@ -2108,7 +2112,7 @@
       // Map pointId → nom (depuis listePoints en session)
       const nomByPid = {};
       (points || []).forEach(function(p) {
-        nomByPid[String(p.id || "")] = p.nom || p.id || "(sans nom)";
+        nomByPid[String(p.id || "")] = p.nom || p.id || window.I18n.t("ui.refonte.label_no_name");
       });
       // Format taille via le helper sessionExporter (déjà exposé)
       const fmt = window._kta_formatBytes || function(n) {
@@ -2119,26 +2123,26 @@
       let html = '<ul class="kta-refonte-session-list">';
       Object.keys(byPoint).forEach(function(pid) {
         const stats = byPoint[pid];
-        const nom = nomByPid[pid] || pid + " (point introuvable)";
+        const nom = nomByPid[pid] || window.I18n.t("ui.refonte.label_point_not_found", { id: pid });
         const safeName = String(nom).replace(/[&<>"']/g, function(c) {
           return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
         });
         html += '<li>' +
           '<strong>' + safeName + '</strong>' +
           '<span class="kta-refonte-session-meta">' +
-            stats.count + ' photo' + (stats.count > 1 ? 's' : '') + ' · ' + fmt(stats.size) +
+            window.I18n.t("ui.refonte.label_n_photos", { n: stats.count }) + ' · ' + fmt(stats.size) +
           '</span>' +
         '</li>';
       });
       html += '</ul>';
-      html += '<div class="kta-refonte-session-meta" style="margin-top:8px; text-align:right;">Total : <strong>' + fmt(totalSize) + '</strong></div>';
+      html += '<div class="kta-refonte-session-meta" style="margin-top:8px; text-align:right;">' + window.I18n.t("ui.refonte.label_total") + ' <strong>' + fmt(totalSize) + '</strong></div>';
 
       body.className = "";  // retire la classe "empty"
       body.innerHTML = html;
     }).catch(function(e) {
       console.warn("[RefonteInterface] _hydraterPhotosModaleSession :", e);
       badge.textContent = "?";
-      body.textContent = "Erreur de lecture du stockage local.";
+      body.textContent = window.I18n.t("ui.refonte.photos_read_error");
     });
   }
 
@@ -2206,8 +2210,8 @@
       div.dataset.refonteSide = side;
       const a = L.DomUtil.create("a", "kta-refonte-collapse-btn", div);
       a.href  = "javascript:void(0)";
-      a.title = "Réduire cette barre";
-      a.setAttribute("aria-label", "Réduire la barre " + side);
+      a.title = window.I18n.t("ui.refonte.btn_sidebar_collapse");
+      a.setAttribute("aria-label", window.I18n.t("ui.refonte.btn_sidebar_collapse_aria", { side: side }));
       // État initial : déplié (5:b = pas de persistance, toujours
       // déroulée au boot) → icône ▾
       a.innerHTML = _iconeCollapse(side, false);
@@ -2216,7 +2220,7 @@
         L.DomEvent.stop(e);
         const isCollapsed = document.body.classList.toggle(cls);
         a.innerHTML = _iconeCollapse(side, isCollapsed);
-        a.title = (isCollapsed ? "Agrandir" : "Réduire") + " cette barre";
+        a.title = isCollapsed ? window.I18n.t("ui.refonte.btn_sidebar_expand") : window.I18n.t("ui.refonte.btn_sidebar_collapse");
         a.setAttribute("aria-pressed", isCollapsed ? "true" : "false");
         // Si on collapse alors qu'un groupe accordéon est ouvert dans
         // cette sidebar, on le ferme pour cohérence visuelle (sinon le
@@ -2314,14 +2318,14 @@
 
       // Texte différencié selon la direction du toggle
       const titre = valueIsNouvelle
-        ? "🎨 Passer à la nouvelle interface ?"
-        : "📜 Revenir à l'ancienne interface ?";
+        ? "🎨 " + window.I18n.t("ui.refonte.modal_switch_titre_new")
+        : "📜 " + window.I18n.t("ui.refonte.modal_switch_titre_old");
       const labelCible = valueIsNouvelle
-        ? "la NOUVELLE interface (refonte)"
-        : "l'ANCIENNE interface (classique v1.8.x)";
+        ? window.I18n.t("ui.refonte.modal_switch_label_new")
+        : window.I18n.t("ui.refonte.modal_switch_label_old");
       const description = valueIsNouvelle
-        ? 'Tu profiteras du header bar avec rose des vents et compteurs cliquables, des sidebars unifiées gauche/droite, et du status bar avec stats live (mesure, distance totale, itinéraire, tracker GPS).'
-        : 'Tu retrouveras l\'interface classique : icônes empilées sans header bar ni status bar, comme avant la refonte v1.9.x. Les modes et les modales restent identiques.';
+        ? window.I18n.t("ui.refonte.modal_switch_desc_new")
+        : window.I18n.t("ui.refonte.modal_switch_desc_old");
 
       const overlay = document.createElement("div");
       overlay.id = "kta-refonte-interface-confirm";
@@ -2335,28 +2339,28 @@
         '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(244,197,66,0.4); box-shadow:0 0 32px rgba(244,197,66,0.18);">' +
           '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(244,197,66,0.25);">' +
             '<div class="kta-readme-modal-titre" style="color:#f4c542;">' + titre + '</div>' +
-            '<button class="kta-panneau-close" type="button" id="kta-rint-close" aria-label="Fermer">✕</button>' +
+            '<button class="kta-panneau-close" type="button" id="kta-rint-close" aria-label="' + window.I18n.t("ui.refonte.btn_close_aria") + '">✕</button>' +
           '</div>' +
           '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
             '<p style="margin:0 0 14px 0; line-height:1.55;">' +
-              'Tu vas passer à <strong style="color:#f4c542;">' + labelCible + '</strong>.' +
+              window.I18n.t("ui.refonte.modal_switch_intro", { cible: '<strong style="color:#f4c542;">' + labelCible + '</strong>' }) +
             '</p>' +
             '<p style="margin:0 0 14px 0; line-height:1.55; font-size:13px; color:#8892a4;">' +
               description +
             '</p>' +
             '<div style="background:rgba(244,197,66,0.06); border:1px solid rgba(244,197,66,0.22); border-radius:8px; padding:10px 14px; margin-bottom:0;">' +
-              '<div style="font-weight:600; color:#f4c542; margin-bottom:6px;">✅ Préservé</div>' +
+              '<div style="font-weight:600; color:#f4c542; margin-bottom:6px;">✅ ' + window.I18n.t("ui.refonte.modal_switch_preserved_titre") + '</div>' +
               '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
-                '<li>Tes plans mémorisés</li>' +
-                '<li>Sessions auto-save en cours</li>' +
-                '<li>Préférences (perf, debug, etc.)</li>' +
-                '<li>Code d\'accès communautaire</li>' +
+                '<li>' + window.I18n.t("ui.refonte.modal_switch_preserved_plans") + '</li>' +
+                '<li>' + window.I18n.t("ui.refonte.modal_switch_preserved_sessions") + '</li>' +
+                '<li>' + window.I18n.t("ui.refonte.modal_switch_preserved_prefs") + '</li>' +
+                '<li>' + window.I18n.t("ui.refonte.modal_switch_preserved_access") + '</li>' +
               '</ul>' +
             '</div>' +
           '</div>' +
           '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end; border-top:1px solid rgba(255,255,255,0.06); padding:12px 18px; flex-shrink:0;">' +
-            '<button class="kta-btn kta-btn-ghost" type="button" id="kta-rint-cancel">Annuler</button>' +
-            '<button class="kta-btn kta-btn-primary" type="button" id="kta-rint-confirm" style="background:#f4c542; color:#0a0d18; border-color:#f4c542;">Valider</button>' +
+            '<button class="kta-btn kta-btn-ghost" type="button" id="kta-rint-cancel">' + window.I18n.t("ui.refonte.btn_cancel") + '</button>' +
+            '<button class="kta-btn kta-btn-primary" type="button" id="kta-rint-confirm" style="background:#f4c542; color:#0a0d18; border-color:#f4c542;">' + window.I18n.t("ui.refonte.btn_validate") + '</button>' +
           '</div>' +
         '</div>';
 

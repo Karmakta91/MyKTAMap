@@ -87,13 +87,13 @@ window.afficherModaleAlerteAbsente = function(status) {
   let icon, title, msg, extraHtml = "";
   if (isOffline) {
     icon  = "📡";
-    title = "Vérification impossible";
-    msg   = "Tu es hors ligne — impossible de vérifier l'état des alertes ou des mises à jour. Réessaie quand tu auras du réseau.";
+    title = window.I18n.t("alerts.absent.offline.title");
+    msg   = window.I18n.t("alerts.absent.offline.msg");
   } else if (isUpToDate) {
     icon  = "✅";
-    title = "Déjà à jour";
+    title = window.I18n.t("alerts.absent.uptodate.title");
     const installed = (window.__MKM__ && window.__MKM__.build) || (lastVersionData && lastVersionData.version) || "?";
-    msg = "Tu utilises la dernière version : <strong>" + _esc(installed) + "</strong>.";
+    msg = window.I18n.t("alerts.absent.uptodate.msg", { version: _esc(installed) });
     // 🐛 v1.34.25 — On affiche les notes UNIQUEMENT si la version cachée
     // dans localStorage correspond exactement à la version installée. Sinon
     // le cache est stale (cas typique : update douce v1.34.X → v1.35.0 →
@@ -106,10 +106,10 @@ window.afficherModaleAlerteAbsente = function(status) {
     if (cacheMatchInstalled && (lastVersionData.released || (Array.isArray(lastVersionData.notes) && lastVersionData.notes.length))) {
       extraHtml += '<div class="kta-alert-absent-version-block">';
       if (lastVersionData.released) {
-        extraHtml += '<div class="kta-alert-absent-version-released">Publiée le <strong>' + _esc(lastVersionData.released) + '</strong></div>';
+        extraHtml += '<div class="kta-alert-absent-version-released">' + window.I18n.t("alerts.absent.uptodate.publishedOn", { date: _esc(lastVersionData.released) }) + '</div>';
       }
       if (Array.isArray(lastVersionData.notes) && lastVersionData.notes.length) {
-        extraHtml += '<div class="kta-alert-absent-version-notes-titre">📝 Notes de cette version</div>';
+        extraHtml += '<div class="kta-alert-absent-version-notes-titre">' + window.I18n.t("alerts.absent.uptodate.notesTitre") + '</div>';
         extraHtml += '<ul class="kta-alert-absent-version-notes">';
         lastVersionData.notes.forEach(function(n) {
           extraHtml += '<li>' + _esc(n) + '</li>';
@@ -120,8 +120,8 @@ window.afficherModaleAlerteAbsente = function(status) {
     }
   } else {
     icon  = "✅";
-    title = "Aucune alerte en cours";
-    msg   = "Pas d'alerte publique active actuellement. Le serveur ne diffuse aucune communication urgente. Continue à utiliser l'app normalement.";
+    title = window.I18n.t("alerts.absent.none.title");
+    msg   = window.I18n.t("alerts.absent.none.msg");
   }
 
   // Variante compacte pour les modales informatives (vs overlay opaque global) :
@@ -140,7 +140,7 @@ window.afficherModaleAlerteAbsente = function(status) {
         extraHtml +
       '</div>' +
       '<div class="kta-alert-absent-actions">' +
-        '<button class="kta-btn kta-btn-primary" id="kta-alert-absent-ok" type="button">OK</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-alert-absent-ok" type="button">' + window.I18n.t("alerts.btn.ok") + '</button>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);
@@ -200,8 +200,8 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
       '<button type="button" class="kta-alert-selector-row kta-alert-selector-row-' + level + (acq ? ' kta-alert-selector-row-seen' : '') + '" data-alert-id="' + _esc(a.id || "") + '">' +
         '<span class="kta-alert-selector-dot"></span>' +
         '<span class="kta-alert-selector-content">' +
-          '<span class="kta-alert-selector-title">' + _esc(a.title || "(sans titre)") + '</span>' +
-          (ts ? '<span class="kta-alert-selector-meta">' + _esc(ts) + (acq ? ' · ✓ acquittée' : '') + '</span>' : '') +
+          '<span class="kta-alert-selector-title">' + _esc(a.title || window.I18n.t("alerts.selector.noTitle")) + '</span>' +
+          (ts ? '<span class="kta-alert-selector-meta">' + _esc(ts) + (acq ? window.I18n.t("alerts.selector.acknowledgedSuffix") : '') + '</span>' : '') +
         '</span>' +
         '<span class="kta-alert-selector-arrow">›</span>' +
       '</button>';
@@ -213,11 +213,11 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
   modal.innerHTML =
     '<div class="kta-readme-modal-boite kta-alert-selector-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">📋 ' + sorted.length + ' alertes actives</span>' +
-        '<button class="kta-panneau-close" id="kta-alert-selector-close" type="button" aria-label="Fermer">&times;</button>' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("alerts.selector.titre", { count: sorted.length }) + '</span>' +
+        '<button class="kta-panneau-close" id="kta-alert-selector-close" type="button" aria-label="' + window.I18n.t("alerts.btn.close") + '">&times;</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps kta-alert-selector-corps">' +
-        '<p class="kta-alert-selector-hint">Sélectionne une alerte pour voir le détail. Triées par criticité décroissante.</p>' +
+        '<p class="kta-alert-selector-hint">' + window.I18n.t("alerts.selector.hint") + '</p>' +
         '<div class="kta-alert-selector-list">' + rowsHtml + '</div>' +
       '</div>' +
     '</div>';
@@ -265,7 +265,7 @@ window.afficherModaleAlerte = function(alert, onClose) {
 
   const id    = alert.id    || "";  // v163 : acquit individuel par id
   const level = alert.level === "warning" || alert.level === "info" ? alert.level : "emergency";
-  const title = alert.title   || "🚨 Alerte";
+  const title = alert.title   || window.I18n.t("alerts.detail.defaultTitle");
   const msg   = alert.message || "";
   const details = Array.isArray(alert.details) ? alert.details : [];
   const released = alert.released || "";
@@ -277,7 +277,7 @@ window.afficherModaleAlerte = function(alert, onClose) {
     : '';
 
   const footerInfo = released
-    ? '<div class="kta-alert-released">Publié le ' + _esc(released) + '</div>'
+    ? '<div class="kta-alert-released">' + window.I18n.t("alerts.detail.publishedOn", { date: _esc(released) }) + '</div>'
     : '';
 
   const modal = document.createElement("div");
@@ -296,7 +296,7 @@ window.afficherModaleAlerte = function(alert, onClose) {
         footerInfo +
       '</div>' +
       '<div class="kta-alert-actions">' +
-        '<button class="kta-btn kta-btn-primary kta-alert-btn-ok" id="kta-alert-ok" type="button">J\'ai compris</button>' +
+        '<button class="kta-btn kta-btn-primary kta-alert-btn-ok" id="kta-alert-ok" type="button">' + window.I18n.t("alerts.detail.understood") + '</button>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);
@@ -336,7 +336,7 @@ window.afficherModaleUpdateDispo = function(opts) {
     ? '<ul style="margin:8px 0 0 0; padding-left:22px; color:#c8d0e0; font-size:13px; line-height:1.6;">' +
         notes.map(function(n) { return '<li>' + String(n).replace(/</g, "&lt;") + '</li>'; }).join("") +
       '</ul>'
-    : '<p style="color:#8892a4; font-size:12px; font-style:italic; margin:8px 0 0 0;">Aucune note de version fournie.</p>';
+    : '<p style="color:#8892a4; font-size:12px; font-style:italic; margin:8px 0 0 0;">' + window.I18n.t("alerts.update.noNotes") + '</p>';
 
   const modal = document.createElement("div");
   modal.id = "kta-update-modal";
@@ -344,54 +344,52 @@ window.afficherModaleUpdateDispo = function(opts) {
   modal.innerHTML =
     '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:85vh;">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">🔔 Mise à jour disponible</span>' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("alerts.update.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-update-close" type="button">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">📦 Versions</div>' +
+          '<div class="kta-aide-section-titre">' + window.I18n.t("alerts.update.versionsTitre") + '</div>' +
           '<div style="display:flex; align-items:center; gap:14px; padding:10px 14px; background:rgba(140,180,255,0.06); border-radius:8px; border:1px solid rgba(140,180,255,0.18);">' +
             '<div style="font-size:12px; color:#8892a4;">' +
-              'Installée<br>' +
+              window.I18n.t("alerts.update.installed") + '<br>' +
               '<strong style="font-size:18px; color:#c8d0e0; font-family:ui-monospace,monospace;">' + localVersion + '</strong>' +
             '</div>' +
             '<div style="font-size:20px; color:#8cb4ff;">→</div>' +
             '<div style="font-size:12px; color:#8892a4;">' +
-              'Disponible' + (released ? ' (' + released + ')' : '') + '<br>' +
+              window.I18n.t("alerts.update.available") + (released ? ' (' + released + ')' : '') + '<br>' +
               '<strong style="font-size:18px; color:#f4c542; font-family:ui-monospace,monospace;">' + remoteVersion + '</strong>' +
             '</div>' +
           '</div>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">🆕 Nouveautés</div>' +
+          '<div class="kta-aide-section-titre">' + window.I18n.t("alerts.update.newsTitre") + '</div>' +
           notesHtml +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">🔄 Deux modes de mise à jour</div>' +
+          '<div class="kta-aide-section-titre">' + window.I18n.t("alerts.update.modesTitre") + '</div>' +
           '<div style="background:rgba(108,226,138,0.08); border:1px solid rgba(108,226,138,0.30); border-radius:8px; padding:10px 12px; margin-bottom:8px;">' +
-            '<div style="font-weight:700; color:#6ce28a; font-size:13px; margin-bottom:4px;">🪶 Mise à jour douce (recommandée)</div>' +
+            '<div style="font-weight:700; color:#6ce28a; font-size:13px; margin-bottom:4px;">' + window.I18n.t("alerts.update.softTitre") + '</div>' +
             '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55;">' +
-              'Seul le <strong>code de l\'app</strong> est rafraîchi (HTML, JS, CSS, docs). ' +
-              'Tes <strong>plans, sessions et préférences sont préservés</strong>.' +
+              window.I18n.t("alerts.update.softDesc") +
             '</div>' +
           '</div>' +
           '<div style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.25); border-radius:8px; padding:10px 12px;">' +
-            '<div style="font-weight:700; color:#ff6b6b; font-size:13px; margin-bottom:4px;">💥 Reset complet</div>' +
+            '<div style="font-weight:700; color:#ff6b6b; font-size:13px; margin-bottom:4px;">' + window.I18n.t("alerts.update.hardTitre") + '</div>' +
             '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55;">' +
-              'À utiliser <strong>seulement</strong> si la mise à jour douce ne suffit pas ' +
-              '(problème persistant). Purge <strong>tout</strong> : cache, plans, sessions, préférences.' +
+              window.I18n.t("alerts.update.hardDesc") +
             '</div>' +
           '</div>' +
         '</div>' +
 
         '<div style="display:flex; gap:10px; margin-top:14px;">' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-update-postpone" type="button" style="flex:1;">Plus tard (24h)</button>' +
-          '<button class="kta-btn kta-btn-primary" id="kta-update-accept-soft" type="button" style="flex:2;">🪶 Mise à jour douce</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-update-postpone" type="button" style="flex:1;">' + window.I18n.t("alerts.update.postpone") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-update-accept-soft" type="button" style="flex:2;">' + window.I18n.t("alerts.update.acceptSoft") + '</button>' +
         '</div>' +
         '<div style="text-align:center; margin-top:10px;">' +
-          '<button class="kta-btn-link kta-update-link-danger" id="kta-update-accept-hard" type="button">💥 Forcer un reset complet à la place</button>' +
+          '<button class="kta-btn-link kta-update-link-danger" id="kta-update-accept-hard" type="button">' + window.I18n.t("alerts.update.acceptHard") + '</button>' +
         '</div>' +
       '</div>' +
     '</div>';
