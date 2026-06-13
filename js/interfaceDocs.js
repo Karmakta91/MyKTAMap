@@ -101,6 +101,19 @@ function _setReadmeLang(lang) {
   try { localStorage.setItem(README_LANG_STORAGE_KEY, lang); } catch(e) {}
 }
 
+// 🆕 v1.46 (KARMA) — Un changement de LANGUE GLOBALE de l'app (myktamap_app_lang,
+// via le sélecteur Réglages/HOME) efface le choix manuel mémorisé de la doc +
+// onboarding (clé partagée myktamap_readme_lang). Effet : doc, aide ET onboarding
+// re-suivent la nouvelle langue app via resolveContentLang → "en" (GB) par défaut
+// quand l'app n'est plus en FR et que la langue active n'a pas de contenu dédié.
+// Le toggle drapeau LOCAL (dans la doc/aide/onboarding) reste sticky TANT QUE la
+// langue globale ne change pas. Enregistré une fois au chargement du module.
+if (window.I18n && typeof window.I18n.onChange === "function") {
+  window.I18n.onChange(function() {
+    try { localStorage.removeItem(README_LANG_STORAGE_KEY); } catch (e) {}
+  });
+}
+
 // Retourne le chemin du fichier README selon la langue.
 // 🆕 v1.29.3 — README_USER.md + .en.md regroupés sous docs/applications/
 // avec les autres docs lues par l'app (AI_CONTEXT, NETWORK_AUDIT). À la

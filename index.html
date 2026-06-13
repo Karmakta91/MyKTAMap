@@ -5210,8 +5210,13 @@
           if (old) old.remove();
 
           const cibleIcone   = (cible === "light") ? "☀️" : "🌙";
-          const cibleLibelle = (cible === "light") ? "CLAIR" : "SOMBRE";
           const cibleColor   = (cible === "light") ? "#f4c542" : "#8cb4ff";
+          // i18n : libellés + textes résolus au RENDU (langue active). I18n.t
+          // n'utilise pas `this` → on peut référencer la fonction directement.
+          // Fallback = clé brute si I18n indispo (très improbable, chargé au boot).
+          const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
+          const cibleLibelle = _t(cible === "light" ? "theme.name.light" : "theme.name.dark");
+          const cibleSpan    = '<strong style="color:' + cibleColor + ';">' + cibleLibelle + '</strong>';
 
           const modal = document.createElement("div");
           modal.id = "kta-theme-confirm-modal";
@@ -5219,23 +5224,22 @@
           modal.innerHTML =
             '<div class="kta-readme-modal-boite kta-theme-confirm-boite">' +
               '<div class="kta-readme-modal-header">' +
-                '<span class="kta-readme-modal-titre">' + cibleIcone + ' Activer le thème ' + cibleLibelle + ' ?</span>' +
-                '<button class="kta-panneau-close" id="kta-theme-confirm-close" type="button" aria-label="Annuler">✕</button>' +
+                '<span class="kta-readme-modal-titre">' + cibleIcone + ' ' + _t("theme.confirm.title", { target: cibleLibelle }) + '</span>' +
+                '<button class="kta-panneau-close" id="kta-theme-confirm-close" type="button" aria-label="' + _t("theme.confirm.cancel") + '">✕</button>' +
               '</div>' +
               '<div class="kta-readme-modal-corps kta-theme-confirm-corps">' +
                 '<div class="kta-theme-confirm-icone" style="color:' + cibleColor + ';">' + cibleIcone + '</div>' +
                 '<p class="kta-theme-confirm-msg">' +
-                  'Passer en thème <strong style="color:' + cibleColor + ';">' + cibleLibelle + '</strong> va ' +
-                  '<strong>relancer l\'application</strong> pour appliquer le changement proprement.' +
+                  _t("theme.confirm.msg", { target: cibleSpan }) +
                 '</p>' +
                 '<p class="kta-theme-confirm-hint">' +
-                  '<em>Le reload garantit un rendu sans bugs résiduels (bandeau top, modales) qu\'on n\'a jamais réussi à régler avec un swap « live ».</em>' +
+                  '<em>' + _t("theme.confirm.hint") + '</em>' +
                 '</p>' +
               '</div>' +
               '<div class="kta-theme-confirm-actions">' +
-                '<button class="kta-btn kta-btn-ghost" id="kta-theme-confirm-cancel" type="button">Annuler</button>' +
+                '<button class="kta-btn kta-btn-ghost" id="kta-theme-confirm-cancel" type="button">' + _t("theme.confirm.cancel") + '</button>' +
                 '<button class="kta-btn kta-btn-primary kta-theme-confirm-ok" id="kta-theme-confirm-ok" type="button">' +
-                  cibleIcone + ' Activer et relancer' +
+                  cibleIcone + ' ' + _t("theme.confirm.ok") +
                 '</button>' +
               '</div>' +
             '</div>';
