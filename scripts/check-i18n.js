@@ -55,6 +55,11 @@ function stripComments(src) {
 function scanFile(file) {
   const src = stripComments(fs.readFileSync(file, "utf8"));
   let m;
+  // Seul I18n.t("…") est détecté de façon fiable. Les alias locaux (t/_t/T)
+  // ne sont PAS captés : certains modules (tutorial.js) ont leur propre _t()
+  // non-i18n (UI_STRINGS) → les capter créerait des faux positifs. Conséquence :
+  // les clés appelées via alias apparaissent comme "orphelines" (info, pas
+  // bloquant) ; la complétude réelle est validée par l'audit résiduel (Phase 4).
   const reT = /I18n\.t\(\s*["'`]([^"'`]+)["'`]/g;
   while ((m = reT.exec(src)) !== null) called.add(m[1]);
   const reAttr = /data-i18n(?:-html|-title)?\s*=\s*"([^"]+)"/g;
@@ -81,6 +86,31 @@ if (calledMissing.length) {
   console.error("❌ Clés appelées mais absentes d'un dico (" + calledMissing.length + ") :\n   " + calledMissing.join("\n   "));
 } else {
   console.log("✅ Toutes les clés appelées (" + called.size + ") existent dans fr + en");
+}
+
+// ---- 2bis. Parité des interpolations {param} fr vs en ----
+function params(str) {
+  const set = new Set();
+  if (typeof str !== "string") return set;
+  let m; const re = /\{(\w+)\}/g;
+  while ((m = re.exec(str)) !== null) set.add(m[1]);
+  return set;
+}
+const paramMismatch = [];
+for (const k of frKeys) {
+  if (k.startsWith("_meta") || !enKeys.has(k)) continue;
+  const pf = params(fr[k]), pe = params(en[k]);
+  const onlyFr = [...pf].filter(x => !pe.has(x));
+  const onlyEn = [...pe].filter(x => !pf.has(x));
+  if (onlyFr.length || onlyEn.length) {
+    paramMismatch.push(k + " (fr-only: " + (onlyFr.join(",") || "-") + " | en-only: " + (onlyEn.join(",") || "-") + ")");
+  }
+}
+if (paramMismatch.length) {
+  blocking++;
+  console.error("❌ Interpolations {param} divergentes fr/en (" + paramMismatch.length + ") :\n   " + paramMismatch.slice(0, 40).join("\n   "));
+} else {
+  console.log("✅ Interpolations {param} cohérentes fr/en");
 }
 
 // ---- 3. Orphelines (info) ----
