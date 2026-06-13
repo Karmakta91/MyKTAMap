@@ -368,8 +368,8 @@
       if (isQuota && !_quotaWarned && window.OOMGuard) {
         _quotaWarned = true;
         window.OOMGuard.showToast(
-          "Espace de stockage du smartphone saturé — la session ne peut plus être sauvegardée automatiquement. " +
-          "Pense à exporter ta session (💾 Enregistrer la session) pour ne rien perdre.",
+          (window.I18n && window.I18n.t) ? window.I18n.t("session.toast.storageFull")
+            : "Espace de stockage du smartphone saturé — la session ne peut plus être sauvegardée automatiquement. Pense à exporter ta session (💾 Enregistrer la session) pour ne rien perdre.",
           "error"
         );
       }
@@ -624,15 +624,18 @@
     const existing = document.getElementById("kta-session-modal");
     if (existing) existing.remove();
 
+    // 🌍 v1.46.0 — i18n au rendu (la modale se construit au chargement du plan,
+    // donc après I18n.init). Helper local avec fallback clé brute.
+    const _t = function(k) { return (window.I18n && window.I18n.t) ? window.I18n.t(k) : k; };
     const parts = [];
-    if (restored.points)     parts.push(restored.points  + " point"  + (restored.points  > 1 ? "s" : ""));
-    if (restored.roads)      parts.push(restored.roads   + " tracé"  + (restored.roads   > 1 ? "s" : ""));
-    if (restored.zones)      parts.push(restored.zones   + " zone"   + (restored.zones   > 1 ? "s" : ""));
+    if (restored.points)     parts.push(restored.points  + " " + _t(restored.points  > 1 ? "session.unit.points"     : "session.unit.point"));
+    if (restored.roads)      parts.push(restored.roads   + " " + _t(restored.roads   > 1 ? "session.unit.roads"      : "session.unit.road"));
+    if (restored.zones)      parts.push(restored.zones   + " " + _t(restored.zones   > 1 ? "session.unit.zones"      : "session.unit.zone"));
     // 🆕 v1.9.3-A1.a : structures dans le feedback restauration session
-    if (restored.structures) parts.push(restored.structures + " structure" + (restored.structures > 1 ? "s" : ""));
-    if (restored.measure)    parts.push("mesure distance");
+    if (restored.structures) parts.push(restored.structures + " " + _t(restored.structures > 1 ? "session.unit.structures" : "session.unit.structure"));
+    if (restored.measure)    parts.push(_t("session.unit.measureDist"));
     // 🆕 v1.12.0-fix : surface dans le feedback de restauration
-    if (restored.measureSurface) parts.push("mesure surface");
+    if (restored.measureSurface) parts.push(_t("session.unit.measureSurf"));
 
     // Nom du plan en cours (échappé) pour que l'utilisateur voie clairement de quel plan vient la session
     const planName = _currentPlanName();
@@ -649,12 +652,12 @@
     modal.innerHTML =
       '<div class="kta-session-modal-boite">' +
         '<div class="kta-session-modal-icon">↻</div>' +
-        '<div class="kta-session-modal-titre">Session précédente restaurée</div>' +
+        '<div class="kta-session-modal-titre">' + _t("session.modal.titre") + '</div>' +
         planLine +
         '<div class="kta-session-modal-detail">' + parts.join(" · ") + '</div>' +
         '<div class="kta-session-modal-actions">' +
-          '<button class="kta-btn kta-btn-ghost"   type="button" data-action="clear">🗑️ Effacer la session</button>' +
-          '<button class="kta-btn kta-btn-primary" type="button" data-action="keep">✓ Continuer</button>' +
+          '<button class="kta-btn kta-btn-ghost"   type="button" data-action="clear">' + _t("session.btn.clear") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" type="button" data-action="keep">' + _t("session.btn.keep") + '</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(modal);
