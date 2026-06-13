@@ -834,6 +834,769 @@
     }
   ];
 
+  // 🆕 v1.44.6 — Version ANGLAISE de l'onboarding (parité 1:1 avec CARDS FR).
+  // Même logique que la doc bilingue (interfaceDocs.js) : la langue active est
+  // lue depuis la clé localStorage partagée `myktamap_readme_lang` ("fr"|"en"),
+  // togglée via le bouton 🇫🇷/🇬🇧 du header du tutoriel (cohérent avec la modale
+  // Documentation). Traduction fidèle, mêmes emojis, même structure, mêmes
+  // codes/raccourcis (Ctrl+K, etc.) que la version FR.
+  const CARDS_EN = [
+    // ─── 1/25 — Welcome ───
+    {
+      emoji: "🌟",
+      titre: "Welcome to MyKTAMap",
+      texte:
+        "<p><strong>MyKTAMap</strong> is an <strong>underground mapping</strong> application built " +
+        "for the field: quarries, catacomb galleries, underground and industrial sites.</p>" +
+        "<p>You work on a <strong>plan image</strong> (scanned paper map, drawing, photo). " +
+        "No GPS needed, no network needed — the app runs fully offline once loaded.</p>" +
+        "<p>📜 <strong>License</strong>: CC BY-NC-SA 4.0 — non-commercial use, share-alike. " +
+        "The code is public on GitHub (<code>Karmakta91/MyKTAMap</code>). This guarantee applies " +
+        "<strong>ONLY</strong> to the official domain <code>myktamap.fr</code>.</p>" +
+        "<p>This short tour helps you discover the app in a few minutes. You can skip it at any time " +
+        "and replay it via <strong>📖 Documentation → 🎓 button</strong> in the modal header.</p>",
+      hint: "Navigate with the ◂ ▸ arrows or the ← → / Space keys on your keyboard."
+    },
+
+    // ─── 2/25 — Privacy & offline ───
+    {
+      emoji: "🛡️",
+      titre: "100% offline, 100% private",
+      texte:
+        "<p>MyKTAMap is a <strong>strictly client-side</strong> PWA:</p>" +
+        "<ul>" +
+          "<li>❌ <strong>No backend server</strong>, no remote database</li>" +
+          "<li>❌ <strong>No tracking cookies</strong>, no telemetry, no analytics</li>" +
+          "<li>❌ <strong>No account</strong>, no authentication, no cloud sync</li>" +
+          "<li>✅ Your annotations, sessions, plans and favorites stay <strong>locally</strong> in " +
+            "your browser (LocalStorage + IndexedDB)</li>" +
+          "<li>✅ Only requests sent: same-origin (app assets) and a " +
+            "<code>gstatic.com/generate_204</code> ping to detect connectivity</li>" +
+        "</ul>" +
+        "<p>🔒 <strong>Check it yourself</strong>: open <strong>⚙️ Configuration → 🔒 Network audit</strong> " +
+        "to see the LIVE log of every request the app sends. Also enable " +
+        "<strong>\"Strict offline mode\"</strong> which blocks any non-whitelisted request " +
+        "directly in the browser.</p>" +
+        "<p>📜 <strong>Server-side CSP header</strong> (Nginx): <code>connect-src 'self' https://www.gstatic.com</code> " +
+        "— your browser ITSELF would refuse any exfiltration to an external domain, even if an " +
+        "attacker injected malicious JS.</p>"
+    },
+
+    // ─── 3/25 — Load an existing plan ───
+    {
+      emoji: "🗂️",
+      titre: "Load an existing plan",
+      texte:
+        "<p>From the <strong>home page</strong>, several ways to load an already available plan:</p>" +
+        "<ul>" +
+          "<li><strong>📚 My plans</strong>: list of every plan you have already imported or created. " +
+            "Persisted in IndexedDB → you find them again on next launch without re-dropping anything.</li>" +
+          "<li><strong>📦 Drop MyKTAMap ZIP</strong>: drop a <code>.zip</code> file in the drop zone. " +
+            "This is the native format — direct loading, full roundtrip (tags, levels, photos, " +
+            "custom legend preserved).</li>" +
+          "<li><strong>📥 Drop KMZ / GPX</strong>: the same drop zone also accepts <code>.kmz</code> " +
+            "files (Google Earth, OsmAnd) and <code>.gpx</code> (TopoDroid, Strava, Garmin). " +
+            "The app automatically converts them into a rebuilt MyKTAMap ZIP.</li>" +
+          "<li><strong>🌐 Server auto-discovery</strong>: if the app is installed on a server that " +
+            "exposes <code>data/index.json</code>, public plans are listed there automatically.</li>" +
+        "</ul>" +
+        "<p>💡 <strong>Imported KMZ / GPX</strong>: ideally <strong>exported from MyKTAMap</strong> " +
+        "(100% preserved roundtrip). Otherwise, info missing from the standard format (MyKTAMap tags, " +
+        "M-LVL levels, etc.) is replaced by defaults. For a GPX with no image, the app generates a " +
+        "blank canvas auto-calibrated on the file's GPS bounds.</p>"
+    },
+
+    // ─── 4/25 — Create a plan: Simple Mode ───
+    {
+      emoji: "🏗️",
+      titre: "Create a plan — Simple Mode",
+      texte:
+        "<p>Want to start a new plan? Click <strong>🏗️ Generate a plan</strong> on the " +
+        "home page. <strong>Simple Mode</strong> is the default option on first launch.</p>" +
+        "<p>You get a ready-to-use MyKTAMap ZIP in <strong>30 seconds</strong> with just:</p>" +
+        "<ul>" +
+          "<li>🖼️ <strong>A plan image</strong> (scan, photo, drawing) or a <strong>blank canvas</strong> " +
+            "(4 standard sizes + 4 color choices: sepia / white / grey / black)</li>" +
+          "<li>🏷️ <strong>A name</strong> and a <strong>version</strong> (the rest is auto-filled)</li>" +
+          "<li>🏗️ Optional: <strong>🏗️ Multi-level plan</strong> checkbox for a multi-storey quarry</li>" +
+          "<li>🧱 Optional: <strong>🧱 V2 tiled</strong> checkbox if plan ≥ 4000×4000 px (recommended for mobile perf)</li>" +
+        "</ul>" +
+        "<p>Built-in icons (shafts, rooms, crawlways, hazards…) are auto-loaded. " +
+        "No need to touch data layers, tracking or GPS calibration — the app provides sensible " +
+        "default values.</p>",
+      hint: "To switch to Advanced Mode: the \"🎨 Advanced\" button at the top of the generator."
+    },
+
+    // ─── 5/25 — Create a plan: Advanced Mode ───
+    {
+      emoji: "🎨",
+      titre: "Create a plan — Advanced Mode",
+      texte:
+        "<p>The generator's <strong>Advanced Mode</strong> gives you full control over every " +
+        "technical parameter of the plan:</p>" +
+        "<ul>" +
+          "<li>🖼️ <strong>Image layers</strong>: stack several PNGs (e.g. raw plan + legend + " +
+            "scanned paper annotations) with configurable order and visibility</li>" +
+          "<li>📊 <strong>Data layers</strong>: embed point/path/zone/structure JSON files into the " +
+            "plan (e.g. shafts.json, vehicles.json). Read-only at runtime, filterable by layer in " +
+            "the map's Layers modal.</li>" +
+          "<li>🚶 <strong>Tracking configuration</strong>: tracker start position, px↔m scale, " +
+            "step length, threshold, cooldown</li>" +
+          "<li>🎨 <strong>Custom icons</strong>: replace the default icons, add 50×50 PNGs " +
+            "for new tags</li>" +
+          "<li>🌐 <strong>GPS georeferencing</strong>: 2 points (plan ↔ GPS) that enable KMZ/GPX " +
+            "export and GPS coordinates display in popups</li>" +
+          "<li>🏷️ <strong>Plan-level legend</strong>: customize labels + masks + custom entries " +
+            "embedded IN the plan ZIP (= cross-user sharing)</li>" +
+        "</ul>" +
+        "<p>If you edit an existing plan (drop ZIP in the generator → Edit mode), the form is " +
+        "<strong>pre-filled</strong> with current values and automatically forces Advanced Mode.</p>"
+    },
+
+    // ─── 6/25 — Points POI ───
+    {
+      emoji: "📍",
+      titre: "Points of interest (POI)",
+      texte:
+        "<p><strong>Right sidebar → ✏️ (direct click = enables add mode)</strong></p>" +
+        "<p>Click the ✏️ icon to start add mode (the button gets highlighted). " +
+        "Then each click on the map drops a new marker. Click ✏️ again to exit " +
+        "the mode. A modal opens for each point with:</p>" +
+        "<ul>" +
+          "<li><strong>Name</strong> (= unique identifier, used by exports and the pathfinder)</li>" +
+          "<li><strong>Tags</strong>: typed icon among the built-ins (ventilation shaft, room, crawlway, " +
+            "passage, hazard, electricity…) or your plan's custom tags</li>" +
+          "<li><strong>State</strong>: not inspected / OK / dangerous (tints the icon)</li>" +
+          "<li><strong>Description</strong> multiline: free textarea, shown in the popup + embedded " +
+            "in KMZ / GPX / JSON exports</li>" +
+          "<li>📸 <strong>POI photos</strong>: up to 5 photos per point. Compressed locally " +
+            "(canvas → JPEG q85 max 1920px), stored in IndexedDB. <strong>Never sent to the Internet</strong>.</li>" +
+        "</ul>" +
+        "<p><strong>A point's popup</strong> (click on the marker):</p>" +
+        "<ul>" +
+          "<li>🌐 <strong>GPS coordinates</strong> if plan is calibrated — copyable to clipboard in one click</li>" +
+          "<li>📸 <strong>Photo thumbnails</strong> clickable → fullscreen viewer (pinch-zoom, swipe)</li>" +
+          "<li>🗺️ <strong>Go there</strong>: starts a route from your position to this point</li>" +
+          "<li>⭐ <strong>Favorite</strong>: marks this point as important</li>" +
+          "<li>✏️ <strong>Edit</strong> / 🗑️ <strong>Delete</strong></li>" +
+        "</ul>"
+    },
+
+    // ─── 7/25 — Paths ───
+    {
+      emoji: "🛣️",
+      titre: "Paths (routes and trails)",
+      texte:
+        "<p><strong>Right sidebar → 🛣️ Paths → Main / Secondary / Trail</strong></p>" +
+        "<p>Click-click on the map to draw a polyline. Click the active icon again to " +
+        "<strong>validate</strong> the path. 3 predefined types with distinct colors:</p>" +
+        "<ul>" +
+          "<li>🟩 <strong>Main</strong>: large known galleries, main axes</li>" +
+          "<li>🟪 <strong>Secondary</strong>: junction galleries, less frequented</li>" +
+          "<li>🟨 <strong>Trail</strong>: narrow passages, shortcuts, exploratory paths</li>" +
+        "</ul>" +
+        "<p>Paths are used by the <strong>pathfinder (Dijkstra)</strong> to compute automatic " +
+        "routes between 2 points (see card 16). <strong>Intersections</strong> are " +
+        "detected automatically (colored circles at crossings — color of the lowest-priority path).</p>" +
+        "<p><strong>💬 Note on a path</strong>: button in the popup → multiline textarea, embedded " +
+        "in exports. Ideal to annotate a gallery (state, hazards, landmarks).</p>" +
+        "<p><strong>📏 Path distance</strong>: visible in 📊 Session details, or via the " +
+        "<strong>📏 Total distance</strong> tool (cumulative magenta highlight).</p>"
+    },
+
+    // ─── 8/25 — Zones ───
+    {
+      emoji: "⬛",
+      titre: "Zones (Water, rubble, inaccessible…)",
+      texte:
+        "<p><strong>Right sidebar → ⬛ Zones → Water / Rubble / Collapse / Inaccessible</strong></p>" +
+        "<p>Click on the map to place the vertices of a polygon. Click the 1st vertex again to " +
+        "close the zone. 4 predefined types:</p>" +
+        "<ul>" +
+          "<li>💧 <strong>Water</strong>: puddle, lake, flooded area (blue)</li>" +
+          "<li>⬛ <strong>Rubble</strong>: scree, partial blockage, debris (grey)</li>" +
+          "<li>🟥 <strong>Collapse</strong>: dangerous area, fallen vault (red)</li>" +
+          "<li>⛔ <strong>Inaccessible</strong>: physically unreachable or forbidden area " +
+            "(red/black 45° hatching)</li>" +
+        "</ul>" +
+        "<p>⚠️ <strong>Inaccessible zone — pathfinder effect</strong>: these zones <strong>BLOCK</strong> " +
+        "route computation. The pathfinder will refuse any path segment crossing an inaccessible " +
+        "zone. Even at the current active level in multi-level mode (inter-level junctions " +
+        "pass over without being blocked — vertical transit points).</p>" +
+        "<p>💬 <strong>Note on a zone</strong>: popup → textarea. Embedded in exports.</p>"
+    },
+
+    // ─── 9/25 — Structures ───
+    {
+      emoji: "🏛️",
+      titre: "Structures (pillars, walls, faces)",
+      texte:
+        "<p><strong>Right sidebar → 🏛️ Structures</strong></p>" +
+        "<p>Cataphile structures are the <strong>built / carved elements</strong> of the " +
+        "quarry. 5 predefined sub-types:</p>" +
+        "<ul>" +
+          "<li>🟡 <strong>Pillar (upper mass)</strong> (yellow polygon): upper support pillar</li>" +
+          "<li>🟠 <strong>Pillar (lower mass)</strong> (orange polygon): lower pillar</li>" +
+          "<li>🔵 <strong>Wall</strong> (dark blue polygon): retaining wall, rubble barrier</li>" +
+          "<li>🟨 <strong>Working face (upper)</strong> (thick yellow polyline): extraction limit</li>" +
+          "<li>🟧 <strong>Working face (lower)</strong> (thick orange polyline)</li>" +
+        "</ul>" +
+        "<p><strong>Polygon vs polyline difference</strong>:</p>" +
+        "<ul>" +
+          "<li>Pillars + Wall = <strong>closed</strong> polygons (≥ 3 vertices) with fill color</li>" +
+          "<li>Faces = <strong>open</strong> polylines (≥ 2 vertices) without fill</li>" +
+        "</ul>" +
+        "<p>💬 <strong>Note on a structure</strong>: popup → textarea. Embedded in exports.</p>" +
+        "<p>📊 <strong>Count stats</strong>: visible in 📊 Session details with breakdown by type.</p>"
+    },
+
+    // ─── 10/25 — Customizable legend ───
+    {
+      emoji: "🏷️",
+      titre: "Customizable legend",
+      texte:
+        "<p>You can <strong>customize the legend</strong>: rename types, hide the ones you " +
+        "don't use, or even <strong>add your own drawable types</strong>.</p>" +
+        "<p>🎯 <strong>3-level cascade</strong>:</p>" +
+        "<ol>" +
+          "<li><strong>Session</strong>: edits made from the map (🗺️ Legend modal → ✏️ Edit). " +
+            "Persisted locally with the current session.</li>" +
+          "<li><strong>Plan</strong>: edits made from the <strong>Advanced Mode generator</strong>. " +
+            "Embedded IN the plan ZIP → shared with all users of this plan.</li>" +
+          "<li><strong>MyKTAMap default</strong>: built-in values (Main, Water, Upper-mass pillar, etc.)</li>" +
+        "</ol>" +
+        "<p>📋 <strong>Usage examples</strong>:</p>" +
+        "<ul>" +
+          "<li>Rename \"Water\" → \"Bottom lake\" for YOUR plan</li>" +
+          "<li>Hide \"Lower-mass pillar\" if the quarry has none</li>" +
+          "<li>Add a new \"⚠️ Toxic gas\" type (red hatched polygon) to flag specific areas</li>" +
+        "</ul>" +
+        "<p>🌍 <strong>KMZ + GPX roundtrip</strong>: the plan's custom legend travels with exports " +
+        "and is restored on re-import → even a recipient who opens your KMZ/GPX in MyKTAMap will find " +
+        "your renamings and your custom types.</p>"
+    },
+
+    // ─── 11/25 — Tracker + Replay ───
+    {
+      emoji: "🧭",
+      titre: "Position tracker (PDR) + Replay",
+      texte:
+        "<p>The <strong>🧭 Tracker</strong> mode (right sidebar flyout) uses your phone's motion " +
+        "sensors (accelerometer, magnetometer) to estimate your position in real time — without GPS " +
+        "(= useful underground).</p>" +
+        "<p><strong>Tracker flyout sub-actions</strong>:</p>" +
+        "<ul>" +
+          "<li>▶️ <strong>Play / Stop</strong>: starts PDR (Pedestrian Dead Reckoning) step detection. " +
+            "The marker moves according to your orientation and detected steps.</li>" +
+          "<li>🧭 <strong>Compass</strong>: rotating visual widget that counter-rotates to keep North " +
+            "up. Lets you verify the heading is correct.</li>" +
+          "<li>📍 <strong>Recalibrate</strong>: click on the map to <strong>teleport</strong> the marker " +
+            "to where you actually are. <strong>Use it every ~50 m</strong> to correct cumulative " +
+            "drift.</li>" +
+          "<li>🗺️ <strong>Route</strong>: opens the modal to compute a route from your current " +
+            "position.</li>" +
+          "<li>🎬 <strong>Replay</strong>: review your tracking session afterwards. Timeline slider + " +
+            "play/pause + speed 0.5× to 10× + CSV export of timestamped positions.</li>" +
+          "<li>🔥 <strong>Heatmap</strong>: cumulative multi-session foot-traffic density (see card 19).</li>" +
+        "</ul>" +
+        "<p>⚠️ <strong>EXPERIMENTAL</strong>: drift is unavoidable (imprecise sensors + metal " +
+        "structures that throw off the magnetometer). It's a debug/curiosity tool, <strong>NOT a " +
+        "backup GPS</strong>. To locate yourself in a tense situation, use the ⛑️ I'm lost mode " +
+        "(next card).</p>"
+    },
+
+    // ─── 12/25 — Emergency modes ───
+    {
+      emoji: "⛑️",
+      titre: "Emergency modes (Lost / Panic / Exit)",
+      texte:
+        "<p>3 complementary modes, at the <strong>end of the Tracker flyout</strong> with a distinctive red background:</p>" +
+        "<ul>" +
+          "<li>⛑️ <strong>I'm lost</strong>: you roughly know where you've been but not where you are " +
+            "<em>now</em>. The app computes a <strong>probable area</strong> (search circle) " +
+            "from your last known position + elapsed time + estimated average speed. You " +
+            "can refine it by adding visual clues (\"I saw a big red plaque\", " +
+            "\"there was a pillar here\").</li>" +
+          "<li>🚨 <strong>XL emergency mode (panic)</strong>: you know where you are (the tracker shows it) " +
+            "but you're panicking and need vital info BIG. Displays your GPS coordinates + compass " +
+            "heading + battery level fullscreen, hiding the rest of the UI. Saves your battery.</li>" +
+          "<li>🚨 <strong>Emergency exit</strong> <em>(v1.35+)</em>: you want to <strong>get out fast</strong>. " +
+            "The app computes via pathfinder the optimal route from your position to the <strong>nearest " +
+            "Exit POI</strong> (<code>exit</code> tag in the plan's POIs). Shows distance + ETA + " +
+            "drawn route. Ideal when the battery is dropping, the tide is rising, or a storm is approaching above.</li>" +
+        "</ul>" +
+        "<p>💡 <strong>3 different use cases</strong>:</p>" +
+        "<ul>" +
+          "<li>⛑️ = I do NOT know where I am → compute a search area</li>" +
+          "<li>🚨 panic = I know where I am → XL display to communicate the position</li>" +
+          "<li>🚨 exit = I know where I am → guides me to the nearest exit</li>" +
+        "</ul>" +
+        "<p>🔆 <strong>Wake Lock</strong>: during emergency mode, the screen no longer turns off (browser " +
+        "Wake Lock API). You can also enable it permanently from ⚙️ Configuration → " +
+        "\"Keep screen on\".</p>",
+      hint: "Emergency modes NEVER replace a call to rescue services. It's a backup tool to communicate your position to rescuers."
+    },
+
+    // ─── 13/25 — Rescue Mode ───
+    {
+      emoji: "🚨",
+      titre: "Rescue Mode (search team coordination)",
+      texte:
+        "<p>⚠️ <strong>3 distinct \"emergency\" modes</strong> in MyKTAMap, don't confuse them:</p>" +
+        "<ul>" +
+          "<li>⛑️ <strong>I'm lost</strong> = YOU are looking for yourself</li>" +
+          "<li>🚨 <strong>Panic mode</strong> = YOU are panicking (see previous card)</li>" +
+          "<li>🚨 <strong>Rescue Mode</strong> = SOMEONE ELSE is lost, you coordinate the search</li>" +
+        "</ul>" +
+        "<p>Access: sidebar → 🧭 Tracker flyout → red <strong>🚨 Rescue Mode</strong> button.</p>" +
+        "<p>The scenario has <strong>2 distinct states</strong>:</p>" +
+        "<p>📝 <strong>State 1 — CREATION</strong> (cold planning OR on the spot):</p>" +
+        "<ul>" +
+          "<li>Create a named scenario (\"Search for Marc 05/26\")</li>" +
+          "<li>Add teams (NATO palette Alpha/Bravo/Charlie...) with " +
+            "<strong>entry + intermediate + exit</strong> route + search area + auto-computed " +
+            "route (Pathfinder avoids overlaps between teams)</li>" +
+          "<li>Auto pre-fill from ⛑️ Lost Mode (last known position + uncertainty area)</li>" +
+          "<li>Multi-level M-LVL supported (auto 1 team per floor if needed)</li>" +
+          "<li>Export <strong>3 formats</strong>: printable A4 PDF with mini-map + cross-app " +
+            "geolocated KMZ (Google Earth / OsmAnd) + standalone <code>.mkmsec.json</code> for cross-device sharing</li>" +
+        "</ul>" +
+        "<p>🚀 <strong>State 2 — FIELD EXECUTION</strong> (incident triggered, real-time Live view):</p>" +
+        "<ul>" +
+          "<li><strong>\"🚀 Launch the rescue plan\"</strong> button + role selection modal</li>" +
+          "<li><strong>👤 Surface operator</strong>: command post, overview of multi-team cards + status " +
+            "+ last obs + \"🚨 Take over\" button with automatic return</li>" +
+          "<li><strong>🚨 Team member</strong>: in the field, clickable visual stepper + observations + " +
+            "<strong>7 quick statuses</strong> (All clear / Suspect / Blocked / Clue / Help requested / " +
+            "Forced turnaround / <strong>Victim found</strong> = blinking red card on the PC side) + " +
+            "photos (max 5/step, dedicated local IDB)</li>" +
+          "<li><strong>🚑 Free responder</strong>: reinforcement with no pre-assigned team, chronological " +
+            "free-form notes with timestamps</li>" +
+          "<li>Global timer with fair pause · \"📦 PLAN ENDED\" banner after stopping</li>" +
+        "</ul>" +
+        "<p>📤 <strong>Report along the steps</strong> at any time (button in each Live view): " +
+        "printable PDF / standalone <code>.mkmsec.report.json</code> / clipboard text. " +
+        "3 scopes depending on your role (global operator / team member only / responder notes).</p>",
+      hint: "Phase 3 single-device for now. To share observations between surface operator and field team members, use .mkmsec.report.json (email / USB key / AirDrop)."
+    },
+
+    // ─── 14/25 — Unified search Ctrl+K ───
+    {
+      emoji: "🔍",
+      titre: "Unified search (Ctrl+K)",
+      texte:
+        "<p><strong>Universal shortcut</strong>: <code>Ctrl+K</code> (Cmd+K on Mac) — opens the search " +
+        "bar from anywhere in the app. Toggle click again to close.</p>" +
+        "<p>🎯 <strong>Searches 4 categories simultaneously</strong>:</p>" +
+        "<ul>" +
+          "<li>📍 <strong>Points</strong>: by name, ID, tag, description</li>" +
+          "<li>🛣️ <strong>Paths</strong>: by label, type, level</li>" +
+          "<li>⬛ <strong>Zones</strong>: by label, type, level</li>" +
+          "<li>🏛️ <strong>Structures</strong>: by label, type, level</li>" +
+        "</ul>" +
+        "<p>📑 <strong>Results grouped by category</strong>, scored by relevance. Live " +
+        "auto-completion on every key pressed.</p>" +
+        "<p>🎛️ <strong>Cumulative filters</strong> (chips above the list):</p>" +
+        "<ul>" +
+          "<li>By <strong>category</strong> (points / paths / zones / structures)</li>" +
+          "<li>By <strong>layer</strong> (My annotations, shafts.json, etc.)</li>" +
+          "<li>By <strong>tag</strong> (ventilation shaft, room, crawlway…)</li>" +
+        "</ul>" +
+        "<p>✨ <strong>Click on a result</strong>:</p>" +
+        "<ul>" +
+          "<li>Point → centers the map + opens the popup + yellow circle 3s</li>" +
+          "<li>Path / Zone / Structure → centers + yellow flash 4s overlay</li>" +
+        "</ul>"
+    },
+
+    // ─── 15/25 — Favorites ───
+    {
+      emoji: "⭐",
+      titre: "Favorites (quick POIs)",
+      texte:
+        "<p>Mark your <strong>important points of interest</strong> as favorites to access them in 1 click.</p>" +
+        "<p>📝 <strong>How to add a favorite</strong>:</p>" +
+        "<ul>" +
+          "<li>Click on a marker → popup → ⭐ <strong>Favorite</strong> button (toggle)</li>" +
+          "<li>The star fills ⭐ and the point appears in the ⭐ Favorites group</li>" +
+        "</ul>" +
+        "<p>📂 <strong>Accessing favorites</strong>:</p>" +
+        "<ul>" +
+          "<li><strong>Left sidebar → ⭐ Favorites group</strong> (just after M-LVL if active). " +
+            "Dynamic list updated on every add/remove.</li>" +
+          "<li>Click a favorite → centers the map on the point + orange flash 3s + popup open</li>" +
+        "</ul>" +
+        "<p>📤 <strong>JSON Export / Import</strong>: from 📊 Session details, you can export " +
+        "your favorites list as JSON then import it on another device (phone → computer, or share " +
+        "with a friend). Lightweight format, independent of the plan.</p>" +
+        "<p>💡 <strong>Typical use cases</strong>:</p>" +
+        "<ul>" +
+          "<li>Quarry main entrance (= \"base\")</li>" +
+          "<li>Meeting point with a group</li>" +
+          "<li>Bivouac room, drinking-water point</li>" +
+          "<li>Trap / recently collapsed passage (to avoid)</li>" +
+        "</ul>" +
+        "<p>🔒 <strong>Storage</strong>: <code>localStorage[\"myktamap_favoris_v1\"]</code> indexed by " +
+        "planId. Full snapshots of points = resilience even if the point is moved or deleted.</p>"
+    },
+
+    // ─── 16/25 — Route pathfinder ───
+    {
+      emoji: "🗺️",
+      titre: "Route pathfinder",
+      texte:
+        "<p>Computes the <strong>shortest path</strong> between N waypoints following the existing " +
+        "path network (<strong>Dijkstra</strong> algorithm + crossing enrichment).</p>" +
+        "<p>🎯 <strong>3 ways to add a waypoint</strong>:</p>" +
+        "<ul>" +
+          "<li>🔍 <strong>Autocomplete</strong> in the route modal (search points by name/tag)</li>" +
+          "<li>🏷️ <strong>Exact ID entry</strong> + Add button</li>" +
+          "<li>📍 <strong>Click on the map</strong> (cyan floating mode)</li>" +
+          "<li>🧭 <strong>My position</strong>: takes your current tracker position as the start point</li>" +
+        "</ul>" +
+        "<p>🚫 <strong>Avoidance preferences (optional)</strong>:</p>" +
+        "<ul>" +
+          "<li><strong>Points</strong>: \"do NOT go through this shaft\"</li>" +
+          "<li><strong>Tags</strong>: \"avoid all hazard-type passages\"</li>" +
+          "<li><strong>Avoidance radius</strong>: margin around avoided points (0-500 px, default 100)</li>" +
+        "</ul>" +
+        "<p>⛔ <strong>Inaccessible zones</strong> are automatically bypassed (hard constraint). " +
+        "Point/tag avoidances are <strong>soft</strong> constraints — if no path exists " +
+        "without them, the pathfinder still computes a path and flags that it had to go through them.</p>" +
+        "<p>⚙️ <strong>Speed modes</strong> (affect the estimated time): 🤕 Injured 2 km/h / 🐌 Slow " +
+        "3 km/h / 🚶 Normal 5 km/h / 🏃 Fast 7 km/h. +15 min break per intermediate waypoint.</p>" +
+        "<p>📊 <strong>Distance + estimated time</strong> label at the bottom-left of the map. Neon cyan path " +
+        "with SVG drop-shadow halo.</p>"
+    },
+
+    // ─── 17/25 — Measurements ───
+    {
+      emoji: "📐",
+      titre: "Measurements (distance, area, total)",
+      texte:
+        "<p><strong>3 complementary measurement tools</strong>:</p>" +
+        "<p>📐 <strong>Distance measurement</strong> (right sidebar → 📐 Measure → 📐 Distance)</p>" +
+        "<ul>" +
+          "<li>Click-click to place vertices, dashed magenta polyline</li>" +
+          "<li>Live label <code>123.4 m</code> or <code>1.23 km</code> beyond 1 km</li>" +
+          "<li>Angles between segments displayed</li>" +
+          "<li>Persisted in session (available again on reload)</li>" +
+        "</ul>" +
+        "<p>⬛ <strong>Area measurement</strong> (right sidebar → 📐 Measure → ⬛ Area)</p>" +
+        "<ul>" +
+          "<li>Click to place polygon vertices. Shoelace algorithm.</li>" +
+          "<li>Live label <code>1234 m²</code> or <code>1.23 ha</code> beyond 1 hectare</li>" +
+          "<li>2 EXCLUSIVE modes (distance OR area) — switching resets the points</li>" +
+        "</ul>" +
+        "<p>📏 <strong>Total path distance</strong> (right sidebar → 🛣️ Paths → 📏)</p>" +
+        "<ul>" +
+          "<li>Highlights in <strong>cumulative magenta</strong> all paths of a given type</li>" +
+          "<li>Computes the total distance per type + grand total</li>" +
+          "<li>Filterable: ☑ Main / ☑ Secondary / ☑ Trail</li>" +
+          "<li>Includes ALL paths (session + embedded data layers, visible or hidden)</li>" +
+        "</ul>" +
+        "<p>The <code>px/m</code> scale is set in the plan's tracking config (or default 1 px = 1 m).</p>"
+    },
+
+    // ─── 18/25 — Multi-level ───
+    {
+      emoji: "🏗️",
+      titre: "Multi-level (M-LVL)",
+      texte:
+        "<p>If you map a quarry with <strong>several stacked floors</strong>, the " +
+        "multi-level mode is essential. <strong>Enabled at plan creation time</strong> " +
+        "(generator → \"🏗️ Multi-level plan\" checkbox) or manual <code>plan-config.json</code> edit.</p>" +
+        "<p>📍 <strong>\"Active level\" button</strong> (left sidebar) — yellow badge with the number:</p>" +
+        "<ul>" +
+          "<li>Click → management modal (active level single-select + visible levels multi-select)</li>" +
+          "<li>Active level = where new annotations are drawn</li>" +
+          "<li>Visible levels = what you see displayed (Quick actions \"All\" / \"Active only\")</li>" +
+          "<li>Negative levels supported (basements -1, -2…). Extensible via − and + buttons</li>" +
+        "</ul>" +
+        "<p>🪜 <strong>Inter-level junctions</strong> (right sidebar → 🛣️ Paths → 🪜):</p>" +
+        "<ul>" +
+          "<li>Special path connecting 2 points on different levels (stairs, slope, internal shaft)</li>" +
+          "<li>Always visible regardless of the level filter (= otherwise impossible to navigate between floors)</li>" +
+          "<li>Magenta dashed style with round markers at the ends</li>" +
+          "<li>The pathfinder uses them naturally to move from one level to another</li>" +
+        "</ul>" +
+        "<p>📤 <strong>Exports respect the level filter</strong>: you can draw on 5 floors and " +
+        "export only the 2 in the middle. Per-level breakdown in 📊 Global stats.</p>",
+      hint: "If your quarry is single-level, ignore this feature — left for advanced use only."
+    },
+
+    // ─── 19/25 — Global stats + Heatmap ───
+    {
+      emoji: "📊",
+      titre: "Global stats + Heatmap",
+      texte:
+        "<p>📊 <strong>Plan global stats</strong> (accessible from 📊 Session details → 📊 View " +
+        "global statistics):</p>" +
+        "<ul>" +
+          "<li>Totals per category (points / paths / zones / structures)</li>" +
+          "<li>Breakdown by tag (how many ventilation shafts, how many rooms, etc.)</li>" +
+          "<li>Cumulative total distance + total area</li>" +
+          "<li>If multi-level: per-level breakdown</li>" +
+          "<li><strong>4 native inline SVG pie charts</strong>: point tags / path types / " +
+            "zone types / structure types distribution</li>" +
+          "<li>📤 <strong>A4 PDF tech-sheet export</strong> + 📊 <strong>CSV ZIP export</strong> " +
+            "(4 UTF-8 files + README, Excel-FR compatible <code>;</code> separator)</li>" +
+        "</ul>" +
+        "<p>🔥 <strong>Heatmap</strong> (Tracker flyout → 🔥) — visual foot-traffic density:</p>" +
+        "<ul>" +
+          "<li>6 checkable sources: tracker timeline / session points / session paths / session zones / " +
+            "session structures / 4 data-layer sub-sources (points / paths / zones / structures, " +
+            "visible or not)</li>" +
+          "<li>Radius sliders (10-120 px) + Intensity (0.2-3×)</li>" +
+          "<li>Interpolation along segments (real continuous trails, not isolated blobs)</li>" +
+          "<li>Auto normalization: densest pixel = red, least dense = blue (adapts to your data)</li>" +
+          "<li>Tracker timeline filter: skip recalibrations (teleports), pauses >5min</li>" +
+        "</ul>" +
+        "<p>💡 <strong>Multi-session</strong> accumulation: the tracker timeline is persisted between " +
+        "restarts → your heatmap builds up as you explore.</p>"
+    },
+
+    // ─── 20/25 — Session exports JSON / KMZ / GPX ───
+    {
+      emoji: "💾",
+      titre: "Session exports — JSON, KMZ, GPX",
+      texte:
+        "<p><strong>💾 Save session</strong> modal (left sidebar → ⬆) with 4 tabs:</p>" +
+        "<p>📄 <strong>Session JSON tab</strong> — re-importable into MyKTAMap:</p>" +
+        "<ul>" +
+          "<li><strong>Full mode</strong>: everything in one file (points + paths + zones + structures + " +
+            "measurements + tracker timeline + optional POI photos)</li>" +
+          "<li><strong>Advanced mode</strong>: granularity by layer, by tag, by type, choice to include " +
+            "or not the photos / tracker / measurements</li>" +
+          "<li>Output: <code>.json</code> or <code>.zip</code> (if photos checked)</li>" +
+        "</ul>" +
+        "<p>🌍 <strong>KMZ tab</strong> — for Google Earth, OsmAnd, Avenza, ArcGIS Earth, Locus:</p>" +
+        "<ul>" +
+          "<li>Requires plan GPS calibration (2 plan↔GPS points, set in the generator)</li>" +
+          "<li>Embeds the plan image + all Placemarks (points/lines/polygons) + per-tag icon style</li>" +
+          "<li>The <strong>plan-level custom legend travels with the KMZ</strong> via an extra file " +
+            "<code>myktamap-extras.json</code> (ignored by third-party apps, restored on MyKTAMap re-import)</li>" +
+        "</ul>" +
+        "<p>📤 <strong>GPX tab</strong> — for TopoDroid, OsmAnd, Strava, Garmin:</p>" +
+        "<ul>" +
+          "<li>Universal GPX 1.1 format, full MyKTAMap roundtrip (tags via <code>&lt;sym&gt;</code>, " +
+            "M-LVL levels via <code>&lt;cmt&gt;</code>, descriptions, custom legend via <code>&lt;extensions&gt;</code>)</li>" +
+          "<li>Reuses the KMZ calibration — if you configured KMZ, GPX works too</li>" +
+        "</ul>" +
+        "<p>🔄 <strong>Conversion tab</strong> — converts your session to/from a data layer " +
+        "(<code>devmap-data</code>) ready to integrate into another plan-config.json. Tracker " +
+        "intentionally excluded (= frozen, read-only data layer).</p>"
+    },
+
+    // ─── 21/25 — Image exports PNG / PDF ───
+    {
+      emoji: "🖼️",
+      titre: "Image exports (PNG, printable PDF)",
+      texte:
+        "<p><strong>🖼️ Image export</strong> modal (left sidebar → 🖼️) with 2 modes:</p>" +
+        "<p>⚡ <strong>Quick mode</strong>:</p>" +
+        "<ul>" +
+          "<li>Captures exactly what you see on the map (current layer visibility)</li>" +
+          "<li>1 click → downloaded PNG file</li>" +
+          "<li>Ideal to quickly share a view</li>" +
+        "</ul>" +
+        "<p>🎨 <strong>Advanced mode</strong>:</p>" +
+        "<ul>" +
+          "<li>Granular filters: by image layer, by data layer, by point tag, by path/" +
+            "zone/structure type, by M-LVL level</li>" +
+          "<li>Include the legend or not (4 styles: opaque / semi / watermark / print)</li>" +
+          "<li>Format: PNG or JPG, custom resolution, 4 legend positions (4 corners)</li>" +
+        "</ul>" +
+        "<p>📄 <strong>Printable PDF export</strong>:</p>" +
+        "<ul>" +
+          "<li>5 formats × 2 orientations: A0/A1/A2/A3/A4 portrait OR landscape</li>" +
+          "<li>Plan + annotations + 4-corner legend overlay + optional header (title + metas)</li>" +
+          "<li>Layer filters identical to advanced PNG</li>" +
+          "<li>Dedicated \"print\" style (white background, max contrast, readable when printed)</li>" +
+        "</ul>" +
+        "<p>💡 <strong>Typical use cases</strong>: A2/A3 print for the field (waterproof paper), " +
+        "PNG for Discord/email, PDF for long-term archiving or formal sharing.</p>"
+    },
+
+    // ─── 22/25 — Auto-backups + Undo ───
+    {
+      emoji: "🛡️",
+      titre: "Backups & Undo — safety net",
+      texte:
+        "<p>The app has <strong>3 levels of protection</strong> against data loss:</p>" +
+        "<p>💾 <strong>Per-plan auto-save</strong> (localStorage slot <code>myktamap_session_v1_&lt;planId&gt;</code>):</p>" +
+        "<ul>" +
+          "<li>Silent save every 1.5 s (adaptive throttle if CPU busy)</li>" +
+          "<li>1 slot per plan = each plan keeps ITS session independently</li>" +
+          "<li>On next launch, your session is <strong>auto-restored</strong> without intervention</li>" +
+        "</ul>" +
+        "<p>📦 <strong>10 IndexedDB backups per plan</strong> (FIFO):</p>" +
+        "<ul>" +
+          "<li>Automatic snapshot every 5 min AND before a destructive action (clear session, reset, etc.)</li>" +
+          "<li>Visible in 📊 Session details → 📦 Recent backups</li>" +
+          "<li>Click ↻ <strong>Restore</strong> on a snapshot = reverts to that state (the app reloads " +
+            "the right plan + state automatically)</li>" +
+          "<li>Manual: 📆 Snapshot now button to freeze an important state</li>" +
+        "</ul>" +
+        "<p>⏪ <strong>Undo / Redo Ctrl+Z / Ctrl+Y</strong>:</p>" +
+        "<ul>" +
+          "<li>50 actions historized in RAM</li>" +
+          "<li>Covers: add/edit/delete of points, paths, zones, structures</li>" +
+          "<li>Also accessible via the ⏪ ⏩ buttons in the ⏪ History group of the left sidebar</li>" +
+          "<li>Reset on plan switch (clean history per plan)</li>" +
+        "</ul>" +
+        "<p>💡 <strong>If something goes wrong</strong>: DevTools → Application → IndexedDB → " +
+        "<code>myktamap_backups</code> contains ALL your sessions of all plans, even deleted ones. " +
+        "You can always recover by manually exporting the JSON.</p>"
+    },
+
+    // ─── 23/25 — OSM View ───
+    {
+      emoji: "🌍",
+      titre: "OSM View — your plan projected on OpenStreetMap",
+      texte:
+        "<p>If your plan is <strong>GPS georeferenced</strong> (2-point lat/lng calibration), you can " +
+        "project it onto <strong>OpenStreetMap</strong> to see where it is in the real world — useful " +
+        "to locate a site entrance, spot the surface roads, brief a rescue team unfamiliar with " +
+        "the cavity.</p>" +
+        "<p>🌍 <strong>2 usage contexts</strong>:</p>" +
+        "<ul>" +
+          "<li><strong>Fullscreen modal</strong> (from map mode): 🌍 button in the sidebar → " +
+            "OSM View modal with your plan as a transparent overlay (opacity slider), your POIs, your paths, " +
+            "your zones and structures. Plan V2 tiles + category filters + multi-level M-LVL.</li>" +
+          "<li><strong>HOME widget</strong>: mini-map embedded in your home page with a plan selector " +
+            "+ ⛶ fullscreen button. You see your georeferenced plans at a glance without loading.</li>" +
+        "</ul>" +
+        "<p>📍 <strong>\"My GPS position\" button</strong> in both contexts: on-demand single fix " +
+        "(no continuous watch = 0 battery impact), cyan-blue marker + accuracy circle. " +
+        "Safeguard: refuses if you are kilometers from the plan (e.g. Paris Catacombs plan while you're in Lyon).</p>" +
+        "<p>🏷️ <strong>Tag filter</strong>: chips in the banner (POI by category). Consistent " +
+        "with the map mode filter but independent (OSM filter local to the modal or widget).</p>" +
+        "<p>🛡️ <strong>Strict opt-in</strong>: OSM View contacts <code>tile.openstreetmap.org</code> " +
+        "for the map tiles. It's <strong>disabled by default</strong> (offline-first " +
+        "philosophy). Enable it in <strong>⚙️ Configuration → 🌐 Allow OSM View</strong>. " +
+        "Your plan data NEVER leaves your browser — only the public OSM tiles are " +
+        "requested, like any standard web client. <em>Strict offline</em> and " +
+        "<em>incognito</em> modes automatically block OSM View for consistency.</p>",
+      hint: "© OpenStreetMap contributors attribution shown in the corner of the maps — ODbL obligation respected. Without plan GPS calibration, OSM View is not available (nothing to project)."
+    },
+
+    // ─── 24/25 — History Mode ───
+    {
+      emoji: "📖",
+      titre: "History Mode — Free note + plan PDF",
+      texte:
+        "<p><strong>History Mode</strong> lets you tell the story of your plan: historical context, " +
+        "anecdotes, sources, testimonies, site-specific instructions.</p>" +
+        "<p>📖 <strong>2 complementary formats</strong>:</p>" +
+        "<ul>" +
+          "<li><strong>Free note</strong> (inline Markdown editor): headings, lists, links, bold / " +
+            "italic, code blocks. Auto-save, persisted locally per plan.</li>" +
+          "<li><strong>Embedded PDF</strong>: import a PDF (original survey, historical IGN map, " +
+            "trip report, geological study…). The app stores it in IndexedDB and displays it " +
+            "embedded (sandboxed iframe) in the History modal.</li>" +
+        "</ul>" +
+        "<p>📖 <strong>Access</strong>: <strong>📖</strong> button in the sidebar (next to the stats), " +
+        "same size as the other header chips. Visible when the plan has a note OR an associated PDF. " +
+        "Otherwise, the button directly opens the edit modal to get started.</p>" +
+        "<p>💾 <strong>Included in your exports</strong>: the free note and the History PDF are " +
+        "embedded in <strong>MKMSESSION</strong> exports (Full session ZIP) — so you can " +
+        "transmit all the context with your session.</p>" +
+        "<p>🔇 <strong>100% local</strong>: the PDF stays in IndexedDB on your device, never " +
+        "transmitted anywhere. If you switch devices, import it from your MKMSESSION.</p>",
+      hint: "Ideal for plans inherited from a former colleague: you can tell the story of the site and attach the original survey in a single exportable \"bag\"."
+    },
+
+    // ─── 25/25 — Additional tools ───
+    {
+      emoji: "⚙️",
+      titre: "Configuration & additional tools",
+      texte:
+        "<p>To go further, the app has many additional tools:</p>" +
+        "<p>⚙️ <strong>⚙️ Loader Configuration</strong> (button on the home page):</p>" +
+        "<ul>" +
+          "<li>🖼️ <strong>Tiling Mode</strong>: performance preset (auto / quality / balanced / performance / off)</li>" +
+          "<li>🚀 <strong>ULTRA Mode</strong>: 6 fine-grain toggles for large plans (decimation, " +
+            "skip animations, viewport culling, etc.)</li>" +
+          "<li>📊 <strong>Memory inspector</strong>: full transparency on what is stored locally " +
+            "(localStorage, IndexedDB, PWA Cache). 📋 Copy report button.</li>" +
+          "<li>🔒 <strong>Network audit</strong>: LIVE log of every request sent + " +
+            "\"strict offline\" mode that blocks anything non-whitelisted</li>" +
+          "<li>🎨 <strong>Light theme</strong>: dark/light toggle, persisted locally</li>" +
+          "<li>🔆 <strong>Wake Lock</strong>: keeps the screen on (useful in a cavity)</li>" +
+          "<li>🔄 <strong>Soft force update</strong>: purges the PWA cache without touching your data</li>" +
+          "<li>💥 <strong>Reset everything</strong>: full wipe (localStorage + IDB + caches). " +
+            "Double confirmation required.</li>" +
+        "</ul>" +
+        "<p>⚙️ <strong>⚙️ Map mode settings</strong> (left sidebar): per-plan preferences (debug, " +
+        "performance, M-LVL if applicable, etc.).</p>" +
+        "<p>🔐 <strong>Optional local access code</strong>: 4-6 digit PIN + Face ID / Touch ID / " +
+        "Windows Hello (WebAuthn). Protection at app startup, ideal if you lend your phone.</p>" +
+        "<p>🎤 <strong>Voice command</strong> <em>(v1.34+)</em>: floating mic button at the bottom-right " +
+        "of map mode. Say \"<em>go to [POI]</em>\", \"<em>enable tracker</em>\", \"<em>emergency exit</em>\" " +
+        "and the app executes. Uses the browser's native Web Speech API, <strong>no audio</strong> " +
+        "leaves your device. Auto-stop after the command runs to save battery. iOS Safari " +
+        "supported (with proper mic release on stop).</p>" +
+        "<p>🪫 <strong>Haptic vibration</strong> <em>(v1.34.26+)</em>: toggle in Configuration. " +
+        "Vibrates on 5 critical events (arrival at destination, emergency mode, etc.). Discreet, non-intrusive.</p>" +
+        "<p>📋 <strong>Crash reports</strong>: if the app was killed by the OS (mobile OOM typically), " +
+        "the report is archived in 📊 Memory inspector → Latest crashes section. Copyable to " +
+        "send to the author via the contact page.</p>" +
+        "<p>📚 <strong>Built-in help</strong> (left sidebar → 📚): full documentation of each feature. " +
+        "If you wonder \"how do I do X?\", that's where it is.</p>" +
+        "<p><strong>Happy exploring! 🚀</strong></p>",
+      hint: "You can replay this tutorial at any time via the 🎓 button at the top of the 📖 Documentation modal."
+    }
+  ];
+
+  // 🆕 v1.44.6 — Libellés UI bilingues (header, boutons, aria). Même clé de
+  // langue que la doc (myktamap_readme_lang).
+  const UI_STRINGS = {
+    fr: {
+      headerTitle:  "🎓 Tutoriel — Premier lancement",
+      skip:         "Passer le tutoriel",
+      prev:         "◂ Précédent",
+      next:         "Suivant ▸",
+      finish:       "✓ Terminer",
+      close:        "Fermer",
+      langToggle:   "🇬🇧 English",
+      langTitle:    "Switch to English",
+      gotoCard:     "Aller à la carte "
+    },
+    en: {
+      headerTitle:  "🎓 Tutorial — First launch",
+      skip:         "Skip tutorial",
+      prev:         "◂ Previous",
+      next:         "Next ▸",
+      finish:       "✓ Finish",
+      close:        "Close",
+      langToggle:   "🇫🇷 Français",
+      langTitle:    "Passer en français",
+      gotoCard:     "Go to card "
+    }
+  };
+
+  // 🆕 v1.44.6 — Détection langue : clé partagée avec la doc (interfaceDocs.js).
+  // saved → navigator.language → "fr" par défaut. Pas de couplage de fonction,
+  // juste la convention de clé localStorage.
+  const LANG_STORAGE_KEY = "myktamap_readme_lang";
+  function _getLang() {
+    try {
+      const saved = localStorage.getItem(LANG_STORAGE_KEY);
+      if (saved === "fr" || saved === "en") return saved;
+    } catch(e) {}
+    const navLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
+    return navLang.startsWith("en") ? "en" : "fr";
+  }
+  function _setLang(lang) {
+    if (lang !== "fr" && lang !== "en") return;
+    try { localStorage.setItem(LANG_STORAGE_KEY, lang); } catch(e) {}
+  }
+
+  let _lang = _getLang();
+  function _cards() { return (_lang === "en") ? CARDS_EN : CARDS; }
+  function _t(key)  { return (UI_STRINGS[_lang] || UI_STRINGS.fr)[key]; }
+
   let _currentIdx = 0;
 
   // ────────── HELPERS ──────────
@@ -864,8 +1627,11 @@
     return ''
       + '<div class="kta-readme-modal-boite kta-tutorial-boite">'
       +   '<div class="kta-readme-modal-header kta-tutorial-header">'
-      +     '<span class="kta-readme-modal-titre">🎓 Tutoriel — Premier lancement</span>'
-      +     '<button type="button" class="kta-panneau-close" id="kta-tutorial-close" aria-label="Fermer">✕</button>'
+      +     '<span class="kta-readme-modal-titre" id="kta-tutorial-titre">' + _t("headerTitle") + '</span>'
+      // 🆕 v1.44.6 — Toggle langue 🇫🇷/🇬🇧 (même logique que la modale Documentation)
+      +     '<button type="button" class="kta-btn kta-btn-ghost kta-tutorial-lang" id="kta-tutorial-lang" '
+      +       'title="' + _t("langTitle") + '">' + _t("langToggle") + '</button>'
+      +     '<button type="button" class="kta-panneau-close" id="kta-tutorial-close" aria-label="' + _t("close") + '">✕</button>'
       +   '</div>'
       +   '<div class="kta-readme-modal-corps kta-tutorial-corps" id="kta-tutorial-corps">'
       +     '<!-- Card content dynamic -->'
@@ -875,16 +1641,17 @@
       +       '<!-- Pastilles de progression dynamiques -->'
       +     '</div>'
       +     '<div class="kta-tutorial-actions">'
-      +       '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-tutorial-skip">Passer le tutoriel</button>'
-      +       '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-tutorial-prev">◂ Précédent</button>'
-      +       '<button type="button" class="kta-btn kta-btn-primary" id="kta-tutorial-next">Suivant ▸</button>'
+      +       '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-tutorial-skip">' + _t("skip") + '</button>'
+      +       '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-tutorial-prev">' + _t("prev") + '</button>'
+      +       '<button type="button" class="kta-btn kta-btn-primary" id="kta-tutorial-next">' + _t("next") + '</button>'
       +     '</div>'
       +   '</div>'
       + '</div>';
   }
 
   function _renderCard(idx) {
-    const card  = CARDS[idx];
+    const cards = _cards();
+    const card  = cards[idx];
     const corps = document.getElementById("kta-tutorial-corps");
     if (!card || !corps) return;
 
@@ -903,10 +1670,10 @@
     const prog = document.getElementById("kta-tutorial-progress");
     if (prog) {
       let dots = "";
-      for (let i = 0; i < CARDS.length; i++) {
+      for (let i = 0; i < cards.length; i++) {
         const isActive  = (i === idx);
         const cls = "kta-tutorial-dot" + (isActive ? " kta-tutorial-dot-active" : "");
-        dots += '<button type="button" class="' + cls + '" data-card-idx="' + i + '" aria-label="Aller à la carte ' + (i + 1) + '"></button>';
+        dots += '<button type="button" class="' + cls + '" data-card-idx="' + i + '" aria-label="' + _t("gotoCard") + (i + 1) + '"></button>';
       }
       prog.innerHTML = dots;
       // Bind nav directe (utile si l'user veut revenir vite à une carte)
@@ -923,15 +1690,15 @@
     const prevBtn = document.getElementById("kta-tutorial-prev");
     const nextBtn = document.getElementById("kta-tutorial-next");
     const skipBtn = document.getElementById("kta-tutorial-skip");
+    const lastIdx = _cards().length - 1;
     if (prevBtn) prevBtn.style.visibility = (_currentIdx === 0) ? "hidden" : "visible";
     if (nextBtn) {
-      const isLast = (_currentIdx === CARDS.length - 1);
-      nextBtn.textContent = isLast ? "✓ Terminer" : "Suivant ▸";
+      const isLast = (_currentIdx === lastIdx);
+      nextBtn.textContent = isLast ? _t("finish") : _t("next");
     }
     if (skipBtn) {
       // Cacher "Passer" sur la dernière carte (= bouton Terminer suffit)
-      const isLast = (_currentIdx === CARDS.length - 1);
-      skipBtn.style.visibility = isLast ? "hidden" : "visible";
+      skipBtn.style.visibility = (_currentIdx === lastIdx) ? "hidden" : "visible";
     }
   }
 
@@ -944,7 +1711,7 @@
   }
 
   function _onNext() {
-    if (_currentIdx < CARDS.length - 1) {
+    if (_currentIdx < _cards().length - 1) {
       _currentIdx++;
       _renderCard(_currentIdx);
       _updateNavButtons();
@@ -952,6 +1719,28 @@
       // Dernière carte → Terminer
       _finish();
     }
+  }
+
+  // 🆕 v1.44.6 — Bascule FR ⇄ EN en live (re-render header + carte courante,
+  // persiste dans la clé partagée). On reste sur le même index de carte (parité
+  // 1:1 entre CARDS et CARDS_EN, donc l'utilisateur ne perd pas sa place).
+  function _toggleLang() {
+    _lang = (_lang === "en") ? "fr" : "en";
+    _setLang(_lang);
+    // Re-render header (titre + libellés boutons)
+    const titre = document.getElementById("kta-tutorial-titre");
+    if (titre) titre.textContent = _t("headerTitle");
+    const langBtn = document.getElementById("kta-tutorial-lang");
+    if (langBtn) { langBtn.textContent = _t("langToggle"); langBtn.title = _t("langTitle"); }
+    const skipBtn = document.getElementById("kta-tutorial-skip");
+    if (skipBtn) skipBtn.textContent = _t("skip");
+    const prevBtn = document.getElementById("kta-tutorial-prev");
+    if (prevBtn) prevBtn.textContent = _t("prev");
+    // Clamp l'index si la langue cible a moins de cartes (parité 1:1 garantie,
+    // mais défensif si divergence future)
+    if (_currentIdx > _cards().length - 1) _currentIdx = _cards().length - 1;
+    _renderCard(_currentIdx);
+    _updateNavButtons();
   }
 
   function _finish() {
@@ -971,12 +1760,19 @@
   function ouvrir() {
     fermer();
     _currentIdx = 0;
+    // 🆕 v1.44.6 — Resync la langue depuis la clé partagée (l'user a pu la
+    // changer dans la modale Documentation entre 2 ouvertures du tutoriel).
+    _lang = _getLang();
 
     const overlay = document.createElement("div");
     overlay.id        = MODAL_ID;
     overlay.className = "kta-readme-modal-overlay";
     overlay.innerHTML = _buildModalHtml();
     document.documentElement.appendChild(overlay);
+
+    // 🆕 v1.44.6 — Bind toggle langue
+    const langBtn = document.getElementById("kta-tutorial-lang");
+    if (langBtn) langBtn.addEventListener("click", _toggleLang);
 
     document.getElementById("kta-tutorial-close").addEventListener("click", function() {
       // Fermeture explicite via ✕ = considère comme "skip" (marque seen pour ne pas re-popup)
@@ -1014,6 +1810,7 @@
     markAsSeen:     markAsSeen,
     // Pour Memory Inspector / debug
     _LS_KEY:        LS_KEY,
-    _CARDS_COUNT:   CARDS.length
+    _CARDS_COUNT:   CARDS.length,
+    _CARDS_COUNT_EN: CARDS_EN.length  // 🆕 v1.44.6 — parité 1:1 attendue avec CARDS
   };
 })();

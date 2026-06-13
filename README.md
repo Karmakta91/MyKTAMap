@@ -8,7 +8,10 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.44.5` (10/06/2026) — **🐛 Fix débordement modale Générateur (data URL icône `entree_plan`)** sur la base v1.44.4.
+**📦 Version courante** : `v1.44.6` (10/06/2026) — **🇬🇧 Onboarding bilingue FR/EN** sur la base v1.44.5.
+
+**🇬🇧 v1.44.6 (10/06/2026)** — **Tutoriel premier-lancement bilingue** :
+- `tutorial.js` : ajout d'un tableau `CARDS_EN` (25 cartes, parité 1:1 avec `CARDS` FR) + objet `UI_STRINGS` (header/boutons/aria). Toggle 🇫🇷/🇬🇧 dans le header du tutoriel (même logique que la modale Documentation), qui bascule les 25 cartes en live. Langue lue/persistée dans la clé partagée `localStorage["myktamap_readme_lang"]` (auto-détection `navigator.language` au 1er boot) → cohérence avec la doc. CSS : `.kta-tutorial-lang` compact dans `style-meminspector.css`.
 
 **🐛 v1.44.5 (10/06/2026)** — **Générateur : data URL SVG `entree_plan` débordait la modale** :
 - `createConf.js` : l'icône built-in `entree_plan` (SVG inline, `data:image/svg+xml;...` ~700 caractères) était affichée telle quelle dans le nom de la row d'icône. En flexbox/grid sans `min-width:0`, ce contenu `nowrap` annulait le `text-overflow:ellipsis` → débordait + élargissait toute la modale + cassait le wrap des textes (mode Avancé, écran ≥1280px en grille 2 colonnes). Fix JS : label propre `🔗 icône intégrée (SVG)` pour les data URL (le `<img src>` garde la data URL pour la preview). Fix CSS : `min-width:0` sur `.kta-planner-icon-path` (flex) ET sur `#kta-planner-corps > *` (grid items).

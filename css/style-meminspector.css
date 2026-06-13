@@ -730,6 +730,19 @@ html.kta-theme-light .kta-profile-footer {
   border-bottom: 1px solid rgba(244, 197, 66, 0.20);
 }
 
+/* 🆕 v1.44.6 — Toggle langue 🇫🇷/🇬🇧 du tutoriel (compact, poussé à droite
+   juste avant la croix de fermeture). Même esprit que le toggle de la modale
+   Documentation. */
+.kta-tutorial-lang {
+  margin-left: auto;
+  margin-right: 8px;
+  padding: 3px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .kta-tutorial-corps {
   flex: 1 1 auto;
   overflow-y: auto;
