@@ -712,9 +712,16 @@ function afficherConfig() {
       </div>
       <div class="kta-readme-modal-corps kta-cfg-corps">
 
-        ${(typeof window.renderBannerCoherenceEchelle === "function")
-            ? window.renderBannerCoherenceEchelle(window._currentLoadedPlanId, { context: "settings" })
-            : ""}
+        <!-- ═══════════════════════════════════════════════════════════════
+             🆕 Réorganisation ergonomique (groupes thématiques) — KARMA.
+             Les blocs ci-dessous sont DÉPLACÉS, pas réécrits : tous les id,
+             class, data-i18n et listeners (attachés par id plus bas dans la
+             fonction) restent strictement identiques. Chaque groupe est
+             précédé d'un en-tête .kta-cfg-group-titre (style inline discret).
+             ═══════════════════════════════════════════════════════════════ -->
+
+        <!-- ════════ 1. 🌍 APPLICATION ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:2px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.application")}</div>
 
         <!-- 🆕 v1.21.0-fix3 (KARMA "met le mode présentation tout en haut") :
              Bouton "🎬 Activer le mode présentation" en TÊTE de la modale
@@ -733,37 +740,9 @@ function afficherConfig() {
           </div>
         </div>
 
-        <!-- 🕵️ v1.31.8 F2 + 🆕 v1.31.9 : Mode incognito — bouton qui
-             ouvre une NOUVELLE fenêtre dans le même origin avec ?incognito=1
-             (activate) OU close la fenêtre courante si déjà incognito (quit).
-             Pas un toggle sur la fenêtre courante : l'incognito doit démarrer
-             DÈS le boot (sinon les modules ont déjà écrit). Ouvrir un nouvel
-             onglet est sémantiquement clair (= comme un onglet privé navigateur). -->
-        ${(window.IncognitoMode && window.IncognitoMode.active) ? `
-        <div class="kta-aide-section">
-          <button class="kta-cfg-incognito-btn kta-cfg-incognito-btn-quit" type="button" id="cfg_incognito_btn">
-            <span style="font-size:18px;">✕</span>
-            <span><strong>${window.I18n.t("config.incognito.quit.btn")}</strong></span>
-          </button>
-          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
-            ${window.I18n.t("config.incognito.quit.desc")}
-          </div>
-        </div>` : `
-        <div class="kta-aide-section">
-          <button class="kta-cfg-incognito-btn" type="button" id="cfg_incognito_btn">
-            <span style="font-size:18px;">🕵️</span>
-            <span><strong>${window.I18n.t("config.incognito.start.btn")}</strong></span>
-          </button>
-          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
-            ${window.I18n.t("config.incognito.start.desc")}
-          </div>
-        </div>`}
-
         <!-- 🌍 v1.45.0 : sélecteur de langue GLOBALE de l'app (= LE point d'entrée
-             du changement complet, ≠ toggle local doc/onboarding). Placé APRÈS
-             l'incognito (choix KARMA) : le sélecteur est déjà accessible dès le
-             HOME, ici c'est un accès secondaire. Le change handler appelle
-             I18n.setLang() puis re-render la modale. -->
+             du changement complet, ≠ toggle local doc/onboarding). Le change
+             handler appelle I18n.setLang() puis re-render la modale. -->
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("config.lang.titre")}</div>
           <select class="kta-cfg-input" id="cfg_app_lang" style="width:100%;">
@@ -773,6 +752,67 @@ function afficherConfig() {
             ${window.I18n.t("config.lang.hint")}
           </div>
         </div>
+
+        <!-- ════════ 2. 📐 PLAN : ÉCHELLE & GÉOLOCALISATION ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.planCalib")}</div>
+
+        <!-- Bandeau cohérence échelle GPS — reste en tête de CE groupe -->
+        ${(typeof window.renderBannerCoherenceEchelle === "function")
+            ? window.renderBannerCoherenceEchelle(window._currentLoadedPlanId, { context: "settings" })
+            : ""}
+
+        <!-- 📐 Échelle (m/px) + 🎯 calibrage — EXTRAIT de l'ancienne section
+             "Détection des pas". Le bouton 🎯 ouvre ouvrirCalibrageEchelle().
+             L'input cfg_scale est inchangé (lu par appliquerConfig). -->
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">${window.I18n.t("config.steps.scale")}</div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <input class="kta-cfg-input" id="cfg_scale" type="number" step="0.1" value="${c.scale}" style="flex:1;">
+            <button type="button" class="kta-btn kta-btn-ghost"
+              onclick="ouvrirCalibrageEchelle()"
+              style="padding:6px 10px; font-size:13px; white-space:nowrap;"
+              title="${window.I18n.t("config.steps.scaleTitle")}">🎯</button>
+          </div>
+        </div>
+
+        <!-- 🧭 v1.37.0 — Calibration Nord per-plan. EXTRAITE de l'ancienne
+             section "Affichage". Utile quand le HAUT du plan n'est PAS le Nord
+             vrai (photo aérienne avec cadrage arbitraire, plan cataphile sans
+             rosace alignée). Cascade lecture : LS prefs-plan >
+             APP_CONFIG.northOffsetDeg (mappé depuis plan-config.json) > 0.
+             Setter notifie via event kta:northOffsetChange → re-render tracker
+             à chaud. Convention : 0° = Nord = haut du plan, sens HORAIRE.
+             UI : champ angle toujours visible (saisie directe) + bouton
+             picker 2 clics Sud→Nord (WYSIWYG sur la map courante) + reset. -->
+        <div class="kta-aide-section">
+          <div id="cfg_north_block" class="kta-perf-ultra-row" style="margin-top:0; display:block; padding:8px; border:1px solid rgba(255,255,255,0.06); border-radius:8px; background:rgba(255,255,255,0.02);">
+            <div class="kta-perf-ultra-text" style="margin-bottom:6px;">
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.north.label")}</span>
+              <span class="kta-perf-ultra-hint" style="display:block;">
+                ${window.I18n.t("config.display.north.hint")}
+              </span>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <input type="number" id="cfg_north_offset_input" min="0" max="359" step="1" value="0"
+                     style="flex:0 0 90px; padding:6px 8px; border-radius:6px;
+                            background:rgba(255,255,255,0.06); color:#e8eaf0;
+                            border:1px solid rgba(255,255,255,0.12); font-weight:600;">
+              <span style="color:#8892a4; font-size:12px;">°</span>
+              <button type="button" id="cfg_north_picker_btn" class="kta-btn"
+                      style="flex:1 1 auto; min-width:140px;">${window.I18n.t("config.display.north.calibrate")}</button>
+              <button type="button" id="cfg_north_reset_btn" class="kta-btn"
+                      style="flex:0 0 auto;" title="${window.I18n.t("config.display.north.resetTitle")}">${window.I18n.t("config.display.north.reset")}</button>
+            </div>
+            <div id="cfg_north_status" style="margin-top:4px; font-size:11.5px; color:#8892a4; min-height:14px;"></div>
+          </div>
+        </div>
+
+        <!-- 🌐 Géoréférencement GPS — DÉPLACÉ ici depuis la fin de la modale
+             (rendu par _renderCfgGeorefSection, ids cfg_kmz_* inchangés). -->
+        ${_renderCfgGeorefSection()}
+
+        <!-- ════════ 3. 📍 NAVIGATION & TRACKER ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.navTracker")}</div>
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("config.tracker.titre")}</div>
@@ -792,17 +832,11 @@ function afficherConfig() {
           <div id="cfg_start_search_results" class="kta-kmz-search-results" style="display:none;"></div>
         </div>
 
+        <!-- Détection des pas — SANS l'échelle (extraite en groupe 2).
+             Les params de pas restent ici : longueur / seuil / cooldown. -->
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("config.steps.titre")}</div>
           <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">${window.I18n.t("config.steps.scale")}</label>
-            <div style="display:flex; gap:6px; align-items:center;">
-              <input class="kta-cfg-input" id="cfg_scale" type="number" step="0.1" value="${c.scale}" style="flex:1;">
-              <button type="button" class="kta-btn kta-btn-ghost"
-                onclick="ouvrirCalibrageEchelle()"
-                style="padding:6px 10px; font-size:13px; white-space:nowrap;"
-                title="${window.I18n.t("config.steps.scaleTitle")}">🎯</button>
-            </div>
             <label class="kta-cfg-label">${window.I18n.t("config.steps.stepLength")}</label>
             <input class="kta-cfg-input" id="cfg_stepLength" type="number" step="0.1" value="${c.stepLength}">
             <label class="kta-cfg-label">${window.I18n.t("config.steps.threshold")}</label>
@@ -824,6 +858,9 @@ function afficherConfig() {
             </span>
           </label>
         </div>
+
+        <!-- ════════ 4. 🎨 AFFICHAGE ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.affichage")}</div>
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("config.display.titre")}</div>
@@ -851,36 +888,6 @@ function afficherConfig() {
               </span>
             </span>
           </label>
-
-          <!-- 🧭 v1.37.0 — Calibration Nord per-plan. Utile quand le HAUT du
-               plan n'est PAS le Nord vrai (photo aérienne avec cadrage
-               arbitraire, plan cataphile sans rosace alignée). Cascade
-               lecture : LS prefs-plan > APP_CONFIG.northOffsetDeg (mappé
-               depuis plan-config.json) > 0. Setter notifie via event
-               kta:northOffsetChange → re-render tracker à chaud.
-               Convention : 0° = Nord = haut du plan, sens HORAIRE.
-               UI : champ angle toujours visible (saisie directe) + bouton
-               picker 2 clics Sud→Nord (WYSIWYG sur la map courante) + reset. -->
-          <div id="cfg_north_block" class="kta-perf-ultra-row" style="margin-top:10px; display:block; padding:8px; border:1px solid rgba(255,255,255,0.06); border-radius:8px; background:rgba(255,255,255,0.02);">
-            <div class="kta-perf-ultra-text" style="margin-bottom:6px;">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.north.label")}</span>
-              <span class="kta-perf-ultra-hint" style="display:block;">
-                ${window.I18n.t("config.display.north.hint")}
-              </span>
-            </div>
-            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-              <input type="number" id="cfg_north_offset_input" min="0" max="359" step="1" value="0"
-                     style="flex:0 0 90px; padding:6px 8px; border-radius:6px;
-                            background:rgba(255,255,255,0.06); color:#e8eaf0;
-                            border:1px solid rgba(255,255,255,0.12); font-weight:600;">
-              <span style="color:#8892a4; font-size:12px;">°</span>
-              <button type="button" id="cfg_north_picker_btn" class="kta-btn"
-                      style="flex:1 1 auto; min-width:140px;">${window.I18n.t("config.display.north.calibrate")}</button>
-              <button type="button" id="cfg_north_reset_btn" class="kta-btn"
-                      style="flex:0 0 auto;" title="${window.I18n.t("config.display.north.resetTitle")}">${window.I18n.t("config.display.north.reset")}</button>
-            </div>
-            <div id="cfg_north_status" style="margin-top:4px; font-size:11.5px; color:#8892a4; min-height:14px;"></div>
-          </div>
 
           <!-- 🖼️ v1.38.2 — Section "Calibration calques image" RETIRÉE des Réglages
                map mode (feedback KARMA : "on le fait que depuis générateur").
@@ -950,6 +957,43 @@ function afficherConfig() {
           </label>
         </div>
 
+        <!-- ════════ 5. 🚀 PERFORMANCE ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.perf")}</div>
+
+        ${_renderPerfUltraSection()}
+
+        <!-- ════════ 6. 🔒 CONFIDENTIALITÉ & SÉCURITÉ ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.privacy")}</div>
+
+        <!-- 🕵️ v1.31.8 F2 + 🆕 v1.31.9 : Mode incognito — bouton qui
+             ouvre une NOUVELLE fenêtre dans le même origin avec ?incognito=1
+             (activate) OU close la fenêtre courante si déjà incognito (quit).
+             Pas un toggle sur la fenêtre courante : l'incognito doit démarrer
+             DÈS le boot (sinon les modules ont déjà écrit). Ouvrir un nouvel
+             onglet est sémantiquement clair (= comme un onglet privé navigateur). -->
+        ${(window.IncognitoMode && window.IncognitoMode.active) ? `
+        <div class="kta-aide-section">
+          <button class="kta-cfg-incognito-btn kta-cfg-incognito-btn-quit" type="button" id="cfg_incognito_btn">
+            <span style="font-size:18px;">✕</span>
+            <span><strong>${window.I18n.t("config.incognito.quit.btn")}</strong></span>
+          </button>
+          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
+            ${window.I18n.t("config.incognito.quit.desc")}
+          </div>
+        </div>` : `
+        <div class="kta-aide-section">
+          <button class="kta-cfg-incognito-btn" type="button" id="cfg_incognito_btn">
+            <span style="font-size:18px;">🕵️</span>
+            <span><strong>${window.I18n.t("config.incognito.start.btn")}</strong></span>
+          </button>
+          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
+            ${window.I18n.t("config.incognito.start.desc")}
+          </div>
+        </div>`}
+
+        <!-- ════════ 7. 🛠️ SYSTÈME & MAINTENANCE ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.system")}</div>
+
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("config.debug.titre")}</div>
           <div class="kta-cfg-grille">
@@ -971,10 +1015,6 @@ function afficherConfig() {
             </div>
           </div>
         </div>
-
-        ${_renderPerfUltraSection()}
-
-        ${_renderCfgGeorefSection()}
 
         <!--
           🆕 v1.7.3 (suite KARMA) : bouton 🗑️ Réinitialiser RETIRÉ de la modale ⚙️
