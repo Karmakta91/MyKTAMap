@@ -8,7 +8,10 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.44.4` (10/06/2026) — **🐛 Fix suppression au clic pile sur l'élément (vraie cause)** sur la base v1.44.3.
+**📦 Version courante** : `v1.44.5` (10/06/2026) — **🐛 Fix débordement modale Générateur (data URL icône `entree_plan`)** sur la base v1.44.4.
+
+**🐛 v1.44.5 (10/06/2026)** — **Générateur : data URL SVG `entree_plan` débordait la modale** :
+- `createConf.js` : l'icône built-in `entree_plan` (SVG inline, `data:image/svg+xml;...` ~700 caractères) était affichée telle quelle dans le nom de la row d'icône. En flexbox/grid sans `min-width:0`, ce contenu `nowrap` annulait le `text-overflow:ellipsis` → débordait + élargissait toute la modale + cassait le wrap des textes (mode Avancé, écran ≥1280px en grille 2 colonnes). Fix JS : label propre `🔗 icône intégrée (SVG)` pour les data URL (le `<img src>` garde la data URL pour la preview). Fix CSS : `min-width:0` sur `.kta-planner-icon-path` (flex) ET sur `#kta-planner-corps > *` (grid items).
 
 **🐛 v1.44.4 (10/06/2026)** — **Suppression au clic : cause racine corrigée** :
 - `interface.js` : le v1.44.3 masquait la popup mais ne déclenchait pas la suppression. Cause de fond : quand on clique PILE sur un élément avec `bindPopup`, le handler Leaflet `_openPopup` fait `DomEvent.stop(e)` → la propagation est stoppée → le `map.on("click")` du mode suppression ne tire JAMAIS. Seuls les clics *à proximité* (sans toucher la ligne) supprimaient. Fix : on REJOUE le clic suppression depuis l'event `popupopen` (Leaflet ouvre la popup à `t.latlng` = point cliqué, donc `popup.getLatLng()` = position du clic) → handler de suppression actif appelé avec `{ latlng }`, retrouve l'élément cliqué et le supprime.

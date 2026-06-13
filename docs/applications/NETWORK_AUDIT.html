@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.44.4</strong> (10 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.44.5</strong> (10 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -700,6 +700,14 @@
     de surface réseau</strong> : même whitelist endpoints, même URLs self-origin,
     juste exécutées en parallèle.</li>
 
+    <li><strong>v1.44.5</strong> — Fix débordement modale Générateur : l'icône
+    built-in <code>entree_plan</code> (SVG inline <code>data:image/svg+xml;...</code>)
+    s'affichait en entier dans le nom de la row d'icône → sans
+    <code>min-width:0</code> sur les flex/grid items, ce contenu
+    <code>nowrap</code> débordait et élargissait toute la modale (mode Avancé,
+    grille 2 colonnes ≥1280px). Fix JS (label propre pour data URL) + CSS
+    (<code>min-width:0</code>). <strong>Aucun changement de surface réseau</strong>.</li>
+
     <li><strong>v1.44.4</strong> — Fix cause racine de la suppression au clic :
     le handler Leaflet <code>_openPopup</code> fait <code>DomEvent.stop(e)</code>
     quand on clique pile sur un élément avec popup → la propagation du clic est
@@ -787,7 +795,7 @@
     réseau</strong> : pur hardening client.</li>
   </ul>
 
-  <p><strong>Confirmation privacy v1.43.0 → v1.44.4</strong> : aucun de ces 33 patches
+  <p><strong>Confirmation privacy v1.43.0 → v1.44.5</strong> : aucun de ces 34 patches
   n'ajoute de surface réseau sortante. Le cache reste 100% IndexedDB local, les
   requêtes vers <code>tile.openstreetmap.org</code> passent par le Service Worker qui
   sert depuis IDB ou laisse passer le fetch réseau standard. <strong>AUCUN tracking,
@@ -872,10 +880,10 @@
     v1.40.19).</li>
   </ul>
 
-  <p><strong>Verdict réseau v1.44.4</strong> : ✅ aucune nouvelle URL ajoutée à la liste
+  <p><strong>Verdict réseau v1.44.5</strong> : ✅ aucune nouvelle URL ajoutée à la liste
   blanche, aucune nouvelle catégorie de donnée envoyée, aucun service tiers contacté. Le
   périmètre réseau v1.42.x est <strong>strictement conservé</strong> sur toute la série
-  v1.43.0 → v1.44.4. La whitelist endpoints reste inchangée
+  v1.43.0 → v1.44.5. La whitelist endpoints reste inchangée
   (<code>tile.openstreetmap.org</code>, <code>denylist.json</code>, <code>ping.html</code>,
   <code>version.json</code> + assets app). Le seul changement est l'introduction d'un store
   IDB local de plus (cf. section « Stockage local »). La feature « Save Offline »

@@ -6239,6 +6239,14 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
     align-items: start;
     grid-auto-flow: row dense;
   }
+  /* 🐛 v1.44.5 — min-width:0 sur TOUS les items du grid. Sans ça, un item au
+     contenu intrinsèque large (ex: data URL SVG de l'icône entree_plan, ~700px
+     en nowrap) impose son min-width:auto à la colonne → la grille déborde les
+     1100px du modal → layout distordu + textes des autres sections qui ne
+     wrappent plus. Le min-width:0 force chaque colonne à respecter 1fr. */
+  #kta-planner-corps > * {
+    min-width: 0;
+  }
   /* Pleine largeur (KMZ import / ZIP existant / erreur / actions) */
   #kta-planner-corps > .kta-pl-col-full {
     grid-column: 1 / -1;
@@ -7847,6 +7855,11 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
   font-size: 11px;
   color: #8892a4;
   flex: 1;
+  /* 🐛 v1.44.5 — min-width:0 indispensable : sans ça, le flex item garde son
+     min-width:auto (= largeur du contenu intrinsèque), ce qui annule
+     text-overflow:ellipsis et laisse une data URL SVG longue (icône
+     entree_plan) déborder + élargir toute la modale. */
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

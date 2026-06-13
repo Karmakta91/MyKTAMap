@@ -1,7 +1,7 @@
 {
-  "version": "v1.44.4",
+  "version": "v1.44.5",
   "released": "2026-06-10",
   "notes": [
-    "🐛 En mode suppression au clic (tracé, zone, structure), cliquer pile sur l'élément le supprime maintenant vraiment — avant, sa fenêtre d'annotation s'ouvrait et bloquait la suppression. Il fallait viser à côté de la ligne pour que ça marche."
+    "🐛 Générateur de plan : l'icône intégrée « Entrée » affichait son code technique (longue URL) au lieu d'un nom lisible, ce qui débordait et déformait toute la fenêtre sur grand écran. Le nom est maintenant propre et la mise en page reprend sa largeur normale, avec les textes qui passent bien à la ligne."
   ]
 }

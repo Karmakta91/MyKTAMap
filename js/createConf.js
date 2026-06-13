@@ -1334,6 +1334,18 @@ function _ajouterIconRow(tag, defaultPath, file, isSysteme) {
   row.className    = "kta-planner-icon-row";
   row.dataset.rowId = id;
 
+  // 🐛 v1.44.5 — Les icônes built-in SVG inline (ex: entree_plan, cf
+  // PLANNER_DEFAULT_ICONS) ont un `defaultPath` = data:image/svg+xml;...
+  // de plusieurs centaines de caractères. Affichée telle quelle dans le
+  // pathSpan, cette data URL (white-space:nowrap, sans min-width:0 sur le
+  // flex item) débordait et élargissait toute la modale du générateur.
+  // Fix : on affiche un label court "🔗 icône intégrée (SVG)" au lieu de la
+  // data URL géante (le <img src> garde la data URL pour la preview).
+  const _isDataUrl = typeof defaultPath === "string" && defaultPath.indexOf("data:") === 0;
+  const _pathLabel = file ? file.name
+                    : (_isDataUrl ? "🔗 icône intégrée (SVG)" : (defaultPath || "—"));
+  const _pathTitle = _isDataUrl ? "Icône SVG intégrée à l'application" : (defaultPath || "");
+
   row.innerHTML = `
     <div class="kta-planner-icon-thumb" id="${id}_thumb">
       <img src="${defaultPath || ''}" alt="${tag}"
@@ -1342,16 +1354,16 @@ function _ajouterIconRow(tag, defaultPath, file, isSysteme) {
     </div>
     <input class="kta-cfg-input kta-planner-icon-tag" id="${id}_tag"
       type="text" value="${tag}" placeholder="ex: fontaine"
-      style="width:100px;flex-shrink:0;"
+      style="width:100px;flex-shrink:0;min-width:0;"
       ${sys ? "readonly title='Tag système — non modifiable'" : ""}>
     <label class="kta-planner-upload-btn" for="${id}_file" style="flex-shrink:0;white-space:nowrap;">
       ${file ? "✅ " + file.name : "📂 Icône"}
     </label>
     <input type="file" id="${id}_file" accept="image/*" style="display:none">
     <span class="kta-planner-icon-path" id="${id}_path"
-      title="${defaultPath || ''}"
-      style="font-size:11px;color:#8892a4;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:6px;">
-      ${file ? file.name : (defaultPath || "—")}
+      title="${_pathTitle}"
+      style="font-size:11px;color:#8892a4;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:6px;">
+      ${_pathLabel}
     </span>
     ${sys ? "" : `<button class="kta-planner-remove-btn" data-remove="${id}">✕</button>`}
   `;
