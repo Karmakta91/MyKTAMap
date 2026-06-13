@@ -8,7 +8,16 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.46.0` (13/06/2026) — **🌍 Application entièrement multilingue (FR / EN)** sur la base v1.45.0.
+**📦 Version courante** : `v1.46.1` (13/06/2026) — **🇪🇸 Espagnol ajouté (FR / EN / ES)** + sélecteur de langue déplacé dans ⚙️ Configuration.
+
+**🇪🇸 v1.46.1 (13/06/2026)** — **Espagnol (ES) + déplacement du sélecteur de langue** :
+- **`lang/es.json` (NOUVEAU)** : 3ᵉ langue complète — **3721 clés** traduites (100 %, parité avec `fr.json`, `{param}` cohérents). `{ code: "es", label: "Español" }` ajouté à `AVAILABLE_LANGS` (`js/langManager.js`) + `./lang/es.json` précaché (`sw.js`). Glossaire cataphile/spéléo ES (trazado, plano, frente de cantera, gatera, rescate, operador…). Lots traduits par sous-agents parallèles puis fusionnés (`scripts/merge-es-frags.js`).
+- **Sélecteur de langue déplacé** : retiré du header HOME (trop chargé sur mobile), placé dans **⚙️ Configuration → section dédiée juste après Incognito** (`#loaderLangSection`, drapeau + nom complet). Bascule **live sans reload** (HOME + modale ouverte re-traduits en place via `_applyI18nDom`, compatible incognito).
+- **Doc / Aide / Onboarding → GB par défaut** quand l'app n'est plus en FR : un changement de **langue globale** efface la mémoire locale `myktamap_readme_lang` → ces 3 contenus re-suivent la langue de l'app (→ EN, car ils restent FR/EN). Le toggle drapeau local reste sticky tant que la langue globale ne bouge pas. `onChange` ne fire qu'au changement utilisateur (pas au boot).
+- **Modale de confirmation thème CLAIR/SOMBRE** : restait codée en dur en FR (résidu), migrée vers `I18n.t()` au rendu (clés `theme.name.*` + `theme.confirm.*` fr/en/es ; le mot coloré passe via interpolation `{target}`).
+- **Outillage** : `scripts/merge-es-frags.js` (NOUVEAU) ; `scripts/check-i18n.js` étendu (contrôle **souple** des langues WIP : couverture partielle tolérée, mais clé fantôme + `{param}` divergent restent bloquants).
+- **Refactor** : `js/i18n.js` renommé **`js/langManager.js`** (nom plus parlant ; global `window.I18n` inchangé).
+- **Hors scope** (toujours FR/EN) : Documentation (`README_USER.*`), Aide intégrée, onboarding. La traduction ES de ces contenus longs = chantier séparé ultérieur.
 
 **🌍 v1.46.0 (13/06/2026)** — **Migration multilingue COMPLÈTE** (chantier méthodique en 7 vagues, sous-agents parallèles + relecture/go-no-go indépendants) :
 - **~3600 clés** `lang/fr.json` + `lang/en.json` (parité 100 %, interpolations `{param}` cohérentes vérifiées par `scripts/check-i18n.js`). FR = référence + fallback universel.

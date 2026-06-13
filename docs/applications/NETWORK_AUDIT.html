@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.44.7</strong> (10 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.46.1</strong> (13 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -320,10 +320,10 @@
         <td><strong>Aucune</strong></td>
       </tr>
       <tr>
-        <td><code>&lt;origin&gt;/lang/fr.json</code>, <code>&lt;origin&gt;/lang/en.json</code></td>
+        <td><code>&lt;origin&gt;/lang/fr.json</code>, <code>&lt;origin&gt;/lang/en.json</code>, <code>&lt;origin&gt;/lang/es.json</code></td>
         <td><code>GET</code></td>
         <td>Au boot (dicos i18n : fr = fallback + langue active) puis au changement de langue</td>
-        <td>Charger les traductions multi-langue (v1.45.0+)</td>
+        <td>Charger les traductions multi-langue (v1.45.0+, espagnol v1.46.1+)</td>
         <td><strong>Aucune</strong> (fichiers statiques same-origin, précachés par le SW)</td>
       </tr>
       <tr>
@@ -1121,6 +1121,12 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.46.1 (Ajout de l'espagnol)</strong> : ajout de l'espagnol (<code>lang/es.json</code>)
+    précaché par le Service Worker — aucun nouveau flux réseau, juste un fichier statique de
+    traduction supplémentaire. Sélecteur de langue déplacé dans ⚙️ Configuration.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.43.0 (Cache offline OSM — opt-in user, IDB local pur, conformité usage CDN OSM)</strong> :

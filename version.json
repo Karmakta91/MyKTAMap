@@ -1,7 +1,7 @@
 {
-  "version": "v1.46.0",
+  "version": "v1.46.1",
   "released": "2026-06-13",
   "notes": [
-    "🌍 L'application est maintenant entièrement multilingue : choisis le français ou l'anglais dans ⚙️ Réglages (ou dès l'accueil) et toute l'interface bascule. En français, rien ne change pour toi."
+    "🌍 L'application parle maintenant français, anglais et espagnol. Choisis ta langue dans ⚙️ Configuration."
   ]
 }
