@@ -659,6 +659,7 @@
 
   // Affiche la modale d'avertissement. Callback reçoit "load" | "skip".
   function _afficherModaleImageVolumineuse(info, callback) {
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     // Modale par-dessus l'overlay du mode urgence — z-index plus haut
     const modal = document.createElement("div");
     modal.id = "kta-emergency-bigimg-modal";
@@ -669,33 +670,34 @@
     // hérité de .kta-readme-modal-boite. Cette modale a un contenu court
     // (~6 lignes texte + 2 boutons), 88vh laisse la moitié vide sur PC.
     // Pattern identique au fix .kta-pin-proposal-boite de v1.12.0.
+    const sizeTxt = info.bytes > 0 ? ' (' + info.sizeTxt + ')' : '';
     modal.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width: 460px; height: auto !important; max-height: 90vh !important;">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">⚠️ Image volumineuse</span>' +
+          '<span class="kta-readme-modal-titre">' + t("emergency.bigimg.titre") + '</span>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" style="font-size:14px; line-height:1.5;">' +
-          '<p>L\'image de fond du plan est <strong>' + info.dimsTxt + '</strong>' +
-          (info.bytes > 0 ? ' (' + info.sizeTxt + ')' : '') + '.</p>' +
-          '<p style="color:#ff8a5c;">Au-delà de ' + (MINIMAP_MAX_PIXELS / 1e6).toFixed(0) +
-          ' M pixels (~' + (MINIMAP_MAX_FILE_BYTES / 1024 / 1024).toFixed(0) +
-          ' Mo), la minimap du mode urgence peut <strong>faire crasher l\'app</strong> sur mobile (mémoire GPU saturée).</p>' +
-          '<p>Tu peux <strong>continuer sans l\'image de fond</strong> (les chemins, zones et structures restent affichés, c\'est juste le fond qui manque), ou <strong>charger quand même</strong> à tes risques.</p>' +
+          '<p>' + t("emergency.bigimg.dims", { dims: info.dimsTxt, size: sizeTxt }) + '</p>' +
+          '<p style="color:#ff8a5c;">' + t("emergency.bigimg.warn", {
+            px: (MINIMAP_MAX_PIXELS / 1e6).toFixed(0),
+            mo: (MINIMAP_MAX_FILE_BYTES / 1024 / 1024).toFixed(0)
+          }) + '</p>' +
+          '<p>' + t("emergency.bigimg.choix") + '</p>' +
           '<p style="font-size:12px; color:#8892a4; margin-top:8px;">' +
-            '💡 Astuce : convertis ce plan en V2 tuilé via 🏗️ Modifier un plan → la minimap utilisera alors automatiquement les tuiles légères.' +
+            t("emergency.bigimg.astuce") +
           '</p>' +
           '<div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">' +
             '<button class="kta-conv-sens-btn" id="kta-em-bigimg-skip" style="flex:1; min-width:160px;">' +
-              '<span class="kta-conv-sens-label">✓ Continuer sans image</span>' +
-              '<span class="kta-conv-sens-desc">Recommandé — pas de crash</span>' +
+              '<span class="kta-conv-sens-label">' + t("emergency.bigimg.btnSkip") + '</span>' +
+              '<span class="kta-conv-sens-desc">' + t("emergency.bigimg.btnSkipDesc") + '</span>' +
             '</button>' +
             '<button class="kta-conv-sens-btn" id="kta-em-bigimg-load" style="flex:1; min-width:160px;">' +
-              '<span class="kta-conv-sens-label">⚠️ Charger quand même</span>' +
-              '<span class="kta-conv-sens-desc">Risque de crash mobile</span>' +
+              '<span class="kta-conv-sens-label">' + t("emergency.bigimg.btnLoad") + '</span>' +
+              '<span class="kta-conv-sens-desc">' + t("emergency.bigimg.btnLoadDesc") + '</span>' +
             '</button>' +
           '</div>' +
           '<label style="display:flex; gap:6px; align-items:center; margin-top:12px; font-size:12px; color:#8892a4; cursor:pointer;">' +
-            '<input type="checkbox" id="kta-em-bigimg-remember"> Mémoriser mon choix pour ce plan' +
+            '<input type="checkbox" id="kta-em-bigimg-remember"> ' + t("emergency.bigimg.remember") +
           '</label>' +
         '</div>' +
       '</div>';

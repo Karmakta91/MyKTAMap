@@ -1035,7 +1035,7 @@ function afficherConfig() {
         if (window.PresentationMode && typeof window.PresentationMode.activate === "function") {
           window.PresentationMode.activate();
         } else {
-          alert("Module PresentationMode indisponible.");
+          alert(window.I18n.t("config.presentation.unavailable"));
         }
       }, 50);
     });
@@ -1072,7 +1072,7 @@ function afficherConfig() {
   if (btnIncognito) {
     btnIncognito.addEventListener("click", function() {
       if (!window.IncognitoMode) {
-        alert("Module IncognitoMode indisponible. Recharge la page.");
+        alert(window.I18n.t("config.incognito.unavailable"));
         return;
       }
       if (window.IncognitoMode.active) {
@@ -1105,8 +1105,8 @@ function afficherConfig() {
         if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
           window.OOMGuard.showToast(
             wlCb.checked
-              ? "🔆 Écran maintenu allumé tant que l'app est ouverte"
-              : "🔅 Mise en veille écran ré-activée",
+              ? window.I18n.t("config.display.wakelock.toastOn")
+              : window.I18n.t("config.display.wakelock.toastOff"),
             "info"
           );
         }
@@ -1191,7 +1191,7 @@ function afficherConfig() {
     pickerBtn.addEventListener("click", function() {
       if (typeof window.openNorthCalibrationPicker !== "function") {
         if (window.OOMGuard && window.OOMGuard.showToast) {
-          window.OOMGuard.showToast("⚠️ Picker Nord indisponible (module pas chargé).", "warn");
+          window.OOMGuard.showToast(window.I18n.t("config.display.north.pickerUnavailable"), "warn");
         }
         return;
       }
@@ -1213,13 +1213,13 @@ function afficherConfig() {
         }
         // _refreshStatus sera appelé via l'event kta:northOffsetChange
         if (window.OOMGuard && window.OOMGuard.showToast) {
-          window.OOMGuard.showToast("🧭 Nord calibré à " + deg.toFixed(1) + "°", "info");
+          window.OOMGuard.showToast(window.I18n.t("config.display.north.calibratedToast", { deg: deg.toFixed(1) }), "info");
         }
       }).catch(function(e) {
         _showCfgBack();
         console.warn("[NorthPicker] échec :", e);
         if (window.OOMGuard && window.OOMGuard.showToast) {
-          window.OOMGuard.showToast("⚠️ " + (e && e.message ? e.message : "Picker indisponible"), "warn");
+          window.OOMGuard.showToast("⚠️ " + (e && e.message ? e.message : window.I18n.t("config.display.north.pickerError")), "warn");
         }
       });
     });
@@ -1270,8 +1270,8 @@ function afficherConfig() {
       if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
         window.OOMGuard.showToast(
           vibCb.checked
-            ? "📳 Vibration activée"
-            : "🔇 Vibration désactivée",
+            ? window.I18n.t("config.display.vibration.toastOn")
+            : window.I18n.t("config.display.vibration.toastOff"),
           "info"
         );
       }
@@ -1296,8 +1296,8 @@ function afficherConfig() {
         if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
           window.OOMGuard.showToast(
             voiceCb.checked
-              ? "🎤 Commandes vocales activées. Bouton 🎤 visible en bas à droite."
-              : "🎤 Commandes vocales désactivées.",
+              ? window.I18n.t("config.display.voice.toastOn")
+              : window.I18n.t("config.display.voice.toastOff"),
             "info"
           );
         }

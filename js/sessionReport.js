@@ -50,6 +50,15 @@
   let _modal = null;
 
   // ====================================================================
+  // I18N HELPER — appelé AU RENDU (jamais au load). Fallback = clé brute.
+  // ====================================================================
+  function t(key, params) {
+    return (window.I18n && typeof window.I18n.t === "function")
+      ? window.I18n.t(key, params)
+      : key;
+  }
+
+  // ====================================================================
   // 📊 DATA COLLECTION
   // ====================================================================
 
@@ -215,24 +224,24 @@
     const sep = "─".repeat(40);
 
     // En-tête
-    lines.push("📋 RAPPORT DE SORTIE — " + data.plan.name);
+    lines.push("📋 " + t("report.txt.header") + data.plan.name);
     lines.push(sep);
     const dStart = new Date(o.startTs).toLocaleDateString("fr-FR");
     const dEnd   = new Date(o.endTs).toLocaleDateString("fr-FR");
     if (dStart === dEnd) {
-      lines.push("📅 Date : " + dStart);
+      lines.push("📅 " + t("report.txt.date") + dStart);
     } else {
-      lines.push("📅 Période : " + dStart + " → " + dEnd);
+      lines.push("📅 " + t("report.txt.period") + dStart + " → " + dEnd);
     }
-    lines.push("🌍 Plan : " + data.plan.name + (data.plan.version ? " " + data.plan.version : ""));
-    if (data.plan.author) lines.push("👤 Auteur plan : " + data.plan.author);
-    lines.push("📱 App : MyKTAMap " + data.app.version);
+    lines.push("🌍 " + t("report.txt.plan") + data.plan.name + (data.plan.version ? " " + data.plan.version : ""));
+    if (data.plan.author) lines.push("👤 " + t("report.txt.author") + data.plan.author);
+    lines.push("📱 " + t("report.txt.app") + " " + data.app.version);
     lines.push("");
 
     // Stats POI
     if (o.includePoints !== false) {
       const tagStats = _statsParTag(data.points);
-      lines.push("📍 POI ajoutés : " + data.points.length);
+      lines.push("📍 " + t("report.txt.poi") + data.points.length);
       Object.keys(tagStats).sort().forEach(function(tag) {
         lines.push("   • " + tag + " : " + tagStats[tag]);
       });
@@ -242,13 +251,13 @@
     // Roads
     if (o.includeRoads !== false) {
       const typeStats = _statsParType(data.roads);
-      lines.push("🛣️ Tracés : " + data.roads.length + " (toutes périodes — pas de timestamp natif)");
-      Object.keys(typeStats).sort().forEach(function(t) {
-        lines.push("   • " + t + " : " + typeStats[t]);
+      lines.push("🛣️ " + t("report.txt.roads") + data.roads.length + " " + t("report.txt.allPeriodsNoTs"));
+      Object.keys(typeStats).sort().forEach(function(ty) {
+        lines.push("   • " + ty + " : " + typeStats[ty]);
       });
       const distM = _pxVersM(_calculerDistanceRoadsPx(data.roads), data.plan.scale);
       if (distM > 0) {
-        lines.push("   • Distance totale tracés : " + _formatDistance(distM));
+        lines.push("   • " + t("report.txt.roadsDist") + _formatDistance(distM));
       }
       lines.push("");
     }
@@ -256,9 +265,9 @@
     // Zones
     if (o.includeZones !== false) {
       const typeStats = _statsParType(data.zones);
-      lines.push("⬛ Zones : " + data.zones.length + " (toutes périodes)");
-      Object.keys(typeStats).sort().forEach(function(t) {
-        lines.push("   • " + t + " : " + typeStats[t]);
+      lines.push("⬛ " + t("report.txt.zones") + data.zones.length + " " + t("report.txt.allPeriods"));
+      Object.keys(typeStats).sort().forEach(function(ty) {
+        lines.push("   • " + ty + " : " + typeStats[ty]);
       });
       lines.push("");
     }
@@ -266,9 +275,9 @@
     // Structures
     if (o.includeStructures !== false && data.structures.length > 0) {
       const typeStats = _statsParType(data.structures);
-      lines.push("🏛️ Structures : " + data.structures.length + " (toutes périodes)");
-      Object.keys(typeStats).sort().forEach(function(t) {
-        lines.push("   • " + t + " : " + typeStats[t]);
+      lines.push("🏛️ " + t("report.txt.structures") + data.structures.length + " " + t("report.txt.allPeriods"));
+      Object.keys(typeStats).sort().forEach(function(ty) {
+        lines.push("   • " + ty + " : " + typeStats[ty]);
       });
       lines.push("");
     }
@@ -277,29 +286,29 @@
     if (o.includeTracker !== false && data.tracker.timeline.length > 0) {
       const distM = _pxVersM(_calculerDistanceTrackerPx(data.tracker.timeline), data.plan.scale);
       const duree = _calculerDureeTimelineMs(data.tracker.timeline);
-      lines.push("🧭 Tracker GPS :");
-      lines.push("   • Distance parcourue : " + _formatDistance(distM));
-      lines.push("   • Durée : " + _formatDuree(duree));
-      lines.push("   • Points enregistrés : " + data.tracker.timeline.length);
+      lines.push("🧭 " + t("report.txt.tracker"));
+      lines.push("   • " + t("report.txt.trackerDist") + _formatDistance(distM));
+      lines.push("   • " + t("report.txt.duration") + _formatDuree(duree));
+      lines.push("   • " + t("report.txt.trackerPts") + data.tracker.timeline.length);
       lines.push("");
     }
 
     // Photos
     if (o.includePhotos !== false && typeof o.photosCount === "number" && o.photosCount > 0) {
-      lines.push("📸 Photos attachées : " + o.photosCount);
+      lines.push("📸 " + t("report.txt.photos") + o.photosCount);
       lines.push("");
     }
 
     // Note libre
     if (o.note && o.note.trim()) {
-      lines.push("📝 NOTE");
+      lines.push("📝 " + t("report.txt.note"));
       lines.push(sep);
       lines.push(o.note.trim());
       lines.push("");
     }
 
     lines.push(sep);
-    lines.push("Généré par MyKTAMap " + data.app.version + " — " + new Date().toLocaleString("fr-FR"));
+    lines.push(t("report.txt.generatedBy") + " " + data.app.version + " — " + new Date().toLocaleString("fr-FR"));
     lines.push("https://myktamap.fr");
 
     return lines.join("\n");
@@ -574,7 +583,7 @@
 
   function _genererPDF(data, opts, mapDataUrl) {
     if (!window.jspdf || !window.jspdf.jsPDF) {
-      throw new Error("jsPDF indisponible (vérifie le chargement de la lib)");
+      throw new Error(t("report.err.jspdf"));
     }
     const pdf = new window.jspdf.jsPDF({ format: "a4", orientation: "portrait", unit: "mm" });
     const pageW = pdf.internal.pageSize.getWidth();
@@ -591,17 +600,19 @@
 
     // ─── HEADER ─────────────────────────────────────────────
     pdf.setFontSize(16); pdf.setFont(undefined, "bold");
-    pdf.text("Rapport de sortie", margin, y); y += 8;
+    pdf.text(_stripPourPdf(t("report.pdf.title")), margin, y); y += 8;
     pdf.setFontSize(11);
     pdf.text(_stripPourPdf(data.plan.name) + (data.plan.version ? " " + data.plan.version : ""), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
     const dStart = new Date(opts.startTs).toLocaleDateString("fr-FR");
     const dEnd   = new Date(opts.endTs).toLocaleDateString("fr-FR");
-    pdf.text(dStart === dEnd ? "Date : " + dStart : "Periode : " + dStart + " - " + dEnd, margin, y); y += 4;
+    pdf.text(dStart === dEnd
+      ? _stripPourPdf(t("report.pdf.date")) + dStart
+      : _stripPourPdf(t("report.pdf.period")) + dStart + " - " + dEnd, margin, y); y += 4;
     if (data.plan.author) {
-      pdf.text("Auteur plan : " + _stripPourPdf(data.plan.author), margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.author")) + _stripPourPdf(data.plan.author), margin, y); y += 4;
     }
-    pdf.text("Genere par MyKTAMap " + data.app.version + " - " + new Date().toLocaleString("fr-FR"), margin, y);
+    pdf.text(_stripPourPdf(t("report.pdf.generatedBy")) + " " + data.app.version + " - " + new Date().toLocaleString("fr-FR"), margin, y);
     y += 8;
 
     // ─── CARTE MINIATURE ───────────────────────────────────
@@ -615,7 +626,7 @@
         y += imgH + 6;
         // Légende
         pdf.setFontSize(8); pdf.setFont(undefined, "italic");
-        pdf.text("Carte miniature : POI (ambre), traces (couleur par type), zones (transparent), heatmap tracker (rouge).",
+        pdf.text(_stripPourPdf(t("report.pdf.mapLegend")),
                  margin, y);
         y += 8;
         pdf.setFont(undefined, "normal");
@@ -627,11 +638,11 @@
     // ─── STATS ─────────────────────────────────────────────
     _ensurePageSpace(20);
     pdf.setFontSize(12); pdf.setFont(undefined, "bold");
-    pdf.text("Statistiques", margin, y); y += 6;
+    pdf.text(_stripPourPdf(t("report.pdf.stats")), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
 
     if (opts.includePoints !== false) {
-      pdf.text("POI ajoutes : " + data.points.length, margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.poi")) + data.points.length, margin, y); y += 4;
       const tagStats = _statsParTag(data.points);
       Object.keys(tagStats).sort().forEach(function(tag) {
         _ensurePageSpace(4);
@@ -641,36 +652,36 @@
     }
     if (opts.includeRoads !== false) {
       _ensurePageSpace(8);
-      pdf.text("Traces : " + data.roads.length + " (toutes periodes)", margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.roads")) + data.roads.length + " " + _stripPourPdf(t("report.pdf.allPeriods")), margin, y); y += 4;
       const distM = _pxVersM(_calculerDistanceRoadsPx(data.roads), data.plan.scale);
       if (distM > 0) {
-        pdf.text("    Distance totale : " + _formatDistance(distM, 0), margin, y); y += 4;
+        pdf.text("    " + _stripPourPdf(t("report.pdf.totalDist")) + _formatDistance(distM, 0), margin, y); y += 4;
       }
       y += 2;
     }
     if (opts.includeZones !== false) {
       _ensurePageSpace(4);
-      pdf.text("Zones : " + data.zones.length + " (toutes periodes)", margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.zones")) + data.zones.length + " " + _stripPourPdf(t("report.pdf.allPeriods")), margin, y); y += 4;
       y += 2;
     }
     if (opts.includeStructures !== false && data.structures.length > 0) {
       _ensurePageSpace(4);
-      pdf.text("Structures : " + data.structures.length + " (toutes periodes)", margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.structures")) + data.structures.length + " " + _stripPourPdf(t("report.pdf.allPeriods")), margin, y); y += 4;
       y += 2;
     }
     if (opts.includeTracker !== false && data.tracker.timeline.length > 0) {
       _ensurePageSpace(12);
       const distM = _pxVersM(_calculerDistanceTrackerPx(data.tracker.timeline), data.plan.scale);
       const duree = _calculerDureeTimelineMs(data.tracker.timeline);
-      pdf.text("Tracker GPS :", margin, y); y += 4;
-      pdf.text("    Distance parcourue : " + _formatDistance(distM, 0), margin, y); y += 4;
-      pdf.text("    Duree : " + _formatDuree(duree), margin, y); y += 4;
-      pdf.text("    Points enregistres : " + data.tracker.timeline.length, margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.tracker")), margin, y); y += 4;
+      pdf.text("    " + _stripPourPdf(t("report.pdf.trackerDist")) + _formatDistance(distM, 0), margin, y); y += 4;
+      pdf.text("    " + _stripPourPdf(t("report.pdf.duration")) + _formatDuree(duree), margin, y); y += 4;
+      pdf.text("    " + _stripPourPdf(t("report.pdf.trackerPts")) + data.tracker.timeline.length, margin, y); y += 4;
       y += 2;
     }
     if (opts.includePhotos !== false && typeof opts.photosCount === "number" && opts.photosCount > 0) {
       _ensurePageSpace(4);
-      pdf.text("Photos attachees : " + opts.photosCount, margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.photos")) + opts.photosCount, margin, y); y += 4;
       y += 2;
     }
 
@@ -679,7 +690,7 @@
       _ensurePageSpace(20);
       y += 4;
       pdf.setFontSize(12); pdf.setFont(undefined, "bold");
-      pdf.text("Note", margin, y); y += 6;
+      pdf.text(_stripPourPdf(t("report.pdf.note")), margin, y); y += 6;
       pdf.setFontSize(9); pdf.setFont(undefined, "normal");
       const noteLines = pdf.splitTextToSize(_stripPourPdf(opts.note), pageW - 2 * margin);
       noteLines.forEach(function(line) {
@@ -694,7 +705,7 @@
       pdf.setPage(i);
       pdf.setFontSize(7); pdf.setFont(undefined, "italic");
       pdf.setTextColor(120, 120, 120);
-      pdf.text("MyKTAMap " + data.app.version + " - myktamap.fr - Rapport sortie - Page " + i + "/" + pageCount,
+      pdf.text("MyKTAMap " + data.app.version + " - myktamap.fr - " + _stripPourPdf(t("report.pdf.footer")) + " " + i + "/" + pageCount,
                pageW / 2, pageH - 6, { align: "center" });
       pdf.setTextColor(0, 0, 0);
     }

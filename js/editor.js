@@ -508,7 +508,9 @@ function afficherFormulaire(x, y, existingPoint) {
         ? window.I18n.t("editor.err.photoQuotaPoint")
         : (err && err.code === "QUOTA_EXCEEDED")
           ? window.I18n.t("editor.err.photoQuotaDisk")
-          : window.I18n.t("editor.err.photoAdd", { msg: (err && err.message ? err.message : err) });
+          : (err && err.code === "QUOTA_DEVICE")
+            ? window.I18n.t("editor.err.photoQuotaDevice")
+            : window.I18n.t("editor.err.photoAdd", { msg: (err && err.message ? err.message : err) });
       setErr(msg);
       setTimeout(function() { setErr(""); }, 5000);
     });

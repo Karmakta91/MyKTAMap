@@ -1633,7 +1633,11 @@ window.ouvrirItinerairModal = function() {
       });
 
     } catch(err) {
-      errEl.textContent = err.message || String(err);
+      // 🌍 i18n : erreurs Pathfinder portent err.i18nKey (+ err.i18nParams),
+      // localisées ici au rendu. Fallback : err.message FR brut.
+      errEl.textContent = (err && err.i18nKey && window.I18n)
+        ? window.I18n.t(err.i18nKey, err.i18nParams || {})
+        : (err.message || String(err));
       errEl.style.display = "block";
     } finally {
       // 🆕 v1.43.26 (Pattern D) — Restore bouton dans tous les chemins de sortie

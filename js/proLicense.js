@@ -87,6 +87,12 @@
   // Helpers internes
   // -------------------------------------------------------------------------
 
+  // Helper i18n — appelé au moment de la validation/import (action user),
+  // jamais au load → dicos prêts. Fallback = clé si I18n absent.
+  function t(k, p) {
+    return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
+  }
+
   function _safeReadLS(key) {
     try {
       var raw = localStorage.getItem(key);
@@ -109,17 +115,17 @@
 
   function _validateData(data, strictHash) {
     if (!data || typeof data !== "object") {
-      return { ok: false, error: "Fichier vide ou format invalide." };
+      return { ok: false, error: t("license.err.emptyOrInvalid") };
     }
     if (data.instance !== "pro") {
-      return { ok: false, error: "Champ \"instance\" doit valoir \"pro\"." };
+      return { ok: false, error: t("license.err.instanceNotPro") };
     }
     if (strictHash) {
       if (typeof data.license_hash !== "string") {
-        return { ok: false, error: "Champ \"license_hash\" manquant. Format attendu : MKTM-LIC-<32 hex>." };
+        return { ok: false, error: t("license.err.hashMissing") };
       }
       if (!HASH_PATTERN.test(data.license_hash)) {
-        return { ok: false, error: "Format de license_hash invalide. Attendu : MKTM-LIC-<32 hex>." };
+        return { ok: false, error: t("license.err.hashInvalid") };
       }
     } else if (typeof data.license_hash === "string" && !HASH_PATTERN.test(data.license_hash)) {
       console.warn("[ProLicense] license_hash présent mais format inattendu — accepté en mode dégradé.");
@@ -265,12 +271,12 @@
   function _importFile(file) {
     return new Promise(function(resolve) {
       if (!file || typeof file !== "object") {
-        resolve({ ok: false, error: "Aucun fichier fourni." });
+        resolve({ ok: false, error: t("license.err.noFile") });
         return;
       }
       var maxBytes = 50 * 1024; // 50 KB suffit largement pour un JSON de licence
       if (typeof file.size === "number" && file.size > maxBytes) {
-        resolve({ ok: false, error: "Fichier trop volumineux (max 50 Ko)." });
+        resolve({ ok: false, error: t("license.err.tooLarge") });
         return;
       }
 
@@ -280,14 +286,14 @@
           ? ev.target.result
           : null;
         if (!text) {
-          resolve({ ok: false, error: "Lecture du fichier impossible." });
+          resolve({ ok: false, error: t("license.err.readImpossible") });
           return;
         }
         var data;
         try {
           data = JSON.parse(text);
         } catch(e) {
-          resolve({ ok: false, error: "JSON invalide : " + (e.message || e) });
+          resolve({ ok: false, error: t("license.err.jsonInvalid", { msg: (e.message || e) }) });
           return;
         }
         // ⚠️ Strict pour l'import manuel : hash obligatoire et bien formé.
@@ -301,7 +307,7 @@
         resolve({ ok: true, data: v.data });
       };
       reader.onerror = function() {
-        resolve({ ok: false, error: "Erreur de lecture du fichier." });
+        resolve({ ok: false, error: t("license.err.readError") });
       };
       reader.readAsText(file);
     });

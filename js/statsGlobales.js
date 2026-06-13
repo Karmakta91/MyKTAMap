@@ -409,7 +409,7 @@
       timestamp:    new Date().toISOString(),
       planId:       planId,
       planMeta:     {
-        name:       planMeta.name       || "(sans nom)",
+        name:       planMeta.name       || (window.I18n ? window.I18n.t("stats.plan.noName") : "(sans nom)"),
         version:    planMeta.version    || "",
         author:     planMeta.author     || "",
         imageW:     planMeta.imageWidth  || null,

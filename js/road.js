@@ -897,8 +897,15 @@ function renderRoads() {
             return _roadEmojis[t] + " " + window.LegendCustomization.getLabel("traces", t);
           }
         }
-        const LBL = { principal: "🟩 Tracé principal", secondaire: "🟪 Tracé secondaire", chemin: "🟨 Chemin" };
-        return LBL[t] || ("Tracé " + t);
+        // 🌍 i18n : fallback (LegendCustomization absent). Clés road.popup.*
+        // résolues au rendu ; fallback FR inline si I18n indisponible.
+        const _i = window.I18n;
+        const LBL = _i ? {
+          principal:  _i.t("road.popup.principal"),
+          secondaire: _i.t("road.popup.secondaire"),
+          chemin:     _i.t("road.popup.chemin")
+        } : { principal: "🟩 Tracé principal", secondaire: "🟪 Tracé secondaire", chemin: "🟨 Chemin" };
+        return LBL[t] || (_i ? _i.t("road.popup.fallback", { type: t }) : ("Tracé " + t));
       }
       const ghostWeight = Math.max((style.weight || 3) + 14, 18);
       const ghost = L.polyline(latlngs, {

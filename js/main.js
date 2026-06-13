@@ -756,7 +756,7 @@ async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
   // 🌀 v152 : overlay plein écran visible (lance avant le fetch du plan-config
   // pour que l'utilisateur sache qu'il y a une activité en cours dès le clic).
   if (typeof window._afficherOverlayChargement === "function") {
-    window._afficherOverlayChargement("Récupération du plan depuis le serveur…");
+    window._afficherOverlayChargement(window.I18n.t("ui.loading.fetchingPlan"));
   }
 
   const ok = await loadAppConfig(planPath);

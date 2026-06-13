@@ -725,9 +725,12 @@
 
     const planConfig = {
       plan: {
-        name: opts.planName || "Plan importé KMZ",
+        // ⚠️ i18n « figé à la langue d'import » : ces défauts sont ÉCRITS comme
+        // donnée dans le plan-config.json reconstruit (nom/auteur de plan). Ils
+        // ne se re-traduisent pas si l'user change de langue après l'import.
+        name: opts.planName || window.I18n.t("kmz.import.planNameDefault"),
         version: opts.planVersion || "v1",
-        author: opts.planAuthor || "Import KMZ",
+        author: opts.planAuthor || window.I18n.t("kmz.import.authorDefault"),
         imageWidth: finalW,
         imageHeight: finalH,
         baseImage: baseFilename,
@@ -866,7 +869,9 @@
     if (hasContent) {
       planConfig.dataLayers.push({
         id: "imported",
-        label: "Annotations importées (KMZ)",
+        // ⚠️ i18n « figé à la langue d'import » : label de dataLayer écrit comme
+        // donnée (affiché dans le FilterPanel). Non re-traduit après import.
+        label: window.I18n.t("kmz.import.layerLabel"),
         // 🐛 v1.21.0-fix5 (KARMA : "bug en reimport KMZ, les tracés bien que
         // visible ne sont plus pris en compte par itinéraire") : avant on
         // mettait `file: "imported.json"` (sans préfixe data/). Au load, la

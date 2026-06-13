@@ -130,7 +130,7 @@
         discoveredNames = list.map(function(d) { return d.name; }).filter(Boolean);
       }
     } catch(e) {
-      result.scanError = "indexedDB.databases() non supporté ou bloqué : " + String(e.message || e);
+      result.scanError = _t("collect.err.idbDatabasesUnsupported", { detail: String(e.message || e) });
     }
 
     // Union avec les bases connues (au cas où discoveredNames soit incomplet
@@ -196,7 +196,7 @@
     const result = { cacheNames: [], activeCache: null, error: null };
     try {
       if (!("caches" in window)) {
-        result.error = "Cache API non supportée par ce navigateur";
+        result.error = _t("collect.err.cacheApiUnsupported");
         return result;
       }
       result.cacheNames = await caches.keys();
@@ -233,7 +233,7 @@
     const result = { usage: null, quota: null, usagePct: null, error: null };
     try {
       if (!(navigator.storage && typeof navigator.storage.estimate === "function")) {
-        result.error = "navigator.storage.estimate() non supportée";
+        result.error = _t("collect.err.storageEstimateUnsupported");
         return result;
       }
       const est = await navigator.storage.estimate();
@@ -344,7 +344,7 @@
     const result = { reports: [], error: null };
     try {
       if (!window.CrashReports || typeof window.CrashReports.listAll !== "function") {
-        result.error = "Module CrashReports non chargé";
+        result.error = _t("collect.err.crashReportsNotLoaded");
         return result;
       }
       result.reports = await window.CrashReports.listAll();

@@ -448,17 +448,19 @@ function renderBannerCoherenceEchelle(planId, opts) {
   const gpsStr  = r.scaleGps.toFixed(3);
   const deltaStr = r.deltaPercent.toFixed(1);
 
+  const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+
   // Texte + icône par niveau
   const niveaux = {
-    warn:     { icon: "🟡", titre: "Incohérence échelle modérée",          cls: "kta-scale-coherence-warn" },
-    alert:    { icon: "🔴", titre: "Incohérence échelle élevée",           cls: "kta-scale-coherence-alert" },
-    critical: { icon: "⬛", titre: "Incohérence échelle critique",         cls: "kta-scale-coherence-critical" }
+    warn:     { icon: "🟡", titre: t("utils.scaleCoherence.titleWarn"),     cls: "kta-scale-coherence-warn" },
+    alert:    { icon: "🔴", titre: t("utils.scaleCoherence.titleAlert"),    cls: "kta-scale-coherence-alert" },
+    critical: { icon: "⬛", titre: t("utils.scaleCoherence.titleCritical"), cls: "kta-scale-coherence-critical" }
   };
   const n = niveaux[r.level] || niveaux.warn;
 
   const intro = (context === "export")
-    ? "L'export KMZ/GPX géolocalisé utilise le géoréférencement GPS. Si l'écart avec l'échelle calibrée est important, les distances rendues dans Google Earth / OsmAnd ne correspondront PAS aux mesures faites dans MyKTAMap."
-    : "L'échelle (px/m) saisie dans cette modale ne correspond pas à l'échelle déduite du géoréférencement GPS. <strong>Une des deux valeurs est probablement fausse.</strong>";
+    ? t("utils.scaleCoherence.introExport")
+    : t("utils.scaleCoherence.introSettings");
 
   return '' +
     '<div class="kta-scale-coherence-banner ' + n.cls + '">' +
@@ -466,26 +468,26 @@ function renderBannerCoherenceEchelle(planId, opts) {
         '<span class="kta-scale-coherence-icon">' + n.icon + '</span>' +
         '<strong>' + n.titre + '</strong>' +
         ' · ' +
-        '<span class="kta-scale-coherence-delta">+' + deltaStr + '% d\'écart</span>' +
+        '<span class="kta-scale-coherence-delta">+' + deltaStr + t("utils.scaleCoherence.deltaSuffix") + '</span>' +
       '</div>' +
       '<div class="kta-scale-coherence-corps">' +
         '<p>' + intro + '</p>' +
         '<table class="kta-scale-coherence-table">' +
           '<tr>' +
-            '<td>📐 Échelle calibrée (saisie)</td>' +
+            '<td>' + t("utils.scaleCoherence.rowCalibrated") + '</td>' +
             '<td><code>' + userStr + '</code> px/m</td>' +
           '</tr>' +
           '<tr>' +
-            '<td>🌐 Échelle déduite du géoréf GPS</td>' +
+            '<td>' + t("utils.scaleCoherence.rowGps") + '</td>' +
             '<td><code>' + gpsStr + '</code> px/m ' +
-              '<button class="kta-scale-coherence-copy-btn" data-action="copy-scale-gps" data-value="' + gpsStr + '" type="button" title="Copier la valeur GPS dans le presse-papier">📋 Copier</button>' +
+              '<button class="kta-scale-coherence-copy-btn" data-action="copy-scale-gps" data-value="' + gpsStr + '" type="button" title="' + t("utils.scaleCoherence.copyTitle") + '">' + t("utils.scaleCoherence.copyBtn") + '</button>' +
             '</td>' +
           '</tr>' +
         '</table>' +
         '<p class="kta-scale-coherence-hint">' +
-          '<strong>Aucune correction automatique appliquée.</strong> ' +
-          'Vérifie soit le géoréférencement (2 points GPS bien placés ?), soit le calibrage d\'échelle (✏️ Réglages → 🎯 Calibrer l\'échelle). ' +
-          'Si tu fais confiance au géoréf, tu peux copier la valeur GPS et la coller dans le champ Échelle.' +
+          '<strong>' + t("utils.scaleCoherence.hintNoFix") + '</strong> ' +
+          t("utils.scaleCoherence.hintCheck") + ' ' +
+          t("utils.scaleCoherence.hintTrust") +
         '</p>' +
       '</div>' +
     '</div>';
@@ -763,7 +765,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
         } catch(e) {
           if (statusEl) {
             statusEl.style.display = "block";
-            statusEl.textContent = "❌ Erreur : " + (e.message || e);
+            statusEl.textContent = window.I18n.t("utils.popup.errorPrefix") + (e.message || e);
             statusEl.style.color = "#ff8080";
           }
         }
@@ -834,7 +836,7 @@ window.kta_copierGps = function(txt) {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(txt).then(function() {
       if (window.OOMGuard && window.OOMGuard.showToast) {
-        window.OOMGuard.showToast("📋 Copié : " + txt, "info");
+        window.OOMGuard.showToast(window.I18n.t("utils.copiedPrefix", { txt: txt }), "info");
       }
     }).catch(function() {});
   } else {
@@ -846,7 +848,7 @@ window.kta_copierGps = function(txt) {
       document.body.appendChild(ta); ta.select();
       document.execCommand("copy"); document.body.removeChild(ta);
       if (window.OOMGuard && window.OOMGuard.showToast) {
-        window.OOMGuard.showToast("📋 Copié : " + txt, "info");
+        window.OOMGuard.showToast(window.I18n.t("utils.copiedPrefix", { txt: txt }), "info");
       }
     } catch(e) {}
   }
@@ -897,8 +899,8 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     ? '<div class="kta-popup-actions">' +
         '<button class="kta-popup-btn kta-popup-btn-edit" type="button" ' +
           'onclick="window.modifierPointEditor(\'' + jsId + "'," + x + ',' + y + '); return false;" ' +
-          'title="Modifier ce point (nom, type, description, photos)">' +
-          '✏️ Modifier' +
+          'title="' + window.I18n.t("poi.editPoint") + '">' +
+          window.I18n.t("poi.editBtn") +
         '</button>' +
       '</div>'
     : '';
@@ -974,7 +976,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
              '<button class="kta-popup-btn kta-popup-btn-add" type="button" ' +
                'onclick="window.itineraireAjouterWaypoint(' + x + ',' + y + ",'" + jsName + "'); return false;\" " +
                'title="' + window.I18n.t("poi.addWaypoint") + '">' +
-               '➕ Itinéraire' +
+               window.I18n.t("poi.addWaypointBtn") +
              '</button>' +
              // 🆕 v1.16.0 step 3 — Favori : toggle ajout/retrait des favoris.
              // Le label et la classe initiale dépendent de l'état actuel.
@@ -983,8 +985,8 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
              '<button class="kta-popup-btn kta-popup-btn-fav' + (isFav ? ' kta-fav-active' : '') + '" type="button" ' +
                'data-fav-pointid="' + _escAttr(jsId) + '" ' +
                'onclick="window.toggleFavoriPoint(\'' + jsId + '\',' + x + ',' + y + ",'" + jsName + "','" + _firstTag + "','" + _layerId + "','" + _escAttr(_layerLabel) + "'); return false;\" " +
-               'title="' + (isFav ? "Retirer des favoris" : "Mettre en favori") + '">' +
-               (isFav ? '⭐ Favori' : '☆ Favori') +
+               'title="' + (isFav ? window.I18n.t("poi.favRemoveTitle") : window.I18n.t("poi.favAddTitle")) + '">' +
+               (isFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff")) +
              '</button>' +
            '</div>' +
            editRow +
@@ -1048,7 +1050,7 @@ window.kta_lireNotePopup = function(btn) {
   if (_kta_currentTtsBtn === btn && window.VoiceTts.isSpeaking()) {
     window.VoiceTts.cancel();
     btn.textContent = "🔊";
-    btn.title = "Lire la note à haute voix";
+    btn.title = window.I18n.t("poi.readNote");
     _kta_currentTtsBtn = null;
     return;
   }
@@ -1057,11 +1059,11 @@ window.kta_lireNotePopup = function(btn) {
   // on lance la nouvelle lecture, on met à jour le UI feedback.
   if (_kta_currentTtsBtn && _kta_currentTtsBtn !== btn) {
     _kta_currentTtsBtn.textContent = "🔊";
-    _kta_currentTtsBtn.title = "Lire la note à haute voix";
+    _kta_currentTtsBtn.title = window.I18n.t("poi.readNote");
   }
   _kta_currentTtsBtn = btn;
   btn.textContent = "⏹️";
-  btn.title = "Arrêter la lecture";
+  btn.title = window.I18n.t("poi.stopReading");
   window.VoiceTts.speak(text);
 };
 
@@ -1073,7 +1075,7 @@ if (window.VoiceTts && typeof window.VoiceTts.onStateChange === "function") {
     if (state === "ended" || state === "error" || state === "canceled") {
       if (_kta_currentTtsBtn) {
         _kta_currentTtsBtn.textContent = "🔊";
-        _kta_currentTtsBtn.title = "Lire la note à haute voix";
+        _kta_currentTtsBtn.title = window.I18n.t("poi.readNote");
         _kta_currentTtsBtn = null;
       }
     }
@@ -1103,15 +1105,15 @@ window.toggleFavoriPoint = function(pointId, x, y, nom, tag, layerId, layerLabel
   const nowFav = window.Favoris.isFav(pointId);
   document.querySelectorAll('.kta-popup-btn-fav[data-fav-pointid]').forEach(function(btn) {
     if (btn.getAttribute("data-fav-pointid") === pointId) {
-      btn.textContent = nowFav ? "⭐ Favori" : "☆ Favori";
+      btn.textContent = nowFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff");
       btn.classList.toggle("kta-fav-active", nowFav);
-      btn.title = nowFav ? "Retirer des favoris" : "Mettre en favori";
+      btn.title = nowFav ? window.I18n.t("poi.favRemoveTitle") : window.I18n.t("poi.favAddTitle");
     }
   });
   // Toast discret (réutilise OOMGuard ou alertCharte si dispo, sinon console)
   if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
     window.OOMGuard.showToast(
-      (nowFav ? "⭐ Ajouté aux favoris : " : "☆ Retiré des favoris : ") + (nom || pointId),
+      window.I18n.t(nowFav ? "poi.favAddedToast" : "poi.favRemovedToast", { name: (nom || pointId) }),
       "info"
     );
   }
@@ -1242,7 +1244,7 @@ function attachPopupPhotos(marker, pointId) {
         img.loading = "lazy";
         img.draggable = false;
         img.dataset.idx = idx;
-        img.title = "Voir photo " + (idx + 1) + " / " + photosWithUrl.length;
+        img.title = window.I18n.t("utils.popup.viewPhoto", { n: (idx + 1), total: photosWithUrl.length });
         // role + tabindex pour l'accessibilité (la mini reste cliquable
         // au clavier / focus-visible).
         img.setAttribute("role", "button");
@@ -1796,13 +1798,13 @@ function ajouterPointsDepuisJSON(url, layer) {
                 }
               }
               const LBL = {
-                principal:  "🟩 Tracé principal",
-                secondaire: "🟪 Tracé secondaire",
-                chemin:     "🟨 Chemin",
-                jonction:   "🪜 Jonction interniveau",
-                itinerary:  "🗺️ Itinéraire"
+                principal:  window.I18n.t("utils.tracePopup.principal"),
+                secondaire: window.I18n.t("utils.tracePopup.secondaire"),
+                chemin:     window.I18n.t("utils.tracePopup.chemin"),
+                jonction:   window.I18n.t("utils.tracePopup.jonction"),
+                itinerary:  window.I18n.t("utils.tracePopup.itinerary")
               };
-              return LBL[t] || ("Tracé " + t);
+              return LBL[t] || window.I18n.t("utils.tracePopup.fallback", { type: t });
             }
             const ghostRO = L.polyline(latlngs, {
               weight:              Math.max((style.weight || 3) + 14, 18),
@@ -1975,13 +1977,13 @@ function ajouterPointsDepuisJSON(url, layer) {
                 }
               }
               const LBL = {
-                "pilier-1": "🟡 Pilier 1ère masse",
-                "pilier-2": "🟠 Pilier 2e masse",
-                "mur":      "🔵 Mur",
-                "front-1":  "🟨 Front de taille 1ère masse",
-                "front-2":  "🟧 Front de taille 2e masse"
+                "pilier-1": window.I18n.t("struct.popup.pilier-1"),
+                "pilier-2": window.I18n.t("struct.popup.pilier-2"),
+                "mur":      window.I18n.t("struct.popup.mur"),
+                "front-1":  window.I18n.t("struct.popup.front-1"),
+                "front-2":  window.I18n.t("struct.popup.front-2")
               };
-              return LBL[t] || ("Structure " + t);
+              return LBL[t] || window.I18n.t("struct.popup.fallback", { type: t });
             }
             let cibleStructRO = leafletLayer;
             if (isPolyline) {
@@ -2124,7 +2126,7 @@ async function telechargerPlan() {
   try {
     const config = window.PLAN_CONFIG;
     if (!config || !config.plan) {
-      alert("Configuration du plan introuvable");
+      alert(window.I18n.t("utils.export.noPlanConfig"));
       return;
     }
 
@@ -2660,11 +2662,7 @@ async function telechargerPlan() {
         await _exporter("image/jpeg", "jpg", 0.92);
         console.info("[Export rapide] fallback JPEG OK (plan trop grand pour PNG)");
       } catch (errJpg) {
-        throw new Error(
-          "Export impossible : le plan est trop grand pour être encodé par le navigateur " +
-          "(PNG et JPEG ont tous deux échoué). Essaye le 🎨 Mode avancé avec une " +
-          "résolution réduite (½ ou ¼) pour contourner la limite mémoire."
-        );
+        throw new Error(window.I18n.t("utils.export.tooLargeError"));
       }
     }
 

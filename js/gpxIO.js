@@ -474,7 +474,9 @@
             id:          "gpx_" + Date.now() + "_" + nouveauxPoints.length,
             x:           Math.round(pos.x),
             y:           Math.round(pos.y),
-            nom:         w.name || "(Point importé GPX)",
+            // ⚠️ i18n « figé à la langue d'import » : fallback de nom écrit comme
+            // donnée d'annotation (affiché sur la carte). Non re-traduit ensuite.
+            nom:         w.name || window.I18n.t("gpx.import.pointNameDefault"),
             description: w.desc || "",
             tags:        [tag],
             level:       Number.isInteger(level) ? level : 0
@@ -515,7 +517,9 @@
           nouveauxTraces.push({
             id:          "gpx_trk_" + Date.now() + "_" + nouveauxTraces.length,
             type:        type,
-            label:       trk.name || "(Tracé importé GPX)",
+            // ⚠️ i18n « figé à la langue d'import » : fallback de label écrit comme
+            // donnée d'annotation (affiché sur la carte). Non re-traduit ensuite.
+            label:       trk.name || window.I18n.t("gpx.import.trackImportedDefault"),
             description: trk.desc || undefined,  // v1.15.0 — préserve la desc track
             points:      points,
             level:       Number.isInteger(level) ? level : 0

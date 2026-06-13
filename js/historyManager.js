@@ -56,6 +56,7 @@
     if (window.I18n && typeof window.I18n.t === "function") return window.I18n.t(key);
     return key === "history.undone" ? "↩ Annulé : "
          : key === "history.redone" ? "↪ Refait : "
+         : key === "history.action.default" ? "Action"
          : key;
   }
 
@@ -184,7 +185,8 @@
   //                 beforeState. Sinon l'undo ne restaurera pas la bonne data.
   function record(label, beforeState, category) {
     const snap = beforeState || _captureState(category);
-    undoStack.push({ label: String(label || "Action"), category: category || null, snapshot: snap, ts: Date.now() });
+    // 🌍 i18n : fallback localisé (label absent) — clé history.action.default.
+    undoStack.push({ label: String(label || _t("history.action.default")), category: category || null, snapshot: snap, ts: Date.now() });
     if (undoStack.length > MAX_HISTORY) {
       undoStack.shift(); // FIFO sur dépassement
     }

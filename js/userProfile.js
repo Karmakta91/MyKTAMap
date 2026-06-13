@@ -303,7 +303,7 @@
 
   async function setPhoto(fileOrBlob) {
     if (!_initialized) await init();
-    if (!fileOrBlob) throw new Error("Aucune image fournie");
+    if (!fileOrBlob) throw new Error(window.I18n ? window.I18n.t("profile.err.noImage") : "Aucune image fournie");
     // Limite raisonnable d'entrée brute (50 MB) pour éviter de crasher
     // le compresseur sur une image RAW gigantesque.
     if (fileOrBlob.size > 50 * 1024 * 1024) {

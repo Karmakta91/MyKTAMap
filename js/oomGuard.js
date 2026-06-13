@@ -41,6 +41,7 @@
   // TOAST UI
   // =========================
   function _renderToast(message, type) {
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const existing = document.getElementById("kta-toast");
     if (existing) existing.remove();
 
@@ -52,7 +53,7 @@
     toast.innerHTML =
       '<span class="kta-toast-icon"></span>' +
       '<span class="kta-toast-msg"></span>' +
-      '<button class="kta-toast-close" aria-label="Fermer">✕</button>';
+      '<button class="kta-toast-close" aria-label="' + t("oom.toast.closeAria") + '">✕</button>';
     toast.querySelector(".kta-toast-icon").textContent = icon;
     toast.querySelector(".kta-toast-msg").textContent  = message;
 
@@ -129,11 +130,15 @@
   //   - Liste de conseils concrets pour réduire la pression mémoire
   //   - Bouton de fermeture
   function _afficherModaleKill(info) {
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const existing = document.getElementById("kta-oom-modal");
     if (existing) existing.remove();
 
     const ageSec = info && info.ageSec ? info.ageSec : null;
     const planTxt = info && info.planId ? info.planId : "(plan inconnu)";
+    const modeTxt = window.matchMedia('(display-mode: standalone)').matches
+      ? t("oom.kill.tech.modePwa")
+      : t("oom.kill.tech.modeBrowser");
 
     const overlay = document.createElement("div");
     overlay.id = "kta-oom-modal";
@@ -143,55 +148,46 @@
         '<div class="kta-readme-modal-header kta-oom-header">' +
           '<span class="kta-oom-titre-big">' +
             '<span class="kta-oom-warn-side">⚠️</span>' +
-            '<span class="kta-oom-titre-text">ATTENTION — ARRÊT BRUTAL DÉTECTÉ</span>' +
+            '<span class="kta-oom-titre-text">' + t("oom.kill.titre") + '</span>' +
             '<span class="kta-oom-warn-side">⚠️</span>' +
           '</span>' +
           '<button class="kta-panneau-close" id="kta-oom-fermer" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-oom-corps">' +
           '<div class="kta-oom-intro">' +
-            'La fois précédente, l\'application s\'est arrêtée <strong>brutalement</strong> sans pouvoir sauvegarder ' +
-            'sa session normalement.' +
+            t("oom.kill.intro") +
           '</div>' +
 
           '<div class="kta-oom-section">' +
-            '<div class="kta-oom-section-titre">🤔 Pourquoi&nbsp;?</div>' +
+            '<div class="kta-oom-section-titre">' + t("oom.kill.whyTitle") + '</div>' +
             '<p>' +
-              'Sur smartphone (iOS et Android), le système d\'exploitation tue silencieusement les onglets et ' +
-              'les apps installées qui consomment trop de mémoire vive. C\'est très souvent ce qui s\'est passé ici, ' +
-              'surtout si tu utilises un plan en haute résolution ou que beaucoup d\'autres apps tournaient en parallèle.' +
+              t("oom.kill.whyBody") +
             '</p>' +
           '</div>' +
 
           '<div class="kta-oom-section">' +
-            '<div class="kta-oom-section-titre">💡 Comment éviter que ça recommence</div>' +
+            '<div class="kta-oom-section-titre">' + t("oom.kill.howTitle") + '</div>' +
             '<ul class="kta-oom-list">' +
-              '<li><strong>Ferme les autres applications en arrière-plan</strong> avant d\'utiliser MyKTAMap. ' +
-                'Sur iPhone : double-clic Home ou swipe-up + dégage les vignettes. Sur Android : bouton multi-tâche + balaye.</li>' +
-              '<li><strong>Réduis le mode performance</strong> dans le loader (icône 🚀 ou via ⚙️ Réglages). ' +
-                '"Performance" charge des tuiles plus petites et utilise moins de RAM que "Qualité".</li>' +
-              '<li><strong>Évite d\'ouvrir plusieurs onglets de navigateur</strong> en parallèle si tu utilises ' +
-                'l\'app via Safari/Chrome — chaque onglet consomme aussi de la mémoire.</li>' +
-              '<li><strong>Garde ton smartphone à jour</strong> : iOS et Android améliorent régulièrement leur ' +
-                'gestion mémoire pour les PWA.</li>' +
-              '<li><strong>Si le problème persiste sur un plan précis</strong>, son image principale est peut-être ' +
-                'trop volumineuse — il faut alors la ré-optimiser (compression PNG ou réduction des dimensions).</li>' +
-              '<li><strong>Exporte régulièrement ta session</strong> (💾 Enregistrer la session) pour ne rien ' +
-                'perdre en cas d\'arrêt brutal.</li>' +
+              '<li>' + t("oom.kill.tip.closeApps") + '</li>' +
+              '<li>' + t("oom.kill.tip.perf") + '</li>' +
+              '<li>' + t("oom.kill.tip.tabs") + '</li>' +
+              '<li>' + t("oom.kill.tip.update") + '</li>' +
+              '<li>' + t("oom.kill.tip.optimize") + '</li>' +
+              '<li>' + t("oom.kill.tip.export") + '</li>' +
             '</ul>' +
           '</div>' +
 
           '<div class="kta-oom-section kta-oom-tech">' +
-            '<div class="kta-oom-section-titre">🔧 Détails techniques</div>' +
+            '<div class="kta-oom-section-titre">' + t("oom.kill.techTitle") + '</div>' +
             '<p style="font-size:11px; color:#8892a4; margin:0;">' +
-              'Plan&nbsp;: <code>' + planTxt + '</code><br>' +
-              (ageSec ? 'Dernière activité avant l\'arrêt&nbsp;: il y a ' + ageSec + 's<br>' : '') +
-              'Mode&nbsp;: ' + (window.matchMedia('(display-mode: standalone)').matches ? 'PWA installée' : 'Navigateur') +
+              t("oom.kill.tech.plan") + ' <code>' + planTxt + '</code><br>' +
+              (ageSec ? t("oom.kill.tech.lastActivity", { n: ageSec }) + '<br>' : '') +
+              t("oom.kill.tech.mode") + ' ' + modeTxt +
             '</p>' +
           '</div>' +
         '</div>' +
         '<div class="kta-oom-actions">' +
-          '<button class="kta-btn kta-btn-primary" id="kta-oom-ok" type="button">✓ Compris</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-oom-ok" type="button">' + t("oom.kill.ok") + '</button>' +
         '</div>' +
       '</div>';
 
@@ -406,39 +402,35 @@
 
   function _afficherModaleV2Crash(info) {
     if (document.getElementById("kta-v2-crash-modal")) return;
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const overlay = document.createElement("div");
     overlay.id = "kta-v2-crash-modal";
     overlay.className = "kta-readme-modal-overlay";
-    const sizeTxt = info.imageSizeMB ? info.imageSizeMB + " Mo" : "taille inconnue";
+    const sizeTxt = info.imageSizeMB ? info.imageSizeMB + " Mo" : t("oom.v2.unknownSize");
+    const nomTxt = String(info.planName).replace(/[<>&]/g, function(c){return {"<":"&lt;",">":"&gt;","&":"&amp;"}[c];});
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-v2-error-boite">' +
         '<div class="kta-readme-modal-header kta-v2-error-header">' +
-          '<span class="kta-readme-modal-titre">🧱❌ Génération V2 interrompue</span>' +
+          '<span class="kta-readme-modal-titre">' + t("oom.v2.titre") + '</span>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           '<p class="kta-v2-error-message">' +
-            'La dernière fois, tu lançais la conversion en V2 du plan <strong>' +
-            String(info.planName).replace(/[<>&]/g, function(c){return {"<":"&lt;",">":"&gt;","&":"&amp;"}[c];}) +
-            '</strong> (image ' + sizeTxt + ') et l\'app s\'est arrêtée brutalement avant la fin.' +
+            t("oom.v2.intro", { nom: nomTxt, taille: sizeTxt }) +
           '</p>' +
           '<p style="font-size:13px; color:#c8d0e0; line-height:1.5; margin:10px 0;">' +
-            'C\'est très probablement une <strong>saturation mémoire</strong> du navigateur — la conversion V2 ' +
-            'décode l\'image source à pleine résolution puis génère N tuiles, ce qui peut dépasser le plafond mémoire ' +
-            'des navigateurs mobiles (~500 MB sur iOS Safari, variable sur Android).' +
+            t("oom.v2.explain") +
           '</p>' +
           '<div class="kta-v2-warn-section kta-v2-warn-section-good">' +
-            '<div class="kta-v2-warn-section-titre">💡 Solutions</div>' +
+            '<div class="kta-v2-warn-section-titre">' + t("oom.v2.solutionsTitle") + '</div>' +
             '<ul style="margin:6px 0 0; padding-left:22px; font-size:13px; color:#c8d0e0; line-height:1.6;">' +
-              '<li><strong>Fais la conversion sur PC</strong> (Windows / macOS / Linux). Pas de plafond mémoire en pratique. ' +
-                'Une fois le ZIP V2 généré, importe-le sur ton téléphone — l\'import est léger (pas de décodage à pleine résolution).</li>' +
-              '<li><strong>Réduis l\'image source</strong> à 6000-8000 px max avant de réessayer (GIMP / Photoshop / ' +
-                '<a href="https://squoosh.app" target="_blank" rel="noopener" style="color:#8cb4ff;">Squoosh</a>).</li>' +
-              '<li><strong>Ferme les autres apps</strong> en arrière-plan pour libérer de la RAM avant de retenter.</li>' +
+              '<li>' + t("oom.v2.sol.pc") + '</li>' +
+              '<li>' + t("oom.v2.sol.resize") + '</li>' +
+              '<li>' + t("oom.v2.sol.closeApps") + '</li>' +
             '</ul>' +
           '</div>' +
         '</div>' +
         '<div class="kta-oom-actions">' +
-          '<button class="kta-btn kta-btn-primary" id="kta-v2-crash-ok" type="button">✓ Compris</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-v2-crash-ok" type="button">' + t("oom.v2.ok") + '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);

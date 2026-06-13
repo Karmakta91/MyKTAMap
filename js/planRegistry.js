@@ -37,6 +37,12 @@
   const IDB_STORE   = "handles";
   const IDB_BLOBS   = "blobs"; // store séparé pour les fichiers ZIP stockés en local
 
+  // Helper i18n — appelé quand l'erreur est construite (import / save = action
+  // user), jamais au load → dicos prêts. Fallback = clé si I18n absent.
+  function t(k, p) {
+    return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
+  }
+
   let _data = null;
 
   // ========== INIT ==========
@@ -301,17 +307,17 @@
 
   // mode: "replace" | "merge"
   async function importFromFile(file, mode) {
-    if (!file) throw new Error("Aucun fichier fourni");
+    if (!file) throw new Error(t("planreg.err.noFile"));
     const text = await file.text();
     let payload;
     try { payload = JSON.parse(text); }
-    catch(e) { throw new Error("Fichier JSON invalide"); }
+    catch(e) { throw new Error(t("planreg.err.jsonInvalid")); }
 
     if (payload.type !== "myktamap-plans-list") {
-      throw new Error("Ce fichier n'est pas une liste de plans MyKTAMap");
+      throw new Error(t("planreg.err.notPlanList"));
     }
     if (!Array.isArray(payload.plans)) {
-      throw new Error("Format de liste invalide (champ 'plans' manquant)");
+      throw new Error(t("planreg.err.badListFormat"));
     }
 
     init();
@@ -337,9 +343,9 @@
     return file.text().then(function(text) {
       let payload;
       try { payload = JSON.parse(text); }
-      catch(e) { return { ok: false, error: "JSON invalide" }; }
+      catch(e) { return { ok: false, error: t("planreg.err.jsonInvalidShort") }; }
       if (payload.type !== "myktamap-plans-list") {
-        return { ok: false, error: "Pas une liste MyKTAMap" };
+        return { ok: false, error: t("planreg.err.notMktmList") };
       }
       const total = (payload.plans || []).length;
       init();
@@ -438,9 +444,9 @@
   // Stocke un Blob (le ZIP entier) dans IndexedDB
   // Retourne un objet { ok: true } ou { ok: false, error: "..." }
   async function saveBlob(id, blob) {
-    if (!blob) return { ok: false, error: "Aucun fichier" };
+    if (!blob) return { ok: false, error: t("planreg.err.noFileShort") };
     const db = await _openIDB();
-    if (!db) return { ok: false, error: "IndexedDB indisponible" };
+    if (!db) return { ok: false, error: t("planreg.err.idbUnavailable") };
 
     return new Promise(function(resolve) {
       try {
@@ -448,19 +454,19 @@
         tx.objectStore(IDB_BLOBS).put(blob, id);
         tx.oncomplete = function() { resolve({ ok: true }); };
         tx.onerror = function(e) {
-          resolve({ ok: false, error: (tx.error && tx.error.name) || "Erreur IDB" });
+          resolve({ ok: false, error: (tx.error && tx.error.name) || t("planreg.err.idbError") });
         };
         tx.onabort = function() {
           // Souvent déclenché par QuotaExceededError
           const err = tx.error;
           if (err && err.name === "QuotaExceededError") {
-            resolve({ ok: false, error: "Quota dépassé — l'espace de stockage du navigateur est plein" });
+            resolve({ ok: false, error: t("planreg.err.quotaExceeded") });
           } else {
-            resolve({ ok: false, error: (err && err.name) || "Stockage refusé" });
+            resolve({ ok: false, error: (err && err.name) || t("planreg.err.storageRefused") });
           }
         };
       } catch(e) {
-        resolve({ ok: false, error: e.message || "Erreur inattendue" });
+        resolve({ ok: false, error: e.message || t("planreg.err.unexpected") });
       }
     });
   }

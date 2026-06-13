@@ -1416,6 +1416,7 @@
       // peuvent être longs à extraire (1000+ tuiles) — l'utilisateur sait
       // qu'il faut attendre et où on en est.
       function _afficherOverlayChargement(message) {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         let overlay = document.getElementById("kta-load-overlay");
         if (!overlay) {
           overlay = document.createElement("div");
@@ -1424,14 +1425,14 @@
           overlay.innerHTML =
             '<div class="kta-load-box">' +
               '<div class="kta-load-spinner"></div>' +
-              '<div class="kta-load-titre">Chargement du plan…</div>' +
+              '<div class="kta-load-titre">' + _t("home.loader.loadingTitle") + '</div>' +
               '<div class="kta-load-message" id="kta-load-message"></div>' +
-              '<div class="kta-load-hint">Ne ferme pas l\'onglet. Pour les plans tuilés V2 ou les plans très détaillés, ça peut prendre plusieurs secondes.</div>' +
+              '<div class="kta-load-hint">' + _t("home.loader.loadingHint") + '</div>' +
             '</div>';
           document.documentElement.appendChild(overlay);
         }
         const msgEl = document.getElementById("kta-load-message");
-        if (msgEl) msgEl.textContent = message || "Initialisation…";
+        if (msgEl) msgEl.textContent = message || _t("home.loader.initializing");
       }
       function _majOverlayChargement(message) {
         const msgEl = document.getElementById("kta-load-message");
@@ -1455,7 +1456,8 @@
       }
 
       async function extraireZip(zipFile) {
-        if (typeof JSZip === "undefined") throw new Error("JSZip non chargé. Vérifiez lib/jszip.min.js");
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
+        if (typeof JSZip === "undefined") throw new Error(_t("home.loader.errJszip"));
         const zip = await JSZip.loadAsync(zipFile);
         let planConfigFile = null;
         const assetFiles = [];
@@ -1676,6 +1678,7 @@
 
       if (fsAccessBtn) {
         fsAccessBtn.addEventListener("click", async function(e) {
+          const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
           e.stopPropagation();
           try {
             const [handle] = await window.showOpenFilePicker({
@@ -1688,12 +1691,12 @@
             const dt = new DataTransfer();
             dt.items.add(file);
             zipFileInput.files = dt.files;
-            zipFileName.textContent = "🔐 " + file.name + " (accès persistant)";
+            zipFileName.textContent = _t("home.loader.persistentAccess", { file: file.name });
             _currentFsHandle = handle;
-            setStatus("ZIP sélectionné. Clique sur « Charger » pour continuer.", false);
+            setStatus(_t("home.loader.zipSelected"), false);
           } catch(err) {
             if (err && err.name !== "AbortError") {
-              setStatus("Erreur de sélection : " + (err.message || err), true);
+              setStatus(_t("home.loader.errSelection") + (err.message || err), true);
             }
           }
         });
@@ -1702,6 +1705,7 @@
       // === CHARGEMENT D'UN ZIP (utilisé par le bouton Charger ET les plans locaux du registre) ===
       // presetChoisi : "auto" | "quality" | "balanced" | "performance" (string)
       async function chargerZipFichier(zipFile, presetChoisi, meta) {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         if (typeof window.startImportedPlan !== "function") {
           throw new Error("startImportedPlan introuvable");
         }
@@ -1719,7 +1723,7 @@
             if (denyCheck && denyCheck.denied) {
               console.warn("[Loader] Plan refusé (denylist) :", denyCheck.sha256, "- raison :", denyCheck.reason);
               _fermerOverlayChargement();
-              setStatus("⛔ Plan révoqué par l'auteur.", true);
+              setStatus(_t("home.loader.planRevoked"), true);
               const planId = (meta && meta.planId) || null;
               window.PlanDenylist.showDeniedModal(denyCheck, planId);
               return;  // STOP : pas d'extraction ni de chargement
@@ -1744,8 +1748,8 @@
         // 🌀 v152 : overlay plein écran visible avec spinner + message d'étape.
         // Plus visible que setStatus (qui écrit dans #loaderStatus tout en bas).
         // Particulièrement utile pour les plans V2 (extraction de 1000+ tuiles).
-        _afficherOverlayChargement("Extraction du ZIP en cours…");
-        setStatus("Extraction en cours…", false);
+        _afficherOverlayChargement(_t("home.loader.extracting"));
+        setStatus(_t("home.loader.extractingShort"), false);
         try {
           // v173 : wrapper de step pour capturer une trace utile dès la source
           // (avant que l'erreur ne se transforme en {} opaque en remontant).
@@ -1760,11 +1764,11 @@
           } catch(eExtr) {
             const _m = (eExtr && eExtr.message) || (eExtr && eExtr.name) || String(eExtr) || "extraction ZIP échouée";
             console.error("[chargerZipFichier] Erreur étape '" + _step + "' :", _m, "| raw :", eExtr);
-            throw new Error("Étape « " + _step + " » : " + _m);
+            throw new Error(_t("home.loader.errStep", { step: _step }) + _m);
           }
 
-          _majOverlayChargement("ZIP extrait — Chargement de la carte…");
-          setStatus("Chargement en cours…", false);
+          _majOverlayChargement(_t("home.loader.mapLoading"));
+          setStatus(_t("home.loader.loadingShort"), false);
 
           _step = "lancement de l'application (startImportedPlan)";
           try {
@@ -1774,10 +1778,10 @@
           } catch(eSta) {
             const _m = (eSta && eSta.message) || (eSta && eSta.name) || String(eSta) || "lancement échoué";
             console.error("[chargerZipFichier] Erreur étape '" + _step + "' :", _m, "| raw :", eSta, "| stack :", eSta && eSta.stack);
-            throw new Error("Étape « " + _step + " » : " + _m);
+            throw new Error(_t("home.loader.errStep", { step: _step }) + _m);
           }
 
-          setStatus("Plan chargé avec succès.");
+          setStatus(_t("home.loader.loadedOk"));
           // 🆕 v1.42.3 — cache le hash SHA-256 dans le PlanRegistry pour
           //    accélérer l'audit denylist au prochain boot.
           _cacheHashAfterLoad();
@@ -1790,11 +1794,12 @@
       window.chargerZipFichier = chargerZipFichier;
 
       async function onLoadPlanClick() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         loadBtn.disabled = true;
         try {
           const zipFile = zipFileInput.files[0];
           if (!zipFile) {
-            setStatus("Sélectionne d'abord une archive .zip", true);
+            setStatus(_t("home.loader.selectZipFirst"), true);
             loadBtn.disabled = false;
             return;
           }
@@ -1820,9 +1825,9 @@
             (err && err.name) ||
             (err && typeof err === "object" ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : null) ||
             String(err) ||
-            "Erreur inconnue";
+            _t("home.loader.errUnknown");
           console.error("[Loader] Erreur :", _msg, "| raw err :", err, "| typeof :", typeof err, "| stack :", err && err.stack);
-          setStatus("Erreur : " + _msg, true);
+          setStatus(_t("home.loader.errPrefix") + _msg, true);
           loadBtn.disabled = false;
         }
       }
@@ -1836,8 +1841,9 @@
       const plannerBtn = document.getElementById("loaderPlannerBtn");
       if (plannerBtn) {
         plannerBtn.addEventListener("click", function() {
+          const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
           if (typeof window.afficherPlanner === "function") window.afficherPlanner();
-          else setStatus("Le générateur n'est pas disponible", true);
+          else setStatus(_t("home.loader.generatorUnavailable"), true);
         });
       }
 
@@ -1858,9 +1864,10 @@
       }
 
       function fmtSize(bytes) {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         if (!bytes) return "";
         const mo = bytes / 1024 / 1024;
-        return mo >= 1 ? mo.toFixed(1) + " Mo" : Math.round(bytes / 1024) + " Ko";
+        return mo >= 1 ? mo.toFixed(1) + " " + _t("home.plans.unitMb") : Math.round(bytes / 1024) + " " + _t("home.plans.unitKb");
       }
 
       // i18n : helper traduction avec fallback FR inline si I18n indisponible
@@ -1918,9 +1925,9 @@
               <div class="plan-row-modes">${badgesMode}${badgeStorage}</div>
             </div>
             <div class="plan-row-actions">
-              <button class="plan-row-btn plan-row-info-btn" title="Informations détaillées sur cette archive">ℹ️</button>
-              <button class="plan-row-btn plan-row-load" title="Charger ce plan">▶️</button>
-              <button class="plan-row-btn plan-row-remove" title="Retirer de la liste">✕</button>
+              <button class="plan-row-btn plan-row-info-btn" title="${_homeT("home.plans.infoBtnTitle", "Informations détaillées sur cette archive")}">ℹ️</button>
+              <button class="plan-row-btn plan-row-load" title="${_homeT("home.plans.loadBtnTitle", "Charger ce plan")}">▶️</button>
+              <button class="plan-row-btn plan-row-remove" title="${_homeT("home.plans.removeBtnTitle", "Retirer de la liste")}">✕</button>
             </div>
           </div>
         `;
@@ -1960,6 +1967,7 @@
       // un seul bouton "J'ai compris" qui ferme la modale + retour sans
       // charger le ZIP. Pattern .kta-readme-modal pour cohérence charte.
       function _afficherModaleNomZipKO(zipName, planName) {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         return new Promise(function(resolve) {
           const existing = document.getElementById("kta-zipname-error-modal");
           if (existing) existing.remove();
@@ -1970,26 +1978,24 @@
           modal.innerHTML =
             '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:80vh; border:1px solid rgba(255,140,140,0.35);">' +
               '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.20);">' +
-                '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">🚫 ZIP refusé — Nom différent</span>' +
+                '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">' + _t("home.plans.nameKO.title") + '</span>' +
                 '<button class="kta-panneau-close" id="kta-zipname-error-close">✕</button>' +
               '</div>' +
               '<div class="kta-readme-modal-corps">' +
                 '<p style="font-size:13px; color:#c0c8d8; line-height:1.6; margin:0 0 14px;">' +
-                  'Le ZIP que vous avez sélectionné contient un plan dont le nom ne correspond pas à celui sur lequel vous avez cliqué :' +
+                  _t("home.plans.nameKO.body") +
                 '</p>' +
                 '<div style="display:grid; grid-template-columns:auto 1fr; gap:8px 12px; font-size:13px; padding:10px 12px; background:rgba(255,140,140,0.06); border:1px solid rgba(255,140,140,0.22); border-radius:6px; margin-bottom:14px;">' +
-                  '<span style="color:#8892a4; white-space:nowrap;">Plan ciblé :</span>' +
+                  '<span style="color:#8892a4; white-space:nowrap;">' + _t("home.plans.nameKO.targetLabel") + '</span>' +
                   '<strong style="color:#e8eaf0; word-break:break-word;">' + escapeHtml(planName) + '</strong>' +
-                  '<span style="color:#8892a4; white-space:nowrap;">ZIP fourni :</span>' +
+                  '<span style="color:#8892a4; white-space:nowrap;">' + _t("home.plans.nameKO.providedLabel") + '</span>' +
                   '<strong style="color:#ff8c8c; word-break:break-word;">' + escapeHtml(zipName) + '</strong>' +
                 '</div>' +
                 '<p style="font-size:12.5px; color:#8892a4; line-height:1.5; margin:0 0 14px; font-style:italic;">' +
-                  'Pour éviter toute incohérence (badges, sessions, métadonnées), l\'import est refusé. ' +
-                  'Si vous souhaitez vraiment charger ce plan, importez-le via le bouton 📦 Charger un nouveau plan ' +
-                  '(il sera ajouté comme entrée distincte avec son propre nom).' +
+                  _t("home.plans.nameKO.hint") +
                 '</p>' +
                 '<div style="display:flex; justify-content:flex-end;">' +
-                  '<button class="kta-btn kta-btn-primary" id="kta-zipname-error-ok">J\'ai compris</button>' +
+                  '<button class="kta-btn kta-btn-primary" id="kta-zipname-error-ok">' + _t("home.plans.nameKO.ok") + '</button>' +
                 '</div>' +
               '</div>' +
             '</div>';
@@ -2016,6 +2022,7 @@
       // contenu du ZIP fait foi, sync automatique). Couleur orange (warning).
       // Returns Promise<boolean> : true = continuer, false = annuler.
       function _afficherModaleModeDifferent(planName, discordances) {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         return new Promise(function(resolve) {
           const existing = document.getElementById("kta-mode-warn-modal");
           if (existing) existing.remove();
@@ -2024,8 +2031,8 @@
             return '<div style="padding:10px 12px; background:rgba(255,179,128,0.06); border:1px solid rgba(255,179,128,0.22); border-radius:6px; margin-bottom:8px;">' +
                      '<div style="font-size:13px; font-weight:600; color:#ffb380; margin-bottom:6px;">' + escapeHtml(d.flag) + '</div>' +
                      '<div style="font-size:12px; color:#c0c8d8; line-height:1.6;">' +
-                       '<span style="color:#8892a4;">Mode mémorisé :</span> ' + escapeHtml(d.avant) + '<br>' +
-                       '<span style="color:#8892a4;">Mode du ZIP :</span> <strong style="color:#e8eaf0;">' + escapeHtml(d.apres) + '</strong>' +
+                       '<span style="color:#8892a4;">' + _t("home.plans.modeWarn.savedLabel") + '</span> ' + escapeHtml(d.avant) + '<br>' +
+                       '<span style="color:#8892a4;">' + _t("home.plans.modeWarn.zipLabel") + '</span> <strong style="color:#e8eaf0;">' + escapeHtml(d.apres) + '</strong>' +
                      '</div>' +
                    '</div>';
           }).join("");
@@ -2036,22 +2043,20 @@
           modal.innerHTML =
             '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:85vh; border:1px solid rgba(255,179,128,0.35);">' +
               '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,179,128,0.20);">' +
-                '<span class="kta-readme-modal-titre" style="color:#ffb380;">⚠️ Mode différent détecté</span>' +
+                '<span class="kta-readme-modal-titre" style="color:#ffb380;">' + _t("home.plans.modeWarn.title") + '</span>' +
                 '<button class="kta-panneau-close" id="kta-mode-warn-close">✕</button>' +
               '</div>' +
               '<div class="kta-readme-modal-corps">' +
                 '<p style="font-size:13px; color:#c0c8d8; line-height:1.6; margin:0 0 12px;">' +
-                  'Le plan <strong style="color:#e8eaf0;">« ' + escapeHtml(planName) + ' »</strong> ' +
-                  'était mémorisé dans un mode, mais le ZIP que vous venez de fournir est dans un autre mode :' +
+                  _t("home.plans.modeWarn.body", { nom: escapeHtml(planName) }) +
                 '</p>' +
                 lignesHtml +
                 '<p style="font-size:12.5px; color:#8892a4; line-height:1.5; margin:12px 0 16px; font-style:italic;">' +
-                  '👉 Si vous continuez, les badges de ce plan dans la liste seront mis à jour pour refléter le nouveau mode ' +
-                  '(le contenu du ZIP fait foi).' +
+                  _t("home.plans.modeWarn.hint") +
                 '</p>' +
                 '<div style="display:flex; gap:10px; justify-content:flex-end;">' +
-                  '<button class="kta-btn kta-btn-ghost" id="kta-mode-warn-cancel">Annuler</button>' +
-                  '<button class="kta-btn kta-btn-primary" id="kta-mode-warn-ok">Continuer</button>' +
+                  '<button class="kta-btn kta-btn-ghost" id="kta-mode-warn-cancel">' + _t("home.plans.modeWarn.cancel") + '</button>' +
+                  '<button class="kta-btn kta-btn-primary" id="kta-mode-warn-ok">' + _t("home.plans.modeWarn.continue") + '</button>' +
                 '</div>' +
               '</div>' +
             '</div>';
@@ -2086,20 +2091,21 @@
         const existing = document.getElementById("kta-plan-infos-modal");
         if (existing) existing.remove();
 
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         // Labels lisibles pour les champs techniques
-        const typeLabel = plan.type === "server" ? "🌐 Plan serveur (data/)" :
-                          plan.type === "local"  ? "💾 Plan local (ZIP)"      :
+        const typeLabel = plan.type === "server" ? _t("home.plans.info.typeServer") :
+                          plan.type === "local"  ? _t("home.plans.info.typeLocal")  :
                           plan.type;
         let storageLabel = "—";
         if (plan.type === "local") {
-          if (plan.storedBlob)      storageLabel = "✅ Mémorisé dans l'app (IndexedDB)";
-          else if (plan.fsHandleId) storageLabel = "🔐 Accès permanent autorisé (File System Access API)";
-          else                      storageLabel = "📁 Re-sélection requise au chargement (pick)";
+          if (plan.storedBlob)      storageLabel = _t("home.plans.info.storedBlob");
+          else if (plan.fsHandleId) storageLabel = _t("home.plans.info.storedFs");
+          else                      storageLabel = _t("home.plans.info.storedPick");
         }
         let modesParts = [];
-        if (plan.tiledV2 === true)    modesParts.push("V2 tuilé (Google Maps-like)");
-        if (plan.multiLevel === true) modesParts.push("Multi-niveau (carrière multi-étages)");
-        if (modesParts.length === 0)  modesParts.push("V1 classique (mono-niveau, image entière en RAM)");
+        if (plan.tiledV2 === true)    modesParts.push(_t("home.plans.info.modeV2"));
+        if (plan.multiLevel === true) modesParts.push(_t("home.plans.info.modeMlvl"));
+        if (modesParts.length === 0)  modesParts.push(_t("home.plans.info.modeV1"));
         const modesLabel = modesParts.join(" + ");
 
         // Liste des champs à afficher (ordre cohérent : identité → source → tech → dates)
@@ -2108,24 +2114,24 @@
           if (value === undefined || value === null || value === "") return;
           rows.push({ label: label, value: String(value), mono: !!mono });
         }
-        pushRow("Identifiant interne", plan.id, true);
-        pushRow("Nom",                 plan.name);
-        pushRow("Version",             plan.version);
-        pushRow("Auteur",              plan.author);
-        rows.push({ label: "Type",     value: typeLabel, mono: false });
+        pushRow(_t("home.plans.info.keyId"),      plan.id, true);
+        pushRow(_t("home.plans.info.keyName"),    plan.name);
+        pushRow(_t("home.plans.info.keyVersion"), plan.version);
+        pushRow(_t("home.plans.info.keyAuthor"),  plan.author);
+        rows.push({ label: _t("home.plans.info.keyType"), value: typeLabel, mono: false });
         if (plan.type === "server") {
-          pushRow("Chemin serveur",   plan.path, true);
+          pushRow(_t("home.plans.info.keyServerPath"), plan.path, true);
         } else if (plan.type === "local") {
-          pushRow("Fichier source",   plan.originalFilename, true);
-          pushRow("Taille",           plan.fileSize ? fmtSize(plan.fileSize) : null);
-          rows.push({ label: "Persistance", value: storageLabel, mono: false });
+          pushRow(_t("home.plans.info.keySourceFile"), plan.originalFilename, true);
+          pushRow(_t("home.plans.info.keySize"),       plan.fileSize ? fmtSize(plan.fileSize) : null);
+          rows.push({ label: _t("home.plans.info.keyPersistence"), value: storageLabel, mono: false });
         }
-        rows.push({ label: "Mode",    value: modesLabel, mono: false });
+        rows.push({ label: _t("home.plans.info.keyMode"), value: modesLabel, mono: false });
         if (plan.perfPreset) {
-          pushRow("Préset performance", plan.perfPreset);
+          pushRow(_t("home.plans.info.keyPreset"), plan.perfPreset);
         }
-        pushRow("Ajouté le",          plan.addedAt    ? fmtDate(plan.addedAt)    : null);
-        pushRow("Dernière ouverture", plan.lastOpened ? fmtDate(plan.lastOpened) : (plan.discovered ? "Jamais ouvert (découvert)" : null));
+        pushRow(_t("home.plans.info.keyAddedAt"),    plan.addedAt    ? fmtDate(plan.addedAt)    : null);
+        pushRow(_t("home.plans.info.keyLastOpened"), plan.lastOpened ? fmtDate(plan.lastOpened) : (plan.discovered ? _t("home.plans.info.neverOpened") : null));
 
         const tableHtml = rows.map(function(r) {
           const valStyle = r.mono ? ' style="font-family:monospace; font-size:11.5px; color:#c8d0e0;"' : '';
@@ -2165,6 +2171,7 @@
       }
 
       window.refreshPlansList = function() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         if (!window.PlanRegistry) return;
         const all = window.PlanRegistry.getAll();
         const last = window.PlanRegistry.getLastOpened();
@@ -2212,7 +2219,7 @@
             // Cas particulier : registre non vide mais filtre cache tout
             // → message d'aide pour réactiver les serveurs.
             allPlansList.innerHTML =
-              '<div class="loader-plans-empty">Aucun plan local — coche <em>Afficher les plans serveur</em> pour voir les plans découverts.</div>';
+              '<div class="loader-plans-empty">' + _t("home.plans.emptyLocal") + '</div>';
           } else {
             // Tri : par lastOpened desc, puis par name
             const sorted = filtered.slice().sort(function(a, b) {
@@ -2234,7 +2241,7 @@
           });
           row.querySelector(".plan-row-remove").addEventListener("click", function(e) {
             e.stopPropagation();
-            if (confirm("Retirer ce plan de votre liste ?")) {
+            if (confirm(_t("home.plans.confirmRemove"))) {
               window.PlanRegistry.remove(id);
               window.refreshPlansList();
             }
@@ -2348,44 +2355,31 @@
       // === MODALE "PLAN INTROUVABLE" ===
       // reason : "server" | "local-blob" | "local-fs" | "local-fs-denied"
       function afficherModalePlanIntrouvable(plan, reason) {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const existing = document.getElementById("planIntrouvableModal");
         if (existing) existing.remove();
 
-        let titre = "⚠️ Plan introuvable";
+        let titre = _t("home.plans.notFound.titleDefault");
         let explication = "";
         let canRetry = false;
         let canReSelect = false;
 
+        const _nom = escapeHtml(plan.name || plan.id);
         if (reason === "server") {
-          titre = "⚠️ Plan serveur introuvable";
-          explication = "Le plan <strong>" + escapeHtml(plan.name || plan.id) + "</strong> " +
-            "n'a pas été trouvé sur le serveur (chemin <code>" + escapeHtml(plan.path) + "</code>).<br><br>" +
-            "Causes possibles : le plan a été déplacé, renommé, supprimé, ou le serveur est temporairement indisponible.";
+          titre = _t("home.plans.notFound.titleServer");
+          explication = _t("home.plans.notFound.bodyServer", { nom: _nom, path: escapeHtml(plan.path) });
           canRetry = true;
         } else if (reason === "local-blob") {
-          titre = "⚠️ Données du plan introuvables";
-          explication = "Le plan <strong>" + escapeHtml(plan.name || plan.id) + "</strong> était mémorisé " +
-            "localement dans le navigateur, mais ses données ont disparu.<br><br>" +
-            "<span style='color:#a8b3c8;'>Causes possibles :</span>" +
-            "<ul style='margin:6px 0 0 0; padding-left:20px; line-height:1.6; color:#8892a4; list-style-type:disc;'>" +
-            "<li style='color:#8892a4;'>Vidage du cache navigateur</li>" +
-            "<li style='color:#8892a4;'>Import d'une liste de plans depuis un autre appareil</li>" +
-            "<li style='color:#8892a4;'>Réinstallation de l'application</li>" +
-            "<li style='color:#8892a4;'>Quota de stockage atteint et purge automatique</li>" +
-            "</ul>";
+          titre = _t("home.plans.notFound.titleBlob");
+          explication = _t("home.plans.notFound.bodyBlob", { nom: _nom });
           canReSelect = true;
         } else if (reason === "local-fs") {
-          titre = "⚠️ Accès au fichier perdu";
-          explication = "Le plan <strong>" + escapeHtml(plan.name || plan.id) + "</strong> avait un accès permanent " +
-            "configuré, mais celui-ci n'est plus valide.<br><br>" +
-            "Causes possibles : le ZIP a été déplacé/supprimé sur votre disque, ou les autorisations du navigateur " +
-            "ont été révoquées (vidage de cache, autre profil, autre navigateur).";
+          titre = _t("home.plans.notFound.titleFs");
+          explication = _t("home.plans.notFound.bodyFs", { nom: _nom });
           canReSelect = true;
         } else if (reason === "local-fs-denied") {
-          titre = "⚠️ Permission refusée";
-          explication = "Le navigateur a refusé l'accès au fichier ZIP du plan <strong>" +
-            escapeHtml(plan.name || plan.id) + "</strong>.<br><br>" +
-            "Vous pouvez re-sélectionner le ZIP manuellement pour autoriser à nouveau l'accès.";
+          titre = _t("home.plans.notFound.titleDenied");
+          explication = _t("home.plans.notFound.bodyDenied", { nom: _nom });
           canReSelect = true;
         }
 
@@ -2402,12 +2396,12 @@
               <p style="font-size:13px; color:#c0c8d8; line-height:1.6; margin:0 0 14px;">
                 ${explication}
               </p>
-              <p style="font-size:13px; color:#e8eaf0; margin:0 0 12px;">Que souhaitez-vous faire ?</p>
+              <p style="font-size:13px; color:#e8eaf0; margin:0 0 12px;">${_t("home.plans.notFound.prompt")}</p>
               <div style="display:flex; flex-direction:column; gap:8px;">
-                ${canRetry ? '<button class="kta-btn kta-btn-primary" data-action="retry">🔄 Réessayer</button>' : ''}
-                ${canReSelect ? '<button class="kta-btn kta-btn-primary" data-action="reselect">📁 Re-sélectionner le ZIP</button>' : ''}
-                <button class="kta-btn kta-btn-primary" data-action="remove" style="background:#5e2828; border-color:rgba(255,140,140,0.3);">🗑️ Retirer de la liste</button>
-                <button class="kta-btn kta-btn-ghost" data-action="cancel">Annuler</button>
+                ${canRetry ? '<button class="kta-btn kta-btn-primary" data-action="retry">' + _t("home.plans.notFound.retry") + '</button>' : ''}
+                ${canReSelect ? '<button class="kta-btn kta-btn-primary" data-action="reselect">' + _t("home.plans.notFound.reselect") + '</button>' : ''}
+                <button class="kta-btn kta-btn-primary" data-action="remove" style="background:#5e2828; border-color:rgba(255,140,140,0.3);">${_t("home.plans.notFound.remove")}</button>
+                <button class="kta-btn kta-btn-ghost" data-action="cancel">${_t("home.plans.notFound.cancel")}</button>
               </div>
             </div>
           </div>
@@ -2431,7 +2425,7 @@
             } else if (action === "remove") {
               window.PlanRegistry.remove(plan.id);
               window.refreshPlansList();
-              setStatus("Plan retiré de la liste");
+              setStatus(_t("home.plans.removedStatus"));
             }
             // cancel → rien
           });
@@ -2441,6 +2435,7 @@
       // === RE-SÉLECTION D'UN ZIP POUR UN PLAN LOCAL ===
       // options = { restorePersistance: true } pour réactiver storeBlob/fsHandle si l'entrée originale les avait
       async function reSelectionnerZipPourPlan(plan, options) {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         options = options || {};
         let file = null;
         let handle = null;
@@ -2508,10 +2503,10 @@
           const registreV2  = plan.tiledV2    === true;
           const registreML  = plan.multiLevel === true;
           const discordances = [];
-          if (registreV2  && !zipFlags.tiledV2)    discordances.push({ flag: "V2 tuilé",    avant: "V2 tuilé (Google Maps-like)",        apres: "V1 classique (image entière en RAM)" });
-          if (!registreV2 && zipFlags.tiledV2)     discordances.push({ flag: "V2 tuilé",    avant: "V1 classique (image entière en RAM)", apres: "V2 tuilé (Google Maps-like)" });
-          if (registreML  && !zipFlags.multiLevel) discordances.push({ flag: "Multi-niveau",avant: "Multi-niveau (carrière multi-étages)",apres: "Mono-niveau (classique)" });
-          if (!registreML && zipFlags.multiLevel)  discordances.push({ flag: "Multi-niveau",avant: "Mono-niveau (classique)",            apres: "Multi-niveau (carrière multi-étages)" });
+          if (registreV2  && !zipFlags.tiledV2)    discordances.push({ flag: "V2 tuilé",    avant: _t("home.plans.info.modeV2"),        apres: "V1 classique (image entière en RAM)" });
+          if (!registreV2 && zipFlags.tiledV2)     discordances.push({ flag: "V2 tuilé",    avant: "V1 classique (image entière en RAM)", apres: _t("home.plans.info.modeV2") });
+          if (registreML  && !zipFlags.multiLevel) discordances.push({ flag: "Multi-niveau",avant: _t("home.plans.info.modeMlvl"),apres: _t("home.plans.info.modeMono") });
+          if (!registreML && zipFlags.multiLevel)  discordances.push({ flag: "Multi-niveau",avant: _t("home.plans.info.modeMono"),            apres: _t("home.plans.info.modeMlvl") });
 
           // v171 : modale custom (orange warning) au lieu de confirm() natif.
           // Continue offert car le ZIP fait foi (sync automatique des flags).
@@ -2576,13 +2571,14 @@
       const exportListBtn = document.getElementById("exportListBtn");
       if (exportListBtn) {
         exportListBtn.addEventListener("click", function() {
+          const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
           if (window.ProfileExportImport && typeof window.ProfileExportImport.ouvrirExportModale === "function") {
             window.ProfileExportImport.ouvrirExportModale();
           } else {
             // Fallback : ancien comportement si module pas chargé
             if (window.PlanRegistry) {
               window.PlanRegistry.exportToFile();
-              setStatus("Liste exportée (mode legacy — module ProfileExportImport non chargé)");
+              setStatus(_t("home.loader.listExportedLegacy"));
             }
           }
         });
@@ -2620,6 +2616,7 @@
       if (skipServerCb) {
         skipServerCb.checked = window._loaderSkipServerPlans();
         skipServerCb.addEventListener("change", function() {
+          const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
           _loaderSetSkipServerPlans(skipServerCb.checked);
           _syncSkipServerPlansUI();
           // Re-render liste home immédiatement (filtre les plans serveur déjà
@@ -2632,8 +2629,8 @@
           if (window.OOMGuard && window.OOMGuard.showToast) {
             window.OOMGuard.showToast(
               skipServerCb.checked
-                ? "🚫 Plans serveur masqués. Reload requis pour skip l'auto-discovery au boot."
-                : "✅ Plans serveur réactivés. Reload requis pour ré-importer la liste serveur.",
+                ? _t("home.serverPlans.hiddenToast")
+                : _t("home.serverPlans.shownToast"),
               "info"
             );
           }
@@ -2668,28 +2665,29 @@
         // Handler change INDÉPENDANT du bouton — sert AUSSI à la modale
         // Détails profil qui trigger ce file picker via getElementById + click().
         importListFile.addEventListener("change", async function() {
+          const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
           const file = importListFile.files[0];
           if (!file) return;
           if (window.ProfileExportImport && typeof window.ProfileExportImport.ouvrirImportModale === "function") {
             try {
               await window.ProfileExportImport.ouvrirImportModale(file);
             } catch(e) {
-              setStatus("Erreur ouverture import : " + (e.message || e), true);
+              setStatus(_t("home.loader.errImportOpen") + (e.message || e), true);
             }
           } else {
             // Fallback : ancien comportement si module pas chargé (très improbable
             // car ProfileExportImport est dans ASSETS_TO_CACHE depuis v1.22.0)
             try {
               const stats = await window.PlanRegistry.statsImport(file);
-              if (!stats.ok) { setStatus("Erreur : " + stats.error, true); importListFile.value = ""; return; }
+              if (!stats.ok) { setStatus(_t("home.loader.errPrefix") + stats.error, true); importListFile.value = ""; return; }
               const choix = await afficherChoixImportListe(stats);
               if (!choix) { importListFile.value = ""; return; }
               const r = await window.PlanRegistry.importFromFile(file, choix);
               setStatus(choix === "replace"
-                ? "Liste remplacée — " + r.count + " plan(s)"
-                : "Liste fusionnée — " + (stats.newOnes) + " nouveau(x), " + stats.duplicates + " ignoré(s)");
+                ? _t("home.loader.listReplaced", { n: r.count })
+                : _t("home.loader.listMerged", { n: stats.newOnes, m: stats.duplicates }));
               window.refreshPlansList();
-            } catch(e) { setStatus("Erreur : " + (e.message || e), true); }
+            } catch(e) { setStatus(_t("home.loader.errPrefix") + (e.message || e), true); }
           }
           importListFile.value = "";  // reset input pour permettre re-sélection
         });
@@ -2868,18 +2866,19 @@
       // - _renderProfileBarStatsSlots(keys) construit le DOM dynamiquement.
       // - _hydrateProfileBarStats() itère les slots présents (pas hardcodé)
       //   et remplit les valeurs selon la key.
+      // 🌐 i18n : on stocke des clés (titleKey) résolues AU RENDU, jamais au load.
       const PROFILE_BAR_STATS = {
         time: {
           icon:  "⏱️",
-          title: "Temps total passé sur l'app (toutes sessions cumulées)"
+          titleKey: "home.profile.stats.timeTitle"
         },
         storage: {
           icon:  "💾",
-          title: "Taille réelle de TES données MyKTAMap stockées localement : localStorage (préférences, sessions, favoris) + IndexedDB (plans mémorisés, photos POI, snapshots, profil, crashes). N'inclut PAS le Cache PWA volatile."
+          titleKey: "home.profile.stats.storageTitle"
         },
         plans: {
           icon:  "🗺️",
-          title: "Nombre de plans dans ton registre MyKTAMap (visités au moins une fois)"
+          titleKey: "home.profile.stats.plansTitle"
         }
       };
       const PROFILE_BAR_STATS_LS_KEY = "myktamap_loader_bar_stats_v1";
@@ -2906,6 +2905,7 @@
 
       // Construit dynamiquement les slots dans le bandeau profil
       function _renderProfileBarStatsSlots(keys) {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const wrap = document.getElementById("kta-loader-profile-stats");
         if (!wrap) return;
         wrap.innerHTML = "";
@@ -2915,7 +2915,7 @@
           const div = document.createElement("div");
           div.className = "kta-loader-profile-stat";
           div.id = "kta-loader-profile-stat-" + k;
-          div.title = cfg.title;
+          div.title = _t(cfg.titleKey);
           div.dataset.statKey = k;
           div.innerHTML =
             '<span class="kta-loader-profile-stat-icon">' + cfg.icon + '</span>' +
@@ -3145,12 +3145,13 @@
       // bouton modifier/retirer photo (input file caché), stats agrégées,
       // boutons export profil / import profil / reset.
       function _ouvrirModaleProfilDetails() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         // Cleanup d'une modale précédente
         const ex = document.getElementById("kta-profile-details-modal");
         if (ex) ex.parentNode.removeChild(ex);
 
         if (!window.UserProfile) {
-          alert("Module UserProfile non disponible.");
+          alert(_t("home.profile.moduleUnavailable"));
           return;
         }
         const snap = window.UserProfile.get();
@@ -3161,31 +3162,31 @@
         overlay.innerHTML =
           '<div class="kta-readme-modal-boite kta-profile-details-boite">' +
             '<div class="kta-readme-modal-header">' +
-              '<span class="kta-readme-modal-titre">👤 Mon profil</span>' +
-              '<button type="button" class="kta-panneau-close" id="kta-profile-details-close" aria-label="Fermer">✕</button>' +
+              '<span class="kta-readme-modal-titre">' + _t("home.profile.title") + '</span>' +
+              '<button type="button" class="kta-panneau-close" id="kta-profile-details-close" aria-label="' + _t("home.profile.closeAria") + '">✕</button>' +
             '</div>' +
             '<div class="kta-readme-modal-corps kta-profile-details-corps">' +
               // — Identité (gros avatar + surnom inline) —
               '<div class="kta-profile-details-identity">' +
                 '<div class="kta-profile-details-avatar-big" id="kta-profile-details-avatar"></div>' +
                 '<div class="kta-profile-details-photo-actions">' +
-                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-profile-details-photo-btn">📷 Photo</button>' +
-                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-profile-details-photo-remove" style="' + (snap.hasPhoto ? '' : 'display:none;') + '">🗑️ Retirer</button>' +
+                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-profile-details-photo-btn">' + _t("home.profile.photoBtn") + '</button>' +
+                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-profile-details-photo-remove" style="' + (snap.hasPhoto ? '' : 'display:none;') + '">' + _t("home.profile.photoRemove") + '</button>' +
                   '<input type="file" id="kta-profile-details-photo-input" accept="image/*" style="display:none;">' +
                 '</div>' +
                 '<div class="kta-profile-details-name-row">' +
-                  '<label class="kta-profile-details-label" for="kta-profile-details-surnom">Surnom</label>' +
+                  '<label class="kta-profile-details-label" for="kta-profile-details-surnom">' + _t("home.profile.nicknameLabel") + '</label>' +
                   '<input type="text" id="kta-profile-details-surnom" class="kta-profile-details-input" ' +
-                    'placeholder="Ex: Karma, Spéléo42, etc." maxlength="40" ' +
+                    'placeholder="' + _t("home.profile.nicknamePlaceholder") + '" maxlength="40" ' +
                     'value="' + (snap.surnom || "").replace(/"/g, "&quot;") + '">' +
-                  '<button type="button" class="kta-btn kta-btn-primary kta-btn-mini" id="kta-profile-details-save-name" style="display:none;">💾 Enregistrer</button>' +
+                  '<button type="button" class="kta-btn kta-btn-primary kta-btn-mini" id="kta-profile-details-save-name" style="display:none;">' + _t("home.profile.saveName") + '</button>' +
                 '</div>' +
-                '<p class="kta-profile-details-hint">Le surnom est local à cet appareil. Il sert juste à personnaliser ton accueil et à signer tes exports de profil.</p>' +
+                '<p class="kta-profile-details-hint">' + _t("home.profile.nicknameHint") + '</p>' +
               '</div>' +
 
               // — Stats compactes —
               '<div class="kta-profile-details-stats" id="kta-profile-details-stats">' +
-                '<div class="kta-profile-details-stats-loading">⏳ Calcul des stats…</div>' +
+                '<div class="kta-profile-details-stats-loading">' + _t("home.profile.statsLoading") + '</div>' +
               '</div>' +
 
               // 🆕 v1.21.3 (KARMA "on doit dans ce cas pouvoir choisir dans
@@ -3194,14 +3195,14 @@
               // Cap dur 3 (cf PROFILE_BAR_STATS_MAX) pour rester lisible
               // sur mobile compact.
               '<div class="kta-profile-barstats">' +
-                '<div class="kta-profile-barstats-header">🎨 Stats du bandeau d\'accueil</div>' +
+                '<div class="kta-profile-barstats-header">' + _t("home.profile.barStatsHeader") + '</div>' +
                 '<p class="kta-profile-barstats-hint">' +
-                  'Choisis 1 à 3 stats à afficher dans l\'en-tête du loader. Cap mobile pour rester compact.' +
+                  _t("home.profile.barStatsHint") +
                 '</p>' +
                 '<div class="kta-profile-barstats-options" id="kta-profile-barstats-options">' +
-                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="time"> <span>⏱️ Temps total</span></label>' +
-                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="storage"> <span>💾 Sauvegarde</span></label>' +
-                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="plans"> <span>🗺️ Plans visités</span></label>' +
+                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="time"> <span>' + _t("home.profile.statTime") + '</span></label>' +
+                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="storage"> <span>' + _t("home.profile.statStorage") + '</span></label>' +
+                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="plans"> <span>' + _t("home.profile.statPlans") + '</span></label>' +
                 '</div>' +
               '</div>' +
 
@@ -3218,15 +3219,13 @@
 
               // — Actions profil —
               '<div class="kta-profile-details-actions">' +
-                '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-details-export">📤 Exporter mon profil</button>' +
-                '<button type="button" class="kta-btn kta-btn-secondary" id="kta-profile-details-import">📥 Importer un profil</button>' +
-                '<button type="button" class="kta-btn kta-btn-danger" id="kta-profile-details-reset">🗑️ Réinitialiser le profil</button>' +
+                '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-details-export">' + _t("home.profile.exportBtn") + '</button>' +
+                '<button type="button" class="kta-btn kta-btn-secondary" id="kta-profile-details-import">' + _t("home.profile.importBtn") + '</button>' +
+                '<button type="button" class="kta-btn kta-btn-danger" id="kta-profile-details-reset">' + _t("home.profile.resetBtn") + '</button>' +
               '</div>' +
 
               '<p class="kta-profile-details-footer-hint">' +
-                'L\'export inclut <strong>tout</strong> (registre des plans, préférences, favoris, sessions, snapshots, identité…). ' +
-                'Le PIN/Face ID et le code communautaire ne sont jamais exportés (sécurité). ' +
-                'Les ZIPs binaires des plans non plus (trop lourd).' +
+                _t("home.profile.exportFooterHint") +
               '</p>' +
             '</div>' +
           '</div>';
@@ -3270,7 +3269,7 @@
             if (checked.length > PROFILE_BAR_STATS_MAX) {
               e.target.checked = false;
               if (window.OOMGuard && window.OOMGuard.showToast) {
-                window.OOMGuard.showToast("⚠️ Max " + PROFILE_BAR_STATS_MAX + " stats dans le bandeau", "warn");
+                window.OOMGuard.showToast(_t("home.profile.barStatsMax", { n: PROFILE_BAR_STATS_MAX }), "warn");
               }
               return;
             }
@@ -3278,7 +3277,7 @@
             if (checked.length === 0) {
               e.target.checked = true;
               if (window.OOMGuard && window.OOMGuard.showToast) {
-                window.OOMGuard.showToast("⚠️ Au moins 1 stat requise", "warn");
+                window.OOMGuard.showToast(_t("home.profile.barStatsMin"), "warn");
               }
               return;
             }
@@ -3301,7 +3300,7 @@
         });
         saveBtn.addEventListener("click", async function() {
           saveBtn.disabled = true;
-          saveBtn.textContent = "⏳";
+          saveBtn.textContent = _t("home.profile.saveBusy");
           try {
             await window.UserProfile.setSurnom(surnomInput.value);
             _originalSurnom = surnomInput.value;
@@ -3309,12 +3308,12 @@
             setTimeout(function() {
               saveBtn.style.display = "none";
               saveBtn.disabled = false;
-              saveBtn.textContent = "💾 Enregistrer";
+              saveBtn.textContent = _t("home.profile.saveName");
             }, 700);
           } catch(e) {
-            alert("Échec : " + (e.message || e));
+            alert(_t("home.profile.errGeneric") + (e.message || e));
             saveBtn.disabled = false;
-            saveBtn.textContent = "💾 Enregistrer";
+            saveBtn.textContent = _t("home.profile.saveName");
           }
         });
         // Submit aussi sur Enter
@@ -3331,29 +3330,29 @@
           const f = photoInput.files[0];
           if (!f) return;
           photoBtn.disabled = true;
-          photoBtn.textContent = "⏳ Compression…";
+          photoBtn.textContent = _t("home.profile.photoCompressing");
           try {
             await window.UserProfile.setPhoto(f);
             const snap2 = window.UserProfile.get();
             _refreshProfileDetailsAvatar(snap2);
             removeBtn.style.display = "";
-            photoBtn.textContent = "🔄 Changer la photo";
+            photoBtn.textContent = _t("home.profile.photoChange");
           } catch(e) {
-            alert("Échec upload photo : " + (e.message || e));
-            photoBtn.textContent = "📷 Photo";
+            alert(_t("home.profile.errPhotoUpload") + (e.message || e));
+            photoBtn.textContent = _t("home.profile.photoBtn");
           }
           photoBtn.disabled = false;
           photoInput.value = "";
         });
         removeBtn.addEventListener("click", async function() {
-          if (!confirm("Retirer la photo de profil ?")) return;
+          if (!confirm(_t("home.profile.confirmRemovePhoto"))) return;
           try {
             await window.UserProfile.removePhoto();
             const snap2 = window.UserProfile.get();
             _refreshProfileDetailsAvatar(snap2);
             removeBtn.style.display = "none";
-            photoBtn.textContent = "📷 Photo";
-          } catch(e) { alert("Échec : " + (e.message || e)); }
+            photoBtn.textContent = _t("home.profile.photoBtn");
+          } catch(e) { alert(_t("home.profile.errGeneric") + (e.message || e)); }
         });
 
         // Boutons export / import (réutilise ProfileExportImport + le file picker
@@ -3362,7 +3361,7 @@
           if (window.ProfileExportImport && window.ProfileExportImport.ouvrirExportModale) {
             window.ProfileExportImport.ouvrirExportModale();
           } else {
-            alert("Module ProfileExportImport indisponible.");
+            alert(_t("home.profile.errExportModule"));
           }
         });
         document.getElementById("kta-profile-details-import").addEventListener("click", function() {
@@ -3383,9 +3382,9 @@
             _originalSurnom = "";
             saveBtn.style.display = "none";
             removeBtn.style.display = "none";
-            photoBtn.textContent = "📷 Photo";
+            photoBtn.textContent = _t("home.profile.photoBtn");
             _refreshProfileDetailsAvatar(snap2);
-          } catch(e) { alert("Échec : " + (e.message || e)); }
+          } catch(e) { alert(_t("home.profile.errGeneric") + (e.message || e)); }
         });
       }
 
@@ -3396,6 +3395,7 @@
        * du profil" (qui est à 99999 via .kta-readme-modal-overlay).
        */
       function _confirmResetProfilModale() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         return new Promise(function(resolve) {
           // Cleanup d'une instance précédente éventuelle (anti-empilement)
           const ex = document.getElementById("kta-profile-reset-confirm-modal");
@@ -3408,28 +3408,27 @@
           overlay.innerHTML =
             '<div class="kta-readme-modal-boite" style="max-width:440px; height:auto !important; max-height:88vh !important; border-color:rgba(255,140,140,0.55); box-shadow:0 0 24px rgba(255,140,140,0.18);">' +
               '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.25);">' +
-                '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">🗑️ Réinitialiser le profil ?</span>' +
-                '<button type="button" class="kta-panneau-close" id="kta-profile-reset-close" aria-label="Annuler">✕</button>' +
+                '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">' + _t("home.profile.resetTitle") + '</span>' +
+                '<button type="button" class="kta-panneau-close" id="kta-profile-reset-close" aria-label="' + _t("home.profile.cancel") + '">✕</button>' +
               '</div>' +
               '<div class="kta-readme-modal-corps">' +
                 '<p style="margin-top:4px;">' +
-                  'Cette action va effacer <strong>uniquement ton identité</strong> sur cet appareil :' +
+                  _t("home.profile.resetBody") +
                 '</p>' +
                 '<ul style="margin:8px 0 12px 18px; padding:0;">' +
-                  '<li>Ton <strong>surnom</strong></li>' +
-                  '<li>Ta <strong>photo de profil</strong></li>' +
+                  '<li>' + _t("home.profile.resetItemNickname") + '</li>' +
+                  '<li>' + _t("home.profile.resetItemPhoto") + '</li>' +
                 '</ul>' +
                 '<div style="background:rgba(110,226,135,0.06); border:1px solid rgba(110,226,135,0.22); border-radius:6px; padding:10px 12px; margin-bottom:8px;">' +
-                  '<strong style="color:#6ee287;">✅ Ne sont PAS touchés :</strong> ' +
-                  'tes plans, sessions actives, favoris, snapshots, photos POI, préférences.' +
+                  _t("home.profile.resetKept") +
                 '</div>' +
                 '<p style="font-size:12px; color:#8892a4; font-style:italic; margin:8px 0 0;">' +
-                  'Tu peux refaire un profil tout de suite après (surnom + photo).' +
+                  _t("home.profile.resetAfterHint") +
                 '</p>' +
               '</div>' +
               '<div class="kta-profile-footer" style="display:flex; gap:8px; padding:14px 16px; border-top:1px solid rgba(255,255,255,0.06);">' +
-                '<button type="button" class="kta-btn kta-btn-ghost"  id="kta-profile-reset-cancel" style="flex:1;">Annuler</button>' +
-                '<button type="button" class="kta-btn kta-btn-danger" id="kta-profile-reset-go"     style="flex:1;">🗑️ Réinitialiser</button>' +
+                '<button type="button" class="kta-btn kta-btn-ghost"  id="kta-profile-reset-cancel" style="flex:1;">' + _t("home.profile.cancel") + '</button>' +
+                '<button type="button" class="kta-btn kta-btn-danger" id="kta-profile-reset-go"     style="flex:1;">' + _t("home.profile.resetConfirm") + '</button>' +
               '</div>' +
             '</div>';
           document.documentElement.appendChild(overlay);
@@ -3510,28 +3509,29 @@
 
       // Helper : libellés humains selon source.
       function _proSourceLabel(source) {
-        if (source === "server") return "Serveur (instance pro déployée)";
-        if (source === "local")  return "Licence importée sur cet appareil";
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
+        if (source === "server") return _t("home.profile.pro.sourceServer");
+        if (source === "local")  return _t("home.profile.pro.sourceLocal");
         return "—";
       }
       function _proSourceHint(source) {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         if (source === "server") {
-          return "Cette instance est servie en mode pro par son administrateur. Aucune action requise.";
+          return _t("home.profile.pro.hintServer");
         }
         if (source === "local") {
-          return "Mode pro activé pour CE navigateur uniquement, via une licence importée par toi. " +
-                 "Retire-la si tu veux revenir au mode communautaire.";
+          return _t("home.profile.pro.hintLocal");
         }
-        return "Mode communautaire actuel. Si tu as reçu une licence pro (fichier <code>Licence-pro.json</code>), " +
-               "importe-la ici pour activer l'édition pro sur cet appareil.";
+        return _t("home.profile.pro.hintCommunity");
       }
 
       // Rend la section selon l'état actuel de la licence pro.
       function _refreshProfileProSection() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const body = document.getElementById("kta-profile-pro-body");
         if (!body) return;
         if (!window.MyKTAMapProLicense) {
-          body.innerHTML = '<p class="kta-profile-pro-error">Module pro license indisponible.</p>';
+          body.innerHTML = '<p class="kta-profile-pro-error">' + _t("home.profile.pro.moduleUnavailable") + '</p>';
           return;
         }
         const lic = window.MyKTAMapProLicense;
@@ -3548,20 +3548,20 @@
           // si un usage futur (export profil, diagnostic, etc.) en a besoin.
           html +=
             '<div class="kta-profile-pro-status kta-profile-pro-status-active">' +
-              '<span class="kta-profile-pro-badge">✓ Édition pro active</span>' +
+              '<span class="kta-profile-pro-badge">' + _t("home.profile.pro.badgeActive") + '</span>' +
             '</div>';
           html += '<p class="kta-profile-pro-hint">' + _proSourceHint(source) + '</p>';
           if (source === "local") {
             html +=
               '<div class="kta-profile-pro-actions">' +
-                '<button type="button" class="kta-btn kta-btn-danger kta-btn-mini" id="kta-profile-pro-remove">🗑️ Retirer la licence locale</button>' +
+                '<button type="button" class="kta-btn kta-btn-danger kta-btn-mini" id="kta-profile-pro-remove">' + _t("home.profile.pro.removeLocalBtn") + '</button>' +
               '</div>';
           }
         } else {
           html += '<p class="kta-profile-pro-hint">' + _proSourceHint(null) + '</p>';
           html +=
             '<div class="kta-profile-pro-actions">' +
-              '<button type="button" class="kta-btn kta-btn-primary kta-btn-mini" id="kta-profile-pro-import">📂 Importer une licence pro</button>' +
+              '<button type="button" class="kta-btn kta-btn-primary kta-btn-mini" id="kta-profile-pro-import">' + _t("home.profile.pro.importBtn") + '</button>' +
             '</div>';
         }
         body.innerHTML = html;
@@ -3571,6 +3571,7 @@
       // Idempotent : un seul binding global via délégation sur le body
       // de la section (qui est re-renduré à chaque change d'état).
       function _bindProfileProHandlers() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const section = document.getElementById("kta-profile-pro-section");
         const fileInput = document.getElementById("kta-profile-pro-input");
         if (!section || !fileInput) return;
@@ -3587,16 +3588,12 @@
           }
           if (target.id === "kta-profile-pro-remove" || target.closest("#kta-profile-pro-remove")) {
             if (!window.MyKTAMapProLicense) return;
-            const ok = window.confirm(
-              "Retirer la licence pro locale ?\n\nL'application reviendra en mode communautaire " +
-              "sur cet appareil. Tu pourras la re-importer plus tard tant que tu gardes le " +
-              "fichier Licence-pro.json reçu."
-            );
+            const ok = window.confirm(_t("home.profile.pro.confirmRemove"));
             if (!ok) return;
             window.MyKTAMapProLicense.removeLocal();
             _refreshProfileProSection();
             if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-              window.OOMGuard.showToast("Licence pro locale retirée", "info");
+              window.OOMGuard.showToast(_t("home.profile.pro.removedToast"), "info");
             }
           }
         });
@@ -3609,17 +3606,18 @@
             if (result && result.ok) {
               _refreshProfileProSection();
               if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-                window.OOMGuard.showToast("✓ Licence pro importée — édition pro activée sur cet appareil", "info");
+                window.OOMGuard.showToast(_t("home.profile.pro.importedToast"), "info");
               }
             } else {
-              const msg = (result && result.error) ? result.error : "Erreur inconnue.";
-              window.alert("Import refusé : " + msg);
+              const msg = (result && result.error) ? result.error : _t("home.profile.pro.errUnknown");
+              window.alert(_t("home.profile.pro.importRejected") + msg);
             }
           });
         });
       }
 
       async function _refreshProfileDetailsStats() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const statsEl = document.getElementById("kta-profile-details-stats");
         if (!statsEl) return;
         // 🆕 v1.29.0-fix2 (KARMA "si je relance, mes plans srv disparaissent
@@ -3697,11 +3695,11 @@
         statsEl.innerHTML =
           '<div class="kta-profile-stat-grid">' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPlans + '</span><span class="kta-profile-stat-lbl">🗂️ plans</span></div>' +
-            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbSessions + '</span><span class="kta-profile-stat-lbl">💾 sessions</span></div>' +
-            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbFavoris + '</span><span class="kta-profile-stat-lbl">⭐ favoris</span></div>' +
-            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbBackups + '</span><span class="kta-profile-stat-lbl">📦 snapshots</span></div>' +
-            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPhotos + '</span><span class="kta-profile-stat-lbl">📸 photos POI (' + _fmtBytes(photosBytes) + ')</span></div>' +
-            '<div class="kta-profile-stat-cell" title="Taille totale réelle des données MyKTAMap (localStorage + IndexedDB, hors Cache PWA volatile)"><span class="kta-profile-stat-num kta-profile-stat-num-bytes">' + _fmtBytes(storageTotalBytes) + '</span><span class="kta-profile-stat-lbl">💾 sauvegarde</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbSessions + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblSessions") + '</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbFavoris + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblFavorites") + '</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbBackups + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblSnapshots") + '</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPhotos + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblPhotos") + ' (' + _fmtBytes(photosBytes) + ')</span></div>' +
+            '<div class="kta-profile-stat-cell" title="' + _t("home.profile.stats.totalTitle") + '"><span class="kta-profile-stat-num kta-profile-stat-num-bytes">' + _fmtBytes(storageTotalBytes) + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblStorage") + '</span></div>' +
           '</div>' +
           // 🆕 v1.21.3 (KARMA "récuperer les stat global de chaque plan pour les
           // lister (ne pas avoir a rentrer dans le plan pour consulter)") :
@@ -3712,16 +3710,16 @@
           // via `_calculerStatsPlansAggregees` (cf ci-après).
           '<div class="kta-profile-plansstats" id="kta-profile-plansstats">' +
             '<div class="kta-profile-plansstats-header" id="kta-profile-plansstats-header">' +
-              '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— préparation…</span>' +
+              _t("home.profile.stats.plansHeaderLoading") +
             '</div>' +
             '<div class="kta-profile-plansstats-wrap">' +
               '<table class="kta-profile-plansstats-table">' +
                 '<thead>' +
                   '<tr>' +
-                    '<th>Plan</th>' +
-                    '<th title="Points d\'intérêt ajoutés à la session de ce plan">📍</th>' +
-                    '<th title="Tracés (Principal / Secondaire / Chemin / Jonction)">🛣️</th>' +
-                    '<th title="Distance totale des tracés (en m/km si plan calibré, sinon pixels image)">↔</th>' +
+                    '<th>' + _t("home.profile.stats.thPlan") + '</th>' +
+                    '<th title="' + _t("home.profile.stats.thPoisTitle") + '">📍</th>' +
+                    '<th title="' + _t("home.profile.stats.thRoadsTitle") + '">🛣️</th>' +
+                    '<th title="' + _t("home.profile.stats.thDistTitle") + '">↔</th>' +
                   '</tr>' +
                 '</thead>' +
                 '<tbody id="kta-profile-plansstats-tbody"></tbody>' +
@@ -3729,9 +3727,7 @@
               '</table>' +
             '</div>' +
             '<p class="kta-profile-plansstats-note">' +
-              'Calcul séquentiel pour éviter de saturer la mémoire sur mobile. ' +
-              'Les distances sont en pixels image (universelles) — pour le plan courant, ' +
-              'la valeur s\'affiche aussi en m/km si calibré.' +
+              _t("home.profile.stats.plansNote") +
             '</p>' +
           '</div>';
 
@@ -3872,6 +3868,7 @@
       // Le tbody est peuplé progressivement → l'user voit la liste grossir
       // au lieu d'attendre un blocking compute.
       async function _calculerStatsPlansAggregees() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const headerEl = document.getElementById("kta-profile-plansstats-header");
         const tbodyEl  = document.getElementById("kta-profile-plansstats-tbody");
         const tfootEl  = document.getElementById("kta-profile-plansstats-tfoot");
@@ -3893,7 +3890,7 @@
           plans = plans.filter(function(p) { return p.type !== "server"; });
         }
         if (plans.length === 0) {
-          if (headerEl) headerEl.innerHTML = '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— aucun plan enregistré</span>';
+          if (headerEl) headerEl.innerHTML = _t("home.profile.stats.plansHeaderEmpty");
           return;
         }
 
@@ -4383,6 +4380,7 @@
 
       // Modale d'info « pas de PIN configuré » — pattern charte MyKTAMap.
       function _afficherLockNoPinInfo() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const old = document.getElementById("kta-lock-nopin-modal");
         if (old) old.remove();
 
@@ -4392,25 +4390,22 @@
         modal.innerHTML =
           '<div class="kta-readme-modal-boite kta-lock-nopin-boite">' +
             '<div class="kta-readme-modal-header">' +
-              '<span class="kta-readme-modal-titre">🔒 Verrouiller MyKTAMap</span>' +
-              '<button class="kta-panneau-close" id="kta-lock-nopin-close" type="button" aria-label="Fermer">✕</button>' +
+              '<span class="kta-readme-modal-titre">' + _t("home.lock.noPinTitle") + '</span>' +
+              '<button class="kta-panneau-close" id="kta-lock-nopin-close" type="button" aria-label="' + _t("home.lock.close") + '">✕</button>' +
             '</div>' +
             '<div class="kta-readme-modal-corps kta-lock-nopin-corps">' +
               '<div class="kta-lock-nopin-icone">🔐</div>' +
               '<p class="kta-lock-nopin-msg">' +
-                'Aucun <strong>code d\'accès local</strong> n\'est configuré pour cette ' +
-                'installation — il n\'y a donc rien à verrouiller.' +
+                _t("home.lock.noPinMsg") +
               '</p>' +
               '<p class="kta-lock-nopin-hint">' +
-                '<em>Pour activer un code d\'accès (PIN 4-6 chiffres + biométrie ' +
-                'Face ID / Touch ID optionnelle), ouvre <strong>⚙️ Configuration</strong> ' +
-                '→ section <strong>🔐 Code d\'accès local</strong>.</em>' +
+                '<em>' + _t("home.lock.noPinHint") + '</em>' +
               '</p>' +
             '</div>' +
             '<div class="kta-lock-nopin-actions">' +
-              '<button class="kta-btn kta-btn-ghost" id="kta-lock-nopin-cancel" type="button">Fermer</button>' +
+              '<button class="kta-btn kta-btn-ghost" id="kta-lock-nopin-cancel" type="button">' + _t("home.lock.close") + '</button>' +
               '<button class="kta-btn kta-btn-primary kta-lock-nopin-ok" id="kta-lock-nopin-config" type="button">' +
-                '⚙️ Ouvrir Configuration' +
+                _t("home.lock.openConfig") +
               '</button>' +
             '</div>' +
           '</div>';
@@ -4441,6 +4436,7 @@
       // Modale confirm « Verrouiller MyKTAMap ? » — pattern charte, accent
       // bleu (action neutre/sécurité, pas destructive comme l'ancien shutdown).
       function _confirmLock() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         return new Promise(function(resolve) {
           const old = document.getElementById("kta-lock-confirm-modal");
           if (old) old.remove();
@@ -4451,26 +4447,22 @@
           modal.innerHTML =
             '<div class="kta-readme-modal-boite kta-lock-confirm-boite">' +
               '<div class="kta-readme-modal-header">' +
-                '<span class="kta-readme-modal-titre">🔒 Verrouiller MyKTAMap ?</span>' +
-                '<button class="kta-panneau-close" id="kta-lock-confirm-close" type="button" aria-label="Annuler">✕</button>' +
+                '<span class="kta-readme-modal-titre">' + _t("home.lock.confirmTitle") + '</span>' +
+                '<button class="kta-panneau-close" id="kta-lock-confirm-close" type="button" aria-label="' + _t("home.lock.cancel") + '">✕</button>' +
               '</div>' +
               '<div class="kta-readme-modal-corps kta-lock-confirm-corps">' +
                 '<div class="kta-lock-confirm-icone">🔒</div>' +
                 '<p class="kta-lock-confirm-msg">' +
-                  'L\'application va <strong>stopper proprement</strong> les modules ' +
-                  'actifs (tracker GPS, mode urgence, replay) puis <strong>relancer</strong> ' +
-                  'pour afficher la <strong>gate PIN</strong>. Tu devras saisir ton code ' +
-                  'd\'accès pour reprendre.' +
+                  _t("home.lock.confirmMsg") +
                 '</p>' +
                 '<p class="kta-lock-confirm-hint">' +
-                  '<em>Utile si tu prêtes ton téléphone, ou si tu veux protéger l\'accès ' +
-                  'sans fermer l\'onglet.</em>' +
+                  '<em>' + _t("home.lock.confirmHint") + '</em>' +
                 '</p>' +
               '</div>' +
               '<div class="kta-lock-confirm-actions">' +
-                '<button class="kta-btn kta-btn-ghost" id="kta-lock-confirm-cancel" type="button">Annuler</button>' +
+                '<button class="kta-btn kta-btn-ghost" id="kta-lock-confirm-cancel" type="button">' + _t("home.lock.cancel") + '</button>' +
                 '<button class="kta-btn kta-btn-primary kta-lock-confirm-ok" id="kta-lock-confirm-ok" type="button">' +
-                  '🔒 Verrouiller maintenant' +
+                  _t("home.lock.confirmOk") +
                 '</button>' +
               '</div>' +
             '</div>';
@@ -4823,6 +4815,7 @@
       // map mode n'expose PAS cette section (pour ne pas surcharger les
       // réglages in-app focus PAR PLAN).
       function _majPinStatusUI() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const iconEl    = document.getElementById("loaderPinStatusIcon");
         const textEl    = document.getElementById("loaderPinStatusText");
         const actionsEl = document.getElementById("loaderPinActions");
@@ -4830,7 +4823,7 @@
 
         if (!window.MyKTAMapPinLock) {
           iconEl.textContent = "⚠️";
-          textEl.textContent = "Module PIN indisponible";
+          textEl.textContent = _t("pin.setup.moduleUnavailable");
           actionsEl.innerHTML = "";
           return;
         }
@@ -4841,23 +4834,23 @@
         if (enabled) {
           iconEl.textContent = "✅";
           iconEl.style.color = "#6ee287";
-          textEl.innerHTML = "Code d'accès <strong>activé</strong>" + (hasBio ? " · 🤳 biométrie configurée" : "");
+          textEl.innerHTML = _t("pin.setup.statusEnabled") + (hasBio ? _t("pin.setup.statusBioConfigured") : "");
           actionsEl.innerHTML =
             '<button class="loader-btn-secondary kta-loader-pin-btn-modif" type="button" id="loaderPinModifBtn">' +
-              '✏️ Modifier le code' +
+              _t("pin.setup.changeBtn") +
             '</button>' +
             '<button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderPinDisableBtn">' +
-              '🔓 Désactiver' +
+              _t("pin.setup.disableBtn") +
             '</button>';
           document.getElementById("loaderPinModifBtn").addEventListener("click", _lancerModificationPin);
           document.getElementById("loaderPinDisableBtn").addEventListener("click", _lancerDesactivationPin);
         } else {
           iconEl.textContent = "○";
           iconEl.style.color = "#8892a4";
-          textEl.innerHTML = "Code d'accès <strong>désactivé</strong>";
+          textEl.innerHTML = _t("pin.setup.statusDisabled");
           actionsEl.innerHTML =
             '<button class="loader-btn-secondary" type="button" id="loaderPinEnableBtn" style="background:rgba(244,197,66,0.15); border-color:rgba(244,197,66,0.4); color:#f4c542;">' +
-              '🔐 Activer le code d\'accès' +
+              _t("pin.setup.enableBtn") +
             '</button>';
           document.getElementById("loaderPinEnableBtn").addEventListener("click", _lancerActivationPin);
         }
@@ -4866,6 +4859,7 @@
       // Helper Promise-based : demande un PIN à l'user via une modale custom.
       // Retourne Promise<string|null> (null si annulé).
       function _demanderPin(titre, message, confirmLabel) {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         return new Promise(function(resolve) {
           const overlay = document.createElement("div");
           overlay.className = "kta-modal-overlay";
@@ -4880,8 +4874,8 @@
                 'text-align:center; letter-spacing:8px; background:#0a0d18; border:2px solid rgba(244,197,66,0.3); ' +
                 'border-radius:8px; color:#f4c542; font-family:monospace; box-sizing:border-box;" placeholder="••••">' +
               '<div class="kta-modal-actions" style="margin-top:10px;">' +
-                '<button class="kta-btn kta-btn-ghost"   id="ktaPinPromptCancel">Annuler</button>' +
-                '<button class="kta-btn kta-btn-primary" id="ktaPinPromptOk">' + (confirmLabel || "Valider") + '</button>' +
+                '<button class="kta-btn kta-btn-ghost"   id="ktaPinPromptCancel">' + _t("pin.setup.cancel") + '</button>' +
+                '<button class="kta-btn kta-btn-primary" id="ktaPinPromptOk">' + (confirmLabel || _t("pin.setup.validate")) + '</button>' +
               '</div>' +
             '</div>';
           document.documentElement.appendChild(overlay);
@@ -4945,26 +4939,26 @@
 
       // Flow d'activation
       async function _lancerActivationPin() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const pin1 = await _demanderPin(
-          "Définir le code d'accès",
-          "Choisis un code de <strong>4 à 6 chiffres</strong>. " +
-          "<br><strong>Note-le bien</strong> : aucune récupération possible en cas d'oubli.",
-          "Suivant"
+          _t("pin.setup.defineTitle"),
+          _t("pin.setup.defineBody"),
+          _t("pin.setup.next")
         );
         if (!pin1) return;
         // Validation basique côté UI (le backend re-valide)
         if (!/^\d{4,6}$/.test(pin1)) {
-          alert("Le code doit faire 4 à 6 chiffres.");
+          alert(_t("pin.setup.errLength"));
           return;
         }
         const pin2 = await _demanderPin(
-          "Confirme ton code",
-          "Saisis ton code une seconde fois pour confirmer.",
-          "Confirmer"
+          _t("pin.setup.confirmTitle"),
+          _t("pin.setup.confirmBody"),
+          _t("pin.setup.confirm")
         );
         if (!pin2) return;
         if (pin1 !== pin2) {
-          alert("❌ Les codes ne correspondent pas. Réessaie.");
+          alert(_t("pin.setup.errMismatchRetry"));
           return;
         }
 
@@ -4976,10 +4970,9 @@
           const bioSupported = await window.MyKTAMapPinLock.isBiometricSupported();
           if (bioSupported) {
             useBio = await _demanderOuiNon(
-              "Activer la biométrie ?",
-              "🤳 Veux-tu aussi activer <strong>Face ID / Touch ID</strong> ?" +
-              "<br><br>Le PIN reste actif en fallback si la biométrie échoue ou n'est pas disponible.",
-              "Oui, activer", "Non, PIN seul", "🤳"
+              _t("pin.setup.bioAskTitle"),
+              _t("pin.setup.bioAskBody"),
+              _t("pin.setup.bioYes"), _t("pin.setup.bioNo"), "🤳"
             );
           }
         } catch(e) {
@@ -4989,14 +4982,14 @@
         // Activation
         try {
           await window.MyKTAMapPinLock.enable(pin1, useBio);
-          alert("✅ Code d'accès activé." + (useBio ? "\n🤳 Biométrie configurée." : ""));
+          alert(_t("pin.setup.okEnabled") + (useBio ? _t("pin.setup.okBioConfigured") : ""));
         } catch(e) {
           if (e && e.pinActivatedWithoutBiometric) {
             // Cas partiel : PIN OK mais biométrie a échoué
-            alert("✅ Code d'accès activé.\n⚠️ Biométrie échouée : " + e.message);
+            alert(_t("pin.setup.okEnabledBioFailed") + e.message);
           } else {
             console.error("[PinSetup] enable :", e);
-            alert("❌ Erreur lors de l'activation : " + (e.message || e));
+            alert(_t("pin.setup.errEnable") + (e.message || e));
             return;
           }
         }
@@ -5005,6 +4998,7 @@
 
       // Flow de modification (9:b — biométrie OU ancien PIN → nouveau)
       async function _lancerModificationPin() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         // Vérification identité : tentative biométrie d'abord si dispo, sinon PIN
         let unlocked = false;
         if (window.MyKTAMapPinLock.hasBiometric()) {
@@ -5016,9 +5010,9 @@
         }
         if (!unlocked) {
           const oldPin = await _demanderPin(
-            "Modifier le code",
-            "Saisis ton <strong>code actuel</strong> pour autoriser le changement.",
-            "Vérifier"
+            _t("pin.setup.changeTitle"),
+            _t("pin.setup.changeOldBody"),
+            _t("pin.setup.verify")
           );
           if (!oldPin) return;
           try {
@@ -5029,39 +5023,39 @@
           }
           if (!unlocked) {
             const remaining = window.MyKTAMapPinLock.getRemainingAttempts();
-            alert("❌ Code incorrect. " + remaining + " tentative(s) restante(s).");
+            alert(_t("pin.setup.errWrongCode", { n: remaining }));
             return;
           }
         }
 
         // Saisie du nouveau code (2 fois)
         const newPin1 = await _demanderPin(
-          "Nouveau code",
-          "Choisis ton <strong>nouveau code</strong> de 4 à 6 chiffres.",
-          "Suivant"
+          _t("pin.setup.newTitle"),
+          _t("pin.setup.newBody"),
+          _t("pin.setup.next")
         );
         if (!newPin1) return;
         if (!/^\d{4,6}$/.test(newPin1)) {
-          alert("Le code doit faire 4 à 6 chiffres.");
+          alert(_t("pin.setup.errLength"));
           return;
         }
         const newPin2 = await _demanderPin(
-          "Confirme le nouveau code",
-          "Saisis le nouveau code une seconde fois.",
-          "Confirmer"
+          _t("pin.setup.newConfirmTitle"),
+          _t("pin.setup.newConfirmBody"),
+          _t("pin.setup.confirm")
         );
         if (!newPin2) return;
         if (newPin1 !== newPin2) {
-          alert("❌ Les codes ne correspondent pas.");
+          alert(_t("pin.setup.errMismatch"));
           return;
         }
 
         try {
           await window.MyKTAMapPinLock.changePin(newPin1);
-          alert("✅ Code d'accès modifié.");
+          alert(_t("pin.setup.okChanged"));
         } catch(e) {
           console.error("[PinSetup] changePin :", e);
-          alert("❌ Erreur : " + (e.message || e));
+          alert(_t("pin.setup.errGeneric") + (e.message || e));
           return;
         }
         _majPinStatusUI();
@@ -5069,13 +5063,12 @@
 
       // Flow de désactivation
       async function _lancerDesactivationPin() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         // 🆕 v1.10.0-hotfix5 : modale Oui/Non charte au lieu du confirm() natif
         const okDesact = await _demanderOuiNon(
-          "Désactiver le code d'accès ?",
-          "L'app ne demandera plus de code au démarrage.<br><br>" +
-          "Si tu changes d'avis, tu pourras réactiver à tout moment depuis " +
-          "<strong>⚙️ Configuration → 🔐 Code d'accès local</strong>.",
-          "Oui, désactiver", "Non, garder",
+          _t("pin.setup.disableAskTitle"),
+          _t("pin.setup.disableAskBody"),
+          _t("pin.setup.disableYes"), _t("pin.setup.disableNo"),
           "🔓"
         );
         if (!okDesact) return;
@@ -5089,14 +5082,14 @@
         }
         if (!unlocked) {
           const pin = await _demanderPin(
-            "Désactiver le code",
-            "Saisis ton code pour confirmer la désactivation.",
-            "Désactiver"
+            _t("pin.setup.disableTitle"),
+            _t("pin.setup.disableBody"),
+            _t("pin.setup.disable")
           );
           if (!pin) return;
           try {
             await window.MyKTAMapPinLock.disable(pin);
-            alert("🔓 Code d'accès désactivé.");
+            alert(_t("pin.setup.okDisabled"));
             _majPinStatusUI();
             return;
           } catch(e) {
@@ -5111,7 +5104,7 @@
         // appelant reset() après check biométrie OK).
         // ⚠️ Sécurité OK car la biométrie EST la preuve d'identité.
         window.MyKTAMapPinLock.reset();
-        alert("🔓 Code d'accès désactivé (validé par biométrie).");
+        alert(_t("pin.setup.okDisabledBio"));
         _majPinStatusUI();
       }
 
@@ -5602,6 +5595,7 @@
       // Pattern Promise-based identique aux modales de re-sélection ZIP
       // (cf. CLAUDE.md §35) — fermable via ✕ / backdrop / Échap / Annuler.
       function _afficherConfirmForceUpdate() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         return new Promise(function(resolve) {
           // Cleanup éventuel d'une instance précédente
           const existing = document.getElementById("kta-force-update-confirm");
@@ -5624,39 +5618,36 @@
             // courte. height:auto rend la modale à la taille de son contenu.
             '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(140,180,255,0.4); box-shadow:0 0 32px rgba(140,180,255,0.18);">' +
               '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(140,180,255,0.25);">' +
-                '<div class="kta-readme-modal-titre" style="color:#8cb4ff;">🔄 Forcer la mise à jour ?</div>' +
-                '<button class="kta-panneau-close" type="button" id="kta-fu-close" aria-label="Fermer">✕</button>' +
+                '<div class="kta-readme-modal-titre" style="color:#8cb4ff;">' + _t("home.maint.forceUpdate.title") + '</div>' +
+                '<button class="kta-panneau-close" type="button" id="kta-fu-close" aria-label="' + _t("home.maint.cancel") + '">✕</button>' +
               '</div>' +
               '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
                 '<p style="margin:0 0 14px 0; line-height:1.55;">' +
-                  'Cette action va <strong>purger le cache des assets</strong> ' +
-                  '(HTML, JS, CSS, icônes) et <strong>recharger l\'application</strong> ' +
-                  'pour télécharger la dernière version depuis le serveur.' +
+                  _t("home.maint.forceUpdate.body") +
                 '</p>' +
                 '<div style="background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
-                  '<div style="font-weight:600; color:#8cb4ff; margin-bottom:6px;">✅ Préservé</div>' +
+                  '<div style="font-weight:600; color:#8cb4ff; margin-bottom:6px;">' + _t("home.maint.forceUpdate.kept") + '</div>' +
                   '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
-                    '<li>Tes plans mémorisés</li>' +
-                    '<li>Sessions auto-save</li>' +
-                    '<li>Préférences (perf, debug, etc.)</li>' +
-                    '<li>Code d\'accès communautaire</li>' +
+                    '<li>' + _t("home.maint.keptPlans") + '</li>' +
+                    '<li>' + _t("home.maint.keptSessions") + '</li>' +
+                    '<li>' + _t("home.maint.keptPrefs") + '</li>' +
+                    '<li>' + _t("home.maint.keptCode") + '</li>' +
                   '</ul>' +
                 '</div>' +
                 '<div style="background:rgba(255,180,128,0.06); border:1px solid rgba(255,180,128,0.22); border-radius:8px; padding:10px 14px; margin-bottom:14px;">' +
-                  '<div style="font-weight:600; color:#ffb380; margin-bottom:6px;">⚠️ Conditions</div>' +
+                  '<div style="font-weight:600; color:#ffb380; margin-bottom:6px;">' + _t("home.maint.forceUpdate.conditions") + '</div>' +
                   '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
-                    '<li><strong>Connexion Internet active</strong> (vérifiée juste après)</li>' +
-                    '<li>Reload immédiat — ferme bien tes onglets / sessions sensibles avant</li>' +
+                    '<li>' + _t("home.maint.forceUpdate.condInternet") + '</li>' +
+                    '<li>' + _t("home.maint.forceUpdate.condReload") + '</li>' +
                   '</ul>' +
                 '</div>' +
                 '<p style="margin:0; font-style:italic; color:#8892a4; font-size:13px;">' +
-                  'Si tu n\'es pas sûr de la nécessité : pas grave, tu peux annuler. ' +
-                  'L\'app reste utilisable sur sa version actuelle.' +
+                  _t("home.maint.forceUpdate.hint") +
                 '</p>' +
               '</div>' +
               '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end;">' +
-                '<button class="kta-btn kta-btn-ghost" type="button" id="kta-fu-cancel">Annuler</button>' +
-                '<button class="kta-btn kta-btn-primary" type="button" id="kta-fu-ok">🔄 Continuer</button>' +
+                '<button class="kta-btn kta-btn-ghost" type="button" id="kta-fu-cancel">' + _t("home.maint.cancel") + '</button>' +
+                '<button class="kta-btn kta-btn-primary" type="button" id="kta-fu-ok">' + _t("home.maint.forceUpdate.continue") + '</button>' +
               '</div>' +
             '</div>';
           document.documentElement.appendChild(overlay);
@@ -5687,6 +5678,7 @@
       // jour douce (re-download complet au prochain boot) mais pas
       // destructive pour les données utilisateur. Promise<bool>.
       function _afficherConfirmKillSw() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         return new Promise(function(resolve) {
           const existing = document.getElementById("kta-killsw-confirm");
           if (existing) existing.remove();
@@ -5699,41 +5691,38 @@
           overlay.innerHTML =
             '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(255,180,128,0.4); box-shadow:0 0 32px rgba(255,180,128,0.18);">' +
               '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,180,128,0.25);">' +
-                '<div class="kta-readme-modal-titre" style="color:#ffb380;">🆘 Désinscrire le Service Worker ?</div>' +
-                '<button class="kta-panneau-close" type="button" id="kta-ks-close" aria-label="Fermer">✕</button>' +
+                '<div class="kta-readme-modal-titre" style="color:#ffb380;">' + _t("home.maint.killSw.title") + '</div>' +
+                '<button class="kta-panneau-close" type="button" id="kta-ks-close" aria-label="' + _t("home.maint.cancel") + '">✕</button>' +
               '</div>' +
               '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
                 '<p style="margin:0 0 14px 0; line-height:1.55;">' +
-                  'Tu vas ouvrir la page <code style="color:#ffb380;">killsw.html</code> qui ' +
-                  '<strong>désinscrit le Service Worker</strong> et <strong>purge les caches PWA</strong>. ' +
-                  'Au prochain chargement, un SW tout neuf prend le relais avec la dernière version du serveur.' +
+                  _t("home.maint.killSw.body") +
                 '</p>' +
                 '<div style="background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
-                  '<div style="font-weight:600; color:#8cb4ff; margin-bottom:6px;">✅ Préservé (données utilisateur)</div>' +
+                  '<div style="font-weight:600; color:#8cb4ff; margin-bottom:6px;">' + _t("home.maint.killSw.kept") + '</div>' +
                   '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
-                    '<li>Tes plans mémorisés</li>' +
-                    '<li>Sessions auto-save</li>' +
-                    '<li>Préférences (perf, debug, etc.)</li>' +
-                    '<li>Code d\'accès communautaire</li>' +
-                    '<li>Photos / annotations</li>' +
+                    '<li>' + _t("home.maint.keptPlans") + '</li>' +
+                    '<li>' + _t("home.maint.keptSessions") + '</li>' +
+                    '<li>' + _t("home.maint.keptPrefs") + '</li>' +
+                    '<li>' + _t("home.maint.keptCode") + '</li>' +
+                    '<li>' + _t("home.maint.killSw.keptPhotos") + '</li>' +
                   '</ul>' +
                 '</div>' +
                 '<div style="background:rgba(255,180,128,0.06); border:1px solid rgba(255,180,128,0.22); border-radius:8px; padding:10px 14px; margin-bottom:14px;">' +
-                  '<div style="font-weight:600; color:#ffb380; margin-bottom:6px;">⚠️ Effets</div>' +
+                  '<div style="font-weight:600; color:#ffb380; margin-bottom:6px;">' + _t("home.maint.killSw.effects") + '</div>' +
                   '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
-                    '<li><strong>Re-download complet</strong> des assets au prochain boot (HTML/JS/CSS/icônes)</li>' +
-                    '<li>Nécessite une <strong>connexion Internet</strong> au retour sur l\'app</li>' +
-                    '<li>Mode hors-ligne indisponible jusqu\'au prochain boot complet</li>' +
+                    '<li>' + _t("home.maint.killSw.effectRedownload") + '</li>' +
+                    '<li>' + _t("home.maint.killSw.effectInternet") + '</li>' +
+                    '<li>' + _t("home.maint.killSw.effectOffline") + '</li>' +
                   '</ul>' +
                 '</div>' +
                 '<p style="margin:0; font-style:italic; color:#8892a4; font-size:13px;">' +
-                  'À utiliser si la <strong>mise à jour douce</strong> n\'a pas suffi (badge footer reste sur ' +
-                  '« ancienne → nouvelle » après reload). Moins destructif que le Reset complet.' +
+                  _t("home.maint.killSw.hint") +
                 '</p>' +
               '</div>' +
               '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end;">' +
-                '<button class="kta-btn kta-btn-ghost" type="button" id="kta-ks-cancel">Annuler</button>' +
-                '<button class="kta-btn kta-btn-primary" type="button" id="kta-ks-ok" style="background:#ffb380; color:#1a1f2e;">🆘 Continuer</button>' +
+                '<button class="kta-btn kta-btn-ghost" type="button" id="kta-ks-cancel">' + _t("home.maint.cancel") + '</button>' +
+                '<button class="kta-btn kta-btn-primary" type="button" id="kta-ks-ok" style="background:#ffb380; color:#1a1f2e;">' + _t("home.maint.killSw.continue") + '</button>' +
               '</div>' +
             '</div>';
           document.documentElement.appendChild(overlay);
@@ -5764,6 +5753,7 @@
       // Pas de bouton "Continuer quand même" (cas trop dangereux). L'user
       // doit retrouver une connexion avant de relancer la désinscription.
       function _afficherKillSwOfflineRefus() {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         const existing = document.getElementById("kta-killsw-offline");
         if (existing) existing.remove();
 
@@ -5775,27 +5765,23 @@
         overlay.innerHTML =
           '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(255,107,107,0.4); box-shadow:0 0 32px rgba(255,107,107,0.18);">' +
             '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,107,107,0.25);">' +
-              '<div class="kta-readme-modal-titre" style="color:#ff6b6b;">❌ Désinscription refusée — pas de connexion</div>' +
-              '<button class="kta-panneau-close" type="button" id="kta-kso-close" aria-label="Fermer">✕</button>' +
+              '<div class="kta-readme-modal-titre" style="color:#ff6b6b;">' + _t("home.maint.killSw.offlineTitle") + '</div>' +
+              '<button class="kta-panneau-close" type="button" id="kta-kso-close" aria-label="' + _t("home.maint.cancel") + '">✕</button>' +
             '</div>' +
             '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
               '<p style="margin:0 0 14px 0; line-height:1.55;">' +
-                'Internet ou le serveur MyKTAMap ne répond pas. La désinscription du Service Worker ' +
-                'est <strong>annulée</strong> pour ta sécurité — sinon l\'app deviendrait inutilisable ' +
-                'au prochain chargement (re-download des assets impossible).' +
+                _t("home.maint.killSw.offlineBody") +
               '</p>' +
               '<div style="background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:8px; padding:10px 14px; margin-bottom:14px;">' +
-                '<div style="font-weight:600; color:#8cb4ff; margin-bottom:6px;">✅ Aucune perte de données</div>' +
-                '<p style="margin:0; line-height:1.55;">Rien n\'a été touché. Tes plans, sessions et préférences sont intacts. L\'app continue de fonctionner sur la version actuellement en cache.</p>' +
+                '<div style="font-weight:600; color:#8cb4ff; margin-bottom:6px;">' + _t("home.maint.killSw.offlineNoLoss") + '</div>' +
+                '<p style="margin:0; line-height:1.55;">' + _t("home.maint.killSw.offlineNoLossBody") + '</p>' +
               '</div>' +
               '<p style="margin:0; font-style:italic; color:#8892a4; font-size:13px;">' +
-                'Reconnecte-toi à Internet (Wi-Fi / 4G), vérifie que ' +
-                '<code>myktamap.fr</code> répond bien, puis relance la désinscription depuis ' +
-                '<strong>⚙️ Configuration → 🆘 Désinscrire le Service Worker</strong>.' +
+                _t("home.maint.killSw.offlineRetryHint") +
               '</p>' +
             '</div>' +
             '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end;">' +
-              '<button class="kta-btn kta-btn-primary" type="button" id="kta-kso-ok">OK</button>' +
+              '<button class="kta-btn kta-btn-primary" type="button" id="kta-kso-ok">' + _t("home.maint.killSw.offlineOk") + '</button>' +
             '</div>' +
           '</div>';
         document.documentElement.appendChild(overlay);
@@ -5930,6 +5916,7 @@
 
       if (debugBtn) {
         debugBtn.addEventListener("click", function() {
+          const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
           const cur = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
           if (typeof window.setDebugMode === "function") {
             window.setDebugMode(!cur);
@@ -5938,7 +5925,7 @@
             window.APP_CONFIG.debugMode = !cur;
           }
           refreshDebugBtnUI();
-          setStatus(window.APP_CONFIG.debugMode ? "Logs détaillés activés" : "Logs détaillés désactivés", false);
+          setStatus(window.APP_CONFIG.debugMode ? _t("home.misc.debugLogsOn") : _t("home.misc.debugLogsOff"), false);
         });
       }
 
@@ -5980,8 +5967,9 @@
       // (v1.23.x → v1.24.0 → v1.24.1 ... 10+ updates en 24h).
       const debugOn = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode === true);
       if (debugOn && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         window.OOMGuard.showToast(
-          "🔄 [DEBUG] Mise à jour mineure appliquée — assets fraîchement rechargés.",
+          _t("home.misc.swUpdateToast"),
           "info"
         );
       }
@@ -6035,7 +6023,8 @@
         );
       }
       Promise.all(tasks).then(function() {
-        try { alert("✓ SW + caches HTTP/PWA purgés.\n\nlocalStorage / IndexedDB préservés (plans, sessions, photos).\n\nClic OK pour recharger l'app neuve."); } catch (e) {}
+        const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
+        try { alert(_t("home.misc.killSwUrlDone")); } catch (e) {}
         // Reload vers la même URL SANS le param killsw, force = true pour bypass
         // tout cache HTTP résiduel.
         const cleanUrl = window.location.pathname +

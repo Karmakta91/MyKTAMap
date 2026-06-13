@@ -1163,7 +1163,7 @@ function _onImageModeChange() {
     if (input && input.files && input.files.length > 0) {
       try { input.value = ""; } catch(e) {}
       const nom = document.getElementById("pl_baseImage_nom");
-      if (nom) nom.textContent = "Aucun fichier";
+      if (nom) nom.textContent = window.I18n.t("gen.upload.aucunFichier");
     }
   }
 }

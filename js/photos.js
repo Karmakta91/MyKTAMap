@@ -332,7 +332,9 @@
     }).catch(function(err) {
       // Quota DB navigateur
       if (err && (err.name === "QuotaExceededError" || /quota/i.test(err.message || ""))) {
-        const e = new Error("Espace de stockage saturé sur l'appareil. Supprime des photos ou libère de la place.");
+        // 🌍 i18n : message user localisé côté rendu (editor.js, via err.code).
+        // Le texte ci-dessous est un fallback dev-facing, jamais affiché.
+        const e = new Error("QUOTA_DEVICE: device storage full");
         e.code = "QUOTA_DEVICE";
         throw e;
       }

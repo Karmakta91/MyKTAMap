@@ -501,7 +501,7 @@
   // ============================================================
   async function genererPdf(opts) {
     if (!_checkJsPDF()) {
-      throw new Error("jsPDF non chargé (lib/jspdf.umd.min.js manquant)");
+      throw new Error(window.I18n.t("pdfexport.erreur.jspdfManquant"));
     }
     const jsPDF = window.jspdf.jsPDF;
 
@@ -510,7 +510,7 @@
     // window.MyKTAMapExporterGenererCanvas est async (charge images, etc.).
     const canvas = await _genererCanvasPlan(opts);
     if (!canvas) {
-      throw new Error("Échec génération canvas du plan");
+      throw new Error(window.I18n.t("pdfexport.erreur.canvasEchec"));
     }
 
     // Étape 2 : créer le doc PDF

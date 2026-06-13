@@ -284,7 +284,7 @@ window.ouvrirImportChoix = function() {
     '<div class="kta-readme-modal-boite" style="max-width:560px; max-height:88vh; height:auto; display:flex; flex-direction:column;">' +
       '<div class="kta-readme-modal-header">' +
         '<span class="kta-readme-modal-titre">' + window.I18n.t("impexp.choix.modalTitle") + '</span>' +
-        '<button class="kta-panneau-close" id="kta-imp2-close" type="button" aria-label="Fermer">✕</button>' +
+        '<button class="kta-panneau-close" id="kta-imp2-close" type="button" aria-label="' + window.I18n.t("ui.refonte.btn_close_aria") + '">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps" style="overflow-y:auto;">' +
 

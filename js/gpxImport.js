@@ -212,7 +212,9 @@
       out.roads.push({
         id:          "gpx_imp_trk_" + (Date.now() + i),
         type:        type,
-        label:       trk.name || "(Tracé GPX)",
+        // ⚠️ i18n « figé à la langue d'import » : fallback de label écrit comme
+        // donnée d'annotation (affiché sur la carte). Non re-traduit après import.
+        label:       trk.name || window.I18n.t("gpx.import.trackLabelDefault"),
         description: trk.desc || undefined,
         points:      projected,
         level:       level
@@ -307,9 +309,11 @@
 
     const planConfig = {
       plan: {
-        name:        opts.planName    || "Plan importé GPX",
+        // ⚠️ i18n « figé à la langue d'import » : défauts écrits comme donnée
+        // dans le plan-config.json reconstruit. Non re-traduits après import.
+        name:        opts.planName    || window.I18n.t("gpx.import.planNameDefault"),
         version:     opts.planVersion || "v1",
-        author:      opts.planAuthor  || "Import GPX",
+        author:      opts.planAuthor  || window.I18n.t("gpx.import.authorDefault"),
         imageWidth:  finalW,
         imageHeight: finalH,
         baseImage:   baseFilename,
@@ -391,7 +395,9 @@
     if (ingested.points.length > 0 || ingested.roads.length > 0) {
       planConfig.dataLayers.push({
         id:      "imported",
-        label:   "Annotations importées (GPX)",
+        // ⚠️ i18n « figé à la langue d'import » : label de dataLayer écrit comme
+        // donnée (affiché dans le FilterPanel). Non re-traduit après import.
+        label:   window.I18n.t("gpx.import.layerLabel"),
         // 🐛 v1.21.0-fix5 (symétrique kmzImport) : file = "data/imported.json"
         // pour matcher la clé d'enregistrement de l'asset (sinon resolution
         // RUNTIME_ASSETS échoue silencieusement → fetch URL relative → 404
