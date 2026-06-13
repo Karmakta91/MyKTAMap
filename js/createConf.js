@@ -920,7 +920,7 @@ function _plannerLegendStatus() {
 async function _chargerZipModifier(file) {
   _plannerZipStatus(window.I18n.t("gen.zipModif.extraction"), false);
   try {
-    if (typeof JSZip === "undefined") throw new Error("JSZip non chargé");
+    if (typeof JSZip === "undefined") throw new Error(window.I18n.t("gen.err.jszipManquant"));
 
     // 🆕 v1.42.1 — Kill-switch anti-fuite aussi côté générateur. Si l'attaquant
     // tente de modifier un ZIP révoqué via le générateur (= changer 1 truc + ré-exporter
@@ -2096,7 +2096,7 @@ function _lireImageDimensions(file) {
     };
     img.onerror = function() {
       URL.revokeObjectURL(url);
-      reject(new Error("Image non décodable : " + file.name));
+      reject(new Error(window.I18n.t("gen.err.imageNonDecodable", { nom: file.name })));
     };
     img.src = url;
   });
@@ -2351,7 +2351,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
     img = await new Promise(function(resolve, reject) {
       const i = new Image();
       i.onload  = function() { resolve(i); };
-      i.onerror = function() { reject(new Error("Image source non décodable")); };
+      i.onerror = function() { reject(new Error(window.I18n.t("gen.err.imageSourceNonDecodable"))); };
       i.src = imgUrl;
     });
   } catch(e) {
@@ -2436,9 +2436,10 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
         } catch(drawErr) {
           // drawImage peut throw sur "tainted canvas" (image cross-origin) ou
           // sur OOM (rare mais possible sur mobile). On veut un message clair.
-          throw new Error("Échec drawImage à z=" + z + " col=" + col + " k=" + k +
-                          " — probable saturation mémoire (image source trop grande pour ce device). " +
-                          "Détail interne : " + (drawErr && drawErr.message ? drawErr.message : "inconnu"));
+          throw new Error(window.I18n.t("gen.err.tuileDrawImage", {
+            z: z, col: col, k: k,
+            detail: (drawErr && drawErr.message ? drawErr.message : window.I18n.t("gen.err.detailInconnu"))
+          }));
         }
 
         // toBlob peut renvoyer null silencieusement si le canvas est dans un
@@ -2453,17 +2454,20 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
             }, "image/jpeg", TILING_V2_JPEG_Q);
           });
         } catch(blobErr) {
-          throw new Error("Échec encodage JPEG de la tuile z=" + z + " col=" + col + " k=" + k +
-                          " — saturation mémoire navigateur. " +
-                          "Détail interne : " + (blobErr && blobErr.message ? blobErr.message : "inconnu"));
+          throw new Error(window.I18n.t("gen.err.tuileJpeg", {
+            z: z, col: col, k: k,
+            detail: (blobErr && blobErr.message ? blobErr.message : window.I18n.t("gen.err.detailInconnu"))
+          }));
         }
 
         try {
           const arrBuf = await blob.arrayBuffer();
           zFolder.file("x" + col + "_y" + leafletY + ".jpg", arrBuf);
         } catch(zipErr) {
-          throw new Error("Échec ajout tuile au ZIP à z=" + z + " col=" + col + " k=" + k +
-                          ". Détail : " + (zipErr && zipErr.message ? zipErr.message : "inconnu"));
+          throw new Error(window.I18n.t("gen.err.tuileZip", {
+            z: z, col: col, k: k,
+            detail: (zipErr && zipErr.message ? zipErr.message : window.I18n.t("gen.err.detailInconnu"))
+          }));
         }
 
         tilesDone++;

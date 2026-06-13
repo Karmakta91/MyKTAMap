@@ -46,18 +46,31 @@
   // pro / plotter, utile pour cartes murales.
   // ⚠️ A0 + scale ×2 = canvas ~30 Mpx → JPEG ~25 Mo → durée d'encodage 30-60 s
   // sur mobile. Limite raisonnable côté UI : scale ×1 par défaut pour A0.
+  // `size`/`dims` = données pures (non traduisibles). L'orientation ("portrait"/
+  // "paysage") est le SEUL fragment FR : on ne la fige plus dans `label`, on la
+  // résout au rendu via _formatLabel() (clés pdfexport.orient.*). Le label
+  // complet reste recomposé à la demande (size + orientation traduite + dims).
   const FORMATS = {
-    "a0-portrait":  { format: "a0", orientation: "portrait",  label: "A0 portrait (841×1189 mm)" },
-    "a0-landscape": { format: "a0", orientation: "landscape", label: "A0 paysage (1189×841 mm)"  },
-    "a1-portrait":  { format: "a1", orientation: "portrait",  label: "A1 portrait (594×841 mm)"  },
-    "a1-landscape": { format: "a1", orientation: "landscape", label: "A1 paysage (841×594 mm)"   },
-    "a2-portrait":  { format: "a2", orientation: "portrait",  label: "A2 portrait (420×594 mm)"  },
-    "a2-landscape": { format: "a2", orientation: "landscape", label: "A2 paysage (594×420 mm)"   },
-    "a3-portrait":  { format: "a3", orientation: "portrait",  label: "A3 portrait (297×420 mm)"  },
-    "a3-landscape": { format: "a3", orientation: "landscape", label: "A3 paysage (420×297 mm)"   },
-    "a4-portrait":  { format: "a4", orientation: "portrait",  label: "A4 portrait (210×297 mm)"  },
-    "a4-landscape": { format: "a4", orientation: "landscape", label: "A4 paysage (297×210 mm)"   }
+    "a0-portrait":  { format: "a0", orientation: "portrait",  size: "A0", dims: "841×1189 mm" },
+    "a0-landscape": { format: "a0", orientation: "landscape", size: "A0", dims: "1189×841 mm" },
+    "a1-portrait":  { format: "a1", orientation: "portrait",  size: "A1", dims: "594×841 mm"  },
+    "a1-landscape": { format: "a1", orientation: "landscape", size: "A1", dims: "841×594 mm"  },
+    "a2-portrait":  { format: "a2", orientation: "portrait",  size: "A2", dims: "420×594 mm"  },
+    "a2-landscape": { format: "a2", orientation: "landscape", size: "A2", dims: "594×420 mm"  },
+    "a3-portrait":  { format: "a3", orientation: "portrait",  size: "A3", dims: "297×420 mm"  },
+    "a3-landscape": { format: "a3", orientation: "landscape", size: "A3", dims: "420×297 mm"  },
+    "a4-portrait":  { format: "a4", orientation: "portrait",  size: "A4", dims: "210×297 mm"  },
+    "a4-landscape": { format: "a4", orientation: "landscape", size: "A4", dims: "297×210 mm"  }
   };
+
+  // Recompose un label "A0 portrait (841×1189 mm)" au rendu : size + dims = données
+  // inline, orientation = fragment traduit (pdfexport.orient.portrait/paysage).
+  function _formatLabel(def) {
+    if (!def) return "";
+    const orientKey = def.orientation === "portrait" ? "portrait" : "paysage";
+    const orient = window.I18n.t("pdfexport.orient." + orientKey);
+    return def.size + " " + orient + " (" + def.dims + ")";
+  }
 
   // Tailles disponibles (pour le 1er radio "taille") et orientations (2e radio).
   // label/hint résolus au rendu via I18n (cf. afficherModale). On conserve un

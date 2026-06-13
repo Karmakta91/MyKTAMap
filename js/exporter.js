@@ -1888,7 +1888,7 @@
       return new Promise(function(res, rej) {
         const img = new Image();
         img.onload = function() { res(img); };
-        img.onerror = function() { rej(new Error("Image non chargée : " + src)); };
+        img.onerror = function() { rej(new Error(window.I18n.t("imgexport.err.imageLoad", { src: src }))); };
         img.src = src;
       });
     }

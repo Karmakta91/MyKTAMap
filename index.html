@@ -118,11 +118,11 @@
     <div id="splashLicense">
       <span class="kta-licence-community">
         Licence libre — usage non commercial<br>
-        <span class="splash-license-detail">Pas de revente, pas de service payant, pas de monétisation</span>
+        <span class="splash-license-detail" data-i18n="home.splash.ethos">Pas de revente, pas de service payant, pas de monétisation</span>
       </span>
       <span class="kta-licence-pro">
-        ✓ Édition professionnelle<br>
-        <span class="splash-license-detail splash-license-detail-pro">Licence active · Tous droits réservés</span>
+        ✓ <span data-i18n="home.splash.proEdition">Édition professionnelle</span><br>
+        <span class="splash-license-detail splash-license-detail-pro" data-i18n="home.splash.proLicense">Licence active · Tous droits réservés</span>
       </span>
     </div>
 
@@ -3190,7 +3190,7 @@
               // licence locale. Le contenu dynamique (statut, source, hash
               // tronqué, boutons) est rendu par _refreshProfileProSection().
               '<div class="kta-profile-pro-section" id="kta-profile-pro-section">' +
-                '<div class="kta-profile-pro-header">💼 Édition professionnelle</div>' +
+                '<div class="kta-profile-pro-header">💼 ' + window.I18n.t("home.splash.proEdition") + '</div>' +
                 '<div class="kta-profile-pro-body" id="kta-profile-pro-body">' +
                   '<div class="kta-profile-pro-loading">⏳…</div>' +
                 '</div>' +
