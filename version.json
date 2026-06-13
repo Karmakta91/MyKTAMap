@@ -1,7 +1,7 @@
 {
-  "version": "v1.45.0",
+  "version": "v1.46.0",
   "released": "2026-06-13",
   "notes": [
-    "🌍 Première étape du passage multilingue : certains écrans de l'app peuvent désormais suivre la langue choisie (français / anglais). En français, rien ne change pour toi."
+    "🌍 L'application est maintenant entièrement multilingue : choisis le français ou l'anglais dans ⚙️ Réglages (ou dès l'accueil) et toute l'interface bascule. En français, rien ne change pour toi."
   ]
 }

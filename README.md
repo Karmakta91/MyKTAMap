@@ -8,7 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.45.0` (13/06/2026) — **🌍 Infrastructure multi-langue (i18n) + module pilote** sur la base v1.44.7.
+**📦 Version courante** : `v1.46.0` (13/06/2026) — **🌍 Application entièrement multilingue (FR / EN)** sur la base v1.45.0.
+
+**🌍 v1.46.0 (13/06/2026)** — **Migration multilingue COMPLÈTE** (chantier méthodique en 7 vagues, sous-agents parallèles + relecture/go-no-go indépendants) :
+- **~3600 clés** `lang/fr.json` + `lang/en.json` (parité 100 %, interpolations `{param}` cohérentes vérifiées par `scripts/check-i18n.js`). FR = référence + fallback universel.
+- **~50 modules migrés** vers `window.I18n.t()` au rendu : toute l'UI (barre d'outils, modales, toasts, tooltips, placeholders, alertes), Réglages (Perf ULTRA/Géoréf/M-LVL), HOME complet, Itinéraire, Vue OSM, Générateur, Éditeurs, Exports/Imports (PNG/PDF/KMZ/GPX), Stats, Mode Histoire, commandes vocales, et **Mode Secours** (le plus gros : ~700 clés).
+- **Outillage** : `scripts/check-i18n.js` (parité + clés appelées + interpolations), `scripts/merge-i18n-frags.js` (fusion des fragments). Glossaire EN cohérent (tracé→path, plan→map, niveau→level, équipe→team, secours→rescue…).
+- **Hors scope** (portée séparée) : doc + onboarding (clé `myktamap_readme_lang`). **Non traduit** (= données) : tags moteur, ids, statuts sérialisés, patterns de reconnaissance vocale, libellés gravés dans les exports KML/GPX.
+- Bascule **live sans reload** via le sélecteur ⚙️ Réglages / HOME. Détails : `docs/architecture/i18n.md` (table de migration) + `docs/i18n-audit.md` (inventaire).
 
 **🌍 v1.45.0 (13/06/2026)** — **Chantier multi-langue — Phase 0 : infra + module pilote** :
 - `js/i18n.js` (NOUVEAU) : helper `window.I18n` — dicos plats `lang/<code>.json` (clés `"module.section.element"`), chaîne de fallback **langue active → fr → clé brute** (jamais de crash), interpolation `{param}`. API : `init()` (await au boot), `t(key, params)`, `getLang()`, `setLang()`, `ensureLang()`, `onChange()`, `available()`, `has()`.
