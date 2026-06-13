@@ -8,7 +8,13 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.46.1` (13/06/2026) — **🇪🇸 Espagnol ajouté (FR / EN / ES)** + sélecteur de langue déplacé dans ⚙️ Configuration.
+**📦 Version courante** : `v1.46.2` (13/06/2026) — **🐛 Rattrapage i18n** : ~415 textes restés en FR (visibles en EN/ES) corrigés.
+
+**🐛 v1.46.2 (13/06/2026)** — **Phase 2 i18n : rattrapage du FR codé en dur** :
+- La migration v1.46.0 avait couvert les modules `js/` mais laissé du **FR codé en dur** dans les **scripts inline d'`index.html`** + quelques modules (jamais passé en clé → **invisible à `check-i18n`**, qui ne valide que la parité + les clés *appelées*). En EN/ES, ces textes restaient français (bug remonté par KARMA : flux **code d'accès PIN**).
+- **~415 chaînes migrées** vers `I18n.t()`, **+438 clés** ajoutées dans fr/en/es **ensemble** (parité maintenue : 4161/4161). Foyers : flux PIN (config HOME), modale **Profil**, modales **maintenance SW**, modales **crash** (`oomGuard`) + **batterie**, **boussole** (cardinaux localisés SW/W/NW), popup POI, avertissements d'échelle, **rapport de session** (TXT/PDF suit la langue), erreurs pathfinder/PDF/quota. **Tous les `alert()`/`confirm()` natifs** user-facing migrés (7 → 0).
+- **Nouvel outillage d'audit** : `scripts/find-hardcoded-fr.js` (détecte le FR codé en dur — l'angle mort de `check-i18n`) + `scripts/merge-i18n-frags3.js` (fusion fragments tri-langue). Inventaire complet : `docs/i18n-hardcoded-audit.md`.
+- **Résidus connus** (faux-positifs du détecteur = données : grammaire vocale, enums de statut, libellés gravés dans les exports KML/GPX) + quelques chaînes mineures documentées. Labels d'import (KMZ/GPX) localisés **à la langue d'import** (donnée figée, assumé).
 
 **🇪🇸 v1.46.1 (13/06/2026)** — **Espagnol (ES) + déplacement du sélecteur de langue** :
 - **`lang/es.json` (NOUVEAU)** : 3ᵉ langue complète — **3721 clés** traduites (100 %, parité avec `fr.json`, `{param}` cohérents). `{ code: "es", label: "Español" }` ajouté à `AVAILABLE_LANGS` (`js/langManager.js`) + `./lang/es.json` précaché (`sw.js`). Glossaire cataphile/spéléo ES (trazado, plano, frente de cantera, gatera, rescate, operador…). Lots traduits par sous-agents parallèles puis fusionnés (`scripts/merge-es-frags.js`).
