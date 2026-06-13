@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.44.6** (10 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.44.7** (10 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -517,7 +517,12 @@ client-side (UX, gates, robustesse SW, fix de logique de cache). Récap :
   (`myktamap_readme_lang`). Pur contenu client. **Aucun changement de surface
   réseau**.
 
-**Confirmation privacy v1.43.0 → v1.44.6** : aucun de ces 35 patches
+- **v1.44.7** — Correction contenu tutoriel (carte Sortie d'urgence) : le
+  texte mentionnait un tag POI `sortie`/`exit` inexistant ; remplacé par les
+  vrais tags reconnus par le moteur (`cao`/`peo`/`eso` ou `entrée`), FR + EN.
+  Pur contenu. **Aucun changement de surface réseau**.
+
+**Confirmation privacy v1.43.0 → v1.44.7** : aucun de ces 36 patches
 n'ajoute de surface réseau sortante. Le cache reste 100% IndexedDB local,
 les requêtes vers `tile.openstreetmap.org` passent par le Service Worker
 qui sert depuis IDB ou laisse passer le fetch réseau standard. **AUCUN
@@ -599,10 +604,10 @@ bbox, le comportement v1.42.x est conservé (modale bloquée + toast warn).
   actifs (héritage automatique des gates `osmView.js` /
   `osmHomePreview.js` v1.40.19).
 
-**Verdict réseau v1.44.6** : ✅ aucune nouvelle URL ajoutée à la liste
+**Verdict réseau v1.44.7** : ✅ aucune nouvelle URL ajoutée à la liste
 blanche, aucune nouvelle catégorie de donnée envoyée, aucun service tiers
 contacté. Le périmètre réseau v1.42.x est **strictement conservé** sur
-toute la série v1.43.0 → v1.44.6. La whitelist endpoints reste inchangée
+toute la série v1.43.0 → v1.44.7. La whitelist endpoints reste inchangée
 (`tile.openstreetmap.org`, `denylist.json`, `ping.html`, `version.json` +
 assets app). Le seul changement est l'introduction d'un store IDB local
 de plus (cf. section « Stockage local »). La feature « Save Offline »

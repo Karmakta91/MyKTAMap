@@ -8,7 +8,10 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.44.6` (10/06/2026) — **🇬🇧 Onboarding bilingue FR/EN** sur la base v1.44.5.
+**📦 Version courante** : `v1.44.7` (10/06/2026) — **✏️ Fix carte tutoriel « Sortie d'urgence » (vrais tags POI)** sur la base v1.44.6.
+
+**✏️ v1.44.7 (10/06/2026)** — **Tutoriel : description exacte des POI sortie** (audit traduction EN) :
+- `tutorial.js` : la carte 12 mentionnait un tag `sortie`/`exit` qui n'existe pas dans le moteur (`sortieUrgence.js` matche sur `cao`/`peo`/`eso` ou le tag `entrée`). Corrigé FR + EN avec les vrais tags. Audit complet de la traduction EN par agent : parité 25/25, complétude 100%, 0 bloquant — seul ce faux tag (hérité du FR) restait à corriger.
 
 **🇬🇧 v1.44.6 (10/06/2026)** — **Tutoriel premier-lancement bilingue** :
 - `tutorial.js` : ajout d'un tableau `CARDS_EN` (25 cartes, parité 1:1 avec `CARDS` FR) + objet `UI_STRINGS` (header/boutons/aria). Toggle 🇫🇷/🇬🇧 dans le header du tutoriel (même logique que la modale Documentation), qui bascule les 25 cartes en live. Langue lue/persistée dans la clé partagée `localStorage["myktamap_readme_lang"]` (auto-détection `navigator.language` au 1er boot) → cohérence avec la doc. CSS : `.kta-tutorial-lang` compact dans `style-meminspector.css`.

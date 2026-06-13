@@ -1,7 +1,7 @@
 {
-  "version": "v1.44.6",
+  "version": "v1.44.7",
   "released": "2026-06-10",
   "notes": [
-    "🇬🇧 Le tutoriel de premier lancement est maintenant bilingue : un bouton 🇫🇷/🇬🇧 en haut du tutoriel permet de basculer toutes les 25 cartes entre français et anglais, exactement comme la modale Documentation. La langue choisie est mémorisée et partagée avec la documentation."
+    "✏️ Tutoriel : la carte « Sortie d'urgence » décrit maintenant correctement les POI reconnus comme sortie (accès surface tagués cavage/puits/escalier ouvert, ou « entrée »), au lieu de mentionner un tag « sortie » qui n'existe pas. Corrigé en français et en anglais."
   ]
 }

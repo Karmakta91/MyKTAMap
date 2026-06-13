@@ -376,9 +376,11 @@
             "GPS + cap boussole + niveau batterie, masque tout le reste de l'UI. Conserve ton autonomie.</li>" +
           // 🆕 v1.40.32 — Ajout du 3e mode urgence (Sortie d'urgence v1.35.0, oublié à l'onboarding)
           "<li>🚨 <strong>Sortie d'urgence</strong> <em>(v1.35+)</em> : tu veux <strong>sortir vite</strong>. " +
-            "L'app calcule via pathfinder l'itinéraire optimal depuis ta position vers le <strong>POI Sortie " +
-            "le plus proche</strong> (tag <code>sortie</code> dans les POI du plan). Affiche distance + ETA + " +
-            "itinéraire tracé. Idéal quand la batterie baisse, la marée monte, ou un orage approche en surface.</li>" +
+            "L'app calcule via pathfinder l'itinéraire optimal depuis ta position vers la <strong>sortie " +
+            "la plus proche</strong> — un POI d'accès surface (cavage, puits ou escalier ouvert : tags " +
+            "<code>cao</code> / <code>peo</code> / <code>eso</code>) ou tagué <code>entrée</code> (on " +
+            "peut ressortir par où l'on est entré). Affiche distance + ETA + itinéraire tracé. Idéal " +
+            "quand la batterie baisse, la marée monte, ou un orage approche en surface.</li>" +
         "</ul>" +
         "<p>💡 <strong>3 cas d'usage différents</strong> :</p>" +
         "<ul>" +
@@ -1122,8 +1124,10 @@
             "heading + battery level fullscreen, hiding the rest of the UI. Saves your battery.</li>" +
           "<li>🚨 <strong>Emergency exit</strong> <em>(v1.35+)</em>: you want to <strong>get out fast</strong>. " +
             "The app computes via pathfinder the optimal route from your position to the <strong>nearest " +
-            "Exit POI</strong> (<code>exit</code> tag in the plan's POIs). Shows distance + ETA + " +
-            "drawn route. Ideal when the battery is dropping, the tide is rising, or a storm is approaching above.</li>" +
+            "exit</strong> — a surface-access POI (open cavage, shaft or stairway: tags " +
+            "<code>cao</code> / <code>peo</code> / <code>eso</code>) or tagged <code>entrée</code> (you " +
+            "can leave the way you came in). Shows distance + ETA + drawn route. Ideal when the battery is " +
+            "dropping, the tide is rising, or a storm is approaching above.</li>" +
         "</ul>" +
         "<p>💡 <strong>3 different use cases</strong>:</p>" +
         "<ul>" +
