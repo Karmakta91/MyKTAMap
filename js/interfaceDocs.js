@@ -535,13 +535,71 @@ function afficherAide() {
   modal.id = "kta-aide-modal";
   modal.className = "kta-readme-modal-overlay";
 
+  // 🆕 v1.45.x — Aide bilingue FR/EN. Même mécanisme que afficherReadme() :
+  // la langue suit l'app via _getReadmeLang() (qui respecte aussi le toggle
+  // drapeau local mémorisé myktamap_readme_lang). Le contenu HTML vit dans
+  // _aideHtmlFr() / _aideHtmlEn() — système doc séparé, PAS window.I18n.t.
+  const _aideLang = _getReadmeLang();
+  const aideEn = (_aideLang === "en");
+
+  // Onglets de langue identiques à la modale Documentation : UN drapeau par
+  // langue réellement dispo (DOC_AVAILABLE_LANGS), la langue courante .active.
+  const _aideLangMeta = (window.I18n && window.I18n.available) ? window.I18n.available() : [
+    { code: "fr", label: "Français", flag: "🇫🇷" },
+    { code: "en", label: "English",  flag: "🇬🇧" }
+  ];
+  const btnLang = '<span class="kta-readme-lang-tabs">' +
+    DOC_AVAILABLE_LANGS.map(function(code) {
+      const meta = _aideLangMeta.filter(function(l){ return l.code === code; })[0] ||
+                   { code: code, label: code.toUpperCase(), flag: code.toUpperCase() };
+      const isCur = (code === _aideLang);
+      return '<button class="kta-readme-lang-btn' + (isCur ? ' active' : '') + '" type="button" ' +
+             'data-target-lang="' + code + '" aria-label="' + meta.label + '" title="' + meta.label + '"' +
+             (isCur ? ' aria-current="true"' : '') + '>' + meta.flag + '</button>';
+    }).join("") + '</span>';
+
+  const aideTitre = aideEn ? "❓ Help — Button reference" : "❓ Aide — Référence des boutons";
+
   modal.innerHTML = `
     <div class="kta-readme-modal-boite kta-aide-modal-boite">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre">❓ Aide — Référence des boutons</span>
+        <span class="kta-readme-modal-titre">${aideTitre}</span>
+        ${btnLang}
         <button class="kta-panneau-close" id="kta-aide-close">✕</button>
       </div>
       <div class="kta-readme-modal-corps kta-aide-corps">
+        ${aideEn ? _aideHtmlEn() : _aideHtmlFr()}
+      </div>
+    </div>
+  `;
+
+  document.documentElement.appendChild(modal);
+  document.getElementById("kta-aide-close").addEventListener("click", function () { modal.remove(); });
+  modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
+
+  // 🆕 v1.45.x — Handler des onglets de langue (délégation sur tous les
+  // drapeaux). Clic sur une langue ≠ courante → persiste (scope LOCAL doc, via
+  // _setReadmeLang) + rebuild la modale dans l'autre langue. Ne touche pas la
+  // langue globale de l'app. Même pattern que afficherReadme().
+  modal.querySelectorAll(".kta-readme-lang-btn").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const target = btn.getAttribute("data-target-lang");
+      if (DOC_AVAILABLE_LANGS.indexOf(target) < 0) return;
+      if (target === _getReadmeLang()) return; // déjà la langue courante
+      _setReadmeLang(target);
+      modal.remove();
+      afficherAide();
+    });
+  });
+}
+
+// =========================
+// AIDE — contenu HTML FR (référence des boutons)
+// =========================
+// 🆕 v1.45.x — Extrait tel quel du innerHTML historique de afficherAide().
+// Retourne le corps de .kta-aide-corps (sections déroulables côté UI app).
+function _aideHtmlFr() {
+  return `
 
         <p class="kta-aide-intro">
           La barre latérale droite est organisée en groupes déroulables.
@@ -1181,14 +1239,658 @@ function afficherAide() {
             <strong>📤 Exporter le profil</strong> AVANT pour avoir un backup complet à portée de main.
           </p>
         </div>
-
-      </div>
-    </div>
   `;
+}
 
-  document.documentElement.appendChild(modal);
-  document.getElementById("kta-aide-close").addEventListener("click", function () { modal.remove(); });
-  modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
+
+// =========================
+// AIDE — contenu HTML EN (button reference)
+// =========================
+// 🆕 v1.45.x — Traduction fidèle de _aideHtmlFr(). Même structure HTML
+// (classes/ids/styles inline/emojis). Valeurs-données conservées (tags
+// cao/peo/eso, raccourcis E/M/Z, noms OTAN Alpha/Bravo, URLs).
+function _aideHtmlEn() {
+  return `
+
+        <p class="kta-aide-intro">
+          The right-hand sidebar is organized into collapsible groups.
+          Only one group can be open at a time — clicking another closes the previous one.
+        </p>
+
+        <!-- v1.35.5 — sections dédiées en remplacement du bloc Nouveautés
+             (feedback KARMA : "intégrer dans une section cohérente ou
+             dédiée, pas en bloc Nouveautés à part"). Mode Histoire et
+             Mode Sortie d'urgence ont chacune leur section identifiable. -->
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📖 History Mode — Map note + PDF</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>📖</strong> button to the left of the battery 🔋 → 2-tab modal, <strong>specific to each map</strong>:
+          </p>
+          <ul style="font-size:13px; color:#c0c8d8; margin:0 0 8px 16px; padding:0; line-height:1.5;">
+            <li><strong>📝 Free note</strong> — auto-saved <strong>Markdown</strong> notebook (headings, bold, lists, links, quotes). <strong>Preview</strong> mode to read / <strong>✏️ Edit</strong> to modify the source.</li>
+            <li><strong>📚 History</strong> — displays the PDF embedded by the map author, or lets you <strong>📥 import your own PDF</strong> (1 per map, replaceable). On iPhone: <strong>↗️ Open in a tab</strong> button for native full screen.</li>
+          </ul>
+          <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
+            Free note + PDF are <strong>automatically included in the session export</strong> (.mkmsession.zip) → everything travels with your session for sharing or transfer. 100% offline.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre" style="color:#ff8a5c;">🚨 Emergency Exit Mode — The nearest exit</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🚨</strong> button between 📖 History Mode and the battery 🔋. Tap it (or say "<em>exit</em>" by voice 🎤) and the app:
+          </p>
+          <ol style="font-size:13px; color:#c0c8d8; margin:0 0 8px 16px; padding:0; line-height:1.5;">
+            <li>Scans POIs tagged as <strong>open</strong> exits (<code>cao</code>, <code>peo</code>, <code>eso</code>) or <code>entrée</code>.</li>
+            <li>Computes the actual navigable path via the pathfinder (handles walls and inter-level junctions).</li>
+            <li>Displays the nearest one + <strong>🧭 Plot the route</strong> button + collapsible <strong>See the N other exits</strong>.</li>
+          </ol>
+          <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
+            If no active tracker → picker mode (click your position). Multi-level OK. Confirmation vibration. Closed versions (<code>caf</code>/<code>pef</code>/<code>esf</code>) ignored. 100% offline.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📚 Help / Docs / Legend</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">❓</span><span>This help — button reference</span>
+            <span class="kta-aide-icone">📖</span><span>User documentation</span>
+            <span class="kta-aide-icone">🤖</span><span>AI Help — download a context file to paste into ChatGPT/Claude/Gemini/etc.</span>
+            <span class="kta-aide-icone">🗺️</span><span>Legend of the map's icons</span>
+            <span class="kta-aide-icone">🚨</span><span>Public alert (loader button, left of 📖) — shows the current alert, or "No alert in progress" if the situation is OK</span>
+            <span class="kta-aide-icone">🔒</span><span><strong>Lock the application</strong> (loader button, right of ⚙️) — if a local access code is set, stops active modules and restarts MyKTAMap: the PIN prompt shows at startup and the code must be re-entered to resume. If no code is set, a modal invites you to create one from ⚙️ Configuration.</span>
+            <span class="kta-aide-icone">🏷️</span><span>Version badge (loader footer) — click to view the update modal or the notes of the installed version. Blinks blue if a new version is available.</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#ff8a5c;">🚨 Public alerts:</strong> if the author broadcasts an alert (fire, closure, toxic gas...),
+            a pulsing red modal appears automatically after the splash, with title, message and instructions. 3 possible levels:
+            <strong>emergency</strong> (red pulse, critical situation), <strong>warning</strong> (orange) or <strong>info</strong> (blue).
+            The <strong>🚨</strong> button in the loader header lets you re-read the alert at any time, OR check
+            "✅ No alert in progress" if the situation has returned to normal. Once "Got it" is clicked, the modal no longer reappears
+            on reload as long as the alert is the same — unless the author publishes a new one.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#d32f2f;">🛡️ Revoked maps (anti-leak v1.42):</strong> if a ZIP map leaks massively (public Telegram,
+            forum, etc.), the author can revoke it server-side. When the ZIP is imported, the app computes its <strong>SHA-256 fingerprint</strong>
+            <em>locally</em> and compares it against the public <code>denylist.json</code> list downloaded at boot.
+            On a match → <strong>blocking red modal</strong> with reason + date + a "Got it, delete this map" button that automatically
+            removes the map from your list. Also covers the generator ("Edit an existing map").
+            <strong style="color:#e9a13b;">🔄 Auto audit at startup (v1.42.3):</strong> already-imported maps are also
+            checked ~2s after boot. If one of them has been revoked since your last import, it is deleted automatically
+            and an <strong>orange modal</strong> informs you (reason + date). Strict privacy: <strong>0 fingerprints sent to the server</strong>.
+            List viewable at <code>https://myktamap.fr/denylist.json</code>.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">⚙️ Settings</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">⚙️</span><span>Settings, scale calibration, debug, <strong>🌐 GPS georeferencing</strong> — <strong>per-map</strong> settings. The GPS calibration entered here is auto-filled when you open 📡 External export. Both calibration points accept <strong>🔍 Search a point</strong> and <strong>📍 Click map</strong> to enter the map coordinates (as in the Export modal). The <strong>🧭 Initial tracker position</strong> offers the same two buttons to set the starting point without typing the coordinates by hand.</span>
+            <span class="kta-aide-icone">🎬</span><span><strong>Presentation mode</strong> — <strong>"🎬 Enable presentation mode"</strong> button placed <strong>at the very top</strong> of the Settings modal for one-glance access. The <kbd>F</kbd> key also opens it on PC. Exit: <kbd>F</kbd> / <kbd>Esc</kbd> key (PC) or floating ✕ button (mobile).</span>
+            <span class="kta-aide-icone">🔆</span><span><strong>Keep the screen on (Wake Lock)</strong> — toggle in Settings (and also in ⚙️ loader Configuration). Prevents sleep while the app is open. <strong>Ideal underground</strong> so you don't have to unlock your phone every 30s. Persistent across sessions, auto-released in the background, re-enabled on return. Compatible with Chrome 84+, Edge 84+, Safari iOS 16.4+ (PWA). Toggle hidden if the feature isn't supported (Firefox).</span>
+            <span class="kta-aide-icone">☀️</span><span><strong>Light / dark theme</strong> — switches between a beige cataphile background (light) and a black night background (dark, default). Can only be enabled <strong>from the home → Configuration → ☀️ Enable LIGHT theme</strong>. The toggle triggers a full app reload to avoid residual display bugs. Choice kept globally per device.</span>
+            <span class="kta-aide-icone">🚀</span><span>ULTRA Performance mode (in ⚙️ Settings) — for large maps that crash</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Contains the 🎯 button to calibrate the scale, 🐛 for detailed logs.
+            <strong>The full reset is no longer here</strong> — go through ⚙️ Configuration on the home page →
+            💥 Reset everything. Same for the <strong>🔐 Local access code (PIN/Face ID)</strong>
+            which can only be enabled from the ⚙️ loader Configuration (by design).
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#f4c542;">🚀 ULTRA Performance mode:</strong> a section in the ⚙️ Settings modal for
+            large maps / weak devices. Enable the <strong>🚀 ULTRA</strong> toggle to apply 6 aggressive optimizations at once,
+            or adjust them individually: <strong>🪜 Decimate paths when zoomed out</strong>, <strong>⚡ Disable zoom/pan animations</strong>
+            (reload required), <strong>🎯 Disable intersection circles</strong> (threshold 50 vs 500), <strong>🚫 Disable popups
+            on data layers</strong> (use 🔍 Search instead), <strong>🐢 Slow auto-save</strong> (30s vs 1.5s),
+            <strong>👁️ Render only visible paths</strong> (optimized rendering of the visible area). No optimization touches the image (already
+            handled by the load-time performance mode). Global persistence on this device, kept across sessions.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🔍 Unified search <span style="font-size:10px; color:#8892a4; font-weight:400;">(Ctrl+K)</span></div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">📍</span><span>Points (name, id, tag, description, state)</span>
+            <span class="kta-aide-icone">🛣️</span><span>Paths (label, type, M-LVL level)</span>
+            <span class="kta-aide-icone">⬛</span><span>Zones (type, level)</span>
+            <span class="kta-aide-icone">🏛️</span><span>Structures (pillars, walls, faces)</span>
+            <span class="kta-aide-icone">🌐</span><span><strong>GPS coordinates</strong> — paste <code>48.6808, 2.1588</code> directly (Google Maps format). If the map is georeferenced: a POI within 50 px → "Go to point"; otherwise → "Create a point here" → opens the form pre-filled at that position</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Search covers 4 categories + GPS.
+            <strong>Ctrl+K keyboard shortcut</strong> (Cmd+K on Mac) to open/close instantly.
+            Results grouped by category with counters. On click: centers + visual flash
+            (circle for points, dashed polyline for paths, transparent polygon for zones / pillars).
+            Filter by category + layer + tag.
+          </p>
+          <p style="font-size:12px; color:#8cb4ff; margin:6px 0 0; line-height:1.5;">
+            <strong>🌐 GPS format:</strong> this same <code>lat, lng</code> format is accepted in
+            <strong>⚙️ Settings → Georeferencing</strong>, in the <strong>📡 External export modal (KMZ/GPX)</strong>
+            and when <strong>creating a georeferenced map</strong> — paste from Google Maps, the app splits
+            the 2 values automatically.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">⬇️ Load / Import</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">📥</span><span><strong>Import</strong> — a single button that opens a 2-card modal: 📥 <strong>MyKTAMap session</strong> (.json / .zip with photos) or 📤 <strong>External GPX</strong> (TopoDroid, OsmAnd, Avenza, Strava, Garmin… requires GPS calibration). Preview before import, Ctrl+Z to undo.</span>
+            <span class="kta-aide-icone">📊</span><span>Edit a JSON file as a table</span>
+            <span class="kta-aide-icone">🗂️</span><span>Switch map (back to home)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">Multi-map:</strong> every map you load (server or local ZIP) is remembered
+            in your personal list. When you return to the home, you find:
+          </p>
+          <ul style="font-size:12px; color:#8892a4; margin:4px 0 0 18px; line-height:1.6;">
+            <li><strong style="color:#a8b3c8;">▶️ Resume</strong> — relaunches the last opened map in one click.</li>
+            <li><strong style="color:#a8b3c8;">📅 Recent</strong> — the last 5 maps used.</li>
+            <li><strong style="color:#a8b3c8;">📂 All</strong> — all your known maps.</li>
+            <li><strong style="color:#a8b3c8;">🌐</strong> = server map · <strong style="color:#a8b3c8;">💾</strong> = local ZIP map.</li>
+            <li><strong style="color:#a8b3c8;">💾 Export / 📂 Import</strong> your list to share or migrate it.</li>
+          </ul>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">Server maps</strong> — the app automatically detects maps
+            published on the server and offers them in your list.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">Local maps</strong> — when you click a local map, the app uses
+            the persistence method chosen at the initial load:
+          </p>
+          <ul style="font-size:12px; color:#8892a4; margin:4px 0 0 18px; line-height:1.6;">
+            <li>
+              <strong style="color:#6ce28a;">✅ Saved</strong> — the ZIP is copied into the browser
+              (check <strong>"💾 Save this map in the app"</strong> on import).
+              Reloads in 0 clicks, works <strong>even offline</strong> and on <strong>mobile</strong>.
+              Storage limit depends on the browser (~50 MB iOS, several GB Android/desktop).
+            </li>
+            <li>
+              <strong style="color:#8cb4ff;">🔐 Permanent access</strong> — Chrome/Edge desktop only,
+              via the <strong>"🔐 Allow permanent access"</strong> button. The browser keeps
+              a reference to the ZIP on disk (1 click max after a refresh).
+            </li>
+            <li>
+              <strong style="color:#c0c8d8;">📁 Re-selection</strong> — the ZIP is requested on every click
+              (drag & drop or click the area). Default behavior without persistence.
+            </li>
+          </ul>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">📱 Mobile</strong> — prefer <strong>"💾 Save in the app"</strong>
+            which works everywhere. For maximum persistence on iPhone, install the app as a
+            <strong>PWA</strong> (Share → Add to Home Screen) before saving the map.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🏗️ Create / Edit a map</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🏗️</span><span>Open the map generator (direct click)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Lets you create a new map or edit an existing one from a ZIP archive.
+            2 modes — <strong>🚀 Simple</strong> (just image + name + version + V2/M-LVL → ZIP ready in 30 sec)
+            and <strong>⚙️ Advanced</strong> (layers, tracking, icons, GPS georef, <strong>🏷️ map legend</strong>).
+            Choice remembered locally. Edit mode always forces Advanced to preserve the source map's customizations.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">👤 Profile mode</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">👤</span><span><strong>Profile banner</strong> in the loader header (above "My maps") — avatar + nickname + global mini-stats (📍 points · 🛣️ paths · ⬛ zones · 🏛️ structures + cumulative time, kept)</span>
+            <span class="kta-aide-icone">✏️</span><span>Click the <strong>nickname</strong> or the <strong>avatar</strong> → editing modal (free nickname + profile photo upload)</span>
+            <span class="kta-aide-icone">🖼️</span><span>Profile photo auto-compressed (max 512px, JPEG q88) — otherwise the default avatar = the nickname's initial in a colored circle</span>
+            <span class="kta-aide-icone">📦</span><span>Profile exportable / importable — share between devices without a server</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong>100% local storage</strong> in a dedicated local store — nickname + photo + dates.
+            No data transmitted. Default profile empty (👤 anonymous): no existing user is forced to configure anything.
+            <strong>Banner stats</strong>: from 2 stats available the banner displays them in mobile median,
+            cumulative time survives reloads.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">⭐ Point favorites</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">⭐</span><span>Button in a POI's popup — toggle ☆ inactive / ⭐ active (amber)</span>
+            <span class="kta-aide-icone">⭐</span><span>Left sidebar group (right after M-LVL) — side flyout listing the current map's favorites</span>
+            <span class="kta-aide-icone">🎯</span><span>Click a favorite → centers the map + flashes an orange circleMarker for 3 s + opens the original marker's popup</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong>Remembered locally per map</strong>.
+            <strong>Full copy</strong> of the points (id, name, coordinates, tag, layer) — resilient if the point is moved or removed from the map.
+            <strong>Not shared via exports</strong> (= a local view per device). Persistent across sessions and survives a reload.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">⏪ History (Undo / Redo) <span style="font-size:10px; color:#8892a4; font-weight:400;">(Ctrl+Z / Ctrl+Y)</span></div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">⏪</span><span>Undo the last action (Ctrl+Z) — up to 50 actions</span>
+            <span class="kta-aide-icone">⏩</span><span>Redo the undone action (Ctrl+Y or Ctrl+Shift+Z)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Covers the 4 categories of drawable annotations —
+            ✏️ points, 🛣️ paths, ⬛ zones, 🏛️ structures. Atomic granularity (1 click = 1 undoable).
+            A discreet toast on every action. Sidebar buttons auto-greyed when the stack is empty.
+            History not saved: starts from scratch on reload, auto-reset when switching map.
+            <strong>⚠️ Photos excluded</strong> (irreversible deletion).
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🪫 Battery indicator</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">⚡</span><span>Header chip — charging (green)</span>
+            <span class="kta-aide-icone">🪫</span><span>Header chip — discharging (color according to level)</span>
+            <span class="kta-aide-icone">🔋</span><span>🔋 STATUS block of emergency mode (level + state shown large)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong>3 display points</strong>: new interface header (⚡/🪫 chip next to session counters), 📋 Active session modal footer, 🔋 STATUS block of emergency mode.
+            <strong>Graduated warnings</strong> via toast at 20% / 10% / 5% (once per threshold per discharge cycle).
+            <strong>⚠️ Limited compatibility</strong>: the browser's battery feature is available in Chromium only (Android Chrome, PC Chrome/Edge).
+            On Safari iOS and recent Firefox, it was removed for privacy reasons — the chip is then <strong>hidden</strong>, with no error message.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📊 Enriched session stats</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">📊</span><span>Stats block at the top of the 📋 Active session modal</span>
+            <span class="kta-aide-icone">📋</span><span>Copy the summary to the clipboard (plain text, ready for Discord / SMS / email)</span>
+            <span class="kta-aide-icone">💾</span><span>TXT export — downloads a .txt file with the full summary</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Display: total annotations, breakdown by type (📍 points · 🛣️ paths · ⬛ zones · 🏛️ structures), <strong>cumulative distance</strong> of paths (auto m → km), <strong>cumulative area</strong> of zones (auto m² → ha), attached POI photos, time elapsed since the session started.
+            In multi-level (M-LVL), an additional per-level breakdown is shown.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📊 Memory inspector</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">📊</span><span>"📊 View memory state" button in ⚙️ loader Configuration (home) → new 📊 Inspector section</span>
+            <span class="kta-aide-icone">🗂️</span><span>localStorage: MyKTAMap keys sorted by size + mini proportion bar</span>
+            <span class="kta-aide-icone">💾</span><span>IndexedDB: 3 databases (handles / backups / photos) + native scan of third-party databases, count per store</span>
+            <span class="kta-aide-icone">📦</span><span>PWA cache: list of caches, active cache marked (★), sample of the first 12 assets</span>
+            <span class="kta-aide-icone">📈</span><span>Storage estimate: browser usage / quota with a color bar (green → yellow → red)</span>
+            <span class="kta-aide-icone">🧠</span><span>Runtime: loaded map, active session (📍/🛣️/⬛/🏛️), loaded/missing JS modules</span>
+            <span class="kta-aide-icone">📋</span><span>📋 Copy report button → plain markdown-like text ready to paste into Discord / email / GitHub</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            A <strong>transparency + debug</strong> tool. Shows a readable overview of everything MyKTAMap has written locally in your browser. Handy for diagnosing a bug ("my session disappears", "my photos are gone") or checking that a full reset really purged everything. <strong>Read-only, 100% local</strong> — no data transmitted.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🏷️ Customizable legend</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">✏️</span><span><strong>3-level cascade</strong>: session &gt; map &gt; MKM default (each level overrides the next)</span>
+            <span class="kta-aide-icone">📐</span><span><strong>Session</strong> editing (personal, local): 🖼️ PNG Export modal → "Customize labels" or the ✏️ Edit button in the 🗺️ map-mode Legend</span>
+            <span class="kta-aide-icone">🏗️</span><span><strong>Map-level</strong> editing (shared with all users of the map): map Generator in <strong>Advanced mode</strong> → "🏷️ Map legend" section</span>
+            <span class="kta-aide-icone">✨</span><span>4 categories covered: 📍 icons / 🛣️ paths / ⬛ zones / 🏛️ structures — rename, hide, or add <strong>custom drawable</strong> entries</span>
+            <span class="kta-aide-icone">🌍</span><span><strong>KMZ round-trip</strong>: the map legend travels with your exported KMZ → auto-restored when re-imported into another MyKTAMap instance. Ignored by Google Earth / OsmAnd / Avenza.</span>
+            <span class="kta-aide-icone">📤</span><span><strong>GPX round-trip</strong>: same for GPX via the GPX file's metadata. Compatible with TopoDroid, OsmAnd, Strava, etc.</span>
+            <span class="kta-aide-icone">👁️</span><span>On re-import (KMZ or GPX), the summary/preview explicitly shows "✅ Map custom legend detected: N renamed · M hidden · K customs" before generating the MyKTAMap ZIP.</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong>Use case</strong>: a cataphile creating a quarry map can rename "Water" to "Bottom lake", hide the types they never use, and add their own drawable types ("Votive niche", "Stela", etc.). These customizations apply <strong>automatically</strong> to everyone who loads their map, in KMZ as well as GPX. Each user can still override their own session on top without breaking anything.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🎬 Tracker session replay</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🎬</span><span>Replay button in the 🧭 Tracker group — opens the full-screen modal</span>
+            <span class="kta-aide-icone">▶️</span><span>Play / Pause / Restart / End — timeline slider + speed selector 0.5× → 10×</span>
+            <span class="kta-aide-icone">⛶</span><span>Toggle compact mode (bottom sheet) ↔ normal mode — to free up the map during replay</span>
+            <span class="kta-aide-icone">💾</span><span>CSV export — file with timestamp + coordinates + type (+ level in M-LVL)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            During tracking, the app records an internal <strong>timeline</strong> of events: start, each PDR step applied, each recalibration.
+            On clicking 🎬, you replay your session with a moving yellow marker.
+            <strong>Multi-segment trail</strong>: recalibrations (teleports) are visually skipped — no artificial straight line.
+            <strong>Keyboard shortcuts</strong>: Space = play/pause · ← → = seek 1s · Esc = close.
+            Not saved: starts from scratch on reload, reset when switching map.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">⬆️ Save</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">💾</span><span>Save the session — modal with 4 tabs: 🚀 Full · 🎨 Advanced · 🔄 Conversion · <strong>📡 External export (KMZ + GPX)</strong>. The Full export embeds the <strong>complete tracker timeline</strong> (route + dated temporal timeline + departure time) → lets you carry the GPS history between devices (multi-session heatmap + multi-device replay). Ignored in layer conversion.</span>
+            <span class="kta-aide-icone">📡</span><span><strong>Tracker checkbox — Advanced mode</strong> — in the 🖼️ Image export modal, the "Tracker position" checkbox shows the path's point counter (e.g. "+ path 142 pts") to visualize what will be burned onto the image.</span>
+            <span class="kta-aide-icone">🖼️</span><span>Export to PNG/JPG — modal with Quick / Advanced mode</span>
+            <span class="kta-aide-icone">📤</span><span><strong>Export to printable PDF</strong> — A0 to A4 × portrait/landscape, legend positionable in a corner</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong>📤 PDF:</strong> 10 formats (A0/A1/A2/A3/A4 × portrait/landscape), choice
+            of data layers + image case by case, 4-corner overlay legend with 3 sizes and 4 styles
+            (including 🆕 "Pro white background" by default for paper printing). Reuses the same
+            rendering chain as the advanced PNG export for perfect visual consistency.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🧭 Tracker</div>
+          <p style="font-size:12px; color:#8892a4; margin:0 0 8px; line-height:1.5;">
+            The Tracker group opens as a side panel
+            to fit its ~8 sub-actions without overflowing. Menu order, top to bottom:
+          </p>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">▶️⏹️</span><span><strong>Play / Stop</strong> — start / stop tracking via PDR sensors (experimental). Dynamic icon ▶️↔⏹️ depending on the state</span>
+            <span class="kta-aide-icone">🧭</span><span><strong>Compass</strong> — toggle of the magnetic North widget (useful orientation underground)</span>
+            <span class="kta-aide-icone">📍</span><span><strong>Recalibration mode</strong> — click the map or an existing point to reposition the marker. Auto-close after click + automatic return to compass</span>
+            <span class="kta-aide-icone">🗺️</span><span><strong>Compute a route</strong> — opens the route modal (waypoints, speed mode, avoidances)</span>
+            <span class="kta-aide-icone">🎬</span><span><strong>Tracker session replay</strong> — full-screen modal: timeline slider + play/pause + speed 0.5×→10× + CSV export. Compact mode auto on Play to free up the map. Shortcuts Space / ← → / Esc</span>
+            <span class="kta-aide-icone">🔥</span><span><strong>Density heatmap</strong> — interpolated segments + auto normalization + <strong>6 checkable sources</strong>: 🚶 Tracker timeline · ✏️ Session points · 🛣️ Paths · ⬛ Zones · 🏛️ Structures · 📊 Data layers</span>
+            <span class="kta-aide-icone" style="background:rgba(255,80,80,0.18); border-radius:4px;">⛑️</span><span><strong>I'm lost</strong> — <span style="color:#ff8a5c;">RED BACKGROUND (emergency)</span> — computes a probable zone of your position from your last known position, the time elapsed and visual clues</span>
+            <span class="kta-aide-icone" style="background:rgba(255,80,80,0.18); border-radius:4px;">🚨</span><span><strong>XL "panic" emergency mode</strong> — <span style="color:#ff8a5c;">RED BACKGROUND (emergency)</span> — XL display of position + compass heading + auto-focus minimap + 🔋 battery + 🗺️ route toggle</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#ff5555;">🚨 Visual demarcation:</strong> the last 2 buttons (⛑️ and 🚨) are placed
+            at the <strong>end of the menu</strong> with a <strong>distinctive red background</strong> to separate them from the normal
+            navigation functions.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#ff5555;">🚨 "Panic" emergency mode:</strong> a distinctive red button,
+            <strong>different</strong> from ⛑️ "I'm lost" (which computes a zone). Here we assume you know where you are
+            (the tracker shows it) but that <strong>you panic and need vital info in large print</strong>:
+            <strong>XL position</strong> (map coords), <strong>large compass heading</strong> (direction of travel, needle
+            turned), <strong>auto-focus minimap</strong> with the <strong>roads / zones / structures of the map in the background</strong>
+            (useful to spot paths, exits, hazards). Automatic Wake Lock (the screen doesn't turn off).
+            Sensor permissions auto-requested if not already granted. Exit via the ✕.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#ff8a5c;">⛑️ Emergency mode:</strong> a distinctive orange sub-action. You indicate where you were (search
+            for an existing point, click on the map or tracker position), <strong>how long ago</strong>, and
+            the app draws an orange <strong>search circle</strong> around it (radius = <strong>speed × time</strong>, with no margin).
+            The speed is chosen via <strong>4 presets</strong> (selector) — <strong>same values as the route
+            mode</strong> for consistency: <strong>🤕 Injured</strong> (2 km/h), <strong>🐌 Slow</strong>
+            (3 km/h), <strong>🚶 Normal</strong> (5 km/h, default), <strong>🏃 Fast</strong> (7 km/h).
+            Max time elapsed <strong>1h30</strong> (beyond that the zone becomes huge and irrelevant).
+            You can add <strong>visual clues</strong> ("water can", "ram graffito"...) — the app searches for these words
+            in the name, description and tags of the map's points; the clues that match <strong>inside the zone</strong>
+            appear in pulsing purple, and their <strong>center</strong> gives a <strong>refined probable location</strong>.
+            The <strong>👁️ Close</strong> button closes the modal while keeping the zone visible on the map (to explore).
+            The <strong>🗑️ Clear the zone</strong> button (in the results) removes everything. Copyable text report to the
+            clipboard (📋) for offline sharing (radio, SMS).
+            A <strong>📚 Best practices</strong> accordion at the top of the modal gathers the essential tips
+            (stay calm, retrace your steps, look for the main axes/haulage ways, use a physical compass,
+            save your light, warn someone if you get a signal, what not to do). ⚠️ Geometric estimate
+            only — it does <strong>NOT</strong> replace a real rescue operation (guide line, compass,
+            spare lamp, paper map).
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🚨 Rescue Mode — Team coordination</div>
+          <p style="font-size:12px; color:#8892a4; margin:0 0 8px; line-height:1.5;">
+            An operational coordination tool to <strong>organize search teams</strong> in case of an underground incident
+            (lost cataphile, organized rescue). <strong>3 distinct emergency modes</strong> not to be confused:
+            ⛑️ <em>I'm lost</em> = YOU are looking for yourself · 🚨 <em>Panic mode</em> = YOU are panicking · 🚨 <em>Rescue Mode</em> = SOMEONE ELSE is lost and you organize the rescue.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:0 0 8px; line-height:1.5;">
+            <strong style="color:#f4c542;">📝 State 1 — CREATION (Edit view)</strong> — preparation/planning of the rescue plan.
+          </p>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🚨</span><span>Opens the Rescue Mode modal (multi-scenarios per map, max 10 saved, oldest first)</span>
+            <span class="kta-aide-icone">➕</span><span>Scenario creation: name + incident time + context notes</span>
+            <span class="kta-aide-icone">🎨</span><span><strong>Fixed 10-color NATO palette</strong>: Alpha red / Bravo blue / Charlie green / Delta yellow / Echo magenta / Foxtrot cyan / Golf orange / Hotel purple / India brown / Juliet grey</span>
+            <span class="kta-aide-icone">📍</span><span>Teams with routes: <strong>entry + intermediates + exit</strong> (POI autocomplete / ID input / map click). Loop if entry=exit</span>
+            <span class="kta-aide-icone">⬛</span><span>Search zone per team: polygon OR selected paths. A "POIs in zone" mini-modal auto-suggests intermediates</span>
+            <span class="kta-aide-icone">🗺️</span><span><strong>Route computed automatically</strong> with avoidances between teams (anti-overlap). Warning toast if avoidance is impossible</span>
+            <span class="kta-aide-icone">🏗️</span><span><strong>M-LVL level per team</strong>: ground/+1/-1 chip + editable select. Auto-creation of 1 team per level via the "🏗️ Auto" button</span>
+            <span class="kta-aide-icone">🔥</span><span>Activity heatmap (tracker/POI/paths sources) to identify probable zones to search</span>
+            <span class="kta-aide-icone">⛑️</span><span>Chaining I'm lost → Rescue: a button in I'm lost pre-fills the last known position + uncertainty zone + incident time</span>
+            <span class="kta-aide-icone">⭐</span><span>Map favorites for quick access in the waypoint picker (max 8 chips above the search)</span>
+            <span class="kta-aide-icone">🔍</span><span><strong>Ctrl+K → assign a POI to a team in 2 clicks</strong>: 📌 button in the unified search results if Rescue Mode is active</span>
+            <span class="kta-aide-icone">🛑</span><span><strong>Configurable pause</strong> (shared with the main route): 0-120 min between intermediate stops, auto-recompute of durations</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">📤 3 export formats</strong>:
+            <strong>📄 Printable PDF</strong> A4 1 page/team with a thumbnail map + integrated mini-legend +
+            empty observation box for paper field use ·
+            <strong>🌍 Geolocated cross-app KMZ</strong> (Google Earth / OsmAnd / Avenza) with 43 NATO color styles +
+            map as a 60% GroundOverlay + nested folders toggleable per team ·
+            <strong>📦 standalone .mkmsec.json</strong> to share between devices without the whole session
+            (preview modal BEFORE injection).
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:14px 0 8px; line-height:1.5;">
+            <strong style="color:#f4c542;">🚀 State 2 — FIELD EXECUTION (real-time Live view)</strong> — the incident is triggered, you follow the observations.
+          </p>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🚀</span><span><strong>Launch the rescue plan</strong> button in the Edit view → role selection modal</span>
+            <span class="kta-aide-icone">👤</span><span><strong>Surface Operator mode</strong> (PC lead): overview of multi-team cards + status + last obs + "🚨 Take over" button with automatic return</span>
+            <span class="kta-aide-icone">🚨</span><span><strong>Team member mode</strong> (in the field): clickable visual stepper + observations + 7 quick statuses + photos (max 5/step) + prev/next navigation</span>
+            <span class="kta-aide-icone">🚑</span><span><strong>Free rescuer mode</strong> (reinforcement without a team): loose chronological notes DESC + 7 quick buttons + auto timestamps</span>
+            <span class="kta-aide-icone">⏱️</span><span>Global timer with a <strong>fair pause</strong> (excludes the cumulative pause time)</span>
+            <span class="kta-aide-icone">📤</span><span><strong>Report as steps progress</strong>: 3 formats (PDF/JSON/clipboard Text) × 3 levels (operator/team member/rescuer). Reusable at any time during or after the stop</span>
+            <span class="kta-aide-icone">📦</span><span><strong>PLAN COMPLETED</strong> banner in the Edit view after the stop: "📤 View historical report" + "🚀 Relaunch"</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">7+1 step statuses</strong>:
+            • <em>pending (default)</em> · 🟢 <strong>All clear</strong> · 🟡 <strong>Suspicious</strong> · ⬛ <strong>Blocked</strong> ·
+            🔵 <strong>Clue</strong> · 🟠 <strong>Help requested</strong> · 🟣 <strong>Forced turnaround</strong> ·
+            <strong style="color:#ff5555;">🚨 Victim found</strong> (absolute emergency = flashing red card on the PC lead side).
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">📸 Photo storage dedicated to rescue mode</strong>:
+            max 5 photos per step, auto JPEG q85 compression max 1920px, reused full-screen viewer.
+          </p>
+          <p style="font-size:12px; color:#8cb4ff; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#8cb4ff;">📥 Consolidation between devices</strong>: back from the field, each team member exports their report via
+            <strong>📤 Report</strong> (team member level). The operator imports it in the Live Op view via the
+            <strong>📥 Import team member report</strong> button in the footer → preview modal with conflict detection → merge (observations concatenated and dated, most
+            severe status kept, photos deduplicated). Automatic save BEFORE so you can undo. A "📥 imported" chip on the merged team cards.
+            <span style="color:#a8b3c8;">The QR code route was tested then dropped — scanning after WhatsApp compression was too fragile on dense codes.</span>
+            ⚠️ Like everything: <strong>keep a physical compass and a paper map</strong>. The phone can fail. The 🚨 is a coordination aid, NOT a substitute for preparation.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:14px 0 8px; line-height:1.5;">
+            <strong style="color:#f4c542;">🌍 State 3 — EXTERNAL RESCUE BRIEFING (OSM View × Rescue Mode, v1.41)</strong> — coordination with external rescue services (firefighters, GRIMP, SDIS).
+          </p>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🚪</span><span>New built-in tag <strong>Map entry point</strong> (category "🚨 Rescue" in the legend) to mark the main emergency entries</span>
+            <span class="kta-aide-icone">📍</span><span><strong>Surface GPS per team</strong>: "📍 Surface GPS" field in the team card (format "lat, lng" WGS84), for the rescue command post / firefighter meeting point</span>
+            <span class="kta-aide-icone">🌍</span><span><strong>🌍 OSM View</strong> button available in the Edit banner AND in the 3 Live footers → show the map's position on OpenStreetMap without leaving the active view</span>
+            <span class="kta-aide-icone">🚒</span><span><strong>Dedicated firefighter briefing PDF</strong> (🚒 button): an A4 page with clickable OSM + Google Maps links + teams + surface GPS + critical POIs (map entry / emergency exit / quarry accesses)</span>
+            <span class="kta-aide-icone">📤</span><span>A <strong>"Surface briefing"</strong> page automatically integrated into the post-mission PDF report</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:14px 0 0; line-height:1.5;">
+            <strong style="color:#8cb4ff;">💾 Save Offline — Offline OSM View (v1.43)</strong> — a <strong>💾 Save Offline</strong> button available in the OSM View modal and in the home's OSM View widget.
+            One click downloads the OpenStreetMap tiles covering the map's area and stores them in the phone's local storage (200 tiles max per click, to respect OSM's usage policy — click the button again if you want to extend coverage or do several zoom levels).
+            Once cached, the <strong>💾</strong> icon stays visible to tell you the area is saved, and the <strong>OSM View opens directly off-network</strong> (underground, no-signal area, airplane mode) — no error message, no connection attempt: the app detects there is cache and displays the map instantly.
+            The cache is <strong>shared</strong> between the home OSM View, the OSM View modal and Rescue Mode — a single Save Offline covers all three.
+            <span style="color:#a8b3c8;">Field reflex: Save Offline before you leave, while you still have a signal.</span>
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📐 Measurement tools</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">📐</span><span>Distance measurement — click to place points, total shown at bottom-left</span>
+            <span class="kta-aide-icone">⬛</span><span><strong>Area measurement</strong> — 📏/⬛ toggle in the group, draw a polygon, the app computes the area in m² (auto ha beyond 10,000 m²)</span>
+            <span class="kta-aide-icone">📏</span><span>Total length of paths — sub-action of the Paths group, floating panel with filters by type</span>
+            <span class="kta-aide-icone">🗺️</span><span>Route — the shortest path between 2 or more points following the existing roads</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">📏 Total length:</strong> opens a small bottom-right panel with 3 checkboxes
+            (Main / Secondary / Path). The total length of the checked paths is shown in meters,
+            and the included segments are highlighted in magenta on the map. Also includes the roads of visible data
+            layers. <strong>Not exported in the PNG image legend.</strong>
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">🗺️ Route:</strong> add waypoints (click on the map, search by name/id/tag, or the <strong>🧭 My position</strong> button which takes your current tracker position),
+            the app computes the shortest path using the existing roads (session + data layers, <strong>even hidden layers</strong> — useful if the roads are drawn directly onto the PNG and you want to gain performance).
+            The bottom-left label shows the <strong>distance</strong>, the <strong>⏱️ estimated time</strong> and the <strong>active speed mode</strong> (🤕 Injured 2 km/h / 🐌 Slow 3 km/h / 🚶 Normal 5 km/h default / 🏃 Fast 7 km/h, + 15 min of pause per intermediate point). The mode is changed via a selector in the route modal and is kept across sessions.
+            The route appears in neon cyan with a distance label at bottom-left. On re-click, the modal opens in
+            <strong>navigation mode</strong>: <strong>⏮️ Start</strong>, <strong>⏭️ End</strong>,
+            <strong>🔁 Full loop</strong> buttons, and 🎯 per waypoint to center the map on it.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong style="color:#ffb266;">🚫 Avoidance constraints:</strong>
+            <strong style="color:#a8b3c8;">⛔ Inaccessible Zone</strong> (Zones group) = a <em>hard</em> constraint, the route will never pass through it, never relaxed.
+            <strong style="color:#a8b3c8;">🚫 Avoidance preferences</strong> (collapsible section in the route modal) = a <em>soft</em> constraint: points to avoid (search / ID / map click) + tags to avoid + margin (px, default 100). If there is no alternative path, the app computes it anyway by passing nearby and shows an orange message <em>⚠️ Unable to avoid: X, Y</em>. Preferences remembered locally per map.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">✏️ Point editing</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">✏️</span><span><strong>Enable add mode</strong> — direct click on the ✏️ icon → ON/OFF toggle. In ON, each click on the map places a new point.</span>
+            <span class="kta-aide-icone">📸</span><span>Photos attached to the point (max 5) — section in the add/edit modal. 📷 Take / 🖼️ Gallery buttons</span>
+            <span class="kta-aide-icone">✏️</span><span>Edit an existing point — blue button in the marker's popup (reopens the same pre-filled modal)</span>
+            <span class="kta-aide-icone">🌐</span><span><strong>GPS coords in the popup</strong> — if the map is <strong>georeferenced</strong>, a point's popup automatically shows the GPS coordinates (lat/lng WGS84) computed right after the description, with a <strong>📋</strong> button to copy to the clipboard. Active for <strong>all points</strong> (session AND data layers).</span>
+            <span class="kta-aide-icone">🗑️</span><span><strong>Delete a point</strong> — click the marker → popup → <strong>🗑️ Delete this point</strong> button. To undo an accidental deletion: <code>Ctrl+Z</code>.</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#f4c542;">📸 POI photos:</strong> attach up to <strong>5 photos per point</strong>
+            (mobile camera via 📷 or gallery import via 🖼️). Auto JPEG q85 compression max 1920px. <strong>100% local on this device</strong>
+            — never sent over the Internet. 44×44 thumbnails in the marker's popup (tap → full-screen viewer with pinch-zoom + pan +
+            horizontal swipe to navigate between photos). Included in all exports (session ZIP + map generator ZIP) + restored
+            automatically on re-import. A 5th 📸 counter in the header + a section in the "📊 Session details" modal.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🏛️ Structures (pillars + walls + working faces)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🟡</span><span>1st-mass pillar (polygon, yellow fill)</span>
+            <span class="kta-aide-icone">🟠</span><span>2nd-mass pillar (polygon, orange fill) — auto-tagged level -1 in M-LVL</span>
+            <span class="kta-aide-icone">🔵</span><span>Wall (polygon, blue fill)</span>
+            <span class="kta-aide-icone">🟨</span><span>1st-mass working face (polyline, yellow stroke) — this is a LINE, not a closed polygon</span>
+            <span class="kta-aide-icone">🟧</span><span>2nd-mass working face (polyline, orange stroke) — auto-tagged level -1 in M-LVL</span>
+            <span class="kta-aide-icone">🧹</span><span>Erase (last point / last in-progress OR closed structure / 🎯 selection by map click / all)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">Mapping the underground architecture</strong>: load-bearing pillars (1st/2nd mass of
+            limestone), retaining walls, and working faces. For polygons (pillars + walls), place at least 3 points
+            then re-click the lit icon to close. For polylines (faces), place at least 2 points then re-click the
+            icon to validate the line. No pathfinder effect (read-only — that's different from the ⛔ Inaccessible zone which
+            blocks the route).
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🛣️ Paths & Roads</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🟩</span><span>Draw a main road</span>
+            <span class="kta-aide-icone">🟪</span><span>Draw a secondary road</span>
+            <span class="kta-aide-icone">🟨</span><span>Draw a path</span>
+            <span class="kta-aide-icone">🪜</span><span>Inter-level junction (dashed magenta) — sub-action visible only if multi-level mode is enabled. A bridge between 2 levels for the pathfinder.</span>
+            <span class="kta-aide-icone">📏</span><span>Total length of paths (floating panel with filters by type)</span>
+            <span class="kta-aide-icone">🧹</span><span>Erase (last point, last path or all)</span>
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">⬛ Zones (fill / collapses / water / inaccessible)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">⬛</span><span>Draw a fill zone</span>
+            <span class="kta-aide-icone">🟥</span><span>Draw a collapse zone</span>
+            <span class="kta-aide-icone">🟦</span><span>Draw a water zone</span>
+            <span class="kta-aide-icone">⛔</span><span>Draw an inaccessible zone (red/black hatching) — blocks the pathfinder</span>
+            <span class="kta-aide-icone">✅</span><span>Close the current zone (at least 3 points)</span>
+            <span class="kta-aide-icone">🧹</span><span>Erase (last point, last zone or all)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Place at least 3 points then re-click the 1st point to close the zone, or use the ✅ button.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🚀 Optimize a map</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            A light map = fast loading, smooth navigation, less risk of a mobile memory crash.
+            <strong>Main tips:</strong>
+          </p>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🖼️</span><span><strong>Base image</strong> ≤ 8,000 px per side, <strong>JPEG quality 85</strong> format (5-10× lighter than PNG)</span>
+            <span class="kta-aide-icone">🗂️</span><span><strong>Just 1 image layer</strong> ideally — merge legends/markers into the base PNG</span>
+            <span class="kta-aide-icone">🛣️</span><span><strong>Many roads</strong>? Draw them in the PNG + hide the JSON layer. The pathfinder uses the roads even when hidden</span>
+            <span class="kta-aide-icone">📍</span><span><strong>Dense points</strong>? Split them into several toggleable layers (shafts / passages / electrical…)</span>
+            <span class="kta-aide-icone">⚡</span><span><strong>Perf mode</strong>: 🎯 Balanced on a modern mobile, ⚡ Performance on an old device</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            More details and precise figures in the <strong>Documentation 📖</strong> (📚 Help / Docs group), "Optimize your map for performance" section.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🔐 Local access code (PIN / Face ID)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🔐</span><span>Optional locking of the app at every startup</span>
+            <span class="kta-aide-icone">🤳</span><span>Face ID / Touch ID / Windows Hello biometrics if the device supports it (native WebAuthn)</span>
+            <span class="kta-aide-icone">🚫</span><span>5 failed attempts = permanent lockout. No recovery if forgotten.</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#f4c542;">To be enabled from the home page only:</strong>
+            ⚙️ Configuration → 🔐 Local access code → "🔐 Enable the access code" button. Enter a
+            4-6 digit PIN, confirm, then accept the biometrics if offered. On the next startup, the app
+            will ask for your code before opening.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong style="color:#ff8a5c;">⚠️ Important note:</strong> this is a <strong>usage barrier</strong>,
+            NOT data encryption. Photos and sessions remain in clear text in the browser's local storage.
+            The PIN is hashed client-side (SHA-256 + random salt) and never sent over the Internet.
+            <strong>Write down your code carefully</strong> — no recovery is possible if forgotten (no backend, no email reset).
+            On lockout: the only solutions = reinstall the app (loss of session + non-saved maps) OR contact
+            the author (who won't be able to do anything, consistent with the no-backend philosophy).
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">💡 Tips</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Exclusive modes</strong>: Measurement, Add point, Recalibration and Paths are mutually
+            exclusive — enabling one automatically disables the others.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Active mode</strong>: as long as a mode is active, its group stays open to allow
+            direct access to the secondary actions (erasing the last point, for example).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.5;">
+            <strong>Changing icon</strong>: the group's main icon reflects the active mode (for example
+            🟩 on the Paths button when a main path is in progress, or 📍 on the Tracker during recalibration).
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🆘 Troubleshooting</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>📡 App stuck after a soft update</strong> (loader with no CSS, page frozen, assets badly loaded):
+            the most frequent cause is an <strong style="color:#f4c542;">edge CDN serving corrupted content</strong>
+            (wrong MIME, truncated asset, etc.). First reflex:
+            <strong>disable your VPN, change network (4G ↔ Wi-Fi)</strong>, and retry. The GitHub Pages CDN sometimes
+            has rotten regional edges — switching IP/geo zone is often enough to unstick it.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🆘 Emergency kill switch</strong>: if the app stays stuck even after changing network, open
+            <code>https://&lt;domain&gt;/?killsw=1</code> in a private tab (Chrome/Safari, NOT the PWA) — this
+            resets the app cache + empties all the app's technical files <strong>without touching your data</strong>
+            (maps, sessions, photos, prefs preserved). Then reload normally.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🆘 Manual reset via dedicated page</strong>: if the URL param isn't enough (HTML cache stuck),
+            navigate to <code>https://&lt;domain&gt;/killsw.html</code> — a standalone 100% inline page (CSS+JS),
+            zero dependencies, works even if the rest of the app is broken. Three steps shown: app cache
+            reset, technical files purged, ready to reload.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🔄 Optimized soft update</strong>: the
+            <strong>⚙️ Configuration → 🔄 Force the update</strong> flow is designed to be 10× faster
+            (from ~45s-3min to ~3-10s depending on network). The app downloads the update in the background during
+            the purge; on reload, the current cache is preserved, without downloading twice.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
+            ⚠️ <strong>These tools delete NO user data</strong> (maps, sessions, photos, prefs, backups).
+            They only purge the cache of the app's files (HTML / CSS / JS / icons). When in doubt,
+            <strong>📤 Export the profile</strong> BEFORE so you have a complete backup at hand.
+          </p>
+        </div>
+  `;
 }
 
 
