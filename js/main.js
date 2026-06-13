@@ -1260,9 +1260,12 @@ function _initHomeLangSelect() {
   if (!sel || !window.I18n || typeof window.I18n.available !== "function") return;
   const langs = window.I18n.available() || [];
   const cur = window.I18n.getLang();
+  // 🌍 v1.46.0 — Header compact : on n'affiche QUE le drapeau (sur Windows il
+  // s'affiche en 2 lettres « FR »/« GB », ailleurs en glyphe drapeau). Le label
+  // complet (Français/English) reste dans le title/aria pour l'accessibilité.
   sel.innerHTML = langs.map(function(l) {
-    return '<option value="' + l.code + '"' + (l.code === cur ? ' selected' : '') + '>' +
-           (l.flag ? l.flag + ' ' : '') + l.label + '</option>';
+    return '<option value="' + l.code + '"' + (l.code === cur ? ' selected' : '') +
+           ' title="' + l.label + '">' + (l.flag || l.code.toUpperCase()) + '</option>';
   }).join("");
   if (sel._i18nBound) return;
   sel._i18nBound = true;

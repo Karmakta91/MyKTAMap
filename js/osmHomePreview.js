@@ -1556,10 +1556,22 @@
   // BOOT
   // =========================
   // Auto-mount au DOMContentLoaded + écoute changements opt-in pour refresh.
+  // 🌍 v1.46.0 — Le widget rend ses toggles/labels via window.I18n.t(). Comme
+  // I18n.init() est ASYNC (fetch des dicos), un mount au DOMContentLoaded peut
+  // s'exécuter AVANT que les dicos soient chargés → labels en clés brutes
+  // (osm_home.toggle.*). On attend donc I18n.init() avant le 1er mount.
+  function _mountWhenI18nReady() {
+    var ready = (window.I18n && typeof window.I18n.init === "function") ? window.I18n.init() : Promise.resolve();
+    Promise.resolve(ready).then(mount).catch(function() { mount(); });
+  }
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", mount);
+    document.addEventListener("DOMContentLoaded", _mountWhenI18nReady);
   } else {
-    setTimeout(mount, 100); // léger délai pour laisser PlanRegistry s'initialiser
+    setTimeout(_mountWhenI18nReady, 100); // léger délai pour laisser PlanRegistry s'initialiser
+  }
+  // 🌍 v1.46.0 — Re-render au changement de langue (labels reconstruits via I18n.t).
+  if (window.I18n && typeof window.I18n.onChange === "function") {
+    window.I18n.onChange(function() { try { mount(); } catch(e) {} });
   }
 
   // ============================================================
