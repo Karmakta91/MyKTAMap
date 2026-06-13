@@ -1618,7 +1618,7 @@ function _aideHtmlEn() {
             The <strong>🗑️ Clear the zone</strong> button (in the results) removes everything. Copyable text report to the
             clipboard (📋) for offline sharing (radio, SMS).
             A <strong>📚 Best practices</strong> accordion at the top of the modal gathers the essential tips
-            (stay calm, retrace your steps, look for the main axes/haulage ways, use a physical compass,
+            (stay calm, retrace your steps, look for the main axes/main galleries, use a physical compass,
             save your light, warn someone if you get a signal, what not to do). ⚠️ Geometric estimate
             only — it does <strong>NOT</strong> replace a real rescue operation (guide line, compass,
             spare lamp, paper map).
@@ -1755,18 +1755,18 @@ function _aideHtmlEn() {
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🏛️ Structures (pillars + walls + working faces)</div>
+          <div class="kta-aide-section-titre">🏛️ Structures (pillars + walls + quarry faces)</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">🟡</span><span>1st-mass pillar (polygon, yellow fill)</span>
             <span class="kta-aide-icone">🟠</span><span>2nd-mass pillar (polygon, orange fill) — auto-tagged level -1 in M-LVL</span>
             <span class="kta-aide-icone">🔵</span><span>Wall (polygon, blue fill)</span>
-            <span class="kta-aide-icone">🟨</span><span>1st-mass working face (polyline, yellow stroke) — this is a LINE, not a closed polygon</span>
-            <span class="kta-aide-icone">🟧</span><span>2nd-mass working face (polyline, orange stroke) — auto-tagged level -1 in M-LVL</span>
+            <span class="kta-aide-icone">🟨</span><span>1st-mass quarry face (polyline, yellow stroke) — this is a LINE, not a closed polygon</span>
+            <span class="kta-aide-icone">🟧</span><span>2nd-mass quarry face (polyline, orange stroke) — auto-tagged level -1 in M-LVL</span>
             <span class="kta-aide-icone">🧹</span><span>Erase (last point / last in-progress OR closed structure / 🎯 selection by map click / all)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
             <strong style="color:#a8b3c8;">Mapping the underground architecture</strong>: load-bearing pillars (1st/2nd mass of
-            limestone), retaining walls, and working faces. For polygons (pillars + walls), place at least 3 points
+            limestone), retaining walls, and quarry faces. For polygons (pillars + walls), place at least 3 points
             then re-click the lit icon to close. For polylines (faces), place at least 2 points then re-click the
             icon to validate the line. No pathfinder effect (read-only — that's different from the ⛔ Inaccessible zone which
             blocks the route).
