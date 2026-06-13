@@ -1269,7 +1269,18 @@ function _initHomeLangSelect() {
   sel.addEventListener("change", function() {
     const code = sel.value;
     const done = (typeof window.I18n.setLang === "function") ? window.I18n.setLang(code) : Promise.resolve();
-    Promise.resolve(done).then(function() { _applyI18nDom(document); });
+    Promise.resolve(done).then(function() {
+      _applyI18nDom(document);
+      // #loaderPerfDesc n'est PAS un data-i18n (rempli en JS depuis les metas
+      // tiling.js, traduit au point d'affichage). On le re-render à la bascule
+      // de langue en re-jouant le preset courant.
+      try {
+        if (typeof window.setLoaderPerfPreset === "function" &&
+            typeof window.getLoaderPerfPreset === "function") {
+          window.setLoaderPerfPreset(window.getLoaderPerfPreset());
+        }
+      } catch (e) { /* no-op : home non encore monté */ }
+    });
   });
 }
 
