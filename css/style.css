@@ -4945,6 +4945,12 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  /* 🌍 v1.46.0 — Depuis l'ajout du sélecteur de langue (5e élément des actions),
+     la rangée titre + actions peut dépasser sur mobile étroit. flex-wrap ne se
+     déclenche QUE si ça ne tient pas : desktop/large = 1 ligne inchangée ;
+     mobile serré = les actions passent sur une 2e ligne (alignées à droite via
+     margin-left:auto sur .loader-header-actions). Aucun bouton hors cadre. */
+  flex-wrap: wrap;
 }
 
 /* 🎨 v1.7.3 : Titre stylisé du loader — refonte D validée KARMA.
@@ -5086,6 +5092,9 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+  /* Reste collé à droite, qu'on soit sur la même ligne que le titre ou wrappé
+     sur une 2e ligne en mobile serré (cf .loader-header > flex-wrap). */
+  margin-left: auto;
 }
 
 /* 🌍 v1.45.0 — Sélecteur de langue GLOBALE sur le HOME (header). Compact,
