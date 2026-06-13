@@ -337,6 +337,8 @@ Pour l'Éditeur tableau (`tableEditor.js`), retrait du `width: 1100px` forcé da
 
 Toggle accessible **uniquement** depuis ⚙️ Configuration du home → section « 🎨 Affichage » (KARMA a fait retirer le doublon de ⚙️ Réglages map mode pour ne pas surcharger les Réglages in-app focus PAR PLAN).
 
+> 🎛️ **v1.46.3 — Refonte ergo des modales config (HOME + PLAN)** : sections réorganisées par **groupes thématiques** (en-têtes `config.group.*` via `I18n.t`/`data-i18n`, **même ordre dans les 2 modales**) : 🌍 Application · 📐 Plan (échelle/Nord/géoréf **regroupés**) · 📍 Navigation · 🎨 Affichage · 🚀 Performance · 🔒 Confidentialité · 🛠️ Système. **Déplacement de blocs uniquement** (tous les `id`/handlers préservés : PLAN `cfg_*`, HOME `loader*`). Échelle (m/px) extraite de « Détection des pas » → groupe calibration (proximité géoréf, demande KARMA). Doublons en-tête/section retirés (Affichage, Mode Perf ULTRA). M-LVL (`_renderMultiLevelSection`) toujours dormant. Fusion tri-langue : `scripts/merge-i18n-frags3.js`.
+
 Bug fix bonus dans `buildAppConfigFromPlan` : ce setter reconstruisait `APP_CONFIG = { ...cfg }` SANS les prefs globales → `scaledMarkers` et `showRoadIntersections` étaient écrasés au plan switch. Restauration explicite depuis localStorage maintenue dans cfg.
 
 ##### 41.15.4 Tracker rotation unwrapped (fix10)

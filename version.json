@@ -1,7 +1,7 @@
 {
-  "version": "v1.46.2",
+  "version": "v1.46.3",
   "released": "2026-06-13",
   "notes": [
-    "🌐 Correction de nombreux textes qui restaient en français quand l'application était utilisée en anglais ou en espagnol (code d'accès, alertes système, rapports…)."
+    "🎛️ Les réglages (accueil et carte) sont réorganisés par thème pour s'y retrouver plus vite — l'échelle et le géoréférencement sont désormais côte à côte."
   ]
 }

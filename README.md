@@ -8,7 +8,12 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.46.2` (13/06/2026) — **🐛 Rattrapage i18n** : ~415 textes restés en FR (visibles en EN/ES) corrigés.
+**📦 Version courante** : `v1.46.3` (13/06/2026) — **🎛️ Refonte ergo des modales de configuration** (tri thématique, échelle ↔ géoréf).
+
+**🎛️ v1.46.3 (13/06/2026)** — **Refonte ergonomique des modales de configuration** :
+- **HOME + carte** : sections réorganisées par **groupes thématiques** (même ordre dans les 2 modales) avec en-têtes : 🌍 Application · 📐 Plan : échelle & géoloc · 📍 Navigation · 🎨 Affichage · 🚀 Performance · 🔒 Confidentialité & sécurité · 🛠️ Système. **Zéro changement de logique** (blocs déplacés, tous les `id`/handlers préservés — PLAN 28 id, HOME 41 id, delta 0).
+- **Échelle (m/px) regroupée avec le Géoréférencement + Calibration Nord** (extraite de « Détection des pas ») — demande KARMA : les calibrations spatiales du plan côte à côte.
+- Clés d'en-tête `config.group.*` (fr/en/es) via `scripts/merge-i18n-frags3.js`. Label langue raccourci (« Langue / Language / Idioma », fini la redondance avec le groupe « Application »). Doublons de titres retirés (Affichage + Mode Performance ULTRA = en-tête de groupe). Lisibilité du menu déroulant langue corrigée (fond solide des `<option>`, dark + thème clair). M-LVL laissé dormant.
 
 **🐛 v1.46.2 (13/06/2026)** — **Phase 2 i18n : rattrapage du FR codé en dur** :
 - La migration v1.46.0 avait couvert les modules `js/` mais laissé du **FR codé en dur** dans les **scripts inline d'`index.html`** + quelques modules (jamais passé en clé → **invisible à `check-i18n`**, qui ne valide que la parité + les clés *appelées*). En EN/ES, ces textes restaient français (bug remonté par KARMA : flux **code d'accès PIN**).
