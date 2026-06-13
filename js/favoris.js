@@ -80,7 +80,7 @@ window.Favoris = (function() {
       if (window.OOMGuard && typeof window.OOMGuard.showToast === "function" &&
           e && (e.name === "QuotaExceededError" || /quota/i.test(e.message || ""))) {
         window.OOMGuard.showToast(
-          "Stockage saturé — favoris non sauvegardés. Pense à exporter ta session.",
+          window.I18n.t("fav.toast.storageFull"),
           "error"
         );
       }
@@ -366,7 +366,7 @@ window.Favoris = (function() {
     return file.text().then(function(txt) {
       return importFromJson(txt, opts);
     }).catch(function(e) {
-      return { ok: false, error: "Lecture fichier échec : " + (e.message || e) };
+      return { ok: false, error: window.I18n.t("fav.err.fileRead", { msg: (e.message || e) }) };
     });
   }
 

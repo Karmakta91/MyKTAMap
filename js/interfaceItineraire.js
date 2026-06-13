@@ -114,15 +114,13 @@ function _confirmRemplacerItineraire(onConfirm) {
   modal.innerHTML =
     '<div class="kta-modal" style="max-width:420px;">' +
       '<div class="kta-modal-icon" style="color:#f4c542;">⚠️</div>' +
-      '<div class="kta-modal-titre">Itinéraire en cours</div>' +
+      '<div class="kta-modal-titre">' + window.I18n.t("iti.replace.titre") + '</div>' +
       '<div class="kta-modal-texte">' +
-        'Un itinéraire est déjà actif. Si tu continues, il sera ' +
-        '<strong>remplacé</strong> par un nouvel itinéraire vers ce point ' +
-        '(depuis ta position tracker actuelle).' +
+        window.I18n.t("iti.replace.texte") +
       '</div>' +
       '<div class="kta-modal-actions">' +
-        '<button class="kta-btn kta-btn-ghost"   id="kta-iti-confirm-cancel" type="button">Annuler</button>' +
-        '<button class="kta-btn kta-btn-primary" id="kta-iti-confirm-ok"     type="button">🧭 Y aller quand même</button>' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-iti-confirm-cancel" type="button">' + window.I18n.t("iti.replace.cancel") + '</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-iti-confirm-ok"     type="button">' + window.I18n.t("iti.replace.ok") + '</button>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);
@@ -146,15 +144,15 @@ window.itineraireYAller = function(x, y, nom) {
     ? window.getTrackingPosition()
     : null;
   if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
-    alert("Position du tracker indisponible.");
+    alert(window.I18n.t("iti.err.trackerPos"));
     return;
   }
   if (!window.Pathfinder) {
-    alert("Module Pathfinder non chargé.");
+    alert(window.I18n.t("iti.err.pathfinder"));
     return;
   }
 
-  const labelPoint = nom ? String(nom) : ("Point (" + Math.round(x) + ", " + Math.round(y) + ")");
+  const labelPoint = nom ? String(nom) : window.I18n.t("iti.point.coords", { x: Math.round(x), y: Math.round(y) });
 
   async function _calculer() {
     // Ferme la popup Leaflet ouverte (sinon elle reste affichee derriere le tracé)
@@ -163,7 +161,7 @@ window.itineraireYAller = function(x, y, nom) {
     const waypoints = [
       {
         x: pos.x, y: pos.y, source: "tracker",
-        label: "🧭 Position actuelle (" + Math.round(pos.x) + ", " + Math.round(pos.y) + ")"
+        label: window.I18n.t("iti.wp.currentPos", { x: Math.round(pos.x), y: Math.round(pos.y) })
       },
       { x: x, y: y, source: "search", label: labelPoint }
     ];
@@ -206,7 +204,7 @@ window.itineraireYAller = function(x, y, nom) {
       _panEtFlashSurPoint({ x: x, y: y });
 
     } catch(err) {
-      alert("Erreur calcul itinéraire : " + (err.message || err));
+      alert(window.I18n.t("iti.err.compute", { err: (err.message || err) }));
     }
   }
 
@@ -228,7 +226,7 @@ window.itineraireAjouterWaypoint = function(x, y, nom) {
   // Ferme la popup Leaflet
   if (window.map) try { window.map.closePopup(); } catch(e) {}
 
-  const labelPoint = nom ? String(nom) : ("Point (" + Math.round(x) + ", " + Math.round(y) + ")");
+  const labelPoint = nom ? String(nom) : window.I18n.t("iti.point.coords", { x: Math.round(x), y: Math.round(y) });
   const newWaypoint = { x: x, y: y, source: "search", label: labelPoint };
 
   // Cas 1 : modale itineraire deja ouverte → ajoute direct a la liste
@@ -266,12 +264,18 @@ let _itiDistanceCtrl = null;
 // 4 modes choisis par l'utilisateur via segmented control dans la modale
 // Itinéraire. Le mode courant est affiché dans le label bottomleft (icône +
 // nom) et persisté en localStorage pour conserver le réglage entre sessions.
+// 🆕 i18n : label/hint ne vivent plus dans le const (résolus au rendu via
+// _presetLabel/_presetHint pour éviter d'appeler I18n.t() au load). Seuls
+// kmh (donnée) et icon (cosmétique stable) restent ici.
 const ITI_SPEED_PRESETS = {
-  blesse:  { kmh: 2, label: "Blessé",  icon: "🤕", hint: "Progression entravée, très lent, terrain accidenté" },
-  lente:   { kmh: 3, label: "Lente",   icon: "🐌", hint: "Prudent, étroitures, exploration" },
-  normale: { kmh: 5, label: "Normale", icon: "🚶", hint: "Allure standard (défaut)" },
-  rapide:  { kmh: 7, label: "Rapide",  icon: "🏃", hint: "Allure soutenue, parcours connu" }
+  blesse:  { kmh: 2, icon: "🤕" },
+  lente:   { kmh: 3, icon: "🐌" },
+  normale: { kmh: 5, icon: "🚶" },
+  rapide:  { kmh: 7, icon: "🏃" }
 };
+// Résolution i18n au rendu (jamais au load). Clés iti.speed.<key>.label/.hint
+function _presetLabel(key) { return window.I18n.t("iti.speed." + key + ".label"); }
+function _presetHint(key)  { return window.I18n.t("iti.speed." + key + ".hint"); }
 const DEFAULT_ITI_SPEED       = "normale";
 const ITI_SPEED_STORAGE_KEY   = "myktamap_iti_walking_preset";
 
@@ -366,11 +370,11 @@ window.getItiTempsMinutes = _tempsItineraireMinutes;
 
 // Formate une duree en minutes : "X min" si < 60, "Xh YY" sinon.
 function _formatTempsMinutes(totalMin) {
-  if (!totalMin || totalMin < 1) return "<1 min";
-  if (totalMin < 60) return Math.round(totalMin) + " min";
+  if (!totalMin || totalMin < 1) return window.I18n.t("iti.time.lessMin");
+  if (totalMin < 60) return window.I18n.t("iti.time.min", { n: Math.round(totalMin) });
   const heures  = Math.floor(totalMin / 60);
   const minutes = Math.round(totalMin - heures * 60);
-  return heures + "h" + (minutes < 10 ? "0" + minutes : minutes);
+  return window.I18n.t("iti.time.hourMin", { h: heures, m: (minutes < 10 ? "0" + minutes : minutes) });
 }
 
 function _afficherLabelDistanceItineraire(distanceM, nbWaypoints) {
@@ -382,11 +386,11 @@ function _afficherLabelDistanceItineraire(distanceM, nbWaypoints) {
     _itiDistanceCtrl = L.control({ position: "bottomleft" });
     _itiDistanceCtrl.onAdd = function() {
       const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-iti-distance");
-      div.innerHTML = '<span class="kta-iti-distance-icon">🗺️</span>Itinéraire : 0 m';
+      div.innerHTML = '<span class="kta-iti-distance-icon">🗺️</span>' + window.I18n.t("iti.label.empty");
       // Raccourci : clic sur le label → ouvre la modale itineraire (mode
       // navigation ou calcul selon presence d'un itineraire actif).
       div.style.cursor = "pointer";
-      div.title = "Cliquer pour ouvrir le menu Itinéraire";
+      div.title = window.I18n.t("iti.label.openMenu");
       // Empecher Leaflet de capturer les events (sinon clic propage a la map)
       L.DomEvent.disableClickPropagation(div);
       L.DomEvent.on(div, "click", function() {
@@ -407,29 +411,32 @@ function _afficherLabelDistanceItineraire(distanceM, nbWaypoints) {
     const distFmt    = window.formatDistance(distanceM, 1);
     const tempsFmt   = _formatTempsMinutes(tempsMin);
     const nbPausesInter = Math.max(0, (nbWaypoints || 0) - 2);
+    const presetLabel = _presetLabel(presetKey);
     el.innerHTML =
       '<span class="kta-iti-distance-icon">🗺️</span>' +
       '<span class="kta-iti-distance-val">' + distFmt + '</span>' +
       '<span class="kta-iti-distance-sep">·</span>' +
       '<span class="kta-iti-distance-time">⏱️ ' + tempsFmt + '</span>' +
       '<span class="kta-iti-distance-sep">·</span>' +
-      '<span class="kta-iti-distance-speed" title="Vitesse de marche : ' +
-        preset.label + ' (' + preset.kmh + ' km/h)">' +
-        preset.icon + ' ' + preset.label +
+      '<span class="kta-iti-distance-speed" title="' +
+        window.I18n.t("iti.label.speedTitle", { label: presetLabel, kmh: preset.kmh }) + '">' +
+        preset.icon + ' ' + presetLabel +
       '</span>';
     // Tooltip detaille pour la breakdown (vitesse + nb pauses)
     // 🆕 v1.23.0 : pause configurable → lit la valeur dynamique
     const pauseActive = _getItiPauseEnabled();
     const pauseMin    = _getItiPauseMinutes();
-    el.title =
-      "Distance : " + distFmt + "\n" +
-      "Temps estimé : " + tempsFmt +
-      " (vitesse " + preset.label + " — " + preset.kmh + " km/h" +
-      (nbPausesInter > 0 && pauseActive && pauseMin > 0
-        ? " + " + nbPausesInter + " pause" + (nbPausesInter > 1 ? "s" : "") +
-          " de " + pauseMin + " min"
-        : "") +
-      ")\nCliquer pour ouvrir le menu Itinéraire (vitesse, pause).";
+    const pausePart   = (nbPausesInter > 0 && pauseActive && pauseMin > 0)
+      ? window.I18n.t(nbPausesInter > 1 ? "iti.label.pausesPart" : "iti.label.pausePart",
+                      { n: nbPausesInter, min: pauseMin })
+      : "";
+    el.title = window.I18n.t("iti.label.tooltip", {
+      dist:  distFmt,
+      time:  tempsFmt,
+      label: presetLabel,
+      kmh:   preset.kmh,
+      pauses: pausePart
+    });
   }
 }
 
@@ -515,33 +522,33 @@ function _rafraichirListeWaypointsModale() {
   const cont = document.getElementById("kta-iti-waypoints-list");
   if (!cont) return;
   if (_itineraryWaypoints.length === 0) {
-    cont.innerHTML = '<div class="kta-iti-empty">Aucun waypoint — clique sur la carte ou sélectionne un point ci-dessus</div>';
+    cont.innerHTML = '<div class="kta-iti-empty">' + window.I18n.t("iti.wp.empty") + '</div>';
     return;
   }
   cont.innerHTML = _itineraryWaypoints.map(function(p, i) {
-    const label = p.label || ("x:" + Math.round(p.x) + " y:" + Math.round(p.y));
+    const label = p.label || window.I18n.t("iti.wp.coordShort", { x: Math.round(p.x), y: Math.round(p.y) });
     // 3 sources possibles : "search" (point existant), "tracker" (position
     // tracker), "click" (par defaut, clic carte). Icone + title adaptes.
     let sourceIcon, sourceTitle, sourceClass;
     if (p.source === "search") {
       sourceIcon  = "🎯";
-      sourceTitle = "Point existant";
+      sourceTitle = window.I18n.t("iti.wp.srcSearch");
       sourceClass = "";
     } else if (p.source === "tracker") {
       sourceIcon  = "📍";
-      sourceTitle = "Position tracker (snapshot)";
+      sourceTitle = window.I18n.t("iti.wp.srcTracker");
       sourceClass = " kta-iti-wp-icon-tracker";
     } else {
       sourceIcon  = "📍";
-      sourceTitle = "Clic carte";
+      sourceTitle = window.I18n.t("iti.wp.srcClick");
       sourceClass = "";
     }
     return '<div class="kta-iti-wp-row">' +
              '<span class="kta-iti-wp-num">' + (i + 1) + '</span>' +
              '<span class="kta-iti-wp-icon' + sourceClass + '" title="' + sourceTitle + '">' + sourceIcon + '</span>' +
              '<span class="kta-iti-wp-coord">' + _escapeHtml(label) + '</span>' +
-             '<button class="kta-iti-wp-goto"   data-idx="' + i + '" title="Aller à ce waypoint">🎯</button>' +
-             '<button class="kta-iti-wp-remove" data-idx="' + i + '" title="Retirer ce waypoint">✕</button>' +
+             '<button class="kta-iti-wp-goto"   data-idx="' + i + '" title="' + window.I18n.t("iti.wp.gotoTitle") + '">🎯</button>' +
+             '<button class="kta-iti-wp-remove" data-idx="' + i + '" title="' + window.I18n.t("iti.wp.removeTitle") + '">✕</button>' +
            '</div>';
   }).join("");
   // Wire-up des boutons retirer
@@ -614,9 +621,9 @@ function _afficherPanneauItineraireFlottant(mainModal) {
   panneau.innerHTML =
     '<span class="kta-iti-floater-icon">📍</span>' +
     '<span class="kta-iti-floater-msg">' +
-      'Mode clic actif — <strong id="kta-iti-floater-count">' + _itineraryWaypoints.length + '</strong> point(s)' +
+      window.I18n.t("iti.floater.clickMsg", { count: '<strong id="kta-iti-floater-count">' + _itineraryWaypoints.length + '</strong>' }) +
     '</span>' +
-    '<button class="kta-btn kta-btn-primary" id="kta-iti-floater-done" type="button">✓ Terminer</button>';
+    '<button class="kta-btn kta-btn-primary" id="kta-iti-floater-done" type="button">' + window.I18n.t("iti.floater.done") + '</button>';
   document.body.appendChild(panneau);
   _itineraryFloater = panneau;
 
@@ -628,7 +635,7 @@ function _afficherPanneauItineraireFlottant(mainModal) {
       _rafraichirListeWaypointsModale();
       const btn = document.getElementById("kta-iti-mode-click");
       if (btn) {
-        btn.textContent = "📍 Activer mode clic carte";
+        btn.textContent = window.I18n.t("iti.btn.modeClickActivate");
         btn.classList.remove("kta-actif");
       }
     }
@@ -726,7 +733,7 @@ function _activerModeClicAvoid(mainModal) {
     prefs.points.push({
       x:     x,
       y:     y,
-      label: "📍 Clic carte (" + Math.round(x) + ", " + Math.round(y) + ")",
+      label: window.I18n.t("iti.avoid.clickLabel", { x: Math.round(x), y: Math.round(y) }),
       id:    null
     });
     _setItiAvoidPrefs(prefs);
@@ -745,9 +752,9 @@ function _activerModeClicAvoid(mainModal) {
   panneau.innerHTML =
     '<span class="kta-iti-floater-icon">🚫</span>' +
     '<span class="kta-iti-floater-msg">' +
-      'Mode clic évitement actif — <strong id="kta-iti-avoid-floater-count">' + _getItiAvoidPrefs().points.length + '</strong> point(s) à éviter' +
+      window.I18n.t("iti.avoid.floaterMsg", { count: '<strong id="kta-iti-avoid-floater-count">' + _getItiAvoidPrefs().points.length + '</strong>' }) +
     '</span>' +
-    '<button class="kta-btn kta-btn-primary" id="kta-iti-avoid-floater-done" type="button">✓ Terminer</button>';
+    '<button class="kta-btn kta-btn-primary" id="kta-iti-avoid-floater-done" type="button">' + window.I18n.t("iti.floater.done") + '</button>';
   document.body.appendChild(panneau);
   _itiAvoidFloater = panneau;
 
@@ -758,7 +765,7 @@ function _activerModeClicAvoid(mainModal) {
       _rafraichirListeAvoidPoints();
       const btn = document.getElementById("kta-iti-avoid-click-map");
       if (btn) {
-        btn.textContent = "📍 Cliquer sur la carte";
+        btn.textContent = window.I18n.t("iti.avoid.clickMapBtn");
         btn.classList.remove("kta-actif");
       }
     }
@@ -796,54 +803,51 @@ function _htmlSectionAvoidItineraire(prefs) {
   return '' +
     '<div class="kta-iti-section">' +
       '<details class="kta-iti-avoid-details">' +
-        '<summary class="kta-iti-section-titre" style="cursor:pointer;">🚫 Préférences d\'évitement (optionnel)</summary>' +
+        '<summary class="kta-iti-section-titre" style="cursor:pointer;">' + window.I18n.t("iti.avoid.title") + '</summary>' +
         '<p class="kta-iti-help">' +
-          'Définis des points ou tags que le pathfinder essaiera de ne PAS traverser. ' +
-          'Si aucun chemin n\'existe en évitant ces contraintes, un fallback les ignore ' +
-          'avec un message d\'avertissement. <em>Les zones inaccessibles ⛔ sont des ' +
-          'contraintes dures séparées (toujours respectées).</em>' +
+          window.I18n.t("iti.avoid.help") +
         '</p>' +
 
         // === Points à éviter ===
         '<div class="kta-iti-avoid-group">' +
-          '<div class="kta-iti-avoid-group-titre">📍 Points à éviter</div>' +
+          '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.pointsTitle") + '</div>' +
           '<div class="kta-iti-avoid-search-wrap">' +
             '<input type="text" id="kta-iti-avoid-search-input" class="kta-cfg-input" ' +
-              'placeholder="🔍 Rechercher un point existant (nom, id, tag)…" autocomplete="off">' +
+              'placeholder="' + window.I18n.t("iti.avoid.searchPlaceholder") + '" autocomplete="off">' +
             '<div id="kta-iti-avoid-search-results" class="kta-iti-search-results"></div>' +
           '</div>' +
           '<div class="kta-iti-avoid-byid-wrap">' +
             '<input type="text" id="kta-iti-avoid-byid-input" class="kta-cfg-input" ' +
-              'placeholder="Saisir un ID exact…" autocomplete="off" style="flex:1;">' +
-            '<button id="kta-iti-avoid-byid-add" class="kta-btn kta-btn-ghost kta-btn-small" type="button">+ Ajouter par ID</button>' +
+              'placeholder="' + window.I18n.t("iti.avoid.byIdPlaceholder") + '" autocomplete="off" style="flex:1;">' +
+            '<button id="kta-iti-avoid-byid-add" class="kta-btn kta-btn-ghost kta-btn-small" type="button">' + window.I18n.t("iti.avoid.byIdAdd") + '</button>' +
           '</div>' +
           // 🚫 v169 (Karma_dev) : bouton mode clic carte — bascule la modale en
           // floater, chaque clic sur la map ajoute un point d'évitement
-          '<button id="kta-iti-avoid-click-map" class="kta-btn kta-btn-ghost kta-btn-small" type="button" style="margin-bottom:8px;">📍 Cliquer sur la carte</button>' +
+          '<button id="kta-iti-avoid-click-map" class="kta-btn kta-btn-ghost kta-btn-small" type="button" style="margin-bottom:8px;">' + window.I18n.t("iti.avoid.clickMapBtn") + '</button>' +
           '<div id="kta-iti-avoid-points-list" class="kta-iti-avoid-list"></div>' +
         '</div>' +
 
         // === Tags à éviter ===
         '<div class="kta-iti-avoid-group">' +
-          '<div class="kta-iti-avoid-group-titre">🏷️ Tags à éviter</div>' +
+          '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.tagsTitle") + '</div>' +
           '<p class="kta-iti-help" style="margin:2px 0 6px; font-size:11.5px;">' +
-            'Clique un tag pour le toggler. Tous les points avec ce tag seront évités.' +
+            window.I18n.t("iti.avoid.tagsHelp") +
           '</p>' +
           '<div id="kta-iti-avoid-tags-chips" class="kta-iti-avoid-tags-chips"></div>' +
         '</div>' +
 
         // === Marge ===
         '<div class="kta-iti-avoid-group">' +
-          '<div class="kta-iti-avoid-group-titre">📏 Marge autour des points à éviter</div>' +
+          '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.marginTitle") + '</div>' +
           '<div style="display:flex; align-items:center; gap:8px;">' +
             '<input type="number" id="kta-iti-avoid-radius" class="kta-cfg-input" ' +
               'value="' + radiusVal + '" min="0" max="500" step="10" style="width:90px;">' +
-            '<span style="font-size:12px; color:#8892a4;">px (défaut 100)</span>' +
+            '<span style="font-size:12px; color:#8892a4;">' + window.I18n.t("iti.avoid.marginUnit") + '</span>' +
           '</div>' +
         '</div>' +
 
         // === Reset ===
-        '<button id="kta-iti-avoid-reset" class="kta-btn kta-btn-ghost kta-btn-small" type="button" style="margin-top:6px;">🗑️ Reset tous les évitements</button>' +
+        '<button id="kta-iti-avoid-reset" class="kta-btn kta-btn-ghost kta-btn-small" type="button" style="margin-top:6px;">' + window.I18n.t("iti.avoid.reset") + '</button>' +
       '</details>' +
     '</div>';
 }
@@ -855,7 +859,7 @@ function _rafraichirListeAvoidPoints() {
   if (!el) return;
   const prefs = _getItiAvoidPrefs();
   if (prefs.points.length === 0) {
-    el.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">Aucun point à éviter pour le moment.</p>';
+    el.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">' + window.I18n.t("iti.avoid.listEmpty") + '</p>';
     return;
   }
   function _esc(s) {
@@ -864,7 +868,7 @@ function _rafraichirListeAvoidPoints() {
   el.innerHTML = prefs.points.map(function(p, idx) {
     return '<div class="kta-iti-avoid-chip">' +
              '<span class="kta-iti-avoid-chip-label">' + _esc(p.label || p.id || ("(" + p.x.toFixed(0) + "," + p.y.toFixed(0) + ")")) + '</span>' +
-             '<button class="kta-iti-avoid-chip-remove" data-idx="' + idx + '" type="button" title="Retirer">✕</button>' +
+             '<button class="kta-iti-avoid-chip-remove" data-idx="' + idx + '" type="button" title="' + window.I18n.t("iti.avoid.chipRemove") + '">✕</button>' +
            '</div>';
   }).join("");
   // Bind retraits
@@ -886,7 +890,7 @@ function _rafraichirListeAvoidPoints() {
 async function _rafraichirChipsAvoidTags() {
   const el = document.getElementById("kta-iti-avoid-tags-chips");
   if (!el) return;
-  el.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">Chargement des tags…</p>';
+  el.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">' + window.I18n.t("iti.avoid.tagsLoading") + '</p>';
   const prefs = _getItiAvoidPrefs();
   const available = await _itiAvoidGetAvailableTags();
   // Si l'utilisateur a deja ferme la modale entre temps, le sub-element peut
@@ -894,7 +898,7 @@ async function _rafraichirChipsAvoidTags() {
   const el2 = document.getElementById("kta-iti-avoid-tags-chips");
   if (!el2) return;
   if (available.length === 0) {
-    el2.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">Aucun tag détecté dans les points de ce plan.</p>';
+    el2.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">' + window.I18n.t("iti.avoid.tagsNone") + '</p>';
     return;
   }
   function _esc(s) {
@@ -943,7 +947,7 @@ function _bindAvoidSectionHandlers() {
         // viendra en remplacement)
         if (searchInput.value.trim() !== q) return;
         if (results.length === 0) {
-          searchRes.innerHTML = '<div class="kta-iti-search-result-empty">Aucun point trouvé</div>';
+          searchRes.innerHTML = '<div class="kta-iti-search-result-empty">' + window.I18n.t("iti.search.noPoint") + '</div>';
           searchRes.style.display = "block";
           return;
         }
@@ -952,7 +956,7 @@ function _bindAvoidSectionHandlers() {
         }
         searchRes.innerHTML = results.slice(0, 10).map(function(it, i) {
           const p = it.point;
-          const label = p.nom || p.id || "(point sans nom)";
+          const label = p.nom || p.id || window.I18n.t("iti.search.unnamed");
           const sub   = p.id  ? p.id : "";
           return '<div class="kta-iti-search-result" data-idx="' + i + '">' +
                    '<strong>' + _esc(label) + '</strong>' +
@@ -1006,7 +1010,7 @@ function _bindAvoidSectionHandlers() {
       if (!id) return;
       const resolved = window.Pathfinder.resolvePointById(id);
       if (!resolved) {
-        alert("Aucun point trouvé avec l'ID/nom : \"" + id + "\"");
+        alert(window.I18n.t("iti.err.idNotFound", { id: id }));
         return;
       }
       const prefs2 = _getItiAvoidPrefs();
@@ -1037,7 +1041,7 @@ function _bindAvoidSectionHandlers() {
       _activerModeClicAvoid(mainModal);
       // Indicateur visuel (devient inactif au "✓ Terminer" du floater)
       clickMapBtn.classList.add("kta-actif");
-      clickMapBtn.textContent = "📍 Mode clic actif…";
+      clickMapBtn.textContent = window.I18n.t("iti.avoid.clickMapActive");
     });
   }
 
@@ -1056,7 +1060,7 @@ function _bindAvoidSectionHandlers() {
   const resetBtn = document.getElementById("kta-iti-avoid-reset");
   if (resetBtn) {
     resetBtn.addEventListener("click", function() {
-      if (!confirm("Effacer tous les évitements (points + tags) ?")) return;
+      if (!confirm(window.I18n.t("iti.avoid.resetConfirm"))) return;
       _setItiAvoidPrefs({ points: [], tags: [], radius: ITI_AVOID_DEFAULT_RADIUS });
       _rafraichirListeAvoidPoints();
       _rafraichirChipsAvoidTags();
@@ -1093,7 +1097,7 @@ window.ouvrirItinerairModal = function() {
     _viderItineraire();
   }
 
-  const titre = modeNavigation ? "🗺️ Itinéraire actif — Navigation" : "🗺️ Calculer un itinéraire";
+  const titre = modeNavigation ? window.I18n.t("iti.modal.titreNav") : window.I18n.t("iti.modal.titreCalc");
 
   // ===== Section "Points de passage" UNIFIEE (mode calcul + mode navigation) =====
   // Les deux modes ont desormais les memes controles d'edition (ajout/suppression
@@ -1103,29 +1107,29 @@ window.ouvrirItinerairModal = function() {
   // de la liste, pour acceder rapidement aux extremites du tracé.
   const quickNavHtml = modeNavigation
     ? '<div class="kta-iti-quicknav">' +
-        '<button id="kta-iti-nav-debut" class="kta-btn kta-btn-primary" type="button">⏮️ Début</button>' +
-        '<button id="kta-iti-nav-fin"   class="kta-btn kta-btn-primary" type="button">⏭️ Fin</button>' +
-        '<button id="kta-iti-nav-tour"  class="kta-btn kta-btn-ghost"   type="button">🔁 Tour complet</button>' +
+        '<button id="kta-iti-nav-debut" class="kta-btn kta-btn-primary" type="button">' + window.I18n.t("iti.nav.start") + '</button>' +
+        '<button id="kta-iti-nav-fin"   class="kta-btn kta-btn-primary" type="button">' + window.I18n.t("iti.nav.end") + '</button>' +
+        '<button id="kta-iti-nav-tour"  class="kta-btn kta-btn-ghost"   type="button">' + window.I18n.t("iti.nav.tour") + '</button>' +
       '</div>'
     : '';
 
   const helpText = modeNavigation
-    ? 'Modifie tes waypoints (ajout via clic carte / 🧭 Ma position / recherche, suppression via ✕) puis 🔄 Recalculer pour mettre à jour le tracé.'
-    : 'Clique sur la carte, sélectionne un point existant, ou utilise ta position tracker. L\'itinéraire passera dans l\'ordre par chacun d\'eux, en suivant le réseau de routes existant au plus court.';
+    ? window.I18n.t("iti.points.helpNav")
+    : window.I18n.t("iti.points.helpCalc");
 
   const sectionPoints =
     '<div class="kta-iti-section">' +
-      '<div class="kta-iti-section-titre">📍 Points de passage</div>' +
+      '<div class="kta-iti-section-titre">' + window.I18n.t("iti.points.titre") + '</div>' +
       '<p class="kta-iti-help">' + helpText + '</p>' +
       quickNavHtml +
       '<div class="kta-iti-mode-toggle">' +
-        '<button id="kta-iti-mode-click" class="kta-btn kta-btn-primary" type="button">📍 Mode clic carte</button>' +
-        '<button id="kta-iti-tracker-pos" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;" title="Ajoute la position actuelle du tracker comme waypoint (snapshot fige)">🧭 Ma position</button>' +
-        '<button id="kta-iti-clear" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">🗑️ Vider</button>' +
+        '<button id="kta-iti-mode-click" class="kta-btn kta-btn-primary" type="button">' + window.I18n.t("iti.btn.modeClick") + '</button>' +
+        '<button id="kta-iti-tracker-pos" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;" title="' + window.I18n.t("iti.btn.myPosTitle") + '">' + window.I18n.t("iti.btn.myPos") + '</button>' +
+        '<button id="kta-iti-clear" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">' + window.I18n.t("iti.btn.clear") + '</button>' +
       '</div>' +
       '<div class="kta-iti-search-wrap">' +
         '<input type="text" id="kta-iti-search-input" class="kta-cfg-input" ' +
-          'placeholder="🔍 Rechercher un point existant (nom, id, tag)…" autocomplete="off">' +
+          'placeholder="' + window.I18n.t("iti.search.placeholder") + '" autocomplete="off">' +
         '<div id="kta-iti-search-results" class="kta-iti-search-results"></div>' +
       '</div>' +
       '<div id="kta-iti-waypoints-list" class="kta-iti-waypoints-list"></div>' +
@@ -1135,7 +1139,7 @@ window.ouvrirItinerairModal = function() {
   // Bouton principal "🎯 Calculer" / "🔄 Recalculer" selon presence d'itineraire.
   // Bouton "❌ Effacer" affiche uniquement si itineraire actif.
   // Statut Distance/Tronçons en haut si mode navigation.
-  const computeBtnLabel = modeNavigation ? "🔄 Recalculer l'itinéraire" : "🎯 Calculer l'itinéraire";
+  const computeBtnLabel = modeNavigation ? window.I18n.t("iti.btn.recompute") : window.I18n.t("iti.btn.compute");
   const currentPresetKey = _getItiSpeedPreset();
   const currentPreset    = ITI_SPEED_PRESETS[currentPresetKey];
   let statusActuel = '';
@@ -1146,40 +1150,40 @@ window.ouvrirItinerairModal = function() {
     statusActuel =
       '<div class="kta-iti-result" id="kta-iti-status-block" style="display:block; margin-bottom:10px;" ' +
            'data-distm="' + distActMeters + '" data-nbwp="' + nbWpAct + '">' +
-        '<div class="kta-iti-result-row"><strong>Distance :</strong> ' + window.formatDistance(distActMeters, 1) + '</div>' +
-        '<div class="kta-iti-result-row"><strong>⏱️ Temps estimé :</strong> ' +
+        '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.distance") + '</strong> ' + window.formatDistance(distActMeters, 1) + '</div>' +
+        '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.time") + '</strong> ' +
           '<span id="kta-iti-temps-val">' + _formatTempsMinutes(tempsActMin) + '</span> ' +
-          '<span class="kta-iti-temps-speed-hint" id="kta-iti-temps-speed-hint">(' + currentPreset.icon + ' ' + currentPreset.label + ')</span>' +
+          '<span class="kta-iti-temps-speed-hint" id="kta-iti-temps-speed-hint">(' + currentPreset.icon + ' ' + _presetLabel(currentPresetKey) + ')</span>' +
         '</div>' +
-        '<div class="kta-iti-result-row"><strong>Tronçons :</strong> ' + (existingItinerary.points.length - 1) + '</div>' +
+        '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.segments") + '</strong> ' + (existingItinerary.points.length - 1) + '</div>' +
       '</div>';
   }
   const eraseBtn = modeNavigation
-    ? '<button id="kta-iti-erase" class="kta-btn kta-btn-danger" type="button" style="width:100%; margin-top:8px;">❌ Effacer l\'itinéraire</button>'
+    ? '<button id="kta-iti-erase" class="kta-btn kta-btn-danger" type="button" style="width:100%; margin-top:8px;">' + window.I18n.t("iti.btn.erase") + '</button>'
     : '';
   // Segmented control pour la vitesse de marche (4 presets)
   // currentPresetKey est déjà défini plus haut (avant statusActuel)
   let speedButtonsHtml = "";
   Object.keys(ITI_SPEED_PRESETS).forEach(function(key) {
     const p = ITI_SPEED_PRESETS[key];
+    const pLabel = _presetLabel(key);
     const active = (key === currentPresetKey);
     speedButtonsHtml +=
       '<button type="button" class="kta-iti-speed-btn' + (active ? " kta-iti-speed-active" : "") + '" ' +
         'data-speed="' + key + '" ' +
-        'title="' + p.label + ' — ' + p.kmh + ' km/h. ' + p.hint + '">' +
+        'title="' + window.I18n.t("iti.speed.btnTitle", { label: pLabel, kmh: p.kmh, hint: _presetHint(key) }) + '">' +
         '<span class="kta-iti-speed-icon">' + p.icon + '</span>' +
-        '<span class="kta-iti-speed-label">' + p.label + '</span>' +
-        '<span class="kta-iti-speed-kmh">' + p.kmh + ' km/h</span>' +
+        '<span class="kta-iti-speed-label">' + pLabel + '</span>' +
+        '<span class="kta-iti-speed-kmh">' + window.I18n.t("iti.speed.kmh", { kmh: p.kmh }) + '</span>' +
       '</button>';
   });
   const sectionVitesse =
     '<div class="kta-iti-section">' +
-      '<div class="kta-iti-section-titre">🏃 Vitesse de marche estimée</div>' +
+      '<div class="kta-iti-section-titre">' + window.I18n.t("iti.speed.titre") + '</div>' +
       '<div class="kta-iti-speed-segmented" id="kta-iti-speed-segmented">' +
         speedButtonsHtml +
       '</div>' +
-      '<p class="kta-iti-speed-hint">Ajuste l\'estimation du temps de parcours. ' +
-        'Le mode actif s\'affiche dans le label bottom-left de la carte.</p>' +
+      '<p class="kta-iti-speed-hint">' + window.I18n.t("iti.speed.hint") + '</p>' +
     '</div>';
 
   // 🆕 v1.23.0 (KARMA "rajoute un temps de pause définissable entre chaque
@@ -1190,26 +1194,23 @@ window.ouvrirItinerairModal = function() {
   const pauseMin       = _getItiPauseMinutes();
   const sectionPause =
     '<div class="kta-iti-section">' +
-      '<div class="kta-iti-section-titre">🛑 Pause entre les arrêts</div>' +
+      '<div class="kta-iti-section-titre">' + window.I18n.t("iti.pause.titre") + '</div>' +
       '<label class="kta-iti-pause-row">' +
         '<input type="checkbox" id="kta-iti-pause-cb"' + (pauseEnabled ? " checked" : "") + '>' +
-        '<span>Inclure une pause entre chaque arrêt intermédiaire</span>' +
+        '<span>' + window.I18n.t("iti.pause.include") + '</span>' +
       '</label>' +
       '<div class="kta-iti-pause-row" id="kta-iti-pause-min-wrap" ' +
            'style="' + (pauseEnabled ? "" : "opacity:0.5; pointer-events:none;") + '">' +
-        '<label for="kta-iti-pause-min" style="flex-shrink:0;">Durée par pause :</label>' +
+        '<label for="kta-iti-pause-min" style="flex-shrink:0;">' + window.I18n.t("iti.pause.duration") + '</label>' +
         '<input type="number" id="kta-iti-pause-min" min="0" max="120" step="1" ' +
-               'value="' + pauseMin + '" style="width:70px;"> min' +
+               'value="' + pauseMin + '" style="width:70px;"> ' + window.I18n.t("iti.pause.minUnit") +
       '</div>' +
-      '<p class="kta-iti-speed-hint">Augmente la précision de l\'estimation : ' +
-        'chaque arrêt intermédiaire (entre départ et arrivée) ajoute cette pause. ' +
-        '2 waypoints = 0 pause, N waypoints = N-2 pauses. ' +
-        'S\'applique aussi au Mode Secours 🚨.</p>' +
+      '<p class="kta-iti-speed-hint">' + window.I18n.t("iti.pause.hint") + '</p>' +
     '</div>';
 
   const sectionAction =
     '<div class="kta-iti-section">' +
-      '<div class="kta-iti-section-titre">🎯 ' + (modeNavigation ? "Itinéraire actuel" : "Action") + '</div>' +
+      '<div class="kta-iti-section-titre">' + (modeNavigation ? window.I18n.t("iti.action.titreNav") : window.I18n.t("iti.action.titre")) + '</div>' +
       statusActuel +
       '<button id="kta-iti-compute" class="kta-btn kta-btn-primary" type="button" style="width:100%;">' + computeBtnLabel + '</button>' +
       eraseBtn +
@@ -1306,11 +1307,12 @@ window.ouvrirItinerairModal = function() {
     const distM = parseFloat(statusBlk.dataset.distm) || 0;
     const nbWp  = parseInt(statusBlk.dataset.nbwp, 10) || 2;
     const tMin  = _tempsItineraireMinutes(distM, nbWp);
-    const p     = ITI_SPEED_PRESETS[_getItiSpeedPreset()];
+    const pKey  = _getItiSpeedPreset();
+    const p     = ITI_SPEED_PRESETS[pKey];
     const tEl   = document.getElementById("kta-iti-temps-val");
     const hEl   = document.getElementById("kta-iti-temps-speed-hint");
     if (tEl) tEl.textContent = _formatTempsMinutes(tMin);
-    if (hEl) hEl.textContent = "(" + p.icon + " " + p.label + ")";
+    if (hEl) hEl.textContent = "(" + p.icon + " " + _presetLabel(pKey) + ")";
   }
 
   function fermer() {
@@ -1371,7 +1373,7 @@ window.ouvrirItinerairModal = function() {
       window.map.fitBounds(bounds, { padding: [40, 40], animate: false });
     });
     document.getElementById("kta-iti-erase").addEventListener("click", function() {
-      if (!confirm("Effacer l'itinéraire actif ?")) return;
+      if (!confirm(window.I18n.t("iti.erase.confirm"))) return;
       const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return r.type !== "itinerary"; });
       if (window.setRoads) window.setRoads(roadsNow);
       _viderItineraire();
@@ -1390,7 +1392,7 @@ window.ouvrirItinerairModal = function() {
 
   function _afficherResultatsRecherche(items) {
     if (!items || items.length === 0) {
-      searchResults.innerHTML = '<div class="kta-iti-search-empty">Aucun résultat</div>';
+      searchResults.innerHTML = '<div class="kta-iti-search-empty">' + window.I18n.t("iti.search.noResults") + '</div>';
       searchResults.style.display = "block";
       return;
     }
@@ -1398,7 +1400,7 @@ window.ouvrirItinerairModal = function() {
     const limite = items.slice(0, 10);
     searchResults.innerHTML = limite.map(function(it, idx) {
       const p = it.point;
-      const name = p.nom || p.id || "(sans nom)";
+      const name = p.nom || p.id || window.I18n.t("iti.search.noName");
       const sub = (p.id && p.id !== name) ? p.id + " — " : "";
       const layer = it.layerLabel || it.layerId || "";
       return '<div class="kta-iti-search-item" data-idx="' + idx + '">' +
@@ -1407,7 +1409,7 @@ window.ouvrirItinerairModal = function() {
              '</div>';
     }).join("");
     if (items.length > 10) {
-      searchResults.innerHTML += '<div class="kta-iti-search-more">+ ' + (items.length - 10) + ' autres résultats — affine la recherche</div>';
+      searchResults.innerHTML += '<div class="kta-iti-search-more">' + window.I18n.t("iti.search.more", { count: (items.length - 10) }) + '</div>';
     }
     searchResults.style.display = "block";
 
@@ -1436,7 +1438,7 @@ window.ouvrirItinerairModal = function() {
         x:      p.x,
         y:      p.y,
         source: "search",
-        label:  (p.nom || p.id || "?") + " (" + (it.layerLabel || it.layerId) + ")"
+        label:  window.I18n.t("iti.wp.searchLabel", { name: (p.nom || p.id || "?"), layer: (it.layerLabel || it.layerId) })
       });
       _ajouterWaypointVisuel({ x: p.x, y: p.y }, _itineraryWaypoints.length);
       _rafraichirListeWaypointsModale();
@@ -1473,7 +1475,7 @@ window.ouvrirItinerairModal = function() {
   btnMode.addEventListener("click", function() {
     if (_itineraryClickActive) {
       _desactiverModeClicCarte();
-      btnMode.textContent = "📍 Activer mode clic carte";
+      btnMode.textContent = window.I18n.t("iti.btn.modeClickActivate");
       btnMode.classList.remove("kta-actif");
     } else {
       _activerModeClicCarte();
@@ -1493,14 +1495,14 @@ window.ouvrirItinerairModal = function() {
       if (typeof window.getTrackingPosition !== "function") return;
       const pos = window.getTrackingPosition();
       if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
-        alert("Position du tracker indisponible.");
+        alert(window.I18n.t("iti.err.trackerPos"));
         return;
       }
       _itineraryWaypoints.push({
         x:      pos.x,
         y:      pos.y,
         source: "tracker",
-        label:  "🧭 Position actuelle (" + Math.round(pos.x) + ", " + Math.round(pos.y) + ")"
+        label:  window.I18n.t("iti.wp.currentPos", { x: Math.round(pos.x), y: Math.round(pos.y) })
       });
       _ajouterWaypointVisuel({ x: pos.x, y: pos.y }, _itineraryWaypoints.length);
       _rafraichirListeWaypointsModale();
@@ -1527,13 +1529,13 @@ window.ouvrirItinerairModal = function() {
     resEl.style.display = "none";
 
     if (_itineraryWaypoints.length < 2) {
-      errEl.textContent = "Il faut au moins 2 waypoints pour calculer un itinéraire.";
+      errEl.textContent = window.I18n.t("iti.err.min2");
       errEl.style.display = "block";
       return;
     }
 
     if (!window.Pathfinder) {
-      errEl.textContent = "Module Pathfinder non chargé.";
+      errEl.textContent = window.I18n.t("iti.err.pathfinder");
       errEl.style.display = "block";
       return;
     }
@@ -1543,7 +1545,7 @@ window.ouvrirItinerairModal = function() {
     // lance 2 calculs concurrents qui se marchent dessus sur le road preview.
     const originalText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = "⏳ Calcul en cours…";
+    btn.textContent = window.I18n.t("iti.btn.computing");
     try {
       // 🚫 v169 (Karma_dev) : lit les preferences d'evitement depuis localStorage
       // et les passe au Pathfinder. La logique 2-passes (fallback) est interne
@@ -1573,24 +1575,24 @@ window.ouvrirItinerairModal = function() {
           return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
         const noms = result.avoidedThrough.map(function(ap) {
-          return _esc(ap.label || ap.id || "(point)");
+          return _esc(ap.label || ap.id || window.I18n.t("iti.avoid.pointFallback"));
         }).join(", ");
         fallbackHtml =
           '<div class="kta-iti-result-row kta-iti-avoid-warning" style="color:#ff9933; background:rgba(255,153,51,0.10); border-left:3px solid #ff9933; padding:8px 10px; margin:6px 0; border-radius:4px;">' +
-            '⚠️ <strong>Impossible d\'éviter</strong> : ' + noms +
-            '<br><span style="font-size:11.5px;">Aucun chemin alternatif possible avec ces contraintes — l\'itinéraire calculé passe à proximité de ces points (marge ' + (result.avoidRadius || ITI_AVOID_DEFAULT_RADIUS) + 'px).</span>' +
+            window.I18n.t("iti.avoid.cantAvoid", { names: noms }) +
+            '<br><span style="font-size:11.5px;">' + window.I18n.t("iti.avoid.cantAvoidDetail", { radius: (result.avoidRadius || ITI_AVOID_DEFAULT_RADIUS) }) + '</span>' +
           '</div>';
       }
 
       const tempsCalcMin = _tempsItineraireMinutes(distM, _itineraryWaypoints.length);
       resEl.innerHTML =
         fallbackHtml +
-        '<div class="kta-iti-result-row"><strong>Distance :</strong> ' + window.formatDistance(distM, 1) + '</div>' +
-        '<div class="kta-iti-result-row"><strong>⏱️ Temps estimé :</strong> ' + _formatTempsMinutes(tempsCalcMin) + '</div>' +
-        '<div class="kta-iti-result-row"><strong>Tronçons traversés :</strong> ' + result.segmentCount + '</div>' +
+        '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.distance") + '</strong> ' + window.formatDistance(distM, 1) + '</div>' +
+        '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.time") + '</strong> ' + _formatTempsMinutes(tempsCalcMin) + '</div>' +
+        '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.segmentsCrossed") + '</strong> ' + result.segmentCount + '</div>' +
         '<div class="kta-iti-result-actions">' +
-          '<button id="kta-iti-save" class="kta-btn kta-btn-primary" type="button">💾 Enregistrer comme itinéraire</button>' +
-          '<button id="kta-iti-discard" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">❌ Effacer</button>' +
+          '<button id="kta-iti-save" class="kta-btn kta-btn-primary" type="button">' + window.I18n.t("iti.btn.save") + '</button>' +
+          '<button id="kta-iti-discard" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">' + window.I18n.t("iti.btn.discard") + '</button>' +
         '</div>';
       resEl.style.display = "block";
 

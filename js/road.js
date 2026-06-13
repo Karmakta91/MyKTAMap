@@ -217,15 +217,15 @@ function initRoad() {
         const e = window.LegendCustomization.findCustomEntry(window.modeRoad);
         typeLabel = e ? e.label : window.modeRoad;
       } else {
-        typeLabel = window.modeRoad === "principal"  ? "Principal"
-                  : window.modeRoad === "secondaire" ? "Secondaire"
-                  : window.modeRoad === "chemin"     ? "Chemin"
-                  : window.modeRoad === "jonction"   ? "Jonction"
+        typeLabel = window.modeRoad === "principal"  ? window.I18n.t("road.type.principal")
+                  : window.modeRoad === "secondaire" ? window.I18n.t("road.type.secondaire")
+                  : window.modeRoad === "chemin"     ? window.I18n.t("road.type.chemin")
+                  : window.modeRoad === "jonction"   ? window.I18n.t("road.type.jonction")
                   : window.modeRoad;
       }
       const lbl = _isNewRoad
-        ? "Nouveau tracé " + typeLabel
-        : "Sommet sur tracé " + typeLabel;
+        ? window.I18n.t("road.history.new", { type: typeLabel })
+        : window.I18n.t("road.history.vertex", { type: typeLabel });
       window.HistoryManager.record(lbl, _historyBefore, "roads");
     }
   });
@@ -1125,8 +1125,8 @@ function removeLastRoad() {
   if (currentRoad === removed) currentRoad = null;
   renderRoads();
   if (window.HistoryManager && _historyBefore) {
-    const typeLabel = removed && removed.type ? removed.type : "tracé";
-    window.HistoryManager.record("Supprimer dernier tracé (" + typeLabel + ")", _historyBefore, "roads");
+    const typeLabel = removed && removed.type ? removed.type : window.I18n.t("road.history.fallbackType");
+    window.HistoryManager.record(window.I18n.t("road.history.removeLast", { type: typeLabel }), _historyBefore, "roads");
   }
   return true;
 }
