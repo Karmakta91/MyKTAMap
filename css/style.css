@@ -5135,6 +5135,22 @@ html.kta-theme-light .kta-cfg-lang-select {
   border-color: rgba(30,95,153,0.35);
   color: #1e5f99;
 }
+/* 🌍 v1.46.3 — Lisibilité des OPTIONS du menu déroulant langue (HOME
+   .kta-cfg-lang-select + PLAN .kta-cfg-input). Le popup natif <option>
+   héritait d'un fond quasi-transparent → texte clair sur fond clair =
+   illisible. On force un fond solide contrasté (dark + variante claire). */
+.kta-cfg-lang-select option,
+.kta-cfg-input option {
+  background: #1a1f2e;
+  color: #e8eaf0;
+}
+body.kta-theme-light .kta-cfg-lang-select option,
+html.kta-theme-light .kta-cfg-lang-select option,
+body.kta-theme-light .kta-cfg-input option,
+html.kta-theme-light .kta-cfg-input option {
+  background: #f5edda;
+  color: #2a2118;
+}
 
 /* === 🚀 Mode Performance ULTRA — toggles dans la modale Réglages === */
 .kta-perf-ultra-row {

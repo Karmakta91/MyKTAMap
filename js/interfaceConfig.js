@@ -67,7 +67,6 @@ function _renderPerfUltraSection() {
   }
   return `
     <div class="kta-aide-section">
-      <div class="kta-aide-section-titre">${window.I18n.t("config.perfultra.titre")}</div>
       <p style="font-size:11.5px; color:#8892a4; margin:0 0 10px 0; line-height:1.5;">
         ${window.I18n.t("config.perfultra.intro")}
       </p>
