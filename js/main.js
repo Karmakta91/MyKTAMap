@@ -1296,7 +1296,7 @@ function _initHomeLangSelect() {
   // 🌍 v1.45.0 : I18N — précharge les dicos (fr = fallback obligatoire +
   // langue active) AVANT tout rendu d'UI/modale, pour que I18n.t() retourne
   // les traductions et jamais la clé brute. Échec réseau → dico {} (jamais de
-  // reject) → fallback FR garanti. Cf js/i18n.js.
+  // reject) → fallback FR garanti. Cf js/langManager.js.
   if (window.I18n && typeof window.I18n.init === "function") {
     try { await window.I18n.init(); }
     catch (e) { console.warn("[Main] I18n.init a échoué (fallback FR) :", e); }

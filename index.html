@@ -159,8 +159,8 @@
        pour être dispo dans tous les modules suivants (interfaceConfig…). Ne
        fait QUE définir window.I18n au load (aucune requête, aucune écriture
        storage). Les dicos lang/<code>.json sont fetch-és par I18n.init(), qui
-       est AWAIT-é dans main.js AVANT lancerApplication. Cf js/i18n.js. -->
-  <script src="js/i18n.js"></script>
+       est AWAIT-é dans main.js AVANT lancerApplication. Cf js/langManager.js. -->
+  <script src="js/langManager.js"></script>
 
   <!-- 🕵️ v1.31.8 F2 : INCOGNITO MODE — détecte ?incognito=1 au boot et shim
        Storage.prototype + IDBObjectStore.prototype writes en in-memory avant

@@ -52,7 +52,7 @@ const ASSETS_TO_CACHE = [
   // Squelette enrichi pour la fonctionnalité 🤖 Aide IA (modale Téléchargement contexte IA)
   "./docs/applications/AI_CONTEXT.md",
 
-  // 🌍 v1.45.0 : dicos i18n multi-langue (lus par js/i18n.js via fetch).
+  // 🌍 v1.45.0 : dicos i18n multi-langue (lus par js/langManager.js via fetch).
   // fr.json = langue de référence + fallback obligatoire ; en.json = anglais.
   // Précachés ici pour un fonctionnement offline instantané dès le 1er install.
   // Pour ajouter une langue : déposer lang/<code>.json + l'ajouter ici.
@@ -93,7 +93,7 @@ const ASSETS_TO_CACHE = [
   "./js/copyright.js",
   // 🌍 v1.45.0 : I18n — helper multi-langue (window.I18n). Chargé tôt dans
   // index.html (après copyright). Précharge lang/fr.json + langue active.
-  "./js/i18n.js",
+  "./js/langManager.js",
   // 🕵️ v1.31.8 F2 : Incognito Mode — shim Storage + IDB en in-memory si
   // ?incognito=1. Chargé SYNC juste après copyright pour intercepter avant
   // tout autre module. Mode normal : pose juste window.IncognitoMode = {...}.
@@ -358,10 +358,10 @@ const CRITICAL_APP_SHELL = [
   "./",
   "./css/style.css",
   "./js/copyright.js",
-  // 🌍 v1.45.0 : I18n + dico fallback. i18n.js est AWAIT-é au boot (main.js) et
+  // 🌍 v1.45.0 : I18n + dico fallback. langManager.js est AWAIT-é au boot (main.js) et
   // fr.json est le fallback universel → tous deux critiques pour un boot offline
   // correct (sinon I18n.t retournerait les clés brutes au 1er install hors ligne).
-  "./js/i18n.js",
+  "./js/langManager.js",
   "./lang/fr.json",
   "./js/main.js",
   "./manifest.json",
