@@ -112,51 +112,49 @@
       // HTML inspiré de afficherModaleUpdateDispo (interfaceAlerts.js)
       // pour cohérence visuelle. Couleurs adaptées : violet/lavande pour
       // l'incognito (vs ambre pour update).
+      var t = window.I18n.t;
       modal.innerHTML =
         '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:85vh;">' +
           '<div class="kta-readme-modal-header">' +
-            '<span class="kta-readme-modal-titre">🕵️ Activer le mode incognito ?</span>' +
+            '<span class="kta-readme-modal-titre">' + t("incognito.confirm.title") + '</span>' +
             '<button class="kta-panneau-close" id="kta-incog-confirm-close" type="button">✕</button>' +
           '</div>' +
           '<div class="kta-readme-modal-corps">' +
 
             '<div class="kta-aide-section">' +
-              '<div class="kta-aide-section-titre">📋 Ce qui change</div>' +
+              '<div class="kta-aide-section-titre">' + t("incognito.confirm.changes.title") + '</div>' +
               '<ul style="margin:8px 0 0 0; padding-left:22px; color:#c8d0e0; font-size:13px; line-height:1.7;">' +
-                '<li><strong>Aucune donnée n\'est sauvegardée</strong> sur ton appareil (points, tracés, zones, photos, tracker, préférences thème/langue…).</li>' +
-                '<li>Une <strong>nouvelle fenêtre</strong> s\'ouvre avec le paramètre <code>?incognito=1</code>.</li>' +
-                '<li>Bordure violette + badge <code>🕵️ INCOGNITO</code> dans le titre rappellent le contexte en permanence.</li>' +
-                '<li>Le mot de passe community et le tutoriel d\'onboarding sont <strong>skippés</strong>.</li>' +
+                '<li>' + t("incognito.confirm.changes.b1") + '</li>' +
+                '<li>' + t("incognito.confirm.changes.b2") + '</li>' +
+                '<li>' + t("incognito.confirm.changes.b3") + '</li>' +
+                '<li>' + t("incognito.confirm.changes.b4") + '</li>' +
               '</ul>' +
             '</div>' +
 
             '<div class="kta-aide-section">' +
-              '<div class="kta-aide-section-titre">⚠️ À savoir avant d\'activer</div>' +
+              '<div class="kta-aide-section-titre">' + t("incognito.confirm.warn.title") + '</div>' +
               '<div style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.25); border-radius:8px; padding:10px 12px;">' +
                 '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55;">' +
-                  'Toutes les <strong>modifs faites en incognito disparaissent</strong> à la fermeture de l\'onglet. ' +
-                  'Si tu ajoutes un POI, un tracé, une photo dans la fenêtre incognito et que tu fermes l\'onglet, ' +
-                  'tout est perdu. La <strong>fenêtre principale n\'est pas affectée</strong> — ' +
-                  'ta session courante est même sauvegardée juste avant l\'ouverture incognito (sécurité).' +
+                  t("incognito.confirm.warn.body") +
                 '</div>' +
               '</div>' +
             '</div>' +
 
             '<div class="kta-aide-section">' +
-              '<div class="kta-aide-section-titre">✅ Idéal pour</div>' +
+              '<div class="kta-aide-section-titre">' + t("incognito.confirm.usecases.title") + '</div>' +
               '<ul style="margin:8px 0 0 0; padding-left:22px; color:#c8d0e0; font-size:13px; line-height:1.7;">' +
-                '<li>Présenter un plan en <strong>démo publique</strong> sans exposer tes repérages</li>' +
-                '<li><strong>Prêter ta session</strong> à un tiers temporairement</li>' +
-                '<li><strong>Explorer un plan sensible</strong> sans polluer ton historique local</li>' +
-                '<li><strong>Tester</strong> une fonctionnalité depuis un état frais</li>' +
+                '<li>' + t("incognito.confirm.usecases.b1") + '</li>' +
+                '<li>' + t("incognito.confirm.usecases.b2") + '</li>' +
+                '<li>' + t("incognito.confirm.usecases.b3") + '</li>' +
+                '<li>' + t("incognito.confirm.usecases.b4") + '</li>' +
               '</ul>' +
             '</div>' +
 
             '<div style="display:flex; gap:10px; margin-top:14px;">' +
-              '<button class="kta-btn kta-btn-ghost"   id="kta-incog-confirm-cancel" type="button" style="flex:1;">Annuler</button>' +
+              '<button class="kta-btn kta-btn-ghost"   id="kta-incog-confirm-cancel" type="button" style="flex:1;">' + t("incognito.confirm.cancel") + '</button>' +
               '<button class="kta-cfg-incognito-btn"   id="kta-incog-confirm-accept" type="button" style="flex:2; margin:0;">' +
                 '<span style="font-size:16px;">🕵️</span>' +
-                '<span><strong>Activer le mode incognito</strong></span>' +
+                '<span><strong>' + t("incognito.confirm.accept") + '</strong></span>' +
               '</button>' +
             '</div>' +
 
@@ -402,10 +400,20 @@
       }
       // Helper : crée le badge avec classe block (CSS-driven layout)
       function _makeBadge() {
+        // Fallback FR défensif : le badge est injecté très tôt (setTimeout boot),
+        // window.I18n peut ne pas être prêt → on retombe sur le FR inline.
+        function _t(key, fb) {
+          try {
+            if (window.I18n && typeof window.I18n.t === "function" && window.I18n.has(key)) {
+              return window.I18n.t(key);
+            }
+          } catch (_) {}
+          return fb;
+        }
         var badge = document.createElement("div");
         badge.className = "kta-incognito-badge";
-        badge.textContent = "🕵️ INCOGNITO";
-        badge.title = "Mode incognito actif — aucune donnée n'est sauvegardée";
+        badge.textContent = _t("incognito.badge.label", "🕵️ INCOGNITO");
+        badge.title = _t("incognito.badge.tooltip", "Mode incognito actif — aucune donnée n'est sauvegardée");
         return badge;
       }
       // 1) Splash : inject dans #splashBox APRÈS #splashSubtitle

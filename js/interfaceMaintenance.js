@@ -294,8 +294,8 @@ async function mettreAJourCodeSeul() {
   overlay.innerHTML =
     '<div class="kta-modal">' +
       '<div class="kta-modal-icon">⏳</div>' +
-      '<div class="kta-modal-titre">Mise à jour en cours…</div>' +
-      '<div class="kta-modal-texte" id="kta-soft-update-status">Vérification de la connexion…</div>' +
+      '<div class="kta-modal-titre">' + window.I18n.t("maint.title_soft_update") + '</div>' +
+      '<div class="kta-modal-texte" id="kta-soft-update-status">' + window.I18n.t("maint.msg_checking_connection") + '</div>' +
     '</div>';
   document.documentElement.appendChild(overlay);
   const status = document.getElementById("kta-soft-update-status");
@@ -304,7 +304,7 @@ async function mettreAJourCodeSeul() {
 
   try {
     // 1. Ping Internet — sans réseau le re-fetch va échouer après la purge
-    _statusUpdate("Vérification de la connexion…");
+    _statusUpdate(window.I18n.t("maint.msg_checking_connection"));
     const online = await _pingInternet();
     if (!online) {
       overlay.remove();
@@ -350,7 +350,7 @@ async function mettreAJourCodeSeul() {
     // contient le nouveau copyright.js → reload sert la bonne version.
     // Si timeout 5s atteint sans waiting (= install vraiment lent) →
     // fallback reload anyway (= comportement v1.34.8 dégradé, pas pire).
-    _statusUpdate("Préparation du Service Worker…");
+    _statusUpdate(window.I18n.t("maint.msg_prep_sw"));
     if (navigator.serviceWorker) {
       try {
         const reg = await navigator.serviceWorker.getRegistration();
@@ -368,7 +368,7 @@ async function mettreAJourCodeSeul() {
           while (Date.now() < DEADLINE_MS) {
             const reg2 = await navigator.serviceWorker.getRegistration();
             if (reg2 && reg2.waiting) {
-              _statusUpdate("Activation du nouveau Service Worker…");
+              _statusUpdate(window.I18n.t("maint.msg_activating_sw"));
               reg2.waiting.postMessage({ type: "SKIP_WAITING" });
               // Attendre controllerchange (= nouveau SW pris le contrôle)
               // ou safety timeout 1.5s (si le browser tarde).
@@ -408,7 +408,7 @@ async function mettreAJourCodeSeul() {
     // ci-dessus) re-populera son cache au reload via son install handler.
     // Coût : 1 re-DL des assets au reload (~100 fichiers) — acceptable pour
     // une action volontaire avec ping internet validé en amont.
-    _statusUpdate("Nettoyage des caches…");
+    _statusUpdate(window.I18n.t("maint.msg_cleaning_caches"));
     if (window.caches) {
       try {
         const keys = await caches.keys();
@@ -427,7 +427,7 @@ async function mettreAJourCodeSeul() {
     // n'a pas encore fini, soit déjà rempli si l'install a terminé.
     // L'user voit un boot un poil plus long (~3-8s sur fibre) mais c'est
     // garantie de servir la nouvelle version.
-    _statusUpdate("Rechargement…");
+    _statusUpdate(window.I18n.t("maint.msg_reloading"));
     setTimeout(function() {
       window.location.reload();
     }, 200); // 200ms (au lieu de 400) — postMessage SKIP_WAITING est arrivé
@@ -435,7 +435,7 @@ async function mettreAJourCodeSeul() {
   } catch(err) {
     overlay.remove();
     console.error("[Soft update] erreur :", err);
-    alert("Erreur pendant la mise à jour douce :\n" + (err.message || err) + "\n\nTu peux essayer le reset complet à la place.");
+    alert(window.I18n.t("maint.error_soft_update", { detail: (err.message || err) }));
   }
 }
 
@@ -459,43 +459,37 @@ function _softUpdateOfflineWarning() {
       '<div class="kta-readme-modal-header kta-oom-header">' +
         '<span class="kta-oom-titre-big">' +
           '<span class="kta-oom-warn-side">⚠️</span>' +
-          '<span class="kta-oom-titre-text">PAS INTERNET OU SERVEUR INDISPO</span>' +
+          '<span class="kta-oom-titre-text">' + window.I18n.t("maint.title_offline_warning") + '</span>' +
           '<span class="kta-oom-warn-side">⚠️</span>' +
         '</span>' +
       '</div>' +
       '<div class="kta-readme-modal-corps kta-oom-corps">' +
         '<div class="kta-oom-intro">' +
-          'La <strong>mise à jour douce</strong> a besoin de joindre le serveur ' +
-          '<code>' + origin + '</code> pour télécharger les nouveaux fichiers (HTML, JS, CSS, icônes). ' +
-          'Le ping de vérification a échoué — l\'opération est <strong>annulée</strong>.' +
+          window.I18n.t("maint.intro_soft_update_offline", { origin: origin }) +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">🔍 Causes possibles</div>' +
+          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_causes") + '</div>' +
           '<ul class="kta-oom-list">' +
-            '<li>Pas de connexion Internet (Wi-Fi / 4G / 5G)</li>' +
-            '<li>Serveur <code>' + origin + '</code> indisponible (maintenance, panne hébergeur)</li>' +
-            '<li>Certificat SSL invalide ou DNS qui ne résout pas</li>' +
+            '<li>' + window.I18n.t("maint.reason_no_internet") + '</li>' +
+            '<li>' + window.I18n.t("maint.reason_server_down", { origin: origin }) + '</li>' +
+            '<li>' + window.I18n.t("maint.reason_ssl_dns") + '</li>' +
           '</ul>' +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">✅ Bonne nouvelle</div>' +
+          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_good_news") + '</div>' +
           '<p>' +
-            '<strong>Aucune donnée n\'a été supprimée.</strong> Le cache PWA, tes plans mémorisés, ' +
-            'ta session en cours et tes préférences sont <strong>intacts</strong>. ' +
-            'Tu peux continuer à utiliser l\'app normalement avec la version actuelle.' +
+            window.I18n.t("maint.reassurance_no_data_lost") +
           '</p>' +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">🔄 Recommandation</div>' +
+          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_recommendation") + '</div>' +
           '<p>' +
-            '<strong>Vérifie ta connexion Internet</strong> (Wi-Fi, 4G/5G) et que ' +
-            '<code>' + origin + '</code> répond bien, puis relance la mise à jour depuis ' +
-            '<strong>⚙️ Configuration → 🔄 Forcer la mise à jour</strong>.' +
+            window.I18n.t("maint.recommendation_soft_update", { origin: origin }) +
           '</p>' +
         '</div>' +
       '</div>' +
       '<div class="kta-oom-actions" style="justify-content:center;">' +
-        '<button class="kta-btn kta-btn-primary" id="kta-soft-update-offline-ok" type="button">✓ J\'ai compris</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-soft-update-offline-ok" type="button">' + window.I18n.t("maint.btn_understood") + '</button>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(overlay);
@@ -515,7 +509,7 @@ function viderCacheAppli() {
   // freeze silencieux de 5s si le réseau ne répond pas.
   const overlayPing = document.createElement("div");
   overlayPing.className = "kta-modal-overlay";
-  overlayPing.innerHTML = '<div class="kta-modal"><div class="kta-modal-icon">📶</div><div class="kta-modal-titre">Vérification de la connexion…</div><div class="kta-modal-texte">Test de la connexion Internet (max 5s).</div></div>';
+  overlayPing.innerHTML = '<div class="kta-modal"><div class="kta-modal-icon">📶</div><div class="kta-modal-titre">' + window.I18n.t("maint.ping_title") + '</div><div class="kta-modal-texte">' + window.I18n.t("maint.ping_text") + '</div></div>';
   document.documentElement.appendChild(overlayPing);
 
   _pingInternet().then(function(online) {
@@ -549,44 +543,40 @@ function _resetFlowOfflineWarning() {
       '<div class="kta-readme-modal-header kta-oom-header">' +
         '<span class="kta-oom-titre-big">' +
           '<span class="kta-oom-warn-side">⚠️</span>' +
-          '<span class="kta-oom-titre-text">PAS INTERNET OU SERVEUR INDISPO</span>' +
+          '<span class="kta-oom-titre-text">' + window.I18n.t("maint.title_offline_warning") + '</span>' +
           '<span class="kta-oom-warn-side">⚠️</span>' +
         '</span>' +
       '</div>' +
       '<div class="kta-readme-modal-corps kta-oom-corps">' +
         '<div class="kta-oom-intro">' +
-          'Tu es sur le point de <strong>tout réinitialiser</strong> alors que le serveur ' +
-          '<code>' + origin + '</code> est <strong>injoignable</strong>. ' +
-          'L\'application a besoin de ce serveur pour redescendre ses fichiers (HTML, JS, CSS, icônes) après le wipe.' +
+          window.I18n.t("maint.intro_reset_offline", { origin: origin }) +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">🔍 Causes possibles</div>' +
+          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_causes") + '</div>' +
           '<ul class="kta-oom-list">' +
-            '<li>Pas de connexion Internet (Wi-Fi / 4G / 5G)</li>' +
-            '<li>Serveur <code>' + origin + '</code> indisponible (maintenance, panne hébergeur)</li>' +
-            '<li>Certificat SSL invalide ou DNS qui ne résout pas</li>' +
+            '<li>' + window.I18n.t("maint.reason_no_internet") + '</li>' +
+            '<li>' + window.I18n.t("maint.reason_server_down", { origin: origin }) + '</li>' +
+            '<li>' + window.I18n.t("maint.reason_ssl_dns") + '</li>' +
           '</ul>' +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">⛔ Conséquence si tu continues maintenant</div>' +
+          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_consequence_reset") + '</div>' +
           '<ul class="kta-oom-list">' +
-            '<li><strong>L\'app sera inutilisable</strong> tant que le serveur ne sera pas joignable à nouveau.</li>' +
-            '<li>Le splash et le loader ne s\'afficheront même pas — le navigateur cherchera les fichiers, ne les trouvera plus en cache, et restera bloqué.</li>' +
-            '<li>Tous tes plans mémorisés, ta session en cours et tes préférences seront <strong>perdus définitivement</strong>.</li>' +
+            '<li>' + window.I18n.t("maint.consequence_app_unusable") + '</li>' +
+            '<li>' + window.I18n.t("maint.consequence_no_splash") + '</li>' +
+            '<li>' + window.I18n.t("maint.consequence_data_lost") + '</li>' +
           '</ul>' +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">✅ Recommandation</div>' +
+          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_recommendation_check") + '</div>' +
           '<p>' +
-            '<strong>Vérifie ta connexion Internet</strong> (Wi-Fi, 4G/5G) et que <code>' + origin + '</code> ' +
-            'répond bien, puis relance la réinitialisation. L\'app aura ainsi une chance de se recharger ' +
-            'correctement après le wipe.' +
+            window.I18n.t("maint.recommendation_reset", { origin: origin }) +
           '</p>' +
         '</div>' +
       '</div>' +
       '<div class="kta-oom-actions" style="justify-content:space-between;">' +
-        '<button class="kta-btn kta-btn-ghost"   id="kta-reset-offline-annuler" type="button">Annuler</button>' +
-        '<button class="kta-btn kta-btn-danger"  id="kta-reset-offline-forcer"  type="button">Continuer quand même</button>' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-reset-offline-annuler" type="button">' + window.I18n.t("maint.btn_cancel") + '</button>' +
+        '<button class="kta-btn kta-btn-danger"  id="kta-reset-offline-forcer"  type="button">' + window.I18n.t("maint.btn_continue_anyway") + '</button>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(overlay);
@@ -614,27 +604,27 @@ function _resetFlowConfirmation() {
   overlay1.innerHTML = `
     <div class="kta-modal">
       <div class="kta-modal-icon">⚠️</div>
-      <div class="kta-modal-titre">Tout réinitialiser ?</div>
+      <div class="kta-modal-titre">${window.I18n.t("maint.title_reset_confirm")}</div>
       <div class="kta-modal-texte">
-        Cette action efface <strong>l'intégralité des données locales</strong> de l'application :
+        ${window.I18n.t("maint.reset_intro")}
         <ul style="text-align:left; margin:10px 0; padding-left:20px;">
-          <li>Cache PWA (assets, Service Worker)</li>
-          <li>Liste de plans mémorisés (registre + ZIPs locaux)</li>
-          <li>Session en cours (points / tracés / zones / structures / mesures)</li>
-          <li>Préférences (mode performance, logs détaillés…)</li>
+          <li>${window.I18n.t("maint.reset_item_cache")}</li>
+          <li>${window.I18n.t("maint.reset_item_maps")}</li>
+          <li>${window.I18n.t("maint.reset_item_session")}</li>
+          <li>${window.I18n.t("maint.reset_item_prefs")}</li>
         </ul>
-        <strong>Si vous utilisez l'app hors connexion, elle sera inutilisable jusqu'à la prochaine synchronisation.</strong>
+        <strong>${window.I18n.t("maint.reset_offline_warning")}</strong>
 
         <div style="margin-top:14px; padding:10px 12px; background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.30); border-radius:6px; text-align:left; font-size:13px;">
-          🗝️ <strong style="color:#f4c542;">Code d'accès requis au redémarrage</strong><br>
-          <span style="color:#c8d0e0;">Après reset, l'app redemandera le code d'accès communautaire :</span><br>
+          🗝️ <strong style="color:#f4c542;">${window.I18n.t("maint.reset_access_code_title")}</strong><br>
+          <span style="color:#c8d0e0;">${window.I18n.t("maint.reset_access_code_intro")}</span><br>
           <code style="display:inline-block; margin-top:6px; padding:4px 10px; background:#0a0d18; border:1px solid rgba(244,197,66,0.30); border-radius:4px; color:#f4c542; font-family:'SF Mono',Monaco,Consolas,monospace; font-size:14px; user-select:all;">${KTA_UNLOCK_PASSWORD_DISPLAY}</code>
-          <br><span style="color:#8892a4; font-size:11.5px; font-style:italic;">Note-le ou copie-le avant de reset, sinon tu ne pourras plus rentrer dans l'app !</span>
+          <br><span style="color:#8892a4; font-size:11.5px; font-style:italic;">${window.I18n.t("maint.reset_access_code_note")}</span>
         </div>
       </div>
       <div class="kta-modal-actions">
-        <button class="kta-btn kta-btn-ghost" id="cache-annuler-1">Annuler</button>
-        <button class="kta-btn kta-btn-danger" id="cache-continuer-1">Continuer →</button>
+        <button class="kta-btn kta-btn-ghost" id="cache-annuler-1">${window.I18n.t("maint.btn_cancel")}</button>
+        <button class="kta-btn kta-btn-danger" id="cache-continuer-1">${window.I18n.t("maint.btn_continue")}</button>
       </div>
     </div>
   `;
@@ -649,16 +639,16 @@ function _resetFlowConfirmation() {
     overlay2.innerHTML = `
       <div class="kta-modal kta-modal-danger">
         <div class="kta-modal-icon">🚨</div>
-        <div class="kta-modal-titre">Confirmation finale</div>
+        <div class="kta-modal-titre">${window.I18n.t("maint.title_final_confirm")}</div>
         <div class="kta-modal-texte">
-          ⚠️ <strong>ATTENTION</strong> ⚠️<br><br>
-          Cette action vide intégralement le cache du navigateur pour cette application.<br><br>
-          <strong>Hors connexion → l'application sera hors service.</strong><br><br>
-          Confirmez uniquement si vous êtes connecté à Internet.
+          ⚠️ <strong>${window.I18n.t("maint.final_warning_label")}</strong> ⚠️<br><br>
+          ${window.I18n.t("maint.final_intro")}<br><br>
+          <strong>${window.I18n.t("maint.final_offline")}</strong><br><br>
+          ${window.I18n.t("maint.final_confirm_online")}
         </div>
         <div class="kta-modal-actions">
-          <button class="kta-btn kta-btn-ghost" id="cache-annuler-2">Annuler</button>
-          <button class="kta-btn kta-btn-danger" id="cache-confirmer-2">🗑️ Vider maintenant</button>
+          <button class="kta-btn kta-btn-ghost" id="cache-annuler-2">${window.I18n.t("maint.btn_cancel")}</button>
+          <button class="kta-btn kta-btn-danger" id="cache-confirmer-2">${window.I18n.t("maint.btn_clear_now")}</button>
         </div>
       </div>
     `;
@@ -673,11 +663,11 @@ function _resetFlowConfirmation() {
       // particulier les IDB ouvertes qui restent verrouillées).
       const btn = this;
       btn.disabled = true;
-      btn.textContent = "⏳ Nettoyage…";
+      btn.textContent = window.I18n.t("maint.btn_cleaning");
       overlay2.remove();
       const overlayWait = document.createElement("div");
       overlayWait.className = "kta-modal-overlay";
-      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">Nettoyage en cours…</div><div class="kta-modal-texte">Suppression de tout le stockage local + désinscription du Service Worker.</div></div>`;
+      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">${window.I18n.t("maint.title_cleaning")}</div><div class="kta-modal-texte">${window.I18n.t("maint.cleaning_text")}</div></div>`;
       document.documentElement.appendChild(overlayWait);
 
       try {
@@ -728,7 +718,7 @@ function _resetFlowConfirmation() {
         overlayWait.remove();
         const overlayErr = document.createElement("div");
         overlayErr.className = "kta-modal-overlay";
-        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">❌</div><div class="kta-modal-titre">Erreur</div><div class="kta-modal-texte">Impossible de vider le cache :<br>${err.message || err}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button></div></div>`;
+        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">❌</div><div class="kta-modal-titre">${window.I18n.t("maint.title_error")}</div><div class="kta-modal-texte">${window.I18n.t("maint.error_clear_cache", { detail: (err.message || err) })}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">${window.I18n.t("maint.btn_ok")}</button></div></div>`;
         document.documentElement.appendChild(overlayErr);
         document.getElementById("cache-err-ok").addEventListener("click", function () { overlayErr.remove(); });
       }

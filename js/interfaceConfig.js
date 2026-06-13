@@ -67,30 +67,27 @@ function _renderPerfUltraSection() {
   }
   return `
     <div class="kta-aide-section">
-      <div class="kta-aide-section-titre">🚀 Mode Performance ULTRA</div>
+      <div class="kta-aide-section-titre">${window.I18n.t("config.perfultra.titre")}</div>
       <p style="font-size:11.5px; color:#8892a4; margin:0 0 10px 0; line-height:1.5;">
-        Pour les gros plans / appareils faibles. Active <strong>🚀 ULTRA</strong> pour appliquer
-        les optims d'un coup, ou ajuste individuellement chaque levier. Les changements
-        s'appliquent à la volée — sauf les options marquées d'un <span style="color:#ffb380;">liseré orange</span>
-        qui nécessitent un reload du plan pour prendre effet.
+        ${window.I18n.t("config.perfultra.intro")}
       </p>
-      ${row("cfg_perf_ultra", "🚀 Mode ULTRA (active tout)", s.ultra,
-            "Préset qui active les 7 toggles ci-dessous. Décocher = désactive tout.")}
+      ${row("cfg_perf_ultra", window.I18n.t("config.perfultra.ultra.label"), s.ultra,
+            window.I18n.t("config.perfultra.ultra.hint"))}
       <div style="border-top:1px solid rgba(255,255,255,0.08); margin:10px 0; padding-top:8px;"></div>
-      ${row("cfg_perf_decim", "🪜 Décimer les tracés au dézoom", s.decim,
-            "Simplifie les polylines via Ramer-Douglas-Peucker. Tracés moins lisses au dézoom mais bien plus rapides.")}
-      ${row("cfg_perf_animOff", "⚡ Désactiver animations zoom/pan", s.animOff,
-            "Pan/zoom instantanés au lieu d'animés. <strong>Reload requis</strong> après changement.", true)}
-      ${row("cfg_perf_noIntersect", "🎯 Désactiver cercles intersections (gros plans)", s.noIntersect,
-            "Seuil abaissé à 50 routes (vs 200 normal). Pas de cercles aux carrefours au-delà.")}
-      ${row("cfg_perf_noTooltips", "🚫 Désactiver popups sur calques données", s.noTooltips,
-            "Plus de popup au clic sur les markers des calques de données. Les points session restent interactifs. Utilise 🔍 pour interagir.")}
-      ${row("cfg_perf_slowSave", "🐢 Auto-save lent (30s)", s.slowSave,
-            "Sauvegarde automatique toutes les 30s au lieu de 1.5s. Risque de perdre ~30s de modifs si crash.")}
-      ${row("cfg_perf_viewportCull", "👁️ Ne rendre que les éléments visibles", s.viewportCull,
-            "Saute les routes <strong>ET les markers POI</strong> hors viewport. Pop-in léger au pan mais énorme gain sur plans denses (100+ POI).")}
-      ${row("cfg_perf_mobileZoomLimit", "🛡️ Limiter le dézoom sur mobile (anti-crash mémoire)", s.mobileZoomLimit,
-            "<strong>Coché par défaut</strong>. Sur smartphone, plafonne le dézoom max pour éviter le crash OOM quand Leaflet tente de rendre l'image entière au minZoom. <strong>Décocher</strong> = autorise le même dézoom max que sur PC (utile pour vue d'ensemble), mais risque de crash sur gros plans. <strong>Reload requis</strong> après changement.", true)}
+      ${row("cfg_perf_decim", window.I18n.t("config.perfultra.decim.label"), s.decim,
+            window.I18n.t("config.perfultra.decim.hint"))}
+      ${row("cfg_perf_animOff", window.I18n.t("config.perfultra.animOff.label"), s.animOff,
+            window.I18n.t("config.perfultra.animOff.hint"), true)}
+      ${row("cfg_perf_noIntersect", window.I18n.t("config.perfultra.noIntersect.label"), s.noIntersect,
+            window.I18n.t("config.perfultra.noIntersect.hint"))}
+      ${row("cfg_perf_noTooltips", window.I18n.t("config.perfultra.noTooltips.label"), s.noTooltips,
+            window.I18n.t("config.perfultra.noTooltips.hint"))}
+      ${row("cfg_perf_slowSave", window.I18n.t("config.perfultra.slowSave.label"), s.slowSave,
+            window.I18n.t("config.perfultra.slowSave.hint"))}
+      ${row("cfg_perf_viewportCull", window.I18n.t("config.perfultra.viewportCull.label"), s.viewportCull,
+            window.I18n.t("config.perfultra.viewportCull.hint"))}
+      ${row("cfg_perf_mobileZoomLimit", window.I18n.t("config.perfultra.mobileZoomLimit.label"), s.mobileZoomLimit,
+            window.I18n.t("config.perfultra.mobileZoomLimit.hint"), true)}
     </div>`;
 }
 
@@ -143,20 +140,15 @@ function _renderMultiLevelSection() {
     && window.PlanRegistry.getMultiLevel(planId));
   return `
     <div class="kta-aide-section">
-      <div class="kta-aide-section-titre">🏗️ Mode multi-niveau (avancé)</div>
+      <div class="kta-aide-section-titre">${window.I18n.t("config.mlvl.titre")}</div>
       <p style="font-size:11.5px; color:#8892a4; margin:0 0 10px 0; line-height:1.5;">
-        Active la gestion des niveaux (étages) pour les carrières multi-étages.
-        Ajoute un sélecteur de niveau dans le groupe <strong>🛣️ Tracés</strong> +
-        une sous-action <strong>🪜 Jonction interniveau</strong>. Les roads existantes
-        sans niveau explicite sont automatiquement considérées comme niveau 0.
-        <br><strong style="color:#c8d0e0;">Désactivé par défaut</strong> — uniquement
-        pour les plans qui le nécessitent (Glacière, Capucins, etc.).
+        ${window.I18n.t("config.mlvl.intro")}
       </p>
       <label class="kta-perf-ultra-row">
         <input type="checkbox" id="cfg_multiLevel" ${enabled ? "checked" : ""}>
         <span class="kta-perf-ultra-text">
-          <span class="kta-perf-ultra-label">🏗️ Activer le mode multi-niveau pour ce plan</span>
-          <span class="kta-perf-ultra-hint">Persisté par plan. Reload requis pour que les changements UI soient visibles dans la sidebar.</span>
+          <span class="kta-perf-ultra-label">${window.I18n.t("config.mlvl.toggle.label")}</span>
+          <span class="kta-perf-ultra-hint">${window.I18n.t("config.mlvl.toggle.hint")}</span>
         </span>
       </label>
     </div>`;
@@ -219,14 +211,9 @@ function _renderCfgGeorefSection() {
 
   return '' +
     '<div class="kta-aide-section">' +
-      '<div class="kta-aide-section-titre">🌐 Géoréférencement GPS</div>' +
+      '<div class="kta-aide-section-titre">' + window.I18n.t("config.georef.titre") + '</div>' +
       '<p style="font-size:12px; color:#8892a4; margin:4px 0 12px; line-height:1.5;">' +
-        'Calibre le plan en saisissant <strong>2 points de référence</strong> ' +
-        '(coordonnées x/y plan + lat/lng GPS WGS84). MyKTAMap calcule la ' +
-        'transformation rotation+échelle+translation pour projeter toutes les ' +
-        'annotations sur le globe. Le calibrage est <strong>persisté localement ' +
-        'par plan</strong> et automatiquement pré-rempli quand tu ouvres ' +
-        '<strong>📡 Export externe</strong> (KMZ / GPX) ou que tu importes un GPX.' +
+        window.I18n.t("config.georef.intro") +
       '</p>' +
 
       // ===== Point A =====
@@ -237,40 +224,40 @@ function _renderCfgGeorefSection() {
       // Les coords GPS lat/lng restent saisies manuellement (l'app ne
       // connaît pas le GPS du plan tant que la calibration n'existe pas).
       '<div class="kta-kmz-section" style="margin:8px 0;">' +
-        '<div class="kta-kmz-section-titre">📍 Point A</div>' +
+        '<div class="kta-kmz-section-titre">' + window.I18n.t("config.georef.pointA") + '</div>' +
         '<div class="kta-kmz-pt-grille">' +
-          '<label class="kta-kmz-lbl">Plan x :</label>' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planX") + '</label>' +
           '<input type="number" id="cfg_kmz_A_x"   value="' + pA.x   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
-          '<label class="kta-kmz-lbl">Plan y :</label>' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planY") + '</label>' +
           '<input type="number" id="cfg_kmz_A_y"   value="' + pA.y   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
-          '<label class="kta-kmz-lbl">GPS (lat, lng) :</label>' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.gpsLatLng") + '</label>' +
           // 🆕 hotfix21 — Input combiné lat/lng (format Google Maps natif).
           '<input type="text" id="cfg_kmz_A_coords" value="' + ((typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(pA.lat, pA.lng) : (Number.isFinite(pA.lat) && Number.isFinite(pA.lng) ? pA.lat + ", " + pA.lng : "")) + '" class="kta-cfg-input kta-kmz-input kta-gps-coords-input" inputmode="decimal" autocomplete="off" placeholder="48.8580, 2.2945">' +
         '</div>' +
         '<div class="kta-gps-coords-error" id="cfg_kmz_A_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_search" type="button">🔍 Chercher un point</button>' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_click" type="button">📍 Cliquer carte</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_search" type="button">' + window.I18n.t("config.georef.searchBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
         '</div>' +
         '<div id="cfg_kmz_A_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
       // ===== Point B =====
       '<div class="kta-kmz-section" style="margin:8px 0;">' +
-        '<div class="kta-kmz-section-titre">📍 Point B</div>' +
+        '<div class="kta-kmz-section-titre">' + window.I18n.t("config.georef.pointB") + '</div>' +
         '<div class="kta-kmz-pt-grille">' +
-          '<label class="kta-kmz-lbl">Plan x :</label>' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planX") + '</label>' +
           '<input type="number" id="cfg_kmz_B_x"   value="' + pB.x   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
-          '<label class="kta-kmz-lbl">Plan y :</label>' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planY") + '</label>' +
           '<input type="number" id="cfg_kmz_B_y"   value="' + pB.y   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
-          '<label class="kta-kmz-lbl">GPS (lat, lng) :</label>' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.gpsLatLng") + '</label>' +
           // 🆕 hotfix21 — Input combiné lat/lng (format Google Maps natif).
           '<input type="text" id="cfg_kmz_B_coords" value="' + ((typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(pB.lat, pB.lng) : (Number.isFinite(pB.lat) && Number.isFinite(pB.lng) ? pB.lat + ", " + pB.lng : "")) + '" class="kta-cfg-input kta-kmz-input kta-gps-coords-input" inputmode="decimal" autocomplete="off" placeholder="48.8520, 2.3050">' +
         '</div>' +
         '<div class="kta-gps-coords-error" id="cfg_kmz_B_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_search" type="button">🔍 Chercher un point</button>' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_click" type="button">📍 Cliquer carte</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_search" type="button">' + window.I18n.t("config.georef.searchBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
         '</div>' +
         '<div id="cfg_kmz_B_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
@@ -279,10 +266,10 @@ function _renderCfgGeorefSection() {
 
       '<div style="display:flex; gap:8px; flex-wrap:wrap;">' +
         '<button class="kta-btn kta-btn-primary" type="button" id="cfg_kmz_save">' +
-          '💾 Sauvegarder le calibrage' +
+          window.I18n.t("config.georef.saveBtn") +
         '</button>' +
         '<button class="kta-btn kta-btn-ghost"   type="button" id="cfg_kmz_clear">' +
-          '🗑️ Effacer' +
+          window.I18n.t("config.georef.clearBtn") +
         '</button>' +
       '</div>' +
     '</div>';
@@ -337,7 +324,7 @@ function _bindCfgGeorefHandlers() {
       el.classList.add("kta-gps-invalid");
       const errEl = errId ? document.getElementById(errId) : null;
       if (errEl) {
-        errEl.textContent = "Format attendu : 48.6808, 2.1588";
+        errEl.textContent = window.I18n.t("config.georef.formatExpected");
         errEl.style.display = "";
       }
       return { invalid: true };
@@ -350,7 +337,7 @@ function _bindCfgGeorefHandlers() {
 
   btnSave.addEventListener("click", function() {
     if (!window.KmzExport) {
-      _setStatus("Module KmzExport indisponible.", "err");
+      _setStatus(window.I18n.t("config.georef.errNoModule"), "err");
       return;
     }
     // 🆕 hotfix21 — Lecture lat/lng via input combiné. Format invalide
@@ -358,7 +345,7 @@ function _bindCfgGeorefHandlers() {
     const coordsA = _readCoordsCombo("cfg_kmz_A_coords", "cfg_kmz_A_err");
     const coordsB = _readCoordsCombo("cfg_kmz_B_coords", "cfg_kmz_B_err");
     if ((coordsA && coordsA.invalid) || (coordsB && coordsB.invalid)) {
-      _setStatus("Coordonnées GPS invalides — corrige les champs en rouge.", "err");
+      _setStatus(window.I18n.t("config.georef.errInvalidGps"), "err");
       return;
     }
     const c = {
@@ -372,7 +359,7 @@ function _bindCfgGeorefHandlers() {
     // Validation : tous les champs requis (x, y, lat, lng pour A et B)
     if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
         c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {
-      _setStatus("Tous les champs sont obligatoires (Plan x/y + GPS pour A et B).", "err");
+      _setStatus(window.I18n.t("config.georef.errAllRequired"), "err");
       return;
     }
     // Validation transform (lève si points colinéaires ou distance nulle)
@@ -384,15 +371,15 @@ function _bindCfgGeorefHandlers() {
         { lat: c.pointB.lat, lng: c.pointB.lng }
       );
     } catch(e) {
-      _setStatus("Calibrage invalide : " + e.message, "err");
+      _setStatus(window.I18n.t("config.georef.errInvalidCalib", { msg: e.message }), "err");
       return;
     }
     // Persistance
     const planId = window._currentLoadedPlanId || "default";
     window.KmzExport.setCalibration(planId, c);
-    _setStatus("✅ Calibrage sauvegardé. Auto-rempli dans 📡 Export externe.", "ok");
+    _setStatus(window.I18n.t("config.georef.okSaved"), "ok");
     if (window.OOMGuard && window.OOMGuard.showToast) {
-      window.OOMGuard.showToast("🌐 Calibrage GPS sauvegardé", "info");
+      window.OOMGuard.showToast(window.I18n.t("config.georef.toastSaved"), "info");
     }
   });
 
@@ -416,7 +403,7 @@ function _bindCfgGeorefHandlers() {
       const planId = window._currentLoadedPlanId || "default";
       localStorage.removeItem("myktamap_kmz_calib_" + planId);
     } catch(e) {}
-    _setStatus("Calibrage effacé.", null);
+    _setStatus(window.I18n.t("config.georef.cleared"), null);
   });
 
   // 🆕 v1.21.0-fix1 : boutons 🔍 Chercher / 📍 Cliquer carte (parité UX
@@ -441,7 +428,7 @@ function _cfgOuvrirRechercheGeoref(letter) {
   res.style.display = "block";
   res.innerHTML =
     '<input type="text" id="cfg_kmz_' + letter + '_search_q" class="kta-cfg-input" ' +
-      'placeholder="Tape un nom / id / tag..." style="width:100%; margin-bottom:6px;">' +
+      'placeholder="' + window.I18n.t("config.georef.searchPlaceholder") + '" style="width:100%; margin-bottom:6px;">' +
     '<div id="cfg_kmz_' + letter + '_search_list"></div>';
   const input = document.getElementById("cfg_kmz_" + letter + "_search_q");
   const list  = document.getElementById("cfg_kmz_" + letter + "_search_list");
@@ -460,7 +447,7 @@ function _cfgOuvrirRechercheGeoref(letter) {
       try { results = await window.SearchPoints.findByQuery(q) || []; } catch(e) {}
       if (input.value.trim() !== q) return;
       if (results.length === 0) {
-        list.innerHTML = '<div class="kta-kmz-search-empty">Aucun résultat pour « ' + q + ' »</div>';
+        list.innerHTML = '<div class="kta-kmz-search-empty">' + window.I18n.t("config.georef.searchEmpty", { q: q }) + '</div>';
         return;
       }
       list.innerHTML = results.slice(0, 10).map(function(it, i) {
@@ -528,8 +515,8 @@ function _cfgActiverModeClicGeoref(letter) {
   fl.className = "kta-iti-floater";
   fl.innerHTML =
     '<span class="kta-iti-floater-icon">📍</span>' +
-    '<span class="kta-iti-floater-msg">Clique sur la carte pour saisir le Point ' + letter + '</span>' +
-    '<button class="kta-btn kta-btn-ghost" id="cfg_kmz_click_cancel" type="button">Annuler</button>';
+    '<span class="kta-iti-floater-msg">' + window.I18n.t("config.georef.clickFloater", { letter: letter }) + '</span>' +
+    '<button class="kta-btn kta-btn-ghost" id="cfg_kmz_click_cancel" type="button">' + window.I18n.t("config.georef.cancel") + '</button>';
   document.body.appendChild(fl);
   const cancelBtn = document.getElementById("cfg_kmz_click_cancel");
   if (cancelBtn) {
@@ -563,7 +550,7 @@ function _cfgOuvrirRechercheStart() {
   res.style.display = "block";
   res.innerHTML =
     '<input type="text" id="cfg_start_search_q" class="kta-cfg-input" ' +
-      'placeholder="Tape un nom / id / tag..." style="width:100%; margin-bottom:6px;">' +
+      'placeholder="' + window.I18n.t("config.tracker.searchPlaceholder") + '" style="width:100%; margin-bottom:6px;">' +
     '<div id="cfg_start_search_list"></div>';
   const input = document.getElementById("cfg_start_search_q");
   const list  = document.getElementById("cfg_start_search_list");
@@ -582,7 +569,7 @@ function _cfgOuvrirRechercheStart() {
       try { results = await window.SearchPoints.findByQuery(q) || []; } catch(e) {}
       if (input.value.trim() !== q) return;
       if (results.length === 0) {
-        list.innerHTML = '<div class="kta-kmz-search-empty">Aucun résultat pour « ' + q + ' »</div>';
+        list.innerHTML = '<div class="kta-kmz-search-empty">' + window.I18n.t("config.tracker.searchEmpty", { q: q }) + '</div>';
         return;
       }
       list.innerHTML = results.slice(0, 10).map(function(it, i) {
@@ -636,8 +623,8 @@ function _cfgActiverModeClicStart() {
   fl.className = "kta-iti-floater";
   fl.innerHTML =
     '<span class="kta-iti-floater-icon">🧭</span>' +
-    '<span class="kta-iti-floater-msg">Clique sur la carte pour la position initiale du tracker</span>' +
-    '<button class="kta-btn kta-btn-ghost" id="cfg_start_click_cancel" type="button">Annuler</button>';
+    '<span class="kta-iti-floater-msg">' + window.I18n.t("config.tracker.clickFloater") + '</span>' +
+    '<button class="kta-btn kta-btn-ghost" id="cfg_start_click_cancel" type="button">' + window.I18n.t("config.tracker.cancel") + '</button>';
   document.body.appendChild(fl);
   const cancelBtn = document.getElementById("cfg_start_click_cancel");
   if (cancelBtn) {
@@ -1431,7 +1418,7 @@ function _ouvrirSelecteurNiveau(btnPastille) {
     checkboxes +=
       '<label class="kta-niv-vis-box">' +
         '<input type="checkbox" data-level="' + lvl + '"' + (checked ? ' checked' : '') + '>' +
-        '<span class="kta-niv-vis-label">Niv ' + lvl + '</span>' +
+        '<span class="kta-niv-vis-label">' + window.I18n.t("config.niveaux.levelShort", { lvl: lvl }) + '</span>' +
       '</label>';
   });
 
@@ -1441,42 +1428,39 @@ function _ouvrirSelecteurNiveau(btnPastille) {
   overlay.innerHTML =
     '<div class="kta-readme-modal-boite kta-niv-modal-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">🏗️ Niveaux</span>' +
-        '<button class="kta-panneau-close" id="kta-niv-close" type="button" aria-label="Fermer">&times;</button>' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("config.niveaux.titre") + '</span>' +
+        '<button class="kta-panneau-close" id="kta-niv-close" type="button" aria-label="' + window.I18n.t("config.niveaux.close") + '">&times;</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
 
         // SECTION 1 : Niveau actif (single-select)
         '<div class="kta-niv-section">' +
-          '<div class="kta-niv-section-titre">🎯 Niveau actif (pour dessiner)</div>' +
+          '<div class="kta-niv-section-titre">' + window.I18n.t("config.niveaux.active.titre") + '</div>' +
           '<p class="kta-niv-section-hint">' +
-            'Tous les nouveaux éléments (tracés, points, zones, tracker recalé) seront ' +
-            'tagués avec ce niveau.' +
+            window.I18n.t("config.niveaux.active.hint") +
           '</p>' +
           '<div class="kta-niv-segmented">' +
-            '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-sub" title="Ajouter un niveau en-dessous (min - 1)">−</button>' +
+            '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-sub" title="' + window.I18n.t("config.niveaux.addBelow") + '">−</button>' +
             segmented +
-            '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-add" title="Ajouter un niveau au-dessus (max + 1)">+</button>' +
+            '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-add" title="' + window.I18n.t("config.niveaux.addAbove") + '">+</button>' +
           '</div>' +
         '</div>' +
 
         // SECTION 2 : Niveaux visibles (multi-select)
         '<div class="kta-niv-section">' +
-          '<div class="kta-niv-section-titre">👁️ Niveaux visibles (filtre)</div>' +
+          '<div class="kta-niv-section-titre">' + window.I18n.t("config.niveaux.visible.titre") + '</div>' +
           '<p class="kta-niv-section-hint">' +
-            'Coche les niveaux que tu veux afficher sur la carte. Les jonctions sont ' +
-            'visibles si au moins un de leurs endpoints touche un niveau coché.' +
+            window.I18n.t("config.niveaux.visible.hint") +
           '</p>' +
           '<div class="kta-niv-vis-grid">' + checkboxes + '</div>' +
           '<div class="kta-niv-vis-actions">' +
-            '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-vis-all">Tous</button>' +
-            '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-vis-active">Actif seul</button>' +
+            '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-vis-all">' + window.I18n.t("config.niveaux.visible.all") + '</button>' +
+            '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-vis-active">' + window.I18n.t("config.niveaux.visible.activeOnly") + '</button>' +
           '</div>' +
         '</div>' +
 
         '<p style="font-size:11.5px; color:#8892a4; margin:6px 0 0 0; line-height:1.5;">' +
-          '⚠️ Changer le niveau actif <strong>annule</strong> tout tracé en cours et ' +
-          'reset le filtre visibles à [actif].' +
+          window.I18n.t("config.niveaux.warn") +
         '</p>' +
       '</div>' +
     '</div>';
@@ -1697,7 +1681,7 @@ function _ouvrirCreationJonction(btnSub) {
   function _optionsHtml(selectedLevel) {
     return levels.map(function(l) {
       return '<option value="' + l + '"' + (l === selectedLevel ? ' selected' : '') + '>' +
-             'Niveau ' + l + '</option>';
+             window.I18n.t("config.jonction.levelOption", { lvl: l }) + '</option>';
     }).join('');
   }
 
@@ -1712,27 +1696,26 @@ function _ouvrirCreationJonction(btnSub) {
   overlay.innerHTML =
     '<div class="kta-readme-modal-boite kta-jct-modal-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">🪜 Nouvelle jonction interniveau</span>' +
-        '<button class="kta-panneau-close" id="kta-jct-close" type="button" aria-label="Fermer">&times;</button>' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("config.jonction.titre") + '</span>' +
+        '<button class="kta-panneau-close" id="kta-jct-close" type="button" aria-label="' + window.I18n.t("config.jonction.close") + '">&times;</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         '<p style="margin:0 0 12px 0; font-size:13px; color:#c8d0e0;">' +
-          'Cette jonction (escalier, pente raide, puits interne) relie deux niveaux.' +
+          window.I18n.t("config.jonction.intro") +
         '</p>' +
         '<div class="kta-jct-grille">' +
-          '<label class="kta-cfg-label">Niveau de départ</label>' +
+          '<label class="kta-cfg-label">' + window.I18n.t("config.jonction.fromLabel") + '</label>' +
           '<select class="kta-cfg-input" id="kta-jct-from">' + _optionsHtml(cur) + '</select>' +
-          '<label class="kta-cfg-label">Niveau d\'arrivée</label>' +
+          '<label class="kta-cfg-label">' + window.I18n.t("config.jonction.toLabel") + '</label>' +
           '<select class="kta-cfg-input" id="kta-jct-to">' + _optionsHtml(defaultTo) + '</select>' +
         '</div>' +
         '<p style="font-size:11.5px; color:#8892a4; margin:12px 0 0 0; line-height:1.5;">' +
-          'Après OK, clique sur la carte pour poser les points de la jonction (autant que tu veux). ' +
-          'Le tracé sera magenta pointillé et restera toujours visible peu importe le niveau actif.' +
+          window.I18n.t("config.jonction.hint") +
         '</p>' +
       '</div>' +
       '<div class="kta-tracker-warn-actions">' +
-        '<button class="kta-btn kta-btn-ghost"   id="kta-jct-cancel" type="button">Annuler</button>' +
-        '<button class="kta-btn kta-btn-primary" id="kta-jct-ok"     type="button">OK — Tracer la jonction</button>' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-jct-cancel" type="button">' + window.I18n.t("config.jonction.cancel") + '</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-jct-ok"     type="button">' + window.I18n.t("config.jonction.okBtn") + '</button>' +
       '</div>' +
     '</div>';
 
@@ -1753,7 +1736,7 @@ function _ouvrirCreationJonction(btnSub) {
     const toLvl   = parseInt(document.getElementById("kta-jct-to").value,   10);
     if (!Number.isInteger(fromLvl) || !Number.isInteger(toLvl)) return;
     if (fromLvl === toLvl) {
-      alert("Les niveaux de départ et d'arrivée doivent être différents.");
+      alert(window.I18n.t("config.jonction.errSameLevel"));
       return;
     }
     _cleanup();
@@ -1816,7 +1799,7 @@ function _initLevelFilterControl() {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-level-control");
     const a   = L.DomUtil.create("a", "kta-level-btn", div);
     a.href      = "javascript:void(0)";
-    a.title     = "Niveau actif — Cliquer pour changer / filtrer";
+    a.title     = window.I18n.t("config.niveaux.controlTitle");
     a.innerHTML = '<span class="kta-niv-pastille" id="kta-niv-pastille-icone">' +
                   (APP_CONFIG.activeLevel || 0) + '</span>';
     // Empeche les events de propager a la carte (clic-pan + zoom-wheel)

@@ -42,6 +42,14 @@
     });
   }
 
+  // ========== HELPER I18N ==========
+  // Appelé AU RENDU uniquement (jamais au load) → les dicos sont prêts.
+  function _t(key, params) {
+    return (window.I18n && typeof window.I18n.t === "function")
+      ? window.I18n.t("swinsp." + key, params)
+      : key;
+  }
+
   // Normalise une URL ou un asset path en pathname relatif au scope SW.
   // Permet de comparer "./js/main.js" (asset list) avec "https://.../js/main.js" (cache key).
   function _normalize(urlLike) {
@@ -68,12 +76,12 @@
   function _querySwExpectedAssets() {
     return new Promise(function(resolve, reject) {
       if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
-        reject(new Error("Service Worker non actif (rechargez la page une fois)"));
+        reject(new Error(_t("err.swInactive")));
         return;
       }
       const channel = new MessageChannel();
       const timeoutId = setTimeout(function() { // lint-ok-modal-lifecycle (query IDB SW hors modale)
-        reject(new Error("Timeout réponse SW (3s)"));
+        reject(new Error(_t("err.timeout")));
       }, 3000);
       channel.port1.onmessage = function(event) {
         clearTimeout(timeoutId);
@@ -85,7 +93,7 @@
             critical:  Array.isArray(data.critical) ? data.critical : []
           });
         } else {
-          reject(new Error("Réponse SW inattendue : " + data.type));
+          reject(new Error(_t("err.unexpected", { type: data.type })));
         }
       };
       try {
@@ -130,7 +138,7 @@
   // QUERY CACHE API : assets vraiment présents
   // ============================================================
   async function _queryActualAssets(cacheName) {
-    if (!("caches" in window)) throw new Error("Cache API non supportée");
+    if (!("caches" in window)) throw new Error(_t("err.noCacheApi"));
     const cache = await caches.open(cacheName);
     const requests = await cache.keys();
     return requests.map(function(r) { return r.url; });
@@ -168,18 +176,18 @@
   function _refetchMissing(missing) {
     return new Promise(function(resolve, reject) {
       if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
-        reject(new Error("Service Worker non actif"));
+        reject(new Error(_t("err.swInactiveShort")));
         return;
       }
       const channel = new MessageChannel();
       const timeoutId = setTimeout(function() { // lint-ok-modal-lifecycle (query IDB SW hors modale)
-        reject(new Error("Timeout refetch (30s)"));
+        reject(new Error(_t("err.timeoutRefetch")));
       }, 30000);
       channel.port1.onmessage = function(event) {
         clearTimeout(timeoutId);
         const data = event.data || {};
         if (data.type === "REFETCH_DONE") resolve(data);
-        else reject(new Error("Réponse SW inattendue : " + data.type));
+        else reject(new Error(_t("err.unexpected", { type: data.type })));
       };
       try {
         navigator.serviceWorker.controller.postMessage({
@@ -199,18 +207,22 @@
   // 🆕 v1.43.22 — Labels user-friendly + emoji pour chaque type d'erreur
   // d'install. Permet à l'user de comprendre POURQUOI un asset manque
   // (FTP partiel = 404, serveur en erreur = 5xx, offline = network, etc.).
-  const FAILURE_LABELS = {
-    "404":     { icon: "🚫", label: "Absent du serveur (404)",     color: "#f4c542" },
-    "5xx":     { icon: "🔥", label: "Serveur en erreur (5xx)",     color: "#f46b6b" },
-    "4xx":     { icon: "🚧", label: "Erreur cliente (4xx)",         color: "#f4c542" },
-    "network": { icon: "📡", label: "Erreur réseau",                color: "#8cb4ff" },
-    "quota":   { icon: "💾", label: "Quota navigateur dépassé",     color: "#f46b6b" },
-    "parse":   { icon: "⚠️", label: "Réponse mal formée",           color: "#f4c542" },
-    "unknown": { icon: "❓", label: "Erreur inconnue",              color: "#8892a4" }
+  // icon/color = données visuelles (non traduites) ; le label texte est résolu
+  // au rendu via I18n (clé swinsp.fail.<type>).
+  const FAILURE_META = {
+    "404":     { icon: "🚫", color: "#f4c542" },
+    "5xx":     { icon: "🔥", color: "#f46b6b" },
+    "4xx":     { icon: "🚧", color: "#f4c542" },
+    "network": { icon: "📡", color: "#8cb4ff" },
+    "quota":   { icon: "💾", color: "#f46b6b" },
+    "parse":   { icon: "⚠️", color: "#f4c542" },
+    "unknown": { icon: "❓", color: "#8892a4" }
   };
 
   function _failureLabel(type) {
-    return FAILURE_LABELS[type] || FAILURE_LABELS.unknown;
+    const meta = FAILURE_META[type] || FAILURE_META.unknown;
+    const safeType = FAILURE_META[type] ? type : "unknown";
+    return { icon: meta.icon, color: meta.color, label: _t("fail." + safeType) };
   }
 
   function _renderReport(diff, cacheName, failures) {
@@ -233,19 +245,18 @@
     if (diff.missing.length === 0) {
       html +=
         '<div class="kta-mem-section" style="border-color:rgba(166,215,133,0.4); background:rgba(166,215,133,0.05);">' +
-          '<div class="kta-mem-section-titre" style="color:#a6d785;">✅ Tout est bien enregistré</div>' +
-          '<div class="kta-mem-line"><b>' + diff.present.length + '</b> assets attendus, tous présents dans le cache <code>' + _escapeHtml(cacheName) + '</code>.</div>' +
+          '<div class="kta-mem-section-titre" style="color:#a6d785;">' + _t("verdict.ok.titre") + '</div>' +
+          '<div class="kta-mem-line">' + _t("verdict.ok.line", { count: diff.present.length, cache: '<code>' + _escapeHtml(cacheName) + '</code>' }) + '</div>' +
         '</div>';
     } else {
       html +=
         '<div class="kta-mem-section" style="border-color:rgba(244,107,107,0.4); background:rgba(244,107,107,0.05);">' +
-          '<div class="kta-mem-section-titre" style="color:#f46b6b;">⚠️ Cache incomplet</div>' +
-          '<div class="kta-mem-line"><b>' + diff.missing.length + '</b> assets attendus sont absents du cache (sur ' + total + ' total). ' +
-          'Cache courant : <code>' + _escapeHtml(cacheName) + '</code></div>' +
-          '<div class="kta-mem-line">Couverture : <b>' + presentPct + '%</b> (' + diff.present.length + ' / ' + total + ')</div>' +
+          '<div class="kta-mem-section-titre" style="color:#f46b6b;">' + _t("verdict.ko.titre") + '</div>' +
+          '<div class="kta-mem-line">' + _t("verdict.ko.line", { count: diff.missing.length, total: total, cache: '<code>' + _escapeHtml(cacheName) + '</code>' }) + '</div>' +
+          '<div class="kta-mem-line">' + _t("verdict.ko.coverage", { pct: presentPct, present: diff.present.length, total: total }) + '</div>' +
           '<div style="margin-top:10px;">' +
             '<button type="button" id="kta-sw-inspector-refetch" class="kta-btn kta-btn-primary" style="font-size:13px; padding:8px 14px;">' +
-              '🔄 Récupérer les ' + diff.missing.length + ' fichier' + (diff.missing.length > 1 ? 's' : '') + ' manquant' + (diff.missing.length > 1 ? 's' : '') +
+              _t("btn.refetch", { count: diff.missing.length }) +
             '</button>' +
             '<span id="kta-sw-inspector-refetch-status" style="margin-left:10px; font-size:12px; color:#8892a4;"></span>' +
           '</div>' +
@@ -256,8 +267,8 @@
     if (diff.missing.length > 0) {
       html +=
         '<div class="kta-mem-section">' +
-          '<div class="kta-mem-section-titre">❌ Assets manquants (' + diff.missing.length + ')</div>' +
-          '<div class="kta-mem-line kta-mem-dim">Ces fichiers sont déclarés dans <code>ASSETS_TO_CACHE</code> du Service Worker mais ne sont pas dans le cache actuel.</div>' +
+          '<div class="kta-mem-section-titre">' + _t("missing.titre", { count: diff.missing.length }) + '</div>' +
+          '<div class="kta-mem-line kta-mem-dim">' + _t("missing.hint") + '</div>' +
           '<div class="kta-sw-inspector-scrollbox" style="max-height:240px; font-size:11.5px;">' +
             diff.missing.map(function(a) {
               const fail = failureByAsset[a];
@@ -270,7 +281,7 @@
                        '</span></div>';
               }
               return '<div>' + _escapeHtml(a) +
-                     ' <span style="color:#8892a4; font-family:sans-serif; font-size:11px;">❓ Cause inconnue</span></div>';
+                     ' <span style="color:#8892a4; font-family:sans-serif; font-size:11px;">' + _t("missing.causeUnknown") + '</span></div>';
             }).join('') +
           '</div>' +
         '</div>';
@@ -285,25 +296,26 @@
         .filter(function(t) { return failureCounts[t] > 0; })
         .map(function(t) {
           const lab = _failureLabel(t);
+          const safeType = FAILURE_META[t] ? t : "unknown";
           return '<span style="color:' + lab.color + '; margin-right:14px; white-space:nowrap;">' +
-                 lab.icon + ' <b>' + failureCounts[t] + '</b> ' + lab.label.toLowerCase() +
+                 lab.icon + ' <b>' + failureCounts[t] + '</b> ' + _t("failStat." + safeType) +
                  '</span>';
         }).join('');
       const ftpPartial = (failureCounts["404"] || 0) > 0;
       const networkIssue = (failureCounts["network"] || 0) > 0;
       let interpretation = '';
       if (ftpPartial && !networkIssue) {
-        interpretation = '🛠️ <b>Diagnostic probable :</b> déploiement FTP partiel (fichiers non poussés). À vérifier côté serveur.';
+        interpretation = _t("diag.ftp");
       } else if (networkIssue && !ftpPartial) {
-        interpretation = '🛠️ <b>Diagnostic probable :</b> coupure réseau pendant l\'install. Reconnecte-toi et clique « Récupérer manquants ».';
+        interpretation = _t("diag.network");
       } else if (ftpPartial && networkIssue) {
-        interpretation = '🛠️ <b>Diagnostic probable :</b> mélange de FTP partiel + coupure réseau. Reconnecte-toi, retry, et vérifie le serveur pour les échecs restants.';
+        interpretation = _t("diag.mixed");
       } else if ((failureCounts["quota"] || 0) > 0) {
-        interpretation = '🛠️ <b>Diagnostic probable :</b> quota navigateur dépassé. Libère de l\'espace ou désinstalle/réinstalle la PWA.';
+        interpretation = _t("diag.quota");
       }
       html +=
         '<div class="kta-mem-section" style="border-color:rgba(140,180,255,0.4); background:rgba(140,180,255,0.05);">' +
-          '<div class="kta-mem-section-titre" style="color:#8cb4ff;">🔍 Échecs d\'installation détectés (' + failures.length + ')</div>' +
+          '<div class="kta-mem-section-titre" style="color:#8cb4ff;">' + _t("failures.titre", { count: failures.length }) + '</div>' +
           '<div class="kta-mem-line">' + statsLine + '</div>' +
           (interpretation
             ? '<div class="kta-mem-line" style="margin-top:8px; font-size:12.5px;">' + interpretation + '</div>'
@@ -315,8 +327,8 @@
     // Section PRÉSENTS (collapse par défaut, affiche le count)
     html +=
       '<details class="kta-mem-section">' +
-        '<summary class="kta-mem-section-titre" style="cursor:pointer;">✅ Assets présents (' + diff.present.length + ')</summary>' +
-        '<div class="kta-mem-line kta-mem-dim" style="margin-top:8px;">Tous ces fichiers sont correctement enregistrés.</div>' +
+        '<summary class="kta-mem-section-titre" style="cursor:pointer;">' + _t("present.titre", { count: diff.present.length }) + '</summary>' +
+        '<div class="kta-mem-line kta-mem-dim" style="margin-top:8px;">' + _t("present.hint") + '</div>' +
         '<div class="kta-sw-inspector-scrollbox" style="font-size:11.5px;">' +
           diff.present.map(function(a) { return _escapeHtml(a); }).join('<br>') +
         '</div>' +
@@ -326,17 +338,15 @@
     if (diff.unexpected.length > 0) {
       html +=
         '<details class="kta-mem-section">' +
-          '<summary class="kta-mem-section-titre" style="cursor:pointer;">📦 Cache dynamique (' + diff.unexpected.length + ')</summary>' +
+          '<summary class="kta-mem-section-titre" style="cursor:pointer;">' + _t("dynamic.titre", { count: diff.unexpected.length }) + '</summary>' +
           '<div class="kta-mem-line kta-mem-dim" style="margin-top:8px;">' +
-            'Fichiers présents en cache mais non déclarés dans <code>ASSETS_TO_CACHE</code>. ' +
-            'Normal — ce sont les ressources cachées au runtime (plans utilisateur, tuiles, fetches divers) ' +
-            'soumises à l\'éviction LRU (cap ' + 800 + ' entrées).' +
+            _t("dynamic.hint", { cap: 800 }) +
           '</div>' +
           '<div class="kta-sw-inspector-scrollbox" style="font-size:11px;">' +
             diff.unexpected.slice(0, 100).map(function(u) {
               try { return _escapeHtml(new URL(u).pathname); } catch(e) { return _escapeHtml(u); }
             }).join('<br>') +
-            (diff.unexpected.length > 100 ? '<br><i>… et ' + (diff.unexpected.length - 100) + ' de plus</i>' : '') +
+            (diff.unexpected.length > 100 ? '<br><i>' + _t("dynamic.more", { count: (diff.unexpected.length - 100) }) + '</i>' : '') +
           '</div>' +
         '</details>';
     }
@@ -351,11 +361,11 @@
     return ''
       + '<div class="kta-readme-modal-boite" style="max-width:780px; width:95vw; max-height:90vh; display:flex; flex-direction:column;">'
       +   '<div class="kta-readme-modal-header" style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.1);">'
-      +     '<span class="kta-readme-modal-titre">🔧 Inspecteur Service Worker</span>'
-      +     '<button type="button" id="kta-sw-inspector-close" aria-label="Fermer" style="background:none; border:none; color:#e8eaf0; font-size:24px; cursor:pointer; padding:0 6px;">×</button>'
+      +     '<span class="kta-readme-modal-titre">' + _t("titre") + '</span>'
+      +     '<button type="button" id="kta-sw-inspector-close" aria-label="' + _t("close") + '" style="background:none; border:none; color:#e8eaf0; font-size:24px; cursor:pointer; padding:0 6px;">×</button>'
       +   '</div>'
       +   '<div class="kta-readme-modal-contenu" id="kta-sw-inspector-body" style="flex:1 1 auto; overflow-y:auto; padding:16px 18px; font-size:13px; color:#c8d0e0; line-height:1.5;">'
-      +     '<div style="text-align:center; padding:30px;">⏳ Analyse du cache en cours…</div>'
+      +     '<div style="text-align:center; padding:30px;">' + _t("loading") + '</div>'
       +   '</div>'
       + '</div>';
   }
@@ -390,11 +400,10 @@
       if (!bodyEl.isConnected) return;
       bodyEl.innerHTML =
         '<div class="kta-mem-section" style="border-color:rgba(244,107,107,0.4); background:rgba(244,107,107,0.05);">' +
-          '<div class="kta-mem-section-titre" style="color:#f46b6b;">❌ Erreur</div>' +
+          '<div class="kta-mem-section-titre" style="color:#f46b6b;">' + _t("error.titre") + '</div>' +
           '<div class="kta-mem-line">' + _escapeHtml(e.message || String(e)) + '</div>' +
           '<div class="kta-mem-line kta-mem-dim" style="margin-top:6px;">' +
-            'Si le Service Worker vient de s\'installer, recharge la page une fois et réessaie. ' +
-            'Si le problème persiste : <a href="/killsw.html" style="color:#8cb4ff;">réinitialiser le SW</a>.' +
+            _t("error.hint", { link: '<a href="/killsw.html" style="color:#8cb4ff;">' + _t("error.resetLink") + '</a>' }) +
           '</div>' +
         '</div>';
     }
@@ -409,8 +418,8 @@
     const status = document.getElementById("kta-sw-inspector-refetch-status");
     // 🆕 v1.44.0 — Pattern D via _lc.lockButton : auto-restore disabled + label
     // au release(). Plus besoin de gérer manuellement btn.disabled.
-    const release = (_lc && btn) ? _lc.lockButton(btn, { text: "⏳ Récupération…" }) : function() {};
-    if (status) status.textContent = "Téléchargement en cours…";
+    const release = (_lc && btn) ? _lc.lockButton(btn, { text: _t("refetch.running") }) : function() {};
+    if (status) status.textContent = _t("refetch.downloading");
     try {
       // 🆕 v1.44.0 — Pattern C via _lc.guard : throw ModalClosedError si
       // modale fermée pendant le refetch (long : ~50 assets × HTTP).
@@ -419,8 +428,8 @@
       const okCount   = (result.results || []).filter(function(r) { return r.ok; }).length;
       const failCount = (result.results || []).length - okCount;
       if (status && status.isConnected) {
-        status.textContent = "✅ " + okCount + " récupéré" + (okCount > 1 ? "s" : "") +
-                             (failCount > 0 ? " · ❌ " + failCount + " échec" + (failCount > 1 ? "s" : "") : "");
+        status.textContent = _t("refetch.okCount", { count: okCount }) +
+                             (failCount > 0 ? " · " + _t("refetch.failCount", { count: failCount }) : "");
         status.style.color = failCount > 0 ? "#f4c542" : "#a6d785";
       }
       // 🆕 v1.44.0 — setTimeout tracked : cleared si user ferme la modale
@@ -428,7 +437,7 @@
       const scheduleReload = function() {
         const bodyEl = document.getElementById("kta-sw-inspector-body");
         if (bodyEl) {
-          bodyEl.innerHTML = '<div style="text-align:center; padding:30px;">⏳ Re-vérification du cache…</div>';
+          bodyEl.innerHTML = '<div style="text-align:center; padding:30px;">' + _t("refetch.recheck") + '</div>';
           _collectAndRender(bodyEl);
         }
       };
@@ -436,7 +445,7 @@
       else     setTimeout(scheduleReload, 1500); // lint-ok-modal-lifecycle (fallback si _lc null)
     } catch(e) {
       if (e && e.name === "ModalClosedError") return;
-      release({ text: "🔄 Réessayer" });
+      release({ text: _t("refetch.retry") });
       if (status && status.isConnected) {
         status.textContent = "❌ " + (e.message || String(e));
         status.style.color = "#f46b6b";
@@ -526,9 +535,9 @@
         "font-size:13px; font-weight:600; z-index:100200; cursor:pointer;" +
         "max-width:90vw; text-align:center; line-height:1.45;" +
         "border:1px solid rgba(244,107,107,1);";
-      t.innerHTML = "⚠️ Cache incomplet : " + failCount + " fichier(s) manquant(s)." +
+      t.innerHTML = _t("toast.incomplete", { count: failCount }) +
                     "<br><span style='font-size:11.5px; font-weight:400; opacity:0.92;'>" +
-                    "Clic pour ouvrir 🔧 Inspecteur Service Worker</span>";
+                    _t("toast.incomplete.action") + "</span>";
       t.addEventListener("click", function() { // lint-ok-modal-lifecycle (toast standalone hors modale)
         try { t.remove(); } catch(e) {}
         if (window.SwInspector && typeof window.SwInspector.ouvrir === "function") {

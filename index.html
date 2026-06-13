@@ -417,7 +417,7 @@
             </div>
             <div id="ktaOsmHomeContent" class="kta-osm-home-content">
               <!-- Rempli dynamiquement par js/osmHomePreview.js -->
-              <div class="kta-osm-home-loading">⏳ Préparation…</div>
+              <div class="kta-osm-home-loading" data-i18n="home.osm.preparing">⏳ Préparation…</div>
             </div>
           </div>
         </div><!-- /.loader-col-osm -->
@@ -495,7 +495,7 @@
            NetworkAudit.isParanoia() === true. Rappel persistant à l'user que
            toute requête sortante non whitelistée est bloquée. Cliquable →
            ouvre ⚙️ Configuration pour aller décocher le toggle. -->
-      <div id="loaderParanoiaBadge" class="kta-net-paranoia-badge" style="display:none;" title="Cliquer pour ouvrir la configuration et désactiver">
+      <div id="loaderParanoiaBadge" class="kta-net-paranoia-badge" style="display:none;" data-i18n-title="home.privacy.badgeTitle" title="Cliquer pour ouvrir la configuration et désactiver" data-i18n="home.privacy.badge">
         🔒 MODE HORS-LIGNE STRICT ACTIF
       </div>
 
@@ -521,20 +521,20 @@
         <span class="kta-licence-community"><span>&copy; 2026</span>
           <img class="kta-loader-copyright-sig" src="icon/karma.png" alt="KARMA" title="KARMA — signature">
         </span>
-        <span class="kta-licence-pro kta-loader-copyright-edition-title">© 2026 MyKTAMap — édition pro · Tous droits réservés</span>
+        <span class="kta-licence-pro kta-loader-copyright-edition-title" data-i18n="home.footer.proEdition">© 2026 MyKTAMap — édition pro · Tous droits réservés</span>
         <span class="kta-loader-copyright-line2">
           <span class="kta-licence-community">
             <span class="kta-loader-copyright-sep">·</span>
-            <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer" title="Creative Commons Attribution - NonCommercial - ShareAlike 4.0">CC BY-NC-SA 4.0</a>
+            <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer" data-i18n-title="home.footer.licenceCcTitle" title="Creative Commons Attribution - NonCommercial - ShareAlike 4.0">CC BY-NC-SA 4.0</a>
             <span class="kta-loader-copyright-sep">·</span>
-            <span class="kta-loader-copyright-warn">Usage commercial interdit</span>
+            <span class="kta-loader-copyright-warn" data-i18n="home.footer.noCommercial">Usage commercial interdit</span>
           </span>
           <span class="kta-licence-pro">
             <span class="kta-loader-copyright-sep">·</span>
-            <span class="kta-loader-copyright-pro-badge">✓ Licence professionnelle active</span>
+            <span class="kta-loader-copyright-pro-badge" data-i18n="home.footer.proBadge">✓ Licence professionnelle active</span>
           </span>
           <span class="kta-loader-copyright-sep">·</span>
-          <span class="kta-loader-copyright-version" id="loaderCopyrightVersion" title="Version de l'app">v?</span>
+          <span class="kta-loader-copyright-version" id="loaderCopyrightVersion" data-i18n-title="home.footer.versionTitle" title="Version de l'app">v?</span>
         </span>
         <!-- 🆕 v1.9.2-fix17 (KARMA "rajoute dans le footer du home nos
              nouvelles citations") : mention des libs + algo majeurs du
@@ -552,7 +552,7 @@
         <div class="kta-loader-credits kta-loader-contact">
           📷 <a href="https://instagram.com/karma_kta" target="_blank" rel="noopener noreferrer">@karma_kta</a>
           · ✉️ <a href="mailto:contact@myktamap.fr">contact@myktamap.fr</a>
-          <span class="kta-licence-community">· 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer">Licence pro</a></span>
+          <span class="kta-licence-community">· 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" data-i18n="home.footer.proLink">Licence pro</a></span>
         </div>
         <div class="kta-loader-credits">
           <!-- 🆕 v1.40.29 — ajout 🌍 OSM (Vue OSM v1.39+ opt-in). Affiché dans
@@ -580,7 +580,7 @@
   <div id="loaderConfigModal" class="kta-readme-modal-overlay" style="display:none;">
     <div class="kta-readme-modal-boite kta-loader-config-boite">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre">⚙️ Configuration</span>
+        <span class="kta-readme-modal-titre" data-i18n="home.loader.configTitle">⚙️ Configuration</span>
         <button class="kta-panneau-close" id="loaderConfigClose">✕</button>
       </div>
       <div class="kta-readme-modal-corps kta-loader-config-corps">
@@ -608,22 +608,22 @@
 
           <!-- ─── Tiling : mode performance image, lié à l'import en cours ─── -->
           <div class="kta-perf-wrap">
-            <div class="kta-perf-titre">🖼️ Tiling de l'image (par plan)</div>
-            <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" aria-label="Mode performance">
+            <div class="kta-perf-titre" data-i18n="home.perf.tilingTitle">🖼️ Tiling de l'image (par plan)</div>
+            <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" data-i18n-title="home.perf.tilingAria" aria-label="Mode performance">
               <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">💤</span><span class="kta-perf-label">Désactivé</span>
+                <span class="kta-perf-emoji">💤</span><span class="kta-perf-label" data-i18n="home.perf.presetOff">Désactivé</span>
               </button>
               <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
-                <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label">Auto</span>
+                <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label" data-i18n="home.perf.presetAuto">Auto</span>
               </button>
               <button type="button" class="kta-perf-btn"        data-preset="quality"     role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">🌟</span><span class="kta-perf-label">Qualité</span>
+                <span class="kta-perf-emoji">🌟</span><span class="kta-perf-label" data-i18n="home.perf.presetQuality">Qualité</span>
               </button>
               <button type="button" class="kta-perf-btn"        data-preset="balanced"    role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">🎯</span><span class="kta-perf-label">Équilibré</span>
+                <span class="kta-perf-emoji">🎯</span><span class="kta-perf-label" data-i18n="home.perf.presetBalanced">Équilibré</span>
               </button>
               <button type="button" class="kta-perf-btn"        data-preset="performance" role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">⚡</span><span class="kta-perf-label">Performance</span>
+                <span class="kta-perf-emoji">⚡</span><span class="kta-perf-label" data-i18n="home.perf.presetPerformance">Performance</span>
               </button>
             </div>
             <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
@@ -634,17 +634,17 @@
 
           <!-- ─── Mode Performance ULTRA : toggles tracés/markers ─── -->
           <div class="kta-perf-wrap">
-            <div class="kta-perf-titre">🚀 Mode Performance ULTRA (tracés / markers)</div>
-            <p class="kta-loader-perf-hint">
+            <div class="kta-perf-titre" data-i18n="home.perf.ultraTitle">🚀 Mode Performance ULTRA (tracés / markers)</div>
+            <p class="kta-loader-perf-hint" data-i18n="home.perf.ultraIntro">
               Pour les gros plans qui crashent. N'affecte PAS l'image (déjà gérée par le Tiling ci-dessus).
               Préférence globale, conservée entre sessions.
             </p>
 
-            <label class="kta-perf-ultra-row" title="Active les 7 toggles ci-dessous en bloc">
+            <label class="kta-perf-ultra-row" data-i18n-title="home.perf.ultraMasterTitle" title="Active les 7 toggles ci-dessous en bloc">
               <input type="checkbox" id="loader_perf_ultra">
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">🚀 Mode ULTRA (active tout)</span>
-                <span class="kta-perf-ultra-hint">Préset : active les 7 optims ci-dessous en bloc.</span>
+                <span class="kta-perf-ultra-label" data-i18n="home.perf.masterLabel">🚀 Mode ULTRA (active tout)</span>
+                <span class="kta-perf-ultra-hint" data-i18n="home.perf.masterHint">Préset : active les 7 optims ci-dessous en bloc.</span>
               </span>
             </label>
 
@@ -653,48 +653,48 @@
             <label class="kta-perf-ultra-row">
               <input type="checkbox" id="loader_perf_decim">
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">🪜 Décimer les tracés au dézoom</span>
-                <span class="kta-perf-ultra-hint">Simplifie les polylines. Tracés moins lisses mais plus rapides.</span>
+                <span class="kta-perf-ultra-label" data-i18n="home.perf.decimLabel">🪜 Décimer les tracés au dézoom</span>
+                <span class="kta-perf-ultra-hint" data-i18n="home.perf.decimHint">Simplifie les polylines. Tracés moins lisses mais plus rapides.</span>
               </span>
             </label>
 
             <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
               <input type="checkbox" id="loader_perf_animOff">
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">⚡ Désactiver animations zoom/pan</span>
-                <span class="kta-perf-ultra-hint">Transitions instantanées. <strong>Reload requis</strong>.</span>
+                <span class="kta-perf-ultra-label" data-i18n="home.perf.animOffLabel">⚡ Désactiver animations zoom/pan</span>
+                <span class="kta-perf-ultra-hint" data-i18n-html="home.perf.animOffHint">Transitions instantanées. <strong>Reload requis</strong>.</span>
               </span>
             </label>
 
             <label class="kta-perf-ultra-row">
               <input type="checkbox" id="loader_perf_noIntersect">
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">🎯 Désactiver cercles intersections (gros plans)</span>
-                <span class="kta-perf-ultra-hint">Seuil 50 routes (vs 200). Pas de cercles aux carrefours au-delà.</span>
+                <span class="kta-perf-ultra-label" data-i18n="home.perf.noIntersectLabel">🎯 Désactiver cercles intersections (gros plans)</span>
+                <span class="kta-perf-ultra-hint" data-i18n="home.perf.noIntersectHint">Seuil 50 routes (vs 200). Pas de cercles aux carrefours au-delà.</span>
               </span>
             </label>
 
             <label class="kta-perf-ultra-row">
               <input type="checkbox" id="loader_perf_noTooltips">
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">🚫 Désactiver popups sur calques données</span>
-                <span class="kta-perf-ultra-hint">Points session restent interactifs. Utilise 🔍 pour les data-layers.</span>
+                <span class="kta-perf-ultra-label" data-i18n="home.perf.noTooltipsLabel">🚫 Désactiver popups sur calques données</span>
+                <span class="kta-perf-ultra-hint" data-i18n="home.perf.noTooltipsHint">Points session restent interactifs. Utilise 🔍 pour les data-layers.</span>
               </span>
             </label>
 
             <label class="kta-perf-ultra-row">
               <input type="checkbox" id="loader_perf_slowSave">
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">🐢 Auto-save lent (30s)</span>
-                <span class="kta-perf-ultra-hint">Sauvegarde toutes les 30s au lieu de 1.5s. Risque ~30s de modifs en cas de crash.</span>
+                <span class="kta-perf-ultra-label" data-i18n="home.perf.slowSaveLabel">🐢 Auto-save lent (30s)</span>
+                <span class="kta-perf-ultra-hint" data-i18n="home.perf.slowSaveHint">Sauvegarde toutes les 30s au lieu de 1.5s. Risque ~30s de modifs en cas de crash.</span>
               </span>
             </label>
 
             <label class="kta-perf-ultra-row">
               <input type="checkbox" id="loader_perf_viewportCull">
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">👁️ Ne rendre que les tracés visibles</span>
-                <span class="kta-perf-ultra-hint">Pop-in léger au pan, gros gain sur plans denses.</span>
+                <span class="kta-perf-ultra-label" data-i18n="home.perf.viewportCullLabel">👁️ Ne rendre que les tracés visibles</span>
+                <span class="kta-perf-ultra-hint" data-i18n="home.perf.viewportCullHint">Pop-in léger au pan, gros gain sur plans denses.</span>
               </span>
             </label>
 
@@ -710,8 +710,8 @@
             <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
               <input type="checkbox" id="loader_perf_mobileZoomLimit">
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">🛡️ Limiter le dézoom sur mobile (anti-crash mémoire)</span>
-                <span class="kta-perf-ultra-hint"><strong>Coché par défaut</strong>. Plafonne le dézoom max sur smartphone pour éviter le crash OOM. <strong>Décocher</strong> = autorise le même dézoom que sur PC (vue d'ensemble) mais risque de crash sur gros plans. <strong>Reload requis</strong>.</span>
+                <span class="kta-perf-ultra-label" data-i18n="home.perf.mobileZoomLabel">🛡️ Limiter le dézoom sur mobile (anti-crash mémoire)</span>
+                <span class="kta-perf-ultra-hint" data-i18n-html="home.perf.mobileZoomHint"><strong>Coché par défaut</strong>. Plafonne le dézoom max sur smartphone pour éviter le crash OOM. <strong>Décocher</strong> = autorise le même dézoom que sur PC (vue d'ensemble) mais risque de crash sur gros plans. <strong>Reload requis</strong>.</span>
               </span>
             </label>
           </div>
@@ -725,14 +725,14 @@
              pratique en cas de bug bloquant au chargement (l'user n'a pas accès
              à la modale ⚙️ Réglages in-app). -->
         <div class="kta-aide-section">
-          <div class="kta-perf-titre">🛠️ Debug</div>
+          <div class="kta-perf-titre" data-i18n="home.debug.title">🛠️ Debug</div>
           <button class="loader-btn-secondary kta-debug-toggle" type="button" id="loaderDebugBtn" aria-pressed="false" style="width:100%;">
-            🐛 Logs détaillés : <span id="loaderDebugState">OFF</span>
+            <span data-i18n="home.debug.logsLabel">🐛 Logs détaillés :</span> <span id="loaderDebugState">OFF</span>
           </button>
-          <button class="loader-btn-secondary" type="button" id="loaderShowLogsBtn" style="width:100%; margin-top:8px;">
+          <button class="loader-btn-secondary" type="button" id="loaderShowLogsBtn" style="width:100%; margin-top:8px;" data-i18n="home.debug.showLogs">
             📋 Afficher les logs
           </button>
-          <p class="kta-loader-perf-hint" style="margin-top:8px;">
+          <p class="kta-loader-perf-hint" style="margin-top:8px;" data-i18n="home.debug.hint">
             Toggle active la console verbeuse (tracker, fetch, etc.). Le bouton 📋 affiche les logs capturés directement (utile aussi sans plan chargé).
           </p>
         </div>
@@ -747,18 +747,18 @@
                - Runtime (plan chargé, session active, modules)
              Bouton 📋 Copier le rapport pour partager par DM en cas de bug. -->
         <div class="kta-aide-section">
-          <div class="kta-perf-titre">📊 Inspecteur</div>
-          <p class="kta-loader-perf-hint" style="margin-bottom:10px;">
+          <div class="kta-perf-titre" data-i18n="home.inspector.title">📊 Inspecteur</div>
+          <p class="kta-loader-perf-hint" style="margin-bottom:10px;" data-i18n-html="home.inspector.intro">
             Topo lisible de ce qui est actuellement <strong>chargé en mémoire</strong> côté navigateur : localStorage, IndexedDB, Cache PWA, état runtime. Utile pour comprendre la consommation et diagnostiquer un problème.
           </p>
-          <button class="loader-btn-secondary" type="button" id="loaderMemInspectorBtn" style="width:100%;">
+          <button class="loader-btn-secondary" type="button" id="loaderMemInspectorBtn" style="width:100%;" data-i18n="home.inspector.memBtn">
             📊 Voir l'état mémoire
           </button>
           <!-- 🆕 v1.43.12 — Inspecteur Service Worker (cf js/swInspector.js).
                Diagnostic du cache PWA : compare la liste ASSETS_TO_CACHE
                attendue avec ce qui est réellement en cache. Verdict +
                bouton pour récupérer les manquants. -->
-          <button class="loader-btn-secondary" type="button" id="loaderSwInspectorBtn" style="width:100%; margin-top:8px;">
+          <button class="loader-btn-secondary" type="button" id="loaderSwInspectorBtn" style="width:100%; margin-top:8px;" data-i18n="home.inspector.swBtn">
             🔧 Voir l'état du cache (Service Worker)
           </button>
         </div>
@@ -775,19 +775,19 @@
              d'abord (audit, mode strict), puis actions de purge progressive
              (Force update = cache PWA uniquement, Reset = tout). -->
         <div class="kta-aide-section">
-          <div class="kta-perf-titre">🔒 Confidentialité &amp; Audit</div>
-          <p class="kta-loader-perf-hint" style="margin-bottom:10px;">
+          <div class="kta-perf-titre" data-i18n="home.privacy.title">🔒 Confidentialité &amp; Audit</div>
+          <p class="kta-loader-perf-hint" style="margin-bottom:10px;" data-i18n-html="home.privacy.intro">
             MyKTAMap est <strong>100% client-side</strong> : aucune de tes données n'est envoyée à un serveur. Tu peux le vérifier toi-même.
           </p>
-          <button class="loader-btn-secondary" type="button" id="loaderNetLogBtn" style="width:100%; margin-bottom:6px;">
+          <button class="loader-btn-secondary" type="button" id="loaderNetLogBtn" style="width:100%; margin-bottom:6px;" data-i18n="home.privacy.netLogBtn">
             📋 Voir le journal réseau
           </button>
-          <button class="loader-btn-secondary" type="button" id="loaderNetDocBtn" style="width:100%; margin-bottom:10px;">
+          <button class="loader-btn-secondary" type="button" id="loaderNetDocBtn" style="width:100%; margin-bottom:10px;" data-i18n="home.privacy.netDocBtn">
             📖 Que fait l'app sur le réseau ?
           </button>
           <label class="kta-net-paranoia-toggle">
             <input type="checkbox" id="loaderNetParanoiaCb">
-            <span><strong>🔒 Mode hors-ligne strict</strong> — bloque activement toute requête sortante non-whitelistée (l'app reste 100% fonctionnelle offline). Préférence persistée.</span>
+            <span data-i18n-html="home.privacy.strictToggle"><strong>🔒 Mode hors-ligne strict</strong> — bloque activement toute requête sortante non-whitelistée (l'app reste 100% fonctionnelle offline). Préférence persistée.</span>
           </label>
           <!-- 🆕 v1.39.0 — Toggle opt-in "Vue OSM" (autorise tile.openstreetmap.org).
                Par défaut OFF (philosophie 100% offline préservée). Si activé,
@@ -795,7 +795,7 @@
                georef-calibrés (cf js/osmView.js). -->
           <label class="kta-net-paranoia-toggle" style="margin-top:8px;">
             <input type="checkbox" id="loaderOsmOptInCb">
-            <span><strong>🗺️ Autoriser la Vue OSM (OpenStreetMap)</strong> — permet le mode "plan au-dessus d'OSM" pour les plans calibrés GPS. Contacte <code>tile.openstreetmap.org</code> quand la modale Vue OSM est ouverte. Préférence persistée (default OFF).</span>
+            <span data-i18n-html="home.privacy.osmToggle"><strong>🗺️ Autoriser la Vue OSM (OpenStreetMap)</strong> — permet le mode "plan au-dessus d'OSM" pour les plans calibrés GPS. Contacte <code>tile.openstreetmap.org</code> quand la modale Vue OSM est ouverte. Préférence persistée (default OFF).</span>
           </label>
         </div>
 
@@ -4282,31 +4282,42 @@
         var label = document.getElementById("loaderIncognitoLabel");
         var hint  = document.getElementById("loaderIncognitoHint");
         if (!btn || !icon || !label || !hint) return;
+        // i18n : helper de traduction avec fallback FR inline si I18n
+        // indisponible (ne devrait pas arriver — l'IIFE tourne après
+        // I18n.init au boot, mais on reste défensif pour ne jamais crasher).
+        function _t(key, fr) {
+          return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(key) : fr;
+        }
         function _refresh() {
           var actif = !!(window.IncognitoMode && window.IncognitoMode.active);
           if (actif) {
             btn.classList.add("kta-cfg-incognito-btn-quit");
             icon.textContent  = "✕";
-            label.textContent = "Quitter le mode incognito";
-            hint.innerHTML    =
+            label.textContent = _t("home.privacy.incognitoQuitLabel", "Quitter le mode incognito");
+            hint.innerHTML    = _t("home.privacy.incognitoQuitHint",
               "Ferme cette fenêtre incognito. <strong>Toutes les données accumulées</strong> " +
               "(points, tracker, notes) <strong>seront perdues</strong>. Ta session principale " +
               "reste intacte dans son onglet.<br>" +
               "<span style=\"color:#a78bfa;\">Si le navigateur bloque la fermeture, " +
-              "l'onglet recharge automatiquement en mode normal.</span>";
+              "l'onglet recharge automatiquement en mode normal.</span>");
           } else {
             btn.classList.remove("kta-cfg-incognito-btn-quit");
             icon.textContent  = "🕵️";
-            label.textContent = "Démarrer en mode incognito";
-            hint.innerHTML    =
+            label.textContent = _t("home.privacy.incognitoStartLabel", "Démarrer en mode incognito");
+            hint.innerHTML    = _t("home.privacy.incognitoStartHint",
               "Ouvre une nouvelle fenêtre où <strong>aucune donnée n'est sauvegardée</strong> " +
               "(ni photos, ni tracker, ni préférences). Idéal pour explorer un plan en démo " +
               "publique, prêter ta session à un tiers ou tester sans polluer ton historique " +
               "local. Bordure violette + badge dans le titre rappellent le contexte.<br>" +
-              "<span style=\"color:#a78bfa;\">Au reload : tout disparaît.</span>";
+              "<span style=\"color:#a78bfa;\">Au reload : tout disparaît.</span>");
           }
         }
         _refresh();
+        // Re-render du label/hint à chaque changement de langue (live, sans
+        // reload — cohérent avec _applyI18nDom appliqué au reste du HOME).
+        if (window.I18n && typeof window.I18n.onChange === "function") {
+          window.I18n.onChange(_refresh);
+        }
         // Re-refresh à chaque ouverture de la modale Configuration (Hook
         // sur le helper exposé sur window pour rester DRY avec configBtn).
         var _origOuvrir = window._ouvrirLoaderConfig;

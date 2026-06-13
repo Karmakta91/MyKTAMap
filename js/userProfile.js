@@ -210,7 +210,7 @@
       img.onload = function() {
         URL.revokeObjectURL(url);
         let w = img.naturalWidth, h = img.naturalHeight;
-        if (!w || !h) { reject(new Error("Image dimensions nulles")); return; }
+        if (!w || !h) { reject(new Error(window.I18n.t("profile.err.dimsNull"))); return; }
         // Resize si nécessaire (côté long ≤ MAX_DIMENSION_PX)
         const maxDim = Math.max(w, h);
         if (maxDim > MAX_DIMENSION_PX) {
@@ -223,13 +223,13 @@
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, w, h);
         canvas.toBlob(function(blob) {
-          if (!blob) { reject(new Error("toBlob a retourné null")); return; }
+          if (!blob) { reject(new Error(window.I18n.t("profile.err.toBlobNull"))); return; }
           resolve(blob);
         }, "image/jpeg", JPEG_QUALITY);
       };
       img.onerror = function() {
         URL.revokeObjectURL(url);
-        reject(new Error("Impossible de charger l'image"));
+        reject(new Error(window.I18n.t("profile.err.loadFailed")));
       };
       img.src = url;
     });
@@ -307,7 +307,7 @@
     // Limite raisonnable d'entrée brute (50 MB) pour éviter de crasher
     // le compresseur sur une image RAW gigantesque.
     if (fileOrBlob.size > 50 * 1024 * 1024) {
-      throw new Error("Image trop volumineuse (> 50 MB). Choisis une image plus petite.");
+      throw new Error(window.I18n.t("profile.err.tooLarge"));
     }
     const compressed = await _compressImageToBlob(fileOrBlob);
     const entry = (await _readEntry()) || { id: ENTRY_ID, surnom: "", createdAt: new Date().toISOString() };
