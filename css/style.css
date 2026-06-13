@@ -4945,12 +4945,6 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  /* 🌍 v1.46.0 — Depuis l'ajout du sélecteur de langue (5e élément des actions),
-     la rangée titre + actions peut dépasser sur mobile étroit. flex-wrap ne se
-     déclenche QUE si ça ne tient pas : desktop/large = 1 ligne inchangée ;
-     mobile serré = les actions passent sur une 2e ligne (alignées à droite via
-     margin-left:auto sur .loader-header-actions). Aucun bouton hors cadre. */
-  flex-wrap: wrap;
 }
 
 /* 🎨 v1.7.3 : Titre stylisé du loader — refonte D validée KARMA.
@@ -5092,33 +5086,51 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
-  /* Reste collé à droite, qu'on soit sur la même ligne que le titre ou wrappé
-     sur une 2e ligne en mobile serré (cf .loader-header > flex-wrap). */
-  margin-left: auto;
 }
 
-/* 🌍 v1.45.0 — Sélecteur de langue GLOBALE sur le HOME (header). Compact,
-   aligné avec les boutons icône (height 32px), thème dark. Options peuplées
-   par JS depuis I18n.available(). */
-.loader-lang-select {
-  height: 32px;
+/* 🌍 v1.46.0 — Sélecteur de langue GLOBALE dans la modale Configuration
+   (déplacé du header HOME — KARMA). Ligne label + select, charte dark, avec
+   variante thème clair. Options peuplées par JS depuis I18n.available(). */
+.kta-cfg-lang-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.kta-cfg-lang-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8eaf0;
+}
+.kta-cfg-lang-select {
+  height: 36px;
+  min-width: 160px;
   background: rgba(140,180,255,0.08);
-  border: 1px solid rgba(140,180,255,0.2);
-  color: #8cb4ff;
+  border: 1px solid rgba(140,180,255,0.25);
+  color: #e8eaf0;
   border-radius: 6px;
-  font-size: 13px;
-  padding: 0 6px;
+  font-size: 14px;
+  padding: 0 10px;
   cursor: pointer;
-  max-width: 130px;
   outline: none;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
-.loader-lang-select:hover {
+.kta-cfg-lang-select:hover {
   background: rgba(140,180,255,0.16);
-  border-color: rgba(140,180,255,0.45);
+  border-color: rgba(140,180,255,0.5);
 }
-body.kta-theme-light .loader-lang-select,
-html.kta-theme-light .loader-lang-select {
+.kta-cfg-lang-hint {
+  font-size: 11.5px;
+  color: #8892a4;
+  margin-top: 8px;
+  line-height: 1.5;
+  padding: 0 4px;
+}
+body.kta-theme-light .kta-cfg-lang-label,
+html.kta-theme-light .kta-cfg-lang-label { color: #2a2118; }
+body.kta-theme-light .kta-cfg-lang-select,
+html.kta-theme-light .kta-cfg-lang-select {
   background: rgba(30,95,153,0.08);
   border-color: rgba(30,95,153,0.35);
   color: #1e5f99;

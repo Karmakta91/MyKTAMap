@@ -999,6 +999,7 @@
   "home.inspector.memBtn": "📊 View memory state",
   "home.inspector.swBtn": "🔧 View cache state (Service Worker)",
   "home.inspector.title": "📊 Inspector",
+  "home.lang.hint": "Saved globally. Drives the whole interface (menus, modals, help).",
   "home.lang.label": "Application language",
   "home.loader.configTitle": "⚙️ Configuration",
   "home.netdoc.docIntro": "The full transparency page (technical model, local storage, author's stance…) is in <code>docs/NETWORK_AUDIT.md</code>:",

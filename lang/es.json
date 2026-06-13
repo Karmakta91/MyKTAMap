@@ -296,6 +296,7 @@
   "home.inspector.memBtn": "📊 Ver el estado de memoria",
   "home.inspector.swBtn": "🔧 Ver el estado de la caché (Service Worker)",
   "home.inspector.title": "📊 Inspector",
+  "home.lang.hint": "Guardado globalmente. Controla toda la interfaz (menús, ventanas, ayuda).",
   "home.lang.label": "Idioma de la aplicación",
   "home.loader.configTitle": "⚙️ Configuración",
   "home.netdoc.docIntro": "La página completa de transparencia (modelo técnico, almacenamiento local, posición del autor…) está en <code>docs/NETWORK_AUDIT.md</code>:",
