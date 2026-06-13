@@ -320,6 +320,13 @@
         <td><strong>Aucune</strong></td>
       </tr>
       <tr>
+        <td><code>&lt;origin&gt;/lang/fr.json</code>, <code>&lt;origin&gt;/lang/en.json</code></td>
+        <td><code>GET</code></td>
+        <td>Au boot (dicos i18n : fr = fallback + langue active) puis au changement de langue</td>
+        <td>Charger les traductions multi-langue (v1.45.0+)</td>
+        <td><strong>Aucune</strong> (fichiers statiques same-origin, précachés par le SW)</td>
+      </tr>
+      <tr>
         <td><code>&lt;origin&gt;/ping.html</code></td>
         <td><code>GET</code> (same-origin, body lu)</td>
         <td>Avant un reset complet, avant un Force update, avant ouverture Vue OSM</td>

@@ -694,13 +694,24 @@ function afficherConfig() {
 
   // Métadonnées du preset perf actif (pour l'affichage read-only)
   const _PRESET_LABELS = {
-    "off":         { emoji: "💤", label: "Désactivé" },
-    "auto":        { emoji: "🔄", label: "Auto" },
-    "quality":     { emoji: "🌟", label: "Qualité" },
-    "balanced":    { emoji: "🎯", label: "Équilibré" },
-    "performance": { emoji: "⚡", label: "Performance" }
+    "off":         { emoji: "💤", label: window.I18n.t("config.preset.off") },
+    "auto":        { emoji: "🔄", label: window.I18n.t("config.preset.auto") },
+    "quality":     { emoji: "🌟", label: window.I18n.t("config.preset.quality") },
+    "balanced":    { emoji: "🎯", label: window.I18n.t("config.preset.balanced") },
+    "performance": { emoji: "⚡", label: window.I18n.t("config.preset.performance") }
   };
   const presetMeta = _PRESET_LABELS[c.perfPreset] || _PRESET_LABELS.auto;
+
+  // 🌍 v1.45.0 : sélecteur de langue GLOBALE de l'app (pilote I18n via la clé
+  // myktamap_app_lang, découplée du toggle local doc/onboarding). Options
+  // construites depuis I18n.available() → 1 seul endroit à éditer pour ajouter
+  // une langue. Fallback FR si I18n indispo (très improbable, chargé au boot).
+  const _curLang = (window.I18n && typeof window.I18n.getLang === "function") ? window.I18n.getLang() : "fr";
+  const _langOptions = ((window.I18n && window.I18n.available) ? window.I18n.available() : [{ code: "fr", label: "Français", flag: "🇫🇷" }])
+    .map(function(l) {
+      return '<option value="' + l.code + '"' + (l.code === _curLang ? ' selected' : '') + '>' +
+             (l.flag ? l.flag + ' ' : '') + l.label + '</option>';
+    }).join("");
 
   const modal = document.createElement("div");
   modal.id = "kta-cfg-modal";
@@ -709,7 +720,7 @@ function afficherConfig() {
   modal.innerHTML = `
     <div class="kta-readme-modal-boite kta-cfg-modal-boite">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre">⚙️ Réglages</span>
+        <span class="kta-readme-modal-titre">${window.I18n.t("config.titre")}</span>
         <button class="kta-panneau-close" id="kta-cfg-close">✕</button>
       </div>
       <div class="kta-readme-modal-corps kta-cfg-corps">
@@ -728,11 +739,10 @@ function afficherConfig() {
           <button class="kta-btn kta-btn-primary" type="button" id="cfg_presentation_btn"
                   style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:12px 16px; font-size:14px;">
             <span style="font-size:20px;">🎬</span>
-            <span><strong>Activer le mode présentation</strong></span>
+            <span><strong>${window.I18n.t("config.presentation.btn")}</strong></span>
           </button>
           <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px; text-align:center;">
-            Cache header + sidebars + footer pour libérer toute la surface pour la carte.
-            Sortie : <kbd>F</kbd> ou <kbd>Échap</kbd> (PC), ou bouton flottant ✕ en haut-droite (mobile).
+            ${window.I18n.t("config.presentation.desc")}
           </div>
         </div>
 
@@ -746,95 +756,96 @@ function afficherConfig() {
         <div class="kta-aide-section">
           <button class="kta-cfg-incognito-btn kta-cfg-incognito-btn-quit" type="button" id="cfg_incognito_btn">
             <span style="font-size:18px;">✕</span>
-            <span><strong>Quitter le mode incognito</strong></span>
+            <span><strong>${window.I18n.t("config.incognito.quit.btn")}</strong></span>
           </button>
           <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
-            Ferme cette fenêtre incognito. <strong>Toutes les données accumulées</strong>
-            (points, tracker, notes) <strong>seront perdues</strong>. Ta session principale
-            reste intacte dans son onglet.
-            <br><span style="color:#a78bfa;">Si le navigateur bloque la fermeture,
-            l'onglet recharge automatiquement en mode normal.</span>
+            ${window.I18n.t("config.incognito.quit.desc")}
           </div>
         </div>` : `
         <div class="kta-aide-section">
           <button class="kta-cfg-incognito-btn" type="button" id="cfg_incognito_btn">
             <span style="font-size:18px;">🕵️</span>
-            <span><strong>Démarrer en mode incognito</strong></span>
+            <span><strong>${window.I18n.t("config.incognito.start.btn")}</strong></span>
           </button>
           <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
-            Ouvre une nouvelle fenêtre où <strong>aucune donnée n'est sauvegardée</strong> (ni
-            photos, ni tracker, ni préférences). Idéal pour explorer un plan en démo
-            publique, prêter ta session à un tiers ou tester sans polluer ton historique
-            local. Bordure violette visible + badge dans le titre rappellent le contexte.
-            <br><span style="color:#a78bfa;">Au reload : tout disparaît.</span>
+            ${window.I18n.t("config.incognito.start.desc")}
           </div>
         </div>`}
 
+        <!-- 🌍 v1.45.0 : sélecteur de langue GLOBALE de l'app (= LE point d'entrée
+             du changement complet, ≠ toggle local doc/onboarding). Placé APRÈS
+             l'incognito (choix KARMA) : le sélecteur est déjà accessible dès le
+             HOME, ici c'est un accès secondaire. Le change handler appelle
+             I18n.setLang() puis re-render la modale. -->
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🧭 Position initiale du tracker</div>
+          <div class="kta-aide-section-titre">${window.I18n.t("config.lang.titre")}</div>
+          <select class="kta-cfg-input" id="cfg_app_lang" style="width:100%;">
+            ${_langOptions}
+          </select>
+          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
+            ${window.I18n.t("config.lang.hint")}
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">${window.I18n.t("config.tracker.titre")}</div>
           <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">Position X</label>
+            <label class="kta-cfg-label">${window.I18n.t("config.tracker.posX")}</label>
             <input class="kta-cfg-input" id="cfg_startX" type="number" value="${c.startX}">
-            <label class="kta-cfg-label">Position Y</label>
+            <label class="kta-cfg-label">${window.I18n.t("config.tracker.posY")}</label>
             <input class="kta-cfg-input" id="cfg_startY" type="number" value="${c.startY}">
           </div>
           <!-- 🆕 Saisie assistée de la position de départ (parité UX géoréf) :
                🔍 via un point existant, 📍 au clic sur la carte. Évite la saisie
                manuelle des coordonnées (gros gain de temps). -->
           <div class="kta-kmz-pt-actions" style="margin-top:8px;">
-            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_search" type="button">🔍 Choisir via un point</button>
-            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_click" type="button">📍 Cliquer sur la carte</button>
+            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_search" type="button">${window.I18n.t("config.tracker.searchBtn")}</button>
+            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_click" type="button">${window.I18n.t("config.tracker.clickBtn")}</button>
           </div>
           <div id="cfg_start_search_results" class="kta-kmz-search-results" style="display:none;"></div>
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">👣 Détection des pas</div>
+          <div class="kta-aide-section-titre">${window.I18n.t("config.steps.titre")}</div>
           <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">Échelle (px/m)</label>
+            <label class="kta-cfg-label">${window.I18n.t("config.steps.scale")}</label>
             <div style="display:flex; gap:6px; align-items:center;">
               <input class="kta-cfg-input" id="cfg_scale" type="number" step="0.1" value="${c.scale}" style="flex:1;">
               <button type="button" class="kta-btn kta-btn-ghost"
                 onclick="ouvrirCalibrageEchelle()"
                 style="padding:6px 10px; font-size:13px; white-space:nowrap;"
-                title="Calculer l'échelle à partir d'une mesure réelle">🎯</button>
+                title="${window.I18n.t("config.steps.scaleTitle")}">🎯</button>
             </div>
-            <label class="kta-cfg-label">Taille d'un pas (m)</label>
+            <label class="kta-cfg-label">${window.I18n.t("config.steps.stepLength")}</label>
             <input class="kta-cfg-input" id="cfg_stepLength" type="number" step="0.1" value="${c.stepLength}">
-            <label class="kta-cfg-label">Seuil de détection</label>
+            <label class="kta-cfg-label">${window.I18n.t("config.steps.threshold")}</label>
             <input class="kta-cfg-input" id="cfg_stepThreshold" type="number" step="0.1" value="${c.stepThreshold}">
-            <label class="kta-cfg-label">Cooldown (ms)</label>
+            <label class="kta-cfg-label">${window.I18n.t("config.steps.cooldown")}</label>
             <input class="kta-cfg-input" id="cfg_stepCooldown" type="number" value="${c.stepCooldown}">
           </div>
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🧭 Navigation intelligente</div>
+          <div class="kta-aide-section-titre">${window.I18n.t("config.smartnav.titre")}</div>
           <label class="kta-perf-ultra-row" style="margin-top:0;">
             <input type="checkbox" id="cfg_smartNav" ${c.smartNav === true ? "checked" : ""}>
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">🧭 Caler la position sur les tracés</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.smartnav.label")}</span>
               <span class="kta-perf-ultra-hint">
-                Décoché par défaut. Quand le plan possède un <strong>réseau de tracés</strong>,
-                la position estimée est <strong>recalée sur la galerie la plus proche</strong> pour
-                compenser la dérive des capteurs (boussole / pas). Hors réseau, retour automatique
-                au comportement actuel. Sans tracés sur le plan, l'option reste sans effet.
+                ${window.I18n.t("config.smartnav.hint")}
               </span>
             </span>
           </label>
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🔍 Affichage</div>
+          <div class="kta-aide-section-titre">${window.I18n.t("config.display.titre")}</div>
           <label class="kta-perf-ultra-row kta-perf-ultra-row-danger" style="margin-top:0;">
             <input type="checkbox" id="cfg_scaledMarkers" ${c.scaledMarkers !== false ? "checked" : ""}>
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">📐 Adapter la taille des icônes au zoom</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.scaledMarkers.label")}</span>
               <span class="kta-perf-ultra-hint">
-                Coché par défaut : les icônes des points rétrécissent quand tu dézoomes
-                (taille relative au plan constante). <strong>Décocher</strong> = comportement Leaflet
-                standard (icônes taille écran fixe, elles deviennent énormes au dézoom).
-                <strong>Reload requis</strong> après changement.
+                ${window.I18n.t("config.display.scaledMarkers.hint")}
               </span>
             </span>
           </label>
@@ -847,12 +858,9 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_show_intersections_row" style="margin-top:8px;">
             <input type="checkbox" id="cfg_show_intersections">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">⚪ Afficher les ronds aux intersections (ce plan)</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.intersections.label")}</span>
               <span class="kta-perf-ultra-hint">
-                Cercle plein coloré au croisement de 2 tracés (vert × violet → jaune, etc.).
-                <strong>Décocher</strong> pour aérer visuellement les plans très denses, ou
-                si le calcul ralentit l'affichage. <strong>Effet immédiat</strong>, sauvegardé
-                par plan (un autre plan garde son propre réglage).
+                ${window.I18n.t("config.display.intersections.hint")}
               </span>
             </span>
           </label>
@@ -868,12 +876,9 @@ function afficherConfig() {
                picker 2 clics Sud→Nord (WYSIWYG sur la map courante) + reset. -->
           <div id="cfg_north_block" class="kta-perf-ultra-row" style="margin-top:10px; display:block; padding:8px; border:1px solid rgba(255,255,255,0.06); border-radius:8px; background:rgba(255,255,255,0.02);">
             <div class="kta-perf-ultra-text" style="margin-bottom:6px;">
-              <span class="kta-perf-ultra-label">🧭 Calibration du Nord (ce plan)</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.north.label")}</span>
               <span class="kta-perf-ultra-hint" style="display:block;">
-                Angle CW entre le HAUT du plan et le Nord vrai. <strong>0° = Nord en haut</strong>
-                (par défaut). Si la flèche Nord pointe vers la droite du plan → 90°. Appliqué
-                au tracker (rotation icône + sens de marche) ; la boussole continue d'afficher
-                le Nord magnétique vrai indépendamment.
+                ${window.I18n.t("config.display.north.hint")}
               </span>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
@@ -883,9 +888,9 @@ function afficherConfig() {
                             border:1px solid rgba(255,255,255,0.12); font-weight:600;">
               <span style="color:#8892a4; font-size:12px;">°</span>
               <button type="button" id="cfg_north_picker_btn" class="kta-btn"
-                      style="flex:1 1 auto; min-width:140px;">📐 Calibrer (2 clics)</button>
+                      style="flex:1 1 auto; min-width:140px;">${window.I18n.t("config.display.north.calibrate")}</button>
               <button type="button" id="cfg_north_reset_btn" class="kta-btn"
-                      style="flex:0 0 auto;" title="Retour au défaut (cascade plan-config / 0°)">↺ Reset</button>
+                      style="flex:0 0 auto;" title="${window.I18n.t("config.display.north.resetTitle")}">${window.I18n.t("config.display.north.reset")}</button>
             </div>
             <div id="cfg_north_status" style="margin-top:4px; font-size:11.5px; color:#8892a4; min-height:14px;"></div>
           </div>
@@ -919,12 +924,9 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_wake_lock_row" style="margin-top:8px; display:none;">
             <input type="checkbox" id="cfg_wake_lock">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">🔆 Garder l'écran allumé (Wake Lock)</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.wakelock.label")}</span>
               <span class="kta-perf-ultra-hint">
-                Empêche la mise en veille de l'écran tant que l'app est ouverte.
-                <strong>Idéal en cavité</strong> pour ne pas avoir à débloquer son téléphone
-                toutes les 30s. Persistant entre sessions. Le wake lock est auto-relâché
-                quand tu changes d'onglet/app, et ré-activé au retour si la case est cochée.
+                ${window.I18n.t("config.display.wakelock.hint")}
               </span>
             </span>
           </label>
@@ -938,13 +940,9 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_vibration_row" style="margin-top:8px; display:none;">
             <input type="checkbox" id="cfg_vibration" ${c.vibrationEnabled !== false ? "checked" : ""}>
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">📳 Vibration haptique</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.vibration.label")}</span>
               <span class="kta-perf-ultra-hint">
-                Petite vibration pour les confirmations (waypoint atteint, action
-                validée, alerte). <strong>Décocher</strong> = silence total (utile en
-                cavité avec d'autres personnes, ou pour méditation). <strong>iOS Safari
-                ne supporte pas</strong> la Web Vibration API — sur iPhone, ce toggle
-                reste masqué. Pref globale, conservée entre les sessions.
+                ${window.I18n.t("config.display.vibration.hint")}
               </span>
             </span>
           </label>
@@ -957,33 +955,28 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_voice_row" style="margin-top:8px; display:none;">
             <input type="checkbox" id="cfg_voice">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">🎤 Commandes vocales (BETA)</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.voice.label")}</span>
               <span class="kta-perf-ultra-hint">
-                Pilote l'app à la voix : zoom, centrer, recherche, ajouter point,
-                tracker on/off, mode urgence/secours, thème clair/sombre…
-                Push-to-talk via un bouton 🎤 flottant en bas à droite.
-                <strong>Dit « aide »</strong> à voix haute pour lister les commandes disponibles.
-                Permission micro demandée à la 1ère utilisation.
-                <strong>Reload requis</strong> après changement (pour injecter/retirer le bouton).
+                ${window.I18n.t("config.display.voice.hint")}
               </span>
             </span>
           </label>
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🛠️ Debug</div>
+          <div class="kta-aide-section-titre">${window.I18n.t("config.debug.titre")}</div>
           <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">Logs détaillés</label>
+            <label class="kta-cfg-label">${window.I18n.t("config.debug.logs")}</label>
             <select class="kta-cfg-input" id="cfg_debugMode">
-              <option value="true"  ${c.debugMode ? "selected" : ""}>Oui</option>
-              <option value="false" ${!c.debugMode ? "selected" : ""}>Non</option>
+              <option value="true"  ${c.debugMode ? "selected" : ""}>${window.I18n.t("config.debug.yes")}</option>
+              <option value="false" ${!c.debugMode ? "selected" : ""}>${window.I18n.t("config.debug.no")}</option>
             </select>
           </div>
 
           <div style="display:flex; align-items:center; gap:12px; margin-top:12px;">
             <div style="flex:1;">
-              <div style="font-size:13px; font-weight:600; color:#e8eaf0;">Mode performance</div>
-              <div style="font-size:11px; color:#8892a4; margin-top:2px;">Modifiable au chargement du plan</div>
+              <div style="font-size:13px; font-weight:600; color:#e8eaf0;">${window.I18n.t("config.debug.perfMode")}</div>
+              <div style="font-size:11px; color:#8892a4; margin-top:2px;">${window.I18n.t("config.debug.perfModeHint")}</div>
             </div>
             <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.04); border-radius:6px; border:1px solid rgba(255,255,255,0.08);">
               <span style="font-size:22px;">${presetMeta.emoji}</span>
@@ -1058,6 +1051,27 @@ function afficherConfig() {
           alert("Module PresentationMode indisponible.");
         }
       }, 50);
+    });
+  }
+
+  // 🌍 v1.45.0 — Sélecteur de langue GLOBALE de l'app. Au change : on bascule
+  // I18n (charge le dico cible + persiste myktamap_app_lang + notifie onChange)
+  // PUIS on re-render la modale Réglages pour refléter la nouvelle langue en
+  // live. Les textes sont figés dans l'innerHTML → un rebuild complet est le
+  // moyen le plus sûr. Les saisies non appliquées repartent des valeurs
+  // APP_CONFIG : acceptable (on choisit la langue avant d'éditer, en pratique).
+  const selAppLang = document.getElementById("cfg_app_lang");
+  if (selAppLang) {
+    selAppLang.addEventListener("change", function() {
+      const code = selAppLang.value;
+      const done = (window.I18n && typeof window.I18n.setLang === "function")
+        ? window.I18n.setLang(code)
+        : Promise.resolve();
+      Promise.resolve(done).then(function() {
+        const m = document.getElementById("kta-cfg-modal");
+        if (m) m.remove();   // retire la modale courante…
+        afficherConfig();    // …puis rebuild fraîche dans la nouvelle langue
+      });
     });
   }
 

@@ -42,6 +42,7 @@
 **Coords** : TOUJOURS `convertCoord(x,y)` = `[imageHeight - y, x]`. Jamais `[y,x]` direct.
 **Distances** : TOUJOURS `window.formatDistance(distM, dec)`. Jamais `toFixed()+" m"`.
 **Icônes** : résolution unique `window._iconMap[tag]` / `getIconUrlForPoint`.
+**Textes user-facing** : migration progressive vers `window.I18n.t("module.section.element")` (dicos `lang/<code>.json`, FR = fallback universel). Appeler au rendu, jamais au load. Hors modules migrés, le FR inline reste OK. Détails + état migration : `docs/architecture/i18n.md`.
 
 ## 🗺️ Où chercher (lis le bon fichier avant de coder)
 | Sujet | Référence |
@@ -54,7 +55,8 @@
 | Tracker, boussole, heading, navigation | `docs/architecture/tracking.md` |
 | Multi-niveau, pathfinding, itinéraire | `docs/architecture/multilevel-pathfinding.md` |
 | Exports PNG/PDF/KMZ/GPX + légende | `docs/architecture/exports.md` |
-| Refonte UI, thème, modales, filtres, i18n | `docs/architecture/ui.md` |
+| Refonte UI, thème, modales, filtres | `docs/architecture/ui.md` |
+| Multi-langue (i18n), dicos `lang/`, `window.I18n`, migration | `docs/architecture/i18n.md` |
 | Session, photos, undo, recherche, stats, favoris | `docs/architecture/session-data.md` |
 | Sécurité : gates, PIN, audit, légal, licence | `docs/architecture/security-legal.md` |
 | Mode Secours (toutes phases) + urgence | `docs/architecture/secours.md` |

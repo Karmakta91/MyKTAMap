@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.44.7";
+const CACHE_NAME = "myktamap-cache-v1.45.0";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -51,6 +51,13 @@ const ASSETS_TO_CACHE = [
   "./docs/applications/DOCKER_INSTALL.en.md",
   // Squelette enrichi pour la fonctionnalité 🤖 Aide IA (modale Téléchargement contexte IA)
   "./docs/applications/AI_CONTEXT.md",
+
+  // 🌍 v1.45.0 : dicos i18n multi-langue (lus par js/i18n.js via fetch).
+  // fr.json = langue de référence + fallback obligatoire ; en.json = anglais.
+  // Précachés ici pour un fonctionnement offline instantané dès le 1er install.
+  // Pour ajouter une langue : déposer lang/<code>.json + l'ajouter ici.
+  "./lang/fr.json",
+  "./lang/en.json",
   // Licence (consultable offline si l'utilisateur veut verifier les conditions d'usage)
   "./LICENSE",
   // 🆕 v1.8.0 : page de transparence détaillée pour l'audit réseau, en 2
@@ -84,6 +91,9 @@ const ASSETS_TO_CACHE = [
   // JS principaux
   // Copyright + watermark + détection DevTools — chargé EN PREMIER dans index.html
   "./js/copyright.js",
+  // 🌍 v1.45.0 : I18n — helper multi-langue (window.I18n). Chargé tôt dans
+  // index.html (après copyright). Précharge lang/fr.json + langue active.
+  "./js/i18n.js",
   // 🕵️ v1.31.8 F2 : Incognito Mode — shim Storage + IDB en in-memory si
   // ?incognito=1. Chargé SYNC juste après copyright pour intercepter avant
   // tout autre module. Mode normal : pose juste window.IncognitoMode = {...}.
@@ -348,6 +358,11 @@ const CRITICAL_APP_SHELL = [
   "./",
   "./css/style.css",
   "./js/copyright.js",
+  // 🌍 v1.45.0 : I18n + dico fallback. i18n.js est AWAIT-é au boot (main.js) et
+  // fr.json est le fallback universel → tous deux critiques pour un boot offline
+  // correct (sinon I18n.t retournerait les clés brutes au 1er install hors ligne).
+  "./js/i18n.js",
+  "./lang/fr.json",
   "./js/main.js",
   "./manifest.json",
   // 🆕 v1.43.10 — Docs consultables offline (KARMA "page audit n'a pas

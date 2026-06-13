@@ -68,30 +68,48 @@
 // un sélecteur global de langue.
 const README_LANG_STORAGE_KEY = "myktamap_readme_lang";
 
+// 🆕 v1.45.0 — Langues pour lesquelles un fichier README_USER existe RÉELLEMENT.
+// fr = README_USER.md (sans suffixe, historique) ; les autres = README_USER.<code>.md.
+// Ajouter une langue (ru, es…) = déposer le fichier + ajouter son code ici
+// (+ l'ajouter à ASSETS_TO_CACHE du SW). 100% générique, aucun code figé.
+const DOC_AVAILABLE_LANGS = ["fr", "en"];
+
+// 🆕 v1.45.0 — Langue à PRÉSÉLECTIONNER pour la doc :
+//   1. choix manuel mémorisé (myktamap_readme_lang) s'il est encore dispo ;
+//   2. sinon défaut dérivé de la langue de l'app via I18n.resolveContentLang
+//      (langue app si doc dispo, sinon "en", sinon "fr").
+// On NE persiste PAS le défaut dérivé : tant que l'user n'a pas cliqué un
+// drapeau, la doc suit la langue de l'app (décision KARMA Q1:A). La doc reste
+// donc LOCALE (clé myktamap_readme_lang ≠ langue globale myktamap_app_lang).
 function _getReadmeLang() {
   try {
     const saved = localStorage.getItem(README_LANG_STORAGE_KEY);
-    if (saved === "fr" || saved === "en") return saved;
+    if (DOC_AVAILABLE_LANGS.indexOf(saved) >= 0) return saved;
   } catch(e) {}
-  // 1er boot : auto-détection navigator.language. EN si commence par "en",
-  // FR sinon (par défaut). Persiste pour stabilité aux relances.
+  if (window.I18n && typeof window.I18n.resolveContentLang === "function") {
+    return window.I18n.resolveContentLang(DOC_AVAILABLE_LANGS);
+  }
+  // Fallback ultime si I18n indispo (très improbable, chargé au boot) :
+  // navigator.language mappé sur une langue doc dispo, sinon FR.
   const navLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
-  const detected = navLang.startsWith("en") ? "en" : "fr";
-  try { localStorage.setItem(README_LANG_STORAGE_KEY, detected); } catch(e) {}
-  return detected;
+  const guess = navLang.split("-")[0];
+  return (DOC_AVAILABLE_LANGS.indexOf(guess) >= 0) ? guess : "fr";
 }
 
 function _setReadmeLang(lang) {
-  if (lang !== "fr" && lang !== "en") return;
+  if (DOC_AVAILABLE_LANGS.indexOf(lang) < 0) return;
   try { localStorage.setItem(README_LANG_STORAGE_KEY, lang); } catch(e) {}
 }
 
-// Retourne le chemin du fichier README selon la langue active.
+// Retourne le chemin du fichier README selon la langue.
 // 🆕 v1.29.3 — README_USER.md + .en.md regroupés sous docs/applications/
 // avec les autres docs lues par l'app (AI_CONTEXT, NETWORK_AUDIT). À la
 // racine : README.md (GitHub) + CLAUDE.md (agents IA) uniquement.
+// 🆕 v1.45.0 — fr = sans suffixe ; toute autre langue = README_USER.<code>.md.
 function _readmePathForLang(lang) {
-  return (lang === "en") ? "docs/applications/README_USER.en.md" : "docs/applications/README_USER.md";
+  return (lang === "fr")
+    ? "docs/applications/README_USER.md"
+    : "docs/applications/README_USER." + lang + ".md";
 }
 
 function afficherReadme(opts) {
@@ -383,16 +401,25 @@ function _ouvrirReadmeModal(html, opts) {
   const btnOnboarding = opts.hideOnboarding
     ? ''
     : '<button class="kta-readme-tutorial-btn" id="kta-readme-tutorial-btn" type="button" aria-label="(Re)voir le tutoriel d\'onboarding" title="🎓 (Re)voir le tutoriel d\'onboarding">🎓</button>';
-  // 🆕 v1.29.0 P0 i18n — Toggle FR/EN dans le header (drapeaux uniquement, KARMA 1:a).
-  // Le bouton montre le drapeau de la langue ALTERNATIVE (pas de celle courante) pour
-  // indiquer "clique pour basculer vers ça". Convention UX classique.
-  const currentLang = _getReadmeLang();
-  const altLang     = (currentLang === "fr") ? "en" : "fr";
-  const altFlag     = (altLang === "fr") ? "🇫🇷" : "🇬🇧";
-  const altTitle    = (altLang === "fr") ? "Lire en français" : "Read in English";
-  const btnLang     = '<button class="kta-readme-lang-btn" id="kta-readme-lang-btn" type="button" ' +
-                        'aria-label="' + altTitle + '" title="' + altTitle + '" ' +
-                        'data-target-lang="' + altLang + '">' + altFlag + '</button>';
+  // 🆕 v1.45.0 — Onglets de langue de la doc : UN drapeau par langue réellement
+  // dispo (DOC_AVAILABLE_LANGS), la langue courante marquée .active. Générique :
+  // 2 drapeaux aujourd'hui (FR/EN), 3+ dès qu'un nouveau README_USER.<code>.md
+  // existe. La langue présélectionnée suit l'app si l'user n'a pas de choix
+  // manuel (cf _getReadmeLang). Les méta (label/flag) viennent de I18n.available().
+  const _docCurrentLang = _getReadmeLang();
+  const _docLangMeta = (window.I18n && window.I18n.available) ? window.I18n.available() : [
+    { code: "fr", label: "Français", flag: "🇫🇷" },
+    { code: "en", label: "English",  flag: "🇬🇧" }
+  ];
+  const btnLang = '<span class="kta-readme-lang-tabs">' +
+    DOC_AVAILABLE_LANGS.map(function(code) {
+      const meta = _docLangMeta.filter(function(l){ return l.code === code; })[0] ||
+                   { code: code, label: code.toUpperCase(), flag: code.toUpperCase() };
+      const isCur = (code === _docCurrentLang);
+      return '<button class="kta-readme-lang-btn' + (isCur ? ' active' : '') + '" type="button" ' +
+             'data-target-lang="' + code + '" aria-label="' + meta.label + '" title="' + meta.label + '"' +
+             (isCur ? ' aria-current="true"' : '') + '>' + meta.flag + '</button>';
+    }).join("") + '</span>';
   modal.innerHTML = `
     <div class="kta-readme-modal-boite">
       <div class="kta-readme-modal-header">
@@ -473,27 +500,27 @@ function _ouvrirReadmeModal(html, opts) {
     });
   }
 
-  // 🆕 v1.29.0 P0 i18n — Handler du toggle FR/EN. Persiste + ferme + ré-ouvre.
-  // KARMA 4:a — scope strictement limité à la doc README. La modale est
-  // détruite puis re-créée pour conserver toute la logique du bandeau Doc
-  // (TOC dépliable, smooth scroll, etc.) sans avoir à dupliquer le rendu.
-  const _readmeLangBtn = document.getElementById("kta-readme-lang-btn");
-  if (_readmeLangBtn) {
-    _readmeLangBtn.addEventListener("click", function() {
-      const target = _readmeLangBtn.getAttribute("data-target-lang");
-      if (target !== "fr" && target !== "en") return;
+  // 🆕 v1.45.0 — Handler des onglets de langue (délégation sur tous les
+  // drapeaux). Clic sur une langue ≠ courante → persiste + rebuild la modale
+  // (préserve TOC dépliable, smooth scroll… sans dupliquer le rendu). Scope
+  // strictement LOCAL à la doc (ne touche pas la langue globale de l'app).
+  modal.querySelectorAll(".kta-readme-lang-btn").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const target = btn.getAttribute("data-target-lang");
+      if (DOC_AVAILABLE_LANGS.indexOf(target) < 0) return;
+      if (target === _getReadmeLang()) return; // déjà la langue courante
       _setReadmeLang(target);
-      // Préserve les opts (overLocker, hideOnboarding) — sont déjà reflétées
-      // dans le DOM courant via les classes de la modale.
-      const wasOverLocker   = modal.classList.contains("kta-readme-over-locker");
-      const wasHideOnboard  = !document.getElementById("kta-readme-tutorial-btn");
+      // Préserve les opts (overLocker, hideOnboarding) — reflétées dans le DOM
+      // courant via les classes de la modale et la présence du bouton 🎓.
+      const wasOverLocker  = modal.classList.contains("kta-readme-over-locker");
+      const wasHideOnboard = !document.getElementById("kta-readme-tutorial-btn");
       modal.remove();
       afficherReadme({
         overLocker:     wasOverLocker,
         hideOnboarding: wasHideOnboard
       });
     });
-  }
+  });
 }
 
 // =========================

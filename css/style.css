@@ -2856,6 +2856,23 @@ html.kta-theme-light .kta-readme-lang-btn:hover {
   background: rgba(30, 95, 153, 0.22) !important;
 }
 
+/* 🆕 v1.45.0 — Onglets de langue de la doc (un drapeau par langue dispo).
+   La langue COURANTE est marquée .active (pleine opacité + accent renforcé),
+   les autres sont atténuées (= "clique pour basculer"). */
+.kta-readme-lang-tabs { display: inline-flex; }
+.kta-readme-lang-tabs .kta-readme-lang-btn { opacity: 0.5; }
+.kta-readme-lang-tabs .kta-readme-lang-btn:hover { opacity: 1; }
+.kta-readme-lang-tabs .kta-readme-lang-btn.active {
+  opacity: 1;
+  background: rgba(140, 180, 255, 0.30);
+  border-color: rgba(140, 180, 255, 0.85);
+}
+body.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active,
+html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
+  background: rgba(30, 95, 153, 0.26) !important;
+  border-color: rgba(30, 95, 153, 0.70) !important;
+}
+
 /* Layout principal : sidebar + corps (+ bouton retour-haut absolute) */
 .kta-readme-modal-layout {
   flex: 1;
@@ -5069,6 +5086,33 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+}
+
+/* 🌍 v1.45.0 — Sélecteur de langue GLOBALE sur le HOME (header). Compact,
+   aligné avec les boutons icône (height 32px), thème dark. Options peuplées
+   par JS depuis I18n.available(). */
+.loader-lang-select {
+  height: 32px;
+  background: rgba(140,180,255,0.08);
+  border: 1px solid rgba(140,180,255,0.2);
+  color: #8cb4ff;
+  border-radius: 6px;
+  font-size: 13px;
+  padding: 0 6px;
+  cursor: pointer;
+  max-width: 130px;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.loader-lang-select:hover {
+  background: rgba(140,180,255,0.16);
+  border-color: rgba(140,180,255,0.45);
+}
+body.kta-theme-light .loader-lang-select,
+html.kta-theme-light .loader-lang-select {
+  background: rgba(30,95,153,0.08);
+  border-color: rgba(30,95,153,0.35);
+  color: #1e5f99;
 }
 
 /* === 🚀 Mode Performance ULTRA — toggles dans la modale Réglages === */

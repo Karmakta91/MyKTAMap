@@ -1580,25 +1580,48 @@
     }
   };
 
-  // 🆕 v1.44.6 — Détection langue : clé partagée avec la doc (interfaceDocs.js).
-  // saved → navigator.language → "fr" par défaut. Pas de couplage de fonction,
-  // juste la convention de clé localStorage.
+  // 🆕 v1.44.6 / v1.45.0 — Langue de l'onboarding. Clé LOCALE myktamap_readme_lang
+  // (partagée avec la doc), DISTINCTE de la langue globale myktamap_app_lang.
+  // Langues dispo = contenus traduits réellement présents (tableaux CARDS_*).
+  // Ajouter une langue (ru…) = CARDS_RU + UI_STRINGS.ru + son code ici. Générique.
   const LANG_STORAGE_KEY = "myktamap_readme_lang";
+  const ONBOARD_AVAILABLE_LANGS = ["fr", "en"];
+
+  // Langue à présélectionner : choix manuel mémorisé s'il est dispo, sinon défaut
+  // dérivé de la langue de l'app (I18n.resolveContentLang). On NE persiste PAS le
+  // défaut → tant qu'aucun clic manuel, l'onboarding suit l'app (KARMA Q1:A).
   function _getLang() {
     try {
       const saved = localStorage.getItem(LANG_STORAGE_KEY);
-      if (saved === "fr" || saved === "en") return saved;
+      if (ONBOARD_AVAILABLE_LANGS.indexOf(saved) >= 0) return saved;
     } catch(e) {}
+    if (window.I18n && typeof window.I18n.resolveContentLang === "function") {
+      return window.I18n.resolveContentLang(ONBOARD_AVAILABLE_LANGS);
+    }
     const navLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
-    return navLang.startsWith("en") ? "en" : "fr";
+    const guess = navLang.split("-")[0];
+    return (ONBOARD_AVAILABLE_LANGS.indexOf(guess) >= 0) ? guess : "fr";
   }
   function _setLang(lang) {
-    if (lang !== "fr" && lang !== "en") return;
+    if (ONBOARD_AVAILABLE_LANGS.indexOf(lang) < 0) return;
     try { localStorage.setItem(LANG_STORAGE_KEY, lang); } catch(e) {}
   }
 
+  // Drapeau d'une langue (via I18n) + langue SUIVANTE dans le cycle (le toggle
+  // unique cycle fr→en→…→fr ; avec 2 langues = simple bascule, mais générique N).
+  function _langFlag(code) {
+    const meta = (window.I18n && window.I18n.available)
+      ? window.I18n.available().filter(function(l){ return l.code === code; })[0] : null;
+    return meta ? meta.flag : code.toUpperCase();
+  }
+  function _nextLang() {
+    const i = ONBOARD_AVAILABLE_LANGS.indexOf(_lang);
+    return ONBOARD_AVAILABLE_LANGS[(i + 1) % ONBOARD_AVAILABLE_LANGS.length];
+  }
+
   let _lang = _getLang();
-  function _cards() { return (_lang === "en") ? CARDS_EN : CARDS; }
+  const _CARDS_BY_LANG = { fr: CARDS, en: CARDS_EN };
+  function _cards() { return _CARDS_BY_LANG[_lang] || CARDS; }
   function _t(key)  { return (UI_STRINGS[_lang] || UI_STRINGS.fr)[key]; }
 
   let _currentIdx = 0;
@@ -1634,7 +1657,7 @@
       +     '<span class="kta-readme-modal-titre" id="kta-tutorial-titre">' + _t("headerTitle") + '</span>'
       // 🆕 v1.44.6 — Toggle langue 🇫🇷/🇬🇧 (même logique que la modale Documentation)
       +     '<button type="button" class="kta-btn kta-btn-ghost kta-tutorial-lang" id="kta-tutorial-lang" '
-      +       'title="' + _t("langTitle") + '">' + _t("langToggle") + '</button>'
+      +       'title="' + _t("langTitle") + '">' + _langFlag(_nextLang()) + '</button>'
       +     '<button type="button" class="kta-panneau-close" id="kta-tutorial-close" aria-label="' + _t("close") + '">✕</button>'
       +   '</div>'
       +   '<div class="kta-readme-modal-corps kta-tutorial-corps" id="kta-tutorial-corps">'
@@ -1725,17 +1748,18 @@
     }
   }
 
-  // 🆕 v1.44.6 — Bascule FR ⇄ EN en live (re-render header + carte courante,
-  // persiste dans la clé partagée). On reste sur le même index de carte (parité
-  // 1:1 entre CARDS et CARDS_EN, donc l'utilisateur ne perd pas sa place).
+  // 🆕 v1.44.6 / v1.45.0 — Cycle vers la langue suivante en live (re-render
+  // header + carte courante, persiste dans la clé locale). Avec 2 langues = une
+  // bascule FR⇄EN ; générique N langues. On reste sur le même index de carte
+  // (parité 1:1 entre tableaux CARDS_*, l'utilisateur ne perd pas sa place).
   function _toggleLang() {
-    _lang = (_lang === "en") ? "fr" : "en";
+    _lang = _nextLang();
     _setLang(_lang);
     // Re-render header (titre + libellés boutons)
     const titre = document.getElementById("kta-tutorial-titre");
     if (titre) titre.textContent = _t("headerTitle");
     const langBtn = document.getElementById("kta-tutorial-lang");
-    if (langBtn) { langBtn.textContent = _t("langToggle"); langBtn.title = _t("langTitle"); }
+    if (langBtn) { langBtn.textContent = _langFlag(_nextLang()); langBtn.title = _t("langTitle"); }
     const skipBtn = document.getElementById("kta-tutorial-skip");
     if (skipBtn) skipBtn.textContent = _t("skip");
     const prevBtn = document.getElementById("kta-tutorial-prev");

@@ -1223,10 +1223,76 @@ async function _splashEnd() {
 }
 
 // =========================
+// 🌍 v1.45.0 — i18n DOM (HOME statique)
+// =========================
+// Applique les traductions sur le DOM : tout élément portant
+//   • data-i18n        → remplace textContent par I18n.t(clé)
+//   • data-i18n-html   → remplace innerHTML  par I18n.t(clé) (valeurs avec balises)
+//   • data-i18n-title  → pose title + aria-label = I18n.t(clé)
+// Le texte FR laissé dans le HTML n'est qu'un FALLBACK (si I18n indispo). La
+// VRAIE source est le dico lang/<code>.json. Idempotent → rappelé à chaque
+// changement de langue. Générique : poser les attributs suffit, aucun code à
+// ajouter ici pour une nouvelle zone ou une nouvelle langue.
+function _applyI18nDom(root) {
+  if (!window.I18n || typeof window.I18n.t !== "function") return;
+  root = root || document;
+  root.querySelectorAll("[data-i18n]").forEach(function(el) {
+    el.textContent = window.I18n.t(el.getAttribute("data-i18n"));
+  });
+  root.querySelectorAll("[data-i18n-html]").forEach(function(el) {
+    el.innerHTML = window.I18n.t(el.getAttribute("data-i18n-html"));
+  });
+  root.querySelectorAll("[data-i18n-title]").forEach(function(el) {
+    const v = window.I18n.t(el.getAttribute("data-i18n-title"));
+    el.setAttribute("title", v);
+    el.setAttribute("aria-label", v);
+  });
+}
+
+// Peuple le sélecteur de langue du HOME depuis I18n.available() (scale N
+// langues, aucun code de langue figé) + sélectionne la langue active + bind le
+// change : bascule I18n PUIS ré-applique les traductions du HOME EN PLACE (pas
+// de reload → compatible incognito, où l'écriture localStorage est shimée en
+// mémoire et un reload perdrait le choix). Couvre le HOME normal ET incognito
+// (même écran). Idempotent (guard _i18nBound).
+function _initHomeLangSelect() {
+  const sel = document.getElementById("loaderAppLang");
+  if (!sel || !window.I18n || typeof window.I18n.available !== "function") return;
+  const langs = window.I18n.available() || [];
+  const cur = window.I18n.getLang();
+  sel.innerHTML = langs.map(function(l) {
+    return '<option value="' + l.code + '"' + (l.code === cur ? ' selected' : '') + '>' +
+           (l.flag ? l.flag + ' ' : '') + l.label + '</option>';
+  }).join("");
+  if (sel._i18nBound) return;
+  sel._i18nBound = true;
+  sel.addEventListener("change", function() {
+    const code = sel.value;
+    const done = (typeof window.I18n.setLang === "function") ? window.I18n.setLang(code) : Promise.resolve();
+    Promise.resolve(done).then(function() { _applyI18nDom(document); });
+  });
+}
+
+// =========================
 // POINT D'ENTRÉE — auto-détection
 // =========================
 (async function initApp() {
   console.log("[Main] Démarrage…");
+
+  // 🌍 v1.45.0 : I18N — précharge les dicos (fr = fallback obligatoire +
+  // langue active) AVANT tout rendu d'UI/modale, pour que I18n.t() retourne
+  // les traductions et jamais la clé brute. Échec réseau → dico {} (jamais de
+  // reject) → fallback FR garanti. Cf js/i18n.js.
+  if (window.I18n && typeof window.I18n.init === "function") {
+    try { await window.I18n.init(); }
+    catch (e) { console.warn("[Main] I18n.init a échoué (fallback FR) :", e); }
+  }
+
+  // 🌍 v1.45.0 — Traduit le HOME (statique, déjà dans le DOM) depuis le dico +
+  // initialise son sélecteur de langue. Fait AVANT le splash → le HOME est déjà
+  // dans la bonne langue quand il devient visible.
+  try { _applyI18nDom(document); _initHomeLangSelect(); }
+  catch (e) { console.warn("[Main] i18n HOME a échoué :", e); }
 
   // Démarrer le splash dès l'init
   _splashStart();
