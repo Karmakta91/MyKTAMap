@@ -85,12 +85,12 @@
     _instrEl.className = "kta-north-picker-overlay";
     _instrEl.innerHTML =
       '<div class="kta-north-picker-card">' +
-        '<div class="kta-north-picker-title">🧭 Calibration du Nord</div>' +
-        '<div class="kta-north-picker-step" id="kta-np-step">Clique d\'abord le <strong>Sud</strong> du plan.</div>' +
+        '<div class="kta-north-picker-title">' + window.I18n.t("north.titre") + '</div>' +
+        '<div class="kta-north-picker-step" id="kta-np-step">' + window.I18n.t("north.step.south") + '</div>' +
         '<div class="kta-north-picker-actions">' +
-          '<button type="button" class="kta-btn" id="kta-np-validate" disabled>✅ Valider</button>' +
-          '<button type="button" class="kta-btn" id="kta-np-restart">↺ Recommencer</button>' +
-          '<button type="button" class="kta-btn" id="kta-np-cancel">❌ Annuler</button>' +
+          '<button type="button" class="kta-btn" id="kta-np-validate" disabled>' + window.I18n.t("north.btn.validate") + '</button>' +
+          '<button type="button" class="kta-btn" id="kta-np-restart">' + window.I18n.t("north.btn.restart") + '</button>' +
+          '<button type="button" class="kta-btn" id="kta-np-cancel">' + window.I18n.t("north.btn.cancel") + '</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(_instrEl);
@@ -150,7 +150,7 @@
     if (!_active) return;
     if (!_pickedSouth) {
       _pickedSouth = { lat: e.latlng.lat, lng: e.latlng.lng };
-      _setStep('Sud capturé ✓ — Maintenant clique le <strong>Nord</strong> du plan.', false);
+      _setStep(window.I18n.t("north.step.southOk"), false);
       return;
     }
     if (!_pickedNorth) {
@@ -159,11 +159,11 @@
       if (deg == null) {
         // Trop proche du Sud — invalider et redemander le 2e clic
         _pickedNorth = null;
-        _setStep('⚠️ Distance trop faible (clics quasi identiques). Reclique le <strong>Nord</strong> plus loin.', false);
+        _setStep(window.I18n.t("north.step.tooClose"), false);
         return;
       }
       _drawArrow();
-      _setStep('Nord capturé ✓ — Angle calculé : <strong>' + deg.toFixed(1) + '°</strong>. Tu peux Valider ou Recommencer.', true);
+      _setStep(window.I18n.t("north.step.northOk", { deg: deg.toFixed(1) }), true);
     }
   }
 
@@ -186,7 +186,7 @@
     _pickedSouth = null;
     _pickedNorth = null;
     _removeArrow();
-    _setStep('Clique d\'abord le <strong>Sud</strong> du plan.', false);
+    _setStep(window.I18n.t("north.step.south"), false);
   }
   function _onCancel() {
     const resolve = _resolveFn;
@@ -219,10 +219,10 @@
     return new Promise(function(resolve, reject) {
       if (_active) {
         // Un autre picker tourne déjà — refuse
-        return reject(new Error("North picker déjà actif"));
+        return reject(new Error(window.I18n.t("north.err.alreadyActive")));
       }
       if (!_isMapReady()) {
-        return reject(new Error("Map indisponible (mode picker requiert l'écran carte)"));
+        return reject(new Error(window.I18n.t("north.err.mapUnavailable")));
       }
       _resolveFn = resolve;
       _rejectFn  = reject;
@@ -230,7 +230,7 @@
       _pickedSouth = null;
       _pickedNorth = null;
       _showInstr();
-      _setStep('Clique d\'abord le <strong>Sud</strong> du plan.', false);
+      _setStep(window.I18n.t("north.step.south"), false);
       _mapClickToken = true;
       window.map.on("click", _onMapClick);
     });

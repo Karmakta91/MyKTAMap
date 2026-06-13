@@ -60,26 +60,26 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-imglayer-calib-boite" style="max-width:1100px; width:95vw; height:auto; max-height:92vh; display:flex; flex-direction:column;">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🖼️ Calibrer le calque image — 2 ancres</span>' +
-          '<button class="kta-panneau-close" type="button" id="kta-ilc-close" aria-label="Fermer">&times;</button>' +
+          '<span class="kta-readme-modal-titre">' + window.I18n.t("imgcal.titre") + '</span>' +
+          '<button class="kta-panneau-close" type="button" id="kta-ilc-close" aria-label="' + window.I18n.t("imgcal.close") + '">&times;</button>' +
         '</div>' +
         '<div class="kta-imglayer-calib-step" id="kta-ilc-step" style="padding:10px 16px; background:rgba(140,180,255,0.08); border-bottom:1px solid rgba(140,180,255,0.2); color:#c8d0e0; font-size:13px;">' +
-          'Initialisation…' +
+          window.I18n.t("imgcal.init") +
         '</div>' +
         '<div class="kta-imglayer-calib-split" style="display:flex; gap:0; flex:1; min-height:400px; max-height:60vh;">' +
           '<div class="kta-imglayer-calib-pane kta-imglayer-calib-left" style="flex:1; display:flex; flex-direction:column; border-right:1px solid rgba(255,255,255,0.1);">' +
-            '<div class="kta-imglayer-calib-pane-titre" style="padding:8px 12px; background:rgba(255,255,255,0.05); font-size:12px; color:#8892a4; text-align:center;">📷 Calque image (source)</div>' +
+            '<div class="kta-imglayer-calib-pane-titre" style="padding:8px 12px; background:rgba(255,255,255,0.05); font-size:12px; color:#8892a4; text-align:center;">' + window.I18n.t("imgcal.pane.source") + '</div>' +
             '<div id="kta-ilc-mini-left" style="flex:1; background:#0a0d18;"></div>' +
           '</div>' +
           '<div class="kta-imglayer-calib-pane kta-imglayer-calib-right" style="flex:1; display:flex; flex-direction:column;">' +
-            '<div class="kta-imglayer-calib-pane-titre" style="padding:8px 12px; background:rgba(255,255,255,0.05); font-size:12px; color:#8892a4; text-align:center;">🗺️ Plan principal (cible)</div>' +
+            '<div class="kta-imglayer-calib-pane-titre" style="padding:8px 12px; background:rgba(255,255,255,0.05); font-size:12px; color:#8892a4; text-align:center;">' + window.I18n.t("imgcal.pane.target") + '</div>' +
             '<div id="kta-ilc-mini-right" style="flex:1; background:#0a0d18;"></div>' +
           '</div>' +
         '</div>' +
         '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end; padding:12px 16px;">' +
-          '<button class="kta-btn kta-btn-ghost" type="button" id="kta-ilc-restart">↺ Recommencer</button>' +
-          '<button class="kta-btn kta-btn-ghost" type="button" id="kta-ilc-cancel">❌ Annuler</button>' +
-          '<button class="kta-btn kta-btn-primary" type="button" id="kta-ilc-validate" disabled>✅ Valider</button>' +
+          '<button class="kta-btn kta-btn-ghost" type="button" id="kta-ilc-restart">' + window.I18n.t("imgcal.btn.restart") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost" type="button" id="kta-ilc-cancel">' + window.I18n.t("imgcal.btn.cancel") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" type="button" id="kta-ilc-validate" disabled>' + window.I18n.t("imgcal.btn.validate") + '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
@@ -154,16 +154,16 @@
   function _refreshStep() {
     const s = _state;
     if (s.step === 1) {
-      _setStepText("🔴 <strong>Étape 1/4</strong> — Clique le <strong>point A</strong> sur le <strong>calque image (gauche)</strong> : un endroit reconnaissable (coin, intersection, marqueur).", false);
+      _setStepText(window.I18n.t("imgcal.step1"), false);
     } else if (s.step === 2) {
-      _setStepText("🔴 <strong>Étape 2/4</strong> — Clique le <strong>même point A</strong> sur le <strong>plan principal (droite)</strong>.", false);
+      _setStepText(window.I18n.t("imgcal.step2"), false);
     } else if (s.step === 3) {
-      _setStepText("🔵 <strong>Étape 3/4</strong> — Clique le <strong>point B</strong> sur le <strong>calque image (gauche)</strong>. Choisis-le éloigné du point A pour une meilleure précision.", false);
+      _setStepText(window.I18n.t("imgcal.step3"), false);
     } else if (s.step === 4) {
-      _setStepText("🔵 <strong>Étape 4/4</strong> — Clique le <strong>même point B</strong> sur le <strong>plan principal (droite)</strong>.", false);
+      _setStepText(window.I18n.t("imgcal.step4"), false);
     } else if (s.step === 5) {
       _renderPreview();
-      _setStepText("👁️ <strong>Aperçu</strong> — L'image est calibrée. Si l'alignement est OK, clique <strong>✅ Valider</strong>. Sinon <strong>↺ Recommencer</strong>.", true);
+      _setStepText(window.I18n.t("imgcal.preview"), true);
     }
   }
 
@@ -200,7 +200,7 @@
   function _renderPreview() {
     const s = _state;
     if (!window.ImageLayerCalibration || !L.imageOverlay.rotated) {
-      _setStepText("⚠️ Plugin ou helper manquant — preview indisponible. Tu peux quand même valider.", true);
+      _setStepText(window.I18n.t("imgcal.warn.noPlugin"), true);
       return;
     }
     const calib = {
@@ -209,7 +209,7 @@
     };
     const corners = window.ImageLayerCalibration.compute3CornersFromAnchors(calib, s.sourceW, s.sourceH);
     if (!corners) {
-      _setStepText("⚠️ Ancres trop proches ou colinéaires — recommence avec des points plus éloignés.", false);
+      _setStepText(window.I18n.t("imgcal.warn.collinear"), false);
       return;
     }
     // Calcule les latlng dans le repère mini-right (planH-based)
@@ -278,7 +278,7 @@
   // =========================
   function open(opts) {
     return new Promise(function(resolve, reject) {
-      if (_active) return reject(new Error("Picker calibration déjà actif"));
+      if (_active) return reject(new Error(window.I18n.t("imgcal.err.alreadyActive")));
       if (!opts || !opts.sourceUrl || !opts.planUrl || !opts.planWidth || !opts.planHeight) {
         return reject(new Error("opts requis : sourceUrl, planUrl, planWidth, planHeight"));
       }

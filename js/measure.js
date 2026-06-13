@@ -280,7 +280,7 @@ function _afficherMesureValeur() {
       ? window.formatDistance(distM, 2)
       : (distM.toFixed(2) + " m");
     const cls = (_activeMode === "distance") ? "kta-measure-line kta-measure-active-line" : "kta-measure-line";
-    html += '<div class="' + cls + '"><span class="kta-measure-distance-icon">📐</span>Distance : ' + txtD + '</div>';
+    html += '<div class="' + cls + '"><span class="kta-measure-distance-icon">📐</span>' + window.I18n.t("measure.label.distance", { val: txtD }) + '</div>';
   }
   if (hasSurface) {
     const surfM2 = calculSurface();
@@ -288,14 +288,16 @@ function _afficherMesureValeur() {
       ? window.formatSurface(surfM2, 1)
       : (surfM2 < 10000 ? Math.round(surfM2) + " m²" : (surfM2 / 10000).toFixed(2) + " ha");
     const cls = (_activeMode === "surface") ? "kta-measure-line kta-measure-active-line" : "kta-measure-line";
-    html += '<div class="' + cls + '"><span class="kta-measure-distance-icon">⬛</span>Surface : ' + txtS + '</div>';
+    html += '<div class="' + cls + '"><span class="kta-measure-distance-icon">⬛</span>' + window.I18n.t("measure.label.surface", { val: txtS }) + '</div>';
   }
 
   // Aucune mesure en cours → libellé invitant à cliquer selon le mode actif
   if (!hasDistance && !hasSurface) {
     if (window.modeMesure) {
       const icon = (_activeMode === "surface") ? "⬛" : "📐";
-      const txt  = (_activeMode === "surface") ? "Surface : clique 3 points min." : "Distance : clique pour commencer";
+      const txt  = (_activeMode === "surface")
+        ? window.I18n.t("measure.hint.surface")
+        : window.I18n.t("measure.hint.distance");
       html = '<div class="kta-measure-line kta-measure-active-line"><span class="kta-measure-distance-icon">' + icon + '</span>' + txt + '</div>';
     } else {
       // Aucune mesure ni mode actif : on cache le label
@@ -316,7 +318,7 @@ function afficherDistance(d) {
 
 function telechargerMesureJSON() {
   if (_pointsDistance.length === 0 && _pointsSurface.length === 0) {
-    alert("Aucune mesure à exporter");
+    alert(window.I18n.t("measure.alert.noMeasure"));
     return;
   }
 

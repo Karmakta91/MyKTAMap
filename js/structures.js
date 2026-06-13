@@ -214,11 +214,8 @@ function initStructures() {
     // 🆕 v1.16.0 step2-drawable : pour les types CUSTOM, le label vient de
     // LegendCustomization (le libellé que l'utilisateur a saisi).
     function _resolveTypeLabel(k) {
-      if (k === "pilier-1") return "Pilier 1ère masse";
-      if (k === "pilier-2") return "Pilier 2e masse";
-      if (k === "mur")      return "Mur";
-      if (k === "front-1")  return "Front 1ère masse";
-      if (k === "front-2")  return "Front 2e masse";
+      const _builtin = ["pilier-1", "pilier-2", "mur", "front-1", "front-2"];
+      if (_builtin.indexOf(k) >= 0) return window.I18n.t("struct.label." + k);
       if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
         const e = window.LegendCustomization.findCustomEntry(k);
         if (e) return e.label || k;
@@ -267,7 +264,9 @@ function initStructures() {
       currentStructure.points.push({ x: x, y: y });
       renderStructures();
       if (window.HistoryManager && _historyBefore) {
-        const lbl = _isNewStruct ? "Nouveau " + _typeLabel : "Sommet sur " + _typeLabel;
+        const lbl = _isNewStruct
+          ? window.I18n.t("struct.undo.new", { type: _typeLabel })
+          : window.I18n.t("struct.undo.vertex", { type: _typeLabel });
         window.HistoryManager.record(lbl, _historyBefore, "structures");
       }
       return;
@@ -282,7 +281,7 @@ function initStructures() {
       if (dist <= STRUCT_CLOSE_TOLERANCE) {
         fermerStructureEnCours();
         if (window.HistoryManager && _historyBefore) {
-          window.HistoryManager.record("Fermer " + _typeLabel, _historyBefore, "structures");
+          window.HistoryManager.record(window.I18n.t("struct.undo.close", { type: _typeLabel }), _historyBefore, "structures");
         }
         return;
       }
@@ -291,7 +290,9 @@ function initStructures() {
     currentStructure.points.push({ x: x, y: y });
     renderStructures();
     if (window.HistoryManager && _historyBefore) {
-      const lbl = _isNewStruct ? "Nouveau " + _typeLabel : "Sommet sur " + _typeLabel;
+      const lbl = _isNewStruct
+        ? window.I18n.t("struct.undo.new", { type: _typeLabel })
+        : window.I18n.t("struct.undo.vertex", { type: _typeLabel });
       window.HistoryManager.record(lbl, _historyBefore, "structures");
     }
   });
@@ -571,14 +572,8 @@ function renderStructures() {
             }
           }
           // Fallback legacy
-          const LBL = {
-            "pilier-1": "🟡 Pilier 1ère masse",
-            "pilier-2": "🟠 Pilier 2e masse",
-            "mur":      "🔵 Mur",
-            "front-1":  "🟨 Front de taille 1ère masse",
-            "front-2":  "🟧 Front de taille 2e masse"
-          };
-          return LBL[t] || ("Structure " + t);
+          if (_structEmojis[t]) return window.I18n.t("struct.popup." + t);
+          return window.I18n.t("struct.popup.fallback", { type: t });
         }
         let cibleClic = layer;
         if (isPolyline) {
@@ -635,7 +630,7 @@ function removeLastStructure() {
     currentStructure = null;
     renderStructures();
     if (window.HistoryManager && _historyBefore) {
-      window.HistoryManager.record("Supprimer structure en cours", _historyBefore, "structures");
+      window.HistoryManager.record(window.I18n.t("struct.undo.removeCurrent"), _historyBefore, "structures");
     }
     return true;
   }
@@ -644,8 +639,8 @@ function removeLastStructure() {
   const removed = structuresData.pop();
   renderStructures();
   if (window.HistoryManager && _historyBefore) {
-    const typeLabel = removed && removed.type ? removed.type : "structure";
-    window.HistoryManager.record("Supprimer dernière structure (" + typeLabel + ")", _historyBefore, "structures");
+    const typeLabel = removed && removed.type ? removed.type : window.I18n.t("struct.undo.fallback");
+    window.HistoryManager.record(window.I18n.t("struct.undo.removeLast", { type: typeLabel }), _historyBefore, "structures");
   }
   return true;
 }
