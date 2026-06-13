@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.44.3** (10 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.44.4** (10 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -496,7 +496,15 @@ client-side (UX, gates, robustesse SW, fix de logique de cache). Récap :
   `interface.js`, installé par les 3 modes suppression. **Aucun changement
   de surface réseau**.
 
-**Confirmation privacy v1.43.0 → v1.44.3** : aucun de ces 32 patches
+- **v1.44.4** — Fix cause racine de la suppression au clic : le handler
+  Leaflet `_openPopup` fait `DomEvent.stop(e)` quand on clique pile sur un
+  élément avec popup → la propagation du clic est stoppée → le handler
+  `map.on("click")` du mode suppression ne tirait jamais (seuls les clics à
+  proximité supprimaient). Fix : rejeu du clic suppression depuis l'event
+  `popupopen` (la popup s'ouvre à la position du clic). **Aucun changement
+  de surface réseau**.
+
+**Confirmation privacy v1.43.0 → v1.44.4** : aucun de ces 33 patches
 n'ajoute de surface réseau sortante. Le cache reste 100% IndexedDB local,
 les requêtes vers `tile.openstreetmap.org` passent par le Service Worker
 qui sert depuis IDB ou laisse passer le fetch réseau standard. **AUCUN
@@ -578,10 +586,10 @@ bbox, le comportement v1.42.x est conservé (modale bloquée + toast warn).
   actifs (héritage automatique des gates `osmView.js` /
   `osmHomePreview.js` v1.40.19).
 
-**Verdict réseau v1.44.3** : ✅ aucune nouvelle URL ajoutée à la liste
+**Verdict réseau v1.44.4** : ✅ aucune nouvelle URL ajoutée à la liste
 blanche, aucune nouvelle catégorie de donnée envoyée, aucun service tiers
 contacté. Le périmètre réseau v1.42.x est **strictement conservé** sur
-toute la série v1.43.0 → v1.44.3. La whitelist endpoints reste inchangée
+toute la série v1.43.0 → v1.44.4. La whitelist endpoints reste inchangée
 (`tile.openstreetmap.org`, `denylist.json`, `ping.html`, `version.json` +
 assets app). Le seul changement est l'introduction d'un store IDB local
 de plus (cf. section « Stockage local »). La feature « Save Offline »

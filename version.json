@@ -1,7 +1,7 @@
 {
-  "version": "v1.44.3",
+  "version": "v1.44.4",
   "released": "2026-06-10",
   "notes": [
-    "🐛 En mode suppression au clic (tracé, zone ou structure), la fenêtre d'annotation de l'élément ne s'ouvre plus par-dessus — l'élément est simplement supprimé, comme attendu."
+    "🐛 En mode suppression au clic (tracé, zone, structure), cliquer pile sur l'élément le supprime maintenant vraiment — avant, sa fenêtre d'annotation s'ouvrait et bloquait la suppression. Il fallait viser à côté de la ligne pour que ça marche."
   ]
 }

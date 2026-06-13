@@ -2880,20 +2880,49 @@ _setGroupeModeActif("tracker", isTracking, null);
 // =========================
 // GUARD POPUP — modes suppression au clic (tracé / zone / structure)
 // =========================
-// 🐛 v1.44.3 — Les éléments session (polylines, zones, structures) ont une
+// 🐛 v1.44.4 — Les éléments session (polylines, zones, structures) ont une
 // popup d'annotation bindée via Leaflet bindPopup (cf utils.js >
-// attacherNotePopup). Au clic sur l'élément, le handler LAYER de Leaflet
-// ouvre la popup AVANT que le handler MAP du mode suppression ne tire —
-// résultat : l'élément est supprimé MAIS sa popup d'annotation s'ouvre
-// par-dessus (orpheline). Le fix intercepte au niveau map : tant qu'un
-// mode suppression est actif, toute popup qui s'ouvre est refermée
-// immédiatement. Helper mutualisé entre les 3 modes (install idempotent).
-// Limite connue : si deux modes suppression sont actifs simultanément
-// (quirk pré-existant, deux floaters empilés) et qu'un seul se désactive,
-// le guard tombe pour l'autre — cas marginal, même sévérité que le quirk.
+// attacherNotePopup). PROBLÈME DE FOND : quand on clique PILE sur l'élément,
+// le handler interne Leaflet `_openPopup` fait `DomEvent.stop(e)` AVANT
+// d'ouvrir la popup → la propagation du clic est stoppée → le handler
+// `map.on("click")` du mode suppression NE TIRE JAMAIS. Conséquence :
+//   - avant v1.44.3 : popup s'ouvrait, suppression NE se faisait PAS
+//   - v1.44.3 (guard simple) : popup refermée, suppression NE se faisait
+//     TOUJOURS PAS (on masquait le symptôme sans corriger la cause)
+// Seuls les clics À PROXIMITÉ (sans toucher la ligne, donc pas de popup)
+// déclenchaient la suppression — d'où l'impression d'aléatoire.
+//
+// Fix v1.44.4 : on REJOUE le clic suppression depuis l'event `popupopen`.
+// Leaflet ouvre la popup exactement à la position du clic (openPopup(t.latlng)
+// dans _openPopup), donc `popup._latlng` = le point cliqué. On ferme la
+// popup orpheline et on appelle le handler de suppression actif avec un
+// faux event `{ latlng }` — il retrouve l'élément le plus proche (= celui
+// cliqué) et le supprime, exactement comme un clic map normal. Le handler
+// map réel ne tire pas (propagation stoppée), donc zéro risque de double.
+//
+// Helper mutualisé entre les 3 modes (install idempotent). Limite connue :
+// deux modes suppression actifs simultanément (quirk pré-existant) → le
+// rejeu pourrait viser le mauvais type ; cas marginal, non aggravé ici.
 let _suppPopupGuardActif = false;
 function _onSuppPopupOpen(e) {
-  try { window.map.closePopup(e && e.popup); } catch(err) {}
+  const popup = e && e.popup;
+  // Position du clic = ancrage de la popup (Leaflet l'ouvre à t.latlng).
+  let latlng = null;
+  try {
+    latlng = (popup && popup.getLatLng) ? popup.getLatLng() : (popup && popup._latlng) || null;
+  } catch(err) { latlng = null; }
+  // Ferme la popup orpheline qui vient de s'ouvrir.
+  try { window.map.closePopup(popup); } catch(err) {}
+  if (!latlng) return;
+  // Rejoue le clic suppression à cette position via le handler du mode actif.
+  const fakeEvt = { latlng: latlng };
+  try {
+    if (_suppTraceClickHandler)          _suppTraceClickHandler(fakeEvt);
+    else if (_suppZoneClickHandler)      _suppZoneClickHandler(fakeEvt);
+    else if (_suppStructureClickHandler) _suppStructureClickHandler(fakeEvt);
+  } catch(err) {
+    console.warn("[Suppr] rejeu clic via popupopen échoué :", err);
+  }
 }
 function _installerSuppPopupGuard() {
   if (_suppPopupGuardActif || !window.map) return;
