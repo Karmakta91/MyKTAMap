@@ -506,7 +506,7 @@ function attacherBoutonCopierEchelleGps(container) {
       if (!val) return;
       const txt = btn.textContent;
       const apply = function() {
-        btn.textContent = "✓ Copié !";
+        btn.textContent = window.I18n.t("utils.copied");
         setTimeout(function() { btn.textContent = txt; }, 1500);
       };
       try {
@@ -743,7 +743,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           setDescr(newDescr || undefined);
           if (statusEl) {
             statusEl.style.display = "block";
-            statusEl.textContent = "✅ Note sauvegardée";
+            statusEl.textContent = window.I18n.t("utils.noteSaved");
             statusEl.style.color = "#6ce28a";
           }
           if (window.HistoryManager && _historyBefore && window.HistoryManager.record) {
@@ -906,7 +906,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     ? '<div class="kta-popup-actions kta-popup-actions-danger">' +
         '<button class="kta-popup-btn kta-popup-btn-delete" type="button" ' +
           'onclick="window.supprimerPointEditor(\'' + jsId + "'," + x + ',' + y + '); return false;" ' +
-          'title="Supprimer définitivement ce point de ta session">' +
+          'title="' + window.I18n.t("poi.deletePoint") + '">' +
           '🗑️ Supprimer ce point' +
         '</button>' +
       '</div>'
@@ -929,12 +929,12 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     const gpsStr = _formatGps(_gpsLatLng);
     const gpsAttr = _escAttr(gpsStr);
     gpsLineHtml =
-      '<div class="kta-popup-gps" title="Coordonnées GPS calculées via le calibrage du plan">' +
+      '<div class="kta-popup-gps" title="' + window.I18n.t("poi.gpsComputed") + '">' +
         '<span class="kta-popup-gps-icon">🌐</span>' +
         '<code class="kta-popup-gps-val">' + gpsStr + '</code>' +
         '<button class="kta-popup-gps-copy" type="button" ' +
           'onclick="window.kta_copierGps(\'' + gpsAttr.replace(/'/g, "\\'") + '\'); return false;" ' +
-          'title="Copier les coordonnées GPS">📋</button>' +
+          'title="' + window.I18n.t("poi.copyGps") + '">📋</button>' +
       '</div>';
   }
 
@@ -950,7 +950,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     ttsBtnHtml = '<button class="kta-popup-tts-btn" type="button" ' +
                    'data-tts-text="' + _escAttr(desc) + '" ' +
                    'onclick="window.kta_lireNotePopup(this); return false;" ' +
-                   'title="Lire la note à haute voix">' +
+                   'title="' + window.I18n.t("poi.readNote") + '">' +
                    '🔊' +
                  '</button>';
   }
@@ -963,17 +963,17 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
            '<div class="kta-popup-actions">' +
              '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' +
                'onclick="window.recalerTrackerSurPoint(' + x + ',' + y + '); return false;" ' +
-               'title="Recale ta position tracker sur ce point (équivalent du mode recalage)">' +
+               'title="' + window.I18n.t("poi.iAmHere") + '">' +
                '📍 Je suis ici' +
              '</button>' +
              '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' +
                'onclick="window.itineraireYAller(' + x + ',' + y + ",'" + jsName + "'); return false;\" " +
-               'title="Calcule un itinéraire depuis ta position tracker vers ce point">' +
+               'title="' + window.I18n.t("poi.goThere") + '">' +
                '🧭 Y aller' +
              '</button>' +
              '<button class="kta-popup-btn kta-popup-btn-add" type="button" ' +
                'onclick="window.itineraireAjouterWaypoint(' + x + ',' + y + ",'" + jsName + "'); return false;\" " +
-               'title="Ajoute ce point comme waypoint d\'un itinéraire">' +
+               'title="' + window.I18n.t("poi.addWaypoint") + '">' +
                '➕ Itinéraire' +
              '</button>' +
              // 🆕 v1.16.0 step 3 — Favori : toggle ajout/retrait des favoris.

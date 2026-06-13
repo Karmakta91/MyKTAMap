@@ -980,7 +980,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
           if (typeof window !== "undefined") {
             const status = document.getElementById("loaderStatus");
             if (status) {
-              status.textContent = "⚠️ Mémorisation impossible : " + result.error + " — le plan reste utilisable mais demandera une re-sélection au prochain chargement.";
+              status.textContent = window.I18n.t("main.rememberFailed", { msg: result.error });
               status.style.color = "#ffb380";
             }
           }

@@ -73,7 +73,7 @@
     btn.id = "kta-presentation-exit-btn";
     btn.className = "kta-presentation-exit-btn";
     btn.setAttribute("aria-label", "Sortir du mode présentation");
-    btn.title = "Sortir du mode présentation (F ou Échap)";
+    btn.title = window.I18n.t("presentation.exitBtn");
     btn.innerHTML = "✕";
     btn.addEventListener("click", function(e) {
       e.preventDefault();

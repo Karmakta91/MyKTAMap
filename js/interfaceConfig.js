@@ -1077,7 +1077,7 @@ function afficherConfig() {
       }
       if (window.IncognitoMode.active) {
         // Confirm avant quit (perte de données potentielle)
-        if (confirm("Quitter le mode incognito ?\n\nTous les points/notes/tracker accumulés dans cette fenêtre seront perdus.")) {
+        if (confirm(window.I18n.t("config.incognito.confirmQuit"))) {
           window.IncognitoMode.quit();
         }
       } else {
@@ -1163,10 +1163,10 @@ function afficherConfig() {
       } catch(e) {}
       input.value = Math.round(cur);
       if (cur === 0) {
-        status.textContent = "ℹ️ Nord = haut du plan (configuration par défaut).";
+        status.textContent = window.I18n.t("config.north.statusDefault");
         status.style.color = "#8892a4";
       } else {
-        status.textContent = "✅ Nord calibré à " + cur.toFixed(1) + "° du haut du plan (sens horaire).";
+        status.textContent = window.I18n.t("config.north.statusCalibrated", { deg: cur.toFixed(1) });
         status.style.color = "#f4c542";
       }
     }

@@ -963,7 +963,7 @@
         <span class="kta-readme-modal-titre">📋 Journal réseau (live)</span>
         <div style="display:flex; gap:6px; align-items:center;">
           <button class="kta-btn kta-btn-ghost kta-net-log-mini" type="button" id="loaderNetLogCopy" title="Copier en JSON">📋 Copier</button>
-          <button class="kta-btn kta-btn-ghost kta-net-log-mini" type="button" id="loaderNetLogExport" title="Télécharger en JSON">📥 Exporter</button>
+          <button class="kta-btn kta-btn-ghost kta-net-log-mini" type="button" id="loaderNetLogExport" data-i18n-title="home.netlog.export" title="Télécharger en JSON">📥 Exporter</button>
           <button class="kta-btn kta-btn-ghost kta-net-log-mini" type="button" id="loaderNetLogClear" title="Vider le buffer">🗑️ Vider</button>
           <button class="kta-panneau-close" id="loaderNetLogClose">✕</button>
         </div>
@@ -1852,6 +1852,14 @@
         return mo >= 1 ? mo.toFixed(1) + " Mo" : Math.round(bytes / 1024) + " Ko";
       }
 
+      // i18n : helper traduction avec fallback FR inline si I18n indisponible
+      // (défensif — planRowHTML tourne après I18n.init au boot). Les titres des
+      // badges plan (stored/fs/pick/V2/M-LVL/V1) sont injectés en JS dans des
+      // template strings → pas de data-i18n-title statique possible ici.
+      function _homeT(key, fr) {
+        return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(key) : fr;
+      }
+
       function planRowHTML(plan) {
         let icon = plan.type === "server" ? "🌐" : "💾";
         // Badge de persistance (plans locaux) — différencier visuellement les
@@ -1859,11 +1867,11 @@
         let badgeStorage = "";
         if (plan.type === "local") {
           if (plan.storedBlob) {
-            badgeStorage = '<span class="plan-row-badge plan-row-badge-stored" title="Plan mémorisé dans l\'app">✅</span>';
+            badgeStorage = '<span class="plan-row-badge plan-row-badge-stored" title="' + _homeT("home.plans.badge.stored", "Plan mémorisé dans l'app") + '">✅</span>';
           } else if (plan.fsHandleId) {
-            badgeStorage = '<span class="plan-row-badge plan-row-badge-fs" title="Accès permanent autorisé">🔐</span>';
+            badgeStorage = '<span class="plan-row-badge plan-row-badge-fs" title="' + _homeT("home.plans.badge.fs", "Accès permanent autorisé") + '">🔐</span>';
           } else {
-            badgeStorage = '<span class="plan-row-badge plan-row-badge-pick" title="Re-sélection requise au chargement">📁</span>';
+            badgeStorage = '<span class="plan-row-badge plan-row-badge-pick" title="' + _homeT("home.plans.badge.pick", "Re-sélection requise au chargement") + '">📁</span>';
           }
         }
         // 🏗️ Mode badges (v150) : V2 tuilé (violet), Multi-niveau (jaune), V1 (gris).
@@ -1874,13 +1882,13 @@
         // que les noms longs poussent les badges modes en ellipsis.
         let badgesMode = "";
         if (plan.tiledV2 === true) {
-          badgesMode += '<span class="plan-row-mode plan-row-mode-v2" title="Plan tuilé V2 (performance, Google Maps-like)">V2</span>';
+          badgesMode += '<span class="plan-row-mode plan-row-mode-v2" title="' + _homeT("home.plans.mode.v2", "Plan tuilé V2 (performance, Google Maps-like)") + '">V2</span>';
         }
         if (plan.multiLevel === true) {
-          badgesMode += '<span class="plan-row-mode plan-row-mode-mlvl" title="Plan multi-niveau (carrière multi-étages)">M-LVL</span>';
+          badgesMode += '<span class="plan-row-mode plan-row-mode-mlvl" title="' + _homeT("home.plans.mode.mlvl", "Plan multi-niveau (carrière multi-étages)") + '">M-LVL</span>';
         }
         if (!badgesMode) {
-          badgesMode = '<span class="plan-row-mode plan-row-mode-v1" title="Plan classique (mono-niveau, image entière en RAM)">V1</span>';
+          badgesMode = '<span class="plan-row-mode plan-row-mode-v1" title="' + _homeT("home.plans.mode.v1", "Plan classique (mono-niveau, image entière en RAM)") + '">V1</span>';
         }
         // Structure (v170 suite 3 — épuration affichage compact) :
         // - .plan-row-title = ligne 1 : nom (ellipsis) + version uniquement
