@@ -1,4 +1,18 @@
 {
-  "active": false,
-  "alerts": []
+  "active": true,
+  "alerts": [
+    {
+      "id": "offline-precache-2026-06",
+      "level": "info",
+      "title": "🛠️ Accès hors-ligne — petite vérification",
+      "message": "Suite à un petit bug temporaire, pour être sûr d'avoir l'application entièrement disponible hors-ligne, tu peux forcer le préchargement de tous les fichiers. Dans la majorité des cas, si tu as déjà utilisé l'app avant, ce n'est pas nécessaire.",
+      "details": [
+        "⚙️ Ouvre la Configuration (icône ⚙️ en haut de l'accueil)",
+        "🔧 Descends jusqu'à « Inspecteur Service Worker »",
+        "🔄 Clique sur « Récupérer les fichiers manquants » et laisse charger jusqu'au bout",
+        "✅ Si rien n'apparaît comme manquant, tout est déjà en cache — rien à faire"
+      ],
+      "released": "2026-06-13T12:00:00Z"
+    }
+  ]
 }
