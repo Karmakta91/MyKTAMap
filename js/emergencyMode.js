@@ -119,18 +119,19 @@
   // UI
   // ============================================================
   function _buildOverlay() {
+    const t = window.I18n.t.bind(window.I18n);
     const overlay = document.createElement("div");
     overlay.id = "kta-emergency-overlay";
     overlay.className = "kta-emergency-overlay kta-emergency-" + _theme;
     overlay.innerHTML =
       '<div class="kta-emergency-box">' +
         '<div class="kta-emergency-header">' +
-          '<span class="kta-emergency-titre">🚨 MODE URGENCE</span>' +
+          '<span class="kta-emergency-titre">' + t("emergency.header.titre") + '</span>' +
           '<div class="kta-emergency-header-actions">' +
             // 🔧 v1.13.0 : toggle 🗺️ Itinéraire RETIRÉ. L'itinéraire actif
             // est toujours affiché dans la minimap (anti-crash JPG géré
             // séparément par _resolveMiniMapImageSource depuis v1.12.0).
-            '<button class="kta-emergency-theme-btn" id="kta-emergency-theme" title="Basculer clair / sombre" type="button">' +
+            '<button class="kta-emergency-theme-btn" id="kta-emergency-theme" title="' + t("emergency.theme.toggleTitle") + '" type="button">' +
               (_theme === "dark" ? "🔆" : "🌑") +
             '</button>' +
           '</div>' +
@@ -139,13 +140,13 @@
         '<div class="kta-emergency-grid">' +
 
           '<div class="kta-emergency-bloc">' +
-            '<div class="kta-emergency-label">📍 POSITION (PLAN)</div>' +
+            '<div class="kta-emergency-label">' + t("emergency.label.position") + '</div>' +
             '<div class="kta-emergency-value kta-emergency-pos-xy" id="kta-em-pos-xy">— / —</div>' +
             '<div class="kta-emergency-sub" id="kta-em-pos-status"></div>' +
           '</div>' +
 
           '<div class="kta-emergency-bloc" id="kta-em-bloc-gps" style="display:none;">' +
-            '<div class="kta-emergency-label">🌍 GPS (LAT / LNG)</div>' +
+            '<div class="kta-emergency-label">' + t("emergency.label.gps") + '</div>' +
             '<div class="kta-emergency-value kta-emergency-pos-gps" id="kta-em-pos-gps">— / —</div>' +
           '</div>' +
 
@@ -170,7 +171,7 @@
             //   - BOTTOM : degrés en gros (187°)
             '<div class="kta-emergency-bloc-heading-overlay">' +
               '<div class="kta-emergency-heading-top">' +
-                '<div class="kta-emergency-label">🧭 CAP</div>' +
+                '<div class="kta-emergency-label">' + t("emergency.label.cap") + '</div>' +
                 '<div class="kta-emergency-heading-card" id="kta-em-heading-card">—</div>' +
               '</div>' +
               '<div class="kta-emergency-value kta-emergency-heading-num" id="kta-em-heading-num">—</div>' +
@@ -179,15 +180,15 @@
 
           '<div class="kta-emergency-bloc kta-emergency-bloc-meta">' +
             '<div class="kta-emergency-meta-row">' +
-              '<span class="kta-emergency-meta-label">📏 ÉCHELLE</span>' +
+              '<span class="kta-emergency-meta-label">' + t("emergency.label.echelle") + '</span>' +
               '<span class="kta-emergency-meta-value" id="kta-em-echelle">—</span>' +
             '</div>' +
             '<div class="kta-emergency-meta-row">' +
-              '<span class="kta-emergency-meta-label">🗂️ PLAN</span>' +
+              '<span class="kta-emergency-meta-label">' + t("emergency.label.plan") + '</span>' +
               '<span class="kta-emergency-meta-value" id="kta-em-plan">—</span>' +
             '</div>' +
             '<div class="kta-emergency-meta-row">' +
-              '<span class="kta-emergency-meta-label">🔋 ÉTAT</span>' +
+              '<span class="kta-emergency-meta-label">' + t("emergency.label.etat") + '</span>' +
               '<span class="kta-emergency-meta-value" id="kta-em-etat">—</span>' +
             '</div>' +
           '</div>' +
@@ -195,13 +196,11 @@
         '</div>' +
 
         '<div class="kta-emergency-hint">' +
-          '⚠️ Ce mode désactive l\'interface principale et affiche les infos vitales en grand. ' +
-          'Si tu es en situation réelle d\'urgence : <strong>reviens sur tes pas</strong>, ' +
-          '<strong>économise ta lumière</strong>, <strong>préviens quelqu\'un</strong> dès que tu captes du réseau.' +
+          t("emergency.hint") +
         '</div>' +
 
         '<button class="kta-emergency-exit-btn" id="kta-emergency-exit" type="button">' +
-          '↩️ SORTIR DU MODE URGENCE' +
+          t("emergency.exitBtn") +
         '</button>' +
 
       '</div>';
@@ -245,14 +244,14 @@
       if (statusEl) {
         const trackingActif = !!(typeof window.getTrackingActif === "function" && window.getTrackingActif());
         statusEl.textContent = trackingActif
-          ? "✅ Tracker actif — mise à jour temps réel"
-          : "📍 Dernière position connue (tracker arrêté)";
+          ? window.I18n.t("emergency.status.trackerActif")
+          : window.I18n.t("emergency.status.dernierePosition");
       }
       // 🆕 v1.10.2 : auto-focus du minimap sur la position
       _updateMiniMap(pos);
     } else {
       if (posEl) posEl.textContent = "—  /  —";
-      if (statusEl) statusEl.textContent = "❌ Aucune position — démarre le tracker ▶️ d'abord";
+      if (statusEl) statusEl.textContent = window.I18n.t("emergency.status.aucunePosition");
     }
 
     // 🌍 GPS (si calibrage KMZ dispo pour ce plan)
@@ -355,7 +354,7 @@
       const numEl  = document.getElementById("kta-em-heading-num");
       const cardEl = document.getElementById("kta-em-heading-card");
       if (numEl)  numEl.textContent  = "—";
-      if (cardEl) cardEl.textContent = "Boussole indispo";
+      if (cardEl) cardEl.textContent = window.I18n.t("emergency.heading.boussoleIndispo");
     }
 
     // 📏 Échelle (statique mais peut changer au plan switch)
@@ -363,8 +362,8 @@
     if (echEl) {
       const scale = window.APP_CONFIG && window.APP_CONFIG.scale;
       echEl.textContent = (typeof scale === "number" && scale > 0)
-        ? scale.toFixed(2) + " px/m"
-        : "non calibrée";
+        ? window.I18n.t("emergency.echelle.unite", { scale: scale.toFixed(2) })
+        : window.I18n.t("emergency.echelle.nonCalibree");
     }
 
     // 🗂️ Plan
@@ -380,14 +379,14 @@
     if (etatEl) {
       const partsEtat = [];
       if (typeof window.getTrackingActif === "function" && window.getTrackingActif()) {
-        partsEtat.push("Tracker ON");
+        partsEtat.push(window.I18n.t("emergency.etat.trackerOn"));
       } else {
-        partsEtat.push("Tracker OFF");
+        partsEtat.push(window.I18n.t("emergency.etat.trackerOff"));
       }
       if (typeof heading === "number" && !isNaN(heading)) {
-        partsEtat.push("Boussole OK");
+        partsEtat.push(window.I18n.t("emergency.etat.boussoleOk"));
       } else {
-        partsEtat.push("Boussole KO");
+        partsEtat.push(window.I18n.t("emergency.etat.boussoleKo"));
       }
       etatEl.textContent = partsEtat.join(" · ");
     }

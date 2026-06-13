@@ -43,11 +43,13 @@
   // (mêmes km/h, mêmes libellés). Pas de marge de sécurité — le rayon est
   // exactement `vitesse × temps`. La spécificité urgence vient des hints
   // (contexte "état présumé de la personne perdue") et de l'icône.
+  // 🌍 i18n : `label`/`hint` ne sont plus codés en dur ici (data-only structure).
+  // Ils sont résolus AU RENDU via _presetLabel()/_presetHint() → I18n.t("lost.preset.<key>.label/.hint").
   const LOST_MODE_PRESETS = {
-    blesse:  { kmh: 2, label: "Blessé",  icon: "🤕", hint: "Progression entravée, très lent, terrain accidenté." },
-    lente:   { kmh: 3, label: "Lente",   icon: "🐌", hint: "Marche prudente, étroitures, exploration." },
-    normale: { kmh: 5, label: "Normale", icon: "🚶", hint: "Allure standard de marche (défaut)." },
-    rapide:  { kmh: 7, label: "Rapide",  icon: "🏃", hint: "Marche soutenue, parcours connu." }
+    blesse:  { kmh: 2, icon: "🤕" },
+    lente:   { kmh: 3, icon: "🐌" },
+    normale: { kmh: 5, icon: "🚶" },
+    rapide:  { kmh: 7, icon: "🏃" }
   };
   const DEFAULT_LOST_PRESET     = "normale";
   const LOST_PRESET_STORAGE_KEY = "myktamap_lost_preset";
@@ -135,6 +137,16 @@
   let _clickHandler     = null;
 
   // ===== Helpers =====
+  // 🌍 i18n — résolution AU RENDU (jamais au load). Fallback FR si I18n absent.
+  function _t(key, params) {
+    if (window.I18n && typeof window.I18n.t === "function") {
+      return window.I18n.t(key, params);
+    }
+    return key;
+  }
+  function _presetLabel(key) { return _t("lost.preset." + key + ".label"); }
+  function _presetHint(key)  { return _t("lost.preset." + key + ".hint"); }
+
   function _scale() {
     return (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
   }
@@ -385,10 +397,11 @@
     });
     const lastPopupHtml =
       '<div class="kta-popup-point kta-lost-popup">' +
-        '<b>📍 Dernière position connue</b>' +
+        '<b>' + _t("lost.popup.lastPos") + '</b>' +
         '<span class="kta-popup-desc">' + _esc(_lastKnownPos.label || "?") + '</span>' +
-        '<span class="kta-popup-desc kta-lost-popup-coord">Coordonnées : X = ' +
-          Math.round(_lastKnownPos.x) + ', Y = ' + Math.round(_lastKnownPos.y) + '</span>' +
+        '<span class="kta-popup-desc kta-lost-popup-coord">' +
+          _t("lost.popup.coords", { x: Math.round(_lastKnownPos.x), y: Math.round(_lastKnownPos.y) }) +
+        '</span>' +
       '</div>';
     _lastKnownMarker = L.marker(ll, { icon: lastIcon, zIndexOffset: 1000 })
       .addTo(window.map)
@@ -482,20 +495,20 @@
       });
 
       const statusBadge = m.inZone
-        ? '<span class="kta-lost-popup-badge kta-lost-popup-badge-in">🔮 Dans la zone</span>'
-        : '<span class="kta-lost-popup-badge kta-lost-popup-badge-out">❌ Hors zone</span>';
+        ? '<span class="kta-lost-popup-badge kta-lost-popup-badge-in">' + _t("lost.popup.inZone") + '</span>'
+        : '<span class="kta-lost-popup-badge kta-lost-popup-badge-out">' + _t("lost.popup.outZone") + '</span>';
 
       const matchPopupHtml =
         '<div class="kta-popup-point kta-lost-popup">' +
           '<b>' + _esc(m.point.nom || m.point.id || "?") + '</b>' +
-          '<span class="kta-popup-desc">Calque : ' + _esc(m.layer || "—") + '</span>' +
+          '<span class="kta-popup-desc">' + _t("lost.popup.calque", { layer: _esc(m.layer || "—") }) + '</span>' +
           (m.point.description ? '<span class="kta-popup-desc">' + _esc(m.point.description) + '</span>' : '') +
           '<div class="kta-lost-popup-meta">' +
             statusBadge +
             '<span class="kta-lost-popup-dist">' + _formatDist(m.distancePx) + '</span>' +
           '</div>' +
           (m.matched && m.matched.length
-            ? '<span class="kta-popup-desc kta-lost-popup-match">Match : ' + _esc(m.matched.join(", ")) + '</span>'
+            ? '<span class="kta-popup-desc kta-lost-popup-match">' + _t("lost.popup.match", { match: _esc(m.matched.join(", ")) }) + '</span>'
             : '') +
         '</div>';
 
@@ -543,7 +556,7 @@
       const x = Math.round(e.latlng.lng);
       const y = Math.round((window.APP_CONFIG.imageHeight || 0) - e.latlng.lat);
       _desactiverClicCarte();
-      callback({ x: x, y: y, label: "Clic carte (" + x + ", " + y + ")" });
+      callback({ x: x, y: y, label: _t("lost.pos.clickLabel", { x: x, y: y }) });
     };
     window.map.on("click", _clickHandler);
   }
@@ -567,26 +580,34 @@
     const now = new Date();
     const lines = [];
 
-    lines.push("⛑️ ALERTE — Personne potentiellement perdue");
+    const _rLang = (window.I18n && typeof window.I18n.getLang === "function") ? window.I18n.getLang() : "fr";
+    const _rLocale = _rLang === "en" ? "en-US" : "fr-FR";
+
+    lines.push(_t("lost.report.titre"));
     lines.push("=========================================");
-    lines.push("Plan : " + (config.name || "?") + (config.version ? " (" + config.version + ")" : ""));
-    lines.push("Généré le : " + now.toLocaleString("fr-FR"));
+    lines.push(_t("lost.report.plan", {
+      name: (config.name || "?") + (config.version ? " (" + config.version + ")" : "")
+    }));
+    lines.push(_t("lost.report.genere", { date: now.toLocaleString(_rLocale) }));
     lines.push("");
 
-    lines.push("📍 Dernière position connue :");
+    lines.push(_t("lost.report.position.titre"));
     if (_lastKnownPos) {
       lines.push("   " + (_lastKnownPos.label || "?"));
-      lines.push("   Coordonnées plan : X=" + Math.round(_lastKnownPos.x) + ", Y=" + Math.round(_lastKnownPos.y));
+      lines.push("   " + _t("lost.report.position.coords", {
+        x: Math.round(_lastKnownPos.x), y: Math.round(_lastKnownPos.y)
+      }));
     } else {
-      lines.push("   (non définie)");
+      lines.push("   " + _t("lost.report.position.none"));
     }
     lines.push("");
 
-    lines.push("⏱️ Temps écoulé : " + _elapsedMinutes + " min");
-    const presetInfo = LOST_MODE_PRESETS[_currentPreset] || { label: "?", icon: "?" };
-    lines.push("🏃 Vitesse de marche : " + presetInfo.icon + " " + presetInfo.label +
-               " (" + _speedKmH + " km/h)");
-    lines.push("📐 Rayon de la zone de recherche : ~" + _formatDist(_radiusPx));
+    lines.push(_t("lost.report.temps", { m: _elapsedMinutes }));
+    const presetInfo = LOST_MODE_PRESETS[_currentPreset] || { icon: "?" };
+    lines.push(_t("lost.report.vitesse", {
+      icon: presetInfo.icon, label: _presetLabel(_currentPreset), speed: _speedKmH
+    }));
+    lines.push(_t("lost.report.rayon", { radius: _formatDist(_radiusPx) }));
 
     // 🛣️ v173 : portée max sur le réseau de routes (Pathfinder.computeReachable).
     // Donne aux secours une info concrète sur le réseau physique parcouru
@@ -595,28 +616,27 @@
       if (_reachStats.exceedsBudget) {
         const r = _reachStats.reason;
         if (r === "no-roads" || r === "empty-graph") {
-          lines.push("🛣️ Portée sur réseau de routes : aucun réseau de routes connu sur ce plan");
+          lines.push(_t("lost.report.reach.none"));
         } else if (r === "snap-too-far") {
-          lines.push("🛣️ Portée sur réseau de routes : la dernière position connue est à ~" +
-                     _formatDist(_reachStats.snapDistance) + " du réseau le plus proche " +
-                     "(> rayon de recherche → personne probablement HORS du réseau de galeries)");
+          lines.push(_t("lost.report.reach.tooFar", { dist: _formatDist(_reachStats.snapDistance) }));
         } else {
-          lines.push("🛣️ Portée sur réseau de routes : non calculable (" + (r || "raison inconnue") + ")");
+          lines.push(_t("lost.report.reach.unknown", { reason: r || _t("lost.report.reach.reasonUnknown") }));
         }
       } else {
-        const tot = _reachStats.fullCount + _reachStats.partialCount;
-        lines.push("🛣️ Portée max sur le réseau de routes : ~" +
-                   _formatDist(_reachStats.totalReachableDistance) +
-                   " parcourable (" + _reachStats.fullCount + " segment" +
-                   (_reachStats.fullCount > 1 ? "s" : "") + " complet" +
-                   (_reachStats.fullCount > 1 ? "s" : "") +
-                   (_reachStats.partialCount > 0
-                     ? " + " + _reachStats.partialCount + " partiel" + (_reachStats.partialCount > 1 ? "s" : "")
-                     : "") +
-                   ", à comparer au rayon théorique " + _formatDist(_radiusPx) + ")");
+        // Pluralisation des segments construite côté JS (FR ajoute "s", EN gère via la clé)
+        const fc = _reachStats.fullCount;
+        const pc = _reachStats.partialCount;
+        const fullStr = _t("lost.report.reach.full" + (fc > 1 ? ".plural" : ".one"), { n: fc });
+        const partStr = pc > 0
+          ? " + " + _t("lost.report.reach.partial" + (pc > 1 ? ".plural" : ".one"), { n: pc })
+          : "";
+        lines.push(_t("lost.report.reach.ok", {
+          dist:    _formatDist(_reachStats.totalReachableDistance),
+          segments: fullStr + partStr,
+          radius:  _formatDist(_radiusPx)
+        }));
         if (_reachStats.snapDistance > 5) {
-          lines.push("   (distance entre position connue et 1er point du réseau : ~" +
-                     _formatDist(_reachStats.snapDistance) + ")");
+          lines.push("   " + _t("lost.report.reach.snapDist", { dist: _formatDist(_reachStats.snapDistance) }));
         }
       }
     }
@@ -625,46 +645,51 @@
     const inZone  = _matches.filter(function(m) { return m.inZone; });
     const outZone = _matches.filter(function(m) { return !m.inZone; });
 
-    lines.push("🔮 Indices matchés DANS la zone : " + inZone.length);
+    lines.push(_t("lost.report.indices.inZone", { n: inZone.length }));
     inZone.forEach(function(m) {
-      lines.push("   - " + (m.point.nom || m.point.id || "?") +
-                 " (" + (m.layer || "—") + ")" +
-                 " à " + _formatDist(m.distancePx) +
-                 " — match: " + m.matched.join(", "));
+      lines.push("   - " + _t("lost.report.indices.item", {
+        name:  (m.point.nom || m.point.id || "?"),
+        layer: (m.layer || "—"),
+        dist:  _formatDist(m.distancePx),
+        match: m.matched.join(", ")
+      }));
     });
-    if (inZone.length === 0) lines.push("   (aucun)");
+    if (inZone.length === 0) lines.push("   " + _t("lost.report.indices.empty"));
     lines.push("");
 
     if (outZone.length > 0) {
-      lines.push("⚠️ Indices matchés HORS zone (exclus) : " + outZone.length);
+      lines.push(_t("lost.report.indices.outZone", { n: outZone.length }));
       outZone.slice(0, 5).forEach(function(m) {
-        lines.push("   - " + (m.point.nom || m.point.id || "?") +
-                   " à " + _formatDist(m.distancePx));
+        lines.push("   - " + _t("lost.report.indices.itemOut", {
+          name: (m.point.nom || m.point.id || "?"),
+          dist: _formatDist(m.distancePx)
+        }));
       });
-      if (outZone.length > 5) lines.push("   ... et " + (outZone.length - 5) + " autres");
+      if (outZone.length > 5) lines.push("   " + _t("lost.report.indices.more", { n: outZone.length - 5 }));
       lines.push("");
     }
 
     if (_refinedLoc) {
-      lines.push("🎯 Localisation probable affinée (barycentre des matchs in-zone) :");
-      lines.push("   X=" + Math.round(_refinedLoc.x) + ", Y=" + Math.round(_refinedLoc.y) +
-                 " (basée sur " + _refinedLoc.count + " match" +
-                 (_refinedLoc.count > 1 ? "s" : "") + ")");
+      lines.push(_t("lost.report.loc.titre"));
+      lines.push("   " + _t("lost.report.loc.coords", {
+        x: Math.round(_refinedLoc.x),
+        y: Math.round(_refinedLoc.y),
+        n: _refinedLoc.count
+      }));
       lines.push("");
     }
 
-    lines.push("⚠️ Cette estimation est purement géométrique (vitesse moyenne × temps). " +
-               "Elle ne remplace PAS une opération de secours réelle.");
+    lines.push(_t("lost.report.disclaimer"));
     return lines.join("\n");
   }
 
   // ===== Validation des entrées =====
   function _validerEtCalculer(queryIndices) {
     if (!_lastKnownPos) {
-      throw new Error("Position de dernière connaissance requise");
+      throw new Error(_t("lost.err.noPos"));
     }
     if (!(_elapsedMinutes > 0)) {
-      throw new Error("Temps écoulé invalide");
+      throw new Error(_t("lost.err.badTime"));
     }
     _calculerRayon();
 
@@ -686,15 +711,18 @@
     const target = _refinedLoc || _lastKnownPos;
     const pt = {
       id: "lost_" + Date.now(),
-      nom: "⛑️ Position probable (mode urgence)",
+      nom: _t("lost.point.nom"),
       x: Math.round(target.x),
       y: Math.round(target.y),
       // Tag danger → icône ⚠️ panneau, justifié pour marquer une position incertaine
       // issue d'une situation d'urgence (rappel visuel fort sur la carte).
       tags: ["danger"],
-      description: "Estimation mode urgence — rayon " + _formatDist(_radiusPx) +
-                   " · " + _elapsedMinutes + " min · " + _speedKmH.toFixed(1) + " km/h" +
-                   " · " + (_refinedLoc ? _refinedLoc.count + " indices" : "barycentre indisponible")
+      description: _t("lost.point.desc", {
+        radius: _formatDist(_radiusPx),
+        m:      _elapsedMinutes,
+        speed:  _speedKmH.toFixed(1),
+        indices: (_refinedLoc ? _t("lost.point.descIndices", { n: _refinedLoc.count }) : _t("lost.point.descNoBary"))
+      })
     };
     if (window.ajouterPointEditor && typeof window.ajouterPointEditor === "function") {
       window.ajouterPointEditor(pt);
@@ -809,7 +837,7 @@
       _afficherResultats();
       // Le bouton Calculer devient "🔄 Recalculer"
       const calc = document.getElementById("kta-lost-calc");
-      if (calc) calc.textContent = "🔄 Recalculer";
+      if (calc) calc.textContent = _t("lost.btn.recalc");
     }
   }
 
@@ -824,86 +852,86 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-lost-modal-boite">' +
         '<div class="kta-readme-modal-header kta-lost-header">' +
-          '<span class="kta-readme-modal-titre">⛑️ Mode urgence — Je suis perdu</span>' +
+          '<span class="kta-readme-modal-titre">' + _t("lost.modal.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-lost-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
 
           '<details class="kta-lost-pratiques">' +
-            '<summary class="kta-lost-pratiques-titre">📚 Bonnes pratiques — clique pour lire (recommandé si tu es vraiment perdu)</summary>' +
+            '<summary class="kta-lost-pratiques-titre">' + _t("lost.tips.summary") + '</summary>' +
             '<div class="kta-lost-pratiques-corps">' +
               '<div class="kta-lost-pratique-cat">' +
-                '<div class="kta-lost-pratique-cat-titre">🧘 Garde ton calme (d\'abord)</div>' +
+                '<div class="kta-lost-pratique-cat-titre">' + _t("lost.tips.calme.titre") + '</div>' +
                 '<ul>' +
-                  '<li><strong>Stop.</strong> Inspire. Pose-toi quelques secondes.</li>' +
-                  '<li>La panique fait perdre les repères et gaspille lumière + énergie.</li>' +
-                  '<li>Mange/bois un peu si tu as quelque chose. Reprends ton souffle.</li>' +
+                  '<li>' + _t("lost.tips.calme.1") + '</li>' +
+                  '<li>' + _t("lost.tips.calme.2") + '</li>' +
+                  '<li>' + _t("lost.tips.calme.3") + '</li>' +
                 '</ul>' +
               '</div>' +
               '<div class="kta-lost-pratique-cat">' +
-                '<div class="kta-lost-pratique-cat-titre">🗺️ Orientation</div>' +
+                '<div class="kta-lost-pratique-cat-titre">' + _t("lost.tips.orient.titre") + '</div>' +
                 '<ul>' +
-                  '<li><strong>Reviens sur tes pas</strong> plutôt que chercher à atteindre ta destination — statistiquement plus fiable.</li>' +
-                  '<li>Cherche les <strong>axes principaux</strong> (roulages, galeries droites, voies ferrées). Ils mènent presque toujours à un repère connu.</li>' +
-                  '<li><strong>Utilise une boussole physique</strong> — pas celle du téléphone, faussée par le sol et les armatures. Recadre-toi à chaque carrefour.</li>' +
-                  '<li><strong>Écoute les bruits</strong> : circulation, métro, train, eau qui coule = indice de direction utile.</li>' +
+                  '<li>' + _t("lost.tips.orient.1") + '</li>' +
+                  '<li>' + _t("lost.tips.orient.2") + '</li>' +
+                  '<li>' + _t("lost.tips.orient.3") + '</li>' +
+                  '<li>' + _t("lost.tips.orient.4") + '</li>' +
                 '</ul>' +
               '</div>' +
               '<div class="kta-lost-pratique-cat">' +
-                '<div class="kta-lost-pratique-cat-titre">🔦 Lumière & ressources</div>' +
+                '<div class="kta-lost-pratique-cat-titre">' + _t("lost.tips.lumiere.titre") + '</div>' +
                 '<ul>' +
-                  '<li>Passe ta lampe en <strong>mode économie</strong>. Lampe morte = situation grave.</li>' +
-                  '<li>Garde une <strong>lampe de secours</strong> si tu en as une (frontale + lampe stylo, l\'idéal).</li>' +
-                  '<li>Hydrate-toi un peu mais économise — le stress déshydrate vite.</li>' +
+                  '<li>' + _t("lost.tips.lumiere.1") + '</li>' +
+                  '<li>' + _t("lost.tips.lumiere.2") + '</li>' +
+                  '<li>' + _t("lost.tips.lumiere.3") + '</li>' +
                 '</ul>' +
               '</div>' +
               '<div class="kta-lost-pratique-cat">' +
-                '<div class="kta-lost-pratique-cat-titre">📡 Communication</div>' +
+                '<div class="kta-lost-pratique-cat-titre">' + _t("lost.tips.comm.titre") + '</div>' +
                 '<ul>' +
-                  '<li>Si tu <strong>captes du réseau</strong> (souvent près des puits / sous certains regards) → préviens quelqu\'un en surface <strong>AVANT</strong> que ta batterie meure.</li>' +
-                  '<li>Le bouton <strong>📋 Copier le rapport</strong> ci-dessous prépare un message tout fait avec ta dernière position + le temps écoulé.</li>' +
+                  '<li>' + _t("lost.tips.comm.1") + '</li>' +
+                  '<li>' + _t("lost.tips.comm.2") + '</li>' +
                 '</ul>' +
               '</div>' +
               '<div class="kta-lost-pratique-cat">' +
-                '<div class="kta-lost-pratique-cat-titre">📍 Si tu décides d\'attendre</div>' +
+                '<div class="kta-lost-pratique-cat-titre">' + _t("lost.tips.attendre.titre") + '</div>' +
                 '<ul>' +
-                  '<li>Pose-toi à un endroit <strong>identifiable</strong> (puits numéroté, salle nommée, épure visible).</li>' +
-                  '<li>Reste où tu es si <strong>personne ne sait que tu es là</strong> — bouger empire la situation.</li>' +
-                  '<li>Marque ton emplacement (peinture, chatterton, sac voyant) pour qu\'on te trouve.</li>' +
+                  '<li>' + _t("lost.tips.attendre.1") + '</li>' +
+                  '<li>' + _t("lost.tips.attendre.2") + '</li>' +
+                  '<li>' + _t("lost.tips.attendre.3") + '</li>' +
                 '</ul>' +
               '</div>' +
               '<div class="kta-lost-pratique-cat kta-lost-pratique-warn">' +
-                '<div class="kta-lost-pratique-cat-titre">⚠️ À ne pas faire</div>' +
+                '<div class="kta-lost-pratique-cat-titre">' + _t("lost.tips.nepas.titre") + '</div>' +
                 '<ul>' +
-                  '<li><strong>Ne suis pas l\'eau</strong> — les diaclases mènent souvent à des passages étroits dangereux.</li>' +
-                  '<li><strong>Ne tente pas un passage inconnu</strong> juste parce qu\'il a l\'air de monter / d\'aller "vers l\'extérieur".</li>' +
-                  '<li>Ne te fie pas au tracker téléphone — il dérive, surtout sous stress (mouvements erratiques).</li>' +
+                  '<li>' + _t("lost.tips.nepas.1") + '</li>' +
+                  '<li>' + _t("lost.tips.nepas.2") + '</li>' +
+                  '<li>' + _t("lost.tips.nepas.3") + '</li>' +
                 '</ul>' +
               '</div>' +
             '</div>' +
           '</details>' +
 
           '<div class="kta-lost-section">' +
-            '<div class="kta-lost-section-titre">📍 Dernière position connue</div>' +
+            '<div class="kta-lost-section-titre">' + _t("lost.section.position") + '</div>' +
             '<div class="kta-lost-pos-tabs">' +
-              '<input id="kta-lost-search" class="kta-lost-search" type="text" placeholder="🔎 Chercher un point (PA1, salle, etc.)" autocomplete="off">' +
-              '<button class="kta-btn kta-btn-ghost" id="kta-lost-click-mode" type="button">📍 Clic carte</button>' +
-              '<button class="kta-btn kta-btn-ghost" id="kta-lost-use-tracker" type="button">🧭 Position tracker</button>' +
+              '<input id="kta-lost-search" class="kta-lost-search" type="text" placeholder="' + _t("lost.search.placeholder") + '" autocomplete="off">' +
+              '<button class="kta-btn kta-btn-ghost" id="kta-lost-click-mode" type="button">' + _t("lost.btn.clickMap") + '</button>' +
+              '<button class="kta-btn kta-btn-ghost" id="kta-lost-use-tracker" type="button">' + _t("lost.btn.tracker") + '</button>' +
             '</div>' +
             '<div class="kta-lost-search-results" id="kta-lost-search-results"></div>' +
-            '<div class="kta-lost-pos-display" id="kta-lost-pos-display">Aucune position sélectionnée</div>' +
+            '<div class="kta-lost-pos-display" id="kta-lost-pos-display">' + _t("lost.pos.none") + '</div>' +
           '</div>' +
 
           '<div class="kta-lost-section">' +
-            '<div class="kta-lost-section-titre">⏱️ Temps écoulé</div>' +
+            '<div class="kta-lost-section-titre">' + _t("lost.section.temps") + '</div>' +
             '<div class="kta-lost-slider-row">' +
               '<input id="kta-lost-elapsed" type="range" min="1" max="' + MAX_ELAPSED_MIN + '" value="' + DEFAULT_ELAPSED_MIN + '" class="kta-lost-slider">' +
-              '<input id="kta-lost-elapsed-num" type="number" min="1" max="' + MAX_ELAPSED_MIN + '" value="' + DEFAULT_ELAPSED_MIN + '" class="kta-lost-num"> min' +
+              '<input id="kta-lost-elapsed-num" type="number" min="1" max="' + MAX_ELAPSED_MIN + '" value="' + DEFAULT_ELAPSED_MIN + '" class="kta-lost-num"> ' + _t("lost.unit.min") +
             '</div>' +
           '</div>' +
 
           '<div class="kta-lost-section">' +
-            '<div class="kta-lost-section-titre">🏃 Vitesse de marche présumée</div>' +
+            '<div class="kta-lost-section-titre">' + _t("lost.section.vitesse") + '</div>' +
             (function() {
               // Segmented control 4 presets — mêmes valeurs que le mode itinéraire
               // (cohérence UX). Le rayon = vitesse × temps, pas de marge.
@@ -911,12 +939,13 @@
               Object.keys(LOST_MODE_PRESETS).forEach(function(key) {
                 const p = LOST_MODE_PRESETS[key];
                 const active = (key === _currentPreset);
+                const lbl = _presetLabel(key);
                 html +=
                   '<button type="button" class="kta-lost-preset-btn' + (active ? " kta-lost-preset-active" : "") + '" ' +
                     'data-preset="' + key + '" ' +
-                    'title="' + p.label + ' — ' + p.kmh + ' km/h. ' + p.hint + '">' +
+                    'title="' + lbl + ' — ' + p.kmh + ' km/h. ' + _presetHint(key) + '">' +
                     '<span class="kta-lost-preset-icon">' + p.icon + '</span>' +
-                    '<span class="kta-lost-preset-label">' + p.label + '</span>' +
+                    '<span class="kta-lost-preset-label">' + lbl + '</span>' +
                     '<span class="kta-lost-preset-meta">' + p.kmh + ' km/h</span>' +
                   '</button>';
               });
@@ -924,22 +953,21 @@
               return html;
             })() +
             '<p style="font-size:11.5px; color:#8892a4; margin:8px 0 0; line-height:1.45; font-style:italic;">' +
-              '💡 Choisis selon l\'état présumé de la personne perdue. Le rayon de recherche = <strong>vitesse × temps écoulé</strong>. ' +
-              'Mêmes valeurs que le mode itinéraire pour la cohérence.' +
+              _t("lost.vitesse.hint") +
             '</p>' +
           '</div>' +
 
           '<div class="kta-lost-section">' +
-            '<div class="kta-lost-section-titre">🔮 Indices visuels (optionnel)</div>' +
-            '<textarea id="kta-lost-clues" class="kta-lost-clues" placeholder="Indices observés, séparés par virgule ou retour ligne. Ex: bidon eau, épure bélier, puits cassé..."></textarea>' +
+            '<div class="kta-lost-section-titre">' + _t("lost.section.indices") + '</div>' +
+            '<textarea id="kta-lost-clues" class="kta-lost-clues" placeholder="' + _t("lost.indices.placeholder") + '"></textarea>' +
           '</div>' +
 
           '<div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">' +
-            '<button class="kta-btn kta-btn-ghost"   id="kta-lost-fermer"   type="button" style="flex:1 1 130px;" title="Ferme la modale, garde la zone sur la carte">👁️ Fermer</button>' +
-            '<button class="kta-btn kta-btn-primary" id="kta-lost-calc"     type="button" style="flex:2 1 200px;">🎯 Calculer la zone</button>' +
+            '<button class="kta-btn kta-btn-ghost"   id="kta-lost-fermer"   type="button" style="flex:1 1 130px;" title="' + _t("lost.btn.fermerTitle") + '">' + _t("lost.btn.fermer") + '</button>' +
+            '<button class="kta-btn kta-btn-primary" id="kta-lost-calc"     type="button" style="flex:2 1 200px;">' + _t("lost.btn.calc") + '</button>' +
           '</div>' +
           '<p style="font-size:11.5px; color:#8892a4; margin:8px 0 0; line-height:1.45; font-style:italic;">' +
-            '💡 <strong>Fermer</strong> ferme juste la modale — la zone reste sur la carte pour que tu puisses explorer. Tu pourras rouvrir le mode pour ajuster, ou cliquer <strong>🗑️ Effacer la zone</strong> dans les résultats (après Calculer) pour tout retirer.' +
+            _t("lost.fermer.hint") +
           '</p>' +
 
           '<div id="kta-lost-results" class="kta-lost-results" style="display:none;"></div>' +
@@ -1033,7 +1061,7 @@
             searchResults.appendChild(div);
           });
           if (found.length === 0) {
-            searchResults.innerHTML = '<div class="kta-lost-search-empty">Aucun résultat</div>';
+            searchResults.innerHTML = '<div class="kta-lost-search-empty">' + _t("lost.search.empty") + '</div>';
           }
         } catch(e) {
           console.warn("[LostMode] search error :", e);
@@ -1058,9 +1086,9 @@
         pos = window.getTrackingPosition();
       }
       if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
-        _selectionnerPosition({ x: pos.x, y: pos.y, label: "Position tracker actuelle" });
+        _selectionnerPosition({ x: pos.x, y: pos.y, label: _t("lost.pos.trackerLabel") });
       } else {
-        alert("Aucune position tracker active.\nDémarre le tracker (▶️) ou utilise la recherche / le clic carte.");
+        alert(_t("lost.err.noTracker"));
       }
     });
 
@@ -1068,7 +1096,7 @@
     document.getElementById("kta-lost-calc").addEventListener("click", async function() {
       const btn = this;
       btn.disabled = true;
-      btn.textContent = "⏳ Calcul…";
+      btn.textContent = _t("lost.btn.calcLoading");
       try {
         _lastClues = document.getElementById("kta-lost-clues").value || "";
         await _validerEtCalculer(_lastClues);
@@ -1077,7 +1105,7 @@
         alert(e.message || e);
       } finally {
         btn.disabled = false;
-        btn.textContent = "🔄 Recalculer";
+        btn.textContent = _t("lost.btn.recalc");
       }
     });
 
@@ -1093,8 +1121,9 @@
     const disp = document.getElementById("kta-lost-pos-display");
     if (disp) {
       disp.innerHTML = '<span class="kta-lost-pos-label">✓ ' + pos.label +
-                       '</span><span class="kta-lost-pos-coord"> (X=' +
-                       Math.round(pos.x) + ', Y=' + Math.round(pos.y) + ')</span>';
+                       '</span><span class="kta-lost-pos-coord"> ' +
+                       _t("lost.pos.coordSuffix", { x: Math.round(pos.x), y: Math.round(pos.y) }) +
+                       '</span>';
       disp.classList.add("kta-lost-pos-set");
     }
   }
@@ -1108,47 +1137,48 @@
     const outZone = _matches.filter(function(m) { return !m.inZone; });
 
     let html = '<div class="kta-lost-section">';
-    html += '<div class="kta-lost-section-titre">📐 Zone de recherche</div>';
-    const pres = LOST_MODE_PRESETS[_currentPreset] || { label: "?", icon: "?" };
-    html += '<div class="kta-lost-stat">Rayon estimé : <strong>' +
-            _formatDist(_radiusPx) + '</strong> ' +
+    html += '<div class="kta-lost-section-titre">' + _t("lost.results.zone.titre") + '</div>';
+    const pres = LOST_MODE_PRESETS[_currentPreset] || { icon: "?" };
+    html += '<div class="kta-lost-stat">' +
+            _t("lost.results.zone.rayon", { radius: _formatDist(_radiusPx) }) + ' ' +
             '<span class="kta-lost-stat-detail">' +
-              '<span class="kta-lost-stat-preset">' + pres.icon + ' ' + pres.label + '</span> ' +
-              '· ' + _speedKmH + ' km/h × ' + _elapsedMinutes + ' min' +
+              '<span class="kta-lost-stat-preset">' + pres.icon + ' ' + _presetLabel(_currentPreset) + '</span> ' +
+              '· ' + _t("lost.results.zone.detail", { speed: _speedKmH, m: _elapsedMinutes }) +
             '</span></div>';
     if (_zoneOverflow) {
       // 🆕 v1.43.26 — Classe CSS dédiée au lieu de styles inline hardcodés (qui
       // restaient illisibles en thème clair). Les overrides light vivent dans
       // css/style.css sous body.kta-theme-light .kta-lost-warn-overflow.
       html += '<div class="kta-lost-stat kta-lost-warn-overflow">' +
-              '⚠️ Le rayon dépasse la taille du plan — tu pourrais être <strong>n\'importe où</strong> sur le plan. ' +
-              'Réduis le temps écoulé ou la vitesse présumée si tu sais que ta progression a été plus lente, ou affine avec des indices visuels ci-dessous.' +
+              _t("lost.results.overflow") +
               '</div>';
     }
     html += '</div>';
 
     html += '<div class="kta-lost-section">';
-    html += '<div class="kta-lost-section-titre">🔮 Indices matchés (' + _matches.length + ')</div>';
+    html += '<div class="kta-lost-section-titre">' + _t("lost.results.indices.titre", { n: _matches.length }) + '</div>';
     if (_matches.length === 0) {
       const aucunIndiceSaisi = !_lastClues || _lastClues.trim().length === 0;
       if (aucunIndiceSaisi) {
-        html += '<p class="kta-lost-empty">Aucun indice saisi — tu peux ajouter du texte dans la section 🔮 ci-dessus puis cliquer 🔄 Recalculer pour affiner la zone.</p>';
+        html += '<p class="kta-lost-empty">' + _t("lost.results.indices.emptyNone") + '</p>';
       } else {
-        html += '<p class="kta-lost-empty">Aucun indice ne correspond aux mots saisis. Modifie tes mots-clés ou prends un preset de vitesse plus rapide pour élargir la zone.</p>';
+        html += '<p class="kta-lost-empty">' + _t("lost.results.indices.emptyNoMatch") + '</p>';
       }
     } else {
       html += '<div class="kta-lost-match-list">';
       _matches.forEach(function(m) {
         const cls = m.inZone ? "kta-lost-match-in" : "kta-lost-match-out";
         const ico = m.inZone ? "🔮" : "·";
+        const detail = m.inZone
+          ? _t("lost.results.match.inZone", { dist: _formatDist(m.distancePx) })
+          : _t("lost.results.match.outZone", { dist: _formatDist(m.distancePx) });
         html += '<div class="kta-lost-match ' + cls + '">' +
                 '<span class="kta-lost-match-ico">' + ico + '</span>' +
                 '<div class="kta-lost-match-body">' +
                   '<strong>' + (m.point.nom || m.point.id || "?") + '</strong>' +
                   ' <span class="kta-lost-match-layer">(' + (m.layer || "—") + ')</span>' +
                   '<div class="kta-lost-match-detail">' +
-                    (m.inZone ? "✅ Dans la zone, à " : "❌ Hors zone, à ") + _formatDist(m.distancePx) +
-                    ' · match: ' + m.matched.join(", ") +
+                    detail + _t("lost.results.match.matchSuffix", { match: m.matched.join(", ") }) +
                   '</div>' +
                 '</div>' +
                 '</div>';
@@ -1159,16 +1189,19 @@
 
     if (_refinedLoc) {
       html += '<div class="kta-lost-section kta-lost-refined-box">';
-      html += '<div class="kta-lost-section-titre">🎯 Localisation probable affinée</div>';
-      html += '<div class="kta-lost-stat">Barycentre de <strong>' + _refinedLoc.count +
-              '</strong> indice' + (_refinedLoc.count > 1 ? "s" : "") + ' in-zone : ' +
-              'X=' + Math.round(_refinedLoc.x) + ', Y=' + Math.round(_refinedLoc.y) + '</div>';
+      html += '<div class="kta-lost-section-titre">' + _t("lost.results.refined.titre") + '</div>';
+      html += '<div class="kta-lost-stat">' +
+              _t("lost.results.refined.bary", {
+                n: _refinedLoc.count,
+                x: Math.round(_refinedLoc.x),
+                y: Math.round(_refinedLoc.y)
+              }) + '</div>';
       html += '</div>';
     }
 
     html += '<div class="kta-lost-actions">' +
-              '<button class="kta-btn kta-btn-ghost"   id="kta-lost-copy"    type="button">📋 Copier le rapport</button>' +
-              '<button class="kta-btn kta-btn-primary" id="kta-lost-confirm" type="button">✅ Supprimer la zone et sauvegarder ma position supposée</button>' +
+              '<button class="kta-btn kta-btn-ghost"   id="kta-lost-copy"    type="button">' + _t("lost.btn.copyReport") + '</button>' +
+              '<button class="kta-btn kta-btn-primary" id="kta-lost-confirm" type="button">' + _t("lost.btn.confirm") + '</button>' +
             '</div>' +
             // 🆕 v1.23.0 Phase 2 / Feature C — Lancer un plan de secours
             // depuis Lost Mode. Pré-remplit le scénario avec context.lastKnownPoint
@@ -1177,12 +1210,12 @@
             '<div style="text-align:center; margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,140,140,0.20);">' +
               '<button class="kta-btn kta-btn-danger" id="kta-lost-launch-secours" type="button" ' +
                 'style="background:rgba(255,68,68,0.85); color:#fff; border:1px solid #ff4444;" ' +
-                'title="Pré-remplit un nouveau scénario Mode Secours avec la position connue + zone d\'incertitude">' +
-                '🚨 Lancer un plan de secours (équipes + zones)' +
+                'title="' + _t("lost.btn.secoursTitle") + '">' +
+                _t("lost.btn.secours") +
               '</button>' +
             '</div>' +
             '<div style="text-align:center; margin-top:8px;">' +
-              '<button class="kta-btn-link kta-update-link-danger" id="kta-lost-wipe" type="button" title="Retire la zone et les markers de la carte">🗑️ Effacer la zone et fermer</button>' +
+              '<button class="kta-btn-link kta-update-link-danger" id="kta-lost-wipe" type="button" title="' + _t("lost.btn.wipeTitle") + '">' + _t("lost.btn.wipe") + '</button>' +
             '</div>';
 
     box.innerHTML = html;
@@ -1200,13 +1233,13 @@
           document.body.removeChild(ta);
         }
         const original = btn.textContent;
-        btn.textContent = "✓ Copié !";
+        btn.textContent = _t("lost.btn.copied");
         // 🆕 v1.44.0 — setTimeout tracked : cleared si modale fermée avant 1.5s.
         const restoreFn = function() { if (btn.isConnected) btn.textContent = original; };
         if (_lc) _lc.setTimeout(restoreFn, 1500);
         else     setTimeout(restoreFn, 1500); // lint-ok-modal-lifecycle (fallback si _lc null)
       } catch(e) {
-        btn.textContent = "❌ Échec";
+        btn.textContent = _t("lost.btn.copyFail");
         console.warn("[LostMode] copy failed :", e);
       }
     });
@@ -1214,13 +1247,11 @@
     document.getElementById("kta-lost-confirm").addEventListener("click", function() {
       const ok = _confirmerLocalisation();
       if (ok) {
-        alert("✅ Position supposée sauvegardée comme point « ⛑️ Position probable » (icône ⚠️ danger).\n" +
-              "La zone de recherche est retirée de la carte. Tu pourras exporter ou convertir le point comme un point classique.");
+        alert(_t("lost.alert.confirmOk"));
         // Une fois le point figé en session, la zone d'exploration n'a plus d'utilité
         close({ keepLayers: false });
       } else {
-        alert("Impossible de sauvegarder le point — fonction d'édition indisponible.\n" +
-              "Tu peux quand même copier le rapport (📋) pour partager les coordonnées.");
+        alert(_t("lost.alert.confirmFail"));
       }
     });
 
@@ -1229,12 +1260,12 @@
     if (launchSecoursBtn) {
       launchSecoursBtn.addEventListener("click", function() {
         if (!window.SecoursMode || typeof window.SecoursMode.creerDepuisLostMode !== "function") {
-          alert("Mode Secours indisponible.");
+          alert(_t("lost.alert.secoursUnavail"));
           return;
         }
         const lostState = getState();
         if (!lostState.lastKnownPos) {
-          alert("⚠️ Définis d'abord une dernière position connue.");
+          alert(_t("lost.alert.secoursNoPos"));
           return;
         }
         // Ferme la modale Lost Mode (mais garde les layers carte pour
