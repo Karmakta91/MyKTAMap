@@ -391,28 +391,26 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">🔍 Recherche unifiée <span style="font-size:11px; color:#8892a4; font-weight:400; margin-left:8px;">Ctrl+K</span></span>
+          <span class="kta-readme-modal-titre">${window.I18n.t("search.modal.titre")} <span style="font-size:11px; color:#8892a4; font-weight:400; margin-left:8px;">Ctrl+K</span></span>
           <button class="kta-panneau-close" id="kta-search-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
 
           <div class="kta-search-input-wrap">
             <input type="text" id="kta-search-input"
-              placeholder="🔍 Point, tracé, zone, structure… ou GPS « 48.68, 2.15 »"
+              placeholder="${_escapeAttr(window.I18n.t("search.modal.placeholder"))}"
               autocomplete="off">
           </div>
           <!-- 🆕 hotfix18 — hint format GPS (visible uniquement si plan georef) -->
           <div class="kta-search-gps-hint" id="kta-search-gps-hint" style="display:none;">
-            🌐 Tu peux coller des coordonnées <strong>GPS</strong> au format
-            <code>48.680831, 2.158843</code> (depuis Google Maps) pour
-            atterrir au point exact ou créer un nouveau point.
+            ${window.I18n.t("search.modal.gpsHint")}
           </div>
 
           <div class="kta-search-filters" id="kta-search-filters"></div>
 
           <div class="kta-search-info-row">
-            <div class="kta-search-info" id="kta-search-info">Chargement des points…</div>
-            <button class="kta-search-clear-filters" id="kta-search-clear-filters" type="button" style="display:none;">✕ Effacer les filtres</button>
+            <div class="kta-search-info" id="kta-search-info">${window.I18n.t("search.info.loading")}</div>
+            <button class="kta-search-clear-filters" id="kta-search-clear-filters" type="button" style="display:none;">${window.I18n.t("search.filters.clear")}</button>
           </div>
 
           <div class="kta-search-results" id="kta-search-results"></div>
@@ -461,12 +459,12 @@
     // Charger le cache au besoin
     _chargerCache().then(function() {
       const total = _tousLesItems().length;
-      infoEl.textContent = total + " élément(s) disponible(s)";
+      infoEl.textContent = window.I18n.t("search.info.available", { count: total });
       _renderFiltres();           // chips catégorie + calques + tags
       _renderResultats("");
       input.focus();
     }).catch(function(err) {
-      infoEl.innerHTML = '<span style="color:#ff8888;">❌ ' + err.message + '</span>';
+      infoEl.innerHTML = '<span style="color:#ff8888;">❌ ' + _escapeHtml(err.message) + '</span>';
     });
 
     // Délégation : clic sur un chip de filtre → toggle + re-render
@@ -555,7 +553,7 @@
     _planSignature  = sig;
 
     const config = window.PLAN_CONFIG;
-    if (!config) throw new Error("Plan non chargé");
+    if (!config) throw new Error(window.I18n.t("search.error.noPlan"));
 
     // Calques de données externes uniquement (on saute "editor")
     if (Array.isArray(config.dataLayers)) {
@@ -584,7 +582,7 @@
 
     const config = window.PLAN_CONFIG;
     // Trouver le label du calque editor (s'il est déclaré dans dataLayers)
-    let label = "Mes ajouts";
+    let label = window.I18n.t("search.layer.editor");
     if (config && Array.isArray(config.dataLayers)) {
       const lc = config.dataLayers.find(function(d) { return d.id === "editor"; });
       if (lc && lc.label) label = lc.label;
@@ -604,10 +602,20 @@
   }
 
   // ========== 🆕 v1.10.3-search-unified : COLLECTEURS ROADS/ZONES/STRUCTURES ==========
-  // Labels lisibles par type (cohérent UI app)
-  const _ROAD_TYPE_LABEL   = { principal: "Principal", secondaire: "Secondaire", chemin: "Chemin", jonction: "Jonction", itinerary: "Itinéraire" };
-  const _ZONE_TYPE_LABEL   = { eau: "Eau", remblais: "Remblais", effondrement: "Effondrement", inaccessible: "Inaccessible" };
-  const _STRUCT_TYPE_LABEL = { "pilier-1": "Pilier 1ère masse", "pilier-2": "Pilier 2e masse", "mur": "Mur", "front-1": "Front 1ère", "front-2": "Front 2e" };
+  // Labels lisibles par type (cohérent UI app). Résolus via I18n AU RENDU
+  // (fonctions, pas constantes) pour ne pas appeler t() au load du module.
+  function _roadTypeLabel(type) {
+    const keys = { principal: "search.roadType.principal", secondaire: "search.roadType.secondaire", chemin: "search.roadType.chemin", jonction: "search.roadType.jonction", itinerary: "search.roadType.itinerary" };
+    return keys[type] ? window.I18n.t(keys[type]) : "";
+  }
+  function _zoneTypeLabel(type) {
+    const keys = { eau: "search.zoneType.eau", remblais: "search.zoneType.remblais", effondrement: "search.zoneType.effondrement", inaccessible: "search.zoneType.inaccessible" };
+    return keys[type] ? window.I18n.t(keys[type]) : "";
+  }
+  function _structTypeLabel(type) {
+    const keys = { "pilier-1": "search.structType.pilier1", "pilier-2": "search.structType.pilier2", "mur": "search.structType.mur", "front-1": "search.structType.front1", "front-2": "search.structType.front2" };
+    return keys[type] ? window.I18n.t(keys[type]) : "";
+  }
 
   // Icônes emoji utilisés dans les résultats (pas d'image PNG dédiée pour
   // roads/zones/structures — emojis plus rapides et cohérents UI).
@@ -620,27 +628,27 @@
     const sessionRoads = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
     sessionRoads.forEach(function(r, idx) {
       if (!r) return;
-      const lbl = r.label || (_ROAD_TYPE_LABEL[r.type] || r.type || "Tracé") + " session #" + (idx + 1);
+      const lbl = r.label || (_roadTypeLabel(r.type) || r.type || window.I18n.t("search.kind.roadFallback")) + " " + window.I18n.t("search.origin.session") + " #" + (idx + 1);
       out.push({
         kind: "road",
         item: r,
         layerId: "session",
-        layerLabel: "Session",
+        layerLabel: window.I18n.t("search.layer.session"),
         label: lbl,
-        searchableText: [lbl, r.type, _ROAD_TYPE_LABEL[r.type] || "", r.label || "", Number.isInteger(r.level) ? "niveau " + r.level : ""].join(" ")
+        searchableText: [lbl, r.type, _roadTypeLabel(r.type) || "", r.label || "", Number.isInteger(r.level) ? window.I18n.t("search.search.levelText", { n: r.level }) : ""].join(" ")
       });
     });
     const embRoads = (typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : [];
     embRoads.forEach(function(r, idx) {
       if (!r) return;
-      const lbl = r.label || (_ROAD_TYPE_LABEL[r.type] || r.type || "Tracé") + " data #" + (idx + 1);
+      const lbl = r.label || (_roadTypeLabel(r.type) || r.type || window.I18n.t("search.kind.roadFallback")) + " " + window.I18n.t("search.origin.data") + " #" + (idx + 1);
       out.push({
         kind: "road",
         item: r,
         layerId: r._layerId || "data",
-        layerLabel: r._layerLabel || "Data layer",
+        layerLabel: r._layerLabel || window.I18n.t("search.layer.data"),
         label: lbl,
-        searchableText: [lbl, r.type, _ROAD_TYPE_LABEL[r.type] || "", r.label || "", Number.isInteger(r.level) ? "niveau " + r.level : ""].join(" ")
+        searchableText: [lbl, r.type, _roadTypeLabel(r.type) || "", r.label || "", Number.isInteger(r.level) ? window.I18n.t("search.search.levelText", { n: r.level }) : ""].join(" ")
       });
     });
     return out;
@@ -651,27 +659,27 @@
     const sessionZones = (typeof window.getZones === "function") ? (window.getZones() || []) : [];
     sessionZones.forEach(function(z, idx) {
       if (!z) return;
-      const lbl = z.label || "Zone " + (_ZONE_TYPE_LABEL[z.type] || z.type || "") + " session #" + (idx + 1);
+      const lbl = z.label || window.I18n.t("search.kind.zonePrefix") + " " + (_zoneTypeLabel(z.type) || z.type || "") + " " + window.I18n.t("search.origin.session") + " #" + (idx + 1);
       out.push({
         kind: "zone",
         item: z,
         layerId: "session",
-        layerLabel: "Session",
+        layerLabel: window.I18n.t("search.layer.session"),
         label: lbl,
-        searchableText: [lbl, z.type, _ZONE_TYPE_LABEL[z.type] || "", z.label || "", Number.isInteger(z.level) ? "niveau " + z.level : ""].join(" ")
+        searchableText: [lbl, z.type, _zoneTypeLabel(z.type) || "", z.label || "", Number.isInteger(z.level) ? window.I18n.t("search.search.levelText", { n: z.level }) : ""].join(" ")
       });
     });
     const embZones = (typeof window.getAllEmbeddedZones === "function") ? (window.getAllEmbeddedZones() || []) : [];
     embZones.forEach(function(z, idx) {
       if (!z) return;
-      const lbl = z.label || "Zone " + (_ZONE_TYPE_LABEL[z.type] || z.type || "") + " data #" + (idx + 1);
+      const lbl = z.label || window.I18n.t("search.kind.zonePrefix") + " " + (_zoneTypeLabel(z.type) || z.type || "") + " " + window.I18n.t("search.origin.data") + " #" + (idx + 1);
       out.push({
         kind: "zone",
         item: z,
         layerId: z._layerId || "data",
-        layerLabel: z._layerLabel || "Data layer",
+        layerLabel: z._layerLabel || window.I18n.t("search.layer.data"),
         label: lbl,
-        searchableText: [lbl, z.type, _ZONE_TYPE_LABEL[z.type] || "", z.label || "", Number.isInteger(z.level) ? "niveau " + z.level : ""].join(" ")
+        searchableText: [lbl, z.type, _zoneTypeLabel(z.type) || "", z.label || "", Number.isInteger(z.level) ? window.I18n.t("search.search.levelText", { n: z.level }) : ""].join(" ")
       });
     });
     return out;
@@ -682,27 +690,27 @@
     const sessionStructs = (typeof window.getStructures === "function") ? (window.getStructures() || []) : [];
     sessionStructs.forEach(function(s, idx) {
       if (!s) return;
-      const lbl = s.label || (_STRUCT_TYPE_LABEL[s.type] || s.type || "Structure") + " session #" + (idx + 1);
+      const lbl = s.label || (_structTypeLabel(s.type) || s.type || window.I18n.t("search.kind.structFallback")) + " " + window.I18n.t("search.origin.session") + " #" + (idx + 1);
       out.push({
         kind: "structure",
         item: s,
         layerId: "session",
-        layerLabel: "Session",
+        layerLabel: window.I18n.t("search.layer.session"),
         label: lbl,
-        searchableText: [lbl, s.type, _STRUCT_TYPE_LABEL[s.type] || "", s.label || "", Number.isInteger(s.level) ? "niveau " + s.level : ""].join(" ")
+        searchableText: [lbl, s.type, _structTypeLabel(s.type) || "", s.label || "", Number.isInteger(s.level) ? window.I18n.t("search.search.levelText", { n: s.level }) : ""].join(" ")
       });
     });
     const embStructs = (typeof window.getAllEmbeddedStructures === "function") ? (window.getAllEmbeddedStructures() || []) : [];
     embStructs.forEach(function(s, idx) {
       if (!s) return;
-      const lbl = s.label || (_STRUCT_TYPE_LABEL[s.type] || s.type || "Structure") + " data #" + (idx + 1);
+      const lbl = s.label || (_structTypeLabel(s.type) || s.type || window.I18n.t("search.kind.structFallback")) + " " + window.I18n.t("search.origin.data") + " #" + (idx + 1);
       out.push({
         kind: "structure",
         item: s,
         layerId: s._layerId || "data",
-        layerLabel: s._layerLabel || "Data layer",
+        layerLabel: s._layerLabel || window.I18n.t("search.layer.data"),
         label: lbl,
-        searchableText: [lbl, s.type, _STRUCT_TYPE_LABEL[s.type] || "", s.label || "", Number.isInteger(s.level) ? "niveau " + s.level : ""].join(" ")
+        searchableText: [lbl, s.type, _structTypeLabel(s.type) || "", s.label || "", Number.isInteger(s.level) ? window.I18n.t("search.search.levelText", { n: s.level }) : ""].join(" ")
       });
     });
     return out;
@@ -717,7 +725,7 @@
     // Points : on garde le format historique mais on l'enrichit avec kind
     _tousLesPoints().forEach(function(it) {
       const p = it.point;
-      const lbl = p.nom || p.id || "Point sans nom";
+      const lbl = p.nom || p.id || window.I18n.t("search.point.noName");
       items.push({
         kind: "point",
         item: p,
@@ -763,15 +771,15 @@
     const kindCount = { point: 0, road: 0, zone: 0, structure: 0 };
     allItems.forEach(function(it) { kindCount[it.kind] = (kindCount[it.kind] || 0) + 1; });
     const KIND_DEFS = [
-      { id: "point",     label: "📍 Points"     },
-      { id: "road",      label: "🛣️ Tracés"     },
-      { id: "zone",      label: "⬛ Zones"      },
-      { id: "structure", label: "🏛️ Structures" }
+      { id: "point",     label: window.I18n.t("search.kind.point")     },
+      { id: "road",      label: window.I18n.t("search.kind.road")      },
+      { id: "zone",      label: window.I18n.t("search.kind.zone")      },
+      { id: "structure", label: window.I18n.t("search.kind.structure") }
     ];
     const kindsAvecContenu = KIND_DEFS.filter(function(k) { return kindCount[k.id] > 0; });
     if (kindsAvecContenu.length >= 2) {  // pas la peine d'afficher s'il n'y a qu'une catégorie
       html += '<div class="kta-search-filters-row">';
-      html += '<span class="kta-search-filters-label">Catégorie</span>';
+      html += '<span class="kta-search-filters-label">' + _escapeHtml(window.I18n.t("search.filters.category")) + '</span>';
       html += '<div class="kta-search-filters-chips">';
       kindsAvecContenu.forEach(function(k) {
         const active = _filterKinds.has(k.id);
@@ -784,7 +792,7 @@
 
     if (layers.length > 0) {
       html += '<div class="kta-search-filters-row">';
-      html += '<span class="kta-search-filters-label">Calques</span>';
+      html += '<span class="kta-search-filters-label">' + _escapeHtml(window.I18n.t("search.filters.layers")) + '</span>';
       html += '<div class="kta-search-filters-chips">';
       layers.forEach(function(l) {
         const active = _filterLayers.has(l.id);
@@ -797,7 +805,7 @@
 
     if (tags.length > 0) {
       html += '<div class="kta-search-filters-row">';
-      html += '<span class="kta-search-filters-label">Tags</span>';
+      html += '<span class="kta-search-filters-label">' + _escapeHtml(window.I18n.t("search.filters.tags")) + '</span>';
       html += '<div class="kta-search-filters-chips">';
       tags.forEach(function(t) {
         const active = _filterTags.has(t);
@@ -902,15 +910,15 @@
 
     if (query) {
       infoEl.textContent = filtered.length === 0
-        ? "Aucun résultat"
-        : filtered.length + " résultat(s)";
+        ? window.I18n.t("search.info.noResult")
+        : window.I18n.t("search.info.results", { count: filtered.length });
     } else {
       const total = _tousLesItems().length;
       const filtersActive = (_filterLayers.size > 0 || _filterTags.size > 0 || _filterKinds.size > 0);
       if (filtersActive) {
-        infoEl.textContent = filtered.length + " sur " + total + " élément(s) (filtré)";
+        infoEl.textContent = window.I18n.t("search.info.filtered", { count: filtered.length, total: total });
       } else {
-        infoEl.textContent = total + " élément(s) disponible(s)";
+        infoEl.textContent = window.I18n.t("search.info.available", { count: total });
       }
     }
 
@@ -918,11 +926,11 @@
       const filtersActive = (_filterLayers.size > 0 || _filterTags.size > 0 || _filterKinds.size > 0);
       let msg;
       if (query) {
-        msg = 'Aucun élément ne correspond à <strong>' + _escapeHtml(query) + '</strong>';
+        msg = window.I18n.t("search.empty.noMatch", { query: '<strong>' + _escapeHtml(query) + '</strong>' });
       } else if (filtersActive) {
-        msg = 'Aucun élément ne correspond aux filtres actifs';
+        msg = window.I18n.t("search.empty.noFilterMatch");
       } else {
-        msg = 'Tape une recherche pour trouver un point, un tracé, une zone ou une structure';
+        msg = window.I18n.t("search.empty.prompt");
       }
       resEl.innerHTML = `
         <div class="kta-search-empty">
@@ -939,10 +947,10 @@
       if (groups[it.kind]) groups[it.kind].push(it);
     });
     const KIND_HEADERS = {
-      point:     "📍 Points",
-      road:      "🛣️ Tracés",
-      zone:      "⬛ Zones",
-      structure: "🏛️ Structures"
+      point:     window.I18n.t("search.kind.point"),
+      road:      window.I18n.t("search.kind.road"),
+      zone:      window.I18n.t("search.kind.zone"),
+      structure: window.I18n.t("search.kind.structure")
     };
     const KIND_ORDER = ["point", "road", "zone", "structure"];
 
@@ -967,7 +975,7 @@
     });
 
     if (surplus > 0) {
-      html += '<div class="kta-search-more">+ ' + surplus + ' autre(s) résultat(s) — affine ta recherche</div>';
+      html += '<div class="kta-search-more">' + _escapeHtml(window.I18n.t("search.results.more", { count: surplus })) + '</div>';
     }
 
     resEl.innerHTML = html;
@@ -1028,7 +1036,7 @@
       const p = it.item;
       html += '<div class="kta-search-name">';
       if (p.id) html += '<span class="kta-search-id">' + _escapeHtml(p.id) + '</span>';
-      html += _escapeHtml(p.nom || "(sans nom)");
+      html += _escapeHtml(p.nom || window.I18n.t("search.row.unnamed"));
       html += '</div>';
     } else {
       // Roads/Zones/Structures : juste le label
@@ -1051,20 +1059,20 @@
     } else {
       const r = it.item;
       // Type lisible (badge couleur)
-      const typeLabel = (it.kind === "road"      ? (_ROAD_TYPE_LABEL[r.type]   || r.type)
-                        : it.kind === "zone"     ? (_ZONE_TYPE_LABEL[r.type]   || r.type)
-                        : it.kind === "structure"? (_STRUCT_TYPE_LABEL[r.type] || r.type)
+      const typeLabel = (it.kind === "road"      ? (_roadTypeLabel(r.type)   || r.type)
+                        : it.kind === "zone"     ? (_zoneTypeLabel(r.type)   || r.type)
+                        : it.kind === "structure"? (_structTypeLabel(r.type) || r.type)
                         : (r.type || ""));
       if (typeLabel) html += '<span class="tag-chip">' + _escapeHtml(typeLabel) + '</span>';
       // Niveau si M-LVL ou level présent
       if (Number.isInteger(r.level)) {
-        html += '<span class="tag-chip">Niv ' + r.level + '</span>';
+        html += '<span class="tag-chip">' + _escapeHtml(window.I18n.t("search.row.level", { n: r.level })) + '</span>';
       } else if (r.type === "jonction" && (Number.isInteger(r.fromLevel) || Number.isInteger(r.toLevel))) {
-        html += '<span class="tag-chip">Niv ' + (r.fromLevel != null ? r.fromLevel : "?") + ' ↔ ' + (r.toLevel != null ? r.toLevel : "?") + '</span>';
+        html += '<span class="tag-chip">' + _escapeHtml(window.I18n.t("search.row.levelRange", { from: (r.fromLevel != null ? r.fromLevel : "?"), to: (r.toLevel != null ? r.toLevel : "?") })) + '</span>';
       }
       // Nombre de points (info utile pour les polygones)
       if (Array.isArray(r.points)) {
-        html += ' <span class="kta-search-coords">' + r.points.length + ' pt' + (r.points.length > 1 ? "s" : "") + '</span>';
+        html += ' <span class="kta-search-coords">' + _escapeHtml(window.I18n.t("search.row.pointCount", { count: r.points.length })) + '</span>';
       }
     }
     html += '</div>';
@@ -1082,7 +1090,7 @@
         && typeof window.SecoursMode.getCurrentScenarioId === "function"
         && window.SecoursMode.getCurrentScenarioId()) {
       html += '<button class="kta-search-result-assign" data-visible-idx="' + visIdx +
-              '" title="📌 Assigner ce point à une équipe Mode Secours">📌</button>';
+              '" title="' + _escapeAttr(window.I18n.t("search.row.assignTitle")) + '">📌</button>';
     }
 
     html += '</div>';  // end result
@@ -1125,7 +1133,7 @@
     const infoEl = document.getElementById("kta-search-info");
     if (!resEl) return;
 
-    infoEl.textContent = "🌐 Recherche GPS : " + gps.lat.toFixed(6) + ", " + gps.lng.toFixed(6);
+    infoEl.textContent = window.I18n.t("search.gps.info", { lat: gps.lat.toFixed(6), lng: gps.lng.toFixed(6) });
 
     // 1) Plan calibré ?
     const planId = window._currentLoadedPlanId || "";
@@ -1154,11 +1162,11 @@
       );
       planCoords = window.KmzExport.gpsToPlan(transform, gps.lat, gps.lng);
     } catch (e) {
-      _renderGpsCardErreur(resEl, gps, "Calibrage invalide : " + (e && e.message));
+      _renderGpsCardErreur(resEl, gps, window.I18n.t("search.gps.errInvalidCalib", { msg: (e && e.message) || "" }));
       return;
     }
     if (!planCoords || typeof planCoords.x !== "number" || typeof planCoords.y !== "number") {
-      _renderGpsCardErreur(resEl, gps, "Conversion GPS échouée");
+      _renderGpsCardErreur(resEl, gps, window.I18n.t("search.gps.errConvertFailed"));
       return;
     }
 
@@ -1199,16 +1207,16 @@
       '<div class="kta-search-gps-card kta-search-gps-card-warn">' +
         '<div class="kta-search-gps-card-icon">🌐</div>' +
         '<div class="kta-search-gps-card-content">' +
-          '<div class="kta-search-gps-card-titre">Format GPS détecté</div>' +
+          '<div class="kta-search-gps-card-titre">' + _escapeHtml(window.I18n.t("search.gps.noCalib.titre")) + '</div>' +
           '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) + '</div>' +
           '<div class="kta-search-gps-card-msg">' +
-            'Ce plan n\'est pas <strong>géoréférencé</strong> — pas de correspondance GPS ↔ coordonnées plan possible.' +
+            window.I18n.t("search.gps.noCalib.msg") +
           '</div>' +
           '<div class="kta-search-gps-card-action">' +
             '<button class="kta-btn kta-btn-secondary kta-btn-sm" id="kta-search-gps-go-config">' +
-              '⚙️ Calibrer ce plan' +
+              _escapeHtml(window.I18n.t("search.gps.noCalib.btn")) +
             '</button>' +
-            '<span class="kta-search-gps-card-hint">Paramètres → 🌐 Géoréférencement</span>' +
+            '<span class="kta-search-gps-card-hint">' + _escapeHtml(window.I18n.t("search.gps.noCalib.hint")) + '</span>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -1219,7 +1227,7 @@
         if (typeof window.afficherConfig === "function") {
           window.afficherConfig();
         } else if (window.OOMGuard) {
-          window.OOMGuard.showToast("⚙️ Ouvre Paramètres → Géoréférencement", "info");
+          window.OOMGuard.showToast(window.I18n.t("search.gps.noCalib.toast"), "info");
         }
       });
     }
@@ -1230,9 +1238,9 @@
       '<div class="kta-search-gps-card kta-search-gps-card-error">' +
         '<div class="kta-search-gps-card-icon">⚠️</div>' +
         '<div class="kta-search-gps-card-content">' +
-          '<div class="kta-search-gps-card-titre">Erreur de conversion GPS</div>' +
+          '<div class="kta-search-gps-card-titre">' + _escapeHtml(window.I18n.t("search.gps.err.titre")) + '</div>' +
           '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) + '</div>' +
-          '<div class="kta-search-gps-card-msg">' + _escapeHtml(msg || "Erreur inconnue") + '</div>' +
+          '<div class="kta-search-gps-card-msg">' + _escapeHtml(msg || window.I18n.t("search.gps.err.unknown")) + '</div>' +
         '</div>' +
       '</div>';
   }
@@ -1242,12 +1250,10 @@
       '<div class="kta-search-gps-card kta-search-gps-card-error">' +
         '<div class="kta-search-gps-card-icon">🚫</div>' +
         '<div class="kta-search-gps-card-content">' +
-          '<div class="kta-search-gps-card-titre">Coordonnée hors plan</div>' +
+          '<div class="kta-search-gps-card-titre">' + _escapeHtml(window.I18n.t("search.gps.outOfPlan.titre")) + '</div>' +
           '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) + '</div>' +
           '<div class="kta-search-gps-card-msg">' +
-            'Cette position GPS se projette en <code>(' + Math.round(planCoords.x) + ', ' + Math.round(planCoords.y) + ')</code> sur le plan, ' +
-            'mais le plan ne couvre que <code>0..' + imgW + ' × 0..' + imgH + '</code> px.<br>' +
-            '<em>Vérifie le calibrage du plan ou la coordonnée saisie.</em>' +
+            window.I18n.t("search.gps.outOfPlan.msg", { x: Math.round(planCoords.x), y: Math.round(planCoords.y), w: imgW, h: imgH }) +
           '</div>' +
         '</div>' +
       '</div>';
@@ -1255,24 +1261,24 @@
 
   function _renderGpsCardPoiProche(resEl, gps, planCoords, item, distPx) {
     const p = item.item;
-    const nom = p.nom || p.id || "Point";
+    const nom = p.nom || p.id || window.I18n.t("search.gps.poi.defaultName");
     const tags = (p.tags && p.tags.length) ? p.tags.join(", ") : "";
     resEl.innerHTML =
       '<div class="kta-search-gps-card kta-search-gps-card-ok">' +
         '<div class="kta-search-gps-card-icon">📍</div>' +
         '<div class="kta-search-gps-card-content">' +
-          '<div class="kta-search-gps-card-titre">POI trouvé à proximité</div>' +
+          '<div class="kta-search-gps-card-titre">' + _escapeHtml(window.I18n.t("search.gps.poi.titre")) + '</div>' +
           '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) +
-            ' → plan <code>(' + Math.round(planCoords.x) + ', ' + Math.round(planCoords.y) + ')</code>' +
+            ' ' + window.I18n.t("search.gps.toPlan", { x: Math.round(planCoords.x), y: Math.round(planCoords.y) }) +
           '</div>' +
           '<div class="kta-search-gps-poi-info">' +
             '<strong>' + _escapeHtml(nom) + '</strong>' +
             (tags ? '<span class="kta-search-gps-poi-tags"> · ' + _escapeHtml(tags) + '</span>' : '') +
-            '<div class="kta-search-gps-poi-dist">📏 ' + Math.round(distPx) + ' px de la coordonnée recherchée</div>' +
+            '<div class="kta-search-gps-poi-dist">' + _escapeHtml(window.I18n.t("search.gps.poi.dist", { dist: Math.round(distPx) })) + '</div>' +
           '</div>' +
           '<div class="kta-search-gps-card-action">' +
             '<button class="kta-btn kta-btn-primary kta-btn-sm" id="kta-search-gps-go-poi">' +
-              '🎯 Aller au point' +
+              _escapeHtml(window.I18n.t("search.gps.poi.goBtn")) +
             '</button>' +
           '</div>' +
         '</div>' +
@@ -1288,17 +1294,16 @@
       '<div class="kta-search-gps-card kta-search-gps-card-create">' +
         '<div class="kta-search-gps-card-icon">📍</div>' +
         '<div class="kta-search-gps-card-content">' +
-          '<div class="kta-search-gps-card-titre">Aucun POI à proximité</div>' +
+          '<div class="kta-search-gps-card-titre">' + _escapeHtml(window.I18n.t("search.gps.noPoi.titre")) + '</div>' +
           '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) +
-            ' → plan <code>(' + Math.round(planCoords.x) + ', ' + Math.round(planCoords.y) + ')</code>' +
+            ' ' + window.I18n.t("search.gps.toPlan", { x: Math.round(planCoords.x), y: Math.round(planCoords.y) }) +
           '</div>' +
           '<div class="kta-search-gps-card-msg">' +
-            'Aucun point existant dans un rayon de <strong>' + _GPS_RADIUS_PX + ' px</strong>. ' +
-            'Tu peux créer un nouveau point à cette position.' +
+            window.I18n.t("search.gps.noPoi.msg", { radius: _GPS_RADIUS_PX }) +
           '</div>' +
           '<div class="kta-search-gps-card-action">' +
             '<button class="kta-btn kta-btn-primary kta-btn-sm" id="kta-search-gps-create-point">' +
-              '➕ Créer un point ici' +
+              _escapeHtml(window.I18n.t("search.gps.noPoi.createBtn")) +
             '</button>' +
           '</div>' +
         '</div>' +
@@ -1317,7 +1322,7 @@
         if (typeof window.afficherFormulaire === "function") {
           window.afficherFormulaire(planCoords.x, planCoords.y);
         } else if (window.OOMGuard) {
-          window.OOMGuard.showToast("⚠️ Module Editor indispo — création point impossible", "error");
+          window.OOMGuard.showToast(window.I18n.t("search.gps.noPoi.editorUnavailable"), "error");
         }
       });
     }
@@ -1345,7 +1350,7 @@
   function _allerVersPoint(item) {
     const p = item.item || item.point;  // compat ancien format (point) + nouveau (item)
     if (typeof p.x !== "number" || typeof p.y !== "number") {
-      alert("Ce point n'a pas de coordonnées valides");
+      alert(window.I18n.t("search.go.pointNoCoords"));
       return;
     }
     const latlng = convertCoord(p.x, p.y);
@@ -1362,7 +1367,7 @@
   function _allerVersAnnotation(item) {
     const ann = item.item;
     if (!ann || !Array.isArray(ann.points) || ann.points.length === 0) {
-      alert("Élément sans points — impossible de localiser.");
+      alert(window.I18n.t("search.go.annotationNoPoints"));
       return;
     }
 
@@ -1409,16 +1414,16 @@
 
     // Popup info — contenu adapté au kind
     let popupHtml = "<b>" + _escapeHtml(item.label) + "</b>";
-    const typeLabel = (item.kind === "road"      ? (_ROAD_TYPE_LABEL[ann.type]   || ann.type)
-                      : item.kind === "zone"     ? (_ZONE_TYPE_LABEL[ann.type]   || ann.type)
-                      : item.kind === "structure"? (_STRUCT_TYPE_LABEL[ann.type] || ann.type)
+    const typeLabel = (item.kind === "road"      ? (_roadTypeLabel(ann.type)   || ann.type)
+                      : item.kind === "zone"     ? (_zoneTypeLabel(ann.type)   || ann.type)
+                      : item.kind === "structure"? (_structTypeLabel(ann.type) || ann.type)
                       : ann.type);
-    if (typeLabel) popupHtml += "<br>Type : " + _escapeHtml(typeLabel);
-    if (Number.isInteger(ann.level)) popupHtml += "<br>Niveau : " + ann.level;
+    if (typeLabel) popupHtml += "<br>" + _escapeHtml(window.I18n.t("search.popup.type", { type: typeLabel }));
+    if (Number.isInteger(ann.level)) popupHtml += "<br>" + _escapeHtml(window.I18n.t("search.popup.level", { n: ann.level }));
     if (ann.type === "jonction" && Number.isInteger(ann.fromLevel) && Number.isInteger(ann.toLevel)) {
-      popupHtml += "<br>Jonction : niv " + ann.fromLevel + " ↔ niv " + ann.toLevel;
+      popupHtml += "<br>" + _escapeHtml(window.I18n.t("search.popup.junction", { from: ann.fromLevel, to: ann.toLevel }));
     }
-    if (Array.isArray(ann.points)) popupHtml += '<br><small style="opacity:0.6;">' + ann.points.length + " point(s) · " + _escapeHtml(item.layerLabel) + "</small>";
+    if (Array.isArray(ann.points)) popupHtml += '<br><small style="opacity:0.6;">' + _escapeHtml(window.I18n.t("search.popup.pointsLayer", { count: ann.points.length, layer: item.layerLabel })) + "</small>";
 
     L.popup({ autoClose: true, closeOnClick: true })
       .setLatLng(center)

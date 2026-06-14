@@ -93,30 +93,26 @@
   // Crée l'overlay plein écran avec champ de saisie, bouton et signature.
   // Style charte MyKTAMap (gradient noir, accent jaune #f4c542).
   function _creerOverlay() {
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const o = document.createElement("div");
     o.id = "kta-unlock-overlay";
     o.innerHTML =
       '<div class="kta-unlock-box">' +
         '<div class="kta-unlock-icon">🗝️</div>' +
-        '<div class="kta-unlock-titre">Accès restreint</div>' +
+        '<div class="kta-unlock-titre">' + t("gate.titre") + '</div>' +
         '<p class="kta-unlock-info">' +
-          'Cette application est privée. Saisis le code d\'accès qui t\'a été ' +
-          'communiqué. Si tu n\'as pas le code, contacte l\'auteur via :' +
+          t("gate.info") +
         '</p>' +
         // 🆕 v1.28.0 — Vrais canaux de contact (avant : « contacte l'auteur »
         // sans aucun canal). Liens sortants uniquement → aucun impact CSP.
         '<div class="kta-unlock-contact" style="margin:0 0 14px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +
-          '📷 <a href="https://instagram.com/karma_kta" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">@karma_kta</a>' +
-          ' &middot; ✉️ <a href="mailto:contact@myktamap.fr" style="color:#f4c542;">contact@myktamap.fr</a>' +
-          // 🆕 v1.28.2 : lien "Licence pro" wrappé en .kta-licence-community
-          // pour être masqué sur instance pro (où c'est déjà le cas, lien inutile).
-          ' <span class="kta-licence-community">&middot; 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">Licence pro</a></span>' +
+          t("gate.contact") +
         '</div>' +
         '<form id="kta-unlock-form" autocomplete="off">' +
-          '<input type="password" id="kta-unlock-input" placeholder="Code d\'accès" ' +
+          '<input type="password" id="kta-unlock-input" placeholder="' + t("gate.placeholder") + '" ' +
                  'autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">' +
           '<button type="submit" id="kta-unlock-btn" class="kta-btn kta-btn-primary">' +
-            '🔓 Déverrouiller' +
+            t("gate.unlockBtn") +
           '</button>' +
         '</form>' +
         '<div class="kta-unlock-feedback" id="kta-unlock-feedback"></div>' +
@@ -130,17 +126,15 @@
         // (cohérent : si déjà pro côté serveur, pas besoin de proposer l'import).
         '<div class="kta-unlock-separator kta-licence-community" aria-hidden="true">' +
           '<span class="kta-unlock-separator-line"></span>' +
-          '<span class="kta-unlock-separator-text">ou</span>' +
+          '<span class="kta-unlock-separator-text">' + t("gate.separatorOr") + '</span>' +
           '<span class="kta-unlock-separator-line"></span>' +
         '</div>' +
         '<div class="kta-unlock-licence-block kta-licence-community">' +
           '<p class="kta-unlock-licence-info">' +
-            'Tu as reçu un fichier de <strong>licence professionnelle</strong>&nbsp;? ' +
-            'Importe-le ci-dessous pour activer l\'édition pro sur cet appareil&nbsp;: ' +
-            'aucun code requis.' +
+            t("gate.licence.info") +
           '</p>' +
           '<button type="button" id="kta-unlock-licence-btn" class="kta-btn kta-btn-secondary kta-unlock-licence-btn">' +
-            '📂 Importer ma licence pro' +
+            t("gate.licence.importBtn") +
           '</button>' +
           '<input type="file" id="kta-unlock-licence-input" accept=".json,application/json" style="display:none;">' +
         '</div>' +
@@ -149,8 +143,8 @@
         // « pourquoi un code ? ») de lire le README utilisateur sans devoir
         // entrer. L'onboarding (🎓) est volontairement masqué : sans accès à
         // l'app, le tutoriel n'a pas de sens.
-        '<button type="button" id="kta-unlock-readme-btn" class="kta-gate-readme-btn" title="Consulter la documentation utilisateur">' +
-          '📖 Lire la documentation' +
+        '<button type="button" id="kta-unlock-readme-btn" class="kta-gate-readme-btn" title="' + t("gate.docTitle") + '">' +
+          t("gate.docBtn") +
         '</button>' +
         '<div class="kta-unlock-signature">' +
           '© 2026 Flavien VIDAL (alias KARMA) — CC BY-NC-SA 4.0' +
@@ -188,31 +182,28 @@
   // travail. Cohérent avec le warning "barrière sociale" : qui n'a pas
   // le code n'a rien à faire ici.
   function _afficherLockout(overlay) {
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const form = overlay.querySelector("#kta-unlock-form");
     const fb   = overlay.querySelector("#kta-unlock-feedback");
     if (form) form.style.display = "none";
     if (fb) {
       fb.innerHTML =
         '<div class="kta-unlock-lockout">' +
-          '<div class="kta-unlock-lockout-titre">🚫 Trop de tentatives</div>' +
-          '<div class="kta-unlock-lockout-msg">Accès verrouillé par sécurité.</div>' +
+          '<div class="kta-unlock-lockout-titre">' + t("gate.lockout.titre") + '</div>' +
+          '<div class="kta-unlock-lockout-msg">' + t("gate.lockout.msg") + '</div>' +
           '<div class="kta-unlock-lockout-hint">' +
-            'Si tu connais légitimement le code, contacte l\'auteur :' +
+            t("gate.lockout.hint") +
           '</div>' +
           // 🆕 v1.28.0 — Canaux explicites (avant : « contacte l'auteur » sans canal).
           '<div class="kta-unlock-lockout-contact" style="margin-top:10px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +
-            '📷 <a href="https://instagram.com/karma_kta" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">@karma_kta</a>' +
-            ' &middot; ✉️ <a href="mailto:contact@myktamap.fr" style="color:#f4c542;">contact@myktamap.fr</a>' +
-            // 🆕 v1.28.2 : lien "Licence pro" wrappé en .kta-licence-community
-          // pour être masqué sur instance pro (où c'est déjà le cas, lien inutile).
-          ' <span class="kta-licence-community">&middot; 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">Licence pro</a></span>' +
+            t("gate.contact") +
           '</div>' +
           // 🆕 v1.28.1 — Accès doc utilisateur même en lockout : si l'user est
           // bloqué et veut comprendre ce qu'est l'app avant de réinstaller
           // OU contacter l'auteur, il peut lire le README. Ne touche en rien
           // au verrouillage : ouvre juste un modal info par-dessus.
-          '<button type="button" id="kta-unlock-readme-btn-lockout" class="kta-gate-readme-btn" style="margin-top:14px;" title="Consulter la documentation utilisateur">' +
-            '📖 Lire la documentation' +
+          '<button type="button" id="kta-unlock-readme-btn-lockout" class="kta-gate-readme-btn" style="margin-top:14px;" title="' + t("gate.docTitle") + '">' +
+            t("gate.docBtn") +
           '</button>' +
         '</div>';
       // Bind du bouton 📖 doc (le HTML vient juste d'être injecté).
@@ -225,9 +216,10 @@
   // SUBMIT FLOW
   // =========================================================================
   async function _onSubmit(overlay, input, fb) {
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const value = (input.value || "").trim();
     if (!value) {
-      fb.innerHTML = '<div class="kta-unlock-error">Champ vide.</div>';
+      fb.innerHTML = '<div class="kta-unlock-error">' + t("gate.err.empty") + '</div>';
       return;
     }
 
@@ -236,7 +228,7 @@
     try {
       hashed = await _sha256(value);
     } catch (e) {
-      fb.innerHTML = '<div class="kta-unlock-error">Erreur crypto : ' + (e.message || e) + '</div>';
+      fb.innerHTML = '<div class="kta-unlock-error">' + t("gate.err.crypto", { err: (e.message || e) }) + '</div>';
       return;
     }
 
@@ -246,7 +238,7 @@
         localStorage.setItem(LS_UNLOCK, HASH_VALIDE);
         localStorage.removeItem(LS_ATTEMPTS);
       } catch(e) {}
-      fb.innerHTML = '<div class="kta-unlock-success">✓ Accès autorisé</div>';
+      fb.innerHTML = '<div class="kta-unlock-success">' + t("gate.success") + '</div>';
       // Petite pause pour que l'user voie la confirmation, puis on libère
       setTimeout(function() {
         overlay.classList.add("kta-unlock-fading");
@@ -275,7 +267,7 @@
         const reste = MAX_ATTEMPTS - attempts;
         fb.innerHTML =
           '<div class="kta-unlock-error">' +
-            '❌ Code incorrect. Tentatives restantes : <strong>' + reste + '</strong>' +
+            t("gate.err.incorrect", { n: reste }) +
           '</div>';
       }
     }
@@ -288,6 +280,7 @@
   // qui ne résout JAMAIS si lockout (5 tentatives ratées). Le caller
   // (main.js > initApp) await ça → l'app reste bloquée tant que pas auth.
   function ouvrirGate() {
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     return new Promise(function(resolve) {
       _resolveGate = resolve;
 
@@ -336,7 +329,7 @@
           if (!window.MyKTAMapProLicense || typeof window.MyKTAMapProLicense.importFile !== "function") {
             fb.innerHTML =
               '<div class="kta-unlock-error">' +
-                '❌ Module de gestion des licences indisponible. Recharge la page.' +
+                t("gate.licence.moduleUnavailable") +
               '</div>';
             return;
           }
@@ -351,7 +344,7 @@
               } catch(e) {}
               fb.innerHTML =
                 '<div class="kta-unlock-success">' +
-                  '✓ Licence pro acceptée — accès accordé' +
+                  t("gate.licence.accepted") +
                 '</div>';
               // Même flow de fade-out + résolve que l'unlock par code.
               setTimeout(function() {
@@ -366,10 +359,10 @@
                 }, 250);
               }, 600);
             } else {
-              const msg = (result && result.error) ? result.error : "Erreur inconnue.";
+              const msg = (result && result.error) ? result.error : t("gate.licence.errUnknown");
               fb.innerHTML =
                 '<div class="kta-unlock-error">' +
-                  '❌ Licence refusée : ' + msg.replace(/</g, "&lt;") +
+                  t("gate.licence.refused", { msg: msg.replace(/</g, "&lt;") }) +
                 '</div>';
             }
           });
@@ -381,7 +374,7 @@
       if (ap > 0 && ap < MAX_ATTEMPTS) {
         fb.innerHTML =
           '<div class="kta-unlock-warn">' +
-            '⚠️ Tentatives restantes : <strong>' + (MAX_ATTEMPTS - ap) + '</strong>' +
+            t("gate.warn.remaining", { n: (MAX_ATTEMPTS - ap) }) +
           '</div>';
       }
     });

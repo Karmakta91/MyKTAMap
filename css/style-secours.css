@@ -2778,3 +2778,52 @@ html.kta-theme-light .kta-secours-imported-chip {
   color: #3856a8 !important;
 }
 
+/* =================================================================
+   🆕 v1.43.26 — Pattern B : theming light pour sous-modales Mode Secours
+   =================================================================
+   Cible les inline styles hardcoded dark (color:#8892a4, rgba blanc semi-
+   transparent pour bordures) qui restaient illisibles ou invisibles en
+   thème clair sur les modales Phase / Debrief / Rapport / Détails équipe.
+   Utilise attribute selectors sur `style*=` pour matcher les inline styles
+   sans devoir toucher au JS et casser de la rétro-compat.
+   ================================================================= */
+
+/* Texte gris pâle (#8892a4) → gris foncé lisible (#5a6878) en mode clair */
+body.kta-theme-light .kta-secours-sub-modal *[style*="color:#8892a4"],
+html.kta-theme-light .kta-secours-sub-modal *[style*="color:#8892a4"],
+body.kta-theme-light .kta-secours-sub-modal *[style*="color: #8892a4"],
+html.kta-theme-light .kta-secours-sub-modal *[style*="color: #8892a4"] {
+  color: #5a6878 !important;
+}
+
+/* Bordures et séparateurs blanc 8 % → gris foncé translucide en mode clair */
+body.kta-theme-light .kta-secours-sub-modal *[style*="rgba(255,255,255,0.08)"],
+html.kta-theme-light .kta-secours-sub-modal *[style*="rgba(255,255,255,0.08)"],
+body.kta-theme-light .kta-secours-sub-modal *[style*="rgba(255, 255, 255, 0.08)"],
+html.kta-theme-light .kta-secours-sub-modal *[style*="rgba(255, 255, 255, 0.08)"] {
+  border-color: rgba(20, 30, 50, 0.14) !important;
+}
+
+/* Hints (descriptifs courts) : texte gris clair → gris foncé */
+body.kta-theme-light .kta-secours-sub-modal .kta-secours-hint,
+html.kta-theme-light .kta-secours-sub-modal .kta-secours-hint {
+  color: #5a6878 !important;
+}
+
+/* Inputs texte (champs nom phase, debrief…) : fond clair + texte foncé.
+   Le defaut .kta-readme-modal-overlay les rendait avec fond dark inline. */
+body.kta-theme-light .kta-secours-sub-modal input[type="text"],
+html.kta-theme-light .kta-secours-sub-modal input[type="text"],
+body.kta-theme-light .kta-secours-sub-modal textarea,
+html.kta-theme-light .kta-secours-sub-modal textarea {
+  background: #fafbfc !important;
+  border: 1px solid rgba(20, 30, 50, 0.18) !important;
+  color: #1f2937 !important;
+}
+
+/* Labels strong en blanc → texte foncé pour rester lisibles sur fond clair */
+body.kta-theme-light .kta-secours-sub-modal label strong,
+html.kta-theme-light .kta-secours-sub-modal label strong {
+  color: #1f2937 !important;
+}
+

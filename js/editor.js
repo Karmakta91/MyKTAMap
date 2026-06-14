@@ -14,6 +14,7 @@ let listePoints = [];
 // quand on supprimait UN seul point.
 // On track donc nos propres markers pour pouvoir faire un cleanup cible.
 let _markersEditor = [];
+let _editorClickHandler = null;  // 🆕 ref stable pour off idempotent (cf initEditor / measure.js)
 
 const EDITOR_TAG_LABELS = {
   salle:    "Salle",
@@ -64,7 +65,14 @@ function initEditor() {
   _markersEditor.forEach(function(m) { try { m.remove(); } catch(e) {} });
   _markersEditor = [];
 
-  window.map.on("click", function(e) {
+  // 🆕 Idempotence du binding clic (cf measure.js) : retire l'ancien handler de la
+  // map courante avant d'en (re)binder un. Sans ça, si initEditor() re-tourne sur
+  // une map réutilisée, les map.on('click') s'EMPILENT → 1 clic = N formulaires POI.
+  // Le off avec l'ancienne référence (encore valide) nettoie le binding précédent.
+  if (window.map && _editorClickHandler) {
+    try { window.map.off("click", _editorClickHandler); } catch (e) {}
+  }
+  _editorClickHandler = function(e) {
     if (!window.modeEdition) return;
     if (document.getElementById("kta-poi-modal")) return; // évite double clic
 
@@ -74,7 +82,8 @@ function initEditor() {
     const y   = Math.round(APP_CONFIG.imageHeight - lat);
 
     afficherFormulaire(x, y);
-  });
+  };
+  window.map.on("click", _editorClickHandler);
 }
 
 // =========================
@@ -101,14 +110,15 @@ function _buildTypeOptionsHTML(selectedTag) {
   const custom  = [...tagsSet].filter(function(k) { return !EDITOR_TAG_LABELS[k]; });
   const orderedTags = known.concat(custom);
 
-  let html = '<option value="">— Aucun tag (défaut) —</option>';
+  let html = '<option value="">' + window.I18n.t("editor.options.none") + '</option>';
   html += orderedTags.map(function(tag) {
-    const label = EDITOR_TAG_LABELS[tag] || tag;
+    // Label built-in via i18n (clé "editor.tag.<tag>"), sinon le tag custom brut.
+    const label = EDITOR_TAG_LABELS[tag] ? window.I18n.t("editor.tag." + tag) : tag;
     const sel   = tag === selectedTag ? ' selected' : '';
     return `<option value="${tag}"${sel}>${label}</option>`;
   }).join("");
 
-  html += '<option value="__new__">➕ Créer un nouveau tag…</option>';
+  html += '<option value="__new__">' + window.I18n.t("editor.options.newTag") + '</option>';
   return html;
 }
 
@@ -134,8 +144,8 @@ function afficherFormulaire(x, y, existingPoint) {
   if (existing) existing.remove();
 
   const isEdit = !!(existingPoint && typeof existingPoint === "object");
-  const titreModale  = isEdit ? "✏️ Modifier le point" : "✏️ Ajouter un point";
-  const labelBouton  = isEdit ? "💾 Enregistrer"        : "✅ Ajouter";
+  const titreModale  = isEdit ? window.I18n.t("editor.modal.titleEdit") : window.I18n.t("editor.modal.titleAdd");
+  const labelBouton  = isEdit ? window.I18n.t("editor.modal.btnSave")   : window.I18n.t("editor.modal.btnAdd");
   const tagInitial   = isEdit && existingPoint.tags && existingPoint.tags.length > 0
                        ? existingPoint.tags[0]
                        : "";
@@ -192,63 +202,63 @@ function afficherFormulaire(x, y, existingPoint) {
       <div class="kta-readme-modal-corps">
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">📍 Position</div>
+          <div class="kta-aide-section-titre">${window.I18n.t("editor.section.position")}</div>
           <div style="font-size:13px; color:#8892a4; padding:4px 0;">
             X : <strong style="color:#e8eaf0;">${x}</strong> — Y : <strong style="color:#e8eaf0;">${y}</strong>
           </div>
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">📋 Informations</div>
+          <div class="kta-aide-section-titre">${window.I18n.t("editor.section.infos")}</div>
           <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">Nom <span style="color:#ff8080;">*</span></label>
-            <input class="kta-cfg-input" id="kta-poi-nom" type="text" value="${_esc(nomInitial)}" placeholder="ex: Puits du chêne" autocomplete="off">
+            <label class="kta-cfg-label">${window.I18n.t("editor.field.name")} <span style="color:#ff8080;">*</span></label>
+            <input class="kta-cfg-input" id="kta-poi-nom" type="text" value="${_esc(nomInitial)}" placeholder="${window.I18n.t("editor.field.namePlaceholder")}" autocomplete="off">
 
-            <label class="kta-cfg-label">Type</label>
+            <label class="kta-cfg-label">${window.I18n.t("editor.field.type")}</label>
             <select class="kta-cfg-input" id="kta-poi-type">${_buildTypeOptionsHTML(tagInitial)}</select>
           </div>
 
           <div id="kta-poi-newtag-wrap" style="display:none; margin-top:8px;">
-            <label class="kta-cfg-label" style="display:block; margin-bottom:4px;">Nouveau tag (sans espace)</label>
-            <input class="kta-cfg-input" id="kta-poi-newtag" type="text" placeholder="ex: fontaine" autocomplete="off">
+            <label class="kta-cfg-label" style="display:block; margin-bottom:4px;">${window.I18n.t("editor.field.newTag")}</label>
+            <input class="kta-cfg-input" id="kta-poi-newtag" type="text" placeholder="${window.I18n.t("editor.field.newTagPlaceholder")}" autocomplete="off">
             <p style="font-size:11px; color:#8892a4; margin:4px 0 0;">
-              L'icône par défaut sera utilisée. Pour personnaliser l'icône, modifie le plan via 📦.
+              ${window.I18n.t("editor.field.newTagHint")}
             </p>
           </div>
 
           <div style="margin-top:10px;">
-            <label class="kta-cfg-label" style="display:block; margin-bottom:4px;">Description</label>
+            <label class="kta-cfg-label" style="display:block; margin-bottom:4px;">${window.I18n.t("editor.field.description")}</label>
             <textarea class="kta-cfg-input" id="kta-poi-desc"
               style="min-height:70px; resize:vertical; font-family:inherit;"
-              placeholder="(optionnel)">${_esc(descInitial)}</textarea>
+              placeholder="${window.I18n.t("editor.field.descPlaceholder")}">${_esc(descInitial)}</textarea>
           </div>
         </div>
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">
-            📸 Photos
-            <span id="kta-poi-photos-counter" class="kta-poi-photos-counter">0 / 5</span>
+            ${window.I18n.t("editor.section.photos")}
+            <span id="kta-poi-photos-counter" class="kta-poi-photos-counter">${window.I18n.t("editor.photos.counter", { n: 0, max: 5 })}</span>
           </div>
           <div id="kta-poi-photos-grid" class="kta-poi-photos-grid"></div>
           <div id="kta-poi-photos-actions" class="kta-poi-photos-actions">
             <button class="kta-btn kta-btn-ghost kta-poi-photos-btn" id="kta-poi-photos-camera" type="button">
-              📷 Prendre photo
+              ${window.I18n.t("editor.photos.btnCamera")}
             </button>
             <button class="kta-btn kta-btn-ghost kta-poi-photos-btn" id="kta-poi-photos-galerie" type="button">
-              🖼️ Depuis la galerie
+              ${window.I18n.t("editor.photos.btnGallery")}
             </button>
           </div>
           <input type="file" accept="image/*" capture="environment" id="kta-poi-photos-input-camera"  style="display:none;">
           <input type="file" accept="image/*" multiple                id="kta-poi-photos-input-galerie" style="display:none;">
           <p id="kta-poi-photos-hint" class="kta-poi-photos-hint">
-            JPEG/PNG, compressées automatiquement (1920px max, qualité 85%). Max 5 photos par point.
+            ${window.I18n.t("editor.photos.hint")}
           </p>
         </div>
 
         <div id="kta-poi-erreur" class="kta-conv-erreur" style="display:none;"></div>
 
         <div class="kta-conv-actions" style="margin-top:14px;">
-          <button class="kta-btn kta-btn-ghost"   id="kta-poi-annuler">Annuler</button>
+          <button class="kta-btn kta-btn-ghost"   id="kta-poi-annuler">${window.I18n.t("editor.btn.cancel")}</button>
           <button class="kta-btn kta-btn-primary" id="kta-poi-valider">${labelBouton}</button>
         </div>
 
@@ -344,16 +354,14 @@ function afficherFormulaire(x, y, existingPoint) {
     const visible = _photosCacheMeta.filter(function(p) {
       return !_photosPendingDelete.has(p.id);
     }).length;
-    photoCounter.textContent = visible + " / " + (window.MyKTAMapPhotos
-                                                  ? window.MyKTAMapPhotos.MAX_PHOTOS_PER_POINT
-                                                  : 5);
     const max  = window.MyKTAMapPhotos ? window.MyKTAMapPhotos.MAX_PHOTOS_PER_POINT : 5;
+    photoCounter.textContent = window.I18n.t("editor.photos.counter", { n: visible, max: max });
     const full = visible >= max;
     photoBtnCamera.disabled  = full;
     photoBtnGalerie.disabled = full;
     if (full) {
-      photoBtnCamera.title  = "Maximum " + max + " photos par point atteint";
-      photoBtnGalerie.title = "Maximum " + max + " photos par point atteint";
+      photoBtnCamera.title  = window.I18n.t("editor.photos.maxReached", { max: max });
+      photoBtnGalerie.title = window.I18n.t("editor.photos.maxReached", { max: max });
     } else {
       photoBtnCamera.title  = "";
       photoBtnGalerie.title = "";
@@ -365,7 +373,7 @@ function afficherFormulaire(x, y, existingPoint) {
   function _renderPhotoGrid() {
     photoGrid.innerHTML = "";
     if (_photosCacheMeta.length === 0) {
-      photoGrid.innerHTML = '<div class="kta-poi-photos-empty">Aucune photo. Ajoute une photo avec les boutons ci-dessous.</div>';
+      photoGrid.innerHTML = '<div class="kta-poi-photos-empty">' + window.I18n.t("editor.photos.empty") + '</div>';
       return;
     }
     _photosCacheMeta.forEach(function(p) {
@@ -413,7 +421,7 @@ function afficherFormulaire(x, y, existingPoint) {
       const btnDel = document.createElement("button");
       btnDel.type = "button";
       btnDel.className = "kta-poi-photo-del";
-      btnDel.title = isPending ? "Restaurer cette photo" : "Retirer cette photo";
+      btnDel.title = isPending ? window.I18n.t("editor.photos.restoreTitle") : window.I18n.t("editor.photos.removeTitle");
       btnDel.textContent = isPending ? "↺" : "✕";
       btnDel.addEventListener("click", function(ev) {
         ev.stopPropagation();
@@ -465,7 +473,7 @@ function afficherFormulaire(x, y, existingPoint) {
   // vraie miniature au callback. Si erreur → toast + retire le placeholder.
   function _ajouterPhotoBlob(blob) {
     if (!window.MyKTAMapPhotos) {
-      setErr("Module photos indisponible (IndexedDB ?)");
+      setErr(window.I18n.t("editor.err.photoModule"));
       return;
     }
     // Placeholder local — id provisoire local pour pouvoir le retrouver
@@ -506,10 +514,12 @@ function afficherFormulaire(x, y, existingPoint) {
       _refreshCounterAndButtons();
       // Message utilisateur
       const msg = (err && err.code === "QUOTA_PER_POINT")
-        ? "Maximum 5 photos par point atteint."
+        ? window.I18n.t("editor.err.photoQuotaPoint")
         : (err && err.code === "QUOTA_EXCEEDED")
-          ? "Stockage du navigateur saturé. Supprime des photos ou des plans inutilisés."
-          : "Erreur lors de l'ajout de la photo : " + (err && err.message ? err.message : err);
+          ? window.I18n.t("editor.err.photoQuotaDisk")
+          : (err && err.code === "QUOTA_DEVICE")
+            ? window.I18n.t("editor.err.photoQuotaDevice")
+            : window.I18n.t("editor.err.photoAdd", { msg: (err && err.message ? err.message : err) });
       setErr(msg);
       setTimeout(function() { setErr(""); }, 5000);
     });
@@ -539,16 +549,16 @@ function afficherFormulaire(x, y, existingPoint) {
   // ============================================================
   btnValider.addEventListener("click", function() {
     const nom = inputNom.value.trim();
-    if (!nom) { setErr("Le nom est obligatoire"); inputNom.focus(); return; }
+    if (!nom) { setErr(window.I18n.t("editor.err.nameRequired")); inputNom.focus(); return; }
 
     let tag = selectType.value;
 
     // Création d'un nouveau tag à la volée
     if (tag === "__new__") {
       const nouveau = inputNewTag.value.trim().toLowerCase().replace(/\s+/g, "_");
-      if (!nouveau) { setErr("Saisis un nom de tag valide"); inputNewTag.focus(); return; }
+      if (!nouveau) { setErr(window.I18n.t("editor.err.tagInvalid")); inputNewTag.focus(); return; }
       if (!/^[a-z0-9_-]+$/.test(nouveau)) {
-        setErr("Le tag doit contenir uniquement lettres, chiffres, _ ou -");
+        setErr(window.I18n.t("editor.err.tagChars"));
         inputNewTag.focus();
         return;
       }
@@ -608,7 +618,7 @@ function afficherFormulaire(x, y, existingPoint) {
         if (window.renderEditorPoints) window.renderEditorPoints();
         console.log("[Editor] Point modifié :", nom, "à", x, y);
         if (window.HistoryManager && _historyBefore) {
-          window.HistoryManager.record("Modifier le point " + nom, _historyBefore, "editorPoints");
+          window.HistoryManager.record(window.I18n.t("editor.undo.editPoint", { nom: nom }), _historyBefore, "editorPoints");
         }
       } else {
         const point = {
@@ -633,7 +643,7 @@ function afficherFormulaire(x, y, existingPoint) {
         listePoints.push(point);
         _ajouterMarker(point);
         if (window.HistoryManager && _historyBefore) {
-          window.HistoryManager.record("Ajouter le point " + nom, _historyBefore, "editorPoints");
+          window.HistoryManager.record(window.I18n.t("editor.undo.addPoint", { nom: nom }), _historyBefore, "editorPoints");
         }
       }
       fermer();
@@ -715,7 +725,7 @@ function _ajouterMarker(point) {
   // 🆕 v1.16.0 step 3 : passe layerInfo pour que le bouton ⭐ Favori
   // puisse construire le snapshot avec le bon layerId/layerLabel.
   const popupHtml = (typeof window.buildPointPopupHtml === "function")
-    ? window.buildPointPopupHtml(point, true, { layerId: "editor", layerLabel: "Mes ajouts" })
+    ? window.buildPointPopupHtml(point, true, { layerId: "editor", layerLabel: window.I18n.t("editor.popup.myAdds") })
     : ("<b>" + point.nom + "</b><br>" + (point.description || ""));
   marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
 
@@ -842,7 +852,9 @@ function removeLastEditorPoint() {
   listePoints.pop();
   if (window.renderEditorPoints) window.renderEditorPoints();
   if (window.HistoryManager && _historyBefore) {
-    const label = "Supprimer dernier point" + (removed && removed.nom ? " (" + removed.nom + ")" : "");
+    const label = (removed && removed.nom)
+      ? window.I18n.t("editor.undo.removeLastNamed", { nom: removed.nom })
+      : window.I18n.t("editor.undo.removeLast");
     window.HistoryManager.record(label, _historyBefore, "editorPoints");
   }
   return true;

@@ -511,19 +511,19 @@
   function parseProfile(input) {
     const payload = (typeof input === "string") ? _safeJsonParse(input) : input;
     if (!payload || typeof payload !== "object") {
-      return { ok: false, error: "JSON invalide ou vide" };
+      return { ok: false, error: window.I18n.t("profileio.err_json_invalid") };
     }
     // Nouveau format v1.22.0+
     if (payload.type === FORMAT_TYPE) {
       if (!payload.sections || typeof payload.sections !== "object") {
-        return { ok: false, error: "Champ `sections` manquant ou invalide" };
+        return { ok: false, error: window.I18n.t("profileio.err_sections_missing") };
       }
       return { ok: true, format: "profile", profile: payload };
     }
     // Legacy format ≤ v1.21.x : conversion en profil minimal (registry only)
     if (payload.type === LEGACY_FORMAT_TYPE) {
       if (!Array.isArray(payload.plans)) {
-        return { ok: false, error: "Format legacy : champ `plans` manquant" };
+        return { ok: false, error: window.I18n.t("profileio.err_legacy_plans_missing") };
       }
       // Wrap dans un profil minimal pour réutiliser applyProfile()
       return {
@@ -540,7 +540,7 @@
         }
       };
     }
-    return { ok: false, error: "Type de fichier inconnu (attendu : myktamap-profile-export ou myktamap-plans-list)" };
+    return { ok: false, error: window.I18n.t("profileio.err_unknown_type") };
   }
 
   /**
@@ -837,18 +837,19 @@
     const overlay = document.createElement("div");
     overlay.id = "kta-profile-export-modal";
     overlay.className = "kta-readme-modal-overlay";
+    const T = window.I18n.t.bind(window.I18n);
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-profile-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📤 Exporter mon profil</span>' +
-          '<button type="button" class="kta-panneau-close" id="kta-profile-export-close" aria-label="Fermer">✕</button>' +
+          '<span class="kta-readme-modal-titre">📤 ' + T("profileio.export_title") + '</span>' +
+          '<button type="button" class="kta-panneau-close" id="kta-profile-export-close" aria-label="' + T("profileio.close") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-profile-export-corps">' +
-          '<div class="kta-mem-loading">⏳ Calcul des tailles par section…</div>' +
+          '<div class="kta-mem-loading">⏳ ' + T("profileio.computing_sizes") + '</div>' +
         '</div>' +
         '<div class="kta-profile-footer">' +
-          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-profile-export-cancel">Annuler</button>' +
-          '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-export-go" disabled>📤 Exporter</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-profile-export-cancel">' + T("profileio.cancel") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-export-go" disabled>📤 ' + T("profileio.export_btn") + '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
@@ -862,7 +863,7 @@
     try { sizes = await computeSectionSizes(); }
     catch(e) {
       const c = document.getElementById("kta-profile-export-corps");
-      if (c) c.innerHTML = '<div class="kta-mem-warn">❌ Erreur : ' + _escHtml(e.message || e) + '</div>';
+      if (c) c.innerHTML = '<div class="kta-mem-warn">❌ ' + _escHtml(window.I18n.t("profileio.error_prefix", { error: (e.message || e) })) + '</div>';
       return;
     }
     if (!document.getElementById("kta-profile-export-modal")) return; // fermée entre-temps
@@ -873,33 +874,30 @@
   function _renderExportContent(sizes) {
     const corps = document.getElementById("kta-profile-export-corps");
     if (!corps) return;
+    const T = window.I18n.t.bind(window.I18n);
     let html = '';
     html += '<p class="kta-profile-intro">';
-    html += 'Coche les sections que tu veux inclure dans ton profil exportable. ';
-    html += 'Le fichier JSON contiendra tout ce qui est coché et pourra être ré-importé sur un autre appareil. ';
-    html += '<strong>Les ZIPs binaires des plans (en dur) ne sont jamais inclus</strong> ';
-    html += '(tu devras les re-déposer sur le nouvel appareil), seulement leur méta dans la liste.';
+    html += T("profileio.export_intro");
     html += '</p>';
     html += '<p class="kta-profile-intro" style="background: rgba(255,140,140,0.06); border:1px solid rgba(255,140,140,0.20); padding:8px 10px; border-radius:6px; color:#ffae80;">';
-    html += '🔐 <strong>Sécurité</strong> : le code d\'accès local (PIN/Face ID) et la barrière communautaire ne sont <strong>JAMAIS exportés</strong> ' +
-            '(décision design — risque de fuite si l\'export est partagé par erreur). Tu redéfiniras ton PIN sur le nouvel appareil.';
+    html += '🔐 ' + T("profileio.export_security");
     html += '</p>';
 
     html += '<div class="kta-profile-sections">';
-    html += _renderSectionRow("user",        "👤", "Identité utilisateur",            sizes.user,        true,  "Surnom + photo de profil (image compressée 512px JPEG). Stockée dans l'IDB <code>myktamap_profile</code>.");
-    html += _renderSectionRow("registry",    "🗂️", "Liste des plans (méta)",         sizes.registry,    true,  "Liste des plans connus (ID, nom, version, source). <strong>Sans</strong> les ZIPs binaires.");
-    html += _renderSectionRow("preferences", "⚙️", "Préférences",                     sizes.preferences, true,  "Réglages utilisateur : thème, mode perf, debug, paranoia, mode Simple/Avancé Générateur, prefs Freehand, etc.");
-    html += _renderSectionRow("perPlanLs",   "📍", "Calibrations & prefs par plan",   sizes.perPlanLs,   true,  "<strong>Georef GPS</strong>, calibrations des calques image, prefs cascade (Nord, etc.), avoidances itinéraire et note libre Mode Histoire — par plan.");
-    html += _renderSectionRow("favoris",     "⭐", "Favoris",                          sizes.favoris,     true,  "Tous les POI marqués favoris (tous plans confondus).");
-    html += _renderSectionRow("sessions",    "💾", "Sessions actives",                sizes.sessions,    true,  "Annotations en cours sur chaque plan (slot localStorage par planId).");
-    html += _renderSectionRow("backups",     "📦", "Snapshots IDB",                   sizes.backups,     true,  "10 derniers snapshots FIFO par plan (auto + manuels).");
-    html += _renderSectionRow("tutorial",    "🎓", "Tutoriel vu",                     sizes.tutorial,    true,  "Flag pour ne pas re-afficher le tutoriel au premier boot du nouvel appareil.");
-    html += _renderSectionRow("photos",      "📸", "Photos POI",                      sizes.photos,      false, "Photos attachées aux points (encodées base64 inline). <strong>⚠️ Potentiellement lourd</strong> selon le nombre.");
-    html += _renderSectionRow("crashes",     "📋", "Rapports de crash",               sizes.crashes,     false, "Historique des derniers crashs détectés (debug). Décoché par défaut car peut contenir des bouts de logs sensibles.");
+    html += _renderSectionRow("user",        "👤", T("profileio.sec_user_label"),        sizes.user,        true,  T("profileio.sec_user_hint"));
+    html += _renderSectionRow("registry",    "🗂️", T("profileio.sec_registry_label"),    sizes.registry,    true,  T("profileio.sec_registry_hint"));
+    html += _renderSectionRow("preferences", "⚙️", T("profileio.sec_preferences_label"), sizes.preferences, true,  T("profileio.sec_preferences_hint"));
+    html += _renderSectionRow("perPlanLs",   "📍", T("profileio.sec_perplan_label"),     sizes.perPlanLs,   true,  T("profileio.sec_perplan_hint"));
+    html += _renderSectionRow("favoris",     "⭐", T("profileio.sec_favoris_label"),      sizes.favoris,     true,  T("profileio.sec_favoris_hint"));
+    html += _renderSectionRow("sessions",    "💾", T("profileio.sec_sessions_label"),    sizes.sessions,    true,  T("profileio.sec_sessions_hint"));
+    html += _renderSectionRow("backups",     "📦", T("profileio.sec_backups_label"),     sizes.backups,     true,  T("profileio.sec_backups_hint"));
+    html += _renderSectionRow("tutorial",    "🎓", T("profileio.sec_tutorial_label"),    sizes.tutorial,    true,  T("profileio.sec_tutorial_hint"));
+    html += _renderSectionRow("photos",      "📸", T("profileio.sec_photos_label"),      sizes.photos,      false, T("profileio.sec_photos_hint"));
+    html += _renderSectionRow("crashes",     "📋", T("profileio.sec_crashes_label"),     sizes.crashes,     false, T("profileio.sec_crashes_hint"));
     html += '</div>';
 
     html += '<div class="kta-profile-total" id="kta-profile-export-total">' +
-              '<strong>Taille estimée du fichier :</strong> <span id="kta-profile-export-totalsize">—</span>' +
+              '<strong>' + T("profileio.estimated_size") + '</strong> <span id="kta-profile-export-totalsize">—</span>' +
             '</div>';
 
     corps.innerHTML = html;
@@ -922,21 +920,21 @@
           include[cb.dataset.section] = cb.checked;
         });
         const origText = btnGo.textContent;
-        btnGo.disabled = true; btnGo.textContent = "⏳ Génération…";
+        btnGo.disabled = true; btnGo.textContent = "⏳ " + window.I18n.t("profileio.generating");
         exportToFile({ include: include }).then(function(res) {
-          btnGo.textContent = "✅ Exporté !";
+          btnGo.textContent = "✅ " + window.I18n.t("profileio.exported_done");
           setTimeout(function() {
             _fermerModales();
             if (window.OOMGuard && window.OOMGuard.showToast) {
               window.OOMGuard.showToast(
-                "📤 Profil exporté : " + res.filename + " (" + _formatBytes(res.bytes) + ")",
+                "📤 " + window.I18n.t("profileio.export_toast", { filename: res.filename, size: _formatBytes(res.bytes) }),
                 "info"
               );
             }
           }, 800);
         }).catch(function(e) {
           btnGo.disabled = false; btnGo.textContent = origText;
-          alert("Échec export : " + (e.message || e));
+          alert(window.I18n.t("profileio.export_fail", { error: (e.message || e) }));
         });
       });
     }
@@ -976,16 +974,16 @@
   // ===========================================================
 
   async function ouvrirImportModale(file) {
-    if (!file) { alert("Aucun fichier fourni"); return; }
+    if (!file) { alert(window.I18n.t("profileio.no_file")); return; }
     _fermerModales();
 
     let text;
     try { text = await file.text(); }
-    catch(e) { alert("Lecture du fichier impossible : " + (e.message || e)); return; }
+    catch(e) { alert(window.I18n.t("profileio.file_read_fail", { error: (e.message || e) })); return; }
 
     const parsed = parseProfile(text);
     if (!parsed.ok) {
-      alert("Fichier invalide : " + parsed.error);
+      alert(window.I18n.t("profileio.file_invalid", { error: parsed.error }));
       return;
     }
 
@@ -996,18 +994,19 @@
     const overlay = document.createElement("div");
     overlay.id = "kta-profile-import-modal";
     overlay.className = "kta-readme-modal-overlay";
+    const T = window.I18n.t.bind(window.I18n);
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-profile-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📥 Importer un profil</span>' +
-          '<button type="button" class="kta-panneau-close" id="kta-profile-import-close" aria-label="Fermer">✕</button>' +
+          '<span class="kta-readme-modal-titre">📥 ' + T("profileio.import_title") + '</span>' +
+          '<button type="button" class="kta-panneau-close" id="kta-profile-import-close" aria-label="' + T("profileio.close") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-profile-import-corps">' +
           _renderImportContent(profile, stats, isLegacy, file.name) +
         '</div>' +
         '<div class="kta-profile-footer">' +
-          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-profile-import-cancel">Annuler</button>' +
-          '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-import-go">📥 Importer</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-profile-import-cancel">' + T("profileio.cancel") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-import-go">📥 ' + T("profileio.import_btn") + '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
@@ -1024,24 +1023,19 @@
         include[cb.dataset.section] = cb.checked;
       });
       if (mode === "replace") {
-        const ok = confirm(
-          "⚠️ Mode REPLACE\n\n" +
-          "Cela va VIDER les sections cochées chez toi avant d'injecter les données du profil " +
-          "importé. Action irréversible.\n\n" +
-          "Confirmer ?"
-        );
+        const ok = confirm(window.I18n.t("profileio.replace_confirm"));
         if (!ok) return;
       }
       const btn = document.getElementById("kta-profile-import-go");
       const orig = btn.textContent;
-      btn.disabled = true; btn.textContent = "⏳ Import en cours…";
+      btn.disabled = true; btn.textContent = "⏳ " + window.I18n.t("profileio.importing");
       applyProfile(profile, { mode: mode, include: include }).then(function(res) {
         if (!res || !res.ok) {
           btn.disabled = false; btn.textContent = orig;
-          alert("Échec import : " + (res && res.error || "raison inconnue"));
+          alert(window.I18n.t("profileio.import_fail", { error: (res && res.error) || window.I18n.t("profileio.unknown_reason") }));
           return;
         }
-        btn.textContent = "✅ Importé !";
+        btn.textContent = "✅ " + window.I18n.t("profileio.imported_done");
         setTimeout(function() {
           _fermerModales();
           // Refresh GRANULAIRE des modules qui supportent le live update.
@@ -1094,17 +1088,18 @@
     const ex = document.getElementById("kta-profile-import-done-modal");
     if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
 
+    const T = window.I18n.t.bind(window.I18n);
     // Construit le résumé des sections appliquées
     const SECTION_LABELS = {
-      user:        "👤 Identité",
-      registry:    "🗂️ Plans",
-      preferences: "⚙️ Préférences",
-      favoris:     "⭐ Favoris",
-      sessions:    "💾 Sessions",
-      backups:     "📦 Snapshots",
-      tutorial:    "🎓 Tutoriel",
-      photos:      "📸 Photos POI",
-      crashes:     "📋 Crashes"
+      user:        "👤 " + T("profileio.done_sec_user"),
+      registry:    "🗂️ " + T("profileio.done_sec_registry"),
+      preferences: "⚙️ " + T("profileio.done_sec_preferences"),
+      favoris:     "⭐ " + T("profileio.done_sec_favoris"),
+      sessions:    "💾 " + T("profileio.done_sec_sessions"),
+      backups:     "📦 " + T("profileio.done_sec_backups"),
+      tutorial:    "🎓 " + T("profileio.done_sec_tutorial"),
+      photos:      "📸 " + T("profileio.done_sec_photos"),
+      crashes:     "📋 " + T("profileio.done_sec_crashes")
     };
     const parts = [];
     Object.keys(res.applied || {}).forEach(function(k) {
@@ -1115,7 +1110,7 @@
     });
     const summaryHtml = parts.length
       ? '<ul style="margin:8px 0 12px 18px; padding:0;">' + parts.join("") + '</ul>'
-      : '<p style="font-style:italic; color:#8892a4;">Rien n\'a été appliqué (toutes les sections étaient vides ou décochées).</p>';
+      : '<p style="font-style:italic; color:#8892a4;">' + T("profileio.done_nothing") + '</p>';
 
     const overlay = document.createElement("div");
     overlay.id = "kta-profile-import-done-modal";
@@ -1124,26 +1119,24 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto !important; max-height:88vh !important; border-color:rgba(110,226,135,0.55); box-shadow:0 0 24px rgba(110,226,135,0.18);">' +
         '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(110,226,135,0.25);">' +
-          '<span class="kta-readme-modal-titre" style="color:#6ee287;">✅ Profil importé</span>' +
-          '<button type="button" class="kta-panneau-close" id="kta-profile-import-done-close" aria-label="Fermer">✕</button>' +
+          '<span class="kta-readme-modal-titre" style="color:#6ee287;">✅ ' + T("profileio.done_title") + '</span>' +
+          '<button type="button" class="kta-panneau-close" id="kta-profile-import-done-close" aria-label="' + T("profileio.close") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           '<p style="margin-top:4px;">' +
-            'Mode <strong>' + _escHtml(mode) + '</strong>. Sections appliquées :' +
+            T("profileio.done_mode", { mode: _escHtml(mode) }) +
           '</p>' +
           summaryHtml +
           '<div style="background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.30); border-radius:6px; padding:10px 12px; margin:10px 0;">' +
-            '🔄 <strong>Recharger l\'app est recommandé</strong> pour appliquer ' +
-            'pleinement les préférences (thème, mode perf, tutoriel, etc.). ' +
-            'Sans reload, certains changements ne seront visibles qu\'au prochain démarrage.' +
+            '🔄 ' + T("profileio.done_reload_reco") +
           '</div>' +
           '<p style="font-size:12px; color:#8892a4; font-style:italic; margin:8px 0 0;">' +
-            'Tu peux choisir « Plus tard » et reload manuellement quand tu veux (F5 ou bouton ↻).' +
+            T("profileio.done_reload_later") +
           '</p>' +
         '</div>' +
         '<div class="kta-profile-footer" style="display:flex; gap:8px; padding:14px 16px; border-top:1px solid rgba(255,255,255,0.06);">' +
-          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-profile-import-done-later"  style="flex:1;">⏱️ Plus tard</button>' +
-          '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-import-done-reload" style="flex:1;">🔄 Recharger maintenant</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-profile-import-done-later"  style="flex:1;">⏱️ ' + T("profileio.done_later") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-import-done-reload" style="flex:1;">🔄 ' + T("profileio.done_reload_now") + '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
@@ -1176,63 +1169,58 @@
   }
 
   function _renderImportContent(profile, stats, isLegacy, fileName) {
+    const T = window.I18n.t.bind(window.I18n);
     let html = '';
 
     // Banner : legacy vs nouveau format
     if (isLegacy) {
       html += '<div class="kta-profile-banner kta-profile-banner-legacy">' +
-                '⚠️ <strong>Format ancien détecté</strong> — ce fichier est une ' +
-                'liste de plans MyKTAMap au format legacy (≤ v1.21.x). Seule la section ' +
-                '<strong>Liste des plans</strong> sera importée. ' +
-                'Pour exporter ton profil complet (préférences + favoris + sessions + snapshots…), ' +
-                'utilise le bouton « 📤 Exporter mon profil » depuis ce même menu.' +
+                '⚠️ ' + T("profileio.import_banner_legacy") +
               '</div>';
     } else {
       html += '<div class="kta-profile-banner kta-profile-banner-ok">' +
-                '✅ Profil MyKTAMap valide détecté.' +
+                '✅ ' + T("profileio.import_banner_ok") +
               '</div>';
     }
 
     html += '<div class="kta-profile-fileinfo">';
-    html += '<div><strong>Fichier</strong> : <code>' + _escHtml(fileName) + '</code></div>';
+    html += '<div><strong>' + T("profileio.fileinfo_file") + '</strong> : <code>' + _escHtml(fileName) + '</code></div>';
     if (stats.exportedAt) {
-      html += '<div><strong>Exporté le</strong> : ' + _escHtml(new Date(stats.exportedAt).toLocaleString("fr-FR")) + '</div>';
+      html += '<div><strong>' + T("profileio.fileinfo_exported_at") + '</strong> : ' + _escHtml(new Date(stats.exportedAt).toLocaleString("fr-FR")) + '</div>';
     }
     if (stats.appVersion) {
-      html += '<div><strong>Version de l\'app source</strong> : ' + _escHtml(stats.appVersion) + '</div>';
+      html += '<div><strong>' + T("profileio.fileinfo_source_version") + '</strong> : ' + _escHtml(stats.appVersion) + '</div>';
     }
     html += '</div>';
 
     html += '<p class="kta-profile-intro">' +
-              'Choisis les sections à importer + le mode (merge ou replace).' +
+              T("profileio.import_intro") +
             '</p>';
 
     // Sections présentes dans le profil
     html += '<div class="kta-profile-sections">';
-    if (stats.user > 0)    html += _renderImportSection("user",     "👤", "Identité utilisateur", stats.user);
-    html += _renderImportSection("registry",    "🗂️", "Liste des plans",     stats.registry);
-    html += _renderImportSection("preferences", "⚙️", "Préférences",         stats.preferences);
-    if (stats.perPlanLs > 0) html += _renderImportSection("perPlanLs", "📍", "Calibrations & prefs par plan", stats.perPlanLs); // 🆕 v1.39.15
-    html += _renderImportSection("favoris",     "⭐", "Favoris",              stats.favoris);
-    html += _renderImportSection("sessions",    "💾", "Sessions actives",    stats.sessions);
-    html += _renderImportSection("backups",     "📦", "Snapshots",           stats.backups);
-    html += _renderImportSection("tutorial",    "🎓", "Tutoriel vu",         stats.tutorial);
-    if (stats.photos > 0)  html += _renderImportSection("photos",  "📸", "Photos POI",         stats.photos);
-    if (stats.crashes > 0) html += _renderImportSection("crashes", "📋", "Rapports de crash",  stats.crashes);
+    if (stats.user > 0)    html += _renderImportSection("user",     "👤", T("profileio.sec_user_label"),     stats.user);
+    html += _renderImportSection("registry",    "🗂️", T("profileio.import_sec_registry"),  stats.registry);
+    html += _renderImportSection("preferences", "⚙️", T("profileio.sec_preferences_label"), stats.preferences);
+    if (stats.perPlanLs > 0) html += _renderImportSection("perPlanLs", "📍", T("profileio.sec_perplan_label"), stats.perPlanLs); // 🆕 v1.39.15
+    html += _renderImportSection("favoris",     "⭐", T("profileio.sec_favoris_label"),     stats.favoris);
+    html += _renderImportSection("sessions",    "💾", T("profileio.sec_sessions_label"),    stats.sessions);
+    html += _renderImportSection("backups",     "📦", T("profileio.import_sec_backups"),    stats.backups);
+    html += _renderImportSection("tutorial",    "🎓", T("profileio.sec_tutorial_label"),    stats.tutorial);
+    if (stats.photos > 0)  html += _renderImportSection("photos",  "📸", T("profileio.sec_photos_label"),    stats.photos);
+    if (stats.crashes > 0) html += _renderImportSection("crashes", "📋", T("profileio.sec_crashes_label"),   stats.crashes);
     html += '</div>';
 
     // Mode merge / replace
     html += '<div class="kta-profile-mode">';
-    html += '<div class="kta-profile-mode-titre">Mode d\'import :</div>';
+    html += '<div class="kta-profile-mode-titre">' + T("profileio.mode_title") + '</div>';
     html += '<label class="kta-profile-mode-row">' +
               '<input type="radio" name="kta-profile-import-mode" value="merge" checked>' +
-              '<span><strong>🔄 Merge</strong> (recommandé) — Ajoute sans écraser. ' +
-                'Anti-doublon sur les IDs. Sessions actives non écrasées si déjà présentes localement.</span>' +
+              '<span>' + T("profileio.mode_merge") + '</span>' +
             '</label>';
     html += '<label class="kta-profile-mode-row">' +
               '<input type="radio" name="kta-profile-import-mode" value="replace">' +
-              '<span><strong>♻️ Replace</strong> — <strong>Vide</strong> les sections cochées chez toi avant d\'injecter. ' +
-                '<span style="color:#ff8c8c;">Irréversible</span>, double confirmation demandée.</span>' +
+              '<span>' + T("profileio.mode_replace") + '</span>' +
             '</label>';
     html += '</div>';
 
@@ -1247,7 +1235,7 @@
              '<span class="kta-profile-row-emoji">' + emoji + '</span>' +
              '<span class="kta-profile-row-label">' +
                '<strong>' + _escHtml(label) + '</strong> ' +
-               '<span class="kta-profile-row-meta">' + count + ' éléments</span>' +
+               '<span class="kta-profile-row-meta">' + window.I18n.t("profileio.elements_count", { count: count }) + '</span>' +
              '</span>' +
            '</label>';
   }

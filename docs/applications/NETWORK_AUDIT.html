@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.43.21</strong> (8 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.46.4</strong> (14 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -318,6 +318,13 @@
         <td>Ouverture des modales Documentation / Aide IA / Audit</td>
         <td>Affichage du contenu</td>
         <td><strong>Aucune</strong></td>
+      </tr>
+      <tr>
+        <td><code>&lt;origin&gt;/lang/fr.json</code>, <code>&lt;origin&gt;/lang/en.json</code>, <code>&lt;origin&gt;/lang/es.json</code></td>
+        <td><code>GET</code></td>
+        <td>Au boot (dicos i18n : fr = fallback + langue active) puis au changement de langue</td>
+        <td>Charger les traductions multi-langue (v1.45.0+, espagnol v1.46.1+)</td>
+        <td><strong>Aucune</strong> (fichiers statiques same-origin, précachés par le SW)</td>
       </tr>
       <tr>
         <td><code>&lt;origin&gt;/ping.html</code></td>
@@ -497,7 +504,7 @@
     </ul></li>
   </ul>
 
-  <h3>Cache offline OSM / « Save Offline » (depuis v1.43.0, consolidé jusqu'à v1.43.21)</h3>
+  <h3>Cache offline OSM / « Save Offline » (depuis v1.43.0, consolidé jusqu'à v1.43.25)</h3>
 
   <p><strong>Nouveauté v1.43.0</strong> : l'utilisateur peut maintenant <strong>mémoriser
   les tuiles OSM affichées</strong> pour les consulter hors-ligne plus tard. C'est une
@@ -623,9 +630,191 @@
     Fix : les backticks ont été remplacés par <code>&amp;amp;nbsp;</code>
     dans le commentaire. Aucun impact réseau, aucun impact privacy — bug
     de syntaxe JS pur, corrigé côté client.</li>
+    <li><strong>v1.43.22</strong> — <strong>Inspecteur SW V2</strong> :
+    nouveau diagnostic des échecs d'install dans le cache PWA. Architecture :
+      <ul>
+        <li>Nouveau store IDB <code>myktamap_sw_install_log/install_failures</code>
+        (clé <code>asset</code>, valeur <code>{type, status, message, timestamp, phase}</code>).
+        Vidé au début de chaque install pour ne pas accumuler d'anciennes
+        erreurs résolues.</li>
+        <li>Wrapper SW <code>_cacheAddDiag(cache, asset, phase)</code> qui
+        remplace <code>cache.add()</code> par un <code>fetch()</code> + analyse
+        explicite de la réponse + <code>cache.put()</code>. Catégorise
+        précisément l'erreur : <strong>404</strong> (FTP partiel),
+        <strong>5xx</strong> / <strong>4xx</strong> (serveur en erreur),
+        <strong>network</strong> (TypeError fetch = offline/DNS/CORS),
+        <strong>quota</strong> (QuotaExceededError sur <code>cache.put</code>),
+        <strong>parse</strong>, <strong>unknown</strong>.</li>
+        <li>Nouveau message handler <code>GET_INSTALL_FAILURES</code> côté SW :
+        renvoie l'historique des échecs au client (pattern MessageChannel
+        identique aux handlers existants).</li>
+        <li>UI Inspecteur enrichie : pour chaque manquant, on affiche désormais
+        la cause (icône + label coloré). Stats agrégées (« 🚫 3 absents serveur
+        · 📡 1 erreur réseau ») + diagnostic textuel (« 🛠️ Diagnostic probable :
+        déploiement FTP partiel »).</li>
+        <li><strong>Toast non-bloquant au boot</strong> si l'auto-heal échoue
+        sur &gt; 10 assets (1× par session via <code>sessionStorage</code>).
+        Clic = ouverture directe de l'Inspecteur SW.</li>
+      </ul>
+      <strong>Aucun impact réseau supplémentaire</strong> : <code>_cacheAddDiag</code>
+      fait exactement le même fetch que <code>cache.add()</code> (même URL,
+      même méthode <code>cache: "reload"</code>), juste en analysant la
+      réponse au lieu de la consumer en boîte noire. Les requêtes restent
+      100&nbsp;% self-origin sur les URLs déjà déclarées dans
+      <code>ASSETS_TO_CACHE</code>. <strong>Aucun impact privacy</strong> :
+      le log IDB reste 100&nbsp;% local (jamais transmis), le toast s'affiche
+      uniquement côté client. <strong>Respect intégral des modes privacy</strong> :
+      strict offline + incognito désactivent déjà l'auto-heal qui produirait
+      le log.</li>
   </ul>
 
-  <p><strong>Confirmation privacy v1.43.0 → v1.43.21</strong> : aucun de ces 22 patches
+    <li><strong>v1.43.23</strong> — Auto-heal plus persistant : garde-fou
+    <code>sessionStorage</code> rendu intelligent. Au lieu de "1× par session
+    brut" (qui bloquait le retry au reload même si le précédent check avait
+    échoué), on persiste maintenant le RÉSULTAT :
+      <ul>
+        <li>dernier check OK → skip jusqu'à la prochaine session (anti-spam)</li>
+        <li>dernier check avec échecs → <strong>retire à chaque reload</strong>
+        (= retry jusqu'à succès, car le serveur a peut-être été corrigé / le
+        runtime cache a réglé une partie)</li>
+        <li>si le SW n'est pas controller à T+5s (1er load post-update), on
+        re-programme un retry à T+10s au lieu d'abandonner</li>
+      </ul>
+      Aucun changement de surface réseau — juste de la robustesse du flow
+      auto-heal côté client.</li>
+  </ul>
+
+    <li><strong>v1.43.24</strong> — UX thème clair pour l'Inspecteur SW :
+    refactor des scrollboxes (styles inline → classe
+    <code>.kta-sw-inspector-scrollbox</code> partagée) + ajout des règles
+    <code>body.kta-theme-light #kta-sw-inspector-*</code> dans
+    <code>style-meminspector.css</code> pour adapter modale + sections +
+    textes au thème clair (fond beige, texte sombre, code en accent doré).
+    Aucun impact réseau.</li>
+  </ul>
+
+    <li><strong>v1.43.25</strong> — Performance install SW : phase 2 parallélisée
+    en batchs de 10 via <code>Promise.allSettled</code> (au lieu de <code>for-of
+    await</code> séquentiel). Sur ~150 assets, l'install passe de 30-60&nbsp;s à
+    5-10&nbsp;s sur connexion mobile → fenêtre d'interruption (Safari iOS kill,
+    reload user, throttling Chrome) drastiquement réduite. Le handler
+    <code>REFETCH_MISSING_ASSETS</code> (bouton « Récupérer manquants » +
+    auto-heal) est aussi parallélisé. Cleanup : retrait de
+    <code>lib/leaflet/leaflet-src.js</code> et <code>leaflet-src.esm.js</code>
+    de <code>ASSETS_TO_CACHE</code> (~1 MB total, versions non-minifiées jamais
+    chargées par index.html en runtime → inutiles dans le cache PWA, fichiers
+    toujours présents sur le serveur pour debug manuel). <strong>Aucun changement
+    de surface réseau</strong> : même whitelist endpoints, même URLs self-origin,
+    juste exécutées en parallèle.</li>
+
+    <li><strong>v1.44.7</strong> — Correction contenu tutoriel (carte Sortie
+    d'urgence) : le texte mentionnait un tag POI <code>sortie</code>/<code>exit</code>
+    inexistant ; remplacé par les vrais tags reconnus par le moteur
+    (<code>cao</code>/<code>peo</code>/<code>eso</code> ou <code>entrée</code>),
+    FR + EN. Pur contenu. <strong>Aucun changement de surface réseau</strong>.</li>
+
+    <li><strong>v1.44.6</strong> — Onboarding bilingue FR/EN : ajout de la
+    version anglaise des 25 cartes du tutoriel premier-lancement
+    (<code>tutorial.js</code>), avec toggle 🇫🇷/🇬🇧 partageant la clé de langue
+    de la doc (<code>myktamap_readme_lang</code>). Pur contenu client.
+    <strong>Aucun changement de surface réseau</strong>.</li>
+
+    <li><strong>v1.44.5</strong> — Fix débordement modale Générateur : l'icône
+    built-in <code>entree_plan</code> (SVG inline <code>data:image/svg+xml;...</code>)
+    s'affichait en entier dans le nom de la row d'icône → sans
+    <code>min-width:0</code> sur les flex/grid items, ce contenu
+    <code>nowrap</code> débordait et élargissait toute la modale (mode Avancé,
+    grille 2 colonnes ≥1280px). Fix JS (label propre pour data URL) + CSS
+    (<code>min-width:0</code>). <strong>Aucun changement de surface réseau</strong>.</li>
+
+    <li><strong>v1.44.4</strong> — Fix cause racine de la suppression au clic :
+    le handler Leaflet <code>_openPopup</code> fait <code>DomEvent.stop(e)</code>
+    quand on clique pile sur un élément avec popup → la propagation du clic est
+    stoppée → le handler <code>map.on("click")</code> du mode suppression ne
+    tirait jamais (seuls les clics à proximité supprimaient). Fix : rejeu du
+    clic suppression depuis l'event <code>popupopen</code> (la popup s'ouvre à
+    la position du clic). <strong>Aucun changement de surface réseau</strong>.</li>
+
+    <li><strong>v1.44.3</strong> — Guard popup mode suppression (1ère tentative,
+    incomplète : masquait la popup sans corriger la cause — voir v1.44.4).</li>
+
+    <li><strong>v1.44.2</strong> — Suite du fix ronds d'intersection : le
+    toggle d'un calque DATA via le FilterPanel (<code>map.addLayer/removeLayer</code>
+    direct) n'émettait pas les événements <code>overlayadd</code>/<code>overlayremove</code>
+    que <code>road.js</code> écoute pour recalculer les intersections →
+    cercles des roads embarquées du calque masqué persistaient. Fix :
+    <code>_scheduleRoadsRecalc()</code> (renderRoads coalescé 150 ms) dans
+    <code>filterPanel.js</code>. <strong>Aucun changement de surface réseau</strong>.</li>
+
+    <li><strong>v1.44.1</strong> — Fix ronds d'intersection des tracés (2 bugs
+    pré-existants cumulés dans <code>road.js</code>) :
+    1️⃣ <code>_renderIntersections</code> ignorait le filtre runtime par type
+    de tracé → cercles des types décochés restaient affichés (nouveau
+    <code>_passeFiltreTag()</code>) ;
+    2️⃣ <code>layer.remove()</code> retirait les cercles de la map mais pas du
+    FeatureGroup parent → accumulation silencieuse à chaque re-render
+    (719 cercles fantômes mesurés pour 9 attendus ; fuite mémoire DOM).
+    Nouveau helper <code>_purgeIntersectionLayers()</code> mutualisé.
+    <strong>Aucun changement de surface réseau</strong>.</li>
+
+    <li><strong>v1.44.0</strong> — Refonte du cycle de vie des modales :
+    helper standalone <code>js/modalLifecycle.js</code> (~250 lignes, zéro
+    dépendance) qui tracke automatiquement timers + listeners + blob URLs
+    d'une modale et libère tout au <code>close()</code>. Migrations pilotes :
+    <code>memInspector</code> + <code>swInspector</code> (complètes),
+    <code>lostMode</code> (partielle). 3 high audit V2 restants fixés :
+    <code>createConf:3062</code> try/finally blob URL ZIP,
+    <code>interfaceItineraire:963 + :1401</code> event delegation autocomplete.
+    Quick wins : GPS input mark clear, overrides CSS light theme
+    <code>.kta-mem-loading</code> + toast <code>#kta-sw-incomplet-toast</code>.
+    Hook lint advisory <code>scripts/check-modal-lifecycle.js</code>.
+    Doc architecture <code>docs/architecture/modal-lifecycle.md</code>.
+    <strong>Aucun changement de surface réseau</strong> : pur refactor client.</li>
+
+    <li><strong>v1.43.27</strong> — Hotfix sur la base de l'audit modales V2
+    (workflow multi-agents adversarial verify, 87 raw → 61 confirmés
+    post-v1.43.26) :
+    1️⃣ correction d'une régression introduite par v1.43.26 dans
+    <code>osmView.js:2390</code> (le commentaire promettait <code>.finally()</code>
+    pour cleanup <code>waitOverlay</code> mais l'impl utilisait toujours
+    <code>then().catch()</code> SANS retirer l'overlay — chaque ouverture Vue
+    OSM laissait un <code>&lt;div class="kta-modal-overlay"&gt;</code> orphelin
+    dans le DOM) ;
+    2️⃣ Pattern C extension : guard <code>isConnected</code> après
+    <code>await findByQuery</code> dans <code>lostMode.js:997</code> ;
+    3️⃣ Pattern D extension : <code>btn.disabled = true</code> dans
+    <code>secoursMode.js:4400</code> (Briefing Pompiers PDF) + <code>_handleExport</code>
+    rapport (3 boutons pdf/json/text disable mutuellement) ;
+    4️⃣ Pattern C extension : guard <code>isConnected</code> après
+    <code>await computeRoute</code> Dijkstra dans <code>interfaceItineraire.js</code> ;
+    5️⃣ refacto event delegation dans <code>filterPanel.js:559+</code> pour
+    Image/Data/Tags/show-all/hide-all (cohérence avec M-LVL déjà délégué en
+    v1.43.26). <strong>Aucun changement de surface réseau</strong> : pur
+    hardening client. Audit V2 complet sauvegardé dans
+    <code>docs/audits/2026-06-09_audit-modales-v2.md</code>.</li>
+
+    <li><strong>v1.43.26</strong> — Sprint hardening modales (top 10 fixes de
+    l'audit perf/UX modales, workflow adversarial verify) :
+    1️⃣ guard <code>getCurrentPosition</code> callback après close <code>osmView</code> ;
+    2️⃣ <code>try/finally</code> revoke blob URL <code>imgUrl</code> dans
+    <code>_genererTuilesV2</code> (cleanup garanti même sur exception OOM/tainted) ;
+    3️⃣ Pattern B theming light pour sous-modales Mode Secours (Phase /
+    Debrief / Rapport) via overrides CSS ciblés dans <code>style-secours.css</code> ;
+    4️⃣ Escape listener auto-cleaned dans crash detail modal <code>memInspector</code> ;
+    5️⃣ bannière warning « rayon dépasse » Lost Mode → classe CSS + variant
+    light (<code>.kta-lost-warn-overflow</code>) ;
+    6️⃣ <code>_lastReport = null</code> au fermer <code>memInspector</code>
+    (libère snapshot crash reports volumineux) ;
+    7️⃣ Pattern A anti-leak Esc listener orphelin sur ré-ouverture modale Phase
+    Mode Secours (ref module <code>_phaseModalEsc</code>) ;
+    8️⃣ <code>.finally()</code> cleanup waitOverlay <code>_pingThenOpen</code> ;
+    9️⃣ <code>_searchTimeout</code> clear au close Lost Mode (évite write sur DOM retiré) ;
+    🔟 refacto event delegation pour M-LVL handlers <code>filterPanel</code> (plus
+    de re-bind à chaque innerHTML reflow). <strong>Aucun changement de surface
+    réseau</strong> : pur hardening client.</li>
+  </ul>
+
+  <p><strong>Confirmation privacy v1.43.0 → v1.44.7</strong> : aucun de ces 36 patches
   n'ajoute de surface réseau sortante. Le cache reste 100% IndexedDB local, les
   requêtes vers <code>tile.openstreetmap.org</code> passent par le Service Worker qui
   sert depuis IDB ou laisse passer le fetch réseau standard. <strong>AUCUN tracking,
@@ -710,10 +899,10 @@
     v1.40.19).</li>
   </ul>
 
-  <p><strong>Verdict réseau v1.43.21</strong> : ✅ aucune nouvelle URL ajoutée à la liste
+  <p><strong>Verdict réseau v1.44.7</strong> : ✅ aucune nouvelle URL ajoutée à la liste
   blanche, aucune nouvelle catégorie de donnée envoyée, aucun service tiers contacté. Le
   périmètre réseau v1.42.x est <strong>strictement conservé</strong> sur toute la série
-  v1.43.0 → v1.43.21. La whitelist endpoints reste inchangée
+  v1.43.0 → v1.44.7. La whitelist endpoints reste inchangée
   (<code>tile.openstreetmap.org</code>, <code>denylist.json</code>, <code>ping.html</code>,
   <code>version.json</code> + assets app). Le seul changement est l'introduction d'un store
   IDB local de plus (cf. section « Stockage local »). La feature « Save Offline »
@@ -932,6 +1121,20 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.46.4 (Correctifs moteur + Aide IA traduite)</strong> : <strong>aucun nouveau flux réseau.</strong>
+    Correctifs purement client-side (ronds de jonctions inter-niveaux, fermeture propre de l'outil tracé) et
+    traduction FR/EN/ES de la chrome de la modale « Aide IA ». Cette modale télécharge
+    <code>docs/applications/AI_CONTEXT.md</code> (fichier statique same-origin, déjà documenté) — inchangé.
+    Whitelist <code>connect-src</code> : ZÉRO modification.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.46.1 (Ajout de l'espagnol)</strong> : ajout de l'espagnol (<code>lang/es.json</code>)
+    précaché par le Service Worker — aucun nouveau flux réseau, juste un fichier statique de
+    traduction supplémentaire. Sélecteur de langue déplacé dans ⚙️ Configuration.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.43.0 (Cache offline OSM — opt-in user, IDB local pur, conformité usage CDN OSM)</strong> :

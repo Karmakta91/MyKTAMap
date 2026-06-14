@@ -35,7 +35,7 @@ L.control.titleControl = function () {
 
     const titre = document.createElement("div");
     titre.id = "kta-titre-fixe";
-    titre.title = "Cliquer pour changer de plan";
+    titre.title = window.I18n.t("ui.title.changePlan");
     titre.innerHTML = `
       <div class="map-title-text">
         ${planName}
@@ -89,15 +89,15 @@ function _resumeSession() {
   const measureSurf = (window.getMeasurePointsSurface && window.getMeasurePointsSurface()) || [];
   const trackPath   = (window.getTrackingPath         && window.getTrackingPath())         || [];
 
-  if (editorPts.length  > 0) items.push(editorPts.length + " point" + (editorPts.length > 1 ? "s" : "") + " ajouté" + (editorPts.length > 1 ? "s" : ""));
-  if (roads.length      > 0) items.push(roads.length     + " tracé"  + (roads.length     > 1 ? "s" : ""));
-  if (zones.length      > 0) items.push(zones.length     + " zone"   + (zones.length     > 1 ? "s" : ""));
+  if (editorPts.length  > 0) items.push(window.I18n.t(editorPts.length > 1 ? "ui.resume.points" : "ui.resume.point", { n: editorPts.length }));
+  if (roads.length      > 0) items.push(window.I18n.t(roads.length > 1 ? "ui.resume.traces" : "ui.resume.trace", { n: roads.length }));
+  if (zones.length      > 0) items.push(window.I18n.t(zones.length > 1 ? "ui.resume.zones" : "ui.resume.zone", { n: zones.length }));
   // 🆕 v1.9.3-A1.a : structures dans le résumé session (avertissement
   // au changement de plan / retour loader).
-  if (structures.length  > 0) items.push(structures.length + " structure" + (structures.length > 1 ? "s" : ""));
-  if (measure.length     > 0) items.push("une mesure de distance");
-  if (measureSurf.length > 0) items.push("une mesure de surface");
-  if (trackPath.length   > 1) items.push("le parcours du tracker");
+  if (structures.length  > 0) items.push(window.I18n.t(structures.length > 1 ? "ui.resume.structures" : "ui.resume.structure", { n: structures.length }));
+  if (measure.length     > 0) items.push(window.I18n.t("ui.resume.measureDist"));
+  if (measureSurf.length > 0) items.push(window.I18n.t("ui.resume.measureSurf"));
+  if (trackPath.length   > 1) items.push(window.I18n.t("ui.resume.trackPath"));
   return items;
 }
 
@@ -107,13 +107,13 @@ function _fmtDateRel(iso) {
     const d = new Date(iso);
     const diffMs = Date.now() - d.getTime();
     const min = Math.floor(diffMs / 60000);
-    if (min < 1)    return "à l'instant";
-    if (min < 60)   return "il y a " + min + " min";
+    if (min < 1)    return window.I18n.t("ui.date.now");
+    if (min < 60)   return window.I18n.t("ui.date.minAgo", { n: min });
     const h = Math.floor(min / 60);
-    if (h < 24)     return "il y a " + h + " h";
+    if (h < 24)     return window.I18n.t("ui.date.hourAgo", { n: h });
     const j = Math.floor(h / 24);
-    if (j === 1)    return "hier";
-    if (j < 7)      return "il y a " + j + " jours";
+    if (j === 1)    return window.I18n.t("ui.date.yesterday");
+    if (j < 7)      return window.I18n.t("ui.date.daysAgo", { n: j });
     return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
   } catch(e) { return ""; }
 }
@@ -164,11 +164,11 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
       ? ' <span class="kta-switcher-ver">' + escapeHtmlSwitcher(current.version) + '</span>'
       : '';
     const sub  = current.lastOpened
-      ? "Ouvert " + (_fmtDateRel(current.lastOpened) || "récemment")
-      : "Plan en cours";
+      ? window.I18n.t("ui.switcher.openedAt", { date: (_fmtDateRel(current.lastOpened) || window.I18n.t("ui.switcher.recently")) })
+      : window.I18n.t("ui.switcher.currentPlan");
     currentHtml =
       '<div class="kta-plan-switcher-current">' +
-        '<div class="kta-plan-switcher-current-label">📍 Plan en cours</div>' +
+        '<div class="kta-plan-switcher-current-label">' + window.I18n.t("ui.switcher.currentLabel") + '</div>' +
         '<div class="kta-plan-switcher-current-name">' +
           '<span class="kta-plan-switcher-current-icon">' + icon + '</span>' +
           '<span>' + escapeHtmlSwitcher(current.name || current.id) + '</span>' + ver +
@@ -180,7 +180,7 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
   // Section "Plans récents"
   let recentsHtml = "";
   if (recents.length > 0) {
-    recentsHtml += '<div class="kta-plan-switcher-section-titre">📚 Plans récents</div>';
+    recentsHtml += '<div class="kta-plan-switcher-section-titre">' + window.I18n.t("ui.switcher.recentTitle") + '</div>';
     recentsHtml += '<div class="kta-switcher-list">';
     recents.forEach(function(p) {
       const icon = p.type === "server" ? "🌐" : "💾";
@@ -199,15 +199,15 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
     recentsHtml += '</div>';
   } else {
     recentsHtml +=
-      '<div class="kta-plan-switcher-section-titre">📚 Plans récents</div>' +
-      '<div class="kta-switcher-empty">Aucun autre plan dans votre liste pour le moment.</div>';
+      '<div class="kta-plan-switcher-section-titre">' + window.I18n.t("ui.switcher.recentTitle") + '</div>' +
+      '<div class="kta-switcher-empty">' + window.I18n.t("ui.switcher.empty") + '</div>';
   }
 
   overlay.innerHTML =
     '<div class="kta-plan-switcher-modal-boite" id="kta-plan-switcher">' +
       '<div class="kta-plan-switcher-modal-header">' +
-        '<span class="kta-plan-switcher-modal-titre">🗂 Changer de plan</span>' +
-        '<button class="kta-panneau-close" id="kta-plan-switcher-close" aria-label="Fermer">✕</button>' +
+        '<span class="kta-plan-switcher-modal-titre">' + window.I18n.t("ui.switcher.modalTitle") + '</span>' +
+        '<button class="kta-panneau-close" id="kta-plan-switcher-close" aria-label="' + window.I18n.t("ui.btn.close") + '">✕</button>' +
       '</div>' +
       '<div class="kta-plan-switcher-modal-corps">' +
         currentHtml +
@@ -216,8 +216,8 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
       '<div class="kta-plan-switcher-modal-footer">' +
         '<button class="kta-plan-switcher-cta" id="kta-switcher-tous">' +
           '<span class="kta-plan-switcher-cta-icon">📚</span>' +
-          '<span class="kta-plan-switcher-cta-label">Voir tous mes plans</span>' +
-          '<span class="kta-plan-switcher-cta-sub">Gérer / supprimer / importer</span>' +
+          '<span class="kta-plan-switcher-cta-label">' + window.I18n.t("ui.switcher.ctaLabel") + '</span>' +
+          '<span class="kta-plan-switcher-cta-sub">' + window.I18n.t("ui.switcher.ctaSub") + '</span>' +
         '</button>' +
       '</div>' +
     '</div>';
@@ -333,23 +333,21 @@ function _confirmEtChargerPlan(planId) {
   overlay.innerHTML =
     '<div class="kta-modal">' +
       '<div class="kta-modal-icon">🗂️</div>' +
-      '<div class="kta-modal-titre">Charger un autre plan</div>' +
+      '<div class="kta-modal-titre">' + window.I18n.t("ui.loadOther.title") + '</div>' +
       '<div class="kta-modal-texte">' +
-        'Session actuellement active sur le plan en cours :' +
+        window.I18n.t("ui.loadOther.activeIntro") +
         '<ul style="text-align:left; margin:10px 0 14px 0; padding-left:24px; color:#a8b3c8; line-height:1.6; list-style-type:disc;">' +
           items.map(function(it) { return '<li style="color:#a8b3c8;">' + escapeHtmlSwitcher(it) + '</li>'; }).join("") +
         '</ul>' +
-        '<strong style="color:#6ce28a;">✅ La session du plan courant est sauvegardée</strong> ' +
-        'et sera restaurée à ton retour sur ce plan.<br>' +
+        window.I18n.t("ui.loadOther.saved") +
         '<span style="color:#a8b3c8; font-size:12.5px;">' +
-          '📦 Les 10 derniers snapshots restent dispos dans 📊 Détails de ' +
-          'session › Backups pour revenir à un état antérieur si besoin.' +
+          window.I18n.t("ui.loadOther.snapshots") +
         '</span><br><br>' +
-        'Charger « <strong>' + escapeHtmlSwitcher(plan.name || plan.id) + '</strong> » ?' +
+        window.I18n.t("ui.loadOther.confirm", { nom: escapeHtmlSwitcher(plan.name || plan.id) }) +
       '</div>' +
       '<div class="kta-modal-actions">' +
-        '<button class="kta-btn kta-btn-ghost"   id="kta-switch-annuler">Annuler</button>' +
-        '<button class="kta-btn kta-btn-primary" id="kta-switch-confirmer">📚 Charger</button>' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-switch-annuler">' + window.I18n.t("ui.btn.cancel") + '</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-switch-confirmer">' + window.I18n.t("ui.loadOther.loadBtn") + '</button>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(overlay);
@@ -543,8 +541,8 @@ function _confirmerAction(titre, texte, callback) {
       <div class="kta-modal-titre">${titre}</div>
       <div class="kta-modal-texte">${texte}</div>
       <div class="kta-modal-actions">
-        <button class="kta-btn kta-btn-ghost" id="_conf-annuler">Annuler</button>
-        <button class="kta-btn kta-btn-danger" id="_conf-ok">Confirmer</button>
+        <button class="kta-btn kta-btn-ghost" id="_conf-annuler">${window.I18n.t("ui.btn.cancel")}</button>
+        <button class="kta-btn kta-btn-danger" id="_conf-ok">${window.I18n.t("ui.btn.confirm")}</button>
       </div>
     </div>
   `;
@@ -584,7 +582,7 @@ function _alertCharte(titre, texte, icone) {
       '<div class="kta-modal-titre">' + titre + '</div>' +
       '<div class="kta-modal-texte">' + texte + '</div>' +
       '<div class="kta-modal-actions">' +
-        '<button class="kta-btn kta-btn-primary" id="kta-alert-charte-ok">OK</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-alert-charte-ok">' + window.I18n.t("ui.btn.ok") + '</button>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(overlay);
@@ -626,7 +624,7 @@ function _choixSuppression(titre, texte, options) {
       <div class="kta-modal-texte">${texte || ""}</div>
       <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
         ${boutonsHtml}
-        <button class="kta-btn kta-btn-ghost" id="_choix-annuler" style="margin-top:4px;">Annuler</button>
+        <button class="kta-btn kta-btn-ghost" id="_choix-annuler" style="margin-top:4px;">${window.I18n.t("ui.btn.cancel")}</button>
       </div>
     </div>
   `;
@@ -659,20 +657,13 @@ function afficherPopupChangerPlan() {
   overlay.innerHTML = `
     <div class="kta-modal" style="max-width:440px;">
       <div class="kta-modal-icon">🗂️</div>
-      <div class="kta-modal-titre">Changer de plan</div>
+      <div class="kta-modal-titre">${window.I18n.t("ui.changePlan.title")}</div>
       <div class="kta-modal-texte">
-        Tu vas quitter la session en cours pour revenir à la liste de tes plans.<br><br>
-        <strong style="color:#6ce28a;">✅ Ta session est sauvegardée automatiquement</strong>
-        et sera restaurée quand tu reviendras sur ce plan.<br>
-        <span style="color:#a8b3c8; font-size:12.5px;">
-          📦 Les 10 derniers snapshots restent aussi disponibles dans
-          📊 Détails de session › Backups récents pour revenir à un état
-          antérieur à tout moment.
-        </span>
+        ${window.I18n.t("ui.changePlan.body")}
       </div>
       <div class="kta-modal-actions">
-        <button class="kta-btn kta-btn-ghost" id="popupResterIci">Rester ici</button>
-        <button class="kta-btn kta-btn-primary" id="popupChargerPlan">📚 Mes plans</button>
+        <button class="kta-btn kta-btn-ghost" id="popupResterIci">${window.I18n.t("ui.changePlan.stay")}</button>
+        <button class="kta-btn kta-btn-primary" id="popupChargerPlan">${window.I18n.t("ui.changePlan.myPlans")}</button>
       </div>
     </div>
   `;
@@ -792,41 +783,38 @@ function _afficherAvertissementTracker(onConfirm) {
   overlay.innerHTML =
     '<div class="kta-readme-modal-boite kta-tracker-warn-boite">' +
       '<div class="kta-readme-modal-header kta-tracker-warn-header">' +
-        '<span class="kta-readme-modal-titre">⚠️ Tracker — Module expérimental</span>' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("ui.trackerWarn.title") + '</span>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         '<p class="kta-tracker-warn-lead">' +
-          'Ce module ne doit <strong>PAS</strong> être utilisé pour te repérer en situation réelle.' +
+          window.I18n.t("ui.trackerWarn.lead") +
         '</p>' +
         '<p>' +
-          'Le suivi par capteurs (boussole + accéléromètre) est <strong>expérimental</strong> et ' +
-          'accumule de la dérive à chaque pas. La précision dépend du calibrage du plan, de la ' +
-          'qualité du magnétomètre du téléphone, et de l\'environnement (les armatures métalliques ' +
-          'des carrières / galeries faussent fortement la boussole).' +
+          window.I18n.t("ui.trackerWarn.intro") +
         '</p>' +
         '<div class="kta-tracker-warn-section">' +
-          '<div class="kta-tracker-warn-section-titre">✅ Utilisations recommandées</div>' +
+          '<div class="kta-tracker-warn-section-titre">' + window.I18n.t("ui.trackerWarn.okTitle") + '</div>' +
           '<ul>' +
-            '<li>Debug de la formule de heading (avec la boussole 🧭)</li>' +
-            '<li>Tester la calibration du plan (échelle pixel→mètre)</li>' +
-            '<li>Valider la détection de pas (seuils accéléromètre)</li>' +
+            '<li>' + window.I18n.t("ui.trackerWarn.ok1") + '</li>' +
+            '<li>' + window.I18n.t("ui.trackerWarn.ok2") + '</li>' +
+            '<li>' + window.I18n.t("ui.trackerWarn.ok3") + '</li>' +
           '</ul>' +
         '</div>' +
         '<div class="kta-tracker-warn-section kta-tracker-warn-section-bad">' +
-          '<div class="kta-tracker-warn-section-titre">❌ NE PAS utiliser pour</div>' +
+          '<div class="kta-tracker-warn-section-titre">' + window.I18n.t("ui.trackerWarn.badTitle") + '</div>' +
           '<ul>' +
-            '<li>Te localiser réellement (utilise un fil d\'Ariane physique)</li>' +
-            '<li>Tracer un itinéraire fiable</li>' +
-            '<li>Retrouver ton chemin en cas de perte (utilise ⛑️ Je suis perdu)</li>' +
+            '<li>' + window.I18n.t("ui.trackerWarn.bad1") + '</li>' +
+            '<li>' + window.I18n.t("ui.trackerWarn.bad2") + '</li>' +
+            '<li>' + window.I18n.t("ui.trackerWarn.bad3") + '</li>' +
           '</ul>' +
         '</div>' +
         '<p class="kta-tracker-warn-note">' +
-          'Recalage manuel via 📍 indispensable tous les ~50m pour limiter la dérive.' +
+          window.I18n.t("ui.trackerWarn.note") +
         '</p>' +
       '</div>' +
       '<div class="kta-tracker-warn-actions">' +
-        '<button class="kta-btn kta-btn-ghost"   id="kta-tracker-warn-cancel" type="button">Annuler</button>' +
-        '<button class="kta-btn kta-btn-primary" id="kta-tracker-warn-ok"     type="button">J\'ai compris — Démarrer</button>' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-tracker-warn-cancel" type="button">' + window.I18n.t("ui.btn.cancel") + '</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-tracker-warn-ok"     type="button">' + window.I18n.t("ui.trackerWarn.startBtn") + '</button>' +
       '</div>' +
     '</div>';
 
@@ -1188,7 +1176,7 @@ function _ouvrirFlyout(groupId) {
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
   closeBtn.className = "kta-group-flyout-close";
-  closeBtn.title = "Fermer";
+  closeBtn.title = window.I18n.t("ui.btn.close");
   closeBtn.textContent = "✕";
   closeBtn.addEventListener("click", function(ev) {
     ev.stopPropagation();
@@ -1452,7 +1440,7 @@ L.control.ktaFilterControl = function() {
     //   • MyKTAMap light theme override (html.kta-theme-light .leaflet-bar a)
     // → match automatique du thème courant comme les autres boutons sidebar.
     div.innerHTML =
-      '<a href="#" role="button" aria-label="Filtres" title="Filtres (Images, Données, Niveaux, Tags, Types)" ' +
+      '<a href="#" role="button" aria-label="' + window.I18n.t("ui.filter.aria") + '" title="' + window.I18n.t("ui.filter.title") + '" ' +
       'style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:18px;line-height:1;text-decoration:none;">' +
       '&#9776;' +  // ≡ (trois barres horizontales)
       '</a>';
@@ -1528,7 +1516,7 @@ function initInterface() {
     _creerGroupeAccordeon({
       id: "favoris",
       iconePrincipale: "⭐",
-      titre: "Favoris",
+      titre: window.I18n.t("ui.group.favoris"),
       position: "topleft",
       useFlyout: true,
       dynamicSousActions: function() {
@@ -1537,7 +1525,7 @@ function initInterface() {
         if (favs.length === 0) {
           return [{
             icone: "ℹ️",
-            titre: "(aucun favori — clique ⭐ dans une popup pour ajouter)",
+            titre: window.I18n.t("ui.favoris.empty"),
             onClick: function() {}  // no-op
           }];
         }
@@ -1580,21 +1568,21 @@ function initInterface() {
   _creerGroupeAccordeon({
     id: "aide",
     iconePrincipale: "📚",
-    titre: "Aide / Documentation / Légende",
+    titre: window.I18n.t("ui.group.aide"),
     position: "topleft",
     sousActions: [
       // 🆕 v1.31.0 P3 Lot 4 : afficherAide / afficherReadme extraites vers
       // js/interfaceDocs.js et exposées via window.* — référence indirecte
       // via window.X car les identifiers locaux n'existent plus dans le
       // scope de interface.js après extraction.
-      { icone: "❓", titre: "Aide",          onClick: function() { if (typeof window.afficherAide === "function") window.afficherAide(); } },
-      { icone: "📖", titre: "Documentation", onClick: function() { if (typeof window.afficherReadme === "function") window.afficherReadme(); } },
-      { icone: "🤖", titre: "Aide IA",       onClick: function() {
+      { icone: "❓", titre: window.I18n.t("ui.subaction.aide"),          onClick: function() { if (typeof window.afficherAide === "function") window.afficherAide(); } },
+      { icone: "📖", titre: window.I18n.t("ui.subaction.documentation"), onClick: function() { if (typeof window.afficherReadme === "function") window.afficherReadme(); } },
+      { icone: "🤖", titre: window.I18n.t("ui.subaction.aideIA"),       onClick: function() {
           if (typeof window.afficherModaleAideIA === "function") {
             window.afficherModaleAideIA();
           }
         } },
-      { icone: "🗺️", titre: "Légende",       onClick: afficherLegende }
+      { icone: "🗺️", titre: window.I18n.t("ui.subaction.legende"),       onClick: afficherLegende }
       // 🆕 v1.21.0 — Rejouer le tutoriel premier-lancement à tout moment.
       // 🔄 v1.21.3 (KARMA "le bouton Onboarding on peux le mettre tout en
       // haut de la doc README") : retiré de ce menu, désormais accessible
@@ -1616,7 +1604,7 @@ function initInterface() {
   _creerGroupeAccordeon({
     id: "settings",
     iconePrincipale: "⚙️",
-    titre: "Paramètres",
+    titre: window.I18n.t("ui.group.settings"),
     position: "topleft",
     soloAction: function() { if (typeof window.afficherConfig === "function") window.afficherConfig(); }
   });
@@ -1625,10 +1613,10 @@ function initInterface() {
   _creerGroupeAccordeon({
     id: "recherche",
     iconePrincipale: "🔍",
-    titre: "Rechercher un point",
+    titre: window.I18n.t("ui.group.recherche"),
     soloAction: function() {
       if (window.ouvrirRecherche) window.ouvrirRecherche();
-      else alert("Module recherche indisponible");
+      else alert(window.I18n.t("ui.alert.rechercheIndispo"));
     }
   });
 
@@ -1647,7 +1635,7 @@ function initInterface() {
   _creerGroupeAccordeon({
     id: "charger",
     iconePrincipale: "⬇️",
-    titre: "Charger / Import",
+    titre: window.I18n.t("ui.group.charger"),
     position: "topleft",
     sousActions: [
       // v1.14.7 : retour à l'icône 📥 (l'icône classique d'import) — KARMA :
@@ -1655,13 +1643,13 @@ function initInterface() {
       // entrée dans le menu, l'icône folder neutre 📂 n'était plus nécessaire.
       // 🆕 v1.31.0 P3 Lot 5 : ouvrirImportSession extraite vers
       // js/interfaceImportExport.js → fallback via window.X.
-      { icone: "📥", titre: "Importer (session MyKTAMap ou GPX externe)", onClick: function() {
+      { icone: "📥", titre: window.I18n.t("ui.subaction.importer"), onClick: function() {
           if (typeof window.ouvrirImportChoix === "function") window.ouvrirImportChoix();
           else if (typeof window.ouvrirImportSession === "function") window.ouvrirImportSession();
         } },
-      { icone: "📊", titre: "Éditer un fichier JSON", onClick: function() {
+      { icone: "📊", titre: window.I18n.t("ui.subaction.editJson"), onClick: function() {
           if (window.ouvrirTableEditor) window.ouvrirTableEditor();
-          else alert("Module éditeur de tableau indisponible");
+          else alert(window.I18n.t("ui.alert.tableEditorIndispo"));
         } }
     ]
   });
@@ -1676,31 +1664,31 @@ function initInterface() {
   _creerGroupeAccordeon({
     id: "save",
     iconePrincipale: "⬆️",
-    titre: "Enregistrer",
+    titre: window.I18n.t("ui.group.save"),
     position: "topleft",
     sousActions: [
-      { icone: "💾", titre: "Enregistrer la session", onClick: function() {
+      { icone: "💾", titre: window.I18n.t("ui.subaction.saveSession"), onClick: function() {
           if (window.ouvrirExportSessionModal) window.ouvrirExportSessionModal();
           else if (window.telechargerSessionJSON) window.telechargerSessionJSON();
         } },
-      { icone: "🖼️", titre: "Exporter le plan en image", onClick: function() {
+      { icone: "🖼️", titre: window.I18n.t("ui.subaction.exportImage"), onClick: function() {
           if (window.ouvrirExportModal) {
             window.ouvrirExportModal();
           } else if (window.telechargerPlan) {
             // Fallback : telechargerPlan rethrow désormais — on l'attrape ici pour
             // afficher un message visible au lieu d'une promesse rejetée silencieuse.
             window.telechargerPlan().catch(function(err) {
-              alert("Erreur lors de l'export du plan : " + (err && err.message ? err.message : err));
+              alert(window.I18n.t("ui.alert.exportError", { err: (err && err.message ? err.message : err) }));
             });
           }
         } },
       // 🆕 v1.10.3 : Export PDF imprimable A4/A3 portrait/paysage (via jsPDF).
       // Réutilise le canvas généré par exporter.js pour cohérence visuelle.
-      { icone: "📤", titre: "Exporter en PDF imprimable", onClick: function() {
+      { icone: "📤", titre: window.I18n.t("ui.subaction.exportPdf"), onClick: function() {
           if (window.MyKTAMapPdfExport && window.MyKTAMapPdfExport.afficherModale) {
             window.MyKTAMapPdfExport.afficherModale();
           } else {
-            alert("Module PDF non chargé. Recharge la page si le problème persiste.");
+            alert(window.I18n.t("ui.alert.pdfIndispo"));
           }
         } }
     ]
@@ -1717,17 +1705,17 @@ function initInterface() {
   _creerGroupeAccordeon({
     id: "history",
     iconePrincipale: "⏪",
-    titre: "Historique (Ctrl+Z / Ctrl+Y)",
+    titre: window.I18n.t("ui.group.history"),
     position: "topleft",
     sousActions: [
       {
         icone: "⏪",
-        titre: "Annuler la dernière action (Ctrl+Z)",
+        titre: window.I18n.t("ui.subaction.undo"),
         onClick: function(btnSub) {
           if (!window.HistoryManager) return;
           if (!window.HistoryManager.canUndo()) {
             if (window.OOMGuard && window.OOMGuard.showToast) {
-              window.OOMGuard.showToast("Rien à annuler.", "info");
+              window.OOMGuard.showToast(window.I18n.t("ui.toast.nothingUndo"), "info");
             }
             return;
           }
@@ -1736,12 +1724,12 @@ function initInterface() {
       },
       {
         icone: "⏩",
-        titre: "Rétablir l'action annulée (Ctrl+Y)",
+        titre: window.I18n.t("ui.subaction.redo"),
         onClick: function(btnSub) {
           if (!window.HistoryManager) return;
           if (!window.HistoryManager.canRedo()) {
             if (window.OOMGuard && window.OOMGuard.showToast) {
-              window.OOMGuard.showToast("Rien à rétablir.", "info");
+              window.OOMGuard.showToast(window.I18n.t("ui.toast.nothingRedo"), "info");
             }
             return;
           }
@@ -1804,12 +1792,12 @@ function initInterface() {
   _creerGroupeAccordeon({
     id: "tracker",
     iconePrincipale: "🧭",
-    titre: "Tracker",
+    titre: window.I18n.t("ui.group.tracker"),
     useFlyout: true,
     sousActions: [
       {
         icone: "▶️",
-        titre: "Démarrer / arrêter le tracking",
+        titre: window.I18n.t("ui.subaction.trackToggle"),
         // Icône dynamique selon état tracking — relu à chaque ouverture flyout
         dynamicIcon: function() { return isTracking ? "⏹️" : "▶️"; },
         isActive:    function() { return isTracking === true; },
@@ -1851,7 +1839,7 @@ function initInterface() {
       },
       {
         icone: "🧭",
-        titre: "Afficher la boussole (Nord)",
+        titre: window.I18n.t("ui.subaction.compass"),
         // 🆕 v1.21.2 : actif si le widget compass est visible (sync au re-ouvert flyout)
         isActive: function() {
           return !!(window.CompassWidget && typeof window.CompassWidget.isVisible === "function"
@@ -1871,7 +1859,7 @@ function initInterface() {
       },
       {
         icone: "📍",
-        titre: "Mode recalage",
+        titre: window.I18n.t("ui.subaction.recalage"),
         // 🆕 v1.21.2 : actif si le mode recalage est en cours (sync au re-ouvert flyout)
         isActive: function() { return window.modeRecalage === true; },
         onClick: function(btnSub) {
@@ -1915,7 +1903,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       },
       {
         icone: "🗺️",
-        titre: "Calculer un itinéraire",
+        titre: window.I18n.t("ui.subaction.itineraire"),
         onClick: function() {
           if (typeof window.ouvrirItinerairModal === "function") {
             window.ouvrirItinerairModal();
@@ -1930,12 +1918,12 @@ _setGroupeModeActif("tracker", isTracking, null);
       // vide (= "active le tracking d'abord puis viens replay").
       {
         icone: "🎬",
-        titre: "Replay du parcours tracker (timeline datée)",
+        titre: window.I18n.t("ui.subaction.replay"),
         onClick: function() {
           if (window.MyKTAMapTrackerReplay && typeof window.MyKTAMapTrackerReplay.ouvrirModale === "function") {
             window.MyKTAMapTrackerReplay.ouvrirModale();
           } else {
-            alert("Module Replay tracker indisponible. Recharge la page si le problème persiste.");
+            alert(window.I18n.t("ui.alert.replayIndispo"));
           }
         }
       },
@@ -1944,12 +1932,12 @@ _setGroupeModeActif("tracker", isTracking, null);
       // SessionBackups (= cumul multi-session exploitable).
       {
         icone: "🔥",
-        titre: "Heatmap — densité tracker + points",
+        titre: window.I18n.t("ui.subaction.heatmap"),
         onClick: function() {
           if (window.MyKTAMapHeatmap && typeof window.MyKTAMapHeatmap.ouvrirModale === "function") {
             window.MyKTAMapHeatmap.ouvrirModale();
           } else {
-            alert("Module Heatmap indisponible. Recharge la page si le problème persiste.");
+            alert(window.I18n.t("ui.alert.heatmapIndispo"));
           }
         }
       },
@@ -1961,13 +1949,13 @@ _setGroupeModeActif("tracker", isTracking, null);
       // + light theme override §11290).
       {
         icone: "⛑️",
-        titre: "Je suis perdu — Mode urgence",
+        titre: window.I18n.t("ui.subaction.lost"),
         cssClass: "kta-sous-action-urgence",
         onClick: function() {
           if (window.LostMode && typeof window.LostMode.open === "function") {
             window.LostMode.open();
           } else {
-            alert("Mode urgence indisponible (LostMode non chargé).");
+            alert(window.I18n.t("ui.alert.lostIndispo"));
           }
         }
       },
@@ -1978,13 +1966,13 @@ _setGroupeModeActif("tracker", isTracking, null);
       // son heading en grand format sans avoir à pinch-zoomer la sidebar.
       {
         icone: "🚨",
-        titre: "Mode urgence — Affichage XL (position + cap)",
+        titre: window.I18n.t("ui.subaction.emergency"),
         cssClass: "kta-sous-action-urgence",
         onClick: function() {
           if (window.EmergencyMode && typeof window.EmergencyMode.activer === "function") {
             window.EmergencyMode.activer();
           } else {
-            alert("Mode urgence indisponible (EmergencyMode non chargé).");
+            alert(window.I18n.t("ui.alert.emergencyIndispo"));
           }
         }
       },
@@ -1994,13 +1982,13 @@ _setGroupeModeActif("tracker", isTracking, null);
       // plan de secours". Placé en FIN du flyout, fond rouge urgence.
       {
         icone: "🚨",
-        titre: "Mode Secours — Plans de recherche (équipes + zones)",
+        titre: window.I18n.t("ui.subaction.secours"),
         cssClass: "kta-sous-action-urgence",
         onClick: function() {
           if (window.SecoursMode && typeof window.SecoursMode.ouvrir === "function") {
             window.SecoursMode.ouvrir();
           } else {
-            alert("Mode Secours indisponible (SecoursMode non chargé).");
+            alert(window.I18n.t("ui.alert.secoursIndispo"));
           }
         }
       }
@@ -2011,7 +1999,7 @@ _setGroupeModeActif("tracker", isTracking, null);
   _creerGroupeAccordeon({
     id: "mesure",
     iconePrincipale: "📐",
-    titre: "Mesure",
+    titre: window.I18n.t("ui.group.mesure"),
     sousActions: [
       // 🔧 v1.12.0-fix (KARMA "le mode calcul de surface ne fonctionne pas
       // ... le mode utilisation n'est pas logique") : refonte des 2 boutons
@@ -2025,7 +2013,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       // sous-mode actif à la fois, re-clic désactive).
       {
         icone: "📐",
-        titre: "Mesurer une DISTANCE (polyline)",
+        titre: window.I18n.t("ui.subaction.mesureDistance"),
         onClick: function(btnSub) {
           const dejaActif = btnSub.classList.contains("kta-actif");
           _desactiverTousLesModes();
@@ -2054,7 +2042,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       },
       {
         icone: "⬛",
-        titre: "Mesurer une SURFACE (polygone fermé)",
+        titre: window.I18n.t("ui.subaction.mesureSurface"),
         onClick: function(btnSub) {
           const dejaActif = btnSub.classList.contains("kta-actif");
           _desactiverTousLesModes();
@@ -2084,7 +2072,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           _setGroupeModeActif("mesure", true, "⬛");
           if (window.OOMGuard && window.OOMGuard.showToast) {
             window.OOMGuard.showToast(
-              "⬛ Mode Surface — clique 3 points minimum, l'aire s'affiche en bas-gauche.",
+              window.I18n.t("ui.toast.surfaceMode"),
               "info"
             );
           }
@@ -2092,7 +2080,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       },
       {
         icone: "❌",
-        titre: "Effacer (dernier point ou tout)",
+        titre: window.I18n.t("ui.subaction.mesureEffacer"),
         onClick: function() {
           // 🆕 v1.12.0-fix : 2 mesures indépendantes possibles → choix
           // granulaire. "Dernier point" cible la mesure du mode actif
@@ -2106,38 +2094,38 @@ _setGroupeModeActif("tracker", isTracking, null);
 
           const activeMode = (typeof window.getMeasureMode === "function") ? window.getMeasureMode() : "distance";
           const ptsActive  = (activeMode === "surface") ? ptsS : ptsD;
-          const labelActive = (activeMode === "surface") ? "⬛ surface" : "📐 distance";
+          const labelActive = (activeMode === "surface") ? window.I18n.t("ui.mesure.labelSurface") : window.I18n.t("ui.mesure.labelDistance");
 
           const choix = [];
           if (ptsActive.length > 0) {
             choix.push({
-              label: "Dernier point — " + labelActive, icon: "↩️",
-              desc: ptsActive.length + " point(s) sur la mesure " + labelActive,
+              label: window.I18n.t("ui.mesure.lastPoint", { label: labelActive }), icon: "↩️",
+              desc: window.I18n.t("ui.mesure.lastPointDesc", { n: ptsActive.length, label: labelActive }),
               onClick: function() { if (window.removeLastMeasurePoint) window.removeLastMeasurePoint(); }
             });
           }
           if (ptsD.length > 0) {
             choix.push({
-              label: "Toute la distance 📐", icon: "🗑️", danger: true,
-              desc: ptsD.length + " point(s)",
+              label: window.I18n.t("ui.mesure.allDistance"), icon: "🗑️", danger: true,
+              desc: window.I18n.t("ui.mesure.nPoints", { n: ptsD.length }),
               onClick: function() { if (window.resetMesureMode) window.resetMesureMode("distance"); }
             });
           }
           if (ptsS.length > 0) {
             choix.push({
-              label: "Toute la surface ⬛", icon: "🗑️", danger: true,
-              desc: ptsS.length + " point(s)",
+              label: window.I18n.t("ui.mesure.allSurface"), icon: "🗑️", danger: true,
+              desc: window.I18n.t("ui.mesure.nPoints", { n: ptsS.length }),
               onClick: function() { if (window.resetMesureMode) window.resetMesureMode("surface"); }
             });
           }
           if (ptsD.length > 0 && ptsS.length > 0) {
             choix.push({
-              label: "Tout effacer (📐 + ⬛)", icon: "🗑️", danger: true,
+              label: window.I18n.t("ui.mesure.allBoth"), icon: "🗑️", danger: true,
               onClick: function() { if (window.resetMesure) window.resetMesure(); }
             });
           }
 
-          _choixSuppression("Mesure", "Que veux-tu effacer ?", choix);
+          _choixSuppression(window.I18n.t("ui.mesure.choixTitle"), window.I18n.t("ui.choix.whatErase"), choix);
         }
       }
     ]
@@ -2159,7 +2147,7 @@ _setGroupeModeActif("tracker", isTracking, null);
   _creerGroupeAccordeon({
     id: "edition",
     iconePrincipale: "✏️",
-    titre: "Ajouter un point (clic = toggle mode)",
+    titre: window.I18n.t("ui.group.edition"),
     soloAction: function() {
       const grp = _groupes["edition"];
       if (!grp || !grp.btnPrincipal) return;
@@ -2228,18 +2216,18 @@ _setGroupeModeActif("tracker", isTracking, null);
   const _sousActionsTraces = [];
 
   _sousActionsTraces.push(
-    { icone: "🟩", titre: "Route principale", isTypeAction: true, typeKey: "principal",
+    { icone: "🟩", titre: window.I18n.t("ui.trace.principal"), isTypeAction: true, typeKey: "principal",
       onClick: function(btn) { _activerRoute("principal",  btn, "🟩"); } },
-    { icone: "🟪", titre: "Route secondaire", isTypeAction: true, typeKey: "secondaire",
+    { icone: "🟪", titre: window.I18n.t("ui.trace.secondaire"), isTypeAction: true, typeKey: "secondaire",
       onClick: function(btn) { _activerRoute("secondaire", btn, "🟪"); } },
-    { icone: "🟨", titre: "Chemin", isTypeAction: true, typeKey: "chemin",
+    { icone: "🟨", titre: window.I18n.t("ui.trace.chemin"), isTypeAction: true, typeKey: "chemin",
       onClick: function(btn) { _activerRoute("chemin",     btn, "🟨"); } }
   );
 
   if (_isMultiLevel) {
     _sousActionsTraces.push({
       icone: "🪜",
-      titre: "Jonction interniveau",
+      titre: window.I18n.t("ui.trace.jonction"),
       isTypeAction: true,
       typeKey: "jonction",
       onClick: function(btn) {
@@ -2269,12 +2257,12 @@ _setGroupeModeActif("tracker", isTracking, null);
     // reste dans roadsData mais window.modeRoad/currentRoad → null).
     // Pas isTypeAction → s'affiche APRÈS les types dans le flyout (après
     // le séparateur visuel).
-    { icone: "✅", titre: "Valider le tracé en cours",
+    { icone: "✅", titre: window.I18n.t("ui.trace.valider"),
       onClick: function() {
         if (!window.modeRoad) {
           _alertCharte(
-            "Aucun tracé en cours",
-            "Active d'abord un type (🟩 Principal, 🟪 Secondaire, 🟨 Chemin) ou un tracé custom ✨ avant de valider.",
+            window.I18n.t("ui.trace.noneTitle"),
+            window.I18n.t("ui.trace.noneBody"),
             "🛣️"
           );
           return;
@@ -2285,14 +2273,14 @@ _setGroupeModeActif("tracker", isTracking, null);
         _fermerModeRoad();
       }
     },
-    { icone: "📏", titre: "Distance totale (filtres)",
+    { icone: "📏", titre: window.I18n.t("ui.trace.distanceTotale"),
         onClick: function() {
           if (typeof window.ouvrirRoadsDistanceFloater === "function") {
             window.ouvrirRoadsDistanceFloater();
           }
         }
       },
-      { icone: "🧹", titre: "Effacer",
+      { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"),
         onClick: function() {
           const roads = window.getRoads ? window.getRoads() : [];
           if (roads.length === 0) return;
@@ -2306,13 +2294,21 @@ _setGroupeModeActif("tracker", isTracking, null);
             return r && ["principal", "secondaire", "chemin", "jonction"].indexOf(r.type) !== -1;
           });
           _choixSuppression(
-            "Tracés", "Que veux-tu effacer ?",
+            window.I18n.t("ui.trace.choixTitle"), window.I18n.t("ui.choix.whatErase"),
             [
-              { label: "Dernier point du tracé", icon: "↩️",
-                desc: nbPts + " point(s) sur le dernier tracé",
-                onClick: function() { if (window.removeLastRoadPoint) window.removeLastRoadPoint(); } },
-              { label: "Dernier tracé entier", icon: "✂️",
-                desc: roads.length + " tracé(s) au total",
+              { label: window.I18n.t("ui.trace.eraseLastPoint"), icon: "↩️",
+                desc: window.I18n.t("ui.trace.eraseLastPointDesc", { n: nbPts }),
+                onClick: function() {
+                  // 🐛 v1.46.x — si supprimer le dernier point vide le tracé en
+                  // cours, fermer le mode (sinon bouton reste kta-actif mais clic
+                  // map fait rien = icône "coupée"). Même garde que le bouton ✂️.
+                  const before = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
+                  if (window.removeLastRoadPoint) window.removeLastRoadPoint();
+                  const after = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
+                  if (before && !after) _fermerModeRoad();
+                } },
+              { label: window.I18n.t("ui.trace.eraseLast"), icon: "✂️",
+                desc: window.I18n.t("ui.trace.eraseLastDesc", { n: roads.length }),
                 onClick: function() {
                   // Capturer la ref du tracé en cours AVANT la suppression :
                   // si removeLastRoad efface justement la road en cours, il
@@ -2323,15 +2319,15 @@ _setGroupeModeActif("tracker", isTracking, null);
                   const after = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
                   if (before && !after) _fermerModeRoad();
                 } },
-              { label: "Sélectionner un tracé à supprimer", icon: "🎯",
-                desc: "Clique sur le tracé sur la carte (" + tracesSelectables.length + " disponibles)",
+              { label: window.I18n.t("ui.trace.eraseSelect"), icon: "🎯",
+                desc: window.I18n.t("ui.trace.eraseSelectDesc", { n: tracesSelectables.length }),
                 onClick: function() {
                   if (typeof window.activerModeSuppressionTraceClic === "function") {
                     window.activerModeSuppressionTraceClic();
                   }
                 } },
-              { label: "Tous les tracés", icon: "🗑️", danger: true,
-                desc: "Annulable via ⏪ Ctrl+Z",
+              { label: window.I18n.t("ui.trace.eraseAll"), icon: "🗑️", danger: true,
+                desc: window.I18n.t("ui.choix.undoableCtrlZ"),
                 onClick: function() {
                   // 🆕 v1.11.0 Undo/Redo : snapshot before reset
                   const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
@@ -2340,7 +2336,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   // window.modeRoad → on doit fermer le mode UI sans condition.
                   _fermerModeRoad();
                   if (window.HistoryManager && _hb) {
-                    window.HistoryManager.record("Supprimer tous les tracés", _hb);
+                    window.HistoryManager.record(window.I18n.t("history.action.deleteAllPaths"), _hb);
                   }
                 } }
             ]
@@ -2352,7 +2348,7 @@ _setGroupeModeActif("tracker", isTracking, null);
   _creerGroupeAccordeon({
     id: "traces",
     iconePrincipale: "🛣️",
-    titre: "Tracés / Routes",
+    titre: window.I18n.t("ui.group.traces"),
     sousActions: _sousActionsTraces,
     // 🆕 v1.16.0 step2-flyout : panel latéral au lieu de cascade verticale
     useFlyout: true,
@@ -2389,29 +2385,29 @@ _setGroupeModeActif("tracker", isTracking, null);
   _creerGroupeAccordeon({
     id: "zones",
     iconePrincipale: "⬛",
-    titre: "Zones (remblais / effondrements / eau / inaccessible)",
+    titre: window.I18n.t("ui.group.zones"),
     // 🆕 v1.16.0 step2-flyout : panel latéral
     useFlyout: true,
     lcCat: "zones",
     customActivator: function(customId, btn) { _activerZone(customId, btn, "✨"); },
     sousActions: [
-      { icone: "⬛", titre: "Zone de remblais", isTypeAction: true, typeKey: "remblais",
+      { icone: "⬛", titre: window.I18n.t("ui.zone.remblais"), isTypeAction: true, typeKey: "remblais",
         onClick: function(btn) { _activerZone("remblais",     btn, "⬛"); } },
-      { icone: "🟥", titre: "Zone d'effondrement", isTypeAction: true, typeKey: "effondrement",
+      { icone: "🟥", titre: window.I18n.t("ui.zone.effondrement"), isTypeAction: true, typeKey: "effondrement",
         onClick: function(btn) { _activerZone("effondrement", btn, "🟥"); } },
-      { icone: "🟦", titre: "Zone d'eau", isTypeAction: true, typeKey: "eau",
+      { icone: "🟦", titre: window.I18n.t("ui.zone.eau"), isTypeAction: true, typeKey: "eau",
         onClick: function(btn) { _activerZone("eau",          btn, "🟦"); } },
       // 🚫 v169 (Karma_dev) : zone bloquante pour le pathfinder. Hachures
       // rouge/noir 45°. Tout segment de route qui traverse est inutilisable
       // pour le calcul d'itinéraire (= contrainte dure).
-      { icone: "⛔", titre: "Zone inaccessible (bloque l'itinéraire)", isTypeAction: true, typeKey: "inaccessible",
+      { icone: "⛔", titre: window.I18n.t("ui.zone.inaccessible"), isTypeAction: true, typeKey: "inaccessible",
         onClick: function(btn) { _activerZone("inaccessible", btn, "⛔"); } },
-      { icone: "✅", titre: "Fermer la zone en cours",
+      { icone: "✅", titre: window.I18n.t("ui.zone.fermer"),
         onClick: function() {
           if (!window.modeZone) {
             _alertCharte(
-              "Aucune zone en cours",
-              "Active d'abord un type de zone (remblais, effondrement, eau, ou inaccessible) avant de tenter de la fermer.",
+              window.I18n.t("ui.zone.noneTitle"),
+              window.I18n.t("ui.zone.noneBody"),
               "⛔"
             );
             return;
@@ -2420,15 +2416,15 @@ _setGroupeModeActif("tracker", isTracking, null);
             const ok = window.fermerZoneEnCours();
             if (!ok) {
               _alertCharte(
-                "Pas assez de points",
-                "Une zone est un polygone fermé. Place <strong>au moins 3 points</strong> sur la carte avant de la fermer.",
+                window.I18n.t("ui.zone.tooFewTitle"),
+                window.I18n.t("ui.zone.tooFewBody"),
                 "📐"
               );
             }
           }
         }
       },
-      { icone: "🧹", titre: "Effacer",
+      { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"),
         onClick: function() {
           const zones = window.getZones ? window.getZones() : [];
           if (zones.length === 0) return;
@@ -2441,16 +2437,23 @@ _setGroupeModeActif("tracker", isTracking, null);
           }).length;
 
           _choixSuppression(
-            "Zones", "Que veux-tu effacer ?",
+            window.I18n.t("ui.zone.choixTitle"), window.I18n.t("ui.choix.whatErase"),
             [
-              { label: "Annuler le dernier point", icon: "↩️",
-                desc: "Sur la zone en cours ou la dernière zone",
-                onClick: function() { if (window.removeLastZonePoint) window.removeLastZonePoint(); } },
+              { label: window.I18n.t("ui.zone.eraseLastPoint"), icon: "↩️",
+                desc: window.I18n.t("ui.zone.eraseLastPointDesc"),
+                onClick: function() {
+                  // 🐛 v1.46.x — voir commentaire road : vider la zone en cours
+                  // doit fermer le mode (sinon bouton kta-actif + clic map inerte).
+                  const before = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
+                  if (window.removeLastZonePoint) window.removeLastZonePoint();
+                  const after = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
+                  if (before && !after) _fermerModeZone();
+                } },
               // 🆕 v1.9.4 (KARMA "supprimer d'un coup le tracé en cours") :
               // removeLastZone priorise désormais currentZone si existe,
               // sinon la dernière fermée. Label adapté pour clarifier.
-              { label: "Dernière zone (en cours OU fermée)", icon: "✂️",
-                desc: nbZonesFermees + " zone(s) fermée(s) au total",
+              { label: window.I18n.t("ui.zone.eraseLast"), icon: "✂️",
+                desc: window.I18n.t("ui.zone.eraseLastDesc", { n: nbZonesFermees }),
                 onClick: function() {
                   // Symetrique du fix roads : si la zone en cours vient
                   // d'etre supprimee, on ferme le mode UI (sinon icone
@@ -2460,15 +2463,15 @@ _setGroupeModeActif("tracker", isTracking, null);
                   const after = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
                   if (before && !after) _fermerModeZone();
                 } },
-              { label: "Sélectionner une zone à supprimer", icon: "🎯",
-                desc: "Clique sur la zone sur la carte (" + nbSelectables + " disponibles)",
+              { label: window.I18n.t("ui.zone.eraseSelect"), icon: "🎯",
+                desc: window.I18n.t("ui.zone.eraseSelectDesc", { n: nbSelectables }),
                 onClick: function() {
                   if (typeof window.activerModeSuppressionZoneClic === "function") {
                     window.activerModeSuppressionZoneClic();
                   }
                 } },
-              { label: "Toutes les zones", icon: "🗑️", danger: true,
-                desc: "Annulable via ⏪ Ctrl+Z",
+              { label: window.I18n.t("ui.zone.eraseAll"), icon: "🗑️", danger: true,
+                desc: window.I18n.t("ui.choix.undoableCtrlZ"),
                 onClick: function() {
                   // 🆕 v1.11.0 Undo/Redo : snapshot before reset
                   const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
@@ -2477,7 +2480,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   // le mode UI inconditionnellement.
                   _fermerModeZone();
                   if (window.HistoryManager && _hb) {
-                    window.HistoryManager.record("Supprimer toutes les zones", _hb);
+                    window.HistoryManager.record(window.I18n.t("history.action.deleteAllZones"), _hb);
                   }
                 } }
             ]
@@ -2528,7 +2531,7 @@ _setGroupeModeActif("tracker", isTracking, null);
   _creerGroupeAccordeon({
     id: "structures",
     iconePrincipale: "🏛️",
-    titre: "Structures (piliers / murs)",
+    titre: window.I18n.t("ui.group.structures"),
     // 🆕 v1.16.0 step2-flyout : panel latéral
     useFlyout: true,
     lcCat: "structures",
@@ -2539,17 +2542,17 @@ _setGroupeModeActif("tracker", isTracking, null);
       // KARMA-fix : 1ère masse en JAUNE (couleurs inversées par rapport
       // au draft initial qui avait orange / jaune dans le mauvais sens).
       // En multi-niveau : tagué au niveau actif.
-      { icone: "🟡", titre: "Pilier 1ère masse (jaune)", isTypeAction: true, typeKey: "pilier-1",
+      { icone: "🟡", titre: window.I18n.t("ui.struct.pilier1"), isTypeAction: true, typeKey: "pilier-1",
         onClick: function(btn) { _activerStructure("pilier-1", btn, "🟡"); } },
       // 🟠 Pilier 2e masse : icone rond orange (fill #ff9933).
       // En multi-niveau : AUTO-tagué à `activeLevel - 1` (cf. structures.js)
       // car structurellement la masse inférieure visible depuis l'actuelle.
-      { icone: "🟠", titre: "Pilier 2e masse (orange) — niveau -1 auto", isTypeAction: true, typeKey: "pilier-2",
+      { icone: "🟠", titre: window.I18n.t("ui.struct.pilier2"), isTypeAction: true, typeKey: "pilier-2",
         onClick: function(btn) { _activerStructure("pilier-2", btn, "🟠"); } },
       // 🔵 Mur : KARMA "rond bleu pour pas confondre avec icône eau"
       // (la zone eau utilise 🟦 carré bleu clair, ici on prend ROND bleu
       // foncé pour distinguer visuellement).
-      { icone: "🔵", titre: "Mur (bleu foncé)", isTypeAction: true, typeKey: "mur",
+      { icone: "🔵", titre: window.I18n.t("ui.struct.mur"), isTypeAction: true, typeKey: "mur",
         onClick: function(btn) { _activerStructure("mur", btn, "🔵"); } },
       // 🆕 v1.9.3-A1.b.2 : fronts de taille (polylines épaisses sans
       // contour). KARMA : "ce sont des tracé ok mais il reste dans
@@ -2557,16 +2560,16 @@ _setGroupeModeActif("tracker", isTracking, null);
       // (cohérent avec pilier-2), front-2 = jaune (cohérent avec pilier-1).
       // Même règle multi-niveau que les piliers : front-2 auto-tagué
       // activeLevel - 1.
-      { icone: "🟨", titre: "Front de taille 1ère masse (jaune épais)", isTypeAction: true, typeKey: "front-1",
+      { icone: "🟨", titre: window.I18n.t("ui.struct.front1"), isTypeAction: true, typeKey: "front-1",
         onClick: function(btn) { _activerStructure("front-1", btn, "🟨"); } },
-      { icone: "🟧", titre: "Front de taille 2e masse (orange épais) — niveau -1 auto", isTypeAction: true, typeKey: "front-2",
+      { icone: "🟧", titre: window.I18n.t("ui.struct.front2"), isTypeAction: true, typeKey: "front-2",
         onClick: function(btn) { _activerStructure("front-2", btn, "🟧"); } },
-      { icone: "✅", titre: "Fermer la structure en cours",
+      { icone: "✅", titre: window.I18n.t("ui.struct.fermer"),
         onClick: function() {
           if (!window.modeStructure) {
             _alertCharte(
-              "Aucune structure en cours",
-              "Active d'abord un type (pilier 1ère/2e masse, mur, ou front de taille 1ère/2e masse) avant de tenter de la fermer.",
+              window.I18n.t("ui.struct.noneTitle"),
+              window.I18n.t("ui.struct.noneBody"),
               "🏛️"
             );
             return;
@@ -2586,14 +2589,14 @@ _setGroupeModeActif("tracker", isTracking, null);
                 && window.isStructurePolylineType(window.modeStructure);
               if (isLine) {
                 _alertCharte(
-                  "Pas assez de points",
-                  "Un front de taille (ligne ouverte) est un tracé. Place <strong>au moins 2 points</strong> sur la carte avant de le valider.",
+                  window.I18n.t("ui.struct.tooFewTitle"),
+                  window.I18n.t("ui.struct.tooFewLineBody"),
                   "📐"
                 );
               } else {
                 _alertCharte(
-                  "Pas assez de points",
-                  "Un pilier / mur (polygone fermé) doit avoir <strong>au moins 3 points</strong>. Place les points sur la carte avant de le fermer.",
+                  window.I18n.t("ui.struct.tooFewTitle"),
+                  window.I18n.t("ui.struct.tooFewPolyBody"),
                   "📐"
                 );
               }
@@ -2601,7 +2604,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
-      { icone: "🧹", titre: "Effacer",
+      { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"),
         onClick: function() {
           const structures = window.getStructures ? window.getStructures() : [];
           if (structures.length === 0) return;
@@ -2612,18 +2615,23 @@ _setGroupeModeActif("tracker", isTracking, null);
           }).length;
 
           _choixSuppression(
-            "Structures", "Que veux-tu effacer ?",
+            window.I18n.t("ui.struct.choixTitle"), window.I18n.t("ui.choix.whatErase"),
             [
-              { label: "Annuler le dernier point", icon: "↩️",
-                desc: "Sur la structure en cours ou la dernière structure",
+              { label: window.I18n.t("ui.struct.eraseLastPoint"), icon: "↩️",
+                desc: window.I18n.t("ui.struct.eraseLastPointDesc"),
                 onClick: function() {
+                  // 🐛 v1.46.x — voir commentaire road : vider la structure en
+                  // cours doit fermer le mode (sinon bouton kta-actif + clic inerte).
+                  const before = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
                   if (window.removeLastStructurePoint) window.removeLastStructurePoint();
+                  const after = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
+                  if (before && !after) _fermerModeStructure();
                 } },
               // 🆕 v1.9.4 (KARMA "supprimer d'un coup le tracé en cours") :
               // removeLastStructure priorise désormais currentStructure si
               // existe, sinon la dernière fermée. Label adapté.
-              { label: "Dernière structure (en cours OU fermée)", icon: "✂️",
-                desc: nbStructFermees + " structure(s) fermée(s) au total",
+              { label: window.I18n.t("ui.struct.eraseLast"), icon: "✂️",
+                desc: window.I18n.t("ui.struct.eraseLastDesc", { n: nbStructFermees }),
                 onClick: function() {
                   const before = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
                   if (window.removeLastStructure) window.removeLastStructure();
@@ -2632,22 +2640,22 @@ _setGroupeModeActif("tracker", isTracking, null);
                 } },
               // 🆕 v1.9.4 (KARMA) : sélection au clic carte pour les structures,
               // pattern identique aux zones et tracés.
-              { label: "Sélectionner une structure à supprimer", icon: "🎯",
-                desc: "Clique sur la structure sur la carte (" + nbSelectables + " disponibles)",
+              { label: window.I18n.t("ui.struct.eraseSelect"), icon: "🎯",
+                desc: window.I18n.t("ui.struct.eraseSelectDesc", { n: nbSelectables }),
                 onClick: function() {
                   if (typeof window.activerModeSuppressionStructureClic === "function") {
                     window.activerModeSuppressionStructureClic();
                   }
                 } },
-              { label: "Toutes les structures", icon: "🗑️", danger: true,
-                desc: "Annulable via ⏪ Ctrl+Z (" + nbSelectables + " supprimable(s))",
+              { label: window.I18n.t("ui.struct.eraseAll"), icon: "🗑️", danger: true,
+                desc: window.I18n.t("ui.struct.eraseAllDesc", { n: nbSelectables }),
                 onClick: function() {
                   // 🆕 v1.11.0 Undo/Redo : snapshot before reset
                   const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
                   if (window.resetStructures) window.resetStructures();
                   _fermerModeStructure();
                   if (window.HistoryManager && _hb) {
-                    window.HistoryManager.record("Supprimer toutes les structures", _hb);
+                    window.HistoryManager.record(window.I18n.t("history.action.deleteAllStructures"), _hb);
                   }
                 } }
             ]
@@ -2878,6 +2886,64 @@ _setGroupeModeActif("tracker", isTracking, null);
 // dans interface.js — aucune dep partagée avec l'itinéraire.
 
 // =========================
+// GUARD POPUP — modes suppression au clic (tracé / zone / structure)
+// =========================
+// 🐛 v1.44.4 — Les éléments session (polylines, zones, structures) ont une
+// popup d'annotation bindée via Leaflet bindPopup (cf utils.js >
+// attacherNotePopup). PROBLÈME DE FOND : quand on clique PILE sur l'élément,
+// le handler interne Leaflet `_openPopup` fait `DomEvent.stop(e)` AVANT
+// d'ouvrir la popup → la propagation du clic est stoppée → le handler
+// `map.on("click")` du mode suppression NE TIRE JAMAIS. Conséquence :
+//   - avant v1.44.3 : popup s'ouvrait, suppression NE se faisait PAS
+//   - v1.44.3 (guard simple) : popup refermée, suppression NE se faisait
+//     TOUJOURS PAS (on masquait le symptôme sans corriger la cause)
+// Seuls les clics À PROXIMITÉ (sans toucher la ligne, donc pas de popup)
+// déclenchaient la suppression — d'où l'impression d'aléatoire.
+//
+// Fix v1.44.4 : on REJOUE le clic suppression depuis l'event `popupopen`.
+// Leaflet ouvre la popup exactement à la position du clic (openPopup(t.latlng)
+// dans _openPopup), donc `popup._latlng` = le point cliqué. On ferme la
+// popup orpheline et on appelle le handler de suppression actif avec un
+// faux event `{ latlng }` — il retrouve l'élément le plus proche (= celui
+// cliqué) et le supprime, exactement comme un clic map normal. Le handler
+// map réel ne tire pas (propagation stoppée), donc zéro risque de double.
+//
+// Helper mutualisé entre les 3 modes (install idempotent). Limite connue :
+// deux modes suppression actifs simultanément (quirk pré-existant) → le
+// rejeu pourrait viser le mauvais type ; cas marginal, non aggravé ici.
+let _suppPopupGuardActif = false;
+function _onSuppPopupOpen(e) {
+  const popup = e && e.popup;
+  // Position du clic = ancrage de la popup (Leaflet l'ouvre à t.latlng).
+  let latlng = null;
+  try {
+    latlng = (popup && popup.getLatLng) ? popup.getLatLng() : (popup && popup._latlng) || null;
+  } catch(err) { latlng = null; }
+  // Ferme la popup orpheline qui vient de s'ouvrir.
+  try { window.map.closePopup(popup); } catch(err) {}
+  if (!latlng) return;
+  // Rejoue le clic suppression à cette position via le handler du mode actif.
+  const fakeEvt = { latlng: latlng };
+  try {
+    if (_suppTraceClickHandler)          _suppTraceClickHandler(fakeEvt);
+    else if (_suppZoneClickHandler)      _suppZoneClickHandler(fakeEvt);
+    else if (_suppStructureClickHandler) _suppStructureClickHandler(fakeEvt);
+  } catch(err) {
+    console.warn("[Suppr] rejeu clic via popupopen échoué :", err);
+  }
+}
+function _installerSuppPopupGuard() {
+  if (_suppPopupGuardActif || !window.map) return;
+  _suppPopupGuardActif = true;
+  window.map.on("popupopen", _onSuppPopupOpen);
+}
+function _retirerSuppPopupGuard() {
+  if (!_suppPopupGuardActif) return;
+  _suppPopupGuardActif = false;
+  if (window.map) window.map.off("popupopen", _onSuppPopupOpen);
+}
+
+// =========================
 // SUPPRESSION D'UN TRACÉ — mode clic visuel sur la carte
 // =========================
 // Active un mode "selection visuelle" : un floater apparait en bas et invite
@@ -2911,6 +2977,7 @@ function _desactiverModeSuppressionTrace() {
     _suppTraceFloater.remove();
     _suppTraceFloater = null;
   }
+  _retirerSuppPopupGuard();  // 🐛 v1.44.3
 }
 
 window.activerModeSuppressionTraceClic = function() {
@@ -2923,7 +2990,7 @@ window.activerModeSuppressionTraceClic = function() {
            ["principal", "secondaire", "chemin", "jonction"].indexOf(r.type) !== -1;
   });
   if (supprimables.length === 0) {
-    alert("Aucun tracé session à supprimer.");
+    alert(window.I18n.t("ui.alert.noTraceToDelete"));
     return;
   }
 
@@ -2936,12 +3003,15 @@ window.activerModeSuppressionTraceClic = function() {
   _suppTraceFloater.className = "kta-supp-trace-floater";
   _suppTraceFloater.innerHTML =
     '<span class="kta-supp-trace-icon">🎯</span>' +
-    '<span class="kta-supp-trace-msg">Clique sur un tracé pour le <strong>supprimer</strong></span>' +
-    '<button class="kta-btn kta-btn-ghost" id="kta-supp-trace-annuler" type="button">✕ Annuler</button>';
+    '<span class="kta-supp-trace-msg">' + window.I18n.t("ui.suppClic.traceMsg") + '</span>' +
+    '<button class="kta-btn kta-btn-ghost" id="kta-supp-trace-annuler" type="button">' + window.I18n.t("ui.btn.cancelX") + '</button>';
   document.body.appendChild(_suppTraceFloater);
 
   document.getElementById("kta-supp-trace-annuler")
     .addEventListener("click", _desactiverModeSuppressionTrace);
+
+  // 🐛 v1.44.3 — bloque l'ouverture des popups d'annotation pendant le mode
+  _installerSuppPopupGuard();
 
   // Tolerance de selection en pixels image (pas screen). Plus la tolerance
   // est grande, plus c'est facile de cliquer sans precision. 20 px est un
@@ -2996,7 +3066,7 @@ window.activerModeSuppressionTraceClic = function() {
     _desactiverModeSuppressionTrace();
 
     if (window.HistoryManager && _historyBefore) {
-      window.HistoryManager.record("Supprimer tracé au clic (" + (closestRoad.type || "?") + ")", _historyBefore);
+      window.HistoryManager.record(window.I18n.t("history.action.deletePathClick", { type: (closestRoad.type || "?") }), _historyBefore);
     }
   };
 
@@ -3041,6 +3111,7 @@ function _desactiverModeSuppressionZone() {
     _suppZoneFloater.remove();
     _suppZoneFloater = null;
   }
+  _retirerSuppPopupGuard();  // 🐛 v1.44.3
 }
 
 window.activerModeSuppressionZoneClic = function() {
@@ -3051,7 +3122,7 @@ window.activerModeSuppressionZoneClic = function() {
     return z && Array.isArray(z.points) && z.points.length >= 3;
   });
   if (supprimables.length === 0) {
-    alert("Aucune zone session à supprimer.");
+    alert(window.I18n.t("ui.alert.noZoneToDelete"));
     return;
   }
 
@@ -3062,12 +3133,15 @@ window.activerModeSuppressionZoneClic = function() {
   _suppZoneFloater.className = "kta-supp-trace-floater";  // reuse meme style charte
   _suppZoneFloater.innerHTML =
     '<span class="kta-supp-trace-icon">🎯</span>' +
-    '<span class="kta-supp-trace-msg">Clique sur une zone pour la <strong>supprimer</strong></span>' +
-    '<button class="kta-btn kta-btn-ghost" id="kta-supp-zone-annuler" type="button">✕ Annuler</button>';
+    '<span class="kta-supp-trace-msg">' + window.I18n.t("ui.suppClic.zoneMsg") + '</span>' +
+    '<button class="kta-btn kta-btn-ghost" id="kta-supp-zone-annuler" type="button">' + window.I18n.t("ui.btn.cancelX") + '</button>';
   document.body.appendChild(_suppZoneFloater);
 
   document.getElementById("kta-supp-zone-annuler")
     .addEventListener("click", _desactiverModeSuppressionZone);
+
+  // 🐛 v1.44.3 — bloque l'ouverture des popups d'annotation pendant le mode
+  _installerSuppPopupGuard();
 
   // Tolerance pour le fallback "click pres du bord" (zone de petit polygon
   // sur lequel l'utilisateur clique a cote sans rentrer dedans).
@@ -3135,7 +3209,7 @@ window.activerModeSuppressionZoneClic = function() {
     _desactiverModeSuppressionZone();
 
     if (window.HistoryManager && _historyBefore) {
-      window.HistoryManager.record("Supprimer zone au clic (" + (foundZone.type || "?") + ")", _historyBefore);
+      window.HistoryManager.record(window.I18n.t("history.action.deleteZoneClick", { type: (foundZone.type || "?") }), _historyBefore);
     }
   };
 
@@ -3168,6 +3242,7 @@ function _desactiverModeSuppressionStructure() {
     _suppStructureFloater.remove();
     _suppStructureFloater = null;
   }
+  _retirerSuppPopupGuard();  // 🐛 v1.44.3
 }
 
 window.activerModeSuppressionStructureClic = function() {
@@ -3183,7 +3258,7 @@ window.activerModeSuppressionStructureClic = function() {
     return s.points.length >= minPts;
   });
   if (supprimables.length === 0) {
-    alert("Aucune structure à supprimer.");
+    alert(window.I18n.t("ui.alert.noStructToDelete"));
     return;
   }
 
@@ -3194,12 +3269,15 @@ window.activerModeSuppressionStructureClic = function() {
   _suppStructureFloater.className = "kta-supp-trace-floater";  // reuse meme style charte
   _suppStructureFloater.innerHTML =
     '<span class="kta-supp-trace-icon">🎯</span>' +
-    '<span class="kta-supp-trace-msg">Clique sur une structure pour la <strong>supprimer</strong></span>' +
-    '<button class="kta-btn kta-btn-ghost" id="kta-supp-structure-annuler" type="button">✕ Annuler</button>';
+    '<span class="kta-supp-trace-msg">' + window.I18n.t("ui.suppClic.structMsg") + '</span>' +
+    '<button class="kta-btn kta-btn-ghost" id="kta-supp-structure-annuler" type="button">' + window.I18n.t("ui.btn.cancelX") + '</button>';
   document.body.appendChild(_suppStructureFloater);
 
   document.getElementById("kta-supp-structure-annuler")
     .addEventListener("click", _desactiverModeSuppressionStructure);
+
+  // 🐛 v1.44.3 — bloque l'ouverture des popups d'annotation pendant le mode
+  _installerSuppPopupGuard();
 
   const TOLERANCE_BORD_PX  = 20;  // polygon fallback bord
   const TOLERANCE_TRACE_PX = 15;  // polyline (fronts)
@@ -3280,7 +3358,7 @@ window.activerModeSuppressionStructureClic = function() {
     _desactiverModeSuppressionStructure();
 
     if (window.HistoryManager && _historyBefore) {
-      window.HistoryManager.record("Supprimer structure au clic (" + (foundStruct.type || "?") + ")", _historyBefore);
+      window.HistoryManager.record(window.I18n.t("history.action.deleteStructureClick", { type: (foundStruct.type || "?") }), _historyBefore);
     }
   };
 

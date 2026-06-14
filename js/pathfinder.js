@@ -714,7 +714,12 @@
   function _computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius) {
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius);
     if (graph.nodes.length === 0) {
-      throw new Error("Aucune route correspondant aux types sélectionnés (" + allowedTypes.join(", ") + ")");
+      // 🌍 i18n : code + params, localisé côté rendu (interfaceItineraire.js).
+      const e = new Error("Aucune route correspondant aux types sélectionnés (" + allowedTypes.join(", ") + ")");
+      e.code = "NO_ROUTE_TYPES";
+      e.i18nKey = "iti.err.aucuneRouteTypes";
+      e.i18nParams = { types: allowedTypes.join(", ") };
+      throw e;
     }
     _enrichirGrapheAvecCroisements(graph);
 
@@ -722,7 +727,11 @@
     for (let i = 0; i < waypoints.length; i++) {
       const snap = _insertVirtualNode(graph, waypoints[i]);
       if (!snap) {
-        throw new Error("Impossible de snap le waypoint #" + (i + 1) + " sur le réseau");
+        const e = new Error("Impossible de snap le waypoint #" + (i + 1) + " sur le réseau");
+        e.code = "SNAP_FAILED";
+        e.i18nKey = "iti.err.snapImpossible";
+        e.i18nParams = { n: (i + 1) };
+        throw e;
       }
       snapResults.push(snap);
     }
@@ -736,10 +745,14 @@
       const b = snapResults[i + 1].nodeIdx;
       const result = _dijkstra(graph, a, b);
       if (!result) {
-        throw new Error(
+        const e = new Error(
           "Aucun chemin trouvé entre le waypoint #" + (i + 1) + " et le waypoint #" + (i + 2) +
           " (le réseau est probablement déconnecté entre ces 2 points)"
         );
+        e.code = "NO_PATH";
+        e.i18nKey = "iti.err.pasDeChemin";
+        e.i18nParams = { a: (i + 1), b: (i + 2) };
+        throw e;
       }
       const segPoints = result.nodeIndices.map(function(idx) {
         return { x: graph.nodes[idx].x, y: graph.nodes[idx].y };
@@ -812,7 +825,10 @@
       "| types autorisés:", allowedTypes.join(","));
 
     if (allRoads.length === 0) {
-      throw new Error("Aucune route disponible pour calculer un itinéraire");
+      const e = new Error("Aucune route disponible pour calculer un itinéraire");
+      e.code = "NO_ROUTE";
+      e.i18nKey = "iti.err.aucuneRoute";
+      throw e;
     }
 
     // 🚫 v169 (Karma_dev) : collecte des zones "inaccessibles" (contrainte dure).

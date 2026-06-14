@@ -107,9 +107,10 @@
   // CONSTRUIRE ET AFFICHER LA MODALE
   // =========================
   function _afficherModal(modeInitial, etatPrecedent) {
+    const T = window.I18n.t;
     const config = window.PLAN_CONFIG;
     if (!config || !config.plan) {
-      alert("Configuration du plan introuvable");
+      alert(T("imgexport.alert.noConfig"));
       return;
     }
 
@@ -136,9 +137,10 @@
       : null;
     const _niveauxRapideTxt = _visibleLevelsForExport
       ? (_visibleLevelsForExport.length === 0
-          ? "AUCUN niveau coché — l'export sera vide"
-          : "niveau" + (_visibleLevelsForExport.length > 1 ? "x" : "") + " " +
-            _visibleLevelsForExport.map(function(l){return "Niv " + l;}).join(", "))
+          ? T("imgexport.rapide.niveauxVide")
+          : T(_visibleLevelsForExport.length > 1 ? "imgexport.rapide.niveauxPluriel" : "imgexport.rapide.niveauxSing", {
+              liste: _visibleLevelsForExport.map(function(l){return T("imgexport.niveau.court", { lvl: l });}).join(", ")
+            }))
       : null;
 
     const modal = document.createElement("div");
@@ -153,7 +155,7 @@
            kta-export-modal-boite pour ajustements ciblés (cf. CSS). -->
       <div class="kta-readme-modal-boite kta-export-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">🖼️ Exporter en PNG/JPG</span>
+          <span class="kta-readme-modal-titre">${T("imgexport.modal.titre")}</span>
           <button class="kta-panneau-close" id="kta-export-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
@@ -161,32 +163,37 @@
           <!-- TOGGLE MODE -->
           <div class="kta-conv-sens-wrap">
             <button class="kta-conv-sens-btn ${modeInitial === 'rapide' ? 'active' : ''}" id="kta-export-mode-rapide">
-              <span class="kta-conv-sens-label">⚡ Mode rapide</span>
+              <span class="kta-conv-sens-label">${T("imgexport.mode.rapide.label")}</span>
               <span class="kta-conv-sens-desc">
                 ${_mlOn
-                  ? "Ce qui est visible sur la carte (filtre niveau actuel), PNG résolution originale"
-                  : "Ce qui est visible sur la carte, PNG résolution originale"}
+                  ? T("imgexport.mode.rapide.descMl")
+                  : T("imgexport.mode.rapide.desc")}
               </span>
             </button>
             <button class="kta-conv-sens-btn ${modeInitial === 'avance' ? 'active' : ''}" id="kta-export-mode-avance">
-              <span class="kta-conv-sens-label">🎨 Mode avancé</span>
-              <span class="kta-conv-sens-desc">Choix des calques, niveaux, légende intégrée, format personnalisable</span>
+              <span class="kta-conv-sens-label">${T("imgexport.mode.avance.label")}</span>
+              <span class="kta-conv-sens-desc">${T("imgexport.mode.avance.desc")}</span>
             </button>
           </div>
 
           <!-- MODE RAPIDE -->
           <div id="kta-export-rapide" style="display:${modeInitial === 'rapide' ? 'block' : 'none'};">
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">📋 Contenu</div>
+              <div class="kta-aide-section-titre">${T("imgexport.rapide.contenu.titre")}</div>
               <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.7;">
-                ✓ Image du plan + calques actuellement <strong>visibles</strong> sur la carte<br>
-                ✓ Annotations de la session (${nbPoints} point(s), ${nbRoads} tracé(s), ${nbZones} zone(s)${(window.getStructures && window.getStructures().length > 0) ? ', ' + window.getStructures().length + ' structure(s)' : ''})<br>
+                ${T("imgexport.rapide.contenu.image")}<br>
+                ${T("imgexport.rapide.contenu.annotations", {
+                  points: nbPoints, roads: nbRoads, zones: nbZones,
+                  structures: (window.getStructures && window.getStructures().length > 0)
+                    ? T("imgexport.rapide.contenu.structuresSuffixe", { count: window.getStructures().length })
+                    : ''
+                })}<br>
                 ${_niveauxRapideTxt
-                  ? '<span style="color:#f4c542;">🏗️ ' + _niveauxRapideTxt + '</span> — change le filtre via le bouton niveau pour exporter autre chose, ou passe en <strong>🎨 Mode avancé</strong> pour choisir explicitement<br>'
+                  ? '<span style="color:#f4c542;">🏗️ ' + _niveauxRapideTxt + '</span>' + T("imgexport.rapide.contenu.niveauxAstuce") + '<br>'
                   : ''}
-                ✓ Format PNG, résolution originale<br>
-                ${nbMesure > 0 ? '✓ Mesure de distance (' + nbMesure + ' points)<br>' : ''}
-                ${nbMesureSurf >= 3 ? '✓ Mesure de surface (' + nbMesureSurf + ' sommets)<br>' : ''}
+                ${T("imgexport.rapide.contenu.format")}<br>
+                ${nbMesure > 0 ? T("imgexport.rapide.contenu.mesureDist", { count: nbMesure }) + '<br>' : ''}
+                ${nbMesureSurf >= 3 ? T("imgexport.rapide.contenu.mesureSurf", { count: nbMesureSurf }) + '<br>' : ''}
               </p>
             </div>
           </div>
@@ -203,88 +210,82 @@
                  - noir : fillRect noir pour vue contraste
                  - transparent : pas de fillRect (canvas alpha) -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">🎨 Fond d'export</div>
+              <div class="kta-aide-section-titre">${T("imgexport.fond.titre")}</div>
               <p style="font-size:11.5px; color:#8892a4; margin:4px 0 8px 0; line-height:1.5;">
-                Choisis le fond du PNG exporté. Utile pour superposer tes
-                annotations sur un autre support (carte impression / fond
-                contraste / chevauchement transparent).
+                ${T("imgexport.fond.intro")}
               </p>
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
                 <label class="kta-export-radio-row">
                   <input type="radio" name="export_bg" value="image" checked>
-                  <span>🖼️ Image du plan <span style="color:#8892a4; font-size:11px;">(défaut)</span></span>
+                  <span>${T("imgexport.fond.image")} <span style="color:#8892a4; font-size:11px;">${T("imgexport.fond.imageNote")}</span></span>
                 </label>
                 <label class="kta-export-radio-row">
                   <input type="radio" name="export_bg" value="white">
-                  <span>⬜ Blanc <span style="color:#8892a4; font-size:11px;">(impression)</span></span>
+                  <span>${T("imgexport.fond.blanc")} <span style="color:#8892a4; font-size:11px;">${T("imgexport.fond.blancNote")}</span></span>
                 </label>
                 <label class="kta-export-radio-row">
                   <input type="radio" name="export_bg" value="black">
-                  <span>⬛ Noir <span style="color:#8892a4; font-size:11px;">(contraste)</span></span>
+                  <span>${T("imgexport.fond.noir")} <span style="color:#8892a4; font-size:11px;">${T("imgexport.fond.noirNote")}</span></span>
                 </label>
                 <label class="kta-export-radio-row">
                   <input type="radio" name="export_bg" value="transparent">
-                  <span>⌬ Transparent <span style="color:#8892a4; font-size:11px;">(PNG alpha)</span></span>
+                  <span>${T("imgexport.fond.transparent")} <span style="color:#8892a4; font-size:11px;">${T("imgexport.fond.transparentNote")}</span></span>
                 </label>
               </div>
               <div id="kta-export-bg-info" style="display:none; margin-top:8px; padding:8px 12px; background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.25); border-radius:6px; font-size:11.5px; color:#c8d0e0; line-height:1.5;">
-                ℹ️ Avec un fond personnalisé, les <strong>calques d'image</strong>
-                (plan + overlays) sont automatiquement ignorés. Les calques de
-                données + annotations restent affichés normalement.
+                ${T("imgexport.fond.info")}
               </div>
             </div>
 
             <!-- Calques d'image -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">🖼️ Calques d'image</div>
+              <div class="kta-aide-section-titre">${T("imgexport.calquesImage.titre")}</div>
               <div id="kta-export-image-layers"></div>
             </div>
 
             <!-- Calques de données -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">🗂️ Calques de données</div>
+              <div class="kta-aide-section-titre">${T("imgexport.calquesData.titre")}</div>
               <div id="kta-export-data-layers"></div>
             </div>
 
             <!-- Annotations -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">✏️ Annotations de session</div>
+              <div class="kta-aide-section-titre">${T("imgexport.annotations.titre")}</div>
               <div id="kta-export-annotations"></div>
             </div>
 
             <!-- 🏗️ Niveaux (depuis v148, conditionnel sur multiLevel ON) -->
             <div class="kta-aide-section" id="kta-export-levels-section" style="display:none;">
-              <div class="kta-aide-section-titre">🏗️ Niveaux à exporter</div>
+              <div class="kta-aide-section-titre">${T("imgexport.niveaux.titre")}</div>
               <p style="font-size:11.5px; color:#8892a4; margin:0 0 8px 0; line-height:1.5;">
-                Sélectionne les niveaux à inclure dans l'export. Pré-coché sur les niveaux
-                actuellement visibles. Les jonctions sont incluses si au moins un de leurs
-                endpoints touche un niveau coché.
+                ${T("imgexport.niveaux.intro")}
               </p>
               <div id="kta-export-levels" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
             </div>
 
             <!-- Légende intégrée -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">📋 Légende intégrée</div>
+              <div class="kta-aide-section-titre">${T("imgexport.legende.titre")}</div>
               <label class="kta-export-cb-row" style="font-weight:600;">
                 <input type="checkbox" id="kta-export-legende-on">
-                <span>Inclure la légende sur le plan</span>
+                <span>${T("imgexport.legende.inclure")}</span>
               </label>
               <div id="kta-export-legende-options" style="display:none; margin-top:10px;">
 
                 <div style="margin-top:8px;">
-                  <div class="kta-cfg-label" style="margin-bottom:4px;">Position</div>
+                  <div class="kta-cfg-label" style="margin-bottom:4px;">${T("imgexport.legende.position")}</div>
                   <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-                    <label class="kta-export-radio-row"><input type="radio" name="leg_pos" value="haut-gauche" checked><span>Coin haut-gauche</span></label>
-                    <label class="kta-export-radio-row"><input type="radio" name="leg_pos" value="haut-droit"><span>Coin haut-droit</span></label>
-                    <label class="kta-export-radio-row"><input type="radio" name="leg_pos" value="bas-gauche"><span>Coin bas-gauche</span></label>
-                    <label class="kta-export-radio-row"><input type="radio" name="leg_pos" value="bas-droit"><span>Coin bas-droit</span></label>
-                    <label class="kta-export-radio-row" style="grid-column: span 2;"><input type="radio" name="leg_pos" value="custom"><span>Position personnalisée</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_pos" value="haut-gauche" checked><span>${T("imgexport.legende.pos.hg")}</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_pos" value="haut-droit"><span>${T("imgexport.legende.pos.hd")}</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_pos" value="bas-gauche"><span>${T("imgexport.legende.pos.bg")}</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_pos" value="bas-droit"><span>${T("imgexport.legende.pos.bd")}</span></label>
+                    <label class="kta-export-radio-row" style="grid-column: span 2;"><input type="radio" name="leg_pos" value="custom"><span>${T("imgexport.legende.pos.custom")}</span></label>
                   </div>
 
                   <div id="kta-export-leg-custom" style="display:none; margin-top:8px;">
                     <button class="kta-btn kta-btn-ghost" id="kta-export-leg-pick" style="width:100%; margin-bottom:6px;">
-                      🎯 Sélectionner sur la carte
+                      ${T("imgexport.legende.selectCarte")}
                     </button>
                     <div style="display:grid; grid-template-columns:auto 1fr auto 1fr; gap:6px; align-items:center;">
                       <label class="kta-cfg-label" style="margin:0;">X</label>
@@ -296,31 +297,31 @@
                 </div>
 
                 <div style="margin-top:12px;">
-                  <div class="kta-cfg-label" style="margin-bottom:4px;">Style</div>
+                  <div class="kta-cfg-label" style="margin-bottom:4px;">${T("imgexport.legende.style")}</div>
                   <div style="display:flex; gap:6px;">
-                    <label class="kta-export-radio-row"><input type="radio" name="leg_style" value="opaque" checked><span>Opaque</span></label>
-                    <label class="kta-export-radio-row"><input type="radio" name="leg_style" value="semi"><span>Semi-transparent</span></label>
-                    <label class="kta-export-radio-row"><input type="radio" name="leg_style" value="filigrane"><span>Filigrane</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_style" value="opaque" checked><span>${T("imgexport.legende.style.opaque")}</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_style" value="semi"><span>${T("imgexport.legende.style.semi")}</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_style" value="filigrane"><span>${T("imgexport.legende.style.filigrane")}</span></label>
                   </div>
                 </div>
 
                 <div style="margin-top:12px;">
-                  <div class="kta-cfg-label" style="margin-bottom:4px;">Taille</div>
+                  <div class="kta-cfg-label" style="margin-bottom:4px;">${T("imgexport.legende.taille")}</div>
                   <div style="display:flex; gap:6px;">
-                    <label class="kta-export-radio-row"><input type="radio" name="leg_size" value="compact"><span>Compact</span></label>
-                    <label class="kta-export-radio-row"><input type="radio" name="leg_size" value="standard" checked><span>Standard</span></label>
-                    <label class="kta-export-radio-row"><input type="radio" name="leg_size" value="large"><span>Large</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_size" value="compact"><span>${T("imgexport.legende.taille.compact")}</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_size" value="standard" checked><span>${T("imgexport.legende.taille.standard")}</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_size" value="large"><span>${T("imgexport.legende.taille.large")}</span></label>
                   </div>
                 </div>
 
                 <div style="margin-top:12px;">
-                  <div class="kta-cfg-label" style="margin-bottom:4px;">Contenu de la légende</div>
-                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_icones" checked><span>Icônes (puits, signalétique, etc.)</span></label>
-                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_traces" checked><span>Tracés (routes / chemins)</span></label>
-                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_zones" checked><span>Zones (remblais / effondrements)</span></label>
-                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_structures" checked><span>🏛️ Structures (piliers / mur / fronts)</span></label>
-                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_track"><span>Tag du tracker</span></label>
-                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_meta" checked><span>Métadonnées du plan (nom, version, auteur, date)</span></label>
+                  <div class="kta-cfg-label" style="margin-bottom:4px;">${T("imgexport.legende.contenu")}</div>
+                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_icones" checked><span>${T("imgexport.legende.contenu.icones")}</span></label>
+                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_traces" checked><span>${T("imgexport.legende.contenu.traces")}</span></label>
+                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_zones" checked><span>${T("imgexport.legende.contenu.zones")}</span></label>
+                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_structures" checked><span>${T("imgexport.legende.contenu.structures")}</span></label>
+                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_track"><span>${T("imgexport.legende.contenu.track")}</span></label>
+                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_meta" checked><span>${T("imgexport.legende.contenu.meta")}</span></label>
                 </div>
 
                 <!-- 🆕 v1.16.0 step 2 : panneau « Personnaliser les libellés »
@@ -328,17 +329,17 @@
                      collapsible pour pas alourdir la modale au défaut. -->
                 <details class="kta-legend-custom-details" style="margin-top:14px; border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:8px;">
                   <summary style="cursor:pointer; font-weight:600; color:#e8eaf0; padding:4px; user-select:none;">
-                    ✏️ Personnaliser les libellés
+                    ${T("imgexport.legende.custom.titre")}
                   </summary>
                   <div id="kta-legend-custom-body" style="margin-top:10px;">
                     <!-- Peuplé dynamiquement par _peuplerLegendCustom() au moment de l'ouverture du modal -->
                   </div>
                   <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
                     <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-legend-custom-add">
-                      ➕ Ajouter une entrée
+                      ${T("imgexport.legende.custom.ajouter")}
                     </button>
-                    <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-legend-custom-reset" title="Restaure les libellés défaut (efface vos overrides session)">
-                      🔄 Reset session
+                    <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-legend-custom-reset" title="${T("imgexport.legende.custom.resetTitre")}">
+                      ${T("imgexport.legende.custom.reset")}
                     </button>
                   </div>
                 </details>
@@ -348,16 +349,16 @@
 
             <!-- Format & qualité -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">⚙️ Format &amp; qualité</div>
+              <div class="kta-aide-section-titre">${T("imgexport.format.titre")}</div>
               <div style="display:flex; gap:14px; flex-wrap:wrap;">
                 <div>
-                  <div class="kta-cfg-label" style="margin-bottom:4px;">Format</div>
-                  <label class="kta-export-radio-row"><input type="radio" name="format" value="png" checked><span>PNG</span></label>
-                  <label class="kta-export-radio-row"><input type="radio" name="format" value="jpeg"><span>JPEG (qualité 90%)</span></label>
+                  <div class="kta-cfg-label" style="margin-bottom:4px;">${T("imgexport.format.format")}</div>
+                  <label class="kta-export-radio-row"><input type="radio" name="format" value="png" checked><span>${T("imgexport.format.png")}</span></label>
+                  <label class="kta-export-radio-row"><input type="radio" name="format" value="jpeg"><span>${T("imgexport.format.jpeg")}</span></label>
                 </div>
                 <div>
-                  <div class="kta-cfg-label" style="margin-bottom:4px;">Résolution</div>
-                  <label class="kta-export-radio-row"><input type="radio" name="resol" value="1" checked><span>Originale</span></label>
+                  <div class="kta-cfg-label" style="margin-bottom:4px;">${T("imgexport.format.resolution")}</div>
+                  <label class="kta-export-radio-row"><input type="radio" name="resol" value="1" checked><span>${T("imgexport.format.resol.originale")}</span></label>
                   <label class="kta-export-radio-row"><input type="radio" name="resol" value="0.5"><span>½</span></label>
                   <label class="kta-export-radio-row"><input type="radio" name="resol" value="0.25"><span>¼</span></label>
                 </div>
@@ -366,7 +367,7 @@
 
             <!-- Aperçu -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">👁️ Aperçu</div>
+              <div class="kta-aide-section-titre">${T("imgexport.apercu.titre")}</div>
               <div style="display:flex; justify-content:center; background:rgba(255,255,255,0.04); border-radius:6px; padding:8px;">
                 <canvas id="kta-export-preview" width="320" height="200" style="max-width:100%; border:1px solid rgba(255,255,255,0.1); border-radius:4px;"></canvas>
               </div>
@@ -377,8 +378,8 @@
 
           <!-- ACTIONS -->
           <div class="kta-conv-actions" style="margin-top:14px;">
-            <button class="kta-btn kta-btn-ghost"   id="kta-export-annuler">Annuler</button>
-            <button class="kta-btn kta-btn-primary" id="kta-export-go">⬇️ Télécharger</button>
+            <button class="kta-btn kta-btn-ghost"   id="kta-export-annuler">${T("imgexport.btn.annuler")}</button>
+            <button class="kta-btn kta-btn-primary" id="kta-export-go">${T("imgexport.btn.telecharger")}</button>
           </div>
 
           <div id="kta-export-erreur" class="kta-conv-erreur" style="display:none;"></div>
@@ -417,7 +418,7 @@
     if (!cont) return;
     const layers = config.imageLayers || [];
     if (layers.length === 0) {
-      cont.innerHTML = '<p style="font-size:12px; color:#8892a4; margin:0;">Aucun calque image</p>';
+      cont.innerHTML = '<p style="font-size:12px; color:#8892a4; margin:0;">' + window.I18n.t("imgexport.calquesImage.aucun") + '</p>';
       return;
     }
     cont.innerHTML = layers.map(function(l) {
@@ -434,7 +435,7 @@
     if (!cont) return;
     const layers = config.dataLayers || [];
     if (layers.length === 0) {
-      cont.innerHTML = '<p style="font-size:12px; color:#8892a4; margin:0;">Aucun calque de données</p>';
+      cont.innerHTML = '<p style="font-size:12px; color:#8892a4; margin:0;">' + window.I18n.t("imgexport.calquesData.aucun") + '</p>';
       return;
     }
 
@@ -600,7 +601,7 @@
         const iconHtml = iconUrl
           ? '<img src="' + iconUrl + '" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
           : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">🏷️</span>');
-        const label = item.isUntagged ? "<em>(sans tag)</em>" : _escapeHtmlExport(item.tag);
+        const label = item.isUntagged ? "<em>" + window.I18n.t("imgexport.tag.sansTag") + "</em>" : _escapeHtmlExport(item.tag);
         return `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
           <input type="checkbox" id="${id}" data-layer-tag-of="${layerCfg.id}" checked>
           <span>${iconHtml}${label} <span style="color:#8892a4;">(${item.count})</span></span>
@@ -610,7 +611,11 @@
 
     // Sous-cases types de routes embarquées
     if (hasRoads) {
-      const roadLabels = { principal: "🟩 Principaux", secondaire: "🟪 Secondaires", chemin: "🟨 Chemins" };
+      const roadLabels = {
+        principal:  window.I18n.t("imgexport.roadType.principal"),
+        secondaire: window.I18n.t("imgexport.roadType.secondaire"),
+        chemin:     window.I18n.t("imgexport.roadType.chemin")
+      };
       ["principal","secondaire","chemin"].forEach(function(t) {
         if (!roadTypes[t]) return;
         const id = "export_layer_" + safeId + "_road_" + t;
@@ -623,7 +628,12 @@
 
     // Sous-cases types de zones embarquées
     if (hasZones) {
-      const zoneLabels = { eau: "🟦 Eau", remblais: "⬛ Remblais", effondrement: "🟥 Effondrement", inaccessible: "⛔ Inaccessible" };
+      const zoneLabels = {
+        eau:          window.I18n.t("imgexport.zoneType.eau"),
+        remblais:     window.I18n.t("imgexport.zoneType.remblais"),
+        effondrement: window.I18n.t("imgexport.zoneType.effondrement"),
+        inaccessible: window.I18n.t("imgexport.zoneType.inaccessible")
+      };
       ["eau","remblais","effondrement","inaccessible"].forEach(function(t) {
         if (!zoneTypes[t]) return;
         const id = "export_layer_" + safeId + "_zone_" + t;
@@ -768,7 +778,7 @@
              ' background:rgba(244,197,66,0.06); border:1px solid rgba(244,197,66,0.20);' +
              ' border-radius:6px; cursor:pointer;">' +
              '<input type="checkbox" data-level="' + lvl + '" id="ann_level_' + lvl + '" ' + checked + '>' +
-             '<span style="font-family:monospace; font-weight:600; color:#f4c542; margin-left:6px;">Niv ' + lvl + '</span>' +
+             '<span style="font-family:monospace; font-weight:600; color:#f4c542; margin-left:6px;">' + window.I18n.t("imgexport.niveau.court", { lvl: lvl }) + '</span>' +
              '</label>';
     }).join("");
   }
@@ -830,8 +840,8 @@
     // Position du tracker : toujours active (la position courante existe au minimum)
     // Inclut le tracé parcouru si > 1 point
     const trackerLabel = (nbTrackerPath && nbTrackerPath > 1)
-      ? 'Position du tracker <span style="color:#8892a4;">(+ tracé ' + nbTrackerPath + ' pts)</span>'
-      : 'Position du tracker';
+      ? window.I18n.t("imgexport.ann.trackerPath", { count: nbTrackerPath })
+      : window.I18n.t("imgexport.ann.tracker");
 
     // Lister les tags présents dans les points de session
     const sessionPoints = window.getEditorPoints ? window.getEditorPoints() : [];
@@ -846,7 +856,7 @@
         const iconHtml = iconUrl
           ? '<img src="' + iconUrl + '" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
           : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">🏷️</span>');
-        const label = item.isUntagged ? "<em>(sans tag)</em>" : _escapeHtmlExport(item.tag);
+        const label = item.isUntagged ? "<em>" + window.I18n.t("imgexport.tag.sansTag") + "</em>" : _escapeHtmlExport(item.tag);
         return `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
           <input type="checkbox" id="${id}" data-session-tag="1" checked>
           <span>${iconHtml}${label} <span style="color:#8892a4;">(${item.count})</span></span>
@@ -854,31 +864,32 @@
       }).join("");
     }
 
+    const Ti = window.I18n.t;
     cont.innerHTML =
-      row("points",  "Points ajoutés",          nbPoints,  true) +
+      row("points",  Ti("imgexport.ann.points"),          nbPoints,  true) +
       pointsTagsHtml +
 
-      row("roads",   "Tracés / routes",         nbRoads,   true) +
-      rowSub("roads_principal",  "🟩 Principaux",  roadsByType.principal,  true) +
-      rowSub("roads_secondaire", "🟪 Secondaires", roadsByType.secondaire, true) +
-      rowSub("roads_chemin",     "🟨 Chemins",     roadsByType.chemin,     true) +
+      row("roads",   Ti("imgexport.ann.roads"),           nbRoads,   true) +
+      rowSub("roads_principal",  Ti("imgexport.roadType.principal"),  roadsByType.principal,  true) +
+      rowSub("roads_secondaire", Ti("imgexport.roadType.secondaire"), roadsByType.secondaire, true) +
+      rowSub("roads_chemin",     Ti("imgexport.roadType.chemin"),     roadsByType.chemin,     true) +
 
-      row("zones",   "Zones",                   nbZones,   true) +
-      rowSub("zones_eau",          "🟦 Eau",           zonesByType.eau,          true) +
-      rowSub("zones_remblais",     "⬛ Remblais",      zonesByType.remblais,     true) +
-      rowSub("zones_effondrement", "🟥 Effondrement",  zonesByType.effondrement, true) +
-      rowSub("zones_inaccessible", "⛔ Inaccessible",  zonesByType.inaccessible, true) +
+      row("zones",   Ti("imgexport.ann.zones"),           nbZones,   true) +
+      rowSub("zones_eau",          Ti("imgexport.zoneType.eau"),          zonesByType.eau,          true) +
+      rowSub("zones_remblais",     Ti("imgexport.zoneType.remblais"),     zonesByType.remblais,     true) +
+      rowSub("zones_effondrement", Ti("imgexport.zoneType.effondrement"), zonesByType.effondrement, true) +
+      rowSub("zones_inaccessible", Ti("imgexport.zoneType.inaccessible"), zonesByType.inaccessible, true) +
 
       // 🆕 v1.9.3-A1.b.2 : structures (piliers + murs + fronts) dans les
       // annotations session de l'export image. Calqué sur le bloc zones.
-      row("structures", "🏛️ Structures", nbStructures, true) +
-      rowSub("structures_pilier-1", "🟡 Pilier 1ère masse",    structuresByType["pilier-1"], true) +
-      rowSub("structures_pilier-2", "🟠 Pilier 2e masse",      structuresByType["pilier-2"], true) +
-      rowSub("structures_mur",      "🔵 Mur",                  structuresByType["mur"],      true) +
-      rowSub("structures_front-1",  "🟨 Front de taille 1ère", structuresByType["front-1"], true) +
-      rowSub("structures_front-2",  "🟧 Front de taille 2e",   structuresByType["front-2"], true) +
+      row("structures", Ti("imgexport.ann.structures"), nbStructures, true) +
+      rowSub("structures_pilier-1", Ti("imgexport.structType.pilier1"), structuresByType["pilier-1"], true) +
+      rowSub("structures_pilier-2", Ti("imgexport.structType.pilier2"), structuresByType["pilier-2"], true) +
+      rowSub("structures_mur",      Ti("imgexport.structType.mur"),     structuresByType["mur"],      true) +
+      rowSub("structures_front-1",  Ti("imgexport.structType.front1"),  structuresByType["front-1"], true) +
+      rowSub("structures_front-2",  Ti("imgexport.structType.front2"),  structuresByType["front-2"], true) +
 
-      row("mesure",  "Mesure de distance",      nbMesure,  false) +
+      row("mesure",  Ti("imgexport.ann.mesure"),          nbMesure,  false) +
       `<label class="kta-export-cb-row" style="${trackerOk ? '' : 'opacity:0.4;'}">
         <input type="checkbox" id="ann_tracker" ${trackerOk ? '' : 'disabled'}>
         <span>${trackerLabel}</span>
@@ -944,7 +955,7 @@
     const LC = window.LegendCustomization;
     if (!LC) {
       cont.innerHTML = '<p style="font-size:12px; color:#8892a4; margin:0;">' +
-        'Module LegendCustomization non disponible.</p>';
+        window.I18n.t("imgexport.legende.custom.moduleKo") + '</p>';
       return;
     }
 
@@ -955,9 +966,9 @@
     }
 
     function _sourceBadge(source) {
-      if (source === "session") return '<span class="kta-legend-src kta-legend-src-session" title="Override de votre session">✏️</span>';
-      if (source === "plan")    return '<span class="kta-legend-src kta-legend-src-plan"    title="Défini par le plan">📋</span>';
-      return                          '<span class="kta-legend-src kta-legend-src-default" title="Libellé défaut MKM">·</span>';
+      if (source === "session") return '<span class="kta-legend-src kta-legend-src-session" title="' + window.I18n.t("imgexport.legende.custom.srcSession") + '">✏️</span>';
+      if (source === "plan")    return '<span class="kta-legend-src kta-legend-src-plan"    title="' + window.I18n.t("imgexport.legende.custom.srcPlan") + '">📋</span>';
+      return                          '<span class="kta-legend-src kta-legend-src-default" title="' + window.I18n.t("imgexport.legende.custom.srcDefaut") + '">·</span>';
     }
 
     function _renderEntryRow(e, isCustomEntry) {
@@ -993,11 +1004,11 @@
 
       // Bouton 🗑️ uniquement pour les custom entries (suppression session)
       const btnRm = isCustomEntry
-        ? '<button type="button" class="kta-legend-rm" title="Supprimer cette entrée custom" ' + dataAttrs + '>🗑️</button>'
+        ? '<button type="button" class="kta-legend-rm" title="' + window.I18n.t("imgexport.legende.custom.supprimerEntree") + '" ' + dataAttrs + '>🗑️</button>'
         : '';
 
       return '<div class="kta-legend-row" ' + dataAttrs + '>' +
-               '<label class="kta-legend-vis" title="Afficher cette entrée dans la légende">' +
+               '<label class="kta-legend-vis" title="' + window.I18n.t("imgexport.legende.custom.afficherEntree") + '">' +
                  '<input type="checkbox" class="kta-legend-vis-cb" ' +
                    (e.visible ? "checked" : "") + ' ' + dataAttrs + '>' +
                '</label>' +
@@ -1049,66 +1060,66 @@
     const wrap = document.createElement("div");
     wrap.className = "kta-readme-modal-overlay kta-legend-add-overlay";
     wrap.style.zIndex = "100100";
+    const Ta = window.I18n.t;
     wrap.innerHTML =
       '<div class="kta-readme-modal-boite" style="width:auto; max-width:420px; height:auto; max-height:90vh; padding:20px; overflow-y:auto;">' +
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px;">' +
-          '<h3 style="margin:0; font-size:16px; color:#e8eaf0;">➕ Nouvelle entrée légende</h3>' +
+          '<h3 style="margin:0; font-size:16px; color:#e8eaf0;">' + Ta("imgexport.addEntry.titre") + '</h3>' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-legend-add-close" style="padding:2px 8px;">✕</button>' +
         '</div>' +
         '<div style="margin-bottom:10px;">' +
-          '<label class="kta-cfg-label">Catégorie</label>' +
+          '<label class="kta-cfg-label">' + Ta("imgexport.addEntry.categorie") + '</label>' +
           '<select class="kta-cfg-input" id="kta-legend-add-cat">' +
-            '<option value="traces">🛣️ Tracés</option>' +
-            '<option value="zones">⬛ Zones</option>' +
-            '<option value="structures">🏛️ Structures</option>' +
-            '<option value="icones">🏷️ Icônes (URL image)</option>' +
+            '<option value="traces">' + Ta("imgexport.addEntry.cat.traces") + '</option>' +
+            '<option value="zones">' + Ta("imgexport.addEntry.cat.zones") + '</option>' +
+            '<option value="structures">' + Ta("imgexport.addEntry.cat.structures") + '</option>' +
+            '<option value="icones">' + Ta("imgexport.addEntry.cat.icones") + '</option>' +
           '</select>' +
         '</div>' +
         // 🆕 v1.16.0 step2-drawable : choix géométrie pour STRUCTURES.
         '<div style="margin-bottom:10px; display:none;" id="kta-legend-add-geom-wrap">' +
-          '<label class="kta-cfg-label">Type de structure</label>' +
+          '<label class="kta-cfg-label">' + Ta("imgexport.addEntry.typeStructure") + '</label>' +
           '<div style="display:flex; gap:6px;">' +
             '<label class="kta-export-radio-row" style="flex:1;">' +
               '<input type="radio" name="kta-legend-add-geom" value="polygon" checked>' +
-              '<span>🟦 Polygone fermé <span style="color:#8892a4; font-size:11px;">(pilier/mur)</span></span>' +
+              '<span>' + Ta("imgexport.addEntry.geom.polygon") + ' <span style="color:#8892a4; font-size:11px;">' + Ta("imgexport.addEntry.geom.polygonNote") + '</span></span>' +
             '</label>' +
             '<label class="kta-export-radio-row" style="flex:1;">' +
               '<input type="radio" name="kta-legend-add-geom" value="polyline">' +
-              '<span>➖ Ligne ouverte <span style="color:#8892a4; font-size:11px;">(front de taille)</span></span>' +
+              '<span>' + Ta("imgexport.addEntry.geom.polyline") + ' <span style="color:#8892a4; font-size:11px;">' + Ta("imgexport.addEntry.geom.polylineNote") + '</span></span>' +
             '</label>' +
           '</div>' +
         '</div>' +
         '<div style="margin-bottom:10px;">' +
-          '<label class="kta-cfg-label">Libellé</label>' +
-          '<input class="kta-cfg-input" id="kta-legend-add-label" type="text" placeholder="Ex : Pilier ancien">' +
+          '<label class="kta-cfg-label">' + Ta("imgexport.addEntry.libelle") + '</label>' +
+          '<input class="kta-cfg-input" id="kta-legend-add-label" type="text" placeholder="' + Ta("imgexport.addEntry.libellePlaceholder") + '">' +
         '</div>' +
         '<div style="margin-bottom:10px;" id="kta-legend-add-line-wrap">' +
-          '<label class="kta-cfg-label">Couleur de trait (ligne)</label>' +
+          '<label class="kta-cfg-label">' + Ta("imgexport.addEntry.couleurTrait") + '</label>' +
           '<input class="kta-cfg-input" id="kta-legend-add-line" type="color" value="#00ff00" style="height:32px; padding:2px;">' +
           '<label class="kta-export-cb-row" style="margin-top:4px;">' +
             '<input type="checkbox" id="kta-legend-add-line-on" checked>' +
-            '<span>Activer le trait</span>' +
+            '<span>' + Ta("imgexport.addEntry.activerTrait") + '</span>' +
           '</label>' +
         '</div>' +
         '<div style="margin-bottom:10px;" id="kta-legend-add-fill-wrap">' +
-          '<label class="kta-cfg-label">Couleur de remplissage</label>' +
+          '<label class="kta-cfg-label">' + Ta("imgexport.addEntry.couleurFill") + '</label>' +
           '<input class="kta-cfg-input" id="kta-legend-add-fill" type="color" value="#3aa9e8" style="height:32px; padding:2px;">' +
           '<label class="kta-export-cb-row" style="margin-top:4px;">' +
             '<input type="checkbox" id="kta-legend-add-fill-on">' +
-            '<span>Activer le remplissage</span>' +
+            '<span>' + Ta("imgexport.addEntry.activerFill") + '</span>' +
           '</label>' +
         '</div>' +
         '<div style="margin-bottom:10px; display:none;" id="kta-legend-add-icon-wrap">' +
-          '<label class="kta-cfg-label">URL de l\'icône (.png / .svg / data:)</label>' +
+          '<label class="kta-cfg-label">' + Ta("imgexport.addEntry.urlIcone") + '</label>' +
           '<input class="kta-cfg-input" id="kta-legend-add-icon" type="text" placeholder="https://... ou data:image/...">' +
           '<p style="font-size:11px; color:#8892a4; margin:4px 0 0 0;">' +
-            "L'image doit être accessible (URL publique ou data: URI). " +
-            "Upload local non supporté en step 2." +
+            Ta("imgexport.addEntry.urlIconeNote") +
           '</p>' +
         '</div>' +
         '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">' +
-          '<button class="kta-btn kta-btn-ghost"   type="button" id="kta-legend-add-cancel">Annuler</button>' +
-          '<button class="kta-btn kta-btn-primary" type="button" id="kta-legend-add-ok">✅ Ajouter</button>' +
+          '<button class="kta-btn kta-btn-ghost"   type="button" id="kta-legend-add-cancel">' + Ta("imgexport.addEntry.annuler") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" type="button" id="kta-legend-add-ok">' + Ta("imgexport.addEntry.ajouter") + '</button>' +
         '</div>' +
       '</div>';
 
@@ -1181,7 +1192,7 @@
       const cat   = catSel.value;
       const label = (document.getElementById("kta-legend-add-label").value || "").trim();
       if (!label) {
-        alert("Donne un libellé à l'entrée.");
+        alert(window.I18n.t("imgexport.addEntry.alert.labelRequis"));
         return;
       }
       const entry = { category: cat, label: label };
@@ -1199,7 +1210,7 @@
 
       if (cat === "icones") {
         const url = (document.getElementById("kta-legend-add-icon").value || "").trim();
-        if (!url) { alert("URL d'icône requise pour cette catégorie."); return; }
+        if (!url) { alert(window.I18n.t("imgexport.addEntry.alert.urlRequise")); return; }
         entry.iconUrl = url;
       } else {
         const lineOn = document.getElementById("kta-legend-add-line-on").checked;
@@ -1213,15 +1224,15 @@
           }
         }
         if (entry.geometry === "polyline" && !entry.lineColor) {
-          alert("Active la couleur du trait pour ce type (front de taille / ligne).");
+          alert(window.I18n.t("imgexport.addEntry.alert.traitRequis"));
           return;
         }
         if (entry.geometry === "polygon" && !entry.fillColor) {
-          alert("Active la couleur de remplissage pour ce type (polygone).");
+          alert(window.I18n.t("imgexport.addEntry.alert.fillRequis"));
           return;
         }
         if (!entry.lineColor && !entry.fillColor) {
-          alert("Active au moins une couleur (trait ou remplissage).");
+          alert(window.I18n.t("imgexport.addEntry.alert.couleurRequise"));
           return;
         }
       }
@@ -1364,11 +1375,7 @@
         if (!window.LegendCustomization) return;
         // Confirmation simple via window.confirm — pas de modale custom pour
         // garder le code léger (action peu fréquente).
-        const ok = window.confirm(
-          "Effacer tous vos overrides de session sur la légende ?\n\n" +
-          "(les libellés défaut du plan reviennent ; ce qui est défini dans " +
-          "le plan-config reste actif)"
-        );
+        const ok = window.confirm(window.I18n.t("imgexport.legende.custom.resetConfirm"));
         if (!ok) return;
         window.LegendCustomization.resetSession();
         _peuplerLegendCustom();
@@ -1426,7 +1433,7 @@
     btnGo.addEventListener("click", async function() {
       const modeRapideActif = btnRapide.classList.contains("active");
       btnGo.disabled = true;
-      btnGo.textContent = "⏳ Génération…";
+      btnGo.textContent = window.I18n.t("imgexport.btn.generation");
       try {
         if (modeRapideActif) {
           if (window.telechargerPlan) {
@@ -1442,11 +1449,11 @@
         console.error("[Export] Erreur :", err);
         const erreurEl = document.getElementById("kta-export-erreur");
         if (erreurEl) {
-          erreurEl.textContent = "Erreur : " + (err.message || err);
+          erreurEl.textContent = window.I18n.t("imgexport.erreur.prefixe", { msg: (err.message || err) });
           erreurEl.style.display = "block";
         }
         btnGo.disabled = false;
-        btnGo.textContent = "⬇️ Télécharger";
+        btnGo.textContent = window.I18n.t("imgexport.btn.telecharger");
       }
     });
   }
@@ -1573,7 +1580,7 @@
     const banner = document.createElement("div");
     banner.id = "kta-export-pick-banner";
     banner.style.cssText = "position:fixed; top:60px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.9); color:#fff; padding:10px 18px; border-radius:8px; font-size:14px; z-index:9999; box-shadow:0 4px 12px rgba(0,0,0,0.4); border:1px solid rgba(140,180,255,0.5);";
-    banner.innerHTML = "🎯 Cliquez sur le plan pour placer la légende (coin haut-gauche). Échap pour annuler.";
+    banner.innerHTML = window.I18n.t("imgexport.pick.banner");
     document.body.appendChild(banner);
 
     // Mode crosshair
@@ -1801,17 +1808,10 @@
           await _tryEncode("image/jpeg", "jpg", 0.92);
           console.info("[Export avancé] fallback JPEG OK (plan trop grand pour PNG)");
         } catch(errJpg) {
-          throw new Error(
-            "Export impossible : le plan est trop grand pour être encodé par le navigateur " +
-            "(PNG et JPEG ont tous deux échoué). Réduis la résolution (½ ou ¼) dans les " +
-            "options d'export pour contourner la limite mémoire."
-          );
+          throw new Error(window.I18n.t("imgexport.erreur.tropGrand"));
         }
       } else {
-        throw new Error(
-          "Export JPEG impossible : le plan est trop grand pour être encodé. " +
-          "Réduis la résolution (½ ou ¼) dans les options d'export."
-        );
+        throw new Error(window.I18n.t("imgexport.erreur.tropGrandJpeg"));
       }
     }
   }
@@ -1888,7 +1888,7 @@
       return new Promise(function(res, rej) {
         const img = new Image();
         img.onload = function() { res(img); };
-        img.onerror = function() { rej(new Error("Image non chargée : " + src)); };
+        img.onerror = function() { rej(new Error(window.I18n.t("imgexport.err.imageLoad", { src: src }))); };
         img.src = src;
       });
     }
@@ -2608,7 +2608,7 @@
     // Métadonnées — rendues à part (pas de section "Plan", juste les infos)
     let metaLignes = [];
     if (leg.contenu.meta && config.plan) {
-      const titre  = (config.plan.name || "Plan");
+      const titre  = (config.plan.name || window.I18n.t("imgexport.legende.metaPlanDefaut"));
       const ver    = config.plan.version ? " " + config.plan.version : "";
       const auteur = config.plan.author  ? " — " + config.plan.author : "";
       // Date au format FR : jj/mm/aaaa
@@ -2634,11 +2634,11 @@
 
       // 3 sous-groupes ordonnés (les autres tags inconnus iront en "Signalétique")
       const GROUPES_ICONES = [
-        { titre: "🕳️ Puits",        cles: ["pa", "pb", "pc", "pe", "ps"] },
-        { titre: "🪜 Accès",         cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
-        { titre: "⚠️ Signalétique", cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] },
+        { titre: window.I18n.t("imgexport.legGroupe.puits"),        cles: ["pa", "pb", "pc", "pe", "ps"] },
+        { titre: window.I18n.t("imgexport.legGroupe.acces"),        cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
+        { titre: window.I18n.t("imgexport.legGroupe.signaletique"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] },
         // 🆕 v1.41.0 D — Catégorie Secours (Vue OSM × Mode Secours).
-        { titre: "🚨 Secours",       cles: ["entree_plan"] }
+        { titre: window.I18n.t("imgexport.legGroupe.secours"),      cles: ["entree_plan"] }
       ];
       const clesGroupees = new Set(GROUPES_ICONES.flatMap(function(g) { return g.cles; }));
 
@@ -2704,7 +2704,7 @@
         if (!url) return;
         lignesAutres.push({ label: _iconLabel(tag), iconUrl: url });
       });
-      if (lignesAutres.length > 0) entrees.push({ section: "🏷️ Autres", lignes: lignesAutres });
+      if (lignesAutres.length > 0) entrees.push({ section: window.I18n.t("imgexport.legGroupe.autres"), lignes: lignesAutres });
 
       // 🆕 v1.16.0 step 2 : entrées custom catégorie "icones" ajoutées par
       // l'user (cascade plan + session). Visible si isVisible et si iconUrl.
@@ -2713,7 +2713,7 @@
           .filter(function(e) { return e.visible && e.iconUrl; })
           .map(function(e) { return { label: e.label, iconUrl: e.iconUrl }; });
         if (customsIcones.length > 0) {
-          entrees.push({ section: "✨ Custom (icônes)", lignes: customsIcones });
+          entrees.push({ section: window.I18n.t("imgexport.legGroupe.customIcones"), lignes: customsIcones });
         }
       }
     }
@@ -2729,10 +2729,10 @@
             .filter(function(e) { return e.visible; })
             .map(function(e) { return { label: e.label, lineColor: e.lineColor }; })
         : [
-            { label: "Route principale",      lineColor: "#00ff00" },
-            { label: "Route secondaire",      lineColor: "#b000ff" },
-            { label: "Chemin",                lineColor: "#ffff00" },
-            { label: "Jonction interniveau",  lineColor: "#ff4ecb" }
+            { label: window.I18n.t("imgexport.legLabel.routePrincipale"), lineColor: "#00ff00" },
+            { label: window.I18n.t("imgexport.legLabel.routeSecondaire"), lineColor: "#b000ff" },
+            { label: window.I18n.t("imgexport.legLabel.chemin"),          lineColor: "#ffff00" },
+            { label: window.I18n.t("imgexport.legLabel.jonction"),        lineColor: "#ff4ecb" }
           ];
       // Ajout des customs traces
       if (LC) {
@@ -2742,7 +2742,7 @@
             lignes.push({ label: e.label, lineColor: e.lineColor || e.fillColor });
           });
       }
-      if (lignes.length > 0) entrees.push({ section: "🛣️ Tracés", lignes: lignes });
+      if (lignes.length > 0) entrees.push({ section: window.I18n.t("imgexport.legSection.traces"), lignes: lignes });
     }
 
     // Zones
@@ -2755,10 +2755,10 @@
             .filter(function(e) { return e.visible; })
             .map(function(e) { return { label: e.label, fillColor: e.fillColor, borderColor: e.borderColor }; })
         : [
-            { label: "Eau",          fillColor: "#3aa9e8", borderColor: "#0066aa" },
-            { label: "Remblais",     fillColor: "#5a5a68", borderColor: "#3a3a44" },
-            { label: "Effondrement", fillColor: "#ff3333", borderColor: "#cc0000" },
-            { label: "Inaccessible", fillColor: "#7a0000", borderColor: "#5a0a0a" }
+            { label: window.I18n.t("imgexport.legLabel.eau"),          fillColor: "#3aa9e8", borderColor: "#0066aa" },
+            { label: window.I18n.t("imgexport.legLabel.remblais"),     fillColor: "#5a5a68", borderColor: "#3a3a44" },
+            { label: window.I18n.t("imgexport.legLabel.effondrement"), fillColor: "#ff3333", borderColor: "#cc0000" },
+            { label: window.I18n.t("imgexport.legLabel.inaccessible"), fillColor: "#7a0000", borderColor: "#5a0a0a" }
           ];
       if (LC) {
         LC.listCustomEntries("zones")
@@ -2767,7 +2767,7 @@
             lignes.push({ label: e.label, fillColor: e.fillColor, borderColor: e.borderColor || e.fillColor });
           });
       }
-      if (lignes.length > 0) entrees.push({ section: "⬛ Zones", lignes: lignes });
+      if (lignes.length > 0) entrees.push({ section: window.I18n.t("imgexport.legSection.zones"), lignes: lignes });
     }
 
     // 🏛️ v1.10.3 (KARMA "structures pas dans la légende") : section
@@ -2787,11 +2787,11 @@
               return { label: e.label, fillColor: e.fillColor, borderColor: e.borderColor };
             })
         : [
-            { label: "Pilier 1ère masse",    fillColor: "#f4c542", borderColor: "#000000" },
-            { label: "Pilier 2e masse",      fillColor: "#ff9933", borderColor: "#000000" },
-            { label: "Mur",                  fillColor: "#1e3a8a", borderColor: "#000000" },
-            { label: "Front de taille 1ère", lineColor:  "#f4c542" },
-            { label: "Front de taille 2e",   lineColor:  "#ff9933" }
+            { label: window.I18n.t("imgexport.legLabel.pilier1"), fillColor: "#f4c542", borderColor: "#000000" },
+            { label: window.I18n.t("imgexport.legLabel.pilier2"), fillColor: "#ff9933", borderColor: "#000000" },
+            { label: window.I18n.t("imgexport.legLabel.mur"),     fillColor: "#1e3a8a", borderColor: "#000000" },
+            { label: window.I18n.t("imgexport.legLabel.front1"),  lineColor:  "#f4c542" },
+            { label: window.I18n.t("imgexport.legLabel.front2"),  lineColor:  "#ff9933" }
           ];
       if (LC) {
         // 🐛 v1.16.0 step2-drawable-fix : geometry first comme discriminator
@@ -2810,7 +2810,7 @@
             }
           });
       }
-      if (lignes.length > 0) entrees.push({ section: "🏛️ Structures", lignes: lignes });
+      if (lignes.length > 0) entrees.push({ section: window.I18n.t("imgexport.legSection.structures"), lignes: lignes });
     }
 
     if (entrees.length === 0 && metaLignes.length === 0) return;
@@ -2877,7 +2877,7 @@
     ctx.save();
     let titreMetaW = 0;
     ctx.font = "italic 600 " + tfs + "px Georgia, 'Times New Roman', serif";
-    const wTitre = ctx.measureText("Légende").width;
+    const wTitre = ctx.measureText(window.I18n.t("imgexport.legende.titreImg")).width;
     if (wTitre > titreMetaW) titreMetaW = wTitre;
     ctx.font = "italic " + (fs * 0.92) + "px Georgia, 'Times New Roman', serif";
     metaLignes.forEach(function(l) {
@@ -2952,7 +2952,7 @@
     ctx.fillStyle = S.titrePrincipal;
     ctx.font = "italic 600 " + tfs + "px Georgia, 'Times New Roman', serif";
     ctx.textBaseline = "top";
-    ctx.fillText("Légende", bx + pad, cy);
+    ctx.fillText(window.I18n.t("imgexport.legende.titreImg"), bx + pad, cy);
     cy += tfs * 1.2;
     ctx.restore();
 

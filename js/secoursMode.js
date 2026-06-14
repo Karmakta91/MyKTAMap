@@ -123,6 +123,28 @@
   }
 
   // ============================================================
+  // i18n — helper de traduction (chantier multilingue v1.45+)
+  // ============================================================
+  // À appeler AU RENDU (jamais au load) : les dicos lang/<code>.json sont
+  // chargés après I18n.init(). Fallback = la clé brute si I18n absent.
+  // Interpolation : t("secours.x", { param }) → remplace {param}.
+  const t = (k, p) => (window.I18n ? window.I18n.t(k, p) : k);
+
+  // Libellé i18n d'un statut TABLEAU_STATUTS par id (résolution au rendu).
+  // Le champ `.label` du tableau reste comme fallback FR de référence.
+  function _statutLabel(statutId) {
+    const info = _getStatutInfo(statutId);
+    return t("secours.statut." + info.id, {}) !== "secours.statut." + info.id
+      ? t("secours.statut." + info.id)
+      : info.label;
+  }
+  // Version ASCII (pour PDF jsPDF latin1) — retire les accents du label i18n.
+  function _statutLabelAscii(statutId) {
+    return _statutLabel(statutId)
+      .normalize("NFD").replace(/[̀-ͯ]/g, "");
+  }
+
+  // ============================================================
   // CONSTANTES
   // ============================================================
 
@@ -259,6 +281,45 @@
   // masque les zones des autres équipes — utile navigation terrain à la
   // sortie pour une équipe spécifique.
   let _focusedGroupeId = null;
+  // 🆕 v1.43.26 — Pattern A (anti-leak) : référence module au listener Esc
+  // de la modale Phase, pour pouvoir le retirer si l'utilisateur ré-ouvre
+  // la modale sans l'avoir fermée (cas où oldModal.remove() retire le DOM
+  // mais laissait le keydown listener orphelin sur document).
+  let _phaseModalEsc = null;
+
+  // 🆕 v1.43.26 (Pattern A généralisé) — Helper mutualisé pour les sous-modales
+  // de Mode Secours. Gère le bind + cleanup automatique d'un éventuel listener
+  // Esc orphelin (cas ré-ouverture rapide sans close manuel). Retourne unbind().
+  //
+  // Usage :
+  //   const unbindEsc = _bindSubModalEsc(_close);
+  //   ... dans _close() : unbindEsc();
+  //
+  // Tracking flat (1 listener actif à la fois pour les sous-modales) :
+  //   - Si une sous-modale est déjà ouverte et qu'on en ouvre une 2e par-dessus,
+  //     l'ancien listener est retiré (l'ancienne modale aurait Esc inactif, mais
+  //     elle est masquée derrière la nouvelle de toute manière).
+  //   - Pas applicable à la modale Mode Secours PRINCIPALE (qui a son propre
+  //     pattern `_onKeyDown` plus large, gérant +touches).
+  let _activeSubModalEsc = null;
+  function _bindSubModalEsc(closeFn) {
+    // Cleanup éventuel listener orphelin d'une modale précédente
+    if (_activeSubModalEsc) {
+      document.removeEventListener("keydown", _activeSubModalEsc);
+      _activeSubModalEsc = null;
+    }
+    const listener = function(e) {
+      if (e.key === "Escape") {
+        try { closeFn(); } catch(_) {}
+      }
+    };
+    _activeSubModalEsc = listener;
+    document.addEventListener("keydown", listener);
+    return function unbind() {
+      document.removeEventListener("keydown", listener);
+      if (_activeSubModalEsc === listener) _activeSubModalEsc = null;
+    };
+  }
 
   // Listeners pour onChange — appelés après chaque mutation persistée.
   const _changeListeners = [];
@@ -694,7 +755,7 @@
       if (e && e.name === "QuotaExceededError" && window.OOMGuard
           && typeof window.OOMGuard.showToast === "function") {
         window.OOMGuard.showToast(
-          "🚨 Quota storage dépassé — exporte ton scénario de secours pour ne pas le perdre !",
+          t("secours.toast.quotaExceeded"),
           "error"
         );
       }
@@ -777,7 +838,7 @@
   function createScenario(nom) {
     const safeName = (typeof nom === "string" && nom.trim())
                      ? nom.trim()
-                     : "Scénario du " + new Date().toLocaleDateString("fr-FR");
+                     : t("secours.scenario.defaultNom", { date: new Date().toLocaleDateString("fr-FR") });
     const scenario = {
       id:        _genId("secours"),
       nom:       safeName,
@@ -1080,7 +1141,7 @@
         _commitMutation(s);
         // Toast assistant non bloquant — l'Op clique pour ouvrir le debrief.
         // Ne ferme PAS auto, important : l'Op doit volontairement confirmer.
-        _toast("✅ Toutes les équipes sont sorties — la phase est prête à clore. Ouvre la vue Live Opérateur pour passer au debrief.", "info");
+        _toast(t("secours.toast.phasePretAClore"), "info");
       }
     } catch(e) { /* swallow watcher errors */ }
     return et;
@@ -1203,35 +1264,32 @@
     const levelsHtml = levels.map(function(lvl) {
       const lbl = (lvl === 0) ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl));
       const sel = (lvl === activeLevel) ? " selected" : "";
-      return '<option value="' + lvl + '"' + sel + '>Niveau ' + lbl + '</option>';
+      return '<option value="' + lvl + '"' + sel + '>' + t("secours.level.niveau", { label: lbl }) + '</option>';
     }).join('');
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-secours-newequipe-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">➕ Nouvelle équipe</span>' +
+          '<span class="kta-readme-modal-titre">' + t("secours.newequipe.titre") + '</span>' +
           '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           '<div class="kta-secours-form-row">' +
-            '<label for="kta-sec-newequipe-nom">🚨 Nom de l\'équipe</label>' +
-            '<input type="text" id="kta-sec-newequipe-nom" placeholder="(laisser vide pour auto Alpha/Bravo/...)" maxlength="40">' +
+            '<label for="kta-sec-newequipe-nom">' + t("secours.newequipe.nomLabel") + '</label>' +
+            '<input type="text" id="kta-sec-newequipe-nom" placeholder="' + _escAttr(t("secours.newequipe.nomPlaceholder")) + '" maxlength="40">' +
           '</div>' +
           '<div class="kta-secours-form-row">' +
-            '<label for="kta-sec-newequipe-level">🏗️ Niveau M-LVL de référence</label>' +
+            '<label for="kta-sec-newequipe-level">' + t("secours.newequipe.levelLabel") + '</label>' +
             '<select id="kta-sec-newequipe-level">' +
-              '<option value="">— Sans niveau (équipe traverse plusieurs étages) —</option>' +
+              '<option value="">' + t("secours.newequipe.levelNone") + '</option>' +
               levelsHtml +
             '</select>' +
           '</div>' +
           '<div class="kta-secours-form-hint">' +
-            '💡 Le niveau de référence indique à quel étage l\'équipe opère ' +
-            '(affiché en chip dans la card équipe + dans le PDF/KMZ exporté). ' +
-            'Tu peux le changer plus tard via le select couleur de la card. ' +
-            'Choisis "Sans niveau" si l\'équipe traverse plusieurs étages via des jonctions.' +
+            t("secours.newequipe.hint") +
           '</div>' +
           '<div class="kta-secours-form-actions">' +
-            '<button class="kta-btn kta-btn-ghost" data-action="cancel">← Annuler</button>' +
-            '<button class="kta-btn kta-btn-primary" data-action="confirm">✓ Créer l\'équipe</button>' +
+            '<button class="kta-btn kta-btn-ghost" data-action="cancel">' + t("secours.btn.annuler") + '</button>' +
+            '<button class="kta-btn kta-btn-primary" data-action="confirm">' + t("secours.btn.creerEquipe") + '</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -1269,17 +1327,17 @@
   // perdre le focus de la recherche.
   function ouvrirAssignerModale(point, layerLabel) {
     if (!_currentScenarioId) {
-      _toast("⚠️ Aucun scénario Mode Secours actif.", "warn");
+      _toast(t("secours.toast.aucunScenarioActif"), "warn");
       return;
     }
     const s = get(_currentScenarioId);
     if (!s) return;
     if (!Array.isArray(s.groupes) || s.groupes.length === 0) {
-      _toast("⚠️ Aucune équipe dans ce scénario. Ajoute d'abord une équipe.", "warn");
+      _toast(t("secours.toast.aucuneEquipeAjoute"), "warn");
       return;
     }
     if (!point || typeof point.x !== "number" || typeof point.y !== "number") {
-      _toast("⚠️ Point invalide.", "error");
+      _toast(t("secours.toast.pointInvalide"), "error");
       return;
     }
     // Cleanup éventuelle modale précédente (idempotency)
@@ -1302,34 +1360,34 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-secours-assign-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📌 Assigner « ' + _escHtml(nomPoint) + ' » à une équipe</span>' +
+          '<span class="kta-readme-modal-titre">' + t("secours.assign.titre", { point: _escHtml(nomPoint) }) + '</span>' +
           '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           '<div class="kta-secours-assign-info">' +
-            '<strong>Point :</strong> ' + _escHtml(nomPoint) +
+            '<strong>' + t("secours.assign.pointLabel") + '</strong> ' + _escHtml(nomPoint) +
             (layerLabel ? ' <span style="opacity:0.7;">(' + _escHtml(layerLabel) + ')</span>' : '') +
             '<br><small style="opacity:0.7;">x=' + Math.round(point.x) + ' y=' + Math.round(point.y) +
-            (typeof point.level === "number" ? ' · niv ' + point.level : '') + '</small>' +
+            (typeof point.level === "number" ? ' · ' + t("secours.assign.niv", { level: point.level }) : '') + '</small>' +
           '</div>' +
           '<div class="kta-secours-form-row">' +
-            '<label for="kta-sec-assign-equipe">🚨 Équipe</label>' +
+            '<label for="kta-sec-assign-equipe">' + t("secours.assign.equipeLabel") + '</label>' +
             '<select id="kta-sec-assign-equipe">' + equipesOptions + '</select>' +
           '</div>' +
           '<div class="kta-secours-form-row">' +
-            '<label>📍 Role dans le parcours</label>' +
+            '<label>' + t("secours.assign.roleLabel") + '</label>' +
             '<div class="kta-secours-assign-roles">' +
-              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="entree" checked> 📍 Entrée</label>' +
-              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="intermediaire"> ▾ Étape intermédiaire</label>' +
-              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="sortie"> 🚪 Sortie</label>' +
+              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="entree" checked> ' + t("secours.role.entree") + '</label>' +
+              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="intermediaire"> ' + t("secours.role.intermediaire") + '</label>' +
+              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="sortie"> ' + t("secours.role.sortie") + '</label>' +
             '</div>' +
           '</div>' +
           '<div class="kta-secours-form-hint">' +
-            '💡 Le point sera ajouté au parcours de l\'équipe sélectionnée. Pour les étapes intermédiaires, le waypoint est ajouté à la fin de la liste existante (ordre = position dans le parcours).' +
+            t("secours.assign.hint") +
           '</div>' +
           '<div class="kta-secours-form-actions">' +
-            '<button class="kta-btn kta-btn-ghost" data-action="cancel">← Annuler</button>' +
-            '<button class="kta-btn kta-btn-primary" data-action="confirm">✓ Assigner</button>' +
+            '<button class="kta-btn kta-btn-ghost" data-action="cancel">' + t("secours.btn.annuler") + '</button>' +
+            '<button class="kta-btn kta-btn-primary" data-action="confirm">' + t("secours.btn.assigner") + '</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -1347,7 +1405,7 @@
         const equipeId = (document.getElementById("kta-sec-assign-equipe") || {}).value;
         const roleEl = overlay.querySelector('input[name="kta-sec-assign-role"]:checked');
         const role = roleEl ? roleEl.value : "entree";
-        if (!equipeId) { _toast("⚠️ Sélectionne une équipe.", "warn"); return; }
+        if (!equipeId) { _toast(t("secours.toast.selectEquipe"), "warn"); return; }
         const level = (typeof point.level === "number") ? point.level
                     : (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
                       ? window.APP_CONFIG.activeLevel : 0;
@@ -1364,10 +1422,10 @@
         _appliquerWaypoint(equipeId, role, null, wp);
         const equipe = s.groupes.find(function(g) { return g.id === equipeId; });
         const equipeNom = equipe ? equipe.nom : equipeId;
-        const roleLbl = role === "entree" ? "Entrée"
-                      : role === "sortie" ? "Sortie"
-                      : "Étape intermédiaire";
-        _toast("✓ « " + nomPoint + " » assigné à " + equipeNom + " (" + roleLbl + ").", "info");
+        const roleLbl = role === "entree" ? t("secours.roleShort.entree")
+                      : role === "sortie" ? t("secours.roleShort.sortie")
+                      : t("secours.roleShort.intermediaire");
+        _toast(t("secours.toast.pointAssigne", { point: nomPoint, equipe: equipeNom, role: roleLbl }), "info");
         _close();
         // Re-render edit si la modale Mode Secours est visible (sinon l'user
         // est en mode overlay carte, on laisse comme c'est).
@@ -1395,32 +1453,35 @@
   // Puis ouvre la modale en vue Edit pour que l'user ajoute les équipes.
   function creerDepuisLostMode(lostState) {
     if (!lostState || !lostState.lastKnownPos) {
-      _toast("⚠️ Aucune position connue dans Lost Mode.", "warn");
+      _toast(t("secours.toast.aucunePositionLost"), "warn");
       return null;
     }
     // Nom auto : "Recherche - 26/05/2026 14:32"
     const now = new Date();
-    const nomAuto = "Recherche - " + now.toLocaleDateString("fr-FR") +
-                    " " + now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    const nomAuto = t("secours.lost.nomAuto", {
+      date: now.toLocaleDateString("fr-FR"),
+      heure: now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+    });
     // Timestamp d'incident = maintenant - elapsedMinutes
     const elapsed = (typeof lostState.elapsedMinutes === "number") ? lostState.elapsedMinutes : 0;
     const incidentTs = Date.now() - elapsed * 60 * 1000;
     // Compose les notes contextuelles
-    const notesParts = ["Importé depuis ⛑️ Mode urgence Je suis perdu."];
+    const notesParts = [t("secours.lost.notesIntro")];
     if (elapsed > 0) {
       const h = Math.floor(elapsed / 60);
       const m = Math.round(elapsed - h * 60);
-      notesParts.push("Temps écoulé estimé : " + (h > 0 ? h + "h" : "") + (m > 0 ? (m < 10 && h > 0 ? "0" : "") + m + "min" : ""));
+      const duree = (h > 0 ? h + "h" : "") + (m > 0 ? (m < 10 && h > 0 ? "0" : "") + m + "min" : "");
+      notesParts.push(t("secours.lost.notesTempsEcoule", { duree: duree }));
     }
     if (lostState.speedKmH) {
-      notesParts.push("Vitesse de marche estimée : " + lostState.speedKmH + " km/h" +
-                      (lostState.presetKey ? " (preset " + lostState.presetKey + ")" : ""));
+      notesParts.push(t("secours.lost.notesVitesse", { vitesse: lostState.speedKmH }) +
+                      (lostState.presetKey ? t("secours.lost.notesPreset", { preset: lostState.presetKey }) : ""));
     }
     if (lostState.radiusMeters) {
-      notesParts.push("Rayon d'incertitude calculé : " + Math.round(lostState.radiusMeters) + " m");
+      notesParts.push(t("secours.lost.notesRayon", { rayon: Math.round(lostState.radiusMeters) }));
     }
     if (lostState.clues && lostState.clues.trim()) {
-      notesParts.push("Indices saisis : " + lostState.clues.trim());
+      notesParts.push(t("secours.lost.notesIndices", { indices: lostState.clues.trim() }));
     }
     // Création + remplissage du contexte
     const scenario = createScenario(nomAuto);
@@ -1443,7 +1504,7 @@
         notes: notesParts.join("\n")
       }
     });
-    _toast("✓ Scénario créé : " + nomAuto + ". Ajoute maintenant les équipes 🚨.", "info");
+    _toast(t("secours.toast.scenarioCreeLost", { nom: nomAuto }), "info");
     // Ouvre la modale Mode Secours en vue Edit
     ouvrir(scenario.id);
     return scenario;
@@ -1472,7 +1533,7 @@
   function exporterScenario(scenarioId) {
     const s = get(scenarioId || _currentScenarioId);
     if (!s) {
-      _toast("⚠️ Scénario introuvable.", "error");
+      _toast(t("secours.toast.scenarioIntrouvable"), "error");
       return null;
     }
     const pc = window.PLAN_CONFIG;
@@ -1506,11 +1567,11 @@
       a.href = url; a.download = filename; a.style.display = "none";
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-      _toast("✓ Plan de secours exporté : " + filename, "info");
+      _toast(t("secours.toast.planExporte", { filename: filename }), "info");
       return filename;
     } catch(e) {
       console.warn("[SecoursMode] exporterScenario échec :", e);
-      _toast("⚠️ Erreur export : " + e.message, "error");
+      _toast(t("secours.toast.erreurExport", { message: e.message }), "error");
       return null;
     }
   }
@@ -1529,33 +1590,33 @@
       } else if (typeof input === "string") {
         text = input;
       } else {
-        return { ok: false, error: "Format input invalide (attendu File, Blob ou string)" };
+        return { ok: false, error: t("secours.import.errInputInvalide") };
       }
     } catch(e) {
-      return { ok: false, error: "Échec lecture fichier : " + e.message };
+      return { ok: false, error: t("secours.import.errLecture", { message: e.message }) };
     }
 
     let payload;
     try {
       payload = JSON.parse(text);
     } catch(e) {
-      return { ok: false, error: "JSON invalide : " + e.message };
+      return { ok: false, error: t("secours.import.errJson", { message: e.message }) };
     }
 
     // Validation stricte du format
     if (!payload || typeof payload !== "object") {
-      return { ok: false, error: "Payload invalide (pas un objet)" };
+      return { ok: false, error: t("secours.import.errPayload") };
     }
     if (payload.type !== "myktamap-secours-scenario") {
-      return { ok: false, error: "Type de fichier incorrect (attendu 'myktamap-secours-scenario', reçu '" + payload.type + "')" };
+      return { ok: false, error: t("secours.import.errType", { type: payload.type }) };
     }
     if (typeof payload.version !== "number" || payload.version < 1 || payload.version > MKMSEC_FORMAT_VERSION) {
-      return { ok: false, error: "Version de format incompatible (reçue " + payload.version + ", max supportée " + MKMSEC_FORMAT_VERSION + ")" };
+      return { ok: false, error: t("secours.import.errVersion", { version: payload.version, max: MKMSEC_FORMAT_VERSION }) };
     }
     if (!payload.scenario || typeof payload.scenario !== "object"
         || typeof payload.scenario.nom !== "string"
         || !Array.isArray(payload.scenario.groupes)) {
-      return { ok: false, error: "Scénario invalide (champs nom + groupes requis)" };
+      return { ok: false, error: t("secours.import.errScenario") };
     }
 
     // Détection plan différent → renvoyé comme warning, pas comme erreur.
@@ -1564,8 +1625,8 @@
     const currentPlanId = window._currentLoadedPlanId;
     const importedPlanId = payload.plan && payload.plan.id;
     if (currentPlanId && importedPlanId && currentPlanId !== importedPlanId) {
-      const importedPlanName = (payload.plan && payload.plan.name) || "(plan inconnu)";
-      warning = "Plan d'origine différent : " + importedPlanName;
+      const importedPlanName = (payload.plan && payload.plan.name) || t("secours.import.planInconnu");
+      warning = t("secours.import.warnPlanDifferent", { plan: importedPlanName });
     }
 
     return { ok: true, payload: payload, warning: warning };
@@ -1652,16 +1713,14 @@
     // Si plan différent, demande confirm() (preserve comportement v1.23.4 pour
     // les callers programmatiques sans UI)
     if (parsed.warning) {
-      const currentPlanName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "(plan courant)";
-      const importedPlanName = (parsed.payload.plan && parsed.payload.plan.name) || "(plan inconnu)";
-      const confirmMsg =
-        "⚠️ Ce scénario vient d'un PLAN DIFFÉRENT :\n\n" +
-        "  • Plan source : " + importedPlanName + "\n" +
-        "  • Plan courant : " + currentPlanName + "\n\n" +
-        "Les coordonnées des waypoints et zones n'auront pas le même sens.\n" +
-        "Importer quand même ?";
+      const currentPlanName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || t("secours.import.planCourant");
+      const importedPlanName = (parsed.payload.plan && parsed.payload.plan.name) || t("secours.import.planInconnu");
+      const confirmMsg = t("secours.import.confirmPlanDifferent", {
+        planSource: importedPlanName,
+        planCourant: currentPlanName
+      });
       if (!window.confirm(confirmMsg)) {
-        return { ok: false, error: "Import annulé par l'utilisateur (plan différent)" };
+        return { ok: false, error: t("secours.import.errAnnuleUser") };
       }
     }
     const applied = _appliquerPayloadImport(parsed.payload);
@@ -1688,7 +1747,7 @@
         parsed = await _parsePayloadMkmsec(file);
       } catch(e) {
         console.warn("[SecoursMode] _ouvrirImportMkmsecPicker exception :", e);
-        parsed = { ok: false, error: "Exception : " + (e && e.message ? e.message : String(e)) };
+        parsed = { ok: false, error: t("secours.import.errException", { message: (e && e.message ? e.message : String(e)) }) };
       }
       // Si erreur de parse/validation → modale d'erreur direct (pas de preview)
       if (!parsed.ok) {
@@ -1742,14 +1801,14 @@
     const planSrc = payload.plan || {};
     const dateExport = payload.exportedAt
                        ? new Date(payload.exportedAt).toLocaleString("fr-FR")
-                       : "(date inconnue)";
-    const appVer = payload.appVersion || "(version inconnue)";
+                       : t("secours.import.dateInconnue");
+    const appVer = payload.appVersion || t("secours.import.versionInconnue");
 
     // Mini-résumé des équipes (max 8 affichées, "+N autres" si plus)
     const groupes = Array.isArray(sc.groupes) ? sc.groupes : [];
     let equipesHtml = "";
     if (groupes.length === 0) {
-      equipesHtml = '<p style="color:#8892a4; font-style:italic; margin:8px 0 0;">Aucune équipe définie.</p>';
+      equipesHtml = '<p style="color:#8892a4; font-style:italic; margin:8px 0 0;">' + t("secours.import.aucuneEquipe") + '</p>';
     } else {
       const visibles = groupes.slice(0, 8);
       equipesHtml = '<ul class="kta-secours-import-preview-equipes">';
@@ -1763,70 +1822,66 @@
                           : "";
         equipesHtml += '<li>' +
                          '<span class="kta-secours-import-preview-couleur" style="background:' + couleur + ';"></span>' +
-                         '<strong>' + _escHtml(g.nom || "(sans nom)") + '</strong>' +
+                         '<strong>' + _escHtml(g.nom || t("secours.import.sansNom")) + '</strong>' +
                          '<span class="kta-secours-import-preview-meta">' +
-                           ' · 👥 ' + nbMembres + ' membre' + (nbMembres > 1 ? 's' : '') +
-                           (hasZone ? ' · ⬛ zone' : '') +
-                           (hasParcours ? ' · 🚪 parcours' : '') +
+                           ' · ' + t("secours.import.membres", { n: nbMembres }) +
+                           (hasZone ? ' · ' + t("secours.import.chipZone") : '') +
+                           (hasParcours ? ' · ' + t("secours.import.chipParcours") : '') +
                            levelChip +
                          '</span>' +
                        '</li>';
       });
       if (groupes.length > 8) {
-        equipesHtml += '<li style="color:#8892a4; font-style:italic;">+ ' + (groupes.length - 8) + ' autre' + (groupes.length - 8 > 1 ? 's' : '') + '…</li>';
+        equipesHtml += '<li style="color:#8892a4; font-style:italic;">' + t("secours.import.autres", { n: (groupes.length - 8) }) + '</li>';
       }
       equipesHtml += '</ul>';
     }
 
     let warningBlock = "";
     if (warning) {
-      const currentPlanName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "(plan courant)";
-      const importedPlanName = planSrc.name || "(plan inconnu)";
+      const currentPlanName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || t("secours.import.planCourant");
+      const importedPlanName = planSrc.name || t("secours.import.planInconnu");
       warningBlock = '<div style="background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.55); border-radius:6px; padding:10px 12px; margin:14px 0; color:#ffb380;">' +
-                       '⚠️ <strong>Attention — plan d\'origine différent</strong><br>' +
+                       '⚠️ <strong>' + t("secours.import.warnTitre") + '</strong><br>' +
                        '<span style="font-size:13px; line-height:1.5;">' +
-                         'Ce scénario a été créé sur le plan <strong>' + _escHtml(importedPlanName) + '</strong> ' +
-                         '(différent du plan courant <strong>' + _escHtml(currentPlanName) + '</strong>). ' +
-                         'Les coordonnées des waypoints et zones n\'auront pas le même sens visuel sur ce plan. ' +
-                         'Importer quand même est utile si tu veux récupérer les noms d\'équipes / membres / notes ' +
-                         'mais tu devras probablement redéfinir les zones et entrées/sorties.' +
+                         t("secours.import.warnBody", { planSource: _escHtml(importedPlanName), planCourant: _escHtml(currentPlanName) }) +
                        '</span>' +
                      '</div>';
     }
 
     const inner = '<div class="kta-readme-modal-header">' +
-                    '<h2 style="margin:0; color:#8cb4ff;">📥 Aperçu de l\'import</h2>' +
-                    '<button class="kta-readme-modal-close" data-action="cancel-preview" aria-label="Annuler">✕</button>' +
+                    '<h2 style="margin:0; color:#8cb4ff;">' + t("secours.import.previewTitre") + '</h2>' +
+                    '<button class="kta-readme-modal-close" data-action="cancel-preview" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
                   '</div>' +
                   '<div class="kta-readme-modal-corps">' +
-                    '<p style="margin:0 0 14px 0;">Vérifie le contenu de ce fichier avant de l\'importer dans le Mode Secours du plan courant.</p>' +
+                    '<p style="margin:0 0 14px 0;">' + t("secours.import.previewIntro") + '</p>' +
 
                     '<div class="kta-secours-import-preview-card">' +
-                      '<div class="kta-secours-import-preview-titre">' + _escHtml(sc.nom || "(sans nom)") + '</div>' +
+                      '<div class="kta-secours-import-preview-titre">' + _escHtml(sc.nom || t("secours.import.sansNom")) + '</div>' +
                       '<div class="kta-secours-import-preview-grid">' +
-                        '<div><span class="kta-secours-import-preview-label">📂 Fichier source</span>' +
-                          '<code>' + _escHtml(sourceFilename || "(fichier)") + '</code></div>' +
-                        '<div><span class="kta-secours-import-preview-label">📅 Date d\'export</span>' +
+                        '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelFichier") + '</span>' +
+                          '<code>' + _escHtml(sourceFilename || t("secours.import.fichierDefault")) + '</code></div>' +
+                        '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelDateExport") + '</span>' +
                           _escHtml(dateExport) + '</div>' +
-                        '<div><span class="kta-secours-import-preview-label">🏷️ Version app source</span>' +
+                        '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelVersionApp") + '</span>' +
                           '<code>' + _escHtml(appVer) + '</code></div>' +
-                        '<div><span class="kta-secours-import-preview-label">🗺️ Plan source</span>' +
-                          _escHtml(planSrc.name || "(plan inconnu)") +
+                        '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelPlanSource") + '</span>' +
+                          _escHtml(planSrc.name || t("secours.import.planInconnu")) +
                           (planSrc.version ? ' <code>' + _escHtml(planSrc.version) + '</code>' : '') +
                         '</div>' +
                       '</div>' +
                     '</div>' +
 
                     '<div class="kta-secours-import-preview-section">' +
-                      '<h3 style="margin:14px 0 6px 0; color:#f4c542;">🚨 Équipes incluses (' + groupes.length + ')</h3>' +
+                      '<h3 style="margin:14px 0 6px 0; color:#f4c542;">' + t("secours.import.equipesIncluses", { n: groupes.length }) + '</h3>' +
                       equipesHtml +
                     '</div>' +
 
                     warningBlock +
 
                     '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
-                      '<button class="kta-btn kta-btn-ghost" data-action="cancel-preview">❌ Annuler</button>' +
-                      '<button class="kta-btn kta-btn-primary" data-action="confirm-preview">✓ Importer ce scénario</button>' +
+                      '<button class="kta-btn kta-btn-ghost" data-action="cancel-preview">' + t("secours.btn.annulerCroix") + '</button>' +
+                      '<button class="kta-btn kta-btn-primary" data-action="confirm-preview">' + t("secours.btn.importerScenario") + '</button>' +
                     '</div>' +
                   '</div>';
 
@@ -1883,41 +1938,40 @@
 
     let inner = '<div class="kta-readme-modal-header">' +
                   '<h2 style="margin:0; color:' + (ok ? '#6ee287' : '#ff8c8c') + ';">' +
-                    (ok ? '✓ Plan de secours importé' : '❌ Échec de l\'import') +
+                    (ok ? t("secours.import.resOkTitre") : t("secours.import.resKoTitre")) +
                   '</h2>' +
-                  '<button class="kta-readme-modal-close" data-action="close-result" aria-label="Fermer">✕</button>' +
+                  '<button class="kta-readme-modal-close" data-action="close-result" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
                 '</div>' +
                 '<div class="kta-readme-modal-corps">';
 
     if (ok) {
       const sc = result.scenario || {};
       const nbGroupes = (sc.groupes || []).length;
-      inner += '<p>Le scénario <strong>' + _escHtml(sc.nom || "(sans nom)") + '</strong> a été ajouté à ce plan.</p>' +
+      inner += '<p>' + t("secours.import.resOkBody", { nom: _escHtml(sc.nom || t("secours.import.sansNom")) }) + '</p>' +
                '<p style="color:#8892a4; font-size:13px;">' +
-                 '📂 Source : <code>' + _escHtml(sourceFilename || "(fichier)") + '</code><br>' +
-                 '🚨 ' + nbGroupes + ' équipe' + (nbGroupes > 1 ? 's' : '') + ' importée' + (nbGroupes > 1 ? 's' : '') +
+                 t("secours.import.resOkSource", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '<br>' +
+                 t("secours.import.resOkEquipes", { n: nbGroupes }) +
                '</p>';
       if (result.warning) {
         inner += '<div style="background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.5); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb380;">' +
-                   '⚠️ <strong>Avertissement :</strong> ' + _escHtml(result.warning) +
+                   '⚠️ <strong>' + t("secours.import.avertissement") + '</strong> ' + _escHtml(result.warning) +
                  '</div>';
       }
       inner += '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end;">' +
-                 '<button class="kta-btn kta-btn-secondary" data-action="close-result">Fermer</button>' +
-                 '<button class="kta-btn kta-btn-primary" data-action="open-imported">✏️ Ouvrir le scénario</button>' +
+                 '<button class="kta-btn kta-btn-secondary" data-action="close-result">' + t("secours.btn.fermer") + '</button>' +
+                 '<button class="kta-btn kta-btn-primary" data-action="open-imported">' + t("secours.btn.ouvrirScenario") + '</button>' +
                '</div>';
     } else {
-      const errMsg = (result && result.error) || "Erreur inconnue";
-      inner += '<p>L\'import du fichier <code>' + _escHtml(sourceFilename || "(fichier)") + '</code> a échoué.</p>' +
+      const errMsg = (result && result.error) || t("secours.import.erreurInconnue");
+      inner += '<p>' + t("secours.import.resKoBody", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '</p>' +
                '<div style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb3b3; font-family:monospace; font-size:13px; word-break:break-word;">' +
                  _escHtml(errMsg) +
                '</div>' +
                '<p style="color:#8892a4; font-size:13px;">' +
-                 '💡 Le fichier doit être un <code>.mkmsec.json</code> valide exporté ' +
-                 'depuis MyKTAMap Mode Secours (bouton 📤 Export .mkmsec.json).' +
+                 t("secours.import.resKoHint") +
                '</p>' +
                '<div style="margin-top:18px; display:flex; justify-content:flex-end;">' +
-                 '<button class="kta-btn kta-btn-primary" data-action="close-result">J\'ai compris</button>' +
+                 '<button class="kta-btn kta-btn-primary" data-action="close-result">' + t("secours.btn.jaiCompris") + '</button>' +
                '</div>';
     }
     inner += '</div>';
@@ -2001,68 +2055,68 @@
       } else if (typeof input === "string") {
         text = input;
       } else {
-        return { ok: false, error: "Format input invalide (attendu File, Blob ou string)" };
+        return { ok: false, error: t("secours.import.errInputInvalide") };
       }
     } catch(e) {
-      return { ok: false, error: "Échec lecture fichier : " + e.message };
+      return { ok: false, error: t("secours.import.errLecture", { message: e.message }) };
     }
 
     let payload;
     try {
       payload = JSON.parse(text);
     } catch(e) {
-      return { ok: false, error: "JSON invalide : " + e.message };
+      return { ok: false, error: t("secours.import.errJson", { message: e.message }) };
     }
 
     // Validation type/version
     if (!payload || typeof payload !== "object") {
-      return { ok: false, error: "Payload invalide (pas un objet)" };
+      return { ok: false, error: t("secours.import.errPayload") };
     }
     if (payload.type !== "myktamap-secours-report") {
-      return { ok: false, error: "Type incorrect (attendu 'myktamap-secours-report', reçu '" + (payload.type || "(absent)") + "')" };
+      return { ok: false, error: t("secours.report.errType", { type: (payload.type || t("secours.report.absent")) }) };
     }
     if (typeof payload.version !== "number" || payload.version < 1 || payload.version > REPORT_FORMAT_VERSION_MAX) {
-      return { ok: false, error: "Version incompatible (reçue " + payload.version + ", max supportée " + REPORT_FORMAT_VERSION_MAX + ")" };
+      return { ok: false, error: t("secours.report.errVersion", { version: payload.version, max: REPORT_FORMAT_VERSION_MAX }) };
     }
 
     // Validation scope = equipe (MVP v1.26.0 : seuls les rapports équipiers fusionnables)
     if (payload.scope !== "equipe") {
       if (payload.scope === "operateur") {
-        return { ok: false, error: "Ce fichier est un RAPPORT OPÉRATEUR GLOBAL (snapshot complet de toutes les équipes) — non fusionnable. L'import ne supporte que les rapports ÉQUIPIERS (scope=\"equipe\") qui apportent les obs d'une équipe terrain spécifique." };
+        return { ok: false, error: t("secours.report.errScopeOperateur") };
       }
       if (payload.scope === "secouriste") {
-        return { ok: false, error: "Ce fichier est un RAPPORT SECOURISTE LIBRE (notes parallèles) — non fusionnable dans le tableau Opérateur. Le secouriste libre tient ses notes en parallèle des équipes." };
+        return { ok: false, error: t("secours.report.errScopeSecouriste") };
       }
-      return { ok: false, error: "Scope inconnu : '" + payload.scope + "' (attendu 'equipe')" };
+      return { ok: false, error: t("secours.report.errScopeInconnu", { scope: payload.scope }) };
     }
 
     // Validation equipesData (doit contenir 1 équipe)
     if (!Array.isArray(payload.equipesData) || payload.equipesData.length !== 1) {
-      return { ok: false, error: "equipesData doit contenir exactement 1 équipe (reçu " + (Array.isArray(payload.equipesData) ? payload.equipesData.length : "non-array") + ")" };
+      return { ok: false, error: t("secours.report.errEquipesData", { n: (Array.isArray(payload.equipesData) ? payload.equipesData.length : t("secours.report.nonArray")) }) };
     }
     const ed = payload.equipesData[0];
     if (!ed.equipe || typeof ed.equipe !== "object" || typeof ed.equipe.id !== "string") {
-      return { ok: false, error: "Données équipe invalides (equipe.id manquant)" };
+      return { ok: false, error: t("secours.report.errEquipeInvalide") };
     }
 
     // Validation scénario actif côté op
     const currentScenario = get(_currentScenarioId);
     if (!currentScenario) {
-      return { ok: false, error: "Aucun scénario actif côté Opérateur. Ouvre le scénario où tu veux importer ce rapport." };
+      return { ok: false, error: t("secours.report.errAucunScenario") };
     }
     if (!currentScenario.execution || !currentScenario.execution.active) {
-      return { ok: false, error: "Le scénario actif n'est pas en cours d'exécution. Lance le plan (🚀) avant d'importer un rapport équipier." };
+      return { ok: false, error: t("secours.report.errPasExecution") };
     }
 
     // Validation scenario.id correspond
     if (payload.scenario && payload.scenario.id && payload.scenario.id !== currentScenario.id) {
-      return { ok: false, error: "Scénario d'origine différent — ce rapport vient de '" + (payload.scenario.nom || "(sans nom)") + "' (id " + payload.scenario.id.slice(0, 8) + "…), pas du scénario actif '" + currentScenario.nom + "'." };
+      return { ok: false, error: t("secours.report.errScenarioDifferent", { nom: (payload.scenario.nom || t("secours.import.sansNom")), id: payload.scenario.id.slice(0, 8), nomActif: currentScenario.nom }) };
     }
 
     // Validation equipe.id existe côté op
     const equipeOp = currentScenario.groupes.find(function(g) { return g.id === ed.equipe.id; });
     if (!equipeOp) {
-      return { ok: false, error: "Équipe '" + (ed.equipe.nom || "(sans nom)") + "' (id " + ed.equipe.id.slice(0, 8) + "…) absente du scénario actif. L'équipier doit être enregistré côté Opérateur AVANT le lancement du plan (pas de création silencieuse à l'import)." };
+      return { ok: false, error: t("secours.report.errEquipeAbsente", { nom: (ed.equipe.nom || t("secours.import.sansNom")), id: ed.equipe.id.slice(0, 8) }) };
     }
 
     // Détection des conflits (info pour preview, pas une erreur)
@@ -2077,7 +2131,7 @@
       if (opHasObs || opHasStatus) {
         conflits.push({
           idx: etImp.idx,
-          label: etImp.label || etOp.label || ("étape " + etImp.idx),
+          label: etImp.label || etOp.label || t("secours.etape.fallback", { idx: etImp.idx }),
           opStatut: etOp.statut || "pending",
           impStatut: etImp.statut || "pending"
         });
@@ -2090,14 +2144,14 @@
     const importedPlanId = payload.plan && payload.plan.id;
     if (currentPlanId && importedPlanId && currentPlanId !== importedPlanId) {
       const importedPlanName = (payload.plan && payload.plan.name) || "(plan inconnu)";
-      warning = "Plan d'origine différent : " + importedPlanName + " (côté équipier). Les obs textuelles sont conservées, mais vérifie que les étapes coïncident.";
+      warning = t("secours.report.warnPlanDifferent", { plan: importedPlanName });
     }
 
     return {
       ok: true,
       payload: payload,
       equipeId: ed.equipe.id,
-      equipeNom: ed.equipe.nom || "(sans nom)",
+      equipeNom: ed.equipe.nom || t("secours.import.sansNom"),
       nbEtapes: etapesImp.length,
       nbPhotos: Array.isArray(ed.photos) ? ed.photos.length : 0,
       conflits: conflits,
@@ -2111,7 +2165,7 @@
   //                           photosSkipped, warnings: [string] } }
   async function _appliquerImportRapportEquipe(payload) {
     const s = get(_currentScenarioId);
-    if (!s) return { ok: false, error: "Scénario actif disparu entre parse et apply" };
+    if (!s) return { ok: false, error: t("secours.report.errScenarioDisparu") };
 
     const ed = payload.equipesData[0];
     const equipeId = ed.equipe.id;
@@ -2123,7 +2177,7 @@
     // Si le module n'est pas dispo, on continue quand même (best-effort).
     try {
       if (window.SessionBackups && typeof window.SessionBackups.snapshot === "function") {
-        window.SessionBackups.snapshot("Avant import rapport équipier " + (ed.equipe.nom || "(sans nom)"));
+        window.SessionBackups.snapshot(t("secours.report.snapshotLabel", { equipe: (ed.equipe.nom || t("secours.import.sansNom")) }));
       }
     } catch(e) {
       console.warn("[SecoursMode] snapshot avant import :", e);
@@ -2166,7 +2220,7 @@
       const etapeOp = etapesOp.find(function(e) { return e.idx === etImp.idx; });
       if (!etapeOp) {
         stats.etapesSkipped++;
-        stats.warnings.push("Étape idx " + etImp.idx + " (" + (etImp.label || "?") + ") absente côté Opérateur — ignorée.");
+        stats.warnings.push(t("secours.report.warnEtapeAbsente", { idx: etImp.idx, label: (etImp.label || "?") }));
         continue;
       }
 
@@ -2174,7 +2228,7 @@
       const importedObs = String(etImp.observations || "").trim();
       if (importedObs.length > 0) {
         const existingObs = String(etapeOp.observations || "").trim();
-        const separator = "\n\n--- 📥 Import Équipier " + tsLabel + " ---\n";
+        const separator = "\n\n" + t("secours.report.separator", { ts: tsLabel }) + "\n";
         etapeOp.observations = existingObs.length > 0
           ? (existingObs + separator + importedObs)
           : importedObs;
@@ -2210,7 +2264,7 @@
         // Vérif autonome (dataUrl présent) sinon skip
         if (!photo.dataUrl) {
           stats.photosSkipped++;
-          stats.warnings.push("Photo " + photo.id + " sans dataUrl — non importée (rapport généré avec includePhotos:false).");
+          stats.warnings.push(t("secours.report.warnPhotoSansData", { id: photo.id }));
           continue;
         }
         // Écriture IDB via secoursPhotos
@@ -2234,11 +2288,11 @@
             }
           } else {
             stats.photosSkipped++;
-            stats.warnings.push("Module SecoursPhotos indisponible — photo " + photo.id + " non importée.");
+            stats.warnings.push(t("secours.report.warnModulePhotos", { id: photo.id }));
           }
         } catch(e) {
           stats.photosSkipped++;
-          stats.warnings.push("Erreur écriture photo " + (photo.id || "?") + " : " + (e && e.message ? e.message : String(e)));
+          stats.warnings.push(t("secours.report.warnPhotoErreur", { id: (photo.id || "?"), message: (e && e.message ? e.message : String(e)) }));
         }
       }
 
@@ -2296,8 +2350,8 @@
 
     const dateExport = payload.exportedAt
                        ? new Date(payload.exportedAt).toLocaleString("fr-FR")
-                       : "(date inconnue)";
-    const appVer = payload.appVersion || "(version inconnue)";
+                       : t("secours.import.dateInconnue");
+    const appVer = payload.appVersion || t("secours.import.versionInconnue");
     const planSrc = payload.plan || {};
     const equipeNom = parseResult.equipeNom;
     const nbEtapes = parseResult.nbEtapes;
@@ -2312,19 +2366,19 @@
         const impInfo = _getStatutInfo(c.impStatut);
         return '<li>' +
                  '<strong>' + _escHtml(c.label) + '</strong> · ' +
-                 '<span style="color:' + opInfo.color + ';">' + opInfo.emoji + ' ' + _escHtml(opInfo.label) + '</span>' +
-                 ' (Op) → ' +
-                 '<span style="color:' + impInfo.color + ';">' + impInfo.emoji + ' ' + _escHtml(impInfo.label) + '</span>' +
-                 ' (Import)' +
+                 '<span style="color:' + opInfo.color + ';">' + opInfo.emoji + ' ' + _escHtml(_statutLabel(c.opStatut)) + '</span>' +
+                 ' ' + t("secours.conflit.op") + ' → ' +
+                 '<span style="color:' + impInfo.color + ';">' + impInfo.emoji + ' ' + _escHtml(_statutLabel(c.impStatut)) + '</span>' +
+                 ' ' + t("secours.conflit.import") +
                '</li>';
       }).join("");
-      const extra = conflits.length > 6 ? '<li style="color:#8892a4; font-style:italic;">+ ' + (conflits.length - 6) + ' autre(s)…</li>' : "";
+      const extra = conflits.length > 6 ? '<li style="color:#8892a4; font-style:italic;">' + t("secours.conflit.autres", { n: (conflits.length - 6) }) + '</li>' : "";
       conflitsBlock =
         '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.45); border-radius:6px; padding:10px 12px; margin:14px 0; color:#e8eaf0;">' +
-          '<strong style="color:#f4c542;">⚠️ ' + conflits.length + ' conflit(s) détecté(s)</strong> — ces étapes ont déjà des données côté Opérateur :' +
+          '<strong style="color:#f4c542;">' + t("secours.conflit.titre", { n: conflits.length }) + '</strong> ' + t("secours.conflit.intro") +
           '<ul style="margin:8px 0 4px 18px; padding:0; font-size:13px; line-height:1.6;">' + lignes + extra + '</ul>' +
           '<div style="font-size:12px; color:#a8b3c8; margin-top:6px;">' +
-            'Politique de fusion : <strong>obs concaténées</strong> (avec séparateur daté), <strong>statut le plus sévère retenu</strong>, photos ajoutées sans doublon. Aucune perte d\'info.' +
+            t("secours.conflit.politique") +
           '</div>' +
         '</div>';
     }
@@ -2339,32 +2393,32 @@
 
     const inner =
       '<div class="kta-readme-modal-header">' +
-        '<h2 style="margin:0; color:#6ee287;">📥 Importer rapport équipier</h2>' +
-        '<button class="kta-readme-modal-close" data-action="cancel-rapport-preview" aria-label="Annuler">✕</button>' +
+        '<h2 style="margin:0; color:#6ee287;">' + t("secours.rapportPreview.titre") + '</h2>' +
+        '<button class="kta-readme-modal-close" data-action="cancel-rapport-preview" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
-        '<p style="margin:0 0 14px 0;">Vérifie le contenu de ce rapport avant fusion dans le scénario actif.</p>' +
+        '<p style="margin:0 0 14px 0;">' + t("secours.rapportPreview.intro") + '</p>' +
 
         '<div class="kta-secours-import-preview-card">' +
           '<div class="kta-secours-import-preview-titre">🚨 ' + _escHtml(equipeNom) + '</div>' +
           '<div class="kta-secours-import-preview-grid">' +
-            '<div><span class="kta-secours-import-preview-label">📂 Fichier source</span>' +
-              '<code>' + _escHtml(sourceFilename || "(fichier)") + '</code></div>' +
-            '<div><span class="kta-secours-import-preview-label">📅 Date d\'export</span>' +
+            '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelFichier") + '</span>' +
+              '<code>' + _escHtml(sourceFilename || t("secours.import.fichierDefault")) + '</code></div>' +
+            '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelDateExport") + '</span>' +
               _escHtml(dateExport) + '</div>' +
-            '<div><span class="kta-secours-import-preview-label">🏷️ Version app source</span>' +
+            '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelVersionApp") + '</span>' +
               '<code>' + _escHtml(appVer) + '</code></div>' +
-            '<div><span class="kta-secours-import-preview-label">🗺️ Plan source</span>' +
-              _escHtml(planSrc.name || "(plan inconnu)") +
+            '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelPlanSource") + '</span>' +
+              _escHtml(planSrc.name || t("secours.import.planInconnu")) +
             '</div>' +
           '</div>' +
         '</div>' +
 
         '<div class="kta-secours-import-preview-section">' +
-          '<h3 style="margin:14px 0 6px 0; color:#f4c542;">📊 Contenu à fusionner</h3>' +
+          '<h3 style="margin:14px 0 6px 0; color:#f4c542;">' + t("secours.rapportPreview.contenuTitre") + '</h3>' +
           '<ul style="margin:0; padding-left:20px; line-height:1.7;">' +
-            '<li><strong>' + nbEtapes + '</strong> étape' + (nbEtapes > 1 ? 's' : '') + ' avec observations + statuts</li>' +
-            '<li><strong>' + nbPhotos + '</strong> photo' + (nbPhotos > 1 ? 's' : '') + ' associée' + (nbPhotos > 1 ? 's' : '') + ' aux étapes</li>' +
+            '<li>' + t("secours.rapportPreview.nbEtapes", { n: nbEtapes }) + '</li>' +
+            '<li>' + t("secours.rapportPreview.nbPhotos", { n: nbPhotos }) + '</li>' +
           '</ul>' +
         '</div>' +
 
@@ -2372,13 +2426,12 @@
         warningBlock +
 
         '<div style="background:rgba(140, 180, 255, 0.06); border-left:3px solid #8cb4ff; padding:10px 12px; margin:14px 0 0; border-radius:0 4px 4px 0; font-size:12px; color:#c8d0e0;">' +
-          '💡 Un <strong>snapshot de session</strong> sera automatiquement créé AVANT l\'import. Tu peux y revenir via ' +
-          '<strong>📊 Détails de session → Backups récents</strong> si besoin d\'annuler.' +
+          t("secours.rapportPreview.snapshotHint") +
         '</div>' +
 
         '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
-          '<button class="kta-btn kta-btn-ghost" data-action="cancel-rapport-preview">❌ Annuler</button>' +
-          '<button class="kta-btn kta-btn-primary" data-action="confirm-rapport-preview">✓ Importer et fusionner</button>' +
+          '<button class="kta-btn kta-btn-ghost" data-action="cancel-rapport-preview">' + t("secours.btn.annulerCroix") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" data-action="confirm-rapport-preview">' + t("secours.btn.importerFusionner") + '</button>' +
         '</div>' +
       '</div>';
 
@@ -2424,44 +2477,44 @@
 
     let inner = '<div class="kta-readme-modal-header">' +
                   '<h2 style="margin:0; color:' + (ok ? '#6ee287' : '#ff8c8c') + ';">' +
-                    (ok ? '✓ Rapport fusionné' : '❌ Échec de l\'import') +
+                    (ok ? t("secours.rapportRes.okTitre") : t("secours.import.resKoTitre")) +
                   '</h2>' +
-                  '<button class="kta-readme-modal-close" data-action="close-rapport-result" aria-label="Fermer">✕</button>' +
+                  '<button class="kta-readme-modal-close" data-action="close-rapport-result" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
                 '</div>' +
                 '<div class="kta-readme-modal-corps">';
 
     if (ok) {
       const stats = result.stats || {};
-      inner += '<p>Le rapport <code>' + _escHtml(sourceFilename || "(fichier)") + '</code> a été fusionné dans le scénario actif.</p>' +
+      inner += '<p>' + t("secours.rapportRes.okBody", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '</p>' +
                '<div style="background:rgba(110, 226, 138, 0.08); border:1px solid rgba(110, 226, 138, 0.35); border-radius:6px; padding:12px 14px; margin:12px 0; font-size:14px; line-height:1.7;">' +
-                 '✅ <strong>' + (stats.etapesFusionnees || 0) + '</strong> étape' + ((stats.etapesFusionnees || 0) > 1 ? 's' : '') + ' fusionnée' + ((stats.etapesFusionnees || 0) > 1 ? 's' : '') + '<br>' +
-                 '📷 <strong>' + (stats.photosImportees || 0) + '</strong> photo' + ((stats.photosImportees || 0) > 1 ? 's' : '') + ' importée' + ((stats.photosImportees || 0) > 1 ? 's' : '') +
-                 ((stats.photosDejaPresentes || 0) > 0 ? ' <span style="color:#8892a4;">(+ ' + stats.photosDejaPresentes + ' déjà présente' + (stats.photosDejaPresentes > 1 ? 's' : '') + ', déduplication)</span>' : '') + '<br>' +
-                 ((stats.etapesSkipped || 0) > 0 ? '⏭️ <strong>' + stats.etapesSkipped + '</strong> étape' + (stats.etapesSkipped > 1 ? 's' : '') + ' ignorée' + (stats.etapesSkipped > 1 ? 's' : '') + ' (idx inconnu côté Opérateur)<br>' : '') +
-                 ((stats.photosSkipped || 0) > 0 ? '⚠️ <strong>' + stats.photosSkipped + '</strong> photo' + (stats.photosSkipped > 1 ? 's' : '') + ' échec' + (stats.photosSkipped > 1 ? 's' : '') + '<br>' : '') +
+                 '✅ ' + t("secours.rapportRes.etapesFusionnees", { n: (stats.etapesFusionnees || 0) }) + '<br>' +
+                 '📷 ' + t("secours.rapportRes.photosImportees", { n: (stats.photosImportees || 0) }) +
+                 ((stats.photosDejaPresentes || 0) > 0 ? ' <span style="color:#8892a4;">' + t("secours.rapportRes.photosDejaPresentes", { n: stats.photosDejaPresentes }) + '</span>' : '') + '<br>' +
+                 ((stats.etapesSkipped || 0) > 0 ? '⏭️ ' + t("secours.rapportRes.etapesSkipped", { n: stats.etapesSkipped }) + '<br>' : '') +
+                 ((stats.photosSkipped || 0) > 0 ? '⚠️ ' + t("secours.rapportRes.photosSkipped", { n: stats.photosSkipped }) + '<br>' : '') +
                '</div>';
       // Warnings détaillés en dépliable
       if (Array.isArray(stats.warnings) && stats.warnings.length > 0) {
         const lis = stats.warnings.map(function(w) { return '<li>' + _escHtml(w) + '</li>'; }).join("");
         inner += '<details style="margin:10px 0; font-size:13px;">' +
-                   '<summary style="cursor:pointer; color:#f4c542;">🔍 ' + stats.warnings.length + ' avertissement(s) détaillé(s)</summary>' +
+                   '<summary style="cursor:pointer; color:#f4c542;">' + t("secours.rapportRes.warningsSummary", { n: stats.warnings.length }) + '</summary>' +
                    '<ul style="margin:8px 0 0 20px; padding:0; color:#c8d0e0; line-height:1.6;">' + lis + '</ul>' +
                  '</details>';
       }
       inner += '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end;">' +
-                 '<button class="kta-btn kta-btn-primary" data-action="close-rapport-result">✓ OK</button>' +
+                 '<button class="kta-btn kta-btn-primary" data-action="close-rapport-result">' + t("secours.btn.ok") + '</button>' +
                '</div>';
     } else {
-      const errMsg = (result && result.error) || "Erreur inconnue";
-      inner += '<p>L\'import du fichier <code>' + _escHtml(sourceFilename || "(fichier)") + '</code> a échoué.</p>' +
+      const errMsg = (result && result.error) || t("secours.import.erreurInconnue");
+      inner += '<p>' + t("secours.import.resKoBody", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '</p>' +
                '<div style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb3b3; font-size:13px; line-height:1.5; word-break:break-word;">' +
                  _escHtml(errMsg) +
                '</div>' +
                '<p style="color:#8892a4; font-size:13px;">' +
-                 '💡 Le fichier doit être un <code>.mkmsec.report.json</code> valide scope=<code>equipe</code>, exporté depuis l\'app de l\'équipier (vue Live Équipe → 📤 Rapport).' +
+                 t("secours.rapportRes.koHint") +
                '</p>' +
                '<div style="margin-top:18px; display:flex; justify-content:flex-end;">' +
-                 '<button class="kta-btn kta-btn-primary" data-action="close-rapport-result">J\'ai compris</button>' +
+                 '<button class="kta-btn kta-btn-primary" data-action="close-rapport-result">' + t("secours.btn.jaiCompris") + '</button>' +
                '</div>';
     }
     inner += '</div>';
@@ -2469,18 +2522,18 @@
     boite.innerHTML = inner;
     overlay.appendChild(boite);
 
+    // 🆕 v1.43.26 — Pattern A : helper mutualisé _bindSubModalEsc()
     function _close() {
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      document.removeEventListener("keydown", _onKey);
+      _unbindEsc();
     }
-    function _onKey(e) { if (e.key === "Escape") _close(); }
     overlay.addEventListener("click", function(e) {
       if (e.target === overlay) _close();
     });
     overlay.querySelectorAll('[data-action="close-rapport-result"]').forEach(function(btn) {
       btn.addEventListener("click", _close);
     });
-    document.addEventListener("keydown", _onKey);
+    const _unbindEsc = _bindSubModalEsc(_close);
     document.body.appendChild(overlay);
   }
 
@@ -2501,7 +2554,7 @@
         parsed = await _parsePayloadReport(file);
       } catch(e) {
         console.warn("[SecoursMode] _ouvrirImportRapportEquipePicker exception :", e);
-        parsed = { ok: false, error: "Exception : " + (e && e.message ? e.message : String(e)) };
+        parsed = { ok: false, error: t("secours.import.errException", { message: (e && e.message ? e.message : String(e)) }) };
       }
       if (!parsed.ok) {
         _afficherResultatImportRapport({ ok: false, error: parsed.error }, file.name);
@@ -2515,7 +2568,7 @@
           applied = await _appliquerImportRapportEquipe(parsed.payload);
         } catch(e) {
           console.warn("[SecoursMode] _appliquerImportRapportEquipe exception :", e);
-          applied = { ok: false, error: "Exception : " + (e && e.message ? e.message : String(e)) };
+          applied = { ok: false, error: t("secours.import.errException", { message: (e && e.message ? e.message : String(e)) }) };
         }
         _afficherResultatImportRapport(applied, file.name);
         // Refresh vue live op pour afficher les chips _importedFrom
@@ -2536,7 +2589,7 @@
     if (!src) return null;
     const copy = JSON.parse(JSON.stringify(src));
     copy.id = _genId("secours");
-    copy.nom = src.nom + " (copie)";
+    copy.nom = t("secours.scenario.copieSuffix", { nom: src.nom });
     copy.createdAt = _nowIso();
     copy.updatedAt = _nowIso();
     // Régénère aussi les IDs internes des groupes (sinon collisions)
@@ -2562,7 +2615,7 @@
     if (!s) return null;
     const safeName = (typeof nom === "string" && nom.trim())
                      ? nom.trim()
-                     : "Équipe " + PALETTE[s.groupes.length % PALETTE.length].nom;
+                     : t("secours.equipe.defaultNom", { nom: PALETTE[s.groupes.length % PALETTE.length].nom });
     const groupe = {
       id:                _genId("G"),
       nom:               safeName,
@@ -2820,7 +2873,7 @@
         fillOpacity: 0.10
       });
       circle.bindTooltip(
-        "⛑️ Zone d'incertitude (rayon " + Math.round(ctx.zoneIncertitude.radiusMeters) + " m)",
+        t("secours.overlay.zoneIncertitude", { rayon: Math.round(ctx.zoneIncertitude.radiusMeters) }),
         { permanent: false }
       );
       circle.addTo(_overlayLayer);
@@ -2835,8 +2888,8 @@
         fillOpacity: 0.95
       });
       const lbl = ctx.lastKnownPoint.label
-                  ? "⛑️ Dernière position connue — " + ctx.lastKnownPoint.label
-                  : "⛑️ Dernière position connue";
+                  ? t("secours.overlay.dernierePositionLabel", { label: ctx.lastKnownPoint.label })
+                  : t("secours.overlay.dernierePosition");
       cm.bindTooltip(lbl, { permanent: false });
       cm.addTo(_overlayLayer);
     }
@@ -2889,7 +2942,7 @@
         fillColor:   couleur,
         fillOpacity: 0.85
       });
-      cm.bindTooltip("📍 Entrée " + _escHtml(g.nom), { permanent: false });
+      cm.bindTooltip(t("secours.overlay.entree", { equipe: _escHtml(g.nom) }), { permanent: false });
       cm.addTo(_overlayLayer);
       // 🆕 hotfix3 — Badge ✓ si étape entrée effectuée
       _addCheckBadgeIfDone(_getEtapeForWaypoint(s, g.id, "entree"), latlng);
@@ -2907,7 +2960,7 @@
           fillColor:   couleur,
           fillOpacity: 0.85
         });
-        cm.bindTooltip("▾ Étape " + (i + 1) + " (" + _escHtml(g.nom) + ")" +
+        cm.bindTooltip(t("secours.overlay.etape", { n: (i + 1), equipe: _escHtml(g.nom) }) +
                        (w.label ? " — " + _escHtml(w.label) : ""),
                        { permanent: false });
         cm.addTo(_overlayLayer);
@@ -2928,7 +2981,8 @@
         fillOpacity: 0.85
       });
       cm.bindTooltip(
-        (isBoucle ? "↻ Boucle (entrée/sortie) " : "🚪 Sortie ") + _escHtml(g.nom),
+        (isBoucle ? t("secours.overlay.boucle", { equipe: _escHtml(g.nom) })
+                  : t("secours.overlay.sortie", { equipe: _escHtml(g.nom) })),
         { permanent: false }
       );
       cm.addTo(_overlayLayer);
@@ -2946,7 +3000,7 @@
         lineCap:   "round",
         lineJoin:  "round"
       });
-      ligne.bindTooltip("🗺️ Itinéraire " + _escHtml(g.nom), { permanent: false });
+      ligne.bindTooltip(t("secours.overlay.itineraire", { equipe: _escHtml(g.nom) }), { permanent: false });
       ligne.addTo(_overlayLayer);
     }
   }
@@ -3176,26 +3230,26 @@
     let out = "";
 
     // ─── Header ───
-    out += "🚨 RAPPORT MODE SECOURS — MyKTAMap " + (r.appVersion || "") + "\n";
+    out += t("secours.txt.header", { version: (r.appVersion || "") }) + "\n";
     out += sep + "\n";
-    out += "Scénario : " + (r.scenario.nom || "(sans nom)") + "\n";
-    out += "Plan     : " + (r.plan ? r.plan.name : "(?)") + "\n";
-    out += "Rôle     : " + _formatRoleLabel(r.scope) + "\n";
-    out += "Exporté  : " + new Date(r.exportedAt).toLocaleString("fr-FR") + "\n";
-    out += "Lancé    : " + (r.execution.startedAt
+    out += t("secours.txt.scenario", { nom: (r.scenario.nom || t("secours.import.sansNom")) }) + "\n";
+    out += t("secours.txt.plan", { plan: (r.plan ? r.plan.name : "(?)") }) + "\n";
+    out += t("secours.txt.role", { role: _formatRoleLabel(r.scope) }) + "\n";
+    out += t("secours.txt.exporte", { date: new Date(r.exportedAt).toLocaleString("fr-FR") }) + "\n";
+    out += t("secours.txt.lance", { date: (r.execution.startedAt
                             ? new Date(r.execution.startedAt).toLocaleString("fr-FR")
-                            : "(?)") + "\n";
+                            : "(?)") }) + "\n";
     if (r.execution.endedAt) {
-      out += "Terminé  : " + new Date(r.execution.endedAt).toLocaleString("fr-FR") + "\n";
+      out += t("secours.txt.termine", { date: new Date(r.execution.endedAt).toLocaleString("fr-FR") }) + "\n";
     } else if (r.execution.active) {
-      out += "Statut   : ⏱️ EN COURS (depuis " + _formatDureeMs(r.execution.dureeMs) + ")\n";
+      out += t("secours.txt.statutEnCours", { duree: _formatDureeMs(r.execution.dureeMs) }) + "\n";
     }
 
     if (r.scenario.context && r.scenario.context.incidentAt) {
-      out += "Incident : " + new Date(r.scenario.context.incidentAt).toLocaleString("fr-FR") + "\n";
+      out += t("secours.txt.incident", { date: new Date(r.scenario.context.incidentAt).toLocaleString("fr-FR") }) + "\n";
     }
     if (r.scenario.context && r.scenario.context.notes) {
-      out += "Notes    : " + r.scenario.context.notes + "\n";
+      out += t("secours.txt.notes", { notes: r.scenario.context.notes }) + "\n";
     }
     out += sep + "\n\n";
 
@@ -3204,37 +3258,36 @@
       r.equipesData.forEach(function(ed, idx) {
         const g = ed.equipe;
         const couleur = PALETTE[g.couleurIdx % PALETTE.length] || PALETTE[0];
-        out += "🚨 ÉQUIPE " + (idx + 1) + "/" + r.equipesData.length +
-                " — " + g.nom + " (" + couleur.nom + ")\n";
+        out += t("secours.txt.equipeHeader", { n: (idx + 1), total: r.equipesData.length, nom: g.nom, couleur: couleur.nom }) + "\n";
         out += sep + "\n";
         if (g.membres && g.membres.length > 0) {
-          out += "Membres : " + g.membres.join(", ") + "\n";
+          out += t("secours.txt.membres", { membres: g.membres.join(", ") }) + "\n";
         }
         if (typeof g.level === "number") {
-          out += "Niveau M-LVL : " + _formatLevelShort(g.level) + "\n";
+          out += t("secours.txt.niveau", { niveau: _formatLevelShort(g.level) }) + "\n";
         }
         // Étapes
         if (Array.isArray(ed.etapes) && ed.etapes.length > 0) {
-          out += "\nÉtapes :\n";
+          out += "\n" + t("secours.txt.etapesTitre") + "\n";
           ed.etapes.forEach(function(et, i) {
             const info = _getStatutInfo(et.statut);
-            const typeLabel = (et.type === "entree") ? "🚪 ENTRÉE"
-                            : (et.type === "sortie") ? "🚪 SORTIE"
-                            : "📍 Étape " + i;
+            const typeLabel = (et.type === "entree") ? t("secours.txt.typeEntree")
+                            : (et.type === "sortie") ? t("secours.txt.typeSortie")
+                            : t("secours.txt.typeEtape", { idx: i });
             const ts = et.completedAt ? new Date(et.completedAt).toLocaleString("fr-FR")
-                     : et.startedAt   ? new Date(et.startedAt).toLocaleString("fr-FR") + " (en cours)"
+                     : et.startedAt   ? t("secours.txt.tsEnCours", { date: new Date(et.startedAt).toLocaleString("fr-FR") })
                      : "—";
             out += "  " + (i + 1) + ". " + typeLabel + " — " + (et.label || "(?)") + "\n";
-            out += "     " + info.emoji + " " + info.label + " · ⏱️ " + ts + "\n";
+            out += "     " + info.emoji + " " + _statutLabel(et.statut) + " · ⏱️ " + ts + "\n";
             if (et.observations && et.observations.trim()) {
-              out += "     📝 « " + et.observations.trim() + " »\n";
+              out += "     " + t("secours.txt.obs", { obs: et.observations.trim() }) + "\n";
             }
             if (Array.isArray(et.photoIds) && et.photoIds.length > 0) {
-              out += "     📸 " + et.photoIds.length + " photo" + (et.photoIds.length > 1 ? "s" : "") + " attachée" + (et.photoIds.length > 1 ? "s" : "") + "\n";
+              out += "     " + t("secours.txt.photosAttachees", { n: et.photoIds.length }) + "\n";
             }
           });
         } else {
-          out += "(aucune étape définie)\n";
+          out += t("secours.txt.aucuneEtape") + "\n";
         }
         out += "\n";
       });
@@ -3242,7 +3295,7 @@
 
     // ─── Notes libres (mode secouriste) ───
     if (Array.isArray(r.notesLibres) && r.notesLibres.length > 0) {
-      out += "🚑 NOTES LIBRES (" + r.notesLibres.length + ")\n";
+      out += t("secours.txt.notesLibresTitre", { n: r.notesLibres.length }) + "\n";
       out += sep + "\n";
       const sorted = r.notesLibres.slice().sort(function(a, b) {
         return Date.parse(a.ts) - Date.parse(b.ts);   // chronologique ASC dans le rapport
@@ -3250,30 +3303,30 @@
       sorted.forEach(function(note, i) {
         const info = _getStatutInfo(note.statut);
         const ts = new Date(note.ts).toLocaleString("fr-FR");
-        out += "  " + (i + 1) + ". " + info.emoji + " " + info.label + " · ⏱️ " + ts + "\n";
+        out += "  " + (i + 1) + ". " + info.emoji + " " + _statutLabel(note.statut) + " · ⏱️ " + ts + "\n";
         if (note.texte) {
-          out += "     📝 « " + note.texte + " »\n";
+          out += "     " + t("secours.txt.obs", { obs: note.texte }) + "\n";
         }
         if (Array.isArray(note.photoIds) && note.photoIds.length > 0) {
-          out += "     📸 " + note.photoIds.length + " photo" + (note.photoIds.length > 1 ? "s" : "") + "\n";
+          out += "     " + t("secours.txt.photos", { n: note.photoIds.length }) + "\n";
         }
       });
       out += "\n";
     } else if (r.scope === "secouriste") {
-      out += "(aucune note libre prise)\n\n";
+      out += t("secours.txt.aucuneNote") + "\n\n";
     }
 
     out += sep + "\n";
-    out += "Généré par MyKTAMap " + (r.appVersion || "") + " — myktamap.fr\n";
+    out += t("secours.txt.genereePar", { version: (r.appVersion || "") }) + "\n";
     out += "© 2026 Flavien VIDAL · CC BY-NC-SA 4.0\n";
     return out;
   }
 
   // Helper interne — label lisible du rôle.
   function _formatRoleLabel(scope) {
-    if (scope === "operateur")  return "👤 Opérateur surface (vue globale)";
-    if (scope === "equipe")     return "🚨 Équipier (parcours individuel)";
-    if (scope === "secouriste") return "🚑 Secouriste libre (notes en vrac)";
+    if (scope === "operateur")  return t("secours.roleLabel.operateur");
+    if (scope === "equipe")     return t("secours.roleLabel.equipe");
+    if (scope === "secouriste") return t("secours.roleLabel.secouriste");
     return "(?)";
   }
 
@@ -3351,7 +3404,7 @@
   // d'entrée du plan" spécial, position GPS surface des équipes.
   function _ouvrirVueOsmDepuisSecours() {
     if (!window.OsmView || typeof window.OsmView.open !== "function") {
-      _toast("🌍 Vue OSM non disponible (module non chargé).", "warn");
+      _toast(t("secours.osm.nonDisponible"), "warn");
       return;
     }
     // Pré-diagnostic explicite pour message clair à l'user.
@@ -3369,29 +3422,29 @@
       if (!hasInline && (!window.OsmView.isAvailable || !window.OsmView.isAvailable())) {
         // On laisse OsmView.isAvailable trancher pour les autres cas (opt-in,
         // strict, incognito, online). Ce branch couvre juste "pas georef du tout".
-        reasons.push("plan non géoréférencé (configure pointA/pointB GPS dans le générateur avancé)");
+        reasons.push(t("secours.osm.raisonGeoref"));
       }
       if (window.OsmView.isOptedIn && typeof window.OsmView.isOptedIn === "function"
           && !window.OsmView.isOptedIn()) {
-        reasons.push("opt-in Vue OSM désactivé (→ ⚙️ Configuration → 🌍 Autoriser la Vue OSM)");
+        reasons.push(t("secours.osm.raisonOptin"));
       }
       if (window.NetworkAudit
           && typeof window.NetworkAudit.isStrictOfflineEnabled === "function"
           && window.NetworkAudit.isStrictOfflineEnabled()) {
-        reasons.push("mode hors-ligne strict actif");
+        reasons.push(t("secours.osm.raisonStrict"));
       }
       if (window.IncognitoMode
           && window.IncognitoMode.isActive
           && window.IncognitoMode.isActive()) {
-        reasons.push("mode incognito actif");
+        reasons.push(t("secours.osm.raisonIncognito"));
       }
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
-        reasons.push("navigateur hors-ligne (tuiles OSM indisponibles)");
+        reasons.push(t("secours.osm.raisonOffline"));
       }
     } catch(e) { /* fallback : on tente quand même l'ouverture ci-dessous */ }
 
     if (reasons.length > 0) {
-      _toast("🌍 Vue OSM indisponible — " + reasons.join(" · "), "warn");
+      _toast(t("secours.osm.indisponible", { raisons: reasons.join(" · ") }), "warn");
       return;
     }
     // Tout OK → ouverture standard. OsmView gère sa propre stack modale.
@@ -3399,7 +3452,7 @@
       window.OsmView.open();
     } catch(e) {
       console.warn("[secoursMode] Ouverture Vue OSM échouée :", e);
-      _toast("🌍 Erreur ouverture Vue OSM — vérifie la console.", "error");
+      _toast(t("secours.osm.erreurOuverture"), "error");
     }
   }
 
@@ -3410,7 +3463,7 @@
     const s = get(scenarioId);
     if (!s) return;
     if (!s.execution) {
-      _toast("⚠️ Aucun plan lancé — impossible de générer un rapport.", "warn");
+      _toast(t("secours.toast.aucunPlanLance"), "warn");
       return;
     }
     // Cleanup éventuelle modale précédente
@@ -3430,32 +3483,32 @@
         etapes.forEach(function(et) { if (et.completedAt) nbDone++; });
       });
       const pct = nbTotal > 0 ? Math.round((nbDone / nbTotal) * 100) : 0;
-      apercuTitre = "👤 Rapport Opérateur surface";
+      apercuTitre = t("secours.rapport.titreOperateur");
       apercuLines = [
-        "🚨 " + nbEquipes + " équipe" + (nbEquipes > 1 ? "s" : ""),
-        "✓ " + nbDone + "/" + nbTotal + " étapes complétées (" + pct + "%)",
-        "⏱️ Durée : " + dureeStr
+        t("secours.rapport.apercuEquipes", { n: nbEquipes }),
+        t("secours.rapport.apercuEtapesPct", { done: nbDone, total: nbTotal, pct: pct }),
+        t("secours.rapport.apercuDuree", { duree: dureeStr })
       ];
     } else if (scope === "equipe") {
       const g = (s.groupes || []).find(function(gr) { return gr.id === exec.currentEquipeId; });
-      const eqNom = g ? g.nom : "(équipe inconnue)";
+      const eqNom = g ? g.nom : t("secours.rapport.equipeInconnue");
       const etapes = g ? _getEtapesEquipe(s, g.id) : [];
       const nbDone = etapes.filter(function(et) { return !!et.completedAt; }).length;
-      apercuTitre = "🚨 Rapport Équipier — " + _escHtml(eqNom);
+      apercuTitre = t("secours.rapport.titreEquipier", { equipe: _escHtml(eqNom) });
       apercuLines = [
-        "📍 " + nbDone + "/" + etapes.length + " étapes complétées",
-        "⏱️ Durée : " + dureeStr
+        t("secours.rapport.apercuEtapes", { done: nbDone, total: etapes.length }),
+        t("secours.rapport.apercuDuree", { duree: dureeStr })
       ];
     } else if (scope === "secouriste") {
       const notes = (exec.etapes && exec.etapes._notes_libres) || [];
-      apercuTitre = "🚑 Rapport Secouriste libre";
+      apercuTitre = t("secours.rapport.titreSecouriste");
       apercuLines = [
-        "📝 " + notes.length + " note" + (notes.length > 1 ? "s" : "") + " prise" + (notes.length > 1 ? "s" : ""),
-        "⏱️ Durée : " + dureeStr
+        t("secours.rapport.apercuNotes", { n: notes.length }),
+        t("secours.rapport.apercuDuree", { duree: dureeStr })
       ];
     } else {
-      apercuTitre = "📤 Rapport";
-      apercuLines = ["⏱️ Durée : " + dureeStr];
+      apercuTitre = t("secours.rapport.titreDefault");
+      apercuLines = [t("secours.rapport.apercuDuree", { duree: dureeStr })];
     }
 
     // Détection présence photos pour info checkbox
@@ -3465,8 +3518,8 @@
         const hint = document.getElementById("kta-rapport-photos-hint");
         if (hint) {
           hint.textContent = n > 0
-            ? "Inclut " + n + " photo" + (n > 1 ? "s" : "") + " (impact taille fichier)"
-            : "Aucune photo attachée à ce plan de secours";
+            ? t("secours.rapport.photosInclut", { n: n })
+            : t("secours.rapport.photosAucune");
         }
       }).catch(function() {});
     }
@@ -3479,12 +3532,12 @@
       '<div class="kta-readme-modal-boite kta-secours-rapport-boite" style="max-width:540px; height:auto; max-height:90vh; border-left:6px solid #8cb4ff;">' +
         '<div class="kta-readme-modal-header">' +
           '<h2 style="margin:0; color:#8cb4ff;">📤 ' + _escHtml(apercuTitre) + '</h2>' +
-          '<button class="kta-readme-modal-close" data-action="cancel-rapport" aria-label="Fermer">✕</button>' +
+          '<button class="kta-readme-modal-close" data-action="cancel-rapport" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
 
           '<div class="kta-secours-rapport-apercu">' +
-            '<div class="kta-secours-rapport-apercu-titre">Aperçu du contenu</div>' +
+            '<div class="kta-secours-rapport-apercu-titre">' + t("secours.rapport.apercuTitre") + '</div>' +
             '<ul class="kta-secours-rapport-apercu-lines">' +
               apercuLines.map(function(l) { return '<li>' + _escHtml(l) + '</li>'; }).join('') +
             '</ul>' +
@@ -3492,8 +3545,8 @@
 
           '<label class="kta-secours-rapport-checkbox">' +
             '<input type="checkbox" id="kta-rapport-include-photos" checked>' +
-            ' <span><strong>📸 Inclure les photos</strong></span>' +
-            '<div id="kta-rapport-photos-hint" class="kta-secours-rapport-photos-hint">Comptage des photos…</div>' +
+            ' <span><strong>' + t("secours.rapport.inclurePhotos") + '</strong></span>' +
+            '<div id="kta-rapport-photos-hint" class="kta-secours-rapport-photos-hint">' + t("secours.rapport.comptagePhotos") + '</div>' +
           '</label>' +
 
           // 🐛 hotfix5 (KARMA "dans Rapport Equipier, le .mkmsec.report.json
@@ -3507,22 +3560,22 @@
             '<button class="kta-btn kta-btn-primary kta-secours-rapport-fmt-btn" data-action="rapport-export-pdf">' +
               '<span class="kta-secours-rapport-fmt-icon">📄</span>' +
               '<span class="kta-secours-rapport-fmt-content">' +
-                '<span class="kta-secours-rapport-fmt-label">PDF imprimable</span>' +
-                '<span class="kta-secours-rapport-fmt-sub">A4 portrait, photos en annexe</span>' +
+                '<span class="kta-secours-rapport-fmt-label">' + t("secours.rapport.fmtPdfLabel") + '</span>' +
+                '<span class="kta-secours-rapport-fmt-sub">' + t("secours.rapport.fmtPdfSub") + '</span>' +
               '</span>' +
             '</button>' +
             '<button class="kta-btn kta-btn-secondary kta-secours-rapport-fmt-btn" data-action="rapport-export-json">' +
               '<span class="kta-secours-rapport-fmt-icon">📦</span>' +
               '<span class="kta-secours-rapport-fmt-content">' +
                 '<span class="kta-secours-rapport-fmt-label">.mkmsec.report.json</span>' +
-                '<span class="kta-secours-rapport-fmt-sub">Data structuré (autonome avec photos en base64)</span>' +
+                '<span class="kta-secours-rapport-fmt-sub">' + t("secours.rapport.fmtJsonSub") + '</span>' +
               '</span>' +
             '</button>' +
             '<button class="kta-btn kta-btn-secondary kta-secours-rapport-fmt-btn" data-action="rapport-copy-text">' +
               '<span class="kta-secours-rapport-fmt-icon">📋</span>' +
               '<span class="kta-secours-rapport-fmt-content">' +
-                '<span class="kta-secours-rapport-fmt-label">Copier texte</span>' +
-                '<span class="kta-secours-rapport-fmt-sub">Pour Discord / SMS / mail rapide</span>' +
+                '<span class="kta-secours-rapport-fmt-label">' + t("secours.rapport.fmtTextLabel") + '</span>' +
+                '<span class="kta-secours-rapport-fmt-sub">' + t("secours.rapport.fmtTextSub") + '</span>' +
               '</span>' +
             '</button>' +
             /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — bouton rapport-share-qr retiré.
@@ -3531,13 +3584,11 @@
           '</div>' +
 
           '<p style="margin-top:14px; color:#8892a4; font-size:12px; font-style:italic;">' +
-            '💡 Le rapport est généré à l\'instant — il reflète l\'état actuel ' +
-            'du scénario (observations + statuts + photos). Tu peux le re-générer ' +
-            'à tout moment pendant ou après l\'exécution.' +
+            t("secours.rapport.footerHint") +
           '</p>' +
 
           '<div style="margin-top:14px; display:flex; justify-content:flex-end;">' +
-            '<button class="kta-btn kta-btn-ghost" data-action="cancel-rapport">Fermer</button>' +
+            '<button class="kta-btn kta-btn-ghost" data-action="cancel-rapport">' + t("secours.btn.fermer") + '</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -3554,35 +3605,47 @@
 
     // Handler factorisé : génère data + appelle la fonction de format demandée
     function _handleExport(formatType) {
+      // 🆕 v1.43.27 (Pattern D) — Disable les 3 boutons d'export pendant la
+      // génération (genererRapportData = async lourd + chaque format est lui
+      // aussi async pour pdf/text). Sans ça, l'user qui double-clique ou clique
+      // un AUTRE format pendant la génération relance N exports concurrents.
+      const exportBtns = overlay.querySelectorAll('[data-action^="rapport-export"], [data-action="rapport-copy-text"]');
+      exportBtns.forEach(function(b) { b.disabled = true; });
+      function _restoreBtns() {
+        exportBtns.forEach(function(b) { b.disabled = false; });
+      }
       const cb = document.getElementById("kta-rapport-include-photos");
       const includePhotos = !!(cb && cb.checked);
-      _toast("⏳ Génération du rapport en cours…", "info");
+      _toast(t("secours.toast.generationRapport"), "info");
       genererRapportData(scenarioId, scope, { includePhotos: includePhotos }).then(function(data) {
         if (!data) {
-          _toast("⚠️ Aucune donnée à exporter.", "error");
+          _toast(t("secours.toast.aucuneDonnee"), "error");
+          _restoreBtns();
           return;
         }
         if (formatType === "pdf") {
           // 🆕 v1.26.0 Phase 4 C5 — genererRapportPDF est désormais async
           // (await sur la mini-carte par équipe). Gère la Promise.
           genererRapportPDF(data).then(function(fn) {
-            if (fn) _toast("✓ Rapport PDF généré : " + fn, "info");
+            if (fn) _toast(t("secours.toast.pdfGenere", { filename: fn }), "info");
           }).catch(function(err) {
             console.warn("[SecoursMode] genererRapportPDF échec :", err);
-            _toast("⚠️ Erreur PDF : " + (err && err.message), "error");
+            _toast(t("secours.toast.erreurPdf", { message: (err && err.message) }), "error");
           });
         } else if (formatType === "json") {
           const fn = exporterRapportJSON(data);
-          if (fn) _toast("✓ Rapport JSON exporté : " + fn, "info");
+          if (fn) _toast(t("secours.toast.jsonExporte", { filename: fn }), "info");
         } else if (formatType === "text") {
           copierRapportTexte(data).then(function(ok) {
-            _toast(ok ? "✓ Rapport copié au presse-papier !" : "⚠️ Copie échouée.", ok ? "info" : "error");
+            _toast(ok ? t("secours.toast.rapportCopie") : t("secours.toast.copieEchouee"), ok ? "info" : "error");
           });
         }
         _close();
+        // Pas besoin de _restoreBtns() : _close() retire l'overlay (et les btns).
       }).catch(function(e) {
         console.warn("[SecoursMode] genererRapportData échec :", e);
-        _toast("⚠️ Erreur génération rapport : " + (e && e.message ? e.message : ""), "error");
+        _toast(t("secours.toast.erreurGenerationRapport", { message: (e && e.message ? e.message : "") }), "error");
+        _restoreBtns();
       });
     }
 
@@ -3622,7 +3685,7 @@
   async function genererRapportPDF(reportData) {
     if (!reportData) return null;
     if (!window.jspdf || !window.jspdf.jsPDF) {
-      _toast("⚠️ Export PDF indisponible. Recharge l'application.", "error");
+      _toast(t("secours.toast.pdfIndisponible"), "error");
       return null;
     }
     try {
@@ -3637,25 +3700,25 @@
       let y = margin + 30;
 
       pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-      pdf.text("CONTEXTE", margin, y); y += 6;
+      pdf.text(t("secours.pdf.contexte"), margin, y); y += 6;
       pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-      pdf.text("Scenario : " + (r.scenario.nom || "(sans nom)"), margin, y); y += 4;
-      pdf.text("Plan     : " + (r.plan ? r.plan.name : "(?)"), margin, y); y += 4;
-      pdf.text("Role     : " + _formatRoleLabelAscii(r.scope), margin, y); y += 4;
+      pdf.text(t("secours.pdf.scenario", { nom: (r.scenario.nom || t("secours.pdf.sansNom")) }), margin, y); y += 4;
+      pdf.text(t("secours.pdf.plan", { plan: (r.plan ? r.plan.name : "(?)") }), margin, y); y += 4;
+      pdf.text(t("secours.pdf.role", { role: _formatRoleLabelAscii(r.scope) }), margin, y); y += 4;
       if (r.execution.startedAt) {
-        pdf.text("Lance    : " + new Date(r.execution.startedAt).toLocaleString("fr-FR"), margin, y); y += 4;
+        pdf.text(t("secours.pdf.lance", { date: new Date(r.execution.startedAt).toLocaleString("fr-FR") }), margin, y); y += 4;
       }
       if (r.execution.endedAt) {
-        pdf.text("Termine  : " + new Date(r.execution.endedAt).toLocaleString("fr-FR"), margin, y); y += 4;
+        pdf.text(t("secours.pdf.termine", { date: new Date(r.execution.endedAt).toLocaleString("fr-FR") }), margin, y); y += 4;
       } else if (r.execution.active) {
-        pdf.text("Statut   : EN COURS (depuis " + _formatDureeMs(r.execution.dureeMs) + ")", margin, y); y += 4;
+        pdf.text(t("secours.pdf.statutEnCours", { duree: _formatDureeMs(r.execution.dureeMs) }), margin, y); y += 4;
       }
       if (r.scenario.context && r.scenario.context.incidentAt) {
-        pdf.text("Incident : " + new Date(r.scenario.context.incidentAt).toLocaleString("fr-FR"), margin, y); y += 4;
+        pdf.text(t("secours.pdf.incident", { date: new Date(r.scenario.context.incidentAt).toLocaleString("fr-FR") }), margin, y); y += 4;
       }
       if (r.scenario.context && r.scenario.context.notes) {
         y += 2;
-        pdf.setFont(undefined, "bold"); pdf.text("Notes :", margin, y); y += 5;
+        pdf.setFont(undefined, "bold"); pdf.text(t("secours.pdf.notesTitre"), margin, y); y += 5;
         pdf.setFont(undefined, "normal");
         y = _pdfWrapText(pdf, r.scenario.context.notes, margin, y, pageW - 2 * margin, 4);
       }
@@ -3711,7 +3774,7 @@
       return filename;
     } catch(e) {
       console.warn("[SecoursMode] genererRapportPDF échec :", e);
-      _toast("⚠️ Erreur génération PDF : " + e.message, "error");
+      _toast(t("secours.toast.erreurGenerationPdf", { message: e.message }), "error");
       return null;
     }
   }
@@ -3800,10 +3863,10 @@
     //   - "briefing" (default) : appel depuis bouton 🚒 Briefing pompiers
     //   - "rapport"            : appel depuis bouton 📤 Rapport global
     const _ctx = (overlayContext === "rapport")
-      ? { icon: "📤", title: "Génération du rapport en cours…",
-          sub: "Capture de la Vue OSM pour la page de briefing surface. Patiente quelques secondes…" }
-      : { icon: "🚒", title: "Génération du Briefing pompiers…",
-          sub: "Capture de la Vue OSM en cours (plan + données projetées). Patiente quelques secondes…" };
+      ? { icon: "📤", title: t("secours.capture.rapportTitle"),
+          sub: t("secours.capture.rapportSub") }
+      : { icon: "🚒", title: t("secours.capture.briefingTitle"),
+          sub: t("secours.capture.briefingSub") };
 
     // 🆕 v1.42.10 — Approche "open/close masqué" : ouvre Vue OSM sous un
     // overlay opaque, capture le DOM Leaflet complet (plan rotated + data
@@ -4015,7 +4078,7 @@
                       'padding:3px 8px;border-radius:4px;font-size:11px;' +
                       'font-weight:600;white-space:nowrap;' +
                       'box-shadow:0 1px 4px rgba(0,0,0,0.5);">' +
-                      _escHtml(g.nom || "équipe") + '</div>',
+                      _escHtml(g.nom || t("secours.surf.equipeDefaut")) + '</div>',
                 iconSize: [10, 10],
                 iconAnchor: [-12, 8]
               }),
@@ -4086,9 +4149,9 @@
 
     // En-tête de la page
     pdf.setFontSize(15); pdf.setFont(undefined, "bold");
-    pdf.text("BRIEFING SURFACE", margin, y); y += 7;
+    pdf.text(t("secours.surf.titre"), margin, y); y += 7;
     pdf.setFontSize(9); pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
-    pdf.text("Page a transmettre aux secours externes (pompiers, GRIMP, etc.)", margin, y);
+    pdf.text(t("secours.surf.sousTitre"), margin, y);
     pdf.setTextColor(0); pdf.setFont(undefined, "normal"); y += 8;
 
     // 🆕 v1.42.5 — Tentative capture rendu OSM (offscreen Leaflet + html2canvas)
@@ -4121,7 +4184,7 @@
         pdf.addImage(imgData, "JPEG", offsetX, y, finalW, finalH);
         y += finalH + 3;
         pdf.setFontSize(7); pdf.setTextColor(140);
-        pdf.text("Vue OpenStreetMap : zone du plan (cadre jaune) + position GPS surface des equipes (cercles colores).",
+        pdf.text(t("secours.surf.osmCaption"),
                  margin, y);
         pdf.setTextColor(0); y += 6;
       }
@@ -4131,15 +4194,15 @@
 
     // Bloc INFOS
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-    pdf.text("INFOS", margin, y); y += 6;
+    pdf.text(t("secours.surf.infos"), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-    pdf.text("Scenario : " + ((scenario && scenario.nom) || "(sans nom)"), margin, y); y += 4;
-    pdf.text("Plan     : " + ((plan && plan.name) || "(non renseigne)"), margin, y); y += 4;
-    pdf.text("Genere le " + new Date().toLocaleString("fr-FR"), margin, y); y += 6;
+    pdf.text(t("secours.surf.scenario", { nom: ((scenario && scenario.nom) || t("secours.pdf.sansNom")) }), margin, y); y += 4;
+    pdf.text(t("secours.surf.plan", { plan: ((plan && plan.name) || t("secours.surf.planNonRenseigne")) }), margin, y); y += 4;
+    pdf.text(t("secours.surf.genereLe", { date: new Date().toLocaleString("fr-FR") }), margin, y); y += 6;
 
     // Bloc LOCALISATION (lien OSM + Google Maps)
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-    pdf.text("LOCALISATION SUR LA CARTE", margin, y); y += 6;
+    pdf.text(t("secours.surf.localisation"), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
 
     let bbox = null;
@@ -4151,64 +4214,63 @@
       const south = bbox.getSouth(), north = bbox.getNorth();
       const west = bbox.getWest(), east = bbox.getEast();
       const latStr = c.lat.toFixed(6), lngStr = c.lng.toFixed(6);
-      pdf.text("Centre du plan : " + latStr + ", " + lngStr, margin, y); y += 4;
-      pdf.text("Bbox : sud-ouest " + south.toFixed(5) + ", " + west.toFixed(5)
-               + " / nord-est " + north.toFixed(5) + ", " + east.toFixed(5),
+      pdf.text(t("secours.surf.centrePlan", { lat: latStr, lng: lngStr }), margin, y); y += 4;
+      pdf.text(t("secours.surf.bbox", { sw: south.toFixed(5) + ", " + west.toFixed(5), ne: north.toFixed(5) + ", " + east.toFixed(5) }),
                margin, y); y += 5;
 
       // Lien OSM (osm.org centre + zoom 16)
       const osmUrl = "https://www.openstreetmap.org/?mlat=" + latStr
                    + "&mlon=" + lngStr + "#map=16/" + latStr + "/" + lngStr;
       pdf.setTextColor(60, 110, 220);
-      pdf.textWithLink("> Ouvrir sur OpenStreetMap (centre du plan)", margin + 4, y,
+      pdf.textWithLink(t("secours.surf.lienOsm"), margin + 4, y,
                        { url: osmUrl }); y += 4;
       // Lien Google Maps backup
       const gmUrl = "https://www.google.com/maps/@" + latStr + "," + lngStr + ",17z";
-      pdf.textWithLink("> Ouvrir sur Google Maps (zoom 17)", margin + 4, y,
+      pdf.textWithLink(t("secours.surf.lienGmaps"), margin + 4, y,
                        { url: gmUrl }); y += 4;
       pdf.setTextColor(0); y += 2;
     } else {
       pdf.setTextColor(180, 80, 0);
-      pdf.text("(!) Vue OSM non initialisee (georef indisponible).", margin, y); y += 4;
+      pdf.text(t("secours.surf.osmNonInit"), margin, y); y += 4;
       pdf.setFontSize(8); pdf.setTextColor(120);
-      pdf.text("Pour ajouter une carte OSM cliquable : ouvre l'app, active la Vue OSM,", margin, y); y += 3;
-      pdf.text("puis regenere ce briefing. Sinon, transmets les coordonnees ci-dessous.", margin, y); y += 4;
+      pdf.text(t("secours.surf.osmNonInitHint1"), margin, y); y += 3;
+      pdf.text(t("secours.surf.osmNonInitHint2"), margin, y); y += 4;
       pdf.setFontSize(9); pdf.setTextColor(0);
     }
     y += 4;
 
     // Bloc EQUIPES + GPS SURFACE
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-    pdf.text("EQUIPES SUR PLACE (GPS surface)", margin, y); y += 6;
+    pdf.text(t("secours.surf.equipesSurPlace"), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
     const groupes = (scenario && Array.isArray(scenario.groupes)) ? scenario.groupes : [];
     if (groupes.length === 0) {
       pdf.setTextColor(120); pdf.setFont(undefined, "italic");
-      pdf.text("(aucune equipe definie dans ce scenario)", margin, y);
+      pdf.text(t("secours.surf.aucuneEquipe"), margin, y);
       pdf.setTextColor(0); pdf.setFont(undefined, "normal"); y += 6;
     } else {
       groupes.forEach(function(g) {
         if (y > pageH - 25) { pdf.addPage(); y = margin + 8; }
         pdf.setFont(undefined, "bold");
-        pdf.text("- " + (g.nom || "(equipe)"), margin, y); y += 4;
+        pdf.text("- " + (g.nom || t("secours.surf.equipeDefaut")), margin, y); y += 4;
         pdf.setFont(undefined, "normal");
         const membresStr = (Array.isArray(g.membres) && g.membres.length > 0)
-                           ? g.membres.join(", ") : "(membres non renseignes)";
-        pdf.text("  Membres : " + membresStr, margin + 2, y); y += 4;
+                           ? g.membres.join(", ") : t("secours.surf.membresNonRenseignes");
+        pdf.text(t("secours.surf.membresLigne", { membres: membresStr }), margin + 2, y); y += 4;
         if (g.surfaceGps && typeof g.surfaceGps.lat === "number"
             && typeof g.surfaceGps.lng === "number") {
           const gLat = g.surfaceGps.lat.toFixed(6);
           const gLng = g.surfaceGps.lng.toFixed(6);
-          pdf.text("  GPS surface : " + gLat + ", " + gLng, margin + 2, y); y += 4;
+          pdf.text(t("secours.surf.gpsSurface", { lat: gLat, lng: gLng }), margin + 2, y); y += 4;
           const eqOsm = "https://www.openstreetmap.org/?mlat=" + gLat
                       + "&mlon=" + gLng + "#map=17/" + gLat + "/" + gLng;
           pdf.setTextColor(60, 110, 220);
-          pdf.textWithLink("  > Voir position equipe sur OSM", margin + 4, y,
+          pdf.textWithLink(t("secours.surf.voirPositionEquipe"), margin + 4, y,
                            { url: eqOsm }); y += 4;
           pdf.setTextColor(0);
         } else {
           pdf.setTextColor(150); pdf.setFont(undefined, "italic");
-          pdf.text("  GPS surface : non renseigne", margin + 2, y); y += 4;
+          pdf.text(t("secours.surf.gpsNonRenseigne"), margin + 2, y); y += 4;
           pdf.setTextColor(0); pdf.setFont(undefined, "normal");
         }
         y += 1;
@@ -4219,49 +4281,49 @@
     // Bloc POI CRITIQUES (entree_plan + sorties urgence + cavages)
     if (y > pageH - 50) { pdf.addPage(); y = margin + 8; }
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-    pdf.text("POI CRITIQUES (acces / sorties)", margin, y); y += 6;
+    pdf.text(t("secours.surf.poiCritiques"), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
 
     const poiList = (window.listePoints && Array.isArray(window.listePoints))
                     ? window.listePoints : [];
     const critTags = ["entree_plan", "sortieurgence", "cao", "caf"];
     const critLabels = {
-      entree_plan:    "Point d'entree (urgence pompiers)",
-      sortieurgence:  "Sortie urgence",
-      cao:            "Cavage ouvert",
-      caf:            "Cavage ferme"
+      entree_plan:    t("secours.surf.critEntree"),
+      sortieurgence:  t("secours.surf.critSortie"),
+      cao:            t("secours.surf.critCao"),
+      caf:            t("secours.surf.critCaf")
     };
     const critByTag = {};
     poiList.forEach(function(p) {
-      const t = p && p.tag;
-      if (t && critTags.indexOf(t) >= 0) {
-        if (!critByTag[t]) critByTag[t] = [];
-        critByTag[t].push(p);
+      const tg = p && p.tag;
+      if (tg && critTags.indexOf(tg) >= 0) {
+        if (!critByTag[tg]) critByTag[tg] = [];
+        critByTag[tg].push(p);
       }
     });
     let critFound = false;
-    critTags.forEach(function(t) {
-      const arr = critByTag[t] || [];
+    critTags.forEach(function(tg) {
+      const arr = critByTag[tg] || [];
       if (arr.length === 0) return;
       critFound = true;
       if (y > pageH - 20) { pdf.addPage(); y = margin + 8; }
       pdf.setFont(undefined, "bold");
-      pdf.text(critLabels[t] + " (" + arr.length + ") :", margin, y); y += 4;
+      pdf.text(critLabels[tg] + t("secours.pdf.critCount", { n: arr.length }), margin, y); y += 4;
       pdf.setFont(undefined, "normal");
       arr.forEach(function(p) {
         if (y > pageH - 15) { pdf.addPage(); y = margin + 8; }
-        const lvl = (typeof p.level === "number") ? " (niveau " + p.level + ")" : "";
-        pdf.text("  - " + (p.nom || p.id || "(sans nom)") + lvl, margin, y); y += 4;
+        const lvl = (typeof p.level === "number") ? t("secours.pdf.niveauParen", { level: p.level }) : "";
+        pdf.text("  - " + (p.nom || p.id || t("secours.pdf.sansNom")) + lvl, margin, y); y += 4;
       });
       y += 1;
     });
     if (!critFound) {
       pdf.setTextColor(120); pdf.setFont(undefined, "italic");
-      pdf.text("(aucun POI critique tagge dans ce plan)", margin, y);
+      pdf.text(t("secours.surf.aucunPoiCritique"), margin, y);
       pdf.setTextColor(0); pdf.setFont(undefined, "normal"); y += 4;
       pdf.setFontSize(8); pdf.setTextColor(150);
-      pdf.text("Astuce : tague les acces principaux avec '" + critLabels.entree_plan + "'", margin, y); y += 3;
-      pdf.text("via l'editeur de POI pour qu'ils apparaissent ici automatiquement.", margin, y); y += 3;
+      pdf.text(t("secours.surf.astuceTag", { tag: critLabels.entree_plan }), margin, y); y += 3;
+      pdf.text(t("secours.surf.astuceTag2"), margin, y); y += 3;
       pdf.setFontSize(9); pdf.setTextColor(0);
     }
   }
@@ -4273,7 +4335,7 @@
   // genererBriefingPompiersPDF(scenarioId, options).
   function _afficherModaleBriefingOptions(scenarioId) {
     const s = get(scenarioId);
-    if (!s) { _toast("⚠️ Scenario introuvable.", "error"); return; }
+    if (!s) { _toast(t("secours.toast.scenarioIntrouvableAscii"), "error"); return; }
 
     // Si une instance existe déjà, la retirer
     const existing = document.getElementById("kta-briefing-options-modal");
@@ -4327,29 +4389,29 @@
       '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">' +
         '<div style="font-size:32px;">🚒</div>' +
         '<div>' +
-          '<div style="font-size:18px;font-weight:700;color:' + pal.accent + ';">Briefing pompiers</div>' +
-          '<div style="font-size:12px;color:' + pal.textMuted + ';margin-top:2px;">Choisis ce qui apparaît sur la carte OSM du PDF.</div>' +
+          '<div style="font-size:18px;font-weight:700;color:' + pal.accent + ';">' + t("secours.briefing.titre") + '</div>' +
+          '<div style="font-size:12px;color:' + pal.textMuted + ';margin-top:2px;">' + t("secours.briefing.sousTitre") + '</div>' +
         '</div>' +
       '</div>' +
       '<div style="background:' + pal.sectionBg + ';border-radius:8px;padding:14px 16px;margin-bottom:14px;">' +
-        '<div style="font-size:13px;font-weight:600;color:' + pal.sectionTitle + ';margin-bottom:10px;">🗺️ Couches Vue OSM</div>' +
+        '<div style="font-size:13px;font-weight:600;color:' + pal.sectionTitle + ';margin-bottom:10px;">' + t("secours.briefing.couchesTitre") + '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px;">' +
-          _renderToggleOpt("opt-plan",    "🖼️ Plan",    true) +
-          _renderToggleOpt("opt-poi",     "📍 POI",     true) +
-          _renderToggleOpt("opt-tracker", "📡 Tracé",   true) +
-          _renderToggleOpt("opt-road",    "🛣️ Routes",  true) +
-          _renderToggleOpt("opt-iti",     "🧭 Iti",     true) +
-          _renderToggleOpt("opt-zone",    "🌐 Zones",   true) +
-          _renderToggleOpt("opt-struct",  "🏗️ Struct",  true) +
-          (hasSecours ? _renderToggleOpt("opt-secours", "🚨 Secours", true) : "") +
+          _renderToggleOpt("opt-plan",    t("secours.briefing.optPlan"),    true) +
+          _renderToggleOpt("opt-poi",     t("secours.briefing.optPoi"),     true) +
+          _renderToggleOpt("opt-tracker", t("secours.briefing.optTracker"), true) +
+          _renderToggleOpt("opt-road",    t("secours.briefing.optRoad"),    true) +
+          _renderToggleOpt("opt-iti",     t("secours.briefing.optIti"),     true) +
+          _renderToggleOpt("opt-zone",    t("secours.briefing.optZone"),    true) +
+          _renderToggleOpt("opt-struct",  t("secours.briefing.optStruct"),  true) +
+          (hasSecours ? _renderToggleOpt("opt-secours", t("secours.briefing.optSecours"), true) : "") +
         '</div>' +
       '</div>' +
       '<div style="font-size:11px;color:' + pal.textMuted + ';margin-bottom:14px;line-height:1.5;">' +
-        'Les sections texte (équipes GPS, POI critiques, liens OSM) sont toujours incluses dans le PDF.' +
+        t("secours.briefing.sectionsTexteHint") +
       '</div>' +
       '<div style="display:flex;justify-content:flex-end;gap:10px;">' +
-        '<button class="kta-btn kta-btn-ghost" data-act="cancel" style="padding:9px 18px;">Annuler</button>' +
-        '<button class="kta-btn kta-btn-primary" data-act="generate" style="padding:9px 20px;font-weight:700;">📄 Générer le PDF</button>' +
+        '<button class="kta-btn kta-btn-ghost" data-act="cancel" style="padding:9px 18px;">' + t("secours.btn.annulerSimple") + '</button>' +
+        '<button class="kta-btn kta-btn-primary" data-act="generate" style="padding:9px 20px;font-weight:700;">' + t("secours.btn.genererPdf") + '</button>' +
       '</div>';
 
     overlay.appendChild(box);
@@ -4359,6 +4421,14 @@
       overlay.remove();
     });
     box.querySelector('[data-act="generate"]').addEventListener("click", function() {
+      // 🆕 v1.43.27 (Pattern D) — Disable le bouton AVANT de lancer la génération
+      // PDF (lourd : html2canvas + jsPDF, plusieurs secondes). Sans ça, l'user
+      // qui double-clique nerveusement déclenche 2 générations parallèles qui
+      // se marchent dessus sur le canvas + double download.
+      const btnGen = this;
+      btnGen.disabled = true;
+      const originalText = btnGen.textContent;
+      btnGen.textContent = t("secours.briefing.generation");
       const opts = {
         showPlan:    box.querySelector("#kta-bo-opt-plan").checked,
         showPoi:     box.querySelector("#kta-bo-opt-poi").checked,
@@ -4370,6 +4440,9 @@
         showSecours: hasSecours ? box.querySelector("#kta-bo-opt-secours").checked : false
       };
       overlay.remove();
+      // Note : overlay déjà retiré → le bouton n'est plus dans le DOM, le
+      // disable est cosmétique mais le ralentit la fenêtre de double-clic
+      // entre clic et overlay.remove(). C'est suffisant pour le cas réel.
       genererBriefingPompiersPDF(scenarioId, opts);
     });
     // Click backdrop = Annuler
@@ -4395,9 +4468,9 @@
   // via _drawBriefingSurfacePage.
   async function genererBriefingPompiersPDF(scenarioId, options) {
     const s = get(scenarioId);
-    if (!s) { _toast("⚠️ Scenario introuvable.", "error"); return null; }
+    if (!s) { _toast(t("secours.toast.scenarioIntrouvableAscii"), "error"); return null; }
     if (!window.jspdf || !window.jspdf.jsPDF) {
-      _toast("⚠️ Export PDF indisponible. Recharge l'application.", "error");
+      _toast(t("secours.toast.pdfIndisponible"), "error");
       return null;
     }
     try {
@@ -4415,16 +4488,16 @@
       // Footer simple (pas de réutilisation du _drawRapportPDFFooter qui
       // nécessite un objet reportData complet — on fait minimaliste ici).
       pdf.setFontSize(7); pdf.setTextColor(140);
-      pdf.text("MyKTAMap v1.41.0 - Briefing pompiers (genere localement, aucune donnee transmise)",
+      pdf.text(t("secours.briefing.footer", { version: ((window.__MKM__ && window.__MKM__.build) || "") }),
                margin, pageH - 6);
       pdf.setTextColor(0);
       const filename = "Briefing_pompiers_" + _slug(s.nom || "scenario") + "_" + _shortDate() + ".pdf";
       pdf.save(filename);
-      _toast("✓ Briefing pompiers exporte : " + filename, "success");
+      _toast(t("secours.toast.briefingExporte", { filename: filename }), "success");
       return filename;
     } catch(e) {
       console.warn("[SecoursMode] genererBriefingPompiersPDF échec :", e);
-      _toast("⚠️ Erreur génération PDF briefing : " + e.message, "error");
+      _toast(t("secours.toast.erreurPdfBriefing", { message: e.message }), "error");
       return null;
     }
   }
@@ -4432,10 +4505,9 @@
   // Helpers PDF rapport — header commun à toutes les pages
   function _drawRapportPDFHeader(pdf, r, pageW, margin) {
     pdf.setFontSize(16); pdf.setFont(undefined, "bold");
-    pdf.text("RAPPORT MODE SECOURS", margin, margin + 6);
+    pdf.text(t("secours.pdf.headerTitre"), margin, margin + 6);
     pdf.setFontSize(9); pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
-    pdf.text("MyKTAMap " + (r.appVersion || "") +
-             " - Exporte le " + new Date(r.exportedAt).toLocaleString("fr-FR"),
+    pdf.text(t("secours.pdf.headerSub", { version: (r.appVersion || ""), date: new Date(r.exportedAt).toLocaleString("fr-FR") }),
              margin, margin + 11);
     pdf.setTextColor(0); pdf.setFont(undefined, "normal");
     // Bandeau jaune décoratif sous l'en-tête
@@ -4461,10 +4533,10 @@
 
     // Titre équipe
     pdf.setFontSize(14); pdf.setFont(undefined, "bold");
-    pdf.text("EQUIPE - " + g.nom, margin, y); y += 4;
+    pdf.text(t("secours.pdf.equipeTitre", { nom: g.nom }), margin, y); y += 4;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal"); pdf.setTextColor(100);
-    pdf.text("(Couleur OTAN : " + couleur.nom +
-             (typeof g.level === "number" ? " - Niveau " + _formatLevelShort(g.level) : "") + ")",
+    pdf.text(t("secours.pdf.couleurOtan", { couleur: couleur.nom }) +
+             (typeof g.level === "number" ? t("secours.pdf.niveauSuffix", { niveau: _formatLevelShort(g.level) }) : "") + ")",
              margin, y); y += 6;
     pdf.setTextColor(0);
 
@@ -4477,7 +4549,7 @@
     // Membres
     if (Array.isArray(g.membres) && g.membres.length > 0) {
       pdf.setFontSize(10); pdf.setFont(undefined, "bold");
-      pdf.text("Membres :", margin, y); y += 4;
+      pdf.text(t("secours.pdf.membresTitre"), margin, y); y += 4;
       pdf.setFont(undefined, "normal");
       y = _pdfWrapText(pdf, g.membres.join(", "), margin, y, pageW - 2 * margin, 4);
       y += 3;
@@ -4485,12 +4557,12 @@
 
     // Étapes
     pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-    pdf.text("ETAPES (" + (ed.etapes || []).length + ")", margin, y); y += 6;
+    pdf.text(t("secours.pdf.etapesTitre", { n: (ed.etapes || []).length }), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
 
     if (!Array.isArray(ed.etapes) || ed.etapes.length === 0) {
       pdf.setFont(undefined, "italic");
-      pdf.text("(aucune etape definie)", margin, y);
+      pdf.text(t("secours.pdf.aucuneEtape"), margin, y);
       _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
       return;
     }
@@ -4503,15 +4575,15 @@
         _drawRapportPDFHeader(pdf, r, pageW, margin);
         y = margin + 22;
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-        pdf.text("EQUIPE - " + g.nom + " (suite)", margin, y); y += 6;
+        pdf.text(t("secours.pdf.equipeTitreSuite", { nom: g.nom }), margin, y); y += 6;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
       }
       const info = _getStatutInfo(et.statut);
-      const typeLabel = (et.type === "entree") ? "ENTREE"
-                      : (et.type === "sortie") ? "SORTIE"
-                      : "Etape " + i;
+      const typeLabel = (et.type === "entree") ? t("secours.pdf.typeEntree")
+                      : (et.type === "sortie") ? t("secours.pdf.typeSortie")
+                      : t("secours.pdf.typeEtape", { idx: i });
       const ts = et.completedAt ? new Date(et.completedAt).toLocaleString("fr-FR")
-               : et.startedAt   ? new Date(et.startedAt).toLocaleString("fr-FR") + " (en cours)"
+               : et.startedAt   ? t("secours.pdf.tsEnCours", { date: new Date(et.startedAt).toLocaleString("fr-FR") })
                : "—";
       // Encadré statut couleur
       const statutRgb = _hexToRgb(info.color);
@@ -4524,13 +4596,13 @@
       pdf.setFont(undefined, "bold");
       pdf.text("  " + (i + 1) + ". " + typeLabel + " - " + (et.label || "(?)"), margin, y); y += 4;
       pdf.setFont(undefined, "normal");
-      pdf.text("     Statut : " + info.label + "  |  " + ts, margin, y); y += 4;
+      pdf.text("     " + t("secours.pdf.statutLigne", { statut: _statutLabelAscii(et.statut), ts: ts }), margin, y); y += 4;
       if (et.observations && et.observations.trim()) {
-        y = _pdfWrapText(pdf, "     Obs : " + et.observations.trim(), margin, y, pageW - 2 * margin, 4);
+        y = _pdfWrapText(pdf, "     " + t("secours.pdf.obsLigne", { obs: et.observations.trim() }), margin, y, pageW - 2 * margin, 4);
       }
       if (Array.isArray(et.photoIds) && et.photoIds.length > 0) {
         pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
-        pdf.text("     " + et.photoIds.length + " photo(s) attachee(s) (voir page suivante)", margin, y);
+        pdf.text("     " + t("secours.pdf.photosAttachees", { n: et.photoIds.length }), margin, y);
         pdf.setTextColor(0); pdf.setFont(undefined, "normal");
         y += 4;
       }
@@ -4850,11 +4922,11 @@
     pdf.setFontSize(14);
     // ASCII-normalize le nom : retire accents (NFD + diacritics) + non-Latin-1
     // (jsPDF Helvetica latin1 = mojibake sur emojis/Unicode)
-    const nomAscii = String(eq.nom || "Equipe")
+    const nomAscii = String(eq.nom || t("secours.pdf.equipeDefautAscii"))
       .normalize("NFD")
       .replace(/[̀-ͯ]/g, "")    // diacritics
       .replace(/[^\x20-\x7E]/g, "");       // non-Latin1 (emojis, etc.)
-    pdf.text("CARTE - " + nomAscii.toUpperCase(), m + 12, 14);
+    pdf.text(t("secours.pdf.carteTitre", { nom: nomAscii.toUpperCase() }), m + 12, 14);
 
     // Image canvas — couvre la zone disponible
     const availW = pageW - 2 * m;
@@ -4869,13 +4941,13 @@
     pdf.setFontSize(9);
     pdf.setTextColor(90);
     const lines = [];
-    if (typeof eq.distanceM === "number")       lines.push("Distance: " + Math.round(eq.distanceM) + " m");
-    if (typeof eq.dureeEstimeeMin === "number") lines.push("Duree: " + Math.round(eq.dureeEstimeeMin) + " min");
-    if (eq.zoneType === "polygon")              lines.push("Zone: polygone (" + (eq.zonePolygon ? eq.zonePolygon.length : 0) + " sommets)");
-    else if (eq.zoneType === "roads")           lines.push("Zone: traces (" + (eq.zoneRoadIds ? eq.zoneRoadIds.length : 0) + " segments)");
+    if (typeof eq.distanceM === "number")       lines.push(t("secours.carte.distance", { distance: Math.round(eq.distanceM) }));
+    if (typeof eq.dureeEstimeeMin === "number") lines.push(t("secours.carte.duree", { duree: Math.round(eq.dureeEstimeeMin) }));
+    if (eq.zoneType === "polygon")              lines.push(t("secours.carte.zonePolygone", { n: (eq.zonePolygon ? eq.zonePolygon.length : 0) }));
+    else if (eq.zoneType === "roads")           lines.push(t("secours.carte.zoneTraces", { n: (eq.zoneRoadIds ? eq.zoneRoadIds.length : 0) }));
     const nbWp = (eq.entree ? 1 : 0) + (eq.sortie ? 1 : 0) +
                  (Array.isArray(eq.intermediaires) ? eq.intermediaires.length : 0);
-    lines.push("Waypoints: " + nbWp);
+    lines.push(t("secours.carte.waypoints", { n: nbWp }));
     pdf.text(lines.join("  -  "), m, pageH - 6);
 
     return true;
@@ -4888,7 +4960,7 @@
     let y = margin + 22;
 
     pdf.setFontSize(12); pdf.setFont(undefined, "bold");
-    pdf.text("PHOTOS - " + g.nom + " (" + ed.photos.length + ")", margin, y); y += 8;
+    pdf.text(t("secours.pdf.photosTitre", { nom: g.nom, n: ed.photos.length }), margin, y); y += 8;
     pdf.setFontSize(8); pdf.setFont(undefined, "normal");
 
     // Grille 2 colonnes, hauteur fixe par cellule
@@ -4915,7 +4987,7 @@
         pdf.rect(x, y, cellW, cellH);
         // Label sous photo
         pdf.setFontSize(7); pdf.setTextColor(80);
-        const stepLabel = (p.stepIdx === -1) ? "Note libre" : "Etape " + (p.stepIdx + 1);
+        const stepLabel = (p.stepIdx === -1) ? t("secours.pdf.noteLibre") : t("secours.pdf.typeEtape", { idx: (p.stepIdx + 1) });
         pdf.text(stepLabel + " - " + _formatKB(p.sizeBytes), x, y + cellH + 4);
         pdf.setTextColor(0);
       } catch(e) {
@@ -4923,7 +4995,7 @@
         pdf.setDrawColor(200);
         pdf.rect(x, y, cellW, cellH);
         pdf.setFontSize(8);
-        pdf.text("(photo " + p.id + " : erreur)", x + 2, y + cellH / 2, { align: "left" });
+        pdf.text(t("secours.pdf.photoErreur", { id: p.id }), x + 2, y + cellH / 2, { align: "left" });
       }
       col++;
       if (col >= cols) {
@@ -4940,7 +5012,7 @@
     let y = margin + 22;
 
     pdf.setFontSize(14); pdf.setFont(undefined, "bold");
-    pdf.text("NOTES LIBRES (" + r.notesLibres.length + ")", margin, y); y += 8;
+    pdf.text(t("secours.pdf.notesLibresTitre", { n: r.notesLibres.length }), margin, y); y += 8;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
 
     const sorted = r.notesLibres.slice().sort(function(a, b) {
@@ -4953,20 +5025,20 @@
         _drawRapportPDFHeader(pdf, r, pageW, margin);
         y = margin + 22;
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-        pdf.text("NOTES LIBRES (suite)", margin, y); y += 6;
+        pdf.text(t("secours.pdf.notesLibresSuite"), margin, y); y += 6;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
       }
       const info = _getStatutInfo(note.statut);
       const ts = new Date(note.ts).toLocaleString("fr-FR");
       pdf.setFont(undefined, "bold");
-      pdf.text("  " + (i + 1) + ". " + info.label + "  |  " + ts, margin, y); y += 4;
+      pdf.text("  " + (i + 1) + ". " + _statutLabelAscii(note.statut) + "  |  " + ts, margin, y); y += 4;
       pdf.setFont(undefined, "normal");
       if (note.texte) {
         y = _pdfWrapText(pdf, "     " + note.texte, margin, y, pageW - 2 * margin, 4);
       }
       if (Array.isArray(note.photoIds) && note.photoIds.length > 0) {
         pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
-        pdf.text("     " + note.photoIds.length + " photo(s) attachee(s)", margin, y);
+        pdf.text("     " + t("secours.pdf.photosAttacheesShort", { n: note.photoIds.length }), margin, y);
         pdf.setTextColor(0); pdf.setFont(undefined, "normal");
         y += 4;
       }
@@ -4977,9 +5049,9 @@
 
   // Helper local — label rôle en ASCII (pour pdf.text qui supporte mal les emojis)
   function _formatRoleLabelAscii(scope) {
-    if (scope === "operateur")  return "Operateur surface (vue globale)";
-    if (scope === "equipe")     return "Equipier (parcours individuel)";
-    if (scope === "secouriste") return "Secouriste libre (notes en vrac)";
+    if (scope === "operateur")  return t("secours.roleAscii.operateur");
+    if (scope === "equipe")     return t("secours.roleAscii.equipe");
+    if (scope === "secouriste") return t("secours.roleAscii.secouriste");
     return "(?)";
   }
 
@@ -5003,18 +5075,18 @@
   async function exporterPDF(scenarioId) {
     const s = get(scenarioId || _currentScenarioId);
     if (!s) {
-      _toast("⚠️ Scénario introuvable.", "error");
+      _toast(t("secours.toast.scenarioIntrouvable"), "error");
       return null;
     }
     if (!window.jspdf || !window.jspdf.jsPDF) {
-      _toast("⚠️ Export PDF indisponible. Recharge l'application.", "error");
+      _toast(t("secours.toast.pdfIndisponible"), "error");
       return null;
     }
     if (!s.groupes || s.groupes.length === 0) {
-      _toast("⚠️ Aucune équipe dans ce scénario.", "warn");
+      _toast(t("secours.toast.aucuneEquipeScenario"), "warn");
       return null;
     }
-    _toast("⏳ Génération du PDF (canvas du plan en cours)…", "info");
+    _toast(t("secours.toast.generationPdfCanvas"), "info");
     // 🆕 v1.22.0-fix5 — Génère UNE fois le canvas plan complet avec calques
     // image + data layers visibles. Sera croppé par équipe. Si échec → PDF
     // text-only (fallback MVP).
@@ -5039,19 +5111,19 @@
       const pdf = new window.jspdf.jsPDF({ format: "a4", orientation: "portrait", unit: "mm" });
       const pageW = pdf.internal.pageSize.getWidth();
       const margin = 14;
-      const planName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "Plan";
+      const planName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || t("secours.pdf.planDefault");
       s.groupes.forEach(function(g, idx) {
         if (idx > 0) pdf.addPage();
         const couleur = PALETTE[g.couleurIdx % PALETTE.length];
         // En-tête
         pdf.setFontSize(18); pdf.setFont(undefined, "bold");
-        pdf.text("PLAN DE SECOURS — " + g.nom, margin, margin + 4);
+        pdf.text(t("secours.pdf.planSecoursTitre", { nom: g.nom }), margin, margin + 4);
         // Bandeau couleur équipe
         const rgb = _hexToRgb(couleur.hex);
         pdf.setFillColor(rgb.r, rgb.g, rgb.b);
         pdf.rect(margin, margin + 7, pageW - 2 * margin, 6, "F");
         pdf.setFontSize(10); pdf.setTextColor(255, 255, 255); pdf.setFont(undefined, "bold");
-        pdf.text("Equipe " + couleur.nom + " (#" + (idx + 1) + "/" + s.groupes.length + ")",
+        pdf.text(t("secours.pdf.equipeBandeau", { couleur: couleur.nom, n: (idx + 1), total: s.groupes.length }),
                  margin + 2, margin + 11);
         pdf.setTextColor(0, 0, 0); pdf.setFont(undefined, "normal");
         let y = margin + 22;
@@ -5075,7 +5147,7 @@
               y += finalHmm + 5;
               // Légende sous l'image
               pdf.setFontSize(8); pdf.setTextColor(120); pdf.setFont(undefined, "italic");
-              pdf.text("Carte miniature — zone de recherche assignee", pageW / 2, y, { align: "center" });
+              pdf.text(t("secours.pdf.carteMiniature"), pageW / 2, y, { align: "center" });
               y += 5;
               pdf.setTextColor(0, 0, 0); pdf.setFont(undefined, "normal");
             }
@@ -5085,72 +5157,71 @@
         }
         // Section Contexte
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-        pdf.text("CONTEXTE DE L'INCIDENT", margin, y); y += 5;
+        pdf.text(t("secours.pdf.contexteIncident"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-        pdf.text("Scenario : " + (s.nom || "(sans nom)"), margin, y); y += 4;
-        pdf.text("Plan : " + planName, margin, y); y += 4;
+        pdf.text(t("secours.pdf.scenarioLigne", { nom: (s.nom || t("secours.pdf.sansNom")) }), margin, y); y += 4;
+        pdf.text(t("secours.pdf.planLigne", { plan: planName }), margin, y); y += 4;
         if (s.context && s.context.incidentAt) {
           const dt = new Date(s.context.incidentAt);
-          pdf.text("Heure d'incident : " + dt.toLocaleString("fr-FR"), margin, y); y += 4;
+          pdf.text(t("secours.pdf.heureIncident", { date: dt.toLocaleString("fr-FR") }), margin, y); y += 4;
         }
         if (s.context && s.context.notes) {
-          y = _pdfWrapText(pdf, "Notes : " + s.context.notes, margin, y, pageW - 2 * margin, 4);
+          y = _pdfWrapText(pdf, t("secours.pdf.notesLigne", { notes: s.context.notes }), margin, y, pageW - 2 * margin, 4);
         }
         y += 4;
         // Section Membres
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-        pdf.text("MEMBRES DE L'EQUIPE", margin, y); y += 5;
+        pdf.text(t("secours.pdf.membresEquipe"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-        pdf.text((g.membres && g.membres.length) ? g.membres.join(", ") : "(non renseignes)", margin, y);
+        pdf.text((g.membres && g.membres.length) ? g.membres.join(", ") : t("secours.pdf.nonRenseignes"), margin, y);
         y += 8;
         // Section Mission
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-        pdf.text("MISSION ASSIGNEE", margin, y); y += 5;
+        pdf.text(t("secours.pdf.missionAssignee"), margin, y); y += 5;
         pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-        pdf.text("Entree : " + _fmtPoint(g.entree), margin, y); y += 4;
-        pdf.text("Sortie : " + _fmtPoint(g.sortie), margin, y); y += 4;
-        const zoneTxt = g.zoneType === "polygon" ? "Polygone (" + (g.zonePolygon ? g.zonePolygon.length : 0) + " sommets)"
-                      : g.zoneType === "roads"   ? (g.zoneRoadIds ? g.zoneRoadIds.length : 0) + " traces selectionnes"
-                      : "(non definie)";
-        pdf.text("Zone a ratisser : " + zoneTxt, margin, y); y += 4;
+        pdf.text(t("secours.pdf.entreeLigne", { point: _fmtPoint(g.entree) }), margin, y); y += 4;
+        pdf.text(t("secours.pdf.sortieLigne", { point: _fmtPoint(g.sortie) }), margin, y); y += 4;
+        const zoneTxt = g.zoneType === "polygon" ? t("secours.pdf.zonePolygone", { n: (g.zonePolygon ? g.zonePolygon.length : 0) })
+                      : g.zoneType === "roads"   ? t("secours.pdf.zoneRoads", { n: (g.zoneRoadIds ? g.zoneRoadIds.length : 0) })
+                      : t("secours.pdf.zoneNonDefinie");
+        pdf.text(t("secours.pdf.zoneRatisser", { zone: zoneTxt }), margin, y); y += 4;
         if (g.distanceM) {
           const distFmt = (typeof window.formatDistance === "function")
                           ? window.formatDistance(g.distanceM, 0) : Math.round(g.distanceM) + " m";
-          pdf.text("Distance itineraire : " + distFmt, margin, y); y += 4;
+          pdf.text(t("secours.pdf.distanceItineraire", { distance: distFmt }), margin, y); y += 4;
         }
         if (g.dureeEstimeeMin) {
-          pdf.text("Duree estimee : ~" + Math.round(g.dureeEstimeeMin) + " min", margin, y); y += 4;
+          pdf.text(t("secours.pdf.dureeEstimee", { duree: Math.round(g.dureeEstimeeMin) }), margin, y); y += 4;
         }
         y += 4;
         // Section Itinéraire (waypoints)
         if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length > 0) {
           pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-          pdf.text("ITINERAIRE SUGGERE", margin, y); y += 5;
+          pdf.text(t("secours.pdf.itineraireSuggere"), margin, y); y += 5;
           pdf.setFontSize(9); pdf.setFont(undefined, "normal");
-          pdf.text(g.itineraireSuggere.length + " waypoints sur le reseau de galeries existant.", margin, y); y += 4;
+          pdf.text(t("secours.pdf.waypointsLigne", { n: g.itineraireSuggere.length }), margin, y); y += 4;
           y += 4;
         }
         // Cadre Observations (rempli papier au retour terrain)
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
-        pdf.text("OBSERVATIONS AU RETOUR TERRAIN", margin, y); y += 5;
+        pdf.text(t("secours.pdf.obsRetourTerrain"), margin, y); y += 5;
         pdf.setDrawColor(150);
         pdf.rect(margin, y, pageW - 2 * margin, 60);
         y += 65;
         // Footer
         pdf.setFontSize(7); pdf.setTextColor(120);
-        pdf.text("Genere par MyKTAMap " + ((window.__MKM__ && window.__MKM__.build) || "") +
-                 " - " + new Date().toLocaleString("fr-FR"),
+        pdf.text(t("secours.pdf.genereLigne", { version: ((window.__MKM__ && window.__MKM__.build) || ""), date: new Date().toLocaleString("fr-FR") }),
                  margin, pdf.internal.pageSize.getHeight() - 6);
       });
       const filename = "Secours_" + _slug(s.nom) + "_" + _shortDate() + ".pdf";
       pdf.save(filename);
       if (window.OOMGuard) {
-        window.OOMGuard.showToast("✓ PDF généré (" + s.groupes.length + " page" + (s.groupes.length > 1 ? "s" : "") + ")", "info");
+        window.OOMGuard.showToast(t("secours.toast.pdfGenerePages", { n: s.groupes.length }), "info");
       }
       return filename;
     } catch(e) {
       console.warn("[SecoursMode] exporterPDF échoué :", e);
-      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Erreur génération PDF : " + e.message, "error");
+      if (window.OOMGuard) window.OOMGuard.showToast(t("secours.toast.erreurGenerationPdf", { message: e.message }), "error");
       return null;
     }
   }
@@ -5306,8 +5377,9 @@
       ctx.font = "bold 11px sans-serif";
       ctx.textAlign = "left"; ctx.textBaseline = "middle";
       ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
-      ctx.strokeText("ENTREE", c.x + 12, c.y);
-      ctx.fillText("ENTREE", c.x + 12, c.y);
+      const lblEntree = t("secours.carte.entree");
+      ctx.strokeText(lblEntree, c.x + 12, c.y);
+      ctx.fillText(lblEntree, c.x + 12, c.y);
     }
     // 6. Sortie (cercle border rouge OU orange si boucle)
     if (g.sortie && typeof g.sortie.x === "number") {
@@ -5319,7 +5391,7 @@
       ctx.font = "bold 11px sans-serif";
       ctx.textAlign = "left"; ctx.textBaseline = "middle";
       ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
-      const lbl = isBoucle ? "BOUCLE" : "SORTIE";
+      const lbl = isBoucle ? t("secours.carte.boucle") : t("secours.carte.sortie");
       // Décale l'étiquette pour ne pas chevaucher celle de l'entrée si même point
       const dx = isBoucle ? 14 : 12;
       const dy = isBoucle ? 14 : 0;
@@ -5340,26 +5412,26 @@
   function _drawTeamLegende(ctx, canvasW, canvasH, g, hexColor) {
     const items = [];
     if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
-      items.push({ type: "zone-poly", label: "Zone (polygone)" });
+      items.push({ type: "zone-poly", label: t("secours.legende.zonePolygone") });
     }
     if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds) && g.zoneRoadIds.length > 0) {
-      items.push({ type: "zone-roads", label: "Zone (tracés)" });
+      items.push({ type: "zone-roads", label: t("secours.legende.zoneTraces") });
     }
     if (g.entree && typeof g.entree.x === "number") {
-      items.push({ type: "entree", label: "Entrée" });
+      items.push({ type: "entree", label: t("secours.legende.entree") });
     }
     if (g.sortie && typeof g.sortie.x === "number") {
       const isBoucle = _samePoint(g.entree, g.sortie);
       items.push({
         type:  isBoucle ? "boucle" : "sortie",
-        label: isBoucle ? "Boucle (entrée=sortie)" : "Sortie"
+        label: isBoucle ? t("secours.legende.boucle") : t("secours.legende.sortie")
       });
     }
     if (Array.isArray(g.intermediaires) && g.intermediaires.length > 0) {
-      items.push({ type: "interm", label: g.intermediaires.length + " intermédiaire" + (g.intermediaires.length > 1 ? "s" : "") });
+      items.push({ type: "interm", label: t("secours.legende.intermediaires", { n: g.intermediaires.length }) });
     }
     if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
-      items.push({ type: "iti", label: "Itinéraire" });
+      items.push({ type: "iti", label: t("secours.legende.itineraire") });
     }
     if (items.length === 0) return;
 
@@ -5495,11 +5567,11 @@
   async function exporterKMZ(scenarioId) {
     const s = get(scenarioId || _currentScenarioId);
     if (!s) {
-      _toast("⚠️ Scénario introuvable.", "error");
+      _toast(t("secours.toast.scenarioIntrouvable"), "error");
       return null;
     }
     if (!window.KmzExport || typeof window.KmzExport.genererKmz !== "function") {
-      _toast("⚠️ Module KmzExport non chargé.", "error");
+      _toast(t("secours.toast.kmzModuleManquant"), "error");
       return null;
     }
     // 🐛 v1.23.0-fixB (KARMA "georef pas pris en compte dans mode secour
@@ -5522,7 +5594,7 @@
         || typeof calib.pointB.x !== "number" || typeof calib.pointB.y !== "number"
         || typeof calib.pointB.lat !== "number" || typeof calib.pointB.lng !== "number") {
       _toast(
-        "⚠️ Plan non calibré (ou calibrage incomplet). Ouvre la modale 💾 Enregistrer session > 🌍 KMZ pour définir 2 points GPS de référence.",
+        t("secours.toast.planNonCalibre"),
         "warn"
       );
       return null;
@@ -5536,7 +5608,7 @@
         { lat: calib.pointB.lat, lng: calib.pointB.lng }
       );
     } catch(e) {
-      _toast("⚠️ Calibrage corrompu : " + e.message, "error");
+      _toast(t("secours.toast.calibrageCorrompu", { message: e.message }), "error");
       return null;
     }
     // 🆕 v1.23.0 (KARMA "rajoute les itineraire de chaque équipe") :
@@ -5548,9 +5620,7 @@
       return g.entree && g.sortie && !Array.isArray(g.itineraireSuggere);
     });
     if (groupesACalc.length > 0) {
-      _toast("⏳ Calcul auto de " + groupesACalc.length + " itinéraire" +
-             (groupesACalc.length > 1 ? "s" : "") + " manquant" +
-             (groupesACalc.length > 1 ? "s" : "") + " avant export…", "info");
+      _toast(t("secours.toast.calcAutoIti", { n: groupesACalc.length }), "info");
       // Lance les calculs en parallèle + attend tous résultats
       await Promise.allSettled(groupesACalc.map(function(g) {
         return _recalculerItineraireGroupeAsync(s.id, g.id);
@@ -5562,7 +5632,7 @@
       }
     }
 
-    _toast("⏳ Génération KMZ en cours (fetch image plan)…", "info");
+    _toast(t("secours.toast.generationKmz"), "info");
     // 🆕 v1.23.0 (KARMA "il faudrai avoir le plan en fond a 60%") : on fetch
     // l'image plan pour la passer en GroundOverlay opacity 60 %. Donne aux
     // équipes de secours le CONTEXTE SPATIAL (puits, galeries, structures
@@ -5598,7 +5668,7 @@
     //   • data session vides (on injecte nos polygons via secoursPlan extras)
     //   • secoursPlan + secoursPalette dans les extras (KML Folder visible)
     const opts = {
-      planName:      (pc && pc.plan && pc.plan.name)    || "Plan",
+      planName:      (pc && pc.plan && pc.plan.name)    || t("secours.pdf.planDefault"),
       planVersion:   (pc && pc.plan && pc.plan.version) || "",
       planAuthor:    (pc && pc.plan && pc.plan.author)  || "",
       imageW:        (pc && pc.plan && pc.plan.imageWidth)  || 1000,
@@ -5622,7 +5692,7 @@
     };
     Promise.resolve(window.KmzExport.genererKmz(opts)).then(function(blob) {
       if (!blob) {
-        if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Génération KMZ échouée.", "error");
+        if (window.OOMGuard) window.OOMGuard.showToast(t("secours.toast.kmzEchouee"), "error");
         return;
       }
       const filename = "Secours_" + _slug(s.nom) + "_" + _shortDate() + ".kmz";
@@ -5632,11 +5702,11 @@
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
       if (window.OOMGuard) {
-        window.OOMGuard.showToast("✓ KMZ exporté : " + filename, "info");
+        window.OOMGuard.showToast(t("secours.toast.kmzExporte", { filename: filename }), "info");
       }
     }).catch(function(e) {
       console.warn("[SecoursMode] exporterKMZ échoué :", e);
-      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Erreur KMZ : " + e.message, "error");
+      if (window.OOMGuard) window.OOMGuard.showToast(t("secours.toast.erreurKmz", { message: e.message }), "error");
     });
   }
 
@@ -5699,8 +5769,8 @@
   function _renderModalHTML() {
     return '<div class="kta-readme-modal-boite kta-secours-modal-boite">' +
              '<div class="kta-readme-modal-header">' +
-               '<span class="kta-readme-modal-titre">🚨 Mode Secours — Plans de recherche</span>' +
-               '<button class="kta-panneau-close" id="kta-secours-close" type="button" aria-label="Fermer">&times;</button>' +
+               '<span class="kta-readme-modal-titre">' + t("secours.modal.titre") + '</span>' +
+               '<button class="kta-panneau-close" id="kta-secours-close" type="button" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">&times;</button>' +
              '</div>' +
              '<div class="kta-readme-modal-corps kta-secours-corps" id="kta-secours-corps">' +
                '<!-- rempli dynamiquement par _switchView -->' +
@@ -5771,17 +5841,14 @@
   function _renderListView() {
     let html = '<div class="kta-secours-list-header">' +
                  '<p class="kta-secours-hint">' +
-                   'Définis et partage des <strong>plans de secours</strong> pour ce plan : ' +
-                   'assigne des <strong>équipes</strong> à des <strong>zones de recherche</strong> ' +
-                   'précises, avec entrées/sorties, itinéraires suggérés et durées estimées. ' +
-                   'Au retour terrain, les équipes peuvent rapporter leurs observations.' +
+                   t("secours.list.intro") +
                  '</p>' +
                  '<div class="kta-secours-list-header-actions">' +
                    '<button class="kta-btn kta-btn-primary" data-action="new-scenario">' +
-                     '➕ Nouveau scénario' +
+                     t("secours.list.btnNouveau") +
                    '</button>' +
-                   '<button class="kta-btn kta-btn-secondary" data-action="import-mkmsec" title="Importer un plan de secours exporté depuis un autre appareil (.mkmsec.json)">' +
-                     '📥 Importer un plan' +
+                   '<button class="kta-btn kta-btn-secondary" data-action="import-mkmsec" title="' + _escAttr(t("secours.list.btnImporterTitle")) + '">' +
+                     t("secours.list.btnImporter") +
                    '</button>' +
                    /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — bouton retiré.
                       Le partage briefings se fait désormais 100% via .mkmsec.json
@@ -5791,8 +5858,8 @@
     if (_scenarios.length === 0) {
       html += '<div class="kta-secours-empty">' +
                 '<div class="kta-secours-empty-icon">🚨</div>' +
-                '<p>Aucun scénario de secours sauvegardé pour ce plan.</p>' +
-                '<p class="kta-secours-empty-hint">Crée ton premier scénario via le bouton ci-dessus.</p>' +
+                '<p>' + t("secours.list.emptyTitre") + '</p>' +
+                '<p class="kta-secours-empty-hint">' + t("secours.list.emptyHint") + '</p>' +
               '</div>';
     } else {
       html += '<div class="kta-secours-list">';
@@ -5807,22 +5874,21 @@
                   '<div class="kta-secours-list-info">' +
                     '<div class="kta-secours-list-nom">' + _escHtml(s.nom) + '</div>' +
                     '<div class="kta-secours-list-meta">' +
-                      '🚨 ' + nbGroupes + ' équipe' + (nbGroupes > 1 ? 's' : '') +
+                      t("secours.list.metaEquipes", { n: nbGroupes }) +
                       ' · 📅 ' + date +
                     '</div>' +
                   '</div>' +
                   '<div class="kta-secours-list-actions">' +
-                    '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="open-scenario" data-id="' + _escAttr(s.id) + '" title="Ouvrir">✏️ Ouvrir</button>' +
-                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="dup-scenario" data-id="' + _escAttr(s.id) + '" title="Dupliquer">🗐</button>' +
-                    '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-scenario" data-id="' + _escAttr(s.id) + '" title="Supprimer">🗑️</button>' +
+                    '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="open-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.ouvrirTitle")) + '">' + t("secours.btn.ouvrir") + '</button>' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="dup-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.dupliquerTitle")) + '">🗐</button>' +
+                    '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">🗑️</button>' +
                   '</div>' +
                 '</div>';
       });
       html += '</div>';
       if (_scenarios.length >= MAX_SCENARIOS) {
         html += '<p class="kta-secours-hint" style="margin-top:12px; color:#ff8c00;">' +
-                  '⚠️ Limite atteinte (' + MAX_SCENARIOS + ' scénarios max par plan). ' +
-                  'Le prochain "Nouveau" supprimera automatiquement le plus ancien.' +
+                  t("secours.list.limiteAtteinte", { max: MAX_SCENARIOS }) +
                 '</p>';
       }
     }
@@ -5840,26 +5906,25 @@
   // placées dans l'éditeur libre.
   function _renderCreateView() {
     return '<div class="kta-secours-create-form">' +
-             '<h3 class="kta-secours-form-titre">🚨 Nouveau scénario de secours</h3>' +
+             '<h3 class="kta-secours-form-titre">' + t("secours.create.titre") + '</h3>' +
              '<div class="kta-secours-form-row">' +
-               '<label for="kta-sec-create-nom">Nom du scénario *</label>' +
-               '<input type="text" id="kta-sec-create-nom" placeholder="ex: Recherche Marc — 15/06/2026" maxlength="80">' +
+               '<label for="kta-sec-create-nom">' + t("secours.create.nomLabel") + '</label>' +
+               '<input type="text" id="kta-sec-create-nom" placeholder="' + _escAttr(t("secours.create.nomPlaceholder")) + '" maxlength="80">' +
              '</div>' +
              '<div class="kta-secours-form-row">' +
-               '<label for="kta-sec-create-notes">Notes de contexte (optionnel)</label>' +
-               '<textarea id="kta-sec-create-notes" rows="3" maxlength="500" placeholder="ex: Marc parti vers 14h pour vérifier galerie Est, équipé d&apos;une lampe + casque, dernière nouvelle 15h30 SMS &quot;arrive&quot;…"></textarea>' +
+               '<label for="kta-sec-create-notes">' + t("secours.create.notesLabel") + '</label>' +
+               '<textarea id="kta-sec-create-notes" rows="3" maxlength="500" placeholder="' + _escAttr(t("secours.create.notesPlaceholder")) + '"></textarea>' +
              '</div>' +
              '<div class="kta-secours-form-row">' +
-               '<label for="kta-sec-create-incident">Heure d\'incident (optionnel)</label>' +
+               '<label for="kta-sec-create-incident">' + t("secours.create.incidentLabel") + '</label>' +
                '<input type="datetime-local" id="kta-sec-create-incident">' +
              '</div>' +
              '<div class="kta-secours-form-hint">' +
-               '💡 Tu pourras ensuite ajouter les équipes, définir leurs zones de recherche, ' +
-               'leurs points d\'entrée/sortie, et exporter le plan en PDF ou KMZ.' +
+               t("secours.create.hint") +
              '</div>' +
              '<div class="kta-secours-form-actions">' +
-               '<button class="kta-btn kta-btn-ghost" data-action="cancel-create">← Annuler</button>' +
-               '<button class="kta-btn kta-btn-primary" data-action="confirm-create">✓ Créer et continuer</button>' +
+               '<button class="kta-btn kta-btn-ghost" data-action="cancel-create">' + t("secours.btn.annuler") + '</button>' +
+               '<button class="kta-btn kta-btn-primary" data-action="confirm-create">' + t("secours.btn.creerContinuer") + '</button>' +
              '</div>' +
            '</div>';
   }
@@ -5878,18 +5943,15 @@
     const currentIdx = (s.execution && typeof s.execution.currentPhaseIdx === "number")
                        ? s.execution.currentPhaseIdx : 0;
     let html = '<details class="kta-secours-section"' + (nbPhases >= 2 ? ' open' : '') + '>' +
-                 '<summary class="kta-secours-section-titre">📋 Phases (' + nbPhases + ')</summary>' +
+                 '<summary class="kta-secours-section-titre">' + t("secours.phases.sectionTitre", { n: nbPhases }) + '</summary>' +
                  '<div class="kta-secours-section-body">';
     if (nbPhases <= 1) {
       // 1 phase → juste un hint + bouton
       html += '<p class="kta-secours-hint">' +
-                'Un scénario contient au minimum <strong>1 phase</strong>. ' +
-                'Ajoute une phase pour séquencer ton plan (ex : Phase 1 = ' +
-                'balayage des axes principaux, Phase 2 = chambres ' +
-                'd\'exploitation).' +
+                t("secours.phases.hint1") +
               '</p>' +
               '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-phase">' +
-                '➕ Ajouter une phase' +
+                t("secours.phases.btnAjouter") +
               '</button>';
     } else {
       // 2+ phases → liste éditable
@@ -5900,15 +5962,15 @@
         const isEnded = !!p.endedAt;
         const nbEquipes = (Array.isArray(p.groupeIds) ? p.groupeIds.length : 0);
         let statutLabel = '';
-        if (isEnded) statutLabel = '<span class="kta-secours-phase-status-end">✓ Terminée</span>';
-        else if (isActive) statutLabel = '<span class="kta-secours-phase-status-active">● Active</span>';
-        else if (isStarted) statutLabel = '<span class="kta-secours-phase-status-paused">⏸ Démarrée</span>';
-        else statutLabel = '<span class="kta-secours-phase-status-pending">○ Non démarrée</span>';
+        if (isEnded) statutLabel = '<span class="kta-secours-phase-status-end">' + t("secours.phases.statutTerminee") + '</span>';
+        else if (isActive) statutLabel = '<span class="kta-secours-phase-status-active">' + t("secours.phases.statutActive") + '</span>';
+        else if (isStarted) statutLabel = '<span class="kta-secours-phase-status-paused">' + t("secours.phases.statutDemarree") + '</span>';
+        else statutLabel = '<span class="kta-secours-phase-status-pending">' + t("secours.phases.statutNonDemarree") + '</span>';
         // Bouton supprimer désactivé si phase active, démarrée, ou si c'est la seule
         const canDelete = !isActive && !isStarted;
-        const delTitle = isActive ? 'Phase active — impossible de supprimer'
-                       : isStarted ? 'Phase déjà démarrée — historique préservé'
-                       : 'Supprimer cette phase';
+        const delTitle = isActive ? t("secours.phases.delTitleActive")
+                       : isStarted ? t("secours.phases.delTitleStarted")
+                       : t("secours.phases.delTitleDefault");
         html += '<div class="kta-secours-phase-row" data-phase-idx="' + i + '">' +
                   '<div class="kta-secours-phase-row-head">' +
                     '<span class="kta-secours-phase-row-icon">📋</span>' +
@@ -5916,11 +5978,11 @@
                     statutLabel +
                   '</div>' +
                   '<div class="kta-secours-phase-row-meta">' +
-                    nbEquipes + ' équipe' + (nbEquipes > 1 ? 's' : '') + ' assignée' + (nbEquipes > 1 ? 's' : '') +
+                    t("secours.phases.equipesAssignees", { n: nbEquipes }) +
                   '</div>' +
                   '<div class="kta-secours-phase-row-actions">' +
-                    '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="edit-phase" data-phase-idx="' + i + '" title="Renommer + assigner des équipes">' +
-                      '✏️ Éditer' +
+                    '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="edit-phase" data-phase-idx="' + i + '" title="' + _escAttr(t("secours.phases.editTitle")) + '">' +
+                      t("secours.btn.editer") +
                     '</button>' +
                     '<button class="kta-btn kta-btn-danger kta-btn-xs" data-action="delete-phase" data-phase-idx="' + i + '"' +
                       (canDelete ? '' : ' disabled') + ' title="' + _escAttr(delTitle) + '">' +
@@ -5932,7 +5994,7 @@
       html += '</div>' +
               '<div style="margin-top:10px;">' +
                 '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-phase">' +
-                  '➕ Ajouter une phase' +
+                  t("secours.phases.btnAjouter") +
                 '</button>' +
               '</div>';
     }
@@ -5951,17 +6013,21 @@
     const isEdit = (typeof editPhaseIdx === "number");
     const existingPhase = isEdit ? s.phases[editPhaseIdx] : null;
     if (isEdit && !existingPhase) {
-      _toast("⚠️ Phase introuvable.", "error");
+      _toast(t("secours.toast.phaseIntrouvable"), "error");
       return;
     }
-    // Cleanup d'une modale précédente
+    // Cleanup d'une modale précédente (DOM + listener Esc orphelin v1.43.26)
     const oldModal = document.getElementById("kta-secours-phase-modal");
     if (oldModal) oldModal.remove();
+    if (_phaseModalEsc) {
+      document.removeEventListener("keydown", _phaseModalEsc);
+      _phaseModalEsc = null;
+    }
 
-    const defaultNom = isEdit ? existingPhase.nom : ("Phase " + (s.phases.length + 1));
+    const defaultNom = isEdit ? existingPhase.nom : t("secours.phaseModal.defaultNom", { n: (s.phases.length + 1) });
     const initialGroupeIds = isEdit ? (existingPhase.groupeIds || []).slice() : [];
 
-    const titre = isEdit ? "✏️ Éditer la phase" : "➕ Créer une phase";
+    const titre = isEdit ? t("secours.phaseModal.titreEdit") : t("secours.phaseModal.titreCreate");
 
     // 🐛 v1.29.0-fix1 — Classe kta-secours-sub-modal pour z-index 100050
     // (au-dessus de la modale Mode Secours principale à 99999).
@@ -5973,19 +6039,16 @@
                    '</div>' +
                    '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
                      '<div class="kta-secours-form-row">' +
-                       '<label for="kta-sec-phase-nom"><strong>Nom de la phase</strong></label>' +
-                       '<input type="text" id="kta-sec-phase-nom" maxlength="80" value="' + _escAttr(defaultNom) + '" placeholder="Phase 1, Reco zone Est, Évacuation, ..." style="width:100%;">' +
+                       '<label for="kta-sec-phase-nom"><strong>' + t("secours.phaseModal.nomLabel") + '</strong></label>' +
+                       '<input type="text" id="kta-sec-phase-nom" maxlength="80" value="' + _escAttr(defaultNom) + '" placeholder="' + _escAttr(t("secours.phaseModal.nomPlaceholder")) + '" style="width:100%;">' +
                      '</div>' +
                      '<div style="margin-top:14px;">' +
-                       '<label><strong>🚨 Équipes participantes</strong></label>' +
+                       '<label><strong>' + t("secours.phaseModal.equipesLabel") + '</strong></label>' +
                        '<p class="kta-secours-hint" style="margin:4px 0 8px;">' +
-                         'Coche les équipes qui interviennent dans cette phase. ' +
-                         'Tu pourras modifier cette sélection plus tard. Les équipes ' +
-                         'non cochées restent dans le scénario mais n\'apparaîtront pas ' +
-                         'dans la vue Live de cette phase.' +
+                         t("secours.phaseModal.equipesHint") +
                        '</p>';
     if (s.groupes.length === 0) {
-      html += '<p class="kta-secours-hint" style="color:#f4c542;">⚠️ Aucune équipe dans ce scénario. Crée des équipes via la section "🚨 Équipes" avant de pouvoir les assigner à une phase.</p>';
+      html += '<p class="kta-secours-hint" style="color:#f4c542;">' + t("secours.phaseModal.aucuneEquipe") + '</p>';
     } else {
       html += '<div class="kta-secours-phase-equipes-list">';
       s.groupes.forEach(function(g) {
@@ -5995,7 +6058,7 @@
                   '<input type="checkbox" data-equipe-id="' + g.id + '"' + (checked ? ' checked' : '') + '>' +
                   '<span class="kta-secours-phase-equipe-swatch" style="background:' + couleur.hex + ';"></span>' +
                   '<span class="kta-secours-phase-equipe-nom">' + _escHtml(g.nom) + '</span>' +
-                  (typeof g.level === "number" ? ' <span class="kta-secours-phase-equipe-level">🏗️ Niv ' + g.level + '</span>' : '') +
+                  (typeof g.level === "number" ? ' <span class="kta-secours-phase-equipe-level">' + t("secours.phaseModal.nivChip", { level: g.level }) + '</span>' : '') +
                 '</label>';
       });
       html += '</div>';
@@ -6003,9 +6066,9 @@
     html += '</div>' +
                    '</div>' +
                    '<div class="kta-readme-modal-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px 18px; border-top:1px solid rgba(255,255,255,0.08);">' +
-                     '<button class="kta-btn kta-btn-ghost" data-action="cancel-phase-modal">Annuler</button>' +
+                     '<button class="kta-btn kta-btn-ghost" data-action="cancel-phase-modal">' + t("secours.btn.annulerSimple") + '</button>' +
                      '<button class="kta-btn kta-btn-primary" data-action="confirm-phase-modal" data-edit-idx="' + (isEdit ? editPhaseIdx : "") + '">' +
-                       (isEdit ? '✓ Enregistrer' : '✓ Créer la phase') +
+                       (isEdit ? t("secours.btn.enregistrer") : t("secours.btn.creerPhase")) +
                      '</button>' +
                    '</div>' +
                  '</div>' +
@@ -6028,8 +6091,11 @@
     function _closeModal() {
       if (modal && modal.parentNode) modal.remove();
       document.removeEventListener("keydown", _onEsc);
+      // 🆕 v1.43.26 — Libère la ref module si c'est bien NOTRE listener.
+      if (_phaseModalEsc === _onEsc) _phaseModalEsc = null;
     }
     function _onEsc(e) { if (e.key === "Escape") _closeModal(); }
+    _phaseModalEsc = _onEsc;
     document.addEventListener("keydown", _onEsc);
 
     // Backdrop click = annuler
@@ -6046,7 +6112,7 @@
       } else if (action === "confirm-phase-modal") {
         const nom = nomInput ? nomInput.value.trim() : "";
         if (!nom) {
-          _toast("⚠️ Le nom de la phase est obligatoire.", "error");
+          _toast(t("secours.toast.phaseNomObligatoire"), "error");
           if (nomInput) nomInput.focus();
           return;
         }
@@ -6064,13 +6130,13 @@
             const wantParticipate = selectedIds.indexOf(g.id) !== -1;
             affecterEquipeAPhase(scenarioId, g.id, editPhaseIdx, wantParticipate);
           });
-          _toast("✓ Phase « " + nom + " » mise à jour.", "info");
+          _toast(t("secours.toast.phaseMaj", { nom: nom }), "info");
         } else {
           const created = creerPhase(scenarioId, nom, selectedIds);
           if (created) {
-            _toast("✓ Phase « " + nom + " » créée.", "info");
+            _toast(t("secours.toast.phaseCreee", { nom: nom }), "info");
           } else {
-            _toast("⚠️ Échec création de la phase.", "error");
+            _toast(t("secours.toast.phaseEchecCreation"), "error");
           }
         }
         _closeModal();
@@ -6112,54 +6178,50 @@
     let html = '<div class="kta-readme-modal-overlay kta-secours-sub-modal" id="kta-secours-debrief-modal">' +
                  '<div class="kta-readme-modal-boite" style="max-width:600px;height:auto;max-height:90vh;">' +
                    '<div class="kta-readme-modal-header">' +
-                     '<span class="kta-readme-modal-titre">📝 Terminer la phase « ' + _escHtml(phase.nom) + ' »</span>' +
+                     '<span class="kta-readme-modal-titre">' + t("secours.debrief.titre", { phase: _escHtml(phase.nom) }) + '</span>' +
                      '<button class="kta-panneau-close" data-action="close-debrief-modal">✕</button>' +
                    '</div>' +
                    '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
                      '<p class="kta-secours-hint" style="margin-top:0;">' +
-                       'Capture ici les enseignements de la phase : équipes rentrées, ' +
-                       'points trouvés, zones à explorer en priorité, contraintes apparues. ' +
-                       'Ce debrief sera intercalé dans le rapport final entre les sections ' +
-                       'de chaque phase.' +
+                       t("secours.debrief.intro") +
                      '</p>' +
                      '<div class="kta-secours-form-row">' +
-                       '<label for="kta-sec-debrief-text"><strong>Notes de debrief</strong>' +
-                         ' <span class="kta-secours-hint" style="font-weight:normal;">(facultatif — 5000 caractères max)</span>' +
+                       '<label for="kta-sec-debrief-text"><strong>' + t("secours.debrief.notesLabel") + '</strong>' +
+                         ' <span class="kta-secours-hint" style="font-weight:normal;">' + t("secours.debrief.notesHint") + '</span>' +
                        '</label>' +
-                       '<textarea id="kta-sec-debrief-text" rows="8" maxlength="5000" style="width:100%;box-sizing:border-box;" placeholder="Ex : Toutes les équipes sont rentrées, zone Nord-Est inexplorée, points P3 et P7 bloqués...">' + _escHtml(existingDebrief) + '</textarea>' +
+                       '<textarea id="kta-sec-debrief-text" rows="8" maxlength="5000" style="width:100%;box-sizing:border-box;" placeholder="' + _escAttr(t("secours.debrief.placeholder")) + '">' + _escHtml(existingDebrief) + '</textarea>' +
                      '</div>' +
                      '<div class="kta-secours-debrief-equipes" style="margin-top:14px;">' +
                        '<div style="font-size:13px;color:#8892a4;margin-bottom:6px;">' +
-                         '<strong>Équipes de la phase actuelle (' + equipesActuelles.length + ')</strong>' +
+                         '<strong>' + t("secours.debrief.equipesActuelles", { n: equipesActuelles.length }) + '</strong>' +
                        '</div>' +
                        '<div style="font-size:12px;color:#a8b3c8;">' +
                          (equipesActuelles.length > 0
                            ? equipesActuelles.map(function(g) { return _escHtml(g.nom); }).join(" · ")
-                           : '<em>Aucune équipe</em>') +
+                           : '<em>' + t("secours.debrief.aucuneEquipe") + '</em>') +
                        '</div>';
     if (aSuivante) {
       html += '<div style="margin-top:10px;padding:10px;background:rgba(140,180,255,0.10);border-left:3px solid rgba(140,180,255,0.55);border-radius:4px;">' +
                 '<div style="font-size:13px;color:#8cb4ff;margin-bottom:4px;">' +
-                  '➡️ <strong>Phase suivante :</strong> ' + _escHtml(nextPhase.nom) +
+                  '➡️ <strong>' + t("secours.debrief.phaseSuivante") + '</strong> ' + _escHtml(nextPhase.nom) +
                 '</div>' +
                 '<div style="font-size:12px;color:#a8b3c8;">' +
-                  equipesSuivantes.length + ' équipe' + (equipesSuivantes.length > 1 ? 's' : '') + ' assignée' + (equipesSuivantes.length > 1 ? 's' : '') + ' : ' +
+                  t("secours.debrief.equipesAssignees", { n: equipesSuivantes.length }) + ' ' +
                   (equipesSuivantes.length > 0
                     ? equipesSuivantes.map(function(g) { return _escHtml(g.nom); }).join(" · ")
-                    : '<em>aucune équipe encore — utilise « ✏️ Éditer » sur la phase pour en assigner</em>') +
+                    : '<em>' + t("secours.debrief.aucuneEquipeSuivante") + '</em>') +
                 '</div>' +
               '</div>';
     } else {
       html += '<div style="margin-top:10px;padding:10px;background:rgba(244,197,66,0.10);border-left:3px solid rgba(244,197,66,0.55);border-radius:4px;font-size:12px;color:#f4c542;">' +
-                '⚠️ Aucune phase suivante n\'existe. Terminer cette phase clôt l\'ensemble du plan ' +
-                '(équivalent « ⏹️ Terminer le plan »).' +
+                t("secours.debrief.pasDeSuivante") +
               '</div>';
     }
     html += '</div></div>' +
                    '<div class="kta-readme-modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid rgba(255,255,255,0.08);">' +
-                     '<button class="kta-btn kta-btn-ghost" data-action="cancel-debrief-modal">Annuler</button>' +
+                     '<button class="kta-btn kta-btn-ghost" data-action="cancel-debrief-modal">' + t("secours.btn.annulerSimple") + '</button>' +
                      '<button class="kta-btn kta-btn-primary" data-action="confirm-debrief-modal">' +
-                       (aSuivante ? '✓ Terminer la phase' : '⏹️ Terminer le plan') +
+                       (aSuivante ? t("secours.btn.terminerPhase") : t("secours.btn.terminerPlan")) +
                      '</button>' +
                    '</div>' +
                  '</div>' +
@@ -6174,12 +6236,12 @@
     const textArea = modal.querySelector("#kta-sec-debrief-text");
     if (textArea) textArea.focus();
 
+    // 🆕 v1.43.26 — Pattern A : helper mutualisé _bindSubModalEsc()
     function _closeModal() {
       if (modal && modal.parentNode) modal.remove();
-      document.removeEventListener("keydown", _onEsc);
+      _unbindEsc();
     }
-    function _onEsc(e) { if (e.key === "Escape") _closeModal(); }
-    document.addEventListener("keydown", _onEsc);
+    const _unbindEsc = _bindSubModalEsc(_closeModal);
     modal.addEventListener("click", function(e) { if (e.target === modal) _closeModal(); });
 
     modal.addEventListener("click", function(e) {
@@ -6197,11 +6259,11 @@
           _afficherModaleLancerPhaseSuivante(scenarioId);
         } else {
           // 2b. Pas de phase suivante → propose d'arrêter complètement
-          if (window.confirm("Phase « " + phase.nom + " » terminée.\n\nAucune phase suivante n'existe.\n\nArrêter complètement le plan de secours ?\n\n(Tu peux aussi créer une nouvelle phase depuis la vue Live avant d'arrêter.)")) {
+          if (window.confirm(t("secours.debrief.confirmArret", { phase: phase.nom }))) {
             arreterExecution(scenarioId);
-            _toast("⏹️ Plan de secours terminé.", "info");
+            _toast(t("secours.toast.planTermine"), "info");
           } else {
-            _toast("✓ Phase « " + phase.nom + " » terminée. Crée une phase suivante ou arrête manuellement.", "info");
+            _toast(t("secours.toast.phaseTermineeManuel", { phase: phase.nom }), "info");
           }
           if (_activeView) _switchView(_activeView);
         }
@@ -6228,7 +6290,7 @@
     let html = '<div class="kta-readme-modal-overlay kta-secours-sub-modal" id="kta-secours-launchnext-modal">' +
                  '<div class="kta-readme-modal-boite" style="max-width:480px;height:auto;max-height:90vh;">' +
                    '<div class="kta-readme-modal-header">' +
-                     '<span class="kta-readme-modal-titre">🚀 Lancer la phase suivante ?</span>' +
+                     '<span class="kta-readme-modal-titre">' + t("secours.launchNext.titre") + '</span>' +
                      '<button class="kta-panneau-close" data-action="close-launchnext">✕</button>' +
                    '</div>' +
                    '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
@@ -6237,16 +6299,15 @@
                          '<strong>' + _escHtml(nextPhase.nom) + '</strong>' +
                        '</div>' +
                        '<div style="font-size:13px;color:#8892a4;">' +
-                         equipes.length + ' équipe' + (equipes.length > 1 ? 's' : '') + ' participante' + (equipes.length > 1 ? 's' : '') +
+                         t("secours.launchNext.equipesParticipantes", { n: equipes.length }) +
                        '</div>' +
                      '</div>';
     if (equipes.length === 0) {
       html += '<div style="padding:10px;background:rgba(244,197,66,0.10);border-left:3px solid rgba(244,197,66,0.55);border-radius:4px;font-size:12px;color:#f4c542;">' +
-                '⚠️ Aucune équipe n\'est assignée à cette phase. La vue Live sera vide. ' +
-                'Utilise « Plus tard » et passe par « ✏️ Éditer » sur la phase pour assigner des équipes avant.' +
+                t("secours.launchNext.aucuneEquipe") +
               '</div>';
     } else {
-      html += '<div style="font-size:12px;color:#a8b3c8;margin-bottom:6px;">Équipes :</div>' +
+      html += '<div style="font-size:12px;color:#a8b3c8;margin-bottom:6px;">' + t("secours.launchNext.equipesLabel") + '</div>' +
               '<div style="font-size:13px;color:#e8eaf0;">' +
                 equipes.map(function(g) {
                   const couleur = PALETTE[g.couleurIdx % PALETTE.length] || PALETTE[0];
@@ -6257,16 +6318,14 @@
                 }).join("") +
               '</div>' +
               '<p class="kta-secours-hint" style="margin-top:10px;">' +
-                'Les étapes seront reconstruites à partir du parcours <strong>actuel</strong> de ' +
-                'chaque équipe (entrée + intermédiaires + sortie). Si tu as modifié les parcours ' +
-                'entre les phases, les nouvelles étapes en tiennent compte.' +
+                t("secours.launchNext.hint") +
               '</p>';
     }
     html += '</div>' +
                    '<div class="kta-readme-modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid rgba(255,255,255,0.08);">' +
-                     '<button class="kta-btn kta-btn-ghost" data-action="cancel-launchnext">Plus tard</button>' +
+                     '<button class="kta-btn kta-btn-ghost" data-action="cancel-launchnext">' + t("secours.btn.plusTard") + '</button>' +
                      '<button class="kta-btn kta-btn-primary" data-action="confirm-launchnext"' + (equipes.length === 0 ? ' disabled' : '') + '>' +
-                       '🚀 Démarrer ' + _escHtml(nextPhase.nom) +
+                       t("secours.btn.demarrerPhase", { phase: _escHtml(nextPhase.nom) }) +
                      '</button>' +
                    '</div>' +
                  '</div>' +
@@ -6279,29 +6338,29 @@
     const modal = document.getElementById("kta-secours-launchnext-modal");
     if (!modal) return;
 
+    // 🆕 v1.43.26 — Pattern A : helper mutualisé _bindSubModalEsc()
     function _closeModal() {
       if (modal && modal.parentNode) modal.remove();
-      document.removeEventListener("keydown", _onEsc);
+      _unbindEsc();
       // Quoi qu'il arrive, re-render la vue pour refléter la nouvelle phase
       // (si lancée) ou l'état "phase terminée" en attente.
       if (_activeView) _switchView(_activeView);
     }
-    function _onEsc(e) { if (e.key === "Escape") _closeModal(); }
-    document.addEventListener("keydown", _onEsc);
+    const _unbindEsc = _bindSubModalEsc(_closeModal);
     modal.addEventListener("click", function(e) { if (e.target === modal) _closeModal(); });
 
     modal.addEventListener("click", function(e) {
       const action = e.target.getAttribute && e.target.getAttribute("data-action");
       if (!action) return;
       if (action === "close-launchnext" || action === "cancel-launchnext") {
-        _toast("✓ Phase terminée. Lancera la phase suivante quand tu seras prêt.", "info");
+        _toast(t("secours.toast.phaseTermineePret"), "info");
         _closeModal();
       } else if (action === "confirm-launchnext") {
         const launched = lancerPhaseSuivante(scenarioId);
         if (launched) {
-          _toast("🚀 « " + launched.nom + " » démarrée.", "info");
+          _toast(t("secours.toast.phaseDemarree", { nom: launched.nom }), "info");
         } else {
-          _toast("⚠️ Échec du lancement de la phase suivante.", "error");
+          _toast(t("secours.toast.phaseEchecLancement"), "error");
         }
         _closeModal();
       }
@@ -6312,17 +6371,17 @@
     const s = get(_currentScenarioId);
     if (!s) {
       return '<div class="kta-secours-error">' +
-               '<p>Scénario introuvable. Retour à la liste…</p>' +
+               '<p>' + t("secours.edit.scenarioIntrouvableListe") + '</p>' +
              '</div>';
     }
     const incidentStr = s.context && s.context.incidentAt
                         ? new Date(s.context.incidentAt).toISOString().slice(0, 16)
                         : "";
     let html = '<div class="kta-secours-edit-header">' +
-                 '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="back-to-list">← Liste</button>' +
+                 '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="back-to-list">' + t("secours.btn.liste") + '</button>' +
                  '<input type="text" class="kta-secours-edit-titre" id="kta-sec-edit-nom" value="' + _escAttr(s.nom) + '" maxlength="80">' +
-                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="toggle-overlay" id="kta-sec-toggle-overlay" title="Afficher / masquer les zones sur la carte">' +
-                   (_overlayLayer ? '🗺️ Masquer' : '🗺️ Voir sur carte') +
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="toggle-overlay" id="kta-sec-toggle-overlay" title="' + _escAttr(t("secours.edit.toggleOverlayTitle")) + '">' +
+                   (_overlayLayer ? t("secours.edit.masquer") : t("secours.edit.voirCarte")) +
                  '</button>' +
                '</div>';
 
@@ -6334,14 +6393,14 @@
 
     // Section 1 — Contexte
     html += '<details class="kta-secours-section" open>' +
-              '<summary class="kta-secours-section-titre">📝 Contexte de l\'incident</summary>' +
+              '<summary class="kta-secours-section-titre">' + t("secours.edit.contexteTitre") + '</summary>' +
               '<div class="kta-secours-section-body">' +
                 '<div class="kta-secours-form-row">' +
-                  '<label for="kta-sec-edit-incident">Heure d\'incident</label>' +
+                  '<label for="kta-sec-edit-incident">' + t("secours.edit.heureIncident") + '</label>' +
                   '<input type="datetime-local" id="kta-sec-edit-incident" value="' + _escAttr(incidentStr) + '">' +
                 '</div>' +
                 '<div class="kta-secours-form-row">' +
-                  '<label for="kta-sec-edit-notes">Notes</label>' +
+                  '<label for="kta-sec-edit-notes">' + t("secours.edit.notes") + '</label>' +
                   '<textarea id="kta-sec-edit-notes" rows="3" maxlength="500">' + _escHtml(s.context.notes || "") + '</textarea>' +
                 '</div>' +
                 // 🆕 v1.23.0 Phase 2 / Feature C — Affichage du lastKnownPoint
@@ -6366,14 +6425,14 @@
                             : [];
     const autoMLVLBtn = (mlvlActive && availableLevels.length > 1)
       ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="auto-equipes-mlvl" ' +
-        'title="Crée automatiquement 1 équipe par niveau disponible (' + availableLevels.length + ' niveaux)">' +
-        '🏗️ Auto : 1 équipe par niveau (' + availableLevels.length + ')</button>'
+        'title="' + _escAttr(t("secours.edit.autoMlvlTitle", { n: availableLevels.length })) + '">' +
+        t("secours.edit.autoMlvlBtn", { n: availableLevels.length }) + '</button>'
       : '';
     html += '<details class="kta-secours-section" open>' +
-              '<summary class="kta-secours-section-titre">🚨 Équipes (' + s.groupes.length + ')</summary>' +
+              '<summary class="kta-secours-section-titre">' + t("secours.edit.equipesTitre", { n: s.groupes.length }) + '</summary>' +
               '<div class="kta-secours-section-body">' +
                 '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
-                  '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-groupe">➕ Ajouter une équipe</button>' +
+                  '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-groupe">' + t("secours.edit.btnAjouterEquipe") + '</button>' +
                   autoMLVLBtn +
                 '</div>' +
                 '<div class="kta-secours-groupes-list" style="margin-top:10px;">' +
@@ -6391,14 +6450,14 @@
 
     // Section 3 — Export
     html += '<details class="kta-secours-section">' +
-              '<summary class="kta-secours-section-titre">📤 Exporter ce scénario</summary>' +
+              '<summary class="kta-secours-section-titre">' + t("secours.edit.exportTitre") + '</summary>' +
               '<div class="kta-secours-section-body">' +
-                '<p class="kta-secours-hint">Partage le plan de secours avec les équipes externes (GRIMP, Pompiers, etc.).</p>' +
+                '<p class="kta-secours-hint">' + t("secours.edit.exportHint") + '</p>' +
                 '<div class="kta-secours-export-actions">' +
-                  '<button class="kta-btn kta-btn-primary" data-action="export-pdf">📄 Export PDF (1 page/équipe)</button>' +
-                  '<button class="kta-btn kta-btn-primary" data-action="export-kmz">🌍 Export KMZ géolocalisé</button>' +
+                  '<button class="kta-btn kta-btn-primary" data-action="export-pdf">' + t("secours.edit.exportPdf") + '</button>' +
+                  '<button class="kta-btn kta-btn-primary" data-action="export-kmz">' + t("secours.edit.exportKmz") + '</button>' +
                   // 🆕 v1.23.4 — Export scénario standalone .mkmsec.json
-                  '<button class="kta-btn kta-btn-secondary" data-action="export-mkmsec" title="Format JSON autonome pour partager ce scénario sur un autre appareil (sans devoir exporter toute la session)">📤 Export .mkmsec.json</button>' +
+                  '<button class="kta-btn kta-btn-secondary" data-action="export-mkmsec" title="' + _escAttr(t("secours.edit.exportMkmsecTitle")) + '">' + t("secours.edit.exportMkmsec") + '</button>' +
                 '</div>' +
               '</div>' +
             '</details>';
@@ -6409,7 +6468,7 @@
   // Rendu de la liste des équipes (utilisé par _renderEditView)
   function _renderGroupesList(scenario) {
     if (!scenario.groupes || scenario.groupes.length === 0) {
-      return '<div class="kta-secours-empty-small">Aucune équipe pour ce scénario. Clique "Ajouter une équipe" ci-dessus.</div>';
+      return '<div class="kta-secours-empty-small">' + t("secours.edit.aucuneEquipeListe") + '</div>';
     }
     let html = '';
     scenario.groupes.forEach(function(g) {
@@ -6419,14 +6478,14 @@
                          ? window.formatDistance(g.distanceM, 0)
                          : Math.round(g.distanceM) + " m")
                       : "—";
-      const dureeFmt = g.dureeEstimeeMin ? Math.round(g.dureeEstimeeMin) + " min" : "—";
-      const zoneFmt = g.zoneType === "polygon" ? "⬛ Polygone (" + (g.zonePolygon ? g.zonePolygon.length : 0) + " sommets)"
-                    : g.zoneType === "roads"   ? "🛣️ " + (g.zoneRoadIds ? g.zoneRoadIds.length : 0) + " tracés"
-                    : "Non définie";
+      const dureeFmt = g.dureeEstimeeMin ? t("secours.groupe.dureeMin", { n: Math.round(g.dureeEstimeeMin) }) : "—";
+      const zoneFmt = g.zoneType === "polygon" ? t("secours.groupe.zonePolygone", { n: (g.zonePolygon ? g.zonePolygon.length : 0) })
+                    : g.zoneType === "roads"   ? t("secours.groupe.zoneTraces", { n: (g.zoneRoadIds ? g.zoneRoadIds.length : 0) })
+                    : t("secours.groupe.zoneNonDefinie");
       // 🆕 v1.23.3 — chip "Niv X" dans le header de la card si g.level défini
       // (formatage cohérent : 0 → RDC, +1/-1 → "+1"/"-1", null → "Sans niveau")
       const lvlChip = (typeof g.level === "number")
-                      ? '<span class="kta-secours-groupe-level-chip" title="Niveau M-LVL de référence de l\'équipe">' +
+                      ? '<span class="kta-secours-groupe-level-chip" title="' + _escAttr(t("secours.groupe.levelChipTitle")) + '">' +
                         '🏗️ ' + (g.level === 0 ? "RDC" : (g.level > 0 ? "+" + g.level : String(g.level))) +
                         '</span>'
                       : '';
@@ -6439,14 +6498,14 @@
                             ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; })
                             : [];
         const levelOptions = '<option value=""' + (g.level == null ? ' selected' : '') +
-                             '>— Sans niveau —</option>' +
+                             '>' + t("secours.groupe.sansNiveau") + '</option>' +
                              availLevels.map(function(lvl) {
                                const lbl = (lvl === 0) ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl));
                                const sel = (lvl === g.level) ? ' selected' : '';
-                               return '<option value="' + lvl + '"' + sel + '>Niveau ' + lbl + '</option>';
+                               return '<option value="' + lvl + '"' + sel + '>' + t("secours.level.niveau", { label: lbl }) + '</option>';
                              }).join('');
         levelSelectRow = '<div class="kta-secours-groupe-row">' +
-                           '<label>🏗️ Niveau M-LVL</label>' +
+                           '<label>' + t("secours.groupe.niveauMlvl") + '</label>' +
                            '<select data-action="change-level" data-gid="' + _escAttr(g.id) + '">' +
                              levelOptions +
                            '</select>' +
@@ -6460,27 +6519,27 @@
                   /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — bouton 📲 retiré.
                      Le partage briefing se fait via "📥 Importer un plan"
                      (vue list) qui consomme le .mkmsec.json complet. */
-                  '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-groupe" data-gid="' + _escAttr(g.id) + '" title="Supprimer">🗑️</button>' +
+                  '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-groupe" data-gid="' + _escAttr(g.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">🗑️</button>' +
                 '</div>' +
                 '<div class="kta-secours-groupe-body">' +
                   '<div class="kta-secours-groupe-row">' +
-                    '<label>👥 Membres</label>' +
-                    '<input type="text" data-action="edit-membres" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr((g.membres || []).join(", ")) + '" placeholder="ex: Léa, Tom (séparés par virgule)" maxlength="200">' +
+                    '<label>' + t("secours.groupe.membresLabel") + '</label>' +
+                    '<input type="text" data-action="edit-membres" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr((g.membres || []).join(", ")) + '" placeholder="' + _escAttr(t("secours.groupe.membresPlaceholder")) + '" maxlength="200">' +
                   '</div>' +
                   // 🆕 v1.41.0 E — Position GPS surface équipe (PC secours, lieu rdv pompiers...).
                   //    Format saisi : "lat, lng" décimal WGS84 (ex: "48.8566, 2.3522").
                   //    Sérialisé en {lat, lng} dans le data model. Optionnel.
                   //    Utilisé par Briefing pompiers PDF (lien OSM + marker carte).
                   '<div class="kta-secours-groupe-row">' +
-                    '<label>📍 GPS surface</label>' +
+                    '<label>' + t("secours.groupe.gpsSurfaceLabel") + '</label>' +
                     '<input type="text" data-action="edit-surface-gps" data-gid="' + _escAttr(g.id) + '" ' +
                       'value="' + _escAttr(g.surfaceGps ? (g.surfaceGps.lat + ", " + g.surfaceGps.lng) : "") + '" ' +
-                      'placeholder="ex: 48.8566, 2.3522 (lat, lng — laisse vide si N/A)" ' +
+                      'placeholder="' + _escAttr(t("secours.groupe.gpsPlaceholder")) + '" ' +
                       'pattern="^\\s*-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*\\s*$" ' +
-                      'maxlength="50" title="Format : latitude, longitude (décimal WGS84)">' +
+                      'maxlength="50" title="' + _escAttr(t("secours.groupe.gpsTitle")) + '">' +
                   '</div>' +
                   '<div class="kta-secours-groupe-row">' +
-                    '<label>🎨 Couleur</label>' +
+                    '<label>' + t("secours.groupe.couleurLabel") + '</label>' +
                     '<select data-action="change-couleur" data-gid="' + _escAttr(g.id) + '">' +
                       PALETTE.map(function(c, i) {
                         return '<option value="' + i + '"' + (i === g.couleurIdx ? ' selected' : '') + '>' +
@@ -6490,19 +6549,19 @@
                   '</div>' +
                   levelSelectRow +
                   '<div class="kta-secours-groupe-stats">' +
-                    '<span>📍 Zone : <strong>' + zoneFmt + '</strong></span>' +
-                    '<span>📏 Distance : <strong>' + distFmt + '</strong></span>' +
-                    '<span>⏱️ Durée estimée : <strong>' + dureeFmt + '</strong></span>' +
+                    '<span>' + t("secours.groupe.statZone", { zone: zoneFmt }) + '</span>' +
+                    '<span>' + t("secours.groupe.statDistance", { distance: distFmt }) + '</span>' +
+                    '<span>' + t("secours.groupe.statDuree", { duree: dureeFmt }) + '</span>' +
                   '</div>' +
                   // 🆕 v1.22.0-fix2 : section Parcours avec entrée + intermédiaires[] + sortie
                   _renderParcoursSection(g) +
                   '<div class="kta-secours-groupe-actions">' +
-                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-zone" data-gid="' + _escAttr(g.id) + '">⬛ Définir zone</button>' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-zone" data-gid="' + _escAttr(g.id) + '">' + t("secours.groupe.btnDefZone") + '</button>' +
                     // 🆕 v1.22.0-fix4 (KARMA "on peut avoir un bouton tous les
                     // points dans la zone de recherche") — ajoute tous les POI
                     // dans la zone comme intermédiaires triés par proximité.
-                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="add-pois-zone" data-gid="' + _escAttr(g.id) + '" title="Ajoute tous les POI de la zone comme étapes (triés par proximité de l\'entrée)">✨ POI de la zone</button>' +
-                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="calc-iti" data-gid="' + _escAttr(g.id) + '">🗺️ Calc. itinéraire</button>' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="add-pois-zone" data-gid="' + _escAttr(g.id) + '" title="' + _escAttr(t("secours.groupe.btnPoisZoneTitle")) + '">' + t("secours.groupe.btnPoisZone") + '</button>' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="calc-iti" data-gid="' + _escAttr(g.id) + '">' + t("secours.groupe.btnCalcIti") + '</button>' +
                   '</div>' +
                 '</div>' +
               '</div>';
@@ -6536,21 +6595,21 @@
     if (!s || !Array.isArray(s.groupes) || s.groupes.length === 0) {
       return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-disabled">' +
                '<span class="kta-secours-lancer-bandeau-icon">🚀</span>' +
-               '<span>Ajoute au moins une équipe pour pouvoir lancer le plan de secours.</span>' +
+               '<span>' + t("secours.bandeau.ajouteEquipe") + '</span>' +
              '</div>';
     }
     if (_estExecutionActive(s)) {
       const exec = s.execution;
-      const roleLabel = (exec.role === "operateur") ? "👤 Opérateur surface"
-                      : (exec.role === "secouriste") ? "🚑 Secouriste libre"
-                      : "🚨 Équipe terrain";
+      const roleLabel = (exec.role === "operateur") ? t("secours.roleBandeau.operateur")
+                      : (exec.role === "secouriste") ? t("secours.roleBandeau.secouriste")
+                      : t("secours.roleBandeau.equipe");
       const dureeMs = getExecutionDureeMs(s.id);
       const dureeStr = _formatDureeMs(dureeMs);
       return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-active">' +
                '<div class="kta-secours-lancer-bandeau-info">' +
                  '<div class="kta-secours-lancer-bandeau-titre">' +
                    '<span class="kta-secours-lancer-bandeau-dot"></span>' +
-                   ' PLAN ACTIF — ' + _escHtml(roleLabel) +
+                   ' ' + t("secours.bandeau.planActif", { role: _escHtml(roleLabel) }) +
                  '</div>' +
                  '<div class="kta-secours-lancer-bandeau-sub">' +
                    // 🐛 hotfix1 (KARMA "le timer après avoir démarré doit
@@ -6559,13 +6618,13 @@
                    // ce texte toutes les 1s (cohérent avec le timer de la
                    // vue Live). Avant : string statique qui ne s'updatait
                    // qu'au re-render de la vue.
-                   '⏱️ Lancé depuis <span data-live-timer="duree">' + _escHtml(dureeStr) + '</span>' +
-                   (exec.pausedAt ? ' · ⏸️ En pause' : '') +
+                   t("secours.bandeau.lanceDepuis") + ' <span data-live-timer="duree">' + _escHtml(dureeStr) + '</span>' +
+                   (exec.pausedAt ? ' · ' + t("secours.bandeau.enPause") : '') +
                  '</div>' +
                '</div>' +
                '<div class="kta-secours-lancer-bandeau-actions">' +
                  '<button class="kta-btn kta-btn-primary" data-action="reprendre-live">' +
-                   '▶️ Reprendre la vue Live' +
+                   t("secours.bandeau.reprendreLive") +
                  '</button>' +
                  // 🆕 v1.40.33 (Synergie A v1) — Bouton "🌍 Vue OSM" depuis bandeau
                  // Mode Secours actif. Au clic : ouvre la modale Vue OSM existante
@@ -6573,20 +6632,20 @@
                  // Utile pour briefer un secours externe qui ne connaît pas le site.
                  // Gating natif (opt-in, strict offline, incognito, online) géré par
                  // OsmView.isAvailable() — voir _ouvrirVueOsmDepuisSecours.
-                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="Voir le plan projeté sur OpenStreetMap (utile pour briefer des secours externes ou situer le site sur la carte)">' +
-                   '🌍 Vue OSM' +
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.bandeau.vueOsmTitle")) + '">' +
+                   t("secours.bandeau.vueOsm") +
                  '</button>' +
                  // 🆕 v1.41.0 C — Briefing pompiers PDF dédié (vue surface + équipes GPS + POI critiques).
-                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="Génère un PDF dédié au briefing des secours externes (vue surface OSM + équipes GPS + POI critiques)">' +
-                   '🚒 Briefing pompiers' +
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitle")) + '">' +
+                   t("secours.bandeau.briefing") +
                  '</button>' +
                  // 🆕 v1.25.0 — Bouton Rapport accessible depuis vue Edit
                  // tant que execution active. Scope choisi = rôle courant.
-                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="edit-rapport" data-scope="' + _escAttr(exec.role) + '" title="Voir ou exporter le rapport actuel">' +
-                   '📤 Rapport' +
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="edit-rapport" data-scope="' + _escAttr(exec.role) + '" title="' + _escAttr(t("secours.bandeau.rapportTitle")) + '">' +
+                   t("secours.bandeau.rapport") +
                  '</button>' +
-                 '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan" title="Termine le plan et conserve les observations comme rapport">' +
-                   '⏹️ Arrêter' +
+                 '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan" title="' + _escAttr(t("secours.bandeau.arreterTitle")) + '">' +
+                   t("secours.bandeau.arreter") +
                  '</button>' +
                '</div>' +
              '</div>';
@@ -6596,43 +6655,43 @@
     if (s.execution && !s.execution.active && s.execution.endedAt) {
       const dureeStr = _formatDureeMs(getExecutionDureeMs(s.id));
       const finStr = new Date(s.execution.endedAt).toLocaleString("fr-FR");
-      const roleLabel = (s.execution.role === "operateur") ? "👤 Opérateur surface"
-                      : (s.execution.role === "secouriste") ? "🚑 Secouriste libre"
-                      : "🚨 Équipe terrain";
+      const roleLabel = (s.execution.role === "operateur") ? t("secours.roleBandeau.operateur")
+                      : (s.execution.role === "secouriste") ? t("secours.roleBandeau.secouriste")
+                      : t("secours.roleBandeau.equipe");
       return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-archived">' +
                '<div class="kta-secours-lancer-bandeau-info">' +
-                 '<div class="kta-secours-lancer-bandeau-titre">📦 PLAN TERMINÉ — ' + _escHtml(roleLabel) + '</div>' +
+                 '<div class="kta-secours-lancer-bandeau-titre">' + t("secours.bandeau.planTermine", { role: _escHtml(roleLabel) }) + '</div>' +
                  '<div class="kta-secours-lancer-bandeau-sub">' +
-                   '⏱️ Durée : ' + dureeStr + ' · 📅 Terminé le ' + _escHtml(finStr) +
+                   t("secours.bandeau.dureeFin", { duree: dureeStr, fin: _escHtml(finStr) }) +
                  '</div>' +
                '</div>' +
                '<div class="kta-secours-lancer-bandeau-actions">' +
                  '<button class="kta-btn kta-btn-primary" data-action="edit-rapport" data-scope="' + _escAttr(s.execution.role) + '">' +
-                   '📤 Voir le rapport historique' +
+                   t("secours.bandeau.voirRapportHisto") +
                  '</button>' +
                  // 🆕 v1.40.33 (Synergie A v1) — Vue OSM accessible aussi pour debrief
-                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="Voir le plan projeté sur OpenStreetMap (debrief géographique, briefing secours externes)">' +
-                   '🌍 Vue OSM' +
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.bandeau.vueOsmTitleDebrief")) + '">' +
+                   t("secours.bandeau.vueOsm") +
                  '</button>' +
                  // 🆕 v1.41.0 C — Briefing pompiers accessible aussi post-mortem.
-                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="Génère un PDF dédié au briefing des secours externes">' +
-                   '🚒 Briefing pompiers' +
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitlePost")) + '">' +
+                   t("secours.bandeau.briefing") +
                  '</button>' +
-                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-lancer-modale" title="Relancer un nouveau plan (les observations actuelles seront écrasées)">' +
-                   '🚀 Relancer' +
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-lancer-modale" title="' + _escAttr(t("secours.bandeau.relancerTitle")) + '">' +
+                   t("secours.bandeau.relancer") +
                  '</button>' +
                '</div>' +
              '</div>';
     }
     return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-cta">' +
              '<div class="kta-secours-lancer-bandeau-info">' +
-               '<div class="kta-secours-lancer-bandeau-titre">🚀 Prêt à déclencher le plan de secours ?</div>' +
+               '<div class="kta-secours-lancer-bandeau-titre">' + t("secours.bandeau.ctaTitre") + '</div>' +
                '<div class="kta-secours-lancer-bandeau-sub">' +
-                 'Lance le mode terrain step-by-step pour suivre les équipes en temps réel.' +
+                 t("secours.bandeau.ctaSub") +
                '</div>' +
              '</div>' +
              '<button class="kta-btn kta-btn-primary kta-btn-lg" data-action="ouvrir-lancer-modale">' +
-               '🚀 Lancer le plan de secours' +
+               t("secours.bandeau.ctaBtn") +
              '</button>' +
            '</div>';
   }
@@ -6672,29 +6731,27 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:90vh; border-left:6px solid #f4c542;">' +
         '<div class="kta-readme-modal-header">' +
-          '<h2 style="margin:0; color:#f4c542;">🚀 Lancer le plan de secours</h2>' +
-          '<button class="kta-readme-modal-close" data-action="cancel-lancer" aria-label="Annuler">✕</button>' +
+          '<h2 style="margin:0; color:#f4c542;">' + t("secours.lancer.titre") + '</h2>' +
+          '<button class="kta-readme-modal-close" data-action="cancel-lancer" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
-          '<p style="margin:0 0 14px 0;">Avant de démarrer, indique ton rôle dans cette mission :</p>' +
+          '<p style="margin:0 0 14px 0;">' + t("secours.lancer.intro") + '</p>' +
           '<div class="kta-secours-lancer-roles">' +
             '<label class="kta-secours-lancer-role-row">' +
               '<input type="radio" name="kta-lancer-role" value="operateur" checked>' +
               '<div class="kta-secours-lancer-role-info">' +
-                '<div class="kta-secours-lancer-role-titre">👤 Opérateur de surface</div>' +
+                '<div class="kta-secours-lancer-role-titre">' + t("secours.lancer.opTitre") + '</div>' +
                 '<div class="kta-secours-lancer-role-desc">' +
-                  'Tu coordonnes depuis le PC chef. Tu vois toutes les équipes en parallèle, ' +
-                  'tu peux éditer leurs observations en supervision.' +
+                  t("secours.lancer.opDesc") +
                 '</div>' +
               '</div>' +
             '</label>' +
             '<label class="kta-secours-lancer-role-row">' +
               '<input type="radio" name="kta-lancer-role" value="equipe">' +
               '<div class="kta-secours-lancer-role-info">' +
-                '<div class="kta-secours-lancer-role-titre">🚨 Équipe sur le terrain</div>' +
+                '<div class="kta-secours-lancer-role-titre">' + t("secours.lancer.equipeTitre") + '</div>' +
                 '<div class="kta-secours-lancer-role-desc">' +
-                  'Tu fais partie d\'une équipe assignée. Tu suis ton parcours étape par étape ' +
-                  'et tu commentes en live.' +
+                  t("secours.lancer.equipeDesc") +
                 '</div>' +
                 '<select id="kta-lancer-equipe-select" class="kta-secours-lancer-equipe-select" disabled>' +
                   groupesOpts +
@@ -6704,20 +6761,19 @@
             '<label class="kta-secours-lancer-role-row">' +
               '<input type="radio" name="kta-lancer-role" value="secouriste">' +
               '<div class="kta-secours-lancer-role-info">' +
-                '<div class="kta-secours-lancer-role-titre">🚑 Secouriste libre</div>' +
+                '<div class="kta-secours-lancer-role-titre">' + t("secours.lancer.secTitre") + '</div>' +
                 '<div class="kta-secours-lancer-role-desc">' +
-                  'Tu interviens sans équipe pré-assignée (renfort ponctuel, reconnaissance). ' +
-                  'Tu prends des notes libres avec timestamps.' +
+                  t("secours.lancer.secDesc") +
                 '</div>' +
               '</div>' +
             '</label>' +
           '</div>' +
           '<p style="margin-top:14px; color:#8892a4; font-size:13px; font-style:italic;">' +
-            '💡 Tu pourras changer de rôle plus tard sans perdre les observations déjà enregistrées.' +
+            t("secours.lancer.hint") +
           '</p>' +
           '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
-            '<button class="kta-btn kta-btn-ghost" data-action="cancel-lancer">❌ Annuler</button>' +
-            '<button class="kta-btn kta-btn-primary" data-action="confirm-lancer">✓ Démarrer maintenant</button>' +
+            '<button class="kta-btn kta-btn-ghost" data-action="cancel-lancer">' + t("secours.btn.annulerCroix") + '</button>' +
+            '<button class="kta-btn kta-btn-primary" data-action="confirm-lancer">' + t("secours.btn.demarrerMaintenant") + '</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -6745,7 +6801,7 @@
         const role = overlay.querySelector('input[name="kta-lancer-role"]:checked').value;
         const equipeId = (role === "equipe" && selectEquipe) ? selectEquipe.value : null;
         if (role === "equipe" && !equipeId) {
-          _toast("⚠️ Sélectionne une équipe.", "warn");
+          _toast(t("secours.toast.selectEquipe"), "warn");
           return;
         }
         _close();
@@ -6772,14 +6828,14 @@
       // Cas dégénéré : on est arrivé sur la vue live sans execution active
       setTimeout(function() { _switchView("edit"); }, 100);
       return '<div class="kta-secours-live-error">' +
-               '<p>⚠️ Aucun plan de secours actif. Retour à l\'édition…</p>' +
+               '<p>' + t("secours.live.aucunPlanActif") + '</p>' +
              '</div>';
     }
     const role = s.execution.role;
     if (role === "equipe")     return _renderLiveViewEquipe(s);
     if (role === "operateur")  return _renderLiveViewOperateur(s);
     if (role === "secouriste") return _renderLiveViewSecouriste(s);
-    return '<div class="kta-secours-live-error"><p>⚠️ Rôle inconnu : ' + _escHtml(role) + '</p></div>';
+    return '<div class="kta-secours-live-error"><p>' + t("secours.live.roleInconnu", { role: _escHtml(role) }) + '</p></div>';
   }
 
   // 🆕 v1.24.0 Phase 3 — State module-level pour vue Live Équipe
@@ -6809,9 +6865,9 @@
                 ? s.execution.currentPhaseIdx
                 : 0;
     const phase = s.phases[idx];
-    const nomPhase = phase ? phase.nom : ("Phase " + (idx + 1));
+    const nomPhase = phase ? phase.nom : t("secours.phaseModal.defaultNom", { n: (idx + 1) });
     return '<span class="kta-secours-live-phase-badge" title="' +
-             _escAttr(nomPhase + " — " + (idx + 1) + " sur " + total) + '">' +
+             _escAttr(t("secours.phaseBadge.title", { nom: nomPhase, n: (idx + 1), total: total })) + '">' +
              '<span class="kta-secours-live-phase-badge-icon">📋</span>' +
              '<span class="kta-secours-live-phase-badge-label">' +
                _escHtml(nomPhase) + ' <span class="kta-secours-live-phase-badge-pos">' +
@@ -6826,15 +6882,15 @@
     const g = (s.groupes || []).find(function(gr) { return gr.id === equipeId; });
     if (!g) {
       return '<div class="kta-secours-live-error">' +
-               '<p>⚠️ Équipe introuvable. Retour à l\'édition…</p>' +
+               '<p>' + t("secours.live.equipeIntrouvable") + '</p>' +
              '</div>';
     }
     const couleur = PALETTE[g.couleurIdx % PALETTE.length];
     const etapes = _getEtapesEquipe(s, equipeId);
     if (etapes.length === 0) {
       return '<div class="kta-secours-live-error">' +
-               '<p>⚠️ Aucune étape définie pour cette équipe (entrée/sortie manquantes). Retour à l\'édition pour compléter le parcours.</p>' +
-               '<button class="kta-btn kta-btn-primary" data-action="back-to-edit">← Retour édition</button>' +
+               '<p>' + t("secours.live.aucuneEtape") + '</p>' +
+               '<button class="kta-btn kta-btn-primary" data-action="back-to-edit">' + t("secours.live.btnRetourEdition") + '</button>' +
              '</div>';
     }
     // Init focus : 1ère étape pending sinon dernière
@@ -6854,7 +6910,7 @@
                 '<strong>' + _escHtml(g.nom) + '</strong>' +
                 _renderPhaseBadgeHTML(s) +
                 '<span class="kta-secours-live-header-meta">' +
-                  ' · Étape ' + (idx + 1) + '/' + etapes.length +
+                  ' · ' + t("secours.live.etapeCompteur", { n: (idx + 1), total: etapes.length }) +
                 '</span>' +
               '</div>' +
               '<div class="kta-secours-live-header-timer">' +
@@ -6872,8 +6928,8 @@
       const cls = isCurrent ? 'kta-secours-live-step kta-secours-live-step-current'
                 : (et.completedAt ? 'kta-secours-live-step kta-secours-live-step-done'
                                   : 'kta-secours-live-step kta-secours-live-step-pending');
-      const labelType = (et.type === "entree") ? "🚪 Entrée"
-                      : (et.type === "sortie") ? "🚪 Sortie"
+      const labelType = (et.type === "entree") ? t("secours.live.stepEntree")
+                      : (et.type === "sortie") ? t("secours.live.stepSortie")
                       : ("📍 " + (i));
       html += '<button class="' + cls + '" data-action="live-goto-step" data-step="' + i + '" ' +
                 'title="' + _escAttr(labelType + " — " + et.label) + '" ' +
@@ -6885,38 +6941,39 @@
     html += '</div>';
 
     // ─── Bloc étape courante ───
-    const typeLabel = (etape.type === "entree") ? "🚪 ENTRÉE"
-                    : (etape.type === "sortie") ? "🚪 SORTIE"
-                    : "📍 ÉTAPE " + idx;
+    const typeLabel = (etape.type === "entree") ? t("secours.live.typeEntree")
+                    : (etape.type === "sortie") ? t("secours.live.typeSortie")
+                    : t("secours.live.typeEtape", { idx: idx });
     html += '<div class="kta-secours-live-etape">' +
               '<div class="kta-secours-live-etape-titre">' +
                 typeLabel +
-                ' — ' + _escHtml(etape.label || "(sans label)") +
+                ' — ' + _escHtml(etape.label || t("secours.live.sansLabel")) +
               '</div>' +
               '<div class="kta-secours-live-etape-statut" style="border-color:' + statutInfo.color + ';">' +
-                '<span style="font-size:14px;">Statut actuel :</span> ' +
+                '<span style="font-size:14px;">' + t("secours.live.statutActuel") + '</span> ' +
                 '<strong style="color:' + statutInfo.color + ';">' +
-                  statutInfo.emoji + ' ' + _escHtml(statutInfo.label) +
+                  statutInfo.emoji + ' ' + _escHtml(_statutLabel(etape.statut)) +
                 '</strong>' +
               '</div>' +
               '<div class="kta-secours-live-etape-textarea-wrap">' +
-                '<label for="kta-live-obs-' + idx + '">📝 Observations à cette étape :</label>' +
+                '<label for="kta-live-obs-' + idx + '">' + t("secours.live.obsLabel") + '</label>' +
                 '<textarea id="kta-live-obs-' + idx + '" class="kta-secours-live-etape-textarea" ' +
-                  'rows="3" maxlength="2000" placeholder="Tape ici (ou utilise les boutons ci-dessous)…">' +
+                  'rows="3" maxlength="2000" placeholder="' + _escAttr(t("secours.live.obsPlaceholder")) + '">' +
                   _escHtml(etape.observations || "") +
                 '</textarea>' +
               '</div>' +
 
               '<div class="kta-secours-live-etape-statuts-rapides">' +
-                '<div class="kta-secours-live-etape-statuts-titre">⚡ Saisie rapide :</div>' +
+                '<div class="kta-secours-live-etape-statuts-titre">' + t("secours.live.saisieRapide") + '</div>' +
                 '<div class="kta-secours-live-etape-statuts-row">' +
                   TABLEAU_STATUTS.filter(function(st) { return !st.isPending; }).map(function(st) {
                     const isSel = (st.id === etape.statut);
+                    const stLbl = _statutLabel(st.id);
                     return '<button class="kta-secours-live-statut-btn' + (isSel ? ' kta-secours-live-statut-btn-sel' : '') + '" ' +
                            'data-action="live-set-statut" data-statut="' + _escAttr(st.id) + '" ' +
                            'style="--kta-statut-color:' + st.color + ';" ' +
-                           'title="' + _escAttr(st.label) + '">' +
-                             st.emoji + ' ' + _escHtml(st.label) +
+                           'title="' + _escAttr(stLbl) + '">' +
+                             st.emoji + ' ' + _escHtml(stLbl) +
                            '</button>';
                   }).join('') +
                 '</div>' +
@@ -6924,11 +6981,11 @@
 
               '<div class="kta-secours-live-etape-actions-row">' +
                 '<button class="kta-btn kta-btn-secondary" data-action="live-photo" ' +
-                  'title="Prendre une photo ou en ajouter une depuis la galerie">' +
-                  '📸 Photo (' + photosCount + '/5)' +
+                  'title="' + _escAttr(t("secours.live.photoTitle")) + '">' +
+                  t("secours.live.photoBtn", { n: photosCount }) +
                 '</button>' +
                 '<button class="kta-btn kta-btn-secondary" data-action="live-recentrer">' +
-                  '🎯 Recentrer carte' +
+                  t("secours.live.recentrerBtn") +
                 '</button>' +
               '</div>' +
 
@@ -6940,9 +6997,9 @@
     // ─── Navigation prev/next ───
     html += '<div class="kta-secours-live-nav">' +
               '<button class="kta-btn kta-btn-ghost" data-action="live-prev"' +
-                (idx === 0 ? ' disabled' : '') + '>← Étape précédente</button>' +
+                (idx === 0 ? ' disabled' : '') + '>' + t("secours.live.etapePrecedente") + '</button>' +
               '<button class="kta-btn kta-btn-primary" data-action="live-next"' +
-                (idx === etapes.length - 1 ? ' disabled' : '') + '>Étape suivante →</button>' +
+                (idx === etapes.length - 1 ? ' disabled' : '') + '>' + t("secours.live.etapeSuivante") + '</button>' +
             '</div>';
 
     // ─── Actions bas : Pause + Terminer + Retour édition ───
@@ -6953,35 +7010,35 @@
     const previousRole = s.execution._previousRole;
     const retourPreviousBtn = previousRole
       ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-retour-previous-role" ' +
-        'title="Retour à la vue ' + (previousRole === "operateur" ? "Opérateur surface" : "Secouriste") + '">' +
-          (previousRole === "operateur" ? "👤 Retour Opérateur" : "🚑 Retour Secouriste") +
+        'title="' + _escAttr(previousRole === "operateur" ? t("secours.live.retourPrevTitleOp") : t("secours.live.retourPrevTitleSec")) + '">' +
+          (previousRole === "operateur" ? t("secours.live.retourOperateur") : t("secours.live.retourSecouriste")) +
         '</button>'
       : '';
     html += '<div class="kta-secours-live-footer">' +
               '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
-                (s.execution.pausedAt ? '▶️ Reprendre' : '⏸️ Pause') +
+                (s.execution.pausedAt ? t("secours.live.reprendre") : t("secours.live.pause")) +
               '</button>' +
               retourPreviousBtn +
               // 🆕 v1.25.0 — Bouton Rapport (mode Équipe : scope = "equipe")
-              '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="equipe" title="Générer un rapport de mon parcours (PDF, JSON ou texte)">' +
-                '📤 Rapport' +
+              '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="equipe" title="' + _escAttr(t("secours.live.rapportEquipeTitle")) + '">' +
+                t("secours.bandeau.rapport") +
               '</button>' +
               // 🆕 v1.41.1 — Vue OSM + Briefing pompiers accessibles depuis vue Équipier.
-              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="Voir le plan projeté sur OpenStreetMap">' +
-                '🌍 Vue OSM' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.live.vueOsmTitle")) + '">' +
+                t("secours.bandeau.vueOsm") +
               '</button>' +
-              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="Génère un PDF dédié au briefing des secours externes">' +
-                '🚒 Briefing pompiers' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitlePost")) + '">' +
+                t("secours.bandeau.briefing") +
               '</button>' +
               /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — bouton retiré.
                  Sera remplacé hotfix18 par "💾 Exporter mes obs (.json)"
                  + import via le bouton "📥 Importer" en haut vue Live
                  (équivalent fichier classique sans QR). */
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
-                '⏸️ Voir l\'édition' +
+                t("secours.live.voirEdition") +
               '</button>' +
               '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan-live">' +
-                '⏹️ Terminer le plan' +
+                t("secours.btn.terminerPlan") +
               '</button>' +
             '</div>';
 
@@ -7029,11 +7086,11 @@
     // Header
     html += '<div class="kta-secours-live-header kta-secours-live-header-op">' +
               '<div class="kta-secours-live-header-titre">' +
-                '<strong>👤 Opérateur surface</strong>' +
+                '<strong>' + t("secours.liveOp.titre") + '</strong>' +
                 _renderPhaseBadgeHTML(s) +
                 '<span class="kta-secours-live-header-meta">' +
                   ' · ' + _escHtml(s.nom) +
-                  ' · ' + groupes.length + ' équipe' + (groupes.length > 1 ? 's' : '') +
+                  ' · ' + t("secours.liveOp.equipesCompteur", { n: groupes.length }) +
                 '</span>' +
               '</div>' +
               '<div class="kta-secours-live-header-timer">' +
@@ -7046,7 +7103,7 @@
     // Grille cards équipes
     if (groupes.length === 0) {
       html += '<div class="kta-secours-empty"><div class="kta-secours-empty-icon">🚨</div>' +
-                '<p>Aucune équipe dans ce scénario.</p></div>';
+                '<p>' + t("secours.liveOp.aucuneEquipe") + '</p></div>';
     } else {
       html += '<div class="kta-secours-live-op-grid">';
       groupes.forEach(function(g) {
@@ -7058,31 +7115,31 @@
     // Actions footer
     html += '<div class="kta-secours-live-footer">' +
               '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
-                (s.execution.pausedAt ? '▶️ Reprendre' : '⏸️ Pause') +
+                (s.execution.pausedAt ? t("secours.live.reprendre") : t("secours.live.pause")) +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-carte-globale">' +
-                '🗺️ Voir carte globale' +
+                t("secours.liveOp.carteGlobale") +
               '</button>' +
               // 🆕 v1.41.1 — Vue OSM + Briefing pompiers accessibles depuis vue Opérateur.
-              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="Voir le plan projeté sur OpenStreetMap (briefing secours externes)">' +
-                '🌍 Vue OSM' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.liveOp.vueOsmTitle")) + '">' +
+                t("secours.bandeau.vueOsm") +
               '</button>' +
-              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="Génère un PDF dédié au briefing des secours externes">' +
-                '🚒 Briefing pompiers' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitlePost")) + '">' +
+                t("secours.bandeau.briefing") +
               '</button>' +
               // 🆕 v1.25.0 — Bouton Rapport (mode Opérateur : scope = "operateur" → toutes équipes)
-              '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="operateur" title="Générer un rapport global de toutes les équipes (PDF, JSON ou texte)">' +
-                '📤 Rapport global' +
+              '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="operateur" title="' + _escAttr(t("secours.liveOp.rapportGlobalTitle")) + '">' +
+                t("secours.liveOp.rapportGlobal") +
               '</button>' +
               // 🆕 v1.26.0 — Bouton Import rapport équipier (consolidation cross-device)
-              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-import-rapport" title="Importer le rapport d\'un équipier (.mkmsec.report.json) pour fusionner ses observations dans le tableau de supervision">' +
-                '📥 Importer rapport équipier' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-import-rapport" title="' + _escAttr(t("secours.liveOp.importRapportTitle")) + '">' +
+                t("secours.liveOp.importRapport") +
               '</button>' +
               // 🆕 v1.29.0 C2 — Ajout phase à chaud (KARMA C2.2:c). Permet à
               // l'Op de planifier la phase suivante pendant que la phase courante
               // tourne, sans passer par la vue Edit.
-              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="add-phase" title="Créer une nouvelle phase. Tu choisiras les équipes qui y participent ; la transition se fait via « ✓ Phase terminée » + debrief.">' +
-                '➕ Ajouter une phase' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="add-phase" title="' + _escAttr(t("secours.liveOp.ajouterPhaseTitle")) + '">' +
+                t("secours.phases.btnAjouter") +
               '</button>' +
               // 🆕 v1.29.0 C3 — "✓ Phase terminée" : ouvre la modale debrief.
               // Visible UNIQUEMENT si multi-phase (KARMA C2.1:a — pas de
@@ -7092,15 +7149,15 @@
               (Array.isArray(s.phases) && s.phases.length >= 2
                 ? '<button class="kta-btn kta-btn-phase-end kta-btn-sm' +
                   (_phaseEstPretAClore(s) ? ' kta-btn-phase-end-ready' : '') +
-                  '" data-action="terminer-phase" title="Archiver la phase courante + saisir le debrief + (optionnel) enchaîner sur la phase suivante.">' +
-                    '✓ Phase terminée' +
+                  '" data-action="terminer-phase" title="' + _escAttr(t("secours.liveOp.phaseTermineeTitle")) + '">' +
+                    t("secours.liveOp.phaseTerminee") +
                   '</button>'
                 : '') +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
-                '⏸️ Voir l\'édition' +
+                t("secours.live.voirEdition") +
               '</button>' +
               '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan-live">' +
-                '⏹️ Terminer le plan' +
+                t("secours.btn.terminerPlan") +
               '</button>' +
             '</div>';
     return html;
@@ -7119,7 +7176,7 @@
                  '<span class="kta-secours-op-card-swatch" style="background:' + couleur.hex + ';"></span>' +
                  _escHtml(g.nom) +
                '</div>' +
-               '<div class="kta-secours-op-card-meta">⚠️ Parcours non défini</div>' +
+               '<div class="kta-secours-op-card-meta">' + t("secours.opCard.parcoursNonDefini") + '</div>' +
              '</div>';
     }
 
@@ -7170,29 +7227,28 @@
                  '<div class="kta-secours-op-card-titre">' +
                    '<span class="kta-secours-op-card-swatch" style="background:' + couleur.hex + ';"></span>' +
                    _escHtml(g.nom) +
-                   (isTerminee ? ' <span class="kta-secours-op-card-badge-terminee">✓ TERMINÉE</span>' : '') +
-                   (hasImported ? ' <span class="kta-secours-imported-chip" title="Au moins une étape contient des observations importées d\'un rapport équipier">📥 importé</span>' : '') +
+                   (isTerminee ? ' <span class="kta-secours-op-card-badge-terminee">' + t("secours.opCard.badgeTerminee") + '</span>' : '') +
+                   (hasImported ? ' <span class="kta-secours-imported-chip" title="' + _escAttr(t("secours.opCard.importeChipTitle")) + '">' + t("secours.opCard.importeChip") + '</span>' : '') +
                  '</div>' +
                  '<div class="kta-secours-op-card-progress">' +
                    '<div class="kta-secours-op-card-progress-bar" style="width:' + pctDone + '%; background:' + couleur.hex + ';"></div>' +
                    '<span class="kta-secours-op-card-progress-label">' +
-                     'Étape ' + (currentIdx + 1) + '/' + nbEtapes +
-                     ' · ' + pctDone + '%' +
+                     t("secours.opCard.etapeProgress", { n: (currentIdx + 1), total: nbEtapes, pct: pctDone }) +
                    '</span>' +
                  '</div>' +
                  '<div class="kta-secours-op-card-statut" style="color:' + highestStatut.color + ';">' +
-                   highestStatut.emoji + ' ' + _escHtml(highestStatut.label) +
+                   highestStatut.emoji + ' ' + _escHtml(_statutLabel(highestStatut.id)) +
                  '</div>' +
                  (obsSnippet
                    ? '<div class="kta-secours-op-card-obs">« ' + _escHtml(obsSnippet) + ' »</div>'
-                   : '<div class="kta-secours-op-card-obs kta-secours-op-card-obs-empty">(aucune observation)</div>') +
+                   : '<div class="kta-secours-op-card-obs kta-secours-op-card-obs-empty">' + t("secours.opCard.aucuneObs") + '</div>') +
                  '<div class="kta-secours-op-card-meta">⏱️ ' + lastTsStr + '</div>' +
                  '<div class="kta-secours-op-card-actions">' +
                    '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-details" data-equipe-id="' + _escAttr(g.id) + '">' +
-                     '👁️ Détails' +
+                     t("secours.opCard.details") +
                    '</button>' +
-                   '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-op-prendre-main" data-equipe-id="' + _escAttr(g.id) + '" title="Bascule en mode Équipe sur cette équipe">' +
-                     '🚨 Prendre la main' +
+                   '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-op-prendre-main" data-equipe-id="' + _escAttr(g.id) + '" title="' + _escAttr(t("secours.opCard.prendreMainTitle")) + '">' +
+                     t("secours.opCard.prendreMain") +
                    '</button>' +
                  '</div>' +
                '</div>';
@@ -7210,10 +7266,10 @@
     // Header
     html += '<div class="kta-secours-live-header kta-secours-live-header-sec">' +
               '<div class="kta-secours-live-header-titre">' +
-                '<strong>🚑 Secouriste libre</strong>' +
+                '<strong>' + t("secours.liveSec.titre") + '</strong>' +
                 _renderPhaseBadgeHTML(s) +
                 '<span class="kta-secours-live-header-meta">' +
-                  ' · ' + notes.length + ' note' + (notes.length > 1 ? 's' : '') +
+                  ' · ' + t("secours.liveSec.notesCompteur", { n: notes.length }) +
                 '</span>' +
               '</div>' +
               '<div class="kta-secours-live-header-timer">' +
@@ -7225,19 +7281,20 @@
 
     // Bloc création nouvelle note
     html += '<div class="kta-secours-live-etape">' +
-              '<div class="kta-secours-live-etape-titre">📝 Ajouter une note</div>' +
+              '<div class="kta-secours-live-etape-titre">' + t("secours.liveSec.ajouterNote") + '</div>' +
               '<div class="kta-secours-live-etape-textarea-wrap">' +
-                '<textarea id="kta-sec-newnote-texte" class="kta-secours-live-etape-textarea" rows="3" maxlength="2000" placeholder="Tape ta note ici (ex: « Galerie Nord exploré, RAS jusqu\'au 1er croisement »)…"></textarea>' +
+                '<textarea id="kta-sec-newnote-texte" class="kta-secours-live-etape-textarea" rows="3" maxlength="2000" placeholder="' + _escAttr(t("secours.liveSec.notePlaceholder")) + '"></textarea>' +
               '</div>' +
               '<div class="kta-secours-live-etape-statuts-rapides">' +
-                '<div class="kta-secours-live-etape-statuts-titre">⚡ Statut associé :</div>' +
+                '<div class="kta-secours-live-etape-statuts-titre">' + t("secours.liveSec.statutAssocie") + '</div>' +
                 '<div class="kta-secours-live-etape-statuts-row">' +
                   TABLEAU_STATUTS.filter(function(st) { return !st.isPending; }).map(function(st) {
+                    const stLbl = _statutLabel(st.id);
                     return '<button class="kta-secours-live-statut-btn" ' +
                            'data-action="sec-add-note" data-statut="' + _escAttr(st.id) + '" ' +
                            'style="--kta-statut-color:' + st.color + ';" ' +
-                           'title="Ajouter note avec statut : ' + _escAttr(st.label) + '">' +
-                             st.emoji + ' ' + _escHtml(st.label) +
+                           'title="' + _escAttr(t("secours.liveSec.ajouterNoteStatut", { statut: stLbl })) + '">' +
+                             st.emoji + ' ' + _escHtml(stLbl) +
                            '</button>';
                   }).join('') +
                 '</div>' +
@@ -7247,7 +7304,7 @@
     // Liste chronologique des notes (DESC = la + récente en haut)
     html += '<div class="kta-secours-live-notes-list">';
     if (notes.length === 0) {
-      html += '<div class="kta-secours-empty-small">Aucune note pour l\'instant. Utilise les boutons rapides ci-dessus pour en créer.</div>';
+      html += '<div class="kta-secours-empty-small">' + t("secours.liveSec.aucuneNote") + '</div>';
     } else {
       const sorted = notes.slice().sort(function(a, b) {
         return Date.parse(b.ts) - Date.parse(a.ts);
@@ -7257,9 +7314,9 @@
         const tsStr = new Date(note.ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
         html += '<div class="kta-secours-live-note" style="border-left:4px solid ' + info.color + ';">' +
                   '<div class="kta-secours-live-note-header">' +
-                    '<span style="color:' + info.color + ';"><strong>' + info.emoji + ' ' + _escHtml(info.label) + '</strong></span>' +
+                    '<span style="color:' + info.color + ';"><strong>' + info.emoji + ' ' + _escHtml(_statutLabel(note.statut)) + '</strong></span>' +
                     '<span class="kta-secours-live-note-ts">⏱️ ' + _escHtml(tsStr) + '</span>' +
-                    '<button class="kta-secours-live-note-del" data-action="sec-del-note" data-note-id="' + _escAttr(note.id) + '" title="Supprimer">✕</button>' +
+                    '<button class="kta-secours-live-note-del" data-action="sec-del-note" data-note-id="' + _escAttr(note.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">✕</button>' +
                   '</div>' +
                   (note.texte ? '<div class="kta-secours-live-note-texte">' + _escHtml(note.texte) + '</div>' : '') +
                 '</div>';
@@ -7270,24 +7327,24 @@
     // Footer
     html += '<div class="kta-secours-live-footer">' +
               '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
-                (s.execution.pausedAt ? '▶️ Reprendre' : '⏸️ Pause') +
+                (s.execution.pausedAt ? t("secours.live.reprendre") : t("secours.live.pause")) +
               '</button>' +
               // 🆕 v1.25.0 — Bouton Rapport (mode Secouriste : scope = "secouriste" → notes libres)
-              '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="secouriste" title="Générer un rapport de mes notes (PDF, JSON ou texte)">' +
-                '📤 Rapport' +
+              '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="secouriste" title="' + _escAttr(t("secours.liveSec.rapportTitle")) + '">' +
+                t("secours.bandeau.rapport") +
               '</button>' +
               // 🆕 v1.41.1 — Vue OSM + Briefing pompiers accessibles depuis vue Secouriste.
-              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="Voir le plan projeté sur OpenStreetMap">' +
-                '🌍 Vue OSM' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.live.vueOsmTitle")) + '">' +
+                t("secours.bandeau.vueOsm") +
               '</button>' +
-              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="Génère un PDF dédié au briefing des secours externes">' +
-                '🚒 Briefing pompiers' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitlePost")) + '">' +
+                t("secours.bandeau.briefing") +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
-                '⏸️ Voir l\'édition' +
+                t("secours.live.voirEdition") +
               '</button>' +
               '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan-live">' +
-                '⏹️ Terminer la mission' +
+                t("secours.liveSec.terminerMission") +
               '</button>' +
             '</div>';
     return html;
@@ -7304,7 +7361,7 @@
     etape.photoIds.forEach(function(pid) {
       html += '<div class="kta-secours-live-photo-slot" data-photo-id="' + _escAttr(pid) + '">' +
                 '<div class="kta-secours-live-photo-placeholder" data-photo-id="' + _escAttr(pid) + '">📸</div>' +
-                '<button class="kta-secours-live-photo-del" data-action="live-photo-del" data-photo-id="' + _escAttr(pid) + '" title="Supprimer cette photo">✕</button>' +
+                '<button class="kta-secours-live-photo-del" data-action="live-photo-del" data-photo-id="' + _escAttr(pid) + '" title="' + _escAttr(t("secours.live.supprimerPhoto")) + '">✕</button>' +
               '</div>';
     });
     html += '</div>';
@@ -7332,20 +7389,18 @@
     const isActive = _secoursHeatmapActive && window.MyKTAMapHeatmap.isVisible &&
                      window.MyKTAMapHeatmap.isVisible();
     return '<div class="kta-secours-tool-block">' +
-             '<div class="kta-secours-tool-block-titre">🔍 Outils d\'analyse</div>' +
+             '<div class="kta-secours-tool-block-titre">' + t("secours.heatmap.titre") + '</div>' +
              '<div class="kta-secours-tool-block-desc">' +
-               'La heatmap visualise les zones où l\'activité a été enregistrée ' +
-               '(timeline tracker, points, tracés). Utile pour identifier les ' +
-               'zones probables à fouiller en priorité.' +
+               t("secours.heatmap.desc") +
              '</div>' +
              '<div class="kta-secours-tool-block-actions">' +
                '<button class="kta-btn kta-btn-' + (isActive ? "primary" : "secondary") +
                  ' kta-btn-sm" data-action="toggle-heatmap-secours">' +
-                 (isActive ? "🔥 Masquer la heatmap" : "🔥 Afficher la heatmap d'activité") +
+                 (isActive ? t("secours.heatmap.masquer") : t("secours.heatmap.afficher")) +
                '</button>' +
                '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="config-heatmap-secours" ' +
-                 'title="Ouvre la modale Heatmap classique pour ajuster sources/rayon/intensité/M-LVL">' +
-                 '⚙️ Régler' +
+                 'title="' + _escAttr(t("secours.heatmap.reglerTitle")) + '">' +
+                 t("secours.heatmap.regler") +
                '</button>' +
              '</div>' +
            '</div>';
@@ -7368,22 +7423,19 @@
     const enabled = !!window.getItiPauseEnabled();
     const minutes = window.getItiPauseMinutes();
     return '<div class="kta-secours-tool-block">' +
-             '<div class="kta-secours-tool-block-titre">🛑 Pause entre les arrêts</div>' +
+             '<div class="kta-secours-tool-block-titre">' + t("secours.pause.titre") + '</div>' +
              '<div class="kta-secours-tool-block-desc">' +
-               'Temps de pause appliqué à chaque arrêt intermédiaire ' +
-               '(entrée et sortie exclues) pour le calcul de la durée ' +
-               'estimée d\'un parcours d\'équipe. <em>Partagé avec ' +
-               'l\'itinéraire principal de l\'app.</em>' +
+               t("secours.pause.desc") +
              '</div>' +
              '<div class="kta-secours-pause-row">' +
                '<label class="kta-secours-pause-toggle">' +
                  '<input type="checkbox" id="kta-sec-pause-enabled" ' +
                    (enabled ? 'checked' : '') + '>' +
-                 ' <span>Activer la pause par point</span>' +
+                 ' <span>' + t("secours.pause.activer") + '</span>' +
                '</label>' +
                '<div class="kta-secours-pause-input-wrap" ' +
                   (enabled ? '' : 'style="opacity:0.5;"') + '>' +
-                 '<label for="kta-sec-pause-min">Durée :</label>' +
+                 '<label for="kta-sec-pause-min">' + t("secours.pause.dureeLabel") + '</label>' +
                  '<input type="number" id="kta-sec-pause-min" min="0" max="120" step="1" ' +
                    'value="' + Math.round(minutes) + '" ' +
                    (enabled ? '' : 'disabled') + '>' +
@@ -7430,26 +7482,26 @@
     const c = s.context || {};
     if (!c.lastKnownPoint && !c.zoneIncertitude) return "";
     let html = '<div class="kta-secours-context-imported">';
-    html += '<div class="kta-secours-context-imported-titre">⛑️ Données importées depuis Lost Mode</div>';
+    html += '<div class="kta-secours-context-imported-titre">' + t("secours.ctxImport.titre") + '</div>';
     if (c.lastKnownPoint) {
       const lp = c.lastKnownPoint;
       const lbl = lp.label || ("x=" + Math.round(lp.x) + " y=" + Math.round(lp.y));
       html += '<div class="kta-secours-context-imported-row">' +
-                '<span>📍 Dernière position connue :</span> <strong>' + _escHtml(lbl) + '</strong>' +
+                '<span>' + t("secours.ctxImport.dernierePosition") + '</span> <strong>' + _escHtml(lbl) + '</strong>' +
                 (typeof lp.level === "number" && window.APP_CONFIG && window.APP_CONFIG.multiLevel
-                  ? ' <span class="kta-secours-parcours-lvl">(niv ' + lp.level + ')</span>'
+                  ? ' <span class="kta-secours-parcours-lvl">' + t("secours.ctxImport.niv", { level: lp.level }) + '</span>'
                   : '') +
               '</div>';
     }
     if (c.zoneIncertitude) {
       html += '<div class="kta-secours-context-imported-row">' +
-                '<span>⭕ Zone d\'incertitude :</span> <strong>rayon ' +
-                Math.round(c.zoneIncertitude.radiusMeters || 0) + ' m</strong>' +
+                '<span>' + t("secours.ctxImport.zoneIncertitude") + '</span> <strong>' +
+                t("secours.ctxImport.rayon", { rayon: Math.round(c.zoneIncertitude.radiusMeters || 0) }) + '</strong>' +
               '</div>';
     }
     html += '<div class="kta-secours-context-imported-actions">' +
-              '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="recentrer-lostpos">🎯 Recentrer la carte</button>' +
-              '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="clear-lostpos" title="Retire les données Lost Mode importées (le scénario reste, seules les infos contextuelles sont effacées)">✕ Retirer</button>' +
+              '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="recentrer-lostpos">' + t("secours.ctxImport.recentrer") + '</button>' +
+              '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="clear-lostpos" title="' + _escAttr(t("secours.ctxImport.retirerTitle")) + '">' + t("secours.ctxImport.retirer") + '</button>' +
             '</div>';
     html += '</div>';
     return html;
@@ -7458,7 +7510,7 @@
   // 🆕 v1.22.0-fix2 — Section Parcours d'une équipe (entree + intermediaires + sortie)
   function _renderParcoursSection(g) {
     let html = '<div class="kta-secours-parcours">';
-    html += '<div class="kta-secours-parcours-titre">🗺️ Parcours :</div>';
+    html += '<div class="kta-secours-parcours-titre">' + t("secours.parcours.titre") + '</div>';
     html += '<div class="kta-secours-parcours-list">';
     // Entrée
     // 🐛 v1.23.2-fix (KARMA audit UX P2 — cohérence boucle modale vs carte) :
@@ -7466,20 +7518,20 @@
     // et sortie (border-left orange au lieu de vert/rouge, cohérent avec
     // l'overlay carte qui rend un marker orange "↻ Boucle").
     const isBoucle = _samePoint(g.entree, g.sortie);
-    html += _renderWaypointRow(g, "entree", g.entree, null, "📍", "Entrée", isBoucle);
+    html += _renderWaypointRow(g, "entree", g.entree, null, "📍", t("secours.parcours.entree"), isBoucle);
     // Intermédiaires
     (g.intermediaires || []).forEach(function(w, i) {
-      html += _renderWaypointRow(g, "intermediaire", w, i, "▾", "Étape " + (i + 1), false);
+      html += _renderWaypointRow(g, "intermediaire", w, i, "▾", t("secours.parcours.etape", { n: (i + 1) }), false);
     });
     // Bouton "Ajouter étape intermédiaire"
     html += '<button class="kta-btn kta-btn-ghost kta-btn-sm kta-secours-parcours-add"' +
             ' data-action="add-intermediaire" data-gid="' + _escAttr(g.id) + '">' +
-            '➕ Ajouter une étape intermédiaire</button>';
+            t("secours.parcours.btnAjouterEtape") + '</button>';
     // Sortie
-    html += _renderWaypointRow(g, "sortie", g.sortie, null, "🚪", "Sortie", isBoucle);
+    html += _renderWaypointRow(g, "sortie", g.sortie, null, "🚪", t("secours.parcours.sortie"), isBoucle);
     // Hint si entrée === sortie (boucle)
     if (g.entree && g.sortie && _samePoint(g.entree, g.sortie)) {
-      html += '<div class="kta-secours-parcours-hint">↻ <em>Boucle détectée — l\'équipe entre et sort par le même point.</em></div>';
+      html += '<div class="kta-secours-parcours-hint">' + t("secours.parcours.boucleHint") + '</div>';
     }
     html += '</div>';
     html += '</div>';
@@ -7494,10 +7546,10 @@
     if (w) {
       label = w.label || ("x=" + Math.round(w.x) + " y=" + Math.round(w.y));
       if (typeof w.level === "number" && window.APP_CONFIG && window.APP_CONFIG.multiLevel) {
-        label += " <span class='kta-secours-parcours-lvl'>(niv " + w.level + ")</span>";
+        label += " <span class='kta-secours-parcours-lvl'>" + t("secours.ctxImport.niv", { level: w.level }) + "</span>";
       }
     } else {
-      label = '<em class="kta-secours-parcours-todo">non défini</em>';
+      label = '<em class="kta-secours-parcours-todo">' + t("secours.parcours.nonDefini") + '</em>';
     }
     // 🆕 v1.23.2-fix UX P2 — data-loop="1" sur entrée+sortie si boucle
     // (border-left orange via CSS, cohérent avec l'overlay carte)
@@ -7511,12 +7563,12 @@
                  '<span class="kta-secours-parcours-btns">' +
                    '<button class="kta-btn kta-btn-ghost kta-btn-xs" data-action="pick-waypoint"' +
                    ' data-gid="' + gid + '" data-role="' + role + '"' + idxAttr +
-                   ' title="Choisir un point (recherche ou clic carte)">' +
+                   ' title="' + _escAttr(t("secours.parcours.pickTitle")) + '">' +
                    (w ? '✏️' : '📍') + '</button>';
     if (isInter || w) {
       html += '<button class="kta-btn kta-btn-ghost kta-btn-xs" data-action="clear-waypoint"' +
               ' data-gid="' + gid + '" data-role="' + role + '"' + idxAttr +
-              ' title="' + (isInter ? "Retirer cette étape" : "Effacer") + '">🗑️</button>';
+              ' title="' + _escAttr(isInter ? t("secours.parcours.retirerEtape") : t("secours.parcours.effacer")) + '">🗑️</button>';
     }
     html += '</span></div>';
     return html;
@@ -7609,7 +7661,7 @@
           const id = btn.getAttribute("data-id");
           const s = get(id);
           if (!s) return;
-          if (window.confirm("Supprimer le scénario « " + s.nom + " » ? Cette action est irréversible.")) {
+          if (window.confirm(t("secours.confirm.supprimerScenario", { nom: s.nom }))) {
             deleteScenario(id);
             _switchView("list");
           }
@@ -7662,7 +7714,7 @@
         btn.addEventListener("click", function() {
           _afficherModaleLancer(s.id, function(opts) {
             lancerExecution(s.id, opts);
-            _toast("🚀 Plan de secours lancé !", "info");
+            _toast(t("secours.toast.planLance"), "info");
             _switchView("live");
           });
         });
@@ -7672,9 +7724,9 @@
       });
       corps.querySelectorAll('[data-action="arreter-plan"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
-          if (!window.confirm("Arrêter le plan de secours ?\n\nLes observations sont conservées (consultables ultérieurement comme rapport). Tu pourras relancer un nouveau plan si nécessaire.")) return;
+          if (!window.confirm(t("secours.confirm.arreterPlan"))) return;
           arreterExecution(s.id);
-          _toast("⏹️ Plan de secours arrêté. Observations sauvegardées.", "info");
+          _toast(t("secours.toast.planArrete"), "info");
           _switchView("edit");
         });
       });
@@ -7714,13 +7766,13 @@
             clearOverlay();
             if (_modal) _modal.style.display = "";
             _removeOverlayFloater();
-            btn.textContent = "🗺️ Voir sur carte";
+            btn.textContent = t("secours.edit.voirCarte");
           } else {
             // Toggle ON : masque modale + render overlay + affiche floater retour
             renderOverlay(_currentScenarioId);
             if (_modal) _modal.style.display = "none";
             _showOverlayFloater();
-            btn.textContent = "🗺️ Masquer";
+            btn.textContent = t("secours.edit.masquer");
           }
         });
       });
@@ -7762,7 +7814,7 @@
       // 🆕 v1.23.0 Feature C — Retirer les données Lost Mode importées
       corps.querySelectorAll('[data-action="clear-lostpos"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
-          if (!window.confirm("Retirer la dernière position connue + zone d'incertitude du contexte ? Le scénario et ses équipes restent intacts.")) return;
+          if (!window.confirm(t("secours.confirm.retirerLostpos"))) return;
           updateScenario(s.id, {
             context: { lastKnownPoint: null, zoneIncertitude: null }
           });
@@ -7772,11 +7824,11 @@
       // 🆕 v1.23.0 Feature D — Toggle heatmap d'activité Mode Secours
       corps.querySelectorAll('[data-action="toggle-heatmap-secours"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
-          if (!window.MyKTAMapHeatmap) { _toast("⚠️ Module Heatmap indisponible.", "error"); return; }
+          if (!window.MyKTAMapHeatmap) { _toast(t("secours.toast.heatmapIndisponible"), "error"); return; }
           if (_secoursHeatmapActive && window.MyKTAMapHeatmap.isVisible()) {
             window.MyKTAMapHeatmap.effacer();
             _secoursHeatmapActive = false;
-            _toast("🔥 Heatmap masquée.", "info");
+            _toast(t("secours.toast.heatmapMasquee"), "info");
           } else {
             // Active overlay si pas déjà actif (sinon la modale cache tout)
             if (!_overlayLayer) {
@@ -7798,10 +7850,10 @@
                 intensity:     1.0
               });
               _secoursHeatmapActive = true;
-              _toast("🔥 Heatmap affichée — Bouton ⚙️ Régler pour ajuster sources/intensité.", "info");
+              _toast(t("secours.toast.heatmapAffichee"), "info");
             } catch(e) {
               console.warn("[SecoursMode] Heatmap échec :", e);
-              _toast("⚠️ Erreur heatmap : " + e.message, "error");
+              _toast(t("secours.toast.erreurHeatmap", { message: e.message }), "error");
             }
           }
           _switchView("edit");   // re-render pour update label bouton
@@ -7816,7 +7868,7 @@
       corps.querySelectorAll('[data-action="config-heatmap-secours"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           if (!window.MyKTAMapHeatmap || typeof window.MyKTAMapHeatmap.ouvrirModale !== "function") {
-            _toast("⚠️ Modale Heatmap indisponible.", "error");
+            _toast(t("secours.toast.heatmapModaleIndispo"), "error");
             return;
           }
           if (_modal) _modal.style.display = "none";
@@ -7852,10 +7904,11 @@
         pauseEnabledCb.addEventListener("change", function() {
           window.setItiPauseEnabled(pauseEnabledCb.checked);
           const updated = _recalculerToutesDureesEquipes(_currentScenarioId);
+          const recalcSuffix = updated > 0 ? t("secours.toast.pauseRecalcSuffix", { n: updated }) : "";
           _toast(
-            pauseEnabledCb.checked
-              ? "✓ Pause activée" + (updated > 0 ? " — " + updated + " durée" + (updated > 1 ? "s" : "") + " recalculée" + (updated > 1 ? "s" : "") : "")
-              : "✓ Pause désactivée" + (updated > 0 ? " — " + updated + " durée" + (updated > 1 ? "s" : "") + " recalculée" + (updated > 1 ? "s" : "") : ""),
+            (pauseEnabledCb.checked
+              ? t("secours.toast.pauseActivee")
+              : t("secours.toast.pauseDesactivee")) + recalcSuffix,
             "info"
           );
           _switchView("edit");   // re-render pour update opacité input + cards
@@ -7869,9 +7922,9 @@
           pauseMinInput.value = String(Math.round(v));  // clamp visuel immédiat
           window.setItiPauseMinutes(v);
           const updated = _recalculerToutesDureesEquipes(_currentScenarioId);
+          const recalcSuffix = updated > 0 ? t("secours.toast.pauseRecalcSuffix", { n: updated }) : "";
           _toast(
-            "✓ Pause : " + Math.round(v) + " min" +
-              (updated > 0 ? " — " + updated + " durée" + (updated > 1 ? "s" : "") + " recalculée" + (updated > 1 ? "s" : "") : ""),
+            t("secours.toast.pauseMinutes", { n: Math.round(v) }) + recalcSuffix,
             "info"
           );
           _switchView("edit");
@@ -7899,26 +7952,25 @@
       corps.querySelectorAll('[data-action="auto-equipes-mlvl"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) {
-            _toast("⚠️ Le mode multi-niveau (M-LVL) n'est pas actif sur ce plan.", "warn");
+            _toast(t("secours.toast.mlvlNonActif"), "warn");
             return;
           }
           const levels = Array.isArray(window.APP_CONFIG.availableLevels)
                          ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; })
                          : [];
           if (levels.length < 2) {
-            _toast("⚠️ Au moins 2 niveaux requis pour cette suggestion.", "warn");
+            _toast(t("secours.toast.auMoins2Niveaux"), "warn");
             return;
           }
           // Confirme si des équipes existent déjà (anti-doublon massif)
           if (s.groupes.length > 0) {
-            if (!window.confirm("Le scénario contient déjà " + s.groupes.length +
-                " équipe(s). Ajouter " + levels.length + " nouvelle(s) équipe(s) (1 par niveau) ?")) return;
+            if (!window.confirm(t("secours.confirm.autoEquipes", { existant: s.groupes.length, nouveau: levels.length }))) return;
           }
           // Crée 1 équipe par niveau, nom = "Niveau X" (avec convention RDC pour 0)
           // 🆕 v1.23.3 : passe le level explicitement à addGroupe → g.level
           // est correctement set (pas écrasé par APP_CONFIG.activeLevel défaut).
           levels.forEach(function(lvl) {
-            const nom = "Niveau " + (lvl === 0 ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl)));
+            const nom = t("secours.level.niveau", { label: (lvl === 0 ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl))) });
             const g = addGroupe(s.id, nom, lvl);
             // Pré-set le level de l'entrée à ce niveau (sera défini via clic carte
             // ensuite, mais le level par défaut est posé pour cohérence Pathfinder).
@@ -7929,7 +7981,7 @@
             // au moment du clic.
             // Note dans le nom déjà suffisamment explicite.
           });
-          _toast("✓ " + levels.length + " équipes créées (1 par niveau). Définis maintenant les zones + entrées/sorties pour chacune.", "info");
+          _toast(t("secours.toast.equipesCreees", { n: levels.length }), "info");
           _switchView("edit");
         });
       });
@@ -7955,14 +8007,14 @@
           if (!Number.isInteger(idx)) return;
           const phase = s.phases[idx];
           if (!phase) return;
-          const confirmMsg = "Supprimer la phase « " + phase.nom + " » ? Les équipes restent dans le scénario.";
+          const confirmMsg = t("secours.confirm.supprimerPhase", { nom: phase.nom });
           if (!window.confirm(confirmMsg)) return;
           const ok = supprimerPhase(s.id, idx);
           if (ok) {
-            _toast("✓ Phase supprimée.", "info");
+            _toast(t("secours.toast.phaseSupprimee"), "info");
             _switchView(_activeView || "edit");
           } else {
-            _toast("⚠️ Suppression impossible (phase active ou démarrée).", "error");
+            _toast(t("secours.toast.phaseSuppressionImpossible"), "error");
           }
         });
       });
@@ -7996,7 +8048,7 @@
               }
             }
             if (!gps) {
-              _toast("⚠️ Format GPS invalide (attendu : lat, lng — ex 48.85, 2.35).", "error");
+              _toast(t("secours.toast.gpsInvalide"), "error");
               return;
             }
           }
@@ -8026,7 +8078,7 @@
           const gid = btn.getAttribute("data-gid");
           const g = s.groupes.find(function(x) { return x.id === gid; });
           if (!g) return;
-          if (window.confirm("Supprimer l'équipe « " + g.nom + " » ?")) {
+          if (window.confirm(t("secours.confirm.supprimerEquipe", { nom: g.nom }))) {
             removeGroupe(s.id, gid);
             _switchView("edit");
           }
@@ -8087,7 +8139,7 @@
         btn.addEventListener("click", function() {
           Promise.resolve(exporterPDF(s.id)).catch(function(e) {
             console.warn("[SecoursMode] exporterPDF rejected :", e);
-            _toast("⚠️ Erreur PDF : " + (e.message || e), "error");
+            _toast(t("secours.toast.erreurPdf", { message: (e.message || e) }), "error");
           });
         });
       });
@@ -8097,7 +8149,7 @@
           // 🆕 v1.23.0 — exporterKMZ est async (fetch plan image) — catch les rejets
           Promise.resolve(exporterKMZ(s.id)).catch(function(e) {
             console.warn("[SecoursMode] exporterKMZ rejected :", e);
-            _toast("⚠️ Erreur KMZ : " + (e.message || e), "error");
+            _toast(t("secours.toast.erreurKmz", { message: (e.message || e) }), "error");
           });
         });
       });
@@ -8142,9 +8194,9 @@
     // Arrêter le plan depuis la vue Live
     corps.querySelectorAll('[data-action="arreter-plan-live"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
-        if (!window.confirm("Terminer le plan de secours ?\n\nLes observations sont conservées comme rapport consultable.")) return;
+        if (!window.confirm(t("secours.confirm.terminerPlanLive"))) return;
         arreterExecution(s.id);
-        _toast("⏹️ Plan de secours terminé. Observations sauvegardées.", "info");
+        _toast(t("secours.toast.planTermineSauv"), "info");
         _switchView("edit");
       });
     });
@@ -8153,7 +8205,7 @@
       btn.addEventListener("click", function() {
         const isPaused = !!s.execution.pausedAt;
         pauseExecution(s.id, !isPaused);
-        _toast(isPaused ? "▶️ Reprise du plan" : "⏸️ Plan mis en pause", "info");
+        _toast(isPaused ? t("secours.toast.reprisePlan") : t("secours.toast.planEnPause"), "info");
         _switchView("live");
       });
     });
@@ -8257,7 +8309,7 @@
         }
         marquerEtapeStatut(s.id, equipeId, idx, statutId);
         const info = _getStatutInfo(statutId);
-        _toast(info.emoji + " Étape " + (idx + 1) + " → " + info.label, "info");
+        _toast(info.emoji + " " + t("secours.toast.etapeStatut", { n: (idx + 1), statut: _statutLabel(statutId) }), "info");
         _switchView("live");
       });
     });
@@ -8272,7 +8324,7 @@
       btn.addEventListener("click", function() {
         const pid = btn.getAttribute("data-photo-id");
         if (!pid) return;
-        if (!window.confirm("Supprimer cette photo ?")) return;
+        if (!window.confirm(t("secours.confirm.supprimerPhoto"))) return;
         _supprimerPhotoEtape(s.id, equipeId, idx, pid);
       });
     });
@@ -8291,8 +8343,8 @@
         delete s.execution._previousRole;
         delete s.execution._previousEquipeId;
         _commitMutation(s);
-        const label = (prevRole === "operateur") ? "👤 Opérateur surface" : "🚑 Secouriste libre";
-        _toast("↩️ Retour : " + label, "info");
+        const label = (prevRole === "operateur") ? t("secours.roleBandeau.operateur") : t("secours.roleBandeau.secouriste");
+        _toast(t("secours.toast.retourRole", { role: label }), "info");
         _switchView("live");
       });
     });
@@ -8317,7 +8369,7 @@
           }
         }
         if (!pos || typeof pos.x !== "number" || !window.map) {
-          _toast("⚠️ Position introuvable pour cette étape.", "warn");
+          _toast(t("secours.toast.positionIntrouvable"), "warn");
           return;
         }
         // Masque modale + centre carte
@@ -8342,7 +8394,7 @@
   // Helper photo : ouvre file picker + compress + add + refresh
   function _ajouterPhotoEtape(scenarioId, equipeId, etapeIdx) {
     if (!window.MyKTAMapSecoursPhotos || !window.MyKTAMapSecoursPhotos.isAvailable()) {
-      _toast("⚠️ Module Photos Secours indisponible.", "error");
+      _toast(t("secours.toast.photosIndisponible"), "error");
       return;
     }
     const input = document.createElement("input");
@@ -8355,7 +8407,7 @@
       const file = input.files && input.files[0];
       document.body.removeChild(input);
       if (!file) return;
-      _toast("⏳ Ajout photo en cours…", "info");
+      _toast(t("secours.toast.ajoutPhoto"), "info");
       window.MyKTAMapSecoursPhotos.addPhoto(scenarioId, equipeId, etapeIdx, file).then(function(photoId) {
         // Update etape.photoIds dans le scenario
         const etapes = _getEtapesEquipe(get(scenarioId), equipeId);
@@ -8363,13 +8415,13 @@
         if (!etape) return;
         const newPhotoIds = (etape.photoIds || []).concat([photoId]);
         updateEtape(scenarioId, equipeId, etapeIdx, { photoIds: newPhotoIds });
-        _toast("✓ Photo ajoutée à l'étape", "info");
+        _toast(t("secours.toast.photoAjoutee"), "info");
         _switchView("live");
       }).catch(function(e) {
         console.warn("[SecoursMode] _ajouterPhotoEtape échec :", e);
         const msg = e && e.code === "QUOTA_PER_ETAPE"
-                    ? "⚠️ Max 5 photos par étape atteint."
-                    : "⚠️ Erreur ajout photo : " + (e && e.message ? e.message : "");
+                    ? t("secours.toast.photoQuota")
+                    : t("secours.toast.erreurAjoutPhoto", { message: (e && e.message ? e.message : "") });
         _toast(msg, "error");
       });
     });
@@ -8385,11 +8437,11 @@
       if (!etape) return;
       const newPhotoIds = (etape.photoIds || []).filter(function(pid) { return pid !== photoId; });
       updateEtape(scenarioId, equipeId, etapeIdx, { photoIds: newPhotoIds });
-      _toast("✓ Photo supprimée", "info");
+      _toast(t("secours.toast.photoSupprimee"), "info");
       _switchView("live");
     }).catch(function(e) {
       console.warn("[SecoursMode] _supprimerPhotoEtape échec :", e);
-      _toast("⚠️ Erreur suppression photo", "error");
+      _toast(t("secours.toast.erreurSuppressionPhoto"), "error");
     });
   }
 
@@ -8431,7 +8483,7 @@
         _livePhotoUrls.add(url);
         const img = document.createElement("img");
         img.src = url;
-        img.alt = "Photo étape";
+        img.alt = t("secours.live.photoAlt");
         img.className = "kta-secours-live-photo-img";
         // Click → ouvre viewer plein écran réutilisant MyKTAMapPhotoViewer si dispo
         img.addEventListener("click", function() {
@@ -8494,7 +8546,7 @@
         s.execution.role = "equipe";
         s.execution.currentEquipeId = equipeId;
         _commitMutation(s);
-        _toast("🚨 Mode Équipe : " + g.nom + " (bouton « 👤 Retour Opérateur » pour revenir)", "info");
+        _toast(t("secours.toast.modeEquipe", { nom: g.nom }), "info");
         _switchView("live");
       });
     });
@@ -8535,13 +8587,13 @@
 
     let etapesHtml = '';
     if (etapes.length === 0) {
-      etapesHtml = '<p style="color:#8892a4; font-style:italic;">Aucune étape définie.</p>';
+      etapesHtml = '<p style="color:#8892a4; font-style:italic;">' + t("secours.opDetails.aucuneEtape") + '</p>';
     } else {
       etapesHtml = '<ol class="kta-secours-op-details-etapes">';
       etapes.forEach(function(et) {
         const info = _getStatutInfo(et.statut);
         const tsStr = et.completedAt ? new Date(et.completedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-                    : et.startedAt   ? new Date(et.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) + " (en cours)"
+                    : et.startedAt   ? t("secours.live.tsEnCours", { time: new Date(et.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) })
                     : "—";
         const obsHtml = et.observations
                         ? '<div class="kta-secours-op-details-obs">« ' + _escHtml(et.observations) + ' »</div>'
@@ -8553,13 +8605,13 @@
         if (et._importedFrom) {
           const impDate = et._importedFrom.importedAt
                           ? new Date(et._importedFrom.importedAt).toLocaleString("fr-FR")
-                          : "(date inconnue)";
-          const impVer = et._importedFrom.sourceAppVersion || "(version inconnue)";
-          importedChip = ' <span class="kta-secours-imported-chip" title="Étape fusionnée depuis un rapport équipier le ' + _escAttr(impDate) + ' (app source : ' + _escAttr(impVer) + ')">📥 importé</span>';
+                          : t("secours.import.dateInconnue");
+          const impVer = et._importedFrom.sourceAppVersion || t("secours.import.versionInconnue");
+          importedChip = ' <span class="kta-secours-imported-chip" title="' + _escAttr(t("secours.opDetails.importeChipTitle", { date: impDate, version: impVer })) + '">' + t("secours.opCard.importeChip") + '</span>';
         }
         etapesHtml += '<li>' +
                         '<div class="kta-secours-op-details-row">' +
-                          '<span style="color:' + info.color + ';">' + info.emoji + ' <strong>' + _escHtml(info.label) + '</strong></span>' +
+                          '<span style="color:' + info.color + ';">' + info.emoji + ' <strong>' + _escHtml(_statutLabel(et.statut)) + '</strong></span>' +
                           ' · ' + _escHtml(et.label || "(?)") +
                           ' · <span class="kta-secours-op-details-ts">⏱️ ' + _escHtml(tsStr) + '</span>' +
                           importedChip +
@@ -8577,28 +8629,28 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:600px; height:auto; max-height:90vh; border-left:6px solid ' + couleur.hex + ';">' +
         '<div class="kta-readme-modal-header">' +
-          '<h2 style="margin:0;">👁️ ' + _escHtml(g.nom) + ' (' + _escHtml(couleur.nom) + ')</h2>' +
-          '<button class="kta-readme-modal-close" data-action="close-op-details" aria-label="Fermer">✕</button>' +
+          '<h2 style="margin:0;">' + t("secours.opDetails.titre", { nom: _escHtml(g.nom), couleur: _escHtml(couleur.nom) }) + '</h2>' +
+          '<button class="kta-readme-modal-close" data-action="close-op-details" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
-          '<p style="margin:0 0 12px 0; color:#8892a4; font-size:13px;">Vue détaillée des étapes (lecture seule).</p>' +
+          '<p style="margin:0 0 12px 0; color:#8892a4; font-size:13px;">' + t("secours.opDetails.sousTitre") + '</p>' +
           etapesHtml +
           '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end;">' +
-            '<button class="kta-btn kta-btn-secondary" data-action="close-op-details">Fermer</button>' +
+            '<button class="kta-btn kta-btn-secondary" data-action="close-op-details">' + t("secours.btn.fermer") + '</button>' +
           '</div>' +
         '</div>' +
       '</div>';
 
+    // 🆕 v1.43.26 — Pattern A : helper mutualisé _bindSubModalEsc()
     function _close() {
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      document.removeEventListener("keydown", _onKey);
+      _unbindEsc();
     }
-    function _onKey(e) { if (e.key === "Escape") _close(); }
+    const _unbindEsc = _bindSubModalEsc(_close);
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
     overlay.querySelectorAll('[data-action="close-op-details"]').forEach(function(btn) {
       btn.addEventListener("click", _close);
     });
-    document.addEventListener("keydown", _onKey);
     document.body.appendChild(overlay);
   }
 
@@ -8614,7 +8666,7 @@
         // Vide le textarea
         if (texteInput) texteInput.value = "";
         const info = _getStatutInfo(statutId);
-        _toast("✓ Note ajoutée : " + info.emoji + " " + info.label, "info");
+        _toast(t("secours.toast.noteAjoutee", { emoji: info.emoji, statut: _statutLabel(statutId) }), "info");
         _switchView("live");
       });
     });
@@ -8623,9 +8675,9 @@
       btn.addEventListener("click", function() {
         const noteId = btn.getAttribute("data-note-id");
         if (!noteId) return;
-        if (!window.confirm("Supprimer cette note ?")) return;
+        if (!window.confirm(t("secours.confirm.supprimerNote"))) return;
         supprimerNoteLibre(s.id, noteId);
-        _toast("✓ Note supprimée", "info");
+        _toast(t("secours.toast.noteSupprimee"), "info");
         _switchView("live");
       });
     });
@@ -8652,13 +8704,13 @@
     _activeMapMode = "point";
     _mapModeCtx = { groupeId: groupeId, role: role, idx: idx, allPoints: [] };
     _hideModalForMap();
-    const lbl = role === "entree" ? "ENTRÉE"
-              : role === "sortie" ? "SORTIE"
-              : "ÉTAPE " + ((idx == null ? 0 : idx) + 1);
+    const lbl = role === "entree" ? t("secours.defPoint.entree")
+              : role === "sortie" ? t("secours.defPoint.sortie")
+              : t("secours.defPoint.etape", { n: ((idx == null ? 0 : idx) + 1) });
     _showFloater(
-      "📍 Clique sur la carte pour définir <strong>" + lbl + "</strong> de l'équipe" +
-      "<br><span style=\"font-size:11px; opacity:0.85;\">💡 Astuce : snap auto au POI le plus proche dans un rayon de 30 px.</span>",
-      [{ label: "Annuler", action: "cancel" }]
+      t("secours.defPoint.instr", { label: lbl }) +
+      "<br><span style=\"font-size:11px; opacity:0.85;\">" + t("secours.defPoint.astuce") + "</span>",
+      [{ label: t("secours.btn.annulerSimple"), action: "cancel" }]
     );
     // 🐛 v1.22.0-fix3 : pré-fetch async des points pour snap sync au clic
     // (SearchPoints.getAllPoints retourne un Promise depuis v1.21.x — on
@@ -8692,7 +8744,7 @@
       y = snap.y;
       pointId = snap.pointId || null;
       label = snap.nom || snap.label || null;
-      _toast("✓ Snap sur « " + (label || pointId || "POI") + " »", "info");
+      _toast(t("secours.toast.snap", { point: (label || pointId || t("secours.map.poiDefault")) }), "info");
     }
     _appliquerWaypoint(_mapModeCtx.groupeId, _mapModeCtx.role, _mapModeCtx.idx,
                        { x: x, y: y, level: level, pointId: pointId, label: label });
@@ -8782,14 +8834,14 @@
     try { favs = window.Favoris.getAll() || []; } catch(e) { return ""; }
     if (!Array.isArray(favs) || favs.length === 0) return "";
     let html = '<div class="kta-secours-pick-favoris">';
-    html += '<div class="kta-secours-pick-favoris-titre">⭐ Favoris du plan (' + favs.length + ')</div>';
+    html += '<div class="kta-secours-pick-favoris-titre">' + t("secours.pick.favorisTitre", { n: favs.length }) + '</div>';
     html += '<div class="kta-secours-pick-favoris-grid">';
     // Max 8 favoris affichés (sinon l'UI s'allonge trop — l'user peut
     // toujours utiliser la recherche pour les autres)
     favs.slice(0, 8).forEach(function(f) {
       // f a la forme { pointId, nom, x, y, level?, tag?, layerId?, ... }
       if (!f || typeof f.x !== "number" || typeof f.y !== "number") return;
-      const nom = f.nom || f.pointId || "Favori";
+      const nom = f.nom || f.pointId || t("secours.pick.favoriDefault");
       html += '<button class="kta-secours-pick-favori" ' +
                 'data-pid="' + _escAttr(f.pointId || "") + '" ' +
                 'data-x="' + f.x + '" data-y="' + f.y + '" ' +
@@ -8801,7 +8853,7 @@
     });
     html += '</div>';
     if (favs.length > 8) {
-      html += '<div class="kta-secours-pick-favoris-more">+' + (favs.length - 8) + ' autres dans la recherche ci-dessous</div>';
+      html += '<div class="kta-secours-pick-favoris-more">' + t("secours.pick.favorisMore", { n: (favs.length - 8) }) + '</div>';
     }
     html += '</div>';
     return html;
@@ -8813,9 +8865,9 @@
     // Cleanup éventuelle modale précédente (idempotency)
     const existing = document.getElementById("kta-secours-pick-modal");
     if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
-    const lblRole = role === "entree" ? "Entrée"
-                  : role === "sortie" ? "Sortie"
-                  : "Étape " + ((idx == null ? 0 : idx) + 1);
+    const lblRole = role === "entree" ? t("secours.roleShort.entree")
+                  : role === "sortie" ? t("secours.roleShort.sortie")
+                  : t("secours.parcours.etape", { n: ((idx == null ? 0 : idx) + 1) });
     const overlay = document.createElement("div");
     overlay.id = "kta-secours-pick-modal";
     overlay.className = "kta-readme-modal-overlay";
@@ -8830,19 +8882,19 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-secours-pick-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📍 Choisir un point — ' + _escHtml(lblRole) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + t("secours.pick.titre", { role: _escHtml(lblRole) }) + '</span>' +
           '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           favorisHtml +
           '<div class="kta-secours-pick-search-wrap">' +
-            '<input type="text" id="kta-secours-pick-search" placeholder="🔍 Rechercher un point (nom, id, tag)..." autocomplete="off">' +
+            '<input type="text" id="kta-secours-pick-search" placeholder="' + _escAttr(t("secours.pick.searchPlaceholder")) + '" autocomplete="off">' +
             '<div class="kta-secours-pick-results" id="kta-secours-pick-results"></div>' +
           '</div>' +
-          '<div class="kta-secours-pick-or">— OU —</div>' +
+          '<div class="kta-secours-pick-or">' + t("secours.pick.ou") + '</div>' +
           '<button class="kta-btn kta-btn-primary kta-secours-pick-clic" data-action="clic-carte">' +
-            '📍 Cliquer sur la carte<br>' +
-            '<small style="opacity:0.85; font-weight:normal;">Snap auto au POI le plus proche dans 30 px</small>' +
+            t("secours.pick.cliquerCarte") + '<br>' +
+            '<small style="opacity:0.85; font-weight:normal;">' + t("secours.pick.snapHint") + '</small>' +
           '</button>' +
         '</div>' +
       '</div>';
@@ -8889,28 +8941,28 @@
     function _doSearch() {
       const q = input.value.trim();
       if (!q || q.length < 1) {
-        results.innerHTML = '<div class="kta-secours-pick-hint">Tape au moins 1 caractère pour rechercher…</div>';
+        results.innerHTML = '<div class="kta-secours-pick-hint">' + t("secours.pick.hintMin") + '</div>';
         return;
       }
       if (!window.SearchPoints || typeof window.SearchPoints.findByQuery !== "function") {
-        results.innerHTML = '<div class="kta-secours-pick-hint">⚠️ Module Recherche indisponible.</div>';
+        results.innerHTML = '<div class="kta-secours-pick-hint">' + t("secours.pick.hintModuleIndispo") + '</div>';
         return;
       }
       const mySeq = ++_searchSeq;
-      results.innerHTML = '<div class="kta-secours-pick-hint">⏳ Recherche…</div>';
+      results.innerHTML = '<div class="kta-secours-pick-hint">' + t("secours.pick.hintRecherche") + '</div>';
       Promise.resolve(window.SearchPoints.findByQuery(q)).then(function(found) {
         // Si une nouvelle query a été lancée entre-temps, ignore ce résultat
         if (mySeq !== _searchSeq) return;
         if (!Array.isArray(found)) found = [];
         if (found.length === 0) {
-          results.innerHTML = '<div class="kta-secours-pick-hint">Aucun résultat pour « ' + _escHtml(q) + ' ».</div>';
+          results.innerHTML = '<div class="kta-secours-pick-hint">' + t("secours.pick.hintAucun", { q: _escHtml(q) }) + '</div>';
           return;
         }
         let html = '';
         found.slice(0, 20).forEach(function(entry) {
           const p = entry.point || entry;
           if (!p) return;
-          const nom = p.nom || p.id || "(sans nom)";
+          const nom = p.nom || p.id || t("secours.import.sansNom");
           const tag = (Array.isArray(p.tags) && p.tags[0]) || "default";
           const layerInfo = entry.layerLabel || entry.layerId || "";
           html += '<button class="kta-secours-pick-result" data-pid="' + _escAttr(p.id || "") +
@@ -8921,7 +8973,7 @@
                   '<span class="kta-secours-pick-meta">' + _escHtml(tag) +
                   (layerInfo ? ' · ' + _escHtml(layerInfo) : '') +
                   ' · x=' + Math.round(p.x) + ' y=' + Math.round(p.y) +
-                  (typeof p.level === "number" ? ' · niv ' + p.level : '') +
+                  (typeof p.level === "number" ? ' · ' + t("secours.assign.niv", { level: p.level }) : '') +
                   '</span>' +
                   '</button>';
         });
@@ -8941,7 +8993,7 @@
         });
       }).catch(function(e) {
         if (mySeq !== _searchSeq) return;
-        results.innerHTML = '<div class="kta-secours-pick-hint">⚠️ Erreur recherche : ' + _escHtml(e.message || String(e)) + '</div>';
+        results.innerHTML = '<div class="kta-secours-pick-hint">' + t("secours.pick.hintErreur", { message: _escHtml(e.message || String(e)) }) + '</div>';
       });
     }
     input.addEventListener("input", function() {
@@ -8961,19 +9013,19 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:420px;">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">⬛ Définir la zone</span>' +
+          '<span class="kta-readme-modal-titre">' + t("secours.zoneMode.titre") + '</span>' +
           '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
-          '<p style="color:#c8d0e0;">Choisis comment définir la zone à ratisser pour cette équipe :</p>' +
+          '<p style="color:#c8d0e0;">' + t("secours.zoneMode.intro") + '</p>' +
           '<div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">' +
             '<button class="kta-btn kta-btn-primary" data-mode="polygon" style="text-align:left;">' +
-              '<strong>⬛ Polygone</strong><br>' +
-              '<small style="opacity:0.85;">Trace un polygone sur la carte (clic = sommet, double-clic = fermer).</small>' +
+              '<strong>' + t("secours.zoneMode.polygoneTitre") + '</strong><br>' +
+              '<small style="opacity:0.85;">' + t("secours.zoneMode.polygoneDesc") + '</small>' +
             '</button>' +
             '<button class="kta-btn kta-btn-primary" data-mode="roads" style="text-align:left;">' +
-              '<strong>🛣️ Sélection de tracés</strong><br>' +
-              '<small style="opacity:0.85;">Clique chaque tracé (route) à inclure. Re-cliquer = retirer. Précis pour les zones étroites suivant les galeries.</small>' +
+              '<strong>' + t("secours.zoneMode.roadsTitre") + '</strong><br>' +
+              '<small style="opacity:0.85;">' + t("secours.zoneMode.roadsDesc") + '</small>' +
             '</button>' +
           '</div>' +
         '</div>' +
@@ -9001,11 +9053,11 @@
     _mapModeCtx = { groupeId: groupeId, points: [], previewLayer: null };
     _hideModalForMap();
     _showFloater(
-      '⬛ Clique pour ajouter des sommets — <strong>double-clic pour FERMER le polygone</strong><br>' +
-      '<span id="kta-sec-poly-count">0 sommet(s)</span>',
+      t("secours.floater.polygonInstr") + '<br>' +
+      '<span id="kta-sec-poly-count">' + t("secours.floater.sommets", { n: 0 }) + '</span>',
       [
-        { label: "Annuler", action: "cancel" },
-        { label: "✓ Terminer", action: "finish" }
+        { label: t("secours.btn.annulerSimple"), action: "cancel" },
+        { label: t("secours.btn.terminer"), action: "finish" }
       ]
     );
     window.map.on("click", _onMapClickPolygon);
@@ -9021,14 +9073,14 @@
     const level = (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
                   ? window.APP_CONFIG.activeLevel : 0;
     _mapModeCtx.points.push({ x: x, y: y, level: level });
-    _updateFloaterCount(_mapModeCtx.points.length, "sommet");
+    _updateFloaterCount(_mapModeCtx.points.length, "sommets");
     _redrawPolygonPreview();
   }
 
   function _onMapDblClickPolygon(e) {
     if (!_mapModeCtx || !_mapModeCtx.points || _mapModeCtx.points.length < 3) {
       if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-        window.OOMGuard.showToast("⚠️ Minimum 3 sommets pour fermer le polygone.", "warn");
+        window.OOMGuard.showToast(t("secours.toast.min3Sommets"), "warn");
       }
       return;
     }
@@ -9066,11 +9118,11 @@
     _mapModeCtx = { groupeId: groupeId, roadIds: new Set(), highlightLayer: null };
     _hideModalForMap();
     _showFloater(
-      '🛣️ Clique chaque <strong>TRACÉ</strong> à inclure (re-clic = retirer)<br>' +
-      '<span id="kta-sec-poly-count">0 tracé(s)</span>',
+      t("secours.floater.roadsInstr") + '<br>' +
+      '<span id="kta-sec-poly-count">' + t("secours.floater.traces", { n: 0 }) + '</span>',
       [
-        { label: "Annuler", action: "cancel" },
-        { label: "✓ Terminer", action: "finish" }
+        { label: t("secours.btn.annulerSimple"), action: "cancel" },
+        { label: t("secours.btn.terminer"), action: "finish" }
       ]
     );
     _bindRoadsClickListeners();
@@ -9136,7 +9188,7 @@
         layer.setStyle({ color: "#ff4444", weight: 8, opacity: 0.9 });
       }
     }
-    _updateFloaterCount(_mapModeCtx.roadIds.size, "tracé");
+    _updateFloaterCount(_mapModeCtx.roadIds.size, "traces");
   }
 
   function _finishRoads() {
@@ -9144,7 +9196,7 @@
     const ctx = _mapModeCtx;
     if (ctx.roadIds.size === 0) {
       if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-        window.OOMGuard.showToast("⚠️ Aucun tracé sélectionné.", "warn");
+        window.OOMGuard.showToast(t("secours.toast.aucunTrace"), "warn");
       }
       return;
     }
@@ -9178,10 +9230,10 @@
     fl.innerHTML =
       '<div class="kta-secours-overlay-floater-info">' +
         '🚨 <strong>' + _escHtml(s.nom) + '</strong>' +
-        ' · ' + nbGroupes + ' équipe' + (nbGroupes > 1 ? 's' : '') +
+        ' · ' + t("secours.liveOp.equipesCompteur", { n: nbGroupes }) +
       '</div>' +
       '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="reopen-modal">' +
-        '↩️ Retour modale' +
+        t("secours.floater.retourModale") +
       '</button>';
     document.body.appendChild(fl);
     fl.querySelector('[data-action="reopen-modal"]').addEventListener("click", function() {
@@ -9243,7 +9295,8 @@
   }
   function _updateFloaterCount(n, label) {
     const el = document.getElementById("kta-sec-poly-count");
-    if (el) el.textContent = n + " " + label + (n > 1 ? "s" : "");
+    // label = "sommets" | "traces" → clé i18n avec pluralisation gérée par la valeur
+    if (el) el.textContent = t("secours.floater." + label, { n: n });
   }
 
   function _cancelMapMode() {
@@ -9283,21 +9336,21 @@
     if (!s) return null;
     const g = s.groupes.find(function(x) { return x.id === groupeId; });
     if (!g) {
-      _toast("⚠️ Équipe introuvable.", "error");
+      _toast(t("secours.toast.equipeIntrouvable"), "error");
       return null;
     }
     if (!g.entree || !g.sortie) {
-      _toast("⚠️ Définis d'abord l'entrée ET la sortie de cette équipe via 📍 Entrée et 🚪 Sortie.", "warn");
+      _toast(t("secours.toast.defEntreeSortie"), "warn");
       return null;
     }
     if (!window.Pathfinder || typeof window.Pathfinder.computeRoute !== "function") {
-      _toast("⚠️ Pathfinder indisponible.", "error");
+      _toast(t("secours.toast.pathfinderIndispo"), "error");
       return null;
     }
     // 🐛 v1.22.0-fix1 : vérifier que les coords sont valides (anti-NaN)
     if (typeof g.entree.x !== "number" || typeof g.entree.y !== "number" ||
         typeof g.sortie.x !== "number" || typeof g.sortie.y !== "number") {
-      _toast("⚠️ Coordonnées entrée/sortie corrompues. Re-définis-les via 📍/🚪.", "error");
+      _toast(t("secours.toast.coordsCorrompues"), "error");
       return null;
     }
     // 🆕 v1.22.0-fix2 : valider aussi les intermédiaires + filtrer les invalides
@@ -9305,20 +9358,20 @@
       .filter(function(w) {
         return w && typeof w.x === "number" && typeof w.y === "number";
       });
-    _toast("⏳ Calcul itinéraire " +
-           (intermediaires.length > 0 ? "(via " + intermediaires.length + " waypoint" + (intermediaires.length > 1 ? "s" : "") + ")" : "") +
-           " en cours…", "info");
+    _toast(intermediaires.length > 0
+           ? t("secours.toast.calcItiViaWp", { n: intermediaires.length })
+           : t("secours.toast.calcIti"), "info");
     try {
       // 🆕 v1.22.0-fix2 : Pathfinder accepte [entree, ...intermediaires, sortie]
       // (multi-waypoints natif depuis v1.5.x). Chaque pair de waypoints
       // consécutifs déclenche un Dijkstra séparé puis les paths sont
       // concaténés (cf §14 CLAUDE.md). Boucle entree=sortie → Pathfinder
       // calcule le tour complet via les intermédiaires (sinon retour direct).
-      const waypoints = [{ x: g.entree.x, y: g.entree.y, label: g.entree.label || ("Entrée " + g.nom) }]
+      const waypoints = [{ x: g.entree.x, y: g.entree.y, label: g.entree.label || t("secours.wp.entree", { equipe: g.nom }) }]
         .concat(intermediaires.map(function(w, i) {
-          return { x: w.x, y: w.y, label: w.label || ("Étape " + (i + 1)) };
+          return { x: w.x, y: w.y, label: w.label || t("secours.parcours.etape", { n: (i + 1) }) };
         }))
-        .concat([{ x: g.sortie.x, y: g.sortie.y, label: g.sortie.label || ("Sortie " + g.nom) }]);
+        .concat([{ x: g.sortie.x, y: g.sortie.y, label: g.sortie.label || t("secours.wp.sortie", { equipe: g.nom }) }]);
       // 🆕 v1.23.0 Phase 2 / Feature B — Pathfinder avoidances cross-équipes :
       // collecte les waypoints + zones des autres équipes du scénario pour
       // que Pathfinder préfère un chemin qui les contourne (pas de chevauchement
@@ -9333,7 +9386,7 @@
       const result = window.Pathfinder.computeRoute(waypoints, pfOpts);
       Promise.resolve(result).then(function(r) {
         if (!r || !Array.isArray(r.path) || r.path.length === 0) {
-          _toast("⚠️ Aucun itinéraire trouvé entre l'entrée et la sortie. Vérifie qu'elles sont sur le réseau de galeries.", "warn");
+          _toast(t("secours.toast.aucunIti"), "warn");
           return;
         }
         const scale = (window.APP_CONFIG && window.APP_CONFIG.scale > 0)
@@ -9363,11 +9416,10 @@
         });
         const fmtD = (typeof window.formatDistance === "function")
                      ? window.formatDistance(distM, 0) : Math.round(distM) + " m";
-        _toast("✓ Itinéraire calculé : " + fmtD + " · ~" + duree + " min", "info");
+        _toast(t("secours.toast.itiCalcule", { distance: fmtD, duree: duree }), "info");
         // 🆕 v1.23.0 Phase 2 / Feature B — Feedback fallback avoidances
         if (r.usedFallback === true && Array.isArray(r.avoidedThrough) && r.avoidedThrough.length > 0) {
-          _toast("⚠️ Itinéraire traverse " + r.avoidedThrough.length +
-                 " point(s) d'autres équipes (zones non-évitables). Vérifie les chevauchements.", "warn");
+          _toast(t("secours.toast.itiTraverse", { n: r.avoidedThrough.length }), "warn");
         }
         // 🐛 v1.22.0-fix1 : re-render edit pour update stats visibles + refresh overlay si actif
         if (_modal) _switchView("edit");
@@ -9375,11 +9427,11 @@
       }).catch(function(err) {
         console.warn("[SecoursMode] Pathfinder error :", err);
         const msg = (err && err.message) ? err.message : String(err);
-        _toast("⚠️ Erreur calcul itinéraire : " + msg, "error");
+        _toast(t("secours.toast.erreurCalcIti", { message: msg }), "error");
       });
     } catch(e) {
       console.warn("[SecoursMode] Calcul itinéraire échoué (sync) :", e);
-      _toast("⚠️ Erreur sync : " + (e.message || e), "error");
+      _toast(t("secours.toast.erreurSync", { message: (e.message || e) }), "error");
     }
   }
 
@@ -9465,18 +9517,18 @@
     const g = s.groupes.find(function(x) { return x.id === groupeId; });
     if (!g) return;
     if (!g.zoneType) {
-      _toast("⚠️ Définis d'abord une zone (polygone ou tracés) via ⬛ Définir zone.", "warn");
+      _toast(t("secours.toast.defZone"), "warn");
       return;
     }
     if (!g.entree) {
-      _toast("⚠️ Définis d'abord une entrée pour ordonner les POI par proximité.", "warn");
+      _toast(t("secours.toast.defEntreePoi"), "warn");
       return;
     }
     if (!window.SearchPoints || typeof window.SearchPoints.getAllPoints !== "function") {
-      _toast("⚠️ Module Recherche indisponible.", "error");
+      _toast(t("secours.toast.rechercheIndispo"), "error");
       return;
     }
-    _toast("⏳ Recherche des POI dans la zone…", "info");
+    _toast(t("secours.toast.recherchePoi"), "info");
     // 🐛 hotfix4 (KARMA "des points sont détectés dans la zone alors qu'il
     // sont en dehors") : pré-calcul du niveau de référence pour le filtre
     // M-LVL strict. Priorité : level du 1er sommet du polygon → level entrée
@@ -9554,7 +9606,7 @@
                   " skipDup=" + cntSkipDup +
                   " retained=" + candidats.length);
       if (candidats.length === 0) {
-        _toast("ℹ️ Aucun POI trouvé dans la zone (qui ne soit pas déjà dans le parcours).", "info");
+        _toast(t("secours.toast.aucunPoiZone"), "info");
         return;
       }
       // Tri par distance croissante à l'entrée (greedy nearest neighbor)
@@ -9566,12 +9618,11 @@
         })
       );
       updateGroupe(scenarioId, groupeId, { intermediaires: newIntermediaires });
-      _toast("✓ " + candidats.length + " POI ajouté" + (candidats.length > 1 ? "s" : "") +
-             " comme étapes intermédiaires (triés par proximité de l'entrée).", "info");
+      _toast(t("secours.toast.poiAjoutes", { n: candidats.length }), "info");
       _switchView("edit");
     }).catch(function(e) {
       console.warn("[SecoursMode] _ajouterPoisDansZone échoué :", e);
-      _toast("⚠️ Erreur : " + (e.message || e), "error");
+      _toast(t("secours.toast.erreurGenerique", { message: (e.message || e) }), "error");
     });
   }
 
@@ -9628,11 +9679,11 @@
       try {
         const intermediaires = (Array.isArray(g.intermediaires) ? g.intermediaires : [])
           .filter(function(w) { return w && typeof w.x === "number" && typeof w.y === "number"; });
-        const waypoints = [{ x: g.entree.x, y: g.entree.y, label: g.entree.label || ("Entrée " + g.nom) }]
+        const waypoints = [{ x: g.entree.x, y: g.entree.y, label: g.entree.label || t("secours.wp.entree", { equipe: g.nom }) }]
           .concat(intermediaires.map(function(w, i) {
-            return { x: w.x, y: w.y, label: w.label || ("Étape " + (i + 1)) };
+            return { x: w.x, y: w.y, label: w.label || t("secours.parcours.etape", { n: (i + 1) }) };
           }))
-          .concat([{ x: g.sortie.x, y: g.sortie.y, label: g.sortie.label || ("Sortie " + g.nom) }]);
+          .concat([{ x: g.sortie.x, y: g.sortie.y, label: g.sortie.label || t("secours.wp.sortie", { equipe: g.nom }) }]);
         // 🆕 v1.23.0 Phase 2 / Feature B — Avoidances cross-équipes (idem
         // _recalculerItineraireGroupe sync). Batch auto-calc à l'export prend
         // en compte les zones des autres équipes.

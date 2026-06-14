@@ -409,7 +409,7 @@
       timestamp:    new Date().toISOString(),
       planId:       planId,
       planMeta:     {
-        name:       planMeta.name       || "(sans nom)",
+        name:       planMeta.name       || (window.I18n ? window.I18n.t("stats.plan.noName") : "(sans nom)"),
         version:    planMeta.version    || "",
         author:     planMeta.author     || "",
         imageW:     planMeta.imageWidth  || null,
@@ -476,33 +476,33 @@
     html += '<div class="kta-stats-glob-plan-name">' + _escapeHtml(meta.name);
     if (meta.version) html += ' <span class="kta-stats-glob-dim">' + _escapeHtml(meta.version) + '</span>';
     html += '</div>';
-    if (meta.author) html += '<div class="kta-stats-glob-meta">par ' + _escapeHtml(meta.author) + '</div>';
+    if (meta.author) html += '<div class="kta-stats-glob-meta">' + window.I18n.t("stats.meta.par", { author: _escapeHtml(meta.author) }) + '</div>';
     html += '<div class="kta-stats-glob-meta">';
     if (meta.imageW && meta.imageH) html += '📐 ' + meta.imageW + ' × ' + meta.imageH + ' px';
     if (meta.scale && meta.scale !== 1) html += ' &middot; ' + meta.scale.toFixed(1) + ' px/m';
-    if (meta.multiLevel) html += ' &middot; 🏗️ Multi-niveau';
-    if (meta.tiledV2)    html += ' &middot; 🧱 V2 tuilé';
+    if (meta.multiLevel) html += ' &middot; ' + window.I18n.t("stats.meta.multiNiveau");
+    if (meta.tiledV2)    html += ' &middot; ' + window.I18n.t("stats.meta.v2Tuile");
     html += '</div>';
     html += '</div>';
 
     // Totaux
     html += '<div class="kta-stats-glob-grid">';
-    html += _statCard("📍", t.points,     "point" + (t.points     > 1 ? "s" : ""),     rep.session.points,     rep.embedded.points);
-    html += _statCard("🛣️", t.roads,      "tracé" + (t.roads      > 1 ? "s" : ""),     rep.session.roads,      rep.embedded.roads);
-    html += _statCard("⬛", t.zones,      "zone"  + (t.zones      > 1 ? "s" : ""),     rep.session.zones,      rep.embedded.zones);
-    html += _statCard("🏛️", t.structures, "structure" + (t.structures > 1 ? "s" : ""), rep.session.structures, rep.embedded.structures);
+    html += _statCard("📍", t.points,     window.I18n.t(t.points     > 1 ? "stats.card.points.plural"     : "stats.card.points.singular"),     rep.session.points,     rep.embedded.points);
+    html += _statCard("🛣️", t.roads,      window.I18n.t(t.roads      > 1 ? "stats.card.roads.plural"      : "stats.card.roads.singular"),      rep.session.roads,      rep.embedded.roads);
+    html += _statCard("⬛", t.zones,      window.I18n.t(t.zones      > 1 ? "stats.card.zones.plural"      : "stats.card.zones.singular"),      rep.session.zones,      rep.embedded.zones);
+    html += _statCard("🏛️", t.structures, window.I18n.t(t.structures > 1 ? "stats.card.structures.plural" : "stats.card.structures.singular"), rep.session.structures, rep.embedded.structures);
     if (t.photos > 0) {
       const sz = rep.photos.bytes > 0 ? (rep.photos.bytes / 1024 / 1024).toFixed(1) + " MB" : "";
       html += '<div class="kta-stats-glob-card"><div class="kta-stats-glob-card-num">' + t.photos + '</div>' +
-              '<div class="kta-stats-glob-card-label">📸 photo' + (t.photos > 1 ? "s" : "") + '</div>' +
+              '<div class="kta-stats-glob-card-label">📸 ' + window.I18n.t(t.photos > 1 ? "stats.card.photos.plural" : "stats.card.photos.singular") + '</div>' +
               (sz ? '<div class="kta-stats-glob-card-sub">' + sz + '</div>' : '') +
               '</div>';
     }
     // 🆕 v1.28.0 : carte tracker (distance parcourue + nb de pas) si historique présent.
     if (rep.tracker && (rep.tracker.distM > 0 || rep.tracker.steps > 0)) {
       html += '<div class="kta-stats-glob-card"><div class="kta-stats-glob-card-num">' + _formatDist(rep.tracker.distM) + '</div>' +
-              '<div class="kta-stats-glob-card-label">🧭 parcourus</div>' +
-              '<div class="kta-stats-glob-card-sub">' + rep.tracker.steps + ' pas</div>' +
+              '<div class="kta-stats-glob-card-label">🧭 ' + window.I18n.t("stats.card.tracker.label") + '</div>' +
+              '<div class="kta-stats-glob-card-sub">' + window.I18n.t("stats.card.tracker.steps", { n: rep.tracker.steps }) + '</div>' +
               '</div>';
     }
     html += '</div>';
@@ -510,7 +510,7 @@
     // Points par tag — 🆕 v1.21.0 : camembert SVG inline + légende
     if (t.points > 0) {
       html += '<div class="kta-stats-glob-section">';
-      html += '<div class="kta-stats-glob-section-titre">📍 Points par tag</div>';
+      html += '<div class="kta-stats-glob-section-titre">📍 ' + window.I18n.t("stats.section.pointsParTag") + '</div>';
       html += _renderPieChart(rep.pointsByTag, "tags", 160);
       html += '</div>';
     }
@@ -520,8 +520,8 @@
     // pas représentable par le camembert qui ne montre que le count).
     if (t.roads > 0) {
       html += '<div class="kta-stats-glob-section">';
-      html += '<div class="kta-stats-glob-section-titre">🛣️ Tracés ' +
-              '<span class="kta-stats-glob-total">' + _formatDist(rep.roadsTotalDistM) + ' cumulés</span></div>';
+      html += '<div class="kta-stats-glob-section-titre">🛣️ ' + window.I18n.t("stats.section.traces") + ' ' +
+              '<span class="kta-stats-glob-total">' + window.I18n.t("stats.section.cumules", { val: _formatDist(rep.roadsTotalDistM) }) + '</span></div>';
       html += _renderPieChart(rep.roadsByType, "roads", 160);
       html += '<div class="kta-stats-glob-list kta-stats-glob-list-compact">';
       const sortedTypes = Object.keys(rep.roadsByType).sort(function(a, b) {
@@ -541,8 +541,8 @@
     // Zones par type + surface — idem : camembert + liste détaillée
     if (t.zones > 0) {
       html += '<div class="kta-stats-glob-section">';
-      html += '<div class="kta-stats-glob-section-titre">⬛ Zones ' +
-              '<span class="kta-stats-glob-total">' + _formatSurf(rep.zonesTotalAreaM2) + ' cumulés</span></div>';
+      html += '<div class="kta-stats-glob-section-titre">⬛ ' + window.I18n.t("stats.section.zones") + ' ' +
+              '<span class="kta-stats-glob-total">' + window.I18n.t("stats.section.cumules", { val: _formatSurf(rep.zonesTotalAreaM2) }) + '</span></div>';
       html += _renderPieChart(rep.zonesByType, "zones", 160);
       html += '<div class="kta-stats-glob-list kta-stats-glob-list-compact">';
       Object.keys(rep.zonesByType).sort(function(a, b) {
@@ -562,7 +562,7 @@
     // distincte par type ici, déjà couverte par la liste de la modale Détails session)
     if (t.structures > 0) {
       html += '<div class="kta-stats-glob-section">';
-      html += '<div class="kta-stats-glob-section-titre">🏛️ Structures</div>';
+      html += '<div class="kta-stats-glob-section-titre">🏛️ ' + window.I18n.t("stats.section.structures") + '</div>';
       html += _renderPieChart(rep.structsByType, "structures", 160);
       html += '</div>';
     }
@@ -570,7 +570,7 @@
     // Multi-niveau
     if (rep.multiLevelBreakdown) {
       html += '<div class="kta-stats-glob-section">';
-      html += '<div class="kta-stats-glob-section-titre">🏗️ Breakdown par niveau</div>';
+      html += '<div class="kta-stats-glob-section-titre">🏗️ ' + window.I18n.t("stats.section.breakdownNiveau") + '</div>';
       html += '<div class="kta-stats-glob-list">';
       const lvlKeys = Object.keys(rep.multiLevelBreakdown).sort(function(a, b) {
         return parseInt(a, 10) - parseInt(b, 10);
@@ -585,7 +585,7 @@
         if (b.zones      > 0) parts.push('⬛ ' + b.zones);
         if (b.structures > 0) parts.push('🏛️ ' + b.structures);
         html += '<div class="kta-stats-glob-row">' +
-                  '<span class="kta-stats-glob-row-lbl">Niveau ' + _escapeHtml(k) + '</span>' +
+                  '<span class="kta-stats-glob-row-lbl">' + window.I18n.t("stats.niveau", { n: _escapeHtml(k) }) + '</span>' +
                   '<span class="kta-stats-glob-row-num">' + parts.join(' &middot; ') + '</span>' +
                 '</div>';
       });
@@ -597,11 +597,11 @@
       const a = rep.georef.pointA;
       const b = rep.georef.pointB;
       html += '<div class="kta-stats-glob-section">';
-      html += '<div class="kta-stats-glob-section-titre">🌐 Géoréférencement</div>';
+      html += '<div class="kta-stats-glob-section-titre">🌐 ' + window.I18n.t("stats.section.georeferencement") + '</div>';
       html += '<div class="kta-stats-glob-list">';
-      html += '<div class="kta-stats-glob-row"><span class="kta-stats-glob-row-lbl">Point A</span>' +
+      html += '<div class="kta-stats-glob-row"><span class="kta-stats-glob-row-lbl">' + window.I18n.t("stats.georef.pointA") + '</span>' +
                 '<span class="kta-stats-glob-row-num">px (' + a.x + ', ' + a.y + ') &harr; (' + a.lat + ', ' + a.lng + ')</span></div>';
-      html += '<div class="kta-stats-glob-row"><span class="kta-stats-glob-row-lbl">Point B</span>' +
+      html += '<div class="kta-stats-glob-row"><span class="kta-stats-glob-row-lbl">' + window.I18n.t("stats.georef.pointB") + '</span>' +
                 '<span class="kta-stats-glob-row-num">px (' + b.x + ', ' + b.y + ') &harr; (' + b.lat + ', ' + b.lng + ')</span></div>';
       html += '</div></div>';
     }
@@ -612,11 +612,11 @@
   function _statCard(emoji, num, label, sessionN, embeddedN) {
     let sub = "";
     if (sessionN > 0 && embeddedN > 0) {
-      sub = '<div class="kta-stats-glob-card-sub">' + sessionN + ' session · ' + embeddedN + ' embed</div>';
+      sub = '<div class="kta-stats-glob-card-sub">' + window.I18n.t("stats.card.sub.sessionEmbed", { session: sessionN, embed: embeddedN }) + '</div>';
     } else if (sessionN > 0) {
-      sub = '<div class="kta-stats-glob-card-sub">' + sessionN + ' session</div>';
+      sub = '<div class="kta-stats-glob-card-sub">' + window.I18n.t("stats.card.sub.session", { session: sessionN }) + '</div>';
     } else if (embeddedN > 0) {
-      sub = '<div class="kta-stats-glob-card-sub">' + embeddedN + ' embed</div>';
+      sub = '<div class="kta-stats-glob-card-sub">' + window.I18n.t("stats.card.sub.embed", { embed: embeddedN }) + '</div>';
     }
     return '<div class="kta-stats-glob-card">' +
              '<div class="kta-stats-glob-card-num">' + num + '</div>' +
@@ -632,28 +632,28 @@
     const meta = rep.planMeta;
     const lines = [];
     lines.push("=========================================");
-    lines.push("MyKTAMap — Statistiques globales du plan");
+    lines.push(window.I18n.t("stats.report.titre"));
     lines.push("=========================================");
-    lines.push("📦 Plan        : " + meta.name + " " + meta.version);
-    if (meta.author) lines.push("👤 Auteur       : " + meta.author);
-    if (meta.imageW && meta.imageH) lines.push("📐 Dimensions   : " + meta.imageW + " × " + meta.imageH + " px");
-    if (meta.scale && meta.scale !== 1) lines.push("📏 Échelle      : " + meta.scale.toFixed(1) + " px/m");
-    if (meta.multiLevel) lines.push("🏗️  Multi-niveau : ON");
-    if (meta.tiledV2)    lines.push("🧱 V2 tuilé     : ON");
-    lines.push("📅 Capturé le   : " + new Date(rep.timestamp).toLocaleString("fr-FR"));
+    lines.push("📦 " + window.I18n.t("stats.report.plan") + " : " + meta.name + " " + meta.version);
+    if (meta.author) lines.push("👤 " + window.I18n.t("stats.report.auteur") + "       : " + meta.author);
+    if (meta.imageW && meta.imageH) lines.push("📐 " + window.I18n.t("stats.report.dimensions") + "   : " + meta.imageW + " × " + meta.imageH + " px");
+    if (meta.scale && meta.scale !== 1) lines.push("📏 " + window.I18n.t("stats.report.echelle") + "      : " + meta.scale.toFixed(1) + " px/m");
+    if (meta.multiLevel) lines.push("🏗️  " + window.I18n.t("stats.report.multiNiveau") + " : ON");
+    if (meta.tiledV2)    lines.push("🧱 " + window.I18n.t("stats.report.v2Tuile") + "     : ON");
+    lines.push("📅 " + window.I18n.t("stats.report.captureLe") + "   : " + new Date(rep.timestamp).toLocaleString("fr-FR"));
     lines.push("");
 
-    lines.push("📊 TOTAUX (session + embedded)");
+    lines.push("📊 " + window.I18n.t("stats.report.totaux"));
     lines.push("─────────────────────────────────────────");
-    lines.push("📍 Points      : " + t.points + "  (" + rep.session.points + " session + " + rep.embedded.points + " embed)");
-    lines.push("🛣️  Tracés      : " + t.roads  + "  (" + rep.session.roads  + " session + " + rep.embedded.roads  + " embed)  → " + _formatDist(rep.roadsTotalDistM));
-    lines.push("⬛ Zones       : " + t.zones  + "  (" + rep.session.zones  + " session + " + rep.embedded.zones  + " embed)  → " + _formatSurf(rep.zonesTotalAreaM2));
-    lines.push("🏛️  Structures  : " + t.structures + "  (" + rep.session.structures + " session + " + rep.embedded.structures + " embed)");
-    lines.push("📸 Photos POI  : " + t.photos);
+    lines.push("📍 " + window.I18n.t("stats.report.points") + "      : " + t.points + "  (" + window.I18n.t("stats.report.sessionEmbed", { session: rep.session.points, embed: rep.embedded.points }) + ")");
+    lines.push("🛣️  " + window.I18n.t("stats.report.traces") + "      : " + t.roads  + "  (" + window.I18n.t("stats.report.sessionEmbed", { session: rep.session.roads, embed: rep.embedded.roads }) + ")  → " + _formatDist(rep.roadsTotalDistM));
+    lines.push("⬛ " + window.I18n.t("stats.report.zones") + "       : " + t.zones  + "  (" + window.I18n.t("stats.report.sessionEmbed", { session: rep.session.zones, embed: rep.embedded.zones }) + ")  → " + _formatSurf(rep.zonesTotalAreaM2));
+    lines.push("🏛️  " + window.I18n.t("stats.report.structures") + "  : " + t.structures + "  (" + window.I18n.t("stats.report.sessionEmbed", { session: rep.session.structures, embed: rep.embedded.structures }) + ")");
+    lines.push("📸 " + window.I18n.t("stats.report.photosPoi") + "  : " + t.photos);
     lines.push("");
 
     if (t.points > 0) {
-      lines.push("📍 POINTS PAR TAG");
+      lines.push("📍 " + window.I18n.t("stats.report.pointsParTag"));
       lines.push("─────────────────────────────────────────");
       Object.keys(rep.pointsByTag).sort(function(a, b) {
         return rep.pointsByTag[b] - rep.pointsByTag[a];
@@ -664,7 +664,7 @@
     }
 
     if (t.roads > 0) {
-      lines.push("🛣️  TRACÉS PAR TYPE (n · distance)");
+      lines.push("🛣️  " + window.I18n.t("stats.report.tracesParType"));
       lines.push("─────────────────────────────────────────");
       Object.keys(rep.roadsByType).sort().forEach(function(type) {
         lines.push("  " + type.padEnd(14, " ") + "  " + (rep.roadsByType[type] + "").padStart(4, " ") +
@@ -674,7 +674,7 @@
     }
 
     if (t.zones > 0) {
-      lines.push("⬛ ZONES PAR TYPE (n · surface)");
+      lines.push("⬛ " + window.I18n.t("stats.report.zonesParType"));
       lines.push("─────────────────────────────────────────");
       Object.keys(rep.zonesByType).sort().forEach(function(type) {
         lines.push("  " + type.padEnd(14, " ") + "  " + (rep.zonesByType[type] + "").padStart(4, " ") +
@@ -684,7 +684,7 @@
     }
 
     if (t.structures > 0) {
-      lines.push("🏛️  STRUCTURES PAR TYPE");
+      lines.push("🏛️  " + window.I18n.t("stats.report.structuresParType"));
       lines.push("─────────────────────────────────────────");
       Object.keys(rep.structsByType).sort().forEach(function(type) {
         lines.push("  " + type.padEnd(14, " ") + "  " + rep.structsByType[type]);
@@ -693,13 +693,13 @@
     }
 
     if (rep.multiLevelBreakdown) {
-      lines.push("🏗️  BREAKDOWN PAR NIVEAU");
+      lines.push("🏗️  " + window.I18n.t("stats.report.breakdownNiveau"));
       lines.push("─────────────────────────────────────────");
       Object.keys(rep.multiLevelBreakdown).sort(function(a, b) {
         return parseInt(a, 10) - parseInt(b, 10);
       }).forEach(function(k) {
         const b = rep.multiLevelBreakdown[k];
-        lines.push("  Niveau " + k + " : 📍" + b.points + " 🛣️" + b.roads +
+        lines.push("  " + window.I18n.t("stats.niveau", { n: k }) + " : 📍" + b.points + " 🛣️" + b.roads +
                    " ⬛" + b.zones + " 🏛️" + b.structures);
       });
       lines.push("");
@@ -715,12 +715,12 @@
   async function _refreshAndRender() {
     const corps = document.getElementById("kta-stats-glob-corps");
     if (!corps) return;
-    corps.innerHTML = '<div class="kta-stats-glob-loading">⏳ Calcul en cours…</div>';
+    corps.innerHTML = '<div class="kta-stats-glob-loading">⏳ ' + window.I18n.t("stats.loading") + '</div>';
     try {
       _lastReport = await compute();
       corps.innerHTML = _renderHtml(_lastReport);
     } catch(e) {
-      corps.innerHTML = '<div class="kta-mem-warn">❌ Erreur : ' + _escapeHtml(e.message || e) + '</div>';
+      corps.innerHTML = '<div class="kta-mem-warn">❌ ' + window.I18n.t("stats.erreur", { msg: _escapeHtml(e.message || e) }) + '</div>';
     }
   }
 
@@ -732,22 +732,22 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-stats-glob-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📊 Statistiques du plan</span>' +
-          '<button type="button" class="kta-panneau-close" id="kta-stats-glob-close" aria-label="Fermer">✕</button>' +
+          '<span class="kta-readme-modal-titre">📊 ' + window.I18n.t("stats.modal.titre") + '</span>' +
+          '<button type="button" class="kta-panneau-close" id="kta-stats-glob-close" aria-label="' + window.I18n.t("stats.modal.fermer") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-stats-glob-corps">' +
-          '<div class="kta-stats-glob-loading">⏳ Calcul en cours…</div>' +
+          '<div class="kta-stats-glob-loading">⏳ ' + window.I18n.t("stats.loading") + '</div>' +
         '</div>' +
         '<div class="kta-readme-modal-footer kta-stats-glob-footer">' +
-          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-refresh">🔄 Rafraîchir</button>' +
-          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-csv">📊 Export CSV</button>' +
-          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-pdf">📤 Export PDF</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-refresh">🔄 ' + window.I18n.t("stats.btn.rafraichir") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-csv">📊 ' + window.I18n.t("stats.btn.exportCsv") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-pdf">📤 ' + window.I18n.t("stats.btn.exportPdf") + '</button>' +
           // 🆕 v1.33.0 D1 : bouton "Rapport de sortie" — ouvre la modale dédiée
           // js/sessionReport.js (3 formats : PDF/JSON/Texte + période + 8 toggles
           // + note libre + carte miniature + heatmap zones explorées).
           // Naturellement placé ici car les stats sont la "vitrine" de la session.
-          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-rapport">📋 Rapport de sortie</button>' +
-          '<button type="button" class="kta-btn kta-btn-primary" id="kta-stats-glob-copy">📋 Copier le rapport</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-rapport">📋 ' + window.I18n.t("stats.btn.rapportSortie") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-primary" id="kta-stats-glob-copy">📋 ' + window.I18n.t("stats.btn.copierRapport") + '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
@@ -768,7 +768,7 @@
         if (window.SessionReport && typeof window.SessionReport.ouvrirModal === "function") {
           window.SessionReport.ouvrirModal();
         } else {
-          alert("Module SessionReport indisponible. Recharge la page.");
+          alert(window.I18n.t("stats.feedback.sessionReportIndispo"));
         }
       });
     }
@@ -780,45 +780,45 @@
         const btn = document.getElementById("kta-stats-glob-copy");
         if (btn) {
           const orig = btn.textContent;
-          btn.textContent = "✅ Copié !";
+          btn.textContent = "✅ " + window.I18n.t("stats.feedback.copie");
           setTimeout(function() { if (btn) btn.textContent = orig; }, 1800);
         }
-      }).catch(function(e) { alert("Échec copie : " + (e.message || e)); });
+      }).catch(function(e) { alert(window.I18n.t("stats.feedback.echecCopie", { msg: (e.message || e) })); });
     });
 
     // 🆕 v1.21.0 — Bouton Export CSV (ZIP 4 fichiers : points/roads/zones/structures).
     document.getElementById("kta-stats-glob-csv").addEventListener("click", function() {
       const btn = document.getElementById("kta-stats-glob-csv");
       const orig = btn ? btn.textContent : null;
-      if (btn) { btn.disabled = true; btn.textContent = "⏳ Génération…"; }
+      if (btn) { btn.disabled = true; btn.textContent = "⏳ " + window.I18n.t("stats.feedback.generation"); }
       exportToCSV().then(function() {
         if (btn) {
-          btn.textContent = "✅ ZIP téléchargé";
+          btn.textContent = "✅ " + window.I18n.t("stats.feedback.zipTelecharge");
           setTimeout(function() { if (btn) { btn.textContent = orig; btn.disabled = false; } }, 1800);
         }
       }).catch(function(e) {
         if (btn) { btn.textContent = orig; btn.disabled = false; }
-        alert("Échec génération CSV : " + (e.message || e));
+        alert(window.I18n.t("stats.feedback.echecCsv", { msg: (e.message || e) }));
       });
     });
 
     // 🆕 v1.21.0 — Bouton Export PDF (A4 portrait, texte/tableaux seuls).
     document.getElementById("kta-stats-glob-pdf").addEventListener("click", function() {
       if (!_lastReport) {
-        alert("Aucune donnée à exporter — rafraîchis d'abord.");
+        alert(window.I18n.t("stats.feedback.aucuneDonnee"));
         return;
       }
       const btn = document.getElementById("kta-stats-glob-pdf");
       const orig = btn ? btn.textContent : null;
-      if (btn) { btn.disabled = true; btn.textContent = "⏳ Génération…"; }
+      if (btn) { btn.disabled = true; btn.textContent = "⏳ " + window.I18n.t("stats.feedback.generation"); }
       exportToPDF({ report: _lastReport }).then(function(res) {
         if (btn) {
-          btn.textContent = "✅ PDF téléchargé";
+          btn.textContent = "✅ " + window.I18n.t("stats.feedback.pdfTelecharge");
           setTimeout(function() { if (btn) { btn.textContent = orig; btn.disabled = false; } }, 1800);
         }
       }).catch(function(e) {
         if (btn) { btn.textContent = orig; btn.disabled = false; }
-        alert("Échec génération PDF : " + (e.message || e));
+        alert(window.I18n.t("stats.feedback.echecPdf", { msg: (e.message || e) }));
       });
     });
 
@@ -870,7 +870,7 @@
   async function exportToPDF(opts) {
     opts = opts || {};
     if (typeof window.jspdf === "undefined" || !window.jspdf.jsPDF) {
-      throw new Error("jsPDF non chargé (lib/jspdf.umd.min.js manquant)");
+      throw new Error(window.I18n.t("stats.pdf.errJspdf"));
     }
     const jsPDF = window.jspdf.jsPDF;
 
@@ -903,7 +903,7 @@
     function _drawFooterCredit() {
       pdf.setFontSize(8);
       pdf.setTextColor(140, 140, 140);
-      const credit = "Genere par MyKTAMap " + (rep.runtime ? rep.runtime.appVersion : ((window.__MKM__ && window.__MKM__.build) || "?")) +
+      const credit = window.I18n.t("stats.pdf.creditPrefix") + " MyKTAMap " + (rep.runtime ? rep.runtime.appVersion : ((window.__MKM__ && window.__MKM__.build) || "?")) +
                      " - myktamap.fr - " +
                      new Date(rep.timestamp).toLocaleString("fr-FR");
       pdf.text(credit, pageW / 2, pageH - 8, { align: "center" });
@@ -999,7 +999,7 @@
 
     // ─── HEADER PRINCIPAL ───
     pdf.setFont("helvetica", "bold");
-    _drawTitle("MyKTAMap - Statistiques du plan", 18, [30, 58, 138]);
+    _drawTitle("MyKTAMap - " + window.I18n.t("stats.pdf.title"), 18, [30, 58, 138]);
     y += 2;
     pdf.setFont("helvetica", "normal");
 
@@ -1012,103 +1012,103 @@
     pdf.setFont("helvetica", "normal");
 
     // Plan meta
-    if (meta.author)               _drawKV("Auteur",            meta.author);
-    if (meta.imageW && meta.imageH) _drawKV("Dimensions",        meta.imageW + " x " + meta.imageH + " px");
-    if (meta.scale && meta.scale !== 1) _drawKV("Echelle",       meta.scale.toFixed(1) + " px/m");
+    if (meta.author)               _drawKV(window.I18n.t("stats.pdf.kv.auteur"),     meta.author);
+    if (meta.imageW && meta.imageH) _drawKV(window.I18n.t("stats.pdf.kv.dimensions"), meta.imageW + " x " + meta.imageH + " px");
+    if (meta.scale && meta.scale !== 1) _drawKV(window.I18n.t("stats.pdf.kv.echelle"), meta.scale.toFixed(1) + " px/m");
     const flags = [];
-    if (meta.multiLevel) flags.push("Multi-niveau");
-    if (meta.tiledV2)    flags.push("V2 tuile");
-    if (flags.length) _drawKV("Flags", flags.join(", "));
-    _drawKV("Rapport genere", new Date(rep.timestamp).toLocaleString("fr-FR"));
+    if (meta.multiLevel) flags.push(window.I18n.t("stats.pdf.flag.multiNiveau"));
+    if (meta.tiledV2)    flags.push(window.I18n.t("stats.pdf.flag.v2Tuile"));
+    if (flags.length) _drawKV(window.I18n.t("stats.pdf.kv.flags"), flags.join(", "));
+    _drawKV(window.I18n.t("stats.pdf.kv.rapportGenere"), new Date(rep.timestamp).toLocaleString("fr-FR"));
     y += sectionGap;
 
     // ─── TOTAUX ───
     const t = rep.totals;
-    _drawSectionTitle("Totaux (session + data layers embedded)");
+    _drawSectionTitle(window.I18n.t("stats.pdf.sec.totaux"));
     _drawTable2col([
-      ["Points",      t.points     + "  (" + rep.session.points     + " session + " + rep.embedded.points     + " embedded)"],
-      ["Traces",      t.roads      + "  (" + rep.session.roads      + " session + " + rep.embedded.roads      + " embedded)"],
-      ["Zones",       t.zones      + "  (" + rep.session.zones      + " session + " + rep.embedded.zones      + " embedded)"],
-      ["Structures",  t.structures + "  (" + rep.session.structures + " session + " + rep.embedded.structures + " embedded)"],
-      ["Photos POI",  String(t.photos)]
-    ], "Categorie", "Total");
+      [window.I18n.t("stats.pdf.row.points"),     t.points     + "  (" + window.I18n.t("stats.pdf.sessionEmbed", { session: rep.session.points,     embed: rep.embedded.points })     + ")"],
+      [window.I18n.t("stats.pdf.row.traces"),     t.roads      + "  (" + window.I18n.t("stats.pdf.sessionEmbed", { session: rep.session.roads,      embed: rep.embedded.roads })      + ")"],
+      [window.I18n.t("stats.pdf.row.zones"),      t.zones      + "  (" + window.I18n.t("stats.pdf.sessionEmbed", { session: rep.session.zones,      embed: rep.embedded.zones })      + ")"],
+      [window.I18n.t("stats.pdf.row.structures"), t.structures + "  (" + window.I18n.t("stats.pdf.sessionEmbed", { session: rep.session.structures, embed: rep.embedded.structures }) + ")"],
+      [window.I18n.t("stats.pdf.row.photosPoi"),  String(t.photos)]
+    ], window.I18n.t("stats.pdf.col.categorie"), window.I18n.t("stats.pdf.col.total"));
     y += sectionGap;
 
     // ─── POINTS PAR TAG ───
     if (t.points > 0) {
-      _drawSectionTitle("Points par tag");
+      _drawSectionTitle(window.I18n.t("stats.pdf.sec.pointsParTag"));
       const sorted = Object.keys(rep.pointsByTag).sort(function(a, b) {
         return rep.pointsByTag[b] - rep.pointsByTag[a];
       });
       _drawTable2col(sorted.map(function(tag) {
         return [tag, rep.pointsByTag[tag]];
-      }), "Tag", "Nombre");
+      }), window.I18n.t("stats.pdf.col.tag"), window.I18n.t("stats.pdf.col.nombre"));
       y += sectionGap;
     }
 
     // ─── TRACÉS PAR TYPE ───
     if (t.roads > 0) {
-      _drawSectionTitle("Traces par type (cumul : " + _formatDist(rep.roadsTotalDistM).replace("²", "2") + ")");
+      _drawSectionTitle(window.I18n.t("stats.pdf.sec.tracesParType", { cumul: _formatDist(rep.roadsTotalDistM).replace("²", "2") }));
       const sorted = Object.keys(rep.roadsByType).sort(function(a, b) {
         return rep.roadsByType[b] - rep.roadsByType[a];
       });
       _drawTable3col(sorted.map(function(type) {
         const d = rep.roadsDistByTypeM[type] || 0;
         return [type, rep.roadsByType[type], _formatDist(d)];
-      }), "Type", "Nombre", "Distance");
+      }), window.I18n.t("stats.pdf.col.type"), window.I18n.t("stats.pdf.col.nombre"), window.I18n.t("stats.pdf.col.distance"));
       y += sectionGap;
     }
 
     // ─── ZONES PAR TYPE ───
     if (t.zones > 0) {
-      _drawSectionTitle("Zones par type (cumul : " + _formatSurf(rep.zonesTotalAreaM2).replace("²", "2") + ")");
+      _drawSectionTitle(window.I18n.t("stats.pdf.sec.zonesParType", { cumul: _formatSurf(rep.zonesTotalAreaM2).replace("²", "2") }));
       const sorted = Object.keys(rep.zonesByType).sort(function(a, b) {
         return rep.zonesByType[b] - rep.zonesByType[a];
       });
       _drawTable3col(sorted.map(function(type) {
         const s = rep.zonesAreaByTypeM2[type] || 0;
         return [type, rep.zonesByType[type], _formatSurf(s).replace("²", "2")];
-      }), "Type", "Nombre", "Surface");
+      }), window.I18n.t("stats.pdf.col.type"), window.I18n.t("stats.pdf.col.nombre"), window.I18n.t("stats.pdf.col.surface"));
       y += sectionGap;
     }
 
     // ─── STRUCTURES PAR TYPE ───
     if (t.structures > 0) {
-      _drawSectionTitle("Structures par type");
+      _drawSectionTitle(window.I18n.t("stats.pdf.sec.structuresParType"));
       const sorted = Object.keys(rep.structsByType).sort(function(a, b) {
         return rep.structsByType[b] - rep.structsByType[a];
       });
       _drawTable2col(sorted.map(function(type) {
         return [type, rep.structsByType[type]];
-      }), "Type", "Nombre");
+      }), window.I18n.t("stats.pdf.col.type"), window.I18n.t("stats.pdf.col.nombre"));
       y += sectionGap;
     }
 
     // ─── M-LVL BREAKDOWN ───
     if (rep.multiLevelBreakdown) {
-      _drawSectionTitle("Breakdown par niveau");
+      _drawSectionTitle(window.I18n.t("stats.pdf.sec.breakdownNiveau"));
       const lvlKeys = Object.keys(rep.multiLevelBreakdown).sort(function(a, b) {
         return parseInt(a, 10) - parseInt(b, 10);
       });
       const rows = lvlKeys.map(function(k) {
         const b = rep.multiLevelBreakdown[k];
         return [
-          "Niveau " + k,
+          window.I18n.t("stats.niveau", { n: k }),
           "P:" + b.points + "  T:" + b.roads + "  Z:" + b.zones + "  S:" + b.structures,
-          (b.points + b.roads + b.zones + b.structures) + " total"
+          window.I18n.t("stats.pdf.totalSuffix", { n: (b.points + b.roads + b.zones + b.structures) })
         ];
       });
-      _drawTable3col(rows, "Niveau", "Detail", "Total");
+      _drawTable3col(rows, window.I18n.t("stats.pdf.col.niveau"), window.I18n.t("stats.pdf.col.detail"), window.I18n.t("stats.pdf.col.total"));
       y += sectionGap;
     }
 
     // ─── GÉORÉFÉRENCEMENT ───
     if (rep.georef && rep.georef.pointA && rep.georef.pointB) {
-      _drawSectionTitle("Georeferencement GPS");
+      _drawSectionTitle(window.I18n.t("stats.pdf.sec.georeferencement"));
       const a = rep.georef.pointA;
       const b = rep.georef.pointB;
-      _drawKV("Point A (plan -> GPS)", "px (" + a.x + ", " + a.y + ") -> (" + a.lat + ", " + a.lng + ")");
-      _drawKV("Point B (plan -> GPS)", "px (" + b.x + ", " + b.y + ") -> (" + b.lat + ", " + b.lng + ")");
+      _drawKV(window.I18n.t("stats.pdf.kv.pointA"), "px (" + a.x + ", " + a.y + ") -> (" + a.lat + ", " + a.lng + ")");
+      _drawKV(window.I18n.t("stats.pdf.kv.pointB"), "px (" + b.x + ", " + b.y + ") -> (" + b.lat + ", " + b.lng + ")");
       y += sectionGap;
     }
 
@@ -1175,7 +1175,7 @@
 
   async function exportToCSV() {
     if (typeof JSZip !== "function" && typeof window.JSZip !== "function") {
-      throw new Error("JSZip indisponible. Recharge la page pour récupérer la lib.");
+      throw new Error(window.I18n.t("stats.csv.errJszip"));
     }
     const ZipLib = (typeof JSZip === "function") ? JSZip : window.JSZip;
     const zip    = new ZipLib();
@@ -1277,21 +1277,21 @@
 
     // ─── README dans le ZIP pour expliquer le format ───
     const readme =
-      "MyKTAMap — Export CSV des annotations\r\n" +
-      "Plan : " + (planMeta.name || "") + "\r\n" +
-      "Date : " + new Date().toISOString() + "\r\n\r\n" +
-      "FICHIERS :\r\n" +
-      "  points.csv     — Points (puits, accès, signalétique, etc.)\r\n" +
-      "  roads.csv      — Tracés (principal, secondaire, chemin, jonction)\r\n" +
-      "  zones.csv      — Zones (eau, remblais, effondrement, inaccessible)\r\n" +
-      "  structures.csv — Structures (pilier-1/2, mur, front-1/2)\r\n\r\n" +
-      "FORMAT :\r\n" +
-      "  - UTF-8 avec BOM (compat Excel)\r\n" +
-      "  - Séparateur : `;` (compat Excel FR par défaut)\r\n" +
-      "  - Colonne `source` : 'session' (annotations en cours) ou 'embedded' (data layers du plan)\r\n" +
-      "  - Distances en mètres (calculées via APP_CONFIG.scale)\r\n" +
-      "  - Surfaces en m² (shoelace formula)\r\n\r\n" +
-      "Ouverture : double-clic dans Excel/LibreOffice/Numbers, ou import dans ton outil BI préféré.\r\n";
+      window.I18n.t("stats.csv.readme.titre") + "\r\n" +
+      window.I18n.t("stats.csv.readme.plan") + " : " + (planMeta.name || "") + "\r\n" +
+      window.I18n.t("stats.csv.readme.date") + " : " + new Date().toISOString() + "\r\n\r\n" +
+      window.I18n.t("stats.csv.readme.fichiers") + " :\r\n" +
+      "  points.csv     — " + window.I18n.t("stats.csv.readme.filePoints") + "\r\n" +
+      "  roads.csv      — " + window.I18n.t("stats.csv.readme.fileRoads") + "\r\n" +
+      "  zones.csv      — " + window.I18n.t("stats.csv.readme.fileZones") + "\r\n" +
+      "  structures.csv — " + window.I18n.t("stats.csv.readme.fileStructs") + "\r\n\r\n" +
+      window.I18n.t("stats.csv.readme.format") + " :\r\n" +
+      "  - " + window.I18n.t("stats.csv.readme.fmtBom") + "\r\n" +
+      "  - " + window.I18n.t("stats.csv.readme.fmtSep") + "\r\n" +
+      "  - " + window.I18n.t("stats.csv.readme.fmtSource") + "\r\n" +
+      "  - " + window.I18n.t("stats.csv.readme.fmtDist") + "\r\n" +
+      "  - " + window.I18n.t("stats.csv.readme.fmtSurf") + "\r\n\r\n" +
+      window.I18n.t("stats.csv.readme.ouverture") + "\r\n";
     zip.file("_README.txt", "﻿" + readme);
 
     // ─── PACK ZIP + DOWNLOAD ───

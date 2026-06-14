@@ -196,7 +196,7 @@ window.ouvrirRoadsDistanceFloater = function() {
 
   const roads = _rdRoadsExploitables();
   if (roads.length === 0) {
-    alert("Aucun tracé de route présent sur ce plan.\n\nTrace au moins une route (Principal / Secondaire / Chemin) avant de calculer une distance totale.");
+    alert(window.I18n.t("disttot.noRoads"));
     return;
   }
 
@@ -213,43 +213,40 @@ window.ouvrirRoadsDistanceFloater = function() {
   modal.innerHTML =
     '<div class="kta-readme-modal-boite kta-rd-modal-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">📏 Distance totale des tracés</span>' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("disttot.modal.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-rd-close" type="button">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         '<div class="kta-aide-section">' +
           '<p class="kta-rd-help">' +
-            'Décoche les types à exclure du calcul. Les tracés inclus sont surlignés ' +
-            '<strong style="color:#ff4ecb;">en magenta</strong> sur la carte. ' +
-            'Le surlignage <strong>persiste après fermeture</strong> de la modale — clique ❌ ' +
-            'Effacer pour le retirer.' +
+            window.I18n.t("disttot.help") +
           '</p>' +
           '<label class="kta-rd-row">' +
             '<input type="checkbox" id="kta-rd-chk-principal"' + (_rdFiltres.principal ? ' checked' : '') + '>' +
             '<span class="kta-rd-swatch" style="background:#00ff00;"></span>' +
-            '<span class="kta-rd-label">Principal</span>' +
+            '<span class="kta-rd-label">' + window.I18n.t("disttot.type.principal") + '</span>' +
             '<span class="kta-rd-count" id="kta-rd-cnt-principal">—</span>' +
           '</label>' +
           '<label class="kta-rd-row">' +
             '<input type="checkbox" id="kta-rd-chk-secondaire"' + (_rdFiltres.secondaire ? ' checked' : '') + '>' +
             '<span class="kta-rd-swatch" style="background:#b000ff;"></span>' +
-            '<span class="kta-rd-label">Secondaire</span>' +
+            '<span class="kta-rd-label">' + window.I18n.t("disttot.type.secondaire") + '</span>' +
             '<span class="kta-rd-count" id="kta-rd-cnt-secondaire">—</span>' +
           '</label>' +
           '<label class="kta-rd-row">' +
             '<input type="checkbox" id="kta-rd-chk-chemin"' + (_rdFiltres.chemin ? ' checked' : '') + '>' +
             '<span class="kta-rd-swatch" style="background:#ffff00;"></span>' +
-            '<span class="kta-rd-label">Chemin</span>' +
+            '<span class="kta-rd-label">' + window.I18n.t("disttot.type.chemin") + '</span>' +
             '<span class="kta-rd-count" id="kta-rd-cnt-chemin">—</span>' +
           '</label>' +
           '<div class="kta-rd-total-wrap">' +
-            '<span class="kta-rd-total-label">Total</span>' +
+            '<span class="kta-rd-total-label">' + window.I18n.t("disttot.total") + '</span>' +
             '<span class="kta-rd-total-value" id="kta-rd-total">—</span>' +
           '</div>' +
         '</div>' +
         '<div class="kta-rd-actions">' +
-          '<button id="kta-rd-erase" class="kta-btn kta-btn-danger" type="button">❌ Effacer le surlignage</button>' +
-          '<button id="kta-rd-done"  class="kta-btn kta-btn-primary" type="button">✓ Fermer (garder le surlignage)</button>' +
+          '<button id="kta-rd-erase" class="kta-btn kta-btn-danger" type="button">' + window.I18n.t("disttot.btn.erase") + '</button>' +
+          '<button id="kta-rd-done"  class="kta-btn kta-btn-primary" type="button">' + window.I18n.t("disttot.btn.close") + '</button>' +
         '</div>' +
       '</div>' +
     '</div>';

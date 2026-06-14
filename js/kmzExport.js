@@ -61,7 +61,7 @@
   // ou throw si distance insuffisante.
   function buildTransform(planA, planB, gpsA, gpsB) {
     if (!planA || !planB || !gpsA || !gpsB) {
-      throw new Error("Calibrage incomplet : 2 points (plan + GPS) requis");
+      throw new Error(window.I18n.t("kmz.err.calibIncomplete"));
     }
 
     // Vecteur plan AB. y plan inverse : y croît vers le bas en MyKTAMap, on
@@ -71,8 +71,8 @@
     const dyPlan = -(planB.y - planA.y);
     const lenPlan = Math.hypot(dxPlan, dyPlan);
     if (lenPlan < MIN_PLAN_DISTANCE) {
-      throw new Error("Les 2 points plan sont trop proches (" + Math.round(lenPlan) +
-                      " px, min " + MIN_PLAN_DISTANCE + " px) pour calibrer avec précision");
+      throw new Error(window.I18n.t("kmz.err.planTooClose",
+        { px: Math.round(lenPlan), min: MIN_PLAN_DISTANCE }));
     }
 
     // Vecteur GPS AB en mètres via projection equirectangulaire locale
@@ -85,7 +85,7 @@
     const dyGps = dlatDeg * 110540;                                    // Nord-Sud
     const lenGps = Math.hypot(dxGps, dyGps);
     if (lenGps < MIN_GPS_DISTANCE_M) {
-      throw new Error("Les 2 points GPS sont identiques ou trop proches (< 1 m).");
+      throw new Error(window.I18n.t("kmz.err.gpsTooClose"));
     }
 
     // Echelle métres par pixel
@@ -316,7 +316,7 @@
   // Retourne le KML complet en string.
   function genererKml(opts) {
     const t = opts.transform;
-    if (!t) throw new Error("Transform requis (calibrage)");
+    if (!t) throw new Error(window.I18n.t("kmz.err.transformRequired"));
 
     const planName = opts.planName || "Plan MyKTAMap";
 
@@ -935,7 +935,7 @@
   // Retourne Promise<Blob> du KMZ généré.
   async function genererKmz(opts) {
     if (typeof JSZip !== "function") {
-      throw new Error("JSZip non chargé — impossible de générer le KMZ");
+      throw new Error(window.I18n.t("kmz.err.jszipExport"));
     }
     const zip = new JSZip();
 

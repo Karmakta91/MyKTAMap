@@ -46,26 +46,41 @@
   // pro / plotter, utile pour cartes murales.
   // ⚠️ A0 + scale ×2 = canvas ~30 Mpx → JPEG ~25 Mo → durée d'encodage 30-60 s
   // sur mobile. Limite raisonnable côté UI : scale ×1 par défaut pour A0.
+  // `size`/`dims` = données pures (non traduisibles). L'orientation ("portrait"/
+  // "paysage") est le SEUL fragment FR : on ne la fige plus dans `label`, on la
+  // résout au rendu via _formatLabel() (clés pdfexport.orient.*). Le label
+  // complet reste recomposé à la demande (size + orientation traduite + dims).
   const FORMATS = {
-    "a0-portrait":  { format: "a0", orientation: "portrait",  label: "A0 portrait (841×1189 mm)" },
-    "a0-landscape": { format: "a0", orientation: "landscape", label: "A0 paysage (1189×841 mm)"  },
-    "a1-portrait":  { format: "a1", orientation: "portrait",  label: "A1 portrait (594×841 mm)"  },
-    "a1-landscape": { format: "a1", orientation: "landscape", label: "A1 paysage (841×594 mm)"   },
-    "a2-portrait":  { format: "a2", orientation: "portrait",  label: "A2 portrait (420×594 mm)"  },
-    "a2-landscape": { format: "a2", orientation: "landscape", label: "A2 paysage (594×420 mm)"   },
-    "a3-portrait":  { format: "a3", orientation: "portrait",  label: "A3 portrait (297×420 mm)"  },
-    "a3-landscape": { format: "a3", orientation: "landscape", label: "A3 paysage (420×297 mm)"   },
-    "a4-portrait":  { format: "a4", orientation: "portrait",  label: "A4 portrait (210×297 mm)"  },
-    "a4-landscape": { format: "a4", orientation: "landscape", label: "A4 paysage (297×210 mm)"   }
+    "a0-portrait":  { format: "a0", orientation: "portrait",  size: "A0", dims: "841×1189 mm" },
+    "a0-landscape": { format: "a0", orientation: "landscape", size: "A0", dims: "1189×841 mm" },
+    "a1-portrait":  { format: "a1", orientation: "portrait",  size: "A1", dims: "594×841 mm"  },
+    "a1-landscape": { format: "a1", orientation: "landscape", size: "A1", dims: "841×594 mm"  },
+    "a2-portrait":  { format: "a2", orientation: "portrait",  size: "A2", dims: "420×594 mm"  },
+    "a2-landscape": { format: "a2", orientation: "landscape", size: "A2", dims: "594×420 mm"  },
+    "a3-portrait":  { format: "a3", orientation: "portrait",  size: "A3", dims: "297×420 mm"  },
+    "a3-landscape": { format: "a3", orientation: "landscape", size: "A3", dims: "420×297 mm"  },
+    "a4-portrait":  { format: "a4", orientation: "portrait",  size: "A4", dims: "210×297 mm"  },
+    "a4-landscape": { format: "a4", orientation: "landscape", size: "A4", dims: "297×210 mm"  }
   };
 
-  // Tailles disponibles (pour le 1er radio "taille") et orientations (2e radio)
+  // Recompose un label "A0 portrait (841×1189 mm)" au rendu : size + dims = données
+  // inline, orientation = fragment traduit (pdfexport.orient.portrait/paysage).
+  function _formatLabel(def) {
+    if (!def) return "";
+    const orientKey = def.orientation === "portrait" ? "portrait" : "paysage";
+    const orient = window.I18n.t("pdfexport.orient." + orientKey);
+    return def.size + " " + orient + " (" + def.dims + ")";
+  }
+
+  // Tailles disponibles (pour le 1er radio "taille") et orientations (2e radio).
+  // label/hint résolus au rendu via I18n (cf. afficherModale). On conserve un
+  // libellé brut (= la clé courte non traduisible "A0".."A4") en fallback.
   const PDF_SIZES = [
-    { key: "a0", label: "A0",  hint: "841×1189 mm — plotter pro"   },
-    { key: "a1", label: "A1",  hint: "594×841 mm — grand format"   },
-    { key: "a2", label: "A2",  hint: "420×594 mm — affiche"        },
-    { key: "a3", label: "A3",  hint: "297×420 mm — papier A3"      },
-    { key: "a4", label: "A4",  hint: "210×297 mm — papier standard"}
+    { key: "a0", label: "A0" },
+    { key: "a1", label: "A1" },
+    { key: "a2", label: "A2" },
+    { key: "a3", label: "A3" },
+    { key: "a4", label: "A4" }
   ];
 
   // ============================================================
@@ -130,7 +145,7 @@
     if (existing) { existing.remove(); return; }
 
     if (!_checkJsPDF()) {
-      alert("📤 Module d'export PDF indisponible.\n\nRecharge l'application et réessaie.");
+      alert(window.I18n.t("pdfexport.alert.indispo"));
       return;
     }
 
@@ -152,53 +167,52 @@
     modal.className = "kta-readme-modal-overlay";
     modal.style.display = "flex";
 
+    const T = window.I18n.t;
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-pdf-modal-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📤 Export PDF imprimable</span>' +
+          '<span class="kta-readme-modal-titre">' + T("pdfexport.modal.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-pdf-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
 
           '<p class="kta-ses-intro">' +
-            'Génère un PDF imprimable du plan (A0 à A4 portrait/paysage) avec ' +
-            'header (titre + métadonnées) et footer (légende compacte). ' +
-            'Inspiré du formulaire d\'export image avancé pour le contrôle fin des calques.' +
+            T("pdfexport.intro") +
           '</p>' +
 
           // 📐 Format de page — 2 lignes : taille + orientation
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">📐 Taille de page</div>' +
+            '<div class="kta-ses-section-title">' + T("pdfexport.taille.titre") + '</div>' +
             '<div class="kta-pdf-radios-inline">' +
               PDF_SIZES.map(function(s, i) {
-                return _radioRowInline("pdf_size", s.key, s.label, s.hint, i === 4 /* A4 par défaut */);
+                return _radioRowInline("pdf_size", s.key, s.label, T("pdfexport.taille.hint." + s.key), i === 4 /* A4 par défaut */);
               }).join("") +
             '</div>' +
           '</div>' +
 
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">↔️ Orientation</div>' +
+            '<div class="kta-ses-section-title">' + T("pdfexport.orientation.titre") + '</div>' +
             '<div class="kta-pdf-radios-inline">' +
-              _radioRowInline("pdf_orient", "portrait",  "📄 Portrait",  "",  false) +
-              _radioRowInline("pdf_orient", "landscape", "📃 Paysage",   "",  true)  +
+              _radioRowInline("pdf_orient", "portrait",  T("pdfexport.orientation.portrait"),  "",  false) +
+              _radioRowInline("pdf_orient", "landscape", T("pdfexport.orientation.paysage"),   "",  true)  +
             '</div>' +
           '</div>' +
 
           // 📦 Annotations de session (cohérent avec export PNG avancé)
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">📦 Annotations de session</div>' +
-            _cbRow("pdf_inc_points",     "✏️ Points ajoutés",  points.length,     true) +
-            _cbRow("pdf_inc_roads",      "🛣️ Tracés",         roads.length,      true) +
-            _cbRow("pdf_inc_zones",      "⬛ Zones",           zones.length,      true) +
-            _cbRow("pdf_inc_structures", "🏛️ Structures",     structures.length, true) +
+            '<div class="kta-ses-section-title">' + T("pdfexport.annotations.titre") + '</div>' +
+            _cbRow("pdf_inc_points",     T("pdfexport.annotations.points"),     points.length,     true) +
+            _cbRow("pdf_inc_roads",      T("pdfexport.annotations.roads"),      roads.length,      true) +
+            _cbRow("pdf_inc_zones",      T("pdfexport.annotations.zones"),      zones.length,      true) +
+            _cbRow("pdf_inc_structures", T("pdfexport.annotations.structures"), structures.length, true) +
           '</div>' +
 
           // 🖼️ Image de base + Calques image (auto-listés depuis plan-config)
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">🖼️ Image de base & calques</div>' +
-            _cbRow("pdf_inc_baseimage", "🗺️ Image plan de base", null, true) +
+            '<div class="kta-ses-section-title">' + T("pdfexport.image.titre") + '</div>' +
+            _cbRow("pdf_inc_baseimage", T("pdfexport.image.base"), null, true) +
             (imageLayers.length === 0
-              ? '<p style="font-size:12px; color:#8892a4; margin:6px 0 0 28px;">Aucun calque image dans ce plan.</p>'
+              ? '<p style="font-size:12px; color:#8892a4; margin:6px 0 0 28px;">' + T("pdfexport.image.aucun") + '</p>'
               : '<div class="kta-pdf-layer-block">' +
                   imageLayers.map(function(l) {
                     const checked = visibleImg.indexOf(l.id) >= 0;
@@ -210,15 +224,15 @@
 
           // 📊 Calques de données (puits, vehicules, etc. — auto-listés)
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">📊 Calques de données</div>' +
+            '<div class="kta-ses-section-title">' + T("pdfexport.data.titre") + '</div>' +
             (dataLayers.length === 0
-              ? '<p style="font-size:12px; color:#8892a4; margin:0;">Aucun calque de données dans ce plan.</p>'
+              ? '<p style="font-size:12px; color:#8892a4; margin:0;">' + T("pdfexport.data.aucun") + '</p>'
               : '<div class="kta-pdf-layer-block">' +
                   dataLayers.map(function(l) {
                     const checked = visibleData.indexOf(l.id) >= 0;
                     const isEditor = l.id === "editor";
                     const label = isEditor
-                      ? "✏️ " + (l.label || "Mes annotations") + " (= calque session)"
+                      ? "✏️ " + (l.label || T("pdfexport.data.mesAnnotations")) + " " + T("pdfexport.data.calqueSessionSuffixe")
                       : "📁 " + (l.label || l.id);
                     return _cbRowSub("pdf_data_layer_" + _slug(l.id), label, null, checked, l.id);
                   }).join("") +
@@ -228,47 +242,47 @@
 
           // 🎨 Mise en page
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">🎨 Mise en page</div>' +
-            _cbRow("pdf_inc_header", "📋 Header (titre + métadonnées)", null, true) +
+            '<div class="kta-ses-section-title">' + T("pdfexport.miseEnPage.titre") + '</div>' +
+            _cbRow("pdf_inc_header", T("pdfexport.miseEnPage.header"), null, true) +
           '</div>' +
 
           // 🗺️ Légende — overlay 4-coins inspiré de l'export PNG avancé
           // (KARMA v3.1 "inclus la légende différemment, trop intrusif").
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">🗺️ Légende</div>' +
-            _cbRow("pdf_inc_legende", "Inclure la légende posée sur le plan", null, true) +
+            '<div class="kta-ses-section-title">' + T("pdfexport.legende.titre") + '</div>' +
+            _cbRow("pdf_inc_legende", T("pdfexport.legende.inclure"), null, true) +
             '<div id="pdf_leg_options" style="margin-left:28px; margin-top:6px;">' +
-              '<div style="font-size:11px; color:#8892a4; margin-bottom:6px;">📍 Position</div>' +
+              '<div style="font-size:11px; color:#8892a4; margin-bottom:6px;">' + T("pdfexport.legende.position") + '</div>' +
               '<div class="kta-pdf-radios-inline">' +
-                _radioRowInline("pdf_leg_pos", "haut-gauche",  "↖ Haut-gauche",   "", false) +
-                _radioRowInline("pdf_leg_pos", "haut-droit",   "↗ Haut-droite",   "", false) +
-                _radioRowInline("pdf_leg_pos", "bas-gauche",   "↙ Bas-gauche",    "", true)  +
-                _radioRowInline("pdf_leg_pos", "bas-droit",    "↘ Bas-droite",    "", false) +
+                _radioRowInline("pdf_leg_pos", "haut-gauche",  T("pdfexport.legende.pos.hg"),   "", false) +
+                _radioRowInline("pdf_leg_pos", "haut-droit",   T("pdfexport.legende.pos.hd"),   "", false) +
+                _radioRowInline("pdf_leg_pos", "bas-gauche",   T("pdfexport.legende.pos.bg"),   "", true)  +
+                _radioRowInline("pdf_leg_pos", "bas-droit",    T("pdfexport.legende.pos.bd"),   "", false) +
               '</div>' +
-              '<div style="font-size:11px; color:#8892a4; margin:8px 0 6px;">📏 Taille</div>' +
+              '<div style="font-size:11px; color:#8892a4; margin:8px 0 6px;">' + T("pdfexport.legende.taille") + '</div>' +
               '<div class="kta-pdf-radios-inline">' +
-                _radioRowInline("pdf_leg_size", "compact",  "Compact",  "icônes 16px", false) +
-                _radioRowInline("pdf_leg_size", "standard", "Standard", "icônes 22px", true)  +
-                _radioRowInline("pdf_leg_size", "large",    "Large",    "icônes 30px", false) +
+                _radioRowInline("pdf_leg_size", "compact",  T("pdfexport.legende.taille.compact"),  T("pdfexport.legende.taille.compactHint"), false) +
+                _radioRowInline("pdf_leg_size", "standard", T("pdfexport.legende.taille.standard"), T("pdfexport.legende.taille.standardHint"), true)  +
+                _radioRowInline("pdf_leg_size", "large",    T("pdfexport.legende.taille.large"),    T("pdfexport.legende.taille.largeHint"), false) +
               '</div>' +
-              '<div style="font-size:11px; color:#8892a4; margin:8px 0 6px;">🎨 Style</div>' +
+              '<div style="font-size:11px; color:#8892a4; margin:8px 0 6px;">' + T("pdfexport.legende.style") + '</div>' +
               '<div class="kta-pdf-radios-inline">' +
-                _radioRowInline("pdf_leg_style", "print",     "Pro (fond blanc)",     "", true) +
-                _radioRowInline("pdf_leg_style", "opaque",    "Sombre opaque",        "", false) +
-                _radioRowInline("pdf_leg_style", "semi",      "Sombre semi-transp.",  "", false) +
-                _radioRowInline("pdf_leg_style", "filigrane", "Filigrane discret",    "", false) +
+                _radioRowInline("pdf_leg_style", "print",     T("pdfexport.legende.style.print"),     "", true) +
+                _radioRowInline("pdf_leg_style", "opaque",    T("pdfexport.legende.style.opaque"),    "", false) +
+                _radioRowInline("pdf_leg_style", "semi",      T("pdfexport.legende.style.semi"),      "", false) +
+                _radioRowInline("pdf_leg_style", "filigrane", T("pdfexport.legende.style.filigrane"), "", false) +
               '</div>' +
             '</div>' +
           '</div>' +
 
           // 📏 Qualité — recommandation par taille
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">📏 Qualité</div>' +
-            _radioRow("pdf_scale", "1",   "Standard (× 1) — recommandé pour A3/A4", true) +
-            _radioRow("pdf_scale", "2",   "Haute définition (× 2) — recommandé A0/A1, fichier plus lourd", false) +
-            _radioRow("pdf_scale", "0.5", "Brouillon (× 0.5) — fichier léger", false) +
+            '<div class="kta-ses-section-title">' + T("pdfexport.qualite.titre") + '</div>' +
+            _radioRow("pdf_scale", "1",   T("pdfexport.qualite.standard"), true) +
+            _radioRow("pdf_scale", "2",   T("pdfexport.qualite.hd"), false) +
+            _radioRow("pdf_scale", "0.5", T("pdfexport.qualite.brouillon"), false) +
             '<p style="font-size:11px; color:#8892a4; margin:6px 0 0 4px; font-style:italic;">' +
-              '⚠️ A0/A1 + ×2 peut prendre 30-60 s sur mobile (canvas très large).' +
+              T("pdfexport.qualite.avertissement") +
             '</p>' +
           '</div>' +
 
@@ -276,8 +290,8 @@
 
         '</div>' +
         '<div class="kta-conv-actions" style="padding:14px 24px 18px;">' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-pdf-annuler" type="button">Annuler</button>' +
-          '<button class="kta-btn kta-btn-primary" id="kta-pdf-generer" type="button">📤 Générer le PDF</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-pdf-annuler" type="button">' + T("pdfexport.btn.annuler") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-pdf-generer" type="button">' + T("pdfexport.btn.generer") + '</button>' +
         '</div>' +
       '</div>';
 
@@ -296,7 +310,7 @@
 
     document.getElementById("kta-pdf-generer").addEventListener("click", function() {
       const opts = _lireOptionsModale();
-      _afficherProgression(modal, "Génération du canvas du plan…");
+      _afficherProgression(modal, window.I18n.t("pdfexport.progression.canvas"));
       // setTimeout pour laisser le browser repeindre la modale progression
       setTimeout(async function() {
         try {
@@ -460,7 +474,7 @@
       '<div style="text-align:center; padding:40px 20px;">' +
         '<div style="font-size:42px; margin-bottom:14px;">⏳</div>' +
         '<div style="font-size:15px; color:#e8eaf0; font-weight:600;">' + msg + '</div>' +
-        '<div style="font-size:12.5px; color:#8892a4; margin-top:10px;">Cela peut prendre quelques secondes sur les gros plans…</div>' +
+        '<div style="font-size:12.5px; color:#8892a4; margin-top:10px;">' + window.I18n.t("pdfexport.progression.patience") + '</div>' +
       '</div>';
   }
 
@@ -471,7 +485,7 @@
       '<div style="padding:20px;">' +
         '<div style="font-size:36px; text-align:center; margin-bottom:10px;">❌</div>' +
         '<div style="background:rgba(255,107,107,0.1); border:1px solid rgba(255,107,107,0.4); border-radius:6px; padding:12px; color:#ff8c8c; font-size:13.5px;">' +
-          '<strong>Échec de la génération PDF :</strong><br>' + _escHtml(msg) +
+          '<strong>' + window.I18n.t("pdfexport.erreur.titre") + '</strong><br>' + _escHtml(msg) +
         '</div>' +
       '</div>';
   }
@@ -487,7 +501,7 @@
   // ============================================================
   async function genererPdf(opts) {
     if (!_checkJsPDF()) {
-      throw new Error("jsPDF non chargé (lib/jspdf.umd.min.js manquant)");
+      throw new Error(window.I18n.t("pdfexport.erreur.jspdfManquant"));
     }
     const jsPDF = window.jspdf.jsPDF;
 
@@ -496,7 +510,7 @@
     // window.MyKTAMapExporterGenererCanvas est async (charge images, etc.).
     const canvas = await _genererCanvasPlan(opts);
     if (!canvas) {
-      throw new Error("Échec génération canvas du plan");
+      throw new Error(window.I18n.t("pdfexport.erreur.canvasEchec"));
     }
 
     // Étape 2 : créer le doc PDF
@@ -561,7 +575,7 @@
     pdf.setFont("helvetica", "italic");
     pdf.setFontSize(7);
     pdf.setTextColor(140, 140, 140);
-    const credit = "Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr";
+    const credit = window.I18n.t("pdfexport.credit");
     pdf.text(credit, pageW - margin, pageH - margin / 2, { align: "right" });
 
     // Étape 7 : save
@@ -618,8 +632,9 @@
   // HEADER
   // ============================================================
   function _dessinerHeader(pdf, pageW, margin, headerH) {
+    const T = window.I18n.t;
     const pc = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
-    const planName = pc.name    || "Plan sans nom";
+    const planName = pc.name    || T("pdfexport.header.planSansNom");
     const planVer  = pc.version || "";
     const planAuth = pc.author  || "";
     const scale    = (window.APP_CONFIG && window.APP_CONFIG.scale) || null;
@@ -636,10 +651,10 @@
     pdf.setFontSize(9);
     pdf.setTextColor(80, 80, 80);
     const parts = [];
-    if (planVer)  parts.push("Version : " + planVer);
-    if (planAuth) parts.push("Auteur : "  + planAuth);
-    parts.push("Date d'export : " + date);
-    if (scale)    parts.push("Échelle : " + scale.toFixed(2) + " px/m");
+    if (planVer)  parts.push(T("pdfexport.header.version", { version: planVer }));
+    if (planAuth) parts.push(T("pdfexport.header.auteur",  { auteur: planAuth }));
+    parts.push(T("pdfexport.header.dateExport", { date: date }));
+    if (scale)    parts.push(T("pdfexport.header.echelle", { echelle: scale.toFixed(2) }));
     const subline = parts.join("  ·  ");
     pdf.text(subline, margin, margin + 11);
 
@@ -656,7 +671,7 @@
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(7.5);
     pdf.setTextColor(120, 120, 120);
-    pdf.text("Cartographie souterraine", pageW - margin, margin + 10, { align: "right" });
+    pdf.text(T("pdfexport.header.tagline"), pageW - margin, margin + 10, { align: "right" });
   }
 
   // ============================================================

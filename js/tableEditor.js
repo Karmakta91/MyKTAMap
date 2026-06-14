@@ -235,26 +235,25 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:520px; width:auto; height:auto; max-height:90vh;">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">📊 Éditeur de tableau JSON</span>
+          <span class="kta-readme-modal-titre">${window.I18n.t("tabledit.modal.titre")}</span>
           <button class="kta-panneau-close" id="kta-tbl-close-import">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
           <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">
-            Charge un fichier <code>.json</code> de type <strong>calque de données</strong> (ex: <code>puit.json</code>) ou <strong>session</strong> (<code>devmap-session.json</code>).
-            Tu pourras éditer ses points dans un tableau, puis le sauvegarder.
+            ${window.I18n.t("tabledit.import.aide")}
           </p>
 
           <div class="kta-tbl-drop" id="kta-tbl-drop">
             <div style="font-size:32px; opacity:0.6;">📂</div>
-            <div style="margin-top:8px;">Glisse un fichier .json ici</div>
-            <div style="font-size:11px; opacity:0.6; margin-top:4px;">ou clique pour le sélectionner</div>
+            <div style="margin-top:8px;">${window.I18n.t("tabledit.import.drop.titre")}</div>
+            <div style="font-size:11px; opacity:0.6; margin-top:4px;">${window.I18n.t("tabledit.import.drop.sous")}</div>
             <input type="file" id="kta-tbl-file" accept=".json,application/json" style="display:none;">
           </div>
 
           <div id="kta-tbl-import-erreur" class="kta-conv-erreur" style="display:none;"></div>
 
           <div class="kta-conv-actions" style="margin-top:14px;">
-            <button class="kta-btn kta-btn-ghost" id="kta-tbl-annuler-import">Annuler</button>
+            <button class="kta-btn kta-btn-ghost" id="kta-tbl-annuler-import">${window.I18n.t("tabledit.import.annuler")}</button>
           </div>
         </div>
       </div>
@@ -275,7 +274,7 @@
       e.preventDefault(); drop.classList.remove("dragover");
       const f = e.dataTransfer.files[0];
       if (f && f.name.toLowerCase().endsWith(".json")) _chargerFichier(f);
-      else _setErreurImport("Le fichier doit être un .json");
+      else _setErreurImport(window.I18n.t("tabledit.import.err.extension"));
     });
 
     const fermer = function() { _modal.remove(); _modal = null; };
@@ -319,11 +318,11 @@
           meta.zones   = json.zones;
           meta.measure = json.measure;
         } else {
-          throw new Error("Le fichier ne contient ni 'data' ni 'editorPoints'");
+          throw new Error(window.I18n.t("tabledit.import.err.noData"));
         }
 
         if (points.length === 0) {
-          throw new Error("Le fichier ne contient aucun point");
+          throw new Error(window.I18n.t("tabledit.import.err.noPoints"));
         }
 
         _data       = points.map(function(p) { return Object.assign({}, p); }); // clone
@@ -373,7 +372,7 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">📊 Éditeur — ${_escapeHtml(_sourceMeta.fileName)}</span>
+          <span class="kta-readme-modal-titre">${window.I18n.t("tabledit.editor.titre", { fichier: _escapeHtml(_sourceMeta.fileName) })}</span>
           <button class="kta-panneau-close" id="kta-tbl-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
@@ -381,9 +380,9 @@
           <div class="kta-tbl-info" id="kta-tbl-info"></div>
 
           <div class="kta-tbl-toolbar">
-            <input type="text" class="kta-cfg-input" id="kta-tbl-search" placeholder="🔍 Rechercher dans toutes les colonnes...">
-            <button class="kta-btn kta-btn-ghost" id="kta-tbl-add">+ Ajouter ligne</button>
-            <button class="kta-btn kta-btn-ghost" id="kta-tbl-preview">📍 Voir sur la carte</button>
+            <input type="text" class="kta-cfg-input" id="kta-tbl-search" placeholder="${_escapeAttr(window.I18n.t("tabledit.editor.recherche"))}">
+            <button class="kta-btn kta-btn-ghost" id="kta-tbl-add">${window.I18n.t("tabledit.editor.ajouterLigne")}</button>
+            <button class="kta-btn kta-btn-ghost" id="kta-tbl-preview">${window.I18n.t("tabledit.editor.voirCarte")}</button>
           </div>
 
           <div id="kta-tbl-warn-big-wrap"></div>
@@ -396,16 +395,16 @@
           </div>
 
           <div class="kta-tbl-footer">
-            <div class="kta-tbl-selection-info" id="kta-tbl-selection-info">0 sélectionné</div>
+            <div class="kta-tbl-selection-info" id="kta-tbl-selection-info">${window.I18n.t("tabledit.selection.zero")}</div>
             <div style="display:flex; gap:8px;">
-              <button class="kta-btn kta-btn-ghost"   id="kta-tbl-duplicate" disabled>📋 Dupliquer</button>
-              <button class="kta-btn kta-btn-danger"  id="kta-tbl-delete"    disabled>🗑️ Supprimer</button>
+              <button class="kta-btn kta-btn-ghost"   id="kta-tbl-duplicate" disabled>${window.I18n.t("tabledit.editor.dupliquer")}</button>
+              <button class="kta-btn kta-btn-danger"  id="kta-tbl-delete"    disabled>${window.I18n.t("tabledit.editor.supprimer")}</button>
             </div>
           </div>
 
           <div class="kta-conv-actions" style="border-top:1px solid rgba(255,255,255,0.08); padding-top:12px;">
-            <button class="kta-btn kta-btn-ghost"   id="kta-tbl-annuler">Annuler</button>
-            <button class="kta-btn kta-btn-primary" id="kta-tbl-save">💾 Sauvegarder</button>
+            <button class="kta-btn kta-btn-ghost"   id="kta-tbl-annuler">${window.I18n.t("tabledit.editor.annuler")}</button>
+            <button class="kta-btn kta-btn-primary" id="kta-tbl-save">${window.I18n.t("tabledit.editor.sauvegarder")}</button>
           </div>
         </div>
       </div>
@@ -475,7 +474,7 @@
     const warnWrap = document.getElementById("kta-tbl-warn-big-wrap");
     if (warnWrap) {
       if (_data.length > 1000) {
-        warnWrap.innerHTML = '<div class="kta-tbl-warn-big">⚠️ ' + _data.length + ' lignes — l\'édition peut être moins fluide. Utilise la recherche pour filtrer.</div>';
+        warnWrap.innerHTML = '<div class="kta-tbl-warn-big">' + window.I18n.t("tabledit.warn.gros", { n: _data.length }) + '</div>';
       } else {
         warnWrap.innerHTML = "";
       }
@@ -533,8 +532,8 @@
           contenu = _escapeHtml(String(v));
         }
 
-        const tooltip = (col === "x" && cls.includes("col-error")) ? ' title="X hors plan (max ' + imgW + ')"' :
-                        (col === "y" && cls.includes("col-error")) ? ' title="Y hors plan (max ' + imgH + ')"' : "";
+        const tooltip = (col === "x" && cls.includes("col-error")) ? ' title="' + _escapeAttr(window.I18n.t("tabledit.hors.x", { max: imgW })) + '"' :
+                        (col === "y" && cls.includes("col-error")) ? ' title="' + _escapeAttr(window.I18n.t("tabledit.hors.y", { max: imgH })) + '"' : "";
 
         html += '<td class="' + cls + '" data-col="' + _escapeAttr(col) + '" data-idx="' + idx + '"' + tooltip + '>' + contenu + '</td>';
       });
@@ -697,7 +696,7 @@
       html += '<span class="kta-tag-chip">' + _escapeHtml(t) +
               '<span class="kta-tag-chip-x" data-tag-remove="' + i + '" data-row="' + idx + '">×</span></span>';
     });
-    html += '<span class="kta-tag-add" data-tag-add="' + idx + '">+ tag</span>';
+    html += '<span class="kta-tag-add" data-tag-add="' + idx + '">' + _escapeHtml(window.I18n.t("tabledit.tags.add")) + '</span>';
     return html;
   }
 
@@ -736,7 +735,7 @@
       html += '</div>';
     });
 
-    html += '<div class="kta-tag-create"><input type="text" id="kta-tag-new" placeholder="Créer un tag (Entrée)..."></div>';
+    html += '<div class="kta-tag-create"><input type="text" id="kta-tag-new" placeholder="' + _escapeAttr(window.I18n.t("tabledit.tags.creer")) + '"></div>';
     dd.innerHTML = html;
     document.body.appendChild(dd);
 
@@ -835,7 +834,7 @@
   function _supprimerSelection() {
     if (_selection.size === 0) return;
     const n = _selection.size;
-    if (!confirm("Supprimer " + n + " ligne(s) ? Cette action est irréversible.")) return;
+    if (!confirm(window.I18n.t("tabledit.confirm.supprimer", { n: n }))) return;
     const indices = [..._selection].sort(function(a, b) { return b - a; });
     indices.forEach(function(i) { _data.splice(i, 1); });
     _selection.clear();
@@ -862,11 +861,11 @@
   // ========== APERÇU SUR LA CARTE ==========
   function _apercuCarte() {
     if (_selection.size === 0) {
-      alert("Sélectionne d'abord une ou plusieurs lignes pour les visualiser sur la carte.");
+      alert(window.I18n.t("tabledit.preview.err.aucuneLigne"));
       return;
     }
     if (!window.map || !APP_CONFIG) {
-      alert("Carte non disponible");
+      alert(window.I18n.t("tabledit.preview.err.carteIndispo"));
       return;
     }
 
@@ -874,7 +873,7 @@
     const points = [..._selection].map(function(i) { return _data[i]; })
       .filter(function(p) { return typeof p.x === "number" && typeof p.y === "number"; });
     if (points.length === 0) {
-      alert("Aucun des points sélectionnés n'a de coordonnées valides");
+      alert(window.I18n.t("tabledit.preview.err.coordsInvalides"));
       return;
     }
 
@@ -908,8 +907,8 @@
     banner.id = "kta-tbl-preview-banner";
     banner.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.92); color:#fff; padding:12px 20px; border-radius:8px; font-size:14px; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,0.5); border:1px solid rgba(140,180,255,0.5); display:flex; gap:12px; align-items:center;";
     banner.innerHTML = `
-      <span>📍 Aperçu de ${points.length} point(s)</span>
-      <button class="kta-btn kta-btn-primary" id="kta-tbl-preview-back" style="padding:6px 14px;">↩️ Retour à l'éditeur</button>
+      <span>${window.I18n.t("tabledit.preview.banner", { n: points.length })}</span>
+      <button class="kta-btn kta-btn-primary" id="kta-tbl-preview-back" style="padding:6px 14px;">${window.I18n.t("tabledit.preview.retour")}</button>
     `;
     document.body.appendChild(banner);
 
@@ -934,21 +933,25 @@
       else if (typeof p.y === "number" && imgH && (p.y < 0 || p.y > imgH)) nbHorsLimite++;
     });
 
-    let html = "<strong>" + _data.length + "</strong> ligne(s)";
+    let html = window.I18n.t("tabledit.info.lignes", { n: _data.length });
     if (_filtre) {
       const visibles = _indexVisibles().length;
-      html += " — <strong>" + visibles + "</strong> filtrée(s)";
+      html += window.I18n.t("tabledit.info.filtrees", { n: visibles });
     }
     if (nbHorsLimite > 0) {
-      html += ' — <span style="color:#ff8888;">⚠️ ' + nbHorsLimite + ' coordonnée(s) hors plan</span>';
+      html += window.I18n.t("tabledit.info.horsPlan", { n: nbHorsLimite });
     }
-    if (_modifie) html += ' — <span class="modif">✏️ modifications non sauvegardées</span>';
+    if (_modifie) html += window.I18n.t("tabledit.info.nonSauve");
 
     infoEl.innerHTML = html;
 
     // Selection
     const selEl = document.getElementById("kta-tbl-selection-info");
-    if (selEl) selEl.textContent = _selection.size + " sélectionné" + (_selection.size > 1 ? "s" : "");
+    if (selEl) {
+      selEl.textContent = _selection.size === 0
+        ? window.I18n.t("tabledit.selection.zero")
+        : window.I18n.t(_selection.size > 1 ? "tabledit.selection.plusieurs" : "tabledit.selection.un", { n: _selection.size });
+    }
     document.getElementById("kta-tbl-delete").disabled    = _selection.size === 0;
     document.getElementById("kta-tbl-duplicate").disabled = _selection.size === 0;
   }
@@ -1003,16 +1006,16 @@
     overlay.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:420px; height:auto;">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">⚠️ Modifications non sauvegardées</span>
+          <span class="kta-readme-modal-titre">${window.I18n.t("tabledit.sortie.titre")}</span>
         </div>
         <div class="kta-readme-modal-corps">
           <p style="font-size:14px; color:#c0c8d8; margin:0 0 16px; line-height:1.5;">
-            Tu as des modifications non sauvegardées. Que veux-tu faire ?
+            ${window.I18n.t("tabledit.sortie.texte")}
           </p>
           <div style="display:flex; flex-direction:column; gap:8px;">
-            <button class="kta-btn kta-btn-primary" id="conf-save">💾 Sauvegarder maintenant</button>
-            <button class="kta-btn kta-btn-danger"  id="conf-quit">🗑️ Quitter sans sauvegarder</button>
-            <button class="kta-btn kta-btn-ghost"   id="conf-stay">↩️ Continuer l'édition</button>
+            <button class="kta-btn kta-btn-primary" id="conf-save">${window.I18n.t("tabledit.sortie.sauver")}</button>
+            <button class="kta-btn kta-btn-danger"  id="conf-quit">${window.I18n.t("tabledit.sortie.quitter")}</button>
+            <button class="kta-btn kta-btn-ghost"   id="conf-stay">${window.I18n.t("tabledit.sortie.continuer")}</button>
           </div>
         </div>
       </div>
@@ -1045,24 +1048,24 @@
     overlay.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:480px; height:auto;">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">💾 Sauvegarder</span>
+          <span class="kta-readme-modal-titre">${window.I18n.t("tabledit.save.titre")}</span>
           <button class="kta-panneau-close" id="save-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
           <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">
-            Choisis une destination pour tes modifications :
+            ${window.I18n.t("tabledit.save.aide")}
           </p>
           <div style="display:flex; flex-direction:column; gap:8px;">
             <button class="kta-btn kta-btn-primary" id="save-dl">
-              📥 Télécharger le fichier modifié
+              ${window.I18n.t("tabledit.save.telecharger")}
             </button>
             <button class="kta-btn kta-btn-ghost" id="save-layer" ${peutCalque ? "" : "disabled"}>
-              🗺️ Remplacer le calque actif sur la carte
-              ${peutCalque ? "" : '<br><span style="font-size:11px; opacity:0.6;">(pas de calque correspondant trouvé)</span>'}
+              ${window.I18n.t("tabledit.save.calque")}
+              ${peutCalque ? "" : window.I18n.t("tabledit.save.calque.absent")}
             </button>
             <button class="kta-btn kta-btn-ghost" id="save-session" ${peutSession ? "" : "disabled"}>
-              ✏️ Remplacer la session en cours
-              ${peutSession ? "" : '<br><span style="font-size:11px; opacity:0.6;">(uniquement pour les fichiers session)</span>'}
+              ${window.I18n.t("tabledit.save.session")}
+              ${peutSession ? "" : window.I18n.t("tabledit.save.session.absent")}
             </button>
           </div>
         </div>
@@ -1147,9 +1150,9 @@
 
   function _remplacerCalque() {
     const layerId = _calqueCorrespondant();
-    if (!layerId) { alert("Aucun calque correspondant trouvé"); return; }
+    if (!layerId) { alert(window.I18n.t("tabledit.save.err.calqueAbsent")); return; }
     const layer = window.dataLayerGroups?.[layerId];
-    if (!layer) { alert("Calque introuvable en mémoire"); return; }
+    if (!layer) { alert(window.I18n.t("tabledit.save.err.calqueMemoire")); return; }
 
     // Vider le layer existant
     layer.clearLayers();
@@ -1162,15 +1165,15 @@
       m.addTo(layer);
     });
 
-    alert("Calque '" + layerId + "' mis à jour avec " + _data.length + " point(s).\nLes modifications sont en mémoire — pense à exporter ton plan si tu veux les conserver.");
+    alert(window.I18n.t("tabledit.save.calqueOk", { id: layerId, n: _data.length }));
   }
 
   // ========== REMPLACEMENT SESSION ==========
   function _remplacerSession() {
-    if (!window.setEditorPoints) { alert("setEditorPoints non disponible"); return; }
+    if (!window.setEditorPoints) { alert(window.I18n.t("tabledit.save.err.sessionIndispo")); return; }
     window.setEditorPoints(_data);
     if (window.renderEditorPoints) window.renderEditorPoints();
-    alert("Session mise à jour avec " + _data.length + " point(s).");
+    alert(window.I18n.t("tabledit.save.sessionOk", { n: _data.length }));
   }
 
 })();

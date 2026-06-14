@@ -337,9 +337,9 @@
     container.innerHTML =
       '<div class="kta-osm-home-empty">' +
         '<div style="font-size:32px;">📴</div>' +
-        '<div><strong>Hors-ligne</strong></div>' +
+        '<div><strong>' + window.I18n.t("osm_home.offline.title") + '</strong></div>' +
         '<div style="max-width:280px; font-size:12px;">' +
-          'La prévisualisation OSM nécessite Internet pour charger les tuiles. Reviens quand tu es en ligne.' +
+          window.I18n.t("osm_home.offline.body") +
         '</div>' +
       '</div>';
   }
@@ -350,11 +350,9 @@
     container.innerHTML =
       '<div class="kta-osm-home-empty">' +
         '<div style="font-size:32px;">🛡️</div>' +
-        '<div><strong>Hors-ligne strict actif</strong></div>' +
+        '<div><strong>' + window.I18n.t("osm_home.strict.title") + '</strong></div>' +
         '<div style="max-width:300px; font-size:12px; line-height:1.6;">' +
-          'Tu as activé le mode hors-ligne strict dans les réglages réseau. La Vue OSM nécessite de contacter ' +
-          '<code>tile.openstreetmap.org</code>, donc elle est désactivée pour respecter ton choix.<br><br>' +
-          'Pour la réactiver, ouvre <strong>Audit réseau → Mode hors-ligne strict</strong> et désactive-le.' +
+          window.I18n.t("osm_home.strict.body") +
         '</div>' +
       '</div>';
   }
@@ -365,9 +363,9 @@
     container.innerHTML =
       '<div class="kta-osm-home-empty">' +
         '<div style="font-size:32px;">🕶️</div>' +
-        '<div><strong>Mode incognito actif</strong></div>' +
+        '<div><strong>' + window.I18n.t("osm_home.incognito.title") + '</strong></div>' +
         '<div style="max-width:300px; font-size:12px; line-height:1.6;">' +
-          'La Vue OSM nécessite de contacter un service tiers (tuiles OSM). Désactivée tant que le mode incognito est actif.' +
+          window.I18n.t("osm_home.incognito.body") +
         '</div>' +
       '</div>';
   }
@@ -376,13 +374,9 @@
     container.innerHTML =
       '<div class="kta-osm-home-empty">' +
         '<div style="font-size:32px;">📍</div>' +
-        '<div><strong>Aucun plan géoréférencé</strong></div>' +
+        '<div><strong>' + window.I18n.t("osm_home.nogeoref.title") + '</strong></div>' +
         '<div style="max-width:300px; font-size:12px; line-height:1.6;">' +
-          'Pour voir un plan sur OpenStreetMap, il faut d\'abord saisir sa <strong>calibration GPS</strong> :<br>' +
-          '<span style="color:#c8d0e0;">→ Charge un plan</span><br>' +
-          '<span style="color:#c8d0e0;">→ ⚙️ Réglages → 🌐 Géoréférencement GPS</span><br>' +
-          '<span style="color:#c8d0e0;">→ Saisis 2 points (plan + GPS)</span><br>' +
-          'Une fois fait, le plan apparaîtra ici automatiquement.' +
+          window.I18n.t("osm_home.nogeoref.body") +
         '</div>' +
       '</div>';
   }
@@ -413,19 +407,19 @@
     }
     container.innerHTML =
       '<div class="kta-osm-home-bandeau">' +
-        '<select id="ktaOsmHomePlanSelect" title="Sélectionner un plan georef">' +
+        '<select id="ktaOsmHomePlanSelect" title="' + _escapeHtml(window.I18n.t("osm_home.select.title")) + '">' +
           optionsHtml +
         '</select>' +
         // 🆕 v1.40.18 — Bouton "Ma position GPS" (1 fix ponctuel, 0 stockage)
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeMyGpsBtn" type="button" ' +
-                'title="Demander un fix GPS ponctuel (permission OS requise, aucune donnée envoyée ou stockée)" ' +
+                'title="' + _escapeHtml(window.I18n.t("osm_home.gps.btnTitle")) + '" ' +
                 'style="background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.4); color: #00d4ff;">' +
           '📍' +
         '</button>' +
         // 🆕 v1.43.0 — Bouton "Cacher tuiles offline" (cache partagé avec
         // Vue OSM modale + Mode Secours, store IDB unique myktamap_osm_tiles).
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeCacheBtn" type="button" ' +
-                'title="💾 Save Offline — Télécharger les tuiles OSM visibles pour consultation hors-réseau (cache partagé avec Vue OSM + Mode Secours)" ' +
+                'title="' + _escapeHtml(window.I18n.t("osm_home.cache.btnTitle")) + '" ' +
                 'style="background: rgba(166,215,133,0.10); border-color: rgba(166,215,133,0.35); color: #a6d785;">' +
           '💾' +
         '</button>' +
@@ -434,12 +428,12 @@
         // Très utile sur mobile et en mode fullscreen où le bandeau prend
         // beaucoup de place.
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeToggleControlsBtn" type="button" ' +
-                'title="Réduire les contrôles (carte plein écran)" ' +
+                'title="' + _escapeHtml(window.I18n.t("osm_home.controls.collapseTitle")) + '" ' +
                 'style="background: rgba(140,180,255,0.10); border-color: rgba(140,180,255,0.35); color: #8cb4ff;">' +
           '🔼' +
         '</button>' +
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFullBtn" type="button" ' +
-                'title="Agrandir la carte en plein écran">' +
+                'title="' + _escapeHtml(window.I18n.t("osm_home.fullscreen.enterTitle")) + '">' +
           '⛶' +
         '</button>' +
       '</div>' +
@@ -448,29 +442,29 @@
       // visible et prend automatiquement la place via son flex:1 1 auto.
       '<div id="ktaOsmHomeCollapsible">' +
         // v1.40.6 — Slider opacité plan (cohérent avec OsmView modale)
-        '<div class="kta-osm-home-opacityrow" style="display:flex; align-items:center; gap:6px; padding:4px 8px; font-size:11px; color:#c8d0e0; border-bottom:1px solid rgba(140,180,255,0.10);" title="Opacité de l\'image du plan sur OSM">' +
-          '<span style="opacity:0.7;">🎚️ Opacité plan :</span>' +
+        '<div class="kta-osm-home-opacityrow" style="display:flex; align-items:center; gap:6px; padding:4px 8px; font-size:11px; color:#c8d0e0; border-bottom:1px solid rgba(140,180,255,0.10);" title="' + _escapeHtml(window.I18n.t("osm_home.opacity.title")) + '">' +
+          '<span style="opacity:0.7;">' + window.I18n.t("osm_home.opacity.label") + '</span>' +
           '<input type="range" id="ktaOsmHomeOpacity" min="0" max="100" value="' + Math.round(_planOpacity * 100) + '" style="flex:1 1 auto; max-width:240px; margin:0;">' +
         '</div>' +
         // 🆕 v1.40.12 — Toggles catégorie (filtres)
         '<div class="kta-osm-home-toggles">' +
-          _renderToggle("ktaOsmHomeShowTiles",  "🖼️", "Plan",   _showTiles,      "Afficher / masquer l\'image du plan") +
-          _renderToggle("ktaOsmHomeShowPoi",    "📍", "POI",    _showPoi,        "Afficher / masquer les POI") +
-          _renderToggle("ktaOsmHomeShowRoads",  "🛣️", "Routes", _showRoads,      "Afficher / masquer les routes") +
-          _renderToggle("ktaOsmHomeShowZones",  "🌐", "Zones",  _showZones,      "Afficher / masquer les zones") +
-          _renderToggle("ktaOsmHomeShowStruct", "🏗️", "Struct", _showStructures, "Afficher / masquer les structures") +
+          _renderToggle("ktaOsmHomeShowTiles",  "🖼️", window.I18n.t("osm_home.toggle.plan.label"),   _showTiles,      window.I18n.t("osm_home.toggle.plan.title")) +
+          _renderToggle("ktaOsmHomeShowPoi",    "📍", window.I18n.t("osm_home.toggle.poi.label"),    _showPoi,        window.I18n.t("osm_home.toggle.poi.title")) +
+          _renderToggle("ktaOsmHomeShowRoads",  "🛣️", window.I18n.t("osm_home.toggle.roads.label"), _showRoads,      window.I18n.t("osm_home.toggle.roads.title")) +
+          _renderToggle("ktaOsmHomeShowZones",  "🌐", window.I18n.t("osm_home.toggle.zones.label"),  _showZones,      window.I18n.t("osm_home.toggle.zones.title")) +
+          _renderToggle("ktaOsmHomeShowStruct", "🏗️", window.I18n.t("osm_home.toggle.struct.label"), _showStructures, window.I18n.t("osm_home.toggle.struct.title")) +
         '</div>' +
         // 🆕 v1.40.17 — Filtre par tag (chips)
         '<div class="kta-osm-home-tagrow">' +
-          '<span class="kta-osm-home-tagrow-label" title="Filtrer les POI par tag (clic = toggle)">🏷️</span>' +
+          '<span class="kta-osm-home-tagrow-label" title="' + _escapeHtml(window.I18n.t("osm_home.tagfilter.title")) + '">🏷️</span>' +
           '<div class="kta-osm-home-tagchips" id="ktaOsmHomeTagChips"></div>' +
         '</div>' +
       '</div>' +
       '<div class="kta-osm-home-map" id="ktaOsmHomeMap"></div>' +
       '<div class="kta-osm-home-footer">' +
-        '🔒 Tiles : tile.openstreetmap.org · ⛶ agrandir · ' +
+        window.I18n.t("osm_home.footer.tiles") + ' ' +
         // 🆕 v1.43.0 — Stats cache OSM offline (refresh dynamique)
-        '<span id="ktaOsmHomeCacheStats" title="Cache OSM offline (partagé avec Vue OSM + Mode Secours)">📦 …</span>' +
+        '<span id="ktaOsmHomeCacheStats" title="' + _escapeHtml(window.I18n.t("osm_home.cache.statsTitle")) + '">📦 …</span>' +
       '</div>';
 
     // Bind dropdown
@@ -939,9 +933,9 @@
         // 🆕 v1.40.17 — Popup info : nom + tag + niveau (si M-LVL)
         // 🆕 v1.40.25 — Description prééminente (au lieu du tag en ligne 2),
         // tag réduit en petit subtle en dessous pour debug. Cohérent modale.
-        const nom  = p.nom || p.label || p.name || "(sans nom)";
+        const nom  = p.nom || p.label || p.name || window.I18n.t("osm_home.poi.noName");
         const lvl  = (typeof p.level === "number") ? p.level : 0;
-        const lvlSfx = isMultiLevel ? ' · niveau ' + lvl : '';
+        const lvlSfx = isMultiLevel ? window.I18n.t("osm_home.poi.levelSuffix", { lvl: lvl }) : '';
         const desc = (p.description || "").trim();
         const popupHtml =
           '<div style="font-size:13px; min-width:140px; max-width:260px;">' +
@@ -1126,18 +1120,18 @@
     if (!_mapInstance) return;
     if (_isStrictOfflineOn()) {
       if (window.OOMGuard && window.OOMGuard.showToast) {
-        window.OOMGuard.showToast("🛡️ Mode hors-ligne strict actif — GPS désactivé par cohérence.", "warn");
-      } else { alert("Mode hors-ligne strict actif — bouton GPS désactivé."); }
+        window.OOMGuard.showToast(window.I18n.t("osm_home.gps.strictToast"), "warn");
+      } else { alert(window.I18n.t("osm_home.gps.strictAlert")); }
       return;
     }
     if (_isIncognitoOn()) {
       if (window.OOMGuard && window.OOMGuard.showToast) {
-        window.OOMGuard.showToast("🕶️ Mode incognito actif — GPS désactivé.", "warn");
-      } else { alert("Mode incognito actif — bouton GPS désactivé."); }
+        window.OOMGuard.showToast(window.I18n.t("osm_home.gps.incognitoToast"), "warn");
+      } else { alert(window.I18n.t("osm_home.gps.incognitoAlert")); }
       return;
     }
     if (!navigator.geolocation) {
-      alert("Géolocalisation non disponible sur ce navigateur.");
+      alert(window.I18n.t("osm_home.gps.unavailable"));
       return;
     }
     const btn = document.getElementById("ktaOsmHomeMyGpsBtn");
@@ -1156,8 +1150,7 @@
           if (!padded.contains([lat, lng])) {
             const center = bbox.getCenter();
             const distKm = _haversineKmHome(lat, lng, center.lat, center.lng);
-            const msg = "📍 Position GPS hors du champ de ce plan (~" + distKm.toFixed(1) +
-                        " km du centre). Marker non affiché — vérifie que tu es bien sur le bon plan ou ailleurs.";
+            const msg = window.I18n.t("osm_home.gps.outOfBounds", { km: distKm.toFixed(1) });
             if (window.OOMGuard && window.OOMGuard.showToast) {
               window.OOMGuard.showToast(msg, "warn");
             } else { alert(msg); }
@@ -1186,10 +1179,10 @@
         }).addTo(_mapInstance);
         _myGpsMarkerHome.bindPopup(
           '<div style="font-size:13px; min-width:140px;">' +
-            '<b>📍 Ta position GPS</b><br>' +
+            '<b>' + window.I18n.t("osm_home.gps.popupTitle") + '</b><br>' +
             '<span style="font-size:11.5px; color:#8892a4;">' +
               lat.toFixed(5) + ", " + lng.toFixed(5) + '<br>' +
-              "Précision : ±" + Math.round(acc) + " m" +
+              window.I18n.t("osm_home.gps.accuracy", { acc: Math.round(acc) }) +
             '</span>' +
           '</div>',
           { closeButton: true, autoClose: true }
@@ -1201,10 +1194,10 @@
       },
       function(err) {
         console.warn("[OsmHomePreview] GPS err :", err);
-        let msg = "Impossible d'obtenir ta position GPS.";
-        if (err.code === 1) msg = "Permission GPS refusée. Autorise la géolocalisation dans ton navigateur.";
-        else if (err.code === 2) msg = "Position GPS indisponible (capteur ou réseau).";
-        else if (err.code === 3) msg = "Délai dépassé pour obtenir la position GPS.";
+        let msg = window.I18n.t("osm_home.gps.errGeneric");
+        if (err.code === 1) msg = window.I18n.t("osm_home.gps.errPermission");
+        else if (err.code === 2) msg = window.I18n.t("osm_home.gps.errUnavailable");
+        else if (err.code === 3) msg = window.I18n.t("osm_home.gps.errTimeout");
         alert(msg);
         if (btn && originalHtml != null) { btn.disabled = false; btn.innerHTML = originalHtml; }
       },
@@ -1240,10 +1233,10 @@
     }
     cont.parentNode.style.display = "";
     const isAllActive = !_homeTagFilter || _homeTagFilter.size === 0;
-    let html = '<button class="kta-osm-home-tag-chip' + (isAllActive ? " active" : "") + '" data-tag="__all__" title="Afficher tous les tags">Tout</button>';
+    let html = '<button class="kta-osm-home-tag-chip' + (isAllActive ? " active" : "") + '" data-tag="__all__" title="' + _escapeHtml(window.I18n.t("osm_home.tagchip.allTitle")) + '">' + _escapeHtml(window.I18n.t("osm_home.tagchip.all")) + '</button>';
     for (const t of tags) {
       const active = isAllActive || (_homeTagFilter && _homeTagFilter.has(t));
-      html += '<button class="kta-osm-home-tag-chip' + (active ? " active" : "") + '" data-tag="' + _escapeHtml(t) + '" title="' + counts[t] + ' POI">' + _escapeHtml(t) + '</button>';
+      html += '<button class="kta-osm-home-tag-chip' + (active ? " active" : "") + '" data-tag="' + _escapeHtml(t) + '" title="' + _escapeHtml(window.I18n.t("osm_home.tagchip.count", { count: counts[t] })) + '">' + _escapeHtml(t) + '</button>';
     }
     cont.innerHTML = html;
     // Bind clicks
@@ -1459,8 +1452,8 @@
     if (btn) {
       btn.textContent = _isFullscreen ? "✕" : "⛶";
       btn.title = _isFullscreen
-        ? "Réduire la carte (Echap)"
-        : "Agrandir la carte en plein écran";
+        ? window.I18n.t("osm_home.fullscreen.exitTitle")
+        : window.I18n.t("osm_home.fullscreen.enterTitle");
     }
     // Leaflet : recalc size après que le DOM ait appliqué la transition
     // (sinon les tuiles ne couvrent que l'ancienne zone visible).
@@ -1563,10 +1556,22 @@
   // BOOT
   // =========================
   // Auto-mount au DOMContentLoaded + écoute changements opt-in pour refresh.
+  // 🌍 v1.46.0 — Le widget rend ses toggles/labels via window.I18n.t(). Comme
+  // I18n.init() est ASYNC (fetch des dicos), un mount au DOMContentLoaded peut
+  // s'exécuter AVANT que les dicos soient chargés → labels en clés brutes
+  // (osm_home.toggle.*). On attend donc I18n.init() avant le 1er mount.
+  function _mountWhenI18nReady() {
+    var ready = (window.I18n && typeof window.I18n.init === "function") ? window.I18n.init() : Promise.resolve();
+    Promise.resolve(ready).then(mount).catch(function() { mount(); });
+  }
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", mount);
+    document.addEventListener("DOMContentLoaded", _mountWhenI18nReady);
   } else {
-    setTimeout(mount, 100); // léger délai pour laisser PlanRegistry s'initialiser
+    setTimeout(_mountWhenI18nReady, 100); // léger délai pour laisser PlanRegistry s'initialiser
+  }
+  // 🌍 v1.46.0 — Re-render au changement de langue (labels reconstruits via I18n.t).
+  if (window.I18n && typeof window.I18n.onChange === "function") {
+    window.I18n.onChange(function() { try { mount(); } catch(e) {} });
   }
 
   // ============================================================
@@ -1591,8 +1596,8 @@
     if (btn) {
       btn.textContent = collapsed ? "🔽" : "🔼";
       btn.title = collapsed
-        ? "Afficher les contrôles"
-        : "Réduire les contrôles (carte plein écran)";
+        ? window.I18n.t("osm_home.controls.expandTitle")
+        : window.I18n.t("osm_home.controls.collapseTitle");
     }
     // Leaflet doit recalculer la taille du conteneur sinon les tuiles
     // se chargent mal et les coords pixel sont fausses au switch.
@@ -1641,10 +1646,9 @@
         "border-radius:6px; gap:8px;";
       ov.innerHTML =
         '<div style="font-size:32px;">📴</div>' +
-        '<div style="font-weight:600; color:#f4c542;">Plan non disponible hors-ligne</div>' +
+        '<div style="font-weight:600; color:#f4c542;">' + window.I18n.t("osm_home.notcached.title") + '</div>' +
         '<div style="font-size:12.5px; color:#c8d0e0; max-width:280px; line-height:1.4;">' +
-          'Aucune tuile OSM n\'a été téléchargée pour ce plan. ' +
-          'Reconnecte-toi puis clique <b>💾</b> dans le bandeau pour le pré-cacher.' +
+          window.I18n.t("osm_home.notcached.body") +
         '</div>';
       mapDiv.style.position = "relative";
       mapDiv.appendChild(ov);
@@ -1673,10 +1677,10 @@
     try {
       const s = await window.OsmTilesCache.getStats();
       if (s.count > 0) {
-        span.textContent = "📦 " + s.count + " tuiles · " + window.OsmTilesCache.formatBytes(s.sizeBytes);
+        span.textContent = window.I18n.t("osm_home.cache.statsCount", { count: s.count, size: window.OsmTilesCache.formatBytes(s.sizeBytes) });
         span.style.color = "#a6d785";
       } else {
-        span.textContent = "📦 cache vide";
+        span.textContent = window.I18n.t("osm_home.cache.statsEmpty");
         span.style.opacity = "0.7";
       }
     } catch(e) {
@@ -1688,7 +1692,7 @@
     if (!window.OsmTilesCache || !_mapInstance) return;
     const btn = document.getElementById("ktaOsmHomeCacheBtn");
     if (!navigator.onLine) {
-      _showHomeToast("⚠️ Pas de connexion — impossible de télécharger.", 3500);
+      _showHomeToast(window.I18n.t("osm_home.cache.noConnection"), 3500);
       return;
     }
     const oldHtml = btn ? btn.innerHTML : null;
@@ -1699,13 +1703,13 @@
           if (btn) btn.innerHTML = "⏳" + done + "/" + total;
         }
       });
-      let msg = "✅ " + result.cached + " tuiles cachées";
-      if (result.skipped) msg += " (♻️" + result.skipped + " déjà)";
-      if (result.failed)  msg += " · ❌" + result.failed;
-      if (result.capped)  msg += " · cap 200";
+      let msg = window.I18n.t("osm_home.cache.cached", { cached: result.cached });
+      if (result.skipped) msg += window.I18n.t("osm_home.cache.skipped", { skipped: result.skipped });
+      if (result.failed)  msg += window.I18n.t("osm_home.cache.failed", { failed: result.failed });
+      if (result.capped)  msg += window.I18n.t("osm_home.cache.capped");
       _showHomeToast(msg, 4500);
     } catch(e) {
-      _showHomeToast("❌ Erreur : " + (e.message || e), 4000);
+      _showHomeToast(window.I18n.t("osm_home.cache.error", { err: (e.message || e) }), 4000);
     } finally {
       if (btn && oldHtml != null) { btn.disabled = false; btn.innerHTML = oldHtml; }
       await _refreshCacheStatsHome();

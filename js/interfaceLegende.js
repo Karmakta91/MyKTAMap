@@ -85,6 +85,11 @@ function afficherLegende() {
   // Cascade session > plan > LEGENDE_LABELS (fallback hardcodé historique).
   function _label(cat, key) {
     if (LC) return LC.getLabel(cat, key);
+    // Pas de LegendCustomization : libellé via i18n (clé legendui.label.<key>),
+    // fallback FR hardcodé historique (LEGENDE_LABELS), sinon la clé brute.
+    if (cat === "icones" && window.I18n && window.I18n.has("legendui.label." + key)) {
+      return window.I18n.t("legendui.label." + key);
+    }
     return LEGENDE_LABELS[key] || key;
   }
   function _visible(cat, key) {
@@ -104,14 +109,14 @@ function afficherLegende() {
   }
 
   if (!icons) {
-    contenuIcones = `<p style="color:#8892a4; text-align:center; padding:20px;">Aucune configuration d'icônes disponible.</p>`;
+    contenuIcones = `<p style="color:#8892a4; text-align:center; padding:20px;">${window.I18n.t("legendui.icons.empty")}</p>`;
   } else {
     const GROUPES = [
-      { titre: "🕳️ Puits",         cles: ["pa", "pb", "pc", "pe", "ps"] },
-      { titre: "🪜 Accès",          cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
-      { titre: "⚠️ Signalétique",  cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] },
+      { titre: window.I18n.t("legendui.group.wells"),   cles: ["pa", "pb", "pc", "pe", "ps"] },
+      { titre: window.I18n.t("legendui.group.access"),  cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
+      { titre: window.I18n.t("legendui.group.signage"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] },
       // 🆕 v1.41.0 D — Catégorie Secours (Vue OSM × Mode Secours).
-      { titre: "🚨 Secours",        cles: ["entree_plan"] }
+      { titre: window.I18n.t("legendui.group.rescue"),  cles: ["entree_plan"] }
     ];
 
     const clesGroupees = GROUPES.flatMap(function(g) { return g.cles; });
@@ -178,7 +183,7 @@ function afficherLegende() {
       .join("");
 
     if (autresEntrees) {
-      contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">📌 Autres</div>${autresEntrees}</div>`;
+      contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.group.others")}</div>${autresEntrees}</div>`;
     }
 
     // 🆕 v1.16.0 step 2 : entrées custom catégorie « icones » ajoutées par
@@ -193,7 +198,7 @@ function afficherLegende() {
             <span class="kta-legende-label">${e.label}</span>
           </div>`;
         }).join("");
-        contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">✨ Custom</div>${html}</div>`;
+        contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.group.custom")}</div>${html}</div>`;
       }
     }
   }
@@ -206,7 +211,7 @@ function afficherLegende() {
     if (!_visible("traces", key)) return "";
     return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${color};"></span><span class="kta-legende-label">${_label("traces", key)}</span></div>`;
   }
-  let contenuTracés = `<div class="kta-aide-section"><div class="kta-aide-section-titre">🛣️ Tracés</div>`;
+  let contenuTracés = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.traces")}</div>`;
   contenuTracés += _ligneTrace("principal",  "#00ff00");
   contenuTracés += _ligneTrace("secondaire", "#b000ff");
   contenuTracés += _ligneTrace("chemin",     "#ffff00");
@@ -226,7 +231,7 @@ function afficherLegende() {
     if (!_visible("zones", key)) return "";
     return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${fill}; opacity:0.7; height:14px; border:2px solid ${border};"></span><span class="kta-legende-label">${_label("zones", key)}</span></div>`;
   }
-  let contenuZones = `<div class="kta-aide-section"><div class="kta-aide-section-titre">⬛ Zones</div>`;
+  let contenuZones = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.zones")}</div>`;
   contenuZones += _ligneZone("eau",          "#3aa9e8", "#0066aa");
   contenuZones += _ligneZone("remblais",     "#5a5a68", "#3a3a44");
   contenuZones += _ligneZone("effondrement", "#ff3333", "#cc0000");
@@ -257,7 +262,7 @@ function afficherLegende() {
     if (!_visible("structures", key)) return "";
     return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${color};"></span><span class="kta-legende-label">${_label("structures", key)}</span></div>`;
   }
-  let contenuStructures = `<div class="kta-aide-section"><div class="kta-aide-section-titre">🏛️ Structures</div>`;
+  let contenuStructures = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.structures")}</div>`;
   contenuStructures += _ligneStructPoly("pilier-1", "#f4c542", "#000000");
   contenuStructures += _ligneStructPoly("pilier-2", "#ff9933", "#000000");
   contenuStructures += _ligneStructPoly("mur",      "#1e3a8a", "#000000");
@@ -291,7 +296,7 @@ function afficherLegende() {
   // les renommages/visibilités/customs apparaissent immédiatement.
   // Disponible uniquement si LegendCustomization est chargé.
   const btnModifier = LC
-    ? '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kta-legende-modifier" type="button" style="margin-right:8px;" title="Renommer / masquer / ajouter des entrées de la légende">✏️ Modifier</button>'
+    ? '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kta-legende-modifier" type="button" style="margin-right:8px;" title="' + window.I18n.t("legendui.edit.title") + '">' + window.I18n.t("legendui.edit.btn") + '</button>'
     : '';
 
   // 🆕 v1.9.2-fix13 : retrait du style inline `max-width:480px` qui
@@ -303,7 +308,7 @@ function afficherLegende() {
   modal.innerHTML = `
     <div class="kta-readme-modal-boite kta-legende-modal-boite">
       <div class="kta-readme-modal-header" style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-        <span class="kta-readme-modal-titre">🗺️ Légende</span>
+        <span class="kta-readme-modal-titre">${window.I18n.t("legendui.modal.titre")}</span>
         <div style="display:flex; align-items:center; gap:4px;">
           ${btnModifier}
           <button class="kta-panneau-close" id="kta-legende-close">✕</button>
@@ -359,14 +364,14 @@ function afficherLegende() {
     // ── Icônes ──
     let icx = "";
     if (!icons) {
-      icx = `<p style="color:#8892a4; text-align:center; padding:20px;">Aucune configuration d'icônes disponible.</p>`;
+      icx = `<p style="color:#8892a4; text-align:center; padding:20px;">${window.I18n.t("legendui.icons.empty")}</p>`;
     } else {
       const GROUPES2 = [
-        { titre: "🕳️ Puits",         cles: ["pa", "pb", "pc", "pe", "ps"] },
-        { titre: "🪜 Accès",          cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
-        { titre: "⚠️ Signalétique",  cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] },
+        { titre: window.I18n.t("legendui.group.wells"),   cles: ["pa", "pb", "pc", "pe", "ps"] },
+        { titre: window.I18n.t("legendui.group.access"),  cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
+        { titre: window.I18n.t("legendui.group.signage"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] },
         // 🆕 v1.41.0 D — Catégorie Secours.
-        { titre: "🚨 Secours",        cles: ["entree_plan"] }
+        { titre: window.I18n.t("legendui.group.rescue"),  cles: ["entree_plan"] }
       ];
       const clesGroupees2 = GROUPES2.flatMap(function(g) { return g.cles; });
       function urlPourCle2(cle) {
@@ -414,11 +419,11 @@ function afficherLegende() {
         .sort()
         .map(function(cle) { return ligneIcone2(cle, getIconUrl2(cle)); })
         .join("");
-      if (autresEntrees2) icx += `<div class="kta-aide-section"><div class="kta-aide-section-titre">📌 Autres</div>${autresEntrees2}</div>`;
+      if (autresEntrees2) icx += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.group.others")}</div>${autresEntrees2}</div>`;
       if (LC) {
         const cs = LC.listCustomEntries("icones").filter(function(e) { return e.visible && e.iconUrl; });
         if (cs.length > 0) {
-          icx += `<div class="kta-aide-section"><div class="kta-aide-section-titre">✨ Custom</div>` +
+          icx += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.group.custom")}</div>` +
                  cs.map(function(e) { return `<div class="kta-legende-ligne"><img class="kta-legende-icone" src="${e.iconUrl}" alt="${e.label}" onerror="this.style.opacity='0.3'"><span class="kta-legende-label">${e.label}</span></div>`; }).join("") +
                  `</div>`;
         }
@@ -427,7 +432,7 @@ function afficherLegende() {
     html += icx;
 
     // ── Tracés ──
-    let trx = `<div class="kta-aide-section"><div class="kta-aide-section-titre">🛣️ Tracés</div>`;
+    let trx = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.traces")}</div>`;
     trx += _ligneTrace("principal",  "#00ff00");
     trx += _ligneTrace("secondaire", "#b000ff");
     trx += _ligneTrace("chemin",     "#ffff00");
@@ -443,7 +448,7 @@ function afficherLegende() {
     html += trx;
 
     // ── Zones ──
-    let zx = `<div class="kta-aide-section"><div class="kta-aide-section-titre">⬛ Zones</div>`;
+    let zx = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.zones")}</div>`;
     zx += _ligneZone("eau",          "#3aa9e8", "#0066aa");
     zx += _ligneZone("remblais",     "#5a5a68", "#3a3a44");
     zx += _ligneZone("effondrement", "#ff3333", "#cc0000");
@@ -465,7 +470,7 @@ function afficherLegende() {
     html += zx;
 
     // ── Structures ──
-    let sx = `<div class="kta-aide-section"><div class="kta-aide-section-titre">🏛️ Structures</div>`;
+    let sx = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.structures")}</div>`;
     sx += _ligneStructPoly("pilier-1", "#f4c542", "#000000");
     sx += _ligneStructPoly("pilier-2", "#ff9933", "#000000");
     sx += _ligneStructPoly("mur",      "#1e3a8a", "#000000");

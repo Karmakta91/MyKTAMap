@@ -1162,6 +1162,25 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   font-size: 13px;
   line-height: 1.5;
 }
+/* 🆕 v1.43.26 — Bannière warning Lost Mode "rayon dépasse la taille du plan".
+   Le inline style hardcoded (color #ffb088 sur fond orange clair) restait
+   illisible en thème clair → classe dédiée + variant light. */
+.kta-lost-warn-overflow {
+  margin-top: 6px;
+  background: rgba(255, 107, 53, 0.14);
+  border: 1px solid rgba(255, 107, 53, 0.45);
+  color: #ffb088;
+}
+body.kta-theme-light .kta-lost-warn-overflow,
+html.kta-theme-light .kta-lost-warn-overflow {
+  background: rgba(220, 80, 30, 0.10) !important;
+  border-color: rgba(220, 80, 30, 0.45) !important;
+  color: #b04a1a !important;
+}
+body.kta-theme-light .kta-lost-warn-overflow strong,
+html.kta-theme-light .kta-lost-warn-overflow strong {
+  color: #8a3611 !important;
+}
 .kta-lost-empty {
   color: #8892a4;
   font-style: italic;
@@ -2835,6 +2854,23 @@ html.kta-theme-light .kta-readme-lang-btn {
 body.kta-theme-light .kta-readme-lang-btn:hover,
 html.kta-theme-light .kta-readme-lang-btn:hover {
   background: rgba(30, 95, 153, 0.22) !important;
+}
+
+/* 🆕 v1.45.0 — Onglets de langue de la doc (un drapeau par langue dispo).
+   La langue COURANTE est marquée .active (pleine opacité + accent renforcé),
+   les autres sont atténuées (= "clique pour basculer"). */
+.kta-readme-lang-tabs { display: inline-flex; }
+.kta-readme-lang-tabs .kta-readme-lang-btn { opacity: 0.5; }
+.kta-readme-lang-tabs .kta-readme-lang-btn:hover { opacity: 1; }
+.kta-readme-lang-tabs .kta-readme-lang-btn.active {
+  opacity: 1;
+  background: rgba(140, 180, 255, 0.30);
+  border-color: rgba(140, 180, 255, 0.85);
+}
+body.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active,
+html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
+  background: rgba(30, 95, 153, 0.26) !important;
+  border-color: rgba(30, 95, 153, 0.70) !important;
 }
 
 /* Layout principal : sidebar + corps (+ bouton retour-haut absolute) */
@@ -5052,6 +5088,80 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
   flex-shrink: 0;
 }
 
+/* 🌍 v1.46.0 — Sélecteur de langue GLOBALE dans la modale Configuration
+   (déplacé du header HOME — KARMA). Ligne label + select, charte dark, avec
+   variante thème clair. Options peuplées par JS depuis I18n.available(). */
+.kta-cfg-lang-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.kta-cfg-lang-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8eaf0;
+}
+.kta-cfg-lang-select {
+  height: 36px;
+  min-width: 160px;
+  background: rgba(140,180,255,0.08);
+  border: 1px solid rgba(140,180,255,0.25);
+  color: #e8eaf0;
+  border-radius: 6px;
+  font-size: 14px;
+  padding: 0 10px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.kta-cfg-lang-select:hover {
+  background: rgba(140,180,255,0.16);
+  border-color: rgba(140,180,255,0.5);
+}
+.kta-cfg-lang-hint {
+  font-size: 11.5px;
+  color: #8892a4;
+  margin-top: 8px;
+  line-height: 1.5;
+  padding: 0 4px;
+}
+body.kta-theme-light .kta-cfg-lang-label,
+html.kta-theme-light .kta-cfg-lang-label { color: #2a2118; }
+body.kta-theme-light .kta-cfg-lang-select,
+html.kta-theme-light .kta-cfg-lang-select {
+  background: rgba(30,95,153,0.08);
+  border-color: rgba(30,95,153,0.35);
+  color: #1e5f99;
+}
+/* 🌍 v1.46.3 — Lisibilité des OPTIONS du menu déroulant langue (HOME
+   .kta-cfg-lang-select + PLAN .kta-cfg-input). Le popup natif <option>
+   héritait d'un fond quasi-transparent → texte clair sur fond clair =
+   illisible. On force un fond solide contrasté (dark + variante claire). */
+.kta-cfg-lang-select option,
+.kta-cfg-input option {
+  background: #1a1f2e;
+  color: #e8eaf0;
+}
+body.kta-theme-light .kta-cfg-lang-select option,
+html.kta-theme-light .kta-cfg-lang-select option,
+body.kta-theme-light .kta-cfg-input option,
+html.kta-theme-light .kta-cfg-input option {
+  background: #f5edda;
+  color: #2a2118;
+}
+
+/* 🌍 En-têtes de groupe de la refonte config (.kta-cfg-group-titre). Le style
+   est posé en INLINE avec color:#f4c542 (jaune charte) → illisible sur le fond
+   crème du thème clair (~1.4:1, sous WCAG AA). On override la couleur en clair
+   vers l'accent foncé (!important requis pour battre l'inline). Le dark garde le
+   jaune (lisible sur fond sombre). Cf docs/audits/2026-06-14_audit-i18n-langue-v1 (C1). */
+body.kta-theme-light .kta-cfg-group-titre,
+html.kta-theme-light .kta-cfg-group-titre {
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+
 /* === 🚀 Mode Performance ULTRA — toggles dans la modale Réglages === */
 .kta-perf-ultra-row {
   display: flex;
@@ -6219,6 +6329,14 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
     gap: 12px 18px;
     align-items: start;
     grid-auto-flow: row dense;
+  }
+  /* 🐛 v1.44.5 — min-width:0 sur TOUS les items du grid. Sans ça, un item au
+     contenu intrinsèque large (ex: data URL SVG de l'icône entree_plan, ~700px
+     en nowrap) impose son min-width:auto à la colonne → la grille déborde les
+     1100px du modal → layout distordu + textes des autres sections qui ne
+     wrappent plus. Le min-width:0 force chaque colonne à respecter 1fr. */
+  #kta-planner-corps > * {
+    min-width: 0;
   }
   /* Pleine largeur (KMZ import / ZIP existant / erreur / actions) */
   #kta-planner-corps > .kta-pl-col-full {
@@ -7828,6 +7946,11 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
   font-size: 11px;
   color: #8892a4;
   flex: 1;
+  /* 🐛 v1.44.5 — min-width:0 indispensable : sans ça, le flex item garde son
+     min-width:auto (= largeur du contenu intrinsèque), ce qui annule
+     text-overflow:ellipsis et laisse une data URL SVG longue (icône
+     entree_plan) déborder + élargir toute la modale. */
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -18888,5 +19011,57 @@ html.kta-theme-light #ktaOsmHomeBox .loader-section-head {
   color: #2a2620 !important;
   font-size: 14px !important;
   font-weight: 700 !important;
+}
+
+/* =================================================================
+   🆕 v1.43.26 (extension Pattern B) — overrides theming light pour
+   inline-styles dark hardcodés communs dans toutes les modales.
+   =================================================================
+   La codebase a accumulé ~30 fichiers JS qui injectent des styles inline
+   avec `color:#8892a4` (texte secondaire), `rgba(255,255,255,0.08)`
+   (bordures séparateurs) et similaires — tous illisibles ou invisibles
+   en thème clair. Plutôt que de migrer modale par modale (très long, à
+   forte régression), on cible ici les inline-styles via attribute
+   selectors sur les overlays de modale CONNUS. Ça mutualise la
+   conversion sans toucher le JS et sans risquer de casser le mode dark.
+
+   Scope volontairement limité aux overlays modales (.kta-readme-modal-*,
+   .kta-poi-modal, .kta-itinerary-modal, .kta-modal-overlay) pour éviter
+   d'impacter les widgets/toasts/badges qui peuvent légitimement utiliser
+   ces couleurs même en thème clair (ex. footer Home).
+   ================================================================= */
+
+/* Texte secondaire gris pâle #8892a4 → gris foncé lisible en mode clair */
+body.kta-theme-light .kta-readme-modal-overlay *[style*="color:#8892a4"],
+html.kta-theme-light .kta-readme-modal-overlay *[style*="color:#8892a4"],
+body.kta-theme-light .kta-readme-modal-overlay *[style*="color: #8892a4"],
+html.kta-theme-light .kta-readme-modal-overlay *[style*="color: #8892a4"],
+body.kta-theme-light .kta-poi-modal *[style*="color:#8892a4"],
+html.kta-theme-light .kta-poi-modal *[style*="color:#8892a4"],
+body.kta-theme-light .kta-itinerary-modal *[style*="color:#8892a4"],
+html.kta-theme-light .kta-itinerary-modal *[style*="color:#8892a4"],
+body.kta-theme-light .kta-modal-overlay *[style*="color:#8892a4"],
+html.kta-theme-light .kta-modal-overlay *[style*="color:#8892a4"] {
+  color: #5a6878 !important;
+}
+
+/* Bordures rgba blanc semi-transparentes → gris foncé translucide */
+body.kta-theme-light .kta-readme-modal-overlay *[style*="rgba(255,255,255,0.08)"],
+html.kta-theme-light .kta-readme-modal-overlay *[style*="rgba(255,255,255,0.08)"],
+body.kta-theme-light .kta-readme-modal-overlay *[style*="rgba(255, 255, 255, 0.08)"],
+html.kta-theme-light .kta-readme-modal-overlay *[style*="rgba(255, 255, 255, 0.08)"],
+body.kta-theme-light .kta-poi-modal *[style*="rgba(255,255,255,0.08)"],
+html.kta-theme-light .kta-poi-modal *[style*="rgba(255,255,255,0.08)"],
+body.kta-theme-light .kta-itinerary-modal *[style*="rgba(255,255,255,0.08)"],
+html.kta-theme-light .kta-itinerary-modal *[style*="rgba(255,255,255,0.08)"] {
+  border-color: rgba(20, 30, 50, 0.14) !important;
+}
+
+/* Backgrounds très sombres explicites (rare mais existe sur quelques modales) */
+body.kta-theme-light .kta-readme-modal-overlay *[style*="background:#1a1f2e"],
+html.kta-theme-light .kta-readme-modal-overlay *[style*="background:#1a1f2e"],
+body.kta-theme-light .kta-readme-modal-overlay *[style*="background: #1a1f2e"],
+html.kta-theme-light .kta-readme-modal-overlay *[style*="background: #1a1f2e"] {
+  background: #f4ecd8 !important;
 }
 

@@ -88,7 +88,7 @@ function importerSessionJSON(file) {
       const data = JSON.parse(e.target.result);
 
       if (data.type !== "devmap-session") {
-        alert("Fichier invalide");
+        alert(window.I18n.t("impexp.fileInvalid"));
         return;
       }
 
@@ -105,10 +105,10 @@ function importerSessionJSON(file) {
       if (window.resetRoads) window.resetRoads();
       if (window.setRoads) window.setRoads(data.roads || []);
 
-      alert("Import terminé");
+      alert(window.I18n.t("impexp.importDone"));
     } catch (err) {
       console.error(err);
-      alert("Erreur lors de l'import");
+      alert(window.I18n.t("impexp.importError"));
     }
   };
 
@@ -128,7 +128,7 @@ window.ouvrirImportGpx = function() {
   if (existing) { existing.remove(); return; }
 
   if (!window.GpxIO) {
-    alert("Module GPX IO indisponible — rechargement nécessaire");
+    alert(window.I18n.t("impexp.gpxIoUnavailable"));
     return;
   }
   const calibre = window.GpxIO.verifierCalibrage();
@@ -139,28 +139,28 @@ window.ouvrirImportGpx = function() {
   overlay.innerHTML =
     '<div class="kta-readme-modal-boite" style="max-width:560px; height:auto !important; max-height:90vh !important;">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">📤 Importer un fichier GPX</span>' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("impexp.gpx.modalTitle") + '</span>' +
         '<button class="kta-panneau-close" id="kta-import-gpx-close" type="button">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         (!calibre ?
           '<div class="kta-aide-section" style="background:rgba(220,50,50,0.10); border-color:rgba(220,50,50,0.30);">' +
-            '<p style="color:#b02020; font-weight:600;">⚠️ Ce plan n\'est pas calibré GPS.</p>' +
-            '<p>Pour importer un GPX, l\'app a besoin de savoir comment transformer les coordonnées WGS84 (lat/lng) en coordonnées plan locales. Cette transformation est définie par 2 points de calibrage (plan ↔ GPS).</p>' +
-            '<p><strong>Comment calibrer</strong> : ferme cette fenêtre → 💾 Enregistrer session → onglet 📡 Export externe → saisis 2 points (x/y plan + GPS lat/lng). Une fois fait, reviens ici pour importer ton GPX.</p>' +
+            '<p style="color:#b02020; font-weight:600;">' + window.I18n.t("impexp.gpx.notCalibratedTitle") + '</p>' +
+            '<p>' + window.I18n.t("impexp.gpx.notCalibratedBody") + '</p>' +
+            '<p>' + window.I18n.t("impexp.gpx.howToCalibrate") + '</p>' +
           '</div>'
         :
           '<div class="kta-aide-section">' +
-            '<p>L\'import GPX ajoute les <strong>waypoints</strong> (points) et <strong>tracks</strong> (tracés) du fichier aux annotations de session du plan courant.</p>' +
-            '<p><strong>Compatibilité</strong> : GPX 1.1 standard (TopoDroid, OsmAnd, Avenza, GPSies, Strava, Garmin, etc.). Les commentaires <code>MyKTAMap level=N</code> sont reconnus pour restaurer le niveau M-LVL si le GPX vient de MyKTAMap.</p>' +
-            '<p><strong>Annulable</strong> : si l\'import ne te convient pas après preview, tu peux faire Ctrl+Z (Undo) pour revenir en arrière.</p>' +
+            '<p>' + window.I18n.t("impexp.gpx.intro") + '</p>' +
+            '<p>' + window.I18n.t("impexp.gpx.compat") + '</p>' +
+            '<p>' + window.I18n.t("impexp.gpx.undoable") + '</p>' +
           '</div>' +
           '<div class="kta-aide-section">' +
             '<label class="kta-net-paranoia-toggle" style="cursor:pointer;">' +
               '<input type="file" accept=".gpx,application/gpx+xml" id="kta-import-gpx-file" style="display:none;">' +
               '<span style="display:flex; align-items:center; gap:8px;">' +
                 '<span style="font-size:22px;">📁</span>' +
-                '<span><strong>Sélectionner un fichier .gpx</strong></span>' +
+                '<span><strong>' + window.I18n.t("impexp.gpx.selectFile") + '</strong></span>' +
               '</span>' +
             '</label>' +
             '<div id="kta-import-gpx-preview" style="margin-top:12px;"></div>' +
@@ -196,33 +196,33 @@ window.ouvrirImportGpx = function() {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
-    previewEl.innerHTML = '<p style="color:#8892a4;">⏳ Lecture en cours…</p>';
+    previewEl.innerHTML = '<p style="color:#8892a4;">' + window.I18n.t("impexp.gpx.reading") + '</p>';
 
     window.GpxIO.importer(file, { confirmAdd: false }).then(function(r) {
       if (!r.ok) {
-        previewEl.innerHTML = '<div style="background:rgba(220,50,50,0.10); border:1px solid rgba(220,50,50,0.30); padding:10px 14px; border-radius:6px; color:#b02020;"><strong>❌ Erreur :</strong> ' + r.msg + '</div>';
+        previewEl.innerHTML = '<div style="background:rgba(220,50,50,0.10); border:1px solid rgba(220,50,50,0.30); padding:10px 14px; border-radius:6px; color:#b02020;"><strong>' + window.I18n.t("impexp.gpx.errorPrefix") + '</strong> ' + r.msg + '</div>';
         return;
       }
       _pendingPreview = r;
       let warnHtml = '';
       if (r.preview.outOfBoundsWpt > 0) {
-        warnHtml += '<div style="color:#8b4a0c; font-size:12px; margin-top:6px;">⚠️ ' + r.preview.outOfBoundsWpt + ' waypoint(s) sont hors du plan et seront ignorés (peut-être un mauvais calibrage ?)</div>';
+        warnHtml += '<div style="color:#8b4a0c; font-size:12px; margin-top:6px;">' + window.I18n.t("impexp.gpx.warnWptOob", { n: r.preview.outOfBoundsWpt }) + '</div>';
       }
       if (r.preview.outOfBoundsTrk > 0) {
-        warnHtml += '<div style="color:#8b4a0c; font-size:12px; margin-top:6px;">⚠️ ' + r.preview.outOfBoundsTrk + ' tracé(s) sont hors du plan et seront ignorés</div>';
+        warnHtml += '<div style="color:#8b4a0c; font-size:12px; margin-top:6px;">' + window.I18n.t("impexp.gpx.warnTrkOob", { n: r.preview.outOfBoundsTrk }) + '</div>';
       }
       previewEl.innerHTML =
         '<div style="background:rgba(244,197,66,0.12); border:1px solid rgba(244,197,66,0.40); padding:12px 14px; border-radius:6px;">' +
-          '<div style="font-weight:700; margin-bottom:8px;">📊 Aperçu de l\'import</div>' +
-          '<div>📍 <strong>' + r.preview.wpts + '</strong> waypoint(s) à ajouter</div>' +
-          '<div>🛣️ <strong>' + r.preview.trks + '</strong> tracé(s) à ajouter</div>' +
-          (r.preview.metadata && r.preview.metadata.name ? '<div style="margin-top:6px; font-size:12px; color:#6b6354;">Source : ' + r.preview.metadata.name + '</div>' : '') +
+          '<div style="font-weight:700; margin-bottom:8px;">' + window.I18n.t("impexp.gpx.previewTitle") + '</div>' +
+          '<div>' + window.I18n.t("impexp.gpx.previewWpts", { n: r.preview.wpts }) + '</div>' +
+          '<div>' + window.I18n.t("impexp.gpx.previewTrks", { n: r.preview.trks }) + '</div>' +
+          (r.preview.metadata && r.preview.metadata.name ? '<div style="margin-top:6px; font-size:12px; color:#6b6354;">' + window.I18n.t("impexp.gpx.previewSource", { name: r.preview.metadata.name }) + '</div>' : '') +
           warnHtml +
         '</div>' +
         '<div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-import-gpx-cancel" type="button">Annuler</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-import-gpx-cancel" type="button">' + window.I18n.t("impexp.gpx.cancel") + '</button>' +
           '<button class="kta-btn kta-btn-primary" id="kta-import-gpx-confirm" type="button" ' +
-                  (r.preview.wpts === 0 && r.preview.trks === 0 ? "disabled" : "") + '>Confirmer l\'import</button>' +
+                  (r.preview.wpts === 0 && r.preview.trks === 0 ? "disabled" : "") + '>' + window.I18n.t("impexp.gpx.confirm") + '</button>' +
         '</div>';
 
       document.getElementById("kta-import-gpx-cancel").addEventListener("click", function() {
@@ -235,8 +235,10 @@ window.ouvrirImportGpx = function() {
         window.GpxIO._appliquerImport(_pendingPreview._toApply.points, _pendingPreview._toApply.tracks);
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast(
-            "📤 Import GPX OK : " + _pendingPreview._toApply.points.length + " point(s) + " +
-            _pendingPreview._toApply.tracks.length + " tracé(s) ajoutés. Ctrl+Z pour annuler.",
+            window.I18n.t("impexp.gpx.toastOk", {
+              wpts: _pendingPreview._toApply.points.length,
+              trks: _pendingPreview._toApply.tracks.length
+            }),
             "info"
           );
         }
@@ -281,32 +283,29 @@ window.ouvrirImportChoix = function() {
   modal.innerHTML =
     '<div class="kta-readme-modal-boite" style="max-width:560px; max-height:88vh; height:auto; display:flex; flex-direction:column;">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">📥 Importer un fichier</span>' +
-        '<button class="kta-panneau-close" id="kta-imp2-close" type="button" aria-label="Fermer">✕</button>' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("impexp.choix.modalTitle") + '</span>' +
+        '<button class="kta-panneau-close" id="kta-imp2-close" type="button" aria-label="' + window.I18n.t("ui.refonte.btn_close_aria") + '">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps" style="overflow-y:auto;">' +
 
         // === SÉLECTEUR DE MODE (2 gros boutons côte-à-côte) ===
         '<div class="kta-conv-sens-wrap">' +
           '<button class="kta-conv-sens-btn active" id="kta-imp2-mode-session" type="button">' +
-            '<span class="kta-conv-sens-label">📥 Session MyKTAMap</span>' +
-            '<span class="kta-conv-sens-desc">.json ou .zip exporté depuis l\'app</span>' +
+            '<span class="kta-conv-sens-label">' + window.I18n.t("impexp.choix.modeSessionLabel") + '</span>' +
+            '<span class="kta-conv-sens-desc">' + window.I18n.t("impexp.choix.modeSessionDesc") + '</span>' +
           '</button>' +
           '<button class="kta-conv-sens-btn" id="kta-imp2-mode-gpx" type="button">' +
-            '<span class="kta-conv-sens-label">📤 Fichier GPX externe</span>' +
-            '<span class="kta-conv-sens-desc">TopoDroid, OsmAnd, Strava, Garmin…</span>' +
+            '<span class="kta-conv-sens-label">' + window.I18n.t("impexp.choix.modeGpxLabel") + '</span>' +
+            '<span class="kta-conv-sens-desc">' + window.I18n.t("impexp.choix.modeGpxDesc") + '</span>' +
           '</button>' +
         '</div>' +
 
         // === PANEL SESSION (visible par défaut) ===
         '<div id="kta-imp2-panel-session">' +
           '<div class="kta-aide-section">' +
-            '<div class="kta-aide-section-titre">📋 Contenu</div>' +
+            '<div class="kta-aide-section-titre">' + window.I18n.t("impexp.choix.contentTitle") + '</div>' +
             '<p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.7;">' +
-              '✓ Fichier <code>session.json</code> ou <code>.zip</code> exporté depuis 💾 Enregistrer session<br>' +
-              '✓ Restaure tes <strong>annotations</strong> : points, tracés, zones, structures, mesure en cours<br>' +
-              '✓ Si le fichier est un <code>.zip</code> : <strong>photos</strong> rattachées aux points également restaurées<br>' +
-              '✓ Choix après preview : remplacer ou fusionner avec ta session actuelle' +
+              window.I18n.t("impexp.choix.sessionContent") +
             '</p>' +
           '</div>' +
         '</div>' +
@@ -314,13 +313,9 @@ window.ouvrirImportChoix = function() {
         // === PANEL GPX (masqué par défaut) ===
         '<div id="kta-imp2-panel-gpx" style="display:none;">' +
           '<div class="kta-aide-section">' +
-            '<div class="kta-aide-section-titre">📋 Contenu</div>' +
+            '<div class="kta-aide-section-titre">' + window.I18n.t("impexp.choix.contentTitle") + '</div>' +
             '<p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.7;">' +
-              '✓ Fichier <code>.gpx</code> standard GPX 1.1 depuis : ' +
-              '<strong>TopoDroid, OsmAnd, Avenza, GPSies, Strava, Garmin</strong>…<br>' +
-              '✓ Les <strong>waypoints</strong> deviennent des points · les <strong>tracks</strong> deviennent des tracés<br>' +
-              '✓ <strong>Calibrage GPS du plan requis</strong> (sinon message d\'erreur t\'invitant à le faire via 📡 Export externe)<br>' +
-              '✓ Roundtrip MyKTAMap : si le GPX vient d\'une autre instance MyKTAMap, les niveaux M-LVL sont restaurés' +
+              window.I18n.t("impexp.choix.gpxContent") +
             '</p>' +
           '</div>' +
         '</div>' +
@@ -329,8 +324,8 @@ window.ouvrirImportChoix = function() {
 
       // === ACTIONS (footer fixe) ===
       '<div style="display:flex; justify-content:flex-end; gap:10px; padding:14px 18px; border-top:1px solid rgba(255,255,255,0.06);">' +
-        '<button class="kta-btn kta-btn-ghost"   id="kta-imp2-cancel" type="button">Annuler</button>' +
-        '<button class="kta-btn kta-btn-primary" id="kta-imp2-ok"     type="button">📂 Choisir un fichier</button>' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-imp2-cancel" type="button">' + window.I18n.t("impexp.choix.cancel") + '</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-imp2-ok"     type="button">' + window.I18n.t("impexp.choix.chooseFile") + '</button>' +
       '</div>' +
     '</div>';
 
@@ -359,7 +354,7 @@ window.ouvrirImportChoix = function() {
       ouvrirImportSession();
     } else {
       if (typeof window.ouvrirImportGpx === "function") window.ouvrirImportGpx();
-      else alert("Module import GPX indisponible");
+      else alert(window.I18n.t("impexp.gpxModuleUnavailable"));
     }
   }
 
@@ -385,43 +380,39 @@ function ouvrirImportSession() {
   modal.innerHTML = `
     <div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:90vh;">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre">📥 Importer une session</span>
+        <span class="kta-readme-modal-titre">${window.I18n.t("impexp.session.modalTitle")}</span>
         <button class="kta-panneau-close" id="kta-import-close">✕</button>
       </div>
       <div class="kta-readme-modal-corps">
 
         <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">
-          Charge un fichier <code>session.json</code> exporté depuis l'application,
-          ou un <code>.zip</code> de session avec photos (depuis v1.9.3).
-          Contient tes points ajoutés, tes tracés, tes zones, tes structures, ta
-          mesure en cours et ses photos rattachées.
+          ${window.I18n.t("impexp.session.intro")}
         </p>
 
         <div class="kta-conv-champ">
-          <label class="kta-conv-label">Fichier session</label>
+          <label class="kta-conv-label">${window.I18n.t("impexp.session.fileLabel")}</label>
           <div class="kta-conv-drop" id="kta-import-drop">
-            <span id="kta-import-drop-label">📂 Cliquer ou glisser un fichier .json ou .zip</span>
+            <span id="kta-import-drop-label">${window.I18n.t("impexp.session.dropLabel")}</span>
             <input type="file" id="kta-import-file" accept=".json,.zip,application/json,application/zip" style="display:none">
           </div>
         </div>
 
         <div id="kta-import-apercu-wrap" class="kta-conv-champ" style="display:none;">
-          <label class="kta-conv-label">Aperçu</label>
+          <label class="kta-conv-label">${window.I18n.t("impexp.session.previewLabel")}</label>
           <div id="kta-import-apercu" style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; font-size:13px; color:#e8eaf0;"></div>
         </div>
 
         <div class="kta-aide-section" id="kta-import-warn" style="display:none; border-color:rgba(255,200,100,0.3); background:rgba(255,180,80,0.06);">
           <div style="font-size:13px; color:#ffd28a;">
-            ⚠️ <strong>Attention</strong> — l'import remplacera tes points, tracés et mesure actuels.
-            Pense à exporter ta session en cours avant si tu veux la conserver.
+            ${window.I18n.t("impexp.session.warn")}
           </div>
         </div>
 
         <div id="kta-import-erreur" class="kta-conv-erreur" style="display:none;"></div>
 
         <div class="kta-conv-actions" style="margin-top:14px;">
-          <button class="kta-btn kta-btn-ghost"   id="kta-import-annuler">Annuler</button>
-          <button class="kta-btn kta-btn-primary"  id="kta-import-valider" disabled>Importer</button>
+          <button class="kta-btn kta-btn-ghost"   id="kta-import-annuler">${window.I18n.t("impexp.session.cancel")}</button>
+          <button class="kta-btn kta-btn-primary"  id="kta-import-valider" disabled>${window.I18n.t("impexp.session.import")}</button>
         </div>
 
       </div>
@@ -471,14 +462,14 @@ function ouvrirImportSession() {
     // 🆕 v1.9.3-B1d : photos
     const nbPhotos     = (_pendingPhotosToRestore && _pendingPhotosToRestore.length) || 0;
     const photosBadge  = nbPhotos > 0
-      ? '<span><strong style="color:#f4c542;">📸 ' + nbPhotos + '</strong> photo' + (nbPhotos > 1 ? "s" : "") + '</span>'
+      ? '<span>' + window.I18n.t("impexp.session.apercuPhotos", { n: nbPhotos }) + '</span>'
       : '';
     // 🆕 v1.21.2 : tracker (path/timeline) si présent dans la session
     const _trk     = data.tracker || null;
     const trkPathN = _trk && Array.isArray(_trk.path) ? _trk.path.length : 0;
     const trkTimeN = _trk && Array.isArray(_trk.timeline) ? _trk.timeline.length : 0;
     const trackerBadge = (trkPathN > 0 || trkTimeN > 0)
-      ? '<span><strong style="color:#7fd1a2;">📡 tracker</strong> (' + trkPathN + ' pt, ' + trkTimeN + ' évt)</span>'
+      ? '<span>' + window.I18n.t("impexp.session.apercuTracker", { pts: trkPathN, evts: trkTimeN }) + '</span>'
       : '';
 
     // 🆕 v1.34.29 : Mode Histoire (note libre + PDF de session)
@@ -487,19 +478,19 @@ function ouvrirImportSession() {
     let histoireBadge = "";
     if (hasNoteLibre || hasHistPdf) {
       const parts = [];
-      if (hasNoteLibre) parts.push("note libre");
-      if (hasHistPdf)   parts.push("PDF");
-      histoireBadge = '<span><strong style="color:#d4a3ff;">📖 Histoire</strong> (' + parts.join(" + ") + ')</span>';
+      if (hasNoteLibre) parts.push(window.I18n.t("impexp.session.histNote"));
+      if (hasHistPdf)   parts.push(window.I18n.t("impexp.session.histPdf"));
+      histoireBadge = '<span>' + window.I18n.t("impexp.session.apercuHistoire", { parts: parts.join(" + ") }) + '</span>';
     }
 
 
     apercuEl.innerHTML = `
       <div style="display:flex; gap:14px; flex-wrap:wrap;">
-        <span><strong style="color:#8cb4ff;">${nbPoints}</strong> point(s) ajouté(s)</span>
-        <span><strong style="color:#8cb4ff;">${nbTraces}</strong> tracé(s)</span>
-        <span><strong style="color:#8cb4ff;">${nbZones}</strong> zone(s)</span>
-        <span><strong style="color:#8cb4ff;">${nbStructures}</strong> structure(s)</span>
-        <span><strong style="color:#8cb4ff;">${nbMesure}</strong> point(s) de mesure</span>
+        <span>${window.I18n.t("impexp.session.apercuPoints", { n: nbPoints })}</span>
+        <span>${window.I18n.t("impexp.session.apercuTraces", { n: nbTraces })}</span>
+        <span>${window.I18n.t("impexp.session.apercuZones", { n: nbZones })}</span>
+        <span>${window.I18n.t("impexp.session.apercuStructures", { n: nbStructures })}</span>
+        <span>${window.I18n.t("impexp.session.apercuMesure", { n: nbMesure })}</span>
         ${trackerBadge}
         ${photosBadge}
         ${histoireBadge}
@@ -513,7 +504,7 @@ function ouvrirImportSession() {
   function _parseSessionJson(text) {
     const data = JSON.parse(text);
     if (data.type !== "devmap-session") {
-      throw new Error("Le fichier n'est pas une session devmap-session valide.");
+      throw new Error(window.I18n.t("impexp.session.errNotValid"));
     }
     return data;
   }
@@ -523,11 +514,11 @@ function ouvrirImportSession() {
   // tableau _pendingPhotosToRestore en variable de fermeture.
   function _parseSessionZip(file) {
     if (typeof JSZip === "undefined") {
-      return Promise.reject(new Error("JSZip non chargé (ZIP impossible)"));
+      return Promise.reject(new Error(window.I18n.t("impexp.session.errJszip")));
     }
     return JSZip.loadAsync(file).then(function(zip) {
       const sessionFile = zip.file("session.json");
-      if (!sessionFile) throw new Error("ZIP invalide : session.json manquant à la racine.");
+      if (!sessionFile) throw new Error(window.I18n.t("impexp.session.errZipNoSession"));
       return sessionFile.async("string").then(function(jsonText) {
         const data = _parseSessionJson(jsonText);
         // 🆕 v1.34.29 — Extraction PDF Mode Histoire si présent. Le payload
@@ -570,7 +561,7 @@ function ouvrirImportSession() {
         return indexFile.async("string").then(function(idxText) {
           let idxObj;
           try { idxObj = JSON.parse(idxText); }
-          catch(e) { throw new Error("photos/_index.json corrompu : " + e.message); }
+          catch(e) { throw new Error(window.I18n.t("impexp.session.errIndexCorrupt", { msg: e.message })); }
           const idxMap = idxObj && idxObj.photos ? idxObj.photos : {};
           const photoIds = Object.keys(idxMap);
           if (photoIds.length === 0) {
@@ -626,7 +617,7 @@ function ouvrirImportSession() {
 
   function chargerFichier(file) {
     fichierCharge = file;
-    dropLabel.textContent = "✅ " + file.name;
+    dropLabel.textContent = window.I18n.t("impexp.session.fileLoaded", { name: file.name });
     setErr("");
     _pendingPhotosToRestore = null;
     _pendingHistoirePdfToRestore = null;  // 🆕 v1.34.29
@@ -641,7 +632,7 @@ function ouvrirImportSession() {
         _renderApercu(data);
       }).catch(function(err) {
         console.error("[Import session ZIP] :", err);
-        setErr("❌ ZIP invalide : " + (err.message || err));
+        setErr(window.I18n.t("impexp.session.errZipPrefix", { msg: err.message || err }));
         dataParsee = null;
         _pendingPhotosToRestore = null;
         _pendingHistoirePdfToRestore = null;  // 🆕 v1.34.29
@@ -660,7 +651,7 @@ function ouvrirImportSession() {
         dataParsee = data;
         _renderApercu(data);
       } catch(err) {
-        setErr("❌ " + err.message);
+        setErr(window.I18n.t("impexp.session.errPrefix", { msg: err.message }));
         dataParsee = null;
         apercuWrap.style.display = "none";
         warnEl.style.display = "none";
@@ -685,7 +676,7 @@ function ouvrirImportSession() {
     // 🆕 v1.9.3-B1d : accepte aussi les .zip (session avec photos)
     const okExt = f && (/\.(json|zip)$/i).test(f.name);
     if (okExt) chargerFichier(f);
-    else setErr("Le fichier doit être un .json ou .zip (session)");
+    else setErr(window.I18n.t("impexp.session.errDropExt"));
   });
 
   // Boutons
@@ -801,11 +792,11 @@ function ouvrirImportSession() {
         fermer();
       } catch(err) {
         console.error(err);
-        setErr("Erreur lors de l'import : " + (err.message || err));
+        setErr(window.I18n.t("impexp.session.errImport", { msg: err.message || err }));
       }
     }).catch(function(err) {
       console.error("[Import] _restorerPhotos a échoué :", err);
-      setErr("Erreur lors de la restauration des photos : " + (err.message || err));
+      setErr(window.I18n.t("impexp.session.errPhotos", { msg: err.message || err }));
     });
   });
 }

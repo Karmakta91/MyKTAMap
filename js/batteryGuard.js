@@ -243,7 +243,8 @@
   // UX : TOASTS + MODALES
   // ============================================================
   function _toastInfo20(lvl) {
-    const msg = "🔋 Batterie à " + lvl + "% — pense au mode Performance ULTRA pour économiser.";
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+    const msg = t("battery.toast.info20", { n: lvl });
     if (window.OOMGuard && window.OOMGuard.showToast) {
       window.OOMGuard.showToast(msg, "warn");
     } else {
@@ -252,7 +253,8 @@
   }
 
   function _toastWarning10(lvl) {
-    const msg = "⚠️ Batterie à " + lvl + "% — active Perf ULTRA et envisage de stopper le tracker (capteurs gourmands).";
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+    const msg = t("battery.toast.warn10", { n: lvl });
     if (window.OOMGuard && window.OOMGuard.showToast) {
       window.OOMGuard.showToast(msg, "warn");
     } else {
@@ -266,6 +268,7 @@
   // de temps si tu ne réagis pas).
   function _afficherModaleCritique(lvl) {
     if (document.getElementById("kta-battery-critical-modal")) return;
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
 
     const modal = document.createElement("div");
     modal.id = "kta-battery-critical-modal";
@@ -276,23 +279,23 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:480px; border:2px solid #ef4444; box-shadow:0 0 32px rgba(239,68,68,0.45);">' +
         '<div class="kta-readme-modal-header" style="border-bottom:1px solid rgba(239,68,68,0.35);">' +
-          '<span class="kta-readme-modal-titre" style="color:#ff8a8a;">🪫 Batterie critique — ' + lvl + ' %</span>' +
+          '<span class="kta-readme-modal-titre" style="color:#ff8a8a;">' + t("battery.critical.titre", { n: lvl }) + '</span>' +
           '<button class="kta-panneau-close" id="kta-bat-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" style="padding:18px; color:#c8d0e0; line-height:1.6;">' +
-          '<p style="font-size:14px; color:#ff8a8a; font-weight:600;">⚠️ Ta batterie est en zone rouge.</p>' +
-          '<p style="font-size:13.5px;">Action immédiate recommandée :</p>' +
+          '<p style="font-size:14px; color:#ff8a8a; font-weight:600;">' + t("battery.critical.intro") + '</p>' +
+          '<p style="font-size:13.5px;">' + t("battery.critical.actionLabel") + '</p>' +
           '<ul style="font-size:13px; margin:8px 0 14px 4px; padding-left:18px; line-height:1.7;">' +
-            '<li>💾 <strong>Sauvegarde ta session</strong> (⬆️ → 💾) — risque de perte si extinction brutale</li>' +
-            '<li>📋 Si tu es en sous-sol et que tu sais où tu es, <strong>note ta position</strong> (papier + crayon ou photo de l\'écran)</li>' +
-            '<li>🔦 Active le mode économie (réduit la luminosité, ferme les autres apps)</li>' +
-            '<li>🚪 Envisage de remonter en surface si tu n\'as pas de batterie de secours</li>' +
+            '<li>' + t("battery.critical.tip.save") + '</li>' +
+            '<li>' + t("battery.critical.tip.notePos") + '</li>' +
+            '<li>' + t("battery.critical.tip.eco") + '</li>' +
+            '<li>' + t("battery.critical.tip.surface") + '</li>' +
           '</ul>' +
-          '<p style="font-size:12.5px; color:#8892a4; font-style:italic;">Cette alerte ne réapparaît plus jusqu\'à la prochaine charge.</p>' +
+          '<p style="font-size:12.5px; color:#8892a4; font-style:italic;">' + t("battery.critical.note") + '</p>' +
         '</div>' +
         '<div class="kta-conv-actions" style="padding:14px 18px 18px; gap:8px;">' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-bat-perf" type="button">⚙️ Configuration</button>' +
-          '<button class="kta-btn kta-btn-primary" id="kta-bat-ok"   type="button">✓ Compris</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-bat-perf" type="button">' + t("battery.critical.btnConfig") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-bat-ok"   type="button">' + t("battery.critical.ok") + '</button>' +
         '</div>' +
       '</div>';
 

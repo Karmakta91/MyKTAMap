@@ -281,13 +281,13 @@
     _overlay.innerHTML =
       '<div class="kta-photo-viewer-header">' +
         '<span class="kta-photo-viewer-counter">1 / 1</span>' +
-        '<button type="button" class="kta-photo-viewer-close" title="Fermer (Échap)">✕</button>' +
+        '<button type="button" class="kta-photo-viewer-close" title="' + window.I18n.t("photoviewer.close") + '">✕</button>' +
       '</div>' +
       '<div class="kta-photo-viewer-viewport">' +
         '<img class="kta-photo-viewer-img" alt="photo">' +
       '</div>' +
-      '<button type="button" class="kta-photo-viewer-nav kta-photo-viewer-nav-prev" title="Précédente (←)">◂</button>' +
-      '<button type="button" class="kta-photo-viewer-nav kta-photo-viewer-nav-next" title="Suivante (→)">▸</button>';
+      '<button type="button" class="kta-photo-viewer-nav kta-photo-viewer-nav-prev" title="' + window.I18n.t("photoviewer.prev") + '">◂</button>' +
+      '<button type="button" class="kta-photo-viewer-nav kta-photo-viewer-nav-next" title="' + window.I18n.t("photoviewer.next") + '">▸</button>';
       // 🆕 v1.9.3-B1d-fix4 (KARMA "enlève la note qui explique comment
       // zoomer") : retrait du hint en bas. Les gestures sont devenus
       // évidentes pour l'user après une utilisation, et le hint masquait

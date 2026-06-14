@@ -136,13 +136,14 @@
   // VALIDATION PIN INPUT
   // ============================================================
   function _validatePinInput(pin) {
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     if (typeof pin !== "string" && typeof pin !== "number") {
-      return "Le PIN doit être un nombre.";
+      return t("pin.err.notNumber");
     }
     const s = String(pin).trim();
-    if (!/^\d+$/.test(s)) return "Le PIN ne doit contenir que des chiffres.";
-    if (s.length < PIN_MIN) return "Le PIN doit faire au moins " + PIN_MIN + " chiffres.";
-    if (s.length > PIN_MAX) return "Le PIN ne doit pas dépasser " + PIN_MAX + " chiffres.";
+    if (!/^\d+$/.test(s)) return t("pin.err.digitsOnly");
+    if (s.length < PIN_MIN) return t("pin.err.tooShort", { min: PIN_MIN });
+    if (s.length > PIN_MAX) return t("pin.err.tooLong", { max: PIN_MAX });
     return null;  // valide
   }
 
@@ -333,11 +334,11 @@
 
     // Si verrouillé out → seul reset complet possible
     if (isLockedOut()) {
-      return Promise.reject(new Error("Lockout actif : reset complet requis."));
+      return Promise.reject(new Error(window.I18n ? window.I18n.t("pin.err.lockoutReset") : "pin.err.lockoutReset"));
     }
 
     return unlock(pin).then(function(ok) {
-      if (!ok) throw new Error("PIN incorrect.");
+      if (!ok) throw new Error(window.I18n ? window.I18n.t("pin.err.incorrect") : "pin.err.incorrect");
       _clearState();
       _unlocked = false;
       return true;
@@ -353,7 +354,7 @@
       return Promise.resolve(true);
     }
     if (isLockedOut()) {
-      return Promise.reject(new Error("Trop de tentatives. Reset complet requis."));
+      return Promise.reject(new Error(window.I18n ? window.I18n.t("pin.err.tooManyReset") : "pin.err.tooManyReset"));
     }
     const state = _getState();
     if (!state) {
@@ -380,7 +381,7 @@
   // ============================================================
   function unlockWithBiometric() {
     if (!hasBiometric()) {
-      return Promise.reject(new Error("Biométrie non configurée."));
+      return Promise.reject(new Error(window.I18n ? window.I18n.t("pin.err.bioNotConfigured") : "pin.err.bioNotConfigured"));
     }
     const state = _getState();
     if (!state) return Promise.resolve(false);
@@ -406,17 +407,18 @@
   // pas l'ancien PIN — la garde est posée par l'UI qui appelle unlock()
   // avant d'autoriser le changement.
   function changePin(newPin) {
+    const t = function(k) { return window.I18n ? window.I18n.t(k) : k; };
     if (!_unlocked) {
-      return Promise.reject(new Error("Session non déverrouillée."));
+      return Promise.reject(new Error(t("pin.err.sessionLocked")));
     }
     if (!isEnabled()) {
-      return Promise.reject(new Error("PIN pas activé. Utilise enable() à la place."));
+      return Promise.reject(new Error(t("pin.err.notEnabled")));
     }
     const err = _validatePinInput(newPin);
     if (err) return Promise.reject(new Error(err));
 
     const state = _getState();
-    if (!state) return Promise.reject(new Error("État PIN introuvable."));
+    if (!state) return Promise.reject(new Error(t("pin.err.stateMissing")));
 
     // On régénère un sel pour ne pas pouvoir corréler les hashes successifs
     const newSaltBytes = _randomBytes(SALT_BYTES);
@@ -484,6 +486,7 @@
       return;
     }
 
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const remaining = getRemainingAttempts();
     const useBio    = hasBiometric();
 
@@ -501,30 +504,30 @@
     overlay.innerHTML =
       '<div class="kta-pin-gate-box">' +
         '<div class="kta-pin-gate-icon">🔐</div>' +
-        '<div class="kta-pin-gate-titre">Code d\'accès local</div>' +
-        '<div class="kta-pin-gate-soustitre">Saisis ton code pour déverrouiller l\'app.</div>' +
+        '<div class="kta-pin-gate-titre">' + t("pin.gate.titre") + '</div>' +
+        '<div class="kta-pin-gate-soustitre">' + t("pin.gate.soustitre") + '</div>' +
         '<div class="kta-pin-gate-dots" id="kta-pin-dots"></div>' +
         '<div class="kta-pin-gate-err" id="kta-pin-err" style="display:none;"></div>' +
-        '<div class="kta-pin-gate-attempts" id="kta-pin-attempts">' + remaining + ' tentative(s) restante(s)</div>' +
+        '<div class="kta-pin-gate-attempts" id="kta-pin-attempts">' + t("pin.gate.attempts", { n: remaining }) + '</div>' +
         (useBio
-          ? '<button class="kta-pin-gate-bio-btn" id="kta-pin-bio" title="Déverrouiller via biométrie">' +
-              '🔓 Déverrouiller via biométrie (Face ID / Touch ID)' +
+          ? '<button class="kta-pin-gate-bio-btn" id="kta-pin-bio" title="' + t("pin.gate.bioTitle") + '">' +
+              t("pin.gate.bioBtn") +
             '</button>'
           : '') +
         '<div class="kta-pin-gate-keypad">' +
           _keypadKey("1") + _keypadKey("2") + _keypadKey("3") +
           _keypadKey("4") + _keypadKey("5") + _keypadKey("6") +
           _keypadKey("7") + _keypadKey("8") + _keypadKey("9") +
-          '<button class="kta-pin-gate-key kta-pin-gate-key-erase" id="kta-pin-erase" title="Effacer">⌫</button>' +
+          '<button class="kta-pin-gate-key kta-pin-gate-key-erase" id="kta-pin-erase" title="' + t("pin.gate.eraseTitle") + '">⌫</button>' +
           _keypadKey("0") +
-          '<button class="kta-pin-gate-key kta-pin-gate-key-validate" id="kta-pin-validate" title="Valider" disabled>✓</button>' +
+          '<button class="kta-pin-gate-key kta-pin-gate-key-validate" id="kta-pin-validate" title="' + t("pin.gate.validateTitle") + '" disabled>✓</button>' +
         '</div>' +
         // 🆕 v1.28.1 — Accès doc utilisateur depuis l'écran PIN. Cas d'usage :
         // un user qui hésite à activer le PIN, l'a activé puis oublié à quoi
         // ça sert, ou qui veut se renseigner avant de saisir. L'onboarding
         // (🎓) est masqué côté modale doc — sans accès à l'app, pas de sens.
-        '<button type="button" id="kta-pin-readme-btn" class="kta-gate-readme-btn" title="Consulter la documentation utilisateur">' +
-          '📖 Lire la documentation' +
+        '<button type="button" id="kta-pin-readme-btn" class="kta-gate-readme-btn" title="' + t("pin.gate.docTitle") + '">' +
+          t("pin.gate.docBtn") +
         '</button>' +
       '</div>';
     document.documentElement.appendChild(overlay);
@@ -572,14 +575,14 @@
       const el = document.getElementById("kta-pin-attempts");
       if (el) {
         const rem = getRemainingAttempts();
-        el.textContent = rem + " tentative(s) restante(s)";
+        el.textContent = t("pin.gate.attempts", { n: rem });
         if (rem <= 2) el.classList.add("kta-pin-gate-attempts-warn");
       }
     }
 
     function _tryUnlock() {
       if (buffer.length < PIN_MIN) {
-        _showErr("Le code doit faire au moins " + PIN_MIN + " chiffres.");
+        _showErr(t("pin.gate.errTooShort", { min: PIN_MIN }));
         return;
       }
       _showErr("");
@@ -602,11 +605,11 @@
             return;
           }
           const rem = getRemainingAttempts();
-          _showErr("❌ Code incorrect. " + rem + " tentative" + (rem > 1 ? "s" : "") + " restante" + (rem > 1 ? "s" : "") + ".");
+          _showErr(t("pin.gate.errIncorrect", { n: rem }));
         }
       }).catch(function(e) {
         console.error("[PinLock] unlock erreur :", e);
-        _showErr("Erreur interne : " + (e.message || e));
+        _showErr(t("pin.gate.errInternal", { err: (e.message || e) }));
       });
     }
 
@@ -645,11 +648,11 @@
           console.log("[PinLock] Déverrouillé via biométrie");
           if (typeof onUnlock === "function") onUnlock();
         } else {
-          _showErr("Biométrie refusée. Saisis ton code à la place.");
+          _showErr(t("pin.gate.bioRefused"));
         }
       }).catch(function(e) {
         console.warn("[PinLock] biométrie erreur :", e);
-        _showErr("Biométrie indisponible. Utilise le code.");
+        _showErr(t("pin.gate.bioUnavailable"));
       });
     }
 
@@ -717,6 +720,7 @@
 
   // Screen lockout (5 tentatives échouées) — pas de bouton sortie
   function _afficherLockoutUI() {
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     // Cleanup une éventuelle gate précédente
     const old = document.getElementById("kta-pin-gate-overlay");
     if (old) old.remove();
@@ -734,28 +738,24 @@
     overlay.innerHTML =
       '<div class="kta-pin-gate-box kta-pin-gate-box-lockout">' +
         '<div class="kta-pin-gate-icon">🚫</div>' +
-        '<div class="kta-pin-gate-titre">Trop de tentatives</div>' +
+        '<div class="kta-pin-gate-titre">' + t("pin.lockout.titre") + '</div>' +
         '<div class="kta-pin-gate-soustitre">' +
-          '5 codes incorrects à la suite. L\'app est verrouillée définitivement.' +
+          t("pin.lockout.soustitre") +
         '</div>' +
         '<div class="kta-pin-gate-lockout-explication">' +
-          '<p><strong>2 solutions pour récupérer l\'accès :</strong></p>' +
+          '<p><strong>' + t("pin.lockout.solutionsTitre") + '</strong></p>' +
           '<ol style="text-align:left; margin:6px 0 10px 20px; padding:0; line-height:1.7;">' +
-            '<li><strong>Réinstaller complètement l\'app</strong> (supprime ' +
-              'le PIN + la session + les plans non mémorisés).</li>' +
-            '<li><strong>Contacter l\'auteur</strong> via ' +
-              '<a href="https://instagram.com/karma_kta" target="_blank" rel="noopener" style="color:#8cb4ff;">Instagram @karma_kta</a>' +
-              ' ou <a href="mailto:contact@myktamap.fr" style="color:#8cb4ff;">contact@myktamap.fr</a>' +
-              ' — ⚠️ il ne pourra pas récupérer ton code (aucune donnée stockée côté serveur).</li>' +
+            '<li>' + t("pin.lockout.solReinstall") + '</li>' +
+            '<li>' + t("pin.lockout.solContact") + '</li>' +
           '</ol>' +
           '<p style="font-style:italic; color:#8892a4; margin-top:10px;">' +
-          'Verrouillage de sécurité actif après plusieurs tentatives échouées.</p>' +
+          t("pin.lockout.securityNote") + '</p>' +
           // 🆕 v1.28.1 — Accès doc utilisateur même en lockout. Aide l'user
           // perdu à comprendre ce qu'est l'app avant de réinstaller / contacter.
           // Ouverture par-dessus le lockeur via z-index 100200 (cf css
           // .kta-readme-over-locker). Ne change rien au verrouillage.
-          '<button type="button" id="kta-pin-readme-btn-lockout" class="kta-gate-readme-btn" style="margin-top:14px;" title="Consulter la documentation utilisateur">' +
-            '📖 Lire la documentation' +
+          '<button type="button" id="kta-pin-readme-btn-lockout" class="kta-gate-readme-btn" style="margin-top:14px;" title="' + t("pin.gate.docTitle") + '">' +
+            t("pin.gate.docBtn") +
           '</button>' +
         '</div>' +
       '</div>';
@@ -822,6 +822,7 @@
   }
 
   function _afficherModaleProposition() {
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const overlay = document.createElement("div");
     overlay.id        = "kta-pin-proposal-overlay";
     overlay.className = "kta-readme-modal-overlay";
@@ -829,40 +830,35 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-pin-proposal-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🔐 Authentification renforcée disponible</span>' +
+          '<span class="kta-readme-modal-titre">' + t("pin.proposal.titre") + '</span>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           '<p style="font-size:14px; line-height:1.55; color:#e8eaf0; margin:0 0 14px 0;">' +
-            'Bonjour 👋 Cette version ajoute la possibilité de <strong>verrouiller l\'app ' +
-            'localement</strong> par un code 4-6 chiffres, et <strong>Face ID / Touch ID</strong> ' +
-            'si ton appareil le supporte.' +
+            t("pin.proposal.intro") +
           '</p>' +
           '<div class="kta-pin-proposal-info">' +
-            '<div class="kta-pin-proposal-info-titre">🎯 À quoi ça sert ?</div>' +
-            '<p>Protège tes plans, sessions et photos en cas de perte ou de prêt de ton appareil. ' +
-            'Personne ne peut ouvrir l\'app sans ton code (ou ta biométrie).</p>' +
+            '<div class="kta-pin-proposal-info-titre">' + t("pin.proposal.usageTitre") + '</div>' +
+            '<p>' + t("pin.proposal.usageDesc") + '</p>' +
           '</div>' +
           '<div class="kta-pin-proposal-info" style="background:rgba(244,197,66,0.06); border-color:rgba(244,197,66,0.25);">' +
-            '<div class="kta-pin-proposal-info-titre" style="color:#f4c542;">⚠️ Avant d\'accepter</div>' +
+            '<div class="kta-pin-proposal-info-titre" style="color:#f4c542;">' + t("pin.proposal.warnTitre") + '</div>' +
             '<ul style="margin:6px 0 0 18px; padding:0; line-height:1.5; color:#c8d0e0; font-size:13px;">' +
-              '<li><strong>Note bien ton code</strong> : aucune récupération n\'est possible en cas d\'oubli</li>' +
-              '<li>5 codes incorrects = lockout définitif (nécessite de tout supprimer)</li>' +
-              '<li>C\'est une <strong>barrière d\'usage</strong>, pas un chiffrement des données</li>' +
+              '<li>' + t("pin.proposal.warnNoRecovery") + '</li>' +
+              '<li>' + t("pin.proposal.warnLockout") + '</li>' +
+              '<li>' + t("pin.proposal.warnBarrier") + '</li>' +
             '</ul>' +
           '</div>' +
           '<p style="font-size:12.5px; color:#8892a4; margin:14px 0 0 0; line-height:1.5; font-style:italic;">' +
-            'Si tu refuses, cette proposition ne sera plus affichée. ' +
-            'Tu pourras toujours activer plus tard depuis ' +
-            '<strong>⚙️ Configuration → 🔐 Code d\'accès local</strong> sur la page d\'accueil.' +
+            t("pin.proposal.laterHint") +
           '</p>' +
         '</div>' +
         '<div class="kta-conv-actions" style="padding:14px 24px 18px; gap:10px;">' +
           '<button class="kta-btn kta-btn-ghost" id="kta-pin-proposal-non" type="button">' +
-            'Non merci' +
+            t("pin.proposal.btnNo") +
           '</button>' +
           '<button class="kta-btn kta-btn-primary" id="kta-pin-proposal-oui" type="button" ' +
             'style="background:rgba(244,197,66,0.18); border-color:rgba(244,197,66,0.5); color:#f4c542;">' +
-            '🔐 Activer maintenant' +
+            t("pin.proposal.btnYes") +
           '</button>' +
         '</div>' +
       '</div>';
@@ -908,7 +904,7 @@
       } else {
         // Fallback : on log + on indique à l'user d'ouvrir Configuration
         console.warn("[PinLock] window._ouvrirLoaderConfig indisponible — l'user doit ouvrir ⚙️ Configuration manuellement");
-        alert("Pour activer le code d'accès, ouvre ⚙️ Configuration depuis la page d'accueil → section 🔐 Code d'accès local.");
+        alert(t("pin.proposal.fallbackAlert"));
       }
       console.log("[PinLock] Proposition d'activation acceptée → redirection ⚙️ Configuration");
     });

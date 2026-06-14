@@ -8,7 +8,99 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.43.8` (08/06/2026) — **💾 Cache OSM offline « Save Offline » + robustesse SW (consolidation v1.43.0 → v1.43.8)** :
+**📦 Version courante** : `v1.46.4` (14/06/2026) — **🐛 Correctifs moteur** (ronds inter-niveaux, outil tracé, mesure) + **🌍 Aide IA traduite**.
+
+**🐛 v1.46.4 (14/06/2026)** — **Correctifs moteur + Aide IA traduite (FR/EN/ES)** :
+- **Ronds roses des jonctions inter-niveaux** : ne disparaissaient pas au toggle du FilterPanel. Les `L.circleMarker` aux extrémités (ajoutés à `window.layerEditor`) étaient purgés via `layer.remove()` → retire de la map mais **pas du FeatureGroup parent** (même bug que les cercles d'intersection, fixé v1.44.1). Cleanup `renderRoads()` rendu **FeatureGroup-aware** (`grp.removeLayer` si `grp.hasLayer`, fallback `layer.remove`).
+- **Outil tracé bloqué après suppression du dernier point** (tracé / zone / structure / front de taille) : les 3 boutons « ↩️ supprimer dernier point » vidaient le tracé en cours sans fermer le mode → `window.modeX` restait actif + bouton `kta-actif` = état fantôme (icône « coupée », clic carte inerte). Ajout de la garde `if (before && !after) _fermerMode*()` (même pattern que les boutons ✂️ voisins).
+- **Modale « Aide IA »** : toute la chrome (titre, 5 sections, étapes, prompt anti-hallucination, boutons, statuts) migrée vers `I18n.t()` (**25 clés `aiia.*`** fr/en/es). Le `.md` téléchargé reste FR (une IA s'en sort).
+- **Correctifs déjà commités depuis v1.46.3** : mode **mesure** (angles réaffichés — `map.off` avant re-bind, fin du *handler stacking*), mode **édition** (1 clic = 1 point, idem), config **thème clair** lisible (en-têtes de groupe `.kta-cfg-group-titre`), clés i18n manquantes **humanisées** (« Change Btn ») au lieu d'affichées brutes, popup POI **lazy** (`bindPopup(fn)`). Audit `docs/audits/2026-06-14_audit-i18n-langue-v1.md` (P0+P1 traités).
+
+**🎛️ v1.46.3 (13/06/2026)** — **Refonte ergonomique des modales de configuration** :
+- **HOME + carte** : sections réorganisées par **groupes thématiques** (même ordre dans les 2 modales) avec en-têtes : 🌍 Application · 📐 Plan : échelle & géoloc · 📍 Navigation · 🎨 Affichage · 🚀 Performance · 🔒 Confidentialité & sécurité · 🛠️ Système. **Zéro changement de logique** (blocs déplacés, tous les `id`/handlers préservés — PLAN 28 id, HOME 41 id, delta 0).
+- **Échelle (m/px) regroupée avec le Géoréférencement + Calibration Nord** (extraite de « Détection des pas ») — demande KARMA : les calibrations spatiales du plan côte à côte.
+- Clés d'en-tête `config.group.*` (fr/en/es) via `scripts/merge-i18n-frags3.js`. Label langue raccourci (« Langue / Language / Idioma », fini la redondance avec le groupe « Application »). Doublons de titres retirés (Affichage + Mode Performance ULTRA = en-tête de groupe). Lisibilité du menu déroulant langue corrigée (fond solide des `<option>`, dark + thème clair). M-LVL laissé dormant.
+
+**🐛 v1.46.2 (13/06/2026)** — **Phase 2 i18n : rattrapage du FR codé en dur** :
+- La migration v1.46.0 avait couvert les modules `js/` mais laissé du **FR codé en dur** dans les **scripts inline d'`index.html`** + quelques modules (jamais passé en clé → **invisible à `check-i18n`**, qui ne valide que la parité + les clés *appelées*). En EN/ES, ces textes restaient français (bug remonté par KARMA : flux **code d'accès PIN**).
+- **~415 chaînes migrées** vers `I18n.t()`, **+438 clés** ajoutées dans fr/en/es **ensemble** (parité maintenue : 4161/4161). Foyers : flux PIN (config HOME), modale **Profil**, modales **maintenance SW**, modales **crash** (`oomGuard`) + **batterie**, **boussole** (cardinaux localisés SW/W/NW), popup POI, avertissements d'échelle, **rapport de session** (TXT/PDF suit la langue), erreurs pathfinder/PDF/quota. **Tous les `alert()`/`confirm()` natifs** user-facing migrés (7 → 0).
+- **Nouvel outillage d'audit** : `scripts/find-hardcoded-fr.js` (détecte le FR codé en dur — l'angle mort de `check-i18n`) + `scripts/merge-i18n-frags3.js` (fusion fragments tri-langue). Inventaire complet : `docs/i18n-hardcoded-audit.md`.
+- **Résidus connus** (faux-positifs du détecteur = données : grammaire vocale, enums de statut, libellés gravés dans les exports KML/GPX) + quelques chaînes mineures documentées. Labels d'import (KMZ/GPX) localisés **à la langue d'import** (donnée figée, assumé).
+
+**🇪🇸 v1.46.1 (13/06/2026)** — **Espagnol (ES) + déplacement du sélecteur de langue** :
+- **`lang/es.json` (NOUVEAU)** : 3ᵉ langue complète — **3721 clés** traduites (100 %, parité avec `fr.json`, `{param}` cohérents). `{ code: "es", label: "Español" }` ajouté à `AVAILABLE_LANGS` (`js/langManager.js`) + `./lang/es.json` précaché (`sw.js`). Glossaire cataphile/spéléo ES (trazado, plano, frente de cantera, gatera, rescate, operador…). Lots traduits par sous-agents parallèles puis fusionnés (`scripts/merge-es-frags.js`).
+- **Sélecteur de langue déplacé** : retiré du header HOME (trop chargé sur mobile), placé dans **⚙️ Configuration → section dédiée juste après Incognito** (`#loaderLangSection`, drapeau + nom complet). Bascule **live sans reload** (HOME + modale ouverte re-traduits en place via `_applyI18nDom`, compatible incognito).
+- **Doc / Aide / Onboarding → GB par défaut** quand l'app n'est plus en FR : un changement de **langue globale** efface la mémoire locale `myktamap_readme_lang` → ces 3 contenus re-suivent la langue de l'app (→ EN, car ils restent FR/EN). Le toggle drapeau local reste sticky tant que la langue globale ne bouge pas. `onChange` ne fire qu'au changement utilisateur (pas au boot).
+- **Modale de confirmation thème CLAIR/SOMBRE** : restait codée en dur en FR (résidu), migrée vers `I18n.t()` au rendu (clés `theme.name.*` + `theme.confirm.*` fr/en/es ; le mot coloré passe via interpolation `{target}`).
+- **Outillage** : `scripts/merge-es-frags.js` (NOUVEAU) ; `scripts/check-i18n.js` étendu (contrôle **souple** des langues WIP : couverture partielle tolérée, mais clé fantôme + `{param}` divergent restent bloquants).
+- **Refactor** : `js/i18n.js` renommé **`js/langManager.js`** (nom plus parlant ; global `window.I18n` inchangé).
+- **Hors scope** (toujours FR/EN) : Documentation (`README_USER.*`), Aide intégrée, onboarding. La traduction ES de ces contenus longs = chantier séparé ultérieur.
+
+**🌍 v1.46.0 (13/06/2026)** — **Migration multilingue COMPLÈTE** (chantier méthodique en 7 vagues, sous-agents parallèles + relecture/go-no-go indépendants) :
+- **~3600 clés** `lang/fr.json` + `lang/en.json` (parité 100 %, interpolations `{param}` cohérentes vérifiées par `scripts/check-i18n.js`). FR = référence + fallback universel.
+- **~50 modules migrés** vers `window.I18n.t()` au rendu : toute l'UI (barre d'outils, modales, toasts, tooltips, placeholders, alertes), Réglages (Perf ULTRA/Géoréf/M-LVL), HOME complet, Itinéraire, Vue OSM, Générateur, Éditeurs, Exports/Imports (PNG/PDF/KMZ/GPX), Stats, Mode Histoire, commandes vocales, et **Mode Secours** (le plus gros : ~700 clés).
+- **Outillage** : `scripts/check-i18n.js` (parité + clés appelées + interpolations), `scripts/merge-i18n-frags.js` (fusion des fragments). Glossaire EN cohérent (tracé→path, plan→map, niveau→level, équipe→team, secours→rescue…).
+- **Hors scope** (portée séparée) : doc + onboarding (clé `myktamap_readme_lang`). **Non traduit** (= données) : tags moteur, ids, statuts sérialisés, patterns de reconnaissance vocale, libellés gravés dans les exports KML/GPX.
+- Bascule **live sans reload** via le sélecteur ⚙️ Réglages / HOME. Détails : `docs/architecture/i18n.md` (table de migration) + `docs/i18n-audit.md` (inventaire).
+
+**🌍 v1.45.0 (13/06/2026)** — **Chantier multi-langue — Phase 0 : infra + module pilote** :
+- `js/langManager.js` (NOUVEAU) : helper `window.I18n` — dicos plats `lang/<code>.json` (clés `"module.section.element"`), chaîne de fallback **langue active → fr → clé brute** (jamais de crash), interpolation `{param}`. API : `init()` (await au boot), `t(key, params)`, `getLang()`, `setLang()`, `ensureLang()`, `onChange()`, `available()`, `has()`.
+- **Langue globale de l'app** lue depuis `localStorage["myktamap_app_lang"]`, **découplée** de `myktamap_readme_lang` (doc + onboarding). Décision KARMA : le changement de langue **complet** passe par ⚙️ Réglages ; les toggles 🇫🇷/🇬🇧 de la doc et du tutoriel restent **locaux** à leur propre affichage.
+- **Sélecteur de langue dans ⚙️ Réglages** (`interfaceConfig.js`) : section `🌍 Langue de l'application` (`<select>` alimenté par `I18n.available()`) → au change, `I18n.setLang()` + rebuild de la modale = bascule **live sans reload**.
+- **Présélection intelligente doc + onboarding** (`interfaceDocs.js`, `tutorial.js`) : à l'ouverture, la langue suit le **choix manuel mémorisé** s'il existe, sinon le **défaut dérivé de la langue de l'app** (`I18n.resolveContentLang` : langue app si le contenu existe, sinon EN, sinon FR). Onglets de langue **dynamiques** (un drapeau par `README_USER.<code>.md` / tableau `CARDS_*` présent) → 2 aujourd'hui (FR/EN), 3+ générique le jour où un RU/ES/… arrive (zéro code de langue figé). La doc affiche N drapeaux (courant `.active`), l'onboarding **cycle** sur la liste.
+- **HOME multilingue + sélecteur dès l'accueil** (`index.html`, `main.js`) : sélecteur de langue dans le header du loader (visible **avant** de charger un plan, et donc en **incognito** qui réutilise le même écran). Les textes statiques du HOME sont annotés `data-i18n` / `data-i18n-html` / `data-i18n-title` et traduits **depuis le dico** par `_applyI18nDom()` (au boot + à chaque bascule, en place sans reload). 21 clés `home.*`. Bandeau profil : greeting + placeholder via `I18n.t()` + re-render sur `I18n.onChange` (le pseudo user reste inchangé). Restent en FR pour une vague suivante : footer, interne du widget Vue OSM, cartes de plans, modale config HOME.
+- `lang/fr.json` + `lang/en.json` (NOUVEAUX) : 1ers dicos (25 clés, parité 100%). FR = **langue de référence + fallback universel**.
+- **Module pilote `interfaceConfig.js`** : migration du **lot 1** de la modale Réglages (header, langue, mode présentation, incognito, position tracker, détection des pas, navigation intelligente) — 23 appels `I18n.t()`. Les sections restantes (Affichage, Perf ULTRA, M-LVL, géoréf…) gardent leur FR inline → **vague suivante** (migration progressive assumée, zéro régression : migré ou pas, ça marche).
+- **Branchement boot** : `index.html` charge `js/langManager.js` tôt (après copyright) · `main.js` `await I18n.init()` avant `lancerApplication` (dicos prêts avant tout rendu) · `sw.js` précache `./js/langManager.js` + `./lang/fr.json` + `./lang/en.json` (fr.json + i18n.js dans le shell critique → boot offline OK).
+- Demain pour ajouter ES/RU/… : déposer `lang/<code>.json` + l'ajouter à `AVAILABLE_LANGS` (i18n.js) + `ASSETS_TO_CACHE` (sw.js). **Zéro code moteur à toucher.** Détails : `docs/architecture/i18n.md`.
+
+**✏️ v1.44.7 (10/06/2026)** — **Tutoriel : description exacte des POI sortie** (audit traduction EN) :
+- `tutorial.js` : la carte 12 mentionnait un tag `sortie`/`exit` qui n'existe pas dans le moteur (`sortieUrgence.js` matche sur `cao`/`peo`/`eso` ou le tag `entrée`). Corrigé FR + EN avec les vrais tags. Audit complet de la traduction EN par agent : parité 25/25, complétude 100%, 0 bloquant — seul ce faux tag (hérité du FR) restait à corriger.
+
+**🇬🇧 v1.44.6 (10/06/2026)** — **Tutoriel premier-lancement bilingue** :
+- `tutorial.js` : ajout d'un tableau `CARDS_EN` (25 cartes, parité 1:1 avec `CARDS` FR) + objet `UI_STRINGS` (header/boutons/aria). Toggle 🇫🇷/🇬🇧 dans le header du tutoriel (même logique que la modale Documentation), qui bascule les 25 cartes en live. Langue lue/persistée dans la clé partagée `localStorage["myktamap_readme_lang"]` (auto-détection `navigator.language` au 1er boot) → cohérence avec la doc. CSS : `.kta-tutorial-lang` compact dans `style-meminspector.css`.
+
+**🐛 v1.44.5 (10/06/2026)** — **Générateur : data URL SVG `entree_plan` débordait la modale** :
+- `createConf.js` : l'icône built-in `entree_plan` (SVG inline, `data:image/svg+xml;...` ~700 caractères) était affichée telle quelle dans le nom de la row d'icône. En flexbox/grid sans `min-width:0`, ce contenu `nowrap` annulait le `text-overflow:ellipsis` → débordait + élargissait toute la modale + cassait le wrap des textes (mode Avancé, écran ≥1280px en grille 2 colonnes). Fix JS : label propre `🔗 icône intégrée (SVG)` pour les data URL (le `<img src>` garde la data URL pour la preview). Fix CSS : `min-width:0` sur `.kta-planner-icon-path` (flex) ET sur `#kta-planner-corps > *` (grid items).
+
+**🐛 v1.44.4 (10/06/2026)** — **Suppression au clic : cause racine corrigée** :
+- `interface.js` : le v1.44.3 masquait la popup mais ne déclenchait pas la suppression. Cause de fond : quand on clique PILE sur un élément avec `bindPopup`, le handler Leaflet `_openPopup` fait `DomEvent.stop(e)` → la propagation est stoppée → le `map.on("click")` du mode suppression ne tire JAMAIS. Seuls les clics *à proximité* (sans toucher la ligne) supprimaient. Fix : on REJOUE le clic suppression depuis l'event `popupopen` (Leaflet ouvre la popup à `t.latlng` = point cliqué, donc `popup.getLatLng()` = position du clic) → handler de suppression actif appelé avec `{ latlng }`, retrouve l'élément cliqué et le supprime.
+
+**v1.44.3 (10/06/2026)** — Guard popup mode suppression (1ère tentative, incomplète : masquait la popup sans corriger la cause — voir v1.44.4).
+
+**🐛 v1.44.2 (10/06/2026)** — **Ronds d'intersection vs toggle calque data** (3e bug de la même famille, trouvé au test terrain de v1.44.1) :
+- `filterPanel.js` : `road.js` recalcule les intersections sur `overlayadd`/`overlayremove` — événements émis uniquement par le contrôle de couches Leaflet NATIF. Or le FilterPanel (v1.21.5) fait `map.addLayer/removeLayer` directement → aucun événement → cercles des roads embarquées du calque masqué persistaient. Fix : `_scheduleRoadsRecalc()` (renderRoads coalescé 150 ms) déclenché après chaque toggle de calque data. Le coalescing évite N renders d'affilée au « Tout afficher » (events synthétiques par checkbox).
+
+**🐛 v1.44.1 (10/06/2026)** — **Fix ronds aux intersections des tracés** (2 bugs cumulés, pré-existants) :
+- `road.js` : `_renderIntersections` ignorait le filtre runtime par type de tracé (`_ktaRuntimeFilters.roadTypes`) → les cercles des types décochés dans Filtres ≡ restaient affichés. Nouveau `_passeFiltreTag()` miroir de la logique `renderRoads`.
+- `road.js` : `layer.remove()` retirait les cercles de la map mais **pas du FeatureGroup parent** (`layerEditor`) → accumulation silencieuse à chaque re-render (mesuré : 719 cercles fantômes pour 9 attendus sur plan dense). Nouveau helper `_purgeIntersectionLayers()` mutualisé (`_renderIntersections` + `resetRoads`) qui retire via `grp.removeLayer()`.
+
+**📦 v1.44.0** (09/06/2026) — **🧰 Refonte interne du cycle de vie des modales (helper `ModalLifecycle`)** sur la base de la 1.43.x (`Save Offline` + robustesse SW + hardening modales v1.43.26-27). Voir `docs/architecture/modal-lifecycle.md` pour l'architecture, `docs/applications/NETWORK_AUDIT.md` pour le détail des patches v1.43.9 → v1.44.0, et `docs/audits/2026-06-09_audit-modales-v2.md` pour le rapport workflow d'audit.
+
+**🧰 v1.44.0 (09/06/2026)** — **Refonte interne ModalLifecycle** (helper standalone ~250 lignes, zéro dépendance, opt-in modale par modale) :
+- `js/modalLifecycle.js` : nouveau helper qui tracke timers + listeners + blob URLs d'une modale et libère tout automatiquement au `close()`
+- Migrations pilotes : `memInspector` (complète : ouverture/fermeture + `_refreshAndRender` + sous-modale crash detail + event delegation `_bindCrashHandlers`), `swInspector` (complète : `_collectAndRender` avec `guard` + `_handleRefetchClick` avec `lockButton`), `lostMode` (partielle : `_lc.close()` au fermer + `_lc.setTimeout` bouton copy)
+- 3 high audit V2 restants fixés : `createConf:3062` try/finally garantit revoke blob URL ZIP, `interfaceItineraire:963 + :1401` refacto event delegation autocomplete avoid/waypoints
+- Quick wins audit V2 : GPS invalid input mark clear avant chaque validation, overrides CSS light theme `.kta-mem-loading` + toast `#kta-sw-incomplet-toast`
+- Hook lint advisory `scripts/check-modal-lifecycle.js` (intégré `.githooks/pre-commit`) flag les natifs dans les modules migrés
+- Doc architecture `docs/architecture/modal-lifecycle.md` (contrat complet + bonnes pratiques + plan migration)
+
+**🩹 v1.43.27 (09/06/2026)** — **Hotfix audit modales V2** (workflow adversarial verify, 87 raw → 61 confirmés) :
+- `osmView:2390` — **régression v1.43.26 corrigée** : `.finally()` ajouté pour cleanup `waitOverlay` (avant : overlay orphelin dans le DOM à chaque ouverture Vue OSM)
+- `lostMode:997` — guard `isConnected` après `await findByQuery` (search autocomplete safe au close)
+- `secoursMode:4400` + `:3607` — `btn.disabled` PDF Briefing/Rapport (double-clic impossible)
+- `interfaceItineraire:1518` — guard `isConnected` après `await computeRoute` Dijkstra
+- `filterPanel:559+` — event delegation Image/Data/Tags/show-all/hide-all (cohérence M-LVL v1.43.26)
+
+**🧯 v1.43.26 (08/06/2026)** — **Top 10 audit modales** (workflow adversarial verify, 153 raw findings → 30 confirmés) :
+- `osmView` : guard `getCurrentPosition` callback après close + `.finally()` cleanup waitOverlay
+- `memInspector` : `_lastReport = null` au fermer + Escape listener auto-cleaned dans crash detail modal
+- `lostMode` : `_searchTimeout` clear au close + bannière warning « rayon dépasse » → classe CSS + theming light
+- `createConf` : try/finally blob URL `imgUrl` lors du tilage V2 (revoke garanti en cas d'exception)
+- `filterPanel` : refacto event delegation pour M-LVL handlers (plus de re-bind à chaque innerHTML reflow)
+- `secoursMode` : Pattern A (anti-leak Esc listener orphelin sur ré-ouverture modale Phase) + Pattern B (theming light pour sous-modales via `style-secours.css` overrides ciblés)
+
+**📦 Historique long** — `v1.43.0` (08/06/2026) : **💾 Cache OSM offline « Save Offline » + robustesse SW (consolidation v1.43.0 → v1.43.8)** :
 
 KARMA : besoin de garder la Vue OSM consultable hors-ligne (descente cata, terrain sans réseau). Solution introduite en v1.43.0 puis durcie sur 8 patches successifs : un bouton « 💾 Save Offline » dans les 3 contextes Vue OSM (modale plan georef + widget HOME + Mode Secours), qui télécharge les tuiles `tile.openstreetmap.org` de la vue actuelle dans un store IndexedDB local, servies ensuite **de manière transparente** par le Service Worker.
 

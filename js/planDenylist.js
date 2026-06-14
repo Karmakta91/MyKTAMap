@@ -219,7 +219,7 @@
         return {
           denied:  true,
           sha256:  sha256,
-          reason:  entry.reason  || "Plan révoqué par l'auteur.",
+          reason:  entry.reason  || (window.I18n ? window.I18n.t("denylist.defaultReason") : "denylist.defaultReason"),
           addedAt: entry.addedAt || null
         };
       }
@@ -231,17 +231,19 @@
   // MODALE BLOQUANTE — affichage si refus
   // ============================================================
   function showDeniedModal(info, planId, onDismiss) {
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+    const locale = (window.I18n && window.I18n.getLang) ? window.I18n.getLang() : "fr";
     // Suppression d'une modale existante (anti-doublon)
     const existing = document.getElementById("kta-denylist-modal");
     if (existing) existing.remove();
 
-    const reasonText  = info.reason  || "Plan révoqué par l'auteur.";
+    const reasonText  = info.reason  || t("denylist.defaultReason");
     const addedAtStr  = info.addedAt
-                       ? new Date(info.addedAt).toLocaleString("fr-FR")
-                       : "(date non précisée)";
+                       ? new Date(info.addedAt).toLocaleString(locale)
+                       : t("denylist.dateUnknown");
     const sha256Short = info.sha256
                        ? (info.sha256.slice(0, 12) + "…" + info.sha256.slice(-8))
-                       : "(hash indisponible)";
+                       : t("denylist.hashUnavailable");
 
     // 🆕 v1.42.14 — Palette adaptée au thème (gardons le rouge danger fort
     // dans les 2 thèmes — la sémantique reste critique — juste les fonds
@@ -290,8 +292,8 @@
     head.innerHTML =
       '<div style="font-size:42px;line-height:1;flex:0 0 auto;">⛔</div>' +
       '<div>' +
-        '<div style="font-size:20px;font-weight:700;color:' + (isLight ? "#b71c1c" : "#ffb4b4") + ';letter-spacing:0.3px;">Plan révoqué</div>' +
-        '<div style="font-size:12px;color:' + (isLight ? "#a04040" : "#e8a0a0") + ';margin-top:2px;">Ce plan a été retiré par l\'auteur ou a fuité publiquement.</div>' +
+        '<div style="font-size:20px;font-weight:700;color:' + (isLight ? "#b71c1c" : "#ffb4b4") + ';letter-spacing:0.3px;">' + t("denylist.modal.titre") + '</div>' +
+        '<div style="font-size:12px;color:' + (isLight ? "#a04040" : "#e8a0a0") + ';margin-top:2px;">' + t("denylist.modal.soustitre") + '</div>' +
       '</div>';
     box.appendChild(head);
 
@@ -304,7 +306,7 @@
       "color:" + (isLight ? "#3a1010" : "#fff5f5")
     ].join(";");
     body.innerHTML =
-      '<div style="font-weight:600;color:' + (isLight ? "#b71c1c" : "#ffd0d0") + ';margin-bottom:6px;">Motif :</div>' +
+      '<div style="font-weight:600;color:' + (isLight ? "#b71c1c" : "#ffd0d0") + ';margin-bottom:6px;">' + t("denylist.motifLabel") + '</div>' +
       '<div>' + _escapeHtml(reasonText) + '</div>';
     box.appendChild(body);
 
@@ -312,15 +314,15 @@
     const tech = document.createElement("div");
     tech.style.cssText = "font-size:11px;color:" + pal.techCol + ";margin:12px 0 18px;line-height:1.6;";
     tech.innerHTML =
-      'Ajouté à la liste : <strong style="color:' + (isLight ? "#6a4040" : "#c0b0b0") + ';">' + _escapeHtml(addedAtStr) + '</strong><br>' +
-      'Empreinte SHA-256 : <code style="font-family:monospace;color:' + pal.monoCol + ';font-size:11px;">' + _escapeHtml(sha256Short) + '</code>';
+      t("denylist.addedAt") + ' <strong style="color:' + (isLight ? "#6a4040" : "#c0b0b0") + ';">' + _escapeHtml(addedAtStr) + '</strong><br>' +
+      t("denylist.fingerprint") + ' <code style="font-family:monospace;color:' + pal.monoCol + ';font-size:11px;">' + _escapeHtml(sha256Short) + '</code>';
     box.appendChild(tech);
 
     // Action
     const actions = document.createElement("div");
     actions.style.cssText = "display:flex;justify-content:flex-end;gap:10px;margin-top:8px;";
     const btn = document.createElement("button");
-    btn.textContent = "Compris, supprimer ce plan";
+    btn.textContent = t("denylist.btnDelete");
     btn.style.cssText = [
       "padding:10px 22px", "background:#d32f2f", "color:#fff",
       "border:none", "border-radius:8px", "font-size:14px", "font-weight:600",
@@ -484,7 +486,7 @@
             id:        plan.id,
             name:      plan.name || plan.originalFilename || plan.id,
             sha256:    hash,
-            reason:    match.reason  || "Plan révoqué par l'auteur.",
+            reason:    match.reason  || (window.I18n ? window.I18n.t("denylist.defaultReason") : "denylist.defaultReason"),
             addedAt:   match.addedAt || null,
             purgedAt:  new Date().toISOString()
           });
@@ -534,6 +536,9 @@
   // Auto-clear la liste à la fermeture (ne ré-affiche pas au prochain boot).
   function showPurgedNotifModal(purgedList) {
     if (!Array.isArray(purgedList) || purgedList.length === 0) return;
+
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+    const locale = (window.I18n && window.I18n.getLang) ? window.I18n.getLang() : "fr";
 
     const existing = document.getElementById("kta-denylist-purged-modal");
     if (existing) existing.remove();
@@ -591,16 +596,15 @@
       '<div style="font-size:38px;line-height:1;flex:0 0 auto;">⚠️</div>' +
       '<div>' +
         '<div style="font-size:18px;font-weight:700;color:' + pp.titleCol + ';letter-spacing:0.3px;">' +
-          n + ' plan' + (n > 1 ? 's' : '') + ' révoqué' + (n > 1 ? 's' : '') + ' automatiquement supprimé' + (n > 1 ? 's' : '') +
+          t(n > 1 ? "denylist.purged.titre.plural" : "denylist.purged.titre.one", { n: n }) +
         '</div>' +
-        '<div style="font-size:12px;color:' + pp.subCol + ';margin-top:2px;">Détecté' + (n > 1 ? 's' : '') + ' au démarrage de l\'application.</div>' +
+        '<div style="font-size:12px;color:' + pp.subCol + ';margin-top:2px;">' + t(n > 1 ? "denylist.purged.detected.plural" : "denylist.purged.detected.one") + '</div>' +
       '</div>';
     box.appendChild(head);
 
     const intro = document.createElement("p");
     intro.style.cssText = "font-size:13px;color:" + pp.introCol + ";line-height:1.5;margin:8px 0 14px;";
-    intro.textContent = "L'auteur a ajouté ces plans à sa liste de révocations publique (fuite, retrait, etc.). " +
-                        "Ils ont été supprimés de ta liste pour éviter une utilisation accidentelle.";
+    intro.textContent = t("denylist.purged.intro");
     box.appendChild(intro);
 
     const list = document.createElement("ul");
@@ -608,15 +612,15 @@
     for (const p of purgedList) {
       const li = document.createElement("li");
       li.style.cssText = "margin:0 0 10px;padding:10px 14px;background:" + pp.itemBg + ";border-left:3px solid #e9a13b;border-radius:6px;";
-      const shaShort = p.sha256 ? (p.sha256.slice(0, 12) + "…" + p.sha256.slice(-8)) : "(hash N/A)";
-      const purgedStr = p.purgedAt ? new Date(p.purgedAt).toLocaleString("fr-FR") : "";
+      const shaShort = p.sha256 ? (p.sha256.slice(0, 12) + "…" + p.sha256.slice(-8)) : t("denylist.purged.hashNA");
+      const purgedStr = p.purgedAt ? new Date(p.purgedAt).toLocaleString(locale) : "";
       li.innerHTML =
         '<div style="font-weight:600;color:' + pp.itemName + ';margin-bottom:4px;">📦 ' + _escapeHtml(p.name) + '</div>' +
         '<div style="font-size:12px;color:' + pp.itemDesc + ';margin-bottom:4px;">' +
-          '<strong>Motif :</strong> ' + _escapeHtml(p.reason || "(non précisé)") +
+          '<strong>' + t("denylist.motifLabel") + '</strong> ' + _escapeHtml(p.reason || t("denylist.purged.reasonNone")) +
         '</div>' +
         '<div style="font-size:10.5px;color:' + pp.itemMono + ';font-family:monospace;">' +
-          'SHA-256 : ' + _escapeHtml(shaShort) + (purgedStr ? ' · Supprimé le ' + _escapeHtml(purgedStr) : '') +
+          t("denylist.purged.sha256Label") + ' ' + _escapeHtml(shaShort) + (purgedStr ? ' ' + t("denylist.purged.deletedOn", { date: _escapeHtml(purgedStr) }) : '') +
         '</div>';
       list.appendChild(li);
     }
@@ -625,7 +629,7 @@
     const actions = document.createElement("div");
     actions.style.cssText = "display:flex;justify-content:flex-end;gap:10px;margin-top:8px;";
     const btn = document.createElement("button");
-    btn.textContent = "Compris";
+    btn.textContent = t("denylist.purged.btnOk");
     btn.style.cssText = [
       "padding:10px 22px", "background:#e9a13b", "color:#1a1505",
       "border:none", "border-radius:8px", "font-size:14px", "font-weight:700",

@@ -67,30 +67,26 @@ function _renderPerfUltraSection() {
   }
   return `
     <div class="kta-aide-section">
-      <div class="kta-aide-section-titre">🚀 Mode Performance ULTRA</div>
       <p style="font-size:11.5px; color:#8892a4; margin:0 0 10px 0; line-height:1.5;">
-        Pour les gros plans / appareils faibles. Active <strong>🚀 ULTRA</strong> pour appliquer
-        les optims d'un coup, ou ajuste individuellement chaque levier. Les changements
-        s'appliquent à la volée — sauf les options marquées d'un <span style="color:#ffb380;">liseré orange</span>
-        qui nécessitent un reload du plan pour prendre effet.
+        ${window.I18n.t("config.perfultra.intro")}
       </p>
-      ${row("cfg_perf_ultra", "🚀 Mode ULTRA (active tout)", s.ultra,
-            "Préset qui active les 7 toggles ci-dessous. Décocher = désactive tout.")}
+      ${row("cfg_perf_ultra", window.I18n.t("config.perfultra.ultra.label"), s.ultra,
+            window.I18n.t("config.perfultra.ultra.hint"))}
       <div style="border-top:1px solid rgba(255,255,255,0.08); margin:10px 0; padding-top:8px;"></div>
-      ${row("cfg_perf_decim", "🪜 Décimer les tracés au dézoom", s.decim,
-            "Simplifie les polylines via Ramer-Douglas-Peucker. Tracés moins lisses au dézoom mais bien plus rapides.")}
-      ${row("cfg_perf_animOff", "⚡ Désactiver animations zoom/pan", s.animOff,
-            "Pan/zoom instantanés au lieu d'animés. <strong>Reload requis</strong> après changement.", true)}
-      ${row("cfg_perf_noIntersect", "🎯 Désactiver cercles intersections (gros plans)", s.noIntersect,
-            "Seuil abaissé à 50 routes (vs 200 normal). Pas de cercles aux carrefours au-delà.")}
-      ${row("cfg_perf_noTooltips", "🚫 Désactiver popups sur calques données", s.noTooltips,
-            "Plus de popup au clic sur les markers des calques de données. Les points session restent interactifs. Utilise 🔍 pour interagir.")}
-      ${row("cfg_perf_slowSave", "🐢 Auto-save lent (30s)", s.slowSave,
-            "Sauvegarde automatique toutes les 30s au lieu de 1.5s. Risque de perdre ~30s de modifs si crash.")}
-      ${row("cfg_perf_viewportCull", "👁️ Ne rendre que les éléments visibles", s.viewportCull,
-            "Saute les routes <strong>ET les markers POI</strong> hors viewport. Pop-in léger au pan mais énorme gain sur plans denses (100+ POI).")}
-      ${row("cfg_perf_mobileZoomLimit", "🛡️ Limiter le dézoom sur mobile (anti-crash mémoire)", s.mobileZoomLimit,
-            "<strong>Coché par défaut</strong>. Sur smartphone, plafonne le dézoom max pour éviter le crash OOM quand Leaflet tente de rendre l'image entière au minZoom. <strong>Décocher</strong> = autorise le même dézoom max que sur PC (utile pour vue d'ensemble), mais risque de crash sur gros plans. <strong>Reload requis</strong> après changement.", true)}
+      ${row("cfg_perf_decim", window.I18n.t("config.perfultra.decim.label"), s.decim,
+            window.I18n.t("config.perfultra.decim.hint"))}
+      ${row("cfg_perf_animOff", window.I18n.t("config.perfultra.animOff.label"), s.animOff,
+            window.I18n.t("config.perfultra.animOff.hint"), true)}
+      ${row("cfg_perf_noIntersect", window.I18n.t("config.perfultra.noIntersect.label"), s.noIntersect,
+            window.I18n.t("config.perfultra.noIntersect.hint"))}
+      ${row("cfg_perf_noTooltips", window.I18n.t("config.perfultra.noTooltips.label"), s.noTooltips,
+            window.I18n.t("config.perfultra.noTooltips.hint"))}
+      ${row("cfg_perf_slowSave", window.I18n.t("config.perfultra.slowSave.label"), s.slowSave,
+            window.I18n.t("config.perfultra.slowSave.hint"))}
+      ${row("cfg_perf_viewportCull", window.I18n.t("config.perfultra.viewportCull.label"), s.viewportCull,
+            window.I18n.t("config.perfultra.viewportCull.hint"))}
+      ${row("cfg_perf_mobileZoomLimit", window.I18n.t("config.perfultra.mobileZoomLimit.label"), s.mobileZoomLimit,
+            window.I18n.t("config.perfultra.mobileZoomLimit.hint"), true)}
     </div>`;
 }
 
@@ -143,20 +139,15 @@ function _renderMultiLevelSection() {
     && window.PlanRegistry.getMultiLevel(planId));
   return `
     <div class="kta-aide-section">
-      <div class="kta-aide-section-titre">🏗️ Mode multi-niveau (avancé)</div>
+      <div class="kta-aide-section-titre">${window.I18n.t("config.mlvl.titre")}</div>
       <p style="font-size:11.5px; color:#8892a4; margin:0 0 10px 0; line-height:1.5;">
-        Active la gestion des niveaux (étages) pour les carrières multi-étages.
-        Ajoute un sélecteur de niveau dans le groupe <strong>🛣️ Tracés</strong> +
-        une sous-action <strong>🪜 Jonction interniveau</strong>. Les roads existantes
-        sans niveau explicite sont automatiquement considérées comme niveau 0.
-        <br><strong style="color:#c8d0e0;">Désactivé par défaut</strong> — uniquement
-        pour les plans qui le nécessitent (Glacière, Capucins, etc.).
+        ${window.I18n.t("config.mlvl.intro")}
       </p>
       <label class="kta-perf-ultra-row">
         <input type="checkbox" id="cfg_multiLevel" ${enabled ? "checked" : ""}>
         <span class="kta-perf-ultra-text">
-          <span class="kta-perf-ultra-label">🏗️ Activer le mode multi-niveau pour ce plan</span>
-          <span class="kta-perf-ultra-hint">Persisté par plan. Reload requis pour que les changements UI soient visibles dans la sidebar.</span>
+          <span class="kta-perf-ultra-label">${window.I18n.t("config.mlvl.toggle.label")}</span>
+          <span class="kta-perf-ultra-hint">${window.I18n.t("config.mlvl.toggle.hint")}</span>
         </span>
       </label>
     </div>`;
@@ -219,14 +210,9 @@ function _renderCfgGeorefSection() {
 
   return '' +
     '<div class="kta-aide-section">' +
-      '<div class="kta-aide-section-titre">🌐 Géoréférencement GPS</div>' +
+      '<div class="kta-aide-section-titre">' + window.I18n.t("config.georef.titre") + '</div>' +
       '<p style="font-size:12px; color:#8892a4; margin:4px 0 12px; line-height:1.5;">' +
-        'Calibre le plan en saisissant <strong>2 points de référence</strong> ' +
-        '(coordonnées x/y plan + lat/lng GPS WGS84). MyKTAMap calcule la ' +
-        'transformation rotation+échelle+translation pour projeter toutes les ' +
-        'annotations sur le globe. Le calibrage est <strong>persisté localement ' +
-        'par plan</strong> et automatiquement pré-rempli quand tu ouvres ' +
-        '<strong>📡 Export externe</strong> (KMZ / GPX) ou que tu importes un GPX.' +
+        window.I18n.t("config.georef.intro") +
       '</p>' +
 
       // ===== Point A =====
@@ -237,40 +223,40 @@ function _renderCfgGeorefSection() {
       // Les coords GPS lat/lng restent saisies manuellement (l'app ne
       // connaît pas le GPS du plan tant que la calibration n'existe pas).
       '<div class="kta-kmz-section" style="margin:8px 0;">' +
-        '<div class="kta-kmz-section-titre">📍 Point A</div>' +
+        '<div class="kta-kmz-section-titre">' + window.I18n.t("config.georef.pointA") + '</div>' +
         '<div class="kta-kmz-pt-grille">' +
-          '<label class="kta-kmz-lbl">Plan x :</label>' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planX") + '</label>' +
           '<input type="number" id="cfg_kmz_A_x"   value="' + pA.x   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
-          '<label class="kta-kmz-lbl">Plan y :</label>' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planY") + '</label>' +
           '<input type="number" id="cfg_kmz_A_y"   value="' + pA.y   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
-          '<label class="kta-kmz-lbl">GPS (lat, lng) :</label>' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.gpsLatLng") + '</label>' +
           // 🆕 hotfix21 — Input combiné lat/lng (format Google Maps natif).
           '<input type="text" id="cfg_kmz_A_coords" value="' + ((typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(pA.lat, pA.lng) : (Number.isFinite(pA.lat) && Number.isFinite(pA.lng) ? pA.lat + ", " + pA.lng : "")) + '" class="kta-cfg-input kta-kmz-input kta-gps-coords-input" inputmode="decimal" autocomplete="off" placeholder="48.8580, 2.2945">' +
         '</div>' +
         '<div class="kta-gps-coords-error" id="cfg_kmz_A_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_search" type="button">🔍 Chercher un point</button>' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_click" type="button">📍 Cliquer carte</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_search" type="button">' + window.I18n.t("config.georef.searchBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
         '</div>' +
         '<div id="cfg_kmz_A_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
       // ===== Point B =====
       '<div class="kta-kmz-section" style="margin:8px 0;">' +
-        '<div class="kta-kmz-section-titre">📍 Point B</div>' +
+        '<div class="kta-kmz-section-titre">' + window.I18n.t("config.georef.pointB") + '</div>' +
         '<div class="kta-kmz-pt-grille">' +
-          '<label class="kta-kmz-lbl">Plan x :</label>' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planX") + '</label>' +
           '<input type="number" id="cfg_kmz_B_x"   value="' + pB.x   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
-          '<label class="kta-kmz-lbl">Plan y :</label>' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planY") + '</label>' +
           '<input type="number" id="cfg_kmz_B_y"   value="' + pB.y   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
-          '<label class="kta-kmz-lbl">GPS (lat, lng) :</label>' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.gpsLatLng") + '</label>' +
           // 🆕 hotfix21 — Input combiné lat/lng (format Google Maps natif).
           '<input type="text" id="cfg_kmz_B_coords" value="' + ((typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(pB.lat, pB.lng) : (Number.isFinite(pB.lat) && Number.isFinite(pB.lng) ? pB.lat + ", " + pB.lng : "")) + '" class="kta-cfg-input kta-kmz-input kta-gps-coords-input" inputmode="decimal" autocomplete="off" placeholder="48.8520, 2.3050">' +
         '</div>' +
         '<div class="kta-gps-coords-error" id="cfg_kmz_B_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_search" type="button">🔍 Chercher un point</button>' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_click" type="button">📍 Cliquer carte</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_search" type="button">' + window.I18n.t("config.georef.searchBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
         '</div>' +
         '<div id="cfg_kmz_B_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
@@ -279,10 +265,10 @@ function _renderCfgGeorefSection() {
 
       '<div style="display:flex; gap:8px; flex-wrap:wrap;">' +
         '<button class="kta-btn kta-btn-primary" type="button" id="cfg_kmz_save">' +
-          '💾 Sauvegarder le calibrage' +
+          window.I18n.t("config.georef.saveBtn") +
         '</button>' +
         '<button class="kta-btn kta-btn-ghost"   type="button" id="cfg_kmz_clear">' +
-          '🗑️ Effacer' +
+          window.I18n.t("config.georef.clearBtn") +
         '</button>' +
       '</div>' +
     '</div>';
@@ -337,7 +323,7 @@ function _bindCfgGeorefHandlers() {
       el.classList.add("kta-gps-invalid");
       const errEl = errId ? document.getElementById(errId) : null;
       if (errEl) {
-        errEl.textContent = "Format attendu : 48.6808, 2.1588";
+        errEl.textContent = window.I18n.t("config.georef.formatExpected");
         errEl.style.display = "";
       }
       return { invalid: true };
@@ -350,7 +336,7 @@ function _bindCfgGeorefHandlers() {
 
   btnSave.addEventListener("click", function() {
     if (!window.KmzExport) {
-      _setStatus("Module KmzExport indisponible.", "err");
+      _setStatus(window.I18n.t("config.georef.errNoModule"), "err");
       return;
     }
     // 🆕 hotfix21 — Lecture lat/lng via input combiné. Format invalide
@@ -358,7 +344,7 @@ function _bindCfgGeorefHandlers() {
     const coordsA = _readCoordsCombo("cfg_kmz_A_coords", "cfg_kmz_A_err");
     const coordsB = _readCoordsCombo("cfg_kmz_B_coords", "cfg_kmz_B_err");
     if ((coordsA && coordsA.invalid) || (coordsB && coordsB.invalid)) {
-      _setStatus("Coordonnées GPS invalides — corrige les champs en rouge.", "err");
+      _setStatus(window.I18n.t("config.georef.errInvalidGps"), "err");
       return;
     }
     const c = {
@@ -372,7 +358,7 @@ function _bindCfgGeorefHandlers() {
     // Validation : tous les champs requis (x, y, lat, lng pour A et B)
     if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
         c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {
-      _setStatus("Tous les champs sont obligatoires (Plan x/y + GPS pour A et B).", "err");
+      _setStatus(window.I18n.t("config.georef.errAllRequired"), "err");
       return;
     }
     // Validation transform (lève si points colinéaires ou distance nulle)
@@ -384,15 +370,15 @@ function _bindCfgGeorefHandlers() {
         { lat: c.pointB.lat, lng: c.pointB.lng }
       );
     } catch(e) {
-      _setStatus("Calibrage invalide : " + e.message, "err");
+      _setStatus(window.I18n.t("config.georef.errInvalidCalib", { msg: e.message }), "err");
       return;
     }
     // Persistance
     const planId = window._currentLoadedPlanId || "default";
     window.KmzExport.setCalibration(planId, c);
-    _setStatus("✅ Calibrage sauvegardé. Auto-rempli dans 📡 Export externe.", "ok");
+    _setStatus(window.I18n.t("config.georef.okSaved"), "ok");
     if (window.OOMGuard && window.OOMGuard.showToast) {
-      window.OOMGuard.showToast("🌐 Calibrage GPS sauvegardé", "info");
+      window.OOMGuard.showToast(window.I18n.t("config.georef.toastSaved"), "info");
     }
   });
 
@@ -416,7 +402,7 @@ function _bindCfgGeorefHandlers() {
       const planId = window._currentLoadedPlanId || "default";
       localStorage.removeItem("myktamap_kmz_calib_" + planId);
     } catch(e) {}
-    _setStatus("Calibrage effacé.", null);
+    _setStatus(window.I18n.t("config.georef.cleared"), null);
   });
 
   // 🆕 v1.21.0-fix1 : boutons 🔍 Chercher / 📍 Cliquer carte (parité UX
@@ -441,7 +427,7 @@ function _cfgOuvrirRechercheGeoref(letter) {
   res.style.display = "block";
   res.innerHTML =
     '<input type="text" id="cfg_kmz_' + letter + '_search_q" class="kta-cfg-input" ' +
-      'placeholder="Tape un nom / id / tag..." style="width:100%; margin-bottom:6px;">' +
+      'placeholder="' + window.I18n.t("config.georef.searchPlaceholder") + '" style="width:100%; margin-bottom:6px;">' +
     '<div id="cfg_kmz_' + letter + '_search_list"></div>';
   const input = document.getElementById("cfg_kmz_" + letter + "_search_q");
   const list  = document.getElementById("cfg_kmz_" + letter + "_search_list");
@@ -460,7 +446,7 @@ function _cfgOuvrirRechercheGeoref(letter) {
       try { results = await window.SearchPoints.findByQuery(q) || []; } catch(e) {}
       if (input.value.trim() !== q) return;
       if (results.length === 0) {
-        list.innerHTML = '<div class="kta-kmz-search-empty">Aucun résultat pour « ' + q + ' »</div>';
+        list.innerHTML = '<div class="kta-kmz-search-empty">' + window.I18n.t("config.georef.searchEmpty", { q: q }) + '</div>';
         return;
       }
       list.innerHTML = results.slice(0, 10).map(function(it, i) {
@@ -528,8 +514,8 @@ function _cfgActiverModeClicGeoref(letter) {
   fl.className = "kta-iti-floater";
   fl.innerHTML =
     '<span class="kta-iti-floater-icon">📍</span>' +
-    '<span class="kta-iti-floater-msg">Clique sur la carte pour saisir le Point ' + letter + '</span>' +
-    '<button class="kta-btn kta-btn-ghost" id="cfg_kmz_click_cancel" type="button">Annuler</button>';
+    '<span class="kta-iti-floater-msg">' + window.I18n.t("config.georef.clickFloater", { letter: letter }) + '</span>' +
+    '<button class="kta-btn kta-btn-ghost" id="cfg_kmz_click_cancel" type="button">' + window.I18n.t("config.georef.cancel") + '</button>';
   document.body.appendChild(fl);
   const cancelBtn = document.getElementById("cfg_kmz_click_cancel");
   if (cancelBtn) {
@@ -563,7 +549,7 @@ function _cfgOuvrirRechercheStart() {
   res.style.display = "block";
   res.innerHTML =
     '<input type="text" id="cfg_start_search_q" class="kta-cfg-input" ' +
-      'placeholder="Tape un nom / id / tag..." style="width:100%; margin-bottom:6px;">' +
+      'placeholder="' + window.I18n.t("config.tracker.searchPlaceholder") + '" style="width:100%; margin-bottom:6px;">' +
     '<div id="cfg_start_search_list"></div>';
   const input = document.getElementById("cfg_start_search_q");
   const list  = document.getElementById("cfg_start_search_list");
@@ -582,7 +568,7 @@ function _cfgOuvrirRechercheStart() {
       try { results = await window.SearchPoints.findByQuery(q) || []; } catch(e) {}
       if (input.value.trim() !== q) return;
       if (results.length === 0) {
-        list.innerHTML = '<div class="kta-kmz-search-empty">Aucun résultat pour « ' + q + ' »</div>';
+        list.innerHTML = '<div class="kta-kmz-search-empty">' + window.I18n.t("config.tracker.searchEmpty", { q: q }) + '</div>';
         return;
       }
       list.innerHTML = results.slice(0, 10).map(function(it, i) {
@@ -636,8 +622,8 @@ function _cfgActiverModeClicStart() {
   fl.className = "kta-iti-floater";
   fl.innerHTML =
     '<span class="kta-iti-floater-icon">🧭</span>' +
-    '<span class="kta-iti-floater-msg">Clique sur la carte pour la position initiale du tracker</span>' +
-    '<button class="kta-btn kta-btn-ghost" id="cfg_start_click_cancel" type="button">Annuler</button>';
+    '<span class="kta-iti-floater-msg">' + window.I18n.t("config.tracker.clickFloater") + '</span>' +
+    '<button class="kta-btn kta-btn-ghost" id="cfg_start_click_cancel" type="button">' + window.I18n.t("config.tracker.cancel") + '</button>';
   document.body.appendChild(fl);
   const cancelBtn = document.getElementById("cfg_start_click_cancel");
   if (cancelBtn) {
@@ -694,13 +680,24 @@ function afficherConfig() {
 
   // Métadonnées du preset perf actif (pour l'affichage read-only)
   const _PRESET_LABELS = {
-    "off":         { emoji: "💤", label: "Désactivé" },
-    "auto":        { emoji: "🔄", label: "Auto" },
-    "quality":     { emoji: "🌟", label: "Qualité" },
-    "balanced":    { emoji: "🎯", label: "Équilibré" },
-    "performance": { emoji: "⚡", label: "Performance" }
+    "off":         { emoji: "💤", label: window.I18n.t("config.preset.off") },
+    "auto":        { emoji: "🔄", label: window.I18n.t("config.preset.auto") },
+    "quality":     { emoji: "🌟", label: window.I18n.t("config.preset.quality") },
+    "balanced":    { emoji: "🎯", label: window.I18n.t("config.preset.balanced") },
+    "performance": { emoji: "⚡", label: window.I18n.t("config.preset.performance") }
   };
   const presetMeta = _PRESET_LABELS[c.perfPreset] || _PRESET_LABELS.auto;
+
+  // 🌍 v1.45.0 : sélecteur de langue GLOBALE de l'app (pilote I18n via la clé
+  // myktamap_app_lang, découplée du toggle local doc/onboarding). Options
+  // construites depuis I18n.available() → 1 seul endroit à éditer pour ajouter
+  // une langue. Fallback FR si I18n indispo (très improbable, chargé au boot).
+  const _curLang = (window.I18n && typeof window.I18n.getLang === "function") ? window.I18n.getLang() : "fr";
+  const _langOptions = ((window.I18n && window.I18n.available) ? window.I18n.available() : [{ code: "fr", label: "Français", flag: "🇫🇷" }])
+    .map(function(l) {
+      return '<option value="' + l.code + '"' + (l.code === _curLang ? ' selected' : '') + '>' +
+             (l.flag ? l.flag + ' ' : '') + l.label + '</option>';
+    }).join("");
 
   const modal = document.createElement("div");
   modal.id = "kta-cfg-modal";
@@ -709,14 +706,21 @@ function afficherConfig() {
   modal.innerHTML = `
     <div class="kta-readme-modal-boite kta-cfg-modal-boite">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre">⚙️ Réglages</span>
+        <span class="kta-readme-modal-titre">${window.I18n.t("config.titre")}</span>
         <button class="kta-panneau-close" id="kta-cfg-close">✕</button>
       </div>
       <div class="kta-readme-modal-corps kta-cfg-corps">
 
-        ${(typeof window.renderBannerCoherenceEchelle === "function")
-            ? window.renderBannerCoherenceEchelle(window._currentLoadedPlanId, { context: "settings" })
-            : ""}
+        <!-- ═══════════════════════════════════════════════════════════════
+             🆕 Réorganisation ergonomique (groupes thématiques) — KARMA.
+             Les blocs ci-dessous sont DÉPLACÉS, pas réécrits : tous les id,
+             class, data-i18n et listeners (attachés par id plus bas dans la
+             fonction) restent strictement identiques. Chaque groupe est
+             précédé d'un en-tête .kta-cfg-group-titre (style inline discret).
+             ═══════════════════════════════════════════════════════════════ -->
+
+        <!-- ════════ 1. 🌍 APPLICATION ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:2px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.application")}</div>
 
         <!-- 🆕 v1.21.0-fix3 (KARMA "met le mode présentation tout en haut") :
              Bouton "🎬 Activer le mode présentation" en TÊTE de la modale
@@ -728,113 +732,142 @@ function afficherConfig() {
           <button class="kta-btn kta-btn-primary" type="button" id="cfg_presentation_btn"
                   style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:12px 16px; font-size:14px;">
             <span style="font-size:20px;">🎬</span>
-            <span><strong>Activer le mode présentation</strong></span>
+            <span><strong>${window.I18n.t("config.presentation.btn")}</strong></span>
           </button>
           <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px; text-align:center;">
-            Cache header + sidebars + footer pour libérer toute la surface pour la carte.
-            Sortie : <kbd>F</kbd> ou <kbd>Échap</kbd> (PC), ou bouton flottant ✕ en haut-droite (mobile).
+            ${window.I18n.t("config.presentation.desc")}
           </div>
         </div>
 
-        <!-- 🕵️ v1.31.8 F2 + 🆕 v1.31.9 : Mode incognito — bouton qui
-             ouvre une NOUVELLE fenêtre dans le même origin avec ?incognito=1
-             (activate) OU close la fenêtre courante si déjà incognito (quit).
-             Pas un toggle sur la fenêtre courante : l'incognito doit démarrer
-             DÈS le boot (sinon les modules ont déjà écrit). Ouvrir un nouvel
-             onglet est sémantiquement clair (= comme un onglet privé navigateur). -->
-        ${(window.IncognitoMode && window.IncognitoMode.active) ? `
+        <!-- 🌍 v1.45.0 : sélecteur de langue GLOBALE de l'app (= LE point d'entrée
+             du changement complet, ≠ toggle local doc/onboarding). Le change
+             handler appelle I18n.setLang() puis re-render la modale. -->
         <div class="kta-aide-section">
-          <button class="kta-cfg-incognito-btn kta-cfg-incognito-btn-quit" type="button" id="cfg_incognito_btn">
-            <span style="font-size:18px;">✕</span>
-            <span><strong>Quitter le mode incognito</strong></span>
-          </button>
+          <div class="kta-aide-section-titre">${window.I18n.t("config.lang.titre")}</div>
+          <select class="kta-cfg-input" id="cfg_app_lang" style="width:100%;">
+            ${_langOptions}
+          </select>
           <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
-            Ferme cette fenêtre incognito. <strong>Toutes les données accumulées</strong>
-            (points, tracker, notes) <strong>seront perdues</strong>. Ta session principale
-            reste intacte dans son onglet.
-            <br><span style="color:#a78bfa;">Si le navigateur bloque la fermeture,
-            l'onglet recharge automatiquement en mode normal.</span>
+            ${window.I18n.t("config.lang.hint")}
           </div>
-        </div>` : `
+        </div>
+
+        <!-- ════════ 2. 📐 PLAN : ÉCHELLE & GÉOLOCALISATION ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.planCalib")}</div>
+
+        <!-- Bandeau cohérence échelle GPS — reste en tête de CE groupe -->
+        ${(typeof window.renderBannerCoherenceEchelle === "function")
+            ? window.renderBannerCoherenceEchelle(window._currentLoadedPlanId, { context: "settings" })
+            : ""}
+
+        <!-- 📐 Échelle (m/px) + 🎯 calibrage — EXTRAIT de l'ancienne section
+             "Détection des pas". Le bouton 🎯 ouvre ouvrirCalibrageEchelle().
+             L'input cfg_scale est inchangé (lu par appliquerConfig). -->
         <div class="kta-aide-section">
-          <button class="kta-cfg-incognito-btn" type="button" id="cfg_incognito_btn">
-            <span style="font-size:18px;">🕵️</span>
-            <span><strong>Démarrer en mode incognito</strong></span>
-          </button>
-          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
-            Ouvre une nouvelle fenêtre où <strong>aucune donnée n'est sauvegardée</strong> (ni
-            photos, ni tracker, ni préférences). Idéal pour explorer un plan en démo
-            publique, prêter ta session à un tiers ou tester sans polluer ton historique
-            local. Bordure violette visible + badge dans le titre rappellent le contexte.
-            <br><span style="color:#a78bfa;">Au reload : tout disparaît.</span>
+          <div class="kta-aide-section-titre">${window.I18n.t("config.steps.scale")}</div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <input class="kta-cfg-input" id="cfg_scale" type="number" step="0.1" value="${c.scale}" style="flex:1;">
+            <button type="button" class="kta-btn kta-btn-ghost"
+              onclick="ouvrirCalibrageEchelle()"
+              style="padding:6px 10px; font-size:13px; white-space:nowrap;"
+              title="${window.I18n.t("config.steps.scaleTitle")}">🎯</button>
           </div>
-        </div>`}
+        </div>
+
+        <!-- 🧭 v1.37.0 — Calibration Nord per-plan. EXTRAITE de l'ancienne
+             section "Affichage". Utile quand le HAUT du plan n'est PAS le Nord
+             vrai (photo aérienne avec cadrage arbitraire, plan cataphile sans
+             rosace alignée). Cascade lecture : LS prefs-plan >
+             APP_CONFIG.northOffsetDeg (mappé depuis plan-config.json) > 0.
+             Setter notifie via event kta:northOffsetChange → re-render tracker
+             à chaud. Convention : 0° = Nord = haut du plan, sens HORAIRE.
+             UI : champ angle toujours visible (saisie directe) + bouton
+             picker 2 clics Sud→Nord (WYSIWYG sur la map courante) + reset. -->
+        <div class="kta-aide-section">
+          <div id="cfg_north_block" class="kta-perf-ultra-row" style="margin-top:0; display:block; padding:8px; border:1px solid rgba(255,255,255,0.06); border-radius:8px; background:rgba(255,255,255,0.02);">
+            <div class="kta-perf-ultra-text" style="margin-bottom:6px;">
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.north.label")}</span>
+              <span class="kta-perf-ultra-hint" style="display:block;">
+                ${window.I18n.t("config.display.north.hint")}
+              </span>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <input type="number" id="cfg_north_offset_input" min="0" max="359" step="1" value="0"
+                     style="flex:0 0 90px; padding:6px 8px; border-radius:6px;
+                            background:rgba(255,255,255,0.06); color:#e8eaf0;
+                            border:1px solid rgba(255,255,255,0.12); font-weight:600;">
+              <span style="color:#8892a4; font-size:12px;">°</span>
+              <button type="button" id="cfg_north_picker_btn" class="kta-btn"
+                      style="flex:1 1 auto; min-width:140px;">${window.I18n.t("config.display.north.calibrate")}</button>
+              <button type="button" id="cfg_north_reset_btn" class="kta-btn"
+                      style="flex:0 0 auto;" title="${window.I18n.t("config.display.north.resetTitle")}">${window.I18n.t("config.display.north.reset")}</button>
+            </div>
+            <div id="cfg_north_status" style="margin-top:4px; font-size:11.5px; color:#8892a4; min-height:14px;"></div>
+          </div>
+        </div>
+
+        <!-- 🌐 Géoréférencement GPS — DÉPLACÉ ici depuis la fin de la modale
+             (rendu par _renderCfgGeorefSection, ids cfg_kmz_* inchangés). -->
+        ${_renderCfgGeorefSection()}
+
+        <!-- ════════ 3. 📍 NAVIGATION & TRACKER ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.navTracker")}</div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🧭 Position initiale du tracker</div>
+          <div class="kta-aide-section-titre">${window.I18n.t("config.tracker.titre")}</div>
           <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">Position X</label>
+            <label class="kta-cfg-label">${window.I18n.t("config.tracker.posX")}</label>
             <input class="kta-cfg-input" id="cfg_startX" type="number" value="${c.startX}">
-            <label class="kta-cfg-label">Position Y</label>
+            <label class="kta-cfg-label">${window.I18n.t("config.tracker.posY")}</label>
             <input class="kta-cfg-input" id="cfg_startY" type="number" value="${c.startY}">
           </div>
           <!-- 🆕 Saisie assistée de la position de départ (parité UX géoréf) :
                🔍 via un point existant, 📍 au clic sur la carte. Évite la saisie
                manuelle des coordonnées (gros gain de temps). -->
           <div class="kta-kmz-pt-actions" style="margin-top:8px;">
-            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_search" type="button">🔍 Choisir via un point</button>
-            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_click" type="button">📍 Cliquer sur la carte</button>
+            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_search" type="button">${window.I18n.t("config.tracker.searchBtn")}</button>
+            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_click" type="button">${window.I18n.t("config.tracker.clickBtn")}</button>
           </div>
           <div id="cfg_start_search_results" class="kta-kmz-search-results" style="display:none;"></div>
         </div>
 
+        <!-- Détection des pas — SANS l'échelle (extraite en groupe 2).
+             Les params de pas restent ici : longueur / seuil / cooldown. -->
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">👣 Détection des pas</div>
+          <div class="kta-aide-section-titre">${window.I18n.t("config.steps.titre")}</div>
           <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">Échelle (px/m)</label>
-            <div style="display:flex; gap:6px; align-items:center;">
-              <input class="kta-cfg-input" id="cfg_scale" type="number" step="0.1" value="${c.scale}" style="flex:1;">
-              <button type="button" class="kta-btn kta-btn-ghost"
-                onclick="ouvrirCalibrageEchelle()"
-                style="padding:6px 10px; font-size:13px; white-space:nowrap;"
-                title="Calculer l'échelle à partir d'une mesure réelle">🎯</button>
-            </div>
-            <label class="kta-cfg-label">Taille d'un pas (m)</label>
+            <label class="kta-cfg-label">${window.I18n.t("config.steps.stepLength")}</label>
             <input class="kta-cfg-input" id="cfg_stepLength" type="number" step="0.1" value="${c.stepLength}">
-            <label class="kta-cfg-label">Seuil de détection</label>
+            <label class="kta-cfg-label">${window.I18n.t("config.steps.threshold")}</label>
             <input class="kta-cfg-input" id="cfg_stepThreshold" type="number" step="0.1" value="${c.stepThreshold}">
-            <label class="kta-cfg-label">Cooldown (ms)</label>
+            <label class="kta-cfg-label">${window.I18n.t("config.steps.cooldown")}</label>
             <input class="kta-cfg-input" id="cfg_stepCooldown" type="number" value="${c.stepCooldown}">
           </div>
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🧭 Navigation intelligente</div>
+          <div class="kta-aide-section-titre">${window.I18n.t("config.smartnav.titre")}</div>
           <label class="kta-perf-ultra-row" style="margin-top:0;">
             <input type="checkbox" id="cfg_smartNav" ${c.smartNav === true ? "checked" : ""}>
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">🧭 Caler la position sur les tracés</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.smartnav.label")}</span>
               <span class="kta-perf-ultra-hint">
-                Décoché par défaut. Quand le plan possède un <strong>réseau de tracés</strong>,
-                la position estimée est <strong>recalée sur la galerie la plus proche</strong> pour
-                compenser la dérive des capteurs (boussole / pas). Hors réseau, retour automatique
-                au comportement actuel. Sans tracés sur le plan, l'option reste sans effet.
+                ${window.I18n.t("config.smartnav.hint")}
               </span>
             </span>
           </label>
         </div>
 
+        <!-- ════════ 4. 🎨 AFFICHAGE ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.affichage")}</div>
+
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🔍 Affichage</div>
           <label class="kta-perf-ultra-row kta-perf-ultra-row-danger" style="margin-top:0;">
             <input type="checkbox" id="cfg_scaledMarkers" ${c.scaledMarkers !== false ? "checked" : ""}>
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">📐 Adapter la taille des icônes au zoom</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.scaledMarkers.label")}</span>
               <span class="kta-perf-ultra-hint">
-                Coché par défaut : les icônes des points rétrécissent quand tu dézoomes
-                (taille relative au plan constante). <strong>Décocher</strong> = comportement Leaflet
-                standard (icônes taille écran fixe, elles deviennent énormes au dézoom).
-                <strong>Reload requis</strong> après changement.
+                ${window.I18n.t("config.display.scaledMarkers.hint")}
               </span>
             </span>
           </label>
@@ -847,48 +880,12 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_show_intersections_row" style="margin-top:8px;">
             <input type="checkbox" id="cfg_show_intersections">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">⚪ Afficher les ronds aux intersections (ce plan)</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.intersections.label")}</span>
               <span class="kta-perf-ultra-hint">
-                Cercle plein coloré au croisement de 2 tracés (vert × violet → jaune, etc.).
-                <strong>Décocher</strong> pour aérer visuellement les plans très denses, ou
-                si le calcul ralentit l'affichage. <strong>Effet immédiat</strong>, sauvegardé
-                par plan (un autre plan garde son propre réglage).
+                ${window.I18n.t("config.display.intersections.hint")}
               </span>
             </span>
           </label>
-
-          <!-- 🧭 v1.37.0 — Calibration Nord per-plan. Utile quand le HAUT du
-               plan n'est PAS le Nord vrai (photo aérienne avec cadrage
-               arbitraire, plan cataphile sans rosace alignée). Cascade
-               lecture : LS prefs-plan > APP_CONFIG.northOffsetDeg (mappé
-               depuis plan-config.json) > 0. Setter notifie via event
-               kta:northOffsetChange → re-render tracker à chaud.
-               Convention : 0° = Nord = haut du plan, sens HORAIRE.
-               UI : champ angle toujours visible (saisie directe) + bouton
-               picker 2 clics Sud→Nord (WYSIWYG sur la map courante) + reset. -->
-          <div id="cfg_north_block" class="kta-perf-ultra-row" style="margin-top:10px; display:block; padding:8px; border:1px solid rgba(255,255,255,0.06); border-radius:8px; background:rgba(255,255,255,0.02);">
-            <div class="kta-perf-ultra-text" style="margin-bottom:6px;">
-              <span class="kta-perf-ultra-label">🧭 Calibration du Nord (ce plan)</span>
-              <span class="kta-perf-ultra-hint" style="display:block;">
-                Angle CW entre le HAUT du plan et le Nord vrai. <strong>0° = Nord en haut</strong>
-                (par défaut). Si la flèche Nord pointe vers la droite du plan → 90°. Appliqué
-                au tracker (rotation icône + sens de marche) ; la boussole continue d'afficher
-                le Nord magnétique vrai indépendamment.
-              </span>
-            </div>
-            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-              <input type="number" id="cfg_north_offset_input" min="0" max="359" step="1" value="0"
-                     style="flex:0 0 90px; padding:6px 8px; border-radius:6px;
-                            background:rgba(255,255,255,0.06); color:#e8eaf0;
-                            border:1px solid rgba(255,255,255,0.12); font-weight:600;">
-              <span style="color:#8892a4; font-size:12px;">°</span>
-              <button type="button" id="cfg_north_picker_btn" class="kta-btn"
-                      style="flex:1 1 auto; min-width:140px;">📐 Calibrer (2 clics)</button>
-              <button type="button" id="cfg_north_reset_btn" class="kta-btn"
-                      style="flex:0 0 auto;" title="Retour au défaut (cascade plan-config / 0°)">↺ Reset</button>
-            </div>
-            <div id="cfg_north_status" style="margin-top:4px; font-size:11.5px; color:#8892a4; min-height:14px;"></div>
-          </div>
 
           <!-- 🖼️ v1.38.2 — Section "Calibration calques image" RETIRÉE des Réglages
                map mode (feedback KARMA : "on le fait que depuis générateur").
@@ -919,12 +916,9 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_wake_lock_row" style="margin-top:8px; display:none;">
             <input type="checkbox" id="cfg_wake_lock">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">🔆 Garder l'écran allumé (Wake Lock)</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.wakelock.label")}</span>
               <span class="kta-perf-ultra-hint">
-                Empêche la mise en veille de l'écran tant que l'app est ouverte.
-                <strong>Idéal en cavité</strong> pour ne pas avoir à débloquer son téléphone
-                toutes les 30s. Persistant entre sessions. Le wake lock est auto-relâché
-                quand tu changes d'onglet/app, et ré-activé au retour si la case est cochée.
+                ${window.I18n.t("config.display.wakelock.hint")}
               </span>
             </span>
           </label>
@@ -938,13 +932,9 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_vibration_row" style="margin-top:8px; display:none;">
             <input type="checkbox" id="cfg_vibration" ${c.vibrationEnabled !== false ? "checked" : ""}>
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">📳 Vibration haptique</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.vibration.label")}</span>
               <span class="kta-perf-ultra-hint">
-                Petite vibration pour les confirmations (waypoint atteint, action
-                validée, alerte). <strong>Décocher</strong> = silence total (utile en
-                cavité avec d'autres personnes, ou pour méditation). <strong>iOS Safari
-                ne supporte pas</strong> la Web Vibration API — sur iPhone, ce toggle
-                reste masqué. Pref globale, conservée entre les sessions.
+                ${window.I18n.t("config.display.vibration.hint")}
               </span>
             </span>
           </label>
@@ -957,33 +947,65 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_voice_row" style="margin-top:8px; display:none;">
             <input type="checkbox" id="cfg_voice">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">🎤 Commandes vocales (BETA)</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.voice.label")}</span>
               <span class="kta-perf-ultra-hint">
-                Pilote l'app à la voix : zoom, centrer, recherche, ajouter point,
-                tracker on/off, mode urgence/secours, thème clair/sombre…
-                Push-to-talk via un bouton 🎤 flottant en bas à droite.
-                <strong>Dit « aide »</strong> à voix haute pour lister les commandes disponibles.
-                Permission micro demandée à la 1ère utilisation.
-                <strong>Reload requis</strong> après changement (pour injecter/retirer le bouton).
+                ${window.I18n.t("config.display.voice.hint")}
               </span>
             </span>
           </label>
         </div>
 
+        <!-- ════════ 5. 🚀 PERFORMANCE ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.perf")}</div>
+
+        ${_renderPerfUltraSection()}
+
+        <!-- ════════ 6. 🔒 CONFIDENTIALITÉ & SÉCURITÉ ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.privacy")}</div>
+
+        <!-- 🕵️ v1.31.8 F2 + 🆕 v1.31.9 : Mode incognito — bouton qui
+             ouvre une NOUVELLE fenêtre dans le même origin avec ?incognito=1
+             (activate) OU close la fenêtre courante si déjà incognito (quit).
+             Pas un toggle sur la fenêtre courante : l'incognito doit démarrer
+             DÈS le boot (sinon les modules ont déjà écrit). Ouvrir un nouvel
+             onglet est sémantiquement clair (= comme un onglet privé navigateur). -->
+        ${(window.IncognitoMode && window.IncognitoMode.active) ? `
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🛠️ Debug</div>
+          <button class="kta-cfg-incognito-btn kta-cfg-incognito-btn-quit" type="button" id="cfg_incognito_btn">
+            <span style="font-size:18px;">✕</span>
+            <span><strong>${window.I18n.t("config.incognito.quit.btn")}</strong></span>
+          </button>
+          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
+            ${window.I18n.t("config.incognito.quit.desc")}
+          </div>
+        </div>` : `
+        <div class="kta-aide-section">
+          <button class="kta-cfg-incognito-btn" type="button" id="cfg_incognito_btn">
+            <span style="font-size:18px;">🕵️</span>
+            <span><strong>${window.I18n.t("config.incognito.start.btn")}</strong></span>
+          </button>
+          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
+            ${window.I18n.t("config.incognito.start.desc")}
+          </div>
+        </div>`}
+
+        <!-- ════════ 7. 🛠️ SYSTÈME & MAINTENANCE ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.system")}</div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">${window.I18n.t("config.debug.titre")}</div>
           <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">Logs détaillés</label>
+            <label class="kta-cfg-label">${window.I18n.t("config.debug.logs")}</label>
             <select class="kta-cfg-input" id="cfg_debugMode">
-              <option value="true"  ${c.debugMode ? "selected" : ""}>Oui</option>
-              <option value="false" ${!c.debugMode ? "selected" : ""}>Non</option>
+              <option value="true"  ${c.debugMode ? "selected" : ""}>${window.I18n.t("config.debug.yes")}</option>
+              <option value="false" ${!c.debugMode ? "selected" : ""}>${window.I18n.t("config.debug.no")}</option>
             </select>
           </div>
 
           <div style="display:flex; align-items:center; gap:12px; margin-top:12px;">
             <div style="flex:1;">
-              <div style="font-size:13px; font-weight:600; color:#e8eaf0;">Mode performance</div>
-              <div style="font-size:11px; color:#8892a4; margin-top:2px;">Modifiable au chargement du plan</div>
+              <div style="font-size:13px; font-weight:600; color:#e8eaf0;">${window.I18n.t("config.debug.perfMode")}</div>
+              <div style="font-size:11px; color:#8892a4; margin-top:2px;">${window.I18n.t("config.debug.perfModeHint")}</div>
             </div>
             <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.04); border-radius:6px; border:1px solid rgba(255,255,255,0.08);">
               <span style="font-size:22px;">${presetMeta.emoji}</span>
@@ -991,10 +1013,6 @@ function afficherConfig() {
             </div>
           </div>
         </div>
-
-        ${_renderPerfUltraSection()}
-
-        ${_renderCfgGeorefSection()}
 
         <!--
           🆕 v1.7.3 (suite KARMA) : bouton 🗑️ Réinitialiser RETIRÉ de la modale ⚙️
@@ -1055,9 +1073,30 @@ function afficherConfig() {
         if (window.PresentationMode && typeof window.PresentationMode.activate === "function") {
           window.PresentationMode.activate();
         } else {
-          alert("Module PresentationMode indisponible.");
+          alert(window.I18n.t("config.presentation.unavailable"));
         }
       }, 50);
+    });
+  }
+
+  // 🌍 v1.45.0 — Sélecteur de langue GLOBALE de l'app. Au change : on bascule
+  // I18n (charge le dico cible + persiste myktamap_app_lang + notifie onChange)
+  // PUIS on re-render la modale Réglages pour refléter la nouvelle langue en
+  // live. Les textes sont figés dans l'innerHTML → un rebuild complet est le
+  // moyen le plus sûr. Les saisies non appliquées repartent des valeurs
+  // APP_CONFIG : acceptable (on choisit la langue avant d'éditer, en pratique).
+  const selAppLang = document.getElementById("cfg_app_lang");
+  if (selAppLang) {
+    selAppLang.addEventListener("change", function() {
+      const code = selAppLang.value;
+      const done = (window.I18n && typeof window.I18n.setLang === "function")
+        ? window.I18n.setLang(code)
+        : Promise.resolve();
+      Promise.resolve(done).then(function() {
+        const m = document.getElementById("kta-cfg-modal");
+        if (m) m.remove();   // retire la modale courante…
+        afficherConfig();    // …puis rebuild fraîche dans la nouvelle langue
+      });
     });
   }
 
@@ -1071,12 +1110,12 @@ function afficherConfig() {
   if (btnIncognito) {
     btnIncognito.addEventListener("click", function() {
       if (!window.IncognitoMode) {
-        alert("Module IncognitoMode indisponible. Recharge la page.");
+        alert(window.I18n.t("config.incognito.unavailable"));
         return;
       }
       if (window.IncognitoMode.active) {
         // Confirm avant quit (perte de données potentielle)
-        if (confirm("Quitter le mode incognito ?\n\nTous les points/notes/tracker accumulés dans cette fenêtre seront perdus.")) {
+        if (confirm(window.I18n.t("config.incognito.confirmQuit"))) {
           window.IncognitoMode.quit();
         }
       } else {
@@ -1104,8 +1143,8 @@ function afficherConfig() {
         if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
           window.OOMGuard.showToast(
             wlCb.checked
-              ? "🔆 Écran maintenu allumé tant que l'app est ouverte"
-              : "🔅 Mise en veille écran ré-activée",
+              ? window.I18n.t("config.display.wakelock.toastOn")
+              : window.I18n.t("config.display.wakelock.toastOff"),
             "info"
           );
         }
@@ -1162,10 +1201,10 @@ function afficherConfig() {
       } catch(e) {}
       input.value = Math.round(cur);
       if (cur === 0) {
-        status.textContent = "ℹ️ Nord = haut du plan (configuration par défaut).";
+        status.textContent = window.I18n.t("config.north.statusDefault");
         status.style.color = "#8892a4";
       } else {
-        status.textContent = "✅ Nord calibré à " + cur.toFixed(1) + "° du haut du plan (sens horaire).";
+        status.textContent = window.I18n.t("config.north.statusCalibrated", { deg: cur.toFixed(1) });
         status.style.color = "#f4c542";
       }
     }
@@ -1190,7 +1229,7 @@ function afficherConfig() {
     pickerBtn.addEventListener("click", function() {
       if (typeof window.openNorthCalibrationPicker !== "function") {
         if (window.OOMGuard && window.OOMGuard.showToast) {
-          window.OOMGuard.showToast("⚠️ Picker Nord indisponible (module pas chargé).", "warn");
+          window.OOMGuard.showToast(window.I18n.t("config.display.north.pickerUnavailable"), "warn");
         }
         return;
       }
@@ -1212,13 +1251,13 @@ function afficherConfig() {
         }
         // _refreshStatus sera appelé via l'event kta:northOffsetChange
         if (window.OOMGuard && window.OOMGuard.showToast) {
-          window.OOMGuard.showToast("🧭 Nord calibré à " + deg.toFixed(1) + "°", "info");
+          window.OOMGuard.showToast(window.I18n.t("config.display.north.calibratedToast", { deg: deg.toFixed(1) }), "info");
         }
       }).catch(function(e) {
         _showCfgBack();
         console.warn("[NorthPicker] échec :", e);
         if (window.OOMGuard && window.OOMGuard.showToast) {
-          window.OOMGuard.showToast("⚠️ " + (e && e.message ? e.message : "Picker indisponible"), "warn");
+          window.OOMGuard.showToast("⚠️ " + (e && e.message ? e.message : window.I18n.t("config.display.north.pickerError")), "warn");
         }
       });
     });
@@ -1269,8 +1308,8 @@ function afficherConfig() {
       if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
         window.OOMGuard.showToast(
           vibCb.checked
-            ? "📳 Vibration activée"
-            : "🔇 Vibration désactivée",
+            ? window.I18n.t("config.display.vibration.toastOn")
+            : window.I18n.t("config.display.vibration.toastOff"),
           "info"
         );
       }
@@ -1295,8 +1334,8 @@ function afficherConfig() {
         if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
           window.OOMGuard.showToast(
             voiceCb.checked
-              ? "🎤 Commandes vocales activées. Bouton 🎤 visible en bas à droite."
-              : "🎤 Commandes vocales désactivées.",
+              ? window.I18n.t("config.display.voice.toastOn")
+              : window.I18n.t("config.display.voice.toastOff"),
             "info"
           );
         }
@@ -1417,7 +1456,7 @@ function _ouvrirSelecteurNiveau(btnPastille) {
     checkboxes +=
       '<label class="kta-niv-vis-box">' +
         '<input type="checkbox" data-level="' + lvl + '"' + (checked ? ' checked' : '') + '>' +
-        '<span class="kta-niv-vis-label">Niv ' + lvl + '</span>' +
+        '<span class="kta-niv-vis-label">' + window.I18n.t("config.niveaux.levelShort", { lvl: lvl }) + '</span>' +
       '</label>';
   });
 
@@ -1427,42 +1466,39 @@ function _ouvrirSelecteurNiveau(btnPastille) {
   overlay.innerHTML =
     '<div class="kta-readme-modal-boite kta-niv-modal-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">🏗️ Niveaux</span>' +
-        '<button class="kta-panneau-close" id="kta-niv-close" type="button" aria-label="Fermer">&times;</button>' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("config.niveaux.titre") + '</span>' +
+        '<button class="kta-panneau-close" id="kta-niv-close" type="button" aria-label="' + window.I18n.t("config.niveaux.close") + '">&times;</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
 
         // SECTION 1 : Niveau actif (single-select)
         '<div class="kta-niv-section">' +
-          '<div class="kta-niv-section-titre">🎯 Niveau actif (pour dessiner)</div>' +
+          '<div class="kta-niv-section-titre">' + window.I18n.t("config.niveaux.active.titre") + '</div>' +
           '<p class="kta-niv-section-hint">' +
-            'Tous les nouveaux éléments (tracés, points, zones, tracker recalé) seront ' +
-            'tagués avec ce niveau.' +
+            window.I18n.t("config.niveaux.active.hint") +
           '</p>' +
           '<div class="kta-niv-segmented">' +
-            '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-sub" title="Ajouter un niveau en-dessous (min - 1)">−</button>' +
+            '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-sub" title="' + window.I18n.t("config.niveaux.addBelow") + '">−</button>' +
             segmented +
-            '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-add" title="Ajouter un niveau au-dessus (max + 1)">+</button>' +
+            '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-add" title="' + window.I18n.t("config.niveaux.addAbove") + '">+</button>' +
           '</div>' +
         '</div>' +
 
         // SECTION 2 : Niveaux visibles (multi-select)
         '<div class="kta-niv-section">' +
-          '<div class="kta-niv-section-titre">👁️ Niveaux visibles (filtre)</div>' +
+          '<div class="kta-niv-section-titre">' + window.I18n.t("config.niveaux.visible.titre") + '</div>' +
           '<p class="kta-niv-section-hint">' +
-            'Coche les niveaux que tu veux afficher sur la carte. Les jonctions sont ' +
-            'visibles si au moins un de leurs endpoints touche un niveau coché.' +
+            window.I18n.t("config.niveaux.visible.hint") +
           '</p>' +
           '<div class="kta-niv-vis-grid">' + checkboxes + '</div>' +
           '<div class="kta-niv-vis-actions">' +
-            '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-vis-all">Tous</button>' +
-            '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-vis-active">Actif seul</button>' +
+            '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-vis-all">' + window.I18n.t("config.niveaux.visible.all") + '</button>' +
+            '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-vis-active">' + window.I18n.t("config.niveaux.visible.activeOnly") + '</button>' +
           '</div>' +
         '</div>' +
 
         '<p style="font-size:11.5px; color:#8892a4; margin:6px 0 0 0; line-height:1.5;">' +
-          '⚠️ Changer le niveau actif <strong>annule</strong> tout tracé en cours et ' +
-          'reset le filtre visibles à [actif].' +
+          window.I18n.t("config.niveaux.warn") +
         '</p>' +
       '</div>' +
     '</div>';
@@ -1683,7 +1719,7 @@ function _ouvrirCreationJonction(btnSub) {
   function _optionsHtml(selectedLevel) {
     return levels.map(function(l) {
       return '<option value="' + l + '"' + (l === selectedLevel ? ' selected' : '') + '>' +
-             'Niveau ' + l + '</option>';
+             window.I18n.t("config.jonction.levelOption", { lvl: l }) + '</option>';
     }).join('');
   }
 
@@ -1698,27 +1734,26 @@ function _ouvrirCreationJonction(btnSub) {
   overlay.innerHTML =
     '<div class="kta-readme-modal-boite kta-jct-modal-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">🪜 Nouvelle jonction interniveau</span>' +
-        '<button class="kta-panneau-close" id="kta-jct-close" type="button" aria-label="Fermer">&times;</button>' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("config.jonction.titre") + '</span>' +
+        '<button class="kta-panneau-close" id="kta-jct-close" type="button" aria-label="' + window.I18n.t("config.jonction.close") + '">&times;</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         '<p style="margin:0 0 12px 0; font-size:13px; color:#c8d0e0;">' +
-          'Cette jonction (escalier, pente raide, puits interne) relie deux niveaux.' +
+          window.I18n.t("config.jonction.intro") +
         '</p>' +
         '<div class="kta-jct-grille">' +
-          '<label class="kta-cfg-label">Niveau de départ</label>' +
+          '<label class="kta-cfg-label">' + window.I18n.t("config.jonction.fromLabel") + '</label>' +
           '<select class="kta-cfg-input" id="kta-jct-from">' + _optionsHtml(cur) + '</select>' +
-          '<label class="kta-cfg-label">Niveau d\'arrivée</label>' +
+          '<label class="kta-cfg-label">' + window.I18n.t("config.jonction.toLabel") + '</label>' +
           '<select class="kta-cfg-input" id="kta-jct-to">' + _optionsHtml(defaultTo) + '</select>' +
         '</div>' +
         '<p style="font-size:11.5px; color:#8892a4; margin:12px 0 0 0; line-height:1.5;">' +
-          'Après OK, clique sur la carte pour poser les points de la jonction (autant que tu veux). ' +
-          'Le tracé sera magenta pointillé et restera toujours visible peu importe le niveau actif.' +
+          window.I18n.t("config.jonction.hint") +
         '</p>' +
       '</div>' +
       '<div class="kta-tracker-warn-actions">' +
-        '<button class="kta-btn kta-btn-ghost"   id="kta-jct-cancel" type="button">Annuler</button>' +
-        '<button class="kta-btn kta-btn-primary" id="kta-jct-ok"     type="button">OK — Tracer la jonction</button>' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-jct-cancel" type="button">' + window.I18n.t("config.jonction.cancel") + '</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-jct-ok"     type="button">' + window.I18n.t("config.jonction.okBtn") + '</button>' +
       '</div>' +
     '</div>';
 
@@ -1739,7 +1774,7 @@ function _ouvrirCreationJonction(btnSub) {
     const toLvl   = parseInt(document.getElementById("kta-jct-to").value,   10);
     if (!Number.isInteger(fromLvl) || !Number.isInteger(toLvl)) return;
     if (fromLvl === toLvl) {
-      alert("Les niveaux de départ et d'arrivée doivent être différents.");
+      alert(window.I18n.t("config.jonction.errSameLevel"));
       return;
     }
     _cleanup();
@@ -1802,7 +1837,7 @@ function _initLevelFilterControl() {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-level-control");
     const a   = L.DomUtil.create("a", "kta-level-btn", div);
     a.href      = "javascript:void(0)";
-    a.title     = "Niveau actif — Cliquer pour changer / filtrer";
+    a.title     = window.I18n.t("config.niveaux.controlTitle");
     a.innerHTML = '<span class="kta-niv-pastille" id="kta-niv-pastille-icone">' +
                   (APP_CONFIG.activeLevel || 0) + '</span>';
     // Empeche les events de propager a la carte (clic-pan + zoom-wheel)

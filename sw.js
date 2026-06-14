@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.43.21";
+const CACHE_NAME = "myktamap-cache-v1.46.4";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -51,6 +51,14 @@ const ASSETS_TO_CACHE = [
   "./docs/applications/DOCKER_INSTALL.en.md",
   // Squelette enrichi pour la fonctionnalité 🤖 Aide IA (modale Téléchargement contexte IA)
   "./docs/applications/AI_CONTEXT.md",
+
+  // 🌍 v1.45.0 : dicos i18n multi-langue (lus par js/langManager.js via fetch).
+  // fr.json = langue de référence + fallback obligatoire ; en.json = anglais.
+  // Précachés ici pour un fonctionnement offline instantané dès le 1er install.
+  // Pour ajouter une langue : déposer lang/<code>.json + l'ajouter ici.
+  "./lang/fr.json",
+  "./lang/en.json",
+  "./lang/es.json",
   // Licence (consultable offline si l'utilisateur veut verifier les conditions d'usage)
   "./LICENSE",
   // 🆕 v1.8.0 : page de transparence détaillée pour l'audit réseau, en 2
@@ -84,6 +92,9 @@ const ASSETS_TO_CACHE = [
   // JS principaux
   // Copyright + watermark + détection DevTools — chargé EN PREMIER dans index.html
   "./js/copyright.js",
+  // 🌍 v1.45.0 : I18n — helper multi-langue (window.I18n). Chargé tôt dans
+  // index.html (après copyright). Précharge lang/fr.json + langue active.
+  "./js/langManager.js",
   // 🕵️ v1.31.8 F2 : Incognito Mode — shim Storage + IDB en in-memory si
   // ?incognito=1. Chargé SYNC juste après copyright pour intercepter avant
   // tout autre module. Mode normal : pose juste window.IncognitoMode = {...}.
@@ -99,6 +110,7 @@ const ASSETS_TO_CACHE = [
   "./js/crashReports.js",
   // 🆕 v1.19.0 : MemInspector — topo lisible mémoire (localStorage, IDB, cache, runtime, crashes)
   "./js/memInspector.js",
+  "./js/modalLifecycle.js",
   // 🆕 v1.43.12 : SwInspector — inspecteur cache Service Worker (diff attendus vs présents)
   "./js/swInspector.js",
   // 🆕 v1.20.0 : StatsGlobales — modale stats agrégées plan complet (session + embedded)
@@ -261,8 +273,12 @@ const ASSETS_TO_CACHE = [
   "./lib/html2canvas.min.js",
   "./lib/leaflet/leaflet.css",
   "./lib/leaflet/leaflet.js",
-  "./lib/leaflet/leaflet-src.js",
-  "./lib/leaflet/leaflet-src.esm.js",
+  // 🗑️ v1.43.25 — Retiré du cache PWA : leaflet-src.js + leaflet-src.esm.js
+  // (~500 KB chacun = 1 MB total). Versions non-minifiées pour debug, JAMAIS
+  // chargées en runtime par index.html (qui charge uniquement leaflet.js
+  // minifié + leaflet.css + leaflet-imageoverlay-rotated.js). Fichiers
+  // toujours présents sur le serveur si besoin debug manuel. Gain : install
+  // plus rapide (~10s gagnés sur 4G) → moins de risque d'interruption.
   // 🆕 v1.38.0 — Plugin Leaflet.ImageOverlay.Rotated (vendored)
   "./lib/leaflet-imageoverlay-rotated.js",
 
@@ -343,6 +359,11 @@ const CRITICAL_APP_SHELL = [
   "./",
   "./css/style.css",
   "./js/copyright.js",
+  // 🌍 v1.45.0 : I18n + dico fallback. langManager.js est AWAIT-é au boot (main.js) et
+  // fr.json est le fallback universel → tous deux critiques pour un boot offline
+  // correct (sinon I18n.t retournerait les clés brutes au 1er install hors ligne).
+  "./js/langManager.js",
+  "./lang/fr.json",
   "./js/main.js",
   "./manifest.json",
   // 🆕 v1.43.10 — Docs consultables offline (KARMA "page audit n'a pas
@@ -357,22 +378,22 @@ const CRITICAL_APP_SHELL = [
 
 async function _cacheWithRetry(cache, asset, attempts) {
   attempts = attempts || 3;
-  let lastErr;
+  let lastResult = null;
   for (let i = 0; i < attempts; i++) {
-    try {
-      await cache.add(new Request(asset, { cache: "reload" }));
-      const absUrl = _cacheKeyOf(asset);
-      if (absUrl) _staticAssetUrls.add(absUrl);
-      return true;
-    } catch (err) {
-      lastErr = err;
-      // Backoff léger pour laisser le réseau respirer (200ms, 500ms)
-      if (i < attempts - 1) {
-        await new Promise(function(r) { setTimeout(r, 200 * (i + 1)); });
-      }
+    // 🆕 v1.43.22 — Utilise _cacheAddDiag (au lieu de cache.add direct)
+    // pour catégoriser précisément l'erreur (404 vs réseau vs quota...).
+    // Le log IDB est rempli automatiquement par _cacheAddDiag.
+    const result = await _cacheAddDiag(cache, asset, "critical");
+    if (result.ok) return true;
+    lastResult = result;
+    // Backoff léger pour laisser le réseau respirer (200ms, 500ms)
+    if (i < attempts - 1) {
+      await new Promise(function(r) { setTimeout(r, 200 * (i + 1)); });
     }
   }
-  console.warn("[SW] CRITIQUE non caché après", attempts, "essais :", asset, lastErr);
+  console.warn("[SW] CRITIQUE non caché après", attempts, "essais :", asset,
+               "type=" + (lastResult && lastResult.type),
+               "status=" + (lastResult && lastResult.status));
   return false;
 }
 
@@ -380,7 +401,12 @@ self.addEventListener("install", (event) => {
   console.log("[SW] Installation");
 
   event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
+    // 🆕 v1.43.22 — Vide le log des échecs précédents avant de commencer.
+    // Sinon les anciennes erreurs (déjà résolues par un FTP postérieur)
+    // continueraient d'apparaître dans l'Inspecteur SW.
+    _clearInstallFailures().catch(function(){}).then(function() {
+      return caches.open(CACHE_NAME);
+    }).then(async (cache) => {
       // ⚡ Phase 1 — App shell critique (retry x3). Garantit qu'index.html est
       // cached même si l'install est interrompue après cette phase.
       console.log("[SW] Phase 1 — App shell critique...");
@@ -388,34 +414,42 @@ self.addEventListener("install", (event) => {
         const ok = await _cacheWithRetry(cache, asset, 3);
         if (ok) console.log("[SW] ✅ Critique caché :", asset);
       }
-      console.log("[SW] Phase 1 OK. Phase 2 — reste assets...");
+      console.log("[SW] Phase 1 OK. Phase 2 — reste assets (batchs parallèles)...");
 
-      // Phase 2 — reste des assets (best-effort, pas de retry)
-      for (const asset of ASSETS_TO_CACHE) {
-        // Skip ceux déjà cachés en phase 1 (évite double-fetch)
-        if (CRITICAL_APP_SHELL.indexOf(asset) !== -1) continue;
-        try {
-          // 🆕 v1.9.2-cache-fix (KARMA "déployé via FTP mais je vois
-          // toujours v1.8.1") : `cache.add(url)` utilise le HTTP cache
-          // du navigateur par défaut. Si le navigateur avait un
-          // Cache-Control valide sur l'ancien fichier, il sert sa copie
-          // locale au lieu de fetch le nouveau FTP-déployé → le SW met
-          // l'ANCIENNE version dans son cache au bump CACHE_NAME.
-          //
-          // Fix : `cache: 'reload'` force le bypass du HTTP cache navigateur
-          // → fetch direct depuis le serveur → on récupère TOUJOURS la
-          // version la plus récente déployée en FTP, indépendamment de
-          // ce que le navigateur a en cache HTTP.
-          await cache.add(new Request(asset, { cache: "reload" }));
-          // 🐛 v1.21.3 (audit P0-7) : enregistre l'URL absolue de l'asset
-          // dans le set "intouchable" pour que la LRU eviction ne supprime
-          // jamais l'app shell.
-          const absUrl = _cacheKeyOf(asset);
-          if (absUrl) _staticAssetUrls.add(absUrl);
-          console.log("[SW] Caché :", asset);
-        } catch (err) {
-          console.warn("[SW] Non caché :", asset, err);
-        }
+      // 🆕 v1.43.25 — Phase 2 PARALLÉLISÉE en batchs de 10 (KARMA "le SW
+      // arrive pas à tout récupérer", typiquement leaflet + icônes).
+      // Avant : `for-of await` séquentiel sur ~150 assets = 30-60s sur 4G
+      // → fenêtre d'interruption énorme (Safari iOS kill SW, reload user,
+      // throttling Chrome Android background). Maintenant : Promise.allSettled
+      // par batch de 10 → install ~5-10× plus rapide → fenêtre minuscule.
+      // BATCH_SIZE = 10 : compromis raisonnable. Trop bas = trop séquentiel ;
+      // trop haut (50+) = risque DDoS sur serveur dev nginx peu puissant.
+      // HTTP/2 multiplexing géré nativement par le navigateur — pas besoin
+      // de keepalive manuel.
+      // `_cacheAddDiag` catch toutes ses propres exceptions et alimente le
+      // log IDB d'install — on n'a pas besoin de wrapper try/catch ici.
+      const BATCH_SIZE = 10;
+      const phase2Assets = ASSETS_TO_CACHE.filter(function(a) {
+        return CRITICAL_APP_SHELL.indexOf(a) === -1;
+      });
+      for (let i = 0; i < phase2Assets.length; i += BATCH_SIZE) {
+        const batch = phase2Assets.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map(function(asset) { return _cacheAddDiag(cache, asset, "phase2"); })
+        );
+        results.forEach(function(r, idx) {
+          const asset = batch[idx];
+          if (r.status === "fulfilled" && r.value && r.value.ok) {
+            console.log("[SW] Caché :", asset);
+          } else if (r.status === "fulfilled") {
+            console.warn("[SW] Non caché :", asset,
+                         "type=" + (r.value && r.value.type),
+                         "status=" + (r.value && r.value.status || "-"));
+          } else {
+            // Cas rarissime : exception non-catchée par _cacheAddDiag
+            console.warn("[SW] Non caché (exception batch) :", asset, r.reason);
+          }
+        });
       }
     })
   );
@@ -542,23 +576,37 @@ self.addEventListener("message", (event) => {
   if (data.type === "REFETCH_MISSING_ASSETS") {
     const assets = Array.isArray(data.assets) ? data.assets : [];
     caches.open(CACHE_NAME).then(async function(cache) {
+      // 🆕 v1.43.25 — Paralléliser aussi le refetch user (clic bouton
+      // "Récupérer manquants" ou auto-heal). Même logique batch=10 que
+      // l'install phase 2 — gain de vitesse identique. Retry x3 conservé
+      // par asset, mais les 10 assets du batch retentent en parallèle.
+      const BATCH_SIZE = 10;
       const results = [];
-      for (const asset of assets) {
-        let ok = false;
-        let lastErr = null;
-        for (let i = 0; i < 3; i++) {
-          try {
-            await cache.add(new Request(asset, { cache: "reload" }));
-            ok = true;
-            const absUrl = _cacheKeyOf(asset);
-            if (absUrl) _staticAssetUrls.add(absUrl);
-            break;
-          } catch(e) {
-            lastErr = String(e && e.message || e);
-            if (i < 2) await new Promise(function(r) { setTimeout(r, 200 * (i + 1)); });
+      for (let i = 0; i < assets.length; i += BATCH_SIZE) {
+        const batch = assets.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.allSettled(batch.map(async function(asset) {
+          let ok = false;
+          let lastResult = null;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const r = await _cacheAddDiag(cache, asset, "refetch");
+            if (r.ok) { ok = true; break; }
+            lastResult = r;
+            if (attempt < 2) await new Promise(function(r2) { setTimeout(r2, 200 * (attempt + 1)); });
           }
-        }
-        results.push({ asset: asset, ok: ok, error: ok ? null : lastErr });
+          return {
+            asset:  asset,
+            ok:     ok,
+            error:  ok ? null : (lastResult && lastResult.type) || "unknown",
+            status: ok ? null : (lastResult && lastResult.status) || 0
+          };
+        }));
+        batchResults.forEach(function(br, idx) {
+          if (br.status === "fulfilled") {
+            results.push(br.value);
+          } else {
+            results.push({ asset: batch[idx], ok: false, error: "exception", status: 0 });
+          }
+        });
       }
       if (event.ports && event.ports[0]) {
         event.ports[0].postMessage({ type: "REFETCH_DONE", results: results });
@@ -566,6 +614,19 @@ self.addEventListener("message", (event) => {
     }).catch(function(e) {
       if (event.ports && event.ports[0]) {
         event.ports[0].postMessage({ type: "REFETCH_DONE", error: String(e.message || e), results: [] });
+      }
+    });
+    return;
+  }
+  // 🆕 v1.43.22 — Inspecteur SW V2 : renvoie l'historique des échecs
+  // d'install (stockés dans IDB myktamap_sw_install_log). Permet au
+  // client d'afficher non seulement QUELS assets manquent (déjà connu
+  // via diff ASSETS_TO_CACHE vs cache), mais POURQUOI (404 = FTP partiel,
+  // 5xx = serveur en erreur, network = offline, quota = IDB plein, etc.).
+  if (data.type === "GET_INSTALL_FAILURES") {
+    _getInstallFailures().then(function(failures) {
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ type: "INSTALL_FAILURES", failures: failures });
       }
     });
     return;
@@ -650,6 +711,146 @@ function _osmTilesCacheLookup(z, x, y) {
     // Pas d'upgradeneeded ici : si la DB n'existe pas encore (= jamais
     // d'écriture côté app), on retourne juste null (miss).
   });
+}
+
+// =========================
+// 🆕 v1.43.22 — INSTALL LOG DB (SwInspector V2)
+// =========================
+// IDB store pour tracer les échecs d'install (FTP partiel = 404 serveur,
+// coupure réseau, quota dépassé, etc.). Permet à l'Inspecteur SW d'afficher
+// non seulement QUELS assets manquent, mais POURQUOI (404/5xx/network/quota/
+// parse/unknown). Vidé au début de chaque install pour ne pas accumuler
+// d'anciens échecs résolus.
+const INSTALL_LOG_DB = "myktamap_sw_install_log";
+const INSTALL_LOG_VER = 1;
+const INSTALL_LOG_STORE = "install_failures";
+
+function _openInstallLogDB() {
+  return new Promise(function(resolve, reject) {
+    if (!self.indexedDB) { reject(new Error("IDB indispo")); return; }
+    let req;
+    try { req = self.indexedDB.open(INSTALL_LOG_DB, INSTALL_LOG_VER); }
+    catch(e) { reject(e); return; }
+    req.onupgradeneeded = function(e) {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(INSTALL_LOG_STORE)) {
+        db.createObjectStore(INSTALL_LOG_STORE, { keyPath: "asset" });
+      }
+    };
+    req.onsuccess = function() { resolve(req.result); };
+    req.onerror   = function() { reject(req.error); };
+  });
+}
+
+function _logInstallFailure(failure) {
+  return new Promise(function(resolve) {
+    _openInstallLogDB().then(function(db) {
+      try {
+        const tx = db.transaction(INSTALL_LOG_STORE, "readwrite");
+        tx.objectStore(INSTALL_LOG_STORE).put({
+          asset:     failure.asset,
+          type:      failure.type     || "unknown",
+          status:    failure.status   || 0,
+          message:   failure.message  || "",
+          timestamp: new Date().toISOString(),
+          phase:     failure.phase    || "unknown"
+        });
+        tx.oncomplete = function() { resolve(true); };
+        tx.onerror    = function() { resolve(false); };
+      } catch(e) { resolve(false); }
+    }).catch(function() { resolve(false); });
+  });
+}
+
+function _clearInstallFailures() {
+  return new Promise(function(resolve) {
+    _openInstallLogDB().then(function(db) {
+      try {
+        const tx = db.transaction(INSTALL_LOG_STORE, "readwrite");
+        tx.objectStore(INSTALL_LOG_STORE).clear();
+        tx.oncomplete = function() { resolve(true); };
+        tx.onerror    = function() { resolve(false); };
+      } catch(e) { resolve(false); }
+    }).catch(function() { resolve(false); });
+  });
+}
+
+function _getInstallFailures() {
+  return new Promise(function(resolve) {
+    _openInstallLogDB().then(function(db) {
+      try {
+        const tx  = db.transaction(INSTALL_LOG_STORE, "readonly");
+        const req = tx.objectStore(INSTALL_LOG_STORE).getAll();
+        req.onsuccess = function() { resolve(req.result || []); };
+        req.onerror   = function() { resolve([]); };
+      } catch(e) { resolve([]); }
+    }).catch(function() { resolve([]); });
+  });
+}
+
+// =========================
+// 🆕 v1.43.22 — CACHE ADD AVEC DIAGNOSTIC
+// =========================
+// Remplace cache.add() (opaque) par un fetch + analyse explicite de la
+// réponse + cache.put. Permet de catégoriser précisément l'erreur :
+//   - "404"      : fichier absent du serveur (= bug FTP partiel)
+//   - "5xx"      : serveur en erreur transitoire (502/503/504...)
+//   - "4xx"      : autre erreur HTTP cliente (403, etc.)
+//   - "network"  : TypeError fetch = offline / DNS / CORS
+//   - "quota"    : IDB plein (QuotaExceededError sur cache.put)
+//   - "parse"    : réponse mal formée
+//   - "unknown"  : reste
+async function _cacheAddDiag(cache, asset, phase) {
+  let resp = null;
+  // Étape 1 : fetch
+  try {
+    resp = await fetch(new Request(asset, { cache: "reload" }));
+  } catch (err) {
+    const type = (err && err.name === "TypeError") ? "network" : "unknown";
+    await _logInstallFailure({
+      asset:   asset,
+      type:    type,
+      status:  0,
+      message: (err && err.message) || String(err),
+      phase:   phase
+    });
+    return { ok: false, type: type, message: (err && err.message) || String(err) };
+  }
+  // Étape 2 : analyse status HTTP
+  if (!resp || !resp.ok) {
+    const status = resp ? resp.status : 0;
+    const type   = status === 404 ? "404"
+                : (status >= 500 && status <= 599) ? "5xx"
+                : (status >= 400 && status <= 499) ? "4xx"
+                : "unknown";
+    await _logInstallFailure({
+      asset:   asset,
+      type:    type,
+      status:  status,
+      message: resp ? (resp.statusText || "") : "no response",
+      phase:   phase
+    });
+    return { ok: false, type: type, status: status };
+  }
+  // Étape 3 : cache.put
+  try {
+    await cache.put(asset, resp);
+    const absUrl = _cacheKeyOf(asset);
+    if (absUrl) _staticAssetUrls.add(absUrl);
+    return { ok: true };
+  } catch (err) {
+    const type = (err && err.name === "QuotaExceededError") ? "quota"
+              : (err && err.name === "SyntaxError")        ? "parse"
+              : "unknown";
+    await _logInstallFailure({
+      asset:   asset,
+      type:    type,
+      status:  resp.status || 0,
+      message: (err && err.message) || String(err),
+      phase:   phase
+    });
+    return { ok: false, type: type, message: (err && err.message) || String(err) };
+  }
 }
 
 self.addEventListener("fetch", (event) => {

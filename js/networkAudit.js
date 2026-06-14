@@ -117,15 +117,32 @@
     }
   ];
 
-  // Descriptions human-readable (affichées dans la modale doc audit)
-  const WHITELIST_HUMAN = [
-    "Même origine — l'app elle-même servie depuis " + location.origin +
-      " (inclut le ping santé serveur " + location.origin + "/ping.html, " +
-      "body attendu \"OK\", utilisé avant Force update / Reset pour vérifier " +
-      "DNS / SSL / Nginx en un seul appel)",
-    "blob: URLs (références locales au navigateur — utilisées par le tiling V2 pour servir les tuiles d'image depuis le ZIP en mémoire ; aucune fuite réseau possible)",
-    "data: URLs (base64 inline — icônes SVG embarquées dans le code, exports image ; aucune fuite réseau possible)"
-  ];
+  // Descriptions human-readable (affichées dans la modale doc audit).
+  // Construites AU RENDU (jamais au load) → dicos i18n prêts. Exposées via
+  // un getter `WHITELIST_HUMAN` sur l'API : chaque accès rebâtit l'array dans
+  // la langue courante. Fallback FR si I18n absent.
+  function _t(k, p) {
+    return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : null;
+  }
+  function _buildWhitelistHuman() {
+    const origin = location.origin;
+    const fr = [
+      "Même origine — l'app elle-même servie depuis " + origin +
+        " (inclut le ping santé serveur " + origin + "/ping.html, " +
+        "body attendu \"OK\", utilisé avant Force update / Reset pour vérifier " +
+        "DNS / SSL / Nginx en un seul appel)",
+      "blob: URLs (références locales au navigateur — utilisées par le tiling V2 pour servir les tuiles d'image depuis le ZIP en mémoire ; aucune fuite réseau possible)",
+      "data: URLs (base64 inline — icônes SVG embarquées dans le code, exports image ; aucune fuite réseau possible)"
+    ];
+    const sameOrigin = _t("netaudit.whitelist.sameOrigin", { origin: origin });
+    const blob       = _t("netaudit.whitelist.blob");
+    const data       = _t("netaudit.whitelist.data");
+    return [
+      sameOrigin != null ? sameOrigin : fr[0],
+      blob       != null ? blob       : fr[1],
+      data       != null ? data       : fr[2]
+    ];
+  }
 
   // ============================================================
   // STATE
@@ -445,8 +462,9 @@
       };
     },
 
-    // Whitelist visible (pour l'UI doc audit)
-    WHITELIST_HUMAN: WHITELIST_HUMAN.slice(),
+    // Whitelist visible (pour l'UI doc audit). Getter → reconstruite à l'accès
+    // dans la langue courante (appelé au rendu de la modale doc audit).
+    get WHITELIST_HUMAN() { return _buildWhitelistHuman(); },
 
     // Export structuré pour le bouton 📥 Exporter JSON
     exportJson: function() {
@@ -457,7 +475,7 @@
         userAgent:  navigator.userAgent,
         origin:     location.origin,
         paranoia:   _paranoia,
-        whitelist:  WHITELIST_HUMAN.slice(),
+        whitelist:  _buildWhitelistHuman(),
         bufferSize: _logBuffer.length,
         bufferMax:  BUFFER_MAX,
         entries:    _logBuffer.map(function(e) {
@@ -482,7 +500,7 @@
   // ============================================================
   if (_paranoia) {
     console.info(
-      "%c[NetworkAudit]%c MODE HORS-LIGNE STRICT ACTIF %c\nToute requête réseau non whitelistée sera bloquée.\nWhitelist : " + WHITELIST_HUMAN.join(" | "),
+      "%c[NetworkAudit]%c MODE HORS-LIGNE STRICT ACTIF %c\nToute requête réseau non whitelistée sera bloquée.\nWhitelist : " + _buildWhitelistHuman().join(" | "),
       "background:#ff9500;color:#fff;font-weight:bold;padding:2px 6px;border-radius:3px;",
       "color:#ff9500;font-weight:bold;",
       "color:#888;"

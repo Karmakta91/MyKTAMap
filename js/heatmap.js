@@ -583,7 +583,7 @@
     const segs = _collecterSegments(opts);
     if (segs.length === 0) {
       if (window.OOMGuard && window.OOMGuard.showToast) {
-        window.OOMGuard.showToast("🔥 Aucune donnée pour la heatmap. Active une source (tracker, points, tracés, calques).", "warn");
+        window.OOMGuard.showToast(window.I18n.t("heatmap.toast.noData"), "warn");
       }
       effacer();
       return;
@@ -595,8 +595,7 @@
       console.warn("[Heatmap] Refus de rendre " + segs.length + " segments (max " + MAX_SEGMENTS + ")");
       if (window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast(
-          "🔥 Trop d'éléments pour la heatmap (" + segs.length + " > " + MAX_SEGMENTS +
-          "). Décoche des sources pour réduire la charge.",
+          window.I18n.t("heatmap.toast.tooMany", { count: segs.length, max: MAX_SEGMENTS }),
           "warn"
         );
       }
@@ -611,9 +610,9 @@
       let nLines = 0, nDots = 0;
       segs.forEach(function(s) { if (s.b) nLines++; else nDots++; });
       const parts = [];
-      if (nLines > 0) parts.push(nLines + " segment" + (nLines > 1 ? "s" : ""));
-      if (nDots  > 0) parts.push(nDots  + " point" + (nDots  > 1 ? "s" : ""));
-      window.OOMGuard.showToast("🔥 Heatmap : " + parts.join(" + ") + " (normalisé sur le pixel le plus chaud).", "info");
+      if (nLines > 0) parts.push(window.I18n.t(nLines > 1 ? "heatmap.toast.segments" : "heatmap.toast.segment", { count: nLines }));
+      if (nDots  > 0) parts.push(window.I18n.t(nDots  > 1 ? "heatmap.toast.points"   : "heatmap.toast.point",   { count: nDots }));
+      window.OOMGuard.showToast(window.I18n.t("heatmap.toast.info", { parts: parts.join(" + ") }), "info");
     }
   }
 
@@ -733,70 +732,67 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-heatmap-modal-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🔥 Heatmap — densité visuelle</span>' +
+          '<span class="kta-readme-modal-titre">' + window.I18n.t("heatmap.modal.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-heatmap-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" style="padding:14px 16px;">' +
           '<p style="font-size:13px; color:#c8d0e0; margin-top:0; line-height:1.4;">' +
-            'Affiche où la <strong>densité d\'éléments</strong> est la plus forte. Les tracés et tracker sont interpolés ' +
-            'le long de leurs segments (vraies traînées continues, pas des points isolés). ' +
-            '<span style="color:#ff8a5c;">Le pixel le plus dense = rouge</span>, le moins dense = bleu — ' +
-            'la coloration s\'auto-adapte aux données sélectionnées.' +
+            window.I18n.t("heatmap.modal.help") +
           '</p>' +
 
           '<div class="kta-heatmap-section">' +
-            '<div class="kta-heatmap-section-titre">🗺️ Session courante</div>' +
+            '<div class="kta-heatmap-section-titre">' + window.I18n.t("heatmap.section.session") + '</div>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-tracker"' + (srcTracker && nTracker > 0 ? " checked" : "") + (nTracker === 0 ? " disabled" : "") + '>' +
-              '<span>🚶 Tracker (timeline)</span>' +
-              '<span class="kta-heatmap-cb-count">' + nTracker + ' pts</span>' +
+              '<span>' + window.I18n.t("heatmap.src.tracker") + '</span>' +
+              '<span class="kta-heatmap-cb-count">' + window.I18n.t("heatmap.count.pts", { pts: nTracker }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-editor"' + (srcEditor && nEditor > 0 ? " checked" : "") + (nEditor === 0 ? " disabled" : "") + '>' +
-              '<span>✏️ Points ajoutés</span>' +
-              '<span class="kta-heatmap-cb-count">' + nEditor + ' pts</span>' +
+              '<span>' + window.I18n.t("heatmap.src.editor") + '</span>' +
+              '<span class="kta-heatmap-cb-count">' + window.I18n.t("heatmap.count.pts", { pts: nEditor }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-roads"' + (srcRoads && nRoads > 0 ? " checked" : "") + (nRoads === 0 ? " disabled" : "") + '>' +
-              '<span>🛣️ Tracés</span>' +
-              '<span class="kta-heatmap-cb-count">' + nRoads + ' tracé' + (nRoads > 1 ? "s" : "") + ' / ' + nRoadsPts + ' pts</span>' +
+              '<span>' + window.I18n.t("heatmap.src.roads") + '</span>' +
+              '<span class="kta-heatmap-cb-count">' + window.I18n.t(nRoads > 1 ? "heatmap.count.roads.plural" : "heatmap.count.roads.one", { n: nRoads, pts: nRoadsPts }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-zones"' + (srcZones && nZones > 0 ? " checked" : "") + (nZones === 0 ? " disabled" : "") + '>' +
-              '<span>⬛ Zones</span>' +
-              '<span class="kta-heatmap-cb-count">' + nZones + ' zone' + (nZones > 1 ? "s" : "") + ' / ' + nZonesPts + ' pts</span>' +
+              '<span>' + window.I18n.t("heatmap.src.zones") + '</span>' +
+              '<span class="kta-heatmap-cb-count">' + window.I18n.t(nZones > 1 ? "heatmap.count.zones.plural" : "heatmap.count.zones.one", { n: nZones, pts: nZonesPts }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-struct"' + (srcStructures && nStruct > 0 ? " checked" : "") + (nStruct === 0 ? " disabled" : "") + '>' +
-              '<span>🏛️ Structures</span>' +
-              '<span class="kta-heatmap-cb-count">' + nStruct + ' / ' + nStructPts + ' pts</span>' +
+              '<span>' + window.I18n.t("heatmap.src.structures") + '</span>' +
+              '<span class="kta-heatmap-cb-count">' + window.I18n.t("heatmap.count.struct", { n: nStruct, pts: nStructPts }) + '</span>' +
             '</label>' +
           '</div>' +
 
           '<div class="kta-heatmap-section">' +
             '<div class="kta-heatmap-section-titre" style="display:flex; align-items:center; gap:8px;">' +
-              '<span>📊 Calques de données <span style="font-size:10px; color:#8892a4; font-weight:400; text-transform:none; letter-spacing:0;">(visibles ou non)</span></span>' +
-              '<button type="button" id="kta-hm-dl-toggleall" style="margin-left:auto; background:transparent; border:1px solid rgba(255,138,92,0.4); color:#ff8a5c; padding:2px 8px; font-size:10px; border-radius:4px; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:600;" title="Tout cocher / décocher les 4 sources data layer">⇅ Tout</button>' +
+              '<span>' + window.I18n.t("heatmap.section.data") + ' <span style="font-size:10px; color:#8892a4; font-weight:400; text-transform:none; letter-spacing:0;">' + window.I18n.t("heatmap.section.dataHint") + '</span></span>' +
+              '<button type="button" id="kta-hm-dl-toggleall" style="margin-left:auto; background:transparent; border:1px solid rgba(255,138,92,0.4); color:#ff8a5c; padding:2px 8px; font-size:10px; border-radius:4px; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:600;" title="' + window.I18n.t("heatmap.data.toggleAllTitle") + '">' + window.I18n.t("heatmap.toggleAll") + '</button>' +
             '</div>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-data-points"' + (srcDataPoints && nDataMarkers > 0 ? " checked" : "") + (nDataMarkers === 0 ? " disabled" : "") + '>' +
-              '<span>📍 Points</span>' +
-              '<span class="kta-heatmap-cb-count">' + nDataMarkers + ' pt' + (nDataMarkers > 1 ? "s" : "") + '</span>' +
+              '<span>' + window.I18n.t("heatmap.src.dataPoints") + '</span>' +
+              '<span class="kta-heatmap-cb-count">' + window.I18n.t(nDataMarkers > 1 ? "heatmap.count.points.plural" : "heatmap.count.points.one", { pts: nDataMarkers }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-data-roads"' + (srcDataRoads && dlRoads.n > 0 ? " checked" : "") + (dlRoads.n === 0 ? " disabled" : "") + '>' +
-              '<span>🛣️ Tracés</span>' +
-              '<span class="kta-heatmap-cb-count">' + dlRoads.n + ' tracé' + (dlRoads.n > 1 ? "s" : "") + ' / ' + dlRoads.pts + ' pts</span>' +
+              '<span>' + window.I18n.t("heatmap.src.dataRoads") + '</span>' +
+              '<span class="kta-heatmap-cb-count">' + window.I18n.t(dlRoads.n > 1 ? "heatmap.count.roads.plural" : "heatmap.count.roads.one", { n: dlRoads.n, pts: dlRoads.pts }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-data-zones"' + (srcDataZones && dlZones.n > 0 ? " checked" : "") + (dlZones.n === 0 ? " disabled" : "") + '>' +
-              '<span>⬛ Zones</span>' +
-              '<span class="kta-heatmap-cb-count">' + dlZones.n + ' zone' + (dlZones.n > 1 ? "s" : "") + ' / ' + dlZones.pts + ' pts</span>' +
+              '<span>' + window.I18n.t("heatmap.src.dataZones") + '</span>' +
+              '<span class="kta-heatmap-cb-count">' + window.I18n.t(dlZones.n > 1 ? "heatmap.count.zones.plural" : "heatmap.count.zones.one", { n: dlZones.n, pts: dlZones.pts }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-data-struct"' + (srcDataStructures && dlStructs.n > 0 ? " checked" : "") + (dlStructs.n === 0 ? " disabled" : "") + '>' +
-              '<span>🏛️ Structures</span>' +
-              '<span class="kta-heatmap-cb-count">' + dlStructs.n + ' / ' + dlStructs.pts + ' pts</span>' +
+              '<span>' + window.I18n.t("heatmap.src.dataStructures") + '</span>' +
+              '<span class="kta-heatmap-cb-count">' + window.I18n.t("heatmap.count.struct", { n: dlStructs.n, pts: dlStructs.pts }) + '</span>' +
             '</label>' +
           '</div>' +
 
@@ -807,42 +803,42 @@
           (_isMultiLevel ?
             '<div class="kta-heatmap-section">' +
               '<div class="kta-heatmap-section-titre" style="display:flex; align-items:center; gap:8px;">' +
-                '<span>🏗️ Niveaux à inclure</span>' +
-                '<button type="button" id="kta-hm-lvl-toggleall" style="margin-left:auto; background:transparent; border:1px solid rgba(255,138,92,0.4); color:#ff8a5c; padding:2px 8px; font-size:10px; border-radius:4px; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:600;" title="Tout cocher / décocher les niveaux">⇅ Tout</button>' +
+                '<span>' + window.I18n.t("heatmap.section.levels") + '</span>' +
+                '<button type="button" id="kta-hm-lvl-toggleall" style="margin-left:auto; background:transparent; border:1px solid rgba(255,138,92,0.4); color:#ff8a5c; padding:2px 8px; font-size:10px; border-radius:4px; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:600;" title="' + window.I18n.t("heatmap.levels.toggleAllTitle") + '">' + window.I18n.t("heatmap.toggleAll") + '</button>' +
               '</div>' +
               '<div class="kta-heatmap-levels-row" style="display:flex; flex-wrap:wrap; gap:6px 10px; padding:4px 0;">' +
                 _availableLevels.map(function(lvl) {
                   const isChecked = _defaultLevelsSet && _defaultLevelsSet.has(lvl);
-                  const lblTxt = (lvl === 0) ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl));
+                  const lblTxt = (lvl === 0) ? window.I18n.t("heatmap.levels.ground") : (lvl > 0 ? "+" + lvl : String(lvl));
                   return '<label class="kta-heatmap-level-chip" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:rgba(244,197,66,0.06); border:1px solid rgba(244,197,66,0.20); border-radius:14px; cursor:pointer; font-size:12px;">' +
                            '<input type="checkbox" data-level="' + lvl + '" class="kta-hm-lvl-cb"' + (isChecked ? " checked" : "") + '>' +
-                           '<span>Niv ' + lblTxt + '</span>' +
+                           '<span>' + window.I18n.t("heatmap.levels.chip", { lvl: lblTxt }) + '</span>' +
                          '</label>';
                 }).join("") +
               '</div>' +
               '<p style="font-size:11px; color:#8892a4; font-style:italic; margin:6px 0 0; line-height:1.4;">' +
-                'Filtre cumulé avec les sources ci-dessus. Une jonction interniveau est incluse si AU MOINS un de ses 2 niveaux est coché.' +
+                window.I18n.t("heatmap.levels.note") +
               '</p>' +
             '</div>'
             : '') +
 
           '<div class="kta-heatmap-section">' +
-            '<div class="kta-heatmap-section-titre">🎨 Paramètres visuels</div>' +
+            '<div class="kta-heatmap-section-titre">' + window.I18n.t("heatmap.section.visual") + '</div>' +
             '<div class="kta-heatmap-slider-row">' +
-              '<span class="kta-heatmap-slider-label">Rayon (px)</span>' +
+              '<span class="kta-heatmap-slider-label">' + window.I18n.t("heatmap.param.radius") + '</span>' +
               '<input type="range" class="kta-heatmap-slider" id="kta-hm-radius" min="10" max="120" step="5" value="' + radius + '">' +
               '<span class="kta-heatmap-slider-val" id="kta-hm-radius-val">' + radius + '</span>' +
             '</div>' +
             '<div class="kta-heatmap-slider-row">' +
-              '<span class="kta-heatmap-slider-label">Intensité</span>' +
+              '<span class="kta-heatmap-slider-label">' + window.I18n.t("heatmap.param.intensity") + '</span>' +
               '<input type="range" class="kta-heatmap-slider" id="kta-hm-intensity" min="0.2" max="3" step="0.1" value="' + intensity + '">' +
               '<span class="kta-heatmap-slider-val" id="kta-hm-intensity-val">' + intensity.toFixed(1) + 'x</span>' +
             '</div>' +
           '</div>' +
 
           '<div class="kta-heatmap-actions">' +
-            '<button class="kta-btn kta-btn-ghost" id="kta-hm-effacer" type="button">❌ Effacer</button>' +
-            '<button class="kta-btn kta-btn-primary" id="kta-hm-appliquer" type="button">🔥 Appliquer</button>' +
+            '<button class="kta-btn kta-btn-ghost" id="kta-hm-effacer" type="button">' + window.I18n.t("heatmap.btn.clear") + '</button>' +
+            '<button class="kta-btn kta-btn-primary" id="kta-hm-appliquer" type="button">' + window.I18n.t("heatmap.btn.apply") + '</button>' +
           '</div>' +
 
         '</div>' +

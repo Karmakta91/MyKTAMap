@@ -50,6 +50,15 @@
   let _modal = null;
 
   // ====================================================================
+  // I18N HELPER — appelé AU RENDU (jamais au load). Fallback = clé brute.
+  // ====================================================================
+  function t(key, params) {
+    return (window.I18n && typeof window.I18n.t === "function")
+      ? window.I18n.t(key, params)
+      : key;
+  }
+
+  // ====================================================================
   // 📊 DATA COLLECTION
   // ====================================================================
 
@@ -215,24 +224,24 @@
     const sep = "─".repeat(40);
 
     // En-tête
-    lines.push("📋 RAPPORT DE SORTIE — " + data.plan.name);
+    lines.push("📋 " + t("report.txt.header") + data.plan.name);
     lines.push(sep);
     const dStart = new Date(o.startTs).toLocaleDateString("fr-FR");
     const dEnd   = new Date(o.endTs).toLocaleDateString("fr-FR");
     if (dStart === dEnd) {
-      lines.push("📅 Date : " + dStart);
+      lines.push("📅 " + t("report.txt.date") + dStart);
     } else {
-      lines.push("📅 Période : " + dStart + " → " + dEnd);
+      lines.push("📅 " + t("report.txt.period") + dStart + " → " + dEnd);
     }
-    lines.push("🌍 Plan : " + data.plan.name + (data.plan.version ? " " + data.plan.version : ""));
-    if (data.plan.author) lines.push("👤 Auteur plan : " + data.plan.author);
-    lines.push("📱 App : MyKTAMap " + data.app.version);
+    lines.push("🌍 " + t("report.txt.plan") + data.plan.name + (data.plan.version ? " " + data.plan.version : ""));
+    if (data.plan.author) lines.push("👤 " + t("report.txt.author") + data.plan.author);
+    lines.push("📱 " + t("report.txt.app") + " " + data.app.version);
     lines.push("");
 
     // Stats POI
     if (o.includePoints !== false) {
       const tagStats = _statsParTag(data.points);
-      lines.push("📍 POI ajoutés : " + data.points.length);
+      lines.push("📍 " + t("report.txt.poi") + data.points.length);
       Object.keys(tagStats).sort().forEach(function(tag) {
         lines.push("   • " + tag + " : " + tagStats[tag]);
       });
@@ -242,13 +251,13 @@
     // Roads
     if (o.includeRoads !== false) {
       const typeStats = _statsParType(data.roads);
-      lines.push("🛣️ Tracés : " + data.roads.length + " (toutes périodes — pas de timestamp natif)");
-      Object.keys(typeStats).sort().forEach(function(t) {
-        lines.push("   • " + t + " : " + typeStats[t]);
+      lines.push("🛣️ " + t("report.txt.roads") + data.roads.length + " " + t("report.txt.allPeriodsNoTs"));
+      Object.keys(typeStats).sort().forEach(function(ty) {
+        lines.push("   • " + ty + " : " + typeStats[ty]);
       });
       const distM = _pxVersM(_calculerDistanceRoadsPx(data.roads), data.plan.scale);
       if (distM > 0) {
-        lines.push("   • Distance totale tracés : " + _formatDistance(distM));
+        lines.push("   • " + t("report.txt.roadsDist") + _formatDistance(distM));
       }
       lines.push("");
     }
@@ -256,9 +265,9 @@
     // Zones
     if (o.includeZones !== false) {
       const typeStats = _statsParType(data.zones);
-      lines.push("⬛ Zones : " + data.zones.length + " (toutes périodes)");
-      Object.keys(typeStats).sort().forEach(function(t) {
-        lines.push("   • " + t + " : " + typeStats[t]);
+      lines.push("⬛ " + t("report.txt.zones") + data.zones.length + " " + t("report.txt.allPeriods"));
+      Object.keys(typeStats).sort().forEach(function(ty) {
+        lines.push("   • " + ty + " : " + typeStats[ty]);
       });
       lines.push("");
     }
@@ -266,9 +275,9 @@
     // Structures
     if (o.includeStructures !== false && data.structures.length > 0) {
       const typeStats = _statsParType(data.structures);
-      lines.push("🏛️ Structures : " + data.structures.length + " (toutes périodes)");
-      Object.keys(typeStats).sort().forEach(function(t) {
-        lines.push("   • " + t + " : " + typeStats[t]);
+      lines.push("🏛️ " + t("report.txt.structures") + data.structures.length + " " + t("report.txt.allPeriods"));
+      Object.keys(typeStats).sort().forEach(function(ty) {
+        lines.push("   • " + ty + " : " + typeStats[ty]);
       });
       lines.push("");
     }
@@ -277,29 +286,29 @@
     if (o.includeTracker !== false && data.tracker.timeline.length > 0) {
       const distM = _pxVersM(_calculerDistanceTrackerPx(data.tracker.timeline), data.plan.scale);
       const duree = _calculerDureeTimelineMs(data.tracker.timeline);
-      lines.push("🧭 Tracker GPS :");
-      lines.push("   • Distance parcourue : " + _formatDistance(distM));
-      lines.push("   • Durée : " + _formatDuree(duree));
-      lines.push("   • Points enregistrés : " + data.tracker.timeline.length);
+      lines.push("🧭 " + t("report.txt.tracker"));
+      lines.push("   • " + t("report.txt.trackerDist") + _formatDistance(distM));
+      lines.push("   • " + t("report.txt.duration") + _formatDuree(duree));
+      lines.push("   • " + t("report.txt.trackerPts") + data.tracker.timeline.length);
       lines.push("");
     }
 
     // Photos
     if (o.includePhotos !== false && typeof o.photosCount === "number" && o.photosCount > 0) {
-      lines.push("📸 Photos attachées : " + o.photosCount);
+      lines.push("📸 " + t("report.txt.photos") + o.photosCount);
       lines.push("");
     }
 
     // Note libre
     if (o.note && o.note.trim()) {
-      lines.push("📝 NOTE");
+      lines.push("📝 " + t("report.txt.note"));
       lines.push(sep);
       lines.push(o.note.trim());
       lines.push("");
     }
 
     lines.push(sep);
-    lines.push("Généré par MyKTAMap " + data.app.version + " — " + new Date().toLocaleString("fr-FR"));
+    lines.push(t("report.txt.generatedBy") + " " + data.app.version + " — " + new Date().toLocaleString("fr-FR"));
     lines.push("https://myktamap.fr");
 
     return lines.join("\n");
@@ -574,7 +583,7 @@
 
   function _genererPDF(data, opts, mapDataUrl) {
     if (!window.jspdf || !window.jspdf.jsPDF) {
-      throw new Error("jsPDF indisponible (vérifie le chargement de la lib)");
+      throw new Error(t("report.err.jspdf"));
     }
     const pdf = new window.jspdf.jsPDF({ format: "a4", orientation: "portrait", unit: "mm" });
     const pageW = pdf.internal.pageSize.getWidth();
@@ -591,17 +600,19 @@
 
     // ─── HEADER ─────────────────────────────────────────────
     pdf.setFontSize(16); pdf.setFont(undefined, "bold");
-    pdf.text("Rapport de sortie", margin, y); y += 8;
+    pdf.text(_stripPourPdf(t("report.pdf.title")), margin, y); y += 8;
     pdf.setFontSize(11);
     pdf.text(_stripPourPdf(data.plan.name) + (data.plan.version ? " " + data.plan.version : ""), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
     const dStart = new Date(opts.startTs).toLocaleDateString("fr-FR");
     const dEnd   = new Date(opts.endTs).toLocaleDateString("fr-FR");
-    pdf.text(dStart === dEnd ? "Date : " + dStart : "Periode : " + dStart + " - " + dEnd, margin, y); y += 4;
+    pdf.text(dStart === dEnd
+      ? _stripPourPdf(t("report.pdf.date")) + dStart
+      : _stripPourPdf(t("report.pdf.period")) + dStart + " - " + dEnd, margin, y); y += 4;
     if (data.plan.author) {
-      pdf.text("Auteur plan : " + _stripPourPdf(data.plan.author), margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.author")) + _stripPourPdf(data.plan.author), margin, y); y += 4;
     }
-    pdf.text("Genere par MyKTAMap " + data.app.version + " - " + new Date().toLocaleString("fr-FR"), margin, y);
+    pdf.text(_stripPourPdf(t("report.pdf.generatedBy")) + " " + data.app.version + " - " + new Date().toLocaleString("fr-FR"), margin, y);
     y += 8;
 
     // ─── CARTE MINIATURE ───────────────────────────────────
@@ -615,7 +626,7 @@
         y += imgH + 6;
         // Légende
         pdf.setFontSize(8); pdf.setFont(undefined, "italic");
-        pdf.text("Carte miniature : POI (ambre), traces (couleur par type), zones (transparent), heatmap tracker (rouge).",
+        pdf.text(_stripPourPdf(t("report.pdf.mapLegend")),
                  margin, y);
         y += 8;
         pdf.setFont(undefined, "normal");
@@ -627,11 +638,11 @@
     // ─── STATS ─────────────────────────────────────────────
     _ensurePageSpace(20);
     pdf.setFontSize(12); pdf.setFont(undefined, "bold");
-    pdf.text("Statistiques", margin, y); y += 6;
+    pdf.text(_stripPourPdf(t("report.pdf.stats")), margin, y); y += 6;
     pdf.setFontSize(9); pdf.setFont(undefined, "normal");
 
     if (opts.includePoints !== false) {
-      pdf.text("POI ajoutes : " + data.points.length, margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.poi")) + data.points.length, margin, y); y += 4;
       const tagStats = _statsParTag(data.points);
       Object.keys(tagStats).sort().forEach(function(tag) {
         _ensurePageSpace(4);
@@ -641,36 +652,36 @@
     }
     if (opts.includeRoads !== false) {
       _ensurePageSpace(8);
-      pdf.text("Traces : " + data.roads.length + " (toutes periodes)", margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.roads")) + data.roads.length + " " + _stripPourPdf(t("report.pdf.allPeriods")), margin, y); y += 4;
       const distM = _pxVersM(_calculerDistanceRoadsPx(data.roads), data.plan.scale);
       if (distM > 0) {
-        pdf.text("    Distance totale : " + _formatDistance(distM, 0), margin, y); y += 4;
+        pdf.text("    " + _stripPourPdf(t("report.pdf.totalDist")) + _formatDistance(distM, 0), margin, y); y += 4;
       }
       y += 2;
     }
     if (opts.includeZones !== false) {
       _ensurePageSpace(4);
-      pdf.text("Zones : " + data.zones.length + " (toutes periodes)", margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.zones")) + data.zones.length + " " + _stripPourPdf(t("report.pdf.allPeriods")), margin, y); y += 4;
       y += 2;
     }
     if (opts.includeStructures !== false && data.structures.length > 0) {
       _ensurePageSpace(4);
-      pdf.text("Structures : " + data.structures.length + " (toutes periodes)", margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.structures")) + data.structures.length + " " + _stripPourPdf(t("report.pdf.allPeriods")), margin, y); y += 4;
       y += 2;
     }
     if (opts.includeTracker !== false && data.tracker.timeline.length > 0) {
       _ensurePageSpace(12);
       const distM = _pxVersM(_calculerDistanceTrackerPx(data.tracker.timeline), data.plan.scale);
       const duree = _calculerDureeTimelineMs(data.tracker.timeline);
-      pdf.text("Tracker GPS :", margin, y); y += 4;
-      pdf.text("    Distance parcourue : " + _formatDistance(distM, 0), margin, y); y += 4;
-      pdf.text("    Duree : " + _formatDuree(duree), margin, y); y += 4;
-      pdf.text("    Points enregistres : " + data.tracker.timeline.length, margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.tracker")), margin, y); y += 4;
+      pdf.text("    " + _stripPourPdf(t("report.pdf.trackerDist")) + _formatDistance(distM, 0), margin, y); y += 4;
+      pdf.text("    " + _stripPourPdf(t("report.pdf.duration")) + _formatDuree(duree), margin, y); y += 4;
+      pdf.text("    " + _stripPourPdf(t("report.pdf.trackerPts")) + data.tracker.timeline.length, margin, y); y += 4;
       y += 2;
     }
     if (opts.includePhotos !== false && typeof opts.photosCount === "number" && opts.photosCount > 0) {
       _ensurePageSpace(4);
-      pdf.text("Photos attachees : " + opts.photosCount, margin, y); y += 4;
+      pdf.text(_stripPourPdf(t("report.pdf.photos")) + opts.photosCount, margin, y); y += 4;
       y += 2;
     }
 
@@ -679,7 +690,7 @@
       _ensurePageSpace(20);
       y += 4;
       pdf.setFontSize(12); pdf.setFont(undefined, "bold");
-      pdf.text("Note", margin, y); y += 6;
+      pdf.text(_stripPourPdf(t("report.pdf.note")), margin, y); y += 6;
       pdf.setFontSize(9); pdf.setFont(undefined, "normal");
       const noteLines = pdf.splitTextToSize(_stripPourPdf(opts.note), pageW - 2 * margin);
       noteLines.forEach(function(line) {
@@ -694,7 +705,7 @@
       pdf.setPage(i);
       pdf.setFontSize(7); pdf.setFont(undefined, "italic");
       pdf.setTextColor(120, 120, 120);
-      pdf.text("MyKTAMap " + data.app.version + " - myktamap.fr - Rapport sortie - Page " + i + "/" + pageCount,
+      pdf.text("MyKTAMap " + data.app.version + " - myktamap.fr - " + _stripPourPdf(t("report.pdf.footer")) + " " + i + "/" + pageCount,
                pageW / 2, pageH - 6, { align: "center" });
       pdf.setTextColor(0, 0, 0);
     }
@@ -764,53 +775,52 @@
     const modal = document.createElement("div");
     modal.id = "kta-report-modal";
     modal.className = "kta-readme-modal-overlay";
+    const T = window.I18n.t.bind(window.I18n);
     modal.innerHTML = '<div class="kta-readme-modal-boite kta-report-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">📋 Rapport de sortie</span>' +
-        '<button class="kta-panneau-close" id="kta-report-close" type="button">✕</button>' +
+        '<span class="kta-readme-modal-titre">📋 ' + T("report.title") + '</span>' +
+        '<button class="kta-panneau-close" id="kta-report-close" type="button" aria-label="' + T("report.close") + '">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">📅 Période</div>' +
+          '<div class="kta-aide-section-titre">📅 ' + T("report.period_title") + '</div>' +
           '<div class="kta-report-period">' +
-            '<label>Du <input class="kta-report-date" id="kta-report-start" type="date" value="' + startDateStr + '"></label>' +
-            '<label>Au <input class="kta-report-date" id="kta-report-end"   type="date" value="' + endDateStr   + '"></label>' +
+            '<label>' + T("report.period_from") + ' <input class="kta-report-date" id="kta-report-start" type="date" value="' + startDateStr + '"></label>' +
+            '<label>' + T("report.period_to") + ' <input class="kta-report-date" id="kta-report-end"   type="date" value="' + endDateStr   + '"></label>' +
           '</div>' +
           '<p class="kta-report-hint">' +
-            'Les POI et le tracker GPS sont filtrés par cette période. ' +
-            'Tracés, zones et structures n\'ont pas de timestamp dans le format et sont inclus en totalité.' +
+            T("report.period_hint") +
           '</p>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">👁️ Aperçu</div>' +
-          '<div id="kta-report-preview" class="kta-report-preview">⏳ Calcul…</div>' +
+          '<div class="kta-aide-section-titre">👁️ ' + T("report.preview_title") + '</div>' +
+          '<div id="kta-report-preview" class="kta-report-preview">⏳ ' + T("report.preview_computing") + '</div>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">📦 Sections à inclure</div>' +
-          _checkboxRow("kta-report-inc-points",  "📍 Points (POI)",         true) +
-          _checkboxRow("kta-report-inc-roads",   "🛣️ Tracés",               true) +
-          _checkboxRow("kta-report-inc-zones",   "⬛ Zones",                 true) +
-          _checkboxRow("kta-report-inc-struct",  "🏛️ Structures",           true) +
-          _checkboxRow("kta-report-inc-tracker", "🧭 Tracker GPS",          true) +
-          _checkboxRow("kta-report-inc-photos",  "📸 Photos (count seul)",  true) +
-          _checkboxRow("kta-report-inc-mapmini", "🗺️ Carte miniature (PDF)", true) +
-          _checkboxRow("kta-report-inc-heatmap", "🔥 Heatmap explorée (PDF)", true) +
+          '<div class="kta-aide-section-titre">📦 ' + T("report.sections_title") + '</div>' +
+          _checkboxRow("kta-report-inc-points",  "📍 " + T("report.sec_points"),  true) +
+          _checkboxRow("kta-report-inc-roads",   "🛣️ " + T("report.sec_roads"),   true) +
+          _checkboxRow("kta-report-inc-zones",   "⬛ " + T("report.sec_zones"),    true) +
+          _checkboxRow("kta-report-inc-struct",  "🏛️ " + T("report.sec_structures"), true) +
+          _checkboxRow("kta-report-inc-tracker", "🧭 " + T("report.sec_tracker"),  true) +
+          _checkboxRow("kta-report-inc-photos",  "📸 " + T("report.sec_photos"),   true) +
+          _checkboxRow("kta-report-inc-mapmini", "🗺️ " + T("report.sec_mapmini"),  true) +
+          _checkboxRow("kta-report-inc-heatmap", "🔥 " + T("report.sec_heatmap"),  true) +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">📝 Note libre (optionnelle)</div>' +
+          '<div class="kta-aide-section-titre">📝 ' + T("report.note_title") + '</div>' +
           '<textarea id="kta-report-note" class="kta-report-note" rows="4" ' +
-            'placeholder="Ex : Mission de reconnaissance section sud-est, accès par PA12. ' +
-            'RAS sur la zone. Prochain passage prévu vendredi pour relevés acoustiques."></textarea>' +
+            'placeholder="' + T("report.note_placeholder") + '"></textarea>' +
         '</div>' +
 
         '<div class="kta-report-actions">' +
-          '<button class="kta-btn kta-btn-primary" id="kta-report-btn-pdf"  type="button">📑 PDF</button>' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-report-btn-json" type="button">📄 JSON</button>' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-report-btn-text" type="button">📝 Texte</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-report-btn-pdf"  type="button">📑 ' + T("report.btn_pdf") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-report-btn-json" type="button">📄 ' + T("report.btn_json") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-report-btn-text" type="button">📝 ' + T("report.btn_text") + '</button>' +
         '</div>' +
         '<div id="kta-report-status" class="kta-report-status"></div>' +
 
@@ -867,19 +877,19 @@
       const duree = _calculerDureeTimelineMs(filtered.tracker.timeline);
       const preview = document.getElementById("kta-report-preview");
       if (preview) {
+        const T = window.I18n.t.bind(window.I18n);
         preview.innerHTML =
           '<div class="kta-report-preview-row">' +
-            '📍 <strong>' + filtered.points.length + '</strong> POI (filtrés)' +
-            ' · 🛣️ <strong>' + baseData.roads.length + '</strong> tracés' +
-            ' · ⬛ <strong>' + baseData.zones.length + '</strong> zones' +
+            '📍 <strong>' + filtered.points.length + '</strong> ' + T("report.preview_poi") +
+            ' · 🛣️ <strong>' + baseData.roads.length + '</strong> ' + T("report.preview_roads") +
+            ' · ⬛ <strong>' + baseData.zones.length + '</strong> ' + T("report.preview_zones") +
             (baseData.structures.length > 0 ? ' · 🏛️ <strong>' + baseData.structures.length + '</strong>' : '') +
           '</div>' +
           (filtered.tracker.timeline.length > 0 ?
             '<div class="kta-report-preview-row">' +
-              '🧭 ' + _formatDistance(distM) + ' parcourus en ' + _formatDuree(duree) +
-              ' (' + filtered.tracker.timeline.length + ' points tracker)' +
+              '🧭 ' + T("report.preview_tracker", { dist: _formatDistance(distM), duree: _formatDuree(duree), count: filtered.tracker.timeline.length }) +
             '</div>' :
-            '<div class="kta-report-preview-row kta-report-preview-dim">Aucun tracker GPS dans la période</div>'
+            '<div class="kta-report-preview-row kta-report-preview-dim">' + T("report.preview_no_tracker") + '</div>'
           );
       }
     }
@@ -892,7 +902,7 @@
     document.getElementById("kta-report-btn-text").addEventListener("click", function() {
       const opts = _readOpts();
       const filtered = _filtrerParPeriode(baseData, opts.startTs, opts.endTs);
-      _setStatus("⏳ Génération texte…");
+      _setStatus("⏳ " + window.I18n.t("report.status_gen_text"));
       baseData.photosPromise.then(function(photos) {
         opts.photosCount = photos.length;
         const txt = _genererTexte(filtered, opts);
@@ -900,12 +910,12 @@
         _telechargerTexte(txt, fn);
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(txt).then(function() {
-            _setStatus("✅ Texte téléchargé + copié dans le presse-papiers");
+            _setStatus("✅ " + window.I18n.t("report.status_text_ok_copied"));
           }).catch(function() {
-            _setStatus("✅ Texte téléchargé (presse-papiers indispo)");
+            _setStatus("✅ " + window.I18n.t("report.status_text_ok_noclip"));
           });
         } else {
-          _setStatus("✅ Texte téléchargé");
+          _setStatus("✅ " + window.I18n.t("report.status_text_ok"));
         }
       });
     });
@@ -913,7 +923,7 @@
     document.getElementById("kta-report-btn-json").addEventListener("click", function() {
       const opts = _readOpts();
       const filtered = _filtrerParPeriode(baseData, opts.startTs, opts.endTs);
-      _setStatus("⏳ Génération JSON…");
+      _setStatus("⏳ " + window.I18n.t("report.status_gen_json"));
       baseData.photosPromise.then(function(photos) {
         const payload = _genererJSON(filtered, opts);
         if (opts.includePhotos && photos.length > 0) {
@@ -926,14 +936,14 @@
         }
         const fn = _filename(filtered.plan.name, "json");
         _telechargerJSON(payload, fn);
-        _setStatus("✅ JSON téléchargé");
+        _setStatus("✅ " + window.I18n.t("report.status_json_ok"));
       });
     });
 
     document.getElementById("kta-report-btn-pdf").addEventListener("click", function() {
       const opts = _readOpts();
       const filtered = _filtrerParPeriode(baseData, opts.startTs, opts.endTs);
-      _setStatus("⏳ Génération PDF (carte + heatmap + stats)…");
+      _setStatus("⏳ " + window.I18n.t("report.status_gen_pdf"));
       Promise.all([
         baseData.photosPromise,
         (opts.includeMapMini !== false)
@@ -947,10 +957,10 @@
           const pdf = _genererPDF(filtered, opts, mapDataUrl);
           const fn = _filename(filtered.plan.name, "pdf");
           pdf.save(fn);
-          _setStatus("✅ PDF téléchargé");
+          _setStatus("✅ " + window.I18n.t("report.status_pdf_ok"));
         } catch (e) {
           console.error("[SessionReport] PDF KO :", e);
-          _setStatus("❌ Erreur PDF : " + (e.message || e), true);
+          _setStatus("❌ " + window.I18n.t("report.status_pdf_err", { error: (e.message || e) }), true);
         }
       });
     });

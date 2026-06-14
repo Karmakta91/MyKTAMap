@@ -176,6 +176,14 @@ window.LegendCustomization = (function() {
   }
 
   function getDefaultLabel(category, key) {
+    // i18n au RUNTIME : si une clé "legend.label.<cat>.<key>" existe, on la
+    // sert traduite ; sinon fallback sur la constante FR (DEFAULT_LABELS),
+    // qui reste la source de vérité structurelle (clés built-in). DEFAULT_LABELS
+    // ne peut pas être traduit au load (I18n pas garanti chargé au top-level).
+    const i18nKey = "legend.label." + category + "." + key;
+    if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(i18nKey)) {
+      return window.I18n.t(i18nKey);
+    }
     return (DEFAULT_LABELS[category] && DEFAULT_LABELS[category][key]) || key;
   }
 
@@ -410,7 +418,7 @@ window.LegendCustomization = (function() {
       // DESSINABLES (toggleXMode + render appliquent le bon style selon la
       // géométrie). Si non fourni, on déduit du category.
       geometry:    geom,
-      label:       String(entry.label || "").trim() || "Sans nom",
+      label:       String(entry.label || "").trim() || ((window.I18n && window.I18n.t) ? window.I18n.t("legend.entry.unnamed") : "Sans nom"),
       // Renders optionnels — normalisés par géométrie ci-dessus
       lineColor:   lineColor,
       fillColor:   fillColor,
@@ -467,6 +475,11 @@ window.LegendCustomization = (function() {
   // Helpers exposés pour exporter.js
   // ─────────────────────────────────────────────
   function categoryTitle(category) {
+    // i18n au RUNTIME (clé "legend.cat.<category>"), fallback constante FR.
+    const i18nKey = "legend.cat." + category;
+    if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(i18nKey)) {
+      return window.I18n.t(i18nKey);
+    }
     return CATEGORY_TITLES[category] || category;
   }
 
@@ -507,28 +520,26 @@ window.LegendCustomization = (function() {
     modal.innerHTML =
       '<div class="kta-readme-modal-boite" style="width:auto; max-width:560px; height:auto; max-height:90vh; padding:0; overflow:hidden; display:flex; flex-direction:column;">' +
         '<div class="kta-readme-modal-header" style="padding:14px 16px;">' +
-          '<span class="kta-readme-modal-titre">✏️ Personnaliser la légende</span>' +
+          '<span class="kta-readme-modal-titre">' + window.I18n.t("legend.editor.title") + '</span>' +
           '<button class="kta-panneau-close" id="kta-legend-editor-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-legend-editor-body" style="padding:14px 16px; overflow-y:auto; flex:1 1 auto;">' +
           '<p style="font-size:12px; color:#8892a4; margin:0 0 12px 0; line-height:1.5;">' +
-            'Renomme les libellés, masque les entrées que tu n\'utilises pas, ' +
-            'ou ajoute des entrées custom. Les modifications sont sauvegardées ' +
-            'automatiquement dans ta session.' +
+            window.I18n.t("legend.editor.intro") +
           '</p>' +
           '<div id="kta-legend-editor-list"></div>' +
         '</div>' +
         '<div style="padding:12px 16px; border-top:1px solid rgba(255,255,255,0.08); display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between;">' +
           '<div style="display:flex; gap:8px;">' +
             '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-legend-editor-add">' +
-              '➕ Ajouter une entrée' +
+              window.I18n.t("legend.editor.add") +
             '</button>' +
-            '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-legend-editor-reset" title="Restaure les libellés défaut">' +
-              '🔄 Reset session' +
+            '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-legend-editor-reset" title="' + window.I18n.t("legend.editor.resetTitle") + '">' +
+              window.I18n.t("legend.editor.reset") +
             '</button>' +
           '</div>' +
           '<button class="kta-btn kta-btn-primary kta-btn-small" type="button" id="kta-legend-editor-done">' +
-            '✅ Terminer' +
+            window.I18n.t("legend.editor.done") +
           '</button>' +
         '</div>' +
       '</div>';
@@ -536,9 +547,9 @@ window.LegendCustomization = (function() {
     document.documentElement.appendChild(modal);
 
     function _sourceBadge(source) {
-      if (source === "session") return '<span class="kta-legend-src kta-legend-src-session" title="Override de votre session">✏️</span>';
-      if (source === "plan")    return '<span class="kta-legend-src kta-legend-src-plan"    title="Défini par le plan">📋</span>';
-      return                          '<span class="kta-legend-src kta-legend-src-default" title="Libellé défaut MKM">·</span>';
+      if (source === "session") return '<span class="kta-legend-src kta-legend-src-session" title="' + window.I18n.t("legend.editor.srcSession") + '">✏️</span>';
+      if (source === "plan")    return '<span class="kta-legend-src kta-legend-src-plan"    title="' + window.I18n.t("legend.editor.srcPlan") + '">📋</span>';
+      return                          '<span class="kta-legend-src kta-legend-src-default" title="' + window.I18n.t("legend.editor.srcDefault") + '">·</span>';
     }
 
     function _renderEntryRow(e, isCustomEntry) {
@@ -585,11 +596,11 @@ window.LegendCustomization = (function() {
       const value = (e.label === e.defaultLabel && !isCustomEntry) ? "" : _esc(e.label);
 
       const btnRm = isCustomEntry
-        ? '<button type="button" class="kta-legend-rm" title="Supprimer cette entrée custom" ' + dataAttrs + '>🗑️</button>'
+        ? '<button type="button" class="kta-legend-rm" title="' + window.I18n.t("legend.editor.rmCustomTitle") + '" ' + dataAttrs + '>🗑️</button>'
         : '';
 
       return '<div class="kta-legend-row" ' + dataAttrs + '>' +
-               '<label class="kta-legend-vis" title="Afficher cette entrée dans la légende">' +
+               '<label class="kta-legend-vis" title="' + window.I18n.t("legend.editor.visTitle") + '">' +
                  '<input type="checkbox" class="kta-legend-vis-cb" ' +
                    (e.visible ? "checked" : "") + ' ' + dataAttrs + '>' +
                '</label>' +
@@ -668,11 +679,7 @@ window.LegendCustomization = (function() {
     });
 
     document.getElementById("kta-legend-editor-reset").addEventListener("click", function() {
-      const ok = window.confirm(
-        "Effacer tous vos overrides de session sur la légende ?\n\n" +
-        "(les libellés défaut du plan reviennent ; ce qui est défini dans " +
-        "le plan-config reste actif)"
-      );
+      const ok = window.confirm(window.I18n.t("legend.editor.resetConfirm"));
       if (!ok) return;
       resetSession();
       _render();
@@ -698,16 +705,16 @@ window.LegendCustomization = (function() {
     wrap.innerHTML =
       '<div class="kta-readme-modal-boite" style="width:auto; max-width:420px; height:auto; max-height:90vh; padding:20px; overflow-y:auto;">' +
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px;">' +
-          '<h3 style="margin:0; font-size:16px; color:#e8eaf0;">➕ Nouvelle entrée légende</h3>' +
+          '<h3 style="margin:0; font-size:16px; color:#e8eaf0;">' + window.I18n.t("legend.add.title") + '</h3>' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-lc-add-close" style="padding:2px 8px;">✕</button>' +
         '</div>' +
         '<div style="margin-bottom:10px;">' +
-          '<label class="kta-cfg-label">Catégorie</label>' +
+          '<label class="kta-cfg-label">' + window.I18n.t("legend.add.category") + '</label>' +
           '<select class="kta-cfg-input" id="kta-lc-add-cat">' +
-            '<option value="traces">🛣️ Tracés</option>' +
-            '<option value="zones">⬛ Zones</option>' +
-            '<option value="structures">🏛️ Structures</option>' +
-            '<option value="icones">🏷️ Icônes (URL image)</option>' +
+            '<option value="traces">' + window.I18n.t("legend.add.catTraces") + '</option>' +
+            '<option value="zones">' + window.I18n.t("legend.add.catZones") + '</option>' +
+            '<option value="structures">' + window.I18n.t("legend.add.catStructures") + '</option>' +
+            '<option value="icones">' + window.I18n.t("legend.add.catIcones") + '</option>' +
           '</select>' +
         '</div>' +
         // 🆕 v1.16.0 step2-drawable : pour les STRUCTURES uniquement, ajout
@@ -717,45 +724,45 @@ window.LegendCustomization = (function() {
         // Pour les autres catégories, la géométrie est implicite (traces =
         // polyline, zones = polygon).
         '<div style="margin-bottom:10px; display:none;" id="kta-lc-add-geom-wrap">' +
-          '<label class="kta-cfg-label">Type de structure</label>' +
+          '<label class="kta-cfg-label">' + window.I18n.t("legend.add.structType") + '</label>' +
           '<div style="display:flex; gap:6px;">' +
             '<label class="kta-export-radio-row" style="flex:1;">' +
               '<input type="radio" name="kta-lc-add-geom" value="polygon" checked>' +
-              '<span>🟦 Polygone fermé <span style="color:#8892a4; font-size:11px;">(pilier/mur)</span></span>' +
+              '<span>' + window.I18n.t("legend.add.polygon") + ' <span style="color:#8892a4; font-size:11px;">' + window.I18n.t("legend.add.polygonHint") + '</span></span>' +
             '</label>' +
             '<label class="kta-export-radio-row" style="flex:1;">' +
               '<input type="radio" name="kta-lc-add-geom" value="polyline">' +
-              '<span>➖ Ligne ouverte <span style="color:#8892a4; font-size:11px;">(front de taille)</span></span>' +
+              '<span>' + window.I18n.t("legend.add.polyline") + ' <span style="color:#8892a4; font-size:11px;">' + window.I18n.t("legend.add.polylineHint") + '</span></span>' +
             '</label>' +
           '</div>' +
         '</div>' +
         '<div style="margin-bottom:10px;">' +
-          '<label class="kta-cfg-label">Libellé</label>' +
-          '<input class="kta-cfg-input" id="kta-lc-add-label" type="text" placeholder="Ex : Pilier ancien">' +
+          '<label class="kta-cfg-label">' + window.I18n.t("legend.add.label") + '</label>' +
+          '<input class="kta-cfg-input" id="kta-lc-add-label" type="text" placeholder="' + window.I18n.t("legend.add.labelPlaceholder") + '">' +
         '</div>' +
         '<div style="margin-bottom:10px;" id="kta-lc-add-line-wrap">' +
-          '<label class="kta-cfg-label">Couleur de trait (ligne)</label>' +
+          '<label class="kta-cfg-label">' + window.I18n.t("legend.add.lineColor") + '</label>' +
           '<input class="kta-cfg-input" id="kta-lc-add-line" type="color" value="#00ff00" style="height:32px; padding:2px;">' +
           '<label class="kta-export-cb-row" style="margin-top:4px;">' +
             '<input type="checkbox" id="kta-lc-add-line-on" checked>' +
-            '<span>Activer le trait</span>' +
+            '<span>' + window.I18n.t("legend.add.lineToggle") + '</span>' +
           '</label>' +
         '</div>' +
         '<div style="margin-bottom:10px;" id="kta-lc-add-fill-wrap">' +
-          '<label class="kta-cfg-label">Couleur de remplissage</label>' +
+          '<label class="kta-cfg-label">' + window.I18n.t("legend.add.fillColor") + '</label>' +
           '<input class="kta-cfg-input" id="kta-lc-add-fill" type="color" value="#3aa9e8" style="height:32px; padding:2px;">' +
           '<label class="kta-export-cb-row" style="margin-top:4px;">' +
             '<input type="checkbox" id="kta-lc-add-fill-on">' +
-            '<span>Activer le remplissage</span>' +
+            '<span>' + window.I18n.t("legend.add.fillToggle") + '</span>' +
           '</label>' +
         '</div>' +
         '<div style="margin-bottom:10px; display:none;" id="kta-lc-add-icon-wrap">' +
-          '<label class="kta-cfg-label">URL de l\'icône (.png / .svg / data:)</label>' +
-          '<input class="kta-cfg-input" id="kta-lc-add-icon" type="text" placeholder="https://... ou data:image/...">' +
+          '<label class="kta-cfg-label">' + window.I18n.t("legend.add.iconUrl") + '</label>' +
+          '<input class="kta-cfg-input" id="kta-lc-add-icon" type="text" placeholder="' + window.I18n.t("legend.add.iconPlaceholder") + '">' +
         '</div>' +
         '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">' +
-          '<button class="kta-btn kta-btn-ghost"   type="button" id="kta-lc-add-cancel">Annuler</button>' +
-          '<button class="kta-btn kta-btn-primary" type="button" id="kta-lc-add-ok">✅ Ajouter</button>' +
+          '<button class="kta-btn kta-btn-ghost"   type="button" id="kta-lc-add-cancel">' + window.I18n.t("legend.add.cancel") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" type="button" id="kta-lc-add-ok">' + window.I18n.t("legend.add.ok") + '</button>' +
         '</div>' +
       '</div>';
 
@@ -832,7 +839,7 @@ window.LegendCustomization = (function() {
     document.getElementById("kta-lc-add-ok").addEventListener("click", function() {
       const cat   = catSel.value;
       const label = (document.getElementById("kta-lc-add-label").value || "").trim();
-      if (!label) { alert("Donne un libellé à l'entrée."); return; }
+      if (!label) { alert(window.I18n.t("legend.add.errNoLabel")); return; }
       const entry = { category: cat, label: label };
 
       // 🆕 v1.16.0 step2-drawable : géométrie. Pour structures = choix user,
@@ -849,7 +856,7 @@ window.LegendCustomization = (function() {
 
       if (cat === "icones") {
         const url = (document.getElementById("kta-lc-add-icon").value || "").trim();
-        if (!url) { alert("URL d'icône requise pour cette catégorie."); return; }
+        if (!url) { alert(window.I18n.t("legend.add.errIconUrl")); return; }
         entry.iconUrl = url;
       } else {
         const lineOn = document.getElementById("kta-lc-add-line-on").checked;
@@ -865,15 +872,15 @@ window.LegendCustomization = (function() {
         // Pour les structures polyline (front), lineColor est obligatoire.
         // Pour les polygones, fillColor est obligatoire.
         if (entry.geometry === "polyline" && !entry.lineColor) {
-          alert("Active la couleur du trait pour ce type de structure (front de taille).");
+          alert(window.I18n.t("legend.add.errPolyline"));
           return;
         }
         if (entry.geometry === "polygon" && !entry.fillColor) {
-          alert("Active la couleur de remplissage pour ce type de structure (pilier/mur).");
+          alert(window.I18n.t("legend.add.errPolygon"));
           return;
         }
         if (!entry.lineColor && !entry.fillColor) {
-          alert("Active au moins une couleur (trait ou remplissage).");
+          alert(window.I18n.t("legend.add.errNoColor"));
           return;
         }
       }

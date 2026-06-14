@@ -730,6 +730,19 @@ html.kta-theme-light .kta-profile-footer {
   border-bottom: 1px solid rgba(244, 197, 66, 0.20);
 }
 
+/* 🆕 v1.44.6 — Toggle langue 🇫🇷/🇬🇧 du tutoriel (compact, poussé à droite
+   juste avant la croix de fermeture). Même esprit que le toggle de la modale
+   Documentation. */
+.kta-tutorial-lang {
+  margin-left: auto;
+  margin-right: 8px;
+  padding: 3px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .kta-tutorial-corps {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -1012,5 +1025,117 @@ body.kta-theme-light .kta-mem-crash-detail-pre,
 html.kta-theme-light .kta-mem-crash-detail-pre {
   background: var(--kta-light-bg-deep) !important;
   color: var(--kta-light-text) !important;
+}
+
+/* ===========================================================
+   🆕 v1.43.24 — Inspecteur SW (swInspector.js)
+   Base : la modale réutilise .kta-readme-modal-* + .kta-mem-section
+   (héritent du thème dark/light de leurs modules respectifs).
+   Ajout : classe dédiée .kta-sw-inspector-scrollbox pour les zones
+   scrollables avec liste de fichiers, + override thème clair.
+   =========================================================== */
+.kta-sw-inspector-scrollbox {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 11.5px;
+  color: #c8d0e0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* === Thème clair pour la modale SwInspector === */
+body.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-boite,
+html.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-boite {
+  background: var(--kta-light-bg-elevated, #f5ecd6) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+  border: 1px solid var(--kta-light-border, rgba(0,0,0,0.12)) !important;
+}
+body.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-header,
+html.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-header {
+  background: var(--kta-light-bg-deep, #ebe0c2) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+  border-bottom-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
+}
+body.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-titre,
+html.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-titre {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light #kta-sw-inspector-modal #kta-sw-inspector-close,
+html.kta-theme-light #kta-sw-inspector-modal #kta-sw-inspector-close {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light #kta-sw-inspector-body,
+html.kta-theme-light #kta-sw-inspector-body {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light #kta-sw-inspector-body code,
+html.kta-theme-light #kta-sw-inspector-body code {
+  background: var(--kta-light-bg-deep, #ebe0c2) !important;
+  color: var(--kta-light-accent-hover, #b8860b) !important;
+}
+body.kta-theme-light #kta-sw-inspector-body .kta-mem-section,
+html.kta-theme-light #kta-sw-inspector-body .kta-mem-section {
+  background: var(--kta-light-bg-deep, #ebe0c2) !important;
+  border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
+}
+body.kta-theme-light #kta-sw-inspector-body .kta-mem-section-titre,
+html.kta-theme-light #kta-sw-inspector-body .kta-mem-section-titre {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light #kta-sw-inspector-body .kta-mem-line,
+html.kta-theme-light #kta-sw-inspector-body .kta-mem-line {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light #kta-sw-inspector-body .kta-mem-dim,
+html.kta-theme-light #kta-sw-inspector-body .kta-mem-dim {
+  color: var(--kta-light-text-secondary, #5a4f40) !important;
+}
+body.kta-theme-light #kta-sw-inspector-body details summary,
+html.kta-theme-light #kta-sw-inspector-body details summary {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+/* Scrollboxes : fond clair lisible (au lieu de noir 20%) */
+body.kta-theme-light .kta-sw-inspector-scrollbox,
+html.kta-theme-light .kta-sw-inspector-scrollbox {
+  background: #fffaf0 !important;
+  color: var(--kta-light-text, #2a2620) !important;
+  border: 1px solid var(--kta-light-border, rgba(0,0,0,0.15)) !important;
+}
+/* Sections verdict (success/warning) avec backgrounds rgba */
+body.kta-theme-light #kta-sw-inspector-body .kta-mem-section[style*="rgba(166,215,133"],
+html.kta-theme-light #kta-sw-inspector-body .kta-mem-section[style*="rgba(166,215,133"] {
+  background: rgba(76, 159, 56, 0.10) !important;
+  border-color: rgba(76, 159, 56, 0.5) !important;
+}
+body.kta-theme-light #kta-sw-inspector-body .kta-mem-section[style*="rgba(244,107,107"],
+html.kta-theme-light #kta-sw-inspector-body .kta-mem-section[style*="rgba(244,107,107"] {
+  background: rgba(204, 51, 51, 0.10) !important;
+  border-color: rgba(204, 51, 51, 0.5) !important;
+}
+body.kta-theme-light #kta-sw-inspector-body .kta-mem-section[style*="rgba(140,180,255"],
+html.kta-theme-light #kta-sw-inspector-body .kta-mem-section[style*="rgba(140,180,255"] {
+  background: rgba(70, 110, 200, 0.10) !important;
+  border-color: rgba(70, 110, 200, 0.5) !important;
+}
+
+/* 🆕 v1.44.0 — Quick wins audit V2 : overrides theming light pour
+   éléments hardcodés #8892a4 du MemInspector + SwInspector */
+body.kta-theme-light .kta-mem-loading,
+html.kta-theme-light .kta-mem-loading {
+  color: #5a6878 !important;
+}
+
+/* Toast "cache incomplet" du SW Inspector : background rouge translucide
+   illisible sur fond blanc → renforcer le contraste en mode clair */
+body.kta-theme-light #kta-sw-incomplet-toast,
+html.kta-theme-light #kta-sw-incomplet-toast {
+  background: rgba(204, 51, 51, 0.95) !important;
+  color: #ffffff !important;
+  border-color: rgba(150, 30, 30, 1) !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.20) !important;
 }
 

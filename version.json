@@ -1,7 +1,8 @@
 {
-  "version": "v1.43.21",
-  "released": "2026-06-08",
+  "version": "v1.46.4",
+  "released": "2026-06-14",
   "notes": [
-    "🐛 Hotfix critique : le bouton « 📖 Documentation utilisateur » ne fonctionnait plus depuis v1.43.18 (caractères backticks dans un commentaire à l'intérieur d'un template literal JavaScript = fermeture prématurée du HTML de la modale). La modale s'ouvre à nouveau normalement."
+    "🐛 Corrections d'affichage : les ronds des liaisons inter-niveaux disparaissent bien quand on les masque, le mode mesure réaffiche les angles, et l'outil de tracé ne reste plus bloqué quand on efface tous les points.",
+    "🌍 La fenêtre « Aide IA » est désormais traduite en anglais et espagnol."
   ]
 }

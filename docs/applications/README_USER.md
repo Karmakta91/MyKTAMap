@@ -437,6 +437,8 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 5. **🎨 Affichage** — toggles d'interface :
    - **🔆 Garder l'écran allumé** — empêche la mise en veille automatique de ton écran tant que MyKTAMap est ouvert (Wake Lock API). Utile en sortie cataphile pour ne pas avoir à toucher le tel toutes les 30 sec. Re-acquisition auto au retour d'arrière-plan (visibilitychange). Toggle masqué automatiquement sur les navigateurs qui ne supportent pas l'API (Firefox notamment). Le même toggle est aussi accessible dans **⚙️ Réglages** en mode carte (cf section dédiée).
 
+> 🌍 **Langue de l'application** *(depuis v1.46)* : MyKTAMap est traduit en **3 langues — Français, English, Español**. Le sélecteur de langue (drapeau + nom complet) se trouve dans **⚙️ Configuration**, dans sa propre section **juste après le bloc Incognito**. Le changement s'applique tout de suite, sans recharger l'app. *À savoir* : la **Documentation**, l'**Aide intégrée** et le **tutoriel de bienvenue** existent pour l'instant en français et en anglais seulement — si tu utilises l'app en espagnol, l'interface est bien en espagnol mais ces contenus s'affichent en **anglais par défaut**. Tu peux à tout moment basculer ces contenus entre 🇫🇷 et 🇬🇧 via le bouton drapeau en haut de leur fenêtre.
+
 > 💡 **Depuis v1.36.2** : l'option « Afficher les ronds aux intersections de tracés » n'est **plus dans Configuration home** mais dans **⚙️ Réglages en mode carte** (per-plan). Chaque plan a maintenant son propre réglage — pratique pour désactiver les cercles uniquement sur tes plans très denses sans toucher les autres.
 
 6. **📚 Plans serveur** — checkbox **"🚫 Ne pas charger les plans serveur au démarrage"** :

@@ -20,5 +20,8 @@ if ! command -v node >/dev/null 2>&1; then
   exit 0
 fi
 
-# Lance le checker
-node scripts/check-no-pro-leak.js
+# Lance les checkers
+node scripts/check-no-pro-leak.js || exit $?
+
+# 🆕 v1.44.0 — Advisory linter ModalLifecycle (avertit mais ne bloque pas)
+node scripts/check-modal-lifecycle.js

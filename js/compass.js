@@ -54,12 +54,18 @@
   let _rafId       = null;
   let _lastApplied = -999;
 
-  // Cardinaux en francais courts (NO/SO au lieu de NW/SW)
+  const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+
+  // Cardinaux localises (FR : N/NE/E/SE/S/SO/O/NO · EN : SW/W/NW). Resolus au
+  // rendu via I18n (cle compass.cardinals = liste "N,NE,E,SE,S,SO,O,NO").
   function _cardinal(h) {
-    const dirs = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
     let idx = Math.round(h / 45) % 8;
     if (idx < 0) idx += 8;
-    return dirs[idx];
+    const raw = t("compass.cardinals");
+    const dirs = (typeof raw === "string" && raw.indexOf(",") !== -1)
+      ? raw.split(",")
+      : ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
+    return dirs[idx] || dirs[0];
   }
 
   // =========================
@@ -71,9 +77,9 @@
     _widgetEl.id = "kta-compass-widget";
     _widgetEl.className = "kta-compass-widget";
     _widgetEl.innerHTML =
-      '<button class="kta-compass-close" type="button" title="Fermer la boussole" aria-label="Fermer">&times;</button>' +
-      '<div class="kta-compass-rose-wrap" title="Cliquer pour agrandir">' +
-        '<img src="icon/compass.png" class="kta-compass-rose kta-compass-rotating-rose" alt="Rose des vents" draggable="false">' +
+      '<button class="kta-compass-close" type="button" title="' + t("compass.widget.closeTitle") + '" aria-label="' + t("compass.widget.closeAria") + '">&times;</button>' +
+      '<div class="kta-compass-rose-wrap" title="' + t("compass.widget.enlargeTitle") + '">' +
+        '<img src="icon/compass.png" class="kta-compass-rose kta-compass-rotating-rose" alt="' + t("compass.roseAlt") + '" draggable="false">' +
       '</div>' +
       '<div class="kta-compass-info">' +
         '<span class="kta-compass-heading kta-compass-text-display">N 0°</span>' +
@@ -111,30 +117,28 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-compass-full-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🧭 Boussole — Nord magnétique</span>' +
-          '<button class="kta-panneau-close" id="kta-compass-full-close" type="button" aria-label="Fermer">&times;</button>' +
+          '<span class="kta-readme-modal-titre">' + t("compass.modal.title") + '</span>' +
+          '<button class="kta-panneau-close" id="kta-compass-full-close" type="button" aria-label="' + t("compass.modal.closeAria") + '">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-compass-full-corps">' +
           '<div class="kta-compass-full-rose-wrap">' +
-            '<img src="icon/compass.png" class="kta-compass-rose-big kta-compass-rotating-rose" alt="Rose des vents" draggable="false">' +
+            '<img src="icon/compass.png" class="kta-compass-rose-big kta-compass-rotating-rose" alt="' + t("compass.roseAlt") + '" draggable="false">' +
           '</div>' +
           '<div class="kta-compass-full-info">' +
             '<div class="kta-compass-full-cardinal kta-compass-cardinal-display">N</div>' +
             '<div class="kta-compass-full-angle    kta-compass-angle-display">0°</div>' +
           '</div>' +
           '<p class="kta-compass-full-hint">' +
-            'Le <strong style="color:#f4c542;">N</strong> de la rose pointe toujours vers le vrai Nord. ' +
-            'Si tu avances en tenant le tel a plat dans la main (top du tel = direction de marche) :' +
+            t("compass.modal.hint") +
           '</p>' +
           '<ul class="kta-compass-full-list">' +
-            '<li>Tu marches vers le <strong>Nord</strong> → <strong>N</strong> reste en haut</li>' +
-            '<li>Tu marches vers l\'<strong>Est</strong> → <strong>N</strong> pointe a gauche</li>' +
-            '<li>Tu marches vers le <strong>Sud</strong> → <strong>N</strong> pointe en bas</li>' +
-            '<li>Tu marches vers l\'<strong>Ouest</strong> → <strong>N</strong> pointe a droite</li>' +
+            '<li>' + t("compass.modal.dirN") + '</li>' +
+            '<li>' + t("compass.modal.dirE") + '</li>' +
+            '<li>' + t("compass.modal.dirS") + '</li>' +
+            '<li>' + t("compass.modal.dirW") + '</li>' +
           '</ul>' +
           '<p class="kta-compass-full-note">' +
-            '⚠️ Attention aux armatures metalliques (carrieres, galeries) qui faussent le magnetometre. ' +
-            'Une vraie boussole physique reste plus fiable.' +
+            t("compass.modal.warning") +
           '</p>' +
         '</div>' +
       '</div>';

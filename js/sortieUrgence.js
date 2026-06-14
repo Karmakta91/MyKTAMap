@@ -198,7 +198,7 @@
     _modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-sortie-urgence-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🚨 Sortie d\'urgence</span>' +
+          '<span class="kta-readme-modal-titre">' + window.I18n.t("sortie.modal.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-sortie-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-sortie-urgence-corps">' + html + '</div>' +
@@ -226,13 +226,10 @@
       if (window.kta_vibrate) window.kta_vibrate.error();
       return (
         '<p class="kta-sortie-err">' +
-          '⚠️ <strong>Aucune sortie identifiée sur ce plan.</strong>' +
+          window.I18n.t("sortie.aucune.titre") +
         '</p>' +
         '<p style="font-size:12px; color:#8892a4;">' +
-          'Les POIs reconnus comme sortie sont ceux taggés ' +
-          '<code>cao</code> (Cavage ouvert), <code>peo</code> (Puits à échelon ouvert), ' +
-          '<code>eso</code> (Escalier de service ouvert), ou <code>entrée</code>.<br>' +
-          '<em>Les versions « fermées » (caf / pef / esf) sont volontairement ignorées.</em>' +
+          window.I18n.t("sortie.aucune.detail") +
         '</p>'
       );
     }
@@ -240,14 +237,14 @@
     if (window.kta_vibrate) window.kta_vibrate.medium();
 
     const meilleure = resultats[0];
-    const safeNom = String(meilleure.point.nom || "(sortie sans nom)")
+    const safeNom = String(meilleure.point.nom || window.I18n.t("sortie.item.sansNom"))
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const distTxt = _formatDist(meilleure.distPx);
     const fallbackBadge = meilleure.fallback
-      ? ' <span class="kta-sortie-fallback" title="Distance à vol d\'oiseau — pathfinder n\'a pas pu calculer un chemin">≈</span>'
+      ? ' <span class="kta-sortie-fallback" title="' + window.I18n.t("sortie.fallback.tooltip") + '">≈</span>'
       : '';
     const levelTxt = (typeof meilleure.point.level === "number" && meilleure.point.level !== 0)
-      ? ' <span class="kta-sortie-niveau">niveau ' + meilleure.point.level + '</span>'
+      ? ' <span class="kta-sortie-niveau">' + window.I18n.t("sortie.item.niveau", { level: meilleure.point.level }) + '</span>'
       : '';
 
     // Cache pour le bouton "Tracer"
@@ -264,7 +261,7 @@
       '<div class="kta-sortie-actions">' +
         '<button type="button" class="kta-btn kta-btn-primary kta-sortie-btn-tracer" ' +
           'onclick="window.SortieUrgence._tracerMeilleure(); return false;">' +
-          '🧭 Tracer l\'itinéraire' +
+          window.I18n.t("sortie.btn.tracer") +
         '</button>' +
       '</div>';
 
@@ -273,19 +270,21 @@
         '<div class="kta-sortie-alternatives">' +
           '<button type="button" class="kta-sortie-alt-toggle" ' +
             'onclick="window.SortieUrgence._toggleAlternatives(); return false;">' +
-            '▾ Voir les ' + (resultats.length - 1) + ' autres sortie' +
-              (resultats.length - 1 > 1 ? "s" : "") +
+            window.I18n.t("sortie.btn.voirAutres", {
+              n: (resultats.length - 1),
+              s: (resultats.length - 1 > 1 ? "s" : "")
+            }) +
           '</button>' +
           '<ul class="kta-sortie-alt-liste" id="kta-sortie-alt-liste" style="display:none;">'
       );
       for (let i = 1; i < resultats.length; i++) {
         const r = resultats[i];
-        const n = String(r.point.nom || "(sans nom)")
+        const n = String(r.point.nom || window.I18n.t("sortie.item.sansNomCourt"))
           .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         const d = _formatDist(r.distPx);
         const fb = r.fallback ? ' <span class="kta-sortie-fallback">≈</span>' : '';
         const lv = (typeof r.point.level === "number" && r.point.level !== 0)
-          ? ' <span class="kta-sortie-niveau">N' + r.point.level + '</span>'
+          ? ' <span class="kta-sortie-niveau">' + window.I18n.t("sortie.item.niveauCourt", { level: r.point.level }) + '</span>'
           : '';
         html += (
           '<li>' +
@@ -312,9 +311,9 @@
     if (!r || !r.point) return;
     _fermerModale();
     if (typeof window.itineraireYAller === "function") {
-      window.itineraireYAller(r.point.x, r.point.y, r.point.nom || "Sortie d'urgence");
+      window.itineraireYAller(r.point.x, r.point.y, r.point.nom || window.I18n.t("sortie.item.nomDefaut"));
     } else {
-      alert("Module Itinéraire indisponible : impossible de tracer.");
+      alert(window.I18n.t("sortie.erreur.itineraireIndispo"));
     }
   };
 
@@ -340,20 +339,19 @@
     // Pas de tracker : propose le picker
     _ouvrirModale(
       '<p class="kta-sortie-err">' +
-        '⚠️ Position tracker indisponible.' +
+        window.I18n.t("sortie.noTracker.titre") +
       '</p>' +
       '<p style="font-size:13px; color:#c8d0e0; line-height:1.5;">' +
-        'Pour calculer la sortie la plus proche, l\'app a besoin de connaître ta position. ' +
-        'Tu peux :' +
+        window.I18n.t("sortie.noTracker.detail") +
       '</p>' +
       '<div class="kta-sortie-actions" style="flex-direction:column; gap:8px;">' +
         '<button type="button" class="kta-btn kta-btn-primary" ' +
           'onclick="window.SortieUrgence._modePickerCarte(); return false;">' +
-          '🖱️ Clique sur ta position sur la carte' +
+          window.I18n.t("sortie.btn.cliquePosition") +
         '</button>' +
         '<button type="button" class="kta-btn kta-btn-ghost" ' +
           'onclick="window.SortieUrgence._fermer(); return false;">' +
-          'Annuler' +
+          window.I18n.t("sortie.btn.annuler") +
         '</button>' +
       '</div>'
     );
@@ -373,7 +371,7 @@
     _ouvrirModale(
       '<div class="kta-sortie-loader">' +
         '<div class="kta-sortie-spinner"></div>' +
-        '<p>Recherche des sorties + calcul des itinéraires…</p>' +
+        '<p>' + window.I18n.t("sortie.loader") + '</p>' +
       '</div>'
     );
     _calculerToutesSorties(origine).then(function(resultats) {
@@ -387,13 +385,13 @@
   SU._modePickerCarte = function() {
     _fermerModale();
     if (!window.map) {
-      alert("Carte indisponible.");
+      alert(window.I18n.t("sortie.erreur.carteIndispo"));
       return;
     }
     _isPicking = true;
     // Affiche un toast discret pour guider l'user
     if (typeof window._kta_showToast === "function") {
-      window._kta_showToast("🖱️ Clique sur ta position actuelle sur la carte", "info");
+      window._kta_showToast(window.I18n.t("sortie.toast.pickPosition"), "info");
     }
     _pickHandler = function(e) {
       _isPicking = false;

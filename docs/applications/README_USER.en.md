@@ -434,6 +434,8 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 5. **🎨 Display** — interface toggles:
    - **🔆 Keep screen on** — prevents your screen from auto-sleeping while MyKTAMap is open (Wake Lock API). Useful on cataphile outings to avoid having to touch the phone every 30 sec. Auto re-acquire on return from background (visibilitychange). Toggle automatically hidden on browsers that don't support the API (Firefox notably). The same toggle is also accessible in **⚙️ Settings** in map mode (see dedicated section).
 
+> 🌍 **Application language** *(since v1.46)*: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is located in **⚙️ Configuration**, in its own section **right after the Incognito block**. The change applies immediately, without reloading the app. *Good to know*: the **Documentation**, the **built-in Help** and the **welcome tutorial** currently exist in French and English only — if you use the app in Spanish, the interface is indeed in Spanish but these long-form contents are displayed in **English by default**. You can switch these contents between 🇫🇷 and 🇬🇧 at any time via the flag button at the top of their window.
+
 > 💡 **Since v1.36.2**: the "Show circles at path intersections" option is **no longer in Configuration home** but in **⚙️ Settings in map mode** (per-plan). Each map now has its own setting — handy to disable circles only on your very dense maps without touching the others.
 
 6. **📚 Server maps** — **"🚫 Do not load server maps at startup"** checkbox:

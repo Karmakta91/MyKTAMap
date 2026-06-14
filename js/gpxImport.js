@@ -69,15 +69,16 @@
   // EXTRACTION (file → parsed)
   // =========================================================================
   async function extraireGpx(file) {
-    if (!file || !(file instanceof Blob)) throw new Error("Fichier GPX invalide");
+    if (!file || !(file instanceof Blob)) throw new Error(window.I18n.t("gpx.err.fileInvalid"));
     const text = await file.text();
     const parser = new DOMParser();
     const gpxDoc = parser.parseFromString(text, "application/xml");
     const err = gpxDoc.querySelector("parsererror");
-    if (err) throw new Error("GPX mal formé : " + (err.textContent || "").split("\n")[0]);
+    if (err) throw new Error(window.I18n.t("gpx.err.malformedShort",
+      { detail: (err.textContent || "").split("\n")[0] }));
 
     if (!window.GpxIO || typeof window.GpxIO.parser !== "function") {
-      throw new Error("Module GpxIO non chargé — impossible de parser le GPX");
+      throw new Error(window.I18n.t("gpx.err.gpxioMissing"));
     }
     const parsed = window.GpxIO.parser(text);
     return { gpxDoc: gpxDoc, parsed: parsed, rawText: text };
@@ -137,7 +138,7 @@
         ctx.fillStyle = fills[color] || fills.sepia;
         ctx.fillRect(0, 0, width, height);
         canvas.toBlob(function(blob) {
-          if (!blob) reject(new Error("Échec génération canvas (toBlob null)"));
+          if (!blob) reject(new Error(window.I18n.t("gpx.err.canvasNull")));
           else resolve(blob);
         }, "image/png");
       } catch(e) { reject(e); }
@@ -211,7 +212,9 @@
       out.roads.push({
         id:          "gpx_imp_trk_" + (Date.now() + i),
         type:        type,
-        label:       trk.name || "(Tracé GPX)",
+        // ⚠️ i18n « figé à la langue d'import » : fallback de label écrit comme
+        // donnée d'annotation (affiché sur la carte). Non re-traduit après import.
+        label:       trk.name || window.I18n.t("gpx.import.trackLabelDefault"),
         description: trk.desc || undefined,
         points:      projected,
         level:       level
@@ -242,12 +245,12 @@
   //   onTilingProgress: fn(done, total, currentZ) — pour overlay UI
   // }
   async function genererZipMyktamap(opts) {
-    if (typeof JSZip === "undefined") throw new Error("JSZip non chargé");
+    if (typeof JSZip === "undefined") throw new Error(window.I18n.t("gpx.err.jszip"));
     if (!opts || !opts.parsed || !opts.bounds) {
-      throw new Error("genererZipMyktamap : opts.parsed + opts.bounds requis");
+      throw new Error(window.I18n.t("gpx.err.genZipReq"));
     }
     if (!window.KmzExport || !window.KmzExport.buildTransform) {
-      throw new Error("Module KmzExport non chargé — impossible de calibrer");
+      throw new Error(window.I18n.t("gpx.err.kmzExportMissing"));
     }
 
     const W = opts.canvasWidth  || 4000;
@@ -269,7 +272,7 @@
       transform.imageW = W;
       transform.imageH = H;
     } catch(e) {
-      throw new Error("Calibrage automatique impossible : " + e.message);
+      throw new Error(window.I18n.t("gpx.err.autoCalib", { msg: e.message }));
     }
 
     // === Ingestion annotations ===
@@ -306,9 +309,11 @@
 
     const planConfig = {
       plan: {
-        name:        opts.planName    || "Plan importé GPX",
+        // ⚠️ i18n « figé à la langue d'import » : défauts écrits comme donnée
+        // dans le plan-config.json reconstruit. Non re-traduits après import.
+        name:        opts.planName    || window.I18n.t("gpx.import.planNameDefault"),
         version:     opts.planVersion || "v1",
-        author:      opts.planAuthor  || "Import GPX",
+        author:      opts.planAuthor  || window.I18n.t("gpx.import.authorDefault"),
         imageWidth:  finalW,
         imageHeight: finalH,
         baseImage:   baseFilename,
@@ -390,7 +395,9 @@
     if (ingested.points.length > 0 || ingested.roads.length > 0) {
       planConfig.dataLayers.push({
         id:      "imported",
-        label:   "Annotations importées (GPX)",
+        // ⚠️ i18n « figé à la langue d'import » : label de dataLayer écrit comme
+        // donnée (affiché dans le FilterPanel). Non re-traduit après import.
+        label:   window.I18n.t("gpx.import.layerLabel"),
         // 🐛 v1.21.0-fix5 (symétrique kmzImport) : file = "data/imported.json"
         // pour matcher la clé d'enregistrement de l'asset (sinon resolution
         // RUNTIME_ASSETS échoue silencieusement → fetch URL relative → 404

@@ -33,6 +33,11 @@
 
   const MODAL_ID = "kta-mem-inspector-modal";
 
+  // 🆕 v1.44.0 — Pilote ModalLifecycle : centralise timers + listeners +
+  // blob URLs de la modale principale (cleanup auto au close). Le helper est
+  // chargé avant memInspector dans index.html, donc on peut compter sur lui.
+  let _lc = null;
+
   // ========== HELPER : FORMAT BYTES ==========
   function _formatBytes(n) {
     if (n == null || isNaN(n)) return "—";
@@ -125,7 +130,7 @@
         discoveredNames = list.map(function(d) { return d.name; }).filter(Boolean);
       }
     } catch(e) {
-      result.scanError = "indexedDB.databases() non supporté ou bloqué : " + String(e.message || e);
+      result.scanError = _t("collect.err.idbDatabasesUnsupported", { detail: String(e.message || e) });
     }
 
     // Union avec les bases connues (au cas où discoveredNames soit incomplet
@@ -191,7 +196,7 @@
     const result = { cacheNames: [], activeCache: null, error: null };
     try {
       if (!("caches" in window)) {
-        result.error = "Cache API non supportée par ce navigateur";
+        result.error = _t("collect.err.cacheApiUnsupported");
         return result;
       }
       result.cacheNames = await caches.keys();
@@ -228,7 +233,7 @@
     const result = { usage: null, quota: null, usagePct: null, error: null };
     try {
       if (!(navigator.storage && typeof navigator.storage.estimate === "function")) {
-        result.error = "navigator.storage.estimate() non supportée";
+        result.error = _t("collect.err.storageEstimateUnsupported");
         return result;
       }
       const est = await navigator.storage.estimate();
@@ -281,7 +286,7 @@
       const pc = window.PLAN_CONFIG;
       if (pc && pc.plan) {
         result.planLoaded = {
-          name:       pc.plan.name || "(sans nom)",
+          name:       pc.plan.name || (window.I18n ? window.I18n.t("stats.plan.noName") : "(sans nom)"),
           version:    pc.plan.version || "—",
           author:     pc.plan.author || "—",
           imageW:     pc.plan.imageWidth || null,
@@ -339,7 +344,7 @@
     const result = { reports: [], error: null };
     try {
       if (!window.CrashReports || typeof window.CrashReports.listAll !== "function") {
-        result.error = "Module CrashReports non chargé";
+        result.error = _t("collect.err.crashReportsNotLoaded");
         return result;
       }
       result.reports = await window.CrashReports.listAll();
@@ -376,45 +381,45 @@
     if (!rep) return "";
     const lines = [];
     lines.push("=========================================");
-    lines.push("MyKTAMap — Rapport État Mémoire");
+    lines.push(_t("report.titre"));
     lines.push("=========================================");
-    lines.push("📅 Timestamp : " + rep.timestamp);
-    lines.push("📦 Version app : " + rep.runtime.appVersion);
+    lines.push(_t("report.timestamp", { ts: rep.timestamp }));
+    lines.push(_t("report.version", { version: rep.runtime.appVersion }));
     lines.push("");
 
     // Runtime
-    lines.push("🧠 RUNTIME");
+    lines.push(_t("report.runtime"));
     lines.push("─────────────────────────────────────────");
     if (rep.runtime.planLoaded) {
       const p = rep.runtime.planLoaded;
-      lines.push("Plan chargé : " + p.name + " " + p.version + " (" + (p.imageW || "?") + "×" + (p.imageH || "?") + ")");
-      lines.push("  Auteur : " + p.author);
-      lines.push("  M-LVL : " + (p.multiLevel ? "ON" : "OFF") + " | V2 tuilé : " + (p.tiledV2 ? "ON" : "OFF"));
-      lines.push("  Calques image : " + p.imageLayersCount + " | Calques data : " + p.dataLayersCount);
-      lines.push("  Légende custom plan : " + (p.hasCustomLegend ? "OUI" : "non"));
+      lines.push(_t("report.plan", { name: p.name, version: p.version, w: (p.imageW || "?"), h: (p.imageH || "?") }));
+      lines.push("  " + _t("report.plan.author", { author: p.author }));
+      lines.push("  " + _t("report.plan.flags", { mlvl: (p.multiLevel ? "ON" : "OFF"), tiled: (p.tiledV2 ? "ON" : "OFF") }));
+      lines.push("  " + _t("report.plan.layers", { image: p.imageLayersCount, data: p.dataLayersCount }));
+      lines.push("  " + _t("report.plan.legend", { val: (p.hasCustomLegend ? _t("report.yes") : _t("report.no")) }));
     } else {
-      lines.push("Plan chargé : (aucun — home)");
+      lines.push(_t("report.plan.none"));
     }
     if (rep.runtime.sessionStats) {
       const s = rep.runtime.sessionStats;
-      lines.push("Session active : " + s.editorPoints + " points, " + s.roads + " tracés, " + s.zones + " zones, " + s.structures + " structures");
-      lines.push("  Mesure : " + s.measurePoints + " pts | Tracker : " + (s.trackingActif ? "ON" : "OFF") + " | Itinéraire : " + (s.itineraireActif ? "ON" : "OFF"));
+      lines.push(_t("report.session", { points: s.editorPoints, roads: s.roads, zones: s.zones, structures: s.structures }));
+      lines.push("  " + _t("report.session.detail", { measure: s.measurePoints, tracker: (s.trackingActif ? "ON" : "OFF"), iti: (s.itineraireActif ? "ON" : "OFF") }));
     }
     const ac = rep.runtime.appConfig;
     lines.push("APP_CONFIG : debug=" + ac.debugMode + ", perfPreset=" + ac.perfPreset + ", scaledMarkers=" + ac.scaledMarkers + ", intersections=" + ac.showRoadIntersections + ", M-LVL=" + ac.multiLevel);
-    lines.push("Modules chargés (" + rep.runtime.modulesLoaded.length + "/" + (rep.runtime.modulesLoaded.length + rep.runtime.modulesMissing.length) + ") : " + rep.runtime.modulesLoaded.join(", "));
+    lines.push(_t("report.modules", { loaded: rep.runtime.modulesLoaded.length, total: (rep.runtime.modulesLoaded.length + rep.runtime.modulesMissing.length), list: rep.runtime.modulesLoaded.join(", ") }));
     if (rep.runtime.modulesMissing.length > 0) {
-      lines.push("Modules MANQUANTS : " + rep.runtime.modulesMissing.join(", "));
+      lines.push(_t("report.modules.missing", { list: rep.runtime.modulesMissing.join(", ") }));
     }
     lines.push("");
 
     // localStorage
-    lines.push("🗂️  LOCALSTORAGE");
+    lines.push(_t("report.ls"));
     lines.push("─────────────────────────────────────────");
     if (rep.localStorage.error) {
-      lines.push("⚠️ Erreur : " + rep.localStorage.error);
+      lines.push(_t("report.error", { detail: rep.localStorage.error }));
     } else {
-      lines.push("Total : " + rep.localStorage.keys.length + " clés MyKTAMap, " + _formatBytes(rep.localStorage.totalBytes));
+      lines.push(_t("report.ls.total", { count: rep.localStorage.keys.length, size: _formatBytes(rep.localStorage.totalBytes) }));
       rep.localStorage.keys.forEach(function(k) {
         lines.push("  " + k.sizePretty.padStart(10, " ") + "  " + k.key);
       });
@@ -422,44 +427,44 @@
     lines.push("");
 
     // IndexedDB
-    lines.push("💾 INDEXEDDB");
+    lines.push(_t("report.idb"));
     lines.push("─────────────────────────────────────────");
     if (rep.indexedDB.scanError) {
-      lines.push("ℹ️ Scan natif : " + rep.indexedDB.scanError + " (fallback bases connues uniquement)");
+      lines.push(_t("report.idb.scanError", { detail: rep.indexedDB.scanError }));
     }
     if (rep.indexedDB.databases.length === 0) {
-      lines.push("(aucune base MyKTAMap détectée)");
+      lines.push(_t("report.idb.empty"));
     }
     rep.indexedDB.databases.forEach(function(db) {
       lines.push("• " + db.name + (db.version != null ? " (v" + db.version + ")" : "") + (db.error ? "  ⚠️ " + db.error : ""));
       db.stores.forEach(function(s) {
         if (s.missing) {
-          lines.push("    └─ " + s.name + " : (store absent)");
+          lines.push("    └─ " + s.name + " : " + _t("report.idb.storeMissing"));
         } else if (s.count < 0) {
-          lines.push("    └─ " + s.name + " : ⚠️ " + (s.error || "erreur count"));
+          lines.push("    └─ " + s.name + " : ⚠️ " + (s.error || _t("report.idb.countError")));
         } else {
-          lines.push("    └─ " + s.name + " : " + s.count + " entrée" + (s.count > 1 ? "s" : ""));
+          lines.push("    └─ " + s.name + " : " + _t("idb.store.entries", { count: s.count }));
         }
       });
     });
     lines.push("");
 
     // Cache PWA
-    lines.push("📦 CACHE PWA (SERVICE WORKER)");
+    lines.push(_t("report.cache"));
     lines.push("─────────────────────────────────────────");
     if (rep.cachePWA.error) {
       lines.push("⚠️ " + rep.cachePWA.error);
     } else {
-      lines.push("Caches existants : " + rep.cachePWA.cacheNames.length);
+      lines.push(_t("report.cache.existing", { count: rep.cachePWA.cacheNames.length }));
       rep.cachePWA.cacheNames.forEach(function(n) {
         const mark = (rep.cachePWA.activeCache && rep.cachePWA.activeCache.name === n) ? "★ " : "  ";
         lines.push(mark + n);
       });
       if (rep.cachePWA.activeCache) {
         lines.push("");
-        lines.push("Cache actif : " + rep.cachePWA.activeCache.name + " — " + rep.cachePWA.activeCache.assetCount + " assets");
+        lines.push(_t("report.cache.active", { name: rep.cachePWA.activeCache.name, count: rep.cachePWA.activeCache.assetCount }));
         if (rep.cachePWA.activeCache.assetSample.length > 0) {
-          lines.push("Échantillon (12 premiers) :");
+          lines.push(_t("report.cache.sample"));
           rep.cachePWA.activeCache.assetSample.forEach(function(u) { lines.push("  " + u); });
         }
       }
@@ -467,29 +472,29 @@
     lines.push("");
 
     // Storage estimate
-    lines.push("📊 STORAGE ESTIMATE (NAVIGATEUR)");
+    lines.push(_t("report.storage"));
     lines.push("─────────────────────────────────────────");
     if (rep.storageEstimate.error) {
       lines.push("⚠️ " + rep.storageEstimate.error);
     } else {
-      lines.push("Usage : " + _formatBytes(rep.storageEstimate.usage));
-      lines.push("Quota : " + _formatBytes(rep.storageEstimate.quota));
-      lines.push("Utilisé : " + (rep.storageEstimate.usagePct != null ? rep.storageEstimate.usagePct.toFixed(2) + " %" : "—"));
+      lines.push(_t("report.storage.usage", { val: _formatBytes(rep.storageEstimate.usage) }));
+      lines.push(_t("report.storage.quota", { val: _formatBytes(rep.storageEstimate.quota) }));
+      lines.push(_t("report.storage.used", { val: (rep.storageEstimate.usagePct != null ? rep.storageEstimate.usagePct.toFixed(2) + " %" : "—") }));
     }
     lines.push("");
 
     // 🆕 v1.20.0 — Crash Reports
     const cr = rep.crashReports || { reports: [], error: null };
-    lines.push("📋 DERNIERS CRASHS DÉTECTÉS");
+    lines.push(_t("report.crash"));
     lines.push("─────────────────────────────────────────");
     if (cr.error) {
       lines.push("⚠️ " + cr.error);
     } else if (cr.reports.length === 0) {
-      lines.push("(aucun crash détecté)");
+      lines.push(_t("report.crash.empty"));
     } else {
       cr.reports.forEach(function(entry) {
         const dateTxt = new Date(entry.timestamp).toISOString();
-        const planTxt = entry.killInfo && entry.killInfo.planId ? entry.killInfo.planId : "(aucun plan)";
+        const planTxt = entry.killInfo && entry.killInfo.planId ? entry.killInfo.planId : _t("crash.noPlan");
         const ageSec  = entry.killInfo && entry.killInfo.ageSec != null ? entry.killInfo.ageSec + "s" : "?";
         const logsN   = (entry.logs || []).length;
         lines.push("• #" + entry.id + "  " + dateTxt +
@@ -498,7 +503,7 @@
                    "  age=" + ageSec +
                    "  logs=" + logsN);
       });
-      lines.push("(détails complets de chaque crash via 📋 Voir détails dans la modale Inspector)");
+      lines.push(_t("report.crash.detailsHint"));
     }
     lines.push("");
     lines.push("=========================================");
@@ -507,19 +512,30 @@
   }
 
   // ========== UI : MODALE ==========
+  // ========== HELPER I18N ==========
+  // Appelé AU RENDU uniquement (jamais au load) → les dicos sont prêts.
+  function _t(key, params) {
+    return (window.I18n && typeof window.I18n.t === "function")
+      ? window.I18n.t("meminsp." + key, params)
+      : key;
+  }
+  function _locale() {
+    return (window.I18n && typeof window.I18n.getLang === "function") ? window.I18n.getLang() : "fr";
+  }
+
   function _buildModalHtml() {
     return ''
       + '<div class="kta-readme-modal-boite kta-mem-inspector-boite">'
       +   '<div class="kta-readme-modal-header">'
-      +     '<span class="kta-readme-modal-titre">📊 État mémoire — Inspecteur</span>'
-      +     '<button type="button" class="kta-panneau-close" id="kta-mem-close" aria-label="Fermer">✕</button>'
+      +     '<span class="kta-readme-modal-titre">' + _t("titre") + '</span>'
+      +     '<button type="button" class="kta-panneau-close" id="kta-mem-close" aria-label="' + _t("close") + '">✕</button>'
       +   '</div>'
       +   '<div class="kta-readme-modal-corps" id="kta-mem-corps">'
-      +     '<div class="kta-mem-loading">⏳ Collecte en cours…</div>'
+      +     '<div class="kta-mem-loading">' + _t("loading") + '</div>'
       +   '</div>'
       +   '<div class="kta-readme-modal-footer kta-mem-footer">'
-      +     '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-mem-refresh">🔄 Rafraîchir</button>'
-      +     '<button type="button" class="kta-btn kta-btn-primary" id="kta-mem-copy">📋 Copier le rapport</button>'
+      +     '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-mem-refresh">' + _t("btn.refresh") + '</button>'
+      +     '<button type="button" class="kta-btn kta-btn-primary" id="kta-mem-copy">' + _t("btn.copy") + '</button>'
       +   '</div>'
       + '</div>';
   }
@@ -535,73 +551,72 @@
 
     // === Header ===
     html += '<div class="kta-mem-header-stamp">';
-    html += '📅 Capturé le ' + _escapeHtml(new Date(rep.timestamp).toLocaleString("fr-FR")) +
-            ' &middot; 📦 ' + _escapeHtml(r.appVersion);
+    html += _t("stamp", { date: _escapeHtml(new Date(rep.timestamp).toLocaleString(_locale())), version: _escapeHtml(r.appVersion) });
     html += '</div>';
 
     // === Section RUNTIME ===
     html += '<div class="kta-mem-section">';
-    html += '<div class="kta-mem-section-titre">🧠 Runtime</div>';
+    html += '<div class="kta-mem-section-titre">' + _t("runtime.titre") + '</div>';
     if (r.planLoaded) {
       const p = r.planLoaded;
-      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">Plan chargé</span>';
+      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.plan") + '</span>';
       html += '<span class="kta-mem-val">' + _escapeHtml(p.name) + ' ' + _escapeHtml(p.version) +
               ' <span class="kta-mem-dim">(' + (p.imageW || "?") + '×' + (p.imageH || "?") + ' px)</span></span></div>';
-      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">Auteur</span><span class="kta-mem-val">' + _escapeHtml(p.author) + '</span></div>';
+      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.author") + '</span><span class="kta-mem-val">' + _escapeHtml(p.author) + '</span></div>';
       const flags = [];
-      if (p.multiLevel) flags.push('<span class="kta-mem-tag">🏗️ M-LVL</span>');
-      if (p.tiledV2)    flags.push('<span class="kta-mem-tag">🧱 V2 tuilé</span>');
-      if (p.hasCustomLegend) flags.push('<span class="kta-mem-tag">🏷️ Légende plan</span>');
-      flags.push('<span class="kta-mem-tag-dim">🗂️ ' + p.imageLayersCount + ' calques image</span>');
-      flags.push('<span class="kta-mem-tag-dim">📊 ' + p.dataLayersCount  + ' calques data</span>');
-      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">Flags</span><span class="kta-mem-val kta-mem-flags">' + flags.join(" ") + '</span></div>';
+      if (p.multiLevel) flags.push('<span class="kta-mem-tag">' + _t("runtime.tag.mlvl") + '</span>');
+      if (p.tiledV2)    flags.push('<span class="kta-mem-tag">' + _t("runtime.tag.tiled") + '</span>');
+      if (p.hasCustomLegend) flags.push('<span class="kta-mem-tag">' + _t("runtime.tag.legend") + '</span>');
+      flags.push('<span class="kta-mem-tag-dim">' + _t("runtime.tag.imageLayers", { count: p.imageLayersCount }) + '</span>');
+      flags.push('<span class="kta-mem-tag-dim">' + _t("runtime.tag.dataLayers", { count: p.dataLayersCount }) + '</span>');
+      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.flags") + '</span><span class="kta-mem-val kta-mem-flags">' + flags.join(" ") + '</span></div>';
     } else {
-      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">Plan chargé</span><span class="kta-mem-val kta-mem-dim">(aucun — vous êtes sur la home)</span></div>';
+      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.plan") + '</span><span class="kta-mem-val kta-mem-dim">' + _t("runtime.plan.none") + '</span></div>';
     }
 
     if (r.sessionStats) {
       const s = r.sessionStats;
-      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">Session</span>';
+      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.session") + '</span>';
       html += '<span class="kta-mem-val">' +
                 '📍 ' + s.editorPoints + ' · 🛣️ ' + s.roads + ' · ⬛ ' + s.zones + ' · 🏛️ ' + s.structures +
-                ' <span class="kta-mem-dim">(annotations actives en RAM)</span></span></div>';
+                ' <span class="kta-mem-dim">' + _t("runtime.session.hint") + '</span></span></div>';
       const liveTags = [];
-      if (s.measurePoints > 0) liveTags.push('<span class="kta-mem-tag">📐 Mesure ' + s.measurePoints + ' pts</span>');
-      if (s.trackingActif)     liveTags.push('<span class="kta-mem-tag kta-mem-tag-on">🧭 Tracker ON</span>');
-      else                     liveTags.push('<span class="kta-mem-tag-dim">🧭 Tracker OFF</span>');
-      if (s.itineraireActif)   liveTags.push('<span class="kta-mem-tag kta-mem-tag-on">🗺️ Iti actif</span>');
-      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">État live</span><span class="kta-mem-val kta-mem-flags">' + liveTags.join(" ") + '</span></div>';
+      if (s.measurePoints > 0) liveTags.push('<span class="kta-mem-tag">' + _t("runtime.tag.measure", { count: s.measurePoints }) + '</span>');
+      if (s.trackingActif)     liveTags.push('<span class="kta-mem-tag kta-mem-tag-on">' + _t("runtime.tag.trackerOn") + '</span>');
+      else                     liveTags.push('<span class="kta-mem-tag-dim">' + _t("runtime.tag.trackerOff") + '</span>');
+      if (s.itineraireActif)   liveTags.push('<span class="kta-mem-tag kta-mem-tag-on">' + _t("runtime.tag.itiActive") + '</span>');
+      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.live") + '</span><span class="kta-mem-val kta-mem-flags">' + liveTags.join(" ") + '</span></div>';
     }
 
     const ac = r.appConfig;
     const cfgTags = [];
-    if (ac.debugMode) cfgTags.push('<span class="kta-mem-tag kta-mem-tag-warn">🐛 debug ON</span>');
-    cfgTags.push('<span class="kta-mem-tag-dim">⚡ perf=' + _escapeHtml(ac.perfPreset) + '</span>');
-    if (!ac.scaledMarkers)         cfgTags.push('<span class="kta-mem-tag-dim">scaledMarkers OFF</span>');
-    if (!ac.showRoadIntersections) cfgTags.push('<span class="kta-mem-tag-dim">intersections OFF</span>');
-    if (ac.multiLevel)             cfgTags.push('<span class="kta-mem-tag">M-LVL niveau actif : ' + (ac.activeLevel != null ? ac.activeLevel : "?") + '</span>');
-    html += '<div class="kta-mem-row"><span class="kta-mem-lbl">APP_CONFIG</span><span class="kta-mem-val kta-mem-flags">' + cfgTags.join(" ") + '</span></div>';
+    if (ac.debugMode) cfgTags.push('<span class="kta-mem-tag kta-mem-tag-warn">' + _t("runtime.tag.debugOn") + '</span>');
+    cfgTags.push('<span class="kta-mem-tag-dim">' + _t("runtime.tag.perf", { preset: _escapeHtml(ac.perfPreset) }) + '</span>');
+    if (!ac.scaledMarkers)         cfgTags.push('<span class="kta-mem-tag-dim">' + _t("runtime.tag.scaledOff") + '</span>');
+    if (!ac.showRoadIntersections) cfgTags.push('<span class="kta-mem-tag-dim">' + _t("runtime.tag.intersectionsOff") + '</span>');
+    if (ac.multiLevel)             cfgTags.push('<span class="kta-mem-tag">' + _t("runtime.tag.mlvlActive", { level: (ac.activeLevel != null ? ac.activeLevel : "?") }) + '</span>');
+    html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.config") + '</span><span class="kta-mem-val kta-mem-flags">' + cfgTags.join(" ") + '</span></div>';
 
-    html += '<div class="kta-mem-row"><span class="kta-mem-lbl">Modules chargés</span>';
+    html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.modules") + '</span>';
     html += '<span class="kta-mem-val"><strong>' + r.modulesLoaded.length + '</strong> / ' + (r.modulesLoaded.length + r.modulesMissing.length) +
             ' <span class="kta-mem-dim">(' + r.modulesLoaded.slice(0, 8).join(", ") + (r.modulesLoaded.length > 8 ? ", …" : "") + ')</span></span></div>';
     if (r.modulesMissing.length > 0) {
-      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">Manquants</span><span class="kta-mem-val kta-mem-warn">⚠️ ' + _escapeHtml(r.modulesMissing.join(", ")) + '</span></div>';
+      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.missing") + '</span><span class="kta-mem-val kta-mem-warn">⚠️ ' + _escapeHtml(r.modulesMissing.join(", ")) + '</span></div>';
     }
     html += '</div>';
 
     // === Section LOCALSTORAGE ===
     html += '<div class="kta-mem-section">';
-    html += '<div class="kta-mem-section-titre">🗂️ localStorage <span class="kta-mem-total">' +
-              ls.keys.length + ' clé' + (ls.keys.length > 1 ? "s" : "") + ' · ' + _formatBytes(ls.totalBytes) +
+    html += '<div class="kta-mem-section-titre">' + _t("ls.titre") + ' <span class="kta-mem-total">' +
+              _t("ls.count", { count: ls.keys.length, size: _formatBytes(ls.totalBytes) }) +
             '</span></div>';
     if (ls.error) {
       html += '<div class="kta-mem-warn">⚠️ ' + _escapeHtml(ls.error) + '</div>';
     } else if (ls.keys.length === 0) {
-      html += '<div class="kta-mem-dim">(aucune clé MyKTAMap trouvée — première utilisation ou reset récent)</div>';
+      html += '<div class="kta-mem-dim">' + _t("ls.empty") + '</div>';
     } else {
       html += '<table class="kta-mem-table">';
-      html += '<thead><tr><th>Clé</th><th class="kta-mem-num">Taille</th></tr></thead><tbody>';
+      html += '<thead><tr><th>' + _t("ls.col.key") + '</th><th class="kta-mem-num">' + _t("ls.col.size") + '</th></tr></thead><tbody>';
       ls.keys.forEach(function(k) {
         const pct = ls.totalBytes > 0 ? (k.sizeBytes / ls.totalBytes * 100) : 0;
         html += '<tr>';
@@ -618,15 +633,14 @@
     // === Section INDEXEDDB ===
     html += '<div class="kta-mem-section">';
     const totalIdbEntries = idb.databases.reduce(function(acc, d) { return acc + (d.totalEntries || 0); }, 0);
-    html += '<div class="kta-mem-section-titre">💾 IndexedDB <span class="kta-mem-total">' +
-              idb.databases.length + ' base' + (idb.databases.length > 1 ? "s" : "") + ' · ' +
-              totalIdbEntries + ' entrée' + (totalIdbEntries > 1 ? "s" : "") +
+    html += '<div class="kta-mem-section-titre">' + _t("idb.titre") + ' <span class="kta-mem-total">' +
+              _t("idb.count", { dbs: idb.databases.length, entries: totalIdbEntries }) +
             '</span></div>';
     if (idb.scanError) {
       html += '<div class="kta-mem-dim">ℹ️ ' + _escapeHtml(idb.scanError) + '</div>';
     }
     if (idb.databases.length === 0) {
-      html += '<div class="kta-mem-dim">(aucune base MyKTAMap détectée — fresh install)</div>';
+      html += '<div class="kta-mem-dim">' + _t("idb.empty") + '</div>';
     }
     idb.databases.forEach(function(db) {
       html += '<div class="kta-mem-db">';
@@ -640,11 +654,11 @@
           html += '<div class="kta-mem-store">';
           html += '<span class="kta-mem-store-name">└─ ' + _escapeHtml(s.name) + '</span>';
           if (s.missing) {
-            html += '<span class="kta-mem-dim">(store absent)</span>';
+            html += '<span class="kta-mem-dim">' + _t("idb.store.missing") + '</span>';
           } else if (s.count < 0) {
-            html += '<span class="kta-mem-warn">⚠️ ' + _escapeHtml(s.error || "erreur") + '</span>';
+            html += '<span class="kta-mem-warn">⚠️ ' + _escapeHtml(s.error || _t("idb.store.error")) + '</span>';
           } else {
-            html += '<span class="kta-mem-num">' + s.count + ' entrée' + (s.count > 1 ? "s" : "") + '</span>';
+            html += '<span class="kta-mem-num">' + _t("idb.store.entries", { count: s.count }) + '</span>';
           }
           html += '</div>';
         });
@@ -655,32 +669,32 @@
 
     // === Section CACHE PWA ===
     html += '<div class="kta-mem-section">';
-    html += '<div class="kta-mem-section-titre">📦 Cache PWA (Service Worker)';
+    html += '<div class="kta-mem-section-titre">' + _t("cache.titre");
     if (cp.activeCache) {
-      html += ' <span class="kta-mem-total">' + cp.activeCache.assetCount + ' assets</span>';
+      html += ' <span class="kta-mem-total">' + _t("cache.assets", { count: cp.activeCache.assetCount }) + '</span>';
     }
     html += '</div>';
     if (cp.error) {
       html += '<div class="kta-mem-warn">⚠️ ' + _escapeHtml(cp.error) + '</div>';
     } else if (cp.cacheNames.length === 0) {
-      html += '<div class="kta-mem-dim">(aucun cache PWA — SW pas encore installé ou reset récent)</div>';
+      html += '<div class="kta-mem-dim">' + _t("cache.empty") + '</div>';
     } else {
       cp.cacheNames.forEach(function(n) {
         const isActive = cp.activeCache && cp.activeCache.name === n;
         html += '<div class="kta-mem-cache-row' + (isActive ? ' kta-mem-cache-active' : '') + '">';
         html += isActive ? '<span class="kta-mem-cache-star">★</span> ' : '<span class="kta-mem-cache-star kta-mem-dim">○</span> ';
         html += '<code>' + _escapeHtml(n) + '</code>';
-        if (isActive) html += ' <span class="kta-mem-tag-dim">(actif)</span>';
+        if (isActive) html += ' <span class="kta-mem-tag-dim">' + _t("cache.active") + '</span>';
         html += '</div>';
       });
       if (cp.activeCache && cp.activeCache.assetSample.length > 0) {
         html += '<div class="kta-mem-cache-sample">';
-        html += '<div class="kta-mem-sample-titre">Échantillon (12 premiers assets) :</div>';
+        html += '<div class="kta-mem-sample-titre">' + _t("cache.sample.titre") + '</div>';
         cp.activeCache.assetSample.forEach(function(u) {
           html += '<div class="kta-mem-asset">' + _escapeHtml(u) + '</div>';
         });
         if (cp.activeCache.assetCount > 12) {
-          html += '<div class="kta-mem-dim">…et ' + (cp.activeCache.assetCount - 12) + ' autres</div>';
+          html += '<div class="kta-mem-dim">' + _t("cache.sample.more", { count: (cp.activeCache.assetCount - 12) }) + '</div>';
         }
         html += '</div>';
       }
@@ -689,24 +703,24 @@
 
     // === Section STORAGE ESTIMATE ===
     html += '<div class="kta-mem-section">';
-    html += '<div class="kta-mem-section-titre">📊 Storage estimate (navigateur)</div>';
+    html += '<div class="kta-mem-section-titre">' + _t("storage.titre") + '</div>';
     if (se.error) {
       html += '<div class="kta-mem-warn">⚠️ ' + _escapeHtml(se.error) + '</div>';
     } else {
-      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">Usage</span><span class="kta-mem-val kta-mem-num"><strong>' + _formatBytes(se.usage) + '</strong></span></div>';
-      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">Quota</span><span class="kta-mem-val kta-mem-num">' + _formatBytes(se.quota) + '</span></div>';
-      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">Utilisé</span><span class="kta-mem-val">';
+      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("storage.usage") + '</span><span class="kta-mem-val kta-mem-num"><strong>' + _formatBytes(se.usage) + '</strong></span></div>';
+      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("storage.quota") + '</span><span class="kta-mem-val kta-mem-num">' + _formatBytes(se.quota) + '</span></div>';
+      html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("storage.used") + '</span><span class="kta-mem-val">';
       html += '<div class="kta-mem-quota-bar"><div class="kta-mem-quota-fill" style="width:' + (se.usagePct || 0).toFixed(2) + '%"></div></div>';
       html += '<span class="kta-mem-num">' + (se.usagePct != null ? se.usagePct.toFixed(2) + " %" : "—") + '</span>';
       html += '</span></div>';
-      html += '<div class="kta-mem-dim" style="margin-top:6px;">Quota défini par le navigateur, partagé entre localStorage + IndexedDB + Cache PWA + autres.</div>';
+      html += '<div class="kta-mem-dim" style="margin-top:6px;">' + _t("storage.hint") + '</div>';
     }
     html += '</div>';
 
     // === Section CRASH REPORTS (v1.20.0) ===
     const cr = rep.crashReports || { reports: [], error: null };
     html += '<div class="kta-mem-section">';
-    html += '<div class="kta-mem-section-titre">📋 Derniers crashs détectés';
+    html += '<div class="kta-mem-section-titre">' + _t("crash.titre");
     if (cr.reports.length > 0) {
       html += ' <span class="kta-mem-total">' + cr.reports.length + ' / 5</span>';
     }
@@ -714,11 +728,11 @@
     if (cr.error) {
       html += '<div class="kta-mem-warn">⚠️ ' + _escapeHtml(cr.error) + '</div>';
     } else if (cr.reports.length === 0) {
-      html += '<div class="kta-mem-dim">(aucun crash détecté — l\'app n\'a jamais été killed brutalement, ou les rapports ont été purgés)</div>';
+      html += '<div class="kta-mem-dim">' + _t("crash.empty") + '</div>';
     } else {
       cr.reports.forEach(function(entry) {
-        const planTxt = entry.killInfo && entry.killInfo.planId ? entry.killInfo.planId : "(aucun plan)";
-        const dateTxt = new Date(entry.timestamp).toLocaleString("fr-FR");
+        const planTxt = entry.killInfo && entry.killInfo.planId ? entry.killInfo.planId : _t("crash.noPlan");
+        const dateTxt = new Date(entry.timestamp).toLocaleString(_locale());
         const ageSec = entry.killInfo && entry.killInfo.ageSec;
         const logsCount = (entry.logs || []).length;
         html += '<div class="kta-mem-crash-row" data-crash-id="' + entry.id + '">';
@@ -729,19 +743,19 @@
         html += '</div>';
         html += '<div class="kta-mem-crash-meta">';
         html += '🗂️ ' + _escapeHtml(planTxt);
-        if (ageSec != null) html += ' &middot; ⏱️ ' + ageSec + 's avant détection';
-        html += ' &middot; 📋 ' + logsCount + ' log' + (logsCount > 1 ? 's' : '');
-        if (entry.sessionSnapMeta) html += ' &middot; 📦 snap session présent';
+        if (ageSec != null) html += ' &middot; ' + _t("crash.meta.age", { sec: ageSec });
+        html += ' &middot; ' + _t("crash.meta.logs", { count: logsCount });
+        if (entry.sessionSnapMeta) html += ' &middot; ' + _t("crash.meta.snap");
         html += '</div>';
         html += '<div class="kta-mem-crash-actions">';
-        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-view" data-crash-id="' + entry.id + '">📋 Voir détails</button>';
-        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-copy" data-crash-id="' + entry.id + '">📋 Copier</button>';
-        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-del"  data-crash-id="' + entry.id + '" title="Supprimer ce rapport">🗑️</button>';
+        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-view" data-crash-id="' + entry.id + '">' + _t("crash.btn.view") + '</button>';
+        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-copy" data-crash-id="' + entry.id + '">' + _t("crash.btn.copy") + '</button>';
+        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-del"  data-crash-id="' + entry.id + '" title="' + _t("crash.btn.del") + '">🗑️</button>';
         html += '</div>';
         html += '</div>';
       });
       html += '<div style="margin-top:10px; text-align:right;">';
-      html += '<button type="button" class="kta-btn kta-btn-ghost" id="kta-mem-crash-clear-all" style="font-size:11px;">🗑️ Tout vider</button>';
+      html += '<button type="button" class="kta-btn kta-btn-ghost" id="kta-mem-crash-clear-all" style="font-size:11px;">' + _t("crash.btn.clearAll") + '</button>';
       html += '</div>';
     }
     html += '</div>';
@@ -750,38 +764,41 @@
   }
 
   // ───────── HANDLERS CRASH REPORTS (v1.20.0) ─────────
-  // Bind après chaque render — les boutons sont dynamiques par crash report.
+  // 🆕 v1.44.0 — Refacto event delegation via _lc.delegate (UN listener par
+  // type d'event au lieu de N listeners ré-attachés à chaque rafraîchissement).
+  // Avant : à chaque _refreshAndRender(), forEach + addEventListener × ~30
+  // boutons = accumulation transitoire de closures + zombies sur DOM ancien.
+  // Maintenant : 1 listener click délégué sur #kta-mem-corps (jamais remplacé,
+  // seul son innerHTML l'est) qui dispatch via e.target.matches.
+  let _crashHandlersBound = false;
   function _bindCrashHandlers() {
-    document.querySelectorAll(".kta-mem-crash-view").forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const id = parseInt(btn.dataset.crashId, 10);
-        _afficherCrashDetail(id);
-      });
+    if (_crashHandlersBound || !_lc) return;
+    const corps = document.getElementById("kta-mem-corps");
+    if (!corps) return;
+    _crashHandlersBound = true;
+    _lc.delegate(corps, "click", ".kta-mem-crash-view", function() {
+      const id = parseInt(this.dataset.crashId, 10);
+      _afficherCrashDetail(id);
     });
-    document.querySelectorAll(".kta-mem-crash-copy").forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const id = parseInt(btn.dataset.crashId, 10);
-        _copierCrashReport(id, btn);
-      });
+    _lc.delegate(corps, "click", ".kta-mem-crash-copy", function() {
+      const id = parseInt(this.dataset.crashId, 10);
+      _copierCrashReport(id, this);
     });
-    document.querySelectorAll(".kta-mem-crash-del").forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const id = parseInt(btn.dataset.crashId, 10);
-        if (!confirm("Supprimer ce rapport de crash ?")) return;
-        if (window.CrashReports && typeof window.CrashReports.remove === "function") {
-          window.CrashReports.remove(id).then(_refreshAndRender);
-        }
-      });
+    _lc.delegate(corps, "click", ".kta-mem-crash-del", function() {
+      const id = parseInt(this.dataset.crashId, 10);
+      if (!confirm(_t("crash.confirm.del"))) return;
+      if (window.CrashReports && typeof window.CrashReports.remove === "function") {
+        window.CrashReports.remove(id).then(_refreshAndRender);
+      }
     });
-    const clearAllBtn = document.getElementById("kta-mem-crash-clear-all");
-    if (clearAllBtn) {
-      clearAllBtn.addEventListener("click", function() {
-        if (!confirm("Vider TOUS les rapports de crash ?")) return;
-        if (window.CrashReports && typeof window.CrashReports.clearAll === "function") {
-          window.CrashReports.clearAll().then(_refreshAndRender);
-        }
-      });
-    }
+    _lc.delegate(corps, "click", "#kta-mem-crash-clear-all", function() {
+      if (!confirm(_t("crash.confirm.clearAll"))) return;
+      if (window.CrashReports && typeof window.CrashReports.clearAll === "function") {
+        window.CrashReports.clearAll().then(_refreshAndRender);
+      }
+    });
+    // Reset le flag au close (au cas où la modale est ré-ouverte)
+    _lc.onClose(function() { _crashHandlersBound = false; });
   }
 
   function _afficherCrashDetail(id) {
@@ -797,20 +814,24 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:760px; height:auto; max-height:88vh;">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📋 Détails du crash #' + id + '</span>' +
-          '<button type="button" class="kta-panneau-close kta-mem-crash-detail-close">✕</button>' +
+          '<span class="kta-readme-modal-titre">' + _t("crash.detail.titre", { id: id }) + '</span>' +
+          '<button type="button" class="kta-panneau-close kta-mem-crash-detail-close" aria-label="' + _t("close") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           '<pre class="kta-mem-crash-detail-pre">' + _escapeHtml(txt) + '</pre>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
-    const close = function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); };
-    overlay.querySelector(".kta-mem-crash-detail-close").addEventListener("click", close);
-    overlay.addEventListener("click", function(e) { if (e.target === overlay) close(); });
-    document.addEventListener("keydown", function _esc(e) {
-      if (e.key === "Escape") { close(); document.removeEventListener("keydown", _esc); }
-    });
+    // 🆕 v1.44.0 — Sous-lifecycle dédié pour cette sous-modale (au-dessus
+    // de la modale MemInspector principale). Cleanup auto au close().
+    const subLc = window.ModalLifecycle.attach(overlay, { label: "MemCrashDetail" });
+    const close = function() {
+      subLc.close();
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    };
+    subLc.on(overlay.querySelector(".kta-mem-crash-detail-close"), "click", close);
+    subLc.bindBackdropClick(close);
+    subLc.bindEscape(close);
   }
 
   function _copierCrashReport(id, btn) {
@@ -820,13 +841,15 @@
     if (!window.CrashReports || typeof window.CrashReports.formatReportText !== "function") return;
     const txt = window.CrashReports.formatReportText(entry);
     _copyToClipboard(txt).then(function() {
-      if (btn) {
-        const orig = btn.textContent;
-        btn.textContent = "✅ Copié !";
-        setTimeout(function() { if (btn) btn.textContent = orig; }, 1800);
-      }
+      if (!btn || !_lc || !_lc.alive) return;
+      const orig = btn.textContent;
+      btn.textContent = _t("btn.copied");
+      // 🆕 v1.44.0 — setTimeout tracked : cleared si modale fermée avant 1.8s.
+      _lc.setTimeout(function() {
+        if (btn.isConnected) btn.textContent = orig;
+      }, 1800);
     }).catch(function(e) {
-      alert("Échec de la copie : " + (e.message || e));
+      alert(_t("copy.fail", { detail: (e.message || e) }));
     });
   }
 
@@ -835,15 +858,22 @@
   async function _refreshAndRender() {
     const corps = document.getElementById("kta-mem-corps");
     if (!corps) return;
-    corps.innerHTML = '<div class="kta-mem-loading">⏳ Collecte en cours…</div>';
+    corps.innerHTML = '<div class="kta-mem-loading">' + _t("loading") + '</div>';
     try {
-      _lastReport = await collecter();
+      // 🆕 v1.44.0 — Pattern C via _lc.guard : throw ModalClosedError si la
+      // modale a été fermée pendant l'await collecter() (200-800 ms typiques).
+      // On catch silencieusement plus bas.
+      const report = await (_lc ? _lc.guard(collecter()) : collecter());
+      _lastReport = report;
       corps.innerHTML = _renderReport(_lastReport);
       // 🆕 v1.20.0 — Bind handlers de la section Crash Reports (boutons
       // dynamiques par crash). Re-bindé à chaque render (rafraîchir, suppr…).
       _bindCrashHandlers();
     } catch(e) {
-      corps.innerHTML = '<div class="kta-mem-warn">❌ Erreur lors de la collecte : ' + _escapeHtml(e.message || e) + '</div>';
+      // 🆕 v1.44.0 — Modale fermée pendant l'await → silently return.
+      if (e && e.name === "ModalClosedError") return;
+      if (!corps.isConnected) return;
+      corps.innerHTML = '<div class="kta-mem-warn">' + _t("collect.error", { detail: _escapeHtml(e.message || e) }) + '</div>';
     }
   }
 
@@ -855,37 +885,47 @@
     overlay.innerHTML = _buildModalHtml();
     document.documentElement.appendChild(overlay);
 
-    document.getElementById("kta-mem-close").addEventListener("click", fermer);
-    overlay.addEventListener("click", function(e) { if (e.target === overlay) fermer(); });
-    document.addEventListener("keydown", _onEscape);
+    // 🆕 v1.44.0 — ModalLifecycle attaché : remplace les addEventListener
+    // manuels, le _onEscape custom, et le setTimeout du bouton 📋 Copier.
+    // Tous les listeners + timers seront cleared automatiquement au close().
+    _lc = window.ModalLifecycle.attach(overlay, {
+      label: "MemInspector",
+      onClose: function() {
+        // 🆕 v1.43.26 — Libère le snapshot du dernier rapport (peut contenir
+        // crashReports avec stacks volumineuses + photos byteCount). Sinon
+        // il survit jusqu'à la prochaine ouverture.
+        _lastReport = null;
+      }
+    });
 
-    document.getElementById("kta-mem-refresh").addEventListener("click", _refreshAndRender);
-    document.getElementById("kta-mem-copy").addEventListener("click", function() {
+    _lc.on(document.getElementById("kta-mem-close"), "click", fermer);
+    _lc.bindBackdropClick(fermer);
+    _lc.bindEscape(fermer);
+
+    _lc.on(document.getElementById("kta-mem-refresh"), "click", _refreshAndRender);
+    _lc.on(document.getElementById("kta-mem-copy"), "click", function() {
       if (!_lastReport) return;
       const txt = getReportText(_lastReport);
       _copyToClipboard(txt).then(function() {
         const btn = document.getElementById("kta-mem-copy");
-        if (btn) {
-          const orig = btn.textContent;
-          btn.textContent = "✅ Copié !";
-          setTimeout(function() { if (btn) btn.textContent = orig; }, 1800);
-        }
+        if (!btn || !_lc || !_lc.alive) return;
+        const orig = btn.textContent;
+        btn.textContent = _t("btn.copied");
+        // 🆕 v1.44.0 — setTimeout tracked : si user ferme la modale dans les
+        // 1.8s, le timer est cleared (plus de write dans bouton détaché).
+        _lc.setTimeout(function() {
+          if (btn.isConnected) btn.textContent = orig;
+        }, 1800);
       }).catch(function(e) {
-        alert("Échec de la copie : " + (e.message || e));
+        alert(_t("copy.fail", { detail: (e.message || e) }));
       });
     });
 
     await _refreshAndRender();
   }
 
-  function _onEscape(e) {
-    if (e.key === "Escape" || e.key === "Esc") {
-      fermer();
-    }
-  }
-
   function fermer() {
-    document.removeEventListener("keydown", _onEscape);
+    if (_lc) { _lc.close(); _lc = null; }
     const ex = document.getElementById(MODAL_ID);
     if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
   }

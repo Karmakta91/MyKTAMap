@@ -72,8 +72,9 @@
     btn.type = "button";
     btn.id = "kta-presentation-exit-btn";
     btn.className = "kta-presentation-exit-btn";
-    btn.setAttribute("aria-label", "Sortir du mode présentation");
-    btn.title = "Sortir du mode présentation (F ou Échap)";
+    // 🌍 i18n : aria-label = même clé que .title (recâblage, pas de doublon).
+    btn.setAttribute("aria-label", window.I18n.t("presentation.exitBtn"));
+    btn.title = window.I18n.t("presentation.exitBtn");
     btn.innerHTML = "✕";
     btn.addEventListener("click", function(e) {
       e.preventDefault();
@@ -103,7 +104,7 @@
     // Toast d'aide (3s) pour rappeler comment sortir
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       window.OOMGuard.showToast(
-        "🎬 Mode présentation activé — F / Échap (PC) ou ✕ en haut-droite (mobile) pour sortir",
+        window.I18n.t("presentation.toast.activated"),
         "info"
       );
     }
