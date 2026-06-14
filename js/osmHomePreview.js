@@ -105,6 +105,9 @@
   let _selectedPlanId = null;
   let _isFullscreen  = false; // v1.40.2 — état overlay plein-viewport
   let _fsEscapeHandler = null; // ref pour cleanup au close()
+  // 🐛 v1.46.4 — Cadrage robuste de la mini-carte (cf _fitToCurrentGeoref).
+  let _lastFitGeoref = null;  // georef du plan courant, pour re-fit auto au resize
+  let _miniFitDone   = false; // true une fois cadré avec une taille de conteneur réelle (>0)
   // 🆕 v1.40.4 — Cache RAM : planId → { config, dataLayers, tilesOverview? }
   // Évite ré-extraction du ZIP si user re-sélectionne un plan déjà vu pendant
   // la session HOME. Cache cleared au unload page (RAM-only, pas de LS).
@@ -589,7 +592,12 @@
     //      cas où le ResizeObserver ne se déclenche pas (déjà stable mais
     //      Leaflet avait raté son calcul initial à l'instanciation).
     function _safeInvalidate() {
-      if (_mapInstance) { try { _mapInstance.invalidateSize(); } catch(e) {} }
+      if (!_mapInstance) return;
+      // 🐛 v1.46.4 — tant que le 1er cadrage n'a pas réussi (conteneur enfin
+      // dimensionné), on ré-essaie le fit ; une fois fait, simple invalidateSize
+      // (pas de re-cadrage → ne clobbe pas un déplacement utilisateur).
+      if (!_miniFitDone) { _fitToCurrentGeoref(); }
+      else { try { _mapInstance.invalidateSize(); } catch(e) {} }
     }
     requestAnimationFrame(_safeInvalidate);
     setTimeout(_safeInvalidate, 100);
@@ -630,9 +638,6 @@
     if (!_mapInstance || !_isValidGeoref(georef)) return;
     if (_markerLayer) _markerLayer.clearLayers();
 
-    const llA = L.latLng(georef.pointA.lat, georef.pointA.lng);
-    const llB = L.latLng(georef.pointB.lat, georef.pointB.lng);
-
     // 🆕 v1.40.24 — KARMA : « en OSM on a a l'affichage le calibrage point A
     // point B en pointillé, je ne veux pas le voir a l'écran ». On supprime
     // les 2 circle markers visuels + la polyline pointillée jaune qui
@@ -641,11 +646,40 @@
     // _markerLayer existe encore (= layerGroup vide) pour ne pas casser
     // d'autres call-sites éventuels.
 
-    // FitBounds direct sur [A, B] (calcul indépendant du rendu visuel)
+    // 🐛 v1.46.4 — nouveau plan (ou 1er rendu) → mémorise le georef + force un
+    // re-cadrage propre (invalidateSize avant fitBounds via _fitToCurrentGeoref).
+    _lastFitGeoref = georef;
+    _miniFitDone   = false;
+    _fitToCurrentGeoref();
+  }
+
+  // 🐛 v1.46.4 — Cadrage robuste de la mini-carte (fix « les tuiles d'un plan ne
+  // se chargent qu'après avoir ouvert le fullscreen »). Cause racine : le
+  // fitBounds s'exécutait JUSTE après L.map(), avant que le conteneur
+  // #ktaOsmHomeMap ait sa taille (layout CSS pas stabilisé au boot) → Leaflet
+  // calculait zoom/center avec une taille 0 → tuiles jamais demandées pour la
+  // bonne zone. Les invalidateSize (raf/timeouts/ResizeObserver) arrivaient trop
+  // tard ET ne ré-exécutaient pas fitBounds → la vue restait fausse jusqu'à ce
+  // qu'un reflow (fullscreen) force enfin un recalcul.
+  // Fix : invalidateSize PUIS fitBounds, et UNIQUEMENT si le conteneur a une
+  // taille réelle (>0). Sinon on n'a rien cadré (_miniFitDone reste false) → les
+  // timeouts + ResizeObserver de _initMiniMap ré-essaient jusqu'à réussite. Une
+  // fois cadré, on ne re-fit plus (ne pas clobber un pan/zoom utilisateur).
+  function _fitToCurrentGeoref() {
+    if (!_mapInstance) return;
+    try { _mapInstance.invalidateSize(false); } catch(e) {}
+    if (!_isValidGeoref(_lastFitGeoref)) return;
+    let sz = null;
+    try { sz = _mapInstance.getSize(); } catch(e) {}
+    if (!sz || sz.x <= 0 || sz.y <= 0) return; // conteneur pas encore dimensionné
     try {
-      const bounds = L.latLngBounds([llA, llB]);
+      const bounds = L.latLngBounds([
+        L.latLng(_lastFitGeoref.pointA.lat, _lastFitGeoref.pointA.lng),
+        L.latLng(_lastFitGeoref.pointB.lat, _lastFitGeoref.pointB.lng)
+      ]);
       if (bounds && bounds.isValid()) {
         _mapInstance.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+        _miniFitDone = true;
       }
     } catch(e) {
       console.warn("[OsmHomePreview] fitBounds échec :", e);
