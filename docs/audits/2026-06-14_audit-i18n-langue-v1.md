@@ -58,9 +58,9 @@ Les 12 en-têtes `.kta-cfg-group-titre` ont **`color:#f4c542` en inline**. En th
 
 ## 🎯 Plan d'action (TODO priorisée)
 
-- [ ] **P0 — C1** : classe CSS `.kta-cfg-group-titre` + variante thème clair (#d9a82e). *Sans ça, la refonte config est cassée en clair.*
-- [ ] **P1 — H1** : durcir `I18n.t()` (fallback lisible sur clé manquante) → règle H1+H2+incognito d'un coup.
-- [ ] **P1 — H3** : popup POI lazy (`popupopen`).
+- [x] **P0 — C1** ✅ `6826f94` : override CSS thème clair des `.kta-cfg-group-titre` (accent foncé `--kta-light-accent-hover`, `!important`). Dark inchangé.
+- [x] **P1 — H1+H2** ✅ `6826f94` : `I18n.t()` humanise la clé manquante (« pin.setup.changeBtn » → « Change Btn ») → couvre du même coup les 39 helpers `_t`. Plus jamais de clé technique affichée.
+- [x] **P1 — H3** ✅ `f190796` : popup POI *lazy* (`bindPopup(fn)`, HTML rendu à l'ouverture, pas au chargement du plan).
 - [ ] **P2 — M1** : i18n de la barre d'actions Réglages PLAN.
 - [ ] **P2 — M2** : mémoïser `getLang()`.
 - [ ] **P2 — M3** : fix troncature labels preset ES mobile.
