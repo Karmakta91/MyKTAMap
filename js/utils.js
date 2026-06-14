@@ -1382,7 +1382,15 @@ function _filtreNiveauSurPolylineData(entry) {
     if (!_passeFiltreRuntimeType("roads", entry.type)) visible = false;
   }
   try {
-    entry.polyline.setStyle({ opacity: visible ? entry.origOpacity : 0 });
+    // 🐛 v1.46.x — on coupe AUSSI fillOpacity au masquage. Les polylines n'ont
+    // pas de remplissage (origFillOpacity absent → 0, inoffensif), mais les ronds
+    // d'extrémité de jonction embarqués sont des circleMarker REMPLIS (disque
+    // blanc) : avec `opacity:0` seul, le bord magenta disparaissait mais le disque
+    // blanc restait visible au filtre type/niveau. Symétrie avec _filtreNiveauSurPolygonData.
+    entry.polyline.setStyle({
+      opacity:     visible ? entry.origOpacity : 0,
+      fillOpacity: visible ? (entry.origFillOpacity != null ? entry.origFillOpacity : 0) : 0
+    });
   } catch(e) {}
 }
 window._applyLevelFilterToDataRoads = function() {
@@ -1878,9 +1886,18 @@ function ajouterPointsDepuisJSON(url, layer) {
               // ces marqueurs (sinon ils restent visibles quand la jonction est
               // filtrée → incohérence visuelle).
               window._ktaDataPolylines.push({
-                polyline:    cm,
-                level:       entry.level,
-                origOpacity: 1
+                polyline:        cm,
+                // 🐛 v1.46.x — sans `type`, le filtre runtime par type (toggle
+                // « jonction » / liaisons inter-niveaux du FilterPanel) sautait
+                // ces ronds (cf _filtreNiveauSurPolylineData : `if (entry.type)`)
+                // → ils persistaient au masquage alors que la polyline partait.
+                type:            road.type,
+                level:           entry.level,
+                origOpacity:     1,
+                // 🐛 v1.46.x — circleMarker REMPLI (disque blanc, fillOpacity:1) :
+                // le masquage doit couper fillOpacity, sinon opacity:0 seul ne
+                // cache que le bord magenta et le disque blanc reste visible.
+                origFillOpacity: 1
               });
             });
           }
