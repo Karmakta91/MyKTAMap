@@ -1691,10 +1691,16 @@ function ajouterPointsDepuisJSON(url, layer) {
             // 2e argument false → point d'un data layer (lecture seule), pas
             // de bouton "🗑️ Supprimer" affiche.
             // 🆕 v1.16.0 step 3 : 3e arg = layerInfo pour le bouton ⭐ Favori
-            const popupHtml = (typeof window.buildPointPopupHtml === "function")
-              ? window.buildPointPopupHtml(p, false, _layerInfo)
-              : ("<b>" + (p.nom || "") + "</b><br>" + (p.description || ""));
-            marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
+            // 🆕 H3 (audit 2026-06-14) : popup LAZY. bindPopup reçoit une FONCTION,
+            // appelée par Leaflet à l'OUVERTURE du popup (pas au bind). Évite de
+            // construire ~10 I18n.t() × N markers au chargement pour des popups
+            // souvent jamais ouverts (gros plans = milliers de points). `p` est
+            // const par itération (for let) + `_layerInfo` stable → closure OK.
+            marker.bindPopup(function() {
+              return (typeof window.buildPointPopupHtml === "function")
+                ? window.buildPointPopupHtml(p, false, _layerInfo)
+                : ("<b>" + (p.nom || "") + "</b><br>" + (p.description || ""));
+            }, window.KTA_POPUP_OPTS);
             // 📸 v1.9.3-B1d : hydrate les miniatures photos dans le popup à
             // l'ouverture. Pour les data layers, ça permet de voir les
             // photos quand l'user import un plan ZIP qui en contient
