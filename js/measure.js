@@ -48,6 +48,15 @@ function initMeasure() {
     interactive: false
   }).addTo(window.map);
 
+  // 🆕 Idempotence du binding clic : retire l'ANCIEN handler de la map courante
+  // avant d'en (re)binder un. Sans ça, si initMeasure() est rappelée sur une map
+  // RÉUTILISÉE (plan switch / init redondant), les map.on('click') s'EMPILENT →
+  // 1 clic = N points coïncidents → segments de 0 px (« 0.0 m ») + angles sautés
+  // (len<1e-6, le label d'angle est skippé). Le off avec l'ancienne référence
+  // (encore valide ici) nettoie le binding précédent → toujours 1 seul handler.
+  if (window.map && _measureClickHandler) {
+    try { window.map.off('click', _measureClickHandler); } catch (e) {}
+  }
   _measureClickHandler = function(e) {
     if (!window.modeMesure) return;
     const lat = e.latlng.lat;
