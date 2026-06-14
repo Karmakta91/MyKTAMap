@@ -2298,7 +2298,15 @@ _setGroupeModeActif("tracker", isTracking, null);
             [
               { label: window.I18n.t("ui.trace.eraseLastPoint"), icon: "↩️",
                 desc: window.I18n.t("ui.trace.eraseLastPointDesc", { n: nbPts }),
-                onClick: function() { if (window.removeLastRoadPoint) window.removeLastRoadPoint(); } },
+                onClick: function() {
+                  // 🐛 v1.46.x — si supprimer le dernier point vide le tracé en
+                  // cours, fermer le mode (sinon bouton reste kta-actif mais clic
+                  // map fait rien = icône "coupée"). Même garde que le bouton ✂️.
+                  const before = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
+                  if (window.removeLastRoadPoint) window.removeLastRoadPoint();
+                  const after = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
+                  if (before && !after) _fermerModeRoad();
+                } },
               { label: window.I18n.t("ui.trace.eraseLast"), icon: "✂️",
                 desc: window.I18n.t("ui.trace.eraseLastDesc", { n: roads.length }),
                 onClick: function() {
@@ -2433,7 +2441,14 @@ _setGroupeModeActif("tracker", isTracking, null);
             [
               { label: window.I18n.t("ui.zone.eraseLastPoint"), icon: "↩️",
                 desc: window.I18n.t("ui.zone.eraseLastPointDesc"),
-                onClick: function() { if (window.removeLastZonePoint) window.removeLastZonePoint(); } },
+                onClick: function() {
+                  // 🐛 v1.46.x — voir commentaire road : vider la zone en cours
+                  // doit fermer le mode (sinon bouton kta-actif + clic map inerte).
+                  const before = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
+                  if (window.removeLastZonePoint) window.removeLastZonePoint();
+                  const after = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
+                  if (before && !after) _fermerModeZone();
+                } },
               // 🆕 v1.9.4 (KARMA "supprimer d'un coup le tracé en cours") :
               // removeLastZone priorise désormais currentZone si existe,
               // sinon la dernière fermée. Label adapté pour clarifier.
@@ -2605,7 +2620,12 @@ _setGroupeModeActif("tracker", isTracking, null);
               { label: window.I18n.t("ui.struct.eraseLastPoint"), icon: "↩️",
                 desc: window.I18n.t("ui.struct.eraseLastPointDesc"),
                 onClick: function() {
+                  // 🐛 v1.46.x — voir commentaire road : vider la structure en
+                  // cours doit fermer le mode (sinon bouton kta-actif + clic inerte).
+                  const before = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
                   if (window.removeLastStructurePoint) window.removeLastStructurePoint();
+                  const after = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
+                  if (before && !after) _fermerModeStructure();
                 } },
               // 🆕 v1.9.4 (KARMA "supprimer d'un coup le tracé en cours") :
               // removeLastStructure priorise désormais currentStructure si
