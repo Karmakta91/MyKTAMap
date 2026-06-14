@@ -8804,18 +8804,28 @@ html.kta-theme-light .kta-cfg-group-titre {
   display: none;
 }
 
-.kta-iti-search-item {
+/* 🐛 v1.46.4 — `.kta-iti-search-result` (= items de la recherche AVOIDANCES,
+   js/interfaceItineraire.js) n'était PAS stylé (le JS génère cette classe mais
+   le CSS ne ciblait que `.kta-iti-search-item` de la recherche principale) →
+   items sans padding ni fond propre, « flottants » au-dessus de la liste =
+   effet transparent. On aligne les 2 classes + un fond opaque explicite sur
+   chaque item (en plus du fond du conteneur) = anti-transparence garanti. */
+.kta-iti-search-item,
+.kta-iti-search-result {
   padding: 8px 12px;
   cursor: pointer;
   border-bottom: 1px solid rgba(255,255,255,0.04);
   transition: background 0.12s;
+  background: #232838;
 }
 
-.kta-iti-search-item:last-child {
+.kta-iti-search-item:last-child,
+.kta-iti-search-result:last-child {
   border-bottom: none;
 }
 
-.kta-iti-search-item:hover {
+.kta-iti-search-item:hover,
+.kta-iti-search-result:hover {
   background: rgba(140,180,255,0.12);
 }
 
@@ -8832,12 +8842,14 @@ html.kta-theme-light .kta-cfg-group-titre {
 }
 
 .kta-iti-search-empty,
-.kta-iti-search-more {
+.kta-iti-search-more,
+.kta-iti-search-result-empty {
   padding: 10px 12px;
   font-size: 12px;
   color: #8892a4;
   font-style: italic;
   text-align: center;
+  background: #232838;
 }
 
 /* Bouton retirer dans la liste de waypoints */
@@ -13179,11 +13191,18 @@ html.kta-theme-light .kta-iti-search-results {
   box-shadow: 0 8px 24px var(--kta-light-shadow);
 }
 body.kta-theme-light .kta-iti-search-item,
-html.kta-theme-light .kta-iti-search-item {
+html.kta-theme-light .kta-iti-search-item,
+body.kta-theme-light .kta-iti-search-result,
+html.kta-theme-light .kta-iti-search-result,
+body.kta-theme-light .kta-iti-search-result-empty,
+html.kta-theme-light .kta-iti-search-result-empty {
   border-bottom-color: rgba(0, 0, 0, 0.05);
+  background: var(--kta-light-bg-elevated);
 }
 body.kta-theme-light .kta-iti-search-item:hover,
-html.kta-theme-light .kta-iti-search-item:hover {
+html.kta-theme-light .kta-iti-search-item:hover,
+body.kta-theme-light .kta-iti-search-result:hover,
+html.kta-theme-light .kta-iti-search-result:hover {
   background: rgba(244, 197, 66, 0.12);
 }
 body.kta-theme-light .kta-iti-search-name,
