@@ -6248,9 +6248,14 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-perf-btn .kta-perf-label {
   font-size: 11px;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* 🆕 v1.46.4 (audit M3) : les labels longs en ES (Desactivado/Equilibrado/
+     Rendimiento) étaient tronqués « Desact… » sur mobile (nowrap + ellipsis +
+     boutons étroits flex:1). On autorise le wrap + la coupure de mot si besoin
+     → le label complet reste lisible (2 lignes au pire). Desktop inchangé (les
+     boutons larges gardent une seule ligne, le wrap ne s'active qu'au manque
+     de place). align-items du flex garde les boutons à hauteur égale. */
+  white-space: normal;
+  overflow-wrap: anywhere;
   max-width: 100%;
 }
 

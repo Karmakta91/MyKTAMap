@@ -57,13 +57,19 @@ function stripComments(src) {
 function scanFile(file) {
   const src = stripComments(fs.readFileSync(file, "utf8"));
   let m;
-  // Seul I18n.t("…") est détecté de façon fiable. Les alias locaux (t/_t/T)
-  // ne sont PAS captés : certains modules (tutorial.js) ont leur propre _t()
-  // non-i18n (UI_STRINGS) → les capter créerait des faux positifs. Conséquence :
-  // les clés appelées via alias apparaissent comme "orphelines" (info, pas
-  // bloquant) ; la complétude réelle est validée par l'audit résiduel (Phase 4).
   const reT = /I18n\.t\(\s*["'`]([^"'`]+)["'`]/g;
   while ((m = reT.exec(src)) !== null) called.add(m[1]);
+  // 🆕 v1.46.4 (audit M4) — On capte aussi les alias `_t("…")`, MAIS uniquement
+  // dans les fichiers où `_t` est explicitement aliasé à I18n.t (helper inline
+  // d'index.html : `const _t = (window.I18n && window.I18n.t) ? window.I18n.t : …`).
+  // C'est l'angle mort qui a masqué le bug PIN (`_t("pin.setup.changeBtn")` dans
+  // index.html jamais validé). Les modules avec un `_t` LOCAL non-i18n
+  // (tutorial.js → UI_STRINGS) n'ont PAS cet alias → ils sont exclus, donc pas
+  // de faux positifs. Le lookbehind évite `xxx_t(` / `._t(`.
+  if (/_t\s*=\s*[^\n;]*I18n\.t/.test(src)) {
+    const reAlias = /(?<![\w.$])_t\(\s*["'`]([^"'`]+)["'`]/g;
+    while ((m = reAlias.exec(src)) !== null) called.add(m[1]);
+  }
   const reAttr = /data-i18n(?:-html|-title)?\s*=\s*"([^"]+)"/g;
   while ((m = reAttr.exec(src)) !== null) called.add(m[1]);
 }

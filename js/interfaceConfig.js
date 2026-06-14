@@ -1024,9 +1024,9 @@ function afficherConfig() {
           Configuration → 💥 Tout réinitialiser.
         -->
         <div class="kta-cfg-actions-bar">
-          <button class="kta-btn kta-btn-ghost"   onclick="resetConfig()">Reset</button>
-          <button class="kta-btn kta-btn-primary"  onclick="appliquerConfig()">Appliquer</button>
-          <button class="kta-btn kta-btn-ghost"    onclick="afficherLogsDebug()">🐛 Logs</button>
+          <button class="kta-btn kta-btn-ghost"   onclick="resetConfig()">${window.I18n.t("config.actions.reset")}</button>
+          <button class="kta-btn kta-btn-primary"  onclick="appliquerConfig()">${window.I18n.t("config.actions.apply")}</button>
+          <button class="kta-btn kta-btn-ghost"    onclick="afficherLogsDebug()">${window.I18n.t("config.actions.logs")}</button>
         </div>
 
       </div>

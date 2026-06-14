@@ -73,16 +73,25 @@
     return AVAILABLE_LANGS.some(function(l) { return l.code === code; });
   }
 
+  // 🆕 v1.46.4 (audit M2) : mémoïsation de la langue active. getLang() est
+  // appelé à CHAQUE t() (= des milliers de fois au rendu d'un gros plan) et
+  // relisait localStorage à chaque appel. La langue ne change QU'AU setLang
+  // (seul écrivain de LANG_STORAGE_KEY) → on cache le résultat et on l'invalide
+  // dans setLang. Comportement inchangé, juste moins de getItem() répétés.
+  let _cachedLang = null;
+
   // Langue active : lit la clé partagée, fallback navigator.language puis FR.
   function getLang() {
+    if (_cachedLang) return _cachedLang;
     try {
       const saved = localStorage.getItem(LANG_STORAGE_KEY);
-      if (_isKnownLang(saved)) return saved;
+      if (_isKnownLang(saved)) { _cachedLang = saved; return saved; }
     } catch(e) {}
     const navLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
     // On ne mappe que sur une langue DÉCLARÉE ; sinon FR.
     const guess = navLang.split("-")[0];
-    return _isKnownLang(guess) ? guess : FALLBACK_LANG;
+    _cachedLang = _isKnownLang(guess) ? guess : FALLBACK_LANG;
+    return _cachedLang;
   }
 
   // Fetch + parse un dico de langue. Résout {} en cas d'échec (jamais reject :
@@ -179,6 +188,7 @@
   function setLang(code) {
     if (!_isKnownLang(code)) return Promise.resolve();
     try { localStorage.setItem(LANG_STORAGE_KEY, code); } catch(e) {}
+    _cachedLang = code; // 🆕 v1.46.4 (M2) : invalide/rafraîchit le cache getLang.
     return ensureLang(code).then(function() {
       _onChangeCbs.forEach(function(cb) {
         try { cb(code); } catch(e) { console.warn("[I18n] onChange cb failed :", e); }
