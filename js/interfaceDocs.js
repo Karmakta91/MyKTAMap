@@ -1977,75 +1977,57 @@ window.afficherModaleAideIA = function() {
   modal.innerHTML =
     '<div class="kta-readme-modal-boite" style="max-width:600px; height:auto; max-height:90vh;">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">🤖 Aide IA — Contexte téléchargeable</span>' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("aiia.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-aide-ia-close" type="button">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">💡 Concept</div>' +
+          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.concept.titre") + '</div>' +
           '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
-            'Télécharge un fichier <strong>.md</strong> qui résume tout ce que ' +
-            'l\'app permet de faire. Donne-le à <strong>n\'importe quelle IA</strong> ' +
-            '(ChatGPT, Claude, Gemini, Perplexity, Le Chat, Copilot, etc.) — elle ' +
-            'pourra répondre à toutes tes questions sur MyKTAMap avec un contexte ' +
-            'précis et à jour.' +
+            window.I18n.t("aiia.concept.body") +
           '</p>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">📋 Comment ça marche</div>' +
+          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.how.titre") + '</div>' +
           '<ol style="color:#c8d0e0; line-height:1.7; font-size:13px; padding-left:22px; margin:0;">' +
-            '<li>Clique <strong>📥 Télécharger le contexte</strong> en bas</li>' +
-            '<li>Ouvre l\'IA de ton choix (web, app mobile, etc.)</li>' +
-            '<li>Copie-colle le fichier dans le <strong>premier message</strong> de la conversation</li>' +
-            '<li>Pose tes questions : <em>"Comment ajouter un point ?"</em>, <em>"Mon plan plante, que faire ?"</em>, etc.</li>' +
+            '<li>' + window.I18n.t("aiia.how.step1") + '</li>' +
+            '<li>' + window.I18n.t("aiia.how.step2") + '</li>' +
+            '<li>' + window.I18n.t("aiia.how.step3") + '</li>' +
+            '<li>' + window.I18n.t("aiia.how.step4") + '</li>' +
           '</ol>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">🔒 Confidentialité</div>' +
+          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.privacy.titre") + '</div>' +
           '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
-            'Le fichier ne contient <strong>QUE la documentation</strong> de l\'app — ' +
-            '<strong>aucune donnée personnelle</strong> (pas de tes plans, points, sessions, etc.). ' +
-            'Tu peux donc le partager sans risque.' +
+            window.I18n.t("aiia.privacy.body") +
           '</p>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">📋 Prompt prêt à coller (anti-hallucination)</div>' +
+          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.prompt.titre") + '</div>' +
           '<p style="color:#c0c8d8; line-height:1.6; font-size:12px; margin:0 0 8px 0;">' +
-            'Colle ce texte <strong>avec</strong> le fichier .md dans le premier message de l\'IA. ' +
-            'Il cadre les règles et limite les hallucinations.' +
+            window.I18n.t("aiia.prompt.intro") +
           '</p>' +
           '<div class="kta-aide-ia-prompt-wrap">' +
             '<textarea id="kta-aide-ia-prompt" class="kta-aide-ia-prompt" readonly>' +
-              'Voici la documentation officielle de l\'application MyKTAMap (fichier .md joint).\n\n' +
-              'Tu vas m\'aider à l\'utiliser en suivant ces règles STRICTES :\n\n' +
-              '⛔ Ne réponds QUE à partir du contenu du fichier joint.\n' +
-              '⛔ Si une fonctionnalité n\'y est pas décrite, dis-le clairement — n\'invente JAMAIS.\n' +
-              '⛔ N\'extrapole pas à partir d\'autres applis (Google Maps, QGIS, etc.).\n' +
-              '⛔ Tu n\'as accès ni au code source, ni au site web, ni à mon application.\n' +
-              '✅ Cite la section du fichier où tu trouves l\'info dans tes réponses.\n' +
-              '✅ Utilise les icônes et libellés exacts mentionnés dans la doc.\n\n' +
-              'Si tu as bien compris, réponds simplement « OK, prêt » et attends ma première question.' +
+              window.I18n.t("aiia.prompt.text") +
             '</textarea>' +
-            '<button class="kta-btn kta-btn-ghost kta-aide-ia-copy-btn" id="kta-aide-ia-copy" type="button">📋 Copier</button>' +
+            '<button class="kta-btn kta-btn-ghost kta-aide-ia-copy-btn" id="kta-aide-ia-copy" type="button">' + window.I18n.t("aiia.btn.copy") + '</button>' +
           '</div>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">💰 Note importante</div>' +
+          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.note.titre") + '</div>' +
           '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
-            'L\'utilisation d\'une IA peut être <strong>payante ou limitée</strong> selon ' +
-            'le service (ChatGPT gratuit avec quotas, Claude Pro, etc.). MyKTAMap reste ' +
-            '<strong>gratuit</strong> — le contexte téléchargé est juste pour aider une ' +
-            'IA externe à mieux te répondre.' +
+            window.I18n.t("aiia.note.body") +
           '</p>' +
         '</div>' +
 
         '<div style="display:flex; gap:10px; margin-top:14px;">' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-aide-ia-cancel"   type="button" style="flex:1;">Annuler</button>' +
-          '<button class="kta-btn kta-btn-primary" id="kta-aide-ia-download" type="button" style="flex:2;">📥 Télécharger le contexte (.md)</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-aide-ia-cancel"   type="button" style="flex:1;">' + window.I18n.t("aiia.btn.cancel") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-aide-ia-download" type="button" style="flex:2;">' + window.I18n.t("aiia.btn.download") + '</button>' +
         '</div>' +
         '<div id="kta-aide-ia-status" style="margin-top:10px; font-size:12px; color:#8892a4; min-height:18px; text-align:center;"></div>' +
       '</div>' +
@@ -2073,7 +2055,7 @@ window.afficherModaleAideIA = function() {
         ta.setSelectionRange(0, 0);
         ta.blur();
       }
-      btn.textContent = "✓ Copié !";
+      btn.textContent = window.I18n.t("aiia.copy.ok");
       btn.classList.add("kta-aide-ia-copy-ok");
       setTimeout(function() {
         btn.textContent = originalText;
@@ -2081,7 +2063,7 @@ window.afficherModaleAideIA = function() {
       }, 1500);
     } catch(e) {
       console.warn("[AideIA] Copy failed :", e);
-      btn.textContent = "❌ Échec — sélectionne manuellement";
+      btn.textContent = window.I18n.t("aiia.copy.fail");
       setTimeout(function() { btn.textContent = originalText; }, 2000);
     }
   });
@@ -2090,8 +2072,8 @@ window.afficherModaleAideIA = function() {
     const btn = this;
     const statusEl = document.getElementById("kta-aide-ia-status");
     btn.disabled = true;
-    btn.textContent = "⏳ Génération en cours...";
-    statusEl.textContent = "Fetch de la documentation...";
+    btn.textContent = window.I18n.t("aiia.dl.generating");
+    statusEl.textContent = window.I18n.t("aiia.dl.fetching");
 
     // Fetch en parallèle : docs/applications/AI_CONTEXT.md + README_USER.md
     // 🆕 v1.29.3 : regroupés sous docs/applications/ avec les autres docs
@@ -2115,10 +2097,10 @@ window.afficherModaleAideIA = function() {
       }
       const tplKo = Math.round(aiContextTpl.length / 1024);
       const docKo = Math.round(readmeText.length / 1024);
-      statusEl.textContent = "Template " + tplKo + " Ko + doc " + docKo + " Ko. Génération...";
+      statusEl.textContent = window.I18n.t("aiia.dl.fetched", { tpl: tplKo, doc: docKo });
     } catch(e) {
       console.warn("[AideIA] Erreur fetch :", e);
-      statusEl.textContent = "⚠️ Connexion impossible — affichage réduit.";
+      statusEl.textContent = window.I18n.t("aiia.dl.offline");
     }
 
     // Construction du contenu complet via remplacement de placeholders
@@ -2136,8 +2118,8 @@ window.afficherModaleAideIA = function() {
     document.body.removeChild(a);
     setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
 
-    statusEl.textContent = "✓ Fichier téléchargé (" + Math.round(contenu.length / 1024) + " Ko)";
-    btn.textContent = "📥 Télécharger le contexte (.md)";
+    statusEl.textContent = window.I18n.t("aiia.dl.done", { ko: Math.round(contenu.length / 1024) });
+    btn.textContent = window.I18n.t("aiia.btn.download");
     btn.disabled = false;
 
     // Fermer la modale après 1.5s
