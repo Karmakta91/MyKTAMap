@@ -286,7 +286,7 @@
       const pc = window.PLAN_CONFIG;
       if (pc && pc.plan) {
         result.planLoaded = {
-          name:       pc.plan.name || "(sans nom)",
+          name:       pc.plan.name || (window.I18n ? window.I18n.t("stats.plan.noName") : "(sans nom)"),
           version:    pc.plan.version || "—",
           author:     pc.plan.author || "—",
           imageW:     pc.plan.imageWidth || null,

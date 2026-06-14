@@ -2169,7 +2169,7 @@
         modal.innerHTML =
           '<div class="kta-readme-modal-boite kta-plan-infos-boite">' +
             '<div class="kta-readme-modal-header">' +
-              '<span class="kta-readme-modal-titre">ℹ️ Informations sur « ' + escapeHtml(plan.name || plan.id) + ' »</span>' +
+              '<span class="kta-readme-modal-titre">' + _t("home.plans.info.title", {nom: escapeHtml(plan.name || plan.id)}) + '</span>' +
               '<button class="kta-panneau-close" id="kta-plan-infos-close">✕</button>' +
             '</div>' +
             '<div class="kta-readme-modal-corps">' +
@@ -2525,8 +2525,8 @@
           const registreV2  = plan.tiledV2    === true;
           const registreML  = plan.multiLevel === true;
           const discordances = [];
-          if (registreV2  && !zipFlags.tiledV2)    discordances.push({ flag: "V2 tuilé",    avant: _t("home.plans.info.modeV2"),        apres: "V1 classique (image entière en RAM)" });
-          if (!registreV2 && zipFlags.tiledV2)     discordances.push({ flag: "V2 tuilé",    avant: "V1 classique (image entière en RAM)", apres: _t("home.plans.info.modeV2") });
+          if (registreV2  && !zipFlags.tiledV2)    discordances.push({ flag: "V2 tuilé",    avant: _t("home.plans.info.modeV2"),        apres: _t("home.plans.info.modeV1") });
+          if (!registreV2 && zipFlags.tiledV2)     discordances.push({ flag: "V2 tuilé",    avant: _t("home.plans.info.modeV1"), apres: _t("home.plans.info.modeV2") });
           if (registreML  && !zipFlags.multiLevel) discordances.push({ flag: "Multi-niveau",avant: _t("home.plans.info.modeMlvl"),apres: _t("home.plans.info.modeMono") });
           if (!registreML && zipFlags.multiLevel)  discordances.push({ flag: "Multi-niveau",avant: _t("home.plans.info.modeMono"),            apres: _t("home.plans.info.modeMlvl") });
 
@@ -2537,7 +2537,7 @@
             if (!ok) return;
           }
         } catch(e) {
-          setStatus("ZIP invalide : " + (e.message || e), true);
+          setStatus(_t("home.plans.zipInvalid") + (e.message || e), true);
           return;
         }
 
@@ -3716,7 +3716,7 @@
         } catch(e) {}
         statsEl.innerHTML =
           '<div class="kta-profile-stat-grid">' +
-            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPlans + '</span><span class="kta-profile-stat-lbl">🗂️ plans</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPlans + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblPlans") + '</span></div>' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbSessions + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblSessions") + '</span></div>' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbFavoris + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblFavorites") + '</span></div>' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbBackups + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblSnapshots") + '</span></div>' +
@@ -4060,7 +4060,7 @@
 
           // Update progress header
           if (headerEl) {
-            headerEl.innerHTML = '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— calcul ' + (i + 1) + '/' + plans.length + '…</span>';
+            headerEl.innerHTML = _t("home.profile.statsProgress", { i: (i + 1), n: plans.length });
           }
 
           const stats = _resoudreStatsPlan(plan);
@@ -4144,7 +4144,7 @@
           const partialNote = nbPartial > 0
             ? ' <span style="color:#f4c542; font-size:11px;">(' + nbPartial + ' ⚠️ partiel' + (nbPartial > 1 ? "s" : "") + ' — ouvre une fois pour stats complètes)</span>'
             : '';
-          headerEl.innerHTML = '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— ' + plans.length + ' plan' + (plans.length > 1 ? "s" : "") + '</span>' + partialNote;
+          headerEl.innerHTML = _t("home.profile.statsFinal", { n: plans.length, s: (plans.length > 1 ? "s" : "") }) + partialNote;
         }
 
         // 🆕 v1.21.3 (KARMA "dans les stat, rajoute comme on voit sur chaque
