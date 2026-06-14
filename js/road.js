@@ -685,7 +685,22 @@ function renderRoads() {
   // .remove() détache le layer où qu'il soit (map directe ou via layerGroup).
   // Plus portable que window.map.removeLayer(...) maintenant que les layers
   // peuvent vivre dans layerEditor au lieu de la map.
-  roadLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
+  // 🐛 v1.46.x — les ronds roses des jonctions (L.circleMarker ajoutés à
+  // window.layerEditor plus bas) souffraient du même bug que les cercles
+  // d'intersection (cf _purgeIntersectionLayers ligne ~577) : layer.remove()
+  // sur un circleMarker retire de la MAP mais PAS du FeatureGroup parent →
+  // les ronds survivaient au toggle des liaisons inter-niveaux. Fix : retrait
+  // FeatureGroup-aware (removeLayer propage aussi le retrait de la map).
+  const _grpRoad = window.layerEditor;
+  roadLayers.forEach(layer => {
+    try {
+      if (_grpRoad && typeof _grpRoad.hasLayer === "function" && _grpRoad.hasLayer(layer)) {
+        _grpRoad.removeLayer(layer);
+      } else {
+        layer.remove();
+      }
+    } catch(e) {}
+  });
   roadLayers = [];
   // 🆕 v1.31.2 (P9) — Clear le cache de state ; il va être repopulé pendant
   // le forEach ci-dessous (1 entry par road qui passe les filtres non-viewport).
