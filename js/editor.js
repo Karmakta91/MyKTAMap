@@ -14,6 +14,7 @@ let listePoints = [];
 // quand on supprimait UN seul point.
 // On track donc nos propres markers pour pouvoir faire un cleanup cible.
 let _markersEditor = [];
+let _editorClickHandler = null;  // 🆕 ref stable pour off idempotent (cf initEditor / measure.js)
 
 const EDITOR_TAG_LABELS = {
   salle:    "Salle",
@@ -64,7 +65,14 @@ function initEditor() {
   _markersEditor.forEach(function(m) { try { m.remove(); } catch(e) {} });
   _markersEditor = [];
 
-  window.map.on("click", function(e) {
+  // 🆕 Idempotence du binding clic (cf measure.js) : retire l'ancien handler de la
+  // map courante avant d'en (re)binder un. Sans ça, si initEditor() re-tourne sur
+  // une map réutilisée, les map.on('click') s'EMPILENT → 1 clic = N formulaires POI.
+  // Le off avec l'ancienne référence (encore valide) nettoie le binding précédent.
+  if (window.map && _editorClickHandler) {
+    try { window.map.off("click", _editorClickHandler); } catch (e) {}
+  }
+  _editorClickHandler = function(e) {
     if (!window.modeEdition) return;
     if (document.getElementById("kta-poi-modal")) return; // évite double clic
 
@@ -74,7 +82,8 @@ function initEditor() {
     const y   = Math.round(APP_CONFIG.imageHeight - lat);
 
     afficherFormulaire(x, y);
-  });
+  };
+  window.map.on("click", _editorClickHandler);
 }
 
 // =========================
