@@ -324,7 +324,7 @@
         <td><code>GET</code></td>
         <td>Au boot (dicos i18n : fr = fallback + langue active) puis au changement de langue</td>
         <td>Charger les traductions multi-langue (v1.45.0+, espagnol v1.46.1+)</td>
-        <td><strong>Aucune</strong> (fichiers statiques same-origin, précachés par le SW)</td>
+        <td><strong>Aucune</strong> (fichiers statiques same-origin, <strong>network-first depuis v1.46.4</strong> avec fallback cache précaché si offline, lecture seule)</td>
       </tr>
       <tr>
         <td><code>&lt;origin&gt;/ping.html</code></td>
@@ -1123,10 +1123,15 @@
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
 
   <p class="meta" style="margin-top:6px;">
-    <strong>v1.46.4 (Correctifs moteur + Aide IA traduite)</strong> : <strong>aucun nouveau flux réseau.</strong>
-    Correctifs purement client-side (ronds de jonctions inter-niveaux, fermeture propre de l'outil tracé) et
-    traduction FR/EN/ES de la chrome de la modale « Aide IA ». Cette modale télécharge
-    <code>docs/applications/AI_CONTEXT.md</code> (fichier statique same-origin, déjà documenté) — inchangé.
+    <strong>v1.46.4 (Correctifs moteur + Aide IA traduite + dicos i18n network-first)</strong> :
+    <strong>aucune nouvelle surface réseau</strong> (mêmes URLs same-origin, aucune donnée envoyée).
+    Correctifs purement client-side (ronds de jonctions inter-niveaux, fermeture propre de l'outil tracé),
+    traduction FR/EN/ES de la modale « Aide IA » (qui télécharge <code>docs/applications/AI_CONTEXT.md</code>,
+    déjà documenté — inchangé). <strong>Changement de stratégie de cache</strong> : les dicos
+    <code>lang/*.json</code> passent de <em>cache-first</em> à <strong>network-first + fallback cache</strong>
+    (timeout 2,5&nbsp;s), comme les docs depuis v1.43.11 — pour que les traductions soient fraîches dès le
+    déploiement sans dépendre du bump <code>CACHE_NAME</code> ni de l'état du SW. Conséquence : 1 <code>GET</code>
+    vers <code>lang/&lt;langue&gt;.json</code> au boot quand en ligne (au lieu du cache) ; offline inchangé.
     Whitelist <code>connect-src</code> : ZÉRO modification.
   </p>
 

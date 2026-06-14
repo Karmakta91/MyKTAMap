@@ -1008,6 +1008,52 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // 🌍 v1.46.4 — STRATEGIE NETWORK-FIRST POUR LES DICOS i18n (lang/*.json)
+  // Même classe de bug que les docs (v1.43.11) : les dicos de traduction
+  // changent à chaque vague i18n, mais le cache-first les sert « stale » tant
+  // que CACHE_NAME ne bump pas ET que le SW se réinstalle. Symptôme vécu (KARMA)
+  // : clés PIN ajoutées en v1.46.2 (`pin.setup.changeBtn`…) affichées humanisées
+  // (« Change Btn ») parce que le `fr.json` précaché datait d'avant. Aggravé par
+  // un SW zombie qui ne se met jamais à jour → traduction périmée INDÉFINIMENT.
+  //
+  // Fix : network-first + timeout 2.5s + fallback cache. Online → dico TOUJOURS
+  // frais (nouvelles clés visibles dès le déploiement, sans dépendre du bump
+  // CACHE_NAME ni de l'état du SW). Offline / réseau lent → fallback cache
+  // précaché (boot offline préservé ; `fr.json` reste le fallback universel).
+  // langManager fetch les dicos au boot → reçoit la version réseau fraîche →
+  // plus jamais de clé humanisée affichée à l'user dès qu'il est en ligne.
+  if (/\/lang\/[a-z-]+\.json(\?|$)/.test(reqUrl)) {
+    event.respondWith((async function() {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const networkPromise = fetch(event.request, { cache: "no-store" });
+        const timeoutPromise = new Promise(function(_, reject) {
+          setTimeout(function() { reject(new Error("network timeout")); }, 2500);
+        });
+        const networkResp = await Promise.race([networkPromise, timeoutPromise]);
+        if (networkResp && networkResp.ok) {
+          // Met à jour le cache silencieusement (best-effort) pour l'offline.
+          try { cache.put(event.request, networkResp.clone()); } catch(e) {}
+          return networkResp;
+        }
+        throw new Error("non-ok status " + (networkResp && networkResp.status));
+      } catch (e) {
+        // Réseau KO/timeout → fallback cache (dico précaché, éventuellement
+        // stale mais utilisable pour un boot offline).
+        const cachedResp = await cache.match(event.request);
+        if (cachedResp) return cachedResp;
+        // Pas en cache + offline → dico vide en 200 (JAMAIS rejeter : sinon
+        // langManager._loadDict throw et I18n.init plante au boot). Dégrade
+        // proprement vers le fallback FR puis la clé humanisée.
+        return new Response("{}", {
+          status: 200,
+          headers: { "Content-Type": "application/json; charset=utf-8" }
+        });
+      }
+    })());
+    return;
+  }
+
   event.respondWith(
     // 🛡️ v1.43.11 — Fix A audit impartial : on scope `caches.match()` au
     // CACHE_NAME courant uniquement. Le `caches.match()` global cherche
