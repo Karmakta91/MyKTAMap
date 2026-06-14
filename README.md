@@ -8,7 +8,13 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.46.3` (13/06/2026) — **🎛️ Refonte ergo des modales de configuration** (tri thématique, échelle ↔ géoréf).
+**📦 Version courante** : `v1.46.4` (14/06/2026) — **🐛 Correctifs moteur** (ronds inter-niveaux, outil tracé, mesure) + **🌍 Aide IA traduite**.
+
+**🐛 v1.46.4 (14/06/2026)** — **Correctifs moteur + Aide IA traduite (FR/EN/ES)** :
+- **Ronds roses des jonctions inter-niveaux** : ne disparaissaient pas au toggle du FilterPanel. Les `L.circleMarker` aux extrémités (ajoutés à `window.layerEditor`) étaient purgés via `layer.remove()` → retire de la map mais **pas du FeatureGroup parent** (même bug que les cercles d'intersection, fixé v1.44.1). Cleanup `renderRoads()` rendu **FeatureGroup-aware** (`grp.removeLayer` si `grp.hasLayer`, fallback `layer.remove`).
+- **Outil tracé bloqué après suppression du dernier point** (tracé / zone / structure / front de taille) : les 3 boutons « ↩️ supprimer dernier point » vidaient le tracé en cours sans fermer le mode → `window.modeX` restait actif + bouton `kta-actif` = état fantôme (icône « coupée », clic carte inerte). Ajout de la garde `if (before && !after) _fermerMode*()` (même pattern que les boutons ✂️ voisins).
+- **Modale « Aide IA »** : toute la chrome (titre, 5 sections, étapes, prompt anti-hallucination, boutons, statuts) migrée vers `I18n.t()` (**25 clés `aiia.*`** fr/en/es). Le `.md` téléchargé reste FR (une IA s'en sort).
+- **Correctifs déjà commités depuis v1.46.3** : mode **mesure** (angles réaffichés — `map.off` avant re-bind, fin du *handler stacking*), mode **édition** (1 clic = 1 point, idem), config **thème clair** lisible (en-têtes de groupe `.kta-cfg-group-titre`), clés i18n manquantes **humanisées** (« Change Btn ») au lieu d'affichées brutes, popup POI **lazy** (`bindPopup(fn)`). Audit `docs/audits/2026-06-14_audit-i18n-langue-v1.md` (P0+P1 traités).
 
 **🎛️ v1.46.3 (13/06/2026)** — **Refonte ergonomique des modales de configuration** :
 - **HOME + carte** : sections réorganisées par **groupes thématiques** (même ordre dans les 2 modales) avec en-têtes : 🌍 Application · 📐 Plan : échelle & géoloc · 📍 Navigation · 🎨 Affichage · 🚀 Performance · 🔒 Confidentialité & sécurité · 🛠️ Système. **Zéro changement de logique** (blocs déplacés, tous les `id`/handlers préservés — PLAN 28 id, HOME 41 id, delta 0).

@@ -1,7 +1,8 @@
 {
-  "version": "v1.46.3",
-  "released": "2026-06-13",
+  "version": "v1.46.4",
+  "released": "2026-06-14",
   "notes": [
-    "🎛️ Les réglages (accueil et carte) sont réorganisés par thème pour s'y retrouver plus vite — l'échelle et le géoréférencement sont désormais côte à côte."
+    "🐛 Corrections d'affichage : les ronds des liaisons inter-niveaux disparaissent bien quand on les masque, le mode mesure réaffiche les angles, et l'outil de tracé ne reste plus bloqué quand on efface tous les points.",
+    "🌍 La fenêtre « Aide IA » est désormais traduite en anglais et espagnol."
   ]
 }

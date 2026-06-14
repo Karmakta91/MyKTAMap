@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.46.3** (13 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.46.4** (14 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -857,6 +857,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.46.4 (Correctifs moteur + Aide IA traduite)** : **aucun nouveau flux réseau.** Correctifs purement client-side (rendu des ronds de jonctions inter-niveaux, fermeture propre de l'outil tracé) et traduction FR/EN/ES de la chrome de la modale « Aide IA ». Cette modale télécharge `docs/applications/AI_CONTEXT.md` (fichier statique same-origin, déjà documenté) — inchangé. Whitelist `connect-src` : ZÉRO modification.
 
 > **v1.46.1 (Ajout de l'espagnol)** : ajout de l'espagnol (`lang/es.json`) précaché par le Service Worker — aucun nouveau flux réseau, juste un fichier statique de traduction supplémentaire. Sélecteur de langue déplacé dans ⚙️ Configuration.
 
