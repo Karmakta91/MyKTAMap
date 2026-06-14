@@ -5152,6 +5152,16 @@ html.kta-theme-light .kta-cfg-input option {
   color: #2a2118;
 }
 
+/* 🌍 En-têtes de groupe de la refonte config (.kta-cfg-group-titre). Le style
+   est posé en INLINE avec color:#f4c542 (jaune charte) → illisible sur le fond
+   crème du thème clair (~1.4:1, sous WCAG AA). On override la couleur en clair
+   vers l'accent foncé (!important requis pour battre l'inline). Le dark garde le
+   jaune (lisible sur fond sombre). Cf docs/audits/2026-06-14_audit-i18n-langue-v1 (C1). */
+body.kta-theme-light .kta-cfg-group-titre,
+html.kta-theme-light .kta-cfg-group-titre {
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+
 /* === 🚀 Mode Performance ULTRA — toggles dans la modale Réglages === */
 .kta-perf-ultra-row {
   display: flex;

@@ -132,6 +132,17 @@
     });
   }
 
+  // 🆕 Dégradation gracieuse d'une clé manquante : "module.section.changeBtn"
+  // → "Change Btn" (dernier segment, camelCase/_/- éclatés en mots, 1ère
+  // majuscule). Évite d'afficher la clé technique brute à l'user si une clé
+  // manque (dico périmé via cache SW, oubli, faute) — lisible plutôt que cassé.
+  function _humanizeKey(key) {
+    if (typeof key !== "string") return "";
+    const last = key.split(".").pop() || key;
+    const words = last.replace(/[_-]+/g, " ").replace(/([a-z0-9])([A-Z])/g, "$1 $2").trim();
+    return words ? words.charAt(0).toUpperCase() + words.slice(1) : key;
+  }
+
   // Cœur : traduction d'une clé. langue active → fallback fr → clé brute.
   function t(key, params) {
     if (key == null) return "";
@@ -150,7 +161,10 @@
         t._warned[key] = true;
         console.warn("[I18n] Clé manquante : \"" + key + "\" (langue " + lang + ")");
       }
-      return key;
+      // 🆕 H1 (audit 2026-06-14) : au lieu de la clé brute (« pin.setup.changeBtn »
+      // — moche si une clé manque côté user, ex. dico périmé), on humanise →
+      // « Change Btn ». Couvre du même coup les ~39 helpers `_t` inline d'index.html.
+      return _humanizeKey(key);
     }
     return _interpolate(val, params);
   }
