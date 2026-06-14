@@ -601,7 +601,7 @@
              → compatible incognito. Cf js/main.js. -->
         <div class="kta-aide-section" id="loaderLangSection">
           <div class="kta-cfg-lang-row">
-            <label class="kta-cfg-lang-label" for="loaderAppLang">🌍 <span data-i18n="home.lang.label">Langue</span></label>
+            <label class="kta-cfg-lang-label" for="loaderAppLang"><span data-i18n="home.lang.label">Langue</span></label>
             <select class="kta-cfg-lang-select" id="loaderAppLang" data-i18n-title="home.lang.label"></select>
           </div>
           <div class="kta-cfg-lang-hint" data-i18n="home.lang.hint">Choix mémorisé globalement. Pilote toute l'interface (menus, modales, aide).</div>
@@ -5132,6 +5132,17 @@
 
       // Initialisation : update au load de la modale Configuration
       _majPinStatusUI();
+
+      // 🆕 v1.46.4 (audit P3-LOW #7) : re-traduit la section PIN au changement
+      // de langue À CHAUD. Elle est rendue par _t() inline (pas via data-i18n)
+      // → non captée par _applyI18nDom. Comme la langue ET le code d'accès sont
+      // dans la MÊME modale Configuration, un switch laissait le PIN en FR.
+      // Abonnement UNIQUE (garde anti-double, même si ce bloc re-tourne) ;
+      // _majPinStatusUI se garde déjà si les éléments DOM sont absents.
+      if (window.I18n && window.I18n.onChange && !window._pinStatusI18nHooked) {
+        window._pinStatusI18nHooked = true;
+        window.I18n.onChange(_majPinStatusUI);
+      }
 
       // === BOUTON "📋 AFFICHER LES LOGS" (v1.7.3 suite KARMA) ===
       // Permet de consulter le buffer des logs capturés par debug.js sans

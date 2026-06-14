@@ -5127,6 +5127,10 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
   line-height: 1.5;
   padding: 0 4px;
 }
+/* 🆕 v1.46.4 (audit P3-LOW #5) : variante thème clair du hint langue (était
+   #8892a4 → trop pâle/illisible sur le fond crème). Aligné sur le muted clair. */
+body.kta-theme-light .kta-cfg-lang-hint,
+html.kta-theme-light .kta-cfg-lang-hint { color: var(--kta-light-text-muted, #6b6354); }
 body.kta-theme-light .kta-cfg-lang-label,
 html.kta-theme-light .kta-cfg-lang-label { color: #2a2118; }
 body.kta-theme-light .kta-cfg-lang-select,

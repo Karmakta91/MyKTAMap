@@ -66,7 +66,9 @@ Les 12 en-têtes `.kta-cfg-group-titre` ont **`color:#f4c542` en inline**. En th
 - [x] **P2 — M2** ✅ v1.46.4 : `getLang()` mémoïsé (`_cachedLang`, invalidé au `setLang`) → fini les `getItem()` à chaque `t()`.
 - [x] **P2 — M3** ✅ v1.46.4 : labels preset perf passent en `white-space:normal` + `overflow-wrap:anywhere` → plus de troncature « Desact… » en ES mobile (desktop inchangé).
 - [x] **P2 — M4** ✅ v1.46.4 : `check-i18n.js` capte désormais les alias `_t("…")` dans les fichiers où `_t` est aliasé à `I18n.t` (exclut le `_t` non-i18n de tutorial.js) → 2030 clés appelées validées, l'angle mort qui a masqué le bug PIN est fermé.
-- [ ] **P3 — LOW** : variantes thème clair manquantes + cosmétique (`.kta-cfg-lang-hint`, etc.) — seul reliquat.
+- [x] **P3 — LOW** ✅ v1.46.4 — actionnables traités : #5 variante thème clair `.kta-cfg-lang-hint` (`--kta-light-text-muted`) · #6 double 🌍 HOME retiré (globe gardé sur le groupe « Application », retiré du label « Langue ») · #7 section PIN re-traduite à chaud (`I18n.onChange(_majPinStatusUI)`, abonnement unique). **Non-bugs (par design / acceptable, non corrigés)** : #1 `await I18n.init()` au boot (init obligatoire avant lancement) · #2 dicos en RAM ~900KB max · #3 `_applyI18nDom` 3 querySelectorAll au switch (rare) · #4 pas de fuite onChange (finding positif).
+
+> **✅ AUDIT CLOS** (v1.46.4) — 20 findings : C1·H1·H2·H3·M1·M2·M3·M4·P3(#5/#6/#7) corrigés ; cause racine pattern #1 réglée (SW network-first) ; 2 angles morts d'audit fermés ; LOW #1-4 = non-bugs assumés.
 
 ## 🔑 Patterns transverses
 
