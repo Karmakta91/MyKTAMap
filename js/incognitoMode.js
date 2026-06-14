@@ -225,7 +225,7 @@
   console.warn(
     "%c🕵️ [IncognitoMode] ACTIF",
     "color:#a78bfa;font-weight:bold;font-size:13px;",
-    "— localStorage + IndexedDB en mode in-memory. Aucune trace persistée."
+    "— localStorage + IndexedDB en mode in-memory. Aucune trace d'activité persistée (langue d'interface conservée)."
   );
 
   // 1️⃣ Marker CSS sur <html> (la racine, pour que les sélecteurs body./html.
@@ -256,9 +256,23 @@
       key:        Storage.prototype.key
     };
 
+    // 🆕 v1.46.4 (KARMA) — whitelist d'ÉCRITURE disque (write-through). La langue
+    // d'interface n'est PAS une trace d'activité privée mais une préférence
+    // d'affichage → KARMA veut qu'elle survive au relancement incognito. On
+    // l'écrit donc AUSSI sur le vrai disque (en plus du shim mémoire). À garder
+    // MINIMAL : seules des prefs UI non-sensibles ont le droit de persister.
+    var WRITE_DISK_WHITELIST = {
+      "myktamap_app_lang": 1
+    };
+
     Storage.prototype.setItem = function(k, v) {
-      _memStorage.set(String(k), String(v));
-      // PAS d'appel à _origStorage.setItem → bypass écriture disque.
+      var key = String(k);
+      _memStorage.set(key, String(v));
+      // Par défaut : PAS d'appel à _origStorage.setItem → bypass écriture disque.
+      // Exception write-through : prefs UI whitelistées (langue) persistées disque.
+      if (WRITE_DISK_WHITELIST[key]) {
+        try { _origStorage.setItem.call(this, key, String(v)); } catch (e) {}
+      }
     };
 
     // 🩹 v1.31.8-fix1 : whitelist clés autorisées en READ disque (writes
@@ -269,10 +283,11 @@
     // l'anti-bruteforce cross-fenêtre (sinon attaque par boucle de tabs).
     var READ_DISK_WHITELIST = {
       "myktamap_unlock_v1":       1, // UnlockGate — hash mdp community validé
-      "myktamap_unlock_attempts": 1  // UnlockGate — compteur tentatives échouées
-      // (extensible : ajouter ici si une autre clé n'a pas de sens à oublier
-      //  en incognito — ex: préf thème/langue. À garder MINIMAL pour ne pas
-      //  diluer la promesse "aucune trace pré-incognito lue".)
+      "myktamap_unlock_attempts": 1, // UnlockGate — compteur tentatives échouées
+      "myktamap_app_lang":        1  // 🆕 v1.46.4 (KARMA) — langue d'interface :
+      // persiste en incognito (lue au boot + write-through ci-dessus). Préférence
+      // d'affichage non-sensible, pas une trace d'activité. Le thème, lui, reste
+      // oublié (pas whitelisté) — seule la langue est l'exception demandée.
     };
 
     Storage.prototype.getItem = function(k) {
@@ -288,9 +303,10 @@
       // 3. Sinon : null. On NE LIT PAS l'existant disque pour ne pas
       //    permettre à un module de "récupérer" des données pré-incognito
       //    (sinon l'incognito devient un demi-mesure : on lit l'historique).
-      //    Conséquence : les préférences thème / langue se résettent au boot
-      //    incognito. Acceptable — c'est cohérent avec le pattern navigation
-      //    privée des navigateurs.
+      //    Conséquence : la préférence de THÈME se résette au boot incognito
+      //    (cohérent avec le pattern navigation privée). La LANGUE, elle, est
+      //    whitelistée (lue ici depuis le disque) + write-through → elle persiste
+      //    (exception assumée v1.46.4 : préférence d'affichage non-sensible).
       return null;
     };
 

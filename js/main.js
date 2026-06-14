@@ -1283,9 +1283,44 @@ function _initHomeLangSelect() {
           window.setLoaderPerfPreset(window.getLoaderPerfPreset());
         }
       } catch (e) { /* no-op : home non encore monté */ }
+      // 🌍 v1.46.4 (KARMA) : proposer un redémarrage pour une bascule 100% propre.
+      if (typeof window.proposerRedemarrageLangue === "function") window.proposerRedemarrageLangue();
     });
   });
 }
+
+// 🌍 v1.46.4 (KARMA) — Popup « redémarrer pour appliquer la langue ». Certains
+// contenus (doc, onboarding, modules non abonnés à I18n.onChange) ne se
+// re-traduisent qu'au reload → on RECOMMANDE (sans imposer) de redémarrer après
+// un changement de langue. Appelé par les 2 sélecteurs (HOME + ⚙️ Réglages carte).
+// Texte affiché dans la NOUVELLE langue (le popup s'ouvre après setLang().then()).
+// Skippé en incognito : un reload y perdrait la session in-memory (décision KARMA
+// 2a) ; la langue est déjà appliquée à chaud + persistée (write-through disque).
+window.proposerRedemarrageLangue = function() {
+  if (window.IncognitoMode && window.IncognitoMode.active) return;
+  var existing = document.getElementById("kta-lang-restart-modal");
+  if (existing) existing.remove();
+  var _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
+  var overlay = document.createElement("div");
+  overlay.id = "kta-lang-restart-modal";
+  overlay.className = "kta-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-modal">' +
+      '<div class="kta-modal-icon">🌍</div>' +
+      '<div class="kta-modal-titre">' + _t("lang.restart.title") + '</div>' +
+      '<div class="kta-modal-texte">' + _t("lang.restart.body") + '</div>' +
+      '<div class="kta-modal-actions">' +
+        '<button class="kta-btn kta-btn-ghost"   id="ktaLangRestartLater" type="button">' + _t("lang.restart.continue") + '</button>' +
+        '<button class="kta-btn kta-btn-primary" id="ktaLangRestartNow"   type="button">' + _t("lang.restart.restart") + '</button>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+  document.getElementById("ktaLangRestartLater").addEventListener("click", function() { overlay.remove(); });
+  document.getElementById("ktaLangRestartNow").addEventListener("click", function() {
+    overlay.remove();
+    try { location.reload(); } catch (e) {}
+  });
+};
 
 // =========================
 // POINT D'ENTRÉE — auto-détection

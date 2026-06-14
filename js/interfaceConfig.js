@@ -1096,6 +1096,8 @@ function afficherConfig() {
         const m = document.getElementById("kta-cfg-modal");
         if (m) m.remove();   // retire la modale courante…
         afficherConfig();    // …puis rebuild fraîche dans la nouvelle langue
+        // 🌍 v1.46.4 (KARMA) : proposer un redémarrage (bascule 100% propre).
+        if (typeof window.proposerRedemarrageLangue === "function") window.proposerRedemarrageLangue();
       });
     });
   }
