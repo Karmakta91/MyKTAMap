@@ -4324,7 +4324,15 @@
         // indisponible (ne devrait pas arriver — l'IIFE tourne après
         // I18n.init au boot, mais on reste défensif pour ne jamais crasher).
         function _t(key, fr) {
-          return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(key) : fr;
+          // 🐛 v1.46.4 — si la clé manque du dico CHARGÉ (ex. cache SW périmé,
+          // clé ajoutée après la version en cache), I18n.t renverrait la clé
+          // HUMANISÉE (« Incognito Start Label »). On préfère alors le fallback
+          // FR inline (déjà écrit ci-dessous, plus propre). I18n.has teste la
+          // présence réelle dans le dico (langue active OU fr).
+          if (window.I18n && typeof window.I18n.t === "function") {
+            return (typeof window.I18n.has === "function" && !window.I18n.has(key)) ? fr : window.I18n.t(key);
+          }
+          return fr;
         }
         function _refresh() {
           var actif = !!(window.IncognitoMode && window.IncognitoMode.active);
