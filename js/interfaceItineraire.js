@@ -66,6 +66,51 @@ function _escapeHtml(s) {
 }
 
 // =========================
+// 🆕 v1.46.4 — OVERLAY DE CALCUL D'ITINÉRAIRE
+// =========================
+// Sur un réseau de tracés DENSE, le Dijkstra prend 1-3 s. On affiche un loader
+// chartré (spinner du chargement de plan + message) le temps du pathfinding,
+// pour que l'user ne croie pas que rien ne s'est passé / que ça a bugué.
+// Plein écran → marche pour la modale ET le popup « itinéraire jusqu'ici ».
+//
+// ⚠️ CŒUR DU FIX : `computeRoute` est `async` mais le Dijkstra dedans est
+// SYNCHRONE → il bloque le thread. Sans yield-to-paint, ni l'overlay ni le
+// label « Calcul en cours… » du bouton ne seraient peints avant le blocage
+// (c'est pour ça que l'user voyait « rien »). `_withItiComputeLoader` affiche
+// l'overlay PUIS attend une frame (rAF + setTimeout 0) pour laisser le
+// navigateur peindre, AVANT de lancer le calcul.
+function _showItiComputeOverlay() {
+  let ov = document.getElementById("kta-iti-compute-overlay");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "kta-iti-compute-overlay";
+    ov.className = "kta-iti-compute-overlay";
+    const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
+    ov.innerHTML =
+      '<div class="kta-load-spinner"></div>' +
+      '<div class="kta-iti-compute-msg">' + _t("iti.compute.loading") + '</div>';
+    document.documentElement.appendChild(ov);
+  }
+  ov.style.display = "flex";
+  return ov;
+}
+function _hideItiComputeOverlay() {
+  const ov = document.getElementById("kta-iti-compute-overlay");
+  if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+}
+async function _withItiComputeLoader(fn) {
+  _showItiComputeOverlay();
+  // yield-to-paint : rAF programme avant le prochain paint, setTimeout 0 reprend
+  // après → garantit ≥1 frame peinte avant de bloquer le thread.
+  await new Promise(function(r) { requestAnimationFrame(function() { setTimeout(r, 0); }); });
+  try {
+    return await fn();
+  } finally {
+    _hideItiComputeOverlay();
+  }
+}
+
+// =========================
 // PAN + FLASH (style searchPoints) — pour les boutons "aller à" sur les waypoints
 // =========================
 let _itiFlashLayer = null;
@@ -173,10 +218,12 @@ window.itineraireYAller = function(x, y, nom) {
       // pour cohérence avec la modale itineraire (l'user voudrait probablement
       // les memes preferences).
       const avoidPrefs = _getItiAvoidPrefs();
-      const result = await window.Pathfinder.computeRoute(waypoints, {
-        avoidPoints: avoidPrefs.points || [],
-        avoidTags:   avoidPrefs.tags   || [],
-        avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
+      const result = await _withItiComputeLoader(function() {
+        return window.Pathfinder.computeRoute(waypoints, {
+          avoidPoints: avoidPrefs.points || [],
+          avoidTags:   avoidPrefs.tags   || [],
+          avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
+        });
       });
 
       // Cree la road itineraire (sans flag _preview : on enregistre direct)
@@ -1552,10 +1599,12 @@ window.ouvrirItinerairModal = function() {
       // au Pathfinder — on lit result.usedFallback et result.avoidedThrough pour
       // afficher un message d'avertissement au user le cas echeant.
       const avoidPrefs = _getItiAvoidPrefs();
-      const result = await window.Pathfinder.computeRoute(_itineraryWaypoints, {
-        avoidPoints: avoidPrefs.points || [],
-        avoidTags:   avoidPrefs.tags   || [],
-        avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
+      const result = await _withItiComputeLoader(function() {
+        return window.Pathfinder.computeRoute(_itineraryWaypoints, {
+          avoidPoints: avoidPrefs.points || [],
+          avoidTags:   avoidPrefs.tags   || [],
+          avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
+        });
       });
       // 🆕 v1.43.27 (Pattern C) — Guard : la modale peut avoir été fermée pendant
       // l'await computeRoute() (Dijkstra peut prendre 1-3 s sur grand graph). Sans

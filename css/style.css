@@ -10339,6 +10339,32 @@ a.kta-level-btn {
 @keyframes kta-load-spin {
   to { transform: rotate(360deg); }
 }
+/* 🆕 v1.46.4 — Overlay de calcul d'itinéraire (cf interfaceItineraire.js).
+   Plein écran, réutilise .kta-load-spinner ; z-index AU-DESSUS de la modale
+   itinéraire (.kta-readme-modal-overlay = 99999). */
+.kta-iti-compute-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 13, 24, 0.82);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 100005;
+  animation: kta-load-fadein 0.15s ease-out;
+}
+.kta-iti-compute-overlay .kta-load-spinner { margin: 0; }
+.kta-iti-compute-msg {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8eaf0;
+  text-align: center;
+  padding: 0 18px;
+  max-width: 320px;
+}
 .kta-load-titre {
   font-size: 17px;
   font-weight: 600;

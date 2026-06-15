@@ -1673,6 +1673,7 @@
   "iti.btn.myPosTitle": "Ajoute la position actuelle du tracker comme waypoint (snapshot figé)",
   "iti.btn.recompute": "🔄 Recalculer l'itinéraire",
   "iti.btn.save": "💾 Enregistrer comme itinéraire",
+  "iti.compute.loading": "🧭 Calcul de l'itinéraire…",
   "iti.erase.confirm": "Effacer l'itinéraire actif ?",
   "iti.err.aucuneRoute": "Aucune route disponible pour calculer un itinéraire",
   "iti.err.aucuneRouteTypes": "Aucune route correspondant aux types sélectionnés ({types})",

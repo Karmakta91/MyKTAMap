@@ -1671,6 +1671,7 @@
   "iti.btn.myPosTitle": "Añade la posición actual del tracker como waypoint (snapshot fijo)",
   "iti.btn.recompute": "🔄 Recalcular la ruta",
   "iti.btn.save": "💾 Guardar como ruta",
+  "iti.compute.loading": "🧭 Calculando la ruta…",
   "iti.erase.confirm": "¿Borrar la ruta activa?",
   "iti.err.aucuneRoute": "No hay ninguna ruta disponible para calcular un itinerario",
   "iti.err.aucuneRouteTypes": "Ninguna ruta coincide con los tipos seleccionados ({types})",

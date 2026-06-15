@@ -1673,6 +1673,7 @@
   "iti.btn.myPosTitle": "Add the tracker's current position as a waypoint (frozen snapshot)",
   "iti.btn.recompute": "🔄 Recompute route",
   "iti.btn.save": "💾 Save as route",
+  "iti.compute.loading": "🧭 Calculating the route…",
   "iti.erase.confirm": "Clear the active route?",
   "iti.err.aucuneRoute": "No route available to compute an itinerary",
   "iti.err.aucuneRouteTypes": "No route matching the selected types ({types})",
