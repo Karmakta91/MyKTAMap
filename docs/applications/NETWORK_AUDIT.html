@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.46.5</strong> (14 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.46.6</strong> (14 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -324,7 +324,7 @@
         <td><code>GET</code></td>
         <td>Au boot (dicos i18n : fr = fallback + langue active) puis au changement de langue</td>
         <td>Charger les traductions multi-langue (v1.45.0+, espagnol v1.46.1+)</td>
-        <td><strong>Aucune</strong> (fichiers statiques same-origin, <strong>network-first depuis v1.46.5</strong> avec fallback cache précaché si offline, lecture seule)</td>
+        <td><strong>Aucune</strong> (fichiers statiques same-origin, <strong>network-first depuis v1.46.5</strong> + <strong>cache-buster <code>?v=&lt;build&gt;</code> depuis v1.46.6</strong> — l'URL porte la version de build pour un dico frais après mise à jour ; fallback cache précaché si offline ; lecture seule)</td>
       </tr>
       <tr>
         <td><code>&lt;origin&gt;/ping.html</code></td>
@@ -1121,6 +1121,16 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.46.6 (Cache-buster dicos i18n)</strong> : <strong>aucune nouvelle surface réseau</strong>
+    (mêmes URLs same-origin, aucune donnée envoyée). Les dicos <code>lang/*.json</code> sont désormais
+    demandés avec un paramètre de version <code>?v=&lt;build&gt;</code> (ex. <code>lang/en.json?v=v1.46.6</code>)
+    — l'URL change à chaque release pour <strong>garantir un dico frais</strong> après une mise à jour
+    (contourne les caches HTTP navigateur / précache SW / serveur qui servaient un vieux dico au boot →
+    corrige les clés affichées « brutes »). Offline : le SW retombe sur le dico précaché via
+    <code>ignoreSearch</code>.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.46.5 (Correctifs moteur + Aide IA traduite + dicos i18n network-first)</strong> :

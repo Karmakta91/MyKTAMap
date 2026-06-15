@@ -98,7 +98,16 @@
   // une langue manquante doit dégrader vers le fallback, pas casser l'app).
   function _loadDict(code) {
     if (_dicts[code]) return Promise.resolve(_dicts[code]);
-    return fetch("lang/" + code + ".json", { cache: "no-cache" })
+    // 🆕 v1.46.6 — CACHE-BUSTER PAR VERSION DE BUILD. Règle DÉFINITIVEMENT les
+    // « clés brutes/humanisées après mise à jour » : l'URL `?v=<build>` change à
+    // CHAQUE release → contourne TOUTES les couches de cache (HTTP navigateur,
+    // précache SW, cache serveur/CDN) qui servaient un vieux dico au boot. Le SW
+    // fait un fallback `ignoreSearch` en offline (cf sw.js) pour retomber sur le
+    // dico précaché sans query. Sans __MKM__.build (improbable, copyright.js
+    // charge avant) : URL nue = comportement d'avant.
+    var _build = (window.__MKM__ && window.__MKM__.build) ? window.__MKM__.build : "";
+    var _url = "lang/" + code + ".json" + (_build ? "?v=" + encodeURIComponent(_build) : "");
+    return fetch(_url, { cache: "no-cache" })
       .then(function(r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();

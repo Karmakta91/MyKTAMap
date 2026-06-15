@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.46.5";
+const CACHE_NAME = "myktamap-cache-v1.46.6";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -1008,7 +1008,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 🌍 v1.46.5 — STRATEGIE NETWORK-FIRST POUR LES DICOS i18n (lang/*.json)
+  // 🌍 v1.46.6 — STRATEGIE NETWORK-FIRST POUR LES DICOS i18n (lang/*.json)
   // Même classe de bug que les docs (v1.43.11) : les dicos de traduction
   // changent à chaque vague i18n, mais le cache-first les sert « stale » tant
   // que CACHE_NAME ne bump pas ET que le SW se réinstalle. Symptôme vécu (KARMA)
@@ -1038,9 +1038,10 @@ self.addEventListener("fetch", (event) => {
         }
         throw new Error("non-ok status " + (networkResp && networkResp.status));
       } catch (e) {
-        // Réseau KO/timeout → fallback cache (dico précaché, éventuellement
-        // stale mais utilisable pour un boot offline).
-        const cachedResp = await cache.match(event.request);
+        // Réseau KO/timeout → fallback cache. `ignoreSearch:true` car langManager
+        // ajoute désormais `?v=<build>` à l'URL (cache-buster) → il faut matcher
+        // l'entrée PRÉCACHÉE (sans query) pour un boot offline.
+        const cachedResp = await cache.match(event.request, { ignoreSearch: true });
         if (cachedResp) return cachedResp;
         // Pas en cache + offline → dico vide en 200 (JAMAIS rejeter : sinon
         // langManager._loadDict throw et I18n.init plante au boot). Dégrade

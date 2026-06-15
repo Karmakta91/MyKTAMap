@@ -1,8 +1,7 @@
 {
-  "version": "v1.46.5",
+  "version": "v1.46.6",
   "released": "2026-06-14",
   "notes": [
-    "✨ Nombreuses corrections d'affichage et d'ergonomie : aperçu OSM de l'accueil, calcul d'itinéraire avec indicateur de chargement, outils de tracé, mode mesure et recherche.",
-    "🌍 Améliorations multilingues : fenêtre d'aide IA traduite, espagnol affiné par un locuteur natif, rappel de redémarrage au changement de langue (et langue conservée en mode incognito)."
+    "🔧 Correctif : après une mise à jour de l'app, les traductions s'affichent désormais toujours à jour (fini les textes qui restaient en version « technique » tant qu'on n'avait pas vidé le cache)."
   ]
 }
