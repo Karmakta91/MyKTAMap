@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.46.4";
+const CACHE_NAME = "myktamap-cache-v1.46.5";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -1008,7 +1008,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 🌍 v1.46.4 — STRATEGIE NETWORK-FIRST POUR LES DICOS i18n (lang/*.json)
+  // 🌍 v1.46.5 — STRATEGIE NETWORK-FIRST POUR LES DICOS i18n (lang/*.json)
   // Même classe de bug que les docs (v1.43.11) : les dicos de traduction
   // changent à chaque vague i18n, mais le cache-first les sert « stale » tant
   // que CACHE_NAME ne bump pas ET que le SW se réinstalle. Symptôme vécu (KARMA)

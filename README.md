@@ -8,9 +8,9 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.46.4` (14/06/2026) — **🐛 Correctifs moteur** (ronds inter-niveaux, outil tracé, mesure) + **🌍 Aide IA traduite**.
+**📦 Version courante** : `v1.46.5` (14/06/2026) — **✨ Vague de correctifs d'affichage & ergonomie** (OSM accueil, itinéraire, tracé, mesure, recherche) + **🌍 multilingue affiné** (Aide IA traduite, espagnol natif, langue en incognito).
 
-**🐛 v1.46.4 (14/06/2026)** — **Correctifs moteur + Aide IA traduite (FR/EN/ES)** :
+**🐛 v1.46.5 (14/06/2026)** — **Correctifs moteur + Aide IA traduite (FR/EN/ES)** :
 - **Ronds roses des jonctions inter-niveaux** : ne disparaissaient pas au toggle du FilterPanel. Les `L.circleMarker` aux extrémités (ajoutés à `window.layerEditor`) étaient purgés via `layer.remove()` → retire de la map mais **pas du FeatureGroup parent** (même bug que les cercles d'intersection, fixé v1.44.1). Cleanup `renderRoads()` rendu **FeatureGroup-aware** (`grp.removeLayer` si `grp.hasLayer`, fallback `layer.remove`). **Suite — jonctions du data layer embarqué (zip)** : `renderRoads()` ne rend que `roadsData` (session) ; les jonctions embarquées sont bâties dans `js/utils.js` et tracées par le filtre runtime via `_ktaDataPolylines`. Leur **entrée de rond manquait le champ `type`** → le filtre par type (toggle « jonction ») les sautait ; et le masquage ne coupait que `opacity` (bord magenta) **pas `fillOpacity`** → le disque blanc rempli persistait. Fix : ajout de `type` + `origFillOpacity` à l'entrée du rond et coupure de `fillOpacity` dans `_filtreNiveauSurPolylineData`. (Aucun impact autres consommateurs : ils gatent sur `entry.points`/`entry.road`, absents du rond.)
 - **Outil tracé bloqué après suppression du dernier point** (tracé / zone / structure / front de taille) : les 3 boutons « ↩️ supprimer dernier point » vidaient le tracé en cours sans fermer le mode → `window.modeX` restait actif + bouton `kta-actif` = état fantôme (icône « coupée », clic carte inerte). Ajout de la garde `if (before && !after) _fermerMode*()` (même pattern que les boutons ✂️ voisins).
 - **Modale « Aide IA »** : toute la chrome (titre, 5 sections, étapes, prompt anti-hallucination, boutons, statuts) migrée vers `I18n.t()` (**25 clés `aiia.*`** fr/en/es). Le `.md` téléchargé reste FR (une IA s'en sort).
