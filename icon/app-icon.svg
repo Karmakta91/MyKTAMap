@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="MyKTAMap">
+  <!-- SOURCE de l'icône PWA (v1.47.0) — boussole vectorielle sur fond sombre
+       charte. Rasterisée en mkm.png (180) / mkm-192.png / mkm-512.png. Pas de
+       libellés N/E/S/W (lisibilité en petit + rendu police) : la branche Nord
+       rouge sert de repère. Fond plein (maskable-safe : rose dans les ~72%
+       centraux). Régénérer : voir release(v1.47.0) / icône PWA. -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#1f2536"/>
+      <stop offset="100%" stop-color="#0a0d18"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g transform="translate(71,71) scale(1.85)">
+    <circle cx="100" cy="100" r="95" fill="none" stroke="#c9991f" stroke-width="1.3"/>
+    <circle cx="100" cy="100" r="86" fill="none" stroke="#c9991f" stroke-width="0.7" opacity="0.5"/>
+    <g stroke="#c9991f" stroke-width="1.4">
+      <g transform="rotate(22.5 100 100)"><line x1="100" y1="6" x2="100" y2="15"/></g>
+      <g transform="rotate(67.5 100 100)"><line x1="100" y1="6" x2="100" y2="15"/></g>
+      <g transform="rotate(112.5 100 100)"><line x1="100" y1="6" x2="100" y2="15"/></g>
+      <g transform="rotate(157.5 100 100)"><line x1="100" y1="6" x2="100" y2="15"/></g>
+      <g transform="rotate(202.5 100 100)"><line x1="100" y1="6" x2="100" y2="15"/></g>
+      <g transform="rotate(247.5 100 100)"><line x1="100" y1="6" x2="100" y2="15"/></g>
+      <g transform="rotate(292.5 100 100)"><line x1="100" y1="6" x2="100" y2="15"/></g>
+      <g transform="rotate(337.5 100 100)"><line x1="100" y1="6" x2="100" y2="15"/></g>
+    </g>
+    <g transform="rotate(45 100 100)"><polygon points="100,52 104,89 100,100" fill="#8cb4ff"/><polygon points="100,52 96,89 100,100" fill="#5b7fc0"/></g>
+    <g transform="rotate(135 100 100)"><polygon points="100,52 104,89 100,100" fill="#8cb4ff"/><polygon points="100,52 96,89 100,100" fill="#5b7fc0"/></g>
+    <g transform="rotate(225 100 100)"><polygon points="100,52 104,89 100,100" fill="#8cb4ff"/><polygon points="100,52 96,89 100,100" fill="#5b7fc0"/></g>
+    <g transform="rotate(315 100 100)"><polygon points="100,52 104,89 100,100" fill="#8cb4ff"/><polygon points="100,52 96,89 100,100" fill="#5b7fc0"/></g>
+    <g transform="rotate(90 100 100)"><polygon points="100,26 107,87 100,100" fill="#f4c542"/><polygon points="100,26 93,87 100,100" fill="#c9991f"/></g>
+    <g transform="rotate(180 100 100)"><polygon points="100,26 107,87 100,100" fill="#f4c542"/><polygon points="100,26 93,87 100,100" fill="#c9991f"/></g>
+    <g transform="rotate(270 100 100)"><polygon points="100,26 107,87 100,100" fill="#f4c542"/><polygon points="100,26 93,87 100,100" fill="#c9991f"/></g>
+    <polygon points="100,26 107,87 100,100" fill="#ef5b45"/>
+    <polygon points="100,26 93,87 100,100" fill="#c4402f"/>
+    <circle cx="100" cy="100" r="9.5" fill="#f4c542"/>
+    <circle cx="100" cy="100" r="4.6" fill="#0a0d18"/>
+    <circle cx="100" cy="100" r="1.9" fill="#f4c542"/>
+  </g>
+</svg>
