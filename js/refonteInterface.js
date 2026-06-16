@@ -139,7 +139,7 @@
     header.className = "kta-refonte-header";
     header.innerHTML =
       '<button class="kta-refonte-header-btn kta-refonte-header-home" id="kta-refonte-home" title="' + window.I18n.t("ui.refonte.btn_home_title") + '" aria-label="' + window.I18n.t("ui.refonte.btn_home_aria") + '">' +
-        '<img src="icon/mkm-full.png" alt="" class="kta-refonte-header-home-img" draggable="false">' +
+        '<img src="icon/compass.svg" alt="" class="kta-refonte-header-home-img" draggable="false">' +
       '</button>' +
       '<div class="kta-refonte-header-title-wrap">' +
         '<button class="kta-refonte-header-title" id="kta-refonte-title-btn" title="' + window.I18n.t("ui.refonte.btn_switch_plan_title") + '">' +

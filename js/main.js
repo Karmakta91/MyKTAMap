@@ -1155,10 +1155,15 @@ function _splashStart() {
   if (!splash) return;
   _splashShownAt = Date.now();
 
-  // Synchroniser la durée CSS de remplissage avec notre constante
-  const bar = document.getElementById("splashProgressBar");
-  if (bar) {
-    bar.style.setProperty("--splash-duration", SPLASH_MIN_DURATION_MS + "ms");
+  // 🆕 v1.47.0 — Affiche la version courante (haut-droite du splash) depuis
+  // le build courant (window.__MKM__.build, défini par js/copyright.js). Zéro
+  // hardcode : la version suit automatiquement chaque release. L'ancienne
+  // barre de progression (#splashProgressBar) a été remplacée par l'arc
+  // doré rotatif autour de la boussole (CSS pur, aucun pilotage JS requis).
+  const ver = document.getElementById("splashVersion");
+  if (ver) {
+    const b = (window.__MKM__ && window.__MKM__.build) ? String(window.__MKM__.build) : "";
+    ver.textContent = b ? (b.charAt(0) === "v" ? b : "v" + b) : "";
   }
 }
 
@@ -1255,6 +1260,43 @@ function _applyI18nDom(root) {
 // de reload → compatible incognito, où l'écriture localStorage est shimée en
 // mémoire et un reload perdrait le choix). Couvre le HOME normal ET incognito
 // (même écran). Idempotent (guard _i18nBound).
+// 🆕 v1.47.0 — Re-traduit le DOM HOME EN PLACE (data-i18n + perf preset rendu en
+// JS, non-data-i18n). Extrait de _initHomeLangSelect pour être rejoué AUSSI au
+// swap SW passif (handler controllerchange ci-dessous), pas seulement à la
+// bascule de langue. Idempotent.
+function _retraduireI18nDomEnPlace() {
+  _applyI18nDom(document);
+  // #loaderPerfDesc n'est PAS un data-i18n (rempli en JS depuis les metas
+  // tiling.js, traduit au point d'affichage) → re-render en re-jouant le preset.
+  try {
+    if (typeof window.setLoaderPerfPreset === "function" &&
+        typeof window.getLoaderPerfPreset === "function") {
+      window.setLoaderPerfPreset(window.getLoaderPerfPreset());
+    }
+  } catch (e) { /* no-op : home non encore monté */ }
+}
+
+// 🆕 v1.47.0 — LISSAGE i18n AU SWAP SW PASSIF (option B, KARMA). Quand un nouveau
+// SW prend la main SANS reload (activation auto au lancement), le 1er boot a pu
+// charger un dico périmé → clés humanisées affichées. On re-fetch les dicos frais
+// (I18n.reload) + re-render EN PLACE → zéro flash, zéro reload. Le flux update
+// MANUEL (interfaceMaintenance) reload déjà la page → se suffit ; ce handler couvre
+// le swap PASSIF. Guard _done : une seule fois par cycle de page.
+(function _initI18nSwSwapRefresh() {
+  if (!("serviceWorker" in navigator)) return;
+  var _done = false;
+  navigator.serviceWorker.addEventListener("controllerchange", function() {
+    if (_done) return;
+    _done = true;
+    var _retrad = function() { try { _retraduireI18nDomEnPlace(); } catch (e) {} };
+    if (window.I18n && typeof window.I18n.reload === "function") {
+      window.I18n.reload().then(_retrad).catch(_retrad);
+    } else {
+      _retrad();
+    }
+  });
+})();
+
 function _initHomeLangSelect() {
   const sel = document.getElementById("loaderAppLang");
   if (!sel || !window.I18n || typeof window.I18n.available !== "function") return;
@@ -1273,19 +1315,45 @@ function _initHomeLangSelect() {
     const code = sel.value;
     const done = (typeof window.I18n.setLang === "function") ? window.I18n.setLang(code) : Promise.resolve();
     Promise.resolve(done).then(function() {
-      _applyI18nDom(document);
-      // #loaderPerfDesc n'est PAS un data-i18n (rempli en JS depuis les metas
-      // tiling.js, traduit au point d'affichage). On le re-render à la bascule
-      // de langue en re-jouant le preset courant.
-      try {
-        if (typeof window.setLoaderPerfPreset === "function" &&
-            typeof window.getLoaderPerfPreset === "function") {
-          window.setLoaderPerfPreset(window.getLoaderPerfPreset());
-        }
-      } catch (e) { /* no-op : home non encore monté */ }
+      _retraduireI18nDomEnPlace();
+      // 🌍 v1.46.4 (KARMA) : proposer un redémarrage pour une bascule 100% propre.
+      if (typeof window.proposerRedemarrageLangue === "function") window.proposerRedemarrageLangue();
     });
   });
 }
+
+// 🌍 v1.46.4 (KARMA) — Popup « redémarrer pour appliquer la langue ». Certains
+// contenus (doc, onboarding, modules non abonnés à I18n.onChange) ne se
+// re-traduisent qu'au reload → on RECOMMANDE (sans imposer) de redémarrer après
+// un changement de langue. Appelé par les 2 sélecteurs (HOME + ⚙️ Réglages carte).
+// Texte affiché dans la NOUVELLE langue (le popup s'ouvre après setLang().then()).
+// Skippé en incognito : un reload y perdrait la session in-memory (décision KARMA
+// 2a) ; la langue est déjà appliquée à chaud + persistée (write-through disque).
+window.proposerRedemarrageLangue = function() {
+  if (window.IncognitoMode && window.IncognitoMode.active) return;
+  var existing = document.getElementById("kta-lang-restart-modal");
+  if (existing) existing.remove();
+  var _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
+  var overlay = document.createElement("div");
+  overlay.id = "kta-lang-restart-modal";
+  overlay.className = "kta-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-modal">' +
+      '<div class="kta-modal-icon">🌍</div>' +
+      '<div class="kta-modal-titre">' + _t("lang.restart.title") + '</div>' +
+      '<div class="kta-modal-texte">' + _t("lang.restart.body") + '</div>' +
+      '<div class="kta-modal-actions">' +
+        '<button class="kta-btn kta-btn-ghost"   id="ktaLangRestartLater" type="button">' + _t("lang.restart.continue") + '</button>' +
+        '<button class="kta-btn kta-btn-primary" id="ktaLangRestartNow"   type="button">' + _t("lang.restart.restart") + '</button>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+  document.getElementById("ktaLangRestartLater").addEventListener("click", function() { overlay.remove(); });
+  document.getElementById("ktaLangRestartNow").addEventListener("click", function() {
+    overlay.remove();
+    try { location.reload(); } catch (e) {}
+  });
+};
 
 // =========================
 // POINT D'ENTRÉE — auto-détection

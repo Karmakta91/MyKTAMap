@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.46.4";
+const CACHE_NAME = "myktamap-cache-v1.47.0";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -315,9 +315,9 @@ const ASSETS_TO_CACHE = [
   // Icônes app / points
   "./icon/mkm-full.png",
   "./icon/karma.png",
-  "./icon/mkm.png",
-  "./icon/mkm-192.png",
-  "./icon/mkm-512.png",
+  "./icon/compass-180.png",
+  "./icon/compass-192.png",
+  "./icon/compass-512.png",
   "./icon/marker-icon.png",
   "./icon/vehicule.png",
   "./icon/pc.png",
@@ -341,6 +341,7 @@ const ASSETS_TO_CACHE = [
   "./icon/caf.png",
   "./icon/plaque.png",
   "./icon/compass.png",
+  "./icon/compass.svg",
 ];
 
 // =========================
@@ -1003,6 +1004,53 @@ self.addEventListener("fetch", (event) => {
           "Document indisponible hors-ligne. Reconnecte-toi pour le consulter.",
           { status: 504, headers: { "Content-Type": "text/plain; charset=utf-8" } }
         );
+      }
+    })());
+    return;
+  }
+
+  // 🌍 v1.46.6 — STRATEGIE NETWORK-FIRST POUR LES DICOS i18n (lang/*.json)
+  // Même classe de bug que les docs (v1.43.11) : les dicos de traduction
+  // changent à chaque vague i18n, mais le cache-first les sert « stale » tant
+  // que CACHE_NAME ne bump pas ET que le SW se réinstalle. Symptôme vécu (KARMA)
+  // : clés PIN ajoutées en v1.46.2 (`pin.setup.changeBtn`…) affichées humanisées
+  // (« Change Btn ») parce que le `fr.json` précaché datait d'avant. Aggravé par
+  // un SW zombie qui ne se met jamais à jour → traduction périmée INDÉFINIMENT.
+  //
+  // Fix : network-first + timeout 2.5s + fallback cache. Online → dico TOUJOURS
+  // frais (nouvelles clés visibles dès le déploiement, sans dépendre du bump
+  // CACHE_NAME ni de l'état du SW). Offline / réseau lent → fallback cache
+  // précaché (boot offline préservé ; `fr.json` reste le fallback universel).
+  // langManager fetch les dicos au boot → reçoit la version réseau fraîche →
+  // plus jamais de clé humanisée affichée à l'user dès qu'il est en ligne.
+  if (/\/lang\/[a-z-]+\.json(\?|$)/.test(reqUrl)) {
+    event.respondWith((async function() {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const networkPromise = fetch(event.request, { cache: "no-store" });
+        const timeoutPromise = new Promise(function(_, reject) {
+          setTimeout(function() { reject(new Error("network timeout")); }, 2500);
+        });
+        const networkResp = await Promise.race([networkPromise, timeoutPromise]);
+        if (networkResp && networkResp.ok) {
+          // Met à jour le cache silencieusement (best-effort) pour l'offline.
+          try { cache.put(event.request, networkResp.clone()); } catch(e) {}
+          return networkResp;
+        }
+        throw new Error("non-ok status " + (networkResp && networkResp.status));
+      } catch (e) {
+        // Réseau KO/timeout → fallback cache. `ignoreSearch:true` car langManager
+        // ajoute désormais `?v=<build>` à l'URL (cache-buster) → il faut matcher
+        // l'entrée PRÉCACHÉE (sans query) pour un boot offline.
+        const cachedResp = await cache.match(event.request, { ignoreSearch: true });
+        if (cachedResp) return cachedResp;
+        // Pas en cache + offline → dico vide en 200 (JAMAIS rejeter : sinon
+        // langManager._loadDict throw et I18n.init plante au boot). Dégrade
+        // proprement vers le fallback FR puis la clé humanisée.
+        return new Response("{}", {
+          status: 200,
+          headers: { "Content-Type": "application/json; charset=utf-8" }
+        });
       }
     })());
     return;

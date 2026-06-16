@@ -1,8 +1,7 @@
 {
-  "version": "v1.46.4",
-  "released": "2026-06-14",
+  "version": "v1.47.0",
+  "released": "2026-06-16",
   "notes": [
-    "🐛 Corrections d'affichage : les ronds des liaisons inter-niveaux disparaissent bien quand on les masque, le mode mesure réaffiche les angles, et l'outil de tracé ne reste plus bloqué quand on efface tous les points.",
-    "🌍 La fenêtre « Aide IA » est désormais traduite en anglais et espagnol."
+    "🧭 Nouvel écran de démarrage repensé autour de la rose des vents : plus épuré, net et animé, avec le numéro de version affiché."
   ]
 }

@@ -73,23 +73,47 @@
     return AVAILABLE_LANGS.some(function(l) { return l.code === code; });
   }
 
+  // 🆕 v1.46.4 (audit M2) : mémoïsation de la langue active. getLang() est
+  // appelé à CHAQUE t() (= des milliers de fois au rendu d'un gros plan) et
+  // relisait localStorage à chaque appel. La langue ne change QU'AU setLang
+  // (seul écrivain de LANG_STORAGE_KEY) → on cache le résultat et on l'invalide
+  // dans setLang. Comportement inchangé, juste moins de getItem() répétés.
+  let _cachedLang = null;
+
   // Langue active : lit la clé partagée, fallback navigator.language puis FR.
   function getLang() {
+    if (_cachedLang) return _cachedLang;
     try {
       const saved = localStorage.getItem(LANG_STORAGE_KEY);
-      if (_isKnownLang(saved)) return saved;
+      if (_isKnownLang(saved)) { _cachedLang = saved; return saved; }
     } catch(e) {}
     const navLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
     // On ne mappe que sur une langue DÉCLARÉE ; sinon FR.
     const guess = navLang.split("-")[0];
-    return _isKnownLang(guess) ? guess : FALLBACK_LANG;
+    _cachedLang = _isKnownLang(guess) ? guess : FALLBACK_LANG;
+    return _cachedLang;
   }
 
   // Fetch + parse un dico de langue. Résout {} en cas d'échec (jamais reject :
   // une langue manquante doit dégrader vers le fallback, pas casser l'app).
   function _loadDict(code) {
     if (_dicts[code]) return Promise.resolve(_dicts[code]);
-    return fetch("lang/" + code + ".json", { cache: "no-cache" })
+    // 🆕 v1.46.6 — CACHE-BUSTER PAR VERSION DE BUILD. Règle DÉFINITIVEMENT les
+    // « clés brutes/humanisées après mise à jour » : l'URL `?v=<build>` change à
+    // CHAQUE release → contourne TOUTES les couches de cache (HTTP navigateur,
+    // précache SW, cache serveur/CDN) qui servaient un vieux dico au boot. Le SW
+    // fait un fallback `ignoreSearch` en offline (cf sw.js) pour retomber sur le
+    // dico précaché sans query. Sans __MKM__.build (improbable, copyright.js
+    // charge avant) : URL nue = comportement d'avant.
+    var _build = (window.__MKM__ && window.__MKM__.build) ? window.__MKM__.build : "";
+    var _url = "lang/" + code + ".json" + (_build ? "?v=" + encodeURIComponent(_build) : "");
+    // 🆕 v1.47.0 — `cache: "reload"` (et non "no-cache") : force un GET réseau qui
+    // IGNORE le cache HTTP du navigateur, au lieu de simplement le revalider.
+    // Sans SW (ex. après killsw), "no-cache" pouvait recevoir un 304 et ressservir
+    // un `fr.json?v=<build>` PÉRIMÉ tant que le build ne changeait pas (clés i18n
+    // ajoutées en cours de cycle → invisibles). "reload" garantit le dico frais dès
+    // que le serveur l'a. SW présent → il intercepte avec son propre no-store.
+    return fetch(_url, { cache: "reload" })
       .then(function(r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
@@ -179,6 +203,7 @@
   function setLang(code) {
     if (!_isKnownLang(code)) return Promise.resolve();
     try { localStorage.setItem(LANG_STORAGE_KEY, code); } catch(e) {}
+    _cachedLang = code; // 🆕 v1.46.4 (M2) : invalide/rafraîchit le cache getLang.
     return ensureLang(code).then(function() {
       _onChangeCbs.forEach(function(cb) {
         try { cb(code); } catch(e) { console.warn("[I18n] onChange cb failed :", e); }
@@ -193,6 +218,24 @@
       const i = _onChangeCbs.indexOf(cb);
       if (i >= 0) _onChangeCbs.splice(i, 1);
     };
+  }
+
+  // 🆕 v1.47.0 — Recharge les dicos (langue active + fallback) DEPUIS LE RÉSEAU :
+  // vide le cache mémoire → _loadDict refetch en `cache: "reload"` (frais garanti),
+  // puis notifie les abonnés (onChange). Sert au lissage du swap SW passif : si le
+  // 1er boot a chargé un dico périmé (clés humanisées), on rafraîchit + re-render à
+  // la volée, sans reload. Idempotent, retourne une Promise.
+  function reload() {
+    var active = getLang();
+    delete _dicts[active];
+    delete _dicts[FALLBACK_LANG];
+    var codes = (active === FALLBACK_LANG) ? [FALLBACK_LANG] : [active, FALLBACK_LANG];
+    return Promise.all(codes.map(_loadDict)).then(function() {
+      _onChangeCbs.forEach(function(cb) {
+        try { cb(active); } catch(e) { console.warn("[I18n] onChange cb failed (reload) :", e); }
+      });
+      return true;
+    });
   }
 
   function available() {
@@ -223,6 +266,7 @@
     setLang:    setLang,
     ensureLang: ensureLang,
     onChange:   onChange,
+    reload:     reload,
     available:  available,
     resolveContentLang: resolveContentLang,
     _STORAGE_KEY: LANG_STORAGE_KEY

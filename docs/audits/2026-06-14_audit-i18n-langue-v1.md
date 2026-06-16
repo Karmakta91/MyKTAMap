@@ -61,14 +61,17 @@ Les 12 en-têtes `.kta-cfg-group-titre` ont **`color:#f4c542` en inline**. En th
 - [x] **P0 — C1** ✅ `6826f94` : override CSS thème clair des `.kta-cfg-group-titre` (accent foncé `--kta-light-accent-hover`, `!important`). Dark inchangé.
 - [x] **P1 — H1+H2** ✅ `6826f94` : `I18n.t()` humanise la clé manquante (« pin.setup.changeBtn » → « Change Btn ») → couvre du même coup les 39 helpers `_t`. Plus jamais de clé technique affichée.
 - [x] **P1 — H3** ✅ `f190796` : popup POI *lazy* (`bindPopup(fn)`, HTML rendu à l'ouverture, pas au chargement du plan).
-- [ ] **P2 — M1** : i18n de la barre d'actions Réglages PLAN.
-- [ ] **P2 — M2** : mémoïser `getLang()`.
-- [ ] **P2 — M3** : fix troncature labels preset ES mobile.
-- [ ] **P2 — M4** : étendre `check-i18n.js` aux alias `_t(...)` (ferme l'angle mort qui a masqué les clés brutes).
-- [ ] **P3 — LOW** : variantes thème clair manquantes + cosmétique.
+- [x] **🔑 CAUSE RACINE H1/pattern #1** ✅ `9160af2` (v1.46.4) : dicos `lang/*.json` passés en **network-first** dans le SW (timeout 2,5s + fallback cache, pattern docs v1.43.11). Le humanize (H1) n'était qu'un filet ; les traductions sont désormais **fraîches dès le déploiement**, découplées du bump `CACHE_NAME` et de l'état du SW. C'est ce qui a réglé le bug récurrent « pin.setup.changeBtn → Change Btn ».
+- [x] **P2 — M1** ✅ v1.46.4 : barre d'actions Réglages PLAN migrée vers `I18n.t()` (clés `config.actions.reset/apply/logs` fr/en/es ; FR inchangé, EN/ES corrigés).
+- [x] **P2 — M2** ✅ v1.46.4 : `getLang()` mémoïsé (`_cachedLang`, invalidé au `setLang`) → fini les `getItem()` à chaque `t()`.
+- [x] **P2 — M3** ✅ v1.46.4 : labels preset perf passent en `white-space:normal` + `overflow-wrap:anywhere` → plus de troncature « Desact… » en ES mobile (desktop inchangé).
+- [x] **P2 — M4** ✅ v1.46.4 : `check-i18n.js` capte désormais les alias `_t("…")` dans les fichiers où `_t` est aliasé à `I18n.t` (exclut le `_t` non-i18n de tutorial.js) → 2030 clés appelées validées, l'angle mort qui a masqué le bug PIN est fermé.
+- [x] **P3 — LOW** ✅ v1.46.4 — actionnables traités : #5 variante thème clair `.kta-cfg-lang-hint` (`--kta-light-text-muted`) · #6 double 🌍 HOME retiré (globe gardé sur le groupe « Application », retiré du label « Langue ») · #7 section PIN re-traduite à chaud (`I18n.onChange(_majPinStatusUI)`, abonnement unique). **Non-bugs (par design / acceptable, non corrigés)** : #1 `await I18n.init()` au boot (init obligatoire avant lancement) · #2 dicos en RAM ~900KB max · #3 `_applyI18nDom` 3 querySelectorAll au switch (rare) · #4 pas de fuite onChange (finding positif).
+
+> **✅ AUDIT CLOS** (v1.46.4) — 20 findings : C1·H1·H2·H3·M1·M2·M3·M4·P3(#5/#6/#7) corrigés ; cause racine pattern #1 réglée (SW network-first) ; 2 angles morts d'audit fermés ; LOW #1-4 = non-bugs assumés.
 
 ## 🔑 Patterns transverses
 
-1. **Raw-key sur clé manquante** = la fragilité #1 (H1+H2+incognito). Un seul fix dans `t()`.
-2. **Thème clair = angle mort récurrent** : tout nouvel élément i18n (en-têtes de groupe, hint langue) oublie sa variante claire.
-3. **Couverture d'audit incomplète** : `check-i18n` ne voit ni le FR codé en dur (réglé par `find-hardcoded-fr.js`) ni les alias `_t(...)` → 2 angles morts à fermer pour un filet complet.
+1. **Raw-key sur clé manquante** = la fragilité #1 (H1+H2+incognito). ✅ **Réglée à la racine en v1.46.4** : humanize (filet) + **dicos network-first** (cause = cache-first qui servait un dico périmé). Plus de clé brute/humanisée affichée dès que l'user est en ligne.
+2. **Thème clair = angle mort récurrent** : tout nouvel élément i18n (en-têtes de groupe, hint langue) oublie sa variante claire. *(C1 réglé ; reste le P3 LOW `.kta-cfg-lang-hint`.)*
+3. **Couverture d'audit incomplète** : `check-i18n` ne voyait ni le FR codé en dur ni les alias `_t(...)`. ✅ **Les 2 angles morts sont fermés** : `find-hardcoded-fr.js` (FR codé en dur) + `check-i18n.js` étendu aux `_t(...)` (M4, v1.46.4). Filet complet.
