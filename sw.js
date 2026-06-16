@@ -315,9 +315,9 @@ const ASSETS_TO_CACHE = [
   // Icônes app / points
   "./icon/mkm-full.png",
   "./icon/karma.png",
-  "./icon/mkm.png",
-  "./icon/mkm-192.png",
-  "./icon/mkm-512.png",
+  "./icon/compass-180.png",
+  "./icon/compass-192.png",
+  "./icon/compass-512.png",
   "./icon/marker-icon.png",
   "./icon/vehicule.png",
   "./icon/pc.png",
