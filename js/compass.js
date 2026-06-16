@@ -79,7 +79,7 @@
     _widgetEl.innerHTML =
       '<button class="kta-compass-close" type="button" title="' + t("compass.widget.closeTitle") + '" aria-label="' + t("compass.widget.closeAria") + '">&times;</button>' +
       '<div class="kta-compass-rose-wrap" title="' + t("compass.widget.enlargeTitle") + '">' +
-        '<img src="icon/compass.png" class="kta-compass-rose kta-compass-rotating-rose" alt="' + t("compass.roseAlt") + '" draggable="false">' +
+        '<img src="icon/compass.svg" class="kta-compass-rose kta-compass-rotating-rose" alt="' + t("compass.roseAlt") + '" draggable="false">' +
       '</div>' +
       '<div class="kta-compass-info">' +
         '<span class="kta-compass-heading kta-compass-text-display">N 0°</span>' +
@@ -122,7 +122,7 @@
         '</div>' +
         '<div class="kta-readme-modal-corps kta-compass-full-corps">' +
           '<div class="kta-compass-full-rose-wrap">' +
-            '<img src="icon/compass.png" class="kta-compass-rose-big kta-compass-rotating-rose" alt="' + t("compass.roseAlt") + '" draggable="false">' +
+            '<img src="icon/compass.svg" class="kta-compass-rose-big kta-compass-rotating-rose" alt="' + t("compass.roseAlt") + '" draggable="false">' +
           '</div>' +
           '<div class="kta-compass-full-info">' +
             '<div class="kta-compass-full-cardinal kta-compass-cardinal-display">N</div>' +

@@ -1384,6 +1384,8 @@
   "home.splash.licenceFree": "Licence libre — usage non commercial",
   "home.splash.proEdition": "Édition professionnelle",
   "home.splash.proLicense": "Licence active · Tous droits réservés",
+  "home.splash.craftedWith": "Conçu avec Claude",
+  "home.splash.craftedSub": "Assistant IA · Anthropic",
   "home.tagline": "Cartographie souterraine",
   "imgcal.btn.cancel": "❌ Annuler",
   "imgcal.btn.restart": "↺ Recommencer",

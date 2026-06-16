@@ -1,7 +1,7 @@
 {
-  "version": "v1.46.6",
-  "released": "2026-06-14",
+  "version": "v1.47.0",
+  "released": "2026-06-16",
   "notes": [
-    "🔧 Correctif : après une mise à jour de l'app, les traductions s'affichent désormais toujours à jour (fini les textes qui restaient en version « technique » tant qu'on n'avait pas vidé le cache)."
+    "🧭 Nouvel écran de démarrage repensé autour de la rose des vents : plus épuré, net et animé, avec le numéro de version affiché."
   ]
 }

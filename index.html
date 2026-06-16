@@ -86,28 +86,34 @@
        Affiché par défaut, fermé par main.js après init + 4s min
        ════════════════════════════════════════════════════════ -->
   <div id="splashOverlay">
+    <!-- 👑 v1.47.0 (KARMA) — Crédit Claude, seul en haut-gauche (symétrique
+         avec la version en haut-droite). Teinte « clay » Claude (#d97757)
+         pour se démarquer du doré charte sans être clinquant. -->
+    <div id="splashClaudeCorner" aria-hidden="true">
+      <span class="splash-claude-mark">✦</span>
+      <span class="splash-claude-text">
+        <span class="splash-claude-main" data-i18n="home.splash.craftedWith">Conçu avec Claude</span>
+        <span class="splash-claude-sub" data-i18n="home.splash.craftedSub">Assistant IA · Anthropic</span>
+      </span>
+    </div>
+    <!-- Version courante (haut-droite) — remplie par main.js > _splashStart
+         depuis window.__MKM__.build (zéro hardcode, suit chaque release). -->
+    <div id="splashVersion" aria-hidden="true"></div>
+
     <div id="splashBox">
-      <img src="icon/mkm-full.png" alt="MyKTAMap" id="splashLogo">
+      <!-- 🧭 v1.47.0 — Rose des vents (compass.png, asset unifié Option 2 :
+           même rose que le mode boussole + header). Nord en haut, statique ;
+           l'entrée « calibrage » splashLogoIn (rotation + amortissement)
+           reste. L'arc doré tourne autour = indicateur de chargement
+           continu (remplace l'ancienne barre + échelle 0-100). -->
+      <div id="splashCompassWrap">
+        <img src="icon/compass.svg" alt="MyKTAMap" id="splashLogo">
+        <svg id="splashSpinArc" viewBox="0 0 220 220" aria-hidden="true">
+          <circle cx="110" cy="110" r="104" fill="none" stroke-linecap="round" stroke-dasharray="90 565"></circle>
+        </svg>
+      </div>
       <div id="splashTitle"><span class="kta-titre-base">MyKTAMap</span><span class="kta-licence-pro kta-titre-suffix-pro">-pro</span></div>
       <div id="splashSubtitle" data-i18n="home.tagline">Cartographie souterraine</div>
-
-      <div id="splashProgressTrack">
-        <div id="splashProgressBar"></div>
-      </div>
-
-      <!-- Échelle 0-100 sous la barre de chargement -->
-      <div id="splashScale" aria-hidden="true">
-        <div class="splash-scale-bar"></div>
-        <div class="splash-scale-labels">
-          <span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span><span>100</span>
-        </div>
-      </div>
-
-      <!-- 🆕 v1.9.2-fix18 (KARMA pivot) : #splashFooter et #splashLicense
-           SORTIS du #splashBox pour pouvoir positionner la licence en
-           absolu au bas du splash, juste au-dessus de la signature KARMA
-           et des crédits libs. Le box principal contient désormais
-           uniquement le contenu central (logo, titre, progress, scale). -->
     </div>
 
     <!-- Licence affichée en bas du splash, JUSTE AU-DESSUS de la signature
@@ -296,7 +302,7 @@
            taille +1024px). -->
       <div class="loader-header">
         <div class="loader-titre">
-          <img src="icon/mkm-full.png" alt="" class="loader-titre-logo" draggable="false">
+          <img src="icon/compass.svg" alt="" class="loader-titre-logo" draggable="false">
           <div class="loader-titre-textes">
             <span class="loader-titre-nom"><span class="kta-titre-base">MyKTAMap</span><span class="kta-licence-pro kta-titre-suffix-pro">-pro</span></span>
             <span class="loader-titre-tagline" data-i18n="home.tagline">Cartographie souterraine</span>

@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.46.6** (14 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.47.0** (16 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -857,6 +857,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.47.0 (Nouveau loader + durcissement i18n)** : **aucune nouvelle surface réseau** (mêmes URLs same-origin, aucune donnée envoyée, whitelist `connect-src` inchangée). Nouvel asset statique **`icon/compass.svg`** (rose des vents vectorielle) ajouté au précache SW (`ASSETS_TO_CACHE`) — remplace les anciens raster dans le splash / header / mode boussole, juste un fichier local supplémentaire. Les dicos `lang/*.json` passent de `cache:"no-cache"` à **`cache:"reload"`** (`langManager.js`) : même requête same-origin, mais le navigateur **ignore son cache HTTP** au lieu de le revalider (garantit un dico frais, sans `304` périmé après une mise à jour). Aucune télémétrie, aucun header custom.
 
 > **v1.46.6 (Cache-buster dicos i18n)** : **aucune nouvelle surface réseau** (mêmes URLs same-origin, aucune donnée envoyée). Les dicos `lang/*.json` sont désormais demandés avec un paramètre de version `?v=<build>` (ex. `lang/en.json?v=v1.46.6`) — l'URL change à chaque release pour **garantir un dico frais** après une mise à jour (contourne les caches HTTP navigateur / précache SW / serveur qui servaient un vieux dico au boot → corrige les clés affichées « brutes »). Offline : le SW retombe sur le dico précaché via `ignoreSearch`.
 

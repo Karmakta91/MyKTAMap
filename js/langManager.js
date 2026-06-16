@@ -107,7 +107,13 @@
     // charge avant) : URL nue = comportement d'avant.
     var _build = (window.__MKM__ && window.__MKM__.build) ? window.__MKM__.build : "";
     var _url = "lang/" + code + ".json" + (_build ? "?v=" + encodeURIComponent(_build) : "");
-    return fetch(_url, { cache: "no-cache" })
+    // 🆕 v1.47.0 — `cache: "reload"` (et non "no-cache") : force un GET réseau qui
+    // IGNORE le cache HTTP du navigateur, au lieu de simplement le revalider.
+    // Sans SW (ex. après killsw), "no-cache" pouvait recevoir un 304 et ressservir
+    // un `fr.json?v=<build>` PÉRIMÉ tant que le build ne changeait pas (clés i18n
+    // ajoutées en cours de cycle → invisibles). "reload" garantit le dico frais dès
+    // que le serveur l'a. SW présent → il intercepte avec son propre no-store.
+    return fetch(_url, { cache: "reload" })
       .then(function(r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
@@ -214,6 +220,24 @@
     };
   }
 
+  // 🆕 v1.47.0 — Recharge les dicos (langue active + fallback) DEPUIS LE RÉSEAU :
+  // vide le cache mémoire → _loadDict refetch en `cache: "reload"` (frais garanti),
+  // puis notifie les abonnés (onChange). Sert au lissage du swap SW passif : si le
+  // 1er boot a chargé un dico périmé (clés humanisées), on rafraîchit + re-render à
+  // la volée, sans reload. Idempotent, retourne une Promise.
+  function reload() {
+    var active = getLang();
+    delete _dicts[active];
+    delete _dicts[FALLBACK_LANG];
+    var codes = (active === FALLBACK_LANG) ? [FALLBACK_LANG] : [active, FALLBACK_LANG];
+    return Promise.all(codes.map(_loadDict)).then(function() {
+      _onChangeCbs.forEach(function(cb) {
+        try { cb(active); } catch(e) { console.warn("[I18n] onChange cb failed (reload) :", e); }
+      });
+      return true;
+    });
+  }
+
   function available() {
     return AVAILABLE_LANGS.slice();
   }
@@ -242,6 +266,7 @@
     setLang:    setLang,
     ensureLang: ensureLang,
     onChange:   onChange,
+    reload:     reload,
     available:  available,
     resolveContentLang: resolveContentLang,
     _STORAGE_KEY: LANG_STORAGE_KEY

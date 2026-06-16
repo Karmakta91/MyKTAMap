@@ -1382,6 +1382,8 @@
   "home.splash.licenceFree": "Licencia libre — uso no comercial",
   "home.splash.proEdition": "Edición profesional",
   "home.splash.proLicense": "Licencia activa · Todos los derechos reservados",
+  "home.splash.craftedWith": "Diseñado con Claude",
+  "home.splash.craftedSub": "Asistente IA · Anthropic",
   "home.tagline": "Cartografía subterránea",
   "imgcal.btn.cancel": "❌ Cancelar",
   "imgcal.btn.restart": "↺ Reiniciar",

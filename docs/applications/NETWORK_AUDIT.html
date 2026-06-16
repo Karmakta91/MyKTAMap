@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.46.6</strong> (14 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.47.0</strong> (16 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1121,6 +1121,17 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.47.0 (Nouveau loader + durcissement i18n)</strong> : <strong>aucune nouvelle surface réseau</strong>
+    (mêmes URLs same-origin, aucune donnée envoyée, whitelist <code>connect-src</code> inchangée). Nouvel asset
+    statique <strong><code>icon/compass.svg</code></strong> (rose des vents vectorielle) ajouté au précache SW
+    (<code>ASSETS_TO_CACHE</code>) — remplace les anciens raster dans le splash / header / mode boussole, juste
+    un fichier local supplémentaire. Les dicos <code>lang/*.json</code> passent de <code>cache:"no-cache"</code>
+    à <strong><code>cache:"reload"</code></strong> (<code>langManager.js</code>) : même requête same-origin, mais
+    le navigateur <strong>ignore son cache HTTP</strong> au lieu de le revalider (garantit un dico frais, sans
+    <code>304</code> périmé après une mise à jour). Aucune télémétrie, aucun header custom.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.46.6 (Cache-buster dicos i18n)</strong> : <strong>aucune nouvelle surface réseau</strong>

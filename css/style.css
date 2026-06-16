@@ -3883,6 +3883,15 @@ html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
   width: 90%;
 }
 
+#splashCompassWrap {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 #splashLogo {
   width: 180px;
   height: 180px;
@@ -3932,95 +3941,83 @@ html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-#splashProgressTrack {
-  width: 240px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-  margin-top: 38px;
-  overflow: hidden;
-  animation: splashTextIn 0.6s ease-out 0.6s both;
-}
-
-#splashProgressBar {
-  width: 0%;
-  height: 100%;
-  background: linear-gradient(90deg, #f4c542 0%, #ffd970 50%, #f4c542 100%);
-  background-size: 200% 100%;
-  border-radius: 4px;
-  animation:
-    splashFill var(--splash-duration, 3000ms) cubic-bezier(0.4, 0, 0.6, 1) forwards,
-    splashShine 1.5s linear infinite;
-  box-shadow: 0 0 12px rgba(244, 197, 66, 0.5);
-}
-
-@keyframes splashFill {
-  from { width: 0%;   }
-  to   { width: 100%; }
-}
-
-@keyframes splashShine {
-  from { background-position: 200% 0; }
-  to   { background-position: -200% 0; }
-}
-
-/* Échelle 0-100 sous la barre de chargement (style "barre d'échelle de carte")
-   Collée directement à la progress bar (pas de gap) */
-#splashScale {
-  width: 240px;
-  margin-top: 0;
-  animation: splashTextIn 0.6s ease-out 0.7s both;
-}
-
-.splash-scale-bar {
-  height: 7px;
-  border: 1px solid rgba(244, 197, 66, 0.45);
-  border-radius: 2px;
-  /* 10 segments alternés jaune (#f4c542) / sombre (#1a1f2e) */
-  background: linear-gradient(
-    to right,
-    #f4c542 0%,    #f4c542 10%,
-    #1a1f2e 10%,   #1a1f2e 20%,
-    #f4c542 20%,   #f4c542 30%,
-    #1a1f2e 30%,   #1a1f2e 40%,
-    #f4c542 40%,   #f4c542 50%,
-    #1a1f2e 50%,   #1a1f2e 60%,
-    #f4c542 60%,   #f4c542 70%,
-    #1a1f2e 70%,   #1a1f2e 80%,
-    #f4c542 80%,   #f4c542 90%,
-    #1a1f2e 90%,   #1a1f2e 100%
-  );
-}
-
-.splash-scale-labels {
-  position: relative;
-  height: 12px;
-  margin-top: 3px;
-  font-size: 9px;
-  color: #8892a4;
-  font-family: 'Courier New', monospace;
-  letter-spacing: 0.04em;
-}
-
-.splash-scale-labels span {
+/* 🧭 v1.47.0 — Arc doré rotatif autour de la boussole = indicateur de
+   chargement continu (remplace l'ancienne barre + échelle 0-100). Tourne
+   tant que le splash est affiché ; l'entrée « calibrage » de la rose
+   (splashLogoIn) tourne indépendamment les ~3.5 premières secondes. */
+#splashSpinArc {
   position: absolute;
-  top: 0;
-  transform: translateX(-50%);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform-origin: center;
+  animation: splashArcSpin 1.5s linear infinite;
+}
+#splashSpinArc circle {
+  stroke: #f4c542;
+  stroke-width: 2.5;
+  opacity: 0.85;
+  filter: drop-shadow(0 0 5px rgba(244, 197, 66, 0.45));
 }
 
-/* Position chaque label centré sur son tick (sauf 0 = aligné gauche, 100 = aligné droit) */
-.splash-scale-labels span:nth-child(1)  { left: 0%;   transform: translateX(0);     }
-.splash-scale-labels span:nth-child(2)  { left: 10%;  }
-.splash-scale-labels span:nth-child(3)  { left: 20%;  }
-.splash-scale-labels span:nth-child(4)  { left: 30%;  }
-.splash-scale-labels span:nth-child(5)  { left: 40%;  }
-.splash-scale-labels span:nth-child(6)  { left: 50%;  }
-.splash-scale-labels span:nth-child(7)  { left: 60%;  }
-.splash-scale-labels span:nth-child(8)  { left: 70%;  }
-.splash-scale-labels span:nth-child(9)  { left: 80%;  }
-.splash-scale-labels span:nth-child(10) { left: 90%;  }
-/* "100" centré sur son tick comme les autres (au lieu de right-aligné qui le collait au "90") */
-.splash-scale-labels span:nth-child(11) { left: 100%; transform: translateX(-50%); }
+@keyframes splashArcSpin {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+/* 👑 v1.47.0 — Crédit Claude (haut-gauche, seul) + version (haut-droite).
+   Coins symétriques ; la boussole trône au centre. Teinte « clay » Claude
+   #d97757 pour le crédit Claude (distinct du doré charte). */
+#splashClaudeCorner {
+  position: absolute;
+  top: calc(18px + env(safe-area-inset-top, 0px));
+  left: 22px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  z-index: 2;
+  user-select: none;
+  pointer-events: none;
+  animation: splashTextIn 0.7s ease-out 0.85s both;
+}
+.splash-claude-mark {
+  font-size: 19px;
+  line-height: 1;
+  color: #d97757;
+  text-shadow: 0 0 14px rgba(217, 119, 87, 0.4);
+}
+.splash-claude-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  text-align: left;
+}
+.splash-claude-main {
+  font-size: 12px;
+  font-weight: 600;
+  color: #d97757;
+  letter-spacing: 0.03em;
+}
+.splash-claude-sub {
+  font-size: 10px;
+  color: #8892a4;
+  letter-spacing: 0.05em;
+}
+
+#splashVersion {
+  position: absolute;
+  top: calc(20px + env(safe-area-inset-top, 0px));
+  right: 22px;
+  font-size: 11px;
+  color: #6c7689;
+  letter-spacing: 0.06em;
+  font-family: 'Courier New', monospace;
+  z-index: 2;
+  user-select: none;
+  pointer-events: none;
+  animation: splashTextIn 0.7s ease-out 0.85s both;
+}
 
 /* 🆕 v1.9.2-fix18 : #splashFooter retiré du DOM (orphelin après extraction
    de #splashLicense en absolute). Règle CSS gardée vide en commentaire au
@@ -4047,7 +4044,10 @@ html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
   /* 🆕 v1.43.20 — Remonté de 70px → 82px depuis que le crédit splash
      occupe 2 lignes (40px de hauteur au lieu de 20px). Sinon la 1re
      ligne des libs chevauchait avec "Édition pro / Licence active". */
-  bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+  /* 🆕 v1.47.0 (KARMA) — Remonté du footer : centré dans le vide entre la
+     tagline et le footer (libs/Karma). vh → se cale au milieu du gap quelle
+     que soit la hauteur d'écran. Centrage horizontal inchangé (left/right 0). */
+  bottom: calc(19vh + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   padding: 0 28px;
@@ -4091,6 +4091,40 @@ html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
   font-style: italic;
   font-weight: 400 !important;
   letter-spacing: 0.01em;
+}
+
+/* 🆕 v1.47.0 — Licence en « pill » (chip bordé charte) au lieu du texte brut,
+   cohérent avec la nouvelle identité du splash. Position bas-centre inchangée
+   (#splashLicense reste absolute + text-align:center → le chip se centre).
+   ⚠️ display scopé #splashLicense pour préserver la bascule community/pro
+   (.kta-instance-pro) sans la casser. */
+#splashLicense .kta-licence-community,
+#splashLicense .kta-licence-pro {
+  background: rgba(244, 197, 66, 0.10);
+  border: 1px solid rgba(244, 197, 66, 0.30);
+  border-radius: 14px;
+  padding: 7px 16px;
+  max-width: 270px;
+}
+#splashLicense .kta-licence-community { display: inline-block; }
+html.kta-instance-pro #splashLicense .kta-licence-community,
+body.kta-instance-pro #splashLicense .kta-licence-community { display: none; }
+#splashLicense .kta-licence-pro { display: none; }
+html.kta-instance-pro #splashLicense .kta-licence-pro,
+body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
+/* Ligne principale community en doré charte (accent), comme la maquette. */
+#splashLicense .kta-licence-community > span:first-child {
+  color: #f4c542;
+  font-weight: 500;
+}
+/* Variant thème clair du pill. */
+html.kta-theme-light #splashLicense .kta-licence-community,
+html.kta-theme-light #splashLicense .kta-licence-pro {
+  background: rgba(201, 153, 31, 0.12) !important;
+  border-color: rgba(201, 153, 31, 0.40) !important;
+}
+html.kta-theme-light #splashLicense .kta-licence-community > span:first-child {
+  color: #8b5a00 !important;
 }
 /* Variant thème clair (cf §53) */
 html.kta-theme-light #splashLicense .kta-licence-pro,
@@ -4200,9 +4234,7 @@ body.kta-theme-light .splash-license-detail-pro {
   #splashLogo { width: 130px; height: 130px; }
   #splashTitle { font-size: 28px; margin-top: 18px; }
   #splashSubtitle { font-size: 12px; }
-  #splashProgressTrack { width: 200px; margin-top: 30px; }
-  #splashScale { width: 200px; margin-top: 0; }
-  .splash-scale-labels { font-size: 8px; }
+  #splashCompassWrap { width: 165px; height: 165px; }
   /* 🆕 v1.9.2-fix18 : #splashFooter retiré du DOM, règle obsolète
      supprimée. Le KARMA img + crédits gardent leurs paliers mobiles. */
   #splashKarmaImg { height: 18px; }
@@ -4214,7 +4246,7 @@ body.kta-theme-light .splash-license-detail-pro {
     line-height: 18px;
   }
   /* 🆕 v1.43.20 — Mobile : remonté 56px → 78px (crédit splash 2 lignes = 36px). */
-  #splashLicense { bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
+  #splashLicense { bottom: calc(19vh + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Mode paysage mobile : compact */
@@ -4222,9 +4254,7 @@ body.kta-theme-light .splash-license-detail-pro {
   #splashLogo { width: 90px; height: 90px; }
   #splashTitle { font-size: 22px; margin-top: 12px; }
   #splashSubtitle { font-size: 10px; }
-  #splashProgressTrack { margin-top: 16px; }
-  #splashScale { margin-top: 0; }
-  .splash-scale-labels { font-size: 8px; height: 10px; }
+  #splashCompassWrap { width: 120px; height: 120px; }
   #splashKarmaImg { height: 16px; }
   #splashLeafletCredit {
     /* 🆕 v1.43.19 — Landscape compact : 2 lignes de 16px = 32px total. */
@@ -4234,7 +4264,7 @@ body.kta-theme-light .splash-license-detail-pro {
   #splashLicense {
     font-size: 10px;
     /* 🆕 v1.43.20 — Landscape compact : remonté 46px → 70px (crédit 2 lignes = 32px). */
-    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(16vh + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -15316,33 +15346,21 @@ html.kta-theme-light #splashTitle {
 html.kta-theme-light #splashSubtitle {
   color: #6b6354 !important;
 }
-html.kta-theme-light #splashProgressTrack {
-  background: rgba(0, 0, 0, 0.10) !important;
+/* 🆕 v1.47.0 — Arc de chargement : doré charte trop clair sur fond beige →
+   doré sombre (darkgoldenrod) pour le contraste. Crédit Claude « clay » +
+   version : assombris pour rester lisibles sur le thème clair. */
+html.kta-theme-light #splashSpinArc circle {
+  stroke: #b8860b !important;
+  opacity: 0.9 !important;
 }
-html.kta-theme-light #splashProgressBar {
-  /* La barre de progression garde son gradient jaune charte mais on
-     ajuste le glow pour le fond clair */
-  box-shadow: 0 0 12px rgba(244, 197, 66, 0.65) !important;
+html.kta-theme-light .splash-claude-mark,
+html.kta-theme-light .splash-claude-main {
+  color: #c15f3f !important;
 }
-/* Échelle 0-100 sous la barre — bandes alternées : remplace le #1a1f2e
-   sombre par un brun-beige cohérent fond clair */
-html.kta-theme-light .splash-scale-bar {
-  background: linear-gradient(
-    to right,
-    #f4c542 0%,    #f4c542 10%,
-    #9a8754 10%,   #9a8754 20%,
-    #f4c542 20%,   #f4c542 30%,
-    #9a8754 30%,   #9a8754 40%,
-    #f4c542 40%,   #f4c542 50%,
-    #9a8754 50%,   #9a8754 60%,
-    #f4c542 60%,   #f4c542 70%,
-    #9a8754 70%,   #9a8754 80%,
-    #f4c542 80%,   #f4c542 90%,
-    #9a8754 90%,   #9a8754 100%
-  ) !important;
-  border-color: rgba(154, 135, 84, 0.65) !important;
+html.kta-theme-light .splash-claude-sub {
+  color: #6b6354 !important;
 }
-html.kta-theme-light .splash-scale-labels span {
+html.kta-theme-light #splashVersion {
   color: #6b6354 !important;
 }
 html.kta-theme-light #splashLicense {
