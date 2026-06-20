@@ -2548,7 +2548,9 @@ Appuyez sur **⬇️ → 📥 Importer une session** pour ouvrir la fenêtre d'i
 
 ### 📊 Éditeur de données du plan
 
-Appuyez sur **⬇️ → 📊 Éditeur de données du plan** pour ouvrir l'éditeur en tableau. Vous pouvez **voir, modifier et exporter** les données du plan (points, tracés, zones, structures).
+Appuyez sur **⬇️ → 📊 Éditeur de données du plan** (en mode carte) **ou** sur le bouton **📊 Éditeur de données** de l'accueil pour ouvrir l'éditeur en tableau. Vous pouvez **voir, modifier et exporter** les données du plan (points, tracés, zones, structures).
+
+> ℹ️ Depuis l'**accueil**, aucun plan n'est encore chargé : seules les sources **📦 ZIP** et **📄 JSON** sont proposées (pas de « plan en cours »).
 
 #### Ouverture — 3 sources *(depuis v1.48.0)*
 

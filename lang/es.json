@@ -1044,6 +1044,7 @@
   "history.undone": "↩ Deshecho: ",
   "home.add.drop": "Arrastra tu archivo <strong>ZIP</strong>, un <strong>KMZ</strong> o un <strong>GPX MyKTAMap</strong> aquí",
   "home.add.dropSub": "o haz clic para seleccionar",
+  "home.add.editData": "📊 Editor de datos",
   "home.add.fsBtn": "🔐 Autorizar el acceso permanente al archivo",
   "home.add.fsInfo": "En Chrome/Edge, autoriza una vez y la app podrá reabrir este ZIP con 1 clic después.",
   "home.add.generate": "🏗️ Generar un mapa",

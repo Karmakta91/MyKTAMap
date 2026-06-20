@@ -1046,6 +1046,7 @@
   "history.undone": "↩ Undone: ",
   "home.add.drop": "Drop your <strong>ZIP</strong> archive, a <strong>KMZ</strong> or a <strong>GPX MyKTAMap</strong> here",
   "home.add.dropSub": "or click to select",
+  "home.add.editData": "📊 Data editor",
   "home.add.fsBtn": "🔐 Allow permanent file access",
   "home.add.fsInfo": "On Chrome/Edge, allow once and the app will be able to reopen this ZIP in 1 click.",
   "home.add.generate": "🏗️ Generate a map",

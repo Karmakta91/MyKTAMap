@@ -327,13 +327,13 @@
           <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">${window.I18n.t("tabledit.accueil.aide")}</p>
           <div id="kta-tbl-accueil-err" class="kta-conv-erreur" style="display:${errMsg ? "block" : "none"}; margin-bottom:12px;">${errMsg ? _escapeHtml(errMsg) : ""}</div>
           <div class="kta-tbl-sources">
-            <button class="kta-tbl-source-card" id="kta-tbl-src-plan" ${planDispo ? "" : "disabled"}>
+            ${planDispo ? `<button class="kta-tbl-source-card" id="kta-tbl-src-plan">
               <span class="kta-tbl-source-ico">🗺️</span>
               <span class="kta-tbl-source-txt">
                 <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.planCourant")}</span>
-                <span class="kta-tbl-source-hint">${window.I18n.t(planDispo ? "tabledit.source.planCourantHint" : "tabledit.source.planAbsent")}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.planCourantHint")}</span>
               </span>
-            </button>
+            </button>` : ""}
             <button class="kta-tbl-source-card" id="kta-tbl-src-zip">
               <span class="kta-tbl-source-ico">📦</span>
               <span class="kta-tbl-source-txt">

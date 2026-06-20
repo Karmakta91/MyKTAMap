@@ -1557,7 +1557,7 @@ fermeture des modales actives).
 
 ### 91. Éditeur de données du plan — refonte 3 sources + édition note tracés/zones (v1.48.0)
 
-Refonte de `js/tableEditor.js` (ex-« Éditeur de tableau JSON » → **« Éditeur de données du plan »**). Ouvert via sidebar ⬇️ → 📊 (`window.ouvrirTableEditor`).
+Refonte de `js/tableEditor.js` (ex-« Éditeur de tableau JSON » → **« Éditeur de données du plan »**). Ouvert via **sidebar carte** ⬇️ → 📊 **ET le home** (`index.html` `loaderTableEditorBtn`, à côté du Générateur) → `window.ouvrirTableEditor`. Au home, `PLAN_CONFIG` est `null` (reset `config.js > resetRuntimeAssets`) → `planDispo` faux → la carte « Plan en cours » est **masquée** (pas seulement grisée), donc 2 sources seulement (ZIP + JSON).
 
 #### 91.1 Écran d'accueil — 3 sources (`_afficherAccueil`)
 

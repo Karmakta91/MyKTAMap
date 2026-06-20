@@ -1046,6 +1046,7 @@
   "history.undone": "↩ Annulé : ",
   "home.add.drop": "Glisse ton archive <strong>ZIP</strong>, un <strong>KMZ</strong> ou un <strong>GPX MyKTAMap</strong> ici",
   "home.add.dropSub": "ou clique pour sélectionner",
+  "home.add.editData": "📊 Éditeur de données",
   "home.add.fsBtn": "🔐 Autoriser l'accès permanent au fichier",
   "home.add.fsInfo": "Sur Chrome/Edge, autorise une fois et l'app pourra rouvrir ce ZIP en 1 clic ensuite.",
   "home.add.generate": "🏗️ Générer un plan",

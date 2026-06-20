@@ -2542,7 +2542,9 @@ Press **⬇️ → 📥 Import a session** to open the import window. A modal di
 
 ### 📊 Plan data editor
 
-Press **⬇️ → 📊 Plan data editor** to open the table editor. You can **view, edit and export** the plan's data (points, paths, zones, structures).
+Press **⬇️ → 📊 Plan data editor** (in map mode) **or** the **📊 Data editor** button on the home screen to open the table editor. You can **view, edit and export** the plan's data (points, paths, zones, structures).
+
+> ℹ️ From the **home screen**, no plan is loaded yet: only the **📦 ZIP** and **📄 JSON** sources are offered (no "current plan").
 
 #### Opening — 3 sources *(since v1.48.0)*
 
