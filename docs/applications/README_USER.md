@@ -2546,44 +2546,39 @@ Appuyez sur **⬇️ → 📥 Importer une session** pour ouvrir la fenêtre d'i
 3. Un **avertissement** vous prévient que l'import remplacera votre session en cours — pensez à exporter avant si nécessaire
 4. Cliquez sur **Importer** pour valider, ou **Annuler** pour fermer sans rien changer
 
-### 📊 Éditer un fichier JSON
+### 📊 Éditeur de données du plan
 
-Appuyez sur **⬇️ → 📊 Éditer un fichier JSON** pour ouvrir l'éditeur de tableau. Permet de modifier en masse les points d'un calque ou d'une session.
+Appuyez sur **⬇️ → 📊 Éditeur de données du plan** pour ouvrir l'éditeur en tableau. Vous pouvez **voir, modifier et exporter** les données du plan (points, tracés, zones, structures).
 
-#### Ouverture
+#### Ouverture — 3 sources *(depuis v1.48.0)*
 
-1. **Glissez-déposez** un fichier `.json` (calque de données type `puit.json`, ou session `devmap-session.json`)
-2. Le format est détecté automatiquement
-3. Le tableau s'affiche avec une colonne par champ détecté
+1. **🗺️ Plan en cours** — liste les calques de données du plan ouvert (puits, accès, tracés, zones…). Choisissez-en un à éditer.
+2. **📦 Importer un ZIP** — récupère la liste des calques de données d'un plan complet (`.zip`).
+3. **📄 Importer un fichier JSON** — un seul fichier de données ou de session (glisser-déposer).
+
+Si une source contient plusieurs jeux de données, un **sélecteur** s'affiche (chacun avec son nombre d'éléments). Le tableau s'ouvre ensuite avec une colonne par champ détecté.
 
 #### Édition
 
 - **Cliquez sur une cellule** pour la modifier (sauf l'ID, en lecture seule)
-- **Tab** : passe à la cellule suivante
-- **Entrée** : passe à la ligne suivante (même colonne)
-- **Échap** : annule la modification en cours
+- **Tab** : passe à la cellule suivante · **Entrée** : ligne suivante (même colonne) · **Échap** : annule
 - **Coordonnées** : si X ou Y est hors du plan, la cellule devient rouge avec un avertissement ⚠
-- **Tags** : cliquez sur la cellule pour ouvrir un sélecteur multi-tags avec aperçu des icônes. Tu peux aussi créer un nouveau tag à la volée
+- **Tags** : cliquez sur la cellule pour ouvrir un sélecteur multi-tags avec aperçu des icônes (création de tag à la volée possible)
+- **🔒 Tracés / zones / structures** : vous pouvez éditer la **note** (description), le **type** et le **niveau**, mais la **géométrie** (la colonne `points`) reste en **lecture seule** — pour la redessiner, utilisez les outils de tracé sur la carte.
 
-#### Actions
+#### Actions *(points uniquement)*
 
-- **🔍 Recherche** : filtre toutes les colonnes
-- **Trier** : clique sur l'en-tête d'une colonne (asc → desc → annulé)
-- **Sélection multiple** : checkbox + Maj+clic pour une plage
-- **+ Ajouter ligne** : nouvelle ligne vide en bas
-- **📋 Dupliquer** : copie les lignes sélectionnées
-- **🗑️ Supprimer** : retire les lignes sélectionnées (confirmation requise)
-- **📍 Voir sur la carte** : affiche les points sélectionnés en orange clignotant sur le plan
+- **🔍 Recherche** filtre toutes les colonnes · **Trier** : clic en-tête (asc → desc → annulé) · **Sélection multiple** : checkbox + Maj+clic
+- **+ Ajouter ligne** · **📋 Dupliquer** · **🗑️ Supprimer** (confirmation) · **📍 Voir sur la carte** (points sélectionnés en orange clignotant)
 
-#### Sauvegarde
+#### Sauvegarde *(jamais de chargement en direct pour les données du plan)*
 
-Bouton **💾 Sauvegarder** → 3 choix :
+Bouton **💾 Sauvegarder** :
 
-| Option | Effet |
+| Cas | Effet |
 |---|---|
-| **📥 Télécharger** | Récupère le fichier `.json` modifié |
-| **🗺️ Remplacer le calque** | Met à jour le calque correspondant en mémoire (si format `data` et calque chargé sur le plan en cours) |
-| **✏️ Remplacer la session** | Remplace les points ajoutés de la session en cours (si format `editorPoints`) |
+| **Données du plan** (points / tracés / zones / structures) | **📥 Télécharger** le fichier `.json` modifié. ⚠️ Pour les **appliquer**, réimportez ce fichier dans le **Générateur** (🏗️) — l'éditeur ne modifie jamais le plan en direct sur la carte. |
+| **Session** (vos annotations en cours) | **📥 Télécharger** **ou** **✏️ Remplacer la session en cours** (mise à jour live de vos points de session). |
 
 > ⚠️ Si vous fermez la fenêtre avec des modifications non sauvegardées, une confirmation vous propose de sauvegarder, quitter sans sauvegarder, ou continuer l'édition.
 

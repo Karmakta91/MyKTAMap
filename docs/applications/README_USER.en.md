@@ -752,7 +752,7 @@ All tools are accessible from the **right side bar**, organized into 11 groups:
 | **Help / Docs / Legend** | 📚 | Help, documentation, icon legend |
 | **Settings** | ⚙️ | Settings, scale calibration, debug *(direct click)* |
 | **Search** | 🔍 | Quickly find a point on the map *(direct click)* |
-| **Load / Import** | ⬇️ | Import a session, edit a JSON file, change map |
+| **Load / Import** | ⬇️ | Import a session, open the plan data editor, change map |
 | **Create / Modify map** | 🏗️ | Map generator *(direct click)* |
 | **Save** | ⬆️ | Save your session (3 modes), export the map as an image |
 | **Tracker** | 🧭 | Start / stop tracking, recalibrate your position |
@@ -2540,44 +2540,39 @@ Press **⬇️ → 📥 Import a session** to open the import window. A modal di
 3. A **warning** notifies you that the import will replace your current session — remember to export before if necessary
 4. Click **Import** to validate, or **Cancel** to close without changing anything
 
-### 📊 Edit a JSON file
+### 📊 Plan data editor
 
-Press **⬇️ → 📊 Edit a JSON file** to open the table editor. Lets you bulk edit the points of a layer or session.
+Press **⬇️ → 📊 Plan data editor** to open the table editor. You can **view, edit and export** the plan's data (points, paths, zones, structures).
 
-#### Opening
+#### Opening — 3 sources *(since v1.48.0)*
 
-1. **Drag and drop** a `.json` file (data layer like `puit.json`, or session `devmap-session.json`)
-2. The format is auto-detected
-3. The table displays with one column per detected field
+1. **🗺️ Current plan** — lists the data layers of the open plan (shafts, accesses, paths, zones…). Pick one to edit.
+2. **📦 Import a ZIP** — retrieves the data layers from a full plan (`.zip`).
+3. **📄 Import a JSON file** — a single data or session file (drag and drop).
+
+If a source contains several datasets, a **selector** appears (each with its element count). The table then opens with one column per detected field.
 
 #### Editing
 
 - **Click a cell** to edit it (except ID, read-only)
-- **Tab**: move to next cell
-- **Enter**: move to next row (same column)
-- **Esc**: cancel the current edit
+- **Tab**: next cell · **Enter**: next row (same column) · **Esc**: cancel
 - **Coordinates**: if X or Y is off the map, the cell turns red with a warning ⚠
-- **Tags**: click the cell to open a multi-tag selector with icon preview. You can also create a new tag on the fly
+- **Tags**: click the cell to open a multi-tag selector with icon preview (you can create a new tag on the fly)
+- **🔒 Paths / zones / structures**: you can edit the **note** (description), **type** and **level**, but the **geometry** (the `points` column) stays **read-only** — to redraw it, use the drawing tools on the map.
 
-#### Actions
+#### Actions *(points only)*
 
-- **🔍 Search**: filters all columns
-- **Sort**: click a column header (asc → desc → cancelled)
-- **Multi-selection**: checkbox + Shift+click for a range
-- **+ Add row**: new empty row at the bottom
-- **📋 Duplicate**: copies the selected rows
-- **🗑️ Delete**: removes the selected rows (confirmation required)
-- **📍 View on map**: displays the selected points in flashing orange on the map
+- **🔍 Search** filters all columns · **Sort**: click a header (asc → desc → cancelled) · **Multi-selection**: checkbox + Shift+click
+- **+ Add row** · **📋 Duplicate** · **🗑️ Delete** (confirmation) · **📍 View on map** (selected points in flashing orange)
 
-#### Saving
+#### Saving *(plan data is never loaded live)*
 
-**💾 Save** button → 3 choices:
+**💾 Save** button:
 
-| Option | Effect |
+| Case | Effect |
 |---|---|
-| **📥 Download** | Retrieves the modified `.json` file |
-| **🗺️ Replace layer** | Updates the corresponding layer in memory (if `data` format and layer loaded on current map) |
-| **✏️ Replace session** | Replaces the added points of the current session (if `editorPoints` format) |
+| **Plan data** (points / paths / zones / structures) | **📥 Download** the modified `.json` file. ⚠️ To **apply** it, re-import that file in the **Generator** (🏗️) — the editor never changes the plan live on the map. |
+| **Session** (your current annotations) | **📥 Download** **or** **✏️ Replace the current session** (live update of your session points). |
 
 > ⚠️ If you close the window with unsaved modifications, a confirmation offers to save, quit without saving, or continue editing.
 

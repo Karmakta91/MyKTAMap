@@ -2,7 +2,7 @@
   "version": "v1.48.0",
   "released": "2026-06-20",
   "notes": [
-    "🚧 Vous pouvez maintenant indiquer des zones à éviter dans le calcul d'itinéraire, en plus des points et des passages.",
-    "🎯 Un curseur de visée rouge facilite le pointage sur les plans clairs, et vos légendes personnalisées sont conservées dans l'export de session."
+    "📊 Nouvel éditeur de données du plan : visualisez, modifiez et exportez les données (points, tracés, zones) du plan en cours ou d'un ZIP, sous forme de tableau.",
+    "🚧 Évitement de zones dans le calcul d'itinéraire, curseur de visée rouge sur les plans clairs, et légendes personnalisées conservées à l'export de session."
   ]
 }
