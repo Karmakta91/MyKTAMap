@@ -1837,7 +1837,13 @@
         // pour cohérence avec le format attendu en import).
         measure:      { points: d.mesure || [] },
         // 🆕 v1.12.0-fix : mesure de surface dans l'export Full
-        measureSurface: { points: d.mesureSurface || [] }
+        measureSurface: { points: d.mesureSurface || [] },
+        // 🆕 v1.48.0 (KARMA) : LÉGENDE CUSTOM → session AUTOPORTANTE. Les types
+        // custom (zones/tracés/tags/structures inventés par l'user) gardent
+        // label+couleur+icône à l'import, même sur un ZIP vierge. Miroir de
+        // SessionPersist (qui embarquait déjà getSessionState au reload).
+        customLegend: (window.LegendCustomization && window.LegendCustomization.getSessionState)
+                        ? window.LegendCustomization.getSessionState() : null
       };
 
       // 🆕 v1.21.2 (KARMA "tu enrengister dans export session le tracker ?
@@ -2050,6 +2056,11 @@
         // 🆕 v1.12.0-fix : mesure de surface dans le JSON Avancé
         if (mesureSurfPts.length)      session.measureSurface = { points: mesureSurfPts };
         if (tracker)                   session.tracker        = tracker;
+        // 🆕 v1.48.0 : légende custom si non vide → session autoportante.
+        if (window.LegendCustomization && window.LegendCustomization.getSessionState &&
+            window.LegendCustomization.isSessionStateEmpty && !window.LegendCustomization.isSessionStateEmpty()) {
+          session.customLegend = window.LegendCustomization.getSessionState();
+        }
         if (photos.length > 0) {
           session.photosCount   = photos.length;
           session.photosTotalKB = Math.round(pack.totalSize / 1024);

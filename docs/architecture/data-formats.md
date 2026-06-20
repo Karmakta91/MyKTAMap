@@ -71,9 +71,12 @@
   "editorPoints": [ ... ],
   "roads":   [ { "type": "principal", "points": [...] } ],
   "zones":   [ { "type": "eau",       "points": [...] } ],
-  "measure": { "points": [...] }
+  "measure": { "points": [...] },
+  "customLegend": { "schemaVersion": 1, "labels": {...}, "hidden": [...], "customEntries": [...] }
 }
 ```
+
+→ **`customLegend`** (depuis v1.48.0) = état de légende personnalisée de l'utilisateur (renommages, masquages, types custom), sérialisé via `LegendCustomization.getSessionState()`. **Optionnel** : présent dans l'export complet, omis dans l'export « avancé » si l'état est vide. Restauré à l'import via `LegendCustomization.loadSessionState()` → rend la session **autoportante** même importée sur un ZIP « legacy » sans légende baked. Les **roads/zones n'ont pas d'`id`** (snapshot brut `{type, points, label?, level?}`) ; l'id de zone utilisé par l'évitement d'itinéraire est **dérivé au runtime** (`z_<type>_<x>_<y>_<n>`), jamais écrit dans l'export.
 
 ### Format export liste de plans
 

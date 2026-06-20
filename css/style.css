@@ -1305,8 +1305,16 @@ html.kta-theme-light .kta-lost-warn-overflow strong {
   pointer-events: none;
 }
 
-/* Curseur crosshair pendant le mode clic carte */
-body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
+/* 🆕 v1.48.0 — Curseur de PRÉCISION (a11y). Réticule or + contour sombre +
+   point central = visible sur plan BLANC comme SOMBRE (l'ancien crosshair
+   noir fin disparaissait sur fond blanc). Appliqué dès qu'un mode « clic sur
+   la carte » est actif : édition/mesure/recalage/tracé/zone/structure (classe
+   body.kta-precision-mode posée par interface.js) + mode « perdu ». Hotspot
+   centré (14,14) = le point cliqué. Fallback `crosshair` (vieux navigateurs). */
+body.kta-precision-mode .leaflet-container,
+body.kta-lost-click-mode .leaflet-container {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M14 3V11M14 17V25M3 14H11M17 14H25' stroke='%23000' stroke-width='4.5' opacity='0.85'/%3E%3Cpath d='M14 3V11M14 17V25M3 14H11M17 14H25' stroke='%23ff1e1e' stroke-width='2'/%3E%3C/g%3E%3Ccircle cx='14' cy='14' r='2.2' fill='%23000' opacity='0.85'/%3E%3Ccircle cx='14' cy='14' r='1.2' fill='%23ff1e1e'/%3E%3C/svg%3E") 14 14, crosshair !important;
+}
 
 /* === Bloc accordion "📚 Bonnes pratiques" — couleur ambre #f4c542 === */
 .kta-lost-pratiques {
@@ -8618,6 +8626,27 @@ html.kta-theme-light .kta-cfg-group-titre {
   flex-wrap: wrap;
   gap: 6px;
 }
+/* 🆕 v1.48.0 — Checklist « Zones à éviter » (modale itinéraire). */
+.kta-iti-avoid-zones-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.kta-iti-avoid-zone-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #d7dbe6;
+  cursor: pointer;
+}
+.kta-iti-avoid-zone-row:hover { background: rgba(255, 255, 255, 0.07); }
+.kta-iti-avoid-zone-cb { accent-color: #ff1e1e; cursor: pointer; }
 .kta-iti-avoid-tag-chip {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.15);

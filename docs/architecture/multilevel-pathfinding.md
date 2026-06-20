@@ -238,19 +238,20 @@ window.passeFiltreNiveau = function(item) {
 
 #### 31.2 Préférences d'évitement (contrainte SOUPLE)
 
-**Configurées dans la modale itinéraire**, section repliable "🚫 Préférences d'évitement (optionnel)". Persisté en localStorage par plan : `localStorage["myktamap_route_avoid_<planId>"] = { points: [{x,y,label,id?}], tags: [...], radius: 100 }`.
+**Configurées dans la modale itinéraire**, section repliable "🚫 Préférences d'évitement (optionnel)". Persisté en localStorage par plan : `localStorage["myktamap_route_avoid_<planId>"] = { points: [{x,y,label,id?}], tags: [...], zones: [...], radius: 100 }`.
 
-**3 types de contraintes** :
+**4 types de contraintes** :
 1. **Points explicites** : `avoidPoints: [{x, y, label?, id?}, ...]`. **3 méthodes d'ajout** côté UI :
    - **Autocomplete** : `SearchPoints.findByQuery` (recherche par nom/id/tag)
    - **Saisie ID exact** : `Pathfinder.resolvePointById` (input texte + bouton Ajouter)
    - **Clic carte** : bouton "📍 Cliquer sur la carte" → mode flottant orange (`_itiAvoidClickActive`, handler isolé du mode clic waypoints), chaque clic ajoute un point d'évitement aux prefs (label "📍 Clic carte (x, y)"). Cf. `_activerModeClicAvoid` / `_desactiverModeClicAvoid` dans interface.js.
 2. **Tags** : `avoidTags: ["pa", "danger", ...]` → expansion auto en tous les points du plan portant ces tags (via `SearchPoints.getAllPoints`, **async**)
 3. **Marge** : `avoidRadius` px (défaut 100, configurable 0-500)
+4. **Zones** (depuis v1.48.0) : `avoidZones: ["z_eau_120_88_4", ...]` → liste d'**ids de zone dérivés** à contourner. Les zones n'ayant **pas d'id en data**, l'id est calculé au runtime par `_zoneDerivedId(z)` = `"z_" + type + "_" + round(p0.x) + "_" + round(p0.y) + "_" + points.length` (stable tant que la zone ne bouge pas, jamais persisté). `getAvoidableZones()` (exposé `window.getAvoidableZones`) liste les zones évitables — **exclut le type `inaccessible`** (déjà une contrainte DURE, cf. §31.1, l'éviter en souple serait redondant/contradictoire). `_collecterZonesAEviter(ids)` re-résout les ids en objets zone au moment du calcul. Côté pathfinder, un segment traversant une zone à éviter est coupé du graphe via `_segmentBloqueParZoneInaccess(prevP, p, segLevel, avoidZones)` (même primitive géométrique que les zones inaccessibles, mais appliquée en passe souple uniquement).
 
 **Algo 2 passes** (clé du fallback) :
-1. **Passe 1** : `_computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, allAvoidPts, avoidRadius)` — graphe avec dur+souple, tentative Dijkstra
-2. Si échec ET `hasAvoidances` → **Passe 2** : `_computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, [], 0)` — graphe avec dur uniquement
+1. **Passe 1** : `_computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, allAvoidPts, avoidRadius, avoidZones)` — graphe avec dur+souple (points **et** zones évitées), tentative Dijkstra
+2. Si échec ET `hasAvoidances` → **Passe 2** : `_computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, [], 0, [])` — graphe avec dur uniquement (zones évitées **et** points relâchés)
 3. Si Passe 2 OK → marqué `usedFallback: true` + détection des points évités traversés via `_pathPassesNearPoint(path, ap, radius)` → renvoyé dans `avoidedThrough`. UI affiche "⚠️ Impossible d'éviter : ..." en bloc orange.
 4. Si Passe 2 échoue aussi → erreur relancée (vraie absence de chemin, zone inaccessible bloquante ou réseau disconnect).
 
@@ -273,11 +274,12 @@ window.passeFiltreNiveau = function(item) {
 
 **Helpers localStorage** : `_getItiAvoidPrefs`, `_setItiAvoidPrefs`, `_itiAvoidLsKey` (clé par planId pour ne pas mélanger entre plans)
 
-**HTML section** : `_htmlSectionAvoidItineraire(prefs)` génère le `<details>` repliable avec 3 sous-blocs (Points / Tags / Marge) + reset
+**HTML section** : `_htmlSectionAvoidItineraire(prefs)` génère le `<details>` repliable avec 4 sous-blocs (Points / Tags / **Zones** / Marge) + reset
 
 **Rendu** :
 - `_rafraichirListeAvoidPoints` (sync) : chips orange pour chaque point évité avec ✕
 - `_rafraichirChipsAvoidTags` (async, await `_itiAvoidGetAvailableTags`) : chips toggleables pour les tags du plan
+- `_rafraichirListeAvoidZones` (depuis v1.48.0) : checklist (`#kta-iti-avoid-zones-list`) bâtie depuis `window.getAvoidableZones()` ; chaque toggle persiste l'id dérivé dans `prefs.zones`. Liste vide → message `iti.avoid.zonesEmpty`. Appelée au premier rendu de la modale **et** au reset des préférences.
 
 **Bind handlers** : `_bindAvoidSectionHandlers` :
 - Autocomplete avec debounce 150ms (réutilise `SearchPoints.findByQuery`)

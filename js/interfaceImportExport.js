@@ -723,6 +723,14 @@ function ouvrirImportSession() {
     _restorerPhotos().then(function() {
       try {
         if (window.setEditorPoints)    window.setEditorPoints(dataParsee.editorPoints || []);
+        // 🆕 v1.48.0 (KARMA) : restaure la LÉGENDE CUSTOM de la session (labels +
+        // entrées custom : zones/tracés/tags/structures inventés par l'user) AVANT
+        // les re-renders → les types custom retrouvent label+couleur+icône, même
+        // sur un ZIP vierge. Stratégie : REMPLACE l'état légende session (miroir
+        // SessionPersist). Rétro-compat : fichiers sans customLegend → null = vide.
+        if (window.LegendCustomization && typeof window.LegendCustomization.loadSessionState === "function") {
+          window.LegendCustomization.loadSessionState(dataParsee.customLegend || null);
+        }
         if (window.renderEditorPoints) window.renderEditorPoints();
         if (window.resetMesure)        window.resetMesure();
         if (window.setMeasurePoints) {

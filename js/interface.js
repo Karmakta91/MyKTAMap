@@ -758,6 +758,39 @@ function _fermerModeStructure() {
 }
 
 // =========================
+// 🆕 v1.48.0 — CURSEUR DE PRÉCISION (a11y)
+// =========================
+// Sur un plan à FOND BLANC, le curseur crosshair (trait noir fin) / la main
+// "grab" sont peu visibles. Fix : un réticule contrasté (cf css/style.css,
+// body.kta-precision-mode .leaflet-container) appliqué dès qu'un mode « clic sur
+// la carte » est actif. Les 6 flags window.modeX sont posés à des endroits
+// DISPERSÉS (édition/mesure/recalage en direct, road/zone/structure via
+// _activerMode) → plutôt que des hooks fragiles à chaque site, on intercepte les
+// ÉCRITURES de ces flags par des accesseurs (1 seul point). Les flags sont de
+// simples window props (window.modeX = false/null à l'init, pas `var`) → la
+// redéfinition est sûre. modeRoad/modeStructure = null|chaîne, les autres =
+// bool → `!!store[k]` couvre les deux.
+(function _initPrecisionCursor() {
+  var FLAGS = ["modeEdition", "modeMesure", "modeRecalage", "modeRoad", "modeZone", "modeStructure"];
+  var store = {};
+  function _sync() {
+    var on = FLAGS.some(function(k) { return !!store[k]; });
+    if (document.body) document.body.classList.toggle("kta-precision-mode", on);
+  }
+  FLAGS.forEach(function(k) {
+    store[k] = window[k];
+    try {
+      Object.defineProperty(window, k, {
+        configurable: true, enumerable: true,
+        get: function() { return store[k]; },
+        set: function(v) { store[k] = v; _sync(); }
+      });
+    } catch (e) { /* flag non-configurable (improbable) → on laisse tel quel */ }
+  });
+  _sync();
+})();
+
+// =========================
 // AVERTISSEMENT TRACKER (popup au ▶️ Play)
 // =========================
 // Affiche une popup d'avertissement la PREMIÈRE FOIS que l'utilisateur clique

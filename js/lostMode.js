@@ -551,7 +551,10 @@
     _desactiverClicCarte();
     _clickModeActive = true;
     document.body.classList.add("kta-lost-click-mode");
-    window.map.getContainer().style.cursor = "crosshair";
+    // 🆕 v1.48.0 : curseur géré par CSS (body.kta-lost-click-mode → réticule
+    // de précision contrasté). On n'impose plus de crosshair inline (qui
+    // écraserait le curseur custom de la charte).
+    window.map.getContainer().style.cursor = "";
     _clickHandler = function(e) {
       const x = Math.round(e.latlng.lng);
       const y = Math.round((window.APP_CONFIG.imageHeight || 0) - e.latlng.lat);

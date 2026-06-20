@@ -1,7 +1,8 @@
 {
-  "version": "v1.47.0",
-  "released": "2026-06-16",
+  "version": "v1.48.0",
+  "released": "2026-06-20",
   "notes": [
-    "🧭 Nouvel écran de démarrage repensé autour de la rose des vents : plus épuré, net et animé, avec le numéro de version affiché."
+    "🚧 Vous pouvez maintenant indiquer des zones à éviter dans le calcul d'itinéraire, en plus des points et des passages.",
+    "🎯 Un curseur de visée rouge facilite le pointage sur les plans clairs, et vos légendes personnalisées sont conservées dans l'export de session."
   ]
 }
