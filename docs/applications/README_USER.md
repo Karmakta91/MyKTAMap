@@ -1177,7 +1177,7 @@ Dans la modale itinéraire, une section repliable **🚫 Préférences d'évitem
 |---|---|
 | **📍 Points à éviter** | **3 méthodes** au choix : (a) recherche autocomplete dans le champ texte, (b) saisie par ID exact, (c) **📍 Cliquer sur la carte** : bascule en mode clic, chaque clic sur la map ajoute un point. Chips orange avec ✕ pour retirer. |
 | **🏷️ Tags à éviter** | Clique un chip pour le toggler. Tous les points portant ce tag seront évités (ex: tu actives `pa` → tous les puits aération sont évités). |
-| **⬛ Zones à éviter** *(depuis v1.48.0)* | Coche une zone dans la liste pour que l'itinéraire la **contourne** (zones d'eau, remblais, effondrement…). Les zones **⛔ inaccessibles** n'apparaissent pas ici : elles sont déjà infranchissables (contrainte dure, jamais relâchée). |
+| **⬛ Zones à éviter** *(depuis v1.48.0)* | Coche un **type de zone** dans la liste (Eau, Effondrement, tes types personnalisés…) pour que l'itinéraire **contourne** toutes les zones de ce type. Les zones **⛔ inaccessibles** n'apparaissent pas ici : elles sont déjà infranchissables (contrainte dure, jamais relâchée). |
 | **📏 Marge** | Distance autour des points évités (px, défaut 100). Tout segment de route à moins de cette marge est exclu du graphe. |
 
 **Comportement** :

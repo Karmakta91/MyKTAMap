@@ -245,33 +245,52 @@
   }
 
   // 🆕 v1.48.0 — ÉVITEMENT DE ZONES NOMMÉES (contrainte SOUPLE)
-  // ID dérivé d'une zone (stable sans persistance) : type + 1er sommet arrondi +
-  // nb de points. Désigne UNE zone précise pour l'évitement par itinéraire.
-  // Change si la zone est éditée (sommet déplacé) → la préférence se déréférence.
-  function _zoneDerivedId(z) {
-    if (!z || !Array.isArray(z.points) || z.points.length === 0) return "";
-    var p0 = z.points[0];
-    return "z_" + (z.type || "?") + "_" + Math.round(p0.x) + "_" + Math.round(p0.y) + "_" + z.points.length;
+  // Label user-facing d'un TYPE de zone (comme les autres filtres) :
+  //  - type custom (cust-…) → label de l'entrée legend ("galerie basse") via
+  //    findCustomEntry (getLabel ne consulte PAS customEntries) ;
+  //  - type built-in → getLabel "zones" ("Eau", "Effondrement"…).
+  function _zoneTypeLabel(type) {
+    var LC = window.LegendCustomization;
+    if (LC && typeof LC.findCustomEntry === "function") {
+      try { var e = LC.findCustomEntry(type); if (e && e.label) return e.label; } catch(_e) {}
+    }
+    if (LC && typeof LC.getLabel === "function") {
+      try { var lbl = LC.getLabel("zones", type); if (lbl) return lbl; } catch(_e2) {}
+    }
+    return type || "?";
   }
 
-  // Liste des zones ÉVITABLES (toutes SAUF "inaccessible", déjà bloquée d'office).
-  // Session (getZones) + embarquées (_ktaDataPolygons). Pour l'UI évitement.
-  // Retourne [{ id, label, type, level, points }, ...].
-  function _listerZonesEvitables() {
+  // Liste des TYPES de zones ÉVITABLES (distincts, SAUF "inaccessible" déjà
+  // bloquée d'office). Session (getZones) + embarquées (_ktaDataPolygons).
+  // 1 entrée PAR TYPE (comme les filtres) : [{ type, label, count }, ...].
+  function _listerTypesZonesEvitables() {
+    var counts = {};
+    function _compter(z) {
+      if (!z || z.type === "inaccessible" || !Array.isArray(z.points) || z.points.length < 3) return;
+      counts[z.type] = (counts[z.type] || 0) + 1;
+    }
+    if (typeof window.getZones === "function") {
+      var s = window.getZones();
+      if (Array.isArray(s)) s.forEach(_compter);
+    }
+    if (Array.isArray(window._ktaDataPolygons)) window._ktaDataPolygons.forEach(_compter);
+    return Object.keys(counts).map(function(type) {
+      return { type: type, label: _zoneTypeLabel(type), count: counts[type] };
+    }).sort(function(a, b) { return String(a.label).localeCompare(String(b.label)); });
+  }
+  window.getAvoidableZoneTypes = _listerTypesZonesEvitables;
+
+  // Polygones de TOUTES les zones dont le type est coché (évitement souple).
+  // Même forme que _collecterZonesInaccessibles → réutilise le test géométrique
+  // niveau-aware (une zone ne bloque que les segments de son niveau).
+  function _collecterZonesAEviter(avoidTypes) {
+    if (!Array.isArray(avoidTypes) || avoidTypes.length === 0) return [];
+    var set = {};
+    avoidTypes.forEach(function(t) { set[t] = 1; });
     var out = [];
     function _pousser(z) {
-      if (!z || z.type === "inaccessible" || !Array.isArray(z.points) || z.points.length < 3) return;
-      var lbl = z.label ||
-                (window.LegendCustomization && typeof window.LegendCustomization.getLabel === "function"
-                   ? window.LegendCustomization.getLabel("zones", z.type) : null) ||
-                ("Zone " + (z.type || "?"));
-      out.push({
-        id:     _zoneDerivedId(z),
-        label:  lbl,
-        type:   z.type,
-        level:  Number.isInteger(z.level) ? z.level : 0,
-        points: z.points
-      });
+      if (!z || z.type === "inaccessible" || !set[z.type] || !Array.isArray(z.points) || z.points.length < 3) return;
+      out.push({ points: z.points, level: Number.isInteger(z.level) ? z.level : 0 });
     }
     if (typeof window.getZones === "function") {
       var s = window.getZones();
@@ -279,18 +298,6 @@
     }
     if (Array.isArray(window._ktaDataPolygons)) window._ktaDataPolygons.forEach(_pousser);
     return out;
-  }
-  window.getAvoidableZones = _listerZonesEvitables;
-
-  // Polygones des zones sélectionnées pour l'évitement souple (par id dérivé).
-  // Même forme que _collecterZonesInaccessibles → réutilise le test géométrique.
-  function _collecterZonesAEviter(avoidZoneIds) {
-    if (!Array.isArray(avoidZoneIds) || avoidZoneIds.length === 0) return [];
-    var set = {};
-    avoidZoneIds.forEach(function(id) { set[id] = 1; });
-    return _listerZonesEvitables()
-      .filter(function(z) { return set[z.id]; })
-      .map(function(z) { return { points: z.points, level: z.level }; });
   }
 
   // =========================

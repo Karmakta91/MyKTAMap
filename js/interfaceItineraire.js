@@ -732,15 +732,18 @@ function _setItiAvoidPrefs(prefs) {
   } catch(e) {}
 }
 
-// 🆕 v1.48.0 — Rendu de la liste des ZONES à éviter (checkboxes). Source :
-// window.getAvoidableZones() (pathfinder : zones session + embarquées, sauf
-// "inaccessible"). Coché = id dérivé présent dans prefs.zones. Persiste à
+// 🆕 v1.48.0 — Rendu des TYPES de zones à éviter (1 checkbox par type, comme
+// les autres filtres). Source : window.getAvoidableZoneTypes() (pathfinder :
+// types distincts des zones session + embarquées, sauf "inaccessible", label
+// résolu legend/custom). Coché = type présent dans prefs.zones. Persiste à
 // chaque toggle. Contrainte SOUPLE côté pathfinder (relâchée si aucun chemin).
 function _rafraichirListeAvoidZones() {
   const el = document.getElementById("kta-iti-avoid-zones-list");
   if (!el) return;
-  const zones = (typeof window.getAvoidableZones === "function") ? window.getAvoidableZones() : [];
-  if (!zones.length) {
+  // 1 entrée par TYPE de zone (comme les autres filtres), pas par instance.
+  // prefs.zones contient des TYPES ; cocher un type = éviter toutes ses zones.
+  const types = (typeof window.getAvoidableZoneTypes === "function") ? window.getAvoidableZoneTypes() : [];
+  if (!types.length) {
     el.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">' + window.I18n.t("iti.avoid.zonesEmpty") + '</p>';
     return;
   }
@@ -748,21 +751,20 @@ function _rafraichirListeAvoidZones() {
   function _esc(s) {
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
-  el.innerHTML = zones.map(function(z) {
-    const checked = prefs.zones.indexOf(z.id) >= 0;
-    const lvl = Number.isInteger(z.level)
-      ? ' <span style="opacity:.6; font-size:11px;">(niv. ' + z.level + ')</span>' : '';
+  el.innerHTML = types.map(function(z) {
+    const checked = prefs.zones.indexOf(z.type) >= 0;
+    const cnt = ' <span style="opacity:.6; font-size:11px;">(' + z.count + ')</span>';
     return '<label class="kta-iti-avoid-zone-row">' +
-             '<input type="checkbox" class="kta-iti-avoid-zone-cb" data-zid="' + _esc(z.id) + '"' + (checked ? ' checked' : '') + '> ' +
-             '<span>' + _esc(z.label) + lvl + '</span>' +
+             '<input type="checkbox" class="kta-iti-avoid-zone-cb" data-ztype="' + _esc(z.type) + '"' + (checked ? ' checked' : '') + '> ' +
+             '<span>' + _esc(z.label) + cnt + '</span>' +
            '</label>';
   }).join("");
   el.querySelectorAll(".kta-iti-avoid-zone-cb").forEach(function(cb) {
     cb.addEventListener("change", function() {
-      const zid = cb.getAttribute("data-zid");
+      const zt = cb.getAttribute("data-ztype");
       const prefs2 = _getItiAvoidPrefs();
-      const i = prefs2.zones.indexOf(zid);
-      if (cb.checked && i < 0) prefs2.zones.push(zid);
+      const i = prefs2.zones.indexOf(zt);
+      if (cb.checked && i < 0) prefs2.zones.push(zt);
       else if (!cb.checked && i >= 0) prefs2.zones.splice(i, 1);
       _setItiAvoidPrefs(prefs2);
     });

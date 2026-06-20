@@ -1168,7 +1168,7 @@ In the route modal, a collapsible section **🚫 Avoidance preferences (optional
 |---|---|
 | **📍 Points to avoid** | **3 methods** to choose from: (a) autocomplete search in the text field, (b) entry by exact ID, (c) **📍 Click on the map**: switches to click mode, each click on the map adds a point. Orange chips with ✕ to remove. |
 | **🏷️ Tags to avoid** | Click a chip to toggle it. All points carrying this tag will be avoided (e.g.: you activate `pa` → all ventilation shafts are avoided). |
-| **⬛ Zones to avoid** *(since v1.48.0)* | Tick a zone in the list so the route **goes around** it (water, rubble, collapse zones…). **⛔ Inaccessible** zones don't appear here: they're already impassable (hard constraint, never relaxed). |
+| **⬛ Zones to avoid** *(since v1.48.0)* | Tick a **zone type** in the list (Water, Collapse, your custom types…) so the route **goes around** all zones of that type. **⛔ Inaccessible** zones don't appear here: they're already impassable (hard constraint, never relaxed). |
 | **📏 Margin** | Distance around the avoided points (px, default 100). Any road segment closer than this margin is excluded from the graph. |
 
 **Behavior**:

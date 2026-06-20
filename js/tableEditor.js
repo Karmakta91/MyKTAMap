@@ -234,7 +234,10 @@
       }
 
       /* 🆕 Écran d'accueil — 3 sources */
-      .kta-tbl-sources { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+      /* margin-bottom : le corps de la modale est forcé en padding-bottom:0
+         (utile pour la vue tableau pleine hauteur) → sans cette marge, la
+         dernière carte colle au bas de la modale (cf. screen KARMA v1.48.0). */
+      .kta-tbl-sources { display:flex; flex-direction:column; gap:10px; margin-top:4px; margin-bottom:24px; }
       .kta-tbl-source-card {
         display:flex; align-items:center; gap:14px;
         padding:14px 16px; text-align:left;
