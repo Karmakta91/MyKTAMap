@@ -162,7 +162,10 @@
         border: 1px solid rgba(140,180,255,0.4);
         border-radius: 6px;
         padding: 6px;
-        z-index: 10000;
+        /* 🐛 v1.48.x — la modale éditeur est à z-index 99999 (.kta-readme-modal-overlay)
+           → un z-index 10000 ouvrait le dropdown DERRIÈRE la modale (invisible). Passé
+           au-dessus du tier modales/sous-modales (99999/100001) pour être cliquable. */
+        z-index: 100002;
         box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         max-height: 280px; overflow-y: auto;
         min-width: 200px;
