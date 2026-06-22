@@ -758,6 +758,39 @@ function _fermerModeStructure() {
 }
 
 // =========================
+// 🆕 v1.48.0 — CURSEUR DE PRÉCISION (a11y)
+// =========================
+// Sur un plan à FOND BLANC, le curseur crosshair (trait noir fin) / la main
+// "grab" sont peu visibles. Fix : un réticule contrasté (cf css/style.css,
+// body.kta-precision-mode .leaflet-container) appliqué dès qu'un mode « clic sur
+// la carte » est actif. Les 6 flags window.modeX sont posés à des endroits
+// DISPERSÉS (édition/mesure/recalage en direct, road/zone/structure via
+// _activerMode) → plutôt que des hooks fragiles à chaque site, on intercepte les
+// ÉCRITURES de ces flags par des accesseurs (1 seul point). Les flags sont de
+// simples window props (window.modeX = false/null à l'init, pas `var`) → la
+// redéfinition est sûre. modeRoad/modeStructure = null|chaîne, les autres =
+// bool → `!!store[k]` couvre les deux.
+(function _initPrecisionCursor() {
+  var FLAGS = ["modeEdition", "modeMesure", "modeRecalage", "modeRoad", "modeZone", "modeStructure"];
+  var store = {};
+  function _sync() {
+    var on = FLAGS.some(function(k) { return !!store[k]; });
+    if (document.body) document.body.classList.toggle("kta-precision-mode", on);
+  }
+  FLAGS.forEach(function(k) {
+    store[k] = window[k];
+    try {
+      Object.defineProperty(window, k, {
+        configurable: true, enumerable: true,
+        get: function() { return store[k]; },
+        set: function(v) { store[k] = v; _sync(); }
+      });
+    } catch (e) { /* flag non-configurable (improbable) → on laisse tel quel */ }
+  });
+  _sync();
+})();
+
+// =========================
 // AVERTISSEMENT TRACKER (popup au ▶️ Play)
 // =========================
 // Affiche une popup d'avertissement la PREMIÈRE FOIS que l'utilisateur clique
@@ -1038,6 +1071,17 @@ function _creerGroupeAccordeon(config) {
         L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
         _toggleFlyout(config.id);
       });
+    } else if (config.useModal === true) {
+      // 🆕 v1.50.0 (KARMA "refondre le menu déroulé de tracker en modal full
+      // screen plus ergonomique / mobile") : le groupe est rendu dans un
+      // MODAL plein écran de grosses tuiles (cf _ouvrirTrackerModal) au lieu
+      // du flyout latéral. Réutilise sousActionsConfig → zéro duplication des
+      // options ; le tap ferme le modal puis exécute l'onClick (même pattern
+      // que le flyout, cf _ouvrirFlyout l.~1343).
+      L.DomEvent.on(btnPrincipal, "click", function(e) {
+        L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+        _toggleTrackerModal(config.id);
+      });
     } else {
       // Créer les sous-actions (cachées par défaut)
       (config.sousActions || []).forEach(function(sub) {
@@ -1086,6 +1130,7 @@ function _creerGroupeAccordeon(config) {
       // catégorie LegendCustomization pour pull des customs, customActivator
       // est le helper d'activation pour un id custom).
       useFlyout:        config.useFlyout === true,
+      useModal:         config.useModal === true,
       sousActionsConfig: config.sousActions || [],
       lcCat:             config.lcCat || null,
       customActivator:   config.customActivator || null,
@@ -1101,6 +1146,193 @@ function _creerGroupeAccordeon(config) {
     return div;
   };
   ctrl.addTo(window.map);
+}
+
+// =========================
+// 🆕 v1.50.0 — Modal plein écran « Tracker » (refonte du menu déroulé)
+// =========================
+//
+// KARMA : "refondre le menu déroulé de tracker par un modal full screen plus
+// ergonomique et mobile". Le groupe tracker (useModal:true) ouvre ce modal de
+// grosses tuiles au lieu du flyout latéral. On RÉUTILISE sousActionsConfig
+// (zéro duplication des options) : chaque tuile reflète l'icône dynamique +
+// l'état actif au moment de l'ouverture, et son tap ferme le modal puis
+// exécute l'onClick existant — même pattern « bouton détaché » que le flyout
+// (cf _ouvrirFlyout : _fermerFlyout() puis sub.onClick(btn) sur un bouton déjà
+// retiré du DOM). Sections : "suivi" / "outils" (champ sub.section) + "urgence"
+// (auto-détecté via sub.cssClass === "kta-sous-action-urgence").
+
+let _trackerModalEl = null;
+let _trackerModalKeyHandler = null;
+
+function _toggleTrackerModal(groupId) {
+  if (_trackerModalEl) { _fermerTrackerModal(); return; }
+  _ouvrirTrackerModal(groupId);
+}
+
+function _fermerTrackerModal() {
+  if (_trackerModalKeyHandler) {
+    document.removeEventListener("keydown", _trackerModalKeyHandler, true);
+    _trackerModalKeyHandler = null;
+  }
+  if (_trackerModalEl && _trackerModalEl.parentNode) {
+    _trackerModalEl.parentNode.removeChild(_trackerModalEl);
+  }
+  _trackerModalEl = null;
+}
+
+function _creerTuileTracker(sub) {
+  const tile = document.createElement("button");
+  tile.type = "button";
+  tile.className = "kta-tracker-modal-tile";
+  if (sub.cssClass) tile.classList.add(sub.cssClass);
+  // État actif (Play en cours, boussole visible, recalage armé…) — relu à
+  // l'ouverture du modal, exactement comme le flyout.
+  if (typeof sub.isActive === "function") {
+    try { if (sub.isActive()) tile.classList.add("kta-actif"); } catch(e) {}
+  }
+  const ic = document.createElement("span");
+  ic.className = "kta-tracker-modal-tile-icon";
+  ic.innerHTML = (typeof sub.dynamicIcon === "function")
+                 ? (sub.dynamicIcon() || sub.icone || "")
+                 : (sub.icone || "");
+  const lbl = document.createElement("span");
+  lbl.className = "kta-tracker-modal-tile-label";
+  lbl.textContent = sub.titre || "";
+  tile.appendChild(ic);
+  tile.appendChild(lbl);
+  tile.addEventListener("click", function(ev) {
+    ev.stopPropagation();
+    // Ferme le modal AVANT l'action (cohérence flyout) : la plupart des
+    // actions ont besoin de la carte/footer visibles (recalage = clic carte,
+    // boussole/badge = sous le modal) ou ouvrent leur propre modale.
+    _fermerTrackerModal();
+    try { sub.onClick(tile); } catch(err) {
+      console.warn("[TrackerModal] action click erreur :", err);
+    }
+  });
+  return tile;
+}
+
+function _ajouterSectionTracker(corps, titre, actions) {
+  if (!actions || actions.length === 0) return;
+  const titreEl = document.createElement("div");
+  titreEl.className = "kta-tracker-modal-section-title";
+  titreEl.textContent = titre;
+  corps.appendChild(titreEl);
+  const grid = document.createElement("div");
+  grid.className = "kta-tracker-modal-grid";
+  const impair = (actions.length % 2 === 1);
+  actions.forEach(function(sub, i) {
+    const tile = _creerTuileTracker(sub);
+    // Tuile seule en fin de grille (compte impair) → pleine largeur, pour
+    // éviter le trou (cf maquette : « Mode Secours » sous « Je suis perdu » /
+    // « Panique »).
+    if (impair && i === actions.length - 1) tile.classList.add("kta-tracker-modal-tile-wide");
+    grid.appendChild(tile);
+  });
+  corps.appendChild(grid);
+}
+
+function _ouvrirTrackerModal(groupId) {
+  // Cohérence "1 menu à la fois" : ferme flyout + accordéon éventuels.
+  _fermerFlyout();
+  if (_groupeOuvert) _fermerGroupe(_groupeOuvert);
+  _fermerTrackerModal();
+
+  const grp = _groupes[groupId];
+  if (!grp) return;
+  const baseActions = (typeof grp.dynamicSousActions === "function")
+                        ? (grp.dynamicSousActions() || [])
+                        : (grp.sousActionsConfig || []).slice();
+
+  const overlay = document.createElement("div");
+  overlay.className = "kta-tracker-modal-overlay";
+  overlay.addEventListener("click", function(ev) {
+    if (ev.target === overlay) _fermerTrackerModal();
+  });
+
+  const box = document.createElement("div");
+  box.className = "kta-tracker-modal-box";
+
+  // --- Header ---
+  const header = document.createElement("div");
+  header.className = "kta-tracker-modal-header";
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "kta-tracker-modal-title";
+  const titleIcon = document.createElement("span");
+  titleIcon.textContent = "🧭";
+  const titleTxt = document.createElement("span");
+  titleTxt.textContent = window.I18n.t("ui.group.tracker");
+  titleWrap.appendChild(titleIcon);
+  titleWrap.appendChild(titleTxt);
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "kta-tracker-modal-close";
+  closeBtn.title = window.I18n.t("ui.btn.close");
+  closeBtn.textContent = "✕";
+  closeBtn.addEventListener("click", function(ev) { ev.stopPropagation(); _fermerTrackerModal(); });
+  header.appendChild(titleWrap);
+  header.appendChild(closeBtn);
+  box.appendChild(header);
+
+  // --- Bande de statut (suivi ON/OFF + distance + pas) ---
+  const status = document.createElement("div");
+  status.className = "kta-tracker-modal-status";
+  // ⚠️ `isTracking` est local à initInterface() → hors de portée ici (scope
+  // module). On lit la source de vérité du moteur : window.getTrackingActif()
+  // (tracking.js, = `tracking === true`), robuste quel que soit le déclencheur
+  // (tuile Play, commande vocale…). Cf même piège corrigé dans refonteInterface.
+  const actif = (typeof window.getTrackingActif === "function") && window.getTrackingActif() === true;
+  const etatWrap = document.createElement("span");
+  etatWrap.className = "kta-tracker-modal-status-item";
+  const dot = document.createElement("span");
+  dot.className = "kta-tracker-modal-status-dot" + (actif ? " kta-on" : "");
+  const lblEtat = document.createElement("span");
+  lblEtat.textContent = window.I18n.t(actif ? "tracker.modal.statusOn" : "tracker.modal.statusOff");
+  etatWrap.appendChild(dot);
+  etatWrap.appendChild(lblEtat);
+  status.appendChild(etatWrap);
+  // Distance + pas affichés seulement si le tracking a produit des données.
+  let distM = 0, pas = 0;
+  try { if (typeof window.getTrackingDistanceM === "function") distM = window.getTrackingDistanceM() || 0; } catch(e) {}
+  try { if (typeof window.getStepCount === "function") pas = window.getStepCount() || 0; } catch(e) {}
+  if (distM > 0 || pas > 0) {
+    const distEl = document.createElement("span");
+    distEl.className = "kta-tracker-modal-status-item";
+    distEl.textContent = "📏 " + (window.formatDistance ? window.formatDistance(distM, 0) : Math.round(distM) + " m");
+    status.appendChild(distEl);
+    const pasEl = document.createElement("span");
+    pasEl.className = "kta-tracker-modal-status-item";
+    pasEl.textContent = "👣 " + pas + " " + window.I18n.t("tracker.modal.steps");
+    status.appendChild(pasEl);
+  }
+  box.appendChild(status);
+
+  // --- Corps : sections de tuiles ---
+  const corps = document.createElement("div");
+  corps.className = "kta-tracker-modal-body";
+  const suivi   = baseActions.filter(function(a) { return a.section === "suivi"; });
+  const outils  = baseActions.filter(function(a) { return a.section === "outils"; });
+  const urgence = baseActions.filter(function(a) { return a.cssClass === "kta-sous-action-urgence"; });
+  // Fallback robustesse : action sans section ni urgence → rangée en "outils"
+  // (évite qu'une option ajoutée sans `section` disparaisse du modal).
+  const classees = new Set([].concat(suivi, outils, urgence));
+  const autres = baseActions.filter(function(a) { return !classees.has(a); });
+  _ajouterSectionTracker(corps, window.I18n.t("tracker.modal.sectionSuivi"), suivi);
+  _ajouterSectionTracker(corps, window.I18n.t("tracker.modal.sectionOutils"), outils.concat(autres));
+  _ajouterSectionTracker(corps, window.I18n.t("tracker.modal.sectionUrgence"), urgence);
+  box.appendChild(corps);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  _trackerModalEl = overlay;
+
+  // Esc pour fermer.
+  _trackerModalKeyHandler = function(ev) {
+    if (ev.key === "Escape") { ev.stopPropagation(); _fermerTrackerModal(); }
+  };
+  document.addEventListener("keydown", _trackerModalKeyHandler, true);
 }
 
 // =========================
@@ -1460,6 +1692,154 @@ L.control.ktaFilterControl = function() {
 };
 
 // =========================
+// 🆕 v1.49.0 — Tracker : « Ma position » (recentrage) + suspension temporaire
+// du verrou sur tracé (smartNav). Helpers module-scope appelés par les
+// sous-actions du flyout Tracker (cf. groupe "tracker" dans initInterface).
+// =========================
+
+// #3 — Recentre la carte sur la position courante du tracker (sans dézoomer).
+function _centrerSurMaPosition() {
+  if (!window.map || typeof window.getTrackingPosition !== "function" || typeof window.convertCoord !== "function") {
+    alert(window.I18n.t("tracker.maPosition.indispo")); return;
+  }
+  var pos = window.getTrackingPosition();
+  if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
+    alert(window.I18n.t("tracker.maPosition.indispo")); return;
+  }
+  var ll = window.convertCoord(pos.x, pos.y);
+  var z = Math.max(window.map.getZoom(), 0); // recentre + garantit un zoom lisible
+  try { window.map.setView(ll, z, { animate: true }); } catch (e) { window.map.setView(ll, z); }
+}
+
+// #5 — Suspension temporaire du verrou sur tracé (APP_CONFIG.smartNav, lu à
+// chaque pas par tracking.js > avancer()). État runtime uniquement (action
+// ponctuelle terrain, pas de persistance). On ne suspend QUE si smartNav=ON,
+// donc la réactivation restaure toujours true.
+var _verrouSuspendu = false, _verrouTimer = null, _verrouInterval = null, _verrouFinTs = 0;
+
+function _gererSuspensionVerrou() {
+  if (_verrouSuspendu) { _confirmerReactivationVerrou(); return; } // déjà suspendu → confirme la réactivation
+  if (window.APP_CONFIG && window.APP_CONFIG.smartNav !== true) {  // rien à suspendre
+    alert(window.I18n.t("tracker.verrou.nonActif")); return;
+  }
+  _ouvrirChoixDureeVerrou();
+}
+
+function _ouvrirChoixDureeVerrou() {
+  var opts = [
+    { ms: 30000,  key: "tracker.verrou.d30s" },
+    { ms: 60000,  key: "tracker.verrou.d1min" },
+    { ms: 600000, key: "tracker.verrou.d10min" },
+    { ms: null,   key: "tracker.verrou.jusqua" }
+  ];
+  var boutons = opts.map(function(o, i) {
+    return '<button class="kta-btn ' + (i === opts.length - 1 ? "kta-btn-ghost" : "kta-btn-primary") +
+           '" data-i="' + i + '" style="width:100%;">' + window.I18n.t(o.key) + '</button>';
+  }).join("");
+  var overlay = document.createElement("div");
+  overlay.className = "kta-readme-modal-overlay";
+  overlay.style.zIndex = "100001";
+  overlay.innerHTML =
+    '<div class="kta-readme-modal-boite" style="max-width:400px; height:auto;">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("tracker.verrou.titre") + '</span>' +
+        '<button class="kta-panneau-close" id="kta-verrou-close">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">' + window.I18n.t("tracker.verrou.aide") + '</p>' +
+        '<div style="display:flex; flex-direction:column; gap:8px;">' + boutons + '</div>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+  var fermer = function() { overlay.remove(); };
+  document.getElementById("kta-verrou-close").addEventListener("click", fermer);
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) fermer(); });
+  overlay.querySelectorAll("[data-i]").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      var o = opts[parseInt(btn.dataset.i, 10)];
+      fermer();
+      _suspendreVerrou(o.ms);
+    });
+  });
+}
+
+function _suspendreVerrou(ms) {
+  if (!window.APP_CONFIG) return;
+  _verrouSuspendu = true;
+  window.APP_CONFIG.smartNav = false;        // pris en compte au prochain pas
+  _verrouFinTs = ms ? (Date.now() + ms) : 0; // 0 = jusqu'à réactivation
+  if (_verrouTimer)    { clearTimeout(_verrouTimer);   _verrouTimer = null; }
+  if (_verrouInterval) { clearInterval(_verrouInterval); _verrouInterval = null; }
+  if (ms) {
+    _verrouTimer    = setTimeout(_reactiverVerrou, ms);
+    _verrouInterval = setInterval(_majBadgeVerrou, 1000);
+  }
+  _afficherBadgeVerrou();
+  console.log("[Tracker] Verrou sur tracé suspendu" + (ms ? " (" + Math.round(ms / 1000) + "s)" : " (jusqu'à réactivation)"));
+}
+
+function _verrouStatEl() { return document.getElementById("kta-refonte-stat-verrou"); }
+
+function _reactiverVerrou() {
+  if (_verrouTimer)    { clearTimeout(_verrouTimer);   _verrouTimer = null; }
+  if (_verrouInterval) { clearInterval(_verrouInterval); _verrouInterval = null; }
+  if (window.APP_CONFIG) window.APP_CONFIG.smartNav = true; // restaure (suspendu uniquement si ON)
+  _verrouSuspendu = false;
+  _verrouFinTs = 0;
+  var el = _verrouStatEl();
+  if (el) { el.style.display = "none"; el.onclick = null; }
+  console.log("[Tracker] Verrou sur tracé réactivé");
+}
+
+// Modale de confirmation avant réactivation (feedback user, sinon le clic sur
+// la stat footer réactive sans retour visible — demande KARMA).
+function _confirmerReactivationVerrou() {
+  var overlay = document.createElement("div");
+  overlay.className = "kta-readme-modal-overlay";
+  overlay.style.zIndex = "100001";
+  overlay.innerHTML =
+    '<div class="kta-readme-modal-boite" style="max-width:380px; height:auto;">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("tracker.verrou.reactivTitre") + '</span>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<p style="font-size:14px; color:#c0c8d8; margin:0 0 16px; line-height:1.5;">' + window.I18n.t("tracker.verrou.reactivTexte") + '</p>' +
+        '<div style="display:flex; gap:8px;">' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-verrou-react-non" style="flex:1;">' + window.I18n.t("tracker.verrou.reactivNon") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-verrou-react-oui" style="flex:1;">' + window.I18n.t("tracker.verrou.reactivOui") + '</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+  var fermer = function() { overlay.remove(); };
+  document.getElementById("kta-verrou-react-non").addEventListener("click", fermer);
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) fermer(); });
+  document.getElementById("kta-verrou-react-oui").addEventListener("click", function() { fermer(); _reactiverVerrou(); });
+}
+
+// Affiche le compte-à-rebours dans la status bar (footer), à côté du ON/OFF
+// tracker (#kta-refonte-stat-verrou, créé caché par refonteInterface.js).
+// Clic sur la stat → modale de confirmation de réactivation.
+function _afficherBadgeVerrou() {
+  var el = _verrouStatEl();
+  if (!el) return;
+  el.style.display = "";
+  el.onclick = _confirmerReactivationVerrou;
+  _majBadgeVerrou();
+}
+
+function _majBadgeVerrou() {
+  var el = _verrouStatEl();
+  if (!el) return;
+  var val = el.querySelector(".kta-refonte-stat-val");
+  if (!val) return;
+  if (!_verrouFinTs) { val.textContent = "∞"; return; } // jusqu'à réactivation
+  var reste = Math.max(0, Math.round((_verrouFinTs - Date.now()) / 1000));
+  var m = Math.floor(reste / 60), s = reste % 60;
+  val.textContent = m + ":" + (s < 10 ? "0" : "") + s;
+}
+
+// =========================
 // INIT INTERFACE — barre 9 groupes (accordéons)
 // =========================
 function initInterface() {
@@ -1793,11 +2173,14 @@ function initInterface() {
     id: "tracker",
     iconePrincipale: "🧭",
     titre: window.I18n.t("ui.group.tracker"),
-    useFlyout: true,
+    // 🆕 v1.50.0 : rendu en MODAL plein écran de tuiles (cf _ouvrirTrackerModal)
+    // au lieu du flyout latéral. Les `section` ci-dessous rangent les tuiles.
+    useModal: true,
     sousActions: [
       {
         icone: "▶️",
         titre: window.I18n.t("ui.subaction.trackToggle"),
+        section: "suivi",
         // Icône dynamique selon état tracking — relu à chaque ouverture flyout
         dynamicIcon: function() { return isTracking ? "⏹️" : "▶️"; },
         isActive:    function() { return isTracking === true; },
@@ -1840,6 +2223,7 @@ function initInterface() {
       {
         icone: "🧭",
         titre: window.I18n.t("ui.subaction.compass"),
+        section: "outils",
         // 🆕 v1.21.2 : actif si le widget compass est visible (sync au re-ouvert flyout)
         isActive: function() {
           return !!(window.CompassWidget && typeof window.CompassWidget.isVisible === "function"
@@ -1860,6 +2244,7 @@ function initInterface() {
       {
         icone: "📍",
         titre: window.I18n.t("ui.subaction.recalage"),
+        section: "suivi",
         // 🆕 v1.21.2 : actif si le mode recalage est en cours (sync au re-ouvert flyout)
         isActive: function() { return window.modeRecalage === true; },
         onClick: function(btnSub) {
@@ -1901,9 +2286,26 @@ _setGroupeModeActif("tracker", isTracking, null);
           _setGroupeModeActif("tracker", true, "📍");
         }
       },
+      // 🆕 v1.49.0 — 🎯 Recentre la carte sur la position courante du tracker.
+      {
+        icone: "🎯",
+        titre: window.I18n.t("ui.subaction.maPosition"),
+        section: "suivi",
+        onClick: function() { _centrerSurMaPosition(); }
+      },
+      // 🆕 v1.49.0 — 🔓 Suspendre temporairement le verrou sur tracé (smartNav)
+      // sans passer par les Réglages (cas : sortie d'une galerie vers une cave
+      // hors réseau). Durées 30s / 1min / 10min / jusqu'à réactivation.
+      {
+        icone: "🔓",
+        titre: window.I18n.t("ui.subaction.verrouSuspend"),
+        section: "suivi",
+        onClick: function() { _gererSuspensionVerrou(); }
+      },
       {
         icone: "🗺️",
         titre: window.I18n.t("ui.subaction.itineraire"),
+        section: "outils",
         onClick: function() {
           if (typeof window.ouvrirItinerairModal === "function") {
             window.ouvrirItinerairModal();
@@ -1919,6 +2321,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       {
         icone: "🎬",
         titre: window.I18n.t("ui.subaction.replay"),
+        section: "outils",
         onClick: function() {
           if (window.MyKTAMapTrackerReplay && typeof window.MyKTAMapTrackerReplay.ouvrirModale === "function") {
             window.MyKTAMapTrackerReplay.ouvrirModale();
@@ -1933,6 +2336,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       {
         icone: "🔥",
         titre: window.I18n.t("ui.subaction.heatmap"),
+        section: "outils",
         onClick: function() {
           if (window.MyKTAMapHeatmap && typeof window.MyKTAMapHeatmap.ouvrirModale === "function") {
             window.MyKTAMapHeatmap.ouvrirModale();

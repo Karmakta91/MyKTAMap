@@ -244,6 +244,62 @@
     return out;
   }
 
+  // 🆕 v1.48.0 — ÉVITEMENT DE ZONES NOMMÉES (contrainte SOUPLE)
+  // Label user-facing d'un TYPE de zone (comme les autres filtres) :
+  //  - type custom (cust-…) → label de l'entrée legend ("galerie basse") via
+  //    findCustomEntry (getLabel ne consulte PAS customEntries) ;
+  //  - type built-in → getLabel "zones" ("Eau", "Effondrement"…).
+  function _zoneTypeLabel(type) {
+    var LC = window.LegendCustomization;
+    if (LC && typeof LC.findCustomEntry === "function") {
+      try { var e = LC.findCustomEntry(type); if (e && e.label) return e.label; } catch(_e) {}
+    }
+    if (LC && typeof LC.getLabel === "function") {
+      try { var lbl = LC.getLabel("zones", type); if (lbl) return lbl; } catch(_e2) {}
+    }
+    return type || "?";
+  }
+
+  // Liste des TYPES de zones ÉVITABLES (distincts, SAUF "inaccessible" déjà
+  // bloquée d'office). Session (getZones) + embarquées (_ktaDataPolygons).
+  // 1 entrée PAR TYPE (comme les filtres) : [{ type, label, count }, ...].
+  function _listerTypesZonesEvitables() {
+    var counts = {};
+    function _compter(z) {
+      if (!z || z.type === "inaccessible" || !Array.isArray(z.points) || z.points.length < 3) return;
+      counts[z.type] = (counts[z.type] || 0) + 1;
+    }
+    if (typeof window.getZones === "function") {
+      var s = window.getZones();
+      if (Array.isArray(s)) s.forEach(_compter);
+    }
+    if (Array.isArray(window._ktaDataPolygons)) window._ktaDataPolygons.forEach(_compter);
+    return Object.keys(counts).map(function(type) {
+      return { type: type, label: _zoneTypeLabel(type), count: counts[type] };
+    }).sort(function(a, b) { return String(a.label).localeCompare(String(b.label)); });
+  }
+  window.getAvoidableZoneTypes = _listerTypesZonesEvitables;
+
+  // Polygones de TOUTES les zones dont le type est coché (évitement souple).
+  // Même forme que _collecterZonesInaccessibles → réutilise le test géométrique
+  // niveau-aware (une zone ne bloque que les segments de son niveau).
+  function _collecterZonesAEviter(avoidTypes) {
+    if (!Array.isArray(avoidTypes) || avoidTypes.length === 0) return [];
+    var set = {};
+    avoidTypes.forEach(function(t) { set[t] = 1; });
+    var out = [];
+    function _pousser(z) {
+      if (!z || z.type === "inaccessible" || !set[z.type] || !Array.isArray(z.points) || z.points.length < 3) return;
+      out.push({ points: z.points, level: Number.isInteger(z.level) ? z.level : 0 });
+    }
+    if (typeof window.getZones === "function") {
+      var s = window.getZones();
+      if (Array.isArray(s)) s.forEach(_pousser);
+    }
+    if (Array.isArray(window._ktaDataPolygons)) window._ktaDataPolygons.forEach(_pousser);
+    return out;
+  }
+
   // =========================
   // CONSTRUCTION DU GRAPHE
   // =========================
@@ -309,10 +365,11 @@
     graph.edges[b].push({ to: a, weight: weight });
   }
 
-  function _buildGraph(roads, allowedTypes, zonesInacc, avoidPoints, avoidRadius) {
+  function _buildGraph(roads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones) {
     zonesInacc  = zonesInacc  || [];
     avoidPoints = avoidPoints || [];
     avoidRadius = avoidRadius || 0;
+    avoidZones  = avoidZones  || [];   // 🆕 v1.48.0 : zones à éviter (souple), même test géométrique que les inaccessibles
     const graph = _newGraph();
 
     for (let r = 0; r < roads.length; r++) {
@@ -365,7 +422,8 @@
         // Quand exclu, le node existe quand meme mais sans edge → impossible
         // d'emprunter ce troncon dans Dijkstra.
         if (!_segmentBloqueParZoneInaccess(prevP, p, segLevel, zonesInacc) &&
-            !_segmentBloqueParAvoidance(prevP, p, avoidPoints, avoidRadius)) {
+            !_segmentBloqueParAvoidance(prevP, p, avoidPoints, avoidRadius) &&
+            !_segmentBloqueParZoneInaccess(prevP, p, segLevel, avoidZones)) { // 🆕 zones à éviter (souple)
           const w = _dist(prevP, p);
           _addEdge(graph, prevIdx, idx, w);
           graph.segments.push({
@@ -711,8 +769,8 @@
   // Factorise la logique build+enrich+snap+Dijkstra. Appele par computeRoute
   // pour la passe 1 (avec contraintes) puis si necessaire pour la passe 2
   // (sans avoidances). Throw avec messages clairs si echec.
-  function _computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius) {
-    const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius);
+  function _computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones) {
+    const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones);
     if (graph.nodes.length === 0) {
       // 🌍 i18n : code + params, localisé côté rendu (interfaceItineraire.js).
       const e = new Error("Aucune route correspondant aux types sélectionnés (" + allowedTypes.join(", ") + ")");
@@ -845,8 +903,13 @@
     const allAvoidPts      = explicitAvoid.concat(expandedFromTags);
     const avoidRadius      = (Number.isFinite(opts.avoidRadius) && opts.avoidRadius > 0)
                               ? opts.avoidRadius : 100;
-    const hasAvoidances    = (allAvoidPts.length > 0);
-    if (hasAvoidances) {
+    // 🆕 v1.48.0 : zones a eviter (souple) — resolues depuis opts.avoidZones (ids derives).
+    const avoidZones       = _collecterZonesAEviter(Array.isArray(opts.avoidZones) ? opts.avoidZones : []);
+    if (avoidZones.length > 0) {
+      console.log("[Pathfinder] " + avoidZones.length + " zone(s) a eviter — contrainte souple");
+    }
+    const hasAvoidances    = (allAvoidPts.length > 0) || (avoidZones.length > 0);
+    if (allAvoidPts.length > 0) {
       console.log("[Pathfinder] " + allAvoidPts.length +
                   " point(s) a eviter (rayon " + avoidRadius + "px) — contrainte souple, fallback possible");
     }
@@ -859,7 +922,7 @@
     try {
       result = _computeRouteInterne(
         waypoints, allRoads, allowedTypes,
-        zonesInacc, allAvoidPts, avoidRadius
+        zonesInacc, allAvoidPts, avoidRadius, avoidZones
       );
     } catch(e1) {
       // Passe 1 echoue. Si on n'avait pas d'avoidances, c'est une vraie absence
@@ -871,7 +934,7 @@
       try {
         result = _computeRouteInterne(
           waypoints, allRoads, allowedTypes,
-          zonesInacc, [], 0
+          zonesInacc, [], 0, []
         );
         usedFallback = true;
         // Detecter quels points evites sont traverses par le chemin final

@@ -1,7 +1,7 @@
 # Architecture MyKTAMap — Tracker, boussole, heading, navigation
 
 > Référence détaillée extraite de l'ancien CLAUDE.md. Lue à la demande (pas auto-chargée).
-> Sections : §24, §25, §28, §34, §62, §70, §75, §76
+> Sections : §24, §25, §28, §34, §62, §70, §75, §76, §77
 
 ---
 
@@ -623,5 +623,32 @@ cap VISUEL (`_getCorrectedHeading` = cap brut + angle écran) mais le **déplace
 Aucune nouvelle surface réseau, aucune nouvelle permission. Graphe construit en mémoire depuis les tracés,
 map-matching = calcul géométrique pur, capteurs déjà utilisés par le tracker, tracé/stats depuis la timeline
 locale. `connect-src` inchangé. Nouveau fichier `js/roadGraph.js` ajouté à `ASSETS_TO_CACHE`.
+
+---
+
+### 77. v1.49.0 — Améliorations terrain du tracker / PDR (2026-06-22)
+
+Retour terrain (sortie 4h30). Lots A / B / C.
+
+#### 77.1 « Ma position » + suspension du verrou (Lot A — `interface.js`)
+
+Helpers module-scope (avant `initInterface`) + 2 sous-actions dans le flyout 🧭 Tracker :
+- **🎯 Ma position** (`_centrerSurMaPosition`) : `map.setView(convertCoord(getTrackingPosition()), max(zoom, 0))`. Marche tracker à l'arrêt (position = init / dernière).
+- **🔓 Suspendre le verrou** (`_gererSuspensionVerrou`) : si `smartNav !== true` → alerte info ; sinon popup durées (30 s / 1 min / 10 min / ∞). `_suspendreVerrou(ms)` met `APP_CONFIG.smartNav = false` (pris au pas suivant par `avancer()`), `setTimeout` de réactivation + `setInterval` du compte-à-rebours. `_reactiverVerrou` restaure `smartNav = true` (on ne suspend que si ON).
+- **Compte-à-rebours dans la status bar** : `refonteInterface.js > _creerStatusBar` crée une stat cachée `#kta-refonte-stat-verrou` (à côté du 🧭 ON/OFF). `interface.js` la montre / cache / met à jour (val = `M:SS` ou `∞`). Clic → `_confirmerReactivationVerrou` (modale OUI / NON, feedback user).
+
+#### 77.2 Démarrage sur la dernière position (Lot B — `tracking.js`)
+
+`setTrackingTimeline` (restore SessionPersist + import session) : après `_rebuildTrailFromTimeline()` (qui replace déjà `position` + le marqueur sur le dernier point), on **recentre la vue** `map.setView(convertCoord(position), zoom)` **si la timeline est non vide**. Sans ça, la vue restait sur `initPosition` (fixée par `initTracking` l.62) alors que le marqueur était ailleurs → incohérence signalée terrain. **Fallback** : timeline vide → pas de recentrage (vue = initPosition). Scopé à `setTrackingTimeline` → le call `_rebuildTrailFromTimeline` de la décimation RAM (mid-session) n'est PAS impacté.
+
+#### 77.3 Tolérances réglables + garde-fous (Lot C — `roadGraph.js`, `config.js`, `interfaceConfig.js`)
+
+- **Réglables à chaud** : `APP_CONFIG.smartNavRadiusM` (tolérance latérale, m, défaut 6 — lu par `_matchRadiusPx`) + `APP_CONFIG.smartNavHeadingWeight` (poids du cap aux croisements, px/°, défaut 0.7 — nouveau helper `_headingWeight()` remplace la constante `W_HEADING_PX_PER_DEG` à l'usage ; 0 = cap ignoré, « passe » les jonctions même mal orienté). Dans `DEFAULT_CONFIG`, persistés / restaurés (`app_user_prefs`), pas de reload requis. UI : section « Verrou sur tracé » de ⚙️ Réglages.
+- **Clamps** (`appliquerConfig`) : `stepLength` ∈ [0 ; 1.5] m · `stepThreshold` ∈ [10 ; 30] (magnitude `√(x²+y²+z²)` avec gravité ≈ 9.8 : sous ~10 = détection permanente, > ~30 = jamais déclenché) · `stepCooldown` ∈ [300 ; 3000] ms. Bornes `min/max` sur les inputs + clamp défensif à l'apply (`Number.isFinite` → fallback valeur courante).
+- **Avertissements** ⚙️ Réglages → Navigation & Tracker : prérequis **échelle m/px** (bleu, en tête du groupe — position de départ, détection de pas et nav intelligente en dépendent) + « réglages experts » (ambre) sur Détection des pas et Verrou sur tracé.
+
+#### 77.4 Confidentialité
+
+Aucune nouvelle surface réseau ni permission. Tout local (état runtime + `app_user_prefs`). Aucun nouveau fichier JS.
 
 ---

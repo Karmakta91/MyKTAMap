@@ -16,16 +16,32 @@
 
   // ========== ÉTAT ==========
   let _modal      = null;
-  let _data       = [];           // tableau d'objets (points)
+  let _data       = [];           // tableau d'objets (lignes éditées : points OU roads/zones/structures)
   let _colonnes   = [];           // colonnes détectées
   let _modifie    = false;        // flag modifs non sauvées
   let _selection  = new Set();    // indices sélectionnés
   let _tri        = { col: null, asc: true };
   let _filtre     = "";
-  let _format     = null;         // "data" | "editorPoints"
-  let _sourceMeta = {};           // fileName, type, version, autresChamps
+  // 🆕 v1.48.x — _kind = quel tableau on édite dans la source :
+  //   "data" | "editorPoints" (= points complets x/y/tags)
+  //   "roads" | "zones" | "structures" (= note/type/niveau éditables, géométrie `points` 🔒)
+  let _kind       = null;
+  let _format     = null;         // alias historique : "data" | "editorPoints" (rétro-compat interne)
+  let _sourceObj  = null;         // objet JSON COMPLET du fichier source (pour re-sérialiser sans perdre les autres tableaux)
+  let _sourceMeta = {};           // fileName (téléchargement + titre)
   let _filtreTimer = null;
   let _lastSelectedIdx = null;    // pour shift-click
+
+  // Tableaux éditables reconnus dans une source + leur icône/typage
+  var _ARRAYS_EDITABLES = [
+    { key: "data",         emoji: "📍", points: true  },
+    { key: "editorPoints", emoji: "📍", points: true  },
+    { key: "roads",        emoji: "🛣️", points: false },
+    { key: "zones",        emoji: "⬛", points: false },
+    { key: "structures",   emoji: "🏗️", points: false }
+  ];
+  function _estPoints()  { return _kind === "data" || _kind === "editorPoints"; }
+  function _estSession() { return _kind === "editorPoints"; }
 
   // ========== STYLES INJECTÉS ==========
   function _injecterStyles() {
@@ -146,7 +162,10 @@
         border: 1px solid rgba(140,180,255,0.4);
         border-radius: 6px;
         padding: 6px;
-        z-index: 10000;
+        /* 🐛 v1.48.x — la modale éditeur est à z-index 99999 (.kta-readme-modal-overlay)
+           → un z-index 10000 ouvrait le dropdown DERRIÈRE la modale (invisible). Passé
+           au-dessus du tier modales/sous-modales (99999/100001) pour être cliquable. */
+        z-index: 100002;
         box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         max-height: 280px; overflow-y: auto;
         min-width: 200px;
@@ -216,6 +235,53 @@
         color: #ffd28a;
         margin-bottom: 8px;
       }
+
+      /* 🆕 Écran d'accueil — 3 sources */
+      /* margin-bottom : le corps de la modale est forcé en padding-bottom:0
+         (utile pour la vue tableau pleine hauteur) → sans cette marge, la
+         dernière carte colle au bas de la modale (cf. screen KARMA v1.48.0). */
+      .kta-tbl-sources { display:flex; flex-direction:column; gap:10px; margin-top:4px; margin-bottom:24px; }
+      .kta-tbl-source-card {
+        display:flex; align-items:center; gap:14px;
+        padding:14px 16px; text-align:left;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(140,180,255,0.2);
+        border-radius: 8px; cursor:pointer; transition: all 0.15s;
+        color:#e8eaf0; font-family:inherit;
+      }
+      .kta-tbl-source-card:hover:not([disabled]) {
+        background: rgba(140,180,255,0.08);
+        border-color: rgba(140,180,255,0.5);
+      }
+      .kta-tbl-source-card[disabled] { opacity:0.45; cursor:not-allowed; }
+      .kta-tbl-source-ico { font-size:28px; line-height:1; flex:0 0 auto; }
+      .kta-tbl-source-txt { display:flex; flex-direction:column; gap:2px; }
+      .kta-tbl-source-titre { font-weight:600; font-size:14px; }
+      .kta-tbl-source-hint { font-size:12px; color:#8892a4; line-height:1.4; }
+
+      /* 🆕 Sélecteur de calque */
+      .kta-tbl-entries { display:flex; flex-direction:column; gap:8px; margin-top:4px; max-height:60vh; overflow:auto; }
+      .kta-tbl-entry {
+        display:flex; align-items:center; gap:12px;
+        padding:11px 14px; text-align:left;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 7px; cursor:pointer; transition: all 0.15s;
+        color:#e8eaf0; font-family:inherit;
+      }
+      .kta-tbl-entry:hover { background: rgba(140,180,255,0.08); border-color: rgba(140,180,255,0.45); }
+      .kta-tbl-entry-ico { font-size:20px; flex:0 0 auto; }
+      .kta-tbl-entry-label { font-weight:600; font-size:13px; flex:1; }
+      .kta-tbl-entry-count { font-size:12px; color:#8cb4ff; }
+      .kta-tbl-entry-file { font-size:11px; color:#6a7488; }
+
+      /* 🆕 Note "datalayer = export only" dans le menu sauvegarde */
+      .kta-tbl-gen-note {
+        background: rgba(140,180,255,0.08);
+        border: 1px solid rgba(140,180,255,0.25);
+        border-radius: 6px; padding:8px 12px; margin-top:4px;
+        font-size:12px; color:#a8b8d8; line-height:1.5;
+      }
     `;
     document.head.appendChild(s);
   }
@@ -224,10 +290,224 @@
   window.ouvrirTableEditor = function() {
     _injecterStyles();
     if (_modal) { _modal.remove(); _modal = null; }
-    _afficherImport();
+    _afficherAccueil();
   };
 
-  // ========== ÉTAPE 1 — IMPORT DU FICHIER ==========
+  // ========== UTILITAIRES SOURCE ==========
+  function _basename(path) {
+    return String(path || "").split(/[\\/]/).pop().split("?")[0] || "";
+  }
+  function _escapeRegex(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+  // Collecte les tableaux éditables (data/editorPoints/roads/zones/structures)
+  // présents et non vides dans `obj`, en réutilisant l'objet source COMPLET
+  // (pour re-sérialiser sans perdre les autres tableaux au téléchargement).
+  function _collecterEntreesEditables(obj, baseLabel, fileName, entries) {
+    if (!obj || typeof obj !== "object") return;
+    _ARRAYS_EDITABLES.forEach(function(def) {
+      var arr = obj[def.key];
+      if (Array.isArray(arr) && arr.length > 0) {
+        entries.push({
+          kind: def.key, emoji: def.emoji, points: def.points,
+          label: baseLabel, count: arr.length,
+          fileName: fileName, sourceObj: obj
+        });
+      }
+    });
+  }
+
+  // ========== ÉCRAN D'ACCUEIL — 3 SOURCES ==========
+  function _afficherAccueil(errMsg) {
+    if (_modal) { _modal.remove(); _modal = null; }
+    var planDispo = !!(window.PLAN_CONFIG && Array.isArray(window.PLAN_CONFIG.dataLayers) && window.PLAN_CONFIG.dataLayers.length);
+    var modal = document.createElement("div");
+    modal.id = "kta-tbl-modal";
+    modal.className = "kta-readme-modal-overlay";
+    modal.innerHTML = `
+      <div class="kta-readme-modal-boite" style="max-width:560px; width:auto; height:auto; max-height:90vh;">
+        <div class="kta-readme-modal-header">
+          <span class="kta-readme-modal-titre">${window.I18n.t("tabledit.modal.titre")}</span>
+          <button class="kta-panneau-close" id="kta-tbl-close-accueil">✕</button>
+        </div>
+        <div class="kta-readme-modal-corps">
+          <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">${window.I18n.t("tabledit.accueil.aide")}</p>
+          <div id="kta-tbl-accueil-err" class="kta-conv-erreur" style="display:${errMsg ? "block" : "none"}; margin-bottom:12px;">${errMsg ? _escapeHtml(errMsg) : ""}</div>
+          <div class="kta-tbl-sources">
+            ${planDispo ? `<button class="kta-tbl-source-card" id="kta-tbl-src-plan">
+              <span class="kta-tbl-source-ico">🗺️</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.planCourant")}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.planCourantHint")}</span>
+              </span>
+            </button>` : ""}
+            <button class="kta-tbl-source-card" id="kta-tbl-src-zip">
+              <span class="kta-tbl-source-ico">📦</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.zip")}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.zipHint")}</span>
+              </span>
+            </button>
+            <button class="kta-tbl-source-card" id="kta-tbl-src-json">
+              <span class="kta-tbl-source-ico">📄</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.json")}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.jsonHint")}</span>
+              </span>
+            </button>
+          </div>
+          <input type="file" id="kta-tbl-zip-input" accept=".zip,application/zip" style="display:none;">
+        </div>
+      </div>
+    `;
+    document.documentElement.appendChild(modal);
+    _modal = modal;
+
+    var fermer = function() { if (_modal) { _modal.remove(); _modal = null; } };
+    document.getElementById("kta-tbl-close-accueil").addEventListener("click", fermer);
+    modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
+    if (planDispo) document.getElementById("kta-tbl-src-plan").addEventListener("click", _listerDatalayersPlanCourant);
+    document.getElementById("kta-tbl-src-json").addEventListener("click", _afficherImport);
+    var zipInput = document.getElementById("kta-tbl-zip-input");
+    document.getElementById("kta-tbl-src-zip").addEventListener("click", function() { zipInput.click(); });
+    zipInput.addEventListener("change", function() { if (zipInput.files[0]) _traiterZipImporte(zipInput.files[0]); });
+  }
+
+  function _afficherChargement(msg) {
+    if (_modal) { _modal.remove(); _modal = null; }
+    var modal = document.createElement("div");
+    modal.id = "kta-tbl-modal";
+    modal.className = "kta-readme-modal-overlay";
+    modal.innerHTML = '<div class="kta-readme-modal-boite" style="max-width:420px; height:auto;">'
+      + '<div class="kta-readme-modal-corps" style="padding:30px; text-align:center; color:#c8d0e0;">'
+      + '<div style="font-size:28px;">⏳</div><div style="margin-top:10px;">' + _escapeHtml(msg || "") + '</div>'
+      + '</div></div>';
+    document.documentElement.appendChild(modal);
+    _modal = modal;
+  }
+
+  // ========== SOURCE : PLAN EN COURS ==========
+  function _listerDatalayersPlanCourant() {
+    var config = window.PLAN_CONFIG;
+    if (!config || !Array.isArray(config.dataLayers) || !config.dataLayers.length) {
+      _afficherAccueil(window.I18n.t("tabledit.err.planVide")); return;
+    }
+    _afficherChargement(window.I18n.t("tabledit.source.planCourant"));
+    // `lc.file` est déjà une URL fetchable (blob: pour ZIP, chemin serveur sinon)
+    // — résolue par config.js > getRuntimeAssetUrl. On relit le JSON SANS toucher
+    // au live (aucun chargement sur la carte).
+    var jobs = config.dataLayers.map(function(lc) {
+      return fetch(lc.file)
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(obj) { return { lc: lc, obj: obj }; })
+        .catch(function() { return { lc: lc, obj: null }; });
+    });
+    Promise.all(jobs).then(function(results) {
+      var entries = [];
+      results.forEach(function(res) {
+        if (res.obj) {
+          var fname = (res.lc.id || "calque") + ".json";
+          _collecterEntreesEditables(res.obj, res.lc.label || res.lc.id || fname, fname, entries);
+        }
+      });
+      if (!entries.length) { _afficherAccueil(window.I18n.t("tabledit.err.planVide")); return; }
+      var titre = "🗺️ " + ((config.plan && config.plan.name) ? config.plan.name : window.I18n.t("tabledit.source.planCourant"));
+      _afficherSelecteurCalque(entries, titre);
+    });
+  }
+
+  // ========== SOURCE : ZIP IMPORTÉ ==========
+  function _traiterZipImporte(file) {
+    if (typeof JSZip === "undefined") { _afficherAccueil(window.I18n.t("tabledit.err.zipInvalide")); return; }
+    _afficherChargement(window.I18n.t("tabledit.source.zip"));
+    JSZip.loadAsync(file).then(function(zip) {
+      var cfgMatches = zip.file(/(?:^|\/)plan-config\.json$/i);
+      if (!cfgMatches || !cfgMatches.length) { var e = new Error("zipSansConfig"); e.code = "zipSansConfig"; throw e; }
+      return cfgMatches[0].async("string").then(function(txt) {
+        var config = JSON.parse(txt);
+        var layers = Array.isArray(config.dataLayers) ? config.dataLayers : [];
+        var jobs = layers.map(function(lc) {
+          var f = null;
+          if (lc.file) {
+            f = zip.file(lc.file);
+            if (!f) { var m = zip.file(new RegExp(_escapeRegex(_basename(lc.file)) + "$")); f = (m && m[0]) || null; }
+          }
+          if (!f) return Promise.resolve({ lc: lc, obj: null });
+          return f.async("string").then(function(t) {
+            try { return { lc: lc, obj: JSON.parse(t) }; } catch (e) { return { lc: lc, obj: null }; }
+          });
+        });
+        return Promise.all(jobs);
+      });
+    }).then(function(results) {
+      var entries = [];
+      results.forEach(function(res) {
+        if (res.obj) _collecterEntreesEditables(res.obj, res.lc.label || res.lc.id || _basename(res.lc.file), _basename(res.lc.file), entries);
+      });
+      if (!entries.length) { _afficherAccueil(window.I18n.t("tabledit.err.zipVide")); return; }
+      _afficherSelecteurCalque(entries, "📦 " + (file.name || "ZIP"));
+    }).catch(function(err) {
+      console.error("[TableEditor] Import ZIP :", err);
+      var key = (err && err.code) ? ("tabledit.err." + err.code) : "tabledit.err.zipInvalide";
+      _afficherAccueil(window.I18n.t(key));
+    });
+  }
+
+  // ========== SÉLECTEUR DE CALQUE ==========
+  function _afficherSelecteurCalque(entries, titre) {
+    if (_modal) { _modal.remove(); _modal = null; }
+    var rows = entries.map(function(e, i) {
+      var noun = window.I18n.t("tabledit.kind." + e.kind);
+      return '<button class="kta-tbl-entry" data-i="' + i + '">'
+        + '<span class="kta-tbl-entry-ico">' + e.emoji + '</span>'
+        + '<span class="kta-tbl-entry-label">' + _escapeHtml(e.label || noun) + '</span>'
+        + '<span class="kta-tbl-entry-count">' + e.count + ' ' + _escapeHtml(noun) + '</span>'
+        + '</button>';
+    }).join("");
+    var modal = document.createElement("div");
+    modal.id = "kta-tbl-modal";
+    modal.className = "kta-readme-modal-overlay";
+    modal.innerHTML = `
+      <div class="kta-readme-modal-boite" style="max-width:560px; width:auto; height:auto; max-height:90vh;">
+        <div class="kta-readme-modal-header">
+          <span class="kta-readme-modal-titre">${_escapeHtml(titre || window.I18n.t("tabledit.selecteur.titre"))}</span>
+          <button class="kta-panneau-close" id="kta-tbl-sel-close">✕</button>
+        </div>
+        <div class="kta-readme-modal-corps">
+          <p style="font-size:13px; color:#8892a4; margin:0 0 12px; line-height:1.5;">${window.I18n.t("tabledit.selecteur.aide")}</p>
+          <div class="kta-tbl-entries">${rows}</div>
+          <div class="kta-conv-actions" style="margin-top:14px;">
+            <button class="kta-btn kta-btn-ghost" id="kta-tbl-sel-retour">${window.I18n.t("tabledit.selecteur.retour")}</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.documentElement.appendChild(modal);
+    _modal = modal;
+    var fermer = function() { if (_modal) { _modal.remove(); _modal = null; } };
+    document.getElementById("kta-tbl-sel-close").addEventListener("click", fermer);
+    document.getElementById("kta-tbl-sel-retour").addEventListener("click", function() { _afficherAccueil(); });
+    modal.addEventListener("click", function(ev) { if (ev.target === modal) fermer(); });
+    modal.querySelectorAll(".kta-tbl-entry").forEach(function(btn) {
+      btn.addEventListener("click", function() { _chargerEntree(entries[parseInt(btn.dataset.i, 10)]); });
+    });
+  }
+
+  // ========== CHARGEMENT D'UNE ENTRÉE → TABLEAU ==========
+  function _chargerEntree(entry) {
+    _sourceObj  = entry.sourceObj;
+    _kind       = entry.kind;
+    _format     = (entry.kind === "editorPoints") ? "editorPoints" : entry.kind; // alias interne
+    _data       = (entry.sourceObj[entry.kind] || []).map(function(p) { return Object.assign({}, p); });
+    _sourceMeta = { fileName: entry.fileName || (entry.kind + ".json") };
+    _modifie    = false;
+    _selection  = new Set();
+    _tri        = { col: null, asc: true };
+    _filtre     = "";
+    _colonnes   = _detecterColonnes(_data);
+    _afficherTableau();
+  }
+
+  // ========== IMPORT D'UN FICHIER JSON (1 des 3 sources) ==========
   function _afficherImport() {
     const modal = document.createElement("div");
     modal.id = "kta-tbl-modal";
@@ -253,7 +533,7 @@
           <div id="kta-tbl-import-erreur" class="kta-conv-erreur" style="display:none;"></div>
 
           <div class="kta-conv-actions" style="margin-top:14px;">
-            <button class="kta-btn kta-btn-ghost" id="kta-tbl-annuler-import">${window.I18n.t("tabledit.import.annuler")}</button>
+            <button class="kta-btn kta-btn-ghost" id="kta-tbl-annuler-import">${window.I18n.t("tabledit.selecteur.retour")}</button>
           </div>
         </div>
       </div>
@@ -277,9 +557,10 @@
       else _setErreurImport(window.I18n.t("tabledit.import.err.extension"));
     });
 
-    const fermer = function() { _modal.remove(); _modal = null; };
+    const fermer = function() { if (_modal) { _modal.remove(); _modal = null; } };
     document.getElementById("kta-tbl-close-import").addEventListener("click", fermer);
-    document.getElementById("kta-tbl-annuler-import").addEventListener("click", fermer);
+    // « ← Retour » → revient à l'écran d'accueil (3 sources)
+    document.getElementById("kta-tbl-annuler-import").addEventListener("click", function() { _afficherAccueil(); });
     modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
   }
 
@@ -295,47 +576,14 @@
     reader.onload = function(e) {
       try {
         const json = JSON.parse(e.target.result);
-
-        // Détecter le format
-        let format = null;
-        let points = null;
-        let meta   = { fileName: file.name };
-
-        if (Array.isArray(json.data)) {
-          format = "data";
-          points = json.data;
-          // Préserver les autres champs (type, version, roads, zones embarqués)
-          meta.type    = json.type;
-          meta.version = json.version;
-          meta.roads   = json.roads;
-          meta.zones   = json.zones;
-        } else if (Array.isArray(json.editorPoints)) {
-          format = "editorPoints";
-          points = json.editorPoints;
-          meta.type    = json.type;
-          meta.version = json.version;
-          meta.roads   = json.roads;
-          meta.zones   = json.zones;
-          meta.measure = json.measure;
-        } else {
-          throw new Error(window.I18n.t("tabledit.import.err.noData"));
-        }
-
-        if (points.length === 0) {
-          throw new Error(window.I18n.t("tabledit.import.err.noPoints"));
-        }
-
-        _data       = points.map(function(p) { return Object.assign({}, p); }); // clone
-        _format     = format;
-        _sourceMeta = meta;
-        _modifie    = false;
-        _selection  = new Set();
-        _tri        = { col: null, asc: true };
-        _filtre     = "";
-        _colonnes   = _detecterColonnes(_data);
-
-        _afficherTableau();
-
+        // Un fichier peut contenir plusieurs tableaux éditables (ex : session
+        // = editorPoints + roads + zones). On les collecte, puis : 1 seul →
+        // tableau direct ; plusieurs → sélecteur.
+        const entries = [];
+        _collecterEntreesEditables(json, _basename(file.name), file.name, entries);
+        if (!entries.length) throw new Error(window.I18n.t("tabledit.import.err.noData"));
+        if (entries.length === 1) _chargerEntree(entries[0]);
+        else _afficherSelecteurCalque(entries, "📄 " + file.name);
       } catch(err) {
         console.error(err);
         _setErreurImport("❌ " + (err.message || err));
@@ -355,7 +603,9 @@
     // plans multi-niveau aient la colonne niveau visible à côté des coords
     // (cohérence visuelle x/y/level). Sans ça, level passait en queue de
     // tableau via le fallback set.forEach (P3 audit Karma_dev).
-    const ordreCourant = ["id", "nom", "x", "y", "level", "tags", "etat", "description", "profondeur", "date_update"];
+    // 🆕 v1.48.x : "type" en tête + "points" (géométrie, lecture seule) près de
+    // la queue → couvre points ET roads/zones/structures avec un ordre lisible.
+    const ordreCourant = ["id", "type", "nom", "x", "y", "level", "tags", "etat", "description", "points", "profondeur", "date_update"];
     const ordonnees = [];
     ordreCourant.forEach(function(k) { if (set.has(k)) { ordonnees.push(k); set.delete(k); } });
     // Ajouter les autres en queue
@@ -381,9 +631,11 @@
 
           <div class="kta-tbl-toolbar">
             <input type="text" class="kta-cfg-input" id="kta-tbl-search" placeholder="${_escapeAttr(window.I18n.t("tabledit.editor.recherche"))}">
-            <button class="kta-btn kta-btn-ghost" id="kta-tbl-add">${window.I18n.t("tabledit.editor.ajouterLigne")}</button>
-            <button class="kta-btn kta-btn-ghost" id="kta-tbl-preview">${window.I18n.t("tabledit.editor.voirCarte")}</button>
+            ${_estPoints() ? `<button class="kta-btn kta-btn-ghost" id="kta-tbl-add">${window.I18n.t("tabledit.editor.ajouterLigne")}</button>
+            <button class="kta-btn kta-btn-ghost" id="kta-tbl-preview">${window.I18n.t("tabledit.editor.voirCarte")}</button>` : ""}
           </div>
+
+          ${_estPoints() ? "" : `<div class="kta-tbl-gen-note">${window.I18n.t("tabledit.geom.lecture")}</div>`}
 
           <div id="kta-tbl-warn-big-wrap"></div>
 
@@ -430,8 +682,10 @@
       }, 200);
     });
 
-    document.getElementById("kta-tbl-add").addEventListener("click", _ajouterLigne);
-    document.getElementById("kta-tbl-preview").addEventListener("click", _apercuCarte);
+    var _btnAdd = document.getElementById("kta-tbl-add");
+    if (_btnAdd) _btnAdd.addEventListener("click", _ajouterLigne);
+    var _btnPrev = document.getElementById("kta-tbl-preview");
+    if (_btnPrev) _btnPrev.addEventListener("click", _apercuCarte);
     document.getElementById("kta-tbl-delete").addEventListener("click", _supprimerSelection);
     document.getElementById("kta-tbl-duplicate").addEventListener("click", _dupliquerSelection);
     document.getElementById("kta-tbl-save").addEventListener("click", _menuSauvegarde);
@@ -513,7 +767,8 @@
       html += '<td class="col-check"><input type="checkbox" data-row-check="' + idx + '"' + (isSel ? " checked" : "") + '></td>';
       _colonnes.forEach(function(col) {
         const v = p[col];
-        const ro = (col === "id");
+        // 🆕 v1.48.x : "points" (géométrie roads/zones/structures) = lecture seule.
+        const ro = (col === "id" || col === "points");
         let cls = "";
         if (ro) cls += "col-readonly";
 
@@ -524,6 +779,9 @@
         let contenu;
         if (col === "tags") {
           contenu = _renderTagsCellule(idx, v);
+        } else if (col === "points") {
+          // Géométrie : résumé non éditable « N points »
+          contenu = window.I18n.t("tabledit.col.points", { n: Array.isArray(v) ? v.length : 0 });
         } else if (Array.isArray(v)) {
           contenu = v.join(", ");
         } else if (v === undefined || v === null) {
@@ -579,7 +837,7 @@
       td.addEventListener("click", function(e) {
         if (e.target.closest("input")) return;
         const col = td.dataset.col;
-        if (col === "id") return; // lecture seule
+        if (col === "id" || col === "points") return; // lecture seule (id + géométrie)
         if (col === "tags") {
           // Si clic sur ×, retirer le tag
           const removeBtn = e.target.closest("[data-tag-remove]");
@@ -613,7 +871,7 @@
     const htmlOrig = td.innerHTML;
     td.classList.add("editing");
 
-    const isNum = (col === "x" || col === "y" || col === "profondeur");
+    const isNum = (col === "x" || col === "y" || col === "profondeur" || col === "level");
     const input = document.createElement("input");
     input.type = isNum ? "number" : "text";
     input.value = valOrig === undefined || valOrig === null ? "" : valOrig;
@@ -1037,10 +1295,11 @@
   }
 
   // ========== MENU DE SAUVEGARDE ==========
+  // 🆕 v1.48.x — règle « no live » pour les datalayers (data/roads/zones/structures) :
+  // export-only + note « repasser par le Générateur ». Seule la SESSION
+  // (editorPoints) garde le remplacement live (`Remplacer la session`).
   function _menuSauvegarde() {
-    // Détecter ce qui est possible
-    const peutCalque = _format === "data" && _calqueCorrespondant() !== null;
-    const peutSession = _format === "editorPoints";
+    const estSession = _estSession();
 
     const overlay = document.createElement("div");
     overlay.className = "kta-readme-modal-overlay";
@@ -1059,15 +1318,9 @@
             <button class="kta-btn kta-btn-primary" id="save-dl">
               ${window.I18n.t("tabledit.save.telecharger")}
             </button>
-            <button class="kta-btn kta-btn-ghost" id="save-layer" ${peutCalque ? "" : "disabled"}>
-              ${window.I18n.t("tabledit.save.calque")}
-              ${peutCalque ? "" : window.I18n.t("tabledit.save.calque.absent")}
-            </button>
-            <button class="kta-btn kta-btn-ghost" id="save-session" ${peutSession ? "" : "disabled"}>
-              ${window.I18n.t("tabledit.save.session")}
-              ${peutSession ? "" : window.I18n.t("tabledit.save.session.absent")}
-            </button>
+            ${estSession ? `<button class="kta-btn kta-btn-ghost" id="save-session">${window.I18n.t("tabledit.save.session")}</button>` : ""}
           </div>
+          ${estSession ? "" : `<div class="kta-tbl-gen-note">${window.I18n.t("tabledit.save.datalayerNote")}</div>`}
         </div>
       </div>
     `;
@@ -1083,15 +1336,7 @@
       overlay.remove();
     });
 
-    if (peutCalque) {
-      document.getElementById("save-layer").addEventListener("click", function() {
-        _remplacerCalque();
-        _modifie = false;
-        _miseAJourInfos();
-        overlay.remove();
-      });
-    }
-    if (peutSession) {
+    if (estSession) {
       document.getElementById("save-session").addEventListener("click", function() {
         _remplacerSession();
         _modifie = false;
@@ -1108,67 +1353,24 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = _sourceMeta.fileName || "data.json";
+    a.download = _sourceMeta.fileName || (_kind || "data") + ".json";
     a.click();
     setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
   }
 
+  // Re-sérialise l'objet source COMPLET en n'y remplaçant que le tableau édité
+  // (_kind) → préserve TOUS les autres tableaux/champs (type, version, measure,
+  // customLegend, autres calques d'un même fichier…). Évite toute perte au
+  // téléchargement, quelle que soit la source (plan en cours / ZIP / JSON).
   function _construireObjetSortie() {
-    if (_format === "editorPoints") {
-      const obj = {
-        type:    _sourceMeta.type    || "devmap-session",
-        version: _sourceMeta.version || 1,
-        editorPoints: _data
-      };
-      if (_sourceMeta.measure) obj.measure = _sourceMeta.measure;
-      if (_sourceMeta.roads)   obj.roads   = _sourceMeta.roads;
-      if (_sourceMeta.zones)   obj.zones   = _sourceMeta.zones;
-      return obj;
-    }
-    // format data (calque)
-    const obj = { data: _data };
-    if (_sourceMeta.type)    obj.type    = _sourceMeta.type;
-    if (_sourceMeta.version) obj.version = _sourceMeta.version;
-    if (_sourceMeta.roads)   obj.roads   = _sourceMeta.roads;
-    if (_sourceMeta.zones)   obj.zones   = _sourceMeta.zones;
+    var base = (_sourceObj && typeof _sourceObj === "object") ? _sourceObj : {};
+    var obj;
+    try { obj = JSON.parse(JSON.stringify(base)); } catch (e) { obj = {}; }
+    obj[_kind] = _data;
     return obj;
   }
 
-  // ========== REMPLACEMENT CALQUE ACTIF ==========
-  function _calqueCorrespondant() {
-    const config = window.PLAN_CONFIG;
-    if (!config || !Array.isArray(config.dataLayers)) return null;
-    // Recherche par nom de fichier
-    const fname = (_sourceMeta.fileName || "").toLowerCase();
-    for (const lc of config.dataLayers) {
-      const lcName = (lc.file || "").split("/").pop().toLowerCase();
-      if (lcName && fname.includes(lcName)) return lc.id;
-      if (lcName === fname) return lc.id;
-    }
-    return null;
-  }
-
-  function _remplacerCalque() {
-    const layerId = _calqueCorrespondant();
-    if (!layerId) { alert(window.I18n.t("tabledit.save.err.calqueAbsent")); return; }
-    const layer = window.dataLayerGroups?.[layerId];
-    if (!layer) { alert(window.I18n.t("tabledit.save.err.calqueMemoire")); return; }
-
-    // Vider le layer existant
-    layer.clearLayers();
-
-    // Recréer les markers depuis _data
-    _data.forEach(function(p) {
-      if (typeof p.x !== "number" || typeof p.y !== "number") return;
-      const m = L.marker(convertCoord(p.x, p.y), { icon: choisirIcone(p) });
-      m.bindPopup("<b>" + (p.nom || "") + "</b><br>" + (p.description || ""), window.KTA_POPUP_OPTS);
-      m.addTo(layer);
-    });
-
-    alert(window.I18n.t("tabledit.save.calqueOk", { id: layerId, n: _data.length }));
-  }
-
-  // ========== REMPLACEMENT SESSION ==========
+  // ========== REMPLACEMENT SESSION (live — uniquement editorPoints) ==========
   function _remplacerSession() {
     if (!window.setEditorPoints) { alert(window.I18n.t("tabledit.save.err.sessionIndispo")); return; }
     window.setEditorPoints(_data);

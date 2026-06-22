@@ -1,7 +1,7 @@
 {
-  "version": "v1.47.0",
-  "released": "2026-06-16",
+  "version": "v1.50.0",
+  "released": "2026-06-23",
   "notes": [
-    "🧭 Nouvel écran de démarrage repensé autour de la rose des vents : plus épuré, net et animé, avec le numéro de version affiché."
+    "🧭 Le menu Tracker s'ouvre désormais en plein écran : de grandes tuiles plus faciles à toucher, rangées par Suivi / Outils / Urgence, avec l'état du suivi (actif, distance, pas) affiché en haut."
   ]
 }

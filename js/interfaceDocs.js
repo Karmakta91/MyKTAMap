@@ -738,7 +738,7 @@ function _aideHtmlFr() {
           <div class="kta-aide-section-titre">⬇️ Charger / Import</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">📥</span><span><strong>Importer</strong> — un seul bouton qui ouvre une modale à 2 cards : 📥 <strong>Session MyKTAMap</strong> (.json / .zip avec photos) ou 📤 <strong>GPX externe</strong> (TopoDroid, OsmAnd, Avenza, Strava, Garmin… nécessite calibrage GPS). Preview avant import, Ctrl+Z pour annuler.</span>
-            <span class="kta-aide-icone">📊</span><span>Éditer un fichier JSON sous forme de tableau</span>
+            <span class="kta-aide-icone">📊</span><span><strong>Éditeur de données du plan</strong> — modifie les données (points, tracés, zones) sous forme de tableau</span>
             <span class="kta-aide-icone">🗂️</span><span>Changer de plan (revenir au home)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
@@ -900,6 +900,16 @@ function _aideHtmlFr() {
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             <strong>Cas d'usage</strong> : un cataphile qui crée un plan d'une carrière peut renommer « Eau » en « Lac du fond », masquer les types qu'il n'utilise jamais, et ajouter ses propres types dessinables (« Niche votive », « Stèle », etc.). Ces personnalisations s'appliquent <strong>automatiquement</strong> à tous ceux qui chargeront son plan, en KMZ comme en GPX. Chaque utilisateur peut toujours surcharger sa propre session par-dessus sans rien casser.
           </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🧭 Menu Tracker (plein écran)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🧭</span><span>Le bouton 🧭 Tracker ouvre un <strong>modal plein écran de grosses tuiles</strong> (au lieu de l'ancien menu latéral) — plus lisible et tactile sur mobile.</span>
+            <span class="kta-aide-icone">📋</span><span>3 sections : <strong>Suivi</strong> (démarrer/arrêter, recaler, Ma position, verrou sur tracé) · <strong>Outils</strong> (boussole, itinéraire, replay, heatmap) · <strong>Urgence</strong> (rouge).</span>
+            <span class="kta-aide-icone">📊</span><span>En-tête : état du suivi (actif/inactif) + distance parcourue + nombre de pas.</span>
+            <span class="kta-aide-icone">✕</span><span>Fermeture : croix, clic en dehors, ou touche Échap. Toucher une tuile ferme le menu puis lance l'action.</span>
+          </div>
         </div>
 
         <div class="kta-aide-section">

@@ -917,6 +917,165 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   color: inherit !important;
 }
 
+/* =========================================================================
+   🆕 v1.50.0 — Modal plein écran « Tracker » (refonte du menu déroulé)
+   Grosses tuiles tactiles groupées en sections (Suivi / Outils / Urgence).
+   Mobile-first : grille 2 colonnes, z-index modale (99999), charte dark.
+   ========================================================================= */
+.kta-tracker-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background: rgba(6, 9, 18, 0.78);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  overflow-y: auto;
+}
+.kta-tracker-modal-box {
+  width: 100%;
+  max-width: 460px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, #1a1f2e 0%, #0a0d18 100%);
+  border: 1px solid rgba(140, 180, 255, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.kta-tracker-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.kta-tracker-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #e8eaf0;
+}
+.kta-tracker-modal-close {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  line-height: 1;
+  color: #c8d0e0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.kta-tracker-modal-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.kta-tracker-modal-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #8892a4;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.kta-tracker-modal-status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.kta-tracker-modal-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #6b7280;
+}
+.kta-tracker-modal-status-dot.kta-on {
+  background: #4ade80;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.7);
+}
+.kta-tracker-modal-body {
+  padding: 4px 14px 12px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.kta-tracker-modal-section-title {
+  margin: 10px 2px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8892a4;
+}
+.kta-tracker-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.kta-tracker-modal-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 62px;
+  padding: 9px 6px;
+  font-family: inherit;
+  color: #e8eaf0;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.06s ease;
+}
+.kta-tracker-modal-tile:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(140, 180, 255, 0.4);
+}
+.kta-tracker-modal-tile:active {
+  transform: scale(0.97);
+}
+.kta-tracker-modal-tile-wide {
+  grid-column: 1 / -1;
+}
+.kta-tracker-modal-tile-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.kta-tracker-modal-tile-label {
+  font-size: 12px;
+  line-height: 1.2;
+  color: inherit;
+}
+/* Tuile active (Play en cours, boussole visible, recalage armé) — accent bleu */
+.kta-tracker-modal-tile.kta-actif {
+  border-color: #8cb4ff;
+  color: #8cb4ff;
+  background: rgba(140, 180, 255, 0.12);
+  box-shadow: 0 0 0 1px rgba(140, 180, 255, 0.35) inset;
+}
+/* Tuile urgence : .kta-sous-action-urgence force déjà bg/bordure/texte rouges
+   (!important) ; on s'assure juste que l'icône/label internes héritent. */
+.kta-tracker-modal-tile.kta-sous-action-urgence .kta-tracker-modal-tile-icon,
+.kta-tracker-modal-tile.kta-sous-action-urgence .kta-tracker-modal-tile-label {
+  color: inherit !important;
+}
+
 /* Modale Lost Mode — bordure rouge urgence */
 .kta-lost-modal-boite {
   max-width: 560px;
@@ -1305,8 +1464,16 @@ html.kta-theme-light .kta-lost-warn-overflow strong {
   pointer-events: none;
 }
 
-/* Curseur crosshair pendant le mode clic carte */
-body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
+/* 🆕 v1.48.0 — Curseur de PRÉCISION (a11y). Réticule or + contour sombre +
+   point central = visible sur plan BLANC comme SOMBRE (l'ancien crosshair
+   noir fin disparaissait sur fond blanc). Appliqué dès qu'un mode « clic sur
+   la carte » est actif : édition/mesure/recalage/tracé/zone/structure (classe
+   body.kta-precision-mode posée par interface.js) + mode « perdu ». Hotspot
+   centré (14,14) = le point cliqué. Fallback `crosshair` (vieux navigateurs). */
+body.kta-precision-mode .leaflet-container,
+body.kta-lost-click-mode .leaflet-container {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M14 3V11M14 17V25M3 14H11M17 14H25' stroke='%23000' stroke-width='4.5' opacity='0.85'/%3E%3Cpath d='M14 3V11M14 17V25M3 14H11M17 14H25' stroke='%23ff1e1e' stroke-width='2'/%3E%3C/g%3E%3Ccircle cx='14' cy='14' r='2.2' fill='%23000' opacity='0.85'/%3E%3Ccircle cx='14' cy='14' r='1.2' fill='%23ff1e1e'/%3E%3C/svg%3E") 14 14, crosshair !important;
+}
 
 /* === Bloc accordion "📚 Bonnes pratiques" — couleur ambre #f4c542 === */
 .kta-lost-pratiques {
@@ -8618,6 +8785,27 @@ html.kta-theme-light .kta-cfg-group-titre {
   flex-wrap: wrap;
   gap: 6px;
 }
+/* 🆕 v1.48.0 — Checklist « Zones à éviter » (modale itinéraire). */
+.kta-iti-avoid-zones-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.kta-iti-avoid-zone-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #d7dbe6;
+  cursor: pointer;
+}
+.kta-iti-avoid-zone-row:hover { background: rgba(255, 255, 255, 0.07); }
+.kta-iti-avoid-zone-cb { accent-color: #ff1e1e; cursor: pointer; }
 .kta-iti-avoid-tag-chip {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -13162,6 +13350,51 @@ body.kta-theme-light button.kta-group-flyout-btn.kta-sous-action-urgence:hover {
 body.kta-theme-light button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-label,
 body.kta-theme-light button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   color: #fff !important;
+}
+
+/* 🆕 v1.50.0 — Modal Tracker en thème clair */
+body.kta-theme-light .kta-tracker-modal-overlay {
+  background: rgba(20, 28, 44, 0.55);
+}
+body.kta-theme-light .kta-tracker-modal-box {
+  background: #f4f6fb;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+body.kta-theme-light .kta-tracker-modal-title { color: #1a1f2e; }
+body.kta-theme-light .kta-tracker-modal-header,
+body.kta-theme-light .kta-tracker-modal-status {
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+body.kta-theme-light .kta-tracker-modal-status {
+  background: rgba(0, 0, 0, 0.03);
+  color: #5a6478;
+}
+body.kta-theme-light .kta-tracker-modal-section-title { color: #5a6478; }
+body.kta-theme-light .kta-tracker-modal-close {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #3a4256;
+}
+body.kta-theme-light .kta-tracker-modal-tile {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #1a1f2e;
+}
+body.kta-theme-light .kta-tracker-modal-tile:hover {
+  background: #eef2fb;
+  border-color: rgba(90, 130, 220, 0.5);
+}
+/* Urgence en clair (rouge plein) : la règle light existante ne cible que
+   a.kta-sub / flyout-btn → on l'étend explicitement à la tuile du modal. */
+body.kta-theme-light .kta-tracker-modal-tile.kta-sous-action-urgence {
+  background: #c0392b !important;
+  border-color: #a33024 !important;
+  color: #fff !important;
+}
+body.kta-theme-light .kta-tracker-modal-tile.kta-sous-action-urgence:hover {
+  background: #a33024 !important;
+  border-color: #8b261c !important;
 }
 
 /* Background des conteneurs leaflet-bar (= la "barre" qui contient les

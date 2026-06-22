@@ -222,6 +222,7 @@ window.itineraireYAller = function(x, y, nom) {
         return window.Pathfinder.computeRoute(waypoints, {
           avoidPoints: avoidPrefs.points || [],
           avoidTags:   avoidPrefs.tags   || [],
+          avoidZones:  avoidPrefs.zones  || [],
           avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
         });
       });
@@ -712,15 +713,16 @@ function _itiAvoidLsKey() {
 function _getItiAvoidPrefs() {
   try {
     const raw = localStorage.getItem(_itiAvoidLsKey());
-    if (!raw) return { points: [], tags: [], radius: ITI_AVOID_DEFAULT_RADIUS };
+    if (!raw) return { points: [], tags: [], zones: [], radius: ITI_AVOID_DEFAULT_RADIUS };
     const obj = JSON.parse(raw);
     return {
       points: Array.isArray(obj.points) ? obj.points : [],
       tags:   Array.isArray(obj.tags)   ? obj.tags   : [],
+      zones:  Array.isArray(obj.zones)  ? obj.zones  : [],   // 🆕 v1.48.0 : ids dérivés des zones à éviter
       radius: Number.isFinite(obj.radius) ? obj.radius : ITI_AVOID_DEFAULT_RADIUS
     };
   } catch(e) {
-    return { points: [], tags: [], radius: ITI_AVOID_DEFAULT_RADIUS };
+    return { points: [], tags: [], zones: [], radius: ITI_AVOID_DEFAULT_RADIUS };
   }
 }
 
@@ -728,6 +730,45 @@ function _setItiAvoidPrefs(prefs) {
   try {
     localStorage.setItem(_itiAvoidLsKey(), JSON.stringify(prefs));
   } catch(e) {}
+}
+
+// 🆕 v1.48.0 — Rendu des TYPES de zones à éviter (1 checkbox par type, comme
+// les autres filtres). Source : window.getAvoidableZoneTypes() (pathfinder :
+// types distincts des zones session + embarquées, sauf "inaccessible", label
+// résolu legend/custom). Coché = type présent dans prefs.zones. Persiste à
+// chaque toggle. Contrainte SOUPLE côté pathfinder (relâchée si aucun chemin).
+function _rafraichirListeAvoidZones() {
+  const el = document.getElementById("kta-iti-avoid-zones-list");
+  if (!el) return;
+  // 1 entrée par TYPE de zone (comme les autres filtres), pas par instance.
+  // prefs.zones contient des TYPES ; cocher un type = éviter toutes ses zones.
+  const types = (typeof window.getAvoidableZoneTypes === "function") ? window.getAvoidableZoneTypes() : [];
+  if (!types.length) {
+    el.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">' + window.I18n.t("iti.avoid.zonesEmpty") + '</p>';
+    return;
+  }
+  const prefs = _getItiAvoidPrefs();
+  function _esc(s) {
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  el.innerHTML = types.map(function(z) {
+    const checked = prefs.zones.indexOf(z.type) >= 0;
+    const cnt = ' <span style="opacity:.6; font-size:11px;">(' + z.count + ')</span>';
+    return '<label class="kta-iti-avoid-zone-row">' +
+             '<input type="checkbox" class="kta-iti-avoid-zone-cb" data-ztype="' + _esc(z.type) + '"' + (checked ? ' checked' : '') + '> ' +
+             '<span>' + _esc(z.label) + cnt + '</span>' +
+           '</label>';
+  }).join("");
+  el.querySelectorAll(".kta-iti-avoid-zone-cb").forEach(function(cb) {
+    cb.addEventListener("change", function() {
+      const zt = cb.getAttribute("data-ztype");
+      const prefs2 = _getItiAvoidPrefs();
+      const i = prefs2.zones.indexOf(zt);
+      if (cb.checked && i < 0) prefs2.zones.push(zt);
+      else if (!cb.checked && i >= 0) prefs2.zones.splice(i, 1);
+      _setItiAvoidPrefs(prefs2);
+    });
+  });
 }
 
 // Liste des tags presents dans le plan (depuis SearchPoints) pour le dropdown
@@ -881,6 +922,15 @@ function _htmlSectionAvoidItineraire(prefs) {
             window.I18n.t("iti.avoid.tagsHelp") +
           '</p>' +
           '<div id="kta-iti-avoid-tags-chips" class="kta-iti-avoid-tags-chips"></div>' +
+        '</div>' +
+
+        // === Zones à éviter (🆕 v1.48.0) ===
+        '<div class="kta-iti-avoid-group">' +
+          '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.zonesTitle") + '</div>' +
+          '<p class="kta-iti-help" style="margin:2px 0 6px; font-size:11.5px;">' +
+            window.I18n.t("iti.avoid.zonesHelp") +
+          '</p>' +
+          '<div id="kta-iti-avoid-zones-list" class="kta-iti-avoid-zones-list"></div>' +
         '</div>' +
 
         // === Marge ===
@@ -1108,9 +1158,10 @@ function _bindAvoidSectionHandlers() {
   if (resetBtn) {
     resetBtn.addEventListener("click", function() {
       if (!confirm(window.I18n.t("iti.avoid.resetConfirm"))) return;
-      _setItiAvoidPrefs({ points: [], tags: [], radius: ITI_AVOID_DEFAULT_RADIUS });
+      _setItiAvoidPrefs({ points: [], tags: [], zones: [], radius: ITI_AVOID_DEFAULT_RADIUS });
       _rafraichirListeAvoidPoints();
       _rafraichirChipsAvoidTags();
+      _rafraichirListeAvoidZones();
       if (radiusInput) radiusInput.value = String(ITI_AVOID_DEFAULT_RADIUS);
     });
   }
@@ -1118,6 +1169,7 @@ function _bindAvoidSectionHandlers() {
   // Premier rendu des chips + liste
   _rafraichirListeAvoidPoints();
   _rafraichirChipsAvoidTags();
+  _rafraichirListeAvoidZones();
 }
 
 window.ouvrirItinerairModal = function() {
@@ -1603,6 +1655,7 @@ window.ouvrirItinerairModal = function() {
         return window.Pathfinder.computeRoute(_itineraryWaypoints, {
           avoidPoints: avoidPrefs.points || [],
           avoidTags:   avoidPrefs.tags   || [],
+          avoidZones:  avoidPrefs.zones  || [],
           avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
         });
       });

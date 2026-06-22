@@ -758,7 +758,7 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 | **Charger / Import** | ⬇️ | Importer une session, éditer un fichier JSON, changer de plan |
 | **Créer / Modifier plan** | 🏗️ | Générateur de plan *(clic direct)* |
 | **Enregistrer** | ⬆️ | Enregistrer ta session (3 modes), exporter le plan en image |
-| **Tracker** | 🧭 | Démarrer / arrêter le tracking, recaler ta position |
+| **Tracker** | 🧭 | **Menu plein écran** : démarrer / arrêter le tracking, recaler, Ma position, verrou sur tracé, boussole, itinéraire, replay, heatmap, urgence |
 | **Mesure** | 📐 | Mesurer une distance, effacer |
 | **Édition de points** | ✏️ | Ajouter tes propres points, effacer |
 | **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins, **calculer la distance totale** |
@@ -907,6 +907,8 @@ Le bouton **🧭 Tracker** ouvre un **panneau latéral (flyout)** adjacent au bo
 | **▶️** / **⏹️** | Play / Stop tracking (l'icône bascule dynamiquement selon l'état) |
 | **🧭** | Boussole (widget rose des vents) |
 | **📍** | Recalage position |
+| **🎯** | **Ma position** — recentre la carte sur toi *(v1.49.0)* |
+| **🔓** | **Suspendre le verrou sur tracé** — temporairement (30 s → 10 min) *(v1.49.0)* |
 | **🗺️** | Calculer un itinéraire |
 | **🎬** | Replay de session tracker |
 | **🔥** | Heatmap — voir section dédiée |
@@ -914,6 +916,11 @@ Le bouton **🧭 Tracker** ouvre un **panneau latéral (flyout)** adjacent au bo
 | **🚨** | Mode urgence XL — **bouton à fond ROUGE** (signal danger) |
 
 > 🚨 **Les 2 modes urgence sont délibérément placés en FIN de panneau avec un fond rouge vif** pour les rendre instantanément identifiables visuellement. En situation de stress, tu sais où regarder.
+
+> 🆕 **v1.49.0 — terrain** :
+> - **🎯 Ma position** : recentre la carte sur ta position courante (utile après avoir navigué ailleurs sur le plan).
+> - **🔓 Suspendre le verrou sur tracé** : si le « verrouillage sur tracé » (navigation intelligente) est activé et que tu **sors du réseau de galeries** (ex. entrer dans une cave), tu peux le couper temporairement (**30 s / 1 min / 10 min / jusqu'à réactivation**) sans passer par les réglages. Un **compte à rebours 🔓 s'affiche dans la barre du bas**, à côté du voyant tracker ON/OFF ; touche-le pour réactiver (confirmation demandée).
+> - **⚙️ Réglages avancés** : dans ⚙️ Réglages → *Navigation & Tracker*, la **tolérance latérale** et le **poids du cap** du verrou sont réglables (pour ajuster le comportement aux jonctions). La taille d'un pas, le seuil et le cooldown sont désormais **bornés** pour éviter les valeurs aberrantes. ⚠️ Réglages experts — règle d'abord l'échelle m/px du plan.
 
 ### ▶️ Démarrer le tracking
 
@@ -1177,6 +1184,7 @@ Dans la modale itinéraire, une section repliable **🚫 Préférences d'évitem
 |---|---|
 | **📍 Points à éviter** | **3 méthodes** au choix : (a) recherche autocomplete dans le champ texte, (b) saisie par ID exact, (c) **📍 Cliquer sur la carte** : bascule en mode clic, chaque clic sur la map ajoute un point. Chips orange avec ✕ pour retirer. |
 | **🏷️ Tags à éviter** | Clique un chip pour le toggler. Tous les points portant ce tag seront évités (ex: tu actives `pa` → tous les puits aération sont évités). |
+| **⬛ Zones à éviter** *(depuis v1.48.0)* | Coche un **type de zone** dans la liste (Eau, Effondrement, tes types personnalisés…) pour que l'itinéraire **contourne** toutes les zones de ce type. Les zones **⛔ inaccessibles** n'apparaissent pas ici : elles sont déjà infranchissables (contrainte dure, jamais relâchée). |
 | **📏 Marge** | Distance autour des points évités (px, défaut 100). Tout segment de route à moins de cette marge est exclu du graphe. |
 
 **Comportement** :
@@ -2545,44 +2553,41 @@ Appuyez sur **⬇️ → 📥 Importer une session** pour ouvrir la fenêtre d'i
 3. Un **avertissement** vous prévient que l'import remplacera votre session en cours — pensez à exporter avant si nécessaire
 4. Cliquez sur **Importer** pour valider, ou **Annuler** pour fermer sans rien changer
 
-### 📊 Éditer un fichier JSON
+### 📊 Éditeur de données du plan
 
-Appuyez sur **⬇️ → 📊 Éditer un fichier JSON** pour ouvrir l'éditeur de tableau. Permet de modifier en masse les points d'un calque ou d'une session.
+Appuyez sur **⬇️ → 📊 Éditeur de données du plan** (en mode carte) **ou** sur le bouton **📊 Éditeur de données** de l'accueil pour ouvrir l'éditeur en tableau. Vous pouvez **voir, modifier et exporter** les données du plan (points, tracés, zones, structures).
 
-#### Ouverture
+> ℹ️ Depuis l'**accueil**, aucun plan n'est encore chargé : seules les sources **📦 ZIP** et **📄 JSON** sont proposées (pas de « plan en cours »).
 
-1. **Glissez-déposez** un fichier `.json` (calque de données type `puit.json`, ou session `devmap-session.json`)
-2. Le format est détecté automatiquement
-3. Le tableau s'affiche avec une colonne par champ détecté
+#### Ouverture — 3 sources *(depuis v1.48.0)*
+
+1. **🗺️ Plan en cours** — liste les calques de données du plan ouvert (puits, accès, tracés, zones…). Choisissez-en un à éditer.
+2. **📦 Importer un ZIP** — récupère la liste des calques de données d'un plan complet (`.zip`).
+3. **📄 Importer un fichier JSON** — un seul fichier de données ou de session (glisser-déposer).
+
+Si une source contient plusieurs jeux de données, un **sélecteur** s'affiche (chacun avec son nombre d'éléments). Le tableau s'ouvre ensuite avec une colonne par champ détecté.
 
 #### Édition
 
 - **Cliquez sur une cellule** pour la modifier (sauf l'ID, en lecture seule)
-- **Tab** : passe à la cellule suivante
-- **Entrée** : passe à la ligne suivante (même colonne)
-- **Échap** : annule la modification en cours
+- **Tab** : passe à la cellule suivante · **Entrée** : ligne suivante (même colonne) · **Échap** : annule
 - **Coordonnées** : si X ou Y est hors du plan, la cellule devient rouge avec un avertissement ⚠
-- **Tags** : cliquez sur la cellule pour ouvrir un sélecteur multi-tags avec aperçu des icônes. Tu peux aussi créer un nouveau tag à la volée
+- **Tags** : cliquez sur la cellule pour ouvrir un sélecteur multi-tags avec aperçu des icônes (création de tag à la volée possible)
+- **🔒 Tracés / zones / structures** : vous pouvez éditer la **note** (description), le **type** et le **niveau**, mais la **géométrie** (la colonne `points`) reste en **lecture seule** — pour la redessiner, utilisez les outils de tracé sur la carte.
 
-#### Actions
+#### Actions *(points uniquement)*
 
-- **🔍 Recherche** : filtre toutes les colonnes
-- **Trier** : clique sur l'en-tête d'une colonne (asc → desc → annulé)
-- **Sélection multiple** : checkbox + Maj+clic pour une plage
-- **+ Ajouter ligne** : nouvelle ligne vide en bas
-- **📋 Dupliquer** : copie les lignes sélectionnées
-- **🗑️ Supprimer** : retire les lignes sélectionnées (confirmation requise)
-- **📍 Voir sur la carte** : affiche les points sélectionnés en orange clignotant sur le plan
+- **🔍 Recherche** filtre toutes les colonnes · **Trier** : clic en-tête (asc → desc → annulé) · **Sélection multiple** : checkbox + Maj+clic
+- **+ Ajouter ligne** · **📋 Dupliquer** · **🗑️ Supprimer** (confirmation) · **📍 Voir sur la carte** (points sélectionnés en orange clignotant)
 
-#### Sauvegarde
+#### Sauvegarde *(jamais de chargement en direct pour les données du plan)*
 
-Bouton **💾 Sauvegarder** → 3 choix :
+Bouton **💾 Sauvegarder** :
 
-| Option | Effet |
+| Cas | Effet |
 |---|---|
-| **📥 Télécharger** | Récupère le fichier `.json` modifié |
-| **🗺️ Remplacer le calque** | Met à jour le calque correspondant en mémoire (si format `data` et calque chargé sur le plan en cours) |
-| **✏️ Remplacer la session** | Remplace les points ajoutés de la session en cours (si format `editorPoints`) |
+| **Données du plan** (points / tracés / zones / structures) | **📥 Télécharger** le fichier `.json` modifié. ⚠️ Pour les **appliquer**, réimportez ce fichier dans le **Générateur** (🏗️) — l'éditeur ne modifie jamais le plan en direct sur la carte. |
+| **Session** (vos annotations en cours) | **📥 Télécharger** **ou** **✏️ Remplacer la session en cours** (mise à jour live de vos points de session). |
 
 > ⚠️ Si vous fermez la fenêtre avec des modifications non sauvegardées, une confirmation vous propose de sauvegarder, quitter sans sauvegarder, ou continuer l'édition.
 

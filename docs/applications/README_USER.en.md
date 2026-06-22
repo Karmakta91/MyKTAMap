@@ -752,10 +752,10 @@ All tools are accessible from the **right side bar**, organized into 11 groups:
 | **Help / Docs / Legend** | 📚 | Help, documentation, icon legend |
 | **Settings** | ⚙️ | Settings, scale calibration, debug *(direct click)* |
 | **Search** | 🔍 | Quickly find a point on the map *(direct click)* |
-| **Load / Import** | ⬇️ | Import a session, edit a JSON file, change map |
+| **Load / Import** | ⬇️ | Import a session, open the plan data editor, change map |
 | **Create / Modify map** | 🏗️ | Map generator *(direct click)* |
 | **Save** | ⬆️ | Save your session (3 modes), export the map as an image |
-| **Tracker** | 🧭 | Start / stop tracking, recalibrate your position |
+| **Tracker** | 🧭 | **Full-screen menu**: start / stop tracking, recalibrate, My position, path lock, compass, route, replay, heatmap, emergency |
 | **Measure** | 📐 | Measure a distance, erase |
 | **Point editing** | ✏️ | Add your own points, erase |
 | **Paths** | 🛣️ | Draw main, secondary roads, paths, **calculate total distance** |
@@ -901,6 +901,8 @@ The **🧭 Tracker** button opens a **side panel (flyout)** adjacent to the main
 | **▶️** / **⏹️** | Play / Stop tracking (the icon toggles dynamically based on state) |
 | **🧭** | Compass (compass rose widget) |
 | **📍** | Position recalibration |
+| **🎯** | **My position** — recenter the map on you *(v1.49.0)* |
+| **🔓** | **Suspend trace lock** — temporarily (30 s → 10 min) *(v1.49.0)* |
 | **🗺️** | Calculate a route |
 | **🎬** | Tracker session replay |
 | **🔥** | Heatmap — see dedicated section |
@@ -908,6 +910,11 @@ The **🧭 Tracker** button opens a **side panel (flyout)** adjacent to the main
 | **🚨** | XL Emergency Mode — **SOLID RED button** (danger signal) |
 
 > 🚨 **The 2 emergency modes are deliberately placed at the END of the panel with a bright red background** to make them instantly visually identifiable. In a stressful situation, you know where to look.
+
+> 🆕 **v1.49.0 — field**:
+> - **🎯 My position**: recenter the map on your current position (handy after panning elsewhere).
+> - **🔓 Suspend trace lock**: if "trace lock" (smart navigation) is on and you **leave the gallery network** (e.g. entering a cave), you can disable it temporarily (**30 s / 1 min / 10 min / until reactivation**) without going through settings. A **🔓 countdown shows in the bottom bar**, next to the tracker ON/OFF indicator; tap it to reactivate (confirmation asked).
+> - **⚙️ Advanced settings**: in ⚙️ Settings → *Navigation & Tracker*, the lock's **lateral tolerance** and **heading weight** are adjustable (to tune junction behavior). Step length, threshold and cooldown are now **clamped** to avoid nonsensical values. ⚠️ Expert settings — set the plan's m/px scale first.
 
 ### ▶️ Start tracking
 
@@ -1168,6 +1175,7 @@ In the route modal, a collapsible section **🚫 Avoidance preferences (optional
 |---|---|
 | **📍 Points to avoid** | **3 methods** to choose from: (a) autocomplete search in the text field, (b) entry by exact ID, (c) **📍 Click on the map**: switches to click mode, each click on the map adds a point. Orange chips with ✕ to remove. |
 | **🏷️ Tags to avoid** | Click a chip to toggle it. All points carrying this tag will be avoided (e.g.: you activate `pa` → all ventilation shafts are avoided). |
+| **⬛ Zones to avoid** *(since v1.48.0)* | Tick a **zone type** in the list (Water, Collapse, your custom types…) so the route **goes around** all zones of that type. **⛔ Inaccessible** zones don't appear here: they're already impassable (hard constraint, never relaxed). |
 | **📏 Margin** | Distance around the avoided points (px, default 100). Any road segment closer than this margin is excluded from the graph. |
 
 **Behavior**:
@@ -2539,44 +2547,41 @@ Press **⬇️ → 📥 Import a session** to open the import window. A modal di
 3. A **warning** notifies you that the import will replace your current session — remember to export before if necessary
 4. Click **Import** to validate, or **Cancel** to close without changing anything
 
-### 📊 Edit a JSON file
+### 📊 Plan data editor
 
-Press **⬇️ → 📊 Edit a JSON file** to open the table editor. Lets you bulk edit the points of a layer or session.
+Press **⬇️ → 📊 Plan data editor** (in map mode) **or** the **📊 Data editor** button on the home screen to open the table editor. You can **view, edit and export** the plan's data (points, paths, zones, structures).
 
-#### Opening
+> ℹ️ From the **home screen**, no plan is loaded yet: only the **📦 ZIP** and **📄 JSON** sources are offered (no "current plan").
 
-1. **Drag and drop** a `.json` file (data layer like `puit.json`, or session `devmap-session.json`)
-2. The format is auto-detected
-3. The table displays with one column per detected field
+#### Opening — 3 sources *(since v1.48.0)*
+
+1. **🗺️ Current plan** — lists the data layers of the open plan (shafts, accesses, paths, zones…). Pick one to edit.
+2. **📦 Import a ZIP** — retrieves the data layers from a full plan (`.zip`).
+3. **📄 Import a JSON file** — a single data or session file (drag and drop).
+
+If a source contains several datasets, a **selector** appears (each with its element count). The table then opens with one column per detected field.
 
 #### Editing
 
 - **Click a cell** to edit it (except ID, read-only)
-- **Tab**: move to next cell
-- **Enter**: move to next row (same column)
-- **Esc**: cancel the current edit
+- **Tab**: next cell · **Enter**: next row (same column) · **Esc**: cancel
 - **Coordinates**: if X or Y is off the map, the cell turns red with a warning ⚠
-- **Tags**: click the cell to open a multi-tag selector with icon preview. You can also create a new tag on the fly
+- **Tags**: click the cell to open a multi-tag selector with icon preview (you can create a new tag on the fly)
+- **🔒 Paths / zones / structures**: you can edit the **note** (description), **type** and **level**, but the **geometry** (the `points` column) stays **read-only** — to redraw it, use the drawing tools on the map.
 
-#### Actions
+#### Actions *(points only)*
 
-- **🔍 Search**: filters all columns
-- **Sort**: click a column header (asc → desc → cancelled)
-- **Multi-selection**: checkbox + Shift+click for a range
-- **+ Add row**: new empty row at the bottom
-- **📋 Duplicate**: copies the selected rows
-- **🗑️ Delete**: removes the selected rows (confirmation required)
-- **📍 View on map**: displays the selected points in flashing orange on the map
+- **🔍 Search** filters all columns · **Sort**: click a header (asc → desc → cancelled) · **Multi-selection**: checkbox + Shift+click
+- **+ Add row** · **📋 Duplicate** · **🗑️ Delete** (confirmation) · **📍 View on map** (selected points in flashing orange)
 
-#### Saving
+#### Saving *(plan data is never loaded live)*
 
-**💾 Save** button → 3 choices:
+**💾 Save** button:
 
-| Option | Effect |
+| Case | Effect |
 |---|---|
-| **📥 Download** | Retrieves the modified `.json` file |
-| **🗺️ Replace layer** | Updates the corresponding layer in memory (if `data` format and layer loaded on current map) |
-| **✏️ Replace session** | Replaces the added points of the current session (if `editorPoints` format) |
+| **Plan data** (points / paths / zones / structures) | **📥 Download** the modified `.json` file. ⚠️ To **apply** it, re-import that file in the **Generator** (🏗️) — the editor never changes the plan live on the map. |
+| **Session** (your current annotations) | **📥 Download** **or** **✏️ Replace the current session** (live update of your session points). |
 
 > ⚠️ If you close the window with unsaved modifications, a confirmation offers to save, quit without saving, or continue editing.
 

@@ -482,6 +482,7 @@
                la voie d'entrée pour créer/modifier un plan, pas une option
                avancée cachée. -->
           <div class="loader-secondary-actions">
+            <button class="loader-btn-secondary" type="button" id="loaderTableEditorBtn" data-i18n="home.add.editData">📊 Éditeur de données</button>
             <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn" data-i18n="home.add.generate">🏗️ Générer un plan</button>
           </div>
 
@@ -1872,6 +1873,18 @@
           const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
           if (typeof window.afficherPlanner === "function") window.afficherPlanner();
           else setStatus(_t("home.loader.generatorUnavailable"), true);
+        });
+      }
+
+      // 🆕 v1.48.0 — Éditeur de données du plan accessible depuis le home
+      // (modale autoportante : depuis le home, pas de "plan en cours" → seules
+      // les sources ZIP + JSON s'affichent, cf tableEditor.js > _afficherAccueil).
+      const tableEditorBtn = document.getElementById("loaderTableEditorBtn");
+      if (tableEditorBtn) {
+        tableEditorBtn.addEventListener("click", function() {
+          const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
+          if (typeof window.ouvrirTableEditor === "function") window.ouvrirTableEditor();
+          else setStatus(_t("ui.alert.tableEditorIndispo"), true);
         });
       }
 
