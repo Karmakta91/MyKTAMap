@@ -901,6 +901,8 @@ The **🧭 Tracker** button opens a **side panel (flyout)** adjacent to the main
 | **▶️** / **⏹️** | Play / Stop tracking (the icon toggles dynamically based on state) |
 | **🧭** | Compass (compass rose widget) |
 | **📍** | Position recalibration |
+| **🎯** | **My position** — recenter the map on you *(v1.49.0)* |
+| **🔓** | **Suspend trace lock** — temporarily (30 s → 10 min) *(v1.49.0)* |
 | **🗺️** | Calculate a route |
 | **🎬** | Tracker session replay |
 | **🔥** | Heatmap — see dedicated section |
@@ -908,6 +910,11 @@ The **🧭 Tracker** button opens a **side panel (flyout)** adjacent to the main
 | **🚨** | XL Emergency Mode — **SOLID RED button** (danger signal) |
 
 > 🚨 **The 2 emergency modes are deliberately placed at the END of the panel with a bright red background** to make them instantly visually identifiable. In a stressful situation, you know where to look.
+
+> 🆕 **v1.49.0 — field**:
+> - **🎯 My position**: recenter the map on your current position (handy after panning elsewhere).
+> - **🔓 Suspend trace lock**: if "trace lock" (smart navigation) is on and you **leave the gallery network** (e.g. entering a cave), you can disable it temporarily (**30 s / 1 min / 10 min / until reactivation**) without going through settings. A **🔓 countdown shows in the bottom bar**, next to the tracker ON/OFF indicator; tap it to reactivate (confirmation asked).
+> - **⚙️ Advanced settings**: in ⚙️ Settings → *Navigation & Tracker*, the lock's **lateral tolerance** and **heading weight** are adjustable (to tune junction behavior). Step length, threshold and cooldown are now **clamped** to avoid nonsensical values. ⚠️ Expert settings — set the plan's m/px scale first.
 
 ### ▶️ Start tracking
 

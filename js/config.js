@@ -75,6 +75,8 @@ let DEFAULT_CONFIG = {
   // Lue à chaud par tracking.js > avancer(). Sans effet si le plan n'a pas de
   // réseau (garde-fou runtime via RoadGraph.isReady()).
   smartNav: false,
+  smartNavRadiusM:       6,    // 🆕 v1.49.0 — tolérance latérale du verrou sur tracé (m), réglable ⚙️
+  smartNavHeadingWeight: 0.7,  // 🆕 v1.49.0 — poids du cap aux croisements (px/°), réglable ⚙️
 
   // 🧭 v1.37.0 — Orientation du Nord (offset en degrés vs haut du plan).
   // Default 0 = haut du plan = Nord (comportement historique strict).
@@ -136,6 +138,9 @@ try {
   if ("showRoadIntersections" in saved) APP_CONFIG.showRoadIntersections = !!saved.showRoadIntersections;
   // 🧭 Nav Intelligente (C2) : restaurer smartNav (pref globale, défaut OFF)
   if ("smartNav" in saved) APP_CONFIG.smartNav = !!saved.smartNav;
+  // 🆕 v1.49.0 — tolérances réglables du verrou sur tracé (override des défauts)
+  if (Number.isFinite(saved.smartNavRadiusM))       APP_CONFIG.smartNavRadiusM       = saved.smartNavRadiusM;
+  if (Number.isFinite(saved.smartNavHeadingWeight)) APP_CONFIG.smartNavHeadingWeight = saved.smartNavHeadingWeight;
 } catch(e) {}
 
 // =========================
@@ -366,6 +371,8 @@ function buildAppConfigFromPlan(planConfig) {
     if ("scaledMarkers"         in saved) cfg.scaledMarkers         = !!saved.scaledMarkers;
     if ("showRoadIntersections" in saved) cfg.showRoadIntersections = !!saved.showRoadIntersections;
     if ("smartNav"              in saved) cfg.smartNav              = !!saved.smartNav;
+    if (Number.isFinite(saved.smartNavRadiusM))       cfg.smartNavRadiusM       = saved.smartNavRadiusM;
+    if (Number.isFinite(saved.smartNavHeadingWeight)) cfg.smartNavHeadingWeight = saved.smartNavHeadingWeight;
   } catch(e) {}
 
   // Fallback aux valeurs par défaut si absentes des prefs (= user a jamais
@@ -455,6 +462,8 @@ function sauvegarderPrefsUtilisateur() {
     existing.scaledMarkers         = APP_CONFIG.scaledMarkers !== false;          // v174 : default true
     existing.showRoadIntersections = APP_CONFIG.showRoadIntersections !== false;  // 🆕 v1.9.2 : default true
     existing.smartNav              = APP_CONFIG.smartNav === true;                 // 🧭 Nav C2 : default false
+    if (Number.isFinite(APP_CONFIG.smartNavRadiusM))       existing.smartNavRadiusM       = APP_CONFIG.smartNavRadiusM;       // 🆕 v1.49.0
+    if (Number.isFinite(APP_CONFIG.smartNavHeadingWeight)) existing.smartNavHeadingWeight = APP_CONFIG.smartNavHeadingWeight; // 🆕 v1.49.0
     localStorage.setItem("app_user_prefs", JSON.stringify(existing));
   } catch(e) {}
 }

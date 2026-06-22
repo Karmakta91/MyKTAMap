@@ -813,6 +813,13 @@ function afficherConfig() {
         <!-- ════════ 3. 📍 NAVIGATION & TRACKER ════════ -->
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.navTracker")}</div>
 
+        <!-- 🆕 v1.49.0 (Lot C) — prérequis échelle PX/M (demande KARMA) : position de
+             départ, détection de pas et navigation intelligente dépendent tous de
+             l'échelle m/px. Bleu (info/prérequis) ≠ ambre (réglages dangereux). -->
+        <div style="margin:0 0 10px; padding:8px 10px; background:rgba(140,180,255,0.1); border:1px solid rgba(140,180,255,0.35); border-radius:6px; font-size:12px; color:#a8c4ff; line-height:1.45;">
+          ${window.I18n.t("config.navTracker.scaleWarn")}
+        </div>
+
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("config.tracker.titre")}</div>
           <div class="kta-cfg-grille">
@@ -835,13 +842,17 @@ function afficherConfig() {
              Les params de pas restent ici : longueur / seuil / cooldown. -->
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("config.steps.titre")}</div>
+          <!-- 🆕 v1.49.0 (Lot C) — avertissement réglages experts (demande KARMA) -->
+          <div style="margin:0 0 10px; padding:8px 10px; background:rgba(255,180,80,0.1); border:1px solid rgba(255,180,80,0.3); border-radius:6px; font-size:12px; color:#ffd28a; line-height:1.45;">
+            ${window.I18n.t("config.tracker.expertWarn")}
+          </div>
           <div class="kta-cfg-grille">
             <label class="kta-cfg-label">${window.I18n.t("config.steps.stepLength")}</label>
-            <input class="kta-cfg-input" id="cfg_stepLength" type="number" step="0.1" value="${c.stepLength}">
+            <input class="kta-cfg-input" id="cfg_stepLength" type="number" step="0.1" min="0" max="1.5" value="${c.stepLength}">
             <label class="kta-cfg-label">${window.I18n.t("config.steps.threshold")}</label>
-            <input class="kta-cfg-input" id="cfg_stepThreshold" type="number" step="0.1" value="${c.stepThreshold}">
+            <input class="kta-cfg-input" id="cfg_stepThreshold" type="number" step="0.1" min="10" max="30" value="${c.stepThreshold}">
             <label class="kta-cfg-label">${window.I18n.t("config.steps.cooldown")}</label>
-            <input class="kta-cfg-input" id="cfg_stepCooldown" type="number" value="${c.stepCooldown}">
+            <input class="kta-cfg-input" id="cfg_stepCooldown" type="number" min="300" max="3000" step="50" value="${c.stepCooldown}">
           </div>
         </div>
 
@@ -856,6 +867,20 @@ function afficherConfig() {
               </span>
             </span>
           </label>
+          <!-- 🆕 v1.49.0 (Lot C) — tolérances réglables du verrou sur tracé + avertissement -->
+          <div style="margin:10px 0 8px; padding:8px 10px; background:rgba(255,180,80,0.1); border:1px solid rgba(255,180,80,0.3); border-radius:6px; font-size:12px; color:#ffd28a; line-height:1.45;">
+            ${window.I18n.t("config.smartnav.warn")}
+          </div>
+          <div class="kta-cfg-row">
+            <label class="kta-cfg-label">${window.I18n.t("config.smartnav.radiusLabel")}</label>
+            <input class="kta-cfg-input" id="cfg_smartNavRadius" type="number" step="0.5" min="1" value="${Number.isFinite(c.smartNavRadiusM) ? c.smartNavRadiusM : 6}">
+          </div>
+          <div style="font-size:11px; color:#8892a4; margin:-2px 0 8px; line-height:1.4;">${window.I18n.t("config.smartnav.radiusHint")}</div>
+          <div class="kta-cfg-row">
+            <label class="kta-cfg-label">${window.I18n.t("config.smartnav.headingLabel")}</label>
+            <input class="kta-cfg-input" id="cfg_smartNavHeading" type="number" step="0.05" min="0" value="${Number.isFinite(c.smartNavHeadingWeight) ? c.smartNavHeadingWeight : 0.7}">
+          </div>
+          <div style="font-size:11px; color:#8892a4; margin:-2px 0 0; line-height:1.4;">${window.I18n.t("config.smartnav.headingHint")}</div>
         </div>
 
         <!-- ════════ 4. 🎨 AFFICHAGE ════════ -->
@@ -1364,7 +1389,9 @@ function appliquerConfig() {
   const _oldStartY = APP_CONFIG.startY;
 
   APP_CONFIG.scale         = parseFloat(document.getElementById("cfg_scale").value);
-  APP_CONFIG.stepLength    = parseFloat(document.getElementById("cfg_stepLength").value);
+  // 🆕 v1.49.0 — clamp taille d'un pas à [0 ; 1,5] m (évite les valeurs délirantes)
+  var _cfgStepLen = parseFloat(document.getElementById("cfg_stepLength").value);
+  APP_CONFIG.stepLength    = Number.isFinite(_cfgStepLen) ? Math.max(0, Math.min(1.5, _cfgStepLen)) : APP_CONFIG.stepLength;
   // 🐛 v1.28.0 (#3) : ne pas écraser startX/startY avec NaN si le champ est
   // vidé (sinon le reset conditionnel placerait le tracker à NaN). On conserve
   // l'ancienne valeur si la saisie est invalide.
@@ -1372,8 +1399,13 @@ function appliquerConfig() {
   const _sy = parseInt(document.getElementById("cfg_startY").value, 10);
   if (Number.isFinite(_sx)) APP_CONFIG.startX = _sx;
   if (Number.isFinite(_sy)) APP_CONFIG.startY = _sy;
-  APP_CONFIG.stepThreshold = parseFloat(document.getElementById("cfg_stepThreshold").value);
-  APP_CONFIG.stepCooldown  = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
+  // 🆕 v1.49.0 — clamp seuil de détection à [10 ; 30] (magnitude accel incluant
+  // la gravité ≈9.8 : sous ~10 = détection permanente ; au-dessus de ~30 = jamais déclenché)
+  var _cfgThr = parseFloat(document.getElementById("cfg_stepThreshold").value);
+  APP_CONFIG.stepThreshold = Number.isFinite(_cfgThr) ? Math.max(10, Math.min(30, _cfgThr)) : APP_CONFIG.stepThreshold;
+  // 🆕 v1.49.0 — clamp cooldown à [300 ; 3000] ms (évite les valeurs délirantes)
+  var _cfgCd = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
+  APP_CONFIG.stepCooldown  = Number.isFinite(_cfgCd) ? Math.max(300, Math.min(3000, _cfgCd)) : APP_CONFIG.stepCooldown;
   // ⚠️ Passer par setDebugMode() au lieu d'ecrire directement APP_CONFIG.debugMode :
   // ainsi le toast feedback (copyright.js > __MKM_showWarning__) se declenche
   // si l'utilisateur passe de OFF a ON via les Reglages.
@@ -1392,6 +1424,11 @@ function appliquerConfig() {
   // chaud par tracking.js > avancer() — pas de reload requis.
   const cbSmartNav = document.getElementById("cfg_smartNav");
   if (cbSmartNav) APP_CONFIG.smartNav = !!cbSmartNav.checked;
+  // 🆕 v1.49.0 (Lot C) — tolérances réglables du verrou sur tracé (smartNav)
+  var inSnRadius = document.getElementById("cfg_smartNavRadius");
+  if (inSnRadius) { var snr = parseFloat(inSnRadius.value); if (Number.isFinite(snr) && snr > 0) APP_CONFIG.smartNavRadiusM = snr; }
+  var inSnHeading = document.getElementById("cfg_smartNavHeading");
+  if (inSnHeading) { var snh = parseFloat(inSnHeading.value); if (Number.isFinite(snh) && snh >= 0) APP_CONFIG.smartNavHeadingWeight = snh; }
 
   // 🆕 v1.9.2 : le handler de showRoadIntersections en mode carte a été retiré
   // (toggle exclusivement dans le ⚙️ Configuration du loader/home désormais).

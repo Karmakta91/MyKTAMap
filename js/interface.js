@@ -1493,6 +1493,154 @@ L.control.ktaFilterControl = function() {
 };
 
 // =========================
+// 🆕 v1.49.0 — Tracker : « Ma position » (recentrage) + suspension temporaire
+// du verrou sur tracé (smartNav). Helpers module-scope appelés par les
+// sous-actions du flyout Tracker (cf. groupe "tracker" dans initInterface).
+// =========================
+
+// #3 — Recentre la carte sur la position courante du tracker (sans dézoomer).
+function _centrerSurMaPosition() {
+  if (!window.map || typeof window.getTrackingPosition !== "function" || typeof window.convertCoord !== "function") {
+    alert(window.I18n.t("tracker.maPosition.indispo")); return;
+  }
+  var pos = window.getTrackingPosition();
+  if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
+    alert(window.I18n.t("tracker.maPosition.indispo")); return;
+  }
+  var ll = window.convertCoord(pos.x, pos.y);
+  var z = Math.max(window.map.getZoom(), 0); // recentre + garantit un zoom lisible
+  try { window.map.setView(ll, z, { animate: true }); } catch (e) { window.map.setView(ll, z); }
+}
+
+// #5 — Suspension temporaire du verrou sur tracé (APP_CONFIG.smartNav, lu à
+// chaque pas par tracking.js > avancer()). État runtime uniquement (action
+// ponctuelle terrain, pas de persistance). On ne suspend QUE si smartNav=ON,
+// donc la réactivation restaure toujours true.
+var _verrouSuspendu = false, _verrouTimer = null, _verrouInterval = null, _verrouFinTs = 0;
+
+function _gererSuspensionVerrou() {
+  if (_verrouSuspendu) { _confirmerReactivationVerrou(); return; } // déjà suspendu → confirme la réactivation
+  if (window.APP_CONFIG && window.APP_CONFIG.smartNav !== true) {  // rien à suspendre
+    alert(window.I18n.t("tracker.verrou.nonActif")); return;
+  }
+  _ouvrirChoixDureeVerrou();
+}
+
+function _ouvrirChoixDureeVerrou() {
+  var opts = [
+    { ms: 30000,  key: "tracker.verrou.d30s" },
+    { ms: 60000,  key: "tracker.verrou.d1min" },
+    { ms: 600000, key: "tracker.verrou.d10min" },
+    { ms: null,   key: "tracker.verrou.jusqua" }
+  ];
+  var boutons = opts.map(function(o, i) {
+    return '<button class="kta-btn ' + (i === opts.length - 1 ? "kta-btn-ghost" : "kta-btn-primary") +
+           '" data-i="' + i + '" style="width:100%;">' + window.I18n.t(o.key) + '</button>';
+  }).join("");
+  var overlay = document.createElement("div");
+  overlay.className = "kta-readme-modal-overlay";
+  overlay.style.zIndex = "100001";
+  overlay.innerHTML =
+    '<div class="kta-readme-modal-boite" style="max-width:400px; height:auto;">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("tracker.verrou.titre") + '</span>' +
+        '<button class="kta-panneau-close" id="kta-verrou-close">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">' + window.I18n.t("tracker.verrou.aide") + '</p>' +
+        '<div style="display:flex; flex-direction:column; gap:8px;">' + boutons + '</div>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+  var fermer = function() { overlay.remove(); };
+  document.getElementById("kta-verrou-close").addEventListener("click", fermer);
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) fermer(); });
+  overlay.querySelectorAll("[data-i]").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      var o = opts[parseInt(btn.dataset.i, 10)];
+      fermer();
+      _suspendreVerrou(o.ms);
+    });
+  });
+}
+
+function _suspendreVerrou(ms) {
+  if (!window.APP_CONFIG) return;
+  _verrouSuspendu = true;
+  window.APP_CONFIG.smartNav = false;        // pris en compte au prochain pas
+  _verrouFinTs = ms ? (Date.now() + ms) : 0; // 0 = jusqu'à réactivation
+  if (_verrouTimer)    { clearTimeout(_verrouTimer);   _verrouTimer = null; }
+  if (_verrouInterval) { clearInterval(_verrouInterval); _verrouInterval = null; }
+  if (ms) {
+    _verrouTimer    = setTimeout(_reactiverVerrou, ms);
+    _verrouInterval = setInterval(_majBadgeVerrou, 1000);
+  }
+  _afficherBadgeVerrou();
+  console.log("[Tracker] Verrou sur tracé suspendu" + (ms ? " (" + Math.round(ms / 1000) + "s)" : " (jusqu'à réactivation)"));
+}
+
+function _verrouStatEl() { return document.getElementById("kta-refonte-stat-verrou"); }
+
+function _reactiverVerrou() {
+  if (_verrouTimer)    { clearTimeout(_verrouTimer);   _verrouTimer = null; }
+  if (_verrouInterval) { clearInterval(_verrouInterval); _verrouInterval = null; }
+  if (window.APP_CONFIG) window.APP_CONFIG.smartNav = true; // restaure (suspendu uniquement si ON)
+  _verrouSuspendu = false;
+  _verrouFinTs = 0;
+  var el = _verrouStatEl();
+  if (el) { el.style.display = "none"; el.onclick = null; }
+  console.log("[Tracker] Verrou sur tracé réactivé");
+}
+
+// Modale de confirmation avant réactivation (feedback user, sinon le clic sur
+// la stat footer réactive sans retour visible — demande KARMA).
+function _confirmerReactivationVerrou() {
+  var overlay = document.createElement("div");
+  overlay.className = "kta-readme-modal-overlay";
+  overlay.style.zIndex = "100001";
+  overlay.innerHTML =
+    '<div class="kta-readme-modal-boite" style="max-width:380px; height:auto;">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t("tracker.verrou.reactivTitre") + '</span>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<p style="font-size:14px; color:#c0c8d8; margin:0 0 16px; line-height:1.5;">' + window.I18n.t("tracker.verrou.reactivTexte") + '</p>' +
+        '<div style="display:flex; gap:8px;">' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-verrou-react-non" style="flex:1;">' + window.I18n.t("tracker.verrou.reactivNon") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-verrou-react-oui" style="flex:1;">' + window.I18n.t("tracker.verrou.reactivOui") + '</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+  var fermer = function() { overlay.remove(); };
+  document.getElementById("kta-verrou-react-non").addEventListener("click", fermer);
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) fermer(); });
+  document.getElementById("kta-verrou-react-oui").addEventListener("click", function() { fermer(); _reactiverVerrou(); });
+}
+
+// Affiche le compte-à-rebours dans la status bar (footer), à côté du ON/OFF
+// tracker (#kta-refonte-stat-verrou, créé caché par refonteInterface.js).
+// Clic sur la stat → modale de confirmation de réactivation.
+function _afficherBadgeVerrou() {
+  var el = _verrouStatEl();
+  if (!el) return;
+  el.style.display = "";
+  el.onclick = _confirmerReactivationVerrou;
+  _majBadgeVerrou();
+}
+
+function _majBadgeVerrou() {
+  var el = _verrouStatEl();
+  if (!el) return;
+  var val = el.querySelector(".kta-refonte-stat-val");
+  if (!val) return;
+  if (!_verrouFinTs) { val.textContent = "∞"; return; } // jusqu'à réactivation
+  var reste = Math.max(0, Math.round((_verrouFinTs - Date.now()) / 1000));
+  var m = Math.floor(reste / 60), s = reste % 60;
+  val.textContent = m + ":" + (s < 10 ? "0" : "") + s;
+}
+
+// =========================
 // INIT INTERFACE — barre 9 groupes (accordéons)
 // =========================
 function initInterface() {
@@ -1933,6 +2081,20 @@ _setGroupeModeActif("tracker", isTracking, null);
           window._fermerModeRecalage = _desactiverFn;
           _setGroupeModeActif("tracker", true, "📍");
         }
+      },
+      // 🆕 v1.49.0 — 🎯 Recentre la carte sur la position courante du tracker.
+      {
+        icone: "🎯",
+        titre: window.I18n.t("ui.subaction.maPosition"),
+        onClick: function() { _centrerSurMaPosition(); }
+      },
+      // 🆕 v1.49.0 — 🔓 Suspendre temporairement le verrou sur tracé (smartNav)
+      // sans passer par les Réglages (cas : sortie d'une galerie vers une cave
+      // hors réseau). Durées 30s / 1min / 10min / jusqu'à réactivation.
+      {
+        icone: "🔓",
+        titre: window.I18n.t("ui.subaction.verrouSuspend"),
+        onClick: function() { _gererSuspensionVerrou(); }
       },
       {
         icone: "🗺️",

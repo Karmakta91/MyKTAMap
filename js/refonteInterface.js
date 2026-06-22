@@ -502,6 +502,13 @@
         '<span class="kta-refonte-stat kta-refonte-stat-tracker-off" id="kta-refonte-stat-tracker">' +
           '<span class="kta-refonte-stat-icon">🧭</span><span class="kta-refonte-stat-val">OFF</span>' +
         '</span>' +
+        // 🆕 v1.49.0 — Compte-à-rebours « verrou sur tracé suspendu » (à côté du
+        // ON/OFF tracker, feedback KARMA). Caché par défaut ; piloté par
+        // interface.js (_afficherBadgeVerrou/_majBadgeVerrou/_reactiverVerrou).
+        // Cliquable → réactive le verrou immédiatement.
+        '<span class="kta-refonte-stat kta-refonte-stat-clickable" id="kta-refonte-stat-verrou" style="display:none; color:#f4c542;" title="' + window.I18n.t("tracker.verrou.statTitle") + '">' +
+          '<span class="kta-refonte-stat-icon">🔓</span><span class="kta-refonte-stat-val">—</span>' +
+        '</span>' +
         // 🚫 v1.12.0-fix (KARMA "la batterie est affichée en bas et en top,
         // on l'affiche que en haut") : retiré du footer. La chip batterie
         // du header (kta-refonte-counter-battery, à côté des compteurs session)

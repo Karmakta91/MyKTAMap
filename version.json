@@ -1,8 +1,8 @@
 {
-  "version": "v1.48.1",
-  "released": "2026-06-21",
+  "version": "v1.49.0",
+  "released": "2026-06-22",
   "notes": [
-    "📊 Nouvel éditeur de données du plan : visualisez, modifiez et exportez les données (points, tracés, zones) du plan en cours ou d'un ZIP, sous forme de tableau.",
-    "🚧 Évitement de zones dans le calcul d'itinéraire, curseur de visée rouge sur les plans clairs, et légendes personnalisées conservées à l'export de session."
+    "🎯 Nouveau bouton « Ma position » pour recentrer la carte sur vous, et possibilité de suspendre temporairement le verrouillage sur tracé (30 s à 10 min) — compte à rebours dans la barre du bas.",
+    "🧭 Au rechargement d'un plan déjà parcouru, vous repartez de votre dernière position. Réglages avancés du tracking (tolérances, détection de pas) bornés et accompagnés d'avertissements."
   ]
 }

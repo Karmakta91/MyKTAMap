@@ -907,6 +907,8 @@ Le bouton **🧭 Tracker** ouvre un **panneau latéral (flyout)** adjacent au bo
 | **▶️** / **⏹️** | Play / Stop tracking (l'icône bascule dynamiquement selon l'état) |
 | **🧭** | Boussole (widget rose des vents) |
 | **📍** | Recalage position |
+| **🎯** | **Ma position** — recentre la carte sur toi *(v1.49.0)* |
+| **🔓** | **Suspendre le verrou sur tracé** — temporairement (30 s → 10 min) *(v1.49.0)* |
 | **🗺️** | Calculer un itinéraire |
 | **🎬** | Replay de session tracker |
 | **🔥** | Heatmap — voir section dédiée |
@@ -914,6 +916,11 @@ Le bouton **🧭 Tracker** ouvre un **panneau latéral (flyout)** adjacent au bo
 | **🚨** | Mode urgence XL — **bouton à fond ROUGE** (signal danger) |
 
 > 🚨 **Les 2 modes urgence sont délibérément placés en FIN de panneau avec un fond rouge vif** pour les rendre instantanément identifiables visuellement. En situation de stress, tu sais où regarder.
+
+> 🆕 **v1.49.0 — terrain** :
+> - **🎯 Ma position** : recentre la carte sur ta position courante (utile après avoir navigué ailleurs sur le plan).
+> - **🔓 Suspendre le verrou sur tracé** : si le « verrouillage sur tracé » (navigation intelligente) est activé et que tu **sors du réseau de galeries** (ex. entrer dans une cave), tu peux le couper temporairement (**30 s / 1 min / 10 min / jusqu'à réactivation**) sans passer par les réglages. Un **compte à rebours 🔓 s'affiche dans la barre du bas**, à côté du voyant tracker ON/OFF ; touche-le pour réactiver (confirmation demandée).
+> - **⚙️ Réglages avancés** : dans ⚙️ Réglages → *Navigation & Tracker*, la **tolérance latérale** et le **poids du cap** du verrou sont réglables (pour ajuster le comportement aux jonctions). La taille d'un pas, le seuil et le cooldown sont désormais **bornés** pour éviter les valeurs aberrantes. ⚠️ Réglages experts — règle d'abord l'échelle m/px du plan.
 
 ### ▶️ Démarrer le tracking
 

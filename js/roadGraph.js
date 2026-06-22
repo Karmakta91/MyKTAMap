@@ -174,6 +174,16 @@
     return Math.max(MATCH_RADIUS_MIN_PX, scale * m);
   }
 
+  // 🆕 v1.49.0 — poids du cap surchargeable à chaud via APP_CONFIG.smartNavHeadingWeight
+  // (≥ 0 ; 0 = le cap n'influe plus sur le choix de branche aux croisements ;
+  // baisser = passe plus facilement une jonction même mal orienté). Réglable dans
+  // ⚙️ Réglages → « Verrou sur tracé (avancé) ». Défaut = W_HEADING_PX_PER_DEG.
+  function _headingWeight() {
+    return (window.APP_CONFIG && Number.isFinite(window.APP_CONFIG.smartNavHeadingWeight) &&
+            window.APP_CONFIG.smartNavHeadingWeight >= 0)
+      ? window.APP_CONFIG.smartNavHeadingWeight : W_HEADING_PX_PER_DEG;
+  }
+
   // Cap (compass) du vecteur a→b, MÊME convention que le déplacement PDR
   // (cap 0 = -y = nord/haut, 90 = +x = est) : newX=sin(cap), newY=-cos(cap).
   function _bearingDeg(a, b) {
@@ -238,7 +248,7 @@
       if (proj.dist > R) continue;  // hors rayon → pas candidat
       let score = proj.dist;
       if (headingValid) {
-        score += W_HEADING_PX_PER_DEG * _angleDiffMod180(headingDeg, _bearingDeg(a, b));
+        score += _headingWeight() * _angleDiffMod180(headingDeg, _bearingDeg(a, b));
       }
       if (prevSeg && (seg.a === prevSeg.a || seg.a === prevSeg.b ||
                       seg.b === prevSeg.a || seg.b === prevSeg.b)) {

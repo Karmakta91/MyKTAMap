@@ -1090,6 +1090,16 @@ window.setTrackingTimeline = function(timeline, startTs) {
   // ici (restore SessionPersist) qui tourne APRÈS initTracking (cf main.js) →
   // polyline + markerPosition existent.
   _rebuildTrailFromTimeline();
+  // 🆕 v1.49.0 (Lot B) — recentre la vue sur la DERNIÈRE position connue
+  // (« ma position actuelle ») au restore/import d'une timeline. Sans ça, la
+  // vue restait sur initPosition (startX/Y, fixée par initTracking l.62) alors
+  // que le marker venait d'être replacé ailleurs par _rebuildTrailFromTimeline
+  // → incohérence signalée KARMA. Fallback implicite : timeline vide →
+  // _rebuildTrailFromTimeline ne touche pas position et on ne recentre pas
+  // (la vue reste sur initPosition, comportement voulu).
+  if (_trackingTimeline.length > 0 && window.map && typeof convertCoord === "function") {
+    try { window.map.setView(convertCoord(position.x, position.y), window.map.getZoom()); } catch(e) {}
+  }
 };
 
 // 🆕 v1.28.0 : reconstruit TOUT le tracé visible + repositionne le marqueur
