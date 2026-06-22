@@ -231,6 +231,7 @@
   "config.tracker.clickBtn": "📍 Hacer clic en el mapa",
   "config.tracker.clickFloater": "Haz clic en el mapa para la posición inicial del tracker",
   "config.tracker.expertWarn": "⚠️ Ajustes expertos. Un valor erróneo puede degradar o bloquear por completo el tracking. Reinicia los ajustes si hay algún problema.",
+  "config.tracking.horsLimites": "⚠️ Algunos valores de tracking están fuera de rango (recuadrados en rojo). Corrígelos antes de aplicar.",
   "config.tracker.posX": "Posición X",
   "config.tracker.posY": "Posición Y",
   "config.tracker.searchBtn": "🔍 Elegir mediante un punto",

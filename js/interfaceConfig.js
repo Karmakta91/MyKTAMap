@@ -873,12 +873,12 @@ function afficherConfig() {
           </div>
           <div class="kta-cfg-row">
             <label class="kta-cfg-label">${window.I18n.t("config.smartnav.radiusLabel")}</label>
-            <input class="kta-cfg-input" id="cfg_smartNavRadius" type="number" step="0.5" min="1" value="${Number.isFinite(c.smartNavRadiusM) ? c.smartNavRadiusM : 6}">
+            <input class="kta-cfg-input" id="cfg_smartNavRadius" type="number" step="0.5" min="1" max="50" value="${Number.isFinite(c.smartNavRadiusM) ? c.smartNavRadiusM : 6}">
           </div>
           <div style="font-size:11px; color:#8892a4; margin:-2px 0 8px; line-height:1.4;">${window.I18n.t("config.smartnav.radiusHint")}</div>
           <div class="kta-cfg-row">
             <label class="kta-cfg-label">${window.I18n.t("config.smartnav.headingLabel")}</label>
-            <input class="kta-cfg-input" id="cfg_smartNavHeading" type="number" step="0.05" min="0" value="${Number.isFinite(c.smartNavHeadingWeight) ? c.smartNavHeadingWeight : 0.7}">
+            <input class="kta-cfg-input" id="cfg_smartNavHeading" type="number" step="0.05" min="0" max="5" value="${Number.isFinite(c.smartNavHeadingWeight) ? c.smartNavHeadingWeight : 0.7}">
           </div>
           <div style="font-size:11px; color:#8892a4; margin:-2px 0 0; line-height:1.4;">${window.I18n.t("config.smartnav.headingHint")}</div>
         </div>
@@ -1380,7 +1380,38 @@ function afficherConfig() {
   // Réglages avant v1.7.3 garde son état persisté en PlanRegistry.
 }
 
+// 🆕 v1.49.0 — validation des réglages tracking bornés. Marque en rouge les
+// champs hors limites (encadré rouge) et retourne false. Demande KARMA :
+// « encadré rouge + refus d'appliquer » au lieu d'un clamp silencieux.
+function _validerReglagesTracking() {
+  var champs = [
+    { id: "cfg_stepLength",      min: 0,   max: 1.5  },
+    { id: "cfg_stepThreshold",   min: 10,  max: 30   },
+    { id: "cfg_stepCooldown",    min: 300, max: 3000 },
+    { id: "cfg_smartNavRadius",  min: 1,   max: 50   },
+    { id: "cfg_smartNavHeading", min: 0,   max: 5    }
+  ];
+  var ok = true;
+  champs.forEach(function(c) {
+    var el = document.getElementById(c.id);
+    if (!el) return;
+    var v = parseFloat(el.value);
+    var invalide = !Number.isFinite(v) || v < c.min || v > c.max;
+    el.style.borderColor = invalide ? "#ff5b45" : "";
+    el.style.boxShadow   = invalide ? "0 0 0 2px rgba(255,91,69,0.4)" : "";
+    if (invalide) ok = false;
+  });
+  return ok;
+}
+
 function appliquerConfig() {
+  // 🆕 v1.49.0 — gate : refuse d'appliquer si un réglage tracking est hors
+  // limites (champ encadré en rouge). Rien n'est sauvegardé, la modale reste
+  // ouverte (return AVANT le fermerPanneau de fin de fonction).
+  if (!_validerReglagesTracking()) {
+    alert(window.I18n.t("config.tracking.horsLimites"));
+    return;
+  }
   // 🐛 v1.28.0 : on mémorise la position initiale AVANT écrasement pour ne
   // réinitialiser la position du tracker QUE si startX/startY a réellement
   // changé (cf plus bas). Sinon un simple toggle (smartNav…) ou un changement
@@ -1389,9 +1420,8 @@ function appliquerConfig() {
   const _oldStartY = APP_CONFIG.startY;
 
   APP_CONFIG.scale         = parseFloat(document.getElementById("cfg_scale").value);
-  // 🆕 v1.49.0 — clamp taille d'un pas à [0 ; 1,5] m (évite les valeurs délirantes)
-  var _cfgStepLen = parseFloat(document.getElementById("cfg_stepLength").value);
-  APP_CONFIG.stepLength    = Number.isFinite(_cfgStepLen) ? Math.max(0, Math.min(1.5, _cfgStepLen)) : APP_CONFIG.stepLength;
+  // taille d'un pas — déjà validée [0 ; 1,5] par le gate _validerReglagesTracking
+  APP_CONFIG.stepLength    = parseFloat(document.getElementById("cfg_stepLength").value);
   // 🐛 v1.28.0 (#3) : ne pas écraser startX/startY avec NaN si le champ est
   // vidé (sinon le reset conditionnel placerait le tracker à NaN). On conserve
   // l'ancienne valeur si la saisie est invalide.
@@ -1399,13 +1429,10 @@ function appliquerConfig() {
   const _sy = parseInt(document.getElementById("cfg_startY").value, 10);
   if (Number.isFinite(_sx)) APP_CONFIG.startX = _sx;
   if (Number.isFinite(_sy)) APP_CONFIG.startY = _sy;
-  // 🆕 v1.49.0 — clamp seuil de détection à [10 ; 30] (magnitude accel incluant
-  // la gravité ≈9.8 : sous ~10 = détection permanente ; au-dessus de ~30 = jamais déclenché)
-  var _cfgThr = parseFloat(document.getElementById("cfg_stepThreshold").value);
-  APP_CONFIG.stepThreshold = Number.isFinite(_cfgThr) ? Math.max(10, Math.min(30, _cfgThr)) : APP_CONFIG.stepThreshold;
-  // 🆕 v1.49.0 — clamp cooldown à [300 ; 3000] ms (évite les valeurs délirantes)
-  var _cfgCd = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
-  APP_CONFIG.stepCooldown  = Number.isFinite(_cfgCd) ? Math.max(300, Math.min(3000, _cfgCd)) : APP_CONFIG.stepCooldown;
+  // seuil de détection — déjà validé [10 ; 30] par le gate
+  APP_CONFIG.stepThreshold = parseFloat(document.getElementById("cfg_stepThreshold").value);
+  // cooldown — déjà validé [300 ; 3000] ms par le gate
+  APP_CONFIG.stepCooldown  = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
   // ⚠️ Passer par setDebugMode() au lieu d'ecrire directement APP_CONFIG.debugMode :
   // ainsi le toast feedback (copyright.js > __MKM_showWarning__) se declenche
   // si l'utilisateur passe de OFF a ON via les Reglages.
