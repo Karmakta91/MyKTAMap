@@ -758,7 +758,7 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 | **Charger / Import** | ⬇️ | Importer une session, éditer un fichier JSON, changer de plan |
 | **Créer / Modifier plan** | 🏗️ | Générateur de plan *(clic direct)* |
 | **Enregistrer** | ⬆️ | Enregistrer ta session (3 modes), exporter le plan en image |
-| **Tracker** | 🧭 | Démarrer / arrêter le tracking, recaler ta position |
+| **Tracker** | 🧭 | **Menu plein écran** : démarrer / arrêter le tracking, recaler, Ma position, verrou sur tracé, boussole, itinéraire, replay, heatmap, urgence |
 | **Mesure** | 📐 | Mesurer une distance, effacer |
 | **Édition de points** | ✏️ | Ajouter tes propres points, effacer |
 | **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins, **calculer la distance totale** |

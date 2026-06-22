@@ -8,7 +8,12 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.49.0` (22/06/2026) — **🧭 Améliorations terrain du tracker (PDR)** : bouton « Ma position » · suspension temporaire du verrou sur tracé (compte-à-rebours dans le footer) · démarrage sur la dernière position · tolérances réglables + garde-fous des réglages.
+**📦 Version courante** : `v1.50.0` (23/06/2026) — **🧭 Menu Tracker en plein écran** : grosses tuiles tactiles rangées par Suivi / Outils / Urgence, état du suivi (actif · distance · pas) en en-tête, optimisé mobile (tient sans scroll).
+
+**🧭 v1.50.0 (23/06/2026)** — **Refonte du menu Tracker en modal plein écran** :
+- **Le groupe 🧭 Tracker s'ouvre en modal plein écran de grosses tuiles** (`interface.js` : nouvelle branche `useModal` dans `_creerGroupeAccordeon` + `_ouvrirTrackerModal`/`_fermerTrackerModal`/`_creerTuileTracker`/`_ajouterSectionTracker`), au lieu du flyout latéral. **Réutilise `sousActionsConfig`** (zéro duplication des options) : chaque tuile reflète l'icône dynamique (▶️/⏹️) + l'état actif (boussole, recalage) **à l'ouverture** ; le tap **ferme le modal puis exécute** l'`onClick` existant (même pattern « bouton détaché » que le flyout, cf `_ouvrirFlyout`).
+- **3 sections** via le champ `section` des sous-actions (`"suivi"` / `"outils"`) + **Urgence** auto-détectée (`cssClass kta-sous-action-urgence`, fond rouge). **Bande de statut** en en-tête : suivi actif/inactif (lu via `window.getTrackingActif()` = source de vérité moteur `tracking.js`, **pas** le miroir `isTracking` local à `initInterface`) + distance (`getTrackingDistanceM`) + pas (`getStepCount`). Fermeture ✕ / clic-fond / **Échap**.
+- CSS `.kta-tracker-modal-*` (charte dark + override thème clair + `safe-area-inset-bottom` iPhone). **Icônes (20px) et hauteurs de tuiles compactées** pour que les 11 options + 3 titres tiennent **sans barre de défilement même sur iPhone SE** (~570px < 92vh). i18n `tracker.modal.*` (FR/EN/ES). **Scope** : seul le groupe Tracker passe en modal (les autres gardent le flyout). Aucune nouvelle surface réseau.
 
 **🧭 v1.49.0 (22/06/2026)** — **Améliorations terrain du tracker / PDR (retour terrain 4h30)** :
 - **🎯 « Ma position »** (`interface.js`, flyout 🧭 Tracker) : recentre la carte sur la position courante du tracker (`getTrackingPosition` → `convertCoord`), zoom conservé. Marche même tracker à l'arrêt.

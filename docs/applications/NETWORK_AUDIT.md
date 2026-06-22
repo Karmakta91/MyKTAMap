@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.49.0** (22 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.50.0** (23 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »). _v1.50.0 — refonte UI du menu Tracker en modal plein écran : 100 % frontend, aucune nouvelle surface réseau, aucune nouvelle permission, aucun nouveau fichier._
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode

@@ -1,8 +1,7 @@
 {
-  "version": "v1.49.0",
-  "released": "2026-06-22",
+  "version": "v1.50.0",
+  "released": "2026-06-23",
   "notes": [
-    "🎯 Nouveau bouton « Ma position » pour recentrer la carte sur vous, et possibilité de suspendre temporairement le verrouillage sur tracé (30 s à 10 min) — compte à rebours dans la barre du bas.",
-    "🧭 Au rechargement d'un plan déjà parcouru, vous repartez de votre dernière position. Réglages avancés du tracking (tolérances, détection de pas) bornés et accompagnés d'avertissements."
+    "🧭 Le menu Tracker s'ouvre désormais en plein écran : de grandes tuiles plus faciles à toucher, rangées par Suivi / Outils / Urgence, avec l'état du suivi (actif, distance, pas) affiché en haut."
   ]
 }

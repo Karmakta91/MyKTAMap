@@ -755,7 +755,7 @@ All tools are accessible from the **right side bar**, organized into 11 groups:
 | **Load / Import** | ⬇️ | Import a session, open the plan data editor, change map |
 | **Create / Modify map** | 🏗️ | Map generator *(direct click)* |
 | **Save** | ⬆️ | Save your session (3 modes), export the map as an image |
-| **Tracker** | 🧭 | Start / stop tracking, recalibrate your position |
+| **Tracker** | 🧭 | **Full-screen menu**: start / stop tracking, recalibrate, My position, path lock, compass, route, replay, heatmap, emergency |
 | **Measure** | 📐 | Measure a distance, erase |
 | **Point editing** | ✏️ | Add your own points, erase |
 | **Paths** | 🛣️ | Draw main, secondary roads, paths, **calculate total distance** |

@@ -1071,6 +1071,17 @@ function _creerGroupeAccordeon(config) {
         L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
         _toggleFlyout(config.id);
       });
+    } else if (config.useModal === true) {
+      // 🆕 v1.50.0 (KARMA "refondre le menu déroulé de tracker en modal full
+      // screen plus ergonomique / mobile") : le groupe est rendu dans un
+      // MODAL plein écran de grosses tuiles (cf _ouvrirTrackerModal) au lieu
+      // du flyout latéral. Réutilise sousActionsConfig → zéro duplication des
+      // options ; le tap ferme le modal puis exécute l'onClick (même pattern
+      // que le flyout, cf _ouvrirFlyout l.~1343).
+      L.DomEvent.on(btnPrincipal, "click", function(e) {
+        L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+        _toggleTrackerModal(config.id);
+      });
     } else {
       // Créer les sous-actions (cachées par défaut)
       (config.sousActions || []).forEach(function(sub) {
@@ -1119,6 +1130,7 @@ function _creerGroupeAccordeon(config) {
       // catégorie LegendCustomization pour pull des customs, customActivator
       // est le helper d'activation pour un id custom).
       useFlyout:        config.useFlyout === true,
+      useModal:         config.useModal === true,
       sousActionsConfig: config.sousActions || [],
       lcCat:             config.lcCat || null,
       customActivator:   config.customActivator || null,
@@ -1134,6 +1146,193 @@ function _creerGroupeAccordeon(config) {
     return div;
   };
   ctrl.addTo(window.map);
+}
+
+// =========================
+// 🆕 v1.50.0 — Modal plein écran « Tracker » (refonte du menu déroulé)
+// =========================
+//
+// KARMA : "refondre le menu déroulé de tracker par un modal full screen plus
+// ergonomique et mobile". Le groupe tracker (useModal:true) ouvre ce modal de
+// grosses tuiles au lieu du flyout latéral. On RÉUTILISE sousActionsConfig
+// (zéro duplication des options) : chaque tuile reflète l'icône dynamique +
+// l'état actif au moment de l'ouverture, et son tap ferme le modal puis
+// exécute l'onClick existant — même pattern « bouton détaché » que le flyout
+// (cf _ouvrirFlyout : _fermerFlyout() puis sub.onClick(btn) sur un bouton déjà
+// retiré du DOM). Sections : "suivi" / "outils" (champ sub.section) + "urgence"
+// (auto-détecté via sub.cssClass === "kta-sous-action-urgence").
+
+let _trackerModalEl = null;
+let _trackerModalKeyHandler = null;
+
+function _toggleTrackerModal(groupId) {
+  if (_trackerModalEl) { _fermerTrackerModal(); return; }
+  _ouvrirTrackerModal(groupId);
+}
+
+function _fermerTrackerModal() {
+  if (_trackerModalKeyHandler) {
+    document.removeEventListener("keydown", _trackerModalKeyHandler, true);
+    _trackerModalKeyHandler = null;
+  }
+  if (_trackerModalEl && _trackerModalEl.parentNode) {
+    _trackerModalEl.parentNode.removeChild(_trackerModalEl);
+  }
+  _trackerModalEl = null;
+}
+
+function _creerTuileTracker(sub) {
+  const tile = document.createElement("button");
+  tile.type = "button";
+  tile.className = "kta-tracker-modal-tile";
+  if (sub.cssClass) tile.classList.add(sub.cssClass);
+  // État actif (Play en cours, boussole visible, recalage armé…) — relu à
+  // l'ouverture du modal, exactement comme le flyout.
+  if (typeof sub.isActive === "function") {
+    try { if (sub.isActive()) tile.classList.add("kta-actif"); } catch(e) {}
+  }
+  const ic = document.createElement("span");
+  ic.className = "kta-tracker-modal-tile-icon";
+  ic.innerHTML = (typeof sub.dynamicIcon === "function")
+                 ? (sub.dynamicIcon() || sub.icone || "")
+                 : (sub.icone || "");
+  const lbl = document.createElement("span");
+  lbl.className = "kta-tracker-modal-tile-label";
+  lbl.textContent = sub.titre || "";
+  tile.appendChild(ic);
+  tile.appendChild(lbl);
+  tile.addEventListener("click", function(ev) {
+    ev.stopPropagation();
+    // Ferme le modal AVANT l'action (cohérence flyout) : la plupart des
+    // actions ont besoin de la carte/footer visibles (recalage = clic carte,
+    // boussole/badge = sous le modal) ou ouvrent leur propre modale.
+    _fermerTrackerModal();
+    try { sub.onClick(tile); } catch(err) {
+      console.warn("[TrackerModal] action click erreur :", err);
+    }
+  });
+  return tile;
+}
+
+function _ajouterSectionTracker(corps, titre, actions) {
+  if (!actions || actions.length === 0) return;
+  const titreEl = document.createElement("div");
+  titreEl.className = "kta-tracker-modal-section-title";
+  titreEl.textContent = titre;
+  corps.appendChild(titreEl);
+  const grid = document.createElement("div");
+  grid.className = "kta-tracker-modal-grid";
+  const impair = (actions.length % 2 === 1);
+  actions.forEach(function(sub, i) {
+    const tile = _creerTuileTracker(sub);
+    // Tuile seule en fin de grille (compte impair) → pleine largeur, pour
+    // éviter le trou (cf maquette : « Mode Secours » sous « Je suis perdu » /
+    // « Panique »).
+    if (impair && i === actions.length - 1) tile.classList.add("kta-tracker-modal-tile-wide");
+    grid.appendChild(tile);
+  });
+  corps.appendChild(grid);
+}
+
+function _ouvrirTrackerModal(groupId) {
+  // Cohérence "1 menu à la fois" : ferme flyout + accordéon éventuels.
+  _fermerFlyout();
+  if (_groupeOuvert) _fermerGroupe(_groupeOuvert);
+  _fermerTrackerModal();
+
+  const grp = _groupes[groupId];
+  if (!grp) return;
+  const baseActions = (typeof grp.dynamicSousActions === "function")
+                        ? (grp.dynamicSousActions() || [])
+                        : (grp.sousActionsConfig || []).slice();
+
+  const overlay = document.createElement("div");
+  overlay.className = "kta-tracker-modal-overlay";
+  overlay.addEventListener("click", function(ev) {
+    if (ev.target === overlay) _fermerTrackerModal();
+  });
+
+  const box = document.createElement("div");
+  box.className = "kta-tracker-modal-box";
+
+  // --- Header ---
+  const header = document.createElement("div");
+  header.className = "kta-tracker-modal-header";
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "kta-tracker-modal-title";
+  const titleIcon = document.createElement("span");
+  titleIcon.textContent = "🧭";
+  const titleTxt = document.createElement("span");
+  titleTxt.textContent = window.I18n.t("ui.group.tracker");
+  titleWrap.appendChild(titleIcon);
+  titleWrap.appendChild(titleTxt);
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "kta-tracker-modal-close";
+  closeBtn.title = window.I18n.t("ui.btn.close");
+  closeBtn.textContent = "✕";
+  closeBtn.addEventListener("click", function(ev) { ev.stopPropagation(); _fermerTrackerModal(); });
+  header.appendChild(titleWrap);
+  header.appendChild(closeBtn);
+  box.appendChild(header);
+
+  // --- Bande de statut (suivi ON/OFF + distance + pas) ---
+  const status = document.createElement("div");
+  status.className = "kta-tracker-modal-status";
+  // ⚠️ `isTracking` est local à initInterface() → hors de portée ici (scope
+  // module). On lit la source de vérité du moteur : window.getTrackingActif()
+  // (tracking.js, = `tracking === true`), robuste quel que soit le déclencheur
+  // (tuile Play, commande vocale…). Cf même piège corrigé dans refonteInterface.
+  const actif = (typeof window.getTrackingActif === "function") && window.getTrackingActif() === true;
+  const etatWrap = document.createElement("span");
+  etatWrap.className = "kta-tracker-modal-status-item";
+  const dot = document.createElement("span");
+  dot.className = "kta-tracker-modal-status-dot" + (actif ? " kta-on" : "");
+  const lblEtat = document.createElement("span");
+  lblEtat.textContent = window.I18n.t(actif ? "tracker.modal.statusOn" : "tracker.modal.statusOff");
+  etatWrap.appendChild(dot);
+  etatWrap.appendChild(lblEtat);
+  status.appendChild(etatWrap);
+  // Distance + pas affichés seulement si le tracking a produit des données.
+  let distM = 0, pas = 0;
+  try { if (typeof window.getTrackingDistanceM === "function") distM = window.getTrackingDistanceM() || 0; } catch(e) {}
+  try { if (typeof window.getStepCount === "function") pas = window.getStepCount() || 0; } catch(e) {}
+  if (distM > 0 || pas > 0) {
+    const distEl = document.createElement("span");
+    distEl.className = "kta-tracker-modal-status-item";
+    distEl.textContent = "📏 " + (window.formatDistance ? window.formatDistance(distM, 0) : Math.round(distM) + " m");
+    status.appendChild(distEl);
+    const pasEl = document.createElement("span");
+    pasEl.className = "kta-tracker-modal-status-item";
+    pasEl.textContent = "👣 " + pas + " " + window.I18n.t("tracker.modal.steps");
+    status.appendChild(pasEl);
+  }
+  box.appendChild(status);
+
+  // --- Corps : sections de tuiles ---
+  const corps = document.createElement("div");
+  corps.className = "kta-tracker-modal-body";
+  const suivi   = baseActions.filter(function(a) { return a.section === "suivi"; });
+  const outils  = baseActions.filter(function(a) { return a.section === "outils"; });
+  const urgence = baseActions.filter(function(a) { return a.cssClass === "kta-sous-action-urgence"; });
+  // Fallback robustesse : action sans section ni urgence → rangée en "outils"
+  // (évite qu'une option ajoutée sans `section` disparaisse du modal).
+  const classees = new Set([].concat(suivi, outils, urgence));
+  const autres = baseActions.filter(function(a) { return !classees.has(a); });
+  _ajouterSectionTracker(corps, window.I18n.t("tracker.modal.sectionSuivi"), suivi);
+  _ajouterSectionTracker(corps, window.I18n.t("tracker.modal.sectionOutils"), outils.concat(autres));
+  _ajouterSectionTracker(corps, window.I18n.t("tracker.modal.sectionUrgence"), urgence);
+  box.appendChild(corps);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  _trackerModalEl = overlay;
+
+  // Esc pour fermer.
+  _trackerModalKeyHandler = function(ev) {
+    if (ev.key === "Escape") { ev.stopPropagation(); _fermerTrackerModal(); }
+  };
+  document.addEventListener("keydown", _trackerModalKeyHandler, true);
 }
 
 // =========================
@@ -1974,11 +2173,14 @@ function initInterface() {
     id: "tracker",
     iconePrincipale: "🧭",
     titre: window.I18n.t("ui.group.tracker"),
-    useFlyout: true,
+    // 🆕 v1.50.0 : rendu en MODAL plein écran de tuiles (cf _ouvrirTrackerModal)
+    // au lieu du flyout latéral. Les `section` ci-dessous rangent les tuiles.
+    useModal: true,
     sousActions: [
       {
         icone: "▶️",
         titre: window.I18n.t("ui.subaction.trackToggle"),
+        section: "suivi",
         // Icône dynamique selon état tracking — relu à chaque ouverture flyout
         dynamicIcon: function() { return isTracking ? "⏹️" : "▶️"; },
         isActive:    function() { return isTracking === true; },
@@ -2021,6 +2223,7 @@ function initInterface() {
       {
         icone: "🧭",
         titre: window.I18n.t("ui.subaction.compass"),
+        section: "outils",
         // 🆕 v1.21.2 : actif si le widget compass est visible (sync au re-ouvert flyout)
         isActive: function() {
           return !!(window.CompassWidget && typeof window.CompassWidget.isVisible === "function"
@@ -2041,6 +2244,7 @@ function initInterface() {
       {
         icone: "📍",
         titre: window.I18n.t("ui.subaction.recalage"),
+        section: "suivi",
         // 🆕 v1.21.2 : actif si le mode recalage est en cours (sync au re-ouvert flyout)
         isActive: function() { return window.modeRecalage === true; },
         onClick: function(btnSub) {
@@ -2086,6 +2290,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       {
         icone: "🎯",
         titre: window.I18n.t("ui.subaction.maPosition"),
+        section: "suivi",
         onClick: function() { _centrerSurMaPosition(); }
       },
       // 🆕 v1.49.0 — 🔓 Suspendre temporairement le verrou sur tracé (smartNav)
@@ -2094,11 +2299,13 @@ _setGroupeModeActif("tracker", isTracking, null);
       {
         icone: "🔓",
         titre: window.I18n.t("ui.subaction.verrouSuspend"),
+        section: "suivi",
         onClick: function() { _gererSuspensionVerrou(); }
       },
       {
         icone: "🗺️",
         titre: window.I18n.t("ui.subaction.itineraire"),
+        section: "outils",
         onClick: function() {
           if (typeof window.ouvrirItinerairModal === "function") {
             window.ouvrirItinerairModal();
@@ -2114,6 +2321,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       {
         icone: "🎬",
         titre: window.I18n.t("ui.subaction.replay"),
+        section: "outils",
         onClick: function() {
           if (window.MyKTAMapTrackerReplay && typeof window.MyKTAMapTrackerReplay.ouvrirModale === "function") {
             window.MyKTAMapTrackerReplay.ouvrirModale();
@@ -2128,6 +2336,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       {
         icone: "🔥",
         titre: window.I18n.t("ui.subaction.heatmap"),
+        section: "outils",
         onClick: function() {
           if (window.MyKTAMapHeatmap && typeof window.MyKTAMapHeatmap.ouvrirModale === "function") {
             window.MyKTAMapHeatmap.ouvrirModale();

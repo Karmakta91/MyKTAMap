@@ -1585,4 +1585,21 @@ i18n : 23 clés `tabledit.*` ajoutées (accueil / source / selecteur / kind / er
 
 ---
 
+### 92. Menu Tracker — refonte flyout → modal plein écran de tuiles (v1.50.0)
+
+KARMA : « refondre le menu déroulé de tracker par un modal full screen plus ergonomique et mobile ». Le groupe 🧭 Tracker passe du **flyout latéral** à un **modal plein écran de grosses tuiles** — mêmes options, présentation plus tactile.
+
+**Mécanisme** (`interface.js`) :
+- Nouvelle branche **`useModal`** dans `_creerGroupeAccordeon` (sœur de `useFlyout`) : le clic sur `btnPrincipal` appelle `_toggleTrackerModal(id)`. Le groupe tracker passe `useFlyout:true` → `useModal:true`. `sousActionsConfig` reste stocké (comme pour le flyout) → réutilisé tel quel.
+- `_ouvrirTrackerModal(groupId)` lit `_groupes[groupId].sousActionsConfig` (**zéro duplication**) et rend chaque sous-action en **tuile** (`_creerTuileTracker`) : `dynamicIcon()` (▶️/⏹️) + `isActive()` (→ `kta-actif`) **relus à l'ouverture**, exactement comme le flyout.
+- **Tap d'une tuile** = `_fermerTrackerModal()` PUIS `sub.onClick(tile)` — **même pattern « bouton détaché » que le flyout** (`_ouvrirFlyout` ferme avant d'exécuter, l.~1343). Conséquence assumée : le modal couvrant la carte/footer, **toute** action ferme le modal (recalage a besoin du clic carte, boussole/badge verrou sont sous le modal). L'état se reflète à la **réouverture**.
+- **Sections** (`_ajouterSectionTracker`) : champ `section` (`"suivi"`/`"outils"`) ajouté aux sous-actions ; **Urgence** auto-détectée via `cssClass === "kta-sous-action-urgence"` (fond rouge réutilisé). Tuile seule en fin de grille (compte impair) → `kta-tracker-modal-tile-wide` (pleine largeur). Fallback robustesse : sous-action sans section ni urgence → rangée en « outils ».
+- **Bande de statut** : `window.getTrackingActif()` (source de vérité moteur `tracking.js`, `tracking === true`) — ⚠️ **PAS** `isTracking`, qui est `let` **local à `initInterface()`** donc hors de portée des fonctions module-scope du modal (piège initial → « Suivi inactif » permanent ; même piège que `refonteInterface` cf `tracking.js:995`). + `getTrackingDistanceM` + `getStepCount`. Fermeture ✕ / clic-fond / Échap.
+
+**CSS** (`css/style.css`) : `.kta-tracker-modal-*` (overlay z-99999, box gradient charte, grille 2 colonnes, tuiles tactiles) + override `body.kta-theme-light` + `safe-area-inset-bottom`. **Icônes 20px / tuile min-h 62px** → les 11 options + 3 titres de section tiennent **sans scroll même sur iPhone SE** (~570px < 92vh) ; `overflow-y:auto` du corps reste en filet de sécurité.
+
+i18n : 6 clés `tracker.modal.*` (sections + statut + « pas ») fr/en/es. **Scope** : seul le groupe Tracker est en modal (les autres gardent le flyout). Aucune nouvelle surface réseau.
+
+---
+
 **Bon code ! 🚀**

@@ -903,6 +903,16 @@ function _aideHtmlFr() {
         </div>
 
         <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🧭 Menu Tracker (plein écran)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🧭</span><span>Le bouton 🧭 Tracker ouvre un <strong>modal plein écran de grosses tuiles</strong> (au lieu de l'ancien menu latéral) — plus lisible et tactile sur mobile.</span>
+            <span class="kta-aide-icone">📋</span><span>3 sections : <strong>Suivi</strong> (démarrer/arrêter, recaler, Ma position, verrou sur tracé) · <strong>Outils</strong> (boussole, itinéraire, replay, heatmap) · <strong>Urgence</strong> (rouge).</span>
+            <span class="kta-aide-icone">📊</span><span>En-tête : état du suivi (actif/inactif) + distance parcourue + nombre de pas.</span>
+            <span class="kta-aide-icone">✕</span><span>Fermeture : croix, clic en dehors, ou touche Échap. Toucher une tuile ferme le menu puis lance l'action.</span>
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🎬 Replay de session tracker</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">🎬</span><span>Bouton Replay dans le groupe 🧭 Tracker — ouvre la modale plein écran</span>
