@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.51.0";
+const CACHE_NAME = "myktamap-cache-v1.52.0";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -119,6 +119,8 @@ const ASSETS_TO_CACHE = [
   "./js/tutorial.js",
   // 🆕 v1.20.0 : UserProfile — mini profil utilisateur (surnom + photo) en IDB dédiée (myktamap_profile)
   "./js/userProfile.js",
+  // 🆕 v1.52.0 : gamification du profil (rangs / badges)
+  "./js/profileGamification.js",
   // 🆕 v1.20.0 : ProfileExportImport — profil utilisateur complet (remplace l'ancien export liste plans)
   "./js/profileExportImport.js",
   // 🆕 v1.21.0 (U4) : Raccourcis clavier globaux (E M Z S T L B R)

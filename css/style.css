@@ -17613,6 +17613,107 @@ html.kta-theme-light .kta-net-cell-method {
   align-items: center;
   justify-content: center;
 }
+
+/* =========================================================================
+   🆕 v1.52.0 — Rangs de profil (gamification) : anneau coloré + bloc rang
+   ========================================================================= */
+/* Couleurs par rang (cascade via data-kta-rank, posé en JS) */
+[data-kta-rank="touriste"]    { --kta-rank-ring:#6b7280; --kta-rank-fg:#9aa4b5; --kta-rank-bg:rgba(107,114,128,0.16); }
+[data-kta-rank="novice"]      { --kta-rank-ring:#cd7f32; --kta-rank-fg:#d89a5e; --kta-rank-bg:rgba(205,127,50,0.16); }
+[data-kta-rank="confirme"]    { --kta-rank-ring:#9fb2c8; --kta-rank-fg:#b9c7da; --kta-rank-bg:rgba(159,178,200,0.16); }
+[data-kta-rank="expert"]      { --kta-rank-ring:#f4c542; --kta-rank-fg:#f4c542; --kta-rank-bg:rgba(244,197,66,0.16); }
+[data-kta-rank="maitre"]      { --kta-rank-ring:#ff8c42; --kta-rank-fg:#ff8c42; --kta-rank-bg:rgba(255,140,66,0.16); }
+[data-kta-rank="grandmaitre"] { --kta-rank-ring:#b388ff; --kta-rank-fg:#b388ff; --kta-rank-bg:rgba(179,136,255,0.18); }
+/* Anneau autour de l'avatar (conserve le shadow de profondeur existant) */
+.kta-loader-profile-avatar-wrap[data-kta-rank] {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 2.5px var(--kta-rank-ring, #6b7280);
+}
+.kta-loader-profile-avatar-wrap[data-kta-rank="expert"],
+.kta-loader-profile-avatar-wrap[data-kta-rank="maitre"] {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 2.5px var(--kta-rank-ring), 0 0 9px -1px var(--kta-rank-ring);
+}
+.kta-loader-profile-avatar-wrap[data-kta-rank="grandmaitre"] {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 3px var(--kta-rank-ring), 0 0 13px -1px var(--kta-rank-ring);
+}
+.kta-profile-details-avatar-big[data-kta-rank] {
+  box-shadow: 0 0 0 3.5px var(--kta-rank-ring, #6b7280);
+}
+.kta-profile-details-avatar-big[data-kta-rank="expert"],
+.kta-profile-details-avatar-big[data-kta-rank="maitre"] {
+  box-shadow: 0 0 0 3.5px var(--kta-rank-ring), 0 0 13px -1px var(--kta-rank-ring);
+}
+.kta-profile-details-avatar-big[data-kta-rank="grandmaitre"] {
+  box-shadow: 0 0 0 4px var(--kta-rank-ring), 0 0 17px -1px var(--kta-rank-ring);
+}
+/* Bloc rang dans la modale Détails profil */
+.kta-profile-details-rank {
+  margin: 4px 0 14px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 12px;
+}
+.kta-profile-details-rank:empty { display: none; }
+.kta-profile-rank-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.kta-profile-rank-chip {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 12px; border-radius:999px;
+  font-size:14px; font-weight:600;
+  color: var(--kta-rank-fg, #c8d0e0);
+  background: var(--kta-rank-bg, rgba(255,255,255,0.06));
+  border: 1px solid var(--kta-rank-ring, rgba(255,255,255,0.2));
+}
+.kta-profile-rank-score { font-size:12.5px; color:#8892a4; font-variant-numeric:tabular-nums; }
+.kta-profile-rank-metrics {
+  display:flex; flex-wrap:wrap; gap:6px 16px;
+  margin-top:10px; font-size:13px; color:#c8d0e0;
+}
+.kta-profile-rank-progress { margin-top:11px; }
+.kta-profile-rank-bar {
+  height:7px; border-radius:999px;
+  background: rgba(255,255,255,0.08); overflow:hidden;
+}
+.kta-profile-rank-bar > span {
+  display:block; height:100%;
+  background: linear-gradient(90deg, var(--kta-rank-ring, #8cb4ff), #f4c542);
+  border-radius:999px;
+}
+.kta-profile-rank-next { margin-top:6px; font-size:12px; color:#8892a4; line-height:1.4; }
+.kta-profile-rank-max { color:#4ade80; font-weight:600; }
+body.kta-theme-light .kta-profile-details-rank { background:#fff; border-color:rgba(0,0,0,0.1); }
+body.kta-theme-light .kta-profile-rank-score,
+body.kta-theme-light .kta-profile-rank-next { color:#5a6478; }
+body.kta-theme-light .kta-profile-rank-metrics { color:#1a1f2e; }
+body.kta-theme-light .kta-profile-rank-bar { background:rgba(0,0,0,0.08); }
+/* Médaille de rang en coin de l'avatar (home) + nom du rang sous le pseudo */
+.kta-loader-profile-avatar-holder { position: relative; flex: 0 0 auto; display: inline-flex; }
+.kta-loader-profile-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  background: #1a1f2e;
+  border: 2px solid var(--kta-rank-ring, #6b7280);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.45);
+  pointer-events: none;
+}
+.kta-loader-profile-rank {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--kta-rank-fg, #8892a4);
+}
+.kta-loader-profile-rank:empty { display: none; }
+body.kta-theme-light .kta-loader-profile-badge { background: #fdf8eb; }
+
 .kta-loader-profile-avatar-img {
   width: 100%;
   height: 100%;

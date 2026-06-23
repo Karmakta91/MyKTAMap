@@ -231,6 +231,7 @@ Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le hea
 
 - **Avatar** : photo perso (carrée, ~64 px) OU initiale colorée auto-générée si pas de photo. La couleur de l'initiale est choisie déterministiquement (via hash djb2 du surnom) parmi une palette de 10 couleurs de la charte — ton avatar reste donc visuellement stable d'une session à l'autre tant que tu ne changes pas de surnom.
 - **Surnom** : ton pseudo (modifiable). Par défaut "Cataphile" au premier lancement.
+- **🏅 Rang** : un **badge** (de *Touriste* à *Grand Maître*) calculé selon ton **temps passé** dans l'app, le **nombre de plans** explorés et les **km de galerie** cartographiés. Il se matérialise par un **anneau coloré** autour de la photo + une **médaille** en coin + le **nom du rang sous ton pseudo**. Le détail (les 3 métriques + la progression « Encore X pour le rang suivant » + un score) est dans la fiche profil. *(100 % local et fun — ça ne débloque rien, c'est juste pour le plaisir.)*
 - **Stats compactes** *(visibles dès que l'écran fait ≥ 380 px de large)* — désormais **configurables** depuis la modale Profil (voir plus bas). Par défaut :
   - ⏱️ **Temps de session** : durée écoulée depuis le démarrage de l'app sur cette session
   - 💾 **Sauvegarde** : taille réelle des données MyKTAMap stockées localement (voir plus bas)

@@ -1626,4 +1626,25 @@ KARMA : « pas de raccourci clavier pour Tracés », « avec TAB et Entrée pouv
 
 ---
 
+### 94. Rangs de profil / gamification (v1.52.0)
+
+KARMA : « ajouter au profil une donnée PRO mais FUN — un rang (Novice/Confirmé/Expert…) selon temps passé / nb plans / km de galerie, avec un anneau autour de la photo différent par rang ». Feature **community / offline**.
+
+**Module pur** `js/profileGamification.js` → `window.ProfileGamification = { RANKS, computeRank, getScore, getProgress, nom, label }`. Aucun DOM / localStorage / réseau : prend `{plans, hours, km}`, renvoie rang / score / progression.
+- **6 rangs** (`RANKS`, ascendant) : `touriste` / `novice` / `confirme` / `expert` / `maitre` / `grandmaitre`, chacun `{emoji, ring (couleur), plans, hours, km}`.
+- **Seuils STATIQUES** (choix KARMA, pas de score qui pilote le badge) : `computeRank` renvoie le **palier le plus haut dont les 3 seuils sont tous remplis** (logique **AND « maillon faible »**). Seuils monotones croissants sur les 3 axes → la boucle s'arrête au 1er palier non atteint.
+- **Score** (`getScore` = `plans + heures + km`) **décoratif**, n'entre PAS dans le rang. `getProgress` = `{current, next, missing, pct}` (pct = ratio min sur les 3 seuils du palier suivant).
+
+**Plumbing (inline `index.html`)** — réutilise les compteurs EXISTANTS, zéro nouvelle collecte :
+- `_collectGamifMetrics()` : ⏱️ `myktamap_total_time_ms` (+ delta session) · 🗺️ plans ouverts (`PlanRegistry.getAll()` filtré sur `lastOpened`) · 📏 km = somme des `distM` (galeries cartographiées) du cache `myktamap_plan_stats_v1_<id>` par plan.
+- `_appliquerRangAvatar(wrapEl)` : pose `data-kta-rank` (→ couleur d'anneau CSS) + `title`, renvoie le rang. Appelé sur le wrap home ET le gros avatar de la modale.
+- `_hydrateProfileRank()` : remplit `#kta-profile-details-rank` (puce de rang + 3 métriques + barre de progression + score).
+- Bandeau home : **nom du rang sous le pseudo** (`#kta-loader-profile-rank`) + **médaille en coin** (`#kta-loader-profile-badge`, dans un `.kta-loader-profile-avatar-holder` `position:relative` car le wrap est `overflow:hidden` → sinon rognée ; cachée pour Touriste = pas d'emoji).
+
+**CSS** : couleurs par rang via `[data-kta-rank]` (variables `--kta-rank-ring/-fg/-bg`) ; anneau = `box-shadow` outset (conserve le shadow de profondeur) + glow pour Expert/Maître/Grand Maître ; `.kta-profile-rank-*` (puce, métriques, barre) + `.kta-loader-profile-badge` + thème clair.
+
+**Persistance** : `myktamap_total_time_ms` ajouté à `PREF_KEYS` (`profileExportImport.js`) → le temps survit à l'export/import profil (plans = registre exporté ; km = régénéré en rouvrant les plans). i18n : 10 clés `rank.*` fr/en/es. **Sources** v1.52.0 ; `profileGamification.js` dans `index.html` (après `userProfile.js`) + `sw.js`. Aucune nouvelle surface réseau (1 fichier same-origin).
+
+---
+
 **Bon code ! 🚀**

@@ -259,6 +259,8 @@
        en-tête du loader avec avatar (photo ou initiale colorée déterministe)
        + surnom + bouton ⚙️ Détails. Karma_dev (Cycle Karma_dev pending). -->
   <script src="js/userProfile.js"></script>
+  <!-- 🆕 v1.52.0 : gamification du profil (rangs/badges selon temps + plans + km) -->
+  <script src="js/profileGamification.js"></script>
 
   <!-- 📦 PROFILE EXPORT/IMPORT — Profil utilisateur complet (registry +
        préférences + favoris + sessions + snapshots + tutorial + user +
@@ -346,8 +348,12 @@
       <div class="kta-loader-top-row">
         <div id="kta-loader-profile-bar" class="kta-loader-profile-bar" role="button"
              tabindex="0" aria-label="Mon profil utilisateur" style="display:none;">
-          <div class="kta-loader-profile-avatar-wrap" id="kta-loader-profile-avatar">
-            <!-- contenu généré dynamiquement par _refreshProfileBar() -->
+          <div class="kta-loader-profile-avatar-holder">
+            <div class="kta-loader-profile-avatar-wrap" id="kta-loader-profile-avatar">
+              <!-- contenu généré dynamiquement par _refreshProfileBar() -->
+            </div>
+            <!-- 🆕 v1.52.0 : médaille de rang en bas-droite (cachée pour Touriste) -->
+            <span class="kta-loader-profile-badge" id="kta-loader-profile-badge" aria-hidden="true" style="display:none;"></span>
           </div>
           <div class="kta-loader-profile-info">
             <div class="kta-loader-profile-greeting" id="kta-loader-profile-greeting" data-i18n="home.profile.greeting">Bienvenue</div>
@@ -355,6 +361,8 @@
                  (sinon _applyI18nDom écraserait le pseudo). Rempli + traduit par
                  _refreshLoaderProfileBar via I18n.t("home.profile.placeholder"). -->
             <div class="kta-loader-profile-surnom" id="kta-loader-profile-surnom">Mon profil</div>
+            <!-- 🆕 v1.52.0 : nom du rang sous le pseudo -->
+            <div class="kta-loader-profile-rank" id="kta-loader-profile-rank"></div>
           </div>
           <!-- 🆕 v1.21.1 : stats compactes (cachées mobile < 600px via CSS).
                🆕 v1.21.3 (KARMA "on doit dans ce cas pouvoir choisir dans
@@ -2784,6 +2792,28 @@
         const greetingEl = document.getElementById("kta-loader-profile-greeting");
         if (!avatarWrap || !surnomEl) return;
 
+        // 🆕 v1.52.0 : anneau de rang (sur le wrap → survit au remplacement du innerHTML)
+        // + nom du rang sous le pseudo + médaille en coin bas-droite de la photo.
+        const _rank = _appliquerRangAvatar(avatarWrap);
+        if (_rank && window.ProfileGamification) {
+          const rankLabelEl = document.getElementById("kta-loader-profile-rank");
+          if (rankLabelEl) {
+            rankLabelEl.textContent = window.ProfileGamification.label(_rank);
+            rankLabelEl.setAttribute("data-kta-rank", _rank.id);
+          }
+          const badgeEl = document.getElementById("kta-loader-profile-badge");
+          if (badgeEl) {
+            if (_rank.emoji) {
+              badgeEl.textContent = _rank.emoji;
+              badgeEl.setAttribute("data-kta-rank", _rank.id);
+              badgeEl.style.display = "";
+            } else {
+              badgeEl.textContent = "";
+              badgeEl.style.display = "none";  // Touriste : pas de médaille
+            }
+          }
+        }
+
         // 🐛 v1.21.1-fix1 (KARMA "j'ai que un —") : hydrate les stats AVANT
         // toute autre opération (et hors await) pour garantir que les valeurs
         // s'affichent même si le bloc photo plus bas fait un early return
@@ -2899,6 +2929,85 @@
         const h = Math.floor(m / 60);
         const remM = m % 60;
         return remM > 0 ? h + "h " + remM + "min" : h + "h";
+      }
+
+      // 🆕 v1.52.0 — Gamification du profil : rang/badge selon temps + plans + km.
+      // Métriques lues depuis les compteurs EXISTANTS (toutes locales) ; le calcul
+      // de rang vit dans js/profileGamification.js (module pur). km = galeries
+      // cartographiées (somme des distM en cache par plan).
+      function _collectGamifMetrics() {
+        let plans = 0, km = 0, list = [];
+        try { if (window.PlanRegistry && window.PlanRegistry.getAll) list = window.PlanRegistry.getAll() || []; } catch(e) {}
+        try {
+          const opened = list.filter(function(p){ return p && p.lastOpened; });
+          plans = opened.length || list.length;
+        } catch(e) {}
+        try {
+          list.forEach(function(p){
+            if (!p || !p.id) return;
+            try {
+              const raw = localStorage.getItem("myktamap_plan_stats_v1_" + p.id);
+              if (raw) {
+                const c = JSON.parse(raw);
+                if (c && typeof c.distM === "number" && c.distM > 0) km += c.distM / 1000;
+              }
+            } catch(e) {}
+          });
+        } catch(e) {}
+        const timeMs = _readTotalTimeMs() + (_timeLastTick ? Math.max(0, Date.now() - _timeLastTick) : 0);
+        return { plans: plans, hours: timeMs / 3600000, km: km, timeMs: timeMs };
+      }
+
+      // Applique l'anneau de rang sur un conteneur d'avatar (data-kta-rank lu par le CSS).
+      function _appliquerRangAvatar(wrapEl) {
+        if (!wrapEl || !window.ProfileGamification) return null;
+        try {
+          const rank = window.ProfileGamification.computeRank(_collectGamifMetrics());
+          wrapEl.setAttribute("data-kta-rank", rank.id);
+          wrapEl.setAttribute("title", window.ProfileGamification.label(rank));
+          return rank;
+        } catch(e) { return null; }
+      }
+
+      // Remplit le bloc rang de la modale Détails profil (puce + métriques + progression + score).
+      function _hydrateProfileRank() {
+        const box = document.getElementById("kta-profile-details-rank");
+        if (!box || !window.ProfileGamification) return;
+        const PG = window.ProfileGamification;
+        const tt = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
+        const m = _collectGamifMetrics();
+        const rank  = PG.computeRank(m);
+        const prog  = PG.getProgress(m);
+        const score = PG.getScore(m);
+        const unitP = tt("rank.unitPlans");
+        const kmTxt = (m.km < 10 ? m.km.toFixed(1) : String(Math.round(m.km))) + " km";
+        let html =
+          '<div class="kta-profile-rank-head">' +
+            '<span class="kta-profile-rank-chip" data-kta-rank="' + rank.id + '">' + PG.label(rank) + '</span>' +
+            '<span class="kta-profile-rank-score">' + tt("rank.scoreLabel") + ' ' + score + '</span>' +
+          '</div>' +
+          '<div class="kta-profile-rank-metrics">' +
+            '<span>🗺️ ' + m.plans + ' ' + unitP + '</span>' +
+            '<span>⏱️ ' + _formatDuration(m.timeMs) + '</span>' +
+            '<span>📏 ' + kmTxt + '</span>' +
+          '</div>';
+        if (prog.next) {
+          const parts = [];
+          if (prog.missing.plans > 0) parts.push(prog.missing.plans + ' ' + unitP);
+          if (prog.missing.hours > 0) parts.push(Math.ceil(prog.missing.hours) + ' h');
+          if (prog.missing.km    > 0) parts.push(Math.ceil(prog.missing.km) + ' km');
+          html +=
+            '<div class="kta-profile-rank-progress">' +
+              '<div class="kta-profile-rank-bar"><span style="width:' + prog.pct.toFixed(0) + '%"></span></div>' +
+              '<div class="kta-profile-rank-next">' +
+                tt("rank.progress", { parts: parts.join(" · "), rank: PG.label(prog.next) }) +
+              '</div>' +
+            '</div>';
+        } else {
+          html += '<div class="kta-profile-rank-next kta-profile-rank-max">' + tt("rank.maxReached") + '</div>';
+        }
+        box.setAttribute("data-kta-rank", rank.id);  // couleur héritée par la puce + la barre
+        box.innerHTML = html;
       }
 
       // 🆕 v1.21.3 (KARMA "on doit pouvoir choisir dans profile les 2 ou 3
@@ -3229,6 +3338,9 @@
                 '<p class="kta-profile-details-hint">' + _t("home.profile.nicknameHint") + '</p>' +
               '</div>' +
 
+              // 🆕 v1.52.0 — Rang / badge (gamification, hydraté par _hydrateProfileRank)
+              '<div class="kta-profile-details-rank" id="kta-profile-details-rank"></div>' +
+
               // — Stats compactes —
               '<div class="kta-profile-details-stats" id="kta-profile-details-stats">' +
                 '<div class="kta-profile-details-stats-loading">' + _t("home.profile.statsLoading") + '</div>' +
@@ -3278,6 +3390,7 @@
 
         // Render avatar initial dans la modale (gros format)
         _refreshProfileDetailsAvatar(snap);
+        _hydrateProfileRank();  // 🆕 v1.52.0 : bloc rang (puce + métriques + progression)
 
         // Calcul stats async
         _refreshProfileDetailsStats();
@@ -3508,6 +3621,7 @@
       async function _refreshProfileDetailsAvatar(snap) {
         const avatarEl = document.getElementById("kta-profile-details-avatar");
         if (!avatarEl || !window.UserProfile) return;
+        _appliquerRangAvatar(avatarEl);  // 🆕 v1.52.0 : anneau de rang sur le gros avatar
         if (_profileDetailsObjectUrl) {
           try { URL.revokeObjectURL(_profileDetailsObjectUrl); } catch(e) {}
           _profileDetailsObjectUrl = null;

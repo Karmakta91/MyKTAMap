@@ -8,7 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.51.0` (23/06/2026) — **⌨️ Raccourcis clavier + navigation clavier + refonte du menu Aide** : raccourci Tracés (P) · cheatsheet « ? » · TAB/Entrée dans les menus d'outils · modal Aide réorganisé en sommaire par thèmes avec recherche.
+**📦 Version courante** : `v1.52.0` (23/06/2026) — **🏅 Rangs de profil (gamification)** : rang Touriste → Grand Maître selon temps passé / plans / km de galerie, anneau coloré + médaille sur la photo + détail dans la fiche profil (temps inclus à l'export profil).
+
+**🏅 v1.52.0 (23/06/2026)** — **Gamification du profil : rangs / badges « PRO mais FUN »** :
+- **6 rangs** (Touriste · 🥉 Novice · 🥈 Confirmé · 🥇 Expert · 🏅 Maître · 👑 Grand Maître) sur **seuils statiques** des 3 métriques (plans ouverts · temps passé · km de galerie cartographiée), logique **AND « maillon faible »** (palier le plus haut dont les 3 seuils sont remplis). Module pur **`js/profileGamification.js`** : `window.ProfileGamification = { RANKS, computeRank, getScore, getProgress }`. Le **score** (`plans + heures + km`) est **décoratif**, n'entre pas dans le calcul du rang.
+- **Métriques** lues depuis les compteurs **existants** (zéro nouvelle collecte) : ⏱️ `myktamap_total_time_ms` · 🗺️ plans ouverts (`PlanRegistry.lastOpened`) · 📏 somme des `distM` (galeries cartographiées) en cache par plan. Plumbing inline `index.html` (`_collectGamifMetrics` / `_appliquerRangAvatar` / `_hydrateProfileRank`).
+- **Affichage** : **anneau coloré** autour de l'avatar (home + modale, glow pour Expert+), **nom du rang sous le pseudo** + **médaille en coin bas-droite de la photo** (cachée pour Touriste), et dans la modale Détails : les 3 métriques chiffrées + **barre + « Encore X pour le rang suivant »** + score. CSS `.kta-profile-rank-*` / `[data-kta-rank]` (dark + thème clair).
+- **Export profil** : `myktamap_total_time_ms` ajouté à `PREF_KEYS` (`profileExportImport.js`) → le temps cumulé survit à une migration d'appareil (plans = registre exporté ; km = se régénère en rouvrant les plans).
+- **Sources** v1.52.0 (+ `profileGamification.js` dans `index.html` + `ASSETS_TO_CACHE`). i18n `rank.*` fr/en/es. 100 % community / offline, aucune nouvelle surface réseau.
 
 **⌨️ v1.51.0 (23/06/2026)** — **Raccourcis clavier (Lot A) + navigation clavier (Lot B) + refonte du menu Aide (Lot C)** :
 - **Lot A — Raccourcis** : ajout du raccourci manquant **🛣️ Tracés = `P`** (`shortcuts.js` MAPPING, `group:traces`). Nouvelle **cheatsheet `?`** (`js/shortcutsCheatsheet.js`) auto-générée depuis `KtaShortcuts.listMapping()` (zéro liste à maintenir) + bloc fixe des combos (Ctrl+Z/Y, Ctrl+K, F, Échap). Touche `?` gérée **avant** le guard Shift (layout-agnostique, AZERTY OK). **Fix** : `_isModaleBloquante()` couvre désormais `.kta-tracker-modal-overlay` (les raccourcis ne se déclenchent plus derrière le modal Tracker). Libellés outils localisés via `cheatsheet.tool.*` (fr/en/es).

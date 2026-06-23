@@ -231,6 +231,7 @@ A **profile banner** is displayed at the top of the home screen, just below the 
 
 - **Avatar**: personal photo (square, ~64 px) OR colored auto-generated initial if no photo. The color of the initial is chosen deterministically (via djb2 hash of the nickname) from a palette of 10 colors of the chart — your avatar therefore remains visually stable from one session to the next as long as you do not change your nickname.
 - **Nickname**: your alias (editable). Default "Cataphile" on first launch.
+- **🏅 Rank**: a **badge** (from *Tourist* to *Grandmaster*) computed from your **time spent** in the app, the **number of maps** explored and the **km of gallery** mapped. It shows as a **colored ring** around the photo + a **medal** in the corner + the **rank name under your nickname**. The breakdown (the 3 metrics + progress "X left for the next rank" + a score) is in the profile card. *(100% local and fun — it unlocks nothing, it's just for the joy of it.)*
 - **Compact stats** *(visible as soon as the screen is ≥ 380 px wide)* — now **configurable** from the Profile modal (see below). By default:
   - ⏱️ **Session time**: time elapsed since the app started in this session
   - 💾 **Save**: actual size of MyKTAMap data stored locally (see below)

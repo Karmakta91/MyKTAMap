@@ -1,8 +1,8 @@
 {
-  "version": "v1.51.0",
+  "version": "v1.52.0",
   "released": "2026-06-23",
   "notes": [
-    "⌨️ Nouveaux raccourcis clavier (appuie sur « ? » pour voir la liste complète) et navigation au clavier dans les menus d'outils : TAB pour parcourir, Entrée pour valider.",
-    "❓ Le menu Aide est réorganisé en sommaire par thèmes avec recherche — chaque rubrique s'ouvre en grand."
+    "🏅 Votre profil gagne un rang (de Touriste à Grand Maître) qui évolue selon le temps passé, les plans explorés et les kilomètres de galerie : anneau coloré + médaille sur la photo, et le détail dans la fiche profil.",
+    "💾 Le temps passé dans l'app est désormais inclus dans l'export/import de profil (conservé en cas de changement d'appareil)."
   ]
 }
