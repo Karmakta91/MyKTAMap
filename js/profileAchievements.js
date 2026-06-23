@@ -44,6 +44,19 @@
     { id: "batisseur",   emoji: "🏛️", metric: "structures",  unit: "",      seuils: [20, 150, 400, 600] }
   ];
 
+  // 🆕 v1.54.0 — Hauts faits "Spéciaux" (one-shot, fun). Dérivés du même objet
+  // de métriques (+ hasTracked / maxLevels / maxTrackerH / score, calculés
+  // inline). `completiste` reçoit un contexte { tieredUnlocked }.
+  const TIERED_TOTAL = FAMILIES.length * 4;  // 32
+  const SPECIALS = [
+    { id: "toucheatout", emoji: "🎨", check: function(m)      { return (m.pois||0)>=1 && (m.roads||0)>=1 && (m.zones||0)>=1 && (m.structures||0)>=1; } },
+    { id: "centurion",   emoji: "💯", check: function(m)      { return (Number(m.score)||0) >= 100; } },
+    { id: "taupe",       emoji: "🦇", check: function(m)      { return !!m.hasTracked; } },
+    { id: "multiniveau", emoji: "🧭", check: function(m)      { return (Number(m.maxLevels)||0) >= 2; } },
+    { id: "marathon",    emoji: "🌃", check: function(m)      { return (Number(m.maxTrackerH)||0) >= 4; } },
+    { id: "completiste", emoji: "🏆", check: function(m, ctx) { return !!ctx && ctx.tieredUnlocked >= TIERED_TOTAL; } }
+  ];
+
   function _t(key, fb) {
     if (window.I18n && typeof window.I18n.t === "function") {
       const v = window.I18n.t(key);
@@ -52,7 +65,8 @@
     return fb;
   }
 
-  function nom(familyId) { return _t("feat." + familyId, familyId); }
+  function nom(familyId)  { return _t("feat." + familyId, familyId); }
+  function nomSpecial(id) { return _t("feat.sp." + id, id); }
 
   function _val(metrics, metric) {
     return Math.max(0, Number(metrics && metrics[metric]) || 0);
@@ -72,6 +86,7 @@
       f.seuils.forEach(function(seuil, i) {
         out.push({
           id:         f.id + ".t" + i,
+          group:      "family",
           familyId:   f.id,
           emoji:      f.emoji,
           tier:       i + 1,
@@ -85,6 +100,21 @@
           pct:        Math.max(0, Math.min(1, seuil > 0 ? val / seuil : 1)) * 100,
           nom:        nom(f.id)
         });
+      });
+    });
+    // 🆕 v1.54.0 : spéciaux one-shot. completiste lit le nb de tiered débloqués.
+    const tieredUnlocked = out.filter(function(a) { return a.unlocked; }).length;
+    const ctx = { tieredUnlocked: tieredUnlocked };
+    SPECIALS.forEach(function(s) {
+      let ok = false;
+      try { ok = !!s.check(metrics || {}, ctx); } catch(e) {}
+      out.push({
+        id:       "special." + s.id,
+        group:    "special",
+        emoji:    s.emoji,
+        unlocked: ok,
+        pct:      ok ? 100 : 0,
+        nom:      nomSpecial(s.id)
       });
     });
     return out;
@@ -102,13 +132,17 @@
 
   function label(ach) {
     if (!ach) return "";
+    if (ach.group === "special") return (ach.emoji ? ach.emoji + " " : "") + ach.nom;
     return ach.emoji + " " + ach.nom + " " + ach.tierRoman;
   }
 
+  const TOTAL = TIERED_TOTAL + SPECIALS.length;  // 32 + 6 = 38
+
   window.ProfileAchievements = {
     FAMILIES:    FAMILIES,
+    SPECIALS:    SPECIALS,
     TIER_ICONS:  TIER_ICONS,
-    total:       FAMILIES.length * 4,
+    total:       TOTAL,
     list:        list,
     unlockedIds: unlockedIds,
     byId:        byId,
@@ -116,5 +150,5 @@
     label:       label
   };
 
-  console.log("[ProfileAchievements] Module chargé (" + (FAMILIES.length * 4) + " hauts faits)");
+  console.log("[ProfileAchievements] Module chargé (" + TOTAL + " hauts faits, dont " + SPECIALS.length + " spéciaux)");
 })();

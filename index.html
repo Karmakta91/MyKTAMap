@@ -2943,6 +2943,7 @@
       // cartographiées (somme des distM en cache par plan).
       function _collectGamifMetrics() {
         let plans = 0, km = 0, pois = 0, roads = 0, zones = 0, structures = 0, plansGeoref = 0, list = [];
+        let hasTracked = false, maxLevels = 0, maxTrackerH = 0;  // 🆕 v1.54.0 (spéciaux)
         try { if (window.PlanRegistry && window.PlanRegistry.getAll) list = window.PlanRegistry.getAll() || []; } catch(e) {}
         try {
           const opened = list.filter(function(p){ return p && p.lastOpened; });
@@ -2966,12 +2967,43 @@
                 }
               }
             } catch(e) {}
+            // 🆕 v1.54.0 : scan session pour les spéciaux (tracker + niveaux annotés)
+            try {
+              const sraw = localStorage.getItem("myktamap_session_v1_" + p.id);
+              if (sraw) {
+                const s = JSON.parse(sraw);
+                const tl = Array.isArray(s.trackerTimeline) ? s.trackerTimeline : [];
+                if (tl.length > 0) {
+                  hasTracked = true;
+                  if (tl.length >= 2) {
+                    let tmin = Infinity, tmax = -Infinity;
+                    for (let i = 0; i < tl.length; i++) {
+                      const t = Number(tl[i] && tl[i].t);
+                      if (isFinite(t)) { if (t < tmin) tmin = t; if (t > tmax) tmax = t; }
+                    }
+                    if (isFinite(tmin) && isFinite(tmax) && tmax > tmin) {
+                      maxTrackerH = Math.max(maxTrackerH, (tmax - tmin) / 3600000);
+                    }
+                  }
+                }
+                const lv = {};
+                ["editorPoints", "roads", "zones", "structures"].forEach(function(coll) {
+                  const arr = Array.isArray(s[coll]) ? s[coll] : [];
+                  for (let i = 0; i < arr.length; i++) { lv[Number(arr[i] && arr[i].level) || 0] = 1; }
+                });
+                const nlv = Object.keys(lv).length;
+                if (nlv > maxLevels) maxLevels = nlv;
+              }
+            } catch(e) {}
           });
         } catch(e) {}
         const timeMs = _readTotalTimeMs() + (_timeLastTick ? Math.max(0, Date.now() - _timeLastTick) : 0);
+        let score = 0;
+        try { if (window.ProfileGamification) score = window.ProfileGamification.getScore({ plans: plans, hours: timeMs / 3600000, km: km }); } catch(e) {}
         return {
           plans: plans, hours: timeMs / 3600000, km: km, timeMs: timeMs,
-          plansGeoref: plansGeoref, pois: pois, roads: roads, zones: zones, structures: structures
+          plansGeoref: plansGeoref, pois: pois, roads: roads, zones: zones, structures: structures,
+          hasTracked: hasTracked, maxLevels: maxLevels, maxTrackerH: maxTrackerH, score: score
         };
       }
 
@@ -3042,6 +3074,17 @@
                   '</div>';
         });
         html += '</div>';
+        // 🆕 v1.54.0 : section Spéciaux (hauts faits one-shot)
+        const specials = all.filter(function(a){ return a.group === "special"; });
+        if (specials.length) {
+          html += '<div class="kta-feats-sptitle">🎉 ' + tt("feat.specials") + '</div>' +
+                  '<div class="kta-feats-specials">';
+          specials.forEach(function(a) {
+            html += '<span class="kta-feat-sp' + (a.unlocked ? " kta-feat-unlocked" : "") + '">' +
+                      a.emoji + " " + a.nom + '</span>';
+          });
+          html += '</div>';
+        }
         box.innerHTML = html;
       }
 

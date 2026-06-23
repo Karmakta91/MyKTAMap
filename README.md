@@ -8,7 +8,12 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.53.0` (23/06/2026) — **🏆 Hauts faits (gamification v2)** : 32 succès à débloquer (8 familles × 4 paliers 🥉🥈🥇👑) selon plans / km / temps / POIs / tracés / zones / structures, toast au déblocage + grille dans la fiche profil ; + 2 stats au choix (⭐ score · 🏆 hauts faits) au bandeau d'accueil.
+**📦 Version courante** : `v1.54.0` (24/06/2026) — **🎉 Hauts faits « spéciaux »** : 6 succès one-shot fun (Touche-à-tout · Centurion · Taupe · Spéléo multi-niveaux · Marathon souterrain · Complétiste), portant le total à **38**, dans une section dédiée de la fiche profil.
+
+**🎉 v1.54.0 (24/06/2026)** — **Hauts faits « spéciaux » (one-shot fun)** :
+- **6 succès uniques** ajoutés à `js/profileAchievements.js` (nouveau tableau `SPECIALS`, groupe `"special"`) : 🎨 **Touche-à-tout** (≥1 POI + tracé + zone + structure) · 💯 **Centurion** (score ≥ 100) · 🦇 **Taupe** (a utilisé le tracker) · 🧭 **Spéléo multi-niveaux** (annoté sur ≥2 niveaux dans un plan) · 🌃 **Marathon souterrain** (session tracker > 4 h) · 🏆 **Complétiste** (les 32 hauts faits de base débloqués — méta, via contexte `{tieredUnlocked}`). **Total 32 → 38** (`PA.total`, compteur + stat bandeau suivent).
+- **Métriques dérivées** (`index.html > _collectGamifMetrics`) : `hasTracked` / `maxLevels` / `maxTrackerH` calculés par **scan de `myktamap_session_v1_<id>`** (trackerTimeline + niveaux des éléments de session) + `score` (`ProfileGamification.getScore`). **100 % dérivé du localStorage existant, zéro wiring d'événement.**
+- **Grille profil** : nouvelle section **« 🎉 Spéciaux »** (`_hydrateProfileFeats`) en chips allumées/grisées sous les 8 familles, toast au déblocage identique. CSS `.kta-feats-specials` / `.kta-feat-sp` + thème clair. i18n `feat.specials` + `feat.sp.*` fr/en/es. **Sources** v1.54.0. Aucune nouvelle surface réseau, aucun nouveau fichier.
 
 **🏆 v1.53.0 (23/06/2026)** — **Hauts faits / succès (Gamification v2)** :
 - **Module pur `js/profileAchievements.js`** : catalogue **8 familles × 4 paliers = 32 hauts faits** (🥉 I · 🥈 II · 🥇 III · 👑 IV). `window.ProfileAchievements = { FAMILIES, total, list, unlockedIds, byId, label }`. Un succès débloqué quand `métrique ≥ seuil`. Familles : Cartographe (plans) · Géomètre (plans géoréf) · Marcheur des profondeurs (km) · Rat de cave (temps) · Pointilleux (POIs) · Traceur (tracés) · Zoneur (zones) · Bâtisseur (structures).

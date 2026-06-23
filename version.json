@@ -1,8 +1,7 @@
 {
-  "version": "v1.53.0",
-  "released": "2026-06-23",
+  "version": "v1.54.0",
+  "released": "2026-06-24",
   "notes": [
-    "🏆 Des hauts faits à débloquer ! 32 succès (Cartographe, Géomètre, Marcheur des profondeurs, Bâtisseur…) selon vos plans, km, POIs, zones et structures — avec une notification au déblocage et le détail dans votre fiche profil.",
-    "🎨 Deux nouvelles stats au choix pour le bandeau d'accueil : votre score et le nombre de hauts faits débloqués (toujours 3 max affichées)."
+    "🎉 6 nouveaux hauts faits « spéciaux » à débloquer : Touche-à-tout, Centurion, Taupe, Spéléo multi-niveaux, Marathon souterrain et Complétiste — 38 au total dans votre fiche profil."
   ]
 }

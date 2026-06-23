@@ -1664,6 +1664,12 @@ KARMA : « rajouter plein de hauts faits (X plans géoréf, X plans, X km, X str
 
 **Persistance** : `myktamap_achievements_v1` ajouté à `PREF_KEYS` (export profil). CSS `.kta-profile-details-feats` / `.kta-feat-*` (médailles `grayscale` verrouillées) + thème clair. i18n : 10 clés `feat.*` + 4 clés stats (`home.profile.statScore`/`statFeats` + tooltips) fr/en/es. **Sources** v1.53.0 ; `profileAchievements.js` dans `index.html` (après `profileGamification.js`) + `sw.js`. Aucune nouvelle surface réseau (1 fichier same-origin).
 
+#### 95.1 Hauts faits « spéciaux » one-shot (v1.54.0)
+
+Ajout d'un 2ᵉ groupe à `profileAchievements.js` : `SPECIALS` (6 succès uniques, `group:"special"`, **total 32 → 38**). Chaque entrée `{id, emoji, check(metrics, ctx)}` — débloqué si `check` vrai. `list()` calcule d'abord les 32 tiered, compte `tieredUnlocked`, puis évalue les spéciaux avec `ctx = {tieredUnlocked}` (pour **Complétiste** = méta « tout le tiered débloqué »). Les 5 autres : 🎨 Touche-à-tout (pois&roads&zones&structures ≥1) · 💯 Centurion (score≥100) · 🦇 Taupe (`hasTracked`) · 🧭 Spéléo multi-niveaux (`maxLevels≥2`) · 🌃 Marathon (`maxTrackerH≥4`).
+
+`_collectGamifMetrics` **étendu** (`index.html`) : `hasTracked` / `maxLevels` / `maxTrackerH` dérivés d'un **scan de `myktamap_session_v1_<id>`** par plan (présence + span temporel de `trackerTimeline`, distinct des `level` des éléments de session) + `score` (`ProfileGamification.getScore`). **Zéro wiring d'événement** — tout dérivé du localStorage existant (lecture seule). `_hydrateProfileFeats` ajoute la section **« 🎉 Spéciaux »** (chips `.kta-feat-sp` allumées/grisées) sous les 8 familles ; toast au déblocage inchangé. i18n `feat.specials` + `feat.sp.*` fr/en/es. **Sources** v1.54.0, **aucun nouveau fichier**, aucune nouvelle surface réseau.
+
 ---
 
 **Bon code ! 🚀**
