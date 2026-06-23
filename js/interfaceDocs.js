@@ -1122,13 +1122,15 @@ function _aideHtmlFr() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🧭 Tracker</div>
           <p style="font-size:12px; color:#8892a4; margin:0 0 8px; line-height:1.5;">
-            Le groupe Tracker s'ouvre en panneau latéral
-            pour accueillir ses ~8 sous-actions sans déborder. Ordre du menu, du haut vers le bas :
+            Le groupe Tracker s'ouvre en <strong>modal plein écran</strong> de tuiles (cf « 🧭 Menu Tracker »)
+            regroupant ses <strong>11 actions</strong>. Ordre, du haut vers le bas :
           </p>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">▶️⏹️</span><span><strong>Play / Stop</strong> — démarrer / arrêter le tracking par capteurs PDR (expérimental). Icône dynamique ▶️↔⏹️ selon l'état</span>
             <span class="kta-aide-icone">🧭</span><span><strong>Boussole</strong> — toggle du widget Nord magnétique (orientation utile en cavité)</span>
             <span class="kta-aide-icone">📍</span><span><strong>Mode recalage</strong> — clic sur la carte ou sur un point existant pour repositionner le marker. Fermeture auto après clic + retour boussole automatique</span>
+            <span class="kta-aide-icone">🎯</span><span><strong>Ma position</strong> — recentre la carte sur la position courante du tracker (zoom conservé). Marche même tracker à l'arrêt</span>
+            <span class="kta-aide-icone">🔓</span><span><strong>Suspendre le verrou sur tracé</strong> — désactive temporairement le verrouillage sur les tracés (30 s / 1 min / 10 min / jusqu'à réactivation), avec compte-à-rebours dans la barre du bas</span>
             <span class="kta-aide-icone">🗺️</span><span><strong>Calculer un itinéraire</strong> — ouvre la modale itinéraire (waypoints, mode de vitesse, évitements)</span>
             <span class="kta-aide-icone">🎬</span><span><strong>Replay de session tracker</strong> — modale plein écran : slider timeline + play/pause + vitesse 0.5×→10× + export CSV. Mode compact auto au Play pour libérer la carte. Raccourcis Espace / ← → / Échap</span>
             <span class="kta-aide-icone">🔥</span><span><strong>Heatmap densité</strong> — segments interpolés + normalisation auto + <strong>6 sources cochables</strong> : 🚶 Tracker timeline · ✏️ Points session · 🛣️ Tracés · ⬛ Zones · 🏛️ Structures · 📊 Calques de données</span>
@@ -1783,13 +1785,15 @@ function _aideHtmlEn() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🧭 Tracker</div>
           <p style="font-size:12px; color:#8892a4; margin:0 0 8px; line-height:1.5;">
-            The Tracker group opens as a side panel
-            to fit its ~8 sub-actions without overflowing. Menu order, top to bottom:
+            The Tracker group opens as a <strong>full-screen modal</strong> of tiles (see "🧭 Tracker menu")
+            grouping its <strong>11 actions</strong>. Order, top to bottom:
           </p>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">▶️⏹️</span><span><strong>Play / Stop</strong> — start / stop tracking via PDR sensors (experimental). Dynamic icon ▶️↔⏹️ depending on the state</span>
             <span class="kta-aide-icone">🧭</span><span><strong>Compass</strong> — toggle of the magnetic North widget (useful orientation underground)</span>
             <span class="kta-aide-icone">📍</span><span><strong>Recalibration mode</strong> — click the map or an existing point to reposition the marker. Auto-close after click + automatic return to compass</span>
+            <span class="kta-aide-icone">🎯</span><span><strong>My position</strong> — recenters the map on the tracker's current position (zoom kept). Works even when the tracker is stopped</span>
+            <span class="kta-aide-icone">🔓</span><span><strong>Suspend the path lock</strong> — temporarily disables locking onto paths (30 s / 1 min / 10 min / until re-enabled), with a countdown in the bottom bar</span>
             <span class="kta-aide-icone">🗺️</span><span><strong>Compute a route</strong> — opens the route modal (waypoints, speed mode, avoidances)</span>
             <span class="kta-aide-icone">🎬</span><span><strong>Tracker session replay</strong> — full-screen modal: timeline slider + play/pause + speed 0.5×→10× + CSV export. Compact mode auto on Play to free up the map. Shortcuts Space / ← → / Esc</span>
             <span class="kta-aide-icone">🔥</span><span><strong>Density heatmap</strong> — interpolated segments + auto normalization + <strong>6 checkable sources</strong>: 🚶 Tracker timeline · ✏️ Session points · 🛣️ Paths · ⬛ Zones · 🏛️ Structures · 📊 Data layers</span>
