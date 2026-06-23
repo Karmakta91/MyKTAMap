@@ -1602,4 +1602,28 @@ i18n : 6 clés `tracker.modal.*` (sections + statut + « pas ») fr/en/es. **Sco
 
 ---
 
+### 93. Raccourcis clavier + navigation clavier + refonte du menu Aide (v1.51.0)
+
+KARMA : « pas de raccourci clavier pour Tracés », « avec TAB et Entrée pouvoir choisir le mode », « refondre le modal Aide en sous-modales depuis un modal principal qui liste les sections ». 3 lots dans une même release.
+
+#### 93.1 Lot A — Raccourcis + cheatsheet (`shortcuts.js`, `shortcutsCheatsheet.js`)
+- **Raccourci Tracés manquant ajouté** : `MAPPING.p = { action: "group:traces", label: … }` (`shortcuts.js`). Mapping complet : E/M/Z/S/T/**P**/L/B/R.
+- **Cheatsheet `?`** : nouveau module `js/shortcutsCheatsheet.js` → `window.ShortcutsCheatsheet = { ouvrir, fermer, toggle, isOpen }`. Modale `.kta-readme-modal-overlay` réutilisée + grille `.kta-cheat-*` / keycaps `.kta-kbd`. Les lignes "outils" sont **auto-générées** depuis `KtaShortcuts.listMapping()` (zéro liste à maintenir) ; libellés localisés via `cheatsheet.tool.*` (fr/en/es). Bloc fixe des combos (Ctrl+Z/Y, Ctrl+K, F, ?, Échap). La touche `?` est gérée dans le keydown de `shortcuts.js` **AVANT** le guard `e.shiftKey` (car `?` = Shift+… sur AZERTY ; `e.key === "?"` est layout-agnostique).
+- **Fix** : `_isModaleBloquante()` (`shortcuts.js`) couvre désormais `.kta-tracker-modal-overlay` → les raccourcis ne se déclenchent plus « derrière » le modal Tracker.
+
+#### 93.2 Lot B — Navigation clavier dans les menus (`interface.js > _installFocusNav`)
+- Helper partagé `_installFocusNav(container, opts)` branché sur **`_ouvrirFlyout`** (flyout latéral, partagé traces/zones/structures/édition/mesure/favoris) **ET** `_ouvrirTrackerModal` (modal Tracker).
+- À l'ouverture : **focus auto** la 1ʳᵉ action (`opts.firstSelector`, pas la croix). **TAB** cycle (piège de focus, dernier→premier + `Shift+Tab` inverse), **↑↓←→** déplacent, **Entrée/Espace** = activation native du `<button>`, **Échap** ferme si `opts.handleEscape` (flyout) sinon géré ailleurs (le modal Tracker garde son handler document-level). Le listener vit/meurt avec le conteneur (retiré du DOM à la fermeture → pas de cleanup explicite).
+
+#### 93.3 Lot C — Refonte du modal Aide en hub (`interfaceDocs.js`)
+- `afficherAide()` ne dump plus le HTML monolithique des **28 sections** dans un scroll, mais construit un **hub** : `_aideRendreHub(corps, en)` parse `_aideHtmlFr/En()` (rendu dans un `<div>` détaché → `querySelectorAll(".kta-aide-section")`) — **source de vérité inchangée**, refonte de présentation pure (blast radius minimal).
+- **Catégories** : `AIDE_CATEGORIES` (6 catégories × `idx` = index de section dans l'ordre du document, **IDENTIQUE FR/EN**). ⚠️ ajout/suppression/réordre d'une section → mettre à jour les index dans les 2 langues. Filet de sécurité : toute section non listée retombe dans « Autres ». L'intro `.kta-aide-intro` est préservée en tête.
+- **Sous-modale** : clic sur une rubrique → `_aideOuvrirSousModal(section, en)` = overlay `.kta-aide-submodal` (**z-index 100001**, au-dessus du hub) avec le **node de la section cloné** + bouton **← Retour** + ✕ + clic-fond + Échap. `_aideFermerSousModal()` la retire.
+- **Recherche** : `<input>` filtre les `.kta-aide-row` par titre + masque les titres de catégorie sans ligne visible + message « aucun résultat ». Ligne épinglée **⌨️ Raccourcis** → `ShortcutsCheatsheet.ouvrir()`.
+- **Parité FR/EN rétablie** : section « Menu Tracker / Tracker menu » ajoutée côté EN (les 2 langues ont 28 sections dans le même ordre). CSS `.kta-aide-hub-search` / `.kta-aide-row` / `.kta-aide-submodal*` (dark + thème clair).
+
+**Sources** v1.51.0 ; `shortcutsCheatsheet.js` ajouté à `index.html` (après `shortcuts.js`) + `sw.js > ASSETS_TO_CACHE`. i18n : 20 clés `cheatsheet.*`. Aucune nouvelle surface réseau (1 fichier same-origin).
+
+---
+
 **Bon code ! 🚀**

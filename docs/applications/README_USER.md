@@ -1827,11 +1827,20 @@ Tu peux **annuler** et **rétablir** tes actions sur le plan, jusqu'à **50 acti
 
 ### Raccourcis clavier (recommandé)
 
+> ⌨️ **Appuie sur `?` à tout moment** pour afficher la liste complète des raccourcis (cheatsheet).
+
 | Raccourci | Action |
 |---|---|
+| **?** | Afficher tous les raccourcis (cheatsheet) |
+| **E / M / Z / S / T / P** | Ouvrir Édition / Mesure / Zones / Structures / Tracker / Tracés |
+| **L / B / R** | Légende / Boussole / Recherche |
+| **Ctrl+K** (`Cmd+K` Mac) | Recherche (alternative à R) |
+| **TAB / Entrée** | Dans un menu d'outils ouvert : parcourir les options / valider la sélection |
+| **F** | Mode présentation (Échap pour sortir) |
 | **Ctrl+Z** (`Cmd+Z` Mac) | Annuler la dernière action |
 | **Ctrl+Y** (`Cmd+Y` Mac) | Rétablir l'action annulée |
 | **Ctrl+Shift+Z** (`Cmd+Shift+Z` Mac) | Rétablir (alternative) |
+| **Échap** | Fermer le menu / la fenêtre |
 
 > 💡 Les raccourcis ne se déclenchent pas si tu es en train de taper dans un champ texte — pour ne pas casser l'undo natif du navigateur dans les inputs.
 

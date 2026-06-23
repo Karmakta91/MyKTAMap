@@ -1,7 +1,8 @@
 {
-  "version": "v1.50.0",
+  "version": "v1.51.0",
   "released": "2026-06-23",
   "notes": [
-    "🧭 Le menu Tracker s'ouvre désormais en plein écran : de grandes tuiles plus faciles à toucher, rangées par Suivi / Outils / Urgence, avec l'état du suivi (actif, distance, pas) affiché en haut."
+    "⌨️ Nouveaux raccourcis clavier (appuie sur « ? » pour voir la liste complète) et navigation au clavier dans les menus d'outils : TAB pour parcourir, Entrée pour valider.",
+    "❓ Le menu Aide est réorganisé en sommaire par thèmes avec recherche — chaque rubrique s'ouvre en grand."
   ]
 }

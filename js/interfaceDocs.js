@@ -573,6 +573,10 @@ function afficherAide() {
 
   const aideTitre = aideEn ? "❓ Help — Button reference" : "❓ Aide — Référence des boutons";
 
+  // 🆕 v1.51.0 (Lot C) : le corps n'est plus le gros scroll monolithique mais
+  // un HUB de sections (cartes par catégorie + recherche) → sous-modale par
+  // section. Les sections restent définies dans _aideHtmlFr/En (source de
+  // vérité inchangée), parsées par _aideRendreHub.
   modal.innerHTML = `
     <div class="kta-readme-modal-boite kta-aide-modal-boite">
       <div class="kta-readme-modal-header">
@@ -580,15 +584,15 @@ function afficherAide() {
         ${btnLang}
         <button class="kta-panneau-close" id="kta-aide-close">✕</button>
       </div>
-      <div class="kta-readme-modal-corps kta-aide-corps">
-        ${aideEn ? _aideHtmlEn() : _aideHtmlFr()}
-      </div>
+      <div class="kta-readme-modal-corps kta-aide-corps" id="kta-aide-corps"></div>
     </div>
   `;
 
   document.documentElement.appendChild(modal);
-  document.getElementById("kta-aide-close").addEventListener("click", function () { modal.remove(); });
-  modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
+
+  function _closeAll() { _aideFermerSousModal(); modal.remove(); }
+  document.getElementById("kta-aide-close").addEventListener("click", _closeAll);
+  modal.addEventListener("click", function (e) { if (e.target === modal) _closeAll(); });
 
   // 🆕 v1.45.x — Handler des onglets de langue (délégation sur tous les
   // drapeaux). Clic sur une langue ≠ courante → persiste (scope LOCAL doc, via
@@ -600,10 +604,180 @@ function afficherAide() {
       if (DOC_AVAILABLE_LANGS.indexOf(target) < 0) return;
       if (target === _getReadmeLang()) return; // déjà la langue courante
       _setReadmeLang(target);
-      modal.remove();
+      _closeAll();
       afficherAide();
     });
   });
+
+  _aideRendreHub(document.getElementById("kta-aide-corps"), aideEn);
+}
+
+// =========================
+// 🆕 v1.51.0 (Lot C) — Hub d'aide : sections groupées + sous-modale
+// =========================
+// Regroupement des sections d'aide pour le hub. `idx` = index de la section
+// dans l'ordre du document _aideHtmlFr/En (IDENTIQUE FR/EN : les 2 ont le même
+// nombre de sections dans le même ordre).
+// ⚠️ Si tu AJOUTES / SUPPRIMES / RÉORDONNES une section dans _aideHtmlFr ET
+// _aideHtmlEn, mets À JOUR ces index. Toute section non listée ici retombe
+// automatiquement dans la catégorie « Autres » (filet de sécurité).
+const AIDE_CATEGORIES = [
+  { fr: "🚀 Prise en main",        en: "🚀 Getting started",     idx: [2, 26, 27] },
+  { fr: "🗺️ Outils carte",         en: "🗺️ Map tools",           idx: [20, 22, 23, 21, 19, 17, 14, 15, 1] },
+  { fr: "💾 Données & session",     en: "💾 Data & session",      idx: [16, 5, 8, 9, 11, 13, 0, 24, 6] },
+  { fr: "🔍 Recherche",            en: "🔍 Search",              idx: [4] },
+  { fr: "🚨 Coordination secours", en: "🚨 Rescue coordination", idx: [18] },
+  { fr: "⚙️ Système & sécurité",   en: "⚙️ System & security",   idx: [3, 25, 10, 12, 7] }
+];
+
+// Une ligne cliquable du hub (titre + chevron).
+function _aideRow(titre, onClick) {
+  const r = document.createElement("button");
+  r.type = "button";
+  r.className = "kta-aide-row";
+  const t = document.createElement("span");
+  t.className = "kta-aide-row-titre";
+  t.textContent = titre;
+  const chev = document.createElement("span");
+  chev.className = "kta-aide-row-chevron";
+  chev.textContent = "›";
+  r.appendChild(t);
+  r.appendChild(chev);
+  r.addEventListener("click", onClick);
+  return r;
+}
+
+function _aideRendreHub(corps, en) {
+  if (!corps) return;
+
+  // Parse les sections depuis le HTML monolithique (source de vérité inchangée).
+  const raw = document.createElement("div");
+  raw.innerHTML = en ? _aideHtmlEn() : _aideHtmlFr();
+  const secNodes = Array.prototype.slice.call(raw.querySelectorAll(".kta-aide-section"));
+  const sections = secNodes.map(function(node) {
+    const t = node.querySelector(".kta-aide-section-titre");
+    return { titre: t ? t.textContent.trim() : "?", node: node };
+  });
+
+  // Conserve l'intro générale si présente (sinon perdue au parsing des sections).
+  const intro = raw.querySelector(".kta-aide-intro");
+  if (intro) corps.appendChild(intro.cloneNode(true));
+
+  // Barre de recherche
+  const search = document.createElement("input");
+  search.type = "search";
+  search.className = "kta-aide-hub-search";
+  search.placeholder = en ? "Search a section…" : "Rechercher une section…";
+  corps.appendChild(search);
+
+  const hub = document.createElement("div");
+  hub.className = "kta-aide-hub";
+  corps.appendChild(hub);
+
+  // Ligne épinglée : cheatsheet des raccourcis clavier (ouvre ShortcutsCheatsheet).
+  const cheatRow = _aideRow(en ? "⌨️ Keyboard shortcuts" : "⌨️ Raccourcis clavier", function() {
+    if (window.ShortcutsCheatsheet && typeof window.ShortcutsCheatsheet.ouvrir === "function") {
+      window.ShortcutsCheatsheet.ouvrir();
+    }
+  });
+  cheatRow.dataset.aideTitre = (en ? "keyboard shortcuts" : "raccourcis clavier");
+  hub.appendChild(cheatRow);
+
+  // Catégories + lignes
+  const used = {};
+  AIDE_CATEGORIES.forEach(function(cat) {
+    const rows = [];
+    cat.idx.forEach(function(i) {
+      if (i < 0 || i >= sections.length) return;
+      used[i] = true;
+      rows.push(sections[i]);
+    });
+    if (!rows.length) return;
+    const ct = document.createElement("div");
+    ct.className = "kta-aide-cat-titre";
+    ct.textContent = en ? cat.en : cat.fr;
+    hub.appendChild(ct);
+    rows.forEach(function(s) {
+      const r = _aideRow(s.titre, function() { _aideOuvrirSousModal(s, en); });
+      r.dataset.aideTitre = s.titre.toLowerCase();
+      hub.appendChild(r);
+    });
+  });
+
+  // Filet de sécurité : sections non catégorisées (si le mapping dérive).
+  const orphans = sections.filter(function(_, i) { return !used[i]; });
+  if (orphans.length) {
+    const ct = document.createElement("div");
+    ct.className = "kta-aide-cat-titre";
+    ct.textContent = en ? "📁 Other" : "📁 Autres";
+    hub.appendChild(ct);
+    orphans.forEach(function(s) {
+      const r = _aideRow(s.titre, function() { _aideOuvrirSousModal(s, en); });
+      r.dataset.aideTitre = s.titre.toLowerCase();
+      hub.appendChild(r);
+    });
+  }
+
+  // Message "aucun résultat"
+  const empty = document.createElement("div");
+  empty.className = "kta-aide-empty";
+  empty.style.display = "none";
+  empty.textContent = en ? "No section found." : "Aucune section trouvée.";
+  corps.appendChild(empty);
+
+  // Filtrage par recherche (titre)
+  search.addEventListener("input", function() {
+    const q = search.value.trim().toLowerCase();
+    let visibles = 0;
+    hub.querySelectorAll(".kta-aide-row").forEach(function(r) {
+      const match = !q || (r.dataset.aideTitre || "").indexOf(q) >= 0;
+      r.style.display = match ? "" : "none";
+      if (match) visibles++;
+    });
+    // masque les titres de catégorie sans aucune ligne visible
+    hub.querySelectorAll(".kta-aide-cat-titre").forEach(function(ct) {
+      let sib = ct.nextElementSibling, any = false;
+      while (sib && sib.classList.contains("kta-aide-row")) {
+        if (sib.style.display !== "none") { any = true; break; }
+        sib = sib.nextElementSibling;
+      }
+      ct.style.display = any ? "" : "none";
+    });
+    empty.style.display = visibles ? "none" : "";
+  });
+}
+
+// Sous-modale : contenu d'UNE section + ← Retour (z-index 100001, au-dessus du hub).
+function _aideOuvrirSousModal(section, en) {
+  _aideFermerSousModal();
+  const ov = document.createElement("div");
+  ov.id = "kta-aide-submodal";
+  ov.className = "kta-readme-modal-overlay kta-aide-submodal";
+  ov.innerHTML =
+    '<div class="kta-readme-modal-boite kta-aide-modal-boite">' +
+      '<div class="kta-readme-modal-header">' +
+        '<button class="kta-aide-submodal-back" type="button" id="kta-aide-back">← ' +
+          (en ? "Back" : "Retour") + "</button>" +
+        '<button class="kta-panneau-close" id="kta-aide-sub-close" type="button">✕</button>' +
+      "</div>" +
+      '<div class="kta-readme-modal-corps kta-aide-corps" id="kta-aide-sub-corps"></div>' +
+    "</div>";
+  document.documentElement.appendChild(ov);
+  const corps = ov.querySelector("#kta-aide-sub-corps");
+  if (corps && section && section.node) corps.appendChild(section.node.cloneNode(true));
+
+  document.getElementById("kta-aide-back").addEventListener("click", _aideFermerSousModal);
+  document.getElementById("kta-aide-sub-close").addEventListener("click", _aideFermerSousModal);
+  ov.addEventListener("click", function(e) { if (e.target === ov) _aideFermerSousModal(); });
+  ov.__esc = function(e) { if (e.key === "Escape") { e.stopPropagation(); _aideFermerSousModal(); } };
+  document.addEventListener("keydown", ov.__esc, true);
+}
+
+function _aideFermerSousModal() {
+  const ov = document.getElementById("kta-aide-submodal");
+  if (!ov) return;
+  if (ov.__esc) document.removeEventListener("keydown", ov.__esc, true);
+  ov.remove();
 }
 
 // =========================
@@ -1561,6 +1735,16 @@ function _aideHtmlEn() {
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             <strong>Use case</strong>: a cataphile creating a quarry map can rename "Water" to "Bottom lake", hide the types they never use, and add their own drawable types ("Votive niche", "Stela", etc.). These customizations apply <strong>automatically</strong> to everyone who loads their map, in KMZ as well as GPX. Each user can still override their own session on top without breaking anything.
           </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🧭 Tracker menu (full-screen)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🧭</span><span>The 🧭 Tracker button opens a <strong>full-screen modal of large tiles</strong> (instead of the old side menu) — clearer and more touch-friendly on mobile.</span>
+            <span class="kta-aide-icone">📋</span><span>3 sections: <strong>Tracking</strong> (start/stop, recalibrate, My position, path lock) · <strong>Tools</strong> (compass, route, replay, heatmap) · <strong>Emergency</strong> (red).</span>
+            <span class="kta-aide-icone">📊</span><span>Header: tracking state (on/off) + distance travelled + step count.</span>
+            <span class="kta-aide-icone">✕</span><span>Close: cross, click outside, or Esc key. Tapping a tile closes the menu then runs the action.</span>
+          </div>
         </div>
 
         <div class="kta-aide-section">

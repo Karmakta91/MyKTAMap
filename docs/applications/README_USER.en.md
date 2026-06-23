@@ -1822,11 +1822,20 @@ You can **undo** and **redo** your actions on the map, up to **50 actions back**
 
 ### Keyboard shortcuts (recommended)
 
+> ⌨️ **Press `?` anytime** to show the full list of shortcuts (cheatsheet).
+
 | Shortcut | Action |
 |---|---|
+| **?** | Show all shortcuts (cheatsheet) |
+| **E / M / Z / S / T / P** | Open Editing / Measure / Zones / Structures / Tracker / Paths |
+| **L / B / R** | Legend / Compass / Search |
+| **Ctrl+K** (`Cmd+K` Mac) | Search (alternative to R) |
+| **TAB / Enter** | In an open tool menu: cycle options / confirm selection |
+| **F** | Presentation mode (Esc to exit) |
 | **Ctrl+Z** (`Cmd+Z` Mac) | Undo last action |
 | **Ctrl+Y** (`Cmd+Y` Mac) | Redo the undone action |
 | **Ctrl+Shift+Z** (`Cmd+Shift+Z` Mac) | Redo (alternative) |
+| **Esc** | Close the menu / window |
 
 > 💡 The shortcuts do not trigger if you are typing in a text field — to avoid breaking the browser's native undo in inputs.
 

@@ -21,9 +21,11 @@
 //   Z → ⬛ Zones (groupe `zones`)
 //   S → 🏛️ Structures (groupe `structures`)
 //   T → 🧭 Tracker (groupe `tracker`)
+//   P → 🛣️ Tracés (groupe `traces`)
 //   L → 🗺️ Légende (window.afficherLegende)
 //   B → 🧭 Boussole widget (window.CompassWidget.toggle)
 //   R → 🔍 Recherche unifiée (window.ouvrirRecherche, alternative à Ctrl+K)
+//   ? → ⌨️ Cheatsheet des raccourcis (window.ShortcutsCheatsheet.toggle)
 //
 // Activation : auto au boot. Pas d'API publique (silencieux).
 //
@@ -44,6 +46,7 @@
     z: { action: "group:zones",     label: "⬛ Zones" },
     s: { action: "group:structures", label: "🏛️ Structures" },
     t: { action: "group:tracker",   label: "🧭 Tracker" },
+    p: { action: "group:traces",    label: "🛣️ Tracés" },
     l: { action: "fn:legende",      label: "🗺️ Légende" },
     b: { action: "fn:boussole",     label: "🧭 Boussole" },
     r: { action: "fn:recherche",    label: "🔍 Recherche (alt Ctrl+K)" }
@@ -74,6 +77,9 @@
     // UnlockGate / PIN gate
     if (document.getElementById("kta-unlock-overlay")) return true;
     if (document.querySelector(".kta-pin-gate-overlay")) return true;
+    // 🆕 v1.51.0 : modal plein écran Tracker (classe distincte de readme-modal)
+    // → sinon E/M/Z/etc. se déclenchaient « derrière » le modal Tracker ouvert.
+    if (document.querySelector(".kta-tracker-modal-overlay")) return true;
     // Modales principales
     const overlays = document.querySelectorAll(".kta-readme-modal-overlay");
     for (let i = 0; i < overlays.length; i++) {
@@ -145,6 +151,20 @@
   document.addEventListener("keydown", function(e) {
     // Pas de modificateurs (sinon laisse passer Ctrl+E browser, Cmd+B macOS, etc.)
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    // 🆕 v1.51.0 : "?" → cheatsheet des raccourcis (toggle). Géré AVANT le
+    // guard Shift car "?" nécessite Shift sur la plupart des claviers (AZERTY
+    // inclus). `e.key` contient déjà le caractère résolu ("?"), layout-agnostique.
+    if (e.key === "?") {
+      if (_isInputFocused()) return;
+      if (window.ShortcutsCheatsheet && typeof window.ShortcutsCheatsheet.toggle === "function") {
+        e.preventDefault();
+        e.stopPropagation();
+        window.ShortcutsCheatsheet.toggle();
+      }
+      return;
+    }
+
     // Shift OK car certaines touches ?  En pratique on veut juste E/M/Z/etc.
     // sans Shift. Si Shift maintenu → laisse passer (les majuscules de mots).
     if (e.shiftKey) return;
@@ -198,5 +218,5 @@
     trigger:     trigger
   };
 
-  console.log("[Shortcuts] Module chargé (8 raccourcis : E M Z S T L B R)");
+  console.log("[Shortcuts] Module chargé (9 raccourcis : E M Z S T P L B R + ? cheatsheet)");
 })();
