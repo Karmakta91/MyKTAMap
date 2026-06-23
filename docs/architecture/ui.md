@@ -1647,4 +1647,23 @@ KARMA : « ajouter au profil une donnée PRO mais FUN — un rang (Novice/Confir
 
 ---
 
+### 95. Hauts faits / succès + stats bandeau score/feats (v1.53.0)
+
+KARMA : « rajouter plein de hauts faits (X plans géoréf, X plans, X km, X structures, X zones…) » puis « ajouter Score et Nombre de hauts faits aux stats du bandeau (cap mobile inchangé) ». Gamification v2, community / offline.
+
+**Module pur** `js/profileAchievements.js` → `window.ProfileAchievements = { FAMILIES, TIER_ICONS, total, list, unlockedIds, byId, nom, label }`.
+- **8 familles × 4 paliers = 32** succès. Paliers `TIER_ICONS = ["🥉","🥈","🥇","👑"]` (couronne = IV, choix KARMA). Chaque famille `{id, emoji, metric, unit, seuils:[4]}` ; id de succès = `<family>.t<i>`.
+- `list(metrics)` renvoie les 32 succès enrichis (`unlocked`, `pct`, `seuilLabel`…) ; `unlockedIds` = ceux dont `métrique ≥ seuil`. Métriques : `plans · plansGeoref · km · hours · pois · roads · zones · structures`.
+
+**Plumbing inline `index.html`** :
+- `_collectGamifMetrics` **étendu** : `plansGeoref` = nb de clés `myktamap_kmz_calib_<id>` ; `pois/roads/zones/structures` = somme du cache `myktamap_plan_stats_v1_<id>` (⚠️ champ **`structs`** côté cache).
+- `_evalAchievements()` : compare `unlockedIds` au stocké `myktamap_achievements_v1` (`{id: dateISO}`) → nouveaux = **toast** `OOMGuard.showToast`. **`firstRun`** (clé absente) = accord rétroactif **silencieux** (pas de spam au 1er calcul). Appelé au refresh du bandeau + à l'ouverture de la modale profil.
+- `_hydrateProfileFeats()` : grille dans `#kta-profile-details-feats` — en-tête `N/total` + 1 rangée par famille (emoji + nom + valeur courante + 4 médailles, allumées si débloquées / `grayscale+opacity` sinon, seuil en `title`).
+
+**🎨 Bandeau d'accueil** : 2 entrées ajoutées au pool `PROFILE_BAR_STATS` — `score` (⭐, `ProfileGamification.getScore`) et `feats` (🏆, `unlockedIds().length + "/" + total`). Rendu déjà pool-driven (`_hydrateProfileBarStats` + 2 branches) + 2 checkboxes. **Cap `PROFILE_BAR_STATS_MAX = 3` INCHANGÉ** (5 stats au choix, 3 max affichées).
+
+**Persistance** : `myktamap_achievements_v1` ajouté à `PREF_KEYS` (export profil). CSS `.kta-profile-details-feats` / `.kta-feat-*` (médailles `grayscale` verrouillées) + thème clair. i18n : 10 clés `feat.*` + 4 clés stats (`home.profile.statScore`/`statFeats` + tooltips) fr/en/es. **Sources** v1.53.0 ; `profileAchievements.js` dans `index.html` (après `profileGamification.js`) + `sw.js`. Aucune nouvelle surface réseau (1 fichier same-origin).
+
+---
+
 **Bon code ! 🚀**

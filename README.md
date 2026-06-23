@@ -8,7 +8,13 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.52.0` (23/06/2026) — **🏅 Rangs de profil (gamification)** : rang Touriste → Grand Maître selon temps passé / plans / km de galerie, anneau coloré + médaille sur la photo + détail dans la fiche profil (temps inclus à l'export profil).
+**📦 Version courante** : `v1.53.0` (23/06/2026) — **🏆 Hauts faits (gamification v2)** : 32 succès à débloquer (8 familles × 4 paliers 🥉🥈🥇👑) selon plans / km / temps / POIs / tracés / zones / structures, toast au déblocage + grille dans la fiche profil ; + 2 stats au choix (⭐ score · 🏆 hauts faits) au bandeau d'accueil.
+
+**🏆 v1.53.0 (23/06/2026)** — **Hauts faits / succès (Gamification v2)** :
+- **Module pur `js/profileAchievements.js`** : catalogue **8 familles × 4 paliers = 32 hauts faits** (🥉 I · 🥈 II · 🥇 III · 👑 IV). `window.ProfileAchievements = { FAMILIES, total, list, unlockedIds, byId, label }`. Un succès débloqué quand `métrique ≥ seuil`. Familles : Cartographe (plans) · Géomètre (plans géoréf) · Marcheur des profondeurs (km) · Rat de cave (temps) · Pointilleux (POIs) · Traceur (tracés) · Zoneur (zones) · Bâtisseur (structures).
+- **Plumbing inline `index.html`** : `_collectGamifMetrics` étendu (plans géoréf via `kmz_calib` + POIs/tracés/zones/structures sommés du cache `myktamap_plan_stats_v1_*`, champ `structs`). `_evalAchievements` détecte les **nouveaux débloqués** → **toast** (`OOMGuard.showToast`) + persiste `myktamap_achievements_v1` (ids + dates). **1ʳᵉ détection = accord rétroactif silencieux** (pas de spam). `_hydrateProfileFeats` = grille dans la fiche profil (compteur **N/32** + 8 rangées famille avec 4 médailles allumées/grisées + seuil en tooltip).
+- **🎨 Bandeau d'accueil** : 2 nouvelles stats au pool `PROFILE_BAR_STATS` — **⭐ Score** (`plans+heures+km`) et **🏆 Hauts faits** (`N/32`) + checkboxes dans la fiche profil. **Cap d'affichage inchangé** (`PROFILE_BAR_STATS_MAX = 3`) : 5 stats au choix, 3 max affichées.
+- **Export profil** : `myktamap_achievements_v1` ajouté à `PREF_KEYS` (`profileExportImport.js`). i18n `feat.*` fr/en/es. **Sources** v1.53.0 (+ `profileAchievements.js` dans `index.html` + `ASSETS_TO_CACHE`). 100 % community / offline, aucune nouvelle surface réseau.
 
 **🏅 v1.52.0 (23/06/2026)** — **Gamification du profil : rangs / badges « PRO mais FUN »** :
 - **6 rangs** (Touriste · 🥉 Novice · 🥈 Confirmé · 🥇 Expert · 🏅 Maître · 👑 Grand Maître) sur **seuils statiques** des 3 métriques (plans ouverts · temps passé · km de galerie cartographiée), logique **AND « maillon faible »** (palier le plus haut dont les 3 seuils sont remplis). Module pur **`js/profileGamification.js`** : `window.ProfileGamification = { RANKS, computeRank, getScore, getProgress }`. Le **score** (`plans + heures + km`) est **décoratif**, n'entre pas dans le calcul du rang.

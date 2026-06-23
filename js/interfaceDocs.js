@@ -976,6 +976,7 @@ function _aideHtmlFr() {
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">👤</span><span><strong>Bandeau profil</strong> en en-tête du loader (au-dessus de « Mes plans ») — avatar + surnom + mini-stats globales (📍 points · 🛣️ tracés · ⬛ zones · 🏛️ structures + temps cumulé, conservés)</span>
             <span class="kta-aide-icone">🏅</span><span><strong>Rang / badge</strong> (Touriste → Grand Maître) selon ton temps passé, tes plans explorés et tes km de galerie — <strong>anneau coloré + médaille</strong> sur la photo, et le détail (3 métriques + progression + score) dans la fiche profil</span>
+            <span class="kta-aide-icone">🏆</span><span><strong>Hauts faits</strong> — <strong>32 succès</strong> à débloquer (8 familles × 4 paliers 🥉🥈🥇👑) selon plans / km / temps / POIs / tracés / zones / structures. Toast au déblocage + grille N/32 dans la fiche profil. Score + nb de hauts faits affichables au bandeau (section 🎨 Stats du bandeau)</span>
             <span class="kta-aide-icone">✏️</span><span>Clic sur le <strong>surnom</strong> ou l'<strong>avatar</strong> → modale d'édition (surnom libre + upload photo profil)</span>
             <span class="kta-aide-icone">🖼️</span><span>Photo profil compressée auto (max 512px, JPEG q88) — sinon avatar par défaut = initiale du surnom dans un cercle coloré</span>
             <span class="kta-aide-icone">📦</span><span>Profil exportable / importable — partage entre appareils sans serveur</span>
@@ -1640,6 +1641,7 @@ function _aideHtmlEn() {
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">👤</span><span><strong>Profile banner</strong> in the loader header (above "My maps") — avatar + nickname + global mini-stats (📍 points · 🛣️ paths · ⬛ zones · 🏛️ structures + cumulative time, kept)</span>
             <span class="kta-aide-icone">🏅</span><span><strong>Rank / badge</strong> (Tourist → Grandmaster) based on your time spent, maps explored and km of gallery — <strong>colored ring + medal</strong> on the photo, and the breakdown (3 metrics + progress + score) in the profile card</span>
+            <span class="kta-aide-icone">🏆</span><span><strong>Achievements</strong> — <strong>32 to unlock</strong> (8 families × 4 tiers 🥉🥈🥇👑) based on maps / km / time / POIs / paths / zones / structures. Toast on unlock + N/32 grid in the profile card. Score + achievement count can be shown in the banner stats (🎨 Banner stats)</span>
             <span class="kta-aide-icone">✏️</span><span>Click the <strong>nickname</strong> or the <strong>avatar</strong> → editing modal (free nickname + profile photo upload)</span>
             <span class="kta-aide-icone">🖼️</span><span>Profile photo auto-compressed (max 512px, JPEG q88) — otherwise the default avatar = the nickname's initial in a colored circle</span>
             <span class="kta-aide-icone">📦</span><span>Profile exportable / importable — share between devices without a server</span>

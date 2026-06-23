@@ -261,6 +261,8 @@
   <script src="js/userProfile.js"></script>
   <!-- 🆕 v1.52.0 : gamification du profil (rangs/badges selon temps + plans + km) -->
   <script src="js/profileGamification.js"></script>
+  <!-- 🆕 v1.53.0 : hauts faits / succès du profil (8 familles × 4 paliers) -->
+  <script src="js/profileAchievements.js"></script>
 
   <!-- 📦 PROFILE EXPORT/IMPORT — Profil utilisateur complet (registry +
        préférences + favoris + sessions + snapshots + tutorial + user +
@@ -2814,6 +2816,10 @@
           }
         }
 
+        // 🆕 v1.53.0 : hauts faits — toast si de nouveaux succès sont débloqués
+        // (au retour sur le home). 1er calcul = accord rétroactif silencieux.
+        _evalAchievements();
+
         // 🐛 v1.21.1-fix1 (KARMA "j'ai que un —") : hydrate les stats AVANT
         // toute autre opération (et hors await) pour garantir que les valeurs
         // s'affichent même si le bloc photo plus bas fait un early return
@@ -2936,7 +2942,7 @@
       // de rang vit dans js/profileGamification.js (module pur). km = galeries
       // cartographiées (somme des distM en cache par plan).
       function _collectGamifMetrics() {
-        let plans = 0, km = 0, list = [];
+        let plans = 0, km = 0, pois = 0, roads = 0, zones = 0, structures = 0, plansGeoref = 0, list = [];
         try { if (window.PlanRegistry && window.PlanRegistry.getAll) list = window.PlanRegistry.getAll() || []; } catch(e) {}
         try {
           const opened = list.filter(function(p){ return p && p.lastOpened; });
@@ -2945,17 +2951,98 @@
         try {
           list.forEach(function(p){
             if (!p || !p.id) return;
+            // 🆕 v1.53.0 : plan géoréférencé = calibration GPS présente (hauts faits Géomètre)
+            try { if (localStorage.getItem("myktamap_kmz_calib_" + p.id)) plansGeoref++; } catch(e) {}
             try {
               const raw = localStorage.getItem("myktamap_plan_stats_v1_" + p.id);
               if (raw) {
                 const c = JSON.parse(raw);
                 if (c && typeof c.distM === "number" && c.distM > 0) km += c.distM / 1000;
+                if (c) {
+                  pois       += Number(c.pois)    || 0;
+                  roads      += Number(c.roads)   || 0;
+                  zones      += Number(c.zones)   || 0;
+                  structures += Number(c.structs) || 0;  // ⚠️ cache = "structs"
+                }
               }
             } catch(e) {}
           });
         } catch(e) {}
         const timeMs = _readTotalTimeMs() + (_timeLastTick ? Math.max(0, Date.now() - _timeLastTick) : 0);
-        return { plans: plans, hours: timeMs / 3600000, km: km, timeMs: timeMs };
+        return {
+          plans: plans, hours: timeMs / 3600000, km: km, timeMs: timeMs,
+          plansGeoref: plansGeoref, pois: pois, roads: roads, zones: zones, structures: structures
+        };
+      }
+
+      // 🆕 v1.53.0 — Hauts faits (succès one-shot). Détection des nouveaux
+      // débloqués + persistance + toast. Catalogue/éval dans js/profileAchievements.js.
+      const _ACH_LS_KEY = "myktamap_achievements_v1";
+      function _readUnlockedAch() {
+        try { const a = JSON.parse(localStorage.getItem(_ACH_LS_KEY)); return (a && typeof a === "object") ? a : {}; }
+        catch(e) { return {}; }
+      }
+      function _writeUnlockedAch(o) { try { localStorage.setItem(_ACH_LS_KEY, JSON.stringify(o)); } catch(e) {} }
+      function _evalAchievements() {
+        if (!window.ProfileAchievements) return;
+        // 1er calcul (clé absente) → on accorde rétroactivement SANS toast (pas de spam).
+        const firstRun = (localStorage.getItem(_ACH_LS_KEY) === null);
+        const m = _collectGamifMetrics();
+        const ids = window.ProfileAchievements.unlockedIds(m);
+        const stored = _readUnlockedAch();
+        let changed = false;
+        ids.forEach(function(id) {
+          if (!stored[id]) {
+            stored[id] = new Date().toISOString();
+            changed = true;
+            if (!firstRun) _toastAchievement(id, m);
+          }
+        });
+        if (changed || firstRun) _writeUnlockedAch(stored);
+      }
+      function _toastAchievement(id, m) {
+        try {
+          const ach = window.ProfileAchievements.byId(id, m);
+          if (!ach) return;
+          const tt = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
+          const msg = "🏆 " + tt("feat.unlocked") + " : " + ach.tierIcon + " " + ach.nom + " " + ach.tierRoman;
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(msg, "info");
+        } catch(e) {}
+      }
+
+      // Remplit la grille des hauts faits dans la modale Détails profil (8 familles × 4 paliers).
+      function _hydrateProfileFeats() {
+        const box = document.getElementById("kta-profile-details-feats");
+        if (!box || !window.ProfileAchievements) return;
+        const PA = window.ProfileAchievements;
+        const tt = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
+        const m = _collectGamifMetrics();
+        const all = PA.list(m);
+        const nbU = all.filter(function(a){ return a.unlocked; }).length;
+        let html = '<div class="kta-feats-head">🏆 ' + tt("feat.title") +
+                   ' <span class="kta-feats-count">' + nbU + '/' + PA.total + '</span></div>' +
+                   '<div class="kta-feats-list">';
+        PA.FAMILIES.forEach(function(f) {
+          const fa = all.filter(function(a){ return a.familyId === f.id; });
+          const val = fa.length ? fa[0].value : 0;
+          let valTxt;
+          if (f.unit === "h")        valTxt = _formatDuration(m.timeMs);
+          else if (f.unit === "km")  valTxt = (val < 10 ? val.toFixed(1) : String(Math.round(val))) + " km";
+          else if (f.unit === "plans") valTxt = Math.round(val) + " " + tt("rank.unitPlans");
+          else                       valTxt = String(Math.round(val));
+          let badges = "";
+          fa.forEach(function(a) {
+            badges += '<span class="kta-feat-badge' + (a.unlocked ? " kta-feat-unlocked" : "") + '" title="' +
+                      a.tierRoman + " — " + a.seuilLabel + '">' + a.tierIcon + '</span>';
+          });
+          html += '<div class="kta-feat-row">' +
+                    '<span class="kta-feat-fam"><span class="kta-feat-emoji">' + f.emoji + '</span>' + PA.nom(f.id) + '</span>' +
+                    '<span class="kta-feat-val">' + valTxt + '</span>' +
+                    '<span class="kta-feat-badges">' + badges + '</span>' +
+                  '</div>';
+        });
+        html += '</div>';
+        box.innerHTML = html;
       }
 
       // Applique l'anneau de rang sur un conteneur d'avatar (data-kta-rank lu par le CSS).
@@ -3033,6 +3120,15 @@
         plans: {
           icon:  "🗺️",
           titleKey: "home.profile.stats.plansTitle"
+        },
+        // 🆕 v1.53.0 : score (gamification) + nb de hauts faits débloqués.
+        score: {
+          icon:  "⭐",
+          titleKey: "home.profile.stats.scoreTitle"
+        },
+        feats: {
+          icon:  "🏆",
+          titleKey: "home.profile.stats.featsTitle"
         }
       };
       const PROFILE_BAR_STATS_LS_KEY = "myktamap_loader_bar_stats_v1";
@@ -3290,6 +3386,18 @@
             } catch(e) {
               valEl.textContent = "—";
             }
+          } else if (key === "score") {
+            try {
+              const m = _collectGamifMetrics();
+              valEl.textContent = (window.ProfileGamification) ? String(window.ProfileGamification.getScore(m)) : "—";
+            } catch(e) { valEl.textContent = "—"; }
+          } else if (key === "feats") {
+            try {
+              const m = _collectGamifMetrics();
+              const n   = (window.ProfileAchievements) ? window.ProfileAchievements.unlockedIds(m).length : 0;
+              const tot = (window.ProfileAchievements) ? window.ProfileAchievements.total : 0;
+              valEl.textContent = tot ? (n + "/" + tot) : String(n);
+            } catch(e) { valEl.textContent = "—"; }
           }
         }
       }
@@ -3341,6 +3449,9 @@
               // 🆕 v1.52.0 — Rang / badge (gamification, hydraté par _hydrateProfileRank)
               '<div class="kta-profile-details-rank" id="kta-profile-details-rank"></div>' +
 
+              // 🆕 v1.53.0 — Hauts faits (succès, hydraté par _hydrateProfileFeats)
+              '<div class="kta-profile-details-feats" id="kta-profile-details-feats"></div>' +
+
               // — Stats compactes —
               '<div class="kta-profile-details-stats" id="kta-profile-details-stats">' +
                 '<div class="kta-profile-details-stats-loading">' + _t("home.profile.statsLoading") + '</div>' +
@@ -3360,6 +3471,8 @@
                   '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="time"> <span>' + _t("home.profile.statTime") + '</span></label>' +
                   '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="storage"> <span>' + _t("home.profile.statStorage") + '</span></label>' +
                   '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="plans"> <span>' + _t("home.profile.statPlans") + '</span></label>' +
+                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="score"> <span>' + _t("home.profile.statScore") + '</span></label>' +
+                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="feats"> <span>' + _t("home.profile.statFeats") + '</span></label>' +
                 '</div>' +
               '</div>' +
 
@@ -3391,6 +3504,8 @@
         // Render avatar initial dans la modale (gros format)
         _refreshProfileDetailsAvatar(snap);
         _hydrateProfileRank();  // 🆕 v1.52.0 : bloc rang (puce + métriques + progression)
+        _evalAchievements();
+        _hydrateProfileFeats();  // 🆕 v1.53.0 : grille des hauts faits
 
         // Calcul stats async
         _refreshProfileDetailsStats();

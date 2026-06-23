@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.52.0** (23 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »). _v1.52.0 — rangs de profil (gamification) calculés 100 % en local sur des compteurs déjà présents (temps cumulé, plans, longueur des tracés). 1 nouveau fichier same-origin (`js/profileGamification.js`, ajouté au cache SW), aucune nouvelle surface réseau, aucune nouvelle permission, aucune nouvelle donnée collectée. `myktamap_total_time_ms` désormais inclus dans l'export profil (toujours local)._
+> Page de transparence technique. À jour pour la version **v1.53.0** (23 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »). _v1.53.0 — hauts faits (succès) calculés 100 % en local sur des compteurs déjà présents (plans, km, POIs, tracés, zones, structures, temps). 1 nouveau fichier same-origin (`js/profileAchievements.js`, ajouté au cache SW), aucune nouvelle surface réseau, aucune nouvelle permission, aucune nouvelle donnée collectée. `myktamap_achievements_v1` (succès débloqués) inclus dans l'export profil (toujours local)._
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode

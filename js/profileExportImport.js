@@ -68,7 +68,8 @@
     "myktamap_loader_show_server_plans",
     "myktamap_perf_toggles",
     "myktamap_last_version_data",
-    "myktamap_total_time_ms"        // 🆕 v1.52.0 : temps cumulé (rang/badge profil) — sinon perdu à migration device
+    "myktamap_total_time_ms",       // 🆕 v1.52.0 : temps cumulé (rang/badge profil) — sinon perdu à migration device
+    "myktamap_achievements_v1"      // 🆕 v1.53.0 : hauts faits débloqués (ids + dates)
   ];
 
   // 🆕 v1.39.15 — Préfixes localStorage per-plan inclus dans la section
