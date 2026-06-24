@@ -3473,7 +3473,10 @@
             '<div class="kta-readme-modal-corps kta-profile-details-corps">' +
               // — Identité (gros avatar + surnom inline) —
               '<div class="kta-profile-details-identity">' +
-                '<div class="kta-profile-details-avatar-big" id="kta-profile-details-avatar"></div>' +
+                '<div class="kta-profile-details-avatar-holder">' +
+                  '<div class="kta-profile-details-avatar-big" id="kta-profile-details-avatar"></div>' +
+                  '<span class="kta-profile-details-badge" id="kta-profile-details-badge" aria-hidden="true" style="display:none;"></span>' +
+                '</div>' +
                 '<div class="kta-profile-details-photo-actions">' +
                   '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-profile-details-photo-btn">' + _t("home.profile.photoBtn") + '</button>' +
                   '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-profile-details-photo-remove" style="' + (snap.hasPhoto ? '' : 'display:none;') + '">' + _t("home.profile.photoRemove") + '</button>' +
@@ -3779,7 +3782,19 @@
       async function _refreshProfileDetailsAvatar(snap) {
         const avatarEl = document.getElementById("kta-profile-details-avatar");
         if (!avatarEl || !window.UserProfile) return;
-        _appliquerRangAvatar(avatarEl);  // 🆕 v1.52.0 : anneau de rang sur le gros avatar
+        // 🆕 v1.52.0 : anneau de rang + 🆕 médaille de coin (parité avec le home)
+        const _dRank = _appliquerRangAvatar(avatarEl);
+        const _dBadge = document.getElementById("kta-profile-details-badge");
+        if (_dBadge && _dRank) {
+          if (_dRank.emoji) {
+            _dBadge.textContent = _dRank.emoji;
+            _dBadge.setAttribute("data-kta-rank", _dRank.id);
+            _dBadge.style.display = "";
+          } else {
+            _dBadge.textContent = "";
+            _dBadge.style.display = "none";  // Touriste : pas de médaille
+          }
+        }
         if (_profileDetailsObjectUrl) {
           try { URL.revokeObjectURL(_profileDetailsObjectUrl); } catch(e) {}
           _profileDetailsObjectUrl = null;
