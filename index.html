@@ -2800,7 +2800,7 @@
         if (_rank && window.ProfileGamification) {
           const rankLabelEl = document.getElementById("kta-loader-profile-rank");
           if (rankLabelEl) {
-            rankLabelEl.textContent = window.ProfileGamification.label(_rank);
+            rankLabelEl.textContent = window.ProfileGamification.nom(_rank);  // nom seul (la médaille porte déjà l'emoji)
             rankLabelEl.setAttribute("data-kta-rank", _rank.id);
           }
           const badgeEl = document.getElementById("kta-loader-profile-badge");
@@ -3113,7 +3113,7 @@
         const kmTxt = (m.km < 10 ? m.km.toFixed(1) : String(Math.round(m.km))) + " km";
         let html =
           '<div class="kta-profile-rank-head">' +
-            '<span class="kta-profile-rank-chip" data-kta-rank="' + rank.id + '">' + PG.label(rank) + '</span>' +
+            '<span class="kta-profile-rank-chip" data-kta-rank="' + rank.id + '">' + PG.nom(rank) + '</span>' +
             '<span class="kta-profile-rank-score">' + tt("rank.scoreLabel") + ' ' + score + '</span>' +
           '</div>' +
           '<div class="kta-profile-rank-metrics">' +
