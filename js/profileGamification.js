@@ -42,7 +42,7 @@
     // 🥚 v1.54.0 Easter egg — rang SECRET au-dessus de Grand Maître, débloqué
     // UNIQUEMENT si le pseudo du profil = « Karma ». Seuils Infinity = jamais
     // atteignable par les métriques (cf override dans computeRank / _isKarma).
-    { id: "legende",     emoji: "✨", ring: "#ff5bd0", plans: Infinity, hours: Infinity, km: Infinity }
+    { id: "legende",     emoji: "⚜️", ring: "#e0a51a", plans: Infinity, hours: Infinity, km: Infinity }
   ];
 
   function _safe(m) {
