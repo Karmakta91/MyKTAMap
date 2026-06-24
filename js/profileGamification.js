@@ -38,11 +38,11 @@
     { id: "confirme",    emoji: "🥈", ring: "#9fb2c8", plans: 5,  hours: 10, km: 20  },
     { id: "expert",      emoji: "🥇", ring: "#f4c542", plans: 10, hours: 20, km: 75  },
     { id: "maitre",      emoji: "🏅", ring: "#ff8c42", plans: 15, hours: 40, km: 130 },
-    { id: "grandmaitre", emoji: "👑", ring: "#b388ff", plans: 25, hours: 60, km: 200 },
+    { id: "grandmaitre", emoji: "⚜️", ring: "#b388ff", plans: 25, hours: 60, km: 200 },
     // 🥚 v1.54.0 Easter egg — rang SECRET au-dessus de Grand Maître, débloqué
     // UNIQUEMENT si le pseudo du profil = « Karma ». Seuils Infinity = jamais
     // atteignable par les métriques (cf override dans computeRank / _isKarma).
-    { id: "legende",     emoji: "⚜️", ring: "#e0a51a", plans: Infinity, hours: Infinity, km: Infinity }
+    { id: "legende",     emoji: "👑", ring: "#e0a51a", plans: Infinity, hours: Infinity, km: Infinity }
   ];
 
   function _safe(m) {
