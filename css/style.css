@@ -17720,7 +17720,8 @@ body.kta-theme-light .kta-profile-details-badge { background: #fdf8eb; }
 }
 .kta-profile-rank-next { margin-top:6px; font-size:12px; color:#8892a4; line-height:1.4; }
 .kta-profile-rank-max { color:#4ade80; font-weight:600; }
-.kta-profile-rank-real { margin-top:4px; font-size:11.5px; color:#8892a4; }
+.kta-profile-rank-real { margin-top:6px; font-size:11.5px; color:#8892a4; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.kta-profile-rank-chip-sm { padding:2px 9px; font-size:12px; gap:5px; font-weight:600; }
 body.kta-theme-light .kta-profile-details-rank { background:#fff; border-color:rgba(0,0,0,0.1); }
 body.kta-theme-light .kta-profile-rank-score,
 body.kta-theme-light .kta-profile-rank-next,

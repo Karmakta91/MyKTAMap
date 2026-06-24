@@ -3139,7 +3139,11 @@
           // on garde l'info : le rang réellement mérité par les métriques.
           const real = (typeof PG.rankByMetrics === "function") ? PG.rankByMetrics(m) : null;
           if (real && real.id !== rank.id) {
-            html += '<div class="kta-profile-rank-real">' + tt("rank.realRank") + ' : ' + PG.label(real) + '</div>';
+            html += '<div class="kta-profile-rank-real">' + tt("rank.realRank") + ' : ' +
+                      '<span class="kta-profile-rank-chip kta-profile-rank-chip-sm" data-kta-rank="' + real.id + '">' +
+                        PG.label(real) +
+                      '</span>' +
+                    '</div>';
           }
         }
         box.setAttribute("data-kta-rank", rank.id);  // couleur héritée par la puce + la barre
