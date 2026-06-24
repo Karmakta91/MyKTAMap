@@ -3859,6 +3859,7 @@
   "rank.expert": "Expert",
   "rank.maitre": "Master",
   "rank.grandmaitre": "Grandmaster",
+  "rank.legende": "Legend",
   "rank.scoreLabel": "Score",
   "rank.unitPlans": "maps",
   "rank.progress": "{parts} left for {rank}",

@@ -38,7 +38,11 @@
     { id: "confirme",    emoji: "🥈", ring: "#9fb2c8", plans: 5,  hours: 10, km: 20  },
     { id: "expert",      emoji: "🥇", ring: "#f4c542", plans: 10, hours: 20, km: 75  },
     { id: "maitre",      emoji: "🏅", ring: "#ff8c42", plans: 15, hours: 40, km: 130 },
-    { id: "grandmaitre", emoji: "👑", ring: "#b388ff", plans: 25, hours: 60, km: 200 }
+    { id: "grandmaitre", emoji: "👑", ring: "#b388ff", plans: 25, hours: 60, km: 200 },
+    // 🥚 v1.54.0 Easter egg — rang SECRET au-dessus de Grand Maître, débloqué
+    // UNIQUEMENT si le pseudo du profil = « Karma ». Seuils Infinity = jamais
+    // atteignable par les métriques (cf override dans computeRank / _isKarma).
+    { id: "legende",     emoji: "✨", ring: "#ff5bd0", plans: Infinity, hours: Infinity, km: Infinity }
   ];
 
   function _safe(m) {
@@ -50,13 +54,30 @@
     };
   }
 
+  // 🥚 Easter egg : pseudo "Karma" (insensible à la casse) → rang secret Légende.
+  function _isKarma() {
+    try {
+      if (window.UserProfile && typeof window.UserProfile.get === "function") {
+        const s = window.UserProfile.get();
+        const n = (s && s.surnom ? String(s.surnom) : "").trim().toLowerCase();
+        return n === "karma";
+      }
+    } catch(e) {}
+    return false;
+  }
+  function _legende() {
+    for (let i = 0; i < RANKS.length; i++) { if (RANKS[i].id === "legende") return RANKS[i]; }
+    return null;
+  }
+
   function computeRank(metrics) {
+    if (_isKarma()) { const lg = _legende(); if (lg) return lg; }  // 🥚 override secret
     const m = _safe(metrics);
     let r = RANKS[0];
     for (let i = 1; i < RANKS.length; i++) {
       const t = RANKS[i];
       if (m.plans >= t.plans && m.hours >= t.hours && m.km >= t.km) r = t;
-      else break;  // seuils monotones → inutile d'aller plus haut
+      else break;  // seuils monotones → inutile d'aller plus haut (et stoppe avant legende)
     }
     return r;
   }
@@ -72,10 +93,14 @@
     const m = _safe(metrics);
     const cur = computeRank(m);
     const idx = RANKS.indexOf(cur);
-    if (idx >= RANKS.length - 1) {
+    const nxt = (idx >= 0 && idx < RANKS.length - 1) ? RANKS[idx + 1] : null;
+    // Max atteint si dernier rang OU si le suivant est l'Easter egg "legende"
+    // (seuils Infinity → pas un "next" normal). Si on EST Karma (cur=legende),
+    // idx = dernier → next null également.
+    if (!nxt || nxt.id === "legende") {
       return { current: cur, next: null, missing: null, pct: 100 };
     }
-    const next = RANKS[idx + 1];
+    const next = nxt;
     const missing = {
       plans: Math.max(0, next.plans - m.plans),
       hours: Math.max(0, next.hours - m.hours),

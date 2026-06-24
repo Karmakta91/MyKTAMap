@@ -17624,6 +17624,7 @@ html.kta-theme-light .kta-net-cell-method {
 [data-kta-rank="expert"]      { --kta-rank-ring:#f4c542; --kta-rank-fg:#f4c542; --kta-rank-bg:rgba(244,197,66,0.16); }
 [data-kta-rank="maitre"]      { --kta-rank-ring:#ff8c42; --kta-rank-fg:#ff8c42; --kta-rank-bg:rgba(255,140,66,0.16); }
 [data-kta-rank="grandmaitre"] { --kta-rank-ring:#b388ff; --kta-rank-fg:#b388ff; --kta-rank-bg:rgba(179,136,255,0.18); }
+[data-kta-rank="legende"]     { --kta-rank-ring:#ff5bd0; --kta-rank-fg:#ff8be0; --kta-rank-bg:rgba(255,91,208,0.20); } /* 🥚 Easter egg "Karma" */
 /* Anneau autour de l'avatar (conserve le shadow de profondeur existant) */
 .kta-loader-profile-avatar-wrap[data-kta-rank] {
   box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 2.5px var(--kta-rank-ring, #6b7280);
@@ -17644,6 +17645,25 @@ html.kta-theme-light .kta-net-cell-method {
 }
 .kta-profile-details-avatar-big[data-kta-rank="grandmaitre"] {
   box-shadow: 0 0 0 4px var(--kta-rank-ring), 0 0 17px -1px var(--kta-rank-ring);
+}
+/* 🥚 Easter egg "Karma" — rang Légende : anneau magenta pulsant */
+.kta-loader-profile-avatar-wrap[data-kta-rank="legende"] {
+  animation: kta-legende-glow 2.4s ease-in-out infinite;
+}
+.kta-profile-details-avatar-big[data-kta-rank="legende"] {
+  animation: kta-legende-glow-big 2.4s ease-in-out infinite;
+}
+@keyframes kta-legende-glow {
+  0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 3px #ff5bd0, 0 0 9px -2px #ff5bd0; }
+  50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 3px #ff5bd0, 0 0 20px 1px #ff5bd0; }
+}
+@keyframes kta-legende-glow-big {
+  0%, 100% { box-shadow: 0 0 0 4px #ff5bd0, 0 0 12px -2px #ff5bd0; }
+  50%      { box-shadow: 0 0 0 4px #ff5bd0, 0 0 26px 2px #ff5bd0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kta-loader-profile-avatar-wrap[data-kta-rank="legende"],
+  .kta-profile-details-avatar-big[data-kta-rank="legende"] { animation: none; }
 }
 /* Bloc rang dans la modale Détails profil */
 .kta-profile-details-rank {
