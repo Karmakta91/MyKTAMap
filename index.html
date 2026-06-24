@@ -3135,6 +3135,12 @@
             '</div>';
         } else {
           html += '<div class="kta-profile-rank-next kta-profile-rank-max">' + tt("rank.maxReached") + '</div>';
+          // 🥚 Si le rang affiché vient de l'Easter egg (pseudo Karma → Légende),
+          // on garde l'info : le rang réellement mérité par les métriques.
+          const real = (typeof PG.rankByMetrics === "function") ? PG.rankByMetrics(m) : null;
+          if (real && real.id !== rank.id) {
+            html += '<div class="kta-profile-rank-real">' + tt("rank.realRank") + ' : ' + PG.label(real) + '</div>';
+          }
         }
         box.setAttribute("data-kta-rank", rank.id);  // couleur héritée par la puce + la barre
         box.innerHTML = html;

@@ -70,16 +70,22 @@
     return null;
   }
 
-  function computeRank(metrics) {
-    if (_isKarma()) { const lg = _legende(); if (lg) return lg; }  // 🥚 override secret
+  // Rang d'après les MÉTRIQUES seules (ignore l'Easter egg) — sert à afficher
+  // le « vrai » rang mérité quand on est Légende via le pseudo Karma.
+  function rankByMetrics(metrics) {
     const m = _safe(metrics);
     let r = RANKS[0];
     for (let i = 1; i < RANKS.length; i++) {
       const t = RANKS[i];
       if (m.plans >= t.plans && m.hours >= t.hours && m.km >= t.km) r = t;
-      else break;  // seuils monotones → inutile d'aller plus haut (et stoppe avant legende)
+      else break;  // seuils monotones (et stoppe avant legende = Infinity)
     }
     return r;
+  }
+
+  function computeRank(metrics) {
+    if (_isKarma()) { const lg = _legende(); if (lg) return lg; }  // 🥚 override secret
+    return rankByMetrics(metrics);
   }
 
   // Score = simple total (plans + heures + km). Purement décoratif (KARMA :
@@ -130,12 +136,13 @@
   }
 
   window.ProfileGamification = {
-    RANKS:       RANKS,
-    computeRank: computeRank,
-    getScore:    getScore,
-    getProgress: getProgress,
-    nom:         nom,
-    label:       label
+    RANKS:         RANKS,
+    computeRank:   computeRank,
+    rankByMetrics: rankByMetrics,  // rang d'après les métriques seules (sans Easter egg)
+    getScore:      getScore,
+    getProgress:   getProgress,
+    nom:           nom,
+    label:         label
   };
 
   console.log("[ProfileGamification] Module chargé (6 rangs)");
