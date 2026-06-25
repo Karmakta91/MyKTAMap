@@ -106,6 +106,9 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.13.0 : ThemeManager — toggle thème clair/sombre limité mode carte
   "./js/themeManager.js",
   "./js/networkAudit.js",
+  // 🔀 Consolidation : modales « Journal réseau » + « Doc audit » du home
+  // (extraites du <script> inline d'index.html — déplacement pur)
+  "./js/loaderNetAudit.js",
   // 🆕 v1.20.0 : CrashReports — archive auto des kills mémoire (IDB myktamap_crashes)
   "./js/crashReports.js",
   // 🆕 v1.19.0 : MemInspector — topo lisible mémoire (localStorage, IDB, cache, runtime, crashes)

@@ -1404,6 +1404,7 @@
   <script src="js/wakeLock.js" defer></script>
 
   <script src="js/main.js" defer></script>
+  <script src="js/loaderNetAudit.js" defer></script>
 
   <!-- LOADER SCRIPT -->
   <script>
@@ -5748,104 +5749,13 @@
         netDocBtn.addEventListener("click", function() { _ouvrirNetDocModal(); });
       }
 
-      // ── Modale Journal réseau (live) ────────────────────────────────
-      let _netLogUnsub = null;  // unsubscribe handle pour NetworkAudit.onLog
-      const CATEGORY_COLORS = {
-        "app-page":      "#8cb4ff",
-        "app-script":    "#8cb4ff",
-        "app-style":     "#8cb4ff",
-        "image":         "#a8d4a8",
-        "data":          "#d4a8d4",
-        "plan-data":     "#d4a8d4",
-        "version-check": "#f4c542",
-        "alert-check":   "#ffb380",
-        "doc":           "#c8d0e0",
-        "ping":          "#888",
-        "local-blob":    "#a8d4a8",  // vert : référence locale au navigateur (tiling V2)
-        "local-data":    "#a8d4a8",  // vert : data URL base64 inline
-        "external":      "#ff8c8c",
-        "same-origin":   "#a0c8e0",
-        "unknown":       "#c8d0e0"
-      };
-
-      function _escapeHtml(s) {
-        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
-                       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-      }
-
-      function _formatTime(ts) {
-        const d = new Date(ts);
-        const hh = String(d.getHours()).padStart(2, "0");
-        const mm = String(d.getMinutes()).padStart(2, "0");
-        const ss = String(d.getSeconds()).padStart(2, "0");
-        const ms = String(d.getMilliseconds()).padStart(3, "0");
-        return hh + ":" + mm + ":" + ss + "." + ms;
-      }
-
-      function _renderNetLogRow(entry) {
-        const color = CATEGORY_COLORS[entry.category] || "#c8d0e0";
-        const statusTxt = entry.status === null ? "…" : String(entry.status);
-        const statusClass = entry.blocked ? "kta-net-status-blocked"
-                          : (typeof entry.status === "number" && entry.status >= 200 && entry.status < 400 ? "kta-net-status-ok"
-                          : (typeof entry.status === "number" && entry.status >= 400 ? "kta-net-status-err"
-                          : "kta-net-status-pending"));
-        const bodyBadge = entry.hasBody
-          ? '<span class="kta-net-body-yes" title="Données envoyées dans le corps de la requête">OUI</span>'
-          : '<span class="kta-net-body-no" title="Aucune donnée envoyée">non</span>';
-        return '<tr class="' + (entry.blocked ? "kta-net-row-blocked" : "") + '">' +
-          '<td class="kta-net-cell-time">' + _formatTime(entry.timestamp) + '</td>' +
-          '<td class="kta-net-cell-kind">' + _escapeHtml(entry.kind) + '</td>' +
-          '<td class="kta-net-cell-method">' + _escapeHtml(entry.method) + '</td>' +
-          '<td class="kta-net-cell-url" title="' + _escapeHtml(entry.url) + '">' + _escapeHtml(entry.url) + '</td>' +
-          '<td class="kta-net-cell-cat" style="color:' + color + ';">' + _escapeHtml(entry.category) + '</td>' +
-          '<td class="kta-net-cell-body">' + bodyBadge + '</td>' +
-          '<td class="kta-net-cell-status ' + statusClass + '">' + _escapeHtml(statusTxt) + '</td>' +
-        '</tr>';
-      }
-
-      function _refreshNetLogTable() {
-        const tbody = document.getElementById("loaderNetLogTbody");
-        const meta  = document.getElementById("loaderNetLogMeta");
-        if (!tbody || !window.NetworkAudit) return;
-        const log = window.NetworkAudit.getLog();
-        if (log.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#8892a4;">Aucune requête capturée pour le moment. Utilise l\'app, recharge un plan, ou ferme/rouvre cette modale.</td></tr>';
-        } else {
-          // On affiche du plus récent au plus ancien (reverse)
-          tbody.innerHTML = log.slice().reverse().map(_renderNetLogRow).join("");
-        }
-        if (meta) {
-          const paranoia = window.NetworkAudit.isParanoia();
-          const blockedCount = log.filter(function(e) { return e.blocked; }).length;
-          meta.innerHTML =
-            '<strong>' + log.length + '</strong> requête' + (log.length > 1 ? 's' : '') + ' capturée' + (log.length > 1 ? 's' : '') +
-            ' · Mode hors-ligne strict : <strong>' + (paranoia ? '🔒 ACTIF' : 'désactivé') + '</strong>' +
-            (blockedCount > 0 ? ' · <strong style="color:#ff8c8c;">' + blockedCount + ' bloquée' + (blockedCount > 1 ? 's' : '') + '</strong>' : '');
-        }
-      }
-
-      function _ouvrirNetLogModal() {
-        const modal = document.getElementById("loaderNetLogModal");
-        if (!modal) return;
-        modal.style.display = "flex";
-        _refreshNetLogTable();
-        // Subscribe live : chaque nouvel event re-render
-        if (window.NetworkAudit && typeof window.NetworkAudit.onLog === "function") {
-          _netLogUnsub = window.NetworkAudit.onLog(function(/* entry */) {
-            _refreshNetLogTable();
-          });
-        }
-      }
-
-      function _fermerNetLogModal() {
-        const modal = document.getElementById("loaderNetLogModal");
-        if (modal) modal.style.display = "none";
-        if (typeof _netLogUnsub === "function") {
-          _netLogUnsub();
-          _netLogUnsub = null;
-        }
-      }
-
+      // ── Modales « Journal réseau » + « Doc audit » ──────────────────
+      // 🔀 Consolidation : l état (_netLogUnsub, CATEGORY_COLORS) et les
+      // fonctions (_escapeHtml/_formatTime/_renderNetLogRow,
+      // _refreshNetLogTable, _ouvrir/_fermerNetLogModal,
+      // _ouvrir/_fermerNetDocModal) sont extraits dans js/loaderNetAudit.js
+      // et exposés sur window. Le câblage ci-dessous (boutons/backdrop/Escape)
+      // les appelle via ces globals.
       // Close ✕ + backdrop + Escape
       const netLogClose = document.getElementById("loaderNetLogClose");
       if (netLogClose) netLogClose.addEventListener("click", _fermerNetLogModal);
@@ -5902,23 +5812,7 @@
         });
       }
 
-      // ── Modale Doc audit ────────────────────────────────────────────
-      function _ouvrirNetDocModal() {
-        const modal = document.getElementById("loaderNetDocModal");
-        if (!modal) return;
-        // Rempli la liste whitelist depuis NetworkAudit.WHITELIST_HUMAN
-        const ul = document.getElementById("loaderNetDocWhitelist");
-        if (ul && window.NetworkAudit && Array.isArray(window.NetworkAudit.WHITELIST_HUMAN)) {
-          ul.innerHTML = window.NetworkAudit.WHITELIST_HUMAN.map(function(s) {
-            return '<li>' + _escapeHtml(s) + '</li>';
-          }).join("");
-        }
-        modal.style.display = "flex";
-      }
-      function _fermerNetDocModal() {
-        const modal = document.getElementById("loaderNetDocModal");
-        if (modal) modal.style.display = "none";
-      }
+      // ── Modale « Doc audit » : fonctions dans js/loaderNetAudit.js ──
       const netDocClose = document.getElementById("loaderNetDocClose");
       if (netDocClose) netDocClose.addEventListener("click", _fermerNetDocModal);
       const netDocModal = document.getElementById("loaderNetDocModal");
