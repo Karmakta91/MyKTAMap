@@ -231,6 +231,8 @@ A **profile banner** is displayed at the top of the home screen, just below the 
 
 - **Avatar**: personal photo (square, ~64 px) OR colored auto-generated initial if no photo. The color of the initial is chosen deterministically (via djb2 hash of the nickname) from a palette of 10 colors of the chart — your avatar therefore remains visually stable from one session to the next as long as you do not change your nickname.
 - **Nickname**: your alias (editable). Default "Cataphile" on first launch.
+- **🏅 Rank**: a **badge** (from *Tourist* to *Grandmaster*) computed from your **time spent** in the app, the **number of maps** explored and the **km of gallery** mapped. It shows as a **colored ring** around the photo + a **medal** in the corner + the **rank name under your nickname**. The breakdown (the 3 metrics + progress "X left for the next rank" + a score) is in the profile card. *(100% local and fun — it unlocks nothing, it's just for the joy of it.)*
+- **🏆 Achievements**: **38 achievements** to unlock. **8 families × 4 tiers** (🥉🥈🥇👑) — *Cartographer* (maps), *Surveyor* (georeferenced maps), *Deep walker* (km), *Cellar rat* (time), *Pin master* (POIs), *Tracer* (paths), *Zoner* (zones), *Builder* (structures) — **+ 6 one-shot « 🎉 Special »**: *Jack of all trades*, *Centurion* (score ≥ 100), *Mole* (used the tracker), *Multi-level caver*, *Underground marathon* (tracker session > 4 h), *Completionist* (all the rest). A **toast** notifies you on unlock, the **N/38** grid lives in the profile card. You can also show your **score** and your **number of achievements** in the home banner stats (🎨 *Banner stats* section).
 - **Compact stats** *(visible as soon as the screen is ≥ 380 px wide)* — now **configurable** from the Profile modal (see below). By default:
   - ⏱️ **Session time**: time elapsed since the app started in this session
   - 💾 **Save**: actual size of MyKTAMap data stored locally (see below)
@@ -1822,11 +1824,20 @@ You can **undo** and **redo** your actions on the map, up to **50 actions back**
 
 ### Keyboard shortcuts (recommended)
 
+> ⌨️ **Press `?` anytime** to show the full list of shortcuts (cheatsheet).
+
 | Shortcut | Action |
 |---|---|
+| **?** | Show all shortcuts (cheatsheet) |
+| **E / M / Z / S / T / P** | Open Editing / Measure / Zones / Structures / Tracker / Paths |
+| **L / B / R** | Legend / Compass / Search |
+| **Ctrl+K** (`Cmd+K` Mac) | Search (alternative to R) |
+| **TAB / Enter** | In an open tool menu: cycle options / confirm selection |
+| **F** | Presentation mode (Esc to exit) |
 | **Ctrl+Z** (`Cmd+Z` Mac) | Undo last action |
 | **Ctrl+Y** (`Cmd+Y` Mac) | Redo the undone action |
 | **Ctrl+Shift+Z** (`Cmd+Shift+Z` Mac) | Redo (alternative) |
+| **Esc** | Close the menu / window |
 
 > 💡 The shortcuts do not trigger if you are typing in a text field — to avoid breaking the browser's native undo in inputs.
 

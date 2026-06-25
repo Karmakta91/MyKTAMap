@@ -231,6 +231,8 @@ Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le hea
 
 - **Avatar** : photo perso (carrée, ~64 px) OU initiale colorée auto-générée si pas de photo. La couleur de l'initiale est choisie déterministiquement (via hash djb2 du surnom) parmi une palette de 10 couleurs de la charte — ton avatar reste donc visuellement stable d'une session à l'autre tant que tu ne changes pas de surnom.
 - **Surnom** : ton pseudo (modifiable). Par défaut "Cataphile" au premier lancement.
+- **🏅 Rang** : un **badge** (de *Touriste* à *Grand Maître*) calculé selon ton **temps passé** dans l'app, le **nombre de plans** explorés et les **km de galerie** cartographiés. Il se matérialise par un **anneau coloré** autour de la photo + une **médaille** en coin + le **nom du rang sous ton pseudo**. Le détail (les 3 métriques + la progression « Encore X pour le rang suivant » + un score) est dans la fiche profil. *(100 % local et fun — ça ne débloque rien, c'est juste pour le plaisir.)*
+- **🏆 Hauts faits** : **38 succès** à débloquer. **8 familles × 4 paliers** (🥉🥈🥇👑) — *Cartographe* (plans), *Géomètre* (plans géoréférencés), *Marcheur des profondeurs* (km), *Rat de cave* (temps), *Pointilleux* (POIs), *Traceur* (tracés), *Zoneur* (zones), *Bâtisseur* (structures) — **+ 6 « 🎉 Spéciaux » one-shot** : *Touche-à-tout* (un peu de tout), *Centurion* (score ≥ 100), *Taupe* (utilisé le tracker), *Spéléo multi-niveaux*, *Marathon souterrain* (session tracker > 4 h), *Complétiste* (tout le reste). Un **toast** te prévient au déblocage, la grille **N/38** est dans la fiche profil. Tu peux aussi afficher ton **score** et ton **nombre de hauts faits** dans les stats du bandeau d'accueil (section 🎨 *Stats du bandeau*).
 - **Stats compactes** *(visibles dès que l'écran fait ≥ 380 px de large)* — désormais **configurables** depuis la modale Profil (voir plus bas). Par défaut :
   - ⏱️ **Temps de session** : durée écoulée depuis le démarrage de l'app sur cette session
   - 💾 **Sauvegarde** : taille réelle des données MyKTAMap stockées localement (voir plus bas)
@@ -1827,11 +1829,20 @@ Tu peux **annuler** et **rétablir** tes actions sur le plan, jusqu'à **50 acti
 
 ### Raccourcis clavier (recommandé)
 
+> ⌨️ **Appuie sur `?` à tout moment** pour afficher la liste complète des raccourcis (cheatsheet).
+
 | Raccourci | Action |
 |---|---|
+| **?** | Afficher tous les raccourcis (cheatsheet) |
+| **E / M / Z / S / T / P** | Ouvrir Édition / Mesure / Zones / Structures / Tracker / Tracés |
+| **L / B / R** | Légende / Boussole / Recherche |
+| **Ctrl+K** (`Cmd+K` Mac) | Recherche (alternative à R) |
+| **TAB / Entrée** | Dans un menu d'outils ouvert : parcourir les options / valider la sélection |
+| **F** | Mode présentation (Échap pour sortir) |
 | **Ctrl+Z** (`Cmd+Z` Mac) | Annuler la dernière action |
 | **Ctrl+Y** (`Cmd+Y` Mac) | Rétablir l'action annulée |
 | **Ctrl+Shift+Z** (`Cmd+Shift+Z` Mac) | Rétablir (alternative) |
+| **Échap** | Fermer le menu / la fenêtre |
 
 > 💡 Les raccourcis ne se déclenchent pas si tu es en train de taper dans un champ texte — pour ne pas casser l'undo natif du navigateur dans les inputs.
 

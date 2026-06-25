@@ -1181,6 +1181,47 @@ function _fermerTrackerModal() {
   _trackerModalEl = null;
 }
 
+// 🆕 v1.51.0 (Lot B) — Navigation clavier dans un panneau (flyout latéral OU
+// modal Tracker). À l'ouverture : focus auto la 1ʳᵉ action. TAB cycle dans le
+// panneau (piège de focus, dernier→premier), ↑↓←→ déplacent aussi, Entrée/
+// Espace = activation native du <button> focalisé. Échap ferme si
+// opts.handleEscape. Le listener vit/meurt avec le conteneur (retiré du DOM à
+// la fermeture → pas de cleanup explicite).
+function _installFocusNav(container, opts) {
+  opts = opts || {};
+  const sel = "button:not([disabled]), a[href], [tabindex]";
+  function items() {
+    return Array.prototype.slice.call(container.querySelectorAll(sel))
+      .filter(function(el) { return el.offsetParent !== null && el.getAttribute("tabindex") !== "-1"; });
+  }
+  // Focus initial = 1ʳᵉ action (firstSelector), pas la croix de fermeture.
+  const first = (opts.firstSelector && container.querySelector(opts.firstSelector)) || items()[0];
+  if (first) { try { first.focus(); } catch(e) {} }
+
+  container.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") {
+      if (opts.handleEscape && typeof opts.onClose === "function") {
+        e.preventDefault(); e.stopPropagation(); opts.onClose();
+      }
+      return;
+    }
+    const isTab  = (e.key === "Tab");
+    const isNext = (e.key === "ArrowDown" || e.key === "ArrowRight");
+    const isPrev = (e.key === "ArrowUp"   || e.key === "ArrowLeft");
+    if (!isTab && !isNext && !isPrev) return;  // Entrée/Espace → activation native
+    const list = items();
+    if (!list.length) return;
+    e.preventDefault();
+    const idx = list.indexOf(document.activeElement);
+    let n;
+    if (isTab) n = e.shiftKey ? (idx <= 0 ? list.length - 1 : idx - 1)
+                              : (idx === list.length - 1 ? 0 : idx + 1);
+    else if (isNext) n = (idx < 0 || idx === list.length - 1) ? 0 : idx + 1;
+    else n = (idx <= 0) ? list.length - 1 : idx - 1;
+    try { list[n].focus(); } catch(e2) {}
+  });
+}
+
 function _creerTuileTracker(sub) {
   const tile = document.createElement("button");
   tile.type = "button";
@@ -1327,6 +1368,10 @@ function _ouvrirTrackerModal(groupId) {
   overlay.appendChild(box);
   document.body.appendChild(overlay);
   _trackerModalEl = overlay;
+
+  // 🆕 v1.51.0 (Lot B) : navigation clavier (focus 1ʳᵉ tuile, TAB cycle, flèches,
+  // Entrée active). Échap reste géré par _trackerModalKeyHandler (niveau document).
+  _installFocusNav(overlay, { firstSelector: ".kta-tracker-modal-tile" });
 
   // Esc pour fermer.
   _trackerModalKeyHandler = function(ev) {
@@ -1550,6 +1595,10 @@ function _ouvrirFlyout(groupId) {
   document.body.appendChild(fly);
   _positionnerFlyout(fly, grp.btnPrincipal, grp.position);
   _currentFlyout = fly;
+
+  // 🆕 v1.51.0 (Lot B) : navigation clavier dans le flyout (focus 1ʳᵉ action,
+  // TAB cycle, ↑↓←→, Entrée active, Échap ferme).
+  _installFocusNav(fly, { firstSelector: ".kta-group-flyout-btn", handleEscape: true, onClose: _fermerFlyout });
 
   // Click externe / scroll / resize → ferme ou repositionne
   // setTimeout pour éviter que le click ayant déclenché l'ouverture

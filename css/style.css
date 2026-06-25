@@ -1076,6 +1076,160 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   color: inherit !important;
 }
 
+/* =========================================================================
+   🆕 v1.51.0 — Cheatsheet des raccourcis clavier (touche ?)
+   Réutilise le chrome .kta-readme-modal-* ; ajoute la grille + keycaps.
+   ========================================================================= */
+.kta-cheatsheet-boite { max-width: 540px; }
+.kta-cheat-sectitre {
+  margin: 14px 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8892a4;
+}
+.kta-cheat-sectitre:first-child { margin-top: 2px; }
+.kta-cheat-grille {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 18px;
+}
+.kta-cheat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+}
+.kta-cheat-keys {
+  flex: 0 0 96px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.kta-cheat-label {
+  font-size: 13.5px;
+  color: #e8eaf0;
+  line-height: 1.2;
+}
+.kta-kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 2px 7px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: center;
+  color: #e8eaf0;
+  background: #232a3d;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+.kta-kbd-plus { color: #8892a4; font-size: 11px; margin: 0 1px; }
+.kta-cheat-note {
+  margin: 16px 2px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8892a4;
+}
+@media (max-width: 520px) {
+  .kta-cheat-grille { grid-template-columns: 1fr; }
+}
+body.kta-theme-light .kta-cheat-sectitre,
+body.kta-theme-light .kta-cheat-note,
+body.kta-theme-light .kta-kbd-plus { color: #5a6478; }
+body.kta-theme-light .kta-cheat-label { color: #1a1f2e; }
+body.kta-theme-light .kta-kbd {
+  color: #1a1f2e;
+  background: #e9edf5;
+  border-color: rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+/* =========================================================================
+   🆕 v1.51.0 — Hub d'aide (modal Aide ❓ : sections par catégorie + sous-modale)
+   ========================================================================= */
+.kta-aide-hub-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  margin: 2px 0 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #e8eaf0;
+  font-size: 14px;
+}
+.kta-aide-hub-search::placeholder { color: #8892a4; }
+.kta-aide-cat-titre {
+  margin: 16px 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8892a4;
+}
+.kta-aide-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  margin: 5px 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  color: #e8eaf0;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.kta-aide-row:hover {
+  background: rgba(140, 180, 255, 0.12);
+  border-color: rgba(140, 180, 255, 0.4);
+}
+.kta-aide-row-titre { flex: 1; line-height: 1.3; }
+.kta-aide-row-chevron { color: #8892a4; font-size: 18px; flex: 0 0 auto; }
+.kta-aide-empty { color: #8892a4; font-size: 13px; padding: 14px 4px; }
+.kta-aide-submodal { z-index: 100001 !important; }
+.kta-aide-submodal-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #c8d0e0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.kta-aide-submodal-back:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+body.kta-theme-light .kta-aide-hub-search {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #1a1f2e;
+}
+body.kta-theme-light .kta-aide-cat-titre,
+body.kta-theme-light .kta-aide-row-chevron,
+body.kta-theme-light .kta-aide-empty { color: #5a6478; }
+body.kta-theme-light .kta-aide-row {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #1a1f2e;
+}
+body.kta-theme-light .kta-aide-row:hover { background: #eef2fb; }
+body.kta-theme-light .kta-aide-submodal-back {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #3a4256;
+}
+
 /* Modale Lost Mode — bordure rouge urgence */
 .kta-lost-modal-boite {
   max-width: 560px;
@@ -17459,6 +17613,212 @@ html.kta-theme-light .kta-net-cell-method {
   align-items: center;
   justify-content: center;
 }
+
+/* =========================================================================
+   🆕 v1.52.0 — Rangs de profil (gamification) : anneau coloré + bloc rang
+   ========================================================================= */
+/* Couleurs par rang (cascade via data-kta-rank, posé en JS) */
+[data-kta-rank="touriste"]    { --kta-rank-ring:#6b7280; --kta-rank-fg:#9aa4b5; --kta-rank-bg:rgba(107,114,128,0.16); }
+[data-kta-rank="novice"]      { --kta-rank-ring:#cd7f32; --kta-rank-fg:#d89a5e; --kta-rank-bg:rgba(205,127,50,0.16); }
+[data-kta-rank="confirme"]    { --kta-rank-ring:#9fb2c8; --kta-rank-fg:#b9c7da; --kta-rank-bg:rgba(159,178,200,0.16); }
+[data-kta-rank="expert"]      { --kta-rank-ring:#f4c542; --kta-rank-fg:#f4c542; --kta-rank-bg:rgba(244,197,66,0.16); }
+[data-kta-rank="maitre"]      { --kta-rank-ring:#ff8c42; --kta-rank-fg:#ff8c42; --kta-rank-bg:rgba(255,140,66,0.16); }
+[data-kta-rank="grandmaitre"] { --kta-rank-ring:#b388ff; --kta-rank-fg:#b388ff; --kta-rank-bg:rgba(179,136,255,0.18); }
+[data-kta-rank="legende"]     { --kta-rank-ring:#e0a51a; --kta-rank-fg:#e8b84a; --kta-rank-bg:rgba(224,165,26,0.20); } /* 🥚 Easter egg "Karma" — or ambre */
+/* Anneau autour de l'avatar (conserve le shadow de profondeur existant) */
+.kta-loader-profile-avatar-wrap[data-kta-rank] {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 2.5px var(--kta-rank-ring, #6b7280);
+}
+.kta-loader-profile-avatar-wrap[data-kta-rank="expert"],
+.kta-loader-profile-avatar-wrap[data-kta-rank="maitre"] {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 2.5px var(--kta-rank-ring), 0 0 9px -1px var(--kta-rank-ring);
+}
+.kta-loader-profile-avatar-wrap[data-kta-rank="grandmaitre"] {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 3px var(--kta-rank-ring), 0 0 13px -1px var(--kta-rank-ring);
+}
+.kta-profile-details-avatar-big[data-kta-rank] {
+  box-shadow: 0 0 0 3.5px var(--kta-rank-ring, #6b7280);
+}
+.kta-profile-details-avatar-big[data-kta-rank="expert"],
+.kta-profile-details-avatar-big[data-kta-rank="maitre"] {
+  box-shadow: 0 0 0 3.5px var(--kta-rank-ring), 0 0 13px -1px var(--kta-rank-ring);
+}
+.kta-profile-details-avatar-big[data-kta-rank="grandmaitre"] {
+  box-shadow: 0 0 0 4px var(--kta-rank-ring), 0 0 17px -1px var(--kta-rank-ring);
+}
+/* 🥚 Easter egg "Karma" — rang Légende : anneau magenta pulsant */
+.kta-loader-profile-avatar-wrap[data-kta-rank="legende"] {
+  animation: kta-legende-glow 4s ease-in-out infinite;
+}
+.kta-profile-details-avatar-big[data-kta-rank="legende"] {
+  animation: kta-legende-glow-big 4s ease-in-out infinite;
+}
+@keyframes kta-legende-glow {
+  0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 3px #e0a51a, 0 0 5px -3px #e0a51a; }
+  50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 3px #e0a51a, 0 0 10px -3px #e0a51a; }
+}
+@keyframes kta-legende-glow-big {
+  0%, 100% { box-shadow: 0 0 0 4px #e0a51a, 0 0 7px -3px #e0a51a; }
+  50%      { box-shadow: 0 0 0 4px #e0a51a, 0 0 13px -3px #e0a51a; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kta-loader-profile-avatar-wrap[data-kta-rank="legende"],
+  .kta-profile-details-avatar-big[data-kta-rank="legende"] { animation: none; }
+}
+/* Médaille de rang en coin du GROS avatar (modale), parité avec le home */
+.kta-profile-details-avatar-holder { position: relative; display: inline-flex; flex: 0 0 auto; }
+.kta-profile-details-badge {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  line-height: 1;
+  background: #1a1f2e;
+  border: 2.5px solid var(--kta-rank-ring, #6b7280);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  pointer-events: none;
+}
+body.kta-theme-light .kta-profile-details-badge { background: #fdf8eb; }
+/* Bloc rang dans la modale Détails profil */
+.kta-profile-details-rank {
+  margin: 4px 0 14px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 12px;
+}
+.kta-profile-details-rank:empty { display: none; }
+.kta-profile-rank-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.kta-profile-rank-chip {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 12px; border-radius:999px;
+  font-size:14px; font-weight:600;
+  color: var(--kta-rank-fg, #c8d0e0);
+  background: var(--kta-rank-bg, rgba(255,255,255,0.06));
+  border: 1px solid var(--kta-rank-ring, rgba(255,255,255,0.2));
+}
+.kta-profile-rank-score { font-size:12.5px; color:#8892a4; font-variant-numeric:tabular-nums; }
+.kta-profile-rank-metrics {
+  display:flex; flex-wrap:wrap; gap:6px 16px;
+  margin-top:10px; font-size:13px; color:#c8d0e0;
+}
+.kta-profile-rank-progress { margin-top:11px; }
+.kta-profile-rank-bar {
+  height:7px; border-radius:999px;
+  background: rgba(255,255,255,0.08); overflow:hidden;
+}
+.kta-profile-rank-bar > span {
+  display:block; height:100%;
+  background: linear-gradient(90deg, var(--kta-rank-ring, #8cb4ff), #f4c542);
+  border-radius:999px;
+}
+.kta-profile-rank-next { margin-top:6px; font-size:12px; color:#8892a4; line-height:1.4; }
+.kta-profile-rank-max { color:#4ade80; font-weight:600; }
+.kta-profile-rank-real { margin-top:6px; font-size:11.5px; color:#8892a4; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.kta-profile-rank-chip-sm { padding:2px 9px; font-size:12px; gap:5px; font-weight:600; }
+body.kta-theme-light .kta-profile-details-rank { background:#fff; border-color:rgba(0,0,0,0.1); }
+body.kta-theme-light .kta-profile-rank-score,
+body.kta-theme-light .kta-profile-rank-next,
+body.kta-theme-light .kta-profile-rank-real { color:#5a6478; }
+body.kta-theme-light .kta-profile-rank-metrics { color:#1a1f2e; }
+body.kta-theme-light .kta-profile-rank-bar { background:rgba(0,0,0,0.08); }
+/* Médaille de rang en coin de l'avatar (home) + nom du rang sous le pseudo */
+.kta-loader-profile-avatar-holder { position: relative; flex: 0 0 auto; display: inline-flex; }
+.kta-loader-profile-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  background: #1a1f2e;
+  border: 2px solid var(--kta-rank-ring, #6b7280);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.45);
+  pointer-events: none;
+}
+.kta-loader-profile-rank {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--kta-rank-fg, #8892a4);
+}
+.kta-loader-profile-rank:empty { display: none; }
+body.kta-theme-light .kta-loader-profile-badge { background: #fdf8eb; }
+
+/* 🆕 v1.53.0 — Hauts faits (succès) dans la modale Détails profil */
+.kta-profile-details-feats {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 12px;
+}
+.kta-profile-details-feats:empty { display: none; }
+.kta-feats-head {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px; font-weight: 600; color: #e8eaf0;
+}
+.kta-feats-count {
+  font-size: 12px; font-weight: 600; color: #f4c542;
+  background: rgba(244,197,66,0.14); padding: 2px 9px; border-radius: 999px;
+}
+.kta-feats-list { display: flex; flex-direction: column; gap: 8px; }
+.kta-feat-row { display: flex; align-items: center; gap: 8px; }
+.kta-feat-fam {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; color: #c8d0e0;
+}
+.kta-feat-emoji { font-size: 15px; flex: 0 0 auto; }
+.kta-feat-val {
+  flex: 0 0 auto; min-width: 54px; text-align: right;
+  font-size: 11.5px; color: #8892a4; font-variant-numeric: tabular-nums;
+}
+.kta-feat-badges { flex: 0 0 auto; display: flex; gap: 3px; }
+.kta-feat-badge {
+  font-size: 15px; line-height: 1;
+  opacity: 0.25; filter: grayscale(1);
+  transition: opacity 0.15s ease;
+}
+.kta-feat-badge.kta-feat-unlocked { opacity: 1; filter: none; }
+body.kta-theme-light .kta-profile-details-feats { background: #fff; border-color: rgba(0,0,0,0.1); }
+body.kta-theme-light .kta-feats-head,
+body.kta-theme-light .kta-feat-fam { color: #1a1f2e; }
+body.kta-theme-light .kta-feat-val { color: #5a6478; }
+/* 🆕 v1.54.0 — section Spéciaux (one-shot) */
+.kta-feats-sptitle { margin: 22px 0 10px; font-size: 14px; font-weight: 600; color: #e8eaf0; }
+.kta-feats-specials { display: flex; flex-wrap: wrap; gap: 6px; }
+.kta-feat-sp {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 12px; color: #8892a4;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  opacity: 0.55; filter: grayscale(0.7);
+}
+.kta-feat-sp.kta-feat-unlocked {
+  opacity: 1; filter: none;
+  color: #e8eaf0;
+  background: rgba(244,197,66,0.14);
+  border-color: rgba(244,197,66,0.4);
+}
+body.kta-theme-light .kta-feats-sptitle { color: #1a1f2e; }
+body.kta-theme-light .kta-feat-sp { background: #f4f6fb; border-color: rgba(0,0,0,0.1); color: #5a6478; }
+body.kta-theme-light .kta-feat-sp.kta-feat-unlocked { color: #1a1f2e; background: rgba(244,197,66,0.2); }
+
 .kta-loader-profile-avatar-img {
   width: 100%;
   height: 100%;

@@ -573,6 +573,10 @@ function afficherAide() {
 
   const aideTitre = aideEn ? "❓ Help — Button reference" : "❓ Aide — Référence des boutons";
 
+  // 🆕 v1.51.0 (Lot C) : le corps n'est plus le gros scroll monolithique mais
+  // un HUB de sections (cartes par catégorie + recherche) → sous-modale par
+  // section. Les sections restent définies dans _aideHtmlFr/En (source de
+  // vérité inchangée), parsées par _aideRendreHub.
   modal.innerHTML = `
     <div class="kta-readme-modal-boite kta-aide-modal-boite">
       <div class="kta-readme-modal-header">
@@ -580,15 +584,15 @@ function afficherAide() {
         ${btnLang}
         <button class="kta-panneau-close" id="kta-aide-close">✕</button>
       </div>
-      <div class="kta-readme-modal-corps kta-aide-corps">
-        ${aideEn ? _aideHtmlEn() : _aideHtmlFr()}
-      </div>
+      <div class="kta-readme-modal-corps kta-aide-corps" id="kta-aide-corps"></div>
     </div>
   `;
 
   document.documentElement.appendChild(modal);
-  document.getElementById("kta-aide-close").addEventListener("click", function () { modal.remove(); });
-  modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
+
+  function _closeAll() { _aideFermerSousModal(); modal.remove(); }
+  document.getElementById("kta-aide-close").addEventListener("click", _closeAll);
+  modal.addEventListener("click", function (e) { if (e.target === modal) _closeAll(); });
 
   // 🆕 v1.45.x — Handler des onglets de langue (délégation sur tous les
   // drapeaux). Clic sur une langue ≠ courante → persiste (scope LOCAL doc, via
@@ -600,10 +604,180 @@ function afficherAide() {
       if (DOC_AVAILABLE_LANGS.indexOf(target) < 0) return;
       if (target === _getReadmeLang()) return; // déjà la langue courante
       _setReadmeLang(target);
-      modal.remove();
+      _closeAll();
       afficherAide();
     });
   });
+
+  _aideRendreHub(document.getElementById("kta-aide-corps"), aideEn);
+}
+
+// =========================
+// 🆕 v1.51.0 (Lot C) — Hub d'aide : sections groupées + sous-modale
+// =========================
+// Regroupement des sections d'aide pour le hub. `idx` = index de la section
+// dans l'ordre du document _aideHtmlFr/En (IDENTIQUE FR/EN : les 2 ont le même
+// nombre de sections dans le même ordre).
+// ⚠️ Si tu AJOUTES / SUPPRIMES / RÉORDONNES une section dans _aideHtmlFr ET
+// _aideHtmlEn, mets À JOUR ces index. Toute section non listée ici retombe
+// automatiquement dans la catégorie « Autres » (filet de sécurité).
+const AIDE_CATEGORIES = [
+  { fr: "🚀 Prise en main",        en: "🚀 Getting started",     idx: [2, 26, 27] },
+  { fr: "🗺️ Outils carte",         en: "🗺️ Map tools",           idx: [20, 22, 23, 21, 19, 17, 14, 15, 1] },
+  { fr: "💾 Données & session",     en: "💾 Data & session",      idx: [16, 5, 8, 9, 11, 13, 0, 24, 6] },
+  { fr: "🔍 Recherche",            en: "🔍 Search",              idx: [4] },
+  { fr: "🚨 Coordination secours", en: "🚨 Rescue coordination", idx: [18] },
+  { fr: "⚙️ Système & sécurité",   en: "⚙️ System & security",   idx: [3, 25, 10, 12, 7] }
+];
+
+// Une ligne cliquable du hub (titre + chevron).
+function _aideRow(titre, onClick) {
+  const r = document.createElement("button");
+  r.type = "button";
+  r.className = "kta-aide-row";
+  const t = document.createElement("span");
+  t.className = "kta-aide-row-titre";
+  t.textContent = titre;
+  const chev = document.createElement("span");
+  chev.className = "kta-aide-row-chevron";
+  chev.textContent = "›";
+  r.appendChild(t);
+  r.appendChild(chev);
+  r.addEventListener("click", onClick);
+  return r;
+}
+
+function _aideRendreHub(corps, en) {
+  if (!corps) return;
+
+  // Parse les sections depuis le HTML monolithique (source de vérité inchangée).
+  const raw = document.createElement("div");
+  raw.innerHTML = en ? _aideHtmlEn() : _aideHtmlFr();
+  const secNodes = Array.prototype.slice.call(raw.querySelectorAll(".kta-aide-section"));
+  const sections = secNodes.map(function(node) {
+    const t = node.querySelector(".kta-aide-section-titre");
+    return { titre: t ? t.textContent.trim() : "?", node: node };
+  });
+
+  // Conserve l'intro générale si présente (sinon perdue au parsing des sections).
+  const intro = raw.querySelector(".kta-aide-intro");
+  if (intro) corps.appendChild(intro.cloneNode(true));
+
+  // Barre de recherche
+  const search = document.createElement("input");
+  search.type = "search";
+  search.className = "kta-aide-hub-search";
+  search.placeholder = en ? "Search a section…" : "Rechercher une section…";
+  corps.appendChild(search);
+
+  const hub = document.createElement("div");
+  hub.className = "kta-aide-hub";
+  corps.appendChild(hub);
+
+  // Ligne épinglée : cheatsheet des raccourcis clavier (ouvre ShortcutsCheatsheet).
+  const cheatRow = _aideRow(en ? "⌨️ Keyboard shortcuts" : "⌨️ Raccourcis clavier", function() {
+    if (window.ShortcutsCheatsheet && typeof window.ShortcutsCheatsheet.ouvrir === "function") {
+      window.ShortcutsCheatsheet.ouvrir();
+    }
+  });
+  cheatRow.dataset.aideTitre = (en ? "keyboard shortcuts" : "raccourcis clavier");
+  hub.appendChild(cheatRow);
+
+  // Catégories + lignes
+  const used = {};
+  AIDE_CATEGORIES.forEach(function(cat) {
+    const rows = [];
+    cat.idx.forEach(function(i) {
+      if (i < 0 || i >= sections.length) return;
+      used[i] = true;
+      rows.push(sections[i]);
+    });
+    if (!rows.length) return;
+    const ct = document.createElement("div");
+    ct.className = "kta-aide-cat-titre";
+    ct.textContent = en ? cat.en : cat.fr;
+    hub.appendChild(ct);
+    rows.forEach(function(s) {
+      const r = _aideRow(s.titre, function() { _aideOuvrirSousModal(s, en); });
+      r.dataset.aideTitre = s.titre.toLowerCase();
+      hub.appendChild(r);
+    });
+  });
+
+  // Filet de sécurité : sections non catégorisées (si le mapping dérive).
+  const orphans = sections.filter(function(_, i) { return !used[i]; });
+  if (orphans.length) {
+    const ct = document.createElement("div");
+    ct.className = "kta-aide-cat-titre";
+    ct.textContent = en ? "📁 Other" : "📁 Autres";
+    hub.appendChild(ct);
+    orphans.forEach(function(s) {
+      const r = _aideRow(s.titre, function() { _aideOuvrirSousModal(s, en); });
+      r.dataset.aideTitre = s.titre.toLowerCase();
+      hub.appendChild(r);
+    });
+  }
+
+  // Message "aucun résultat"
+  const empty = document.createElement("div");
+  empty.className = "kta-aide-empty";
+  empty.style.display = "none";
+  empty.textContent = en ? "No section found." : "Aucune section trouvée.";
+  corps.appendChild(empty);
+
+  // Filtrage par recherche (titre)
+  search.addEventListener("input", function() {
+    const q = search.value.trim().toLowerCase();
+    let visibles = 0;
+    hub.querySelectorAll(".kta-aide-row").forEach(function(r) {
+      const match = !q || (r.dataset.aideTitre || "").indexOf(q) >= 0;
+      r.style.display = match ? "" : "none";
+      if (match) visibles++;
+    });
+    // masque les titres de catégorie sans aucune ligne visible
+    hub.querySelectorAll(".kta-aide-cat-titre").forEach(function(ct) {
+      let sib = ct.nextElementSibling, any = false;
+      while (sib && sib.classList.contains("kta-aide-row")) {
+        if (sib.style.display !== "none") { any = true; break; }
+        sib = sib.nextElementSibling;
+      }
+      ct.style.display = any ? "" : "none";
+    });
+    empty.style.display = visibles ? "none" : "";
+  });
+}
+
+// Sous-modale : contenu d'UNE section + ← Retour (z-index 100001, au-dessus du hub).
+function _aideOuvrirSousModal(section, en) {
+  _aideFermerSousModal();
+  const ov = document.createElement("div");
+  ov.id = "kta-aide-submodal";
+  ov.className = "kta-readme-modal-overlay kta-aide-submodal";
+  ov.innerHTML =
+    '<div class="kta-readme-modal-boite kta-aide-modal-boite">' +
+      '<div class="kta-readme-modal-header">' +
+        '<button class="kta-aide-submodal-back" type="button" id="kta-aide-back">← ' +
+          (en ? "Back" : "Retour") + "</button>" +
+        '<button class="kta-panneau-close" id="kta-aide-sub-close" type="button">✕</button>' +
+      "</div>" +
+      '<div class="kta-readme-modal-corps kta-aide-corps" id="kta-aide-sub-corps"></div>' +
+    "</div>";
+  document.documentElement.appendChild(ov);
+  const corps = ov.querySelector("#kta-aide-sub-corps");
+  if (corps && section && section.node) corps.appendChild(section.node.cloneNode(true));
+
+  document.getElementById("kta-aide-back").addEventListener("click", _aideFermerSousModal);
+  document.getElementById("kta-aide-sub-close").addEventListener("click", _aideFermerSousModal);
+  ov.addEventListener("click", function(e) { if (e.target === ov) _aideFermerSousModal(); });
+  ov.__esc = function(e) { if (e.key === "Escape") { e.stopPropagation(); _aideFermerSousModal(); } };
+  document.addEventListener("keydown", ov.__esc, true);
+}
+
+function _aideFermerSousModal() {
+  const ov = document.getElementById("kta-aide-submodal");
+  if (!ov) return;
+  if (ov.__esc) document.removeEventListener("keydown", ov.__esc, true);
+  ov.remove();
 }
 
 // =========================
@@ -801,6 +975,8 @@ function _aideHtmlFr() {
           <div class="kta-aide-section-titre">👤 Mode profil</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">👤</span><span><strong>Bandeau profil</strong> en en-tête du loader (au-dessus de « Mes plans ») — avatar + surnom + mini-stats globales (📍 points · 🛣️ tracés · ⬛ zones · 🏛️ structures + temps cumulé, conservés)</span>
+            <span class="kta-aide-icone">🏅</span><span><strong>Rang / badge</strong> (Touriste → Grand Maître) selon ton temps passé, tes plans explorés et tes km de galerie — <strong>anneau coloré + médaille</strong> sur la photo, et le détail (3 métriques + progression + score) dans la fiche profil</span>
+            <span class="kta-aide-icone">🏆</span><span><strong>Hauts faits</strong> — <strong>38 succès</strong> à débloquer : 8 familles × 4 paliers (🥉🥈🥇👑, plans/km/temps/POIs/tracés/zones/structures) <strong>+ 6 « 🎉 Spéciaux »</strong> one-shot (Touche-à-tout, Centurion, Taupe, Multi-niveaux, Marathon, Complétiste). Toast au déblocage + grille N/38 dans la fiche profil. Score + nb de hauts faits affichables au bandeau (section 🎨 Stats du bandeau)</span>
             <span class="kta-aide-icone">✏️</span><span>Clic sur le <strong>surnom</strong> ou l'<strong>avatar</strong> → modale d'édition (surnom libre + upload photo profil)</span>
             <span class="kta-aide-icone">🖼️</span><span>Photo profil compressée auto (max 512px, JPEG q88) — sinon avatar par défaut = initiale du surnom dans un cercle coloré</span>
             <span class="kta-aide-icone">📦</span><span>Profil exportable / importable — partage entre appareils sans serveur</span>
@@ -948,13 +1124,15 @@ function _aideHtmlFr() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🧭 Tracker</div>
           <p style="font-size:12px; color:#8892a4; margin:0 0 8px; line-height:1.5;">
-            Le groupe Tracker s'ouvre en panneau latéral
-            pour accueillir ses ~8 sous-actions sans déborder. Ordre du menu, du haut vers le bas :
+            Le groupe Tracker s'ouvre en <strong>modal plein écran</strong> de tuiles (cf « 🧭 Menu Tracker »)
+            regroupant ses <strong>11 actions</strong>. Ordre, du haut vers le bas :
           </p>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">▶️⏹️</span><span><strong>Play / Stop</strong> — démarrer / arrêter le tracking par capteurs PDR (expérimental). Icône dynamique ▶️↔⏹️ selon l'état</span>
             <span class="kta-aide-icone">🧭</span><span><strong>Boussole</strong> — toggle du widget Nord magnétique (orientation utile en cavité)</span>
             <span class="kta-aide-icone">📍</span><span><strong>Mode recalage</strong> — clic sur la carte ou sur un point existant pour repositionner le marker. Fermeture auto après clic + retour boussole automatique</span>
+            <span class="kta-aide-icone">🎯</span><span><strong>Ma position</strong> — recentre la carte sur la position courante du tracker (zoom conservé). Marche même tracker à l'arrêt</span>
+            <span class="kta-aide-icone">🔓</span><span><strong>Suspendre le verrou sur tracé</strong> — désactive temporairement le verrouillage sur les tracés (30 s / 1 min / 10 min / jusqu'à réactivation), avec compte-à-rebours dans la barre du bas</span>
             <span class="kta-aide-icone">🗺️</span><span><strong>Calculer un itinéraire</strong> — ouvre la modale itinéraire (waypoints, mode de vitesse, évitements)</span>
             <span class="kta-aide-icone">🎬</span><span><strong>Replay de session tracker</strong> — modale plein écran : slider timeline + play/pause + vitesse 0.5×→10× + export CSV. Mode compact auto au Play pour libérer la carte. Raccourcis Espace / ← → / Échap</span>
             <span class="kta-aide-icone">🔥</span><span><strong>Heatmap densité</strong> — segments interpolés + normalisation auto + <strong>6 sources cochables</strong> : 🚶 Tracker timeline · ✏️ Points session · 🛣️ Tracés · ⬛ Zones · 🏛️ Structures · 📊 Calques de données</span>
@@ -1462,6 +1640,8 @@ function _aideHtmlEn() {
           <div class="kta-aide-section-titre">👤 Profile mode</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">👤</span><span><strong>Profile banner</strong> in the loader header (above "My maps") — avatar + nickname + global mini-stats (📍 points · 🛣️ paths · ⬛ zones · 🏛️ structures + cumulative time, kept)</span>
+            <span class="kta-aide-icone">🏅</span><span><strong>Rank / badge</strong> (Tourist → Grandmaster) based on your time spent, maps explored and km of gallery — <strong>colored ring + medal</strong> on the photo, and the breakdown (3 metrics + progress + score) in the profile card</span>
+            <span class="kta-aide-icone">🏆</span><span><strong>Achievements</strong> — <strong>38 to unlock</strong>: 8 families × 4 tiers (🥉🥈🥇👑, maps/km/time/POIs/paths/zones/structures) <strong>+ 6 « 🎉 Special »</strong> one-shot (Jack of all trades, Centurion, Mole, Multi-level, Marathon, Completionist). Toast on unlock + N/38 grid in the profile card. Score + achievement count can be shown in the banner stats (🎨 Banner stats)</span>
             <span class="kta-aide-icone">✏️</span><span>Click the <strong>nickname</strong> or the <strong>avatar</strong> → editing modal (free nickname + profile photo upload)</span>
             <span class="kta-aide-icone">🖼️</span><span>Profile photo auto-compressed (max 512px, JPEG q88) — otherwise the default avatar = the nickname's initial in a colored circle</span>
             <span class="kta-aide-icone">📦</span><span>Profile exportable / importable — share between devices without a server</span>
@@ -1564,6 +1744,16 @@ function _aideHtmlEn() {
         </div>
 
         <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🧭 Tracker menu (full-screen)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🧭</span><span>The 🧭 Tracker button opens a <strong>full-screen modal of large tiles</strong> (instead of the old side menu) — clearer and more touch-friendly on mobile.</span>
+            <span class="kta-aide-icone">📋</span><span>3 sections: <strong>Tracking</strong> (start/stop, recalibrate, My position, path lock) · <strong>Tools</strong> (compass, route, replay, heatmap) · <strong>Emergency</strong> (red).</span>
+            <span class="kta-aide-icone">📊</span><span>Header: tracking state (on/off) + distance travelled + step count.</span>
+            <span class="kta-aide-icone">✕</span><span>Close: cross, click outside, or Esc key. Tapping a tile closes the menu then runs the action.</span>
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🎬 Tracker session replay</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">🎬</span><span>Replay button in the 🧭 Tracker group — opens the full-screen modal</span>
@@ -1599,13 +1789,15 @@ function _aideHtmlEn() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🧭 Tracker</div>
           <p style="font-size:12px; color:#8892a4; margin:0 0 8px; line-height:1.5;">
-            The Tracker group opens as a side panel
-            to fit its ~8 sub-actions without overflowing. Menu order, top to bottom:
+            The Tracker group opens as a <strong>full-screen modal</strong> of tiles (see "🧭 Tracker menu")
+            grouping its <strong>11 actions</strong>. Order, top to bottom:
           </p>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">▶️⏹️</span><span><strong>Play / Stop</strong> — start / stop tracking via PDR sensors (experimental). Dynamic icon ▶️↔⏹️ depending on the state</span>
             <span class="kta-aide-icone">🧭</span><span><strong>Compass</strong> — toggle of the magnetic North widget (useful orientation underground)</span>
             <span class="kta-aide-icone">📍</span><span><strong>Recalibration mode</strong> — click the map or an existing point to reposition the marker. Auto-close after click + automatic return to compass</span>
+            <span class="kta-aide-icone">🎯</span><span><strong>My position</strong> — recenters the map on the tracker's current position (zoom kept). Works even when the tracker is stopped</span>
+            <span class="kta-aide-icone">🔓</span><span><strong>Suspend the path lock</strong> — temporarily disables locking onto paths (30 s / 1 min / 10 min / until re-enabled), with a countdown in the bottom bar</span>
             <span class="kta-aide-icone">🗺️</span><span><strong>Compute a route</strong> — opens the route modal (waypoints, speed mode, avoidances)</span>
             <span class="kta-aide-icone">🎬</span><span><strong>Tracker session replay</strong> — full-screen modal: timeline slider + play/pause + speed 0.5×→10× + CSV export. Compact mode auto on Play to free up the map. Shortcuts Space / ← → / Esc</span>
             <span class="kta-aide-icone">🔥</span><span><strong>Density heatmap</strong> — interpolated segments + auto normalization + <strong>6 checkable sources</strong>: 🚶 Tracker timeline · ✏️ Session points · 🛣️ Paths · ⬛ Zones · 🏛️ Structures · 📊 Data layers</span>

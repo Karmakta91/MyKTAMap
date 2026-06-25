@@ -1602,4 +1602,76 @@ i18n : 6 clés `tracker.modal.*` (sections + statut + « pas ») fr/en/es. **Sco
 
 ---
 
+### 93. Raccourcis clavier + navigation clavier + refonte du menu Aide (v1.51.0)
+
+KARMA : « pas de raccourci clavier pour Tracés », « avec TAB et Entrée pouvoir choisir le mode », « refondre le modal Aide en sous-modales depuis un modal principal qui liste les sections ». 3 lots dans une même release.
+
+#### 93.1 Lot A — Raccourcis + cheatsheet (`shortcuts.js`, `shortcutsCheatsheet.js`)
+- **Raccourci Tracés manquant ajouté** : `MAPPING.p = { action: "group:traces", label: … }` (`shortcuts.js`). Mapping complet : E/M/Z/S/T/**P**/L/B/R.
+- **Cheatsheet `?`** : nouveau module `js/shortcutsCheatsheet.js` → `window.ShortcutsCheatsheet = { ouvrir, fermer, toggle, isOpen }`. Modale `.kta-readme-modal-overlay` réutilisée + grille `.kta-cheat-*` / keycaps `.kta-kbd`. Les lignes "outils" sont **auto-générées** depuis `KtaShortcuts.listMapping()` (zéro liste à maintenir) ; libellés localisés via `cheatsheet.tool.*` (fr/en/es). Bloc fixe des combos (Ctrl+Z/Y, Ctrl+K, F, ?, Échap). La touche `?` est gérée dans le keydown de `shortcuts.js` **AVANT** le guard `e.shiftKey` (car `?` = Shift+… sur AZERTY ; `e.key === "?"` est layout-agnostique).
+- **Fix** : `_isModaleBloquante()` (`shortcuts.js`) couvre désormais `.kta-tracker-modal-overlay` → les raccourcis ne se déclenchent plus « derrière » le modal Tracker.
+
+#### 93.2 Lot B — Navigation clavier dans les menus (`interface.js > _installFocusNav`)
+- Helper partagé `_installFocusNav(container, opts)` branché sur **`_ouvrirFlyout`** (flyout latéral, partagé traces/zones/structures/édition/mesure/favoris) **ET** `_ouvrirTrackerModal` (modal Tracker).
+- À l'ouverture : **focus auto** la 1ʳᵉ action (`opts.firstSelector`, pas la croix). **TAB** cycle (piège de focus, dernier→premier + `Shift+Tab` inverse), **↑↓←→** déplacent, **Entrée/Espace** = activation native du `<button>`, **Échap** ferme si `opts.handleEscape` (flyout) sinon géré ailleurs (le modal Tracker garde son handler document-level). Le listener vit/meurt avec le conteneur (retiré du DOM à la fermeture → pas de cleanup explicite).
+
+#### 93.3 Lot C — Refonte du modal Aide en hub (`interfaceDocs.js`)
+- `afficherAide()` ne dump plus le HTML monolithique des **28 sections** dans un scroll, mais construit un **hub** : `_aideRendreHub(corps, en)` parse `_aideHtmlFr/En()` (rendu dans un `<div>` détaché → `querySelectorAll(".kta-aide-section")`) — **source de vérité inchangée**, refonte de présentation pure (blast radius minimal).
+- **Catégories** : `AIDE_CATEGORIES` (6 catégories × `idx` = index de section dans l'ordre du document, **IDENTIQUE FR/EN**). ⚠️ ajout/suppression/réordre d'une section → mettre à jour les index dans les 2 langues. Filet de sécurité : toute section non listée retombe dans « Autres ». L'intro `.kta-aide-intro` est préservée en tête.
+- **Sous-modale** : clic sur une rubrique → `_aideOuvrirSousModal(section, en)` = overlay `.kta-aide-submodal` (**z-index 100001**, au-dessus du hub) avec le **node de la section cloné** + bouton **← Retour** + ✕ + clic-fond + Échap. `_aideFermerSousModal()` la retire.
+- **Recherche** : `<input>` filtre les `.kta-aide-row` par titre + masque les titres de catégorie sans ligne visible + message « aucun résultat ». Ligne épinglée **⌨️ Raccourcis** → `ShortcutsCheatsheet.ouvrir()`.
+- **Parité FR/EN rétablie** : section « Menu Tracker / Tracker menu » ajoutée côté EN (les 2 langues ont 28 sections dans le même ordre). CSS `.kta-aide-hub-search` / `.kta-aide-row` / `.kta-aide-submodal*` (dark + thème clair).
+
+**Sources** v1.51.0 ; `shortcutsCheatsheet.js` ajouté à `index.html` (après `shortcuts.js`) + `sw.js > ASSETS_TO_CACHE`. i18n : 20 clés `cheatsheet.*`. Aucune nouvelle surface réseau (1 fichier same-origin).
+
+---
+
+### 94. Rangs de profil / gamification (v1.52.0)
+
+KARMA : « ajouter au profil une donnée PRO mais FUN — un rang (Novice/Confirmé/Expert…) selon temps passé / nb plans / km de galerie, avec un anneau autour de la photo différent par rang ». Feature **community / offline**.
+
+**Module pur** `js/profileGamification.js` → `window.ProfileGamification = { RANKS, computeRank, getScore, getProgress, nom, label }`. Aucun DOM / localStorage / réseau : prend `{plans, hours, km}`, renvoie rang / score / progression.
+- **6 rangs** (`RANKS`, ascendant) : `touriste` / `novice` / `confirme` / `expert` / `maitre` / `grandmaitre`, chacun `{emoji, ring (couleur), plans, hours, km}`.
+- **Seuils STATIQUES** (choix KARMA, pas de score qui pilote le badge) : `computeRank` renvoie le **palier le plus haut dont les 3 seuils sont tous remplis** (logique **AND « maillon faible »**). Seuils monotones croissants sur les 3 axes → la boucle s'arrête au 1er palier non atteint.
+- **Score** (`getScore` = `plans + heures + km`) **décoratif**, n'entre PAS dans le rang. `getProgress` = `{current, next, missing, pct}` (pct = ratio min sur les 3 seuils du palier suivant).
+
+**Plumbing (inline `index.html`)** — réutilise les compteurs EXISTANTS, zéro nouvelle collecte :
+- `_collectGamifMetrics()` : ⏱️ `myktamap_total_time_ms` (+ delta session) · 🗺️ plans ouverts (`PlanRegistry.getAll()` filtré sur `lastOpened`) · 📏 km = somme des `distM` (galeries cartographiées) du cache `myktamap_plan_stats_v1_<id>` par plan.
+- `_appliquerRangAvatar(wrapEl)` : pose `data-kta-rank` (→ couleur d'anneau CSS) + `title`, renvoie le rang. Appelé sur le wrap home ET le gros avatar de la modale.
+- `_hydrateProfileRank()` : remplit `#kta-profile-details-rank` (puce de rang + 3 métriques + barre de progression + score).
+- Bandeau home : **nom du rang sous le pseudo** (`#kta-loader-profile-rank`) + **médaille en coin** (`#kta-loader-profile-badge`, dans un `.kta-loader-profile-avatar-holder` `position:relative` car le wrap est `overflow:hidden` → sinon rognée ; cachée pour Touriste = pas d'emoji).
+
+**CSS** : couleurs par rang via `[data-kta-rank]` (variables `--kta-rank-ring/-fg/-bg`) ; anneau = `box-shadow` outset (conserve le shadow de profondeur) + glow pour Expert/Maître/Grand Maître ; `.kta-profile-rank-*` (puce, métriques, barre) + `.kta-loader-profile-badge` + thème clair.
+
+**Persistance** : `myktamap_total_time_ms` ajouté à `PREF_KEYS` (`profileExportImport.js`) → le temps survit à l'export/import profil (plans = registre exporté ; km = régénéré en rouvrant les plans). i18n : 10 clés `rank.*` fr/en/es. **Sources** v1.52.0 ; `profileGamification.js` dans `index.html` (après `userProfile.js`) + `sw.js`. Aucune nouvelle surface réseau (1 fichier same-origin).
+
+---
+
+### 95. Hauts faits / succès + stats bandeau score/feats (v1.53.0)
+
+KARMA : « rajouter plein de hauts faits (X plans géoréf, X plans, X km, X structures, X zones…) » puis « ajouter Score et Nombre de hauts faits aux stats du bandeau (cap mobile inchangé) ». Gamification v2, community / offline.
+
+**Module pur** `js/profileAchievements.js` → `window.ProfileAchievements = { FAMILIES, TIER_ICONS, total, list, unlockedIds, byId, nom, label }`.
+- **8 familles × 4 paliers = 32** succès. Paliers `TIER_ICONS = ["🥉","🥈","🥇","👑"]` (couronne = IV, choix KARMA). Chaque famille `{id, emoji, metric, unit, seuils:[4]}` ; id de succès = `<family>.t<i>`.
+- `list(metrics)` renvoie les 32 succès enrichis (`unlocked`, `pct`, `seuilLabel`…) ; `unlockedIds` = ceux dont `métrique ≥ seuil`. Métriques : `plans · plansGeoref · km · hours · pois · roads · zones · structures`.
+
+**Plumbing inline `index.html`** :
+- `_collectGamifMetrics` **étendu** : `plansGeoref` = nb de clés `myktamap_kmz_calib_<id>` ; `pois/roads/zones/structures` = somme du cache `myktamap_plan_stats_v1_<id>` (⚠️ champ **`structs`** côté cache).
+- `_evalAchievements()` : compare `unlockedIds` au stocké `myktamap_achievements_v1` (`{id: dateISO}`) → nouveaux = **toast** `OOMGuard.showToast`. **`firstRun`** (clé absente) = accord rétroactif **silencieux** (pas de spam au 1er calcul). Appelé au refresh du bandeau + à l'ouverture de la modale profil.
+- `_hydrateProfileFeats()` : grille dans `#kta-profile-details-feats` — en-tête `N/total` + 1 rangée par famille (emoji + nom + valeur courante + 4 médailles, allumées si débloquées / `grayscale+opacity` sinon, seuil en `title`).
+
+**🎨 Bandeau d'accueil** : 2 entrées ajoutées au pool `PROFILE_BAR_STATS` — `score` (⭐, `ProfileGamification.getScore`) et `feats` (🏆, `unlockedIds().length + "/" + total`). Rendu déjà pool-driven (`_hydrateProfileBarStats` + 2 branches) + 2 checkboxes. **Cap `PROFILE_BAR_STATS_MAX = 3` INCHANGÉ** (5 stats au choix, 3 max affichées).
+
+**Persistance** : `myktamap_achievements_v1` ajouté à `PREF_KEYS` (export profil). CSS `.kta-profile-details-feats` / `.kta-feat-*` (médailles `grayscale` verrouillées) + thème clair. i18n : 10 clés `feat.*` + 4 clés stats (`home.profile.statScore`/`statFeats` + tooltips) fr/en/es. **Sources** v1.53.0 ; `profileAchievements.js` dans `index.html` (après `profileGamification.js`) + `sw.js`. Aucune nouvelle surface réseau (1 fichier same-origin).
+
+#### 95.1 Hauts faits « spéciaux » one-shot (v1.54.0)
+
+Ajout d'un 2ᵉ groupe à `profileAchievements.js` : `SPECIALS` (6 succès uniques, `group:"special"`, **total 32 → 38**). Chaque entrée `{id, emoji, check(metrics, ctx)}` — débloqué si `check` vrai. `list()` calcule d'abord les 32 tiered, compte `tieredUnlocked`, puis évalue les spéciaux avec `ctx = {tieredUnlocked}` (pour **Complétiste** = méta « tout le tiered débloqué »). Les 5 autres : 🎨 Touche-à-tout (pois&roads&zones&structures ≥1) · 💯 Centurion (score≥100) · 🦇 Taupe (`hasTracked`) · 🧭 Spéléo multi-niveaux (`maxLevels≥2`) · 🌃 Marathon (`maxTrackerH≥4`).
+
+`_collectGamifMetrics` **étendu** (`index.html`) : `hasTracked` / `maxLevels` / `maxTrackerH` dérivés d'un **scan de `myktamap_session_v1_<id>`** par plan (présence + span temporel de `trackerTimeline`, distinct des `level` des éléments de session) + `score` (`ProfileGamification.getScore`). **Zéro wiring d'événement** — tout dérivé du localStorage existant (lecture seule). `_hydrateProfileFeats` ajoute la section **« 🎉 Spéciaux »** (chips `.kta-feat-sp` allumées/grisées) sous les 8 familles ; toast au déblocage inchangé. i18n `feat.specials` + `feat.sp.*` fr/en/es. **Sources** v1.54.0, **aucun nouveau fichier**, aucune nouvelle surface réseau.
+
+> 🥚 **Easter egg (v1.54.0)** : un 7ᵉ rang **secret `legende`** (👑, or ambre `#e0a51a`, seuils `Infinity` ; le Grand Maître prend la ⚜️ fleur de lys) est ajouté à `RANKS` dans `profileGamification.js`. `computeRank` renvoie ce rang **uniquement** si `_isKarma()` (pseudo profil = « karma », trim + lowercase) ; sinon plafonné à Grand Maître (les seuils `Infinity` le rendent inatteignable par les métriques). `getProgress` traite « legende » comme non-`next` (Grand Maître reste « max atteint »). **`rankByMetrics(metrics)`** exposé = rang d'après les métriques seules (sans egg) → la fiche profil affiche le rang mérité sous le message max (« Sans l'easter egg : <mini-puce> »). Anneau **or ambre pulsant** (`@keyframes kta-legende-glow` / `-big`, désactivé en `prefers-reduced-motion`). **Volontairement non documenté** côté user (README_USER / notes de version) — surprise.
+
+---
+
 **Bon code ! 🚀**
