@@ -1067,6 +1067,7 @@
   "home.add.fsBtn": "🔐 Autorizar el acceso permanente al archivo",
   "home.add.fsInfo": "En Chrome/Edge, autoriza una vez y la app podrá reabrir este ZIP con 1 clic después.",
   "home.add.generate": "🏗️ Generar un mapa",
+  "home.add.fusion": "🔗 Fusionar data layers",
   "home.add.load": "▶️ Cargar este mapa",
   "home.add.storeInfo": "El ZIP se copiará en el espacio local del navegador y se recargará con 1 clic. Recomendado en móvil.",
   "home.add.storeLabel": "💾 Memorizar este mapa en la app",

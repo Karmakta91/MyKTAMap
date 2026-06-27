@@ -493,6 +493,7 @@
                avancée cachée. -->
           <div class="loader-secondary-actions">
             <button class="loader-btn-secondary" type="button" id="loaderTableEditorBtn" data-i18n="home.add.editData">📊 Éditeur de données</button>
+            <button class="loader-btn-secondary" type="button" id="loaderFusionBtn" data-i18n="home.add.fusion">🔗 Fusionner des datalayers</button>
             <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn" data-i18n="home.add.generate">🏗️ Générer un plan</button>
           </div>
 
@@ -1901,6 +1902,17 @@
           const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
           if (typeof window.ouvrirTableEditor === "function") window.ouvrirTableEditor();
           else setStatus(_t("ui.alert.tableEditorIndispo"), true);
+        });
+      }
+
+      // 🔗 v1.55.0 — Fusionneur de datalayers accessible depuis le home : ouvre la
+      // modale « Enregistrer la session » directement sur l'onglet Fusion. L'onglet
+      // opère sur les fichiers uploadés, indépendamment d'un plan chargé.
+      const fusionBtn = document.getElementById("loaderFusionBtn");
+      if (fusionBtn) {
+        fusionBtn.addEventListener("click", function() {
+          if (typeof window.ouvrirExportSessionModal === "function") window.ouvrirExportSessionModal("fusion");
+          else console.warn("[Home] ouvrirExportSessionModal indisponible");
         });
       }
 

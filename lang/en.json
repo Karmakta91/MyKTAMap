@@ -1069,6 +1069,7 @@
   "home.add.fsBtn": "🔐 Allow permanent file access",
   "home.add.fsInfo": "On Chrome/Edge, allow once and the app will be able to reopen this ZIP in 1 click.",
   "home.add.generate": "🏗️ Generate a map",
+  "home.add.fusion": "🔗 Merge data layers",
   "home.add.load": "▶️ Load this map",
   "home.add.storeInfo": "The ZIP will be copied into the browser's local storage and reloaded in 1 click. Recommended on mobile.",
   "home.add.storeLabel": "💾 Remember this map in the app",

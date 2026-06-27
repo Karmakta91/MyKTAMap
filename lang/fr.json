@@ -1069,6 +1069,7 @@
   "home.add.fsBtn": "🔐 Autoriser l'accès permanent au fichier",
   "home.add.fsInfo": "Sur Chrome/Edge, autorise une fois et l'app pourra rouvrir ce ZIP en 1 clic ensuite.",
   "home.add.generate": "🏗️ Générer un plan",
+  "home.add.fusion": "🔗 Fusionner des datalayers",
   "home.add.load": "▶️ Charger ce plan",
   "home.add.storeInfo": "Le ZIP sera copié dans l'espace local du navigateur et rechargé en 1 clic. Recommandé sur mobile.",
   "home.add.storeLabel": "💾 Mémoriser ce plan dans l'app",

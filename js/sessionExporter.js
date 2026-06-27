@@ -471,10 +471,12 @@
   }
 
   // ========== ENTRÉE PUBLIQUE ==========
-  window.ouvrirExportSessionModal = function() {
+  window.ouvrirExportSessionModal = function(initialTab) {
     _injecterStyles();
     if (_modal) { _modal.remove(); _modal = null; }
-    _activeTab = "full";
+    // initialTab optionnel (ex. "fusion" depuis le home) ; défaut "full".
+    const TABS = ["full", "advanced", "conversion", "extern", "fusion"];
+    _activeTab = (typeof initialTab === "string" && TABS.indexOf(initialTab) >= 0) ? initialTab : "full";
     _afficherModal();
   };
 
