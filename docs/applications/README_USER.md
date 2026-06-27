@@ -2364,7 +2364,7 @@ Si tu actives le mode sur un plan existant :
 
 > Tous les boutons d'export se trouvent dans le groupe **⬆️ Enregistrer** de la barre latérale.
 
-### 💾 Enregistrer une session
+### 📤 Exporter
 
 Appuyez sur **⬆️ → 💾**. Une modale s'ouvre avec **3 onglets** au choix :
 
@@ -2686,7 +2686,7 @@ Tu peux ensuite ajouter tes calques de données (vides), tracking, icônes et **
 
 ### 📦 Importer un datalayer ZIP en un clic
 
-Dans la section **📊 Calques de données** du générateur, un encadré jaune doré propose **📦 Choisir un ZIP datalayer…**. Il sert à **récupérer en un coup** les calques + photos d'un autre plan, exportés via **💾 Enregistrer la session → 🔄 Conversion → ✏️→🗂️ Session vers data layer** (avec la case 📸 Photos cochée pour les inclure).
+Dans la section **📊 Calques de données** du générateur, un encadré jaune doré propose **📦 Choisir un ZIP datalayer…**. Il sert à **récupérer en un coup** les calques + photos d'un autre plan, exportés via **📤 Exporter → 🔄 Conversion → ✏️→🗂️ Session vers data layer** (avec la case 📸 Photos cochée pour les inclure).
 
 **Cas d'usage typique** :
 1. KARMA voit un copain qui a annoté un plan (points + tracés + zones + structures + photos) et qui exporte un `data_<plan>.zip` via la Conversion
@@ -2884,7 +2884,7 @@ Si malgré le mode Performance, ton plan crashe encore (typiquement plans 4000+ 
 
 Les plans très gros peuvent occasionner des **kills mémoire silencieux** sur iOS — l'OS tue l'onglet sans prévenir pour récupérer de la RAM. L'app détecte ce kill au reboot et te montre un toast d'avertissement.
 
-> 📌 **Réflexe** : exporte ta session (💾 Enregistrer la session) tous les 10-15 minutes de travail intensif. L'auto-save localStorage protège déjà contre la plupart des cas, mais un export externe reste le plus sûr.
+> 📌 **Réflexe** : exporte ta session (📤 Exporter) tous les 10-15 minutes de travail intensif. L'auto-save localStorage protège déjà contre la plupart des cas, mais un export externe reste le plus sûr.
 
 ### Récap rapide
 

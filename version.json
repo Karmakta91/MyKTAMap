@@ -2,6 +2,6 @@
   "version": "v1.55.0",
   "released": "2026-06-27",
   "notes": [
-    "🔗 Nouveau : fusionnez plusieurs fichiers de données (« data layers ») en un seul jeu par type — pratique pour assembler un grand plan construit en plusieurs sessions. Depuis l'accueil ou « Enregistrer la session » → onglet Fusion."
+    "🔗 Nouveau : fusionnez plusieurs fichiers de données (« data layers ») en un seul jeu par type — pratique pour assembler un grand plan construit en plusieurs sessions. Depuis l'accueil ou « Exporter » → onglet Fusion."
   ]
 }
