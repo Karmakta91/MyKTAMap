@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.54.0** (24 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »). _v1.54.0 — 6 hauts faits « spéciaux » en plus (one-shot), dérivés 100 % en local de compteurs et sessions déjà présents (lecture seule du localStorage, ex. `myktamap_session_v1_*`). Aucun nouveau fichier, aucune nouvelle surface réseau, aucune nouvelle permission, aucune nouvelle donnée collectée._
+> Page de transparence technique. À jour pour la version **v1.54.1** (27 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »). _v1.54.1 — 2 corrections d'interface (fermeture zone/structure au clic ; doublon de point en mode itinéraire) + consolidation interne : 2 fichiers JS internes ajoutés (modales « journal réseau » et « gestion du Service Worker » **extraites d'`index.html`** — déplacement pur), **même surface réseau qu'avant**. Aucune nouvelle permission, aucune nouvelle donnée collectée._
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
