@@ -1911,7 +1911,7 @@
       const fusionBtn = document.getElementById("loaderFusionBtn");
       if (fusionBtn) {
         fusionBtn.addEventListener("click", function() {
-          if (typeof window.ouvrirExportSessionModal === "function") window.ouvrirExportSessionModal("fusion");
+          if (typeof window.ouvrirExportSessionModal === "function") window.ouvrirExportSessionModal("fusion", true);
           else console.warn("[Home] ouvrirExportSessionModal indisponible");
         });
       }

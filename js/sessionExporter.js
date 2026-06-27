@@ -31,6 +31,9 @@
   // + dupIds (ids POI en double détectés, concat brut conservé — alerte seulement).
   let _fusionInputs = [];
   let _fusionMerged = null;
+  // Mode "solo" : modale focalisée sur un seul onglet (barre masquée), ex. le
+  // fusionneur ouvert depuis l'accueil via ouvrirExportSessionModal("fusion", true).
+  let _soloTab = false;
 
   // v1.14.1 — onglet unifié "📡 Export externe" (KMZ + GPX partagent
   // le même calibrage GPS 2 points). Persisté côté localStorage pour
@@ -471,12 +474,15 @@
   }
 
   // ========== ENTRÉE PUBLIQUE ==========
-  window.ouvrirExportSessionModal = function(initialTab) {
+  window.ouvrirExportSessionModal = function(initialTab, solo) {
     _injecterStyles();
     if (_modal) { _modal.remove(); _modal = null; }
     // initialTab optionnel (ex. "fusion" depuis le home) ; défaut "full".
-    const TABS = ["full", "advanced", "conversion", "extern", "fusion"];
+    const TABS = ["full", "advanced", "conversion", "fusion", "extern"];
     _activeTab = (typeof initialTab === "string" && TABS.indexOf(initialTab) >= 0) ? initialTab : "full";
+    // solo = true → modale focalisée sur un seul onglet (barre d'onglets masquée
+    // + titre = libellé de l'onglet), ex. le fusionneur ouvert depuis l'accueil.
+    _soloTab = !!solo && TABS.indexOf(_activeTab) >= 0;
     _afficherModal();
   };
 
@@ -618,16 +624,16 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${t("export.modal.titre")}</span>
+          <span class="kta-readme-modal-titre">${_soloTab ? t("home.add.fusion") : t("export.modal.titre")}</span>
           <button class="kta-panneau-close" id="kta-ses-close">✕</button>
         </div>
 
-        <div class="kta-ses-tabs">
+        <div class="kta-ses-tabs"${_soloTab ? ' style="display:none;"' : ''}>
           <button class="kta-ses-tab" data-tab="full">${t("export.tab.full")}</button>
           <button class="kta-ses-tab" data-tab="advanced">${t("export.tab.advanced")}</button>
           <button class="kta-ses-tab" data-tab="conversion">${t("export.tab.conversion")}</button>
-          <button class="kta-ses-tab" data-tab="extern">${t("export.tab.extern")}</button>
           <button class="kta-ses-tab" data-tab="fusion">${t("export.tab.fusion")}</button>
+          <button class="kta-ses-tab" data-tab="extern">${t("export.tab.extern")}</button>
         </div>
 
         <div class="kta-ses-content" id="kta-ses-content"></div>
