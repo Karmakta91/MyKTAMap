@@ -1,8 +1,7 @@
 {
-  "version": "v1.54.1",
+  "version": "v1.55.0",
   "released": "2026-06-27",
   "notes": [
-    "🛠️ Fermer une zone ou une structure en recliquant sur son premier point arrête maintenant l'outil — fini les points fantômes sur le tracé suivant.",
-    "🛠️ Mode itinéraire : un clic sur la carte n'ajoute plus qu'un seul point (plus de doublon au même endroit)."
+    "🔗 Nouveau : fusionnez plusieurs fichiers de données (« data layers ») en un seul jeu par type — pratique pour assembler un grand plan construit en plusieurs sessions. Depuis l'accueil ou « Enregistrer la session » → onglet Fusion."
   ]
 }

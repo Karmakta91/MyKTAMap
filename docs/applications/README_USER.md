@@ -2405,6 +2405,16 @@ Téléchargement direct si 1 seul fichier, ZIP sinon.
 
 > 💡 La conversion est utile pour figer une partie de ton travail dans un plan permanent. Une fois converties en data layer, ces données ne sont plus modifiables depuis l'application.
 
+#### 🔗 Fusion (fusionner plusieurs data layers)
+Tu construis un gros plan en **plusieurs sessions** et tu te retrouves avec plein de fichiers (`Point1.json`, `Point2.json`, `Road1.json`…) ? L'onglet **🔗 Fusion** les **regroupe en un seul jeu par type**.
+
+- Glisse/sélectionne **N fichiers** data layer (`.json` et/ou `.zip`, cumulables).
+- L'app les **concatène par catégorie** : tous les points → `points.json`, tous les tracés → `roads.json`, toutes les zones → `zones.json`, toutes les structures → `structure.json`.
+- Un **aperçu** affiche les totaux et te **prévient** si des identifiants de points sont en double (les doublons sont conservés tels quels).
+- **Télécharge** le résultat (un ZIP, ou un `.json` direct s'il n'y a qu'une seule catégorie), prêt à déposer dans le dossier de ton plan.
+
+Accessible aussi **directement depuis l'accueil** (bouton « 🔗 Fusionner des datalayers », entre « 📊 Éditeur de données » et « 🏗️ Générer un plan ») — pas besoin d'avoir un plan ouvert. **100 % local**, aucune donnée envoyée.
+
 ### 🖼️ Exporter en PNG/JPG
 
 Appuyez sur **⬆️ → 🖼️ Plan en image**. Une modale s'ouvre avec deux modes :

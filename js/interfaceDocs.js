@@ -1108,7 +1108,7 @@ function _aideHtmlFr() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⬆️ Enregistrer</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">💾</span><span>Enregistrer la session — modale avec 4 onglets : 🚀 Full · 🎨 Avancé · 🔄 Conversion · <strong>📡 Export externe (KMZ + GPX)</strong>. L'export Full embarque la <strong>timeline tracker complète</strong> (parcours + timeline temporelle datée + heure de départ) → permet de transporter l'historique GPS entre appareils (heatmap multi-sessions + replay multi-appareils). Ignoré en conversion de calque.</span>
+            <span class="kta-aide-icone">💾</span><span>Enregistrer la session — modale avec 5 onglets : 🚀 Full · 🎨 Avancé · 🔄 Conversion · <strong>📡 Export externe (KMZ + GPX)</strong> · <strong>🔗 Fusion</strong> (fusionne N fichiers data layer en 1 fichier par type — aussi accessible depuis l'accueil). L'export Full embarque la <strong>timeline tracker complète</strong> (parcours + timeline temporelle datée + heure de départ) → permet de transporter l'historique GPS entre appareils (heatmap multi-sessions + replay multi-appareils). Ignoré en conversion de calque.</span>
             <span class="kta-aide-icone">📡</span><span><strong>Case tracker — mode Avancé</strong> — dans la modale 🖼️ Export image, la case « Position du tracker » montre le compteur de points du tracé (ex : « + tracé 142 pts ») pour visualiser ce qui sera gravé sur l'image.</span>
             <span class="kta-aide-icone">🖼️</span><span>Exporter en PNG/JPG — modale avec mode Rapide / Avancé</span>
             <span class="kta-aide-icone">📤</span><span><strong>Exporter en PDF imprimable</strong> — A0 à A4 × portrait/paysage, légende positionnable dans un coin</span>
@@ -1773,7 +1773,7 @@ function _aideHtmlEn() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⬆️ Save</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">💾</span><span>Save the session — modal with 4 tabs: 🚀 Full · 🎨 Advanced · 🔄 Conversion · <strong>📡 External export (KMZ + GPX)</strong>. The Full export embeds the <strong>complete tracker timeline</strong> (route + dated temporal timeline + departure time) → lets you carry the GPS history between devices (multi-session heatmap + multi-device replay). Ignored in layer conversion.</span>
+            <span class="kta-aide-icone">💾</span><span>Save the session — modal with 5 tabs: 🚀 Full · 🎨 Advanced · 🔄 Conversion · <strong>📡 External export (KMZ + GPX)</strong> · <strong>🔗 Merge</strong> (merges N data layer files into 1 file per type — also accessible from the home screen). The Full export embeds the <strong>complete tracker timeline</strong> (route + dated temporal timeline + departure time) → lets you carry the GPS history between devices (multi-session heatmap + multi-device replay). Ignored in layer conversion.</span>
             <span class="kta-aide-icone">📡</span><span><strong>Tracker checkbox — Advanced mode</strong> — in the 🖼️ Image export modal, the "Tracker position" checkbox shows the path's point counter (e.g. "+ path 142 pts") to visualize what will be burned onto the image.</span>
             <span class="kta-aide-icone">🖼️</span><span>Export to PNG/JPG — modal with Quick / Advanced mode</span>
             <span class="kta-aide-icone">📤</span><span><strong>Export to printable PDF</strong> — A0 to A4 × portrait/landscape, legend positionable in a corner</span>

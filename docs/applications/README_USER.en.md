@@ -2400,6 +2400,16 @@ Direct download if 1 single file, ZIP otherwise.
 
 > 💡 Conversion is useful for freezing part of your work in a permanent map. Once converted to a data layer, this data is no longer modifiable from the application.
 
+#### 🔗 Merge (combine several data layers)
+Building a large map across **several sessions** and ending up with lots of files (`Point1.json`, `Point2.json`, `Road1.json`…)? The **🔗 Merge** tab **groups them into a single set per type**.
+
+- Drop/select **N** data layer files (`.json` and/or `.zip`, can be added cumulatively).
+- The app **concatenates them by category**: all points → `points.json`, all paths → `roads.json`, all zones → `zones.json`, all structures → `structure.json`.
+- A **preview** shows the totals and **warns** you if any point ids are duplicated (duplicates are kept as-is).
+- **Download** the result (a ZIP, or a direct `.json` if there is only one category), ready to drop into your map folder.
+
+Also available **directly from the home screen** ("🔗 Merge data layers" button, between "📊 Data editor" and "🏗️ Generate a map") — no need to have a map open. **100% local**, no data sent.
+
 ### 🖼️ Export to PNG/JPG
 
 Press **⬆️ → 🖼️ Map as image**. A modal opens with two modes:
