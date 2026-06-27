@@ -526,7 +526,7 @@ window._majLabelDistanceItineraire = _majLabelDistanceItineraire;
 let _itineraryWaypoints   = [];
 let _itineraryMarkerLayer = null;     // layer Leaflet contenant les markers numérotés
 let _itineraryClickActive = false;
-let _itineraryClickHandler = null;
+// Handler à RÉFÉRENCE STABLE (cf _itineraryMapClick) : on/off idempotents.
 
 // 🆕 v1.34.27 — Expose les waypoints de l'iti actif en lecture seule pour que
 // tracking.js puisse détecter quand l'user arrive à proximité (vibration
@@ -625,30 +625,35 @@ function _rafraichirListeWaypointsModale() {
   });
 }
 
+// 🐛 fix double-input : handler à RÉFÉRENCE STABLE (toujours la même fonction).
+// L'itinéraire est le seul mode qui bind/unbind le clic carte à chaque
+// activation — avec une closure recréée à chaque fois, un cycle interrompu
+// (rebuild de modale, plan switch…) pouvait laisser un 1er handler bindé et un
+// 2e s'ajouter → 1 clic = 2 waypoints (même coordonnée). Réf stable + off-avant-on
+// = binding idempotent (exactement 1 handler, quoi qu'il arrive).
+function _itineraryMapClick(e) {
+  // Coords plan (cf. convention du projet : convertCoord inverse y)
+  const x = e.latlng.lng;
+  const y = APP_CONFIG.imageHeight - e.latlng.lat;
+  _itineraryWaypoints.push({ x: x, y: y, source: "click" });
+  _ajouterWaypointVisuel({ x: x, y: y }, _itineraryWaypoints.length);
+  _rafraichirListeWaypointsModale();
+  _majPanneauFloaterCount();
+}
+
 function _activerModeClicCarte() {
   if (_itineraryClickActive) return;
   _itineraryClickActive = true;
   if (window.map) {
-    _itineraryClickHandler = function(e) {
-      // Coords plan (cf. convention du projet : convertCoord inverse y)
-      const x = e.latlng.lng;
-      const y = APP_CONFIG.imageHeight - e.latlng.lat;
-      _itineraryWaypoints.push({ x: x, y: y, source: "click" });
-      _ajouterWaypointVisuel({ x: x, y: y }, _itineraryWaypoints.length);
-      _rafraichirListeWaypointsModale();
-      _majPanneauFloaterCount();
-    };
-    window.map.on("click", _itineraryClickHandler);
+    window.map.off("click", _itineraryMapClick);  // défensif : 0 avant +1
+    window.map.on("click", _itineraryMapClick);
   }
 }
 
 function _desactiverModeClicCarte() {
   if (!_itineraryClickActive) return;
   _itineraryClickActive = false;
-  if (window.map && _itineraryClickHandler) {
-    window.map.off("click", _itineraryClickHandler);
-  }
-  _itineraryClickHandler = null;
+  if (window.map) window.map.off("click", _itineraryMapClick);
 }
 
 function _viderItineraire() {
