@@ -1,7 +1,7 @@
 {
-  "version": "v1.54.0",
-  "released": "2026-06-24",
+  "version": "v1.55.0",
+  "released": "2026-06-27",
   "notes": [
-    "🎉 6 nouveaux hauts faits « spéciaux » à débloquer : Touche-à-tout, Centurion, Taupe, Spéléo multi-niveaux, Marathon souterrain et Complétiste — 38 au total dans votre fiche profil."
+    "🔗 Nouveau : fusionnez plusieurs fichiers de données (« data layers ») en un seul jeu par type — pratique pour assembler un grand plan construit en plusieurs sessions. Depuis l'accueil ou « Exporter » → onglet Fusion."
   ]
 }

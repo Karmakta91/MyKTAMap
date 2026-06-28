@@ -283,6 +283,9 @@ function initStructures() {
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("struct.undo.close", { type: _typeLabel }), _historyBefore, "structures");
         }
+        // 🐛 fix : idem zones — fermeture au clic éteint l'outil (sinon bouton
+        // reste actif + window.modeStructure armé → clic suivant incohérent).
+        if (typeof window._fermerModeStructure === "function") window._fermerModeStructure();
         return;
       }
     }

@@ -179,6 +179,10 @@ function initZones() {
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("history.action.closeZone", { type: _typeLabel }), _historyBefore, "zones");
         }
+        // 🐛 fix : fermeture au clic = on éteint aussi l'outil (sinon le bouton
+        // reste actif + window.modeZone armé → le clic suivant relance une zone
+        // dans un état incohérent). _fermerModeZone gère désactivation + UI.
+        if (typeof window._fermerModeZone === "function") window._fermerModeZone();
         return;
       }
     }

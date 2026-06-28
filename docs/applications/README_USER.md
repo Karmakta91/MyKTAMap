@@ -2364,7 +2364,7 @@ Si tu actives le mode sur un plan existant :
 
 > Tous les boutons d'export se trouvent dans le groupe **⬆️ Enregistrer** de la barre latérale.
 
-### 💾 Enregistrer une session
+### 📤 Exporter
 
 Appuyez sur **⬆️ → 💾**. Une modale s'ouvre avec **3 onglets** au choix :
 
@@ -2404,6 +2404,16 @@ Cases à cocher : Points / Tracés / Zones / Structures (avec **filtrage par tag
 Téléchargement direct si 1 seul fichier, ZIP sinon.
 
 > 💡 La conversion est utile pour figer une partie de ton travail dans un plan permanent. Une fois converties en data layer, ces données ne sont plus modifiables depuis l'application.
+
+#### 🔗 Fusion (fusionner plusieurs data layers)
+Tu construis un gros plan en **plusieurs sessions** et tu te retrouves avec plein de fichiers (`Point1.json`, `Point2.json`, `Road1.json`…) ? L'onglet **🔗 Fusion** les **regroupe en un seul jeu par type**.
+
+- Glisse/sélectionne **N fichiers** data layer (`.json` et/ou `.zip`, cumulables).
+- L'app les **concatène par catégorie** : tous les points → `points.json`, tous les tracés → `roads.json`, toutes les zones → `zones.json`, toutes les structures → `structure.json`.
+- Un **aperçu** affiche les totaux et te **prévient** si des identifiants de points sont en double (les doublons sont conservés tels quels).
+- **Télécharge** le résultat (un ZIP, ou un `.json` direct s'il n'y a qu'une seule catégorie), prêt à déposer dans le dossier de ton plan.
+
+Accessible aussi **directement depuis l'accueil** (bouton « 🔗 Fusionner des datalayers », entre « 📊 Éditeur de données » et « 🏗️ Générer un plan ») — pas besoin d'avoir un plan ouvert. **100 % local**, aucune donnée envoyée.
 
 ### 🖼️ Exporter en PNG/JPG
 
@@ -2676,7 +2686,7 @@ Tu peux ensuite ajouter tes calques de données (vides), tracking, icônes et **
 
 ### 📦 Importer un datalayer ZIP en un clic
 
-Dans la section **📊 Calques de données** du générateur, un encadré jaune doré propose **📦 Choisir un ZIP datalayer…**. Il sert à **récupérer en un coup** les calques + photos d'un autre plan, exportés via **💾 Enregistrer la session → 🔄 Conversion → ✏️→🗂️ Session vers data layer** (avec la case 📸 Photos cochée pour les inclure).
+Dans la section **📊 Calques de données** du générateur, un encadré jaune doré propose **📦 Choisir un ZIP datalayer…**. Il sert à **récupérer en un coup** les calques + photos d'un autre plan, exportés via **📤 Exporter → 🔄 Conversion → ✏️→🗂️ Session vers data layer** (avec la case 📸 Photos cochée pour les inclure).
 
 **Cas d'usage typique** :
 1. KARMA voit un copain qui a annoté un plan (points + tracés + zones + structures + photos) et qui exporte un `data_<plan>.zip` via la Conversion
@@ -2874,7 +2884,7 @@ Si malgré le mode Performance, ton plan crashe encore (typiquement plans 4000+ 
 
 Les plans très gros peuvent occasionner des **kills mémoire silencieux** sur iOS — l'OS tue l'onglet sans prévenir pour récupérer de la RAM. L'app détecte ce kill au reboot et te montre un toast d'avertissement.
 
-> 📌 **Réflexe** : exporte ta session (💾 Enregistrer la session) tous les 10-15 minutes de travail intensif. L'auto-save localStorage protège déjà contre la plupart des cas, mais un export externe reste le plus sûr.
+> 📌 **Réflexe** : exporte ta session (📤 Exporter) tous les 10-15 minutes de travail intensif. L'auto-save localStorage protège déjà contre la plupart des cas, mais un export externe reste le plus sûr.
 
 ### Récap rapide
 

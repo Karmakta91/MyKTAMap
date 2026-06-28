@@ -757,6 +757,13 @@ function _fermerModeStructure() {
   delete _modesActifs["structure"];
 }
 
+// 🆕 Exposé pour zones.js / structures.js : la fermeture AU CLIC (re-clic sur
+// le 1er point, gérée dans leur propre handler Leaflet) doit aussi éteindre
+// l'outil dans la sidebar — sinon le bouton reste kta-actif + window.modeX
+// armé → confusion au clic suivant (KARMA : « zone fermée → on arrête l'icône »).
+window._fermerModeZone      = _fermerModeZone;
+window._fermerModeStructure = _fermerModeStructure;
+
 // =========================
 // 🆕 v1.48.0 — CURSEUR DE PRÉCISION (a11y)
 // =========================

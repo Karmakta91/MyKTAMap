@@ -145,7 +145,7 @@ A **permanent info alert** (blue 🚨 badge) is broadcast via the public alerts 
 Your data (list of maps, sessions, preferences) is **linked to the domain** (web security rule — isolated origins). It will NOT follow automatically. You must act before the cutoff:
 
 1. **📚 Export your map list**: in the loader, **📚 My maps** section → **💾** button → download a `.config` file containing all your saved maps (metadata + references). On the new domain, you will import this `.config` via the **📂** button at the same place.
-2. **💾 Export your sessions**: on each open map, use **💾 Save session** (Full or Advanced) → download a `.json` per session (annotations, paths, zones, custom points in progress).
+2. **💾 Export your sessions**: on each open map, use **📤 Export** (Full or Advanced) → download a `.json` per session (annotations, paths, zones, custom points in progress).
 3. **📦 Keep your map ZIPs** that you had imported. Local blobs stored in the browser are not exportable — you will need to re-import the ZIPs manually on the new domain via the usual drag-and-drop.
 4. **On July 15, 2026**: go to `myktamap.fr` → import the map list `.config` + re-import the ZIPs + import the session `.json` files on each corresponding map.
 5. **📱 If you had installed the app on your home screen** (PWA): you will need to manually delete the old icon then reinstall from `myktamap.fr` (since the origins are different, the installed icon points to the old domain).
@@ -663,7 +663,7 @@ Otherwise you can **📥 import your own PDF** from your device (1 PDF per plan,
 
 ### 📦 Bundled into session export
 
-When you 💾 Save session, both your Markdown free note AND your Story-mode PDF are automatically embedded in the `.mkmsession.zip` file. On re-import (on another device, or to share with a partner), everything is restored on the current plan. Backward-compatible (an old file without these fields still loads fine).
+When you 📤 Export, both your Markdown free note AND your Story-mode PDF are automatically embedded in the `.mkmsession.zip` file. On re-import (on another device, or to share with a partner), everything is restored on the current plan. Backward-compatible (an old file without these fields still loads fine).
 
 In **anonymized** mode, note + PDF are intentionally omitted from the ZIP (may contain personal info).
 
@@ -2053,7 +2053,7 @@ You can attach up to **5 photos per point** (anti-saturation limit for browser s
 3. In the app: a **📸 N** counter is displayed in the top bar (alongside the other counters 📍 / 🛣 / ⬛ / 🏛️). Click on it → "📊 Session details" modal with breakdown per point.
 
 **Sharing / saving**: photos are **included** in:
-- 💾 Save session → tab 📦 Full / 🎨 Advanced / 🔄 Conversion → check "📸 Include photos"
+- 📤 Export → tab 📦 Full / 🎨 Advanced / 🔄 Conversion → check "📸 Include photos"
 - Re-import session ZIP → photos automatically restored
 - 📦 Map ZIP generator (Modify mode) → option "📸 Include attached photos"
 - When creating a new map via the generator, button "📦 Import a datalayer ZIP in one click" → you can recover the points + photos exported from another map
@@ -2359,7 +2359,7 @@ If you enable the mode on an existing map:
 
 > All export buttons are located in the **⬆️ Save** group of the sidebar.
 
-### 💾 Save a session
+### 📤 Export
 
 Press **⬆️ → 💾**. A modal opens with **3 tabs** to choose from:
 
@@ -2399,6 +2399,16 @@ Checkboxes: Points / Paths / Zones / Structures (with **tag filtering** for poin
 Direct download if 1 single file, ZIP otherwise.
 
 > 💡 Conversion is useful for freezing part of your work in a permanent map. Once converted to a data layer, this data is no longer modifiable from the application.
+
+#### 🔗 Merge (combine several data layers)
+Building a large map across **several sessions** and ending up with lots of files (`Point1.json`, `Point2.json`, `Road1.json`…)? The **🔗 Merge** tab **groups them into a single set per type**.
+
+- Drop/select **N** data layer files (`.json` and/or `.zip`, can be added cumulatively).
+- The app **concatenates them by category**: all points → `points.json`, all paths → `roads.json`, all zones → `zones.json`, all structures → `structure.json`.
+- A **preview** shows the totals and **warns** you if any point ids are duplicated (duplicates are kept as-is).
+- **Download** the result (a ZIP, or a direct `.json` if there is only one category), ready to drop into your map folder.
+
+Also available **directly from the home screen** ("🔗 Merge data layers" button, between "📊 Data editor" and "🏗️ Generate a map") — no need to have a map open. **100% local**, no data sent.
 
 ### 🖼️ Export to PNG/JPG
 
@@ -2670,7 +2680,7 @@ You can then add your data layers (empty), tracking, icons and **📦 Generate Z
 
 ### 📦 Import a datalayer ZIP in one click
 
-In the **📊 Data layers** section of the generator, a golden yellow box offers **📦 Choose a datalayer ZIP…**. It serves to **retrieve in one go** the layers + photos from another map, exported via **💾 Save session → 🔄 Conversion → ✏️→🗂️ Session to data layer** (with the 📸 Photos checkbox checked to include them).
+In the **📊 Data layers** section of the generator, a golden yellow box offers **📦 Choose a datalayer ZIP…**. It serves to **retrieve in one go** the layers + photos from another map, exported via **📤 Export → 🔄 Conversion → ✏️→🗂️ Session to data layer** (with the 📸 Photos checkbox checked to include them).
 
 **Typical use case**:
 1. KARMA sees a friend who has annotated a map (points + paths + zones + structures + photos) and who exports a `data_<map>.zip` via Conversion
@@ -2868,7 +2878,7 @@ If despite Performance mode, your map still crashes (typically 4000+ × 2000+ pi
 
 Very large maps can cause **silent memory kills** on iOS — the OS kills the tab without warning to reclaim RAM. The app detects this kill at reboot and shows you a warning toast.
 
-> 📌 **Reflex**: export your session (💾 Save session) every 10-15 minutes of intensive work. Local auto-save already protects against most cases, but an external export is the safest.
+> 📌 **Reflex**: export your session (📤 Export) every 10-15 minutes of intensive work. Local auto-save already protects against most cases, but an external export is the safest.
 
 ### Quick recap
 
@@ -2938,7 +2948,7 @@ Access the settings by clicking **⚙️**:
 
 ### 🎯 Georeferencing pickers
 
-The 2-point pickers (GPS calibration for KMZ / GPX) are available in **⚙️ Settings → Georeferencing tab** (in addition to the **Save session → 🌍 KMZ** modal):
+The 2-point pickers (GPS calibration for KMZ / GPX) are available in **⚙️ Settings → Georeferencing tab** (in addition to the **Export → 🌍 KMZ** modal):
 
 - **🔍 Search a point** on the map to auto-fill x/y
 - **📍 Map click** to directly point to a position
@@ -3189,7 +3199,7 @@ The app has **no ambition to replace** old annotated paper maps, outings guided 
 
 - 🌐 **100% offline by default** — the app works without a network once the map is loaded. You can launch it on a plane, in the metro, or 30 m underground.
 - 🔒 **Zero telemetry** — no third-party service is called to track you. The only possible external fetch is the update of the app code (and you can disable it). The auditor can verify in `🔒 Network audit`.
-- 📦 **Data ownership** — your annotations, your photos, your measurements are stored **locally**, in the browser. No one else has access to them. You can export everything at any time (`💾 Save session`) and erase everything in 2 clicks (`💥 Reset everything`).
+- 📦 **Data ownership** — your annotations, your photos, your measurements are stored **locally**, in the browser. No one else has access to them. You can export everything at any time (`📤 Export`) and erase everything in 2 clicks (`💥 Reset everything`).
 - 🤝 **Open code** — the license is `CC BY-NC-SA 4.0`. You can read the code, audit it. No black box, no marketing.
 - ⚖️ **Discretion = respect** — a map shared carelessly is a weakened place. The app contains no maps by default; it is up to each user to load their own, and **not to distribute them** beyond the circle of trust.
 

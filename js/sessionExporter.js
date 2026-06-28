@@ -23,7 +23,17 @@
   }
 
   let _modal = null;
-  let _activeTab = "full"; // "full" | "advanced" | "conversion" | "extern"
+  let _activeTab = "full"; // "full" | "advanced" | "conversion" | "extern" | "fusion"
+
+  // 🔗 Fusion de datalayers (v1.55.0) : ingère N fichiers data layer (.json/.zip),
+  // concatène par CATÉGORIE de contenu (data/roads/zones/structures) et ressort
+  // un fichier par type. _fusionInputs = [{name, json}] ; _fusionMerged = résultat
+  // + dupIds (ids POI en double détectés, concat brut conservé — alerte seulement).
+  let _fusionInputs = [];
+  let _fusionMerged = null;
+  // Mode "solo" : modale focalisée sur un seul onglet (barre masquée), ex. le
+  // fusionneur ouvert depuis l'accueil via ouvrirExportSessionModal("fusion", true).
+  let _soloTab = false;
 
   // v1.14.1 — onglet unifié "📡 Export externe" (KMZ + GPX partagent
   // le même calibrage GPS 2 points). Persisté côté localStorage pour
@@ -446,15 +456,33 @@
       html.kta-theme-light .kta-ses-fmt-desc strong {
         color: #3a2f15;
       }
+      /* 🔗 Fusion datalayers (v1.55.0) */
+      .kta-fusion-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+      .kta-fusion-file { display: flex; justify-content: space-between; gap: 10px;
+        padding: 6px 10px; background: rgba(140,180,255,0.07); border-radius: 6px;
+        font-size: 0.86em; }
+      .kta-fusion-file-name { color: #c8d0e0; word-break: break-all; }
+      .kta-fusion-file-cats { color: #8892a4; white-space: nowrap; }
+      .kta-fusion-clear-btn { float: right; background: none; border: 1px solid #8892a4;
+        color: #c8d0e0; border-radius: 6px; padding: 1px 8px; font-size: 0.8em; cursor: pointer; }
+      .kta-fusion-clear-btn:hover { border-color: #ff8c8c; color: #ff8c8c; }
+      .kta-fusion-warn { margin-top: 8px; padding: 8px 10px; border-radius: 6px;
+        background: rgba(244,197,66,0.12); border: 1px solid rgba(244,197,66,0.4);
+        color: #f4c542; font-size: 0.86em; }
     `;
     document.head.appendChild(s);
   }
 
   // ========== ENTRÉE PUBLIQUE ==========
-  window.ouvrirExportSessionModal = function() {
+  window.ouvrirExportSessionModal = function(initialTab, solo) {
     _injecterStyles();
     if (_modal) { _modal.remove(); _modal = null; }
-    _activeTab = "full";
+    // initialTab optionnel (ex. "fusion" depuis le home) ; défaut "full".
+    const TABS = ["full", "advanced", "conversion", "fusion", "extern"];
+    _activeTab = (typeof initialTab === "string" && TABS.indexOf(initialTab) >= 0) ? initialTab : "full";
+    // solo = true → modale focalisée sur un seul onglet (barre d'onglets masquée
+    // + titre = libellé de l'onglet), ex. le fusionneur ouvert depuis l'accueil.
+    _soloTab = !!solo && TABS.indexOf(_activeTab) >= 0;
     _afficherModal();
   };
 
@@ -596,14 +624,15 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${t("export.modal.titre")}</span>
+          <span class="kta-readme-modal-titre">${_soloTab ? t("home.add.fusion") : t("export.modal.titre")}</span>
           <button class="kta-panneau-close" id="kta-ses-close">✕</button>
         </div>
 
-        <div class="kta-ses-tabs">
+        <div class="kta-ses-tabs"${_soloTab ? ' style="display:none;"' : ''}>
           <button class="kta-ses-tab" data-tab="full">${t("export.tab.full")}</button>
           <button class="kta-ses-tab" data-tab="advanced">${t("export.tab.advanced")}</button>
           <button class="kta-ses-tab" data-tab="conversion">${t("export.tab.conversion")}</button>
+          <button class="kta-ses-tab" data-tab="fusion">${t("export.tab.fusion")}</button>
           <button class="kta-ses-tab" data-tab="extern">${t("export.tab.extern")}</button>
         </div>
 
@@ -657,6 +686,12 @@
     const c = document.getElementById("kta-ses-content");
     if (!c) return;
 
+    // Bouton Télécharger ré-activé par défaut à chaque changement d'onglet ;
+    // les onglets qui exigent un upload (Conversion data→session, Fusion) le
+    // re-désactivent dans leur bind tant que rien n'est chargé.
+    const _dlBtnReset = document.getElementById("kta-ses-download");
+    if (_dlBtnReset) _dlBtnReset.disabled = false;
+
     if (_activeTab === "full") {
       c.innerHTML = _renderFull();
       // 🆕 v1.9.3-B1d : remplit le compteur photos en async (lecture IDB).
@@ -682,6 +717,10 @@
       setTimeout(_bindKmzHandlers, 0);
       // Bind handlers du sélecteur de format (pills KMZ/GPX)
       setTimeout(_bindExternFmtHandlers, 0);
+    }
+    else if (_activeTab === "fusion") {
+      c.innerHTML = _renderFusion();
+      setTimeout(_bindFusion, 0);
     }
   }
 
@@ -1426,6 +1465,7 @@
     if (_activeTab === "full")              _exportFull();
     else if (_activeTab === "advanced")     _exportAdvanced();
     else if (_activeTab === "conversion")   _exportConversion();
+    else if (_activeTab === "fusion")       _exportFusion();
     else if (_activeTab === "extern") {
       // v1.14.1 — dispatch selon format choisi (radio pill)
       if (_externFormat === "gpx") _exportGpxViaExtern();
@@ -2443,6 +2483,224 @@
     });
   }
 
+  // ========================================================
+  // 🔗 FUSION DE DATALAYERS (v1.55.0)
+  // ========================================================
+  // Ingère N fichiers data layer (.json ou .zip), concatène par CATÉGORIE
+  // (data/roads/zones/structures) et ressort un fichier par type. Réutilise
+  // _telechargerConversionFiles (sortie ZIP identique au sens session→data).
+
+  // Merge PUR : concatène les 4 tableaux de N objets data layer + détecte les
+  // ids POI en double (concat brut conservé, alerte seulement). Pas de DOM.
+  function _mergeDatalayerObjects(jsons) {
+    const merged = { data: [], roads: [], zones: [], structures: [] };
+    (jsons || []).forEach(function(json) {
+      if (!json || typeof json !== "object") return;
+      // Points : .data (data layer) ou .editorPoints (export session)
+      if (Array.isArray(json.data) && json.data.length) {
+        merged.data = merged.data.concat(json.data);
+      } else if (Array.isArray(json.editorPoints) && json.editorPoints.length) {
+        merged.data = merged.data.concat(json.editorPoints);
+      }
+      if (Array.isArray(json.roads))      merged.roads      = merged.roads.concat(json.roads);
+      if (Array.isArray(json.zones))      merged.zones      = merged.zones.concat(json.zones);
+      if (Array.isArray(json.structures)) merged.structures = merged.structures.concat(json.structures);
+    });
+    // Détection des ids POI en double (alerte ; concat brut conservé)
+    const seen = Object.create(null);
+    const dupIds = [];
+    merged.data.forEach(function(p) {
+      const id = (p && p.id != null) ? String(p.id) : null;
+      if (id == null) return;
+      if (seen[id]) { if (dupIds.indexOf(id) < 0) dupIds.push(id); }
+      else seen[id] = true;
+    });
+    merged.dupIds = dupIds;
+    return merged;
+  }
+
+  // Lit un fichier .json → Promise<[{name, json}]> (tableau 0 ou 1 élément).
+  function _fusionLireJson(f) {
+    return new Promise(function(resolve) {
+      const r = new FileReader();
+      r.onload = function() {
+        try {
+          const json = JSON.parse(r.result);
+          if (json && typeof json === "object") resolve([{ name: f.name, json: json }]);
+          else resolve([]);
+        } catch(e) {
+          console.warn("[Fusion] JSON invalide ignoré :", f.name, e);
+          resolve([]);
+        }
+      };
+      r.onerror = function() { resolve([]); };
+      r.readAsText(f);
+    });
+  }
+
+  // Lit un .zip → Promise<[{name, json}]> (chaque .json racine = 1 entrée).
+  function _fusionLireZip(f) {
+    if (typeof JSZip === "undefined") return Promise.resolve([]);
+    return JSZip.loadAsync(f).then(function(zip) {
+      const entries = [];
+      zip.forEach(function(relPath, entry) {
+        if (entry.dir) return;
+        if (relPath.indexOf("/") >= 0) return;       // ignore sous-dossiers (photos/)
+        if (!/\.json$/i.test(relPath)) return;
+        entries.push(entry);
+      });
+      return Promise.all(entries.map(function(entry) {
+        return entry.async("string").then(function(txt) {
+          try {
+            const j = JSON.parse(txt);
+            return (j && typeof j === "object") ? { name: f.name + "/" + entry.name, json: j } : null;
+          } catch(e) { return null; }
+        });
+      })).then(function(arr) { return arr.filter(Boolean); });
+    }).catch(function(e) {
+      console.warn("[Fusion] ZIP illisible :", f.name, e);
+      return [];
+    });
+  }
+
+  // Ajoute N fichiers (FileList) aux inputs, re-merge, re-render.
+  function _fusionAjouterFichiers(fileList) {
+    const files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) return;
+    const erreurEl = document.getElementById("kta-fusion-erreur");
+    if (erreurEl) erreurEl.style.display = "none";
+
+    const proms = files.map(function(f) {
+      if (/\.zip$/i.test(f.name))  return _fusionLireZip(f);
+      if (/\.json$/i.test(f.name)) return _fusionLireJson(f);
+      return Promise.resolve([]);  // type non géré
+    });
+    Promise.all(proms).then(function(results) {
+      const added = results.reduce(function(a, b) { return a.concat(b); }, []);
+      if (!added.length) {
+        if (erreurEl) { erreurEl.textContent = t("export.fusion.errNoValid"); erreurEl.style.display = "block"; }
+        return;
+      }
+      _fusionInputs = _fusionInputs.concat(added);
+      _fusionMerged = _mergeDatalayerObjects(_fusionInputs.map(function(x) { return x.json; }));
+      _renderTab();
+    });
+  }
+
+  function _renderFusion() {
+    const m = _fusionMerged;
+
+    let listeHtml = "";
+    if (_fusionInputs.length) {
+      listeHtml = _fusionInputs.map(function(f) {
+        const j = f.json || {};
+        const nbP = (Array.isArray(j.data) && j.data.length) ? j.data.length
+                  : (Array.isArray(j.editorPoints) ? j.editorPoints.length : 0);
+        const nbR = Array.isArray(j.roads) ? j.roads.length : 0;
+        const nbZ = Array.isArray(j.zones) ? j.zones.length : 0;
+        const nbS = Array.isArray(j.structures) ? j.structures.length : 0;
+        const cats = [];
+        if (nbP) cats.push("✏️ " + nbP);
+        if (nbR) cats.push("🛣️ " + nbR);
+        if (nbZ) cats.push("⬛ " + nbZ);
+        if (nbS) cats.push("🏛️ " + nbS);
+        return '<div class="kta-fusion-file"><span class="kta-fusion-file-name">' + _escapeHtml(f.name) +
+               '</span><span class="kta-fusion-file-cats">' + (cats.join(" · ") || "∅") + '</span></div>';
+      }).join("");
+    }
+
+    const filesSection = _fusionInputs.length
+      ? `<div class="kta-ses-section">
+           <div class="kta-ses-section-title">${t("export.fusion.filesTitle", { n: _fusionInputs.length })}
+             <button id="kta-fusion-clear" class="kta-fusion-clear-btn" type="button">${t("export.fusion.clear")}</button>
+           </div>
+           <div class="kta-fusion-list">${listeHtml}</div>
+         </div>`
+      : "";
+
+    let apercuHtml = "";
+    if (m) {
+      const dupHtml = (m.dupIds && m.dupIds.length)
+        ? `<div class="kta-fusion-warn">⚠️ ${t("export.fusion.dupWarn", { n: m.dupIds.length })}</div>`
+        : "";
+      apercuHtml = `
+        <div class="kta-ses-section">
+          <div class="kta-ses-section-title">${t("export.fusion.apercuTitle")}</div>
+          <div class="kta-ses-summary">
+            <div>✏️ ${t("export.conv.d2sPoints",     { n: m.data.length,       s: m.data.length > 1 ? "s" : "" })}</div>
+            <div>🛣️ ${t("export.conv.d2sRoads",      { n: m.roads.length,      s: m.roads.length > 1 ? "s" : "" })}</div>
+            <div>⬛ ${t("export.conv.d2sZones",      { n: m.zones.length,      s: m.zones.length > 1 ? "s" : "" })}</div>
+            <div>🏛️ ${t("export.conv.d2sStructures", { n: m.structures.length, s: m.structures.length > 1 ? "s" : "" })}</div>
+          </div>
+          ${dupHtml}
+        </div>`;
+    }
+
+    return `
+      <div class="kta-ses-intro">
+        ${t("export.fusion.intro")}
+        <br><span style="color:#8892a4;">${t("export.fusion.introDetail")}</span>
+      </div>
+
+      <div class="kta-ses-section">
+        <div class="kta-ses-section-title">${t("export.fusion.sourceTitle")}</div>
+        <div class="kta-conv-drop" id="kta-fusion-drop">
+          <span>${t("export.fusion.dropEmpty")}</span>
+          <input type="file" id="kta-fusion-file" accept=".json,.zip,application/json,application/zip" multiple style="display:none">
+        </div>
+      </div>
+
+      ${filesSection}
+      ${apercuHtml}
+
+      <div id="kta-fusion-erreur" class="kta-conv-erreur" style="display:none;"></div>
+    `;
+  }
+
+  function _bindFusion() {
+    if (!_modal || _activeTab !== "fusion") return;
+    const dropZone  = document.getElementById("kta-fusion-drop");
+    const fileInput = document.getElementById("kta-fusion-file");
+
+    if (dropZone && fileInput) {
+      dropZone.addEventListener("click", function() { fileInput.click(); });
+      dropZone.addEventListener("dragover",  function(e) { e.preventDefault(); dropZone.classList.add("dragover"); });
+      dropZone.addEventListener("dragleave", function()  { dropZone.classList.remove("dragover"); });
+      dropZone.addEventListener("drop", function(e) {
+        e.preventDefault(); dropZone.classList.remove("dragover");
+        _fusionAjouterFichiers(e.dataTransfer.files);
+      });
+      fileInput.addEventListener("change", function() { _fusionAjouterFichiers(fileInput.files); });
+    }
+
+    const clearBtn = document.getElementById("kta-fusion-clear");
+    if (clearBtn) clearBtn.addEventListener("click", function() {
+      _fusionInputs = [];
+      _fusionMerged = null;
+      _renderTab();
+    });
+
+    // Bouton Télécharger désactivé tant qu'aucun contenu fusionné.
+    const dlBtn = document.getElementById("kta-ses-download");
+    if (dlBtn) dlBtn.disabled = !_fusionMerged;
+  }
+
+  // Export : un fichier data layer par catégorie non vide → ZIP (réutilise
+  // _telechargerConversionFiles, format identique au sens session→data layer).
+  function _exportFusion() {
+    const m = _fusionMerged;
+    if (!m || (!m.data.length && !m.roads.length && !m.zones.length && !m.structures.length)) {
+      alert(t("export.fusion.errVide"));
+      return;
+    }
+    const files = [];
+    if (m.data.length)       files.push({ name: "points.json",    payload: { data: m.data } });
+    if (m.roads.length)      files.push({ name: "roads.json",     payload: { data: [], roads: m.roads } });
+    if (m.zones.length)      files.push({ name: "zones.json",     payload: { data: [], zones: m.zones } });
+    if (m.structures.length) files.push({ name: "structure.json", payload: { data: [], structures: m.structures } });
+    _telechargerConversionFiles(files, []);
+  }
+
   // ========== UTILITAIRES ==========
   function _escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, function(c) {
@@ -2483,6 +2741,9 @@
     _convUploadedJson = null;
     _convUploadedName = "";
     _convUploadedPhotos = null;  // 🆕 v1.9.3-B1d++
+    // 🔗 reset fusion datalayers (v1.55.0)
+    _fusionInputs = [];
+    _fusionMerged = null;
     // 🌍 v169 (Karma_dev) : reset mode clic carte KMZ si actif
     if (_kmzClickActive) _kmzDesactiverModeClic();
   }

@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.54.0";
+const CACHE_NAME = "myktamap-cache-v1.55.0";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -106,6 +106,10 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.13.0 : ThemeManager — toggle thème clair/sombre limité mode carte
   "./js/themeManager.js",
   "./js/networkAudit.js",
+  // 🔀 Consolidation : modales du home extraites du <script> inline
+  // d'index.html (déplacement pur) — journal/doc réseau + gestion SW
+  "./js/loaderNetAudit.js",
+  "./js/loaderSwModals.js",
   // 🆕 v1.20.0 : CrashReports — archive auto des kills mémoire (IDB myktamap_crashes)
   "./js/crashReports.js",
   // 🆕 v1.19.0 : MemInspector — topo lisible mémoire (localStorage, IDB, cache, runtime, crashes)

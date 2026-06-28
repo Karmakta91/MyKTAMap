@@ -14588,6 +14588,37 @@ body.kta-theme-light .kta-refonte-session-meta {
    light mode, c'est cohérent pour la lisibilité des photos) === */
 
 /* === Modale d'export (PNG / PDF / KMZ / Session) === */
+/* 🆕 v1.55.0 — Règles de base globalisées (elles n'existaient QUE dans le
+   <style> local de js/exporter.js → absentes tant que la modale d'export image
+   n'avait jamais été ouverte). La modale « Nouvelle entrée légende »
+   (legendCustomization.js) réutilise ces classes → case « Activer le
+   remplissage » non stylée (checkbox/label collés) si on ouvrait le générateur
+   sans avoir ouvert l'export image. */
+.kta-export-cb-row,
+.kta-export-radio-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #c0c8d8;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.kta-export-cb-row:hover,
+.kta-export-radio-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.kta-export-cb-row input[type="checkbox"],
+.kta-export-radio-row input[type="radio"] {
+  margin: 0;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.kta-export-cb-row input:disabled { cursor: not-allowed; }
+.kta-export-cb-row input:disabled + span { color: #666; }
 body.kta-theme-light .kta-export-cb-row,
 body.kta-theme-light .kta-export-sub-cb-row,
 body.kta-theme-light .kta-ses-cb-row {
