@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.55.0** (27 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »). _v1.55.0 — Fusionneur de data layers (nouvel onglet « Fusion » de la modale « Exporter », accessible aussi depuis l'accueil) : ingère N fichiers locaux, les concatène et ressort un fichier par type. **Traitement 100 % local** (lecture des fichiers que tu fournis, écriture d'un ZIP) — aucune requête réseau, aucune nouvelle permission, aucune donnée collectée._
+> Page de transparence technique. À jour pour la version **v1.55.1** (28 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »). _v1.55.1 — Ajout d'un indicateur visuel « calcul en cours » (mode « Je suis perdu » + itinéraires d'équipe du Mode Secours + recherche de sortie d'urgence). **Purement visuel/local** (un overlay pendant un calcul sur l'appareil) — 1 fichier JS interne ajouté, aucune requête réseau, aucune nouvelle permission, aucune donnée collectée._
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode

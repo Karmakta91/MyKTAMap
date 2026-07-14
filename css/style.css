@@ -10737,6 +10737,31 @@ a.kta-level-btn {
   padding: 0 18px;
   max-width: 320px;
 }
+/* 🌀 v1.55.1 — Loader générique « calcul en cours » (js/computeLoader.js),
+   réutilisé par « Je suis perdu » + Mode Secours. Même rendu que l'overlay iti. */
+.kta-compute-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 13, 24, 0.82);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 100005;
+  animation: kta-load-fadein 0.15s ease-out;
+}
+.kta-compute-overlay .kta-load-spinner { margin: 0; }
+.kta-compute-msg {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8eaf0;
+  text-align: center;
+  padding: 0 18px;
+  max-width: 320px;
+}
 .kta-load-titre {
   font-size: 17px;
   font-weight: 600;

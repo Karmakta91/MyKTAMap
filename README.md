@@ -8,7 +8,13 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.55.0` (27/06/2026) — **🔗 Fusionneur de datalayers** : nouvel onglet « Fusion » (dans « Exporter » + accès depuis l'accueil) qui ingère N fichiers data layer et les concatène **par type** (points/tracés/zones/structures) en un fichier par catégorie.
+**📦 Version courante** : `v1.55.1` (28/06/2026) — **🌀 Loader « calcul en cours »** étendu au mode « Je suis perdu » (zone probable), aux itinéraires d'équipe du Mode Secours (module générique `js/computeLoader.js`) et à la recherche de sortie d'urgence → plus d'écran figé sans feedback pendant les calculs Pathfinder bloquants.
+
+**🌀 v1.55.1 (28/06/2026)** — **Loader « calcul en cours » générique (Lost Mode + Secours + Sortie d'urgence)** :
+- **Nouveau module neutre `js/computeLoader.js`** : `window.ComputeLoader.wrap(fn, message)` = overlay plein écran (spinner + message) + **yield-to-paint** (`rAF` + `setTimeout 0`) **avant** d'exécuter `fn`. Indispensable pour les calculs **synchrones bloquants** (Dijkstra/Pathfinder) : sans une frame peinte avant le blocage, l'écran fige « sans rien montrer ». CSS générique `.kta-compute-overlay` (z-index 100005, même rendu que l'overlay itinéraire).
+- **Branché sur les 2 calculs lourds sans feedback** : `lostMode.js` (bouton « Calculer » → `Pathfinder.computeReachable`) et `secoursMode.js` (bouton « Calculer itinéraire » par équipe → `Pathfinder.computeRoute`). L'**itinéraire principal garde son loader historique** (inchangé, 0 régression).
+- **Sortie d'urgence** (`sortieUrgence.js`) : `_lancer` passe en `async` + **yield-to-paint** juste après l'ouverture de la modale-spinner et **avant** le batch (jusqu'à 15 `Pathfinder.computeRoute`). Conserve son spinner de modale dédié (pas de double overlay `ComputeLoader`) — il lui manquait seulement la frame peinte. C'était le seul mode « calcul d'itinéraire » sans feedback pendant le blocage.
+- i18n `lost.compute.loading` / `secours.compute.loading` (fr/en/es). Enregistré dans `index.html` + `sw.js > ASSETS_TO_CACHE`. **Sources** v1.55.1. Aucune nouvelle surface réseau.
 
 **🔗 v1.55.0 (27/06/2026)** — **Fusionneur de datalayers (nouvel onglet « Fusion »)** :
 - **Nouvel onglet « 🔗 Fusion »** dans le modal « Exporter » (anciennement « Enregistrer la session » — renommé car il couvre aussi conversion/fusion/KMZ-GPX, pas que la session) (`sessionExporter.js`) : ingère **N fichiers data layer** (`.json` et `.zip`, cumulables) et les **concatène par catégorie de contenu** (`data`/`roads`/`zones`/`structures` + `editorPoints`) → ressort **un fichier par type** (`points.json` / `roads.json` / `zones.json` / `structure.json`) en ZIP (ou `.json` direct si une seule catégorie). Cas d'usage : assembler un gros plan construit en plusieurs sessions exportées en datalayers.

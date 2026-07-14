@@ -367,13 +367,18 @@
     _lancer({ x: x, y: y });
   }
 
-  function _lancer(origine) {
+  async function _lancer(origine) {
     _ouvrirModale(
       '<div class="kta-sortie-loader">' +
         '<div class="kta-sortie-spinner"></div>' +
         '<p>' + window.I18n.t("sortie.loader") + '</p>' +
       '</div>'
     );
+    // 🌀 v1.55.1 : yield-to-paint AVANT le batch de Pathfinder.computeRoute
+    // (jusqu'à 15 Dijkstra SYNC bloquants). Sans une frame peinte ici, le
+    // spinner de la modale ne s'affiche pas et l'écran fige « sans rien
+    // montrer » — même cause que l'overlay itinéraire (cf computeLoader.js).
+    await new Promise(function(r) { requestAnimationFrame(function() { setTimeout(r, 0); }); });
     _calculerToutesSorties(origine).then(function(resultats) {
       // On peut être interrompu si l'user ferme la modale entre temps
       if (!_modal) return;
