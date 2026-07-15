@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.55.1";
+const CACHE_NAME = "myktamap-cache-v1.56.0";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -51,6 +51,10 @@ const ASSETS_TO_CACHE = [
   "./docs/applications/DOCKER_INSTALL.en.md",
   // Squelette enrichi pour la fonctionnalité 🤖 Aide IA (modale Téléchargement contexte IA)
   "./docs/applications/AI_CONTEXT.md",
+  // 🆕 v1.56.0 : Conditions d'utilisation + avertissement légal (textes de loi
+  // intégraux : arrêté du 2 novembre 1955 + réponse Sénat n° 03710). Consultable
+  // offline. Cf js/legalGate.js (mirror des textes) + lien Documentation.
+  "./docs/applications/CGU.md",
 
   // 🌍 v1.45.0 : dicos i18n multi-langue (lus par js/langManager.js via fetch).
   // fr.json = langue de référence + fallback obligatoire ; en.json = anglais.
@@ -228,6 +232,8 @@ const ASSETS_TO_CACHE = [
   "./js/sessionPersist.js",
   "./js/oomGuard.js",
   "./js/computeLoader.js",
+  "./js/legalGate.js",
+  "./js/firstRunFlow.js",
   "./js/pathfinder.js",
   "./js/roadGraph.js",
   "./js/updateChecker.js",

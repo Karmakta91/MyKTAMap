@@ -568,6 +568,8 @@
           📷 <a href="https://instagram.com/karma_kta" target="_blank" rel="noopener noreferrer">@karma_kta</a>
           · ✉️ <a href="mailto:contact@myktamap.fr">contact@myktamap.fr</a>
           <span class="kta-licence-community">· 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" data-i18n="home.footer.proLink">Licence pro</a></span>
+          <!-- 🆕 v1.56.0 — ré-accès aux Conditions d'utilisation (consultation, non bloquant) -->
+          · ⚖️ <a href="#" onclick="if(window.LegalGate){window.LegalGate.ouvrirConsultation();}return false;" data-i18n="legal.footer.link">Conditions d'utilisation</a>
         </div>
         <div class="kta-loader-credits">
           <!-- 🆕 v1.40.29 — ajout 🌍 OSM (Vue OSM v1.39+ opt-in). Affiché dans
@@ -1287,6 +1289,11 @@
   <script src="js/roadGraph.js" defer></script>
   <script src="js/updateChecker.js" defer></script>
   <script src="js/alertChecker.js" defer></script>
+  <!-- 🆕 v1.56.0 : Conditions d'utilisation + avertissement légal (gate
+       bloquante 1er lancement) + orchestrateur de premier lancement qui
+       séquence alerte → légal → onboarding → PIN. Cf docs CGU.md. -->
+  <script src="js/legalGate.js" defer></script>
+  <script src="js/firstRunFlow.js" defer></script>
   <script src="js/lostMode.js" defer></script>
   <!-- 🆕 v1.10.1 : Mode urgence (panique) — affichage XL position + cap
        boussole + thèmes clair/sombre. Différent du LostMode (calcul de

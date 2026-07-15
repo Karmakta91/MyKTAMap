@@ -1,0 +1,306 @@
+/*!
+ * MyKTAMap — Gate « Conditions d'utilisation & avertissement légal » (v1.56.0)
+ * (c) 2026 Flavien VIDAL (alias KARMA)
+ * Site : https://myktamap.fr
+ *
+ * Licence : CC BY-NC-SA 4.0
+ */
+
+// =========================
+// LEGALGATE.JS — Conditions d'utilisation + avertissement légal (depuis v1.56.0)
+// =========================
+// Gate BLOQUANTE au premier lancement (case à cocher + « J'accepte ») rappelant
+// que MyKTAMap est un outil de repérage, pas une incitation à pénétrer dans des
+// lieux interdits : l'accès aux anciennes carrières de Paris est prohibé
+// (arrêté préfectoral du 2 novembre 1955) et l'intrusion en lieu privé/interdit
+// engage la seule responsabilité de l'utilisateur.
+//
+// - Séquencée par js/firstRunFlow.js (étape « légal », après une éventuelle
+//   alerte critique et avant l'onboarding).
+// - Ré-accessible à tout moment en consultation (footer / Documentation) via
+//   ouvrirConsultation() — non bloquant, sans case à cocher.
+// - Le CADRAGE GÉNÉRAL est traduit (fr/en, clés legal.*) ; les TEXTES DE LOI
+//   (arrêté + réponse Sénat) restent en FR (droit français, non traduit),
+//   stockés en constantes verbatim ci-dessous et mirrorés dans
+//   docs/applications/CGU.md.
+//
+// API : window.LegalGate = {
+//   isAccepted(),              // bool — CGU acceptées (version courante)
+//   ouvrirGate(),              // Promise — gate bloquante, résout à l'acceptation
+//   ouvrirConsultation(),      // void — ré-affichage non bloquant (re-lecture)
+//   TERMS_VERSION              // int — bump pour forcer un re-consentement
+// };
+// 100 % local, aucune surface réseau.
+// =========================
+
+(function() {
+  "use strict";
+
+  // Bump TERMS_VERSION à chaque changement de fond des CGU → force un
+  // re-consentement des utilisateurs déjà passés (le flag stocke la version
+  // acceptée, pas juste un booléen).
+  const TERMS_VERSION = 1;
+  const LS_KEY = "myktamap_terms_accepted_v1";
+
+  const GATE_ID = "kta-legal-gate-overlay";
+  const FULL_ID = "kta-legal-full-overlay";
+
+  // ---------------------------------------------------------------
+  // TEXTES DE LOI — FR verbatim (actes officiels, hors droit d'auteur :
+  // CPI art. L.122-5 2°). NE PAS traduire, NE PAS reformuler.
+  // ---------------------------------------------------------------
+  // Arrêté préfectoral du 2 novembre 1955 (Préfecture de la Seine / Police).
+  // Non publié sur Légifrance (arrêté préfectoral ancien). Reproduit d'après la
+  // source cataphile de référence ; cité officiellement par le Sénat comme
+  // « arrêté préfectoral du 2 novembre 1955 ».
+  const ARRETE_1955 = [
+    { art: "Article 1er",
+      txt: "Il est interdit à toute personne non munie d'une autorisation émanant de l'Inspection Générale des Carrières de la Seine d'ouvrir les portes et trappes d'accès aux escaliers et puits à échelons ou autres des anciennes carrières, de descendre dans ces ouvrages, de pénétrer et de circuler dans les vides des anciennes carrières s'étendant sous l'emprise des voies publiques de la Ville de Paris." },
+    { art: "Article 2",
+      txt: "Les contraventions au présent arrêté seront constatées par procès-verbal des commissaires de police et autres officiers de police judiciaire et des agents de l'Inspection Générale des Carrières ayant qualité pour verbaliser. Elles seront déférées aux tribunaux compétents." },
+    { art: "Article 3",
+      txt: "Le Directeur de la Police Municipale et l'Ingénieur Général des Mines, Inspecteur Général des carrières de la Seine sont chargés de l'exécution du présent arrêté qui sera inséré au recueil des Actes Administratifs et affiché dans Paris." }
+  ];
+  const ARRETE_1955_SIGN = "Fait à Paris le 2 novembre 1955. — Le Préfet de Police.";
+  const ARRETE_1955_SRC  = "Arrêté préfectoral du 2 novembre 1955 (Préfecture de la Seine / Préfecture de Police). Acte administratif — texte public. Reproduit d'après la source de référence cataphile ; référence officielle citée par le Sénat (réponse au JO du 05/06/2025).";
+
+  // Question écrite Sénat n° 03710 — texte officiel intégral (JO Sénat).
+  const SENAT_META = {
+    intitule: "Dangers liés aux explorations illicites dans les catacombes de Paris",
+    num:      "Question écrite n° 03710 — 17e législature",
+    auteur:   "Mme Catherine DUMAS (Paris — Les Républicains)",
+    ministre: "M. le ministre d'État, ministre de l'intérieur",
+    qDate:    "Question publiée au JO Sénat du 13/03/2025 (page 1080)",
+    rDate:    "Réponse du Ministère de l'intérieur publiée au JO Sénat du 05/06/2025 (page 3180)",
+    src:      "Source officielle : senat.fr — base des questions, qSEQ250303710. Débats parlementaires — texte public."
+  };
+  const SENAT_QUESTION = [
+    "Mme Catherine Dumas attire l'attention de M. le ministre d'État, ministre de l'intérieur sur les dangers liés aux explorations illicites dans les catacombes de Paris.",
+    "Elle note que l'accès aux catacombes est interdit depuis un arrêté préfectoral du 2 novembre 1955, pourtant de nombreux explorateurs continuent de s'y aventurer clandestinement, malgré les risques encourus. Ces explorations illégales, pratiquées par des « cataphiles », sont non seulement dangereuses mais également illégales, exposant les contrevenants à des amendes.",
+    "Elle précise que ces incursions illégales posent des problèmes de sécurité publique. En 2017, deux adolescents se sont perdus pendant trois jours dans les catacombes, nécessitant une mobilisation très importante des services de secours, notamment le groupe de recherche et d'intervention en milieu périlleux (GRIMP) et la brigade des sapeurs-pompiers de Paris (BSPP).",
+    "Elle constate que malgré les interdictions et les dangers connus, les explorations clandestines persistent, mettant en péril la sécurité des individus et la préservation du patrimoine souterrain de la ville. Les autorités compétentes, notamment l'Inspection générale des carrières et la brigade spécialisée de la police nationale, peinent à endiguer ce phénomène, malgré des patrouilles régulières et des actions de fermeture des accès illégaux.",
+    "Elle souhaite par conséquent lui demander ce que le Gouvernement entend mettre en œuvre pour renforcer la sécurité et la protection des catacombes, prévenir les explorations illégales et préserver ce patrimoine historique unique."
+  ];
+  const SENAT_REPONSE = [
+    "Les catacombes de Paris forment, en sous-sol de la capitale, un dédale de 280 km de galeries. Leur accès est formellement interdit par un arrêté préfectoral du 2 novembre 1955, notamment en raison de la dangerosité des lieux (risques d'égarement, d'éboulement, de chute dans des puits). Au sein de la direction de l'ordre public et de la circulation (DOPC) de la préfecture de police, le groupe d'intervention et de protection (GIP), composé de la brigade de protection et de la brigade d'intervention, est chargé de la sécurisation des carrières. Sa mission consiste en premier lieu à rechercher, reconduire en surface et verbaliser les individus se trouvant illégalement dans les carrières de Paris. Elle consiste également à mettre en place un plan de recherche par secteur en cas de signalement de personnes disparues.",
+    "La brigade de protection effectue des patrouilles quasi-quotidiennes sur des vacations de journée (entre 8 heures et 20 heures) pour assurer la formation interne, procéder aux vérifications techniques et à la sécurisation générale du réseau. À cette occasion, elle est en relation avec l'inspection générale des carrières (IGC), service dépendant de la mairie de Paris. Elle est sa principale interlocutrice pour lui signaler des plaques d'accès dessoudées ou le creusement de passages appelés « chatières ». L'IGC procède en réponse au scellement de plaques d'accès et à l'injection de béton dans les galeries. La brigade de protection organise également mensuellement des missions de sécurisation en soirée et de nuit pour contrôler la fréquentation du réseau et reconduire en surface les cataphiles. La nuit (entre 21 heures et 6 heures) et les week-ends, la brigade d'intervention est déployée pour secourir des personnes égarées.",
+    "En 2024, 342 contraventions ont été rédigées pour non-respect des dispositions de l'arrêté précité de 1955. 13 individus ont également été mis à disposition de l'autorité judiciaire (violation d'un terrain militaire sous le Val de Grâce, infractions à la législation sur les stupéfiants et port d'arme prohibé). Pour prendre en compte et évacuer les blessés, les militaires du groupe de recherche et d'intervention en milieu périlleux (GRIMP) de la brigade de sapeurs-pompiers de Paris sont compétents pour intervenir dans les carrières du sous-sol de la capitale. Entre 2020 et 2023, ces lieux ont généré 17 interventions des sapeurs-pompiers, permettant de porter assistance à 104 victimes. Ce sont des opérations souvent longues (3h en moyenne) qui mobilisent près d'une quinzaine de militaires et 4 véhicules de secours. Deux opérations conjointes de secours ont été réalisées par le GIP et le GRIMP en 2024 pour des personnes en difficulté.",
+    "Au regard du linéaire à couvrir en sécurisation, le dispositif actuel paraît correctement dimensionné. Toutefois, l'apparition cyclique de nouvelles brèches engendre ponctuellement une hausse de fréquentation des sous-sols parisiens. Une fois les accès détectés et refermés, le nombre de visiteurs diminue fortement. Aussi, des mesures sont prises régulièrement pour réduire le nombre d'accès aux carrières, notamment avec le renforcement des dispositifs de verrouillage des puits, le scellement des plaques d'accès et la présence policière. Une faiblesse du dispositif actuel réside dans la porosité entre le réseau des carrières et des galeries techniques. Les opérateurs de réseaux peuvent se montrer réticents à supporter le coût financier des opérations de « rebouchage » des chatières. Enfin, depuis novembre 2024, l'arsenal de répression a évolué vers une verbalisation à l'aide d'un procès verbal électronique qui facilite la rédaction et le suivi du relevé d'infraction. Les infractions à l'arrêté préfectoral du 2 novembre 1955 sont ainsi passibles d'une amende forfaitaire d'un montant de 135 euros avec une majoration à 375 euros."
+  ];
+
+  // Intrusion en lieu privé — Article 226-4 du Code pénal (version en vigueur
+  // depuis le 29/07/2023, modifié par la loi n° 2023-668 du 27 juillet 2023).
+  // Source : Légifrance. Texte officiel — hors droit d'auteur.
+  const CODE_PENAL_226_4 = [
+    "L'introduction dans le domicile d'autrui à l'aide de manœuvres, menaces, voies de fait ou contrainte, hors les cas où la loi le permet, est puni de trois ans d'emprisonnement et de 45 000 euros d'amende.",
+    "Le maintien dans le domicile d'autrui à la suite de l'introduction mentionnée au premier alinéa, hors les cas où la loi le permet, est puni des mêmes peines.",
+    "Constitue notamment le domicile d'une personne, au sens du présent article, tout local d'habitation contenant des biens meubles lui appartenant, que cette personne y habite ou non et qu'il s'agisse de sa résidence principale ou non."
+  ];
+  const CODE_PENAL_226_4_SRC = "Article 226-4 du Code pénal (version en vigueur depuis le 29 juillet 2023, modifié par la loi n° 2023-668 du 27 juillet 2023). Source : Légifrance.";
+  const PROPRIETE_PRIVEE = "Le droit de propriété est exclusif (article 544 du Code civil) : nul ne peut pénétrer ni se maintenir sur une propriété privée sans l'autorisation de son propriétaire. Une telle intrusion engage la responsabilité civile de son auteur et, selon les circonstances (violation de domicile, dégradations, franchissement de clôture, non-respect d'un arrêté), sa responsabilité pénale.";
+
+  // Carrières du Val-d'Oise (95) — régime de PROTECTION DU PATRIMOINE géologique
+  // (et non un arrêté d'interdiction d'accès comme à Paris). Source officielle :
+  // DRIEAT Île-de-France (services de l'État), avril 2026.
+  const VALDOISE_INTRO = "Dans le Val-d'Oise (95), les anciennes carrières souterraines relèvent d'un régime de protection du patrimoine géologique (et non d'un arrêté d'interdiction d'accès comme à Paris).";
+  const VALDOISE = [
+    "Par arrêté du 21 avril 2026, le préfet du Val-d'Oise a institué la liste des sites d'intérêt géologique du département, au titre des articles L.411-1 et R.411-17-1 et R.411-17-2 du Code de l'environnement. Toute destruction, altération ou dégradation de ces sites — notamment les cavités souterraines naturelles ou artificielles — ainsi que le prélèvement, la destruction ou la dégradation de fossiles, minéraux et concrétions, y sont interdits.",
+    "Communes concernées : Longuesse, Vigny, Villiers-Adam, Chars, Sannois, Saint-Witz, Santeuil, Auvers-sur-Oise et Sagy.",
+    "Quatre arrêtés préfectoraux de protection de géotope (APPG) complètent ce régime : carrière des 15 Arpents (Villiers-Adam), carrière du Guépelle (Saint-Witz), carrière du Bois des Roches (Vigny-Longuesse) et carrière du Bois le Roi (Auvers-sur-Oise)."
+  ];
+  const VALDOISE_SRC = "Source : DRIEAT Île-de-France (services de l'État), avril 2026. Actes administratifs — textes publics.";
+
+  // ---------------------------------------------------------------
+  // i18n helper (cadrage général uniquement)
+  // ---------------------------------------------------------------
+  function _t(k, p) {
+    return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
+  }
+  function _esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // État
+  // ---------------------------------------------------------------
+  function isAccepted() {
+    try {
+      const v = parseInt(localStorage.getItem(LS_KEY), 10);
+      return v >= TERMS_VERSION;
+    } catch(e) { return false; }
+  }
+  function _markAccepted() {
+    try { localStorage.setItem(LS_KEY, String(TERMS_VERSION)); }
+    catch(e) { console.warn("[LegalGate] _markAccepted :", e); }
+  }
+
+  // ---------------------------------------------------------------
+  // SOUS-MODALE — texte intégral (arrêté + Sénat), FR only
+  // ---------------------------------------------------------------
+  function _buildFullTextHtml() {
+    let h = "";
+    // Arrêté 1955
+    h += '<h3 class="kta-legal-full-h">⚖️ ' + _esc("Arrêté préfectoral du 2 novembre 1955") + '</h3>';
+    ARRETE_1955.forEach(function(a) {
+      h += '<p class="kta-legal-art"><strong>' + _esc(a.art) + '.</strong> ' + _esc(a.txt) + '</p>';
+    });
+    h += '<p class="kta-legal-sign">' + _esc(ARRETE_1955_SIGN) + '</p>';
+    h += '<p class="kta-legal-src">' + _esc(ARRETE_1955_SRC) + '</p>';
+    // Sénat
+    h += '<h3 class="kta-legal-full-h">🏛️ ' + _esc(SENAT_META.intitule) + '</h3>';
+    h += '<p class="kta-legal-meta">' + _esc(SENAT_META.num) + '<br>' +
+         '<strong>' + _esc("Auteure : ") + '</strong>' + _esc(SENAT_META.auteur) + '<br>' +
+         '<strong>' + _esc("Ministre interrogé : ") + '</strong>' + _esc(SENAT_META.ministre) + '</p>';
+    h += '<p class="kta-legal-meta">' + _esc(SENAT_META.qDate) + '</p>';
+    h += '<h4 class="kta-legal-full-sub">' + _esc("Question") + '</h4>';
+    SENAT_QUESTION.forEach(function(p) { h += '<p class="kta-legal-art">' + _esc(p) + '</p>'; });
+    h += '<p class="kta-legal-meta">' + _esc(SENAT_META.rDate) + '</p>';
+    h += '<h4 class="kta-legal-full-sub">' + _esc("Réponse du Ministère de l'intérieur") + '</h4>';
+    SENAT_REPONSE.forEach(function(p) { h += '<p class="kta-legal-art">' + _esc(p) + '</p>'; });
+    h += '<p class="kta-legal-src">' + _esc(SENAT_META.src) + '</p>';
+    // Intrusion en lieu privé — Code pénal art. 226-4 + principe de propriété
+    h += '<h3 class="kta-legal-full-h">🏠 ' + _esc("Intrusion en lieu privé") + '</h3>';
+    h += '<h4 class="kta-legal-full-sub">' + _esc("Article 226-4 du Code pénal — violation de domicile") + '</h4>';
+    CODE_PENAL_226_4.forEach(function(p) { h += '<p class="kta-legal-art">' + _esc(p) + '</p>'; });
+    h += '<p class="kta-legal-art">' + _esc(PROPRIETE_PRIVEE) + '</p>';
+    h += '<p class="kta-legal-src">' + _esc(CODE_PENAL_226_4_SRC) + '</p>';
+    // Carrières du Val-d'Oise — protection du patrimoine géologique
+    h += '<h3 class="kta-legal-full-h">⛏️ ' + _esc("Carrières du Val-d'Oise (95)") + '</h3>';
+    h += '<p class="kta-legal-meta">' + _esc(VALDOISE_INTRO) + '</p>';
+    VALDOISE.forEach(function(p) { h += '<p class="kta-legal-art">' + _esc(p) + '</p>'; });
+    h += '<p class="kta-legal-src">' + _esc(VALDOISE_SRC) + '</p>';
+    return h;
+  }
+
+  function _ouvrirTexteIntegral() {
+    if (document.getElementById(FULL_ID)) return;
+    const overlay = document.createElement("div");
+    overlay.id        = FULL_ID;
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.display = "flex";
+    overlay.style.zIndex  = "100001";  // sous-modale au-dessus de la gate
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-legal-full-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<button class="kta-btn kta-btn-ghost kta-legal-back" id="kta-legal-full-back" type="button">' +
+            _esc(_t("legal.full.back")) + '</button>' +
+          '<span class="kta-readme-modal-titre">' + _esc(_t("legal.full.titre")) + '</span>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps kta-legal-full-corps">' +
+          '<p class="kta-legal-full-note">' + _esc(_t("legal.full.note")) + '</p>' +
+          _buildFullTextHtml() +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+    document.getElementById("kta-legal-full-back").addEventListener("click", function() {
+      try { overlay.remove(); } catch(e) {}
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // GATE / CONSULTATION — corps commun
+  // ---------------------------------------------------------------
+  function _buildBodyHtml() {
+    return (
+      '<p class="kta-legal-intro">' + _esc(_t("legal.gate.intro")) + '</p>' +
+      '<ul class="kta-legal-points">' +
+        '<li>' + _esc(_t("legal.gate.pointTool")) + '</li>' +
+        '<li>' + _esc(_t("legal.gate.pointInterdit")) + '</li>' +
+        '<li>' + _esc(_t("legal.gate.pointResp")) + '</li>' +
+        '<li>' + _esc(_t("legal.gate.pointRespect")) + '</li>' +
+      '</ul>' +
+      '<button class="kta-legal-readfull" id="kta-legal-readfull" type="button">📜 ' +
+        _esc(_t("legal.gate.readFull")) + '</button>'
+    );
+  }
+
+  // Gate BLOQUANTE : résout la Promise à l'acceptation (case cochée + bouton).
+  function ouvrirGate() {
+    return new Promise(function(resolve) {
+      // Sécurité : si déjà accepté, ne pas re-afficher (le flow appelle déjà
+      // sous condition, mais on garde le no-op défensif).
+      if (isAccepted()) { resolve(true); return; }
+
+      const overlay = document.createElement("div");
+      overlay.id        = GATE_ID;
+      overlay.className = "kta-readme-modal-overlay";
+      overlay.style.display = "flex";
+      overlay.innerHTML =
+        '<div class="kta-readme-modal-boite kta-legal-boite">' +
+          '<div class="kta-readme-modal-header">' +
+            '<span class="kta-readme-modal-titre">⚖️ ' + _esc(_t("legal.gate.titre")) + '</span>' +
+          '</div>' +
+          '<div class="kta-readme-modal-corps">' +
+            _buildBodyHtml() +
+            '<label class="kta-legal-check" for="kta-legal-cb">' +
+              '<input type="checkbox" id="kta-legal-cb"> ' +
+              '<span>' + _esc(_t("legal.gate.checkbox")) + '</span>' +
+            '</label>' +
+          '</div>' +
+          '<div class="kta-conv-actions kta-legal-actions">' +
+            '<button class="kta-btn kta-btn-primary kta-legal-accept" id="kta-legal-accept" type="button" disabled>' +
+              _esc(_t("legal.gate.accept")) + '</button>' +
+          '</div>' +
+        '</div>';
+      document.documentElement.appendChild(overlay);
+
+      const cb     = document.getElementById("kta-legal-cb");
+      const accept = document.getElementById("kta-legal-accept");
+      cb.addEventListener("change", function() {
+        accept.disabled = !cb.checked;
+      });
+      document.getElementById("kta-legal-readfull").addEventListener("click", _ouvrirTexteIntegral);
+      accept.addEventListener("click", function() {
+        if (!cb.checked) return;  // garde-fou
+        _markAccepted();
+        try { overlay.remove(); } catch(e) {}
+        const full = document.getElementById(FULL_ID);
+        if (full) try { full.remove(); } catch(e) {}
+        console.log("[LegalGate] CGU acceptées (v" + TERMS_VERSION + ")");
+        resolve(true);
+      });
+    });
+  }
+
+  // Consultation NON bloquante (re-lecture depuis footer / Documentation).
+  function ouvrirConsultation() {
+    if (document.getElementById(GATE_ID)) return;
+    const overlay = document.createElement("div");
+    overlay.id        = GATE_ID;
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.display = "flex";
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-legal-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">⚖️ ' + _esc(_t("legal.gate.titre")) + '</span>' +
+          '<button class="kta-readme-modal-close" id="kta-legal-consult-close" type="button" aria-label="✕">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          _buildBodyHtml() +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+    document.getElementById("kta-legal-readfull").addEventListener("click", _ouvrirTexteIntegral);
+    function _close() {
+      try { overlay.remove(); } catch(e) {}
+      const full = document.getElementById(FULL_ID);
+      if (full) try { full.remove(); } catch(e) {}
+    }
+    document.getElementById("kta-legal-consult-close").addEventListener("click", _close);
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
+  }
+
+  // ---------------------------------------------------------------
+  // EXPORT
+  // ---------------------------------------------------------------
+  window.LegalGate = {
+    isAccepted:         isAccepted,
+    ouvrirGate:         ouvrirGate,
+    ouvrirConsultation: ouvrirConsultation,
+    TERMS_VERSION:      TERMS_VERSION
+  };
+
+  console.log("[LegalGate] Module chargé (CGU acceptées : " + isAccepted() + ")");
+})();

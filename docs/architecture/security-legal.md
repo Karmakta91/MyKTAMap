@@ -1333,3 +1333,38 @@ async function _captureOsmCanvasForBriefing(scenario, plan): Promise<string | nu
 - Le helper `_captureOsmCanvasForBriefing` est généralisable : `_captureOsmCanvas({bbox, markers, options}): Promise<dataURL>`. À factoriser si besoin pour Mode Histoire, partage social, etc.
 
 ---
+
+### 87. Conditions d'utilisation (gate légale) + séquenceur de premier lancement (v1.56.0)
+
+> **Motivation** : (1) protéger l'auteur en rappelant à l'utilisateur, dès le 1er lancement, que l'app est un **outil de repérage** et non une incitation à l'intrusion (accès anciennes carrières de Paris interdit — arrêté du 2 novembre 1955) ; (2) tuer le « spam » de popups qui se superposaient au 1er boot (proposition PIN + alerte + onboarding, 3 `setTimeout` non coordonnés).
+
+#### 87.1 Séquenceur `js/firstRunFlow.js`
+
+`window.FirstRunFlow.run()` — file **séquentielle** jouée **une fois** après le retrait du splash (`main.js > _splashEnd`). Chaque étape attend la **fermeture** de la précédente. Ordre par priorité :
+
+1. 🚨 **Alerte critique serveur** (`AlertChecker.notifySplashEnded(onDone)`)
+2. ⚖️ **Conditions d'utilisation** (`LegalGate.ouvrirGate()` → Promise, bloquant)
+3. 🎓 **Onboarding** (`Tutorial.ouvrir(onClose)`)
+4. 🔐 **Proposition PIN** (`MyKTAMapPinLock.proposerActivation(onClose)`)
+
+Chaque module expose désormais un **signal de fin** (Promise ou callback `onClose`/`onDone`) ; `firstRunFlow` les promisifie via le helper interne `_step(label, fn)` (résout immédiatement si module absent / étape non applicable → la file continue). `main.js` a **remplacé** les anciens déclencheurs éparpillés (proposition PIN à +800 ms, bloc tutoriel + `notifySplashEnded` dans `_splashEnd`) par un unique `FirstRunFlow.run()`.
+
+⚠️ Le délai interne de 800 ms de `proposerActivation` a été **supprimé** (le séquenceur garantit qu'aucune autre modale n'est ouverte). `Tutorial.fermer()` déclenche le `onClose` une seule fois (défini **après** le `fermer()` initial de `ouvrir()` pour ne pas se déclencher à tort). Le cas **multi-alertes** (rare) ne bloque pas la file : `onDone` est appelé dès l'ouverture du sélecteur.
+
+#### 87.2 Gate légale `js/legalGate.js`
+
+`window.LegalGate = { isAccepted, ouvrirGate, ouvrirConsultation, TERMS_VERSION }`.
+
+- **`ouvrirGate()`** → Promise, **bloquante** : case « J'ai lu et compris » + bouton « J'accepte » (désactivé tant que la case n'est pas cochée). Résout à l'acceptation, pose `localStorage["myktamap_terms_accepted_v1"] = TERMS_VERSION`.
+- **Flag versionné** : `isAccepted()` compare la version stockée à `TERMS_VERSION` (const, actuellement `1`). **Bumper `TERMS_VERSION`** force un re-consentement de tous les utilisateurs si le fond des CGU change.
+- **`ouvrirConsultation()`** : ré-affichage **non bloquant** (bouton ✕ / clic-fond), sans case à cocher. Câblé sur le lien ⚖️ « Conditions d'utilisation » du footer loader (`index.html`).
+- **Sous-modale « texte intégral »** (z-index 100001) : arrêté du 2 novembre 1955 + question écrite Sénat n° 03710 (réponse du 05/06/2025), **constantes verbatim** dans le module (`ARRETE_1955`, `SENAT_QUESTION`, `SENAT_REPONSE`). Actes officiels → **hors droit d'auteur** (CPI L.122-5 2°).
+- **i18n** : cadrage général `legal.*` traduit **fr + en** ; les **textes de loi restent en FR** (droit français, non traduits — décision KARMA). Mirror offline `docs/applications/CGU.md`.
+- **Incognito** : le séquenceur **saute** la gate bloquante en incognito (le flag `localStorage` est shimé et ne persiste pas → sinon re-prompt à chaque session, cf. même parti pris que la proposition PIN §43). Consultation footer reste dispo.
+
+#### 87.3 À NE PAS faire
+
+- ❌ Traduire les **textes de loi** (arrêté / Sénat) — droit français, reproduits verbatim en FR uniquement.
+- ❌ Rendre la gate **non bloquante** au 1er boot (elle doit être acceptée — décision 4:a).
+- ❌ Réintroduire des `setTimeout` de déclenchement direct dans `main.js` pour l'alerte / l'onboarding / le PIN — tout passe par `FirstRunFlow`.
+- ❌ Oublier le **signal de fin** si on ajoute une étape au flux — sans lui, la file se bloque sur cette étape.

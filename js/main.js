@@ -1190,39 +1190,20 @@ async function _splashEnd() {
     if (window.UpdateChecker && typeof window.UpdateChecker.notifySplashEnded === "function") {
       window.UpdateChecker.notifySplashEnded();
     }
-    // Alerte publique (incendie, etc.) si l'auteur en a publié une dans alert.json
-    // (depuis v168 : inclut aussi l'annonce migration myktamap.fr — l'ancien
-    // module MigrationNotice qui doublait via une modal one-shot a été supprimé)
-    if (window.AlertChecker && typeof window.AlertChecker.notifySplashEnded === "function") {
+    // 🆕 v1.56.0 — Séquenceur de premier lancement (js/firstRunFlow.js).
+    // Remplace les anciens déclencheurs non coordonnés (alerte + onboarding +
+    // proposition PIN) qui se superposaient au 1er boot. Joue les étapes UNE
+    // PAR UNE, dans l'ordre : 🚨 alerte critique → ⚖️ conditions d'utilisation
+    // → 🎓 onboarding → 🔐 proposition PIN. AlertChecker.notifySplashEnded (qui
+    // pose aussi le flag _splashEnded + affiche les alertes différées) est
+    // désormais appelé PAR l'orchestrateur (étape 1). Chaque boot rejoue la
+    // séquence : les étapes déjà faites (légal accepté, onboarding vu, PIN
+    // proposé) se sautent d'elles-mêmes.
+    if (window.FirstRunFlow && typeof window.FirstRunFlow.run === "function") {
+      window.FirstRunFlow.run();
+    } else if (window.AlertChecker && typeof window.AlertChecker.notifySplashEnded === "function") {
+      // Fallback défensif si le module n'a pas chargé : au moins les alertes.
       window.AlertChecker.notifySplashEnded();
-    }
-
-    // 🆕 v1.21.0 — Tutoriel premier-lancement. Auto-déclenché UNIQUEMENT si
-    // c'est le tout premier boot (flag `myktamap_tutorial_seen_v1` absent).
-    // Différé encore +600ms pour laisser le temps aux alertes/updates de
-    // s'afficher en premier (priorité : info critique > onboarding). L'user
-    // peut rejouer à tout moment via le bouton 🎓 dans le header de la
-    // modale 📖 Documentation (depuis v1.21.3).
-    if (window.Tutorial && typeof window.Tutorial.isFirstLaunch === "function" && window.Tutorial.isFirstLaunch()) {
-      setTimeout(function() {
-        // Re-check au cas où une autre modale (update, alerte critique) soit
-        // ouverte à ce moment — on attend qu'elle soit fermée avant d'afficher
-        // le tutoriel. Skip si flag déjà marqué pendant le délai (race rare).
-        const blockingModal = document.querySelector(".kta-readme-modal-overlay") ||
-                              document.querySelector("#kta-update-modal");
-        if (blockingModal) {
-          // Modale prioritaire ouverte → on retente dans 2s
-          setTimeout(function() {
-            if (window.Tutorial && window.Tutorial.isFirstLaunch && window.Tutorial.isFirstLaunch()) {
-              try { window.Tutorial.ouvrir(); } catch(e) { console.warn("[Tutorial] auto-open échec :", e); }
-            }
-          }, 2000);
-          return;
-        }
-        try { window.Tutorial.ouvrir(); } catch(e) {
-          console.warn("[Tutorial] auto-open échec :", e);
-        }
-      }, 600);
     }
   }, 500);
 }
@@ -1474,15 +1455,10 @@ window.proposerRedemarrageLangue = function() {
     console.log("[Main] Gate PIN franchie → init normale");
   }
 
-  // 🆕 v1.10.0 (KARMA "après cette mise à jour, premier lancement, proposer
-  // activer l'authentification forte") : proposition d'activation one-shot
-  // pour les users qui n'ont pas (encore) activé le PIN. Skip si déjà
-  // activé OU si l'user a déjà refusé une fois (flag localStorage).
-  // Délai 800ms après pour laisser le splash finir + ne pas surcharger
-  // le 1er paint visuel.
-  if (window.MyKTAMapPinLock && typeof window.MyKTAMapPinLock.proposerActivation === "function") {
-    window.MyKTAMapPinLock.proposerActivation();
-  }
+  // 🆕 v1.56.0 — La proposition d'activation du PIN n'est PLUS déclenchée ici :
+  // elle est désormais séquencée par js/firstRunFlow.js (dernière étape du flux
+  // de premier lancement : alerte → légal → onboarding → PIN), pour éviter le
+  // « spam » de popups superposées au 1er boot. Cf. _splashEnd → FirstRunFlow.run().
 
   // Initialiser le registre
   if (window.PlanRegistry) {

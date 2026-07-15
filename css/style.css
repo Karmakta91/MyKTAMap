@@ -8179,6 +8179,134 @@ html.kta-theme-light .kta-cfg-group-titre {
   max-height: 90vh !important;
 }
 
+/* =========================================================
+   ⚖️ v1.56.0 — Gate « Conditions d'utilisation » (legalGate.js)
+   ========================================================= */
+.kta-legal-boite {
+  max-width: 560px !important;
+  border: 1.5px solid rgba(244, 197, 66, 0.35) !important;
+  box-shadow: 0 8px 40px rgba(244, 197, 66, 0.15) !important;
+  height: auto !important;
+  max-height: 92vh !important;
+}
+.kta-legal-intro {
+  font-size: 14px;
+  line-height: 1.55;
+  color: #e8eaf0;
+  margin: 0 0 12px 0;
+}
+.kta-legal-points {
+  list-style: none;
+  margin: 0 0 4px 0;
+  padding: 0;
+}
+.kta-legal-points li {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #c8d0e0;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: rgba(140, 180, 255, 0.06);
+  border-left: 3px solid rgba(140, 180, 255, 0.35);
+  border-radius: 4px;
+}
+.kta-legal-readfull {
+  display: inline-block;
+  margin: 4px 0 14px 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #8cb4ff;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.kta-legal-readfull:hover { color: #b0ccff; }
+.kta-legal-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 6px 0 2px 0;
+  padding: 12px 14px;
+  background: rgba(244, 197, 66, 0.06);
+  border: 1px solid rgba(244, 197, 66, 0.25);
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #e8eaf0;
+  cursor: pointer;
+}
+.kta-legal-check input[type="checkbox"] {
+  margin-top: 2px;
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  accent-color: #f4c542;
+  cursor: pointer;
+}
+.kta-legal-actions { padding: 14px 24px 18px; }
+.kta-legal-accept {
+  background: rgba(244, 197, 66, 0.18) !important;
+  border-color: rgba(244, 197, 66, 0.5) !important;
+  color: #f4c542 !important;
+}
+.kta-legal-accept:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+/* Sous-modale texte intégral */
+.kta-legal-full-boite { max-width: 720px !important; height: auto !important; max-height: 92vh !important; }
+.kta-legal-full-corps { line-height: 1.6; }
+.kta-legal-full-note {
+  font-size: 12.5px;
+  font-style: italic;
+  color: #8892a4;
+  margin: 0 0 14px 0;
+}
+.kta-legal-full-h {
+  font-size: 15px;
+  color: #f4c542;
+  margin: 22px 0 10px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+.kta-legal-full-sub {
+  font-size: 13.5px;
+  color: #8cb4ff;
+  margin: 16px 0 6px 0;
+}
+.kta-legal-art {
+  font-size: 13px;
+  line-height: 1.62;
+  color: #c8d0e0;
+  margin: 0 0 10px 0;
+  text-align: justify;
+}
+.kta-legal-meta {
+  font-size: 12.5px;
+  color: #8892a4;
+  margin: 0 0 8px 0;
+}
+.kta-legal-sign {
+  font-size: 12.5px;
+  font-style: italic;
+  color: #a8b2c4;
+  margin: 4px 0 10px 0;
+}
+.kta-legal-src {
+  font-size: 11.5px;
+  color: #6c7688;
+  margin: 8px 0 4px 0;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+.kta-legal-back { font-size: 13px; padding: 4px 10px; }
+/* Thème clair */
+html.kta-theme-light .kta-legal-intro,
+html.kta-theme-light .kta-legal-check { color: var(--kta-light-text, #1a1f2e); }
+html.kta-theme-light .kta-legal-points li { color: var(--kta-light-text-2, #38414f); }
+html.kta-theme-light .kta-legal-art { color: var(--kta-light-text-2, #38414f); }
+
 .kta-pin-proposal-info {
   margin: 12px 0;
   padding: 10px 14px;

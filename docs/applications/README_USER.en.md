@@ -6,6 +6,18 @@
 
 ## 🔴 Important warnings
 
+### ⚖️ Terms of use & legal notice (since v1.56.0)
+
+On **first launch**, a **terms of use** page reminds you that MyKTAMap is a **mapping and orientation tool**, not an encouragement to enter forbidden places. It must be **read and accepted once** (checkbox + "I accept").
+
+- Access to many underground sites — notably the **former quarry network of Paris** — is **forbidden** (Paris prefectural order of 2 November 1955) and **punishable by a fine** (€135 to €375).
+- Any intrusion into a private or forbidden place is **your sole responsibility**.
+- The **full text** (order of 2 November 1955 + French Senate written reply no. 03710 of 05/06/2025) is available from the page — reproduced in French only, as they are French official acts — and at any time via the **⚖️ Terms of use** link in the home footer.
+
+> Clandestine exploration is dangerous (getting lost, collapses, falls into pits) and illegal. Respect the law, site owners and your own safety.
+
+---
+
 ### 🔐 Data confidentiality — read this first
 
 MyKTAMap is a field mapping tool that may contain sensitive information: **precise location of entrances, shafts, passages, underground structures.**

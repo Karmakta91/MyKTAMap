@@ -1,7 +1,8 @@
 {
-  "version": "v1.55.1",
-  "released": "2026-06-28",
+  "version": "v1.56.0",
+  "released": "2026-07-15",
   "notes": [
-    "🌀 Un indicateur « calcul en cours » s'affiche maintenant aussi en mode « Je suis perdu » (zone probable), pour les itinéraires d'équipe du Mode Secours et lors de la recherche de sortie d'urgence — plus de doute sur un éventuel blocage pendant le calcul."
+    "⚖️ Nouveau : au premier lancement, des conditions d'utilisation rappellent que l'application est un outil de repérage et que l'accès à certains lieux (anciennes carrières de Paris…) est interdit — à lire et accepter une fois.",
+    "✨ Premier accueil plus clair : les messages d'ouverture ne se chevauchent plus, ils s'affichent l'un après l'autre."
   ]
 }

@@ -6,6 +6,18 @@
 
 ## 🔴 Avertissements importants
 
+### ⚖️ Conditions d'utilisation & avertissement légal (depuis v1.56.0)
+
+Au **premier lancement**, une page de **conditions d'utilisation** rappelle que MyKTAMap est un **outil de repérage et de cartographie**, pas une incitation à pénétrer dans des lieux interdits. Elle doit être **lue et acceptée une fois** (case à cocher + « J'accepte »).
+
+- L'accès à de nombreux sites souterrains — notamment le **réseau des anciennes carrières de Paris** — est **interdit** (arrêté préfectoral du 2 novembre 1955) et **passible d'amende** (135 € à 375 €).
+- Toute intrusion dans un lieu privé ou interdit engage votre **seule responsabilité**.
+- Le **texte intégral** (arrêté du 2 novembre 1955 + réponse ministérielle Sénat n° 03710 du 05/06/2025) est consultable depuis la page, et à tout moment via le lien **⚖️ Conditions d'utilisation** dans le pied de page de l'accueil.
+
+> Les explorations clandestines sont dangereuses (égarement, éboulement, chute dans des puits) et illégales. Respectez la loi, les propriétaires et votre sécurité.
+
+---
+
 ### 🔐 Confidentialité des données — à lire en premier
 
 MyKTAMap est un outil de cartographie de terrain qui peut contenir des informations sensibles : **localisation précise d'entrées, de puits, de passages, de structures souterraines.**
