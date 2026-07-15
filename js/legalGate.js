@@ -99,16 +99,20 @@
   const CODE_PENAL_226_4_SRC = "Article 226-4 du Code pénal (version en vigueur depuis le 29 juillet 2023, modifié par la loi n° 2023-668 du 27 juillet 2023). Source : Légifrance.";
   const PROPRIETE_PRIVEE = "Le droit de propriété est exclusif (article 544 du Code civil) : nul ne peut pénétrer ni se maintenir sur une propriété privée sans l'autorisation de son propriétaire. Une telle intrusion engage la responsabilité civile de son auteur et, selon les circonstances (violation de domicile, dégradations, franchissement de clôture, non-respect d'un arrêté), sa responsabilité pénale.";
 
-  // Carrières du Val-d'Oise (95) — régime de PROTECTION DU PATRIMOINE géologique
-  // (et non un arrêté d'interdiction d'accès comme à Paris). Source officielle :
-  // DRIEAT Île-de-France (services de l'État), avril 2026.
-  const VALDOISE_INTRO = "Dans le Val-d'Oise (95), les anciennes carrières souterraines relèvent d'un régime de protection du patrimoine géologique (et non d'un arrêté d'interdiction d'accès comme à Paris).";
-  const VALDOISE = [
-    "Par arrêté du 21 avril 2026, le préfet du Val-d'Oise a institué la liste des sites d'intérêt géologique du département, au titre des articles L.411-1 et R.411-17-1 et R.411-17-2 du Code de l'environnement. Toute destruction, altération ou dégradation de ces sites — notamment les cavités souterraines naturelles ou artificielles — ainsi que le prélèvement, la destruction ou la dégradation de fossiles, minéraux et concrétions, y sont interdits.",
-    "Communes concernées : Longuesse, Vigny, Villiers-Adam, Chars, Sannois, Saint-Witz, Santeuil, Auvers-sur-Oise et Sagy.",
-    "Quatre arrêtés préfectoraux de protection de géotope (APPG) complètent ce régime : carrière des 15 Arpents (Villiers-Adam), carrière du Guépelle (Saint-Witz), carrière du Bois des Roches (Vigny-Longuesse) et carrière du Bois le Roi (Auvers-sur-Oise)."
+  // Responsabilité pour faute — Code civil art. 1240 et 1241 (version en
+  // vigueur depuis le 01/10/2016, ord. n° 2016-131). Source : Légifrance.
+  const RESP_CIVILE = [
+    "Article 1240 — Tout fait quelconque de l'homme, qui cause à autrui un dommage, oblige celui par la faute duquel il est arrivé à le réparer.",
+    "Article 1241 — Chacun est responsable du dommage qu'il a causé non seulement par son fait, mais encore par sa négligence ou par son imprudence."
   ];
-  const VALDOISE_SRC = "Source : DRIEAT Île-de-France (services de l'État), avril 2026. Actes administratifs — textes publics.";
+  // Cas des secours : en principe gratuits (dépense obligatoire de la commune),
+  // mais la faute peut coûter cher — et les secours de loisir peuvent être
+  // facturés. Sources : CGCT art. L.2321-2 et L.2331-4.
+  const SECOURS = [
+    "Concrètement : si votre présence dans un lieu interdit ou dangereux déclenche une opération de secours (égarement, blessure, mise en danger des sauveteurs), vous vous exposez à devoir en répondre. En France, les secours sont en principe gratuits (dépense obligatoire des communes, article L.2321-2 du Code général des collectivités territoriales), mais une commune peut, par délibération et après information du public, exiger le remboursement de tout ou partie des frais de secours consécutifs à une activité sportive ou de loisir (article L.2331-4 du même code).",
+    "Surtout, sur le fondement des articles 1240 et 1241 du Code civil, quiconque cause un dommage par sa faute — imprudence, négligence, intrusion illicite — est tenu de le réparer : cela peut couvrir les dégradations commises, le préjudice causé aux tiers, et les conséquences d'une intervention rendue nécessaire par votre comportement."
+  ];
+  const RESP_SRC = "Sources : articles 1240 et 1241 du Code civil (Légifrance) ; articles L.2321-2 et L.2331-4 du Code général des collectivités territoriales.";
 
   // ---------------------------------------------------------------
   // i18n helper (cadrage général uniquement)
@@ -166,11 +170,11 @@
     CODE_PENAL_226_4.forEach(function(p) { h += '<p class="kta-legal-art">' + _esc(p) + '</p>'; });
     h += '<p class="kta-legal-art">' + _esc(PROPRIETE_PRIVEE) + '</p>';
     h += '<p class="kta-legal-src">' + _esc(CODE_PENAL_226_4_SRC) + '</p>';
-    // Carrières du Val-d'Oise — protection du patrimoine géologique
-    h += '<h3 class="kta-legal-full-h">⛏️ ' + _esc("Carrières du Val-d'Oise (95)") + '</h3>';
-    h += '<p class="kta-legal-meta">' + _esc(VALDOISE_INTRO) + '</p>';
-    VALDOISE.forEach(function(p) { h += '<p class="kta-legal-art">' + _esc(p) + '</p>'; });
-    h += '<p class="kta-legal-src">' + _esc(VALDOISE_SRC) + '</p>';
+    // Responsabilité pour faute + cas des secours
+    h += '<h4 class="kta-legal-full-sub">' + _esc("Responsabilité en cas de dommages ou de secours") + '</h4>';
+    RESP_CIVILE.forEach(function(p) { h += '<p class="kta-legal-art">' + _esc(p) + '</p>'; });
+    SECOURS.forEach(function(p) { h += '<p class="kta-legal-art">' + _esc(p) + '</p>'; });
+    h += '<p class="kta-legal-src">' + _esc(RESP_SRC) + '</p>';
     return h;
   }
 

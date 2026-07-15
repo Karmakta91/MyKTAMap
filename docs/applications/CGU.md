@@ -94,23 +94,17 @@ Le droit de propriété est par ailleurs **exclusif** (article 544 du Code civil
 
 > **Source** : Article 226-4 du Code pénal (version en vigueur depuis le 29 juillet 2023, modifié par la loi n° 2023-668 du 27 juillet 2023) — Légifrance. Article 544 du Code civil.
 
----
+#### Responsabilité en cas de dommages ou de secours
 
-### ⛏️ Carrières du Val-d'Oise (95)
+**Article 1240 du Code civil.** Tout fait quelconque de l'homme, qui cause à autrui un dommage, oblige celui par la faute duquel il est arrivé à le réparer.
 
-Dans le Val-d'Oise, les anciennes carrières souterraines relèvent d'un régime de **protection du patrimoine géologique** (et non d'un arrêté d'interdiction d'accès comme à Paris).
+**Article 1241 du Code civil.** Chacun est responsable du dommage qu'il a causé non seulement par son fait, mais encore par sa négligence ou par son imprudence.
 
-Par **arrêté du 21 avril 2026**, le préfet du Val-d'Oise a institué la liste des **sites d'intérêt géologique** du département, au titre des articles **L.411-1** et **R.411-17-1 et R.411-17-2 du Code de l'environnement**. Toute **destruction, altération ou dégradation** de ces sites — **notamment les cavités souterraines naturelles ou artificielles** — ainsi que le prélèvement, la destruction ou la dégradation de fossiles, minéraux et concrétions, y sont **interdits**.
+Concrètement : si votre présence dans un lieu interdit ou dangereux **déclenche une opération de secours** (égarement, blessure, mise en danger des sauveteurs), vous vous exposez à devoir en répondre. En France, les secours sont **en principe gratuits** (dépense obligatoire des communes, article L.2321-2 du Code général des collectivités territoriales), mais une commune peut, par délibération et après information du public, **exiger le remboursement** de tout ou partie des frais de secours consécutifs à une **activité sportive ou de loisir** (article L.2331-4 du même code).
 
-**Communes concernées** : Longuesse, Vigny, Villiers-Adam, Chars, Sannois, Saint-Witz, Santeuil, Auvers-sur-Oise et Sagy.
+Surtout, sur le fondement des articles 1240 et 1241 du Code civil, quiconque cause un dommage **par sa faute** — imprudence, négligence, intrusion illicite — est tenu de le **réparer** : cela peut couvrir les dégradations commises, le préjudice causé aux tiers, et les conséquences d'une intervention rendue nécessaire par votre comportement.
 
-Quatre **arrêtés préfectoraux de protection de géotope (APPG)** complètent ce régime :
-- carrière des **15 Arpents** (Villiers-Adam) ;
-- carrière du **Guépelle** (Saint-Witz) ;
-- carrière du **Bois des Roches** (Vigny-Longuesse) ;
-- carrière du **Bois le Roi** (Auvers-sur-Oise).
-
-> **Source** : DRIEAT Île-de-France (services de l'État), avril 2026. Actes administratifs — textes publics.
+> **Source** : articles 1240 et 1241 du Code civil (Légifrance) ; articles L.2321-2 et L.2331-4 du Code général des collectivités territoriales.
 
 ---
 
