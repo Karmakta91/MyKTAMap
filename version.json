@@ -1,8 +1,8 @@
 {
-  "version": "v1.56.0",
-  "released": "2026-07-15",
+  "version": "v1.56.2",
+  "released": "2026-07-16",
   "notes": [
-    "⚖️ Nouveau : au premier lancement, des conditions d'utilisation rappellent que l'application est un outil de repérage et que l'accès à certains lieux (anciennes carrières de Paris…) est interdit — à lire et accepter une fois.",
-    "✨ Premier accueil plus clair : les messages d'ouverture ne se chevauchent plus, ils s'affichent l'un après l'autre."
+    "📐 Mesure de distance : l'angle en degrés s'affiche de nouveau à chaque sommet (certaines mesures affichaient « 0.0 m » à la place) — les mesures déjà enregistrées se réparent automatiquement à l'ouverture du plan.",
+    "⚖️ Conditions d'utilisation affinées : le rappel légal couvre désormais l'intrusion en lieu privé et les conséquences d'un déclenchement de secours."
   ]
 }

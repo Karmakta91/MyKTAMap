@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.56.0** (15 juillet 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »). _v1.56.0 — Conditions d'utilisation / avertissement légal au premier lancement + séquenceur des popups de démarrage. **Purement local** (une modale d'acceptation + un document `CGU.md` servi depuis l'app) — 2 fichiers JS internes + 1 document ajoutés, aucune requête réseau, aucune nouvelle permission, aucune donnée collectée._
+> Page de transparence technique. À jour pour la version **v1.56.2** (16 juillet 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »). _v1.56.2 — Correction d'affichage des angles de l'outil mesure + contenu des conditions d'utilisation affiné (intrusion en lieu privé, frais de secours ; mention Val-d'Oise retirée). **Purement local** (calculs et textes embarqués) — aucune requête réseau, aucune nouvelle permission, aucune donnée collectée. (v1.56.0 : gate légale + séquenceur de démarrage, également 100 % local.)_
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode

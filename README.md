@@ -8,7 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.56.0` (15/07/2026) — **⚖️ Conditions d'utilisation + orchestration du premier lancement** : gate légale bloquante au 1er boot (rappel intrusion carrières interdite — arrêté du 2 novembre 1955 + réponse Sénat n° 03710) et fin du « spam » de popups au démarrage (alerte → légal → onboarding → PIN, séquencés un par un).
+**📦 Version courante** : `v1.56.2` (16/07/2026) — **📐 Fix angles de mesure** (les sommets dupliqués d'anciennes sessions affichaient « 0.0 m » au lieu de l'angle — déduplication à la saisie/au restore/au rendu) + **⚖️ CGU affinées** (retrait Val-d'Oise, ajout intrusion en lieu privé : art. 226-4/544 + responsabilité-secours art. 1240-1241 & CGCT L.2321-2/L.2331-4).
+
+**📐 v1.56.2 (16/07/2026)** — **Fix angles de mesure (« 0.0 m » au sommet) + bump du lot légal c829c30** :
+- **Cause racine** : des **points consécutifs dupliqués** `[A,A,B,B,…]` dans `_pointsDistance` — héritage de l'ancien bug de handlers de clic empilés (corrigé côté saisie depuis), mais **les sessions sauvées à cette époque re-restaurent les doublons** via SessionPersist. Chaque sommet portait un segment interne de 0 px → label « 0.0 m » posé sur le point + **tous les angles skippés** (`len < 1e-6`).
+- **Fix 3 couches** (`js/measure.js`, helper `_dedupPointsConsecutifs`, seuil 0.01 px) : ① **saisie** — clic coïncident avec le dernier point ignoré ; ② **restore** — `setMeasurePoints`/`setMeasurePointsSurface` dédupliquent → les **sessions polluées se réparent au chargement** (re-sauvées propres) ; ③ **rendu** — labels segments + angles calculés sur la géométrie dédupliquée (robuste quelle que soit la source). Les vrais points (≥ 0.01 px) ne sont jamais fusionnés. Aucun impact `calculDistance`/`calculSurface` (segments 0 = 0 m ; shoelace insensible aux doublons).
+- **Testé** : harness Leaflet factice — scénario `[A,A,B,B,C,C]` → segments « 10.0 m »/« 8.0 m » + angle **90°** affiché, résultat strictement identique à une saisie propre ; helper unitaire (fusion < 0.01 px, conservation 0.5 px, tableaux vides).
+- **Inclut le bump du commit `c829c30`** (docs légaux, passé sans bump) : CGU **sans** le volet Val-d'Oise (retiré) + **intrusion en lieu privé approfondie** — art. 226-4 (verbatim) & 544, et **responsabilité en cas de dommages ou de secours** : art. 1240-1241 Code civil (verbatim), secours en principe gratuits (CGCT L.2321-2) mais **facturables** pour une activité de loisir (CGCT L.2331-4) + réparation du dommage causé par faute/imprudence. Puce « responsabilité » de la gate enrichie (fr/en).
+- **Sources** v1.56.2. Aucune nouvelle surface réseau.
 
 **⚖️ v1.56.0 (15/07/2026)** — **Conditions d'utilisation (avertissement légal) + séquenceur de premier lancement** :
 - **Problème** : au 1er lancement, 3 modales se bousculaient sans coordination (proposition PIN à +800 ms, alerte publique post-splash, onboarding à +600 ms) → superposition, « spam », premier accueil non pro.
