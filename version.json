@@ -1,8 +1,7 @@
 {
-  "version": "v1.56.2",
-  "released": "2026-07-16",
+  "version": "v1.56.3",
+  "released": "2026-07-21",
   "notes": [
-    "📐 Mesure de distance : l'angle en degrés s'affiche de nouveau à chaque sommet (certaines mesures affichaient « 0.0 m » à la place) — les mesures déjà enregistrées se réparent automatiquement à l'ouverture du plan.",
-    "⚖️ Conditions d'utilisation affinées : le rappel légal couvre désormais l'intrusion en lieu privé et les conséquences d'un déclenchement de secours."
+    "🔧 L'adresse du site de développement change : dev.myktamap.fr (anciennement devmap.is-underground.fr). Les pages de documentation et d'audit sont à jour — l'adresse officielle myktamap.fr ne change pas."
   ]
 }

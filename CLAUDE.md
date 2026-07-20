@@ -5,7 +5,7 @@
 ## 🎯 Projet
 - App web **cartographie souterraine** (Leaflet `L.CRS.Simple`), plans = images HD, **sans GPS**. Cible : cataphiles, spéléo, sites souterrains.
 - **PWA page unique** `index.html`. Stack **HTML/CSS/JS vanilla + Leaflet**, pas de framework, **pas de bundler**.
-- Prod https://myktamap.fr · Dev https://devmap.is-underground.fr
+- Prod https://myktamap.fr · Dev https://dev.myktamap.fr
 - Auteur Flavien VIDAL (KARMA). Licence **CC BY-NC-SA 4.0** (usage commercial interdit sans accord).
 
 ## 🔒 Frontière community ↔ pro (CRITIQUE)

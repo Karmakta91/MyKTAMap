@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.56.2** (16 juillet 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »). _v1.56.2 — Correction d'affichage des angles de l'outil mesure + contenu des conditions d'utilisation affiné (intrusion en lieu privé, frais de secours ; mention Val-d'Oise retirée). **Purement local** (calculs et textes embarqués) — aucune requête réseau, aucune nouvelle permission, aucune donnée collectée. (v1.56.0 : gate légale + séquenceur de démarrage, également 100 % local.)_
+> Page de transparence technique. À jour pour la version **v1.56.3** (21 juillet 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »). _v1.56.3 — Changement d'adresse de l'environnement de développement : `dev.myktamap.fr` remplace `devmap.is-underground.fr` (même auteur, mêmes garanties). Mise à jour de documentation uniquement — **aucun changement de surface réseau** : le domaine officiel `myktamap.fr` est inchangé, et l'app ne contacte que son propre domaine (`connect-src 'self'`). (v1.56.2 : fix angles mesure + CGU affinées, 100 % local.)_
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -23,7 +23,7 @@ suite du document t'explique comment.
 
 > **⚠️ Cette garantie de sécurité et de non-télémétrie s'applique
 > UNIQUEMENT au domaine officiel `myktamap.fr`** (et à l'environnement
-> de développement `devmap.is-underground.fr`, géré par le même auteur).
+> de développement `dev.myktamap.fr`, géré par le même auteur).
 
 Le code source de MyKTAMap est **public** sous licence CC BY-NC-SA 4.0. Il
 peut donc être **copié, forké, miroir ou redéployé** par n'importe qui dans
@@ -43,7 +43,7 @@ quelqu'un de prendre notre code et de le modifier.
 ### Comment t'assurer que tu es sur le vrai site ?
 
 1. Vérifie l'URL dans la **barre d'adresse** de ton navigateur
-2. Elle doit commencer par `https://myktamap.fr` ou `https://devmap.is-underground.fr`
+2. Elle doit commencer par `https://myktamap.fr` ou `https://dev.myktamap.fr`
 3. Vérifie que le cadenas 🔒 est présent (HTTPS valide, certificat émis par Let's Encrypt)
 4. Si l'URL ne correspond pas, **tout ce qui est écrit dans cette page ne te concerne pas** — c'est une copie tierce sur laquelle nous n'avons aucun contrôle
 
@@ -98,7 +98,7 @@ envoyé** (réponse : rien, jamais).
 
 `<origin>` = le domaine sur lequel l'app est servie. Pour la prod c'est
 `myktamap.fr` (ou `myktamap.fr` après le 15 juillet 2026).
-Pour dev : `devmap.is-underground.fr`. Sur ton réseau local en
+Pour dev : `dev.myktamap.fr`. Sur ton réseau local en
 développement : `localhost` ou IP locale.
 
 **Aucun `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`, `WebSocket`,
@@ -114,7 +114,7 @@ fichier sera mis à jour en conséquence et la version sera bumpée.
 l'app** (same-origin) :
 
 - Prod : `https://myktamap.fr/ping.html`
-- Dev : `https://devmap.is-underground.fr/ping.html`
+- Dev : `https://dev.myktamap.fr/ping.html`
 - Future prod : `https://myktamap.fr/ping.html`
 
 L'URL est résolue dynamiquement via `location.origin + "/ping.html"`.
@@ -922,7 +922,7 @@ retrouver sans cache hors-ligne).
 
 > **v1.34.23 (Mode Histoire — Fix theme clair sélecteur CSS dual body/html)** : KARMA screenshot v1.34.22 montre que les overrides theme clair v1.34.21 ne s'appliquent pas aux éléments INSIDE la modale Mode Histoire. Cause : modale appendée à `document.documentElement` (= `<html>`) → sibling de body, pas descendant. Mes overrides `body.kta-theme-light .X` ne matchent que descendants de body. Fix : double sélecteur `body.kta-theme-light .X, html.kta-theme-light .X` (pattern identique à `sessionExporter.js`). **Impact réseau** : ZÉRO — pure correction CSS. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — fix cosmétique.
 
-> **v1.34.22 (Mode Histoire — Fix CSP iframe blob + bouton "Ouvrir dans un onglet")** : KARMA test v1.34.20/21 a remonté une violation CSP : `Framing 'blob:...' violates default-src 'self'`. Cause : le header CSP nginx n'avait pas `frame-src` défini → fallback sur `default-src 'self'` qui bloque les blob: URLs en iframe. **Fix nginx** : `docs/nginx-csp-config.conf` ligne 96 — ajout `frame-src 'self' blob:;` dans le header `Content-Security-Policy`. Cohérent avec les autres directives blob: déjà autorisées (img-src, connect-src, worker-src). `frame-ancestors 'none'` (anti-clickjacking) reste intact — c'est une directive séparée qui régit qui peut embarquer NOTRE page dans une frame, pas ce qu'on embarque nous. **Fix code** : ajout bouton "↗️ Ouvrir dans un onglet" en sticky sur le wrap PDF (toujours visible). Sert de fallback si la nginx config pas redéployée ET de UX bonus (plein écran natif, copie texte). **Impact réseau** : ZÉRO. Le PDF reste 100% local (embarqué via RUNTIME_ASSETS ou session IDB). Le bouton "Ouvrir dans un onglet" utilise target="_blank" qui ouvre un nouvel onglet sur la même origine (devmap.is-underground.fr) avec la même blob: URL — aucun fetch externe. **Sécurité CSP renforcée** : `frame-src 'self' blob:;` est restrictif — autorise UNIQUEMENT les frames de notre origine et les blob: créées par notre code. Pas de risque XSS via iframe distante. **Action KARMA** : redéployer `nginx-csp-config.conf` sur serveur (devmap + prod) + reload nginx. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — fix CSP cohérent avec la philosophie de l'app + UX bonus.
+> **v1.34.22 (Mode Histoire — Fix CSP iframe blob + bouton "Ouvrir dans un onglet")** : KARMA test v1.34.20/21 a remonté une violation CSP : `Framing 'blob:...' violates default-src 'self'`. Cause : le header CSP nginx n'avait pas `frame-src` défini → fallback sur `default-src 'self'` qui bloque les blob: URLs en iframe. **Fix nginx** : `docs/nginx-csp-config.conf` ligne 96 — ajout `frame-src 'self' blob:;` dans le header `Content-Security-Policy`. Cohérent avec les autres directives blob: déjà autorisées (img-src, connect-src, worker-src). `frame-ancestors 'none'` (anti-clickjacking) reste intact — c'est une directive séparée qui régit qui peut embarquer NOTRE page dans une frame, pas ce qu'on embarque nous. **Fix code** : ajout bouton "↗️ Ouvrir dans un onglet" en sticky sur le wrap PDF (toujours visible). Sert de fallback si la nginx config pas redéployée ET de UX bonus (plein écran natif, copie texte). **Impact réseau** : ZÉRO. Le PDF reste 100% local (embarqué via RUNTIME_ASSETS ou session IDB). Le bouton "Ouvrir dans un onglet" utilise target="_blank" qui ouvre un nouvel onglet sur la même origine (dev.myktamap.fr) avec la même blob: URL — aucun fetch externe. **Sécurité CSP renforcée** : `frame-src 'self' blob:;` est restrictif — autorise UNIQUEMENT les frames de notre origine et les blob: créées par notre code. Pas de risque XSS via iframe distante. **Action KARMA** : redéployer `nginx-csp-config.conf` sur serveur (devmap + prod) + reload nginx. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — fix CSP cohérent avec la philosophie de l'app + UX bonus.
 
 > **v1.34.21 (Mode Histoire — finitions UX bouton + theme clair)** : 2 retours KARMA tests v1.34.19/20. (1) Bouton 📖 déplacé à GAUCHE de la batterie dans header refonte (modif `js/refonteInterface.js` — inversion ordre d'insertion HTML). (2) Theme clair fixé pour Mode Histoire : ajout overrides `body.kta-theme-light .kta-histoire-*` dans `css/style.css` (~50 lignes) — tabs, textarea, pdf-wrap, placeholders, toolbar. Réutilise variables `--kta-light-*` existantes. **Impact réseau** : ZÉRO — modifs purement CSS + un déplacement HTML local. Aucun fetch externe, aucun changement de comportement réseau. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression réseau — finitions UI purement client-side.
 
