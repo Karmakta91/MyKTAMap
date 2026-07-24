@@ -1340,14 +1340,18 @@ async function _captureOsmCanvasForBriefing(scenario, plan): Promise<string | nu
 
 #### 87.1 Séquenceur `js/firstRunFlow.js`
 
-`window.FirstRunFlow.run()` — file **séquentielle** jouée **une fois** après le retrait du splash (`main.js > _splashEnd`). Chaque étape attend la **fermeture** de la précédente. Ordre par priorité :
+`window.FirstRunFlow.run()` — file **séquentielle** jouée **une fois** après le retrait du splash (`main.js > _splashEnd`). Chaque étape attend la **fermeture** de la précédente.
 
-1. 🚨 **Alerte critique serveur** (`AlertChecker.notifySplashEnded(onDone)`)
-2. ⚖️ **Conditions d'utilisation** (`LegalGate.ouvrirGate()` → Promise, bloquant)
-3. 🎓 **Onboarding** (`Tutorial.ouvrir(onClose)`)
-4. 🔐 **Proposition PIN** (`MyKTAMapPinLock.proposerActivation(onClose)`)
+**⚠️ v1.56.4 — Ordre de boot complet** (« on lit et accepte les conditions AVANT de saisir un code », KARMA) :
 
-Chaque module expose désormais un **signal de fin** (Promise ou callback `onClose`/`onDone`) ; `firstRunFlow` les promisifie via le helper interne `_step(label, fn)` (résout immédiatement si module absent / étape non applicable → la file continue). `main.js` a **remplacé** les anciens déclencheurs éparpillés (proposition PIN à +800 ms, bloc tutoriel + `notifySplashEnded` dans `_splashEnd`) par un unique `FirstRunFlow.run()`.
+0. ⚖️ **Conditions d'utilisation** — affichée par **`main.js > initApp` AVANT l'UnlockGate** (pas par le flow). Bug corrigé : déclenchée post-splash par le flow, la gate légale (z 99999) passait **derrière** l'UnlockGate (z 100100).
+1. 🗝️ **UnlockGate** (code communautaire / import licence) puis 🔐 **gate PIN** — inchangées.
+2. → `main.js` appelle **`FirstRunFlow.notifyBootGatesDone()`** une fois toutes les gates franchies.
+3. La file du flow déroule alors : 🚨 **Alerte critique serveur** (`AlertChecker.notifySplashEnded(onDone)`) → ⚖️ étape légale (simple **filet**, no-op car déjà acceptée) → 🎓 **Onboarding** (`Tutorial.ouvrir(onClose)`) → 🔐 **Proposition PIN** (`MyKTAMapPinLock.proposerActivation(onClose)`).
+
+**Pourquoi un signal explicite** (`notifyBootGatesDone`) et pas un poll du DOM : entre 2 gates il existe des **fenêtres sans overlay** (ex. ~2 s d'attente du check licence pro entre la légale et l'UnlockGate) pendant lesquelles un poll croirait la voie libre → le tutoriel partait pendant la saisie du code (race constatée au test). En **lockout** (unlock/PIN), `main.js` reste bloqué sur `ouvrirGate()` → le signal n'arrive jamais → la file ne démarre jamais (voulu). Un poll DOM (`#kta-legal-gate-overlay, #kta-unlock-overlay, #kta-pin-gate-overlay`, 250 ms) est conservé en 2e rideau après le signal.
+
+Chaque module expose un **signal de fin** (Promise ou callback `onClose`/`onDone`) ; `firstRunFlow` les promisifie via le helper interne `_step(label, fn)` (résout immédiatement si module absent / étape non applicable → la file continue). `main.js` a **remplacé** les anciens déclencheurs éparpillés (proposition PIN à +800 ms, bloc tutoriel + `notifySplashEnded` dans `_splashEnd`) par un unique `FirstRunFlow.run()`.
 
 ⚠️ Le délai interne de 800 ms de `proposerActivation` a été **supprimé** (le séquenceur garantit qu'aucune autre modale n'est ouverte). `Tutorial.fermer()` déclenche le `onClose` une seule fois (défini **après** le `fermer()` initial de `ouvrir()` pour ne pas se déclencher à tort). Le cas **multi-alertes** (rare) ne bloque pas la file : `onDone` est appelé dès l'ouverture du sélecteur.
 

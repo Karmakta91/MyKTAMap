@@ -755,6 +755,26 @@ If your map is **GPS calibrated** (see "Export to geolocated KMZ" section for 2-
 
 > 💡 **Typical use case**: on a cataphile outing, you find an unlisted well, you add it via ✏️, you click on it → you can instantly copy its GPS coordinates to send them to a teammate by SMS or to mark them later in Google Earth.
 
+### 🌀 Inter-plan links (since v1.57.0)
+
+You can **link a point on one plan to a point on another plan** — like a "portal" between two touching networks (two neighboring quarries, or an overview plan and a detail plan).
+
+**Create a link**:
+1. Click a point (session **or** data layer) → in its popup, button **"🌀 Link to another plan"**.
+2. Pick the **target plan** from your library, then **search the arrival point** (by name, id or tag) — no need to open the other plan, its points are read in place.
+3. The link is created **both ways**: it shows in both points' popups.
+
+**On the map**: a **golden 🌀 badge** floats above the icon of every linked point.
+
+**Use a link**: in the point's popup, a 🌀 line shows the destination plan and point → **➜** button → confirmation → the app **switches plan** (your current session is saved automatically) and drops you **right on the arrival point** (blue flash).
+
+**Good to know**:
+- A point can carry **several links** (a "hub" point).
+- If the destination plan is **not on your device**, the link still shows (⛔) — add the plan to be able to "go there".
+- **Deleting a point** also deletes its links (both sides).
+- Links **travel with the session export** (restored on import on another device).
+- A distributed plan ("data layer") can embed ready-to-use links: you can **use** them, not edit them.
+
 ---
 
 ## 🧭 Interface overview

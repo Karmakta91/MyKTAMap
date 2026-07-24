@@ -724,10 +724,18 @@ function _ajouterMarker(point) {
   // bouton "🗑️ Supprimer" affiche dans la popup.
   // 🆕 v1.16.0 step 3 : passe layerInfo pour que le bouton ⭐ Favori
   // puisse construire le snapshot avec le bon layerId/layerLabel.
-  const popupHtml = (typeof window.buildPointPopupHtml === "function")
-    ? window.buildPointPopupHtml(point, true, { layerId: "editor", layerLabel: window.I18n.t("editor.popup.myAdds") })
-    : ("<b>" + point.nom + "</b><br>" + (point.description || ""));
-  marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
+  // 🌀 v1.57.0 — bindPopup reçoit une FONCTION (contenu régénéré à CHAQUE
+  // ouverture) au lieu d'un HTML figé au render. Sans ça, la section
+  // « Liaisons inter-plan » (et l'état ⭐ Favori) restait celle du moment du
+  // render : une liaison créée depuis le popup n'apparaissait qu'après un
+  // plan switch. Même pattern que les markers data layers (utils.js > popup
+  // LAZY H3) — bonus perf : le HTML n'est plus construit pour les popups
+  // jamais ouverts.
+  marker.bindPopup(function() {
+    return (typeof window.buildPointPopupHtml === "function")
+      ? window.buildPointPopupHtml(point, true, { layerId: "editor", layerLabel: window.I18n.t("editor.popup.myAdds") })
+      : ("<b>" + point.nom + "</b><br>" + (point.description || ""));
+  }, window.KTA_POPUP_OPTS);
 
   // 🔍 v174 : double-clic sur le marker → zoom flyTo dessus
   if (typeof window.attachMarkerDblClickZoom === "function") {
@@ -922,6 +930,16 @@ window.supprimerPointEditor = function(id, x, y) {
   if (idx === -1) {
     console.warn("[Editor] Point a supprimer introuvable :", id, x, y);
     return;
+  }
+
+  // 🌀 v1.57.0 : purge les liaisons inter-plan du point supprimé (le lien
+  // entier disparaît des 2 côtés + badge retiré — cf interPlanLinks.js).
+  // Capturé AVANT le splice (on a besoin de l'objet point pour le croisement).
+  if (window.InterPlanLinks && typeof window.InterPlanLinks.onPointDeleted === "function"
+      && window._currentLoadedPlanId) {
+    try {
+      window.InterPlanLinks.onPointDeleted(window._currentLoadedPlanId, listePoints[idx]);
+    } catch(e) { console.warn("[Editor] purge liaisons inter-plan :", e); }
   }
 
   // Retire du tableau + re-render (renderEditorPoints clear le layerEditor + re-add)

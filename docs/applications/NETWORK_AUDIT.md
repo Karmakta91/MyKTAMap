@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.56.3** (21 juillet 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »). _v1.56.3 — Changement d'adresse de l'environnement de développement : `dev.myktamap.fr` remplace `devmap.is-underground.fr` (même auteur, mêmes garanties). Mise à jour de documentation uniquement — **aucun changement de surface réseau** : le domaine officiel `myktamap.fr` est inchangé, et l'app ne contacte que son propre domaine (`connect-src 'self'`). (v1.56.2 : fix angles mesure + CGU affinées, 100 % local.)_
+> Page de transparence technique. À jour pour la version **v1.57.0** (25 juillet 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »). _v1.57.0 — Liaisons inter-plan (lier un point d'un plan à un point d'un autre plan). **Aucune nouvelle surface réseau** : le registre des liaisons vit en localStorage, la lecture des points d'un autre plan passe par le stockage local (IndexedDB) ou par des requêtes vers le propre domaine de l'app (déjà couvertes par `connect-src 'self'`). Les conditions d'utilisation s'affichent désormais avant la saisie du code d'accès (changement d'ordre local, zéro réseau). (v1.56.3 : renommage du domaine de dev en `dev.myktamap.fr`.)_
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode

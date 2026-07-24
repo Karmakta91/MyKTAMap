@@ -442,6 +442,15 @@ async function lancerApplication() {
 
   console.log("[Main] Application lancée");
 
+  // 🌀 v1.57.0 — Liaisons inter-plan : pose les badges 🌀 sur les points
+  // liés du plan courant (lecture du registre localStorage — cf.
+  // js/interPlanLinks.js). Le module gère lui-même son différé interne.
+  if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanLoaded === "function") {
+    try { window.InterPlanLinks.onPlanLoaded(); } catch(e) {
+      console.warn("[Main] InterPlanLinks.onPlanLoaded échec :", e);
+    }
+  }
+
   // 🆕 v1.21.3 (KARMA "les stat de plan ne comprenne que les session") :
   // persiste les stats COMPLÈTES du plan courant (session + embedded data
   // layers) dans localStorage pour que la modale Profil > "📊 Mes plans"
@@ -1360,6 +1369,22 @@ window.proposerRedemarrageLangue = function() {
   // Démarrer le splash dès l'init
   _splashStart();
 
+  // ⚖️ v1.56.4 — Conditions d'utilisation EN TOUT PREMIER, AVANT toute saisie
+  // de code communautaire ou import de licence (bug : déclenchée par
+  // FirstRunFlow post-splash, la gate légale [z 99999] passait DERRIÈRE
+  // l'UnlockGate [z 100100] — et l'ordre logique voulu par KARMA est « on lit
+  // et accepte les conditions AVANT de saisir un code »). Bloquant : le boot
+  // ne continue pas tant que l'user n'a pas accepté. Skip en incognito (flag
+  // localStorage shimé, non persistant — cohérent FirstRunFlow). L'étape
+  // légale de FirstRunFlow reste en filet (no-op ici car déjà accepté).
+  if (window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
+      && !window.LegalGate.isAccepted()
+      && !(window.IncognitoMode && window.IncognitoMode.active)) {
+    await _splashEnd();
+    try { await window.LegalGate.ouvrirGate(); }
+    catch (e) { console.warn("[Main] LegalGate a échoué :", e); }
+  }
+
   // 🗝️ v173 : Unlock Gate (barrière communautaire).
   // Position 3=b validée KARMA : APRÈS le splash, AVANT toute initialisation
   // qui touche au plan ou à l'UI. Si pas authentifié → l'app reste bloquée
@@ -1453,6 +1478,17 @@ window.proposerRedemarrageLangue = function() {
     console.log("[Main] Gate PIN ouverte (pas encore déverrouillé)…");
     await window.MyKTAMapPinLock.ouvrirGate();
     console.log("[Main] Gate PIN franchie → init normale");
+  }
+
+  // ⚖️ v1.56.4 — Toutes les gates de boot (légale → unlock → PIN) sont
+  // franchies : on libère le séquenceur de premier lancement. Sans ce signal
+  // explicite, FirstRunFlow (déclenché par _splashEnd ~500 ms après le fade)
+  // pouvait démarrer dans une FENÊTRE SANS GATE entre deux gates (ex. ~2 s
+  // d'attente du check licence pro entre la légale et l'UnlockGate) → le
+  // tutoriel partait avant/derrière la saisie du code. En lockout, ce point
+  // n'est jamais atteint → la file ne démarre jamais (voulu).
+  if (window.FirstRunFlow && typeof window.FirstRunFlow.notifyBootGatesDone === "function") {
+    window.FirstRunFlow.notifyBootGatesDone();
   }
 
   // 🆕 v1.56.0 — La proposition d'activation du PIN n'est PLUS déclenchée ici :

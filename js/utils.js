@@ -957,6 +957,16 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
                  '</button>';
   }
 
+  // 🌀 v1.57.0 — Liaisons inter-plan : section synchrone (registre localStorage)
+  // listant les liaisons du point (+ liens baked `point.interPlanLinks` d'un
+  // datalayer) + bouton « Lier à un autre plan ». Tout point est liable
+  // (session ET datalayer — décision 6:a). Cf js/interPlanLinks.js.
+  let iplSectionHtml = "";
+  if (window.InterPlanLinks && typeof window.InterPlanLinks.buildPopupHtml === "function") {
+    try { iplSectionHtml = window.InterPlanLinks.buildPopupHtml(point, _layerId); }
+    catch(e) { console.warn("[Popup] section liaisons inter-plan :", e); }
+  }
+
   return '<div class="kta-popup-point">' +
            '<b>' + safeName + '</b>' +
            (safeDesc ? '<br><span class="kta-popup-desc">' + ttsBtnHtml + safeDesc + '</span>' : '') +
@@ -989,6 +999,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
                (isFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff")) +
              '</button>' +
            '</div>' +
+           iplSectionHtml +
            editRow +
            deleteRow +
          '</div>';

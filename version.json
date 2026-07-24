@@ -1,7 +1,8 @@
 {
-  "version": "v1.56.3",
-  "released": "2026-07-21",
+  "version": "v1.57.0",
+  "released": "2026-07-25",
   "notes": [
-    "🔧 L'adresse du site de développement change : dev.myktamap.fr (anciennement devmap.is-underground.fr). Les pages de documentation et d'audit sont à jour — l'adresse officielle myktamap.fr ne change pas."
+    "🌀 Nouveau : liez deux plans entre eux ! Depuis la fiche d'un point, « Lier à un autre plan » crée un passage vers un point d'un autre plan — un badge doré le signale sur la carte et « Y aller » vous y emmène directement, même entre vos sessions et les plans fournis.",
+    "✨ Au premier démarrage, les conditions d'utilisation s'affichent désormais en tout premier, avant la saisie du code d'accès."
   ]
 }

@@ -8307,6 +8307,115 @@ html.kta-theme-light .kta-legal-check { color: var(--kta-light-text, #1a1f2e); }
 html.kta-theme-light .kta-legal-points li { color: var(--kta-light-text-2, #38414f); }
 html.kta-theme-light .kta-legal-art { color: var(--kta-light-text-2, #38414f); }
 
+/* =========================================================
+   🌀 v1.57.0 — Liaisons inter-plan (interPlanLinks.js)
+   ========================================================= */
+/* Section dans le popup POI */
+.kta-ipl-section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(140, 180, 255, 0.25);
+}
+.kta-ipl-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 12px;
+}
+.kta-ipl-ico { flex: 0 0 auto; }
+.kta-ipl-label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #8cb4ff;
+}
+.kta-ipl-go, .kta-ipl-del {
+  flex: 0 0 auto;
+  padding: 2px 7px !important;
+  font-size: 12px !important;
+}
+.kta-ipl-absent { flex: 0 0 auto; opacity: 0.6; cursor: help; }
+.kta-ipl-add { width: 100%; }
+/* Badge 🌀 sur la carte — centré AU-DESSUS de l'icône du point lié
+   (v1.57.0-fix : taille + contraste doré renforcés, zIndexOffset 2000
+   côté marker pour passer par-dessus toutes les icônes) */
+.kta-ipl-badge-wrap { pointer-events: none; }
+.kta-ipl-badge {
+  width: 22px;
+  height: 22px;
+  line-height: 20px;
+  text-align: center;
+  font-size: 14px;
+  background: rgba(26, 31, 46, 0.95);
+  border: 2px solid #f4c542;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(244, 197, 66, 0.55), 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+/* Modale création */
+.kta-ipl-boite { max-width: 520px !important; height: auto !important; max-height: 90vh !important; }
+.kta-ipl-src {
+  font-size: 12.5px;
+  color: #8892a4;
+  margin: 0 0 12px 0;
+  padding: 8px 10px;
+  background: rgba(140, 180, 255, 0.06);
+  border-left: 3px solid rgba(140, 180, 255, 0.35);
+  border-radius: 4px;
+}
+.kta-ipl-hint { font-size: 13px; color: #c8d0e0; margin: 10px 0 8px 0; }
+.kta-ipl-empty { font-size: 13px; color: #8892a4; font-style: italic; margin: 12px 0; }
+.kta-ipl-plan-btn, .kta-ipl-pt-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  background: rgba(140, 180, 255, 0.06);
+  border: 1px solid rgba(140, 180, 255, 0.18);
+  border-radius: 6px;
+  color: #e8eaf0;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.kta-ipl-plan-btn:hover, .kta-ipl-pt-btn:hover {
+  background: rgba(140, 180, 255, 0.14);
+  border-color: rgba(140, 180, 255, 0.4);
+}
+.kta-ipl-plan-name, .kta-ipl-pt-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kta-ipl-plan-ver, .kta-ipl-pt-meta { flex: 0 0 auto; font-size: 11px; color: #8892a4; }
+.kta-ipl-search {
+  width: 100%;
+  padding: 8px 12px;
+  margin: 8px 0;
+  background: rgba(10, 13, 24, 0.6);
+  border: 1px solid rgba(140, 180, 255, 0.25);
+  border-radius: 6px;
+  color: #e8eaf0;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.kta-ipl-search:focus { outline: none; border-color: #8cb4ff; }
+.kta-ipl-results { max-height: 42vh; overflow-y: auto; }
+.kta-ipl-back { font-size: 12.5px; padding: 4px 10px; margin-bottom: 4px; }
+/* Thème clair */
+html.kta-theme-light .kta-ipl-plan-btn,
+html.kta-theme-light .kta-ipl-pt-btn { color: var(--kta-light-text, #1a1f2e); }
+html.kta-theme-light .kta-ipl-hint { color: var(--kta-light-text-2, #38414f); }
+html.kta-theme-light .kta-ipl-search {
+  color: var(--kta-light-text, #1a1f2e);
+  background: rgba(255, 255, 255, 0.8);
+}
+html.kta-theme-light .kta-ipl-badge { background: rgba(255, 255, 255, 0.9); }
+
 .kta-pin-proposal-info {
   margin: 12px 0;
   padding: 10px 14px;

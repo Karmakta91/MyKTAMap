@@ -1883,7 +1883,13 @@
         // label+couleur+icône à l'import, même sur un ZIP vierge. Miroir de
         // SessionPersist (qui embarquait déjà getSessionState au reload).
         customLegend: (window.LegendCustomization && window.LegendCustomization.getSessionState)
-                        ? window.LegendCustomization.getSessionState() : null
+                        ? window.LegendCustomization.getSessionState() : null,
+        // 🌀 v1.57.0 : liaisons inter-plan du plan courant (registre central
+        // myktamap_interplan_links_v1) → session AUTOPORTANTE cross-appareil.
+        // Réinjectées au registre à l'import (fusion par id, cf.
+        // interfaceImportExport.js). Ids de plans déterministes → portables.
+        interPlanLinks: (window.InterPlanLinks && window._currentLoadedPlanId)
+                          ? window.InterPlanLinks.getLinksForPlan(window._currentLoadedPlanId) : []
       };
 
       // 🆕 v1.21.2 (KARMA "tu enrengister dans export session le tracker ?
@@ -2100,6 +2106,11 @@
         if (window.LegendCustomization && window.LegendCustomization.getSessionState &&
             window.LegendCustomization.isSessionStateEmpty && !window.LegendCustomization.isSessionStateEmpty()) {
           session.customLegend = window.LegendCustomization.getSessionState();
+        }
+        // 🌀 v1.57.0 : liaisons inter-plan du plan courant (si non vide)
+        if (window.InterPlanLinks && window._currentLoadedPlanId) {
+          const _ipl = window.InterPlanLinks.getLinksForPlan(window._currentLoadedPlanId);
+          if (_ipl.length > 0) session.interPlanLinks = _ipl;
         }
         if (photos.length > 0) {
           session.photosCount   = photos.length;

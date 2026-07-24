@@ -54,9 +54,48 @@
     });
   }
 
+  // ⚖️ v1.56.4 — Attend que les GATES DE BOOT (légale → unlock → PIN) soient
+  // TOUTES franchies avant de dérouler la file. _splashEnd() déclenche run()
+  // ~500 ms après le début du fade du splash, c.-à-d. potentiellement PENDANT
+  // une gate bloquante à z-index supérieur → l'alerte/onboarding s'affichaient
+  // derrière ou par-dessus.
+  //
+  // Signal EXPLICITE (notifyBootGatesDone, appelé par main.js une fois le
+  // bloc gates passé) plutôt qu'un poll du DOM : entre 2 gates il existe des
+  // fenêtres sans overlay (ex. ~2 s d'attente du check licence pro entre la
+  // gate légale et l'UnlockGate) pendant lesquelles un poll croirait la voie
+  // libre (race constatée au test : le tutoriel partait avant l'unlock).
+  // En lockout (unlock/PIN), main.js reste bloqué sur ouvrirGate() → le
+  // signal n'arrive jamais → la file ne démarre jamais (voulu).
+  // Poll DOM conservé en 2e rideau (défense) après le signal.
+  const _BOOT_GATES_SEL = "#kta-legal-gate-overlay, #kta-unlock-overlay, #kta-pin-gate-overlay";
+  let _bootGatesDone = false;
+  let _bootGatesWaiters = [];
+  function notifyBootGatesDone() {
+    _bootGatesDone = true;
+    const w = _bootGatesWaiters;
+    _bootGatesWaiters = [];
+    w.forEach(function(r) { try { r(); } catch(e) {} });
+  }
+  function _attendreSignalGates() {
+    if (_bootGatesDone) return Promise.resolve();
+    return new Promise(function(resolve) { _bootGatesWaiters.push(resolve); });
+  }
+  function _attendreGatesBootDom() {
+    return new Promise(function(resolve) {
+      (function check() {
+        if (!document.querySelector(_BOOT_GATES_SEL)) { resolve(); return; }
+        setTimeout(check, 250);
+      })();
+    });
+  }
+
   async function run() {
     if (_ran) return;
     _ran = true;
+
+    await _attendreSignalGates();
+    await _attendreGatesBootDom();
 
     const inIncognito = !!(window.IncognitoMode && window.IncognitoMode.active);
 
@@ -72,10 +111,14 @@
       }
     });
 
-    // 2) ⚖️ Conditions d'utilisation (bloquant, 1re fois).
-    //    Skip en incognito : localStorage est shimé (le flag ne persiste pas)
-    //    → sinon re-prompt à chaque session incognito (cf. même parti pris que
-    //    la proposition PIN). L'accès reste possible en consultation (footer).
+    // 2) ⚖️ Conditions d'utilisation — FILET uniquement depuis v1.56.4 : la
+    //    gate légale est désormais affichée par main.js AVANT l'UnlockGate
+    //    (« on accepte les conditions avant de saisir un code ») → ici c'est
+    //    un no-op (isAccepted() = true) sauf cas anormal où l'étape boot
+    //    n'aurait pas tourné. Skip en incognito : localStorage est shimé (le
+    //    flag ne persiste pas) → sinon re-prompt à chaque session incognito
+    //    (cf. même parti pris que la proposition PIN). L'accès reste possible
+    //    en consultation (footer).
     if (window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
         && !window.LegalGate.isAccepted() && !inIncognito) {
       try { await window.LegalGate.ouvrirGate(); }
@@ -107,7 +150,7 @@
     console.log("[FirstRunFlow] Séquence de premier lancement terminée");
   }
 
-  window.FirstRunFlow = { run: run };
+  window.FirstRunFlow = { run: run, notifyBootGatesDone: notifyBootGatesDone };
 
   console.log("[FirstRunFlow] Module chargé");
 })();

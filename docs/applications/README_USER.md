@@ -758,6 +758,26 @@ Si ton plan est **calibré GPS** (cf. section "Exporter en KMZ géolocalisé" po
 
 > 💡 **Cas d'usage typique** : en sortie cataphile, tu trouves un puits non répertorié, tu l'ajoutes via ✏️, tu cliques dessus → tu peux instantanément copier ses coords GPS pour les envoyer à un binôme par SMS ou pour les pointer plus tard dans Google Earth.
 
+### 🌀 Liaisons inter-plan (depuis v1.57.0)
+
+Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « portail » entre deux réseaux qui se touchent (deux carrières voisines, ou un plan général et un plan de détail).
+
+**Créer une liaison** :
+1. Clique sur un point (session **ou** data layer) → dans la fiche, bouton **« 🌀 Lier à un autre plan »**.
+2. Choisis le **plan cible** dans ta bibliothèque, puis **recherche le point** d'arrivée (par nom, id ou tag) — pas besoin d'ouvrir l'autre plan, ses points sont lus sur place.
+3. La liaison est créée **dans les deux sens** : elle apparaît dans la fiche des deux points.
+
+**Sur la carte** : un **badge doré 🌀** flotte au-dessus de l'icône de chaque point lié.
+
+**Utiliser une liaison** : dans la fiche du point, ligne 🌀 avec le plan et le point de destination → bouton **➜** → confirmation → l'app **change de plan** (ta session actuelle est sauvegardée automatiquement) et te dépose **directement sur le point d'arrivée** (flash bleu).
+
+**Bon à savoir** :
+- Un point peut porter **plusieurs liaisons** (point « hub »).
+- Si le plan de destination n'est **pas sur ton appareil**, la liaison s'affiche quand même (⛔) — ajoute le plan pour pouvoir « y aller ».
+- **Supprimer un point** supprime aussi ses liaisons (des deux côtés).
+- Les liaisons **voyagent avec l'export de session** (elles sont restaurées à l'import sur un autre appareil).
+- Un plan distribué (« data layer ») peut embarquer des liaisons prêtes à l'emploi : tu peux les **utiliser**, pas les modifier.
+
 ---
 
 ## 🧭 Présentation de l'interface
