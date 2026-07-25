@@ -1907,6 +1907,24 @@ function initInterface() {
   Object.keys(_groupes).forEach(function(k) { delete _groupes[k]; });
   _groupeOuvert = null;
 
+  // 🐛 v1.57.2 (KARMA « le bouton ajouter point est actif quand j'ouvre le
+  // plan ») : RESET des MODES au chargement d'un plan. Les flags window.modeX
+  // n'étaient remis à false NULLE PART au plan switch → quitter un plan avec
+  // le mode édition armé (cas typique : créer un POI puis prendre un
+  // « portail » inter-plan) laissait le mode actif à l'arrivée — chaque clic
+  // carte posait un point. _desactiverTousLesModes() couvre les modes
+  // enregistrés (leurs desactiverFn référencent les boutons de l'ANCIENNE
+  // sidebar, détachés → classList inoffensif) ; les flags sont ensuite forcés
+  // à false en filet (mode jamais enregistré / état incohérent). Les setters
+  // observés (curseur de précision v1.48.0) notifient → la croix disparaît.
+  try { _desactiverTousLesModes(); } catch(e) {}
+  window.modeEdition  = false;
+  window.modeMesure   = false;
+  window.modeRecalage = false;
+  window.modeRoad     = false;
+  window.modeZone     = false;
+  window.modeStructure = false;
+
   L.control.titleControl().addTo(window.map);
 
   // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : bouton ≡ custom topright

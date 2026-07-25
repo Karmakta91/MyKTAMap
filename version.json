@@ -1,7 +1,7 @@
 {
-  "version": "v1.57.1",
+  "version": "v1.57.2",
   "released": "2026-07-25",
   "notes": [
-    "🌀 Liaisons inter-plan : à l'arrivée, l'application bascule automatiquement sur le niveau du point de destination (son icône est maintenant toujours visible) et vous prévient si un filtre de tags le masque. Astuce : recréez les liaisons faites en v1.57.0 pour en profiter pleinement."
+    "🛠️ Les outils d'édition (ajouter un point, tracé, zone…) sont désormais toujours désactivés à l'ouverture d'un plan — fini le mode « ajout de point » resté armé après un changement de plan ou un passage de portail."
   ]
 }

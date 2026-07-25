@@ -8,7 +8,12 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.57.1` (25/07/2026) — **🌀 Fix liaisons inter-plan** : bascule automatique sur le **niveau** du point cible à l'arrivée (l'icône du POI était masquée par le filtre multi-niveau — « badge sans l'icône »), badge 🌀 respectant `visibleLevels` (re-render au changement de niveau), toast si un **filtre de tags** masque l'arrivée.
+**📦 Version courante** : `v1.57.2` (25/07/2026) — **🛠️ Reset des modes d'édition au chargement d'un plan** : les flags `window.modeX` (édition/mesure/recalage/tracé/zone/structure) n'étaient jamais remis à `false` au plan switch → le mode « ajouter un point » restait armé après un changement de plan (rendu visible par les allers-retours « portail »).
+
+**🛠️ v1.57.2 (25/07/2026)** — **Fix : mode « ajouter un point » armé à l'entrée d'un plan** :
+- **Cause racine** : les 6 flags de mode (`modeEdition`, `modeMesure`, `modeRecalage`, `modeRoad`, `modeZone`, `modeStructure`) ne sont initialisés qu'au **chargement du script** (1× par session navigateur) — **aucun reset au plan switch**. Quitter un plan avec un mode actif (cas typique : créer un POI puis prendre un portail inter-plan) → mode encore armé à l'arrivée, chaque clic carte posait un point. Dette **pré-existante** (switcher v1.16+), révélée par les switches fréquents de la v1.57.0.
+- **Fix** (`interface.js > initInterface`) : `_desactiverTousLesModes()` + remise à `false` explicite des 6 flags au début de chaque init de plan (les `desactiverFn` référencent des boutons de l'ancienne sidebar, détachés → inoffensif ; les setters observés notifient → le curseur de précision disparaît). Premier boot = no-op ; tracker non concerné (pas un mode d'édition, préservé volontairement au switch).
+- **Sources** v1.57.2. Aucune nouvelle surface réseau. *(Note : l'« icône manquante » du POI en préset ULTRA signalée en parallèle = échantillonnage assumé du mode ULTRA, pas un bug.)* — **🌀 Fix liaisons inter-plan** : bascule automatique sur le **niveau** du point cible à l'arrivée (l'icône du POI était masquée par le filtre multi-niveau — « badge sans l'icône »), badge 🌀 respectant `visibleLevels` (re-render au changement de niveau), toast si un **filtre de tags** masque l'arrivée.
 
 **🌀 v1.57.1 (25/07/2026)** — **Fix « portail » : arrivée sur un POI invisible (filtre de niveau)** :
 - **Cause racine** : le point cible pouvait être sur un **niveau non affiché** → son marker était à `opacity: 0` (filtre multi-niveau) alors que le badge 🌀 était posé **sans** ce filtre → l'user ne voyait que le badge.
