@@ -1,7 +1,7 @@
 {
-  "version": "v1.57.3",
-  "released": "2026-07-25",
+  "version": "v1.57.4",
+  "released": "2026-07-26",
   "notes": [
-    "📚 La documentation des liaisons inter-plan (« portails ») est disponible partout : Aide intégrée (rubrique Outils carte), Documentation utilisateur et Aide IA."
+    "🧹 Stabilité et mémoire améliorées lors des changements de plan répétés (l'application ne ralentit plus au fil des allers-retours entre plans, notamment via les portails)."
   ]
 }

@@ -92,6 +92,14 @@ function _resolveRoadStyle(type) {
   return null;
 }
 
+// 🐛 v1.57.4 — Abonnement PerfUltra ONE-SHOT (audit « fuites au plan
+// switch ») : initRoad est ré-exécutée à chaque switch (roadInitialized remis
+// à false par main.js) mais PerfUltra est un singleton → l'onChange s'empilait
+// (N re-renders au toggle Perf après N switches). Abonnement unique + réf
+// vers la closure throttle de l'init COURANTE (timer frais à chaque plan).
+let _perfUltraSubBound = false;
+let _renderRoadsThrottledRef = null;
+
 // =========================
 // INIT
 // =========================
@@ -158,12 +166,16 @@ function initRoad() {
   // Hook sur les changements de toggles PerfUltra → re-render à la volée
   // pour appliquer décimation / viewport culling / cap intersections sans
   // forcer l'utilisateur à reload (sauf animOff qui nécessite reload).
-  if (window.PerfUltra && typeof window.PerfUltra.onChange === "function") {
+  // 🐛 v1.57.4 : abonnement ONE-SHOT + réf rafraîchie (cf déclarations avant
+  // initRoad) — avant, un callback de plus s'empilait à chaque plan switch.
+  _renderRoadsThrottledRef = _renderRoadsThrottled;
+  if (!_perfUltraSubBound && window.PerfUltra && typeof window.PerfUltra.onChange === "function") {
+    _perfUltraSubBound = true;
     window.PerfUltra.onChange(function(changedKeys) {
       const touchedRender = changedKeys.some(function(k) {
         return ["decim", "viewportCull", "noIntersect"].indexOf(k) >= 0;
       });
-      if (touchedRender) _renderRoadsThrottled();
+      if (touchedRender && _renderRoadsThrottledRef) _renderRoadsThrottledRef();
     });
   }
 

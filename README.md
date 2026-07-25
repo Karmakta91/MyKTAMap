@@ -8,7 +8,13 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.57.3` (25/07/2026) — **📚 Doc complète des liaisons inter-plan** : nouvelle section 🌀 dans l'Aide intégrée (FR/EN, catégorie Outils carte), recette pas-à-pas dans `AI_CONTEXT.md` (Aide IA), précisions v1.57.1/2 reportées dans `README_USER` fr/en.
+**📦 Version courante** : `v1.57.4` (26/07/2026) — **🧹 Fix fuites pub/sub au plan switch** (audit) : les `onChange` de `HistoryManager`/`Favoris`/`LegendCustomization`/`PerfUltra` posés dans `initInterface`/`initRoad` s'empilaient à chaque switch → abonnements **one-shot** + référence rafraîchie par init.
+
+**🧹 v1.57.4 (26/07/2026)** — **Audit « fuites au plan switch » : 4 abonnements pub/sub corrigés** :
+- **Audit** (agent + scans) sur la famille « listeners/états empilés au plan switch » (celle des bugs measure v1.54.x et modes v1.57.2) : le codebase est **rigoureusement gardé partout** (off-avant-on, flags `*Attached`/`_batteryHooked`/`_clickExterieurInit`, reset per-init) **sauf** 4 abonnements `onChange` posés dans `initInterface` (×3 : grisage history `interface.js:2235`, refresh flyout favoris `:3272`, boutons légende custom `:3258`) et `initRoad` (×1 : re-render PerfUltra `road.js:161`). Ces init sont ré-exécutées à chaque switch, les singletons émetteurs survivent → **+1 callback empilé par switch** (les anciens manipulant des sidebars détachées = fuite mémoire linéaire + re-renders redondants).
+- **Fix uniforme** : abonnement **ONE-SHOT** derrière un flag module-level + **référence rafraîchie à chaque init** (`_syncHistoryUiRef`, `_injecterBoutonsCustomRef`, `_renderRoadsThrottledRef`) pour les callbacks qui capturent des éléments de la sidebar courante → l'abonnement unique déréférence toujours la closure fraîche.
+- **Vérifiés sains** (audit) : cas « switch pendant mode Urgence/Secours » (Secours **déjà reset au switch** `main.js:605` ; Urgence plein écran = switcher inatteignable) · i18n (les « clés manquantes » vues au banc = vieux dico servi par le SW de test ; parité en 100 %, es sans `legal.*` = voulu) · générateur (concat des points **par référence** → `interPlanLinks` baked survit au cycle « Modifier existant »).
+- **DX** : hook anti-fuite pro **activé** (`git config core.hooksPath .githooks`). **Sources** v1.57.4. Aucune nouvelle surface réseau. — **📚 Doc complète des liaisons inter-plan** : nouvelle section 🌀 dans l'Aide intégrée (FR/EN, catégorie Outils carte), recette pas-à-pas dans `AI_CONTEXT.md` (Aide IA), précisions v1.57.1/2 reportées dans `README_USER` fr/en.
 
 **📚 v1.57.3 (25/07/2026)** — **Documentation des liaisons inter-plan (3 surfaces)** :
 - **Aide intégrée** (`interfaceDocs.js`) : section « 🌀 Liaisons inter-plan ("portails") » ajoutée **en fin de document** (idx 28) dans `_aideHtmlFr` ET `_aideHtmlEn` (parité 29≡29) pour ne décaler **aucun** index d'`AIDE_CATEGORIES` ; idx 28 rattaché à « 🗺️ Outils carte ».
