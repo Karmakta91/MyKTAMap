@@ -2516,6 +2516,7 @@
   "ipl.nav.texte": "Aller au plan « {plan} », point « {point} » ?",
   "ipl.nav.sessionSaved": "La session du plan actuel est sauvegardée automatiquement.",
   "ipl.nav.go": "Y aller",
+  "ipl.nav.hiddenByFilter": "⚠️ Le point d'arrivée est masqué par un filtre de tags actif — ouvre les filtres pour le réafficher.",
   "legal.gate.titre": "Conditions d'utilisation",
   "legal.gate.intro": "MyKTAMap est un outil de repérage et de cartographie souterraine. Ce n'est pas une incitation à pénétrer dans des lieux interdits ou dangereux.",
   "legal.gate.pointTool": "🗺️ L'application aide à cartographier et se repérer — elle ne donne aucun droit d'accès à un lieu.",

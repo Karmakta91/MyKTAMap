@@ -2516,6 +2516,7 @@
   "ipl.nav.texte": "Go to plan \"{plan}\", point \"{point}\"?",
   "ipl.nav.sessionSaved": "The current plan's session is saved automatically.",
   "ipl.nav.go": "Go",
+  "ipl.nav.hiddenByFilter": "⚠️ The arrival point is hidden by an active tag filter — open the filters to show it again.",
   "legal.gate.titre": "Terms of use",
   "legal.gate.intro": "MyKTAMap is an underground mapping and orientation tool. It is not an encouragement to enter forbidden or dangerous places.",
   "legal.gate.pointTool": "🗺️ The app helps you map and find your way — it grants no right of access to any place.",

@@ -2514,6 +2514,7 @@
   "ipl.nav.texte": "¿Ir al plano «{plan}», punto «{point}»?",
   "ipl.nav.sessionSaved": "La sesión del plano actual se guarda automáticamente.",
   "ipl.nav.go": "Ir",
+  "ipl.nav.hiddenByFilter": "⚠️ El punto de llegada está oculto por un filtro de tags activo — abre los filtros para mostrarlo de nuevo.",
   "pin.proposal.titre": "🔐 Autenticación reforzada disponible",
   "pin.proposal.usageDesc": "Protege tus mapas, sesiones y fotos en caso de pérdida o préstamo de tu dispositivo. Nadie puede abrir la app sin tu código (o tu biometría).",
   "pin.proposal.usageTitre": "🎯 ¿Para qué sirve?",

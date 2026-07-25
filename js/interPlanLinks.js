@@ -224,12 +224,16 @@
     });
 
     // Bouton de création — tout point est liable (6:a), y compris datalayer.
+    // 🐛 v1.57.1 : level + 1er tag passés au snapshot (la bascule de niveau à
+    // l'arrivée et le check filtre tag en dépendent).
     const jsId  = String(point.id || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     const jsNom = String(point.nom || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\r?\n/g, " ");
     const source = (layerId === "editor") ? "session" : "data";
+    const lvlArg = Number.isInteger(point.level) ? point.level : 0;
+    const tagArg = String((Array.isArray(point.tags) && point.tags[0]) || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     const addBtn =
       '<button class="kta-popup-btn kta-ipl-add" type="button" ' +
-        "onclick=\"window.InterPlanLinks.ouvrirCreation('" + jsId + "'," + (Number(point.x) || 0) + "," + (Number(point.y) || 0) + ",'" + jsNom + "','" + source + "'); return false;\" " +
+        "onclick=\"window.InterPlanLinks.ouvrirCreation('" + jsId + "'," + (Number(point.x) || 0) + "," + (Number(point.y) || 0) + ",'" + jsNom + "','" + source + "'," + lvlArg + ",'" + tagArg + "'); return false;\" " +
         'title="' + _esc(_t("ipl.popup.addTitle")) + '">' +
         '🌀 ' + _esc(_t("ipl.popup.addBtn")) +
       '</button>';
@@ -351,7 +355,7 @@
     if (m) m.remove();
   }
 
-  function ouvrirCreation(pointId, x, y, nom, source) {
+  function ouvrirCreation(pointId, x, y, nom, source, level, tag) {
     const planId = _currentPlanId();
     if (!planId) {
       alert(_t("ipl.err.noPlan"));
@@ -367,7 +371,9 @@
       pointNom: String(nom || ""),
       x: Number(x) || 0,
       y: Number(y) || 0,
-      source: source === "session" ? "session" : "data"
+      source: source === "session" ? "session" : "data",
+      level:  Number.isInteger(level) ? level : 0,
+      tag:    String(tag || "") || undefined
     };
 
     const plans = (window.PlanRegistry ? window.PlanRegistry.getAll() : [])
@@ -452,7 +458,8 @@
             pointNom: String(p.nom || ""),
             x: p.x, y: p.y,
             source: p.source,
-            level: p.level
+            level: Number.isInteger(p.level) ? p.level : 0,
+            tag:   (Array.isArray(p.tags) && p.tags[0]) || undefined
           };
           createLink(refA, refB);
           _fermerModale();
@@ -549,7 +556,9 @@
     // ci-dessus. Sans ça, le recentrage de session post-chargement (restore
     // SessionPersist / tracker « dernière position ») écrasait notre setView
     // → l'user arrivait sur « ma position » au lieu du point lié.
-    _pendingTarget = { x: other.x, y: other.y };
+    // 🐛 v1.57.1 : level + tag embarqués → bascule de niveau à l'arrivée +
+    // avertissement si un filtre de tags masque le point cible.
+    _pendingTarget = { x: other.x, y: other.y, level: other.level, tag: other.tag };
     _pendingConsumed = false;
   }
 
@@ -563,6 +572,32 @@
     _pendingConsumed = true;
     const t = _pendingTarget;
     _pendingTarget = null;
+
+    // 🐛 v1.57.1 — BASCULE DE NIVEAU : un portail amène AU niveau du point
+    // cible. Sans ça, arriver sur un plan multi-niveau affiché sur un autre
+    // niveau laissait le POI invisible (opacity 0 par le filtre) — l'user ne
+    // voyait que le badge 🌀 (« badge sans l'icône »).
+    if (Number.isInteger(t.level) && window.APP_CONFIG
+        && Array.isArray(window.APP_CONFIG.visibleLevels)
+        && window.APP_CONFIG.visibleLevels.indexOf(t.level) === -1
+        && typeof window._changerNiveauActif === "function") {
+      try {
+        window._changerNiveauActif(t.level);
+        console.log("[InterPlanLinks] Bascule niveau → " + t.level + " (niveau du point cible)");
+      } catch(e) { console.warn("[InterPlanLinks] bascule niveau échouée :", e); }
+    }
+
+    // 🐛 v1.57.1 — FILTRE TAG : si un filtre de tags runtime est actif et
+    // masque le tag du point cible, on N'Y TOUCHE PAS (jamais de reset de
+    // filtre sans avertir — règle projet) mais on prévient l'user par toast.
+    if (t.tag && window._ktaRuntimeFilters && window._ktaRuntimeFilters.tags
+        && typeof window._ktaRuntimeFilters.tags.has === "function"
+        && !window._ktaRuntimeFilters.tags.has(t.tag)) {
+      if (window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast(_t("ipl.nav.hiddenByFilter"), "warn");
+      }
+    }
+
     // Triple passe : le restore de session (SessionPersist) et le tracker
     // (« démarrage sur la dernière position », v1.49.0) recentrent la vue en
     // async APRÈS la fin de lancerApplication. On repasse derrière eux à
@@ -629,11 +664,19 @@
     const links = getLinksForPlan(planId);
     if (links.length === 0) return;
 
+    // 🐛 v1.57.1 — le badge respecte le FILTRE DE NIVEAU courant (comme les
+    // markers `_ktaLevel`) : un badge sans son icône était incohérent (« j'ai
+    // juste le badge portail sans l'icône »). Re-render au changement de
+    // niveau via le hook dans appliquerFiltreNiveau (interfaceConfig.js).
+    const visibleLevels = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
+      ? window.APP_CONFIG.visibleLevels : null;
+
     const group = L.layerGroup();
     const seen = {};
     links.forEach(function(l) {
       [l.a, l.b].forEach(function(side) {
         if (!side || side.planId !== planId) return;
+        if (visibleLevels && visibleLevels.indexOf(Number.isInteger(side.level) ? side.level : 0) === -1) return;
         const k = _sideKey(side);
         if (seen[k]) return;
         seen[k] = true;

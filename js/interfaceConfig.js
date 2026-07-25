@@ -1757,6 +1757,13 @@ window.appliquerFiltreNiveau = function() {
   if (window.FilterPanel && typeof window.FilterPanel.onLevelChange === "function") {
     try { window.FilterPanel.onLevelChange(); } catch(e) {}
   }
+
+  // 🌀 v1.57.1 : badges des liaisons inter-plan re-rendus au changement de
+  // niveau (ils respectent visibleLevels comme les markers — sinon un badge
+  // flottait sans son icône sur les niveaux masqués).
+  if (window.InterPlanLinks && typeof window.InterPlanLinks.refreshBadges === "function") {
+    try { window.InterPlanLinks.refreshBadges(); } catch(e) {}
+  }
 };
 
 // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : helper global qui cascade

@@ -1,8 +1,7 @@
 {
-  "version": "v1.57.0",
+  "version": "v1.57.1",
   "released": "2026-07-25",
   "notes": [
-    "🌀 Nouveau : liez deux plans entre eux ! Depuis la fiche d'un point, « Lier à un autre plan » crée un passage vers un point d'un autre plan — un badge doré le signale sur la carte et « Y aller » vous y emmène directement, même entre vos sessions et les plans fournis.",
-    "✨ Au premier démarrage, les conditions d'utilisation s'affichent désormais en tout premier, avant la saisie du code d'accès."
+    "🌀 Liaisons inter-plan : à l'arrivée, l'application bascule automatiquement sur le niveau du point de destination (son icône est maintenant toujours visible) et vous prévient si un filtre de tags le masque. Astuce : recréez les liaisons faites en v1.57.0 pour en profiter pleinement."
   ]
 }
