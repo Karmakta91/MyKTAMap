@@ -785,6 +785,8 @@ La zone apparaît avec un **motif hachures rouge sombre / noir** à 45°. Tout i
 - Un plan distribué peut embarquer des liaisons **prêtes à l'emploi** dans ses calques de données : utilisables, non modifiables.
 - Si un **filtre de tags** masque le point d'arrivée, un avertissement s'affiche (l'app ne modifie jamais tes filtres).
 - Les liaisons sont stockées localement (`myktamap_interplan_links_v1`) — comme tout le reste, **rien ne quitte l'appareil**.
+- **↩️ Retour** (v1.58.0) : après un saut, un bouton flottant « Retour : <plan> » (15 s, bas de l'écran) ramène au plan et à la **vue exacte** d'origine (niveau + zoom). Les sauts s'empilent (3 portails = 3 retours).
+- **🌐 Recherche multi-plans** (v1.58.0) : cherche un point dans **tous les plans de la bibliothèque** — depuis l'accueil (bouton « 🌐 Recherche multi-plans ») ou via la recherche Ctrl+K (bouton « Chercher dans tous les plans », saisie conservée). Chaque résultat porte le badge de son plan ; un clic charge le plan, bascule sur le bon niveau et centre la vue.
 
 ---
 

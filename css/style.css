@@ -8416,6 +8416,93 @@ html.kta-theme-light .kta-ipl-search {
 }
 html.kta-theme-light .kta-ipl-badge { background: rgba(255, 255, 255, 0.9); }
 
+/* =========================================================
+   ↩️ v1.58.0 — Bouton flottant « Retour » après un saut inter-plan
+   ========================================================= */
+.kta-ipl-back-float {
+  position: fixed;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1300;                 /* au-dessus des contrôles Leaflet, sous les modales */
+  padding: 9px 16px;
+  background: rgba(26, 31, 46, 0.94);
+  border: 1.5px solid rgba(244, 197, 66, 0.6);
+  border-radius: 22px;
+  color: #f4c542;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 8px rgba(244, 197, 66, 0.25);
+  animation: kta-ipl-back-in 260ms ease-out;
+  white-space: nowrap;
+  max-width: 82vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kta-ipl-back-float:hover { background: rgba(38, 45, 66, 0.97); border-color: #f4c542; }
+.kta-ipl-back-depth {
+  display: inline-block;
+  min-width: 17px;
+  margin-left: 6px;
+  padding: 0 4px;
+  background: rgba(244, 197, 66, 0.2);
+  border-radius: 9px;
+  font-size: 11px;
+  text-align: center;
+}
+@keyframes kta-ipl-back-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+html.kta-theme-light .kta-ipl-back-float {
+  background: rgba(255, 255, 255, 0.96);
+  color: #8a6d00;
+}
+
+/* =========================================================
+   🌐 v1.58.0 — Recherche cross-plan (crossPlanSearch.js)
+   ========================================================= */
+.kta-xps-boite { max-width: 560px !important; height: auto !important; max-height: 90vh !important; }
+.kta-xps-status {
+  font-size: 11.5px;
+  color: #8892a4;
+  margin: 2px 0 8px 0;
+  min-height: 15px;
+}
+.kta-xps-results { max-height: 52vh; }
+.kta-xps-plan-badge {
+  flex: 0 0 auto;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: #8cb4ff;
+  background: rgba(140, 180, 255, 0.10);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+/* Pont depuis la recherche unifiée (Ctrl+K) */
+.kta-search-crossplan {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(140, 180, 255, 0.08);
+  border: 1px dashed rgba(140, 180, 255, 0.35);
+  border-radius: 6px;
+  color: #8cb4ff;
+  font-size: 12.5px;
+  cursor: pointer;
+  text-align: center;
+}
+.kta-search-crossplan:hover {
+  background: rgba(140, 180, 255, 0.16);
+  border-style: solid;
+}
+html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
+
 .kta-pin-proposal-info {
   margin: 12px 0;
   padding: 10px 14px;

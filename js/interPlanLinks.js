@@ -501,17 +501,55 @@
   }
 
   // ---------------------------------------------------------------
-  // NAVIGATION — « Y aller » (5:a : mini-confirmation puis switch + flash)
+  // NAVIGATION — goTo générique + pile de retour (v1.58.0)
   // ---------------------------------------------------------------
-  function naviguerVers(linkId, mySide) {
-    const link = _load().links.find(function(l) { return l.id === linkId; })
-      || _bakedLinkCache[linkId] || null;
-    if (!link) { alert(_t("ipl.err.linkGone")); return; }
-    const other = (mySide === "a") ? link.b : link.a;
-    if (!other) return;
+  // goTo(planId, target, opts) : navigation inter-plan RÉUTILISABLE —
+  // consommée par les liaisons (naviguerVers), le bouton ↩️ Retour et la
+  // recherche cross-plan. target = { x, y, level?, tag?, zoom?, label?,
+  // planName? }. opts = { confirm: bool (mini-modale avant switch),
+  // noStack: bool (ne pas empiler l'origine — cas du retour lui-même) }.
+  function goTo(planId, target, opts) {
+    opts = opts || {};
+    const plan = window.PlanRegistry ? window.PlanRegistry.findById(planId) : null;
+    if (!plan) {
+      alert(_t("ipl.err.planAbsent", { plan: (target && target.planName) || planId }));
+      return;
+    }
 
-    const plan = window.PlanRegistry ? window.PlanRegistry.findById(other.planId) : null;
-    if (!plan) { alert(_t("ipl.err.planAbsent", { plan: other.planName || other.planId })); return; }
+    const doGo = async function() {
+      // ↩️ v1.58.0 (A2, décisions 1:a 3:a) : empile l'ORIGINE (vue courante :
+      // plan + centre + niveau + zoom) avant de partir — pile N niveaux en
+      // RAM. Le retour (noStack) ne ré-empile pas (sinon ping-pong infini).
+      if (!opts.noStack) _empilerOrigine();
+      if (window.map) try { window.map.closePopup(); } catch(e) {}
+      _retirerBoutonRetour();
+      // 🐛 v1.57.0-fix : cible posée AVANT le switch — consommée par
+      // onPlanLoaded (fin de lancerApplication) ET par le fallback
+      // post-await. Sans ça, le recentrage de session post-chargement
+      // écrasait notre setView (« j'arrive sur ma position »).
+      _pendingTarget = { x: target.x, y: target.y, level: target.level,
+                         tag: target.tag, zoom: target.zoom };
+      _pendingConsumed = false;
+      try {
+        if (plan.type === "server") {
+          await window.chargerPlanServeur(plan.path, plan);
+        } else if (typeof window.chargerPlanDuRegistre === "function") {
+          await window.chargerPlanDuRegistre(plan.id);
+        } else {
+          alert(_t("ipl.err.loadFailed"));
+          _pendingTarget = null;
+          return;
+        }
+      } catch(e) {
+        console.warn("[InterPlanLinks] switch plan échoué :", e);
+        alert(_t("ipl.err.loadFailed"));
+        _pendingTarget = null;
+        return;
+      }
+      _consumePendingTarget();
+    };
+
+    if (!opts.confirm) { doGo(); return; }
 
     const modal = document.createElement("div");
     modal.className = "kta-readme-modal-overlay";
@@ -521,7 +559,7 @@
         '<div class="kta-modal-icon" style="color:#8cb4ff;">🌀</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipl.nav.titre")) + '</div>' +
         '<div class="kta-modal-texte">' +
-          _esc(_t("ipl.nav.texte", { plan: other.planName || other.planId, point: other.pointNom || other.pointId || (other.x + "," + other.y) })) +
+          _esc(_t("ipl.nav.texte", { plan: plan.name || planId, point: target.label || (target.x + "," + target.y) })) +
           '<br><span style="font-size:12px; color:#8892a4;">' + _esc(_t("ipl.nav.sessionSaved")) + '</span>' +
         '</div>' +
         '<div class="kta-modal-actions">' +
@@ -532,37 +570,88 @@
     document.documentElement.appendChild(modal);
     document.getElementById("kta-ipl-nav-no").addEventListener("click", function() { modal.remove(); });
     modal.addEventListener("click", function(e) { if (e.target === modal) modal.remove(); });
-    document.getElementById("kta-ipl-nav-yes").addEventListener("click", async function() {
+    document.getElementById("kta-ipl-nav-yes").addEventListener("click", function() {
       modal.remove();
-      if (window.map) try { window.map.closePopup(); } catch(e) {}
-      try {
-        if (plan.type === "server") {
-          await window.chargerPlanServeur(plan.path, plan);
-        } else if (typeof window.chargerPlanDuRegistre === "function") {
-          await window.chargerPlanDuRegistre(plan.id);
-        } else {
-          alert(_t("ipl.err.loadFailed"));
-          return;
-        }
-      } catch(e) {
-        console.warn("[InterPlanLinks] switch plan échoué :", e);
-        alert(_t("ipl.err.loadFailed"));
-        return;
-      }
-      _consumePendingTarget();
+      doGo();
     });
-    // 🐛 v1.57.0-fix : cible posée AVANT le switch — consommée par
-    // onPlanLoaded (fin de lancerApplication) ET par le fallback post-await
-    // ci-dessus. Sans ça, le recentrage de session post-chargement (restore
-    // SessionPersist / tracker « dernière position ») écrasait notre setView
-    // → l'user arrivait sur « ma position » au lieu du point lié.
-    // 🐛 v1.57.1 : level + tag embarqués → bascule de niveau à l'arrivée +
-    // avertissement si un filtre de tags masque le point cible.
-    _pendingTarget = { x: other.x, y: other.y, level: other.level, tag: other.tag };
-    _pendingConsumed = false;
   }
 
-  // Cible de navigation en attente (posée par naviguerVers, consommée une
+  // « Y aller » depuis une liaison (5:a : mini-confirmation puis switch).
+  function naviguerVers(linkId, mySide) {
+    const link = _load().links.find(function(l) { return l.id === linkId; })
+      || _bakedLinkCache[linkId] || null;
+    if (!link) { alert(_t("ipl.err.linkGone")); return; }
+    const other = (mySide === "a") ? link.b : link.a;
+    if (!other) return;
+    goTo(other.planId, {
+      x: other.x, y: other.y, level: other.level, tag: other.tag,
+      planName: other.planName,
+      label: other.pointNom || other.pointId || (other.x + "," + other.y)
+    }, { confirm: true });
+  }
+
+  // ---------------------------------------------------------------
+  // ↩️ PILE DE RETOUR (A2 — décisions 1:a 2:a 3:a)
+  // ---------------------------------------------------------------
+  // Pile en MÉMOIRE VIVE uniquement (perdue au reload — voulu). Chaque saut
+  // goTo (hors retour) empile l'origine ; le bouton flottant temporaire
+  // (15 s) dépile. Enchaîner 3 portails = 3 retours possibles.
+  const _navStack = [];
+  let _backBtnTimer = null;
+
+  function _empilerOrigine() {
+    const pid = _currentPlanId();
+    if (!pid || !window.map || typeof window.map.getCenter !== "function") return;
+    try {
+      const c = window.map.getCenter();
+      const h = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
+      _navStack.push({
+        planId:   pid,
+        planName: _currentPlanName(),
+        x: c.lng,
+        y: h - c.lat,
+        level: (window.APP_CONFIG && Number.isInteger(window.APP_CONFIG.activeLevel))
+                 ? window.APP_CONFIG.activeLevel : undefined,
+        zoom: window.map.getZoom()
+      });
+    } catch(e) { console.warn("[InterPlanLinks] empilerOrigine :", e); }
+  }
+
+  function _retirerBoutonRetour() {
+    if (_backBtnTimer) { clearTimeout(_backBtnTimer); _backBtnTimer = null; }
+    const b = document.getElementById("kta-ipl-back-float");
+    if (b) try { b.remove(); } catch(e) {}
+  }
+
+  // Bouton flottant « ↩️ Retour : <plan> » affiché après l'arrivée (2:a :
+  // temporaire, 15 s ou clic). La pile reste en RAM après expiration — le
+  // bouton réapparaîtra au prochain saut si des niveaux restent à dépiler.
+  function _afficherBoutonRetour() {
+    _retirerBoutonRetour();
+    if (_navStack.length === 0) return;
+    const top = _navStack[_navStack.length - 1];
+    const btn = document.createElement("button");
+    btn.id = "kta-ipl-back-float";
+    btn.type = "button";
+    btn.className = "kta-ipl-back-float";
+    btn.innerHTML =
+      '↩️ ' + _esc(_t("ipl.back.btn", { plan: top.planName || top.planId })) +
+      (_navStack.length > 1
+        ? ' <span class="kta-ipl-back-depth">' + _navStack.length + '</span>' : '');
+    btn.title = _t("ipl.back.title");
+    btn.addEventListener("click", function() {
+      _retirerBoutonRetour();
+      const o = _navStack.pop();
+      if (o) {
+        goTo(o.planId, { x: o.x, y: o.y, level: o.level, zoom: o.zoom, planName: o.planName },
+             { confirm: false, noStack: true });
+      }
+    });
+    document.documentElement.appendChild(btn);
+    _backBtnTimer = setTimeout(_retirerBoutonRetour, 15000);
+  }
+
+  // Cible de navigation en attente (posée par goTo, consommée une
   // seule fois après le chargement du plan cible).
   let _pendingTarget = null;
   let _pendingConsumed = false;
@@ -603,24 +692,33 @@
     // async APRÈS la fin de lancerApplication. On repasse derrière eux à
     // +600 ms (setView + flash), puis +1600/+2600 ms (setView silencieux)
     // pour garder la main sur la vue finale.
-    _panEtFlash(t.x, t.y, true);
-    setTimeout(function() { _panEtFlash(t.x, t.y, false); }, 1600);
-    setTimeout(function() { _panEtFlash(t.x, t.y, false); }, 2600);
+    _panEtFlash(t, true);
+    setTimeout(function() { _panEtFlash(t, false); }, 1600);
+    setTimeout(function() { _panEtFlash(t, false); }, 2600);
+
+    // ↩️ v1.58.0 : propose le retour vers l'origine (bouton flottant 15 s)
+    // une fois l'arrivée peinte. Vaut pour TOUTES les navigations goTo (lien,
+    // recherche cross-plan) — après un retour, s'il reste des niveaux dans la
+    // pile, le bouton réapparaît pour continuer à dépiler.
+    setTimeout(_afficherBoutonRetour, 900);
   }
 
-  // Pan (+ flash optionnel) sur le point cible. Retry léger si la map du
-  // nouveau plan n'est pas encore opérationnelle.
-  function _panEtFlash(x, y, withFlash, attempt) {
+  // Pan (+ flash optionnel) sur la cible t = {x, y, zoom?}. Retry léger si la
+  // map du nouveau plan n'est pas encore opérationnelle. Le zoom n'est fourni
+  // que par le RETOUR (restauration de la vue d'origine) — les autres
+  // navigations conservent le zoom courant.
+  function _panEtFlash(t, withFlash, attempt) {
     attempt = attempt || 0;
     const mapOk = window.map && typeof window.map.setView === "function"
                   && typeof window.convertCoord === "function";
     if (!mapOk) {
-      if (attempt < 10) setTimeout(function() { _panEtFlash(x, y, withFlash, attempt + 1); }, 400);
+      if (attempt < 10) setTimeout(function() { _panEtFlash(t, withFlash, attempt + 1); }, 400);
       return;
     }
     try {
-      const latlng = window.convertCoord(x, y);
-      window.map.setView(latlng, window.map.getZoom(), { animate: false });
+      const latlng = window.convertCoord(t.x, t.y);
+      const z = (typeof t.zoom === "number") ? t.zoom : window.map.getZoom();
+      window.map.setView(latlng, z, { animate: false });
       if (withFlash) {
         const flash = L.circleMarker(latlng, {
           radius: 24, color: "#8cb4ff", fillColor: "#8cb4ff",
@@ -751,7 +849,12 @@
     supprimerDepuisPopup: supprimerDepuisPopup,
     onPlanLoaded:         onPlanLoaded,
     onPointDeleted:       onPointDeleted,
-    refreshBadges:        refreshBadges
+    refreshBadges:        refreshBadges,
+    // 🆕 v1.58.0 — navigation générique (liaisons, retour, recherche
+    // cross-plan) + lecture des points d'un plan non chargé (réutilisée par
+    // js/crossPlanSearch.js — zéro duplication du lecteur session/ZIP/serveur).
+    goTo:                 goTo,
+    collectPointsForPlan: _collecterPointsDuPlan
   };
 
   console.log("[InterPlanLinks] Module chargé (" + _load().links.length + " liaison(s))");

@@ -1461,6 +1461,14 @@ function _aideHtmlFr() {
             d'arrivée</strong> et te dépose dessus (flash bleu). Un <strong>badge doré 🌀</strong> flotte au-dessus
             de l'icône de chaque point lié.
           </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>↩️ Retour</strong> (v1.58.0) : après un saut, un bouton flottant « Retour : &lt;plan&gt; »
+            (15 s, bas de l'écran) te ramène au plan et à la <strong>vue exacte</strong> d'où tu venais (niveau + zoom).
+            Les sauts s'empilent — 3 portails enchaînés = 3 retours possibles.
+            <strong>🌐 Recherche multi-plans</strong> (v1.58.0) : cherche un point dans <strong>toute ta
+            bibliothèque</strong> depuis l'accueil (bouton 🌐) ou via la recherche Ctrl+K (bouton
+            « Chercher dans tous les plans ») — un clic charge le bon plan et te centre dessus.
+          </p>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
             Plan cible absent de l'appareil → la liaison s'affiche (⛔) mais « y aller » nécessite d'ajouter le plan.
             Supprimer un point supprime ses liaisons (des deux côtés). Les liaisons voyagent avec l'export de session.
@@ -2152,6 +2160,14 @@ function _aideHtmlEn() {
             the app switches plan (session saved automatically), <strong>switches to the arrival point's
             level</strong> and drops you on it (blue flash). A <strong>golden 🌀 badge</strong> floats above
             the icon of every linked point.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>↩️ Back</strong> (v1.58.0): after a jump, a floating "Back: &lt;plan&gt;" button
+            (15 s, bottom of screen) brings you back to the plan and the <strong>exact view</strong> you came
+            from (level + zoom). Jumps stack — 3 chained portals = 3 possible returns.
+            <strong>🌐 Multi-plan search</strong> (v1.58.0): search a point across <strong>your whole
+            library</strong> from the home screen (🌐 button) or via the Ctrl+K search ("Search across
+            all plans" button) — one click loads the right plan and centers on it.
           </p>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
             Target plan missing from this device → the link still shows (⛔) but "going there" requires adding the plan.

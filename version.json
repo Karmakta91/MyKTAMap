@@ -1,7 +1,8 @@
 {
-  "version": "v1.57.4",
+  "version": "v1.58.0",
   "released": "2026-07-26",
   "notes": [
-    "🧹 Stabilité et mémoire améliorées lors des changements de plan répétés (l'application ne ralentit plus au fil des allers-retours entre plans, notamment via les portails)."
+    "🌐 Nouveau : recherche multi-plans ! Cherchez un point dans TOUS les plans de votre bibliothèque (depuis l'accueil ou via la recherche Ctrl+K) — un clic charge le bon plan et vous centre dessus.",
+    "↩️ Nouveau : après un passage de portail ou un saut de recherche, un bouton « Retour » vous ramène au plan et à la vue d'où vous venez (les sauts s'enchaînent, les retours aussi)."
   ]
 }

@@ -768,12 +768,23 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 **Use a link**: in the point's popup, a 🌀 line shows the destination plan and point → **➜** button → confirmation → the app **switches plan** (your current session is saved automatically), **switches to the arrival point's level** (multi-level plans) and drops you **right on it** (blue flash). If a tag filter hides the arrival point, a warning is shown — your filters are never modified.
 
+**↩️ Going back (since v1.58.0)**: after taking a portal (or a multi-plan search jump), a floating **"↩️ Back: <plan>"** button appears at the bottom of the screen for 15 seconds — one click brings you back to the plan **and the exact view** you came from (level and zoom included). Jumps stack up: chain 3 portals, you can go back 3 times.
+
 **Good to know**:
 - A point can carry **several links** (a "hub" point).
 - If the destination plan is **not on your device**, the link still shows (⛔) — add the plan to be able to "go there".
 - **Deleting a point** also deletes its links (both sides).
 - Links **travel with the session export** (restored on import on another device).
 - A distributed plan ("data layer") can embed ready-to-use links: you can **use** them, not edit them.
+
+### 🌐 Multi-plan search (since v1.58.0)
+
+Search for a point across **every plan in your library** at once, without opening them one by one:
+
+- **From the home screen**: **🌐 Multi-plan search** button (next to the Data editor).
+- **From the map**: open the search (Ctrl+K or 🔍) → **"🌐 Search across all plans"** button at the bottom — your current input is kept.
+
+The app reads each plan's points (session + data layers) **in place**, showing progress ("Reading 2/5: Oise…"). Each result carries the **badge of the plan** it belongs to. One click: confirmation (if a plan is open), the right plan loads, the right level is selected and the view centers on the point — with the ↩️ Back button to return.
 
 ---
 

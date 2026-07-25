@@ -771,12 +771,23 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 
 **Utiliser une liaison** : dans la fiche du point, ligne 🌀 avec le plan et le point de destination → bouton **➜** → confirmation → l'app **change de plan** (ta session actuelle est sauvegardée automatiquement), **bascule sur le niveau du point d'arrivée** (plans multi-niveaux) et te dépose **directement dessus** (flash bleu). Si un filtre de tags masque le point d'arrivée, un avertissement s'affiche — tes filtres ne sont jamais modifiés.
 
+**↩️ Revenir en arrière (depuis v1.58.0)** : après un passage de portail (ou un saut de recherche multi-plans), un bouton flottant **« ↩️ Retour : <plan> »** apparaît en bas de l'écran pendant 15 secondes — un clic te ramène au plan **et à la vue exacte** d'où tu venais (niveau et zoom compris). Les sauts s'empilent : enchaîne 3 portails, tu peux faire 3 retours.
+
 **Bon à savoir** :
 - Un point peut porter **plusieurs liaisons** (point « hub »).
 - Si le plan de destination n'est **pas sur ton appareil**, la liaison s'affiche quand même (⛔) — ajoute le plan pour pouvoir « y aller ».
 - **Supprimer un point** supprime aussi ses liaisons (des deux côtés).
 - Les liaisons **voyagent avec l'export de session** (elles sont restaurées à l'import sur un autre appareil).
 - Un plan distribué (« data layer ») peut embarquer des liaisons prêtes à l'emploi : tu peux les **utiliser**, pas les modifier.
+
+### 🌐 Recherche multi-plans (depuis v1.58.0)
+
+Cherche un point dans **tous les plans de ta bibliothèque** d'un coup, sans les ouvrir un par un :
+
+- **Depuis l'accueil** : bouton **🌐 Recherche multi-plans** (à côté de l'Éditeur de données).
+- **Depuis la carte** : ouvre la recherche (Ctrl+K ou 🔍) → bouton **« 🌐 Chercher dans tous les plans »** en bas — ta saisie en cours est conservée.
+
+L'app lit les points (session + calques de données) de chaque plan **sur place**, avec la progression affichée (« Lecture 2/5 : Oise… »). Chaque résultat porte le **badge du plan** où il se trouve. Un clic : confirmation (si un plan est ouvert), chargement du bon plan, bascule sur le bon niveau et centrage sur le point — avec le bouton ↩️ Retour pour revenir.
 
 ---
 
