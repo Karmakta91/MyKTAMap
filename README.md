@@ -8,7 +8,13 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.57.2` (25/07/2026) — **🛠️ Reset des modes d'édition au chargement d'un plan** : les flags `window.modeX` (édition/mesure/recalage/tracé/zone/structure) n'étaient jamais remis à `false` au plan switch → le mode « ajouter un point » restait armé après un changement de plan (rendu visible par les allers-retours « portail »).
+**📦 Version courante** : `v1.57.3` (25/07/2026) — **📚 Doc complète des liaisons inter-plan** : nouvelle section 🌀 dans l'Aide intégrée (FR/EN, catégorie Outils carte), recette pas-à-pas dans `AI_CONTEXT.md` (Aide IA), précisions v1.57.1/2 reportées dans `README_USER` fr/en.
+
+**📚 v1.57.3 (25/07/2026)** — **Documentation des liaisons inter-plan (3 surfaces)** :
+- **Aide intégrée** (`interfaceDocs.js`) : section « 🌀 Liaisons inter-plan ("portails") » ajoutée **en fin de document** (idx 28) dans `_aideHtmlFr` ET `_aideHtmlEn` (parité 29≡29) pour ne décaler **aucun** index d'`AIDE_CATEGORIES` ; idx 28 rattaché à « 🗺️ Outils carte ».
+- **Aide IA** (`AI_CONTEXT.md`) : recette « 🌀 Lier deux plans entre eux » (préparer/créer/utiliser/supprimer + bon-à-savoir, dont clé `myktamap_interplan_links_v1` et rappel zéro-réseau).
+- **`README_USER` fr/en** : bascule automatique sur le **niveau** du point d'arrivée + avertissement filtre de tags (précisions v1.57.1/2).
+- **Sources** v1.57.3 (bump requis : `interfaceDocs.js` + docs précachés SW). Aucune nouvelle surface réseau. — **🛠️ Reset des modes d'édition au chargement d'un plan** : les flags `window.modeX` (édition/mesure/recalage/tracé/zone/structure) n'étaient jamais remis à `false` au plan switch → le mode « ajouter un point » restait armé après un changement de plan (rendu visible par les allers-retours « portail »).
 
 **🛠️ v1.57.2 (25/07/2026)** — **Fix : mode « ajouter un point » armé à l'entrée d'un plan** :
 - **Cause racine** : les 6 flags de mode (`modeEdition`, `modeMesure`, `modeRecalage`, `modeRoad`, `modeZone`, `modeStructure`) ne sont initialisés qu'au **chargement du script** (1× par session navigateur) — **aucun reset au plan switch**. Quitter un plan avec un mode actif (cas typique : créer un POI puis prendre un portail inter-plan) → mode encore armé à l'arrivée, chaque clic carte posait un point. Dette **pré-existante** (switcher v1.16+), révélée par les switches fréquents de la v1.57.0.

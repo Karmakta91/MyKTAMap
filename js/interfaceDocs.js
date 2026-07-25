@@ -623,7 +623,7 @@ function afficherAide() {
 // automatiquement dans la catégorie « Autres » (filet de sécurité).
 const AIDE_CATEGORIES = [
   { fr: "🚀 Prise en main",        en: "🚀 Getting started",     idx: [2, 26, 27] },
-  { fr: "🗺️ Outils carte",         en: "🗺️ Map tools",           idx: [20, 22, 23, 21, 19, 17, 14, 15, 1] },
+  { fr: "🗺️ Outils carte",         en: "🗺️ Map tools",           idx: [20, 22, 23, 21, 19, 17, 14, 15, 1, 28] },
   { fr: "💾 Données & session",     en: "💾 Data & session",      idx: [16, 5, 8, 9, 11, 13, 0, 24, 6] },
   { fr: "🔍 Recherche",            en: "🔍 Search",              idx: [4] },
   { fr: "🚨 Coordination secours", en: "🚨 Rescue coordination", idx: [18] },
@@ -1440,6 +1440,33 @@ function _aideHtmlFr() {
             <strong>📤 Exporter le profil</strong> AVANT pour avoir un backup complet à portée de main.
           </p>
         </div>
+
+        <!-- 🌀 v1.57.0 — Liaisons inter-plan (section idx 28, ajoutée EN FIN
+             pour ne décaler aucun index d'AIDE_CATEGORIES) -->
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🌀 Liaisons inter-plan (« portails »)</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            Lie un <strong>point d'un plan</strong> à un <strong>point d'un autre plan</strong> — comme un portail entre
+            deux réseaux qui se touchent (deux carrières voisines, plan général ↔ plan de détail).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Créer</strong> : clique un point (session ou data layer) → bouton
+            <strong>🌀 Lier à un autre plan</strong> → choisis le plan cible puis recherche le point d'arrivée
+            (nom, id ou tag — pas besoin d'ouvrir l'autre plan). La liaison est <strong>bidirectionnelle</strong> :
+            visible dans la fiche des deux points. Un point peut porter plusieurs liaisons.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Utiliser</strong> : dans la fiche du point, ligne 🌀 → bouton <strong>➜</strong> → confirmation →
+            l'app change de plan (session sauvegardée automatiquement), <strong>bascule sur le niveau du point
+            d'arrivée</strong> et te dépose dessus (flash bleu). Un <strong>badge doré 🌀</strong> flotte au-dessus
+            de l'icône de chaque point lié.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
+            Plan cible absent de l'appareil → la liaison s'affiche (⛔) mais « y aller » nécessite d'ajouter le plan.
+            Supprimer un point supprime ses liaisons (des deux côtés). Les liaisons voyagent avec l'export de session.
+            Si un filtre de tags masque le point d'arrivée, un avertissement s'affiche (le filtre n'est jamais modifié).
+          </p>
+        </div>
   `;
 }
 
@@ -2103,6 +2130,33 @@ function _aideHtmlEn() {
             ⚠️ <strong>These tools delete NO user data</strong> (maps, sessions, photos, prefs, backups).
             They only purge the cache of the app's files (HTML / CSS / JS / icons). When in doubt,
             <strong>📤 Export the profile</strong> BEFORE so you have a complete backup at hand.
+          </p>
+        </div>
+
+        <!-- 🌀 v1.57.0 — Inter-plan links (section idx 28, appended LAST to
+             keep every AIDE_CATEGORIES index untouched — parity with FR) -->
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🌀 Inter-plan links ("portals")</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            Link a <strong>point on one plan</strong> to a <strong>point on another plan</strong> — like a portal between
+            two touching networks (two neighboring quarries, overview plan ↔ detail plan).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Create</strong>: click a point (session or data layer) → button
+            <strong>🌀 Link to another plan</strong> → pick the target plan then search the arrival point
+            (name, id or tag — no need to open the other plan). The link is <strong>bidirectional</strong>:
+            visible in both points' popups. A point can carry several links.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Use</strong>: in the point's popup, 🌀 line → <strong>➜</strong> button → confirmation →
+            the app switches plan (session saved automatically), <strong>switches to the arrival point's
+            level</strong> and drops you on it (blue flash). A <strong>golden 🌀 badge</strong> floats above
+            the icon of every linked point.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
+            Target plan missing from this device → the link still shows (⛔) but "going there" requires adding the plan.
+            Deleting a point also deletes its links (both sides). Links travel with the session export.
+            If a tag filter hides the arrival point, a warning is shown (the filter is never modified).
           </p>
         </div>
   `;

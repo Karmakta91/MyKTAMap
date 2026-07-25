@@ -769,7 +769,7 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 
 **Sur la carte** : un **badge doré 🌀** flotte au-dessus de l'icône de chaque point lié.
 
-**Utiliser une liaison** : dans la fiche du point, ligne 🌀 avec le plan et le point de destination → bouton **➜** → confirmation → l'app **change de plan** (ta session actuelle est sauvegardée automatiquement) et te dépose **directement sur le point d'arrivée** (flash bleu).
+**Utiliser une liaison** : dans la fiche du point, ligne 🌀 avec le plan et le point de destination → bouton **➜** → confirmation → l'app **change de plan** (ta session actuelle est sauvegardée automatiquement), **bascule sur le niveau du point d'arrivée** (plans multi-niveaux) et te dépose **directement dessus** (flash bleu). Si un filtre de tags masque le point d'arrivée, un avertissement s'affiche — tes filtres ne sont jamais modifiés.
 
 **Bon à savoir** :
 - Un point peut porter **plusieurs liaisons** (point « hub »).

@@ -1,7 +1,7 @@
 {
-  "version": "v1.57.2",
+  "version": "v1.57.3",
   "released": "2026-07-25",
   "notes": [
-    "🛠️ Les outils d'édition (ajouter un point, tracé, zone…) sont désormais toujours désactivés à l'ouverture d'un plan — fini le mode « ajout de point » resté armé après un changement de plan ou un passage de portail."
+    "📚 La documentation des liaisons inter-plan (« portails ») est disponible partout : Aide intégrée (rubrique Outils carte), Documentation utilisateur et Aide IA."
   ]
 }

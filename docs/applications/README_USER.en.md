@@ -766,7 +766,7 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 **On the map**: a **golden 🌀 badge** floats above the icon of every linked point.
 
-**Use a link**: in the point's popup, a 🌀 line shows the destination plan and point → **➜** button → confirmation → the app **switches plan** (your current session is saved automatically) and drops you **right on the arrival point** (blue flash).
+**Use a link**: in the point's popup, a 🌀 line shows the destination plan and point → **➜** button → confirmation → the app **switches plan** (your current session is saved automatically), **switches to the arrival point's level** (multi-level plans) and drops you **right on it** (blue flash). If a tag filter hides the arrival point, a warning is shown — your filters are never modified.
 
 **Good to know**:
 - A point can carry **several links** (a "hub" point).
