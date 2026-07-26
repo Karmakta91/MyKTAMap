@@ -1324,3 +1324,24 @@ Cf `NETWORK_AUDIT.md` pour le détail des changements de surface réseau (zéro 
 fetch, zéro nouvelle permission).
 
 ---
+
+---
+
+## 🫥 Transparence des plans (v1.62.0)
+
+> Une source PNG/WebP avec canal alpha n'est plus aplatie sur un fond opaque — ni au générateur V2, ni au tuilage runtime V1. Décision KARMA (reco 1:a 2:a 3:a 4:a).
+
+**Helpers partagés** (`utils.js`) :
+- `ktaTileExt(tilingManifest)` → extension des tuiles V2 : `"webp"`/`"png"` si `tiling.format` le dit, **sinon `"jpg"`** (= rétrocompat totale des plans V2 pré-v1.62.0, format `"jpeg"` ou absent). Consommateurs : `tiling.js` ×2 (résolution lazy + pré-extract), `emergencyMode.js`, `osmView.js`, `osmHomePreview.js`. Le scan ZIP de `main.js` est agnostique (regex sans extension).
+- `ktaProbeAlphaTileFormat()` → `{mime, ext, name}` mémoïsé : **WebP** si `canvas.toBlob("image/webp")` encode vraiment (Chrome/Edge/Firefox), sinon **PNG** (Safari renvoie un blob PNG ou null). WebP ≈ PNG/3 en poids, décodage universel.
+- `ktaDetecterAlpha(source, mimeHint)` → scan échantillonné (≤256px, stride 4 px, seuil `a < 250`). Hint JPEG court-circuite (jamais d'alpha). Échec lecture (CORS/OOM) → `false` = chemin opaque historique.
+
+**Générateur V2** (`createConf.js > _genererTuilesV2`) : détection par CONTENU (un PNG ré-exporté sans alpha réel → JPEG léger). Source transparente → `clearRect` sans `fillRect`, `toBlob(fmt.mime)` (WebP q0.90 / PNG), fichiers `.webp`/`.png`, manifest `{format, alpha}`. Import KMZ/GPX re-tuilage V2 = même fonction.
+
+**Tuilage runtime V1** (`tiling.js`) : détection sur l'image chargée → flag `canvas._ktaHasAlpha` posé par `_imageVersCanvasReduit`, lu par `_tilerDepuisCanvas`. Pas de fond, encodage WebP/PNG. ⚠️ La détection « canvas noir » (drawImage JPEG échoué) exige un pixel **opaque** `(0,0,0,255)` — un pixel `(0,0,0,0)` est légitime sur une source transparente.
+
+**À NE PAS faire** :
+- ❌ **Auto-cropper une source transparente** — le crop change `imageWidth/Height` + l'origine, les datalayers/georef/calibrations restent en coords d'origine → tout se décale (double décalage Y via `imageHeight - y`). Bug vécu KARMA à la v1.62.0-dev ; `_genererTuilesV2` skip le crop dès `hasAlpha`. Les marges transparentes se compressent à ~0 : le crop n'apporte rien.
+- ❌ Décider du format sur le MIME du fichier (un PNG peut être 100 % opaque → JPEG reste le bon choix poids).
+- ❌ Hardcoder une extension de tuile — TOUJOURS `ktaTileExt(manifest)`.
+- ❌ Migrer les plans V2 legacy au runtime — le fond est cuit dans leurs JPEG, seule la régénération (Modifier → recocher V2, baseImage du ZIP garde son alpha) le retire.

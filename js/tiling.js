@@ -171,6 +171,9 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
   const TILE_SIZE = tilingManifest.tileSize || 512;
   const MIN_NATIVE = (Number.isInteger(tilingManifest.minNativeZoom)) ? tilingManifest.minNativeZoom : -3;
   const MAX_NATIVE = (Number.isInteger(tilingManifest.maxNativeZoom)) ? tilingManifest.maxNativeZoom : 0;
+  // 🫥 v1.62.0 : extension d'après le manifest (webp/png = tuiles avec alpha,
+  // jpg = plans V2 historiques — rétrocompat totale via ktaTileExt)
+  const TILE_EXT = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(tilingManifest) : "jpg";
 
   // État du runtime V2 — exposé en window pour cleanup côté main.js plan switch
   const state = {
@@ -200,7 +203,7 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
   // au premier appel et la réutilise ensuite (asset.url cached). Range l'asset
   // dans le bucket du niveau z pour le LRU.
   function _resoudreUrlTuile(z, col, k) {
-    const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + ".jpg";
+    const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + TILE_EXT;
     const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
     if (!asset) return null;  // tuile manquante (edge case ou erreur génération)
     if (!asset.url && asset.file) {
@@ -283,7 +286,7 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
       const aExtraire = [];
       for (let k = 1; k <= rows; k++) {
         for (let col = 0; col < cols; col++) {
-          const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + ".jpg";
+          const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + TILE_EXT;
           const asset = window.RUNTIME_ASSETS[path];
           if (asset && !asset.file && asset._zipPath) {
             aExtraire.push(path);
@@ -482,36 +485,53 @@ function _imageVersCanvasReduit(url, targetW, targetH, srcBlob, maxWorkDim) {
         canvas.height = workH;
         const ctx = canvas.getContext('2d');
 
+        // 🫥 v1.62.0 — Détection d'alpha AVANT de peindre : une source
+        // transparente garde son canal alpha de bout en bout (pas de fond).
+        const hasAlpha = (typeof window.ktaDetecterAlpha === "function")
+          ? window.ktaDetecterAlpha(img)
+          : false;
+        canvas._ktaHasAlpha = hasAlpha;
+        if (hasAlpha) console.log("[Tiling] Source transparente — alpha conservé (pas de fond)");
+
         // Fond charte sombre #0a0d18 (au lieu de blanc) — apparait pendant le
         // tile loading et autour des bords de l'image si elle ne couvre pas tout.
         // Cohérent avec le fond de la map (.leaflet-container = #000000) et la
         // charte loader. ⚠️ NE PAS mettre #000000 strict : la detection
-        // "canvas noir" plus bas check pixel (0,0,0) — un fond noir pur ferait
-        // un faux positif. #0a0d18 est visuellement equivalent mais distinct.
-        ctx.fillStyle = "#0a0d18";
-        ctx.fillRect(0, 0, workW, workH);
+        // "canvas noir" plus bas check pixel (0,0,0) opaque — un fond noir pur
+        // ferait un faux positif. #0a0d18 est visuellement equivalent mais
+        // distinct. 🫥 v1.62.0 : AUCUN fond si la source a de l'alpha.
+        if (!hasAlpha) {
+          ctx.fillStyle = "#0a0d18";
+          ctx.fillRect(0, 0, workW, workH);
+        }
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
         ctx.drawImage(img, 0, 0, workW, workH);
 
-        // Détection canvas noir — drawImage JPEG échoué silencieusement
+        // Détection canvas noir — drawImage JPEG échoué silencieusement.
+        // 🫥 v1.62.0 : le pixel doit être OPAQUE (a=255) pour compter comme
+        // « noir suspect » — un pixel transparent (0,0,0,0) est légitime.
         let estNoir = false;
         try {
           const px = ctx.getImageData(1, 1, 1, 1).data;
-          estNoir = (px[0] === 0 && px[1] === 0 && px[2] === 0);
+          estNoir = (px[0] === 0 && px[1] === 0 && px[2] === 0 && px[3] === 255);
         } catch(e) {}
 
         if (estNoir) {
           console.warn("[Tiling] Canvas noir — re-essai dans 100ms");
           setTimeout(function() {
-            ctx.fillStyle = "#0a0d18";
-            ctx.fillRect(0, 0, workW, workH);
+            if (hasAlpha) {
+              ctx.clearRect(0, 0, workW, workH);
+            } else {
+              ctx.fillStyle = "#0a0d18";
+              ctx.fillRect(0, 0, workW, workH);
+            }
             ctx.drawImage(img, 0, 0, workW, workH);
             // Vérifier à nouveau
             let encoreNoir = false;
             try {
               const px2 = ctx.getImageData(1, 1, 1, 1).data;
-              encoreNoir = (px2[0] === 0 && px2[1] === 0 && px2[2] === 0);
+              encoreNoir = (px2[0] === 0 && px2[1] === 0 && px2[2] === 0 && px2[3] === 255);
             } catch(e) {}
             if (encoreNoir) {
               console.error("[Tiling] Canvas toujours noir après re-essai — image non dessinable à cette taille");
@@ -557,8 +577,20 @@ async function _tilerDepuisCanvas(srcCanvas, W, H, map, params) {
   const nbX    = Math.ceil(W / tileSize);
   const nbY    = Math.ceil(H / tileSize);
 
+  // 🫥 v1.62.0 — Canvas de travail avec alpha (flag posé par
+  // _imageVersCanvasReduit) : tuiles SANS fond, encodées avec transparence
+  // (WebP si encodable, sinon PNG). Sinon : JPEG + fond charte historiques.
+  const hasAlpha = !!srcCanvas._ktaHasAlpha;
+  const fmt = hasAlpha
+    ? await window.ktaProbeAlphaTileFormat()
+    : { mime: "image/jpeg", ext: "jpg", name: "jpeg" };
+  const fmtQuality = (fmt.mime === "image/webp") ? 0.90
+                   : (fmt.mime === "image/jpeg") ? jpegQuality
+                   : undefined;
+
   console.log("[Tiling]", nbX+"×"+nbY, "=", nbX*nbY, "tuiles depuis canvas", workW+"×"+workH,
-              "(tile "+tileSize+", Q "+jpegQuality+")");
+              "(tile "+tileSize+", " + fmt.name + (fmtQuality ? " Q "+fmtQuality : "") +
+              (hasAlpha ? ", alpha conservé" : "") + ")");
 
   const overlays = [];
 
@@ -577,11 +609,13 @@ async function _tilerDepuisCanvas(srcCanvas, W, H, map, params) {
       tuile.height = tileH;
       const tCtx   = tuile.getContext('2d');
 
-      tCtx.fillStyle = "#0a0d18";
-      tCtx.fillRect(0, 0, tileW, tileH);
+      if (!hasAlpha) {
+        tCtx.fillStyle = "#0a0d18";
+        tCtx.fillRect(0, 0, tileW, tileH);
+      }
       tCtx.drawImage(srcCanvas, srcX, srcY, srcW, srcH, 0, 0, tileW, tileH);
 
-      const blobUrl = await _canvasToBlob(tuile, "image/jpeg", jpegQuality);
+      const blobUrl = await _canvasToBlob(tuile, fmt.mime, fmtQuality);
 
       // Libérer le canvas de tuile immédiatement
       tuile.width = 0;

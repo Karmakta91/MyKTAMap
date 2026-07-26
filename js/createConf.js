@@ -2242,6 +2242,10 @@ function _getFile(inputId, logicalPath) {
 const TILING_V2_TILE_SIZE  = 512;
 const TILING_V2_FORMAT     = "jpeg";
 const TILING_V2_JPEG_Q     = 0.88;
+// 🫥 v1.62.0 — Source avec canal alpha : tuiles encodées AVEC transparence
+// (WebP si le navigateur sait encoder, sinon PNG — cf utils.js >
+// ktaProbeAlphaTileFormat). Qualité WebP : 0.90 (alpha lossless, RGB lossy).
+const TILING_V2_WEBP_Q     = 0.90;
 const TILING_V2_LEVELS     = 4;       // z=0, -1, -2, -3
 const TILING_V2_VERSION    = 2;
 const TILING_V2_AUTOCROP_RGB_THRESHOLD = 200;  // R,G,B > 200 = "blanc"
@@ -2362,9 +2366,31 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
 
   try {
 
+  // 🫥 v1.62.0 — Détection d'alpha : source transparente → tuiles encodées
+  // AVEC le canal alpha (pas de fond aplati), format WebP ou PNG selon
+  // capacité d'encodage du navigateur. Source opaque → JPEG historique.
+  const hasAlpha = (typeof window.ktaDetecterAlpha === "function")
+    ? window.ktaDetecterAlpha(img, imageFile && imageFile.type)
+    : false;
+  const fmt = hasAlpha
+    ? await window.ktaProbeAlphaTileFormat()
+    : { mime: "image/jpeg", ext: "jpg", name: TILING_V2_FORMAT };
+  const fmtQuality = (fmt.mime === "image/webp") ? TILING_V2_WEBP_Q
+                   : (fmt.mime === "image/jpeg") ? TILING_V2_JPEG_Q
+                   : undefined;   // PNG : sans perte, pas de qualité
+  console.log("[Planner] Tiling V2 — source " + (hasAlpha ? "TRANSPARENTE → tuiles " + fmt.name + " (alpha conservé)" : "opaque → tuiles jpeg"));
+
   // Auto-crop : si l'image a beaucoup de marges blanches, on tuile depuis la
   // zone utile uniquement. Sinon (bbox > 90% du canvas), on prend tout.
-  const bbox = _detectContentBBox(img);
+  // 🐛 v1.62.0 (KARMA « tout est décalé ») : JAMAIS d'auto-crop sur une source
+  // TRANSPARENTE — le crop change imageWidth/Height et l'origine, or les
+  // datalayers/georef/calibrations existants restent en coords d'origine →
+  // tout se décale (double décalage en Y via le flip imageHeight - y). Les
+  // marges transparentes sont invisibles au rendu et se compressent à ~0 en
+  // WebP/PNG : le crop n'apporte rien ici. Inchangé pour les scans opaques
+  // à marges blanches (comportement historique v149).
+  const bbox = hasAlpha ? null : _detectContentBBox(img);
+  if (hasAlpha) console.log("[Planner] Auto-crop : skip (source transparente — coords préservées)");
   const cropX = bbox ? bbox.x : 0;
   const cropY = bbox ? bbox.y : 0;
   const srcW  = bbox ? bbox.w : img.naturalWidth;
@@ -2425,10 +2451,14 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
         const sourceHeightOrig = sliceHeightLvl * scale;
 
         // Fond noir pour les bordures de la tuile haute partielle
+        // 🫥 v1.62.0 : source transparente → PAS de fond (clearRect seul,
+        // bordures partielles transparentes aussi)
         try {
           tileCtx.clearRect(0, 0, TILING_V2_TILE_SIZE, TILING_V2_TILE_SIZE);
-          tileCtx.fillStyle = "#000000";
-          tileCtx.fillRect(0, 0, TILING_V2_TILE_SIZE, TILING_V2_TILE_SIZE);
+          if (!hasAlpha) {
+            tileCtx.fillStyle = "#000000";
+            tileCtx.fillRect(0, 0, TILING_V2_TILE_SIZE, TILING_V2_TILE_SIZE);
+          }
           tileCtx.drawImage(
             img,
             sourceLeftOrig, sourceTopOrig, sourceWidthOrig, sourceHeightOrig,
@@ -2452,7 +2482,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
             tileCanvas.toBlob(function(b) {
               if (!b) reject(new Error("toBlob a retourné null"));
               else    resolve(b);
-            }, "image/jpeg", TILING_V2_JPEG_Q);
+            }, fmt.mime, fmtQuality);
           });
         } catch(blobErr) {
           throw new Error(window.I18n.t("gen.err.tuileJpeg", {
@@ -2463,7 +2493,7 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
 
         try {
           const arrBuf = await blob.arrayBuffer();
-          zFolder.file("x" + col + "_y" + leafletY + ".jpg", arrBuf);
+          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, arrBuf);
         } catch(zipErr) {
           throw new Error(window.I18n.t("gen.err.tuileZip", {
             z: z, col: col, k: k,
@@ -2485,7 +2515,10 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
     manifest: {
       version:        TILING_V2_VERSION,
       tileSize:       TILING_V2_TILE_SIZE,
-      format:         TILING_V2_FORMAT,
+      // 🫥 v1.62.0 : format réel des tuiles ("jpeg" | "webp" | "png") — lu au
+      // runtime via window.ktaTileExt pour résoudre l'extension des fichiers.
+      format:         fmt.name,
+      alpha:          hasAlpha,
       minNativeZoom:  -(TILING_V2_LEVELS - 1),
       maxNativeZoom:  0
     },

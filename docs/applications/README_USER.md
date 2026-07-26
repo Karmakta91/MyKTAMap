@@ -2798,6 +2798,8 @@ La case 🧱 Convertir en V2 apparaît dans le formulaire dès que tu as **uploa
 
 **Auto-crop intégré** : si ton image source a beaucoup de marges blanches (typique des plans scannés papier), le générateur détecte automatiquement le bbox du contenu utile et tuile uniquement cette zone. Tu gagnes en taille de ZIP + en netteté au zoom max. Si l'image est déjà bien cadrée, pas de crop.
 
+**🫥 Transparence conservée *(depuis v1.62.0)*** : si ton image source est un **PNG/WebP avec de la vraie transparence** (fond alpha), le générateur ne rajoute **plus de fond sombre** : les tuiles gardent la transparence (format WebP, ou PNG selon le navigateur). Résultat : derrière les zones transparentes tu vois le fond sombre de la carte — et dans la **Vue OSM**, la carte OpenStreetMap apparaît **à travers ton plan**. La détection est automatique (elle regarde les pixels, pas l'extension du fichier — un PNG dont le fond a déjà été aplati reste traité en opaque). Sur une source transparente, l'auto-crop ci-dessus est **désactivé** pour ne jamais décaler tes points/tracés/géoréférencement. **Plans V2 existants** : le fond a été cuit dans leurs tuiles à l'époque — régénère une fois (Modifier → recocher V2) pour en profiter ; sans régénération ils continuent de marcher comme avant.
+
 **Trade-offs** :
 
 | ✅ Gains | ⚠️ Coûts |

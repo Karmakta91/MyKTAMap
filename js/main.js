@@ -915,7 +915,9 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     await registerAsset(logicalPath, matched);
   }));
 
-  // 🧱 Tiling V2 (v149) : scan des tuiles dans le ZIP (chemin `data/tiles/z<N>/*.jpg`).
+  // 🧱 Tiling V2 (v149) : scan des tuiles dans le ZIP (chemin `data/tiles/z<N>/*`
+  // — 🫥 v1.62.0 : extension .jpg (legacy) OU .webp/.png (tuiles avec alpha), le
+  // regex est agnostique et le format vit dans `tiling.format`).
   // Enregistrement LAZY (pas de blob URL au boot — économie d'allocations sur des
   // plans qui peuvent avoir 1000+ tuiles). Les blob URLs sont créées à la demande
   // par tiling.js > _chargerImageTuileV2 quand chaque tuile est rendue.

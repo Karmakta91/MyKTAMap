@@ -1,8 +1,8 @@
 {
-  "version": "v1.61.0",
+  "version": "v1.62.0",
   "released": "2026-07-26",
   "notes": [
-    "🗺️ Ton itinéraire se replanifie automatiquement quand tu recales ta position, et « 📍 Je suis ici » sur une étape la valide (✓ vert) — dans l'ordre que tu veux. Une fois toutes les étapes validées, l'itinéraire se termine tout seul.",
-    "🌀 En prenant un portail, ta position est maintenant recalée sur le point d'arrivée. Le bouton Retour peut être réduit ou fermé d'un clic, et plusieurs boutons de fermeture de fenêtres ont retrouvé leur style."
+    "🫥 Les plans créés depuis une image transparente gardent maintenant leur transparence : plus de fond sombre ajouté autour du dessin, et la carte OpenStreetMap apparaît à travers dans la Vue OSM.",
+    "Pour en profiter sur un plan existant, régénère-le une fois (Modifier le plan → recocher le mode tuilé). Les plans actuels continuent de fonctionner sans rien faire."
   ]
 }

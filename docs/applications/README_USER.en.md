@@ -2792,6 +2792,8 @@ The 🧱 Convert to V2 checkbox appears in the form as soon as you have **upload
 
 **Built-in auto-crop**: if your source image has lots of white margins (typical of scanned paper plans), the generator automatically detects the bbox of useful content and only tiles this area. You gain ZIP size + sharpness at max zoom. If the image is already well framed, no crop.
 
+**🫥 Transparency preserved *(since v1.62.0)***: if your source image is a **PNG/WebP with real transparency** (alpha background), the generator no longer adds a **dark background**: tiles keep the transparency (WebP format, or PNG depending on the browser). Result: behind transparent areas you see the map's dark background — and in the **OSM View**, the OpenStreetMap map shows **through your plan**. Detection is automatic (it looks at pixels, not the file extension — a PNG whose background was already flattened is still treated as opaque). On a transparent source, the auto-crop above is **disabled** so your points/paths/georeferencing are never shifted. **Existing V2 plans**: the background was baked into their tiles back then — regenerate once (Edit → re-check V2) to benefit; without regeneration they keep working as before.
+
 **Trade-offs**:
 
 | ✅ Gains | ⚠️ Costs |

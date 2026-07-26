@@ -865,6 +865,76 @@ window.ktaEsc = function(s) {
   });
 };
 
+// =========================
+// 🫥 v1.62.0 — TRANSPARENCE DES PLANS (helpers partagés)
+// =========================
+// Une source PNG/WebP avec canal alpha ne doit plus être aplatie sur un fond
+// opaque au tuilage (V2 générateur + V1 runtime) : les tuiles gardent l'alpha
+// et le fond de la carte (ou l'OSM en Vue OSM) apparaît à travers.
+
+// Extension de fichier des tuiles V2 d'après le manifest `tiling.format`.
+// Rétrocompat TOTALE : "jpeg" / absent / inconnu → "jpg" (tous les plans V2
+// générés avant v1.62.0). Consommateurs : tiling.js, emergencyMode.js,
+// osmView.js, osmHomePreview.js.
+window.ktaTileExt = function(tilingManifest) {
+  const f = tilingManifest && tilingManifest.format;
+  if (f === "png")  return "png";
+  if (f === "webp") return "webp";
+  return "jpg";
+};
+
+// Meilleur format d'encodage AVEC alpha supporté par ce navigateur :
+// WebP (≈3× plus léger que PNG, décodage universel) si canvas.toBlob sait
+// l'encoder (Chrome/Edge/Firefox), sinon PNG (Safari — toBlob("image/webp")
+// y retourne un blob PNG ou null). Résultat mémoïsé (window._ktaAlphaFmt).
+window.ktaProbeAlphaTileFormat = function() {
+  if (window._ktaAlphaFmt) return Promise.resolve(window._ktaAlphaFmt);
+  return new Promise(function(resolve) {
+    const done = function(fmt) { window._ktaAlphaFmt = fmt; resolve(fmt); };
+    try {
+      const c = document.createElement("canvas");
+      c.width = 2; c.height = 2;
+      c.toBlob(function(b) {
+        done((b && b.type === "image/webp")
+          ? { mime: "image/webp", ext: "webp", name: "webp" }
+          : { mime: "image/png",  ext: "png",  name: "png"  });
+      }, "image/webp", 0.9);
+    } catch(e) {
+      done({ mime: "image/png", ext: "png", name: "png" });
+    }
+  });
+};
+
+// Détection d'alpha réel dans une image (HTMLImageElement ou canvas).
+// mimeHint court-circuite : un JPEG ne porte JAMAIS d'alpha. Sinon, scan
+// échantillonné (≤256px, stride 4 px) : un pixel a<250 suffit (250 et pas
+// 255 : l'anti-aliasing d'un export opaque peut laisser 254 sur les bords).
+// Échec de lecture (CORS/OOM) → false = comportement opaque historique.
+window.ktaDetecterAlpha = function(source, mimeHint) {
+  if (mimeHint && /jpe?g/i.test(String(mimeHint))) return false;
+  try {
+    const srcW = source.naturalWidth  || source.width  || 0;
+    const srcH = source.naturalHeight || source.height || 0;
+    if (!srcW || !srcH) return false;
+    const scale = Math.min(1, 256 / Math.max(srcW, srcH));
+    const w = Math.max(1, Math.round(srcW * scale));
+    const h = Math.max(1, Math.round(srcH * scale));
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const ctx = c.getContext("2d");
+    ctx.drawImage(source, 0, 0, w, h);
+    const data = ctx.getImageData(0, 0, w, h).data;
+    c.width = 0; c.height = 0;
+    for (let i = 3; i < data.length; i += 16) {   // stride 4 pixels
+      if (data[i] < 250) return true;
+    }
+    return false;
+  } catch(e) {
+    console.warn("[Utils] ktaDetecterAlpha : lecture pixels impossible, fallback opaque —", e && e.message);
+    return false;
+  }
+};
+
 function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   const nom  = String(point.nom || "(sans nom)");
   const desc = String(point.description || "");

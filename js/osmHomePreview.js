@@ -1358,9 +1358,11 @@
     const rows = Math.ceil(lvlH / tileSize);
 
     const tiles = [];
+    // 🫥 v1.62.0 : extension d'après le manifest (webp/png = alpha, jpg = legacy)
+    const _tileExt = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(config.tiling) : "jpg";
     for (let col = 0; col < cols; col++) {
       for (let k = 1; k <= rows; k++) {
-        const path  = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + ".jpg";
+        const path  = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + _tileExt;
         const entry = zip.file(path);
         if (!entry) {
           console.warn("[OsmHomePreview] tuile absente :", path);
