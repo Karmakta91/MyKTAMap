@@ -455,7 +455,93 @@
       if (stats) stats.dataError = true;   // 🆕 v1.59.0 (U2) : serveur injoignable / config illisible
     }
 
+    // 🆕 A5 : resync opportuniste — on vient de lire les points frais de ce
+    // plan (picker liaison / recherche cross-plan), autant en profiter pour
+    // rafraîchir les snapshots des liaisons qui le référencent. Skip si la
+    // lecture des datalayers a échoué (données partielles → un point data
+    // introuvable ne doit pas être interprété — les côtés retrouvés via la
+    // session restent resyncables sans risque, mais on privilégie la
+    // prudence : resync uniquement sur lecture complète).
+    if (!stats || !stats.dataError) {
+      try { _resyncSnapshotsForPlan(plan.id, pts); } catch(e) {}
+    }
+
     return pts;
+  }
+
+  // ---------------------------------------------------------------
+  // 🆕 v1.60.0 (A6) — LECTURE ROUTING d'un plan NON chargé
+  // ---------------------------------------------------------------
+  // Même mécanique que _collecterPointsDuPlan mais pour les ROADS + ZONES
+  // (nécessaires au Dijkstra du leg distant : graphe + zones inaccessibles
+  // dures + zones évitables). Session localStorage (state.roads/zones) +
+  // datalayers (json.roads/zones, serveur fetch ou ZIP IndexedDB).
+  // stats.dataError = datalayers inaccessibles (le leg distant serait
+  // calculé sur un réseau PARTIEL → l'appelant doit refuser, pas deviner).
+  async function _collecterRoutingDuPlan(plan, stats) {
+    const roads = [], zones = [];
+    let scale = null;   // px/mètre du plan distant (cfg.tracking.scale) — nécessaire
+                        // pour sommer les distances des legs en MÈTRES (⚠️ les px
+                        // de 2 plans n'ont pas la même échelle)
+    function _absorber(objRoads, objZones) {
+      (objRoads || []).forEach(function(r) {
+        if (r && Array.isArray(r.points) && r.points.length >= 2 && r.type !== "itinerary") roads.push(r);
+      });
+      (objZones || []).forEach(function(z) {
+        if (z && Array.isArray(z.points) && z.points.length >= 3) zones.push(z);
+      });
+    }
+    // 1) Session du plan
+    try {
+      const raw = localStorage.getItem("myktamap_session_v1_" + plan.id);
+      if (raw) {
+        const sess = JSON.parse(raw);
+        _absorber(sess.roads, sess.zones);
+      }
+    } catch(e) { console.warn("[InterPlanLinks] session routing " + plan.id + " illisible :", e); }
+    // 2) Datalayers
+    try {
+      if (plan.type === "server" && plan.path) {
+        const cfg = await (await fetch(plan.path + "/plan-config.json", { cache: "no-cache" })).json();
+        if (cfg && cfg.tracking && Number.isFinite(cfg.tracking.scale) && cfg.tracking.scale > 0) scale = cfg.tracking.scale;
+        const layers = (cfg && cfg.dataLayers) || [];
+        for (let i = 0; i < layers.length; i++) {
+          try {
+            const dj = await (await fetch(plan.path + "/" + layers[i].file, { cache: "no-cache" })).json();
+            _absorber(dj.roads, dj.zones);
+          } catch(e) { /* layer illisible → skip */ }
+        }
+      } else if (plan.type === "local" && window.PlanRegistry && window.JSZip) {
+        const blob = await window.PlanRegistry.getBlob(plan.id);
+        if (!blob && stats) stats.dataError = true;
+        if (blob) {
+          const zip = await window.JSZip.loadAsync(blob);
+          let cfgFile = zip.file("plan-config.json");
+          if (!cfgFile) {
+            const cand = Object.keys(zip.files).find(function(n) { return /(^|\/)plan-config\.json$/.test(n); });
+            if (cand) cfgFile = zip.file(cand);
+          }
+          if (cfgFile) {
+            const baseDir = cfgFile.name.replace(/plan-config\.json$/, "");
+            const cfg = JSON.parse(await cfgFile.async("string"));
+            if (cfg && cfg.tracking && Number.isFinite(cfg.tracking.scale) && cfg.tracking.scale > 0) scale = cfg.tracking.scale;
+            const layers = (cfg && cfg.dataLayers) || [];
+            for (let i = 0; i < layers.length; i++) {
+              const f = zip.file(baseDir + layers[i].file) || zip.file(layers[i].file);
+              if (!f) continue;
+              try {
+                const dj = JSON.parse(await f.async("string"));
+                _absorber(dj.roads, dj.zones);
+              } catch(e) { /* skip */ }
+            }
+          }
+        }
+      }
+    } catch(e) {
+      console.warn("[InterPlanLinks] routing datalayers " + plan.id + " illisibles :", e);
+      if (stats) stats.dataError = true;
+    }
+    return { roads: roads, zones: zones, scale: scale };
   }
 
   // ---------------------------------------------------------------
@@ -908,11 +994,81 @@
   // ---------------------------------------------------------------
   function refreshBadges() { /* no-op depuis v1.59.0 — cf commentaire */ }
 
+  // ---------------------------------------------------------------
+  // 🆕 v1.59.x (A5) — RESYNC des SNAPSHOTS de liaisons
+  // ---------------------------------------------------------------
+  // Un snapshot (nom/coords/level/tag d'un côté) peut se périmer si le point
+  // est renommé ou déplacé après la création de la liaison. Principe : « le
+  // plan qui SAIT met à jour ses propres côtés » — resync silencieux :
+  //   1. au CHARGEMENT d'un plan (ses points en mémoire font autorité sur
+  //      les côtés qui le référencent — zéro fetch supplémentaire) ;
+  //   2. opportunistement quand collectPointsForPlan lit un plan distant
+  //      (picker liaison / recherche cross-plan — les points frais sont là).
+  // Au fil de l'usage normal, tous les snapshots convergent.
+  // Matching : par pointId (stable, suit un point déplacé) sinon par coords
+  // arrondies (points sans id — un déplacement change alors l'identité, on
+  // ne peut resynchroniser que le nom/level/tag d'un point retrouvé sur place).
+  function _resyncSnapshotsForPlan(planId, pts) {
+    if (!planId || !Array.isArray(pts) || pts.length === 0) return 0;
+    const byId = {}, byXy = {};
+    pts.forEach(function(p) {
+      if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
+      const id = String(p.id || "").trim();
+      if (id && !byId[id]) byId[id] = p;
+      const xy = "xy:" + Math.round(p.x) + ":" + Math.round(p.y);
+      if (!byXy[xy]) byXy[xy] = p;
+    });
+    const reg = _load();
+    let changed = 0;
+    reg.links.forEach(function(l) {
+      ["a", "b"].forEach(function(s) {
+        const side = l[s];
+        if (!side || side.planId !== planId) return;
+        const id = String(side.pointId || "").trim();
+        const p = (id && byId[id]) || byXy[_sideKey(side)] || null;
+        if (!p) return;   // point disparu / plan partiel → snapshot conservé tel quel
+        const nom = String(p.nom || "");
+        const lvl = Number.isInteger(p.level) ? p.level : 0;
+        const tag = (Array.isArray(p.tags) && p.tags[0]) || undefined;
+        if (side.pointNom !== nom || side.x !== p.x || side.y !== p.y
+            || (side.level || 0) !== lvl || side.tag !== tag) {
+          side.pointNom = nom;
+          side.x = p.x;
+          side.y = p.y;
+          side.level = lvl;
+          side.tag = tag;
+          changed++;
+        }
+      });
+    });
+    if (changed > 0) {
+      _save(reg);
+      console.log("[InterPlanLinks] Resync snapshots « " + planId + " » : " + changed + " côté(s) mis à jour");
+    }
+    return changed;
+  }
+
+  // Resync au chargement du plan courant : points session + datalayers déjà
+  // en mémoire via SearchPoints.getAllPoints (format [{point, layerId}]).
+  async function _resyncPlanCourant() {
+    const pid = _currentPlanId();
+    if (!pid || !window.SearchPoints || typeof window.SearchPoints.getAllPoints !== "function") return;
+    if (getLinksForPlan(pid).length === 0) return;   // rien à resyncer → zéro travail
+    try {
+      const items = await window.SearchPoints.getAllPoints();
+      const pts = (items || []).map(function(it) { return it && it.point; }).filter(Boolean);
+      _resyncSnapshotsForPlan(pid, pts);
+    } catch(e) { console.warn("[InterPlanLinks] resync plan courant échoué :", e); }
+  }
+
   // Hook appelé par main.js à la fin de lancerApplication (plan prêt).
   function onPlanLoaded() {
     // 🐛 v1.57.0-fix : consomme la cible de navigation pendante (« Y aller »
     // depuis une liaison) — repasse derrière les recentrages de session.
     setTimeout(_consumePendingTarget, 600);
+    // 🆕 A5 : resync différé des snapshots des côtés locaux (laisse les
+    // datalayers async finir leur chargement — même délai que les stats plan).
+    setTimeout(_resyncPlanCourant, 2000);
   }
 
   // 🐛 v1.57.0-fix : purge des liaisons d'un point SUPPRIMÉ (hook appelé par
@@ -959,6 +1115,7 @@
     // js/crossPlanSearch.js — zéro duplication du lecteur session/ZIP/serveur).
     goTo:                 goTo,
     collectPointsForPlan: _collecterPointsDuPlan,
+    collectRoutingDataForPlan: _collecterRoutingDuPlan,   // 🆕 v1.60.0 (A6) — roads+zones d'un plan non chargé
     // 🆕 v1.59.0 (A3) — gestionnaire global (bouton HOME « 🌀 Mes liaisons »)
     ouvrirGestionnaire:   ouvrirGestionnaire
   };

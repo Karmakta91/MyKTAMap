@@ -773,6 +773,10 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 
 **Utiliser une liaison** : dans la fiche du point, ligne 🌀 avec le plan et le point de destination → bouton **➜** → confirmation → l'app **change de plan** (ta session actuelle est sauvegardée automatiquement), **bascule sur le niveau du point d'arrivée** (plans multi-niveaux) et te dépose **directement dessus** (flash bleu). Si un filtre de tags masque le point d'arrivée, un avertissement s'affiche — tes filtres ne sont jamais modifiés.
 
+**🧭 Itinéraire inter-plan (depuis v1.60.0)** : demande un itinéraire vers un point **d'un autre plan** relié par un portail — depuis la modale **Itinéraire** (bouton « 🌐 Destination sur un autre plan ») ou la **recherche multi-plans** (bouton 🧭 sur un résultat distant). L'app compare les portails disponibles au **coût réel**, affiche le trajet en étapes (« ① Rejoindre 🌀 Puits nord — 450 m · ② Traverser · ③ Rejoindre la salle — 300 m · Total ≈ 750 m »), trace le chemin jusqu'au portail, puis **trace automatiquement la suite** quand tu traverses. Les évitements (zones, points, tags) de **chaque plan** sont respectés. Si c'est impossible (aucun portail, plan hors-ligne, destination isolée du réseau…), un message t'explique **précisément pourquoi** — y compris « pas de liaison directe, mais un chemin existe via tel plan ».
+
+**🔄 Fiches toujours à jour (depuis v1.60.0)** : si tu renommes ou déplaces un point lié, les fiches de liaisons (des deux côtés) se **mettent à jour automatiquement** à la prochaine ouverture du plan concerné.
+
 **↩️ Revenir en arrière (depuis v1.58.0)** : après un passage de portail (ou un saut de recherche multi-plans), un bouton flottant **« ↩️ Retour : <plan> »** apparaît en bas de l'écran pendant 15 secondes — un clic te ramène au plan **et à la vue exacte** d'où tu venais (niveau et zoom compris). Les sauts s'empilent : enchaîne 3 portails, tu peux faire 3 retours.
 
 **Bon à savoir** :

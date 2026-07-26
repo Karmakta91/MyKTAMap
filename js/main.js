@@ -451,6 +451,14 @@ async function lancerApplication() {
     }
   }
 
+  // 🧭 v1.60.0 (A6) — Itinéraire inter-plan : trace le leg distant en attente
+  // (l'user vient de traverser un portail avec un itinéraire calculé).
+  if (window.InterPlanRoute && typeof window.InterPlanRoute.onPlanLoaded === "function") {
+    try { window.InterPlanRoute.onPlanLoaded(); } catch(e) {
+      console.warn("[Main] InterPlanRoute.onPlanLoaded échec :", e);
+    }
+  }
+
   // 🚀 v1.59.0 (U3, KARMA) — INDICATEUR honnête : si des optimisations Perf
   // ULTRA sont actives sur CE plan (slot per-plan, hors mobileZoomLimit qui
   // est une sécurité par défaut), un toast le signale au chargement —

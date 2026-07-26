@@ -64,7 +64,11 @@
   }
 
   // Entrée principale. initialQuery optionnel (pont depuis la recherche Ctrl+K).
-  function ouvrir(initialQuery) {
+  // 🆕 v1.60.0 (A6) : opts.onSelect(plan, pt) — mode SÉLECTION : le clic sur un
+  // résultat appelle le callback au lieu de naviguer (utilisé par la modale
+  // Itinéraire pour choisir une destination sur un autre plan).
+  function ouvrir(initialQuery, opts) {
+    opts = opts || {};
     _fermer();
     const plans = (window.PlanRegistry ? window.PlanRegistry.getAll() : []);
     if (plans.length === 0) {
@@ -119,27 +123,56 @@
           _esc(_scanDone ? _t("xps.noResult") : _t("xps.scanning")) + '</p>';
         return;
       }
+      // 🆕 v1.60.0 (A6) : bouton 🧭 « itinéraire via portail » sur les
+      // résultats DISTANTS — seulement si un plan est chargé (le calcul part
+      // de la position tracker sur le plan courant) et hors mode sélection.
+      const _planCharge = !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan);
+      const _iprDispo = !opts.onSelect && _planCharge
+        && window.InterPlanRoute && typeof window.InterPlanRoute.computeEtAfficher === "function";
+      const _pidCourant = window._currentLoadedPlanId || null;
+
       resEl.innerHTML = matches.map(function(e, i) {
-        return '<button class="kta-ipl-pt-btn kta-xps-row" type="button" data-i="' + i + '">' +
+        const distant = e.plan.id !== _pidCourant;
+        return '<div class="kta-xps-rowwrap">' +
+               '<button class="kta-ipl-pt-btn kta-xps-row" type="button" data-i="' + i + '">' +
                  '<span class="kta-ipl-pt-ico">' + (e.pt.source === "session" ? "✏️" : "📄") + '</span>' +
                  '<span class="kta-ipl-pt-name">' + _esc(e.pt.nom || e.pt.id || ("(" + e.pt.x + "," + e.pt.y + ")")) + '</span>' +
                  '<span class="kta-xps-plan-badge" title="' + _esc(e.plan.name || e.plan.id) + '">' +
                    (e.plan.type === "server" ? "🌐" : "📦") + ' ' + _esc(e.plan.name || e.plan.id) +
                  '</span>' +
-               '</button>';
+               '</button>' +
+               ((_iprDispo && distant)
+                 ? '<button class="kta-popup-btn kta-xps-iti" type="button" data-iti="' + i + '" title="' +
+                     _esc(_t("ipr.btn.routeTitle")) + '">🧭</button>' : '') +
+               '</div>';
       }).join("");
+
+      function _destDe(e) {
+        return {
+          planId: e.plan.id, planName: e.plan.name || e.plan.id,
+          x: e.pt.x, y: e.pt.y,
+          level: e.pt.level,
+          tag: (Array.isArray(e.pt.tags) && e.pt.tags[0]) || undefined,
+          label: e.pt.nom || e.pt.id || (e.pt.x + "," + e.pt.y)
+        };
+      }
+
       resEl.querySelectorAll(".kta-xps-row").forEach(function(btn) {
         btn.addEventListener("click", function() {
           const e = matches[parseInt(btn.getAttribute("data-i"), 10)];
           if (!e) return;
           _fermer();
+          // 🆕 v1.60.0 : mode SÉLECTION (modale Itinéraire) → callback.
+          if (typeof opts.onSelect === "function") {
+            try { opts.onSelect(e.plan, e.pt); } catch(err) { console.warn("[CrossPlanSearch] onSelect :", err); }
+            return;
+          }
           // 3:a — mini-confirmation seulement si un plan est chargé (au HOME,
           // rien à interrompre → chargement direct). Même pipeline d'arrivée
           // que les portails : bascule niveau + pan/flash + bouton retour.
           // 🐛 v1.58.1 : le marqueur « plan chargé » est PLAN_CONFIG (null au
           // home) — _currentLoadedPlanId PERSISTE au retour home et affichait
           // la confirmation à tort depuis l'accueil.
-          const _planCharge = !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan);
           window.InterPlanLinks.goTo(e.plan.id, {
             x: e.pt.x, y: e.pt.y,
             level: e.pt.level,
@@ -147,6 +180,14 @@
             planName: e.plan.name || e.plan.id,
             label: e.pt.nom || e.pt.id || (e.pt.x + "," + e.pt.y)
           }, { confirm: _planCharge });
+        });
+      });
+      resEl.querySelectorAll(".kta-xps-iti").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const e = matches[parseInt(btn.getAttribute("data-iti"), 10)];
+          if (!e) return;
+          _fermer();
+          window.InterPlanRoute.computeEtAfficher(_destDe(e));
         });
       });
     }

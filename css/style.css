@@ -8501,6 +8501,35 @@ html.kta-theme-light .kta-ipl-back-float {
 .kta-ipl-mgr-actions { flex: 0 0 auto; display: flex; gap: 4px; }
 html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); }
 
+/* 🧭 v1.60.0 (A6) — Itinéraire inter-plan */
+.kta-ipr-step {
+  font-size: 13px;
+  color: #c8d0e0;
+  padding: 5px 0;
+  line-height: 1.45;
+}
+.kta-ipr-total {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f4c542;
+  padding: 8px 0 2px 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  margin-top: 6px;
+}
+.kta-xps-rowwrap {
+  display: flex;
+  align-items: stretch;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+.kta-xps-rowwrap .kta-xps-row { flex: 1 1 auto; margin-bottom: 0; }
+.kta-xps-iti {
+  flex: 0 0 auto;
+  padding: 4px 10px !important;
+  font-size: 15px !important;
+}
+html.kta-theme-light .kta-ipr-step { color: var(--kta-light-text-2, #38414f); }
+
 /* Pont depuis la recherche unifiée (Ctrl+K) */
 .kta-search-crossplan {
   display: block;

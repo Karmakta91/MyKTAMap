@@ -369,3 +369,25 @@ Audit demandé KARMA pour vérifier que les modales "aide" (📖) et "légende" 
 13. Doc : CLAUDE.md (cette section), AI_CONTEXT.md (liste anti-hallucination), README_USER.md, README.md (journal)
 
 C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne pas en oublier.
+
+---
+
+## 🧭 Itinéraire INTER-PLAN (v1.60.0 — A6)
+
+> Le pathfinding traverse les « portails » (liaisons inter-plan, cf. `js/interPlanLinks.js` + `docs/architecture/data-formats.md` §liaisons). Décisions KARMA : `1:c 2:a 3:a 4:a 5:a 6:a`.
+
+**Module `js/interPlanRoute.js`** (`window.InterPlanRoute = { computeEtAfficher(dest), onPlanLoaded() }`) :
+
+- **Leg A** (plan courant) : `Pathfinder.computeRoute` classique — position tracker → point-portail côté A, avec les prefs d'évitement du plan courant.
+- **Leg B** (plan distant, **non chargé**) : `Pathfinder.computeRouteOnRoads(waypoints, roads, opts)` — nouvelle API **synchrone** exposant `_computeRouteInterne` sur des roads fournies. Les données viennent de `InterPlanLinks.collectRoutingDataForPlan(plan, stats)` : **roads + zones + scale** lus depuis la session localStorage + les datalayers (serveur `fetch` / ZIP IndexedDB). Zones `inaccessible` = contrainte dure ; évitements du plan B (prefs `myktamap_route_avoid_<planB>`) résolus par l'appelant (tags → points du plan B via `collectPointsForPlan`).
+- **Portails candidats** (3:a) : liaisons A↔B du registre, tri par proximité euclidienne du départ, **≤ 5 testés au coût réel**, total minimal retenu.
+- ⚠️ **Échelles** : `totalM = legA.px/scaleA + legB.px/scaleB` — le scale du plan B est lu depuis SON plan-config (`tracking.scale`). Ne JAMAIS sommer des px de plans différents.
+- **Traversée** (4:a, coût 0 m — 5:a) : modale résumé par étapes → « Prendre le portail » → `InterPlanLinks.goTo` → **`_pendingRoute`** (RAM) consommée par `onPlanLoaded` (hook `main.js`) **+3 s après l'arrivée** (le restore SessionPersist écrase les roads sinon). Le leg tracé = road `type:"itinerary"` standard.
+- **Erreurs codées** (exigence KARMA) : `NO_PLAN`/`NO_POS`/`SAME_PLAN`/`NO_LINK`/`NO_DIRECT_LINK` (BFS borné profondeur 4 sur le méta-graphe des plans → nomme le plan intermédiaire ; le calcul multi-hop reste **V2**)/`DATA_UNREACHABLE`/`NO_ROADS_B`/`ALL_FAILED` (détail par portail, côté A ou B). i18n `ipr.err.*`.
+- **Entrées UX** (1:c) : `searchPoints` inchangé — recherche multi-plans (`crossPlanSearch.js`) bouton 🧭 par résultat distant ; modale Itinéraire (`interfaceItineraire.js`) bouton « 🌐 Destination sur un autre plan » via `CrossPlanSearch.ouvrir(query, { onSelect })` (mode sélection).
+
+**À NE PAS faire** :
+- ❌ Sommer des pixels de deux plans (échelles différentes) — toujours convertir en mètres par plan.
+- ❌ Tracer le leg B AVANT le restore de session du plan B (il serait écrasé) — passer par `_pendingRoute` + délai.
+- ❌ Calculer le leg B sur des données partielles (`stats.dataError`) — refuser avec `DATA_UNREACHABLE`, ne pas deviner.
+- ❌ Étendre au multi-hop sans topo dédié (explosion combinatoire portails × plans — le BFS actuel ne sert qu'au MESSAGE informatif).

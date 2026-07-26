@@ -1,8 +1,8 @@
 {
-  "version": "v1.59.0",
+  "version": "v1.60.0",
   "released": "2026-07-26",
   "notes": [
-    "🚀 Le mode Performance ULTRA devient un réglage PAR PLAN : il ne s'applique plus tout seul à vos autres plans (recochez-le sur les gros plans qui en ont besoin). Vos points ajoutés à la main restent toujours affichés, et un message vous prévient à l'ouverture quand l'affichage est allégé.",
-    "🌀 Nouveau : « Mes liaisons » sur l'accueil (liste, y aller, supprimer) et nouveau tag « Portail » avec sa propre icône — à vous de choisir de marquer visuellement un point lié ou non (l'ancien badge automatique est retiré). L'app vous prévient aussi clairement quand un plan est injoignable."
+    "🧭 Nouveau : itinéraire inter-plan ! Choisissez une destination sur un autre plan (modale Itinéraire ou recherche multi-plans, bouton 🧭) : l'app calcule le trajet jusqu'au portail, la distance totale des deux côtés, puis trace automatiquement la suite quand vous traversez. Messages clairs si aucun portail ne relie les plans ou si la destination est injoignable.",
+    "🌀 Les fiches de liaisons se mettent à jour toutes seules quand un point lié a été renommé ou déplacé."
   ]
 }

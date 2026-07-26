@@ -1317,6 +1317,13 @@ window.ouvrirItinerairModal = function() {
       '<div class="kta-iti-section-titre">' + (modeNavigation ? window.I18n.t("iti.action.titreNav") : window.I18n.t("iti.action.titre")) + '</div>' +
       statusActuel +
       '<button id="kta-iti-compute" class="kta-btn kta-btn-primary" type="button" style="width:100%;">' + computeBtnLabel + '</button>' +
+      // 🆕 v1.60.0 (A6 1:c) — destination sur un AUTRE plan : ouvre la
+      // recherche multi-plans en mode sélection → itinéraire via portail
+      // (InterPlanRoute). Affiché seulement si les modules sont chargés.
+      ((window.CrossPlanSearch && window.InterPlanRoute)
+        ? '<button id="kta-iti-crossplan" class="kta-btn kta-btn-ghost" type="button" style="width:100%; margin-top:8px;">🌐 ' +
+            window.I18n.t("ipr.btn.fromItiModal") + '</button>'
+        : '') +
       eraseBtn +
       '<div id="kta-iti-result" class="kta-iti-result" style="display:none;"></div>' +
       '<div id="kta-iti-error" class="kta-iti-error" style="display:none;"></div>' +
@@ -1622,6 +1629,30 @@ window.ouvrirItinerairModal = function() {
     document.getElementById("kta-iti-result").style.display = "none";
     document.getElementById("kta-iti-error").style.display  = "none";
   });
+
+  // 🆕 v1.60.0 (A6) — Destination sur un autre plan : recherche multi-plans
+  // en mode sélection. Point du plan COURANT sélectionné → simple waypoint
+  // (flux classique) ; point DISTANT → itinéraire via portail (InterPlanRoute,
+  // la modale itinéraire est fermée — le résumé par étapes prend le relais).
+  const btnCross = document.getElementById("kta-iti-crossplan");
+  if (btnCross) {
+    btnCross.addEventListener("click", function() {
+      window.CrossPlanSearch.ouvrir("", { onSelect: function(plan, pt) {
+        const label = pt.nom || pt.id || (pt.x + "," + pt.y);
+        if (plan.id === (window._currentLoadedPlanId || null)) {
+          window.itineraireAjouterWaypoint(pt.x, pt.y, label);
+          return;
+        }
+        fermer();   // fermeture propre de la modale (helper local, cf ci-dessous)
+        window.InterPlanRoute.computeEtAfficher({
+          planId: plan.id, planName: plan.name || plan.id,
+          x: pt.x, y: pt.y, level: pt.level,
+          tag: (Array.isArray(pt.tags) && pt.tags[0]) || undefined,
+          label: label
+        });
+      }});
+    });
+  }
 
   // Calculer (handler async depuis v169 : computeRoute peut await SearchPoints
   // si avoidTags non vide — l'await passe immediatement si pas d'avoidTags)

@@ -770,6 +770,10 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 **Use a link**: in the point's popup, a 🌀 line shows the destination plan and point → **➜** button → confirmation → the app **switches plan** (your current session is saved automatically), **switches to the arrival point's level** (multi-level plans) and drops you **right on it** (blue flash). If a tag filter hides the arrival point, a warning is shown — your filters are never modified.
 
+**🧭 Inter-plan route (since v1.60.0)**: request a route to a point **on another plan** connected by a portal — from the **Route** modal ("🌐 Destination on another plan" button) or the **multi-plan search** (🧭 button on a distant result). The app compares available portals at **real cost**, shows the trip in steps ("① Reach 🌀 North well — 450 m · ② Cross · ③ Reach the room — 300 m · Total ≈ 750 m"), draws the path to the portal, then **automatically draws the rest** when you cross. Each plan's avoidances (zones, points, tags) are honored. If it's impossible (no portal, plan offline, destination cut off from the network…), a message tells you **exactly why** — including "no direct link, but a path exists via that plan".
+
+**🔄 Always-fresh popups (since v1.60.0)**: if you rename or move a linked point, the link entries (on both sides) **update automatically** the next time the plan is opened.
+
 **↩️ Going back (since v1.58.0)**: after taking a portal (or a multi-plan search jump), a floating **"↩️ Back: <plan>"** button appears at the bottom of the screen for 15 seconds — one click brings you back to the plan **and the exact view** you came from (level and zoom included). Jumps stack up: chain 3 portals, you can go back 3 times.
 
 **Good to know**:
