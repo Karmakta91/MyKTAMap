@@ -66,7 +66,7 @@
     "myktamap_planner_mode",
     "myktamap_freehand_prefs_v1",
     "myktamap_loader_show_server_plans",
-    "myktamap_perf_toggles",
+    "myktamap_perf_toggles",        // legacy — plus lue depuis v1.59.0 (per-plan), gardée pour compat vieux exports
     "myktamap_last_version_data",
     "myktamap_total_time_ms",       // 🆕 v1.52.0 : temps cumulé (rang/badge profil) — sinon perdu à migration device
     "myktamap_achievements_v1"      // 🆕 v1.53.0 : hauts faits débloqués (ids + dates)
@@ -84,7 +84,8 @@
     "myktamap_kmz_calib_",        // GPS georef plan (pointA/B {x,y,lat,lng})
     "myktamap_plan_prefs_",       // prefs cascade per-plan (calibrations image layers v1.38.0, Nord, etc.)
     "myktamap_route_avoid_",      // avoidances itinéraire Pathfinder
-    "myktamap_note_libre_"        // note libre Mode Histoire (markdown user)
+    "myktamap_note_libre_",       // note libre Mode Histoire (markdown user)
+    "myktamap_perf_toggles_v2_"   // 🆕 v1.59.0 : toggles Perf ULTRA PER-PLAN (ex-clé globale)
   ];
 
   // ───────── HELPERS ─────────

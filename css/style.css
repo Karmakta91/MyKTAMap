@@ -8338,21 +8338,8 @@ html.kta-theme-light .kta-legal-art { color: var(--kta-light-text-2, #38414f); }
 }
 .kta-ipl-absent { flex: 0 0 auto; opacity: 0.6; cursor: help; }
 .kta-ipl-add { width: 100%; }
-/* Badge 🌀 sur la carte — centré AU-DESSUS de l'icône du point lié
-   (v1.57.0-fix : taille + contraste doré renforcés, zIndexOffset 2000
-   côté marker pour passer par-dessus toutes les icônes) */
-.kta-ipl-badge-wrap { pointer-events: none; }
-.kta-ipl-badge {
-  width: 22px;
-  height: 22px;
-  line-height: 20px;
-  text-align: center;
-  font-size: 14px;
-  background: rgba(26, 31, 46, 0.95);
-  border: 2px solid #f4c542;
-  border-radius: 50%;
-  box-shadow: 0 0 6px rgba(244, 197, 66, 0.55), 0 2px 6px rgba(0, 0, 0, 0.5);
-}
+/* (Ex-badge 🌀 carte — retiré en v1.59.0 : le marquage visuel d'un point lié
+   passe par le tag builtin « portail » et son icône dédiée icon/portail.png) */
 /* Modale création */
 .kta-ipl-boite { max-width: 520px !important; height: auto !important; max-height: 90vh !important; }
 .kta-ipl-src {
@@ -8414,7 +8401,6 @@ html.kta-theme-light .kta-ipl-search {
   color: var(--kta-light-text, #1a1f2e);
   background: rgba(255, 255, 255, 0.8);
 }
-html.kta-theme-light .kta-ipl-badge { background: rgba(255, 255, 255, 0.9); }
 
 /* =========================================================
    ↩️ v1.58.0 — Bouton flottant « Retour » après un saut inter-plan
@@ -8483,6 +8469,38 @@ html.kta-theme-light .kta-ipl-back-float {
   border-radius: 4px;
   padding: 2px 6px;
 }
+/* 🌀 v1.59.0 (A3) — Gestionnaire de liaisons */
+.kta-ipl-mgr-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  background: rgba(140, 180, 255, 0.06);
+  border: 1px solid rgba(140, 180, 255, 0.18);
+  border-radius: 6px;
+  font-size: 12.5px;
+}
+.kta-ipl-mgr-sides {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.kta-ipl-mgr-side {
+  color: #e8eaf0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.kta-ipl-mgr-absent { color: #8892a4; }
+.kta-ipl-mgr-arrow { color: #f4c542; flex: 0 0 auto; }
+.kta-ipl-mgr-actions { flex: 0 0 auto; display: flex; gap: 4px; }
+html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); }
+
 /* Pont depuis la recherche unifiée (Ctrl+K) */
 .kta-search-crossplan {
   display: block;

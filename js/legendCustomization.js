@@ -69,7 +69,8 @@ window.LegendCustomization = (function() {
       cao: "Cavage ouvert", caf: "Cavage fermé",
       passage: "Passage", chatiere: "Chatière", vehicule: "Véhicule",
       danger: "Danger", info: "Information", elec: "Électricité", epure: "Épure",
-      plaque: "Plaque indication"
+      plaque: "Plaque indication",
+      portail: "Portail (liaison inter-plan)"   // 🆕 v1.59.0
     },
     traces: {
       principal:  "Route principale",

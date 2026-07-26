@@ -43,15 +43,19 @@
     });
   }
 
+  // 🆕 v1.59.0 (U2) : retourne { pts, dataError } — dataError = datalayers du
+  // plan injoignables (serveur off, ZIP absent) → compteur ⚠️ dans le statut.
   async function _pointsDuPlan(plan) {
     const hit = _cache[plan.id];
-    if (hit && (Date.now() - hit.ts) < CACHE_TTL_MS) return hit.pts;
+    if (hit && (Date.now() - hit.ts) < CACHE_TTL_MS) return hit;
     let pts = [];
+    const stats = {};
     try {
-      pts = await window.InterPlanLinks.collectPointsForPlan(plan);
-    } catch(e) { console.warn("[CrossPlanSearch] lecture " + plan.id + " :", e); }
-    _cache[plan.id] = { pts: pts, ts: Date.now() };
-    return pts;
+      pts = await window.InterPlanLinks.collectPointsForPlan(plan, stats);
+    } catch(e) { console.warn("[CrossPlanSearch] lecture " + plan.id + " :", e); stats.dataError = true; }
+    const entry = { pts: pts, dataError: !!stats.dataError, ts: Date.now() };
+    _cache[plan.id] = entry;
+    return entry;
   }
 
   function _fermer() {
@@ -132,13 +136,17 @@
           // 3:a — mini-confirmation seulement si un plan est chargé (au HOME,
           // rien à interrompre → chargement direct). Même pipeline d'arrivée
           // que les portails : bascule niveau + pan/flash + bouton retour.
+          // 🐛 v1.58.1 : le marqueur « plan chargé » est PLAN_CONFIG (null au
+          // home) — _currentLoadedPlanId PERSISTE au retour home et affichait
+          // la confirmation à tort depuis l'accueil.
+          const _planCharge = !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan);
           window.InterPlanLinks.goTo(e.plan.id, {
             x: e.pt.x, y: e.pt.y,
             level: e.pt.level,
             tag: (Array.isArray(e.pt.tags) && e.pt.tags[0]) || undefined,
             planName: e.plan.name || e.plan.id,
             label: e.pt.nom || e.pt.id || (e.pt.x + "," + e.pt.y)
-          }, { confirm: !!window._currentLoadedPlanId });
+          }, { confirm: _planCharge });
         });
       });
     }
@@ -146,15 +154,18 @@
     // Scan progressif : plan par plan (cache RAM par plan, TTL 2 min).
     // Le rendu se rafraîchit au fil de l'eau — pas d'attente bloquante.
     (async function _scan() {
+      let unreachable = 0;   // 🆕 v1.59.0 (U2)
       for (let i = 0; i < plans.length; i++) {
         if (!document.getElementById(MODAL_ID)) return;   // modale fermée → stop
         statusEl.textContent = _t("xps.status.scanning", { n: i + 1, total: plans.length, plan: plans[i].name || plans[i].id });
-        const pts = await _pointsDuPlan(plans[i]);
-        pts.forEach(function(pt) { _index.push({ plan: plans[i], pt: pt }); });
+        const entry = await _pointsDuPlan(plans[i]);
+        if (entry.dataError) unreachable++;
+        entry.pts.forEach(function(pt) { _index.push({ plan: plans[i], pt: pt }); });
         _renderResults();
       }
       _scanDone = true;
-      statusEl.textContent = _t("xps.status.done", { total: plans.length, n: _index.length });
+      statusEl.textContent = _t("xps.status.done", { total: plans.length, n: _index.length }) +
+        (unreachable > 0 ? " · " + _t("xps.status.unreachable", { u: unreachable }) : "");
       _renderResults();
     })();
 

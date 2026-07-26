@@ -37,6 +37,8 @@ const EDITOR_TAG_LABELS = {
   elec:     "Électricité",
   epure:    "Épure",
   plaque:   "Plaque indication",
+  // 🆕 v1.59.0 — Portail (liaison inter-plan) : icône dédiée optionnelle.
+  portail:  "Portail (liaison inter-plan)",
   // 🆕 v1.41.0 D — Point d'entrée du plan (Vue OSM × Mode Secours).
   entree_plan: "🚪 Point d'entrée du plan"
 };
@@ -761,19 +763,16 @@ function _ajouterMarker(point) {
   // qui efface aussi roads/zones partageant le meme layerEditor).
   _markersEditor.push(marker);
 
-  // 🚀 v1.30.0 (P5 viewport culling) : skip addTo si hors viewport ET toggle
-  // viewportCull actif. Le marker reste dans _markersEditor pour pouvoir
-  // être réintégré via _refreshEditorMarkersViewport() au moveend/zoomend.
-  // _ktaLayer = window.layerEditor : tracé pour la réintégration.
+  // 🆕 v1.59.0 (A4, KARMA) : les points de SESSION ne sont PLUS JAMAIS
+  // soumis au viewport culling — un point créé à la main est précieux et
+  // rare (quelques dizaines max vs des milliers de points datalayer) : le
+  // masquer selon le viewport déroutait (« mon POI a disparu ») pour un gain
+  // perf négligeable. Le culling reste actif sur les markers DATALAYER
+  // (utils.js). _ktaLayer/_ktaVpHidden conservés pour la compat avec
+  // _refreshEditorMarkersViewport (réintégration de résidus).
   marker._ktaLayer = window.layerEditor;
-  const _vpcEd = !!(window.PerfUltra && window.PerfUltra.get("viewportCull"));
-  if (_vpcEd && typeof window._markerInViewportPadded === "function"
-      && !window._markerInViewportPadded(marker, 0.1)) {
-    marker._ktaVpHidden = true;
-  } else {
-    marker._ktaVpHidden = false;
-    marker.addTo(window.layerEditor);
-  }
+  marker._ktaVpHidden = false;
+  marker.addTo(window.layerEditor);
 
   // Applique le filtre niveau immediat sur ce nouveau marker (utile quand le
   // user ajoute un point sur un niveau qui n'est pas dans visibleLevels —
@@ -788,31 +787,16 @@ function _ajouterMarker(point) {
 // Pattern strictement identique à _refreshDataMarkersViewport (mêmes
 // garanties idempotentes + toggle OFF = graceful reintegration).
 window._refreshEditorMarkersViewport = function() {
+  // 🆕 v1.59.0 (A4, KARMA) : les points de session sont EXEMPTÉS du viewport
+  // culling (cf _ajouterMarker). Cette fonction — toujours appelée par le
+  // chaînage utils.js > _refreshDataMarkersViewport au moveend/zoomend — ne
+  // sert plus qu'à réintégrer d'éventuels markers cachés résiduels (état
+  // hérité d'une session ouverte sous une version antérieure).
   if (!Array.isArray(_markersEditor) || _markersEditor.length === 0) return;
-  const _vpcOn = !!(window.PerfUltra && window.PerfUltra.get("viewportCull"));
-
-  if (!_vpcOn) {
-    // Toggle OFF → réintégrer tous les markers cachés
-    _markersEditor.forEach(function(m) {
-      if (m && m._ktaVpHidden && m._ktaLayer) {
-        try { m.addTo(m._ktaLayer); } catch(e) {}
-        m._ktaVpHidden = false;
-      }
-    });
-    return;
-  }
-
-  // Toggle ON → check viewport pour chaque marker
   _markersEditor.forEach(function(m) {
-    if (!m || !m._ktaLayer) return;
-    const inside = (typeof window._markerInViewportPadded === "function")
-      ? window._markerInViewportPadded(m, 0.1) : true;
-    if (inside && m._ktaVpHidden) {
+    if (m && m._ktaVpHidden && m._ktaLayer) {
       try { m.addTo(m._ktaLayer); } catch(e) {}
       m._ktaVpHidden = false;
-    } else if (!inside && !m._ktaVpHidden) {
-      try { m.remove(); } catch(e) {}
-      m._ktaVpHidden = true;
     }
   });
 };

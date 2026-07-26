@@ -26,6 +26,7 @@ const PLANNER_DEFAULT_ICONS = {
   passage:  "icon/passage.png",
   danger:   "icon/danger.png",
   plaque:   "icon/plaque.png",
+  portail:  "icon/portail.png",   // 🆕 v1.59.0 — liaison inter-plan
   // 🆕 v1.41.0 D — Point d'entrée du plan (Vue OSM × Mode Secours).
   //    SVG inline → pas de fichier PNG nécessaire (cf js/map.js TAGS_BUILTIN).
   entree_plan: 'data:image/svg+xml;utf8,' + encodeURIComponent(

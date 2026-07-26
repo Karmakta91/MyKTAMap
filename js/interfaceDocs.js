@@ -865,7 +865,7 @@ function _aideHtmlFr() {
             <span class="kta-aide-icone">🎬</span><span><strong>Mode présentation</strong> — bouton <strong>« 🎬 Activer le mode présentation »</strong> placé <strong>tout en haut</strong> de la modale Réglages pour accès en 1 vue. La touche <kbd>F</kbd> y donne aussi accès sur PC. Sortie : touche <kbd>F</kbd> / <kbd>Échap</kbd> (PC) ou bouton flottant ✕ (mobile).</span>
             <span class="kta-aide-icone">🔆</span><span><strong>Garder l'écran allumé (Wake Lock)</strong> — toggle dans Réglages (et aussi dans ⚙️ Configuration loader). Empêche la mise en veille tant que l'app est ouverte. <strong>Idéal en cavité</strong> pour ne pas débloquer son téléphone toutes les 30s. Persistant entre sessions, auto-relâché en arrière-plan, ré-activé au retour. Compat Chrome 84+, Edge 84+, Safari iOS 16.4+ (PWA). Toggle masqué si la fonction n'est pas supportée (Firefox).</span>
             <span class="kta-aide-icone">☀️</span><span><strong>Thème clair / sombre</strong> — bascule entre fond beige cataphile (clair) et fond noir nuit (sombre, défaut). Activable <strong>uniquement depuis la home → Configuration → ☀️ Activer le thème CLAIR</strong>. Le toggle déclenche un rechargement complet de l'app pour éviter les bugs résiduels d'affichage. Choix conservé globalement par appareil.</span>
-            <span class="kta-aide-icone">🚀</span><span>Mode Performance ULTRA (dans ⚙️ Réglages) — pour les gros plans qui crashent</span>
+            <span class="kta-aide-icone">🚀</span><span>Mode Performance ULTRA (dans ⚙️ Réglages) — pour les gros plans qui crashent. Réglage PAR PLAN depuis v1.59.0 (opt-in, tes points de session restent toujours affichés)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             Contient le bouton 🎯 pour calibrer l'échelle, 🐛 pour les logs détaillés.
@@ -1458,8 +1458,9 @@ function _aideHtmlFr() {
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>Utiliser</strong> : dans la fiche du point, ligne 🌀 → bouton <strong>➜</strong> → confirmation →
             l'app change de plan (session sauvegardée automatiquement), <strong>bascule sur le niveau du point
-            d'arrivée</strong> et te dépose dessus (flash bleu). Un <strong>badge doré 🌀</strong> flotte au-dessus
-            de l'icône de chaque point lié.
+            d'arrivée</strong> et te dépose dessus (flash bleu). Marquage visuel au choix : donne le
+            <strong>tag « Portail »</strong> au point pour son <strong>icône vortex dédiée</strong>, ou garde
+            n'importe quel tag (aucun marquage).
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>↩️ Retour</strong> (v1.58.0) : après un saut, un bouton flottant « Retour : &lt;plan&gt; »
@@ -1469,10 +1470,15 @@ function _aideHtmlFr() {
             bibliothèque</strong> depuis l'accueil (bouton 🌐) ou via la recherche Ctrl+K (bouton
             « Chercher dans tous les plans ») — un clic charge le bon plan et te centre dessus.
           </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🌀 Mes liaisons</strong> (v1.59.0) : sur l'<strong>accueil</strong>, liste toutes tes liaisons
+            (état ⛔ si un plan est absent, ➜ pour y aller, 🗑️ pour supprimer).
+          </p>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
             Plan cible absent de l'appareil → la liaison s'affiche (⛔) mais « y aller » nécessite d'ajouter le plan.
             Supprimer un point supprime ses liaisons (des deux côtés). Les liaisons voyagent avec l'export de session.
             Si un filtre de tags masque le point d'arrivée, un avertissement s'affiche (le filtre n'est jamais modifié).
+            Données d'un plan injoignables (hors-ligne) → l'app le signale au lieu d'un « 0 points » muet.
           </p>
         </div>
   `;
@@ -1565,7 +1571,7 @@ function _aideHtmlEn() {
             <span class="kta-aide-icone">🎬</span><span><strong>Presentation mode</strong> — <strong>"🎬 Enable presentation mode"</strong> button placed <strong>at the very top</strong> of the Settings modal for one-glance access. The <kbd>F</kbd> key also opens it on PC. Exit: <kbd>F</kbd> / <kbd>Esc</kbd> key (PC) or floating ✕ button (mobile).</span>
             <span class="kta-aide-icone">🔆</span><span><strong>Keep the screen on (Wake Lock)</strong> — toggle in Settings (and also in ⚙️ loader Configuration). Prevents sleep while the app is open. <strong>Ideal underground</strong> so you don't have to unlock your phone every 30s. Persistent across sessions, auto-released in the background, re-enabled on return. Compatible with Chrome 84+, Edge 84+, Safari iOS 16.4+ (PWA). Toggle hidden if the feature isn't supported (Firefox).</span>
             <span class="kta-aide-icone">☀️</span><span><strong>Light / dark theme</strong> — switches between a beige cataphile background (light) and a black night background (dark, default). Can only be enabled <strong>from the home → Configuration → ☀️ Enable LIGHT theme</strong>. The toggle triggers a full app reload to avoid residual display bugs. Choice kept globally per device.</span>
-            <span class="kta-aide-icone">🚀</span><span>ULTRA Performance mode (in ⚙️ Settings) — for large maps that crash</span>
+            <span class="kta-aide-icone">🚀</span><span>ULTRA Performance mode (in ⚙️ Settings) — for large maps that crash. PER-PLAN setting since v1.59.0 (opt-in, your session points always stay visible)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             Contains the 🎯 button to calibrate the scale, 🐛 for detailed logs.
@@ -2158,8 +2164,9 @@ function _aideHtmlEn() {
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>Use</strong>: in the point's popup, 🌀 line → <strong>➜</strong> button → confirmation →
             the app switches plan (session saved automatically), <strong>switches to the arrival point's
-            level</strong> and drops you on it (blue flash). A <strong>golden 🌀 badge</strong> floats above
-            the icon of every linked point.
+            level</strong> and drops you on it (blue flash). Visual marking is your choice: give the point
+            the <strong>"Portal" tag</strong> for its <strong>dedicated vortex icon</strong>, or keep any
+            tag (no marking).
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>↩️ Back</strong> (v1.58.0): after a jump, a floating "Back: &lt;plan&gt;" button
@@ -2169,10 +2176,15 @@ function _aideHtmlEn() {
             library</strong> from the home screen (🌐 button) or via the Ctrl+K search ("Search across
             all plans" button) — one click loads the right plan and centers on it.
           </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🌀 My links</strong> (v1.59.0): on the <strong>home screen</strong>, lists all your links
+            (⛔ if a plan is missing, ➜ to go there, 🗑️ to delete).
+          </p>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
             Target plan missing from this device → the link still shows (⛔) but "going there" requires adding the plan.
             Deleting a point also deletes its links (both sides). Links travel with the session export.
             If a tag filter hides the arrival point, a warning is shown (the filter is never modified).
+            Plan data unreachable (offline) → the app says so instead of a silent "0 points".
           </p>
         </div>
   `;

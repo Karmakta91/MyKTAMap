@@ -439,7 +439,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 1. **🖼️ Image tiling (per map)** — 5-preset segmented control (see detail below), which chooses how the main image is split in memory at load. Stored **per map** (one map in Performance, another in Quality, etc.).
 
-2. **🚀 Performance ULTRA mode (paths / markers)** — 7 optimization toggles that do **NOT** touch the image (already covered by Tiling above) but everything else (polylines, popups, intersections, auto-save, viewport culling, mobile zoom-out limit). **Global** preference, kept between sessions. See "🚀 Optimize your map" section below for details.
+2. **🚀 Performance ULTRA mode (paths / markers)** — 7 optimization toggles that do **NOT** touch the image (already covered by Tiling above) but everything else (polylines, popups, intersections, auto-save, viewport culling, mobile zoom-out limit). **PER-PLAN setting since v1.59.0**: enabling ULTRA on one plan no longer affects the others — each plan starts disabled until you opt in for it. See "🚀 Optimize your map" section below for details.
 
 3. **🛠️ Debug** — **🐛 Detailed logs** toggle (verbose mode) **+ 📋 Show logs button** which directly opens the modal buffer of captured logs. Useful for consulting logs without having to load a map first (e.g.: if you are trying to diagnose a blocking bug at load).
 
@@ -764,7 +764,9 @@ You can **link a point on one plan to a point on another plan** — like a "port
 2. Pick the **target plan** from your library, then **search the arrival point** (by name, id or tag) — no need to open the other plan, its points are read in place.
 3. The link is created **both ways**: it shows in both points' popups.
 
-**On the map**: a **golden 🌀 badge** floats above the icon of every linked point.
+**On the map (since v1.59.0)**: you choose whether a linked point stands out or not. By default, **nothing distinguishes it** (it keeps its usual tag and icon). If you want to mark it visually, give it the new **"Portal" tag**: it then gets a **dedicated vortex icon** (golden ring, blue spiral). *(The old automatic golden badge has been removed.)*
+
+**🌀 My links (since v1.59.0)**: on the **home screen**, the **"🌀 My links"** button lists all your links (across all plans): each side's status (⛔ if the plan is not on this device), **➜** button to jump straight to either point, **🗑️** to delete. If a plan's data is unreachable (server offline…), the app tells you clearly instead of showing "0 points".
 
 **Use a link**: in the point's popup, a 🌀 line shows the destination plan and point → **➜** button → confirmation → the app **switches plan** (your current session is saved automatically), **switches to the arrival point's level** (multi-level plans) and drops you **right on it** (blue flash). If a tag filter hides the arrival point, a warning is shown — your filters are never modified.
 
@@ -2887,6 +2889,11 @@ When loading a map, you can choose from 5 presets in the loader:
 ### 6 bis. 🚀 Performance ULTRA mode — for the really big maps that crash
 
 If despite Performance mode, your map still crashes (typically 4000+ × 2000+ pixel maps with many paths), open **⚙️ Settings → "🚀 Performance ULTRA mode" section** and enable the **🚀 ULTRA master toggle**. It enables 6 aggressive optimizations simultaneously.
+
+> 🆕 **Since v1.59.0** — three things to know:
+> - **PER-PLAN setting**: enabling ULTRA here only affects the open plan. Your other plans are no longer impacted (before, the setting was global and silently "followed" you on every plan). After the update, plans that had ULTRA start disabled again — re-enable it on the ones that need it.
+> - **Your session points are sacred**: POIs you add by hand (✏️) stay **always visible**, even with viewport culling on — only the thousands of data-layer points get lightened.
+> - **Message on load**: when optimizations are active on a plan, a message reminds you at load time — a "lightened" display (simplified paths, data popups off…) is not a bug.
 
 > ⚠️ These optims do **NOT** touch the image (already managed by the performance mode above). They target vector elements (paths, points, calculations).
 

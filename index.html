@@ -494,6 +494,7 @@
           <div class="loader-secondary-actions">
             <button class="loader-btn-secondary" type="button" id="loaderTableEditorBtn" data-i18n="home.add.editData">📊 Éditeur de données</button>
             <button class="loader-btn-secondary" type="button" id="loaderCrossSearchBtn" data-i18n="home.add.crossSearch">🌐 Recherche multi-plans</button>
+            <button class="loader-btn-secondary" type="button" id="loaderLinksMgrBtn" data-i18n="home.add.linksMgr">🌀 Mes liaisons</button>
             <button class="loader-btn-secondary" type="button" id="loaderFusionBtn" data-i18n="home.add.fusion">🔗 Fusionner des datalayers</button>
             <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn" data-i18n="home.add.generate">🏗️ Générer un plan</button>
           </div>
@@ -1930,6 +1931,19 @@
             window.CrossPlanSearch.ouvrir("");
           } else {
             console.warn("[Home] CrossPlanSearch indisponible");
+          }
+        });
+      }
+
+      // 🌀 v1.59.0 (A3) — Gestionnaire de liaisons inter-plan depuis le home :
+      // vue globale du registre (état, navigation, suppression), sans plan chargé.
+      const linksMgrBtn = document.getElementById("loaderLinksMgrBtn");
+      if (linksMgrBtn) {
+        linksMgrBtn.addEventListener("click", function() {
+          if (window.InterPlanLinks && typeof window.InterPlanLinks.ouvrirGestionnaire === "function") {
+            window.InterPlanLinks.ouvrirGestionnaire();
+          } else {
+            console.warn("[Home] InterPlanLinks.ouvrirGestionnaire indisponible");
           }
         });
       }

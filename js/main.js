@@ -451,6 +451,24 @@ async function lancerApplication() {
     }
   }
 
+  // 🚀 v1.59.0 (U3, KARMA) — INDICATEUR honnête : si des optimisations Perf
+  // ULTRA sont actives sur CE plan (slot per-plan, hors mobileZoomLimit qui
+  // est une sécurité par défaut), un toast le signale au chargement —
+  // l'affichage « allégé » (tracés simplifiés, popups data désactivés,
+  // culling…) ne doit jamais passer pour un bug. Queued par OOMGuard si le
+  // splash est encore affiché (flushPendingToasts).
+  if (window.PerfUltra && Array.isArray(window.PerfUltra.TOGGLES)) {
+    try {
+      const _optimsActives = window.PerfUltra.TOGGLES.filter(function(k) {
+        return k !== "mobileZoomLimit" && window.PerfUltra.get(k);
+      });
+      if (_optimsActives.length > 0 && window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast(
+          window.I18n.t("perf.toast.activeOnPlan", { n: _optimsActives.length }), "info");
+      }
+    } catch(e) { console.warn("[Main] toast PerfUltra échec :", e); }
+  }
+
   // 🆕 v1.21.3 (KARMA "les stat de plan ne comprenne que les session") :
   // persiste les stats COMPLÈTES du plan courant (session + embedded data
   // layers) dans localStorage pour que la modale Profil > "📊 Mes plans"

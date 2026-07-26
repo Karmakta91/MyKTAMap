@@ -1,8 +1,8 @@
 {
-  "version": "v1.58.0",
+  "version": "v1.59.0",
   "released": "2026-07-26",
   "notes": [
-    "🌐 Nouveau : recherche multi-plans ! Cherchez un point dans TOUS les plans de votre bibliothèque (depuis l'accueil ou via la recherche Ctrl+K) — un clic charge le bon plan et vous centre dessus.",
-    "↩️ Nouveau : après un passage de portail ou un saut de recherche, un bouton « Retour » vous ramène au plan et à la vue d'où vous venez (les sauts s'enchaînent, les retours aussi)."
+    "🚀 Le mode Performance ULTRA devient un réglage PAR PLAN : il ne s'applique plus tout seul à vos autres plans (recochez-le sur les gros plans qui en ont besoin). Vos points ajoutés à la main restent toujours affichés, et un message vous prévient à l'ouverture quand l'affichage est allégé.",
+    "🌀 Nouveau : « Mes liaisons » sur l'accueil (liste, y aller, supprimer) et nouveau tag « Portail » avec sa propre icône — à vous de choisir de marquer visuellement un point lié ou non (l'ancien badge automatique est retiré). L'app vous prévient aussi clairement quand un plan est injoignable."
   ]
 }

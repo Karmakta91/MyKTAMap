@@ -8,8 +8,17 @@
 // 🚀 PERF ULTRA — toggles d'optimisation pour gros plans / appareils faibles
 // =========================
 // Préset "ULTRA" qui active 6 optims simultanément, OU toggles individuels
-// pour les power users qui veulent affiner. Persistance localStorage globale
-// (préférence utilisateur, comme debugMode), pas par plan.
+// pour les power users qui veulent affiner.
+//
+// 🆕 v1.59.0 (KARMA « on n'active jamais cette option par défaut, c'est
+// l'utilisateur qui coche ») : persistance PAR PLAN (`myktamap_perf_toggles_
+// v2_<planId>`). Avant : clé GLOBALE `myktamap_perf_toggles` → cocher ULTRA
+// une fois sur un gros plan l'appliquait silencieusement à TOUS les plans
+// (perçu comme une « activation automatique »). Désormais chaque plan repart
+// sur les defaults (tout OFF sauf les toggles de sécurité DEFAULTS_TRUE) tant
+// que l'user n'a pas coché POUR CE PLAN. L'ancienne clé globale est IGNORÉE
+// (laissée en place, aucune donnée détruite). Au HOME (aucun plan chargé) :
+// defaults purs, les réglages éventuels ne sont pas persistés.
 //
 // Optims gérées :
 //   - decim         : décimation des polylines roads au dézoom (RDP)
@@ -33,7 +42,9 @@
 (function() {
   "use strict";
 
-  const STORAGE_KEY = "myktamap_perf_toggles";
+  // 🆕 v1.59.0 : slot PAR PLAN. L'ancienne clé globale "myktamap_perf_toggles"
+  // n'est plus lue (péremption volontaire — cf. en-tête).
+  const STORAGE_PREFIX = "myktamap_perf_toggles_v2_";
 
   // Liste des toggles individuels gérés. ultra n'est PAS dans cette liste —
   // c'est un méta-toggle qui active/désactive les autres en bloc.
@@ -56,10 +67,18 @@
     return o;
   }
 
-  // État courant (chargé du localStorage au boot)
-  let _state = (function() {
+  // 🆕 v1.59.0 — État PAR PLAN, résolu au runtime. _resolve() détecte le
+  // changement de plan courant (window._currentLoadedPlanId, posé AVANT
+  // initMapFromConfig sur tous les chemins de chargement → animOff lu à
+  // l'init de la map voit déjà le bon slot) et recharge le slot correspondant.
+  // Aucun plan chargé (HOME) → defaults purs, non persistés.
+  let _cachePlanId = "__uninit__";
+  let _state = _defaults();
+
+  function _loadFor(planId) {
+    if (!planId) return _defaults();
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(STORAGE_PREFIX + planId);
       if (!raw) return _defaults();
       const parsed = JSON.parse(raw);
       const out = _defaults();
@@ -71,13 +90,29 @@
       console.warn("[PerfUltra] localStorage parse failed :", e);
       return _defaults();
     }
-  })();
+  }
+
+  function _resolve() {
+    const pid = window._currentLoadedPlanId || null;
+    if (pid === _cachePlanId) return;
+    _cachePlanId = pid;
+    _state = _loadFor(pid);
+    const actifs = TOGGLES.filter(function(k) { return _state[k] && DEFAULTS_TRUE.indexOf(k) < 0; });
+    if (actifs.length > 0) {
+      console.log("[PerfUltra] Slot plan « " + pid + " » : toggles actifs :", actifs.join(", "));
+    }
+  }
 
   // Callbacks abonnés aux changements (pour re-render à la volée)
   const _listeners = [];
 
   function _persist() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(_state)); }
+    const pid = window._currentLoadedPlanId || null;
+    if (!pid) {
+      console.warn("[PerfUltra] Aucun plan chargé — réglage non persisté (RAM uniquement)");
+      return;
+    }
+    try { localStorage.setItem(STORAGE_PREFIX + pid, JSON.stringify(_state)); }
     catch(e) { console.warn("[PerfUltra] localStorage save failed :", e); }
   }
 
@@ -90,19 +125,23 @@
   }
 
   function get(key) {
+    _resolve();
     return !!_state[key];
   }
 
   function getAll() {
+    _resolve();
     return Object.assign({}, _state, { ultra: isUltra() });
   }
 
   // True si TOUS les toggles individuels sont ON (preset ULTRA actif)
   function isUltra() {
+    _resolve();
     return TOGGLES.every(function(k) { return _state[k]; });
   }
 
   function set(key, value, opts) {
+    _resolve();
     if (TOGGLES.indexOf(key) < 0) {
       console.warn("[PerfUltra] toggle inconnu :", key);
       return false;
@@ -117,6 +156,7 @@
 
   // Active/désactive le preset ULTRA = applique la même valeur à tous les toggles
   function setUltra(value) {
+    _resolve();
     const v = !!value;
     const changed = [];
     TOGGLES.forEach(function(k) {
@@ -134,12 +174,8 @@
     if (typeof fn === "function") _listeners.push(fn);
   }
 
-  // Diag au boot — log les toggles actifs
-  const activeToggles = TOGGLES.filter(function(k) { return _state[k]; });
-  if (activeToggles.length > 0) {
-    console.log("[PerfUltra] Toggles actifs au boot :", activeToggles.join(", "),
-                isUltra() ? "(preset ULTRA complet)" : "");
-  }
+  // (Diag au boot retiré en v1.59.0 : au boot, aucun plan n'est chargé →
+  //  l'état est toujours les defaults. Le log par plan vit dans _resolve().)
 
   window.PerfUltra = {
     get: get,

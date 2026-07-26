@@ -26,9 +26,9 @@
 //     path) donc portables entre appareils.
 //   - Navigation : mini-confirmation → switch de plan (chargerPlanServeur /
 //     chargerPlanDuRegistre) → pan + flash sur le point cible.
-//   - Badge 🌀 overlay (L.divIcon, non interactif) sur les points liés du
-//     plan courant — rafraîchi au chargement du plan (hook main.js >
-//     lancerApplication) et à chaque création/suppression.
+//   - Marquage visuel : CHOIX UTILISATEUR via le tag builtin « portail »
+//     (icône vortex icon/portail.png, cf TAGS_BUILTIN map.js) — l'ex-badge
+//     🌀 overlay automatique a été RETIRÉ en v1.59.0 (décision KARMA).
 //   - Mode datalayer « baked » : un point peut embarquer `interPlanLinks`
 //     (array de liens) dans son JSON → lu au popup (merge avec le registre,
 //     dédup par id). Lecture seule — « l'utiliser » sans l'éditer.
@@ -243,11 +243,13 @@
            '</div>';
   }
 
-  // Suppression depuis le popup (confirmation légère)
-  function supprimerDepuisPopup(linkId) {
+  // 🆕 v1.59.0 (A3) — Confirmation de suppression FACTORISÉE (popup +
+  // gestionnaire). onDone appelé après suppression effective.
+  function _confirmerSuppression(linkId, onDone) {
     const modal = document.createElement("div");
     modal.className = "kta-readme-modal-overlay";
     modal.style.display = "flex";
+    modal.style.zIndex = "100002";   // au-dessus du gestionnaire (99999)
     modal.innerHTML =
       '<div class="kta-modal" style="max-width:380px;">' +
         '<div class="kta-modal-icon" style="color:#f4c542;">🌀</div>' +
@@ -263,12 +265,114 @@
     document.getElementById("kta-ipl-rm-yes").addEventListener("click", function() {
       removeLink(linkId);
       modal.remove();
-      if (window.map) try { window.map.closePopup(); } catch(e) {}
       if (window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast(_t("ipl.toast.removed"), "info");
       }
+      if (typeof onDone === "function") { try { onDone(); } catch(e) {} }
     });
     modal.addEventListener("click", function(e) { if (e.target === modal) modal.remove(); });
+  }
+
+  // Suppression depuis le popup (confirmation légère)
+  function supprimerDepuisPopup(linkId) {
+    _confirmerSuppression(linkId, function() {
+      if (window.map) try { window.map.closePopup(); } catch(e) {}
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // 🆕 v1.59.0 (A3) — GESTIONNAIRE DE LIAISONS (vue globale du registre)
+  // ---------------------------------------------------------------
+  // Modale listant TOUTES les liaisons (tous plans confondus, triées par date
+  // desc) : A ⇄ B avec état de disponibilité (⛔ si un plan est absent de
+  // l'appareil), bouton ➜ vers chaque côté disponible, 🗑️ suppression.
+  // Accessible depuis le HOME (bouton « 🌀 Mes liaisons ») — opère sans plan
+  // chargé (la navigation ➜ charge le plan cible, pipeline goTo).
+  const MGR_ID = "kta-ipl-mgr-modal";
+
+  function ouvrirGestionnaire() {
+    const ex = document.getElementById(MGR_ID);
+    if (ex) ex.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = MGR_ID;
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.display = "flex";
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-ipl-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">🌀 ' + _esc(_t("ipl.mgr.titre")) + '</span>' +
+          '<button class="kta-readme-modal-close" id="kta-ipl-mgr-close" type="button" aria-label="✕">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<p class="kta-ipl-hint" id="kta-ipl-mgr-count"></p>' +
+          '<div class="kta-ipl-results" id="kta-ipl-mgr-list"></div>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+    document.getElementById("kta-ipl-mgr-close").addEventListener("click", function() { overlay.remove(); });
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
+
+    function _sideHtml(side) {
+      const dispo = !!(window.PlanRegistry && window.PlanRegistry.findById(side.planId));
+      return '<span class="kta-ipl-mgr-side' + (dispo ? '' : ' kta-ipl-mgr-absent') + '">' +
+               (dispo ? '' : '⛔ ') +
+               _esc(side.planName || side.planId) + ' · ' +
+               _esc(side.pointNom || side.pointId || (side.x + "," + side.y)) +
+             '</span>';
+    }
+
+    function _render() {
+      const links = _load().links.slice().sort(function(a, b) {
+        return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+      });
+      const countEl = document.getElementById("kta-ipl-mgr-count");
+      const listEl  = document.getElementById("kta-ipl-mgr-list");
+      if (!countEl || !listEl) return;
+      countEl.textContent = _t("ipl.mgr.count", { n: links.length });
+      if (links.length === 0) {
+        listEl.innerHTML = '<p class="kta-ipl-empty">' + _esc(_t("ipl.mgr.empty")) + '</p>';
+        return;
+      }
+      listEl.innerHTML = links.map(function(l, i) {
+        const dispoA = !!(window.PlanRegistry && window.PlanRegistry.findById(l.a.planId));
+        const dispoB = !!(window.PlanRegistry && window.PlanRegistry.findById(l.b.planId));
+        return '<div class="kta-ipl-mgr-row" data-i="' + i + '">' +
+                 '<div class="kta-ipl-mgr-sides">' +
+                   _sideHtml(l.a) + '<span class="kta-ipl-mgr-arrow">⇄</span>' + _sideHtml(l.b) +
+                 '</div>' +
+                 '<div class="kta-ipl-mgr-actions">' +
+                   (dispoA ? '<button class="kta-popup-btn kta-ipl-go" type="button" data-go="a" title="' +
+                     _esc(_t("ipl.mgr.goSide", { plan: l.a.planName || l.a.planId })) + '">➜ A</button>' : '') +
+                   (dispoB ? '<button class="kta-popup-btn kta-ipl-go" type="button" data-go="b" title="' +
+                     _esc(_t("ipl.mgr.goSide", { plan: l.b.planName || l.b.planId })) + '">➜ B</button>' : '') +
+                   '<button class="kta-popup-btn kta-ipl-del" type="button" data-del="1" title="' +
+                     _esc(_t("ipl.popup.removeTitle")) + '">🗑️</button>' +
+                 '</div>' +
+               '</div>';
+      }).join("");
+      listEl.querySelectorAll(".kta-ipl-mgr-row").forEach(function(row) {
+        const l = links[parseInt(row.getAttribute("data-i"), 10)];
+        if (!l) return;
+        row.querySelectorAll("[data-go]").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            const side = (btn.getAttribute("data-go") === "a") ? l.a : l.b;
+            overlay.remove();
+            goTo(side.planId, {
+              x: side.x, y: side.y, level: side.level, tag: side.tag,
+              planName: side.planName,
+              label: side.pointNom || side.pointId || (side.x + "," + side.y)
+            }, { confirm: !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan) });
+          });
+        });
+        const del = row.querySelector("[data-del]");
+        if (del) del.addEventListener("click", function() {
+          _confirmerSuppression(l.id, _render);
+        });
+      });
+    }
+
+    _render();
   }
 
   // ---------------------------------------------------------------
@@ -278,7 +382,12 @@
   // Datalayers : serveur → fetch path/plan-config.json + fichiers ;
   //              local  → ZIP IndexedDB (PlanRegistry.getBlob) via JSZip.
   // Retourne Promise<[{id, nom, x, y, tags, source, level}]>.
-  async function _collecterPointsDuPlan(plan) {
+  // 🆕 v1.59.0 (U2) : `stats` optionnel — objet rempli par la collecte :
+  // { dataError: bool } → true si les DATALAYERS du plan sont inaccessibles
+  // (serveur injoignable/404, ZIP absent d'IndexedDB) alors que la session
+  // reste lisible. Les appelants (picker liaison, recherche cross-plan)
+  // affichent alors un avertissement au lieu d'un « 0 points » muet.
+  async function _collecterPointsDuPlan(plan, stats) {
     const pts = [];
     // 1) Points de session (toujours lisibles, tous types de plans)
     try {
@@ -312,6 +421,7 @@
         }
       } else if (plan.type === "local" && window.PlanRegistry && window.JSZip) {
         const blob = await window.PlanRegistry.getBlob(plan.id);
+        if (!blob && stats) stats.dataError = true;   // 🆕 v1.59.0 (U2) : ZIP absent d'IDB
         if (blob) {
           const zip = await window.JSZip.loadAsync(blob);
           // plan-config.json à la racine ou 1er trouvé
@@ -340,7 +450,10 @@
           }
         }
       }
-    } catch(e) { console.warn("[InterPlanLinks] datalayers " + plan.id + " illisibles :", e); }
+    } catch(e) {
+      console.warn("[InterPlanLinks] datalayers " + plan.id + " illisibles :", e);
+      if (stats) stats.dataError = true;   // 🆕 v1.59.0 (U2) : serveur injoignable / config illisible
+    }
 
     return pts;
   }
@@ -481,9 +594,14 @@
           _t("ipl.create.loadingFrom", { plan: _targetPlan.name || _targetPlan.id });
         const box = document.getElementById("kta-ipl-results");
         box.innerHTML = '<div class="kta-load-spinner" style="margin:18px auto;"></div>';
-        _targetPoints = await _collecterPointsDuPlan(_targetPlan);
+        // 🆕 v1.59.0 (U2) : stats de collecte — si les datalayers du plan sont
+        // injoignables (serveur off, ZIP absent), on le DIT au lieu de laisser
+        // un « 0 points » muet.
+        const _stats = {};
+        _targetPoints = await _collecterPointsDuPlan(_targetPlan, _stats);
         document.getElementById("kta-ipl-target-plan").textContent =
-          _t("ipl.create.targetPlan", { plan: _targetPlan.name || _targetPlan.id, n: _targetPoints.length });
+          _t("ipl.create.targetPlan", { plan: _targetPlan.name || _targetPlan.id, n: _targetPoints.length }) +
+          (_stats.dataError ? " — " + _t("ipl.picker.dataUnreachable") : "");
         _renderResults("");
         const inp = document.getElementById("kta-ipl-search");
         inp.addEventListener("input", function() { _renderResults(inp.value); });
@@ -513,6 +631,22 @@
     const plan = window.PlanRegistry ? window.PlanRegistry.findById(planId) : null;
     if (!plan) {
       alert(_t("ipl.err.planAbsent", { plan: (target && target.planName) || planId }));
+      return;
+    }
+
+    // 🐛 v1.58.1 (KARMA « si je sélectionne un point du plan en cours, pas de
+    // bouton retour ») : cible sur le PLAN COURANT → chemin court. Pas de
+    // rechargement du plan (inutile et lent), pas de confirmation (« changer
+    // de plan ? » n'a pas de sens), pas d'empilement ni de bouton Retour (on
+    // reste sur place) — juste bascule de niveau éventuelle + pan/flash
+    // immédiat (samePlan : une seule passe, rien ne recentre derrière).
+    const planCharge = !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan);
+    if (planCharge && planId === _currentPlanId()) {
+      if (window.map) try { window.map.closePopup(); } catch(e) {}
+      _pendingTarget = { x: target.x, y: target.y, level: target.level,
+                         tag: target.tag, zoom: target.zoom, samePlan: true };
+      _pendingConsumed = false;
+      _consumePendingTarget();
       return;
     }
 
@@ -600,6 +734,17 @@
   let _backBtnTimer = null;
 
   function _empilerOrigine() {
+    // 🐛 v1.58.1 (KARMA « depuis une recherche du home, pas de bouton
+    // retour ») : au HOME, _currentLoadedPlanId ET window.map PERSISTENT du
+    // dernier plan chargé (le retour au loader ne les purge pas) → on
+    // empilait une fausse origine. Le marqueur fiable du home est
+    // PLAN_CONFIG === null (resetRuntimeAssets). Partir du home ROMPT aussi
+    // la chaîne de navigation : on vide la pile (pas de « retour » vers un
+    // vieux saut d'avant le passage au home).
+    if (!window.PLAN_CONFIG || !window.PLAN_CONFIG.plan) {
+      _navStack.length = 0;
+      return;
+    }
     const pid = _currentPlanId();
     if (!pid || !window.map || typeof window.map.getCenter !== "function") return;
     try {
@@ -687,6 +832,16 @@
       }
     }
 
+    // 🐛 v1.58.1 — cible sur le PLAN COURANT (samePlan) : une seule passe
+    // immédiate (aucun restore de session ne recentre derrière puisqu'il n'y
+    // a pas eu de rechargement) et PAS de bouton Retour (on n'a pas bougé de
+    // plan — et des restes de pile d'anciens sauts ne doivent pas réapparaître
+    // après un simple recentrage).
+    if (t.samePlan) {
+      _panEtFlash(t, true);
+      return;
+    }
+
     // Triple passe : le restore de session (SessionPersist) et le tracker
     // (« démarrage sur la dernière position », v1.49.0) recentrent la vue en
     // async APRÈS la fin de lancerApplication. On repasse derrière eux à
@@ -743,69 +898,18 @@
   };
 
   // ---------------------------------------------------------------
-  // BADGES 🌀 sur les points liés du plan courant (4:a)
+  // (Ex-BADGES 🌀 — RETIRÉS en v1.59.0, décision KARMA « enlève le badge
+  // portail ») : le marquage visuel d'un point lié est désormais un CHOIX
+  // UTILISATEUR via le tag builtin « portail » (icône vortex dédiée,
+  // icon/portail.png — cf TAGS_BUILTIN dans map.js). Un point lié peut
+  // garder n'importe quel tag (aucun marquage) ou prendre le tag portail.
+  // refreshBadges reste exposée en NO-OP (compat : hook historique dans
+  // interfaceConfig.js > appliquerFiltreNiveau, anciens callers éventuels).
   // ---------------------------------------------------------------
-  let _badgeLayer = null;
-
-  function refreshBadges() {
-    // Guard renforcé : au HOME, window.map peut exister sans être une map
-    // Leaflet opérationnelle (shell du script inline) → addLayer absent.
-    if (!window.map || typeof window.map.addLayer !== "function"
-        || typeof window.map.removeLayer !== "function"
-        || typeof window.convertCoord !== "function") return;
-    if (_badgeLayer) {
-      try { window.map.removeLayer(_badgeLayer); } catch(e) {}
-      _badgeLayer = null;
-    }
-    const planId = _currentPlanId();
-    if (!planId) return;
-    const links = getLinksForPlan(planId);
-    if (links.length === 0) return;
-
-    // 🐛 v1.57.1 — le badge respecte le FILTRE DE NIVEAU courant (comme les
-    // markers `_ktaLevel`) : un badge sans son icône était incohérent (« j'ai
-    // juste le badge portail sans l'icône »). Re-render au changement de
-    // niveau via le hook dans appliquerFiltreNiveau (interfaceConfig.js).
-    const visibleLevels = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
-      ? window.APP_CONFIG.visibleLevels : null;
-
-    const group = L.layerGroup();
-    const seen = {};
-    links.forEach(function(l) {
-      [l.a, l.b].forEach(function(side) {
-        if (!side || side.planId !== planId) return;
-        if (visibleLevels && visibleLevels.indexOf(Number.isInteger(side.level) ? side.level : 0) === -1) return;
-        const k = _sideKey(side);
-        if (seen[k]) return;
-        seen[k] = true;
-        try {
-          // 🐛 v1.57.0-fix : badge CENTRÉ AU-DESSUS de l'icône du point
-          // (ancre [11, 56] = le badge 22px flotte au-dessus d'une icône
-          // ~40px ancrée bas) + zIndexOffset élevé pour passer PAR-DESSUS
-          // tous les markers. Taille/contraste renforcés (CSS .kta-ipl-badge).
-          const m = L.marker(window.convertCoord(side.x, side.y), {
-            icon: L.divIcon({
-              className: "kta-ipl-badge-wrap",
-              html: '<div class="kta-ipl-badge">🌀</div>',
-              iconSize: [22, 22],
-              iconAnchor: [11, 56]
-            }),
-            interactive: false,
-            keyboard: false,
-            zIndexOffset: 2000
-          });
-          group.addLayer(m);
-        } catch(e) {}
-      });
-    });
-    group.addTo(window.map);
-    _badgeLayer = group;
-  }
+  function refreshBadges() { /* no-op depuis v1.59.0 — cf commentaire */ }
 
   // Hook appelé par main.js à la fin de lancerApplication (plan prêt).
   function onPlanLoaded() {
-    // Léger différé : laisse la map finir son premier rendu.
-    setTimeout(refreshBadges, 400);
     // 🐛 v1.57.0-fix : consomme la cible de navigation pendante (« Y aller »
     // depuis une liaison) — repasse derrière les recentrages de session.
     setTimeout(_consumePendingTarget, 600);
@@ -854,7 +958,9 @@
     // cross-plan) + lecture des points d'un plan non chargé (réutilisée par
     // js/crossPlanSearch.js — zéro duplication du lecteur session/ZIP/serveur).
     goTo:                 goTo,
-    collectPointsForPlan: _collecterPointsDuPlan
+    collectPointsForPlan: _collecterPointsDuPlan,
+    // 🆕 v1.59.0 (A3) — gestionnaire global (bouton HOME « 🌀 Mes liaisons »)
+    ouvrirGestionnaire:   ouvrirGestionnaire
   };
 
   console.log("[InterPlanLinks] Module chargé (" + _load().links.length + " liaison(s))");

@@ -775,7 +775,7 @@ La zone apparaît avec un **motif hachures rouge sombre / noir** à 45°. Tout i
 
 1. **Préparer** : les deux plans doivent être dans la bibliothèque (ajoutés depuis l'accueil). Les deux points (départ et arrivée) doivent exister — n'importe quel point convient : point de session (✏️) **ou** point d'un calque de données.
 2. **Créer la liaison** : ouvre le plan X → clique le point de départ → dans sa fiche, bouton **🌀 Lier à un autre plan** → choisis le plan Y dans la liste → recherche le point d'arrivée (par nom, id ou tag — les points du plan Y sont lus **sans l'ouvrir**) → clique-le. C'est fait.
-3. **Résultat** : la liaison est **bidirectionnelle** (visible dans la fiche des DEUX points, sur les deux plans) et un **badge doré 🌀** flotte au-dessus de l'icône de chaque point lié. Un point peut porter plusieurs liaisons.
+3. **Résultat** : la liaison est **bidirectionnelle** (visible dans la fiche des DEUX points, sur les deux plans). Un point peut porter plusieurs liaisons. **Marquage visuel au choix** (depuis v1.59.0) : par défaut rien ne distingue un point lié ; donne-lui le **tag « Portail »** pour son **icône vortex dédiée** (anneau doré, spirale bleue).
 4. **Utiliser** : fiche du point → ligne 🌀 « plan · point » → bouton **➜** → confirmation → l'app change de plan (la session actuelle est sauvegardée automatiquement), **bascule sur le niveau du point d'arrivée** et centre la vue dessus (flash bleu).
 5. **Supprimer** : bouton 🗑️ sur la ligne de liaison (des deux côtés), ou supprime le point — ses liaisons partent avec.
 

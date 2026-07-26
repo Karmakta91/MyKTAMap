@@ -442,7 +442,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 1. **🖼️ Tiling de l'image (par plan)** — segmented control 5 presets (voir détail ci-dessous), qui choisit comment l'image principale est découpée en mémoire au chargement. Mémorisé **par plan** (un plan en Performance, un autre en Qualité, etc.).
 
-2. **🚀 Mode Performance ULTRA (tracés / markers)** — 7 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling, limite dézoom mobile). Préférence **globale**, conservée entre sessions. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
+2. **🚀 Mode Performance ULTRA (tracés / markers)** — 7 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling, limite dézoom mobile). **Réglage PAR PLAN depuis v1.59.0** : cocher ULTRA sur un plan n'affecte plus les autres — chaque plan repart désactivé tant que tu ne coches pas pour lui. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
 
 3. **🛠️ Debug** — toggle **🐛 Logs détaillés** (verbose mode) **+ bouton 📋 Afficher les logs** qui ouvre directement la modale buffer des logs capturés. Utile pour consulter les logs sans avoir à charger un plan d'abord (ex : si tu cherches à diagnostiquer un bug bloquant au chargement).
 
@@ -767,7 +767,9 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 2. Choisis le **plan cible** dans ta bibliothèque, puis **recherche le point** d'arrivée (par nom, id ou tag) — pas besoin d'ouvrir l'autre plan, ses points sont lus sur place.
 3. La liaison est créée **dans les deux sens** : elle apparaît dans la fiche des deux points.
 
-**Sur la carte** : un **badge doré 🌀** flotte au-dessus de l'icône de chaque point lié.
+**Sur la carte (depuis v1.59.0)** : à toi de choisir si un point lié se voit ou non. Par défaut, **rien ne le distingue** (il garde son tag et son icône habituels). Si tu veux le marquer visuellement, donne-lui le nouveau **tag « Portail »** : il prend alors une **icône vortex dédiée** (anneau doré, spirale bleue). *(L'ancien badge doré automatique a été retiré.)*
+
+**🌀 Mes liaisons (depuis v1.59.0)** : sur l'**accueil**, le bouton **« 🌀 Mes liaisons »** liste toutes tes liaisons (tous plans confondus) : état de chaque côté (⛔ si le plan n'est pas sur l'appareil), bouton **➜** pour aller directement à l'un des deux points, **🗑️** pour supprimer. Si les données d'un plan sont injoignables (serveur hors-ligne…), l'app te le dit clairement au lieu d'afficher « 0 points ».
 
 **Utiliser une liaison** : dans la fiche du point, ligne 🌀 avec le plan et le point de destination → bouton **➜** → confirmation → l'app **change de plan** (ta session actuelle est sauvegardée automatiquement), **bascule sur le niveau du point d'arrivée** (plans multi-niveaux) et te dépose **directement dessus** (flash bleu). Si un filtre de tags masque le point d'arrivée, un avertissement s'affiche — tes filtres ne sont jamais modifiés.
 
@@ -2893,6 +2895,11 @@ Au chargement d'un plan, tu peux choisir parmi 5 presets dans le loader :
 ### 6 bis. 🚀 Mode Performance ULTRA — pour les vrais gros plans qui crashent
 
 Si malgré le mode Performance, ton plan crashe encore (typiquement plans 4000+ × 2000+ pixels avec beaucoup de tracés), ouvre **⚙️ Réglages → section "🚀 Mode Performance ULTRA"** et active le **toggle master 🚀 ULTRA**. Il active 6 optimisations agressives simultanément.
+
+> 🆕 **Depuis v1.59.0** — trois choses à savoir :
+> - **Réglage PAR PLAN** : cocher ULTRA ici ne concerne QUE le plan ouvert. Tes autres plans ne sont plus impactés (avant, le réglage était global et « suivait » silencieusement sur tous les plans). Après la mise à jour, les plans qui avaient ULTRA repartent désactivés — recoche-le sur ceux qui en ont besoin.
+> - **Tes points de session sont sacrés** : les POI que tu ajoutes à la main (✏️) restent **toujours affichés**, même avec le viewport culling actif — seul l'affichage des milliers de points des calques de données est allégé.
+> - **Message à l'ouverture** : quand des optimisations sont actives sur un plan, un message te le rappelle au chargement — un affichage « allégé » (tracés simplifiés, popups data désactivés…) n'est pas un bug.
 
 > ⚠️ Ces optims **ne touchent PAS à l'image** (déjà gérée par le mode performance ci-dessus). Elles ciblent les éléments vectoriels (tracés, points, calculs).
 
