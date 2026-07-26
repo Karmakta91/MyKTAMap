@@ -607,6 +607,15 @@
     if (window.setMeasurePoints)        window.setMeasurePoints([]);
     // 🆕 v1.12.0-fix : vide aussi la mesure de surface
     if (window.setMeasurePointsSurface) window.setMeasurePointsSurface([]);
+    // 🐛 v1.64.0 (KARMA « je refuse la session mais le tracé tracker de la
+    // précédente session persiste ») : le TRACKER n'était jamais vidé —
+    // la timeline restaurée, le tracé visible (polyline multi-segments) et
+    // le marker repositionné survivaient à l'« Effacer la session ».
+    // resetTrackingPosition fait tout : timeline vidée, tracé effacé,
+    // marker + vue remis sur la position initiale du plan.
+    if (typeof window.resetTrackingPosition === "function") {
+      try { window.resetTrackingPosition(); } catch(e) {}
+    }
   }
 
   // ========== MODALE DE FEEDBACK ==========
@@ -618,7 +627,11 @@
     const total = restored.points + restored.roads + restored.zones
                 + (restored.structures || 0) + restored.measure
                 // 🆕 v1.12.0-fix : surface compte aussi pour décider d'afficher
-                + (restored.measureSurface || 0);
+                + (restored.measureSurface || 0)
+                // 🐛 v1.64.0 : une session TRACKER-SEULE (long tracé, rien
+                // d'autre) n'affichait pas la modale → impossible de la
+                // refuser. Le tracé compte comme contenu restauré.
+                + (restored.trackerTimeline ? 1 : 0);
     if (total === 0) return;
 
     const existing = document.getElementById("kta-session-modal");
@@ -636,6 +649,8 @@
     if (restored.measure)    parts.push(_t("session.unit.measureDist"));
     // 🆕 v1.12.0-fix : surface dans le feedback de restauration
     if (restored.measureSurface) parts.push(_t("session.unit.measureSurf"));
+    // 🐛 v1.64.0 : tracé tracker dans le feedback (et le total ci-dessus)
+    if (restored.trackerTimeline) parts.push(_t("session.unit.tracker"));
 
     // Nom du plan en cours (échappé) pour que l'utilisateur voie clairement de quel plan vient la session
     const planName = _currentPlanName();

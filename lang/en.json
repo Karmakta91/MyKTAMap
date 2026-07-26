@@ -3662,6 +3662,7 @@
   "session.toast.storageFull": "Phone storage is full — the session can no longer be saved automatically. Remember to export your session (📤 Export) so you don't lose anything.",
   "session.unit.measureDist": "distance measurement",
   "session.unit.measureSurf": "surface measurement",
+  "session.unit.tracker": "🧭 tracker trail",
   "session.unit.point": "point",
   "session.unit.points": "points",
   "session.unit.road": "path",

@@ -3647,6 +3647,7 @@
   "session.toast.storageFull": "Espacio de almacenamiento del smartphone saturado — la sesión ya no se puede guardar automáticamente. Acuérdate de exportar tu sesión (📤 Exportar) para no perder nada.",
   "session.unit.measureDist": "medición de distancia",
   "session.unit.measureSurf": "medición de superficie",
+  "session.unit.tracker": "🧭 recorrido del tracker",
   "session.unit.point": "punto",
   "session.unit.points": "puntos",
   "session.unit.road": "trazado",
