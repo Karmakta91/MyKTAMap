@@ -1780,13 +1780,20 @@ window.ouvrirItinerairModal = function() {
           window.itineraireAjouterWaypoint(pt.x, pt.y, label);
           return;
         }
+        // 🌀 v1.64.0 (KARMA « plusieurs points de passage sur le plan A avant
+        // le portail ») : les étapes déjà posées dans la modale (non validées,
+        // hors origine tracker) deviennent des points de passage OBLIGATOIRES
+        // du leg A, dans l'ordre planifié, AVANT le portail.
+        const viaA = _itineraryWaypoints
+          .filter(function(w) { return !w.done && w.source !== "tracker"; })
+          .map(function(w) { return { x: w.x, y: w.y, label: w.label || "" }; });
         fermer();   // fermeture propre de la modale (helper local, cf ci-dessous)
         window.InterPlanRoute.computeEtAfficher({
           planId: plan.id, planName: plan.name || plan.id,
           x: pt.x, y: pt.y, level: pt.level,
           tag: (Array.isArray(pt.tags) && pt.tags[0]) || undefined,
           label: label
-        });
+        }, { viaWaypoints: viaA });
       }});
     });
   }

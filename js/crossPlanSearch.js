@@ -92,6 +92,13 @@
         '<div class="kta-readme-modal-corps">' +
           '<input type="text" id="kta-xps-input" class="kta-ipl-search" ' +
             'placeholder="' + _esc(_t("xps.placeholder")) + '" autocomplete="off">' +
+          // 🌀 v1.64.0 (multi-hop, décision KARMA 5 : opt-in à cocher) :
+          // autorise l'itinéraire 🧭 à passer par des plans intermédiaires.
+          // Préférence persistée via InterPlanRoute (OFF par défaut).
+          '<label class="kta-xps-multihop" title="' + _esc(_t("xps.multihop.hint")) + '">' +
+            '<input type="checkbox" id="kta-xps-multihop-cb">' +
+            '<span>' + _esc(_t("xps.multihop.label")) + '</span>' +
+          '</label>' +
           '<div class="kta-xps-status" id="kta-xps-status"></div>' +
           '<div class="kta-ipl-results kta-xps-results" id="kta-xps-results"></div>' +
         '</div>' +
@@ -100,6 +107,18 @@
 
     document.getElementById("kta-xps-close").addEventListener("click", _fermer);
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _fermer(); });
+
+    // 🌀 v1.64.0 — case multi-hop : lue/écrite via InterPlanRoute (source de
+    // vérité unique). Masquée si le module route n'est pas dispo.
+    const mhCb = document.getElementById("kta-xps-multihop-cb");
+    if (window.InterPlanRoute && typeof window.InterPlanRoute.isMultiHopEnabled === "function") {
+      mhCb.checked = window.InterPlanRoute.isMultiHopEnabled();
+      mhCb.addEventListener("change", function() {
+        window.InterPlanRoute.setMultiHopEnabled(mhCb.checked);
+      });
+    } else if (mhCb && mhCb.parentNode) {
+      mhCb.parentNode.style.display = "none";
+    }
 
     const input    = document.getElementById("kta-xps-input");
     const statusEl = document.getElementById("kta-xps-status");

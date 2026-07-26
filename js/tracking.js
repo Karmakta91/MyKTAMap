@@ -757,6 +757,12 @@ function _notifierRecalage(x, y, source) {
     try { window._onTrackerRecale(x, y, source); }
     catch(e) { console.warn("[Tracking] hook recalage échoué :", e); }
   }
+  // 🌀 v1.64.0 : 2e consommateur — « je suis ici » sur le point-portail de
+  // sortie re-propose la traversée (interPlanRoute._currentPortalOut)
+  if (window.InterPlanRoute && typeof window.InterPlanRoute.onTrackerRecale === "function") {
+    try { window.InterPlanRoute.onTrackerRecale(x, y, source); }
+    catch(e) { console.warn("[Tracking] hook recalage portail échoué :", e); }
+  }
 }
 
 // =========================

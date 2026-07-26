@@ -118,6 +118,13 @@
     });
   }
 
+  // 🌀 v1.64.0 (multi-hop) : registre complet en lecture — le méta-graphe des
+  // plans d'interPlanRoute en a besoin pour construire l'adjacence sans
+  // crawler plan par plan. Copie défensive.
+  function getAllLinks() {
+    return _load().links.slice();
+  }
+
   function createLink(refA, refB) {
     const reg = _load();
     const link = {
@@ -390,6 +397,27 @@
   // (serveur injoignable/404, ZIP absent d'IndexedDB) alors que la session
   // reste lisible. Les appelants (picker liaison, recherche cross-plan)
   // affichent alors un avertissement au lieu d'un « 0 points » muet.
+  // 🐛 v1.64.0 — Résolution d'URL de datalayer à DOUBLE essai. Les
+  // plan-config mélangent 2 conventions pour `dataLayers[].file` : chemin
+  // RELATIF au dossier du plan (« chemin.json ») et chemin COMPLET depuis la
+  // racine web (« data/test2/chemin.json » — cas des plans serveur
+  // historiques). L'ancien code ne tentait que `path + "/" + file` → URL
+  // doublée (« data/test2/data/test2/chemin.json ») → 404 silencieux → la
+  // recherche multi-plans perdait les points datalayer ET le leg distant de
+  // l'itinéraire inter-plan voyait « 0 tracés » sur ces plans serveur.
+  // (Les plans ZIP locaux avaient déjà leur fallback `|| zip.file(file)`.)
+  async function _fetchLayerJson(basePath, file) {
+    const essais = [basePath + "/" + file];
+    if (String(file).indexOf("/") >= 0) essais.push(file);
+    for (let i = 0; i < essais.length; i++) {
+      try {
+        const resp = await fetch(essais[i], { cache: "no-cache" });
+        if (resp.ok) return await resp.json();
+      } catch(e) { /* essai suivant */ }
+    }
+    throw new Error("datalayer introuvable : " + file);
+  }
+
   async function _collecterPointsDuPlan(plan, stats) {
     const pts = [];
     // 1) Points de session (toujours lisibles, tous types de plans)
@@ -413,7 +441,7 @@
         const layers = (cfg && cfg.dataLayers) || [];
         for (let i = 0; i < layers.length; i++) {
           try {
-            const dj = await (await fetch(plan.path + "/" + layers[i].file, { cache: "no-cache" })).json();
+            const dj = await _fetchLayerJson(plan.path, layers[i].file);   // 🐛 v1.64.0 : double essai
             (dj.data || []).forEach(function(p) {
               if (p && typeof p.x === "number" && typeof p.y === "number") {
                 pts.push({ id: p.id || "", nom: p.nom || "", x: p.x, y: p.y,
@@ -510,7 +538,7 @@
         const layers = (cfg && cfg.dataLayers) || [];
         for (let i = 0; i < layers.length; i++) {
           try {
-            const dj = await (await fetch(plan.path + "/" + layers[i].file, { cache: "no-cache" })).json();
+            const dj = await _fetchLayerJson(plan.path, layers[i].file);   // 🐛 v1.64.0 : double essai
             _absorber(dj.roads, dj.zones);
           } catch(e) { /* layer illisible → skip */ }
         }
@@ -1185,6 +1213,7 @@
   window.InterPlanLinks = {
     getLinksForPoint:     getLinksForPoint,
     getLinksForPlan:      getLinksForPlan,
+    getAllLinks:          getAllLinks,
     createLink:           createLink,
     removeLink:           removeLink,
     importLinks:          importLinks,
