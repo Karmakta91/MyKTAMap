@@ -854,6 +854,17 @@ window.kta_copierGps = function(txt) {
   }
 };
 
+// 🧹 v1.61.0 (B6) — Échappement HTML CANONIQUE. Les modules récents
+// (legalGate, interPlanLinks, crossPlanSearch, interPlanRoute) délèguent ici
+// au lieu de dupliquer le corps (~8 copies recensées à l'audit). Les helpers
+// historiques (_escapeHtml locaux, _escAttr) restent en place — les migrer
+// n'apporte rien et risque des régressions de leurs variantes (attributs).
+window.ktaEsc = function(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+};
+
 function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   const nom  = String(point.nom || "(sans nom)");
   const desc = String(point.description || "");

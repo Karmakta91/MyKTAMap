@@ -118,6 +118,8 @@ function initTracking() {
     if (tracking) {
       _applyRotationToTrackerMarker();
     }
+    // 🆕 v1.61.0 : replanification d'itinéraire au recalage clic carte
+    _notifierRecalage(x, y, "click");
   });
 }
 
@@ -744,6 +746,19 @@ function _avancerSurGraphe() {
   }
 }
 
+// 🆕 v1.61.0 — Hook de recalage (replanification d'itinéraire).
+// Émis à CHAQUE recalage de position : clic carte (mode recalage), bouton
+// « 📍 Je suis ici » d'une popup point, arrivée de portail (interPlanLinks
+// passe par recalerTrackerSurPoint). Consommé par interfaceItineraire.js
+// (window._onTrackerRecale) pour replanifier l'itinéraire actif depuis la
+// nouvelle position et valider les étapes. source : "click" | "point".
+function _notifierRecalage(x, y, source) {
+  if (typeof window._onTrackerRecale === "function") {
+    try { window._onTrackerRecale(x, y, source); }
+    catch(e) { console.warn("[Tracking] hook recalage échoué :", e); }
+  }
+}
+
 // =========================
 // UPDATE MAP
 // =========================
@@ -1188,6 +1203,9 @@ window.recalerTrackerSurPoint = function(x, y, level) {
   // L'user vient de toucher "📍 Je suis ici" → feedback tactile = "OK, j'ai
   // compris". Echec silencieux si pref OFF ou iOS Safari (cf utils.js).
   if (window.kta_vibrate) window.kta_vibrate.light();
+  // 🆕 v1.61.0 : replanification d'itinéraire + validation d'étape (coords
+  // exactes d'un point → peut matcher une étape de l'itinéraire actif)
+  _notifierRecalage(x, y, "point");
 };
 
 // 🆕 v1.34.27 — Détection de proximité aux waypoints de l'itinéraire actif.

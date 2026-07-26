@@ -770,11 +770,15 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 **Use a link**: in the point's popup, a 🌀 line shows the destination plan and point → **➜** button → confirmation → the app **switches plan** (your current session is saved automatically), **switches to the arrival point's level** (multi-level plans) and drops you **right on it** (blue flash). If a tag filter hides the arrival point, a warning is shown — your filters are never modified.
 
+**📍 Automatic recalibration on arrival (since v1.61.0)**: when you **physically cross** a portal (a link's ➜ button, or an inter-plan route's "Take the portal"), your **tracker position is recalibrated onto the arrival point** of the target plan — you ARE there, the app knows it. Multi-plan search and the links manager do **not** recalibrate (viewing a point ≠ moving there). And if a route is active on the arrival plan, it replans from the portal.
+
 **🧭 Inter-plan route (since v1.60.0)**: request a route to a point **on another plan** connected by a portal — from the **Route** modal ("🌐 Destination on another plan" button) or the **multi-plan search** (🧭 button on a distant result). The app compares available portals at **real cost**, shows the trip in steps ("① Reach 🌀 North well — 450 m · ② Cross · ③ Reach the room — 300 m · Total ≈ 750 m"), draws the path to the portal, then **automatically draws the rest** when you cross. Each plan's avoidances (zones, points, tags) are honored. If it's impossible (no portal, plan offline, destination cut off from the network…), a message tells you **exactly why** — including "no direct link, but a path exists via that plan".
 
 **🔄 Always-fresh popups (since v1.60.0)**: if you rename or move a linked point, the link entries (on both sides) **update automatically** the next time the plan is opened.
 
 **↩️ Going back (since v1.58.0)**: after taking a portal (or a multi-plan search jump), a floating **"↩️ Back: <plan>"** button appears at the bottom of the screen for 15 seconds — one click brings you back to the plan **and the exact view** you came from (level and zoom included). Jumps stack up: chain 3 portals, you can go back 3 times.
+
+**↩️ Discreet Back button (since v1.61.0)**: if the button bothers you, two new controls on it — **[–]** shrinks it to a discreet **↩️ mini-chip** at the bottom right (it stays until it expires, one click re-expands it), **[✕]** closes it. Your choice is remembered: once minimized, future returns arrive directly as a mini-chip.
 
 **Good to know**:
 - A point can carry **several links** (a "hub" point).
@@ -1217,6 +1221,18 @@ The active mode is displayed next to the estimated time in the bottomleft label.
 **Tolerance**: the algorithm accepts that your start or end points may be a bit **off** the roads — it automatically snaps them onto the nearest network. If several roads visually intersect but without sharing exactly the same point (typical case of a hand-drawn path), the app also handles **junctions within 15 px** to trace the route without breaks.
 
 > 💡 **Tip**: if you want to see only the path without the distance label, close the modal then reopen it in navigation mode to use the piloting buttons.
+
+#### 🔄 Living route — replanning on recalibration + stop validation *(since v1.61.0)*
+
+During a real outing, the tracker can drift and the phone spends time locked in your pocket. The route adapts on its own every time you **recalibrate your position**:
+
+- **Recalibrate your position** (map click in recalibration mode, a point's **📍 I am here** button, or arriving through a portal) → the active route is **automatically recalculated from your new position**. Your position becomes the new point 0, the remaining stops are kept **in the order you planned**, and your avoidance preferences are respected.
+- **Validate your passage at a stop**: tap **📍 I am here** on a point that belongs to your route → the stop is **validated** (**green ✓** marker on the map, struck-through line in the modal), excluded from future calculations, and the route restarts from there. **The order is free**: you can visit stop 3 before stop 1 — the app validates what YOU do, not what it suggests.
+- **All stops validated** (including your exit) → a small "🎉 Route complete" message and the path clears. Your tracker trail stays on screen.
+- **Map-click** recalibration never validates a stop (it is approximate by nature): it only replans.
+- Validated stops **survive reloads and phone locking** (saved with the session).
+
+> 💡 In practice: plan your outing (me → curiosity X → curiosity Y → exit), walk, and at each point you reach tap **📍 I am here** on its popup. The app checks it off, recalculates, and always shows the way from where you actually are.
 
 #### 🚫 Avoidance preferences
 

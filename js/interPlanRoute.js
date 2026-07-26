@@ -50,6 +50,9 @@
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
   }
   function _esc(s) {
+    // 🧹 v1.61.0 (B6) : délègue au helper canonique window.ktaEsc (utils.js) ;
+    // fallback inline si utils pas encore chargé (ordre defer sûr, ceinture).
+    if (typeof window.ktaEsc === "function") return window.ktaEsc(s);
     return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
       return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
     });
@@ -304,7 +307,7 @@
         level: res.portal.entreeB.level, tag: res.portal.entreeB.tag,
         planName: res.planB.name || res.planB.id,
         label: res.portal.entreeB.pointNom || ""
-      }, { confirm: false });
+      }, { confirm: false, recalerTracker: true });   // 🆕 v1.61.0 : traversée physique → tracker recalé
     });
   }
 

@@ -391,3 +391,27 @@ C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne 
 - ❌ Tracer le leg B AVANT le restore de session du plan B (il serait écrasé) — passer par `_pendingRoute` + délai.
 - ❌ Calculer le leg B sur des données partielles (`stats.dataError`) — refuser avec `DATA_UNREACHABLE`, ne pas deviner.
 - ❌ Étendre au multi-hop sans topo dédié (explosion combinatoire portails × plans — le BFS actuel ne sert qu'au MESSAGE informatif).
+
+---
+
+## 🔄 Itinéraire vivant — replanification au recalage + validation d'étapes (v1.61.0)
+
+> Scénario : sortie multi-étapes réelle (moi → curiosité X → curiosité Y → sortie), le tracker dérive, le téléphone est verrouillé → l'user recale souvent. Décisions KARMA `1:a 2:a 3:a 4:a 5:a` (recalcul sur TOUT recalage · validation explicite uniquement · ordre planifié conservé · étape validée reste affichée ✓ · fin = tracé effacé).
+
+**Flux** : `tracking.js > _notifierRecalage(x, y, source)` — émis aux 3 sorties de recalage : clic carte mode recalage (`"click"`), `recalerTrackerSurPoint` (`"point"` — couvre « 📍 Je suis ici » ET l'arrivée portail v1.61.0). Consommateur unique : `interfaceItineraire.js > window._onTrackerRecale`.
+
+**`_onTrackerRecale(x, y, source)`** (`interfaceItineraire.js`) :
+- No-op sans road `type:"itinerary"` active (hors `_preview`).
+- `source === "point"` + coords **arrondies** égales à une étape non-done (hors `source:"tracker"`) → **validation** : `w.done = true` (mutation directe de la road → persistance session gratuite), toast `iti.replan.stepDone` + vibration medium.
+- Débounce **500 ms** → `_replanifierDepuis(x, y)` : étapes restantes = `waypoints.filter(!done && source!=="tracker")` dans l'ordre ; `computeRoute([origin, ...restantes], avoidPrefs)` sous `_withItiComputeLoader` ; nouvelle road = `waypoints: [origin, ...TOUTES les étapes copiées]` (done incluses → progression visible + persistée). **Échec de calcul → ancien tracé conservé** + toast `iti.replan.err`.
+- 0 étape restante → road itinéraire retirée + toast `iti.replan.finished` (le tracé tracker n'est pas touché).
+
+**Rendu done** : `_ajouterWaypointVisuel` → classe `.kta-iti-wp-done` + ✓ au lieu du numéro (CSS vert `#4caf50`) ; liste modale → ligne `.kta-iti-wp-row-done` rayée.
+
+**Exclusions du calcul** : les étapes `done` sont exclues PARTOUT — replan auto, bouton « Recalculer » de la modale (`wpsCalc = _itineraryWaypoints.filter(!done)`), compte de pauses (`_majLabelDistanceItineraire` + statut modale), et `getItineraireWaypoints()` (vibration proximité — filtre aussi l'origine tracker, sinon vibration parasite à chaque replan).
+
+**À NE PAS faire** :
+- ❌ Valider sur le recalage clic carte (approximatif par nature — seul le `"point"` exact valide).
+- ❌ Réordonner les étapes restantes (TSP « plus proche d'abord ») — l'ordre planifié est un choix utilisateur (3:a). Une option V2 éventuelle, jamais un défaut.
+- ❌ Retirer les étapes done de `road.waypoints` — elles portent la progression (persistance + rendu ✓) ; on les exclut du CALCUL, pas de la donnée.
+- ❌ Recalculer sans débounce (recalages en rafale = Dijkstras 1-3 s empilés).

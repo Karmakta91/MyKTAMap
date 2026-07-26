@@ -773,11 +773,15 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 
 **Utiliser une liaison** : dans la fiche du point, ligne 🌀 avec le plan et le point de destination → bouton **➜** → confirmation → l'app **change de plan** (ta session actuelle est sauvegardée automatiquement), **bascule sur le niveau du point d'arrivée** (plans multi-niveaux) et te dépose **directement dessus** (flash bleu). Si un filtre de tags masque le point d'arrivée, un avertissement s'affiche — tes filtres ne sont jamais modifiés.
 
+**📍 Recalage automatique à l'arrivée (depuis v1.61.0)** : quand tu **traverses physiquement** un portail (bouton ➜ d'une liaison, ou « Prendre le portail » d'un itinéraire inter-plan), ta **position tracker est recalée sur le point d'arrivée** du plan cible — tu ES là, l'app le sait. La recherche multi-plans et le gestionnaire ne recalent **pas** (consulter un point ≠ s'y déplacer). Et si un itinéraire est actif sur le plan d'arrivée, il se replanifie depuis le portail.
+
 **🧭 Itinéraire inter-plan (depuis v1.60.0)** : demande un itinéraire vers un point **d'un autre plan** relié par un portail — depuis la modale **Itinéraire** (bouton « 🌐 Destination sur un autre plan ») ou la **recherche multi-plans** (bouton 🧭 sur un résultat distant). L'app compare les portails disponibles au **coût réel**, affiche le trajet en étapes (« ① Rejoindre 🌀 Puits nord — 450 m · ② Traverser · ③ Rejoindre la salle — 300 m · Total ≈ 750 m »), trace le chemin jusqu'au portail, puis **trace automatiquement la suite** quand tu traverses. Les évitements (zones, points, tags) de **chaque plan** sont respectés. Si c'est impossible (aucun portail, plan hors-ligne, destination isolée du réseau…), un message t'explique **précisément pourquoi** — y compris « pas de liaison directe, mais un chemin existe via tel plan ».
 
 **🔄 Fiches toujours à jour (depuis v1.60.0)** : si tu renommes ou déplaces un point lié, les fiches de liaisons (des deux côtés) se **mettent à jour automatiquement** à la prochaine ouverture du plan concerné.
 
 **↩️ Revenir en arrière (depuis v1.58.0)** : après un passage de portail (ou un saut de recherche multi-plans), un bouton flottant **« ↩️ Retour : <plan> »** apparaît en bas de l'écran pendant 15 secondes — un clic te ramène au plan **et à la vue exacte** d'où tu venais (niveau et zoom compris). Les sauts s'empilent : enchaîne 3 portails, tu peux faire 3 retours.
+
+**↩️ Bouton Retour discret (depuis v1.61.0)** : si le bouton te gêne, deux nouvelles commandes dessus — **[–]** le réduit en **mini-pastille ↩️** discrète en bas à droite (elle reste jusqu'à son expiration, un clic la ré-agrandit), **[✕]** le ferme. Ton choix est retenu : une fois réduit, les prochains retours arrivent directement en mini-pastille.
 
 **Bon à savoir** :
 - Un point peut porter **plusieurs liaisons** (point « hub »).
@@ -1226,6 +1230,18 @@ Le mode actif est affiché à côté du temps estimé dans le label bottomleft. 
 **Tolérance** : l'algorithme accepte que vos points de départ ou d'arrivée soient un peu **à côté** des routes — il les snappe automatiquement sur le réseau le plus proche. Si plusieurs roads se croisent visuellement mais sans partager exactement un même point (cas typique d'un tracé fait à la main), l'app gère aussi les **jonctions à 15 px près** pour tracer le chemin sans coupure.
 
 > 💡 **Astuce** : si vous voulez voir uniquement le tracé sans le label distance, fermez la modale puis ré-ouvrez-la en mode navigation pour utiliser les boutons de pilotage.
+
+#### 🔄 Itinéraire vivant — replanification au recalage + validation d'étapes *(depuis v1.61.0)*
+
+Pendant une sortie réelle, le tracker peut dériver et le téléphone passe du temps verrouillé dans la poche. L'itinéraire s'adapte tout seul à chaque **recalage de position** :
+
+- **Recale ta position** (clic carte en mode recalage, bouton **📍 Je suis ici** d'un point, ou arrivée par un portail) → l'itinéraire actif est **automatiquement recalculé depuis ta nouvelle position**. Ta position devient le nouveau point 0, les étapes restantes sont conservées **dans l'ordre que tu avais planifié**, tes préférences d'évitement sont respectées.
+- **Valide ton passage à une étape** : touche **📍 Je suis ici** sur un point qui fait partie de ton itinéraire → l'étape est **validée** (marker **✓ vert** sur la carte, ligne rayée dans la modale), exclue des prochains calculs, et l'itinéraire repart de là. **L'ordre est libre** : tu peux visiter l'étape 3 avant la 1, l'app valide ce que TU fais, pas ce qu'elle propose.
+- **Toutes les étapes validées** (y compris ta sortie) → petit message « 🎉 Itinéraire terminé » et le tracé s'efface. Ton tracé tracker, lui, reste affiché.
+- Le recalage **clic carte** ne valide jamais d'étape (il est approximatif par nature) : il replanifie seulement.
+- Les étapes validées **survivent au reload et au verrouillage du téléphone** (sauvegardées avec la session).
+
+> 💡 En pratique : planifie ta sortie (moi → curiosité X → curiosité Y → sortie), marche, et à chaque point atteint touche **📍 Je suis ici** sur son popup. L'app coche, recalcule, et t'indique toujours le chemin depuis là où tu es vraiment.
 
 #### 🚫 Préférences d'évitement
 

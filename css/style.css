@@ -770,6 +770,31 @@ html, body {
   color: #e8eaf0;
   background: rgba(255,255,255,0.08);
 }
+/* 🐛 v1.61.0 (KARMA « carré blanc sur plusieurs ✕ de modales ») :
+   .kta-readme-modal-close n'avait AUCUN style de base (seul :focus-visible
+   existait, pour l'accessibilité) → bouton NATIF gris/blanc avec bordure
+   outset sur toutes les modales qui l'utilisent (gestionnaire de liaisons,
+   recherche multi-plans, CGU, et les usages historiques secoursMode/utils).
+   Alignement sur .kta-panneau-close. */
+.kta-readme-modal-close {
+  background: none;
+  border: none;
+  color: #8892a4;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.kta-readme-modal-close:hover {
+  color: #e8eaf0;
+  background: rgba(255,255,255,0.08);
+}
+html.kta-theme-light .kta-readme-modal-close { color: #6a7488; }
+html.kta-theme-light .kta-readme-modal-close:hover {
+  color: #1a1f2e;
+  background: rgba(0,0,0,0.06);
+}
 
 .kta-panneau-corps {
   padding: 12px 14px 14px;
@@ -8405,28 +8430,78 @@ html.kta-theme-light .kta-ipl-search {
 /* =========================================================
    ↩️ v1.58.0 — Bouton flottant « Retour » après un saut inter-plan
    ========================================================= */
+/* v1.61.0 (U4) : le flottant devient un CONTENEUR (bouton principal + [–] + [✕])
+   ou une mini-pastille discrète (.kta-ipl-back-mini). */
 .kta-ipl-back-float {
   position: fixed;
   bottom: 84px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1300;                 /* au-dessus des contrôles Leaflet, sous les modales */
-  padding: 9px 16px;
+  display: flex;
+  align-items: stretch;
   background: rgba(26, 31, 46, 0.94);
   border: 1.5px solid rgba(244, 197, 66, 0.6);
   border-radius: 22px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 8px rgba(244, 197, 66, 0.25);
+  animation: kta-ipl-back-in 260ms ease-out;
+  max-width: 82vw;
+  overflow: hidden;
+}
+.kta-ipl-back-main {
+  background: none;
+  border: none;
+  padding: 9px 10px 9px 16px;
   color: #f4c542;
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 8px rgba(244, 197, 66, 0.25);
-  animation: kta-ipl-back-in 260ms ease-out;
   white-space: nowrap;
-  max-width: 82vw;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
-.kta-ipl-back-float:hover { background: rgba(38, 45, 66, 0.97); border-color: #f4c542; }
+.kta-ipl-back-main:hover { background: rgba(244, 197, 66, 0.10); }
+.kta-ipl-back-ctrl {
+  background: none;
+  border: none;
+  border-left: 1px solid rgba(244, 197, 66, 0.25);
+  padding: 0 11px;
+  color: #8892a4;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.kta-ipl-back-ctrl:hover { color: #f4c542; background: rgba(244, 197, 66, 0.10); }
+/* Mode mini : pastille ronde discrète */
+.kta-ipl-back-mini {
+  left: auto;
+  right: 14px;
+  transform: none;
+  border-radius: 50%;
+  opacity: 0.82;
+  animation: none;   /* le keyframe translateX(-50%) ferait sauter la pastille (ancrée à droite) */
+}
+.kta-ipl-back-mini:hover { opacity: 1; }
+.kta-ipl-back-minibtn {
+  background: none;
+  border: none;
+  width: 40px;
+  height: 40px;
+  color: #f4c542;
+  font-size: 17px;
+  cursor: pointer;
+  position: relative;
+}
+.kta-ipl-back-minibtn .kta-ipl-back-depth {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  font-size: 10px;
+  min-width: 14px;
+  margin-left: 0;
+}
 .kta-ipl-back-depth {
   display: inline-block;
   min-width: 17px;
@@ -9475,6 +9550,24 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   font-weight: 800;
   border: 2px solid #1a1f2e;
   box-shadow: 0 2px 8px rgba(0, 212, 255, 0.5);
+}
+
+/* 🆕 v1.61.0 — étape validée (« je suis ici » sur le point) : ✓ vert.
+   Le marker reste affiché = trace de progression pendant la sortie. */
+.kta-itinerary-waypoint.kta-iti-wp-done .kta-iti-num {
+  background: #4caf50;
+  color: #0a0d18;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.45);
+}
+.kta-iti-wp-row-done {
+  opacity: 0.55;
+}
+.kta-iti-wp-row-done .kta-iti-wp-coord {
+  text-decoration: line-through;
+}
+.kta-iti-wp-row-done .kta-iti-wp-num {
+  color: #4caf50;
+  font-weight: 800;
 }
 
 /* Floater itinéraire — mini-panneau pendant le mode clic carte */

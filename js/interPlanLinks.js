@@ -58,6 +58,9 @@
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
   }
   function _esc(s) {
+    // 🧹 v1.61.0 (B6) : délègue au helper canonique window.ktaEsc (utils.js) ;
+    // fallback inline si utils pas encore chargé (ordre defer sûr, ceinture).
+    if (typeof window.ktaEsc === "function") return window.ktaEsc(s);
     return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
       return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
     });
@@ -747,8 +750,12 @@
       // onPlanLoaded (fin de lancerApplication) ET par le fallback
       // post-await. Sans ça, le recentrage de session post-chargement
       // écrasait notre setView (« j'arrive sur ma position »).
+      // 🆕 v1.61.0 (KARMA) : opts.recalerTracker → à l'arrivée, le TRACKER
+      // est recalé sur le point cible (traversée PHYSIQUE d'un portail —
+      // l'user y est réellement). Jamais posé par la recherche « voir ».
       _pendingTarget = { x: target.x, y: target.y, level: target.level,
-                         tag: target.tag, zoom: target.zoom };
+                         tag: target.tag, zoom: target.zoom,
+                         recale: !!opts.recalerTracker };
       _pendingConsumed = false;
       try {
         if (plan.type === "server") {
@@ -807,7 +814,7 @@
       x: other.x, y: other.y, level: other.level, tag: other.tag,
       planName: other.planName,
       label: other.pointNom || other.pointId || (other.x + "," + other.y)
-    }, { confirm: true });
+    }, { confirm: true, recalerTracker: true });   // 🆕 v1.61.0 : traversée physique → tracker recalé
   }
 
   // ---------------------------------------------------------------
@@ -857,28 +864,77 @@
   // Bouton flottant « ↩️ Retour : <plan> » affiché après l'arrivée (2:a :
   // temporaire, 15 s ou clic). La pile reste en RAM après expiration — le
   // bouton réapparaîtra au prochain saut si des niveaux restent à dépiler.
-  function _afficherBoutonRetour() {
+  //
+  // 🆕 v1.61.0 (U4, KARMA « pouvoir réduire ou supprimer ce bouton ») :
+  //   - [✕] ferme le bouton SANS déclencher le retour (dismiss ponctuel —
+  //     la pile reste intacte, le bouton réapparaîtra au prochain saut) ;
+  //   - [–] RÉDUIT en mini-pastille ↩️ discrète (clic pastille = ré-expansion,
+  //     jamais de retour direct depuis la pastille — anti-mauvais-clic).
+  //     Le choix « réduit » est MÉMORISÉ (localStorage) : les prochains sauts
+  //     affichent directement la pastille ; ré-expandre re-mémorise « plein ».
+  //   - En mode réduit, PAS de timer 15 s : la pastille ne pollue pas, elle
+  //     peut rester jusqu'au prochain événement.
+  const BACKBTN_MODE_KEY = "myktamap_backbtn_mode";   // "full" (défaut) | "mini"
+
+  function _backBtnMode() {
+    try { return localStorage.getItem(BACKBTN_MODE_KEY) === "mini" ? "mini" : "full"; }
+    catch(e) { return "full"; }
+  }
+  function _setBackBtnMode(m) {
+    try { localStorage.setItem(BACKBTN_MODE_KEY, m); } catch(e) {}
+  }
+
+  function _faireRetour() {
+    _retirerBoutonRetour();
+    const o = _navStack.pop();
+    if (o) {
+      goTo(o.planId, { x: o.x, y: o.y, level: o.level, zoom: o.zoom, planName: o.planName },
+           { confirm: false, noStack: true });
+    }
+  }
+
+  function _afficherBoutonRetour(forceMode) {
     _retirerBoutonRetour();
     if (_navStack.length === 0) return;
     const top = _navStack[_navStack.length - 1];
-    const btn = document.createElement("button");
-    btn.id = "kta-ipl-back-float";
-    btn.type = "button";
-    btn.className = "kta-ipl-back-float";
-    btn.innerHTML =
-      '↩️ ' + _esc(_t("ipl.back.btn", { plan: top.planName || top.planId })) +
-      (_navStack.length > 1
-        ? ' <span class="kta-ipl-back-depth">' + _navStack.length + '</span>' : '');
-    btn.title = _t("ipl.back.title");
-    btn.addEventListener("click", function() {
-      _retirerBoutonRetour();
-      const o = _navStack.pop();
-      if (o) {
-        goTo(o.planId, { x: o.x, y: o.y, level: o.level, zoom: o.zoom, planName: o.planName },
-             { confirm: false, noStack: true });
-      }
+    const mode = forceMode || _backBtnMode();
+
+    const wrap = document.createElement("div");
+    wrap.id = "kta-ipl-back-float";
+    wrap.className = "kta-ipl-back-float" + (mode === "mini" ? " kta-ipl-back-mini" : "");
+
+    if (mode === "mini") {
+      // Pastille discrète : clic = ré-expansion (jamais de retour direct).
+      wrap.innerHTML = '<button type="button" class="kta-ipl-back-minibtn" title="' +
+        _esc(_t("ipl.back.expandTitle")) + '">↩️' +
+        (_navStack.length > 1 ? '<span class="kta-ipl-back-depth">' + _navStack.length + '</span>' : '') +
+        '</button>';
+      wrap.querySelector(".kta-ipl-back-minibtn").addEventListener("click", function() {
+        _setBackBtnMode("full");
+        _afficherBoutonRetour("full");
+      });
+      document.documentElement.appendChild(wrap);
+      // Pas de timer en mode mini (la pastille ne pollue pas).
+      return;
+    }
+
+    wrap.innerHTML =
+      '<button type="button" class="kta-ipl-back-main" title="' + _esc(_t("ipl.back.title")) + '">' +
+        '↩️ ' + _esc(_t("ipl.back.btn", { plan: top.planName || top.planId })) +
+        (_navStack.length > 1 ? ' <span class="kta-ipl-back-depth">' + _navStack.length + '</span>' : '') +
+      '</button>' +
+      '<button type="button" class="kta-ipl-back-ctrl" data-act="mini" title="' + _esc(_t("ipl.back.miniTitle")) + '">–</button>' +
+      '<button type="button" class="kta-ipl-back-ctrl" data-act="close" title="' + _esc(_t("ipl.back.closeTitle")) + '">✕</button>';
+
+    wrap.querySelector(".kta-ipl-back-main").addEventListener("click", _faireRetour);
+    wrap.querySelector('[data-act="mini"]').addEventListener("click", function() {
+      _setBackBtnMode("mini");
+      _afficherBoutonRetour("mini");
     });
-    document.documentElement.appendChild(btn);
+    wrap.querySelector('[data-act="close"]').addEventListener("click", function() {
+      _retirerBoutonRetour();   // dismiss ponctuel — pile intacte
+    });
+    document.documentElement.appendChild(wrap);
     _backBtnTimer = setTimeout(_retirerBoutonRetour, 15000);
   }
 
@@ -942,6 +998,35 @@
     // recherche cross-plan) — après un retour, s'il reste des niveaux dans la
     // pile, le bouton réapparaît pour continuer à dépiler.
     setTimeout(_afficherBoutonRetour, 900);
+
+    // 🆕 v1.61.0 (KARMA « recalage de position sur le point d'arrivée ») :
+    // traversée PHYSIQUE d'un portail → recale le tracker sur le point
+    // d'arrivée du plan cible, IMMÉDIATEMENT (le restore de session tracker
+    // est synchrone dans lancerApplication → déjà passé quand on consomme ;
+    // vérifié au bench t+3s). Re-assertion à +2.8 s UNIQUEMENT si quelque
+    // chose a bougé la position entre-temps (ceinture — évite double
+    // vibration/ancre timeline dans le cas nominal).
+    if (t.recale) {
+      const _recaler = function() {
+        if (typeof window.recalerTrackerSurPoint !== "function") return;
+        try {
+          window.recalerTrackerSurPoint(t.x, t.y,
+            Number.isInteger(t.level) ? t.level : undefined);
+          console.log("[InterPlanLinks] Tracker recalé sur le point d'arrivée du portail (" +
+                      Math.round(t.x) + "," + Math.round(t.y) + ")");
+        } catch(e) { console.warn("[InterPlanLinks] recalage tracker échoué :", e); }
+      };
+      _recaler();
+      setTimeout(function() {
+        try {
+          const p = window.getTrackingPosition ? window.getTrackingPosition() : null;
+          if (p && (Math.round(p.x) !== Math.round(t.x) || Math.round(p.y) !== Math.round(t.y))) {
+            console.log("[InterPlanLinks] Position tracker écrasée après recalage → re-assertion");
+            _recaler();
+          }
+        } catch(e) {}
+      }, 2800);
+    }
   }
 
   // Pan (+ flash optionnel) sur la cible t = {x, y, zoom?}. Retry léger si la

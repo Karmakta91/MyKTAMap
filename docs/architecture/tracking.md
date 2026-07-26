@@ -652,3 +652,15 @@ Helpers module-scope (avant `initInterface`) + 2 sous-actions dans le flyout �
 Aucune nouvelle surface réseau ni permission. Tout local (état runtime + `app_user_prefs`). Aucun nouveau fichier JS.
 
 ---
+
+---
+
+## 🔄 Hook de recalage + recalage à l'arrivée d'un portail (v1.61.0)
+
+**`_notifierRecalage(x, y, source)`** (`tracking.js`) : émis à CHAQUE recalage de position — clic carte mode recalage (`"click"`, handler `map.on("click")` d'`initTracking`) et `recalerTrackerSurPoint` (`"point"` — bouton « 📍 Je suis ici », arrivée de portail). Consommateur : `window._onTrackerRecale` (assigné par `interfaceItineraire.js` — replanification d'itinéraire + validation d'étapes, cf. `multilevel-pathfinding.md` §Itinéraire vivant). Émission best-effort (try/catch, no-op si non défini).
+
+**Recalage portail** (`interPlanLinks.js > _consumePendingTarget`) : `goTo(planId, target, { recalerTracker: true })` — posé UNIQUEMENT par les traversées physiques (`naviguerVers` d'une liaison, « Prendre le portail » d'`interPlanRoute.js`), jamais par la recherche multi-plans / gestionnaire / retour (consultation ≠ déplacement). À la consommation de la cible : `recalerTrackerSurPoint(t.x, t.y, t.level)` **immédiat** — le restore de session tracker (`SessionPersist.onPlanLoaded` → `setTrackingTimeline` → `_rebuildTrailFromTimeline`) est **synchrone** dans `lancerApplication`, donc déjà passé (mesuré au bench : position recalée à t+415 ms, stable ≥ 10 s). Re-assertion +2.8 s seulement si `getTrackingPosition()` ≠ cible (ceinture — évite double vibration/ancre timeline dans le cas nominal).
+
+**À NE PAS faire** :
+- ❌ Différer le recalage portail « par prudence » (l'ancienne version +2.8 s laissait l'user croire que rien ne s'était passé — c'est un bug signalé KARMA).
+- ❌ Poser `recalerTracker` sur un `goTo` de consultation (recherche, gestionnaire) — le tracker doit refléter le corps, pas la vue.

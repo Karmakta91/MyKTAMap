@@ -1280,6 +1280,15 @@ function _aideHtmlFr() {
             <strong>🔁 Tour complet</strong>, et 🎯 par waypoint pour centrer la carte dessus.
           </p>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">🔄 Itinéraire vivant (v1.61.0) :</strong> à chaque <strong>recalage de position</strong>
+            (clic carte, « 📍 Je suis ici », arrivée par un portail), l'itinéraire actif est <strong>recalculé depuis ta
+            nouvelle position</strong> (étapes restantes conservées dans l'ordre planifié, évitements respectés).
+            « 📍 Je suis ici » sur un point qui est une <strong>étape de l'itinéraire</strong> = <strong>validation de
+            passage</strong> (marker ✓ vert, ligne rayée dans la modale, étape exclue des prochains calculs) — dans
+            <strong>n'importe quel ordre</strong>. Toutes les étapes validées → « 🎉 Itinéraire terminé », le tracé
+            s'efface (le tracé tracker reste). Les validations survivent au reload (sauvegardées avec la session).
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             <strong style="color:#ffb266;">🚫 Contraintes d'évitement :</strong>
             <strong style="color:#a8b3c8;">⛔ Zone Inaccessible</strong> (groupe Zones) = contrainte <em>dure</em>, l'itinéraire ne passera jamais à travers, jamais relâchée.
             <strong style="color:#a8b3c8;">🚫 Préférences d'évitement</strong> (section repliable dans la modale itinéraire) = contrainte <em>souple</em> : points à éviter (recherche / ID / clic carte) + tags à éviter + marge (px, défaut 100). Si pas de chemin alternatif, l'app calcule quand même en passant à proximité et affiche un message orange <em>⚠️ Impossible d'éviter : X, Y</em>. Préférences mémorisées localement par plan.
@@ -1461,11 +1470,16 @@ function _aideHtmlFr() {
             d'arrivée</strong> et te dépose dessus (flash bleu). Marquage visuel au choix : donne le
             <strong>tag « Portail »</strong> au point pour son <strong>icône vortex dédiée</strong>, ou garde
             n'importe quel tag (aucun marquage).
+            <strong>📍 Recalage à l'arrivée</strong> (v1.61.0) : traverser physiquement un portail (➜ d'une liaison,
+            « Prendre le portail » d'un itinéraire) <strong>recale ta position tracker sur le point d'arrivée</strong> —
+            la recherche multi-plans et le gestionnaire, eux, ne recalent pas (consulter ≠ se déplacer).
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>↩️ Retour</strong> (v1.58.0) : après un saut, un bouton flottant « Retour : &lt;plan&gt; »
             (15 s, bas de l'écran) te ramène au plan et à la <strong>vue exacte</strong> d'où tu venais (niveau + zoom).
             Les sauts s'empilent — 3 portails enchaînés = 3 retours possibles.
+            <strong>Discret au besoin</strong> (v1.61.0) : <strong>[–]</strong> le réduit en mini-pastille ↩️
+            (clic = ré-agrandir), <strong>[✕]</strong> le ferme — le choix est retenu pour les prochains sauts.
             <strong>🌐 Recherche multi-plans</strong> (v1.58.0) : cherche un point dans <strong>toute ta
             bibliothèque</strong> depuis l'accueil (bouton 🌐) ou via la recherche Ctrl+K (bouton
             « Chercher dans tous les plans ») — un clic charge le bon plan et te centre dessus.
@@ -1994,6 +2008,15 @@ function _aideHtmlEn() {
             <strong>🔁 Full loop</strong> buttons, and 🎯 per waypoint to center the map on it.
           </p>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">🔄 Living route (v1.61.0):</strong> every <strong>position
+            recalibration</strong> (map click, "📍 I am here", portal arrival) <strong>recalculates the active
+            route from your new position</strong> (remaining stops kept in planned order, avoidances respected).
+            "📍 I am here" on a point that is a <strong>route stop</strong> = <strong>passage validation</strong>
+            (green ✓ marker, struck-through line in the modal, stop excluded from future calculations) — in
+            <strong>any order</strong>. All stops validated → "🎉 Route complete", the path clears (the tracker
+            trail stays). Validations survive reloads (saved with the session).
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             <strong style="color:#ffb266;">🚫 Avoidance constraints:</strong>
             <strong style="color:#a8b3c8;">⛔ Inaccessible Zone</strong> (Zones group) = a <em>hard</em> constraint, the route will never pass through it, never relaxed.
             <strong style="color:#a8b3c8;">🚫 Avoidance preferences</strong> (collapsible section in the route modal) = a <em>soft</em> constraint: points to avoid (search / ID / map click) + tags to avoid + margin (px, default 100). If there is no alternative path, the app computes it anyway by passing nearby and shows an orange message <em>⚠️ Unable to avoid: X, Y</em>. Preferences remembered locally per map.
@@ -2175,11 +2198,16 @@ function _aideHtmlEn() {
             level</strong> and drops you on it (blue flash). Visual marking is your choice: give the point
             the <strong>"Portal" tag</strong> for its <strong>dedicated vortex icon</strong>, or keep any
             tag (no marking).
+            <strong>📍 Recalibration on arrival</strong> (v1.61.0): physically crossing a portal (a link's ➜,
+            a route's "Take the portal") <strong>recalibrates your tracker position onto the arrival
+            point</strong> — multi-plan search and the manager do not (viewing ≠ moving).
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>↩️ Back</strong> (v1.58.0): after a jump, a floating "Back: &lt;plan&gt;" button
             (15 s, bottom of screen) brings you back to the plan and the <strong>exact view</strong> you came
             from (level + zoom). Jumps stack — 3 chained portals = 3 possible returns.
+            <strong>Discreet when needed</strong> (v1.61.0): <strong>[–]</strong> shrinks it to a ↩️ mini-chip
+            (click = re-expand), <strong>[✕]</strong> closes it — your choice is remembered for future jumps.
             <strong>🌐 Multi-plan search</strong> (v1.58.0): search a point across <strong>your whole
             library</strong> from the home screen (🌐 button) or via the Ctrl+K search ("Search across
             all plans" button) — one click loads the right plan and centers on it.
