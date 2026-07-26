@@ -81,6 +81,10 @@
   const MAX_PHOTOS_PER_POINT  = 5;
   const COMPRESS_MAX_DIMENSION = 1920;  // px côté long après compression
   const COMPRESS_JPEG_QUALITY  = 0.85;  // qualité JPEG (0-1)
+  // 🔒 v1.63.0 (A8) : qualité haute pour les photos DÉJÀ petites — elles ne
+  // sont plus retournées telles quelles (leur EXIF, dont le GPS, survivait)
+  // mais re-encodées sans resize. 0.92 = dégradation imperceptible.
+  const COMPRESS_JPEG_QUALITY_SMALL = 0.92;
 
   // Singleton connection IDB (= 1 seule fois ouverte par session)
   let _db = null;
@@ -238,12 +242,14 @@
         const H = img.naturalHeight;
         URL.revokeObjectURL(url);
 
-        // Si déjà petit → on retourne le blob original (no-op compression).
-        // Évite une dégradation JPEG inutile pour des photos déjà optimisées.
-        if (W <= maxDim && H <= maxDim && srcBlob.size < 500 * 1024) {
-          resolve(srcBlob);
-          return;
-        }
+        // 🔒 v1.63.0 (A8) : le bypass « déjà petite → blob original » est
+        // SUPPRIMÉ — le blob original peut porter des métadonnées EXIF
+        // (dont les coordonnées GPS de la prise de vue !). Toute photo est
+        // re-encodée via canvas = strip EXIF garanti (drawImage applique
+        // l'orientation EXIF, l'image reste droite). Petite photo → pas de
+        // resize, qualité haute (0.92) pour une dégradation imperceptible.
+        const petite = (W <= maxDim && H <= maxDim && srcBlob.size < 500 * 1024);
+        const q = petite ? Math.max(quality, COMPRESS_JPEG_QUALITY_SMALL) : quality;
 
         // Calcul du ratio de redimensionnement
         const ratio = Math.min(maxDim / W, maxDim / H, 1);
@@ -267,7 +273,7 @@
             return;
           }
           resolve(blob);
-        }, mime, quality);
+        }, mime, q);
       };
 
       img.onerror = function() {

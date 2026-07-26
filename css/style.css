@@ -770,6 +770,31 @@ html, body {
   color: #e8eaf0;
   background: rgba(255,255,255,0.08);
 }
+/* 🐛 v1.61.0 (KARMA « carré blanc sur plusieurs ✕ de modales ») :
+   .kta-readme-modal-close n'avait AUCUN style de base (seul :focus-visible
+   existait, pour l'accessibilité) → bouton NATIF gris/blanc avec bordure
+   outset sur toutes les modales qui l'utilisent (gestionnaire de liaisons,
+   recherche multi-plans, CGU, et les usages historiques secoursMode/utils).
+   Alignement sur .kta-panneau-close. */
+.kta-readme-modal-close {
+  background: none;
+  border: none;
+  color: #8892a4;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.kta-readme-modal-close:hover {
+  color: #e8eaf0;
+  background: rgba(255,255,255,0.08);
+}
+html.kta-theme-light .kta-readme-modal-close { color: #6a7488; }
+html.kta-theme-light .kta-readme-modal-close:hover {
+  color: #1a1f2e;
+  background: rgba(0,0,0,0.06);
+}
 
 .kta-panneau-corps {
   padding: 12px 14px 14px;
@@ -8405,28 +8430,78 @@ html.kta-theme-light .kta-ipl-search {
 /* =========================================================
    ↩️ v1.58.0 — Bouton flottant « Retour » après un saut inter-plan
    ========================================================= */
+/* v1.61.0 (U4) : le flottant devient un CONTENEUR (bouton principal + [–] + [✕])
+   ou une mini-pastille discrète (.kta-ipl-back-mini). */
 .kta-ipl-back-float {
   position: fixed;
   bottom: 84px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1300;                 /* au-dessus des contrôles Leaflet, sous les modales */
-  padding: 9px 16px;
+  display: flex;
+  align-items: stretch;
   background: rgba(26, 31, 46, 0.94);
   border: 1.5px solid rgba(244, 197, 66, 0.6);
   border-radius: 22px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 8px rgba(244, 197, 66, 0.25);
+  animation: kta-ipl-back-in 260ms ease-out;
+  max-width: 82vw;
+  overflow: hidden;
+}
+.kta-ipl-back-main {
+  background: none;
+  border: none;
+  padding: 9px 10px 9px 16px;
   color: #f4c542;
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 8px rgba(244, 197, 66, 0.25);
-  animation: kta-ipl-back-in 260ms ease-out;
   white-space: nowrap;
-  max-width: 82vw;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
-.kta-ipl-back-float:hover { background: rgba(38, 45, 66, 0.97); border-color: #f4c542; }
+.kta-ipl-back-main:hover { background: rgba(244, 197, 66, 0.10); }
+.kta-ipl-back-ctrl {
+  background: none;
+  border: none;
+  border-left: 1px solid rgba(244, 197, 66, 0.25);
+  padding: 0 11px;
+  color: #8892a4;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.kta-ipl-back-ctrl:hover { color: #f4c542; background: rgba(244, 197, 66, 0.10); }
+/* Mode mini : pastille ronde discrète */
+.kta-ipl-back-mini {
+  left: auto;
+  right: 14px;
+  transform: none;
+  border-radius: 50%;
+  opacity: 0.82;
+  animation: none;   /* le keyframe translateX(-50%) ferait sauter la pastille (ancrée à droite) */
+}
+.kta-ipl-back-mini:hover { opacity: 1; }
+.kta-ipl-back-minibtn {
+  background: none;
+  border: none;
+  width: 40px;
+  height: 40px;
+  color: #f4c542;
+  font-size: 17px;
+  cursor: pointer;
+  position: relative;
+}
+.kta-ipl-back-minibtn .kta-ipl-back-depth {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  font-size: 10px;
+  min-width: 14px;
+  margin-left: 0;
+}
 .kta-ipl-back-depth {
   display: inline-block;
   min-width: 17px;
@@ -8516,6 +8591,169 @@ html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); 
   border-top: 1px dashed rgba(255, 255, 255, 0.12);
   margin-top: 6px;
 }
+
+/* 🕸️ v1.65.0 (A7) — Vue « réseau de plans » (gestionnaire Mes liaisons) */
+.kta-ipl-mgr-toggle {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.kta-ipl-mgr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(140, 180, 255, 0.12);
+  border: 1px solid rgba(140, 180, 255, 0.4);
+  color: #8cb4ff;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.kta-ipl-mgr-chip button {
+  background: none;
+  border: none;
+  color: #8cb4ff;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 2px;
+}
+.kta-ipl-mgr-chip button:hover { color: #e8eaf0; }
+.kta-pnet-wrap {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(10, 13, 24, 0.55);
+}
+.kta-pnet-svg { display: block; touch-action: none; }
+.kta-pnet-edge {
+  stroke: #8cb4ff;
+  stroke-opacity: 0.5;
+  stroke-linecap: round;
+}
+.kta-pnet-edge-hit {
+  stroke: transparent;
+  cursor: pointer;
+}
+.kta-pnet-edge-hit:hover + * , .kta-pnet-edge-hit:hover { stroke: rgba(140,180,255,0.12); }
+.kta-pnet-edge-count {
+  fill: #8cb4ff;
+  font: 600 11px 'Segoe UI', Arial, sans-serif;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.kta-pnet-node { cursor: pointer; }
+.kta-pnet-disc {
+  fill: #222b40;
+  stroke: #45557a;
+  stroke-width: 1.5;
+}
+.kta-pnet-node:hover .kta-pnet-disc { stroke: #8cb4ff; }
+.kta-pnet-node-absent { opacity: 0.5; cursor: default; }
+.kta-pnet-ring {
+  fill: none;
+  stroke: #f4c542;
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+.kta-pnet-ico {
+  font-size: 16px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+.kta-pnet-count-disc { fill: #f4c542; }
+.kta-pnet-count {
+  fill: #1a1f2e;
+  font: 700 10px 'Segoe UI', Arial, sans-serif;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+.kta-pnet-name {
+  fill: #e8eaf0;
+  font: 600 12px 'Segoe UI', Arial, sans-serif;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.kta-pnet-badges {
+  fill: #8892a4;
+  font: 500 10px 'Segoe UI', Arial, sans-serif;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.kta-pnet-sep { stroke: rgba(255, 255, 255, 0.12); stroke-dasharray: 5 4; }
+.kta-pnet-sep-titre {
+  fill: #8892a4;
+  font: 600 11px 'Segoe UI', Arial, sans-serif;
+}
+html.kta-theme-light .kta-pnet-wrap { background: rgba(240, 232, 216, 0.5); border-color: rgba(0,0,0,0.1); }
+html.kta-theme-light .kta-pnet-disc { fill: #f5f1e6; stroke: #a99c78; }
+html.kta-theme-light .kta-pnet-name { fill: #1a1f2e; }
+html.kta-theme-light .kta-pnet-badges, html.kta-theme-light .kta-pnet-sep-titre { fill: #6a7488; }
+html.kta-theme-light .kta-pnet-edge { stroke: #2d5aa8; }
+html.kta-theme-light .kta-pnet-edge-count { fill: #2d5aa8; }
+
+/* 🌀 v1.64.0 — Multi-hop : case à cocher (recherche multi-plans) */
+.kta-xps-multihop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+  font-size: 12.5px;
+  color: #c8d0e0;
+  cursor: pointer;
+  user-select: none;
+}
+.kta-xps-multihop input { accent-color: #8cb4ff; }
+html.kta-theme-light .kta-xps-multihop { color: #3a4358; }
+
+/* 🌀 v1.64.0 — Invite flottante « Portail suivant » (au-dessus du bouton ↩️
+   Retour bottom:20px — même famille visuelle, accent bleu interaction) */
+.kta-ipr-next-float {
+  position: fixed;
+  left: 50%;
+  bottom: 74px;
+  transform: translateX(-50%);
+  z-index: 1090;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(26, 31, 46, 0.95);
+  border: 1px solid rgba(140, 180, 255, 0.55);
+  border-radius: 10px;
+  padding: 6px 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 14px rgba(140, 180, 255, 0.15);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.kta-ipr-next-main {
+  background: none;
+  border: none;
+  color: #8cb4ff;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.kta-ipr-next-main:hover { background: rgba(140, 180, 255, 0.12); }
+.kta-ipr-next-close {
+  background: none;
+  border: none;
+  color: #8892a4;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.kta-ipr-next-close:hover { color: #e8eaf0; background: rgba(255,255,255,0.08); }
+html.kta-theme-light .kta-ipr-next-float {
+  background: rgba(250, 248, 242, 0.96);
+  border-color: rgba(60, 90, 160, 0.45);
+}
+html.kta-theme-light .kta-ipr-next-main { color: #2d5aa8; }
+html.kta-theme-light .kta-ipr-next-close { color: #6a7488; }
 .kta-xps-rowwrap {
   display: flex;
   align-items: stretch;
@@ -9475,6 +9713,24 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   font-weight: 800;
   border: 2px solid #1a1f2e;
   box-shadow: 0 2px 8px rgba(0, 212, 255, 0.5);
+}
+
+/* 🆕 v1.61.0 — étape validée (« je suis ici » sur le point) : ✓ vert.
+   Le marker reste affiché = trace de progression pendant la sortie. */
+.kta-itinerary-waypoint.kta-iti-wp-done .kta-iti-num {
+  background: #4caf50;
+  color: #0a0d18;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.45);
+}
+.kta-iti-wp-row-done {
+  opacity: 0.55;
+}
+.kta-iti-wp-row-done .kta-iti-wp-coord {
+  text-decoration: line-through;
+}
+.kta-iti-wp-row-done .kta-iti-wp-num {
+  color: #4caf50;
+  font-weight: 800;
 }
 
 /* Floater itinéraire — mini-panneau pendant le mode clic carte */

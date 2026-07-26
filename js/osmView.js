@@ -2085,9 +2085,11 @@
     // Phase 1 : identifier les tuiles visibles à ajouter (pas déjà dans _tilesByPath)
     const aAjouter = [];
     const aExtraire = [];
+    // 🫥 v1.62.0 : extension d'après le manifest (webp/png = alpha, jpg = legacy)
+    const _tileExt = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(tiling) : "jpg";
     for (let col = 0; col < cols; col++) {
       for (let k = 1; k <= rows; k++) {
-        const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + ".jpg";
+        const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + _tileExt;
         if (_tilesByPath[path]) continue; // déjà rendue
 
         const pxLeft   = col * tileSize * scale;

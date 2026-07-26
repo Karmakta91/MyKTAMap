@@ -58,6 +58,9 @@
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
   }
   function _esc(s) {
+    // 🧹 v1.61.0 (B6) : délègue au helper canonique window.ktaEsc (utils.js) ;
+    // fallback inline si utils pas encore chargé (ordre defer sûr, ceinture).
+    if (typeof window.ktaEsc === "function") return window.ktaEsc(s);
     return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
       return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
     });
@@ -113,6 +116,13 @@
     return _load().links.filter(function(l) {
       return (l.a && l.a.planId === planId) || (l.b && l.b.planId === planId);
     });
+  }
+
+  // 🌀 v1.64.0 (multi-hop) : registre complet en lecture — le méta-graphe des
+  // plans d'interPlanRoute en a besoin pour construire l'adjacence sans
+  // crawler plan par plan. Copie défensive.
+  function getAllLinks() {
+    return _load().links.slice();
   }
 
   function createLink(refA, refB) {
@@ -305,8 +315,15 @@
           '<button class="kta-readme-modal-close" id="kta-ipl-mgr-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
+          // 🕸️ v1.65.0 (A7, reco 1:a) : toggle Liste ⇄ Graphe
+          '<div class="kta-ipl-mgr-toggle">' +
+            '<button class="kta-btn kta-btn-primary" id="kta-ipl-mgr-vlist" type="button">📋 ' + _esc(_t("ipl.mgr.viewList")) + '</button>' +
+            '<button class="kta-btn kta-btn-ghost" id="kta-ipl-mgr-vgraph" type="button">🕸️ ' + _esc(_t("ipl.mgr.viewGraph")) + '</button>' +
+          '</div>' +
           '<p class="kta-ipl-hint" id="kta-ipl-mgr-count"></p>' +
+          '<div id="kta-ipl-mgr-filter"></div>' +
           '<div class="kta-ipl-results" id="kta-ipl-mgr-list"></div>' +
+          '<div class="kta-pnet-wrap" id="kta-ipl-mgr-graph" style="display:none;"></div>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
@@ -322,10 +339,39 @@
              '</span>';
     }
 
+    // 🕸️ v1.65.0 (A7, reco 3:a) : filtre de FRONTIÈRE — clic sur une arête du
+    // graphe → la liste ne montre que les liaisons entre ces 2 plans (chip ✕).
+    let _filterPair = null;   // { a: planId, b: planId } ou null
+
+    function _renderFilterChip() {
+      const el = document.getElementById("kta-ipl-mgr-filter");
+      if (!el) return;
+      if (!_filterPair) { el.innerHTML = ""; return; }
+      const nomPlan = function(pid) {
+        const p = window.PlanRegistry && window.PlanRegistry.findById(pid);
+        return (p && p.name) || pid;
+      };
+      el.innerHTML =
+        '<span class="kta-ipl-mgr-chip">' +
+          _esc(_t("ipl.mgr.filterPair", { a: nomPlan(_filterPair.a), b: nomPlan(_filterPair.b) })) +
+          ' <button type="button" id="kta-ipl-mgr-chip-x" title="' + _esc(_t("ipl.mgr.filterClear")) + '">✕</button>' +
+        '</span>';
+      const x = document.getElementById("kta-ipl-mgr-chip-x");
+      if (x) x.addEventListener("click", function() { _filterPair = null; _render(); });
+    }
+
     function _render() {
-      const links = _load().links.slice().sort(function(a, b) {
+      let links = _load().links.slice().sort(function(a, b) {
         return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
       });
+      if (_filterPair) {
+        links = links.filter(function(l) {
+          if (!l.a || !l.b) return false;
+          return (l.a.planId === _filterPair.a && l.b.planId === _filterPair.b)
+              || (l.a.planId === _filterPair.b && l.b.planId === _filterPair.a);
+        });
+      }
+      _renderFilterChip();
       const countEl = document.getElementById("kta-ipl-mgr-count");
       const listEl  = document.getElementById("kta-ipl-mgr-list");
       if (!countEl || !listEl) return;
@@ -372,6 +418,43 @@
       });
     }
 
+    // 🕸️ v1.65.0 (A7) : bascule Liste ⇄ Graphe. Le graphe est re-rendu à
+    // chaque bascule (données fraîches + layout adapté à la taille réelle).
+    const vList  = document.getElementById("kta-ipl-mgr-vlist");
+    const vGraph = document.getElementById("kta-ipl-mgr-vgraph");
+    const listEl  = document.getElementById("kta-ipl-mgr-list");
+    const graphEl = document.getElementById("kta-ipl-mgr-graph");
+    function _basculer(graphe) {
+      listEl.style.display  = graphe ? "none" : "";
+      graphEl.style.display = graphe ? "" : "none";
+      document.getElementById("kta-ipl-mgr-filter").style.display = graphe ? "none" : "";
+      vList.className  = "kta-btn " + (graphe ? "kta-btn-ghost" : "kta-btn-primary");
+      vGraph.className = "kta-btn " + (graphe ? "kta-btn-primary" : "kta-btn-ghost");
+      if (graphe && window.PlanNetwork) {
+        window.PlanNetwork.render(graphEl, {
+          // reco 2:a — clic nœud = ouvrir le plan (ancré sur son premier
+          // portail si dispo, sinon simple switch sans pan)
+          onOpenPlan: function(planId, anchorSide) {
+            overlay.remove();
+            const cible = anchorSide ? {
+              x: anchorSide.x, y: anchorSide.y, level: anchorSide.level,
+              tag: anchorSide.tag, planName: anchorSide.planName,
+              label: anchorSide.pointNom || anchorSide.pointId || ""
+            } : null;
+            goTo(planId, cible, { confirm: !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan) });
+          },
+          // reco 3:a — clic arête = détail de la frontière (liste filtrée)
+          onEdgeClick: function(a, b) {
+            _filterPair = { a: a, b: b };
+            _basculer(false);
+            _render();
+          }
+        });
+      }
+    }
+    vList.addEventListener("click", function() { _basculer(false); });
+    vGraph.addEventListener("click", function() { _basculer(true); });
+
     _render();
   }
 
@@ -387,6 +470,27 @@
   // (serveur injoignable/404, ZIP absent d'IndexedDB) alors que la session
   // reste lisible. Les appelants (picker liaison, recherche cross-plan)
   // affichent alors un avertissement au lieu d'un « 0 points » muet.
+  // 🐛 v1.64.0 — Résolution d'URL de datalayer à DOUBLE essai. Les
+  // plan-config mélangent 2 conventions pour `dataLayers[].file` : chemin
+  // RELATIF au dossier du plan (« chemin.json ») et chemin COMPLET depuis la
+  // racine web (« data/test2/chemin.json » — cas des plans serveur
+  // historiques). L'ancien code ne tentait que `path + "/" + file` → URL
+  // doublée (« data/test2/data/test2/chemin.json ») → 404 silencieux → la
+  // recherche multi-plans perdait les points datalayer ET le leg distant de
+  // l'itinéraire inter-plan voyait « 0 tracés » sur ces plans serveur.
+  // (Les plans ZIP locaux avaient déjà leur fallback `|| zip.file(file)`.)
+  async function _fetchLayerJson(basePath, file) {
+    const essais = [basePath + "/" + file];
+    if (String(file).indexOf("/") >= 0) essais.push(file);
+    for (let i = 0; i < essais.length; i++) {
+      try {
+        const resp = await fetch(essais[i], { cache: "no-cache" });
+        if (resp.ok) return await resp.json();
+      } catch(e) { /* essai suivant */ }
+    }
+    throw new Error("datalayer introuvable : " + file);
+  }
+
   async function _collecterPointsDuPlan(plan, stats) {
     const pts = [];
     // 1) Points de session (toujours lisibles, tous types de plans)
@@ -410,7 +514,7 @@
         const layers = (cfg && cfg.dataLayers) || [];
         for (let i = 0; i < layers.length; i++) {
           try {
-            const dj = await (await fetch(plan.path + "/" + layers[i].file, { cache: "no-cache" })).json();
+            const dj = await _fetchLayerJson(plan.path, layers[i].file);   // 🐛 v1.64.0 : double essai
             (dj.data || []).forEach(function(p) {
               if (p && typeof p.x === "number" && typeof p.y === "number") {
                 pts.push({ id: p.id || "", nom: p.nom || "", x: p.x, y: p.y,
@@ -507,7 +611,7 @@
         const layers = (cfg && cfg.dataLayers) || [];
         for (let i = 0; i < layers.length; i++) {
           try {
-            const dj = await (await fetch(plan.path + "/" + layers[i].file, { cache: "no-cache" })).json();
+            const dj = await _fetchLayerJson(plan.path, layers[i].file);   // 🐛 v1.64.0 : double essai
             _absorber(dj.roads, dj.zones);
           } catch(e) { /* layer illisible → skip */ }
         }
@@ -728,6 +832,7 @@
     // immédiat (samePlan : une seule passe, rien ne recentre derrière).
     const planCharge = !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan);
     if (planCharge && planId === _currentPlanId()) {
+      if (!target) return;   // 🕸️ v1.65.0 : « ouvrir le plan » sans cible → déjà dessus
       if (window.map) try { window.map.closePopup(); } catch(e) {}
       _pendingTarget = { x: target.x, y: target.y, level: target.level,
                          tag: target.tag, zoom: target.zoom, samePlan: true };
@@ -747,8 +852,17 @@
       // onPlanLoaded (fin de lancerApplication) ET par le fallback
       // post-await. Sans ça, le recentrage de session post-chargement
       // écrasait notre setView (« j'arrive sur ma position »).
-      _pendingTarget = { x: target.x, y: target.y, level: target.level,
-                         tag: target.tag, zoom: target.zoom };
+      // 🆕 v1.61.0 (KARMA) : opts.recalerTracker → à l'arrivée, le TRACKER
+      // est recalé sur le point cible (traversée PHYSIQUE d'un portail —
+      // l'user y est réellement). Jamais posé par la recherche « voir ».
+      // 🕸️ v1.65.0 (A7) : target peut être NULL (« ouvrir le plan » depuis le
+      // graphe, plan sans liaison → pas de point d'ancrage) → simple switch,
+      // pas de cible pendante ni de pan.
+      _pendingTarget = target
+        ? { x: target.x, y: target.y, level: target.level,
+            tag: target.tag, zoom: target.zoom,
+            recale: !!opts.recalerTracker }
+        : null;
       _pendingConsumed = false;
       try {
         if (plan.type === "server") {
@@ -779,7 +893,8 @@
         '<div class="kta-modal-icon" style="color:#8cb4ff;">🌀</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipl.nav.titre")) + '</div>' +
         '<div class="kta-modal-texte">' +
-          _esc(_t("ipl.nav.texte", { plan: plan.name || planId, point: target.label || (target.x + "," + target.y) })) +
+          _esc(_t("ipl.nav.texte", { plan: plan.name || planId,
+                                     point: (target && (target.label || (target.x + "," + target.y))) || (plan.name || planId) })) +
           '<br><span style="font-size:12px; color:#8892a4;">' + _esc(_t("ipl.nav.sessionSaved")) + '</span>' +
         '</div>' +
         '<div class="kta-modal-actions">' +
@@ -807,7 +922,7 @@
       x: other.x, y: other.y, level: other.level, tag: other.tag,
       planName: other.planName,
       label: other.pointNom || other.pointId || (other.x + "," + other.y)
-    }, { confirm: true });
+    }, { confirm: true, recalerTracker: true });   // 🆕 v1.61.0 : traversée physique → tracker recalé
   }
 
   // ---------------------------------------------------------------
@@ -857,28 +972,77 @@
   // Bouton flottant « ↩️ Retour : <plan> » affiché après l'arrivée (2:a :
   // temporaire, 15 s ou clic). La pile reste en RAM après expiration — le
   // bouton réapparaîtra au prochain saut si des niveaux restent à dépiler.
-  function _afficherBoutonRetour() {
+  //
+  // 🆕 v1.61.0 (U4, KARMA « pouvoir réduire ou supprimer ce bouton ») :
+  //   - [✕] ferme le bouton SANS déclencher le retour (dismiss ponctuel —
+  //     la pile reste intacte, le bouton réapparaîtra au prochain saut) ;
+  //   - [–] RÉDUIT en mini-pastille ↩️ discrète (clic pastille = ré-expansion,
+  //     jamais de retour direct depuis la pastille — anti-mauvais-clic).
+  //     Le choix « réduit » est MÉMORISÉ (localStorage) : les prochains sauts
+  //     affichent directement la pastille ; ré-expandre re-mémorise « plein ».
+  //   - En mode réduit, PAS de timer 15 s : la pastille ne pollue pas, elle
+  //     peut rester jusqu'au prochain événement.
+  const BACKBTN_MODE_KEY = "myktamap_backbtn_mode";   // "full" (défaut) | "mini"
+
+  function _backBtnMode() {
+    try { return localStorage.getItem(BACKBTN_MODE_KEY) === "mini" ? "mini" : "full"; }
+    catch(e) { return "full"; }
+  }
+  function _setBackBtnMode(m) {
+    try { localStorage.setItem(BACKBTN_MODE_KEY, m); } catch(e) {}
+  }
+
+  function _faireRetour() {
+    _retirerBoutonRetour();
+    const o = _navStack.pop();
+    if (o) {
+      goTo(o.planId, { x: o.x, y: o.y, level: o.level, zoom: o.zoom, planName: o.planName },
+           { confirm: false, noStack: true });
+    }
+  }
+
+  function _afficherBoutonRetour(forceMode) {
     _retirerBoutonRetour();
     if (_navStack.length === 0) return;
     const top = _navStack[_navStack.length - 1];
-    const btn = document.createElement("button");
-    btn.id = "kta-ipl-back-float";
-    btn.type = "button";
-    btn.className = "kta-ipl-back-float";
-    btn.innerHTML =
-      '↩️ ' + _esc(_t("ipl.back.btn", { plan: top.planName || top.planId })) +
-      (_navStack.length > 1
-        ? ' <span class="kta-ipl-back-depth">' + _navStack.length + '</span>' : '');
-    btn.title = _t("ipl.back.title");
-    btn.addEventListener("click", function() {
-      _retirerBoutonRetour();
-      const o = _navStack.pop();
-      if (o) {
-        goTo(o.planId, { x: o.x, y: o.y, level: o.level, zoom: o.zoom, planName: o.planName },
-             { confirm: false, noStack: true });
-      }
+    const mode = forceMode || _backBtnMode();
+
+    const wrap = document.createElement("div");
+    wrap.id = "kta-ipl-back-float";
+    wrap.className = "kta-ipl-back-float" + (mode === "mini" ? " kta-ipl-back-mini" : "");
+
+    if (mode === "mini") {
+      // Pastille discrète : clic = ré-expansion (jamais de retour direct).
+      wrap.innerHTML = '<button type="button" class="kta-ipl-back-minibtn" title="' +
+        _esc(_t("ipl.back.expandTitle")) + '">↩️' +
+        (_navStack.length > 1 ? '<span class="kta-ipl-back-depth">' + _navStack.length + '</span>' : '') +
+        '</button>';
+      wrap.querySelector(".kta-ipl-back-minibtn").addEventListener("click", function() {
+        _setBackBtnMode("full");
+        _afficherBoutonRetour("full");
+      });
+      document.documentElement.appendChild(wrap);
+      // Pas de timer en mode mini (la pastille ne pollue pas).
+      return;
+    }
+
+    wrap.innerHTML =
+      '<button type="button" class="kta-ipl-back-main" title="' + _esc(_t("ipl.back.title")) + '">' +
+        '↩️ ' + _esc(_t("ipl.back.btn", { plan: top.planName || top.planId })) +
+        (_navStack.length > 1 ? ' <span class="kta-ipl-back-depth">' + _navStack.length + '</span>' : '') +
+      '</button>' +
+      '<button type="button" class="kta-ipl-back-ctrl" data-act="mini" title="' + _esc(_t("ipl.back.miniTitle")) + '">–</button>' +
+      '<button type="button" class="kta-ipl-back-ctrl" data-act="close" title="' + _esc(_t("ipl.back.closeTitle")) + '">✕</button>';
+
+    wrap.querySelector(".kta-ipl-back-main").addEventListener("click", _faireRetour);
+    wrap.querySelector('[data-act="mini"]').addEventListener("click", function() {
+      _setBackBtnMode("mini");
+      _afficherBoutonRetour("mini");
     });
-    document.documentElement.appendChild(btn);
+    wrap.querySelector('[data-act="close"]').addEventListener("click", function() {
+      _retirerBoutonRetour();   // dismiss ponctuel — pile intacte
+    });
+    document.documentElement.appendChild(wrap);
     _backBtnTimer = setTimeout(_retirerBoutonRetour, 15000);
   }
 
@@ -942,6 +1106,35 @@
     // recherche cross-plan) — après un retour, s'il reste des niveaux dans la
     // pile, le bouton réapparaît pour continuer à dépiler.
     setTimeout(_afficherBoutonRetour, 900);
+
+    // 🆕 v1.61.0 (KARMA « recalage de position sur le point d'arrivée ») :
+    // traversée PHYSIQUE d'un portail → recale le tracker sur le point
+    // d'arrivée du plan cible, IMMÉDIATEMENT (le restore de session tracker
+    // est synchrone dans lancerApplication → déjà passé quand on consomme ;
+    // vérifié au bench t+3s). Re-assertion à +2.8 s UNIQUEMENT si quelque
+    // chose a bougé la position entre-temps (ceinture — évite double
+    // vibration/ancre timeline dans le cas nominal).
+    if (t.recale) {
+      const _recaler = function() {
+        if (typeof window.recalerTrackerSurPoint !== "function") return;
+        try {
+          window.recalerTrackerSurPoint(t.x, t.y,
+            Number.isInteger(t.level) ? t.level : undefined);
+          console.log("[InterPlanLinks] Tracker recalé sur le point d'arrivée du portail (" +
+                      Math.round(t.x) + "," + Math.round(t.y) + ")");
+        } catch(e) { console.warn("[InterPlanLinks] recalage tracker échoué :", e); }
+      };
+      _recaler();
+      setTimeout(function() {
+        try {
+          const p = window.getTrackingPosition ? window.getTrackingPosition() : null;
+          if (p && (Math.round(p.x) !== Math.round(t.x) || Math.round(p.y) !== Math.round(t.y))) {
+            console.log("[InterPlanLinks] Position tracker écrasée après recalage → re-assertion");
+            _recaler();
+          }
+        } catch(e) {}
+      }, 2800);
+    }
   }
 
   // Pan (+ flash optionnel) sur la cible t = {x, y, zoom?}. Retry léger si la
@@ -1100,6 +1293,7 @@
   window.InterPlanLinks = {
     getLinksForPoint:     getLinksForPoint,
     getLinksForPlan:      getLinksForPlan,
+    getAllLinks:          getAllLinks,
     createLink:           createLink,
     removeLink:           removeLink,
     importLinks:          importLinks,

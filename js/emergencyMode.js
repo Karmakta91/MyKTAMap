@@ -763,8 +763,10 @@
       currentLevel: null
     };
 
+    // 🫥 v1.62.0 : extension d'après le manifest (webp/png = alpha, jpg = legacy)
+    const _tileExt = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(manifest) : "jpg";
     function _resolveTileUrl(z, col, k) {
-      const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + ".jpg";
+      const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + _tileExt;
       const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
       if (!asset) return null;
       if (!asset.url && asset.file) {

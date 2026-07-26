@@ -771,13 +771,25 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 
 **🌀 Mes liaisons (depuis v1.59.0)** : sur l'**accueil**, le bouton **« 🌀 Mes liaisons »** liste toutes tes liaisons (tous plans confondus) : état de chaque côté (⛔ si le plan n'est pas sur l'appareil), bouton **➜** pour aller directement à l'un des deux points, **🗑️** pour supprimer. Si les données d'un plan sont injoignables (serveur hors-ligne…), l'app te le dit clairement au lieu d'afficher « 0 points ».
 
+**🕸️ Vue Graphe (depuis v1.65.0)** : dans la même fenêtre, bascule **📋 Liste ⇄ 🕸️ Graphe** — ta bibliothèque dessinée en **réseau** : chaque plan est une bulle (badges V2/M-LVL, compteur de liaisons, anneau doré sur le plan en cours, ⛔ grisé si absent de l'appareil), chaque frontière un trait dont **l'épaisseur suit le nombre de liaisons**. Les plans sans liaison sont rangés dans une bande en bas. **Clique une bulle** pour ouvrir le plan (arrivée sur son premier portail), **clique un trait** pour voir le détail des liaisons de cette frontière (la liste se filtre), et **déplace les bulles** au doigt pour arranger la vue à ta façon.
+
 **Utiliser une liaison** : dans la fiche du point, ligne 🌀 avec le plan et le point de destination → bouton **➜** → confirmation → l'app **change de plan** (ta session actuelle est sauvegardée automatiquement), **bascule sur le niveau du point d'arrivée** (plans multi-niveaux) et te dépose **directement dessus** (flash bleu). Si un filtre de tags masque le point d'arrivée, un avertissement s'affiche — tes filtres ne sont jamais modifiés.
 
-**🧭 Itinéraire inter-plan (depuis v1.60.0)** : demande un itinéraire vers un point **d'un autre plan** relié par un portail — depuis la modale **Itinéraire** (bouton « 🌐 Destination sur un autre plan ») ou la **recherche multi-plans** (bouton 🧭 sur un résultat distant). L'app compare les portails disponibles au **coût réel**, affiche le trajet en étapes (« ① Rejoindre 🌀 Puits nord — 450 m · ② Traverser · ③ Rejoindre la salle — 300 m · Total ≈ 750 m »), trace le chemin jusqu'au portail, puis **trace automatiquement la suite** quand tu traverses. Les évitements (zones, points, tags) de **chaque plan** sont respectés. Si c'est impossible (aucun portail, plan hors-ligne, destination isolée du réseau…), un message t'explique **précisément pourquoi** — y compris « pas de liaison directe, mais un chemin existe via tel plan ».
+**📍 Recalage automatique à l'arrivée (depuis v1.61.0)** : quand tu **traverses physiquement** un portail (bouton ➜ d'une liaison, ou « Prendre le portail » d'un itinéraire inter-plan), ta **position tracker est recalée sur le point d'arrivée** du plan cible — tu ES là, l'app le sait. La recherche multi-plans et le gestionnaire ne recalent **pas** (consulter un point ≠ s'y déplacer). Et si un itinéraire est actif sur le plan d'arrivée, il se replanifie depuis le portail.
+
+**🧭 Itinéraire inter-plan (depuis v1.60.0, refondu v1.64.0)** : demande un itinéraire vers un point **d'un autre plan** relié par un portail — depuis la modale **Itinéraire** (bouton « 🌐 Destination sur un autre plan ») ou la **recherche multi-plans** (bouton 🧭 sur un résultat distant). L'app compare les portails disponibles au **coût réel**, affiche le trajet en étapes (« ① Rejoindre 🌀 Puits nord — 450 m · ② Traverser · ③ Rejoindre la salle — 300 m · Total ≈ 750 m ») et **trace le trajet sur ton plan**. Les évitements (zones, points, tags) de **chaque plan** sont respectés. Si c'est impossible (aucun portail, plan hors-ligne, destination isolée du réseau…), un message t'explique **précisément pourquoi**.
+
+**🚶 Le trajet suit ton rythme (depuis v1.64.0)** : le bouton du résumé s'appelle « **🗺️ C'est parti** » — il ne te téléporte plus. Tu **marches** ton trajet (avec la validation d'étapes « 📍 Je suis ici » et la replanification au recalage), et la traversée se propose quand tu es **au portail** : bouton flottant « **🌀 Portail suivant (X m)** » (fermable — « 📍 Je suis ici » sur le point-portail le fait réapparaître), ou bouton ➜ du popup du point-portail. À chaque traversée, la suite se trace automatiquement de l'autre côté, jusqu'à destination.
+
+**🧭 Tes étapes d'abord (depuis v1.64.0)** : pose tes **points de passage** dans la modale Itinéraire (curiosité X, Y…) puis choisis la destination distante — le trajet passe par **toutes tes étapes dans l'ordre, avant le portail**.
+
+**🌀 À travers plusieurs plans (depuis v1.64.0)** : coche « **🌀 Itinéraire via plusieurs plans** » dans la recherche multi-plans (choix mémorisé, décoché par défaut) → l'app peut calculer un trajet qui **traverse des plans intermédiaires** (A → B → C, jusqu'à 3 traversées), en comparant toutes les combinaisons de portails au coût réel. Un plan intermédiaire injoignable est écarté (et nommé si plus aucun chemin ne passe). Chaque arrivée trace le tronçon du plan et te propose le portail suivant.
 
 **🔄 Fiches toujours à jour (depuis v1.60.0)** : si tu renommes ou déplaces un point lié, les fiches de liaisons (des deux côtés) se **mettent à jour automatiquement** à la prochaine ouverture du plan concerné.
 
 **↩️ Revenir en arrière (depuis v1.58.0)** : après un passage de portail (ou un saut de recherche multi-plans), un bouton flottant **« ↩️ Retour : <plan> »** apparaît en bas de l'écran pendant 15 secondes — un clic te ramène au plan **et à la vue exacte** d'où tu venais (niveau et zoom compris). Les sauts s'empilent : enchaîne 3 portails, tu peux faire 3 retours.
+
+**↩️ Bouton Retour discret (depuis v1.61.0)** : si le bouton te gêne, deux nouvelles commandes dessus — **[–]** le réduit en **mini-pastille ↩️** discrète en bas à droite (elle reste jusqu'à son expiration, un clic la ré-agrandit), **[✕]** le ferme. Ton choix est retenu : une fois réduit, les prochains retours arrivent directement en mini-pastille.
 
 **Bon à savoir** :
 - Un point peut porter **plusieurs liaisons** (point « hub »).
@@ -1226,6 +1238,18 @@ Le mode actif est affiché à côté du temps estimé dans le label bottomleft. 
 **Tolérance** : l'algorithme accepte que vos points de départ ou d'arrivée soient un peu **à côté** des routes — il les snappe automatiquement sur le réseau le plus proche. Si plusieurs roads se croisent visuellement mais sans partager exactement un même point (cas typique d'un tracé fait à la main), l'app gère aussi les **jonctions à 15 px près** pour tracer le chemin sans coupure.
 
 > 💡 **Astuce** : si vous voulez voir uniquement le tracé sans le label distance, fermez la modale puis ré-ouvrez-la en mode navigation pour utiliser les boutons de pilotage.
+
+#### 🔄 Itinéraire vivant — replanification au recalage + validation d'étapes *(depuis v1.61.0)*
+
+Pendant une sortie réelle, le tracker peut dériver et le téléphone passe du temps verrouillé dans la poche. L'itinéraire s'adapte tout seul à chaque **recalage de position** :
+
+- **Recale ta position** (clic carte en mode recalage, bouton **📍 Je suis ici** d'un point, ou arrivée par un portail) → l'itinéraire actif est **automatiquement recalculé depuis ta nouvelle position**. Ta position devient le nouveau point 0, les étapes restantes sont conservées **dans l'ordre que tu avais planifié**, tes préférences d'évitement sont respectées.
+- **Valide ton passage à une étape** : touche **📍 Je suis ici** sur un point qui fait partie de ton itinéraire → l'étape est **validée** (marker **✓ vert** sur la carte, ligne rayée dans la modale), exclue des prochains calculs, et l'itinéraire repart de là. **L'ordre est libre** : tu peux visiter l'étape 3 avant la 1, l'app valide ce que TU fais, pas ce qu'elle propose.
+- **Toutes les étapes validées** (y compris ta sortie) → petit message « 🎉 Itinéraire terminé » et le tracé s'efface. Ton tracé tracker, lui, reste affiché.
+- Le recalage **clic carte** ne valide jamais d'étape (il est approximatif par nature) : il replanifie seulement.
+- Les étapes validées **survivent au reload et au verrouillage du téléphone** (sauvegardées avec la session).
+
+> 💡 En pratique : planifie ta sortie (moi → curiosité X → curiosité Y → sortie), marche, et à chaque point atteint touche **📍 Je suis ici** sur son popup. L'app coche, recalcule, et t'indique toujours le chemin depuis là où tu es vraiment.
 
 #### 🚫 Préférences d'évitement
 
@@ -2094,6 +2118,10 @@ Tu peux attacher jusqu'à **5 photos par point** (limite anti-saturation stockag
 
 **Compression auto** : les photos sont compressées avant stockage (1920 px côté long max, qualité JPEG 85 %). Une photo brute de 5-10 Mo passe à ~200-500 Ko. Pour 5 photos = ~2 Mo par point.
 
+**🔒 Métadonnées nettoyées *(depuis v1.63.0)*** : **toute** photo est ré-encodée à l'ajout, même déjà petite — les métadonnées cachées du fichier (**EXIF : position GPS de la prise de vue, date, modèle d'appareil**) sont systématiquement supprimées. Rien de tout ça n'entre dans l'app ni ne sort dans un export. Les petites photos sont ré-encodées sans redimensionnement à qualité haute (dégradation invisible).
+
+**🛡️ Export anonymisé + photos *(depuis v1.63.0)*** : dans 💾 Enregistrer session → 📦 Full, la case « 🛡️ Anonymiser pour partage public » accepte maintenant les photos : chacune est **ré-encodée sans métadonnées** (y compris les photos ajoutées avant v1.63.0) et **renommée** (`photo-anon-1`, `photo-anon-2`…), rattachée aux codes anonymisés des points (`💎 POI #1`…). Une photo qui ne peut pas être ré-encodée est **exclue** de l'export — jamais embarquée telle quelle. La note libre et le PDF Histoire restent exclus de l'export anonymisé.
+
 **Retirer une photo** : clic sur la croix ✕ rouge en haut à droite de la miniature → elle apparaît grisée avec hachures rouges (marquée à supprimer). Si tu changes d'avis, clic sur la flèche verte ↺ pour annuler. La vraie suppression n'a lieu qu'au moment où tu **💾 Enregistres**.
 
 **Si tu annules** la fenêtre d'édition au lieu de sauvegarder, **les photos que tu venais d'ajouter sont effacées** (cleanup auto). Les marquages à supprimer sont au contraire **annulés** — la photo reste.
@@ -2781,6 +2809,8 @@ La case 🧱 Convertir en V2 apparaît dans le formulaire dès que tu as **uploa
 7. **Re-importer ce ZIP via le loader** → le mode V2 s'active automatiquement (badge violet `V2` sur la carte plan)
 
 **Auto-crop intégré** : si ton image source a beaucoup de marges blanches (typique des plans scannés papier), le générateur détecte automatiquement le bbox du contenu utile et tuile uniquement cette zone. Tu gagnes en taille de ZIP + en netteté au zoom max. Si l'image est déjà bien cadrée, pas de crop.
+
+**🫥 Transparence conservée *(depuis v1.62.0)*** : si ton image source est un **PNG/WebP avec de la vraie transparence** (fond alpha), le générateur ne rajoute **plus de fond sombre** : les tuiles gardent la transparence (format WebP, ou PNG selon le navigateur). Résultat : derrière les zones transparentes tu vois le fond sombre de la carte — et dans la **Vue OSM**, la carte OpenStreetMap apparaît **à travers ton plan**. La détection est automatique (elle regarde les pixels, pas l'extension du fichier — un PNG dont le fond a déjà été aplati reste traité en opaque). Sur une source transparente, l'auto-crop ci-dessus est **désactivé** pour ne jamais décaler tes points/tracés/géoréférencement. **Plans V2 existants** : le fond a été cuit dans leurs tuiles à l'époque — régénère une fois (Modifier → recocher V2) pour en profiter ; sans régénération ils continuent de marcher comme avant.
 
 **Trade-offs** :
 

@@ -1,7 +1,7 @@
 {
-  "version": "v1.60.1",
+  "version": "v1.65.0",
   "released": "2026-07-26",
   "notes": [
-    "🌍 Améliorations de traduction : le Journal réseau et les messages d'import de fichiers sont désormais disponibles en anglais et en espagnol. Rien ne change en français."
+    "🕸️ Nouvelle vue « Graphe » dans 🌀 Mes liaisons : ta bibliothèque dessinée en réseau — les plans reliés par leurs portails, l'épaisseur des traits selon le nombre de liaisons. Clique un plan pour l'ouvrir, une liaison pour voir son détail, et déplace les bulles à ta guise."
   ]
 }

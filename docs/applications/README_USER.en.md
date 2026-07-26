@@ -768,13 +768,25 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 **🌀 My links (since v1.59.0)**: on the **home screen**, the **"🌀 My links"** button lists all your links (across all plans): each side's status (⛔ if the plan is not on this device), **➜** button to jump straight to either point, **🗑️** to delete. If a plan's data is unreachable (server offline…), the app tells you clearly instead of showing "0 points".
 
+**🕸️ Graph view (since v1.65.0)**: in the same window, toggle **📋 List ⇄ 🕸️ Graph** — your library drawn as a **network**: each plan is a bubble (V2/M-LVL badges, link counter, golden ring on the current plan, grayed ⛔ if missing from this device), each border a line whose **thickness follows the number of links**. Plans without links sit in a strip at the bottom. **Click a bubble** to open the plan (arriving at its first portal), **click a line** to see that border's links in detail (the list filters itself), and **drag the bubbles** to arrange the view your way.
+
 **Use a link**: in the point's popup, a 🌀 line shows the destination plan and point → **➜** button → confirmation → the app **switches plan** (your current session is saved automatically), **switches to the arrival point's level** (multi-level plans) and drops you **right on it** (blue flash). If a tag filter hides the arrival point, a warning is shown — your filters are never modified.
 
-**🧭 Inter-plan route (since v1.60.0)**: request a route to a point **on another plan** connected by a portal — from the **Route** modal ("🌐 Destination on another plan" button) or the **multi-plan search** (🧭 button on a distant result). The app compares available portals at **real cost**, shows the trip in steps ("① Reach 🌀 North well — 450 m · ② Cross · ③ Reach the room — 300 m · Total ≈ 750 m"), draws the path to the portal, then **automatically draws the rest** when you cross. Each plan's avoidances (zones, points, tags) are honored. If it's impossible (no portal, plan offline, destination cut off from the network…), a message tells you **exactly why** — including "no direct link, but a path exists via that plan".
+**📍 Automatic recalibration on arrival (since v1.61.0)**: when you **physically cross** a portal (a link's ➜ button, or an inter-plan route's "Take the portal"), your **tracker position is recalibrated onto the arrival point** of the target plan — you ARE there, the app knows it. Multi-plan search and the links manager do **not** recalibrate (viewing a point ≠ moving there). And if a route is active on the arrival plan, it replans from the portal.
+
+**🧭 Inter-plan route (since v1.60.0, revamped v1.64.0)**: request a route to a point **on another plan** connected by a portal — from the **Route** modal ("🌐 Destination on another plan" button) or the **multi-plan search** (🧭 button on a distant result). The app compares available portals at **real cost**, shows the trip in steps ("① Reach 🌀 North well — 450 m · ② Cross · ③ Reach the room — 300 m · Total ≈ 750 m") and **draws the route on your plan**. Each plan's avoidances (zones, points, tags) are honored. If it's impossible (no portal, plan offline, destination cut off from the network…), a message tells you **exactly why**.
+
+**🚶 The trip follows your pace (since v1.64.0)**: the summary button is "**🗺️ Let's go**" — it no longer teleports you. You **walk** your route (with "📍 I am here" stop validation and replanning on recalibration), and the crossing is offered when you are **at the portal**: floating "**🌀 Next portal (X m)**" button (dismissible — "📍 I am here" on the portal point brings it back), or the portal point's ➜ button. At each crossing, the rest is drawn automatically on the other side, all the way to the destination.
+
+**🧭 Your stops first (since v1.64.0)**: set your **waypoints** in the Route modal (curiosity X, Y…) then pick the distant destination — the trip goes through **all your stops in order, before the portal**.
+
+**🌀 Across multiple plans (since v1.64.0)**: check "**🌀 Route across multiple plans**" in the multi-plan search (choice remembered, unchecked by default) → the app can compute a trip that **crosses intermediate plans** (A → B → C, up to 3 crossings), comparing every portal combination at real cost. An unreachable intermediate plan is set aside (and named if no path survives). Each arrival draws that plan's leg and offers the next portal.
 
 **🔄 Always-fresh popups (since v1.60.0)**: if you rename or move a linked point, the link entries (on both sides) **update automatically** the next time the plan is opened.
 
 **↩️ Going back (since v1.58.0)**: after taking a portal (or a multi-plan search jump), a floating **"↩️ Back: <plan>"** button appears at the bottom of the screen for 15 seconds — one click brings you back to the plan **and the exact view** you came from (level and zoom included). Jumps stack up: chain 3 portals, you can go back 3 times.
+
+**↩️ Discreet Back button (since v1.61.0)**: if the button bothers you, two new controls on it — **[–]** shrinks it to a discreet **↩️ mini-chip** at the bottom right (it stays until it expires, one click re-expands it), **[✕]** closes it. Your choice is remembered: once minimized, future returns arrive directly as a mini-chip.
 
 **Good to know**:
 - A point can carry **several links** (a "hub" point).
@@ -1217,6 +1229,18 @@ The active mode is displayed next to the estimated time in the bottomleft label.
 **Tolerance**: the algorithm accepts that your start or end points may be a bit **off** the roads — it automatically snaps them onto the nearest network. If several roads visually intersect but without sharing exactly the same point (typical case of a hand-drawn path), the app also handles **junctions within 15 px** to trace the route without breaks.
 
 > 💡 **Tip**: if you want to see only the path without the distance label, close the modal then reopen it in navigation mode to use the piloting buttons.
+
+#### 🔄 Living route — replanning on recalibration + stop validation *(since v1.61.0)*
+
+During a real outing, the tracker can drift and the phone spends time locked in your pocket. The route adapts on its own every time you **recalibrate your position**:
+
+- **Recalibrate your position** (map click in recalibration mode, a point's **📍 I am here** button, or arriving through a portal) → the active route is **automatically recalculated from your new position**. Your position becomes the new point 0, the remaining stops are kept **in the order you planned**, and your avoidance preferences are respected.
+- **Validate your passage at a stop**: tap **📍 I am here** on a point that belongs to your route → the stop is **validated** (**green ✓** marker on the map, struck-through line in the modal), excluded from future calculations, and the route restarts from there. **The order is free**: you can visit stop 3 before stop 1 — the app validates what YOU do, not what it suggests.
+- **All stops validated** (including your exit) → a small "🎉 Route complete" message and the path clears. Your tracker trail stays on screen.
+- **Map-click** recalibration never validates a stop (it is approximate by nature): it only replans.
+- Validated stops **survive reloads and phone locking** (saved with the session).
+
+> 💡 In practice: plan your outing (me → curiosity X → curiosity Y → exit), walk, and at each point you reach tap **📍 I am here** on its popup. The app checks it off, recalculates, and always shows the way from where you actually are.
 
 #### 🚫 Avoidance preferences
 
@@ -2089,6 +2113,10 @@ You can attach up to **5 photos per point** (anti-saturation limit for browser s
 
 **Auto compression**: photos are compressed before storage (1920 px long side max, JPEG quality 85%). A raw photo of 5-10 MB drops to ~200-500 KB. For 5 photos = ~2 MB per point.
 
+**🔒 Metadata scrubbed *(since v1.63.0)***: **every** photo is re-encoded when added, even already-small ones — the file's hidden metadata (**EXIF: GPS position of the shot, date, camera model**) is systematically removed. None of it enters the app or leaves in an export. Small photos are re-encoded without resizing at high quality (invisible degradation).
+
+**🛡️ Anonymized export + photos *(since v1.63.0)***: in 💾 Save session → 📦 Full, the "🛡️ Anonymize for public sharing" checkbox now accepts photos: each one is **re-encoded without metadata** (including photos added before v1.63.0) and **renamed** (`photo-anon-1`, `photo-anon-2`…), linked to the points' anonymized codes (`💎 POI #1`…). A photo that cannot be re-encoded is **excluded** from the export — never embedded as-is. The free note and History PDF remain excluded from the anonymized export.
+
 **Remove a photo**: click on the red ✕ at the top right of the thumbnail → it appears greyed out with red hatching (marked for deletion). If you change your mind, click on the green ↺ arrow to undo. The actual deletion only happens when you **💾 Save**.
 
 **If you cancel** the edit window instead of saving, **the photos you had just added are deleted** (auto cleanup). The deletion markings are conversely **canceled** — the photo stays.
@@ -2775,6 +2803,8 @@ The 🧱 Convert to V2 checkbox appears in the form as soon as you have **upload
 7. **Re-import this ZIP via the loader** → V2 mode activates automatically (purple `V2` badge on the map plan)
 
 **Built-in auto-crop**: if your source image has lots of white margins (typical of scanned paper plans), the generator automatically detects the bbox of useful content and only tiles this area. You gain ZIP size + sharpness at max zoom. If the image is already well framed, no crop.
+
+**🫥 Transparency preserved *(since v1.62.0)***: if your source image is a **PNG/WebP with real transparency** (alpha background), the generator no longer adds a **dark background**: tiles keep the transparency (WebP format, or PNG depending on the browser). Result: behind transparent areas you see the map's dark background — and in the **OSM View**, the OpenStreetMap map shows **through your plan**. Detection is automatic (it looks at pixels, not the file extension — a PNG whose background was already flattened is still treated as opaque). On a transparent source, the auto-crop above is **disabled** so your points/paths/georeferencing are never shifted. **Existing V2 plans**: the background was baked into their tiles back then — regenerate once (Edit → re-check V2) to benefit; without regeneration they keep working as before.
 
 **Trade-offs**:
 

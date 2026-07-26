@@ -390,4 +390,63 @@ C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne 
 - ❌ Sommer des pixels de deux plans (échelles différentes) — toujours convertir en mètres par plan.
 - ❌ Tracer le leg B AVANT le restore de session du plan B (il serait écrasé) — passer par `_pendingRoute` + délai.
 - ❌ Calculer le leg B sur des données partielles (`stats.dataError`) — refuser avec `DATA_UNREACHABLE`, ne pas deviner.
-- ❌ Étendre au multi-hop sans topo dédié (explosion combinatoire portails × plans — le BFS actuel ne sert qu'au MESSAGE informatif).
+- ~~❌ Étendre au multi-hop~~ → FAIT en v1.64.0 (cf. § Multi-hop ci-dessous — l'explosion combinatoire est contenue par le Dijkstra sur graphe de portails à arêtes paresseuses).
+
+---
+
+## 🔄 Itinéraire vivant — replanification au recalage + validation d'étapes (v1.61.0)
+
+> Scénario : sortie multi-étapes réelle (moi → curiosité X → curiosité Y → sortie), le tracker dérive, le téléphone est verrouillé → l'user recale souvent. Décisions KARMA `1:a 2:a 3:a 4:a 5:a` (recalcul sur TOUT recalage · validation explicite uniquement · ordre planifié conservé · étape validée reste affichée ✓ · fin = tracé effacé).
+
+**Flux** : `tracking.js > _notifierRecalage(x, y, source)` — émis aux 3 sorties de recalage : clic carte mode recalage (`"click"`), `recalerTrackerSurPoint` (`"point"` — couvre « 📍 Je suis ici » ET l'arrivée portail v1.61.0). Consommateur unique : `interfaceItineraire.js > window._onTrackerRecale`.
+
+**`_onTrackerRecale(x, y, source)`** (`interfaceItineraire.js`) :
+- No-op sans road `type:"itinerary"` active (hors `_preview`).
+- `source === "point"` + coords **arrondies** égales à une étape non-done (hors `source:"tracker"`) → **validation** : `w.done = true` (mutation directe de la road → persistance session gratuite), toast `iti.replan.stepDone` + vibration medium.
+- Débounce **500 ms** → `_replanifierDepuis(x, y)` : étapes restantes = `waypoints.filter(!done && source!=="tracker")` dans l'ordre ; `computeRoute([origin, ...restantes], avoidPrefs)` sous `_withItiComputeLoader` ; nouvelle road = `waypoints: [origin, ...TOUTES les étapes copiées]` (done incluses → progression visible + persistée). **Échec de calcul → ancien tracé conservé** + toast `iti.replan.err`.
+- 0 étape restante → road itinéraire retirée + toast `iti.replan.finished` (le tracé tracker n'est pas touché).
+
+**Rendu done** : `_ajouterWaypointVisuel` → classe `.kta-iti-wp-done` + ✓ au lieu du numéro (CSS vert `#4caf50`) ; liste modale → ligne `.kta-iti-wp-row-done` rayée.
+
+**Exclusions du calcul** : les étapes `done` sont exclues PARTOUT — replan auto, bouton « Recalculer » de la modale (`wpsCalc = _itineraryWaypoints.filter(!done)`), compte de pauses (`_majLabelDistanceItineraire` + statut modale), et `getItineraireWaypoints()` (vibration proximité — filtre aussi l'origine tracker, sinon vibration parasite à chaque replan).
+
+**À NE PAS faire** :
+- ❌ Valider sur le recalage clic carte (approximatif par nature — seul le `"point"` exact valide).
+- ❌ Réordonner les étapes restantes (TSP « plus proche d'abord ») — l'ordre planifié est un choix utilisateur (3:a). Une option V2 éventuelle, jamais un défaut.
+- ❌ Retirer les étapes done de `road.waypoints` — elles portent la progression (persistance + rendu ✓) ; on les exclut du CALCUL, pas de la donnée.
+- ❌ Recalculer sans débounce (recalages en rafale = Dijkstras 1-3 s empilés).
+
+---
+
+## 🌀 Multi-hop + refonte du déroulé (v1.64.0)
+
+> Décisions KARMA `1:a 2:a 3:a 4:a` + case à cocher (5) + « prendre le portail n'a pas de sens, on n'est pas à côté » + « plusieurs points de passage sur le plan A ».
+
+**Moteur multi-hop** (`interPlanRoute.js > _computeMultiHop`) — actif quand la case « 🌀 Itinéraire via plusieurs plans » est cochée (`myktamap_ipr_multihop_v1`, OFF par défaut ; exposée dans la recherche multi-plans via `InterPlanRoute.is/setMultiHopEnabled`) :
+- **Graphe de portails** : nœuds `@start` (position) + chaque CÔTÉ de portail + `@dest` ; arêtes de traversée à 0 m ; arêtes intra-plan **PARESSEUSES** — le coût (Dijkstra réel via `_legEntre`, en MÈTRES par échelle du plan, mémoïsé `legCache`) n'est calculé qu'à l'expansion du nœud. Le Dijkstra global couvre AUSSI le cas direct → case cochée = `_computeMultiHop` remplace entièrement le single-hop.
+- **Périmètre** : plans sur un chemin BFS `dFrom + dTo ≤ MAX_HOPS (3)` uniquement ; `MAX_PORTALS_PER_PAIR = 5` par frontière ; budget `MAX_LEGS_COMPUTE = 60` Dijkstras (signalé si atteint : `ipr.err.budget`). Plans injoignables → écartés + nommés (`ipr.err.blocked`) si aucun chemin ne survit. Adjacence via `InterPlanLinks.getAllLinks()` (registre ; les liaisons baked des datalayers n'y sont pas — même périmètre que le single-hop).
+- **Format unique « chaîne de legs »** : `{ legs: [{planId, planName, path, distM, waypoints, portalOut}], totalM, dest }` — le single-hop est adapté via `_chainDepuisSingleHop`. UN SEUL renderer (`_afficherResume`) et UN SEUL consommateur (`onPlanLoaded`).
+
+**Déroulé temps réel** :
+- Résumé → « 🗺️ C'est parti » : trace le leg du plan courant, arme `_pendingChain` (file des legs restants) + `_currentPortalOut` — **AUCUNE téléportation**.
+- Traversée quand l'user est AU portail : invite flottante « 🌀 Portail suivant (dist) » (`kta-ipr-next-float`, persistante, fermable) · bouton ➜ du popup · « 📍 Je suis ici » sur le point-portail → `InterPlanRoute.onTrackerRecale` (2e consommateur du hook `tracking.js > _notifierRecalage`) re-propose l'invite.
+- Chaque arrivée (`onPlanLoaded`, +3 s post-restore) : trace le leg du plan, ré-arme l'invite suivante — zéro ressaisie sur toute la chaîne.
+
+**Étapes plan A** : `computeEtAfficher(dest, { viaWaypoints })` — les waypoints non-done de la modale Itinéraire deviennent des points de passage OBLIGATOIRES du premier leg (ordre planifié, `_viaWps` intercalés dans `computeRoute`/arête `@start`) ET dans les `waypoints` du tracé → la validation d'étapes + le replan (itinéraire vivant v1.61.0) marchent dessus gratuitement.
+
+**À NE PAS faire** :
+- ❌ Rebrancher un bouton de traversée dans le résumé de CALCUL (l'user n'est pas au portail — c'est le bug UX d'origine).
+- ❌ Évaluer les arêtes intra-plan en EAGER (produit portails × plans = explosion ; la paresse fait tenir le cas typique en ~5-15 Dijkstras).
+- ❌ Sommer des px inter-plans — toujours `distM = px / scale` PAR plan (inchangé depuis A6).
+
+---
+
+## 🕸️ Vue « réseau de plans » (v1.65.0 — A7)
+
+> Reco KARMA 1:a 2:a 3:a 4:a. Module de RENDU PUR — aucune donnée nouvelle.
+
+**`js/planNetwork.js`** (`window.PlanNetwork.render(containerEl, { onOpenPlan, onEdgeClick })`) :
+- Données : `PlanRegistry.getAll()` (nœuds) + `InterPlanLinks.getAllLinks()` (arêtes agrégées par frontière). Plan référencé par une liaison mais absent du registre → nœud FANTÔME ⛔ (nom du snapshot, non cliquable). Plans sans liaison → bande dédiée en bas (`ISO_TITLE_H`/`ISO_ROW_H`, multi-rangées — la hauteur SVG compte TOUTES les rangées, bug de chevauchement titre/pastille corrigé pendant la release).
+- Rendu : SVG vanilla (`createElementNS`), layout force PRÉCALCULÉ (150 itérations, init déterministe en cercle — pas de `Math.random`, rendu stable ; répulsion + ressorts `SPRING_LEN 150` + gravité centre + refroidissement linéaire). AUCUNE animation continue. Drag des nœuds via pointer events (seuil 6 px sépare drag et clic ; les arêtes connectées suivent en direct).
+- Intégration : gestionnaire `interPlanLinks.js > ouvrirGestionnaire` — toggle 📋 Liste ⇄ 🕸️ Graphe ; clic nœud → `goTo(planId, anchorSide|null, {confirm si plan chargé})` (ancre = premier côté de liaison du plan) ; clic arête → liste filtrée par `_filterPair` + chip ✕.
+- ⚠️ `goTo` accepte `target = null` depuis v1.65.0 (plan isolé → switch sans cible pendante ni pan) — ne pas re-supposer target non-nul dans goTo/consume.

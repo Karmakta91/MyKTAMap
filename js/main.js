@@ -603,6 +603,20 @@ window._etendreAvailableLevelsSiBesoin = function() {
 // startImportedPlan). Évite la duplication ET garantit que rien n'est oublié
 // sur mobile où chaque Mo retenu compte pour iOS Safari.
 function _libererRessourcesPlanPrecedent() {
+  // 🐛 v1.64.0 (KARMA « au chargement je suis sur la position initiale, pas
+  // sur celle du tracker ») : FIGER LA PERSISTANCE EN PREMIER. Le poller
+  // d'auto-save (1.5 s) restait actif sur l'ANCIEN plan pendant tout le
+  // switch : le teardown ci-dessous vide la timeline tracker en RAM
+  // (resetTrackingTimeline), puis un tick pendant le chargement du nouveau
+  // plan (plusieurs secondes) sauvegardait l'état MUTILÉ — timeline vide
+  // écrasée dans le slot, voire slot PURGÉ (_isEmptyState) pour une session
+  // tracker-seule → au retour sur le plan, tracker sur la position initiale.
+  // Fix : save final forcé (état encore intact) + arrêt du poll — il ne
+  // redémarre qu'au onPlanLoaded du nouveau plan.
+  if (window.SessionPersist && typeof window.SessionPersist.onPlanUnload === "function") {
+    try { window.SessionPersist.onPlanUnload(); } catch(e) {}
+  }
+
   // 🎨 Refonte UI v1 : cleanup du header bar + status bar avant démontage
   // de la map. Sinon le header reste affiché avec les vieilles valeurs
   // pendant le splash du nouveau plan. No-op si flag OFF.
@@ -915,7 +929,9 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     await registerAsset(logicalPath, matched);
   }));
 
-  // 🧱 Tiling V2 (v149) : scan des tuiles dans le ZIP (chemin `data/tiles/z<N>/*.jpg`).
+  // 🧱 Tiling V2 (v149) : scan des tuiles dans le ZIP (chemin `data/tiles/z<N>/*`
+  // — 🫥 v1.62.0 : extension .jpg (legacy) OU .webp/.png (tuiles avec alpha), le
+  // regex est agnostique et le format vit dans `tiling.format`).
   // Enregistrement LAZY (pas de blob URL au boot — économie d'allocations sur des
   // plans qui peuvent avoir 1000+ tuiles). Les blob URLs sont créées à la demande
   // par tiling.js > _chargerImageTuileV2 quand chaque tuile est rendue.

@@ -514,7 +514,9 @@ function _majLabelDistanceItineraire() {
   const itineraryRoad = window.getRoads().find(function(r) { return r.type === "itinerary"; });
   if (itineraryRoad) {
     const distM = _distanceItineraireMeters(itineraryRoad);
-    const nbWp  = Array.isArray(itineraryRoad.waypoints) ? itineraryRoad.waypoints.length : 2;
+    // 🆕 v1.61.0 : les étapes validées (done) ne comptent plus dans les pauses
+    const nbWp  = Array.isArray(itineraryRoad.waypoints)
+      ? itineraryRoad.waypoints.filter(function(w) { return !w.done; }).length : 2;
     _afficherLabelDistanceItineraire(distM, nbWp);
   } else {
     _masquerLabelDistanceItineraire();
@@ -532,8 +534,13 @@ let _itineraryClickActive = false;
 // tracking.js puisse détecter quand l'user arrive à proximité (vibration
 // haptique de proximité 100px, cf tracking.js _checkWaypointProximity).
 // Retourne une COPIE pour empêcher la mutation côté caller.
+// 🆕 v1.61.0 : filtre les étapes validées (done) ET le point 0 tracker —
+// vibrer « waypoint atteint » sur sa propre origine ou sur une étape déjà
+// validée est du bruit (et chaque replanification crée une nouvelle origine).
 window.getItineraireWaypoints = function() {
-  return _itineraryWaypoints.slice();
+  return _itineraryWaypoints.filter(function(w) {
+    return !w.done && w.source !== "tracker";
+  });
 };
 
 function _ajouterWaypointVisuel(p, num) {
@@ -545,9 +552,11 @@ function _ajouterWaypointVisuel(p, num) {
   if (!_itineraryMarkerLayer || !_itineraryMarkerLayer._map) {
     _itineraryMarkerLayer = L.layerGroup().addTo(window.map);
   }
+  // 🆕 v1.61.0 : étape validée (« je suis ici » dessus) → ✓ vert au lieu du numéro
+  const done = !!p.done;
   const icon = L.divIcon({
-    className: "kta-itinerary-waypoint",
-    html: '<div class="kta-iti-num">' + num + '</div>',
+    className: "kta-itinerary-waypoint" + (done ? " kta-iti-wp-done" : ""),
+    html: '<div class="kta-iti-num">' + (done ? "✓" : num) + '</div>',
     iconSize:  [28, 28],
     iconAnchor: [14, 14]
   });
@@ -591,8 +600,11 @@ function _rafraichirListeWaypointsModale() {
       sourceTitle = window.I18n.t("iti.wp.srcClick");
       sourceClass = "";
     }
-    return '<div class="kta-iti-wp-row">' +
-             '<span class="kta-iti-wp-num">' + (i + 1) + '</span>' +
+    // 🆕 v1.61.0 : étape validée → ligne rayée + ✓ (elle reste listée pour
+    // montrer la progression, exclue du calcul)
+    const done = !!p.done;
+    return '<div class="kta-iti-wp-row' + (done ? " kta-iti-wp-row-done" : "") + '">' +
+             '<span class="kta-iti-wp-num">' + (done ? "✓" : (i + 1)) + '</span>' +
              '<span class="kta-iti-wp-icon' + sourceClass + '" title="' + sourceTitle + '">' + sourceIcon + '</span>' +
              '<span class="kta-iti-wp-coord">' + _escapeHtml(label) + '</span>' +
              '<button class="kta-iti-wp-goto"   data-idx="' + i + '" title="' + window.I18n.t("iti.wp.gotoTitle") + '">🎯</button>' +
@@ -698,6 +710,129 @@ function _afficherPanneauItineraireFlottant(mainModal) {
 function _majPanneauFloaterCount() {
   const el = document.getElementById("kta-iti-floater-count");
   if (el) el.textContent = _itineraryWaypoints.length;
+}
+
+// =========================
+// 🆕 v1.61.0 — REPLANIFICATION AU RECALAGE + VALIDATION D'ÉTAPES
+// =========================
+// Scénario KARMA (sortie multi-étapes en carrière) : le tracker dérive ou le
+// téléphone est verrouillé → l'user recale souvent sa position. À chaque
+// recalage (clic carte, « 📍 Je suis ici », arrivée portail — hook
+// window._onTrackerRecale émis par tracking.js), l'itinéraire actif est
+// REPLANIFIÉ : ma position devient le point 0, étapes restantes dans l'ordre
+// planifié (reco 3:a).
+// Si le recalage « Je suis ici » tombe sur les coords EXACTES (arrondies)
+// d'une étape non validée, c'est une VALIDATION DE PASSAGE — dans n'importe
+// quel ordre (l'user ne suit pas forcément l'ordre proposé) : étape flaggée
+// done (persistée dans road.waypoints → survit au reload), exclue du calcul,
+// marker passé en ✓ vert (reco 4:a). Dernière étape validée → toast
+// « terminé » + effacement du tracé itinéraire (le tracé tracker reste,
+// reco 5:a). Clic carte = jamais une validation (coords approximatives par
+// nature) : simple replanification.
+// Débounce 500 ms : recalages rapprochés → un seul Dijkstra.
+let _replanTimer = null;
+
+function _roadItineraireActive() {
+  if (!window.getRoads) return null;
+  return window.getRoads().find(function(r) { return r.type === "itinerary" && !r._preview; }) || null;
+}
+
+function _toastIti(msg, type) {
+  if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+    window.OOMGuard.showToast(msg, type || "info");
+  }
+}
+
+window._onTrackerRecale = function(x, y, source) {
+  const road = _roadItineraireActive();
+  if (!road || !Array.isArray(road.waypoints) || road.waypoints.length === 0) return;
+
+  // Validation d'étape : uniquement au recalage "point" (coords exactes).
+  if (source === "point") {
+    const etape = road.waypoints.find(function(w) {
+      return !w.done && w.source !== "tracker" &&
+             Math.round(w.x) === Math.round(x) && Math.round(w.y) === Math.round(y);
+    });
+    if (etape) {
+      etape.done = true;   // mutation directe : reprise par le rebuild + persistée
+      const restantes = road.waypoints.filter(function(w) { return !w.done && w.source !== "tracker"; }).length;
+      if (restantes > 0) {
+        _toastIti(window.I18n.t("iti.replan.stepDone", {
+          n: road.waypoints.indexOf(etape) + 1, rest: restantes
+        }), "info");
+        if (window.kta_vibrate) window.kta_vibrate.medium();
+      }
+      // restantes === 0 → le toast « terminé » est géré par _replanifierDepuis
+    }
+  }
+
+  if (_replanTimer) clearTimeout(_replanTimer);
+  _replanTimer = setTimeout(function() {
+    _replanTimer = null;
+    _replanifierDepuis(x, y);
+  }, 500);
+};
+
+async function _replanifierDepuis(px, py) {
+  const road = _roadItineraireActive();
+  if (!road || !Array.isArray(road.waypoints)) return;
+  const etapes    = road.waypoints.filter(function(w) { return w.source !== "tracker"; });
+  const restantes = etapes.filter(function(w) { return !w.done; });
+
+  // Toutes les étapes validées → itinéraire terminé. On efface le tracé
+  // itinéraire (le tracé TRACKER, lui, reste à l'écran).
+  if (restantes.length === 0) {
+    if (window.setRoads) {
+      window.setRoads((window.getRoads ? window.getRoads() : [])
+        .filter(function(r) { return r.type !== "itinerary"; }));
+    }
+    _viderItineraire();
+    _rafraichirListeWaypointsModale();
+    _majLabelDistanceItineraire();
+    _toastIti(window.I18n.t("iti.replan.finished"), "info");
+    if (window.kta_vibrate) window.kta_vibrate.medium();
+    return;
+  }
+
+  const origin = {
+    x: px, y: py, source: "tracker",
+    label: window.I18n.t("iti.wp.currentPos", { x: Math.round(px), y: Math.round(py) })
+  };
+  try {
+    const avoidPrefs = _getItiAvoidPrefs();
+    const result = await _withItiComputeLoader(function() {
+      return window.Pathfinder.computeRoute([origin].concat(restantes), {
+        avoidPoints: avoidPrefs.points || [],
+        avoidTags:   avoidPrefs.tags   || [],
+        avoidZones:  avoidPrefs.zones  || [],
+        avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
+      });
+    });
+    // road.waypoints conserve TOUTES les étapes (validées incluses, avec leur
+    // flag done) → progression visible + persistance session gratuite. Seul
+    // l'ancien point 0 tracker est remplacé par la position recalée.
+    const newRoad = {
+      type:      "itinerary",
+      points:    result.path,
+      waypoints: [origin].concat(etapes.map(function(w) { return Object.assign({}, w); }))
+    };
+    const filtered = (window.getRoads ? window.getRoads() : [])
+      .filter(function(r) { return r.type !== "itinerary"; });
+    filtered.push(newRoad);
+    if (window.setRoads) window.setRoads(filtered);
+    _itineraryWaypoints = newRoad.waypoints.map(function(w) { return Object.assign({}, w); });
+    _redessinerWaypoints();
+    _majLabelDistanceItineraire();
+    console.log("[Itineraire] Replanifié depuis (" + Math.round(px) + "," + Math.round(py) + ") — " +
+                restantes.length + " étape(s) restante(s)");
+  } catch(err) {
+    // Pas de chemin depuis la nouvelle position (réseau non connecté, etc.) :
+    // on GARDE l'ancien tracé tel quel, on informe sans bloquer.
+    const msg = (err && err.i18nKey && window.I18n)
+      ? window.I18n.t(err.i18nKey, err.i18nParams || {})
+      : (err && err.message) || String(err);
+    _toastIti(window.I18n.t("iti.replan.err", { err: msg }), "warn");
+  }
 }
 
 // =========================
@@ -1249,7 +1384,9 @@ window.ouvrirItinerairModal = function() {
   let statusActuel = '';
   if (modeNavigation) {
     const distActMeters = _distanceItineraireMeters(existingItinerary);
-    const nbWpAct       = Array.isArray(existingItinerary.waypoints) ? existingItinerary.waypoints.length : 2;
+    // 🆕 v1.61.0 : étapes validées exclues du compte de pauses
+    const nbWpAct       = Array.isArray(existingItinerary.waypoints)
+      ? existingItinerary.waypoints.filter(function(w) { return !w.done; }).length : 2;
     const tempsActMin   = _tempsItineraireMinutes(distActMeters, nbWpAct);
     statusActuel =
       '<div class="kta-iti-result" id="kta-iti-status-block" style="display:block; margin-bottom:10px;" ' +
@@ -1643,13 +1780,20 @@ window.ouvrirItinerairModal = function() {
           window.itineraireAjouterWaypoint(pt.x, pt.y, label);
           return;
         }
+        // 🌀 v1.64.0 (KARMA « plusieurs points de passage sur le plan A avant
+        // le portail ») : les étapes déjà posées dans la modale (non validées,
+        // hors origine tracker) deviennent des points de passage OBLIGATOIRES
+        // du leg A, dans l'ordre planifié, AVANT le portail.
+        const viaA = _itineraryWaypoints
+          .filter(function(w) { return !w.done && w.source !== "tracker"; })
+          .map(function(w) { return { x: w.x, y: w.y, label: w.label || "" }; });
         fermer();   // fermeture propre de la modale (helper local, cf ci-dessous)
         window.InterPlanRoute.computeEtAfficher({
           planId: plan.id, planName: plan.name || plan.id,
           x: pt.x, y: pt.y, level: pt.level,
           tag: (Array.isArray(pt.tags) && pt.tags[0]) || undefined,
           label: label
-        });
+        }, { viaWaypoints: viaA });
       }});
     });
   }
@@ -1663,7 +1807,11 @@ window.ouvrirItinerairModal = function() {
     errEl.style.display = "none";
     resEl.style.display = "none";
 
-    if (_itineraryWaypoints.length < 2) {
+    // 🆕 v1.61.0 : les étapes validées (done) restent listées mais sont
+    // EXCLUES du calcul — sinon « Recalculer » re-router par des étapes
+    // déjà visitées.
+    const wpsCalc = _itineraryWaypoints.filter(function(w) { return !w.done; });
+    if (wpsCalc.length < 2) {
       errEl.textContent = window.I18n.t("iti.err.min2");
       errEl.style.display = "block";
       return;
@@ -1688,7 +1836,7 @@ window.ouvrirItinerairModal = function() {
       // afficher un message d'avertissement au user le cas echeant.
       const avoidPrefs = _getItiAvoidPrefs();
       const result = await _withItiComputeLoader(function() {
-        return window.Pathfinder.computeRoute(_itineraryWaypoints, {
+        return window.Pathfinder.computeRoute(wpsCalc, {
           avoidPoints: avoidPrefs.points || [],
           avoidTags:   avoidPrefs.tags   || [],
           avoidZones:  avoidPrefs.zones  || [],
@@ -1722,7 +1870,7 @@ window.ouvrirItinerairModal = function() {
           '</div>';
       }
 
-      const tempsCalcMin = _tempsItineraireMinutes(distM, _itineraryWaypoints.length);
+      const tempsCalcMin = _tempsItineraireMinutes(distM, wpsCalc.length);
       resEl.innerHTML =
         fallbackHtml +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.distance") + '</strong> ' + window.formatDistance(distM, 1) + '</div>' +
