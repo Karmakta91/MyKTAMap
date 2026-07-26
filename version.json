@@ -1,7 +1,7 @@
 {
-  "version": "v1.55.0",
-  "released": "2026-06-27",
+  "version": "v1.60.1",
+  "released": "2026-07-26",
   "notes": [
-    "🔗 Nouveau : fusionnez plusieurs fichiers de données (« data layers ») en un seul jeu par type — pratique pour assembler un grand plan construit en plusieurs sessions. Depuis l'accueil ou « Exporter » → onglet Fusion."
+    "🌍 Améliorations de traduction : le Journal réseau et les messages d'import de fichiers sont désormais disponibles en anglais et en espagnol. Rien ne change en français."
   ]
 }

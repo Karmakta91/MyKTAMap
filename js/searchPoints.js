@@ -415,6 +415,13 @@
 
           <div class="kta-search-results" id="kta-search-results"></div>
 
+          <!-- 🌐 v1.58.0 (A1 1:c) — pont vers la recherche CROSS-PLAN : ouvre la
+               modale multi-plans (js/crossPlanSearch.js) en reprenant la saisie
+               en cours. Affiché seulement si le module est chargé. -->
+          <button class="kta-search-crossplan" id="kta-search-crossplan" type="button" style="display:none;">
+            🌐 ${window.I18n.t("search.crossPlanBridge")}
+          </button>
+
         </div>
       </div>
     `;
@@ -448,6 +455,19 @@
       if (_filtreTimer) { clearTimeout(_filtreTimer); _filtreTimer = null; }
     }
     btnClose.addEventListener("click", fermer);
+
+    // 🌐 v1.58.0 — pont cross-plan : ferme cette modale et ouvre la recherche
+    // multi-plans avec la saisie courante pré-remplie.
+    (function _wireCrossPlanBridge() {
+      const bridge = document.getElementById("kta-search-crossplan");
+      if (!bridge || !window.CrossPlanSearch || typeof window.CrossPlanSearch.ouvrir !== "function") return;
+      bridge.style.display = "";
+      bridge.addEventListener("click", function() {
+        const q = input ? input.value : "";
+        fermer();
+        window.CrossPlanSearch.ouvrir(q);
+      });
+    })();
     modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
     document.addEventListener("keydown", function onEsc(e) {
       if (e.key === "Escape" && _modal) {

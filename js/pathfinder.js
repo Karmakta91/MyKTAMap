@@ -958,6 +958,66 @@
     });
   }
 
+  // ============================================================
+  // 🆕 v1.60.0 (A6 — itinéraire inter-plan) — computeRouteOnRoads
+  // ============================================================
+  // Dijkstra sur des ROADS FOURNIES EN PARAMÈTRE (plan NON chargé — lues à
+  // distance par InterPlanLinks.collectRoutingDataForPlan). Contrairement à
+  // computeRoute : SYNCHRONE (pas d'expansion avoidTags — l'appelant résout
+  // lui-même ses évitements en points/zones objets, car les données du plan
+  // distant ne sont pas dans les globals du runtime).
+  //
+  // opts :
+  //   - allowedTypes        : types de roads (défaut principal/secondaire/chemin)
+  //   - zones               : zones du plan distant [{type, points, level?}] —
+  //                           les "inaccessible" deviennent CONTRAINTE DURE
+  //   - avoidPoints         : [{x, y, label?}] contrainte souple (passe 2 sans)
+  //   - avoidZonesResolved  : zones OBJETS à éviter (souple)
+  //   - avoidRadius         : rayon px (défaut 100)
+  // Retour : même forme que computeRoute (+ usedFallback / avoidedThrough).
+  function computeRouteOnRoads(waypoints, roads, opts) {
+    if (!Array.isArray(waypoints) || waypoints.length < 2) {
+      throw new Error("Au moins 2 waypoints sont requis");
+    }
+    opts = opts || {};
+    const allowedTypes = opts.allowedTypes || ["principal", "secondaire", "chemin"];
+    if (!Array.isArray(roads) || roads.length === 0) {
+      const e = new Error("Aucune route disponible pour calculer un itinéraire");
+      e.code = "NO_ROUTE";
+      e.i18nKey = "iti.err.aucuneRoute";
+      throw e;
+    }
+    const zonesInacc = (Array.isArray(opts.zones) ? opts.zones : []).filter(function(z) {
+      return z && z.type === "inaccessible" && Array.isArray(z.points) && z.points.length >= 3;
+    }).map(function(z) {
+      return { points: z.points, level: Number.isInteger(z.level) ? z.level : 0 };
+    });
+    const avoidPts    = Array.isArray(opts.avoidPoints) ? opts.avoidPoints : [];
+    const avoidRadius = (Number.isFinite(opts.avoidRadius) && opts.avoidRadius > 0) ? opts.avoidRadius : 100;
+    const avoidZones  = Array.isArray(opts.avoidZonesResolved) ? opts.avoidZonesResolved : [];
+    const hasAvoid    = avoidPts.length > 0 || avoidZones.length > 0;
+
+    let result = null, usedFallback = false, avoidedThrough = [];
+    try {
+      result = _computeRouteInterne(waypoints, roads, allowedTypes,
+                                    zonesInacc, avoidPts, avoidRadius, avoidZones);
+    } catch(e1) {
+      if (!hasAvoid) throw e1;
+      // Passe 2 sans évitements souples (mêmes règles que computeRoute)
+      result = _computeRouteInterne(waypoints, roads, allowedTypes,
+                                    zonesInacc, [], 0, []);
+      usedFallback = true;
+      avoidedThrough = avoidPts.filter(function(ap) {
+        return _pathPassesNearPoint(result.path, ap, avoidRadius);
+      });
+    }
+    return Object.assign({}, result, {
+      usedFallback:   usedFallback,
+      avoidedThrough: avoidedThrough,
+      avoidRadius:    avoidRadius
+    });
+  }
+
   // Recherche un point existant par id ou par nom (case-insensitive).
   // Cherche d'abord dans les editor points, puis dans le cache de recherche
   // si dispo (rempli par searchPoints.js au boot).
@@ -1252,6 +1312,7 @@
   // =========================
   window.Pathfinder = {
     computeRoute:      computeRoute,
+    computeRouteOnRoads: computeRouteOnRoads,   // 🆕 v1.60.0 (A6) — roads fournies (plan non chargé)
     computeReachable:  computeReachable,
     resolvePointById:  resolvePointById,
     // 🆕 Nav Intelligente C1 — graphe réseau réutilisable (cf js/roadGraph.js)

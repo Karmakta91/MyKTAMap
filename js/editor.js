@@ -37,6 +37,8 @@ const EDITOR_TAG_LABELS = {
   elec:     "Électricité",
   epure:    "Épure",
   plaque:   "Plaque indication",
+  // 🆕 v1.59.0 — Portail (liaison inter-plan) : icône dédiée optionnelle.
+  portail:  "Portail (liaison inter-plan)",
   // 🆕 v1.41.0 D — Point d'entrée du plan (Vue OSM × Mode Secours).
   entree_plan: "🚪 Point d'entrée du plan"
 };
@@ -724,10 +726,18 @@ function _ajouterMarker(point) {
   // bouton "🗑️ Supprimer" affiche dans la popup.
   // 🆕 v1.16.0 step 3 : passe layerInfo pour que le bouton ⭐ Favori
   // puisse construire le snapshot avec le bon layerId/layerLabel.
-  const popupHtml = (typeof window.buildPointPopupHtml === "function")
-    ? window.buildPointPopupHtml(point, true, { layerId: "editor", layerLabel: window.I18n.t("editor.popup.myAdds") })
-    : ("<b>" + point.nom + "</b><br>" + (point.description || ""));
-  marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
+  // 🌀 v1.57.0 — bindPopup reçoit une FONCTION (contenu régénéré à CHAQUE
+  // ouverture) au lieu d'un HTML figé au render. Sans ça, la section
+  // « Liaisons inter-plan » (et l'état ⭐ Favori) restait celle du moment du
+  // render : une liaison créée depuis le popup n'apparaissait qu'après un
+  // plan switch. Même pattern que les markers data layers (utils.js > popup
+  // LAZY H3) — bonus perf : le HTML n'est plus construit pour les popups
+  // jamais ouverts.
+  marker.bindPopup(function() {
+    return (typeof window.buildPointPopupHtml === "function")
+      ? window.buildPointPopupHtml(point, true, { layerId: "editor", layerLabel: window.I18n.t("editor.popup.myAdds") })
+      : ("<b>" + point.nom + "</b><br>" + (point.description || ""));
+  }, window.KTA_POPUP_OPTS);
 
   // 🔍 v174 : double-clic sur le marker → zoom flyTo dessus
   if (typeof window.attachMarkerDblClickZoom === "function") {
@@ -753,19 +763,16 @@ function _ajouterMarker(point) {
   // qui efface aussi roads/zones partageant le meme layerEditor).
   _markersEditor.push(marker);
 
-  // 🚀 v1.30.0 (P5 viewport culling) : skip addTo si hors viewport ET toggle
-  // viewportCull actif. Le marker reste dans _markersEditor pour pouvoir
-  // être réintégré via _refreshEditorMarkersViewport() au moveend/zoomend.
-  // _ktaLayer = window.layerEditor : tracé pour la réintégration.
+  // 🆕 v1.59.0 (A4, KARMA) : les points de SESSION ne sont PLUS JAMAIS
+  // soumis au viewport culling — un point créé à la main est précieux et
+  // rare (quelques dizaines max vs des milliers de points datalayer) : le
+  // masquer selon le viewport déroutait (« mon POI a disparu ») pour un gain
+  // perf négligeable. Le culling reste actif sur les markers DATALAYER
+  // (utils.js). _ktaLayer/_ktaVpHidden conservés pour la compat avec
+  // _refreshEditorMarkersViewport (réintégration de résidus).
   marker._ktaLayer = window.layerEditor;
-  const _vpcEd = !!(window.PerfUltra && window.PerfUltra.get("viewportCull"));
-  if (_vpcEd && typeof window._markerInViewportPadded === "function"
-      && !window._markerInViewportPadded(marker, 0.1)) {
-    marker._ktaVpHidden = true;
-  } else {
-    marker._ktaVpHidden = false;
-    marker.addTo(window.layerEditor);
-  }
+  marker._ktaVpHidden = false;
+  marker.addTo(window.layerEditor);
 
   // Applique le filtre niveau immediat sur ce nouveau marker (utile quand le
   // user ajoute un point sur un niveau qui n'est pas dans visibleLevels —
@@ -780,31 +787,16 @@ function _ajouterMarker(point) {
 // Pattern strictement identique à _refreshDataMarkersViewport (mêmes
 // garanties idempotentes + toggle OFF = graceful reintegration).
 window._refreshEditorMarkersViewport = function() {
+  // 🆕 v1.59.0 (A4, KARMA) : les points de session sont EXEMPTÉS du viewport
+  // culling (cf _ajouterMarker). Cette fonction — toujours appelée par le
+  // chaînage utils.js > _refreshDataMarkersViewport au moveend/zoomend — ne
+  // sert plus qu'à réintégrer d'éventuels markers cachés résiduels (état
+  // hérité d'une session ouverte sous une version antérieure).
   if (!Array.isArray(_markersEditor) || _markersEditor.length === 0) return;
-  const _vpcOn = !!(window.PerfUltra && window.PerfUltra.get("viewportCull"));
-
-  if (!_vpcOn) {
-    // Toggle OFF → réintégrer tous les markers cachés
-    _markersEditor.forEach(function(m) {
-      if (m && m._ktaVpHidden && m._ktaLayer) {
-        try { m.addTo(m._ktaLayer); } catch(e) {}
-        m._ktaVpHidden = false;
-      }
-    });
-    return;
-  }
-
-  // Toggle ON → check viewport pour chaque marker
   _markersEditor.forEach(function(m) {
-    if (!m || !m._ktaLayer) return;
-    const inside = (typeof window._markerInViewportPadded === "function")
-      ? window._markerInViewportPadded(m, 0.1) : true;
-    if (inside && m._ktaVpHidden) {
+    if (m && m._ktaVpHidden && m._ktaLayer) {
       try { m.addTo(m._ktaLayer); } catch(e) {}
       m._ktaVpHidden = false;
-    } else if (!inside && !m._ktaVpHidden) {
-      try { m.remove(); } catch(e) {}
-      m._ktaVpHidden = true;
     }
   });
 };
@@ -922,6 +914,16 @@ window.supprimerPointEditor = function(id, x, y) {
   if (idx === -1) {
     console.warn("[Editor] Point a supprimer introuvable :", id, x, y);
     return;
+  }
+
+  // 🌀 v1.57.0 : purge les liaisons inter-plan du point supprimé (le lien
+  // entier disparaît des 2 côtés + badge retiré — cf interPlanLinks.js).
+  // Capturé AVANT le splice (on a besoin de l'objet point pour le croisement).
+  if (window.InterPlanLinks && typeof window.InterPlanLinks.onPointDeleted === "function"
+      && window._currentLoadedPlanId) {
+    try {
+      window.InterPlanLinks.onPointDeleted(window._currentLoadedPlanId, listePoints[idx]);
+    } catch(e) { console.warn("[Editor] purge liaisons inter-plan :", e); }
   }
 
   // Retire du tableau + re-render (renderEditorPoints clear le layerEditor + re-add)

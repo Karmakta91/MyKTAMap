@@ -196,10 +196,15 @@
   // `fromManualClick` : si true (click bouton 🚨), affiche TOUTES les alertes
   // actives même acquittées dans le sélecteur. Si false (boot post-splash),
   // ne montre que les non acquittées.
-  function _afficherAlertes(alertsAaffich, fromManualClick) {
-    if (!alertsAaffich || alertsAaffich.length === 0) return;
+  function _afficherAlertes(alertsAaffich, fromManualClick, onDone) {
+    // 🆕 v1.56.0 — onDone : signal de fin pour le séquenceur de premier
+    // lancement (js/firstRunFlow.js). Appelé à la fermeture de la modale
+    // d'alerte (ou immédiatement s'il n'y a rien / cas multi non bloquant).
+    const _od = function() { if (typeof onDone === "function") { try { onDone(); } catch(e) {} } };
+    if (!alertsAaffich || alertsAaffich.length === 0) { _od(); return; }
     if (typeof window.afficherModaleAlerte !== "function") {
       console.warn("[AlertChecker] afficherModaleAlerte absente — alerte ignorée");
+      _od();
       return;
     }
     // 🆕 v1.34.27 — Vibration haptique error pour signaler l'alerte serveur.
@@ -210,9 +215,10 @@
       window.kta_vibrate.error();
     }
 
-    // Cas simple : 1 seule alerte → modale détail direct
+    // Cas simple : 1 seule alerte → modale détail direct.
+    // onDone câblé sur le onClose natif de afficherModaleAlerte(alert, onClose).
     if (alertsAaffich.length === 1) {
-      window.afficherModaleAlerte(alertsAaffich[0]);
+      window.afficherModaleAlerte(alertsAaffich[0], _od);
       return;
     }
 
@@ -221,7 +227,7 @@
     if (typeof window.afficherSelecteurAlertes !== "function") {
       // Fallback si le sélecteur est absent (vieille version interface.js)
       console.warn("[AlertChecker] afficherSelecteurAlertes absent — fallback modale détail 1ère alerte");
-      window.afficherModaleAlerte(alertsAaffich[0]);
+      window.afficherModaleAlerte(alertsAaffich[0], _od);
       return;
     }
 
@@ -240,6 +246,10 @@
         // PAS de callback onClose → fermeture simple, pas de re-déclenchement
       }
     });
+    // 🆕 v1.56.0 — cas multi : on ne bloque PAS la file de premier lancement sur
+    // l'acquittement (l'user gère via le sélecteur / bouton 🚨). La suite de la
+    // séquence (légal, onboarding, PIN) peut s'enchaîner par-dessus le sélecteur.
+    _od();
   }
 
   function _showOrDefer(alertsAaffich) {
@@ -251,12 +261,15 @@
     }
   }
 
-  function notifySplashEnded() {
+  function notifySplashEnded(onDone) {
     _splashEnded = true;
     if (_pendingAlerts.length > 0) {
       const list = _pendingAlerts;
       _pendingAlerts = [];
-      _afficherAlertes(list, false);
+      _afficherAlertes(list, false, onDone);
+    } else {
+      // 🆕 v1.56.0 — rien à afficher : notifie tout de suite le séquenceur.
+      if (typeof onDone === "function") { try { onDone(); } catch(e) {} }
     }
   }
 

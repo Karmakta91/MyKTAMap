@@ -1102,7 +1102,14 @@
       btn.textContent = _t("lost.btn.calcLoading");
       try {
         _lastClues = document.getElementById("kta-lost-clues").value || "";
-        await _validerEtCalculer(_lastClues);
+        // 🌀 v1.55.1 : overlay « calcul en cours » (computeReachable est SYNC
+        // bloquant → sans yield-to-paint l'écran fige sans rien montrer).
+        const _msg = _t("lost.compute.loading");
+        if (window.ComputeLoader && window.ComputeLoader.wrap) {
+          await window.ComputeLoader.wrap(function() { return _validerEtCalculer(_lastClues); }, _msg);
+        } else {
+          await _validerEtCalculer(_lastClues);
+        }
         _afficherResultats();
       } catch(e) {
         alert(e.message || e);

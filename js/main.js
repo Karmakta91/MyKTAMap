@@ -442,6 +442,41 @@ async function lancerApplication() {
 
   console.log("[Main] Application lancée");
 
+  // 🌀 v1.57.0 — Liaisons inter-plan : pose les badges 🌀 sur les points
+  // liés du plan courant (lecture du registre localStorage — cf.
+  // js/interPlanLinks.js). Le module gère lui-même son différé interne.
+  if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanLoaded === "function") {
+    try { window.InterPlanLinks.onPlanLoaded(); } catch(e) {
+      console.warn("[Main] InterPlanLinks.onPlanLoaded échec :", e);
+    }
+  }
+
+  // 🧭 v1.60.0 (A6) — Itinéraire inter-plan : trace le leg distant en attente
+  // (l'user vient de traverser un portail avec un itinéraire calculé).
+  if (window.InterPlanRoute && typeof window.InterPlanRoute.onPlanLoaded === "function") {
+    try { window.InterPlanRoute.onPlanLoaded(); } catch(e) {
+      console.warn("[Main] InterPlanRoute.onPlanLoaded échec :", e);
+    }
+  }
+
+  // 🚀 v1.59.0 (U3, KARMA) — INDICATEUR honnête : si des optimisations Perf
+  // ULTRA sont actives sur CE plan (slot per-plan, hors mobileZoomLimit qui
+  // est une sécurité par défaut), un toast le signale au chargement —
+  // l'affichage « allégé » (tracés simplifiés, popups data désactivés,
+  // culling…) ne doit jamais passer pour un bug. Queued par OOMGuard si le
+  // splash est encore affiché (flushPendingToasts).
+  if (window.PerfUltra && Array.isArray(window.PerfUltra.TOGGLES)) {
+    try {
+      const _optimsActives = window.PerfUltra.TOGGLES.filter(function(k) {
+        return k !== "mobileZoomLimit" && window.PerfUltra.get(k);
+      });
+      if (_optimsActives.length > 0 && window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast(
+          window.I18n.t("perf.toast.activeOnPlan", { n: _optimsActives.length }), "info");
+      }
+    } catch(e) { console.warn("[Main] toast PerfUltra échec :", e); }
+  }
+
   // 🆕 v1.21.3 (KARMA "les stat de plan ne comprenne que les session") :
   // persiste les stats COMPLÈTES du plan courant (session + embedded data
   // layers) dans localStorage pour que la modale Profil > "📊 Mes plans"
@@ -1190,39 +1225,20 @@ async function _splashEnd() {
     if (window.UpdateChecker && typeof window.UpdateChecker.notifySplashEnded === "function") {
       window.UpdateChecker.notifySplashEnded();
     }
-    // Alerte publique (incendie, etc.) si l'auteur en a publié une dans alert.json
-    // (depuis v168 : inclut aussi l'annonce migration myktamap.fr — l'ancien
-    // module MigrationNotice qui doublait via une modal one-shot a été supprimé)
-    if (window.AlertChecker && typeof window.AlertChecker.notifySplashEnded === "function") {
+    // 🆕 v1.56.0 — Séquenceur de premier lancement (js/firstRunFlow.js).
+    // Remplace les anciens déclencheurs non coordonnés (alerte + onboarding +
+    // proposition PIN) qui se superposaient au 1er boot. Joue les étapes UNE
+    // PAR UNE, dans l'ordre : 🚨 alerte critique → ⚖️ conditions d'utilisation
+    // → 🎓 onboarding → 🔐 proposition PIN. AlertChecker.notifySplashEnded (qui
+    // pose aussi le flag _splashEnded + affiche les alertes différées) est
+    // désormais appelé PAR l'orchestrateur (étape 1). Chaque boot rejoue la
+    // séquence : les étapes déjà faites (légal accepté, onboarding vu, PIN
+    // proposé) se sautent d'elles-mêmes.
+    if (window.FirstRunFlow && typeof window.FirstRunFlow.run === "function") {
+      window.FirstRunFlow.run();
+    } else if (window.AlertChecker && typeof window.AlertChecker.notifySplashEnded === "function") {
+      // Fallback défensif si le module n'a pas chargé : au moins les alertes.
       window.AlertChecker.notifySplashEnded();
-    }
-
-    // 🆕 v1.21.0 — Tutoriel premier-lancement. Auto-déclenché UNIQUEMENT si
-    // c'est le tout premier boot (flag `myktamap_tutorial_seen_v1` absent).
-    // Différé encore +600ms pour laisser le temps aux alertes/updates de
-    // s'afficher en premier (priorité : info critique > onboarding). L'user
-    // peut rejouer à tout moment via le bouton 🎓 dans le header de la
-    // modale 📖 Documentation (depuis v1.21.3).
-    if (window.Tutorial && typeof window.Tutorial.isFirstLaunch === "function" && window.Tutorial.isFirstLaunch()) {
-      setTimeout(function() {
-        // Re-check au cas où une autre modale (update, alerte critique) soit
-        // ouverte à ce moment — on attend qu'elle soit fermée avant d'afficher
-        // le tutoriel. Skip si flag déjà marqué pendant le délai (race rare).
-        const blockingModal = document.querySelector(".kta-readme-modal-overlay") ||
-                              document.querySelector("#kta-update-modal");
-        if (blockingModal) {
-          // Modale prioritaire ouverte → on retente dans 2s
-          setTimeout(function() {
-            if (window.Tutorial && window.Tutorial.isFirstLaunch && window.Tutorial.isFirstLaunch()) {
-              try { window.Tutorial.ouvrir(); } catch(e) { console.warn("[Tutorial] auto-open échec :", e); }
-            }
-          }, 2000);
-          return;
-        }
-        try { window.Tutorial.ouvrir(); } catch(e) {
-          console.warn("[Tutorial] auto-open échec :", e);
-        }
-      }, 600);
     }
   }, 500);
 }
@@ -1379,6 +1395,22 @@ window.proposerRedemarrageLangue = function() {
   // Démarrer le splash dès l'init
   _splashStart();
 
+  // ⚖️ v1.56.4 — Conditions d'utilisation EN TOUT PREMIER, AVANT toute saisie
+  // de code communautaire ou import de licence (bug : déclenchée par
+  // FirstRunFlow post-splash, la gate légale [z 99999] passait DERRIÈRE
+  // l'UnlockGate [z 100100] — et l'ordre logique voulu par KARMA est « on lit
+  // et accepte les conditions AVANT de saisir un code »). Bloquant : le boot
+  // ne continue pas tant que l'user n'a pas accepté. Skip en incognito (flag
+  // localStorage shimé, non persistant — cohérent FirstRunFlow). L'étape
+  // légale de FirstRunFlow reste en filet (no-op ici car déjà accepté).
+  if (window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
+      && !window.LegalGate.isAccepted()
+      && !(window.IncognitoMode && window.IncognitoMode.active)) {
+    await _splashEnd();
+    try { await window.LegalGate.ouvrirGate(); }
+    catch (e) { console.warn("[Main] LegalGate a échoué :", e); }
+  }
+
   // 🗝️ v173 : Unlock Gate (barrière communautaire).
   // Position 3=b validée KARMA : APRÈS le splash, AVANT toute initialisation
   // qui touche au plan ou à l'UI. Si pas authentifié → l'app reste bloquée
@@ -1474,15 +1506,21 @@ window.proposerRedemarrageLangue = function() {
     console.log("[Main] Gate PIN franchie → init normale");
   }
 
-  // 🆕 v1.10.0 (KARMA "après cette mise à jour, premier lancement, proposer
-  // activer l'authentification forte") : proposition d'activation one-shot
-  // pour les users qui n'ont pas (encore) activé le PIN. Skip si déjà
-  // activé OU si l'user a déjà refusé une fois (flag localStorage).
-  // Délai 800ms après pour laisser le splash finir + ne pas surcharger
-  // le 1er paint visuel.
-  if (window.MyKTAMapPinLock && typeof window.MyKTAMapPinLock.proposerActivation === "function") {
-    window.MyKTAMapPinLock.proposerActivation();
+  // ⚖️ v1.56.4 — Toutes les gates de boot (légale → unlock → PIN) sont
+  // franchies : on libère le séquenceur de premier lancement. Sans ce signal
+  // explicite, FirstRunFlow (déclenché par _splashEnd ~500 ms après le fade)
+  // pouvait démarrer dans une FENÊTRE SANS GATE entre deux gates (ex. ~2 s
+  // d'attente du check licence pro entre la légale et l'UnlockGate) → le
+  // tutoriel partait avant/derrière la saisie du code. En lockout, ce point
+  // n'est jamais atteint → la file ne démarre jamais (voulu).
+  if (window.FirstRunFlow && typeof window.FirstRunFlow.notifyBootGatesDone === "function") {
+    window.FirstRunFlow.notifyBootGatesDone();
   }
+
+  // 🆕 v1.56.0 — La proposition d'activation du PIN n'est PLUS déclenchée ici :
+  // elle est désormais séquencée par js/firstRunFlow.js (dernière étape du flux
+  // de premier lancement : alerte → légal → onboarding → PIN), pour éviter le
+  // « spam » de popups superposées au 1er boot. Cf. _splashEnd → FirstRunFlow.run().
 
   // Initialiser le registre
   if (window.PlanRegistry) {

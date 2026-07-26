@@ -143,6 +143,11 @@ function creerIcones(iconConfig) {
     passage:  "icon/passage.png",
     danger:   "icon/danger.png",
     plaque:   "icon/plaque.png",
+    // 🆕 v1.59.0 — Tag « portail » (liaisons inter-plan) : icône vortex dédiée.
+    // Choix UTILISATEUR : un point lié peut garder n'importe quel tag (aucun
+    // marquage visuel), ou prendre ce tag pour signaler visuellement le
+    // portail (l'ex-badge 🌀 overlay auto a été retiré en v1.59.0).
+    portail:  "icon/portail.png",
     // 🆕 v1.41.0 D — Tag spécial "Point d'entrée du plan" (Vue OSM × Mode Secours).
     //    Icône inline SVG vectorielle (porte stylisée jaune charte) → pas besoin
     //    de fichier PNG. KARMA peut remplacer par "icon/entree.png" + ajouter au

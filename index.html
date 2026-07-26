@@ -493,6 +493,8 @@
                avancée cachée. -->
           <div class="loader-secondary-actions">
             <button class="loader-btn-secondary" type="button" id="loaderTableEditorBtn" data-i18n="home.add.editData">📊 Éditeur de données</button>
+            <button class="loader-btn-secondary" type="button" id="loaderCrossSearchBtn" data-i18n="home.add.crossSearch">🌐 Recherche multi-plans</button>
+            <button class="loader-btn-secondary" type="button" id="loaderLinksMgrBtn" data-i18n="home.add.linksMgr">🌀 Mes liaisons</button>
             <button class="loader-btn-secondary" type="button" id="loaderFusionBtn" data-i18n="home.add.fusion">🔗 Fusionner des datalayers</button>
             <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn" data-i18n="home.add.generate">🏗️ Générer un plan</button>
           </div>
@@ -568,6 +570,8 @@
           📷 <a href="https://instagram.com/karma_kta" target="_blank" rel="noopener noreferrer">@karma_kta</a>
           · ✉️ <a href="mailto:contact@myktamap.fr">contact@myktamap.fr</a>
           <span class="kta-licence-community">· 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" data-i18n="home.footer.proLink">Licence pro</a></span>
+          <!-- 🆕 v1.56.0 — ré-accès aux Conditions d'utilisation (consultation, non bloquant) -->
+          · ⚖️ <a href="#" onclick="if(window.LegalGate){window.LegalGate.ouvrirConsultation();}return false;" data-i18n="legal.footer.link">Conditions d'utilisation</a>
         </div>
         <div class="kta-loader-credits">
           <!-- 🆕 v1.40.29 — ajout 🌍 OSM (Vue OSM v1.39+ opt-in). Affiché dans
@@ -1082,13 +1086,13 @@
         <div class="kta-net-doc-section kta-net-doc-section-domain">
           <div class="kta-net-doc-section-titre" data-i18n-html="home.netdoc.scopeTitle">🛡️ Périmètre de garantie : <code>myktamap.fr</code></div>
           <p class="kta-net-doc-hint" data-i18n-html="home.netdoc.scope1">
-            <strong>Cette garantie de sécurité et de non-télémétrie s'applique UNIQUEMENT au domaine officiel <code>myktamap.fr</code></strong> (et à l'environnement de développement <code>devmap.is-underground.fr</code>, géré par le même auteur).
+            <strong>Cette garantie de sécurité et de non-télémétrie s'applique UNIQUEMENT au domaine officiel <code>myktamap.fr</code></strong> (et à l'environnement de développement <code>dev.myktamap.fr</code>, géré par le même auteur).
           </p>
           <p class="kta-net-doc-hint" data-i18n-html="home.netdoc.scope2">
             Le code source de MyKTAMap est public (CC BY-NC-SA 4.0) et peut être <strong>copié, forké ou miroir</strong> par n'importe qui. Toute installation tierce — peu importe qu'elle se présente sous un autre nom, un autre domaine ou même qu'elle clame être « MyKTAMap » — peut contenir des <strong>modifications dont nous ne sommes pas responsables</strong> : tracking ajouté, exfiltration de données, code malveillant injecté. Nous n'avons aucun moyen de vérifier ce qui s'y passe.
           </p>
           <p class="kta-net-doc-hint" data-i18n-html="home.netdoc.scope3">
-            <strong>Comment t'assurer que tu es sur le vrai site ?</strong> Vérifie l'URL dans la barre d'adresse de ton navigateur. Si elle ne commence pas par <code>https://myktamap.fr</code> ou <code>https://devmap.is-underground.fr</code>, tout ce qui est écrit dans cette page ne te concerne pas — c'est une copie sur laquelle nous n'avons aucun contrôle.
+            <strong>Comment t'assurer que tu es sur le vrai site ?</strong> Vérifie l'URL dans la barre d'adresse de ton navigateur. Si elle ne commence pas par <code>https://myktamap.fr</code> ou <code>https://dev.myktamap.fr</code>, tout ce qui est écrit dans cette page ne te concerne pas — c'est une copie sur laquelle nous n'avons aucun contrôle.
           </p>
         </div>
 
@@ -1282,10 +1286,24 @@
   <script src="js/planDenylist.js" defer></script>
   <script src="js/sessionPersist.js" defer></script>
   <script src="js/oomGuard.js" defer></script>
+  <script src="js/computeLoader.js" defer></script>
   <script src="js/pathfinder.js" defer></script>
   <script src="js/roadGraph.js" defer></script>
   <script src="js/updateChecker.js" defer></script>
   <script src="js/alertChecker.js" defer></script>
+  <!-- 🆕 v1.56.0 : Conditions d'utilisation + avertissement légal (gate
+       bloquante 1er lancement) + orchestrateur de premier lancement qui
+       séquence alerte → légal → onboarding → PIN. Cf docs CGU.md. -->
+  <script src="js/legalGate.js" defer></script>
+  <script src="js/firstRunFlow.js" defer></script>
+  <!-- 🌀 v1.57.0 : Liaisons inter-plan (« portails » entre points de 2 plans).
+       Registre central localStorage + section popup + badges. -->
+  <script src="js/interPlanLinks.js" defer></script>
+  <!-- 🌐 v1.58.0 : Recherche cross-plan (tous les plans de la bibliothèque).
+       Réutilise InterPlanLinks (lecture de plans non chargés + navigation). -->
+  <script src="js/crossPlanSearch.js" defer></script>
+  <!-- 🧭 v1.60.0 : Itinéraire inter-plan (Dijkstra à travers les portails). -->
+  <script src="js/interPlanRoute.js" defer></script>
   <script src="js/lostMode.js" defer></script>
   <!-- 🆕 v1.10.1 : Mode urgence (panique) — affichage XL position + cap
        boussole + thèmes clair/sombre. Différent du LostMode (calcul de
@@ -1646,7 +1664,7 @@
             zipFileName.textContent = "🌍 " + f.name + " — ouverture de l'import KMZ…";
             window.afficherImporterKmz(f);
           } else {
-            setStatus("Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là.", true);
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.kmzUnavailable") : "Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là."), true);
           }
           return;
         }
@@ -1656,7 +1674,7 @@
             zipFileName.textContent = "📤 " + f.name + " — ouverture de l'import GPX…";
             window.afficherImporterGpx(f);
           } else {
-            setStatus("Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là.", true);
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.gpxUnavailable") : "Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là."), true);
           }
           return;
         }
@@ -1688,7 +1706,7 @@
             zipFileName.textContent = "🌍 " + f.name + " — ouverture de l'import KMZ…";
             window.afficherImporterKmz(f);
           } else {
-            setStatus("Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là.", true);
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.kmzUnavailable") : "Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là."), true);
           }
         } else if (lower.endsWith(".gpx")) {
           // v1.15.0 — route GPX vers la nouvelle modale d'import GPX
@@ -1698,10 +1716,10 @@
             zipFileName.textContent = "📤 " + f.name + " — ouverture de l'import GPX…";
             window.afficherImporterGpx(f);
           } else {
-            setStatus("Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là.", true);
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.gpxUnavailable") : "Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là."), true);
           }
         } else {
-          setStatus("Le fichier doit être une archive .zip, un .kmz ou un .gpx MyKTAMap", true);
+          setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.badFileType") : "Le fichier doit être une archive .zip, un .kmz ou un .gpx MyKTAMap"), true);
         }
       });
 
@@ -1902,6 +1920,33 @@
           const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
           if (typeof window.ouvrirTableEditor === "function") window.ouvrirTableEditor();
           else setStatus(_t("ui.alert.tableEditorIndispo"), true);
+        });
+      }
+
+      // 🌐 v1.58.0 — Recherche multi-plans depuis le home (A1 1:c) : cherche un
+      // point dans TOUTE la bibliothèque sans charger de plan ; le clic sur un
+      // résultat charge le plan cible et centre sur le point (pipeline portail).
+      const crossSearchBtn = document.getElementById("loaderCrossSearchBtn");
+      if (crossSearchBtn) {
+        crossSearchBtn.addEventListener("click", function() {
+          if (window.CrossPlanSearch && typeof window.CrossPlanSearch.ouvrir === "function") {
+            window.CrossPlanSearch.ouvrir("");
+          } else {
+            console.warn("[Home] CrossPlanSearch indisponible");
+          }
+        });
+      }
+
+      // 🌀 v1.59.0 (A3) — Gestionnaire de liaisons inter-plan depuis le home :
+      // vue globale du registre (état, navigation, suppression), sans plan chargé.
+      const linksMgrBtn = document.getElementById("loaderLinksMgrBtn");
+      if (linksMgrBtn) {
+        linksMgrBtn.addEventListener("click", function() {
+          if (window.InterPlanLinks && typeof window.InterPlanLinks.ouvrirGestionnaire === "function") {
+            window.InterPlanLinks.ouvrirGestionnaire();
+          } else {
+            console.warn("[Home] InterPlanLinks.ouvrirGestionnaire indisponible");
+          }
         });
       }
 

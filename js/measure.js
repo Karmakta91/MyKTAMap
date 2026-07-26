@@ -32,6 +32,24 @@ let _activeMode = "distance";  // mode du bouton actif → cible les clics
 let _segmentLabels = [];
 let _angleLabels   = [];
 
+// 🐛 v1.56.2 — Points consécutifs COÏNCIDENTS (doublons [A,A,B,B,…] hérités de
+// l'ancien bug de handlers empilés, re-restaurés par SessionPersist, ou d'un
+// double événement click) : segments de 0 px → label « 0.0 m » posé SUR le
+// sommet + angles avalés (len < 1e-6 → skip). Helper de déduplication : ne
+// retire QUE les doublons consécutifs (< 0.01 px), jamais un vrai point.
+const _MEASURE_DUP_EPS = 0.01;  // px plan — sous ce seuil, 2 clics = 1 point
+function _dedupPointsConsecutifs(points) {
+  if (!Array.isArray(points) || points.length < 2) return points || [];
+  const out = [points[0]];
+  for (let i = 1; i < points.length; i++) {
+    const prev = out[out.length - 1];
+    const dx = points[i].x - prev.x;
+    const dy = points[i].y - prev.y;
+    if (Math.sqrt(dx * dx + dy * dy) >= _MEASURE_DUP_EPS) out.push(points[i]);
+  }
+  return out;
+}
+
 function initMeasure() {
   // Reset complet : nouvelle map = nouveaux layers + nouveau handler
   _pointsDistance = [];
@@ -67,11 +85,16 @@ function initMeasure() {
     // 🆕 v1.12.0-fix : route le clic vers le tableau du mode actif.
     // Les 2 mesures coexistent — clic en mode "surface" n'efface pas la
     // distance existante (et vice-versa).
-    if (_activeMode === "surface") {
-      _pointsSurface.push({ x: x, y: y });
-    } else {
-      _pointsDistance.push({ x: x, y: y });
+    // 🐛 v1.56.2 : ignore un point coïncident avec le DERNIER du tableau
+    // (double event click / tap fantôme) — un segment de 0 px n'a aucun sens
+    // en mesure et casse l'affichage des angles.
+    const arr = (_activeMode === "surface") ? _pointsSurface : _pointsDistance;
+    const last = arr[arr.length - 1];
+    if (last) {
+      const ddx = x - last.x, ddy = y - last.y;
+      if (Math.sqrt(ddx * ddx + ddy * ddy) < _MEASURE_DUP_EPS) return;
     }
+    arr.push({ x: x, y: y });
     updateMesure();
   };
 
@@ -102,11 +125,15 @@ function _updateSegmentLabels() {
   _segmentLabels.forEach(function(l) { try { l.remove(); } catch(e) {} });
   _segmentLabels = [];
 
-  if (!window.map || _pointsDistance.length < 2) return;
+  // 🐛 v1.56.2 : labels calculés sur la géométrie DÉDUPLIQUÉE — une session
+  // restaurée avec des doublons [A,A,B,B,…] posait un « 0.0 m » sur chaque
+  // sommet. Le tableau source n'est pas modifié (SessionPersist inchangé).
+  const pts = _dedupPointsConsecutifs(_pointsDistance);
+  if (!window.map || pts.length < 2) return;
 
-  for (let i = 1; i < _pointsDistance.length; i++) {
-    const p1 = _pointsDistance[i - 1];
-    const p2 = _pointsDistance[i];
+  for (let i = 1; i < pts.length; i++) {
+    const p1 = pts[i - 1];
+    const p2 = pts[i];
     const midX = (p1.x + p2.x) / 2;
     const midY = (p1.y + p2.y) / 2;
     const dx = p2.x - p1.x;
@@ -141,12 +168,17 @@ function _updateAngleLabels() {
   _angleLabels.forEach(function(l) { try { l.remove(); } catch(e) {} });
   _angleLabels = [];
 
-  if (!window.map || _pointsDistance.length < 3) return;
+  // 🐛 v1.56.2 : angles calculés sur la géométrie DÉDUPLIQUÉE — avec des
+  // doublons [A,A,B,B,…], chaque sommet avait un vecteur adjacent de longueur
+  // nulle → TOUS les angles étaient skippés (len < 1e-6). Sur la géométrie
+  // réelle, l'angle réapparaît à chaque sommet intermédiaire.
+  const pts = _dedupPointsConsecutifs(_pointsDistance);
+  if (!window.map || pts.length < 3) return;
 
-  for (let i = 1; i < _pointsDistance.length - 1; i++) {
-    const a = _pointsDistance[i - 1];
-    const b = _pointsDistance[i];
-    const c = _pointsDistance[i + 1];
+  for (let i = 1; i < pts.length - 1; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    const c = pts[i + 1];
     const v1x = a.x - b.x, v1y = a.y - b.y;
     const v2x = c.x - b.x, v2y = c.y - b.y;
     const len1 = Math.sqrt(v1x * v1x + v1y * v1y);
@@ -379,7 +411,10 @@ window.getMeasurePoints = function() {
 };
 
 window.setMeasurePoints = function(points) {
-  _pointsDistance = points || [];
+  // 🐛 v1.56.2 : déduplique au restore — les sessions sauvées à l'époque du
+  // bug de handlers empilés contiennent des points doublés ; on répare la
+  // donnée au chargement (SessionPersist re-sauvera la version propre).
+  _pointsDistance = _dedupPointsConsecutifs(points || []);
   updateMesure();
 };
 
@@ -388,7 +423,7 @@ window.getMeasurePointsSurface = function() {
 };
 
 window.setMeasurePointsSurface = function(points) {
-  _pointsSurface = points || [];
+  _pointsSurface = _dedupPointsConsecutifs(points || []);  // 🐛 v1.56.2 idem distance
   updateMesure();
 };
 

@@ -104,6 +104,10 @@ function importerSessionJSON(file) {
       }
       if (window.resetRoads) window.resetRoads();
       if (window.setRoads) window.setRoads(data.roads || []);
+      // 🌀 v1.57.0 : liaisons inter-plan (fusion par id dans le registre)
+      if (window.InterPlanLinks && typeof window.InterPlanLinks.importLinks === "function") {
+        window.InterPlanLinks.importLinks(data.interPlanLinks || []);
+      }
 
       alert(window.I18n.t("impexp.importDone"));
     } catch (err) {
@@ -730,6 +734,12 @@ function ouvrirImportSession() {
         // SessionPersist). Rétro-compat : fichiers sans customLegend → null = vide.
         if (window.LegendCustomization && typeof window.LegendCustomization.loadSessionState === "function") {
           window.LegendCustomization.loadSessionState(dataParsee.customLegend || null);
+        }
+        // 🌀 v1.57.0 : réinjecte les liaisons inter-plan de la session importée
+        // dans le registre central (fusion par id — les liaisons déjà connues
+        // localement ne sont pas dupliquées). Rétro-compat : champ absent → 0.
+        if (window.InterPlanLinks && typeof window.InterPlanLinks.importLinks === "function") {
+          window.InterPlanLinks.importLinks(dataParsee.interPlanLinks || []);
         }
         if (window.renderEditorPoints) window.renderEditorPoints();
         if (window.resetMesure)        window.resetMesure();

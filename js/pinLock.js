@@ -800,7 +800,12 @@
     catch(e) { console.warn("[PinLock] markProposalDone :", e); }
   }
 
-  function proposerActivation() {
+  function proposerActivation(onClose) {
+    // 🆕 v1.56.0 — onClose : signal de fin pour le séquenceur de premier
+    // lancement (js/firstRunFlow.js). Appelé dans TOUS les cas (skip inclus)
+    // pour que la file continue. Le délai interne de 800 ms est supprimé : le
+    // séquenceur garantit qu'aucune autre modale n'est ouverte à ce moment.
+    const _done = (typeof onClose === "function") ? onClose : function() {};
     // 🕵️ v1.31.10-fix1 — Skip aussi la PROPOSITION d'activation en
     // incognito (modale "🔐 Authentification renforcée disponible").
     // KARMA bug : "J'ai toujours la popup authentification renforcé au
@@ -810,18 +815,16 @@
     // En incognito, isProposalDone() lit la clé PROPOSAL_FLAG qui n'est
     // PAS dans la whitelist → retourne null → considère "pas encore
     // proposé" → modale s'affichait à chaque boot incognito.
-    if (window.IncognitoMode && window.IncognitoMode.active) return;
+    if (window.IncognitoMode && window.IncognitoMode.active) { _done(); return; }
     // Skip si PIN déjà activé OU déjà proposé une fois
-    if (isEnabled()) return;
-    if (isProposalDone()) return;
+    if (isEnabled()) { _done(); return; }
+    if (isProposalDone()) { _done(); return; }
 
-    // Petit délai pour ne pas être trop intrusif au boot
-    setTimeout(function() {
-      _afficherModaleProposition();
-    }, 800);
+    _afficherModaleProposition(_done);
   }
 
-  function _afficherModaleProposition() {
+  function _afficherModaleProposition(onClose) {
+    const _done = (typeof onClose === "function") ? onClose : function() {};
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const overlay = document.createElement("div");
     overlay.id        = "kta-pin-proposal-overlay";
@@ -864,8 +867,10 @@
       '</div>';
     document.documentElement.appendChild(overlay);
 
+    let _closed = false;
     function _close() {
       try { overlay.remove(); } catch(e) {}
+      if (!_closed) { _closed = true; try { _done(); } catch(e) {} }  // 🆕 v1.56.0 : notifie le séquenceur
     }
 
     document.getElementById("kta-pin-proposal-non").addEventListener("click", function() {

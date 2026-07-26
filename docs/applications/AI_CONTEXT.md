@@ -769,6 +769,28 @@ La zone apparaît avec un **motif hachures rouge sombre / noir** à 45°. Tout i
 
 ---
 
+## 🌀 Recette : lier deux plans entre eux (liaisons inter-plan, depuis v1.57.0)
+
+**Objectif** : créer un « portail » entre un point d'un plan X et un point d'un plan Y (deux réseaux qui se touchent, ou plan général ↔ plan de détail), puis naviguer de l'un à l'autre en un clic.
+
+1. **Préparer** : les deux plans doivent être dans la bibliothèque (ajoutés depuis l'accueil). Les deux points (départ et arrivée) doivent exister — n'importe quel point convient : point de session (✏️) **ou** point d'un calque de données.
+2. **Créer la liaison** : ouvre le plan X → clique le point de départ → dans sa fiche, bouton **🌀 Lier à un autre plan** → choisis le plan Y dans la liste → recherche le point d'arrivée (par nom, id ou tag — les points du plan Y sont lus **sans l'ouvrir**) → clique-le. C'est fait.
+3. **Résultat** : la liaison est **bidirectionnelle** (visible dans la fiche des DEUX points, sur les deux plans). Un point peut porter plusieurs liaisons. **Marquage visuel au choix** (depuis v1.59.0) : par défaut rien ne distingue un point lié ; donne-lui le **tag « Portail »** pour son **icône vortex dédiée** (anneau doré, spirale bleue).
+4. **Utiliser** : fiche du point → ligne 🌀 « plan · point » → bouton **➜** → confirmation → l'app change de plan (la session actuelle est sauvegardée automatiquement), **bascule sur le niveau du point d'arrivée** et centre la vue dessus (flash bleu).
+4 bis. **Itinéraire inter-plan** (depuis v1.60.0) : depuis la modale **Itinéraire** (« 🌐 Destination sur un autre plan ») ou la **recherche multi-plans** (bouton 🧭 sur un résultat distant), demande un trajet vers un point d'un autre plan. L'app compare les portails disponibles au coût réel, affiche les étapes (portail + distances de chaque côté + total en mètres), trace le chemin jusqu'au portail, puis **trace automatiquement la suite** à la traversée. Les évitements de chaque plan sont respectés. En cas d'impossibilité, le message explique précisément la cause (aucun portail — en crée un d'abord ; plan hors-ligne ; destination isolée du réseau ; « pas de liaison directe mais un chemin existe via tel plan »).
+5. **Supprimer** : bouton 🗑️ sur la ligne de liaison (des deux côtés), ou supprime le point — ses liaisons partent avec.
+
+**Bon à savoir** :
+- Plan de destination absent de l'appareil → la liaison s'affiche avec ⛔ ; ajoute le plan pour pouvoir « y aller ».
+- Les liaisons **voyagent avec l'export de session** (restaurées à l'import, fusion sans doublon).
+- Un plan distribué peut embarquer des liaisons **prêtes à l'emploi** dans ses calques de données : utilisables, non modifiables.
+- Si un **filtre de tags** masque le point d'arrivée, un avertissement s'affiche (l'app ne modifie jamais tes filtres).
+- Les liaisons sont stockées localement (`myktamap_interplan_links_v1`) — comme tout le reste, **rien ne quitte l'appareil**.
+- **↩️ Retour** (v1.58.0) : après un saut, un bouton flottant « Retour : <plan> » (15 s, bas de l'écran) ramène au plan et à la **vue exacte** d'origine (niveau + zoom). Les sauts s'empilent (3 portails = 3 retours).
+- **🌐 Recherche multi-plans** (v1.58.0) : cherche un point dans **tous les plans de la bibliothèque** — depuis l'accueil (bouton « 🌐 Recherche multi-plans ») ou via la recherche Ctrl+K (bouton « Chercher dans tous les plans », saisie conservée). Chaque résultat porte le badge de son plan ; un clic charge le plan, bascule sur le bon niveau et centre la vue.
+
+---
+
 # ❓ FAQ — questions et solutions
 
 ### Le tracker dérive énormément après quelques pas

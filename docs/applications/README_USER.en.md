@@ -6,6 +6,18 @@
 
 ## 🔴 Important warnings
 
+### ⚖️ Terms of use & legal notice (since v1.56.0)
+
+On **first launch**, a **terms of use** page reminds you that MyKTAMap is a **mapping and orientation tool**, not an encouragement to enter forbidden places. It must be **read and accepted once** (checkbox + "I accept").
+
+- Access to many underground sites — notably the **former quarry network of Paris** — is **forbidden** (Paris prefectural order of 2 November 1955) and **punishable by a fine** (€135 to €375).
+- Any intrusion into a private or forbidden place is **your sole responsibility**.
+- The **full text** (order of 2 November 1955 + French Senate written reply no. 03710 of 05/06/2025) is available from the page — reproduced in French only, as they are French official acts — and at any time via the **⚖️ Terms of use** link in the home footer.
+
+> Clandestine exploration is dangerous (getting lost, collapses, falls into pits) and illegal. Respect the law, site owners and your own safety.
+
+---
+
 ### 🔐 Data confidentiality — read this first
 
 MyKTAMap is a field mapping tool that may contain sensitive information: **precise location of entrances, shafts, passages, underground structures.**
@@ -427,7 +439,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 1. **🖼️ Image tiling (per map)** — 5-preset segmented control (see detail below), which chooses how the main image is split in memory at load. Stored **per map** (one map in Performance, another in Quality, etc.).
 
-2. **🚀 Performance ULTRA mode (paths / markers)** — 7 optimization toggles that do **NOT** touch the image (already covered by Tiling above) but everything else (polylines, popups, intersections, auto-save, viewport culling, mobile zoom-out limit). **Global** preference, kept between sessions. See "🚀 Optimize your map" section below for details.
+2. **🚀 Performance ULTRA mode (paths / markers)** — 7 optimization toggles that do **NOT** touch the image (already covered by Tiling above) but everything else (polylines, popups, intersections, auto-save, viewport culling, mobile zoom-out limit). **PER-PLAN setting since v1.59.0**: enabling ULTRA on one plan no longer affects the others — each plan starts disabled until you opt in for it. See "🚀 Optimize your map" section below for details.
 
 3. **🛠️ Debug** — **🐛 Detailed logs** toggle (verbose mode) **+ 📋 Show logs button** which directly opens the modal buffer of captured logs. Useful for consulting logs without having to load a map first (e.g.: if you are trying to diagnose a blocking bug at load).
 
@@ -742,6 +754,43 @@ If your map is **GPS calibrated** (see "Export to geolocated KMZ" section for 2-
 - If the map **is not calibrated**, the line does not appear (absolute backward compatibility).
 
 > 💡 **Typical use case**: on a cataphile outing, you find an unlisted well, you add it via ✏️, you click on it → you can instantly copy its GPS coordinates to send them to a teammate by SMS or to mark them later in Google Earth.
+
+### 🌀 Inter-plan links (since v1.57.0)
+
+You can **link a point on one plan to a point on another plan** — like a "portal" between two touching networks (two neighboring quarries, or an overview plan and a detail plan).
+
+**Create a link**:
+1. Click a point (session **or** data layer) → in its popup, button **"🌀 Link to another plan"**.
+2. Pick the **target plan** from your library, then **search the arrival point** (by name, id or tag) — no need to open the other plan, its points are read in place.
+3. The link is created **both ways**: it shows in both points' popups.
+
+**On the map (since v1.59.0)**: you choose whether a linked point stands out or not. By default, **nothing distinguishes it** (it keeps its usual tag and icon). If you want to mark it visually, give it the new **"Portal" tag**: it then gets a **dedicated vortex icon** (golden ring, blue spiral). *(The old automatic golden badge has been removed.)*
+
+**🌀 My links (since v1.59.0)**: on the **home screen**, the **"🌀 My links"** button lists all your links (across all plans): each side's status (⛔ if the plan is not on this device), **➜** button to jump straight to either point, **🗑️** to delete. If a plan's data is unreachable (server offline…), the app tells you clearly instead of showing "0 points".
+
+**Use a link**: in the point's popup, a 🌀 line shows the destination plan and point → **➜** button → confirmation → the app **switches plan** (your current session is saved automatically), **switches to the arrival point's level** (multi-level plans) and drops you **right on it** (blue flash). If a tag filter hides the arrival point, a warning is shown — your filters are never modified.
+
+**🧭 Inter-plan route (since v1.60.0)**: request a route to a point **on another plan** connected by a portal — from the **Route** modal ("🌐 Destination on another plan" button) or the **multi-plan search** (🧭 button on a distant result). The app compares available portals at **real cost**, shows the trip in steps ("① Reach 🌀 North well — 450 m · ② Cross · ③ Reach the room — 300 m · Total ≈ 750 m"), draws the path to the portal, then **automatically draws the rest** when you cross. Each plan's avoidances (zones, points, tags) are honored. If it's impossible (no portal, plan offline, destination cut off from the network…), a message tells you **exactly why** — including "no direct link, but a path exists via that plan".
+
+**🔄 Always-fresh popups (since v1.60.0)**: if you rename or move a linked point, the link entries (on both sides) **update automatically** the next time the plan is opened.
+
+**↩️ Going back (since v1.58.0)**: after taking a portal (or a multi-plan search jump), a floating **"↩️ Back: <plan>"** button appears at the bottom of the screen for 15 seconds — one click brings you back to the plan **and the exact view** you came from (level and zoom included). Jumps stack up: chain 3 portals, you can go back 3 times.
+
+**Good to know**:
+- A point can carry **several links** (a "hub" point).
+- If the destination plan is **not on your device**, the link still shows (⛔) — add the plan to be able to "go there".
+- **Deleting a point** also deletes its links (both sides).
+- Links **travel with the session export** (restored on import on another device).
+- A distributed plan ("data layer") can embed ready-to-use links: you can **use** them, not edit them.
+
+### 🌐 Multi-plan search (since v1.58.0)
+
+Search for a point across **every plan in your library** at once, without opening them one by one:
+
+- **From the home screen**: **🌐 Multi-plan search** button (next to the Data editor).
+- **From the map**: open the search (Ctrl+K or 🔍) → **"🌐 Search across all plans"** button at the bottom — your current input is kept.
+
+The app reads each plan's points (session + data layers) **in place**, showing progress ("Reading 2/5: Oise…"). Each result carries the **badge of the plan** it belongs to. One click: confirmation (if a plan is open), the right plan loads, the right level is selected and the view centers on the point — with the ↩️ Back button to return.
 
 ---
 
@@ -2844,6 +2893,11 @@ When loading a map, you can choose from 5 presets in the loader:
 ### 6 bis. 🚀 Performance ULTRA mode — for the really big maps that crash
 
 If despite Performance mode, your map still crashes (typically 4000+ × 2000+ pixel maps with many paths), open **⚙️ Settings → "🚀 Performance ULTRA mode" section** and enable the **🚀 ULTRA master toggle**. It enables 6 aggressive optimizations simultaneously.
+
+> 🆕 **Since v1.59.0** — three things to know:
+> - **PER-PLAN setting**: enabling ULTRA here only affects the open plan. Your other plans are no longer impacted (before, the setting was global and silently "followed" you on every plan). After the update, plans that had ULTRA start disabled again — re-enable it on the ones that need it.
+> - **Your session points are sacred**: POIs you add by hand (✏️) stay **always visible**, even with viewport culling on — only the thousands of data-layer points get lightened.
+> - **Message on load**: when optimizations are active on a plan, a message reminds you at load time — a "lightened" display (simplified paths, data popups off…) is not a bug.
 
 > ⚠️ These optims do **NOT** touch the image (already managed by the performance mode above). They target vector elements (paths, points, calculations).
 

@@ -1785,8 +1785,15 @@
 
   // ────────── API PUBLIQUE ──────────
 
-  function ouvrir() {
+  // 🆕 v1.56.0 — Callback de fermeture (onClose) pour le séquenceur de premier
+  // lancement (js/firstRunFlow.js). Appelé UNE FOIS à la fermeture du tutoriel
+  // (✕ / Passer). Défini après le fermer() initial pour ne pas se déclencher à
+  // tort à la ré-ouverture.
+  let _tutorialOnClose = null;
+
+  function ouvrir(onClose) {
     fermer();
+    _tutorialOnClose = (typeof onClose === "function") ? onClose : null;
     _currentIdx = 0;
     // 🆕 v1.44.6 — Resync la langue depuis la clé partagée (l'user a pu la
     // changer dans la modale Documentation entre 2 ouvertures du tutoriel).
@@ -1828,6 +1835,10 @@
     document.removeEventListener("keydown", _onKey);
     const ex = document.getElementById(MODAL_ID);
     if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
+    // 🆕 v1.56.0 — notifie le séquenceur (une seule fois)
+    const cb = _tutorialOnClose;
+    _tutorialOnClose = null;
+    if (cb) { try { cb(); } catch(e) { console.warn("[Tutorial] onClose :", e); } }
   }
 
   // ────────── EXPORT ──────────

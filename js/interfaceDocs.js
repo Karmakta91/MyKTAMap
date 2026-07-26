@@ -623,7 +623,7 @@ function afficherAide() {
 // automatiquement dans la catégorie « Autres » (filet de sécurité).
 const AIDE_CATEGORIES = [
   { fr: "🚀 Prise en main",        en: "🚀 Getting started",     idx: [2, 26, 27] },
-  { fr: "🗺️ Outils carte",         en: "🗺️ Map tools",           idx: [20, 22, 23, 21, 19, 17, 14, 15, 1] },
+  { fr: "🗺️ Outils carte",         en: "🗺️ Map tools",           idx: [20, 22, 23, 21, 19, 17, 14, 15, 1, 28] },
   { fr: "💾 Données & session",     en: "💾 Data & session",      idx: [16, 5, 8, 9, 11, 13, 0, 24, 6] },
   { fr: "🔍 Recherche",            en: "🔍 Search",              idx: [4] },
   { fr: "🚨 Coordination secours", en: "🚨 Rescue coordination", idx: [18] },
@@ -865,7 +865,7 @@ function _aideHtmlFr() {
             <span class="kta-aide-icone">🎬</span><span><strong>Mode présentation</strong> — bouton <strong>« 🎬 Activer le mode présentation »</strong> placé <strong>tout en haut</strong> de la modale Réglages pour accès en 1 vue. La touche <kbd>F</kbd> y donne aussi accès sur PC. Sortie : touche <kbd>F</kbd> / <kbd>Échap</kbd> (PC) ou bouton flottant ✕ (mobile).</span>
             <span class="kta-aide-icone">🔆</span><span><strong>Garder l'écran allumé (Wake Lock)</strong> — toggle dans Réglages (et aussi dans ⚙️ Configuration loader). Empêche la mise en veille tant que l'app est ouverte. <strong>Idéal en cavité</strong> pour ne pas débloquer son téléphone toutes les 30s. Persistant entre sessions, auto-relâché en arrière-plan, ré-activé au retour. Compat Chrome 84+, Edge 84+, Safari iOS 16.4+ (PWA). Toggle masqué si la fonction n'est pas supportée (Firefox).</span>
             <span class="kta-aide-icone">☀️</span><span><strong>Thème clair / sombre</strong> — bascule entre fond beige cataphile (clair) et fond noir nuit (sombre, défaut). Activable <strong>uniquement depuis la home → Configuration → ☀️ Activer le thème CLAIR</strong>. Le toggle déclenche un rechargement complet de l'app pour éviter les bugs résiduels d'affichage. Choix conservé globalement par appareil.</span>
-            <span class="kta-aide-icone">🚀</span><span>Mode Performance ULTRA (dans ⚙️ Réglages) — pour les gros plans qui crashent</span>
+            <span class="kta-aide-icone">🚀</span><span>Mode Performance ULTRA (dans ⚙️ Réglages) — pour les gros plans qui crashent. Réglage PAR PLAN depuis v1.59.0 (opt-in, tes points de session restent toujours affichés)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             Contient le bouton 🎯 pour calibrer l'échelle, 🐛 pour les logs détaillés.
@@ -1440,6 +1440,55 @@ function _aideHtmlFr() {
             <strong>📤 Exporter le profil</strong> AVANT pour avoir un backup complet à portée de main.
           </p>
         </div>
+
+        <!-- 🌀 v1.57.0 — Liaisons inter-plan (section idx 28, ajoutée EN FIN
+             pour ne décaler aucun index d'AIDE_CATEGORIES) -->
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🌀 Liaisons inter-plan (« portails »)</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            Lie un <strong>point d'un plan</strong> à un <strong>point d'un autre plan</strong> — comme un portail entre
+            deux réseaux qui se touchent (deux carrières voisines, plan général ↔ plan de détail).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Créer</strong> : clique un point (session ou data layer) → bouton
+            <strong>🌀 Lier à un autre plan</strong> → choisis le plan cible puis recherche le point d'arrivée
+            (nom, id ou tag — pas besoin d'ouvrir l'autre plan). La liaison est <strong>bidirectionnelle</strong> :
+            visible dans la fiche des deux points. Un point peut porter plusieurs liaisons.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Utiliser</strong> : dans la fiche du point, ligne 🌀 → bouton <strong>➜</strong> → confirmation →
+            l'app change de plan (session sauvegardée automatiquement), <strong>bascule sur le niveau du point
+            d'arrivée</strong> et te dépose dessus (flash bleu). Marquage visuel au choix : donne le
+            <strong>tag « Portail »</strong> au point pour son <strong>icône vortex dédiée</strong>, ou garde
+            n'importe quel tag (aucun marquage).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>↩️ Retour</strong> (v1.58.0) : après un saut, un bouton flottant « Retour : &lt;plan&gt; »
+            (15 s, bas de l'écran) te ramène au plan et à la <strong>vue exacte</strong> d'où tu venais (niveau + zoom).
+            Les sauts s'empilent — 3 portails enchaînés = 3 retours possibles.
+            <strong>🌐 Recherche multi-plans</strong> (v1.58.0) : cherche un point dans <strong>toute ta
+            bibliothèque</strong> depuis l'accueil (bouton 🌐) ou via la recherche Ctrl+K (bouton
+            « Chercher dans tous les plans ») — un clic charge le bon plan et te centre dessus.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🌀 Mes liaisons</strong> (v1.59.0) : sur l'<strong>accueil</strong>, liste toutes tes liaisons
+            (état ⛔ si un plan est absent, ➜ pour y aller, 🗑️ pour supprimer).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🧭 Itinéraire inter-plan</strong> (v1.60.0) : demande un trajet vers un point d'un
+            <strong>autre plan</strong> (modale Itinéraire → « 🌐 Destination sur un autre plan », ou bouton 🧭
+            dans la recherche multi-plans). L'app compare les portails au coût réel, affiche les étapes et la
+            distance totale, trace le chemin jusqu'au portail — et <strong>la suite se trace toute seule</strong>
+            quand tu traverses. Impossible ? Le message t'explique pourquoi (pas de portail, plan hors-ligne,
+            destination isolée…).
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
+            Plan cible absent de l'appareil → la liaison s'affiche (⛔) mais « y aller » nécessite d'ajouter le plan.
+            Supprimer un point supprime ses liaisons (des deux côtés). Les liaisons voyagent avec l'export de session.
+            Si un filtre de tags masque le point d'arrivée, un avertissement s'affiche (le filtre n'est jamais modifié).
+            Données d'un plan injoignables (hors-ligne) → l'app le signale au lieu d'un « 0 points » muet.
+          </p>
+        </div>
   `;
 }
 
@@ -1530,7 +1579,7 @@ function _aideHtmlEn() {
             <span class="kta-aide-icone">🎬</span><span><strong>Presentation mode</strong> — <strong>"🎬 Enable presentation mode"</strong> button placed <strong>at the very top</strong> of the Settings modal for one-glance access. The <kbd>F</kbd> key also opens it on PC. Exit: <kbd>F</kbd> / <kbd>Esc</kbd> key (PC) or floating ✕ button (mobile).</span>
             <span class="kta-aide-icone">🔆</span><span><strong>Keep the screen on (Wake Lock)</strong> — toggle in Settings (and also in ⚙️ loader Configuration). Prevents sleep while the app is open. <strong>Ideal underground</strong> so you don't have to unlock your phone every 30s. Persistent across sessions, auto-released in the background, re-enabled on return. Compatible with Chrome 84+, Edge 84+, Safari iOS 16.4+ (PWA). Toggle hidden if the feature isn't supported (Firefox).</span>
             <span class="kta-aide-icone">☀️</span><span><strong>Light / dark theme</strong> — switches between a beige cataphile background (light) and a black night background (dark, default). Can only be enabled <strong>from the home → Configuration → ☀️ Enable LIGHT theme</strong>. The toggle triggers a full app reload to avoid residual display bugs. Choice kept globally per device.</span>
-            <span class="kta-aide-icone">🚀</span><span>ULTRA Performance mode (in ⚙️ Settings) — for large maps that crash</span>
+            <span class="kta-aide-icone">🚀</span><span>ULTRA Performance mode (in ⚙️ Settings) — for large maps that crash. PER-PLAN setting since v1.59.0 (opt-in, your session points always stay visible)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             Contains the 🎯 button to calibrate the scale, 🐛 for detailed logs.
@@ -2103,6 +2152,54 @@ function _aideHtmlEn() {
             ⚠️ <strong>These tools delete NO user data</strong> (maps, sessions, photos, prefs, backups).
             They only purge the cache of the app's files (HTML / CSS / JS / icons). When in doubt,
             <strong>📤 Export the profile</strong> BEFORE so you have a complete backup at hand.
+          </p>
+        </div>
+
+        <!-- 🌀 v1.57.0 — Inter-plan links (section idx 28, appended LAST to
+             keep every AIDE_CATEGORIES index untouched — parity with FR) -->
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🌀 Inter-plan links ("portals")</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            Link a <strong>point on one plan</strong> to a <strong>point on another plan</strong> — like a portal between
+            two touching networks (two neighboring quarries, overview plan ↔ detail plan).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Create</strong>: click a point (session or data layer) → button
+            <strong>🌀 Link to another plan</strong> → pick the target plan then search the arrival point
+            (name, id or tag — no need to open the other plan). The link is <strong>bidirectional</strong>:
+            visible in both points' popups. A point can carry several links.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Use</strong>: in the point's popup, 🌀 line → <strong>➜</strong> button → confirmation →
+            the app switches plan (session saved automatically), <strong>switches to the arrival point's
+            level</strong> and drops you on it (blue flash). Visual marking is your choice: give the point
+            the <strong>"Portal" tag</strong> for its <strong>dedicated vortex icon</strong>, or keep any
+            tag (no marking).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>↩️ Back</strong> (v1.58.0): after a jump, a floating "Back: &lt;plan&gt;" button
+            (15 s, bottom of screen) brings you back to the plan and the <strong>exact view</strong> you came
+            from (level + zoom). Jumps stack — 3 chained portals = 3 possible returns.
+            <strong>🌐 Multi-plan search</strong> (v1.58.0): search a point across <strong>your whole
+            library</strong> from the home screen (🌐 button) or via the Ctrl+K search ("Search across
+            all plans" button) — one click loads the right plan and centers on it.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🌀 My links</strong> (v1.59.0): on the <strong>home screen</strong>, lists all your links
+            (⛔ if a plan is missing, ➜ to go there, 🗑️ to delete).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🧭 Inter-plan route</strong> (v1.60.0): request a route to a point on <strong>another
+            plan</strong> (Route modal → "🌐 Destination on another plan", or 🧭 button in the multi-plan
+            search). The app compares portals at real cost, shows the steps and total distance, draws the
+            path to the portal — and <strong>the rest draws itself</strong> when you cross. Impossible?
+            The message tells you why (no portal, plan offline, destination cut off…).
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
+            Target plan missing from this device → the link still shows (⛔) but "going there" requires adding the plan.
+            Deleting a point also deletes its links (both sides). Links travel with the session export.
+            If a tag filter hides the arrival point, a warning is shown (the filter is never modified).
+            Plan data unreachable (offline) → the app says so instead of a silent "0 points".
           </p>
         </div>
   `;

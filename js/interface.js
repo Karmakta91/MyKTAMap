@@ -1398,6 +1398,22 @@ function _ouvrirTrackerModal(groupId) {
 
 let _currentFlyout = null;
 
+// 🐛 v1.57.4 — Abonnements pub/sub ONE-SHOT (audit « fuites au plan switch ») :
+// initInterface est RE-EXÉCUTÉE à chaque switch (main.js remet
+// interfaceInitialized à false) mais HistoryManager / Favoris /
+// LegendCustomization sont des singletons qui SURVIVENT au switch → chaque
+// onChange(...) posé dans initInterface s'EMPILAIT (1 callback de plus par
+// switch, les anciens manipulant des boutons de sidebars détachées = fuite
+// mémoire + travail redondant). Pattern : abonnement UNIQUE derrière un flag
+// module-level (cf _batteryHooked dans refonteInterface.js) + une RÉFÉRENCE
+// rafraîchie à chaque init pour les callbacks qui capturent des éléments de
+// la sidebar courante (_sync history, _injecterBoutonsCustomSidebar).
+let _historyUiSubBound       = false;
+let _favorisSubBound         = false;
+let _legendCustomSubBound    = false;
+let _syncHistoryUiRef        = null;  // closure de l'init COURANTE (boutons frais)
+let _injecterBoutonsCustomRef = null; // idem
+
 function _toggleFlyout(groupId) {
   if (_currentFlyout && _currentFlyout.dataset.groupId === groupId) {
     _fermerFlyout();
@@ -1907,6 +1923,24 @@ function initInterface() {
   Object.keys(_groupes).forEach(function(k) { delete _groupes[k]; });
   _groupeOuvert = null;
 
+  // 🐛 v1.57.2 (KARMA « le bouton ajouter point est actif quand j'ouvre le
+  // plan ») : RESET des MODES au chargement d'un plan. Les flags window.modeX
+  // n'étaient remis à false NULLE PART au plan switch → quitter un plan avec
+  // le mode édition armé (cas typique : créer un POI puis prendre un
+  // « portail » inter-plan) laissait le mode actif à l'arrivée — chaque clic
+  // carte posait un point. _desactiverTousLesModes() couvre les modes
+  // enregistrés (leurs desactiverFn référencent les boutons de l'ANCIENNE
+  // sidebar, détachés → classList inoffensif) ; les flags sont ensuite forcés
+  // à false en filet (mode jamais enregistré / état incohérent). Les setters
+  // observés (curseur de précision v1.48.0) notifient → la croix disparaît.
+  try { _desactiverTousLesModes(); } catch(e) {}
+  window.modeEdition  = false;
+  window.modeMesure   = false;
+  window.modeRecalage = false;
+  window.modeRoad     = false;
+  window.modeZone     = false;
+  window.modeStructure = false;
+
   L.control.titleControl().addTo(window.map);
 
   // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : bouton ≡ custom topright
@@ -2213,8 +2247,18 @@ function initInterface() {
       canUndo: window.HistoryManager.canUndo(),
       canRedo: window.HistoryManager.canRedo()
     });
-    // Listener pour les futurs changements
-    window.HistoryManager.onChange(_sync);
+    // 🐛 v1.57.4 : abonnement ONE-SHOT + réf rafraîchie. Avant : onChange(_sync)
+    // à CHAQUE init → N callbacks empilés après N switches, les N-1 anciens
+    // grisant des boutons de sidebars détachées (fuite mémoire linéaire).
+    // _syncHistoryUiRef repointe la closure fraîche (btnUndo/btnRedo de la
+    // sidebar COURANTE) à chaque init ; l'abonnement unique la déréférence.
+    _syncHistoryUiRef = _sync;
+    if (!_historyUiSubBound) {
+      _historyUiSubBound = true;
+      window.HistoryManager.onChange(function(state) {
+        if (_syncHistoryUiRef) _syncHistoryUiRef(state);
+      });
+    }
   })();
 
   // 6. TRACKER
@@ -3237,9 +3281,14 @@ _setGroupeModeActif("tracker", isTracking, null);
   _injecterBoutonsCustomSidebar();
 
   // Refresh automatique sur tout changement (add / remove / update / reset)
-  if (window.LegendCustomization && typeof window.LegendCustomization.onCustomEntriesChange === "function") {
+  // 🐛 v1.57.4 : abonnement ONE-SHOT + réf rafraîchie (même famille que le
+  // grisage history — l'ancien onChange s'empilait à chaque plan switch).
+  _injecterBoutonsCustomRef = _injecterBoutonsCustomSidebar;
+  if (!_legendCustomSubBound && window.LegendCustomization
+      && typeof window.LegendCustomization.onCustomEntriesChange === "function") {
+    _legendCustomSubBound = true;
     window.LegendCustomization.onCustomEntriesChange(function() {
-      _injecterBoutonsCustomSidebar();
+      if (_injecterBoutonsCustomRef) _injecterBoutonsCustomRef();
     });
   }
 
@@ -3251,7 +3300,11 @@ _setGroupeModeActif("tracker", isTracking, null);
   // _initLevelFilterControl, position topleft pour apparaître juste sous
   // la pastille M-LVL dans la sidebar gauche — cf KARMA "met plutôt
   // l'icône favoris dans le menu de gauche, juste après M-LVL").
-  if (window.Favoris && typeof window.Favoris.onChange === "function") {
+  // 🐛 v1.57.4 : abonnement ONE-SHOT (le callback ne référence que du
+  // module-level _currentFlyout/_ouvrirFlyout, résolus au runtime → pas
+  // besoin de réf rafraîchie ici). Avant : 1 callback de plus par switch.
+  if (!_favorisSubBound && window.Favoris && typeof window.Favoris.onChange === "function") {
+    _favorisSubBound = true;
     window.Favoris.onChange(function() {
       if (_currentFlyout && _currentFlyout.dataset.groupId === "favoris") {
         _ouvrirFlyout("favoris");

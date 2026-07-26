@@ -6,6 +6,18 @@
 
 ## 🔴 Avertissements importants
 
+### ⚖️ Conditions d'utilisation & avertissement légal (depuis v1.56.0)
+
+Au **premier lancement**, une page de **conditions d'utilisation** rappelle que MyKTAMap est un **outil de repérage et de cartographie**, pas une incitation à pénétrer dans des lieux interdits. Elle doit être **lue et acceptée une fois** (case à cocher + « J'accepte »).
+
+- L'accès à de nombreux sites souterrains — notamment le **réseau des anciennes carrières de Paris** — est **interdit** (arrêté préfectoral du 2 novembre 1955) et **passible d'amende** (135 € à 375 €).
+- Toute intrusion dans un lieu privé ou interdit engage votre **seule responsabilité**.
+- Le **texte intégral** (arrêté du 2 novembre 1955 + réponse ministérielle Sénat n° 03710 du 05/06/2025) est consultable depuis la page, et à tout moment via le lien **⚖️ Conditions d'utilisation** dans le pied de page de l'accueil.
+
+> Les explorations clandestines sont dangereuses (égarement, éboulement, chute dans des puits) et illégales. Respectez la loi, les propriétaires et votre sécurité.
+
+---
+
 ### 🔐 Confidentialité des données — à lire en premier
 
 MyKTAMap est un outil de cartographie de terrain qui peut contenir des informations sensibles : **localisation précise d'entrées, de puits, de passages, de structures souterraines.**
@@ -430,7 +442,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 1. **🖼️ Tiling de l'image (par plan)** — segmented control 5 presets (voir détail ci-dessous), qui choisit comment l'image principale est découpée en mémoire au chargement. Mémorisé **par plan** (un plan en Performance, un autre en Qualité, etc.).
 
-2. **🚀 Mode Performance ULTRA (tracés / markers)** — 7 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling, limite dézoom mobile). Préférence **globale**, conservée entre sessions. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
+2. **🚀 Mode Performance ULTRA (tracés / markers)** — 7 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling, limite dézoom mobile). **Réglage PAR PLAN depuis v1.59.0** : cocher ULTRA sur un plan n'affecte plus les autres — chaque plan repart désactivé tant que tu ne coches pas pour lui. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
 
 3. **🛠️ Debug** — toggle **🐛 Logs détaillés** (verbose mode) **+ bouton 📋 Afficher les logs** qui ouvre directement la modale buffer des logs capturés. Utile pour consulter les logs sans avoir à charger un plan d'abord (ex : si tu cherches à diagnostiquer un bug bloquant au chargement).
 
@@ -745,6 +757,43 @@ Si ton plan est **calibré GPS** (cf. section "Exporter en KMZ géolocalisé" po
 - Si le plan **n'est pas calibré**, la ligne n'apparaît pas (rétro-compat absolue).
 
 > 💡 **Cas d'usage typique** : en sortie cataphile, tu trouves un puits non répertorié, tu l'ajoutes via ✏️, tu cliques dessus → tu peux instantanément copier ses coords GPS pour les envoyer à un binôme par SMS ou pour les pointer plus tard dans Google Earth.
+
+### 🌀 Liaisons inter-plan (depuis v1.57.0)
+
+Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « portail » entre deux réseaux qui se touchent (deux carrières voisines, ou un plan général et un plan de détail).
+
+**Créer une liaison** :
+1. Clique sur un point (session **ou** data layer) → dans la fiche, bouton **« 🌀 Lier à un autre plan »**.
+2. Choisis le **plan cible** dans ta bibliothèque, puis **recherche le point** d'arrivée (par nom, id ou tag) — pas besoin d'ouvrir l'autre plan, ses points sont lus sur place.
+3. La liaison est créée **dans les deux sens** : elle apparaît dans la fiche des deux points.
+
+**Sur la carte (depuis v1.59.0)** : à toi de choisir si un point lié se voit ou non. Par défaut, **rien ne le distingue** (il garde son tag et son icône habituels). Si tu veux le marquer visuellement, donne-lui le nouveau **tag « Portail »** : il prend alors une **icône vortex dédiée** (anneau doré, spirale bleue). *(L'ancien badge doré automatique a été retiré.)*
+
+**🌀 Mes liaisons (depuis v1.59.0)** : sur l'**accueil**, le bouton **« 🌀 Mes liaisons »** liste toutes tes liaisons (tous plans confondus) : état de chaque côté (⛔ si le plan n'est pas sur l'appareil), bouton **➜** pour aller directement à l'un des deux points, **🗑️** pour supprimer. Si les données d'un plan sont injoignables (serveur hors-ligne…), l'app te le dit clairement au lieu d'afficher « 0 points ».
+
+**Utiliser une liaison** : dans la fiche du point, ligne 🌀 avec le plan et le point de destination → bouton **➜** → confirmation → l'app **change de plan** (ta session actuelle est sauvegardée automatiquement), **bascule sur le niveau du point d'arrivée** (plans multi-niveaux) et te dépose **directement dessus** (flash bleu). Si un filtre de tags masque le point d'arrivée, un avertissement s'affiche — tes filtres ne sont jamais modifiés.
+
+**🧭 Itinéraire inter-plan (depuis v1.60.0)** : demande un itinéraire vers un point **d'un autre plan** relié par un portail — depuis la modale **Itinéraire** (bouton « 🌐 Destination sur un autre plan ») ou la **recherche multi-plans** (bouton 🧭 sur un résultat distant). L'app compare les portails disponibles au **coût réel**, affiche le trajet en étapes (« ① Rejoindre 🌀 Puits nord — 450 m · ② Traverser · ③ Rejoindre la salle — 300 m · Total ≈ 750 m »), trace le chemin jusqu'au portail, puis **trace automatiquement la suite** quand tu traverses. Les évitements (zones, points, tags) de **chaque plan** sont respectés. Si c'est impossible (aucun portail, plan hors-ligne, destination isolée du réseau…), un message t'explique **précisément pourquoi** — y compris « pas de liaison directe, mais un chemin existe via tel plan ».
+
+**🔄 Fiches toujours à jour (depuis v1.60.0)** : si tu renommes ou déplaces un point lié, les fiches de liaisons (des deux côtés) se **mettent à jour automatiquement** à la prochaine ouverture du plan concerné.
+
+**↩️ Revenir en arrière (depuis v1.58.0)** : après un passage de portail (ou un saut de recherche multi-plans), un bouton flottant **« ↩️ Retour : <plan> »** apparaît en bas de l'écran pendant 15 secondes — un clic te ramène au plan **et à la vue exacte** d'où tu venais (niveau et zoom compris). Les sauts s'empilent : enchaîne 3 portails, tu peux faire 3 retours.
+
+**Bon à savoir** :
+- Un point peut porter **plusieurs liaisons** (point « hub »).
+- Si le plan de destination n'est **pas sur ton appareil**, la liaison s'affiche quand même (⛔) — ajoute le plan pour pouvoir « y aller ».
+- **Supprimer un point** supprime aussi ses liaisons (des deux côtés).
+- Les liaisons **voyagent avec l'export de session** (elles sont restaurées à l'import sur un autre appareil).
+- Un plan distribué (« data layer ») peut embarquer des liaisons prêtes à l'emploi : tu peux les **utiliser**, pas les modifier.
+
+### 🌐 Recherche multi-plans (depuis v1.58.0)
+
+Cherche un point dans **tous les plans de ta bibliothèque** d'un coup, sans les ouvrir un par un :
+
+- **Depuis l'accueil** : bouton **🌐 Recherche multi-plans** (à côté de l'Éditeur de données).
+- **Depuis la carte** : ouvre la recherche (Ctrl+K ou 🔍) → bouton **« 🌐 Chercher dans tous les plans »** en bas — ta saisie en cours est conservée.
+
+L'app lit les points (session + calques de données) de chaque plan **sur place**, avec la progression affichée (« Lecture 2/5 : Oise… »). Chaque résultat porte le **badge du plan** où il se trouve. Un clic : confirmation (si un plan est ouvert), chargement du bon plan, bascule sur le bon niveau et centrage sur le point — avec le bouton ↩️ Retour pour revenir.
 
 ---
 
@@ -2850,6 +2899,11 @@ Au chargement d'un plan, tu peux choisir parmi 5 presets dans le loader :
 ### 6 bis. 🚀 Mode Performance ULTRA — pour les vrais gros plans qui crashent
 
 Si malgré le mode Performance, ton plan crashe encore (typiquement plans 4000+ × 2000+ pixels avec beaucoup de tracés), ouvre **⚙️ Réglages → section "🚀 Mode Performance ULTRA"** et active le **toggle master 🚀 ULTRA**. Il active 6 optimisations agressives simultanément.
+
+> 🆕 **Depuis v1.59.0** — trois choses à savoir :
+> - **Réglage PAR PLAN** : cocher ULTRA ici ne concerne QUE le plan ouvert. Tes autres plans ne sont plus impactés (avant, le réglage était global et « suivait » silencieusement sur tous les plans). Après la mise à jour, les plans qui avaient ULTRA repartent désactivés — recoche-le sur ceux qui en ont besoin.
+> - **Tes points de session sont sacrés** : les POI que tu ajoutes à la main (✏️) restent **toujours affichés**, même avec le viewport culling actif — seul l'affichage des milliers de points des calques de données est allégé.
+> - **Message à l'ouverture** : quand des optimisations sont actives sur un plan, un message te le rappelle au chargement — un affichage « allégé » (tracés simplifiés, popups data désactivés…) n'est pas un bug.
 
 > ⚠️ Ces optims **ne touchent PAS à l'image** (déjà gérée par le mode performance ci-dessus). Elles ciblent les éléments vectoriels (tracés, points, calculs).
 

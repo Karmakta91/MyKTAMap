@@ -8131,7 +8131,15 @@
       // Calc itinéraire (commit 4)
       corps.querySelectorAll('[data-action="calc-iti"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
-          _recalculerItineraireGroupe(s.id, btn.getAttribute("data-gid"));
+          const gid = btn.getAttribute("data-gid");
+          // 🌀 v1.55.1 : overlay « calcul en cours » (Pathfinder.computeRoute
+          // est SYNC bloquant → sans yield-to-paint l'écran fige).
+          const _msg = (window.I18n && window.I18n.t) ? window.I18n.t("secours.compute.loading") : "Calcul de l'itinéraire…";
+          if (window.ComputeLoader && window.ComputeLoader.wrap) {
+            window.ComputeLoader.wrap(function() { return _recalculerItineraireGroupe(s.id, gid); }, _msg);
+          } else {
+            _recalculerItineraireGroupe(s.id, gid);
+          }
         });
       });
       // Export PDF — async depuis fix5 (génère canvas plan + crop par équipe)

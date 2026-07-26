@@ -62,6 +62,8 @@ const LEGENDE_LABELS = {
   passage:  "Passage",
   danger:   "Danger",
   plaque:   "Plaque indication",
+  // 🆕 v1.59.0 — Portail (liaison inter-plan)
+  portail:  "Portail (liaison inter-plan)",
   track:    "Position du tracker",
   default:  "Point sans tag (défaut)",
   // 🆕 v1.41.0 D — Point d'entrée du plan (Vue OSM × Mode Secours).
@@ -114,7 +116,7 @@ function afficherLegende() {
     const GROUPES = [
       { titre: window.I18n.t("legendui.group.wells"),   cles: ["pa", "pb", "pc", "pe", "ps"] },
       { titre: window.I18n.t("legendui.group.access"),  cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
-      { titre: window.I18n.t("legendui.group.signage"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] },
+      { titre: window.I18n.t("legendui.group.signage"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
       // 🆕 v1.41.0 D — Catégorie Secours (Vue OSM × Mode Secours).
       { titre: window.I18n.t("legendui.group.rescue"),  cles: ["entree_plan"] }
     ];
@@ -369,7 +371,7 @@ function afficherLegende() {
       const GROUPES2 = [
         { titre: window.I18n.t("legendui.group.wells"),   cles: ["pa", "pb", "pc", "pe", "ps"] },
         { titre: window.I18n.t("legendui.group.access"),  cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
-        { titre: window.I18n.t("legendui.group.signage"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] },
+        { titre: window.I18n.t("legendui.group.signage"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
         // 🆕 v1.41.0 D — Catégorie Secours.
         { titre: window.I18n.t("legendui.group.rescue"),  cles: ["entree_plan"] }
       ];

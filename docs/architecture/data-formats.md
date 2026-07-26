@@ -78,6 +78,32 @@
 
 → **`customLegend`** (depuis v1.48.0) = état de légende personnalisée de l'utilisateur (renommages, masquages, types custom), sérialisé via `LegendCustomization.getSessionState()`. **Optionnel** : présent dans l'export complet, omis dans l'export « avancé » si l'état est vide. Restauré à l'import via `LegendCustomization.loadSessionState()` → rend la session **autoportante** même importée sur un ZIP « legacy » sans légende baked. Les **roads/zones n'ont pas d'`id`** (snapshot brut `{type, points, label?, level?}`) ; l'id de zone utilisé par l'évitement d'itinéraire est **dérivé au runtime** (`z_<type>_<x>_<y>_<n>`), jamais écrit dans l'export.
 
+### 🌀 Liaisons inter-plan (depuis v1.57.0)
+
+**Registre central** `localStorage["myktamap_interplan_links_v1"]` (module `js/interPlanLinks.js`) — la « DB de croisement » entre plans. **Jamais** écrit dans les datalayers (le popup d'un point est enrichi au runtime par croisement `(planId, pointId||coords arrondies)`) :
+
+```json
+{
+  "version": 1,
+  "links": [
+    {
+      "id": "ipl_<ts36>_<rand>",
+      "a": { "planId": "local_gm1_v2", "planName": "GM1", "pointId": "PA1",
+             "pointNom": "Puits nord", "x": 4843, "y": 2002, "level": 0, "source": "session" },
+      "b": { "planId": "server_data_oise", "planName": "Oise", "pointId": "",
+             "pointNom": "Accès cave", "x": 120, "y": 88, "source": "data" },
+      "createdAt": "2026-07-21T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+- Chaque côté = **snapshot** (affichable même si le plan cible est absent de l'appareil). `pointId` peut être vide (points data sans id) → croisement par coords arrondies.
+- Les ids `PlanRegistry` étant **déterministes** (slug), les liaisons sont **portables entre appareils**.
+- **Export session** (Full + Avancé) : clé racine `interPlanLinks` = liaisons du plan courant → réinjectées au registre à l'import (**fusion par id**, jamais de doublon).
+- **Datalayer baked** : un point peut porter `interPlanLinks: [<link>]` dans son JSON → lu au popup (lecture seule, navigable, pas de 🗑️).
+- Suppression d'un point session → `InterPlanLinks.onPointDeleted` purge le lien **entier** (hook `editor.js > supprimerPointEditor`).
+
 ### Format export liste de plans
 
 ```json
