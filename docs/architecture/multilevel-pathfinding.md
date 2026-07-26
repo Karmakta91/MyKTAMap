@@ -438,3 +438,15 @@ C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne 
 - ❌ Rebrancher un bouton de traversée dans le résumé de CALCUL (l'user n'est pas au portail — c'est le bug UX d'origine).
 - ❌ Évaluer les arêtes intra-plan en EAGER (produit portails × plans = explosion ; la paresse fait tenir le cas typique en ~5-15 Dijkstras).
 - ❌ Sommer des px inter-plans — toujours `distM = px / scale` PAR plan (inchangé depuis A6).
+
+---
+
+## 🕸️ Vue « réseau de plans » (v1.65.0 — A7)
+
+> Reco KARMA 1:a 2:a 3:a 4:a. Module de RENDU PUR — aucune donnée nouvelle.
+
+**`js/planNetwork.js`** (`window.PlanNetwork.render(containerEl, { onOpenPlan, onEdgeClick })`) :
+- Données : `PlanRegistry.getAll()` (nœuds) + `InterPlanLinks.getAllLinks()` (arêtes agrégées par frontière). Plan référencé par une liaison mais absent du registre → nœud FANTÔME ⛔ (nom du snapshot, non cliquable). Plans sans liaison → bande dédiée en bas (`ISO_TITLE_H`/`ISO_ROW_H`, multi-rangées — la hauteur SVG compte TOUTES les rangées, bug de chevauchement titre/pastille corrigé pendant la release).
+- Rendu : SVG vanilla (`createElementNS`), layout force PRÉCALCULÉ (150 itérations, init déterministe en cercle — pas de `Math.random`, rendu stable ; répulsion + ressorts `SPRING_LEN 150` + gravité centre + refroidissement linéaire). AUCUNE animation continue. Drag des nœuds via pointer events (seuil 6 px sépare drag et clic ; les arêtes connectées suivent en direct).
+- Intégration : gestionnaire `interPlanLinks.js > ouvrirGestionnaire` — toggle 📋 Liste ⇄ 🕸️ Graphe ; clic nœud → `goTo(planId, anchorSide|null, {confirm si plan chargé})` (ancre = premier côté de liaison du plan) ; clic arête → liste filtrée par `_filterPair` + chip ✕.
+- ⚠️ `goTo` accepte `target = null` depuis v1.65.0 (plan isolé → switch sans cible pendante ni pan) — ne pas re-supposer target non-nul dans goTo/consume.

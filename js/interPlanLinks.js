@@ -315,8 +315,15 @@
           '<button class="kta-readme-modal-close" id="kta-ipl-mgr-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
+          // 🕸️ v1.65.0 (A7, reco 1:a) : toggle Liste ⇄ Graphe
+          '<div class="kta-ipl-mgr-toggle">' +
+            '<button class="kta-btn kta-btn-primary" id="kta-ipl-mgr-vlist" type="button">📋 ' + _esc(_t("ipl.mgr.viewList")) + '</button>' +
+            '<button class="kta-btn kta-btn-ghost" id="kta-ipl-mgr-vgraph" type="button">🕸️ ' + _esc(_t("ipl.mgr.viewGraph")) + '</button>' +
+          '</div>' +
           '<p class="kta-ipl-hint" id="kta-ipl-mgr-count"></p>' +
+          '<div id="kta-ipl-mgr-filter"></div>' +
           '<div class="kta-ipl-results" id="kta-ipl-mgr-list"></div>' +
+          '<div class="kta-pnet-wrap" id="kta-ipl-mgr-graph" style="display:none;"></div>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
@@ -332,10 +339,39 @@
              '</span>';
     }
 
+    // 🕸️ v1.65.0 (A7, reco 3:a) : filtre de FRONTIÈRE — clic sur une arête du
+    // graphe → la liste ne montre que les liaisons entre ces 2 plans (chip ✕).
+    let _filterPair = null;   // { a: planId, b: planId } ou null
+
+    function _renderFilterChip() {
+      const el = document.getElementById("kta-ipl-mgr-filter");
+      if (!el) return;
+      if (!_filterPair) { el.innerHTML = ""; return; }
+      const nomPlan = function(pid) {
+        const p = window.PlanRegistry && window.PlanRegistry.findById(pid);
+        return (p && p.name) || pid;
+      };
+      el.innerHTML =
+        '<span class="kta-ipl-mgr-chip">' +
+          _esc(_t("ipl.mgr.filterPair", { a: nomPlan(_filterPair.a), b: nomPlan(_filterPair.b) })) +
+          ' <button type="button" id="kta-ipl-mgr-chip-x" title="' + _esc(_t("ipl.mgr.filterClear")) + '">✕</button>' +
+        '</span>';
+      const x = document.getElementById("kta-ipl-mgr-chip-x");
+      if (x) x.addEventListener("click", function() { _filterPair = null; _render(); });
+    }
+
     function _render() {
-      const links = _load().links.slice().sort(function(a, b) {
+      let links = _load().links.slice().sort(function(a, b) {
         return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
       });
+      if (_filterPair) {
+        links = links.filter(function(l) {
+          if (!l.a || !l.b) return false;
+          return (l.a.planId === _filterPair.a && l.b.planId === _filterPair.b)
+              || (l.a.planId === _filterPair.b && l.b.planId === _filterPair.a);
+        });
+      }
+      _renderFilterChip();
       const countEl = document.getElementById("kta-ipl-mgr-count");
       const listEl  = document.getElementById("kta-ipl-mgr-list");
       if (!countEl || !listEl) return;
@@ -381,6 +417,43 @@
         });
       });
     }
+
+    // 🕸️ v1.65.0 (A7) : bascule Liste ⇄ Graphe. Le graphe est re-rendu à
+    // chaque bascule (données fraîches + layout adapté à la taille réelle).
+    const vList  = document.getElementById("kta-ipl-mgr-vlist");
+    const vGraph = document.getElementById("kta-ipl-mgr-vgraph");
+    const listEl  = document.getElementById("kta-ipl-mgr-list");
+    const graphEl = document.getElementById("kta-ipl-mgr-graph");
+    function _basculer(graphe) {
+      listEl.style.display  = graphe ? "none" : "";
+      graphEl.style.display = graphe ? "" : "none";
+      document.getElementById("kta-ipl-mgr-filter").style.display = graphe ? "none" : "";
+      vList.className  = "kta-btn " + (graphe ? "kta-btn-ghost" : "kta-btn-primary");
+      vGraph.className = "kta-btn " + (graphe ? "kta-btn-primary" : "kta-btn-ghost");
+      if (graphe && window.PlanNetwork) {
+        window.PlanNetwork.render(graphEl, {
+          // reco 2:a — clic nœud = ouvrir le plan (ancré sur son premier
+          // portail si dispo, sinon simple switch sans pan)
+          onOpenPlan: function(planId, anchorSide) {
+            overlay.remove();
+            const cible = anchorSide ? {
+              x: anchorSide.x, y: anchorSide.y, level: anchorSide.level,
+              tag: anchorSide.tag, planName: anchorSide.planName,
+              label: anchorSide.pointNom || anchorSide.pointId || ""
+            } : null;
+            goTo(planId, cible, { confirm: !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan) });
+          },
+          // reco 3:a — clic arête = détail de la frontière (liste filtrée)
+          onEdgeClick: function(a, b) {
+            _filterPair = { a: a, b: b };
+            _basculer(false);
+            _render();
+          }
+        });
+      }
+    }
+    vList.addEventListener("click", function() { _basculer(false); });
+    vGraph.addEventListener("click", function() { _basculer(true); });
 
     _render();
   }
@@ -759,6 +832,7 @@
     // immédiat (samePlan : une seule passe, rien ne recentre derrière).
     const planCharge = !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan);
     if (planCharge && planId === _currentPlanId()) {
+      if (!target) return;   // 🕸️ v1.65.0 : « ouvrir le plan » sans cible → déjà dessus
       if (window.map) try { window.map.closePopup(); } catch(e) {}
       _pendingTarget = { x: target.x, y: target.y, level: target.level,
                          tag: target.tag, zoom: target.zoom, samePlan: true };
@@ -781,9 +855,14 @@
       // 🆕 v1.61.0 (KARMA) : opts.recalerTracker → à l'arrivée, le TRACKER
       // est recalé sur le point cible (traversée PHYSIQUE d'un portail —
       // l'user y est réellement). Jamais posé par la recherche « voir ».
-      _pendingTarget = { x: target.x, y: target.y, level: target.level,
-                         tag: target.tag, zoom: target.zoom,
-                         recale: !!opts.recalerTracker };
+      // 🕸️ v1.65.0 (A7) : target peut être NULL (« ouvrir le plan » depuis le
+      // graphe, plan sans liaison → pas de point d'ancrage) → simple switch,
+      // pas de cible pendante ni de pan.
+      _pendingTarget = target
+        ? { x: target.x, y: target.y, level: target.level,
+            tag: target.tag, zoom: target.zoom,
+            recale: !!opts.recalerTracker }
+        : null;
       _pendingConsumed = false;
       try {
         if (plan.type === "server") {
@@ -814,7 +893,8 @@
         '<div class="kta-modal-icon" style="color:#8cb4ff;">🌀</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipl.nav.titre")) + '</div>' +
         '<div class="kta-modal-texte">' +
-          _esc(_t("ipl.nav.texte", { plan: plan.name || planId, point: target.label || (target.x + "," + target.y) })) +
+          _esc(_t("ipl.nav.texte", { plan: plan.name || planId,
+                                     point: (target && (target.label || (target.x + "," + target.y))) || (plan.name || planId) })) +
           '<br><span style="font-size:12px; color:#8892a4;">' + _esc(_t("ipl.nav.sessionSaved")) + '</span>' +
         '</div>' +
         '<div class="kta-modal-actions">' +

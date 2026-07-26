@@ -1,8 +1,7 @@
 {
-  "version": "v1.64.0",
+  "version": "v1.65.0",
   "released": "2026-07-26",
   "notes": [
-    "🌀 L'itinéraire vers un autre plan peut maintenant traverser plusieurs plans (coche « Itinéraire via plusieurs plans » dans la recherche multi-plans), passer par tes étapes avant le portail, et te laisse marcher : la traversée se propose quand tu es au portail, plus de téléportation au calcul.",
-    "🧭 Deux corrections importantes du tracker : sa position survit maintenant aux changements de plan, et « Effacer la session » efface bien le tracé de la session précédente."
+    "🕸️ Nouvelle vue « Graphe » dans 🌀 Mes liaisons : ta bibliothèque dessinée en réseau — les plans reliés par leurs portails, l'épaisseur des traits selon le nombre de liaisons. Clique un plan pour l'ouvrir, une liaison pour voir son détail, et déplace les bulles à ta guise."
   ]
 }

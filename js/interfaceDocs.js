@@ -1487,6 +1487,10 @@ function _aideHtmlFr() {
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>🌀 Mes liaisons</strong> (v1.59.0) : sur l'<strong>accueil</strong>, liste toutes tes liaisons
             (état ⛔ si un plan est absent, ➜ pour y aller, 🗑️ pour supprimer).
+            <strong>🕸️ Vue Graphe</strong> (v1.65.0) : bascule 📋 Liste ⇄ 🕸️ Graphe — la bibliothèque en
+            réseau (plans = bulles avec badges + compteur, portails = traits dont l'épaisseur suit le nombre
+            de liaisons, plans sans liaison en bande dédiée). Clic bulle = ouvrir le plan, clic trait =
+            détail de la frontière, bulles déplaçables au doigt.
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>🧭 Itinéraire inter-plan</strong> (v1.60.0, refondu v1.64.0) : demande un trajet vers un
@@ -2219,6 +2223,10 @@ function _aideHtmlEn() {
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>🌀 My links</strong> (v1.59.0): on the <strong>home screen</strong>, lists all your links
             (⛔ if a plan is missing, ➜ to go there, 🗑️ to delete).
+            <strong>🕸️ Graph view</strong> (v1.65.0): toggle 📋 List ⇄ 🕸️ Graph — the library as a network
+            (plans = bubbles with badges + counter, portals = lines whose thickness follows the number of
+            links, unlinked plans in a dedicated strip). Click a bubble = open the plan, click a line =
+            border detail, bubbles draggable.
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>🧭 Inter-plan route</strong> (v1.60.0, revamped v1.64.0): request a route to a point on

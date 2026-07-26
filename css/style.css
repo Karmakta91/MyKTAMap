@@ -8592,6 +8592,108 @@ html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); 
   margin-top: 6px;
 }
 
+/* 🕸️ v1.65.0 (A7) — Vue « réseau de plans » (gestionnaire Mes liaisons) */
+.kta-ipl-mgr-toggle {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.kta-ipl-mgr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(140, 180, 255, 0.12);
+  border: 1px solid rgba(140, 180, 255, 0.4);
+  color: #8cb4ff;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.kta-ipl-mgr-chip button {
+  background: none;
+  border: none;
+  color: #8cb4ff;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 2px;
+}
+.kta-ipl-mgr-chip button:hover { color: #e8eaf0; }
+.kta-pnet-wrap {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(10, 13, 24, 0.55);
+}
+.kta-pnet-svg { display: block; touch-action: none; }
+.kta-pnet-edge {
+  stroke: #8cb4ff;
+  stroke-opacity: 0.5;
+  stroke-linecap: round;
+}
+.kta-pnet-edge-hit {
+  stroke: transparent;
+  cursor: pointer;
+}
+.kta-pnet-edge-hit:hover + * , .kta-pnet-edge-hit:hover { stroke: rgba(140,180,255,0.12); }
+.kta-pnet-edge-count {
+  fill: #8cb4ff;
+  font: 600 11px 'Segoe UI', Arial, sans-serif;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.kta-pnet-node { cursor: pointer; }
+.kta-pnet-disc {
+  fill: #222b40;
+  stroke: #45557a;
+  stroke-width: 1.5;
+}
+.kta-pnet-node:hover .kta-pnet-disc { stroke: #8cb4ff; }
+.kta-pnet-node-absent { opacity: 0.5; cursor: default; }
+.kta-pnet-ring {
+  fill: none;
+  stroke: #f4c542;
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+.kta-pnet-ico {
+  font-size: 16px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+.kta-pnet-count-disc { fill: #f4c542; }
+.kta-pnet-count {
+  fill: #1a1f2e;
+  font: 700 10px 'Segoe UI', Arial, sans-serif;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+.kta-pnet-name {
+  fill: #e8eaf0;
+  font: 600 12px 'Segoe UI', Arial, sans-serif;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.kta-pnet-badges {
+  fill: #8892a4;
+  font: 500 10px 'Segoe UI', Arial, sans-serif;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.kta-pnet-sep { stroke: rgba(255, 255, 255, 0.12); stroke-dasharray: 5 4; }
+.kta-pnet-sep-titre {
+  fill: #8892a4;
+  font: 600 11px 'Segoe UI', Arial, sans-serif;
+}
+html.kta-theme-light .kta-pnet-wrap { background: rgba(240, 232, 216, 0.5); border-color: rgba(0,0,0,0.1); }
+html.kta-theme-light .kta-pnet-disc { fill: #f5f1e6; stroke: #a99c78; }
+html.kta-theme-light .kta-pnet-name { fill: #1a1f2e; }
+html.kta-theme-light .kta-pnet-badges, html.kta-theme-light .kta-pnet-sep-titre { fill: #6a7488; }
+html.kta-theme-light .kta-pnet-edge { stroke: #2d5aa8; }
+html.kta-theme-light .kta-pnet-edge-count { fill: #2d5aa8; }
+
 /* 🌀 v1.64.0 — Multi-hop : case à cocher (recherche multi-plans) */
 .kta-xps-multihop {
   display: flex;
