@@ -547,3 +547,20 @@ documentées ici pour la doctrine.
   (= un user qui lit le README à jour mais l'audit obsolète, ou inverse).
 
 ---
+
+---
+
+## 🧹 B7 — Découpe du monolithe index.html (v1.66.0)
+
+> Décisions KARMA 1:a 2:b 3:a. Le bloc `<script>` inline (~232 Ko, ex-lignes 1433-6050) vivait dans UNE closure `window.addEventListener("load", …)`. Découpé VERBATIM en 3 modules + résiduel inline.
+
+**Structure post-B7** (`index.html` ≈ 101 Ko) :
+- `js/homeLoader.js` — chrome loader, `setStatus`, overlay, import/extraction ZIP, liste des plans, `chargerPlanDuRegistre`, modales plan introuvable / re-sélection.
+- `js/homeProfile.js` — bandeau profil, rangs, hauts faits, stockage, modale détails, édition pro, stats agrégées + `afficherChoixImportListe`.
+- `js/homeConfig.js` — modale Config ⚙️, flux PIN, badges alertes/paranoïa, thème, journal réseau.
+- Résiduel inline : segmented perf + debug, puis bloc boot SW (inchangé).
+
+**Règles à respecter (sinon casse silencieuse)** :
+- ⚠️ Les 3 `<script src>` sont **SANS `defer`** et wrappés `addEventListener("load")` chacun — l'ordre d'enregistrement des listeners (`homeLoader → homeProfile → homeConfig → résiduel`) reproduit l'ordre d'exécution du bloc d'origine. **Ne pas réordonner, ne pas ajouter `defer`.**
+- Les fichiers partagent des symboles via **ponts `window.X = X`** en fin de wrapper (6 ponts : `setStatus`, `chargerPlanDuRegistre`, `onLoadPlanClick`, `reSelectionnerZipPourPlan`, `afficherChoixImportListe`, `getLoaderPerfPreset`) — les identifiants nus des autres closures se résolvent sur l'objet global. **Toute nouvelle dépendance croisée entre ces fichiers doit passer par un pont window.***, jamais par un identifiant de closure.
+- Extraction VERBATIM : si un bloc doit être retravaillé, le faire dans une release SÉPARÉE du moindre déplacement.

@@ -1,7 +1,7 @@
 {
-  "version": "v1.65.0",
-  "released": "2026-07-26",
+  "version": "v1.66.0",
+  "released": "2026-07-27",
   "notes": [
-    "🕸️ Nouvelle vue « Graphe » dans 🌀 Mes liaisons : ta bibliothèque dessinée en réseau — les plans reliés par leurs portails, l'épaisseur des traits selon le nombre de liaisons. Clique un plan pour l'ouvrir, une liaison pour voir son détail, et déplace les bulles à ta guise."
+    "🧹 Grand nettoyage interne de l'écran d'accueil (aucun changement visible) : l'app est plus simple à maintenir et à faire évoluer. Si quelque chose te semble différent sur l'accueil, le profil ou la configuration, signale-le."
   ]
 }
