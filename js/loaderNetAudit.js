@@ -66,9 +66,14 @@
                       : (typeof entry.status === "number" && entry.status >= 200 && entry.status < 400 ? "kta-net-status-ok"
                       : (typeof entry.status === "number" && entry.status >= 400 ? "kta-net-status-err"
                       : "kta-net-status-pending"));
+    // 🌍 v1.60.x (B8) : i18n au rendu, fallback FR inline (pattern projet).
+    const _nt = function(k, fb) {
+      return (window.I18n && typeof window.I18n.t === "function" && window.I18n.has && window.I18n.has(k))
+        ? window.I18n.t(k) : fb;
+    };
     const bodyBadge = entry.hasBody
-      ? '<span class="kta-net-body-yes" title="Données envoyées dans le corps de la requête">OUI</span>'
-      : '<span class="kta-net-body-no" title="Aucune donnée envoyée">non</span>';
+      ? '<span class="kta-net-body-yes" title="' + _nt("netlog.bodyYesTitle", "Données envoyées dans le corps de la requête") + '">' + _nt("netlog.bodyYes", "OUI") + '</span>'
+      : '<span class="kta-net-body-no" title="' + _nt("netlog.bodyNoTitle", "Aucune donnée envoyée") + '">' + _nt("netlog.bodyNo", "non") + '</span>';
     return '<tr class="' + (entry.blocked ? "kta-net-row-blocked" : "") + '">' +
       '<td class="kta-net-cell-time">' + _formatTime(entry.timestamp) + '</td>' +
       '<td class="kta-net-cell-kind">' + _escapeHtml(entry.kind) + '</td>' +
@@ -85,8 +90,15 @@
     const meta  = document.getElementById("loaderNetLogMeta");
     if (!tbody || !window.NetworkAudit) return;
     const log = window.NetworkAudit.getLog();
+    // 🌍 v1.60.x (B8) : i18n au rendu, fallback FR inline (pattern projet).
+    const _nt = function(k, fb, params) {
+      return (window.I18n && typeof window.I18n.t === "function" && window.I18n.has && window.I18n.has(k))
+        ? window.I18n.t(k, params || {}) : fb;
+    };
     if (log.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#8892a4;">Aucune requête capturée pour le moment. Utilise l\'app, recharge un plan, ou ferme/rouvre cette modale.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#8892a4;">' +
+        _nt("netlog.empty", "Aucune requête capturée pour le moment. Utilise l'app, recharge un plan, ou ferme/rouvre cette modale.") +
+        '</td></tr>';
     } else {
       // On affiche du plus récent au plus ancien (reverse)
       tbody.innerHTML = log.slice().reverse().map(_renderNetLogRow).join("");
@@ -94,10 +106,17 @@
     if (meta) {
       const paranoia = window.NetworkAudit.isParanoia();
       const blockedCount = log.filter(function(e) { return e.blocked; }).length;
+      const captured = (log.length > 1)
+        ? _nt("netlog.captured.plural", '<strong>' + log.length + '</strong> requêtes capturées', { n: log.length })
+        : _nt("netlog.captured.one",    '<strong>' + log.length + '</strong> requête capturée',   { n: log.length });
+      const blocked = (blockedCount > 1)
+        ? _nt("netlog.blocked.plural", blockedCount + ' bloquées', { n: blockedCount })
+        : _nt("netlog.blocked.one",    blockedCount + ' bloquée',  { n: blockedCount });
       meta.innerHTML =
-        '<strong>' + log.length + '</strong> requête' + (log.length > 1 ? 's' : '') + ' capturée' + (log.length > 1 ? 's' : '') +
-        ' · Mode hors-ligne strict : <strong>' + (paranoia ? '🔒 ACTIF' : 'désactivé') + '</strong>' +
-        (blockedCount > 0 ? ' · <strong style="color:#ff8c8c;">' + blockedCount + ' bloquée' + (blockedCount > 1 ? 's' : '') + '</strong>' : '');
+        captured +
+        ' · ' + _nt("netlog.paranoiaLabel", "Mode hors-ligne strict :") + ' <strong>' +
+        (paranoia ? _nt("netlog.paranoiaOn", "🔒 ACTIF") : _nt("netlog.paranoiaOff", "désactivé")) + '</strong>' +
+        (blockedCount > 0 ? ' · <strong style="color:#ff8c8c;">' + blocked + '</strong>' : '');
     }
   }
 

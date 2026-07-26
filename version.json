@@ -1,8 +1,7 @@
 {
-  "version": "v1.60.0",
+  "version": "v1.60.1",
   "released": "2026-07-26",
   "notes": [
-    "🧭 Nouveau : itinéraire inter-plan ! Choisissez une destination sur un autre plan (modale Itinéraire ou recherche multi-plans, bouton 🧭) : l'app calcule le trajet jusqu'au portail, la distance totale des deux côtés, puis trace automatiquement la suite quand vous traversez. Messages clairs si aucun portail ne relie les plans ou si la destination est injoignable.",
-    "🌀 Les fiches de liaisons se mettent à jour toutes seules quand un point lié a été renommé ou déplacé."
+    "🌍 Améliorations de traduction : le Journal réseau et les messages d'import de fichiers sont désormais disponibles en anglais et en espagnol. Rien ne change en français."
   ]
 }

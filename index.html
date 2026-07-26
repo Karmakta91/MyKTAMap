@@ -1664,7 +1664,7 @@
             zipFileName.textContent = "🌍 " + f.name + " — ouverture de l'import KMZ…";
             window.afficherImporterKmz(f);
           } else {
-            setStatus("Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là.", true);
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.kmzUnavailable") : "Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là."), true);
           }
           return;
         }
@@ -1674,7 +1674,7 @@
             zipFileName.textContent = "📤 " + f.name + " — ouverture de l'import GPX…";
             window.afficherImporterGpx(f);
           } else {
-            setStatus("Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là.", true);
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.gpxUnavailable") : "Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là."), true);
           }
           return;
         }
@@ -1706,7 +1706,7 @@
             zipFileName.textContent = "🌍 " + f.name + " — ouverture de l'import KMZ…";
             window.afficherImporterKmz(f);
           } else {
-            setStatus("Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là.", true);
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.kmzUnavailable") : "Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là."), true);
           }
         } else if (lower.endsWith(".gpx")) {
           // v1.15.0 — route GPX vers la nouvelle modale d'import GPX
@@ -1716,10 +1716,10 @@
             zipFileName.textContent = "📤 " + f.name + " — ouverture de l'import GPX…";
             window.afficherImporterGpx(f);
           } else {
-            setStatus("Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là.", true);
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.gpxUnavailable") : "Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là."), true);
           }
         } else {
-          setStatus("Le fichier doit être une archive .zip, un .kmz ou un .gpx MyKTAMap", true);
+          setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.badFileType") : "Le fichier doit être une archive .zip, un .kmz ou un .gpx MyKTAMap"), true);
         }
       });
 
