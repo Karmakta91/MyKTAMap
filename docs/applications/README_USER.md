@@ -2110,6 +2110,10 @@ Tu peux attacher jusqu'à **5 photos par point** (limite anti-saturation stockag
 
 **Compression auto** : les photos sont compressées avant stockage (1920 px côté long max, qualité JPEG 85 %). Une photo brute de 5-10 Mo passe à ~200-500 Ko. Pour 5 photos = ~2 Mo par point.
 
+**🔒 Métadonnées nettoyées *(depuis v1.63.0)*** : **toute** photo est ré-encodée à l'ajout, même déjà petite — les métadonnées cachées du fichier (**EXIF : position GPS de la prise de vue, date, modèle d'appareil**) sont systématiquement supprimées. Rien de tout ça n'entre dans l'app ni ne sort dans un export. Les petites photos sont ré-encodées sans redimensionnement à qualité haute (dégradation invisible).
+
+**🛡️ Export anonymisé + photos *(depuis v1.63.0)*** : dans 💾 Enregistrer session → 📦 Full, la case « 🛡️ Anonymiser pour partage public » accepte maintenant les photos : chacune est **ré-encodée sans métadonnées** (y compris les photos ajoutées avant v1.63.0) et **renommée** (`photo-anon-1`, `photo-anon-2`…), rattachée aux codes anonymisés des points (`💎 POI #1`…). Une photo qui ne peut pas être ré-encodée est **exclue** de l'export — jamais embarquée telle quelle. La note libre et le PDF Histoire restent exclus de l'export anonymisé.
+
 **Retirer une photo** : clic sur la croix ✕ rouge en haut à droite de la miniature → elle apparaît grisée avec hachures rouges (marquée à supprimer). Si tu changes d'avis, clic sur la flèche verte ↺ pour annuler. La vraie suppression n'a lieu qu'au moment où tu **💾 Enregistres**.
 
 **Si tu annules** la fenêtre d'édition au lieu de sauvegarder, **les photos que tu venais d'ajouter sont effacées** (cleanup auto). Les marquages à supprimer sont au contraire **annulés** — la photo reste.

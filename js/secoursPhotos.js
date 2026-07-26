@@ -232,10 +232,11 @@
         const W = img.naturalWidth;
         const H = img.naturalHeight;
         URL.revokeObjectURL(url);
-        if (W <= maxDim && H <= maxDim && srcBlob.size < 500 * 1024) {
-          resolve(srcBlob);
-          return;
-        }
+        // 🔒 v1.63.0 (A8) : plus de bypass « déjà petite » — le blob original
+        // peut porter de l'EXIF (GPS). Re-encodage systématique, qualité
+        // haute (0.92) sans resize pour les petites (cf photos.js).
+        const petite = (W <= maxDim && H <= maxDim && srcBlob.size < 500 * 1024);
+        const q = petite ? Math.max(quality, 0.92) : quality;
         const ratio = Math.min(maxDim / W, maxDim / H, 1);
         const newW = Math.round(W * ratio);
         const newH = Math.round(H * ratio);
@@ -254,7 +255,7 @@
             return;
           }
           resolve(blob);
-        }, mime, quality);
+        }, mime, q);
       };
       img.onerror = function() {
         URL.revokeObjectURL(url);

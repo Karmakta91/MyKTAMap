@@ -1582,6 +1582,36 @@
     });
   }
 
+  // 🔒 v1.63.0 (A8) — Strip EXIF pour l'export anonymisé : chaque photo est
+  // RE-ENCODÉE via canvas (photos.js > compressBlob, qui ne retourne plus
+  // jamais le blob original) → métadonnées EXIF (dont GPS) garanties
+  // absentes. FAIL-CLOSED : une photo qui ne peut pas être ré-encodée est
+  // EXCLUE de l'export — jamais de blob original dans un ZIP anonymisé.
+  function _stripperExifPhotos(pack) {
+    if (!window.MyKTAMapPhotos || typeof window.MyKTAMapPhotos.compressBlob !== "function") {
+      console.warn("[SessionExport] Module photos absent — photos exclues de l'export anonymisé (fail-closed)");
+      return Promise.resolve({ photos: [], totalSize: 0 });
+    }
+    return Promise.all(pack.photos.map(function(p) {
+      return window.MyKTAMapPhotos.compressBlob(p.blob, {})
+        .then(function(b) {
+          return { id: p.id, blob: b, mime: b.type || "image/jpeg", pointId: p.pointId, size: b.size };
+        })
+        .catch(function(e) {
+          console.warn("[SessionExport] Strip EXIF impossible pour", p.id, "— photo EXCLUE (fail-closed) :", e);
+          return null;
+        });
+    })).then(function(arr) {
+      const photos = arr.filter(Boolean);
+      let total = 0;
+      photos.forEach(function(p) { total += p.size; });
+      const exclues = pack.photos.length - photos.length;
+      if (exclues > 0) console.warn("[SessionExport] " + exclues + " photo(s) exclue(s) de l'export anonymisé (re-encodage impossible)");
+      console.log("[SessionExport] Strip EXIF : " + photos.length + " photo(s) ré-encodée(s) pour l'export anonymisé");
+      return { photos: photos, totalSize: total };
+    });
+  }
+
   // Marque chaque editorPoint avec un array `photos: [photoId, ...]` listant
   // les photos qui lui sont rattachées. Permet un viewer "rapide" qui sait
   // qu'un point a N photos sans relire l'index.
@@ -1621,7 +1651,13 @@
   // Strippé : id, nom, label, description, profondeur, date_update,
   //           tracker, photos (= EXIF), user/author.
   // Marqué : session.anonymized = true + session.anonymizedAt = ISO.
-  function _anonymiserSession(session) {
+  // 🔒 v1.63.0 (A8) : accepte un 2e param `photos` (records de
+  // _collecterPhotosPlan, déjà strippés EXIF par _stripperExifPhotos).
+  // Les ids photo sont renommés (`photo-anon-N`, zip-safe), le pointId de
+  // chaque photo est remappé vers le CODE anonymisé du point, et les points
+  // anonymisés récupèrent leur liste `photos` — la liaison photo↔point
+  // survit à l'anonymisation sans fuiter les ids d'origine.
+  function _anonymiserSession(session, photos) {
     // Mapping emoji par tag (built-in connus + fallback "🎯")
     // ⚠️ Synchroniser avec TAGS_BUILTIN si nouveau tag ajouté.
     const EMOJI_PAR_TAG = {
@@ -1639,6 +1675,8 @@
     }
 
     // 1. editorPoints — séquence par tag (cohérent avec coordination terrain)
+    // 🔒 v1.63.0 : idMap id d'origine → code anonymisé (remappage photos)
+    const idMap = {};
     if (Array.isArray(session.editorPoints)) {
       const counterByTag = {};
       session.editorPoints = session.editorPoints.map(function(p) {
@@ -1647,6 +1685,7 @@
         const key     = firstTag || "_notag";
         counterByTag[key] = (counterByTag[key] || 0) + 1;
         const code = emoji + " POI #" + counterByTag[key];
+        if (p.id) idMap[String(p.id)] = code;
         const out  = {
           id:    code,
           nom:   code,
@@ -1659,9 +1698,22 @@
           source:      "editor"
         };
         if (typeof p.level === "number") out.level = p.level;
-        // photos pointer non préservé (forcé sans photos quand anonymize ON)
         return out;
       });
+    }
+
+    // 🔒 v1.63.0 (A8) : photos incluses dans l'export anonymisé (blobs déjà
+    // strippés EXIF en amont). Renommage zip-safe + remappage vers les codes
+    // anonymisés + ré-attache des listes `photos` sur les points anonymisés.
+    if (Array.isArray(photos) && photos.length > 0) {
+      let n = 0;
+      photos.forEach(function(p) {
+        n++;
+        p.id      = "photo-anon-" + n;
+        p.pointId = idMap[String(p.pointId)] || "";
+        p.mime    = p.mime || "image/jpeg";
+      });
+      session.editorPoints = _enrichirPointsAvecPhotos(session.editorPoints, photos);
     }
 
     // 2. roads — séquence globale
@@ -1730,9 +1782,13 @@
     delete session.userProfile;
     delete session.author;
 
-    // 7. compteurs photos (info récap) — retirés car forcés à 0
-    delete session.photosCount;
-    delete session.photosTotalKB;
+    // 7. compteurs photos (info récap) — retirés seulement si pas de photos
+    // (🔒 v1.63.0 : photos strippées EXIF désormais incluables → les
+    // compteurs calculés en amont sur le pack strippé restent justes)
+    if (!Array.isArray(photos) || photos.length === 0) {
+      delete session.photosCount;
+      delete session.photosTotalKB;
+    }
 
     // 🆕 v1.34.29 : Mode Histoire (note libre + PDF session)
     delete session.noteLibre;
@@ -1843,7 +1899,9 @@
     const anonymize   = !!(anonymizeCb && anonymizeCb.checked);
 
     // Collecte des photos (async — on encapsule tout dans la chaîne Promise).
-    const photosPromise = (inclurePhotos && !anonymize)
+    // 🔒 v1.63.0 (A8) : l'anonymisation n'exclut PLUS les photos — elles
+    // sont ré-encodées (strip EXIF/GPS) par _stripperExifPhotos plus bas.
+    const photosPromise = inclurePhotos
       ? _collecterPhotosPlan(null)
       : Promise.resolve({ photos: [], totalSize: 0 });
 
@@ -1857,6 +1915,13 @@
         });
 
     Promise.all([photosPromise, histoirePromise]).then(function(results) {
+      // 🔒 v1.63.0 (A8) : anonymize + photos → strip EXIF AVANT toute
+      // construction du payload (fail-closed : photo non ré-encodable exclue).
+      const stripPromise = (anonymize && results[0].photos.length > 0)
+        ? _stripperExifPhotos(results[0])
+        : Promise.resolve(results[0]);
+      return stripPromise.then(function(pack) { return [pack, results[1]]; });
+    }).then(function(results) {
       const pack = results[0];
       const histoire = results[1];
       const photos = pack.photos;
@@ -1943,8 +2008,10 @@
       // 🆕 v1.31.7 F1 : applique l'anonymisation APRÈS construction du
       // payload — comme ça la logique d'inclusion (tracker, photos…)
       // reste identique, on mute juste le résultat avant download.
+      // 🔒 v1.63.0 (A8) : les photos (déjà strippées EXIF) sont passées pour
+      // renommage zip-safe + remappage vers les codes anonymisés.
       if (anonymize) {
-        _anonymiserSession(session);
+        _anonymiserSession(session, photos);
       }
 
       // Préfixe du nom de fichier : "session-anon-…" quand anonymisé
@@ -1958,9 +2025,10 @@
 
       if (photos.length > 0 || hasHistoirePdf) {
         // Bundle ZIP : session.json + photos/ + mode-histoire/<pdf>
-        // NB : ce chemin ne peut PAS être pris quand anonymize ON
-        // (photos + PDF Histoire forcés à 0/null plus haut), donc pas de
-        // risque de fuite EXIF ni de notes perso.
+        // 🔒 v1.63.0 (A8) : ce chemin est désormais POSSIBLE avec anonymize
+        // ON — les photos y sont garanties strippées EXIF (re-encodées,
+        // fail-closed) et renommées photo-anon-N. Le PDF Histoire, lui,
+        // reste exclu de l'anonymisation (contenu perso non nettoyable).
         _packerZipSession(session, photos, _filename(fnPrefix, "zip"), histoire.pdf)
           .then(function() { _fermer(); })
           .catch(function(err) {

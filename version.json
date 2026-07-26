@@ -1,8 +1,8 @@
 {
-  "version": "v1.62.0",
+  "version": "v1.63.0",
   "released": "2026-07-26",
   "notes": [
-    "🫥 Les plans créés depuis une image transparente gardent maintenant leur transparence : plus de fond sombre ajouté autour du dessin, et la carte OpenStreetMap apparaît à travers dans la Vue OSM.",
-    "Pour en profiter sur un plan existant, régénère-le une fois (Modifier le plan → recocher le mode tuilé). Les plans actuels continuent de fonctionner sans rien faire."
+    "🔒 Les photos ne gardent plus aucune métadonnée cachée (position GPS de la prise de vue, date, appareil) : tout est nettoyé automatiquement dès l'ajout.",
+    "📸 L'export anonymisé peut maintenant inclure tes photos : elles sont nettoyées de leurs métadonnées et renommées, prêtes pour un partage public sans risque."
   ]
 }

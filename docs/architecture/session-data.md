@@ -1134,3 +1134,18 @@ CSS : `.kta-secours-imported-chip` (badge bleu clair + variants thème clair). T
 3. Utile pour debug ou audit terrain a posteriori
 
 ---
+
+---
+
+## 🔒 Strip EXIF photos (v1.63.0 — A8)
+
+> Reco KARMA 1:a 2:a 3:a. Le bypass « photo déjà petite (≤1920px ET <500 Ko) → blob original conservé » de `photos.js > compressBlob` (et sa copie `secoursPhotos.js`) laissait l'EXIF — dont le GPS de prise de vue — entrer en IDB et sortir dans tous les exports.
+
+- **Ingestion** : plus AUCUN chemin ne retourne le blob original (hors `opts.skipCompress` du restore et le fallback d'échec — assumés). Petite photo → re-encodage sans resize à `COMPRESS_JPEG_QUALITY_SMALL = 0.92`. Le re-encodage canvas applique l'orientation EXIF (`drawImage`) → image droite sans flag.
+- **Export anonymisé** (`sessionExporter.js`) : `_stripperExifPhotos(pack)` re-encode chaque blob AVANT le payload — **fail-closed** (photo non ré-encodable = exclue + warn, JAMAIS de blob original dans un ZIP anonymisé). `_anonymiserSession(session, photos)` : `idMap` id origine → code anonymisé, photos renommées `photo-anon-N` (zip-safe, pas d'emoji dans un nom de fichier), `pointId` remappé, `_enrichirPointsAvecPhotos` ré-appliqué sur les points anonymisés. Compteurs conservés si photos incluses.
+- **Legacy IDB** : photos pré-v1.63.0 potentiellement avec EXIF — PAS de migration (reco 2:a) ; le strip à l'export anonymisé les couvre. Un export NON-anonymisé de photos legacy peut donc encore porter de l'EXIF — c'est le compromis accepté (l'export nominal est destiné à soi-même/équipe de confiance).
+
+**À NE PAS faire** :
+- ❌ Réintroduire un « fast path » qui retourne un blob original (c'est LE trou d'origine).
+- ❌ Fallback blob original en cas d'échec de re-encodage dans un contexte ANONYMISÉ — toujours exclure (fail-closed).
+- ❌ Strip binaire des marqueurs JPEG au lieu du re-encodage — le flag d'orientation partirait avec, image tournée.

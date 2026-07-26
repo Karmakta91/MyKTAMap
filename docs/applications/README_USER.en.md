@@ -2105,6 +2105,10 @@ You can attach up to **5 photos per point** (anti-saturation limit for browser s
 
 **Auto compression**: photos are compressed before storage (1920 px long side max, JPEG quality 85%). A raw photo of 5-10 MB drops to ~200-500 KB. For 5 photos = ~2 MB per point.
 
+**🔒 Metadata scrubbed *(since v1.63.0)***: **every** photo is re-encoded when added, even already-small ones — the file's hidden metadata (**EXIF: GPS position of the shot, date, camera model**) is systematically removed. None of it enters the app or leaves in an export. Small photos are re-encoded without resizing at high quality (invisible degradation).
+
+**🛡️ Anonymized export + photos *(since v1.63.0)***: in 💾 Save session → 📦 Full, the "🛡️ Anonymize for public sharing" checkbox now accepts photos: each one is **re-encoded without metadata** (including photos added before v1.63.0) and **renamed** (`photo-anon-1`, `photo-anon-2`…), linked to the points' anonymized codes (`💎 POI #1`…). A photo that cannot be re-encoded is **excluded** from the export — never embedded as-is. The free note and History PDF remain excluded from the anonymized export.
+
 **Remove a photo**: click on the red ✕ at the top right of the thumbnail → it appears greyed out with red hatching (marked for deletion). If you change your mind, click on the green ↺ arrow to undo. The actual deletion only happens when you **💾 Save**.
 
 **If you cancel** the edit window instead of saving, **the photos you had just added are deleted** (auto cleanup). The deletion markings are conversely **canceled** — the photo stays.
