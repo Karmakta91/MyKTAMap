@@ -1149,3 +1149,11 @@ CSS : `.kta-secours-imported-chip` (badge bleu clair + variants thème clair). T
 - ❌ Réintroduire un « fast path » qui retourne un blob original (c'est LE trou d'origine).
 - ❌ Fallback blob original en cas d'échec de re-encodage dans un contexte ANONYMISÉ — toujours exclure (fail-closed).
 - ❌ Strip binaire des marqueurs JPEG au lieu du re-encodage — le flag d'orientation partirait avec, image tournée.
+
+---
+
+## 🐛 Persistance tracker — 2 fixes v1.64.0
+
+**Race du plan switch** (KARMA « au chargement je suis sur la position initiale ») : le poller d'auto-save (1.5 s) restait actif sur l'ANCIEN plan pendant le switch — le teardown (`main.js > _libererRessourcesPlanPrecedent`) vide la timeline tracker en RAM (`resetTrackingTimeline`), un tick pendant le chargement (plusieurs secondes) sauvegardait l'état MUTILÉ : timeline vide écrasée, voire slot PURGÉ (`_isEmptyState → removeItem`) pour une session tracker-seule. **Fix : `SessionPersist.onPlanUnload()`** appelé EN PREMIER dans le teardown — save final forcé (état intact) + `_stopPolling()` + `_currentPlanId = null` (neutralise aussi les filets `beforeunload`/`visibilitychange` pendant la fenêtre). Le polling redémarre au `onPlanLoaded` du nouveau plan. ⚠️ Tout NOUVEAU reset ajouté au teardown doit rester APRÈS l'appel `onPlanUnload`.
+
+**« Effacer la session » vs tracker** : `_viderEtatCourant` (chemin 🗑️ de la modale de restauration) est antérieur à la persistance timeline (v1.21/1.28) et ne vidait jamais le tracker → la timeline restaurée + le tracé visible + le marker survivaient au refus. **Fix : `resetTrackingPosition()`** ajouté au vidage. Bonus : une session TRACKER-SEULE compte désormais dans le total de la modale de restauration (sinon pas de modale = pas de refus possible) — ligne « 🧭 tracé du tracker » (`session.unit.tracker`).

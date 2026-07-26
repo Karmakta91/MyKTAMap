@@ -1,8 +1,8 @@
 {
-  "version": "v1.63.0",
+  "version": "v1.64.0",
   "released": "2026-07-26",
   "notes": [
-    "🔒 Les photos ne gardent plus aucune métadonnée cachée (position GPS de la prise de vue, date, appareil) : tout est nettoyé automatiquement dès l'ajout.",
-    "📸 L'export anonymisé peut maintenant inclure tes photos : elles sont nettoyées de leurs métadonnées et renommées, prêtes pour un partage public sans risque."
+    "🌀 L'itinéraire vers un autre plan peut maintenant traverser plusieurs plans (coche « Itinéraire via plusieurs plans » dans la recherche multi-plans), passer par tes étapes avant le portail, et te laisse marcher : la traversée se propose quand tu es au portail, plus de téléportation au calcul.",
+    "🧭 Deux corrections importantes du tracker : sa position survit maintenant aux changements de plan, et « Effacer la session » efface bien le tracé de la session précédente."
   ]
 }

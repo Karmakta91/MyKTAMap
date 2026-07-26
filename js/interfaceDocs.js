@@ -1489,12 +1489,16 @@ function _aideHtmlFr() {
             (état ⛔ si un plan est absent, ➜ pour y aller, 🗑️ pour supprimer).
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>🧭 Itinéraire inter-plan</strong> (v1.60.0) : demande un trajet vers un point d'un
-            <strong>autre plan</strong> (modale Itinéraire → « 🌐 Destination sur un autre plan », ou bouton 🧭
-            dans la recherche multi-plans). L'app compare les portails au coût réel, affiche les étapes et la
-            distance totale, trace le chemin jusqu'au portail — et <strong>la suite se trace toute seule</strong>
-            quand tu traverses. Impossible ? Le message t'explique pourquoi (pas de portail, plan hors-ligne,
-            destination isolée…).
+            <strong>🧭 Itinéraire inter-plan</strong> (v1.60.0, refondu v1.64.0) : demande un trajet vers un
+            point d'un <strong>autre plan</strong> (modale Itinéraire → « 🌐 Destination sur un autre plan »,
+            ou bouton 🧭 dans la recherche multi-plans). L'app compare les portails au coût réel, affiche les
+            étapes et la distance totale — tes <strong>points de passage de la modale sont visités d'abord</strong>,
+            dans l'ordre. « <strong>🗺️ C'est parti</strong> » trace le trajet et te laisse <strong>marcher</strong> :
+            la traversée se propose quand tu es AU portail (bouton flottant « 🌀 Portail suivant », ➜ du popup,
+            ou « 📍 Je suis ici » sur le point-portail). Coche <strong>« 🌀 Itinéraire via plusieurs plans »</strong>
+            dans la recherche multi-plans pour traverser des plans intermédiaires (A → B → C, 3 traversées max) —
+            chaque arrivée trace le tronçon et propose le portail suivant. Impossible ? Le message t'explique
+            pourquoi (pas de portail, plan hors-ligne, destination isolée…).
           </p>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
             Plan cible absent de l'appareil → la liaison s'affiche (⛔) mais « y aller » nécessite d'ajouter le plan.
@@ -2217,11 +2221,16 @@ function _aideHtmlEn() {
             (⛔ if a plan is missing, ➜ to go there, 🗑️ to delete).
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>🧭 Inter-plan route</strong> (v1.60.0): request a route to a point on <strong>another
-            plan</strong> (Route modal → "🌐 Destination on another plan", or 🧭 button in the multi-plan
-            search). The app compares portals at real cost, shows the steps and total distance, draws the
-            path to the portal — and <strong>the rest draws itself</strong> when you cross. Impossible?
-            The message tells you why (no portal, plan offline, destination cut off…).
+            <strong>🧭 Inter-plan route</strong> (v1.60.0, revamped v1.64.0): request a route to a point on
+            <strong>another plan</strong> (Route modal → "🌐 Destination on another plan", or 🧭 button in
+            the multi-plan search). The app compares portals at real cost, shows the steps and total
+            distance — your <strong>modal waypoints are visited first</strong>, in order.
+            "<strong>🗺️ Let's go</strong>" draws the route and lets you <strong>walk</strong>: the crossing
+            is offered when you are AT the portal (floating "🌀 Next portal" button, the popup's ➜, or
+            "📍 I am here" on the portal point). Check <strong>"🌀 Route across multiple plans"</strong> in
+            the multi-plan search to cross intermediate plans (A → B → C, 3 crossings max) — each arrival
+            draws that leg and offers the next portal. Impossible? The message tells you why (no portal,
+            plan offline, destination cut off…).
           </p>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
             Target plan missing from this device → the link still shows (⛔) but "going there" requires adding the plan.

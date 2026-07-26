@@ -390,7 +390,7 @@ C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne 
 - ❌ Sommer des pixels de deux plans (échelles différentes) — toujours convertir en mètres par plan.
 - ❌ Tracer le leg B AVANT le restore de session du plan B (il serait écrasé) — passer par `_pendingRoute` + délai.
 - ❌ Calculer le leg B sur des données partielles (`stats.dataError`) — refuser avec `DATA_UNREACHABLE`, ne pas deviner.
-- ❌ Étendre au multi-hop sans topo dédié (explosion combinatoire portails × plans — le BFS actuel ne sert qu'au MESSAGE informatif).
+- ~~❌ Étendre au multi-hop~~ → FAIT en v1.64.0 (cf. § Multi-hop ci-dessous — l'explosion combinatoire est contenue par le Dijkstra sur graphe de portails à arêtes paresseuses).
 
 ---
 
@@ -415,3 +415,26 @@ C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne 
 - ❌ Réordonner les étapes restantes (TSP « plus proche d'abord ») — l'ordre planifié est un choix utilisateur (3:a). Une option V2 éventuelle, jamais un défaut.
 - ❌ Retirer les étapes done de `road.waypoints` — elles portent la progression (persistance + rendu ✓) ; on les exclut du CALCUL, pas de la donnée.
 - ❌ Recalculer sans débounce (recalages en rafale = Dijkstras 1-3 s empilés).
+
+---
+
+## 🌀 Multi-hop + refonte du déroulé (v1.64.0)
+
+> Décisions KARMA `1:a 2:a 3:a 4:a` + case à cocher (5) + « prendre le portail n'a pas de sens, on n'est pas à côté » + « plusieurs points de passage sur le plan A ».
+
+**Moteur multi-hop** (`interPlanRoute.js > _computeMultiHop`) — actif quand la case « 🌀 Itinéraire via plusieurs plans » est cochée (`myktamap_ipr_multihop_v1`, OFF par défaut ; exposée dans la recherche multi-plans via `InterPlanRoute.is/setMultiHopEnabled`) :
+- **Graphe de portails** : nœuds `@start` (position) + chaque CÔTÉ de portail + `@dest` ; arêtes de traversée à 0 m ; arêtes intra-plan **PARESSEUSES** — le coût (Dijkstra réel via `_legEntre`, en MÈTRES par échelle du plan, mémoïsé `legCache`) n'est calculé qu'à l'expansion du nœud. Le Dijkstra global couvre AUSSI le cas direct → case cochée = `_computeMultiHop` remplace entièrement le single-hop.
+- **Périmètre** : plans sur un chemin BFS `dFrom + dTo ≤ MAX_HOPS (3)` uniquement ; `MAX_PORTALS_PER_PAIR = 5` par frontière ; budget `MAX_LEGS_COMPUTE = 60` Dijkstras (signalé si atteint : `ipr.err.budget`). Plans injoignables → écartés + nommés (`ipr.err.blocked`) si aucun chemin ne survit. Adjacence via `InterPlanLinks.getAllLinks()` (registre ; les liaisons baked des datalayers n'y sont pas — même périmètre que le single-hop).
+- **Format unique « chaîne de legs »** : `{ legs: [{planId, planName, path, distM, waypoints, portalOut}], totalM, dest }` — le single-hop est adapté via `_chainDepuisSingleHop`. UN SEUL renderer (`_afficherResume`) et UN SEUL consommateur (`onPlanLoaded`).
+
+**Déroulé temps réel** :
+- Résumé → « 🗺️ C'est parti » : trace le leg du plan courant, arme `_pendingChain` (file des legs restants) + `_currentPortalOut` — **AUCUNE téléportation**.
+- Traversée quand l'user est AU portail : invite flottante « 🌀 Portail suivant (dist) » (`kta-ipr-next-float`, persistante, fermable) · bouton ➜ du popup · « 📍 Je suis ici » sur le point-portail → `InterPlanRoute.onTrackerRecale` (2e consommateur du hook `tracking.js > _notifierRecalage`) re-propose l'invite.
+- Chaque arrivée (`onPlanLoaded`, +3 s post-restore) : trace le leg du plan, ré-arme l'invite suivante — zéro ressaisie sur toute la chaîne.
+
+**Étapes plan A** : `computeEtAfficher(dest, { viaWaypoints })` — les waypoints non-done de la modale Itinéraire deviennent des points de passage OBLIGATOIRES du premier leg (ordre planifié, `_viaWps` intercalés dans `computeRoute`/arête `@start`) ET dans les `waypoints` du tracé → la validation d'étapes + le replan (itinéraire vivant v1.61.0) marchent dessus gratuitement.
+
+**À NE PAS faire** :
+- ❌ Rebrancher un bouton de traversée dans le résumé de CALCUL (l'user n'est pas au portail — c'est le bug UX d'origine).
+- ❌ Évaluer les arêtes intra-plan en EAGER (produit portails × plans = explosion ; la paresse fait tenir le cas typique en ~5-15 Dijkstras).
+- ❌ Sommer des px inter-plans — toujours `distM = px / scale` PAR plan (inchangé depuis A6).
