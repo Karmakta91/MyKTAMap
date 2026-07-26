@@ -603,6 +603,20 @@ window._etendreAvailableLevelsSiBesoin = function() {
 // startImportedPlan). Évite la duplication ET garantit que rien n'est oublié
 // sur mobile où chaque Mo retenu compte pour iOS Safari.
 function _libererRessourcesPlanPrecedent() {
+  // 🐛 v1.64.0 (KARMA « au chargement je suis sur la position initiale, pas
+  // sur celle du tracker ») : FIGER LA PERSISTANCE EN PREMIER. Le poller
+  // d'auto-save (1.5 s) restait actif sur l'ANCIEN plan pendant tout le
+  // switch : le teardown ci-dessous vide la timeline tracker en RAM
+  // (resetTrackingTimeline), puis un tick pendant le chargement du nouveau
+  // plan (plusieurs secondes) sauvegardait l'état MUTILÉ — timeline vide
+  // écrasée dans le slot, voire slot PURGÉ (_isEmptyState) pour une session
+  // tracker-seule → au retour sur le plan, tracker sur la position initiale.
+  // Fix : save final forcé (état encore intact) + arrêt du poll — il ne
+  // redémarre qu'au onPlanLoaded du nouveau plan.
+  if (window.SessionPersist && typeof window.SessionPersist.onPlanUnload === "function") {
+    try { window.SessionPersist.onPlanUnload(); } catch(e) {}
+  }
+
   // 🎨 Refonte UI v1 : cleanup du header bar + status bar avant démontage
   // de la map. Sinon le header reste affiché avec les vieilles valeurs
   // pendant le splash du nouveau plan. No-op si flag OFF.

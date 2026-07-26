@@ -713,6 +713,25 @@
     });
   }
 
+  // 🐛 v1.64.0 — Appelé par main.js > _libererRessourcesPlanPrecedent AVANT
+  // tout démontage : save final forcé (l'état RAM est encore intact) puis
+  // ARRÊT du polling. Sans ça, un tick 1.5 s entre le teardown (qui vide la
+  // timeline tracker) et le onPlanLoaded du nouveau plan sauvegardait un
+  // état mutilé sur le slot de l'ANCIEN plan (timeline perdue, voire slot
+  // purgé via _isEmptyState pour une session tracker-seule).
+  function onPlanUnload() {
+    if (_currentPlanId) {
+      try { save({ force: true }); } catch(e) {}
+    }
+    _stopPolling();
+    // Neutralise aussi les filets beforeunload/visibilitychange pendant la
+    // fenêtre de switch (ils forcent save() — même risque d'état mutilé).
+    // save() est gardé par `if (!_currentPlanId) return` ; onPlanLoaded du
+    // nouveau plan re-pose l'id.
+    _currentPlanId = null;
+    console.log("[SessionPersist] Plan unload — save final + persistance figée jusqu'au prochain plan");
+  }
+
   // ========== HOOK PRINCIPAL ==========
 
   // Appelé par main.js > lancerApplication() après init complète
@@ -795,6 +814,7 @@
   // ========== EXPORTS ==========
   window.SessionPersist = {
     onPlanLoaded: onPlanLoaded,
+    onPlanUnload: onPlanUnload,   // 🐛 v1.64.0 : figer la persistance au teardown
     save:         save,
     clear:        clear,
     getSaved:     getSaved
