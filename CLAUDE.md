@@ -47,6 +47,7 @@
 ## 🗺️ Où chercher (lis le bon fichier avant de coder)
 | Sujet | Référence |
 |---|---|
+| Vue d'ensemble visuelle (gate→home→plan, modules, clés LS/IDB) | `docs/architecture/overview.svg` |
 | Ordre chargement modules | `index.html` |
 | Journal des versions | `README.md` |
 | Rendu Leaflet, icônes, calques, splash | `docs/architecture/rendering-leaflet.md` |

@@ -8,6 +8,11 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
+**🗺️ Architecture générale** (gate → home → écran plan, modules JS, clés de stockage — légende : 🟡 hub · ⬛ 100 % offline · 🔵 accès réseau opt-in · 🔴 sécurité/secours) :
+
+<img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
+
+
 **📦 Version courante** : `v1.63.0` (26/07/2026) — **🔒 Strip EXIF photos (A8)** : re-encodage systématique à l'ingestion (fini le bypass « petite photo » qui laissait passer le GPS EXIF) + **export anonymisé AVEC photos** (re-encodées fail-closed, renommées `photo-anon-N`, remappées sur les codes anonymisés).
 
 **🔒 v1.63.0 (26/07/2026)** — **Strip EXIF photos (A8, reporté depuis v1.31.7)** :
