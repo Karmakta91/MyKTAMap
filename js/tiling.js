@@ -118,11 +118,17 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
   // L.imageOverlay — comportement V1 brut. Use case : comparer V2 vs V1 sur le
   // meme plan, ou contourner un bug perçu du runtime tuile. Le baseImage reste
   // toujours present dans le ZIP/asset (le generateur V2 ne le supprime pas).
+  // 🏗️ v1.67.0 : registre des overlays du plan PRINCIPAL en rendu direct
+  // (non tuilé) — sans référence, le filtre multi-niveau ne pourrait pas le
+  // masquer. Reset à chaque chargement (un seul plan à la fois).
+  window._ktaBaseLayers = [];
+  window._ktaBaseHidden = false;
+
   const pc = window.PLAN_CONFIG;
   if (pc && pc.plan && pc.plan.tiledV2 === true && pc.tiling) {
     if (preset === "off") {
       console.log("[Tiling] Plan V2 mais perfPreset=off → fallback baseImage direct (V1-like)");
-      L.imageOverlay(url, bounds).addTo(map);
+      window._ktaBaseLayers.push(L.imageOverlay(url, bounds).addTo(map));
       return [];
     }
     console.log("[Tiling] Mode V2 (Option B : multi-imageOverlay swap on zoom)");
@@ -137,9 +143,40 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
     return await chargerImageTuillee(url, bounds, map, sourceFile, r.params);
   }
   console.log("[Tiling] Rendu direct (mode "+preset+")");
-  L.imageOverlay(url, bounds).addTo(map);
+  window._ktaBaseLayers.push(L.imageOverlay(url, bounds).addTo(map));
   return [];
 }
+
+// =========================
+// 🏗️ v1.67.0 — LE PLAN PRINCIPAL EST LE NIVEAU 0 (décision KARMA)
+// =========================
+// Le filtre multi-niveau masquait les CALQUES image par niveau mais jamais le
+// plan principal — impossible de regarder le niveau -1/+1 seul (le fond
+// restait affiché et « polluait » la superposition). Le plan principal est
+// désormais traité comme niveau 0 : décocher 0 dans la modale Niveaux le
+// masque (net, reco 2:a), le re-cocher le réaffiche. Couvre les 3 modes de
+// rendu : direct (_ktaBaseLayers), tuiles runtime V1 (_baseTiles), tuiles V2
+// (_tilingV2State.activeOverlays + garde _ktaBaseHidden dans _renderNiveau
+// pour les swaps de zoom). Appelé par appliquerFiltreNiveau (dispatcher).
+window._applyLevelFilterToBasePlan = function() {
+  if (!window.map) return;
+  const cfg = window.APP_CONFIG;
+  const visible = !(cfg && cfg.multiLevel === true)
+    || !Array.isArray(cfg.visibleLevels)
+    || cfg.visibleLevels.indexOf(0) >= 0;
+  window._ktaBaseHidden = !visible;
+  function _tog(ov) {
+    if (!ov) return;
+    try {
+      if (visible) { if (!window.map.hasLayer(ov)) window.map.addLayer(ov); }
+      else         { if (window.map.hasLayer(ov))  window.map.removeLayer(ov); }
+    } catch(e) {}
+  }
+  (window._ktaBaseLayers || []).forEach(_tog);
+  (window._baseTiles || []).forEach(function(t) { _tog(t && t.overlay); });
+  const st = window._tilingV2State;
+  if (st && Array.isArray(st.activeOverlays)) st.activeOverlays.forEach(_tog);
+};
 
 // =========================
 // 🧱 RUNTIME V2 — Option B (multi-imageOverlay swap on zoom)
@@ -340,7 +377,10 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
           // (cohérent avec le rendu Leaflet standard)
           pane: "tilePane"
         });
-        overlay.addTo(map);
+        // 🏗️ v1.67.0 : le plan principal EST le niveau 0 — si le filtre
+        // multi-niveau le masque, les tuiles du swap zoom restent hors map
+        // (mais tracées dans activeOverlays pour le ré-affichage).
+        if (!window._ktaBaseHidden) overlay.addTo(map);
         state.activeOverlays.push(overlay);
         added++;
       }

@@ -2352,6 +2352,10 @@ Radio buttons `[ − ] [-2] [-1] [0] [1] [2] [ + ]` (5 levels by default, symmet
 
 Checkboxes per level. Paths/zones/points of **unchecked** levels are hidden on the map (opacity 0). Inter-level junctions remain visible if **at least one** of their endpoints touches a checked level.
 
+**🏗️ The main plan IS level 0 *(since v1.67.0)***: unchecking level **0** also hides **the plan's main image** (tiles included) — you can finally look at a single floor (e.g. only the transparent level -1 layer), without the level-0 background polluting the stack. Re-check 0 and it comes back. Without multi-level mode, the main plan is never hidden.
+
+**🫥 Level layer transparency**: for stacking to make sense, every level layer (≠ 0) must be a **PNG with a transparent background**. The generator now warns you at generation time if a level layer is opaque (JPEG, or PNG with a flattened background) — it would hide everything below.
+
 Quick buttons:
 - **All**: checks all available levels
 - **Active only**: checks only the active level

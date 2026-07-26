@@ -655,6 +655,7 @@
   "gen.err.detailInconnu": "inconnu",
   "gen.err.imageNonDecodable": "Image non décodable : {nom}",
   "gen.err.imageSourceNonDecodable": "Image source non décodable",
+  "gen.warn.layerOpaque": "⚠️ Calque(s) de niveau SANS transparence : {layers} — en superposition, ils masqueront tout ce qui est en dessous. Ré-exporte-les en PNG avec fond transparent pour garder le sens du multi-niveau.",
   "gen.err.jszipManquant": "JSZip non chargé",
   "gen.err.tuileDrawImage": "Échec drawImage à z={z} col={col} k={k} — probable saturation mémoire (image source trop grande pour cet appareil). Détail interne : {detail}",
   "gen.err.tuileJpeg": "Échec encodage JPEG de la tuile z={z} col={col} k={k} — saturation mémoire navigateur. Détail interne : {detail}",

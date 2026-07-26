@@ -295,3 +295,21 @@ seulement l'un des deux peut suffire à libérer la texture. Validé sur iOS 16,
   ad-hoc créés par MyKTAMap.
 
 Cf `perf-memory.md §88.5` pour le contexte du sprint Pack RAM et la mesure d'impact terrain.
+
+---
+
+## 🏗️ Plan principal = niveau 0 + transparence des calques de niveau (v1.67.0)
+
+> KARMA « logique de superposition : un fond noir ou un plan au-dessus fait perdre le sens ». Reco 1:a 2:a 3:a. La chaîne des calques image était déjà saine (embed VERBATIM au générateur — octets bruts, aucun ré-encodage — et rendu `L.imageOverlay` direct → alpha préservé). Les 2 trous étaient ailleurs :
+
+**A — Le plan principal est filtrable comme niveau 0** (`tiling.js > _applyLevelFilterToBasePlan`, appelé par le dispatcher `appliquerFiltreNiveau` d'interfaceConfig) :
+- Visible ssi `multiLevel !== true` OU `visibleLevels` contient 0. Masquage NET (2:a).
+- Couvre les 3 modes de rendu du base : **direct** (`window._ktaBaseLayers` — nouveau registre, les 2 sites `L.imageOverlay(url, bounds).addTo(map)` ne gardaient AUCUNE référence) · **tuiles runtime V1** (`window._baseTiles`) · **tuiles V2** (`_tilingV2State.activeOverlays` + garde `window._ktaBaseHidden` dans `_renderNiveau` — les tuiles d'un swap de zoom restent hors map mais TRACÉES dans activeOverlays pour le ré-affichage).
+- ⚠️ Tout NOUVEAU chemin de rendu du plan principal doit s'enregistrer dans un de ces 3 conteneurs, sinon il échappera au filtre.
+
+**B — Garde-fou transparence au générateur** (`createConf.js`, warning NON-bloquant 3:a) : chaque calque de niveau ≠ 0 est vérifié par CONTENU via `ktaDetecterAlpha` (v1.62.0) — JPEG = opaque d'office, PNG/WebP scannés. Opaque → toast + statut `gen.warn.layerOpaque`. Niveau 0 exclu (une légende opaque est légitime).
+
+**À NE PAS faire** :
+- ❌ Ré-encoder les calques image à l'embed (le verbatim EST la garantie d'alpha — cf le contre-exemple historique du tuilage V2 pré-v1.62).
+- ❌ Masquer le base par `opacity: 0` (le GPU garde les bitmaps décodées) — `removeLayer` net.
+- ❌ Bloquer la génération sur un calque opaque (3:a : l'user peut avoir une raison — on informe, on ne bloque pas).

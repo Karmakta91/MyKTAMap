@@ -12,9 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.66.0` (27/07/2026)
+## 📦 Version courante — `v1.67.0` (27/07/2026)
 
-> 🧹 **B7 — découpe du monolithe `index.html`** : le bloc `<script>` inline (~232 Ko) est extrait **verbatim** en 3 modules `js/homeLoader.js` · `js/homeProfile.js` · `js/homeConfig.js` (index.html : 327 → 101 Ko), zéro refactor interne, 6 ponts `window.*`, aucun changement visible pour l'utilisateur.
+> 🏗️ **Le plan principal EST le niveau 0** : le filtre multi-niveau peut désormais le masquer (décocher 0 dans la modale Niveaux) — regarder un étage seul sans le fond qui pollue la superposition. + 🫥 **Garde-fou transparence au générateur** : avertissement non-bloquant si un calque de niveau n'a pas de canal alpha (il masquerait tout ce qui est dessous).
 >
 > Détail complet de cette version et de toutes les précédentes : **[📋 Journal des versions](#-journal-des-versions)** (fin de fichier).
 
@@ -446,7 +446,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.66.0 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.67.0 → v1.26)
+
+**🏗️ v1.67.0 (27/07/2026)** — **Superposition multi-niveau : plan principal = niveau 0 + garde-fou transparence des calques (reco 1:a 2:a 3:a)** :
+- **Constat KARMA** (« un fond noir ou un plan au-dessus fait perdre le sens de la superposition ») : la chaîne des calques image était déjà saine (embed **verbatim** au générateur, rendu `L.imageOverlay` direct → alpha préservé de bout en bout) — les 2 vrais trous étaient ailleurs :
+- **A — Plan principal filtrable comme niveau 0** (`tiling.js` + dispatcher `appliquerFiltreNiveau`) : le filtre multi-niveau pilotait les calques (`_ktaImageOverlays`) mais JAMAIS le plan principal, affiché quoi qu'il arrive → impossible de regarder un étage seul. Nouveau `window._applyLevelFilterToBasePlan()` : masquage **net** (2:a) quand 0 est décoché, couvre les **3 modes de rendu** — direct (nouveau registre `_ktaBaseLayers`, les 2 sites `L.imageOverlay` ne gardaient AUCUNE référence), tuiles runtime V1 (`_baseTiles`), tuiles V2 (`activeOverlays` + garde `_ktaBaseHidden` dans `_renderNiveau` pour les swaps de zoom). No-op si `multiLevel !== true`.
+- **B — Garde-fou transparence au générateur** (`createConf.js`, 3:a non-bloquant) : à la génération, chaque calque de **niveau ≠ 0** est vérifié par CONTENU (`ktaDetecterAlpha` v1.62.0 — JPEG = opaque d'office, PNG/WebP scannés) → toast + statut « ⚠️ Calque(s) de niveau SANS transparence : X — ils masqueront tout ce qui est dessous ». Les calques niveau 0 (légende…) ne sont pas concernés. Clé `gen.warn.layerOpaque` (fr/en/es).
+- **Tests bench** (plan M-LVL test2) : niveau 0 décoché → plan principal masqué ✓ · re-coché → revient ✓ · multi-niveau OFF → jamais masqué ✓. V2/tuiles couverts par le même chemin (garde swap-zoom relue). **Sources** v1.67.0. Aucune nouvelle surface réseau.
 
 **🧹 v1.66.0 (27/07/2026)** — **B7 : découpe du monolithe index.html (décisions KARMA 1:a 2:b 3:a)** :
 - **Constat** : le bloc `<script>` inline (lignes 1433-6050, ~232 Ko) vivait dans UNE closure `window.addEventListener("load", …)` — chrome loader + import ZIP + liste plans + profil/gamification/stats + config/PIN/badges + perf/debug, tout entremêlé.

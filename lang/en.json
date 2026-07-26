@@ -655,6 +655,7 @@
   "gen.err.detailInconnu": "unknown",
   "gen.err.imageNonDecodable": "Image cannot be decoded: {nom}",
   "gen.err.imageSourceNonDecodable": "Source image cannot be decoded",
+  "gen.warn.layerOpaque": "⚠️ Level layer(s) WITHOUT transparency: {layers} — when stacked, they will hide everything below. Re-export them as PNG with a transparent background to keep multi-level meaningful.",
   "gen.err.jszipManquant": "JSZip not loaded",
   "gen.err.tuileDrawImage": "drawImage failed at z={z} col={col} k={k} — likely memory saturation (source image too large for this device). Internal detail: {detail}",
   "gen.err.tuileJpeg": "JPEG encoding of tile z={z} col={col} k={k} failed — browser memory saturation. Internal detail: {detail}",

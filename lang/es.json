@@ -653,6 +653,7 @@
   "gen.err.detailInconnu": "desconocido",
   "gen.err.imageNonDecodable": "Imagen no decodificable: {nom}",
   "gen.err.imageSourceNonDecodable": "Imagen fuente no decodificable",
+  "gen.warn.layerOpaque": "⚠️ Capa(s) de nivel SIN transparencia: {layers} — superpuestas, ocultarán todo lo que esté debajo. Reexpórtalas en PNG con fondo transparente para conservar el sentido del multinivel.",
   "gen.err.jszipManquant": "JSZip no cargado",
   "gen.err.tuileDrawImage": "Fallo de drawImage en z={z} col={col} k={k} — probable saturación de memoria (imagen fuente demasiado grande para este dispositivo). Detalle interno: {detail}",
   "gen.err.tuileJpeg": "Fallo al codificar JPEG de la tesela z={z} col={col} k={k} — saturación de memoria del navegador. Detalle interno: {detail}",

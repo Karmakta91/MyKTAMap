@@ -2605,6 +2605,7 @@ async function _genererZip() {
 
     // ── Calques image ──
     const imageLayers = [];
+    const _alphaWarnChecks = [];   // 🫥 v1.67.0 : calques de niveau à vérifier (alpha)
     for (const item of document.querySelectorAll("#pl_imageLayers_list .kta-planner-layer-item")) {
       const lid     = item.dataset.layerId;
       const ilId    = document.getElementById(lid + "_id").value.trim();
@@ -2654,6 +2655,44 @@ async function _genererZip() {
         imageLayerObj.calibration = item._calibration;
       }
       imageLayers.push(imageLayerObj);
+      // 🫥 v1.67.0 : candidat au garde-fou transparence (calques de NIVEAU
+      // uniquement — un calque niveau 0 opaque type légende est légitime)
+      if (ilLevel !== 0) {
+        _alphaWarnChecks.push({ label: ilLabel, file: ilFile || _plannerOrigAssets[nomTxt] || null });
+      }
+    }
+
+    // 🫥 v1.67.0 (KARMA « logique de superposition », reco 3:a) — GARDE-FOU
+    // TRANSPARENCE : un calque de niveau (≠ 0) sans canal alpha est un
+    // rectangle opaque qui masque tout ce qui est dessous → la superposition
+    // multi-niveau perd son sens. Détection par CONTENU (ktaDetecterAlpha,
+    // cf v1.62.0 — un PNG au fond aplati est bien détecté opaque). Warning
+    // NON-bloquant (toast + statut), la génération continue.
+    const calquesOpaques = [];
+    for (const c of _alphaWarnChecks) {
+      if (!c.file) continue;
+      const mime = c.file.type || "";
+      if (/^image\/jpe?g/i.test(mime)) { calquesOpaques.push(c.label); continue; }   // JPEG : jamais d'alpha
+      if (!/^image\//i.test(mime)) continue;
+      try {
+        const url = URL.createObjectURL(c.file);
+        const img = await new Promise(function(res, rej) {
+          const i = new Image();
+          i.onload = function() { res(i); };
+          i.onerror = rej;
+          i.src = url;
+        });
+        URL.revokeObjectURL(url);
+        if (typeof window.ktaDetecterAlpha === "function" && !window.ktaDetecterAlpha(img, mime)) {
+          calquesOpaques.push(c.label);
+        }
+      } catch(e) { /* image illisible → pas de verdict, pas de warning */ }
+    }
+    if (calquesOpaques.length > 0) {
+      const msg = window.I18n.t("gen.warn.layerOpaque", { layers: calquesOpaques.join(", ") });
+      if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast(msg, "warn");
+      setStatus(msg, "#ff9933");
+      console.warn("[Planner] Calques de niveau SANS transparence :", calquesOpaques.join(", "));
     }
 
     // ── Calques données ──

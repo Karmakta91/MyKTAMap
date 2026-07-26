@@ -1,7 +1,8 @@
 {
-  "version": "v1.66.0",
+  "version": "v1.67.0",
   "released": "2026-07-27",
   "notes": [
-    "🧹 Grand nettoyage interne de l'écran d'accueil (aucun changement visible) : l'app est plus simple à maintenir et à faire évoluer. Si quelque chose te semble différent sur l'accueil, le profil ou la configuration, signale-le."
+    "🏗️ Multi-niveau : le plan principal se comporte enfin comme le niveau 0 — décoche-le dans la modale Niveaux pour regarder un étage seul, sans le fond qui pollue la superposition.",
+    "🫥 Le générateur t'avertit désormais si un calque de niveau n'a pas de transparence (il masquerait tout ce qui est en dessous)."
   ]
 }

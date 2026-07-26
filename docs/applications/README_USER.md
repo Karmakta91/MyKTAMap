@@ -2357,6 +2357,10 @@ Boutons radio `[ − ] [-2] [-1] [0] [1] [2] [ + ]` (5 niveaux par défaut, sym�
 
 Checkboxes par niveau. Les tracés/zones/points de niveaux **non cochés** sont cachés sur la carte (opacity 0). Les jonctions interniveau restent visibles si **au moins un** de leurs endpoints touche un niveau coché.
 
+**🏗️ Le plan principal EST le niveau 0 *(depuis v1.67.0)*** : décocher le niveau **0** masque aussi **l'image principale du plan** (tuiles comprises) — tu peux enfin regarder un étage seul (ex. uniquement le calque du niveau -1 transparent), sans le fond du niveau 0 qui pollue la superposition. Re-coche 0 et il revient. Sans mode multi-niveau, le plan principal n'est jamais masqué.
+
+**🫥 Transparence des calques de niveau** : pour que la superposition ait un sens, chaque calque de niveau (≠ 0) doit être un **PNG avec fond transparent**. Le générateur t'avertit désormais à la génération si un calque de niveau est opaque (JPEG, ou PNG au fond aplati) — il masquerait tout ce qui est en dessous.
+
 Boutons rapides :
 - **Tous** : coche tous les niveaux disponibles
 - **Actif seul** : coche uniquement le niveau actif
