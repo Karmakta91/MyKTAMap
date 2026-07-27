@@ -617,6 +617,18 @@ function _libererRessourcesPlanPrecedent() {
     try { window.SessionPersist.onPlanUnload(); } catch(e) {}
   }
 
+  // 🧹 v1.68.0 (audit) : purge des flottants de navigation au CHANGEMENT de
+  // plan. Bug bench : après un switch DIRECT (sélecteur du titre, sans goTo),
+  // la mini-pastille ↩️ survivait sur le NOUVEAU plan avec une pile de retour
+  // PÉRIMÉE. Les hooks distinguent goTo (pendingTarget posé → no-op côté
+  // liaison, chaîne multi-hop conservée côté route) du switch direct (purge).
+  if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanExit === "function") {
+    try { window.InterPlanLinks.onPlanExit("switch"); } catch(e) {}
+  }
+  if (window.InterPlanRoute && typeof window.InterPlanRoute.onPlanExit === "function") {
+    try { window.InterPlanRoute.onPlanExit("switch"); } catch(e) {}
+  }
+
   // 🎨 Refonte UI v1 : cleanup du header bar + status bar avant démontage
   // de la map. Sinon le header reste affiché avec les vieilles valeurs
   // pendant le splash du nouveau plan. No-op si flag OFF.
@@ -1148,6 +1160,22 @@ function afficherLoader() {
   if (typeof window._ktaAnnulerModesClicCarte === "function") {
     try { window._ktaAnnulerModesClicCarte(); } catch(e) {}
   }
+  // 🧹 v1.68.0 (audit KARMA « fermetures à la sortie du plan ») : purge des
+  // FLOTTANTS DE NAVIGATION — 4 résidus reproduits au bench restaient
+  // affichés par-dessus le HOME : mini-pastille ↩️ (sans timer), invite
+  // « 🌀 Portail suivant » (sans timer), widget boussole, modale itinéraire
+  // fantôme (cachée dans le DOM). Seuls les chemins goTo nettoyaient.
+  if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanExit === "function") {
+    try { window.InterPlanLinks.onPlanExit("home"); } catch(e) {}
+  }
+  if (window.InterPlanRoute && typeof window.InterPlanRoute.onPlanExit === "function") {
+    try { window.InterPlanRoute.onPlanExit("home"); } catch(e) {}
+  }
+  if (window.CompassWidget && typeof window.CompassWidget.hide === "function") {
+    try { window.CompassWidget.hide(); } catch(e) {}
+  }
+  const itiFantome = document.getElementById("kta-itinerary-modal");
+  if (itiFantome) { try { itiFantome.remove(); } catch(e) {} }
   const overlay = document.getElementById("planLoaderOverlay");
   if (overlay) {
     overlay.style.display = "flex";

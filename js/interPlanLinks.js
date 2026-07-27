@@ -934,6 +934,22 @@
   const _navStack = [];
   let _backBtnTimer = null;
 
+  // 🧹 v1.68.0 (audit KARMA « fermetures à la sortie du plan ») — purge des
+  // flottants de navigation. contexte :
+  //   "home"   : sortie vers le HOME (afficherLoader) → bouton Retour retiré
+  //              (mini-pastille comprise — elle n'a pas de timer) + pile vidée
+  //              (partir du home rompt la chaîne, cohérent v1.58.1).
+  //   "switch" : teardown d'un changement de plan. Si un _pendingTarget existe,
+  //              c'est un goTo (navigation intentionnelle qui gère déjà bouton
+  //              et pile) → no-op. Sinon = switch DIRECT (sélecteur du titre) →
+  //              la pile pointe vers un contexte périmé : bouton retiré + pile
+  //              vidée (bug bench : mini-pastille avec retour obsolète).
+  function onPlanExit(contexte) {
+    if (contexte === "switch" && _pendingTarget) return;   // goTo en cours → géré
+    _retirerBoutonRetour();
+    _navStack.length = 0;
+  }
+
   function _empilerOrigine() {
     // 🐛 v1.58.1 (KARMA « depuis une recherche du home, pas de bouton
     // retour ») : au HOME, _currentLoadedPlanId ET window.map PERSISTENT du
@@ -1294,6 +1310,7 @@
     getLinksForPoint:     getLinksForPoint,
     getLinksForPlan:      getLinksForPlan,
     getAllLinks:          getAllLinks,
+    onPlanExit:           onPlanExit,   // 🧹 v1.68.0 : purge flottants sortie/switch
     createLink:           createLink,
     removeLink:           removeLink,
     importLinks:          importLinks,

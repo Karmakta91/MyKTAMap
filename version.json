@@ -1,8 +1,8 @@
 {
-  "version": "v1.67.0",
+  "version": "v1.67.1",
   "released": "2026-07-27",
   "notes": [
-    "🏗️ Multi-niveau : le plan principal se comporte enfin comme le niveau 0 — décoche-le dans la modale Niveaux pour regarder un étage seul, sans le fond qui pollue la superposition.",
-    "🫥 Le générateur t'avertit désormais si un calque de niveau n'a pas de transparence (il masquerait tout ce qui est en dessous)."
+    "🧹 Fini les boutons fantômes : le bouton Retour réduit, l'invite « Portail suivant » et la boussole disparaissent proprement quand tu quittes un plan ou en changes directement.",
+    "🌍 Les conditions d'utilisation parlent maintenant espagnol (les textes de loi restent en français)."
   ]
 }

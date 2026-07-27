@@ -12,9 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.67.0` (27/07/2026)
+## 📦 Version courante — `v1.67.1` (27/07/2026)
 
-> 🏗️ **Le plan principal EST le niveau 0** : le filtre multi-niveau peut désormais le masquer (décocher 0 dans la modale Niveaux) — regarder un étage seul sans le fond qui pollue la superposition. + 🫥 **Garde-fou transparence au générateur** : avertissement non-bloquant si un calque de niveau n'a pas de canal alpha (il masquerait tout ce qui est dessous).
+> 🧹 **Audit « frictions UI » — 4 résidus flottants corrigés** : mini-pastille ↩️, invite « 🌀 Portail suivant » et boussole ne survivent plus à la sortie du plan ni au switch direct (hooks `onPlanExit` home/switch, pile de retour périmée purgée, chaîne multi-hop préservée). + 🌍 gate légale traduite en espagnol (13 clés).
 >
 > Détail complet de cette version et de toutes les précédentes : **[📋 Journal des versions](#-journal-des-versions)** (fin de fichier).
 
@@ -446,7 +446,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.67.0 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.67.1 → v1.26)
+
+**🧹 v1.67.1 (27/07/2026)** — **Audit frictions UI/bugs : purge des flottants de navigation + gate légale ES (reco 1:a 2:a)** :
+- **Audit systématique** (6 détecteurs statiques + parcours bench, focus KARMA « fermetures à la sortie du plan ») : le codebase s'est révélé PLUS SAIN que prévu — boutons « natifs » suspects tous stylés (5 modules injectent leur CSS en JS au 1er usage), zéro `onclick` mort, zéro id fantôme, i18n complet hors gate ES. Les 4 vrais bugs étaient TOUS dans la piste de KARMA :
+- **🔴 4 résidus flottants** (repro bench) : ① mini-pastille ↩️ (mode réduit U4, sans timer) **permanente au HOME** après sortie du plan ② invite « 🌀 Portail suivant » idem ③ mini-pastille survivant à un **switch DIRECT** (sélecteur du titre) avec **pile de retour PÉRIMÉE** (clic = navigation vers un état obsolète) ④ widget boussole visible au HOME. Cause commune : seuls les chemins `goTo` nettoyaient — `afficherLoader()` (sortie) et le teardown du switch ne purgeaient rien.
+- **Fix — hooks `onPlanExit(ctx)`** (`InterPlanLinks` + `InterPlanRoute`, branchés dans `afficherLoader` [ctx "home"] et `_libererRessourcesPlanPrecedent` [ctx "switch"]) : bouton Retour retiré + pile vidée · invite retirée + portail désarmé. **Subtilités anti-régression** : côté liaison, `_pendingTarget` distingue un goTo (no-op, il gère déjà) d'un switch direct (purge) ; côté route, la **chaîne multi-hop est CONSERVÉE au switch** (c'est elle qui trace les legs aux arrivées) et abandonnée seulement au retour HOME. + `CompassWidget.hide()` + suppression de la modale itinéraire fantôme (cachée dans le DOM). Bench : 5 résidus → propres, bouton Retour toujours présent sur un saut goTo normal (non-régression).
+- **🌍 Gate légale ES** : 13 clés `legal.*` ajoutées à `es.json` (chrome traduit ; les textes de loi restent FR par design, la note ES le précise).
+- **Sources** v1.67.1. Aucune nouvelle surface réseau.
 
 **🏗️ v1.67.0 (27/07/2026)** — **Superposition multi-niveau : plan principal = niveau 0 + garde-fou transparence des calques (reco 1:a 2:a 3:a)** :
 - **Constat KARMA** (« un fond noir ou un plan au-dessus fait perdre le sens de la superposition ») : la chaîne des calques image était déjà saine (embed **verbatim** au générateur, rendu `L.imageOverlay` direct → alpha préservé de bout en bout) — les 2 vrais trous étaient ailleurs :
