@@ -12,9 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.68.0` (27/07/2026)
+## 📦 Version courante — `v1.68.1` (27/07/2026)
 
-> 📱 **HOME mobile (lot A de l'étude)** : hero « ▶️ Reprendre », liste des plans bornée aux 5 récents (+ dépliant), dropzone compacte, outils en accordéon 🧰, cibles tactiles élargies, header une-ligne (chips 36 px, tagline masquée ≤ 640 px). Desktop strictement inchangé.
+> 🔤 **Fix i18n au boot** : les rendus qui gagnaient la course contre le chargement des dicos (header refonte, liste des plans, statut PIN, preset perf) affichaient des libellés « humanisés » anglais gravés à vie. Barrière `I18n.init()` mémoïsée + réparation des gardes `!== clé` morts depuis l'humanisation H1. Zéro warn « Clé manquante » au boot.
 >
 > Détail complet de cette version et de toutes les précédentes : **[📋 Journal des versions](#-journal-des-versions)** (fin de fichier).
 
@@ -446,7 +446,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.68.0 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.68.1 → v1.26)
+
+**🔤 v1.68.1 (27/07/2026)** — **Fix i18n « clés manquantes » au boot (audit KARMA « on a toujours autant d'erreurs »)** :
+- **Cause racine (mesurée par instrumentation)** : aucune clé ne manquait — les 32 clés signalées existent dans les 3 dicos. Les dicos résolvent à ~700 ms ; des rendus tombaient à 645-695 ms : fallback `DOMContentLoaded` de `refonteInterface` (header + statusbar construits dico vide → **22 tooltips « Btn home title »… gravés à vie**, `_creerHeaderBar` early-return), rendus initiaux home* B7 au `window load` (tooltips lignes de plans, statut PIN, accordéon), `proLicense` (validation cache au load du script).
+- **Fix** : promesse d'`I18n.init()` **mémoïsée** (`_initPromise` — supprime aussi le double-fetch des dicos main.js/osmHomePreview, latent depuis v1.45) et utilisée en **barrière** par tous les rendus précoces (refonteInterface, homeLoader, homeConfig, bloc résiduel index.html).
+- **Gardes morts réparés** : le pattern `const v = t(k); if (v !== k)` ne fonctionnait plus depuis l'humanisation H1 (t() ne retourne jamais la clé) → remplacé par `I18n.has(clé)` dans 6 modules (perf desc index.html — « Auto » écrasait la description FR —, `_homeT` homeLoader, proLicense, profileAchievements, profileGamification, shortcutsCheatsheet).
+- **Bench E2E** (JS vérifié frais octet-par-octet, serveur no-store) : 32 warns/boot → **0** ; tooltips réels FR partout. Doc : `i18n.md` § Pièges (barrière obligatoire, pattern interdit). **Sources** v1.68.1. Aucune nouvelle surface réseau (une requête dico dupliquée en MOINS au boot).
 
 **📱 v1.68.0 (27/07/2026)** — **HOME mobile (étude KARMA « interface plus dédiée mobile », lot A, reco 1:a 2:a 3:a)** :
 - **Étude mesurée** (375×812) : le HOME mobile = layout desktop 2 colonnes aplati — dropzone ZIP de 326 px (geste souris) avant les outils, liste de plans non bornée (~24 plans ≈ 1 300 px), outils à ~3 écrans de scroll, chips header 32 px.

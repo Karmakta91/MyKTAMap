@@ -572,12 +572,16 @@
         return mo >= 1 ? mo.toFixed(1) + " " + _t("home.plans.unitMb") : Math.round(bytes / 1024) + " " + _t("home.plans.unitKb");
       }
 
-      // i18n : helper traduction avec fallback FR inline si I18n indisponible
-      // (défensif — planRowHTML tourne après I18n.init au boot). Les titres des
-      // badges plan (stored/fs/pick/V2/M-LVL/V1) sont injectés en JS dans des
-      // template strings → pas de data-i18n-title statique possible ici.
+      // i18n : helper traduction avec fallback FR inline. 🐛 v1.68.1 (audit
+      // clés manquantes) : l'ancien test « I18n présent ? » ne protégeait PAS
+      // du dico pas-encore-chargé (course au window load) → t() warnait et
+      // retournait la version humanisée. I18n.has() teste la présence réelle
+      // de la clé (sans warn) : dico pas prêt OU clé absente → fallback FR.
       function _homeT(key, fr) {
-        return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(key) : fr;
+        if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(key)) {
+          return window.I18n.t(key);
+        }
+        return (fr !== undefined) ? fr : key;
       }
 
       function planRowHTML(plan) {
@@ -1464,7 +1468,13 @@
           _maj();
         });
         cont.parentNode.insertBefore(btn, cont);
-        _maj();
+        // 🐛 v1.68.1 : libellé rendu derrière la barrière i18n (course au
+        // window load) — sinon fallback FR gravé jusqu'au premier clic.
+        if (window.I18n && typeof window.I18n.init === "function") {
+          window.I18n.init().then(_maj);
+        } else {
+          _maj();
+        }
       })();
 
       // ── Ponts B7 : consommés par homeProfile/homeConfig/le bloc résiduel

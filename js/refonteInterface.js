@@ -2252,8 +2252,17 @@
 
   // Et au cas où on est chargé après lancerApplication (cas rare mais
   // safe), on tente direct si window.map existe.
+  // 🐛 v1.68.1 (audit clés manquantes) : window.map existe AVANT tout plan
+  // (Leaflet init tôt) → ce fallback construisait header + statusbar au
+  // DOMContentLoaded, AVANT la fin du fetch des dicos i18n. Résultat :
+  // 22 tooltips gravés en « humanisé » (« Btn home title »…) à vie, car
+  // _creerHeaderBar ne se reconstruit jamais (early return si _headerEl).
+  // → On attend la barrière I18n.init() (mémoïsée, cf langManager) avant.
   document.addEventListener("DOMContentLoaded", function() {
-    if (window.map) _setupQuandMapPrete();
+    if (!window.map) return;
+    const ready = (window.I18n && typeof window.I18n.init === "function")
+      ? window.I18n.init() : Promise.resolve();
+    ready.then(function() { _setupQuandMapPrete(); });
   });
 
   // ============================================================

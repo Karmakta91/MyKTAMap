@@ -1,7 +1,7 @@
 {
-  "version": "v1.68.0",
+  "version": "v1.68.1",
   "released": "2026-07-27",
   "notes": [
-    "📱 Accueil repensé pour mobile : « Reprendre » mis en avant, liste des plans repliée sur les 5 récents (bouton pour tout voir), outils regroupés dans un menu 🧰, zone d'import compacte et boutons plus faciles à toucher. Sur ordinateur, rien ne change."
+    "🔤 Fini les libellés bizarres en anglais qui pouvaient apparaître au démarrage (infobulles du haut de l'écran, liste des plans, description du mode performance) : tout s'affiche désormais dans votre langue dès le premier écran."
   ]
 }

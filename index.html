@@ -1473,11 +1473,14 @@
           // i18n : la description vient des metas FR de tiling.js (PERF_*_META).
           // On traduit au point d'affichage via I18n, en gardant la description
           // FR de la meta comme fallback si la clé est absente / I18n indispo.
+          // 🐛 v1.68.1 (audit clés manquantes) : l'ancien garde `_tr !== _k`
+          // était MORT depuis l'humanisation H1 (t() ne retourne plus jamais
+          // la clé brute) → « Auto » humanisé écrasait la description FR.
+          // I18n.has() teste la présence réelle SANS warn ni humanisation.
           const _frDesc = (meta && meta.description) ? meta.description : "";
-          if (window.I18n && typeof window.I18n.t === "function") {
-            const _k = "home.perf.desc." + preset;
-            const _tr = window.I18n.t(_k);
-            descEl.textContent = (_tr && _tr !== _k) ? _tr : _frDesc;
+          const _k = "home.perf.desc." + preset;
+          if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(_k)) {
+            descEl.textContent = window.I18n.t(_k);
           } else {
             descEl.textContent = _frDesc;
           }
@@ -1530,8 +1533,14 @@
       window.getLoaderPerfPreset = getLoaderPerfPreset;
       window.setLoaderPerfPreset = setLoaderPerfPreset;
 
-      // Initialisation : "auto" + description correspondante + ligne debug si applicable
-      setLoaderPerfPreset("auto");
+      // Initialisation : "auto" + description correspondante + ligne debug si
+      // applicable. 🐛 v1.68.1 : différée derrière la barrière I18n.init()
+      // (mémoïsée) — au window load, le fetch des dicos peut ne pas être fini
+      // → la description perf se rendait « humanisée » (« Auto »). Le premier
+      // rendu de la liste des plans (plus bas) attend la même barrière.
+      const _i18nReadyHome = (window.I18n && typeof window.I18n.init === "function")
+        ? window.I18n.init() : Promise.resolve();
+      _i18nReadyHome.then(function() { setLoaderPerfPreset("auto"); });
 
       // ════════════════════════════════════════════════════════
       // BOUTON 🐛 LOGS DÉTAILLÉS (toggle debug mode)
@@ -1567,8 +1576,12 @@
       // Init : refléter l'état courant (lu depuis localStorage par config.js au boot)
       refreshDebugBtnUI();
 
-      // Premier rendu de la liste
-      if (window.refreshPlansList) window.refreshPlansList();
+      // Premier rendu de la liste — derrière la barrière i18n (v1.68.1) :
+      // les tooltips des lignes (Charger/Infos/Retirer, badges V1/M-LVL)
+      // sortaient « humanisés » quand le load gagnait la course des dicos.
+      _i18nReadyHome.then(function() {
+        if (window.refreshPlansList) window.refreshPlansList();
+      });
 
       // ── Pont B7 : lu par homeLoader.js (déjà appelé via window.* avec
       // garde typeof dans le code d'origine — ex-lignes 1874/2391/…).
