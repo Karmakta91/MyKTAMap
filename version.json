@@ -1,7 +1,7 @@
 {
-  "version": "v1.67.2",
+  "version": "v1.68.0",
   "released": "2026-07-27",
   "notes": [
-    "🌀 L'export de ton profil emporte maintenant tes liaisons entre plans (et tes préférences d'itinéraire multi-plans et de bouton Retour) : une migration d'appareil ne perd plus ton réseau de portails. À l'import, tes liaisons existantes sont conservées et fusionnées."
+    "📱 Accueil repensé pour mobile : « Reprendre » mis en avant, liste des plans repliée sur les 5 récents (bouton pour tout voir), outils regroupés dans un menu 🧰, zone d'import compacte et boutons plus faciles à toucher. Sur ordinateur, rien ne change."
   ]
 }

@@ -12,9 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.67.2` (27/07/2026)
+## 📦 Version courante — `v1.68.0` (27/07/2026)
 
-> 🌀 **L'export profil emporte le registre des liaisons inter-plan** (+ prefs multi-hop et bouton Retour) — une migration d'appareil ne perd plus le réseau de portails. Import en mode merge = **fusion par id** (les liaisons de l'appareil cible sont préservées).
+> 📱 **HOME mobile (lot A de l'étude)** : hero « ▶️ Reprendre », liste des plans bornée aux 5 récents (+ dépliant), dropzone compacte, outils en accordéon 🧰, cibles tactiles élargies, header une-ligne (chips 36 px, tagline masquée ≤ 640 px). Desktop strictement inchangé.
 >
 > Détail complet de cette version et de toutes les précédentes : **[📋 Journal des versions](#-journal-des-versions)** (fin de fichier).
 
@@ -446,7 +446,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.67.2 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.68.0 → v1.26)
+
+**📱 v1.68.0 (27/07/2026)** — **HOME mobile (étude KARMA « interface plus dédiée mobile », lot A, reco 1:a 2:a 3:a)** :
+- **Étude mesurée** (375×812) : le HOME mobile = layout desktop 2 colonnes aplati — dropzone ZIP de 326 px (geste souris) avant les outils, liste de plans non bornée (~24 plans ≈ 1 300 px), outils à ~3 écrans de scroll, chips header 32 px.
+- **Lot A** (`@media ≤ 640 px`, desktop intouché — CSS + 2 fonctions dans `homeLoader.js`) : ① hero « ▶️ Reprendre » pleine largeur 52 px liseré doré ② **liste bornée aux 5 récents** + bouton « 📚 Tous mes plans (N) » dépliant/repliable (`_ktaMobileCollapsePlans`, rappelée à chaque `refreshPlansList`, masquage CSS = listeners intacts) ③ dropzone compacte 93 px (hint FS Access desktop masqué) ④ **accordéon « 🧰 Outils »** replié (5 boutons regroupés) ⑤ cibles tactiles ≥ 44 px (outils, hero). Croissance du scroll **bornée** (~1,4 écran quel que soit le nombre de plans).
+- **🐛 Fix header ×3** (retours KARMA en direct) : les chips 44 px débordaient à droite (`.loader-header-actions{flex-shrink:0}` + header sans wrap) ; le wrap-dessous déplaisait → **bilan au pixel** : 327 px dispo, lockup titre 186 px (tiré par la tagline). Solution : **chips 36 px sur la ligne du titre** + **tagline masquée sur mobile** (identité = logo + nom) + wrap/ellipse en filet < 340 px (zéro débordement possible). Header : 103 → 55 px.
+- i18n `home.mobile.*` (3 clés fr/en/es). **Bench** : 375 px (5/8 lignes visibles, dépliage/repli, accordéon, chips 351/375, zéro débordement) + non-régression desktop (liste complète, boutons mobiles absents). **Sources** v1.68.0. Aucune nouvelle surface réseau.
 
 **🌀 v1.67.2 (27/07/2026)** — **Export profil : registre des liaisons inter-plan (question KARMA « la db des liaisons est-elle exportée ? » → non, corrigé)** :
 - **Constat** [code lu] : `profileExportImport.js` n'embarquait ni `myktamap_interplan_links_v1` (registre GLOBAL cross-plan) ni les prefs `myktamap_ipr_multihop_v1`/`myktamap_backbtn_mode` → une migration d'appareil via l'export profil **perdait tout le réseau de portails** (les liaisons ne voyageaient que par l'export de session manuel, plan par plan).

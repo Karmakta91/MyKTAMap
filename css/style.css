@@ -8592,6 +8592,90 @@ html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); 
   margin-top: 6px;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   📱 v1.68.0 — HOME MOBILE (lot A, étude KARMA — desktop intouché)
+   ═══════════════════════════════════════════════════════════ */
+/* Bouton accordéon Outils + « Tous mes plans » : inexistants sur desktop */
+#kta-home-tools-toggle,
+#kta-home-plans-more { display: none; }
+
+@media (max-width: 640px) {
+  /* ① Hero « ▶️ Reprendre » — l'action n°1 du terrain, mise en avant */
+  #resumeBox { margin-bottom: 16px; }
+  #resumeBtn.loader-btn-resume {
+    width: 100%;
+    min-height: 52px;
+    font-size: 16px;
+    font-weight: 700;
+    border: 1px solid rgba(244, 197, 66, 0.55);
+    box-shadow: 0 4px 14px rgba(244, 197, 66, 0.12);
+  }
+
+  /* ② Liste des plans bornée : 5 récents visibles, le reste déplié à la
+     demande (bouton #kta-home-plans-more injecté par homeLoader.js) */
+  #allPlansList.kta-collapsed > .plan-row:nth-of-type(n+6) { display: none; }
+  #kta-home-plans-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+    margin-top: 8px;
+  }
+
+  /* ③ Dropzone → carte compacte (le glisser-déposer est un geste souris ;
+     au doigt, la zone reste cliquable = sélecteur de fichier) */
+  #zipDropZone {
+    padding: 12px 14px;
+    min-height: 0;
+  }
+  #zipDropZone .zip-icon { font-size: 20px; }
+  #zipDropZone br { display: none; }
+  /* 🔐 FS Access = Chrome/Edge DESKTOP uniquement — jamais utile au doigt */
+  #fsAccessHint { display: none !important; }
+
+  /* ④ Outils en accordéon replié (bouton 🧰 injecté par homeLoader.js) */
+  .loader-secondary-actions { display: none; }
+  .loader-secondary-actions.kta-open {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #kta-home-tools-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+    margin-bottom: 8px;
+  }
+
+  /* ⑤ Cibles tactiles (chips header mesurées à 32 px, outils à 39 px).
+     🐛 fix ×3 (KARMA « les icônes doivent rester à côté du titre ») —
+     bilan mesuré à 375 px : dispo 327 px, lockup titre 186 px (tiré par la
+     tagline « Cartographie souterraine »), 4 chips + gaps. Solution :
+     chips 36 px (> 32 px d'origine) + tagline MASQUÉE sur mobile (l'identité
+     reste logo + nom) + gap header réduit → titre 151 + chips 156 + 6 =
+     313 ≤ 327 : une seule ligne garantie. Wrap + ellipse gardés en FILET
+     pour les écrans < 340 px (jamais de débordement). */
+  .loader-header { flex-wrap: wrap; row-gap: 6px; column-gap: 6px; }
+  .loader-titre { min-width: 0; flex: 1 1 auto; }
+  .loader-titre-textes { min-width: 0; }
+  .loader-titre-tagline { display: none; }
+  .loader-titre-nom {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .loader-header-actions { margin-left: auto; }
+  #loaderAlertBtn, #loaderHelpBtn, #loaderConfigBtn, #loaderLockBtn {
+    min-width: 36px;
+    min-height: 36px;
+  }
+  .loader-btn-secondary { min-height: 44px; }
+  #loadPlanBtn { min-height: 48px; }
+}
+
 /* 🕸️ v1.65.0 (A7) — Vue « réseau de plans » (gestionnaire Mes liaisons) */
 .kta-ipl-mgr-toggle {
   display: flex;

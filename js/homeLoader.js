@@ -933,6 +933,7 @@
             allPlansList.innerHTML = sorted.map(planRowHTML).join("");
           }
         }
+        _ktaMobileCollapsePlans();   // 📱 v1.68.0 : liste bornée sur mobile
 
         // Brancher les listeners
         document.querySelectorAll(".plan-row").forEach(function(row) {
@@ -1400,6 +1401,71 @@
       // Le bandeau est cliquable (toute la zone) ET le bouton ⚙️ dédié.
       // Click → ouvre la modale détails (édition surnom / photo / stats /
       // export / import / reset).
+
+      // ═══════════════════════════════════════════════════════════
+      // 📱 v1.68.0 — HOME MOBILE (lot A, ≤ 640 px, desktop intouché)
+      // ═══════════════════════════════════════════════════════════
+      // Étude KARMA « interface plus dédiée mobile » (reco 1:a 2:a 3:a) :
+      // ① liste des plans BORNÉE aux 5 récents + bouton « 📚 Tous mes
+      //   plans (N) » dépliant (avec 20+ plans, les outils partaient à
+      //   3 écrans de scroll) ;
+      // ② les 5 boutons outils regroupés en ACCORDÉON « 🧰 Outils »
+      //   replié (fréquence d'usage inégale, mur de texte évité).
+      // Le reste du lot (hero Reprendre, dropzone compacte, cibles 44px)
+      // est en CSS pur — cf style.css @media (max-width: 640px).
+
+      // ① Liste bornée — rappelée à CHAQUE refreshPlansList (idempotente).
+      // Masquage par classe CSS (les listeners des lignes cachées restent
+      // branchés — le dépliage ne re-render rien).
+      function _ktaMobileCollapsePlans() {
+        const list = document.getElementById("allPlansList");
+        if (!list) return;
+        const old = document.getElementById("kta-home-plans-more");
+        if (old) old.remove();
+        list.classList.remove("kta-collapsed");
+        if (!window.matchMedia || !window.matchMedia("(max-width: 640px)").matches) return;
+        const rows = list.querySelectorAll(".plan-row").length;
+        if (rows <= 5) return;
+        list.classList.add("kta-collapsed");
+        const btn = document.createElement("button");
+        btn.id = "kta-home-plans-more";
+        btn.type = "button";
+        btn.className = "loader-btn-secondary";
+        function _maj() {
+          const replie = list.classList.contains("kta-collapsed");
+          btn.textContent = replie
+            ? "📚 " + _homeT("home.mobile.plansAll", "Tous mes plans") + " (" + rows + ")"
+            : "▴ " + _homeT("home.mobile.plansLess", "Réduire la liste");
+        }
+        btn.addEventListener("click", function() {
+          list.classList.toggle("kta-collapsed");
+          _maj();
+        });
+        list.insertAdjacentElement("afterend", btn);
+        _maj();
+      }
+
+      // ② Accordéon Outils — bouton injecté une fois au boot ; visible
+      // uniquement ≤ 640 px (CSS), le conteneur .loader-secondary-actions
+      // est replié par défaut sur mobile et intact sur desktop.
+      (function _ktaMobileToolsAccordion() {
+        const cont = document.querySelector(".loader-secondary-actions");
+        if (!cont || document.getElementById("kta-home-tools-toggle")) return;
+        const btn = document.createElement("button");
+        btn.id = "kta-home-tools-toggle";
+        btn.type = "button";
+        btn.className = "loader-btn-secondary";
+        function _maj() {
+          btn.textContent = "🧰 " + _homeT("home.mobile.tools", "Outils") +
+                            (cont.classList.contains("kta-open") ? " ▴" : " ▾");
+        }
+        btn.addEventListener("click", function() {
+          cont.classList.toggle("kta-open");
+          _maj();
+        });
+        cont.parentNode.insertBefore(btn, cont);
+        _maj();
+      })();
 
       // ── Ponts B7 : consommés par homeProfile/homeConfig/le bloc résiduel
       // (setStatus partout), le plan switcher du titre (chargerPlanDuRegistre,

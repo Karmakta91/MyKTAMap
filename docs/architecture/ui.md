@@ -1675,3 +1675,13 @@ Ajout d'un 2ᵉ groupe à `profileAchievements.js` : `SPECIALS` (6 succès uniqu
 ---
 
 **Bon code ! 🚀**
+
+---
+
+## 📱 HOME mobile (v1.68.0 — lot A)
+
+> Étude KARMA « interface plus dédiée mobile ». TOUT est scopé `@media (max-width: 640px)` — desktop strictement inchangé.
+
+- **CSS** (`style.css`, bloc « HOME MOBILE ») : hero Reprendre, dropzone compacte, accordéon Outils (`.loader-secondary-actions` masqué sauf `.kta-open`), liste bornée (`#allPlansList.kta-collapsed > .plan-row:nth-of-type(n+6)`), cibles 44 px, header une-ligne (chips 36 px, `.loader-titre-tagline{display:none}`, wrap+ellipse en filet).
+- **JS** (`homeLoader.js`) : `_ktaMobileCollapsePlans()` — rappelée à CHAQUE `refreshPlansList`, idempotente, masquage par classe CSS (les listeners des lignes cachées restent branchés) ; accordéon injecté une fois au boot (`#kta-home-tools-toggle`).
+- ⚠️ Pièges : ① le lockup titre fait ~186 px à 375 px À CAUSE de la tagline — toute nouvelle chip dans `.loader-header-actions` doit re-vérifier le bilan largeur (327 px dispo) ; ② `.loader-header-actions` a `flex-shrink:0` en base — ne jamais y compter pour absorber un dépassement ; ③ ne pas re-render la liste au dépliage (masquage CSS uniquement).
