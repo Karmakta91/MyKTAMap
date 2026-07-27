@@ -1,8 +1,7 @@
 {
-  "version": "v1.67.1",
+  "version": "v1.67.2",
   "released": "2026-07-27",
   "notes": [
-    "🧹 Fini les boutons fantômes : le bouton Retour réduit, l'invite « Portail suivant » et la boussole disparaissent proprement quand tu quittes un plan ou en changes directement.",
-    "🌍 Les conditions d'utilisation parlent maintenant espagnol (les textes de loi restent en français)."
+    "🌀 L'export de ton profil emporte maintenant tes liaisons entre plans (et tes préférences d'itinéraire multi-plans et de bouton Retour) : une migration d'appareil ne perd plus ton réseau de portails. À l'import, tes liaisons existantes sont conservées et fusionnées."
   ]
 }

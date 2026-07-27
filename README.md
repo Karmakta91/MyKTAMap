@@ -12,9 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.67.1` (27/07/2026)
+## 📦 Version courante — `v1.67.2` (27/07/2026)
 
-> 🧹 **Audit « frictions UI » — 4 résidus flottants corrigés** : mini-pastille ↩️, invite « 🌀 Portail suivant » et boussole ne survivent plus à la sortie du plan ni au switch direct (hooks `onPlanExit` home/switch, pile de retour périmée purgée, chaîne multi-hop préservée). + 🌍 gate légale traduite en espagnol (13 clés).
+> 🌀 **L'export profil emporte le registre des liaisons inter-plan** (+ prefs multi-hop et bouton Retour) — une migration d'appareil ne perd plus le réseau de portails. Import en mode merge = **fusion par id** (les liaisons de l'appareil cible sont préservées).
 >
 > Détail complet de cette version et de toutes les précédentes : **[📋 Journal des versions](#-journal-des-versions)** (fin de fichier).
 
@@ -446,7 +446,12 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.67.1 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.67.2 → v1.26)
+
+**🌀 v1.67.2 (27/07/2026)** — **Export profil : registre des liaisons inter-plan (question KARMA « la db des liaisons est-elle exportée ? » → non, corrigé)** :
+- **Constat** [code lu] : `profileExportImport.js` n'embarquait ni `myktamap_interplan_links_v1` (registre GLOBAL cross-plan) ni les prefs `myktamap_ipr_multihop_v1`/`myktamap_backbtn_mode` → une migration d'appareil via l'export profil **perdait tout le réseau de portails** (les liaisons ne voyageaient que par l'export de session manuel, plan par plan).
+- **Fix** : 3 clés ajoutées à `PREF_KEYS` + **cas spécial à l'import** pour le registre : en mode **merge**, fusion par `link.id` via l'API `InterPlanLinks.importLinks` (v1.57) — les liaisons déjà créées sur l'appareil cible sont préservées, jamais écrasées ; mode replace = remplacement direct (cohérent avec la sémantique de section).
+- **Bench roundtrip** : 2 liaisons + prefs → export (registre présent ✓) → wipe + 1 liaison locale différente → import merge → **3 liaisons** (2 importées + 1 locale préservée), prefs restaurées. **Sources** v1.67.2. Aucune nouvelle surface réseau.
 
 **🧹 v1.67.1 (27/07/2026)** — **Audit frictions UI/bugs : purge des flottants de navigation + gate légale ES (reco 1:a 2:a)** :
 - **Audit systématique** (6 détecteurs statiques + parcours bench, focus KARMA « fermetures à la sortie du plan ») : le codebase s'est révélé PLUS SAIN que prévu — boutons « natifs » suspects tous stylés (5 modules injectent leur CSS en JS au 1er usage), zéro `onclick` mort, zéro id fantôme, i18n complet hors gate ES. Les 4 vrais bugs étaient TOUS dans la piste de KARMA :
