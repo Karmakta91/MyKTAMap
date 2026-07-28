@@ -2266,35 +2266,122 @@ function _aideHtmlEn() {
 // docs/AI_CONTEXT.md, sans toucher au code JS. Le SW propage automatiquement.
 // =========================
 
-function _genererContenuContexteIA(aiContextTemplate, readmeUserText) {
+// 🆕 v1.69.0 — PROFILS DE CONTEXTE. Le template est balisé par des marqueurs
+// `<!-- @@PROFIL usage,diagnostic -->` (un marqueur s'applique jusqu'au
+// suivant ; "tous" = commun à tous les profils). Filtrer = garder les blocs
+// du profil demandé + les blocs communs. profil null/"complet" = tout garder.
+// Objectif : fichiers de ~60-120 Ko réellement lisibles en entier par les IA
+// (l'ancien fichier unique de ~500 Ko était tronqué/résumé par la plupart).
+function _filtrerContexteParProfil(tpl, profil) {
+  const complet = !profil || profil === "complet";
+  const out = [];
+  let scope = ["tous"];
+  for (const line of tpl.split("\n")) {
+    const m = /^<!-- @@PROFIL ([a-z, ]+) -->\s*$/.exec(line);
+    if (m) { scope = m[1].split(",").map(function(x) { return x.trim(); }); continue; }
+    if (complet || scope.indexOf("tous") >= 0 || scope.indexOf(profil) >= 0) out.push(line);
+  }
+  return out.join("\n");
+}
+
+// 🆕 v1.69.0 — Bloc « état de l'installation » (opt-in, case décochée par
+// défaut). Généré 100 % localement, joint au contexte pour permettre à l'IA
+// un diagnostic ciblé. ANONYME PAR CONSTRUCTION : aucun nom de plan, aucun
+// point/coordonnée/photo — uniquement des caractéristiques techniques.
+async function _genererEtatInstallation() {
+  const L = [];
+  L.push("## 🔧 État de l'installation (généré localement, anonyme)");
+  L.push("");
+  try {
+    const lang = (window.I18n && window.I18n.getLang) ? window.I18n.getLang() : "?";
+    let theme = "sombre";
+    try { if (localStorage.getItem("myktamap_theme_v1") === "light") theme = "clair"; } catch(e) {}
+    L.push("- Version : " + ((window.__MKM__ && window.__MKM__.build) || "?") +
+           " · langue app : " + lang + " · thème : " + theme);
+    const standalone = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+    L.push("- Appareil : " + navigator.userAgent);
+    L.push("- Écran : " + screen.width + "×" + screen.height + " (dpr " + (window.devicePixelRatio || 1) +
+           ") · PWA installée : " + (standalone ? "oui" : "non") + " · en ligne : " + (navigator.onLine ? "oui" : "non"));
+  } catch(e) {}
+  // Stockage (quota navigateur)
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const est = await navigator.storage.estimate();
+      const mo = function(n) { return Math.round((n || 0) / 1024 / 1024) + " Mo"; };
+      L.push("- Stockage navigateur : " + mo(est.usage) + " utilisés / " + mo(est.quota) + " de quota");
+    }
+  } catch(e) {}
+  // Plans (anonymisés : Plan 1..N, jamais les noms — ce sont des lieux sensibles)
+  try {
+    const plans = (window.PlanRegistry && window.PlanRegistry.getAll) ? window.PlanRegistry.getAll() : [];
+    L.push("- Plans dans la bibliothèque : " + plans.length);
+    plans.forEach(function(p, i) {
+      const mode = (p.tiledV2 ? "V2" : "V1") + (p.multiLevel ? "+M-LVL" : "");
+      const stock = p.storedBlob ? "mémorisé dans l'app" : (p.fsHandle ? "accès fichier permanent" : (p.type === "server" ? "serveur" : "re-sélection requise"));
+      const taille = (p.sizeBytes || p.size) ? " · " + Math.round((p.sizeBytes || p.size) / 1024 / 1024) + " Mo" : "";
+      L.push("  - Plan " + (i + 1) + " : " + (p.type || "?") + " · mode " + mode + " · preset perf " + (p.perfPreset || "auto") + " · " + stock + taille);
+    });
+  } catch(e) {}
+  // Sessions persistées (tailles uniquement)
+  try {
+    let n = 0, tot = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf("myktamap_session_v1_") === 0) { n++; tot += (localStorage.getItem(k) || "").length; }
+    }
+    L.push("- Sessions sauvegardées : " + n + " (" + Math.round(tot / 1024) + " Ko au total)");
+  } catch(e) {}
+  // Dernières erreurs/avertissements du buffer de logs (debug.js)
+  try {
+    const buf = JSON.parse(localStorage.getItem("kta_debug_logs") || "[]");
+    const errs = buf.filter(function(l) { return typeof l === "string" && (l.indexOf("[ERROR]") === 0 || l.indexOf("[WARN]") === 0); }).slice(-15);
+    if (errs.length) {
+      L.push("- Derniers avertissements/erreurs de la console (max 15) :");
+      L.push("```");
+      errs.forEach(function(l) { L.push(l.length > 300 ? l.slice(0, 300) + "…" : l); });
+      L.push("```");
+    } else {
+      L.push("- Aucun avertissement/erreur récent dans le journal de logs.");
+    }
+  } catch(e) {}
+  L.push("");
+  return L.join("\n");
+}
+
+function _genererContenuContexteIA(aiContextTemplate, profil, etatBlock) {
   const dateExport = new Date().toISOString().slice(0, 10);
   const buildVersion = (window.__MKM__ && window.__MKM__.build) || "non-défini";
 
   // Si le template docs/AI_CONTEXT.md est dispo, on s'en sert. Sinon fallback minimal.
   if (aiContextTemplate && aiContextTemplate.trim().length > 0) {
-    return aiContextTemplate
+    let contenu = _filtrerContexteParProfil(aiContextTemplate, profil)
+      // Purge des commentaires HTML restants (note éditeur en tête, etc.) :
+      // le contexte livré à l'IA ne doit contenir que du contenu utile.
+      .replace(/<!--[\s\S]*?-->\n?/g, "")
       .replace(/\{\{DATE\}\}/g, dateExport)
       .replace(/\{\{BUILD\}\}/g, buildVersion)
-      .replace(
-        /\{\{README_USER\}\}/g,
-        readmeUserText && readmeUserText.trim().length > 0
-          ? readmeUserText
-          : "_⚠️ Documentation utilisateur indisponible au moment de la génération (échec du fetch docs/applications/README_USER.md). Réessaye depuis l'app avec une connexion active ou après que le service worker ait mis le fichier en cache._"
-      );
+      // Rétrocompat : vieux template encore en cache SW → le placeholder de la
+      // doc intégrale est remplacé par un renvoi (plus jamais les ~250 Ko).
+      .replace(/\{\{README_USER\}\}/g,
+        "_La documentation intégrale n'est plus incluse dans ce fichier (trop volumineuse pour être lue en entier par une IA). Consulte la Documentation intégrée de l'app (bouton 📖)._");
+    if (etatBlock) {
+      const finDoc = contenu.indexOf("**Fin du document.**");
+      contenu = (finDoc >= 0)
+        ? contenu.slice(0, finDoc) + etatBlock + "\n" + contenu.slice(finDoc)
+        : contenu + "\n\n---\n\n" + etatBlock;
+    }
+    return contenu;
   }
 
   // ===== Fallback ultra-minimal si AI_CONTEXT.md est introuvable =====
   return (
     "# MyKTAMap — Contexte IA (fallback minimal)\n\n" +
-    "> ⚠️ Le fichier `AI_CONTEXT.md` n'a pas pu être récupéré. Ce fichier de secours " +
-    "contient uniquement la documentation utilisateur brute. Réessaye depuis l'app " +
+    "> ⚠️ Le fichier `AI_CONTEXT.md` n'a pas pu être récupéré. Réessaye depuis l'app " +
     "quand le service worker aura mis `AI_CONTEXT.md` en cache.\n\n" +
     "**Auteur** : Flavien VIDAL (alias KARMA) · **Licence** : CC BY-NC-SA 4.0 · " +
     "**Site** : https://myktamap.fr\n\n" +
     "Date d'export : " + dateExport + " · Build : " + buildVersion + "\n\n" +
-    "---\n\n" +
-    (readmeUserText || "_Documentation utilisateur également indisponible._") +
-    "\n"
+    (etatBlock ? "---\n\n" + etatBlock : "")
   );
 }
 
@@ -2343,6 +2430,20 @@ window.afficherModaleAideIA = function() {
         '</div>' +
 
         '<div class="kta-aide-section">' +
+          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.profil.titre") + '</div>' +
+          '<div id="kta-aide-ia-profils" style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:#c8d0e0;">' +
+            '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="usage" checked> <span><strong>' + window.I18n.t("aiia.profil.usage") + '</strong> — ' + window.I18n.t("aiia.profil.usage.desc") + '</span></label>' +
+            '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="diagnostic"> <span><strong>' + window.I18n.t("aiia.profil.diagnostic") + '</strong> — ' + window.I18n.t("aiia.profil.diagnostic.desc") + '</span></label>' +
+            '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="plans"> <span><strong>' + window.I18n.t("aiia.profil.plans") + '</strong> — ' + window.I18n.t("aiia.profil.plans.desc") + '</span></label>' +
+            '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="complet"> <span><strong>' + window.I18n.t("aiia.profil.complet") + '</strong> — ' + window.I18n.t("aiia.profil.complet.desc") + '</span></label>' +
+          '</div>' +
+          '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer; margin-top:10px; font-size:13px; color:#c8d0e0;">' +
+            '<input type="checkbox" id="kta-aide-ia-etat"> <span>' + window.I18n.t("aiia.etat.label") + '</span>' +
+          '</label>' +
+          '<p style="color:#8892a4; line-height:1.5; font-size:11px; margin:4px 0 0 24px;">' + window.I18n.t("aiia.etat.note") + '</p>' +
+        '</div>' +
+
+        '<div class="kta-aide-section">' +
           '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.privacy.titre") + '</div>' +
           '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
             window.I18n.t("aiia.privacy.body") +
@@ -2369,9 +2470,10 @@ window.afficherModaleAideIA = function() {
           '</p>' +
         '</div>' +
 
-        '<div style="display:flex; gap:10px; margin-top:14px;">' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-aide-ia-cancel"   type="button" style="flex:1;">' + window.I18n.t("aiia.btn.cancel") + '</button>' +
-          '<button class="kta-btn kta-btn-primary" id="kta-aide-ia-download" type="button" style="flex:2;">' + window.I18n.t("aiia.btn.download") + '</button>' +
+        '<div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-aide-ia-cancel"   type="button" style="flex:1; min-width:90px;">' + window.I18n.t("aiia.btn.cancel") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-aide-ia-copyctx"  type="button" style="flex:2; min-width:150px;">' + window.I18n.t("aiia.btn.copyCtx") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-aide-ia-download" type="button" style="flex:2; min-width:150px;">' + window.I18n.t("aiia.btn.download") + '</button>' +
         '</div>' +
         '<div id="kta-aide-ia-status" style="margin-top:10px; font-size:12px; color:#8892a4; min-height:18px; text-align:center;"></div>' +
       '</div>' +
@@ -2412,62 +2514,98 @@ window.afficherModaleAideIA = function() {
     }
   });
 
+  // 🆕 v1.69.0 — génération factorisée : fetch du template (seul — la doc
+  // intégrale n'est plus injectée), filtrage par profil, bloc état opt-in.
+  async function _genererContexte(statusEl) {
+    statusEl.textContent = window.I18n.t("aiia.dl.fetching");
+    let aiContextTpl = "";
+    try {
+      const respCtx = await fetch("docs/applications/AI_CONTEXT.md", { cache: "no-cache" });
+      if (respCtx.ok) aiContextTpl = await respCtx.text();
+      else console.warn("[AideIA] docs/applications/AI_CONTEXT.md HTTP " + respCtx.status);
+    } catch(e) {
+      console.warn("[AideIA] Erreur fetch :", e);
+      statusEl.textContent = window.I18n.t("aiia.dl.offline");
+    }
+    const profilInput = modal.querySelector('input[name="ktaAiiaProfil"]:checked');
+    const profil = profilInput ? profilInput.value : "usage";
+    let etatBlock = null;
+    const etatCb = document.getElementById("kta-aide-ia-etat");
+    if (etatCb && etatCb.checked) {
+      try { etatBlock = await _genererEtatInstallation(); }
+      catch(e) { console.warn("[AideIA] État installation :", e); }
+    }
+    return { contenu: _genererContenuContexteIA(aiContextTpl, profil, etatBlock), profil: profil };
+  }
+
+  // 📥 Télécharger le fichier .md
   document.getElementById("kta-aide-ia-download").addEventListener("click", async function() {
     const btn = this;
     const statusEl = document.getElementById("kta-aide-ia-status");
     btn.disabled = true;
     btn.textContent = window.I18n.t("aiia.dl.generating");
-    statusEl.textContent = window.I18n.t("aiia.dl.fetching");
 
-    // Fetch en parallèle : docs/applications/AI_CONTEXT.md + README_USER.md
-    // 🆕 v1.29.3 : regroupés sous docs/applications/ avec les autres docs
-    // lues par l'app (NETWORK_AUDIT). À la racine : README.md + CLAUDE.md.
-    let aiContextTpl = "";
-    let readmeText = "";
-    try {
-      const [respCtx, respDoc] = await Promise.all([
-        fetch("docs/applications/AI_CONTEXT.md", { cache: "no-cache" }),
-        fetch("docs/applications/README_USER.md", { cache: "no-cache" })
-      ]);
-      if (respCtx.ok) {
-        aiContextTpl = await respCtx.text();
-      } else {
-        console.warn("[AideIA] docs/applications/AI_CONTEXT.md HTTP " + respCtx.status);
-      }
-      if (respDoc.ok) {
-        readmeText = await respDoc.text();
-      } else {
-        console.warn("[AideIA] docs/applications/README_USER.md HTTP " + respDoc.status);
-      }
-      const tplKo = Math.round(aiContextTpl.length / 1024);
-      const docKo = Math.round(readmeText.length / 1024);
-      statusEl.textContent = window.I18n.t("aiia.dl.fetched", { tpl: tplKo, doc: docKo });
-    } catch(e) {
-      console.warn("[AideIA] Erreur fetch :", e);
-      statusEl.textContent = window.I18n.t("aiia.dl.offline");
-    }
-
-    // Construction du contenu complet via remplacement de placeholders
-    const contenu = _genererContenuContexteIA(aiContextTpl, readmeText);
-    const blob = new Blob([contenu], { type: "text/markdown;charset=utf-8" });
+    const res = await _genererContexte(statusEl);
+    const blob = new Blob([res.contenu], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
 
-    // Nom de fichier avec timestamp
     const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "MyKTAMap-AI-Context-" + ts + ".md";
+    a.download = "MyKTAMap-AI-Context-" + res.profil + "-" + ts + ".md";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
 
-    statusEl.textContent = window.I18n.t("aiia.dl.done", { ko: Math.round(contenu.length / 1024) });
+    statusEl.textContent = window.I18n.t("aiia.dl.done", { ko: Math.round(res.contenu.length / 1024) });
     btn.textContent = window.I18n.t("aiia.btn.download");
     btn.disabled = false;
 
     // Fermer la modale après 1.5s
     setTimeout(_fermer, 1500);
+  });
+
+  // 📋 Copier le contexte directement dans le presse-papiers (mobile-friendly :
+  // coller dans un chat IA est bien plus simple que joindre un fichier .md).
+  document.getElementById("kta-aide-ia-copyctx").addEventListener("click", async function() {
+    const btn = this;
+    const statusEl = document.getElementById("kta-aide-ia-status");
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = window.I18n.t("aiia.dl.generating");
+    try {
+      const res = await _genererContexte(statusEl);
+      // Copie : API clipboard d'abord, repli execCommand si elle échoue
+      // (writeText peut throw même en contexte sécurisé, ex. document non focus).
+      let copie = false;
+      if (navigator.clipboard && window.isSecureContext) {
+        try { await navigator.clipboard.writeText(res.contenu); copie = true; } catch(e) {}
+      }
+      if (!copie) {
+        const ta = document.createElement("textarea");
+        ta.value = res.contenu;
+        ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        copie = document.execCommand("copy");
+        document.body.removeChild(ta);
+        if (!copie) throw new Error("clipboard + execCommand KO");
+      }
+      statusEl.textContent = window.I18n.t("aiia.copyCtx.ok", { ko: Math.round(res.contenu.length / 1024) });
+      btn.textContent = window.I18n.t("aiia.copy.ok");
+      btn.classList.add("kta-aide-ia-copy-ok");
+      setTimeout(function() {
+        btn.textContent = originalText;
+        btn.classList.remove("kta-aide-ia-copy-ok");
+        btn.disabled = false;
+      }, 2000);
+    } catch(e) {
+      console.warn("[AideIA] Copie contexte :", e);
+      statusEl.textContent = window.I18n.t("aiia.copy.fail");
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
   });
 };
 
