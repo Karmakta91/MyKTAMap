@@ -78,6 +78,9 @@
   // 🆕 v1.21.3 : passage 8 → 22 cards (KARMA "rajoute des diapo pour décrire mieu
   // chaque fonction"). Découpe granulaire : 1 sujet = 1 carte = lecture digeste.
   // 🆕 v1.25.3 : 22 → 23 cards (ajout carte 13 « 🚨 Mode Secours » après modes urgence).
+  // 🆕 v1.69.0 : 25 → 26 cards (ajout carte 25 « 📔 Mon carnet », après Mode Histoire).
+  // ⚠️ PARITÉ FR/EN OBLIGATOIRE : toute carte ajoutée à CARDS doit l'être aussi à
+  // CARDS_EN, au MÊME rang (le compteur « n/N » et la navigation sont partagés).
   const CARDS = [
     // ═══════════════════════════════════════════════════════════════════════
     // SECTION A : ACCUEIL & CONFIANCE (1-2)
@@ -728,7 +731,7 @@
         "Tu peux toujours récupérer en exportant manuellement le JSON.</p>"
     },
 
-    // ─── 23/25 — Vue OSM (v1.39+) ───
+    // ─── 23/26 — Vue OSM (v1.39+) ───
     // 🆕 v1.40.32 — Ajout post-livraison Vue OSM (KARMA "on doit pouvoir
     // enrichir le On Boarding avec la partie OSM et Histoire"). Carte dense
     // couvrant les 2 contextes (modale plan + widget HOME) + opt-in strict +
@@ -763,7 +766,7 @@
       hint: "Attribution © OpenStreetMap contributors affichée dans le coin des cartes — obligation ODbL respectée. Sans calibration GPS du plan, la Vue OSM n'est pas disponible (rien à projeter)."
     },
 
-    // ─── 24/25 — Mode Histoire (v1.34.19+) ───
+    // ─── 24/26 — Mode Histoire (v1.34.19+) ───
     // 🆕 v1.40.32 — Ajout post-livraison Mode Histoire (oublié à l'onboarding
     // depuis v1.34.19). Carte présente la note libre + PDF embed comme une
     // feature de session : tu racontes le plan, tu l'illustre par un PDF.
@@ -777,9 +780,12 @@
         "<ul>" +
           "<li><strong>Note libre</strong> (éditeur Markdown inline) : titres, listes, liens, gras / " +
             "italique, blocs code. Sauvegarde auto, persistée localement par plan.</li>" +
-          "<li><strong>PDF embarqué</strong> : importe un PDF (topo originale, plan IGN historique, " +
-            "compte-rendu de sortie, étude géologique…). L'app le stocke en IndexedDB et l'affiche " +
-            "intégré (iframe sandboxée) dans la modale Histoire.</li>" +
+          "<li><strong>Documents PDF</strong> <em>(v1.69.0 : jusqu'à 10 par plan)</em> : importe tes " +
+            "PDF (topo originale, plan IGN historique, compte-rendu de sortie, étude géologique…). " +
+            "Ils s'empilent — un nouvel import n'écrase plus le précédent — et une liste te laisse " +
+            "passer de l'un à l'autre. Stockage IndexedDB, affichage intégré (iframe sandboxée). " +
+            "Le PDF livré dans le ZIP par l'auteur du plan apparaît en tête (📕, non supprimable) " +
+            "et ne t'empêche plus d'ajouter les tiens.</li>" +
         "</ul>" +
         "<p>📖 <strong>Accès</strong> : bouton <strong>📖</strong> dans la sidebar (à côté des stats), " +
         "même taille que les autres chips header. Visible quand le plan a une note OU un PDF associé. " +
@@ -792,7 +798,38 @@
       hint: "Idéal pour les plans hérités d'un ancien collègue : tu peux raconter l'histoire du site et joindre la topo originale dans un seul \"sac\" exportable."
     },
 
-    // ─── 25/25 — Outils annexes ───
+    // ─── 25/26 — Le Carnet (v1.69.0) ───
+    {
+      emoji: "📔",
+      titre: "Mon carnet — l'historique de tes sorties",
+      texte:
+        "<p>La sauvegarde auto garde <strong>l'état courant</strong> d'un plan. Le " +
+        "<strong>carnet</strong>, lui, garde <strong>l'histoire</strong> : chaque fois que tu explores " +
+        "un plan, une <strong>sortie</strong> est archivée. Effacer une session ne supprime pas les " +
+        "sorties déjà rangées.</p>" +
+        "<p>📔 <strong>Une sortie contient</strong> : la date, la durée réellement passée dans l'app, " +
+        "la distance parcourue au tracker, les points / tracés / zones ajoutés, les photos prises, le " +
+        "tracé de ton déplacement, et une <strong>note libre</strong> que tu peux écrire même des " +
+        "semaines plus tard.</p>" +
+        "<p>🚶 <strong>Terrain ou 🖥️ travail sur plan ?</strong> Le carnet fait la différence tout seul : " +
+        "si le tracker a enregistré du déplacement, c'est une <strong>sortie terrain</strong> ; si tu " +
+        "n'as fait qu'annoter sans bouger (préparation à la maison), c'est du <strong>travail sur " +
+        "plan</strong>, rangé à part. Les <strong>totaux ne comptent que le terrain</strong>. L'app " +
+        "s'est trompée (sortie faite tracker éteint) ? Un bouton de la fiche corrige le classement.</p>" +
+        "<p>📔 <strong>Où</strong> : tuile <strong>📔 Mon carnet</strong> sur l'accueil, dans la carte " +
+        "« 🧰 Outils » (visible aussi sur mobile). Depuis un plan : modale <strong>Session</strong> " +
+        "→ section <strong>📔 Sortie en cours</strong>, avec <strong>🏁 Clôturer ma sortie</strong> pour " +
+        "la ranger tout de suite.</p>" +
+        "<p>📖 <strong>2e onglet : Récits</strong> — tes notes libres et tes PDF de plan (Mode Histoire) " +
+        "réunis <strong>tous plans confondus</strong>, lisibles et modifiables <strong>sans charger le " +
+        "plan</strong>.</p>" +
+        "<p>🔇 <strong>100 % local</strong> : rien n'est envoyé. Une sortie très courte et sans trace " +
+        "n'est pas conservée, et le carnet part vide — il ne peut pas reconstituer tes sorties d'avant " +
+        "la v1.69.0.</p>",
+      hint: "Le carnet répond à « qu'est-ce que j'ai fait le 12 juillet ? » — une question à laquelle l'app ne savait pas répondre avant."
+    },
+
+    // ─── 26/26 — Outils annexes ───
     {
       emoji: "⚙️",
       titre: "Configuration & outils annexes",
@@ -829,6 +866,9 @@
         "<p>📋 <strong>Rapports de crash</strong> : si l'app a été tuée par l'OS (OOM mobile typiquement), " +
         "le rapport est archivé dans 📊 Inspecteur mémoire → section Derniers crashs. Copiable pour " +
         "envoi à l'auteur via la page de contact.</p>" +
+        "<p>🔎 <strong>Barre de recherche de l'accueil</strong> <em>(v1.69.0)</em> : au centre de " +
+        "l'en-tête, elle cherche un point dans <strong>tous tes plans</strong> sans en ouvrir " +
+        "aucun — Entrée ou 🔎 pour lancer.</p>" +
         "<p>📚 <strong>Aide intégrée</strong> (sidebar gauche → 📚) : doc complète de chaque fonction. " +
         "Si tu te demandes « comment fait-on X ? », c'est là.</p>" +
         "<p><strong>Bonne exploration ! 🚀</strong></p>",
@@ -843,7 +883,7 @@
   // Documentation). Traduction fidèle, mêmes emojis, même structure, mêmes
   // codes/raccourcis (Ctrl+K, etc.) que la version FR.
   const CARDS_EN = [
-    // ─── 1/25 — Welcome ───
+    // ─── 1/26 — Welcome ───
     {
       emoji: "🌟",
       titre: "Welcome to MyKTAMap",
@@ -860,7 +900,7 @@
       hint: "Navigate with the ◂ ▸ arrows or the ← → / Space keys on your keyboard."
     },
 
-    // ─── 2/25 — Privacy & offline ───
+    // ─── 2/26 — Privacy & offline ───
     {
       emoji: "🛡️",
       titre: "100% offline, 100% private",
@@ -884,7 +924,7 @@
         "attacker injected malicious JS.</p>"
     },
 
-    // ─── 3/25 — Load an existing plan ───
+    // ─── 3/26 — Load an existing plan ───
     {
       emoji: "🗂️",
       titre: "Load an existing plan",
@@ -908,7 +948,7 @@
         "blank canvas auto-calibrated on the file's GPS bounds.</p>"
     },
 
-    // ─── 4/25 — Create a plan: Simple Mode ───
+    // ─── 4/26 — Create a plan: Simple Mode ───
     {
       emoji: "🏗️",
       titre: "Create a plan — Simple Mode",
@@ -929,7 +969,7 @@
       hint: "To switch to Advanced Mode: the \"🎨 Advanced\" button at the top of the generator."
     },
 
-    // ─── 5/25 — Create a plan: Advanced Mode ───
+    // ─── 5/26 — Create a plan: Advanced Mode ───
     {
       emoji: "🎨",
       titre: "Create a plan — Advanced Mode",
@@ -955,7 +995,7 @@
         "<strong>pre-filled</strong> with current values and automatically forces Advanced Mode.</p>"
     },
 
-    // ─── 6/25 — Points POI ───
+    // ─── 6/26 — Points POI ───
     {
       emoji: "📍",
       titre: "Points of interest (POI)",
@@ -984,7 +1024,7 @@
         "</ul>"
     },
 
-    // ─── 7/25 — Paths ───
+    // ─── 7/26 — Paths ───
     {
       emoji: "🛣️",
       titre: "Paths (routes and trails)",
@@ -1006,7 +1046,7 @@
         "<strong>📏 Total distance</strong> tool (cumulative magenta highlight).</p>"
     },
 
-    // ─── 8/25 — Zones ───
+    // ─── 8/26 — Zones ───
     {
       emoji: "⬛",
       titre: "Zones (Water, rubble, inaccessible…)",
@@ -1028,7 +1068,7 @@
         "<p>💬 <strong>Note on a zone</strong>: popup → textarea. Embedded in exports.</p>"
     },
 
-    // ─── 9/25 — Structures ───
+    // ─── 9/26 — Structures ───
     {
       emoji: "🏛️",
       titre: "Structures (pillars, walls, faces)",
@@ -1052,7 +1092,7 @@
         "<p>📊 <strong>Count stats</strong>: visible in 📊 Session details with breakdown by type.</p>"
     },
 
-    // ─── 10/25 — Customizable legend ───
+    // ─── 10/26 — Customizable legend ───
     {
       emoji: "🏷️",
       titre: "Customizable legend",
@@ -1078,7 +1118,7 @@
         "your renamings and your custom types.</p>"
     },
 
-    // ─── 11/25 — Tracker + Replay ───
+    // ─── 11/26 — Tracker + Replay ───
     {
       emoji: "🧭",
       titre: "Position tracker (PDR) + Replay",
@@ -1107,7 +1147,7 @@
         "(next card).</p>"
     },
 
-    // ─── 12/25 — Emergency modes ───
+    // ─── 12/26 — Emergency modes ───
     {
       emoji: "⛑️",
       titre: "Emergency modes (Lost / Panic / Exit)",
@@ -1141,7 +1181,7 @@
       hint: "Emergency modes NEVER replace a call to rescue services. It's a backup tool to communicate your position to rescuers."
     },
 
-    // ─── 13/25 — Rescue Mode ───
+    // ─── 13/26 — Rescue Mode ───
     {
       emoji: "🚨",
       titre: "Rescue Mode (search team coordination)",
@@ -1184,7 +1224,7 @@
       hint: "Phase 3 single-device for now. To share observations between surface operator and field team members, use .mkmsec.report.json (email / USB key / AirDrop)."
     },
 
-    // ─── 14/25 — Unified search Ctrl+K ───
+    // ─── 14/26 — Unified search Ctrl+K ───
     {
       emoji: "🔍",
       titre: "Unified search (Ctrl+K)",
@@ -1213,7 +1253,7 @@
         "</ul>"
     },
 
-    // ─── 15/25 — Favorites ───
+    // ─── 15/26 — Favorites ───
     {
       emoji: "⭐",
       titre: "Favorites (quick POIs)",
@@ -1244,7 +1284,7 @@
         "planId. Full snapshots of points = resilience even if the point is moved or deleted.</p>"
     },
 
-    // ─── 16/25 — Route pathfinder ───
+    // ─── 16/26 — Route pathfinder ───
     {
       emoji: "🗺️",
       titre: "Route pathfinder",
@@ -1273,7 +1313,7 @@
         "with SVG drop-shadow halo.</p>"
     },
 
-    // ─── 17/25 — Measurements ───
+    // ─── 17/26 — Measurements ───
     {
       emoji: "📐",
       titre: "Measurements (distance, area, total)",
@@ -1302,7 +1342,7 @@
         "<p>The <code>px/m</code> scale is set in the plan's tracking config (or default 1 px = 1 m).</p>"
     },
 
-    // ─── 18/25 — Multi-level ───
+    // ─── 18/26 — Multi-level ───
     {
       emoji: "🏗️",
       titre: "Multi-level (M-LVL)",
@@ -1329,7 +1369,7 @@
       hint: "If your quarry is single-level, ignore this feature — left for advanced use only."
     },
 
-    // ─── 19/25 — Global stats + Heatmap ───
+    // ─── 19/26 — Global stats + Heatmap ───
     {
       emoji: "📊",
       titre: "Global stats + Heatmap",
@@ -1360,7 +1400,7 @@
         "restarts → your heatmap builds up as you explore.</p>"
     },
 
-    // ─── 20/25 — Session exports JSON / KMZ / GPX ───
+    // ─── 20/26 — Session exports JSON / KMZ / GPX ───
     {
       emoji: "💾",
       titre: "Session exports — JSON, KMZ, GPX",
@@ -1392,7 +1432,7 @@
         "intentionally excluded (= frozen, read-only data layer).</p>"
     },
 
-    // ─── 21/25 — Image exports PNG / PDF ───
+    // ─── 21/26 — Image exports PNG / PDF ───
     {
       emoji: "🖼️",
       titre: "Image exports (PNG, printable PDF)",
@@ -1422,7 +1462,7 @@
         "PNG for Discord/email, PDF for long-term archiving or formal sharing.</p>"
     },
 
-    // ─── 22/25 — Auto-backups + Undo ───
+    // ─── 22/26 — Auto-backups + Undo ───
     {
       emoji: "🛡️",
       titre: "Backups & Undo — safety net",
@@ -1454,7 +1494,7 @@
         "You can always recover by manually exporting the JSON.</p>"
     },
 
-    // ─── 23/25 — OSM View ───
+    // ─── 23/26 — OSM View ───
     {
       emoji: "🌍",
       titre: "OSM View — your plan projected on OpenStreetMap",
@@ -1485,7 +1525,7 @@
       hint: "© OpenStreetMap contributors attribution shown in the corner of the maps — ODbL obligation respected. Without plan GPS calibration, OSM View is not available (nothing to project)."
     },
 
-    // ─── 24/25 — History Mode ───
+    // ─── 24/26 — History Mode ───
     {
       emoji: "📖",
       titre: "History Mode — Free note + plan PDF",
@@ -1496,9 +1536,12 @@
         "<ul>" +
           "<li><strong>Free note</strong> (inline Markdown editor): headings, lists, links, bold / " +
             "italic, code blocks. Auto-save, persisted locally per plan.</li>" +
-          "<li><strong>Embedded PDF</strong>: import a PDF (original survey, historical IGN map, " +
-            "trip report, geological study…). The app stores it in IndexedDB and displays it " +
-            "embedded (sandboxed iframe) in the History modal.</li>" +
+          "<li><strong>PDF documents</strong> <em>(v1.69.0: up to 10 per plan)</em>: import your " +
+            "PDFs (original survey, historical IGN map, trip report, geological study…). They stack " +
+            "up — a new import no longer overwrites the previous one — and a list lets you switch " +
+            "between them. IndexedDB storage, embedded display (sandboxed iframe). The PDF shipped " +
+            "in the ZIP by the plan author sits on top (📕, not deletable) and no longer prevents " +
+            "you from adding your own.</li>" +
         "</ul>" +
         "<p>📖 <strong>Access</strong>: <strong>📖</strong> button in the sidebar (next to the stats), " +
         "same size as the other header chips. Visible when the plan has a note OR an associated PDF. " +
@@ -1511,7 +1554,36 @@
       hint: "Ideal for plans inherited from a former colleague: you can tell the story of the site and attach the original survey in a single exportable \"bag\"."
     },
 
-    // ─── 25/25 — Additional tools ───
+    // ─── 25/26 — The Logbook (v1.69.0) ───
+    {
+      emoji: "📔",
+      titre: "My logbook — the history of your trips",
+      texte:
+        "<p>Auto-save keeps the <strong>current state</strong> of a plan. The <strong>logbook</strong> " +
+        "keeps the <strong>history</strong>: every time you explore a plan, a <strong>trip</strong> is " +
+        "archived. Clearing a session does not delete trips already filed.</p>" +
+        "<p>📔 <strong>A trip contains</strong>: the date, the time actually spent in the app, the " +
+        "distance travelled with the tracker, the points / paths / zones added, the photos taken, the " +
+        "path you walked, and a <strong>free-form note</strong> you can write even weeks later.</p>" +
+        "<p>🚶 <strong>Field trip or 🖥️ desk work?</strong> The logbook tells them apart on its own: if " +
+        "the tracker recorded movement it is a <strong>field trip</strong>; if you only annotated " +
+        "without moving (prep at home) it is <strong>desk work</strong>, filed separately. " +
+        "<strong>Totals count field trips only</strong>. Got it wrong (a trip made with the tracker " +
+        "off)? A button on the trip sheet fixes the classification.</p>" +
+        "<p>📔 <strong>Where</strong>: the <strong>📔 My logbook</strong> tile on the home screen, in the " +
+        "« 🧰 Tools » card (visible on mobile too). From a plan: <strong>Session</strong> modal → " +
+        "<strong>📔 Trip in progress</strong>, with <strong>🏁 Close my trip</strong> to file it right " +
+        "away.</p>" +
+        "<p>📖 <strong>2nd tab: Stories</strong> — your free notes and plan PDFs (History Mode) gathered " +
+        "<strong>across all plans</strong>, readable and editable <strong>without loading the " +
+        "plan</strong>.</p>" +
+        "<p>🔇 <strong>100% local</strong>: nothing is uploaded. A very short trip that left no trace is " +
+        "not kept, and the logbook starts empty — it cannot reconstruct your trips from before " +
+        "v1.69.0.</p>",
+      hint: "The logbook answers \"what did I do on July 12th?\" — a question the app simply could not answer before."
+    },
+
+    // ─── 26/26 — Additional tools ───
     {
       emoji: "⚙️",
       titre: "Configuration & additional tools",
@@ -1546,6 +1618,9 @@
         "<p>📋 <strong>Crash reports</strong>: if the app was killed by the OS (mobile OOM typically), " +
         "the report is archived in 📊 Memory inspector → Latest crashes section. Copyable to " +
         "send to the author via the contact page.</p>" +
+        "<p>🔎 <strong>Home search bar</strong> <em>(v1.69.0)</em>: centered in the header, it searches " +
+        "a point across <strong>all your plans</strong> without opening any — Enter or 🔎 to run " +
+        "it.</p>" +
         "<p>📚 <strong>Built-in help</strong> (left sidebar → 📚): full documentation of each feature. " +
         "If you wonder \"how do I do X?\", that's where it is.</p>" +
         "<p><strong>Happy exploring! 🚀</strong></p>",

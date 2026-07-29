@@ -312,6 +312,22 @@
             <span class="loader-titre-tagline" data-i18n="home.tagline">Cartographie souterraine</span>
           </div>
         </div>
+        <!-- 🔎 HOME v2 (refonte KARMA 29/07, décision 1:a) : la recherche vit
+             dans l'EN-TÊTE, centrée — sa place naturelle (pattern app bar).
+             Fin définitive des problèmes d'alignement : elle n'appartient plus
+             à aucune grille. PC : pilule centrée entre logo et chips. Mobile :
+             le header passe en wrap, la barre prend la 2e ligne pleine largeur.
+             La barre reste masquée tant que la bibliothèque est vide
+             (refreshPlansList pose display:flex/none sur #loaderSearchBar). -->
+        <div class="loader-search-wrap">
+          <div class="loader-search-bar" id="loaderSearchBar" style="display:none;">
+            <input type="search" id="loaderSearchInput" class="loader-search-input"
+                   data-i18n-placeholder="home.search.placeholder"
+                   placeholder="🔎 Chercher un point dans tous mes plans…" autocomplete="off">
+            <button type="button" id="loaderSearchBtn" class="loader-search-btn"
+                    data-i18n-title="home.search.btnTitle" title="Chercher dans tous les plans">🔎</button>
+          </div>
+        </div>
         <div class="loader-header-actions">
           <!-- 🌍 v1.46.0 (KARMA) — Le sélecteur de langue GLOBALE a été déplacé
                du header vers la modale Configuration (après Incognito) : header
@@ -382,6 +398,7 @@
             ▶️ <span data-i18n="home.resume">Reprendre</span> <strong id="resumeName"></strong>
           </button>
         </div>
+
       </div>
 
       <!-- ===== Layout 2 colonnes sur PC (≥1024px) — sur mobile/tablette
@@ -391,6 +408,7 @@
 
         <!-- ▬▬▬ COLONNE GAUCHE (60% PC) : 📚 Mes plans ▬▬▬ -->
         <div class="loader-col loader-col-plans">
+
 
           <!-- 📚 MES PLANS — Karma_dev : les boutons d'export/import profil
                ont été retirés d'ici pour être regroupés dans la nouvelle
@@ -490,12 +508,19 @@
           <!-- 🏗️ Bouton "Générer un plan" — accessible directement (sortie de
                'Plus d'options' v1.7.3). Cohérent avec son importance : c'est
                la voie d'entrée pour créer/modifier un plan, pas une option
-               avancée cachée. -->
+               avancée cachée.
+               🧹 v1.69.0 (allègement du HOME, demande KARMA) : la liste passe
+               de 5 à 4 entrées — « 🌐 Recherche multi-plans » devient la barre
+               de recherche au-dessus de la liste des plans, « 🔗 Fusionner des
+               datalayers » rejoint les sources de l'Éditeur de données, et
+               « 📔 Mon carnet » entre ici au lieu d'être isolé au-dessus. -->
+          <div class="loader-section-head loader-tools-head">
+            <span data-i18n="home.tools.title">🧰 Outils</span>
+          </div>
           <div class="loader-secondary-actions">
+            <button class="loader-btn-secondary" type="button" id="loaderJournalBtn" data-i18n="home.add.journal">📔 Mon carnet</button>
             <button class="loader-btn-secondary" type="button" id="loaderTableEditorBtn" data-i18n="home.add.editData">📊 Éditeur de données</button>
-            <button class="loader-btn-secondary" type="button" id="loaderCrossSearchBtn" data-i18n="home.add.crossSearch">🌐 Recherche multi-plans</button>
             <button class="loader-btn-secondary" type="button" id="loaderLinksMgrBtn" data-i18n="home.add.linksMgr">🌀 Mes liaisons</button>
-            <button class="loader-btn-secondary" type="button" id="loaderFusionBtn" data-i18n="home.add.fusion">🔗 Fusionner des datalayers</button>
             <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn" data-i18n="home.add.generate">🏗️ Générer un plan</button>
           </div>
 
@@ -1285,6 +1310,11 @@
        APRÈS planRegistry.js (dépend de window.PlanRegistry pour suppression). -->
   <script src="js/planDenylist.js" defer></script>
   <script src="js/sessionPersist.js" defer></script>
+  <!-- 📔 v1.69.0 — Le Carnet : archive des sorties (socle IDB + hooks de cycle
+       de vie) et sa couche vue. Chargé après sessionPersist : la baseline d'une
+       sortie est prise APRÈS la restauration de session (cf main.js). -->
+  <script src="js/journal.js" defer></script>
+  <script src="js/journalUi.js" defer></script>
   <script src="js/oomGuard.js" defer></script>
   <script src="js/computeLoader.js" defer></script>
   <script src="js/pathfinder.js" defer></script>

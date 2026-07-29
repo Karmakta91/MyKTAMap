@@ -701,8 +701,15 @@ function _resetFlowConfirmation() {
               });
             }));
           } else {
-            // Safari/Firefox : on ne peut pas lister, on supprime au moins les bases connues
-            const knownDbs = ["myktamap_handles"];
+            // Safari/Firefox : on ne peut pas lister, on supprime au moins les bases connues.
+            // 🐛 v1.69.0 : la liste s'était arrêtée à `handles` — sur Safari, « tout
+            // effacer » laissait donc en place photos, backups, profil, crashes (et
+            // maintenant le carnet). Liste alignée sur memInspector.KNOWN_IDB_DBS.
+            const knownDbs = [
+              "myktamap_handles", "myktamap_backups", "myktamap_photos",
+              "myktamap_profile", "myktamap_crashes", "myktamap_journal",
+              "myktamap_histoire_pdfs", "myktamap_secours_photos", "myktamap_osm_tiles"
+            ];
             await Promise.all(knownDbs.map(function(name) {
               return new Promise(function(resolve) {
                 const req = indexedDB.deleteDatabase(name);

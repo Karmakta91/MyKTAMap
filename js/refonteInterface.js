@@ -1653,6 +1653,46 @@
       html += '</div>';
     }
 
+    // ─── 📔 v1.69.0 : Le Carnet — sortie en cours ───
+    //
+    // Point d'entrée de la clôture MANUELLE (décision KARMA 1:c, hybride) :
+    // l'archivage auto se déclenche au teardown du plan, mais l'user peut
+    // « poser » une étape à tout moment — la sortie est alors gardée sans
+    // condition de seuil, et une nouvelle repart aussitôt sur le même plan.
+    (function _sectionCarnet() {
+      const cur = (window.Journal && typeof window.Journal.getCurrent === "function")
+                    ? window.Journal.getCurrent() : null;
+      html += '<div class="kta-refonte-session-section" id="kta-refonte-session-carnet-section">';
+      html += '<div class="kta-refonte-session-section-titre">📔 ' + window.I18n.t("jrn.section.titre") + '</div>';
+      if (cur) {
+        const a = cur.ajouts || {};
+        const nbAj = (a.points || 0) + (a.roads || 0) + (a.zones || 0) + (a.structures || 0) + (a.photos || 0);
+        const min = Math.floor((cur.activeMs || 0) / 60000);
+        const duree = (min < 1 ? window.I18n.t("jrn.dur.lessMin") : (min + " min"));
+        // 🚶/🖥️ v1.69.0 : la nature est annoncée EN DIRECT — sans ça l'user
+        // découvrirait après coup que sa session a été classée « travail sur
+        // plan » (aucun déplacement tracker) au lieu de « sortie ».
+        const terrain = (cur.type === "terrain");
+        html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
+                  (terrain
+                    ? window.I18n.t("jrn.section.encours", {
+                        duree: duree, dist: window.formatDistance(cur.distM || 0, 0), n: nbAj })
+                    : window.I18n.t("jrn.section.encoursBureau", { duree: duree, n: nbAj })) +
+                '</div>';
+      } else {
+        html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
+                  window.I18n.t("jrn.section.aucune") +
+                '</div>';
+      }
+      html += '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
+                (cur ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-carnet-cloture">' +
+                         '🏁 ' + window.I18n.t("jrn.section.cloturer") + '</button>' : '') +
+                '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-carnet-ouvrir">' +
+                  '📔 ' + window.I18n.t("jrn.section.ouvrir") + '</button>' +
+              '</div>';
+      html += '</div>';
+    })();
+
     // ─── 🆕 v1.20.0 : ⭐ Favoris — Export/Import JSON ───
     //
     // Section dédiée pour partager les favoris cross-appareil (avant v1.20.0
@@ -1732,6 +1772,26 @@
       if (e.target === overlay) _close();
     });
     document.getElementById("kta-refonte-session-close").addEventListener("click", _close);
+
+    // 📔 v1.69.0 — Wire-up des CTA du Carnet (clôture manuelle + ouverture).
+    const _btnCarnetClot = document.getElementById("kta-refonte-session-carnet-cloture");
+    if (_btnCarnetClot) {
+      _btnCarnetClot.addEventListener("click", function() {
+        if (window.JournalUi && typeof window.JournalUi.cloturerDepuisUi === "function") {
+          _close();   // la fiche s'ouvre par-dessus : on ferme la modale Session d'abord
+          window.JournalUi.cloturerDepuisUi();
+        }
+      });
+    }
+    const _btnCarnetOuvrir = document.getElementById("kta-refonte-session-carnet-ouvrir");
+    if (_btnCarnetOuvrir) {
+      _btnCarnetOuvrir.addEventListener("click", function() {
+        if (window.JournalUi && typeof window.JournalUi.ouvrir === "function") {
+          _close();
+          window.JournalUi.ouvrir();
+        }
+      });
+    }
 
     // 🆕 v1.20.0 — CTA Stats globales du plan (modale dédiée)
     const _btnStatsGlob = document.getElementById("kta-refonte-session-open-stats-glob");

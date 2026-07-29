@@ -76,6 +76,8 @@
 }
 ```
 
+→ **Mode Histoire dans le ZIP de session** : `noteLibre` (string inline) + `historeSessionPdfs` (**tableau** depuis v1.69.0 : `[{name, file: "mode-histoire/<nom>"}]`, un fichier par entrée dans le dossier `mode-histoire/` du ZIP, noms dédoublonnés). `historeSessionPdf` (objet unique = **premier** document) reste écrit pour que les versions antérieures relisent au moins un PDF ; à l'import, le tableau prime et le champ unique sert de repli. Les deux sont **omis** en export anonymisé.
+
 → **`customLegend`** (depuis v1.48.0) = état de légende personnalisée de l'utilisateur (renommages, masquages, types custom), sérialisé via `LegendCustomization.getSessionState()`. **Optionnel** : présent dans l'export complet, omis dans l'export « avancé » si l'état est vide. Restauré à l'import via `LegendCustomization.loadSessionState()` → rend la session **autoportante** même importée sur un ZIP « legacy » sans légende baked. Les **roads/zones n'ont pas d'`id`** (snapshot brut `{type, points, label?, level?}`) ; l'id de zone utilisé par l'évitement d'itinéraire est **dérivé au runtime** (`z_<type>_<x>_<y>_<n>`), jamais écrit dans l'export.
 
 ### 🌀 Liaisons inter-plan (depuis v1.57.0)

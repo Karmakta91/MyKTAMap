@@ -61,6 +61,16 @@
     return entry;
   }
 
+  // 🐛 v1.69.0 — « un plan est-il AFFICHÉ ? ». Le test historique
+  // `PLAN_CONFIG && PLAN_CONFIG.plan` restait vrai au HOME (afficherLoader ne
+  // remet pas PLAN_CONFIG à null) → case multi-hop et boutons 🧭 affichés sur
+  // l'accueil. Source de vérité unique : window.ktaPlanAffiche (utils.js).
+  function _planAffiche() {
+    return (typeof window.ktaPlanAffiche === "function")
+      ? window.ktaPlanAffiche()
+      : !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan);
+  }
+
   function _fermer() {
     const m = document.getElementById(MODAL_ID);
     if (m) m.remove();
@@ -95,10 +105,16 @@
           // 🌀 v1.64.0 (multi-hop, décision KARMA 5 : opt-in à cocher) :
           // autorise l'itinéraire 🧭 à passer par des plans intermédiaires.
           // Préférence persistée via InterPlanRoute (OFF par défaut).
-          '<label class="kta-xps-multihop" title="' + _esc(_t("xps.multihop.hint")) + '">' +
-            '<input type="checkbox" id="kta-xps-multihop-cb">' +
-            '<span>' + _esc(_t("xps.multihop.label")) + '</span>' +
-          '</label>' +
+          // 🐛 v1.69.0 : la case n'est plus rendue DU TOUT au HOME — la notion
+          // d'itinéraire n'existe pas sans plan chargé (le calcul part de la
+          // position tracker courante). Elle s'affichait à tort depuis que le
+          // marqueur « plan chargé » était faussé (cf. window.ktaPlanAffiche).
+          (_planAffiche()
+            ? '<label class="kta-xps-multihop" title="' + _esc(_t("xps.multihop.hint")) + '">' +
+                '<input type="checkbox" id="kta-xps-multihop-cb">' +
+                '<span>' + _esc(_t("xps.multihop.label")) + '</span>' +
+              '</label>'
+            : '') +
           '<div class="kta-xps-status" id="kta-xps-status"></div>' +
           '<div class="kta-ipl-results kta-xps-results" id="kta-xps-results"></div>' +
         '</div>' +
@@ -109,15 +125,18 @@
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _fermer(); });
 
     // 🌀 v1.64.0 — case multi-hop : lue/écrite via InterPlanRoute (source de
-    // vérité unique). Masquée si le module route n'est pas dispo.
+    // vérité unique). Absente du DOM au HOME (cf. plus haut) → `mhCb` peut être
+    // null, ce n'est pas une anomalie.
     const mhCb = document.getElementById("kta-xps-multihop-cb");
-    if (window.InterPlanRoute && typeof window.InterPlanRoute.isMultiHopEnabled === "function") {
-      mhCb.checked = window.InterPlanRoute.isMultiHopEnabled();
-      mhCb.addEventListener("change", function() {
-        window.InterPlanRoute.setMultiHopEnabled(mhCb.checked);
-      });
-    } else if (mhCb && mhCb.parentNode) {
-      mhCb.parentNode.style.display = "none";
+    if (mhCb) {
+      if (window.InterPlanRoute && typeof window.InterPlanRoute.isMultiHopEnabled === "function") {
+        mhCb.checked = window.InterPlanRoute.isMultiHopEnabled();
+        mhCb.addEventListener("change", function() {
+          window.InterPlanRoute.setMultiHopEnabled(mhCb.checked);
+        });
+      } else if (mhCb.parentNode) {
+        mhCb.parentNode.style.display = "none";
+      }
     }
 
     const input    = document.getElementById("kta-xps-input");
@@ -148,7 +167,7 @@
       // 🆕 v1.60.0 (A6) : bouton 🧭 « itinéraire via portail » sur les
       // résultats DISTANTS — seulement si un plan est chargé (le calcul part
       // de la position tracker sur le plan courant) et hors mode sélection.
-      const _planCharge = !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan);
+      const _planCharge = _planAffiche();
       const _iprDispo = !opts.onSelect && _planCharge
         && window.InterPlanRoute && typeof window.InterPlanRoute.computeEtAfficher === "function";
       const _pidCourant = window._currentLoadedPlanId || null;

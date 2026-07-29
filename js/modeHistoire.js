@@ -46,14 +46,36 @@
   let _modal = null;
   let _currentMode = "note";  // "note" | "pdf"
   let _saveTimer = null;
-  let _pdfBlobUrl = null;     // URL.createObjectURL pour le PDF session (à revoke)
-  let _sessionPdfMeta = null; // { name, size } du PDF session importé pour ce plan
+  let _pdfBlobUrl = null;     // URL.createObjectURL du document AFFICHÉ (à revoke)
+  let _sessionPdfMeta = null; // { id, name, size } du document affiché
+  // 📄 v1.69.0 — multi-documents : id du document sélectionné dans la liste.
+  // EMBED_ID = pseudo-id du PDF livré dans le ZIP (non supprimable, pas en IDB).
+  const EMBED_ID = "__embed__";
+  let _docSelectionne = null;
 
-  // ========== IDB SESSION PDFS (v1.34.20) ==========
+  // ========== IDB DOCUMENTS PDF (v1.34.20 · MULTI-DOCUMENTS depuis v1.69.0) ==========
+  // v1 : 1 seul PDF par plan (`keyPath: "planId"`, un import écrasait le précédent).
+  // v2 : N documents par plan → `keyPath: "id"` + index `by_plan`.
+  // Le keyPath d'un store ne se change PAS : la migration lit les anciens
+  // enregistrements dans la transaction `versionchange`, supprime le store et le
+  // recrée. Chaque ancien PDF devient le document n°1 de son plan (jamais perdu).
   const IDB_NAME    = "myktamap_histoire_pdfs";
-  const IDB_VERSION = 1;
+  const IDB_VERSION = 2;
   const IDB_STORE   = "pdfs";
+  const IDB_INDEX   = "by_plan";
+
+  // Garde-fous quota (décision KARMA 29/07 — 1:a). Sans eux, un seul PDF de
+  // 80 Mo passait sans un mot, et la base n'apparaissait nulle part dans le
+  // calcul « Stockage » (corrigé en même temps côté memInspector/homeProfile).
+  const MAX_DOCS_PAR_PLAN = 10;
+  const WARN_TOTAL_BYTES  = 25 * 1024 * 1024;    // avertissement au-delà
+  const MAX_TOTAL_BYTES   = 100 * 1024 * 1024;   // refus au-delà
+
   let _idbPromise = null;
+
+  function _genDocId() {
+    return "doc_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+  }
 
   function _idbOpen() {
     if (_idbPromise) return _idbPromise;
@@ -65,9 +87,40 @@
       const req = indexedDB.open(IDB_NAME, IDB_VERSION);
       req.onupgradeneeded = function(e) {
         const db = e.target.result;
+        const tx = e.target.transaction;
+
         if (!db.objectStoreNames.contains(IDB_STORE)) {
-          db.createObjectStore(IDB_STORE, { keyPath: "planId" });
+          const st = db.createObjectStore(IDB_STORE, { keyPath: "id" });
+          st.createIndex(IDB_INDEX, "planId", { unique: false });
+          return;
         }
+        if (e.oldVersion >= 2) return;
+
+        // ── Migration v1 → v2 (1 PDF/plan → N documents/plan) ──
+        const anciens = [];
+        const cur = tx.objectStore(IDB_STORE).openCursor();
+        cur.onsuccess = function(ev) {
+          const c = ev.target.result;
+          if (c) { anciens.push(c.value); c.continue(); return; }
+          // Tous les anciens sont en mémoire (Blobs = handles, pas des copies
+          // d'octets) → on peut détruire et recréer le store dans la MÊME
+          // transaction versionchange.
+          db.deleteObjectStore(IDB_STORE);
+          const neuf = db.createObjectStore(IDB_STORE, { keyPath: "id" });
+          neuf.createIndex(IDB_INDEX, "planId", { unique: false });
+          anciens.forEach(function(rec) {
+            if (!rec || !rec.blob) return;
+            neuf.put({
+              id:      _genDocId(),
+              planId:  rec.planId,
+              blob:    rec.blob,
+              name:    rec.name || "histoire.pdf",
+              size:    rec.size || (rec.blob && rec.blob.size) || 0,
+              addedAt: rec.addedAt || Date.now()
+            });
+          });
+          console.log("[ModeHistoire] Migration IDB v1→v2 : " + anciens.length + " PDF conservé(s)");
+        };
       };
       req.onsuccess = function() { resolve(req.result); };
       req.onerror   = function() { reject(req.error); };
@@ -75,47 +128,85 @@
     return _idbPromise;
   }
 
-  function _idbGet(planId) {
+  // Tous les documents d'un plan, du plus ancien au plus récent (ordre d'import).
+  function _idbListe(planId) {
     return _idbOpen().then(function(db) {
-      return new Promise(function(resolve, reject) {
-        const tx = db.transaction(IDB_STORE, "readonly");
-        const st = tx.objectStore(IDB_STORE);
-        const req = st.get(planId);
-        req.onsuccess = function() { resolve(req.result || null); };
-        req.onerror   = function() { reject(req.error); };
+      return new Promise(function(resolve) {
+        try {
+          const req = db.transaction(IDB_STORE, "readonly")
+                        .objectStore(IDB_STORE).index(IDB_INDEX)
+                        .getAll(IDBKeyRange.only(String(planId)));
+          req.onsuccess = function() {
+            const arr = req.result || [];
+            arr.sort(function(a, b) { return (a.addedAt || 0) - (b.addedAt || 0); });
+            resolve(arr);
+          };
+          req.onerror = function() { resolve([]); };
+        } catch(e) { resolve([]); }
       });
-    });
+    }).catch(function() { return []; });
   }
 
-  function _idbSet(planId, blob, name) {
+  function _idbGetDoc(id) {
+    return _idbOpen().then(function(db) {
+      return new Promise(function(resolve) {
+        try {
+          const req = db.transaction(IDB_STORE, "readonly").objectStore(IDB_STORE).get(String(id));
+          req.onsuccess = function() { resolve(req.result || null); };
+          req.onerror   = function() { resolve(null); };
+        } catch(e) { resolve(null); }
+      });
+    }).catch(function() { return null; });
+  }
+
+  function _idbAjouter(planId, blob, name) {
     return _idbOpen().then(function(db) {
       return new Promise(function(resolve, reject) {
-        const tx = db.transaction(IDB_STORE, "readwrite");
-        const st = tx.objectStore(IDB_STORE);
         const rec = {
-          planId: planId,
-          blob:   blob,
-          name:   String(name || "histoire.pdf"),
-          size:   blob.size || 0,
+          id:      _genDocId(),
+          planId:  String(planId),
+          blob:    blob,
+          name:    String(name || "histoire.pdf"),
+          size:    blob.size || 0,
           addedAt: Date.now()
         };
-        const req = st.put(rec);
-        req.onsuccess = function() { resolve(); };
-        req.onerror   = function() { reject(req.error); };
+        try {
+          const req = db.transaction(IDB_STORE, "readwrite").objectStore(IDB_STORE).add(rec);
+          req.onsuccess = function() { resolve(rec); };
+          req.onerror   = function() { reject(req.error); };
+        } catch(e) { reject(e); }
       });
     });
   }
 
-  function _idbDel(planId) {
+  function _idbDel(id) {
     return _idbOpen().then(function(db) {
       return new Promise(function(resolve, reject) {
-        const tx = db.transaction(IDB_STORE, "readwrite");
-        const st = tx.objectStore(IDB_STORE);
-        const req = st.delete(planId);
-        req.onsuccess = function() { resolve(); };
-        req.onerror   = function() { reject(req.error); };
+        try {
+          const req = db.transaction(IDB_STORE, "readwrite").objectStore(IDB_STORE).delete(String(id));
+          req.onsuccess = function() { resolve(); };
+          req.onerror   = function() { reject(req.error); };
+        } catch(e) { reject(e); }
       });
     });
+  }
+
+  // Vérifie les garde-fous AVANT d'écrire. Retourne null si OK, sinon un message.
+  // `avertir` (fonction) est appelé pour les cas non bloquants.
+  function _verifierQuota(docs, file, avertir) {
+    if (docs.length >= MAX_DOCS_PAR_PLAN) {
+      return window.I18n.t("histoire.pdf.err.tropDeDocs", { max: MAX_DOCS_PAR_PLAN });
+    }
+    let total = 0;
+    docs.forEach(function(d) { total += Number(d.size) || 0; });
+    const apres = total + (file.size || 0);
+    if (apres > MAX_TOTAL_BYTES) {
+      return window.I18n.t("histoire.pdf.err.tropLourd", { max: Math.round(MAX_TOTAL_BYTES / 1048576) });
+    }
+    if (apres > WARN_TOTAL_BYTES && typeof avertir === "function") {
+      avertir(window.I18n.t("histoire.pdf.warn.taille", { mo: Math.round(apres / 1048576) }));
+    }
+    return null;
   }
 
   // ========== LOCALSTORAGE NOTE LIBRE ==========
@@ -154,50 +245,45 @@
     return !!_getEmbeddedPdfUrl();
   }
 
-  // ========== PDF SESSION (IDB) ==========
-  // Récupère le PDF session du plan courant en IDB, crée la blob URL.
-  // Retourne { url, name, size } ou null.
-  // 🐛 v1.34.20 (Pack RAM Phase 4 lesson) : on revoke l'ancienne URL avant
-  // d'en créer une nouvelle pour éviter fuite bitmap iOS.
-  function _loadSessionPdf() {
-    return _idbGet(_currentPlanId()).then(function(rec) {
+  // ========== DOCUMENTS PDF DU PLAN (IDB, multi depuis v1.69.0) ==========
+
+  // Documents importés du plan courant (métadonnées + Blob handle).
+  function _docsImportes() {
+    return _idbListe(_currentPlanId());
+  }
+
+  // Crée la blob URL d'un document et révoque la précédente (fuite bitmap iOS
+  // — leçon Pack RAM Phase 4 : une seule URL vivante à la fois).
+  function _urlDeDoc(id) {
+    return _idbGetDoc(id).then(function(rec) {
       if (!rec || !rec.blob) return null;
       if (_pdfBlobUrl) {
         try { URL.revokeObjectURL(_pdfBlobUrl); } catch(e) {}
         _pdfBlobUrl = null;
       }
       _pdfBlobUrl = URL.createObjectURL(rec.blob);
-      _sessionPdfMeta = { name: rec.name, size: rec.size };
-      return { url: _pdfBlobUrl, name: rec.name, size: rec.size };
-    }).catch(function(e) {
-      console.warn("[ModeHistoire] _loadSessionPdf échec :", e);
-      return null;
+      _sessionPdfMeta = { id: rec.id, name: rec.name, size: rec.size };
+      return { url: _pdfBlobUrl, name: rec.name, size: rec.size, id: rec.id };
     });
   }
 
-  // Stocke un nouveau PDF session pour le plan courant. Remplace l'existant
-  // s'il y en avait un (et revoke son URL).
-  function _saveSessionPdf(file) {
+  // Ajoute un document (ne remplace plus rien) après contrôle des garde-fous.
+  function _ajouterDoc(file) {
     if (!file) return Promise.reject(new Error("Pas de fichier"));
-    return _idbSet(_currentPlanId(), file, file.name).then(function() {
-      _sessionPdfMeta = { name: file.name, size: file.size };
-      // Revoke l'ancienne URL si présente
-      if (_pdfBlobUrl) {
-        try { URL.revokeObjectURL(_pdfBlobUrl); } catch(e) {}
-      }
-      _pdfBlobUrl = URL.createObjectURL(file);
-      return { url: _pdfBlobUrl, name: file.name, size: file.size };
+    return _docsImportes().then(function(docs) {
+      const err = _verifierQuota(docs, file, function(msg) { alert(msg); });
+      if (err) { const e = new Error(err); e.code = "QUOTA"; throw e; }
+      return _idbAjouter(_currentPlanId(), file, file.name);
     });
   }
 
-  // Supprime le PDF session du plan courant + revoke URL.
-  function _deleteSessionPdf() {
-    return _idbDel(_currentPlanId()).then(function() {
-      if (_pdfBlobUrl) {
+  function _supprimerDoc(id) {
+    return _idbDel(id).then(function() {
+      if (_sessionPdfMeta && _sessionPdfMeta.id === id && _pdfBlobUrl) {
         try { URL.revokeObjectURL(_pdfBlobUrl); } catch(e) {}
         _pdfBlobUrl = null;
+        _sessionPdfMeta = null;
       }
-      _sessionPdfMeta = null;
     });
   }
 
@@ -257,9 +343,12 @@
               '<span class="kta-histoire-pdf-meta" id="kta-histoire-pdf-meta"></span>' +
               '<input type="file" id="kta-histoire-pdf-input" accept="application/pdf,.pdf" style="display:none;">' +
               '<button class="kta-btn kta-btn-ghost" type="button" id="kta-histoire-pdf-import">' + t("histoire.pdf.import") + '</button>' +
-              '<button class="kta-btn kta-btn-ghost" type="button" id="kta-histoire-pdf-replace" style="display:none;">' + t("histoire.pdf.replace") + '</button>' +
               '<button class="kta-btn kta-btn-danger" type="button" id="kta-histoire-pdf-remove" style="display:none;">' + t("histoire.pdf.remove") + '</button>' +
             '</div>' +
+            // 📄 v1.69.0 — liste des documents (N par plan). Le PDF embarqué dans
+            // le ZIP y figure aussi, en lecture seule : il n'appartient pas à
+            // l'utilisateur, seul le générateur peut le changer.
+            '<div class="kta-histoire-pdf-docs" id="kta-histoire-pdf-docs" style="display:none;"></div>' +
             // Viewer wrap (iframe ou fallback)
             '<div id="kta-histoire-pdf-wrap" class="kta-histoire-pdf-wrap">' +
               '<div class="kta-histoire-pdf-empty" id="kta-histoire-pdf-empty">' +
@@ -349,17 +438,14 @@
       });
     }
 
-    // Wire PDF import/replace/remove (v1.34.20)
+    // Wire PDF import / suppression (v1.34.20 · multi-documents v1.69.0)
     const fileInput = document.getElementById("kta-histoire-pdf-input");
     const btnImport = document.getElementById("kta-histoire-pdf-import");
-    const btnReplace = document.getElementById("kta-histoire-pdf-replace");
     const btnRemove = document.getElementById("kta-histoire-pdf-remove");
 
-    function _triggerImport() {
-      if (fileInput) fileInput.click();
+    if (btnImport) {
+      btnImport.addEventListener("click", function() { if (fileInput) fileInput.click(); });
     }
-    if (btnImport)  btnImport.addEventListener("click", _triggerImport);
-    if (btnReplace) btnReplace.addEventListener("click", _triggerImport);
 
     if (fileInput) {
       fileInput.addEventListener("change", function() {
@@ -372,24 +458,30 @@
           fileInput.value = "";
           return;
         }
-        _saveSessionPdf(f).then(function() {
+        _ajouterDoc(f).then(function(rec) {
           fileInput.value = "";
+          _docSelectionne = rec.id;   // on affiche celui qu'on vient d'ajouter
           _renderPdf({ force: true });
         }).catch(function(e) {
-          console.error("[ModeHistoire] saveSessionPdf échec :", e);
-          alert(window.I18n.t("histoire.pdf.err.saveFail", { ko: (e.message || e) }));
           fileInput.value = "";
+          if (e && e.code === "QUOTA") { alert(e.message); return; }
+          console.error("[ModeHistoire] ajout document échec :", e);
+          alert(window.I18n.t("histoire.pdf.err.saveFail", { ko: (e.message || e) }));
         });
       });
     }
 
+    // Supprime le document AFFICHÉ (jamais l'embarqué : le bouton est masqué
+    // quand la sélection vient du ZIP).
     if (btnRemove) {
       btnRemove.addEventListener("click", function() {
+        if (!_docSelectionne || _docSelectionne === EMBED_ID) return;
         if (!confirm(window.I18n.t("histoire.pdf.removeConfirm"))) return;
-        _deleteSessionPdf().then(function() {
+        _supprimerDoc(_docSelectionne).then(function() {
+          _docSelectionne = null;
           _renderPdf({ force: true });
         }).catch(function(e) {
-          console.error("[ModeHistoire] deleteSessionPdf échec :", e);
+          console.error("[ModeHistoire] suppression document échec :", e);
         });
       });
     }
@@ -516,66 +608,116 @@
     if (mode === "pdf") _renderPdf();
   }
 
-  // _renderPdf : décide quelle source PDF afficher (embarqué > session > vide).
-  // opts.force=true → re-render même si déjà fait (utilisé après import/delete).
+  // _renderPdf : construit la liste des documents du plan (embarqué + importés)
+  // et affiche celui qui est sélectionné.
+  // opts.force=true → re-render même si déjà fait (après import/suppression).
+  //
+  // ⚠️ v1.69.0 : l'embarqué ne MASQUE plus l'import. Avant, un plan livré avec
+  // un PDF interdisait d'en ajouter (toolbar cachée) — l'user ne pouvait rien
+  // joindre à ces plans-là. Il est maintenant une entrée de la liste parmi les
+  // autres, simplement non supprimable.
   function _renderPdf(opts) {
     opts = opts || {};
     const wrap = document.getElementById("kta-histoire-pdf-wrap");
     const empty = document.getElementById("kta-histoire-pdf-empty");
     const toolbar = document.getElementById("kta-histoire-pdf-toolbar");
-    const btnImport = document.getElementById("kta-histoire-pdf-import");
-    const btnReplace = document.getElementById("kta-histoire-pdf-replace");
     const btnRemove = document.getElementById("kta-histoire-pdf-remove");
     const meta = document.getElementById("kta-histoire-pdf-meta");
     if (!wrap) return;
 
-    // No-op si déjà rendu (sauf force)
-    if (!opts.force) {
-      if (wrap.querySelector("iframe") || wrap.querySelector(".kta-histoire-pdf-fallback")) {
+    if (!opts.force && wrap.getAttribute("data-rendu") === "1") return;
+
+    // Reset du wrap : vider l'iframe AVANT de la retirer (bitmap PDF épinglée
+    // sur WebKit sinon).
+    const oldIframe = wrap.querySelector("iframe");
+    if (oldIframe) { try { oldIframe.src = ""; } catch(e) {} oldIframe.remove(); }
+    const fallback = wrap.querySelector(".kta-histoire-pdf-fallback");
+    if (fallback) fallback.remove();
+    const actions = wrap.querySelector(".kta-histoire-pdf-actions");
+    if (actions) actions.remove();
+    wrap.setAttribute("data-rendu", "1");
+
+    if (toolbar) toolbar.style.display = "flex";
+
+    const embeddedUrl = _getEmbeddedPdfUrl();
+
+    _docsImportes().then(function(docs) {
+      const liste = [];
+      if (embeddedUrl) {
+        liste.push({ id: EMBED_ID, name: window.I18n.t("histoire.pdf.embarque"), size: 0, embarque: true });
+      }
+      docs.forEach(function(d) { liste.push({ id: d.id, name: d.name, size: d.size, embarque: false }); });
+
+      _renderDocsListe(liste);
+
+      if (liste.length === 0) {
+        if (empty) empty.style.display = "";
+        if (btnRemove) btnRemove.style.display = "none";
+        if (meta) meta.textContent = "";
+        _docSelectionne = null;
         return;
       }
-    } else {
-      // Force : reset le wrap (revoke aussi l'iframe pour libérer la bitmap PDF iOS)
-      const oldIframe = wrap.querySelector("iframe");
-      if (oldIframe) {
-        try { oldIframe.src = ""; } catch(e) {}
-      }
-      const fallback = wrap.querySelector(".kta-histoire-pdf-fallback");
-      if (fallback) fallback.remove();
-      if (oldIframe) oldIframe.remove();
-    }
-
-    // 1. Priorité absolue : PDF embarqué dans le plan
-    const embeddedUrl = _getEmbeddedPdfUrl();
-    if (embeddedUrl) {
       if (empty) empty.style.display = "none";
-      if (toolbar) toolbar.style.display = "none";  // pas d'import si embarqué
-      _displayPdfInWrap(embeddedUrl, "histoire.pdf");
-      return;
-    }
 
-    // 2. Pas d'embarqué : on regarde la session IDB
-    if (toolbar) toolbar.style.display = "flex";
-    _loadSessionPdf().then(function(sessionInfo) {
-      if (sessionInfo && sessionInfo.url) {
-        if (empty) empty.style.display = "none";
-        // Mode "PDF session présent" : meta + boutons Remplacer/Retirer
-        if (btnImport)  btnImport.style.display  = "none";
-        if (btnReplace) btnReplace.style.display = "";
-        if (btnRemove)  btnRemove.style.display  = "";
-        if (meta) {
-          const sizeKb = Math.round((sessionInfo.size || 0) / 1024);
-          meta.textContent = window.I18n.t("histoire.pdf.meta", { name: sessionInfo.name, kb: sizeKb });
-        }
-        _displayPdfInWrap(sessionInfo.url, sessionInfo.name);
-      } else {
-        // 3. Ni embarqué ni session : placeholder + bouton Importer
-        if (empty) empty.style.display = "";
-        if (btnImport)  btnImport.style.display  = "";
-        if (btnReplace) btnReplace.style.display = "none";
-        if (btnRemove)  btnRemove.style.display  = "none";
-        if (meta) meta.textContent = "";
+      // Sélection : celle en cours si elle existe encore, sinon la première.
+      let sel = null;
+      for (let i = 0; i < liste.length; i++) {
+        if (liste[i].id === _docSelectionne) { sel = liste[i]; break; }
       }
+      if (!sel) sel = liste[0];
+      _docSelectionne = sel.id;
+      _marquerDocActif(sel.id);
+
+      if (btnRemove) btnRemove.style.display = sel.embarque ? "none" : "";
+
+      if (sel.embarque) {
+        if (meta) meta.textContent = window.I18n.t("histoire.pdf.embarqueMeta");
+        _displayPdfInWrap(embeddedUrl, "histoire.pdf");
+        return;
+      }
+      _urlDeDoc(sel.id).then(function(info) {
+        if (!info) { _docSelectionne = null; _renderPdf({ force: true }); return; }
+        if (meta) {
+          meta.textContent = window.I18n.t("histoire.pdf.meta", {
+            name: info.name, kb: Math.round((info.size || 0) / 1024)
+          });
+        }
+        _displayPdfInWrap(info.url, info.name);
+      });
+    });
+  }
+
+  // Rangée par document : clic = afficher. La liste est masquée s'il n'y a
+  // qu'un seul document (une liste d'un élément n'apprend rien).
+  function _renderDocsListe(liste) {
+    const box = document.getElementById("kta-histoire-pdf-docs");
+    if (!box) return;
+    if (liste.length < 2) { box.style.display = "none"; box.innerHTML = ""; return; }
+    box.style.display = "";
+    box.innerHTML = liste.map(function(d, i) {
+      const ko = d.size ? (" · " + Math.round(d.size / 1024) + " Ko") : "";
+      return '<button type="button" class="kta-histoire-doc" data-id="' + String(d.id).replace(/"/g, "") + '" ' +
+               'data-i="' + i + '">' +
+               (d.embarque ? "📕 " : "📄 ") +
+               '<span class="kta-histoire-doc-nom">' + window.kta_escapeHtml(d.name || "?") + '</span>' +
+               '<span class="kta-histoire-doc-meta">' + ko + '</span>' +
+             '</button>';
+    }).join("");
+    box.querySelectorAll(".kta-histoire-doc").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const id = btn.getAttribute("data-id");
+        if (!id || id === _docSelectionne) return;
+        _docSelectionne = id;
+        _renderPdf({ force: true });
+      });
+    });
+  }
+
+  function _marquerDocActif(id) {
+    const box = document.getElementById("kta-histoire-pdf-docs");
+    if (!box) return;
+    box.querySelectorAll(".kta-histoire-doc").forEach(function(btn) {
+      btn.classList.toggle("kta-histoire-doc-actif", btn.getAttribute("data-id") === String(id));
     });
   }
 
@@ -680,10 +822,15 @@
   // courant. Cohérent avec la sémantique d'import des autres champs : on
   // remplace les données du plan courant par celles du fichier importé.
   //   - noteText : string (vide ou null = pas de note → on n'écrase rien)
-  //   - pdfBlob  : Blob PDF ou null = pas de PDF (on ne supprime rien)
-  //   - pdfName  : string suggéré pour le fichier
+  //   - docs     : 📄 v1.69.0 — TABLEAU [{blob, name}] de documents à AJOUTER.
+  //                Ancienne signature (pdfBlob, pdfName) encore acceptée.
   // Renvoie Promise qui résout quand IDB est OK (note est sync).
-  function importSessionData(noteText, pdfBlob, pdfName) {
+  function importSessionData(noteText, docs, pdfNameLegacy) {
+    // Rétrocompat d'appel : importSessionData(note, blob, name)
+    if (docs && typeof docs.size === "number" && !Array.isArray(docs)) {
+      docs = [{ blob: docs, name: pdfNameLegacy || "histoire.pdf" }];
+    }
+    const liste = Array.isArray(docs) ? docs.filter(function(d) { return d && d.blob && d.blob.size > 0; }) : [];
     return new Promise(function(resolve) {
       try {
         // Note libre : si présente, on écrase la note courante du plan.
@@ -693,17 +840,19 @@
       } catch(e) {
         console.warn("[ModeHistoire] importSessionData note échec :", e);
       }
-      // PDF : si présent, persist en IDB pour le plan courant.
-      if (pdfBlob && pdfBlob.size > 0) {
-        _idbSet(_currentPlanId(), pdfBlob, pdfName || "histoire.pdf")
-          .then(function() { resolve(true); })
-          .catch(function(err) {
-            console.warn("[ModeHistoire] importSessionData PDF IDB échec :", err);
-            resolve(false);
-          });
-      } else {
-        resolve(true);
-      }
+      // PDF : AJOUTÉS aux documents du plan courant.
+      // 📄 v1.69.0 : c'était un `put` sur la clé du plan → réimporter une
+      // session écrasait le PDF déjà en place. Depuis le multi-documents, on
+      // ajoute — l'import n'efface plus rien (cohérent avec « merge » ailleurs).
+      if (liste.length === 0) { resolve(true); return; }
+      const planId = _currentPlanId();
+      Promise.all(liste.map(function(d) {
+        return _idbAjouter(planId, d.blob, d.name || "histoire.pdf");
+      })).then(function() { resolve(true); })
+        .catch(function(err) {
+          console.warn("[ModeHistoire] importSessionData PDF IDB échec :", err);
+          resolve(false);
+        });
     });
   }
 
@@ -717,5 +866,5 @@
 
   window.ModeHistoire = MH;
 
-  console.log("[ModeHistoire] Module chargé (v1.34.20 — note libre + PDF embarqué/session IDB)");
+  console.log("[ModeHistoire] Module chargé (note libre + documents PDF multiples, IDB v" + IDB_VERSION + ")");
 })();

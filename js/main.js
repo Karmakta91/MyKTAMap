@@ -345,6 +345,19 @@ async function lancerApplication() {
     window.SessionPersist.onPlanLoaded(window._currentLoadedPlanId || null);
   }
 
+  // 📔 v1.69.0 — Ouverture d'une SORTIE au carnet. Impérativement APRÈS
+  // SessionPersist.onPlanLoaded : la baseline des compteurs doit inclure la
+  // session restaurée, sinon tout le contenu déjà présent serait compté comme
+  // « ajouté pendant cette sortie ».
+  if (window.Journal && typeof window.Journal.onPlanLoaded === "function") {
+    try {
+      window.Journal.onPlanLoaded(
+        window._currentLoadedPlanId || null,
+        (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || null
+      );
+    } catch(e) { console.warn("[Main] Journal.onPlanLoaded échec :", e); }
+  }
+
   // 🆕 v1.22.0 (Mode Secours) : charge les scénarios de secours pour ce plan
   // depuis localStorage. Idempotent — peut être rappelé au plan switch.
   if (window.SecoursMode && typeof window.SecoursMode.init === "function") {
@@ -615,6 +628,15 @@ function _libererRessourcesPlanPrecedent() {
   // redémarre qu'au onPlanLoaded du nouveau plan.
   if (window.SessionPersist && typeof window.SessionPersist.onPlanUnload === "function") {
     try { window.SessionPersist.onPlanUnload(); } catch(e) {}
+  }
+
+  // 📔 v1.69.0 — Clôture de la sortie au carnet. MÊME CONTRAINTE que
+  // SessionPersist ci-dessus : ici l'état RAM est encore intact (compteurs,
+  // timeline tracker). Plus bas, resetTrackingTimeline() vide la timeline →
+  // le tracé et la distance de la sortie seraient perdus. Écriture IDB async,
+  // mais le record est snapshoté de façon SYNCHRONE dans cet appel.
+  if (window.Journal && typeof window.Journal.onPlanUnload === "function") {
+    try { window.Journal.onPlanUnload(); } catch(e) {}
   }
 
   // 🧹 v1.68.0 (audit) : purge des flottants de navigation au CHANGEMENT de
@@ -1294,6 +1316,7 @@ async function _splashEnd() {
 //   • data-i18n        → remplace textContent par I18n.t(clé)
 //   • data-i18n-html   → remplace innerHTML  par I18n.t(clé) (valeurs avec balises)
 //   • data-i18n-title  → pose title + aria-label = I18n.t(clé)
+//   • data-i18n-placeholder → pose placeholder = I18n.t(clé)  [v1.69.0]
 // Le texte FR laissé dans le HTML n'est qu'un FALLBACK (si I18n indispo). La
 // VRAIE source est le dico lang/<code>.json. Idempotent → rappelé à chaque
 // changement de langue. Générique : poser les attributs suffit, aucun code à
@@ -1311,6 +1334,12 @@ function _applyI18nDom(root) {
     const v = window.I18n.t(el.getAttribute("data-i18n-title"));
     el.setAttribute("title", v);
     el.setAttribute("aria-label", v);
+  });
+  // 🆕 v1.69.0 — placeholder d'input (barre de recherche du HOME). Manquait :
+  // un champ traduit devait sinon être rempli à la main en JS, hors du cycle
+  // de re-traduction au changement de langue.
+  root.querySelectorAll("[data-i18n-placeholder]").forEach(function(el) {
+    el.setAttribute("placeholder", window.I18n.t(el.getAttribute("data-i18n-placeholder")));
   });
 }
 

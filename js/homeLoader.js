@@ -511,16 +511,38 @@
         });
       }
 
-      // 🌐 v1.58.0 — Recherche multi-plans depuis le home (A1 1:c) : cherche un
-      // point dans TOUTE la bibliothèque sans charger de plan ; le clic sur un
-      // résultat charge le plan cible et centre sur le point (pipeline portail).
-      const crossSearchBtn = document.getElementById("loaderCrossSearchBtn");
-      if (crossSearchBtn) {
-        crossSearchBtn.addEventListener("click", function() {
-          if (window.CrossPlanSearch && typeof window.CrossPlanSearch.ouvrir === "function") {
-            window.CrossPlanSearch.ouvrir("");
+      // 🔎 v1.69.0 — Recherche multi-plans : n'est plus un bouton d'outil mais
+      // une BARRE entre « Reprendre » et la liste des plans (allègement du HOME
+      // demandé par KARMA). Entrée ou clic sur 🔎 ouvre la modale de résultats
+      // avec la saisie reprise. On n'ouvre PAS à chaque frappe : le scan des
+      // plans est coûteux, et une modale qui s'ouvre sous les doigts est hostile.
+      const searchInput = document.getElementById("loaderSearchInput");
+      const searchBtn   = document.getElementById("loaderSearchBtn");
+      function _lancerRecherche() {
+        const q = searchInput ? String(searchInput.value || "").trim() : "";
+        if (window.CrossPlanSearch && typeof window.CrossPlanSearch.ouvrir === "function") {
+          window.CrossPlanSearch.ouvrir(q);
+          if (searchInput) searchInput.value = "";   // la modale porte la saisie
+        } else {
+          console.warn("[Home] CrossPlanSearch indisponible");
+        }
+      }
+      if (searchBtn) searchBtn.addEventListener("click", _lancerRecherche);
+      if (searchInput) {
+        searchInput.addEventListener("keydown", function(e) {
+          if (e.key === "Enter") { e.preventDefault(); _lancerRecherche(); }
+        });
+      }
+
+      // 📔 v1.69.0 — Le Carnet depuis le home : timeline de toutes les sorties
+      // archivées, tous plans confondus (aucun plan à charger).
+      const journalBtn = document.getElementById("loaderJournalBtn");
+      if (journalBtn) {
+        journalBtn.addEventListener("click", function() {
+          if (window.JournalUi && typeof window.JournalUi.ouvrir === "function") {
+            window.JournalUi.ouvrir();
           } else {
-            console.warn("[Home] CrossPlanSearch indisponible");
+            console.warn("[Home] JournalUi indisponible");
           }
         });
       }
@@ -538,16 +560,10 @@
         });
       }
 
-      // 🔗 v1.55.0 — Fusionneur de datalayers accessible depuis le home : ouvre la
-      // modale « Enregistrer la session » directement sur l'onglet Fusion. L'onglet
-      // opère sur les fichiers uploadés, indépendamment d'un plan chargé.
-      const fusionBtn = document.getElementById("loaderFusionBtn");
-      if (fusionBtn) {
-        fusionBtn.addEventListener("click", function() {
-          if (typeof window.ouvrirExportSessionModal === "function") window.ouvrirExportSessionModal("fusion", true);
-          else console.warn("[Home] ouvrirExportSessionModal indisponible");
-        });
-      }
+      // 🔗 v1.55.0 — Fusionneur de datalayers. 🧹 v1.69.0 : son bouton a quitté
+      // le HOME (allègement demandé par KARMA) — il vit désormais comme 4e
+      // source de l'Éditeur de données (`tableEditor.js > kta-tbl-src-fusion`),
+      // qui appelle le même `ouvrirExportSessionModal("fusion", true)`.
 
       // (Le bouton "🌐 Plan serveur racine" a été retiré le 08/05/2026 — les plans serveur
       // sont déjà listés dans 📚 Mes plans via auto-discovery `data/index.json`.)
@@ -895,11 +911,16 @@
 
         // Liste unique
         const myPlansBox = document.getElementById("myPlansBox");
+        // 🔎 v1.69.0 : la barre de recherche suit la liste — proposer de
+        // chercher dans une bibliothèque vide n'a aucun sens.
+        const searchBar = document.getElementById("loaderSearchBar");
         if (all.length === 0) {
           if (myPlansBox) myPlansBox.style.display = "none";
+          if (searchBar)  searchBar.style.display  = "none";
           return;
         }
         if (myPlansBox) myPlansBox.style.display = "block";
+        if (searchBar)  searchBar.style.display  = "flex";
 
         // 🌐 v170 : filtre "Afficher plans serveur" (persisté localStorage).
         // Si l'user a décoché → on retire tous les plans type === "server" de
@@ -1449,33 +1470,11 @@
         _maj();
       }
 
-      // ② Accordéon Outils — bouton injecté une fois au boot ; visible
-      // uniquement ≤ 640 px (CSS), le conteneur .loader-secondary-actions
-      // est replié par défaut sur mobile et intact sur desktop.
-      (function _ktaMobileToolsAccordion() {
-        const cont = document.querySelector(".loader-secondary-actions");
-        if (!cont || document.getElementById("kta-home-tools-toggle")) return;
-        const btn = document.createElement("button");
-        btn.id = "kta-home-tools-toggle";
-        btn.type = "button";
-        btn.className = "loader-btn-secondary";
-        function _maj() {
-          btn.textContent = "🧰 " + _homeT("home.mobile.tools", "Outils") +
-                            (cont.classList.contains("kta-open") ? " ▴" : " ▾");
-        }
-        btn.addEventListener("click", function() {
-          cont.classList.toggle("kta-open");
-          _maj();
-        });
-        cont.parentNode.insertBefore(btn, cont);
-        // 🐛 v1.68.1 : libellé rendu derrière la barrière i18n (course au
-        // window load) — sinon fallback FR gravé jusqu'au premier clic.
-        if (window.I18n && typeof window.I18n.init === "function") {
-          window.I18n.init().then(_maj);
-        } else {
-          _maj();
-        }
-      })();
+      // ② HOME v2 (refonte KARMA 29/07) : l'accordéon Outils du lot A est
+      // SUPPRIMÉ — la liste verticale de 5 boutons qui justifiait le repli
+      // est devenue une grille 2×2 de 4 tuiles (~120 px), assez compacte pour
+      // rester visible sur mobile. Le CSS `.loader-secondary-actions{display:
+      // none}` ≤ 640 px a été retiré en même temps (sinon outils invisibles).
 
       // ── Ponts B7 : consommés par homeProfile/homeConfig/le bloc résiduel
       // (setStatus partout), le plan switcher du titre (chargerPlanDuRegistre,

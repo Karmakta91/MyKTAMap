@@ -624,7 +624,9 @@ function afficherAide() {
 const AIDE_CATEGORIES = [
   { fr: "🚀 Prise en main",        en: "🚀 Getting started",     idx: [2, 26, 27] },
   { fr: "🗺️ Outils carte",         en: "🗺️ Map tools",           idx: [20, 22, 23, 21, 19, 17, 14, 15, 1, 28] },
-  { fr: "💾 Données & session",     en: "💾 Data & session",      idx: [16, 5, 8, 9, 11, 13, 0, 24, 6] },
+  // 📔 v1.69.0 : la section « Mon carnet » est AJOUTÉE EN FIN de _aideHtmlFr/En
+  // (index 29) — ajout en queue volontaire pour ne renuméroter aucun index.
+  { fr: "💾 Données & session",     en: "💾 Data & session",      idx: [16, 5, 8, 9, 11, 13, 0, 24, 6, 29] },
   { fr: "🔍 Recherche",            en: "🔍 Search",              idx: [4] },
   { fr: "🚨 Coordination secours", en: "🚨 Rescue coordination", idx: [18] },
   { fr: "⚙️ Système & sécurité",   en: "⚙️ System & security",   idx: [3, 25, 10, 12, 7] }
@@ -804,7 +806,7 @@ function _aideHtmlFr() {
           </p>
           <ul style="font-size:13px; color:#c0c8d8; margin:0 0 8px 16px; padding:0; line-height:1.5;">
             <li><strong>📝 Note libre</strong> — carnet de notes <strong>Markdown</strong> auto-sauvegardé (titres, gras, listes, liens, citations). Mode <strong>Aperçu</strong> pour lire / <strong>✏️ Éditer</strong> pour modifier la source.</li>
-            <li><strong>📚 Histoire</strong> — affiche le PDF embarqué par l'auteur du plan, ou laisse <strong>📥 importer ton propre PDF</strong> (1 par plan, remplaçable). Sur iPhone : bouton <strong>↗️ Ouvrir dans un onglet</strong> pour le plein écran natif.</li>
+            <li><strong>📚 Histoire</strong> — <strong>jusqu'à 10 documents PDF par plan</strong> (v1.69.0 : avant, un seul, et un nouvel import écrasait le précédent). Liste au-dessus de la visionneuse, <strong>📥 Importer</strong> ajoute, <strong>🗑️ Retirer</strong> supprime le document affiché. Le PDF livré dans le ZIP figure en tête (📕, non supprimable) et n'empêche plus d'ajouter les tiens. Avertissement au-delà de 25 Mo cumulés, refus au-delà de 100 Mo. Sur iPhone : bouton <strong>↗️ Ouvrir dans un onglet</strong> pour le plein écran natif.</li>
           </ul>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
             Note libre + PDF sont <strong>inclus automatiquement dans l'export de session</strong> (.mkmsession.zip) → tout voyage avec ta session pour partage ou transfert. 100 % offline.
@@ -912,7 +914,7 @@ function _aideHtmlFr() {
           <div class="kta-aide-section-titre">⬇️ Charger / Import</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">📥</span><span><strong>Importer</strong> — un seul bouton qui ouvre une modale à 2 cards : 📥 <strong>Session MyKTAMap</strong> (.json / .zip avec photos) ou 📤 <strong>GPX externe</strong> (TopoDroid, OsmAnd, Avenza, Strava, Garmin… nécessite calibrage GPS). Preview avant import, Ctrl+Z pour annuler.</span>
-            <span class="kta-aide-icone">📊</span><span><strong>Éditeur de données du plan</strong> — modifie les données (points, tracés, zones) sous forme de tableau</span>
+            <span class="kta-aide-icone">📊</span><span><strong>Éditeur de données du plan</strong> — modifie les données (points, tracés, zones) sous forme de tableau. Contient aussi <strong>🔗 Fusionner des calques de données</strong> (v1.69.0, arrivé de l'accueil).</span>
             <span class="kta-aide-icone">🗂️</span><span>Changer de plan (revenir au home)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
@@ -921,6 +923,8 @@ function _aideHtmlFr() {
           </p>
           <ul style="font-size:12px; color:#8892a4; margin:4px 0 0 18px; line-height:1.6;">
             <li><strong style="color:#a8b3c8;">▶️ Reprendre</strong> — relance le dernier plan ouvert en 1 clic.</li>
+            <li><strong style="color:#a8b3c8;">🔎 Barre de recherche</strong> (v1.69.0) — au centre de l'en-tête : cherche un point dans TOUS tes plans, Entrée ou 🔎 pour lancer.</li>
+            <li><strong style="color:#a8b3c8;">📔 Mon carnet</strong> (v1.69.0) — tuile de la carte 🧰 Outils : l'historique de tes sorties + tes notes et PDF de plan.</li>
             <li><strong style="color:#a8b3c8;">📅 Récents</strong> — les 5 derniers plans utilisés.</li>
             <li><strong style="color:#a8b3c8;">📂 Tous</strong> — l'ensemble de tes plans connus.</li>
             <li><strong style="color:#a8b3c8;">🌐</strong> = plan serveur · <strong style="color:#a8b3c8;">💾</strong> = plan ZIP local.</li>
@@ -1480,9 +1484,11 @@ function _aideHtmlFr() {
             Les sauts s'empilent — 3 portails enchaînés = 3 retours possibles.
             <strong>Discret au besoin</strong> (v1.61.0) : <strong>[–]</strong> le réduit en mini-pastille ↩️
             (clic = ré-agrandir), <strong>[✕]</strong> le ferme — le choix est retenu pour les prochains sauts.
-            <strong>🌐 Recherche multi-plans</strong> (v1.58.0) : cherche un point dans <strong>toute ta
-            bibliothèque</strong> depuis l'accueil (bouton 🌐) ou via la recherche Ctrl+K (bouton
-            « Chercher dans tous les plans ») — un clic charge le bon plan et te centre dessus.
+            <strong>🔎 Recherche multi-plans</strong> (v1.58.0) : cherche un point dans <strong>toute ta
+            bibliothèque</strong> depuis la <strong>barre de recherche en haut de l'accueil</strong>
+            (au centre de l'en-tête — c'était un bouton d'outil avant v1.69.0 ; valide avec Entrée ou 🔎)
+            ou via la recherche Ctrl+K (bouton « Chercher dans tous les plans »)
+            — un clic charge le bon plan et te centre dessus.
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>🌀 Mes liaisons</strong> (v1.59.0) : sur l'<strong>accueil</strong>, liste toutes tes liaisons
@@ -1509,6 +1515,45 @@ function _aideHtmlFr() {
             Supprimer un point supprime ses liaisons (des deux côtés). Les liaisons voyagent avec l'export de session.
             Si un filtre de tags masque le point d'arrivée, un avertissement s'affiche (le filtre n'est jamais modifié).
             Données d'un plan injoignables (hors-ligne) → l'app le signale au lieu d'un « 0 points » muet.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📔 Mon carnet — l'historique de tes sorties</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            La sauvegarde auto garde <strong>l'état courant</strong> d'un plan ; le carnet garde
+            <strong>l'histoire</strong>. Chaque exploration devient une <strong>sortie</strong> archivée :
+            date, durée réellement passée dans l'app, distance parcourue au tracker, points / tracés / zones
+            ajoutés, photos prises, tracé de ton déplacement, et une <strong>note libre</strong> que tu peux
+            écrire même des semaines plus tard. Effacer une session ne supprime pas les sorties déjà rangées.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Où :</strong> bouton <strong>📔 Mon carnet</strong> sur l'accueil (sans charger de plan) ·
+            depuis un plan : modale <strong>Session</strong> → section <strong>📔 Sortie en cours</strong>.
+            <strong>Quand :</strong> archivage <strong>automatique</strong> quand tu quittes le plan, ou
+            <strong>🏁 Clôturer ma sortie</strong> pour la ranger tout de suite — une nouvelle repart aussitôt.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🚶 Sortie terrain ou 🖥️ travail sur plan ?</strong> Le carnet fait la différence tout seul :
+            si le tracker a enregistré du déplacement, c'est une <strong>sortie</strong> ; si tu n'as fait
+            qu'annoter sans bouger, c'est du <strong>travail sur plan</strong>, rangé dans une section repliée
+            à part. Les <strong>totaux ne comptent que le terrain</strong>. Seuils d'archivage auto :
+            <strong>50 m</strong> parcourus pour une sortie · <strong>10 min de travail + 1 annotation</strong>
+            pour une séance sur plan (en dessous, rien n'est gardé). L'app s'est trompée — sortie faite tracker
+            éteint ? La fiche a un bouton pour <strong>corriger le classement</strong>, définitivement.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>📖 Onglet Récits</strong> : la note libre et le PDF du <strong>Mode Histoire</strong> étaient
+            enfermés dans l'écran plan — il fallait charger la carrière pour relire ses propres notes. Ils sont
+            désormais listés ici <strong>tous plans confondus</strong>, avec la note affichée en Markdown et
+            <strong>modifiable sur place</strong> (c'est la même note, pas une copie). Un PDF livré dans le ZIP
+            du plan reste consultable uniquement plan chargé.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
+            Le carnet démarre vide en v1.69.0 : les sorties d'avant n'ont jamais été enregistrées. Tout est
+            local (aucun envoi) ; chaque sortie est supprimable depuis sa fiche ; au-delà de 500 sorties les
+            plus anciennes partent. Les photos ne sont pas recopiées (le carnet pointe vers les tiennes — une
+            photo supprimée affiche 🚫). Le carnet n'est pas encore inclus dans l'export de profil.
           </p>
         </div>
   `;
@@ -1540,7 +1585,7 @@ function _aideHtmlEn() {
           </p>
           <ul style="font-size:13px; color:#c0c8d8; margin:0 0 8px 16px; padding:0; line-height:1.5;">
             <li><strong>📝 Free note</strong> — auto-saved <strong>Markdown</strong> notebook (headings, bold, lists, links, quotes). <strong>Preview</strong> mode to read / <strong>✏️ Edit</strong> to modify the source.</li>
-            <li><strong>📚 History</strong> — displays the PDF embedded by the map author, or lets you <strong>📥 import your own PDF</strong> (1 per map, replaceable). On iPhone: <strong>↗️ Open in a tab</strong> button for native full screen.</li>
+            <li><strong>📚 History</strong> — <strong>up to 10 PDF documents per map</strong> (v1.69.0: before, only one, and a new import overwrote the previous). List above the viewer, <strong>📥 Import</strong> adds, <strong>🗑️ Remove</strong> deletes the displayed document. The PDF shipped in the ZIP sits on top (📕, not deletable) and no longer blocks adding your own. Warning past 25 MB total, refusal past 100 MB. On iPhone: <strong>↗️ Open in a tab</strong> button for native full screen.</li>
           </ul>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
             Free note + PDF are <strong>automatically included in the session export</strong> (.mkmsession.zip) → everything travels with your session for sharing or transfer. 100% offline.
@@ -1648,7 +1693,7 @@ function _aideHtmlEn() {
           <div class="kta-aide-section-titre">⬇️ Load / Import</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">📥</span><span><strong>Import</strong> — a single button that opens a 2-card modal: 📥 <strong>MyKTAMap session</strong> (.json / .zip with photos) or 📤 <strong>External GPX</strong> (TopoDroid, OsmAnd, Avenza, Strava, Garmin… requires GPS calibration). Preview before import, Ctrl+Z to undo.</span>
-            <span class="kta-aide-icone">📊</span><span>Edit a JSON file as a table</span>
+            <span class="kta-aide-icone">📊</span><span><strong>Map data editor</strong> — edit the data (points, paths, zones) as a table. Also holds <strong>🔗 Merge data layers</strong> (v1.69.0, moved in from the home screen).</span>
             <span class="kta-aide-icone">🗂️</span><span>Switch map (back to home)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
@@ -1657,6 +1702,8 @@ function _aideHtmlEn() {
           </p>
           <ul style="font-size:12px; color:#8892a4; margin:4px 0 0 18px; line-height:1.6;">
             <li><strong style="color:#a8b3c8;">▶️ Resume</strong> — relaunches the last opened map in one click.</li>
+            <li><strong style="color:#a8b3c8;">🔎 Search bar</strong> (v1.69.0) — centered in the header: search a point across ALL your maps, Enter or 🔎 to run it.</li>
+            <li><strong style="color:#a8b3c8;">📔 My logbook</strong> (v1.69.0) — tile in the 🧰 Tools card: the history of your trips plus your map notes and PDFs.</li>
             <li><strong style="color:#a8b3c8;">📅 Recent</strong> — the last 5 maps used.</li>
             <li><strong style="color:#a8b3c8;">📂 All</strong> — all your known maps.</li>
             <li><strong style="color:#a8b3c8;">🌐</strong> = server map · <strong style="color:#a8b3c8;">💾</strong> = local ZIP map.</li>
@@ -2216,9 +2263,10 @@ function _aideHtmlEn() {
             from (level + zoom). Jumps stack — 3 chained portals = 3 possible returns.
             <strong>Discreet when needed</strong> (v1.61.0): <strong>[–]</strong> shrinks it to a ↩️ mini-chip
             (click = re-expand), <strong>[✕]</strong> closes it — your choice is remembered for future jumps.
-            <strong>🌐 Multi-plan search</strong> (v1.58.0): search a point across <strong>your whole
-            library</strong> from the home screen (🌐 button) or via the Ctrl+K search ("Search across
-            all plans" button) — one click loads the right plan and centers on it.
+            <strong>🔎 Multi-plan search</strong> (v1.58.0): search a point across <strong>your whole
+            library</strong> from the <strong>search bar at the top of the home screen</strong> (centered
+            in the header — it used to be a tool button before v1.69.0; confirm with Enter or 🔎) or via the Ctrl+K
+            search ("Search across all plans" button) — one click loads the right plan and centers on it.
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>🌀 My links</strong> (v1.59.0): on the <strong>home screen</strong>, lists all your links
@@ -2245,6 +2293,45 @@ function _aideHtmlEn() {
             Deleting a point also deletes its links (both sides). Links travel with the session export.
             If a tag filter hides the arrival point, a warning is shown (the filter is never modified).
             Plan data unreachable (offline) → the app says so instead of a silent "0 points".
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📔 My logbook — the history of your trips</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            Auto-save keeps the <strong>current state</strong> of a plan; the logbook keeps the
+            <strong>history</strong>. Every exploration becomes an archived <strong>trip</strong>: date,
+            time actually spent in the app, distance travelled with the tracker, points / paths / zones
+            added, photos taken, the path you walked, and a <strong>free-form note</strong> you can write
+            even weeks later. Clearing a session does not delete trips already filed.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Where:</strong> the <strong>📔 My logbook</strong> button on the home screen (no plan to
+            load) · from a plan: <strong>Session</strong> modal → <strong>📔 Trip in progress</strong>.
+            <strong>When:</strong> archived <strong>automatically</strong> when you leave the plan, or
+            <strong>🏁 Close my trip</strong> to file it right away — a new one starts immediately.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🚶 Field trip or 🖥️ desk work?</strong> The logbook tells them apart on its own: if the
+            tracker recorded movement it is a <strong>trip</strong>; if you only annotated without moving it is
+            <strong>desk work</strong>, filed in a collapsed section of its own. <strong>Totals count field
+            trips only</strong>. Auto-archiving thresholds: <strong>50 m</strong> travelled for a trip ·
+            <strong>10 min of work + 1 annotation</strong> for a desk session (below that, nothing is kept).
+            Got it wrong — a trip made with the tracker off? The sheet has a button to
+            <strong>fix the classification</strong>, for good.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>📖 Stories tab</strong>: the free note and the PDF of <strong>Story mode</strong> were locked
+            inside a plan's screen — you had to load the quarry to re-read your own notes. They are now listed
+            here <strong>across all plans</strong>, with the note rendered as Markdown and
+            <strong>editable right there</strong> (same note, not a copy). A PDF shipped inside the plan's ZIP
+            still requires the plan to be loaded.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
+            The logbook starts empty in v1.69.0: earlier trips were never recorded. Everything stays local
+            (nothing is uploaded); each trip can be deleted from its sheet; beyond 500 trips the oldest ones
+            are removed. Photos are not copied (the logbook points at yours — a deleted photo shows 🚫).
+            The logbook is not part of the profile export yet.
           </p>
         </div>
   `;

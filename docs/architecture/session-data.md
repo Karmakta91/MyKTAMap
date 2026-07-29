@@ -1157,3 +1157,122 @@ CSS : `.kta-secours-imported-chip` (badge bleu clair + variants thème clair). T
 **Race du plan switch** (KARMA « au chargement je suis sur la position initiale ») : le poller d'auto-save (1.5 s) restait actif sur l'ANCIEN plan pendant le switch — le teardown (`main.js > _libererRessourcesPlanPrecedent`) vide la timeline tracker en RAM (`resetTrackingTimeline`), un tick pendant le chargement (plusieurs secondes) sauvegardait l'état MUTILÉ : timeline vide écrasée, voire slot PURGÉ (`_isEmptyState → removeItem`) pour une session tracker-seule. **Fix : `SessionPersist.onPlanUnload()`** appelé EN PREMIER dans le teardown — save final forcé (état intact) + `_stopPolling()` + `_currentPlanId = null` (neutralise aussi les filets `beforeunload`/`visibilitychange` pendant la fenêtre). Le polling redémarre au `onPlanLoaded` du nouveau plan. ⚠️ Tout NOUVEAU reset ajouté au teardown doit rester APRÈS l'appel `onPlanUnload`.
 
 **« Effacer la session » vs tracker** : `_viderEtatCourant` (chemin 🗑️ de la modale de restauration) est antérieur à la persistance timeline (v1.21/1.28) et ne vidait jamais le tracker → la timeline restaurée + le tracé visible + le marker survivaient au refus. **Fix : `resetTrackingPosition()`** ajouté au vidage. Bonus : une session TRACKER-SEULE compte désormais dans le total de la modale de restauration (sinon pas de modale = pas de refus possible) — ligne « 🧭 tracé du tracker » (`session.unit.tracker`).
+
+---
+
+## 📔 Le Carnet — archive des sorties (v1.69.0)
+
+> Décisions KARMA (topo 28/07/2026 — **1:c 2:b 3:a**) : archivage **hybride** (auto au teardown + bouton manuel + note éditable après coup) · contenu = **métadonnées + refs photos + tracé décimé** · **lot 1 seul** (socle + timeline HOME + fiche ; agrégation Mode Histoire / galerie transverse / export PDF = lots 2-3).
+
+**Pourquoi** : avant v1.69.0, rien ne datait ni n'empilait une sortie. `sessionPersist` = état live écrasé par plan, `sessionBackups` = 10 rotations FIFO (destructif au-delà), timeline tracker per-plan, Mode Histoire enfermé dans l'écran plan. Impossible de répondre à « qu'est-ce que j'ai fait le 12 juillet ? ». Le Carnet est la couche **append-only** manquante : effacer une session ne détruit pas la sortie déjà archivée.
+
+**Modules** : `js/journal.js` (socle, sans DOM) + `js/journalUi.js` (modale carnet + fiche). Séparation volontaire — le socle doit rester appelable sans UI, et on évite un nouveau monolithe.
+
+**Storage** : IDB `myktamap_journal` v1, store `sorties` (keyPath `id`, index `by_start`). Une entrée ≈ 2-8 Ko :
+
+```json
+{ "id": "srt_<ts36>_<rand>", "schema": 1, "status": "close", "closedBy": "auto|manual",
+  "type": "terrain|bureau", "typeManuel": false,
+  "planId": "local_gm1_v2", "planName": "GM1",
+  "startedAt": "2026-07-28T18:02:00.000Z", "startedAtMs": 1785000000000, "endedAt": "…",
+  "activeMs": 5400000, "wallMs": 7200000, "distM": 3120, "steps": 480, "levels": [0, -1],
+  "ajouts": { "points": 14, "roads": 2, "zones": 0, "structures": 0, "photos": 8 },
+  "photoIds": ["ph_…"], "track": [{ "x": 4843, "y": 2002, "t": 1785000012000 }],
+  "note": "", "appVersion": "v1.69.0" }
+```
+
+**Cycle de vie** (2 hooks dans `main.js`, ordre CRITIQUE) :
+- `Journal.onPlanLoaded(planId, planName)` — **APRÈS** `SessionPersist.onPlanLoaded` : la baseline des compteurs doit inclure la session restaurée, sinon tout le contenu déjà présent serait compté comme « ajouté aujourd'hui ».
+- `Journal.onPlanUnload()` — dans `_libererRessourcesPlanPrecedent`, **juste après** `SessionPersist.onPlanUnload` et **avant** le teardown : plus bas, `resetTrackingTimeline()` vide la timeline → tracé et distance de la sortie seraient perdus. Le record est snapshoté de façon **synchrone** ; seule l'écriture IDB est async.
+- Flush IDB toutes les **30 s** + à chaque `visibilitychange → hidden` / `pagehide` (mobile tué sans préavis). Le record « en cours » est donc récupérable après un kill.
+
+**Temps actif** : même règle que le compteur global du profil (`homeProfile > _flushTotalTime`) — pas de comptage onglet caché, deltas > 5 min ignorés (veille). `activeMs` ≠ `wallMs`, les deux sont stockés.
+
+### 🚶 terrain vs 🖥️ bureau (retour KARMA 29/07/2026 — reco 1:a 2:a 3:a)
+
+**Le lot 1 confondait deux natures de session** : une soirée de dessin à la maison atterrissait dans le carnet à côté d'une vraie sortie — et le seuil « ≥ 1 ajout » le *garantissait*. Correction :
+
+- **Classement AUTO sur le seul signal fiable, le déplacement tracker** (`distM > 0 || steps > 0`) → `type: "terrain"`, sinon `"bureau"`. Ni la durée ni le nombre d'ajouts ne discriminent (on peut passer 3 h à dessiner assis, comme parcourir 2 km sans rien annoter).
+- Ré-évalué **à chaque snapshot** : une session démarre toujours `bureau` et bascule `terrain` au premier pas. L'inverse n'arrive jamais (le déplacement ne se dé-parcourt pas) → pas d'oscillation.
+- **Correction manuelle** possible sur la fiche (`Journal.setType`) → pose `typeManuel: true`, et le record n'est **plus jamais** reclassé automatiquement (cas d'usage : sortie faite tracker éteint).
+- **Totaux du carnet = terrain UNIQUEMENT** (`stats()` renvoie `bureau`/`bureauMs` à part). Mélanger du temps de dessin à des heures passées sous terre rendrait le chiffre faux.
+- **UI** : liste scindée — sorties terrain en premier, section **repliée** « 🖥️ Travail sur plan (N) » en dessous. La modale Session de l'écran plan annonce la nature **en direct**, sinon l'user découvrirait le classement après coup.
+
+**Seuils d'archivage AUTO**, distincts par nature (la clôture **manuelle** garde toujours, puis **rouvre immédiatement** une sortie sur le même plan) :
+
+| Nature | Gardée si |
+|---|---|
+| 🚶 terrain | ≥ **50 m** parcourus |
+| 🖥️ bureau | ≥ **10 min** actives **ET** ≥ 1 ajout |
+
+⚠️ Le critère « ≥ 1 ajout » du lot 1 a été **supprimé** — c'était lui le coupable. En dessous des seuils, la session est **jetée** (`remove(id)` — y compris l'éventuel flush « en cours » déjà écrit, sinon un fantôme resterait au carnet).
+
+**Deltas** : `ajouts` = compteurs courants − baseline, clampés à 0 (une suppression nette n'affiche pas un ajout négatif). La distance se **ré-ancre** si elle recule (session effacée / tracker reset) — sans ça le delta partirait négatif pour le reste de la sortie.
+
+**Photos** : hook `Journal.onPhotoAdded` posé dans `photos.js > addPhoto` (succès) et **PAS** dans `restorePhoto` — réimporter une session ne doit pas gonfler le compteur de la sortie en cours. Le carnet ne stocke que des **refs** : une photo supprimée de l'app affiche une vignette « 🚫 photo supprimée », pas une erreur.
+
+### 📖 Onglet Récits — Mode Histoire remonté au HOME (v1.69.0, demande KARMA 29/07)
+
+La note libre et le PDF d'un plan étaient **enfermés dans l'écran plan** : il fallait charger le plan pour relire ses propres notes. Le carnet les expose tous, sans charger quoi que ce soit — modale carnet, 2e onglet.
+
+- **Sources lues directement** : `localStorage["myktamap_note_libre_<planId>"]` (balayage du préfixe) + IDB `myktamap_histoire_pdfs` / store `pdfs` (keyPath `planId`). Le nom du plan est résolu via `PlanRegistry`, sinon via les sorties du carnet (un plan supprimé du registre garde son nom), sinon l'id brut. `planId = "default"` = notes prises hors plan.
+- **Édition sur place** : la fiche récit écrit **exactement la même clé** que `modeHistoire.js` — aucune copie divergente. Rendu Markdown via `window.kta_renderMd`.
+- **PDF** : seulement les documents **importés** (IDB). Le PDF **embarqué** dans le ZIP (`plan-config.json > plan.histoirePdf`) n'est pas listable ici — son chemin runtime exige le plan chargé.
+- **Ajout / suppression depuis le carnet** (décision 3:a) : même schéma IDB que `modeHistoire.js`. Si la base est encore en **v1** (l'user n'a pas rouvert le Mode Histoire depuis la mise à jour), l'ajout est **refusé** avec un message qui renvoie vers le Mode Histoire — y écrire créerait une clé `planId` en doublon qui écraserait le PDF existant.
+- **Perf** : l'onglet n'est scanné qu'à sa première ouverture ; la liste utilise `getAllKeys()` (charger `getAll()` mettrait tous les PDF en RAM pour afficher une pastille), le blob n'est lu qu'au clic sur « Ouvrir le PDF ». L'`<iframe>` est vidée avant `remove()` (bitmap PDF épinglée sur WebKit — même leçon que `modeHistoire.js > close()`).
+
+⚠️ **Piège IDB** : `indexedDB.open(nom)` **sans version crée** une base vide si elle n'existe pas. Le Mode Histoire ferait ensuite `open(nom, 1)` sans `onupgradeneeded` → store `pdfs` absent → plantage. `_histOpen()` détecte la création et **supprime** la base aussitôt. Ne jamais simplifier ce garde-fou.
+
+**Points d'entrée** : bouton HOME `📔 Mon carnet` (hors accordéon 🧰 Outils — usage régulier, pas outil ponctuel) · écran plan → modale Session → section `📔 Sortie en cours` (`🏁 Clôturer ma sortie` + `📔 Ouvrir mon carnet`).
+
+**Garde-fous** : purge FIFO au-delà de **500 sorties** · tracé décimé à **1500 points** (premier/dernier conservés) · carnet désactivable (`localStorage > myktamap_journal_enabled = "0"`) · DB déclarée dans `memInspector.KNOWN_IDB_DBS` et dans le calcul « Stockage » du profil (`homeProfile._IDB_STORES`), sinon l'espace occupé serait invisible.
+
+**À NE PAS faire** :
+- ❌ Déplacer `Journal.onPlanLoaded` **avant** la restauration de session (baseline faussée) ni `onPlanUnload` **après** un reset du tracker (tracé perdu).
+- ❌ Réintroduire « ≥ 1 ajout » comme seuil d'archivage terrain/global, ni compter le bureau dans les totaux — c'est exactement ce qui rendait le carnet illisible.
+- ❌ Recalculer le `type` d'un record `typeManuel: true`.
+- ❌ Copier les blobs photo dans le carnet (duplication du quota IDB — le choix 2:b est **refs only**).
+- ❌ Compter les photos de `restorePhoto` comme photos de la sortie.
+- ❌ Considérer le carnet comme une sauvegarde : il n'archive ni les points ni les tracés eux-mêmes (rôle de `sessionBackups` / de l'export session).
+
+**Limite assumée** : aucun remplissage rétroactif — le carnet démarre vide en v1.69.0, il n'existait pas de « sortie » avant.
+
+**Dette connue (lot 2-3)** : le carnet n'est **pas** inclus dans l'export/import de profil (`profileExportImport.js`) — un profil réimporté sur un autre appareil arrive sans son carnet.
+
+---
+
+## 📄 Mode Histoire — documents PDF multiples (v1.69.0)
+
+> Question KARMA 29/07/2026 (« peut-on mettre plusieurs PDF ? ») → reco **1:a 2:a 3:a**. Avant : **un seul** PDF importé par plan (`keyPath: "planId"`), un nouvel import écrasait le précédent ; et le PDF **embarqué** dans le ZIP **masquait la toolbar**, donc sur ces plans-là l'utilisateur ne pouvait rien joindre du tout.
+
+**Schéma IDB `myktamap_histoire_pdfs` — v1 → v2** :
+
+| | v1 (≤ v1.68.1) | v2 (v1.69.0) |
+|---|---|---|
+| keyPath | `planId` | `id` (`doc_<ts36>_<rand>`) |
+| index | — | `by_plan` sur `planId` |
+| documents | 1 par plan | N par plan |
+
+**Migration** : le keyPath d'un store ne se change pas. `onupgradeneeded` lit les anciens enregistrements au curseur, `deleteObjectStore`, recrée le store en v2 + index, puis re-`put` chaque ancien PDF avec un id neuf — **dans la même transaction `versionchange`**. Chaque PDF déjà importé devient le document n°1 de son plan, aucun n'est perdu.
+
+**Garde-fous** (il n'y en avait aucun) : `MAX_DOCS_PAR_PLAN = 10` (refus), avertissement au-delà de **25 Mo** cumulés, refus au-delà de **100 Mo**. Contrôle **avant** écriture (`_verifierQuota`).
+
+**UI** : le PDF embarqué devient une **entrée de liste** (`EMBED_ID = "__embed__"`, 📕, non supprimable) au lieu de tout masquer. Liste affichée seulement à partir de 2 documents. Une seule blob URL vivante à la fois (`_urlDeDoc` révoque la précédente — fuite bitmap iOS), et l'`<iframe>` est vidée avant retrait.
+
+**Propagation obligatoire — 3 consommateurs hors module** (tous corrigés, à ne pas oublier si le schéma rebouge) :
+1. `sessionExporter.js > _lirePdfsHistoireSession` — ouvrait la base **figée sur `open(nom, 1)`** : avec la base en v2, ça lève une `VersionError` et le PDF **disparaissait silencieusement des exports**. Ouvre désormais **sans version**, lit via l'index (et retombe sur `get(planId)` si la base est restée en v1). Exporte **tous** les documents, noms **dédoublonnés** (deux homonymes s'écraseraient dans le dossier ZIP).
+2. `interfaceImportExport.js` — lit `historeSessionPdfs` (tableau) avec repli sur `historeSessionPdf` (ancien champ unique, conservé à l'export pour rétrocompat).
+3. `modeHistoire.js > importSessionData(note, docs)` — **ajoute** au lieu d'écraser (réimporter une session ne détruit plus le document en place) ; l'ancienne signature `(note, blob, name)` reste acceptée.
+
+**Inventaire de stockage** : la base est ENFIN déclarée dans `memInspector.KNOWN_IDB_DBS` et `homeProfile._IDB_STORES` — elle en était absente depuis v1.34.20, donc un PDF de 40 Mo ne comptait nulle part dans « Stockage ».
+
+**🖥️ Grand écran (≥ 1024 px, retour KARMA 29/07)** — tout en CSS, mobile strictement inchangé (même seuil que la modale ⚙️ Réglages) :
+- modale carnet 640 → **900 px**, liste 62vh ; fiche de sortie 560 → **760 px** (mini-tracé 220 px, vignettes 84 px) ;
+- fiche récit 560 → **820 px** ; et **avec un PDF ouvert** : `95vw` × `92vh` en **2 colonnes** (note + documents à gauche ~30 %, visionneuse à droite pleine hauteur). La classe `kta-jrn-recit-avecpdf` est posée/retirée en JS à l'ouverture/suppression du PDF — une note seule dans une modale géante se lirait mal ;
+- les colonnes sont en `flex: 1` + `min-height: 0`, **pas** une hauteur calculée avec la taille du header : celle-ci n'est pas une constante (titre long, zoom 125 %) ;
+- modale Mode Histoire 900 → **1400 px** / 92vh (c'est la surface de lecture principale des PDF).
+
+**À NE PAS faire** :
+- ❌ Rouvrir la base avec un numéro de version figé (`open(nom, 1)`) — c'est le bug n°1 ci-dessus, silencieux.
+- ❌ Écrire dans le store depuis un module tiers sans vérifier la présence de l'index `by_plan` (base encore en v1 → clé `planId` → écrasement).
+- ❌ Réintroduire « l'embarqué masque l'import ».

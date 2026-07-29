@@ -1685,3 +1685,84 @@ Ajout d'un 2ᵉ groupe à `profileAchievements.js` : `SPECIALS` (6 succès uniqu
 - **CSS** (`style.css`, bloc « HOME MOBILE ») : hero Reprendre, dropzone compacte, accordéon Outils (`.loader-secondary-actions` masqué sauf `.kta-open`), liste bornée (`#allPlansList.kta-collapsed > .plan-row:nth-of-type(n+6)`), cibles 44 px, header une-ligne (chips 36 px, `.loader-titre-tagline{display:none}`, wrap+ellipse en filet).
 - **JS** (`homeLoader.js`) : `_ktaMobileCollapsePlans()` — rappelée à CHAQUE `refreshPlansList`, idempotente, masquage par classe CSS (les listeners des lignes cachées restent branchés) ; accordéon injecté une fois au boot (`#kta-home-tools-toggle`).
 - ⚠️ Pièges : ① le lockup titre fait ~186 px à 375 px À CAUSE de la tagline — toute nouvelle chip dans `.loader-header-actions` doit re-vérifier le bilan largeur (327 px dispo) ; ② `.loader-header-actions` a `flex-shrink:0` en base — ne jamais y compter pour absorber un dépassement ; ③ ne pas re-render la liste au dépliage (masquage CSS uniquement).
+
+## 🧹 Allègement du HOME (v1.69.0 — demande KARMA « moins d'icônes »)
+
+3 icônes retirées de l'accueil, **aucune fonctionnalité supprimée** — chacune a rejoint l'endroit où on la cherche naturellement :
+
+| Avant (bouton d'accueil) | Après |
+|---|---|
+| 🌐 Recherche multi-plans | **Barre de recherche** `#loaderSearchBar`, entre « ▶️ Reprendre » et la liste des plans |
+| 🔗 Fusionner des datalayers | **4e source de l'Éditeur de données** (`tableEditor.js > #kta-tbl-src-fusion`) |
+| 📔 Mon carnet (isolé au-dessus des outils) | Dans la **liste des outils** `.loader-secondary-actions` |
+
+Liste d'outils : **5 → 4** entrées (Carnet · Éditeur de données · Mes liaisons · Générer un plan).
+
+> ⚠️ **OBSOLÈTE depuis HOME v2 (même jour)** — conservé comme historique : la barre a fini dans le HEADER, cf. § HOME v2 ci-dessous.
+
+**⚠️ Placement — piège vécu (bug KARMA 29/07, capture)** : la barre vit dans `.kta-loader-top-row`, après `#resumeBox`. Ce wrapper est **`display: contents` sur mobile** (empilement naturel profil → Reprendre → recherche) mais une **GRILLE `2fr 3fr 2fr` sur PC** (alignée sur `.loader-grid` du dessous, v1.40.49). Ajoutée sans placement explicite, elle est partie en **ligne 2** de la grille → barre orpheline sous le profil, énorme vide à droite ; mobile ne montrait rien.
+
+**Sur PC** (itéré 3 fois avec KARMA — état final) : le top-row garde le **même `grid-template-columns` que la grille du dessous** (« Reprendre » reste donc aligné sur la colonne « Ajouter un plan », décision v1.40.49), mais on **arrête de faire correspondre le profil à la colonne « Mes plans »** : après l'élargissement de la Vue OSM, la col 1 ne fait plus que 322 px et le bandeau profil y était étranglé.
+
+- **profil** : `grid-column: 1 / span 2` + `justify-self: start` + **plafond de largeur** par palier (320 / 420 / 460 / 560 / 640 px) ;
+- **barre de recherche** : **même bande** `1 / span 2` + `margin-left` = *plafond du profil + gouttière du palier* → sa **zone** va du bord du profil au bord droit de la colonne « Vue OSM » du dessous. Dans cette zone, le champ est **centré** (`justify-content: center` + `flex: 0 1 560px` sur l'input) : largeur confort plafonnée à ~610 px (champ + bouton), trous symétriques de part et d'autre, rétrécit si la zone est plus courte. (Étapes intermédiaires abandonnées : `justify-self: end` + plafond → trou de 258 px d'un seul côté ; étirement bord à bord → champ démesuré et déporté à droite.)
+- Largeur de la zone par palier : **297 / 484 / 440 / 594 / 670 px**.
+- ⚠️ **Invariant** : `margin-left` de la barre **=** `max-width` du profil **+** `gap` du palier. Modifier un plafond de profil sans recaler le `margin-left` recrée un trou (ou fait déborder la barre hors de la colonne OSM).
+- **`text-align: center`** sur `#resumeBtn` en PC : la règle de base est `text-align: left`, donc le libellé « ▶️ Reprendre <plan> » restait collé à gauche d'un bouton pleine largeur (mobile inchangé — le hero pleine largeur reste à gauche, lisible au pouce). `#resumeBox` garde la col 3. La barre est centrée verticalement (`align-items: center`) entre deux blocs pleine hauteur — un champ de saisie de 78 px de haut se lirait comme un bug.
+
+⚠️ **`grid-row: 1` est OBLIGATOIRE sur les 3 enfants** (2e bug d'alignement du 29/07) : `#resumeBox` (col 3) est placé **avant** la barre dans le DOM — pour garder l'ordre mobile profil → Reprendre → recherche —, l'auto-placement avance donc le curseur au-delà de la col 3, et un item suivant en `grid-column: 2` **sans ligne explicite tombe en ligne 2** (cellule vide en haut, barre décalée dessous). Colonne explicite ≠ ligne explicite. Si la bibliothèque est vide, la barre est masquée et le profil **reprend les 2 colonnes** (`:not(:has(#loaderSearchBar[style*="flex"]))` — `:has()` non supporté = règle ignorée, le profil reste en col 1, dégradation acceptable).
+
+⚠️ **Ne jamais ajouter d'enfant à `.kta-loader-top-row` sans lui donner une `grid-column` explicite ET vérifier le rendu ≥ 1024 px.**
+
+**Barre de recherche** — la recherche ne part **qu'à la validation** (Entrée ou bouton 🔎), jamais à la frappe : le scan lit les points de chaque plan (session + datalayers, fetch/ZIP), une modale qui s'ouvre sous les doigts serait hostile. La saisie est transmise à `CrossPlanSearch.ouvrir(q)` puis **vidée** (la modale la porte). La barre est masquée quand la bibliothèque est vide (`refreshPlansList`, même règle que `#myPlansBox`).
+
+**i18n** : nouveau support générique **`data-i18n-placeholder`** dans `main.js > _applyI18nDom` (à côté de `data-i18n`, `-html`, `-title`). Sans lui, le placeholder aurait dû être posé à la main en JS, hors du cycle de re-traduction au changement de langue. Les libellés `home.add.crossSearch` et `home.add.fusion` sont retirés des 3 dicos (⚠️ `sessionExporter` réutilisait `home.add.fusion` comme titre de modale en mode solo → repointé sur `tabledit.source.fusion`).
+
+**Mobile** : le carnet étant désormais dans `.loader-secondary-actions`, il est replié dans l'accordéon 🧰 Outils ≤ 640 px (comportement voulu). La barre de recherche, elle, reste toujours visible — c'est un geste fréquent.
+
+## 🌍 Vue OSM plus grande sur grand écran — **OBSOLÈTE depuis HOME v2** (système de paliers supprimé, cf. § HOME v2)
+
+### (historique) 🌍 Vue OSM plus grande sur grand écran (v1.69.0 — demande KARMA)
+
+« Réduire la largeur de la liste de plans et de la colonne de droite pour afficher l'OSM en plus grand, **PC uniquement** ». Le gain est **progressif** : la carte récupère de la place à la fois sur les colonnes latérales **et** sur les gouttières (56 px puis 72 px, c'était du luxe).
+
+| Palier | `grid-template-columns` | gap | Plans / OSM / Actions (largeur réelle) |
+|---|---|---|---|
+| 1024–1279 | `2fr 3fr 2fr` *(inchangé)* | 24 px | 247 / 370 / 247 (à 1024) |
+| 1280–1439 | `1.8fr 3.6fr 1.8fr` | 24 px | 302 / 603 / 302 (à 1366) |
+| 1440–1599 | idem | 56 px | 300 / 600 / 300 |
+| 1600–1919 | `1.6fr 4.2fr 1.6fr` | 40 px | 318 / 835 / 318 (à 1680) |
+| ≥ 1920 | `1.5fr 4.6fr 1.5fr` | 48 px | 322 / **988** / 322 |
+
+À 1920 px la carte passe de **679 → 988 px** (+45 %). Hauteur mini de la carte relevée en parallèle : 280 → 340 → 420 → **500 px**.
+
+**Le palier 1024 est volontairement INTACT** : sur un petit portable, rétrécir les colonnes latérales aurait rendu la liste de plans illisible **et fait perdre de la largeur à la carte** (les gouttières mangent proportionnellement tout l'espace récupéré).
+
+⚠️ **Deux invariants** :
+1. `.loader-grid` et `.kta-loader-top-row` doivent **toujours** partager `grid-template-columns` **ET** `gap` — c'est ce qui aligne profil / recherche / Reprendre sur plans / OSM / actions. Un écart préexistant a été corrigé au passage (`.loader-grid` passait à 56 px dès 1440 px alors que le top-row restait à 24 px ; invisible parce que `#resumeBox` était centré par `max-width: 900px; margin: auto`).
+2. Sans opt-in OSM, la colonne du milieu est masquée et la grille repasse à 2 colonnes (`.kta-no-osm`) : la règle `grid-template-columns: 3fr 2fr !important` est réaffirmée au-delà de 1280 px, sinon on déclarerait 3 colonnes pour 2 enfants → colonne fantôme.
+
+
+## 🏠 HOME v2 — refonte graphique (v1.69.0, décisions KARMA 1:a 2:b 3:a)
+
+> Maquette validée (`scratchpad/mockup_home_v2.html`). **Aucune fonction retirée, aucun ID changé** — seuls les wrappers, le CSS et 1 injection JS ont bougé. Remplace : la grille jumelle top-row, le système de paliers OSM, l'accordéon Outils mobile.
+
+**Les 4 causes racines corrigées** (elles avaient produit 4 bugs d'alignement en 1 journée) :
+
+| Cause | Avant | v2 |
+|---|---|---|
+| Tout en ratios `fr` | `2fr 3fr 2fr` + 3 paliers de correction | **Rails FIXES** : `300px minmax(0,1fr) 300px` — l'OSM absorbe tout le reste (~1230 px à 1920), zéro palier |
+| Grille jumelle à synchroniser | `.kta-loader-top-row` clonait colonnes+gap de `.loader-grid` | Top-row = **flex space-between** (profil · Reprendre), plus rien à synchroniser |
+| La recherche sans place naturelle | 3 itérations de `margin-left` | **Dans le header**, pilule centrée `min(560px,100%)` entre logo et chips (pattern app bar). Mobile : header en wrap, barre en 2e ligne pleine largeur |
+| Bande du haut sans hiérarchie | profil/Reprendre/recherche mélangés | header = navigation · bande = identité + action n°1 · corps = contenu |
+
+**Habillage** : chaque `.loader-col` est une **card** (fond `rgba(22,27,43,.72)`, bordure `rgba(140,180,255,.12)`, rayon 12, pas 16 px) + variante thème clair. Section heads unifiés. `min-height` OSM : `clamp(300px, 52vh, 660px)`.
+
+**Outils** : grille **2×2** (`.loader-secondary-actions`), tuiles 58 px centrées, Carnet garde son liseré doré. **L'accordéon mobile du lot A est SUPPRIMÉ** (JS d'injection retiré de `homeLoader.js`, CSS `display:none` ≤ 640 px retiré — l'oublier aurait rendu les outils invisibles sur mobile). Clé i18n `home.mobile.tools` supprimée, `home.tools.title` ajoutée (titre de section statique).
+
+**`.kta-no-osm`** (pas d'opt-in OSM) : `minmax(0,1fr) 300px` — la liste des plans devient la zone fluide.
+
+**À NE PAS faire** :
+- ❌ Réintroduire des ratios `fr` ou des paliers de correction sur `.loader-grid` — les rails fixes sont LE fix.
+- ❌ Redonner une grille à `.kta-loader-top-row`.
+- ❌ Sortir la recherche du header pour la remettre dans une colonne.

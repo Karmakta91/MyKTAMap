@@ -1,7 +1,8 @@
 {
-  "version": "v1.68.1",
-  "released": "2026-07-27",
+  "version": "v1.69.0",
+  "released": "2026-07-29",
   "notes": [
-    "🔤 Fini les libellés bizarres en anglais qui pouvaient apparaître au démarrage (infobulles du haut de l'écran, liste des plans, description du mode performance) : tout s'affiche désormais dans votre langue dès le premier écran."
+    "📔 Nouveau : Mon carnet. Chaque sortie sur un plan est archivée toute seule (date, durée, distance parcourue, points et photos ajoutés) et se retrouve depuis l'accueil, tous plans confondus — avec vos notes et vos PDF de plan, désormais consultables sans charger le plan (et jusqu'à 10 PDF par plan au lieu d'un seul).",
+    "🏠 Nouvel écran d'accueil : recherche en haut au centre, carte OSM bien plus grande sur PC, tout est rangé en cartes claires — chaque bouton est toujours là, juste à sa place."
   ]
 }

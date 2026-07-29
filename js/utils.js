@@ -144,6 +144,35 @@ function formatDistance(distM, decimalsM) {
 window.formatDistance = formatDistance;
 
 // =========================
+// 🗺️ UN PLAN EST-IL AFFICHÉ ? (source de vérité unique — depuis v1.69.0)
+// =========================
+// 🐛 Bug KARMA 29/07/2026 : la recherche multi-plans ouverte depuis le HOME
+// affichait la case « Itinéraire via plusieurs plans » et les boutons 🧭 —
+// des notions qui n'existent QUE plan chargé (l'itinéraire part de la position
+// tracker sur le plan courant).
+//
+// Cause : le marqueur utilisé partout était `!!(PLAN_CONFIG && PLAN_CONFIG.plan)`,
+// or `afficherLoader()` (retour à l'accueil) NE REMET PAS `PLAN_CONFIG` à null —
+// il masque `#map` et pose `body.kta-loader-active`. Après avoir ouvert un plan
+// une fois, le marqueur restait donc VRAI pour le reste de la session, même au
+// HOME. Mêmes faux positifs sur les confirmations « changer de plan ? » et sur
+// le chemin court « déjà sur ce plan » de `InterPlanLinks.goTo`.
+//
+// Marqueur fiable : la classe `kta-loader-active` est posée par afficherLoader()
+// et retirée par le masquage du loader (homeLoader) — strictement symétrique.
+// On garde le test PLAN_CONFIG en complément (boot initial : la classe peut ne
+// pas encore être posée alors qu'aucun plan n'est chargé).
+function ktaPlanAffiche() {
+  try {
+    if (document.body && document.body.classList.contains("kta-loader-active")) return false;
+    return !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan);
+  } catch(e) {
+    return !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan);
+  }
+}
+window.ktaPlanAffiche = ktaPlanAffiche;
+
+// =========================
 // FORMATAGE D'UNE SURFACE (m² ↔ ha) — depuis v1.11.2 (V2.2)
 // =========================
 // Reçoit une surface en m² et retourne une string formatée :

@@ -530,21 +530,32 @@ function ouvrirImportSession() {
         // (ex. "mode-histoire/histoire.pdf"). On stocke le blob en pending
         // pour restauration au moment du clic Valider. Si le fichier référencé
         // est absent dans le ZIP → log warn, on ignore (pas d'erreur fatale).
+        // 📄 v1.69.0 — le Mode Histoire accepte N documents : on lit d'abord
+        // `historeSessionPdfs` (tableau), et on retombe sur l'ancien champ
+        // unique `historeSessionPdf` pour les sessions exportées avant.
         _pendingHistoirePdfToRestore = null;
-        if (data && data.historeSessionPdf && data.historeSessionPdf.file) {
-          const histFile = zip.file(data.historeSessionPdf.file);
-          if (histFile) {
-            // On schedule l'extraction blob en parallèle des photos.
-            // (Géré comme une Promise dans le pipeline ci-dessous.)
-            data._pendingHistPromise = histFile.async("blob").then(function(blob) {
-              _pendingHistoirePdfToRestore = {
-                blob: blob,
-                name: data.historeSessionPdf.name || "histoire.pdf"
-              };
+        const _refsPdf = (data && Array.isArray(data.historeSessionPdfs) && data.historeSessionPdfs.length)
+          ? data.historeSessionPdfs
+          : ((data && data.historeSessionPdf && data.historeSessionPdf.file) ? [data.historeSessionPdf] : []);
+        if (_refsPdf.length > 0) {
+          const _lus = [];
+          const _proms = [];
+          _refsPdf.forEach(function(ref) {
+            if (!ref || !ref.file) return;
+            const histFile = zip.file(ref.file);
+            if (!histFile) {
+              console.warn("[Import session ZIP] PDF Histoire référencé mais absent :", ref.file);
+              return;
+            }
+            _proms.push(histFile.async("blob").then(function(blob) {
+              _lus.push({ blob: blob, name: ref.name || "histoire.pdf" });
+            }));
+          });
+          if (_proms.length > 0) {
+            // On schedule l'extraction des blobs en parallèle des photos.
+            data._pendingHistPromise = Promise.all(_proms).then(function() {
+              if (_lus.length > 0) _pendingHistoirePdfToRestore = _lus;
             });
-          } else {
-            console.warn("[Import session ZIP] PDF Histoire référencé mais absent :",
-                         data.historeSessionPdf.file);
           }
         }
 
@@ -787,15 +798,19 @@ function ouvrirImportSession() {
         //   centraliser la logique IDB et garantir la cohérence du schéma.
         // Rétrocompat : si dataParsee.noteLibre et historeSessionPdf absents
         // (anciens exports), on ne touche RIEN — la note du plan courant reste.
+        // 📄 v1.69.0 : `_pendingHistoirePdfToRestore` est désormais un TABLEAU
+        // de documents (il pouvait être un objet unique avant — géré ici pour
+        // ne pas dépendre de l'ordre des mises à jour).
         const _noteToImport = (typeof dataParsee.noteLibre === "string") ? dataParsee.noteLibre : null;
-        const _pdfBlob = _pendingHistoirePdfToRestore && _pendingHistoirePdfToRestore.blob || null;
-        const _pdfName = _pendingHistoirePdfToRestore && _pendingHistoirePdfToRestore.name || null;
-        if ((_noteToImport && _noteToImport.length > 0) || _pdfBlob) {
+        const _docs = Array.isArray(_pendingHistoirePdfToRestore)
+          ? _pendingHistoirePdfToRestore
+          : (_pendingHistoirePdfToRestore ? [_pendingHistoirePdfToRestore] : []);
+        if ((_noteToImport && _noteToImport.length > 0) || _docs.length > 0) {
           if (window.ModeHistoire && typeof window.ModeHistoire.importSessionData === "function") {
-            window.ModeHistoire.importSessionData(_noteToImport, _pdfBlob, _pdfName)
+            window.ModeHistoire.importSessionData(_noteToImport, _docs)
               .then(function(ok) {
                 console.log("[Import session] Mode Histoire restauré :",
-                            { note: !!_noteToImport, pdf: !!_pdfBlob, ok: ok });
+                            { note: !!_noteToImport, pdfs: _docs.length, ok: ok });
               })
               .catch(function(err) {
                 console.warn("[Import session] Mode Histoire restore err :", err);

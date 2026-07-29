@@ -12,9 +12,11 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.68.1` (27/07/2026)
+## 📦 Version courante — `v1.69.0` (29/07/2026)
 
-> 🔤 **Fix i18n au boot** : les rendus qui gagnaient la course contre le chargement des dicos (header refonte, liste des plans, statut PIN, preset perf) affichaient des libellés « humanisés » anglais gravés à vie. Barrière `I18n.init()` mémoïsée + réparation des gardes `!== clé` morts depuis l'humanisation H1. Zéro warn « Clé manquante » au boot.
+> 📔 **Le Carnet** : archive **append-only** des sorties (durée active, distance tracker, ajouts, refs photos, tracé décimé — IDB dédiée, indépendante des sessions), avec distinction **🚶 terrain / 🖥️ travail sur plan** (classement auto par le déplacement, totaux terrain-only) et onglet **📖 Récits** (notes + PDF Mode Histoire lisibles/éditables sans charger le plan).
+> 📄 **Mode Histoire multi-documents** : jusqu'à **10 PDF par plan** (store IDB migré v1→v2, plafonds 25/100 Mo, export/import session à N documents).
+> 🏠 **HOME v2** : refonte graphique — recherche multi-plans dans l'en-tête, corps en rails fixes (`300px · 1fr · 300px`, la Vue OSM absorbe tout le reste), colonnes en cards, outils en grille 2×2. Aucune fonction retirée. + carte onboarding 📔, fix marqueur `PLAN_CONFIG` (gotchas.md), inventaire stockage complété.
 >
 > Détail complet de cette version et de toutes les précédentes : **[📋 Journal des versions](#-journal-des-versions)** (fin de fichier).
 
@@ -25,7 +27,7 @@
 1. [🧭 Introduction](#-introduction)
 2. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalités-principales)
 3. [🏗️ Structure du projet](#%EF%B8%8F-structure-du-projet)
-4. [📦 Modules JS — référentiel (103 modules)](#-modules-js--référentiel-103-modules)
+4. [📦 Modules JS — référentiel (105 modules)](#-modules-js--référentiel-105-modules)
 5. [📚 Documentation d'architecture](#-documentation-darchitecture)
 6. [⚙️ Développement, conventions & release](#%EF%B8%8F-développement-conventions--release)
 7. [📋 Journal des versions](#-journal-des-versions)
@@ -106,6 +108,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | 📊 Éditeur de données du plan (tableau, 3 sources) | `tableEditor.js` |
 | 📋 Rapport de sortie · 📈 stats globales + export PDF | `sessionReport.js`, `statsGlobales.js` |
 | 💾 Backups multi-rotations sessions (10 FIFO IDB) | `sessionBackups.js` |
+| 📔 **Le Carnet** : archive automatique des sorties (durée, distance, ajouts, tracé, note) + timeline multi-plans | `journal.js`, `journalUi.js` |
 | 👤 Export / import de **profil utilisateur complet** | `profileExportImport.js` |
 
 ### 🆘 Mode Secours (coordination de recherche)
@@ -145,7 +148,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | 🎬 Refonte interface : header bar + sidebars unifiées + status bar | `refonteInterface.js`, `interface.js` |
 | 📱 **PWA installable** + mode hors-connexion (Service Worker précache) | `manifest.json`, `sw.js` |
 | 🔁 UpdateChecker semver + force update sur mismatch de cache | `updateChecker.js`, `loaderSwModals.js` |
-| 🎓 Tutoriel premier lancement (23 cards) | `tutorial.js` |
+| 🎓 Tutoriel premier lancement (26 cards, FR/EN) | `tutorial.js` |
 | 📖 Aide intégrée FR/EN + documentation in-app + contexte IA | `interfaceDocs.js` |
 | ⌨️ Raccourcis clavier globaux + cheatsheet | `shortcuts.js`, `shortcutsCheatsheet.js` |
 | 🎬 Mode présentation · 📜 Mode Histoire (récit de sortie) | `presentationMode.js`, `modeHistoire.js` |
@@ -187,7 +190,7 @@ lib/                            ← Librairies locales (aucun CDN)
   jspdf.umd.min.js              ← jsPDF (PDF imprimable)
   html2canvas.min.js            ← html2canvas (rendus export)
 
-js/                             ← 103 modules IIFE — voir section suivante
+js/                             ← 105 modules IIFE — voir section suivante
 docs/                           ← Docs user (README_USER, AI_CONTEXT, NETWORK_AUDIT) + architecture/
 scripts/                        ← Outillage dev (check-no-pro-leak, find-hardcoded-fr…)
 .githooks/                      ← Hook pre-commit anti-fuite pro
@@ -196,7 +199,7 @@ docker/                         ← Self-host (voir docs/architecture/docker-sel
 
 ---
 
-## 📦 Modules JS — référentiel (103 modules)
+## 📦 Modules JS — référentiel (105 modules)
 
 > Tous les modules sont en **IIFE** (`(function() { "use strict"; ... })()`) avec API publique exposée via `window.<NomDuModule>`. Pas de bundler, pas de transpiler. **L'ordre de chargement = l'ordre des `<script>` dans `index.html`** (source de vérité) — les groupes ci-dessous le suivent.
 
@@ -271,6 +274,8 @@ docker/                         ← Self-host (voir docs/architecture/docker-sel
 | Module | Rôle |
 |---|---|
 | `sessionBackups.js` | Backups multi-rotations (10 FIFO IDB) |
+| `journal.js` | Le Carnet — archive des sorties (IDB `myktamap_journal`, hooks de cycle de vie) |
+| `journalUi.js` | Le Carnet — modale timeline + fiche de sortie |
 | `exporter.js` | Export PNG / JPG + légende dessinée |
 | `pdfExport.js` | Export PDF imprimable (A0 → A4) |
 | `tableEditor.js` | Éditeur JSON en tableau (calque ou session) |
@@ -446,7 +451,25 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.68.1 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.69.0 → v1.26)
+
+**📔 v1.69.0 (28-29/07/2026)** — **Le Carnet + Mode Histoire multi-PDF + HOME v2 (3 chantiers, 2 jours de session)** :
+- **Constat de départ** [code lu] : rien dans l'app ne datait ni n'empilait une sortie — `sessionPersist` = état live écrasé par plan, `sessionBackups` = 10 rotations FIFO (destructif au-delà), timeline tracker per-plan, Mode Histoire enfermé dans l'écran plan. Un hub HOME qui se contenterait d'agréger l'existant aurait été **maigre et amnésique** : le vrai geste manquant était de **journaliser** les sorties.
+- **Socle `journal.js`** (sans DOM) : IDB `myktamap_journal` v1 / store `sorties` (~2-8 Ko par entrée). Une sortie = métadonnées + `activeMs`/`wallMs` + `distM` + `ajouts` + `levels` + **refs photos** + **tracé décimé** (≤ 1500 pts) + note. Flush 30 s + `visibilitychange`/`pagehide` (récupérable après un kill mémoire mobile).
+- **Cycle de vie — 2 hooks `main.js`, ordre critique** : `onPlanLoaded` **APRÈS** `SessionPersist.onPlanLoaded` (sinon la session restaurée serait comptée comme « ajoutée aujourd'hui ») ; `onPlanUnload` juste après celui de SessionPersist et **AVANT** le teardown (plus bas, `resetTrackingTimeline` vide la timeline → tracé et distance perdus). Snapshot **synchrone**, écriture IDB async.
+- **Hybride (1:c)** : archivage auto sous conditions de pertinence + `🏁 Clôturer ma sortie` (garde toujours, puis rouvre une sortie) + note éditable après coup. Deltas clampés à 0, distance ré-ancrée si elle recule (session effacée / tracker reset).
+- **🚶 terrain vs 🖥️ bureau (retour KARMA 29/07, reco 1:a 2:a 3:a)** : le lot 1 confondait une soirée de dessin à la maison et une vraie sortie — le seuil « ≥ 1 ajout » le garantissait même. Classement **auto par le déplacement tracker** (`distM > 0 || steps > 0`), ré-évalué à chaque snapshot (bureau → terrain au premier pas, jamais l'inverse), **corrigeable à la main** sur la fiche (`typeManuel` = plus jamais recalculé). **Seuils refaits** : terrain ≥ 50 m · bureau ≥ 10 min actives ET ≥ 1 ajout — le « ≥ 1 ajout » global est supprimé. **Totaux = terrain uniquement**, liste scindée (section « 🖥️ Travail sur plan » repliée), nature annoncée en direct dans la modale Session.
+- **Vue `journalUi.js`** : modale carnet à 2 onglets. **📔 Sorties** (totaux, filtre par plan, liste antéchronologique) + fiche (métriques, mini-tracé SVG, vignettes photos avec fallback « photo supprimée », note, reclassement, suppression). **📖 Récits** (demande KARMA 29/07) : la note libre et le PDF du **Mode Histoire**, jusqu'ici enfermés dans l'écran plan, sont listés **tous plans confondus et éditables sans charger le plan** — lecture directe de `myktamap_note_libre_<planId>` + IDB `myktamap_histoire_pdfs`, écriture sur la **même clé** (pas de copie divergente), rendu MD via `kta_renderMd`. Scan différé au 1er affichage de l'onglet, `getAllKeys()` pour la liste (jamais `getAll()` : ça chargerait tous les PDF en RAM), blob lu au clic, iframe vidée avant `remove()`. ⚠️ `_histOpen()` détecte et **supprime** la base créée par mégarde (`open(nom)` sans version crée une base vide → le Mode Histoire planterait ensuite sur un store absent). Entrées : bouton HOME `📔 Mon carnet` (hors accordéon 🧰 Outils) + section « Sortie en cours » dans la modale Session de l'écran plan.
+- **Photos** : hook dans `photos.js > addPhoto` uniquement — `restorePhoto` (import de session) ne gonfle pas le compteur. **Refs only**, aucune image dupliquée.
+- **Intendance** : DB déclarée dans `memInspector` + calcul « Stockage » du profil (sinon espace invisible) ; **🐛 fix collatéral** — la liste de secours de « 💥 Tout réinitialiser » (Safari/Firefox, sans `indexedDB.databases()`) s'arrêtait à `myktamap_handles` et laissait photos, backups, profil, crashes et tuiles OSM en place : complétée.
+- **📄 Mode Histoire : N documents PDF par plan** (question KARMA 29/07 « peut-on mettre plusieurs PDF ? » → reco 1:a 2:a 3:a). Avant : **1 seul** PDF importé (`keyPath: "planId"`, import = écrasement), et un PDF embarqué dans le ZIP **masquait la toolbar** → sur ces plans-là l'user ne pouvait rien joindre. Store migré **v1 → v2** (`keyPath: "id"` + index `by_plan`) : le keyPath n'étant pas modifiable, la migration lit au curseur, `deleteObjectStore`, recrée et re-`put` **dans la même transaction versionchange** — aucun PDF perdu. Garde-fous inédits : 10 documents/plan, avertissement à 25 Mo cumulés, refus à 100 Mo. L'embarqué devient une entrée de liste (📕 non supprimable) au lieu de tout bloquer.
+- **🐛 3 propagations obligatoires** : ① `sessionExporter` ouvrait la base **figée sur `open(nom, 1)`** → `VersionError` avec le store en v2 = **PDF disparu silencieusement des exports** (ouverture sans version + lecture par index + repli v1, tous les documents exportés, noms dédoublonnés) ; ② `interfaceImportExport` lit `historeSessionPdfs` avec repli sur l'ancien champ unique ; ③ `importSessionData` **ajoute** au lieu d'écraser. **🐛 Inventaire** : `myktamap_histoire_pdfs` n'était déclarée NI dans `memInspector` NI dans le calcul « Stockage » depuis v1.34.20 — un PDF de 40 Mo ne comptait nulle part. Corrigé.
+- **🧹 Allègement du HOME (demande KARMA)** — 3 icônes en moins sur l'accueil, aucune fonctionnalité retirée : ① **« 🌐 Recherche multi-plans » devient une BARRE de recherche** (geste fréquent ≠ outil ponctuel ; validation à l'Entrée ou 🔎, jamais à la frappe — le scan des plans est coûteux ; masquée si la bibliothèque est vide). **Placement final** : dans le **header** (cf. bullet HOME v2 — les itérations de placement en grille sont documentées en historique dans `ui.md`). Mobile (`display:contents`) : empilement profil → Reprendre → recherche, inchangé ② **« 🔗 Fusionner des datalayers » rejoint l'Éditeur de données** comme 4e source (même famille d'usage : manipuler des calques JSON hors carte) ③ **« 📔 Mon carnet » entre dans la liste des outils** au lieu d'être isolé au-dessus. Liste d'outils : 5 → 4 entrées. Nouveau support i18n générique **`data-i18n-placeholder`** (`main.js > _applyI18nDom`) — sans lui, un champ traduit serait rempli à la main hors du cycle de re-traduction. 2 libellés morts retirés des 3 dicos. **🐛 collatéral** : la carte « 🗺️ plan en cours » de l'Éditeur de données s'affichait depuis le HOME (même marqueur `PLAN_CONFIG` faussé, cf. ci-dessous).
+- **🐛 `PLAN_CONFIG` n'est pas un marqueur « plan affiché » (bug KARMA, capture)** : la Recherche multi-plans ouverte **depuis le HOME** montrait la case « Itinéraire via plusieurs plans » et les boutons 🧭 — notions qui n'existent que plan chargé. Cause : `afficherLoader()` **ne remet jamais `PLAN_CONFIG` à null** (il masque `#map` + pose `body.kta-loader-active`), donc le marqueur restait vrai toute la session après un premier plan — le commentaire v1.58.1 affirmait le contraire. **3 faux positifs réels** : ① case + 🧭 sur l'accueil ② confirmation « changer de plan ? » depuis l'accueil (`interPlanLinks` ×2) ③ **`goTo` prenait le chemin court « déjà sur ce plan »** → depuis le HOME, cliquer une liaison vers le dernier plan ouvert **ne chargeait rien**. Fix : source de vérité unique `window.ktaPlanAffiche()` (`utils.js`), basée sur `body.kta-loader-active` (symétrique) + `PLAN_CONFIG` en complément au boot. Doc : `gotchas.md`.
+- **🏠 HOME v2 — refonte graphique (maquette validée, décisions 1:a 2:b 3:a)** : après 4 bugs d'alignement en 1 journée, diagnostic de fond — tout en ratios `fr`, grille jumelle top-row/loader-grid à synchroniser à la main, recherche sans place naturelle. **v2** : 🔎 recherche **dans le header** (pilule centrée, pattern app bar ; mobile = header en wrap, barre en 2e ligne) · bande d'état en **flex** (profil · Reprendre centré) · corps en **rails fixes** `300px minmax(0,1fr) 300px` — **la Vue OSM absorbe tout le reste (~1230 px à 1920), zéro palier** (`min-height: clamp(300px,52vh,660px)`) · colonnes en **cards** (rayon 12, pas 16 px, thème clair couvert) · **outils en grille 2×2** (Carnet doré) · **accordéon Outils mobile supprimé** (JS + CSS — la grille 2×2 est assez compacte). Aucune fonction ni ID touché ; clé `home.mobile.tools` retirée, `home.tools.title` ajoutée. Maquette : `mockup_home_v2.html`. Doc : `ui.md § HOME v2` (avec la liste des « à ne pas refaire »).
+- **🖥️ Grand écran (≥ 1024 px, retour KARMA)** : carnet 640 → 900 px, fiche de sortie 560 → 760 px (tracé 220 px, vignettes 84 px), fiche récit 820 px — et **avec un PDF ouvert : 95vw × 92vh en 2 colonnes** (note/documents à gauche, visionneuse pleine hauteur à droite, classe `kta-jrn-recit-avecpdf` posée en JS). Modale Mode Histoire 900 → 1400 px / 92vh. Colonnes en `flex: 1` + `min-height: 0` plutôt qu'une hauteur calculée sur le header (pas une constante : titre long, zoom 125 %). **Mobile strictement inchangé** (tout est sous `@media`, seuil aligné sur la modale ⚙️ Réglages).
+- **🎓 Onboarding audité** (demande KARMA) : nouvelle carte **25/26 « 📔 Mon carnet »** (FR + EN — terrain vs bureau, onglet Récits, où le trouver) · carte **Mode Histoire** corrigée (elle décrivait « LE PDF embarqué » au singulier alors qu'on est passé à 10 documents) · **barre de recherche** ajoutée à la carte Outils annexes · compteurs `n/25` → `n/26` et compte du README (**23 → 26**, faux depuis 2 versions). ⚠️ Parité FR/EN vérifiée par script (26/26) — une insertion s'était initialement faite dans le mauvais tableau. `firstRunFlow.js` : rien à changer (séquenceur pur, aucun texte de feature).
+- 68 clés i18n `jrn.*` + 8 clés `histoire.pdf.*` neuves, fr/en/es (3 obsolètes retirées : `histoire.pdf.replace`, `jrn.recits.pdf`, `jrn.hint` — la ligne d'explication du carnet, supprimée sur retour KARMA). **Limite assumée** : aucun remplissage rétroactif, le carnet démarre vide. **Dette connue (lot 2-3)** : carnet absent de l'export/import de profil. Doc : `session-data.md` § Le Carnet. **Sources** v1.69.0. Aucune nouvelle surface réseau.
 
 **🔤 v1.68.1 (27/07/2026)** — **Fix i18n « clés manquantes » au boot (audit KARMA « on a toujours autant d'erreurs »)** :
 - **Cause racine (mesurée par instrumentation)** : aucune clé ne manquait — les 32 clés signalées existent dans les 3 dicos. Les dicos résolvent à ~700 ms ; des rendus tombaient à 645-695 ms : fallback `DOMContentLoaded` de `refonteInterface` (header + statusbar construits dico vide → **22 tooltips « Btn home title »… gravés à vie**, `_creerHeaderBar` early-return), rendus initiaux home* B7 au `window load` (tooltips lignes de plans, statut PIN, accordéon), `proLicense` (validation cache au load du script).
