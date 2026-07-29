@@ -565,3 +565,21 @@ Clé IDB = "z/x/y" (slippy tilenames OSM, EPSG:3857)
 - ✅ **Pas de gestion de "qui possède quoi"** côté code : chaque plan demande ses tuiles via `hasCacheForBbox(planBbox)`, et la réponse dépend uniquement de la couverture géographique réelle
 
 **Limite** : pas de mécanisme « purge tuiles d'un plan spécifique » (volontaire — on purge tout via `clear()` ou rien). Si un user veut nettoyer les tuiles parisiennes après avoir supprimé son plan Paris, il faut « Vider le cache » global. Acceptable car les tuiles OSM sont publiques (pas de risque privacy) et borné (200 max par clic).
+
+
+## 🔎 Mode OSM — lot 1 : recherche locale + sémantique « mode » (v1.70.0)
+
+> Topo « 2 projets » KARMA 30/07/2026 : **OSM prioritaire** (gain user direct), mode serveur community ensuite. Décisions : recherche **locale-only** (« pas de sortie internet ») · avertissements perf plutôt que cap dur (2:b) · widget HOME conservé tel quel (3:a).
+
+**Constat qui a réduit le lot** : le fullscreen du widget (`osmHomePreview.openFullScreen`) EST déjà un mode plein écran, et `_loadPlanDataForPreview` lit déjà les données d'un plan **non chargé**. Lot 1 livré dans `osmHomePreview.js` (pas de nouveau module) :
+
+- **Recherche** (`#ktaOsmHomeSearch`, visible uniquement via `.kta-osm-home-fullscreen-active`) : plans géoréférencés + leurs POI. Index **paresseux** à la première saisie ; extraction **séquentielle** des ZIP (un `Promise.all` sur N JSZip = pic RAM mobile) ; cache RAM `_planDataCache` partagé avec le rendu. Un POI est projeté via le georef de **SON** plan — jamais celui du plan sélectionné. Résultat → `selectPlan` + `flyTo` (retries bornés : la carte se recrée après un selectPlan) + circleMarker doré + popup.
+- **Avertissement perf** : `_avertirPerfModeOsm()` — 1× (LS `myktamap_osm_mode_warn_v1`). Le seuil « > 3 plans » du lot 2 passera par la même fonction.
+- **⛶** : mêmes clés i18n, valeurs retitrées « Ouvrir le mode OSM ».
+
+**⚠️ Pièges** :
+- Le champ des dataLayers extraits est **`points`** (pas `pois` — 1er bug de ce lot, attrapé au grep).
+- `_listGeorefPlans()` ne voit que les calibs **localStorage** (`KmzExport.getCalibration`) : un plan dont le georef n'est QUE dans le ZIP (jamais ouvert) est invisible du mode OSM — limitation existante du widget, assumée au lot 1.
+- z-index des résultats : 1000 (au-dessus des panes Leaflet ~700).
+
+**Feuille de route** : lot 2 (v1.71) = multi-plans images + gestionnaire de calques (visibilité / opacité / ordre par glisser) + avertissement > 3 plans · lot 3 (v1.72) = croisement de données (collecteurs tracés/zones réutilisables depuis `_loadPlanDataForPreview`) + liaisons portails dessinées entre plans.

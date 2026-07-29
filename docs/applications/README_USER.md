@@ -697,6 +697,16 @@ Le toggle est **persistant** (survit aux reloads et fermetures d'onglet) jusqu'�
 
 ---
 
+## 🌍 Mode OSM — recherche intégrée (depuis v1.70.0)
+
+Le bouton **⛶** du widget Vue OSM s'appelle désormais **« Ouvrir le mode OSM »** : la carte passe en plein écran. Une **barre de recherche** y apparaît :
+
+- elle cherche **un plan** (parmi vos plans géoréférencés) ou **un point** (les POI de ces plans) — taper, cliquer un résultat, la carte vole dessus avec un marqueur ;
+- **100 % local** : la recherche lit vos propres plans, aucune adresse internet n'est interrogée ;
+- seuls les plans **géoréférencés** apparaissent — un plan sans calibrage GPS est invisible en mode OSM (calibrez-le via le Générateur ou les Réglages).
+
+Au premier lancement du mode, un message rappelle que l'affichage de plans complets peut être plus lent sur mobile. *(À venir : affichage de plusieurs plans en même temps avec ordre des calques.)*
+
 ## 📖 Mode Histoire — Note libre + PDF du plan
 
 Le bouton **📖** dans la barre du haut (à gauche de la batterie 🔋) ouvre une modale à deux onglets propre à chaque plan. C'est ton **carnet d'exploration personnel** pour chaque site souterrain.

@@ -2346,8 +2346,8 @@
   "osm_home.controls.collapseTitle": "Collapse the controls (full-screen map)",
   "osm_home.controls.expandTitle": "Show the controls",
   "osm_home.footer.tiles": "🔒 Tiles: tile.openstreetmap.org · ⛶ expand ·",
-  "osm_home.fullscreen.enterTitle": "Expand the map to full screen",
-  "osm_home.fullscreen.exitTitle": "Shrink the map (Esc)",
+  "osm_home.fullscreen.enterTitle": "Open OSM mode (full screen)",
+  "osm_home.fullscreen.exitTitle": "Close OSM mode",
   "osm_home.gps.accuracy": "Accuracy: ±{acc} m",
   "osm_home.gps.btnTitle": "Request a one-shot GPS fix (OS permission required, no data sent or stored)",
   "osm_home.gps.errGeneric": "Unable to get your GPS position.",
@@ -4548,5 +4548,9 @@
   "home.search.btnTitle": "Search this point across every plan in my library",
   "tabledit.source.fusion": "🔗 Merge data layers",
   "tabledit.source.fusionHint": "Combines several data-layer files (.json / .zip) into one, without touching the plan.",
-  "home.tools.title": "🧰 Tools"
+  "home.tools.title": "🧰 Tools",
+  "osm_mode.search.placeholder": "🔎 Search a plan or a point (georeferenced plans)…",
+  "osm_mode.search.scanning": "Reading georeferenced plans…",
+  "osm_mode.search.noResult": "No result among georeferenced plans.",
+  "osm_mode.warn.perf": "⚡ OSM mode displays full plans on the map: on mobile or with large plans, rendering may be slower."
 }

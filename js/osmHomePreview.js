@@ -440,6 +440,16 @@
           '⛶' +
         '</button>' +
       '</div>' +
+      // 🔎 v1.70.0 — MODE OSM lot 1 (topo KARMA 30/07, décisions 1:local 2:b 3:a) :
+      // recherche PROPRE à la vue OSM, visible UNIQUEMENT en mode OSM (fullscreen,
+      // CSS .kta-osm-home-fullscreen-active). Périmètre 100 % LOCAL : les plans
+      // géoréférencés de la liste + leurs POI (via _loadPlanDataForPreview, cache
+      // RAM) — AUCUNE recherche d'adresse, zéro requête réseau nouvelle.
+      '<div class="kta-osm-home-search" id="ktaOsmHomeSearch">' +
+        '<input type="search" id="ktaOsmHomeSearchInput" ' +
+               'placeholder="' + _escapeHtml(window.I18n.t("osm_mode.search.placeholder")) + '" autocomplete="off">' +
+        '<div class="kta-osm-home-search-results" id="ktaOsmHomeSearchResults" style="display:none;"></div>' +
+      '</div>' +
       // 🆕 v1.43.15 — Wrapper collapsible : opacity + toggles + tagrow.
       // Cache par le bouton 🔼. La carte (.kta-osm-home-map) reste toujours
       // visible et prend automatiquement la place via son flex:1 1 auto.
@@ -482,6 +492,8 @@
     if (fullBtn) {
       fullBtn.addEventListener("click", openFullScreen);
     }
+    // 🔎 v1.70.0 — Recherche du mode OSM (bindings)
+    _bindOsmSearch(container);
     // 🆕 v1.40.18 — Bouton "Ma position GPS"
     const myGpsBtn = container.querySelector("#ktaOsmHomeMyGpsBtn");
     if (myGpsBtn) {
@@ -1461,11 +1473,175 @@
   // L'ancien flow (sessionStorage + simulation clic + auto-open) est retiré
   // car les sélecteurs HTML étaient faux (data-plan-id n'existe pas, le
   // HTML utilise data-id, et la classe est .plan-row-load pas .plan-row-load-btn).
+  // ═══════════════════════════════════════════════════════════
+  // 🔎 v1.70.0 — RECHERCHE DU MODE OSM (topo KARMA 30/07, décision 1)
+  // ═══════════════════════════════════════════════════════════
+  // Périmètre STRICTEMENT LOCAL (décision explicite : « pas de sortie
+  // internet ») : ① les PLANS de la liste OSM (géoréférencés uniquement —
+  // les autres sont invisibles ici par construction) ② leurs POI, lus sans
+  // charger le plan via _loadPlanDataForPreview (cache RAM `_planDataCache`).
+  // PAS de recherche d'adresse (Nominatim = nouvelle surface réseau,
+  // écartée ; réétudiable en option opt-in séparée).
+  //
+  // Index construit PARESSEUSEMENT à la première saisie (extraire N ZIP au
+  // mount du widget ralentirait le boot HOME pour un usage incertain).
+  let _searchIndex = null;      // [{type:"plan"|"poi", planId, planName, georef, nom, x, y, tags}]
+  let _searchIndexEnCours = false;
+
+  function _construireIndexRecherche() {
+    if (_searchIndex || _searchIndexEnCours) return Promise.resolve(_searchIndex);
+    _searchIndexEnCours = true;
+    const plans = _listGeorefPlans();
+    const index = [];
+    plans.forEach(function(p) {
+      index.push({ type: "plan", planId: p.id, planName: p.name, georef: p.georef });
+    });
+    // Extraction séquentielle (pas Promise.all : N JSZip simultanés = pic RAM
+    // mobile ; le cache _planDataCache rend les passages suivants gratuits).
+    let chaine = Promise.resolve();
+    plans.forEach(function(p) {
+      chaine = chaine.then(function() {
+        return _loadPlanDataForPreview(p.id).then(function(data) {
+          if (!data || !Array.isArray(data.dataLayers)) return;
+          data.dataLayers.forEach(function(layer) {
+            (layer.points || []).forEach(function(pt) {
+              if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return;
+              index.push({
+                type: "poi", planId: p.id, planName: p.name, georef: p.georef,
+                nom: pt.nom || pt.id || "", x: pt.x, y: pt.y,
+                tags: Array.isArray(pt.tags) ? pt.tags.join(" ") : ""
+              });
+            });
+          });
+        }).catch(function() {});
+      });
+    });
+    return chaine.then(function() {
+      _searchIndex = index;
+      _searchIndexEnCours = false;
+      return index;
+    });
+  }
+
+  // Projette un POI en latlng via le georef de SON plan (chaque plan a sa
+  // propre calibration — jamais celle du plan sélectionné).
+  function _poiVersLatLng(entry) {
+    try {
+      if (!window.KmzExport || typeof window.KmzExport.buildTransform !== "function") return null;
+      const g = entry.georef;
+      const t = window.KmzExport.buildTransform(
+        { x: g.pointA.x, y: g.pointA.y }, { x: g.pointB.x, y: g.pointB.y },
+        { lat: g.pointA.lat, lng: g.pointA.lng }, { lat: g.pointB.lat, lng: g.pointB.lng });
+      const gps = window.KmzExport.planToGps(t, entry.x, entry.y);
+      return gps ? L.latLng(gps.lat, gps.lng) : null;
+    } catch(e) { return null; }
+  }
+
+  let _searchFlashMarker = null;
+
+  function _allerAuResultat(entry) {
+    const resEl = document.getElementById("ktaOsmHomeSearchResults");
+    if (resEl) resEl.style.display = "none";
+    // Le résultat bascule d'abord la vue sur SON plan (mono-plan en lot 1 —
+    // le multi-plans du lot 2 réutilisera ce même pipeline).
+    if (entry.planId !== _selectedPlanId) selectPlan(entry.planId);
+    if (entry.type === "plan") return;   // sélection = fitBounds déjà fait
+    const ll = _poiVersLatLng(entry);
+    if (!ll) return;
+    // La carte peut être en cours de (re)création après selectPlan → retries
+    // bornés, même pattern que les invalidateSize en cascade du module.
+    let essais = 0;
+    (function _volerVers() {
+      if (!_mapInstance) {
+        if (++essais < 12) setTimeout(_volerVers, 250);
+        return;
+      }
+      try {
+        _mapInstance.flyTo(ll, Math.max(_mapInstance.getZoom(), 17), { duration: 0.6 });
+        if (_searchFlashMarker) { try { _mapInstance.removeLayer(_searchFlashMarker); } catch(e) {} }
+        _searchFlashMarker = L.circleMarker(ll, {
+          radius: 11, color: "#f4c542", weight: 3, fillColor: "#f4c542", fillOpacity: 0.25
+        }).addTo(_mapInstance);
+        if (entry.nom) _searchFlashMarker.bindPopup(_escapeHtml(entry.nom)).openPopup();
+      } catch(e) {}
+    })();
+  }
+
+  function _bindOsmSearch(container) {
+    const input = container.querySelector("#ktaOsmHomeSearchInput");
+    const resEl = container.querySelector("#ktaOsmHomeSearchResults");
+    if (!input || !resEl) return;
+
+    function _rendre(q) {
+      if (!q) { resEl.style.display = "none"; resEl.innerHTML = ""; return; }
+      if (!_searchIndex) {
+        resEl.style.display = "block";
+        resEl.innerHTML = '<div class="kta-osm-search-empty">' +
+          _escapeHtml(window.I18n.t("osm_mode.search.scanning")) + '</div>';
+        _construireIndexRecherche().then(function() { _rendre(String(input.value || "").toLowerCase().trim()); });
+        return;
+      }
+      const matches = _searchIndex.filter(function(e) {
+        if (e.type === "plan") return e.planName.toLowerCase().indexOf(q) !== -1;
+        return (e.nom && e.nom.toLowerCase().indexOf(q) !== -1)
+            || (e.tags && e.tags.toLowerCase().indexOf(q) !== -1);
+      }).slice(0, 30);
+      if (matches.length === 0) {
+        resEl.style.display = "block";
+        resEl.innerHTML = '<div class="kta-osm-search-empty">' +
+          _escapeHtml(window.I18n.t("osm_mode.search.noResult")) + '</div>';
+        return;
+      }
+      resEl.style.display = "block";
+      resEl.innerHTML = matches.map(function(e, i) {
+        return '<button type="button" class="kta-osm-search-row" data-i="' + i + '">' +
+                 (e.type === "plan"
+                   ? '🗺️ <b>' + _escapeHtml(e.planName) + '</b>'
+                   : '📍 ' + _escapeHtml(e.nom || "?") +
+                     ' <span class="kta-osm-search-badge">' + _escapeHtml(e.planName) + '</span>') +
+               '</button>';
+      }).join("");
+      resEl.querySelectorAll(".kta-osm-search-row").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const e = matches[parseInt(btn.getAttribute("data-i"), 10)];
+          if (e) _allerAuResultat(e);
+        });
+      });
+    }
+
+    let _debounce = null;
+    input.addEventListener("input", function() {
+      if (_debounce) clearTimeout(_debounce);
+      _debounce = setTimeout(function() {
+        _rendre(String(input.value || "").toLowerCase().trim());
+      }, 180);
+    });
+    input.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") { resEl.style.display = "none"; input.blur(); e.stopPropagation(); }
+    });
+  }
+
+  // ⚠️ v1.70.0 — Avertissement perf du mode OSM (décision KARMA 2:b) :
+  // UNE FOIS à la première ouverture du mode (persisté LS). Le second volet
+  // (« > 3 plans affichés ») s'activera au lot 2 multi-plans via cette même
+  // fonction (seuil passé en argument).
+  const _WARN_LS_KEY = "myktamap_osm_mode_warn_v1";
+  function _avertirPerfModeOsm() {
+    try {
+      if (localStorage.getItem(_WARN_LS_KEY)) return;
+      localStorage.setItem(_WARN_LS_KEY, "1");
+    } catch(e) {}
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(window.I18n.t("osm_mode.warn.perf"), "warn");
+    }
+  }
+
   function openFullScreen() {
     _isFullscreen = !_isFullscreen;
     const box = document.getElementById("ktaOsmHomeBox");
     if (!box) return;
     if (_isFullscreen) {
+      _avertirPerfModeOsm();   // 🔔 v1.70.0 — 1× à la première ouverture du mode
       box.classList.add("kta-osm-home-fullscreen-active");
       document.body.classList.add("kta-osm-home-fs-lock");
       // Escape pour réduire

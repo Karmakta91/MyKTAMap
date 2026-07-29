@@ -698,6 +698,16 @@ The toggle is **persistent** (survives reloads and tab closures) until you unche
 
 ---
 
+## 🌍 OSM mode — built-in search (since v1.70.0)
+
+The **⛶** button of the OSM view widget is now called **"Open OSM mode"**: the map goes full screen. A **search bar** shows up there:
+
+- it finds **a plan** (among your georeferenced plans) or **a point** (those plans' POIs) — type, click a result, the map flies to it with a marker;
+- **100% local**: the search reads your own plans, no internet address service is queried;
+- only **georeferenced** plans appear — a plan without GPS calibration is invisible in OSM mode (calibrate it via the Generator or Settings).
+
+On the first opening of the mode, a message reminds you that rendering full plans can be slower on mobile. *(Coming next: several plans displayed at once with layer ordering.)*
+
 ## 📖 Story Mode — Free note + PDF for each plan
 
 The **📖** button in the top bar (left of the battery 🔋) opens a two-tab modal scoped to each plan. It's your **personal exploration notebook** for each underground site.

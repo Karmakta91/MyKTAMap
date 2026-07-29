@@ -2346,8 +2346,8 @@
   "osm_home.controls.collapseTitle": "Réduire les contrôles (carte plein écran)",
   "osm_home.controls.expandTitle": "Afficher les contrôles",
   "osm_home.footer.tiles": "🔒 Tiles : tile.openstreetmap.org · ⛶ agrandir ·",
-  "osm_home.fullscreen.enterTitle": "Agrandir la carte en plein écran",
-  "osm_home.fullscreen.exitTitle": "Réduire la carte (Echap)",
+  "osm_home.fullscreen.enterTitle": "Ouvrir le mode OSM (plein écran)",
+  "osm_home.fullscreen.exitTitle": "Fermer le mode OSM",
   "osm_home.gps.accuracy": "Précision : ±{acc} m",
   "osm_home.gps.btnTitle": "Demander un fix GPS ponctuel (permission OS requise, aucune donnée envoyée ou stockée)",
   "osm_home.gps.errGeneric": "Impossible d'obtenir ta position GPS.",
@@ -4548,5 +4548,9 @@
   "home.search.btnTitle": "Chercher ce point dans tous les plans de ma bibliothèque",
   "tabledit.source.fusion": "🔗 Fusionner des calques de données",
   "tabledit.source.fusionHint": "Combine plusieurs fichiers de calques (.json / .zip) en un seul, sans toucher au plan.",
-  "home.tools.title": "🧰 Outils"
+  "home.tools.title": "🧰 Outils",
+  "osm_mode.search.placeholder": "🔎 Chercher un plan ou un point (plans géoréférencés)…",
+  "osm_mode.search.scanning": "Lecture des plans géoréférencés…",
+  "osm_mode.search.noResult": "Aucun résultat dans les plans géoréférencés.",
+  "osm_mode.warn.perf": "⚡ Le mode OSM affiche des plans complets sur la carte : sur mobile ou avec de gros plans, l'affichage peut être plus lent."
 }

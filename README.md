@@ -12,11 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.69.0` (29/07/2026)
+## 📦 Version courante — `v1.70.0` (30/07/2026)
 
-> 📔 **Le Carnet** : archive **append-only** des sorties (durée active, distance tracker, ajouts, refs photos, tracé décimé — IDB dédiée, indépendante des sessions), avec distinction **🚶 terrain / 🖥️ travail sur plan** (classement auto par le déplacement, totaux terrain-only) et onglet **📖 Récits** (notes + PDF Mode Histoire lisibles/éditables sans charger le plan).
-> 📄 **Mode Histoire multi-documents** : jusqu'à **10 PDF par plan** (store IDB migré v1→v2, plafonds 25/100 Mo, export/import session à N documents).
-> 🏠 **HOME v2** : refonte graphique — recherche multi-plans dans l'en-tête, corps en rails fixes (`300px · 1fr · 300px`, la Vue OSM absorbe tout le reste), colonnes en cards, outils en grille 2×2. Aucune fonction retirée. + carte onboarding 📔, fix marqueur `PLAN_CONFIG` (gotchas.md), inventaire stockage complété.
+> 🌍 **Mode OSM — lot 1** (topo 2 projets validé : OSM prioritaire, serveur community ensuite) : le ⛶ du widget devient « **Ouvrir le mode OSM** », qui gagne une **recherche 100 % locale** (plans géoréférencés + leurs POI, lus sans charger les plans, projetés via leur propre georef, flyTo + marker) et un **avertissement perf** à la première ouverture. Zéro nouvelle surface réseau (Nominatim écarté). Lot 2 à venir : multi-plans + ordre d'affichage.
 >
 > Détail complet de cette version et de toutes les précédentes : **[📋 Journal des versions](#-journal-des-versions)** (fin de fichier).
 
@@ -451,7 +449,15 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.69.0 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.70.0 → v1.26)
+
+**🌍 v1.70.0 (30/07/2026)** — **Mode OSM lot 1 (topo 2 projets KARMA → OSM prioritaire ; décisions : recherche locale-only, avertissements perf 2:b, widget conservé 3:a)** :
+- **Découverte qui a réduit le lot** [code lu] : le fullscreen du widget HOME était déjà un « mode OSM » de fait (`openFullScreen` = overlay plein viewport), et `_loadPlanDataForPreview` lisait déjà plan-config + POI/tracés/zones d'un plan **non chargé** (ZIP via FS/IDB, cache RAM). Lot 1 = sémantique + recherche + garde-fou, pas de nouveau module.
+- **🔎 Recherche propre au mode OSM** (visible uniquement en fullscreen) : périmètre **strictement local** — plans géoréférencés de la liste + leurs POI. Index construit **paresseusement** à la première saisie (extraction séquentielle des ZIP, pas de `Promise.all` = pic RAM), chaque POI projeté via le georef de **son** plan (`KmzExport.buildTransform`/`planToGps`), résultat → `selectPlan` + `flyTo` + marker doré + popup (retries bornés le temps que la carte se recrée). **Aucune recherche d'adresse** (Nominatim = surface réseau, écarté — réétudiable en opt-in séparé).
+- **⚡ Avertissement perf** : toast 1× à la première ouverture du mode (LS `myktamap_osm_mode_warn_v1`) ; le volet « > 3 plans » s'activera au lot 2 multi-plans via la même fonction.
+- **⛶ retitré** « Ouvrir le mode OSM » (valeurs des clés `osm_home.fullscreen.*` mises à jour fr/en/es, +4 clés `osm_mode.*`). Widget HOME inchangé (décision 3:a).
+- **Suite planifiée** : lot 2 (v1.71) multi-plans images + gestionnaire de calques (visibilité/opacité/ordre) · lot 3 (v1.72) croisement de données + liaisons dessinées · puis mode serveur community (2 flags kiosque max, promesse = « pas de backend », ligne pro à figer par écrit avant). **Sources** v1.70.0. Aucune nouvelle surface réseau.
+
 
 **📔 v1.69.0 (28-29/07/2026)** — **Le Carnet + Mode Histoire multi-PDF + HOME v2 (3 chantiers, 2 jours de session)** :
 - **Constat de départ** [code lu] : rien dans l'app ne datait ni n'empilait une sortie — `sessionPersist` = état live écrasé par plan, `sessionBackups` = 10 rotations FIFO (destructif au-delà), timeline tracker per-plan, Mode Histoire enfermé dans l'écran plan. Un hub HOME qui se contenterait d'agréger l'existant aurait été **maigre et amnésique** : le vrai geste manquant était de **journaliser** les sorties.

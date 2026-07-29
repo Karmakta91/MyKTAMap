@@ -2357,8 +2357,8 @@
   "osm_home.controls.collapseTitle": "Reducir los controles (mapa a pantalla completa)",
   "osm_home.controls.expandTitle": "Mostrar los controles",
   "osm_home.footer.tiles": "🔒 Teselas: tile.openstreetmap.org · ⛶ agrandar ·",
-  "osm_home.fullscreen.enterTitle": "Agrandar el mapa a pantalla completa",
-  "osm_home.fullscreen.exitTitle": "Reducir el mapa (Esc)",
+  "osm_home.fullscreen.enterTitle": "Abrir el modo OSM (pantalla completa)",
+  "osm_home.fullscreen.exitTitle": "Cerrar el modo OSM",
   "osm_home.gps.accuracy": "Precisión: ±{acc} m",
   "osm_home.gps.btnTitle": "Solicitar un fix GPS puntual (permiso del SO necesario, ningún dato enviado o almacenado)",
   "osm_home.gps.errGeneric": "Imposible obtener tu posición GPS.",
@@ -4546,5 +4546,9 @@
   "home.search.btnTitle": "Buscar este punto en todos los planos de mi biblioteca",
   "tabledit.source.fusion": "🔗 Fusionar capas de datos",
   "tabledit.source.fusionHint": "Combina varios archivos de capas (.json / .zip) en uno solo, sin tocar el plano.",
-  "home.tools.title": "🧰 Herramientas"
+  "home.tools.title": "🧰 Herramientas",
+  "osm_mode.search.placeholder": "🔎 Buscar un plano o un punto (planos georreferenciados)…",
+  "osm_mode.search.scanning": "Leyendo los planos georreferenciados…",
+  "osm_mode.search.noResult": "Ningún resultado en los planos georreferenciados.",
+  "osm_mode.warn.perf": "⚡ El modo OSM muestra planos completos en el mapa: en móvil o con planos grandes, la visualización puede ser más lenta."
 }
