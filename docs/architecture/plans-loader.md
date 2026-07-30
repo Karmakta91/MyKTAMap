@@ -492,3 +492,20 @@ AVANT le sweep, puis ré-injecter APRÈS. Moins propre car couplage temporel.
 Cf `perf-memory.md §88` pour le contexte du sprint Pack RAM et la mesure d'impact terrain.
 
 ---
+
+
+## 🧙 Générateur — assistant pas-à-pas (v1.72.1)
+
+> Topo KARMA « installeur style Windows, évite les oublis » — décisions **1:a** (couche de présentation sur le form existant, PAS de réécriture) **2:a** (toggle « Tout afficher » conservé) **3:a** (barre d'étapes cliquable).
+
+**Principe** : `_wizInit()` (appelé en fin d'`afficherPlanner`) injecte la chrome — barre d'étapes sous le hint de mode, nav (Précédent/Passer/Suivant) dans la rangée d'actions, page Résumé avant le bloc erreur, toggle 🗒️/🧙 à côté du switcher. Les pages = les `.kta-aide-section` du corps **dans l'ordre DOM** (`WIZ_DEFS`, mapping par INDEX).
+
+**⚠️ Invariants** :
+- **`WIZ_DEFS` est indexé sur l'ordre DOM des sections** : ajouter/retirer/déplacer une section du form = mettre à jour `WIZ_DEFS` (sinon décalage silencieux de toutes les pages).
+- L'état du résumé est **lu dans les champs** (`_wizEtatDe`), jamais déduit de la navigation — le « Passé » n'est qu'un marquage visuel.
+- Le masquage wizard (`style.display` inline) coexiste avec le masquage mode Simple (CSS `[data-planner-mode="simple"] [data-planner-advanced]`) : inline `""` rend la main au CSS, ne JAMAIS forcer `display:block`.
+- Changement de mode ou import ZIP → **reconstruire les pages** (`_wizConstruirePages`) ; l'import ZIP rend toutes les étapes visitables et atterrit sur Identité.
+- Validations par page volontairement **légères** (nom, image) — la validation exhaustive reste dans `_genererZip` (source de vérité unique).
+- ⚠️ **Plus aucun élément du form ne doit être révélé « au chargement de quelque chose »** : en wizard, un élément caché au moment où l'user est sur sa page est un élément JAMAIS VU (piège vécu : la checkbox V2, révélée à l'upload de l'image, se ratait — rendue toujours visible en v1.72.1). Un état non-applicable se montre grisé/inerte, pas caché.
+
+**LS** : `myktamap_planner_wizard_v1` (« 0 » = tout afficher).

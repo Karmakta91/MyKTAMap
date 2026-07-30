@@ -450,3 +450,12 @@ C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne 
 - Rendu : SVG vanilla (`createElementNS`), layout force PRÉCALCULÉ (150 itérations, init déterministe en cercle — pas de `Math.random`, rendu stable ; répulsion + ressorts `SPRING_LEN 150` + gravité centre + refroidissement linéaire). AUCUNE animation continue. Drag des nœuds via pointer events (seuil 6 px sépare drag et clic ; les arêtes connectées suivent en direct).
 - Intégration : gestionnaire `interPlanLinks.js > ouvrirGestionnaire` — toggle 📋 Liste ⇄ 🕸️ Graphe ; clic nœud → `goTo(planId, anchorSide|null, {confirm si plan chargé})` (ancre = premier côté de liaison du plan) ; clic arête → liste filtrée par `_filterPair` + chip ✕.
 - ⚠️ `goTo` accepte `target = null` depuis v1.65.0 (plan isolé → switch sans cible pendante ni pan) — ne pas re-supposer target non-nul dans goTo/consume.
+
+---
+
+## 🧹 Purge des flottants de navigation (v1.67.1 — hooks onPlanExit)
+
+> Audit KARMA « fermetures à la sortie du plan » : 4 résidus (mini-pastille ↩️, invite 🌀, pile périmée au switch direct, boussole) — seuls les chemins goTo nettoyaient.
+
+- `InterPlanLinks.onPlanExit(ctx)` + `InterPlanRoute.onPlanExit(ctx)`, appelés côté boot/teardown : `afficherLoader()` → ctx `"home"` · `_libererRessourcesPlanPrecedent()` → ctx `"switch"`.
+- ⚠️ **Subtilités à ne pas casser** : ① côté liaison, le hook "switch" est **no-op si `_pendingTarget` existe** (= goTo en cours qui gère déjà bouton + pile ; sans ce garde, tout saut de portail perdrait son bouton Retour). ② côté route, la **chaîne multi-hop (`_pendingChain`) survit au "switch"** — c'est elle qui trace les legs aux arrivées ; elle n'est abandonnée qu'au retour HOME. ③ Tout NOUVEAU flottant de navigation doit s'enregistrer dans un de ces hooks (ou avoir un timer d'expiration).

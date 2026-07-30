@@ -119,6 +119,34 @@
   let _tilesLayer     = null;   // L.layerGroup pour les tuiles plan projetées
   let _planOpacity    = 0.5;    // 🆕 v1.40.6 / v1.42.4 — opacité plan (slider bandeau). KARMA : default 50% (meilleur compromis lecture OSM + plan, cohérent avec modale plan).
 
+  // ═══ 🗂️ v1.71.0 — MULTI-PLANS (lot 2, topo KARMA : « croisement de données
+  // OSM », cas Paris 13e + 14e + galeries techniques ensemble) ═══
+  // Le plan SÉLECTIONNÉ (dropdown) reste le « principal » (fitBounds, slider
+  // d'opacité du bandeau). Les autres plans géoréférencés peuvent être AJOUTÉS
+  // par-dessus/dessous via le panneau 🗂️ du mode OSM.
+  //   _stackOrder   : planIds dans l'ordre d'affichage — index 0 = AU-DESSUS
+  //                   (même ordre que le panneau). Contient AUSSI le principal.
+  //   _extraLayers  : planId → { tiles, data, poi, roads, zones, struct }
+  //                   (groupes Leaflet des plans NON principaux).
+  //   _extraOpacity : planId → 0..1 (le principal garde _planOpacity).
+  // RAM-only (pas de persistance LS) : la composition est un geste de session.
+  // ⚠️ Les blob URLs des tuiles vivent dans _planDataCache et ne sont JAMAIS
+  // révoquées tant que la page vit → un plan retiré puis re-ajouté est gratuit.
+  let _stackOrder   = [];
+  let _extraLayers  = {};
+  let _extraOpacity = {};
+  let _warnedMulti  = false;   // avertissement « > 3 plans » (1× par session)
+
+  // 🗂️ v1.71.0 (retour KARMA) — visibilités PAR PLAN (tuiles + 4 catégories).
+  // Visibilité effective = toggle GLOBAL du bandeau ET chip du plan. Vaut
+  // aussi pour le principal (clé = planId, comme les extras).
+  let _planVis = {};
+  function _visDe(id) {
+    if (!id) return { tiles: true, poi: true, roads: true, zones: true, struct: true };
+    if (!_planVis[id]) _planVis[id] = { tiles: true, poi: true, roads: true, zones: true, struct: true };
+    return _planVis[id];
+  }
+
   // Style structures aligné sur structures.js > STRUCTURE_STYLES (cf §3b OSM modal).
   // Variant LIGHT pour la mini-carte HOME (weight/fillOpacity allégés).
   const STRUCT_STYLES_HOME = {
@@ -401,13 +429,6 @@
         '</option>';
     }
 
-    // 🆕 v1.40.12 — Mini-helper pour générer un toggle compact
-    function _renderToggle(id, emoji, label, checked, title) {
-      return '<label class="kta-osm-home-toggle" title="' + title + '">' +
-               '<input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + '>' +
-               '<span>' + emoji + ' ' + label + '</span>' +
-             '</label>';
-    }
     container.innerHTML =
       '<div class="kta-osm-home-bandeau">' +
         '<select id="ktaOsmHomePlanSelect" title="' + _escapeHtml(window.I18n.t("osm_home.select.title")) + '">' +
@@ -426,43 +447,34 @@
                 'style="background: rgba(166,215,133,0.10); border-color: rgba(166,215,133,0.35); color: #a6d785;">' +
           '💾' +
         '</button>' +
-        // 🆕 v1.43.15 — Toggle "Réduire les contrôles" (= carte plein écran).
-        // Cache opacity + toggles catégorie + tagrow. Persiste en localStorage.
-        // Très utile sur mobile et en mode fullscreen où le bandeau prend
-        // beaucoup de place.
-        '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeToggleControlsBtn" type="button" ' +
-                'title="' + _escapeHtml(window.I18n.t("osm_home.controls.collapseTitle")) + '" ' +
-                'style="background: rgba(140,180,255,0.10); border-color: rgba(140,180,255,0.35); color: #8cb4ff;">' +
-          '🔼' +
+        // 🎚️ v1.71.0 (retour KARMA « un icône Filtre → modale dédiée, comme en
+        // mode plan ») : toute la gestion multi-plans (priorités, opacités,
+        // filtres par plan) vit dans une MODALE — zéro emprise sur la carte.
+        '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFiltersBtn" type="button" ' +
+                'title="' + _escapeHtml(window.I18n.t("osm_mode.filters.btnTitle")) + '" ' +
+                'style="background: rgba(244,197,66,0.10); border-color: rgba(244,197,66,0.4); color: #f4c542;">' +
+          '≡' +
         '</button>' +
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFullBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_home.fullscreen.enterTitle")) + '">' +
           '⛶' +
         '</button>' +
       '</div>' +
-      // 🆕 v1.43.15 — Wrapper collapsible : opacity + toggles + tagrow.
-      // Cache par le bouton 🔼. La carte (.kta-osm-home-map) reste toujours
-      // visible et prend automatiquement la place via son flex:1 1 auto.
-      '<div id="ktaOsmHomeCollapsible">' +
-        // v1.40.6 — Slider opacité plan (cohérent avec OsmView modale)
-        '<div class="kta-osm-home-opacityrow" style="display:flex; align-items:center; gap:6px; padding:4px 8px; font-size:11px; color:#c8d0e0; border-bottom:1px solid rgba(140,180,255,0.10);" title="' + _escapeHtml(window.I18n.t("osm_home.opacity.title")) + '">' +
-          '<span style="opacity:0.7;">' + window.I18n.t("osm_home.opacity.label") + '</span>' +
-          '<input type="range" id="ktaOsmHomeOpacity" min="0" max="100" value="' + Math.round(_planOpacity * 100) + '" style="flex:1 1 auto; max-width:240px; margin:0;">' +
-        '</div>' +
-        // 🆕 v1.40.12 — Toggles catégorie (filtres)
-        '<div class="kta-osm-home-toggles">' +
-          _renderToggle("ktaOsmHomeShowTiles",  "🖼️", window.I18n.t("osm_home.toggle.plan.label"),   _showTiles,      window.I18n.t("osm_home.toggle.plan.title")) +
-          _renderToggle("ktaOsmHomeShowPoi",    "📍", window.I18n.t("osm_home.toggle.poi.label"),    _showPoi,        window.I18n.t("osm_home.toggle.poi.title")) +
-          _renderToggle("ktaOsmHomeShowRoads",  "🛣️", window.I18n.t("osm_home.toggle.roads.label"), _showRoads,      window.I18n.t("osm_home.toggle.roads.title")) +
-          _renderToggle("ktaOsmHomeShowZones",  "🌐", window.I18n.t("osm_home.toggle.zones.label"),  _showZones,      window.I18n.t("osm_home.toggle.zones.title")) +
-          _renderToggle("ktaOsmHomeShowStruct", "🏗️", window.I18n.t("osm_home.toggle.struct.label"), _showStructures, window.I18n.t("osm_home.toggle.struct.title")) +
-        '</div>' +
-        // 🆕 v1.40.17 — Filtre par tag (chips)
-        '<div class="kta-osm-home-tagrow">' +
-          '<span class="kta-osm-home-tagrow-label" title="' + _escapeHtml(window.I18n.t("osm_home.tagfilter.title")) + '">🏷️</span>' +
-          '<div class="kta-osm-home-tagchips" id="ktaOsmHomeTagChips"></div>' +
-        '</div>' +
+      // 🔎 v1.70.0 — MODE OSM lot 1 (topo KARMA 30/07, décisions 1:local 2:b 3:a) :
+      // recherche PROPRE à la vue OSM, visible UNIQUEMENT en mode OSM (fullscreen,
+      // CSS .kta-osm-home-fullscreen-active). Périmètre 100 % LOCAL : les plans
+      // géoréférencés de la liste + leurs POI (via _loadPlanDataForPreview, cache
+      // RAM) — AUCUNE recherche d'adresse, zéro requête réseau nouvelle.
+      '<div class="kta-osm-home-search" id="ktaOsmHomeSearch">' +
+        '<input type="search" id="ktaOsmHomeSearchInput" ' +
+               'placeholder="' + _escapeHtml(window.I18n.t("osm_mode.search.placeholder")) + '" autocomplete="off">' +
+        '<div class="kta-osm-home-search-results" id="ktaOsmHomeSearchResults" style="display:none;"></div>' +
       '</div>' +
+
+      // 🧹 v1.71.0 (retour KARMA « on a la main dans la modale ≡ ») : le
+      // wrapper collapsible (opacité + toggles + chips tags) est SUPPRIMÉ du
+      // widget — opacité PAR PLAN, filtres globaux et tags vivent dans la
+      // modale « 🎚️ Plans & filtres ». La carte gagne la hauteur libérée.
       '<div class="kta-osm-home-map" id="ktaOsmHomeMap"></div>' +
       '<div class="kta-osm-home-footer">' +
         window.I18n.t("osm_home.footer.tiles") + ' ' +
@@ -482,6 +494,25 @@
     if (fullBtn) {
       fullBtn.addEventListener("click", openFullScreen);
     }
+    // 🔎 v1.70.0 — Recherche du mode OSM (bindings)
+    _bindOsmSearch(container);
+    // 🔎 v1.71.0 (retour KARMA) — la barre vit dans la LIGNE DE TITRE
+    // « 🌍 Vue OSM » : visible en mode réduit ET en mode OSM. Le nœud est
+    // DÉPLACÉ (listeners conservés) ; l'ancien exemplaire d'un render
+    // précédent est purgé du head d'abord.
+    (function _monterRechercheDansHead() {
+      const head = document.querySelector("#ktaOsmHomeBox .loader-section-head");
+      if (!head) return;
+      const ancien = head.querySelector("#ktaOsmHomeSearch");
+      if (ancien) ancien.remove();
+      const barre = container.querySelector("#ktaOsmHomeSearch");
+      if (barre) head.appendChild(barre);
+    })();
+    // 🗂️ v1.71.0 — Panneau multi-plans : bind du sélecteur d'ajout + 1er render
+    const filtresBtn = container.querySelector("#ktaOsmHomeFiltersBtn");
+    if (filtresBtn) {
+      filtresBtn.addEventListener("click", _ouvrirModalFiltresOsm);
+    }
     // 🆕 v1.40.18 — Bouton "Ma position GPS"
     const myGpsBtn = container.querySelector("#ktaOsmHomeMyGpsBtn");
     if (myGpsBtn) {
@@ -494,34 +525,8 @@
     }
     _refreshCacheStatsHome();
 
-    // 🆕 v1.43.15 — Toggle "Réduire les contrôles" du widget Home
-    const toggleCtrlBtn = container.querySelector("#ktaOsmHomeToggleControlsBtn");
-    if (toggleCtrlBtn) {
-      toggleCtrlBtn.addEventListener("click", function() {
-        _applyHomeControlsCollapsed(!_getHomeControlsCollapsed());
-      });
-      // Apply état initial immédiatement (avant mount carte Leaflet)
-      _applyHomeControlsCollapsed(_getHomeControlsCollapsed());
-    }
-    // v1.40.6 — Slider opacité tuiles plan
-    const opacitySlider = container.querySelector("#ktaOsmHomeOpacity");
-    if (opacitySlider) {
-      opacitySlider.addEventListener("input", function(e) {
-        const v = (parseInt(e.target.value, 10) || 0) / 100;
-        _setPlanOpacity(v);
-      });
-    }
-    // 🆕 v1.40.12 — Bind toggles catégorie
-    function _bindToggle(id, fn) {
-      const el = container.querySelector("#" + id);
-      if (el) el.addEventListener("change", function(e) { fn(!!e.target.checked); });
-    }
-    _bindToggle("ktaOsmHomeShowTiles",  _toggleTiles);
-    _bindToggle("ktaOsmHomeShowPoi",    _togglePoi);
-    _bindToggle("ktaOsmHomeShowRoads",  _toggleRoads);
-    _bindToggle("ktaOsmHomeShowZones",  _toggleZones);
-    _bindToggle("ktaOsmHomeShowStruct", _toggleStructures);
-
+    // 🧹 v1.71.0 : binds du wrapper collapsible retirés avec lui (🔼, slider
+    // d'opacité bandeau, 5 checkboxes) — équivalents dans la modale ≡.
     // Init mini-carte Leaflet (différée pour laisser le DOM se peindre)
     setTimeout(function() { _initMiniMap(sel.georef); }, 50);
 
@@ -628,8 +633,10 @@
         // 🆕 v1.40.6 — Render tuiles V2 EN PREMIER (sous les data layers)
         if (data.tilesOverview) _renderTilesOnMiniMap(data.tilesOverview, georef);
         _renderDataLayersOnMiniMap(data, georef);
-        // 🆕 v1.40.17 — Render chips tags (filtre)
-        _renderTagChips(data);
+        // 🎚️ v1.71.0 : les tags vivent dans la modale ≡ (guard si fermée)
+        _renderModalTags();
+        _appliquerOrdre();   // 🗂️ v1.71.0 — renormalise les zIndex de la pile
+        _appliquerVisibilites();
       });
     }
   }
@@ -917,17 +924,30 @@
   // 🔧 v1.40.12 — Refactor : chaque catégorie va dans son propre sub-layerGroup
   // pour permettre les toggles individuels via add/removeLayer. Pattern aligné
   // sur osmView.js modale (5 layers indépendants par catégorie).
-  function _renderDataLayersOnMiniMap(data, georef) {
+  function _renderDataLayersOnMiniMap(data, georef, cible) {
+    // 🗂️ v1.71.0 — PARAMÉTRÉ : sans `cible`, rend dans les groupes MODULE du
+    // plan principal (comportement historique, clear inclus). Avec `cible`
+    // ({data, poi, roads, zones, struct}), rend dans les groupes d'un plan
+    // AJOUTÉ de la pile multi-plans — les groupes module ne sont pas touchés.
     if (!_mapInstance) return;
-    if (!_dataLayer)      _dataLayer      = L.layerGroup().addTo(_mapInstance);
-    if (!_poiSubLayer)    _poiSubLayer    = L.layerGroup();
-    if (!_roadsSubLayer)  _roadsSubLayer  = L.layerGroup();
-    if (!_zonesSubLayer)  _zonesSubLayer  = L.layerGroup();
-    if (!_structSubLayer) _structSubLayer = L.layerGroup();
-    _poiSubLayer.clearLayers();
-    _roadsSubLayer.clearLayers();
-    _zonesSubLayer.clearLayers();
-    _structSubLayer.clearLayers();
+    let dataL, poiL, roadsL, zonesL, structL;
+    if (cible) {
+      dataL = cible.data; poiL = cible.poi; roadsL = cible.roads;
+      zonesL = cible.zones; structL = cible.struct;
+      if (!dataL || !poiL || !roadsL || !zonesL || !structL) return;
+    } else {
+      if (!_dataLayer)      _dataLayer      = L.layerGroup().addTo(_mapInstance);
+      if (!_poiSubLayer)    _poiSubLayer    = L.layerGroup();
+      if (!_roadsSubLayer)  _roadsSubLayer  = L.layerGroup();
+      if (!_zonesSubLayer)  _zonesSubLayer  = L.layerGroup();
+      if (!_structSubLayer) _structSubLayer = L.layerGroup();
+      dataL = _dataLayer; poiL = _poiSubLayer; roadsL = _roadsSubLayer;
+      zonesL = _zonesSubLayer; structL = _structSubLayer;
+    }
+    poiL.clearLayers();
+    roadsL.clearLayers();
+    zonesL.clearLayers();
+    structL.clearLayers();
     if (!data || !Array.isArray(data.dataLayers)) return;
     const proj = _buildProjection(georef);
     if (!proj) { console.warn("[OsmHomePreview] proj indisponible, skip data render"); return; }
@@ -954,7 +974,7 @@
     for (const layer of data.dataLayers) {
       if (!layer.visible) continue;
 
-      // POI → _poiSubLayer (v1.40.13 icônes natives + 🆕 v1.40.17 popup + filtre tag)
+      // POI → poiL (v1.40.13 icônes natives + 🆕 v1.40.17 popup + filtre tag)
       const isMultiLevel = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel);
       for (const p of layer.points) {
         if (typeof p.x !== "number" || typeof p.y !== "number") continue;
@@ -1003,11 +1023,11 @@
           maxWidth: 240,
           className: "kta-osm-popup"
         });
-        marker.addTo(_poiSubLayer);
+        marker.addTo(poiL);
         nPoi++;
       }
 
-      // Roads → _roadsSubLayer (🆕 v1.40.37 : cascade couleur complète via
+      // Roads → roadsL (🆕 v1.40.37 : cascade couleur complète via
       // _resolveRoadColorHome — explicit r.color > built-in type > custom
       // legend > fallback gris. KARMA : « la couleur des routes... doit
       // persister ». Inclut les types custom (cust-*) définis dans
@@ -1020,11 +1040,11 @@
         const color = _resolveRoadColorHome(r);
         L.polyline(lls, {
           color: color, weight: 3, opacity: 0.85, interactive: false
-        }).addTo(_roadsSubLayer);
+        }).addTo(roadsL);
         nRoad++;
       }
 
-      // Zones → _zonesSubLayer (🆕 v1.40.37 : idem cascade couleur via
+      // Zones → zonesL (🆕 v1.40.37 : idem cascade couleur via
       // _resolveZoneColorsHome — couleurs natives ZONE_STYLES respectées
       // et custom legend persistée.)
       for (const z of layer.zones) {
@@ -1036,11 +1056,11 @@
           color: cols.stroke, fillColor: cols.fill,
           fillOpacity: (typeof z.fillOpacity === "number") ? z.fillOpacity * 0.7 : 0.25,
           weight: 1.5, opacity: 0.85, interactive: false
-        }).addTo(_zonesSubLayer);
+        }).addTo(zonesL);
         nZone++;
       }
 
-      // Structures → _structSubLayer (adaptatif polyline/polygon)
+      // Structures → structL (adaptatif polyline/polygon)
       for (const s of layer.structures) {
         if (!Array.isArray(s.points)) continue;
         const style = STRUCT_STYLES_HOME[s.type] || STRUCT_STYLES_HOME["mur"];
@@ -1050,21 +1070,21 @@
         const lls = _projectPoints(s.points, proj);
         if (lls.length < minPts) continue;
         if (polyline) {
-          L.polyline(lls, { color: style.color, weight: style.weight, opacity: style.opacity, interactive: false }).addTo(_structSubLayer);
+          L.polyline(lls, { color: style.color, weight: style.weight, opacity: style.opacity, interactive: false }).addTo(structL);
         } else {
           L.polygon(lls, {
             color: style.color, fillColor: style.fillColor,
             fillOpacity: style.fillOpacity, weight: style.weight, opacity: 1, interactive: false
-          }).addTo(_structSubLayer);
+          }).addTo(structL);
         }
         nStruct++;
       }
     }
     // Add sub-layers selon les toggles utilisateur
-    if (_showPoi)        _dataLayer.addLayer(_poiSubLayer);
-    if (_showRoads)      _dataLayer.addLayer(_roadsSubLayer);
-    if (_showZones)      _dataLayer.addLayer(_zonesSubLayer);
-    if (_showStructures) _dataLayer.addLayer(_structSubLayer);
+    if (_showPoi)        dataL.addLayer(poiL);
+    if (_showRoads)      dataL.addLayer(roadsL);
+    if (_showZones)      dataL.addLayer(zonesL);
+    if (_showStructures) dataL.addLayer(structL);
     console.log("[OsmHomePreview] Data render :", nPoi, "POI ·", nRoad, "roads ·", nZone, "zones ·", nStruct, "struct");
     // 🆕 v1.40.14 — Diagnostic icônes : combien matchent vs fallback + top tags non-matchés
     if (nPoi > 0) {
@@ -1080,36 +1100,41 @@
   }
 
   // 🆕 v1.40.12 — Toggles par catégorie (add/removeLayer du sub-group)
-  function _toggleTiles(visible) {
-    _showTiles = !!visible;
-    if (!_tilesLayer || !_mapInstance) return;
-    if (_showTiles)  { if (!_mapInstance.hasLayer(_tilesLayer)) _mapInstance.addLayer(_tilesLayer); }
-    else             { if  (_mapInstance.hasLayer(_tilesLayer)) _mapInstance.removeLayer(_tilesLayer); }
+  function _montrer(parent, layer, on) {
+    if (!parent || !layer) return;
+    if (on) { if (!parent.hasLayer(layer)) parent.addLayer(layer); }
+    else    { if  (parent.hasLayer(layer)) parent.removeLayer(layer); }
   }
-  function _togglePoi(visible) {
-    _showPoi = !!visible;
-    if (!_poiSubLayer || !_dataLayer) return;
-    if (_showPoi) { if (!_dataLayer.hasLayer(_poiSubLayer)) _dataLayer.addLayer(_poiSubLayer); }
-    else          { if  (_dataLayer.hasLayer(_poiSubLayer)) _dataLayer.removeLayer(_poiSubLayer); }
+
+  // 🗂️ v1.71.0 (retour KARMA « je veux qu'on puisse filtrer comme on fait
+  // déjà ») — APPLICATEUR UNIQUE : visibilité effective d'une couche =
+  // toggle GLOBAL (bandeau) ET chip PAR PLAN (panneau 🗂️). Appelé par les
+  // toggles globaux, les chips, et après chaque rendu.
+  function _appliquerVisibilites() {
+    if (!_mapInstance) return;
+    const vP = _visDe(_selectedPlanId);
+    if (_tilesLayer) _montrer(_mapInstance, _tilesLayer, _showTiles && vP.tiles);
+    if (_dataLayer) {
+      _montrer(_dataLayer, _poiSubLayer,    _showPoi        && vP.poi);
+      _montrer(_dataLayer, _roadsSubLayer,  _showRoads      && vP.roads);
+      _montrer(_dataLayer, _zonesSubLayer,  _showZones      && vP.zones);
+      _montrer(_dataLayer, _structSubLayer, _showStructures && vP.struct);
+    }
+    _chaqueExtra(function(g, id) {
+      const v = _visDe(id);
+      _montrer(_mapInstance, g.tiles, _showTiles && v.tiles);
+      _montrer(g.data, g.poi,    _showPoi        && v.poi);
+      _montrer(g.data, g.roads,  _showRoads      && v.roads);
+      _montrer(g.data, g.zones,  _showZones      && v.zones);
+      _montrer(g.data, g.struct, _showStructures && v.struct);
+    });
   }
-  function _toggleRoads(visible) {
-    _showRoads = !!visible;
-    if (!_roadsSubLayer || !_dataLayer) return;
-    if (_showRoads) { if (!_dataLayer.hasLayer(_roadsSubLayer)) _dataLayer.addLayer(_roadsSubLayer); }
-    else            { if  (_dataLayer.hasLayer(_roadsSubLayer)) _dataLayer.removeLayer(_roadsSubLayer); }
-  }
-  function _toggleZones(visible) {
-    _showZones = !!visible;
-    if (!_zonesSubLayer || !_dataLayer) return;
-    if (_showZones) { if (!_dataLayer.hasLayer(_zonesSubLayer)) _dataLayer.addLayer(_zonesSubLayer); }
-    else            { if  (_dataLayer.hasLayer(_zonesSubLayer)) _dataLayer.removeLayer(_zonesSubLayer); }
-  }
-  function _toggleStructures(visible) {
-    _showStructures = !!visible;
-    if (!_structSubLayer || !_dataLayer) return;
-    if (_showStructures) { if (!_dataLayer.hasLayer(_structSubLayer)) _dataLayer.addLayer(_structSubLayer); }
-    else                 { if  (_dataLayer.hasLayer(_structSubLayer)) _dataLayer.removeLayer(_structSubLayer); }
-  }
+
+  function _toggleTiles(visible)      { _showTiles      = !!visible; _appliquerVisibilites(); }
+  function _togglePoi(visible)        { _showPoi        = !!visible; _appliquerVisibilites(); }
+  function _toggleRoads(visible)      { _showRoads      = !!visible; _appliquerVisibilites(); }
+  function _toggleZones(visible)      { _showZones      = !!visible; _appliquerVisibilites(); }
+  function _toggleStructures(visible) { _showStructures = !!visible; _appliquerVisibilites(); }
 
   // 🆕 v1.40.21 — Bbox GPS du plan sélectionné (4 coins projetés via la georef).
   // Utilisée pour le garde-fou "GPS hors champ du plan" du bouton 📍 widget HOME.
@@ -1256,79 +1281,10 @@
 
   // Rendu de la ligne de chips tag (filtre par tag) dans le bandeau.
   // Click → toggle in/out du Set _homeTagFilter + re-render data layers.
-  function _renderTagChips(data) {
-    const cont = document.getElementById("ktaOsmHomeTagChips");
-    if (!cont) return;
-    const counts = _collectAvailableTags(data);
-    const tags   = Object.keys(counts).sort(function(a, b) { return counts[b] - counts[a]; });
-    if (tags.length === 0) {
-      cont.parentNode.style.display = "none";
-      return;
-    }
-    cont.parentNode.style.display = "";
-    const isAllActive = !_homeTagFilter || _homeTagFilter.size === 0;
-    let html = '<button class="kta-osm-home-tag-chip' + (isAllActive ? " active" : "") + '" data-tag="__all__" title="' + _escapeHtml(window.I18n.t("osm_home.tagchip.allTitle")) + '">' + _escapeHtml(window.I18n.t("osm_home.tagchip.all")) + '</button>';
-    for (const t of tags) {
-      const active = isAllActive || (_homeTagFilter && _homeTagFilter.has(t));
-      html += '<button class="kta-osm-home-tag-chip' + (active ? " active" : "") + '" data-tag="' + _escapeHtml(t) + '" title="' + _escapeHtml(window.I18n.t("osm_home.tagchip.count", { count: counts[t] })) + '">' + _escapeHtml(t) + '</button>';
-    }
-    cont.innerHTML = html;
-    // Bind clicks
-    const buttons = cont.querySelectorAll(".kta-osm-home-tag-chip");
-    buttons.forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        const tag = btn.dataset.tag;
-        if (tag === "__all__") {
-          _homeTagFilter = null; // reset
-        } else {
-          if (!_homeTagFilter) _homeTagFilter = new Set();
-          if (_homeTagFilter.has(tag)) _homeTagFilter.delete(tag);
-          else _homeTagFilter.add(tag);
-          if (_homeTagFilter.size === 0) _homeTagFilter = null;
-        }
-        // Re-render avec le nouveau filtre + re-render chips pour refléter l'état
-        const planData = _selectedPlanId ? _planDataCache[_selectedPlanId] : null;
-        if (planData) {
-          const plans = _listGeorefPlans();
-          const sel = plans.find(function(p) { return p.id === _selectedPlanId; });
-          if (sel) {
-            _renderDataLayersOnMiniMap(planData, sel.georef);
-            _renderTagChips(planData);
-          }
-        }
-      });
-    });
-  }
+  // 🧹 v1.71.0 : _renderTagChips (chips tags du widget) SUPPRIMÉE — le
+  // conteneur #ktaOsmHomeTagChips n'existe plus, les tags vivent dans la
+  // modale ≡ (_renderModalTags, agrégés sur toute la pile).
 
-  // =========================
-  // 🆕 v1.40.6 — TUILES V2 OVERVIEW (image plan sur OSM)
-  // =========================
-
-  // 🆕 v1.40.7 / 🔧 v1.40.10 — Heuristique de choix du niveau de tuiles.
-  // Choisit le niveau le PLUS zoomé (= meilleure résolution) tel que le nombre
-  // total de tuiles tient sous MAX_TILES_HOME.
-  //
-  // KARMA v1.40.6 : "trop flou" → v1.40.7 bump MAX=12 (z=-1 Catacombes ×4).
-  // KARMA v1.40.10 : "augmente / comme map" → MAX=40 (Catacombes z=0 natif).
-  // KARMA v1.40.11 : "plans très grosse dimension 16K bcp trop dégradé,
-  //   augmenter vraiment" → MAX=80. Permet aux plans 16K de monter à z=-2
-  //   (8×8=64 tuiles ≤ 80) au lieu de fallback z=-3 (4×4=16 tuiles flou).
-  //   Soit ×2 résolution sur les très gros plans.
-  //
-  // Compromis RAM : 80 tuiles × ~1 MB décodé = ~80 MB max. Toujours sous
-  // budget mobile (~500 MB iPhone PWA) car widget HOME isolé. Pour la
-  // plupart des plans (Catacombes 4K, plans typiques cataphiles ≤ 8K), on
-  // reste à 40-50 tuiles soit ~50 MB.
-  //
-  // Tableau récap par taille plan avec MAX=80 :
-  //   4K  (4000×2251)  : z=0   (8×5  = 40 tuiles) → résolution native ✅
-  //   8K  (8000×4500)  : z=-1  (8×5  = 40 tuiles) → scale ×2
-  //   12K (12000×8000) : z=-1  (12×8 = 96 trop) → z=-2 (6×4 = 24)
-  //   16K (16000×16000): z=-2  (8×8  = 64 tuiles) → scale ×4 (au lieu de
-  //                      z=-3 scale ×8 en v1.40.10) ← FIX KARMA
-  //
-  // Plans EXTRÊMES (32K+) : fallback minNativeZoom si dépasse MAX_TILES
-  // même au niveau le plus dézoomé. Flou résiduel accepté pour ces cas.
   function _chooseTileLevelForHome(tiling, planW, planH) {
     const MAX_TILES_HOME = 80;
     const tileSize = tiling.tileSize || 512;
@@ -1384,10 +1340,12 @@
   // Render des tuiles V2 sur la mini-carte via L.imageOverlay.rotated.
   // Pattern identique à osmView.js > _renderTilesV2OnOsm — convention CRS.Simple
   // pour le flip Y (k=1 = tuile la plus basse = sud).
-  function _renderTilesOnMiniMap(tilesData, georef) {
-    if (!_mapInstance) return;
-    if (!_tilesLayer) _tilesLayer = L.layerGroup().addTo(_mapInstance);
-    _tilesLayer.clearLayers();
+  // 🗂️ v1.71.0 — Cœur PARAMÉTRÉ (multi-plans) : rend les tuiles d'UN plan dans
+  // le groupe fourni, avec SON opacité et SON zIndex de pile. Le wrapper
+  // historique (plan principal) et les plans ajoutés passent tous par ici.
+  function _renderTilesInto(groupe, tilesData, georef, opacite, zIndex) {
+    if (!_mapInstance || !groupe) return;
+    groupe.clearLayers();
     if (!tilesData || !Array.isArray(tilesData.tiles) || tilesData.tiles.length === 0) return;
     if (!L.imageOverlay || !L.imageOverlay.rotated) {
       console.warn("[OsmHomePreview] L.imageOverlay.rotated indisponible (lib pas chargée)");
@@ -1417,15 +1375,22 @@
       try {
         const overlay = L.imageOverlay.rotated(t.url, tl, tr, bl, {
           interactive: false,
-          opacity: _planOpacity
+          opacity: opacite,
+          zIndex: zIndex
         });
-        overlay.addTo(_tilesLayer);
+        overlay.addTo(groupe);
         rendered++;
       } catch(e) {
         console.warn("[OsmHomePreview] tile overlay :", e);
       }
     }
-    console.log("[OsmHomePreview] Tiles V2 : " + rendered + " tuile(s) rendues à z=" + tilesData.z + " (scale x" + scale + ")");
+    console.log("[OsmHomePreview] Tiles V2 : " + rendered + " tuile(s) rendues à z=" + tilesData.z + " (scale x" + scale + ", zIndex " + zIndex + ")");
+  }
+
+  function _renderTilesOnMiniMap(tilesData, georef) {
+    if (!_mapInstance) return;
+    if (!_tilesLayer) _tilesLayer = L.layerGroup().addTo(_mapInstance);
+    _renderTilesInto(_tilesLayer, tilesData, georef, _planOpacity, _zIndexPour(_selectedPlanId));
   }
 
   // Met à jour l'opacité des tuiles plan (slider bandeau).
@@ -1461,11 +1426,561 @@
   // L'ancien flow (sessionStorage + simulation clic + auto-open) est retiré
   // car les sélecteurs HTML étaient faux (data-plan-id n'existe pas, le
   // HTML utilise data-id, et la classe est .plan-row-load pas .plan-row-load-btn).
+  // ═══════════════════════════════════════════════════════════
+  // 🗂️ v1.71.0 — PILE MULTI-PLANS (lot 2 : croisement de données OSM)
+  // ═══════════════════════════════════════════════════════════
+  // Cas d'usage KARMA : Paris 13e + 14e + galeries techniques de tout Paris
+  // sur la même carte, avec ordre d'affichage et opacité PAR PLAN.
+  // Le plan sélectionné (dropdown) reste le « principal » ; les autres sont
+  // ajoutés via le panneau 🗂️ (fullscreen uniquement, comme la recherche).
+
+  function _chaqueExtra(fn) {
+    Object.keys(_extraLayers).forEach(function(id) {
+      const g = _extraLayers[id];
+      if (g) fn(g, id);
+    });
+  }
+
+  // zIndex de pile : index 0 = AU-DESSUS. Base 200 (au-dessus du fond OSM),
+  // pas de 5 par niveau.
+  function _zIndexPour(planId) {
+    const i = _stackOrder.indexOf(planId);
+    if (i === -1) return 200;
+    return 200 + (_stackOrder.length - 1 - i) * 5;
+  }
+
+  function _appliquerOrdre() {
+    _stackOrder.forEach(function(id) {
+      const z = _zIndexPour(id);
+      const groupe = (id === _selectedPlanId) ? _tilesLayer
+                   : (_extraLayers[id] ? _extraLayers[id].tiles : null);
+      if (!groupe) return;
+      groupe.eachLayer(function(l) {
+        try { if (typeof l.setZIndex === "function") l.setZIndex(z); } catch(e) {}
+      });
+    });
+  }
+
+  function _avertirMultiSiBesoin() {
+    // Décision KARMA 2:b — pas de cap dur : avertissement quand la pile
+    // DÉPASSE 3 plans, 1× par session.
+    if (_warnedMulti || _stackOrder.length <= 3) return;
+    _warnedMulti = true;
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(
+        window.I18n.t("osm_mode.warn.multi", { n: _stackOrder.length }), "warn");
+    }
+  }
+
+  function _ajouterPlanOsm(planId) {
+    if (!planId || planId === _selectedPlanId || _extraLayers[planId]) return;
+    const plans = _listGeorefPlans();
+    const p = plans.find(function(x) { return x.id === planId; });
+    if (!p) return;
+
+    if (_stackOrder.indexOf(planId) === -1) _stackOrder.unshift(planId); // nouveau = au-dessus
+    const g = {
+      tiles:  L.layerGroup(),
+      data:   L.layerGroup().addTo(_mapInstance),
+      poi:    L.layerGroup(),
+      roads:  L.layerGroup(),
+      zones:  L.layerGroup(),
+      struct: L.layerGroup()
+    };
+    if (_showTiles) g.tiles.addTo(_mapInstance);
+    _extraLayers[planId] = g;
+    if (!(planId in _extraOpacity)) _extraOpacity[planId] = 0.5;
+
+    _avertirMultiSiBesoin();
+    _renderMultiPanel();
+
+    _loadPlanDataForPreview(planId).then(function(data) {
+      // Garde anti-race : retiré (ou devenu principal) pendant l'extraction ?
+      if (!_extraLayers[planId] || _extraLayers[planId] !== g) return;
+      if (!data) return;
+      if (data.tilesOverview) {
+        _renderTilesInto(g.tiles, data.tilesOverview, p.georef,
+                         _extraOpacity[planId], _zIndexPour(planId));
+      }
+      _renderDataLayersOnMiniMap(data, p.georef, g);
+      _appliquerOrdre();
+      _appliquerVisibilites();
+    });
+  }
+
+  function _retirerPlanOsm(planId) {
+    const g = _extraLayers[planId];
+    if (!g) return;
+    try {
+      if (_mapInstance) {
+        if (_mapInstance.hasLayer(g.tiles)) _mapInstance.removeLayer(g.tiles);
+        if (_mapInstance.hasLayer(g.data))  _mapInstance.removeLayer(g.data);
+      }
+      g.tiles.clearLayers(); g.data.clearLayers();
+    } catch(e) {}
+    delete _extraLayers[planId];
+    const i = _stackOrder.indexOf(planId);
+    if (i !== -1) _stackOrder.splice(i, 1);
+    // Pas de revoke des blob URLs : elles vivent dans _planDataCache (re-ajout
+    // gratuit) et peuvent servir au plan principal.
+    _appliquerOrdre();
+    _renderMultiPanel();
+  }
+
+  // sens : -1 = monter (vers le dessus), +1 = descendre
+  function _deplacerPlan(planId, sens) {
+    const i = _stackOrder.indexOf(planId);
+    const j = i + sens;
+    if (i === -1 || j < 0 || j >= _stackOrder.length) return;
+    _stackOrder[i] = _stackOrder[j];
+    _stackOrder[j] = planId;
+    _appliquerOrdre();
+    _renderMultiPanel();
+  }
+
+  function _setOpaciteExtra(planId, v) {
+    _extraOpacity[planId] = Math.max(0, Math.min(1, v));
+    const g = _extraLayers[planId];
+    if (!g) return;
+    g.tiles.eachLayer(function(l) {
+      try {
+        if (typeof l.setOpacity === "function") l.setOpacity(_extraOpacity[planId]);
+        else if (l._image) l._image.style.opacity = String(_extraOpacity[planId]);
+      } catch(e) {}
+    });
+  }
+
+  // 🎚️ v1.71.0 (retour KARMA) — MODALE « Plans & filtres OSM » : remplace le
+  // panneau flottant (qui empiétait sur la carte). Même pattern que la modale
+  // ≡ Filtres du mode plan. Contenu vivant : _renderMultiPanel() cible les ids
+  // à l'intérieur de la modale (garde d'existence déjà en place).
+  const OSM_FILTERS_MODAL_ID = "kta-osm-filters-modal";
+
+  function _fermerModalFiltresOsm() {
+    const m = document.getElementById(OSM_FILTERS_MODAL_ID);
+    if (m) m.remove();
+    document.removeEventListener("keydown", _escFiltresOsm, true);
+  }
+  function _escFiltresOsm(e) {
+    if (e.key === "Escape" || e.key === "Esc") {
+      // capture + stopPropagation : ne pas laisser l'Escape refermer AUSSI le
+      // mode OSM (handler fullscreen en phase bulle sur document).
+      e.stopPropagation();
+      _fermerModalFiltresOsm();
+    }
+  }
+
+  function _ouvrirModalFiltresOsm() {
+    _fermerModalFiltresOsm();
+    const overlay = document.createElement("div");
+    overlay.id = OSM_FILTERS_MODAL_ID;
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.display = "flex";
+    overlay.style.zIndex = "100001";   // au-dessus du widget fullscreen
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-osm-filters-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">🎚️ ' + _escapeHtml(window.I18n.t("osm_mode.filters.title")) + '</span>' +
+          '<button class="kta-readme-modal-close" id="kta-osm-filters-close" type="button" aria-label="✕">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<p class="kta-osm-filters-hint">' + _escapeHtml(window.I18n.t("osm_mode.filters.hint")) + '</p>' +
+          '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.global")) + '</div>' +
+          '<div class="kta-osm-multi-cats kta-osm-filters-globaux" id="ktaOsmFiltersGlobaux"></div>' +
+          '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.tags")) + '</div>' +
+          '<div class="kta-osm-home-tagchips kta-osm-filters-tags" id="ktaOsmFiltersTags"></div>' +
+          '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.plans")) + '</div>' +
+          '<select id="ktaOsmMultiAdd" class="kta-osm-filters-add"></select>' +
+          '<div id="ktaOsmMultiRows"></div>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+
+    document.getElementById("kta-osm-filters-close").addEventListener("click", _fermerModalFiltresOsm);
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _fermerModalFiltresOsm(); });
+    document.addEventListener("keydown", _escFiltresOsm, true);
+
+    const multiAdd = overlay.querySelector("#ktaOsmMultiAdd");
+    if (multiAdd) {
+      multiAdd.addEventListener("change", function() {
+        if (multiAdd.value) { _ajouterPlanOsm(multiAdd.value); multiAdd.value = ""; }
+      });
+    }
+    _renderModalGlobaux();
+    _renderModalTags();
+    _renderMultiPanel();
+  }
+
+  // Catalogue partagé des 5 catégories (chips globaux ET par plan).
+  const _CATS = [
+    ["tiles",  "🖼️", "osm_home.toggle.plan.label"],
+    ["poi",    "📍", "osm_home.toggle.poi.label"],
+    ["roads",  "🛣️", "osm_home.toggle.roads.label"],
+    ["zones",  "🌐", "osm_home.toggle.zones.label"],
+    ["struct", "🏛️", "osm_home.toggle.struct.label"]
+  ];
+
+  // 🎚️ v1.71.0 (retour KARMA) — chips GLOBAUX de la modale (ex-checkboxes du
+  // bandeau, supprimées avec le wrapper collapsible).
+  function _renderModalGlobaux() {
+    const cont = document.getElementById("ktaOsmFiltersGlobaux");
+    if (!cont) return;
+    const etats = { tiles: _showTiles, poi: _showPoi, roads: _showRoads,
+                    zones: _showZones, struct: _showStructures };
+    const setters = { tiles: _toggleTiles, poi: _togglePoi, roads: _toggleRoads,
+                      zones: _toggleZones, struct: _toggleStructures };
+    cont.innerHTML = _CATS.map(function(c) {
+      return '<button type="button" class="kta-osm-multi-cat kta-osm-cat-libelle' +
+             (etats[c[0]] ? " active" : "") + '" data-gcat="' + c[0] + '">' +
+             c[1] + ' <span>' + _escapeHtml(window.I18n.t(c[2])) + '</span></button>';
+    }).join("");
+    cont.querySelectorAll("[data-gcat]").forEach(function(b) {
+      b.addEventListener("click", function() {
+        const cat = b.getAttribute("data-gcat");
+        const nouveau = !({ tiles: _showTiles, poi: _showPoi, roads: _showRoads,
+                            zones: _showZones, struct: _showStructures }[cat]);
+        setters[cat](nouveau);
+        b.classList.toggle("active", nouveau);
+      });
+    });
+  }
+
+  // 🏷️ v1.71.0 (retour KARMA « on doit aussi pouvoir filtrer au tag ») — chips
+  // tags dans la modale, agrégés sur TOUTE la pile (plus seulement le principal).
+  function _renderModalTags() {
+    const cont = document.getElementById("ktaOsmFiltersTags");
+    if (!cont) return;
+    const counts = {};
+    _stackOrder.forEach(function(id) {
+      const data = _planDataCache[id];
+      if (!data) return;
+      const c = _collectAvailableTags(data);
+      Object.keys(c).forEach(function(t) { counts[t] = (counts[t] || 0) + c[t]; });
+    });
+    const tags = Object.keys(counts).sort(function(a, b) { return counts[b] - counts[a]; });
+    if (tags.length === 0) { cont.innerHTML = ""; return; }
+    const isAllActive = !_homeTagFilter || _homeTagFilter.size === 0;
+    let html = '<button class="kta-osm-home-tag-chip' + (isAllActive ? " active" : "") +
+               '" data-mtag="__all__">' + _escapeHtml(window.I18n.t("osm_home.tagchip.all")) + '</button>';
+    tags.forEach(function(t) {
+      const active = isAllActive || (_homeTagFilter && _homeTagFilter.has(t));
+      html += '<button class="kta-osm-home-tag-chip' + (active ? " active" : "") +
+              '" data-mtag="' + _escapeHtml(t) + '" title="' +
+              _escapeHtml(window.I18n.t("osm_home.tagchip.count", { count: counts[t] })) + '">' +
+              _escapeHtml(t) + '</button>';
+    });
+    cont.innerHTML = html;
+    cont.querySelectorAll("[data-mtag]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const tag = btn.getAttribute("data-mtag");
+        if (tag === "__all__") {
+          _homeTagFilter = null;
+        } else {
+          if (!_homeTagFilter) _homeTagFilter = new Set();
+          if (_homeTagFilter.has(tag)) _homeTagFilter.delete(tag);
+          else _homeTagFilter.add(tag);
+          if (_homeTagFilter.size === 0) _homeTagFilter = null;
+        }
+        _reRenderDataTous();
+        _renderModalTags();
+      });
+    });
+  }
+
+  // Re-render de la DATA de TOUTE la pile (filtre tag modifié). Les tuiles ne
+  // bougent pas (le filtre tag ne concerne que les POI).
+  function _reRenderDataTous() {
+    const plans = _listGeorefPlans();
+    const principal = plans.find(function(p) { return p.id === _selectedPlanId; });
+    const dataP = _selectedPlanId ? _planDataCache[_selectedPlanId] : null;
+    if (principal && dataP) _renderDataLayersOnMiniMap(dataP, principal.georef);
+    _chaqueExtra(function(g, id) {
+      const p = plans.find(function(x) { return x.id === id; });
+      const data = _planDataCache[id];
+      if (p && data) _renderDataLayersOnMiniMap(data, p.georef, g);
+    });
+    _appliquerVisibilites();
+  }
+
+  // Panneau 🗂️ — reconstruit à chaque changement de pile. Lignes dans l'ordre
+  // de _stackOrder (haut de liste = au-dessus sur la carte).
+  function _renderMultiPanel() {
+    const rows = document.getElementById("ktaOsmMultiRows");
+    const addSel = document.getElementById("ktaOsmMultiAdd");
+    if (!rows || !addSel) return;
+    const plans = _listGeorefPlans();
+    const nomDe = function(id) {
+      const p = plans.find(function(x) { return x.id === id; });
+      return p ? p.name : id;
+    };
+
+    rows.innerHTML = _stackOrder.map(function(id, i) {
+      const principal = (id === _selectedPlanId);
+      const op = principal ? _planOpacity : (_extraOpacity[id] != null ? _extraOpacity[id] : 0.5);
+      return '<div class="kta-osm-multi-row" data-id="' + _escapeHtml(id) + '">' +
+        '<span class="kta-osm-multi-ordre">' +
+          '<button type="button" class="kta-osm-multi-btn" data-up="' + _escapeHtml(id) + '"' +
+            (i === 0 ? ' disabled' : '') + ' title="' + _escapeHtml(window.I18n.t("osm_mode.multi.upTitle")) + '">▲</button>' +
+          '<button type="button" class="kta-osm-multi-btn" data-down="' + _escapeHtml(id) + '"' +
+            (i === _stackOrder.length - 1 ? ' disabled' : '') + ' title="' + _escapeHtml(window.I18n.t("osm_mode.multi.downTitle")) + '">▼</button>' +
+        '</span>' +
+        '<span class="kta-osm-multi-nom"' + (principal ? ' title="' + _escapeHtml(window.I18n.t("osm_mode.multi.primaryTitle")) + '"' : '') + '>' +
+          (principal ? "◉ " : "") + _escapeHtml(nomDe(id)) + '</span>' +
+        '<input type="range" class="kta-osm-multi-op" data-op="' + _escapeHtml(id) + '" ' +
+          'min="0" max="100" value="' + Math.round(op * 100) + '" ' +
+          'title="' + _escapeHtml(window.I18n.t("osm_mode.multi.opacityTitle")) + '">' +
+        (principal ? '<span class="kta-osm-multi-btn kta-osm-multi-vide"></span>'
+                   : '<button type="button" class="kta-osm-multi-btn kta-osm-multi-x" data-x="' + _escapeHtml(id) + '" ' +
+                     'title="' + _escapeHtml(window.I18n.t("osm_mode.multi.removeTitle")) + '">✕</button>') +
+        // 🗂️ v1.71.0 (retour KARMA) — chips de filtrage PAR PLAN. Visibilité
+        // effective = case globale du bandeau ET chip du plan.
+        '<div class="kta-osm-multi-cats">' +
+          _CATS.map(function(c) {
+            const v = _visDe(id);
+            return '<button type="button" class="kta-osm-multi-cat kta-osm-cat-libelle' + (v[c[0]] ? " active" : "") + '" ' +
+                   'data-cat="' + c[0] + '" data-plan="' + _escapeHtml(id) + '">' +
+                   c[1] + ' <span>' + _escapeHtml(window.I18n.t(c[2])) + '</span></button>';
+          }).join("") +
+        '</div>' +
+      '</div>';
+    }).join("");
+
+    // Sélecteur d'ajout : plans georef restants
+    const restants = plans.filter(function(p) { return _stackOrder.indexOf(p.id) === -1; });
+    addSel.innerHTML = '<option value="">' + _escapeHtml(window.I18n.t("osm_mode.multi.add")) + '</option>' +
+      restants.map(function(p) {
+        return '<option value="' + _escapeHtml(p.id) + '">' + _escapeHtml(p.name) + '</option>';
+      }).join("");
+    addSel.style.display = restants.length ? "" : "none";
+
+    // Bindings (rows reconstruits → rebind à chaque render, listeners courts)
+    rows.querySelectorAll("[data-up]").forEach(function(b) {
+      b.addEventListener("click", function() { _deplacerPlan(b.getAttribute("data-up"), -1); });
+    });
+    rows.querySelectorAll("[data-down]").forEach(function(b) {
+      b.addEventListener("click", function() { _deplacerPlan(b.getAttribute("data-down"), +1); });
+    });
+    rows.querySelectorAll("[data-x]").forEach(function(b) {
+      b.addEventListener("click", function() { _retirerPlanOsm(b.getAttribute("data-x")); });
+    });
+    rows.querySelectorAll(".kta-osm-multi-cat").forEach(function(b) {
+      b.addEventListener("click", function() {
+        const id = b.getAttribute("data-plan");
+        const cat = b.getAttribute("data-cat");
+        const v = _visDe(id);
+        v[cat] = !v[cat];
+        b.classList.toggle("active", v[cat]);
+        _appliquerVisibilites();
+      });
+    });
+    rows.querySelectorAll("[data-op]").forEach(function(r) {
+      r.addEventListener("input", function() {
+        const id = r.getAttribute("data-op");
+        const v = parseInt(r.value, 10) / 100;
+        if (id === _selectedPlanId) {
+          _setPlanOpacity(v);   // (le slider bandeau n'existe plus — modale seule)
+        } else {
+          _setOpaciteExtra(id, v);
+        }
+      });
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 🔎 v1.70.0 — RECHERCHE DU MODE OSM (topo KARMA 30/07, décision 1)
+  // ═══════════════════════════════════════════════════════════
+  // Périmètre STRICTEMENT LOCAL (décision explicite : « pas de sortie
+  // internet ») : ① les PLANS de la liste OSM (géoréférencés uniquement —
+  // les autres sont invisibles ici par construction) ② leurs POI, lus sans
+  // charger le plan via _loadPlanDataForPreview (cache RAM `_planDataCache`).
+  // PAS de recherche d'adresse (Nominatim = nouvelle surface réseau,
+  // écartée ; réétudiable en option opt-in séparée).
+  //
+  // Index construit PARESSEUSEMENT à la première saisie (extraire N ZIP au
+  // mount du widget ralentirait le boot HOME pour un usage incertain).
+  let _searchIndex = null;      // [{type:"plan"|"poi", planId, planName, georef, nom, x, y, tags}]
+  // 🐛 v1.72.1 (KARMA « elle se bloque ») : pendant l'extraction, un 2e appel
+  // recevait `Promise.resolve(null)` IMMÉDIAT → _rendre re-tournait → nouvel
+  // appel → résolution immédiate → boucle de microtasks, UI gelée sur
+  // « Lecture des plans… ». Fix : retourner LA promesse en vol.
+  let _searchIndexPromise = null;
+
+  function _construireIndexRecherche() {
+    if (_searchIndex) return Promise.resolve(_searchIndex);
+    if (_searchIndexPromise) return _searchIndexPromise;
+    const plans = _listGeorefPlans();
+    const index = [];
+    plans.forEach(function(p) {
+      index.push({ type: "plan", planId: p.id, planName: p.name, georef: p.georef });
+    });
+    // Extraction séquentielle (pas Promise.all : N JSZip simultanés = pic RAM
+    // mobile ; le cache _planDataCache rend les passages suivants gratuits).
+    let chaine = Promise.resolve();
+    plans.forEach(function(p) {
+      chaine = chaine.then(function() {
+        return _loadPlanDataForPreview(p.id).then(function(data) {
+          if (!data || !Array.isArray(data.dataLayers)) return;
+          data.dataLayers.forEach(function(layer) {
+            (layer.points || []).forEach(function(pt) {
+              if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return;
+              index.push({
+                type: "poi", planId: p.id, planName: p.name, georef: p.georef,
+                nom: pt.nom || pt.id || "", x: pt.x, y: pt.y,
+                tags: Array.isArray(pt.tags) ? pt.tags.join(" ") : ""
+              });
+            });
+          });
+        }).catch(function() {});
+      });
+    });
+    _searchIndexPromise = chaine.then(function() {
+      _searchIndex = index;
+      _searchIndexPromise = null;
+      return index;
+    });
+    return _searchIndexPromise;
+  }
+
+  // Projette un POI en latlng via le georef de SON plan (chaque plan a sa
+  // propre calibration — jamais celle du plan sélectionné).
+  function _poiVersLatLng(entry) {
+    try {
+      if (!window.KmzExport || typeof window.KmzExport.buildTransform !== "function") return null;
+      const g = entry.georef;
+      const t = window.KmzExport.buildTransform(
+        { x: g.pointA.x, y: g.pointA.y }, { x: g.pointB.x, y: g.pointB.y },
+        { lat: g.pointA.lat, lng: g.pointA.lng }, { lat: g.pointB.lat, lng: g.pointB.lng });
+      const gps = window.KmzExport.planToGps(t, entry.x, entry.y);
+      return gps ? L.latLng(gps.lat, gps.lng) : null;
+    } catch(e) { return null; }
+  }
+
+  let _searchFlashMarker = null;
+
+  function _allerAuResultat(entry) {
+    const resEl = document.getElementById("ktaOsmHomeSearchResults");
+    if (resEl) resEl.style.display = "none";
+    // Le résultat bascule d'abord la vue sur SON plan (mono-plan en lot 1 —
+    // le multi-plans du lot 2 réutilisera ce même pipeline).
+    if (entry.planId !== _selectedPlanId) selectPlan(entry.planId);
+    if (entry.type === "plan") return;   // sélection = fitBounds déjà fait
+    const ll = _poiVersLatLng(entry);
+    if (!ll) return;
+    // La carte peut être en cours de (re)création après selectPlan → retries
+    // bornés, même pattern que les invalidateSize en cascade du module.
+    let essais = 0;
+    (function _volerVers() {
+      if (!_mapInstance) {
+        if (++essais < 12) setTimeout(_volerVers, 250);
+        return;
+      }
+      try {
+        _mapInstance.flyTo(ll, Math.max(_mapInstance.getZoom(), 17), { duration: 0.6 });
+        if (_searchFlashMarker) { try { _mapInstance.removeLayer(_searchFlashMarker); } catch(e) {} }
+        _searchFlashMarker = L.circleMarker(ll, {
+          radius: 11, color: "#f4c542", weight: 3, fillColor: "#f4c542", fillOpacity: 0.25
+        }).addTo(_mapInstance);
+        if (entry.nom) _searchFlashMarker.bindPopup(_escapeHtml(entry.nom)).openPopup();
+      } catch(e) {}
+    })();
+  }
+
+  function _bindOsmSearch(container) {
+    const input = container.querySelector("#ktaOsmHomeSearchInput");
+    const resEl = container.querySelector("#ktaOsmHomeSearchResults");
+    if (!input || !resEl) return;
+
+    // 🐛 v1.72.1 (spec finale KARMA) — le dropdown ÉPOUSE la barre : même
+    // gauche, même largeur, collé dessous. position:fixed + rect de l'input
+    // à chaque affichage ; largeur élargie (min 320px) et clampée au viewport
+    // si la barre est très étroite.
+    function _positionnerResultats() {
+      try {
+        const r = input.getBoundingClientRect();
+        const vw = window.innerWidth || document.documentElement.clientWidth;
+        const largeur = Math.min(Math.max(r.width, 320), vw - 16);
+        let gauche = r.left;
+        if (gauche + largeur > vw - 8) gauche = vw - 8 - largeur;   // clamp droite
+        if (gauche < 8) gauche = 8;                                  // clamp gauche
+        resEl.style.top   = Math.round(r.bottom + 6) + "px";
+        resEl.style.left  = Math.round(gauche) + "px";
+        resEl.style.width = Math.round(largeur) + "px";
+      } catch(e) {}
+    }
+
+    function _rendre(q) {
+      if (!q) { resEl.style.display = "none"; resEl.innerHTML = ""; return; }
+      if (!_searchIndex) {
+        _positionnerResultats();
+        resEl.style.display = "block";
+        resEl.innerHTML = '<div class="kta-osm-search-empty">' +
+          _escapeHtml(window.I18n.t("osm_mode.search.scanning")) + '</div>';
+        _construireIndexRecherche().then(function() { _rendre(String(input.value || "").toLowerCase().trim()); });
+        return;
+      }
+      const matches = _searchIndex.filter(function(e) {
+        if (e.type === "plan") return e.planName.toLowerCase().indexOf(q) !== -1;
+        return (e.nom && e.nom.toLowerCase().indexOf(q) !== -1)
+            || (e.tags && e.tags.toLowerCase().indexOf(q) !== -1);
+      }).slice(0, 30);
+      if (matches.length === 0) {
+        _positionnerResultats();
+        resEl.style.display = "block";
+        resEl.innerHTML = '<div class="kta-osm-search-empty">' +
+          _escapeHtml(window.I18n.t("osm_mode.search.noResult")) + '</div>';
+        return;
+      }
+      _positionnerResultats();
+        resEl.style.display = "block";
+      resEl.innerHTML = matches.map(function(e, i) {
+        return '<button type="button" class="kta-osm-search-row" data-i="' + i + '">' +
+                 (e.type === "plan"
+                   ? '🗺️ <b>' + _escapeHtml(e.planName) + '</b>'
+                   : '📍 ' + _escapeHtml(e.nom || "?") +
+                     ' <span class="kta-osm-search-badge">' + _escapeHtml(e.planName) + '</span>') +
+               '</button>';
+      }).join("");
+      resEl.querySelectorAll(".kta-osm-search-row").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const e = matches[parseInt(btn.getAttribute("data-i"), 10)];
+          if (e) _allerAuResultat(e);
+        });
+      });
+    }
+
+    let _debounce = null;
+    input.addEventListener("input", function() {
+      if (_debounce) clearTimeout(_debounce);
+      _debounce = setTimeout(function() {
+        _rendre(String(input.value || "").toLowerCase().trim());
+      }, 180);
+    });
+    input.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") { resEl.style.display = "none"; input.blur(); e.stopPropagation(); }
+    });
+  }
+
+  // ⚠️ v1.70.0 — Avertissement perf du mode OSM (décision KARMA 2:b) :
+  // UNE FOIS à la première ouverture du mode (persisté LS). Le second volet
+  // (« > 3 plans affichés ») s'activera au lot 2 multi-plans via cette même
+  // fonction (seuil passé en argument).
+  const _WARN_LS_KEY = "myktamap_osm_mode_warn_v1";
+  function _avertirPerfModeOsm() {
+    try {
+      if (localStorage.getItem(_WARN_LS_KEY)) return;
+      localStorage.setItem(_WARN_LS_KEY, "1");
+    } catch(e) {}
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(window.I18n.t("osm_mode.warn.perf"), "warn");
+    }
+  }
+
   function openFullScreen() {
     _isFullscreen = !_isFullscreen;
     const box = document.getElementById("ktaOsmHomeBox");
     if (!box) return;
     if (_isFullscreen) {
+      _avertirPerfModeOsm();   // 🔔 v1.70.0 — 1× à la première ouverture du mode
       box.classList.add("kta-osm-home-fullscreen-active");
       document.body.classList.add("kta-osm-home-fs-lock");
       // Escape pour réduire
@@ -1557,10 +2072,32 @@
 
   function selectPlan(planId) {
     if (!planId) return;
+    // 🗂️ v1.71.0 — pile multi-plans : le plan sélectionné devient le PRINCIPAL.
+    // S'il était un plan AJOUTÉ, on retire d'abord ses groupes extra (ses
+    // couches vont renaître dans les groupes module) ; l'ancien principal est
+    // REMPLACÉ dans la pile à la même position (comportement historique : ses
+    // couches sont écrasées par le rendu du nouveau).
+    const _prevPrimary = _selectedPlanId;
+    if (planId !== _prevPrimary && _extraLayers[planId]) _retirerPlanOsm(planId);
     _selectedPlanId = planId;
+    // 🐛 v1.71.0 (KARMA) — synchroniser le DROPDOWN du bandeau : la recherche
+    // (et tout selectPlan programmatique) changeait le plan affiché mais le
+    // <select> gardait l'ancien nom — sa valeur n'était posée qu'au render
+    // initial du widget.
+    const _dd = document.getElementById("ktaOsmHomePlanSelect");
+    if (_dd && _dd.value !== planId) _dd.value = planId;
     const plans = _listGeorefPlans();
     const sel = plans.find(function(p) { return p.id === planId; });
     if (!sel) return;
+    if (_stackOrder.indexOf(planId) === -1) {
+      const iPrev = _prevPrimary ? _stackOrder.indexOf(_prevPrimary) : -1;
+      if (iPrev !== -1) _stackOrder[iPrev] = planId;
+      else _stackOrder.unshift(planId);
+    } else if (_prevPrimary && _prevPrimary !== planId) {
+      const iPrev = _stackOrder.indexOf(_prevPrimary);
+      if (iPrev !== -1) _stackOrder.splice(iPrev, 1);
+    }
+    _renderMultiPanel();
     _saveLastSelected(planId);
     _renderGeorefMarkers(sel.georef);
     // 🆕 v1.43.3 — Si offline, vérifier si ce plan a des tuiles cachées.
@@ -1577,8 +2114,10 @@
       // 🆕 v1.40.6 — Render tuiles V2 EN PREMIER (sous les data layers)
       if (data.tilesOverview) _renderTilesOnMiniMap(data.tilesOverview, sel.georef);
       _renderDataLayersOnMiniMap(data, sel.georef);
-      // 🆕 v1.40.17 — Render chips tags après changement de plan
-      _renderTagChips(data);
+      // 🎚️ v1.71.0 : tags en modale (guard si fermée) + parité pile
+      _renderModalTags();
+      _appliquerOrdre();
+      _appliquerVisibilites();
     });
   }
 
@@ -1612,35 +2151,9 @@
 
   // ============================================================
   // 🆕 v1.43.15 — Toggle "Réduire les contrôles" du widget Home
-  // ============================================================
-  // Cache opacity slider + toggles catégorie + tagrow pour avoir la carte
-  // en plein écran. État persisté en localStorage (clé séparée de la
-  // modale OSM car contexte UX différent : ici on est dans le widget Home
-  // qui peut être en mode mini OU en mode fullscreen).
-  const LS_HOME_COLLAPSED_KEY = "myktamap_osm_home_controls_collapsed";
-
-  function _getHomeControlsCollapsed() {
-    try { return localStorage.getItem(LS_HOME_COLLAPSED_KEY) === "1"; }
-    catch(e) { return false; }
-  }
-
-  function _applyHomeControlsCollapsed(collapsed) {
-    try { localStorage.setItem(LS_HOME_COLLAPSED_KEY, collapsed ? "1" : "0"); } catch(e) {}
-    const wrapper = document.getElementById("ktaOsmHomeCollapsible");
-    const btn     = document.getElementById("ktaOsmHomeToggleControlsBtn");
-    if (wrapper) wrapper.style.display = collapsed ? "none" : "";
-    if (btn) {
-      btn.textContent = collapsed ? "🔽" : "🔼";
-      btn.title = collapsed
-        ? window.I18n.t("osm_home.controls.expandTitle")
-        : window.I18n.t("osm_home.controls.collapseTitle");
-    }
-    // Leaflet doit recalculer la taille du conteneur sinon les tuiles
-    // se chargent mal et les coords pixel sont fausses au switch.
-    if (_mapInstance && typeof _mapInstance.invalidateSize === "function") {
-      setTimeout(function() { try { _mapInstance.invalidateSize(); } catch(e) {} }, 80);
-    }
-  }
+  // 🧹 v1.71.0 : helpers du bouton 🔼 « réduire les contrôles » SUPPRIMÉS
+  // avec le wrapper collapsible (la clé LS myktamap_osm_home_controls_collapsed
+  // n'est plus lue — résidu inoffensif chez les users existants).
 
   // ============================================================
   // 🆕 v1.43.3 — Overlay "ce plan n'est pas caché offline"

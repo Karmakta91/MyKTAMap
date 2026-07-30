@@ -521,7 +521,13 @@
         { db: "myktamap_backups", store: "backups", blobFields: [] },
         { db: "myktamap_photos",  store: "photos",  blobFields: ["blob"] },
         { db: "myktamap_profile", store: "profile", blobFields: ["photoBlob"] },
-        { db: "myktamap_crashes", store: "crashes", blobFields: [] }
+        { db: "myktamap_crashes", store: "crashes", blobFields: [] },
+        // 🆕 v1.69.0 — Le Carnet (js/journal.js) : sans cette ligne, l'espace
+        // occupé par les sorties archivées serait invisible dans « Stockage ».
+        { db: "myktamap_journal", store: "sorties", blobFields: [] },
+        // 🆕 v1.69.0 — Documents PDF du Mode Histoire : jamais comptés jusqu'ici
+        // (un PDF de 40 Mo était invisible dans « Stockage »).
+        { db: "myktamap_histoire_pdfs", store: "pdfs", blobFields: ["blob"] }
       ];
 
       // Ouvre une DB IDB en lecture seule SANS la créer si absente. Utilise

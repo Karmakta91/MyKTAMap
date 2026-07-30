@@ -331,6 +331,13 @@
         return _tx("readwrite", function(store) {
           return _reqPromise(store.add(record)).then(function() {
             console.log("[Photos] add OK :", record.id, "(" + Math.round(finalBlob.size / 1024) + " Ko)");
+            // 📔 v1.69.0 — Le Carnet référence les photos PRISES pendant la
+            // sortie. Hook posé ici et PAS dans restorePhoto() : réimporter une
+            // session ne doit pas gonfler le compteur photos de la sortie
+            // en cours (ce sont des photos d'une autre sortie, d'un autre jour).
+            if (window.Journal && typeof window.Journal.onPhotoAdded === "function") {
+              try { window.Journal.onPhotoAdded(record.id, record.planId, record.pointId); } catch(e) {}
+            }
             return record.id;
           });
         });

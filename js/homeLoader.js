@@ -141,6 +141,10 @@
             // (1-10 Mo) consulté à la demande user, lazy n'apporte rien et
             // simplifie le rendu iframe (qui veut une URL stable).
             _addPath(planConfig.plan && planConfig.plan.histoirePdf);
+            // 📄 v1.71.0 — multi-PDF Histoire
+            if (planConfig.plan && Array.isArray(planConfig.plan.histoirePdfs)) {
+              planConfig.plan.histoirePdfs.forEach(_addPath);
+            }
             (planConfig.imageLayers || []).forEach(function(l) { _addPath(l && l.file); });
             (planConfig.dataLayers || []).forEach(function(l) { _addPath(l && l.file); });
             console.log("[LazyTiles v1.34.10-dryrun] Whitelist des paths référencés (= NE PAS stuber en Phase 2) :", Array.from(referencedPaths));
@@ -511,16 +515,175 @@
         });
       }
 
-      // 🌐 v1.58.0 — Recherche multi-plans depuis le home (A1 1:c) : cherche un
-      // point dans TOUTE la bibliothèque sans charger de plan ; le clic sur un
-      // résultat charge le plan cible et centre sur le point (pipeline portail).
-      const crossSearchBtn = document.getElementById("loaderCrossSearchBtn");
-      if (crossSearchBtn) {
-        crossSearchBtn.addEventListener("click", function() {
-          if (window.CrossPlanSearch && typeof window.CrossPlanSearch.ouvrir === "function") {
-            window.CrossPlanSearch.ouvrir("");
+      // 🔽 v1.71.0 (KARMA) — Footer repliable : gagne la hauteur du bloc
+      // copyright pour le contenu. État persisté (et exporté avec le profil).
+      const LS_FOOTER_REPLIE = "myktamap_home_footer_replie_v1";
+      const footerToggle = document.getElementById("loaderFooterToggle");
+      const footerBlock  = document.getElementById("loaderFooterBlock");
+      function _appliquerFooter(replie) {
+        if (!footerToggle || !footerBlock) return;
+        footerBlock.style.display = replie ? "none" : "";
+        footerToggle.setAttribute("aria-expanded", replie ? "false" : "true");
+        // Replié : mention minimale (copyright jamais supprimé, juste replié)
+        footerToggle.textContent = replie
+          ? "▴ © 2026 MyKTAMap · " + ((window.__MKM__ && window.__MKM__.build) || "")
+          : "▾";
+      }
+      if (footerToggle && footerBlock) {
+        footerToggle.addEventListener("click", function() {
+          const replie = footerBlock.style.display !== "none";
+          try { localStorage.setItem(LS_FOOTER_REPLIE, replie ? "1" : "0"); } catch(e) {}
+          _appliquerFooter(replie);
+        });
+        try { _appliquerFooter(localStorage.getItem(LS_FOOTER_REPLIE) === "1"); } catch(e) {}
+      }
+
+      // 🔎 v1.69.0 — Recherche multi-plans : n'est plus un bouton d'outil mais
+      // une BARRE entre « Reprendre » et la liste des plans (allègement du HOME
+      // demandé par KARMA). Entrée ou clic sur 🔎 ouvre la modale de résultats
+      // avec la saisie reprise. On n'ouvre PAS à chaque frappe : le scan des
+      // plans est coûteux, et une modale qui s'ouvre sous les doigts est hostile.
+      const searchInput = document.getElementById("loaderSearchInput");
+      const searchBtn   = document.getElementById("loaderSearchBtn");
+      function _lancerRecherche() {
+        const q = searchInput ? String(searchInput.value || "").trim() : "";
+        if (window.CrossPlanSearch && typeof window.CrossPlanSearch.ouvrir === "function") {
+          window.CrossPlanSearch.ouvrir(q);
+          if (searchInput) searchInput.value = "";   // la modale porte la saisie
+        } else {
+          console.warn("[Home] CrossPlanSearch indisponible");
+        }
+      }
+      if (searchBtn) searchBtn.addEventListener("click", _lancerRecherche);
+      if (searchInput) {
+        searchInput.addEventListener("keydown", function(e) {
+          if (e.key === "Enter") { e.preventDefault(); _fermerLiveResultats(); _lancerRecherche(); }
+          if (e.key === "Escape") { _fermerLiveResultats(); searchInput.blur(); }
+        });
+      }
+
+      // 🔎 v1.72.1 (KARMA « même principe que la barre OSM ») — résultats EN
+      // DIRECT sous la barre, sans passer par la modale. Scan via l'API
+      // CrossPlanSearch.rechercher (cache RAM partagé avec la modale, TTL
+      // 2 min). Entrée / 🔎 / « Voir tout » = modale complète (exhaustive).
+      const liveRes = document.getElementById("loaderSearchResults");
+      let _liveJeton = 0;         // anti-race : seule la dernière requête rend
+      let _liveDebounce = null;
+
+      function _fermerLiveResultats() {
+        if (liveRes) { liveRes.style.display = "none"; liveRes.innerHTML = ""; }
+      }
+
+      // Même modèle éprouvé que la recherche OSM : fixed + rect de l'input.
+      function _positionnerLive() {
+        if (!liveRes || !searchInput) return;
+        try {
+          const r = searchInput.getBoundingClientRect();
+          const vw = window.innerWidth || document.documentElement.clientWidth;
+          const largeur = Math.min(Math.max(r.width, 320), vw - 16);
+          let gauche = r.left;
+          if (gauche + largeur > vw - 8) gauche = vw - 8 - largeur;
+          if (gauche < 8) gauche = 8;
+          liveRes.style.top   = Math.round(r.bottom + 6) + "px";
+          liveRes.style.left  = Math.round(gauche) + "px";
+          liveRes.style.width = Math.round(largeur) + "px";
+        } catch(e) {}
+      }
+
+      function _renderLive(q, jeton) {
+        const _t2 = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
+        // 1) Plans dont le NOM matche (immédiat, registre en RAM)
+        const plans = (window.PlanRegistry && window.PlanRegistry.getAll)
+          ? (window.PlanRegistry.getAll() || []) : [];
+        const plansOk = plans.filter(function(p) {
+          return p && p.name && p.name.toLowerCase().indexOf(q) !== -1;
+        }).slice(0, 3);
+
+        _positionnerLive();
+        liveRes.style.display = "block";
+        liveRes.innerHTML = '<div class="loader-search-vide">' + _t2("xps.scanning") + '</div>';
+
+        // 2) Points (async, cache partagé avec la modale)
+        if (!window.CrossPlanSearch || typeof window.CrossPlanSearch.rechercher !== "function") return;
+        window.CrossPlanSearch.rechercher(q, 8).then(function(res) {
+          if (jeton !== _liveJeton) return;   // saisie plus récente en cours
+          const pts = res.points || [];
+          if (!plansOk.length && !pts.length) {
+            liveRes.innerHTML = '<div class="loader-search-vide">' + _t2("xps.noResult") + '</div>';
+            return;
+          }
+          let html = "";
+          plansOk.forEach(function(p, i) {
+            html += '<button type="button" class="loader-search-row" data-lplan="' + i + '">' +
+                    '🗺️ <b>' + escapeHtml(p.name) + '</b></button>';
+          });
+          pts.forEach(function(e, i) {
+            html += '<button type="button" class="loader-search-row" data-lpt="' + i + '">' +
+                    (e.pt.source === "session" ? "✏️" : "📄") + ' ' +
+                    escapeHtml(e.pt.nom || e.pt.id || (e.pt.x + "," + e.pt.y)) +
+                    '<span class="loader-search-badge">' + escapeHtml(e.plan.name || e.plan.id) + '</span>' +
+                    '</button>';
+          });
+          html += '<button type="button" class="loader-search-row loader-search-tous" data-ltous="1">' +
+                  _t2("home.search.tousResultats") + '</button>';
+          liveRes.innerHTML = html;
+
+          liveRes.querySelectorAll("[data-lplan]").forEach(function(b) {
+            b.addEventListener("click", function() {
+              const p = plansOk[parseInt(b.getAttribute("data-lplan"), 10)];
+              _fermerLiveResultats();
+              if (p) chargerPlanDuRegistre(p.id);
+            });
+          });
+          liveRes.querySelectorAll("[data-lpt]").forEach(function(b) {
+            b.addEventListener("click", function() {
+              const e = pts[parseInt(b.getAttribute("data-lpt"), 10)];
+              _fermerLiveResultats();
+              if (!e || !window.InterPlanLinks) return;
+              // Même pipeline d'arrivée que la modale : chargement du plan,
+              // bascule niveau, pan/flash. Depuis le HOME → pas de confirmation.
+              window.InterPlanLinks.goTo(e.plan.id, {
+                x: e.pt.x, y: e.pt.y, level: e.pt.level,
+                tag: (Array.isArray(e.pt.tags) && e.pt.tags[0]) || undefined,
+                planName: e.plan.name || e.plan.id,
+                label: e.pt.nom || e.pt.id || (e.pt.x + "," + e.pt.y)
+              }, { confirm: false });
+            });
+          });
+          const tous = liveRes.querySelector("[data-ltous]");
+          if (tous) tous.addEventListener("click", function() {
+            _fermerLiveResultats();
+            if (window.CrossPlanSearch) window.CrossPlanSearch.ouvrir(q);
+          });
+        });
+      }
+
+      if (searchInput && liveRes) {
+        searchInput.addEventListener("input", function() {
+          const q = String(searchInput.value || "").toLowerCase().trim();
+          if (_liveDebounce) clearTimeout(_liveDebounce);
+          if (q.length < 2) { _fermerLiveResultats(); return; }
+          _liveDebounce = setTimeout(function() {
+            _renderLive(q, ++_liveJeton);
+          }, 250);
+        });
+        // Fermer au clic hors de la barre (le clic-résultat vit dans la barre)
+        document.addEventListener("click", function(e) {
+          if (!liveRes || liveRes.style.display === "none") return;
+          const barre = document.getElementById("loaderSearchBar");
+          if (barre && !barre.contains(e.target)) _fermerLiveResultats();
+        });
+      }
+
+      // 📔 v1.69.0 — Le Carnet depuis le home : timeline de toutes les sorties
+      // archivées, tous plans confondus (aucun plan à charger).
+      const journalBtn = document.getElementById("loaderJournalBtn");
+      if (journalBtn) {
+        journalBtn.addEventListener("click", function() {
+          if (window.JournalUi && typeof window.JournalUi.ouvrir === "function") {
+            window.JournalUi.ouvrir();
           } else {
-            console.warn("[Home] CrossPlanSearch indisponible");
+            console.warn("[Home] JournalUi indisponible");
           }
         });
       }
@@ -538,16 +701,10 @@
         });
       }
 
-      // 🔗 v1.55.0 — Fusionneur de datalayers accessible depuis le home : ouvre la
-      // modale « Enregistrer la session » directement sur l'onglet Fusion. L'onglet
-      // opère sur les fichiers uploadés, indépendamment d'un plan chargé.
-      const fusionBtn = document.getElementById("loaderFusionBtn");
-      if (fusionBtn) {
-        fusionBtn.addEventListener("click", function() {
-          if (typeof window.ouvrirExportSessionModal === "function") window.ouvrirExportSessionModal("fusion", true);
-          else console.warn("[Home] ouvrirExportSessionModal indisponible");
-        });
-      }
+      // 🔗 v1.55.0 — Fusionneur de datalayers. 🧹 v1.69.0 : son bouton a quitté
+      // le HOME (allègement demandé par KARMA) — il vit désormais comme 4e
+      // source de l'Éditeur de données (`tableEditor.js > kta-tbl-src-fusion`),
+      // qui appelle le même `ouvrirExportSessionModal("fusion", true)`.
 
       // (Le bouton "🌐 Plan serveur racine" a été retiré le 08/05/2026 — les plans serveur
       // sont déjà listés dans 📚 Mes plans via auto-discovery `data/index.json`.)
@@ -572,12 +729,16 @@
         return mo >= 1 ? mo.toFixed(1) + " " + _t("home.plans.unitMb") : Math.round(bytes / 1024) + " " + _t("home.plans.unitKb");
       }
 
-      // i18n : helper traduction avec fallback FR inline si I18n indisponible
-      // (défensif — planRowHTML tourne après I18n.init au boot). Les titres des
-      // badges plan (stored/fs/pick/V2/M-LVL/V1) sont injectés en JS dans des
-      // template strings → pas de data-i18n-title statique possible ici.
+      // i18n : helper traduction avec fallback FR inline. 🐛 v1.68.1 (audit
+      // clés manquantes) : l'ancien test « I18n présent ? » ne protégeait PAS
+      // du dico pas-encore-chargé (course au window load) → t() warnait et
+      // retournait la version humanisée. I18n.has() teste la présence réelle
+      // de la clé (sans warn) : dico pas prêt OU clé absente → fallback FR.
       function _homeT(key, fr) {
-        return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(key) : fr;
+        if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(key)) {
+          return window.I18n.t(key);
+        }
+        return (fr !== undefined) ? fr : key;
       }
 
       function planRowHTML(plan) {
@@ -617,18 +778,16 @@
         //   modale ℹ️ Informations détaillées (bouton dans .plan-row-actions).
         //   Allège la liste, surtout quand on en a beaucoup.
         return `
-          <div class="plan-row" data-id="${plan.id}">
+          <div class="plan-row" data-id="${plan.id}" title="${_homeT("home.plans.loadBtnTitle", "Charger ce plan")}">
             <span class="plan-row-icon">${icon}</span>
             <div class="plan-row-info">
               <div class="plan-row-title">
                 <span class="plan-row-name-text">${escapeHtml(plan.name || plan.id)}</span>
-                ${plan.version ? '<span class="plan-row-version">' + escapeHtml(plan.version) + '</span>' : ''}
               </div>
               <div class="plan-row-modes">${badgesMode}${badgeStorage}</div>
             </div>
             <div class="plan-row-actions">
               <button class="plan-row-btn plan-row-info-btn" title="${_homeT("home.plans.infoBtnTitle", "Informations détaillées sur cette archive")}">ℹ️</button>
-              <button class="plan-row-btn plan-row-load" title="${_homeT("home.plans.loadBtnTitle", "Charger ce plan")}">▶️</button>
               <button class="plan-row-btn plan-row-remove" title="${_homeT("home.plans.removeBtnTitle", "Retirer de la liste")}">✕</button>
             </div>
           </div>
@@ -891,11 +1050,16 @@
 
         // Liste unique
         const myPlansBox = document.getElementById("myPlansBox");
+        // 🔎 v1.69.0 : la barre de recherche suit la liste — proposer de
+        // chercher dans une bibliothèque vide n'a aucun sens.
+        const searchBar = document.getElementById("loaderSearchBar");
         if (all.length === 0) {
           if (myPlansBox) myPlansBox.style.display = "none";
+          if (searchBar)  searchBar.style.display  = "none";
           return;
         }
         if (myPlansBox) myPlansBox.style.display = "block";
+        if (searchBar)  searchBar.style.display  = "flex";
 
         // 🌐 v170 : filtre "Afficher plans serveur" (persisté localStorage).
         // Si l'user a décoché → on retire tous les plans type === "server" de
@@ -933,14 +1097,13 @@
             allPlansList.innerHTML = sorted.map(planRowHTML).join("");
           }
         }
+        _ktaMobileCollapsePlans();   // 📱 v1.68.0 : liste bornée sur mobile
 
         // Brancher les listeners
         document.querySelectorAll(".plan-row").forEach(function(row) {
           const id = row.dataset.id;
-          row.querySelector(".plan-row-load").addEventListener("click", function(e) {
-            e.stopPropagation();
-            chargerPlanDuRegistre(id);
-          });
+          // 🧹 v1.71.0 : plus de bouton ▶️ — la row entière est cliquable
+          // (listener plus bas) et porte le title « Charger ce plan ».
           row.querySelector(".plan-row-remove").addEventListener("click", function(e) {
             e.stopPropagation();
             if (confirm(_t("home.plans.confirmRemove"))) {
@@ -1400,6 +1563,55 @@
       // Le bandeau est cliquable (toute la zone) ET le bouton ⚙️ dédié.
       // Click → ouvre la modale détails (édition surnom / photo / stats /
       // export / import / reset).
+
+      // ═══════════════════════════════════════════════════════════
+      // 📱 v1.68.0 — HOME MOBILE (lot A, ≤ 640 px, desktop intouché)
+      // ═══════════════════════════════════════════════════════════
+      // Étude KARMA « interface plus dédiée mobile » (reco 1:a 2:a 3:a) :
+      // ① liste des plans BORNÉE aux 5 récents + bouton « 📚 Tous mes
+      //   plans (N) » dépliant (avec 20+ plans, les outils partaient à
+      //   3 écrans de scroll) ;
+      // ② les 5 boutons outils regroupés en ACCORDÉON « 🧰 Outils »
+      //   replié (fréquence d'usage inégale, mur de texte évité).
+      // Le reste du lot (hero Reprendre, dropzone compacte, cibles 44px)
+      // est en CSS pur — cf style.css @media (max-width: 640px).
+
+      // ① Liste bornée — rappelée à CHAQUE refreshPlansList (idempotente).
+      // Masquage par classe CSS (les listeners des lignes cachées restent
+      // branchés — le dépliage ne re-render rien).
+      function _ktaMobileCollapsePlans() {
+        const list = document.getElementById("allPlansList");
+        if (!list) return;
+        const old = document.getElementById("kta-home-plans-more");
+        if (old) old.remove();
+        list.classList.remove("kta-collapsed");
+        if (!window.matchMedia || !window.matchMedia("(max-width: 640px)").matches) return;
+        const rows = list.querySelectorAll(".plan-row").length;
+        if (rows <= 5) return;
+        list.classList.add("kta-collapsed");
+        const btn = document.createElement("button");
+        btn.id = "kta-home-plans-more";
+        btn.type = "button";
+        btn.className = "loader-btn-secondary";
+        function _maj() {
+          const replie = list.classList.contains("kta-collapsed");
+          btn.textContent = replie
+            ? "📚 " + _homeT("home.mobile.plansAll", "Tous mes plans") + " (" + rows + ")"
+            : "▴ " + _homeT("home.mobile.plansLess", "Réduire la liste");
+        }
+        btn.addEventListener("click", function() {
+          list.classList.toggle("kta-collapsed");
+          _maj();
+        });
+        list.insertAdjacentElement("afterend", btn);
+        _maj();
+      }
+
+      // ② HOME v2 (refonte KARMA 29/07) : l'accordéon Outils du lot A est
+      // SUPPRIMÉ — la liste verticale de 5 boutons qui justifiait le repli
+      // est devenue une grille 2×2 de 4 tuiles (~120 px), assez compacte pour
+      // rester visible sur mobile. Le CSS `.loader-secondary-actions{display:
+      // none}` ≤ 640 px a été retiré en même temps (sinon outils invisibles).
 
       // ── Ponts B7 : consommés par homeProfile/homeConfig/le bloc résiduel
       // (setStatus partout), le plan switcher du titre (chargerPlanDuRegistre,

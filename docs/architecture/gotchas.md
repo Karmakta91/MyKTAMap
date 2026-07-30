@@ -350,3 +350,21 @@ Voir `exporter.js > _dessinerLegende`. La répartition est automatique (algorith
 3. Tester avec un plan riche pour vérifier la répartition gauche/droite.
 
 ---
+
+## 🗺️ `PLAN_CONFIG` n'est PAS un marqueur « un plan est affiché » (v1.69.0)
+
+**Symptôme** (bug KARMA 29/07/2026, capture à l'appui) : la modale **Recherche multi-plans** ouverte **depuis le HOME** affichait la case « 🌀 Itinéraire via plusieurs plans » et les boutons **🧭** sur les résultats — deux notions qui n'existent que plan chargé (l'itinéraire part de la position tracker du plan courant).
+
+**Cause racine** : le marqueur utilisé partout était `!!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan)`. Or **`afficherLoader()` (retour à l'accueil) ne remet jamais `PLAN_CONFIG` à `null`** — il masque `#map` et pose `body.kta-loader-active`. Une fois un plan ouvert, le marqueur reste donc **vrai pour le reste de la session**, y compris au HOME. Le commentaire de `crossPlanSearch.js` affirmait l'inverse (« PLAN_CONFIG est null au home ») depuis v1.58.1 : c'était faux.
+
+**Trois faux positifs réels**, pas seulement l'affichage :
+1. case multi-hop + boutons 🧭 sur l'accueil (`crossPlanSearch`) ;
+2. mini-confirmation « changer de plan ? » posée depuis l'accueil (`interPlanLinks`, 2 sites) ;
+3. plus grave — `InterPlanLinks.goTo` prenait le **chemin court « déjà sur ce plan »** (`planCharge && planId === _currentPlanId()`, `_currentLoadedPlanId` étant lui aussi persistant) : depuis le HOME, cliquer sur une liaison pointant vers le **dernier plan ouvert** ne chargeait **rien**.
+
+**Fix — source de vérité unique** : `window.ktaPlanAffiche()` (`utils.js`). Elle teste d'abord `body.kta-loader-active` (posée par `afficherLoader`, retirée au masquage du loader — strictement symétrique), puis `PLAN_CONFIG` en complément pour le boot initial où la classe peut ne pas encore être posée.
+
+**À NE PAS faire** :
+- ❌ Réutiliser `PLAN_CONFIG && PLAN_CONFIG.plan` pour savoir si l'on est sur un plan ou au HOME (c'est valide uniquement pour LIRE les métadonnées du dernier plan chargé : nom, échelle…).
+- ❌ Se fier à `window._currentLoadedPlanId` : lui aussi **persiste** au retour HOME.
+- ❌ « Corriger » en remettant `PLAN_CONFIG = null` dans `afficherLoader()` : des dizaines de call-sites lisent ce champ sans garde, ça déplacerait le bug ailleurs.

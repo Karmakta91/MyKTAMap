@@ -22,8 +22,11 @@ Vérifier qu'aucune n'est oubliée :
 grep -n "vX\.Y\.Z" sw.js js/copyright.js version.json
 ```
 
-## 3. Notes user-facing
-Dans `version.json > notes` : 3-5 puces concises orientées **utilisateur** (pas technique). Le détail technique va dans `README.md > Journal des modifications`.
+## 3. Notes user-facing + journal README
+- `version.json > notes` : 1-2 puces concises orientées **utilisateur** (pas technique), **uniquement le bump courant** (les notes précédentes sont remplacées).
+- Détail technique dans `README.md`, **2 endroits précis** (⚠️ ne JAMAIS prépender en tête de fichier) :
+  1. Remplacer le bloc `## 📦 Version courante` (tête de fichier, 3-5 lignes max) ;
+  2. Ajouter l'entrée détaillée **en tête de la section `## 📋 Journal des versions`** (fin de fichier, juste sous `### 🕐 Versions récentes`).
 
 ## 4. Nouveaux assets
 Si un nouveau fichier `js/` ou une icône a été ajouté → vérifier qu'il est dans `sw.js > ASSETS_TO_CACHE` (sinon pas servi offline).

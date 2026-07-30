@@ -1,6 +1,6 @@
 # 📘 MyKTAMap
 
-> Application web de **cartographie souterraine** — visualisation, annotation et déplacement simulé sur plan image (carrières, galeries, sites souterrains / industriels).
+> Application web de **cartographie souterraine** — visualisation, annotation et déplacement simulé sur plan image (carrières, galeries, sites souterrains / industriels). **100 % hors-ligne**, sans GPS requis, sans framework.
 
 **🌍 Environnements :**
 - 🟢 Production : [myktamap.fr](https://myktamap.fr)
@@ -12,8 +12,522 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
+## 📦 Version courante — `v1.72.1` (30/07/2026)
 
-**📦 Version courante** : `v1.66.0` (27/07/2026) — **🧹 B7 : monolithe `index.html` découpé** (327 → 101 Ko) : ~232 Ko de script inline extraits VERBATIM en 3 modules `js/homeLoader.js` (74 Ko) + `js/homeProfile.js` (94 Ko) + `js/homeConfig.js` (62 Ko). Zéro changement visible user.
+> 🧙 **Générateur = ASSISTANT pas-à-pas** (topo « installeur style Windows », décisions 1:a 2:a 3:a) : les 10 sections deviennent des pages Suivant/Précédent/Passer, barre d'étapes cliquable, **validation à chaque étape** et **page Résumé anti-oubli** (états ✅/➖/⏭/❌ + avertissements : pas de georef → pas de Vue OSM/KMZ…). ZIP importé → Avancé, toutes pages pré-remplies, on ne fait que réviser. Toggle 🗒️ « Tout afficher » = comportement historique conservé (persisté). **Couche de présentation pure** : mêmes champs, même génération — zéro réécriture des 3100 lignes.
+>
+> Détail complet de cette version et de toutes les précédentes : **[📋 Journal des versions](#-journal-des-versions)** (fin de fichier).
+
+---
+
+## 📑 Sommaire
+
+1. [🧭 Introduction](#-introduction)
+2. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalités-principales)
+3. [🏗️ Structure du projet](#%EF%B8%8F-structure-du-projet)
+4. [📦 Modules JS — référentiel (105 modules)](#-modules-js--référentiel-105-modules)
+5. [📚 Documentation d'architecture](#-documentation-darchitecture)
+6. [⚙️ Développement, conventions & release](#%EF%B8%8F-développement-conventions--release)
+7. [📋 Journal des versions](#-journal-des-versions)
+8. [📄 Licence](#-licence)
+
+---
+
+## 🧭 Introduction
+
+MyKTAMap est une application web permettant de **visualiser, annoter et exploiter un plan image** (carrière souterraine, bâtiment, site industriel…) à partir d'une image haute résolution.
+
+L'outil repose sur **[Leaflet](https://leafletjs.com/)** en projection simple (`L.CRS.Simple`), ce qui permet de travailler sur une carte personnalisée **sans coordonnées GPS** — tout en supportant un calibrage GPS 2 points optionnel pour exporter/importer en KMZ géolocalisé et GPX (Google Earth, OsmAnd, TopoDroid, Strava…) et projeter le plan sur fond OpenStreetMap (opt-in réseau).
+
+Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + IndexedDB), **zéro télémétrie**, **données locales** uniquement, **multi-langue FR/EN/ES**, **code ouvert** sous CC BY-NC-SA.
+
+**PWA page unique** (`index.html`), stack **HTML/CSS/JS vanilla + Leaflet** — pas de framework, pas de bundler, pas de build : les sources sont servies telles quelles.
+
+---
+
+## 🛠️ Fonctionnalités principales
+
+### 🗺️ Cartographie et annotations
+
+| Fonctionnalité | Module(s) clé(s) |
+|---|---|
+| Affichage plan image haute résolution (tiling runtime V1, 5 presets) | `map.js`, `tiling.js`, `config.js` |
+| **Tuiles V2** build-time type Google Maps (4 niveaux de zoom, WebP/PNG si source transparente) | `createConf.js > _genererTuilesV2`, `tiling.js` |
+| **Multi-niveau (M-LVL)** : étages, jonctions interniveau, filtre de niveau | `interface.js`, `config.js` |
+| Calques image (légende, surimpressions) + calibration 2 points | `map.js`, `imageLayerCalibration*.js` |
+| Calques de données (`devmap-data` JSON) | `utils.js > ajouterPointsDepuisJSON` |
+| Points d'intérêt : tags, notes, photos IDB (ré-encodées sans EXIF) | `editor.js`, `photos.js`, `photoViewer.js` |
+| Tracés (Principal / Secondaire / Chemin / Jonction / Itinéraire) | `road.js` |
+| Zones polygonales (eau / remblais / effondrement / inaccessible) | `zones.js` |
+| Structures (pilier 1ère / 2e masse, mur, fronts) | `structures.js` |
+| Mesure distance + surface (polygone shoelace) | `measure.js` |
+| **Undo / Redo global** (Ctrl+Z / Ctrl+Y, 50 entrées FIFO) | `historyManager.js` |
+| Heatmap densité d'activité | `heatmap.js` |
+| **Légende personnalisable** (rename / hide / types customs dessinables) | `legendCustomization.js` |
+| **Favoris** par plan + export/import JSON | `favoris.js` |
+| Recherche unifiée (Ctrl/Cmd+K, tous calques + session) | `searchPoints.js` |
+| Modale **Filtres unifiée** (tags / types, live update) | `filterPanel.js` |
+
+### 🧭 Tracker et navigation
+
+| Fonctionnalité | Module(s) clé(s) |
+|---|---|
+| Tracker PDR (capteurs mobile, expérimental) + timeline persistée par plan | `tracking.js`, `compass.js` |
+| Recalage : clic carte, « 📍 Je suis ici », arrivée de portail | `tracking.js` |
+| Itinéraire Dijkstra sur le réseau de tracés (waypoints, évitements par tag, pauses estimées) | `pathfinder.js`, `roadGraph.js`, `interfaceItineraire.js` |
+| **Itinéraire vivant** : replanification au recalage + validation d'étapes au passage | `interfaceItineraire.js`, `tracking.js` |
+| Replay session tracker (timeline + slider + export CSV) | `trackerReplay.js` |
+| Boussole / heading + définition du nord du plan | `compass.js`, `northPicker.js` |
+| ⛑️ **« Je suis perdu »** (isochrone Dijkstra) · 🚨 **Panique** · sortie d'urgence la plus proche | `lostMode.js`, `emergencyMode.js`, `sortieUrgence.js` |
+| 🎤 Commandes vocales (BETA, push-to-talk, ~18 commandes FR) + synthèse vocale | `voiceCommand.js`, `voiceTts.js` |
+
+### 🌀 Multi-plans et inter-plan
+
+| Fonctionnalité | Module(s) clé(s) |
+|---|---|
+| **Registre multi-plans** (localStorage + ZIP IndexedDB, auto-discovery serveur `data/index.json`) | `planRegistry.js` |
+| **Liaisons inter-plan « portails »** (bidirectionnelles, snapshots auto-rafraîchis, tag builtin portail) | `interPlanLinks.js` |
+| Gestionnaire « 🌀 Mes liaisons » : liste + **vue graphe SVG** (plans = nœuds, portails = arêtes) | `interPlanLinks.js`, `planNetwork.js` |
+| **Recherche multi-plans** (scan de la bibliothèque sans charger les plans) | `crossPlanSearch.js` |
+| **Itinéraire inter-plan** (leg A → portail → leg B auto-tracé) + **multi-hop** (Dijkstra sur graphe de portails, ≤ 3 traversées) | `interPlanRoute.js` |
+| Pile de navigation + bouton ↩️ Retour réductible après un saut | `interPlanLinks.js` |
+
+### 📦 Import / Export
+
+| Fonctionnalité | Module(s) clé(s) |
+|---|---|
+| Session JSON Full / Avancé + conversion session → calque de données | `sessionExporter.js`, `sessionPersist.js` |
+| **Export anonymisé** (ids remappés, photos ré-encodées sans EXIF, fail-closed) | `sessionExporter.js` |
+| **Générateur de plan ZIP** (Nouveau / Modifier, mode Simple / Avancé, tuiles V2, canvas vierge) | `createConf.js` |
+| Import unifié ZIP / KMZ / GPX (drop zone home + générateur) | `homeLoader.js`, `kmzImport.js`, `gpxImport.js` |
+| 🌍 **KMZ géolocalisé** export / import round-trip (Google Earth, OsmAnd, Avenza, Locus) | `kmzExport.js`, `kmzImport.js` |
+| 📤 **GPX 1.1** export / import (TopoDroid, OsmAnd, Strava, Garmin) | `gpxIO.js`, `gpxImport.js` |
+| 🖼️ Export PNG / JPG (Rapide / Avancé + légende dessinée) · 📄 PDF imprimable A0 → A4 | `exporter.js`, `pdfExport.js` |
+| 📊 Éditeur de données du plan (tableau, 3 sources) | `tableEditor.js` |
+| 📋 Rapport de sortie · 📈 stats globales + export PDF | `sessionReport.js`, `statsGlobales.js` |
+| 💾 Backups multi-rotations sessions (10 FIFO IDB) | `sessionBackups.js` |
+| 📔 **Le Carnet** : archive automatique des sorties (durée, distance, ajouts, tracé, note) + timeline multi-plans | `journal.js`, `journalUi.js` |
+| 👤 Export / import de **profil utilisateur complet** | `profileExportImport.js` |
+
+### 🆘 Mode Secours (coordination de recherche)
+
+| Fonctionnalité | Module(s) clé(s) |
+|---|---|
+| Création de scénario : équipes (palette OTAN), parcours, zones de recherche, itinéraires Pathfinder, niveau M-LVL par équipe | `secoursMode.js` |
+| Exécution terrain : 3 rôles live (👤 Opérateur / 🚨 Équipe step-by-step / 🚑 Secouriste libre), 7 statuts d'étape, timer avec pause | `secoursMode.js` |
+| Photos terrain (store IDB dédié) + rapports 3 formats × 3 scopes | `secoursPhotos.js`, `secoursMode.js` |
+| Partage scénario `.mkmsec.json` export / import avec preview | `secoursMode.js` |
+
+### 🔒 Sécurité et confidentialité
+
+| Fonctionnalité | Module(s) clé(s) |
+|---|---|
+| 🗝️ **UnlockGate** (barrière communautaire) · 🔐 **PinLock** (PIN 4-6 + biométrie) · verrouillage depuis la home | `unlockGate.js`, `pinLock.js` |
+| ⚖️ **Gate CGU au boot** (avant la saisie du code) + séquenceur premier lancement | `legalGate.js`, `firstRunFlow.js` |
+| 🕶️ **Mode incognito** (shim Storage + IDB, zéro trace locale) | `incognitoMode.js` |
+| 🚫 Denylist de ZIP fuités (hash SHA-256, `denylist.json`) | `planDenylist.js` |
+| 📊 Audit réseau exposé in-app + journal réseau du loader | `networkAudit.js`, `loaderNetAudit.js` |
+| 🚨 Alertes publiques (incendie, fermeture, info — `alert.json`) | `alertChecker.js`, `interfaceAlerts.js` |
+
+### 🌍 Vue OSM (opt-in réseau)
+
+| Fonctionnalité | Module(s) clé(s) |
+|---|---|
+| Modale OSM : plan projeté sur fond OpenStreetMap via géoréférencement 2 points | `osmView.js` |
+| Widget aperçu OSM sur la home | `osmHomePreview.js` |
+| Cache de tuiles OSM (IndexedDB) | `osmTilesCache.js` |
+
+### 🎨 UI / UX
+
+| Fonctionnalité | Module(s) clé(s) |
+|---|---|
+| 🌍 **Multi-langue FR / EN / ES** (`window.I18n`, dicos `lang/*.json`, FR fallback universel) | `langManager.js` |
+| ☀️ Thème **clair / sombre** global | `themeManager.js` |
+| 🎬 Refonte interface : header bar + sidebars unifiées + status bar | `refonteInterface.js`, `interface.js` |
+| 📱 **PWA installable** + mode hors-connexion (Service Worker précache) | `manifest.json`, `sw.js` |
+| 🔁 UpdateChecker semver + force update sur mismatch de cache | `updateChecker.js`, `loaderSwModals.js` |
+| 🎓 Tutoriel premier lancement (26 cards, FR/EN) | `tutorial.js` |
+| 📖 Aide intégrée FR/EN + documentation in-app + contexte IA | `interfaceDocs.js` |
+| ⌨️ Raccourcis clavier globaux + cheatsheet | `shortcuts.js`, `shortcutsCheatsheet.js` |
+| 🎬 Mode présentation · 📜 Mode Histoire (récit de sortie) | `presentationMode.js`, `modeHistoire.js` |
+| 👤 Profil utilisateur : gamification, rangs, hauts faits | `userProfile.js`, `profileGamification.js`, `profileAchievements.js` |
+
+### ⚡ Performance et robustesse
+
+| Fonctionnalité | Module(s) clé(s) |
+|---|---|
+| 🚀 **Perf ULTRA per-plan** (toggles opt-in par plan) | `perfUltra.js` |
+| ⚙️ OOMGuard (détection kill mémoire) · 🪫 BatteryGuard (alertes 20/10/5 %) · 💡 WakeLock | `oomGuard.js`, `batteryGuard.js`, `wakeLock.js` |
+| 📋 Crash reports auto (IDB) · 🧠 Inspecteur mémoire · 🔧 Inspecteur Service Worker | `crashReports.js`, `memInspector.js`, `swInspector.js` |
+| 💾 Auto-save session per-plan (poller 1,5 s, teardown propre au plan switch) | `sessionPersist.js` |
+| ⏳ Overlay générique « calcul en cours » | `computeLoader.js` |
+
+---
+
+## 🏗️ Structure du projet
+
+```
+index.html                      ← Page unique : home loader + carte Leaflet + modales (~101 Ko)
+sw.js                           ← Service Worker (précache exhaustif, CACHE_NAME versionné)
+manifest.json                   ← PWA (icônes, theme color, standalone)
+version.json                    ← Source de vérité version (UpdateChecker) + notes user-friendly
+alert.json                      ← (Optionnel) Diffusion d'alertes publiques
+css/style.css                   ← Tous les styles (~19k lignes : dark base + thème clair + modales)
+
+lang/                           ← Dictionnaires i18n (fr.json = fallback, en.json, es.json)
+
+data/                           ← Plans serveur (DATA pure — auto-discovery via index.json)
+  index.json                    ← (Optionnel) Liste des plans
+  <plan>/plan-config.json       ← Config d'un plan + images + calques JSON
+
+icon/                           ← Icônes des tags (PNG 50×50 transparents, 1 par tag builtin)
+
+lib/                            ← Librairies locales (aucun CDN)
+  leaflet/                      ← Leaflet 1.9.x + imageoverlay-rotated
+  jszip.min.js                  ← JSZip (ZIP)
+  jspdf.umd.min.js              ← jsPDF (PDF imprimable)
+  html2canvas.min.js            ← html2canvas (rendus export)
+
+js/                             ← 105 modules IIFE — voir section suivante
+docs/                           ← Docs user (README_USER, AI_CONTEXT, NETWORK_AUDIT) + architecture/
+scripts/                        ← Outillage dev (check-no-pro-leak, find-hardcoded-fr…)
+.githooks/                      ← Hook pre-commit anti-fuite pro
+docker/                         ← Self-host (voir docs/architecture/docker-selfhost.md)
+```
+
+---
+
+## 📦 Modules JS — référentiel (105 modules)
+
+> Tous les modules sont en **IIFE** (`(function() { "use strict"; ... })()`) avec API publique exposée via `window.<NomDuModule>`. Pas de bundler, pas de transpiler. **L'ordre de chargement = l'ordre des `<script>` dans `index.html`** (source de vérité) — les groupes ci-dessous le suivent.
+
+### 🎯 Socle transverse (chargé en premier)
+
+| Module | Rôle |
+|---|---|
+| `copyright.js` | Bannière console + `__MKM__.build` (version côté JS) |
+| `langManager.js` | `window.I18n` — dicos `lang/*.json`, FR fallback universel |
+| `incognitoMode.js` | Mode incognito (shim Storage + IndexedDB, zéro trace) |
+| `proLicense.js` | Check licence pro au boot (white-label) |
+| `themeManager.js` | Thème clair / sombre global |
+| `networkAudit.js` | Journal réseau in-app (📊 Logs) |
+| `cssLazy.js` | Chargement CSS différé |
+| `crashReports.js` | Rapports de crash auto en IndexedDB |
+| `memInspector.js` | Inspecteur mémoire (rapport RAM / IDB) |
+| `modalLifecycle.js` | Cycle de vie des modales (ouverture/fermeture/empilement) |
+| `swInspector.js` | Inspection du Service Worker et des caches |
+| `statsGlobales.js` | Stats globales du plan + export PDF |
+| `tutorial.js` | Tutoriel premier lancement (cards) |
+| `userProfile.js` | Profil utilisateur intégré au loader |
+| `profileGamification.js` | Gamification (XP, rangs) |
+| `profileAchievements.js` | Hauts faits / achievements |
+| `profileExportImport.js` | Export / import complet du profil |
+| `debug.js` | Panneau de logs debug persisté |
+| `perfUltra.js` | Toggles perf ULTRA per-plan |
+
+### 🔒 Gates et configuration
+
+| Module | Rôle |
+|---|---|
+| `unlockGate.js` | Barrière d'accès communautaire |
+| `pinLock.js` | PIN local 4-6 + biométrie (Face ID / Touch ID) |
+| `config.js` | Chargement `plan-config.json` + état global du plan |
+
+### 🧰 Noyau carte
+
+| Module | Rôle |
+|---|---|
+| `utils.js` | Helpers transverses : `convertCoord`, `formatDistance`, popups, icônes, tuiles |
+| `measure.js` | Mesure distance + surface |
+| `tiling.js` | Tiling runtime V1 + consommation tuiles V2 |
+| `imageLayerCalibration.js` | Calibration de calques image (2 points) |
+| `imageLayerCalibrationPicker.js` | Picker UI de la calibration |
+| `map.js` | Init Leaflet, icônes builtin (`TAGS_BUILTIN`), calques |
+| `tracking.js` | Tracker PDR, recalage, timeline, hook `_onTrackerRecale` |
+
+### ✏️ Annotations
+
+| Module | Rôle |
+|---|---|
+| `editor.js` | Points de session (création, édition, suppression) |
+| `road.js` | Tracés (5 types) |
+| `zones.js` | Zones polygonales (4 types) |
+| `structures.js` | Structures (5 sous-types) |
+| `photos.js` | Photos POI (IndexedDB, ré-encodage sans EXIF) |
+| `photoViewer.js` | Visionneuse photos |
+| `historyManager.js` | Undo / Redo global (50 FIFO) |
+
+### ⚡ Runtime plan
+
+| Module | Rôle |
+|---|---|
+| `batteryGuard.js` | Alertes batterie graduelles (Chromium) |
+| `trackerReplay.js` | Replay timeline tracker + export CSV |
+| `heatmap.js` | Heatmap densité d'activité |
+| `legendCustomization.js` | Légende personnalisable + types customs dessinables |
+| `favoris.js` | Favoris points par plan |
+
+### 💾 Sessions, recherche et exports
+
+| Module | Rôle |
+|---|---|
+| `sessionBackups.js` | Backups multi-rotations (10 FIFO IDB) |
+| `journal.js` | Le Carnet — archive des sorties (IDB `myktamap_journal`, hooks de cycle de vie) |
+| `journalUi.js` | Le Carnet — modale timeline + fiche de sortie |
+| `exporter.js` | Export PNG / JPG + légende dessinée |
+| `pdfExport.js` | Export PDF imprimable (A0 → A4) |
+| `tableEditor.js` | Éditeur JSON en tableau (calque ou session) |
+| `searchPoints.js` | Recherche unifiée Ctrl+K |
+| `sessionExporter.js` | Export session Full / Avancé / conversion / externe / anonymisé |
+| `sessionReport.js` | Rapport de sortie (3 formats) |
+
+### 🎤 Voix et urgence
+
+| Module | Rôle |
+|---|---|
+| `voiceCommand.js` | Commandes vocales BETA (Web Speech API, push-to-talk) |
+| `voiceTts.js` | Synthèse vocale |
+| `sortieUrgence.js` | Itinéraire vers la sortie la plus proche (POIs sortie / entrée) |
+| `mdParser.js` | Parseur markdown léger |
+| `modeHistoire.js` | Mode Histoire (récit de sortie) |
+
+### 🌍 Interop géo (KMZ / GPX / OSM)
+
+| Module | Rôle |
+|---|---|
+| `kmzExport.js` | Export KMZ géolocalisé |
+| `osmTilesCache.js` | Cache tuiles OSM (IndexedDB) |
+| `osmView.js` | Vue OSM modale (plan projeté) |
+| `osmHomePreview.js` | Widget aperçu OSM sur la home |
+| `kmzImport.js` | Import KMZ → ZIP MyKTAMap (round-trip) |
+| `gpxIO.js` | Export / import GPX 1.1 |
+| `gpxImport.js` | Import GPX → ZIP MyKTAMap (canvas auto-calibré) |
+
+### 🗄️ Plans, persistance et calcul
+
+| Module | Rôle |
+|---|---|
+| `createConf.js` | Générateur de plan ZIP (Nouveau / Modifier) + tuiles V2 |
+| `planRegistry.js` | Registre multi-plans (localStorage + blobs IDB) |
+| `planDenylist.js` | Denylist de ZIP fuités (hash) |
+| `sessionPersist.js` | Auto-save session per-plan + restore |
+| `oomGuard.js` | Détection kill mémoire mobile |
+| `computeLoader.js` | Overlay générique « calcul en cours » |
+| `pathfinder.js` | Dijkstra chemin le plus court (+ `computeRouteOnRoads`) |
+| `roadGraph.js` | Graphe des tracés (snapping, segments) |
+
+### 🔄 Infra boot
+
+| Module | Rôle |
+|---|---|
+| `updateChecker.js` | Check de version semver + badge + modale |
+| `alertChecker.js` | Alertes publiques (`alert.json`) |
+| `legalGate.js` | Gate CGU au boot |
+| `firstRunFlow.js` | Séquenceur premier lancement (gates → tutoriel) |
+
+### 🌀 Inter-plan
+
+| Module | Rôle |
+|---|---|
+| `interPlanLinks.js` | Liaisons « portails », gestionnaire, pipeline `goTo`, pile Retour |
+| `crossPlanSearch.js` | Recherche multi-plans (scan bibliothèque) |
+| `interPlanRoute.js` | Itinéraire inter-plan + multi-hop (graphe de portails) |
+| `planNetwork.js` | Vue graphe SVG des plans / portails |
+
+### 🚨 Urgence plein écran
+
+| Module | Rôle |
+|---|---|
+| `lostMode.js` | ⛑️ « Je suis perdu » (isochrone) |
+| `emergencyMode.js` | 🚨 Panique / urgence (minimap, GPS) |
+| `compass.js` | Boussole / heading |
+
+### 🖥️ Interface écran plan
+
+| Module | Rôle |
+|---|---|
+| `refonteInterface.js` | Header bar + sidebars unifiées + status bar |
+| `interface.js` | Cœur UI plan (modes, calibrage, légende, niveaux) |
+| `interfaceAlerts.js` | UI des alertes |
+| `interfaceDistanceTotale.js` | Totalisateur de distance des tracés |
+| `interfaceLegende.js` | Légende (labels, groupes) |
+| `interfaceDocs.js` | Aide intégrée + documentation in-app |
+| `interfaceImportExport.js` | UI import / export |
+| `interfaceItineraire.js` | Modale itinéraire (waypoints, évitements, replan) |
+| `interfaceMaintenance.js` | Maintenance (reset complet, purges) |
+| `northPicker.js` | Définition du nord du plan |
+| `interfaceConfig.js` | Modale ⚙️ Configuration du plan (géoref, niveaux) |
+| `filterPanel.js` | Modale Filtres unifiée |
+
+### 🆘 Secours et confort
+
+| Module | Rôle |
+|---|---|
+| `secoursMode.js` | Mode Secours (scénarios, exécution live, exports) |
+| `secoursPhotos.js` | Photos terrain (store IDB dédié) |
+| `shortcuts.js` | Raccourcis clavier globaux |
+| `shortcutsCheatsheet.js` | Cheatsheet des raccourcis |
+| `presentationMode.js` | Mode présentation |
+| `wakeLock.js` | Écran maintenu allumé |
+
+### 🚀 Bootstrap final
+
+| Module | Rôle |
+|---|---|
+| `main.js` | Orchestrateur : boot, chargement plans, plan switch, reset |
+| `loaderNetAudit.js` | Journal réseau côté home |
+| `loaderSwModals.js` | Modales Service Worker (force-update / kill SW) |
+| `homeLoader.js` | Home : loader, import ZIP, liste des plans (ex-inline `index.html`) |
+| `homeProfile.js` | Home : bandeau profil, rangs, stats, camemberts (ex-inline) |
+| `homeConfig.js` | Home : modale Config ⚙️, flux PIN, badges (ex-inline) |
+
+---
+
+## 📚 Documentation d'architecture
+
+> **`docs/architecture/` est la source de vérité technique.** Le README ne duplique plus le détail des sous-systèmes — lire le bon fichier avant de coder.
+
+| Sujet | Référence |
+|---|---|
+| Vue d'ensemble visuelle (gate → home → plan, modules, clés LS/IDB) | `docs/architecture/overview.svg` |
+| Rendu Leaflet, icônes, calques, splash | `docs/architecture/rendering-leaflet.md` |
+| Plans : registre, loader, générateur | `docs/architecture/plans-loader.md` |
+| Perf, mémoire, OOM, tiling V2, ULTRA, batterie | `docs/architecture/perf-memory.md` |
+| Tracker, boussole, heading, navigation | `docs/architecture/tracking.md` |
+| Multi-niveau, pathfinding, itinéraire (+ inter-plan) | `docs/architecture/multilevel-pathfinding.md` |
+| Exports PNG/PDF/KMZ/GPX + légende | `docs/architecture/exports.md` |
+| Refonte UI, thème, modales, filtres | `docs/architecture/ui.md` |
+| Cycle de vie des modales | `docs/architecture/modal-lifecycle.md` |
+| Multi-langue (i18n), dicos `lang/`, migration | `docs/architecture/i18n.md` |
+| Session, photos, undo, recherche, stats, favoris | `docs/architecture/session-data.md` |
+| Sécurité : gates, PIN, audit, légal, licence | `docs/architecture/security-legal.md` |
+| Mode Secours (toutes phases) + urgence | `docs/architecture/secours.md` |
+| Vue OSM modale + widget HOME | `docs/architecture/vue-osm.md` |
+| Versioning, live-config, releases, DX, logs | `docs/architecture/infra-versioning.md` |
+| Formats JSON (plan-config, point, session) | `docs/architecture/data-formats.md` |
+| Self-host Docker | `docs/architecture/docker-selfhost.md` |
+| Pièges connus & renommages | `docs/architecture/gotchas.md` |
+
+Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `docs/applications/AI_CONTEXT.md` · `docs/applications/NETWORK_AUDIT.md` + `.html`. Contexte IA / règles projet : `CLAUDE.md`.
+
+---
+
+## ⚙️ Développement, conventions & release
+
+### 🧪 Validation
+
+- **Syntaxe JS** : `node -c fichier.js` — seul filet (pas de tests auto, pas de linter).
+- **Pas de build** : les `<script src="js/…">` sont chargés dans l'ordre par `index.html`. Ajouter un module = l'ajouter à `index.html` **et** à `sw.js > ASSETS_TO_CACHE`.
+- Vérifier les **régressions cross-module** avant d'affirmer qu'un fix marche.
+
+### 🧭 Conventions
+
+- **JS** : vanilla, globales via `window.x`, privées préfixe `_`, pas d'`import/export` ES6. Logs préfixés `[Module]`. 2 espaces, lignes < 120.
+- **Coordonnées** : TOUJOURS `convertCoord(x, y)` = `[imageHeight - y, x]`. Jamais `[y, x]` direct.
+- **Distances** : TOUJOURS `window.formatDistance(distM, dec)`. Jamais `toFixed() + " m"`.
+- **Icônes** : résolution unique `window._iconMap[tag]` / `getIconUrlForPoint(point)`.
+- **i18n** : textes user-facing via `window.I18n.t("module.section.element")`, appelé **au rendu** (jamais au load), FR = fallback. État de la migration : `docs/architecture/i18n.md`.
+- **CSS** : charte dark (`#1a1f2e` → `#0a0d18`, texte `#e8eaf0`/`#c8d0e0`/`#8892a4`), accent `#f4c542`, interaction `#8cb4ff`. Préfixe `kta-`. Z-index : 1100 titre · 5000 loader · 9999 splash · 99999 modales · 100001 sous-modales.
+
+### 🛡️ Garde-fous
+
+- `data/**` = **DATA pure** — le moteur vit dans `js/`, `css/`, `index.html`, `sw.js`.
+- **Frontière community ↔ pro** : ce repo est 100 % offline, gratuit, sans bridage. Le pro (cloud sync, backend, white-label…) vit dans le repo privé. Hook anti-fuite : `.githooks/pre-commit` + `scripts/check-no-pro-leak.js` (`git config core.hooksPath .githooks`).
+- Jamais de `push main` direct / `push --force` / `reset --hard` (hooks bloquants côté IA).
+
+### 🚀 Release
+
+1. Bumper **ENSEMBLE** : `sw.js > CACHE_NAME` · `js/copyright.js > __MKM__.build` · `version.json > version`.
+2. `version.json > notes` : **user-friendly, uniquement le dernier bump** (1-2 phrases, zéro jargon).
+3. Sync docs 4 axes : 📱 in-app (`README_USER` fr/en, `interfaceDocs.js`, `AI_CONTEXT.md`) · 🔒 audit (`NETWORK_AUDIT.md` + `.html`) · 📖 ce README · 🤖 archi IA (`CLAUDE.md` + `docs/architecture/<sujet>.md`).
+4. **Ce README à chaque bump** : remplacer le bloc **📦 Version courante** en tête + ajouter l'entrée détaillée **en tête du [journal](#-journal-des-versions)**.
+5. Déploiement : **FTP manuel par KARMA** (prod). Détails : `docs/architecture/infra-versioning.md`.
+
+---
+
+## 📋 Journal des versions
+
+> Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
+
+### 🕐 Versions récentes — entrées détaillées (v1.72.1 → v1.26)
+
+**🧙 v1.72.1 (30/07/2026)** — **Générateur : assistant pas-à-pas (topo KARMA « installeur style Windows, évite les oublis » → reco 1:a 2:a 3:a)** :
+- **Architecture — couche de présentation PURE** : les `.kta-aide-section` du form existant DEVIENNENT les pages (mêmes IDs de champs, même `_genererZip`, même préremplissage ZIP). Le wizard montre/masque, valide au « Suivant », et lit les champs pour le résumé — **zéro réécriture** du module de 3100 lignes, risque de régression minimal.
+- **Flow** : Accueil (ZIP/exemple + Simple|Avancé) → Identité✱ → Image✱ → [7 pages optionnelles Passables en Avancé] → **Résumé**. Simple = 4 pages. **ZIP importé** → Avancé, toutes étapes visitables (`_wizMaxVisite` = max), atterrissage sur Identité pré-remplie.
+- **Résumé anti-oubli** : état par page **lu dans les CHAMPS** (pas dans la navigation) — ✅ rempli / ➖ vide / ⏭ passé / ❌ manquant (requis) + bouton Modifier (saut direct) + avertissements non bloquants (sans georef → Vue OSM/KMZ indisponibles ; aucun datalayer → plan vide).
+- **Navigation** : barre d'étapes numérotée cliquable (pages visitées), validation par page via le bloc erreur existant, switcher Simple/Avancé visible uniquement sur l'Accueil (changer de mode reconstruit les pages).
+- **Toggle 🗒️ « Tout afficher »** (décision 2:a) : l'affichage historique une-page reste à un clic, persisté LS `myktamap_planner_wizard_v1`. En wizard, la grille 2 colonnes est neutralisée (`kta-wiz-actif` → block, sections centrées 640px).
+- **🐛 Piège attrapé par KARMA au test** : la checkbox « Convertir en V2 tuilé » n'apparaissait qu'UNE FOIS l'image chargée — en wizard on pouvait quitter la page Image sans jamais l'avoir vue. **Toujours visible** désormais (`_majVisibiliteCheckboxV2` ne masque plus ; sans image, la génération bloque déjà sur `dimInconnues` avant d'utiliser la checkbox — aucun risque).
+- **🐛 Recherche OSM (repro KARMA)** : ① UI **gelée** sur « Lecture des plans… » — pendant l'extraction, un 2e appel à `_construireIndexRecherche` recevait `Promise.resolve(null)` immédiat → boucle de microtasks avec `_rendre` (fix : retourner **la promesse en vol**) ; ② barre + dropdown **hors cadre** (2 itérations) : le head wrappe désormais (`flex-wrap`, barre en 2e ligne pleine largeur si < 220 px dispo, `max-width:100%`) et le dropdown (4 itérations — j'avais accumulé des règles contradictoires, reprises à zéro sur rappel KARMA) : **`position:fixed`, top + left + width posés EN JS depuis le rect de l'input** → il épouse la barre (collé dessous, même gauche, largeur = barre élargie à 320 px min, clampée viewport). Une seule source de vérité, plus aucune règle horizontale CSS. z-index 100000.
+- **🔎 Barre du HOME : résultats LIVE (demande KARMA « même principe que la barre OSM »)** : dès 2 caractères (debounce 250 ms), dropdown collé sous la barre — 3 plans max (nom, registre RAM) + 8 points (via **nouvelle API `CrossPlanSearch.rechercher(q, max)`**, cache RAM partagé avec la modale) + « Voir tous les résultats… » → modale. Clic plan → chargement ; clic point → `InterPlanLinks.goTo` sans confirmation (on est au HOME). Jeton anti-race, fermeture au clic extérieur/Échap, positionnement fixed+rect (modèle éprouvé de la barre OSM). Entrée/🔎 → modale, inchangé.
+- 17 clés i18n `gen.wiz.*` fr/en/es. **Sources** v1.72.1. Aucune nouvelle surface réseau.
+
+
+**🗂️ v1.71.0 (30/07/2026)** — **Mode OSM lot 2 : multi-plans (« croisement de données OSM », cas KARMA Paris 13e + 14e + galeries techniques)** :
+- **Refactor pivot** : les 2 rendus du widget deviennent **paramétrés** — `_renderTilesInto(groupe, tilesData, georef, opacité, zIndex)` (les wrappers historiques délèguent) et `_renderDataLayersOnMiniMap(data, georef, cible?)` (33 références internes aliasées `dataL/poiL/…` ; sans `cible` = groupes module du plan principal, avec = groupes d'un plan ajouté). Zéro duplication des ~460 lignes de rendu data.
+- **Pile multi-plans** : `_stackOrder` (index 0 = au-dessus, contient AUSSI le principal) + `_extraLayers` (6 groupes Leaflet par plan ajouté) + `_extraOpacity`. zIndex = 200 + rang×5 posé sur chaque `imageOverlay.rotated` (`setZIndex` au réordonnancement, sans re-render). RAM-only (composition = geste de session). Blob URLs jamais révoquées (cache `_planDataCache`) → retrait/re-ajout gratuit.
+- **Panneau 🗂️** (fullscreen uniquement, comme la recherche) : lignes dans l'ordre de la pile — ▲▼ (ordre), slider **opacité par plan** (la ligne du principal pilote AUSSI le slider du bandeau, synchro bidirectionnelle), ✕ retirer (pas sur le principal, marqué ◉), sélecteur ➕ des plans georef restants.
+- **Intégrations** : `selectPlan` remplace l'ancien principal **à la même position** de pile (un extra sélectionné devient principal via retrait préalable) ; la recherche du lot 1 fonctionne inchangée (résultat → bascule de principal). **Filtrage à 2 niveaux (retour KARMA en cours de lot)** : cases du bandeau = masters globaux + **5 chips PAR PLAN** (🖼️📍🛣️🌐🏛️) sur chaque ligne du panneau — visibilité effective = global ET par-plan, via l'applicateur unique `_appliquerVisibilites()` (les toggles réécrits ne manipulent plus aucun groupe directement). Gestion déplacée en **modale dédiée « 🎚️ Plans & filtres »** (bouton ≡ du bandeau, pattern ≡ Filtres du mode plan — 2 itérations : panneau flottant → pastille → modale, retours KARMA successifs ; piège Escape consigné dans vue-osm.md). **Recherche remontée dans la ligne de titre « 🌍 Vue OSM »** (visible aussi en mode réduit, nœud déplacé listeners intacts). **Colonne « Mes plans » dynamique** (retour KARMA « pas de titre tronqué ») : `fit-content(420px)` — s'élargit jusqu'au plus long titre, plafond 420 px, puis **wrap 2 lignes** (`-webkit-line-clamp: 2`, ellipsis seulement au-delà) au lieu de l'ellipsis mono-ligne. **📄 Générateur : PDF Histoire MULTIPLES (vérification KARMA « je crois qu'on ne peut en mettre qu'un » → confirmé, corrigé)** : input `multiple` + liste retirable ligne à ligne, prefill Modifier depuis `histoirePdfs[]` (repli chaîne unique), écriture ZIP `data/<nom-safe>.pdf` dédoublonnés. **Format** : `plan.histoirePdfs[]` (nouveau) + `plan.histoirePdf` = 1er élément (rétrocompat — une app antérieure lit au moins le premier). 3 lecteurs propagés : `config.js` (résolution runtime de chaque entrée), `homeLoader` (collecte assets), `modeHistoire` (N entrées 📕 `__embed__<i>`, garde Retirer par préfixe). Doc : `data-formats.md`. **📱 Plein écran iPhone : 2e tentative → ROLLBACK immédiat** (constat terrain KARMA : « ça marche pas »). L'hypothèse « les 86 `env(safe-area-inset-*)` accumulés suffisent, il ne manquait que les metas » est **réfutée** — deux échecs (v1.9.2, v1.71.0), le commentaire d'index.html interdit désormais une 3e tentative sans diagnostic précis du symptôme sur appareil. État stable conservé (barre opaque, ~47 px perdus). **🔽 Footer HOME repliable** (demande KARMA « gagner encore un peu de place ») : flèche classique sous le contenu — replié, le bloc copyright complet est masqué et la barre garde la mention minimale « © 2026 MyKTAMap · vX » (le copyright n'est jamais supprimé, il est replié — mention complète à 1 clic). État persisté `myktamap_home_footer_replie_v1` **+ ajouté à `PREF_KEYS`** (voyage avec l'export de profil). **🐛 2 bugs mobile (captures KARMA)** : ① les 5 chips libellés par plan débordaient horizontalement (`.kta-osm-multi-cats` sans `flex-wrap` — ajouté, + ceinture `overflow-x: hidden` sur le corps de la modale) ; ② en mode OSM, le ✕ `position:fixed` recouvrait la fin de la barre de recherche → réserve de 56 px à droite du head. **Modale ≡ enrichie** : sections Affichage (5 chips globaux **libellés** — les checkboxes du bandeau sont supprimées avec tout le wrapper collapsible du widget : opacité, tags, bouton 🔼, leurs binds et `_renderTagChips`), **🏷️ Tags agrégés sur toute la pile** (clic → re-render data de TOUS les plans via `_reRenderDataTous`), et pile. Chips par plan désormais **icône + libellé**. La carte du widget gagne la hauteur des 3 rangées supprimées. **Rows épurées** : badge version retiré (il vit dans ℹ️) et **bouton ▶️ supprimé** — la row entière charge le plan (title « Charger ce plan » posé sur la row ; ⚠️ le listener `.plan-row-load` est parti avec, sinon TypeError au refresh). Bande profil/Reprendre **amincie sur PC** (avatar 36 px, paddings réduits) → carte OSM à **58vh**.
+- **⚡ Avertissement > 3 plans** (décision 2:b, 1× par session) via `osm_mode.warn.multi`. 8 clés i18n `osm_mode.multi.*` fr/en/es.
+- **🐛 Dropdown désynchronisé** (repro KARMA) : une recherche vers un point d'un AUTRE plan basculait carte + pile mais le `<select>` du bandeau gardait l'ancien nom (valeur posée uniquement au render du widget) → synchronisé dans `selectPlan`.
+- **Garde anti-race** : plan retiré pendant l'extraction ZIP → rendu abandonné (`_extraLayers[planId] !== g`). **Sources** v1.71.0. Aucune nouvelle surface réseau.
+
+
+**🌍 v1.70.0 (30/07/2026)** — **Mode OSM lot 1 (topo 2 projets KARMA → OSM prioritaire ; décisions : recherche locale-only, avertissements perf 2:b, widget conservé 3:a)** :
+- **Découverte qui a réduit le lot** [code lu] : le fullscreen du widget HOME était déjà un « mode OSM » de fait (`openFullScreen` = overlay plein viewport), et `_loadPlanDataForPreview` lisait déjà plan-config + POI/tracés/zones d'un plan **non chargé** (ZIP via FS/IDB, cache RAM). Lot 1 = sémantique + recherche + garde-fou, pas de nouveau module.
+- **🔎 Recherche propre au mode OSM** (visible uniquement en fullscreen) : périmètre **strictement local** — plans géoréférencés de la liste + leurs POI. Index construit **paresseusement** à la première saisie (extraction séquentielle des ZIP, pas de `Promise.all` = pic RAM), chaque POI projeté via le georef de **son** plan (`KmzExport.buildTransform`/`planToGps`), résultat → `selectPlan` + `flyTo` + marker doré + popup (retries bornés le temps que la carte se recrée). **Aucune recherche d'adresse** (Nominatim = surface réseau, écarté — réétudiable en opt-in séparé).
+- **⚡ Avertissement perf** : toast 1× à la première ouverture du mode (LS `myktamap_osm_mode_warn_v1`) ; le volet « > 3 plans » s'activera au lot 2 multi-plans via la même fonction.
+- **⛶ retitré** « Ouvrir le mode OSM » (valeurs des clés `osm_home.fullscreen.*` mises à jour fr/en/es, +4 clés `osm_mode.*`). Widget HOME inchangé (décision 3:a).
+- **Suite planifiée** : lot 2 (v1.71) multi-plans images + gestionnaire de calques (visibilité/opacité/ordre) · lot 3 (v1.72) croisement de données + liaisons dessinées · puis mode serveur community (2 flags kiosque max, promesse = « pas de backend », ligne pro à figer par écrit avant). **Sources** v1.70.0. Aucune nouvelle surface réseau.
+
+
+**📔 v1.69.0 (28-29/07/2026)** — **Le Carnet + Mode Histoire multi-PDF + HOME v2 (3 chantiers, 2 jours de session)** :
+- **Constat de départ** [code lu] : rien dans l'app ne datait ni n'empilait une sortie — `sessionPersist` = état live écrasé par plan, `sessionBackups` = 10 rotations FIFO (destructif au-delà), timeline tracker per-plan, Mode Histoire enfermé dans l'écran plan. Un hub HOME qui se contenterait d'agréger l'existant aurait été **maigre et amnésique** : le vrai geste manquant était de **journaliser** les sorties.
+- **Socle `journal.js`** (sans DOM) : IDB `myktamap_journal` v1 / store `sorties` (~2-8 Ko par entrée). Une sortie = métadonnées + `activeMs`/`wallMs` + `distM` + `ajouts` + `levels` + **refs photos** + **tracé décimé** (≤ 1500 pts) + note. Flush 30 s + `visibilitychange`/`pagehide` (récupérable après un kill mémoire mobile).
+- **Cycle de vie — 2 hooks `main.js`, ordre critique** : `onPlanLoaded` **APRÈS** `SessionPersist.onPlanLoaded` (sinon la session restaurée serait comptée comme « ajoutée aujourd'hui ») ; `onPlanUnload` juste après celui de SessionPersist et **AVANT** le teardown (plus bas, `resetTrackingTimeline` vide la timeline → tracé et distance perdus). Snapshot **synchrone**, écriture IDB async.
+- **Hybride (1:c)** : archivage auto sous conditions de pertinence + `🏁 Clôturer ma sortie` (garde toujours, puis rouvre une sortie) + note éditable après coup. Deltas clampés à 0, distance ré-ancrée si elle recule (session effacée / tracker reset).
+- **🚶 terrain vs 🖥️ bureau (retour KARMA 29/07, reco 1:a 2:a 3:a)** : le lot 1 confondait une soirée de dessin à la maison et une vraie sortie — le seuil « ≥ 1 ajout » le garantissait même. Classement **auto par le déplacement tracker** (`distM > 0 || steps > 0`), ré-évalué à chaque snapshot (bureau → terrain au premier pas, jamais l'inverse), **corrigeable à la main** sur la fiche (`typeManuel` = plus jamais recalculé). **Seuils refaits** : terrain ≥ 50 m · bureau ≥ 10 min actives ET ≥ 1 ajout — le « ≥ 1 ajout » global est supprimé. **Totaux = terrain uniquement**, liste scindée (section « 🖥️ Travail sur plan » repliée), nature annoncée en direct dans la modale Session.
+- **Vue `journalUi.js`** : modale carnet à 2 onglets. **📔 Sorties** (totaux, filtre par plan, liste antéchronologique) + fiche (métriques, mini-tracé SVG, vignettes photos avec fallback « photo supprimée », note, reclassement, suppression). **📖 Récits** (demande KARMA 29/07) : la note libre et le PDF du **Mode Histoire**, jusqu'ici enfermés dans l'écran plan, sont listés **tous plans confondus et éditables sans charger le plan** — lecture directe de `myktamap_note_libre_<planId>` + IDB `myktamap_histoire_pdfs`, écriture sur la **même clé** (pas de copie divergente), rendu MD via `kta_renderMd`. Scan différé au 1er affichage de l'onglet, `getAllKeys()` pour la liste (jamais `getAll()` : ça chargerait tous les PDF en RAM), blob lu au clic, iframe vidée avant `remove()`. ⚠️ `_histOpen()` détecte et **supprime** la base créée par mégarde (`open(nom)` sans version crée une base vide → le Mode Histoire planterait ensuite sur un store absent). Entrées : bouton HOME `📔 Mon carnet` (hors accordéon 🧰 Outils) + section « Sortie en cours » dans la modale Session de l'écran plan.
+- **Photos** : hook dans `photos.js > addPhoto` uniquement — `restorePhoto` (import de session) ne gonfle pas le compteur. **Refs only**, aucune image dupliquée.
+- **Intendance** : DB déclarée dans `memInspector` + calcul « Stockage » du profil (sinon espace invisible) ; **🐛 fix collatéral** — la liste de secours de « 💥 Tout réinitialiser » (Safari/Firefox, sans `indexedDB.databases()`) s'arrêtait à `myktamap_handles` et laissait photos, backups, profil, crashes et tuiles OSM en place : complétée.
+- **📄 Mode Histoire : N documents PDF par plan** (question KARMA 29/07 « peut-on mettre plusieurs PDF ? » → reco 1:a 2:a 3:a). Avant : **1 seul** PDF importé (`keyPath: "planId"`, import = écrasement), et un PDF embarqué dans le ZIP **masquait la toolbar** → sur ces plans-là l'user ne pouvait rien joindre. Store migré **v1 → v2** (`keyPath: "id"` + index `by_plan`) : le keyPath n'étant pas modifiable, la migration lit au curseur, `deleteObjectStore`, recrée et re-`put` **dans la même transaction versionchange** — aucun PDF perdu. Garde-fous inédits : 10 documents/plan, avertissement à 25 Mo cumulés, refus à 100 Mo. L'embarqué devient une entrée de liste (📕 non supprimable) au lieu de tout bloquer.
+- **🐛 3 propagations obligatoires** : ① `sessionExporter` ouvrait la base **figée sur `open(nom, 1)`** → `VersionError` avec le store en v2 = **PDF disparu silencieusement des exports** (ouverture sans version + lecture par index + repli v1, tous les documents exportés, noms dédoublonnés) ; ② `interfaceImportExport` lit `historeSessionPdfs` avec repli sur l'ancien champ unique ; ③ `importSessionData` **ajoute** au lieu d'écraser. **🐛 Inventaire** : `myktamap_histoire_pdfs` n'était déclarée NI dans `memInspector` NI dans le calcul « Stockage » depuis v1.34.20 — un PDF de 40 Mo ne comptait nulle part. Corrigé.
+- **🧹 Allègement du HOME (demande KARMA)** — 3 icônes en moins sur l'accueil, aucune fonctionnalité retirée : ① **« 🌐 Recherche multi-plans » devient une BARRE de recherche** (geste fréquent ≠ outil ponctuel ; validation à l'Entrée ou 🔎, jamais à la frappe — le scan des plans est coûteux ; masquée si la bibliothèque est vide). **Placement final** : dans le **header** (cf. bullet HOME v2 — les itérations de placement en grille sont documentées en historique dans `ui.md`). Mobile (`display:contents`) : empilement profil → Reprendre → recherche, inchangé ② **« 🔗 Fusionner des datalayers » rejoint l'Éditeur de données** comme 4e source (même famille d'usage : manipuler des calques JSON hors carte) ③ **« 📔 Mon carnet » entre dans la liste des outils** au lieu d'être isolé au-dessus. Liste d'outils : 5 → 4 entrées. Nouveau support i18n générique **`data-i18n-placeholder`** (`main.js > _applyI18nDom`) — sans lui, un champ traduit serait rempli à la main hors du cycle de re-traduction. 2 libellés morts retirés des 3 dicos. **🐛 collatéral** : la carte « 🗺️ plan en cours » de l'Éditeur de données s'affichait depuis le HOME (même marqueur `PLAN_CONFIG` faussé, cf. ci-dessous).
+- **🐛 `PLAN_CONFIG` n'est pas un marqueur « plan affiché » (bug KARMA, capture)** : la Recherche multi-plans ouverte **depuis le HOME** montrait la case « Itinéraire via plusieurs plans » et les boutons 🧭 — notions qui n'existent que plan chargé. Cause : `afficherLoader()` **ne remet jamais `PLAN_CONFIG` à null** (il masque `#map` + pose `body.kta-loader-active`), donc le marqueur restait vrai toute la session après un premier plan — le commentaire v1.58.1 affirmait le contraire. **3 faux positifs réels** : ① case + 🧭 sur l'accueil ② confirmation « changer de plan ? » depuis l'accueil (`interPlanLinks` ×2) ③ **`goTo` prenait le chemin court « déjà sur ce plan »** → depuis le HOME, cliquer une liaison vers le dernier plan ouvert **ne chargeait rien**. Fix : source de vérité unique `window.ktaPlanAffiche()` (`utils.js`), basée sur `body.kta-loader-active` (symétrique) + `PLAN_CONFIG` en complément au boot. Doc : `gotchas.md`.
+- **🏠 HOME v2 — refonte graphique (maquette validée, décisions 1:a 2:b 3:a)** : après 4 bugs d'alignement en 1 journée, diagnostic de fond — tout en ratios `fr`, grille jumelle top-row/loader-grid à synchroniser à la main, recherche sans place naturelle. **v2** : 🔎 recherche **dans le header** (pilule centrée, pattern app bar ; mobile = header en wrap, barre en 2e ligne) · bande d'état en **flex** (profil · Reprendre centré) · corps en **rails fixes** `300px minmax(0,1fr) 300px` — **la Vue OSM absorbe tout le reste (~1230 px à 1920), zéro palier** (`min-height: clamp(300px,52vh,660px)`) · colonnes en **cards** (rayon 12, pas 16 px, thème clair couvert) · **outils en grille 2×2** (Carnet doré) · **accordéon Outils mobile supprimé** (JS + CSS — la grille 2×2 est assez compacte). Aucune fonction ni ID touché ; clé `home.mobile.tools` retirée, `home.tools.title` ajoutée. Maquette : `mockup_home_v2.html`. Doc : `ui.md § HOME v2` (avec la liste des « à ne pas refaire »).
+- **🖥️ Grand écran (≥ 1024 px, retour KARMA)** : carnet 640 → 900 px, fiche de sortie 560 → 760 px (tracé 220 px, vignettes 84 px), fiche récit 820 px — et **avec un PDF ouvert : 95vw × 92vh en 2 colonnes** (note/documents à gauche, visionneuse pleine hauteur à droite, classe `kta-jrn-recit-avecpdf` posée en JS). Modale Mode Histoire 900 → 1400 px / 92vh. Colonnes en `flex: 1` + `min-height: 0` plutôt qu'une hauteur calculée sur le header (pas une constante : titre long, zoom 125 %). **Mobile strictement inchangé** (tout est sous `@media`, seuil aligné sur la modale ⚙️ Réglages).
+- **🎓 Onboarding audité** (demande KARMA) : nouvelle carte **25/26 « 📔 Mon carnet »** (FR + EN — terrain vs bureau, onglet Récits, où le trouver) · carte **Mode Histoire** corrigée (elle décrivait « LE PDF embarqué » au singulier alors qu'on est passé à 10 documents) · **barre de recherche** ajoutée à la carte Outils annexes · compteurs `n/25` → `n/26` et compte du README (**23 → 26**, faux depuis 2 versions). ⚠️ Parité FR/EN vérifiée par script (26/26) — une insertion s'était initialement faite dans le mauvais tableau. `firstRunFlow.js` : rien à changer (séquenceur pur, aucun texte de feature).
+- 68 clés i18n `jrn.*` + 8 clés `histoire.pdf.*` neuves, fr/en/es (3 obsolètes retirées : `histoire.pdf.replace`, `jrn.recits.pdf`, `jrn.hint` — la ligne d'explication du carnet, supprimée sur retour KARMA). **Limite assumée** : aucun remplissage rétroactif, le carnet démarre vide. **Dette connue (lot 2-3)** : carnet absent de l'export/import de profil. Doc : `session-data.md` § Le Carnet. **Sources** v1.69.0. Aucune nouvelle surface réseau.
+
+**🔤 v1.68.1 (27/07/2026)** — **Fix i18n « clés manquantes » au boot (audit KARMA « on a toujours autant d'erreurs »)** :
+- **Cause racine (mesurée par instrumentation)** : aucune clé ne manquait — les 32 clés signalées existent dans les 3 dicos. Les dicos résolvent à ~700 ms ; des rendus tombaient à 645-695 ms : fallback `DOMContentLoaded` de `refonteInterface` (header + statusbar construits dico vide → **22 tooltips « Btn home title »… gravés à vie**, `_creerHeaderBar` early-return), rendus initiaux home* B7 au `window load` (tooltips lignes de plans, statut PIN, accordéon), `proLicense` (validation cache au load du script).
+- **Fix** : promesse d'`I18n.init()` **mémoïsée** (`_initPromise` — supprime aussi le double-fetch des dicos main.js/osmHomePreview, latent depuis v1.45) et utilisée en **barrière** par tous les rendus précoces (refonteInterface, homeLoader, homeConfig, bloc résiduel index.html).
+- **Gardes morts réparés** : le pattern `const v = t(k); if (v !== k)` ne fonctionnait plus depuis l'humanisation H1 (t() ne retourne jamais la clé) → remplacé par `I18n.has(clé)` dans 6 modules (perf desc index.html — « Auto » écrasait la description FR —, `_homeT` homeLoader, proLicense, profileAchievements, profileGamification, shortcutsCheatsheet).
+- **Bench E2E** (JS vérifié frais octet-par-octet, serveur no-store) : 32 warns/boot → **0** ; tooltips réels FR partout. Doc : `i18n.md` § Pièges (barrière obligatoire, pattern interdit). **Sources** v1.68.1. Aucune nouvelle surface réseau (une requête dico dupliquée en MOINS au boot).
+
+**📱 v1.68.0 (27/07/2026)** — **HOME mobile (étude KARMA « interface plus dédiée mobile », lot A, reco 1:a 2:a 3:a)** :
+- **Étude mesurée** (375×812) : le HOME mobile = layout desktop 2 colonnes aplati — dropzone ZIP de 326 px (geste souris) avant les outils, liste de plans non bornée (~24 plans ≈ 1 300 px), outils à ~3 écrans de scroll, chips header 32 px.
+- **Lot A** (`@media ≤ 640 px`, desktop intouché — CSS + 2 fonctions dans `homeLoader.js`) : ① hero « ▶️ Reprendre » pleine largeur 52 px liseré doré ② **liste bornée aux 5 récents** + bouton « 📚 Tous mes plans (N) » dépliant/repliable (`_ktaMobileCollapsePlans`, rappelée à chaque `refreshPlansList`, masquage CSS = listeners intacts) ③ dropzone compacte 93 px (hint FS Access desktop masqué) ④ **accordéon « 🧰 Outils »** replié (5 boutons regroupés) ⑤ cibles tactiles ≥ 44 px (outils, hero). Croissance du scroll **bornée** (~1,4 écran quel que soit le nombre de plans).
+- **🐛 Fix header ×3** (retours KARMA en direct) : les chips 44 px débordaient à droite (`.loader-header-actions{flex-shrink:0}` + header sans wrap) ; le wrap-dessous déplaisait → **bilan au pixel** : 327 px dispo, lockup titre 186 px (tiré par la tagline). Solution : **chips 36 px sur la ligne du titre** + **tagline masquée sur mobile** (identité = logo + nom) + wrap/ellipse en filet < 340 px (zéro débordement possible). Header : 103 → 55 px.
+- i18n `home.mobile.*` (3 clés fr/en/es). **Bench** : 375 px (5/8 lignes visibles, dépliage/repli, accordéon, chips 351/375, zéro débordement) + non-régression desktop (liste complète, boutons mobiles absents). **Sources** v1.68.0. Aucune nouvelle surface réseau.
+
+**🌀 v1.67.2 (27/07/2026)** — **Export profil : registre des liaisons inter-plan (question KARMA « la db des liaisons est-elle exportée ? » → non, corrigé)** :
+- **Constat** [code lu] : `profileExportImport.js` n'embarquait ni `myktamap_interplan_links_v1` (registre GLOBAL cross-plan) ni les prefs `myktamap_ipr_multihop_v1`/`myktamap_backbtn_mode` → une migration d'appareil via l'export profil **perdait tout le réseau de portails** (les liaisons ne voyageaient que par l'export de session manuel, plan par plan).
+- **Fix** : 3 clés ajoutées à `PREF_KEYS` + **cas spécial à l'import** pour le registre : en mode **merge**, fusion par `link.id` via l'API `InterPlanLinks.importLinks` (v1.57) — les liaisons déjà créées sur l'appareil cible sont préservées, jamais écrasées ; mode replace = remplacement direct (cohérent avec la sémantique de section).
+- **Bench roundtrip** : 2 liaisons + prefs → export (registre présent ✓) → wipe + 1 liaison locale différente → import merge → **3 liaisons** (2 importées + 1 locale préservée), prefs restaurées. **Sources** v1.67.2. Aucune nouvelle surface réseau.
+
+**🧹 v1.67.1 (27/07/2026)** — **Audit frictions UI/bugs : purge des flottants de navigation + gate légale ES (reco 1:a 2:a)** :
+- **Audit systématique** (6 détecteurs statiques + parcours bench, focus KARMA « fermetures à la sortie du plan ») : le codebase s'est révélé PLUS SAIN que prévu — boutons « natifs » suspects tous stylés (5 modules injectent leur CSS en JS au 1er usage), zéro `onclick` mort, zéro id fantôme, i18n complet hors gate ES. Les 4 vrais bugs étaient TOUS dans la piste de KARMA :
+- **🔴 4 résidus flottants** (repro bench) : ① mini-pastille ↩️ (mode réduit U4, sans timer) **permanente au HOME** après sortie du plan ② invite « 🌀 Portail suivant » idem ③ mini-pastille survivant à un **switch DIRECT** (sélecteur du titre) avec **pile de retour PÉRIMÉE** (clic = navigation vers un état obsolète) ④ widget boussole visible au HOME. Cause commune : seuls les chemins `goTo` nettoyaient — `afficherLoader()` (sortie) et le teardown du switch ne purgeaient rien.
+- **Fix — hooks `onPlanExit(ctx)`** (`InterPlanLinks` + `InterPlanRoute`, branchés dans `afficherLoader` [ctx "home"] et `_libererRessourcesPlanPrecedent` [ctx "switch"]) : bouton Retour retiré + pile vidée · invite retirée + portail désarmé. **Subtilités anti-régression** : côté liaison, `_pendingTarget` distingue un goTo (no-op, il gère déjà) d'un switch direct (purge) ; côté route, la **chaîne multi-hop est CONSERVÉE au switch** (c'est elle qui trace les legs aux arrivées) et abandonnée seulement au retour HOME. + `CompassWidget.hide()` + suppression de la modale itinéraire fantôme (cachée dans le DOM). Bench : 5 résidus → propres, bouton Retour toujours présent sur un saut goTo normal (non-régression).
+- **🌍 Gate légale ES** : 13 clés `legal.*` ajoutées à `es.json` (chrome traduit ; les textes de loi restent FR par design, la note ES le précise).
+- **Sources** v1.67.1. Aucune nouvelle surface réseau.
+
+**🏗️ v1.67.0 (27/07/2026)** — **Superposition multi-niveau : plan principal = niveau 0 + garde-fou transparence des calques (reco 1:a 2:a 3:a)** :
+- **Constat KARMA** (« un fond noir ou un plan au-dessus fait perdre le sens de la superposition ») : la chaîne des calques image était déjà saine (embed **verbatim** au générateur, rendu `L.imageOverlay` direct → alpha préservé de bout en bout) — les 2 vrais trous étaient ailleurs :
+- **A — Plan principal filtrable comme niveau 0** (`tiling.js` + dispatcher `appliquerFiltreNiveau`) : le filtre multi-niveau pilotait les calques (`_ktaImageOverlays`) mais JAMAIS le plan principal, affiché quoi qu'il arrive → impossible de regarder un étage seul. Nouveau `window._applyLevelFilterToBasePlan()` : masquage **net** (2:a) quand 0 est décoché, couvre les **3 modes de rendu** — direct (nouveau registre `_ktaBaseLayers`, les 2 sites `L.imageOverlay` ne gardaient AUCUNE référence), tuiles runtime V1 (`_baseTiles`), tuiles V2 (`activeOverlays` + garde `_ktaBaseHidden` dans `_renderNiveau` pour les swaps de zoom). No-op si `multiLevel !== true`.
+- **B — Garde-fou transparence au générateur** (`createConf.js`, 3:a non-bloquant) : à la génération, chaque calque de **niveau ≠ 0** est vérifié par CONTENU (`ktaDetecterAlpha` v1.62.0 — JPEG = opaque d'office, PNG/WebP scannés) → toast + statut « ⚠️ Calque(s) de niveau SANS transparence : X — ils masqueront tout ce qui est dessous ». Les calques niveau 0 (légende…) ne sont pas concernés. Clé `gen.warn.layerOpaque` (fr/en/es).
+- **Tests bench** (plan M-LVL test2) : niveau 0 décoché → plan principal masqué ✓ · re-coché → revient ✓ · multi-niveau OFF → jamais masqué ✓. V2/tuiles couverts par le même chemin (garde swap-zoom relue). **Sources** v1.67.0. Aucune nouvelle surface réseau.
 
 **🧹 v1.66.0 (27/07/2026)** — **B7 : découpe du monolithe index.html (décisions KARMA 1:a 2:b 3:a)** :
 - **Constat** : le bloc `<script>` inline (lignes 1433-6050, ~232 Ko) vivait dans UNE closure `window.addEventListener("load", …)` — chrome loader + import ZIP + liste plans + profil/gamification/stats + config/PIN/badges + perf/debug, tout entremêlé.
@@ -5100,918 +5614,10 @@ Tous les calls sont gardés par `if (window.kta_vibrate)` (no-op si module pas c
 **📦 v1.32.1** : PATCH Option C manifest `display: fullscreen` — Android only, iOS limite Apple.
 **📦 v1.31.10-fix1** (avant les tentatives v1.32.0 rollback) — HOTFIX 2 bugs incognito KARMA test : (1) Popup `🔐 Authentification renforcée disponible` skip en incognito via `proposerActivation()` ; (2) Bordure violette persistante via `body::before fixed`. Détails dans le commit + `docs/architecture/security-legal.md §86`.
 **📦 Précédentes shipped main** : `v1.31.10` (Garde-fou modale confirmation activation) ; `v1.31.9-fix1` (skip PIN+onboard + bordure 5px) ; `v1.31.9` (Toggle home + Quitter) ; `v1.31.8-fix1` (badge mobile + flush + whitelist UnlockGate) ; `v1.31.8` (F2 Mode incognito — shim Storage + IDB) ; `v1.31.7` (F1 Export anonymisé) ; `v1.31.6-fix1` (HOTFIX SW offline) ; `v1.31.1` (perf P7 OOMGuard) ; `v1.31.0` (refactor 9 modules) ; `v1.30.0` (perf boot defer) ; `v1.29.0+fix3` (i18n EN + Secours multi-phases) ; `v1.25.3` (tutoriel Mode Secours).
-**📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
 
-## 📑 Sommaire
-
-1. [🚀 Dernière release — v1.21.1](#-derniere-release--v1211)
-2. [🧭 Introduction](#-introduction)
-3. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalites-principales)
-4. [🏗️ Architecture applicative](#%EF%B8%8F-architecture-applicative)
-5. [📦 Modules JS — référentiel à jour (45 modules)](#-modules-js--referentiel-a-jour-45-modules)
-6. [📱 PWA — Application installable](#-pwa--application-installable)
-7. [🔄 Service Worker — mode hors-connexion](#-service-worker--mode-hors-connexion)
-8. [🚀 Démarrage — auto-détection du mode](#-demarrage--auto-detection-du-mode)
-9. [🎬 Splash screen](#-splash-screen)
-10. [💥 Reset complet de l'application](#-reset-complet-de-lapplication)
-11. [⚠️ Gestion des erreurs « Plan introuvable »](#%EF%B8%8F-gestion-des-erreurs--plan-introuvable-)
-12. [🎨 Système d'icônes — cascade et fallback](#-systeme-dicones--cascade-et-fallback)
-13. [📚 Multi-plans (`planRegistry.js`)](#-multi-plans-planregistryjs)
-14. [⚡ Mode performance (tiling V1 + V2)](#-mode-performance-tiling-v1--v2)
-15. [💾 Préférences utilisateur](#-preferences-utilisateur)
-16. [⚙️ Configuration — `plan-config.json`](#%EF%B8%8F-configuration--plan-configjson)
-17. [📦 Structure des données JSON](#-structure-des-donnees-json)
-18. [💾 Export de session — `sessionExporter.js`](#-export-de-session--sessionexporterjs)
-19. [📍 Gestion des coordonnées](#-gestion-des-coordonnees)
-20. [🐛 Débogage](#-debogage)
-21. [📋 Journal des modifications](#-journal-des-modifications)
-22. [📄 Licence](#-licence)
-
----
-
-## 🚀 Dernière release — v1.21.1
-
-📅 **25 mai 2026** — Release **PATCH** (Z+1 sur v1.21.0) : **Audit imports/exports/roundtrips**. Pack consolidé de 9 bugs critiques découverts via audit ciblé (agent général-purpose) après accumulation de 6 hotfixes post-v1.21.0 qui suggérait des patterns latents.
-
-- 🚨 **Sécurité** : bloc GPS du mode urgence ne s'affichait JAMAIS (clone bug fix4 dans `emergencyMode.js`) → critique pour user perdu en cata
-- 🎨 **Types custom préservés partout** : 4 bugs liés au traitement de 2e zone des `cust-*` (KMZ export drop, KMZ import regex stricte, GPX import validTypes, Session Avancé filtre)
-- 📦 **Embedded data layers** : fronts (polylines) filtrés out, descriptions perdues dans tous les registries runtime
-- 🏗️ **Niveaux M-LVL roundtrip KMZ** : levels aplatis à 0 (fonctionnaient uniquement via folder parent, jamais ré-extraits) → fix via `<ExtendedData>` standard KML
-- 🧱 **V2 tiling auto-crop** : annotations + georef décalés du cropOffset si auto-crop des marges déclenché
-
-Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
-
----
-
-## 🚀 Release précédente — v1.21.0
-
-📅 **25 mai 2026** — Release **MINOR** (Y+1 sur v1.20.0) : **Cycle « Stats avancées + QoL UX »**. 4 features qui complètent le polish v1.20.0 :
-
-- 📊 **Export CSV** des annotations (ZIP avec 4 fichiers points/roads/zones/structures, UTF-8 BOM + sep `;` compat Excel)
-- 📊 **Graphes camembert** SVG natifs dans Stats globales (4 sections breakdown — coloration charte cohérente avec la carte)
-- 🎯 **Raccourcis clavier** E M Z S T L B R (toggle, anti-vol focus, skip si modale ouverte)
-- 🎬 **Mode présentation** (touche F) — cache header + sidebars + footer, garde carte + zoom + boussole
-
-Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
-
----
-
-## 🚀 Release précédente — v1.20.0
-
-📅 **25 mai 2026** — Release **MINOR** (Y+1 sur v1.19.1) : **Cycle complet « Robustesse + Stats + Onboarding + Profil »**. 8 features regroupées en une seule release :
-
-**🛡️ Filet de sécurité & robustesse**
-
-- 🪤 **Skip snapshot identique** : économie FIFO des slots backups (boot sans changement = 0 slot consommé)
-- 📋 **Crash report auto IDB** : archive auto des kills mémoire détectés (debug + diagnostic facilité) — nouvelle DB IDB `myktamap_crashes`
-- 🛡️ **Clause anti-fork dans Audit** : précision que la garantie de sécurité s'applique uniquement à `myktamap.fr`
-
-**📊 Stats & partage communauté**
-
-- ⭐ **Favoris export/import JSON** : partage cross-appareil de tes POI préférés
-- 📊 **Statistiques globales du plan** : modale agrégée session + data layers embedded + **export PDF A4 via jsPDF**
-
-**🎓 Onboarding & profil utilisateur**
-
-- 🎓 **Tutoriel premier-lancement enrichi** (8 cards) : Bienvenue / Charger-créer / Annoter / Tracker GPS / Recherche Ctrl+K + Favoris / Multi-niveau M-LVL / Sauver-partager / Outils annexes — rejouable via 📚 Aide
-- 📦 **Export/Import de profil utilisateur COMPLET** : remplace l'ancien export « liste de plans ». 9 sections (user / registry / preferences / favoris / sessions / backups / tutorial / photos POI / crashes). PIN/Face ID + UnlockGate jamais exportés (sécurité). Rétro-compat absolue avec l'ancien format `myktamap-plans-list`. Modale post-import « ✅ Profil importé » avec proposition de reload doux.
-- 👤 **Mode profil utilisateur intégré au loader** : nouveau bandeau en-tête (avatar + surnom + bouton ⚙️ Détails). Photo + surnom stockés dans nouvelle DB IDB `myktamap_profile`. Avatar default = initiale colorée déterministe (hash). Modale détails : édition surnom inline + upload/retrait photo + stats agrégées + boutons export/import/reset.
-
-Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
-
----
-
-## 🚀 Release précédente — v1.19.1
-
-📅 **24 mai 2026** — Release **PATCH** consolidée (Z+1 sur v1.16.1 — saut PATCH car le pack accumulé est **surtout** des fixes + polish, malgré la présence de quelques features moyennes). Contenu :
-
-- 🚀 **Générateur accessible** : nouveau mode Simple (image + nom + version + V2/M-LVL → ZIP en 30 sec) + mode Avancé inchangé + nouvelle source de vérité plan-level `plan.customLegend`
-- 🌍 **Roundtrip légende KMZ + GPX** : la légende personnalisée du plan voyage avec les exports, restaurée auto au ré-import. Compat externe préservée (apps tierces ignorent silencieusement).
-- 📊 **État mémoire (Inspecteur)** : nouvel outil de transparence accessible depuis ⚙️ Configuration loader. Topo lisible localStorage / IndexedDB / Cache PWA / Storage estimate / Runtime. Bouton 📋 Copier le rapport.
-- 🎯 **Polish UX + DX** : Aide intégrée enrichie (2 sections), Update Checker en vrai semver, Toast non-bloquant au changement de SW.
-- 🩹 **Fixes UI** : auto-save par plan, ⭐ Favoris dans l'Aide, tableau MemInspector mobile, boussole derrière le footer, modales logs illisibles en thème clair.
-
-Détails complets dans le [Journal des modifications](#-journal-des-modifications) (chaque sous-feature documentée séparément, l'historique Git préserve les itérations dev).
-
----
-
-## 🚀 Release précédente — v1.16.1
-
-📅 **24 mai 2026** — Hotfix PATCH (Z+1 sur v1.16.0) : auto-save par plan (slot localStorage indexé par planId + migration legacy transparente). Quitter un plan → revenir : la session reprend exactement où elle s'était arrêtée pour CE plan, sans charger de snapshot.
-
----
-
-## 🚀 Release précédente — v1.16.0
-
-📅 **24 mai 2026** — Cycle « **UX & filet de sécurité** » : **4 features majeures** qui se complètent + plusieurs polishs UI conséquents.
-
-**Highlights :**
-
-- 📝 **Notes sur zones / tracés / structures** (step 1) — Bouton « Note » dans la popup de chaque élément, textarea multiligne en mode session, lecture seule en data layer KMZ. Helper `window.attacherNotePopup` (`utils.js`) + ghost polyline transparente épaisse pour ergonomie clic sur les tracés. Roundtrip complet : session JSON, KMZ (`<description>` CDATA), GPX (`<cmt>` / `<desc>`).
-- 🏷️ **Légende personnalisable** (step 2) — Nouveau module `js/legendCustomization.js` (~600 lignes IIFE) avec **cascade 3 niveaux** : session > plan (`PLAN_CONFIG.customLegend`) > default. **4 catégories** : icones / traces / zones / structures. Renommage, masquage, et **entrées custom DESSINABLES** (geometry polyline ou polygon → boutons sidebar dynamiques + render via style resolvers `_resolveRoadStyle / _resolveZoneStyle / _resolveStructureStyle`). UI éditeur dans la modale Export PNG **+** bouton ✏️ Modifier dans la fenêtre 🗺️ Légende mode carte.
-- 🎛️ **Flyout sidebar** (step 2-flyout) — Pivot UI pour les groupes traces / zones / structures : remplace la cascade verticale (qui débordait l'écran avec beaucoup de customs) par un **panel latéral** adjacent au bouton principal. Position calculée dynamiquement (`getBoundingClientRect` + listeners resize/scroll), header sticky pour longues listes, max-height/max-width en pixels réels (robuste landscape mobile iOS).
-- ⭐ **Favoris points** (step 3) — Nouveau module `js/favoris.js` (~180 lignes). Stockage localStorage **indexé par planId**, snapshots complets des points (résilience). Bouton ⭐ dans la popup des POI. Groupe sidebar **⭐ Favoris position topleft juste après M-LVL**, liste flyout dynamique → clic centre + flash circleMarker orange 3s + ouvre la popup du marker original.
-- 📦 **Backup multi-rotations sessions** (step 4) — Nouveau module `js/sessionBackups.js` (~280 lignes). **10 snapshots FIFO en IndexedDB** (`myktamap_backups` / store `backups`). **4 triggers** : auto 5 min, au boot pre-restore, avant action destructive (`SessionPersist.clear`), manuel via 📆 Snapshot maintenant. UI section **📦 Backups récents** dans la modale 📊 Détails de session (filtrée sur plan courant, badge avec `(+N autres plans)`). Restore par écriture localStorage + reload.
-- 🧭 **Fix thème clair compass widget** — Le widget réduit était hardcodé dark, nouveaux overrides `body.kta-theme-light .kta-compass-widget*` (fond beige clair, texte ambre saturé, bouton close lisible).
-- 💬 **Garde-fous « Changer de plan » reformulés** — Les modales (clic titre/rose des vents → home, et clic plan spécifique dans le switcher) ne disent plus « Les données non exportées seront perdues » (trompeur avec autosave + snapshots) mais affichent un message rassurant : « ✅ Ta session est sauvegardée et sera restaurée à ton retour. 📦 Les 10 derniers snapshots restent dispos dans 📊 Détails de session › Backups récents. »
-
-🛡️ **Confidentialité** — Aucun nouveau call réseau. Backups en IndexedDB local, favoris en localStorage, LegendCustomization persiste dans le payload SessionPersist existant. **NETWORK_AUDIT inchangé** sur le fond.
-
-📂 **Détail complet** : voir [Journal des modifications](#-journal-des-modifications) en bas de doc.
-
----
-
-## 🧭 Introduction
-
-MyKTAMap est une application web permettant de **visualiser, annoter et exploiter un plan image** (carrière souterraine, bâtiment, site industriel…) à partir d'une image haute résolution.
-
-L'outil repose sur **[Leaflet](https://leafletjs.com/)** en projection simple (`L.CRS.Simple`), ce qui permet de travailler sur une carte personnalisée **sans coordonnées GPS** — tout en supportant un calibrage GPS 2 points optionnel pour exporter/importer en KMZ géolocalisé et GPX (Google Earth, OsmAnd, TopoDroid, Strava…).
-
-Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + IndexedDB), **zéro télémétrie**, **données locales** uniquement, **code ouvert** sous CC BY-NC-SA.
-
----
-
-## 🛠️ Fonctionnalités principales
-
-### 🗺️ Cartographie et annotations
-
-| Fonctionnalité | État | Module(s) clé(s) |
-|---|---|---|
-| Affichage plan image haute résolution (mode Tiling 5 presets) | ✅ | `map.js`, `tiling.js`, `config.js` |
-| **V2 tuiles** Google Maps-like (4 niveaux de zoom) | ✅ | `createConf.js > _genererTuilesV2`, `tiling.js` |
-| **Multi-plans** côté utilisateur (registre localStorage + IDB) | ✅ | `planRegistry.js`, `main.js` |
-| **Multi-niveau (M-LVL)** : étages + jonctions interniveau | ✅ | `interface.js`, `config.js` |
-| Calques image (légende, surimpressions) | ✅ | `map.js`, `config.js` |
-| Calques de données (`devmap-data` JSON) | ✅ | `utils.js > ajouterPointsDepuisJSON` |
-| Ajout de points d'intérêt (modale + tags + photos POI IDB) | ✅ | `editor.js`, `photos.js`, `photoViewer.js` |
-| Tracés de routes (Principal / Secondaire / Chemin / Jonction / Itinéraire) | ✅ | `road.js`, `pathfinder.js` |
-| Zones polygonales (eau / remblais / effondrement / inaccessible) | ✅ | `zones.js` |
-| Structures (5 sous-types : pilier 1ère / 2e masse / mur / fronts) | ✅ | `structures.js` |
-| Mesure distance + ⬛ mesure surface (polygone shoelace) | ✅ | `measure.js`, `utils.js > polygonAreaM2` |
-| Suppression granulaire (point / tracé / tout) | ✅ | `editor.js`, `road.js`, `zones.js`, `structures.js` |
-| **Undo / Redo global** (Ctrl+Z / Ctrl+Y, 50 entrées FIFO) | ✅ | `historyManager.js` |
-| Heatmap densité d'activité (désactivé v1.12, code en standby) | 🟡 | `heatmap.js` |
-
-### 🧭 Tracker et géolocalisation
-
-| Fonctionnalité | État | Module(s) clé(s) |
-|---|---|---|
-| Tracker PDR (capteurs mobile, expérimental) | ⚠️ | `tracking.js`, `compass.js` |
-| Recalage tracker au clic carte | ✅ | `interface.js > recalerTrackerSurPoint` |
-| Itinéraire le plus court (Dijkstra) sur le réseau de tracés | ✅ | `pathfinder.js` |
-| **Mode urgence « Je suis perdu »** + isochrone Dijkstra | ✅ | `lostMode.js`, `emergencyMode.js` |
-| **Replay session tracker** (timeline + slider + export CSV) | ✅ | `trackerReplay.js` |
-
-### 📦 Import / Export
-
-| Fonctionnalité | État | Module(s) clé(s) |
-|---|---|---|
-| Import / Export session (`devmap-session` JSON, optionnel ZIP photos) | ✅ | `sessionExporter.js`, `sessionPersist.js` |
-| Conversion session → calque de données | ✅ | `sessionExporter.js` (onglet Conversion) |
-| **Générateur de plan ZIP** (Nouveau / Modifier) + canvas vierge | ✅ | `createConf.js` |
-| Import ZIP MyKTAMap (drop zone home + générateur) | ✅ | `main.js > startImportedPlan` |
-| **🌍 Export KMZ géolocalisé** (Google Earth, OsmAnd, Avenza, Locus) | ✅ | `kmzExport.js`, `sessionExporter.js` (onglet 📡 Export externe) |
-| **🌍 Import KMZ → ZIP MyKTAMap** (round-trip MyKTAMap, V2 + M-LVL optionnels) | ✅ | `kmzImport.js`, `createConf.js > _afficherImporterKmz` |
-| **📤 Export GPX 1.1** (TopoDroid, OsmAnd, Strava, Garmin, GPSies) | ✅ | `gpxIO.js`, `sessionExporter.js` |
-| **📤 Import GPX** ajout aux annotations session (v1.14.0) | ✅ | `gpxIO.js > importer` |
-| **📤 Import GPX → ZIP MyKTAMap** (canvas vierge auto-calibré, v1.15.0) | ✅ | `gpxImport.js`, `createConf.js > _afficherImporterGpx` |
-| **📝 Notes** (description) sur zones / tracés / structures (v1.16.0) | ✅ | `utils.js > attacherNotePopup`, `road.js`, `zones.js`, `structures.js` |
-| **🏷️ Légende personnalisable** (rename / hide / customs DESSINABLES, v1.16.0) | ✅ | `legendCustomization.js`, `exporter.js`, `interface.js > afficherLegende` |
-| **⭐ Favoris points** par plan + groupe sidebar (v1.16.0) | ✅ | `favoris.js`, `utils.js > buildPointPopupHtml`, `interface.js` |
-| **📦 Backup multi-rotations** sessions (10 FIFO IDB, v1.16.0) | ✅ | `sessionBackups.js`, `refonteInterface.js > _afficherModaleSessionDetail` |
-| 🖼️ Export PNG / JPG (modes Rapide / Avancé + légende dessinée) | ✅ | `exporter.js`, `utils.js > telechargerPlan` |
-| 📤 **Export PDF imprimable** (A0 → A4, portrait/paysage) | ✅ | `pdfExport.js` |
-| 📊 Éditeur de données du plan (tableau, 3 sources) | ✅ | `tableEditor.js` |
-| 🔎 Recherche unifiée (Ctrl/Cmd+K, tous calques + session) | ✅ | `searchPoints.js` |
-
-### 🔒 Sécurité et confidentialité
-
-| Fonctionnalité | État | Module(s) clé(s) |
-|---|---|---|
-| 🗝️ **UnlockGate** : barrière communautaire (mdp partagé hardcodé) | ✅ | `unlockGate.js` |
-| 🔐 **PinLock** : code d'accès local personnel optionnel (PIN 4-6 + biométrie Face ID / Touch ID) | ✅ | `pinLock.js` |
-| 🔒 **Verrouiller** depuis la home (cleanup modules + reload → gate PIN) | ✅ | `index.html > #loaderLockBtn` |
-| 🔒 Audit réseau exposé in-app (`📊 Logs`) | ✅ | `networkAudit.js`, `docs/NETWORK_AUDIT.md` |
-| 🚨 **AlertChecker** : alertes publiques (incendie, fermeture, info) | ✅ | `alertChecker.js`, `alert.json` |
-
-### 🎨 UI / UX
-
-| Fonctionnalité | État | Module(s) clé(s) |
-|---|---|---|
-| ☀️ **Thème CLAIR / SOMBRE global** (toggle home + reload propre v1.14.2) | ✅ | `themeManager.js` |
-| 🎯 Calibrage de l'échelle (modale dédiée) | ✅ | `interface.js > ouvrirCalibrageEchelle` |
-| 🌐 **Géoréférencement GPS** depuis ⚙️ Configuration (auto-rempli dans Export externe) | ✅ | `interface.js > _renderCfgGeorefSection` |
-| 📱 **PWA installable** + mode standalone iOS / Android | ✅ | `manifest.json`, `index.html` |
-| 🔄 Mode hors-connexion (Service Worker précache) | ✅ | `sw.js` |
-| 🐛 Panneau de logs de débogage persisté localStorage | ✅ | `debug.js` |
-| 🪫 Indicateur batterie + alertes graduelles (20/10/5 %, Chromium only) | ✅ | `batteryGuard.js` |
-| ⚙️ **OOMGuard** : détection kill mémoire mobile + toast warning | ✅ | `oomGuard.js` |
-| 🧰 **PerfUltra** : 7 toggles de tuning perf (slowSave, noTooltips, etc.) | ✅ | `perfUltra.js` |
-| 🔁 **UpdateChecker** : badge version clignotant + modale dédiée | ✅ | `updateChecker.js` |
-| 🎬 **Refonte interface v1** : header bar + sidebars unifiées + status bar | ✅ | `refonteInterface.js`, `interface.js` |
-
----
-
-## 🏗️ Architecture applicative
-
-```
-index.html                      ← Page unique : home loader + carte Leaflet + modales
-sw.js                           ← Service Worker (mode hors-ligne, précache exhaustif)
-manifest.json                   ← PWA (icônes, theme color, standalone)
-version.json                    ← Source de vérité version (lue par UpdateChecker)
-alert.json                      ← (Optionnel) Diffusion d'alertes publiques
-css/style.css                   ← Tous les styles (~14k lignes : dark base + thème clair + modales)
-
-data/                           ← Plans serveur (auto-discovery via index.json)
-  index.json                    ← (Optionnel) Liste des plans
-  plan-config.json              ← (Optionnel) Plan racine (rétro-compat)
-  test1/
-    plan-config.json
-    *.png, *.json
-  test2/
-    ...
-
-icon/                           ← Icônes des tags (PNG 50×50, transparentes)
-  iconetrack.png  mkm.png  mkm-full.png  karma.png
-  pa.png pc.png pb.png pe.png ps.png peo.png pef.png eso.png esf.png cao.png caf.png
-  salle.png vehicule.png elec.png epure.png info.png chatiere.png passage.png danger.png plaque.png
-
-lib/
-  leaflet/                      ← Leaflet 1.9.x (local)
-  jszip.min.js                  ← JSZip 3.10.1 (local — ZIP)
-  jspdf.umd.min.js              ← jsPDF 2.5.x (local — PDF imprimable)
-
-js/                             ← 45 modules — voir section suivante
-```
-
----
-
-## 📦 Modules JS — référentiel à jour (45 modules)
-
-> Tous les modules sont en **IIFE** (`(function() { "use strict"; ... })()`) avec API publique exposée via `window.<NomDuModule>`. Pas de bundler, pas de transpiler — JS vanilla servi tel quel.
-
-### 🎯 Bootstrap & noyau
-
-| Module | Rôle |
-|---|---|
-| **`main.js`** | Point d'entrée unique. `initApp()` → auto-discovery serveur, gestion multi-plans, `startImportedPlan()`, cleanup `_libererRessourcesPlanPrecedent`. Propage `plan.georef` vers `KmzExport.setCalibration` au load (v1.14.20). |
-| **`config.js`** | `DEFAULT_CONFIG` / `APP_CONFIG` / `RUNTIME_ASSETS`. `buildAppConfigFromPlan()`, `loadAppConfig()`, `cloneAndResolvePlanConfig()`, `setDebugMode()`. |
-| **`map.js`** | Initialisation Leaflet (`L.CRS.Simple`, `preferCanvas: true`). `cleanupExistingMap()`, `creerIcones(iconConfig)` → `_iconMap` dynamique, `initCollisionMap()`. |
-| **`debug.js`** | Capture `console.log/warn/error` + `window.onerror` + `unhandledrejection` → `localStorage("kta_debug_logs")` survit aux crashs Safari iOS. Modale `afficherLogsDebug()`. |
-| **`utils.js`** | `convertCoord(x, y)` (plan → Leaflet), `choisirIcone(p)`, `getIconUrlForPoint(p)` (cascade 4 niveaux), `ajouterPointsDepuisJSON()`, `telechargerPlan()` (export PNG rapide), `polygonArea()` / `polygonAreaM2()` / `formatSurface()`. |
-| **`copyright.js`** | Footer copyright + `window.__MKM__.build` (version courante, source de vérité runtime). |
-
-### 🖱️ Interface utilisateur
-
-| Module | Rôle |
-|---|---|
-| **`interface.js`** | **Le module géant** (~380 ko). Crée les groupes accordéon de la sidebar gauche (`_creerGroupeAccordeon`), toutes les modales (Aide / Config / Légende / Recherche / Itinéraire / Mesure / Réglages / etc.), helpers de suppression, modale d'import session, calibrage échelle, géoréférencement GPS depuis Config. |
-| **`refonteInterface.js`** | Header bar avec compteurs + sidebars unifiées gauche/droite + status bar (mode imposé depuis v1.14.19). API `window.RefonteInterface = { isActive, setActive, updateCompteurs, refreshStatusBar }`. |
-| **`themeManager.js`** | Toggle thème clair / sombre **global**. API `window.ThemeManager = { init, getCurrent, setTheme, setThemeAndReload, toggleTheme, onChange, isLight }`. Applique `body.kta-theme-light` + `html.kta-theme-light` (critique pour les modales appendées à documentElement). |
-| **`updateChecker.js`** | Fetch `version.json` au boot + modale `afficherModaleUpdateDispo`. Badge version dans le footer du loader, clignote en bleu si une nouvelle version est dispo. |
-| **`alertChecker.js`** | Fetch `alert.json` (alertes publiques type incendie / fermeture / info). Modale dédiée avec acquittement par id, sélecteur si N>1 alertes actives. |
-
-### 🎨 Annotations dessinables
-
-| Module | Rôle |
-|---|---|
-| **`editor.js`** | Ajout de points (modale plein écran + tags custom). API `getEditorPoints`, `setEditorPoints`, `removeLastEditorPoint`, `renderEditorPoints`. |
-| **`road.js`** | Tracés polylines (5 types : principal / secondaire / chemin / jonction / itinerary). API `getRoads`, `setRoads`, `resetRoads`, `removeLastRoad/Point`, `toggleRoadMode(type)`. Cercles aux intersections + halo néon itinerary. |
-| **`zones.js`** | Polygones remplis (4 types : eau / remblais / effondrement / inaccessible). API `getZones`, `setZones`, `resetZones`, `toggleZoneMode(type)`, `fermerZoneEnCours()`, `removeLastZone/Point`. |
-| **`structures.js`** | 5 sous-types : pilier-1 / pilier-2 / mur (polygones) + front-1 / front-2 (polylignes). Architecture souterraine, lecture seule pour le pathfinder. Couleurs alignées : front-1 jaune (1ère masse) / front-2 orange (2e masse). |
-| **`measure.js`** | Mesure 📐 distance (polyline) OU ⬛ surface (polygone, shoelace). API `getMeasurePoints`, `setMeasureMode("distance"|"surface")`, `getMeasureValue()`. |
-| **`historyManager.js`** | Undo / Redo global (Ctrl+Z / Ctrl+Y). Snapshot hybride 4 catégories (`editorPoints`, `roads`, `zones`, `structures`), 50 entrées FIFO, RAM-only. API `record`, `captureState`, `recordAction`, `undo`, `redo`, `onChange`. |
-| **`pathfinder.js`** | Algorithme Dijkstra sur le réseau de polylines (tracés + jonctions). Calcule l'itinéraire le plus court entre 2 points. Snap orthogonal des waypoints aux polylines. |
-| **`heatmap.js`** | Carte de chaleur de densité d'activité (basée tracker + clicks). **Désactivé en v1.12.0**, code en standby pour réactivation future. |
-
-### 📸 Photos POI
-
-| Module | Rôle |
-|---|---|
-| **`photos.js`** | Gestion photos par point (IndexedDB store `photos_by_point`). API `MyKTAMapPhotos = { add, getAllForPoint, getAllPhotosForPlan, remove, removeAllForPoint }`. Stockage Blob, max ~50 photos par point. |
-| **`photoViewer.js`** | Viewer plein écran avec swipe horizontal pour naviguer. Reste **dark** même en thème clair (pour lire les photos correctement). |
-
-### 🧭 Tracker et mode urgence
-
-| Module | Rôle |
-|---|---|
-| **`tracking.js`** | Tracker PDR (capteurs mobile DeviceMotion + DeviceOrientation). Cache collision RGBA. API `getTrackingPosition`, `getTrackingPath`, `getTrackingTimeline`, `startTracking`, `stopTracking`, `resetTrackingPosition`. Listeners idempotents anti-fuite. |
-| **`compass.js`** | Boussole magnétique (DeviceOrientation). Affiche la direction du nord sur la sidebar. |
-| **`trackerReplay.js`** | Modale plein écran replay (slider timeline + play/pause + vitesse 0.5×→10× + export CSV). Mode compact bottom sheet pendant lecture. API `TrackerReplay = { ouvrir, fermer, exporterCSV }`. |
-| **`lostMode.js`** | Mode urgence « Je suis perdu » : cercle de zone théorique + segments atteignables (isochrone Dijkstra) en rouge clair. Multi-niveau via jonctions. |
-| **`emergencyMode.js`** | Overlay rouge plein écran (alerte critique sous terre) : numéros secours, dernière position, mini-map. |
-
-### 📦 Import / Export
-
-| Module | Rôle |
-|---|---|
-| **`sessionExporter.js`** | Modale 💾 Enregistrer session (4 onglets : Full / Avancé / Conversion / **📡 Export externe**). Export externe = KMZ + GPX unifiés (calibrage GPS partagé). |
-| **`sessionPersist.js`** | Auto-save session courante (polling 1.5s par défaut, 5s avec `slowSave`). Restore au load avec modale « Session précédente restaurée ». |
-| **`exporter.js`** | Modale 🖼️ Export PNG/JPG (modes Rapide / Avancé + légende intégrée, 4 fonds : image / blanc / noir / transparent). |
-| **`pdfExport.js`** | Export PDF imprimable A0 → A4 (portrait/paysage), légende positionnable dans un coin. |
-| **`tableEditor.js`** | Éditeur de données du plan en tableau plein écran. 3 sources (plan en cours / ZIP / JSON) + sélecteur de calque. Points éditables entièrement ; tracés/zones/structures = note+type+niveau (géométrie 🔒). Datalayers en export-only (no live → Générateur) ; session remplaçable live. Édition inline, validation typée, multi-select tags, recherche + tri + filtres. |
-| **`createConf.js`** | Générateur de plan ZIP (Nouveau / Modifier) + modales `_afficherImporterKmz` et `_afficherImporterGpx`. Layout PC ≥1280px en 2 colonnes (col-left / col-right / col-full). Calibrage GPS embarqué via `plan.georef`. |
-| **`kmzExport.js`** | Génération KMZ géolocalisé (Google Earth, OsmAnd, Locus). API `KmzExport = { buildTransform, planToGps, gpsToPlan, genererKmz, getCalibration, setCalibration }`. Calibrage 2 points persisté par plan en localStorage. Icônes embarquées dans `files/icons/<tag>.png`. |
-| **`kmzImport.js`** | Reconversion d'un KMZ MyKTAMap en ZIP MyKTAMap utilisable (image plan + icônes + annotations + structures préservées). Options V2 tuilage + M-LVL. API `KmzImport = { estKmzMyktamap, extraireKmz, extraireGroundOverlays, buildTransform, gpsToPixel, ingestPlacemarks, genererZipMyktamap }`. |
-| **`gpxIO.js`** | Import / Export GPX 1.1 — pour ajouter à la session courante. Réutilise calibrage KMZ. API `GpxIO = { exporter, parser, importer, verifierCalibrage, _appliquerImport }`. Roundtrip MyKTAMap via `<sym>`/`<type>`/`<cmt>MyKTAMap level=N>`. |
-| **`gpxImport.js`** | **v1.15.0** — Reconversion d'un GPX en ZIP MyKTAMap autonome. Génère un canvas vierge auto-calibré sur les bounds GPS. API `GpxImport = { estGpxMyktamap, extraireGpx, extraireBoundsGps, genererCanvasVierge, ingestParsed, genererZipMyktamap }`. |
-| **`legendCustomization.js`** | **Nouveau v1.16.0** — Cascade session > plan (`PLAN_CONFIG.customLegend`) > default pour les libellés / visibilité / entrées custom de la légende. API `LegendCustomization = { getLabel, isVisible, listEntries, listCustomEntries, addCustomEntry, removeCustomEntry, setSessionLabel, setSessionVisibility, ouvrirEditeur, findCustomEntry, onCustomEntriesChange }`. Entrées custom DESSINABLES via `geometry` (polyline / polygon) → boutons sidebar dynamiques. |
-| **`favoris.js`** | **Nouveau v1.16.0** — Favoris points POI par plan, stockage `localStorage["myktamap_favoris_v1"]`. Snapshots complets (résilience si point déplacé). API `Favoris = { loadPlan, getAll, isFav, findByPointId, add, remove, toggle, onChange }`. Bouton ⭐ dans la popup POI + groupe sidebar topleft. |
-| **`sessionBackups.js`** | **Nouveau v1.16.0** — Backup multi-rotations sessions, 10 snapshots FIFO en IndexedDB (`myktamap_backups` / store `backups`). API `SessionBackups = { init, snapshot, listAll, restore, remove, clearAll, onChange }`. 4 triggers : auto 5 min, boot pre-restore, avant `SessionPersist.clear`, manuel. Restore par écriture localStorage + reload. |
-
-### 🗄️ Stockage et registre
-
-| Module | Rôle |
-|---|---|
-| **`planRegistry.js`** | Registre multi-plans `localStorage["myktamap_plans"]` + IndexedDB (stores `handles` pour FS Access + `blobs` pour ZIP mémorisés). API `init`, `addOrUpdate`, `remove`, `getById`, `hasFsAccess`, `saveHandle/Blob`, `getHandle/Blob`, `requestPersistentStorage`, statistiques import. |
-
-### 🔍 Recherche
-
-| Module | Rôle |
-|---|---|
-| **`searchPoints.js`** | Recherche unifiée (Ctrl/Cmd+K) sur tous les calques de données + session. Tri par pertinence, normalisation NFD, navigation clavier (↑↓ Enter). Marker cercle orange 3s au résultat. |
-
-### 🔒 Sécurité
-
-| Module | Rôle |
-|---|---|
-| **`unlockGate.js`** | Barrière communautaire au démarrage : mot de passe partagé hardcodé. 5 tentatives ratées → lockout permanent. |
-| **`pinLock.js`** | Code d'accès local personnel optionnel. PIN 4-6 chiffres (SHA-256 + salt random) + biométrie Face ID / Touch ID via WebAuthn. API `MyKTAMapPinLock = { isEnabled, isUnlocked, isLockedOut, enable, disable, unlock, unlockWithBiometric, changePin, reset, ouvrirGate }`. |
-| **`networkAudit.js`** | Inspection des fetch sortants (whitelist same-origin + lib CDN explicites). Modale `afficherModaleAuditReseau` pour transparence. |
-
-### ⚡ Performance et watchdogs
-
-| Module | Rôle |
-|---|---|
-| **`tiling.js`** | Tiling V1 runtime (5 presets : off / auto / quality / balanced / performance). Découpe l'image en tuiles pour éviter crash Safari iOS sur JPEG > 8192px. |
-| **`perfUltra.js`** | 7 toggles de tuning (slowSave, noTooltips, limiterDezoomMobile, etc.). API `PerfUltra = { getState, get, set, onChange }`. |
-| **`oomGuard.js`** | Détection kill mémoire mobile (`Performance.memory` + heuristiques). Toast warning + suspension certains modules en cas de pression. API `OOMGuard = { showToast, stop, init }`. |
-| **`batteryGuard.js`** | Indicateur batterie (Chromium uniquement, gracieux fallback iOS Safari / Firefox). Warnings 20 / 10 / 5 % avec throttle 5s + polling 30s. API `BatteryGuard = { init, forceCheck, getState, onChange, getStatusLabel, isAvailable }`. |
-
----
-
-## 📱 PWA — Application installable
-
-MyKTAMap est une **PWA installable** sur mobile et desktop. Sur iOS, elle peut être ajoutée à l'écran d'accueil via Safari (Partager ↑ → Sur l'écran d'accueil) et fonctionne ensuite en mode standalone (sans la barre Safari).
-
-### 🧾 Métadonnées dans `<head>`
-
-```html
-<!-- Mode standalone -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="MyKTAMap">
-<meta name="mobile-web-app-capable" content="yes">
-
-<!-- Icônes écran d'accueil iOS (multi-tailles) -->
-<link rel="apple-touch-icon" href="icon/mkm.png">
-<link rel="apple-touch-icon" sizes="180x180" href="icon/mkm.png">
-<link rel="apple-touch-icon" sizes="167x167" href="icon/mkm.png">
-<link rel="apple-touch-icon" sizes="152x152" href="icon/mkm.png">
-<link rel="apple-touch-icon" sizes="120x120" href="icon/mkm.png">
-
-<!-- Favicon classique -->
-<link rel="icon" type="image/png" href="icon/mkm.png">
-```
-
-### 🍎 Pourquoi 5 balises `apple-touch-icon`
-
-Safari iOS **ignore complètement** la balise `<link rel="icon">` standard pour le bouton « Sur l'écran d'accueil ». Il cherche **uniquement** `apple-touch-icon`. On déclare plusieurs tailles pour qu'iOS choisisse la plus proche selon l'appareil. Le même PNG est servi à toutes les tailles (Safari redimensionne).
-
-### 🖼️ Contraintes du fichier icône
-
-- **PNG carré** (≥ 180×180, idéalement 512×512)
-- **Fond opaque** — pas de transparence (sinon iOS met du noir)
-- **Pas d'arrondi** dans l'image (iOS arrondit automatiquement)
-- **Marge interne 10-15 %** (iOS rogne légèrement les bords)
-
-### 🔁 Mise à jour de l'icône PWA
-
-iOS cache l'icône agressivement. Pour forcer le rafraîchissement après changement : supprimer l'app de l'écran d'accueil, effacer données Safari, rouvrir `myktamap.fr`, re-ajouter à l'écran d'accueil.
-
----
-
-## 🔄 Service Worker — mode hors-connexion
-
-Le `sw.js` est **actif** et précache l'ensemble des assets statiques de l'application au premier chargement. Une fois en cache, l'app fonctionne **entièrement hors-ligne**.
-
-**Stratégie :**
-- **Cache First** pour les assets app (HTML, JS, CSS, icônes, libs)
-- **Network First** pour `data/plan-config.json` et les données du plan (toujours fraîches si dispo)
-- **Fallback Cache** automatique si pas de réseau
-
-**Mise à jour de version :** à chaque release, le constant `CACHE_NAME` dans `sw.js` est bumpé (ex: `myktamap-cache-v1.16.0`). Les anciens caches sont automatiquement purgés au prochain `activate`.
-
-**Désactivation manuelle :** le bouton `🗑️ Réinitialiser` dans ⚙️ désinscrit le SW et vide tous les caches → recharge complète depuis le serveur (Internet requis).
-
----
-
-## 🚀 Démarrage — auto-détection du mode
-
-`main.js` orchestre le démarrage avec auto-discovery serveur + rétro-compat :
-
-```
-initApp()
-  ├─ PlanRegistry.init()              ← charge le registre localStorage
-  ├─ decouvrirPlansServeur()          ← fetch('data/index.json') si présent
-  │     → ajoute les plans découverts au registre (discovered: true)
-  │
-  ├─ Si registre vide ET data/plan-config.json racine existe :
-  │     → loadAppConfig()             ← rétro-compat ancien comportement
-  │     → registre += server_root     ← enregistre comme plan racine
-  │     → lancerApplication()
-  │
-  └─ Sinon :
-        → afficherLoader()            ← home avec liste de plans + import
-        → refreshPlansList()
-
-# Chargement d'un plan serveur (depuis le registre)
-chargerPlanServeur(planPath, registryEntry)
-  ├─ libère tuiles + détruit map existante (_libererRessourcesPlanPrecedent)
-  ├─ resetRuntimeAssets()
-  ├─ loadAppConfig(planPath)
-  ├─ enregistre dans registre + markOpened
-  ├─ _propagerGeorefVersKmzExport(id)  ← v1.14.20 — calibrage GPS embarqué
-  └─ lancerApplication()
-
-# Chargement d'un ZIP (depuis import ou registre local)
-startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
-  ├─ resetRuntimeAssets()
-  ├─ registerAsset() × N
-  ├─ cloneAndResolvePlanConfig()
-  ├─ buildAppConfigFromPlan() + perfPreset
-  ├─ Enregistrement registre :
-  │     ├─ Si meta.fsHandle → saveHandle(id, handle)
-  │     ├─ Si meta.storeBlob → requestPersistentStorage() + saveBlob(id, file)
-  │     └─ markOpened(id)
-  ├─ _propagerGeorefVersKmzExport(id)  ← v1.14.20
-  └─ lancerApplication()
-```
-
-Le loader HTML est intégré dans `index.html` avec `display:none` — il s'affiche au démarrage si aucun plan n'est chargé.
-
----
-
-## 🎬 Splash screen
-
-Le splash s'affiche **uniquement au chargement initial de la page** (F5, ouverture d'onglet, démarrage PWA). Il ne réapparaît jamais lors d'un changement de plan via 🗂️ « Mes plans ».
-
-### Cycle de vie
-
-```
-HTML parsé → splashOverlay visible (animations CSS démarrent)
-   ↓
-initApp() → _splashStart() enregistre Date.now()
-   ↓
-   PlanRegistry.init() + decouvrirPlansServeur() en parallèle
-   ↓
-   afficherLoader() OU lancerApplication() (en parallèle de _splashEnd)
-   ↓
-_splashEnd() :
-   ├─ Attendre que (SPLASH_MIN_DURATION_MS - elapsed) soit écoulé
-   ├─ Ajouter classe .fading (opacity 0 transition 0.4s)
-   └─ Retirer du DOM après 500ms
-```
-
-| Constante | Valeur | Description |
-|---|---|---|
-| `SPLASH_MIN_DURATION_MS` | `4000` | Durée minimum d'affichage (`main.js`) |
-| `--splash-duration` | dyn | Variable CSS pour synchroniser la barre |
-| `_splashShownAt` | timestamp | Calcul du temps restant |
-
-**Assets requis (cachés par le SW)** : `icon/mkm-full.png` (logo rose des vents) + `icon/karma.png` (signature).
-
----
-
-## 💥 Reset complet de l'application
-
-Fonction `viderCacheAppli()` accessible depuis :
-- **⚙️ Configuration** dans le loader home (bouton rouge `💥 Tout réinitialiser`)
-- **⚠️ Modale Update** (bouton « 🔄 Forcer la mise à jour » → variante reset)
-
-### Étapes du reset
-
-```
-1. navigator.serviceWorker.getRegistrations() + unregister
-2. caches.keys() + caches.delete                    ← vide tous les caches PWA
-3. localStorage.clear()                              ← registre + préférences + debug
-4. sessionStorage.clear()
-5. indexedDB.databases() → deleteDatabase pour chaque (incl. handles, blobs, photos)
-   (fallback Safari : deleteDatabase("myktamap_handles") + photos par nom)
-6. window.location.reload(true)                      ← redémarrage complet
-```
-
-### Sécurité — double confirmation
-
-| Étape | Modale |
-|---|---|
-| 1 | « ⚠️ Tout réinitialiser ? » — liste les éléments effacés + boutons Annuler / Continuer |
-| 2 | « 🚨 Confirmation finale » — rappel « Pensez à exporter votre liste avant » |
-| 3 | « ⏳ Réinitialisation en cours… » (spinner pendant le nettoyage) |
-
-Après reload, l'app revient strictement à l'état « premier lancement » (splash → loader vide).
-
----
-
-## ⚠️ Gestion des erreurs « Plan introuvable »
-
-Détection à la volée au clic sur un plan du registre (pas de scan préventif).
-
-### Cas couverts
-
-| Cas | Détection | Reason |
-|---|---|---|
-| Plan serveur 404 | `chargerPlanServeur()` throw `e.code === "PLAN_NOT_FOUND"` | `server` |
-| Blob mémorisé absent | `getBlob(id)` retourne `null` (vidage cache) | `local-blob` |
-| FS handle perdu | `getHandle(id)` null OU `handle.getFile()` throw | `local-fs` |
-| FS permission refusée | `ensureHandlePermission(handle) === false` | `local-fs-denied` |
-
-### Modale d'erreur (`afficherModalePlanIntrouvable`)
-
-Modale **pédagogique** dans `index.html`, actions selon le `reason` :
-
-- **🔄 Réessayer** (server uniquement)
-- **📁 Re-sélectionner le ZIP** (cas locaux, restaure auto la persistance Blob/FS)
-- **🗑️ Retirer de la liste** (suppression + libération blobs/handles via `PlanRegistry.remove()`)
-- **Annuler**
-
-Si ZIP re-sélectionné a un `plan.name` différent du nom cliqué → `confirm()` « Charger quand même ? ».
-
----
-
-## 🎨 Système d'icônes — cascade et fallback
-
-L'app dispose d'un système de résolution d'icônes en **cascade 4 niveaux** qui permet d'ajouter de nouveaux types sans modifier les `plan-config.json` existants.
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ 1. PLAN_CONFIG.icons[tag]                                       │
-│    Personnalisation par plan (chemin custom dans plan-config)   │
-├─────────────────────────────────────────────────────────────────┤
-│ 2. _iconMap[tag] (rempli par creerIcones() via TAGS_BUILTIN)    │
-│    Fallback built-in dans map.js → pointe vers icon/<tag>.png   │
-├─────────────────────────────────────────────────────────────────┤
-│ 3. PLAN_CONFIG.icons.default                                    │
-│    Icône par défaut déclarée dans le plan                       │
-├─────────────────────────────────────────────────────────────────┤
-│ 4. _iconMap.default / iconeDefault                              │
-│    Filet de sécurité ultime (pin Leaflet natif)                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### `TAGS_BUILTIN` (`map.js > creerIcones`)
-
-```js
-const TAGS_BUILTIN = {
-  salle:    "icon/house.png",
-  pa:       "icon/pa.png",  pc: "icon/pc.png",  pb: "icon/pb.png",
-  pe:       "icon/pe.png",  ps: "icon/ps.png",
-  // 6 tags d'accès
-  peo:      "icon/peo.png", pef: "icon/pef.png",   // puits à échelon
-  eso:      "icon/eso.png", esf: "icon/esf.png",   // escalier service
-  cao:      "icon/cao.png", caf: "icon/caf.png",   // cavage
-  // signalétique
-  vehicule: "icon/vehicule.png", elec: "icon/elec.png", epure: "icon/epure.png",
-  info:     "icon/info.png", chatiere: "icon/chatiere.png",
-  passage:  "icon/passage.png", danger: "icon/danger.png", plaque: "icon/plaque.png"
-};
-```
-
-### Fonction centralisée `getIconUrlForPoint(point)` (`utils.js`)
-
-Implémente la cascade complète, exposée pour : `searchPoints.js`, `utils.js > telechargerPlan`, `exporter.js`, `sessionExporter.js`.
-
-### Ajouter un nouveau tag — checklist
-
-1. **PNG 50×50** transparent dans `icon/<nom>.png`
-2. **`map.js`** — ajouter dans `TAGS_BUILTIN`
-3. **`editor.js`** — ajouter dans `EDITOR_TAG_LABELS`
-4. **`interface.js`** — ajouter dans `LEGENDE_LABELS` + dans le bon groupe `GROUPES`
-5. **`exporter.js`** — ajouter dans `LBL` local + groupe `GROUPES_ICONES`
-6. **`createConf.js`** — ajouter dans `PLANNER_DEFAULT_ICONS`
-7. **`sw.js`** — ajouter `"./icon/<nom>.png"` dans `ASSETS_TO_CACHE`
-
-→ Le tag est utilisable immédiatement, **même sur les plans existants** (sans modifier leur `plan-config.json`).
-
----
-
-## 📚 Multi-plans (`planRegistry.js`)
-
-Module dédié à la gestion de **N plans simultanés** côté utilisateur, avec persistance localStorage + IndexedDB.
-
-### 🗂️ Format de stockage `localStorage["myktamap_plans"]`
-
-```json
-{
-  "version": "1.0",
-  "lastPlanId": "server_data_test1",
-  "plans": [
-    {
-      "id":         "server_data_test1",
-      "type":       "server",
-      "path":       "data/test1",
-      "name":       "Test 1",
-      "version":    "V1",
-      "author":     "Karma",
-      "discovered": true,
-      "lastOpened": "2026-05-06T10:23:00Z",
-      "addedAt":    "2026-05-06T10:00:00Z",
-      "perfPreset": "auto",
-      "multiLevel": false,
-      "tiledV2":    false
-    },
-    {
-      "id":               "local_planmarseille_v1",
-      "type":             "local",
-      "name":             "Plan Marseille",
-      "version":          "V1",
-      "originalFilename": "plan_marseille.zip",
-      "fileSize":         24592384,
-      "fsHandleId":       "local_planmarseille_v1",
-      "storedBlob":       false,
-      "lastOpened":       "2026-05-06T11:10:00Z",
-      "addedAt":          "2026-05-04T08:00:00Z"
-    }
-  ]
-}
-```
-
-### 📂 Auto-discovery serveur — `data/index.json`
-
-```json
-{ "plans": ["test1", "test2", "demo"] }
-```
-
-Format détaillé (évite N fetches au démarrage) :
-
-```json
-{
-  "plans": [
-    { "id": "test1", "path": "data/test1", "name": "Test 1", "version": "V1", "author": "..." },
-    { "id": "test2", "path": "data/test2", "name": "Test 2", "version": "V2", "author": "..." }
-  ]
-}
-```
-
-### 🔐 Persistance des plans locaux — 3 stratégies
-
-| Stratégie | Plateforme | Description |
-|---|---|---|
-| **File System Access API** | Chrome / Edge desktop | Bouton 🔐 sous le drop ; `FileSystemFileHandle` en IDB store `handles` ; au pire 1 clic après refresh |
-| **Stockage Blob IDB** | Mobile + fallback | Case « 💾 Mémoriser ce plan » ; ZIP entier copié en IDB ; `navigator.storage.persist()` |
-| **Re-sélection** | Fallback | Aucune persistance ; clic sur plan → file picker ; validation `cfg.plan.name` |
-
-### 🏷️ Indicateurs visuels
-
-| Badge | Signification | Couleur |
-|---|---|---|
-| ✅ | `storedBlob: true` — ZIP en IDB | Vert |
-| 🔐 | `fsHandleId` présent — FS handle en IDB | Bleu |
-| 📁 | Aucune persistance — re-sélection requise | Gris |
-
-### 🔄 Hiérarchie de chargement
-
-Au clic sur un plan local : Blob IDB → FS Handle → Re-sélection (fallback).
-
-### 💾 Export / Import de la liste
-
-- **Export** : `myktamap_plans_AAAAMMJJ.config` (JSON `myktamap-plans-list`). Les `fsHandleId` sont retirés (non portables).
-- **Import** : modale 3 modes (Remplacer / Fusionner / Annuler). `statsImport(file)` pour résumé.
-
----
-
-## ⚡ Mode performance (tiling V1 + V2)
-
-### V1 runtime — `tiling.js`
-
-Pour les plans JPEG volumineux qui crashent Safari iOS (`drawImage` > 8192px échoue silencieusement → canvas noir), le mode performance découpe l'image en tuiles. Réglable en **5 presets** :
-
-| `APP_CONFIG.perfPreset` | `MAX_WORK_DIM` | `TILE_SIZE` | JPEG Q | Quand on tile |
-|---|---|---|---|---|
-| `"off"` | — | — | — | **JAMAIS** |
-| `"auto"` (défaut) | (Équilibré quand tile) | — | — | si `fileSize > 60 Mo` |
-| `"quality"` | 12288 | 1024 | 0.95 | si `imageW × imageH > 4096²` |
-| `"balanced"` | 8192 | 1024 | 0.88 | si `imageW × imageH > 4096²` |
-| `"performance"` | 6144 | 768 | 0.78 | si `imageW × imageH > 4096²` |
-
-> Le preset est **par plan** (sauvegardé dans `PlanRegistry[planId].perfPreset`).
-
-### V2 build-time — `createConf.js > _genererTuilesV2`
-
-Conversion offline (= au moment de générer le ZIP plan) en **tuiles 512×512 sur 4 niveaux de zoom** (Google Maps-like). Manifest dans `plan-config.json > tiling`, flag `plan.tiledV2 = true`. Réduction mémoire massive vs V1 (qui charge l'image entière en RAM) — utile pour les gros plans > 50 Mo.
-
-V2 disponible depuis :
-- Générateur classique (Modifier un plan, image source dispo)
-- 🌍 Import KMZ (option « 🧱 Convertir en V2 » dans la modale)
-- 📤 Import GPX (option idem, re-tile le canvas vierge)
-
----
-
-## 💾 Préférences utilisateur
-
-### 1. Globale — `localStorage["app_user_prefs"]`
-
-```js
-{
-  "debugMode": true | false   // unique pref globale
-}
-```
-
-Helper `setDebugMode(value)` (utilisé par le bouton 🐛 du loader ET le toggle Réglages ⚙️).
-
-### 2. Par plan — `PlanRegistry[planId]`
-
-```js
-{
-  "id": "local_planmarseille_v1",
-  "perfPreset": "balanced",   // tiling V1 preset
-  "multiLevel": true,          // M-LVL actif
-  "tiledV2":    true           // V2 tuiles actif
-}
-```
-
-### 3. Thème global — `localStorage["myktamap_theme_v1"]`
-
-`"dark"` (défaut) ou `"light"`. Géré par `themeManager.js`.
-
-### 4. PIN local — `localStorage["myktamap_pin_v1"]`
-
-`{ hash, salt, attempts, biometricEnabled }`. Géré par `pinLock.js`.
-
----
-
-## ⚙️ Configuration — `plan-config.json`
-
-Chaque plan est décrit par un fichier `plan-config.json` à la racine de son ZIP / dossier.
-
-### 🧾 Exemple complet
-
-```json
-{
-  "plan": {
-    "name": "TEST",
-    "version": "V1",
-    "author": "KARMA",
-    "imageWidth": 1044,
-    "imageHeight": 610,
-    "baseImage": "data/TestMAP.png",
-    "collisionImage": "data/collision.png",
-    "multiLevel": false,
-    "tiledV2": false,
-    "georef": {
-      "pointA": { "x": 100, "y": 200, "lat": 48.8580, "lng": 2.2945 },
-      "pointB": { "x": 800, "y": 500, "lat": 48.8520, "lng": 2.3050 }
-    }
-  },
-  "imageLayers": [
-    { "id": "legende", "label": "Legende", "file": "data/TestMAP_LEGENDE.png", "visible": true, "order": 10, "level": 0 }
-  ],
-  "dataLayers": [
-    { "id": "puits",    "label": "Puits",   "file": "data/puit.json",    "visible": true },
-    { "id": "vehicule", "label": "Vehicule","file": "data/vehicule.json","visible": true },
-    { "id": "editor",   "label": "Ajouts",  "file": "data/editor.json",  "visible": true }
-  ],
-  "tracking": {
-    "startX": 345, "startY": 519,
-    "scale": 4.9, "stepLength": 0.7,
-    "stepThreshold": 13, "stepCooldown": 400
-  },
-  "icons": {
-    "default":  "icon/iconetrack.png",
-    "track":    "icon/iconetrack.png",
-    "salle":    "icon/house.png",
-    "pa":       "icon/pa.png"
-  }
-}
-```
-
-### Champs notables
-
-- **`plan.multiLevel`** : opt-in (depuis v148). Active la gestion des étages + jonctions interniveau.
-- **`plan.tiledV2`** : opt-in (depuis v149). Indique que le plan utilise les tuiles V2 — `tiling` section présente.
-- **`plan.georef`** : opt-in (depuis v1.14.20). Calibrage GPS 2 points embarqué — propagé automatiquement vers `KmzExport.setCalibration` au load via `main.js > _propagerGeorefVersKmzExport`. Permet l'export KMZ/GPX sans re-saisie côté utilisateurs.
-- Le calque `editor` doit toujours être présent dans `dataLayers`.
-- Les tags `default` et `track` sont **obligatoires** dans `icons`. Les autres sont libres.
-
----
-
-## 📦 Structure des données JSON
-
-### 🗂️ Format standard (calques de données)
-
-```json
-{
-  "type": "puits",
-  "version": 1,
-  "data": [ ... ],
-  "roads": [],
-  "zones": [],
-  "structures": []
-}
-```
-
-### 💾 Format session exportée
-
-```json
-{
-  "type": "devmap-session",
-  "version": 1,
-  "editorPoints": [ ... ],
-  "roads": [],
-  "zones": [],
-  "structures": [],
-  "measure": { "mode": "distance|surface", "points": [] },
-  "tracker": { "position": {x,y}, "path": [...] }
-}
-```
-
-### 📍 Format point
-
-```json
-{
-  "id": "PA1",
-  "nom": "Puits Aération",
-  "x": 4843,
-  "y": 2002,
-  "tags": ["pa"],
-  "etat": "Non inspectée",
-  "description": "Puits avec courant d'air",
-  "profondeur": 12,
-  "date_update": "2026-04-03",
-  "level": 0
-}
-```
-
-Un point avec un tableau `tags` vide → utilise l'icône `default`.
-
----
-
-## 💾 Export de session — `sessionExporter.js`
-
-Modale `window.ouvrirExportSessionModal()` avec 4 onglets.
-
-### 🚀 Full
-
-Inclus : `editorPoints` + `roads` + `zones` + `structures` + `measure`. Exclu : tracker, photos. Format : `devmap-session` JSON. Nom auto `session_<plan>_AAAAMMJJ.json`.
-
-### 🎨 Avancé
-
-Cases hiérarchiques :
-- ✏️ Points + sous-cases par tag (avec icône miniature)
-- 🛣️ Tracés + sous-cases par type (principal / secondaire / chemin)
-- ⬛ Zones + sous-cases par type (eau / remblais / effondrement / inaccessible)
-- 🏛️ Structures + sous-cases par sous-type
-- 🧭 Tracker (option)
-- 📸 Photos (option, ZIP si coché)
-
-Format : JSON unique OU ZIP multi-fichiers (incluant `data/photos/` si coché).
-
-### 🔄 Conversion
-
-Convertit la session en data layer(s) au format `devmap-data` (réimportable dans le générateur ZIP). Pas de tracker.
-
-### 📡 Export externe (KMZ + GPX unifiés)
-
-- **Calibrage GPS 2 points** saisi UNE seule fois (partagé avec KMZ et GPX)
-- Sélecteur pills KMZ / GPX (persisté en localStorage)
-- **KMZ** : Google Earth, OsmAnd, Avenza, Locus. Folders KML par niveau. Image overlay opacité réglable.
-- **GPX 1.1** : TopoDroid, OsmAnd, Strava, Garmin. Waypoints + tracks. Roundtrip MyKTAMap via `<sym>`/`<type>`/`<cmt>MyKTAMap level=N>`.
-
----
-
-## 📍 Gestion des coordonnées
-
-GIMP / image source : origine **haut-gauche** (Y vers le bas). Leaflet `L.CRS.Simple` : origine **bas-gauche** (Y vers le haut).
-
-```js
-function convertCoord(x, y) {
-  return [APP_CONFIG.imageHeight - y, x];
-}
-```
-
-Pour le calibrage GPS, `KmzExport.buildTransform()` calcule une transformation affine 2D (rotation + scale + translation) à partir de 2 points plan ↔ GPS. `planToGps(t, x, y)` et `gpsToPlan(t, lat, lng)` font la conversion bidirectionnelle.
-
----
-
-## 🐛 Débogage
-
-Le panneau de logs est accessible via **⚙️ → 🐛 Logs**. Il capture en silence :
-
-- Tous les `console.log` / `console.warn` / `console.error`
-- Les erreurs non catchées (`window.onerror`)
-- Les promesses rejetées (`unhandledrejection`)
-
-Les logs sont persistés dans `localStorage["kta_debug_logs"]` — ils survivent au crash du tab Safari iOS. Au prochain ouverture, les logs du crash précédent s'affichent en grisé avec le label `[CRASH PRÉCÉDENT]`.
-
-Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mode map) ajoute des `console.log` supplémentaires côté tracker (PDR, pas détectés, recalages) et perf (chiffres techniques tiling).
-
----
-
-## 📋 Journal des modifications
-
-> Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
+### 🗄️ Journal historique — v1.25.3 → v1.12
 
 <details id="v1-25-3" open>
 <summary><strong>🗓️ 27/05/2026 — 🎓 v1.25.3 : Release PATCH onboarding — Carte « 🚨 Mode Secours » ajoutée au tutoriel (22 → 23 cards)</strong></summary>

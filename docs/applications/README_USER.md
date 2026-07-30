@@ -526,15 +526,67 @@ Cliquez sur un bouton avant de charger — la description sous le sélecteur cha
 Vos **annotations en cours** (points ajoutés, tracés, zones, mesures) sont automatiquement sauvegardées en arrière-plan toutes les ~1,5 secondes. Ainsi, si vous fermez l'application et la rouvrez via **▶️ Reprendre**, votre travail est restauré.
 
 **Comment ça marche :**
-- À chaque modification, votre session est sauvegardée dans le navigateur (un seul "slot" — la session courante remplace la précédente)
+- À chaque modification, votre session est sauvegardée dans le navigateur, **dans un emplacement propre à chaque plan** (depuis v1.16.1) : travailler sur un autre plan n'écrase plus la session du premier
 - Au prochain lancement, si vous cliquez sur **▶️ Reprendre [nom du plan]**, votre session est restaurée — une **fenêtre centrée** vous confirme avec le détail (*"3 points · 1 tracé · 2 zones"*)
 - La fenêtre vous propose deux actions : **🗑️ Effacer la session** (commencer ce plan avec une session vierge) ou **✓ Continuer** (garder la session restaurée). Cliquer en dehors ou appuyer sur Échap = Continuer.
 
 **Important :**
-- Si vous **chargez un autre plan** entre deux ouvertures, la session précédente est perdue (un seul slot, dernière session active "gagne")
+- Chaque plan garde sa propre session : revenir sur un plan quitté restaure ce que vous y aviez laissé
 - Le **chemin du tracker** n'est pas restauré (le tracker étant expérimental, ressusciter une trail figée serait trompeur)
 - Le **💥 Tout réinitialiser** efface aussi votre session sauvegardée
 - Pour conserver une session importante au-delà de l'auto-save, utilisez **⬆️ Exporter la session JSON** (sauvegarde explicite que vous pouvez ré-importer plus tard)
+
+### 📔 Mon carnet — l'historique de vos sorties (depuis v1.69.0)
+
+La sauvegarde automatique ci-dessus garde **l'état courant** d'un plan. Le **carnet**, lui, garde **l'histoire** : chaque fois que vous explorez un plan, une **sortie** est archivée avec sa date, sa durée, la distance parcourue et ce que vous avez ajouté. Effacer une session ne supprime pas les sorties déjà rangées au carnet.
+
+**Y accéder :** tuile **📔 Mon carnet** sur l'écran d'accueil, dans la carte « 🧰 Outils » (grille sous « 📦 Ajouter un plan », visible aussi sur mobile). Aucun plan à charger. Depuis un plan : modale **Session** → section **📔 Sortie en cours**.
+
+**Ce que contient une sortie :**
+- la date, la **durée** (temps réellement passé dans l'app, pas le temps écoulé) et la **distance parcourue** au tracker,
+- le nombre de **points, tracés, zones et structures ajoutés**,
+- le **tracé de votre déplacement** (mini-carte dans la fiche),
+- les **photos prises pendant la sortie** (le carnet ne les recopie pas : il pointe vers vos photos existantes — si vous en supprimez une, sa vignette devient « 🚫 »),
+- une **note libre** que vous écrivez quand vous voulez, même des semaines plus tard.
+
+**🚶 Sortie terrain ou 🖥️ travail sur plan ?**
+
+Le carnet fait la différence tout seul, et c'est important : préparer un plan chez soi n'est pas une sortie.
+
+- Si vous vous êtes **déplacé** pendant la session (le tracker a enregistré de la distance ou des pas) → **sortie terrain**.
+- Si vous n'avez fait qu'**annoter sans bouger** → **travail sur plan**, rangé dans une section repliée à part, en bas du carnet.
+- Les **totaux** en haut du carnet (nombre de sorties, temps, distance) ne comptent **que le terrain** — le temps passé à dessiner à la maison n'a rien à y faire.
+- L'app s'est trompée ? Par exemple une sortie faite tracker éteint : ouvrez la fiche et cliquez **🚶 Classer en sortie terrain** (ou l'inverse). Votre correction est définitive, elle ne sera jamais recalculée.
+
+**Quand une session est-elle archivée ?**
+- **Automatiquement** quand vous quittez le plan (changement de plan ou retour à l'accueil), selon la nature :
+  - une **sortie terrain** est gardée à partir de **50 m parcourus**,
+  - un **travail sur plan** est gardé à partir de **10 minutes** de travail réel **et** au moins une annotation.
+  - En dessous, rien n'est conservé — ouvrir un plan 20 secondes pour vérifier un détail ne pollue pas le carnet.
+- **À la main** avec **🏁 Clôturer ma sortie** : elle est rangée sans condition, et une nouvelle démarre aussitôt. Pratique pour découper une longue journée en étapes.
+
+**📖 L'onglet Récits — vos notes et PDF de plan, enfin réunis**
+
+Le **Mode Histoire** (note libre + PDF) était jusqu'ici enfermé dans l'écran d'un plan : pour relire vos notes sur une carrière, il fallait charger la carrière. Le second onglet du carnet, **📖 Récits**, les rassemble **tous plans confondus, sans rien charger** :
+
+- la liste montre chaque plan ayant une note ou un PDF, avec un extrait de la note ;
+- ouvrir une fiche affiche la note **mise en forme** (Markdown) et permet de la **modifier sur place** — c'est bien la même note que dans le Mode Histoire du plan, pas une copie ;
+- les **documents PDF** du plan sont listés : clic pour ouvrir, 🗑️ pour supprimer, **➕ Ajouter un PDF** pour en joindre un nouveau — le tout sans charger le plan.
+- ⚠️ Un PDF **livré dans le ZIP du plan** n'apparaît pas ici : il faut charger le plan pour le consulter (Mode Histoire).
+
+**Bon à savoir :**
+- Le carnet **démarre vide** : il ne peut pas reconstituer les sorties d'avant la v1.69.0, elles n'ont jamais été enregistrées en tant que telles.
+- Tout est **strictement local** à votre appareil (aucun envoi, aucun compte). Chaque sortie est supprimable individuellement depuis sa fiche.
+- Au-delà de **500 sorties**, les plus anciennes sont effacées automatiquement.
+- Le carnet n'est **pas** inclus dans l'export de profil pour le moment : changer d'appareil via l'export de profil ne transporte pas encore votre historique.
+
+### 🧙 Générateur : assistant pas-à-pas (depuis v1.72.1)
+
+Le **Générateur** (🏗️) vous guide désormais **étape par étape**, comme un installateur : chaque page ne montre qu'une chose (nom, image, calques…), les étapes optionnelles se **passent** d'un clic, et un **résumé final** vous montre ce qui est rempli, passé ou manquant — avec des avertissements utiles (ex. sans géoréférencement GPS, pas de Vue OSM ni d'export KMZ) **avant** de générer. Un ZIP importé pré-remplit toutes les étapes : vous ne faites que relire. Les habitués retrouvent l'ancien affichage complet via **🗒️ Tout afficher** (choix mémorisé).
+
+### 🔽 Pied de page repliable (depuis v1.71.0)
+
+La petite **flèche** sous l'écran d'accueil replie le pied de page (copyright, liens, crédits) pour gagner de la place — il n'en reste qu'une ligne minimale « © MyKTAMap · version ». Re-cliquez pour le déplier. Votre choix est mémorisé et voyage avec l'export de profil.
 
 ### 🐛 Logs détaillés (mode debug)
 
@@ -653,6 +705,19 @@ Le toggle est **persistant** (survit aux reloads et fermetures d'onglet) jusqu'�
 
 ---
 
+## 🌍 Mode OSM — recherche intégrée (depuis v1.70.0)
+
+Le bouton **⛶** du widget Vue OSM s'appelle désormais **« Ouvrir le mode OSM »** : la carte passe en plein écran. Une **barre de recherche** y apparaît :
+
+- elle est posée **dans la ligne de titre « 🌍 Vue OSM »**, donc disponible aussi sur le widget réduit de l'accueil ;
+- elle cherche **un plan** (parmi vos plans géoréférencés) ou **un point** (les POI de ces plans) — taper, cliquer un résultat, la carte vole dessus avec un marqueur ;
+- **100 % local** : la recherche lit vos propres plans, aucune adresse internet n'est interrogée ;
+- seuls les plans **géoréférencés** apparaissent — un plan sans calibrage GPS est invisible en mode OSM (calibrez-le via le Générateur ou les Réglages).
+
+**🗂️ Plusieurs plans en même temps (depuis v1.71.0)** — le panneau « Plans affichés » du mode OSM permet de **superposer vos plans géoréférencés** : ➕ pour en ajouter un, ▲▼ pour choisir qui passe dessus/dessous, un curseur d'**opacité par plan**, ✕ pour retirer. Le plan marqué ◉ est le « principal » (celui du sélecteur du haut). Toute cette gestion vit dans une **modale dédiée** ouverte par le bouton **≡** du bandeau (rien ne masque la carte) : réglages d'**affichage globaux**, **filtre par tag** (agrégé sur tous les plans affichés), et la pile des plans. Les anciennes rangées sous le sélecteur (opacité, cases, tags) ont disparu du widget — la carte y gagne leur hauteur. Chaque ligne y porte aussi **5 mini-boutons de filtrage propres au plan** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — les cases du bandeau restent des interrupteurs globaux, les deux se combinent. Idéal pour afficher deux secteurs voisins par-dessus un plan d'ensemble, en ne gardant par exemple que les POI de l'un et l'image de l'autre.
+
+Au premier lancement du mode, un message rappelle que l'affichage de plans complets peut être plus lent sur mobile — et un second apparaît si vous affichez **plus de 3 plans** à la fois.
+
 ## 📖 Mode Histoire — Note libre + PDF du plan
 
 Le bouton **📖** dans la barre du haut (à gauche de la batterie 🔋) ouvre une modale à deux onglets propre à chaque plan. C'est ton **carnet d'exploration personnel** pour chaque site souterrain.
@@ -667,15 +732,20 @@ La note supporte le **Markdown** :
 - Clique sur **👁 Aperçu** pour revoir le rendu.
 - Tout MD que tu tapes (`**gras**`, `# Titre`, `- item`…) est interprété au rendu.
 
-### 📚 Histoire (PDF)
+### 📚 Histoire (PDF) — **plusieurs documents par plan depuis v1.69.0**
 
-Si l'auteur du plan a embarqué un PDF dans le plan (récit historique, plan papier scanné, brochure, légende détaillée), il s'affiche directement dans cet onglet.
+Tu peux maintenant garder **jusqu'à 10 documents PDF par plan** (avant : un seul, et un nouvel import écrasait le précédent). Rapport de 2019, plan papier scanné, article de presse, relevé topo : tout tient au même endroit.
 
-Sinon tu peux **📥 importer ton propre PDF** depuis ton appareil (1 PDF par plan, remplaçable / retirable). Le PDF importé survit aux reloads de l'app. Sur iPhone, un bouton **↗️ Ouvrir dans un onglet** te le sort en plein écran natif si l'affichage intégré n'est pas dispo.
+- Une **liste de documents** s'affiche au-dessus de la visionneuse dès qu'il y en a plusieurs ; clique un document pour l'ouvrir.
+- **📥 Importer** ajoute un document (il ne remplace plus rien). **🗑️ Retirer** supprime celui qui est affiché.
+- L'auteur du plan peut embarquer des PDF dans le ZIP — **plusieurs depuis v1.71.0** (le Générateur accepte maintenant une liste de fichiers) : ils apparaissent en tête de liste (📕), consultables, non supprimables (seul le générateur peut les changer). **Nouveau** : sa présence ne t'empêche plus d'ajouter tes propres documents — avant, l'import était masqué sur ces plans-là.
+- Garde-fous : **10 documents maximum** par plan, avertissement au-delà de **25 Mo** cumulés, refus au-delà de **100 Mo**. L'espace occupé apparaît désormais dans **Stockage** (il était invisible jusqu'ici).
+- Sur iPhone, un bouton **↗️ Ouvrir dans un onglet** sort le document en plein écran natif si l'affichage intégré n'est pas dispo.
+- Tes documents sont aussi listés, ajoutables et supprimables depuis **📔 Mon carnet → 📖 Récits**, sans charger le plan.
 
 ### 📦 Inclus dans l'export de session
 
-Quand tu fais 💾 Enregistrer session, ta note libre Markdown ET ton PDF Mode Histoire sont automatiquement embarqués dans le fichier `.mkmsession.zip`. À la ré-importation (sur un autre appareil, ou pour partager avec un binôme), tout est restauré au plan courant. Compatible rétrocompat (un vieux fichier sans ces champs reste lisible).
+Quand tu fais 💾 Enregistrer session, ta note libre Markdown ET **tous tes documents PDF** du Mode Histoire sont embarqués dans le fichier `.mkmsession.zip`. À la ré-importation (sur un autre appareil, ou pour partager avec un binôme), ils sont **ajoutés** au plan courant — un import n'écrase plus le document déjà en place. Compatible rétrocompat (un vieux fichier avec un seul PDF reste lisible).
 
 En mode **anonymisé**, note + PDF sont volontairement omis du ZIP (peuvent contenir des infos perso).
 
@@ -798,11 +868,11 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 - Les liaisons **voyagent avec l'export de session** (elles sont restaurées à l'import sur un autre appareil).
 - Un plan distribué (« data layer ») peut embarquer des liaisons prêtes à l'emploi : tu peux les **utiliser**, pas les modifier.
 
-### 🌐 Recherche multi-plans (depuis v1.58.0)
+### 🔎 Recherche multi-plans (depuis v1.58.0, barre de recherche depuis v1.69.0)
 
 Cherche un point dans **tous les plans de ta bibliothèque** d'un coup, sans les ouvrir un par un :
 
-- **Depuis l'accueil** : bouton **🌐 Recherche multi-plans** (à côté de l'Éditeur de données).
+- **Depuis l'accueil** : la **barre de recherche 🔎 en haut de l'écran**, au centre de l'en-tête. Depuis v1.72.1, **les résultats apparaissent en direct sous la barre** dès 2 caractères (plans + points, avec le badge du plan) — cliquer un résultat charge le plan et centre la carte. **Entrée** ou 🔎 ouvre la recherche complète. Sur mobile, la barre occupe la 2e ligne de l'en-tête.
 - **Depuis la carte** : ouvre la recherche (Ctrl+K ou 🔍) → bouton **« 🌐 Chercher dans tous les plans »** en bas — ta saisie en cours est conservée.
 
 L'app lit les points (session + calques de données) de chaque plan **sur place**, avec la progression affichée (« Lecture 2/5 : Oise… »). Chaque résultat porte le **badge du plan** où il se trouve. Un clic : confirmation (si un plan est ouvert), chargement du bon plan, bascule sur le bon niveau et centrage sur le point — avec le bouton ↩️ Retour pour revenir.
@@ -2357,6 +2427,10 @@ Boutons radio `[ − ] [-2] [-1] [0] [1] [2] [ + ]` (5 niveaux par défaut, sym�
 
 Checkboxes par niveau. Les tracés/zones/points de niveaux **non cochés** sont cachés sur la carte (opacity 0). Les jonctions interniveau restent visibles si **au moins un** de leurs endpoints touche un niveau coché.
 
+**🏗️ Le plan principal EST le niveau 0 *(depuis v1.67.0)*** : décocher le niveau **0** masque aussi **l'image principale du plan** (tuiles comprises) — tu peux enfin regarder un étage seul (ex. uniquement le calque du niveau -1 transparent), sans le fond du niveau 0 qui pollue la superposition. Re-coche 0 et il revient. Sans mode multi-niveau, le plan principal n'est jamais masqué.
+
+**🫥 Transparence des calques de niveau** : pour que la superposition ait un sens, chaque calque de niveau (≠ 0) doit être un **PNG avec fond transparent**. Le générateur t'avertit désormais à la génération si un calque de niveau est opaque (JPEG, ou PNG au fond aplati) — il masquerait tout ce qui est en dessous.
+
 Boutons rapides :
 - **Tous** : coche tous les niveaux disponibles
 - **Actif seul** : coche uniquement le niveau actif
@@ -2490,7 +2564,7 @@ Tu construis un gros plan en **plusieurs sessions** et tu te retrouves avec plei
 - Un **aperçu** affiche les totaux et te **prévient** si des identifiants de points sont en double (les doublons sont conservés tels quels).
 - **Télécharge** le résultat (un ZIP, ou un `.json` direct s'il n'y a qu'une seule catégorie), prêt à déposer dans le dossier de ton plan.
 
-Accessible aussi **directement depuis l'accueil** (bouton « 🔗 Fusionner des datalayers », entre « 📊 Éditeur de données » et « 🏗️ Générer un plan ») — pas besoin d'avoir un plan ouvert. **100 % local**, aucune donnée envoyée.
+Accessible **sans plan ouvert** depuis l'accueil : **📊 Éditeur de données → 🔗 Fusionner des calques de données** (depuis v1.69.0 ; c'était un bouton séparé de l'accueil avant, il a rejoint les sources de l'éditeur pour alléger l'écran). **100 % local**, aucune donnée envoyée.
 
 ### 🖼️ Exporter en PNG/JPG
 

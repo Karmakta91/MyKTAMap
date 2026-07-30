@@ -93,7 +93,12 @@
     { name: "myktamap_backups", stores: ["backups"] },
     { name: "myktamap_photos",  stores: ["photos"] },
     // 🆕 v1.20.0 — Crash Reports (cf js/crashReports.js)
-    { name: "myktamap_crashes", stores: ["crashes"] }
+    { name: "myktamap_crashes", stores: ["crashes"] },
+    // 🆕 v1.69.0 — Le Carnet : archive des sorties (cf js/journal.js)
+    { name: "myktamap_journal", stores: ["sorties"] },
+    // 🆕 v1.69.0 — Documents PDF du Mode Histoire (N par plan depuis v1.69.0).
+    // Absente de cette liste depuis v1.34.20 : les PDF pesaient sans apparaître.
+    { name: "myktamap_histoire_pdfs", stores: ["pdfs"] }
   ];
 
   function _openDb(name) {

@@ -58,7 +58,7 @@
 | Exports PNG/PDF/KMZ/GPX + légende | `docs/architecture/exports.md` |
 | Refonte UI, thème, modales, filtres | `docs/architecture/ui.md` |
 | Multi-langue (i18n), dicos `lang/`, `window.I18n`, migration | `docs/architecture/i18n.md` |
-| Session, photos, undo, recherche, stats, favoris | `docs/architecture/session-data.md` |
+| Session, photos, undo, recherche, stats, favoris, **Carnet (sorties)** | `docs/architecture/session-data.md` |
 | Sécurité : gates, PIN, audit, légal, licence | `docs/architecture/security-legal.md` |
 | Mode Secours (toutes phases) + urgence | `docs/architecture/secours.md` |
 | Vue OSM modale + widget HOME (georef, tuiles V2, opt-in) | `docs/architecture/vue-osm.md` |

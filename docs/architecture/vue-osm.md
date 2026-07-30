@@ -565,3 +565,42 @@ Clé IDB = "z/x/y" (slippy tilenames OSM, EPSG:3857)
 - ✅ **Pas de gestion de "qui possède quoi"** côté code : chaque plan demande ses tuiles via `hasCacheForBbox(planBbox)`, et la réponse dépend uniquement de la couverture géographique réelle
 
 **Limite** : pas de mécanisme « purge tuiles d'un plan spécifique » (volontaire — on purge tout via `clear()` ou rien). Si un user veut nettoyer les tuiles parisiennes après avoir supprimé son plan Paris, il faut « Vider le cache » global. Acceptable car les tuiles OSM sont publiques (pas de risque privacy) et borné (200 max par clic).
+
+
+## 🔎 Mode OSM — lot 1 : recherche locale + sémantique « mode » (v1.70.0)
+
+> Topo « 2 projets » KARMA 30/07/2026 : **OSM prioritaire** (gain user direct), mode serveur community ensuite. Décisions : recherche **locale-only** (« pas de sortie internet ») · avertissements perf plutôt que cap dur (2:b) · widget HOME conservé tel quel (3:a).
+
+**Constat qui a réduit le lot** : le fullscreen du widget (`osmHomePreview.openFullScreen`) EST déjà un mode plein écran, et `_loadPlanDataForPreview` lit déjà les données d'un plan **non chargé**. Lot 1 livré dans `osmHomePreview.js` (pas de nouveau module) :
+
+- **Recherche** (`#ktaOsmHomeSearch`, visible uniquement via `.kta-osm-home-fullscreen-active`) : plans géoréférencés + leurs POI. Index **paresseux** à la première saisie ; extraction **séquentielle** des ZIP (un `Promise.all` sur N JSZip = pic RAM mobile) ; cache RAM `_planDataCache` partagé avec le rendu. Un POI est projeté via le georef de **SON** plan — jamais celui du plan sélectionné. Résultat → `selectPlan` + `flyTo` (retries bornés : la carte se recrée après un selectPlan) + circleMarker doré + popup.
+- **Avertissement perf** : `_avertirPerfModeOsm()` — 1× (LS `myktamap_osm_mode_warn_v1`). Le seuil « > 3 plans » du lot 2 passera par la même fonction.
+- **⛶** : mêmes clés i18n, valeurs retitrées « Ouvrir le mode OSM ».
+
+**⚠️ Pièges** :
+- Le champ des dataLayers extraits est **`points`** (pas `pois` — 1er bug de ce lot, attrapé au grep).
+- `_listGeorefPlans()` ne voit que les calibs **localStorage** (`KmzExport.getCalibration`) : un plan dont le georef n'est QUE dans le ZIP (jamais ouvert) est invisible du mode OSM — limitation existante du widget, assumée au lot 1.
+- z-index des résultats : 1000 (au-dessus des panes Leaflet ~700).
+
+**Feuille de route** : lot 2 (v1.71) = multi-plans images + gestionnaire de calques (visibilité / opacité / ordre par glisser) + avertissement > 3 plans · lot 3 (v1.72) = croisement de données (collecteurs tracés/zones réutilisables depuis `_loadPlanDataForPreview`) + liaisons portails dessinées entre plans.
+
+
+## 🗂️ Mode OSM — lot 2 : multi-plans (v1.71.0)
+
+**Pile** : `_stackOrder` (index 0 = au-dessus, principal INCLUS) · `_extraLayers[planId]` = {tiles, data, poi, roads, zones, struct} · `_extraOpacity`. zIndex = `200 + rang×5`, posé à la création des overlays et via `setZIndex` au réordonnancement (pas de re-render). RAM-only.
+
+**Refactor pivot** : `_renderTilesInto(groupe, tilesData, georef, opacité, zIndex)` + `_renderDataLayersOnMiniMap(data, georef, cible?)` — les rendus du principal et des plans ajoutés partagent LE MÊME code (les 33 refs internes sont aliasées `dataL/poiL/...`). ⚠️ Toute évolution du rendu data doit rester compatible avec les DEUX chemins (module vs cible).
+
+**Règles** :
+- Le plan sélectionné (dropdown) = **principal** : fitBounds, slider bandeau, ◉ dans le panneau, non retirable. `selectPlan` le REMPLACE à la même position de pile ; sélectionner un plan déjà ajouté le retire d'abord de la pile extra (ses couches renaissent dans les groupes module).
+- **Visibilité à 2 niveaux** (retour KARMA en cours de lot) : les cases du bandeau restent des **masters globaux**, et chaque ligne du panneau porte **5 chips par plan** (🖼️📍🛣️🌐🏛️). Visibilité effective = global ET par-plan, appliquée par **`_appliquerVisibilites()`** — applicateur UNIQUE appelé par les toggles globaux, les chips, et après chaque rendu (le bloc `if (_showPoi) dataL.addLayer(...)` de fin de rendu est ensuite corrigé par l'applicateur). ⚠️ Ne jamais re-manipuler les sous-groupes directement dans un toggle : tout passe par l'applicateur.
+- ⚠️ Clé i18n du chip tuiles = `osm_home.toggle.plan.label` (PAS `.tiles.` — piège vécu).
+- **Gestion en MODALE dédiée** (2e retour KARMA, remplace le panneau flottant puis la pastille) : bouton **≡** du bandeau → modale « 🎚️ Plans & filtres OSM » (pattern ≡ Filtres du mode plan, `z-index 100001` au-dessus du fullscreen). `_renderMultiPanel()` cible les ids DANS la modale (gardes d'existence) — le contenu reste vivant pendant qu'elle est ouverte. ⚠️ Escape : handler en **capture + stopPropagation**, sinon l'Escape fermerait AUSSI le mode OSM (handler fullscreen en phase bulle sur `document`).
+- **Modale ≡ enrichie (4e retour KARMA)** : 3 sections — **Affichage** (5 chips globaux libellés, ex-checkboxes du bandeau), **🏷️ Tags** (chips agrégés sur TOUTE la pile via `_planDataCache`, clic → `_reRenderDataTous()` = re-render data du principal ET des extras + `_appliquerVisibilites`), **🗂️ Plans** (pile). Le **wrapper collapsible du widget est SUPPRIMÉ** (opacité bandeau, 5 checkboxes, chips tags, bouton 🔼 + ses binds — l'oubli d'un bind aurait fait un TypeError) ; `_renderTagChips` supprimée (conteneur disparu). La carte du widget gagne toute la hauteur libérée. ⚠️ Clés i18n `osm_home.opacity.*`, `osm_home.tagfilter.title`, `osm_home.controls.*` : vérifier l'orphelinage avant toute purge (osmView modale en partage certaines).
+- **Recherche dans la LIGNE DE TITRE « 🌍 Vue OSM »** (3e retour KARMA) : le nœud `#ktaOsmHomeSearch` est rendu dans le contenu puis **déplacé** dans `.loader-section-head` (listeners conservés, ancien exemplaire purgé à chaque re-render) → visible en mode réduit ET en mode OSM. Input compact 30 px en réduit, 36 px en fullscreen.
+- Opacité **par plan** ; la ligne du principal et le slider bandeau sont synchronisés dans les deux sens.
+- Blob URLs des tuiles : JAMAIS révoquées au retrait (elles vivent dans `_planDataCache`, partagées avec un éventuel usage principal) — re-ajout gratuit.
+- Garde anti-race : `_extraLayers[planId] !== g` après l'extraction ZIP async → abandon silencieux.
+- Avertissement `> 3` plans : 1× par session (`_warnedMulti`), même canal toast que le warn d'ouverture.
+
+**Reste au lot 3 (v1.72)** : croisement fin (filtres par plan ?, popups enrichis cross-plan), liaisons portails dessinées entre plans sur OSM.

@@ -345,6 +345,19 @@ async function lancerApplication() {
     window.SessionPersist.onPlanLoaded(window._currentLoadedPlanId || null);
   }
 
+  // 📔 v1.69.0 — Ouverture d'une SORTIE au carnet. Impérativement APRÈS
+  // SessionPersist.onPlanLoaded : la baseline des compteurs doit inclure la
+  // session restaurée, sinon tout le contenu déjà présent serait compté comme
+  // « ajouté pendant cette sortie ».
+  if (window.Journal && typeof window.Journal.onPlanLoaded === "function") {
+    try {
+      window.Journal.onPlanLoaded(
+        window._currentLoadedPlanId || null,
+        (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || null
+      );
+    } catch(e) { console.warn("[Main] Journal.onPlanLoaded échec :", e); }
+  }
+
   // 🆕 v1.22.0 (Mode Secours) : charge les scénarios de secours pour ce plan
   // depuis localStorage. Idempotent — peut être rappelé au plan switch.
   if (window.SecoursMode && typeof window.SecoursMode.init === "function") {
@@ -615,6 +628,27 @@ function _libererRessourcesPlanPrecedent() {
   // redémarre qu'au onPlanLoaded du nouveau plan.
   if (window.SessionPersist && typeof window.SessionPersist.onPlanUnload === "function") {
     try { window.SessionPersist.onPlanUnload(); } catch(e) {}
+  }
+
+  // 📔 v1.69.0 — Clôture de la sortie au carnet. MÊME CONTRAINTE que
+  // SessionPersist ci-dessus : ici l'état RAM est encore intact (compteurs,
+  // timeline tracker). Plus bas, resetTrackingTimeline() vide la timeline →
+  // le tracé et la distance de la sortie seraient perdus. Écriture IDB async,
+  // mais le record est snapshoté de façon SYNCHRONE dans cet appel.
+  if (window.Journal && typeof window.Journal.onPlanUnload === "function") {
+    try { window.Journal.onPlanUnload(); } catch(e) {}
+  }
+
+  // 🧹 v1.68.0 (audit) : purge des flottants de navigation au CHANGEMENT de
+  // plan. Bug bench : après un switch DIRECT (sélecteur du titre, sans goTo),
+  // la mini-pastille ↩️ survivait sur le NOUVEAU plan avec une pile de retour
+  // PÉRIMÉE. Les hooks distinguent goTo (pendingTarget posé → no-op côté
+  // liaison, chaîne multi-hop conservée côté route) du switch direct (purge).
+  if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanExit === "function") {
+    try { window.InterPlanLinks.onPlanExit("switch"); } catch(e) {}
+  }
+  if (window.InterPlanRoute && typeof window.InterPlanRoute.onPlanExit === "function") {
+    try { window.InterPlanRoute.onPlanExit("switch"); } catch(e) {}
   }
 
   // 🎨 Refonte UI v1 : cleanup du header bar + status bar avant démontage
@@ -1148,6 +1182,22 @@ function afficherLoader() {
   if (typeof window._ktaAnnulerModesClicCarte === "function") {
     try { window._ktaAnnulerModesClicCarte(); } catch(e) {}
   }
+  // 🧹 v1.68.0 (audit KARMA « fermetures à la sortie du plan ») : purge des
+  // FLOTTANTS DE NAVIGATION — 4 résidus reproduits au bench restaient
+  // affichés par-dessus le HOME : mini-pastille ↩️ (sans timer), invite
+  // « 🌀 Portail suivant » (sans timer), widget boussole, modale itinéraire
+  // fantôme (cachée dans le DOM). Seuls les chemins goTo nettoyaient.
+  if (window.InterPlanLinks && typeof window.InterPlanLinks.onPlanExit === "function") {
+    try { window.InterPlanLinks.onPlanExit("home"); } catch(e) {}
+  }
+  if (window.InterPlanRoute && typeof window.InterPlanRoute.onPlanExit === "function") {
+    try { window.InterPlanRoute.onPlanExit("home"); } catch(e) {}
+  }
+  if (window.CompassWidget && typeof window.CompassWidget.hide === "function") {
+    try { window.CompassWidget.hide(); } catch(e) {}
+  }
+  const itiFantome = document.getElementById("kta-itinerary-modal");
+  if (itiFantome) { try { itiFantome.remove(); } catch(e) {} }
   const overlay = document.getElementById("planLoaderOverlay");
   if (overlay) {
     overlay.style.display = "flex";
@@ -1266,6 +1316,7 @@ async function _splashEnd() {
 //   • data-i18n        → remplace textContent par I18n.t(clé)
 //   • data-i18n-html   → remplace innerHTML  par I18n.t(clé) (valeurs avec balises)
 //   • data-i18n-title  → pose title + aria-label = I18n.t(clé)
+//   • data-i18n-placeholder → pose placeholder = I18n.t(clé)  [v1.69.0]
 // Le texte FR laissé dans le HTML n'est qu'un FALLBACK (si I18n indispo). La
 // VRAIE source est le dico lang/<code>.json. Idempotent → rappelé à chaque
 // changement de langue. Générique : poser les attributs suffit, aucun code à
@@ -1283,6 +1334,12 @@ function _applyI18nDom(root) {
     const v = window.I18n.t(el.getAttribute("data-i18n-title"));
     el.setAttribute("title", v);
     el.setAttribute("aria-label", v);
+  });
+  // 🆕 v1.69.0 — placeholder d'input (barre de recherche du HOME). Manquait :
+  // un champ traduit devait sinon être rempli à la main en JS, hors du cycle
+  // de re-traduction au changement de langue.
+  root.querySelectorAll("[data-i18n-placeholder]").forEach(function(el) {
+    el.setAttribute("placeholder", window.I18n.t(el.getAttribute("data-i18n-placeholder")));
   });
 }
 

@@ -523,18 +523,71 @@ Click on a button before loading — the description under the selector changes 
 Your **current annotations** (added points, paths, zones, measurements) are automatically saved in the background every ~1.5 seconds. So if you close the application and reopen it via **▶️ Resume**, your work is restored.
 
 **How it works:**
-- On each modification, your session is saved in the browser (a single "slot" — the current session replaces the previous one)
+- On each modification, your session is saved in the browser, **in a slot of its own for each map** (since v1.16.1): working on another map no longer overwrites the first one's session
 - On next launch, if you click on **▶️ Resume [map name]**, your session is restored — a **centered window** confirms with the details (*"3 points · 1 path · 2 zones"*)
 - The window offers you two actions: **🗑️ Clear session** (start this map with a blank session) or **✓ Continue** (keep the restored session). Clicking outside or pressing Escape = Continue.
 
 **Important:**
-- If you **load another map** between two openings, the previous session is lost (single slot, last active session "wins")
+- Each map keeps its own session: coming back to a map you left restores what you had there
 - The **tracker path** is not restored (the tracker being experimental, reviving a frozen trail would be misleading)
 - The **💥 Reset everything** also erases your saved session
 - To keep an important session beyond auto-save, use **⬆️ Export JSON session** (explicit save that you can re-import later)
-Sur la planète, on est en équipe de souterrains.
 
 ---
+
+### 📔 My logbook — the history of your trips (since v1.69.0)
+
+The auto-save above keeps the **current state** of a map. The **logbook** keeps the **history**: every time you explore a map, a **trip** is archived with its date, duration, distance travelled and what you added. Clearing a session does not delete the trips already filed in the logbook.
+
+**Where to find it:** the **📔 My logbook** tile on the home screen, in the « 🧰 Tools » card (grid under « 📦 Add a map », visible on mobile too). No map to load. From a map: **Session** modal → **📔 Trip in progress** section.
+
+**What a trip contains:**
+- date, **duration** (time actually spent in the app, not elapsed time) and **distance travelled** with the tracker,
+- how many **points, paths, zones and structures you added**,
+- the **path you walked** (mini-map in the trip sheet),
+- the **photos taken during the trip** (the logbook does not copy them: it points at your existing photos — delete one and its thumbnail becomes « 🚫 »),
+- a **free-form note** you can write whenever you want, even weeks later.
+
+**🚶 Field trip or 🖥️ desk work?**
+
+The logbook tells them apart on its own, and it matters: preparing a map at home is not a trip.
+
+- If you **moved** during the session (the tracker recorded distance or steps) → **field trip**.
+- If you only **annotated without moving** → **desk work**, filed in a collapsed section of its own at the bottom of the logbook.
+- The **totals** at the top of the logbook (number of trips, time, distance) count **field trips only** — time spent drawing at home has no business there.
+- Got it wrong? A trip made with the tracker off, for instance: open the sheet and click **🚶 Mark as field trip** (or the other way round). Your correction is final, it is never recomputed.
+
+**When is a session archived?**
+- **Automatically** when you leave the map (map switch or back to home), depending on its nature:
+  - a **field trip** is kept from **50 m travelled**,
+  - **desk work** is kept from **10 minutes** of actual work **and** at least one annotation.
+  - Below that, nothing is kept — opening a map for 20 seconds to check a detail does not clutter the logbook.
+- **Manually** with **🏁 Close my trip**: it is filed unconditionally, and a new one starts right away. Handy to split a long day into stages.
+
+**📖 The Stories tab — your plan notes and PDFs, gathered at last**
+
+**Story mode** (free note + PDF) used to be locked inside a plan's screen: to re-read your notes about a quarry, you had to load that quarry. The logbook's second tab, **📖 Stories**, gathers them **across all plans, without loading anything**:
+
+- the list shows every plan that has a note or a PDF, with an excerpt of the note;
+- opening a sheet shows the note **formatted** (Markdown) and lets you **edit it right there** — it is the very same note as in the plan's Story mode, not a copy;
+- the plan's **PDF documents** are listed: click to open, 🗑️ to delete, **➕ Add a PDF** to attach a new one — all without loading the plan.
+- ⚠️ A PDF **shipped inside the plan's ZIP** does not appear here: you must load the plan to read it (Story mode).
+
+**Good to know:**
+- The logbook **starts empty**: it cannot reconstruct trips from before v1.69.0, they were never recorded as such.
+- Everything is **strictly local** to your device (no upload, no account). Each trip can be deleted individually from its sheet.
+- Beyond **500 trips**, the oldest ones are removed automatically.
+- The logbook is **not** part of the profile export yet: switching devices via the profile export does not carry your history over.
+
+---
+
+### 🧙 Generator: step-by-step wizard (since v1.72.1)
+
+The **Generator** (🏗️) now guides you **step by step**, like an installer: each page shows one thing (name, image, layers…), optional steps can be **skipped** in one click, and a **final summary** shows what's filled, skipped or missing — with useful warnings (e.g. no GPS georeferencing = no OSM view or KMZ export) **before** generating. An imported ZIP pre-fills every step: you just review. Power users can switch back to the old full view via **🗒️ Show all** (choice remembered).
+
+### 🔽 Collapsible footer (since v1.71.0)
+
+The small **arrow** under the home screen collapses the footer (copyright, links, credits) to free up space — only a minimal « © MyKTAMap · version » line remains. Click again to expand. Your choice is remembered and travels with the profile export.
 
 ### 🐛 Detailed logs (debug mode)
 
@@ -653,6 +706,19 @@ The toggle is **persistent** (survives reloads and tab closures) until you unche
 
 ---
 
+## 🌍 OSM mode — built-in search (since v1.70.0)
+
+The **⛶** button of the OSM view widget is now called **"Open OSM mode"**: the map goes full screen. A **search bar** shows up there:
+
+- it sits **in the « 🌍 OSM view » title line**, so it's available on the reduced home widget too;
+- it finds **a plan** (among your georeferenced plans) or **a point** (those plans' POIs) — type, click a result, the map flies to it with a marker;
+- **100% local**: the search reads your own plans, no internet address service is queried;
+- only **georeferenced** plans appear — a plan without GPS calibration is invisible in OSM mode (calibrate it via the Generator or Settings).
+
+**🗂️ Several plans at once (since v1.71.0)** — the "Displayed plans" panel of OSM mode lets you **stack your georeferenced plans**: ➕ to add one, ▲▼ to choose what goes above/below, a per-plan **opacity** slider, ✕ to remove. The plan marked ◉ is the "primary" one (the top selector's). All this management lives in a **dedicated modal** opened by the banner's **≡** button (nothing covers the map): **global display** switches, **tag filtering** (aggregated across displayed plans), and the plan stack. The old rows under the selector (opacity, checkboxes, tags) are gone from the widget — the map gains their height. Each row also carries **5 mini filter buttons of its own** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — the banner checkboxes remain global switches, the two combine. Perfect to show two neighbouring sectors on top of an overview plan, keeping e.g. only one's POIs and the other's image.
+
+On the first opening of the mode, a message reminds you that rendering full plans can be slower on mobile — and another one shows if you display **more than 3 plans** at once.
+
 ## 📖 Story Mode — Free note + PDF for each plan
 
 The **📖** button in the top bar (left of the battery 🔋) opens a two-tab modal scoped to each plan. It's your **personal exploration notebook** for each underground site.
@@ -667,15 +733,20 @@ The note supports **Markdown**:
 - Tap **👁 Preview** to switch back to the rendered view.
 - Any MD you type (`**bold**`, `# Title`, `- item`…) is interpreted on render.
 
-### 📚 Story (PDF)
+### 📚 Story (PDF) — **several documents per plan since v1.69.0**
 
-If the plan author embedded a PDF in the plan (historical narrative, scanned paper map, brochure, detailed legend), it shows up directly in this tab.
+You can now keep **up to 10 PDF documents per plan** (before: only one, and a new import overwrote the previous one). A 2019 report, a scanned paper map, a press article, a survey sheet: all in the same place.
 
-Otherwise you can **📥 import your own PDF** from your device (1 PDF per plan, replaceable / removable). An imported PDF survives reloads. On iPhone, an **↗️ Open in a tab** button kicks it into native fullscreen if the inline view isn't available.
+- A **document list** appears above the viewer as soon as there is more than one; click a document to open it.
+- **📥 Import** adds a document (it no longer replaces anything). **🗑️ Remove** deletes the one being displayed.
+- The plan author can embed PDFs in the ZIP — **several since v1.71.0** (the Generator now accepts a list of files): they appear at the top of the list (📕), readable, not deletable (only the generator can change them). **New**: its presence no longer prevents you from adding your own documents — import used to be hidden on those plans.
+- Guardrails: **10 documents maximum** per plan, warning past **25 MB** total, refusal past **100 MB**. The space used now shows up in **Storage** (it was invisible until now).
+- On iPhone, an **↗️ Open in a tab** button kicks a document into native fullscreen if the inline view isn't available.
+- Your documents are also listed, added and deleted from **📔 My logbook → 📖 Stories**, without loading the plan.
 
 ### 📦 Bundled into session export
 
-When you 📤 Export, both your Markdown free note AND your Story-mode PDF are automatically embedded in the `.mkmsession.zip` file. On re-import (on another device, or to share with a partner), everything is restored on the current plan. Backward-compatible (an old file without these fields still loads fine).
+When you 📤 Export, both your Markdown free note AND **all your Story-mode PDF documents** are embedded in the `.mkmsession.zip` file. On re-import (on another device, or to share with a partner), they are **added** to the current plan — an import no longer overwrites the document already there. Backward-compatible (an old file with a single PDF still loads fine).
 
 In **anonymized** mode, note + PDF are intentionally omitted from the ZIP (may contain personal info).
 
@@ -795,11 +866,11 @@ You can **link a point on one plan to a point on another plan** — like a "port
 - Links **travel with the session export** (restored on import on another device).
 - A distributed plan ("data layer") can embed ready-to-use links: you can **use** them, not edit them.
 
-### 🌐 Multi-plan search (since v1.58.0)
+### 🔎 Multi-plan search (since v1.58.0, search bar since v1.69.0)
 
 Search for a point across **every plan in your library** at once, without opening them one by one:
 
-- **From the home screen**: **🌐 Multi-plan search** button (next to the Data editor).
+- **From the home screen**: the **🔎 search bar at the top of the screen**, centered in the header. Since v1.72.1, **results show up live under the bar** from 2 characters (plans + points, with the plan badge) — clicking a result loads the plan and centers the map. **Enter** or 🔎 opens the full search. On mobile the bar takes the header's second line.
 - **From the map**: open the search (Ctrl+K or 🔍) → **"🌐 Search across all plans"** button at the bottom — your current input is kept.
 
 The app reads each plan's points (session + data layers) **in place**, showing progress ("Reading 2/5: Oise…"). Each result carries the **badge of the plan** it belongs to. One click: confirmation (if a plan is open), the right plan loads, the right level is selected and the view centers on the point — with the ↩️ Back button to return.
@@ -2352,6 +2423,10 @@ Radio buttons `[ − ] [-2] [-1] [0] [1] [2] [ + ]` (5 levels by default, symmet
 
 Checkboxes per level. Paths/zones/points of **unchecked** levels are hidden on the map (opacity 0). Inter-level junctions remain visible if **at least one** of their endpoints touches a checked level.
 
+**🏗️ The main plan IS level 0 *(since v1.67.0)***: unchecking level **0** also hides **the plan's main image** (tiles included) — you can finally look at a single floor (e.g. only the transparent level -1 layer), without the level-0 background polluting the stack. Re-check 0 and it comes back. Without multi-level mode, the main plan is never hidden.
+
+**🫥 Level layer transparency**: for stacking to make sense, every level layer (≠ 0) must be a **PNG with a transparent background**. The generator now warns you at generation time if a level layer is opaque (JPEG, or PNG with a flattened background) — it would hide everything below.
+
 Quick buttons:
 - **All**: checks all available levels
 - **Active only**: checks only the active level
@@ -2485,7 +2560,7 @@ Building a large map across **several sessions** and ending up with lots of file
 - A **preview** shows the totals and **warns** you if any point ids are duplicated (duplicates are kept as-is).
 - **Download** the result (a ZIP, or a direct `.json` if there is only one category), ready to drop into your map folder.
 
-Also available **directly from the home screen** ("🔗 Merge data layers" button, between "📊 Data editor" and "🏗️ Generate a map") — no need to have a map open. **100% local**, no data sent.
+Available **without an open map** from the home screen: **📊 Data editor → 🔗 Merge data layers** (since v1.69.0; it used to be a separate home button, now folded into the editor's sources to declutter the screen). **100% local**, no data sent.
 
 ### 🖼️ Export to PNG/JPG
 

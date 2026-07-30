@@ -69,7 +69,16 @@
     "myktamap_perf_toggles",        // legacy — plus lue depuis v1.59.0 (per-plan), gardée pour compat vieux exports
     "myktamap_last_version_data",
     "myktamap_total_time_ms",       // 🆕 v1.52.0 : temps cumulé (rang/badge profil) — sinon perdu à migration device
-    "myktamap_achievements_v1"      // 🆕 v1.53.0 : hauts faits débloqués (ids + dates)
+    "myktamap_achievements_v1",     // 🆕 v1.53.0 : hauts faits débloqués (ids + dates)
+    "myktamap_home_footer_replie_v1", // 🔽 v1.71.0 : footer HOME replié (demande KARMA « sauvegardé dans le profil »)
+    // 🌀 v1.67.2 (KARMA « la db des liaisons est-elle exportée ? » → non) :
+    // le REGISTRE DES LIAISONS INTER-PLAN est une donnée globale cross-plan —
+    // sans lui, une migration d'appareil perdait tout le réseau de portails.
+    // À l'import : cas spécial FUSION par id (cf _applyImport) au lieu d'un
+    // écrasement, pour ne pas perdre les liaisons créées sur l'appareil cible.
+    "myktamap_interplan_links_v1",
+    "myktamap_ipr_multihop_v1",     // case « itinéraire via plusieurs plans » (v1.64.0)
+    "myktamap_backbtn_mode"         // préférence bouton Retour réduit/complet (v1.61.0)
   ];
 
   // 🆕 v1.39.15 — Préfixes localStorage per-plan inclus dans la section
@@ -625,6 +634,15 @@
             const existing = _safeJsonParse(existingRaw) || {};
             const merged = Object.assign({}, existing, val);
             localStorage.setItem(key, JSON.stringify(merged));
+          } else if (key === "myktamap_interplan_links_v1" && mode === "merge"
+                     && window.InterPlanLinks && typeof window.InterPlanLinks.importLinks === "function") {
+            // 🌀 v1.67.2 : registre des liaisons → FUSION par id (jamais
+            // d'écrasement en mode merge — les liaisons déjà créées sur
+            // l'appareil cible sont préservées, dédup par link.id via l'API
+            // existante v1.57). Mode replace → setItem direct (branche else).
+            const links = (val && Array.isArray(val.links)) ? val.links : [];
+            const added = window.InterPlanLinks.importLinks(links);
+            console.log("[ProfileExportImport] Liaisons inter-plan fusionnées : +" + added);
           } else {
             // Autres clés : remplacement direct (replace ou merge, c'est juste un toggle)
             localStorage.setItem(key,

@@ -319,7 +319,11 @@
   // ========== ÉCRAN D'ACCUEIL — 3 SOURCES ==========
   function _afficherAccueil(errMsg) {
     if (_modal) { _modal.remove(); _modal = null; }
-    var planDispo = !!(window.PLAN_CONFIG && Array.isArray(window.PLAN_CONFIG.dataLayers) && window.PLAN_CONFIG.dataLayers.length);
+    // 🐛 v1.69.0 : PLAN_CONFIG survit au retour HOME (afficherLoader ne le remet
+    // pas à null) → la carte « 🗺️ plan en cours » s'affichait depuis l'accueil
+    // et menait à un plan qui n'est plus à l'écran. Cf. gotchas.md § PLAN_CONFIG.
+    var planAffiche = (typeof window.ktaPlanAffiche === "function") ? window.ktaPlanAffiche() : true;
+    var planDispo = planAffiche && !!(window.PLAN_CONFIG && Array.isArray(window.PLAN_CONFIG.dataLayers) && window.PLAN_CONFIG.dataLayers.length);
     var modal = document.createElement("div");
     modal.id = "kta-tbl-modal";
     modal.className = "kta-readme-modal-overlay";
@@ -354,6 +358,17 @@
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.jsonHint")}</span>
               </span>
             </button>
+            <!-- 🔗 v1.69.0 (allègement du HOME, demande KARMA) : « Fusionner des
+                 datalayers » quitte l'accueil et rejoint les sources de l'éditeur
+                 de données — c'est la même famille d'usage (manipuler des calques
+                 JSON hors carte), et ça retire une icône de la home. -->
+            <button class="kta-tbl-source-card" id="kta-tbl-src-fusion">
+              <span class="kta-tbl-source-ico">🔗</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.fusion")}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.fusionHint")}</span>
+              </span>
+            </button>
           </div>
           <input type="file" id="kta-tbl-zip-input" accept=".zip,application/zip" style="display:none;">
         </div>
@@ -367,6 +382,16 @@
     modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
     if (planDispo) document.getElementById("kta-tbl-src-plan").addEventListener("click", _listerDatalayersPlanCourant);
     document.getElementById("kta-tbl-src-json").addEventListener("click", _afficherImport);
+    // 🔗 v1.69.0 — délègue au fusionneur existant (onglet « Fusion » de la
+    // modale d'export de session), ouvert en mode solo comme depuis le HOME.
+    document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
+      fermer();
+      if (typeof window.ouvrirExportSessionModal === "function") {
+        window.ouvrirExportSessionModal("fusion", true);
+      } else {
+        console.warn("[TableEditor] ouvrirExportSessionModal indisponible");
+      }
+    });
     var zipInput = document.getElementById("kta-tbl-zip-input");
     document.getElementById("kta-tbl-src-zip").addEventListener("click", function() { zipInput.click(); });
     zipInput.addEventListener("change", function() { if (zipInput.files[0]) _traiterZipImporte(zipInput.files[0]); });

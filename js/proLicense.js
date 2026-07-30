@@ -87,10 +87,14 @@
   // Helpers internes
   // -------------------------------------------------------------------------
 
-  // Helper i18n — appelé au moment de la validation/import (action user),
-  // jamais au load → dicos prêts. Fallback = clé si I18n absent.
+  // Helper i18n — fallback = clé brute. 🐛 v1.68.1 (audit clés manquantes) :
+  // le commentaire d'origine (« jamais au load ») était faux — _validateData
+  // tourne AUSSI au boot (validation du cache LS / fetch serveur), AVANT la
+  // fin du fetch des dicos → t() warnait « clé manquante » pour rien. has()
+  // teste la présence réelle sans warn ; erreur de boot jetée = clé brute OK.
   function t(k, p) {
-    return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
+    return (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(k))
+      ? window.I18n.t(k, p) : k;
   }
 
   function _safeReadLS(key) {

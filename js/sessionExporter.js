@@ -624,7 +624,7 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${_soloTab ? t("home.add.fusion") : t("export.modal.titre")}</span>
+          <span class="kta-readme-modal-titre">${_soloTab ? t("tabledit.source.fusion") : t("export.modal.titre")}</span>
           <button class="kta-panneau-close" id="kta-ses-close">✕</button>
         </div>
 
@@ -1539,7 +1539,10 @@
   // de editorPoints (cf. _enrichirPointsAvecPhotos), mais le garde séparé
   // permet un restore robuste même si l'user édite session.json à la main
   // et change des ids. Le restore IDB lit l'index en priorité.
-  function _packerZipSession(payload, photos, filename, historePdf) {
+  // 📄 v1.69.0 : `historePdfs` = TABLEAU de documents (chacun avec son `zipName`
+  // déjà dédoublonné côté _exportFull). Un objet unique reste accepté par
+  // sécurité si un appelant tiers n'a pas suivi.
+  function _packerZipSession(payload, photos, filename, historePdfs) {
     if (typeof JSZip === "undefined") {
       alert(t("export.err.compressionIndispo"));
       return Promise.reject(new Error("JSZip indisponible"));
@@ -1570,10 +1573,13 @@
     // 🆕 v1.34.29 — PDF Mode Histoire de session (importé par l'user via la
     // modale 📖). On le pose dans `mode-histoire/<name>` du ZIP. La référence
     // est déjà inscrite dans `payload.historeSessionPdf` côté _exportFull.
-    if (historePdf && historePdf.blob) {
+    const _docs = Array.isArray(historePdfs) ? historePdfs : (historePdfs ? [historePdfs] : []);
+    if (_docs.length > 0) {
       const histoireFolder = zip.folder("mode-histoire");
-      const pdfName = historePdf.name || "histoire.pdf";
-      histoireFolder.file(pdfName, historePdf.blob);
+      _docs.forEach(function(d) {
+        if (!d || !d.blob) return;
+        histoireFolder.file(d.zipName || d.name || "histoire.pdf", d.blob);
+      });
     }
 
     return zip.generateAsync({ type: "blob" }).then(function(blob) {
@@ -1793,6 +1799,7 @@
     // 🆕 v1.34.29 : Mode Histoire (note libre + PDF session)
     delete session.noteLibre;
     delete session.historeSessionPdf;
+    delete session.historeSessionPdfs;   // 📄 v1.69.0 (multi-documents)
 
     // 8. marqueur d'anonymisation pour audit côté destinataire
     session.anonymized   = true;
@@ -1806,48 +1813,63 @@
   // IDB `myktamap_histoire_pdfs` (cf js/modeHistoire.js v1.34.20+). Retourne
   // { blob, name } ou null si absent. Ouverture/fermeture IDB ad-hoc — pas
   // d'optimisation cache car export est un one-shot.
-  function _lirePdfHistoireSession() {
-    if (!window.indexedDB) return Promise.resolve(null);
+  // 📄 v1.69.0 — MULTI-DOCUMENTS. Retourne un TABLEAU [{blob, name}] (vide si
+  // aucun). Deux pièges corrigés ici :
+  //   ① l'ouverture était figée sur `open(name, 1)` : depuis le passage du store
+  //      en v2 (keyPath `id` + index `by_plan`), ça déclenchait une VersionError
+  //      → le PDF disparaissait SILENCIEUSEMENT des exports ;
+  //   ② `get(planId)` ne marche plus (la clé est l'id du document) → lecture via
+  //      l'index `by_plan`.
+  // On ouvre SANS version pour suivre celle qui existe, et le fallback
+  // onupgradeneeded s'aligne sur le schéma v2 (sinon modeHistoire hériterait
+  // d'une base au mauvais schéma).
+  function _lirePdfsHistoireSession() {
+    if (!window.indexedDB) return Promise.resolve([]);
     const planId = window._currentLoadedPlanId || "default";
     return new Promise(function(resolve) {
       try {
-        const req = indexedDB.open("myktamap_histoire_pdfs", 1);
+        const req = indexedDB.open("myktamap_histoire_pdfs");
+        req.onupgradeneeded = function(e) {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains("pdfs")) {
+            const st = db.createObjectStore("pdfs", { keyPath: "id" });
+            st.createIndex("by_plan", "planId", { unique: false });
+          }
+        };
         req.onsuccess = function() {
           const db = req.result;
           if (!db.objectStoreNames.contains("pdfs")) {
             try { db.close(); } catch(e) {}
-            resolve(null);
+            resolve([]);
             return;
           }
-          const tx = db.transaction("pdfs", "readonly");
-          const st = tx.objectStore("pdfs");
-          const getReq = st.get(planId);
-          getReq.onsuccess = function() {
-            const rec = getReq.result;
-            try { db.close(); } catch(e) {}
-            if (rec && rec.blob) resolve({ blob: rec.blob, name: rec.name || "histoire.pdf" });
-            else resolve(null);
-          };
-          getReq.onerror = function() {
-            try { db.close(); } catch(e) {}
-            resolve(null);
-          };
+          try {
+            const st = db.transaction("pdfs", "readonly").objectStore("pdfs");
+            // Base encore en v1 (l'user n'a pas rouvert le Mode Histoire depuis
+            // la mise à jour) : pas d'index, la clé EST le planId.
+            if (!st.indexNames.contains("by_plan")) {
+              const g = st.get(planId);
+              g.onsuccess = function() {
+                const rec = g.result;
+                try { db.close(); } catch(e) {}
+                resolve((rec && rec.blob) ? [{ blob: rec.blob, name: rec.name || "histoire.pdf" }] : []);
+              };
+              g.onerror = function() { try { db.close(); } catch(e) {} resolve([]); };
+              return;
+            }
+            const req2 = st.index("by_plan").getAll(IDBKeyRange.only(String(planId)));
+            req2.onsuccess = function() {
+              const arr = (req2.result || []).filter(function(r) { return r && r.blob; });
+              arr.sort(function(a, b) { return (a.addedAt || 0) - (b.addedAt || 0); });
+              try { db.close(); } catch(e) {}
+              resolve(arr.map(function(r) { return { blob: r.blob, name: r.name || "histoire.pdf" }; }));
+            };
+            req2.onerror = function() { try { db.close(); } catch(e) {} resolve([]); };
+          } catch(e) { try { db.close(); } catch(e2) {} resolve([]); }
         };
-        req.onerror = function() { resolve(null); };
-        // ⚠️ Création store ICI pour compat modeHistoire.js : si l'user n'a
-        // jamais ouvert Mode Histoire et tente un export, on ne veut PAS que
-        // notre `indexedDB.open` crée la DB vide sans store — ça empêcherait
-        // modeHistoire de créer le store plus tard (DB déjà en v1, onupgrade
-        // ne se redéclencherait pas). Donc on s'aligne sur le schéma v1 de
-        // modeHistoire : { keyPath: "planId" } sur store "pdfs".
-        req.onupgradeneeded = function(e) {
-          const db = e.target.result;
-          if (!db.objectStoreNames.contains("pdfs")) {
-            db.createObjectStore("pdfs", { keyPath: "planId" });
-          }
-        };
+        req.onerror = function() { resolve([]); };
       } catch(e) {
-        resolve(null);
+        resolve([]);
       }
     });
   }
@@ -1909,9 +1931,9 @@
     // session IDB) en parallèle des photos. Si anonymize ON, on skip tout
     // (la note libre peut contenir des infos perso, le PDF aussi).
     const histoirePromise = anonymize
-      ? Promise.resolve({ note: null, pdf: null })
-      : _lirePdfHistoireSession().then(function(pdf) {
-          return { note: _lireNoteLibreSession(), pdf: pdf };
+      ? Promise.resolve({ note: null, pdfs: [] })
+      : _lirePdfsHistoireSession().then(function(pdfs) {
+          return { note: _lireNoteLibreSession(), pdfs: pdfs || [] };
         });
 
     Promise.all([photosPromise, histoirePromise]).then(function(results) {
@@ -1998,11 +2020,28 @@
       if (histoire.note && histoire.note.length > 0) {
         session.noteLibre = histoire.note;
       }
-      if (histoire.pdf && histoire.pdf.blob) {
-        session.historeSessionPdf = {
-          name: histoire.pdf.name || "histoire.pdf",
-          file: "mode-histoire/" + (histoire.pdf.name || "histoire.pdf")
-        };
+      // 📄 v1.69.0 — N documents possibles. `historeSessionPdfs` = tableau
+      // (nouveau) ; `historeSessionPdf` = premier document, CONSERVÉ pour que
+      // les versions antérieures relisent au moins un PDF (rétrocompat).
+      // Les noms sont dédoublonnés : deux fichiers homonymes s'écraseraient
+      // dans le dossier ZIP.
+      if (histoire.pdfs && histoire.pdfs.length > 0) {
+        const vus = {};
+        histoire.pdfs.forEach(function(p) {
+          let n = p.name || "histoire.pdf";
+          if (vus[n]) {
+            const pt = n.lastIndexOf(".");
+            const base = (pt > 0) ? n.slice(0, pt) : n;
+            const ext  = (pt > 0) ? n.slice(pt) : "";
+            n = base + "-" + (vus[p.name || "histoire.pdf"] + 1) + ext;
+          }
+          vus[p.name || "histoire.pdf"] = (vus[p.name || "histoire.pdf"] || 0) + 1;
+          p.zipName = n;
+        });
+        session.historeSessionPdfs = histoire.pdfs.map(function(p) {
+          return { name: p.zipName, file: "mode-histoire/" + p.zipName };
+        });
+        session.historeSessionPdf = session.historeSessionPdfs[0];
       }
 
       // 🆕 v1.31.7 F1 : applique l'anonymisation APRÈS construction du
@@ -2021,7 +2060,7 @@
       // 🆕 v1.34.29 — Force ZIP si PDF Histoire présent (le blob ne tient pas
       // dans un JSON pur). La note libre seule reste compatible JSON pur car
       // c'est du texte inline.
-      const hasHistoirePdf = !!(histoire.pdf && histoire.pdf.blob);
+      const hasHistoirePdf = !!(histoire.pdfs && histoire.pdfs.length > 0);
 
       if (photos.length > 0 || hasHistoirePdf) {
         // Bundle ZIP : session.json + photos/ + mode-histoire/<pdf>
@@ -2029,7 +2068,7 @@
         // ON — les photos y sont garanties strippées EXIF (re-encodées,
         // fail-closed) et renommées photo-anon-N. Le PDF Histoire, lui,
         // reste exclu de l'anonymisation (contenu perso non nettoyable).
-        _packerZipSession(session, photos, _filename(fnPrefix, "zip"), histoire.pdf)
+        _packerZipSession(session, photos, _filename(fnPrefix, "zip"), histoire.pdfs)
           .then(function() { _fermer(); })
           .catch(function(err) {
             console.error("[SessionExport] _packerZipSession :", err);

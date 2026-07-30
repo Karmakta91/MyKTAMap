@@ -290,6 +290,11 @@ function cloneAndResolvePlanConfig(rawConfig) {
   // Histoire (cf js/modeHistoire.js). Pas d'erreur si absent.
   if (resolved.plan?.histoirePdf)
     resolved.plan.histoirePdf = getRuntimeAssetUrl(resolved.plan.histoirePdf) || resolved.plan.histoirePdf;
+  // 📄 v1.71.0 — multi-PDF Histoire : résolution de chaque entrée du tableau
+  if (Array.isArray(resolved.plan?.histoirePdfs))
+    resolved.plan.histoirePdfs = resolved.plan.histoirePdfs.map(function(p) {
+      return getRuntimeAssetUrl(p) || p;
+    });
   if (Array.isArray(resolved.imageLayers))
     resolved.imageLayers = resolved.imageLayers.map(function(l) {
       return { ...l, file: getRuntimeAssetUrl(l.file) || l.file };

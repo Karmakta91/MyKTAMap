@@ -419,6 +419,17 @@ sans ces 4 syncs = dette technique immédiate.
 | Axe | Cible | Quand sync ? |
 |---|---|---|
 | 📱 **In-app** | `docs/applications/README_USER.md` + `README_USER.en.md` (modale Documentation) · `js/interfaceDocs.js` (Aide intégrée) · `docs/applications/AI_CONTEXT.md` (modale Aide IA) | Si UX user touchée OU nouvelle fonctionnalité |
+
+**⚠️ AI_CONTEXT.md est BALISÉ PAR PROFILS depuis v1.69.0** (refonte Aide IA) : marqueurs
+`<!-- @@PROFIL usage,diagnostic -->` (un marqueur s'applique jusqu'au suivant ; `tous` =
+commun). La modale 🤖 Aide IA génère 4 sorties (usage ~115 Ko · diagnostic ~80 Ko ·
+plans ~80 Ko · complet ~130 Ko) filtrées par `interfaceDocs.js > _filtrerContexteParProfil`.
+Règles d'édition (cf note en tête du fichier) : toute nouvelle recette/FAQ reçoit un
+marqueur ; les listes fermées anti-hallucination + le survol restent en zone commune ;
+la doc intégrale (`{{README_USER}}`) n'est **plus injectée** — tenir la section
+« 🗓️ Version actuelle » (digest des nouveautés) à jour à chaque release marquante, et
+NE PAS re-remplir le survol avec des notes de release dev (c'est ce qui l'avait fait
+gonfler à 153 Ko — le digest + README.md suffisent pour l'historique).
 | 🔒 **Audit** | `docs/applications/NETWORK_AUDIT.md` + `NETWORK_AUDIT.html` | À chaque release (verdict réseau attendu par les users qui auditent) |
 | 📖 **Dev** | `README.md` racine (journal des versions, "Version courante" + précédentes shipped) | À chaque release |
 | 🤖 **Archi IA** | `CLAUDE.md` racine (si règle/archi change) + `docs/architecture/<sujet>.md` (selon sujets impactés) | Si pattern technique nouveau, refactor structurel, lesson learned |

@@ -834,10 +834,27 @@
     }
   }
 
+  // 🧹 v1.68.0 (audit « fermetures à la sortie du plan ») — purge de l'invite
+  // « Portail suivant ». contexte :
+  //   "home"   : sortie vers le HOME → invite retirée + CHAÎNE abandonnée
+  //              (_pendingChain/_currentPortalOut) — partir au home rompt la
+  //              navigation en cours (cohérent avec la pile de retour v1.58.1).
+  //   "switch" : changement de plan → invite retirée + portail courant
+  //              désarmé (ils appartiennent à l'ANCIEN plan) ; la CHAÎNE est
+  //              CONSERVÉE — c'est elle qui permet aux traversées goTo de
+  //              tracer le leg suivant à l'arrivée (onPlanLoaded la consomme
+  //              et ré-arme l'invite si le plan correspond).
+  function onPlanExit(contexte) {
+    _retirerProchainPortail();
+    _currentPortalOut = null;
+    if (contexte === "home") _pendingChain = null;
+  }
+
   window.InterPlanRoute = {
     computeEtAfficher:   computeEtAfficher,
     onPlanLoaded:        onPlanLoaded,
     onTrackerRecale:     onTrackerRecale,
+    onPlanExit:          onPlanExit,   // 🧹 v1.68.0 : purge invite sortie/switch
     // 🌀 v1.64.0 — préférence multi-hop (case à cocher recherche multi-plans)
     isMultiHopEnabled:   _multiHopEnabled,
     setMultiHopEnabled:  _setMultiHopEnabled

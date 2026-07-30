@@ -1,7 +1,8 @@
 {
-  "version": "v1.66.0",
-  "released": "2026-07-27",
+  "version": "v1.72.1",
+  "released": "2026-07-30",
   "notes": [
-    "🧹 Grand nettoyage interne de l'écran d'accueil (aucun changement visible) : l'app est plus simple à maintenir et à faire évoluer. Si quelque chose te semble différent sur l'accueil, le profil ou la configuration, signale-le."
+    "🧙 Le Générateur devient un ASSISTANT pas-à-pas : une étape à la fois (Suivant / Précédent / Passer), champs vérifiés au fil de l'eau, et un RÉSUMÉ final qui signale ce qui manque avant de générer. Un ZIP importé pré-remplit toutes les étapes ; « Tout afficher » reste à un clic.",
+    "🔎 Les recherches montrent leurs résultats EN DIRECT sous la barre : celle de l'accueil (plans + points, clic = chargement et centrage) comme celle de la vue OSM — fini les listes qui débordent ou qui bloquent."
   ]
 }

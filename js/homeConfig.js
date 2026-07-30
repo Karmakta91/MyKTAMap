@@ -900,8 +900,15 @@
         _majPinStatusUI();
       }
 
-      // Initialisation : update au load de la modale Configuration
-      _majPinStatusUI();
+      // Initialisation : update au load de la modale Configuration.
+      // 🐛 v1.68.1 (audit clés manquantes) : derrière la barrière I18n.init()
+      // (mémoïsée) — le window load peut gagner la course du fetch des dicos
+      // → le statut PIN sortait « humanisé » (« Status Disabled »).
+      if (window.I18n && typeof window.I18n.init === "function") {
+        window.I18n.init().then(_majPinStatusUI);
+      } else {
+        _majPinStatusUI();
+      }
 
       // 🆕 v1.46.4 (audit P3-LOW #7) : re-traduit la section PIN au changement
       // de langue À CHAUD. Elle est rendue par _t() inline (pas via data-i18n)

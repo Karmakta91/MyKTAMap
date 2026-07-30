@@ -21,13 +21,16 @@
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
-  <!-- 🆕 v1.9.2-rollback-final (KARMA "rollback les modif de full screen,
-       plus de problèmes que de bénéfice"). Multiples tentatives cover +
-       black-translucent ont créé soit une bande sombre en bas, soit la
-       status bar iOS qui hide/show de façon imprévisible. On reste sur
-       le comportement stable v1.9.1 : pas de cover, status bar opaque
-       noire, on perd ~47px en haut sur iPhone notché mais comportement
-       PRÉVISIBLE. -->
+  <!-- 📱 ROLLBACK ×2 du plein écran iPhone — NE PAS RETENTER sans nouveau
+       diagnostic. Tentative 1 (v1.9.2) : « bande sombre en bas, status bar
+       hide/show ». Tentative 2 (30/07/2026, v1.71.0) : cover +
+       black-translucent MALGRÉ 86 env(safe-area-inset-*) déjà en place —
+       constat terrain KARMA immédiat : « ça marche pas ». Le pari « la
+       plomberie safe-area suffit » est RÉFUTÉ deux fois ; la prochaine
+       tentative devra partir d'une observation précise du symptôme sur
+       l'appareil (quel écran, quelle zone, quelle bande), pas des metas.
+       État stable conservé : pas de cover, status bar opaque noire,
+       ~47px perdus en haut sur iPhone notché mais comportement PRÉVISIBLE. -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
   <!-- PWA -->
@@ -312,6 +315,27 @@
             <span class="loader-titre-tagline" data-i18n="home.tagline">Cartographie souterraine</span>
           </div>
         </div>
+        <!-- 🔎 HOME v2 (refonte KARMA 29/07, décision 1:a) : la recherche vit
+             dans l'EN-TÊTE, centrée — sa place naturelle (pattern app bar).
+             Fin définitive des problèmes d'alignement : elle n'appartient plus
+             à aucune grille. PC : pilule centrée entre logo et chips. Mobile :
+             le header passe en wrap, la barre prend la 2e ligne pleine largeur.
+             La barre reste masquée tant que la bibliothèque est vide
+             (refreshPlansList pose display:flex/none sur #loaderSearchBar). -->
+        <div class="loader-search-wrap">
+          <div class="loader-search-bar" id="loaderSearchBar" style="display:none;">
+            <input type="search" id="loaderSearchInput" class="loader-search-input"
+                   data-i18n-placeholder="home.search.placeholder"
+                   placeholder="🔎 Chercher un point dans tous mes plans…" autocomplete="off">
+            <button type="button" id="loaderSearchBtn" class="loader-search-btn"
+                    data-i18n-title="home.search.btnTitle" title="Chercher dans tous les plans">🔎</button>
+            <!-- 🔎 v1.72.1 (KARMA « même principe que la barre OSM ») : résultats
+                 EN DIRECT sous la barre — position:fixed, top/left/width posés en
+                 JS depuis le rect de l'input (même modèle éprouvé que la
+                 recherche du mode OSM). Entrée/🔎 = modale complète inchangée. -->
+            <div class="loader-search-results" id="loaderSearchResults" style="display:none;"></div>
+          </div>
+        </div>
         <div class="loader-header-actions">
           <!-- 🌍 v1.46.0 (KARMA) — Le sélecteur de langue GLOBALE a été déplacé
                du header vers la modale Configuration (après Incognito) : header
@@ -382,6 +406,7 @@
             ▶️ <span data-i18n="home.resume">Reprendre</span> <strong id="resumeName"></strong>
           </button>
         </div>
+
       </div>
 
       <!-- ===== Layout 2 colonnes sur PC (≥1024px) — sur mobile/tablette
@@ -391,6 +416,7 @@
 
         <!-- ▬▬▬ COLONNE GAUCHE (60% PC) : 📚 Mes plans ▬▬▬ -->
         <div class="loader-col loader-col-plans">
+
 
           <!-- 📚 MES PLANS — Karma_dev : les boutons d'export/import profil
                ont été retirés d'ici pour être regroupés dans la nouvelle
@@ -490,12 +516,19 @@
           <!-- 🏗️ Bouton "Générer un plan" — accessible directement (sortie de
                'Plus d'options' v1.7.3). Cohérent avec son importance : c'est
                la voie d'entrée pour créer/modifier un plan, pas une option
-               avancée cachée. -->
+               avancée cachée.
+               🧹 v1.69.0 (allègement du HOME, demande KARMA) : la liste passe
+               de 5 à 4 entrées — « 🌐 Recherche multi-plans » devient la barre
+               de recherche au-dessus de la liste des plans, « 🔗 Fusionner des
+               datalayers » rejoint les sources de l'Éditeur de données, et
+               « 📔 Mon carnet » entre ici au lieu d'être isolé au-dessus. -->
+          <div class="loader-section-head loader-tools-head">
+            <span data-i18n="home.tools.title">🧰 Outils</span>
+          </div>
           <div class="loader-secondary-actions">
+            <button class="loader-btn-secondary" type="button" id="loaderJournalBtn" data-i18n="home.add.journal">📔 Mon carnet</button>
             <button class="loader-btn-secondary" type="button" id="loaderTableEditorBtn" data-i18n="home.add.editData">📊 Éditeur de données</button>
-            <button class="loader-btn-secondary" type="button" id="loaderCrossSearchBtn" data-i18n="home.add.crossSearch">🌐 Recherche multi-plans</button>
             <button class="loader-btn-secondary" type="button" id="loaderLinksMgrBtn" data-i18n="home.add.linksMgr">🌀 Mes liaisons</button>
-            <button class="loader-btn-secondary" type="button" id="loaderFusionBtn" data-i18n="home.add.fusion">🔗 Fusionner des datalayers</button>
             <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn" data-i18n="home.add.generate">🏗️ Générer un plan</button>
           </div>
 
@@ -527,7 +560,15 @@
            · CC BY-NC-SA 4.0 · Usage commercial interdit · vX.Y.Z".
            Le span .kta-loader-copyright-line2 wrappe la partie licence
            pour permettre un line-break sur mobile (CSS @media). -->
-      <div class="kta-loader-copyright">
+      <!-- 🔽 v1.71.0 (KARMA) — footer REPLIABLE : petite flèche classique,
+           état persisté (LS myktamap_home_footer_replie_v1, embarqué dans
+           l'export de profil via PREF_KEYS). Replié : le bloc complet est
+           masqué, la barre de bascule garde une mention minimale
+           « © MyKTAMap · vX » (la mention légale complète reste à 1 clic —
+           on ne supprime jamais le copyright, on le replie). -->
+      <button id="loaderFooterToggle" class="kta-footer-toggle" type="button"
+              data-i18n-title="home.footer.toggleTitle" title="Réduire / déplier le pied de page" aria-expanded="true">▾</button>
+      <div class="kta-loader-copyright" id="loaderFooterBlock">
         <!-- 🏷️ v1.28.2 : copyright dual community ↔ pro.
              - Bloc .kta-licence-community : visible par défaut (community)
              - Bloc .kta-licence-pro : visible UNIQUEMENT si <html> ou <body>
@@ -1285,6 +1326,11 @@
        APRÈS planRegistry.js (dépend de window.PlanRegistry pour suppression). -->
   <script src="js/planDenylist.js" defer></script>
   <script src="js/sessionPersist.js" defer></script>
+  <!-- 📔 v1.69.0 — Le Carnet : archive des sorties (socle IDB + hooks de cycle
+       de vie) et sa couche vue. Chargé après sessionPersist : la baseline d'une
+       sortie est prise APRÈS la restauration de session (cf main.js). -->
+  <script src="js/journal.js" defer></script>
+  <script src="js/journalUi.js" defer></script>
   <script src="js/oomGuard.js" defer></script>
   <script src="js/computeLoader.js" defer></script>
   <script src="js/pathfinder.js" defer></script>
@@ -1473,11 +1519,14 @@
           // i18n : la description vient des metas FR de tiling.js (PERF_*_META).
           // On traduit au point d'affichage via I18n, en gardant la description
           // FR de la meta comme fallback si la clé est absente / I18n indispo.
+          // 🐛 v1.68.1 (audit clés manquantes) : l'ancien garde `_tr !== _k`
+          // était MORT depuis l'humanisation H1 (t() ne retourne plus jamais
+          // la clé brute) → « Auto » humanisé écrasait la description FR.
+          // I18n.has() teste la présence réelle SANS warn ni humanisation.
           const _frDesc = (meta && meta.description) ? meta.description : "";
-          if (window.I18n && typeof window.I18n.t === "function") {
-            const _k = "home.perf.desc." + preset;
-            const _tr = window.I18n.t(_k);
-            descEl.textContent = (_tr && _tr !== _k) ? _tr : _frDesc;
+          const _k = "home.perf.desc." + preset;
+          if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(_k)) {
+            descEl.textContent = window.I18n.t(_k);
           } else {
             descEl.textContent = _frDesc;
           }
@@ -1530,8 +1579,14 @@
       window.getLoaderPerfPreset = getLoaderPerfPreset;
       window.setLoaderPerfPreset = setLoaderPerfPreset;
 
-      // Initialisation : "auto" + description correspondante + ligne debug si applicable
-      setLoaderPerfPreset("auto");
+      // Initialisation : "auto" + description correspondante + ligne debug si
+      // applicable. 🐛 v1.68.1 : différée derrière la barrière I18n.init()
+      // (mémoïsée) — au window load, le fetch des dicos peut ne pas être fini
+      // → la description perf se rendait « humanisée » (« Auto »). Le premier
+      // rendu de la liste des plans (plus bas) attend la même barrière.
+      const _i18nReadyHome = (window.I18n && typeof window.I18n.init === "function")
+        ? window.I18n.init() : Promise.resolve();
+      _i18nReadyHome.then(function() { setLoaderPerfPreset("auto"); });
 
       // ════════════════════════════════════════════════════════
       // BOUTON 🐛 LOGS DÉTAILLÉS (toggle debug mode)
@@ -1567,8 +1622,12 @@
       // Init : refléter l'état courant (lu depuis localStorage par config.js au boot)
       refreshDebugBtnUI();
 
-      // Premier rendu de la liste
-      if (window.refreshPlansList) window.refreshPlansList();
+      // Premier rendu de la liste — derrière la barrière i18n (v1.68.1) :
+      // les tooltips des lignes (Charger/Infos/Retirer, badges V1/M-LVL)
+      // sortaient « humanisés » quand le load gagnait la course des dicos.
+      _i18nReadyHome.then(function() {
+        if (window.refreshPlansList) window.refreshPlansList();
+      });
 
       // ── Pont B7 : lu par homeLoader.js (déjà appelé via window.* avec
       // garde typeof dans le code d'origine — ex-lignes 1874/2391/…).

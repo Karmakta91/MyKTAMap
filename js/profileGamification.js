@@ -124,9 +124,9 @@
 
   function nom(rank) {
     const key = "rank." + ((rank && rank.id) || "touriste");
-    if (window.I18n && typeof window.I18n.t === "function") {
-      const v = window.I18n.t(key);
-      if (v && v !== key) return v;
+    // 🐛 v1.68.1 : garde `v !== key` mort depuis l'humanisation H1 → has().
+    if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(key)) {
+      return window.I18n.t(key);
     }
     return (rank && rank.id) || "?";
   }

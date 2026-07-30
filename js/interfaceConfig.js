@@ -1750,6 +1750,11 @@ window.appliquerFiltreNiveau = function() {
   if (typeof window._applyLevelFilterToImageLayers === "function") {
     try { window._applyLevelFilterToImageLayers(); } catch(e) {}
   }
+  // 🏗️ v1.67.0 (KARMA « logique de superposition ») : le plan PRINCIPAL est
+  // le niveau 0 — masqué net quand 0 est décoché (cf tiling.js).
+  if (typeof window._applyLevelFilterToBasePlan === "function") {
+    try { window._applyLevelFilterToBasePlan(); } catch(e) {}
+  }
 
   // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : sync M-LVL bidirectionnel.
   // Quand visibleLevels change (via modale Niveaux), notifie FilterPanel pour

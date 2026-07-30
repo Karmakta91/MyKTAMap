@@ -68,6 +68,15 @@
   // Callbacks abonnés au changement de langue (re-render des modales ouvertes).
   const _onChangeCbs = [];
   let _initialized = false;
+  // 🆕 v1.68.1 (audit clés manquantes) : promesse d'init MÉMOÏSÉE. Avant,
+  // deux appels concurrents à init() (main.js + osmHomePreview au boot)
+  // relançaient chacun le Promise.all → DOUBLE fetch des dicos. Et surtout,
+  // init() devient une barrière gratuite : tout module qui rend du texte
+  // potentiellement AVANT la fin du fetch des dicos fait
+  // `I18n.init().then(render)` — résolue = microtask immédiate, en vol = on
+  // attend le dico. C'est le filet anti-course du boot (cf audit v1.68.1 :
+  // 32 clés « manquantes » qui existaient toutes, appelées trop tôt).
+  let _initPromise = null;
 
   function _isKnownLang(code) {
     return AVAILABLE_LANGS.some(function(l) { return l.code === code; });
@@ -137,15 +146,16 @@
 
   // Init au boot : charge le FALLBACK (fr, obligatoire) + la langue active.
   function init() {
-    if (_initialized) return Promise.resolve();
+    if (_initPromise) return _initPromise;
     const active = getLang();
     const toLoad = [FALLBACK_LANG];
     if (active !== FALLBACK_LANG) toLoad.push(active);
-    return Promise.all(toLoad.map(_loadDict)).then(function() {
+    _initPromise = Promise.all(toLoad.map(_loadDict)).then(function() {
       _initialized = true;
       console.log("[I18n] Module chargé (v1.45.0) — langue active : " + getLang() +
                   " · dicos : " + Object.keys(_dicts).join(", "));
     });
+    return _initPromise;
   }
 
   // Interpolation : remplace {nom} par params.nom dans la chaîne.

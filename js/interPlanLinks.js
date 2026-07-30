@@ -49,6 +49,18 @@
 (function() {
   "use strict";
 
+  // 🐛 v1.69.0 — « un plan est-il AFFICHÉ ? ». Le test historique
+  // `PLAN_CONFIG && PLAN_CONFIG.plan` restait VRAI au HOME (afficherLoader ne
+  // remet pas PLAN_CONFIG à null) : confirmation « changer de plan ? » posée
+  // depuis l'accueil, et surtout chemin court « déjà sur ce plan » emprunté à
+  // tort dans goTo → le clic sur une liaison vers le dernier plan ouvert ne
+  // chargeait rien. Source de vérité unique : window.ktaPlanAffiche (utils.js).
+  function _planAffiche() {
+    return (typeof window.ktaPlanAffiche === "function")
+      ? window.ktaPlanAffiche()
+      : !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan);
+  }
+
   const LS_KEY = "myktamap_interplan_links_v1";
 
   // ---------------------------------------------------------------
@@ -408,7 +420,7 @@
               x: side.x, y: side.y, level: side.level, tag: side.tag,
               planName: side.planName,
               label: side.pointNom || side.pointId || (side.x + "," + side.y)
-            }, { confirm: !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan) });
+            }, { confirm: _planAffiche() });
           });
         });
         const del = row.querySelector("[data-del]");
@@ -441,7 +453,7 @@
               tag: anchorSide.tag, planName: anchorSide.planName,
               label: anchorSide.pointNom || anchorSide.pointId || ""
             } : null;
-            goTo(planId, cible, { confirm: !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan) });
+            goTo(planId, cible, { confirm: _planAffiche() });
           },
           // reco 3:a — clic arête = détail de la frontière (liste filtrée)
           onEdgeClick: function(a, b) {
@@ -830,7 +842,7 @@
     // de plan ? » n'a pas de sens), pas d'empilement ni de bouton Retour (on
     // reste sur place) — juste bascule de niveau éventuelle + pan/flash
     // immédiat (samePlan : une seule passe, rien ne recentre derrière).
-    const planCharge = !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan);
+    const planCharge = _planAffiche();
     if (planCharge && planId === _currentPlanId()) {
       if (!target) return;   // 🕸️ v1.65.0 : « ouvrir le plan » sans cible → déjà dessus
       if (window.map) try { window.map.closePopup(); } catch(e) {}
@@ -933,6 +945,22 @@
   // (15 s) dépile. Enchaîner 3 portails = 3 retours possibles.
   const _navStack = [];
   let _backBtnTimer = null;
+
+  // 🧹 v1.68.0 (audit KARMA « fermetures à la sortie du plan ») — purge des
+  // flottants de navigation. contexte :
+  //   "home"   : sortie vers le HOME (afficherLoader) → bouton Retour retiré
+  //              (mini-pastille comprise — elle n'a pas de timer) + pile vidée
+  //              (partir du home rompt la chaîne, cohérent v1.58.1).
+  //   "switch" : teardown d'un changement de plan. Si un _pendingTarget existe,
+  //              c'est un goTo (navigation intentionnelle qui gère déjà bouton
+  //              et pile) → no-op. Sinon = switch DIRECT (sélecteur du titre) →
+  //              la pile pointe vers un contexte périmé : bouton retiré + pile
+  //              vidée (bug bench : mini-pastille avec retour obsolète).
+  function onPlanExit(contexte) {
+    if (contexte === "switch" && _pendingTarget) return;   // goTo en cours → géré
+    _retirerBoutonRetour();
+    _navStack.length = 0;
+  }
 
   function _empilerOrigine() {
     // 🐛 v1.58.1 (KARMA « depuis une recherche du home, pas de bouton
@@ -1294,6 +1322,7 @@
     getLinksForPoint:     getLinksForPoint,
     getLinksForPlan:      getLinksForPlan,
     getAllLinks:          getAllLinks,
+    onPlanExit:           onPlanExit,   // 🧹 v1.68.0 : purge flottants sortie/switch
     createLink:           createLink,
     removeLink:           removeLink,
     importLinks:          importLinks,
