@@ -1,8 +1,8 @@
 {
-  "version": "v1.72.1",
+  "version": "v1.72.2",
   "released": "2026-07-30",
   "notes": [
-    "🧙 Le Générateur devient un ASSISTANT pas-à-pas : une étape à la fois (Suivant / Précédent / Passer), champs vérifiés au fil de l'eau, et un RÉSUMÉ final qui signale ce qui manque avant de générer. Un ZIP importé pré-remplit toutes les étapes ; « Tout afficher » reste à un clic.",
-    "🔎 Les recherches montrent leurs résultats EN DIRECT sous la barre : celle de l'accueil (plans + points, clic = chargement et centrage) comme celle de la vue OSM — fini les listes qui débordent ou qui bloquent."
+    "🌍 Vue OSM : quand plusieurs plans sont superposés, l'ordre d'affichage s'applique maintenant aussi aux tracés et zones (plus seulement aux images). Le 1er plan retrouve son réglage d'opacité et ses tags dans « Plans & filtres ».",
+    "🏠 Accueil : les cadres Profil et Reprendre sont désormais parfaitement alignés (même largeur, même hauteur)."
   ]
 }

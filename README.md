@@ -12,9 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.72.1` (30/07/2026)
+## 📦 Version courante — `v1.72.2` (30/07/2026)
 
-> 🧙 **Générateur = ASSISTANT pas-à-pas** (topo « installeur style Windows », décisions 1:a 2:a 3:a) : les 10 sections deviennent des pages Suivant/Précédent/Passer, barre d'étapes cliquable, **validation à chaque étape** et **page Résumé anti-oubli** (états ✅/➖/⏭/❌ + avertissements : pas de georef → pas de Vue OSM/KMZ…). ZIP importé → Avancé, toutes pages pré-remplies, on ne fait que réviser. Toggle 🗒️ « Tout afficher » = comportement historique conservé (persisté). **Couche de présentation pure** : mêmes champs, même génération — zéro réécriture des 3100 lignes.
+> 🔧 **Finitions post-v1.72.1** : ① l'**ordre de pile OSM s'applique enfin aux tracés** — un pane Leaflet par plan (images + vecteurs + POI ordonnés ensemble ; avant, seuls les `zIndex` d'images comptaient) ② **modale ≡ « Plans & filtres »** : le plan principal est semé dans la pile dès le rendu initial → sa ligne ◉, son curseur d'opacité et ses tags apparaissent immédiatement ③ **symétrie HOME** profil/Reprendre sur les deux dimensions (cause hauteur : `margin-bottom` inline de `#resumeBox`, battu par `!important`).
 >
 > Détail complet de cette version et de toutes les précédentes : **[📋 Journal des versions](#-journal-des-versions)** (fin de fichier).
 
@@ -449,7 +449,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.72.1 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.72.2 → v1.26)
+
+**🔧 v1.72.2 (30/07/2026)** — finitions post-v1.72.1 :
+- **📐 Symétrie HOME** : boîtes profil et Reprendre identiques sur les DEUX dimensions — largeurs (`flex: 1 1 0`, plafond 620 px chacune ; l'itération « sans plafond, moitié de rangée » a été rollback sur ordre KARMA) **et hauteurs** : cause racine du déséquilibre = `#resumeBox` porte un `margin-bottom:14px` **inline** (index.html) jamais retiré par le JS — un style inline bat toute règle de classe, et en flex `stretch` la marge est soustraite → Reprendre 14 px plus courte que profil. Fix : `margin: 0 !important` (contexte top-row PC uniquement) + `min-height: 56px` commune + bouton Reprendre en flex plein-cadre.
+- **🐛 Modale ≡ OSM (repro KARMA)** — cause racine commune : le rendu INITIAL du widget pose `_selectedPlanId` **sans passer par `selectPlan`** → le principal n'entrait jamais dans `_stackOrder` → **pas de ligne ◉** (donc aucun curseur d'opacité pour le 1er plan, le slider bandeau ayant été supprimé avec le wrapper) et **tags du principal invisibles** (`_renderModalTags` agrège sur la pile). Fix : seed du principal au rendu initial + ceinture dans `_renderMultiPanel` (tout futur chemin oublié est rattrapé). + tags rafraîchis à CHAQUE mouvement de pile (ajout dès extraction, retrait) — fin du « les tags arrivent au bout d'un certain temps ».
+- **🐛 Ordre de pile inopérant sur les TRACÉS (repro KARMA : « une image du plan A cache les tracés du plan B même prioritaire »)** — structurel Leaflet : les `zIndex` d'`imageOverlay` n'ordonnent que les images, tous les vecteurs SVG partagent UN renderer dans l'overlayPane. Fix : **un pane Leaflet PAR PLAN** (`_panePour`, zIndex de pile posé sur le pane) — tuiles (`pane:`), POI (`pane:`) et chemins SVG (**`renderer: L.svg({pane})` dédié** — un `L.Path` ignore l'option `pane`, seul son renderer compte) rendus dedans → l'ordre devient global par plan, vecteurs compris ; dans un pane, le SVG arrive après les tuiles → les tracés d'un plan restent au-dessus de sa propre image. `_appliquerOrdre` ne fait plus que déplacer les panes (réordonnancement sans re-render conservé) ; panes invalidés à la recréation de la carte.
+
 
 **🧙 v1.72.1 (30/07/2026)** — **Générateur : assistant pas-à-pas (topo KARMA « installeur style Windows, évite les oublis » → reco 1:a 2:a 3:a)** :
 - **Architecture — couche de présentation PURE** : les `.kta-aide-section` du form existant DEVIENNENT les pages (mêmes IDs de champs, même `_genererZip`, même préremplissage ZIP). Le wizard montre/masque, valide au « Suivant », et lit les champs pour le résumé — **zéro réécriture** du module de 3100 lignes, risque de régression minimal.

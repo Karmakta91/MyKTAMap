@@ -418,6 +418,12 @@
   function _renderWidget(container, plans, selectedId) {
     const sel = plans.find(function(p) { return p.id === selectedId; }) || plans[0];
     _selectedPlanId = sel.id;
+    // 🐛 v1.72.2 (KARMA) — CAUSE RACINE de « pas d'opacité pour le 1er plan »
+    // et « tags du principal invisibles » : ce chemin initial ne passe PAS par
+    // selectPlan → le principal n'entrait jamais dans _stackOrder → pas de
+    // ligne ◉ dans la modale (donc pas de curseur), et _renderModalTags
+    // (qui agrège sur la pile) ne voyait pas ses tags.
+    if (_stackOrder.indexOf(sel.id) === -1) _stackOrder.unshift(sel.id);
 
     // HTML structure : bandeau (dropdown + ⛶) + mini-map + footer
     let optionsHtml = "";
@@ -548,6 +554,7 @@
     if (_mapInstance) {
       try { _mapInstance.remove(); } catch(e) {}
       _mapInstance = null;
+      _panesParPlan = {};   // v1.72.2 : les panes appartiennent à la carte détruite
       _markerLayer = null;
       _dataLayer   = null; // v1.40.4
       _tilesLayer  = null; // v1.40.6
@@ -924,7 +931,7 @@
   // 🔧 v1.40.12 — Refactor : chaque catégorie va dans son propre sub-layerGroup
   // pour permettre les toggles individuels via add/removeLayer. Pattern aligné
   // sur osmView.js modale (5 layers indépendants par catégorie).
-  function _renderDataLayersOnMiniMap(data, georef, cible) {
+  function _renderDataLayersOnMiniMap(data, georef, cible, planIdPourPane) {
     // 🗂️ v1.71.0 — PARAMÉTRÉ : sans `cible`, rend dans les groupes MODULE du
     // plan principal (comportement historique, clear inclus). Avec `cible`
     // ({data, poi, roads, zones, struct}), rend dans les groupes d'un plan
@@ -949,6 +956,11 @@
     zonesL.clearLayers();
     structL.clearLayers();
     if (!data || !Array.isArray(data.dataLayers)) return;
+    // v1.72.2 — pane du plan : markers via `pane`, chemins SVG via `renderer`
+    // dédié au pane (un L.Path ignore `pane`, seul son renderer compte).
+    const paneCtx = _panePour(planIdPourPane || _selectedPlanId);
+    const optsPane = paneCtx ? { pane: paneCtx.nom } : {};
+    const optsRendu = paneCtx ? { renderer: paneCtx.renderer } : {};
     const proj = _buildProjection(georef);
     if (!proj) { console.warn("[OsmHomePreview] proj indisponible, skip data render"); return; }
 
@@ -1001,13 +1013,13 @@
           '</div>';
         let marker;
         if (icon) {
-          marker = L.marker(ll, { icon: icon, interactive: true });
+          marker = L.marker(ll, Object.assign({ icon: icon, interactive: true }, optsPane));
           nPoiWithIcon++;
         } else {
-          marker = L.circleMarker(ll, {
+          marker = L.circleMarker(ll, Object.assign({
             radius: 4, color: "#fff", weight: 1,
             fillColor: "#f4c542", fillOpacity: 0.85, interactive: true
-          });
+          }, optsRendu));
           nPoiFallback++;
           unmatchedTags[tag] = (unmatchedTags[tag] || 0) + 1;
         }
@@ -1038,9 +1050,9 @@
         const lls = _projectPoints(r.points, proj);
         if (lls.length < 2) continue;
         const color = _resolveRoadColorHome(r);
-        L.polyline(lls, {
+        L.polyline(lls, Object.assign({
           color: color, weight: 3, opacity: 0.85, interactive: false
-        }).addTo(roadsL);
+        }, optsRendu)).addTo(roadsL);
         nRoad++;
       }
 
@@ -1052,11 +1064,11 @@
         const lls = _projectPoints(z.points, proj);
         if (lls.length < 3) continue;
         const cols = _resolveZoneColorsHome(z);
-        L.polygon(lls, {
+        L.polygon(lls, Object.assign({
           color: cols.stroke, fillColor: cols.fill,
           fillOpacity: (typeof z.fillOpacity === "number") ? z.fillOpacity * 0.7 : 0.25,
           weight: 1.5, opacity: 0.85, interactive: false
-        }).addTo(zonesL);
+        }, optsRendu)).addTo(zonesL);
         nZone++;
       }
 
@@ -1070,12 +1082,12 @@
         const lls = _projectPoints(s.points, proj);
         if (lls.length < minPts) continue;
         if (polyline) {
-          L.polyline(lls, { color: style.color, weight: style.weight, opacity: style.opacity, interactive: false }).addTo(structL);
+          L.polyline(lls, Object.assign({ color: style.color, weight: style.weight, opacity: style.opacity, interactive: false }, optsRendu)).addTo(structL);
         } else {
-          L.polygon(lls, {
+          L.polygon(lls, Object.assign({
             color: style.color, fillColor: style.fillColor,
             fillOpacity: style.fillOpacity, weight: style.weight, opacity: 1, interactive: false
-          }).addTo(structL);
+          }, optsRendu)).addTo(structL);
         }
         nStruct++;
       }
@@ -1343,7 +1355,7 @@
   // 🗂️ v1.71.0 — Cœur PARAMÉTRÉ (multi-plans) : rend les tuiles d'UN plan dans
   // le groupe fourni, avec SON opacité et SON zIndex de pile. Le wrapper
   // historique (plan principal) et les plans ajoutés passent tous par ici.
-  function _renderTilesInto(groupe, tilesData, georef, opacite, zIndex) {
+  function _renderTilesInto(groupe, tilesData, georef, opacite, zIndex, paneNom) {
     if (!_mapInstance || !groupe) return;
     groupe.clearLayers();
     if (!tilesData || !Array.isArray(tilesData.tiles) || tilesData.tiles.length === 0) return;
@@ -1373,11 +1385,11 @@
       if (!tl || !tr || !bl) continue;
 
       try {
-        const overlay = L.imageOverlay.rotated(t.url, tl, tr, bl, {
+        const overlay = L.imageOverlay.rotated(t.url, tl, tr, bl, Object.assign({
           interactive: false,
           opacity: opacite,
           zIndex: zIndex
-        });
+        }, paneNom ? { pane: paneNom } : {}));
         overlay.addTo(groupe);
         rendered++;
       } catch(e) {
@@ -1390,7 +1402,9 @@
   function _renderTilesOnMiniMap(tilesData, georef) {
     if (!_mapInstance) return;
     if (!_tilesLayer) _tilesLayer = L.layerGroup().addTo(_mapInstance);
-    _renderTilesInto(_tilesLayer, tilesData, georef, _planOpacity, _zIndexPour(_selectedPlanId));
+    const pn = _panePour(_selectedPlanId);
+    _renderTilesInto(_tilesLayer, tilesData, georef, _planOpacity,
+                     _zIndexPour(_selectedPlanId), pn ? pn.nom : null);
   }
 
   // Met à jour l'opacité des tuiles plan (slider bandeau).
@@ -1434,6 +1448,32 @@
   // Le plan sélectionné (dropdown) reste le « principal » ; les autres sont
   // ajoutés via le panneau 🗂️ (fullscreen uniquement, comme la recherche).
 
+  // 🐛 v1.72.2 (KARMA « une image du plan A cache les tracés du plan B ») —
+  // les zIndex d'imageOverlay n'ordonnent QUE les images : tous les tracés
+  // SVG partagent un renderer unique dans l'overlayPane, hors de portée.
+  // Fix structurel : UN PANE LEAFLET PAR PLAN (zIndex posé sur le pane),
+  // et TOUT le contenu du plan (tuiles + tracés + POI) rendu dedans →
+  // l'ordre de pile devient global, vecteurs compris. Dans un pane, le SVG
+  // est ajouté APRÈS les tuiles → les tracés d'un plan restent au-dessus de
+  // sa propre image.
+  let _panesParPlan = {};   // planId → { nom, pane, renderer, map }
+
+  function _panePour(planId) {
+    if (!_mapInstance || !planId) return null;
+    let e = _panesParPlan[planId];
+    if (e && e.map === _mapInstance) {
+      e.pane.style.zIndex = String(_zIndexPour(planId));
+      return e;
+    }
+    const nom = "ktaOsmPlan_" + String(planId).replace(/[^a-zA-Z0-9_-]/g, "_");
+    let pane = _mapInstance.getPane(nom);
+    if (!pane) pane = _mapInstance.createPane(nom);
+    pane.style.zIndex = String(_zIndexPour(planId));
+    e = { nom: nom, pane: pane, renderer: L.svg({ pane: nom }), map: _mapInstance };
+    _panesParPlan[planId] = e;
+    return e;
+  }
+
   function _chaqueExtra(fn) {
     Object.keys(_extraLayers).forEach(function(id) {
       const g = _extraLayers[id];
@@ -1451,13 +1491,9 @@
 
   function _appliquerOrdre() {
     _stackOrder.forEach(function(id) {
-      const z = _zIndexPour(id);
-      const groupe = (id === _selectedPlanId) ? _tilesLayer
-                   : (_extraLayers[id] ? _extraLayers[id].tiles : null);
-      if (!groupe) return;
-      groupe.eachLayer(function(l) {
-        try { if (typeof l.setZIndex === "function") l.setZIndex(z); } catch(e) {}
-      });
+      // v1.72.2 : l'ordre vit sur le PANE du plan (images ET vecteurs).
+      const e = _panesParPlan[id];
+      if (e && e.pane) e.pane.style.zIndex = String(_zIndexPour(id));
     });
   }
 
@@ -1499,12 +1535,14 @@
       if (!_extraLayers[planId] || _extraLayers[planId] !== g) return;
       if (!data) return;
       if (data.tilesOverview) {
+        const pn = _panePour(planId);
         _renderTilesInto(g.tiles, data.tilesOverview, p.georef,
-                         _extraOpacity[planId], _zIndexPour(planId));
+                         _extraOpacity[planId], _zIndexPour(planId), pn ? pn.nom : null);
       }
-      _renderDataLayersOnMiniMap(data, p.georef, g);
+      _renderDataLayersOnMiniMap(data, p.georef, g, planId);
       _appliquerOrdre();
       _appliquerVisibilites();
+      _renderModalTags();   // 🐛 v1.72.2 : les tags du plan ajouté arrivent DÈS son extraction
     });
   }
 
@@ -1525,6 +1563,7 @@
     // gratuit) et peuvent servir au plan principal.
     _appliquerOrdre();
     _renderMultiPanel();
+    _renderModalTags();   // 🐛 v1.72.2 : retirer un plan retire aussi ses tags
   }
 
   // sens : -1 = monter (vers le dessus), +1 = descendre
@@ -1697,7 +1736,7 @@
     _chaqueExtra(function(g, id) {
       const p = plans.find(function(x) { return x.id === id; });
       const data = _planDataCache[id];
-      if (p && data) _renderDataLayersOnMiniMap(data, p.georef, g);
+      if (p && data) _renderDataLayersOnMiniMap(data, p.georef, g, id);
     });
     _appliquerVisibilites();
   }
@@ -1708,6 +1747,12 @@
     const rows = document.getElementById("ktaOsmMultiRows");
     const addSel = document.getElementById("ktaOsmMultiAdd");
     if (!rows || !addSel) return;
+    // Ceinture v1.72.2 : le principal DOIT être dans la pile (cf bug du rendu
+    // initial) — tout futur chemin qui poserait _selectedPlanId sans passer
+    // par selectPlan est rattrapé ici.
+    if (_selectedPlanId && _stackOrder.indexOf(_selectedPlanId) === -1) {
+      _stackOrder.unshift(_selectedPlanId);
+    }
     const plans = _listGeorefPlans();
     const nomDe = function(id) {
       const p = plans.find(function(x) { return x.id === id; });

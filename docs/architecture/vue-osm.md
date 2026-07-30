@@ -603,4 +603,6 @@ Clé IDB = "z/x/y" (slippy tilenames OSM, EPSG:3857)
 - Garde anti-race : `_extraLayers[planId] !== g` après l'extraction ZIP async → abandon silencieux.
 - Avertissement `> 3` plans : 1× par session (`_warnedMulti`), même canal toast que le warn d'ouverture.
 
+**🧅 Panes par plan (v1.72.2)** : l'ordre de pile vit sur des **panes Leaflet dédiés** (`ktaOsmPlan_<id>`, zIndex 200+rang×5 posé sur le pane) — c'est la SEULE façon d'ordonner images ET vecteurs ensemble (les zIndex d'imageOverlay n'ordonnent que les images ; les L.Path ignorent `pane`, il faut leur donner un **`renderer: L.svg({pane})`** dédié). ⚠️ À la recréation de `_mapInstance`, `_panesParPlan` DOIT être vidé (les panes appartiennent à la carte détruite). ⚠️ Le principal doit être semé dans `_stackOrder` dès le rendu initial (chemin `_renderWidget` qui ne passe pas par `selectPlan`) — sinon pas de ligne ◉ ni d'opacité ni de tags pour lui.
+
 **Reste au lot 3 (v1.72)** : croisement fin (filtres par plan ?, popups enrichis cross-plan), liaisons portails dessinées entre plans sur OSM.
