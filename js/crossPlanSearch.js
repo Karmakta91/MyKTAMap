@@ -257,7 +257,36 @@
     try { input.focus(); } catch(e) {}
   }
 
-  window.CrossPlanSearch = { ouvrir: ouvrir };
+  // 🔎 v1.72.1 (KARMA « même principe pour la barre du HOME ») — API de
+  // recherche SANS UI : scanne la bibliothèque (même cache RAM _cache, TTL
+  // 2 min, partagé avec la modale) et retourne les correspondances. Utilisée
+  // par le dropdown live de la barre du HOME (homeLoader).
+  //   q   : chaîne (déjà lowercase-able ici)
+  //   max : cap de résultats points (défaut 8)
+  // → Promise<{ points: [{plan, pt}], scanEnCours: bool }>
+  //   `scanEnCours` = des plans restaient à lire quand le cap a été atteint
+  //   (le dropdown affiche « … » ; la modale reste le chemin exhaustif).
+  async function rechercher(q, max) {
+    q = String(q || "").toLowerCase().trim();
+    max = max || 8;
+    const out = [];
+    if (!q || !window.PlanRegistry) return { points: out, scanEnCours: false };
+    const plans = window.PlanRegistry.getAll() || [];
+    for (let i = 0; i < plans.length; i++) {
+      if (out.length >= max) return { points: out, scanEnCours: true };
+      const entry = await _pointsDuPlan(plans[i]);
+      for (const pt of entry.pts) {
+        if (out.length >= max) break;
+        const ok = (pt.nom && pt.nom.toLowerCase().indexOf(q) !== -1)
+                || (pt.id && String(pt.id).toLowerCase().indexOf(q) !== -1)
+                || (pt.tags && pt.tags.join(" ").toLowerCase().indexOf(q) !== -1);
+        if (ok) out.push({ plan: plans[i], pt: pt });
+      }
+    }
+    return { points: out, scanEnCours: false };
+  }
+
+  window.CrossPlanSearch = { ouvrir: ouvrir, rechercher: rechercher };
 
   console.log("[CrossPlanSearch] Module chargé");
 })();

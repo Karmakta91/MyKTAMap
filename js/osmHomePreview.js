@@ -1799,11 +1799,15 @@
   // Index construit PARESSEUSEMENT à la première saisie (extraire N ZIP au
   // mount du widget ralentirait le boot HOME pour un usage incertain).
   let _searchIndex = null;      // [{type:"plan"|"poi", planId, planName, georef, nom, x, y, tags}]
-  let _searchIndexEnCours = false;
+  // 🐛 v1.72.1 (KARMA « elle se bloque ») : pendant l'extraction, un 2e appel
+  // recevait `Promise.resolve(null)` IMMÉDIAT → _rendre re-tournait → nouvel
+  // appel → résolution immédiate → boucle de microtasks, UI gelée sur
+  // « Lecture des plans… ». Fix : retourner LA promesse en vol.
+  let _searchIndexPromise = null;
 
   function _construireIndexRecherche() {
-    if (_searchIndex || _searchIndexEnCours) return Promise.resolve(_searchIndex);
-    _searchIndexEnCours = true;
+    if (_searchIndex) return Promise.resolve(_searchIndex);
+    if (_searchIndexPromise) return _searchIndexPromise;
     const plans = _listGeorefPlans();
     const index = [];
     plans.forEach(function(p) {
@@ -1829,11 +1833,12 @@
         }).catch(function() {});
       });
     });
-    return chaine.then(function() {
+    _searchIndexPromise = chaine.then(function() {
       _searchIndex = index;
-      _searchIndexEnCours = false;
+      _searchIndexPromise = null;
       return index;
     });
+    return _searchIndexPromise;
   }
 
   // Projette un POI en latlng via le georef de SON plan (chaque plan a sa
@@ -1885,9 +1890,28 @@
     const resEl = container.querySelector("#ktaOsmHomeSearchResults");
     if (!input || !resEl) return;
 
+    // 🐛 v1.72.1 (spec finale KARMA) — le dropdown ÉPOUSE la barre : même
+    // gauche, même largeur, collé dessous. position:fixed + rect de l'input
+    // à chaque affichage ; largeur élargie (min 320px) et clampée au viewport
+    // si la barre est très étroite.
+    function _positionnerResultats() {
+      try {
+        const r = input.getBoundingClientRect();
+        const vw = window.innerWidth || document.documentElement.clientWidth;
+        const largeur = Math.min(Math.max(r.width, 320), vw - 16);
+        let gauche = r.left;
+        if (gauche + largeur > vw - 8) gauche = vw - 8 - largeur;   // clamp droite
+        if (gauche < 8) gauche = 8;                                  // clamp gauche
+        resEl.style.top   = Math.round(r.bottom + 6) + "px";
+        resEl.style.left  = Math.round(gauche) + "px";
+        resEl.style.width = Math.round(largeur) + "px";
+      } catch(e) {}
+    }
+
     function _rendre(q) {
       if (!q) { resEl.style.display = "none"; resEl.innerHTML = ""; return; }
       if (!_searchIndex) {
+        _positionnerResultats();
         resEl.style.display = "block";
         resEl.innerHTML = '<div class="kta-osm-search-empty">' +
           _escapeHtml(window.I18n.t("osm_mode.search.scanning")) + '</div>';
@@ -1900,12 +1924,14 @@
             || (e.tags && e.tags.toLowerCase().indexOf(q) !== -1);
       }).slice(0, 30);
       if (matches.length === 0) {
+        _positionnerResultats();
         resEl.style.display = "block";
         resEl.innerHTML = '<div class="kta-osm-search-empty">' +
           _escapeHtml(window.I18n.t("osm_mode.search.noResult")) + '</div>';
         return;
       }
-      resEl.style.display = "block";
+      _positionnerResultats();
+        resEl.style.display = "block";
       resEl.innerHTML = matches.map(function(e, i) {
         return '<button type="button" class="kta-osm-search-row" data-i="' + i + '">' +
                  (e.type === "plan"

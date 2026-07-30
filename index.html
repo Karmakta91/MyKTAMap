@@ -329,6 +329,11 @@
                    placeholder="🔎 Chercher un point dans tous mes plans…" autocomplete="off">
             <button type="button" id="loaderSearchBtn" class="loader-search-btn"
                     data-i18n-title="home.search.btnTitle" title="Chercher dans tous les plans">🔎</button>
+            <!-- 🔎 v1.72.1 (KARMA « même principe que la barre OSM ») : résultats
+                 EN DIRECT sous la barre — position:fixed, top/left/width posés en
+                 JS depuis le rect de l'input (même modèle éprouvé que la
+                 recherche du mode OSM). Entrée/🔎 = modale complète inchangée. -->
+            <div class="loader-search-results" id="loaderSearchResults" style="display:none;"></div>
           </div>
         </div>
         <div class="loader-header-actions">

@@ -580,6 +580,10 @@ Le **Mode Histoire** (note libre + PDF) était jusqu'ici enfermé dans l'écran 
 - Au-delà de **500 sorties**, les plus anciennes sont effacées automatiquement.
 - Le carnet n'est **pas** inclus dans l'export de profil pour le moment : changer d'appareil via l'export de profil ne transporte pas encore votre historique.
 
+### 🧙 Générateur : assistant pas-à-pas (depuis v1.72.1)
+
+Le **Générateur** (🏗️) vous guide désormais **étape par étape**, comme un installateur : chaque page ne montre qu'une chose (nom, image, calques…), les étapes optionnelles se **passent** d'un clic, et un **résumé final** vous montre ce qui est rempli, passé ou manquant — avec des avertissements utiles (ex. sans géoréférencement GPS, pas de Vue OSM ni d'export KMZ) **avant** de générer. Un ZIP importé pré-remplit toutes les étapes : vous ne faites que relire. Les habitués retrouvent l'ancien affichage complet via **🗒️ Tout afficher** (choix mémorisé).
+
 ### 🔽 Pied de page repliable (depuis v1.71.0)
 
 La petite **flèche** sous l'écran d'accueil replie le pied de page (copyright, liens, crédits) pour gagner de la place — il n'en reste qu'une ligne minimale « © MyKTAMap · version ». Re-cliquez pour le déplier. Votre choix est mémorisé et voyage avec l'export de profil.
@@ -868,7 +872,7 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 
 Cherche un point dans **tous les plans de ta bibliothèque** d'un coup, sans les ouvrir un par un :
 
-- **Depuis l'accueil** : la **barre de recherche 🔎 en haut de l'écran**, au centre de l'en-tête (depuis v1.69.0 — c'était un bouton d'outil avant). Tape ton point et valide avec **Entrée** ou le bouton 🔎 : les résultats s'ouvrent avec ta saisie déjà reprise. Sur mobile, la barre occupe la 2e ligne de l'en-tête.
+- **Depuis l'accueil** : la **barre de recherche 🔎 en haut de l'écran**, au centre de l'en-tête. Depuis v1.72.1, **les résultats apparaissent en direct sous la barre** dès 2 caractères (plans + points, avec le badge du plan) — cliquer un résultat charge le plan et centre la carte. **Entrée** ou 🔎 ouvre la recherche complète. Sur mobile, la barre occupe la 2e ligne de l'en-tête.
 - **Depuis la carte** : ouvre la recherche (Ctrl+K ou 🔍) → bouton **« 🌐 Chercher dans tous les plans »** en bas — ta saisie en cours est conservée.
 
 L'app lit les points (session + calques de données) de chaque plan **sur place**, avec la progression affichée (« Lecture 2/5 : Oise… »). Chaque résultat porte le **badge du plan** où il se trouve. Un clic : confirmation (si un plan est ouvert), chargement du bon plan, bascule sur le bon niveau et centrage sur le point — avec le bouton ↩️ Retour pour revenir.

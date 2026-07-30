@@ -1,8 +1,8 @@
 {
-  "version": "v1.71.0",
+  "version": "v1.72.1",
   "released": "2026-07-30",
   "notes": [
-    "🗂️ Le mode OSM affiche plusieurs plans en même temps : le bouton ≡ ouvre « Plans & filtres » — ordre, opacité et filtres (catégories, tags) pour chaque plan. Une barre de recherche dédiée trouve un plan ou un point et centre la carte dessus, sans aucune connexion supplémentaire.",
-    "🏠 L'accueil s'affine (pied de page repliable, liste de plans plus lisible, titres complets) et le Générateur accepte désormais PLUSIEURS PDF Histoire dans un même plan."
+    "🧙 Le Générateur devient un ASSISTANT pas-à-pas : une étape à la fois (Suivant / Précédent / Passer), champs vérifiés au fil de l'eau, et un RÉSUMÉ final qui signale ce qui manque avant de générer. Un ZIP importé pré-remplit toutes les étapes ; « Tout afficher » reste à un clic.",
+    "🔎 Les recherches montrent leurs résultats EN DIRECT sous la barre : celle de l'accueil (plans + points, clic = chargement et centrage) comme celle de la vue OSM — fini les listes qui débordent ou qui bloquent."
   ]
 }

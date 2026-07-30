@@ -237,7 +237,10 @@ function afficherPlanner() {
                L.imageOverlay par niveau avec swap on zoomend (Option B).
                Reduction memoire massive vs V1 (qui charge l'image entiere
                en RAM) — utile pour les gros plans > 50 Mo. -->
-          <div id="pl_v2_convert_wrap" style="display:none; margin-top:10px;">
+          <!-- 🧙 v1.72.1 (KARMA « piège ! ») : wrap TOUJOURS visible — avant,
+               il n'apparaissait qu'une fois l'image chargée, donc en wizard on
+               pouvait quitter la page Image sans jamais avoir VU l'option V2. -->
+          <div id="pl_v2_convert_wrap" style="margin-top:10px;">
             <label class="kta-planner-tiling-v2-row" id="pl_v2_convert_label" title="${window.I18n.t("gen.v2.rowTitle")}">
               <input type="checkbox" id="pl_tilingV2">
               <span>
@@ -585,8 +588,13 @@ function afficherPlanner() {
     btn.addEventListener("click", function() {
       _appliquerPlannerMode(btn.dataset.mode);
       _ecrirePlannerMode(btn.dataset.mode);
+      // 🧙 v1.72.1 : le jeu de pages dépend du mode → reconstruire
+      if (_wizActif) { _wizConstruirePages(); _wizIdx = 0; _wizMaxVisite = 0; _wizSkip = {}; _wizAfficherPage(0); }
     });
   });
+
+  // 🧙 v1.72.1 — Assistant (wizard) : injecté APRÈS tous les binds du form
+  _wizInit();
 
   document.getElementById("kta-planner-close").addEventListener("click", function() { modal.remove(); });
   document.getElementById("kta-planner-annuler").addEventListener("click", function() { modal.remove(); });
@@ -856,7 +864,332 @@ function _appliquerPlannerMode(mode) {
 }
 
 // =========================
-// 🆕 v1.17.0 — LÉGENDE PLAN-LEVEL
+// 🧙 v1.72.1 — ASSISTANT DE CRÉATION (wizard, topo KARMA « installeur
+// style Windows » — décisions 1:a 2:a 3:a)
+// =========================
+// COUCHE DE PRÉSENTATION pure au-dessus du formulaire existant : les
+// `.kta-aide-section` du corps deviennent les PAGES (mêmes IDs de champs,
+// même _genererZip, même préremplissage ZIP). L'assistant ne fait que
+// montrer/masquer, valider à chaque « Suivant », et construire le RÉSUMÉ
+// en lisant les champs. Toggle « 🗒️ Tout afficher » = comportement
+// historique (une page), persisté LS.
+const WIZ_LS_KEY = "myktamap_planner_wizard_v1";   // "0" = tout afficher
+let _wizActif = true;
+let _wizSections = [];   // les .kta-aide-section du corps, dans l'ordre DOM
+let _wizPages = [];      // pages actives selon le mode
+let _wizIdx = 0;
+let _wizMaxVisite = 0;
+let _wizSkip = {};       // pageId → true (marquage « passé »)
+
+// Métadonnées par section (ordre DOM). `simple` = présente en mode Simple.
+const WIZ_DEFS = [
+  { id: "accueil",  simple: true,  skip: false },
+  { id: "identite", simple: true,  skip: false, valider: function() {
+      const nom = document.getElementById("pl_name");
+      if (!nom || !nom.value.trim()) return window.I18n.t("gen.wiz.errNom");
+      return null;
+    } },
+  { id: "image",    simple: true,  skip: false, valider: function() {
+      if (_plannerMode === "modifier") return null;   // image conservée du ZIP
+      const vierge = document.querySelector('input[name="pl_image_mode"][value="vierge"]');
+      if (vierge && vierge.checked) return null;      // canvas généré
+      const f = document.getElementById("pl_baseImage");
+      if (f && f.files && f.files.length > 0) return null;
+      const w = parseInt(document.getElementById("pl_width")?.value, 10);
+      if (Number.isFinite(w) && w > 0) return null;   // image déjà chargée (ZIP)
+      return window.I18n.t("gen.wiz.errImage");
+    } },
+  { id: "imgLayers", simple: false, skip: true },
+  { id: "data",      simple: false, skip: true },
+  { id: "tracking",  simple: false, skip: true },
+  { id: "icones",    simple: false, skip: true },
+  { id: "legende",   simple: false, skip: true },
+  { id: "georef",    simple: false, skip: true },
+  { id: "histoire",  simple: false, skip: true }
+];
+
+function _wizEstActifLs() {
+  try { return localStorage.getItem(WIZ_LS_KEY) !== "0"; } catch(e) { return true; }
+}
+
+function _wizTitreDe(i) {
+  const t = _wizSections[i] && _wizSections[i].querySelector(".kta-aide-section-titre");
+  if (!t) return "?";
+  // 1er nœud texte utile (le titre peut contenir des boutons « Ajouter »)
+  for (const n of t.childNodes) {
+    if (n.nodeType === 3 && n.textContent.trim()) return n.textContent.trim();
+    if (n.nodeType === 1 && !n.classList.contains("kta-planner-add-btn") && n.textContent.trim())
+      return n.textContent.trim();
+  }
+  return t.textContent.trim();
+}
+
+// Reconstruit la liste des pages actives (mode simple/avancé).
+function _wizConstruirePages() {
+  const corps = document.getElementById("kta-planner-corps");
+  if (!corps) return;
+  _wizSections = Array.prototype.slice.call(corps.querySelectorAll(":scope > .kta-aide-section"))
+    .filter(function(sec) { return sec.id !== "kta-wiz-resume"; });
+  const mode = corps.getAttribute("data-planner-mode") || "simple";
+  const avance = (mode === "avance");
+  _wizPages = [];
+  WIZ_DEFS.forEach(function(def, i) {
+    if (i >= _wizSections.length) return;
+    if (!avance && !def.simple) return;
+    _wizPages.push({ def: def, section: i });
+  });
+  _wizPages.push({ def: { id: "resume", simple: true, skip: false }, section: -1 });
+}
+
+function _wizAfficherPage(idx) {
+  const corps = document.getElementById("kta-planner-corps");
+  if (!corps || !_wizActif) return;
+  idx = Math.max(0, Math.min(idx, _wizPages.length - 1));
+  _wizIdx = idx;
+  if (idx > _wizMaxVisite) _wizMaxVisite = idx;
+  const page = _wizPages[idx];
+
+  // Sections : seule celle de la page courante est visible
+  _wizSections.forEach(function(sec, i) {
+    sec.style.display = (page.section === i) ? "" : "none";
+  });
+  const resume = document.getElementById("kta-wiz-resume");
+  if (resume) resume.style.display = (page.def.id === "resume") ? "" : "none";
+  if (page.def.id === "resume") _wizConstruireResume();
+
+  // Le switcher Simple/Avancé n'a de sens que sur l'accueil
+  const sw = document.getElementById("kta-planner-mode-switcher");
+  const hint = document.getElementById("kta-planner-mode-hint");
+  const surAccueil = (page.def.id === "accueil");
+  if (sw && _plannerMode !== "modifier") sw.style.display = surAccueil ? "" : "none";
+  if (hint) hint.style.display = surAccueil ? "" : "none";
+
+  _wizRenderSteps();
+
+  const prev = document.getElementById("kta-wiz-prev");
+  const skip = document.getElementById("kta-wiz-skip");
+  const next = document.getElementById("kta-wiz-next");
+  if (prev) prev.style.display = (idx === 0) ? "none" : "";
+  if (skip) skip.style.display = page.def.skip ? "" : "none";
+  if (next) {
+    next.textContent = (idx === _wizPages.length - 2)
+      ? window.I18n.t("gen.wiz.versResume")
+      : window.I18n.t("gen.wiz.suivant");
+    next.style.display = (page.def.id === "resume") ? "none" : "";
+  }
+  const btnGen = document.getElementById("kta-planner-generer");
+  if (btnGen) btnGen.style.display = (page.def.id === "resume") ? "" : "none";
+  const err = document.getElementById("kta-planner-erreur");
+  if (err) err.style.display = "none";
+
+  try { corps.scrollTop = 0; } catch(e) {}
+}
+
+function _wizRenderSteps() {
+  const bar = document.getElementById("kta-wiz-steps");
+  if (!bar) return;
+  bar.innerHTML = _wizPages.map(function(p, i) {
+    const titre = (p.def.id === "resume") ? window.I18n.t("gen.wiz.resume") : _wizTitreDe(p.section);
+    let cls = "kta-wiz-step";
+    if (i === _wizIdx) cls += " kta-wiz-actuel";
+    else if (_wizSkip[p.def.id]) cls += " kta-wiz-passe";
+    else if (i <= _wizMaxVisite) cls += " kta-wiz-fait";
+    const clicable = (i <= _wizMaxVisite);
+    return '<button type="button" class="' + cls + '"' + (clicable ? '' : ' disabled') +
+           ' data-wiz-go="' + i + '" title="' + titre.replace(/"/g, "&quot;") + '">' +
+           (i + 1) + '</button>';
+  }).join('<span class="kta-wiz-lien"></span>');
+  bar.querySelectorAll("[data-wiz-go]").forEach(function(b) {
+    b.addEventListener("click", function() {
+      _wizAfficherPage(parseInt(b.getAttribute("data-wiz-go"), 10));
+    });
+  });
+}
+
+function _wizSuivant() {
+  const page = _wizPages[_wizIdx];
+  if (page.def.valider) {
+    const msg = page.def.valider();
+    if (msg) {
+      const el = document.getElementById("kta-planner-erreur");
+      if (el) { el.textContent = msg; el.style.display = ""; }
+      return;
+    }
+  }
+  delete _wizSkip[page.def.id];
+  _wizAfficherPage(_wizIdx + 1);
+}
+
+function _wizPasser() {
+  _wizSkip[_wizPages[_wizIdx].def.id] = true;
+  _wizAfficherPage(_wizIdx + 1);
+}
+
+// ── RÉSUMÉ : l'anti-oubli. État lu dans les CHAMPS, pas dans la navigation. ──
+function _wizEtatDe(pageId) {
+  function nbLignes(id) {
+    const l = document.getElementById(id);
+    return l ? l.querySelectorAll(":scope > *:not(.kta-planner-empty)").length : 0;
+  }
+  switch (pageId) {
+    case "identite": {
+      const nom = document.getElementById("pl_name");
+      return (nom && nom.value.trim()) ? "ok" : "manquant";
+    }
+    case "image": {
+      if (_plannerMode === "modifier") return "ok";
+      const vierge = document.querySelector('input[name="pl_image_mode"][value="vierge"]');
+      if (vierge && vierge.checked) return "ok";
+      const f = document.getElementById("pl_baseImage");
+      if (f && f.files && f.files.length > 0) return "ok";
+      const w = parseInt(document.getElementById("pl_width")?.value, 10);
+      return (Number.isFinite(w) && w > 0) ? "ok" : "manquant";
+    }
+    case "imgLayers": return nbLignes("pl_imageLayers_list") ? "ok" : "vide";
+    case "data":      return nbLignes("pl_dataLayers_list") ? "ok" : "vide";
+    case "icones":    return nbLignes("pl_icons_list") ? "ok" : "vide";
+    case "tracking": {
+      const sx = document.getElementById("pl_startX");
+      return (sx && sx.value !== "") ? "ok" : "vide";
+    }
+    case "legende":   return _plannerPlanLegend ? "ok" : "vide";
+    case "georef": {
+      const a = document.getElementById("pl_geo_A_x");
+      const b = document.getElementById("pl_geo_B_x");
+      return (a && a.value !== "" && b && b.value !== "") ? "ok" : "vide";
+    }
+    case "histoire":  return _plannerHistPdfs.length ? "ok" : "vide";
+  }
+  return "vide";
+}
+
+function _wizConstruireResume() {
+  const resume = document.getElementById("kta-wiz-resume");
+  if (!resume) return;
+  const ETATS = {
+    ok:       { ico: "✅", cls: "ok",       lbl: window.I18n.t("gen.wiz.etatRempli") },
+    vide:     { ico: "➖", cls: "vide",     lbl: window.I18n.t("gen.wiz.etatVide") },
+    passe:    { ico: "⏭️", cls: "vide",     lbl: window.I18n.t("gen.wiz.etatPasse") },
+    manquant: { ico: "❌", cls: "manquant", lbl: window.I18n.t("gen.wiz.etatManquant") }
+  };
+  let html = '<div class="kta-aide-section-titre">' + window.I18n.t("gen.wiz.resumeTitre") + '</div>';
+  html += '<div class="kta-wiz-resume-liste">';
+  _wizPages.forEach(function(p, i) {
+    if (p.def.id === "resume" || p.def.id === "accueil") return;
+    let etat = _wizEtatDe(p.def.id);
+    if (etat === "vide" && _wizSkip[p.def.id]) etat = "passe";
+    const E = ETATS[etat];
+    html += '<div class="kta-wiz-resume-row kta-wiz-' + E.cls + '">' +
+      '<span class="kta-wiz-resume-ico">' + E.ico + '</span>' +
+      '<span class="kta-wiz-resume-nom">' + _wizTitreDe(p.section) + '</span>' +
+      '<span class="kta-wiz-resume-etat">' + E.lbl + '</span>' +
+      '<button type="button" class="kta-planner-add-btn" data-wiz-edit="' + i + '">' +
+        window.I18n.t("gen.wiz.modifier") + '</button>' +
+    '</div>';
+  });
+  html += '</div>';
+  // Avertissements — informer, jamais brider
+  const avert = [];
+  if (_wizEtatDe("georef") !== "ok") avert.push(window.I18n.t("gen.wiz.warnGeoref"));
+  if (_wizEtatDe("data") !== "ok" && _plannerMode !== "modifier")
+    avert.push(window.I18n.t("gen.wiz.warnData"));
+  if (avert.length) {
+    html += '<div class="kta-wiz-resume-warns">' + avert.map(function(w) {
+      return '<div>⚠️ ' + w + '</div>';
+    }).join("") + '</div>';
+  }
+  resume.innerHTML = html;
+  resume.querySelectorAll("[data-wiz-edit]").forEach(function(b) {
+    b.addEventListener("click", function() {
+      _wizAfficherPage(parseInt(b.getAttribute("data-wiz-edit"), 10));
+    });
+  });
+}
+
+// Bascule assistant ↔ tout afficher (décision 2:a — les deux vivent)
+function _wizAppliquerAffichage() {
+  const corps = document.getElementById("kta-planner-corps");
+  if (!corps) return;
+  const toggle = document.getElementById("kta-wiz-toggle");
+  const steps = document.getElementById("kta-wiz-steps");
+  const nav = document.getElementById("kta-wiz-nav");
+  const btnGen = document.getElementById("kta-planner-generer");
+  const resume = document.getElementById("kta-wiz-resume");
+  corps.classList.toggle("kta-wiz-actif", _wizActif);
+  if (toggle) toggle.textContent = _wizActif
+    ? window.I18n.t("gen.wiz.toggleTout") : window.I18n.t("gen.wiz.toggleWiz");
+  if (_wizActif) {
+    if (steps) steps.style.display = "";
+    if (nav) nav.style.display = "";
+    _wizConstruirePages();
+    _wizIdx = 0; _wizMaxVisite = 0; _wizSkip = {};
+    _wizAfficherPage(0);
+  } else {
+    // Tout afficher = comportement historique intégral
+    if (steps) steps.style.display = "none";
+    if (nav) nav.style.display = "none";
+    if (resume) resume.style.display = "none";
+    if (btnGen) btnGen.style.display = "";
+    _wizSections.forEach(function(sec) { sec.style.display = ""; });
+    const sw = document.getElementById("kta-planner-mode-switcher");
+    const hint = document.getElementById("kta-planner-mode-hint");
+    if (sw && _plannerMode !== "modifier") sw.style.display = "";
+    if (hint) hint.style.display = "";
+  }
+}
+
+// Init : injecte la chrome (steps + nav + résumé + toggle) puis applique.
+function _wizInit() {
+  const corps = document.getElementById("kta-planner-corps");
+  if (!corps) return;
+  _wizActif = _wizEstActifLs();
+
+  // Barre d'étapes — sous le hint du mode
+  const hint = document.getElementById("kta-planner-mode-hint");
+  const steps = document.createElement("div");
+  steps.id = "kta-wiz-steps";
+  if (hint && hint.parentNode) hint.parentNode.insertBefore(steps, hint.nextSibling);
+
+  // Page résumé — avant le bloc erreur
+  const err = document.getElementById("kta-planner-erreur");
+  const resume = document.createElement("div");
+  resume.id = "kta-wiz-resume";
+  resume.className = "kta-aide-section kta-pl-col-full";
+  resume.style.display = "none";
+  if (err && err.parentNode) err.parentNode.insertBefore(resume, err);
+
+  // Nav — dans la rangée d'actions existante (avant Annuler)
+  const actions = corps.querySelector(".kta-conv-actions");
+  const nav = document.createElement("div");
+  nav.id = "kta-wiz-nav";
+  nav.innerHTML =
+    '<button type="button" class="kta-btn kta-btn-ghost" id="kta-wiz-prev">' + window.I18n.t("gen.wiz.precedent") + '</button>' +
+    '<button type="button" class="kta-btn kta-btn-ghost" id="kta-wiz-skip">' + window.I18n.t("gen.wiz.passer") + '</button>' +
+    '<button type="button" class="kta-btn kta-btn-primary" id="kta-wiz-next">' + window.I18n.t("gen.wiz.suivant") + '</button>';
+  if (actions) actions.insertBefore(nav, actions.firstChild);
+  document.getElementById("kta-wiz-prev").addEventListener("click", function() { _wizAfficherPage(_wizIdx - 1); });
+  document.getElementById("kta-wiz-skip").addEventListener("click", _wizPasser);
+  document.getElementById("kta-wiz-next").addEventListener("click", _wizSuivant);
+
+  // Toggle 🗒️/🧙 — à côté du switcher de mode
+  const sw = document.getElementById("kta-planner-mode-switcher");
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.id = "kta-wiz-toggle";
+  toggle.className = "kta-btn kta-btn-ghost kta-btn-small";
+  toggle.addEventListener("click", function() {
+    _wizActif = !_wizActif;
+    try { localStorage.setItem(WIZ_LS_KEY, _wizActif ? "1" : "0"); } catch(e) {}
+    _wizAppliquerAffichage();
+  });
+  if (sw && sw.parentNode) sw.parentNode.insertBefore(toggle, sw.nextSibling);
+
+  _wizConstruirePages();
+  _wizAppliquerAffichage();
+}
+
+// =========================
+// \U0001F195 v1.17.0 \u2014 L\u00c9GENDE PLAN-LEVEL
 // =========================
 // Ouvre l'éditeur LegendCustomization en mode "édition plan-level" via le
 // pattern de swap session ↔ plan. Étapes :
@@ -1059,6 +1392,14 @@ function _preRemplirFormulaire(config) {
                         : null;
   if (typeof _plannerLegendStatus === "function") _plannerLegendStatus();
   if (typeof _appliquerPlannerMode === "function") _appliquerPlannerMode("avance");
+  // 🧙 v1.72.1 — ZIP importé → wizard reconstruit en Avancé (pages toutes
+  // pré-remplies), atterrissage sur l'Identité : l'user ne fait que RÉVISER.
+  if (_wizActif) {
+    _wizConstruirePages();
+    _wizIdx = 0; _wizSkip = {};
+    _wizMaxVisite = _wizPages.length - 1;   // tout est visitable (prérempli)
+    _wizAfficherPage(1);
+  }
 
   // 🌐 v1.14.20 — Géoréférencement GPS : si le plan-config.json importé
   // contient `plan.georef = { pointA, pointB }`, on pré-remplit les inputs.
@@ -1975,16 +2316,12 @@ function _majCompteurPhotosPlanner() {
 //   - mode Nouveau + image → visible (File source via input pl_baseImage)
 //   - mode Nouveau sans img → cachee (pas de File a tuiler)
 function _majVisibiliteCheckboxV2() {
+  // 🧙 v1.72.1 (KARMA) : le wrap V2 est TOUJOURS visible désormais — en
+  // wizard, le masquer jusqu'au chargement de l'image faisait rater l'option
+  // (on pouvait passer à la page suivante avant qu'elle n'apparaisse). La
+  // fonction reste (call-sites conservés) mais ne masque plus jamais.
   const wrap = document.getElementById("pl_v2_convert_wrap");
-  if (!wrap) return;
-  if (_plannerMode === "modifier") {
-    wrap.style.display = "";
-    return;
-  }
-  // Mode Nouveau : visible si baseImage est uploade
-  const input = document.getElementById("pl_baseImage");
-  const aImage = !!(input && input.files && input.files[0]);
-  wrap.style.display = aImage ? "" : "none";
+  if (wrap) wrap.style.display = "";
 }
 
 // 🧱 v152 : Modal d'erreur VISIBLE (full-screen) quand la generation V2 echoue.

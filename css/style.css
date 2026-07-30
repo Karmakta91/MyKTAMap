@@ -20972,12 +20972,18 @@ html.kta-theme-light .loader-section-head { border-bottom-color: rgba(20, 30, 50
 /* 🔎 v1.71.0 (retour KARMA) — la barre vit dans la LIGNE DE TITRE
    « 🌍 Vue OSM » (mode réduit ET mode OSM) : le nœud y est déplacé par
    _monterRechercheDansHead. */
+/* Le head qui héberge la barre doit pouvoir WRAPPER (barre en 2e ligne
+   pleine largeur quand la place manque) au lieu de laisser déborder. */
+#ktaOsmHomeBox .loader-section-head { flex-wrap: wrap; min-width: 0; }
 .kta-osm-home-search {
   position: relative;
-  flex: 1 1 auto;
+  flex: 1 1 220px;      /* < 220 px dispo → passe en 2e ligne du head */
   min-width: 0;
+  max-width: 100%;
   margin-left: 14px;
 }
+/* En 2e ligne (wrap), pas de marge orpheline à gauche */
+#ktaOsmHomeBox .loader-section-head .kta-osm-home-search { margin-left: 0; }
 .kta-osm-home-search input {
   width: 100%;
   display: block;
@@ -20998,17 +21004,21 @@ html.kta-theme-light .loader-section-head { border-bottom-color: rgba(20, 30, 50
 .kta-osm-home-search input::placeholder { color: #8892a4; }
 .kta-osm-home-search input:focus { outline: none; border-color: rgba(140, 180, 255, 0.55); }
 .kta-osm-home-search-results {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  top: calc(100% + 4px);
-  width: min(520px, calc(100vw - 24px));
+  /* 🐛 v1.72.1 (KARMA « sort du cadre ») : ancré sur la LARGEUR DE LA BARRE
+     (elle vit dans la ligne de titre, souvent étroite et collée à droite) —
+     l'ancien centrage 520 px débordait du widget. */
+  /* 🐛 v1.72.1 (spec finale KARMA « collé sous la barre ») : position:fixed
+     (échappe à tout clipping parent) mais top + left + width sont posés EN JS
+     depuis le rect de l'input — le dropdown épouse la barre, où qu'elle soit
+     (widget réduit / mode OSM). AUCUNE règle horizontale ici : une seule
+     source de vérité, le JS. */
+  position: fixed;
   max-height: 46vh;
   overflow-y: auto;
   background: #121726;
   border: 1px solid rgba(140, 180, 255, 0.25);
   border-radius: 10px;
-  z-index: 1000;              /* au-dessus des panes Leaflet (max ~700) */
+  z-index: 100000;            /* au-dessus du mode OSM fullscreen (9999) et du ✕ (10001) */
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 .kta-osm-search-row {
@@ -21226,3 +21236,120 @@ html.kta-theme-light .kta-footer-toggle { color: #6a7488; }
 .kta-planner-hist-nom { color: #c8d0e0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kta-planner-hist-nom em { color: #8892a4; font-size: 10.5px; }
 html.kta-theme-light .kta-planner-hist-nom { color: #3a4256; }
+
+/* ═══════════════════════════════════════════════════════════
+   🧙 v1.72.1 — ASSISTANT du générateur (wizard)
+   ═══════════════════════════════════════════════════════════ */
+/* En mode assistant : une page à la fois → on neutralise la grille 2 colonnes */
+#kta-planner-corps.kta-wiz-actif { display: block !important; }
+#kta-planner-corps.kta-wiz-actif .kta-aide-section { max-width: 640px; margin-left: auto; margin-right: auto; }
+
+#kta-wiz-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 10px 0 14px;
+  flex-wrap: wrap;
+}
+.kta-wiz-step {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8892a4;
+  background: rgba(140, 180, 255, 0.06);
+  border: 1px solid rgba(140, 180, 255, 0.2);
+  cursor: pointer;
+  padding: 0;
+}
+.kta-wiz-step:disabled { opacity: 0.35; cursor: default; }
+.kta-wiz-step.kta-wiz-fait { color: #8cb4ff; border-color: rgba(140, 180, 255, 0.45); }
+.kta-wiz-step.kta-wiz-passe { color: #8892a4; border-style: dashed; }
+.kta-wiz-step.kta-wiz-actuel {
+  color: #1a1f2e;
+  background: #f4c542;
+  border-color: #f4c542;
+}
+.kta-wiz-lien { width: 14px; height: 1px; background: rgba(140, 180, 255, 0.25); }
+
+#kta-wiz-nav { display: flex; gap: 8px; margin-right: auto; }
+
+.kta-wiz-resume-liste { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+.kta-wiz-resume-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: rgba(140, 180, 255, 0.05);
+  border: 1px solid rgba(140, 180, 255, 0.14);
+  border-radius: 6px;
+  font-size: 12.5px;
+}
+.kta-wiz-resume-row.kta-wiz-manquant { border-color: rgba(255, 140, 140, 0.5); background: rgba(255, 140, 140, 0.07); }
+.kta-wiz-resume-nom { flex: 1 1 auto; color: #e8eaf0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kta-wiz-resume-etat { color: #8892a4; font-size: 11px; flex: 0 0 auto; }
+.kta-wiz-manquant .kta-wiz-resume-etat { color: #ff8c8c; font-weight: 600; }
+.kta-wiz-resume-warns {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(244, 197, 66, 0.35);
+  background: rgba(244, 197, 66, 0.07);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #e8d5a0;
+  line-height: 1.6;
+}
+#kta-wiz-toggle { margin-left: 8px; }
+html.kta-theme-light .kta-wiz-resume-nom { color: #1a1f2e; }
+html.kta-theme-light .kta-wiz-resume-warns { color: #6a5a1e; }
+
+/* 🔎 v1.72.1 — Résultats LIVE de la barre du HOME (même modèle que la
+   recherche OSM : fixed, top/left/width posés en JS depuis le rect de l'input) */
+.loader-search-results {
+  position: fixed;
+  max-height: 46vh;
+  overflow-y: auto;
+  background: #121726;
+  border: 1px solid rgba(140, 180, 255, 0.25);
+  border-radius: 10px;
+  z-index: 100000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.loader-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  color: #c8d0e0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(140, 180, 255, 0.08);
+  cursor: pointer;
+  min-height: 38px;
+}
+.loader-search-row:hover { background: rgba(140, 180, 255, 0.10); }
+.loader-search-row b { color: #e8eaf0; }
+.loader-search-badge {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: #8cb4ff;
+  background: rgba(140, 180, 255, 0.12);
+  border-radius: 4px;
+  padding: 1px 6px;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.loader-search-tous { justify-content: center; color: #8cb4ff; font-weight: 600; border-bottom: none; }
+.loader-search-vide { padding: 12px; font-size: 12px; color: #8892a4; font-style: italic; text-align: center; }
+html.kta-theme-light .loader-search-results { background: #f4ecd8; }
+html.kta-theme-light .loader-search-row { color: #3a4256; }
+html.kta-theme-light .loader-search-row b { color: #1a1f2e; }

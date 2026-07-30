@@ -581,6 +581,10 @@ The logbook tells them apart on its own, and it matters: preparing a map at home
 
 ---
 
+### 🧙 Generator: step-by-step wizard (since v1.72.1)
+
+The **Generator** (🏗️) now guides you **step by step**, like an installer: each page shows one thing (name, image, layers…), optional steps can be **skipped** in one click, and a **final summary** shows what's filled, skipped or missing — with useful warnings (e.g. no GPS georeferencing = no OSM view or KMZ export) **before** generating. An imported ZIP pre-fills every step: you just review. Power users can switch back to the old full view via **🗒️ Show all** (choice remembered).
+
 ### 🔽 Collapsible footer (since v1.71.0)
 
 The small **arrow** under the home screen collapses the footer (copyright, links, credits) to free up space — only a minimal « © MyKTAMap · version » line remains. Click again to expand. Your choice is remembered and travels with the profile export.
@@ -866,7 +870,7 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 Search for a point across **every plan in your library** at once, without opening them one by one:
 
-- **From the home screen**: the **🔎 search bar at the top of the screen**, centered in the header (since v1.69.0 — it used to be a tool button). Type your point and confirm with **Enter** or the 🔎 button: results open with your text already carried over. On mobile the bar takes the header's second line.
+- **From the home screen**: the **🔎 search bar at the top of the screen**, centered in the header. Since v1.72.1, **results show up live under the bar** from 2 characters (plans + points, with the plan badge) — clicking a result loads the plan and centers the map. **Enter** or 🔎 opens the full search. On mobile the bar takes the header's second line.
 - **From the map**: open the search (Ctrl+K or 🔍) → **"🌐 Search across all plans"** button at the bottom — your current input is kept.
 
 The app reads each plan's points (session + data layers) **in place**, showing progress ("Reading 2/5: Oise…"). Each result carries the **badge of the plan** it belongs to. One click: confirmation (if a plan is open), the right plan loads, the right level is selected and the view centers on the point — with the ↩️ Back button to return.

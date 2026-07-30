@@ -557,7 +557,121 @@
       if (searchBtn) searchBtn.addEventListener("click", _lancerRecherche);
       if (searchInput) {
         searchInput.addEventListener("keydown", function(e) {
-          if (e.key === "Enter") { e.preventDefault(); _lancerRecherche(); }
+          if (e.key === "Enter") { e.preventDefault(); _fermerLiveResultats(); _lancerRecherche(); }
+          if (e.key === "Escape") { _fermerLiveResultats(); searchInput.blur(); }
+        });
+      }
+
+      // 🔎 v1.72.1 (KARMA « même principe que la barre OSM ») — résultats EN
+      // DIRECT sous la barre, sans passer par la modale. Scan via l'API
+      // CrossPlanSearch.rechercher (cache RAM partagé avec la modale, TTL
+      // 2 min). Entrée / 🔎 / « Voir tout » = modale complète (exhaustive).
+      const liveRes = document.getElementById("loaderSearchResults");
+      let _liveJeton = 0;         // anti-race : seule la dernière requête rend
+      let _liveDebounce = null;
+
+      function _fermerLiveResultats() {
+        if (liveRes) { liveRes.style.display = "none"; liveRes.innerHTML = ""; }
+      }
+
+      // Même modèle éprouvé que la recherche OSM : fixed + rect de l'input.
+      function _positionnerLive() {
+        if (!liveRes || !searchInput) return;
+        try {
+          const r = searchInput.getBoundingClientRect();
+          const vw = window.innerWidth || document.documentElement.clientWidth;
+          const largeur = Math.min(Math.max(r.width, 320), vw - 16);
+          let gauche = r.left;
+          if (gauche + largeur > vw - 8) gauche = vw - 8 - largeur;
+          if (gauche < 8) gauche = 8;
+          liveRes.style.top   = Math.round(r.bottom + 6) + "px";
+          liveRes.style.left  = Math.round(gauche) + "px";
+          liveRes.style.width = Math.round(largeur) + "px";
+        } catch(e) {}
+      }
+
+      function _renderLive(q, jeton) {
+        const _t2 = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
+        // 1) Plans dont le NOM matche (immédiat, registre en RAM)
+        const plans = (window.PlanRegistry && window.PlanRegistry.getAll)
+          ? (window.PlanRegistry.getAll() || []) : [];
+        const plansOk = plans.filter(function(p) {
+          return p && p.name && p.name.toLowerCase().indexOf(q) !== -1;
+        }).slice(0, 3);
+
+        _positionnerLive();
+        liveRes.style.display = "block";
+        liveRes.innerHTML = '<div class="loader-search-vide">' + _t2("xps.scanning") + '</div>';
+
+        // 2) Points (async, cache partagé avec la modale)
+        if (!window.CrossPlanSearch || typeof window.CrossPlanSearch.rechercher !== "function") return;
+        window.CrossPlanSearch.rechercher(q, 8).then(function(res) {
+          if (jeton !== _liveJeton) return;   // saisie plus récente en cours
+          const pts = res.points || [];
+          if (!plansOk.length && !pts.length) {
+            liveRes.innerHTML = '<div class="loader-search-vide">' + _t2("xps.noResult") + '</div>';
+            return;
+          }
+          let html = "";
+          plansOk.forEach(function(p, i) {
+            html += '<button type="button" class="loader-search-row" data-lplan="' + i + '">' +
+                    '🗺️ <b>' + escapeHtml(p.name) + '</b></button>';
+          });
+          pts.forEach(function(e, i) {
+            html += '<button type="button" class="loader-search-row" data-lpt="' + i + '">' +
+                    (e.pt.source === "session" ? "✏️" : "📄") + ' ' +
+                    escapeHtml(e.pt.nom || e.pt.id || (e.pt.x + "," + e.pt.y)) +
+                    '<span class="loader-search-badge">' + escapeHtml(e.plan.name || e.plan.id) + '</span>' +
+                    '</button>';
+          });
+          html += '<button type="button" class="loader-search-row loader-search-tous" data-ltous="1">' +
+                  _t2("home.search.tousResultats") + '</button>';
+          liveRes.innerHTML = html;
+
+          liveRes.querySelectorAll("[data-lplan]").forEach(function(b) {
+            b.addEventListener("click", function() {
+              const p = plansOk[parseInt(b.getAttribute("data-lplan"), 10)];
+              _fermerLiveResultats();
+              if (p) chargerPlanDuRegistre(p.id);
+            });
+          });
+          liveRes.querySelectorAll("[data-lpt]").forEach(function(b) {
+            b.addEventListener("click", function() {
+              const e = pts[parseInt(b.getAttribute("data-lpt"), 10)];
+              _fermerLiveResultats();
+              if (!e || !window.InterPlanLinks) return;
+              // Même pipeline d'arrivée que la modale : chargement du plan,
+              // bascule niveau, pan/flash. Depuis le HOME → pas de confirmation.
+              window.InterPlanLinks.goTo(e.plan.id, {
+                x: e.pt.x, y: e.pt.y, level: e.pt.level,
+                tag: (Array.isArray(e.pt.tags) && e.pt.tags[0]) || undefined,
+                planName: e.plan.name || e.plan.id,
+                label: e.pt.nom || e.pt.id || (e.pt.x + "," + e.pt.y)
+              }, { confirm: false });
+            });
+          });
+          const tous = liveRes.querySelector("[data-ltous]");
+          if (tous) tous.addEventListener("click", function() {
+            _fermerLiveResultats();
+            if (window.CrossPlanSearch) window.CrossPlanSearch.ouvrir(q);
+          });
+        });
+      }
+
+      if (searchInput && liveRes) {
+        searchInput.addEventListener("input", function() {
+          const q = String(searchInput.value || "").toLowerCase().trim();
+          if (_liveDebounce) clearTimeout(_liveDebounce);
+          if (q.length < 2) { _fermerLiveResultats(); return; }
+          _liveDebounce = setTimeout(function() {
+            _renderLive(q, ++_liveJeton);
+          }, 250);
+        });
+        // Fermer au clic hors de la barre (le clic-résultat vit dans la barre)
+        document.addEventListener("click", function(e) {
+          if (!liveRes || liveRes.style.display === "none") return;
+          const barre = document.getElementById("loaderSearchBar");
+          if (barre && !barre.contains(e.target)) _fermerLiveResultats();
         });
       }
 

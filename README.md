@@ -12,9 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.71.0` (30/07/2026)
+## 📦 Version courante — `v1.72.1` (30/07/2026)
 
-> 🗂️ **Mode OSM lot 2 — multi-plans** : N plans géoréférencés superposés, gestion complète dans la **modale ≡ « Plans & filtres »** (pile ▲▼, opacité par plan, chips de filtrage par plan + globaux, tags agrégés), recherche dans la ligne de titre. 📄 **Générateur : PDF Histoire multiples** (`plan.histoirePdfs[]` + rétrocompat). 🏠 **HOME affiné** : colonne plans `fit-content` sans titres tronqués, rows épurées (▶️/version retirés), footer repliable (profil-exporté), bande profil/Reprendre amincie. 🐛 dropdown OSM désynchronisé, chips noires PC, 2 bugs mobile. 📱 Plein écran iPhone : 2e tentative → **rollback** (post-mortem dans ui.md).
+> 🧙 **Générateur = ASSISTANT pas-à-pas** (topo « installeur style Windows », décisions 1:a 2:a 3:a) : les 10 sections deviennent des pages Suivant/Précédent/Passer, barre d'étapes cliquable, **validation à chaque étape** et **page Résumé anti-oubli** (états ✅/➖/⏭/❌ + avertissements : pas de georef → pas de Vue OSM/KMZ…). ZIP importé → Avancé, toutes pages pré-remplies, on ne fait que réviser. Toggle 🗒️ « Tout afficher » = comportement historique conservé (persisté). **Couche de présentation pure** : mêmes champs, même génération — zéro réécriture des 3100 lignes.
 >
 > Détail complet de cette version et de toutes les précédentes : **[📋 Journal des versions](#-journal-des-versions)** (fin de fichier).
 
@@ -449,7 +449,19 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.71.0 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.72.1 → v1.26)
+
+**🧙 v1.72.1 (30/07/2026)** — **Générateur : assistant pas-à-pas (topo KARMA « installeur style Windows, évite les oublis » → reco 1:a 2:a 3:a)** :
+- **Architecture — couche de présentation PURE** : les `.kta-aide-section` du form existant DEVIENNENT les pages (mêmes IDs de champs, même `_genererZip`, même préremplissage ZIP). Le wizard montre/masque, valide au « Suivant », et lit les champs pour le résumé — **zéro réécriture** du module de 3100 lignes, risque de régression minimal.
+- **Flow** : Accueil (ZIP/exemple + Simple|Avancé) → Identité✱ → Image✱ → [7 pages optionnelles Passables en Avancé] → **Résumé**. Simple = 4 pages. **ZIP importé** → Avancé, toutes étapes visitables (`_wizMaxVisite` = max), atterrissage sur Identité pré-remplie.
+- **Résumé anti-oubli** : état par page **lu dans les CHAMPS** (pas dans la navigation) — ✅ rempli / ➖ vide / ⏭ passé / ❌ manquant (requis) + bouton Modifier (saut direct) + avertissements non bloquants (sans georef → Vue OSM/KMZ indisponibles ; aucun datalayer → plan vide).
+- **Navigation** : barre d'étapes numérotée cliquable (pages visitées), validation par page via le bloc erreur existant, switcher Simple/Avancé visible uniquement sur l'Accueil (changer de mode reconstruit les pages).
+- **Toggle 🗒️ « Tout afficher »** (décision 2:a) : l'affichage historique une-page reste à un clic, persisté LS `myktamap_planner_wizard_v1`. En wizard, la grille 2 colonnes est neutralisée (`kta-wiz-actif` → block, sections centrées 640px).
+- **🐛 Piège attrapé par KARMA au test** : la checkbox « Convertir en V2 tuilé » n'apparaissait qu'UNE FOIS l'image chargée — en wizard on pouvait quitter la page Image sans jamais l'avoir vue. **Toujours visible** désormais (`_majVisibiliteCheckboxV2` ne masque plus ; sans image, la génération bloque déjà sur `dimInconnues` avant d'utiliser la checkbox — aucun risque).
+- **🐛 Recherche OSM (repro KARMA)** : ① UI **gelée** sur « Lecture des plans… » — pendant l'extraction, un 2e appel à `_construireIndexRecherche` recevait `Promise.resolve(null)` immédiat → boucle de microtasks avec `_rendre` (fix : retourner **la promesse en vol**) ; ② barre + dropdown **hors cadre** (2 itérations) : le head wrappe désormais (`flex-wrap`, barre en 2e ligne pleine largeur si < 220 px dispo, `max-width:100%`) et le dropdown (4 itérations — j'avais accumulé des règles contradictoires, reprises à zéro sur rappel KARMA) : **`position:fixed`, top + left + width posés EN JS depuis le rect de l'input** → il épouse la barre (collé dessous, même gauche, largeur = barre élargie à 320 px min, clampée viewport). Une seule source de vérité, plus aucune règle horizontale CSS. z-index 100000.
+- **🔎 Barre du HOME : résultats LIVE (demande KARMA « même principe que la barre OSM »)** : dès 2 caractères (debounce 250 ms), dropdown collé sous la barre — 3 plans max (nom, registre RAM) + 8 points (via **nouvelle API `CrossPlanSearch.rechercher(q, max)`**, cache RAM partagé avec la modale) + « Voir tous les résultats… » → modale. Clic plan → chargement ; clic point → `InterPlanLinks.goTo` sans confirmation (on est au HOME). Jeton anti-race, fermeture au clic extérieur/Échap, positionnement fixed+rect (modèle éprouvé de la barre OSM). Entrée/🔎 → modale, inchangé.
+- 17 clés i18n `gen.wiz.*` fr/en/es. **Sources** v1.72.1. Aucune nouvelle surface réseau.
+
 
 **🗂️ v1.71.0 (30/07/2026)** — **Mode OSM lot 2 : multi-plans (« croisement de données OSM », cas KARMA Paris 13e + 14e + galeries techniques)** :
 - **Refactor pivot** : les 2 rendus du widget deviennent **paramétrés** — `_renderTilesInto(groupe, tilesData, georef, opacité, zIndex)` (les wrappers historiques délèguent) et `_renderDataLayersOnMiniMap(data, georef, cible?)` (33 références internes aliasées `dataL/poiL/…` ; sans `cible` = groupes module du plan principal, avec = groupes d'un plan ajouté). Zéro duplication des ~460 lignes de rendu data.
