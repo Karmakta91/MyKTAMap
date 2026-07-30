@@ -1002,8 +1002,10 @@
   // bouton réapparaîtra au prochain saut si des niveaux restent à dépiler.
   //
   // 🆕 v1.61.0 (U4, KARMA « pouvoir réduire ou supprimer ce bouton ») :
-  //   - [✕] ferme le bouton SANS déclencher le retour (dismiss ponctuel —
-  //     la pile reste intacte, le bouton réapparaîtra au prochain saut) ;
+  //   - [✕] ferme le bouton SANS déclencher le retour. 🆕 v1.73.0 (KARMA
+  //     « supprime les retours possibles — éviter un empilement inutile ») :
+  //     ✕ VIDE AUSSI LA PILE — fermer = renoncer à la chaîne de retours,
+  //     le bouton ne réapparaîtra pas au prochain saut avec du périmé ;
   //   - [–] RÉDUIT en mini-pastille ↩️ discrète (clic pastille = ré-expansion,
   //     jamais de retour direct depuis la pastille — anti-mauvais-clic).
   //     Le choix « réduit » est MÉMORISÉ (localStorage) : les prochains sauts
@@ -1068,7 +1070,8 @@
       _afficherBoutonRetour("mini");
     });
     wrap.querySelector('[data-act="close"]').addEventListener("click", function() {
-      _retirerBoutonRetour();   // dismiss ponctuel — pile intacte
+      _retirerBoutonRetour();
+      _navStack.length = 0;   // v1.73.0 : fermer = abandonner la chaîne de retours
     });
     document.documentElement.appendChild(wrap);
     _backBtnTimer = setTimeout(_retirerBoutonRetour, 15000);

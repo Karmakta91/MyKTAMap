@@ -899,10 +899,7 @@
     const pA = georef.pointA, pB = georef.pointB;
     let t;
     try {
-      t = window.KmzExport.buildTransform(
-        { x: pA.x, y: pA.y }, { x: pB.x, y: pB.y },
-        { lat: pA.lat, lng: pA.lng }, { lat: pB.lat, lng: pB.lng }
-      );
+      t = window.KmzExport.buildTransformCalib(georef);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(e) { console.warn("[OsmHomePreview] buildTransform échec :", e); return null; }
     return {
       planToLatLng: function(x, y) {
@@ -1892,9 +1889,7 @@
     try {
       if (!window.KmzExport || typeof window.KmzExport.buildTransform !== "function") return null;
       const g = entry.georef;
-      const t = window.KmzExport.buildTransform(
-        { x: g.pointA.x, y: g.pointA.y }, { x: g.pointB.x, y: g.pointB.y },
-        { lat: g.pointA.lat, lng: g.pointA.lng }, { lat: g.pointB.lat, lng: g.pointB.lng });
+      const t = window.KmzExport.buildTransformCalib(g);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
       const gps = window.KmzExport.planToGps(t, entry.x, entry.y);
       return gps ? L.latLng(gps.lat, gps.lng) : null;
     } catch(e) { return null; }

@@ -378,7 +378,7 @@
             "mais tu paniques et tu as besoin d'infos vitales en GROS. Affiche en plein écran tes coords " +
             "GPS + cap boussole + niveau batterie, masque tout le reste de l'UI. Conserve ton autonomie.</li>" +
           // 🆕 v1.40.32 — Ajout du 3e mode urgence (Sortie d'urgence v1.35.0, oublié à l'onboarding)
-          "<li>🚨 <strong>Sortie d'urgence</strong> <em>(v1.35+)</em> : tu veux <strong>sortir vite</strong>. " +
+          "<li>🚨 <strong>Sortie d'urgence</strong> : tu veux <strong>sortir vite</strong>. " +
             "L'app calcule via pathfinder l'itinéraire optimal depuis ta position vers la <strong>sortie " +
             "la plus proche</strong> — un POI d'accès surface (cavage, puits ou escalier ouvert : tags " +
             "<code>cao</code> / <code>peo</code> / <code>eso</code>) ou tagué <code>entrée</code> (on " +
@@ -780,7 +780,7 @@
         "<ul>" +
           "<li><strong>Note libre</strong> (éditeur Markdown inline) : titres, listes, liens, gras / " +
             "italique, blocs code. Sauvegarde auto, persistée localement par plan.</li>" +
-          "<li><strong>Documents PDF</strong> <em>(v1.69.0 : jusqu'à 10 par plan)</em> : importe tes " +
+          "<li><strong>Documents PDF</strong> <em>(jusqu'à 10 par plan)</em> : importe tes " +
             "PDF (topo originale, plan IGN historique, compte-rendu de sortie, étude géologique…). " +
             "Ils s'empilent — un nouvel import n'écrase plus le précédent — et une liste te laisse " +
             "passer de l'un à l'autre. Stockage IndexedDB, affichage intégré (iframe sandboxée). " +
@@ -824,8 +824,8 @@
         "réunis <strong>tous plans confondus</strong>, lisibles et modifiables <strong>sans charger le " +
         "plan</strong>.</p>" +
         "<p>🔇 <strong>100 % local</strong> : rien n'est envoyé. Une sortie très courte et sans trace " +
-        "n'est pas conservée, et le carnet part vide — il ne peut pas reconstituer tes sorties d'avant " +
-        "la v1.69.0.</p>",
+        "n'est pas conservée, et le carnet part vide — il ne peut pas reconstituer tes sorties " +
+        "d'avant son arrivée.</p>",
       hint: "Le carnet répond à « qu'est-ce que j'ai fait le 12 juillet ? » — une question à laquelle l'app ne savait pas répondre avant."
     },
 
@@ -855,20 +855,20 @@
         "<p>🔐 <strong>Code d'accès local optionnel</strong> : PIN 4-6 chiffres + Face ID / Touch ID / " +
         "Windows Hello (WebAuthn). Protection au démarrage de l'app, idéal si tu prêtes ton téléphone.</p>" +
         // 🆕 v1.40.32 — Mention commande vocale (oubliée à l'onboarding depuis v1.34.0)
-        "<p>🎤 <strong>Commande vocale</strong> <em>(v1.34+)</em> : bouton micro flottant en bas-droite " +
+        "<p>🎤 <strong>Commande vocale</strong> : bouton micro flottant en bas-droite " +
         "du mode carte. Dis « <em>aller à [POI]</em> », « <em>activer tracker</em> », « <em>sortie d'urgence</em> » " +
         "et l'app exécute. Utilise la Web Speech API native du navigateur, <strong>aucun audio</strong> " +
         "ne quitte ton appareil. Auto-stop après commande exécutée pour économiser la batterie. iOS Safari " +
         "supporté (avec libération propre du micro au stop).</p>" +
         // 🆕 v1.40.32 — Mention vibration haptique + thème clair (déjà mentionnés mais brièvement)
-        "<p>🪫 <strong>Vibration haptique</strong> <em>(v1.34.26+)</em> : toggle dans Configuration. " +
+        "<p>🪫 <strong>Vibration haptique</strong> : toggle dans Configuration. " +
         "Vibre sur 5 events critiques (arrivée à destination, mode urgence, etc.). Discret, non intrusif.</p>" +
         "<p>📋 <strong>Rapports de crash</strong> : si l'app a été tuée par l'OS (OOM mobile typiquement), " +
         "le rapport est archivé dans 📊 Inspecteur mémoire → section Derniers crashs. Copiable pour " +
         "envoi à l'auteur via la page de contact.</p>" +
-        "<p>🔎 <strong>Barre de recherche de l'accueil</strong> <em>(v1.69.0)</em> : au centre de " +
+        "<p>🔎 <strong>Barre de recherche de l'accueil</strong> : au centre de " +
         "l'en-tête, elle cherche un point dans <strong>tous tes plans</strong> sans en ouvrir " +
-        "aucun — Entrée ou 🔎 pour lancer.</p>" +
+        "aucun — les résultats s'affichent en direct sous la barre, Entrée ou 🔎 pour la recherche complète.</p>" +
         "<p>📚 <strong>Aide intégrée</strong> (sidebar gauche → 📚) : doc complète de chaque fonction. " +
         "Si tu te demandes « comment fait-on X ? », c'est là.</p>" +
         "<p><strong>Bonne exploration ! 🚀</strong></p>",
@@ -1162,7 +1162,7 @@
           "<li>🚨 <strong>XL emergency mode (panic)</strong>: you know where you are (the tracker shows it) " +
             "but you're panicking and need vital info BIG. Displays your GPS coordinates + compass " +
             "heading + battery level fullscreen, hiding the rest of the UI. Saves your battery.</li>" +
-          "<li>🚨 <strong>Emergency exit</strong> <em>(v1.35+)</em>: you want to <strong>get out fast</strong>. " +
+          "<li>🚨 <strong>Emergency exit</strong>: you want to <strong>get out fast</strong>. " +
             "The app computes via pathfinder the optimal route from your position to the <strong>nearest " +
             "exit</strong> — a surface-access POI (open cavage, shaft or stairway: tags " +
             "<code>cao</code> / <code>peo</code> / <code>eso</code>) or tagged <code>entrée</code> (you " +
@@ -1536,7 +1536,7 @@
         "<ul>" +
           "<li><strong>Free note</strong> (inline Markdown editor): headings, lists, links, bold / " +
             "italic, code blocks. Auto-save, persisted locally per plan.</li>" +
-          "<li><strong>PDF documents</strong> <em>(v1.69.0: up to 10 per plan)</em>: import your " +
+          "<li><strong>PDF documents</strong> <em>(up to 10 per plan)</em>: import your " +
             "PDFs (original survey, historical IGN map, trip report, geological study…). They stack " +
             "up — a new import no longer overwrites the previous one — and a list lets you switch " +
             "between them. IndexedDB storage, embedded display (sandboxed iframe). The PDF shipped " +
@@ -1578,8 +1578,8 @@
         "<strong>across all plans</strong>, readable and editable <strong>without loading the " +
         "plan</strong>.</p>" +
         "<p>🔇 <strong>100% local</strong>: nothing is uploaded. A very short trip that left no trace is " +
-        "not kept, and the logbook starts empty — it cannot reconstruct your trips from before " +
-        "v1.69.0.</p>",
+        "not kept, and the logbook starts empty — it cannot reconstruct your trips from " +
+        "before it existed.</p>",
       hint: "The logbook answers \"what did I do on July 12th?\" — a question the app simply could not answer before."
     },
 
@@ -1608,19 +1608,19 @@
         "performance, M-LVL if applicable, etc.).</p>" +
         "<p>🔐 <strong>Optional local access code</strong>: 4-6 digit PIN + Face ID / Touch ID / " +
         "Windows Hello (WebAuthn). Protection at app startup, ideal if you lend your phone.</p>" +
-        "<p>🎤 <strong>Voice command</strong> <em>(v1.34+)</em>: floating mic button at the bottom-right " +
+        "<p>🎤 <strong>Voice command</strong>: floating mic button at the bottom-right " +
         "of map mode. Say \"<em>go to [POI]</em>\", \"<em>enable tracker</em>\", \"<em>emergency exit</em>\" " +
         "and the app executes. Uses the browser's native Web Speech API, <strong>no audio</strong> " +
         "leaves your device. Auto-stop after the command runs to save battery. iOS Safari " +
         "supported (with proper mic release on stop).</p>" +
-        "<p>🪫 <strong>Haptic vibration</strong> <em>(v1.34.26+)</em>: toggle in Configuration. " +
+        "<p>🪫 <strong>Haptic vibration</strong>: toggle in Configuration. " +
         "Vibrates on 5 critical events (arrival at destination, emergency mode, etc.). Discreet, non-intrusive.</p>" +
         "<p>📋 <strong>Crash reports</strong>: if the app was killed by the OS (mobile OOM typically), " +
         "the report is archived in 📊 Memory inspector → Latest crashes section. Copyable to " +
         "send to the author via the contact page.</p>" +
-        "<p>🔎 <strong>Home search bar</strong> <em>(v1.69.0)</em>: centered in the header, it searches " +
-        "a point across <strong>all your plans</strong> without opening any — Enter or 🔎 to run " +
-        "it.</p>" +
+        "<p>🔎 <strong>Home search bar</strong>: centered in the header, it searches " +
+        "a point across <strong>all your plans</strong> without opening any — results show up live under the bar, Enter or 🔎 for " +
+        "the full search.</p>" +
         "<p>📚 <strong>Built-in help</strong> (left sidebar → 📚): full documentation of each feature. " +
         "If you wonder \"how do I do X?\", that's where it is.</p>" +
         "<p><strong>Happy exploring! 🚀</strong></p>",

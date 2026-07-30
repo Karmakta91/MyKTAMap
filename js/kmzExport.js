@@ -51,15 +51,23 @@
   // MATH AFFINE 2D
   // =========================
 
-  // Construit une transformation affine 2D similarity (rotation+scale+translation)
-  // qui mappe (x,y) plan vers (lat,lng) GPS, à partir de 2 points de calibrage.
+  // Construit une transformation 2D qui mappe (x,y) plan vers (lat,lng) GPS.
   //
-  // planA, planB : {x, y} en pixels image
-  // gpsA, gpsB   : {lat, lng} en degrés décimaux
+  // planA, planB : {x, y} en pixels image      gpsA, gpsB : {lat, lng}
+  // 📐 v1.73.0 (KARMA « erreurs de projection sur un assemblage ») :
+  // planC/gpsC OPTIONNELS. Absents → similitude 2 points (rotation + échelle
+  // uniforme), comportement historique BIT-À-BIT. Présents → AFFINE 6 DOF
+  // (échelles X/Y indépendantes + cisaillement) résolue exactement sur les
+  // 3 correspondances — corrige une déformation GLOBALE constante, PAS les
+  // erreurs locales d'un assemblage morceau par morceau (l'affine moyenne).
+  // C quasi colinéaire avec A-B (aire du triangle < seuil) → C IGNORÉ,
+  // repli similitude + `degenereC: true` (jamais de throw pour C : optionnel).
   //
-  // Retourne { refPlan, refGps, metresParPixel, rotation, latMoyenne }
-  // ou throw si distance insuffisante.
-  function buildTransform(planA, planB, gpsA, gpsB) {
+  // Retourne { refPlan, refGps, metresParPixel, rotation, latMoyenne,
+  //            affine?, affineInv?, degenereC? } — metresParPixel/rotation
+  // restent dérivés de A/B même en affine (affichage d'échelle : approximation
+  // assumée, une affine n'a pas UNE échelle).
+  function buildTransform(planA, planB, gpsA, gpsB, planC, gpsC) {
     if (!planA || !planB || !gpsA || !gpsB) {
       throw new Error(window.I18n.t("kmz.err.calibIncomplete"));
     }
@@ -96,18 +104,96 @@
     const angleGps  = Math.atan2(dyGps,  dxGps);
     const rotation  = angleGps - anglePlan;
 
-    return {
+    const t = {
       refPlan:        { x: planA.x, y: planA.y },
       refGps:         { lat: gpsA.lat, lng: gpsA.lng },
       metresParPixel: metresParPixel,
       rotation:       rotation,
       latMoyenne:     latMoy
     };
+
+    // 📐 Point C optionnel → transformation AFFINE (repère : yF = -y, mètres
+    // équirectangulaires relatifs à gpsA, à la latitude moyenne des 3 points).
+    const _fin = function(v) { return typeof v === "number" && Number.isFinite(v); };
+    if (planC && gpsC && _fin(planC.x) && _fin(planC.y) && _fin(gpsC.lat) && _fin(gpsC.lng)) {
+      const x1 = planA.x, y1 = -planA.y,
+            x2 = planB.x, y2 = -planB.y,
+            x3 = planC.x, y3 = -planC.y;
+      // 2 × aire du triangle plan — quasi nul = C colinéaire avec A-B :
+      // l'affine serait dégénérée (matrice non inversible) → repli 2 points.
+      const det3 = x1 * (y2 - y3) - y1 * (x2 - x3) + (x2 * y3 - x3 * y2);
+      if (Math.abs(det3) < MIN_PLAN_DISTANCE * MIN_PLAN_DISTANCE * 0.05) {
+        t.degenereC = true;
+        console.warn("[KmzExport] Point C quasi colinéaire avec A-B — ignoré (repli 2 points)");
+        return t;
+      }
+      const latMoy3 = (gpsA.lat + gpsB.lat + gpsC.lat) / 3;
+      const kLng = 111320 * Math.cos(latMoy3 * Math.PI / 180), kLat = 110540;
+      // Mètres Est/Nord relatifs à gpsA
+      const E = [0, (gpsB.lng - gpsA.lng) * kLng, (gpsC.lng - gpsA.lng) * kLng];
+      const N = [0, (gpsB.lat - gpsA.lat) * kLat, (gpsC.lat - gpsA.lat) * kLat];
+      // Aire du triangle GPS quasi nulle → même dégénérescence côté monde
+      const detG = E[0] * (N[1] - N[2]) - N[0] * (E[1] - E[2]) + (E[1] * N[2] - E[2] * N[1]);
+      if (Math.abs(detG) < MIN_GPS_DISTANCE_M * MIN_GPS_DISTANCE_M * 0.05) {
+        t.degenereC = true;
+        console.warn("[KmzExport] Points GPS quasi colinéaires — C ignoré (repli 2 points)");
+        return t;
+      }
+      // Résolution exacte (Cramer) de  E = a·x + b·yF + e  ;  N = c·x + d·yF + f
+      const X = [x1, x2, x3], Y = [y1, y2, y3];
+      const solve = function(V) {
+        const d0 = det3;
+        const da = V[0] * (Y[1] - Y[2]) - Y[0] * (V[1] - V[2]) + (V[1] * Y[2] - V[2] * Y[1]);
+        const db = X[0] * (V[1] - V[2]) - V[0] * (X[1] - X[2]) + (X[1] * V[2] - X[2] * V[1]);
+        const dc = X[0] * (Y[1] * V[2] - Y[2] * V[1]) - Y[0] * (X[1] * V[2] - X[2] * V[1]) + V[0] * (X[1] * Y[2] - X[2] * Y[1]);
+        return [da / d0, db / d0, dc / d0];
+      };
+      const sE = solve(E), sN = solve(N);
+      const aff = { a: sE[0], b: sE[1], e: sE[2], c: sN[0], d: sN[1], f: sN[2], latMoy3: latMoy3, kLng: kLng, kLat: kLat };
+      const detA = aff.a * aff.d - aff.b * aff.c;
+      if (!Number.isFinite(detA) || Math.abs(detA) < 1e-12) {
+        t.degenereC = true;
+        console.warn("[KmzExport] Affine non inversible — C ignoré (repli 2 points)");
+        return t;
+      }
+      aff.det = detA;
+      t.affine = aff;
+    }
+    return t;
+  }
+
+  // 📐 v1.73.0 — Helper : transform depuis un objet calib/georef
+  // { pointA, pointB, pointC? } (chaque point = {x, y, lat, lng}).
+  // pointC incomplet → ignoré (warn). Throw identique à buildTransform si A/B invalides.
+  function buildTransformCalib(g) {
+    if (!g || !g.pointA || !g.pointB) {
+      throw new Error(window.I18n.t("kmz.err.calibIncomplete"));
+    }
+    const _fin = function(v) { return typeof v === "number" && Number.isFinite(v); };
+    let pC = g.pointC || null;
+    if (pC && !(_fin(pC.x) && _fin(pC.y) && _fin(pC.lat) && _fin(pC.lng))) {
+      console.warn("[KmzExport] pointC incomplet — ignoré");
+      pC = null;
+    }
+    return buildTransform(
+      { x: g.pointA.x, y: g.pointA.y }, { x: g.pointB.x, y: g.pointB.y },
+      { lat: g.pointA.lat, lng: g.pointA.lng }, { lat: g.pointB.lat, lng: g.pointB.lng },
+      pC ? { x: pC.x, y: pC.y } : null,
+      pC ? { lat: pC.lat, lng: pC.lng } : null
+    );
   }
 
   // Convertit (x,y) plan en (lat,lng) GPS via la transformation t.
   function planToGps(t, x, y) {
     if (!t) return null;
+    // 📐 v1.73.0 — chemin affine (3 points) : (x, -y) → mètres E/N relatifs
+    // à refGps → degrés. Exact sur A, B et C par construction.
+    if (t.affine) {
+      const f = t.affine, yF = -y;
+      const E = f.a * x + f.b * yF + f.e;
+      const N = f.c * x + f.d * yF + f.f;
+      return { lat: t.refGps.lat + N / f.kLat, lng: t.refGps.lng + E / f.kLng };
+    }
     // Position relative à refPlan (y inversé pour math standard, cf buildTransform)
     const dx = x - t.refPlan.x;
     const dy = -(y - t.refPlan.y);
@@ -139,6 +225,15 @@
   //   4. unflip Y (y plan = -dy + refPlan.y)
   function gpsToPlan(t, lat, lng) {
     if (!t) return null;
+    // 📐 v1.73.0 — inverse affine exacte (det vérifié non nul à la construction)
+    if (t.affine) {
+      const f = t.affine;
+      const E = (lng - t.refGps.lng) * f.kLng;
+      const N = (lat - t.refGps.lat) * f.kLat;
+      const x  = (f.d * (E - f.e) - f.b * (N - f.f)) / f.det;
+      const yF = (f.a * (N - f.f) - f.c * (E - f.e)) / f.det;
+      return { x: x, y: -yF };
+    }
     // Position relative à refGps en degrés
     const dlatDeg = lat - t.refGps.lat;
     const dlngDeg = lng - t.refGps.lng;
@@ -1018,6 +1113,7 @@
   // =========================
   window.KmzExport = {
     buildTransform:  buildTransform,
+    buildTransformCalib: buildTransformCalib,
     planToGps:       planToGps,
     gpsToPlan:       gpsToPlan,    // 🆕 v1.14.0 : inverse pour import GPX
     getCalibration:  getCalibration,

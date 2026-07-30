@@ -387,10 +387,7 @@
     const pA = g.pointA, pB = g.pointB;
     let t;
     try {
-      t = window.KmzExport.buildTransform(
-        { x: pA.x, y: pA.y }, { x: pB.x, y: pB.y },
-        { lat: pA.lat, lng: pA.lng }, { lat: pB.lat, lng: pB.lng }
-      );
+      t = window.KmzExport.buildTransformCalib(g);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(err) {
       console.warn("[OsmView] buildTransform failed :", err);
       return null;

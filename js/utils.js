@@ -418,12 +418,7 @@ function calculerCoherenceEchelleGeoref(planId) {
   // Build transform pour récupérer metresParPixel (m/px)
   let transform;
   try {
-    transform = window.KmzExport.buildTransform(
-      { x: pA.x, y: pA.y },
-      { x: pB.x, y: pB.y },
-      { lat: pA.lat, lng: pA.lng },
-      { lat: pB.lat, lng: pB.lng }
-    );
+    transform = window.KmzExport.buildTransformCalib(saved);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
   } catch(e) {
     return { hasCalibration: false, error: "Calcul transform impossible : " + (e && e.message ? e.message : String(e)) };
   }
@@ -835,12 +830,9 @@ function _planXyToGps(x, y) {
         || typeof B.x !== "number" || typeof B.y !== "number"
         || typeof A.lat !== "number" || typeof A.lng !== "number"
         || typeof B.lat !== "number" || typeof B.lng !== "number") return null;
-    if (typeof window.KmzExport.buildTransform !== "function") return null;
-    if (typeof window.KmzExport.planToGps     !== "function") return null;
-    const t = window.KmzExport.buildTransform(
-      { x: A.x, y: A.y }, { x: B.x, y: B.y },
-      { lat: A.lat, lng: A.lng }, { lat: B.lat, lng: B.lng }
-    );
+    if (typeof window.KmzExport.buildTransformCalib !== "function") return null;
+    if (typeof window.KmzExport.planToGps !== "function") return null;
+    const t = window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     return window.KmzExport.planToGps(t, x, y);
   } catch(e) {
     return null;  // calib dégénéré (2 points identiques, etc.)

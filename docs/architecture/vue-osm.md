@@ -45,7 +45,9 @@ _getEffectiveGeoref()
   2. KmzExport.getCalibration(planId) (LS myktamap_kmz_calib_<planId>)
 ```
 
-Source 2 propagée automatiquement depuis source 1 au boot du plan (`_propagerGeorefVersKmzExport` dans `main.js:816`). Cas user qui saisit georef via Réglages map mode → uniquement source 2.
+Source 2 propagée automatiquement depuis source 1 au boot du plan (`_propagerGeorefVersKmzExport` dans `main.js:816` — copie l'objet ENTIER, `pointC` compris). Cas user qui saisit georef via Réglages map mode → uniquement source 2.
+
+**📐 Point C optionnel (v1.73.0, KARMA « erreurs de projection sur un assemblage »)** : `georef`/calib acceptent un `pointC {x,y,lat,lng}` → `KmzExport.buildTransform` passe en **affine 6 DOF** (échelles X/Y indépendantes + cisaillement, résolue exactement sur les 3 correspondances par Cramer dans le repère mètres équirectangulaires). Sans C : similitude 2 points **bit-à-bit identique** à avant. C quasi colinéaire avec A-B (2×aire < `MIN_PLAN_DISTANCE²·0.05`) → repli 2 points + `degenereC: true` (les UIs de saisie refusent franchement, le moteur replie silencieusement pour un C venu d'un ZIP). **Tous les consommateurs passent par `buildTransformCalib(calibOuGeoref)`** (12 sites migrés : osmHomePreview ×2, osmView, emergencyMode, gpxIO ×2, sessionExporter ×3, utils ×2, searchPoints, secoursMode, interfaceConfig, createConf — seul `gpxImport` garde le 4-args, calibrage synthétique par bounds). ⚠️ `metresParPixel`/`rotation` restent dérivés de A/B même en affine (affichage d'échelle = approximation assumée). ⚠️ La modale KMZ de sessionExporter n'édite que A/B : `_kmzLireCalib` **fusionne le pointC stocké** avant `setCalibration`, sinon chaque save KMZ écraserait l'affine. Limite documentée user : corrige une déformation GLOBALE, pas les erreurs locales morceau par morceau d'un assemblage.
 
 ### 2.3 Tuiles V2 + niveau adaptatif + viewport culling (v1.39.10-11)
 

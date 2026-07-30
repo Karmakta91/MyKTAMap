@@ -207,6 +207,7 @@ function _renderCfgGeorefSection() {
                   ? window.KmzExport.getCalibration(planId) : null;
   const pA = (saved && saved.pointA) || { x: "", y: "", lat: "", lng: "" };
   const pB = (saved && saved.pointB) || { x: "", y: "", lat: "", lng: "" };
+  const pC = (saved && saved.pointC) || { x: "", y: "", lat: "", lng: "" };   // 📐 v1.73.0 : optionnel
 
   return '' +
     '<div class="kta-aide-section">' +
@@ -259,6 +260,26 @@ function _renderCfgGeorefSection() {
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
         '</div>' +
         '<div id="cfg_kmz_B_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
+      '</div>' +
+
+      // ===== 📐 Point C (v1.73.0, OPTIONNEL — affine anti-déformation) =====
+      '<div class="kta-kmz-section" style="margin:8px 0;">' +
+        '<div class="kta-kmz-section-titre">' + window.I18n.t("config.georef.pointC") + '</div>' +
+        '<p style="font-size:11.5px; color:#8892a4; margin:2px 0 6px; line-height:1.45;">' + window.I18n.t("config.georef.pointCHint") + '</p>' +
+        '<div class="kta-kmz-pt-grille">' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planX") + '</label>' +
+          '<input type="number" id="cfg_kmz_C_x"   value="' + pC.x   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planY") + '</label>' +
+          '<input type="number" id="cfg_kmz_C_y"   value="' + pC.y   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.gpsLatLng") + '</label>' +
+          '<input type="text" id="cfg_kmz_C_coords" value="' + ((typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(pC.lat, pC.lng) : (Number.isFinite(pC.lat) && Number.isFinite(pC.lng) ? pC.lat + ", " + pC.lng : "")) + '" class="kta-cfg-input kta-kmz-input kta-gps-coords-input" inputmode="decimal" autocomplete="off" placeholder="48.8600, 2.2900">' +
+        '</div>' +
+        '<div class="kta-gps-coords-error" id="cfg_kmz_C_err" style="display:none;"></div>' +
+        '<div class="kta-kmz-pt-actions">' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_C_search" type="button">' + window.I18n.t("config.georef.searchBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_C_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
+        '</div>' +
+        '<div id="cfg_kmz_C_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
       '<div id="cfg_kmz_status" style="font-size:12px; margin:8px 2px 4px; min-height:18px;"></div>' +
@@ -343,7 +364,8 @@ function _bindCfgGeorefHandlers() {
     // → border rouge + message + abort silencieux (la combo bloque le save).
     const coordsA = _readCoordsCombo("cfg_kmz_A_coords", "cfg_kmz_A_err");
     const coordsB = _readCoordsCombo("cfg_kmz_B_coords", "cfg_kmz_B_err");
-    if ((coordsA && coordsA.invalid) || (coordsB && coordsB.invalid)) {
+    const coordsC = _readCoordsCombo("cfg_kmz_C_coords", "cfg_kmz_C_err");   // 📐 v1.73.0
+    if ((coordsA && coordsA.invalid) || (coordsB && coordsB.invalid) || (coordsC && coordsC.invalid)) {
       _setStatus(window.I18n.t("config.georef.errInvalidGps"), "err");
       return;
     }
@@ -361,14 +383,25 @@ function _bindCfgGeorefHandlers() {
       _setStatus(window.I18n.t("config.georef.errAllRequired"), "err");
       return;
     }
-    // Validation transform (lève si points colinéaires ou distance nulle)
+    // 📐 Point C : OPTIONNEL mais tout-ou-rien (un C partiel = oubli, pas un choix)
+    const _pcx = _readVal("cfg_kmz_C_x"), _pcy = _readVal("cfg_kmz_C_y");
+    const _pcRempli = _pcx != null || _pcy != null || (coordsC && coordsC.lat != null);
+    if (_pcRempli) {
+      if (_pcx == null || _pcy == null || !coordsC || coordsC.lat == null || coordsC.lng == null) {
+        _setStatus(window.I18n.t("config.georef.errCIncomplete"), "err");
+        return;
+      }
+      c.pointC = { x: _pcx, y: _pcy, lat: coordsC.lat, lng: coordsC.lng };
+    }
+    // Validation transform (lève si points colinéaires ou distance nulle ;
+    // un C colinéaire est TOLÉRÉ par le moteur — repli 2 points — mais ici,
+    // à la saisie, on préfère le signaler franchement)
     try {
-      window.KmzExport.buildTransform(
-        { x: c.pointA.x, y: c.pointA.y },
-        { x: c.pointB.x, y: c.pointB.y },
-        { lat: c.pointA.lat, lng: c.pointA.lng },
-        { lat: c.pointB.lat, lng: c.pointB.lng }
-      );
+      const _t = window.KmzExport.buildTransformCalib(c);
+      if (c.pointC && _t.degenereC) {
+        _setStatus(window.I18n.t("config.georef.errCColineaire"), "err");
+        return;
+      }
     } catch(e) {
       _setStatus(window.I18n.t("config.georef.errInvalidCalib", { msg: e.message }), "err");
       return;
@@ -384,7 +417,7 @@ function _bindCfgGeorefHandlers() {
 
   btnClear.addEventListener("click", function() {
     // 🆕 hotfix21 — Wipe x/y + coords combinés (au lieu des 4 inputs séparés).
-    ["A_x","A_y","A_coords","B_x","B_y","B_coords"].forEach(function(k) {
+    ["A_x","A_y","A_coords","B_x","B_y","B_coords","C_x","C_y","C_coords"].forEach(function(k) {
       const el = document.getElementById("cfg_kmz_" + k);
       if (el) {
         el.value = "";
@@ -392,7 +425,7 @@ function _bindCfgGeorefHandlers() {
       }
     });
     // Cache aussi les éventuels messages d'erreur restants
-    ["cfg_kmz_A_err", "cfg_kmz_B_err"].forEach(function(id) {
+    ["cfg_kmz_A_err", "cfg_kmz_B_err", "cfg_kmz_C_err"].forEach(function(id) {
       const e = document.getElementById(id);
       if (e) { e.textContent = ""; e.style.display = "none"; }
     });
@@ -409,7 +442,7 @@ function _bindCfgGeorefHandlers() {
   // avec la modale 💾 Enregistrer > 📡 Export externe). Pattern identique
   // à sessionExporter.js > _kmzOuvrirRecherche / _kmzActiverModeClic mais
   // sur les IDs `cfg_kmz_*` (au lieu de `kmz_*`).
-  ["A", "B"].forEach(function(letter) {
+  ["A", "B", "C"].forEach(function(letter) {
     const btnSearch = document.getElementById("cfg_kmz_" + letter + "_search");
     const btnClick  = document.getElementById("cfg_kmz_" + letter + "_click");
     if (btnSearch) btnSearch.addEventListener("click", function() { _cfgOuvrirRechercheGeoref(letter); });

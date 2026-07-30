@@ -3385,7 +3385,7 @@
     };
     const cA = getCoords("kmz_A_coords");
     const cB = getCoords("kmz_B_coords");
-    return {
+    const calib = {
       pointA: {
         x:   get("kmz_A_x"),   y:   get("kmz_A_y"),
         lat: cA.lat,           lng: cA.lng
@@ -3395,6 +3395,15 @@
         lat: cB.lat,           lng: cB.lng
       }
     };
+    // 📐 v1.73.0 — cette modale n'édite que A/B : on PRÉSERVE le pointC
+    // stocké (saisi via ⚙️ Réglages ou le Générateur), sinon chaque save
+    // KMZ écraserait silencieusement l'affine 3 points.
+    try {
+      const saved = (window.KmzExport && window.KmzExport.getCalibration)
+                     ? window.KmzExport.getCalibration(_kmzCurrentPlanId()) : null;
+      if (saved && saved.pointC) calib.pointC = saved.pointC;
+    } catch(e) {}
+    return calib;
   }
 
   function _kmzRafraichirApercu() {
@@ -3415,12 +3424,7 @@
     }
     let transform;
     try {
-      transform = window.KmzExport.buildTransform(
-        { x: c.pointA.x, y: c.pointA.y },
-        { x: c.pointB.x, y: c.pointB.y },
-        { lat: c.pointA.lat, lng: c.pointA.lng },
-        { lat: c.pointB.lat, lng: c.pointB.lng }
-      );
+      transform = window.KmzExport.buildTransformCalib(c);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(e) {
       target.innerHTML = '<span style="color:#ff9933;">⚠️ ' + String(e.message || e) + '</span>';
       return;
@@ -3605,12 +3609,7 @@
     // Build transform (avec validations bloquantes)
     let transform;
     try {
-      transform = window.KmzExport.buildTransform(
-        { x: c.pointA.x, y: c.pointA.y },
-        { x: c.pointB.x, y: c.pointB.y },
-        { lat: c.pointA.lat, lng: c.pointA.lng },
-        { lat: c.pointB.lat, lng: c.pointB.lng }
-      );
+      transform = window.KmzExport.buildTransformCalib(c);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(e) {
       alert(t("export.err.calibInvalide", { msg: e.message }));
       return;
@@ -3970,12 +3969,7 @@
       return;
     }
     try {
-      window.KmzExport.buildTransform(
-        { x: c.pointA.x, y: c.pointA.y },
-        { x: c.pointB.x, y: c.pointB.y },
-        { lat: c.pointA.lat, lng: c.pointA.lng },
-        { lat: c.pointB.lat, lng: c.pointB.lng }
-      );
+      window.KmzExport.buildTransformCalib(c);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(e) {
       alert(t("export.err.calibInvalide", { msg: e.message }));
       return;

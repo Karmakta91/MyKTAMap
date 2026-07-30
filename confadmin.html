@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyKTAMap — ConfAdmin (index.json kiosque)</title>
+<!-- ═══════════════════════════════════════════════════════════════
+     🛠️ CONFADMIN — outil DÉPLOYEUR (mode serveur « kiosque »)
+     Génère le data/index.json d'une instance auto-hébergée :
+       - plans[]   : lus depuis les ZIPs générés par l'app (métadonnées
+                     extraites de plan-config.json — rien n'est uploadé,
+                     tout reste dans ce navigateur)
+       - liaisons  : piochées dans le profil du navigateur OU un export
+                     de profil (.json), avec REMAPPAGE des planId locaux
+                     vers les ids serveur du pack
+       - config    : flags kiosque (serverPlansOnly / disableGenerator)
+     ⚠️ Cette page ne fait PAS partie de l'app : PAS dans ASSETS_TO_CACHE
+     (sw.js), pas de lien depuis l'UI. FR inline (hors périmètre i18n).
+     ✅ v1.73.0 : le moteur lit TOUT (plans, config.subtitle, les 2 flags,
+     liaisons — merge par id). Gouvernance : community-server-line.md.
+     ═══════════════════════════════════════════════════════════════ -->
+<script src="lib/jszip.min.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 60px;
+    background: linear-gradient(160deg, #1a1f2e 0%, #0a0d18 100%);
+    min-height: 100vh;
+    color: #e8eaf0;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+  }
+  .kta-ca-wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 22px; color: #f4c542; margin: 0 0 4px; }
+  .kta-ca-sub { color: #8892a4; margin: 0 0 18px; font-size: 13px; }
+  .kta-ca-warn {
+    background: rgba(244,197,66,0.10); border: 1px solid rgba(244,197,66,0.35);
+    border-radius: 10px; padding: 10px 14px; margin: 0 0 22px;
+    font-size: 12.5px; color: #c8d0e0; line-height: 1.5;
+  }
+  .kta-ca-card {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(140,180,255,0.16);
+    border-radius: 12px; padding: 16px; margin: 0 0 18px;
+  }
+  .kta-ca-card h2 { font-size: 15px; margin: 0 0 10px; color: #8cb4ff; }
+  .kta-ca-hint { color: #8892a4; font-size: 12px; margin: 4px 0 10px; line-height: 1.45; }
+  .kta-ca-btn {
+    background: linear-gradient(135deg, #2c3a5e, #1f2a47);
+    border: 1px solid rgba(140,180,255,0.4); border-radius: 8px;
+    color: #e8eaf0; padding: 8px 14px; cursor: pointer; font-size: 13px;
+  }
+  .kta-ca-btn:hover { border-color: rgba(140,180,255,0.7); }
+  .kta-ca-btn-gold {
+    background: linear-gradient(135deg, #4a3d1e, #2e2712);
+    border-color: rgba(244,197,66,0.5); color: #f4c542; font-weight: 600;
+  }
+  .kta-ca-drop {
+    border: 2px dashed rgba(140,180,255,0.35); border-radius: 10px;
+    padding: 18px; text-align: center; color: #8892a4; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .kta-ca-drop.kta-ca-over { border-color: #f4c542; background: rgba(244,197,66,0.06); }
+  table.kta-ca-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  .kta-ca-table th {
+    text-align: left; font-size: 11px; color: #8892a4; font-weight: 600;
+    padding: 4px 6px; border-bottom: 1px solid rgba(140,180,255,0.18);
+  }
+  .kta-ca-table td { padding: 5px 6px; border-bottom: 1px solid rgba(140,180,255,0.08); vertical-align: middle; }
+  .kta-ca-table input[type="text"] {
+    width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(140,180,255,0.25);
+    border-radius: 6px; color: #e8eaf0; padding: 4px 8px; font-size: 13px;
+  }
+  .kta-ca-badge {
+    display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px;
+    border-radius: 5px; background: rgba(140,180,255,0.15); color: #8cb4ff;
+    border: 1px solid rgba(140,180,255,0.35); margin-right: 3px; white-space: nowrap;
+  }
+  .kta-ca-x {
+    background: none; border: none; color: #e07a6a; cursor: pointer; font-size: 15px; padding: 2px 6px;
+  }
+  .kta-ca-mv { background: none; border: none; color: #8892a4; cursor: pointer; font-size: 12px; padding: 1px 4px; }
+  .kta-ca-mv:hover { color: #f4c542; }
+  .kta-ca-status { font-size: 12.5px; color: #7ec97e; margin-top: 8px; }
+  .kta-ca-status.kta-ca-err { color: #e07a6a; }
+  .kta-ca-map-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; flex-wrap: wrap; }
+  .kta-ca-map-row code { color: #f4c542; font-size: 12px; }
+  select.kta-ca-sel {
+    background: #1f2a47; border: 1px solid rgba(140,180,255,0.3); border-radius: 6px;
+    color: #e8eaf0; padding: 4px 8px; font-size: 13px;
+  }
+  .kta-ca-link-row { display: flex; align-items: flex-start; gap: 8px; padding: 5px 4px; border-bottom: 1px solid rgba(140,180,255,0.07); font-size: 13px; }
+  .kta-ca-link-row.kta-ca-off { opacity: 0.4; }
+  .kta-ca-check { margin-top: 2px; }
+  label.kta-ca-flag { display: flex; align-items: flex-start; gap: 8px; margin: 8px 0; cursor: pointer; }
+  label.kta-ca-flag small { color: #8892a4; display: block; }
+  pre.kta-ca-out {
+    background: rgba(0,0,0,0.45); border: 1px solid rgba(140,180,255,0.2); border-radius: 10px;
+    padding: 12px; font-size: 12px; line-height: 1.45; overflow-x: auto;
+    max-height: 380px; color: #c8d0e0;
+  }
+  .kta-ca-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  ol.kta-ca-deploy { margin: 8px 0 0; padding-left: 20px; color: #c8d0e0; font-size: 12.5px; line-height: 1.6; }
+  ol.kta-ca-deploy code { color: #f4c542; }
+</style>
+</head>
+<body>
+<div class="kta-ca-wrap">
+  <h1>🛠️ ConfAdmin — index.json kiosque</h1>
+  <p class="kta-ca-sub">Générateur de <code>data/index.json</code> pour une instance MyKTAMap auto-hébergée (plans pré-installés sur le serveur).</p>
+
+  <div class="kta-ca-warn">
+    🔒 <strong>Tout se passe dans ce navigateur</strong> — aucun fichier n'est envoyé nulle part.
+    Les ZIPs sont lus localement pour en extraire les métadonnées ; le résultat est un fichier
+    <code>index.json</code> à télécharger puis déposer toi-même sur ton serveur.
+  </div>
+
+  <!-- ═══ 1. PLANS ═══ -->
+  <div class="kta-ca-card">
+    <h2>📦 1. Plans du kiosque</h2>
+    <p class="kta-ca-hint">Dépose les ZIPs générés par MyKTAMap (Générateur ou export). L'outil lit le
+    <code>plan-config.json</code> de chacun pour pré-remplir id / nom / version / badges. L'<strong>id</strong>
+    devient le nom du dossier sur le serveur (<code>data/&lt;id&gt;/</code>) — modifiable, minuscules sans espace.</p>
+    <div class="kta-ca-drop" id="caDrop">📥 Glisse tes ZIPs ici — ou clique pour choisir</div>
+    <input type="file" id="caZipInput" accept=".zip" multiple style="display:none">
+    <div id="caPlansStatus"></div>
+    <table class="kta-ca-table" id="caPlansTable" style="display:none;">
+      <thead><tr><th></th><th>id (dossier)</th><th>Nom affiché</th><th>Version</th><th>Auteur</th><th>Badges</th><th></th></tr></thead>
+      <tbody id="caPlansBody"></tbody>
+    </table>
+    <div class="kta-ca-actions"><button class="kta-ca-btn" id="caAddManual" type="button">➕ Ajouter une entrée à la main</button></div>
+  </div>
+
+  <!-- ═══ 2. LIAISONS ═══ -->
+  <div class="kta-ca-card">
+    <h2>🌀 2. Liaisons inter-plan (portails)</h2>
+    <p class="kta-ca-hint">Récupère tes liaisons depuis le profil de <strong>ce navigateur</strong> (ouvre cette page
+    depuis ton instance MyKTAMap — même adresse — sinon le profil est introuvable) ou depuis un
+    <strong>export de profil</strong> (.json). Ensuite, fais correspondre chaque plan d'origine à un plan du kiosque :
+    les ids locaux sont remappés vers les ids serveur.</p>
+    <div class="kta-ca-actions">
+      <button class="kta-ca-btn" id="caReadLocal" type="button">📥 Lire les liaisons de CE navigateur</button>
+      <button class="kta-ca-btn" id="caLoadProfile" type="button">📂 Charger un export de profil (.json)</button>
+      <input type="file" id="caProfileInput" accept=".json,application/json" style="display:none">
+    </div>
+    <div id="caLinksStatus"></div>
+    <div id="caMapping" style="display:none;">
+      <p class="kta-ca-hint" style="margin-top:12px;"><strong>Correspondance des plans</strong> — pour chaque plan
+      vu dans les liaisons, choisis le plan du kiosque correspondant (pré-rempli quand les noms matchent) :</p>
+      <div id="caMappingRows"></div>
+    </div>
+    <div id="caLinksList" style="margin-top:10px;"></div>
+  </div>
+
+  <!-- ═══ 3. CONFIG KIOSQUE ═══ -->
+  <div class="kta-ca-card">
+    <h2>⚙️ 3. Réglages kiosque</h2>
+    <label class="kta-ca-flag" style="flex-direction:column; align-items:stretch; gap:4px; cursor:default;">
+      <span><strong>Sous-titre personnalisé</strong> — remplace « Cartographie souterraine » (écran de démarrage + en-tête de l'accueil)<br>
+      <small>Vide = sous-titre standard traduit selon la langue du visiteur. Le nom MyKTAMap reste affiché.</small></span>
+      <input type="text" id="caSubtitle" placeholder="ex. Gironde" maxlength="80"
+             style="background:rgba(0,0,0,0.3); border:1px solid rgba(140,180,255,0.25); border-radius:6px; color:#e8eaf0; padding:6px 10px; font-size:13px; max-width:340px;">
+    </label>
+    <label class="kta-ca-flag"><input type="checkbox" id="caFlagServerOnly">
+      <span><strong>serverPlansOnly</strong> — plans du serveur uniquement<br>
+      <small>Masque l'import de plans (dropzone, « Ajouter un plan ») : les visiteurs consultent les plans du kiosque.
+      Leurs données restent locales chez eux (sessions, notes, carnet, photos).</small></span></label>
+    <label class="kta-ca-flag"><input type="checkbox" id="caFlagNoGen">
+      <span><strong>disableGenerator</strong> — sans Générateur<br>
+      <small>Retire le Générateur de plans de la liste des outils.</small></span></label>
+    <p class="kta-ca-hint">⚠️ Ces réglages sont du <strong>désencombrement d'interface</strong>, pas un verrou de
+    sécurité. Sous-titre, flags et liaisons sont lus depuis v1.73.0 — un <code>index.json</code> qui les
+    contient reste valide sur toutes les versions (champs inconnus ignorés). Guide complet :
+    <code>docs/applications/SELFHOST.md</code>.</p>
+  </div>
+
+  <!-- ═══ 4. SORTIE ═══ -->
+  <div class="kta-ca-card">
+    <h2>📤 4. index.json</h2>
+    <pre class="kta-ca-out" id="caOut">{ "plans": [] }</pre>
+    <div class="kta-ca-actions">
+      <button class="kta-ca-btn kta-ca-btn-gold" id="caDownload" type="button">💾 Télécharger index.json</button>
+      <button class="kta-ca-btn" id="caCopy" type="button">📋 Copier</button>
+    </div>
+    <p class="kta-ca-hint" style="margin-top:14px;"><strong>Déploiement :</strong></p>
+    <ol class="kta-ca-deploy">
+      <li>Décompresse chaque ZIP dans <code>data/&lt;id&gt;/</code> (le dossier doit contenir <code>plan-config.json</code> à sa racine).</li>
+      <li>Dépose ce fichier en <code>data/index.json</code>.</li>
+      <li>Sers le site en statique (aucun backend) — les plans apparaissent dans « 📚 Mes plans » avec le badge 🌐.</li>
+      <li>Hors-ligne : chaque plan doit avoir été ouvert <strong>une fois en ligne</strong> pour être disponible offline.</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  // ───────── État ─────────
+  const _plans = [];        // { id, name, version, author, multiLevel, tiledV2 }
+  let _links = [];          // liaisons source (objets du registre, intacts)
+  let _linksOrigine = "";   // libellé de provenance
+  const _linkSel = {};      // linkId → bool (cochée)
+  const _mapping = {};      // planId d'origine → id de pack ("" = ignorer)
+  const _planNamesVus = {}; // planId d'origine → dernier planName vu (affichage mapping)
+
+  function $(id) { return document.getElementById(id); }
+  function _esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+  // Même sanitisation que le moteur (main.js decouvrirPlansServeur)
+  function _sanitId(s) { return String(s || "").replace(/[^a-z0-9_-]/gi, "_"); }
+  function _slug(s) {
+    return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/\.zip$/i, "").replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "") || "plan";
+  }
+  function _statut(el, msg, err) {
+    el.innerHTML = msg ? '<div class="kta-ca-status' + (err ? " kta-ca-err" : "") + '">' + msg + "</div>" : "";
+  }
+
+  // ───────── 1. PLANS ─────────
+  async function _lireZip(file) {
+    if (typeof JSZip === "undefined") throw new Error("lib/jszip.min.js introuvable (ouvre la page depuis l'instance)");
+    const zip = await JSZip.loadAsync(file);
+    // plan-config.json à la racine du ZIP — sinon le moins profond (ZIP re-dossierisé)
+    let entry = zip.file("plan-config.json");
+    if (!entry) {
+      let best = null;
+      zip.forEach(function(chemin, f) {
+        if (/(^|\/)plan-config\.json$/.test(chemin) && !f.dir) {
+          if (!best || chemin.split("/").length < best.name.split("/").length) best = f;
+        }
+      });
+      entry = best;
+    }
+    if (!entry) throw new Error("pas de plan-config.json dans « " + file.name + " »");
+    const cfg = JSON.parse(await entry.async("string"));
+    const plan = cfg && cfg.plan ? cfg.plan : {};
+    return {
+      id:         _slug(file.name),
+      name:       plan.name || _slug(file.name),
+      version:    plan.version || "",
+      author:     plan.author || "",
+      multiLevel: plan.multiLevel === true,
+      tiledV2:    plan.tiledV2 === true || !!cfg.tiling   // même détection que config.js
+    };
+  }
+
+  async function _ajouterZips(files) {
+    const errs = [];
+    for (const f of files) {
+      if (!/\.zip$/i.test(f.name)) continue;
+      try {
+        const p = await _lireZip(f);
+        // dédup id
+        let base = p.id, n = 2;
+        while (_plans.some(function(x) { return x.id === p.id; })) p.id = base + "-" + (n++);
+        _plans.push(p);
+      } catch(e) { errs.push(e.message); }
+    }
+    _statut($("caPlansStatus"),
+      errs.length ? "⚠️ " + errs.join(" · ") : (_plans.length + " plan(s) dans la liste"), errs.length > 0);
+    _renderPlans(); _renderMapping(); _renderOut();
+  }
+
+  function _renderPlans() {
+    const tb = $("caPlansBody");
+    $("caPlansTable").style.display = _plans.length ? "" : "none";
+    tb.innerHTML = "";
+    _plans.forEach(function(p, i) {
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td><button class="kta-ca-mv" data-mv="-1" data-i="' + i + '" title="Monter">▲</button>' +
+        '<button class="kta-ca-mv" data-mv="1" data-i="' + i + '" title="Descendre">▼</button></td>' +
+        '<td><input type="text" data-f="id" data-i="' + i + '" value="' + _esc(p.id) + '"></td>' +
+        '<td><input type="text" data-f="name" data-i="' + i + '" value="' + _esc(p.name) + '"></td>' +
+        '<td style="width:80px;"><input type="text" data-f="version" data-i="' + i + '" value="' + _esc(p.version) + '"></td>' +
+        '<td style="width:110px;"><input type="text" data-f="author" data-i="' + i + '" value="' + _esc(p.author) + '"></td>' +
+        "<td>" + (p.tiledV2 ? '<span class="kta-ca-badge">V2</span>' : "") +
+                 (p.multiLevel ? '<span class="kta-ca-badge">Multi-LVL</span>' : "") + "</td>" +
+        '<td><button class="kta-ca-x" data-x="' + i + '" title="Retirer">✕</button></td>';
+      tb.appendChild(tr);
+    });
+  }
+
+  $("caPlansBody").addEventListener("input", function(e) {
+    const f = e.target.getAttribute("data-f");
+    if (!f) return;
+    _plans[Number(e.target.getAttribute("data-i"))][f] = e.target.value;
+    _renderMapping(); _renderOut();
+  });
+  $("caPlansBody").addEventListener("click", function(e) {
+    const x = e.target.getAttribute("data-x"), mv = e.target.getAttribute("data-mv");
+    if (x != null) { _plans.splice(Number(x), 1); }
+    else if (mv != null) {
+      const i = Number(e.target.getAttribute("data-i")), j = i + Number(mv);
+      if (j < 0 || j >= _plans.length) return;
+      const t = _plans[i]; _plans[i] = _plans[j]; _plans[j] = t;
+    } else return;
+    _renderPlans(); _renderMapping(); _renderOut();
+  });
+
+  const drop = $("caDrop");
+  drop.addEventListener("click", function() { $("caZipInput").click(); });
+  $("caZipInput").addEventListener("change", function(e) { _ajouterZips(Array.from(e.target.files || [])); e.target.value = ""; });
+  ["dragover", "dragenter"].forEach(function(ev) {
+    drop.addEventListener(ev, function(e) { e.preventDefault(); drop.classList.add("kta-ca-over"); });
+  });
+  ["dragleave", "drop"].forEach(function(ev) {
+    drop.addEventListener(ev, function(e) { e.preventDefault(); drop.classList.remove("kta-ca-over"); });
+  });
+  drop.addEventListener("drop", function(e) { _ajouterZips(Array.from((e.dataTransfer || {}).files || [])); });
+
+  $("caAddManual").addEventListener("click", function() {
+    _plans.push({ id: "plan-" + (_plans.length + 1), name: "Nouveau plan", version: "", author: "", multiLevel: false, tiledV2: false });
+    _renderPlans(); _renderMapping(); _renderOut();
+  });
+
+  // ───────── 2. LIAISONS ─────────
+  function _poserLiaisons(reg, origine) {
+    const links = (reg && Array.isArray(reg.links)) ? reg.links : [];
+    if (!links.length) { _statut($("caLinksStatus"), "Aucune liaison trouvée (" + origine + ")", true); return; }
+    _links = links; _linksOrigine = origine;
+    links.forEach(function(l) {
+      [l.a, l.b].forEach(function(s) {
+        if (s && s.planId && !(s.planId in _planNamesVus)) _planNamesVus[s.planId] = s.planName || s.planId;
+      });
+      if (!(l.id in _linkSel)) _linkSel[l.id] = true;
+    });
+    _statut($("caLinksStatus"), links.length + " liaison(s) chargée(s) — " + origine);
+    _renderMapping(); _renderLinks(); _renderOut();
+  }
+
+  $("caReadLocal").addEventListener("click", function() {
+    try {
+      const raw = localStorage.getItem("myktamap_interplan_links_v1");
+      if (!raw) { _statut($("caLinksStatus"), "Rien dans ce navigateur — ouvre cette page depuis TON instance MyKTAMap (même adresse), ou charge un export de profil.", true); return; }
+      _poserLiaisons(JSON.parse(raw), "profil de ce navigateur");
+    } catch(e) { _statut($("caLinksStatus"), "Lecture impossible : " + e.message, true); }
+  });
+
+  $("caLoadProfile").addEventListener("click", function() { $("caProfileInput").click(); });
+  $("caProfileInput").addEventListener("change", function(e) {
+    const f = (e.target.files || [])[0]; e.target.value = "";
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = function() {
+      try {
+        const d = JSON.parse(r.result);
+        // Export de profil complet (sections.preferences) OU registre brut {links:[]}
+        let reg = null;
+        if (d && d.type === "myktamap-profile-export" && d.sections && d.sections.preferences) {
+          reg = d.sections.preferences["myktamap_interplan_links_v1"] || null;
+          if (typeof reg === "string") reg = JSON.parse(reg);
+        } else if (d && Array.isArray(d.links)) {
+          reg = d;
+        }
+        if (!reg) { _statut($("caLinksStatus"), "Format non reconnu (attendu : export de profil MyKTAMap, ou registre de liaisons)", true); return; }
+        _poserLiaisons(reg, "export « " + f.name + " »");
+      } catch(err) { _statut($("caLinksStatus"), "JSON invalide : " + err.message, true); }
+    };
+    r.readAsText(f);
+  });
+
+  function _autoMatch(planIdOrigine) {
+    const nom = String(_planNamesVus[planIdOrigine] || "").toLowerCase().trim();
+    const hit = _plans.find(function(p) { return p.name.toLowerCase().trim() === nom && nom; });
+    return hit ? hit.id : "";
+  }
+
+  function _renderMapping() {
+    const ids = Object.keys(_planNamesVus);
+    $("caMapping").style.display = ids.length ? "" : "none";
+    const box = $("caMappingRows");
+    box.innerHTML = "";
+    ids.forEach(function(pid) {
+      if (!(pid in _mapping)) _mapping[pid] = _autoMatch(pid);
+      // pack retiré depuis ? → reset
+      if (_mapping[pid] && !_plans.some(function(p) { return p.id === _mapping[pid]; })) _mapping[pid] = _autoMatch(pid);
+      const row = document.createElement("div");
+      row.className = "kta-ca-map-row";
+      let opts = '<option value="">— ignorer (exclure ces liaisons) —</option>';
+      _plans.forEach(function(p) {
+        opts += '<option value="' + _esc(p.id) + '"' + (_mapping[pid] === p.id ? " selected" : "") + ">" +
+                _esc(p.name) + " (data/" + _esc(p.id) + ")</option>";
+      });
+      row.innerHTML = "<code>" + _esc(_planNamesVus[pid]) + "</code> →" +
+        ' <select class="kta-ca-sel" data-map="' + _esc(pid) + '">' + opts + "</select>";
+      box.appendChild(row);
+    });
+  }
+  $("caMappingRows").addEventListener("change", function(e) {
+    const pid = e.target.getAttribute("data-map");
+    if (pid == null) return;
+    _mapping[pid] = e.target.value;
+    _renderLinks(); _renderOut();
+  });
+
+  function _liaisonExportable(l) {
+    return !!(l.a && l.b && _mapping[l.a.planId] && _mapping[l.b.planId]);
+  }
+  function _coteLabel(s) {
+    return _esc((s && (s.planName || s.planId)) || "?") + " · " + _esc((s && (s.pointNom || s.pointId)) || ((s && s.x) + "," + (s && s.y)));
+  }
+
+  function _renderLinks() {
+    const box = $("caLinksList");
+    box.innerHTML = "";
+    _links.forEach(function(l) {
+      const ok = _liaisonExportable(l);
+      const row = document.createElement("div");
+      row.className = "kta-ca-link-row" + (ok ? "" : " kta-ca-off");
+      row.innerHTML = '<input type="checkbox" class="kta-ca-check" data-lk="' + _esc(l.id) + '"' +
+        (ok && _linkSel[l.id] ? " checked" : "") + (ok ? "" : " disabled") + ">" +
+        "<span>🌀 " + _coteLabel(l.a) + " ⇄ " + _coteLabel(l.b) +
+        (ok ? "" : ' <em style="color:#8892a4;">(plan non mappé)</em>') + "</span>";
+      box.appendChild(row);
+    });
+  }
+  $("caLinksList").addEventListener("change", function(e) {
+    const id = e.target.getAttribute("data-lk");
+    if (id == null) return;
+    _linkSel[id] = e.target.checked;
+    _renderOut();
+  });
+
+  // ───────── 3+4. SORTIE ─────────
+  function _construire() {
+    const out = {};
+    const so = $("caFlagServerOnly").checked, ng = $("caFlagNoGen").checked;
+    const st = $("caSubtitle").value.trim();
+    if (so || ng || st) {
+      out.config = {};
+      if (st) out.config.subtitle = st;
+      if (so) out.config.serverPlansOnly = true;
+      if (ng) out.config.disableGenerator = true;
+    }
+    out.plans = _plans.map(function(p) {
+      const e = { id: p.id, path: "data/" + p.id, name: p.name };
+      if (p.version) e.version = p.version;
+      if (p.author)  e.author  = p.author;
+      if (p.multiLevel) e.multiLevel = true;
+      if (p.tiledV2)    e.tiledV2    = true;
+      return e;
+    });
+    // Liaisons : remap des planId locaux → "server_<id>" (= id PlanRegistry
+    // que decouvrirPlansServeur attribuera sur le kiosque), planName = nom pack.
+    const links = _links.filter(function(l) { return _liaisonExportable(l) && _linkSel[l.id]; })
+      .map(function(l) {
+        function remap(s) {
+          const packId = _mapping[s.planId];
+          const pack = _plans.find(function(p) { return p.id === packId; });
+          const ns = Object.assign({}, s);
+          ns.planId   = "server_" + _sanitId(packId);
+          ns.planName = pack ? pack.name : s.planName;
+          return ns;
+        }
+        const nl = Object.assign({}, l);
+        nl.a = remap(l.a); nl.b = remap(l.b);
+        return nl;
+      });
+    if (links.length) out.liaisons = { version: 1, links: links };
+    return out;
+  }
+
+  function _renderOut() {
+    $("caOut").textContent = JSON.stringify(_construire(), null, 2);
+  }
+  $("caSubtitle").addEventListener("input", _renderOut);
+  $("caFlagServerOnly").addEventListener("change", _renderOut);
+  $("caFlagNoGen").addEventListener("change", _renderOut);
+
+  $("caDownload").addEventListener("click", function() {
+    const blob = new Blob([JSON.stringify(_construire(), null, 2) + "\n"], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "index.json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function() { URL.revokeObjectURL(a.href); }, 5000);
+  });
+  $("caCopy").addEventListener("click", function() {
+    const txt = JSON.stringify(_construire(), null, 2);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function() { $("caCopy").textContent = "✅ Copié"; setTimeout(function() { $("caCopy").textContent = "📋 Copier"; }, 1500); });
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = txt; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch(e) {}
+      ta.remove();
+    }
+  });
+
+  _renderOut();
+})();
+</script>
+</body>
+</html>

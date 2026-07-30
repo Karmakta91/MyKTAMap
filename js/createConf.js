@@ -517,6 +517,20 @@ function afficherPlanner() {
             </div>
             <div class="kta-gps-coords-error" id="pl_geo_B_err" style="display:none;"></div>
           </div>
+          <!-- 📐 v1.73.0 : Point C OPTIONNEL — affine anti-déformation (assemblages) -->
+          <div class="kta-kmz-section" style="margin:8px 0;">
+            <div class="kta-kmz-section-titre">${window.I18n.t("gen.georef.pointC")}</div>
+            <p class="kta-planner-info" style="margin:2px 0 6px;">${window.I18n.t("gen.georef.pointCHint")}</p>
+            <div class="kta-kmz-pt-grille">
+              <label class="kta-kmz-lbl">${window.I18n.t("gen.georef.planX")}</label>
+              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_C_x"   type="number" step="any">
+              <label class="kta-kmz-lbl">${window.I18n.t("gen.georef.planY")}</label>
+              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_C_y"   type="number" step="any">
+              <label class="kta-kmz-lbl">${window.I18n.t("gen.georef.gpsLatLng")}</label>
+              <input class="kta-cfg-input kta-kmz-input kta-gps-coords-input" id="pl_geo_C_coords" type="text" inputmode="decimal" autocomplete="off" placeholder="48.8600, 2.2900">
+            </div>
+            <div class="kta-gps-coords-error" id="pl_geo_C_err" style="display:none;"></div>
+          </div>
           <div id="pl_geo_status" style="font-size:12px; color:#8892a4; margin:6px 2px 0; min-height:18px;"></div>
         </div>
 
@@ -566,6 +580,10 @@ function afficherPlanner() {
     window.attacherGpsValidationCombo(
       document.getElementById("pl_geo_B_coords"),
       { errorEl: document.getElementById("pl_geo_B_err") }
+    );
+    window.attacherGpsValidationCombo(
+      document.getElementById("pl_geo_C_coords"),
+      { errorEl: document.getElementById("pl_geo_C_err") }
     );
   }
 
@@ -1421,6 +1439,11 @@ function _preRemplirFormulaire(config) {
                 : function(a, b) { return (Number.isFinite(a) && Number.isFinite(b)) ? (a + ", " + b) : ""; };
     sv("pl_geo_A_coords", fmt(gA.lat, gA.lng));
     sv("pl_geo_B_coords", fmt(gB.lat, gB.lng));
+    // 📐 v1.73.0 : pointC optionnel
+    const gC = plan.georef.pointC || null;
+    sv("pl_geo_C_x", gC && gC.x != null ? gC.x : "");
+    sv("pl_geo_C_y", gC && gC.y != null ? gC.y : "");
+    sv("pl_geo_C_coords", gC ? fmt(gC.lat, gC.lng) : "");
   }
 
   // 🆕 hotfix21 — Validation live des inputs GPS combinés (idempotent).
@@ -3419,6 +3442,7 @@ async function _genererZip() {
     }
     const _coordsA = _readGeoCoords("pl_geo_A_coords", "pl_geo_A_err", window.I18n.t("gen.geo.labelA"));
     const _coordsB = _readGeoCoords("pl_geo_B_coords", "pl_geo_B_err", window.I18n.t("gen.geo.labelB"));
+    const _coordsC = _readGeoCoords("pl_geo_C_coords", "pl_geo_C_err", window.I18n.t("gen.geo.labelC"));   // 📐 v1.73.0
     const _geoA = { x: _readGeo("pl_geo_A_x"), y: _readGeo("pl_geo_A_y"),
                     lat: _coordsA.lat, lng: _coordsA.lng };
     const _geoB = { x: _readGeo("pl_geo_B_x"), y: _readGeo("pl_geo_B_y"),
@@ -3427,16 +3451,30 @@ async function _genererZip() {
       _geoA.x != null && _geoA.y != null && _geoA.lat != null && _geoA.lng != null &&
       _geoB.x != null && _geoB.y != null && _geoB.lat != null && _geoB.lng != null;
     if (_allGeoFilled) {
-      // Validation transform (refus si points colinéaires / distance nulle)
+      // 📐 v1.73.0 — Point C optionnel mais TOUT-OU-RIEN (C partiel = oubli)
+      const _geoC = { x: _readGeo("pl_geo_C_x"), y: _readGeo("pl_geo_C_y"),
+                      lat: _coordsC.lat, lng: _coordsC.lng };
+      const _cRempli = _geoC.x != null || _geoC.y != null || _geoC.lat != null;
+      const _cComplet = _geoC.x != null && _geoC.y != null && _geoC.lat != null && _geoC.lng != null;
+      if (_cRempli && !_cComplet) {
+        _plannerErreur(window.I18n.t("gen.geo.pointCIncomplet"));
+        throw new Error("abort");
+      }
+      // Validation transform (refus si points colinéaires / distance nulle ;
+      // C colinéaire = refus franc à la saisie, même si le moteur sait replier)
       try {
-        if (window.KmzExport && typeof window.KmzExport.buildTransform === "function") {
-          window.KmzExport.buildTransform(
-            { x: _geoA.x, y: _geoA.y }, { x: _geoB.x, y: _geoB.y },
-            { lat: _geoA.lat, lng: _geoA.lng }, { lat: _geoB.lat, lng: _geoB.lng }
-          );
+        const _g = { pointA: _geoA, pointB: _geoB };
+        if (_cComplet) _g.pointC = _geoC;
+        if (window.KmzExport && typeof window.KmzExport.buildTransformCalib === "function") {
+          const _t = window.KmzExport.buildTransformCalib(_g);
+          if (_g.pointC && _t.degenereC) {
+            _plannerErreur(window.I18n.t("gen.geo.pointCColineaire"));
+            throw new Error("abort");
+          }
         }
-        planObj.georef = { pointA: _geoA, pointB: _geoB };
+        planObj.georef = _g;
       } catch(e) {
+        if (e.message === "abort") throw e;
         _plannerErreur(window.I18n.t("gen.geo.calibrageInvalide", { err: e.message }));
         throw new Error("abort");
       }

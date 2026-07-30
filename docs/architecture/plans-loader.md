@@ -14,6 +14,15 @@
   ```json
   { "plans": [{ "id": "test1", "path": "data/test1", "name": "Test 1" }] }
   ```
+- **🛠️ Format ÉTENDU kiosque (v1.73.0 — figé, généré par `confadmin.html`)** — `index.json` peut porter en plus :
+  ```json
+  {
+    "config":   { "subtitle": "Gironde", "serverPlansOnly": true, "disableGenerator": true },
+    "plans":    [{ "id": "...", "path": "data/...", "name": "...", "version": "...", "author": "...", "multiLevel": true, "tiledV2": true }],
+    "liaisons": { "version": 1, "links": [ /* format registre myktamap_interplan_links_v1, planId REMAPPÉS "server_<id>" */ ] }
+  }
+  ```
+  ⚠️ `decouvrirPlansServeur` (main.js) ne lit QUE `plans` aujourd'hui — champs inconnus ignorés (rétrocompat totale). **`config.subtitle` est lu DÈS v1.73.0** (`main.js > _appliquerSousTitreKiosque`, appelé par `decouvrirPlansServeur`) : remplace « Cartographie souterraine » sur les 2 nœuds `[data-i18n="home.tagline"]` (splash + header loader) via `textContent` (jamais innerHTML) **+ retrait de l'attribut `data-i18n`** — sans ce retrait, tout changement de langue ré-écraserait l'override. ⚠️ Pref « ne pas charger les plans serveur » → discovery skippée → sous-titre non appliqué (limite consignée, résolue au lot lecteurs). **Depuis v1.73.0 TOUT est lu** : `_chargerIndexServeur()` (main.js) fetch l'index à CHAQUE boot (même pref skip-server active — elle ne skippe que l'inscription des plans), le SW le sert **network-first** (fraîcheur kiosque, fallback cache offline) ; `_appliquerConfigKiosque()` applique sous-titre + flags (serverPlansOnly masque #panelZip + head + .loader-plans-filters + section pref skip ; disableGenerator masque #loaderPlannerBtn) ; les `liaisons` sont fusionnées par id via `InterPlanLinks.importLinks` (idempotent, rejouée à chaque boot). Le tagline des PDF exportés suit aussi `config.subtitle` (pdfExport). Gouvernance + règle des 2 flags MAX : `community-server-line.md`. Guide admin : `docs/applications/SELFHOST.md`. `confadmin.html` (racine, **HORS `ASSETS_TO_CACHE`**, FR inline hors i18n) : lit les ZIPs via `lib/jszip.min.js` (tout local), pioche les liaisons dans localStorage même-origine OU un export de profil (`sections.preferences`), et REMAPPE les planId locaux → `"server_" + id` (même sanitisation `[^a-z0-9_-]` que le moteur — sinon les liaisons pointeraient vers des ids d'un autre appareil).
 - **Persistance ZIP local** : `meta.fsHandle` (Chrome/Edge) ou `meta.storeBlob` (mobile/Safari).
 - **Modale "Plan introuvable"** : `afficherModalePlanIntrouvable(plan, reason)` avec 4 cas (`server`, `local-blob`, `local-fs`, `local-fs-denied`).
 

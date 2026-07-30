@@ -6,7 +6,7 @@
 
 ## 🔴 Important warnings
 
-### ⚖️ Terms of use & legal notice (since v1.56.0)
+### ⚖️ Terms of use & legal notice
 
 On **first launch**, a **terms of use** page reminds you that MyKTAMap is a **mapping and orientation tool**, not an encouragement to enter forbidden places. It must be **read and accepted once** (checkbox + "I accept").
 
@@ -101,7 +101,7 @@ When clicked, the 🚨 button forces the re-display of ALL active alerts in casc
 
 > ⚠️ This system is intended for alerts **important for community safety**. It is not used for commercial or promotional messages.
 
-### 🛡️ Revoked plans (anti-leak kill-switch, since v1.42.0)
+### 🛡️ Revoked plans (anti-leak kill-switch)
 
 If a plan ZIP **leaks massively** (= it's been distributed outside its trusted group — public Telegram, forum, warez site…), the author can **revoke** it: its fingerprint is added to a public server-side list (`denylist.json`). The application will then automatically refuse to open it for **all users**.
 
@@ -131,7 +131,7 @@ If a plan ZIP **leaks massively** (= it's been distributed outside its trusted g
 
 > 💡 **For plan authors who want to revoke a ZIP**: contact KARMA (app author) with your ZIP's SHA-256 fingerprint (command: `sha256sum your-plan.zip`) + a short reason. Revocation is applied server-side within a few days.
 
-#### 🔄 Automatic boot audit (since v1.42.3)
+#### 🔄 Automatic boot audit
 
 If a plan **you have already imported** is revoked by the author AFTER your import (between 2 sessions), the app detects it automatically at next startup:
 
@@ -388,6 +388,8 @@ The application remembers all the maps you load, whether they come from the serv
 
 > 💡 **Tip** — If you change PC or phone, export your list on the old device then import it on the new one to find all your maps in one click. Note: file access permissions are not portable (you will have to re-select local ZIPs the first time on the new device). When re-selecting, if you provide a ZIP in a different mode (e.g.: you had this map in V2 but the ZIP is V1), a warning message will clearly notify you before continuing.
 
+> 📐 **Point C (optional, since v1.73.0) — for distorted maps**: if your map is an **assembly** that projects poorly (stretched one way, different X/Y scales), add a **3rd point** in ⚙️ Settings → Georeferencing (or in the generator): the app then switches to a transformation that **corrects the global distortion** — OSM view, KMZ/GPX exports and Rescue Mode all benefit. Pick C **far from the A-B line** (an aligned C adds nothing and is refused). Note: this corrects an *overall* distortion — if each piece of the assembly has its own error, the result improves but cannot be perfect everywhere. Leave C empty if your map already projects well: nothing changes.
+
 ### 🔐 Avoid re-selecting the ZIP at each opening
 
 Depending on your platform, two persistence options appear under the import area:
@@ -439,7 +441,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 1. **🖼️ Image tiling (per map)** — 5-preset segmented control (see detail below), which chooses how the main image is split in memory at load. Stored **per map** (one map in Performance, another in Quality, etc.).
 
-2. **🚀 Performance ULTRA mode (paths / markers)** — 7 optimization toggles that do **NOT** touch the image (already covered by Tiling above) but everything else (polylines, popups, intersections, auto-save, viewport culling, mobile zoom-out limit). **PER-PLAN setting since v1.59.0**: enabling ULTRA on one plan no longer affects the others — each plan starts disabled until you opt in for it. See "🚀 Optimize your map" section below for details.
+2. **🚀 Performance ULTRA mode (paths / markers)** — 7 optimization toggles that do **NOT** touch the image (already covered by Tiling above) but everything else (polylines, popups, intersections, auto-save, viewport culling, mobile zoom-out limit). **PER-PLAN setting**: enabling ULTRA on one plan no longer affects the others — each plan starts disabled until you opt in for it. See "🚀 Optimize your map" section below for details.
 
 3. **🛠️ Debug** — **🐛 Detailed logs** toggle (verbose mode) **+ 📋 Show logs button** which directly opens the modal buffer of captured logs. Useful for consulting logs without having to load a map first (e.g.: if you are trying to diagnose a blocking bug at load).
 
@@ -448,9 +450,9 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 5. **🎨 Display** — interface toggles:
    - **🔆 Keep screen on** — prevents your screen from auto-sleeping while MyKTAMap is open (Wake Lock API). Useful on cataphile outings to avoid having to touch the phone every 30 sec. Auto re-acquire on return from background (visibilitychange). Toggle automatically hidden on browsers that don't support the API (Firefox notably). The same toggle is also accessible in **⚙️ Settings** in map mode (see dedicated section).
 
-> 🌍 **Application language** *(since v1.46)*: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is located in **⚙️ Configuration**, in its own section **right after the Incognito block**. The change applies immediately, without reloading the app. *Good to know*: the **Documentation**, the **built-in Help** and the **welcome tutorial** currently exist in French and English only — if you use the app in Spanish, the interface is indeed in Spanish but these long-form contents are displayed in **English by default**. You can switch these contents between 🇫🇷 and 🇬🇧 at any time via the flag button at the top of their window. On each language change, a message offers to **restart the app** for a fully clean switch (optional). 💡 In **incognito mode**, your interface language is now **kept** (all other data stays completely forgotten).
+> 🌍 **Application language**: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is located in **⚙️ Configuration**, in its own section **right after the Incognito block**. The change applies immediately, without reloading the app. *Good to know*: the **Documentation**, the **built-in Help** and the **welcome tutorial** currently exist in French and English only — if you use the app in Spanish, the interface is indeed in Spanish but these long-form contents are displayed in **English by default**. You can switch these contents between 🇫🇷 and 🇬🇧 at any time via the flag button at the top of their window. On each language change, a message offers to **restart the app** for a fully clean switch (optional). 💡 In **incognito mode**, your interface language is now **kept** (all other data stays completely forgotten).
 
-> 💡 **Since v1.36.2**: the "Show circles at path intersections" option is **no longer in Configuration home** but in **⚙️ Settings in map mode** (per-plan). Each map now has its own setting — handy to disable circles only on your very dense maps without touching the others.
+> 💡 The "Show circles at path intersections" option is **not in Configuration home** but in **⚙️ Settings in map mode** (per-plan). Each map now has its own setting — handy to disable circles only on your very dense maps without touching the others.
 
 6. **📚 Server maps** — **"🚫 Do not load server maps at startup"** checkbox:
    - **Disables auto-discovery** of the `data/index.json` file at app boot — the app will no longer query the server to list demo maps or public hosted maps.
@@ -523,7 +525,7 @@ Click on a button before loading — the description under the selector changes 
 Your **current annotations** (added points, paths, zones, measurements) are automatically saved in the background every ~1.5 seconds. So if you close the application and reopen it via **▶️ Resume**, your work is restored.
 
 **How it works:**
-- On each modification, your session is saved in the browser, **in a slot of its own for each map** (since v1.16.1): working on another map no longer overwrites the first one's session
+- On each modification, your session is saved in the browser, **in a slot of its own for each map**: working on another map no longer overwrites the first one's session
 - On next launch, if you click on **▶️ Resume [map name]**, your session is restored — a **centered window** confirms with the details (*"3 points · 1 path · 2 zones"*)
 - The window offers you two actions: **🗑️ Clear session** (start this map with a blank session) or **✓ Continue** (keep the restored session). Clicking outside or pressing Escape = Continue.
 
@@ -535,7 +537,7 @@ Your **current annotations** (added points, paths, zones, measurements) are auto
 
 ---
 
-### 📔 My logbook — the history of your trips (since v1.69.0)
+### 📔 My logbook — the history of your trips
 
 The auto-save above keeps the **current state** of a map. The **logbook** keeps the **history**: every time you explore a map, a **trip** is archived with its date, duration, distance travelled and what you added. Clearing a session does not delete the trips already filed in the logbook.
 
@@ -574,7 +576,7 @@ The logbook tells them apart on its own, and it matters: preparing a map at home
 - ⚠️ A PDF **shipped inside the plan's ZIP** does not appear here: you must load the plan to read it (Story mode).
 
 **Good to know:**
-- The logbook **starts empty**: it cannot reconstruct trips from before v1.69.0, they were never recorded as such.
+- The logbook **starts empty**: it cannot reconstruct trips from before it existed, they were never recorded as such.
 - Everything is **strictly local** to your device (no upload, no account). Each trip can be deleted individually from its sheet.
 - Beyond **500 trips**, the oldest ones are removed automatically.
 - The logbook is **not** part of the profile export yet: switching devices via the profile export does not carry your history over.
@@ -715,7 +717,7 @@ The **⛶** button of the OSM view widget is now called **"Open OSM mode"**: the
 - **100% local**: the search reads your own plans, no internet address service is queried;
 - only **georeferenced** plans appear — a plan without GPS calibration is invisible in OSM mode (calibrate it via the Generator or Settings).
 
-**🗂️ Several plans at once (since v1.71.0)** — the "Displayed plans" panel of OSM mode lets you **stack your georeferenced plans**: ➕ to add one, ▲▼ to choose what goes above/below, a per-plan **opacity** slider, ✕ to remove. The plan marked ◉ is the "primary" one (the top selector's). All this management lives in a **dedicated modal** opened by the banner's **≡** button (nothing covers the map): **global display** switches, **tag filtering** (aggregated across displayed plans), and the plan stack. The old rows under the selector (opacity, checkboxes, tags) are gone from the widget — the map gains their height. Each row also carries **5 mini filter buttons of its own** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — the banner checkboxes remain global switches, the two combine. Perfect to show two neighbouring sectors on top of an overview plan, keeping e.g. only one's POIs and the other's image.
+**🗂️ Several plans at once (since v1.71.0)** — the "Displayed plans" panel of OSM mode lets you **stack your georeferenced plans**: ➕ to add one, ▲▼ to choose what goes above/below, a per-plan **opacity** slider, ✕ to remove. The plan marked ◉ is the "primary" one (the top selector's). All this management lives in a **dedicated modal** opened by the banner's **≡** button (nothing covers the map): **global display** switches, **tag filtering** (aggregated across displayed plans), and the plan stack. The old rows under the selector (opacity, checkboxes, tags) are gone from the widget — the map gains their height. Each row also carries **5 mini filter buttons of its own** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — the global display switches live in the same modal (Display section), the two levels combine. Perfect to show two neighbouring sectors on top of an overview plan, keeping e.g. only one's POIs and the other's image.
 
 On the first opening of the mode, a message reminds you that rendering full plans can be slower on mobile — and another one shows if you display **more than 3 plans** at once.
 
@@ -733,7 +735,7 @@ The note supports **Markdown**:
 - Tap **👁 Preview** to switch back to the rendered view.
 - Any MD you type (`**bold**`, `# Title`, `- item`…) is interpreted on render.
 
-### 📚 Story (PDF) — **several documents per plan since v1.69.0**
+### 📚 Story (PDF) — **several documents per plan**
 
 You can now keep **up to 10 PDF documents per plan** (before: only one, and a new import overwrote the previous one). A 2019 report, a scanned paper map, a press article, a survey sheet: all in the same place.
 
@@ -826,7 +828,7 @@ If your map is **GPS calibrated** (see "Export to geolocated KMZ" section for 2-
 
 > 💡 **Typical use case**: on a cataphile outing, you find an unlisted well, you add it via ✏️, you click on it → you can instantly copy its GPS coordinates to send them to a teammate by SMS or to mark them later in Google Earth.
 
-### 🌀 Inter-plan links (since v1.57.0)
+### 🌀 Inter-plan links
 
 You can **link a point on one plan to a point on another plan** — like a "portal" between two touching networks (two neighboring quarries, or an overview plan and a detail plan).
 
@@ -835,29 +837,29 @@ You can **link a point on one plan to a point on another plan** — like a "port
 2. Pick the **target plan** from your library, then **search the arrival point** (by name, id or tag) — no need to open the other plan, its points are read in place.
 3. The link is created **both ways**: it shows in both points' popups.
 
-**On the map (since v1.59.0)**: you choose whether a linked point stands out or not. By default, **nothing distinguishes it** (it keeps its usual tag and icon). If you want to mark it visually, give it the new **"Portal" tag**: it then gets a **dedicated vortex icon** (golden ring, blue spiral). *(The old automatic golden badge has been removed.)*
+**On the map**: you choose whether a linked point stands out or not. By default, **nothing distinguishes it** (it keeps its usual tag and icon). If you want to mark it visually, give it the new **"Portal" tag**: it then gets a **dedicated vortex icon** (golden ring, blue spiral). *(The old automatic golden badge has been removed.)*
 
-**🌀 My links (since v1.59.0)**: on the **home screen**, the **"🌀 My links"** button lists all your links (across all plans): each side's status (⛔ if the plan is not on this device), **➜** button to jump straight to either point, **🗑️** to delete. If a plan's data is unreachable (server offline…), the app tells you clearly instead of showing "0 points".
+**🌀 My links**: on the **home screen**, the **"🌀 My links"** button lists all your links (across all plans): each side's status (⛔ if the plan is not on this device), **➜** button to jump straight to either point, **🗑️** to delete. If a plan's data is unreachable (server offline…), the app tells you clearly instead of showing "0 points".
 
-**🕸️ Graph view (since v1.65.0)**: in the same window, toggle **📋 List ⇄ 🕸️ Graph** — your library drawn as a **network**: each plan is a bubble (V2/M-LVL badges, link counter, golden ring on the current plan, grayed ⛔ if missing from this device), each border a line whose **thickness follows the number of links**. Plans without links sit in a strip at the bottom. **Click a bubble** to open the plan (arriving at its first portal), **click a line** to see that border's links in detail (the list filters itself), and **drag the bubbles** to arrange the view your way.
+**🕸️ Graph view**: in the same window, toggle **📋 List ⇄ 🕸️ Graph** — your library drawn as a **network**: each plan is a bubble (V2/M-LVL badges, link counter, golden ring on the current plan, grayed ⛔ if missing from this device), each border a line whose **thickness follows the number of links**. Plans without links sit in a strip at the bottom. **Click a bubble** to open the plan (arriving at its first portal), **click a line** to see that border's links in detail (the list filters itself), and **drag the bubbles** to arrange the view your way.
 
 **Use a link**: in the point's popup, a 🌀 line shows the destination plan and point → **➜** button → confirmation → the app **switches plan** (your current session is saved automatically), **switches to the arrival point's level** (multi-level plans) and drops you **right on it** (blue flash). If a tag filter hides the arrival point, a warning is shown — your filters are never modified.
 
-**📍 Automatic recalibration on arrival (since v1.61.0)**: when you **physically cross** a portal (a link's ➜ button, or an inter-plan route's "Take the portal"), your **tracker position is recalibrated onto the arrival point** of the target plan — you ARE there, the app knows it. Multi-plan search and the links manager do **not** recalibrate (viewing a point ≠ moving there). And if a route is active on the arrival plan, it replans from the portal.
+**📍 Automatic recalibration on arrival**: when you **physically cross** a portal (a link's ➜ button, or an inter-plan route's "Take the portal"), your **tracker position is recalibrated onto the arrival point** of the target plan — you ARE there, the app knows it. Multi-plan search and the links manager do **not** recalibrate (viewing a point ≠ moving there). And if a route is active on the arrival plan, it replans from the portal.
 
-**🧭 Inter-plan route (since v1.60.0, revamped v1.64.0)**: request a route to a point **on another plan** connected by a portal — from the **Route** modal ("🌐 Destination on another plan" button) or the **multi-plan search** (🧭 button on a distant result). The app compares available portals at **real cost**, shows the trip in steps ("① Reach 🌀 North well — 450 m · ② Cross · ③ Reach the room — 300 m · Total ≈ 750 m") and **draws the route on your plan**. Each plan's avoidances (zones, points, tags) are honored. If it's impossible (no portal, plan offline, destination cut off from the network…), a message tells you **exactly why**.
+**🧭 Inter-plan route**: request a route to a point **on another plan** connected by a portal — from the **Route** modal ("🌐 Destination on another plan" button) or the **multi-plan search** (🧭 button on a distant result). The app compares available portals at **real cost**, shows the trip in steps ("① Reach 🌀 North well — 450 m · ② Cross · ③ Reach the room — 300 m · Total ≈ 750 m") and **draws the route on your plan**. Each plan's avoidances (zones, points, tags) are honored. If it's impossible (no portal, plan offline, destination cut off from the network…), a message tells you **exactly why**.
 
-**🚶 The trip follows your pace (since v1.64.0)**: the summary button is "**🗺️ Let's go**" — it no longer teleports you. You **walk** your route (with "📍 I am here" stop validation and replanning on recalibration), and the crossing is offered when you are **at the portal**: floating "**🌀 Next portal (X m)**" button (dismissible — "📍 I am here" on the portal point brings it back), or the portal point's ➜ button. At each crossing, the rest is drawn automatically on the other side, all the way to the destination.
+**🚶 The trip follows your pace**: the summary button is "**🗺️ Let's go**" — it no longer teleports you. You **walk** your route (with "📍 I am here" stop validation and replanning on recalibration), and the crossing is offered when you are **at the portal**: floating "**🌀 Next portal (X m)**" button (dismissible — "📍 I am here" on the portal point brings it back), or the portal point's ➜ button. At each crossing, the rest is drawn automatically on the other side, all the way to the destination.
 
-**🧭 Your stops first (since v1.64.0)**: set your **waypoints** in the Route modal (curiosity X, Y…) then pick the distant destination — the trip goes through **all your stops in order, before the portal**.
+**🧭 Your stops first**: set your **waypoints** in the Route modal (curiosity X, Y…) then pick the distant destination — the trip goes through **all your stops in order, before the portal**.
 
-**🌀 Across multiple plans (since v1.64.0)**: check "**🌀 Route across multiple plans**" in the multi-plan search (choice remembered, unchecked by default) → the app can compute a trip that **crosses intermediate plans** (A → B → C, up to 3 crossings), comparing every portal combination at real cost. An unreachable intermediate plan is set aside (and named if no path survives). Each arrival draws that plan's leg and offers the next portal.
+**🌀 Across multiple plans**: check "**🌀 Route across multiple plans**" in the multi-plan search (choice remembered, unchecked by default) → the app can compute a trip that **crosses intermediate plans** (A → B → C, up to 3 crossings), comparing every portal combination at real cost. An unreachable intermediate plan is set aside (and named if no path survives). Each arrival draws that plan's leg and offers the next portal.
 
-**🔄 Always-fresh popups (since v1.60.0)**: if you rename or move a linked point, the link entries (on both sides) **update automatically** the next time the plan is opened.
+**🔄 Always-fresh popups**: if you rename or move a linked point, the link entries (on both sides) **update automatically** the next time the plan is opened.
 
-**↩️ Going back (since v1.58.0)**: after taking a portal (or a multi-plan search jump), a floating **"↩️ Back: <plan>"** button appears at the bottom of the screen for 15 seconds — one click brings you back to the plan **and the exact view** you came from (level and zoom included). Jumps stack up: chain 3 portals, you can go back 3 times.
+**↩️ Going back**: after taking a portal (or a multi-plan search jump), a floating **"↩️ Back: <plan>"** button appears at the bottom of the screen for 15 seconds — one click brings you back to the plan **and the exact view** you came from (level and zoom included). Jumps stack up: chain 3 portals, you can go back 3 times.
 
-**↩️ Discreet Back button (since v1.61.0)**: if the button bothers you, two new controls on it — **[–]** shrinks it to a discreet **↩️ mini-chip** at the bottom right (it stays until it expires, one click re-expands it), **[✕]** closes it. Your choice is remembered: once minimized, future returns arrive directly as a mini-chip.
+**↩️ Discreet Back button**: if the button bothers you, two new controls on it — **[–]** shrinks it to a discreet **↩️ mini-chip** at the bottom right (it stays until it expires, one click re-expands it), **[✕]** closes it **and forgets the stacked returns** (since v1.73.0 — closing means giving up the return chain; before, the button came back on the next jump). Your [–] choice is remembered: once minimized, future returns arrive directly as a mini-chip.
 
 **Good to know**:
 - A point can carry **several links** (a "hub" point).
@@ -866,7 +868,7 @@ You can **link a point on one plan to a point on another plan** — like a "port
 - Links **travel with the session export** (restored on import on another device).
 - A distributed plan ("data layer") can embed ready-to-use links: you can **use** them, not edit them.
 
-### 🔎 Multi-plan search (since v1.58.0, search bar since v1.69.0)
+### 🔎 Multi-plan search
 
 Search for a point across **every plan in your library** at once, without opening them one by one:
 
@@ -1035,8 +1037,8 @@ The **🧭 Tracker** button opens a **side panel (flyout)** adjacent to the main
 | **▶️** / **⏹️** | Play / Stop tracking (the icon toggles dynamically based on state) |
 | **🧭** | Compass (compass rose widget) |
 | **📍** | Position recalibration |
-| **🎯** | **My position** — recenter the map on you *(v1.49.0)* |
-| **🔓** | **Suspend trace lock** — temporarily (30 s → 10 min) *(v1.49.0)* |
+| **🎯** | **My position** — recenter the map on you |
+| **🔓** | **Suspend trace lock** — temporarily (30 s → 10 min) |
 | **🗺️** | Calculate a route |
 | **🎬** | Tracker session replay |
 | **🔥** | Heatmap — see dedicated section |
@@ -1045,7 +1047,7 @@ The **🧭 Tracker** button opens a **side panel (flyout)** adjacent to the main
 
 > 🚨 **The 2 emergency modes are deliberately placed at the END of the panel with a bright red background** to make them instantly visually identifiable. In a stressful situation, you know where to look.
 
-> 🆕 **v1.49.0 — field**:
+> 🆕 **In the field**:
 > - **🎯 My position**: recenter the map on your current position (handy after panning elsewhere).
 > - **🔓 Suspend trace lock**: if "trace lock" (smart navigation) is on and you **leave the gallery network** (e.g. entering a cave), you can disable it temporarily (**30 s / 1 min / 10 min / until reactivation**) without going through settings. A **🔓 countdown shows in the bottom bar**, next to the tracker ON/OFF indicator; tap it to reactivate (confirmation asked).
 > - **⚙️ Advanced settings**: in ⚙️ Settings → *Navigation & Tracker*, the lock's **lateral tolerance** and **heading weight** are adjustable (to tune junction behavior). Step length, threshold and cooldown are now **clamped** to avoid nonsensical values. ⚠️ Expert settings — set the plan's m/px scale first.
@@ -1301,7 +1303,7 @@ The active mode is displayed next to the estimated time in the bottomleft label.
 
 > 💡 **Tip**: if you want to see only the path without the distance label, close the modal then reopen it in navigation mode to use the piloting buttons.
 
-#### 🔄 Living route — replanning on recalibration + stop validation *(since v1.61.0)*
+#### 🔄 Living route — replanning on recalibration + stop validation
 
 During a real outing, the tracker can drift and the phone spends time locked in your pocket. The route adapts on its own every time you **recalibrate your position**:
 
@@ -1321,7 +1323,7 @@ In the route modal, a collapsible section **🚫 Avoidance preferences (optional
 |---|---|
 | **📍 Points to avoid** | **3 methods** to choose from: (a) autocomplete search in the text field, (b) entry by exact ID, (c) **📍 Click on the map**: switches to click mode, each click on the map adds a point. Orange chips with ✕ to remove. |
 | **🏷️ Tags to avoid** | Click a chip to toggle it. All points carrying this tag will be avoided (e.g.: you activate `pa` → all ventilation shafts are avoided). |
-| **⬛ Zones to avoid** *(since v1.48.0)* | Tick a **zone type** in the list (Water, Collapse, your custom types…) so the route **goes around** all zones of that type. **⛔ Inaccessible** zones don't appear here: they're already impassable (hard constraint, never relaxed). |
+| **⬛ Zones to avoid** | Tick a **zone type** in the list (Water, Collapse, your custom types…) so the route **goes around** all zones of that type. **⛔ Inaccessible** zones don't appear here: they're already impassable (hard constraint, never relaxed). |
 | **📏 Margin** | Distance around the avoided points (px, default 100). Any road segment closer than this margin is excluded from the graph. |
 
 **Behavior**:
@@ -1599,9 +1601,9 @@ Default checked + 15 min (= preserved behavior). Modifiable → also applies to 
 
 > ⚠️ As with all digital tools underground: **keep a physical compass** and a paper map in your pocket. The phone can fail, the magnetometer can be distorted by local metal, the tracker can drift. The 🚨 is a quick info reading aid, not a substitute for preparation.
 
-### 🚨 Rescue Mode × 🌍 OSM View — External rescue coordination (v1.41)
+### 🚨 Rescue Mode × 🌍 OSM View — External rescue coordination
 
-Since v1.41.0, Rescue Mode is integrated with the OSM View to provide **external rescue teams** (firefighters, GRIMP, SDIS) with everything they need to intervene on site without knowing the place.
+Rescue Mode is integrated with the OSM View to provide **external rescue teams** (firefighters, GRIMP, SDIS) with everything they need to intervene on site without knowing the place.
 
 #### 🚪 "Plan entry point" tag
 
@@ -1653,9 +1655,9 @@ The post-mission PDF report (generated via 📤 Report button) now includes a ne
 
 #### 🏷️ OSM View tag filter fix
 
-Previously, the tag filter chips in the OSM View modal only showed ~3 tags (data source bug). Since v1.41.4, **all tags present** in the plan are listed, aligned with the OSM View Home widget.
+The tag filter chips in the OSM View modal list **all tags present** in the plan, aligned with the OSM View Home widget.
 
-#### 💾 Save Offline — OSM View without Internet (v1.43.0 → v1.43.8)
+#### 💾 Save Offline — OSM View without Internet
 
 Heading out on a cataphile trip, or prepping for a Rescue Mode in an area with terrible cellular? You can now **download the OpenStreetMap tiles around your plan ahead of time**, and view them **with no Internet** once you're on site.
 
@@ -1687,7 +1689,7 @@ The 💾 Save Offline button shows up in **3 contexts** — and the cache is **s
 
 > ✅ **Shared cache**: you download ONCE → it's available everywhere, no duplicates. No need to redo the download per mode.
 
-**Smart offline behavior** (v1.43.1 → v1.43.7):
+**Smart offline behavior**:
 
 When the app detects you have no Internet, it adapts the 🌍 icon behavior based on what's stored on your device:
 
@@ -2184,9 +2186,9 @@ You can attach up to **5 photos per point** (anti-saturation limit for browser s
 
 **Auto compression**: photos are compressed before storage (1920 px long side max, JPEG quality 85%). A raw photo of 5-10 MB drops to ~200-500 KB. For 5 photos = ~2 MB per point.
 
-**🔒 Metadata scrubbed *(since v1.63.0)***: **every** photo is re-encoded when added, even already-small ones — the file's hidden metadata (**EXIF: GPS position of the shot, date, camera model**) is systematically removed. None of it enters the app or leaves in an export. Small photos are re-encoded without resizing at high quality (invisible degradation).
+**🔒 Metadata scrubbed**: **every** photo is re-encoded when added, even already-small ones — the file's hidden metadata (**EXIF: GPS position of the shot, date, camera model**) is systematically removed. None of it enters the app or leaves in an export. Small photos are re-encoded without resizing at high quality (invisible degradation).
 
-**🛡️ Anonymized export + photos *(since v1.63.0)***: in 💾 Save session → 📦 Full, the "🛡️ Anonymize for public sharing" checkbox now accepts photos: each one is **re-encoded without metadata** (including photos added before v1.63.0) and **renamed** (`photo-anon-1`, `photo-anon-2`…), linked to the points' anonymized codes (`💎 POI #1`…). A photo that cannot be re-encoded is **excluded** from the export — never embedded as-is. The free note and History PDF remain excluded from the anonymized export.
+**🛡️ Anonymized export + photos**: in 💾 Save session → 📦 Full, the "🛡️ Anonymize for public sharing" checkbox now accepts photos: each one is **re-encoded without metadata** (including photos added before this protection existed) and **renamed** (`photo-anon-1`, `photo-anon-2`…), linked to the points' anonymized codes (`💎 POI #1`…). A photo that cannot be re-encoded is **excluded** from the export — never embedded as-is. The free note and History PDF remain excluded from the anonymized export.
 
 **Remove a photo**: click on the red ✕ at the top right of the thumbnail → it appears greyed out with red hatching (marked for deletion). If you change your mind, click on the green ↺ arrow to undo. The actual deletion only happens when you **💾 Save**.
 
@@ -2423,7 +2425,7 @@ Radio buttons `[ − ] [-2] [-1] [0] [1] [2] [ + ]` (5 levels by default, symmet
 
 Checkboxes per level. Paths/zones/points of **unchecked** levels are hidden on the map (opacity 0). Inter-level junctions remain visible if **at least one** of their endpoints touches a checked level.
 
-**🏗️ The main plan IS level 0 *(since v1.67.0)***: unchecking level **0** also hides **the plan's main image** (tiles included) — you can finally look at a single floor (e.g. only the transparent level -1 layer), without the level-0 background polluting the stack. Re-check 0 and it comes back. Without multi-level mode, the main plan is never hidden.
+**🏗️ The main plan IS level 0**: unchecking level **0** also hides **the plan's main image** (tiles included) — you can finally look at a single floor (e.g. only the transparent level -1 layer), without the level-0 background polluting the stack. Re-check 0 and it comes back. Without multi-level mode, the main plan is never hidden.
 
 **🫥 Level layer transparency**: for stacking to make sense, every level layer (≠ 0) must be a **PNG with a transparent background**. The generator now warns you at generation time if a level layer is opaque (JPEG, or PNG with a flattened background) — it would hide everything below.
 
@@ -2560,7 +2562,7 @@ Building a large map across **several sessions** and ending up with lots of file
 - A **preview** shows the totals and **warns** you if any point ids are duplicated (duplicates are kept as-is).
 - **Download** the result (a ZIP, or a direct `.json` if there is only one category), ready to drop into your map folder.
 
-Available **without an open map** from the home screen: **📊 Data editor → 🔗 Merge data layers** (since v1.69.0; it used to be a separate home button, now folded into the editor's sources to declutter the screen). **100% local**, no data sent.
+Available **without an open map** from the home screen: **📊 Data editor → 🔗 Merge data layers** (it used to be a separate home button, now folded into the editor's sources to declutter the screen). **100% local**, no data sent.
 
 ### 🖼️ Export to PNG/JPG
 
@@ -2656,7 +2658,7 @@ Typical use cases:
 - Load into **OsmAnd / Locus / Avenza** for offline field navigation
 - Share with a colleague who doesn't have MyKTAMap but has a KML viewer
 
-#### Calibration via 2 GPS points
+#### Calibration via 2 GPS points (+ optional 3rd point)
 
 The KMZ needs to know **where your map is located on the globe**. You give it 2 pairs (point on your map ↔ real GPS coordinates), the app calculates the rotation+scale+translation transformation and positions everything correctly.
 
@@ -2726,7 +2728,7 @@ Press **⬇️ → 📊 Plan data editor** (in map mode) **or** the **📊 Data 
 
 > ℹ️ From the **home screen**, no plan is loaded yet: only the **📦 ZIP** and **📄 JSON** sources are offered (no "current plan").
 
-#### Opening — 3 sources *(since v1.48.0)*
+#### Opening — 3 sources
 
 1. **🗺️ Current plan** — lists the data layers of the open plan (shafts, accesses, paths, zones…). Pick one to edit.
 2. **📦 Import a ZIP** — retrieves the data layers from a full plan (`.zip`).
@@ -2879,7 +2881,7 @@ The 🧱 Convert to V2 checkbox appears in the form as soon as you have **upload
 
 **Built-in auto-crop**: if your source image has lots of white margins (typical of scanned paper plans), the generator automatically detects the bbox of useful content and only tiles this area. You gain ZIP size + sharpness at max zoom. If the image is already well framed, no crop.
 
-**🫥 Transparency preserved *(since v1.62.0)***: if your source image is a **PNG/WebP with real transparency** (alpha background), the generator no longer adds a **dark background**: tiles keep the transparency (WebP format, or PNG depending on the browser). Result: behind transparent areas you see the map's dark background — and in the **OSM View**, the OpenStreetMap map shows **through your plan**. Detection is automatic (it looks at pixels, not the file extension — a PNG whose background was already flattened is still treated as opaque). On a transparent source, the auto-crop above is **disabled** so your points/paths/georeferencing are never shifted. **Existing V2 plans**: the background was baked into their tiles back then — regenerate once (Edit → re-check V2) to benefit; without regeneration they keep working as before.
+**🫥 Transparency preserved**: if your source image is a **PNG/WebP with real transparency** (alpha background), the generator no longer adds a **dark background**: tiles keep the transparency (WebP format, or PNG depending on the browser). Result: behind transparent areas you see the map's dark background — and in the **OSM View**, the OpenStreetMap map shows **through your plan**. Detection is automatic (it looks at pixels, not the file extension — a PNG whose background was already flattened is still treated as opaque). On a transparent source, the auto-crop above is **disabled** so your points/paths/georeferencing are never shifted. **Existing V2 plans**: the background was baked into their tiles back then — regenerate once (Edit → re-check V2) to benefit; without regeneration they keep working as before.
 
 **Trade-offs**:
 
@@ -2999,7 +3001,7 @@ When loading a map, you can choose from 5 presets in the loader:
 
 If despite Performance mode, your map still crashes (typically 4000+ × 2000+ pixel maps with many paths), open **⚙️ Settings → "🚀 Performance ULTRA mode" section** and enable the **🚀 ULTRA master toggle**. It enables 6 aggressive optimizations simultaneously.
 
-> 🆕 **Since v1.59.0** — three things to know:
+> 🆕 **Three things to know**:
 > - **PER-PLAN setting**: enabling ULTRA here only affects the open plan. Your other plans are no longer impacted (before, the setting was global and silently "followed" you on every plan). After the update, plans that had ULTRA start disabled again — re-enable it on the ones that need it.
 > - **Your session points are sacred**: POIs you add by hand (✏️) stay **always visible**, even with viewport culling on — only the thousands of data-layer points get lightened.
 > - **Message on load**: when optimizations are active on a plan, a message reminds you at load time — a "lightened" display (simplified paths, data popups off…) is not a bug.
@@ -3094,10 +3096,10 @@ Access the settings by clicking **⚙️**:
 
 ### 🔍 Display
 - **Zoom-adaptive icons** (`scaledMarkers`) — *global preference*: the point icons (shafts, accesses, signage, etc.) keep a constant size relative to the map. On zoom-out, they shrink; on zoom-in, they grow. Reload required on toggle.
-- **⚪ Show circles at path intersections (this map)** — *per-plan since v1.36.2*: solid colored circle at the crossing of 2 paths (green × purple → yellow, etc.). Uncheck to visually clear very dense maps, or if the computation slows down rendering. **Immediate effect**, saved per map (another map keeps its own setting). Before v1.36.2 this option was in Configuration home and global to all maps.
-- **🧭 North calibration (this map)** — *per-plan since v1.37.0*: useful when the TOP of the map is **not** the true North (aerial photo with arbitrary framing, cataphile map without aligned compass rose). Angle field [0,360[ in degrees or button **📐 Calibrate (2 clicks)** which opens a WYSIWYG picker: click first the SOUTH of the map, then the NORTH, a dashed Sud→Nord arrow appears and the angle is auto-computed. **Effect**: tracker icon rotation + walking direction adapt → the tracker points in the right direction RELATIVE TO THE MAP. The physical compass 🧭 keeps pointing to the real magnetic North (= expected behavior of a compass). **Saved per map**, **immediate effect** without reload. ↺ Reset button to return to default (0 = North toward top of map).
+- **⚪ Show circles at path intersections (this map)** — *per-plan setting*: solid colored circle at the crossing of 2 paths (green × purple → yellow, etc.). Uncheck to visually clear very dense maps, or if the computation slows down rendering. **Immediate effect**, saved per map (another map keeps its own setting). 
+- **🧭 North calibration (this map)** — *per-plan setting*: useful when the TOP of the map is **not** the true North (aerial photo with arbitrary framing, cataphile map without aligned compass rose). Angle field [0,360[ in degrees or button **📐 Calibrate (2 clicks)** which opens a WYSIWYG picker: click first the SOUTH of the map, then the NORTH, a dashed Sud→Nord arrow appears and the angle is auto-computed. **Effect**: tracker icon rotation + walking direction adapt → the tracker points in the right direction RELATIVE TO THE MAP. The physical compass 🧭 keeps pointing to the real magnetic North (= expected behavior of a compass). **Saved per map**, **immediate effect** without reload. ↺ Reset button to return to default (0 = North toward top of map).
 
-> 💡 **Map author v1.37.0**: to durably embed the North OR a **History PDF** in the map ZIP (cross-users), use the **advanced generator** (field "🧭 North orientation" in Tracking + optional "📖 History PDF" section). For a History PDF loaded only in your session (your browser), keep using the import button in the **📖 History Mode** modal (status bar) — unchanged since v1.34.20.
+> 💡 **Map author**: to durably embed the North OR a **History PDF** in the map ZIP (cross-users), use the **advanced generator** (field "🧭 North orientation" in Tracking + optional "📖 History PDF" section). For a History PDF loaded only in your session (your browser), keep using the import button in the **📖 History Mode** modal (status bar).
 - **🔆 Keep screen on** — *global preference*: enables the Wake Lock API to prevent automatic screen sleep while the app is open. Auto re-acquisition on return from background. Hidden if the browser doesn't support the API. The same toggle is also available in **⚙️ Configuration** on the home page.
 
 ### 🎬 Presentation mode
@@ -3209,7 +3211,7 @@ In case of a problem or to force an update, use **⚙️ → 🗑️ Reset**. Th
 
 ---
 
-## 🐳 Self-host with Docker (NEW v1.36.0)
+## 🐳 Self-host with Docker
 
 If you want to run MyKTAMap **on your own hardware** (PC, Raspberry Pi, NAS, dedicated server) — to have it available on your local network, guarantee 100% offline operation, or just out of curiosity — a **ready-to-run Docker image** is now available.
 
@@ -3390,11 +3392,11 @@ To those who agreed to go down with an unstable `1.x.y-beta` version, to come ba
 MyKTAMap relies entirely on **open-source bricks**. Without these projects, the app simply would not exist:
 
 - 🍃 **[Leaflet](https://leafletjs.com/)** *(BSD 2-Clause)* — interactive map engine. Heart of the map display. Thanks to **Vladimir Agafonkin** and the many contributors of the project.
-- 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin that projects an image as a parallelogram via 3 corners (CSS matrix transform). Used for the **2-anchor** calibration of image layers (v1.38+) and for the projection of MyKTAMap plans **onto the OSM View** (v1.39+). Thanks to **Iván Sánchez Ortega** for this elegant plugin.
+- 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin that projects an image as a parallelogram via 3 corners (CSS matrix transform). Used for the **2-anchor** calibration of image layers and for the projection of MyKTAMap plans **onto the OSM View**. Thanks to **Iván Sánchez Ortega** for this elegant plugin.
 - 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL dual)* — reading and writing of `.zip` archives on the browser side (maps, sessions, exports, partial extraction for the HOME mini-map). Thanks to **Stuart Knightley** and contributors.
 - 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — generation of printable PDFs (A0 → A4, portrait/landscape, miniature page Rescue Mode, embed Story Mode).
-- 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — DOM-to-image capture (canvas → PNG). Used to embed the **Leaflet OSM map** in the **« Firefighters Briefing »** PDFs of the Rescue Mode (since v1.42.5): the full graphic stack (tiles + overlays + projected plan) is captured as a frozen image and embedded in the PDF handed to external rescue teams. Thanks to **Niklas von Hertzen** and contributors.
-- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & its contributors** — licensed under **[ODbL](https://opendatacommons.org/licenses/odbl/)** for data and **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** for cartography. Worldwide map data displayed in the **OSM View** (modal + HOME widget, since v1.39+) **only when you enable it via the dedicated opt-in**. The app shows the `© OpenStreetMap contributors` attribution in the corner of every OSM map, **as the ODbL license requires**. Tile hosting: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (non-commercial foundation, public logs policy, no advertising tracking). Without this monumental common good — built since 2004 by **thousands of volunteers** mapping the world street by street — the OSM View would not exist.
+- 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — DOM-to-image capture (canvas → PNG). Used to embed the **Leaflet OSM map** in the **« Firefighters Briefing »** PDFs of the Rescue Mode: the full graphic stack (tiles + overlays + projected plan) is captured as a frozen image and embedded in the PDF handed to external rescue teams. Thanks to **Niklas von Hertzen** and contributors.
+- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & its contributors** — licensed under **[ODbL](https://opendatacommons.org/licenses/odbl/)** for data and **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** for cartography. Worldwide map data displayed in the **OSM View** (modal + HOME widget) **only when you enable it via the dedicated opt-in**. The app shows the `© OpenStreetMap contributors` attribution in the corner of every OSM map, **as the ODbL license requires**. Tile hosting: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (non-commercial foundation, public logs policy, no advertising tracking). Without this monumental common good — built since 2004 by **thousands of volunteers** mapping the world street by street — the OSM View would not exist.
 - 🧭 **Dijkstra's algorithm** (1959) — shortest path calculation for assisted itineraries. Edsger W. Dijkstra (1930-2002): thanks for this 60+ year old idea that still underpins Google Maps, OpenStreetMap routing, and every GPS in the world.
 - 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — exchange format with TopoDroid, OsmAnd, Strava, Garmin and the outdoor ecosystem.
 - 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintained by thousands of people we will never meet and to whom we owe enormously.

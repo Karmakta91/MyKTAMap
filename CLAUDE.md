@@ -64,6 +64,7 @@
 | Vue OSM modale + widget HOME (georef, tuiles V2, opt-in) | `docs/architecture/vue-osm.md` |
 | Versioning, live-config, releases, DX (selfhost, hooks), logs | `docs/architecture/infra-versioning.md` |
 | Formats JSON (plan-config, point, session) | `docs/architecture/data-formats.md` |
+| Frontière community/pro, mode serveur kiosque, confadmin | `docs/architecture/community-server-line.md` |
 | Pièges connus & renommages | `docs/architecture/gotchas.md` |
 
 ## 📝 Style KARMA

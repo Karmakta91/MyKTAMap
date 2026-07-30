@@ -20516,10 +20516,8 @@ html.kta-theme-light .kta-readme-modal-overlay *[style*="background: #1a1f2e"] {
 /* 🧹 v1.69.0 : « 📔 Mon carnet » a rejoint la liste des outils classiques —
    le conteneur dédié `.loader-journal-action` n'existe plus. Le liseré doré
    reste, posé directement sur le bouton, pour le distinguer dans la liste. */
-#loaderJournalBtn {
-  border-color: rgba(244, 197, 66, 0.30);
-  background: rgba(244, 197, 66, 0.08);
-}
+/* (v1.73.0, KARMA : l'accent doré du bouton Carnet est retiré — même
+   apparence que les autres outils de la grille, .loader-btn-secondary nue.) */
 
 /* ── Modale carnet ── */
 .kta-jrn-boite { max-width: 640px !important; height: auto !important; max-height: 90vh !important; }
@@ -21294,7 +21292,16 @@ html.kta-theme-light .kta-planner-hist-nom { color: #3a4256; }
 }
 .kta-wiz-lien { width: 14px; height: 1px; background: rgba(140, 180, 255, 0.25); }
 
-#kta-wiz-nav { display: flex; gap: 8px; margin-right: auto; }
+/* 🔄 v1.73.0 (KARMA) : convention installeur — Annuler seul à GAUCHE,
+   navigation Précédent/Passer/Suivant à DROITE (Générer encore plus à
+   droite sur la page Résumé). Réalisé en flex `order` + margin auto sur
+   Annuler : le DOM ne bouge pas (listeners/JS intacts), et wizard OFF
+   (« Tout afficher ») → nav display:none côté JS, rangée historique
+   Annuler·Générer à droite inchangée. */
+#kta-wiz-nav { display: flex; gap: 8px; order: 2; }
+#kta-planner-corps.kta-wiz-actif .kta-conv-actions { justify-content: flex-start; }
+#kta-planner-corps.kta-wiz-actif .kta-conv-actions #kta-planner-annuler { order: 0; margin-right: auto; }
+#kta-planner-corps.kta-wiz-actif .kta-conv-actions #kta-planner-generer { order: 3; }
 
 .kta-wiz-resume-liste { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
 .kta-wiz-resume-row {

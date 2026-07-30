@@ -98,12 +98,7 @@
     // signaler un calibrage dégénéré).
     if (typeof window.KmzExport.buildTransform !== "function") return false;
     try {
-      window.KmzExport.buildTransform(
-        { x: calib.pointA.x, y: calib.pointA.y },
-        { x: calib.pointB.x, y: calib.pointB.y },
-        { lat: calib.pointA.lat, lng: calib.pointA.lng },
-        { lat: calib.pointB.lat, lng: calib.pointB.lng }
-      );
+      window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
       return true;
     } catch(e) {
       // Calibrage présent mais dégénéré (2 points identiques, etc.)
@@ -117,12 +112,7 @@
                   : null;
     if (!_calibComplet(calib)) return null;
     try {
-      return window.KmzExport.buildTransform(
-        { x: calib.pointA.x, y: calib.pointA.y },
-        { x: calib.pointB.x, y: calib.pointB.y },
-        { lat: calib.pointA.lat, lng: calib.pointA.lng },
-        { lat: calib.pointB.lat, lng: calib.pointB.lng }
-      );
+      return window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(e) {
       return null;
     }

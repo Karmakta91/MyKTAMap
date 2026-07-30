@@ -277,12 +277,7 @@
         if (_isNum(pA.x) && _isNum(pA.y) && _isNum(pA.lat) && _isNum(pA.lng)
             && _isNum(pB.x) && _isNum(pB.y) && _isNum(pB.lat) && _isNum(pB.lng)) {
           try {
-            _emTransform = window.KmzExport.buildTransform(
-              { x: pA.x, y: pA.y },
-              { x: pB.x, y: pB.y },
-              { lat: pA.lat, lng: pA.lng },
-              { lat: pB.lat, lng: pB.lng }
-            );
+            _emTransform = window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
           } catch(e) {
             // Calibrage présent mais dégénéré (points colinéaires, etc.)
             _emTransform = null;
