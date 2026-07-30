@@ -122,3 +122,11 @@
 → **Les `fsHandleId` ne sont PAS exportés** (non portables entre appareils/sessions).
 
 ---
+
+
+### 📄 PDF Histoire embarqués — `plan.histoirePdf` / `plan.histoirePdfs` (v1.71.0)
+
+- **`plan.histoirePdfs`** (tableau, depuis v1.71.0) : chemins relatifs `"data/<nom>.pdf"` des PDF embarqués par le générateur (multi-upload, noms sanitizés + dédoublonnés `-2`, `-3`…).
+- **`plan.histoirePdf`** (chaîne, historique) : TOUJOURS écrit = **premier élément** du tableau → une app antérieure à v1.71.0 lit au moins le premier document.
+- ⚠️ Lecteurs : préférer le tableau, replier sur la chaîne, **ne jamais concaténer les deux** (doublon garanti). `config.js` résout chaque entrée via `getRuntimeAssetUrl` ; `modeHistoire._getEmbeddedPdfUrls()` liste N entrées 📕 (ids `__embed__<i>`, non supprimables) ; `homeLoader._addPath` collecte chaque chemin (assets runtime ZIP).
+- Aucun PDF → les deux champs **absents** (rétrocompat stricte inchangée).

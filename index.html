@@ -21,13 +21,16 @@
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
-  <!-- 🆕 v1.9.2-rollback-final (KARMA "rollback les modif de full screen,
-       plus de problèmes que de bénéfice"). Multiples tentatives cover +
-       black-translucent ont créé soit une bande sombre en bas, soit la
-       status bar iOS qui hide/show de façon imprévisible. On reste sur
-       le comportement stable v1.9.1 : pas de cover, status bar opaque
-       noire, on perd ~47px en haut sur iPhone notché mais comportement
-       PRÉVISIBLE. -->
+  <!-- 📱 ROLLBACK ×2 du plein écran iPhone — NE PAS RETENTER sans nouveau
+       diagnostic. Tentative 1 (v1.9.2) : « bande sombre en bas, status bar
+       hide/show ». Tentative 2 (30/07/2026, v1.71.0) : cover +
+       black-translucent MALGRÉ 86 env(safe-area-inset-*) déjà en place —
+       constat terrain KARMA immédiat : « ça marche pas ». Le pari « la
+       plomberie safe-area suffit » est RÉFUTÉ deux fois ; la prochaine
+       tentative devra partir d'une observation précise du symptôme sur
+       l'appareil (quel écran, quelle zone, quelle bande), pas des metas.
+       État stable conservé : pas de cover, status bar opaque noire,
+       ~47px perdus en haut sur iPhone notché mais comportement PRÉVISIBLE. -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
   <!-- PWA -->
@@ -552,7 +555,15 @@
            · CC BY-NC-SA 4.0 · Usage commercial interdit · vX.Y.Z".
            Le span .kta-loader-copyright-line2 wrappe la partie licence
            pour permettre un line-break sur mobile (CSS @media). -->
-      <div class="kta-loader-copyright">
+      <!-- 🔽 v1.71.0 (KARMA) — footer REPLIABLE : petite flèche classique,
+           état persisté (LS myktamap_home_footer_replie_v1, embarqué dans
+           l'export de profil via PREF_KEYS). Replié : le bloc complet est
+           masqué, la barre de bascule garde une mention minimale
+           « © MyKTAMap · vX » (la mention légale complète reste à 1 clic —
+           on ne supprime jamais le copyright, on le replie). -->
+      <button id="loaderFooterToggle" class="kta-footer-toggle" type="button"
+              data-i18n-title="home.footer.toggleTitle" title="Réduire / déplier le pied de page" aria-expanded="true">▾</button>
+      <div class="kta-loader-copyright" id="loaderFooterBlock">
         <!-- 🏷️ v1.28.2 : copyright dual community ↔ pro.
              - Bloc .kta-licence-community : visible par défaut (community)
              - Bloc .kta-licence-pro : visible UNIQUEMENT si <html> ou <body>

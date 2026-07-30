@@ -583,3 +583,24 @@ Clé IDB = "z/x/y" (slippy tilenames OSM, EPSG:3857)
 - z-index des résultats : 1000 (au-dessus des panes Leaflet ~700).
 
 **Feuille de route** : lot 2 (v1.71) = multi-plans images + gestionnaire de calques (visibilité / opacité / ordre par glisser) + avertissement > 3 plans · lot 3 (v1.72) = croisement de données (collecteurs tracés/zones réutilisables depuis `_loadPlanDataForPreview`) + liaisons portails dessinées entre plans.
+
+
+## 🗂️ Mode OSM — lot 2 : multi-plans (v1.71.0)
+
+**Pile** : `_stackOrder` (index 0 = au-dessus, principal INCLUS) · `_extraLayers[planId]` = {tiles, data, poi, roads, zones, struct} · `_extraOpacity`. zIndex = `200 + rang×5`, posé à la création des overlays et via `setZIndex` au réordonnancement (pas de re-render). RAM-only.
+
+**Refactor pivot** : `_renderTilesInto(groupe, tilesData, georef, opacité, zIndex)` + `_renderDataLayersOnMiniMap(data, georef, cible?)` — les rendus du principal et des plans ajoutés partagent LE MÊME code (les 33 refs internes sont aliasées `dataL/poiL/...`). ⚠️ Toute évolution du rendu data doit rester compatible avec les DEUX chemins (module vs cible).
+
+**Règles** :
+- Le plan sélectionné (dropdown) = **principal** : fitBounds, slider bandeau, ◉ dans le panneau, non retirable. `selectPlan` le REMPLACE à la même position de pile ; sélectionner un plan déjà ajouté le retire d'abord de la pile extra (ses couches renaissent dans les groupes module).
+- **Visibilité à 2 niveaux** (retour KARMA en cours de lot) : les cases du bandeau restent des **masters globaux**, et chaque ligne du panneau porte **5 chips par plan** (🖼️📍🛣️🌐🏛️). Visibilité effective = global ET par-plan, appliquée par **`_appliquerVisibilites()`** — applicateur UNIQUE appelé par les toggles globaux, les chips, et après chaque rendu (le bloc `if (_showPoi) dataL.addLayer(...)` de fin de rendu est ensuite corrigé par l'applicateur). ⚠️ Ne jamais re-manipuler les sous-groupes directement dans un toggle : tout passe par l'applicateur.
+- ⚠️ Clé i18n du chip tuiles = `osm_home.toggle.plan.label` (PAS `.tiles.` — piège vécu).
+- **Gestion en MODALE dédiée** (2e retour KARMA, remplace le panneau flottant puis la pastille) : bouton **≡** du bandeau → modale « 🎚️ Plans & filtres OSM » (pattern ≡ Filtres du mode plan, `z-index 100001` au-dessus du fullscreen). `_renderMultiPanel()` cible les ids DANS la modale (gardes d'existence) — le contenu reste vivant pendant qu'elle est ouverte. ⚠️ Escape : handler en **capture + stopPropagation**, sinon l'Escape fermerait AUSSI le mode OSM (handler fullscreen en phase bulle sur `document`).
+- **Modale ≡ enrichie (4e retour KARMA)** : 3 sections — **Affichage** (5 chips globaux libellés, ex-checkboxes du bandeau), **🏷️ Tags** (chips agrégés sur TOUTE la pile via `_planDataCache`, clic → `_reRenderDataTous()` = re-render data du principal ET des extras + `_appliquerVisibilites`), **🗂️ Plans** (pile). Le **wrapper collapsible du widget est SUPPRIMÉ** (opacité bandeau, 5 checkboxes, chips tags, bouton 🔼 + ses binds — l'oubli d'un bind aurait fait un TypeError) ; `_renderTagChips` supprimée (conteneur disparu). La carte du widget gagne toute la hauteur libérée. ⚠️ Clés i18n `osm_home.opacity.*`, `osm_home.tagfilter.title`, `osm_home.controls.*` : vérifier l'orphelinage avant toute purge (osmView modale en partage certaines).
+- **Recherche dans la LIGNE DE TITRE « 🌍 Vue OSM »** (3e retour KARMA) : le nœud `#ktaOsmHomeSearch` est rendu dans le contenu puis **déplacé** dans `.loader-section-head` (listeners conservés, ancien exemplaire purgé à chaque re-render) → visible en mode réduit ET en mode OSM. Input compact 30 px en réduit, 36 px en fullscreen.
+- Opacité **par plan** ; la ligne du principal et le slider bandeau sont synchronisés dans les deux sens.
+- Blob URLs des tuiles : JAMAIS révoquées au retrait (elles vivent dans `_planDataCache`, partagées avec un éventuel usage principal) — re-ajout gratuit.
+- Garde anti-race : `_extraLayers[planId] !== g` après l'extraction ZIP async → abandon silencieux.
+- Avertissement `> 3` plans : 1× par session (`_warnedMulti`), même canal toast que le warn d'ouverture.
+
+**Reste au lot 3 (v1.72)** : croisement fin (filtres par plan ?, popups enrichis cross-plan), liaisons portails dessinées entre plans sur OSM.

@@ -70,6 +70,7 @@
     "myktamap_last_version_data",
     "myktamap_total_time_ms",       // 🆕 v1.52.0 : temps cumulé (rang/badge profil) — sinon perdu à migration device
     "myktamap_achievements_v1",     // 🆕 v1.53.0 : hauts faits débloqués (ids + dates)
+    "myktamap_home_footer_replie_v1", // 🔽 v1.71.0 : footer HOME replié (demande KARMA « sauvegardé dans le profil »)
     // 🌀 v1.67.2 (KARMA « la db des liaisons est-elle exportée ? » → non) :
     // le REGISTRE DES LIAISONS INTER-PLAN est une donnée globale cross-plan —
     // sans lui, une migration d'appareil perdait tout le réseau de portails.

@@ -46,6 +46,33 @@ let _imageLayerCount   = 0;
 let _dataLayerCount    = 0;
 let _iconRowCount      = 0;
 let _plannerOrigAssets = {};
+// 📄 v1.71.0 — PDF Histoire MULTIPLES du générateur (cf section 📖 du form)
+let _plannerHistPdfs = [];
+
+function _renderHistPdfListe() {
+  const liste = document.getElementById("pl_histoirePdf_liste");
+  const nom   = document.getElementById("pl_histoirePdf_nom");
+  if (!liste) return;
+  if (nom) {
+    nom.textContent = _plannerHistPdfs.length
+      ? window.I18n.t("gen.histoire.nFichiers", { n: _plannerHistPdfs.length })
+      : window.I18n.t("gen.upload.aucunFichier");
+  }
+  liste.innerHTML = _plannerHistPdfs.map(function(e, i) {
+    return '<div class="kta-planner-hist-row">' +
+             '<span class="kta-planner-hist-nom">📄 ' + e.name.replace(/[&<>"]/g, "") +
+               (e.fromZip ? ' <em>' + window.I18n.t("gen.upload.depuisZip") + '</em>' : '') + '</span>' +
+             '<button type="button" class="kta-planner-add-btn" data-hist-del="' + i + '">' +
+               window.I18n.t("gen.histoire.retirerBtn") + '</button>' +
+           '</div>';
+  }).join("");
+  liste.querySelectorAll("[data-hist-del]").forEach(function(b) {
+    b.addEventListener("click", function() {
+      _plannerHistPdfs.splice(parseInt(b.getAttribute("data-hist-del"), 10), 1);
+      _renderHistPdfListe();
+    });
+  });
+}
 // 🆕 v1.9.3-B1d.γ.2 : photos extraites d'un datalayer ZIP importé via le
 // bouton "📦 Importer ZIP" (mode Nouveau ou Modifier). Format identique à
 // ce qu'on trouve dans _convUploadedPhotos de sessionExporter.js :
@@ -498,13 +525,17 @@ function afficherPlanner() {
         <div class="kta-aide-section kta-pl-col-right" data-planner-advanced="1">
           <div class="kta-aide-section-titre">${window.I18n.t("gen.histoire.titre")} <span class="kta-planner-hint">${window.I18n.t("gen.commun.optionnel")}</span></div>
           <p class="kta-planner-info">${window.I18n.t("gen.histoire.info")}</p>
+          <!-- 📄 v1.71.0 (KARMA « on peut mettre juste un PDF ? ») — MULTI :
+               input multiple + liste de fichiers, chacun retirable. Le ZIP
+               embarque data/<nom>.pdf par document ; plan-config écrit
+               histoirePdfs[] + histoirePdf (1er) pour rétrocompat. -->
           <div class="kta-planner-upload-ligne">
             <span class="kta-cfg-label">${window.I18n.t("gen.histoire.fichier")}</span>
             <label class="kta-planner-upload-btn" for="pl_histoirePdf">${window.I18n.t("gen.btn.choisir")}</label>
-            <input type="file" id="pl_histoirePdf" accept="application/pdf" style="display:none">
+            <input type="file" id="pl_histoirePdf" accept="application/pdf" multiple style="display:none">
             <span class="kta-planner-upload-nom" id="pl_histoirePdf_nom">${window.I18n.t("gen.upload.aucunFichier")}</span>
-            <button type="button" class="kta-planner-add-btn" id="pl_histoirePdf_retirer" style="display:none;">${window.I18n.t("gen.histoire.retirerBtn")}</button>
           </div>
+          <div id="pl_histoirePdf_liste" class="kta-planner-hist-liste"></div>
           <p class="kta-planner-hint" style="margin:6px 0 0; font-size:11.5px; color:#8892a4;">${window.I18n.t("gen.histoire.modifierHint")}</p>
         </div>
 
@@ -539,6 +570,8 @@ function afficherPlanner() {
   _dataLayerCount    = 0;
   _iconRowCount      = 0;
   _plannerOrigAssets = {};
+  _plannerHistPdfs = [];
+  setTimeout(_renderHistPdfListe, 0);
   _plannerPhotosFromZip = [];  // 🆕 v1.9.3-B1d.γ.2 : reset buffer photos ZIP
   _plannerMode       = "nouveau";
   _plannerPlanLegend = null;   // 🆕 v1.17.0 : reset état légende plan-level
@@ -580,26 +613,23 @@ function afficherPlanner() {
   _bindUploadLabel("pl_collision", "pl_collision_nom");
   // 📖 v1.37.0 — PDF Histoire (générateur avancé). Sync nom uploaded +
   // bouton "🗑 Retirer" qui marque l'intention de retirer (data-retire=1)
-  // pour signaler à _genererZip de NE PAS conserver le PDF du ZIP source
-  // (mode Modifier). Choisir un nouveau fichier réinitialise le flag retire.
+  // 📄 v1.71.0 — MULTI-PDF Histoire : liste vivante {name, file|null, fromZip}.
+  // file = File uploadé ; fromZip = ré-embarqué depuis _plannerOrigAssets[name]
+  // (mode Modifier). Retirer une ligne = ne pas l'embarquer, simplement.
   _bindUploadLabel("pl_histoirePdf", "pl_histoirePdf_nom");
   (function _bindHistoirePdfControls() {
-    const inp     = document.getElementById("pl_histoirePdf");
-    const nom     = document.getElementById("pl_histoirePdf_nom");
-    const btnDel  = document.getElementById("pl_histoirePdf_retirer");
-    if (!inp || !nom || !btnDel) return;
+    const inp = document.getElementById("pl_histoirePdf");
+    if (!inp) return;
     inp.addEventListener("change", function() {
-      // Reset le flag "retirer" si l'user choisit un nouveau fichier
-      btnDel.dataset.retire = "";
-      btnDel.style.display = "";
-    });
-    btnDel.addEventListener("click", function() {
-      // Marque l'intention de retirer (lecture dans _genererZip)
-      btnDel.dataset.retire = "1";
+      const fichiers = Array.prototype.slice.call(inp.files || []);
+      fichiers.forEach(function(f) {
+        if (!/\.pdf$/i.test(f.name || "")) return;
+        // dédoublonnage par nom : re-choisir un fichier le REMPLACE
+        _plannerHistPdfs = _plannerHistPdfs.filter(function(e) { return e.name !== f.name; });
+        _plannerHistPdfs.push({ name: f.name, file: f, fromZip: false });
+      });
       try { inp.value = ""; } catch(e) {}
-      nom.textContent = window.I18n.t("gen.histoire.aucunRetire");
-      nom.dataset.existing = "";
-      btnDel.style.display = "none";
+      _renderHistPdfListe();
     });
   })();
 
@@ -1001,30 +1031,19 @@ function _preRemplirFormulaire(config) {
   // si champ absent → rétrocompat stricte plans v1.36.x).
   sv("pl_northOffset", (plan.northOffsetDeg != null && Number.isFinite(Number(plan.northOffsetDeg))) ? plan.northOffsetDeg : 0);
 
-  // 📖 v1.37.0 — Pré-remplissage PDF Histoire depuis plan.histoirePdf
-  // (chemin relatif ZIP, type "data/<nom>.pdf"). Sauvegarde le nom dans
-  // dataset.existing pour que _genererZip puisse le ré-embarquer depuis
-  // _plannerOrigAssets si l'user n'a pas changé/retiré le PDF.
-  const histNomEl = document.getElementById("pl_histoirePdf_nom");
-  const histBtnDel = document.getElementById("pl_histoirePdf_retirer");
-  if (histNomEl) {
-    if (plan.histoirePdf) {
-      const _histBase = String(plan.histoirePdf).split("/").pop();
-      histNomEl.textContent = "📄 " + _histBase + " " + window.I18n.t("gen.upload.depuisZip");
-      histNomEl.dataset.existing = _histBase;
-      if (histBtnDel) {
-        histBtnDel.style.display = "";
-        histBtnDel.dataset.retire = "";
-      }
-    } else {
-      histNomEl.textContent = window.I18n.t("gen.upload.aucunFichier");
-      histNomEl.dataset.existing = "";
-      if (histBtnDel) {
-        histBtnDel.style.display = "none";
-        histBtnDel.dataset.retire = "";
-      }
-    }
-  }
+  // 📄 v1.71.0 — Pré-remplissage MULTI depuis plan.histoirePdfs (tableau)
+  // avec repli sur plan.histoirePdf (chaîne unique, plans anciens). Chaque
+  // entrée = ré-embarquée depuis _plannerOrigAssets sauf si retirée.
+  _plannerHistPdfs = [];
+  const _histSources = Array.isArray(plan.histoirePdfs) && plan.histoirePdfs.length
+    ? plan.histoirePdfs
+    : (plan.histoirePdf ? [plan.histoirePdf] : []);
+  _histSources.forEach(function(chemin) {
+    const base = String(chemin).split("/").pop();
+    if (base) _plannerHistPdfs.push({ name: base, file: null, fromZip: true });
+  });
+  _renderHistPdfListe();
+
   // 🏗️ Multi-niveau : pre-coche la case si le plan-config importé contient
   // `plan.multiLevel: true`. Sinon laisse decochee (defaut HTML). Absence
   // du champ = false implicite (retro-compat plans v147 et avant).
@@ -2984,28 +3003,31 @@ async function _genererZip() {
       if (_northNorm !== 0) planObj.northOffsetDeg = _northNorm;
     }
 
-    // 📖 v1.37.0 — PDF Histoire. 3 cas :
-    //  1. User a uploadé un nouveau PDF → embed dans data/histoire.pdf
-    //     + planObj.histoirePdf = "data/histoire.pdf"
-    //  2. Mode Modifier + PDF existant pas retiré + pas remplacé → on
-    //     conserve le nom & on re-embarque depuis _plannerOrigAssets
-    //  3. Sinon → champ absent (rétrocompat stricte)
-    const _histRetire     = (document.getElementById("pl_histoirePdf_retirer")?.dataset.retire === "1");
-    const _histNewFile    = _getFile("pl_histoirePdf", null);
-    const _histExistNom   = document.getElementById("pl_histoirePdf_nom")?.dataset.existing || "";
-    if (_histNewFile) {
-      // Cas 1 : nouveau PDF uploadé
-      const _histName = "histoire.pdf";  // nom normalisé pour le runtime
-      dataFolder.file(_histName, await _lireFichier(_histNewFile));
-      planObj.histoirePdf = "data/" + _histName;
-      console.log("[Planner] PDF Histoire embarqué :", _histName, "(taille " + _histNewFile.size + " bytes)");
-    } else if (!_histRetire && _histExistNom && _plannerOrigAssets[_histExistNom]) {
-      // Cas 2 : conservation du PDF existant (mode Modifier sans changement)
-      dataFolder.file(_histExistNom, await _lireFichier(_plannerOrigAssets[_histExistNom]));
-      planObj.histoirePdf = "data/" + _histExistNom;
-      console.log("[Planner] PDF Histoire conservé depuis ZIP source :", _histExistNom);
+    // 📄 v1.71.0 — PDF Histoire MULTIPLES (KARMA). Chaque entrée de
+    // _plannerHistPdfs est embarquée sous data/<nom-safe> (dédoublonné) :
+    //   - file présent  → upload neuf
+    //   - fromZip       → ré-embarqué depuis _plannerOrigAssets[name]
+    // plan-config : histoirePdfs[] (nouveau) + histoirePdf = 1er (RÉTROCOMPAT :
+    // une app antérieure à v1.71.0 lira au moins le premier document).
+    // Aucun PDF → les 2 champs absents (rétrocompat stricte inchangée).
+    const _histChemins = [];
+    for (const _e of _plannerHistPdfs) {
+      const _src = _e.file || _plannerOrigAssets[_e.name];
+      if (!_src) { console.warn("[Planner] PDF Histoire introuvable, ignoré :", _e.name); continue; }
+      let _safe = String(_e.name).replace(/[^a-zA-Z0-9._-]/g, "_");
+      if (!/\.pdf$/i.test(_safe)) _safe += ".pdf";
+      let _final = _safe, _n = 2;
+      while (_histChemins.indexOf("data/" + _final) !== -1) {
+        _final = _safe.replace(/\.pdf$/i, "") + "-" + (_n++) + ".pdf";
+      }
+      dataFolder.file(_final, await _lireFichier(_src));
+      _histChemins.push("data/" + _final);
+      console.log("[Planner] PDF Histoire embarqué :", _final);
     }
-    // Cas 3 : pas de PDF → planObj.histoirePdf absent (rétrocompat).
+    if (_histChemins.length) {
+      planObj.histoirePdf  = _histChemins[0];
+      planObj.histoirePdfs = _histChemins;
+    }
 
     // 🆕 v1.17.0 — Légende plan-level : si l'utilisateur a personnalisé
     // la légende dans le Générateur (section "🏷️ Légende du plan" en mode

@@ -141,6 +141,10 @@
             // (1-10 Mo) consulté à la demande user, lazy n'apporte rien et
             // simplifie le rendu iframe (qui veut une URL stable).
             _addPath(planConfig.plan && planConfig.plan.histoirePdf);
+            // 📄 v1.71.0 — multi-PDF Histoire
+            if (planConfig.plan && Array.isArray(planConfig.plan.histoirePdfs)) {
+              planConfig.plan.histoirePdfs.forEach(_addPath);
+            }
             (planConfig.imageLayers || []).forEach(function(l) { _addPath(l && l.file); });
             (planConfig.dataLayers || []).forEach(function(l) { _addPath(l && l.file); });
             console.log("[LazyTiles v1.34.10-dryrun] Whitelist des paths référencés (= NE PAS stuber en Phase 2) :", Array.from(referencedPaths));
@@ -511,6 +515,29 @@
         });
       }
 
+      // 🔽 v1.71.0 (KARMA) — Footer repliable : gagne la hauteur du bloc
+      // copyright pour le contenu. État persisté (et exporté avec le profil).
+      const LS_FOOTER_REPLIE = "myktamap_home_footer_replie_v1";
+      const footerToggle = document.getElementById("loaderFooterToggle");
+      const footerBlock  = document.getElementById("loaderFooterBlock");
+      function _appliquerFooter(replie) {
+        if (!footerToggle || !footerBlock) return;
+        footerBlock.style.display = replie ? "none" : "";
+        footerToggle.setAttribute("aria-expanded", replie ? "false" : "true");
+        // Replié : mention minimale (copyright jamais supprimé, juste replié)
+        footerToggle.textContent = replie
+          ? "▴ © 2026 MyKTAMap · " + ((window.__MKM__ && window.__MKM__.build) || "")
+          : "▾";
+      }
+      if (footerToggle && footerBlock) {
+        footerToggle.addEventListener("click", function() {
+          const replie = footerBlock.style.display !== "none";
+          try { localStorage.setItem(LS_FOOTER_REPLIE, replie ? "1" : "0"); } catch(e) {}
+          _appliquerFooter(replie);
+        });
+        try { _appliquerFooter(localStorage.getItem(LS_FOOTER_REPLIE) === "1"); } catch(e) {}
+      }
+
       // 🔎 v1.69.0 — Recherche multi-plans : n'est plus un bouton d'outil mais
       // une BARRE entre « Reprendre » et la liste des plans (allègement du HOME
       // demandé par KARMA). Entrée ou clic sur 🔎 ouvre la modale de résultats
@@ -637,18 +664,16 @@
         //   modale ℹ️ Informations détaillées (bouton dans .plan-row-actions).
         //   Allège la liste, surtout quand on en a beaucoup.
         return `
-          <div class="plan-row" data-id="${plan.id}">
+          <div class="plan-row" data-id="${plan.id}" title="${_homeT("home.plans.loadBtnTitle", "Charger ce plan")}">
             <span class="plan-row-icon">${icon}</span>
             <div class="plan-row-info">
               <div class="plan-row-title">
                 <span class="plan-row-name-text">${escapeHtml(plan.name || plan.id)}</span>
-                ${plan.version ? '<span class="plan-row-version">' + escapeHtml(plan.version) + '</span>' : ''}
               </div>
               <div class="plan-row-modes">${badgesMode}${badgeStorage}</div>
             </div>
             <div class="plan-row-actions">
               <button class="plan-row-btn plan-row-info-btn" title="${_homeT("home.plans.infoBtnTitle", "Informations détaillées sur cette archive")}">ℹ️</button>
-              <button class="plan-row-btn plan-row-load" title="${_homeT("home.plans.loadBtnTitle", "Charger ce plan")}">▶️</button>
               <button class="plan-row-btn plan-row-remove" title="${_homeT("home.plans.removeBtnTitle", "Retirer de la liste")}">✕</button>
             </div>
           </div>
@@ -963,10 +988,8 @@
         // Brancher les listeners
         document.querySelectorAll(".plan-row").forEach(function(row) {
           const id = row.dataset.id;
-          row.querySelector(".plan-row-load").addEventListener("click", function(e) {
-            e.stopPropagation();
-            chargerPlanDuRegistre(id);
-          });
+          // 🧹 v1.71.0 : plus de bouton ▶️ — la row entière est cliquable
+          // (listener plus bas) et porte le title « Charger ce plan ».
           row.querySelector(".plan-row-remove").addEventListener("click", function(e) {
             e.stopPropagation();
             if (confirm(_t("home.plans.confirmRemove"))) {

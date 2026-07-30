@@ -1,8 +1,8 @@
 {
-  "version": "v1.70.0",
+  "version": "v1.71.0",
   "released": "2026-07-30",
   "notes": [
-    "🌍 Le mode OSM s'enrichit : une barre de recherche dédiée trouve un plan ou un point dans tous vos plans géoréférencés et centre la carte dessus — sans aucune connexion supplémentaire.",
-    "⚡ Un avertissement s'affiche à la première ouverture du mode OSM pour prévenir que l'affichage de plans complets peut être plus lent sur mobile."
+    "🗂️ Le mode OSM affiche plusieurs plans en même temps : le bouton ≡ ouvre « Plans & filtres » — ordre, opacité et filtres (catégories, tags) pour chaque plan. Une barre de recherche dédiée trouve un plan ou un point et centre la carte dessus, sans aucune connexion supplémentaire.",
+    "🏠 L'accueil s'affine (pied de page repliable, liste de plans plus lisible, titres complets) et le Générateur accepte désormais PLUSIEURS PDF Histoire dans un même plan."
   ]
 }

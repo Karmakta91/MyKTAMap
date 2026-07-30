@@ -581,6 +581,10 @@ The logbook tells them apart on its own, and it matters: preparing a map at home
 
 ---
 
+### 🔽 Collapsible footer (since v1.71.0)
+
+The small **arrow** under the home screen collapses the footer (copyright, links, credits) to free up space — only a minimal « © MyKTAMap · version » line remains. Click again to expand. Your choice is remembered and travels with the profile export.
+
 ### 🐛 Detailed logs (debug mode)
 
 The **🐛 Detailed logs** button in the **⚙️ Configuration** modal of the loader enables verbose mode:
@@ -702,11 +706,14 @@ The toggle is **persistent** (survives reloads and tab closures) until you unche
 
 The **⛶** button of the OSM view widget is now called **"Open OSM mode"**: the map goes full screen. A **search bar** shows up there:
 
+- it sits **in the « 🌍 OSM view » title line**, so it's available on the reduced home widget too;
 - it finds **a plan** (among your georeferenced plans) or **a point** (those plans' POIs) — type, click a result, the map flies to it with a marker;
 - **100% local**: the search reads your own plans, no internet address service is queried;
 - only **georeferenced** plans appear — a plan without GPS calibration is invisible in OSM mode (calibrate it via the Generator or Settings).
 
-On the first opening of the mode, a message reminds you that rendering full plans can be slower on mobile. *(Coming next: several plans displayed at once with layer ordering.)*
+**🗂️ Several plans at once (since v1.71.0)** — the "Displayed plans" panel of OSM mode lets you **stack your georeferenced plans**: ➕ to add one, ▲▼ to choose what goes above/below, a per-plan **opacity** slider, ✕ to remove. The plan marked ◉ is the "primary" one (the top selector's). All this management lives in a **dedicated modal** opened by the banner's **≡** button (nothing covers the map): **global display** switches, **tag filtering** (aggregated across displayed plans), and the plan stack. The old rows under the selector (opacity, checkboxes, tags) are gone from the widget — the map gains their height. Each row also carries **5 mini filter buttons of its own** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — the banner checkboxes remain global switches, the two combine. Perfect to show two neighbouring sectors on top of an overview plan, keeping e.g. only one's POIs and the other's image.
+
+On the first opening of the mode, a message reminds you that rendering full plans can be slower on mobile — and another one shows if you display **more than 3 plans** at once.
 
 ## 📖 Story Mode — Free note + PDF for each plan
 
@@ -728,7 +735,7 @@ You can now keep **up to 10 PDF documents per plan** (before: only one, and a ne
 
 - A **document list** appears above the viewer as soon as there is more than one; click a document to open it.
 - **📥 Import** adds a document (it no longer replaces anything). **🗑️ Remove** deletes the one being displayed.
-- If the plan author embedded a PDF in the ZIP, it appears at the top of the list as **📕 Plan document**: readable, not deletable (only the generator can change it). **New**: its presence no longer prevents you from adding your own documents — import used to be hidden on those plans.
+- The plan author can embed PDFs in the ZIP — **several since v1.71.0** (the Generator now accepts a list of files): they appear at the top of the list (📕), readable, not deletable (only the generator can change them). **New**: its presence no longer prevents you from adding your own documents — import used to be hidden on those plans.
 - Guardrails: **10 documents maximum** per plan, warning past **25 MB** total, refusal past **100 MB**. The space used now shows up in **Storage** (it was invisible until now).
 - On iPhone, an **↗️ Open in a tab** button kicks a document into native fullscreen if the inline view isn't available.
 - Your documents are also listed, added and deleted from **📔 My logbook → 📖 Stories**, without loading the plan.

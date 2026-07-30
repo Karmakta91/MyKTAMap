@@ -1686,6 +1686,15 @@ Ajout d'un 2ᵉ groupe à `profileAchievements.js` : `SPECIALS` (6 succès uniqu
 - **JS** (`homeLoader.js`) : `_ktaMobileCollapsePlans()` — rappelée à CHAQUE `refreshPlansList`, idempotente, masquage par classe CSS (les listeners des lignes cachées restent branchés) ; accordéon injecté une fois au boot (`#kta-home-tools-toggle`).
 - ⚠️ Pièges : ① le lockup titre fait ~186 px à 375 px À CAUSE de la tagline — toute nouvelle chip dans `.loader-header-actions` doit re-vérifier le bilan largeur (327 px dispo) ; ② `.loader-header-actions` a `flex-shrink:0` en base — ne jamais y compter pour absorber un dépassement ; ③ ne pas re-render la liste au dépliage (masquage CSS uniquement).
 
+## 📱 Plein écran iPhone — 2 tentatives, 2 rollbacks : NE PAS RETENTER À L'AVEUGLE
+
+- **v1.9.2** : cover + black-translucent → « bande sombre en bas, status bar hide/show » → rollback.
+- **v1.71.0 (30/07/2026)** : mêmes metas, MAIS avec 86 `env(safe-area-inset-*)` déjà en place (header refonte `calc(44px+env)`, statusbar, photo viewer, sidebar, leaflet-top) + compléments HOME/OSM/`html{background}`. Constat terrain KARMA immédiat : **« ça marche pas »** → rollback complet (metas + bloc CSS de compléments).
+
+**Leçon** : l'hypothèse « la plomberie safe-area suffit, il ne manquait que les metas » est réfutée. Une 3e tentative exige d'abord un **diagnostic observé sur l'appareil** : quel écran, quelle zone, bande noire ou contenu masqué, portrait/paysage, et si iOS a bien ré-lu les metas (elles ne sont relues qu'à la **ré-installation** de la PWA sur l'écran d'accueil — un simple relaunch ne suffit pas ; si le test a été fait sans ré-installer, le diagnostic est invalide, à re-vérifier AVANT tout nouveau code).
+
+Les 86 `env()` existants restent en place (no-ops barre opaque, utiles à Safari onglet / Android).
+
 ## 🧹 Allègement du HOME (v1.69.0 — demande KARMA « moins d'icônes »)
 
 3 icônes retirées de l'accueil, **aucune fonctionnalité supprimée** — chacune a rejoint l'endroit où on la cherche naturellement :
@@ -1751,7 +1760,7 @@ Liste d'outils : **5 → 4** entrées (Carnet · Éditeur de données · Mes lia
 
 | Cause | Avant | v2 |
 |---|---|---|
-| Tout en ratios `fr` | `2fr 3fr 2fr` + 3 paliers de correction | **Rails FIXES** : `300px minmax(0,1fr) 300px` — l'OSM absorbe tout le reste (~1230 px à 1920), zéro palier |
+| Tout en ratios `fr` | `2fr 3fr 2fr` + 3 paliers de correction | **Rails logiques** : `fit-content(420px) minmax(0,1fr) 300px` — la colonne plans s'élargit jusqu'au plus long titre (plafond 420 px, puis wrap 2 lignes via `-webkit-line-clamp` sur `.plan-row-name-text`), l'OSM absorbe tout le reste, zéro palier |
 | Grille jumelle à synchroniser | `.kta-loader-top-row` clonait colonnes+gap de `.loader-grid` | Top-row = **flex space-between** (profil · Reprendre), plus rien à synchroniser |
 | La recherche sans place naturelle | 3 itérations de `margin-left` | **Dans le header**, pilule centrée `min(560px,100%)` entre logo et chips (pattern app bar). Mobile : header en wrap, barre en 2e ligne pleine largeur |
 | Bande du haut sans hiérarchie | profil/Reprendre/recherche mélangés | header = navigation · bande = identité + action n°1 · corps = contenu |

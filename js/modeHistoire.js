@@ -228,10 +228,12 @@
     catch(e) { console.warn("[ModeHistoire] localStorage save échec :", e); }
   }
 
-  // ========== PDF EMBARQUÉ (plan-config.json > histoirePdf) ==========
-  function _getEmbeddedPdfUrl() {
-    if (!window.PLAN_CONFIG || !window.PLAN_CONFIG.plan) return null;
-    const path = window.PLAN_CONFIG.plan.histoirePdf;
+  // ========== PDF EMBARQUÉS (plan-config.json) ==========
+  // 📄 v1.71.0 — MULTI : lit `plan.histoirePdfs[]` (générateur v1.71+), avec
+  // repli sur `plan.histoirePdf` (chaîne unique, plans antérieurs). ⚠️ Quand
+  // les DEUX existent, histoirePdf est le 1er élément du tableau — ne JAMAIS
+  // concaténer les deux sources (doublon garanti).
+  function _resoudreCheminEmbed(path) {
     if (!path) return null;
     if (typeof path === "string" && path.indexOf("blob:") === 0) return path;
     if (typeof window.getRuntimeAssetUrl === "function") {
@@ -240,9 +242,25 @@
     }
     return path;
   }
+  function _getEmbeddedPdfUrls() {
+    if (!window.PLAN_CONFIG || !window.PLAN_CONFIG.plan) return [];
+    const plan = window.PLAN_CONFIG.plan;
+    const sources = Array.isArray(plan.histoirePdfs) && plan.histoirePdfs.length
+      ? plan.histoirePdfs
+      : (plan.histoirePdf ? [plan.histoirePdf] : []);
+    const out = [];
+    sources.forEach(function(p, i) {
+      const url = _resoudreCheminEmbed(p);
+      if (!url) return;
+      const base = (typeof p === "string" && p.indexOf("blob:") !== 0)
+        ? String(p).split("/").pop() : ("histoire-" + (i + 1) + ".pdf");
+      out.push({ url: url, name: base });
+    });
+    return out;
+  }
 
   function _hasEmbeddedPdf() {
-    return !!_getEmbeddedPdfUrl();
+    return _getEmbeddedPdfUrls().length > 0;
   }
 
   // ========== DOCUMENTS PDF DU PLAN (IDB, multi depuis v1.69.0) ==========
@@ -475,7 +493,7 @@
     // quand la sélection vient du ZIP).
     if (btnRemove) {
       btnRemove.addEventListener("click", function() {
-        if (!_docSelectionne || _docSelectionne === EMBED_ID) return;
+        if (!_docSelectionne || String(_docSelectionne).indexOf(EMBED_ID) === 0) return;
         if (!confirm(window.I18n.t("histoire.pdf.removeConfirm"))) return;
         _supprimerDoc(_docSelectionne).then(function() {
           _docSelectionne = null;
@@ -639,13 +657,14 @@
 
     if (toolbar) toolbar.style.display = "flex";
 
-    const embeddedUrl = _getEmbeddedPdfUrl();
+    const embarques = _getEmbeddedPdfUrls();
 
     _docsImportes().then(function(docs) {
       const liste = [];
-      if (embeddedUrl) {
-        liste.push({ id: EMBED_ID, name: window.I18n.t("histoire.pdf.embarque"), size: 0, embarque: true });
-      }
+      embarques.forEach(function(e, i) {
+        liste.push({ id: EMBED_ID + i, name: (embarques.length > 1 ? "📕 " + e.name : window.I18n.t("histoire.pdf.embarque")),
+                     size: 0, embarque: true, url: e.url, nomFichier: e.name });
+      });
       docs.forEach(function(d) { liste.push({ id: d.id, name: d.name, size: d.size, embarque: false }); });
 
       _renderDocsListe(liste);
@@ -672,7 +691,7 @@
 
       if (sel.embarque) {
         if (meta) meta.textContent = window.I18n.t("histoire.pdf.embarqueMeta");
-        _displayPdfInWrap(embeddedUrl, "histoire.pdf");
+        _displayPdfInWrap(sel.url, sel.nomFichier || "histoire.pdf");
         return;
       }
       _urlDeDoc(sel.id).then(function(info) {

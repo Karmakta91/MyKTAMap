@@ -580,6 +580,10 @@ Le **Mode Histoire** (note libre + PDF) était jusqu'ici enfermé dans l'écran 
 - Au-delà de **500 sorties**, les plus anciennes sont effacées automatiquement.
 - Le carnet n'est **pas** inclus dans l'export de profil pour le moment : changer d'appareil via l'export de profil ne transporte pas encore votre historique.
 
+### 🔽 Pied de page repliable (depuis v1.71.0)
+
+La petite **flèche** sous l'écran d'accueil replie le pied de page (copyright, liens, crédits) pour gagner de la place — il n'en reste qu'une ligne minimale « © MyKTAMap · version ». Re-cliquez pour le déplier. Votre choix est mémorisé et voyage avec l'export de profil.
+
 ### 🐛 Logs détaillés (mode debug)
 
 Le bouton **🐛 Logs détaillés** dans la modale **⚙️ Configuration** du chargeur active un mode verbose :
@@ -701,11 +705,14 @@ Le toggle est **persistant** (survit aux reloads et fermetures d'onglet) jusqu'�
 
 Le bouton **⛶** du widget Vue OSM s'appelle désormais **« Ouvrir le mode OSM »** : la carte passe en plein écran. Une **barre de recherche** y apparaît :
 
+- elle est posée **dans la ligne de titre « 🌍 Vue OSM »**, donc disponible aussi sur le widget réduit de l'accueil ;
 - elle cherche **un plan** (parmi vos plans géoréférencés) ou **un point** (les POI de ces plans) — taper, cliquer un résultat, la carte vole dessus avec un marqueur ;
 - **100 % local** : la recherche lit vos propres plans, aucune adresse internet n'est interrogée ;
 - seuls les plans **géoréférencés** apparaissent — un plan sans calibrage GPS est invisible en mode OSM (calibrez-le via le Générateur ou les Réglages).
 
-Au premier lancement du mode, un message rappelle que l'affichage de plans complets peut être plus lent sur mobile. *(À venir : affichage de plusieurs plans en même temps avec ordre des calques.)*
+**🗂️ Plusieurs plans en même temps (depuis v1.71.0)** — le panneau « Plans affichés » du mode OSM permet de **superposer vos plans géoréférencés** : ➕ pour en ajouter un, ▲▼ pour choisir qui passe dessus/dessous, un curseur d'**opacité par plan**, ✕ pour retirer. Le plan marqué ◉ est le « principal » (celui du sélecteur du haut). Toute cette gestion vit dans une **modale dédiée** ouverte par le bouton **≡** du bandeau (rien ne masque la carte) : réglages d'**affichage globaux**, **filtre par tag** (agrégé sur tous les plans affichés), et la pile des plans. Les anciennes rangées sous le sélecteur (opacité, cases, tags) ont disparu du widget — la carte y gagne leur hauteur. Chaque ligne y porte aussi **5 mini-boutons de filtrage propres au plan** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — les cases du bandeau restent des interrupteurs globaux, les deux se combinent. Idéal pour afficher deux secteurs voisins par-dessus un plan d'ensemble, en ne gardant par exemple que les POI de l'un et l'image de l'autre.
+
+Au premier lancement du mode, un message rappelle que l'affichage de plans complets peut être plus lent sur mobile — et un second apparaît si vous affichez **plus de 3 plans** à la fois.
 
 ## 📖 Mode Histoire — Note libre + PDF du plan
 
@@ -727,7 +734,7 @@ Tu peux maintenant garder **jusqu'à 10 documents PDF par plan** (avant : un seu
 
 - Une **liste de documents** s'affiche au-dessus de la visionneuse dès qu'il y en a plusieurs ; clique un document pour l'ouvrir.
 - **📥 Importer** ajoute un document (il ne remplace plus rien). **🗑️ Retirer** supprime celui qui est affiché.
-- Si l'auteur du plan a embarqué un PDF dans le ZIP, il apparaît en tête de liste sous le nom **📕 Document du plan** : consultable, non supprimable (seul le générateur peut le changer). **Nouveau** : sa présence ne t'empêche plus d'ajouter tes propres documents — avant, l'import était masqué sur ces plans-là.
+- L'auteur du plan peut embarquer des PDF dans le ZIP — **plusieurs depuis v1.71.0** (le Générateur accepte maintenant une liste de fichiers) : ils apparaissent en tête de liste (📕), consultables, non supprimables (seul le générateur peut les changer). **Nouveau** : sa présence ne t'empêche plus d'ajouter tes propres documents — avant, l'import était masqué sur ces plans-là.
 - Garde-fous : **10 documents maximum** par plan, avertissement au-delà de **25 Mo** cumulés, refus au-delà de **100 Mo**. L'espace occupé apparaît désormais dans **Stockage** (il était invisible jusqu'ici).
 - Sur iPhone, un bouton **↗️ Ouvrir dans un onglet** sort le document en plein écran natif si l'affichage intégré n'est pas dispo.
 - Tes documents sont aussi listés, ajoutables et supprimables depuis **📔 Mon carnet → 📖 Récits**, sans charger le plan.
