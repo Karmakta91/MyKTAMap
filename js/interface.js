@@ -765,6 +765,61 @@ window._fermerModeZone      = _fermerModeZone;
 window._fermerModeStructure = _fermerModeStructure;
 
 // =========================
+// 🐛 v1.73.1 — MODALE OUVERTE EN MODE MAP → COUPURE DES MODES SIDEBAR
+// =========================
+// (KARMA « si j'ouvre une modale en mode map, ça doit couper toute icône en
+// cours (sauf tracker) — j'ai des bugs sinon, notamment en mesure ») :
+// un mode clic-carte actif (mesure, édition, recalage, tracé, zone,
+// structure) + une modale par-dessus = état incohérent (le mode reste armé,
+// clics fantômes à la fermeture, bouton surligné sans effet).
+// Détection CENTRALE plutôt qu'un hook sur chacune des ~140 ouvertures de
+// modale : un MutationObserver `childList` (SANS subtree — zéro coût sur le
+// churn DOM Leaflet) sur <html> et <body>, les DEUX points d'attache de
+// toutes les modales du projet (`.kta-readme-modal-overlay` et assimilées).
+// La coupure = _desactiverTousLesModes() : les 6 modes sidebar y sont TOUS
+// enregistrés (road/zone/structure via _activerMode ; recalage/mesure/
+// édition manuellement) avec leur désactivation propre. Le TRACKER n'est
+// pas un mode exclusif (fond) → jamais coupé, comme demandé.
+// Helper public pour cas particuliers : window.ktaCouperModesOutils().
+(function _initCoupeModesSurModale() {
+  const RX_OVERLAY = /(?:^|\s)(?:kta-readme-modal-overlay|kta-secours-overlay)(?:\s|$)/;
+  // Modales DE FLUX D'OUTIL — ne coupent PAS le mode qui les a ouvertes :
+  //   - #kta-poi-modal : formulaire de point ouvert par le CLIC CARTE du mode
+  //     édition — couper ici casserait l'enchaînement « poser plusieurs
+  //     points d'affilée » (le mode doit survivre au formulaire).
+  // Les petites boîtes de confirmation (classe `kta-modal-overlay`, ex.
+  // choix ❌ Effacer de la mesure) sont DÉJÀ hors du filet : autre classe.
+  const IDS_EXCLUS = { "kta-poi-modal": true };
+  function _couper() {
+    if (Object.keys(_modesActifs).length === 0) return;
+    // Uniquement en mode map (au HOME les modes n'existent pas, ceinture)
+    if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return;
+    console.log("[Interface] Modale ouverte → modes sidebar coupés");
+    _desactiverTousLesModes();
+  }
+  window.ktaCouperModesOutils = _couper;
+  const obs = new MutationObserver(function(mutations) {
+    for (const mu of mutations) {
+      for (const n of mu.addedNodes) {
+        if (n && n.nodeType === 1 && typeof n.className === "string" && RX_OVERLAY.test(n.className)) {
+          if (n.id && IDS_EXCLUS[n.id]) continue;
+          _couper();
+          return;
+        }
+      }
+    }
+  });
+  function _demarrer() {
+    try {
+      obs.observe(document.documentElement, { childList: true });
+      if (document.body) obs.observe(document.body, { childList: true });
+    } catch(e) { console.warn("[Interface] observer modales :", e); }
+  }
+  if (document.body) _demarrer();
+  else document.addEventListener("DOMContentLoaded", _demarrer);
+})();
+
+// =========================
 // 🆕 v1.48.0 — CURSEUR DE PRÉCISION (a11y)
 // =========================
 // Sur un plan à FOND BLANC, le curseur crosshair (trait noir fin) / la main

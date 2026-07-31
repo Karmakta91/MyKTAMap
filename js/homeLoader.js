@@ -360,6 +360,82 @@
 
       // === CHARGEMENT D'UN ZIP (utilisé par le bouton Charger ET les plans locaux du registre) ===
       // presetChoisi : "auto" | "quality" | "balanced" | "performance" (string)
+      // =========================
+      // 🔄 v1.73.1 — MÊME PLAN RÉIMPORTÉ : MISE À JOUR AU LIEU DE DOUBLON
+      // =========================
+      // (KARMA « j'importe le même plan des jours après → il duplique »)
+      // Rappel du modèle : l'id d'un plan local est DÉRIVÉ de nom+version
+      // (`local_<slug(nom)>_<slug(version)>`) → nom ET version identiques
+      // écrasaient DÉJÀ l'entrée. Le doublon vient donc d'une **version qui
+      // a changé** (regénération = c'est la norme). On détecte ce cas ici :
+      // même nom + même auteur (normalisés), version différente → on demande.
+      // Décisions KARMA 1:a 2:a 3:a — portée : import ZIP depuis l'accueil.
+      function _normId(s) {
+        return String(s == null ? "" : s).toLowerCase()
+          .normalize("NFD").replace(/[̀-ͯ]/g, "")
+          .replace(/[^a-z0-9]+/g, "").trim();
+      }
+
+      // Retourne l'entrée locale « même plan, autre version », ou null.
+      function _chercherPlanExistant(nom, version, auteur) {
+        if (!window.PlanRegistry || !nom) return null;
+        const nN = _normId(nom), nA = _normId(auteur), nV = _normId(version);
+        if (!nN) return null;
+        return window.PlanRegistry.getAll().find(function(p) {
+          return p.type === "local"
+              && _normId(p.name) === nN
+              && _normId(p.author) === nA
+              && _normId(p.version) !== nV;   // version identique → même id, déjà géré
+        }) || null;
+      }
+
+      // Modale de choix. Résout "update" | "both" | "cancel".
+      // ✕ / Escape / backdrop = "cancel" (on ne charge rien) : le choix par
+      // défaut ne doit jamais être celui qui écrase.
+      function _demanderQuoiFaireDoublon(existant, nouvelleVersion) {
+        return new Promise(function(resolve) {
+          const t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
+          const tiret = "—";
+          const ov = document.createElement("div");
+          ov.className = "kta-readme-modal-overlay";
+          ov.style.display = "flex";
+          const esc = (typeof window.ktaEsc === "function") ? window.ktaEsc : function(x){return x;};
+          ov.innerHTML =
+            '<div class="kta-modal" style="max-width:440px;">' +
+              '<div class="kta-modal-icon" style="color:#f4c542;">🔄</div>' +
+              '<div class="kta-modal-titre">' + esc(t("home.dup.titre")) + '</div>' +
+              '<div class="kta-modal-texte">' +
+                esc(t("home.dup.texte", {
+                  nom: existant.name || "?",
+                  vA:  existant.version || tiret,
+                  vB:  nouvelleVersion || tiret
+                })) +
+                '<br><span style="font-size:12px; color:#8892a4;">' + esc(t("home.dup.note")) + '</span>' +
+              '</div>' +
+              '<div class="kta-modal-actions" style="flex-wrap:wrap;">' +
+                '<button class="kta-btn kta-btn-ghost" id="kta-dup-cancel" type="button">' + esc(t("ui.btn.cancel")) + '</button>' +
+                '<button class="kta-btn kta-btn-ghost" id="kta-dup-both" type="button">' + esc(t("home.dup.btnBoth")) + '</button>' +
+                '<button class="kta-btn kta-btn-primary" id="kta-dup-update" type="button">' + esc(t("home.dup.btnUpdate")) + '</button>' +
+              '</div>' +
+            '</div>';
+          document.documentElement.appendChild(ov);
+          let fini = false;
+          function _fermer(choix) {
+            if (fini) return;
+            fini = true;
+            document.removeEventListener("keydown", _onKey);
+            try { ov.remove(); } catch(e) {}
+            resolve(choix);
+          }
+          function _onKey(e) { if (e.key === "Escape") _fermer("cancel"); }
+          document.addEventListener("keydown", _onKey);
+          ov.addEventListener("click", function(e) { if (e.target === ov) _fermer("cancel"); });
+          ov.querySelector("#kta-dup-cancel").addEventListener("click", function() { _fermer("cancel"); });
+          ov.querySelector("#kta-dup-both").addEventListener("click",   function() { _fermer("both"); });
+          ov.querySelector("#kta-dup-update").addEventListener("click", function() { _fermer("update"); });
+        });
+      }
+
       async function chargerZipFichier(zipFile, presetChoisi, meta) {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         if (typeof window.startImportedPlan !== "function") {
@@ -421,6 +497,40 @@
             const _m = (eExtr && eExtr.message) || (eExtr && eExtr.name) || String(eExtr) || "extraction ZIP échouée";
             console.error("[chargerZipFichier] Erreur étape '" + _step + "' :", _m, "| raw :", eExtr);
             throw new Error(_t("home.loader.errStep", { step: _step }) + _m);
+          }
+
+          // 🔄 v1.73.1 — Détection « même plan, autre version » (UNIQUEMENT sur
+          // un import frais : si meta.planId est déjà posé, le caller vise une
+          // entrée précise — rechargement depuis la liste, re-sélection de
+          // fichier — et rien ne doit être demandé).
+          if (!meta || !meta.planId) {
+            let _infosPlan = null;
+            try {
+              const _cfg = JSON.parse(await planConfigFile.text());
+              if (_cfg && _cfg.plan) _infosPlan = _cfg.plan;
+            } catch(e) { /* plan-config illisible → startImportedPlan lèvera proprement */ }
+            if (_infosPlan) {
+              const _exist = _chercherPlanExistant(_infosPlan.name, _infosPlan.version, _infosPlan.author);
+              if (_exist) {
+                _fermerOverlayChargement();   // la modale doit être lisible
+                const _choix = await _demanderQuoiFaireDoublon(_exist, _infosPlan.version);
+                if (_choix === "cancel") {
+                  setStatus(_t("home.dup.cancelled"), false);
+                  if (loadBtn) loadBtn.disabled = false;
+                  return;
+                }
+                if (_choix === "update") {
+                  meta = Object.assign({}, meta || {});
+                  meta.planId = _exist.id;   // → startImportedPlan écrase CETTE entrée
+                  // Le ZIP mémorisé doit suivre : sans ça l'entrée pointerait
+                  // encore sur l'ancienne archive (= « ça ne met pas à jour »).
+                  if (_exist.storedBlob) meta.storeBlob = true;
+                  console.log("[Loader] 🔄 Mise à jour du plan existant :", _exist.id,
+                              "(v" + (_exist.version || "—") + " → v" + (_infosPlan.version || "—") + ")");
+                }
+                _afficherOverlayChargement(_t("home.loader.mapLoading"));
+              }
+            }
           }
 
           _majOverlayChargement(_t("home.loader.mapLoading"));

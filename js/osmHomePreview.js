@@ -981,7 +981,14 @@
     }
 
     for (const layer of data.dataLayers) {
-      if (!layer.visible) continue;
+      // 🐛 v1.73.1 (KARMA « un datalayer généré invisible n'est pas affichable
+      // en Vue OSM ») : on ne skippe PLUS les calques `visible: false` du
+      // plan-config. Cette visibilité est un DÉFAUT D'AFFICHAGE du mode plan
+      // (retoggables via ⊞ Calques) — or la Vue OSM n'a aucun toggle par
+      // calque : les sauter les rendait INACCESSIBLES, tracés compris. Ici
+      // l'affichage est gouverné par les filtres existants (chips catégories
+      // globales + par plan, filtre tags). `layer.visible` reste parsé si un
+      // jour on veut des toggles par calque dans la modale ≡.
 
       // POI → poiL (v1.40.13 icônes natives + 🆕 v1.40.17 popup + filtre tag)
       const isMultiLevel = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel);
