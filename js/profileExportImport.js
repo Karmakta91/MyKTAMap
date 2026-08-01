@@ -15,6 +15,8 @@
 //   - Préférences utilisateur (app_user_prefs + theme + paranoia + ...)
 //   - Favoris (toutes les listes par plan)
 //   - Sessions actives (slots `myktamap_session_v1_<planId>`)
+//   - 📔 Le Carnet (IDB `myktamap_journal` > `sorties`) — 🆕 v1.74.0, coché
+//     par défaut. Refs photos seulement, ~2-8 Ko/sortie (plafond 500).
 //   - Snapshots IDB (myktamap_backups, FIFO 10/plan)
 //   - Tutorial seen flag
 //   - Photos POI (OPTIONNEL — case décochée par défaut car potentiellement lourd)
@@ -71,6 +73,7 @@
     "myktamap_total_time_ms",       // 🆕 v1.52.0 : temps cumulé (rang/badge profil) — sinon perdu à migration device
     "myktamap_achievements_v1",     // 🆕 v1.53.0 : hauts faits débloqués (ids + dates)
     "myktamap_home_footer_replie_v1", // 🔽 v1.71.0 : footer HOME replié (demande KARMA « sauvegardé dans le profil »)
+    "myktamap_journal_enabled",     // 📔 v1.74.0 : carnet activé/désactivé — voyage avec la section carnet
     // 🌀 v1.67.2 (KARMA « la db des liaisons est-elle exportée ? » → non) :
     // le REGISTRE DES LIAISONS INTER-PLAN est une donnée globale cross-plan —
     // sans lui, une migration d'appareil perdait tout le réseau de portails.
@@ -246,6 +249,29 @@
     return sessions;
   }
 
+  // 🆕 v1.74.0 — LE CARNET (IDB `myktamap_journal` > `sorties`).
+  // Dette soldée : le carnet était la SEULE donnée user qui ne voyageait pas
+  // avec le profil (changement d'appareil = historique de sorties perdu).
+  // Volume : ~2-8 Ko par sortie, plafond 500 → ~4 Mo pire cas, aucune image
+  // (le carnet ne stocke que des REFS photos) → coché par défaut.
+  // On exporte AUSSI les records `status: "encours"` : le balayage au boot
+  // (`Journal > _balayerEnCours`) les clôturera proprement à l'arrivée.
+  async function _collectCarnet() {
+    if (!window.Journal || typeof window.Journal.list !== "function") return [];
+    try {
+      // flush() d'abord : la sortie en cours n'est écrite en IDB que toutes les
+      // 30 s — sans ça, exporter juste après une sortie perd les dernières minutes.
+      if (typeof window.Journal.flush === "function") {
+        try { await window.Journal.flush(); } catch(e) {}
+      }
+      const arr = await window.Journal.list();
+      return Array.isArray(arr) ? arr : [];
+    } catch(e) {
+      console.warn("[ProfileExportImport] carnet collect échec :", e);
+      return [];
+    }
+  }
+
   async function _collectBackups() {
     if (!window.SessionBackups || typeof window.SessionBackups.listAll !== "function") return [];
     try {
@@ -362,7 +388,7 @@
 
   /**
    * Assemble le profil selon les sections demandées.
-   * @param {Object} opts - { include: { registry, preferences, favoris, sessions, backups, tutorial, photos, crashes } }
+   * @param {Object} opts - { include: { registry, preferences, favoris, sessions, carnet, backups, tutorial, photos, crashes } }
    * @returns {Promise<Object>} le profil complet sérialisable
    */
   async function buildProfile(opts) {
@@ -383,6 +409,7 @@
     if (include.tutorial !== false)    profile.sections.tutorial    = _collectTutorial();
     // Async sections
     if (include.user !== false)        profile.sections.user        = await _collectUser();
+    if (include.carnet !== false)      profile.sections.carnet      = await _collectCarnet(); // 🆕 v1.74.0
     if (include.backups !== false)     profile.sections.backups     = await _collectBackups();
     if (include.photos === true)       profile.sections.photos      = await _collectPhotos();
     if (include.crashes === true)      profile.sections.crashes     = await _collectCrashes();
@@ -449,6 +476,14 @@
     } else {
       sizes.user = { count: 0, bytes: 0 };
     }
+    // Carnet (async) — 🆕 v1.74.0
+    try {
+      const carnet = await _collectCarnet();
+      sizes.carnet = {
+        count: carnet.length,
+        bytes: JSON.stringify(carnet).length
+      };
+    } catch(e) { sizes.carnet = { count: 0, bytes: 0 }; }
     // Backups (async)
     try {
       const backups = await _collectBackups();
@@ -570,6 +605,7 @@
                      return acc + (s.favoris.byPlan[pid] || []).length;
                    }, 0) : 0,
       sessions:    s.sessions    ? Object.keys(s.sessions).length : 0,
+      carnet:      s.carnet      ? (Array.isArray(s.carnet) ? s.carnet.length : 0) : 0, // 🆕 v1.74.0
       backups:     s.backups     ? (Array.isArray(s.backups) ? s.backups.length : 0) : 0,
       tutorial:    s.tutorial    ? (s.tutorial.seen ? 1 : 0) : 0,
       photos:      (s.photos && Array.isArray(s.photos.photos)) ? s.photos.photos.length : 0,
@@ -593,7 +629,7 @@
     const mode = (opts.mode === "replace") ? "replace" : "merge";
     const include = opts.include || {
       registry: true, preferences: true, perPlanLs: true,
-      favoris: true, sessions: true, backups: true, tutorial: true,
+      favoris: true, sessions: true, carnet: true, backups: true, tutorial: true,
       photos: false, crashes: false
     };
     const s = profile.sections;
@@ -727,6 +763,42 @@
         result.applied.sessions = n;
       } catch(e) {
         console.warn("[ProfileExportImport] apply sessions échec :", e);
+      }
+    }
+
+    // ─── Carnet / sorties (IDB myktamap_journal) — 🆕 v1.74.0 ───
+    if (include.carnet !== false && Array.isArray(s.carnet) && s.carnet.length > 0) {
+      try {
+        // Open IDB direct (même raison que les backups : Journal n'expose pas
+        // d'API d'import bulk). ⚠️ L'index `by_start` DOIT être créé ici aussi :
+        // si la base n'existe pas encore sur cet appareil, c'est nous qui la
+        // créons — sans l'index, la purge FIFO de journal.js casserait.
+        const db = await new Promise(function(resolve, reject) {
+          const req = indexedDB.open("myktamap_journal", 1);
+          req.onupgradeneeded = function() {
+            const d = req.result;
+            if (!d.objectStoreNames.contains("sorties")) {
+              const st = d.createObjectStore("sorties", { keyPath: "id" });
+              st.createIndex("by_start", "startedAtMs", { unique: false });
+            }
+          };
+          req.onsuccess = function() { resolve(req.result); };
+          req.onerror   = function() { reject(req.error); };
+        });
+        const tx = db.transaction(["sorties"], "readwrite");
+        const store = tx.objectStore("sorties");
+        if (mode === "replace") store.clear();
+        s.carnet.forEach(function(r) {
+          // Filtre défensif : un record sans id ferait échouer put() (keyPath).
+          if (r && typeof r === "object" && r.id) { try { store.put(r); } catch(e) {} }
+        });
+        await new Promise(function(resolve, reject) {
+          tx.oncomplete = function() { db.close(); resolve(); };
+          tx.onerror    = function() { db.close(); reject(tx.error); };
+        });
+        result.applied.carnet = s.carnet.length;
+      } catch(e) {
+        console.warn("[ProfileExportImport] apply carnet échec :", e);
       }
     }
 
@@ -911,6 +983,7 @@
     html += _renderSectionRow("perPlanLs",   "📍", T("profileio.sec_perplan_label"),     sizes.perPlanLs,   true,  T("profileio.sec_perplan_hint"));
     html += _renderSectionRow("favoris",     "⭐", T("profileio.sec_favoris_label"),      sizes.favoris,     true,  T("profileio.sec_favoris_hint"));
     html += _renderSectionRow("sessions",    "💾", T("profileio.sec_sessions_label"),    sizes.sessions,    true,  T("profileio.sec_sessions_hint"));
+    html += _renderSectionRow("carnet",      "📔", T("profileio.sec_carnet_label"),      sizes.carnet,      true,  T("profileio.sec_carnet_hint"));
     html += _renderSectionRow("backups",     "📦", T("profileio.sec_backups_label"),     sizes.backups,     true,  T("profileio.sec_backups_hint"));
     html += _renderSectionRow("tutorial",    "🎓", T("profileio.sec_tutorial_label"),    sizes.tutorial,    true,  T("profileio.sec_tutorial_hint"));
     html += _renderSectionRow("photos",      "📸", T("profileio.sec_photos_label"),      sizes.photos,      false, T("profileio.sec_photos_hint"));
@@ -1117,6 +1190,7 @@
       preferences: "⚙️ " + T("profileio.done_sec_preferences"),
       favoris:     "⭐ " + T("profileio.done_sec_favoris"),
       sessions:    "💾 " + T("profileio.done_sec_sessions"),
+      carnet:      "📔 " + T("profileio.done_sec_carnet"),
       backups:     "📦 " + T("profileio.done_sec_backups"),
       tutorial:    "🎓 " + T("profileio.done_sec_tutorial"),
       photos:      "📸 " + T("profileio.done_sec_photos"),
@@ -1226,6 +1300,7 @@
     if (stats.perPlanLs > 0) html += _renderImportSection("perPlanLs", "📍", T("profileio.sec_perplan_label"), stats.perPlanLs); // 🆕 v1.39.15
     html += _renderImportSection("favoris",     "⭐", T("profileio.sec_favoris_label"),     stats.favoris);
     html += _renderImportSection("sessions",    "💾", T("profileio.sec_sessions_label"),    stats.sessions);
+    html += _renderImportSection("carnet",      "📔", T("profileio.import_sec_carnet"),     stats.carnet);
     html += _renderImportSection("backups",     "📦", T("profileio.import_sec_backups"),    stats.backups);
     html += _renderImportSection("tutorial",    "🎓", T("profileio.sec_tutorial_label"),    stats.tutorial);
     if (stats.photos > 0)  html += _renderImportSection("photos",  "📸", T("profileio.sec_photos_label"),    stats.photos);
