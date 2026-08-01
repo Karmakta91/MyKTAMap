@@ -183,7 +183,7 @@ Pré-condition : plan calibré KMZ. Transform reconstruit on-demand via `KmzExpo
 
 `kmzExport.js > genererKmz` étendu : check `_hasExtras` sur les 2 champs (planCustomLegend + secoursPlan), wrapper extensible `{type: "myktamap-kmz-extras", version: 1, exportedAt, customLegend?, secoursPlan?}`.
 
-⚠️ **Limitation MVP** : seul l'extras.json embarque le scénario (MyKTAMap re-import natif fonctionnel). Le `doc.kml` ne contient PAS encore les Placemarks/Polygons cross-app pour Google Earth / OsmAnd. KARMA a choisi « KMZ géolocalisé cross-app » — cette partie est Phase 2 (injection Folder "🚨 Secours" avec Placemarks entrées/sorties + Polygons zones).
+⚠️ **Limitation MVP — ✅ LEVÉE EN v1.23.0, voir §66** : à l'époque de la Phase 1, seul l'extras.json embarquait le scénario (re-import MyKTAMap natif), le `doc.kml` ne contenant pas les Placemarks/Polygons cross-app pour Google Earth / OsmAnd. **C'est fait depuis** : `kmzExport.js > _emitSecoursFolder` émet le Folder « 🚨 Secours » complet (Placemarks + Polygons). Ne pas relire ce paragraphe comme l'état courant.
 
 #### 65.10 À NE PAS faire
 
@@ -192,7 +192,7 @@ Pré-condition : plan calibré KMZ. Transform reconstruit on-demand via `KmzExpo
 - ❌ Skip `map.once` au mode POINT → utiliser `map.on` simple → fuit le handler après usage
 - ❌ Faire `JSON.parse(localStorage.getItem(...))` sans try/catch et sans filtre défensif des entries (chaque scénario doit avoir au moins id + nom)
 - ❌ Reassign `recalculerItineraires` après le export `window.SecoursMode = {...}` — l'export capture la ref à la position du code. Toujours faire le reassign AVANT l'export final.
-- ❌ Confondre `secoursPlan` (Phase 1) et `secoursPlan.groupes[].statut` (Phase 3 future) — `statut` est défini mais pas encore exploité.
+- ⚠️ *(règle périmée — la Phase 3 a été livrée, cf. §67)* : `secoursPlan.groupes[].statut` **est exploité** (lu/écrit dans `secoursMode.js`, propagé à l'export). L'ancienne consigne « défini mais pas encore exploité » ne vaut plus.
 - ❌ Ajouter des champs sensibles (positions GPS exactes en clair, photos de la victime, données médicales) dans le payload `secoursPlan` qui voyage dans le KMZ. Cohérence avec la philo cataphile « pas de données identifiantes dans les exports partageables ». Si Phase 3 ajoute des observations terrain, prévoir un opt-in explicite.
 
 #### 65.11 Pour étendre

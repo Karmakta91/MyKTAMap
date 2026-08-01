@@ -599,8 +599,12 @@ latérale est annulée et on tourne correctement aux croisements. **Réversible*
   Helpers `_bearingDeg` (même convention que le déplacement) + `_angleDiffMod180` (galerie non orientée).
   Paramètres terrain : `W_HEADING_PX_PER_DEG=0.7`, `STICKY_FACTOR=2.5`, `T_EDGE=0.02`.
 
-> Reste à faire (non livré) : **C5** magnétisme edit-time, **C6** multi-niveau (jonctions = changement de
-> niveau). Voir design doc.
+> Reste à faire (non livré, **revérifié dans le code le 01/08/2026**) : **C5** magnétisme edit-time,
+> **C6** multi-niveau. `RoadGraph.matchPosition` n'a **aucune** notion de `level` — alors que le graphe
+> transporte pourtant `nodeLevels` (hérité de `Pathfinder.buildNetworkGraph`). Conséquence concrète sur un
+> plan M-LVL : le map-matching peut caler la position sur une galerie d'un **autre niveau** superposée en
+> x/y, et ne détecte pas le franchissement d'une jonction interniveau (donc pas de bascule automatique du
+> niveau actif). Voir design doc.
 
 #### 76.3 Fix connexe — déplacement en paysage
 

@@ -6,26 +6,27 @@
  */
 
 // =========================
-// 🚫 MODULE DÉSACTIVÉ depuis v1.12.0
+// ✅ MODULE ACTIF depuis v1.21.2
 // =========================
-// Décision KARMA (V2 release) : "on désactive ce module, on garde de côté
-// le code". L'utilité n'était pas claire dans le contexte cataphile actuel
-// — le tracker est session-only RAM, donc pas de cumul long terme qui
-// rendrait la heatmap vraiment utile. Les points POI restent visualisables
-// directement via les icônes natives, plus précis qu'un gradient diffus.
+// ⚠️ NE PAS SE FIER aux mentions "désactivé" qui traînent ailleurs :
+// ce module a été désactivé en v1.12.0 puis RÉACTIVÉ en v1.21.2 sur
+// décision KARMA ("on reactive [la heatmap]"). État vérifié le 01/08/2026 :
+//   - chargé par index.html (<script src="js/heatmap.js" defer>)
+//   - présent dans sw.js > ASSETS_TO_CACHE
+//   - consommé par 13 modules (tracking, osmView, secoursMode,
+//     sessionPersist/Exporter/Backups/Report, statsGlobales, tutorial,
+//     interface, interfaceDocs, main, cssLazy)
+// L'ancien en-tête décrivait une désactivation levée depuis, et donnait une
+// procédure de réactivation dont les 4 étapes étaient DÉJÀ appliquées —
+// il a induit en erreur lors d'un audit de dettes (01/08/2026). Si ce module
+// est un jour re-désactivé, réécrire ce bloc plutôt que d'empiler les états.
 //
-// Le code reste valide et testé, prêt à être réactivé si le besoin
-// émerge (par exemple : tracker multi-session persisté, ou plan très
-// dense en points où une heatmap aiderait à voir la distribution).
-//
-// Pour RÉACTIVER :
-//   1. Décommenter <script src="js/heatmap.js"> dans index.html
-//   2. Restaurer "./js/heatmap.js" dans sw.js > ASSETS_TO_CACHE
-//   3. Restaurer le bouton 🔥 dans interface.js groupe Tracker (bloc /* ... */)
-//   4. Restaurer le reset dans main.js > _libererRessourcesPlanPrecedent
+// Historique : désactivé en v1.12.0 (l'utilité n'était pas claire — le
+// tracker est session-only RAM, donc pas de cumul long terme). La
+// persistance de session ultérieure a levé cette objection.
 //
 // =========================
-// 🔥 HEATMAP — V2.4 (v1.11.4) [INACTIF]
+// 🔥 HEATMAP — V2.4 (v1.11.4)
 // =========================
 // Overlay canvas rouge/jaune/vert/bleu qui visualise la densité de points
 // (tracker timeline, editor points, data layers points) sur le plan.

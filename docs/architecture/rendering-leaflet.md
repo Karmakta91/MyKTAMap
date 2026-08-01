@@ -104,7 +104,11 @@ Le calque `editor` dans le contrôle des couches Leaflet (label hardcoded **"Mes
 - `editor.js > _ajouterMarker` : `addTo(window.layerEditor)`.
 - `map.js > initMapFromConfig` : auto-création de `editor` si absent du plan-config (fallback pour vieux plans).
 
-**⚠️ Bug Leaflet observé non résolu** : sur certaines configurations, le toggle off du LayerGroup ne propage PAS aux polylines roads (zones + markers OK). Une tentative de calque séparé "Mes tracés" pour les roads a été rollback car ne résolvait pas le bug. À investiguer plus tard si critique pour un user.
+**⚠️ Bug observé, statut incertain** : sur certaines configurations, le toggle off du LayerGroup ne propage PAS aux polylines roads (zones + markers OK). Une tentative de calque séparé "Mes tracés" pour les roads a été rollback car ne résolvait pas le bug.
+
+> 🔍 **Piste (audit 01/08/2026, non testée en runtime)** — ce n'est probablement PAS un bug Leaflet, mais une **course au boot** : `_targetLayerForRoad()` retombe sur `window.map` quand `window.layerEditor` n'existe pas encore (fallback l. ~563, idem `zones.js > _zoneTarget`). Une road créée pendant cette fenêtre est attachée **directement à la map** → le toggle du LayerGroup `editor` ne la verra jamais, définitivement. Ça colle au « sur certaines configurations » (dépend du timing d'init). Le bug jumeau côté retrait a d'ailleurs été corrigé en v1.46.x (`layer.remove()` détache de la map mais pas du FeatureGroup parent → retrait FeatureGroup-aware, cf. `road.js` l. ~700).
+>
+> **Pour vérifier** : en console, `window.getRoads()` puis contrôler `window.layerEditor.hasLayer(<layer>)` sur les tracés récalcitrants. Si `false` alors qu'ils sont visibles → hypothèse confirmée, et le fix est de re-parenter au lieu de chercher côté Leaflet.
 
 **Label dans le contrôle des couches** : forcé hardcoded "Mes annotations" pour le calque `id: "editor"` (override le `layerConfig.label` du plan-config). Plans existants avec "Ajouts" affichent automatiquement "Mes annotations" sans regénération.
 
