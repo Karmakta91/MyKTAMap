@@ -4034,6 +4034,7 @@
   "theme.name.dark": "DARK",
   "theme.name.light": "LIGHT",
   "tracker.maPosition.indispo": "Tracker position unavailable.",
+  "tracker.nav.niveauAuto": "🏗️ Level {level} — junction crossed",
   "tracker.modal.sectionSuivi": "Tracking",
   "tracker.modal.sectionOutils": "Tools",
   "tracker.modal.sectionUrgence": "Emergency",

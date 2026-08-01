@@ -4034,6 +4034,7 @@
   "theme.name.dark": "SOMBRE",
   "theme.name.light": "CLAIR",
   "tracker.maPosition.indispo": "Position du tracker indisponible.",
+  "tracker.nav.niveauAuto": "🏗️ Niveau {level} — jonction franchie",
   "tracker.modal.sectionSuivi": "Suivi",
   "tracker.modal.sectionOutils": "Outils",
   "tracker.modal.sectionUrgence": "Urgence",

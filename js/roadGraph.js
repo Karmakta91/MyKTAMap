@@ -201,11 +201,43 @@
     return d;
   }
 
+  // 🏗️ C6 v1.74.0 — MULTI-NIVEAU. Le graphe portait DÉJÀ tout ce qu'il faut
+  // (`seg.level` = entier pour une road, `"transit"` pour un segment de
+  // jonction interniveau, cf. pathfinder.js > buildNetworkGraph) — le
+  // map-matching ne le lisait simplement pas. Conséquence avant ce lot : sur
+  // un plan M-LVL, la position pouvait se caler sur une galerie d'un AUTRE
+  // étage superposée en x/y, et franchir un puits ne basculait jamais le
+  // niveau actif.
+  //
+  // Règle d'éligibilité d'un segment candidat :
+  //   1. M-LVL désactivé pour ce plan → tout est éligible (rétro-compat stricte)
+  //   2. seg.level === "transit"      → toujours éligible (c'est le pont vertical)
+  //   3. seg.level === activeLevel    → l'étage courant
+  //   4. le segment PRÉCÉDENT était "transit" → on est EN TRAIN de traverser :
+  //      on rouvre TOUS les niveaux, sinon le segment d'arrivée (niveau N ≠
+  //      actif) serait filtré et on ne sortirait jamais de la jonction. C'est
+  //      cette règle qui rend la bascule possible (le caller compare le level
+  //      retourné à activeLevel).
+  //
+  // Filtrage STRICT (et non pondéré) : hors des cas ci-dessus, un segment
+  // n'est pas candidat du tout. Si l'étage courant est faux, on décroche
+  // franchement en off-network → repli PDR raster côté caller. Mieux vaut
+  // décrocher que caler faux en silence.
+  function _levelEligible(seg, mlOn, activeLevel, prevSeg) {
+    if (!mlOn) return true;
+    if (!seg) return false;
+    if (seg.level === "transit") return true;
+    if (seg.level === activeLevel) return true;
+    if (prevSeg && prevSeg.level === "transit") return true;
+    return false;
+  }
+
   // matchPosition(rawX, rawY, prevSegIdx, headingDeg)
-  //   → { onNetwork:bool, matched:{x,y}, segIdx:int, dist:number }
+  //   → { onNetwork:bool, matched:{x,y}, segIdx:int, dist:number,
+  //       level:number|"transit"|null }   ← `level` ajouté en v1.74.0 (C6)
   // headingDeg : cap VISUEL courant (= _getCorrectedHeading côté tracking).
   function matchPosition(rawX, rawY, prevSegIdx, headingDeg) {
-    const off = { onNetwork: false, matched: { x: rawX, y: rawY }, segIdx: -1, dist: Infinity };
+    const off = { onNetwork: false, matched: { x: rawX, y: rawY }, segIdx: -1, dist: Infinity, level: null };
     const g = getGraph();
     if (!g || !Array.isArray(g.segments) || g.segments.length === 0) return off;
 
@@ -213,6 +245,12 @@
     const R = _matchRadiusPx();
     const headingValid = Number.isFinite(headingDeg);
     const connectBonus = R * 0.4;
+
+    // 🏗️ C6 : contexte multi-niveau. `multiLevel` est un opt-in PAR PLAN —
+    // quand il est false, tout ce lot est neutre (mêmes candidats qu'avant).
+    const cfg         = window.APP_CONFIG || {};
+    const mlOn        = !!cfg.multiLevel;
+    const activeLevel = Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0;
 
     let prevSeg = null;
     if (Number.isInteger(prevSegIdx) && prevSegIdx >= 0 && prevSegIdx < g.segments.length) {
@@ -228,7 +266,8 @@
       if (a && b) {
         const pc = _projectOnSeg(raw, a, b);
         if (pc.dist <= R * STICKY_FACTOR && pc.t > T_EDGE && pc.t < 1 - T_EDGE) {
-          return { onNetwork: true, matched: { x: pc.x, y: pc.y }, segIdx: prevSegIdx, dist: pc.dist };
+          return { onNetwork: true, matched: { x: pc.x, y: pc.y }, segIdx: prevSegIdx,
+                   dist: pc.dist, level: prevSeg.level };
         }
       }
     }
@@ -244,6 +283,7 @@
       const seg = g.segments[i];
       const a = g.nodes[seg.a], b = g.nodes[seg.b];
       if (!a || !b) continue;
+      if (!_levelEligible(seg, mlOn, activeLevel, prevSeg)) continue;  // 🏗️ C6
       const proj = _projectOnSeg(raw, a, b);
       if (proj.dist > R) continue;  // hors rayon → pas candidat
       let score = proj.dist;
@@ -255,11 +295,12 @@
         score -= connectBonus;
       }
       if (!best || score < best.score) {
-        best = { segIdx: i, x: proj.x, y: proj.y, dist: proj.dist, score: score };
+        best = { segIdx: i, x: proj.x, y: proj.y, dist: proj.dist, score: score, level: seg.level };
       }
     }
     if (best) {
-      return { onNetwork: true, matched: { x: best.x, y: best.y }, segIdx: best.segIdx, dist: best.dist };
+      return { onNetwork: true, matched: { x: best.x, y: best.y }, segIdx: best.segIdx,
+               dist: best.dist, level: best.level };
     }
 
     // 3) Trop loin de tout → off-network (repli PDR raster côté caller).

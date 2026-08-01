@@ -1713,24 +1713,72 @@ function _changerNiveauActif(newLevel) {
   // v155 fix : retire le check newLevel < 0 qui bloquait les niveaux negatifs
   // (reste de v148 quand availableLevels etait [0..3] strict). Depuis v154 on
   // supporte les sous-sols (-1, -2, …), donc tout entier est valide.
-  if (!Number.isInteger(newLevel)) return;
+  // 🆕 v1.74.0 : simple delegation — toute la logique vit dans le helper unique.
+  window.ktaSetActiveLevel(newLevel, { source: "modale-niveaux" });
+}
 
-  // Annule le tracé en cours
-  if (typeof _fermerModeRoad === "function") _fermerModeRoad();
+// 🆕 v1.74.0 — SOURCE DE VÉRITÉ UNIQUE du niveau de travail.
+//
+// AVANT : 3 chemins concurrents écrivaient `APP_CONFIG.activeLevel` à la main
+// (modale Niveaux via _changerNiveauActif, modale ≡ Filtres ×2) et un seul
+// propageait réellement. Les 2 chemins de la modale ≡ se contentaient de
+// notifier `window._onLevelChange(...)` — un callback qui n'a **JAMAIS été
+// défini nulle part** : 7 appels tous gardés par `typeof === "function"`, donc
+// morts en silence. Conséquence vécue : changer le niveau actif depuis la
+// modale ≡ ne mettait à jour NI la pastille de la sidebar, NI les modules
+// level-aware. Le garde `typeof` a masqué le trou pendant des versions.
+//
+// ⚠️ CHANGEMENT DE SÉMANTIQUE ASSUMÉ (demande KARMA) : changer le niveau de
+// TRAVAIL n'écrase plus les niveaux AFFICHÉS. `_changerNiveauActif` faisait
+// `visibleLevels = [newLevel]` (« mode focalisé ») → passer au -2 faisait
+// DISPARAÎTRE toutes les galeries du -1. Rédhibitoire en exploration, et
+// bloquant pour la bascule automatique de C6 (franchir une jonction en
+// navigation ne doit pas effacer l'étage qu'on vient de quitter).
+//
+// Nouvelle règle = UNION : le niveau de travail s'AJOUTE aux niveaux visibles
+// s'il n'y est pas déjà. On garde l'invariant « tu vois toujours ce sur quoi
+// tu dessines » (sans quoi on dessinerait à l'aveugle) sans jamais rien
+// retirer de ce que l'user avait choisi d'afficher. Pour revenir à un seul
+// niveau, le bouton « Actif seul » existe toujours (modale ≡ et modale
+// Niveaux) — le mode focalisé devient un GESTE EXPLICITE au lieu d'un effet
+// de bord.
+//
+// @param {number} newLevel - entier (négatifs = sous-sols)
+// @param {Object} [opts]   - { source?: string } pour le log
+// @returns {boolean} true si appliqué
+window.ktaSetActiveLevel = function(newLevel, opts) {
+  if (!Number.isInteger(newLevel)) return false;
+  opts = opts || {};
+  if (!window.APP_CONFIG) return false;
 
-  APP_CONFIG.activeLevel   = newLevel;
-  APP_CONFIG.visibleLevels = [newLevel];  // reset filtre au mode focalise
+  // Annule le tracé en cours (un tracé ne peut pas enjamber 2 niveaux).
+  if (typeof _fermerModeRoad === "function") {
+    try { _fermerModeRoad(); } catch(e) {}
+  }
+
+  APP_CONFIG.activeLevel = newLevel;
+
+  // UNION (et pas remplacement) — cf. bloc de commentaire ci-dessus.
+  if (!Array.isArray(APP_CONFIG.visibleLevels)) APP_CONFIG.visibleLevels = [];
+  if (APP_CONFIG.visibleLevels.indexOf(newLevel) === -1) {
+    APP_CONFIG.visibleLevels = APP_CONFIG.visibleLevels.concat([newLevel]);
+  }
   window.APP_CONFIG = APP_CONFIG;
 
-  // Mise à jour de la pastille dans la sidebar (chiffre seul, pas de prefixe)
+  // Pastille sidebar (chiffre seul, pas de prefixe)
   const pill = document.getElementById("kta-niv-pastille-icone");
   if (pill) pill.textContent = String(newLevel);
 
-  // Propage le filtre a tous les modules level-aware
+  // Propage a tous les modules level-aware (re-render roads/zones + filtres).
+  // C'est aussi lui qui resynchronise la modale ≡ si elle est ouverte
+  // (FilterPanel.onLevelChange).
   if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
 
-  console.log("[MultiNiveau] Niveau actif →", newLevel, "| Visibles :", APP_CONFIG.visibleLevels);
-}
+  console.log("[MultiNiveau] Niveau actif →", newLevel,
+              "| Visibles :", APP_CONFIG.visibleLevels,
+              opts.source ? "| src: " + opts.source : "");
+  return true;
+};
 
 // 🏗️ Multi-niveau : helper global qui re-render / re-filtre TOUS les modules
 // level-aware. Appele apres tout changement de visibleLevels.

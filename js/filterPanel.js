@@ -173,13 +173,19 @@
       if (btnActive && scope.contains(btnActive)) {
         const lvl = parseInt(btnActive.getAttribute("data-lvl-active"), 10);
         if (isNaN(lvl) || !window.APP_CONFIG) return;
-        window.APP_CONFIG.activeLevel = lvl;
+        // 🆕 v1.74.0 : passe par le helper unique (avant : écriture directe de
+        // activeLevel + notify d'un callback _onLevelChange jamais défini →
+        // ni pastille ni modules rafraîchis depuis cette modale).
+        if (typeof window.ktaSetActiveLevel === "function") {
+          window.ktaSetActiveLevel(lvl, { source: "modale-filtres" });
+        } else {
+          window.APP_CONFIG.activeLevel = lvl;   // repli si interfaceConfig absent
+        }
         scope.querySelectorAll('[data-lvl-active]').forEach(function(b) {
           b.classList.toggle("kta-fp-lvl-btn-active", b === btnActive);
         });
-        if (typeof window._onLevelChange === "function") {
-          try { window._onLevelChange("active", lvl); } catch(_) {}
-        }
+        // Le niveau a pu s'AJOUTER aux visibles (union) → resync des cases.
+        _refreshChipsState(_modal);
         return;
       }
       // Quick action "Tous"
@@ -628,15 +634,16 @@
       btn.addEventListener("click", function() {
         const lvl = parseInt(btn.getAttribute("data-lvl-active"), 10);
         if (isNaN(lvl) || !window.APP_CONFIG) return;
-        window.APP_CONFIG.activeLevel = lvl;
+        // 🆕 v1.74.0 : helper unique (cf. _bindLevelHandlers, même correctif).
+        if (typeof window.ktaSetActiveLevel === "function") {
+          window.ktaSetActiveLevel(lvl, { source: "modale-filtres" });
+        } else {
+          window.APP_CONFIG.activeLevel = lvl;
+        }
         // Update UI segmented
         overlay.querySelectorAll('[data-lvl-active]').forEach(function(b) {
           b.classList.toggle("kta-fp-lvl-btn-active", b === btn);
         });
-        // Notify l'ancienne modale via le callback existant
-        if (typeof window._onLevelChange === "function") {
-          try { window._onLevelChange("active", lvl); } catch(e) {}
-        }
       });
     });
 

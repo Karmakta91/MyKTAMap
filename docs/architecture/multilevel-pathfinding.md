@@ -203,7 +203,13 @@ window.passeFiltreNiveau = function(item) {
 
 ⚠️ **Body class `kta-multilevel-active`** : ajouté/retiré sur `document.body` dans `lancerApplication` ET dans `_bindMultiLevelToggle`. Permet à la boussole de se repositionner via CSS sans reload.
 
-⚠️ **Switch d'activeLevel reset visibleLevels** : `_changerNiveauActif(N)` fait `visibleLevels = [N]` (mode focalisé par défaut). Si l'user veut voir plusieurs niveaux à la fois, il utilise les checkboxes ou le bouton `Tous`.
+✅ **Switch d'activeLevel = UNION, plus un reset (changé en v1.74.0, demande KARMA)** — ⚠️ **la règle a été INVERSÉE, ne pas se fier à d'anciennes lectures** : `_changerNiveauActif(N)` faisait `visibleLevels = [N]` (« mode focalisé »), donc passer son niveau de travail au -2 **faisait disparaître toutes les galeries du -1**. Rédhibitoire en exploration, et bloquant pour la bascule automatique C6 (franchir un puits ne doit pas effacer l'étage quitté).
+
+**Nouvelle règle** : le niveau de travail **s'AJOUTE** aux niveaux visibles s'il n'y est pas déjà. Rien n'est jamais retiré. L'invariant « tu vois toujours ce sur quoi tu dessines » est conservé (sinon on dessinerait à l'aveugle). Le mode focalisé reste disponible comme **geste explicite** : bouton `Actif seul` (modale ≡ Filtres et modale Niveaux).
+
+**Source de vérité unique : `window.ktaSetActiveLevel(lvl, opts)`** (`interfaceConfig.js`) — valide, coupe le mode tracé, pose `activeLevel`, unionne `visibleLevels`, met à jour la pastille sidebar, propage via `appliquerFiltreNiveau()`. **Tous** les chemins passent par lui : modale Niveaux (`_changerNiveauActif` n'est plus qu'une délégation), modale ≡ Filtres (2 sites), arrivée de portail (`interPlanLinks`), et la bascule C6 du tracker.
+
+> 🐛 **Bug de fond corrigé au passage** : les 2 chemins de la modale ≡ Filtres n'appelaient **ni** `appliquerFiltreNiveau()` **ni** rien d'autre — ils notifiaient `window._onLevelChange(...)`, un callback **jamais défini nulle part** dans le projet. Les 7 appels étant tous gardés par `typeof === "function"`, le trou était silencieux : changer le niveau actif depuis la modale ≡ ne mettait à jour ni la pastille ni les modules level-aware. Il reste 5 appels morts sur le volet `"visible"` (inoffensifs — ils accompagnent un vrai `appliquerFiltreNiveau()`), à purger si on repasse dans le fichier.
 
 ⚠️ **Itineraire = bypass total** : `road.type === "itinerary"` toujours visible peu importe le filtre (calculé par Pathfinder, doit rester affiché pendant la navigation).
 

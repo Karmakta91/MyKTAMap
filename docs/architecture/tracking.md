@@ -599,12 +599,29 @@ latérale est annulée et on tourne correctement aux croisements. **Réversible*
   Helpers `_bearingDeg` (même convention que le déplacement) + `_angleDiffMod180` (galerie non orientée).
   Paramètres terrain : `W_HEADING_PX_PER_DEG=0.7`, `STICKY_FACTOR=2.5`, `T_EDGE=0.02`.
 
-> Reste à faire (non livré, **revérifié dans le code le 01/08/2026**) : **C5** magnétisme edit-time,
-> **C6** multi-niveau. `RoadGraph.matchPosition` n'a **aucune** notion de `level` — alors que le graphe
-> transporte pourtant `nodeLevels` (hérité de `Pathfinder.buildNetworkGraph`). Conséquence concrète sur un
-> plan M-LVL : le map-matching peut caler la position sur une galerie d'un **autre niveau** superposée en
-> x/y, et ne détecte pas le franchissement d'une jonction interniveau (donc pas de bascule automatique du
-> niveau actif). Voir design doc.
+> Reste à faire : **C5** magnétisme edit-time (accrochage aux tracés existants pendant le dessin) —
+> lot séparé, il ne partage ni code ni moment ni risques avec C6. Voir design doc.
+
+#### 76.4 C6 — multi-niveau (v1.74.0)
+
+**La donnée était déjà là** : `Pathfinder.buildNetworkGraph` produit `segments[i].level` = entier pour une road, **`"transit"`** pour un segment de jonction interniveau. `matchPosition` ne le lisait simplement pas. Avant ce lot, sur un plan M-LVL : la position pouvait se caler sur une galerie d'un **autre étage superposé en x/y**, et franchir un puits ne basculait jamais le niveau actif.
+
+**Éligibilité d'un candidat** — `roadGraph.js > _levelEligible(seg, mlOn, activeLevel, prevSeg)` :
+
+| # | Règle | Pourquoi |
+|---|---|---|
+| 1 | `!mlOn` → tout éligible | `multiLevel` est un opt-in **par plan** — rétro-compat stricte quand il est off |
+| 2 | `seg.level === "transit"` | c'est le pont vertical, toujours empruntable |
+| 3 | `seg.level === activeLevel` | l'étage courant |
+| 4 | `prevSeg.level === "transit"` → **tous** niveaux rouverts | **la règle clé** : sans elle le segment d'arrivée (niveau N ≠ actif) serait filtré et on resterait bloqué dans la jonction pour toujours |
+
+Filtrage **STRICT**, pas pondéré : hors de ces cas un segment n'est pas candidat. Si l'étage courant est faux, on décroche franchement en off-network → repli PDR raster déjà en place. Mieux vaut décrocher que caler faux en silence.
+
+**Bascule** — `tracking.js > _basculerNiveauSiTraversee(m)` : dès que `m.level` est un entier ≠ `activeLevel`, on vient de sortir d'une jonction → `window.ktaSetActiveLevel(m.level, {source:"nav-jonction"})` + toast `tracker.nav.niveauAuto`. Auto et non confirmé : en navigation les mains sont prises, une modale bloquante est ingérable. Le risque (un point créé ensuite hériterait du mauvais niveau via `editor.js`) est amorti par l'**union** de v1.74.0 — la bascule ne fait plus disparaître l'étage quitté, donc rien ne se perd à l'écran ; retour manuel = 1 tap sur le chip.
+
+⚠️ **Pas de bouton Annuler dans le toast** : `OOMGuard.showToast(message, type)` n'accepte pas d'action. Y ajouter un bouton serait un lot à part.
+
+**Portée** : `smartNav` est **OFF par défaut** (lot C2) → aucune régression possible pour qui ne l'a pas activé. Validé par harness Node (7 cas — 2 galeries superposées en x/y sur 2 niveaux + jonction : non-saut d'étage, sortie de jonction, refus hors traversée, rétro-compat M-LVL off).
 
 #### 76.3 Fix connexe — déplacement en paysage
 

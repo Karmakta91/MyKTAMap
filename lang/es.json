@@ -4032,6 +4032,7 @@
   "theme.name.dark": "OSCURO",
   "theme.name.light": "CLARO",
   "tracker.maPosition.indispo": "Posición del tracker no disponible.",
+  "tracker.nav.niveauAuto": "🏗️ Nivel {level} — unión franqueada",
   "tracker.modal.sectionSuivi": "Seguimiento",
   "tracker.modal.sectionOutils": "Herramientas",
   "tracker.modal.sectionUrgence": "Emergencia",
