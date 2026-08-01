@@ -66,6 +66,7 @@
 | Formats JSON (plan-config, point, session) | `docs/architecture/data-formats.md` |
 | Frontière community/pro, mode serveur kiosque, confadmin | `docs/architecture/community-server-line.md` |
 | Pièges connus & renommages | `docs/architecture/gotchas.md` |
+| **Ce qui reste à faire** (sujets ouverts, dettes, sujets enterrés) | **`docs/BACKLOG.md`** ← lire AVANT d'annoncer qu'une feature manque |
 
 ## 📝 Style KARMA
 - **Topo avant de coder** (choix numérotés + reco). Réponses courtes OK (`1:a 2:b`).
