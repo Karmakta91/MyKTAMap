@@ -182,8 +182,22 @@ function initRoad() {
   window.map.on("mousedown", function(e) {
     if (!window.modeRoad) return;
 
-    const x = e.latlng.lng;
-    const y = APP_CONFIG.imageHeight - e.latlng.lat;
+    let x = e.latlng.lng;
+    let y = APP_CONFIG.imageHeight - e.latlng.lat;
+
+    // 🧲 C5 v1.74.0 — MAGNÉTISME EDIT-TIME. Corrige le problème à la SOURCE :
+    // deux tracés qui se rejoignent à l'œil atterrissent souvent à 5-10 px
+    // l'un de l'autre → deux nœuds distincts dans le graphe là où il devrait
+    // y en avoir UN. Le Pathfinder rattrape aujourd'hui à l'aveugle avec
+    // PROXIMITY_TOLERANCE = 15 px ; au-delà, la connexion n'existe pas et un
+    // itinéraire refuse de passer par une galerie visiblement reliée.
+    // Ici on accroche le point cliqué sur le sommet existant le plus proche.
+    const _snap = _snapSurSommetProche(x, y);
+    if (_snap) {
+      x = _snap.x;
+      y = _snap.y;
+      _flashSnap(_snap.x, _snap.y);
+    }
 
     // 🆕 v1.11.0 Undo/Redo : snapshot AVANT toute mutation (création
     // de currentRoad OU ajout d'un sommet à l'existant). Label adapté
@@ -545,6 +559,129 @@ function _calculerIntersectionsRoads(roads) {
   }
   return intersections;
 }
+
+// =========================
+// 🧲 C5 v1.74.0 — MAGNÉTISME EDIT-TIME
+// =========================
+// BUT : améliorer la qualité du graphe À LA SOURCE. Quand on trace deux
+// galeries qui se rejoignent, on clique « à peu près » : les extrémités
+// atterrissent à 5-10 px l'une de l'autre → le graphe voit DEUX nœuds là où
+// il devrait y en avoir UN. Le Pathfinder compense aujourd'hui à l'aveugle
+// (`PROXIMITY_TOLERANCE = 15` px) ; au-delà de cette tolérance la connexion
+// n'existe pas, et un itinéraire refuse de passer par une galerie qu'on voit
+// pourtant reliée à l'écran. Ici, on accroche pour de bon.
+//
+// ⚠️ N'aide que ce qui est dessiné APRÈS activation — les plans existants
+// gardent leur jitter, `PROXIMITY_TOLERANCE` reste indispensable.
+//
+// Choix d'implémentation :
+//   • On scanne les SOMMETS des roads (session + embedded), PAS le graphe
+//     RoadGraph : chaque clic ajoute un point → la signature du cache change →
+//     `getGraph()` reconstruirait tout le réseau À CHAQUE CLIC. Un scan O(N)
+//     des sommets est très largement moins cher et sémantiquement équivalent
+//     (un nœud du graphe EST un sommet de road, au spatial-merge près).
+//   • Rayon exprimé en pixels ÉCRAN puis converti en unités plan au clic :
+//     un rayon fixe en unités plan serait imperceptible au dézoom et
+//     ridiculement large au zoom. Règle mentale : « si c'est proche à l'œil,
+//     ça s'accroche », à tous les zooms.
+//   • Le DERNIER point de la road en cours est exclu (sinon un clic voisin du
+//     précédent s'y collerait). Les points ANTÉRIEURS de la road en cours
+//     restent éligibles → fermer une boucle sur son propre départ marche.
+//   • Multi-niveau : on n'accroche que sur des roads du niveau actif. Les
+//     `jonction` font exception (leurs extrémités existent POUR relier des
+//     niveaux). Sans ça, on se collerait à une galerie d'un autre étage
+//     superposée en x/y — exactement le défaut corrigé par C6.
+function _snapSurSommetProche(x, y) {
+  const cfg = window.APP_CONFIG || {};
+  if (cfg.snapDraw !== true) return null;
+  if (!window.map || typeof window.map.latLngToLayerPoint !== "function") return null;
+
+  // Rayon écran → unités plan, via la projection Leaflet courante (agnostique
+  // du CRS : on mesure ce que vaut 1 px écran en x plan au zoom courant).
+  const px = (Number.isFinite(cfg.snapDrawPx) && cfg.snapDrawPx > 0) ? cfg.snapDrawPx : 14;
+  let tol;
+  try {
+    // On mesure sur le CENTRE de la vue (référence toujours valide) : combien
+    // vaut un déplacement de `px` pixels écran, exprimé en unités plan.
+    const c   = window.map.getCenter();
+    const p0  = window.map.latLngToLayerPoint(c);
+    const ll1 = window.map.layerPointToLatLng(L.point(p0.x + px, p0.y));
+    tol = Math.abs(ll1.lng - c.lng);
+  } catch(e) { return null; }
+  if (!Number.isFinite(tol) || tol <= 0) return null;
+
+  const mlOn  = cfg.multiLevel === true;
+  const actif = Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0;
+
+  const session  = (typeof window.getRoads === "function" ? window.getRoads() : roadsData) || [];
+  const embedded = (typeof window.getAllEmbeddedRoads === "function")
+    ? (window.getAllEmbeddedRoads() || [])
+    : ((typeof window.getEmbeddedRoads === "function") ? (window.getEmbeddedRoads() || []) : []);
+
+  // Dernier sommet posé sur la road en cours → jamais candidat.
+  let exclu = null;
+  if (currentRoad && Array.isArray(currentRoad.points) && currentRoad.points.length > 0) {
+    exclu = currentRoad.points[currentRoad.points.length - 1];
+  }
+
+  let best = null;
+  const _scan = function(roads) {
+    for (let i = 0; i < roads.length; i++) {
+      const r = roads[i];
+      if (!r || !Array.isArray(r.points)) continue;
+      if (r.type === "itinerary") continue;        // calculé, pas cartographié
+      if (mlOn && r.type !== "jonction" && Number.isInteger(r.level) && r.level !== actif) continue;
+      for (let j = 0; j < r.points.length; j++) {
+        const p = r.points[j];
+        if (!p || p === exclu) continue;
+        const d = Math.hypot(p.x - x, p.y - y);
+        if (d <= tol && (!best || d < best.d)) best = { x: p.x, y: p.y, d: d };
+      }
+    }
+  };
+  _scan(session);
+  _scan(embedded);
+
+  if (best && window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+    console.log("[Road] 🧲 accrochage sur sommet à", best.d.toFixed(2), "px plan (tol", tol.toFixed(2), ")");
+  }
+  return best;
+}
+
+// Confirmation visuelle APRÈS l'accrochage (et non en survol prédictif comme
+// l'esquissait le design) : le survol n'existe pas au doigt, et un scan O(N)
+// à chaque mousemove coûterait cher sur réseau dense. Un flash court dit
+// « ça s'est collé ICI », identiquement sur mobile et desktop.
+let _snapFlashLayer = null;
+let _snapFlashTimer = null;
+function _flashSnap(x, y) {
+  if (!window.map || !window.L) return;
+  try {
+    if (_snapFlashTimer) { clearTimeout(_snapFlashTimer); _snapFlashTimer = null; }
+    if (_snapFlashLayer) { window.map.removeLayer(_snapFlashLayer); _snapFlashLayer = null; }
+    _snapFlashLayer = L.circleMarker(convertCoord(x, y), {
+      radius: 9, color: "#f4c542", weight: 3, opacity: 0.95,
+      fillColor: "#f4c542", fillOpacity: 0.25, interactive: false
+    }).addTo(window.map);
+    _snapFlashTimer = setTimeout(function() {
+      if (_snapFlashLayer) {
+        try { window.map.removeLayer(_snapFlashLayer); } catch(e) {}
+        _snapFlashLayer = null;
+      }
+      _snapFlashTimer = null;
+    }, 700);
+  } catch(e) {}
+}
+
+// Purge du flash (changement de plan / sortie de mode) — sinon un layer
+// orphelin survit sur la carte recréée.
+window.ktaPurgerFlashSnap = function() {
+  if (_snapFlashTimer) { clearTimeout(_snapFlashTimer); _snapFlashTimer = null; }
+  if (_snapFlashLayer) {
+    try { window.map.removeLayer(_snapFlashLayer); } catch(e) {}
+    _snapFlashLayer = null;
+  }
+};
 
 // =========================
 // RENDU

@@ -78,6 +78,17 @@ let DEFAULT_CONFIG = {
   smartNavRadiusM:       6,    // 🆕 v1.49.0 — tolérance latérale du verrou sur tracé (m), réglable ⚙️
   smartNavHeadingWeight: 0.7,  // 🆕 v1.49.0 — poids du cap aux croisements (px/°), réglable ⚙️
 
+  // 🧲 C5 v1.74.0 — MAGNÉTISME EDIT-TIME (accrochage au dessin).
+  // Pref GLOBALE, défaut OFF (le geste de dessin historique reste le défaut —
+  // ce lot touche `road.js > mousedown`, utilisé à chaque session).
+  // ⚠️ INDÉPENDANT de `smartNav` malgré son rangement dans la même section de
+  // ⚙️ Réglages : le magnétisme améliore la qualité du GRAPHE, donc il sert
+  // aussi au Pathfinder (itinéraires) même si la nav intelligente est OFF.
+  snapDraw:   false,
+  snapDrawPx: 14,   // rayon d'accrochage en pixels ÉCRAN (converti en unités
+                    // plan au clic selon le zoom courant — « si c'est proche
+                    // à l'œil, ça s'accroche », quel que soit le niveau de zoom)
+
   // 🧭 v1.37.0 — Orientation du Nord (offset en degrés vs haut du plan).
   // Default 0 = haut du plan = Nord (comportement historique strict).
   // Quand l'image du plan n'est pas orientée Nord-haut (photo aérienne avec
@@ -141,6 +152,9 @@ try {
   // 🆕 v1.49.0 — tolérances réglables du verrou sur tracé (override des défauts)
   if (Number.isFinite(saved.smartNavRadiusM))       APP_CONFIG.smartNavRadiusM       = saved.smartNavRadiusM;
   if (Number.isFinite(saved.smartNavHeadingWeight)) APP_CONFIG.smartNavHeadingWeight = saved.smartNavHeadingWeight;
+  // 🧲 C5 v1.74.0 — magnétisme edit-time (pref globale, défaut OFF)
+  if ("snapDraw" in saved) APP_CONFIG.snapDraw = !!saved.snapDraw;
+  if (Number.isFinite(saved.snapDrawPx) && saved.snapDrawPx > 0) APP_CONFIG.snapDrawPx = saved.snapDrawPx;
 } catch(e) {}
 
 // =========================
@@ -469,6 +483,8 @@ function sauvegarderPrefsUtilisateur() {
     existing.smartNav              = APP_CONFIG.smartNav === true;                 // 🧭 Nav C2 : default false
     if (Number.isFinite(APP_CONFIG.smartNavRadiusM))       existing.smartNavRadiusM       = APP_CONFIG.smartNavRadiusM;       // 🆕 v1.49.0
     if (Number.isFinite(APP_CONFIG.smartNavHeadingWeight)) existing.smartNavHeadingWeight = APP_CONFIG.smartNavHeadingWeight; // 🆕 v1.49.0
+    existing.snapDraw              = APP_CONFIG.snapDraw === true;                 // 🧲 C5 v1.74.0 : default false
+    if (Number.isFinite(APP_CONFIG.snapDrawPx) && APP_CONFIG.snapDrawPx > 0) existing.snapDrawPx = APP_CONFIG.snapDrawPx;
     localStorage.setItem("app_user_prefs", JSON.stringify(existing));
   } catch(e) {}
 }

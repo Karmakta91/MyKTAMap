@@ -1,6 +1,6 @@
 # MyKTAMap — Conception : Navigation Intelligente (GPS road-aware)
 
-> **Statut** : 🟢 *C1→C4 livrés en v1.28.0* (testés terrain OK) · **C5 (magnétisme edit-time) + C6 (multi-niveau) restent à faire.**
+> **Statut** : ✅ **INITIATIVE COMPLÈTE.** C1→C4 livrés en v1.28.0 (testés terrain OK) · **C6 (multi-niveau) et C5 (magnétisme edit-time) livrés en v1.74.0** — validés par harness Node, **restent à tester sur le terrain**.
 > **Date** : 2026-05-29 · **Auteur** : Flavien VIDAL (alias KARMA) · **Rédaction technique** : assistant IA
 > **Livrée dans** : v1.28.0 (cf §76 CLAUDE.md). Implémentation : `js/roadGraph.js` (C1), `APP_CONFIG.smartNav` + `tracking.js > avancer()` dispatcher (C2), `RoadGraph.matchPosition` greedy + repli hybride (C3), choix d'arête au cap (C4).
 > **Périmètre** : ajoute un mode de navigation qui *cale la position estimée sur le réseau de tracés (ROAD)*,
@@ -141,7 +141,15 @@ le(la) plus proche** du graphe, dans la limite d'un rayon de sécurité. Au-del�
 
 ---
 
-## 6. Magnétisme edit-time (décision verrouillée : **INCLUS — lot C5**)
+## 6. Magnétisme edit-time (décision verrouillée : **INCLUS — lot C5**) — ✅ LIVRÉ v1.74.0
+
+> **Écarts assumés vs l'esquisse ci-dessous** (détail : `docs/architecture/tracking.md §76.5`) :
+> ① accrochage sur les **sommets de roads** et non sur les nœuds `RoadGraph` — chaque clic invaliderait
+> le cache du graphe et forcerait une reconstruction complète du réseau **à chaque point posé** ;
+> ② feedback **après** l'accrochage (flash doré 700 ms) et non en survol prédictif — le survol n'existe
+> pas au doigt, et un scan à chaque `mousemove` coûterait cher sur réseau dense ;
+> ③ toggle **indépendant** et non sous-toggle de `smartNav` — le magnétisme améliore le graphe, donc il
+> sert au Pathfinder même quand la nav intelligente est OFF.
 
 Amélioration de la **qualité du graphe** à la source, côté dessin :
 

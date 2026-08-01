@@ -778,6 +778,12 @@ function _libererRessourcesPlanPrecedent() {
     try { window.resetTrackingTimeline(); } catch(e) {}
   }
 
+  // 🧲 C5 v1.74.0 : purge du flash d'accrochage (magnétisme edit-time) — un
+  // circleMarker transitoire pourrait survivre sur la carte détruite.
+  if (typeof window.ktaPurgerFlashSnap === "function") {
+    try { window.ktaPurgerFlashSnap(); } catch(e) {}
+  }
+
   // 🔥 v1.21.2 (KARMA "on reactive") : reset Heatmap au plan switch.
   // Si le module est chargé ET qu'un overlay est actif sur la carte du
   // plan précédent, on l'efface AVANT d'invalider la carte Leaflet

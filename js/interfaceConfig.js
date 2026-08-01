@@ -914,6 +914,24 @@ function afficherConfig() {
             <input class="kta-cfg-input" id="cfg_smartNavHeading" type="number" step="0.05" min="0" max="5" value="${Number.isFinite(c.smartNavHeadingWeight) ? c.smartNavHeadingWeight : 0.7}">
           </div>
           <div style="font-size:11px; color:#8892a4; margin:-2px 0 0; line-height:1.4;">${window.I18n.t("config.smartnav.headingHint")}</div>
+
+          <!-- 🧲 C5 v1.74.0 — magnétisme edit-time. Rangé ici (section Navigation)
+               mais INDÉPENDANT du toggle ci-dessus : il améliore la qualité du
+               graphe, donc il sert aussi aux itinéraires sans nav intelligente. -->
+          <label class="kta-perf-ultra-row" style="margin-top:14px;">
+            <input type="checkbox" id="cfg_snapDraw" ${c.snapDraw === true ? "checked" : ""}>
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.snapdraw.label")}</span>
+              <span class="kta-perf-ultra-hint">
+                ${window.I18n.t("config.snapdraw.hint")}
+              </span>
+            </span>
+          </label>
+          <div class="kta-cfg-row">
+            <label class="kta-cfg-label">${window.I18n.t("config.snapdraw.radiusLabel")}</label>
+            <input class="kta-cfg-input" id="cfg_snapDrawPx" type="number" step="1" min="4" max="40" value="${Number.isFinite(c.snapDrawPx) ? c.snapDrawPx : 14}">
+          </div>
+          <div style="font-size:11px; color:#8892a4; margin:-2px 0 0; line-height:1.4;">${window.I18n.t("config.snapdraw.radiusHint")}</div>
         </div>
 
         <!-- ════════ 4. 🎨 AFFICHAGE ════════ -->
@@ -1422,7 +1440,8 @@ function _validerReglagesTracking() {
     { id: "cfg_stepThreshold",   min: 10,  max: 30   },
     { id: "cfg_stepCooldown",    min: 300, max: 3000 },
     { id: "cfg_smartNavRadius",  min: 1,   max: 50   },
-    { id: "cfg_smartNavHeading", min: 0,   max: 5    }
+    { id: "cfg_smartNavHeading", min: 0,   max: 5    },
+    { id: "cfg_snapDrawPx",      min: 4,   max: 40   }   // 🧲 C5 v1.74.0
   ];
   var ok = true;
   champs.forEach(function(c) {
@@ -1489,6 +1508,13 @@ function appliquerConfig() {
   if (inSnRadius) { var snr = parseFloat(inSnRadius.value); if (Number.isFinite(snr) && snr > 0) APP_CONFIG.smartNavRadiusM = snr; }
   var inSnHeading = document.getElementById("cfg_smartNavHeading");
   if (inSnHeading) { var snh = parseFloat(inSnHeading.value); if (Number.isFinite(snh) && snh >= 0) APP_CONFIG.smartNavHeadingWeight = snh; }
+
+  // 🧲 C5 v1.74.0 — magnétisme edit-time (pref globale, défaut OFF). Lu à chaud
+  // par road.js > _snapSurSommetProche() au clic — pas de reload requis.
+  const cbSnapDraw = document.getElementById("cfg_snapDraw");
+  if (cbSnapDraw) APP_CONFIG.snapDraw = !!cbSnapDraw.checked;
+  var inSnapPx = document.getElementById("cfg_snapDrawPx");
+  if (inSnapPx) { var spx = parseFloat(inSnapPx.value); if (Number.isFinite(spx) && spx > 0) APP_CONFIG.snapDrawPx = spx; }
 
   // 🆕 v1.9.2 : le handler de showRoadIntersections en mode carte a été retiré
   // (toggle exclusivement dans le ⚙️ Configuration du loader/home désormais).
