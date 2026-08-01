@@ -960,6 +960,14 @@ function _aideHtmlFr() {
             qui fonctionne partout. Pour une persistance maximale sur iPhone, installez l'app en
             <strong>PWA</strong> (Partager → Sur l'écran d'accueil) avant de mémoriser le plan.
           </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">🔄 Réimport d'un plan regénéré (v1.73.1)</strong> — un ZIP de
+            <strong>même nom + même auteur</strong> qu'un plan déjà dans ta liste, mais de <strong>version différente</strong>,
+            ouvre un choix : <strong>🔄 Mettre à jour</strong> (remplace l'entrée et son archive mémorisée —
+            session, notes et liaisons conservées), <strong>➕ Garder les deux</strong>, ou <strong>Annuler</strong>
+            (défaut sur ✕ / Échap / clic à côté : jamais d'écrasement accidentel). Nom ET version identiques =
+            mise à jour directe sans question, comme avant.
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -1266,6 +1274,9 @@ function _aideHtmlFr() {
             Tu peux <strong>superposer plusieurs plans</strong> (➕) et tout gérer dans la modale
             <strong>≡ « Plans &amp; filtres »</strong> : ordre ▲▼ (images ET tracés), opacité par plan,
             réglages d'affichage globaux, filtre par tag agrégé, et 5 filtres par plan (🖼️📍🛣️🌐🏛️).
+            <strong style="color:#a8b3c8;">Depuis v1.73.1</strong>, les calques de données livrés masqués par défaut
+            dans un ZIP sont eux aussi affichés (ils étaient invisibles sans aucun moyen de les activer) — filtre-les
+            comme les autres via les chips de catégorie ou les tags.
           </p>
         </div>
 
@@ -1422,9 +1433,15 @@ function _aideHtmlFr() {
             <strong>Mode actif</strong> : tant qu'un mode est actif, son groupe reste ouvert pour permettre
             l'accès direct aux actions secondaires (effacer le dernier point par exemple).
           </p>
-          <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.5;">
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>Icône qui change</strong> : l'icône principale du groupe reflète le mode actif (par exemple
             🟩 sur le bouton Tracés quand un tracé principal est en cours, ou 📍 sur le Tracker pendant le recalage).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.5;">
+            <strong>🛡️ Une fenêtre coupe l'outil en cours (v1.73.1)</strong> : ouvrir une modale (Réglages, Filtres,
+            Documentation, Mode Secours…) pendant une mesure, une édition, un tracé, une zone, une structure ou un
+            recalage <strong>désarme le mode</strong> — plus de clics fantômes en refermant. Le <strong>tracker n'est
+            jamais coupé</strong>, et la fiche du point que tu viens de poser n'interrompt pas l'édition.
           </p>
         </div>
 
@@ -1747,6 +1764,13 @@ function _aideHtmlEn() {
             which works everywhere. For maximum persistence on iPhone, install the app as a
             <strong>PWA</strong> (Share → Add to Home Screen) before saving the map.
           </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">🔄 Re-importing a regenerated map (v1.73.1)</strong> — a ZIP with the
+            <strong>same name + same author</strong> as a map already in your list, but a <strong>different version</strong>,
+            opens a choice: <strong>🔄 Update</strong> (replaces the entry and its stored archive — session, notes and
+            links kept), <strong>➕ Keep both</strong>, or <strong>Cancel</strong> (default on ✕ / Escape / click outside:
+            no accidental overwrite). Same name AND version = direct update without asking, as before.
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -2053,6 +2077,9 @@ function _aideHtmlEn() {
             You can <strong>stack several maps</strong> (➕) and manage everything in the
             <strong>≡ "Plans &amp; filters"</strong> modal: ▲▼ order (images AND paths), per-map opacity,
             global display switches, aggregated tag filter, and 5 per-map filters (🖼️📍🛣️🌐🏛️).
+            <strong style="color:#a8b3c8;">Since v1.73.1</strong>, data layers shipped hidden by default in a ZIP are
+            displayed too (they used to be invisible with no way to enable them) — filter them like the others via the
+            category chips or the tags.
           </p>
         </div>
 
@@ -2209,9 +2236,16 @@ function _aideHtmlEn() {
             <strong>Active mode</strong>: as long as a mode is active, its group stays open to allow
             direct access to the secondary actions (erasing the last point, for example).
           </p>
-          <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.5;">
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>Changing icon</strong>: the group's main icon reflects the active mode (for example
             🟩 on the Paths button when a main path is in progress, or 📍 on the Tracker during recalibration).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.5;">
+            <strong>🛡️ A window cancels the active tool (v1.73.1)</strong>: opening a modal (Settings, Filters,
+            Documentation, Rescue Mode…) during a measurement, an edit, a path, a zone, a structure or a
+            recalibration <strong>disarms the mode</strong> — no more ghost clicks after closing. The
+            <strong>tracker is never cancelled</strong>, and the form of the point you just placed does not
+            interrupt editing.
           </p>
         </div>
 

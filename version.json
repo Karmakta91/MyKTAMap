@@ -1,8 +1,8 @@
 {
-  "version": "v1.73.0",
-  "released": "2026-07-31",
+  "version": "v1.73.1",
+  "released": "2026-08-01",
   "notes": [
-    "📐 Géoréférencement : un 3e point optionnel corrige les plans déformés (assemblages, échelles inégales) — la Vue OSM, les exports KMZ/GPX et le Mode Secours se plaquent mieux. Tes plans actuels ne changent pas.",
-    "🧭 Itinéraire : les étapes posées au clic se valident enfin (touche leur numéro → « Je suis ici »). Le ✕ du bouton Retour oublie désormais les retours empilés, et l'assistant du Générateur range Annuler à gauche, Précédent/Suivant à droite."
+    "🔄 Réimporter un plan que tu viens de regénérer ne crée plus un doublon dans ta liste : l'app te propose de mettre à jour l'existant ou de garder les deux. Ta session, tes notes et tes liaisons sont conservées.",
+    "🛡️ Ouvrir une fenêtre pendant une mesure ou un tracé désarme proprement l'outil en cours (fini les clics fantômes au retour). En Vue OSM, les calques masqués par défaut s'affichent enfin — tu peux toujours les filtrer."
   ]
 }

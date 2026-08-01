@@ -235,6 +235,13 @@ At startup, the application displays a **home screen** that groups together:
 2. **Click on a known map** — in **📚 My maps**, a click directly relaunches an already opened map (🌐 server or 💾 local).
 3. **🏗️ Generate a map** — dedicated button on the home page to create a map from scratch.
 
+> 🔄 **Re-importing a map you regenerated (since v1.73.1)** — if the ZIP you import has the **same name and same author** as a map already in your list but a **different version**, the app asks instead of stacking a duplicate:
+> - **🔄 Update** — the existing entry is replaced (name, version, size, stored archive). Your **session, notes and inter-map links are kept**. Photos are only replaced if the new ZIP contains some.
+> - **➕ Keep both** — previous behaviour: both versions live side by side in the list.
+> - **Cancel** (or ✕ / Escape / click outside) — nothing is touched. This is always the default: no accidental overwrite.
+>
+> Good to know: a ZIP with **exactly the same name AND version** updates the existing entry without asking (historical behaviour). No question either for server maps, or when you re-select the file of a specific map from your list.
+
 ### 👤 User profile
 
 A **profile banner** is displayed at the top of the home screen, just below the header. It groups your visual identity and configurable statistics on your use of the app.
@@ -721,6 +728,8 @@ The **⛶** button of the OSM view widget is now called **"Open OSM mode"**: the
 
 On the first opening of the mode, a message reminds you that rendering full plans can be slower on mobile — and another one shows if you display **more than 3 plans** at once.
 
+> 👁️ **Layers hidden by default (since v1.73.1)** — a data layer shipped "unchecked" in a plan ZIP (so hidden when the map opens) used to be **completely invisible in OSM view**, with no way to show it. It is now rendered like the others: hide or show it with the existing filters (global and per-plan category chips, tag filter). The OSM view of the map screen is unaffected — it has always followed the layers actually displayed on your map.
+
 ## 📖 Story Mode — Free note + PDF for each plan
 
 The **📖** button in the top bar (left of the battery 🔋) opens a two-tab modal scoped to each plan. It's your **personal exploration notebook** for each underground site.
@@ -905,6 +914,8 @@ All tools are accessible from the **right side bar**, organized into 11 groups:
 - **When a mode is active** (measure, add, road, zone, recalibrate), the group **remains open** so you can quickly access the associated actions (delete a point, etc.). The main icon changes to reflect the current mode
 - **Touching outside** the open group closes it automatically
 - **On mobile in landscape**, the bar becomes vertically scrollable if it overflows the screen
+
+> 🛡️ **Opening a window cancels the active tool (since v1.73.1)** — if you are in **measure, point editing, path, zone, structure or recalibration** mode and you open a modal on top (Settings, Filters, Documentation, Rescue Mode…), the mode disarms itself. Before, it stayed armed behind: after closing, your map clicks went into the tool with nothing to remind you, and the button stayed lit without effect. **The tracker is never cancelled** (it runs in the background, it is not a click mode), and the form of a point you just placed does not cancel editing — you can chain your points normally.
 
 ### 🔄 Quickly change map via the title
 

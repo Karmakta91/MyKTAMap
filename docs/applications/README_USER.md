@@ -235,6 +235,13 @@ Au démarrage, l'application affiche un **écran d'accueil** qui regroupe :
 2. **Cliquer sur un plan déjà connu** — dans **📚 Mes plans**, un clic relance directement un plan déjà ouvert (serveur 🌐 ou local 💾).
 3. **🏗️ Générer un plan** — bouton dédié dans la home pour créer un plan from scratch.
 
+> 🔄 **Réimporter un plan que tu as regénéré (depuis v1.73.1)** — si le ZIP que tu importes porte le **même nom et le même auteur** qu'un plan déjà dans ta liste mais une **version différente**, l'app te pose la question au lieu d'empiler un doublon :
+> - **🔄 Mettre à jour** — l'entrée existante est remplacée (nom, version, taille, archive mémorisée). Ta **session, tes notes et tes liaisons inter-plan sont conservées**. Les photos ne sont remplacées que si le nouveau ZIP en contient.
+> - **➕ Garder les deux** — comportement d'avant : les deux versions cohabitent dans la liste.
+> - **Annuler** (ou ✕ / Échap / clic à côté) — rien n'est touché. C'est toujours le choix par défaut : jamais d'écrasement accidentel.
+>
+> À savoir : si le ZIP a **exactement le même nom ET la même version**, il met à jour l'entrée existante sans rien demander (c'est le comportement historique). Aucune question non plus pour les plans serveur ni quand tu re-sélectionnes le fichier d'un plan précis depuis ta liste.
+
 ### 👤 Profil utilisateur
 
 Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le header. Il regroupe ton identité visuelle et des statistiques configurables sur ton usage de l'app.
@@ -718,6 +725,8 @@ Le bouton **⛶** du widget Vue OSM s'appelle désormais **« Ouvrir le mode OSM
 
 Au premier lancement du mode, un message rappelle que l'affichage de plans complets peut être plus lent sur mobile — et un second apparaît si vous affichez **plus de 3 plans** à la fois.
 
+> 👁️ **Calques masqués par défaut (depuis v1.73.1)** — un calque de données livré « décoché » dans le ZIP d'un plan (donc masqué à l'ouverture en mode carte) était jusqu'ici **totalement invisible en Vue OSM**, sans aucun moyen de l'afficher. Il est désormais rendu comme les autres : tu le masques ou l'affiches avec les filtres existants (chips de catégorie globaux et par plan, filtre par tag). La Vue OSM de l'écran plan n'est pas concernée — elle a toujours suivi les calques réellement affichés sur ta carte.
+
 ## 📖 Mode Histoire — Note libre + PDF du plan
 
 Le bouton **📖** dans la barre du haut (à gauche de la batterie 🔋) ouvre une modale à deux onglets propre à chaque plan. C'est ton **carnet d'exploration personnel** pour chaque site souterrain.
@@ -905,6 +914,8 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 - **Quand un mode est actif** (mesure, ajout, route, zone, recalage), le groupe **reste ouvert** pour que tu puisses accéder rapidement aux actions associées (effacer un point, etc.). L'icône principale change pour refléter le mode en cours
 - **Toucher en dehors** du groupe ouvert le ferme automatiquement
 - **Sur mobile en paysage**, la barre devient scrollable verticalement si elle dépasse de l'écran
+
+> 🛡️ **Ouvrir une fenêtre coupe l'outil en cours (depuis v1.73.1)** — si tu es en **mesure, édition de points, tracé, zone, structure ou recalage** et que tu ouvres une modale par-dessus (Réglages, Filtres, Documentation, Mode Secours…), le mode se désarme tout seul. Avant, il restait actif derrière : en refermant, tes clics sur la carte partaient dans l'outil sans que rien ne le rappelle, et le bouton restait allumé sans effet. **Le tracker n'est jamais coupé** (il tourne en fond, ce n'est pas un mode de clic), et la fiche d'un point que tu viens de poser ne coupe pas l'édition — tu peux enchaîner tes points normalement.
 
 ### 🔄 Changer rapidement de plan via le titre
 
