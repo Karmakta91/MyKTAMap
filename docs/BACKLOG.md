@@ -37,10 +37,25 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 
 ⚠️ **Piège CRS** : QGIS exporte souvent en **Lambert 93 (EPSG:2154)** — mètres, pas degrés. **Aucune lib de reprojection vendored** (`lib/` = leaflet, jszip, jspdf, html2canvas, imageoverlay-rotated). Détection triviale (coords hors `[-180,180]`/`[-90,90]`).
 
-**Décisions en attente** :
-1. Formats lot 1 : `a)` GeoJSON seul · **`b)` GeoJSON + KML (reco — le parser existe)** · `c)` + Shapefile
-2. CRS non-WGS84 : **`a)` refus franc « réexporte en EPSG:4326 » (reco — règle « valider plutôt que clamper »)** · `b)` vendorer proj4 (~30 Ko)
-3. Attributs → tags/types : **`a)` heuristique noms de champs + écran de correspondance (reco)** · `b)` type par défaut · `c)` mapping manuel obligatoire
+**Décisions tranchées le 01/08 (KARMA « GO RECO ») : `1:b 2:a 3:a`.**
+
+**État : 🟡 MOTEUR LIVRÉ, UI À FAIRE.**
+
+✅ Fait — `js/sigImport.js` (câblé dans `index.html` + `sw.js`), validé par harness Node (34 cas) :
+- parsers **GeoJSON** (FeatureCollection/Feature/GeometryCollection, les 6 géométries, Multi\* éclatés) et **KML** (Placemark, `ExtendedData`/`SimpleData`, KMZ via JSZip)
+- **validation CRS** : refus franc si coords hors `[-90,90]`/`[-180,180]` **et** si le membre `crs` déclare autre chose que CRS84/4326 — le message dit combien de coordonnées sont fautives
+- bounds (avec fenêtre minimale si étendue nulle → pas de division par zéro dans `buildTransform`)
+- `analyserAttributs()` → colonnes candidates triées + valeurs distinctes = **matière première de l'écran de correspondance**
+- `proposerMapping()` → pré-remplissage par synonymes, **jamais de valeur forcée** (inconnu → `null`, l'user tranche)
+- `ingest()` → points/roads/zones en coords plan via `KmzExport.gpsToPlan`
+- `genererZipMyktamap()` → réutilise `GpxImport.genererCanvasVierge` (aucune raison d'avoir 2 générateurs de fond)
+
+❌ **Reste à faire — sans ça la feature est INATTEIGNABLE par l'utilisateur** :
+1. `_routerFichierImport` (`createConf.js`) : router `.geojson/.json/.kml` → nouveau panneau (aujourd'hui ils tombent sur « mauvaise extension »)
+2. `_afficherImporterSig()` : panneau calqué sur `_afficherImporterGpx` (~200 lignes) — résumé du fichier, dims du canvas, nom/version/auteur
+3. **Écran de correspondance** : colonne SIG à utiliser + table « valeur → tag/type MyKTAMap », alimentée par `analyserAttributs` + `proposerMapping`
+4. Clés i18n ×3 (les messages d'erreur sont déjà des clés : `sig.err.*`, `sig.warn.*`)
+5. Élargir l'`accept=` de l'input fichier
 
 ---
 

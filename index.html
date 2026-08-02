@@ -1320,6 +1320,10 @@
   <!-- 🆕 v1.15.0 : GPX → ZIP MyKTAMap (canvas vierge auto-calibré + annotations
        restaurées). Doit charger APRÈS gpxIO.js et kmzExport.js. -->
   <script src="js/gpxImport.js" defer></script>
+  <!-- 🗺️ v1.74.0 — Import SIG (QGIS) : GeoJSON + KML/KMZ vectoriel.
+       Après gpxImport : il réutilise sa génération de canvas vierge
+       (window.GpxImport.genererCanvasVierge) au moment de l'appel. -->
+  <script src="js/sigImport.js" defer></script>
   <script src="js/createConf.js" defer></script>
   <script src="js/planRegistry.js" defer></script>
   <!-- 🆕 v1.42.0 — Kill-switch anti-fuite (denylist.json côté serveur). Charge

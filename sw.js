@@ -223,6 +223,7 @@ const ASSETS_TO_CACHE = [
   "./js/gpxIO.js",
   // 🆕 v1.15.0 : GPX → ZIP MyKTAMap (canvas vierge auto-calibré)
   "./js/gpxImport.js",
+  "./js/sigImport.js",
   "./js/tableEditor.js",
   "./js/searchPoints.js",
   "./js/createConf.js",
