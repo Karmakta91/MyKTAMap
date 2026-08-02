@@ -21573,3 +21573,29 @@ body.kta-theme-light #planLoaderBox.kta-has-wall .loader-section-head,
 body.kta-theme-light #planLoaderBox.kta-has-wall .loader-section-head * {
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.65);
 }
+
+/* ── Fond d'écran : le panneau du header NE DOIT PAS manger de largeur sur
+   mobile (régression signalée par KARMA : « les icônes passent à la ligne,
+   plus alignées avec MyKTAMap »).
+   Le calage mobile du header est SERRÉ et durement acquis (cf. bloc
+   @media max-width:640px, « fix ×3 ») : à 375 px il reste 327 px utiles
+   pour 313 px de contenu, soit 14 px de marge. Mon `padding: 8px 10px`
+   en consommait 20 → le flex-wrap de secours se déclenchait.
+   Correctif : sous 640 px, padding horizontal à 0. Le panneau s'étend sur
+   la largeur naturelle du header, la ligne reste intacte. Le padding
+   vertical est conservé (il ne joue sur aucun budget horizontal). */
+@media (max-width: 640px) {
+  #planLoaderBox.kta-has-wall .loader-header {
+    padding-left: 0;
+    padding-right: 0;
+    border-radius: 8px;
+  }
+  /* Les chips ne doivent pas non plus s'élargir : le fond des boutons
+     utilitaires reste purement visuel, sans padding ajouté. */
+  #planLoaderBox.kta-has-wall .loader-btn-help {
+    background: rgba(10, 13, 24, 0.55);
+  }
+  body.kta-theme-light #planLoaderBox.kta-has-wall .loader-btn-help {
+    background: rgba(244, 236, 216, 0.65);
+  }
+}
