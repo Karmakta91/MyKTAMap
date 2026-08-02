@@ -452,6 +452,31 @@
     }
   };
 
+  // Valeurs distinctes d'une colonne, VENTILÉES PAR FAMILLE de géométrie.
+  // Indispensable à l'écran de correspondance : une valeur « eau » trouvée sur
+  // des polygones doit proposer des types de ZONE, pas des types de tracé.
+  // Agréger les 3 familles comme le fait analyserAttributs() donnerait des
+  // choix absurdes (proposer « principal » pour un polygone).
+  function valeursParFamille(normalise, cle) {
+    const out = { points: [], lignes: [], polygones: [] };
+    if (!cle) return out;
+    function _collecte(items, dest) {
+      const vus = new Set();
+      (items || []).forEach(function(it) {
+        const k = _trouverCle(it.props, cle);
+        if (!k) return;
+        const v = it.props[k];
+        if (v == null || String(v).trim() === "") return;
+        vus.add(String(v).trim());
+      });
+      out[dest] = Array.from(vus).slice(0, MAX_VALEURS_DISTINCTES);
+    }
+    _collecte(normalise.points,    "points");
+    _collecte(normalise.lignes,    "lignes");
+    _collecte(normalise.polygones, "polygones");
+    return out;
+  }
+
   function proposerMapping(valeurs, categorie) {
     const table = SYNONYMES[categorie] || {};
     const out = {};
@@ -634,6 +659,7 @@
     validerCrs:         validerCrs,
     calculerBounds:     calculerBounds,
     analyserAttributs:  analyserAttributs,
+    valeursParFamille:  valeursParFamille,
     proposerMapping:    proposerMapping,
     ingest:             ingest,
     genererZipMyktamap: genererZipMyktamap

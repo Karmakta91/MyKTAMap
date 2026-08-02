@@ -181,7 +181,7 @@ function afficherPlanner() {
             <input
               type="file"
               id="kta-planner-zip-input"
-              accept=".zip,.kmz,.gpx,application/zip,application/vnd.google-earth.kmz,application/gpx+xml"
+              accept=".zip,.kmz,.gpx,.geojson,.json,.kml,application/zip,application/vnd.google-earth.kmz,application/gpx+xml,application/geo+json,application/vnd.google-earth.kml+xml"
               style="
                 position:absolute;
                 inset:0;
@@ -776,6 +776,16 @@ function afficherPlanner() {
         _afficherImporterGpx(f);
       } else {
         _plannerZipStatus(window.I18n.t("gen.router.gpxIndispo"), true);
+      }
+    } else if (lower.endsWith(".geojson") || lower.endsWith(".json") || lower.endsWith(".kml")) {
+      // 🗺️ v1.74.0 — Import SIG. ⚠️ `.json` est AMBIGU (config, session,
+      // calque de données…) : on route quand même vers le panneau SIG, c'est
+      // le parser qui tranchera au contenu et refusera proprement si ce n'est
+      // pas du GeoJSON (message `sig.err.pasDuGeojson`).
+      if (typeof _afficherImporterSig === "function") {
+        _afficherImporterSig(f);
+      } else {
+        _plannerZipStatus(window.I18n.t("gen.router.sigIndispo"), true);
       }
     } else {
       _plannerZipStatus(window.I18n.t("gen.router.badExt"), true);
@@ -4453,3 +4463,327 @@ async function _gpxImpGenerer() {
 }
 
 window.afficherImporterGpx = _afficherImporterGpx;
+
+// =====================================================================
+// 🗺️ IMPORT SIG (QGIS) — v1.74.0
+// =====================================================================
+// Panneau calqué sur _afficherImporterGpx (même squelette de modale, mêmes
+// classes CSS) + UNE section que le GPX n'a pas : l'ÉCRAN DE CORRESPONDANCE.
+//
+// Pourquoi cet écran existe : un fichier SIG porte ses propres nomenclatures
+// (« CANALISATION », « galerie_tech », « ZH »…). Deviner seul se tromperait
+// en silence sur des schémas qu'on ne connaît pas. On propose donc une
+// correspondance pré-remplie par synonymes, et l'utilisateur tranche.
+//
+// ⚠️ Les valeurs sont ventilées PAR FAMILLE de géométrie
+// (SigImport.valeursParFamille) : une valeur trouvée sur des polygones
+// propose des types de ZONE, pas des types de tracé.
+let _sigImportState = null;
+
+function _afficherImporterSig(prefilledFile) {
+  const existing = document.getElementById("kta-sig-import-modal");
+  if (existing) { existing.remove(); return; }
+
+  const T = function(k, p) { return window.I18n.t(k, p); };
+  const modal = document.createElement("div");
+  modal.id        = "kta-sig-import-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML = `
+    <div class="kta-readme-modal-boite kta-kmz-imp-boite">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">${T("gen.sig.titre")}</span>
+        <button class="kta-panneau-close" id="kta-sig-imp-close">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps">
+
+        <p class="kta-planner-info" style="margin-bottom:14px;">${T("gen.sig.intro")}</p>
+        <div style="padding:8px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; font-size:12px; color:#c0c8d8; margin-bottom:14px;">${T("gen.sig.crsInfo")}</div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">${T("gen.sig.fichierTitre")}</div>
+          <div class="kta-conv-drop" id="kta-sig-imp-drop" style="position:relative; overflow:hidden;">
+            <span style="font-size:28px;">🗺️</span>
+            <span id="kta-sig-imp-label">${T("gen.sig.dropLabel")}</span>
+            <input type="file" id="kta-sig-imp-input" accept=".geojson,.json,.kml,.kmz"
+              style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; z-index:5;">
+          </div>
+          <div id="kta-sig-imp-status" style="margin-top:8px;font-size:13px;min-height:18px;"></div>
+        </div>
+
+        <div class="kta-aide-section" id="kta-sig-imp-step-resume" style="display:none;">
+          <div class="kta-aide-section-titre">${T("gen.imp.apercu")}</div>
+          <div id="kta-sig-imp-resume" class="kta-conv-stats"></div>
+        </div>
+
+        <!-- ÉCRAN DE CORRESPONDANCE -->
+        <div class="kta-aide-section" id="kta-sig-imp-step-map" style="display:none;">
+          <div class="kta-aide-section-titre">${T("gen.sig.mapTitre")}</div>
+          <p class="kta-planner-info" style="margin-bottom:8px;">${T("gen.sig.mapInfo")}</p>
+          <div class="kta-planner-grille">
+            <label class="kta-cfg-label">${T("gen.sig.colonneType")}</label>
+            <select class="kta-cfg-input" id="kta-sig-imp-colonne"></select>
+          </div>
+          <div id="kta-sig-imp-map-tables" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="kta-aide-section" id="kta-sig-imp-step-config" style="display:none;">
+          <div class="kta-aide-section-titre">${T("gen.imp.configTitre")}</div>
+          <div class="kta-planner-grille">
+            <label class="kta-cfg-label">${T("gen.imp.nomPlan")} <span class="kta-planner-req">*</span></label>
+            <input class="kta-cfg-input" id="kta-sig-imp-name" type="text" placeholder="${T("gen.sig.nomPlaceholder")}">
+            <label class="kta-cfg-label">${T("gen.infos.version")}</label>
+            <input class="kta-cfg-input" id="kta-sig-imp-version" type="text" placeholder="v1" value="v1">
+            <label class="kta-cfg-label">${T("gen.infos.auteur")}</label>
+            <input class="kta-cfg-input" id="kta-sig-imp-author" type="text" placeholder="${T("gen.gpx.auteurPlaceholder")}">
+          </div>
+
+          <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">${T("gen.sig.canvasInfo")}</p>
+          <div class="kta-planner-grille">
+            <label class="kta-cfg-label">${T("gen.vierge.largeur")}</label>
+            <input class="kta-cfg-input" id="kta-sig-imp-w" type="number" min="500" max="12000" step="100" value="4000">
+            <label class="kta-cfg-label">${T("gen.vierge.hauteur")}</label>
+            <input class="kta-cfg-input" id="kta-sig-imp-h" type="number" min="500" max="12000" step="100" value="4000">
+          </div>
+
+          <div class="kta-cfg-label" style="margin-top:8px;">${T("gen.gpx.couleurCanvas")}</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px;">
+            <label class="kta-export-radio-row"><input type="radio" name="sig_imp_color" value="white"><span>⬜ ${T("gen.couleur.blanc")}</span></label>
+            <label class="kta-export-radio-row"><input type="radio" name="sig_imp_color" value="gray"><span>▫️ ${T("gen.couleur.gris")}</span></label>
+            <label class="kta-export-radio-row"><input type="radio" name="sig_imp_color" value="black"><span>⬛ ${T("gen.couleur.noir")}</span></label>
+            <label class="kta-export-radio-row"><input type="radio" name="sig_imp_color" value="sepia" checked><span>📜 ${T("gen.couleur.sepia")}</span></label>
+          </div>
+
+          <div style="margin-top:14px;">
+            <label class="kta-planner-multilevel-row">
+              <input type="checkbox" id="kta-sig-imp-mlvl">
+              <span><strong>${T("gen.mlvl.label")}</strong><em>${T("gen.gpx.mlvlHint")}</em></span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+      <div class="kta-aide-actions" style="padding:14px 18px; border-top:1px solid rgba(255,255,255,0.06); display:flex; gap:10px; justify-content:flex-end;">
+        <button class="kta-btn kta-btn-ghost" id="kta-sig-imp-annuler">${T("gen.btn.annuler")}</button>
+        <button class="kta-btn kta-btn-primary" id="kta-sig-imp-generer" disabled>${T("gen.imp.genererBtn")}</button>
+      </div>
+    </div>
+  `;
+  document.documentElement.appendChild(modal);
+  _sigImportState = null;
+
+  const _close = function() { modal.remove(); _sigImportState = null; };
+  document.getElementById("kta-sig-imp-close").addEventListener("click", _close);
+  document.getElementById("kta-sig-imp-annuler").addEventListener("click", _close);
+  modal.addEventListener("click", function(e) { if (e.target === modal) _close(); });
+
+  const input   = document.getElementById("kta-sig-imp-input");
+  const labelEl = document.getElementById("kta-sig-imp-label");
+  input.addEventListener("change", async function() {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    labelEl.textContent = "📦 " + file.name;
+    await _sigImpAnalyserFichier(file);
+  });
+  document.getElementById("kta-sig-imp-colonne").addEventListener("change", _sigImpRendreTables);
+  document.getElementById("kta-sig-imp-generer").addEventListener("click", _sigImpGenerer);
+
+  if (prefilledFile) {
+    if (labelEl) labelEl.textContent = "📦 " + prefilledFile.name;
+    setTimeout(function() { _sigImpAnalyserFichier(prefilledFile); }, 0);
+  }
+}
+
+async function _sigImpAnalyserFichier(file) {
+  const T      = function(k, p) { return window.I18n.t(k, p); };
+  const status = document.getElementById("kta-sig-imp-status");
+  const btnGen = document.getElementById("kta-sig-imp-generer");
+  status.style.color = "#8cb4ff";
+  status.textContent = T("gen.sig.analyse");
+  btnGen.disabled = true;
+
+  if (!window.SigImport) {
+    status.textContent = T("gen.sig.moduleNonCharge");
+    status.style.color = "#ff8c8c";
+    return;
+  }
+
+  try {
+    const { format, data } = await window.SigImport.parseFichier(file);
+
+    // ── Refus CRS : message ACTIONNABLE, pas un simple « erreur ». ──
+    const crs = window.SigImport.validerCrs(data);
+    if (!crs.ok) {
+      _sigImportState = null;
+      document.getElementById("kta-sig-imp-step-resume").style.display = "none";
+      document.getElementById("kta-sig-imp-step-map").style.display    = "none";
+      document.getElementById("kta-sig-imp-step-config").style.display = "none";
+      status.style.color = "#ff8c8c";
+      status.innerHTML = (crs.code === "vide")
+        ? T("gen.sig.err.vide")
+        : T("gen.sig.err.crsProjete", {
+            n:   crs.horsBornes,
+            tot: crs.total,
+            max: Math.round(Math.max(crs.maxAbsLat, crs.maxAbsLng))
+          });
+      return;
+    }
+
+    const bounds = window.SigImport.calculerBounds(data);
+    const cols   = window.SigImport.analyserAttributs(data);
+    _sigImportState = { file: file, format: format, data: data, bounds: bounds, colonnes: cols };
+
+    // Résumé
+    const dLat = bounds.latMax - bounds.latMin;
+    const dLng = bounds.lngMax - bounds.lngMin;
+    let html = '<div><strong>' + format.toUpperCase() + '</strong> — '
+             + T("gen.sig.resume", {
+                 p: data.points.length, l: data.lignes.length, z: data.polygones.length
+               }) + '</div>'
+             + '<div style="color:#8892a4; font-size:12px; margin-top:4px;">'
+             + '📍 ' + bounds.latMin.toFixed(5) + ', ' + bounds.lngMin.toFixed(5)
+             + ' → ' + bounds.latMax.toFixed(5) + ', ' + bounds.lngMax.toFixed(5)
+             + ' (Δ ' + dLat.toFixed(5) + '° × ' + dLng.toFixed(5) + '°)</div>';
+    (data.avertissements || []).forEach(function(a) {
+      html += '<div style="color:#ffb380; font-size:12px; margin-top:4px;">⚠️ ' + T(a) + '</div>';
+    });
+    document.getElementById("kta-sig-imp-resume").innerHTML = html;
+    document.getElementById("kta-sig-imp-step-resume").style.display = "";
+
+    // Sélecteur de colonne (option vide = tout au type par défaut)
+    const sel = document.getElementById("kta-sig-imp-colonne");
+    sel.innerHTML = '<option value="">' + T("gen.sig.colonneAucune") + '</option>'
+      + cols.map(function(c) {
+          return '<option value="' + _escAttrSig(c.cle) + '">' + _escHtmlSig(c.cle)
+               + ' (' + c.nbDistinctes + ')' + (c.probableType ? ' ⭐' : '') + '</option>';
+        }).join("");
+    if (cols.length > 0 && cols[0].probableType) sel.value = cols[0].cle;
+    document.getElementById("kta-sig-imp-step-map").style.display = "";
+    _sigImpRendreTables();
+
+    document.getElementById("kta-sig-imp-step-config").style.display = "";
+    const nameEl = document.getElementById("kta-sig-imp-name");
+    if (!nameEl.value) nameEl.value = file.name.replace(/\.(geojson|json|kml|kmz)$/i, "");
+    btnGen.disabled = false;
+    status.textContent = "";
+  } catch(err) {
+    _sigImportState = null;
+    status.style.color = "#ff8c8c";
+    const cle = String(err && err.message || "");
+    // Les erreurs du moteur SONT des clés i18n — on les traduit telles quelles.
+    status.textContent = cle.indexOf("sig.err.") === 0
+      ? T(cle) + (err.crsNom ? " (" + err.crsNom + ")" : "") + (err.n ? " (" + err.n + ")" : "")
+      : T("gen.sig.err.generique", { err: cle });
+  }
+}
+
+const _SIG_TYPES = {
+  points:    ["default", "pa", "pb", "pc", "pe", "ps", "salle", "chatiere", "passage", "danger", "info"],
+  lignes:    ["chemin", "secondaire", "principal"],
+  polygones: ["remblais", "eau", "effondrement", "inaccessible"]
+};
+const _SIG_CAT_I18N = { points: "gen.sig.famPoints", lignes: "gen.sig.famLignes", polygones: "gen.sig.famZones" };
+
+function _sigImpRendreTables() {
+  const T   = function(k, p) { return window.I18n.t(k, p); };
+  const box = document.getElementById("kta-sig-imp-map-tables");
+  if (!box || !_sigImportState) return;
+  const cle = document.getElementById("kta-sig-imp-colonne").value;
+  if (!cle) { box.innerHTML = '<div style="color:#8892a4; font-size:12px;">' + T("gen.sig.mapAucune") + '</div>'; return; }
+
+  const parFam = window.SigImport.valeursParFamille(_sigImportState.data, cle);
+  const catPour = { points: null, lignes: "traces", polygones: "zones" };
+  let html = "";
+  ["points", "lignes", "polygones"].forEach(function(fam) {
+    const vals = parFam[fam] || [];
+    if (vals.length === 0) return;
+    const propose = catPour[fam] ? window.SigImport.proposerMapping(vals, catPour[fam]) : {};
+    html += '<div style="margin-top:10px;"><div class="kta-cfg-label">' + T(_SIG_CAT_I18N[fam]) + '</div>';
+    vals.forEach(function(v) {
+      const sugg = propose[v] || "";
+      html += '<div style="display:flex; align-items:center; gap:8px; margin-top:4px;">'
+           +  '<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:#c0c8d8;" title="' + _escAttrSig(v) + '">' + _escHtmlSig(v) + '</span>'
+           +  '<select class="kta-cfg-input" data-sig-fam="' + fam + '" data-sig-val="' + _escAttrSig(v) + '" style="flex:0 0 46%;">'
+           +  _SIG_TYPES[fam].map(function(t) {
+                return '<option value="' + t + '"' + (t === sugg ? " selected" : "") + '>' + t + '</option>';
+              }).join("")
+           +  '</select></div>';
+    });
+    html += '</div>';
+  });
+  box.innerHTML = html || '<div style="color:#8892a4; font-size:12px;">' + T("gen.sig.mapVide") + '</div>';
+}
+
+function _escHtmlSig(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function _escAttrSig(s) { return _escHtmlSig(s).replace(/"/g, "&quot;"); }
+
+async function _sigImpGenerer() {
+  const T      = function(k, p) { return window.I18n.t(k, p); };
+  const status = document.getElementById("kta-sig-imp-status");
+  const btnGen = document.getElementById("kta-sig-imp-generer");
+  if (!_sigImportState) return;
+
+  const name = (document.getElementById("kta-sig-imp-name").value || "").trim();
+  if (!name) {
+    status.style.color = "#ff8c8c";
+    status.textContent = T("gen.sig.err.nomRequis");
+    return;
+  }
+
+  // Relecture de l'écran de correspondance
+  const cle = document.getElementById("kta-sig-imp-colonne").value || null;
+  const mapTags = {}, mapTraces = {}, mapZones = {};
+  document.querySelectorAll("#kta-sig-imp-map-tables select[data-sig-fam]").forEach(function(s) {
+    const fam = s.getAttribute("data-sig-fam");
+    const val = s.getAttribute("data-sig-val");
+    if (fam === "points")         mapTags[val]   = s.value;
+    else if (fam === "lignes")    mapTraces[val] = s.value;
+    else if (fam === "polygones") mapZones[val]  = s.value;
+  });
+
+  btnGen.disabled = true;
+  btnGen.textContent = T("gen.sig.generation");
+  status.style.color = "#8cb4ff";
+  status.textContent = T("gen.sig.generation");
+
+  try {
+    const result = await window.SigImport.genererZipMyktamap({
+      normalise:    _sigImportState.data,
+      bounds:       _sigImportState.bounds,
+      planName:     name,
+      planVersion:  (document.getElementById("kta-sig-imp-version").value || "v1").trim(),
+      planAuthor:   (document.getElementById("kta-sig-imp-author").value || "").trim(),
+      canvasWidth:  parseInt(document.getElementById("kta-sig-imp-w").value, 10) || 4000,
+      canvasHeight: parseInt(document.getElementById("kta-sig-imp-h").value, 10) || 4000,
+      canvasColor:  (document.querySelector('input[name="sig_imp_color"]:checked') || {}).value || "sepia",
+      multiLevel:   document.getElementById("kta-sig-imp-mlvl").checked,
+      layerLabel:   name,
+      mapping: { cleType: cle, mapTags: mapTags, mapTraces: mapTraces, mapZones: mapZones }
+    });
+
+    const url = URL.createObjectURL(result.blob);
+    const a   = document.createElement("a");
+    a.href = url;
+    a.download = "plan_" + name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() + "_from_sig.zip";
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+
+    status.style.color = "#6ce28a";
+    status.textContent = T("gen.sig.zipGenere", {
+      p: result.stats.points, l: result.stats.roads, z: result.stats.zones
+    });
+  } catch(err) {
+    status.style.color = "#ff8c8c";
+    const cleErr = String(err && err.message || "");
+    status.textContent = cleErr.indexOf("sig.err.") === 0
+      ? T(cleErr)
+      : T("gen.sig.err.generique", { err: cleErr });
+  } finally {
+    btnGen.disabled = false;
+    btnGen.textContent = T("gen.imp.genererBtn");
+  }
+}
+
+window.afficherImporterSig = _afficherImporterSig;

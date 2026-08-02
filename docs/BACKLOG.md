@@ -39,7 +39,7 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 
 **Décisions tranchées le 01/08 (KARMA « GO RECO ») : `1:b 2:a 3:a`.**
 
-**État : 🟡 MOTEUR LIVRÉ, UI À FAIRE.**
+**État : ✅ LIVRÉ (moteur + UI) — reste à tester sur de vrais exports QGIS.**
 
 ✅ Fait — `js/sigImport.js` (câblé dans `index.html` + `sw.js`), validé par harness Node (34 cas) :
 - parsers **GeoJSON** (FeatureCollection/Feature/GeometryCollection, les 6 géométries, Multi\* éclatés) et **KML** (Placemark, `ExtendedData`/`SimpleData`, KMZ via JSZip)
@@ -50,12 +50,13 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 - `ingest()` → points/roads/zones en coords plan via `KmzExport.gpsToPlan`
 - `genererZipMyktamap()` → réutilise `GpxImport.genererCanvasVierge` (aucune raison d'avoir 2 générateurs de fond)
 
-❌ **Reste à faire — sans ça la feature est INATTEIGNABLE par l'utilisateur** :
-1. `_routerFichierImport` (`createConf.js`) : router `.geojson/.json/.kml` → nouveau panneau (aujourd'hui ils tombent sur « mauvaise extension »)
-2. `_afficherImporterSig()` : panneau calqué sur `_afficherImporterGpx` (~200 lignes) — résumé du fichier, dims du canvas, nom/version/auteur
-3. **Écran de correspondance** : colonne SIG à utiliser + table « valeur → tag/type MyKTAMap », alimentée par `analyserAttributs` + `proposerMapping`
-4. Clés i18n ×3 (les messages d'erreur sont déjà des clés : `sig.err.*`, `sig.warn.*`)
-5. Élargir l'`accept=` de l'input fichier
+✅ UI livrée (`createConf.js`) : routage `.geojson/.json/.kml` dans `_routerFichierImport`, panneau `_afficherImporterSig()` calqué sur le panneau GPX, **écran de correspondance** (colonne SIG + table « valeur → type », valeurs **ventilées par famille** via `valeursParFamille` — un polygone ne se voit jamais proposer un type de tracé), `accept=` élargi, 41 clés i18n ×3.
+
+⚠️ **Reste à valider sur le terrain** : aucun vrai export QGIS n'a été testé. Le harness couvre la logique (parsers, CRS, mapping) mais pas les schémas réels. À tester en priorité — un GeoJSON QGIS EPSG:4326, un KML QGIS, un fichier volontairement en Lambert 93 (doit être refusé avec le compte de coordonnées fautives).
+
+⚠️ **`.json` est routé vers le panneau SIG** : extension ambiguë (config, session, calque…). C'est le parser qui tranche au contenu et refuse proprement (`sig.err.pasDuGeojson`). Si ça gêne un flux existant, router `.json` ailleurs.
+
+**Extensions possibles plus tard** : Shapefile (lib ~50 Ko), reprojection proj4 (~30 Ko) pour accepter le Lambert 93 au lieu de le refuser, import des styles SIG.
 
 ---
 
