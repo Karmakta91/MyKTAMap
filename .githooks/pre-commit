@@ -25,3 +25,13 @@ node scripts/check-no-pro-leak.js || exit $?
 
 # 🆕 v1.44.0 — Advisory linter ModalLifecycle (avertit mais ne bloque pas)
 node scripts/check-modal-lifecycle.js
+
+# 🆕 v1.74.0 — Surface d'API : CHARGE les modules IIFE et vérifie que chaque
+# méthode annoncée existe. `node -c` ne valide QUE la syntaxe : un identifiant
+# supprimé mais encore référencé dans un bloc d'exports passe le check et
+# casse au chargement navigateur (ReferenceError vécu le 01/08 sur
+# WALLPAPER_MAX_PX — le même patch raté avait aussi fait sauter
+# setWallpaperCadrage des exports, sans aucun signal).
+# BLOQUANT : contrairement au linter ModalLifecycle, ici un échec = module
+# mort au boot, jamais un faux positif.
+node scripts/check-api-surface.js || exit $?
