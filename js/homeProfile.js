@@ -27,9 +27,11 @@
         _renderProfileBarStatsSlots(_getProfileBarStatsKeys());
         await _refreshLoaderProfileBar();
         bar.style.display = "";  // révèle (default = none)
+        await _appliquerFondEcran();
         // Listener changement (notifie sur setSurnom / setPhoto / removePhoto / clear)
         window.UserProfile.onChange(function() {
           _refreshLoaderProfileBar();
+          _appliquerFondEcran();
         });
         // 🌍 v1.45.0 — Re-render au changement de langue (greeting + placeholder
         // "Mon profil" viennent du dico ; le pseudo reste inchangé). Couvre la
@@ -47,6 +49,42 @@
             _ouvrirModaleProfilDetails();
           }
         });
+      }
+
+      // 🖼️ v1.74.0 — FOND D'ÉCRAN DU HOME (demande KARMA « un peu comme Windows »).
+      // On pose 2 variables CSS sur #planLoaderBox : l'image et l'alpha du voile.
+      // La COULEUR du voile est définie côté CSS par thème (sombre / clair), donc
+      // basculer le thème réajuste automatiquement le voile sans repasser ici.
+      //
+      // ⚠️ La Blob URL précédente DOIT être révoquée : sans ça, chaque
+      // notification de profil (renommage, avatar, réglage du voile…) en créerait
+      // une nouvelle et l'image resterait en mémoire à chaque fois.
+      let _wallObjectUrl = null;
+      async function _appliquerFondEcran() {
+        const box = document.getElementById("planLoaderBox");
+        if (!box || !window.UserProfile) return;
+        try {
+          const snap = window.UserProfile.get();
+          if (_wallObjectUrl) { URL.revokeObjectURL(_wallObjectUrl); _wallObjectUrl = null; }
+          if (!snap.hasWallpaper) {
+            box.classList.remove("kta-has-wall");
+            box.style.removeProperty("--kta-wall-img");
+            box.style.removeProperty("--kta-wall-a");
+            return;
+          }
+          const url = await window.UserProfile.getWallpaperObjectUrl();
+          if (!url) { box.classList.remove("kta-has-wall"); return; }
+          _wallObjectUrl = url;
+          const voile = Number.isFinite(snap.wallVoile) ? snap.wallVoile : 55;
+          const px    = Number.isFinite(snap.wallPosX) ? snap.wallPosX : 50;
+          const py    = Number.isFinite(snap.wallPosY) ? snap.wallPosY : 50;
+          box.style.setProperty("--kta-wall-img", 'url("' + url + '")');
+          box.style.setProperty("--kta-wall-a", String(Math.max(0, Math.min(100, voile)) / 100));
+          box.style.setProperty("--kta-wall-pos", px + "% " + py + "%");
+          box.classList.add("kta-has-wall");
+        } catch(e) {
+          console.warn("[Profile] fond d'écran non appliqué :", e);
+        }
       }
 
       let _profileBarObjectUrl = null;  // tracker pour révoquer au refresh
@@ -813,6 +851,39 @@
                 '<input type="file" id="kta-profile-pro-input" accept=".json,application/json" style="display:none;">' +
               '</div>' +
 
+              // 🖼️ v1.74.0 — Fond d'écran du HOME. Placé JUSTE AVANT les actions
+              // (retour KARMA : « mal intégré, mets-le plus vers la fin ») —
+              // c'est de la déco, elle ne doit pas s'intercaler entre l'identité
+              // et les stats/rang qui, eux, se lisent d'affilée.
+              '<div class="kta-profile-details-section">' +
+                '<div class="kta-profile-details-section-titre">' + _t("home.profile.wallTitle") + '</div>' +
+                '<div class="kta-wall-preview" id="kta-wall-preview">' + _t("home.profile.wallNone") + '</div>' +
+                '<div class="kta-wall-actions">' +
+                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-wall-btn">' + _t("home.profile.wallBtn") + '</button>' +
+                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-wall-remove" style="' + (snap.hasWallpaper ? '' : 'display:none;') + '">' + _t("home.profile.wallRemove") + '</button>' +
+                  '<input type="file" id="kta-wall-input" accept="image/*" style="display:none;">' +
+                '</div>' +
+                '<div id="kta-wall-reglages" style="' + (snap.hasWallpaper ? '' : 'display:none;') + '">' +
+                  '<div class="kta-wall-voile-row">' +
+                    '<label class="kta-profile-details-label" for="kta-wall-voile">' + _t("home.profile.wallVoile") + '</label>' +
+                    '<input type="range" id="kta-wall-voile" min="0" max="100" step="5" value="' + (Number.isFinite(snap.wallVoile) ? snap.wallVoile : 55) + '">' +
+                    '<span class="kta-wall-voile-val" id="kta-wall-voile-val">' + (Number.isFinite(snap.wallVoile) ? snap.wallVoile : 55) + ' %</span>' +
+                  '</div>' +
+                  '<div class="kta-wall-voile-row">' +
+                    '<label class="kta-profile-details-label" for="kta-wall-posx">' + _t("home.profile.wallPosX") + '</label>' +
+                    '<input type="range" id="kta-wall-posx" min="0" max="100" step="5" value="' + (Number.isFinite(snap.wallPosX) ? snap.wallPosX : 50) + '">' +
+                    '<span class="kta-wall-voile-val" id="kta-wall-posx-val">' + (Number.isFinite(snap.wallPosX) ? snap.wallPosX : 50) + ' %</span>' +
+                  '</div>' +
+                  '<div class="kta-wall-voile-row">' +
+                    '<label class="kta-profile-details-label" for="kta-wall-posy">' + _t("home.profile.wallPosY") + '</label>' +
+                    '<input type="range" id="kta-wall-posy" min="0" max="100" step="5" value="' + (Number.isFinite(snap.wallPosY) ? snap.wallPosY : 50) + '">' +
+                    '<span class="kta-wall-voile-val" id="kta-wall-posy-val">' + (Number.isFinite(snap.wallPosY) ? snap.wallPosY : 50) + ' %</span>' +
+                  '</div>' +
+                  '<p class="kta-profile-details-hint">' + _t("home.profile.wallCadrageHint") + '</p>' +
+                '</div>' +
+                '<p class="kta-profile-details-hint">' + _t("home.profile.wallHint") + '</p>' +
+              '</div>' +
+
               // — Actions profil —
               '<div class="kta-profile-details-actions">' +
                 '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-details-export">' + _t("home.profile.exportBtn") + '</button>' +
@@ -968,6 +1039,113 @@
           if (fileInput) fileInput.click();
         });
 
+        // 🖼️ v1.74.0 — FOND D'ÉCRAN. L'aperçu montre l'image AVEC son voile,
+        // exactement comme le vrai fond : sans ça on choisirait une image qui
+        // rend bien nue mais illisible une fois voilée.
+        const wallPreview = document.getElementById("kta-wall-preview");
+        const wallInput   = document.getElementById("kta-wall-input");
+        const wallBtn     = document.getElementById("kta-wall-btn");
+        const wallRemove  = document.getElementById("kta-wall-remove");
+        const wallRow     = document.getElementById("kta-wall-reglages");
+        const wallRange   = document.getElementById("kta-wall-voile");
+        const wallVal     = document.getElementById("kta-wall-voile-val");
+        const wallPosX    = document.getElementById("kta-wall-posx");
+        const wallPosXVal = document.getElementById("kta-wall-posx-val");
+        const wallPosY    = document.getElementById("kta-wall-posy");
+        const wallPosYVal = document.getElementById("kta-wall-posy-val");
+        let _wallPreviewUrl = null;
+
+        // Peint l'aperçu avec le voile ET le cadrage courants — l'aperçu doit
+        // montrer exactement ce que donnera le vrai fond, sinon on choisit une
+        // image qui rend bien nue et illisible une fois voilée.
+        const _peindreApercu = function(url, voile, posX, posY) {
+          const a = voile / 100;
+          const clair = document.body.classList.contains("kta-theme-light");
+          const rgb = clair ? "201,184,143" : "26,31,46";
+          wallPreview.style.backgroundImage =
+            'linear-gradient(rgba(' + rgb + ',' + a + '), rgba(' + rgb + ',' + a + ')), url("' + url + '")';
+          wallPreview.style.backgroundPosition = posX + "% " + posY + "%";
+        };
+
+        const _rafraichirApercuFond = async function() {
+          const s = window.UserProfile.get();
+          if (_wallPreviewUrl) { URL.revokeObjectURL(_wallPreviewUrl); _wallPreviewUrl = null; }
+          if (!s.hasWallpaper) {
+            wallPreview.style.backgroundImage = "";
+            wallPreview.textContent = _t("home.profile.wallNone");
+            wallRemove.style.display = "none";
+            wallRow.style.display    = "none";
+            return;
+          }
+          const url = await window.UserProfile.getWallpaperObjectUrl();
+          if (!url) return;
+          _wallPreviewUrl = url;
+          wallPreview.textContent = "";
+          const vx = Number.isFinite(s.wallPosX) ? s.wallPosX : 50;
+          const vy = Number.isFinite(s.wallPosY) ? s.wallPosY : 50;
+          wallRange.value   = Number.isFinite(s.wallVoile) ? s.wallVoile : 55;
+          wallVal.textContent    = wallRange.value + " %";
+          wallPosX.value    = vx; wallPosXVal.textContent = vx + " %";
+          wallPosY.value    = vy; wallPosYVal.textContent = vy + " %";
+          _peindreApercu(url, Number(wallRange.value), vx, vy);
+          wallRemove.style.display = "";
+          wallRow.style.display    = "";
+        };
+        _rafraichirApercuFond();
+
+        // Cadrage : `input` = aperçu live, `change` = persistance au relâchement
+        // (même contrat que le voile — sinon une écriture IDB par pixel parcouru).
+        [[wallPosX, wallPosXVal, "x"], [wallPosY, wallPosYVal, "y"]].forEach(function(t) {
+          const el = t[0], lab = t[1], axe = t[2];
+          el.addEventListener("input", function() {
+            lab.textContent = el.value + " %";
+            if (_wallPreviewUrl) {
+              _peindreApercu(_wallPreviewUrl, Number(wallRange.value),
+                             Number(wallPosX.value), Number(wallPosY.value));
+            }
+          });
+          el.addEventListener("change", async function() {
+            try { await window.UserProfile.setWallpaperCadrage(axe, Number(el.value)); }
+            catch(e) { console.warn("[Profile] cadrage non enregistré :", e); }
+          });
+        });
+
+        wallBtn.addEventListener("click", function() { wallInput.click(); });
+        wallInput.addEventListener("change", async function() {
+          const f = wallInput.files && wallInput.files[0];
+          if (!f) return;
+          const label = wallBtn.textContent;
+          wallBtn.disabled = true;
+          wallBtn.textContent = _t("home.profile.photoCompressing");
+          try {
+            await window.UserProfile.setWallpaper(f);
+            await _rafraichirApercuFond();
+          } catch(e) {
+            alert(_t("home.profile.errGeneric") + (e.message || e));
+          } finally {
+            wallBtn.disabled = false;
+            wallBtn.textContent = label;
+            wallInput.value = "";   // re-sélectionner le MÊME fichier doit refonctionner
+          }
+        });
+        wallRemove.addEventListener("click", async function() {
+          try { await window.UserProfile.removeWallpaper(); await _rafraichirApercuFond(); }
+          catch(e) { alert(_t("home.profile.errGeneric") + (e.message || e)); }
+        });
+        // `input` = aperçu live pendant le glissement ; `change` = persistance
+        // au relâchement seulement (sinon une écriture IDB par pixel parcouru).
+        wallRange.addEventListener("input", function() {
+          wallVal.textContent = wallRange.value + " %";
+          if (_wallPreviewUrl) {
+            _peindreApercu(_wallPreviewUrl, Number(wallRange.value),
+                           Number(wallPosX.value), Number(wallPosY.value));
+          }
+        });
+        wallRange.addEventListener("change", async function() {
+          try { await window.UserProfile.setWallpaperVoile(Number(wallRange.value)); }
+          catch(e) { console.warn("[Profile] voile non enregistré :", e); }
+        });
+
         // Reset profil — modale custom charte (cf §35 CLAUDE.md, pattern
         // Promise-based, .kta-readme-modal-overlay + accent rouge danger).
         document.getElementById("kta-profile-details-reset").addEventListener("click", async function() {
@@ -983,6 +1161,9 @@
             removeBtn.style.display = "none";
             photoBtn.textContent = _t("home.profile.photoBtn");
             _refreshProfileDetailsAvatar(snap2);
+            // 🖼️ v1.74.0 : `clear()` efface l'entrée entière, fond compris —
+            // l'aperçu doit suivre, sinon il montre une image qui n'existe plus.
+            await _rafraichirApercuFond();
           } catch(e) { alert(_t("home.profile.errGeneric") + (e.message || e)); }
         });
       }

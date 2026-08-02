@@ -85,7 +85,12 @@
     hasPhoto:   false,
     photoMime:  null,
     createdAt:  null,
-    updatedAt:  null
+    updatedAt:  null,
+    // 🖼️ v1.74.0 — fond d'écran du HOME (cf. bloc dédié en bas de fichier)
+    hasWallpaper: false,
+    wallVoile:    55,
+    wallPosX:     50,
+    wallPosY:     50
   };
   let _initialized = false;
   const _listeners = [];
@@ -203,7 +208,31 @@
 
   // ───────── COMPRESSION PHOTO ─────────
 
-  function _compressImageToBlob(fileOrBlob) {
+  // 🖼️ v1.74.0 — compresseur partagé avatar / fond d'écran. Le passage par
+  // canvas STRIPPE L'EXIF, ce qui compte doublement pour un fond d'écran :
+  // c'est souvent une photo perso qui embarque les coordonnées GPS de prise
+  // de vue.
+  //
+  // `opts` : un NOMBRE = plafond sur le côté long (cas avatar, historique),
+  //          ou { maxLong, maxShort }.
+  //
+  // ⚠️ POURQUOI UN PLAFOND SUR LE CÔTÉ COURT (constat KARMA sur la vue
+  // mobile) : en portrait, avec `background-size: cover`, c'est le côté
+  // COURT de l'image qui doit couvrir la HAUTEUR de l'écran. Plafonner le
+  // côté long garantit donc la mauvaise dimension — une photo 1920×1080 sur
+  // un téléphone (390×844 @DPR3) se retrouve agrandie ×2,3 et visiblement
+  // molle. En bornant le côté court à 1440, le portrait reste net ; le côté
+  // long garde son propre plafond pour qu'un panorama ne devienne pas un
+  // fichier démesuré. On ne SUR-échantillonne jamais (ratio plafonné à 1).
+  function _compressImageToBlob(fileOrBlob, opts) {
+    let maxLong  = MAX_DIMENSION_PX;
+    let maxShort = 0;                       // 0 = pas de contrainte (avatar)
+    if (Number.isFinite(opts) && opts > 0) {
+      maxLong = opts;
+    } else if (opts && typeof opts === "object") {
+      if (Number.isFinite(opts.maxLong)  && opts.maxLong  > 0) maxLong  = opts.maxLong;
+      if (Number.isFinite(opts.maxShort) && opts.maxShort > 0) maxShort = opts.maxShort;
+    }
     return new Promise(function(resolve, reject) {
       const img = new Image();
       const url = URL.createObjectURL(fileOrBlob);
@@ -211,12 +240,17 @@
         URL.revokeObjectURL(url);
         let w = img.naturalWidth, h = img.naturalHeight;
         if (!w || !h) { reject(new Error(window.I18n.t("profile.err.dimsNull"))); return; }
-        // Resize si nécessaire (côté long ≤ MAX_DIMENSION_PX)
-        const maxDim = Math.max(w, h);
-        if (maxDim > MAX_DIMENSION_PX) {
-          const ratio = MAX_DIMENSION_PX / maxDim;
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
+        const cotéLong  = Math.max(w, h);
+        const cotéCourt = Math.min(w, h);
+        // Le ratio le PLUS restrictif gagne, et jamais d'agrandissement.
+        let ratio = Math.min(
+          maxLong / cotéLong,
+          maxShort > 0 ? (maxShort / cotéCourt) : Infinity,
+          1
+        );
+        if (ratio < 1) {
+          w = Math.max(1, Math.round(w * ratio));
+          h = Math.max(1, Math.round(h * ratio));
         }
         const canvas = document.createElement("canvas");
         canvas.width = w; canvas.height = h;
@@ -247,6 +281,13 @@
         _state.photoMime = entry.photoMime || null;
         _state.createdAt = entry.createdAt || null;
         _state.updatedAt = entry.updatedAt || null;
+        // 🖼️ v1.74.0 — fond d'écran. `wallVoile` absent = profil antérieur
+        // au fond d'écran → on garde le défaut, jamais 0 (0 = image nue,
+        // ce serait illisible sur une entrée qui n'a même pas d'image).
+        _state.hasWallpaper = !!entry.wallBlob;
+        if (Number.isFinite(entry.wallVoile)) _state.wallVoile = entry.wallVoile;
+        if (Number.isFinite(entry.wallPosX))  _state.wallPosX  = entry.wallPosX;
+        if (Number.isFinite(entry.wallPosY))  _state.wallPosY  = entry.wallPosY;
       }
     } catch(e) {
       console.warn("[UserProfile] init() IDB lecture échouée :", e);
@@ -261,7 +302,11 @@
       hasPhoto:  _state.hasPhoto,
       photoMime: _state.photoMime,
       createdAt: _state.createdAt,
-      updatedAt: _state.updatedAt
+      updatedAt: _state.updatedAt,
+      hasWallpaper: _state.hasWallpaper,
+      wallVoile:    _state.wallVoile,
+      wallPosX:     _state.wallPosX,
+      wallPosY:     _state.wallPosY
     };
   }
 
@@ -368,6 +413,118 @@
 
   // ───────── EXPORT GLOBAL ─────────
 
+  // ═══════════════════════════════════════════════════════════
+  // 🖼️ FOND D'ÉCRAN DU HOME (v1.74.0 — demande KARMA « un peu comme Windows »)
+  // ═══════════════════════════════════════════════════════════
+  // Rangé dans la MÊME entrée IDB que l'avatar (`me`) : c'est de la
+  // personnalisation de profil, ça vit et meurt avec lui.
+  //
+  // ⚠️ LE VRAI SUJET N'EST PAS LE STOCKAGE, C'EST LA LISIBILITÉ. Une photo
+  // derrière les cards du HOME rend les textes illisibles. D'où le VOILE :
+  // une couche semi-opaque de la couleur du thème par-dessus l'image, dont
+  // l'utilisateur règle l'intensité (0 = image nue, 100 = fond uni comme
+  // avant). Choisi contre `backdrop-filter: blur()` : coûteux sur mobile et
+  // inégalement supporté, alors qu'un voile est gratuit et marche partout.
+  //
+  // Compressé à 1920 px / JPEG q88 : un fond en 12 Mpx ne se voit pas mieux
+  // et ralentirait le boot. Le canvas strippe l'EXIF au passage (GPS inclus).
+  // Côté COURT ≥ 1440 (netteté en portrait, cf. _compressImageToBlob), côté
+  // long borné à 3840 pour qu'un panorama ne parte pas en fichier démesuré.
+  const WALLPAPER_MAX_SHORT = 1440;
+  const WALLPAPER_MAX_LONG  = 3840;
+  const VOILE_DEFAUT        = 55;   // %, testé lisible sur photo claire ET sombre
+  // Cadrage : position du fond en %, sur les 2 axes. Avec `cover`, seul l'axe
+  // qui DÉBORDE bouge réellement — en portrait avec une photo paysage, c'est
+  // X ; en paysage avec une photo portrait, c'est Y. Les 2 sont exposés pour
+  // couvrir les 2 orientations sans que l'user ait à comprendre lequel agit.
+  const CADRAGE_DEFAUT      = 50;   // % (centre)
+
+  async function setWallpaper(fileOrBlob) {
+    if (!_initialized) await init();
+    if (!fileOrBlob) throw new Error(window.I18n ? window.I18n.t("profile.err.noImage") : "Aucune image fournie");
+    if (fileOrBlob.size > 50 * 1024 * 1024) throw new Error(window.I18n.t("profile.err.tooLarge"));
+    const compressed = await _compressImageToBlob(fileOrBlob, {
+      maxShort: WALLPAPER_MAX_SHORT,
+      maxLong:  WALLPAPER_MAX_LONG
+    });
+    const entry = (await _readEntry()) || { id: ENTRY_ID, surnom: "", createdAt: new Date().toISOString() };
+    entry.wallBlob = compressed;
+    entry.wallMime = "image/jpeg";
+    if (!Number.isFinite(entry.wallVoile)) entry.wallVoile = VOILE_DEFAUT;
+    // Cadrage remis au centre à chaque NOUVELLE image : un réglage hérité de
+    // la photo précédente n'a aucun sens sur un cadrage différent.
+    entry.wallPosX = CADRAGE_DEFAUT;
+    entry.wallPosY = CADRAGE_DEFAUT;
+    entry.updatedAt = new Date().toISOString();
+    if (!entry.createdAt) entry.createdAt = entry.updatedAt;
+    await _writeEntry(entry);
+    _state.hasWallpaper = true;
+    _state.wallVoile    = entry.wallVoile;
+    _state.wallPosX     = entry.wallPosX;
+    _state.wallPosY     = entry.wallPosY;
+    _state.updatedAt    = entry.updatedAt;
+    _notify();
+    return { ok: true, size: compressed.size };
+  }
+
+  async function removeWallpaper() {
+    if (!_initialized) await init();
+    const entry = await _readEntry();
+    if (!entry) return false;
+    delete entry.wallBlob;
+    delete entry.wallMime;
+    entry.updatedAt = new Date().toISOString();
+    await _writeEntry(entry);
+    _state.hasWallpaper = false;
+    _state.updatedAt    = entry.updatedAt;
+    _notify();
+    return true;
+  }
+
+  async function getWallpaperBlob() {
+    if (!_initialized) await init();
+    try {
+      const entry = await _readEntry();
+      if (entry && entry.wallBlob) return entry.wallBlob;
+    } catch(e) { console.warn("[UserProfile] getWallpaperBlob() échec :", e); }
+    return null;
+  }
+
+  // ⚠️ Le caller DOIT révoquer l'URL retournée (même contrat que
+  // getPhotoObjectUrl) — sinon fuite mémoire à chaque re-render du HOME.
+  async function getWallpaperObjectUrl() {
+    const blob = await getWallpaperBlob();
+    return blob ? URL.createObjectURL(blob) : null;
+  }
+
+  async function setWallpaperVoile(pct) {
+    if (!_initialized) await init();
+    const v = Math.max(0, Math.min(100, Math.round(Number(pct))));
+    if (!Number.isFinite(v)) return false;
+    const entry = (await _readEntry()) || { id: ENTRY_ID, surnom: "", createdAt: new Date().toISOString() };
+    entry.wallVoile = v;
+    entry.updatedAt = new Date().toISOString();
+    await _writeEntry(entry);
+    _state.wallVoile = v;
+    _notify();
+    return true;
+  }
+
+  // Cadrage : `axe` ∈ {"x","y"}, `pct` 0-100.
+  async function setWallpaperCadrage(axe, pct) {
+    if (!_initialized) await init();
+    const v = Math.max(0, Math.min(100, Math.round(Number(pct))));
+    if (!Number.isFinite(v)) return false;
+    const champ = (axe === "y") ? "wallPosY" : "wallPosX";
+    const entry = (await _readEntry()) || { id: ENTRY_ID, surnom: "", createdAt: new Date().toISOString() };
+    entry[champ] = v;
+    entry.updatedAt = new Date().toISOString();
+    await _writeEntry(entry);
+    _state[champ] = v;
+    _notify();
+    return true;
+  }
+
   window.UserProfile = {
     init:               init,
     get:                get,
@@ -376,6 +533,13 @@
     setSurnom:          setSurnom,
     setPhoto:           setPhoto,
     removePhoto:        removePhoto,
+    // 🖼️ v1.74.0 — fond d'écran du HOME
+    setWallpaper:          setWallpaper,
+    removeWallpaper:       removeWallpaper,
+    getWallpaperBlob:      getWallpaperBlob,
+    getWallpaperObjectUrl: getWallpaperObjectUrl,
+    setWallpaperVoile:     setWallpaperVoile,
+    WALLPAPER_MAX_PX:      WALLPAPER_MAX_PX,
     clear:              clear,
     onChange:           onChange,
     getInitial:         getInitial,

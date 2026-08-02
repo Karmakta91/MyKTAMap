@@ -21378,3 +21378,129 @@ html.kta-theme-light .kta-wiz-resume-warns { color: #6a5a1e; }
 html.kta-theme-light .loader-search-results { background: #f4ecd8; }
 html.kta-theme-light .loader-search-row { color: #3a4256; }
 html.kta-theme-light .loader-search-row b { color: #1a1f2e; }
+
+/* ═══════════════════════════════════════════════════════════
+   🖼️ FOND D'ÉCRAN DU HOME (v1.74.0 — demande KARMA)
+   ═══════════════════════════════════════════════════════════
+   Le fond visible du HOME est celui de #planLoaderBox (il couvre 100% de
+   la viewport ; #planLoaderOverlay est derrière). C'est donc lui qu'on
+   habille.
+
+   ⚠️ LISIBILITÉ : une photo derrière les cards rend les textes illisibles.
+   D'où le VOILE — un aplat semi-opaque de la couleur du thème posé PAR-DESSUS
+   l'image via un premier calque de background. Deux variables pilotent tout :
+     --kta-wall-img : url() de la Blob URL       (posée par homeProfile.js)
+     --kta-wall-a   : alpha du voile, 0 → 1      (posée par homeProfile.js)
+   La COULEUR du voile (--kta-wall-rgb) vient du thème ci-dessous : basculer
+   clair/sombre réajuste le voile tout seul, sans repasser par le JS.
+
+   `!important` nécessaire : la règle light theme pose déjà un background
+   !important sur #planLoaderBox.
+   Pas de `background-attachment: fixed` — cassé sur iOS Safari. */
+#planLoaderBox.kta-has-wall {
+  --kta-wall-rgb: 26, 31, 46;          /* #1a1f2e — fond sombre de la charte */
+  background-image:
+    linear-gradient(rgba(var(--kta-wall-rgb), var(--kta-wall-a, .55)),
+                    rgba(var(--kta-wall-rgb), var(--kta-wall-a, .55))),
+    var(--kta-wall-img) !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+}
+body.kta-theme-light #planLoaderBox.kta-has-wall {
+  --kta-wall-rgb: 201, 184, 143;       /* brun-beige du thème clair */
+}
+
+/* Aperçu dans la modale Profil : même rendu que le vrai fond, en petit. */
+.kta-wall-preview {
+  width: 100%;
+  height: 110px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-color: #1a1f2e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #8892a4;
+}
+.kta-wall-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.kta-wall-voile-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.kta-wall-voile-row input[type="range"] { flex: 1; min-width: 0; }
+.kta-wall-voile-val { font-size: 12px; color: #8892a4; min-width: 40px; text-align: right; }
+
+/* Bloc « fond d'écran » de la modale Profil — calqué sur
+   .kta-profile-details-stats pour rester natif dans la modale. */
+.kta-profile-details-section {
+  background: rgba(140,180,255,0.05);
+  border: 1px solid rgba(140,180,255,0.18);
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 14px;
+}
+.kta-profile-details-section-titre {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 10px;
+}
+html.kta-theme-light .kta-profile-details-section {
+  background: rgba(140,180,255,0.10);
+}
+
+/* ── Fond d'écran : CADRAGE (v1.74.0, retour KARMA « vue mobile / crop »)
+   `cover` rogne forcément : en portrait avec une photo paysage, seule ~26 %
+   de la largeur reste visible. --kta-wall-pos laisse l'utilisateur choisir
+   CE QUI reste visible. Avec `cover`, seul l'axe qui déborde bouge
+   réellement — les 2 sont exposés pour couvrir les 2 orientations. */
+#planLoaderBox.kta-has-wall {
+  background-position: var(--kta-wall-pos, center center) !important;
+}
+
+/* ── Fond d'écran : LISIBILITÉ DU HEADER ET DU BANDEAU PROFIL
+   (retour KARMA « on distingue mal le header et le profil, pas assez
+   contrasté avec le fond d'écran »).
+   Le voile global ne suffit pas pour ces 2 zones : elles sont posées À MÊME
+   l'image, sans fond propre. On leur donne donc leur PROPRE fond semi-opaque
+   dès qu'un fond d'écran est actif — même principe qu'une barre de menus
+   système au-dessus d'un wallpaper. Scopé sous `.kta-has-wall` : sans fond
+   d'écran, rien ne change. */
+#planLoaderBox.kta-has-wall .loader-header {
+  background: rgba(10, 13, 24, 0.72);
+  border-radius: 10px;
+  padding: 8px 10px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+}
+#planLoaderBox.kta-has-wall .kta-loader-profile-bar {
+  background: rgba(10, 13, 24, 0.72) !important;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+}
+/* Le titre et les icônes gagnent une ombre portée : lisibles même si
+   l'utilisateur descend le voile à 0 sur une photo claire. */
+#planLoaderBox.kta-has-wall .loader-titre-nom,
+#planLoaderBox.kta-has-wall .loader-titre-tagline,
+#planLoaderBox.kta-has-wall .kta-loader-profile-surnom {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+}
+#planLoaderBox.kta-has-wall .loader-btn-help {
+  background: rgba(10, 13, 24, 0.55);
+  border-radius: 8px;
+}
+/* Thème clair : voile local clair, texte sombre — sinon on poserait du
+   sombre sur du sombre. */
+body.kta-theme-light #planLoaderBox.kta-has-wall .loader-header,
+body.kta-theme-light #planLoaderBox.kta-has-wall .kta-loader-profile-bar {
+  background: rgba(244, 236, 216, 0.82) !important;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
+}
+body.kta-theme-light #planLoaderBox.kta-has-wall .loader-titre-nom,
+body.kta-theme-light #planLoaderBox.kta-has-wall .loader-titre-tagline,
+body.kta-theme-light #planLoaderBox.kta-has-wall .kta-loader-profile-surnom {
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+}
+body.kta-theme-light #planLoaderBox.kta-has-wall .loader-btn-help {
+  background: rgba(244, 236, 216, 0.65);
+}
