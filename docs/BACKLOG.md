@@ -89,6 +89,26 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 
 ---
 
+### 3. 📦 Export de profil AVEC les archives de plans
+
+**Besoin KARMA (01/08)** : « j'ai importé N plans au fil du temps, tous en base locale ; j'exporte mon profil et je récupère liste/sessions/liaisons **mais pas les ZIP** — or je les ai supprimés de mon PC, la seule copie restante est dans la base du navigateur ».
+
+**État : 🟡 récupération UNITAIRE livrée (v1.74.0), export FULL à faire.**
+
+✅ Fait — bouton **💾 Télécharger le ZIP** dans la modale ℹ️ Infos d'un plan (`homeLoader.js > _afficherInfosPlan`). `PlanRegistry.getBlob(id)` était **déjà public** : il ne manquait que l'exposition. **3 états**, le bouton étant **affiché grisé plutôt que masqué** quand la récupération est impossible (sinon on cherche pourquoi certains plans l'ont et d'autres non) :
+- plan **serveur** → pas de bouton (retéléchargeable, rien à sauver)
+- **`storedBlob`** → actif ; nom de fichier = `originalFilename`, sinon reconstruit depuis nom+version
+- **`fsHandle`** ou **re-sélection** → grisé + explication (le ZIP vit sur le disque, pas dans l'app)
+
+⚠️ Garde-fou : `storedBlob` n'est qu'un **flag du registre**. Le navigateur peut avoir évincé l'archive sous pression de quota sans que le flag bouge → si `getBlob` rend vide, message explicite (« le navigateur l'a supprimée pour libérer de la place ») plutôt qu'un fichier vide téléchargé.
+
+❌ **Reste — export FULL** (décisions déjà prises, non implémenté) :
+- **Format** : conteneur **ZIP** (`profil.json` + `plans/<id>.zip`), **pas** le JSON actuel — le base64 inline gonfle de +33 % et `JSON.stringify` construit tout en RAM → plantage assuré sur mobile, risqué sur PC.
+- **Compression `STORE`** : les ZIP de plans sont déjà compressés, recompresser coûte du temps pour rien.
+- **Aller-retour** : à l'import, réinjecter les blobs en base **et** rattacher aux entrées du registre (flag `storedBlob`, collisions d'`id`). C'est ce qui a de la valeur, et c'est le gros du coût.
+- **Sélection + garde-fou de taille** plutôt que tout-ou-rien : liste des plans avec tailles et total, refus/avertissement franc au-delà d'un seuil selon la plateforme (iOS plafonne autour de 50 Mo, Android/desktop plusieurs Go).
+- **Piste RAM** : File System Access API (`showSaveFilePicker` + flux d'écriture) pour écrire sur le disque sans tout garder en mémoire — **Chrome/Edge desktop uniquement**, fallback blob ailleurs. [Probable — l'API de flux de JSZip existe, non testée ici]
+
 ## 🔴 Dettes ouvertes
 
 ### D0 — 🧲 Magnétisme C5 : rayon non plafonné en unités plan ✅ vérifié 01/08

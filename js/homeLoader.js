@@ -1112,6 +1112,34 @@
                  '</tr>';
         }).join("");
 
+        // 💾 v1.74.0 — RÉCUPÉRATION DU ZIP (demande KARMA : « j'ai supprimé les
+        // zip de mon PC, le seul truc qui subsiste c'est la DB du navigateur »).
+        // L'export de profil n'embarque PAS les archives (exclu par design, cf.
+        // profileExportImport.js) — sans ce bouton, un ZIP mémorisé dans le
+        // navigateur était définitivement inatteignable.
+        //
+        // 3 états, et on AFFICHE le bouton grisé au lieu de le masquer quand la
+        // récupération est impossible : masqué, l'user chercherait pourquoi
+        // certains plans l'ont et pas d'autres.
+        //   • plan serveur      → pas de bouton du tout (retéléchargeable, rien à sauver)
+        //   • storedBlob        → actif
+        //   • fsHandle / re-pick → grisé + raison (le ZIP vit sur le disque, pas ici)
+        let dlHtml = "";
+        if (plan.type === "local") {
+          if (plan.storedBlob) {
+            dlHtml = '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-dl-zip" ' +
+                     'title="' + escapeHtml(_t("home.plans.info.dlZipTitle")) + '">💾 ' +
+                     escapeHtml(_t("home.plans.info.dlZip")) + '</button>';
+          } else {
+            const raison = plan.fsHandleId ? _t("home.plans.info.dlZipFs") : _t("home.plans.info.dlZipPick");
+            dlHtml = '<button class="kta-btn kta-btn-ghost kta-btn-small" disabled ' +
+                     'style="opacity:.5; cursor:not-allowed;">💾 ' + escapeHtml(_t("home.plans.info.dlZip")) +
+                     '</button>' +
+                     '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
+                     escapeHtml(raison) + '</div>';
+          }
+        }
+
         const modal = document.createElement("div");
         modal.id = "kta-plan-infos-modal";
         modal.className = "kta-readme-modal-overlay";
@@ -1123,9 +1151,51 @@
             '</div>' +
             '<div class="kta-readme-modal-corps">' +
               '<table class="kta-plan-infos-table">' + tableHtml + '</table>' +
+              (dlHtml ? '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
+                        dlHtml +
+                        '<div id="kta-plan-dl-status" style="font-size:12px; margin-top:8px; min-height:16px;"></div>' +
+                        '</div>' : '') +
             '</div>' +
           '</div>';
         document.documentElement.appendChild(modal);
+
+        const btnDl = document.getElementById("kta-plan-dl-zip");
+        if (btnDl) {
+          btnDl.addEventListener("click", async function() {
+            const st = document.getElementById("kta-plan-dl-status");
+            btnDl.disabled = true;
+            st.style.color = "#8cb4ff";
+            st.textContent = _t("home.plans.info.dlZipEnCours");
+            try {
+              const blob = await window.PlanRegistry.getBlob(plan.id);
+              // ⚠️ `storedBlob` n'est qu'un FLAG du registre : le navigateur a pu
+              // évincer l'archive (pression sur le quota) sans que le flag bouge.
+              // On le dit clairement plutôt que de télécharger un fichier vide.
+              if (!blob || blob.size === 0) {
+                st.style.color = "#ff8c8c";
+                st.textContent = _t("home.plans.info.dlZipMissing");
+                btnDl.disabled = false;
+                return;
+              }
+              const nom = plan.originalFilename
+                       || ("plan_" + String(plan.name || plan.id).replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
+                           + (plan.version ? "_" + String(plan.version).replace(/[^a-zA-Z0-9_.-]/g, "") : "") + ".zip");
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url; a.download = nom;
+              a.click();
+              setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+              st.style.color = "#6ce28a";
+              st.textContent = _t("home.plans.info.dlZipOk", { nom: nom, taille: fmtSize(blob.size) });
+            } catch(e) {
+              st.style.color = "#ff8c8c";
+              st.textContent = _t("home.plans.info.dlZipErr", { err: (e && e.message) || String(e) });
+            } finally {
+              btnDl.disabled = false;
+            }
+          });
+        }
+
         document.getElementById("kta-plan-infos-close").addEventListener("click", function() { modal.remove(); });
         modal.addEventListener("click", function(e) { if (e.target === modal) modal.remove(); });
         // Échap pour fermer (cohérent avec les autres modales du projet)
