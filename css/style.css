@@ -21474,9 +21474,29 @@ html.kta-theme-light .kta-profile-details-section {
   padding: 8px 10px;
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
 }
+/* ⚠️ Le bandeau profil porte son identité dans son BACKGROUND : un dégradé
+   doré→bleu très léger + une bordure dorée (le « halo » de la charte). Un
+   aplat opaque en `background` l'écrasait purement et simplement (retour
+   KARMA « on perd le petit halo doré »).
+   Fix : on EMPILE — le dégradé doré reste au-dessus, l'aplat opaque passe
+   en dernière couche pour bloquer l'image. Le halo est même renforcé
+   (0.08→0.16) : sur une photo il doit lutter contre plus de bruit visuel
+   que sur un fond uni. */
 #planLoaderBox.kta-has-wall .kta-loader-profile-bar {
-  background: rgba(10, 13, 24, 0.72) !important;
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+  background:
+    linear-gradient(135deg, rgba(244,197,66,0.16), rgba(140,180,255,0.10)),
+    rgba(10, 13, 24, 0.78) !important;
+  border-color: rgba(244,197,66,0.42) !important;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(244,197,66,0.10);
+}
+/* Le hover d'origine n'a pas de !important → il serait battu par la règle
+   ci-dessus et le bandeau perdrait tout retour au survol. On le rejoue. */
+#planLoaderBox.kta-has-wall .kta-loader-profile-bar:hover,
+#planLoaderBox.kta-has-wall .kta-loader-profile-bar:focus-visible {
+  background:
+    linear-gradient(135deg, rgba(244,197,66,0.26), rgba(140,180,255,0.16)),
+    rgba(10, 13, 24, 0.80) !important;
+  border-color: rgba(244,197,66,0.60) !important;
 }
 /* Le titre et les icônes gagnent une ombre portée : lisibles même si
    l'utilisateur descend le voile à 0 sur une photo claire. */
@@ -21491,10 +21511,25 @@ html.kta-theme-light .kta-profile-details-section {
 }
 /* Thème clair : voile local clair, texte sombre — sinon on poserait du
    sombre sur du sombre. */
-body.kta-theme-light #planLoaderBox.kta-has-wall .loader-header,
-body.kta-theme-light #planLoaderBox.kta-has-wall .kta-loader-profile-bar {
+body.kta-theme-light #planLoaderBox.kta-has-wall .loader-header {
   background: rgba(244, 236, 216, 0.82) !important;
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
+}
+/* Thème clair : même empilement, le halo doré est conservé au-dessus d'un
+   aplat beige (l'or sur beige ressort moins → on monte l'alpha du dégradé). */
+body.kta-theme-light #planLoaderBox.kta-has-wall .kta-loader-profile-bar {
+  background:
+    linear-gradient(135deg, rgba(244,197,66,0.30), rgba(140,180,255,0.12)),
+    rgba(244, 236, 216, 0.86) !important;
+  border-color: rgba(196,150,20,0.50) !important;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.18);
+}
+body.kta-theme-light #planLoaderBox.kta-has-wall .kta-loader-profile-bar:hover,
+body.kta-theme-light #planLoaderBox.kta-has-wall .kta-loader-profile-bar:focus-visible {
+  background:
+    linear-gradient(135deg, rgba(244,197,66,0.42), rgba(140,180,255,0.18)),
+    rgba(244, 236, 216, 0.88) !important;
+  border-color: rgba(196,150,20,0.70) !important;
 }
 body.kta-theme-light #planLoaderBox.kta-has-wall .loader-titre-nom,
 body.kta-theme-light #planLoaderBox.kta-has-wall .loader-titre-tagline,
