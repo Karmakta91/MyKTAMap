@@ -211,11 +211,24 @@
       .catch(function(e) { console.warn("[Journal] remove() échec :", e); return false; });
   }
 
+  // 🐛 v1.74.0 (repro KARMA : « la liste affiche ma note, mais la fiche est
+  // vide et je ne peux que la réécrire ») — CAUSE RACINE : setNote écrivait
+  // en IDB SANS toucher `_cur`, l'objet RAM de la sortie EN COURS. Or `flush()`
+  // ré-écrit `_snapshot()` (= `_cur`) toutes les 30 s et à la fermeture du
+  // plan. Sur la sortie en cours, la séquence était donc :
+  //   setNote → note en base ✅ → la liste (relue) l'affiche ✅
+  //   flush 30 s plus tard → _put(_cur) SANS note → note écrasée en base ❌
+  //   fiche rouverte → get() frais → note perdue ❌
+  // La note semblait « posée puis oubliée », exactement le symptôme décrit.
+  // Fix : quand l'id visé est celui de la sortie en cours, on met aussi à
+  // jour `_cur` — le prochain flush réécrit alors la bonne valeur.
   function setNote(id, texte) {
     return get(id).then(function(rec) {
       if (!rec) return false;
-      rec.note = String(texte == null ? "" : texte).slice(0, 4000);
+      const val = String(texte == null ? "" : texte).slice(0, 4000);
+      rec.note = val;
       rec.updatedAt = new Date().toISOString();
+      if (_cur && String(_cur.id) === String(id)) _cur.note = val;   // ← le fix
       return _put(rec).then(function() { return true; });
     });
   }
@@ -503,6 +516,11 @@
 
   // Corrige à la main le classement d'une session archivée (bouton 🚶 / 🖥️ de
   // la fiche). Pose `typeManuel` → plus aucun recalcul auto sur ce record.
+  // ⚠️ MÊME PIÈGE que setNote (corrigé en même temps, v1.74.0) : sans la mise
+  // à jour de `_cur`, un reclassement manuel sur la sortie EN COURS était
+  // annulé au flush suivant — et pire, `_snapshot()` reclasse automatiquement
+  // tant que `typeManuel` est absent, donc le choix de l'user était non
+  // seulement perdu mais ACTIVEMENT écrasé par le classement auto.
   function setType(id, type) {
     const t = (type === TYPE_TERRAIN) ? TYPE_TERRAIN : TYPE_BUREAU;
     return get(id).then(function(rec) {
@@ -510,6 +528,10 @@
       rec.type       = t;
       rec.typeManuel = true;
       rec.updatedAt  = new Date().toISOString();
+      if (_cur && String(_cur.id) === String(id)) {
+        _cur.type       = t;
+        _cur.typeManuel = true;
+      }
       return _put(rec).then(function() { return true; });
     });
   }

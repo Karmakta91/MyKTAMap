@@ -68,7 +68,15 @@ let DEFAULT_CONFIG = {
   // dans ⚙️ Réglages (map mode) ou ⚙️ Configuration (loader/home).
   // Pas de reload requis : un appel à renderRoads() après toggle suffit
   // pour faire disparaître / réapparaître les cercles à chaud.
-  showRoadIntersections: true,
+  // ⚠️ v1.74.0 — DÉFAUT BASCULÉ À false (décision KARMA). Les cercles ne
+  // signalent PAS un contact réel : `road.js > _calculerIntersectionsRoads`
+  // pose aussi un cercle quand une EXTRÉMITÉ passe à moins de
+  // ROAD_PROXIMITY_TOLERANCE (8 px plan) d'un segment voisin. Deux tracés qui
+  // se frôlent sans se toucher affichent donc un cercle — lecture trompeuse,
+  // signalée sur le terrain. Le toggle reste disponible partout, mais il
+  // s'active désormais en connaissance de cause. Dette associée : cf.
+  // docs/BACKLOG.md (« cercles d'intersection : symptôme vs cause »).
+  showRoadIntersections: false,
 
   // 🧭 Nav Intelligente (C2) : caler la position tracker sur le réseau de
   // tracés (map-matching). Pref GLOBALE, défaut OFF (rétrocompat stricte).
@@ -399,7 +407,9 @@ function buildAppConfigFromPlan(planConfig) {
   // champ resterait undefined et la check `!== false` le traiterait comme
   // truthy — fonctionnel mais moins explicite.
   if (cfg.scaledMarkers === undefined)         cfg.scaledMarkers         = DEFAULT_CONFIG.scaledMarkers !== false;
-  if (cfg.showRoadIntersections === undefined) cfg.showRoadIntersections = DEFAULT_CONFIG.showRoadIntersections !== false;
+  // ⚠️ v1.74.0 : passé de `!== false` à `=== true` — le défaut est désormais
+  // OFF, l'idiome `!== false` aurait continué à rendre true sur undefined.
+  if (cfg.showRoadIntersections === undefined) cfg.showRoadIntersections = DEFAULT_CONFIG.showRoadIntersections === true;
   if (cfg.smartNav === undefined)              cfg.smartNav              = DEFAULT_CONFIG.smartNav === true;  // défaut OFF
 
   return cfg;
@@ -479,7 +489,7 @@ function sauvegarderPrefsUtilisateur() {
     const existing = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
     existing.debugMode             = !!APP_CONFIG.debugMode;
     existing.scaledMarkers         = APP_CONFIG.scaledMarkers !== false;          // v174 : default true
-    existing.showRoadIntersections = APP_CONFIG.showRoadIntersections !== false;  // 🆕 v1.9.2 : default true
+    existing.showRoadIntersections = APP_CONFIG.showRoadIntersections === true;   // ⚠️ v1.74.0 : default FALSE
     existing.smartNav              = APP_CONFIG.smartNav === true;                 // 🧭 Nav C2 : default false
     if (Number.isFinite(APP_CONFIG.smartNavRadiusM))       existing.smartNavRadiusM       = APP_CONFIG.smartNavRadiusM;       // 🆕 v1.49.0
     if (Number.isFinite(APP_CONFIG.smartNavHeadingWeight)) existing.smartNavHeadingWeight = APP_CONFIG.smartNavHeadingWeight; // 🆕 v1.49.0
@@ -566,8 +576,11 @@ function _writePlanPrefs(planId, prefs) {
 // Lecture avec fallback en cascade :
 //   1. Pref per-plan (clé dédiée localStorage)
 //   2. Pref globale historique APP_CONFIG.showRoadIntersections
-//   3. Default true
+//   3. Default FALSE (⚠️ basculé en v1.74.0 — cf. DEFAULT_CONFIG)
 // Renvoie un boolean.
+// ⚠️ Les 2 premiers niveaux restent prioritaires : un user qui avait activé
+// les cercles explicitement (per-plan ou global) les GARDE. Seuls ceux qui
+// n'ont jamais touché le toggle basculent sur OFF.
 function getPlanShowsIntersections(planId) {
   const pid = planId || window._currentLoadedPlanId || "default";
   const prefs = _readPlanPrefs(pid);
@@ -578,7 +591,7 @@ function getPlanShowsIntersections(planId) {
   if (window.APP_CONFIG && typeof window.APP_CONFIG.showRoadIntersections === "boolean") {
     return window.APP_CONFIG.showRoadIntersections;
   }
-  return true; // default
+  return false; // ⚠️ v1.74.0 : default OFF (était true)
 }
 
 // Setter per-plan + re-render à chaud. Appelé par le toggle dans Réglages
