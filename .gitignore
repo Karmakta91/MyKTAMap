@@ -9,3 +9,11 @@
 # documents internes). NE JAMAIS livrer dans ce repo (public/open community).
 # Tout le contenu reste local au checkout principal, jamais versionné ici.
 /pro/
+
+# 📝 Notes de travail LOCALES (checklists de test, brouillons de KARMA).
+# Fichiers cachés à la racine : ni versionnés, ni déployés.
+# ⚠️ Garder ces notes à la RACINE, jamais dans js/ ou docs/ — ces dossiers
+# partent au FTP, un .md qui traîne dedans se retrouverait en ligne.
+/.checklist-*.md
+/.notes-*.md
+/.todo-*.md
