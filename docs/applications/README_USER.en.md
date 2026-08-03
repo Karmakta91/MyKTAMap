@@ -244,7 +244,7 @@ At startup, the application displays a **home screen** that groups together:
 
 ### 🗺️ Convert a GIS file (QGIS…) into a map — since v1.75.0
 
-Got data in a GIS package you want to use in MyKTAMap? Drop your export on the usual import area of the **🏗️ Generator**: the app recognises it and opens **"Convert from GIS"**.
+Got data in a GIS package you want to use in MyKTAMap? Drop your export **straight onto the "📦 Load a new map" area of the home screen** — the same one you already use for ZIPs: the app recognises the format and opens **"Convert from GIS"**. It also works from the **🏗️ Generator** import area.
 
 **Accepted formats**: `.geojson`, `.json`, `.kml`, `.kmz` (vector). Points, paths and zones are imported.
 

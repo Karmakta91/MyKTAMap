@@ -244,7 +244,7 @@ Au démarrage, l'application affiche un **écran d'accueil** qui regroupe :
 
 ### 🗺️ Convertir un fichier SIG (QGIS…) en plan — depuis v1.75.0
 
-Tu as des données dans un logiciel SIG et tu veux les exploiter dans MyKTAMap ? Dépose ton export sur la zone d'import habituelle du **🏗️ Générateur** : l'app le reconnaît et ouvre **« Convertir depuis un SIG »**.
+Tu as des données dans un logiciel SIG et tu veux les exploiter dans MyKTAMap ? Dépose ton export **directement sur la zone « 📦 Charger un nouveau plan » de l'accueil** — celle où tu déposes déjà tes ZIP : l'app reconnaît le format et ouvre **« Convertir depuis un SIG »**. Ça marche aussi depuis la zone d'import du **🏗️ Générateur**.
 
 **Formats acceptés** : `.geojson`, `.json`, `.kml`, `.kmz` (vectoriel). Points, tracés et zones sont repris.
 

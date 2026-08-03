@@ -980,7 +980,7 @@ function _aideHtmlFr() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🗺️ Convertir depuis un SIG (QGIS…)</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">🗺️</span><span>Dépose un <strong>.geojson / .json / .kml / .kmz</strong> sur la zone d'import du Générateur → le panneau de conversion s'ouvre</span>
+            <span class="kta-aide-icone">🗺️</span><span>Dépose un <strong>.geojson</strong> ou <strong>.kml</strong> sur la zone <strong>« 📦 Charger un nouveau plan » de l'accueil</strong> (la même que pour les ZIP) → le panneau de conversion s'ouvre. Marche aussi depuis la zone d'import du Générateur</span>
             <span class="kta-aide-icone">🖼️</span><span><strong>Pas besoin d'image</strong> : un fond vierge est généré et calé sur les coordonnées du fichier</span>
             <span class="kta-aide-icone">🏷️</span><span><strong>Écran de correspondance</strong> : tu choisis la colonne qui porte le type, puis dis à quoi chaque valeur correspond</span>
           </div>
@@ -1822,7 +1822,7 @@ function _aideHtmlEn() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🗺️ Convert from GIS (QGIS…)</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">🗺️</span><span>Drop a <strong>.geojson / .json / .kml / .kmz</strong> on the Generator's import area → the conversion panel opens</span>
+            <span class="kta-aide-icone">🗺️</span><span>Drop a <strong>.geojson</strong> or <strong>.kml</strong> on the <strong>"📦 Load a new map" area of the home screen</strong> (the same one you use for ZIPs) → the conversion panel opens. Also works from the Generator import area</span>
             <span class="kta-aide-icone">🖼️</span><span><strong>No image needed</strong>: a blank background is generated and aligned on the file's coordinates</span>
             <span class="kta-aide-icone">🏷️</span><span><strong>Mapping screen</strong>: pick the column holding the type, then say what each value means</span>
           </div>

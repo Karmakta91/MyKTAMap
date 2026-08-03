@@ -474,11 +474,16 @@
           <span class="zip-icon">📦</span>
           <span data-i18n-html="home.add.drop">Glisse ton archive <strong>ZIP</strong>, un <strong>KMZ</strong> ou un <strong>GPX MyKTAMap</strong> ici</span><br>
           <span style="font-size:12px; opacity:0.6;" data-i18n="home.add.dropSub">ou clique pour sélectionner</span>
+          <span class="zip-drop-sig" data-i18n-html="home.add.dropSig">🗺️ Aussi accepté : un export <strong>SIG</strong> (QGIS…) en <strong>.geojson</strong> ou <strong>.kml</strong> — l'app le convertit en plan</span>
           <!-- v1.14.20-hotfix6 + v1.15.0 — accept étendu à .kmz et .gpx :
                un KMZ ou un GPX déposé ici est routé vers sa modale d'import
                dédiée (afficherImporterKmz / afficherImporterGpx) qui le
-               reconvertit en ZIP MyKTAMap utilisable. -->
-          <input id="zipFile" type="file" accept=".zip,.kmz,.gpx,application/zip,application/vnd.google-earth.kmz,application/gpx+xml">
+               reconvertit en ZIP MyKTAMap utilisable.
+               🗺️ v1.75.2 — + .geojson / .kml / .json : routés vers
+               afficherImporterSig. Avant, l'accueil les REFUSAIT (« le fichier
+               doit être une archive .zip ») et la conversion SIG n'était
+               atteignable que depuis la zone d'import du Générateur. -->
+          <input id="zipFile" type="file" accept=".zip,.kmz,.gpx,.geojson,.kml,.json,application/zip,application/vnd.google-earth.kmz,application/gpx+xml,application/geo+json,application/vnd.google-earth.kml+xml">
         </div>
         <div id="zipFileName"></div>
 

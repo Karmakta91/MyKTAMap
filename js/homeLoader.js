@@ -244,6 +244,17 @@
         if (e.target.closest("#fsAccessHint")) return;
         zipFileInput.click();
       });
+      // 🗺️ v1.75.2 — extensions routées vers « Convertir depuis un SIG ».
+      // `.kmz` en est VOLONTAIREMENT absent : il part vers l'import KMZ
+      // historique (celui qui reconstruit un plan depuis un GroundOverlay).
+      // Un KMZ purement vectoriel y sera refusé — le message de refus renvoie
+      // vers la conversion SIG.
+      function _estFichierSig(nomMinuscule) {
+        return nomMinuscule.endsWith(".geojson")
+            || nomMinuscule.endsWith(".kml")
+            || nomMinuscule.endsWith(".json");
+      }
+
       zipFileInput.addEventListener("change", function () {
         const f = zipFileInput.files[0];
         if (!f) { zipFileName.textContent = ""; return; }
@@ -267,6 +278,25 @@
             window.afficherImporterGpx(f);
           } else {
             setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.gpxUnavailable") : "Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là."), true);
+          }
+          return;
+        }
+        // 🗺️ v1.75.2 (retour KARMA « l'endroit où on importe nos données SIG
+        // est mal indiqué ») — L'ACCUEIL LES REFUSAIT PUREMENT ET SIMPLEMENT.
+        // La conversion SIG n'était atteignable que depuis la zone d'import DU
+        // GÉNÉRATEUR ; ici, un .geojson tombait sur « le fichier doit être une
+        // archive .zip ». Or c'est ÇA, l'endroit évident pour déposer un fichier.
+        // ⚠️ `.json` est routé aussi : sur cette zone il ne peut pas être un
+        // plan (JSZip échouerait), donc l'envoyer au parser SIG — qui refuse
+        // proprement si ce n'est pas du GeoJSON — est strictement meilleur que
+        // le comportement actuel.
+        if (_estFichierSig(lower)) {
+          zipFileInput.value = "";
+          if (typeof window.afficherImporterSig === "function") {
+            zipFileName.textContent = "🗺️ " + f.name + " — ouverture de la conversion SIG…";
+            window.afficherImporterSig(f);
+          } else {
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.sigUnavailable") : "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG »."), true);
           }
           return;
         }
@@ -310,8 +340,16 @@
           } else {
             setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.gpxUnavailable") : "Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là."), true);
           }
+        } else if (_estFichierSig(lower)) {
+          // 🗺️ v1.75.2 — même routage que la sélection par clic (cf. plus haut).
+          if (typeof window.afficherImporterSig === "function") {
+            zipFileName.textContent = "🗺️ " + f.name + " — ouverture de la conversion SIG…";
+            window.afficherImporterSig(f);
+          } else {
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.sigUnavailable") : "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG »."), true);
+          }
         } else {
-          setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.badFileType") : "Le fichier doit être une archive .zip, un .kmz ou un .gpx MyKTAMap"), true);
+          setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.badFileType") : "Le fichier doit être une archive .zip, un .kmz, un .gpx ou un fichier SIG (.geojson, .kml)"), true);
         }
       });
 
