@@ -59,10 +59,24 @@
       // ⚠️ La Blob URL précédente DOIT être révoquée : sans ça, chaque
       // notification de profil (renommage, avatar, réglage du voile…) en créerait
       // une nouvelle et l'image resterait en mémoire à chaque fois.
+      // 🐛 v1.75.0 (repro KARMA : « je perds ma photo de profil ET le fond
+      // d'écran en fermant la modale, ça revient au restart ») — JETON
+      // ANTI-COURSE. Chaque réglage du fond (voile, cadrage X, cadrage Y)
+      // déclenche un `_notify()`, donc plusieurs `_appliquerFondEcran()` et
+      // `_refreshLoaderProfileBar()` se chevauchent, chacun avec une lecture
+      // IDB asynchrone au milieu. Un appel ANCIEN pouvait alors se terminer
+      // APRÈS un plus récent : il réécrivait son URL périmée et révoquait
+      // celle réellement affichée. Le dégât ne se voyait qu'au repaint —
+      // c'est-à-dire à la fermeture de la modale, d'où le symptôme trompeur.
+      // Les données n'ont jamais été touchées : un rechargement recréait des
+      // URL fraîches, d'où le « ça revient au restart ».
+      // Règle : seul le DERNIER appel émis a le droit de commiter.
       let _wallObjectUrl = null;
+      let _wallJeton     = 0;
       async function _appliquerFondEcran() {
         const box = document.getElementById("planLoaderBox");
         if (!box || !window.UserProfile) return;
+        const monJeton = ++_wallJeton;
         try {
           const snap = window.UserProfile.get();
           // Même règle que pour l'avatar : on ne révoque qu'APRÈS avoir posé
@@ -81,6 +95,13 @@
             return;
           }
           const url = await window.UserProfile.getWallpaperObjectUrl();
+          // Un appel plus récent est passé pendant la lecture : on abandonne
+          // en révoquant NOTRE url (jamais affichée) — surtout pas l'ancienne,
+          // qui est celle que le gagnant vient d'installer.
+          if (monJeton !== _wallJeton) {
+            if (url) { try { URL.revokeObjectURL(url); } catch(e) {} }
+            return;
+          }
           if (!url) { box.classList.remove("kta-has-wall"); _wallObjectUrl = null; liberer(); return; }
           _wallObjectUrl = url;
           const voile = Number.isFinite(snap.wallVoile) ? snap.wallVoile : 55;
@@ -97,8 +118,10 @@
       }
 
       let _profileBarObjectUrl = null;  // tracker pour révoquer au refresh
+      let _barJeton = 0;                // 🐛 v1.75.0 — anti-course (cf. _appliquerFondEcran)
       async function _refreshLoaderProfileBar() {
         if (!window.UserProfile) return;
+        const monJetonBar = ++_barJeton;
         const snap = window.UserProfile.get();
         const avatarWrap = document.getElementById("kta-loader-profile-avatar");
         const surnomEl   = document.getElementById("kta-loader-profile-surnom");
@@ -171,6 +194,12 @@
         if (snap.hasPhoto) {
           try {
             const url = await window.UserProfile.getPhotoObjectUrl();
+            // Appel dépassé pendant la lecture IDB → on jette NOTRE url et on
+            // laisse le gagnant tranquille (cf. _appliquerFondEcran).
+            if (monJetonBar !== _barJeton) {
+              if (url) { try { URL.revokeObjectURL(url); } catch(e) {} }
+              return;
+            }
             if (url) {
               _profileBarObjectUrl = url;
               avatarWrap.innerHTML =
@@ -183,6 +212,7 @@
             console.warn("[Profile] avatar photo échec, fallback initiale :", e);
           }
         }
+        if (monJetonBar !== _barJeton) return;
         // Pas de photo (ou lecture échouée) : l'initiale remplace le <img>,
         // on peut libérer sans risque.
         _profileBarObjectUrl = null;
@@ -938,6 +968,14 @@
           const m = document.getElementById("kta-profile-details-modal");
           if (m) m.parentNode.removeChild(m);
           document.removeEventListener("keydown", escFn);
+          // 🐛 v1.75.0 — RESYNCHRONISATION du HOME à la fermeture. Le jeton
+          // anti-course règle les chevauchements, mais on ne veut pas dépendre
+          // du timing pour que l'accueil soit juste : après avoir édité son
+          // profil, l'user revient au HOME, et le HOME DOIT refléter l'état
+          // final. Deux rendus frais, coût négligeable (une fois par
+          // fermeture), et ça rend le symptôme impossible par construction.
+          try { _refreshLoaderProfileBar(); } catch(e) {}
+          try { _appliquerFondEcran(); }     catch(e) {}
         };
         const escFn = function(e) { if (e.key === "Escape" || e.key === "Esc") closeFn(); };
         document.getElementById("kta-profile-details-close").addEventListener("click", closeFn);
