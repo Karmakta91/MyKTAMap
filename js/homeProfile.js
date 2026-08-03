@@ -110,6 +110,11 @@
           box.style.setProperty("--kta-wall-img", 'url("' + url + '")');
           box.style.setProperty("--kta-wall-a", String(Math.max(0, Math.min(100, voile)) / 100));
           box.style.setProperty("--kta-wall-pos", px + "% " + py + "%");
+          // 🖼️ v1.75.0 — mode d'affichage. `contain` = image entière, l'espace
+          // restant prend la couleur du thème (le voile joue déjà cette
+          // couleur, donc ça se lit comme une image posée sur le fond de
+          // l'app, pas comme un rendu raté).
+          box.style.setProperty("--kta-wall-size", snap.wallFit === "contain" ? "contain" : "cover");
           box.classList.add("kta-has-wall");
           liberer();
         } catch(e) {
@@ -917,6 +922,13 @@
                 '</div>' +
                 '<div id="kta-wall-reglages" style="' + (snap.hasWallpaper ? '' : 'display:none;') + '">' +
                   '<div class="kta-wall-voile-row">' +
+                    '<label class="kta-profile-details-label" for="kta-wall-fit">' + _t("home.profile.wallFit") + '</label>' +
+                    '<select class="kta-cfg-input" id="kta-wall-fit" style="flex:1; min-width:0;">' +
+                      '<option value="cover"' + (snap.wallFit !== "contain" ? " selected" : "") + '>' + _t("home.profile.wallFitCover") + '</option>' +
+                      '<option value="contain"' + (snap.wallFit === "contain" ? " selected" : "") + '>' + _t("home.profile.wallFitContain") + '</option>' +
+                    '</select>' +
+                  '</div>' +
+                  '<div class="kta-wall-voile-row">' +
                     '<label class="kta-profile-details-label" for="kta-wall-voile">' + _t("home.profile.wallVoile") + '</label>' +
                     '<input type="range" id="kta-wall-voile" min="0" max="100" step="5" value="' + (Number.isFinite(snap.wallVoile) ? snap.wallVoile : 55) + '">' +
                     '<span class="kta-wall-voile-val" id="kta-wall-voile-val">' + (Number.isFinite(snap.wallVoile) ? snap.wallVoile : 55) + ' %</span>' +
@@ -1118,14 +1130,19 @@
         // Peint l'aperçu avec le voile ET le cadrage courants — l'aperçu doit
         // montrer exactement ce que donnera le vrai fond, sinon on choisit une
         // image qui rend bien nue et illisible une fois voilée.
-        const _peindreApercu = function(url, voile, posX, posY) {
+        const wallFit = document.getElementById("kta-wall-fit");
+        const _peindreApercu = function(url, voile, posX, posY, fit) {
           const a = voile / 100;
           const clair = document.body.classList.contains("kta-theme-light");
           const rgb = clair ? "201,184,143" : "26,31,46";
           wallPreview.style.backgroundImage =
             'linear-gradient(rgba(' + rgb + ',' + a + '), rgba(' + rgb + ',' + a + ')), url("' + url + '")';
           wallPreview.style.backgroundPosition = posX + "% " + posY + "%";
+          // L'aperçu doit montrer le MÊME mode que le vrai fond, sinon on
+          // choisit « Entière » sur une vignette qui affiche du « Remplir ».
+          wallPreview.style.backgroundSize = (fit === "contain") ? "contain" : "cover";
         };
+        const _fitCourant = function() { return wallFit ? wallFit.value : "cover"; };
 
         const _rafraichirApercuFond = async function() {
           const s = window.UserProfile.get();
@@ -1154,7 +1171,8 @@
           wallVal.textContent    = wallRange.value + " %";
           wallPosX.value    = vx; wallPosXVal.textContent = vx + " %";
           wallPosY.value    = vy; wallPosYVal.textContent = vy + " %";
-          _peindreApercu(url, Number(wallRange.value), vx, vy);
+          if (wallFit) wallFit.value = (s.wallFit === "contain") ? "contain" : "cover";
+          _peindreApercu(url, Number(wallRange.value), vx, vy, _fitCourant());
           wallRemove.style.display = "";
           wallRow.style.display    = "";
         };
@@ -1168,7 +1186,7 @@
             lab.textContent = el.value + " %";
             if (_wallPreviewUrl) {
               _peindreApercu(_wallPreviewUrl, Number(wallRange.value),
-                             Number(wallPosX.value), Number(wallPosY.value));
+                             Number(wallPosX.value), Number(wallPosY.value), _fitCourant());
             }
           });
           el.addEventListener("change", async function() {
@@ -1205,13 +1223,30 @@
           wallVal.textContent = wallRange.value + " %";
           if (_wallPreviewUrl) {
             _peindreApercu(_wallPreviewUrl, Number(wallRange.value),
-                           Number(wallPosX.value), Number(wallPosY.value));
+                           Number(wallPosX.value), Number(wallPosY.value), _fitCourant());
           }
         });
         wallRange.addEventListener("change", async function() {
           try { await window.UserProfile.setWallpaperVoile(Number(wallRange.value)); }
           catch(e) { console.warn("[Profile] voile non enregistré :", e); }
         });
+
+        // 🖼️ v1.75.0 — mode d'affichage. Pas de `input`/`change` séparés ici :
+        // un <select> ne se « glisse » pas, un seul événement suffit.
+        // ⚠️ Les curseurs de cadrage restent ACTIFS en mode Entière : quand
+        // l'image ne remplit pas l'écran, ils ne choisissent plus ce qui est
+        // rogné mais OÙ l'image se pose dans le cadre. Même contrôle, usage
+        // différent — les griser aurait retiré une possibilité réelle.
+        if (wallFit) {
+          wallFit.addEventListener("change", async function() {
+            if (_wallPreviewUrl) {
+              _peindreApercu(_wallPreviewUrl, Number(wallRange.value),
+                             Number(wallPosX.value), Number(wallPosY.value), _fitCourant());
+            }
+            try { await window.UserProfile.setWallpaperFit(wallFit.value); }
+            catch(e) { console.warn("[Profile] mode d'affichage non enregistré :", e); }
+          });
+        }
 
         // Reset profil — modale custom charte (cf §35 CLAUDE.md, pattern
         // Promise-based, .kta-readme-modal-overlay + accent rouge danger).

@@ -21403,7 +21403,10 @@ html.kta-theme-light .loader-search-row b { color: #1a1f2e; }
     linear-gradient(rgba(var(--kta-wall-rgb), var(--kta-wall-a, .55)),
                     rgba(var(--kta-wall-rgb), var(--kta-wall-a, .55))),
     var(--kta-wall-img) !important;
-  background-size: cover !important;
+  /* 🖼️ v1.75.0 — cover (rogne) ou contain (image entiere). Sous contain,
+     background-color reste celle du theme : les bandes se lisent comme le
+     fond de l app, pas comme un rendu rate. */
+  background-size: var(--kta-wall-size, cover) !important;
   background-position: center center !important;
   background-repeat: no-repeat !important;
 }

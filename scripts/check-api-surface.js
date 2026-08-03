@@ -44,7 +44,7 @@ if (UP) {
     "removePhoto", "clear", "onChange", "getInitial", "getAvatarColor",
     // 🖼️ v1.74.0 — fond d'ecran
     "setWallpaper", "removeWallpaper", "getWallpaperBlob", "getWallpaperObjectUrl",
-    "setWallpaperVoile", "setWallpaperCadrage"
+    "setWallpaperVoile", "setWallpaperCadrage", "setWallpaperFit"
   ];
   ATTENDU.forEach(function(m) {
     t("UserProfile." + m + "() exposee", typeof UP[m] === "function");
@@ -56,7 +56,7 @@ if (UP) {
   // L'etat par defaut doit porter les champs du fond d'ecran, sinon l'UI lit
   // `undefined` et les curseurs partent a la mauvaise valeur.
   const snap = UP.get();
-  ["hasWallpaper", "wallVoile", "wallPosX", "wallPosY"].forEach(function(k) {
+  ["hasWallpaper", "wallVoile", "wallPosX", "wallPosY", "wallFit"].forEach(function(k) {
     t("get() expose " + k, Object.prototype.hasOwnProperty.call(snap, k));
   });
   t("voile par defaut = 55", snap.wallVoile === 55);

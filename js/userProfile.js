@@ -90,7 +90,8 @@
     hasWallpaper: false,
     wallVoile:    55,
     wallPosX:     50,
-    wallPosY:     50
+    wallPosY:     50,
+    wallFit:      "cover"
   };
   let _initialized = false;
   const _listeners = [];
@@ -288,6 +289,7 @@
         if (Number.isFinite(entry.wallVoile)) _state.wallVoile = entry.wallVoile;
         if (Number.isFinite(entry.wallPosX))  _state.wallPosX  = entry.wallPosX;
         if (Number.isFinite(entry.wallPosY))  _state.wallPosY  = entry.wallPosY;
+        if (typeof entry.wallFit === "string")  _state.wallFit   = entry.wallFit;
       }
     } catch(e) {
       console.warn("[UserProfile] init() IDB lecture échouée :", e);
@@ -306,7 +308,8 @@
       hasWallpaper: _state.hasWallpaper,
       wallVoile:    _state.wallVoile,
       wallPosX:     _state.wallPosX,
-      wallPosY:     _state.wallPosY
+      wallPosY:     _state.wallPosY,
+      wallFit:      _state.wallFit
     };
   }
 
@@ -438,6 +441,17 @@
   // X ; en paysage avec une photo portrait, c'est Y. Les 2 sont exposés pour
   // couvrir les 2 orientations sans que l'user ait à comprendre lequel agit.
   const CADRAGE_DEFAUT      = 50;   // % (centre)
+  // 🖼️ v1.75.0 — MODE D'AFFICHAGE (retour KARMA : « une image verticale, il
+  // va la zoomer et la cropper en vue horizontale alors qu'on pourrait
+  // presque l'afficher telle quelle »).
+  //   "cover"   → remplit tout l'écran, ROGNE ce qui dépasse (défaut historique)
+  //   "contain" → image ENTIÈRE, l'espace restant prend la couleur du thème
+  // `cover` agrandit jusqu'à couvrir les DEUX dimensions : plus le format de
+  // l'image s'éloigne de celui de l'écran, plus il rogne. Une photo portrait
+  // dans un cadre large n'en laisse voir qu'une bande. `contain` est la seule
+  // réponse correcte à ce cas.
+  const FIT_DEFAUT          = "cover";
+  const FITS_VALIDES        = ["cover", "contain"];
 
   async function setWallpaper(fileOrBlob) {
     if (!_initialized) await init();
@@ -511,6 +525,18 @@
   }
 
   // Cadrage : `axe` ∈ {"x","y"}, `pct` 0-100.
+  async function setWallpaperFit(mode) {
+    if (!_initialized) await init();
+    const m = (FITS_VALIDES.indexOf(mode) >= 0) ? mode : FIT_DEFAUT;
+    const entry = (await _readEntry()) || { id: ENTRY_ID, surnom: "", createdAt: new Date().toISOString() };
+    entry.wallFit = m;
+    entry.updatedAt = new Date().toISOString();
+    await _writeEntry(entry);
+    _state.wallFit = m;
+    _notify();
+    return true;
+  }
+
   async function setWallpaperCadrage(axe, pct) {
     if (!_initialized) await init();
     const v = Math.max(0, Math.min(100, Math.round(Number(pct))));
@@ -540,6 +566,7 @@
     getWallpaperObjectUrl: getWallpaperObjectUrl,
     setWallpaperVoile:     setWallpaperVoile,
     setWallpaperCadrage:   setWallpaperCadrage,
+    setWallpaperFit:       setWallpaperFit,
     WALLPAPER_MAX_SHORT:   WALLPAPER_MAX_SHORT,
     WALLPAPER_MAX_LONG:    WALLPAPER_MAX_LONG,
     clear:              clear,
