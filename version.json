@@ -1,5 +1,5 @@
 {
-  "version": "v1.75.1",
+  "version": "v1.75.2",
   "released": "2026-08-03",
   "notes": [
     "🗺️ Nouveau : « Convertir depuis un SIG ». Dépose un fichier exporté de QGIS (GeoJSON, KML) et l'app en fait un plan — points, tracés et zones repris, avec un écran pour dire à quoi correspond chacune de tes appellations. Pas besoin d'image : un fond est généré et calé sur les coordonnées.",

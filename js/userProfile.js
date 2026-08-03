@@ -126,38 +126,59 @@
 
   // ───────── IDB UTILS ─────────
 
+  // ⚠️ v1.75.2 — `onblocked` + délai de garde. Sans eux, une ouverture bloquée
+  // (autre onglet tenant une version différente) laissait la promesse JAMAIS
+  // RÉGLÉE : l'appelant restait suspendu pour toujours APRÈS avoir consommé le
+  // jeton de rendu le plus récent, donc tous les rendus suivants abandonnaient
+  // et le HOME restait figé jusqu'au rechargement de l'app. Une promesse qui
+  // ne se règle pas est pire qu'une erreur : elle ne remonte nulle part.
+  const OPEN_TIMEOUT_MS = 8000;
   function _openDb() {
     return new Promise(function(resolve, reject) {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      let regle = false;
+      const finir = function(fn, arg) { if (regle) return; regle = true; fn(arg); };
+      let req;
+      try { req = indexedDB.open(DB_NAME, DB_VERSION); }
+      catch(e) { finir(reject, e); return; }
       req.onupgradeneeded = function(e) {
         const db = e.target.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: "id" });
         }
       };
-      req.onsuccess = function() { resolve(req.result); };
-      req.onerror   = function() { reject(req.error); };
+      req.onsuccess = function() { finir(resolve, req.result); };
+      req.onerror   = function() { finir(reject, req.error || new Error("IDB open error")); };
+      req.onblocked = function() { finir(reject, new Error("IDB open bloquée (autre onglet ?)")); };
+      setTimeout(function() { finir(reject, new Error("IDB open : délai dépassé")); }, OPEN_TIMEOUT_MS);
     });
   }
 
+  // ⚠️ v1.75.2 — DISTINGUE « absent » DE « échec ».
+  // Avant, les deux cas rendaient `null`. Les écrivains faisaient alors
+  // `(await _readEntry()) || { id, surnom: "", createdAt }` : sur un simple
+  // échec transitoire de lecture, ils écrivaient un enregistrement NEUF —
+  // donc sans `photoBlob` ni `wallBlob` — et DÉTRUISAIENT l'avatar et le fond
+  // d'écran en base. Mine posée dans le chemin le plus exercé.
+  // Désormais : `null` = l'enregistrement n'existe pas (cas légitime d'un
+  // profil neuf, le stub est alors correct) ; une ERREUR est PROPAGÉE, donc
+  // l'écrivain échoue au lieu d'écraser.
   async function _readEntry() {
-    let db;
-    try { db = await _openDb(); } catch(e) { return null; }
-    return new Promise(function(resolve) {
+    const db = await _openDb();          // rejette si l'ouverture échoue
+    return new Promise(function(resolve, reject) {
       try {
         const tx = db.transaction([STORE_NAME], "readonly");
         const st = tx.objectStore(STORE_NAME);
         const req = st.get(ENTRY_ID);
         req.onsuccess = function() {
-          resolve(req.result || null);
+          resolve(req.result || null);   // null = ABSENT, pas « échec »
           try { db.close(); } catch(e) {}
         };
         req.onerror = function() {
-          resolve(null);
+          reject(req.error || new Error("IDB read error"));
           try { db.close(); } catch(e) {}
         };
       } catch(e) {
-        resolve(null);
+        reject(e);
         try { db.close(); } catch(e2) {}
       }
     });
@@ -282,17 +303,15 @@
         _state.photoMime = entry.photoMime || null;
         _state.createdAt = entry.createdAt || null;
         _state.updatedAt = entry.updatedAt || null;
-        // 🖼️ v1.74.0 — fond d'écran. `wallVoile` absent = profil antérieur
-        // au fond d'écran → on garde le défaut, jamais 0 (0 = image nue,
-        // ce serait illisible sur une entrée qui n'a même pas d'image).
+        // 🖼️ Le BLOB reste en IDB ; les RÉGLAGES vivent en localStorage
+        // (cf. bloc v1.75.2). `_hydraterWallPrefs` migre au passage les
+        // réglages d'un profil créé avant ce découpage.
         _state.hasWallpaper = !!entry.wallBlob;
-        if (Number.isFinite(entry.wallVoile)) _state.wallVoile = entry.wallVoile;
-        if (Number.isFinite(entry.wallPosX))  _state.wallPosX  = entry.wallPosX;
-        if (Number.isFinite(entry.wallPosY))  _state.wallPosY  = entry.wallPosY;
-        if (typeof entry.wallFit === "string")  _state.wallFit   = entry.wallFit;
       }
+      _hydraterWallPrefs(entry);
     } catch(e) {
       console.warn("[UserProfile] init() IDB lecture échouée :", e);
+      _hydraterWallPrefs(null);
     }
     _initialized = true;
     return _stateSnapshot();
@@ -461,21 +480,23 @@
       maxShort: WALLPAPER_MAX_SHORT,
       maxLong:  WALLPAPER_MAX_LONG
     });
+    // Le stub n'est atteint que si l'enregistrement est réellement ABSENT
+    // (profil neuf) : depuis v1.75.2, un ÉCHEC de lecture est propagé par
+    // `_readEntry` et fait échouer l'écriture au lieu d'écraser les blobs.
     const entry = (await _readEntry()) || { id: ENTRY_ID, surnom: "", createdAt: new Date().toISOString() };
     entry.wallBlob = compressed;
     entry.wallMime = "image/jpeg";
-    if (!Number.isFinite(entry.wallVoile)) entry.wallVoile = VOILE_DEFAUT;
-    // Cadrage remis au centre à chaque NOUVELLE image : un réglage hérité de
-    // la photo précédente n'a aucun sens sur un cadrage différent.
-    entry.wallPosX = CADRAGE_DEFAUT;
-    entry.wallPosY = CADRAGE_DEFAUT;
     entry.updatedAt = new Date().toISOString();
     if (!entry.createdAt) entry.createdAt = entry.updatedAt;
     await _writeEntry(entry);
+    // Cadrage remis au centre à chaque NOUVELLE image : un réglage hérité de
+    // la photo précédente n'a aucun sens sur un cadrage différent. Réglages
+    // en localStorage → aucune réécriture de blob (cf. bloc v1.75.2).
+    _state.wallPosX = CADRAGE_DEFAUT;
+    _state.wallPosY = CADRAGE_DEFAUT;
+    if (!Number.isFinite(_state.wallVoile)) _state.wallVoile = VOILE_DEFAUT;
+    _ecrireWallPrefs({ wallPosX: CADRAGE_DEFAUT, wallPosY: CADRAGE_DEFAUT, wallVoile: _state.wallVoile });
     _state.hasWallpaper = true;
-    _state.wallVoile    = entry.wallVoile;
-    _state.wallPosX     = entry.wallPosX;
-    _state.wallPosY     = entry.wallPosY;
     _state.updatedAt    = entry.updatedAt;
     _notify();
     return { ok: true, size: compressed.size };
@@ -511,42 +532,101 @@
     return blob ? URL.createObjectURL(blob) : null;
   }
 
+  // ═══════════════════════════════════════════════════════════
+  // 🐛 v1.75.2 — LES RÉGLAGES D'AFFICHAGE NE TOUCHENT PLUS L'IDB
+  // ═══════════════════════════════════════════════════════════
+  // CAUSE RACINE du bug « j'ajoute un fond → OK ; je rouvre la modale, je
+  // modifie les réglages → au retour au HOME, plus de fond ET plus de photo
+  // de profil (un « ? »), il faut relancer l'app ».
+  //
+  // Ces 3 setters faisaient un read-modify-write de l'ENREGISTREMENT ENTIER
+  // — `photoBlob` et `wallBlob` compris, soit plusieurs Mo — à CHAQUE
+  // événement `change` d'un curseur. Or réécrire un record IDB contenant des
+  // Blobs relâche le backing store de l'ancienne version : les Blob URL déjà
+  // créées et affichées deviennent **illisibles SANS avoir été révoquées**.
+  // D'où les deux symptômes simultanés (image cassée = le « ? » du
+  // navigateur, et fond disparu), une base intacte, et le retour à la normale
+  // au redémarrage. WebKit émet `change` à chaque déplacement du curseur, pas
+  // seulement au relâchement : un seul glissement = N réécritures concurrentes.
+  //
+  // C'est aussi pourquoi mes 3 correctifs précédents n'ont rien changé : ils
+  // traitaient tous la durée de vie de la CHAÎNE d'URL (ordre de révocation,
+  // jeton anti-course, resynchronisation), jamais la validité du BLOB.
+  //
+  // FIX ARCHITECTURAL : ces 4 valeurs sont des réglages d'affichage minuscules
+  // et purement locaux. Elles n'ont rien à faire dans le même enregistrement
+  // qu'un binaire de plusieurs Mo → elles passent en localStorage. Les setters
+  // ne touchent plus JAMAIS l'IDB, donc plus aucune invalidation possible.
+  // Bénéfice collatéral : ils deviennent synchrones et incassables.
+  const LS_WALL_PREFS = "myktamap_wallpaper_prefs_v1";
+
+  function _lireWallPrefs() {
+    try {
+      const o = JSON.parse(localStorage.getItem(LS_WALL_PREFS) || "{}");
+      return (o && typeof o === "object") ? o : {};
+    } catch(e) { return {}; }
+  }
+
+  function _ecrireWallPrefs(patch) {
+    try {
+      const o = Object.assign(_lireWallPrefs(), patch || {});
+      localStorage.setItem(LS_WALL_PREFS, JSON.stringify(o));
+      return true;
+    } catch(e) {
+      console.warn("[UserProfile] réglages fond d'écran non enregistrés :", e);
+      return false;
+    }
+  }
+
+  // Applique les réglages sur `_state`, avec MIGRATION unique depuis l'ancien
+  // emplacement (l'entrée IDB) pour ne pas perdre les réglages d'un user déjà
+  // équipé. `entry` peut être null (appel hors init).
+  function _hydraterWallPrefs(entry) {
+    const p = _lireWallPrefs();
+    const migre = {};
+    const _prendre = function(cle, valide, defaut) {
+      if (valide(p[cle])) { _state[cle] = p[cle]; return; }
+      if (entry && valide(entry[cle])) {          // legacy IDB → on migre
+        _state[cle] = entry[cle]; migre[cle] = entry[cle]; return;
+      }
+      _state[cle] = defaut;
+    };
+    const estPct = function(v) { return Number.isFinite(v) && v >= 0 && v <= 100; };
+    _prendre("wallVoile", estPct, VOILE_DEFAUT);
+    _prendre("wallPosX",  estPct, CADRAGE_DEFAUT);
+    _prendre("wallPosY",  estPct, CADRAGE_DEFAUT);
+    _prendre("wallFit",   function(v) { return FITS_VALIDES.indexOf(v) >= 0; }, FIT_DEFAUT);
+    if (Object.keys(migre).length > 0) _ecrireWallPrefs(migre);
+  }
+
   async function setWallpaperVoile(pct) {
     if (!_initialized) await init();
     const v = Math.max(0, Math.min(100, Math.round(Number(pct))));
     if (!Number.isFinite(v)) return false;
-    const entry = (await _readEntry()) || { id: ENTRY_ID, surnom: "", createdAt: new Date().toISOString() };
-    entry.wallVoile = v;
-    entry.updatedAt = new Date().toISOString();
-    await _writeEntry(entry);
     _state.wallVoile = v;
+    _ecrireWallPrefs({ wallVoile: v });
+    _notify();
+    return true;
+  }
+
+  async function setWallpaperFit(mode) {
+    if (!_initialized) await init();
+    const m = (FITS_VALIDES.indexOf(mode) >= 0) ? mode : FIT_DEFAUT;
+    _state.wallFit = m;
+    _ecrireWallPrefs({ wallFit: m });
     _notify();
     return true;
   }
 
   // Cadrage : `axe` ∈ {"x","y"}, `pct` 0-100.
-  async function setWallpaperFit(mode) {
-    if (!_initialized) await init();
-    const m = (FITS_VALIDES.indexOf(mode) >= 0) ? mode : FIT_DEFAUT;
-    const entry = (await _readEntry()) || { id: ENTRY_ID, surnom: "", createdAt: new Date().toISOString() };
-    entry.wallFit = m;
-    entry.updatedAt = new Date().toISOString();
-    await _writeEntry(entry);
-    _state.wallFit = m;
-    _notify();
-    return true;
-  }
-
   async function setWallpaperCadrage(axe, pct) {
     if (!_initialized) await init();
     const v = Math.max(0, Math.min(100, Math.round(Number(pct))));
     if (!Number.isFinite(v)) return false;
     const champ = (axe === "y") ? "wallPosY" : "wallPosX";
-    const entry = (await _readEntry()) || { id: ENTRY_ID, surnom: "", createdAt: new Date().toISOString() };
-    entry[champ] = v;
-    entry.updatedAt = new Date().toISOString();
-    await _writeEntry(entry);
     _state[champ] = v;
+    const patch = {}; patch[champ] = v;
+    _ecrireWallPrefs(patch);
     _notify();
     return true;
   }

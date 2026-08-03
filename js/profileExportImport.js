@@ -74,6 +74,10 @@
     "myktamap_achievements_v1",     // 🆕 v1.53.0 : hauts faits débloqués (ids + dates)
     "myktamap_home_footer_replie_v1", // 🔽 v1.71.0 : footer HOME replié (demande KARMA « sauvegardé dans le profil »)
     "myktamap_journal_enabled",     // 📔 v1.74.0 : carnet activé/désactivé — voyage avec la section carnet
+    "myktamap_wallpaper_prefs_v1",  // 🖼️ v1.75.2 : réglages d'affichage du fond (voile, cadrage, mode).
+                                    // ⚠️ L'IMAGE elle-même ne voyage pas encore (elle vit en IDB avec
+                                    // l'avatar) — ces réglages arrivent donc sans leur image tant que
+                                    // ce point du backlog n'est pas traité.
     // 🌀 v1.67.2 (KARMA « la db des liaisons est-elle exportée ? » → non) :
     // le REGISTRE DES LIAISONS INTER-PLAN est une donnée globale cross-plan —
     // sans lui, une migration d'appareil perdait tout le réseau de portails.

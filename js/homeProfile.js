@@ -143,12 +143,15 @@
       let _barJeton = 0;                // 🐛 v1.75.0 — anti-course (cf. _appliquerFondEcran)
       async function _refreshLoaderProfileBar() {
         if (!window.UserProfile) return;
-        const monJetonBar = ++_barJeton;
         const snap = window.UserProfile.get();
         const avatarWrap = document.getElementById("kta-loader-profile-avatar");
         const surnomEl   = document.getElementById("kta-loader-profile-surnom");
         const greetingEl = document.getElementById("kta-loader-profile-greeting");
         if (!avatarWrap || !surnomEl) return;
+        // ⚠️ Le jeton s'incrémente APRÈS les gardes de sortie — sinon un appel
+        // stérile (DOM absent) brûlait un numéro et faisait abandonner un appel
+        // légitime déjà en vol. `_appliquerFondEcran` avait déjà le bon ordre.
+        const monJetonBar = ++_barJeton;
 
         // 🆕 v1.52.0 : anneau de rang (sur le wrap → survit au remplacement du innerHTML)
         // + nom du rang sous le pseudo + médaille en coin bas-droite de la photo.
@@ -632,7 +635,7 @@
         { db: "myktamap_handles", store: "blobs",   blobFields: ["blob"] },
         { db: "myktamap_backups", store: "backups", blobFields: [] },
         { db: "myktamap_photos",  store: "photos",  blobFields: ["blob"] },
-        { db: "myktamap_profile", store: "profile", blobFields: ["photoBlob"] },
+        { db: "myktamap_profile", store: "profile", blobFields: ["photoBlob", "wallBlob"] },
         { db: "myktamap_crashes", store: "crashes", blobFields: [] },
         // 🆕 v1.69.0 — Le Carnet (js/journal.js) : sans cette ligne, l'espace
         // occupé par les sorties archivées serait invisible dans « Stockage ».
@@ -1178,7 +1181,10 @@
             return;
           }
           const url = await window.UserProfile.getWallpaperObjectUrl();
-          if (!url) { libererP(); return; }
+          // ⚠️ `_wallPreviewUrl = null` INDISPENSABLE ici : sans ça la variable
+          // gardait l'URL qu'on vient de révoquer, et les handlers `input` des
+          // curseurs repeignaient l'aperçu avec une URL morte.
+          if (!url) { _wallPreviewUrl = null; libererP(); return; }
           _wallPreviewUrl = url;
           libererP();
           wallPreview.textContent = "";
