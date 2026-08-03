@@ -1738,6 +1738,37 @@
       throw new Error("[PWA] kill switch — short-circuit normal load");
     })();
 
+    // 🧹 v1.75.0 — Nettoyage du cache-buster `?_=<timestamp>` (retour KARMA
+    // « pourquoi j'ai un truc comme ça qui s'ajoute à mon URL »).
+    //
+    // POURQUOI IL EXISTE : `killsw.html` recharge via `/?_=<timestamp>` parce
+    // que purger le Service Worker et ses caches NE VIDE PAS le cache HTTP du
+    // navigateur — sans URL unique, le reload pouvait re-servir depuis le
+    // disque l'`index.html` périmé qu'on venait justement de fuir.
+    //
+    // POURQUOI ON L'EFFACE ENSUITE : une fois ce script exécuté, la requête
+    // fraîche a EU LIEU — le paramètre n'a plus aucune utilité. Le laisser
+    // inquiète l'utilisateur, et surtout il se FIGE dans un favori ou dans le
+    // `start_url` si quelqu'un ajoute l'app à son écran d'accueil depuis cette
+    // URL. Aligne aussi le comportement sur celui de `?killsw=1`, qui nettoie
+    // déjà son paramètre (cf. plus haut).
+    //
+    // `replaceState` : on remplace l'entrée d'historique au lieu d'en ajouter
+    // une — sinon le bouton Retour ramènerait sur l'URL sale.
+    // Les autres paramètres (`incognito`…) et le hash sont PRÉSERVÉS.
+    (function _nettoyerCacheBuster() {
+      try {
+        if (!window.history || typeof history.replaceState !== "function") return;
+        if (window.location.search.indexOf("_=") === -1) return;
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has("_")) return;
+        params.delete("_");
+        const q = params.toString();
+        history.replaceState(null, "",
+          window.location.pathname + (q ? "?" + q : "") + (window.location.hash || ""));
+      } catch (e) { /* cosmétique : jamais bloquant pour le boot */ }
+    })();
+
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("/sw.js")
         .then(function (reg) {
