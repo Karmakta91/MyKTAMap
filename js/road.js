@@ -670,7 +670,12 @@ function _flashSnap(x, y) {
       }
       _snapFlashTimer = null;
     }, 700);
-  } catch(e) {}
+  } catch(e) {
+    // ⚠️ Ne JAMAIS ravaler l'erreur ici : un `catch` muet a masqué le vrai
+    // symptôme lors du diagnostic du 03/08 (« je n'ai pas le flash doré »),
+    // alors que la panne venait d'ailleurs. Un flash absent doit se voir.
+    console.warn("[Road] 🧲 flash d'accrochage impossible :", e);
+  }
 }
 
 // Purge du flash (changement de plan / sortie de mode) — sinon un layer

@@ -400,6 +400,17 @@ function buildAppConfigFromPlan(planConfig) {
     if ("smartNav"              in saved) cfg.smartNav              = !!saved.smartNav;
     if (Number.isFinite(saved.smartNavRadiusM))       cfg.smartNavRadiusM       = saved.smartNavRadiusM;
     if (Number.isFinite(saved.smartNavHeadingWeight)) cfg.smartNavHeadingWeight = saved.smartNavHeadingWeight;
+    // 🐛 v1.75.0 (repro KARMA « je n'ai pas le flash doré ») — `snapDraw`
+    // MANQUAIT ici. Il était bien sauvegardé et restauré au BOOT (bloc
+    // app_user_prefs plus haut), mais APP_CONFIG est RECONSTRUIT à chaque
+    // chargement de plan par cette fonction : toute pref absente de cette
+    // liste retombe silencieusement sur DEFAULT_CONFIG. Le magnétisme
+    // repassait donc à false dès l'ouverture d'un plan — c'est-à-dire
+    // exactement au moment où on veut dessiner.
+    // ⚠️ Toute nouvelle pref GLOBALE doit être ajoutée aux DEUX endroits :
+    // le bloc de restauration au boot ET cette liste.
+    if ("snapDraw" in saved) cfg.snapDraw = !!saved.snapDraw;
+    if (Number.isFinite(saved.snapDrawPx) && saved.snapDrawPx > 0) cfg.snapDrawPx = saved.snapDrawPx;
   } catch(e) {}
 
   // Fallback aux valeurs par défaut si absentes des prefs (= user a jamais
@@ -411,6 +422,8 @@ function buildAppConfigFromPlan(planConfig) {
   // OFF, l'idiome `!== false` aurait continué à rendre true sur undefined.
   if (cfg.showRoadIntersections === undefined) cfg.showRoadIntersections = DEFAULT_CONFIG.showRoadIntersections === true;
   if (cfg.smartNav === undefined)              cfg.smartNav              = DEFAULT_CONFIG.smartNav === true;  // défaut OFF
+  if (cfg.snapDraw === undefined)              cfg.snapDraw              = DEFAULT_CONFIG.snapDraw === true;  // défaut OFF
+  if (!Number.isFinite(cfg.snapDrawPx))        cfg.snapDrawPx            = DEFAULT_CONFIG.snapDrawPx;
 
   return cfg;
 }

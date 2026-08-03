@@ -35,3 +35,9 @@ node scripts/check-modal-lifecycle.js
 # BLOQUANT : contrairement au linter ModalLifecycle, ici un échec = module
 # mort au boot, jamais un faux positif.
 node scripts/check-api-surface.js || exit $?
+
+# 🆕 v1.75.0 — Prefs globales : APP_CONFIG est RECONSTRUIT a chaque chargement
+# de plan. Une pref sauvegardee mais absente de la liste de relecture retombe
+# silencieusement sur son defaut (bug vecu le 03/08 : le magnetisme au dessin
+# repassait a OFF des l'ouverture d'un plan). BLOQUANT.
+node scripts/check-prefs-survival.js || exit $?
