@@ -242,6 +242,24 @@ Au démarrage, l'application affiche un **écran d'accueil** qui regroupe :
 >
 > À savoir : si le ZIP a **exactement le même nom ET la même version**, il met à jour l'entrée existante sans rien demander (c'est le comportement historique). Aucune question non plus pour les plans serveur ni quand tu re-sélectionnes le fichier d'un plan précis depuis ta liste.
 
+### 🗺️ Convertir un fichier SIG (QGIS…) en plan — depuis v1.75.0
+
+Tu as des données dans un logiciel SIG et tu veux les exploiter dans MyKTAMap ? Dépose ton export sur la zone d'import habituelle du **🏗️ Générateur** : l'app le reconnaît et ouvre **« Convertir depuis un SIG »**.
+
+**Formats acceptés** : `.geojson`, `.json`, `.kml`, `.kmz` (vectoriel). Points, tracés et zones sont repris.
+
+**Pas besoin d'image de plan** : si tu n'as que des données vectorielles, l'app **génère un fond vierge automatiquement calé** sur les coordonnées de ton fichier — tes annotations tombent au bon endroit. Tu pourras remplacer ce fond par une vraie image plus tard via 🏗️ **Modifier un plan**.
+
+**Tes appellations sont respectées.** Un fichier SIG a sa propre nomenclature (`CANALISATION`, `galerie_tech`, `ZH`…). Un **écran de correspondance** te laisse choisir la colonne qui porte le type, puis dire à quoi chaque valeur correspond dans MyKTAMap. Les valeurs évidentes sont pré-remplies — vérifie-les, rien n'est imposé. Les valeurs listées sont **séparées par famille** : celles trouvées sur des polygones te proposent des types de zone, jamais des types de tracé.
+
+> ⚠️ **Ton fichier doit être en coordonnées GPS classiques (WGS84 / EPSG:4326).** Dans QGIS : *Exporter → Enregistrer les entités sous…* puis choisis **EPSG:4326** dans le champ SCR.
+>
+> Un fichier en **Lambert 93** ou dans une autre projection sera **refusé**, avec le nombre de coordonnées fautives et la manip à faire. C'est volontaire : accepter en silence placerait ton plan à des milliers de kilomètres sans que rien ne te l'indique.
+
+**À savoir** : les trous (anneaux intérieurs) des polygones sont ignorés — MyKTAMap n'a pas de zone à trous. Au-delà de 20 000 objets, l'import est refusé : filtre ta couche dans QGIS avant d'exporter.
+
+*Non gérés* : Shapefile et GeoPackage. Ils exigeraient des bibliothèques lourdes, incompatibles avec la promesse « 100 % hors-ligne, sans installation ». Réexporte en GeoJSON depuis QGIS, c'est deux clics.
+
 ### 👤 Profil utilisateur
 
 Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le header. Il regroupe ton identité visuelle et des statistiques configurables sur ton usage de l'app.
@@ -257,6 +275,22 @@ Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le hea
   - 💾 **Sauvegarde** : taille réelle des données MyKTAMap stockées localement (voir plus bas)
 
 > 💡 **Charte light theme** : en mode clair, le fond du bandeau profil s'aligne sur les cards "Mes plans" pour une intégration visuelle propre.
+
+#### 🖼️ Fond d'écran de l'accueil (depuis v1.75.0)
+
+Dans la modale **Profil** (clique le bandeau), tout en bas avant les boutons d'export, tu peux mettre **ta propre image en fond de l'écran d'accueil** à la place de la couleur du thème.
+
+Trois réglages, et ils comptent :
+
+- **🖼️ Choisir une image** — n'importe quelle photo. Elle est réduite et ré-encodée à l'ajout, ce qui **supprime au passage ses métadonnées**, dont le lieu de prise de vue.
+- **Voile** — assombrit (ou éclaircit, en thème clair) l'image pour que les textes restent lisibles par-dessus. À 0 % l'image est nue, à 100 % tu retrouves le fond uni d'avant. Par défaut 55 %.
+- **Cadrage ↔ / ↕** — l'écran ne montre **jamais toute la photo** : elle est agrandie pour couvrir, le reste est coupé. En portrait sur un téléphone, une photo paysage ne laisse voir qu'environ un quart de sa largeur. Ces curseurs choisissent **quelle partie reste visible**. Seul celui de l'axe qui dépasse a un effet — l'autre ne fait rien, c'est normal.
+
+**🗑️ Retirer** revient à la couleur du thème.
+
+> 💡 L'image reste **sur ton appareil**, dans le même stockage que ton avatar. Elle disparaît si tu réinitialises ton profil.
+>
+> ⚠️ Elle **ne voyage pas encore** avec l'export de profil : sur un nouvel appareil, il faudra la remettre.
 
 **Modifier ton profil** :
 

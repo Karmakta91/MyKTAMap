@@ -242,6 +242,24 @@ At startup, the application displays a **home screen** that groups together:
 >
 > Good to know: a ZIP with **exactly the same name AND version** updates the existing entry without asking (historical behaviour). No question either for server maps, or when you re-select the file of a specific map from your list.
 
+### 🗺️ Convert a GIS file (QGIS…) into a map — since v1.75.0
+
+Got data in a GIS package you want to use in MyKTAMap? Drop your export on the usual import area of the **🏗️ Generator**: the app recognises it and opens **"Convert from GIS"**.
+
+**Accepted formats**: `.geojson`, `.json`, `.kml`, `.kmz` (vector). Points, paths and zones are imported.
+
+**No map image needed**: if all you have is vector data, the app **generates a blank background automatically aligned** on your file's coordinates — your annotations land in the right place. You can replace that background with a real image later via 🏗️ **Edit a map**.
+
+**Your own naming is respected.** A GIS file has its own vocabulary (`CANALISATION`, `galerie_tech`, `ZH`…). A **mapping screen** lets you pick the column holding the type, then say what each value means in MyKTAMap. Obvious values are pre-filled — check them, nothing is forced. Listed values are **split by family**: those found on polygons offer zone types, never path types.
+
+> ⚠️ **Your file must use standard GPS coordinates (WGS84 / EPSG:4326).** In QGIS: *Export → Save Features As…* then pick **EPSG:4326** in the CRS field.
+>
+> A file in **Lambert 93** or another projection will be **refused**, with the number of offending coordinates and what to do. This is deliberate: accepting it silently would place your map thousands of kilometres away with nothing to warn you.
+
+**Good to know**: polygon holes (inner rings) are ignored — MyKTAMap has no zone with holes. Beyond 20,000 objects the import is refused: filter your layer in QGIS before exporting.
+
+*Not supported*: Shapefile and GeoPackage. They would require heavy libraries, incompatible with the "100% offline, no install" promise. Re-export as GeoJSON from QGIS, it's two clicks.
+
 ### 👤 User profile
 
 A **profile banner** is displayed at the top of the home screen, just below the header. It groups your visual identity and configurable statistics on your use of the app.
@@ -257,6 +275,22 @@ A **profile banner** is displayed at the top of the home screen, just below the 
   - 💾 **Save**: actual size of MyKTAMap data stored locally (see below)
 
 > 💡 **Light theme chart**: in light mode, the profile banner background aligns with the "My maps" cards for clean visual integration.
+
+#### 🖼️ Home wallpaper (since v1.75.0)
+
+In the **Profile** modal (click the banner), at the very bottom before the export buttons, you can set **your own image as the home screen background** instead of the theme colour.
+
+Three settings, and they matter:
+
+- **🖼️ Choose an image** — any photo. It is resized and re-encoded on add, which also **strips its metadata**, including where the photo was taken.
+- **Veil** — darkens (or lightens, in light theme) the image so text stays readable on top. At 0% the image is bare, at 100% you get the plain background back. Default 55%.
+- **Framing ↔ / ↕** — the screen **never shows the whole photo**: it is scaled up to cover, the rest is cropped. In portrait on a phone, a landscape photo only shows about a quarter of its width. These sliders pick **which part stays visible**. Only the one for the overflowing axis has an effect — the other does nothing, that's expected.
+
+**🗑️ Remove** goes back to the theme colour.
+
+> 💡 The image stays **on your device**, in the same storage as your avatar. It disappears if you reset your profile.
+>
+> ⚠️ It **does not travel yet** with the profile export: on a new device you will need to set it again.
 
 **Edit your profile**:
 

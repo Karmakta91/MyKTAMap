@@ -968,6 +968,34 @@ function _aideHtmlFr() {
             (défaut sur ✕ / Échap / clic à côté : jamais d'écrasement accidentel). Nom ET version identiques =
             mise à jour directe sans question, comme avant.
           </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">💾 Récupérer le ZIP d'un plan (v1.75.0)</strong> — l'export de profil
+            n'embarque pas les archives. Si tu as perdu le ZIP d'origine, ouvre <strong>ℹ️ Infos</strong> sur le plan :
+            un bouton <strong>💾 Télécharger le ZIP</strong> te le rend, à condition qu'il ait été
+            <strong>mémorisé dans l'app</strong>. Sur un plan en « accès permanent » ou en re-sélection, le bouton est
+            grisé — l'app ne détient rien, le fichier vit (ou vivait) sur ton disque.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🗺️ Convertir depuis un SIG (QGIS…)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🗺️</span><span>Dépose un <strong>.geojson / .json / .kml / .kmz</strong> sur la zone d'import du Générateur → le panneau de conversion s'ouvre</span>
+            <span class="kta-aide-icone">🖼️</span><span><strong>Pas besoin d'image</strong> : un fond vierge est généré et calé sur les coordonnées du fichier</span>
+            <span class="kta-aide-icone">🏷️</span><span><strong>Écran de correspondance</strong> : tu choisis la colonne qui porte le type, puis dis à quoi chaque valeur correspond</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#ffb380;">⚠️ Coordonnées GPS obligatoires (WGS84 / EPSG:4326).</strong>
+            Dans QGIS : <em>Exporter → Enregistrer les entités sous…</em> puis EPSG:4326 dans le champ SCR.
+            Un fichier en <strong>Lambert 93</strong> ou autre projection est <strong>refusé</strong>, avec le nombre
+            de coordonnées fautives — l'accepter placerait ton plan à des milliers de kilomètres sans rien signaler.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Les valeurs proposées sont <strong>séparées par famille</strong> (un polygone ne se voit jamais proposer un
+            type de tracé). Trous des polygones ignorés, plafond 20 000 objets.
+            <strong>Shapefile et GeoPackage non gérés</strong> : ils exigeraient des bibliothèques lourdes,
+            incompatibles avec le 100 % hors-ligne. Réexporte en GeoJSON.
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -998,6 +1026,17 @@ function _aideHtmlFr() {
             Aucune donnée transmise. Profil par défaut vide (👤 anonyme) : aucun utilisateur existant n'est forcé de configurer.
             <strong>Stats bandeau</strong> : dès 2 stats dispo le bandeau les affiche en mobile médian,
             temps cumulé survit aux rechargements.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">🖼️ Fond d'écran de l'accueil (v1.75.0)</strong> — en bas de la modale
+            Profil, tu peux mettre <strong>ta propre image</strong> à la place de la couleur du thème. Trois réglages :
+            le <strong>voile</strong> (assombrit l'image pour garder les textes lisibles — 0 % = image nue,
+            100 % = fond uni d'avant), et le <strong>cadrage ↔ / ↕</strong>. Ce dernier compte : l'écran ne montre
+            <strong>jamais toute la photo</strong> (elle est agrandie pour couvrir, le reste est coupé) — en portrait,
+            une photo paysage ne laisse voir qu'environ un quart de sa largeur. Seul le curseur de l'axe qui dépasse
+            a un effet. L'image reste sur l'appareil, dans le même stockage que l'avatar, et son ré-encodage
+            <strong>supprime ses métadonnées</strong> (dont le lieu de prise de vue).
+            ⚠️ Elle ne voyage pas encore avec l'export de profil.
           </p>
         </div>
 
@@ -1771,6 +1810,33 @@ function _aideHtmlEn() {
             links kept), <strong>➕ Keep both</strong>, or <strong>Cancel</strong> (default on ✕ / Escape / click outside:
             no accidental overwrite). Same name AND version = direct update without asking, as before.
           </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">💾 Retrieve a map's ZIP (v1.75.0)</strong> — the profile export does not
+            carry archives. If you lost the original ZIP, open <strong>ℹ️ Info</strong> on the map: a
+            <strong>💾 Download the ZIP</strong> button gives it back, provided it was <strong>saved in the app</strong>.
+            On a map using "permanent access" or re-selection the button is greyed out — the app holds nothing, the
+            file lives (or lived) on your disk.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🗺️ Convert from GIS (QGIS…)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🗺️</span><span>Drop a <strong>.geojson / .json / .kml / .kmz</strong> on the Generator's import area → the conversion panel opens</span>
+            <span class="kta-aide-icone">🖼️</span><span><strong>No image needed</strong>: a blank background is generated and aligned on the file's coordinates</span>
+            <span class="kta-aide-icone">🏷️</span><span><strong>Mapping screen</strong>: pick the column holding the type, then say what each value means</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#ffb380;">⚠️ GPS coordinates required (WGS84 / EPSG:4326).</strong>
+            In QGIS: <em>Export → Save Features As…</em> then EPSG:4326 in the CRS field.
+            A file in <strong>Lambert 93</strong> or another projection is <strong>refused</strong>, with the number of
+            offending coordinates — accepting it would place your map thousands of kilometres away with no warning.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Offered values are <strong>split by family</strong> (a polygon is never offered a path type). Polygon holes
+            ignored, 20,000-object cap. <strong>Shapefile and GeoPackage unsupported</strong>: they would require heavy
+            libraries, incompatible with 100% offline. Re-export as GeoJSON.
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -1801,6 +1867,17 @@ function _aideHtmlEn() {
             No data transmitted. Default profile empty (👤 anonymous): no existing user is forced to configure anything.
             <strong>Banner stats</strong>: from 2 stats available the banner displays them in mobile median,
             cumulative time survives reloads.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">🖼️ Home wallpaper (v1.75.0)</strong> — at the bottom of the Profile modal
+            you can set <strong>your own image</strong> instead of the theme colour. Three settings: the
+            <strong>veil</strong> (darkens the image to keep text readable — 0% = bare image, 100% = the previous
+            plain background), and <strong>framing ↔ / ↕</strong>. That last one matters: the screen
+            <strong>never shows the whole photo</strong> (it is scaled up to cover, the rest is cropped) — in portrait,
+            a landscape photo only shows about a quarter of its width. Only the slider for the overflowing axis has an
+            effect. The image stays on the device, in the same storage as the avatar, and re-encoding
+            <strong>strips its metadata</strong> (including where it was taken).
+            ⚠️ It does not travel with the profile export yet.
           </p>
         </div>
 

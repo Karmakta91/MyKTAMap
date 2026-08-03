@@ -1,8 +1,8 @@
 {
-  "version": "v1.73.1",
-  "released": "2026-08-01",
+  "version": "v1.75.0",
+  "released": "2026-08-03",
   "notes": [
-    "🔄 Réimporter un plan que tu viens de regénérer ne crée plus un doublon dans ta liste : l'app te propose de mettre à jour l'existant ou de garder les deux. Ta session, tes notes et tes liaisons sont conservées.",
-    "🛡️ Ouvrir une fenêtre pendant une mesure ou un tracé désarme proprement l'outil en cours (fini les clics fantômes au retour). En Vue OSM, les calques masqués par défaut s'affichent enfin — tu peux toujours les filtrer."
+    "🗺️ Nouveau : « Convertir depuis un SIG ». Dépose un fichier exporté de QGIS (GeoJSON, KML) et l'app en fait un plan — points, tracés et zones repris, avec un écran pour dire à quoi correspond chacune de tes appellations. Pas besoin d'image : un fond est généré et calé sur les coordonnées.",
+    "🖼️ Tu peux mettre ta propre image en fond d'écran de l'accueil, avec réglage du voile et du cadrage. Et si tu as perdu le ZIP d'un plan, tu peux le retélécharger depuis ℹ️ Infos — l'app en gardait une copie."
   ]
 }
