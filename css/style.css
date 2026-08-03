@@ -21394,24 +21394,58 @@ html.kta-theme-light .loader-search-row b { color: #1a1f2e; }
    La COULEUR du voile (--kta-wall-rgb) vient du thème ci-dessous : basculer
    clair/sombre réajuste le voile tout seul, sans repasser par le JS.
 
-   `!important` nécessaire : la règle light theme pose déjà un background
-   !important sur #planLoaderBox.
-   Pas de `background-attachment: fixed` — cassé sur iOS Safari. */
-#planLoaderBox.kta-has-wall {
-  --kta-wall-rgb: 26, 31, 46;          /* #1a1f2e — fond sombre de la charte */
+   ⚠️ REFONTE v1.75.0 — LE FOND EST PORTÉ PAR #planLoaderOverlay, PAS PAR LA BOX.
+   Constat KARMA : « en portrait, quand on défile, le fond défile aussi alors
+   qu'il devrait rester fixe derrière — c'est ce qui crée le zoom ». Diagnostic
+   confirmé, et c'est UN SEUL défaut à deux symptômes :
+     • #planLoaderOverlay est `position: fixed; inset:0` + `overflow-y: auto`
+       → c'est LUI le conteneur de défilement (cf. main.js, qui remet son
+       scrollTop à 0 au retour au HOME).
+     • #planLoaderBox est le CONTENU DÉFILÉ : `min-height: 100dvh` sans
+       `height`, donc sa hauteur utilisée = hauteur du contenu (2000-3000 px
+       en portrait mobile).
+   Peindre le fond sur la box revenait donc à calculer `cover` sur une boîte
+   de 2500 px de haut au lieu de ~700 : facteur d'échelle vertical énorme,
+   ~88 % de la largeur rognée. Le « zoom » n'était pas un effet du défilement,
+   c'était son frère jumeau — même cause.
+   Porté par l'overlay : sa padding box EST le viewport, et comme il est
+   lui-même le scroller, son fond (`background-attachment: scroll`, défaut)
+   est attaché à sa border box et ne suit pas le contenu.
+   → `background-attachment: fixed` devient INUTILE. L'ancien commentaire qui
+   l'écartait « car cassé sur iOS Safari » affirmait sans source dans ce dépôt ;
+   la question ne se pose plus.
+
+   ⚠️ SPÉCIFICITÉ — le piège qui a déjà mordu : `body.kta-theme-light
+   #planLoaderOverlay` et `body.kta-theme-light #planLoaderBox` sont des
+   SHORTHANDS `!important` de spécificité (1,1,1). À `!important` égal, c'est la
+   spécificité qui tranche, PAS l'ordre. Un sélecteur (1,1,0) perd et le
+   shorthand remet `background-image: none`. D'où le préfixe `body.kta-theme-light`
+   sur les règles claires ci-dessous → (1,2,1), qui l'emporte.
+
+   La classe `.kta-has-wall` RESTE sur la box : une douzaine de blocs de
+   contraste (header, profil, footer, titres) sont scopés dessus. L'overlay
+   reçoit sa propre classe miroir `.kta-has-wall-bg`, posée par le JS. */
+#planLoaderOverlay.kta-has-wall-bg,
+body.kta-theme-light #planLoaderOverlay.kta-has-wall-bg {
   background-image:
-    linear-gradient(rgba(var(--kta-wall-rgb), var(--kta-wall-a, .55)),
-                    rgba(var(--kta-wall-rgb), var(--kta-wall-a, .55))),
+    linear-gradient(rgba(var(--kta-wall-rgb, 26,31,46), var(--kta-wall-a, .55)),
+                    rgba(var(--kta-wall-rgb, 26,31,46), var(--kta-wall-a, .55))),
     var(--kta-wall-img) !important;
-  /* 🖼️ v1.75.0 — cover (rogne) ou contain (image entiere). Sous contain,
-     background-color reste celle du theme : les bandes se lisent comme le
-     fond de l app, pas comme un rendu rate. */
+  /* cover (rogne) ou contain (image entière). Sous contain, la couleur de
+     fond reste celle du thème : les bandes se lisent comme le fond de l'app. */
   background-size: var(--kta-wall-size, cover) !important;
-  background-position: center center !important;
+  background-position: var(--kta-wall-pos, center center) !important;
   background-repeat: no-repeat !important;
 }
+#planLoaderOverlay.kta-has-wall-bg          { --kta-wall-rgb: 26, 31, 46; }
+body.kta-theme-light #planLoaderOverlay.kta-has-wall-bg { --kta-wall-rgb: 201, 184, 143; }
+
+/* La box doit devenir TRANSPARENTE, sinon elle masque l'overlay (elle est
+   opaque et couvre 100 %). Deux règles : la sombre bat la base (0,1,0), la
+   claire doit atteindre (1,2,1) pour battre le shorthand du thème clair. */
+#planLoaderBox.kta-has-wall,
 body.kta-theme-light #planLoaderBox.kta-has-wall {
-  --kta-wall-rgb: 201, 184, 143;       /* brun-beige du thème clair */
+  background: transparent !important;
 }
 
 /* Aperçu dans la modale Profil : même rendu que le vrai fond, en petit. */
@@ -21454,14 +21488,14 @@ html.kta-theme-light .kta-profile-details-section {
   background: rgba(140,180,255,0.10);
 }
 
-/* ── Fond d'écran : CADRAGE (v1.74.0, retour KARMA « vue mobile / crop »)
-   `cover` rogne forcément : en portrait avec une photo paysage, seule ~26 %
-   de la largeur reste visible. --kta-wall-pos laisse l'utilisateur choisir
-   CE QUI reste visible. Avec `cover`, seul l'axe qui déborde bouge
-   réellement — les 2 sont exposés pour couvrir les 2 orientations. */
-#planLoaderBox.kta-has-wall {
-  background-position: var(--kta-wall-pos, center center) !important;
-}
+/* ── Fond d'écran : CADRAGE
+   `--kta-wall-pos` laisse l'utilisateur choisir CE QUI reste visible (mode
+   Remplir) ou OÙ l'image se pose (mode Image entière).
+   ⚠️ La règle qui appliquait ça sur #planLoaderBox a été SUPPRIMÉE en v1.75.0 :
+   le fond n'est plus porté par la box mais par #planLoaderOverlay, qui gère
+   déjà `background-position` dans son propre bloc. La laisser aurait posé un
+   background-position sur un élément désormais sans image — sans effet, mais
+   trompeur à la relecture. */
 
 /* ── Fond d'écran : LISIBILITÉ DU HEADER ET DU BANDEAU PROFIL
    (retour KARMA « on distingue mal le header et le profil, pas assez

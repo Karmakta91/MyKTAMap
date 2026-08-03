@@ -76,6 +76,16 @@
       async function _appliquerFondEcran() {
         const box = document.getElementById("planLoaderBox");
         if (!box || !window.UserProfile) return;
+        // ⚠️ v1.75.0 — L'IMAGE EST PORTÉE PAR L'OVERLAY, PAS PAR LA BOX.
+        // La box est le CONTENU DÉFILÉ (hauteur = hauteur du contenu, 2000-3000 px
+        // en portrait) ; l'overlay est `position:fixed; inset:0` + le scroller,
+        // donc sa boîte de fond EST le viewport et ne bouge pas au défilement.
+        // Peindre sur la box faisait calculer `cover` sur 2500 px de haut →
+        // ~88 % de la largeur rognée, et le fond défilait avec le contenu.
+        // La CLASSE `.kta-has-wall` reste sur la box : une douzaine de blocs
+        // de contraste (header, profil, footer, titres) sont scopés dessus.
+        // L'overlay reçoit sa propre classe miroir.
+        const fond = document.getElementById("planLoaderOverlay") || box;
         const monJeton = ++_wallJeton;
         try {
           const snap = window.UserProfile.get();
@@ -87,9 +97,11 @@
           };
           if (!snap.hasWallpaper) {
             box.classList.remove("kta-has-wall");
-            box.style.removeProperty("--kta-wall-img");
-            box.style.removeProperty("--kta-wall-a");
-            box.style.removeProperty("--kta-wall-pos");
+            fond.classList.remove("kta-has-wall-bg");
+            fond.style.removeProperty("--kta-wall-img");
+            fond.style.removeProperty("--kta-wall-a");
+            fond.style.removeProperty("--kta-wall-pos");
+            fond.style.removeProperty("--kta-wall-size");
             _wallObjectUrl = null;
             liberer();
             return;
@@ -102,20 +114,25 @@
             if (url) { try { URL.revokeObjectURL(url); } catch(e) {} }
             return;
           }
-          if (!url) { box.classList.remove("kta-has-wall"); _wallObjectUrl = null; liberer(); return; }
+          if (!url) {
+            box.classList.remove("kta-has-wall");
+            fond.classList.remove("kta-has-wall-bg");
+            _wallObjectUrl = null; liberer(); return;
+          }
           _wallObjectUrl = url;
           const voile = Number.isFinite(snap.wallVoile) ? snap.wallVoile : 55;
           const px    = Number.isFinite(snap.wallPosX) ? snap.wallPosX : 50;
           const py    = Number.isFinite(snap.wallPosY) ? snap.wallPosY : 50;
-          box.style.setProperty("--kta-wall-img", 'url("' + url + '")');
-          box.style.setProperty("--kta-wall-a", String(Math.max(0, Math.min(100, voile)) / 100));
-          box.style.setProperty("--kta-wall-pos", px + "% " + py + "%");
+          fond.style.setProperty("--kta-wall-img", 'url("' + url + '")');
+          fond.style.setProperty("--kta-wall-a", String(Math.max(0, Math.min(100, voile)) / 100));
+          fond.style.setProperty("--kta-wall-pos", px + "% " + py + "%");
           // 🖼️ v1.75.0 — mode d'affichage. `contain` = image entière, l'espace
           // restant prend la couleur du thème (le voile joue déjà cette
           // couleur, donc ça se lit comme une image posée sur le fond de
           // l'app, pas comme un rendu raté).
-          box.style.setProperty("--kta-wall-size", snap.wallFit === "contain" ? "contain" : "cover");
-          box.classList.add("kta-has-wall");
+          fond.style.setProperty("--kta-wall-size", snap.wallFit === "contain" ? "contain" : "cover");
+          box.classList.add("kta-has-wall");        // ← blocs de contraste
+          fond.classList.add("kta-has-wall-bg");    // ← porteur de l'image
           liberer();
         } catch(e) {
           console.warn("[Profile] fond d'écran non appliqué :", e);
