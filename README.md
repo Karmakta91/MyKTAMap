@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.75.0` (03/08/2026)
+## 📦 Version courante — `v1.75.1` (03/08/2026)
+
+> 🔁 **v1.75.1 = bump de cache uniquement.** Aucune évolution fonctionnelle, `version.json > notes` volontairement **inchangées** : le contenu livré est celui de v1.75.0. Le bump sert à **invalider le cache des clients** qui auraient récupéré une v1.75.0 portant les bugs du fond d'écran (fond qui défilait et sur-zoomait, invisible en thème clair) corrigés depuis.
 
 > 🚀 **3 features + l'initiative smartNav bouclée** : ① **🗺️ Import depuis SIG** — « Convertir depuis un SIG » ingère GeoJSON / KML / KMZ vectoriel (QGIS…) et en fait un plan, avec **écran de correspondance** des nomenclatures et **refus franc des CRS projetés** (Lambert 93) ② **🖼️ Fond d'écran du HOME** — image perso à la place de la couleur du thème, voile et cadrage réglables ③ **💾 Récupérer le ZIP d'un plan** depuis ℹ️ Infos (l'app en gardait une copie inatteignable) ④ **🧭 smartNav COMPLET (C1→C6)** — C6 multi-niveau + C5 magnétisme edit-time. Plus : le Carnet voyage avec le profil, le niveau de travail n'écrase plus l'affichage, cercles d'intersection OFF par défaut, et 2 bugs de fond corrigés (note de sortie effacée au flush, `userProfile` mort au boot).
 >
