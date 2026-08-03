@@ -65,15 +65,23 @@
         if (!box || !window.UserProfile) return;
         try {
           const snap = window.UserProfile.get();
-          if (_wallObjectUrl) { URL.revokeObjectURL(_wallObjectUrl); _wallObjectUrl = null; }
+          // Même règle que pour l'avatar : on ne révoque qu'APRÈS avoir posé
+          // la nouvelle URL, sinon le fond disparaît le temps de la lecture.
+          const ancienne = _wallObjectUrl;
+          const liberer = function() {
+            if (ancienne) { try { URL.revokeObjectURL(ancienne); } catch(e) {} }
+          };
           if (!snap.hasWallpaper) {
             box.classList.remove("kta-has-wall");
             box.style.removeProperty("--kta-wall-img");
             box.style.removeProperty("--kta-wall-a");
+            box.style.removeProperty("--kta-wall-pos");
+            _wallObjectUrl = null;
+            liberer();
             return;
           }
           const url = await window.UserProfile.getWallpaperObjectUrl();
-          if (!url) { box.classList.remove("kta-has-wall"); return; }
+          if (!url) { box.classList.remove("kta-has-wall"); _wallObjectUrl = null; liberer(); return; }
           _wallObjectUrl = url;
           const voile = Number.isFinite(snap.wallVoile) ? snap.wallVoile : 55;
           const px    = Number.isFinite(snap.wallPosX) ? snap.wallPosX : 50;
@@ -82,6 +90,7 @@
           box.style.setProperty("--kta-wall-a", String(Math.max(0, Math.min(100, voile)) / 100));
           box.style.setProperty("--kta-wall-pos", px + "% " + py + "%");
           box.classList.add("kta-has-wall");
+          liberer();
         } catch(e) {
           console.warn("[Profile] fond d'écran non appliqué :", e);
         }
@@ -146,11 +155,19 @@
           if (greetingEl) greetingEl.textContent = _tGreeting;
         }
         // Avatar : photo si dispo, sinon initiale colorée
-        // Cleanup ancien objectURL
-        if (_profileBarObjectUrl) {
-          try { URL.revokeObjectURL(_profileBarObjectUrl); } catch(e) {}
-          _profileBarObjectUrl = null;
-        }
+        // 🐛 v1.75.0 (repro KARMA : « quand je charge un fond d'écran, la
+        // miniature de ma photo de profil devient un ? ») — l'ancienne URL
+        // était révoquée AVANT l'await : entre les deux, le <img> affiché
+        // pointait sur une URL morte → image cassée (le « ? » du navigateur).
+        // Invisible tant que les rafraîchissements étaient rares ; le fond
+        // d'écran en déclenche beaucoup plus (ajout, voile, cadrage) et la
+        // fenêtre est devenue systématiquement visible.
+        // Fix : on RETIENT l'ancienne URL, on installe la nouvelle, et on ne
+        // révoque qu'APRÈS le remplacement.
+        const _ancienneUrl = _profileBarObjectUrl;
+        const _libererAncienne = function() {
+          if (_ancienneUrl) { try { URL.revokeObjectURL(_ancienneUrl); } catch(e) {} }
+        };
         if (snap.hasPhoto) {
           try {
             const url = await window.UserProfile.getPhotoObjectUrl();
@@ -159,12 +176,17 @@
               avatarWrap.innerHTML =
                 '<img class="kta-loader-profile-avatar-img" src="' + url + '" alt="Avatar de ' +
                   (snap.surnom || "profil").replace(/"/g, "&quot;") + '">';
+              _libererAncienne();
               return;
             }
           } catch(e) {
             console.warn("[Profile] avatar photo échec, fallback initiale :", e);
           }
         }
+        // Pas de photo (ou lecture échouée) : l'initiale remplace le <img>,
+        // on peut libérer sans risque.
+        _profileBarObjectUrl = null;
+        _libererAncienne();
         // Fallback initiale
         const initial = hasName ? window.UserProfile.getInitial(snap.surnom) : "👤";
         const color   = window.UserProfile.getAvatarColor(snap.surnom || "");
@@ -1069,17 +1091,24 @@
 
         const _rafraichirApercuFond = async function() {
           const s = window.UserProfile.get();
-          if (_wallPreviewUrl) { URL.revokeObjectURL(_wallPreviewUrl); _wallPreviewUrl = null; }
+          // Idem : révocation différée après remplacement (cf. avatar).
+          const ancienneP = _wallPreviewUrl;
+          const libererP = function() {
+            if (ancienneP) { try { URL.revokeObjectURL(ancienneP); } catch(e) {} }
+          };
           if (!s.hasWallpaper) {
             wallPreview.style.backgroundImage = "";
             wallPreview.textContent = _t("home.profile.wallNone");
             wallRemove.style.display = "none";
             wallRow.style.display    = "none";
+            _wallPreviewUrl = null;
+            libererP();
             return;
           }
           const url = await window.UserProfile.getWallpaperObjectUrl();
-          if (!url) return;
+          if (!url) { libererP(); return; }
           _wallPreviewUrl = url;
+          libererP();
           wallPreview.textContent = "";
           const vx = Number.isFinite(s.wallPosX) ? s.wallPosX : 50;
           const vy = Number.isFinite(s.wallPosY) ? s.wallPosY : 50;
@@ -1256,10 +1285,14 @@
             _dBadge.style.display = "none";  // Touriste : pas de médaille
           }
         }
-        if (_profileDetailsObjectUrl) {
-          try { URL.revokeObjectURL(_profileDetailsObjectUrl); } catch(e) {}
-          _profileDetailsObjectUrl = null;
-        }
+        // 🐛 v1.75.0 — même correctif que le bandeau : révoquer AVANT l'await
+        // laissait le <img> sur une URL morte le temps de la lecture IDB.
+        // C'est l'avatar de CETTE modale que KARMA voyait passer en « ? »,
+        // puisque c'est là qu'on charge un fond d'écran.
+        const _ancienneUrlD = _profileDetailsObjectUrl;
+        const _libererAncienneD = function() {
+          if (_ancienneUrlD) { try { URL.revokeObjectURL(_ancienneUrlD); } catch(e) {} }
+        };
         snap = snap || window.UserProfile.get();
         if (snap.hasPhoto) {
           try {
@@ -1267,10 +1300,13 @@
             if (url) {
               _profileDetailsObjectUrl = url;
               avatarEl.innerHTML = '<img class="kta-profile-details-avatar-photo" src="' + url + '" alt="Photo profil">';
+              _libererAncienneD();
               return;
             }
           } catch(e) {}
         }
+        _profileDetailsObjectUrl = null;
+        _libererAncienneD();
         const hasName = !!(snap.surnom && snap.surnom.trim());
         const initial = hasName ? window.UserProfile.getInitial(snap.surnom) : "👤";
         const color   = window.UserProfile.getAvatarColor(snap.surnom || "");
