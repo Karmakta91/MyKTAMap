@@ -3755,7 +3755,7 @@ async function _kmzImpAnalyserFichier(file) {
     if (!window.KmzImport.estKmzMyktamap(kmlDoc)) {
       status.textContent = window.I18n.t("gen.kmz.nonCompatible");
       status.style.color = "#ff8c8c";
-      _kmzImpAfficherModaleNonCompatible();
+      _kmzImpAfficherModaleNonCompatible(file);   // 🗺️ v1.75.2 : propose la conversion SIG
       return;
     }
 
@@ -3885,31 +3885,77 @@ async function _kmzImpAnalyserFichier(file) {
 
 // Modale d'erreur "KMZ non compatible" (v173 simplifié — round-trip MyKTAMap only).
 // Affichée quand `estKmzMyktamap` retourne false (KMZ tiers).
-function _kmzImpAfficherModaleNonCompatible() {
+// 🗺️ v1.75.2 (demande KARMA « il faut rebrancher : une erreur précise +
+// redirection avec un timer de 3 s ») — `fichier` optionnel : quand il est
+// fourni, on propose la CONVERSION SIG au lieu d'un cul-de-sac.
+// Pourquoi ici : un export QGIS en .kmz est un KMZ *vectoriel*, il n'a pas la
+// signature MyKTAMap → il atterrit sur CE refus. Or c'est précisément le
+// fichier que sait traiter `sigImport`. Sans ce pont, l'utilisateur recevait
+// « format non compatible » alors que l'app savait parfaitement le lire.
+function _kmzImpAfficherModaleNonCompatible(fichier) {
   const existing = document.getElementById("kta-kmz-imp-incompat-modal");
   if (existing) existing.remove();
+  const T = function(k, p) { return window.I18n.t(k, p); };
+  // Bascule proposée seulement si on a le fichier ET le module SIG.
+  const peutBasculer = !!(fichier && typeof _afficherImporterSig === "function");
+  const DELAI = 3;
+
   const m = document.createElement("div");
   m.id = "kta-kmz-imp-incompat-modal";
   m.className = "kta-readme-modal-overlay";
   m.innerHTML =
     '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:80vh; border:1px solid rgba(255,140,140,0.35);">' +
       '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.20);">' +
-        '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">' + window.I18n.t("gen.kmzIncompat.titre") + '</span>' +
+        '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">' + T("gen.kmzIncompat.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-kmz-imp-incompat-close">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
-        '<p style="font-size:13.5px; color:#c0c8d8; line-height:1.6; margin:0 0 12px;">' + window.I18n.t("gen.kmzIncompat.txt") + '</p>' +
-        '<div style="padding:10px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:#c0c8d8;">' + window.I18n.t("gen.kmzIncompat.aide") + '</div>' +
-        '<div style="display:flex; justify-content:flex-end;">' +
-          '<button class="kta-btn kta-btn-primary" id="kta-kmz-imp-incompat-ok">' + window.I18n.t("gen.btn.jaiCompris") + '</button>' +
+        '<p style="font-size:13.5px; color:#c0c8d8; line-height:1.6; margin:0 0 12px;">' + T("gen.kmzIncompat.txt") + '</p>' +
+        (peutBasculer
+          ? '<div style="padding:10px 12px; background:rgba(108,226,138,0.08); border:1px solid rgba(108,226,138,0.30); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:#c0c8d8; line-height:1.55;">' +
+              T("gen.kmzIncompat.sigTxt") +
+              '<div style="margin-top:8px; color:#6ce28a; font-weight:600;" id="kta-kmz-sig-compte">' +
+                T("gen.kmzIncompat.sigCompte", { s: DELAI }) +
+              '</div>' +
+            '</div>'
+          : '<div style="padding:10px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:#c0c8d8;">' + T("gen.kmzIncompat.aide") + '</div>') +
+        '<div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
+          (peutBasculer
+            ? '<button class="kta-btn kta-btn-ghost" id="kta-kmz-imp-incompat-rester">' + T("gen.kmzIncompat.rester") + '</button>' +
+              '<button class="kta-btn kta-btn-primary" id="kta-kmz-imp-incompat-sig">' + T("gen.kmzIncompat.sigBtn") + '</button>'
+            : '<button class="kta-btn kta-btn-primary" id="kta-kmz-imp-incompat-ok">' + T("gen.btn.jaiCompris") + '</button>') +
         '</div>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(m);
-  const _c = function() { m.remove(); };
+
+  // ⚠️ Le compte à rebours DOIT être annulable par TOUTES les sorties (✕,
+  // clic sur le fond, Échap, bouton « Rester ici ») — sinon la modale se
+  // ferme et la conversion s'ouvre quand même 2 s plus tard, sur le dos de
+  // l'utilisateur qui venait d'annuler.
+  let _tick = null;
+  const _stop = function() { if (_tick) { clearInterval(_tick); _tick = null; } };
+  const _c = function() { _stop(); m.remove(); document.removeEventListener("keydown", _esc); };
+  const _esc = function(e) { if (e.key === "Escape" || e.key === "Esc") _c(); };
+  document.addEventListener("keydown", _esc);
+
   document.getElementById("kta-kmz-imp-incompat-close").addEventListener("click", _c);
-  document.getElementById("kta-kmz-imp-incompat-ok").addEventListener("click", _c);
   m.addEventListener("click", function(e) { if (e.target === m) _c(); });
+  const btnOk = document.getElementById("kta-kmz-imp-incompat-ok");
+  if (btnOk) btnOk.addEventListener("click", _c);
+
+  if (peutBasculer) {
+    const _basculer = function() { _c(); _afficherImporterSig(fichier); };
+    document.getElementById("kta-kmz-imp-incompat-sig").addEventListener("click", _basculer);
+    document.getElementById("kta-kmz-imp-incompat-rester").addEventListener("click", _c);
+    let reste = DELAI;
+    const el = document.getElementById("kta-kmz-sig-compte");
+    _tick = setInterval(function() {
+      reste--;
+      if (reste <= 0) { _basculer(); return; }
+      if (el) el.textContent = T("gen.kmzIncompat.sigCompte", { s: reste });
+    }, 1000);
+  }
 }
 
 // Modale d'erreur dédiée pour le Mode C (KMZ sans GroundOverlay).
