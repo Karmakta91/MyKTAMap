@@ -98,7 +98,11 @@ if (LC) {
     "loadSessionState", "getSessionState", "isSessionStateEmpty", "loadPlanState",
     "getLabel", "getDefaultLabel", "isVisible", "getSource",
     "listEntries", "listCustomEntries", "findCustomEntry",
-    "addCustomEntry", "removeCustomEntry", "ouvrirEditeur"
+    "addCustomEntry", "removeCustomEntry", "ouvrirEditeur",
+    // 🎨 v1.76.0 — override de couleur. `getColor` est appelee par
+    // window.ktaResolveStyle : si elle disparait des exports, la carte perd
+    // silencieusement les couleurs choisies par l'utilisateur.
+    "getColor", "setColor", "hasColorOverride"
   ];
   ATTENDU_LC.forEach(function(m) {
     t("LegendCustomization." + m + "() exposee", typeof LC[m] === "function");
@@ -123,6 +127,31 @@ if (LC) {
   const front1 = structs.filter(function(e) { return e.key === "front-1"; })[0];
   t("pastille d'un front = un TRAIT, pas un polygone",
     !!front1 && front1.lineColor === "#f4c542" && !front1.fillColor);
+
+  // Boucle complete de l'override : on choisit une couleur, la pastille de
+  // l'editeur doit la refleter (elle passe par le resolveur), puis le retrait
+  // doit rendre EXACTEMENT la couleur d'origine.
+  t("pas d'override au depart", LC.hasColorOverride("traces", "principal") === false);
+  LC.setColor("traces", "principal", "#abcdef");
+  t("setColor est enregistre", LC.getColor("traces", "principal") === "#abcdef");
+  t("hasColorOverride bascule", LC.hasColorOverride("traces", "principal") === true);
+  const apres = (LC.listEntries("traces") || []).filter(function(e) { return e.key === "principal"; })[0];
+  t("la pastille de l'editeur suit l'override", !!apres && apres.lineColor === "#abcdef");
+  t("listEntries expose hasColor", !!apres && apres.hasColor === true);
+  LC.setColor("traces", "principal", null);
+  t("retrait de l'override = retour au canon",
+    LC.getColor("traces", "principal") === null &&
+    (LC.listEntries("traces") || []).filter(function(e) { return e.key === "principal"; })[0].lineColor === "#00ff00");
+
+  // L'override doit VOYAGER avec la session, sinon il est perdu au reload.
+  LC.setColor("zones", "eau", "#010203");
+  const snap = LC.getSessionState();
+  t("getSessionState embarque les couleurs", !!snap.colors && snap.colors["zones.eau"] === "#010203");
+  LC.loadSessionState(null);
+  t("loadSessionState(null) purge les couleurs", LC.getColor("zones", "eau") === null);
+  LC.loadSessionState(snap);
+  t("recharger la session restaure les couleurs", LC.getColor("zones", "eau") === "#010203");
+  LC.loadSessionState(null);
 }
 
 console.log(ko === 0 ? "\n🎉 tout passe" : "\n⚠️ " + ko + " echec(s)");

@@ -131,17 +131,29 @@ window.LegendCustomization = (function() {
   // États session + plan (cascade)
   // ─────────────────────────────────────────────
   function _emptyState() {
-    return { labels: {}, hidden: {}, customEntries: [] };
+    return { labels: {}, hidden: {}, colors: {}, customEntries: [] };
   }
 
   let _sessionState = _emptyState();
   let _planState    = _emptyState();
 
+  // 🎨 v1.76.0 — `colors` : couleur choisie par l'utilisateur pour un type
+  // BUILT-IN, indexée comme `labels` et `hidden` (clé "<catégorie>.<type>").
+  // UNE seule couleur par type — cf. `_appliquerOverride` dans styleResolver.js
+  // pour la façon dont elle est appliquée selon la géométrie.
+  // Les types CUSTOM ne passent pas par là : leurs couleurs sont déjà dans
+  // l'entrée elle-même, éditables via la dialog de modification.
+  //
+  // ⚠️ `hidden` est accepté même sous forme de TABLEAU par cette normalisation
+  // depuis l'origine (tous les lookups `hidden[k]` rendent alors `undefined`
+  // en silence). C'est une incohérence de forme connue — cf. F22 dans
+  // docs/BACKLOG.md. Non corrigée ici pour ne pas mélanger les sujets.
   function _normalize(state) {
     const s = state || {};
     return {
       labels:        (s.labels && typeof s.labels === "object") ? s.labels : {},
       hidden:        (s.hidden && typeof s.hidden === "object") ? s.hidden : {},
+      colors:        (s.colors && typeof s.colors === "object" && !Array.isArray(s.colors)) ? s.colors : {},
       customEntries: Array.isArray(s.customEntries) ? s.customEntries.slice() : []
     };
   }
@@ -156,6 +168,7 @@ window.LegendCustomization = (function() {
       schemaVersion: SCHEMA_VERSION,
       labels:        Object.assign({}, _sessionState.labels),
       hidden:        Object.assign({}, _sessionState.hidden),
+      colors:        Object.assign({}, _sessionState.colors),
       customEntries: _sessionState.customEntries.map(function(e) { return Object.assign({}, e); })
     };
   }
@@ -163,6 +176,7 @@ window.LegendCustomization = (function() {
   function isSessionStateEmpty() {
     return Object.keys(_sessionState.labels).length === 0
         && Object.keys(_sessionState.hidden).length === 0
+        && Object.keys(_sessionState.colors).length === 0
         && _sessionState.customEntries.length === 0;
   }
 
@@ -214,6 +228,50 @@ window.LegendCustomization = (function() {
     return "default";
   }
 
+  // 🎨 v1.76.0 — couleur choisie pour un type BUILT-IN. Même cascade que les
+  // libellés : session > plan > aucune (auquel cas le style canonique
+  // s'applique tel quel). Rend `null` s'il n'y a pas d'override.
+  // ⚠️ Lecture PURE : appelée depuis `ktaResolveStyle`, qui est lui-même
+  // appelé depuis ce module (`_renduDefaut`). Ne jamais y appeler le résolveur.
+  function getColor(category, key) {
+    const k = _key(category, key);
+    const s = _sessionState.colors[k];
+    if (typeof s === "string" && s) return s;
+    const p = _planState.colors[k];
+    if (typeof p === "string" && p) return p;
+    return null;
+  }
+
+  // `color` = null / "" → retire l'override et rend la couleur d'origine.
+  function setColor(category, key, color) {
+    const k = _key(category, key);
+    if (!color) delete _sessionState.colors[k];
+    else _sessionState.colors[k] = String(color);
+    _persistSession();
+    _repeindreCarte();
+  }
+
+  // 🎨 v1.76.0 — REPEINDRE APRÈS UN CHANGEMENT DE COULEUR.
+  // Sans ça la feature ne « marche » pas : le style est bien résolu à la
+  // nouvelle couleur, mais les objets Leaflet déjà dessinés gardent l'ancienne
+  // jusqu'au prochain rendu — l'utilisateur choisirait une couleur et ne
+  // verrait rien changer avant de recharger le plan.
+  // Le listener `onCustomEntriesChange` existant ne suffit PAS : son unique
+  // abonné (interface.js) ne rafraîchit que les boutons de la sidebar.
+  // Les data layers ne sont PAS re-rendus ici : ils sont construits une fois
+  // au chargement du plan. C'est une limite connue, notée en dette.
+  function _repeindreCarte() {
+    ["renderRoads", "renderZones", "renderStructures"].forEach(function(fn) {
+      if (typeof window[fn] === "function") {
+        try { window[fn](); } catch(e) { console.warn("[LegendCustomization] " + fn + " a échoué :", e); }
+      }
+    });
+  }
+
+  function hasColorOverride(category, key) {
+    return getColor(category, key) !== null;
+  }
+
   // ─────────────────────────────────────────────
   // Liste des entrées (cascade appliquée)
   // ─────────────────────────────────────────────
@@ -229,6 +287,10 @@ window.LegendCustomization = (function() {
         planLabel:    _planState.labels[_key(category, key)] || null,
         visible:      isVisible(category, key),
         source:       getSource(category, key),
+        // 🎨 v1.76.0 — vrai si l'utilisateur (ou le plan) a choisi une couleur.
+        // Sert à n'afficher le bouton « remettre la couleur d'origine » que
+        // lorsqu'il a un sens.
+        hasColor:     hasColorOverride(category, key),
         lineColor:    r.lineColor,
         fillColor:    r.fillColor,
         borderColor:  r.borderColor,
@@ -602,12 +664,31 @@ window.LegendCustomization = (function() {
         ? '<button type="button" class="kta-legend-rm" title="' + window.I18n.t("legend.editor.rmCustomTitle") + '" ' + dataAttrs + '>🗑️</button>'
         : '';
 
+      // 🎨 v1.76.0 — sélecteur de couleur sur les types BUILT-IN dessinables.
+      // Les entrées CUSTOM ont déjà leurs couleurs dans l'entrée elle-même, et
+      // les ICÔNES sont des images : ni l'une ni l'autre n'a de couleur à
+      // choisir ici. Pour ces deux familles on garde la pastille statique.
+      // La couleur affichée vient de `listEntries`, donc du style RÉEL — elle
+      // reflète déjà l'override, sans calcul en double.
+      const estColorable = !isCustomEntry && e.category !== "icones";
+      let champCouleur = "";
+      if (estColorable) {
+        const cur = e.lineColor || e.fillColor || "#888888";
+        champCouleur =
+          '<input type="color" class="kta-legend-color" value="' + _esc(cur) + '" ' +
+            'title="' + window.I18n.t("legend.editor.colorTitle") + '" ' + dataAttrs + '>' +
+          (e.hasColor
+            ? '<button type="button" class="kta-legend-color-reset" ' +
+                'title="' + window.I18n.t("legend.editor.colorResetTitle") + '" ' + dataAttrs + '>↺</button>'
+            : '');
+      }
+
       return '<div class="kta-legend-row" ' + dataAttrs + '>' +
                '<label class="kta-legend-vis" title="' + window.I18n.t("legend.editor.visTitle") + '">' +
                  '<input type="checkbox" class="kta-legend-vis-cb" ' +
                    (e.visible ? "checked" : "") + ' ' + dataAttrs + '>' +
                '</label>' +
-               swatch +
+               (estColorable ? champCouleur : swatch) +
                '<input type="text" class="kta-legend-label" placeholder="' + placeholder + '" ' +
                  'value="' + value + '" ' + dataAttrs + '>' +
                _sourceBadge(e.source) +
@@ -650,6 +731,8 @@ window.LegendCustomization = (function() {
       } else if (target.classList.contains("kta-legend-label")) {
         if (customId) updateCustomEntry(customId, { label: target.value });
         else if (cat && key) setSessionLabel(cat, key, target.value);
+      } else if (target.classList.contains("kta-legend-color")) {
+        if (cat && key) setColor(cat, key, target.value);
       }
       if (opts.onChange) opts.onChange();
     }
@@ -658,6 +741,16 @@ window.LegendCustomization = (function() {
     if (body) {
       body.addEventListener("change", function(e) {
         if (e.target.matches(".kta-legend-vis-cb")) _applyFromUI(e.target);
+        // 🎨 v1.76.0 — la couleur est appliquée sur `change`, PAS sur `input`.
+        // WebKit émet un `input` à CHAQUE mouvement du curseur dans le
+        // sélecteur natif : sur `input` on écrirait la session des dizaines de
+        // fois par glissement. C'est exactement le mécanisme qui avait rendu
+        // les Blob du fond d'écran illisibles le 02/08 — même piège, autre
+        // module. `change` ne tire qu'à la validation.
+        if (e.target.matches(".kta-legend-color")) {
+          _applyFromUI(e.target);
+          _render();   // fait apparaître le bouton ↺
+        }
       });
       body.addEventListener("input", function(e) {
         if (e.target.matches(".kta-legend-label")) _applyFromUI(e.target);
@@ -667,6 +760,14 @@ window.LegendCustomization = (function() {
           const id = e.target.getAttribute("data-custom-id");
           if (id) {
             removeCustomEntry(id);
+            _render();
+            if (opts.onChange) opts.onChange();
+          }
+        } else if (e.target.matches(".kta-legend-color-reset")) {
+          const c = e.target.getAttribute("data-cat");
+          const k = e.target.getAttribute("data-key");
+          if (c && k) {
+            setColor(c, k, null);     // null = retour à la couleur d'origine
             _render();
             if (opts.onChange) opts.onChange();
           }
@@ -926,6 +1027,11 @@ window.LegendCustomization = (function() {
     isVisible:             isVisible,
     getSource:             getSource,
     getDefaultLabel:       getDefaultLabel,
+    // 🎨 v1.76.0 — override de couleur des types built-in.
+    // `getColor` est appelée par window.ktaResolveStyle : lecture PURE,
+    // ne jamais y rappeler le résolveur (réentrance).
+    getColor:              getColor,
+    hasColorOverride:      hasColorOverride,
     listEntries:           listEntries,
     listCustomEntries:     listCustomEntries,
     isCustomVisible:       isCustomVisible,
@@ -933,6 +1039,7 @@ window.LegendCustomization = (function() {
     // Setters session
     setSessionLabel:       setSessionLabel,
     setSessionVisibility:  setSessionVisibility,
+    setColor:              setColor,
     setCustomEntryVisibility: setCustomEntryVisibility,
     addCustomEntry:        addCustomEntry,
     removeCustomEntry:     removeCustomEntry,

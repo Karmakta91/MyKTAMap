@@ -1923,6 +1923,8 @@
   "legend.editor.done": "✅ Terminer",
   "legend.editor.intro": "Renomme les libellés, masque les entrées que tu n'utilises pas, ou ajoute des entrées custom. Les modifications sont sauvegardées automatiquement dans ta session.",
   "legend.editor.reset": "🔄 Reset session",
+  "legend.editor.colorResetTitle": "Remettre la couleur d'origine",
+  "legend.editor.colorTitle": "Changer la couleur de ce type",
   "legend.editor.resetConfirm": "Effacer tous vos overrides de session sur la légende ?\n\n(les libellés défaut du plan reviennent ; ce qui est défini dans le plan-config reste actif)",
   "legend.editor.resetTitle": "Restaure les libellés défaut",
   "legend.editor.rmCustomTitle": "Supprimer cette entrée custom",

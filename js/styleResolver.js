@@ -115,6 +115,60 @@
   // pour une entrée CUSTOM, dont on ne connaît que les couleurs choisies.
   const GEOM = { traces: "polyline", zones: "polygon", structures: "polygon" };
 
+  // ───────── OVERRIDE DE COULEUR (v1.76.0) ─────────
+  // L'utilisateur peut choisir la couleur d'un type BUILT-IN depuis
+  // ≡ Légende → ✏️ Modifier. UNE seule couleur par type : c'est ici qu'on
+  // décide de ce qu'elle repeint, selon la géométrie. Branché à cet endroit
+  // précis, l'override atteint TOUT le monde — carte, exports PNG/PDF, KMZ,
+  // pastilles de légende, camemberts, rapport de session — sans qu'aucun
+  // consommateur n'ait à le savoir. C'était la raison d'être de ce module.
+  //
+  // Les types CUSTOM ne passent pas par là : leur couleur vit déjà dans leur
+  // entrée, éditable directement.
+
+  // Assombrit une couleur (bordure dérivée d'un remplissage choisi).
+  function _assombrir(hex, k) {
+    if (typeof hex !== "string" || hex[0] !== "#" || hex.length !== 7) return hex;
+    const v = [1, 3, 5].map(function(i) {
+      return Math.max(0, Math.min(255, Math.round(parseInt(hex.substr(i, 2), 16) * k)));
+    });
+    return "#" + v.map(function(n) { return n.toString(16).padStart(2, "0"); }).join("");
+  }
+
+  function _appliquerOverride(categorie, cle, s) {
+    if (!window.LegendCustomization || typeof window.LegendCustomization.getColor !== "function") return s;
+    let c = null;
+    try { c = window.LegendCustomization.getColor(categorie, cle); } catch(e) { return s; }
+    if (!c) return s;
+
+    if (categorie === "traces") {          // un tracé, c'est son trait
+      s.color = c;
+      return s;
+    }
+    if (categorie === "structures") {
+      if (s.isPolyline) {                  // front de taille : trait épais
+        s.color = c;
+        s.fillColor = c;                   // le canon garde les deux alignés
+        return s;
+      }
+      // Pilier / mur : on repeint le REMPLISSAGE et on garde le contour NOIR.
+      // Ce contour est la signature visuelle qui distingue une structure d'une
+      // zone — le laisser changer casserait la grammaire de la carte.
+      s.fillColor = c;
+      return s;
+    }
+    // Zones : le remplissage prend la couleur, la bordure en est dérivée par
+    // assombrissement — c'est déjà la relation du canon (#3aa9e8 → #0066aa).
+    s.fillColor = c;
+    s.color     = _assombrir(c, 0.62);
+    // Un type à MOTIF (inaccessible) perd ses hachures quand il est repeint :
+    // le pattern SVG est statique dans index.html, il ne peut pas prendre une
+    // couleur choisie à l'exécution. On retombe donc sur un aplat, à l'opacité
+    // prévue pour son repli.
+    if (s._flatFillOpacity !== undefined) s.fillOpacity = s._flatFillOpacity;
+    return s;
+  }
+
   function _copie(o) {
     const c = {};
     for (const k in o) if (Object.prototype.hasOwnProperty.call(o, k)) c[k] = o[k];
@@ -180,6 +234,9 @@
         s.fillColor   = s._flatFill;
         s.fillOpacity = (s._flatFillOpacity !== undefined) ? s._flatFillOpacity : s.fillOpacity;
       }
+      // APRÈS le repli d'aplat : une couleur choisie par l'utilisateur prime
+      // sur tout, motif SVG compris.
+      _appliquerOverride(categorie, cle, s);
       delete s._flatFill; delete s._flatFillOpacity;
       return s;
     }

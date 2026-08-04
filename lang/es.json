@@ -1921,6 +1921,8 @@
   "legend.editor.done": "✅ Finalizar",
   "legend.editor.intro": "Renombra las etiquetas, oculta las entradas que no uses, o añade entradas personalizadas. Los cambios se guardan automáticamente en tu sesión.",
   "legend.editor.reset": "🔄 Restablecer sesión",
+  "legend.editor.colorResetTitle": "Restaurar el color original",
+  "legend.editor.colorTitle": "Cambiar el color de este tipo",
   "legend.editor.resetConfirm": "¿Borrar todas tus modificaciones de sesión sobre la leyenda?\n\n(vuelven las etiquetas por defecto del mapa; lo definido en el plan-config sigue activo)",
   "legend.editor.resetTitle": "Restaura las etiquetas por defecto",
   "legend.editor.rmCustomTitle": "Eliminar esta entrada personalizada",

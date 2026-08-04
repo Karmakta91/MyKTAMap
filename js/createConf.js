@@ -1278,10 +1278,16 @@ function _plannerLegendStateNormalize(state) {
   const labels  = state.labels        || {};
   const hidden  = state.hidden        || {};
   const customs = state.customEntries || [];
+  // 🎨 v1.76.0 — `colors` (override de couleur des types built-in) compte
+  // comme une personnalisation à part entière. Sans cette ligne, un plan dont
+  // la SEULE personnalisation serait des couleurs choisies se ferait
+  // normaliser à `null` et n'emporterait rien dans son plan-config.
+  const colors  = state.colors        || {};
   const hasLabels  = Object.keys(labels).length  > 0;
   const hasHidden  = (Array.isArray(hidden) ? hidden.length : Object.keys(hidden).length) > 0;
+  const hasColors  = Object.keys(colors).length  > 0;
   const hasCustoms = Array.isArray(customs) && customs.length > 0;
-  if (!hasLabels && !hasHidden && !hasCustoms) return null;
+  if (!hasLabels && !hasHidden && !hasColors && !hasCustoms) return null;
   return state;
 }
 
