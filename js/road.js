@@ -37,29 +37,21 @@ let _roadRenderState = [];
 // calque est masqué, ses roads disparaissent ET leurs intersections aussi.
 let _embeddedRoads = [];
 
-// styles par type
-// smoothFactor 2.5 : Leaflet simplifie les polylines en interne via
-// Douglas-Peucker. Le defaut (1.0) garde tous les points. 2.5 reduit
-// significativement le nombre de points dessines au pan/zoom (gain perf
-// sur les polylines avec beaucoup de points), perte visuelle negligeable
-// (les segments restent visuellement equivalents au zoom usuel). Sur
-// l'itineraire on garde un facteur plus bas pour preserver la precision
-// du tracé calculé.
-const ROAD_STYLES = {
-  principal:   { color: "#00ff00", weight: 5, opacity: 1, smoothFactor: 2.5 },
-  secondaire:  { color: "#b000ff", weight: 5, opacity: 1, smoothFactor: 2.5 },
-  chemin:      { color: "#ffff00", weight: 5, opacity: 1, smoothFactor: 2.5 },
-  // Type "itinéraire" calculé par Pathfinder : couleur cyan distinctive,
-  // tracé plus épais pour bien se voir par-dessus les autres roads.
-  // smoothFactor 1.5 (un peu moins agressif) pour preserver la precision
-  // du chemin calcule par le pathfinder.
-  itinerary:   { color: "#00d4ff", weight: 7, opacity: 0.9, dashArray: "12 6", smoothFactor: 1.5 },
-  // Type "jonction" (multi-niveau, depuis v148) : tracé reliant 2 points sur
-  // des niveaux differents (escalier, pente, puits interne). Magenta pointille
-  // (coherent avec le surlignage distance totale). Toujours visible peu
-  // importe le filtre `activeLevel` car c'est le bridge entre niveaux.
-  jonction:    { color: "#ff4ecb", weight: 5, opacity: 1, dashArray: "10 6", smoothFactor: 2.0 }
-};
+// 🎨 v1.76.0 — Les styles des 5 types built-in ne sont plus declares ici : ils
+// viennent de `js/styleResolver.js` (table canonique unique). Voir l'en-tete de
+// ce module pour le pourquoi (les memes couleurs etaient recopiees dans ~25
+// tables, et une divergence y etait invisible).
+// Rappels utiles restes en commentaire, car la valeur seule ne les explique pas :
+//   • smoothFactor 2.5 sur les traces : Leaflet simplifie les polylines via
+//     Douglas-Peucker ; le defaut (1.0) garde tous les points. 2.5 reduit
+//     nettement le nombre de points dessines au pan/zoom, pour une perte
+//     visuelle negligeable au zoom usuel.
+//   • itinerary garde 1.5 (moins agressif) pour preserver la precision du
+//     chemin calcule par le pathfinder, et un trace plus epais pour passer
+//     au-dessus des autres roads.
+//   • jonction (multi-niveau, v148) relie 2 points de niveaux differents
+//     (escalier, pente, puits). Magenta pointille, toujours visible quel que
+//     soit le filtre `activeLevel` puisque c'est le pont entre niveaux.
 
 // Priorité couleur des intersections : chemin (jaune) > secondaire (violet) > principal (vert)
 // Quand 2 roads de types différents se croisent, un cercle plein est dessiné à l'intersection
@@ -71,25 +63,24 @@ const ROAD_INTERSECTION_PRIORITY = {
 };
 const ROAD_INTERSECTION_RADIUS = 8;  // 16px de diamètre
 
-// 🆕 v1.16.0 step2-drawable : résolution dynamique du style pour les types
-// CUSTOM ajoutés via LegendCustomization. Si type est un id custom (commence
-// par "cust-" et trouvé dans LC.findCustomEntry), retourne un style construit
-// à partir de l'entry.lineColor. Sinon ROAD_STYLES[type] (comportement
-// historique pour les 5 types built-in).
+// Résolution du style d'un tracé — built-in ET types CUSTOM (LegendCustomization).
+// 🎨 v1.76.0 : delegue integralement a window.ktaResolveStyle. Retourne
+// desormais un objet NEUF a chaque appel (avant : l'objet partage de la table),
+// donc un appelant qui mute son style ne contamine plus les autres traces.
+// Retourne null si le type est inconnu — l'appelant garde son propre repli.
+let _resolverManquantSignale = false;
 function _resolveRoadStyle(type) {
-  if (ROAD_STYLES[type]) return ROAD_STYLES[type];
-  if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
-    const e = window.LegendCustomization.findCustomEntry(type);
-    if (e && e.category === "traces") {
-      return {
-        color:       e.lineColor || "#ffffff",
-        weight:      5,
-        opacity:     1,
-        smoothFactor: 2.5
-      };
+  if (typeof window.ktaResolveStyle !== "function") {
+    // Ne peut arriver qu'avec un cache Service Worker incoherent (styleResolver.js
+    // absent alors que road.js est a jour). On le dit UNE fois, fort, plutot que
+    // de repeindre en blanc silencieusement.
+    if (!_resolverManquantSignale) {
+      _resolverManquantSignale = true;
+      console.error("[Roads] window.ktaResolveStyle absent — styles indisponibles. Cache SW incoherent ?");
     }
+    return null;
   }
-  return null;
+  return window.ktaResolveStyle("traces", type);
 }
 
 // 🐛 v1.57.4 — Abonnement PerfUltra ONE-SHOT (audit « fuites au plan
@@ -450,6 +441,20 @@ function _calculerIntersectionsRoads(roads) {
   // pas physiquement (un est au-dessus de l'autre). Bug report user.
   const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
 
+  // 🎨 v1.76.0 — memo des couleurs par type gagnant. La boucle ci-dessous est
+  // en O(N²) sur les paires de routes ; depuis que le style vient du resolver,
+  // chaque appel construit un objet neuf. On resout donc chaque type UNE fois.
+  // Memo LOCAL a l'appel (pas au module) : une couleur custom modifiee a chaud
+  // doit etre reprise au rendu suivant.
+  const _couleurParType = {};
+  function _couleurDeType(t) {
+    if (!(t in _couleurParType)) {
+      const s = _resolveRoadStyle(t);
+      _couleurParType[t] = (s && s.color) || "#ffffff";
+    }
+    return _couleurParType[t];
+  }
+
   // Garde-fou anti-freeze sur les gros plans : skip total si trop de routes.
   // Seuil dynamique : 200 en mode normal, 50 si PerfUltra.noIntersect actif.
   const _maxRoads = _roadIntersectionMaxRoads();
@@ -502,7 +507,7 @@ function _calculerIntersectionsRoads(roads) {
       }
 
       const winner = _typeGagnant(A.type, B.type);
-      const color  = ROAD_STYLES[winner]?.color || "#ffffff";
+      const color  = _couleurDeType(winner);
 
       // 1) Croisement franc segment × segment
       for (let a = 0; a < A.points.length - 1; a++) {
@@ -1103,10 +1108,11 @@ function renderRoads() {
     // carte densement remplie de tracés.
     if (road.type === "jonction" && workPoints.length >= 2) {
       const endpoints = [workPoints[0], workPoints[workPoints.length - 1]];
+      const _colJonction = (_resolveRoadStyle("jonction") || {}).color;
       endpoints.forEach(function(pt) {
         const cm = L.circleMarker(convertCoord(pt.x, pt.y), {
           radius:      7,
-          color:       ROAD_STYLES.jonction.color,   // bord magenta
+          color:       _colJonction,                 // bord magenta
           fillColor:   "#ffffff",                    // intérieur blanc → contraste
           fillOpacity: 1,
           weight:      3,

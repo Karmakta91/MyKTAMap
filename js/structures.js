@@ -49,37 +49,21 @@ function _isPolylineType(type) {
   return false;
 }
 
-// 🆕 v1.16.0 step2-drawable : résolution dynamique du style — supporte
-// les types CUSTOM via LegendCustomization. Pour polyline (front custom),
-// retourne un style polyline-like. Pour polygon (pilier/mur custom),
-// retourne un style polygon-like.
+// Résolution du style d'une structure — built-in ET types CUSTOM. Pour un
+// custom, la geometrie declaree tranche : polyline → gabarit « front de taille »
+// (epais, sans contour), polygon → gabarit « pilier/mur » (contour noir).
+// 🎨 v1.76.0 : delegue integralement a window.ktaResolveStyle, qui applique le
+// gabarit de la CATEGORIE demandee. Retourne un objet NEUF a chaque appel.
+let _resolverManquantSignaleS = false;
 function _resolveStructureStyle(type) {
-  if (STRUCTURE_STYLES[type]) return STRUCTURE_STYLES[type];
-  if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
-    const e = window.LegendCustomization.findCustomEntry(type);
-    if (e && e.category === "structures") {
-      if (e.geometry === "polyline") {
-        const col = e.lineColor || "#888";
-        return {
-          color:       col,
-          fillColor:   col,
-          fillOpacity: 1,
-          weight:      10,
-          opacity:     1,
-          isPolyline:  true
-        };
-      } else {
-        return {
-          color:       e.borderColor || "#000",
-          fillColor:   e.fillColor || "#888",
-          fillOpacity: 0.85,
-          weight:      3,
-          opacity:     1
-        };
-      }
+  if (typeof window.ktaResolveStyle !== "function") {
+    if (!_resolverManquantSignaleS) {
+      _resolverManquantSignaleS = true;
+      console.error("[Structures] window.ktaResolveStyle absent — styles indisponibles. Cache SW incoherent ?");
     }
+    return null;
   }
-  return null;
+  return window.ktaResolveStyle("structures", type);
 }
 
 let structuresData = [];
@@ -96,65 +80,27 @@ const STRUCT_CLOSE_TOLERANCE = 5;
 // Chaque structure = fill couleur charte + stroke NOIR 3px (le stroke noir
 // est la signature visuelle qui distingue les structures des zones).
 // Internal note KARMA : "techniquement ce sont des zones", donc style proche
-// de ZONE_STYLES mais avec stroke #000 systématique + fill plus saturé
+// des zones mais avec stroke #000 systématique + fill plus saturé
 // (les structures représentent du physique solide, pas du marquage).
 //
 // 🆕 v1.9.3-A1.a-fix (KARMA "j'ai inversé les couleurs 1er masse / 2e masse") :
 //   - 1ère masse → JAUNE (#f4c542, couleur charte MKM)
 //   - 2e masse   → ORANGE (#ff9933)
-const STRUCTURE_STYLES = {
-  // 🟡 Pilier de 1ère masse : jaune accent (= couleur charte MyKTAMap)
-  "pilier-1": {
-    color:       "#000000",
-    fillColor:   "#f4c542",
-    fillOpacity: 0.85,
-    weight:      3,
-    opacity:     1
-  },
-  // 🟠 Pilier de 2e masse : orange visible
-  "pilier-2": {
-    color:       "#000000",
-    fillColor:   "#ff9933",
-    fillOpacity: 0.85,
-    weight:      3,
-    opacity:     1
-  },
-  // 🔵 Mur en pierre / béton : bleu foncé (KARMA "rond bleu dans le menu
-  // pour pas confondre avec icône eau")
-  "mur": {
-    color:       "#000000",
-    fillColor:   "#1e3a8a",
-    fillOpacity: 0.85,
-    weight:      3,
-    opacity:     1
-  },
-  // 🆕 v1.9.3-A1.b.2 : fronts de taille — POLYLINES épaisses sans contour
-  // qui représentent les limites d'exploitation d'une couche cataphile.
-  // 🔧 v1.10.1-hotfix2 (KARMA "si orange = 2e masse, le front de taille
-  // orange et 2e masse") : couleurs alignées sur les piliers — front-1
-  // jaune comme pilier-1 (1ère masse), front-2 orange comme pilier-2
-  // (2e masse). Avant : inversées par "design" mais KARMA confirme que
-  // c'était une erreur — la cohérence couleur/masse est plus parlante
-  // sur le terrain (un trait orange = 2e masse, un trait jaune = 1ère).
-  // Pas de stroke contour (le polyline est juste de couleur unie).
-  // weight: 10 = bien plus épais que les roads (5) pour distinction visuelle.
-  "front-1": {
-    color:       "#f4c542",   // jaune charte MKM — 1ère masse (cohérent pilier-1)
-    fillColor:   "#f4c542",
-    fillOpacity: 1,           // (n.a. pour polyline mais conservé)
-    weight:      10,
-    opacity:     1,
-    isPolyline:  true         // marqueur pour render adapter
-  },
-  "front-2": {
-    color:       "#ff9933",   // orange — 2e masse (cohérent pilier-2)
-    fillColor:   "#ff9933",
-    fillOpacity: 1,
-    weight:      10,
-    opacity:     1,
-    isPolyline:  true
-  }
-};
+// 🎨 v1.76.0 — Les 5 types built-in ne sont plus declares ici : leurs valeurs
+// viennent de la table canonique de `js/styleResolver.js`.
+// Rappels de DESIGN, qui ne se lisent pas dans les valeurs :
+//   • Piliers/mur : stroke NOIR systematique — c'est la signature visuelle qui
+//     distingue une structure d'une zone (KARMA : « techniquement ce sont des
+//     zones »), avec un fill plus sature car une structure est du solide.
+//     🔵 mur en bleu fonce (KARMA « rond bleu dans le menu pour pas confondre
+//     avec l'icone eau »).
+//   • Fronts de taille (v1.9.3-A1.b.2) : POLYLINES epaisses (weight 10, ~2x les
+//     roads) sans contour, representant les limites d'exploitation d'une couche.
+//     🔧 v1.10.1-hotfix2 (KARMA « si orange = 2e masse, le front de taille
+//     orange et 2e masse ») : front-1 JAUNE comme pilier-1 (1ere masse),
+//     front-2 ORANGE comme pilier-2 (2e masse). Elles etaient inversees « par
+//     design » — c'etait une erreur : sur le terrain la coherence couleur/masse
+//     prime (un trait orange = 2e masse, un trait jaune = 1ere).
 
 const STRUCTURE_STYLE_PREVIEW = {
   weight:    3,
@@ -455,7 +401,7 @@ function renderStructures() {
 
     const latlngs = s.points.map(function(p) { return convertCoord(p.x, p.y); });
     // 🆕 v1.16.0 step2-drawable : résolution dynamique (custom support)
-    const style = _resolveStructureStyle(s.type) || STRUCTURE_STYLES["mur"];
+    const style = _resolveStructureStyle(s.type) || _resolveStructureStyle("mur");
 
     // 🆕 v1.9.3-A1.b.2 : différenciation polyline (fronts) vs polygon
     // (piliers + mur). Les fronts sont des lignes ouvertes épaisses
@@ -467,7 +413,7 @@ function renderStructures() {
       // ne doivent pas être en pointillé pendant le dessin, on garde le
       // même comportement écran que une road") :
       // - Polyline (front) en cours : ligne CONTINUE déjà au style final
-      //   (color, weight, opacity du STRUCTURE_STYLES), pas de dashArray.
+      //   (color, weight, opacity resolus par le styleResolver), pas de dashArray.
       //   Comportement calqué sur road.js qui rend directement la road
       //   en cours dans son style final.
       // - Polygon (pilier/mur) en cours : preview pointillé (dashArray

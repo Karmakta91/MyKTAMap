@@ -89,8 +89,27 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 
 ⚠️ **Découverte du relevé exhaustif — 2 VARIANTES DÉLIBÉRÉES, à ne jamais « corriger »** : `emergencyMode.js` a une palette entière plus vive pour la mini-carte d'urgence, et `osmView.js`/`osmHomePreview.js` rendent `inaccessible` en aplat orange (le motif hachuré SVG n'existe pas sur fond OSM). **Les deux sont commentées dans leur fichier d'origine.** Unifier aveuglément aurait changé le rendu de deux écrans sans que personne l'ait demandé — c'est exactement ce que la comparaison préalable a évité. Elles sont inscrites en `EXCEPTIONS` dans le script de contrôle, ce qui rend tout nouvel écart **volontaire et visible**.
 
+#### 🟢 Vague 1 — LIVRÉE (04/08) — la carte
+`road.js`, `zones.js`, `structures.js` ne déclarent plus aucun style : ils appellent `ktaResolveStyle`. **3 tables supprimées, 14 déclarations en moins** (le contrôle passe de 105 à 91 confrontations).
+
+🔴 **Ce que la migration a révélé — la table canonique de la vague 0 contenait 3 valeurs FAUSSES.** Elles n'ont jamais été livrées (aucun consommateur ne l'appelait), mais un `check-style-canon` limité aux couleurs ne pouvait pas les voir :
+
+| type | valeur réelle | canon vague 0 | effet si migration à l'aveugle |
+|---|---|---|---|
+| `pilier-1/2`, `mur` | `weight: 3` | `weight: 2` | contour noir aminci |
+| `front-1/2` | `weight: 10` + `fillColor` + `isPolyline` | `weight: 5` seul | fronts 2× plus fins, flag de rendu perdu |
+| `inaccessible` | `url(#kta-pattern-inaccessible)`, `fillOpacity: 1` | `#7a0000` / `0.65` | **perte des hachures** |
+
+Origine : `#7a0000`/`0.65` avait été relevé sur les tables d'**export** (qui ne savent pas peindre un motif SVG) et le `2` sur `kmzExport`, où `width: 2` est une largeur **KML** — pas un `weight` Leaflet.
+
+**Corrections apportées :**
+- Le canon porte désormais la valeur **rendue à l'écran**, et `inaccessible` déclare son aplat de repli. Les contextes sans motif SVG demandent `ktaResolveStyle(cat, clé, { flat: true })` → prêt pour les vagues 2 et 3.
+- `check-style-canon.js` compare maintenant aussi **`weight` et `fillOpacity`** (`width:` du KMZ reste volontairement non assimilé à `weight:` — unités différentes). Vérifié en falsifiant le canon : le contrôle mord.
+- Le repli des **customs** est devenu **conscient de la catégorie** : un front custom garde `weight: 10` + `isPolyline`, un pilier custom son contour noir et son `fillOpacity: 0.85`. Un gabarit générique unique les aurait tous ramenés à celui des zones.
+- `check-style-resolver.js` : 21 → **30 cas**.
+- `index.html` : `styleResolver.js` remonté **avant** ses consommateurs — il était chargé après, et son commentaire affirmait le contraire.
+
 #### 🔜 Vagues suivantes
-1. **Carte** — `road.js`, `zones.js`, `structures.js`
 2. **Exports image** — `exporter.js` + `utils.js` → **corrige le bug 1**
 3. **KMZ / GPX** — `kmzExport.js`, `gpxIO.js` → **corrige le bug 2**
 4. **Reste** — `interfaceLegende.js`, `statsGlobales.js`, `secoursMode.js`, `interfaceDistanceTotale.js`

@@ -54,6 +54,13 @@ function lireCanon() {
 // `color` et `borderColor` désignent le MÊME trait ; `fill` et `fillColor` le
 // même remplissage. Ne pas les assimiler produirait des faux positifs (piège
 // rencontré au premier jet du relevé).
+// Les valeurs NUMÉRIQUES (`weight`, `fillOpacity`) sont relevées elles aussi :
+// c'est précisément ce que la première version laissait passer. Le canon avait
+// `weight: 2` pour les piliers (valeur reprise à tort d'un `width:` KML, qui
+// n'est pas la même unité) et `weight: 5` pour les fronts au lieu de 10 —
+// invisible tant qu'on ne comparait que les hex.
+// `width:` (KMZ) n'est VOLONTAIREMENT pas assimilé à `weight:` pour cette
+// raison même : ce sont deux unités différentes.
 function couleursPour(txt, type) {
   const esc = type.replace(/-/g, "\\-");
   const rx = new RegExp('["\']?' + esc + '["\']?\\s*:\\s*\\{([^}]*)\\}', "g");
@@ -68,9 +75,21 @@ function couleursPour(txt, type) {
       }
       return null;
     };
+    const lireNum = function (nom) {
+      const mm = corps.match(new RegExp("\\b" + nom + "\\s*:\\s*([0-9]*\\.?[0-9]+)"));
+      return mm ? parseFloat(mm[1]) : null;
+    };
     const trait = lire(["borderColor", "color", "line", "stroke", "lineColor"]);
     const fond  = lire(["fillColor", "fill"]);
-    if (trait || fond) out.push({ ligne: txt.slice(0, m.index).split("\n").length, trait, fond });
+    const motif = /fill(?:Color)?\s*:\s*"url\(#/.test(corps);
+    if (trait || fond || motif) {
+      out.push({
+        ligne: txt.slice(0, m.index).split("\n").length,
+        trait, fond, motif,
+        weight: lireNum("weight"),
+        fillOpacity: lireNum("fillOpacity")
+      });
+    }
   }
   return out;
 }
@@ -86,7 +105,15 @@ for (const fichier of FICHIERS) {
   for (const [cat, table] of Object.entries(CANON)) {
     for (const [cle, ref] of Object.entries(table)) {
       const refTrait = (ref.color || "").toLowerCase() || null;
-      const refFond  = (ref.fillColor || "").toLowerCase() || null;
+      // Un type à motif SVG a DEUX remplissages légitimes : le motif lui-même
+      // et son aplat de repli (contextes bitmap/KMZ/OSM). Les deux passent.
+      const refFonds = [];
+      if (ref.fillColor && ref.fillColor.indexOf("url(") !== 0) refFonds.push(ref.fillColor.toLowerCase());
+      if (ref._flatFill) refFonds.push(ref._flatFill.toLowerCase());
+      const refOpas = [];
+      if (ref.fillOpacity !== undefined) refOpas.push(ref.fillOpacity);
+      if (ref._flatFillOpacity !== undefined) refOpas.push(ref._flatFillOpacity);
+
       for (const occ of couleursPour(txt, cle)) {
         verifs++;
         // Une déclaration partielle est tolérée ; seul un CONFLIT est fautif.
@@ -95,9 +122,19 @@ for (const fichier of FICHIERS) {
                       " trait " + occ.trait + " ≠ canon " + refTrait);
           ko++;
         }
-        if (occ.fond && refFond && occ.fond !== refFond) {
+        if (occ.fond && refFonds.length && refFonds.indexOf(occ.fond) === -1) {
           console.log("❌ " + fichier + ":" + occ.ligne + "  " + cat + "/" + cle +
-                      " fond " + occ.fond + " ≠ canon " + refFond);
+                      " fond " + occ.fond + " ∉ canon [" + refFonds.join(", ") + "]");
+          ko++;
+        }
+        if (occ.weight !== null && ref.weight !== undefined && occ.weight !== ref.weight) {
+          console.log("❌ " + fichier + ":" + occ.ligne + "  " + cat + "/" + cle +
+                      " weight " + occ.weight + " ≠ canon " + ref.weight);
+          ko++;
+        }
+        if (occ.fillOpacity !== null && refOpas.length && refOpas.indexOf(occ.fillOpacity) === -1) {
+          console.log("❌ " + fichier + ":" + occ.ligne + "  " + cat + "/" + cle +
+                      " fillOpacity " + occ.fillOpacity + " ∉ canon [" + refOpas.join(", ") + "]");
           ko++;
         }
       }

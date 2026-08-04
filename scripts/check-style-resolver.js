@@ -14,7 +14,18 @@ t("zone eau : trait + fond", R("zones", "eau").color === "#0066aa" && R("zones",
 t("zone inaccessible presente (LE bug d'origine)", R("zones", "inaccessible") !== null);
 t("inaccessible n'est PAS du remblais", R("zones", "inaccessible").fillColor !== R("zones", "remblais").fillColor);
 t("structure pilier-1", R("structures", "pilier-1").fillColor === "#f4c542");
-t("front-1 est une ligne (pas de fond)", R("structures", "front-1").fillColor === undefined);
+t("front-1 est une polyline epaisse", R("structures", "front-1").weight === 10 && R("structures", "front-1").isPolyline === true);
+t("pilier garde son contour de 3px", R("structures", "pilier-1").weight === 3);
+
+// ── motif SVG et son repli d'aplat ──
+// Le rendu carte veut le motif hachure ; tout contexte qui ne sait pas peindre
+// un url(#...) (bitmap, KMZ, fond OSM) demande { flat: true }.
+t("inaccessible par defaut = motif SVG", /^url\(#/.test(R("zones", "inaccessible").fillColor));
+t("inaccessible { flat } = aplat #7a0000", R("zones", "inaccessible", { flat: true }).fillColor === "#7a0000");
+t("inaccessible { flat } baisse l'opacite", R("zones", "inaccessible", { flat: true }).fillOpacity === 0.65);
+t("{ flat } n'affecte pas un type sans motif", R("zones", "eau", { flat: true }).fillColor === "#3aa9e8");
+t("le style rendu ne fuit aucun champ interne",
+  !("_flatFill" in R("zones", "inaccessible")) && !("_flatFillOpacity" in R("zones", "inaccessible", { flat: true })));
 t("jonction a son tirete", R("traces", "jonction").dashArray === "10 6");
 
 // ── objet NEUF a chaque appel : un consommateur qui mute ne doit contaminer personne ──
@@ -33,6 +44,8 @@ win.LegendCustomization = {
     if (id === "cust-line") return { id, category: "traces",     geometry: "polyline", lineColor: "#123456" };
     if (id === "cust-poly") return { id, category: "zones",      geometry: "polygon",  fillColor: "#abcdef", borderColor: "#fedcba" };
     if (id === "cust-nogeo") return { id, category: "structures" };   // geometrie absente
+    if (id === "cust-front") return { id, category: "structures", geometry: "polyline", lineColor: "#ff0000" };
+    if (id === "cust-pilier") return { id, category: "structures", geometry: "polygon", fillColor: "#00ff88" };
     return null;
   }
 };
@@ -41,6 +54,12 @@ const p = R("zones", "cust-poly");
 t("custom polygon -> fond + bordure", p.fillColor === "#abcdef" && p.color === "#fedcba");
 t("custom sans geometrie -> repli sur la categorie", R("structures", "cust-nogeo") !== null);
 t("custom inconnu -> null", R("traces", "cust-inexistant") === null);
+// Un custom doit ressembler aux built-in de SA categorie, pas a un gabarit unique.
+const cf = R("structures", "cust-front");
+t("front custom : epaisseur 10 + isPolyline", cf.weight === 10 && cf.isPolyline === true && cf.color === "#ff0000");
+const cp = R("structures", "cust-pilier");
+t("pilier custom : contour noir + opacite 0.85", cp.color === "#000000" && cp.fillOpacity === 0.85 && cp.weight === 3);
+t("categorie croisee refusee (zone custom demandee en trace)", R("traces", "cust-poly") === null);
 
 // ── robustesse : module custom absent ou qui jette ──
 delete win.LegendCustomization;

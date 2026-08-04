@@ -1210,6 +1210,13 @@
   <script src="js/map.js" defer></script>
   <script src="js/tracking.js" defer></script>
   <script src="js/editor.js" defer></script>
+  <!-- 🎨 v1.76.0 — StyleResolver : source de verite UNIQUE des styles built-in
+       (traces / zones / structures). Charge AVANT tous ses consommateurs
+       (road, zones, structures, puis exporter/utils/kmz aux vagues suivantes).
+       Il n'a AUCUNE dependance au chargement : legendCustomization.js n'est
+       interroge qu'a l'appel, pour les types custom — d'ou la possibilite de
+       le placer ici, en amont, plutot qu'apres lui. -->
+  <script src="js/styleResolver.js" defer></script>
   <script src="js/road.js" defer></script>
   <script src="js/zones.js" defer></script>
   <!-- 🆕 v1.9.3-A1.a : structures (piliers + murs). Chargé APRÈS zones.js
@@ -1255,10 +1262,6 @@
        resolver dans _dessinerLegende) et AVANT sessionPersist.js
        (qui sérialise / restaure l'état session). -->
   <script src="js/legendCustomization.js" defer></script>
-  <!-- 🎨 v1.75.2 — StyleResolver : source de verite UNIQUE des styles built-in.
-       Charge APRES legendCustomization (il l'interroge pour les types custom)
-       et AVANT road/zones/structures/exporter qui le consomment. -->
-  <script src="js/styleResolver.js" defer></script>
   <!-- 🆕 v1.16.0 step 3 : module Favoris (points POI). Doit charger
        AVANT utils.js (qui injecte le bouton ⭐ dans buildPointPopupHtml)
        — en pratique utils.js est déjà chargé donc on met juste avant
