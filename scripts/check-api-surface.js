@@ -102,7 +102,10 @@ if (LC) {
     // 🎨 v1.76.0 — override de couleur. `getColor` est appelee par
     // window.ktaResolveStyle : si elle disparait des exports, la carte perd
     // silencieusement les couleurs choisies par l'utilisateur.
-    "getColor", "setColor", "hasColorOverride"
+    "getColor", "setColor", "hasColorOverride",
+    // 🐛 v1.76.0 (F8) — decompte des objets utilisant un type, lu par la
+    // confirmation de suppression de l'editeur.
+    "countUsages"
   ];
   ATTENDU_LC.forEach(function(m) {
     t("LegendCustomization." + m + "() exposee", typeof LC[m] === "function");

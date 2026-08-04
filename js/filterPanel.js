@@ -294,10 +294,23 @@
   }
 
   // Label LegendCustomization-aware
+  // 🐛 v1.76.0 (F11) — `getLabel` ne consulte QUE les libellés des types
+  // built-in : pour un type CUSTOM elle rendait la clé brute, et la puce du
+  // filtre affichait `cust-m2k9x-3fa` au lieu du nom choisi. Il faut passer par
+  // `findCustomEntry`, comme le font déjà refonteInterface.js, statsGlobales.js
+  // et pathfinder.js — ce module était le seul à l'avoir oublié.
   function _lcLabel(category, type, fallback) {
-    if (window.LegendCustomization && typeof window.LegendCustomization.getLabel === "function") {
+    const LC = window.LegendCustomization;
+    if (LC && typeof LC.findCustomEntry === "function" && String(type).indexOf("cust-") === 0) {
       try {
-        const lbl = window.LegendCustomization.getLabel(category, type);
+        const e = LC.findCustomEntry(type);
+        if (e && e.label) return "✨ " + e.label;
+      } catch(err) {}
+      return fallback || type;
+    }
+    if (LC && typeof LC.getLabel === "function") {
+      try {
+        const lbl = LC.getLabel(category, type);
         if (lbl) return lbl;
       } catch(e) {}
     }

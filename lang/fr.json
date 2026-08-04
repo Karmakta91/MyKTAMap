@@ -1929,6 +1929,7 @@
   "legend.editor.resetConfirm": "Effacer tous vos overrides de session sur la légende ?\n\n(les libellés défaut du plan reviennent ; ce qui est défini dans le plan-config reste actif)",
   "legend.editor.resetTitle": "Restaure les libellés défaut",
   "legend.editor.rmCustomTitle": "Supprimer cette entrée custom",
+  "legend.editor.rmUsedConfirm": "⚠️ « {nom} » est utilisé par {total} objet(s) dessiné(s), dont {calques} dans des calques de données.\n\nSupprimer quand même ? Ces objets perdront leur nom et leur couleur (repli générique), sans retour arrière.",
   "legend.editor.srcDefault": "Libellé défaut MKM",
   "legend.editor.srcPlan": "Défini par le plan",
   "legend.editor.srcSession": "Override de votre session",

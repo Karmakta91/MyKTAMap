@@ -417,6 +417,35 @@ window.LegendCustomization = (function() {
     });
   }
 
+  // 🐛 v1.76.0 (F8) — COMPTE LES OBJETS QUI UTILISENT UN TYPE.
+  // Supprimer une entrée custom la retirait sans un mot, et tous les objets
+  // dessinés de ce type basculaient instantanément en repli : blanc pour un
+  // tracé, gris remblais pour une zone, bleu mur pour une structure — et un
+  // FRONT custom, perdant sa géométrie déclarée, se refermait en polygone
+  // plein. Rien ne prévenait, rien ne permettait de revenir en arrière.
+  // On compte session ET calques de données : les seconds ne sont pas
+  // modifiables, donc leurs objets resteraient orphelins pour de bon.
+  function countUsages(id) {
+    if (!id) return { session: 0, calques: 0, total: 0 };
+    let session = 0, calques = 0;
+    function _compter(liste) {
+      let n = 0;
+      (liste || []).forEach(function(o) { if (o && o.type === id) n++; });
+      return n;
+    }
+    [["getRoads", "getAllEmbeddedRoads"],
+     ["getZones", "getAllEmbeddedZones"],
+     ["getStructures", "getAllEmbeddedStructures"]].forEach(function(paire) {
+      if (typeof window[paire[0]] === "function") {
+        try { session += _compter(window[paire[0]]()); } catch(e) {}
+      }
+      if (typeof window[paire[1]] === "function") {
+        try { calques += _compter(window[paire[1]]()); } catch(e) {}
+      }
+    });
+    return { session: session, calques: calques, total: session + calques };
+  }
+
   // Lookup d'une entrée custom par ID (session OU plan).
   function findCustomEntry(id) {
     if (!id) return null;
@@ -768,6 +797,18 @@ window.LegendCustomization = (function() {
         if (e.target.matches(".kta-legend-rm")) {
           const id = e.target.getAttribute("data-custom-id");
           if (id) {
+            // 🐛 v1.76.0 (F8) — on prévient AVANT, avec le décompte réel.
+            // Un type supprimé laisse ses objets orphelins, sans retour arrière.
+            const u = countUsages(id);
+            if (u.total > 0) {
+              const ent = findCustomEntry(id);
+              const msg = window.I18n.t("legend.editor.rmUsedConfirm", {
+                nom:      (ent && ent.label) || id,
+                total:    u.total,
+                calques:  u.calques
+              });
+              if (!window.confirm(msg)) return;
+            }
             removeCustomEntry(id);
             _render();
             if (opts.onChange) opts.onChange();
@@ -1055,6 +1096,7 @@ window.LegendCustomization = (function() {
     updateCustomEntry:     updateCustomEntry,
     resetSession:          resetSession,
     findCustomEntry:       findCustomEntry,
+    countUsages:           countUsages,
 
     // Hook listener (sidebar dynamique, invalidation styles, etc.)
     onCustomEntriesChange: onCustomEntriesChange,

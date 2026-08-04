@@ -106,6 +106,23 @@ function _buildTypeOptionsHTML(selectedTag) {
   // Retirer les tags système
   EDITOR_EXCLURE.forEach(function(k) { tagsSet.delete(k); });
 
+  // 🐛 v1.76.0 (F10) — les ICÔNES CUSTOM de la légende deviennent des tags
+  // sélectionnables. Elles existaient dans ≡ Légende mais aucun point ne
+  // pouvait les porter : ce sélecteur ne les listait pas. L'icône elle-même
+  // est résolue par _iconMap[id] (enregistrée par map.js, MAJ au fil de la
+  // session via onCustomEntriesChange).
+  const customIconLabels = {};
+  if (window.LegendCustomization && typeof window.LegendCustomization.listCustomEntries === "function") {
+    try {
+      window.LegendCustomization.listCustomEntries("icones").forEach(function(e) {
+        if (e && e.id && e.iconUrl) {
+          tagsSet.add(e.id);
+          customIconLabels[e.id] = "✨ " + (e.label || e.id);
+        }
+      });
+    } catch(e) {}
+  }
+
   // Trier : d'abord les tags labellisés (ordre de EDITOR_TAG_LABELS),
   // puis les tags custom non labellisés en fin
   const known   = Object.keys(EDITOR_TAG_LABELS).filter(function(k) { return tagsSet.has(k); });
@@ -114,8 +131,10 @@ function _buildTypeOptionsHTML(selectedTag) {
 
   let html = '<option value="">' + window.I18n.t("editor.options.none") + '</option>';
   html += orderedTags.map(function(tag) {
-    // Label built-in via i18n (clé "editor.tag.<tag>"), sinon le tag custom brut.
-    const label = EDITOR_TAG_LABELS[tag] ? window.I18n.t("editor.tag." + tag) : tag;
+    // Label built-in via i18n (clé "editor.tag.<tag>"), icône custom via son
+    // libellé de légende, sinon le tag custom brut.
+    const label = EDITOR_TAG_LABELS[tag] ? window.I18n.t("editor.tag." + tag)
+                : (customIconLabels[tag] || tag);
     const sel   = tag === selectedTag ? ' selected' : '';
     return `<option value="${tag}"${sel}>${label}</option>`;
   }).join("");
@@ -567,7 +586,10 @@ function afficherFormulaire(x, y, existingPoint) {
       tag = nouveau;
 
       // Enregistrer le tag dans PLAN_CONFIG.icons s'il n'existe pas (icône par défaut)
-      if (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) {
+      // ⚠️ F10 : jamais pour un id `cust-…` — PLAN_CONFIG.icons est lu EN
+      // PREMIER par getIconUrlForPoint, y écrire l'icône par défaut masquerait
+      // l'icône custom de la légende dans tous les exports.
+      if (window.PLAN_CONFIG && window.PLAN_CONFIG.icons && tag.indexOf("cust-") !== 0) {
         if (!window.PLAN_CONFIG.icons[tag]) {
           window.PLAN_CONFIG.icons[tag] = window.PLAN_CONFIG.icons.default || "icon/iconetrack.png";
         }

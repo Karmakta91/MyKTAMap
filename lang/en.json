@@ -1929,6 +1929,7 @@
   "legend.editor.resetConfirm": "Clear all your session overrides on the legend?\n\n(the plan's default labels return; what is defined in the plan-config stays active)",
   "legend.editor.resetTitle": "Restore default labels",
   "legend.editor.rmCustomTitle": "Delete this custom entry",
+  "legend.editor.rmUsedConfirm": "⚠️ “{nom}” is used by {total} drawn object(s), including {calques} in data layers.\n\nDelete anyway? These objects will lose their name and colour (generic fallback), with no way back.",
   "legend.editor.srcDefault": "Default MKM label",
   "legend.editor.srcPlan": "Defined by the map",
   "legend.editor.srcSession": "Your session override",

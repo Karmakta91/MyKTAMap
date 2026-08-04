@@ -2291,6 +2291,27 @@
       zip.file(name, JSON.stringify(obj, null, 2));
     }
 
+    // 🐛 v1.76.0 (F13) — LA LÉGENDE MANQUAIT À CE ZIP.
+    // Le JSON de session simple la porte (`session.customLegend`), pas le ZIP
+    // multi-fichiers : deux boutons voisins, deux contenus différents.
+    //
+    // ⚠️ Précision vérifiée : ce format est un export SEUL — aucun importeur
+    // ne lit `session_points.json` & consorts (`_parseSessionZip` attend un
+    // `session.json`). Le tort n'est donc pas une perte au ré-import, mais une
+    // archive qui ne se DÉCRIT PAS : un fichier `session_roads.json` plein de
+    // types `cust-abc123` sans nulle part la définition de ces types. Pour une
+    // archive longue durée — la raison d'être de ce bouton — c'est un défaut
+    // suffisant.
+    // Fichier DÉDIÉ : le ZIP est déjà organisé un fichier par sujet, et la
+    // légende doit survivre même à une session sans aucun point.
+    (function() {
+      const LC = window.LegendCustomization;
+      if (!LC || typeof LC.getSessionState !== "function") return;
+      if (typeof LC.isSessionStateEmpty === "function" && LC.isSessionStateEmpty()) return;
+      try { file("session_legend.json", { customLegend: LC.getSessionState() }); }
+      catch(e) { console.warn("[SessionExport] légende non embarquée dans le ZIP :", e); }
+    })();
+
     if (points.length)     file("session_points.json",     { editorPoints: points });
     if (roads.length)      file("session_roads.json",      { roads: roads });
     if (zones.length)      file("session_zones.json",      { zones: zones });
@@ -2633,6 +2654,48 @@
       labels: labels, hidden: hidden, colors: colors,
       customEntries: customEntries
     };
+  }
+
+  // 🐛 v1.76.0 (F12) — LA LÉGENDE EXPORTÉE EN KMZ/GPX DOIT ÊTRE CELLE QU'ON VOIT.
+  // L'option « Légende personnalisée du plan » ne lisait que
+  // `PLAN_CONFIG.customLegend`. Or 100 % des types créés sur le terrain vivent
+  // dans la SESSION (l'éditeur ≡ Légende n'écrit que là ; le niveau plan ne se
+  // remplit que depuis le générateur). Pour un utilisateur normal la case était
+  // donc grisée à 0 en permanence : le seul transport MyKTAMap ↔ MyKTAMap qui
+  // existe lui était inaccessible.
+  // On fusionne les deux, dans l'ordre de la cascade d'affichage — la SESSION
+  // prime sur le plan — pour que le fichier exporté décrive ce que l'auteur a
+  // réellement sous les yeux.
+  function _legendeCompleteAExporter() {
+    const plan = (window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend) || null;
+    const LC = window.LegendCustomization;
+    let sess = null;
+    if (LC && typeof LC.getSessionState === "function") {
+      try { sess = LC.getSessionState(); } catch(e) { sess = null; }
+    }
+    if (!plan && !sess) return null;
+
+    const out = { labels: {}, hidden: {}, colors: {}, customEntries: [] };
+    function _fusionner(src) {
+      if (!src || typeof src !== "object") return;
+      ["labels", "hidden", "colors"].forEach(function(champ) {
+        const m = src[champ];
+        if (!m || typeof m !== "object" || Array.isArray(m)) return;
+        Object.keys(m).forEach(function(k) { out[champ][k] = m[k]; });
+      });
+      const ids = new Set(out.customEntries.map(function(e) { return e && e.id; }));
+      (Array.isArray(src.customEntries) ? src.customEntries : []).forEach(function(e) {
+        if (!e || !e.id || ids.has(e.id)) return;
+        ids.add(e.id);
+        out.customEntries.push(e);
+      });
+    }
+    _fusionner(plan);
+    _fusionner(sess);   // en second : la session écrase le plan, comme à l'écran
+
+    if (!Object.keys(out.labels).length && !Object.keys(out.hidden).length &&
+        !Object.keys(out.colors).length && !out.customEntries.length) return null;
+    return out;
   }
 
   function _telechargerConversionFiles(files, photos) {
@@ -3374,11 +3437,10 @@
         // « nu » (cascade défaut MKM), la case s'affiche grisée à 0 — pas
         // d'incident, juste rien à embarquer.
         (function() {
-          const cl = window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend;
-          const hasCustomLegend = !!(cl && typeof cl === "object" &&
-            ((cl.labels && Object.keys(cl.labels).length) ||
-             (cl.hidden && (Array.isArray(cl.hidden) ? cl.hidden.length : Object.keys(cl.hidden).length)) ||
-             (Array.isArray(cl.customEntries) && cl.customEntries.length)));
+          // 🐛 v1.76.0 (F12) — plan ET session (cf. _legendeCompleteAExporter).
+          // Avant, la case restait grisée à 0 pour quiconque avait créé ses
+          // types depuis ≡ Légende, c'est-à-dire tout le monde sur le terrain.
+          const hasCustomLegend = !!_legendeCompleteAExporter();
           return row("kmz_inc_legend",
                      t("export.kmz.legend"),
                      hasCustomLegend ? 1 : 0,
@@ -3976,9 +4038,8 @@
         planCustomLegend: (function() {
           const inclLegend = !!document.getElementById("kmz_inc_legend")?.checked;
           if (!inclLegend) return null;
-          const cl = window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend;
-          if (!cl || typeof cl !== "object") return null;
-          return cl;
+          // F12 : plan + session fusionnes (la session prime, comme a l ecran).
+          return _legendeCompleteAExporter();
         })()
       });
 
@@ -4036,11 +4097,9 @@
         // <extensions><myktamap:customLegend> sous <metadata> GPX standard.
         // Ignoré par les apps tierces (TopoDroid, OsmAnd…), parsé par gpxIO.
         (function() {
-          const cl = window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend;
-          const has = !!(cl && typeof cl === "object" &&
-            ((cl.labels && Object.keys(cl.labels).length) ||
-             (cl.hidden && (Array.isArray(cl.hidden) ? cl.hidden.length : Object.keys(cl.hidden).length)) ||
-             (Array.isArray(cl.customEntries) && cl.customEntries.length)));
+          // F12 : la case ne doit plus etre grisee quand la legende vient de
+          // la SESSION (cas de tout utilisateur terrain).
+          const has = !!_legendeCompleteAExporter();
           return '<label class="kta-ses-cb-row" style="' + (has ? "" : "opacity:0.5;") + '">' +
             '<input type="checkbox" id="gpx_legend" ' + (has ? "checked" : "disabled") + '>' +
             '<span>' + t("export.gpx.legend") + ' ' +
@@ -4105,9 +4164,8 @@
         // Skip si checkbox décochée OU si pas de customLegend dans le plan.
         planCustomLegend: (function() {
           if (!incLegend) return null;
-          const cl = window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend;
-          if (!cl || typeof cl !== "object") return null;
-          return cl;
+          // F12 : plan + session fusionnes (la session prime, comme a l ecran).
+          return _legendeCompleteAExporter();
         })()
       });
       if (!r.ok) {

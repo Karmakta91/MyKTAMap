@@ -1927,6 +1927,7 @@
   "legend.editor.resetConfirm": "¿Borrar todas tus modificaciones de sesión sobre la leyenda?\n\n(vuelven las etiquetas por defecto del mapa; lo definido en el plan-config sigue activo)",
   "legend.editor.resetTitle": "Restaura las etiquetas por defecto",
   "legend.editor.rmCustomTitle": "Eliminar esta entrada personalizada",
+  "legend.editor.rmUsedConfirm": "⚠️ «{nom}» está siendo usado por {total} objeto(s) dibujado(s), incluidos {calques} en capas de datos.\n\n¿Eliminar de todos modos? Esos objetos perderán su nombre y su color (valor genérico), sin vuelta atrás.",
   "legend.editor.srcDefault": "Etiqueta por defecto MKM",
   "legend.editor.srcPlan": "Definido por el mapa",
   "legend.editor.srcSession": "Modificación de tu sesión",
