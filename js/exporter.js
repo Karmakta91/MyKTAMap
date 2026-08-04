@@ -1189,6 +1189,11 @@
           lineWrap.style.display = "none";
           fillWrap.style.display = "block";
           document.getElementById("kta-legend-add-fill-on").checked = true;
+          // 🐛 v1.76.0 — décocher le trait, pas seulement le masquer (sinon
+          // contour vert fluo #00ff00 sur toute zone custom). Correctif
+          // identique dans legendCustomization.js — cette dialog en est un
+          // clone intégral, cf. la dette notée dans docs/BACKLOG.md.
+          document.getElementById("kta-legend-add-line-on").checked = false;
         } else {
           // structures
           // 🐛 v1.16.0 step2-drawable-fix : pour polygone, on cache le
@@ -1203,6 +1208,9 @@
             lineWrap.style.display = "none";
             fillWrap.style.display = "block";
             document.getElementById("kta-legend-add-fill-on").checked = true;
+            // 🐛 v1.76.0 — idem : sans ce décochage, un pilier/mur custom
+            // naissait avec une bordure verte au lieu du noir des built-in.
+            document.getElementById("kta-legend-add-line-on").checked = false;
           }
         }
       }

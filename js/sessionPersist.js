@@ -784,6 +784,22 @@
       return null;
     }
 
+    // 🐛 v1.76.0 — RESET DE LA LÉGENDE AVANT TOUTE RESTAURATION.
+    // `LegendCustomization._sessionState` n'était réinitialisé NULLE PART au
+    // changement de plan : `loadSessionState` n'était appelé que depuis
+    // `_applyRestore`, donc uniquement quand un slot existait ET que le
+    // `nameMatch` passait. Charger un plan jamais visité laissait donc en place
+    // les types custom du plan PRÉCÉDENT — affichés dans ≡ Légende, proposés au
+    // dessin dans la sidebar, puis écrits dans le slot du nouveau plan au
+    // premier poll d'auto-save. La légende d'un plan contaminait le suivant.
+    // On repart d'un état vide : soit `_applyRestore` recharge juste après la
+    // vraie légende du plan, soit il n'y en a pas et l'état vide est correct.
+    // (`_planState`, lui, vient de `loadPlanState()` et n'est pas concerné.)
+    if (window.LegendCustomization && typeof window.LegendCustomization.loadSessionState === "function") {
+      try { window.LegendCustomization.loadSessionState(null); }
+      catch(e) { console.warn("[SessionPersist] reset légende échec :", e); }
+    }
+
     const saved = getSaved();  // lit le slot du plan courant
     let restored = null;
     if (saved) {

@@ -10,10 +10,14 @@
 // =====================================================================
 // ÉTAT DE LA MIGRATION (une vague = un lot de consommateurs)
 //   ✅ vague 1 — CARTE : road.js · zones.js · structures.js
-//   ⬜ vague 2 — EXPORTS IMAGE : exporter.js · utils.js
+//   ✅ vague 2 — EXPORTS IMAGE : exporter.js · utils.js
 //   ⬜ vague 3 — KMZ / GPX : kmzExport.js · gpxIO.js
 //   ⬜ vague 4 — RESTE : interfaceLegende.js · statsGlobales.js ·
-//                secoursMode.js · interfaceDistanceTotale.js
+//                interfaceDistanceTotale.js · refonteInterface.js ·
+//                sessionReport.js (ces deux derniers oublies du recensement
+//                initial ; sessionReport porte meme une 5e palette hors charte)
+// ⚠️ secoursMode.js etait liste ici a tort : ses traces sont colories par
+//    COULEUR D'EQUIPE, pas par type. Il n'a rien a migrer.
 // Tant que des tables subsistent, `scripts/check-style-canon.js` (bloquant)
 // vérifie qu'elles ne dérivent pas de la table ci-dessous.
 // =====================================================================

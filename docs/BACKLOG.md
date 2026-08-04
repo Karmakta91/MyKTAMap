@@ -109,13 +109,68 @@ Origine : `#7a0000`/`0.65` avait été relevé sur les tables d'**export** (qui 
 - `check-style-resolver.js` : 21 → **30 cas**.
 - `index.html` : `styleResolver.js` remonté **avant** ses consommateurs — il était chargé après, et son commentaire affirmait le contraire.
 
+#### 🟢 Vague 2 — LIVRÉE (04/08) — les exports image
+`exporter.js` (5 tables) et `utils.js` (6 tables) ne déclarent plus aucun style. **64 déclarations en moins** (91 → 27 confrontations).
+
+- ✅ **Bug 1 corrigé** — `ZS_EMBED` n'avait pas `inaccessible`, et le repli `|| ZS_EMBED.remblais` rendait l'oubli invisible.
+- ✅ **Bug non répertorié, trouvé pendant la migration** — les 3 tables des **data layers** de `utils.js` n'interrogeaient **pas** `LegendCustomization` : un tracé custom embarqué sortait **blanc**, une zone custom **gris remblais**, une structure custom **bleu mur**, et une structure custom *polyline* était traitée en **polygone** (min. 3 points). Le même objet dessiné en session s'affichait pourtant correctement.
+- Deux helpers, parce que les cibles diffèrent : `_ktaStyleMap` (Leaflet, peint le motif SVG) et `_ktaStyleCanvas` (`{ flat: true }`).
+
 #### 🔜 Vagues suivantes
-2. **Exports image** — `exporter.js` + `utils.js` → **corrige le bug 1**
 3. **KMZ / GPX** — `kmzExport.js`, `gpxIO.js` → **corrige le bug 2**
-4. **Reste** — `interfaceLegende.js`, `statsGlobales.js`, `secoursMode.js`, `interfaceDistanceTotale.js`
+4. **Reste** — `interfaceLegende.js`, `statsGlobales.js`, `interfaceDistanceTotale.js`, **+ `refonteInterface.js` et `sessionReport.js`** (oubliés du recensement initial, cf. §2bis)
 5. **Alors seulement l'override couleur** : une entrée dans le résolveur, qui atteint tout le monde par construction
 
-⚠️ **Toujours non vérifiés** : `createConf.js`, `tableEditor.js` — à contrôler avant de clore.
+⚠️ **Correction d'inventaire** : `secoursMode.js` n'a **rien à migrer** — ses tracés sont coloriés par **couleur d'équipe**, pas par type. Il était listé à tort en vague 4 ici et dans l'en-tête de `styleResolver.js`.
+
+---
+
+### 2bis. 🔍 Audit Légende (04/08) — le round-trip est cassé
+
+**Question KARMA** : « je crée un type custom, je dessine, j'exporte en calque de données, je régénère un plan avec — quel comportement ? dois-je ré-importer la légende ? »
+
+**Réponse : la définition de légende ne voyage pas, et AUCUN chemin d'UI ne permet de la ré-importer.**
+
+L'**id** (`cust-XXXX`) est bien sérialisé sur chaque objet, mais le payload `devmap-data` n'a aucun champ `customLegend` ([`sessionExporter.js:2553`](../js/sessionExporter.js#L2553)), et [`createConf.js:2091`](../js/createConf.js#L2091) ne le lirait pas même s'il y était. À l'ouverture du plan régénéré : tracé custom → **blanc**, zone custom → **gris remblais**, structure custom → **bleu mur** (et un *front* custom se referme en polygone plein). **Aucune ligne n'apparaît dans ≡ Légende** — le panneau ne liste que `customEntries`, il ne scanne jamais les objets dessinés.
+
+Chemins de réparation évalués, tous impraticables : l'import de session ramène la légende mais **duplique tous les objets** · recréer l'entrée à la main génère un **nouvel id** (aucun champ ne permet de saisir un id existant) · l'option « Légende personnalisée du plan » des KMZ/GPX lit `PLAN_CONFIG.customLegend`, jamais la session. Seule solution réelle : éditer `plan-config.json` à la main dans le ZIP.
+
+#### 🟢 Correctifs livrés (04/08)
+
+| | Symptôme | Fichier |
+|---|---|---|
+| ✅ **F1** | Granularité **fine** : tous les objets de type custom étaient **supprimés de l'export**, sans un log. `_trierParType` les rangeait dans `out.autres`, jamais écrit dans aucun fichier. *(3ᵉ occurrence du défaut : `jonction` l'avait déjà subi, corrigé en v169.)* | `sessionExporter.js` — déversoir `_emettreTypesRestants`, 1 fichier par type restant |
+| ✅ **F4** | `gpxIO.js` convertissait **tout type custom en `chemin`** à l'import — perte de donnée, pas seulement de couleur. `gpxImport.js` (générateur) avait reçu ce correctif en v1.21.1, ce lecteur-ci avait été oublié | `gpxIO.js:511` |
+| ✅ **F5** | La légende **fuyait d'un plan à l'autre** : `loadSessionState` n'était appelé que si un slot de session existait. Plan jamais visité → les types custom du plan précédent restaient affichés, dessinables, puis écrits dans le slot du nouveau plan | `sessionPersist.js` — reset avant restauration |
+| ✅ **F9** | **Toute zone custom naissait avec un contour vert fluo** `#00ff00` : la case « trait » est `checked` dans le HTML, la branche `zones` la masquait sans la **décocher** → `lineColor` prenait la valeur par défaut d'un color picker jamais affiché, puis était promue en `borderColor`. Idem pilier/mur custom (vert au lieu de noir) | `legendCustomization.js` + son **clone** dans `exporter.js` |
+
+#### 🔴 Ouvert — le round-trip lui-même
+
+- **F2** — l'export « calque de données » n'embarque pas la définition de légende. *Piste : ajouter `customLegend: <sous-ensemble des entrées réellement référencées>` au payload `devmap-data`.*
+- **F3** — `_importerDatalayerZip` ignore `customLegend` même présent. *Piste : le fusionner dans `_plannerPlanLegend`.*
+- ⚠️ **Topo requis avant de coder** : que faire en cas de **conflit d'id** entre la légende importée et celle du plan — fusion, remplacement, ou renommage ?
+
+#### 🟠 Ouvert — gênant
+
+- **F6** — **décision produit en attente de KARMA.** `isVisible()` n'a que 2 lecteurs dans tout le repo (`interfaceLegende.js`, `exporter.js`). Masquer un type le retire de la **boîte de légende** mais il **reste dessiné sur la carte et dans le PNG** → l'export se contredit lui-même. Trancher : soit `isVisible` filtre aussi le rendu, soit l'option se renomme « masquer de la légende ».
+- **F7** — masquer un **custom** le retire du flyout sidebar (on ne peut plus le dessiner) ; masquer un **built-in** ne change rien. Deux comportements sous la même case.
+- **F8** — supprimer un type custom utilisé : aucun décompte, aucune confirmation, orphelins instantanés.
+- **F10** — les entrées custom de catégorie **`icones`** sont affichées dans la légende mais **aucun groupe de sidebar** ne les propose → inutilisables.
+- **F11** — le filtre 🔍 affiche l'**id brut** `cust-m2k9x-3fa` au lieu du libellé (`filterPanel.js` est le seul à ne pas passer par `findCustomEntry`).
+- **F12** — l'option « Légende personnalisée du plan » (KMZ/GPX) est **grisée à 0** pour un usage terrain : elle lit `PLAN_CONFIG.customLegend`, jamais la session.
+- **F13** — le ZIP de session « Avancé multi-fichiers » perd la légende ; le JSON single la porte.
+- **F14** — la **distance totale** ignore les customs (`_RD_TYPES_TOUS` hardcodé) → un plan tracé entièrement en custom affiche **0 m**.
+
+#### ⚪ Dette
+
+- **F15/F16/F17** — 3 consommateurs oubliés du recensement des styles : camemberts de stats (couleur par **hash**, sans rapport avec la carte), barres de `refonteInterface.js` (customs en gris), et **`sessionReport.js` qui porte une 5ᵉ palette hors charte** en ternaires (`principal` en `#6ce28a` au lieu de `#00ff00`) — invisible pour `check-style-canon` puisque ce ne sont pas des tables.
+- **F19** — la dialog « ajouter une entrée » existe **en double**, dupliquée à l'identique (`legendCustomization.js` et `exporter.js`). F9 a dû être corrigé deux fois. *Piste : exposer `_ouvrirAddDialog`.*
+- **F20** — `tableEditor.js` : la colonne `type` est un **champ texte libre**, sans validation ni liste. Une faute de frappe crée un orphelin indétectable. *(Trou du BACKLOG comblé : rien de cassé, rien de protégé.)*
+- **F21** — les id `cust-<ts36>-<rnd36>` sont **probabilistes**, pas structurellement uniques. L'affirmation « pas de collision inter-appareils » d'une version antérieure de ce fichier était trop forte. En cas de collision, `listCustomEntries` **ne déduplique pas** → deux lignes de légende et deux boutons identiques.
+- **F22** — `hidden` est tantôt objet, tantôt tableau : `_normalize` accepte un tableau (tous les lookups renvoient alors `undefined` en silence) pendant que `createConf.js` teste `Array.isArray` à 3 endroits.
+- **F23** — **cause racine commune de F2/F3/F8** : rien ne relie jamais les objets dessinés aux entrées de légende. Un simple avertissement « N objets référencent M types inconnus » dans ≡ Légende rendrait tout le problème visible au lieu de silencieux.
+
+> **Limites de l'audit** : lecture statique uniquement, aucune exécution runtime. `secoursMode.js` (9850 lignes) lu par grep ciblé. `homeLoader.js` non parcouru — si un reset de légende s'y cachait, F5 tomberait. F1, F5 et F9 ont été **revérifiés à la main** ; F1 a en plus été **exécuté** sur données synthétiques (6/6 objets écrits, types distincts non fusionnés).
 
 ---
 

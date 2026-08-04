@@ -804,6 +804,13 @@ window.LegendCustomization = (function() {
           lineWrap.style.display = "none";
           fillWrap.style.display = "block";
           document.getElementById("kta-lc-add-fill-on").checked = true;
+          // 🐛 v1.76.0 — DÉCOCHER le trait, pas seulement le masquer. La case
+          // est `checked` dans le HTML ; la cacher ne la décoche pas, donc
+          // `lineOn` restait vrai et `lineColor` prenait la valeur par défaut
+          // du color picker jamais affiché (#00ff00). `addCustomEntry` la
+          // promouvait ensuite en `borderColor` → TOUTE zone custom naissait
+          // avec un contour VERT FLUO que l'utilisateur n'avait pas choisi.
+          document.getElementById("kta-lc-add-line-on").checked = false;
         } else {
           // structures → afficher le sélecteur de géométrie + ajuster
           // les champs de couleur selon le choix.
@@ -826,6 +833,10 @@ window.LegendCustomization = (function() {
             lineWrap.style.display = "none";
             fillWrap.style.display = "block";
             document.getElementById("kta-lc-add-fill-on").checked = true;
+            // 🐛 v1.76.0 — même correctif que pour les zones : sans ce
+            // décochage, un pilier/mur custom naissait avec une bordure verte
+            // fluo au lieu du noir des piliers built-in.
+            document.getElementById("kta-lc-add-line-on").checked = false;
           }
         }
       }

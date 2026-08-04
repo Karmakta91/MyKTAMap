@@ -502,8 +502,16 @@
           // Map type GPX → type road MyKTAMap (si reconnu).
           // v1.15.0 — ajout de "jonction" pour roundtrip complet (sans ça,
           // un tracé jonction exporté revenait en chemin à l'import).
+          // 🐛 v1.76.0 — les types CUSTOM (`cust-…`) étaient rejetés ici et
+          // TOUS convertis en "chemin" : perte de donnée silencieuse, pas
+          // seulement de couleur. `gpxImport.js` (le lecteur du générateur)
+          // avait reçu ce même correctif en v1.21.1 ; ce lecteur-ci a été
+          // oublié. Deux importeurs GPX, deux comportements sur le même
+          // fichier — c'est cette asymétrie qu'on supprime.
           const validTypes = ["principal", "secondaire", "chemin", "itinerary", "jonction"];
-          const type = (trk.type && validTypes.indexOf(trk.type) >= 0) ? trk.type : "chemin";
+          const type = (trk.type &&
+                        (validTypes.indexOf(trk.type) >= 0 || String(trk.type).indexOf("cust-") === 0))
+                         ? trk.type : "chemin";
           nouveauxTraces.push({
             id:          "gpx_trk_" + Date.now() + "_" + nouveauxTraces.length,
             type:        type,

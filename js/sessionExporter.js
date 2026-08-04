@@ -544,6 +544,39 @@
     return out;
   }
 
+  // 🐛 v1.76.0 — DÉVERSOIR DU BUCKET `autres`.
+  // `_trierParType` range tout type non built-in dans `out.autres`, et les
+  // appelants n'itéraient QUE sur `validTypes` : le bucket n'était écrit dans
+  // aucun fichier. Conséquence mesurée : en granularité « fine », TOUS les
+  // objets d'un type CUSTOM disparaissaient de l'export de calque de données,
+  // sans un log ni un avertissement. C'est le même défaut qui avait déjà
+  // effacé les `jonction` (corrigé en v169) — en pire, parce qu'un type custom
+  // est une création de l'utilisateur, pas un built-in qu'on peut redessiner.
+  //
+  // On émet un fichier par type restant, comme pour les built-in : la
+  // granularité fine tient enfin sa promesse. Le groupement se fait sur le
+  // type BRUT (deux types distincts ne doivent jamais fusionner) ; seul le nom
+  // de fichier est assaini.
+  function _emettreTypesRestants(items, prefixe, cleTableau, files) {
+    if (!items || !items.length) return;
+    const parType = new Map();
+    items.forEach(function(it) {
+      const t = String(it.type || "inconnu");
+      if (!parType.has(t)) parType.set(t, []);
+      parType.get(t).push(it);
+    });
+    let n = 0;
+    parType.forEach(function(liste, type) {
+      const nomSur = type.replace(/[^A-Za-z0-9_-]/g, "_");
+      const payload = { data: [] };
+      payload[cleTableau] = liste;
+      files.push({ name: prefixe + "_" + nomSur + ".json", payload: payload });
+      n += liste.length;
+    });
+    console.log("[SessionExport] granularité fine — " + n + " objet(s) de " + parType.size +
+                " type(s) hors built-in émis dans " + prefixe + "_*.json");
+  }
+
   // Liste tous les tags présents dans les points avec leur compte.
   // Un point peut avoir plusieurs tags → il sera compté dans chacun.
   // Cas spécial : points sans tag → catégorie "(sans tag)".
@@ -2436,6 +2469,7 @@
             files.push({ name: "roads_" + t + ".json", payload: { data: [], roads: byType[t] } });
           }
         });
+        _emettreTypesRestants(byType.autres, "roads", "roads", files);
       }
 
       if (filteredZones.length) {
@@ -2445,6 +2479,7 @@
             files.push({ name: "zones_" + t + ".json", payload: { data: [], zones: byType[t] } });
           }
         });
+        _emettreTypesRestants(byType.autres, "zones", "zones", files);
       }
 
       // 🆕 v1.9.3-A1.a : structures en granularité fine, 1 fichier par
@@ -2458,6 +2493,7 @@
             files.push({ name: "structures_" + t + ".json", payload: { data: [], structures: byType[t] } });
           }
         });
+        _emettreTypesRestants(byType.autres, "structures", "structures", files);
       }
 
       _telechargerConversionFiles(files, photos);
