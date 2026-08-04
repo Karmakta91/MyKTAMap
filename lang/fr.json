@@ -1922,6 +1922,7 @@
   "legend.editor.add": "➕ Ajouter une entrée",
   "legend.editor.done": "✅ Terminer",
   "legend.editor.intro": "Renomme les libellés, masque les entrées que tu n'utilises pas, ou ajoute des entrées custom. Les modifications sont sauvegardées automatiquement dans ta session.",
+  "legend.editor.hintVisibilite": "👁️ La case cochée affiche l'entrée dans la boîte de légende. Elle ne masque rien sur la carte : pour ça, utilise 🔍 Filtres.",
   "legend.editor.reset": "🔄 Reset session",
   "legend.editor.colorResetTitle": "Remettre la couleur d'origine",
   "legend.editor.colorTitle": "Changer la couleur de ce type",

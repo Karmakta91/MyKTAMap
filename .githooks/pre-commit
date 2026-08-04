@@ -56,3 +56,10 @@ node scripts/check-style-resolver.js || exit $?
 # types custom recoivent bien un <Style> (bug 2 : styleUrl pendant = couleur
 # perdue). BLOQUANT.
 node scripts/check-kml-styles.js || exit $?
+
+# 🔁 v1.76.0 — Round-trip de la legende : type custom -> calque de donnees ->
+# plan regenere. Avant, seul l'ID du type voyageait et les objets ressortaient
+# blancs/gris, sans aucune ligne de legende ni moyen de reparer. Verrouille
+# aussi l'idempotence du re-import et la regle de conflit (le plan gagne).
+# BLOQUANT.
+node scripts/check-legend-roundtrip.js || exit $?

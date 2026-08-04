@@ -2576,6 +2576,65 @@
   // photos dans le ZIP de conversion. Format identique au session ZIP
   // (B1.d.α) → photos/_index.json + photos/<photoId>.<ext>. Permet au
   // re-import data→session de reconnecter les photos automatiquement.
+  // 🐛 v1.76.0 (F2) — LA LÉGENDE VOYAGE AVEC LE CALQUE.
+  // Jusqu'ici seul l'ID du type partait (`cust-abc123`), jamais sa DÉFINITION.
+  // Conséquence : on régénérait un plan avec le calque, on l'ouvrait, et les
+  // tracés custom sortaient en BLANC, les zones en gris remblais, les
+  // structures en bleu mur — sans même une ligne dans ≡ Légende, puisque le
+  // panneau ne liste que les entrées connues et ne regarde jamais les objets
+  // dessinés. Aucun chemin d'UI ne permettait de réparer.
+  //
+  // On n'embarque QUE ce que le fichier référence réellement : un calque de
+  // 3 tracés ne doit pas traîner les 40 entrées de légende de la session.
+  function _legendePourPayload(payload) {
+    const LC = window.LegendCustomization;
+    if (!LC || typeof LC.getSessionState !== "function") return null;
+    let etat;
+    try { etat = LC.getSessionState(); } catch(e) { return null; }
+    if (!etat) return null;
+
+    // Types réellement présents, par catégorie de légende.
+    const parCat = { traces: new Set(), zones: new Set(), structures: new Set() };
+    (payload.roads      || []).forEach(function(o) { if (o && o.type) parCat.traces.add(o.type); });
+    (payload.zones      || []).forEach(function(o) { if (o && o.type) parCat.zones.add(o.type); });
+    (payload.structures || []).forEach(function(o) { if (o && o.type) parCat.structures.add(o.type); });
+
+    const idsUtilises = new Set();
+    Object.keys(parCat).forEach(function(cat) {
+      parCat[cat].forEach(function(tp) { if (String(tp).indexOf("cust-") === 0) idsUtilises.add(tp); });
+    });
+
+    // Les entrées CUSTOM référencées, avec leur définition complète.
+    const customEntries = (etat.customEntries || []).filter(function(e) {
+      return e && idsUtilises.has(e.id);
+    });
+
+    // Les personnalisations de types BUILT-IN présents (libellé renommé,
+    // couleur choisie, masquage). Restreintes aux types du fichier.
+    function _sousEnsemble(map) {
+      const out = {};
+      Object.keys(map || {}).forEach(function(k) {
+        const sep = k.indexOf(".");
+        if (sep < 0) return;
+        const cat = k.slice(0, sep), tp = k.slice(sep + 1);
+        if (parCat[cat] && parCat[cat].has(tp)) out[k] = map[k];
+      });
+      return out;
+    }
+    const labels = _sousEnsemble(etat.labels);
+    const hidden = _sousEnsemble(etat.hidden);
+    const colors = _sousEnsemble(etat.colors);
+
+    if (!customEntries.length && !Object.keys(labels).length &&
+        !Object.keys(hidden).length && !Object.keys(colors).length) return null;
+
+    return {
+      schemaVersion: etat.schemaVersion,
+      labels: labels, hidden: hidden, colors: colors,
+      customEntries: customEntries
+    };
+  }
+
   function _telechargerConversionFiles(files, photos) {
     if (files.length === 0) {
       alert(t("export.err.convRien"));
@@ -2584,10 +2643,22 @@
     const now = new Date().toISOString();
     const hasPhotos = Array.isArray(photos) && photos.length > 0;
 
-    // Wrap en format devmap-data
+    // Wrap en format devmap-data + légende embarquée (F2).
+    // Par FICHIER et non une fois pour toutes : un data layer doit rester
+    // exploitable seul, sorti de son ZIP.
+    let nbAvecLegende = 0;
     files.forEach(function(f) {
-      f.payload = Object.assign({ type: "devmap-data", version: "1.0", date_export: now }, f.payload);
+      const leg = _legendePourPayload(f.payload);
+      if (leg) nbAvecLegende++;
+      f.payload = Object.assign(
+        { type: "devmap-data", version: "1.0", date_export: now },
+        f.payload,
+        leg ? { customLegend: leg } : {}
+      );
     });
+    if (nbAvecLegende > 0) {
+      console.log("[SessionExport] légende embarquée dans " + nbAvecLegende + "/" + files.length + " fichier(s)");
+    }
 
     // Cas le plus simple : 1 seul fichier, pas de photos → JSON direct (rétrocompat)
     if (files.length === 1 && !hasPhotos) {

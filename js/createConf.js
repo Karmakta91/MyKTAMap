@@ -1273,6 +1273,59 @@ function _ouvrirEditeurLegendePlan() {
 // Normalise un state : retourne null si vide (zéro override), sinon objet
 // sérialisable propre. Évite d'écrire un customLegend tout vide dans le
 // plan-config.json (pollution inutile + cache PWA bumpé pour rien).
+// 🐛 v1.76.0 (F3) — Absorbe la légende embarquée dans un calque de données
+// importé, dans la légende du plan en cours de génération.
+//
+// RÈGLE DE CONFLIT : l'existant GAGNE, toujours. Une entrée déjà définie dans
+// le plan n'est jamais écrasée par celle d'un calque importé ; on ajoute
+// seulement ce qui manque. C'est le choix non destructif : réimporter deux
+// fois le même calque est sans effet, et un calque ne peut pas repeindre en
+// silence la légende que l'auteur du plan a construite. Ce qui est écarté est
+// journalisé — un conflit doit être visible, pas deviné.
+function _absorberLegendeCalque(legende) {
+  if (!legende || typeof legende !== "object") return;
+  const cible = _plannerPlanLegend && typeof _plannerPlanLegend === "object"
+                  ? _plannerPlanLegend
+                  : { labels: {}, hidden: {}, colors: {}, customEntries: [] };
+  ["labels", "hidden", "colors"].forEach(function(champ) {
+    if (!cible[champ] || typeof cible[champ] !== "object" || Array.isArray(cible[champ])) cible[champ] = {};
+  });
+  if (!Array.isArray(cible.customEntries)) cible.customEntries = [];
+
+  let ajoutes = 0, ignores = 0;
+  ["labels", "hidden", "colors"].forEach(function(champ) {
+    const src = legende[champ];
+    if (!src || typeof src !== "object" || Array.isArray(src)) return;
+    Object.keys(src).forEach(function(k) {
+      if (Object.prototype.hasOwnProperty.call(cible[champ], k)) { ignores++; return; }
+      cible[champ][k] = src[k];
+      ajoutes++;
+    });
+  });
+
+  const idsPresents = new Set(cible.customEntries.map(function(e) { return e && e.id; }));
+  (Array.isArray(legende.customEntries) ? legende.customEntries : []).forEach(function(e) {
+    if (!e || !e.id) return;
+    if (idsPresents.has(e.id)) { ignores++; return; }
+    idsPresents.add(e.id);
+    cible.customEntries.push(e);
+    ajoutes++;
+  });
+
+  if (ajoutes > 0 || ignores > 0) {
+    console.log("[Planner Import ZIP] légende du calque : " + ajoutes + " élément(s) repris, " +
+                ignores + " ignoré(s) (déjà définis dans le plan — l'existant prime).");
+  }
+  if (ajoutes > 0) {
+    _plannerPlanLegend = _plannerLegendStateNormalize(cible);
+    // La section « 🏷️ Légende du plan » doit refléter tout de suite qu'elle
+    // n'est plus vide, sinon l'utilisateur croit que rien n'a été repris.
+    if (typeof _plannerLegendStatus === "function") {
+      try { _plannerLegendStatus(); } catch(e) {}
+    }
+  }
+}
+
 function _plannerLegendStateNormalize(state) {
   if (!state || typeof state !== "object") return null;
   const labels  = state.labels        || {};
@@ -2105,6 +2158,11 @@ function _importerDatalayerZip(zipFile) {
         if (Array.isArray(json.roads))      merged.roads      = merged.roads.concat(json.roads);
         if (Array.isArray(json.zones))      merged.zones      = merged.zones.concat(json.zones);
         if (Array.isArray(json.structures)) merged.structures = merged.structures.concat(json.structures);
+        // 🐛 v1.76.0 (F3) — la légende embarquée dans le calque est ENFIN lue.
+        // Sans ça, même un fichier qui la portait la voyait jetée ici, et les
+        // objets custom du calque devenaient des orphelins sans nom ni couleur
+        // dans le plan régénéré.
+        if (json.customLegend) _absorberLegendeCalque(json.customLegend);
       });
 
       const total = merged.data.length + merged.roads.length + merged.zones.length + merged.structures.length;

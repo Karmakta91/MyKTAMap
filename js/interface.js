@@ -1556,7 +1556,15 @@ function _ouvrirFlyout(groupId) {
                         : (grp.sousActionsConfig || []).slice();
   const allActions  = baseActions.slice();
   if (window.LegendCustomization && grp.lcCat && typeof window.LegendCustomization.listCustomEntries === "function") {
-    const customs = window.LegendCustomization.listCustomEntries(grp.lcCat).filter(function(e) { return e.visible; });
+    // 🎨 v1.76.0 (F6) — le filtre `.filter(e => e.visible)` est retiré.
+    // La case de l'éditeur de légende ne masque QUE la boîte de légende ;
+    // ici elle retirait en plus le bouton de la sidebar, donc on ne pouvait
+    // plus dessiner ce type. Deux comportements différents sous la même case,
+    // selon qu'un type était built-in (aucun effet sur le dessin) ou custom
+    // (plus dessinable). Les deux familles s'alignent : masquer de la légende
+    // n'empêche jamais de dessiner. Pour retirer un type de la CARTE, c'est
+    // 🔍 Filtres.
+    const customs = window.LegendCustomization.listCustomEntries(grp.lcCat);
     if (customs.length > 0) {
       const firstNonTypeIdx = allActions.findIndex(function(a) { return !a.isTypeAction; });
       const insertIdx = firstNonTypeIdx >= 0 ? firstNonTypeIdx : allActions.length;
@@ -3287,8 +3295,12 @@ _setGroupeModeActif("tracker", isTracking, null);
         : grp.subActions.length;
 
       // 3) Construit les nouveaux boutons depuis LC.listCustomEntries.
-      //    Filtre les invisibles.
-      const customs = LC.listCustomEntries(m.lcCat).filter(function(e) { return e.visible; });
+      // 🎨 v1.76.0 (F6) — plus de filtre sur `visible` : masquer un type le
+      // retire de la BOÎTE de légende, jamais de la sidebar. Ce site est le
+      // jumeau dynamique de celui de `_construireFlyout` ; les deux DOIVENT
+      // rester d'accord, sinon la sidebar change de contenu entre sa
+      // construction initiale et son premier rafraîchissement.
+      const customs = LC.listCustomEntries(m.lcCat);
       customs.forEach(function(e, i) {
         // 🐛 v1.16.0 step2-drawable-fix : geometry first pour le swatch.
         const isLine = (e.geometry === "polyline") || (!e.geometry && e.lineColor && !e.fillColor);

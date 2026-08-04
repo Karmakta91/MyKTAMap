@@ -1920,6 +1920,7 @@
   "legend.editor.add": "➕ Añadir una entrada",
   "legend.editor.done": "✅ Finalizar",
   "legend.editor.intro": "Renombra las etiquetas, oculta las entradas que no uses, o añade entradas personalizadas. Los cambios se guardan automáticamente en tu sesión.",
+  "legend.editor.hintVisibilite": "👁️ La casilla muestra la entrada en el cuadro de leyenda. No oculta nada en el mapa: para eso usa 🔍 Filtros.",
   "legend.editor.reset": "🔄 Restablecer sesión",
   "legend.editor.colorResetTitle": "Restaurar el color original",
   "legend.editor.colorTitle": "Cambiar el color de este tipo",

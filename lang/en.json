@@ -1922,6 +1922,7 @@
   "legend.editor.add": "➕ Add an entry",
   "legend.editor.done": "✅ Done",
   "legend.editor.intro": "Rename labels, hide entries you don't use, or add custom entries. Changes are saved automatically in your session.",
+  "legend.editor.hintVisibilite": "👁️ The checkbox shows the entry in the legend box. It hides nothing on the map: use 🔍 Filters for that.",
   "legend.editor.reset": "🔄 Reset session",
   "legend.editor.colorResetTitle": "Restore the original colour",
   "legend.editor.colorTitle": "Change the colour of this type",

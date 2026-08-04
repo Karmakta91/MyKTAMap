@@ -592,6 +592,15 @@ window.LegendCustomization = (function() {
           '<p style="font-size:12px; color:#8892a4; margin:0 0 12px 0; line-height:1.5;">' +
             window.I18n.t("legend.editor.intro") +
           '</p>' +
+          // 🎨 v1.76.0 (F6) — lève l'ambiguïté historique de la case à cocher.
+          // Elle n'a JAMAIS masqué quoi que ce soit de la carte : elle ne
+          // retire l'entrée que de la BOÎTE de légende. Le masquage carte
+          // existe déjà, dans 🔍 Filtres — étendre celle-ci au rendu aurait
+          // créé deux contrôles concurrents sur la même chose. On l'explique
+          // au lieu de la changer.
+          '<p style="font-size:12px; color:#8892a4; margin:0 0 12px 0; line-height:1.5;">' +
+            window.I18n.t("legend.editor.hintVisibilite") +
+          '</p>' +
           '<div id="kta-legend-editor-list"></div>' +
         '</div>' +
         '<div style="padding:12px 16px; border-top:1px solid rgba(255,255,255,0.08); display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between;">' +
