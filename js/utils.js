@@ -1415,18 +1415,44 @@ function normaliserPoints(json) {
   return [];
 }
 
-// smoothFactor 2.5 : Leaflet simplifie en interne via Douglas-Peucker.
-// Reduit le nombre de points dessines au pan/zoom (gain perf significatif
-// sur les plans avec beaucoup de routes embedded), perte visuelle quasi
-// imperceptible aux niveaux de zoom usuels. Cf. ROAD_STYLES de road.js.
-const ROAD_STYLES_DATA = {
-  principal:  { color: "#00ff00", weight: 5, opacity: 1, smoothFactor: 2.5 },
-  secondaire: { color: "#b000ff", weight: 5, opacity: 1, smoothFactor: 2.5 },
-  chemin:     { color: "#ffff00", weight: 5, opacity: 1, smoothFactor: 2.5 },
-  // 🪜 v1.7.1 fix : entrée jonction manquante → fallback blanc bug. Style
-  // canonique cohérent avec road.js > ROAD_STYLES.jonction (magenta pointillé).
-  jonction:   { color: "#ff4ecb", weight: 5, opacity: 1, dashArray: "10 6", smoothFactor: 2.0 }
-};
+// =====================================================================
+// 🎨 v1.76.0 — STYLES : ce fichier n'en déclare plus aucun
+// =====================================================================
+// Il en portait SIX tables (3 pour les data layers Leaflet, 3 pour les pipes
+// canvas d'export), soit trois copies de chaque type built-in. Elles viennent
+// désormais de `js/styleResolver.js`.
+//
+// ⚠️ Effet de bord VOULU, et c'est une correction de bug : les tables des DATA
+// LAYERS n'interrogeaient PAS `LegendCustomization`. Un tracé d'un type custom
+// embarqué dans un calque de données ressortait donc en BLANC, une zone custom
+// en gris remblais, une structure custom en bleu mur — alors que le même objet
+// dessiné en session s'affichait bien. Passer par le résolveur aligne les deux
+// (à condition que l'entrée de légende soit présente ; sinon, repli inchangé).
+//
+// Deux helpers, parce que les deux cibles de rendu ne se valent pas :
+//   • carte Leaflet → le motif SVG de `inaccessible` est peint tel quel ;
+//   • canvas d'export → il ne sait pas peindre un `url(#pattern)`, d'où
+//     { flat: true } qui substitue l'aplat de repli déclaré pour le type.
+// `repli` = type utilisé si `type` est introuvable ; `null` pour ne rien rendre.
+
+function _ktaStyleMap(categorie, type, repli) {
+  const R = window.ktaResolveStyle;
+  if (typeof R !== "function") {
+    console.error("[Utils] window.ktaResolveStyle absent — styles indisponibles.");
+    return null;
+  }
+  return R(categorie, type) || (repli ? R(categorie, repli) : null);
+}
+
+function _ktaStyleCanvas(categorie, type, repli) {
+  const R = window.ktaResolveStyle;
+  if (typeof R !== "function") {
+    console.error("[Utils] window.ktaResolveStyle absent — styles indisponibles.");
+    return null;
+  }
+  return R(categorie, type, { flat: true }) ||
+         (repli ? R(categorie, repli, { flat: true }) : null);
+}
 
 // 🏗️ Multi-niveau (v148) : registres globaux de TOUS les objets Leaflet des
 // data layers pour appliquer le filtre runtime sans refetch. Vides a chaque
@@ -1900,7 +1926,7 @@ function ajouterPointsDepuisJSON(url, layer) {
         let _ktaEmbeddedRoadRegistered = false;
         roadsToRender.forEach(function(road) {
           if (!road.points || road.points.length < 2) return;
-          const style = ROAD_STYLES_DATA[road.type] || { color: "#ffffff", weight: 5, opacity: 1 };
+          const style = _ktaStyleMap("traces", road.type) || { color: "#ffffff", weight: 5, opacity: 1 };
           const latlngs = road.points.map(function(p) { return convertCoord(p.x, p.y); });
           // v1.16.0 step 1 — si une note (description) est embarquée dans le
           // data layer, on rend la polyline interactive pour binder un popup
@@ -2034,24 +2060,8 @@ function ajouterPointsDepuisJSON(url, layer) {
       // Tri Z-index : mur (arrière) → pilier 1ère masse → pilier 2e masse
       // (avant), cohérent avec le rendu session dans structures.js.
       if (Array.isArray(json.structures) && json.structures.length > 0) {
-        // Mêmes styles que dans structures.js > STRUCTURE_STYLES, dupliqués
-        // ici pour le data layer (lecture seule, interactive: false).
-        // Cohérent avec la duplication ZONE_STYLES ↔ ZONE_STYLES_DATA.
-        const STRUCTURE_STYLES_DATA = {
-          // 🟡 1ère masse : jaune (couleur charte MKM)
-          "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1 },
-          // 🟠 2e masse : orange
-          "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
-          // 🔵 Mur : bleu foncé
-          "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
-          // 🆕 v1.9.3-A1.b.2 : fronts de taille — POLYLINES épaisses sans
-          // contour.
-          // 🔧 v1.10.1-hotfix2 (KARMA "si orange = 2e masse, le front orange
-          // = 2e masse") : couleurs alignées sur les piliers (front-1 jaune
-          // comme pilier-1, front-2 orange comme pilier-2). Avant inversées.
-          "front-1":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true },
-          "front-2":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true }
-        };
+        // Styles resolus (lecture seule, interactive: false) — memes valeurs que
+        // le rendu session, plus aucune copie locale.
         // 🆕 v1.10.0-hotfix1 (KARMA "fronts au-dessus des piliers + logique
         // de niveau") : nouvel ordre Z mur < pilier-2 < pilier-1 < front-2 <
         // front-1 (fronts en avant-plan, plus visibles). En mode multi-niveau,
@@ -2075,10 +2085,10 @@ function ajouterPointsDepuisJSON(url, layer) {
         }
         structuresTriees.forEach(function(structure) {
           // 🆕 v1.9.3-A1.b.2 : min points dépend du type (2 pour polyline, 3 pour polygon)
-          const isPolyline = !!STRUCTURE_STYLES_DATA[structure.type]?.isPolyline;
+          const style = _ktaStyleMap("structures", structure.type, "mur");
+          const isPolyline = !!(style && style.isPolyline);
           const minPts = isPolyline ? 2 : 3;
           if (!structure.points || structure.points.length < minPts) return;
-          const style = STRUCTURE_STYLES_DATA[structure.type] || STRUCTURE_STYLES_DATA["mur"];
           const latlngs = structure.points.map(function(p) { return convertCoord(p.x, p.y); });
           // v1.16.0 step 1 + 1c — note readonly conditionnelle + ghost
           // transparent épais pour les polylines (fronts) si note présente.
@@ -2166,14 +2176,9 @@ function ajouterPointsDepuisJSON(url, layer) {
       // Zones embarquées en lecture seule dans le même layer
       // Tri : eau (arrière) → remblais → effondrement (avant)
       if (Array.isArray(json.zones) && json.zones.length > 0) {
-        const ZONE_STYLES_DATA = {
-          eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
-          remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
-          effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 },
-          // 🚫 v169 : zone inaccessible — pattern hachures rouge/noir 45° (id
-          // SVG defini dans index.html). Force renderer SVG (canvas ignore).
-          inaccessible: { color: "#5a0a0a", fillColor: "url(#kta-pattern-inaccessible)", fillOpacity: 1, weight: 3, opacity: 1 }
-        };
+        // 🚫 v169 : `inaccessible` est peinte au motif hachure 45° (pattern SVG
+        // declare dans index.html) — d'ou le renderer SVG force plus bas, un
+        // renderer canvas ignorerait le url(#...).
         const zonesTriees = [...json.zones].sort(function(a, b) {
           const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
           return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
@@ -2186,7 +2191,7 @@ function ajouterPointsDepuisJSON(url, layer) {
         }
         zonesTriees.forEach(function(zone) {
           if (!zone.points || zone.points.length < 3) return;
-          const style = ZONE_STYLES_DATA[zone.type] || ZONE_STYLES_DATA.remblais;
+          const style = _ktaStyleMap("zones", zone.type, "remblais");
           const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
           // v1.16.0 step 1 — note readonly conditionnelle (cf roads/structures ci-dessus)
           const hasNoteROZone = !!(zone.description && String(zone.description).trim());
@@ -2420,24 +2425,11 @@ async function telechargerPlan() {
     // ---------- couches JSON visibles ----------
     // Pour chaque calque : data[] (markers) + roads[] + zones[] embarqués
     // (cohérent avec ajouterPointsDepuisJSON qui les affiche à l'écran)
-    const ZONE_STYLES_EMBED = {
-      eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7,  weight: 3, opacity: 1 },
-      remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7,  weight: 3, opacity: 1 },
-      effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7,  weight: 3, opacity: 1 },
-      // v169 : zone inaccessible — rouge fonce uni pour l'export PNG (canvas
-      // ne supporte pas le pattern SVG inline ; on perd l'effet hachures mais
-      // la signification "zone interdite" reste claire visuellement)
-      inaccessible: { color: "#5a0a0a", fillColor: "#7a0000", fillOpacity: 0.65, weight: 3, opacity: 1 }
-    };
-    const ROAD_STYLES_EMBED = {
-      principal:   { color: "#00ff00", weight: 5, opacity: 1 },
-      secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },
-      chemin:      { color: "#ffff00", weight: 5, opacity: 1 },
-      // 🪜 v1.7.1 fix : entrée jonction manquante. Pas de dashArray dans canvas
-      // export (ctx.setLineDash requis). Ronds magenta aux extrémités gérés
-      // séparément ci-dessous comme pour les jonctions de session.
-      jonction:    { color: "#ff4ecb", weight: 5, opacity: 1 }
-    };
+    // v169 : `inaccessible` sort en rouge fonce uni — le canvas ne supporte pas
+    // le pattern SVG inline. On perd l'effet hachures, la signification "zone
+    // interdite" reste lisible. C'est ce que { flat: true } applique.
+    // Les jonctions n'ont pas de pointille ici (ctx.setLineDash serait requis) ;
+    // leurs extremites sont marquees par des ronds magenta plus bas.
 
     // Collecte des routes (embedded + editable) pour dessiner les cercles d'intersection à la fin
     const allRoadsForIntersect = [];
@@ -2483,7 +2475,7 @@ async function telechargerPlan() {
               return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
             }).forEach(function(z) {
               if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(z)) return;
-              drawPolygon(z.points || [], ZONE_STYLES_EMBED[z.type] || ZONE_STYLES_EMBED.remblais);
+              drawPolygon(z.points || [], _ktaStyleCanvas("zones", z.type, "remblais"));
               _diag.embZones++;
             });
           }
@@ -2496,14 +2488,6 @@ async function telechargerPlan() {
           // Tri Z + couleurs cohérents avec utils.js > ajouterPointsDepuisJSON
           // et exporter.js > _genererCanvasExport (mode avancé).
           if (Array.isArray(json.structures) && json.structures.length > 0) {
-            const STRUCT_STYLES_EMBED = {
-              "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1 },
-              "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
-              "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
-              // Fronts = polylines épaisses, pas de fill, color cohérent avec piliers
-              "front-1":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true },
-              "front-2":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true }
-            };
             // Tri Z hotfix v1.10.0-hotfix1 : mur < pilier-2 < pilier-1 < front-2 < front-1
             const ordreStruct = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
             const _mlOnStructEmb = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
@@ -2516,7 +2500,7 @@ async function telechargerPlan() {
               return (ordreStruct[a.type] ?? 99) - (ordreStruct[b.type] ?? 99);
             }).forEach(function(s) {
               if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(s)) return;
-              const style = STRUCT_STYLES_EMBED[s.type] || STRUCT_STYLES_EMBED["mur"];
+              const style = _ktaStyleCanvas("structures", s.type, "mur");
               const isPolyline = !!style.isPolyline;
               const minPts = isPolyline ? 2 : 3;
               if (!s.points || s.points.length < minPts) return;
@@ -2548,7 +2532,7 @@ async function telechargerPlan() {
             roadsR.forEach(function(r) {
               if (!r.points || r.points.length < 2) return;
               if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(r)) return;
-              drawPolyline(r.points, ROAD_STYLES_EMBED[r.type] || { color: "#ffffff", weight: 5, opacity: 1 });
+              drawPolyline(r.points, _ktaStyleCanvas("traces", r.type) || { color: "#ffffff", weight: 5, opacity: 1 });
               allRoadsForIntersect.push(r);
               _diag.embRoads++;
             });
@@ -2571,20 +2555,11 @@ async function telechargerPlan() {
     const zones = (window.getZones ? window.getZones() : []).filter(function(z) {
       return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(z);
     });
-    const ZONE_STYLES_EXPORT = {
-      eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7,  weight: 3, opacity: 1 },
-      remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7,  weight: 3, opacity: 1 },
-      effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7,  weight: 3, opacity: 1 },
-      // v169 : zone inaccessible — rouge fonce uni (canvas-only fallback, cf
-      // commentaire dans ZONE_STYLES_EMBED ci-dessus pour le contexte hachures)
-      inaccessible: { color: "#5a0a0a", fillColor: "#7a0000", fillOpacity: 0.65, weight: 3, opacity: 1 }
-    };
     for (const zone of [...zones].sort(function(a, b) {
       const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
     })) {
-      const style = ZONE_STYLES_EXPORT[zone.type] || ZONE_STYLES_EXPORT.remblais;
-      drawPolygon(zone.points || [], style);
+      drawPolygon(zone.points || [], _ktaStyleCanvas("zones", zone.type, "remblais"));
     }
 
     // ---------- 🆕 v1.10.3-structures-session-fix (KARMA "structures bien
@@ -2599,13 +2574,6 @@ async function telechargerPlan() {
         return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(s);
       });
       if (structures.length > 0) {
-        const STRUCT_STYLES_SESSION = {
-          "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1 },
-          "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
-          "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
-          "front-1":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true },
-          "front-2":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true }
-        };
         // Tri Z hotfix v1.10.0-hotfix1 : mur < pilier-2 < pilier-1 < front-2 < front-1
         const ordreStructS = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
         const _mlOnStructSess = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
@@ -2617,7 +2585,7 @@ async function telechargerPlan() {
           }
           return (ordreStructS[a.type] ?? 99) - (ordreStructS[b.type] ?? 99);
         }).forEach(function(s) {
-          const style = STRUCT_STYLES_SESSION[s.type] || STRUCT_STYLES_SESSION["mur"];
+          const style = _ktaStyleCanvas("structures", s.type, "mur");
           const isPolyline = !!style.isPolyline;
           const minPts = isPolyline ? 2 : 3;
           if (!s.points || s.points.length < minPts) return;
@@ -2658,18 +2626,13 @@ async function telechargerPlan() {
                (TYPE_ORDER[b.type] != null ? TYPE_ORDER[b.type] : 99);
       });
     }
-    const ROAD_STYLES = {
-      principal:   { color: "#00ff00", weight: 5, opacity: 1 },
-      secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },
-      chemin:      { color: "#ffff00", weight: 5, opacity: 1 },
-      // Jonction : magenta cohérent avec on-map render. Pas de dashArray dans
-      // canvas (ctx.setLineDash requis) → plein pour l'export. Endpoints
-      // marqués par des ronds blanc+magenta plus bas.
-      jonction:    { color: "#ff4ecb", weight: 5, opacity: 1 }
-    };
+    // Jonction : magenta, mais TRAIT PLEIN ici — le dashArray exigerait
+    // ctx.setLineDash. Ses extremites sont marquees par des ronds blanc+magenta
+    // juste en dessous, pour rester lisible sans le pointille.
+    const _colJonctionCanvas = (_ktaStyleCanvas("traces", "jonction") || {}).color;
 
     for (const road of roads) {
-      drawPolyline(road.points || [], ROAD_STYLES[road.type] || { color: "white", weight: 5, opacity: 1 });
+      drawPolyline(road.points || [], _ktaStyleCanvas("traces", road.type) || { color: "white", weight: 5, opacity: 1 });
       // 🏗️ Multi-niveau : ronds aux extremites des jonctions (parite avec on-map)
       // Convention export rapide : x direct + toCanvasY pour y.
       if (road.type === "jonction" && road.points && road.points.length >= 2) {
@@ -2677,7 +2640,7 @@ async function telechargerPlan() {
         endpts.forEach(function(pt) {
           ctx.save();
           ctx.fillStyle   = "#ffffff";
-          ctx.strokeStyle = ROAD_STYLES.jonction.color;
+          ctx.strokeStyle = _colJonctionCanvas;
           ctx.lineWidth   = 3;
           ctx.beginPath();
           ctx.arc(pt.x, toCanvasY(pt.y), 7, 0, Math.PI * 2);

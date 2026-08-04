@@ -1199,6 +1199,12 @@
 
   <!-- APP JS -->
   <script src="js/config.js" defer></script>
+  <!-- 🎨 v1.76.0 — StyleResolver : source de verite UNIQUE des styles built-in
+       (traces / zones / structures). Place EN AMONT de tous ses consommateurs
+       (utils, road, zones, structures, exporter, puis kmz/gpx aux vagues
+       suivantes). Il n'a AUCUNE dependance au chargement : legendCustomization
+       n'est interroge qu'a l'appel, pour les types custom. -->
+  <script src="js/styleResolver.js" defer></script>
   <script src="js/utils.js" defer></script>
   <script src="js/measure.js" defer></script>
   <script src="js/tiling.js" defer></script>
@@ -1210,13 +1216,6 @@
   <script src="js/map.js" defer></script>
   <script src="js/tracking.js" defer></script>
   <script src="js/editor.js" defer></script>
-  <!-- 🎨 v1.76.0 — StyleResolver : source de verite UNIQUE des styles built-in
-       (traces / zones / structures). Charge AVANT tous ses consommateurs
-       (road, zones, structures, puis exporter/utils/kmz aux vagues suivantes).
-       Il n'a AUCUNE dependance au chargement : legendCustomization.js n'est
-       interroge qu'a l'appel, pour les types custom — d'ou la possibilite de
-       le placer ici, en amont, plutot qu'apres lui. -->
-  <script src="js/styleResolver.js" defer></script>
   <script src="js/road.js" defer></script>
   <script src="js/zones.js" defer></script>
   <!-- 🆕 v1.9.3-A1.a : structures (piliers + murs). Chargé APRÈS zones.js

@@ -18,6 +18,31 @@
   let _previewBusy  = false;
 
   // =========================
+  // 🎨 v1.76.0 — STYLES : plus aucune table locale
+  // =========================
+  // Toutes les couleurs viennent de `js/styleResolver.js` (table canonique).
+  // Ce fichier en portait 5 copies : c'est comme ca qu'une zone INACCESSIBLE
+  // venant d'un calque de donnees sortait en GRIS REMBLAIS dans l'export PNG
+  // avance — `ZS_EMBED` avait simplement oublie l'entree, et le repli
+  // `|| ZS_EMBED.remblais` rendait l'oubli invisible.
+  //
+  // { flat: true } : cette pipe est un CANVAS, il ne sait pas peindre un
+  // `url(#pattern)` SVG. Le resolveur substitue l'aplat de repli declare pour
+  // le type (rouge fonce semi-transparent pour `inaccessible`).
+  //
+  // `repli` est le type utilise quand `type` est introuvable — un custom
+  // supprime de la legende, par exemple. Passer `null` pour ne rien dessiner.
+  function _styleCanvas(categorie, type, repli) {
+    const R = window.ktaResolveStyle;
+    if (typeof R !== "function") {
+      console.error("[Export] window.ktaResolveStyle absent — styles indisponibles.");
+      return null;
+    }
+    return R(categorie, type, { flat: true }) ||
+           (repli ? R(categorie, repli, { flat: true }) : null);
+  }
+
+  // =========================
   // INJECTION DES STYLES (au premier appel)
   // =========================
   function _injecterStyles() {
@@ -1953,34 +1978,12 @@
     // ---------- zones (avant les tracés) ----------
     if (opts.ann.zones && window.getZones) {
       const zones = window.getZones();
-      const ZS = {
-        eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7,  weight: 3, opacity: 1 },
-        remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7,  weight: 3, opacity: 1 },
-        effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7,  weight: 3, opacity: 1 },
-        // v169 : Zone inaccessible. Pour l'export canvas PNG, on utilise un
-        // rouge fonce uni semi-transparent (les hachures SVG runtime ne sont
-        // pas portables tel quel au canvas — perte acceptable pour l'export).
-        inaccessible: { color: "#5a0a0a", fillColor: "#7a0000", fillOpacity: 0.65, weight: 3, opacity: 1 }
-      };
       const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       const filtreZ = opts.ann.zonesTypes || { eau: true, remblais: true, effondrement: true, inaccessible: true };
-      // 🆕 v1.16.0 step2-drawable : résolution custom pour les zones
-      function _styleZoneExp(type) {
-        if (ZS[type]) return ZS[type];
-        if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
-          const e = window.LegendCustomization.findCustomEntry(type);
-          if (e && e.category === "zones") {
-            return {
-              color:       e.borderColor || e.fillColor || "#888",
-              fillColor:   e.fillColor   || "#888",
-              fillOpacity: 0.7,
-              weight:      3,
-              opacity:     1
-            };
-          }
-        }
-        return ZS.remblais;
-      }
+      // v169 : `inaccessible` sort en rouge fonce uni semi-transparent — les
+      // hachures SVG du runtime ne sont pas portables au canvas. C'est le repli
+      // d'aplat que { flat: true } applique (cf. _styleCanvas).
+      function _styleZoneExp(type) { return _styleCanvas("zones", type, "remblais"); }
       const triees = [...zones]
         .filter(function(z) {
           // Custom zones toujours OK (pas dans filtreZ qui ne liste que built-in)
@@ -2020,17 +2023,8 @@
     // mur) vs polyline (fronts) au rendu canvas.
     if (opts.ann.structures && window.getStructures) {
       const structures = window.getStructures();
-      const SS = {
-        "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1 },
-        "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
-        "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
-        // Fronts : polylines épaisses sans contour. weight 10 (px Leaflet)
-        // converti via scale au canvas final.
-        // 🔧 v1.10.1-hotfix2 (KARMA) : front-1 jaune = pilier-1 jaune,
-        // front-2 orange = pilier-2 orange (alignement couleur/masse).
-        "front-1":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true },
-        "front-2":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true }
-      };
+      // Fronts : polylines épaisses sans contour. Le `weight` (px Leaflet) est
+      // converti via `scale` au canvas final.
       // 🆕 v1.10.0-hotfix1 : nouvel ordre Z mur < pilier-2 < pilier-1 <
       // front-2 < front-1 (fronts en avant-plan) + tri par level en M-LVL.
       // Cohérent avec structures.js > renderStructures et utils.js.
@@ -2039,29 +2033,10 @@
         "pilier-1": true, "pilier-2": true, "mur": true,
         "front-1":  true, "front-2": true
       };
-      // 🆕 v1.16.0 step2-drawable : résolution custom pour les structures.
-      // Pour polyline (front custom) : style isPolyline + lineColor.
-      // Pour polygon (pilier/mur custom) : style polygon avec fill + border.
-      function _styleStructExp(type) {
-        if (SS[type]) return SS[type];
-        if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
-          const e = window.LegendCustomization.findCustomEntry(type);
-          if (e && e.category === "structures") {
-            if (e.geometry === "polyline") {
-              return { color: e.lineColor || "#888", weight: 10, opacity: 1, isPolyline: true };
-            } else {
-              return {
-                color:       e.borderColor || "#000",
-                fillColor:   e.fillColor || "#888",
-                fillOpacity: 0.85,
-                weight:      3,
-                opacity:     1
-              };
-            }
-          }
-        }
-        return SS["mur"];
-      }
+      // Custom : la géométrie déclarée tranche — polyline (front) → trait épais,
+      // polygon (pilier/mur) → contour noir. C'est le résolveur qui applique le
+      // gabarit de la catégorie « structures ».
+      function _styleStructExp(type) { return _styleCanvas("structures", type, "mur"); }
       const _multiLevelOnExp = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
       const triees = [...structures]
         .filter(function(s) {
@@ -2152,19 +2127,13 @@
       ctx.restore();
     }
 
-    const ZS_EMBED = {
-      eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
-      remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
-      effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
-    };
-    const RS_EMBED = {
-      principal:   { color: "#00ff00", weight: 5, opacity: 1 },
-      secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },
-      chemin:      { color: "#ffff00", weight: 5, opacity: 1 },
-      // 🪜 v1.7.1 fix : entrée jonction manquante = blanc dans l'export PNG avancé
-      // des roads embedded. Magenta cohérent avec utils.js + road.js.
-      jonction:    { color: "#ff4ecb", weight: 5, opacity: 1 }
-    };
+    // 🐛 v1.76.0 — CORRECTION DU BUG HISTORIQUE. Ces deux tables etaient
+    // ecrites a la main et INCOMPLETES : `ZS_EMBED` n'avait pas `inaccessible`,
+    // donc le repli `|| ZS_EMBED.remblais` faisait sortir une zone DANGEREUSE
+    // en gris remblais. Exactement le meme oubli avait deja frappe `jonction`
+    // ici meme (corrige en v1.7.1) — deux fois le meme defaut, parce que la
+    // table etait recopiee. Elle ne l'est plus : le resolveur connait TOUS les
+    // types, built-in comme custom, et il n'y a plus rien a oublier.
 
     // Collecte des routes (embedded + editable) pour dessiner les cercles d'intersection à la fin
     const allRoadsForIntersect = [];
@@ -2255,7 +2224,7 @@
         return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
       }).forEach(function(z) {
         if (!_itemPasseLevels(z)) return;
-        _drawPolygon(z.points || [], ZS_EMBED[z.type] || ZS_EMBED.remblais);
+        _drawPolygon(z.points || [], _styleCanvas("zones", z.type, "remblais"));
         _diagAdv.embZones++;
       });
 
@@ -2268,13 +2237,6 @@
       // mêmes que pour les structures session — cohérent avec la modale
       // Avancé qui n'a qu'un seul groupe de checkbox pour les structures).
       if (opts.ann.structures && embeddedStructures.length > 0) {
-        const SS_EMBED = {
-          "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1 },
-          "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
-          "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
-          "front-1":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true },
-          "front-2":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true }
-        };
         const ordreS_E = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
         const filtreS_E = opts.ann.structuresTypes || {
           "pilier-1": true, "pilier-2": true, "mur": true,
@@ -2293,7 +2255,7 @@
             return (ordreS_E[a.type] ?? 99) - (ordreS_E[b.type] ?? 99);
           });
         for (const st of trieesEmb) {
-          const s = SS_EMBED[st.type] || SS_EMBED["mur"];
+          const s = _styleCanvas("structures", st.type, "mur");
           const isPolyline = !!s.isPolyline;
           const minPts = isPolyline ? 2 : 3;
           if (!st.points || st.points.length < minPts) continue;
@@ -2324,7 +2286,7 @@
       }
       drawnRoadsSorted.forEach(function(r) {
         if (!_itemPasseLevels(r)) return;
-        _drawPolyline(r.points || [], RS_EMBED[r.type] || { color: "#ffffff", weight: 5, opacity: 1 });
+        _drawPolyline(r.points || [], _styleCanvas("traces", r.type) || { color: "#ffffff", weight: 5, opacity: 1 });
         if (r.points && r.points.length >= 2) allRoadsForIntersect.push(r);
         _diagAdv.embRoads++;
       });
@@ -2373,25 +2335,13 @@
                  (T_ORDER[b.type] != null ? T_ORDER[b.type] : 99);
         });
       }
-      const RS = {
-        principal:   { color: "#00ff00", weight: 5 },
-        secondaire:  { color: "#b000ff", weight: 5 },
-        chemin:      { color: "#ffff00", weight: 5 },
-        // 🏗️ Multi-niveau (v148) : jonction = magenta plein (canvas n'a
-        // pas de dashArray natif dans cette pipe). Endpoints marques en
-        // ronds blanc+magenta plus bas pour parite avec l'on-map.
-        jonction:    { color: "#ff4ecb", weight: 5 }
-      };
-      // 🆕 v1.16.0 step2-drawable : pour les types CUSTOM (cust-XXX), on
-      // résout la couleur via LegendCustomization.findCustomEntry. Sinon
-      // fallback "white".
+      // 🏗️ Multi-niveau (v148) : la jonction sort en magenta PLEIN — cette pipe
+      // canvas ne gere pas le dashArray. Ses extremites sont marquees en ronds
+      // blanc+magenta plus bas, pour la parite avec l'affichage carte.
+      // Repli "white" pour un type totalement inconnu (custom supprime de la
+      // legende) : mieux vaut un trait visible qu'un trait absent.
       function _styleRoadExp(type) {
-        if (RS[type]) return RS[type];
-        if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
-          const e = window.LegendCustomization.findCustomEntry(type);
-          if (e && e.category === "traces") return { color: e.lineColor || "white", weight: 5 };
-        }
-        return { color: "white", weight: 5 };
+        return _styleCanvas("traces", type) || { color: "white", weight: 5 };
       }
       const filtreR = opts.ann.roadsTypes || { principal: true, secondaire: true, chemin: true };
       for (const r of roads) {
