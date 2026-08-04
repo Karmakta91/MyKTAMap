@@ -48,3 +48,11 @@ node scripts/check-prefs-survival.js || exit $?
 # dangereuse sortait en gris remblais dans l'export PNG. BLOQUANT.
 node scripts/check-style-canon.js || exit $?
 node scripts/check-style-resolver.js || exit $?
+
+# 🌍 v1.76.0 — Sortie KML : le KMZ a ses PROPRES largeurs (unite different du
+# `weight` Leaflet, ajustee a l'echelle GPS) et ses propres alphas. Brancher
+# naivement le resolveur dessus changerait le rendu dans Google Earth sans que
+# personne le voie. Ce script fige les 14 styles built-in et verifie que les
+# types custom recoivent bien un <Style> (bug 2 : styleUrl pendant = couleur
+# perdue). BLOQUANT.
+node scripts/check-kml-styles.js || exit $?

@@ -305,52 +305,103 @@
     return (a + b + g + r).toLowerCase();
   }
 
-  // Styles communs (1 fois par doc)
-  const STYLES_KML = {
-    road_principal:    { line: "#00ff00", width: 4, alpha: 1   },
-    road_secondaire:   { line: "#b000ff", width: 4, alpha: 1   },
-    road_chemin:       { line: "#ffff00", width: 3, alpha: 1   },
-    road_jonction:     { line: "#ff4ecb", width: 4, alpha: 1   },
-    road_itinerary:    { line: "#00d4ff", width: 6, alpha: 1   },
-    zone_eau:          { line: "#0066aa", fill: "#3aa9e8", fillAlpha: 0.6, width: 2 },
-    zone_remblais:     { line: "#3a3a44", fill: "#5a5a68", fillAlpha: 0.6, width: 2 },
-    zone_effondrement: { line: "#cc0000", fill: "#ff3333", fillAlpha: 0.6, width: 2 },
-    zone_inaccessible: { line: "#5a0a0a", fill: "#7a0000", fillAlpha: 0.65, width: 2 },
-    // 🆕 v1.9.3-A1.b.1 : structures (piliers + murs). Stroke noir (#000)
-    // signature visuelle qui distingue des zones. fill cohérent avec
-    // STRUCTURE_STYLES de structures.js (jaune charte / orange / bleu foncé).
-    "structure_pilier-1": { line: "#000000", fill: "#f4c542", fillAlpha: 0.85, width: 2 },
-    "structure_pilier-2": { line: "#000000", fill: "#ff9933", fillAlpha: 0.85, width: 2 },
-    "structure_mur":      { line: "#000000", fill: "#1e3a8a", fillAlpha: 0.85, width: 2 },
-    // 🆕 v1.9.3-A1.b.2 : fronts de taille — LineStrings épaisses sans
-    // contour. width: 5 dans KML car ≠ unité que le canvas Leaflet
-    // weight, ajusté visuellement pour rendre épais à l'échelle GPS.
-    // 🔧 v1.10.1-hotfix2 (KARMA) : front-1 jaune = pilier-1 jaune,
-    // front-2 orange = pilier-2 orange (alignement couleur/masse).
-    "structure_front-1":  { line: "#f4c542", width: 5, alpha: 1 },
-    "structure_front-2":  { line: "#ff9933", width: 5, alpha: 1 }
-  };
+  // =====================================================================
+  // 🎨 v1.76.0 — STYLES KML : couleurs résolues, épaisseurs propres au KML
+  // =====================================================================
+  // Les COULEURS viennent de `js/styleResolver.js` (table canonique) — c'est
+  // la seule chose qui doit rester alignée sur la carte.
+  // Les LARGEURS, elles, restent définies ICI et ne sont PAS les `weight`
+  // Leaflet : l'unité diffère et elles ont été ajustées visuellement à
+  // l'échelle GPS (un front de taille est à 5 ici, 10 sur la carte ; un
+  // pilier à 2 ici, 3 sur la carte). Les mélanger changerait le rendu dans
+  // Google Earth. Idem pour les alphas de remplissage (0.6 ici, 0.7 sur la
+  // carte). C'est une VARIANTE DÉLIBÉRÉE, pas une dérive.
+  //
+  // `{ flat: true }` : le KML ne sait pas peindre un motif SVG, `inaccessible`
+  // retombe donc sur son aplat de repli.
+  const PREFIXE_CATEGORIE = { road: "traces", zone: "zones", structure: "structures" };
 
-  function _genererStylesKml() {
+  function _traitsKml(categorie, cle, style) {
+    if (categorie === "traces") {
+      if (cle === "chemin")    return { width: 3, alpha: 1 };
+      if (cle === "itinerary") return { width: 6, alpha: 1 };
+      return { width: 4, alpha: 1 };
+    }
+    if (categorie === "zones") {
+      return { width: 2, fillAlpha: (cle === "inaccessible") ? 0.65 : 0.6 };
+    }
+    // Structures : la géométrie tranche. Un front (polyline) est une
+    // LineString épaisse SANS remplissage ; un pilier/mur est un polygone.
+    if (style && style.isPolyline) return { width: 5, alpha: 1 };
+    return { width: 2, fillAlpha: 0.85 };
+  }
+
+  // Retourne le descriptif de style KML d'un type, built-in OU custom, ou null
+  // si le type est inconnu (custom supprimé de la légende, par exemple).
+  function _styleKmlDe(categorie, cle) {
+    if (typeof window.ktaResolveStyle !== "function") return null;
+    const s = window.ktaResolveStyle(categorie, cle, { flat: true });
+    if (!s) return null;
+    const t = _traitsKml(categorie, cle, s);
+    const out = { line: s.color, width: t.width };
+    if (t.alpha != null) out.alpha = t.alpha;
+    // Pas de PolyStyle sur une polyline : le canon donne `fillColor` aux
+    // fronts (plusieurs consommateurs le lisent), mais un LineString KML ne
+    // doit pas se voir attribuer de remplissage.
+    if (s.fillColor && !s.isPolyline) {
+      out.fill = s.fillColor;
+      out.fillAlpha = t.fillAlpha;
+    }
+    return out;
+  }
+
+  function _blocStyleKml(id, s) {
+    let out = '<Style id="' + id + '">';
+    if (s.line) {
+      out += '<LineStyle>' +
+               '<color>' + _kmlColor(s.line, s.alpha != null ? s.alpha : 1) + '</color>' +
+               '<width>' + s.width + '</width>' +
+             '</LineStyle>';
+    }
+    if (s.fill) {
+      out += '<PolyStyle>' +
+               '<color>' + _kmlColor(s.fill, s.fillAlpha != null ? s.fillAlpha : 0.5) + '</color>' +
+               '<outline>1</outline>' +
+               '<fill>1</fill>' +
+             '</PolyStyle>';
+    }
+    return out + '</Style>';
+  }
+
+  // 🐛 v1.76.0 — CORRECTION DU BUG 2.
+  // Les Placemark émettent `<styleUrl>#road_<type></styleUrl>`. Pour un type
+  // CUSTOM ça donnait `#road_cust-abc123`, un id qui n'était JAMAIS déclaré
+  // dans le document (la table ne listait que les built-in) : styleUrl
+  // pendant → Google Earth retombait sur son trait par défaut et la couleur
+  // choisie par l'utilisateur était perdue.
+  // On déclare désormais un <Style> pour chaque type custom RÉELLEMENT
+  // utilisé — collectés pendant la génération du corps, cf. `_idStyleEtCollecte`.
+  function _genererStylesKml(idsCustomUtilises) {
     let out = "";
-    Object.keys(STYLES_KML).forEach(function(id) {
-      const s = STYLES_KML[id];
-      out += '<Style id="' + id + '">';
-      if (s.line) {
-        out += '<LineStyle>' +
-                 '<color>' + _kmlColor(s.line, s.alpha != null ? s.alpha : 1) + '</color>' +
-                 '<width>' + s.width + '</width>' +
-               '</LineStyle>';
-      }
-      if (s.fill) {
-        out += '<PolyStyle>' +
-                 '<color>' + _kmlColor(s.fill, s.fillAlpha != null ? s.fillAlpha : 0.5) + '</color>' +
-                 '<outline>1</outline>' +
-                 '<fill>1</fill>' +
-               '</PolyStyle>';
-      }
-      out += '</Style>';
+    Object.keys(PREFIXE_CATEGORIE).forEach(function(prefixe) {
+      const cat = PREFIXE_CATEGORIE[prefixe];
+      const cles = (typeof window.ktaStyleBuiltins === "function") ? window.ktaStyleBuiltins(cat) : [];
+      cles.forEach(function(cle) {
+        const s = _styleKmlDe(cat, cle);
+        if (s) out += _blocStyleKml(prefixe + "_" + cle, s);
+      });
     });
+    if (idsCustomUtilises && idsCustomUtilises.size) {
+      idsCustomUtilises.forEach(function(id) {
+        const sep = id.indexOf("_");
+        const cat = PREFIXE_CATEGORIE[id.slice(0, sep)];
+        const s   = cat ? _styleKmlDe(cat, id.slice(sep + 1)) : null;
+        // Type custom introuvable (supprimé de la légende entre-temps) : on
+        // n'émet rien. Le styleUrl reste pendant — mais c'est exactement le
+        // comportement d'avant, et la donnée elle-même est préservée.
+        if (s) out += _blocStyleKml(id, s);
+      });
+    }
     return out;
   }
 
@@ -819,6 +870,17 @@
     //   zoneTypesSet : Set<string> | null — whitelist des types eau/remblais/effondrement/inaccessible
     // null = pas de filtre (legacy compat). Set vide = drop tout (parent
     // coché mais aucun enfant sélectionné, edge case).
+    // 🐛 v1.76.0 (bug 2) — ids de style des types CUSTOM réellement rencontrés
+    // pendant la génération du corps. Ils sont déclarés en fin de document par
+    // `_genererStylesKml`. Sans ça leur <styleUrl> pointait dans le vide et
+    // Google Earth affichait un trait par défaut.
+    const idsStyleCustom = new Set();
+    function _idStyleEtCollecte(prefixe, type) {
+      const id = prefixe + "_" + type;
+      if (String(type).indexOf("cust-") === 0) idsStyleCustom.add(id);
+      return id;
+    }
+
     const pointTagsSet = (opts.include.pointTagsSet instanceof Set) ? opts.include.pointTagsSet : null;
     const roadTypesSet = (opts.include.roadTypesSet instanceof Set) ? opts.include.roadTypesSet : null;
     const zoneTypesSet = (opts.include.zoneTypesSet instanceof Set) ? opts.include.zoneTypesSet : null;
@@ -857,7 +919,7 @@
         if (roads.length > 0) {
           body += '<Folder><name>🛣️ Tracés (' + roads.length + ')</name>';
           roads.forEach(function(r) {
-            const styleId = "road_" + r.type;
+            const styleId = _idStyleEtCollecte("road", r.type);
             body += _emitLineString(r, styleId);
           });
           body += '</Folder>';
@@ -887,7 +949,7 @@
         if (zones.length > 0) {
           body += '<Folder><name>⬛ Zones (' + zones.length + ')</name>';
           zones.forEach(function(z) {
-            const styleId = "zone_" + z.type;
+            const styleId = _idStyleEtCollecte("zone", z.type);
             body += _emitPolygon(z, styleId);
           });
           body += '</Folder>';
@@ -906,7 +968,7 @@
         if (structures.length > 0) {
           body += '<Folder><name>🏛️ Structures (' + structures.length + ')</name>';
           structures.forEach(function(s) {
-            const styleId = "structure_" + s.type;
+            const styleId = _idStyleEtCollecte("structure", s.type);
             // Fronts (polylines) → KML LineString. Piliers/mur → Polygon.
             // _emitLineString attend road.type pour le nom — on patch
             // temporairement avec un objet adapté.
@@ -999,7 +1061,7 @@
             new Date().toISOString().slice(0, 10) +
             " — Calibrage GPS via 2 points (rotation + scale + translation)"
           ) + '</description>' +
-          _genererStylesKml() +
+          _genererStylesKml(idsStyleCustom) +
           stylesIcones +
           secoursStyles +
           (groundOverlay || "") +
