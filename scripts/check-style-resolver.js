@@ -71,6 +71,16 @@ try { R("traces", "cust-x"); } catch (e) { crash = true; }
 t("un findCustomEntry qui jette ne fait pas planter", !crash);
 
 // ── liste des built-in ──
+// ── couleur representative (pastilles, barres, camemberts) ──
+// Un polygone est represente par son REMPLISSAGE, une ligne par son TRAIT.
+const S = win.ktaSwatchColor;
+t("swatch trace = son trait",            S("traces", "principal") === "#00ff00");
+t("swatch zone = son REMPLISSAGE",       S("zones", "eau") === "#3aa9e8");
+t("swatch inaccessible = aplat de repli", S("zones", "inaccessible") === "#7a0000");
+t("swatch pilier = son remplissage",     S("structures", "pilier-1") === "#f4c542");
+t("swatch front (polyline) = son TRAIT", S("structures", "front-1") === "#f4c542");
+t("swatch d'un type inconnu = null",     S("zones", "inexistant") === null);
+
 t("ktaStyleBuiltins(zones) = 4 types", win.ktaStyleBuiltins("zones").length === 4);
 t("ktaStyleBuiltins(bidon) = []", win.ktaStyleBuiltins("bidon").length === 0);
 

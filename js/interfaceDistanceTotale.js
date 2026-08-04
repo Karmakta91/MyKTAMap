@@ -66,7 +66,18 @@
 // indépendante).
 
 const _RD_TYPES_TOUS    = ["principal", "secondaire", "chemin"];
-const _RD_HIGHLIGHT_HEX = "#ff4ecb";
+// 🎨 v1.76.0 — le magenta de surlignage est celui de la jonction (cohérence
+// voulue de longue date, elle était jusqu'ici recopiée à la main).
+// Résolu à l'APPEL, pas au chargement : styleResolver.js est chargé avant ce
+// module, mais lire une couleur au load figerait la valeur avant qu'un futur
+// override de légende ne puisse s'appliquer.
+function _rdHighlightHex() {
+  return (typeof window.ktaSwatchColor === "function" && window.ktaSwatchColor("traces", "jonction")) || "#ff4ecb";
+}
+// Pastille de couleur d'un type de tracé, dans la modale Distance totale.
+function _rdSwatch(type) {
+  return (typeof window.ktaSwatchColor === "function" && window.ktaSwatchColor("traces", type)) || "#888888";
+}
 
 let _rdFloater         = null;
 let _rdHighlightLayer  = null;  // L.layerGroup contenant les polylines magenta
@@ -146,7 +157,7 @@ function _rdRedessinerHighlight() {
   });
   if (multiSegments.length === 0) return;  // rien à dessiner (toutes les cases décochées)
   L.polyline(multiSegments, {
-    color:     _RD_HIGHLIGHT_HEX,
+    color:     _rdHighlightHex(),
     weight:    9,
     opacity:   0.85,
     renderer:  L.svg(),       // SVG forcé pour drop-shadow CSS
@@ -223,19 +234,19 @@ window.ouvrirRoadsDistanceFloater = function() {
           '</p>' +
           '<label class="kta-rd-row">' +
             '<input type="checkbox" id="kta-rd-chk-principal"' + (_rdFiltres.principal ? ' checked' : '') + '>' +
-            '<span class="kta-rd-swatch" style="background:#00ff00;"></span>' +
+            '<span class="kta-rd-swatch" style="background:' + _rdSwatch("principal") + ';"></span>' +
             '<span class="kta-rd-label">' + window.I18n.t("disttot.type.principal") + '</span>' +
             '<span class="kta-rd-count" id="kta-rd-cnt-principal">—</span>' +
           '</label>' +
           '<label class="kta-rd-row">' +
             '<input type="checkbox" id="kta-rd-chk-secondaire"' + (_rdFiltres.secondaire ? ' checked' : '') + '>' +
-            '<span class="kta-rd-swatch" style="background:#b000ff;"></span>' +
+            '<span class="kta-rd-swatch" style="background:' + _rdSwatch("secondaire") + ';"></span>' +
             '<span class="kta-rd-label">' + window.I18n.t("disttot.type.secondaire") + '</span>' +
             '<span class="kta-rd-count" id="kta-rd-cnt-secondaire">—</span>' +
           '</label>' +
           '<label class="kta-rd-row">' +
             '<input type="checkbox" id="kta-rd-chk-chemin"' + (_rdFiltres.chemin ? ' checked' : '') + '>' +
-            '<span class="kta-rd-swatch" style="background:#ffff00;"></span>' +
+            '<span class="kta-rd-swatch" style="background:' + _rdSwatch("chemin") + ';"></span>' +
             '<span class="kta-rd-label">' + window.I18n.t("disttot.type.chemin") + '</span>' +
             '<span class="kta-rd-count" id="kta-rd-cnt-chemin">—</span>' +
           '</label>' +

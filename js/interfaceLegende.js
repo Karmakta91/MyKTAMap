@@ -209,15 +209,29 @@ function afficherLegende() {
   // conditionnel multi-niveau, présenté dans la légende même sans multiLevel
   // car cohérence avec la légende exportée PNG.
   // 🆕 v1.16.0 step 2 : libellés via LegendCustomization + filtre isVisible.
-  function _ligneTrace(key, color) {
+  // 🎨 v1.76.0 — les pastilles ne portent plus leurs couleurs en dur : elles
+  // les demandent au styleResolver. C'était LE risque structurel de ce module —
+  // cette légende décrivait la carte avec sa propre table, indépendante de
+  // celle du rendu. Elles coïncidaient par chance ; le jour où l'une bougeait,
+  // la légende mentait sur la carte sans qu'aucun test ne le voie.
+  // `_couleurTrait` / `_couleurFond` retombent sur un gris neutre si le type
+  // est introuvable — mieux vaut une pastille terne qu'une couleur inventée.
+  function _resolu(cat, key) {
+    return (typeof window.ktaResolveStyle === "function")
+             ? window.ktaResolveStyle(cat, key, { flat: true }) : null;
+  }
+  function _couleurTrait(cat, key) { const s = _resolu(cat, key); return (s && s.color) || "#888888"; }
+  function _couleurFond(cat, key)  { const s = _resolu(cat, key); return (s && s.fillColor) || "#888888"; }
+
+  function _ligneTrace(key) {
     if (!_visible("traces", key)) return "";
-    return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${color};"></span><span class="kta-legende-label">${_label("traces", key)}</span></div>`;
+    return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${_couleurTrait("traces", key)};"></span><span class="kta-legende-label">${_label("traces", key)}</span></div>`;
   }
   let contenuTracés = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.traces")}</div>`;
-  contenuTracés += _ligneTrace("principal",  "#00ff00");
-  contenuTracés += _ligneTrace("secondaire", "#b000ff");
-  contenuTracés += _ligneTrace("chemin",     "#ffff00");
-  contenuTracés += _ligneTrace("jonction",   "#ff4ecb");
+  contenuTracés += _ligneTrace("principal");
+  contenuTracés += _ligneTrace("secondaire");
+  contenuTracés += _ligneTrace("chemin");
+  contenuTracés += _ligneTrace("jonction");
   // Customs traces (lineColor obligatoire)
   if (LC) {
     LC.listCustomEntries("traces")
@@ -229,18 +243,18 @@ function afficherLegende() {
   contenuTracés += `</div>`;
 
   // 🚫 v169 (Karma_dev) : Inaccessible (hachures rouge/noir).
-  function _ligneZone(key, fill, border) {
+  function _ligneZone(key) {
     if (!_visible("zones", key)) return "";
-    return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${fill}; opacity:0.7; height:14px; border:2px solid ${border};"></span><span class="kta-legende-label">${_label("zones", key)}</span></div>`;
+    return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${_couleurFond("zones", key)}; opacity:0.7; height:14px; border:2px solid ${_couleurTrait("zones", key)};"></span><span class="kta-legende-label">${_label("zones", key)}</span></div>`;
   }
   let contenuZones = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.zones")}</div>`;
-  contenuZones += _ligneZone("eau",          "#3aa9e8", "#0066aa");
-  contenuZones += _ligneZone("remblais",     "#5a5a68", "#3a3a44");
-  contenuZones += _ligneZone("effondrement", "#ff3333", "#cc0000");
+  contenuZones += _ligneZone("eau");
+  contenuZones += _ligneZone("remblais");
+  contenuZones += _ligneZone("effondrement");
   // Inaccessible a un fond hachuré custom — handled inline (pas via _ligneZone)
   if (_visible("zones", "inaccessible")) {
     contenuZones += `<div class="kta-legende-ligne">
-        <span class="kta-legende-trait" style="background:repeating-linear-gradient(45deg, #5a0a0a 0 6px, #1a1f2e 6px 10px); height:14px; border:2px solid #5a0a0a;"></span>
+        <span class="kta-legende-trait" style="background:repeating-linear-gradient(45deg, ${_couleurTrait("zones","inaccessible")} 0 6px, #1a1f2e 6px 10px); height:14px; border:2px solid ${_couleurTrait("zones","inaccessible")};"></span>
         <span class="kta-legende-label">${_label("zones", "inaccessible")}</span>
       </div>`;
   }
@@ -256,20 +270,20 @@ function afficherLegende() {
   contenuZones += `</div>`;
 
   // 🏛️ v1.10.3 — Structures. Polygones (fillColor + borderColor) + polylines (lineColor).
-  function _ligneStructPoly(key, fill, border) {
+  function _ligneStructPoly(key) {
     if (!_visible("structures", key)) return "";
-    return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${fill}; opacity:0.85; height:14px; border:2px solid ${border};"></span><span class="kta-legende-label">${_label("structures", key)}</span></div>`;
+    return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${_couleurFond("structures", key)}; opacity:0.85; height:14px; border:2px solid ${_couleurTrait("structures", key)};"></span><span class="kta-legende-label">${_label("structures", key)}</span></div>`;
   }
-  function _ligneStructLine(key, color) {
+  function _ligneStructLine(key) {
     if (!_visible("structures", key)) return "";
-    return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${color};"></span><span class="kta-legende-label">${_label("structures", key)}</span></div>`;
+    return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${_couleurTrait("structures", key)};"></span><span class="kta-legende-label">${_label("structures", key)}</span></div>`;
   }
   let contenuStructures = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.structures")}</div>`;
-  contenuStructures += _ligneStructPoly("pilier-1", "#f4c542", "#000000");
-  contenuStructures += _ligneStructPoly("pilier-2", "#ff9933", "#000000");
-  contenuStructures += _ligneStructPoly("mur",      "#1e3a8a", "#000000");
-  contenuStructures += _ligneStructLine("front-1", "#f4c542");
-  contenuStructures += _ligneStructLine("front-2", "#ff9933");
+  contenuStructures += _ligneStructPoly("pilier-1");
+  contenuStructures += _ligneStructPoly("pilier-2");
+  contenuStructures += _ligneStructPoly("mur");
+  contenuStructures += _ligneStructLine("front-1");
+  contenuStructures += _ligneStructLine("front-2");
   // Customs structures
   // 🐛 v1.16.0 step2-drawable-fix : utilise GEOMETRY comme discriminator
   // (au lieu de "lineColor first") — sinon une entrée polygon avec
@@ -435,10 +449,10 @@ function afficherLegende() {
 
     // ── Tracés ──
     let trx = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.traces")}</div>`;
-    trx += _ligneTrace("principal",  "#00ff00");
-    trx += _ligneTrace("secondaire", "#b000ff");
-    trx += _ligneTrace("chemin",     "#ffff00");
-    trx += _ligneTrace("jonction",   "#ff4ecb");
+    trx += _ligneTrace("principal");
+    trx += _ligneTrace("secondaire");
+    trx += _ligneTrace("chemin");
+    trx += _ligneTrace("jonction");
     if (LC) {
       LC.listCustomEntries("traces")
         .filter(function(e) { return e.visible && (e.lineColor || e.fillColor); })
@@ -451,12 +465,12 @@ function afficherLegende() {
 
     // ── Zones ──
     let zx = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.zones")}</div>`;
-    zx += _ligneZone("eau",          "#3aa9e8", "#0066aa");
-    zx += _ligneZone("remblais",     "#5a5a68", "#3a3a44");
-    zx += _ligneZone("effondrement", "#ff3333", "#cc0000");
+    zx += _ligneZone("eau");
+    zx += _ligneZone("remblais");
+    zx += _ligneZone("effondrement");
     if (_visible("zones", "inaccessible")) {
       zx += `<div class="kta-legende-ligne">
-        <span class="kta-legende-trait" style="background:repeating-linear-gradient(45deg, #5a0a0a 0 6px, #1a1f2e 6px 10px); height:14px; border:2px solid #5a0a0a;"></span>
+        <span class="kta-legende-trait" style="background:repeating-linear-gradient(45deg, ${_couleurTrait("zones","inaccessible")} 0 6px, #1a1f2e 6px 10px); height:14px; border:2px solid ${_couleurTrait("zones","inaccessible")};"></span>
         <span class="kta-legende-label">${_label("zones", "inaccessible")}</span>
       </div>`;
     }
@@ -473,11 +487,11 @@ function afficherLegende() {
 
     // ── Structures ──
     let sx = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.structures")}</div>`;
-    sx += _ligneStructPoly("pilier-1", "#f4c542", "#000000");
-    sx += _ligneStructPoly("pilier-2", "#ff9933", "#000000");
-    sx += _ligneStructPoly("mur",      "#1e3a8a", "#000000");
-    sx += _ligneStructLine("front-1", "#f4c542");
-    sx += _ligneStructLine("front-2", "#ff9933");
+    sx += _ligneStructPoly("pilier-1");
+    sx += _ligneStructPoly("pilier-2");
+    sx += _ligneStructPoly("mur");
+    sx += _ligneStructLine("front-1");
+    sx += _ligneStructLine("front-2");
     if (LC) {
       // 🐛 v1.16.0 step2-drawable-fix : geometry first
       LC.listCustomEntries("structures")

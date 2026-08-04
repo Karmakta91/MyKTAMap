@@ -12,7 +12,12 @@ const vm = require("vm");
 let ko = 0;
 const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; };
 
-function charger(fichier, nomGlobal) {
+// `prealables` : fichiers à charger dans le MÊME contexte avant celui-ci.
+// Nécessaire dès qu'un module en interroge un autre au chargement (ex.
+// legendCustomization qui demande ses couleurs à styleResolver) — sans ça
+// chaque appel de `charger` repart d'un contexte vierge et la dépendance
+// est silencieusement absente.
+function charger(fichier, nomGlobal, prealables) {
   const win = {
     console: { log(){}, warn(){}, error(){} },
     indexedDB: { open() { return { onupgradeneeded: null, onsuccess: null, onerror: null }; } },
@@ -24,16 +29,23 @@ function charger(fichier, nomGlobal) {
   };
   win.window = win;
   const ctx = vm.createContext(win);
+  const PREAMBULE = "var window = this; var document = this.document; var indexedDB = this.indexedDB;";
   try {
-    vm.runInContext("var window = this; var document = this.document; var indexedDB = this.indexedDB;"
-                    + fs.readFileSync(fichier, "utf8"), ctx);
+    (prealables || []).forEach(function(p) {
+      vm.runInContext(PREAMBULE + fs.readFileSync(p, "utf8"), ctx);
+    });
+    vm.runInContext(PREAMBULE + fs.readFileSync(fichier, "utf8"), ctx);
   } catch (e) {
     t(fichier + " se charge sans erreur", false);
     console.log("   ↳ " + e.name + " : " + e.message);
     return null;
   }
   t(fichier + " se charge sans erreur", true);
-  return win[nomGlobal];
+  // On rend aussi le `window` simule : certains modules exposent des fonctions
+  // libres (window.ktaResolveStyle) plutot qu'un objet d'API.
+  const api = win[nomGlobal];
+  if (api && typeof api === "object") api.__win = win;
+  return api;
 }
 
 // ───────── userProfile.js ─────────
@@ -61,6 +73,56 @@ if (UP) {
   });
   t("voile par defaut = 55", snap.wallVoile === 55);
   t("cadrage par defaut centre", snap.wallPosX === 50 && snap.wallPosY === 50);
+}
+
+// ───────── styleResolver.js ─────────
+// Expose des fonctions LIBRES sur window, pas un objet d'API.
+const SR = charger("js/styleResolver.js", "ktaResolveStyle");
+t("window.ktaResolveStyle() exposee",  typeof SR === "function");
+["ktaStyleBuiltins", "ktaSwatchColor"].forEach(function(f) {
+  // Rechargement isole : on veut verifier CHAQUE nom, pas seulement le premier.
+  const g = charger("js/styleResolver.js", f);
+  t("window." + f + "() exposee", typeof g === "function");
+});
+
+// ───────── legendCustomization.js ─────────
+// 🐛 Ajouté en v1.76.0 après un incident : la suppression de la table
+// `DEFAULT_RENDERS` avait laissé `DEFAULT_RENDERS: DEFAULT_RENDERS` dans le
+// bloc d'exports. `node -c` passe (la syntaxe est valide), mais le module
+// mourait d'un ReferenceError au chargement navigateur — donc plus AUCUNE
+// légende, plus aucun type custom. Même classe de bug que WALLPAPER_MAX_PX
+// le 01/08. Ce guard ne couvrait alors que userProfile.js : il n'a rien vu.
+const LC = charger("js/legendCustomization.js", "LegendCustomization", ["js/styleResolver.js"]);
+if (LC) {
+  const ATTENDU_LC = [
+    "loadSessionState", "getSessionState", "isSessionStateEmpty", "loadPlanState",
+    "getLabel", "getDefaultLabel", "isVisible", "getSource",
+    "listEntries", "listCustomEntries", "findCustomEntry",
+    "addCustomEntry", "removeCustomEntry", "ouvrirEditeur"
+  ];
+  ATTENDU_LC.forEach(function(m) {
+    t("LegendCustomization." + m + "() exposee", typeof LC[m] === "function");
+  });
+  ["SCHEMA_VERSION", "DEFAULT_LABELS", "CATEGORIES"].forEach(function(c) {
+    t("LegendCustomization." + c + " exposee", LC[c] !== undefined);
+  });
+
+  // Le rendu par defaut d'une entree built-in doit etre DERIVE du style reel.
+  // Si listEntries rend des couleurs vides, les pastilles de l'editeur de
+  // legende deviennent grises sans que rien ne le signale.
+  const traces = LC.listEntries("traces") || [];
+  const principal = traces.filter(function(e) { return e.key === "principal"; })[0];
+  t("listEntries(traces) rend le built-in principal", !!principal);
+  t("pastille d'un trace = sa couleur de trait",
+    !!principal && principal.lineColor === "#00ff00");
+  const zones = LC.listEntries("zones") || [];
+  const eau = zones.filter(function(e) { return e.key === "eau"; })[0];
+  t("pastille d'une zone = fond + bordure",
+    !!eau && eau.fillColor === "#3aa9e8" && eau.borderColor === "#0066aa");
+  const structs = LC.listEntries("structures") || [];
+  const front1 = structs.filter(function(e) { return e.key === "front-1"; })[0];
+  t("pastille d'un front = un TRAIT, pas un polygone",
+    !!front1 && front1.lineColor === "#f4c542" && !front1.fillColor);
 }
 
 console.log(ko === 0 ? "\n🎉 tout passe" : "\n⚠️ " + ko + " echec(s)");

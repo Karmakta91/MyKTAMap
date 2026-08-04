@@ -1162,6 +1162,16 @@
     h += '<span class="kta-refonte-stats-val">' + _formatDurationStats(stats.session.durationMs) + '</span>';
     h += '</div>';
 
+    // 🎨 v1.76.0 — couleur des barres résolue via le styleResolver, au lieu de
+    // deux tables recopiées à la main. Effet de bord VOULU : les types CUSTOM
+    // avaient leur barre en gris `#888` faute d'entrée dans ces tables ; ils
+    // prennent maintenant leur vraie couleur, celle de la carte.
+    // Déclaré ICI, avant les blocs tracés ET zones : `const` est à portée de
+    // bloc, le placer dans le premier `if` le rendrait invisible au second.
+    const _barColor = function(cat, t) {
+      return (typeof window.ktaSwatchColor === "function" && window.ktaSwatchColor(cat, t)) || "#888";
+    };
+
     // 🛣 Tracés total + breakdown
     if (stats.roads.total > 0) {
       h += '<div class="kta-refonte-stats-row">';
@@ -1170,7 +1180,6 @@
       h += '</div>';
       // Barres par type
       const totalRoadDist = stats.roads.distM || 1;
-      const ROAD_COLORS = { principal: "#00ff00", secondaire: "#b000ff", chemin: "#ffff00", jonction: "#ff4ecb" };
       const ROAD_LABELS = {
         principal:  window.I18n.t("ui.refonte.label_road_principal"),
         secondaire: window.I18n.t("ui.refonte.label_road_secondaire"),
@@ -1182,7 +1191,7 @@
         const pct = (s.distM / totalRoadDist) * 100;
         h += '<div class="kta-refonte-stats-bar-row">';
         h += '<span class="kta-refonte-stats-bar-label">' + _lcLabel("traces", t, ROAD_LABELS[t]) + '</span>';
-        h += '<div class="kta-refonte-stats-bar"><div class="kta-refonte-stats-bar-fill" style="width:' + pct.toFixed(1) + '%; background:' + (ROAD_COLORS[t] || "#888") + ';"></div></div>';
+        h += '<div class="kta-refonte-stats-bar"><div class="kta-refonte-stats-bar-fill" style="width:' + pct.toFixed(1) + '%; background:' + _barColor("traces", t) + ';"></div></div>';
         h += '<span class="kta-refonte-stats-bar-val">' + _fdistStats(s.distM) + '</span>';
         h += '</div>';
       });
@@ -1195,7 +1204,6 @@
       h += '<span class="kta-refonte-stats-val"><strong>' + _fsurfStats(stats.zones.areaM2) + '</strong> ' + window.I18n.t("ui.refonte.stats_on_n_zones", { n: stats.zones.total }) + '</span>';
       h += '</div>';
       const totalArea = stats.zones.areaM2 || 1;
-      const ZONE_COLORS = { eau: "#3aa9e8", remblais: "#5a5a68", effondrement: "#ff3333", inaccessible: "#7a0000" };
       const ZONE_LABELS = {
         eau:          window.I18n.t("ui.refonte.label_zone_eau"),
         remblais:     window.I18n.t("ui.refonte.label_zone_remblais"),
@@ -1207,7 +1215,7 @@
         const pct = (z.areaM2 / totalArea) * 100;
         h += '<div class="kta-refonte-stats-bar-row">';
         h += '<span class="kta-refonte-stats-bar-label">' + _lcLabel("zones", t, ZONE_LABELS[t]) + '</span>';
-        h += '<div class="kta-refonte-stats-bar"><div class="kta-refonte-stats-bar-fill" style="width:' + pct.toFixed(1) + '%; background:' + (ZONE_COLORS[t] || "#888") + ';"></div></div>';
+        h += '<div class="kta-refonte-stats-bar"><div class="kta-refonte-stats-bar-fill" style="width:' + pct.toFixed(1) + '%; background:' + _barColor("zones", t) + ';"></div></div>';
         h += '<span class="kta-refonte-stats-bar-val">' + _fsurfStats(z.areaM2) + '</span>';
         h += '</div>';
       });

@@ -93,29 +93,31 @@ window.LegendCustomization = (function() {
     }
   };
 
-  // Rendus défaut (couleurs/icônes) pour les entrées non-icones.
-  // Pour icones, le rendu vient de _iconePourTag dans exporter.js.
-  const DEFAULT_RENDERS = {
-    traces: {
-      principal:  { lineColor: "#00ff00" },
-      secondaire: { lineColor: "#b000ff" },
-      chemin:     { lineColor: "#ffff00" },
-      jonction:   { lineColor: "#ff4ecb" }
-    },
-    zones: {
-      eau:          { fillColor: "#3aa9e8", borderColor: "#0066aa" },
-      remblais:     { fillColor: "#5a5a68", borderColor: "#3a3a44" },
-      effondrement: { fillColor: "#ff3333", borderColor: "#cc0000" },
-      inaccessible: { fillColor: "#7a0000", borderColor: "#5a0a0a" }
-    },
-    structures: {
-      "pilier-1":  { fillColor: "#f4c542", borderColor: "#000000" },
-      "pilier-2":  { fillColor: "#ff9933", borderColor: "#000000" },
-      "mur":       { fillColor: "#1e3a8a", borderColor: "#000000" },
-      "front-1":   { lineColor:  "#f4c542" },
-      "front-2":   { lineColor:  "#ff9933" }
-    }
-  };
+  // 🎨 v1.76.0 — la table DEFAULT_RENDERS est supprimée.
+  // C'était LA plus dangereuse des ~25 tables : elle décrivait les pastilles
+  // de l'éditeur de légende et était TOTALEMENT INDÉPENDANTE de celle du rendu
+  // carte. Les deux coïncidaient par chance ; le jour où l'une bougeait, la
+  // légende aurait menti sur la carte sans qu'aucun test ne le voie.
+  //
+  // Le rendu par défaut d'une entrée BUILT-IN est désormais dérivé du style
+  // réel, via `js/styleResolver.js` :
+  //   • une ligne (tracé, front de taille) → `lineColor`
+  //   • un polygone (zone, pilier, mur)    → `fillColor` + `borderColor`
+  // C'est exactement la normalisation appliquée aux entrées CUSTOM à leur
+  // création (cf. `addCustomEntry`), donc les deux familles se décrivent enfin
+  // de la même façon.
+  // `{ flat: true }` : une pastille ne sait pas peindre un motif SVG.
+  function _renduDefaut(category, key) {
+    if (typeof window.ktaResolveStyle !== "function") return {};
+    const s = window.ktaResolveStyle(category, key, { flat: true });
+    if (!s) return {};
+    // Ligne : pas de remplissage à montrer. Le canon donne un `fillColor` aux
+    // fronts (plusieurs consommateurs le lisent) — on ne le propage PAS ici,
+    // sinon la pastille afficherait un polygone pour un tracé.
+    const estLigne = (category === "traces") || !!s.isPolyline;
+    if (estLigne) return { lineColor: s.color };
+    return { fillColor: s.fillColor, borderColor: s.color };
+  }
 
   const CATEGORIES = ["icones", "traces", "zones", "structures"];
   const CATEGORY_TITLES = {
@@ -218,7 +220,7 @@ window.LegendCustomization = (function() {
   function listEntries(category) {
     const out = [];
     Object.keys(DEFAULT_LABELS[category] || {}).forEach(function(key) {
-      const r = (DEFAULT_RENDERS[category] && DEFAULT_RENDERS[category][key]) || {};
+      const r = _renduDefaut(category, key);
       out.push({
         category:     category,
         key:          key,
@@ -908,7 +910,9 @@ window.LegendCustomization = (function() {
   return {
     SCHEMA_VERSION:        SCHEMA_VERSION,
     DEFAULT_LABELS:        DEFAULT_LABELS,
-    DEFAULT_RENDERS:       DEFAULT_RENDERS,
+    // DEFAULT_RENDERS retiré en v1.76.0 : le rendu par défaut d'une entrée
+    // built-in se demande à `window.ktaResolveStyle` (aucun consommateur
+    // externe ne lisait cette table — vérifié par grep sur js/).
     CATEGORIES:            CATEGORIES,
 
     // Hooks de cycle de vie

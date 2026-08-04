@@ -11,15 +11,20 @@
 // ÉTAT DE LA MIGRATION (une vague = un lot de consommateurs)
 //   ✅ vague 1 — CARTE : road.js · zones.js · structures.js
 //   ✅ vague 2 — EXPORTS IMAGE : exporter.js · utils.js
-//   ⬜ vague 3 — KMZ / GPX : kmzExport.js · gpxIO.js
-//   ⬜ vague 4 — RESTE : interfaceLegende.js · statsGlobales.js ·
-//                interfaceDistanceTotale.js · refonteInterface.js ·
-//                sessionReport.js (ces deux derniers oublies du recensement
-//                initial ; sessionReport porte meme une 5e palette hors charte)
-// ⚠️ secoursMode.js etait liste ici a tort : ses traces sont colories par
-//    COULEUR D'EQUIPE, pas par type. Il n'a rien a migrer.
-// Tant que des tables subsistent, `scripts/check-style-canon.js` (bloquant)
-// vérifie qu'elles ne dérivent pas de la table ci-dessous.
+//   ✅ vague 3 — KMZ : kmzExport.js
+//   ✅ vague 4 — RESTE : legendCustomization.js · interfaceLegende.js ·
+//                statsGlobales.js · interfaceDistanceTotale.js ·
+//                refonteInterface.js · sessionReport.js
+// 🎉 MIGRATION TERMINÉE — `scripts/check-style-canon.js` confronte désormais
+//    ZÉRO table : il ne reste plus une seule couleur de type écrite à la main
+//    hors des exceptions ci-dessous. Le script reste BLOQUANT : il mordra si
+//    quelqu'un réintroduit une table.
+//
+// ⚠️ Deux fichiers n'avaient RIEN à migrer, contrairement à ce qu'affirmaient
+//    les inventaires précédents :
+//    • `secoursMode.js` — ses tracés sont coloriés par COULEUR D'ÉQUIPE, pas
+//      par type. Aucune table de style par type.
+//    • `gpxIO.js` — le GPX n'a aucune notion de style.
 // =====================================================================
 // POURQUOI CE MODULE EXISTE
 // Avant lui, les couleurs des 13 types built-in étaient recopiées à la main
@@ -196,8 +201,26 @@
     return t ? Object.keys(t) : [];
   }
 
+  // Couleur REPRÉSENTATIVE d'un type — une seule, pour les surfaces qui ne
+  // peuvent en montrer qu'une : pastille de légende, barre de statistiques,
+  // part de camembert, aplat de rapport.
+  // Convention : un polygone est représenté par son REMPLISSAGE (c'est ce
+  // qu'on voit de loin), une ligne par son TRAIT. `{ flat: true }` parce
+  // qu'aucune de ces surfaces ne sait peindre un motif SVG.
+  // Sans ce helper, chaque module se refaisait sa propre palette « à peu
+  // près » — d'où des camemberts colorés par hash, sans aucun rapport avec
+  // la carte. Passer par ici garantit qu'un futur override de couleur les
+  // atteindra tous, par construction.
+  function ktaSwatchColor(categorie, cle) {
+    const s = ktaResolveStyle(categorie, cle, { flat: true });
+    if (!s) return null;
+    if (s.fillColor && !s.isPolyline) return s.fillColor;
+    return s.color || null;
+  }
+
   window.ktaResolveStyle  = ktaResolveStyle;
   window.ktaStyleBuiltins = ktaStyleBuiltins;
+  window.ktaSwatchColor   = ktaSwatchColor;
   // Exposée pour les harnais de test et les outils de diagnostic UNIQUEMENT.
   // Aucun module applicatif ne doit lire cette table en direct : passer par
   // ktaResolveStyle(), sinon on recrée exactement le problème qu'on corrige.

@@ -506,11 +506,16 @@
       ctx.lineWidth = 1.5;
       data.roads.forEach(function(r) {
         if (!Array.isArray(r.points) || r.points.length < 2) return;
-        // Couleur par type
-        const c = (r.type === "principal" ? "#6ce28a" :
-                   r.type === "secondaire" ? "#a78bfa" :
-                   r.type === "chemin" ? "#f4c542" : "#8cb4ff");
-        ctx.strokeStyle = c;
+        // 🎨 v1.76.0 — couleur résolue au lieu d'une 5e palette écrite à la
+        // main. Elle n'était ni documentée comme variante délibérée, ni
+        // recensée nulle part : `principal` y sortait en #6ce28a alors que la
+        // carte le dessine en #00ff00. Le rapport décrivait donc la session
+        // avec des couleurs qui n'étaient celles d'aucun autre écran.
+        // ⚠️ CHANGEMENT VISIBLE : la mini-carte du rapport prend désormais les
+        // couleurs de la carte. C'est l'intention de tout ce lot — sans quoi un
+        // futur override de couleur ne l'atteindrait jamais.
+        ctx.strokeStyle = (typeof window.ktaSwatchColor === "function" &&
+                           window.ktaSwatchColor("traces", r.type)) || "#8cb4ff";
         ctx.beginPath();
         ctx.moveTo(r.points[0].x * ratio, r.points[0].y * ratio);
         for (let i = 1; i < r.points.length; i++) {
@@ -527,11 +532,11 @@
       ctx.globalAlpha = 0.25;
       data.zones.forEach(function(z) {
         if (!Array.isArray(z.points) || z.points.length < 3) return;
-        const c = (z.type === "eau" ? "#3b82f6" :
-                   z.type === "remblais" ? "#6b7280" :
-                   z.type === "effondrement" ? "#ef4444" :
-                   z.type === "inaccessible" ? "#991b1b" : "#8892a4");
-        ctx.fillStyle = c;
+        // 🎨 v1.76.0 — idem : couleur de la carte (remplissage de la zone),
+        // au lieu d'une palette locale. Le globalAlpha 0.25 du contexte reste
+        // la signature visuelle du rapport.
+        ctx.fillStyle = (typeof window.ktaSwatchColor === "function" &&
+                         window.ktaSwatchColor("zones", z.type)) || "#8892a4";
         ctx.beginPath();
         ctx.moveTo(z.points[0].x * ratio, z.points[0].y * ratio);
         for (let i = 1; i < z.points.length; i++) {
