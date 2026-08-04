@@ -41,3 +41,10 @@ node scripts/check-api-surface.js || exit $?
 # silencieusement sur son defaut (bug vecu le 03/08 : le magnetisme au dessin
 # repassait a OFF des l'ouverture d'un plan). BLOQUANT.
 node scripts/check-prefs-survival.js || exit $?
+
+# 🎨 v1.75.2 — Table canonique des styles : tant que des tables subsistent
+# (migration en cours), on verifie qu'elles ne DERIVENT pas de la reference.
+# Un oubli y est invisible : exporter.js avait perdu `inaccessible` et une zone
+# dangereuse sortait en gris remblais dans l'export PNG. BLOQUANT.
+node scripts/check-style-canon.js || exit $?
+node scripts/check-style-resolver.js || exit $?

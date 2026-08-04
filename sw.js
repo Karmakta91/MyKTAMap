@@ -195,6 +195,7 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.16.0 step 2 : module de personnalisation de la légende (cascade
   // session > plan > default). Doit être caché pour fonctionner offline.
   "./js/legendCustomization.js",
+  "./js/styleResolver.js",
   // 🆕 v1.16.0 step 3 : module Favoris (points POI par plan)
   "./js/favoris.js",
   // 🆕 v1.16.0 step 4 : module SessionBackups (10 snapshots FIFO en IDB)

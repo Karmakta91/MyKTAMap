@@ -80,12 +80,23 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 #### 🧱 Le fond — une trentaine de tables pour 13 types built-in
 ✅ **vérifié** — tracés **9 tables** · zones **11** · structures **11**, réparties sur 12 fichiers. `utils.js` en porte 3 copies, `exporter.js` 2 à 4. Et `legendCustomization.js > DEFAULT_RENDERS` (pastilles de la légende) est **indépendante** de `ROAD_STYLES` (la carte) : elles coïncident aujourd'hui, rien ne le garantit — le jour où elles divergent, **la légende ment sur la carte** sans qu'aucun test ne le voie.
 
-**Reco : lot 0 AVANT le lot couleur.** Ajouter l'override sans traiter ça = fabriquer une 32ᵉ source de vérité, avec la couleur juste à l'écran et fausse dans tout ce qui se partage.
-1. Résolveur central `window.ktaResolveStyle(category, key)` — absorbe les 2 bugs par construction
-2. Migration par vagues : carte → `exporter.js` + `utils.js` → KMZ/GPX → OSM → Secours
-3. **Alors seulement** l'override couleur : une ligne dans le résolveur, qui atteint tout le monde
+**Décision KARMA (03/08) : option `1` — lot 0 complet, puis la couleur.**
 
-**Décision en attente** : `1` lot 0 complet · `2` les 2 bugs seuls (~20 lignes, n'ouvre pas la couleur) · `3` les 2 bugs puis le résolveur
+#### 🟢 Vague 0 — LIVRÉE (03/08)
+- `js/styleResolver.js` : table **canonique** des 13 types built-in + `window.ktaResolveStyle(catégorie, clé)`. Résout aussi les types **custom** via `LegendCustomization`. Rend un **objet neuf** à chaque appel (un consommateur qui mute son style ne contamine personne).
+- `scripts/check-style-canon.js` — **pré-commit bloquant**. Confronte les tables encore présentes dans le code à la table canonique : **105 déclarations vérifiées, aucune dérive**. Tant que la migration n'est pas finie, c'est lui qui empêche une table de repartir en vrille.
+- `scripts/check-style-resolver.js` — **pré-commit bloquant**, 21 cas (built-in, customs, inconnus, non-contamination, module absent, `findCustomEntry` qui jette).
+
+⚠️ **Découverte du relevé exhaustif — 2 VARIANTES DÉLIBÉRÉES, à ne jamais « corriger »** : `emergencyMode.js` a une palette entière plus vive pour la mini-carte d'urgence, et `osmView.js`/`osmHomePreview.js` rendent `inaccessible` en aplat orange (le motif hachuré SVG n'existe pas sur fond OSM). **Les deux sont commentées dans leur fichier d'origine.** Unifier aveuglément aurait changé le rendu de deux écrans sans que personne l'ait demandé — c'est exactement ce que la comparaison préalable a évité. Elles sont inscrites en `EXCEPTIONS` dans le script de contrôle, ce qui rend tout nouvel écart **volontaire et visible**.
+
+#### 🔜 Vagues suivantes
+1. **Carte** — `road.js`, `zones.js`, `structures.js`
+2. **Exports image** — `exporter.js` + `utils.js` → **corrige le bug 1**
+3. **KMZ / GPX** — `kmzExport.js`, `gpxIO.js` → **corrige le bug 2**
+4. **Reste** — `interfaceLegende.js`, `statsGlobales.js`, `secoursMode.js`, `interfaceDistanceTotale.js`
+5. **Alors seulement l'override couleur** : une entrée dans le résolveur, qui atteint tout le monde par construction
+
+⚠️ **Toujours non vérifiés** : `createConf.js`, `tableEditor.js` — à contrôler avant de clore.
 
 ---
 
