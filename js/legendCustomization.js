@@ -170,12 +170,22 @@ window.LegendCustomization = (function() {
   }
 
   function _normalize(state) {
-    const s = state || {};
+    // `state` peut venir d'un localStorage corrompu, d'un plan-config forgé ou
+    // d'un calque importé malformé : tout champ est suspect. Sans le filtre
+    // ci-dessous, UNE entrée `null` dans customEntries suffisait à faire
+    // planter listCustomEntries (TypeError sur e.category) → plus de légende
+    // NI de sidebar au boot. Trouvé par le checkup destructif M3 (05/08),
+    // avant qu'un utilisateur ne le trouve.
+    const s = (state && typeof state === "object") ? state : {};
     return {
       labels:        (s.labels && typeof s.labels === "object" && !Array.isArray(s.labels)) ? s.labels : {},
       hidden:        _hiddenEnObjet(s.hidden),
       colors:        (s.colors && typeof s.colors === "object" && !Array.isArray(s.colors)) ? s.colors : {},
-      customEntries: Array.isArray(s.customEntries) ? s.customEntries.slice() : []
+      customEntries: (Array.isArray(s.customEntries) ? s.customEntries : []).filter(function(e) {
+        // une entrée exploitable a AU MINIMUM un id string ; le reste des
+        // champs est déjà défendu à la lecture (repli par catégorie, etc.)
+        return e && typeof e === "object" && typeof e.id === "string" && e.id;
+      })
     };
   }
 

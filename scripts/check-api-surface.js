@@ -207,6 +207,27 @@ if (LC) {
     LC.loadSessionState(null);
   })();
 
+  // 💣 Corruption du stockage (checkup destructif M3, 05/08) : la session en
+  // localStorage, le plan-config et les calques importes sont des entrees NON
+  // FIABLES. Une entree `null` dans customEntries plantait listCustomEntries
+  // (TypeError) -> plus de legende NI de sidebar au boot. Ces cas verrouillent
+  // la regle : _normalize assainit TOUT, aucun lecteur ne crash sur du pourri.
+  t("customLegend = 42 ne casse rien", (function() {
+    LC.loadSessionState(42);
+    return LC.listCustomEntries("traces").length === 0 && LC.isVisible("traces", "principal");
+  })());
+  t("entree null/invalide filtree a l'entree", (function() {
+    LC.loadSessionState({ labels: {}, hidden: {}, colors: {},
+      customEntries: [ {}, { id: "cust-ok", category: "traces", geometry: "polyline", lineColor: "#123456" }, { category: "bidon" }, null ] });
+    const l = LC.listCustomEntries("traces");
+    return l.length === 1 && l[0].id === "cust-ok";
+  })());
+  t("labels null / colors tableau -> ignores sans crash", (function() {
+    LC.loadSessionState({ labels: null, colors: [], hidden: {}, customEntries: [] });
+    return LC.getLabel("traces", "principal") !== null && LC.getColor("traces", "principal") === null;
+  })());
+  LC.loadSessionState(null);
+
   // L'override doit VOYAGER avec la session, sinon il est perdu au reload.
   LC.setColor("zones", "eau", "#010203");
   const snap = LC.getSessionState();
