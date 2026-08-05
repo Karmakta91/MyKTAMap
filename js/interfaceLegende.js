@@ -116,15 +116,21 @@ function afficherLegende() {
     // verrouillée). C'est LE chemin de réparation qui manquait : recréer
     // l'entrée à la main générait un id neuf qui ne se liait jamais (vécu
     // KARMA sur son type « Bas »). L'id n'est jamais montré ni saisi.
+    // Une LIGNE par type (flex + wrap), pas d'inline « · » : dans la colonne
+    // étroite de la modale, un nowrap faisait déborder le bouton hors de la
+    // boîte (bug CSS remonté par KARMA). Les ids longs (`cust-…`) cassent
+    // proprement via word-break.
     const details = orphelins.map(function(o) {
-      return '<span style="white-space:nowrap;"><code style="font-size:11px;">' + _escHtml(o.type) + '</code> (' + o.nb + ')' +
-             ' <button type="button" class="kta-orphan-link" data-otype="' + _escHtml(o.type) + '" data-ocat="' + o.categorie + '"' +
-             ' style="font-size:11px; padding:1px 6px; margin-left:2px; cursor:pointer; background:transparent; border:1px solid rgba(140,180,255,0.4); color:#8cb4ff; border-radius:4px;">➕ ' +
-             window.I18n.t("legendui.orphans.lier") + '</button></span>';
-    }).join(" · ");
+      return '<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:3px 0;">' +
+             '<code style="font-size:11px; word-break:break-all; min-width:0;">' + _escHtml(o.type) + '</code>' +
+             '<span style="color:#8892a4;">(' + o.nb + ')</span>' +
+             '<button type="button" class="kta-orphan-link" data-otype="' + _escHtml(o.type) + '" data-ocat="' + o.categorie + '"' +
+             ' style="font-size:11px; padding:1px 6px; cursor:pointer; background:transparent; border:1px solid rgba(140,180,255,0.4); color:#8cb4ff; border-radius:4px; flex:0 0 auto;">➕ ' +
+             window.I18n.t("legendui.orphans.lier") + '</button></div>';
+    }).join("");
     return `<div style="border:1px solid rgba(255,120,80,0.5); background:rgba(255,120,80,0.08); border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:12px; line-height:1.5; color:#e8eaf0;">
-        ⚠️ ${window.I18n.t("legendui.orphans.intro", { objets: totalObjets, types: orphelins.length })}<br>
-        ${details}<br>
+        ⚠️ ${window.I18n.t("legendui.orphans.intro", { objets: totalObjets, types: orphelins.length })}
+        ${details}
         <span style="color:#8892a4;">${window.I18n.t("legendui.orphans.aide")}</span>
       </div>`;
   }
