@@ -2014,6 +2014,8 @@
   "legendui.label.track": "Posición del tracker",
   "legendui.label.vehicule": "Vehículo",
   "legendui.modal.titre": "🗺️ Leyenda",
+  "legendui.orphans.intro": "{objets} objeto(s) dibujado(s) usan {types} tipo(s) ausente(s) de la leyenda:",
+  "legendui.orphans.aide": "Se muestran en colores de reserva (blanco / gris / azul). Recrea la entrada con ✏️ Editar, o reimporta la leyenda original (sesión o capa de datos).",
   "legendui.section.structures": "🏛️ Estructuras",
   "legendui.section.traces": "🛣️ Trazados",
   "legendui.section.zones": "⬛ Zonas",

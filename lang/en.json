@@ -2003,6 +2003,8 @@
   "legendui.label.track": "Tracker position",
   "legendui.label.vehicule": "Vehicle",
   "legendui.modal.titre": "🗺️ Legend",
+  "legendui.orphans.intro": "{objets} drawn object(s) use {types} type(s) missing from the legend:",
+  "legendui.orphans.aide": "They render in fallback colours (white / grey / blue). Recreate the entry via ✏️ Edit, or re-import the original legend (session or data layer).",
   "legendui.section.structures": "🏛️ Structures",
   "legendui.section.traces": "🛣️ Paths",
   "legendui.section.zones": "⬛ Zones",

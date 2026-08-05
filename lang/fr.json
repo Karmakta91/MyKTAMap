@@ -2003,6 +2003,8 @@
   "legendui.label.track": "Position du tracker",
   "legendui.label.vehicule": "Véhicule",
   "legendui.modal.titre": "🗺️ Légende",
+  "legendui.orphans.intro": "{objets} objet(s) dessiné(s) utilisent {types} type(s) absent(s) de la légende :",
+  "legendui.orphans.aide": "Ils s'affichent en couleur de repli (blanc / gris / bleu). Recrée l'entrée via ✏️ Modifier, ou ré-importe la légende d'origine (session ou calque).",
   "legendui.section.structures": "🏛️ Structures",
   "legendui.section.traces": "🛣️ Tracés",
   "legendui.section.zones": "⬛ Zones",

@@ -105,7 +105,12 @@ if (LC) {
     "getColor", "setColor", "hasColorOverride",
     // 🐛 v1.76.0 (F8) — decompte des objets utilisant un type, lu par la
     // confirmation de suppression de l'editeur.
-    "countUsages"
+    "countUsages",
+    // 🧹 v1.76.0 (F19/F23) — exporter.js DELEGUE sa dialog d'ajout a
+    // ouvrirAddDialog (son clone de 209 lignes a ete supprime) : si ce nom
+    // change, le bouton ➕ de la modale Export devient un no-op silencieux.
+    // listOrphanTypes est lu par le bandeau ⚠️ de la Legende.
+    "ouvrirAddDialog", "listOrphanTypes"
   ];
   ATTENDU_LC.forEach(function(m) {
     t("LegendCustomization." + m + "() exposee", typeof LC[m] === "function");
@@ -145,6 +150,36 @@ if (LC) {
   t("retrait de l'override = retour au canon",
     LC.getColor("traces", "principal") === null &&
     (LC.listEntries("traces") || []).filter(function(e) { return e.key === "principal"; })[0].lineColor === "#00ff00");
+
+  // F22 — `hidden` au format TABLEAU (forme qui a reellement circule, cf.
+  // Array.isArray dans createConf) doit etre MIGRE en objet au chargement :
+  // avant, tous les lookups rendaient undefined et les masquages etaient
+  // perdus en silence.
+  LC.loadSessionState({ hidden: ["traces.principal"], labels: {}, customEntries: [] });
+  t("hidden en tableau : le masquage est bien applique", LC.isVisible("traces", "principal") === false);
+  t("hidden en tableau : les autres types restent visibles", LC.isVisible("traces", "chemin") === true);
+  const snapH = LC.getSessionState();
+  t("hidden re-serialise en OBJET", !Array.isArray(snapH.hidden) && snapH.hidden["traces.principal"] === true);
+  LC.loadSessionState(null);
+
+  // F21 — collision d'id plan/session : UNE seule ligne, variante session.
+  LC.__win.PLAN_CONFIG = { customLegend: { labels: {}, hidden: {}, customEntries: [
+    { id: "cust-dup", category: "traces", geometry: "polyline", label: "Version PLAN", lineColor: "#111111" },
+    { id: "cust-planonly", category: "traces", geometry: "polyline", label: "Plan seul", lineColor: "#222222" }
+  ] } };
+  LC.loadPlanState();
+  LC.loadSessionState({ labels: {}, hidden: {}, customEntries: [
+    { id: "cust-dup", category: "traces", geometry: "polyline", label: "Version SESSION", lineColor: "#333333" }
+  ] });
+  const lst = LC.listCustomEntries("traces");
+  t("collision d'id : une seule ligne", lst.filter(function(e) { return e.id === "cust-dup"; }).length === 1);
+  t("collision d'id : la variante SESSION gagne",
+    lst.filter(function(e) { return e.id === "cust-dup"; })[0].label === "Version SESSION");
+  t("l'entree plan sans collision reste listee", lst.some(function(e) { return e.id === "cust-planonly"; }));
+  t("ordre historique conserve (plan d'abord)", lst[0].id === "cust-dup" && lst[1].id === "cust-planonly");
+  LC.loadSessionState(null);
+  LC.__win.PLAN_CONFIG = null;
+  LC.loadPlanState();
 
   // L'override doit VOYAGER avec la session, sinon il est perdu au reload.
   LC.setColor("zones", "eau", "#010203");

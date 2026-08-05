@@ -99,6 +99,28 @@ function afficherLegende() {
     return true;
   }
 
+  // 🧹 v1.76.0 (F23) — bandeau « types orphelins » : des objets dessinés
+  // référencent un type custom qui n'existe dans aucune légende (entrée
+  // supprimée, calque importé sans sa définition…). Avant, ces objets
+  // sortaient blancs/gris SANS aucune ligne ici — le problème était
+  // invisible précisément à l'endroit où l'utilisateur venait chercher la
+  // réponse. Le bandeau nomme les types et compte les objets.
+  function _bandeauOrphelins() {
+    if (!LC || typeof LC.listOrphanTypes !== "function") return "";
+    let orphelins;
+    try { orphelins = LC.listOrphanTypes(); } catch(e) { return ""; }
+    if (!orphelins || !orphelins.length) return "";
+    const totalObjets = orphelins.reduce(function(s, o) { return s + o.nb; }, 0);
+    const details = orphelins.map(function(o) {
+      return '<code style="font-size:11px;">' + o.type + '</code> (' + o.nb + ')';
+    }).join(" · ");
+    return `<div style="border:1px solid rgba(255,120,80,0.5); background:rgba(255,120,80,0.08); border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:12px; line-height:1.5; color:#e8eaf0;">
+        ⚠️ ${window.I18n.t("legendui.orphans.intro", { objets: totalObjets, types: orphelins.length })}<br>
+        ${details}<br>
+        <span style="color:#8892a4;">${window.I18n.t("legendui.orphans.aide")}</span>
+      </div>`;
+  }
+
   let contenuIcones = "";
 
   // Helper pour générer une ligne d'icône
@@ -331,6 +353,7 @@ function afficherLegende() {
         </div>
       </div>
       <div class="kta-readme-modal-corps kta-legende-corps">
+        ${_bandeauOrphelins()}
         ${contenuIcones}
         ${contenuTracés}
         ${contenuZones}
@@ -375,7 +398,7 @@ function afficherLegende() {
     // contenuZones, contenuStructures) ? Non, elles ont été figées au
     // build initial. On re-construit tout à partir des helpers _label /
     // _visible qui lisent LC à chaud.
-    let html = "";
+    let html = _bandeauOrphelins();   // F23 — recalculé à chaque refresh
 
     // ── Icônes ──
     let icx = "";

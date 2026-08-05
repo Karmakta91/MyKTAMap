@@ -144,15 +144,28 @@ window.LegendCustomization = (function() {
   // Les types CUSTOM ne passent pas par là : leurs couleurs sont déjà dans
   // l'entrée elle-même, éditables via la dialog de modification.
   //
-  // ⚠️ `hidden` est accepté même sous forme de TABLEAU par cette normalisation
-  // depuis l'origine (tous les lookups `hidden[k]` rendent alors `undefined`
-  // en silence). C'est une incohérence de forme connue — cf. F22 dans
-  // docs/BACKLOG.md. Non corrigée ici pour ne pas mélanger les sujets.
+  // 🧹 v1.76.0 (F22) — `hidden` existe dans la nature sous DEUX formes : objet
+  // ({ "traces.principal": true }) et TABLEAU de clés (["traces.principal"]) —
+  // createConf teste `Array.isArray(cl.hidden)` à 3 endroits, preuve que la
+  // forme tableau a réellement circulé. Or un tableau passait le test
+  // `typeof === "object"` d'ici et TOUS les lookups `hidden[k]` rendaient
+  // `undefined` en silence : les masquages venus d'un plan au format tableau
+  // étaient perdus sans un log. On MIGRE le tableau vers la forme objet au
+  // chargement — un seul format en mémoire, tous les producteurs acceptés.
+  function _hiddenEnObjet(h) {
+    if (Array.isArray(h)) {
+      const o = {};
+      h.forEach(function(k) { if (typeof k === "string" && k) o[k] = true; });
+      return o;
+    }
+    return (h && typeof h === "object") ? h : {};
+  }
+
   function _normalize(state) {
     const s = state || {};
     return {
-      labels:        (s.labels && typeof s.labels === "object") ? s.labels : {},
-      hidden:        (s.hidden && typeof s.hidden === "object") ? s.hidden : {},
+      labels:        (s.labels && typeof s.labels === "object" && !Array.isArray(s.labels)) ? s.labels : {},
+      hidden:        _hiddenEnObjet(s.hidden),
       colors:        (s.colors && typeof s.colors === "object" && !Array.isArray(s.colors)) ? s.colors : {},
       customEntries: Array.isArray(s.customEntries) ? s.customEntries.slice() : []
     };
@@ -258,10 +271,11 @@ window.LegendCustomization = (function() {
   // verrait rien changer avant de recharger le plan.
   // Le listener `onCustomEntriesChange` existant ne suffit PAS : son unique
   // abonné (interface.js) ne rafraîchit que les boutons de la sidebar.
-  // Les data layers ne sont PAS re-rendus ici : ils sont construits une fois
-  // au chargement du plan. C'est une limite connue, notée en dette.
+  // 🎨 v1.76.0 (N1) — les CALQUES DE DONNÉES sont désormais repeints eux
+  // aussi (window._ktaRestyleDataLayers, cf. utils.js) : la limite « recharge
+  // le plan pour voir les couleurs sur les calques » est levée.
   function _repeindreCarte() {
-    ["renderRoads", "renderZones", "renderStructures"].forEach(function(fn) {
+    ["renderRoads", "renderZones", "renderStructures", "_ktaRestyleDataLayers"].forEach(function(fn) {
       if (typeof window[fn] === "function") {
         try { window[fn](); } catch(e) { console.warn("[LegendCustomization] " + fn + " a échoué :", e); }
       }
@@ -301,18 +315,34 @@ window.LegendCustomization = (function() {
   }
 
   function listCustomEntries(category) {
-    // Custom entries provenant des 2 niveaux (plan + session). Pas de
-    // déduplication — chaque entrée a son id unique.
+    // Custom entries provenant des 2 niveaux (plan + session).
+    // 🧹 v1.76.0 (F21) — DÉDUPLICATION par id, session prioritaire. Les ids
+    // `cust-<ts36>-<rnd36>` sont probabilistes, pas structurellement uniques :
+    // si un plan et une session déclarent le même id (collision, ou plan
+    // regénéré depuis la session — cas courant depuis F2/F3), on affichait
+    // DEUX lignes de légende et DEUX boutons de sidebar identiques. La session
+    // gagne : c'est déjà la règle de `findCustomEntry`, les deux résolveurs
+    // doivent raconter la même chose.
+    // Ordre d'affichage historique conservé : plan d'abord, session ensuite.
+    // En cas de doublon d'id, la ligne du plan est REMPLACÉE par la variante
+    // session, à sa place.
+    const sessionParId = new Map();
+    _sessionState.customEntries.forEach(function(e) {
+      if (!category || e.category === category) sessionParId.set(e.id, e);
+    });
     const out = [];
+    const emis = new Set();
     _planState.customEntries.forEach(function(e) {
-      if (!category || e.category === category) {
-        out.push(Object.assign({}, e, { isCustom: true, source: "plan", visible: isCustomVisible(e.id) }));
-      }
+      if (category && e.category !== category) return;
+      const src = sessionParId.get(e.id) || e;
+      const source = sessionParId.has(e.id) ? "session" : "plan";
+      emis.add(e.id);
+      out.push(Object.assign({}, src, { isCustom: true, source: source, visible: isCustomVisible(src.id) }));
     });
     _sessionState.customEntries.forEach(function(e) {
-      if (!category || e.category === category) {
-        out.push(Object.assign({}, e, { isCustom: true, source: "session", visible: isCustomVisible(e.id) }));
-      }
+      if (category && e.category !== category) return;
+      if (emis.has(e.id)) return;
+      out.push(Object.assign({}, e, { isCustom: true, source: "session", visible: isCustomVisible(e.id) }));
     });
     return out;
   }
@@ -444,6 +474,34 @@ window.LegendCustomization = (function() {
       }
     });
     return { session: session, calques: calques, total: session + calques };
+  }
+
+  // 🧹 v1.76.0 (F23) — TYPES ORPHELINS : objets dessinés dont le type `cust-…`
+  // n'existe dans AUCUNE légende (entrée supprimée, calque importé sans sa
+  // définition avant F2/F3…). C'était la cause racine commune des symptômes
+  // « objets blancs/gris sans ligne de légende » : le problème existait mais
+  // RIEN ne le rendait visible. ≡ Légende affiche désormais un avertissement.
+  // Retourne [{ type, categorie, nb }] — vide si tout va bien.
+  function listOrphanTypes() {
+    const orphelins = new Map();
+    [["traces", "getRoads", "getAllEmbeddedRoads"],
+     ["zones", "getZones", "getAllEmbeddedZones"],
+     ["structures", "getStructures", "getAllEmbeddedStructures"]].forEach(function(trio) {
+      const cat = trio[0];
+      [trio[1], trio[2]].forEach(function(fn) {
+        if (typeof window[fn] !== "function") return;
+        let liste;
+        try { liste = window[fn]() || []; } catch(e) { return; }
+        liste.forEach(function(o) {
+          if (!o || typeof o.type !== "string" || o.type.indexOf("cust-") !== 0) return;
+          if (findCustomEntry(o.type)) return;
+          const k = cat + "|" + o.type;
+          if (!orphelins.has(k)) orphelins.set(k, { type: o.type, categorie: cat, nb: 0 });
+          orphelins.get(k).nb++;
+        });
+      });
+    });
+    return Array.from(orphelins.values());
   }
 
   // Lookup d'une entrée custom par ID (session OU plan).
@@ -1097,6 +1155,11 @@ window.LegendCustomization = (function() {
     resetSession:          resetSession,
     findCustomEntry:       findCustomEntry,
     countUsages:           countUsages,
+    // 🧹 v1.76.0 (F19) — dialog « ajouter une entrée » exposée : exporter.js
+    // en avait un clone intégral, supprimé au profit de cette API.
+    ouvrirAddDialog:       _ouvrirAddDialog,
+    // 🧹 v1.76.0 (F23) — diagnostic des types orphelins, lu par ≡ Légende.
+    listOrphanTypes:       listOrphanTypes,
 
     // Hook listener (sidebar dynamique, invalidation styles, etc.)
     onCustomEntriesChange: onCustomEntriesChange,

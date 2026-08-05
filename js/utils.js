@@ -1537,6 +1537,52 @@ window._applyLevelFilterToDataRoads = function() {
   window._ktaDataPolylines.forEach(_filtreNiveauSurPolylineData);
 };
 
+// 🎨 v1.76.0 (N1) — REPEINT les objets des CALQUES DE DONNÉES après un
+// changement de couleur dans la légende. Ils sont construits une fois au
+// chargement du plan : sans ce hook, une couleur choisie ne les atteignait
+// qu'au rechargement (limite documentée à la livraison de l'override —
+// levée ici). On ne touche qu'aux COULEURS (color / fillColor) et aux
+// opacités d'ORIGINE des entrées : l'opacité affichée reste la propriété du
+// filtre multi-niveau, qu'on réapplique juste après pour ne pas révéler un
+// objet masqué.
+// ⚠️ `inaccessible` : son style carte est un motif SVG `url(#…)`. Ses
+// polygones data layer sont sur le renderer SVG dédié → setStyle du motif
+// comme d'un aplat d'override y fonctionnent tels quels.
+window._ktaRestyleDataLayers = function() {
+  const R = window.ktaResolveStyle;
+  if (typeof R !== "function") return;
+  const parType = {};   // memo par (cat|type) — listes potentiellement longues
+  function _style(cat, type) {
+    const k = cat + "|" + type;
+    if (!(k in parType)) parType[k] = R(cat, type);
+    return parType[k];
+  }
+  (window._ktaDataPolylines || []).forEach(function(e) {
+    if (!e || !e.polyline || !e.type) return;
+    const s = _style("traces", e.type);
+    if (!s) return;
+    try { e.polyline.setStyle({ color: s.color }); } catch(err) {}
+  });
+  (window._ktaDataPolygons || []).forEach(function(e) {
+    if (!e || !e.polygon || !e.type) return;
+    const s = _style("zones", e.type);
+    if (!s) return;
+    if (s.fillOpacity != null) e.origFillOpacity = s.fillOpacity;
+    try { e.polygon.setStyle({ color: s.color, fillColor: s.fillColor }); } catch(err) {}
+  });
+  (window._ktaDataStructurePolygons || []).forEach(function(e) {
+    if (!e || !e.polygon || !e.type) return;
+    const s = _style("structures", e.type);
+    if (!s) return;
+    if (s.fillOpacity != null) e.origFillOpacity = s.fillOpacity;
+    try { e.polygon.setStyle({ color: s.color, fillColor: s.fillColor || s.color }); } catch(err) {}
+  });
+  // Réapplique les filtres niveau/type : eux seuls décident des opacités.
+  if (typeof window._applyLevelFilterToDataRoads === "function") window._applyLevelFilterToDataRoads();
+  if (typeof window._applyLevelFilterToDataZones === "function") window._applyLevelFilterToDataZones();
+  if (typeof window._applyLevelFilterToDataStructures === "function") window._applyLevelFilterToDataStructures();
+};
+
 // === POLYGONS data layers (zones embarquees) ===
 // 🆕 v1.21.5 : `kindForRuntime` permet de différencier zone vs structure
 // (le même format de polygon entry est utilisé pour les 2). Passé par les
