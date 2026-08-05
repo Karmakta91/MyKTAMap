@@ -70,7 +70,15 @@ window.LegendCustomization = (function() {
       passage: "Passage", chatiere: "Chatière", vehicule: "Véhicule",
       danger: "Danger", info: "Information", elec: "Électricité", epure: "Épure",
       plaque: "Plaque indication",
-      portail: "Portail (liaison inter-plan)"   // 🆕 v1.59.0
+      portail: "Portail (liaison inter-plan)",  // 🆕 v1.59.0
+      // 🐛 v1.76.0 — trois tags built-in MANQUAIENT ici depuis leur création :
+      // dès que la légende passait par getLabel (LC présent = toujours), ils
+      // s'affichaient en clé brute (« entree_plan » au lieu de « Point
+      // d'entrée du plan »). Le fallback historique LEGENDE_LABELS
+      // d'interfaceLegende.js les avait, mais il n'est lu que SANS LC.
+      entree_plan: "Point d'entrée du plan",    // v1.41.0 D
+      track: "Position du tracker",
+      "default": "Point sans tag (défaut)"
     },
     traces: {
       principal:  "Route principale",
@@ -589,6 +597,9 @@ window.LegendCustomization = (function() {
       _sessionState.customEntries.splice(idx, 1);
       _persistSession();
       _fireCustomChange();
+      // Les objets du type supprimé doivent basculer en repli TOUT DE SUITE
+      // (et le bandeau orphelins de ≡ Légende devenir exact au prochain open).
+      _repeindreCarte();
       return true;
     }
     // Si c'est une entrée du PLAN (non éditable), on la cache via hidden
@@ -614,6 +625,9 @@ window.LegendCustomization = (function() {
     if (patch.geometry === "polyline" || patch.geometry === "polygon") e.geometry = patch.geometry;
     _persistSession();
     _fireCustomChange();
+    // Une couleur/géométrie de custom modifiée doit se voir sans redémarrage,
+    // comme l'override des built-in (setColor fait pareil).
+    _repeindreCarte();
     return true;
   }
 
@@ -621,6 +635,10 @@ window.LegendCustomization = (function() {
     _sessionState = _emptyState();
     _persistSession();
     _fireCustomChange();
+    // 🐛 v1.76.0 — sans repeinture, les couleurs override restaient affichées
+    // jusqu'au redémarrage : le reset vidait bien l'état, mais les objets
+    // Leaflet déjà dessinés gardaient leur style (bug remonté par KARMA).
+    _repeindreCarte();
   }
 
   // ─────────────────────────────────────────────

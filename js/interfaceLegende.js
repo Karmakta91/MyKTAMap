@@ -126,8 +126,11 @@ function afficherLegende() {
   // Helper pour générer une ligne d'icône
   function ligneIcone(cle, url) {
     const label = _label("icones", cle);
+    // 🐛 v1.76.0 — plus de onerror inline : la gestion d'échec est déléguée
+    // (capture) au niveau de la modale, avec repli sur l'icône BUILT-IN
+    // intégrée quand le plan déclarait une URL morte (cf. _brancherRepliIcones).
     return `<div class="kta-legende-ligne">
-      <img class="kta-legende-icone" src="${url}" alt="${label}" onerror="this.style.opacity='0.3'">
+      <img class="kta-legende-icone" src="${url}" alt="${label}" data-kta-tag="${cle}">
       <span class="kta-legende-label">${label}</span>
     </div>`;
   }
@@ -363,6 +366,29 @@ function afficherLegende() {
   `;
 
   document.documentElement.appendChild(modal);
+
+  // 🐛 v1.76.0 — REPLI D'ICÔNE À L'ÉCHEC DE CHARGEMENT (bug « entree_plan »).
+  // Si un plan déclare un tag built-in avec un chemin mort dans son
+  // plan-config.json > icons, cette URL cassée gagne sur l'icône intégrée
+  // (PLAN_CONFIG.icons est lu en premier). On rattrape à l'erreur : bascule
+  // UNE fois sur l'URL built-in (`_ktaBuiltinIconUrls`, cf. map.js), sinon
+  // l'ancien comportement (opacité réduite). Délégation en phase de CAPTURE :
+  // l'événement `error` d'une <img> ne bulle pas, et le corps de la modale
+  // est re-rendu par innerHTML à chaque édition de légende — un listener posé
+  // sur la modale survit, ceux posés sur les <img> non.
+  modal.addEventListener("error", function(ev) {
+    const img = ev.target;
+    if (!img || !img.classList || !img.classList.contains("kta-legende-icone")) return;
+    const tag = img.getAttribute("data-kta-tag");
+    const repli = tag && window._ktaBuiltinIconUrls && window._ktaBuiltinIconUrls[tag];
+    if (repli && img.src !== repli && !img.dataset.ktaReplied) {
+      img.dataset.ktaReplied = "1";   // une seule tentative — pas de boucle si le repli échoue
+      img.src = repli;
+      return;
+    }
+    img.style.opacity = "0.3";
+  }, true);
+
   document.getElementById("kta-legende-close").addEventListener("click", function () { modal.remove(); });
   modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
 

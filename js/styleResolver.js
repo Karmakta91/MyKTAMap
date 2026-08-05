@@ -296,10 +296,33 @@
            ';border:2px solid ' + s.color + ';vertical-align:middle;border-radius:3px;"></span>';
   }
 
+  // Variante pour les LIBELLÉS de formulaire (« 🟩 Principaux ») : l'émoji de
+  // tête est remplacé par la pastille résolue. Les libellés i18n des modales
+  // d'export portent leur émoji EN DUR dans la chaîne traduite — après un
+  // override de couleur, le formulaire montrait l'ancienne couleur alors que
+  // l'export sortait la nouvelle (bug remonté par KARMA le 05/08, suite de N2).
+  // Seuls les émojis DE COULEUR sont remplacés ; les symboles sémantiques
+  // (⛔ inaccessible, 🪜 jonction) restent — même règle que la sidebar.
+  // Si le libellé ne commence pas par un émoji de couleur (traduction sans
+  // émoji, libellé déjà nettoyé), il est rendu tel quel.
+  const _EMOJIS_COULEUR = ["🟩", "🟪", "🟨", "🟦", "🟥", "⬛", "🟡", "🟠", "🔵", "🟧"];
+  function ktaLabelAvecPastille(categorie, cle, label) {
+    const l = String(label == null ? "" : label);
+    for (let i = 0; i < _EMOJIS_COULEUR.length; i++) {
+      const e = _EMOJIS_COULEUR[i];
+      if (l.indexOf(e) === 0) {
+        const pastille = ktaTypeSwatchHtml(categorie, cle, e);
+        return pastille + " " + l.slice(e.length).replace(/^\s+/, "");
+      }
+    }
+    return l;
+  }
+
   window.ktaResolveStyle    = ktaResolveStyle;
   window.ktaStyleBuiltins   = ktaStyleBuiltins;
-  window.ktaSwatchColor     = ktaSwatchColor;
-  window.ktaTypeSwatchHtml  = ktaTypeSwatchHtml;
+  window.ktaSwatchColor       = ktaSwatchColor;
+  window.ktaTypeSwatchHtml    = ktaTypeSwatchHtml;
+  window.ktaLabelAvecPastille = ktaLabelAvecPastille;
   // Exposée pour les harnais de test et les outils de diagnostic UNIQUEMENT.
   // Aucun module applicatif ne doit lire cette table en direct : passer par
   // ktaResolveStyle(), sinon on recrée exactement le problème qu'on corrige.

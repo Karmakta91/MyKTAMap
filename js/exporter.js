@@ -32,6 +32,15 @@
   //
   // `repli` est le type utilise quand `type` est introuvable — un custom
   // supprime de la legende, par exemple. Passer `null` pour ne rien dessiner.
+  // 🎨 v1.76.0 (suite N2) — libellé de formulaire avec pastille RÉSOLUE.
+  // Les libellés i18n des cases à cocher portent leur émoji en dur
+  // (« 🟩 Principaux ») : après un override de couleur, le formulaire montrait
+  // l'ancienne couleur alors que l'export sortait la nouvelle.
+  function _lp(cat, key, label) {
+    return (typeof window.ktaLabelAvecPastille === "function")
+             ? window.ktaLabelAvecPastille(cat, key, label) : label;
+  }
+
   function _styleCanvas(categorie, type, repli) {
     const R = window.ktaResolveStyle;
     if (typeof R !== "function") {
@@ -637,9 +646,9 @@
     // Sous-cases types de routes embarquées
     if (hasRoads) {
       const roadLabels = {
-        principal:  window.I18n.t("imgexport.roadType.principal"),
-        secondaire: window.I18n.t("imgexport.roadType.secondaire"),
-        chemin:     window.I18n.t("imgexport.roadType.chemin")
+        principal:  _lp("traces", "principal", window.I18n.t("imgexport.roadType.principal")),
+        secondaire: _lp("traces", "secondaire", window.I18n.t("imgexport.roadType.secondaire")),
+        chemin:     _lp("traces", "chemin", window.I18n.t("imgexport.roadType.chemin"))
       };
       ["principal","secondaire","chemin"].forEach(function(t) {
         if (!roadTypes[t]) return;
@@ -654,10 +663,10 @@
     // Sous-cases types de zones embarquées
     if (hasZones) {
       const zoneLabels = {
-        eau:          window.I18n.t("imgexport.zoneType.eau"),
-        remblais:     window.I18n.t("imgexport.zoneType.remblais"),
-        effondrement: window.I18n.t("imgexport.zoneType.effondrement"),
-        inaccessible: window.I18n.t("imgexport.zoneType.inaccessible")
+        eau:          _lp("zones", "eau", window.I18n.t("imgexport.zoneType.eau")),
+        remblais:     _lp("zones", "remblais", window.I18n.t("imgexport.zoneType.remblais")),
+        effondrement: _lp("zones", "effondrement", window.I18n.t("imgexport.zoneType.effondrement")),
+        inaccessible: _lp("zones", "inaccessible", window.I18n.t("imgexport.zoneType.inaccessible"))
       };
       ["eau","remblais","effondrement","inaccessible"].forEach(function(t) {
         if (!zoneTypes[t]) return;
@@ -895,24 +904,24 @@
       pointsTagsHtml +
 
       row("roads",   Ti("imgexport.ann.roads"),           nbRoads,   true) +
-      rowSub("roads_principal",  Ti("imgexport.roadType.principal"),  roadsByType.principal,  true) +
-      rowSub("roads_secondaire", Ti("imgexport.roadType.secondaire"), roadsByType.secondaire, true) +
-      rowSub("roads_chemin",     Ti("imgexport.roadType.chemin"),     roadsByType.chemin,     true) +
+      rowSub("roads_principal",  _lp("traces", "principal", Ti("imgexport.roadType.principal")),  roadsByType.principal,  true) +
+      rowSub("roads_secondaire", _lp("traces", "secondaire", Ti("imgexport.roadType.secondaire")), roadsByType.secondaire, true) +
+      rowSub("roads_chemin",     _lp("traces", "chemin", Ti("imgexport.roadType.chemin")),     roadsByType.chemin,     true) +
 
       row("zones",   Ti("imgexport.ann.zones"),           nbZones,   true) +
-      rowSub("zones_eau",          Ti("imgexport.zoneType.eau"),          zonesByType.eau,          true) +
-      rowSub("zones_remblais",     Ti("imgexport.zoneType.remblais"),     zonesByType.remblais,     true) +
-      rowSub("zones_effondrement", Ti("imgexport.zoneType.effondrement"), zonesByType.effondrement, true) +
-      rowSub("zones_inaccessible", Ti("imgexport.zoneType.inaccessible"), zonesByType.inaccessible, true) +
+      rowSub("zones_eau",          _lp("zones", "eau", Ti("imgexport.zoneType.eau")),          zonesByType.eau,          true) +
+      rowSub("zones_remblais",     _lp("zones", "remblais", Ti("imgexport.zoneType.remblais")),     zonesByType.remblais,     true) +
+      rowSub("zones_effondrement", _lp("zones", "effondrement", Ti("imgexport.zoneType.effondrement")), zonesByType.effondrement, true) +
+      rowSub("zones_inaccessible", _lp("zones", "inaccessible", Ti("imgexport.zoneType.inaccessible")), zonesByType.inaccessible, true) +
 
       // 🆕 v1.9.3-A1.b.2 : structures (piliers + murs + fronts) dans les
       // annotations session de l'export image. Calqué sur le bloc zones.
       row("structures", Ti("imgexport.ann.structures"), nbStructures, true) +
-      rowSub("structures_pilier-1", Ti("imgexport.structType.pilier1"), structuresByType["pilier-1"], true) +
-      rowSub("structures_pilier-2", Ti("imgexport.structType.pilier2"), structuresByType["pilier-2"], true) +
-      rowSub("structures_mur",      Ti("imgexport.structType.mur"),     structuresByType["mur"],      true) +
-      rowSub("structures_front-1",  Ti("imgexport.structType.front1"),  structuresByType["front-1"], true) +
-      rowSub("structures_front-2",  Ti("imgexport.structType.front2"),  structuresByType["front-2"], true) +
+      rowSub("structures_pilier-1", _lp("structures", "pilier-1", Ti("imgexport.structType.pilier1")), structuresByType["pilier-1"], true) +
+      rowSub("structures_pilier-2", _lp("structures", "pilier-2", Ti("imgexport.structType.pilier2")), structuresByType["pilier-2"], true) +
+      rowSub("structures_mur",      _lp("structures", "mur", Ti("imgexport.structType.mur")),     structuresByType["mur"],      true) +
+      rowSub("structures_front-1",  _lp("structures", "front-1", Ti("imgexport.structType.front1")),  structuresByType["front-1"], true) +
+      rowSub("structures_front-2",  _lp("structures", "front-2", Ti("imgexport.structType.front2")),  structuresByType["front-2"], true) +
 
       row("mesure",  Ti("imgexport.ann.mesure"),          nbMesure,  false) +
       `<label class="kta-export-cb-row" style="${trackerOk ? '' : 'opacity:0.4;'}">

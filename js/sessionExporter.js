@@ -923,22 +923,22 @@
         ${pointsTagsHtml}
 
         ${row("adv_roads", t("export.adv.roads"), d.roads.length, true)}
-        ${rowSub("adv_roads_principal",  t("export.adv.roadsPrincipal"),  roadsByType.principal.length,  true)}
-        ${rowSub("adv_roads_secondaire", t("export.adv.roadsSecondaire"), roadsByType.secondaire.length, true)}
-        ${rowSub("adv_roads_chemin",     t("export.adv.roadsChemin"),     roadsByType.chemin.length,     true)}
+        ${rowSub("adv_roads_principal",  _lp("traces", "principal", t("export.adv.roadsPrincipal")),  roadsByType.principal.length,  true)}
+        ${rowSub("adv_roads_secondaire", _lp("traces", "secondaire", t("export.adv.roadsSecondaire")), roadsByType.secondaire.length, true)}
+        ${rowSub("adv_roads_chemin",     _lp("traces", "chemin", t("export.adv.roadsChemin")),     roadsByType.chemin.length,     true)}
 
         ${row("adv_zones", t("export.adv.zones"), d.zones.length, true)}
-        ${rowSub("adv_zones_eau",          t("export.adv.zonesEau"),           zonesByType.eau.length,          true)}
-        ${rowSub("adv_zones_remblais",     t("export.adv.zonesRemblais"),      zonesByType.remblais.length,     true)}
-        ${rowSub("adv_zones_effondrement", t("export.adv.zonesEffondrement"),  zonesByType.effondrement.length, true)}
-        ${rowSub("adv_zones_inaccessible", t("export.adv.zonesInaccessible"),  zonesByType.inaccessible.length, true)}
+        ${rowSub("adv_zones_eau",          _lp("zones", "eau", t("export.adv.zonesEau")),           zonesByType.eau.length,          true)}
+        ${rowSub("adv_zones_remblais",     _lp("zones", "remblais", t("export.adv.zonesRemblais")),      zonesByType.remblais.length,     true)}
+        ${rowSub("adv_zones_effondrement", _lp("zones", "effondrement", t("export.adv.zonesEffondrement")),  zonesByType.effondrement.length, true)}
+        ${rowSub("adv_zones_inaccessible", _lp("zones", "inaccessible", t("export.adv.zonesInaccessible")),  zonesByType.inaccessible.length, true)}
 
         ${row("adv_structures", t("export.adv.structures"), (d.structures || []).length, true)}
-        ${rowSub("adv_structures_pilier-1", t("export.adv.structPilier1"),     structuresByType["pilier-1"].length, true)}
-        ${rowSub("adv_structures_pilier-2", t("export.adv.structPilier2"),     structuresByType["pilier-2"].length, true)}
-        ${rowSub("adv_structures_mur",      t("export.adv.structMur"),         structuresByType["mur"].length,      true)}
-        ${rowSub("adv_structures_front-1",  t("export.adv.structFront1"),      structuresByType["front-1"].length,  true)}
-        ${rowSub("adv_structures_front-2",  t("export.adv.structFront2"),      structuresByType["front-2"].length,  true)}
+        ${rowSub("adv_structures_pilier-1", _lp("structures", "pilier-1", t("export.adv.structPilier1")),     structuresByType["pilier-1"].length, true)}
+        ${rowSub("adv_structures_pilier-2", _lp("structures", "pilier-2", t("export.adv.structPilier2")),     structuresByType["pilier-2"].length, true)}
+        ${rowSub("adv_structures_mur",      _lp("structures", "mur", t("export.adv.structMur")),         structuresByType["mur"].length,      true)}
+        ${rowSub("adv_structures_front-1",  _lp("structures", "front-1", t("export.adv.structFront1")),      structuresByType["front-1"].length,  true)}
+        ${rowSub("adv_structures_front-2",  _lp("structures", "front-2", t("export.adv.structFront2")),      structuresByType["front-2"].length,  true)}
 
         ${row("adv_mesure",        t("export.adv.mesureDistance"), (d.mesure || []).length,        (d.mesure || []).length > 0)}
         ${row("adv_mesure_surface",t("export.adv.mesureSurface"),  (d.mesureSurface || []).length, (d.mesureSurface || []).length >= 3)}
@@ -2666,6 +2666,13 @@
   // On fusionne les deux, dans l'ordre de la cascade d'affichage — la SESSION
   // prime sur le plan — pour que le fichier exporté décrive ce que l'auteur a
   // réellement sous les yeux.
+  // 🎨 v1.76.0 (suite N2) — libellé de case à cocher avec pastille RÉSOLUE
+  // (cf. exporter.js > _lp, même besoin : l'émoji des libellés i18n est figé).
+  function _lp(cat, key, label) {
+    return (typeof window.ktaLabelAvecPastille === "function")
+             ? window.ktaLabelAvecPastille(cat, key, label) : label;
+  }
+
   function _legendeCompleteAExporter() {
     const plan = (window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend) || null;
     const LC = window.LegendCustomization;
@@ -3407,24 +3414,24 @@
 
         // --- Tracés + sous-cases par type ---
         row("kmz_inc_roads", t("export.kmz.roads"), roadsTotal, true) +
-        rowSub("kmz_inc_roads_principal",  t("export.kmz.roadsPrincipal"),  rByT.principal,  true) +
-        rowSub("kmz_inc_roads_secondaire", t("export.kmz.roadsSecondaire"), rByT.secondaire, true) +
-        rowSub("kmz_inc_roads_chemin",     t("export.kmz.roadsChemin"),     rByT.chemin,     true) +
+        rowSub("kmz_inc_roads_principal",  _lp("traces", "principal", t("export.kmz.roadsPrincipal")),  rByT.principal,  true) +
+        rowSub("kmz_inc_roads_secondaire", _lp("traces", "secondaire", t("export.kmz.roadsSecondaire")), rByT.secondaire, true) +
+        rowSub("kmz_inc_roads_chemin",     _lp("traces", "chemin", t("export.kmz.roadsChemin")),     rByT.chemin,     true) +
 
         // --- Zones + sous-cases par type ---
         row("kmz_inc_zones", t("export.kmz.zones"), zonesTotal, true) +
-        rowSub("kmz_inc_zones_eau",          t("export.kmz.zonesEau"),          zByT.eau,          true) +
-        rowSub("kmz_inc_zones_remblais",     t("export.kmz.zonesRemblais"),     zByT.remblais,     true) +
-        rowSub("kmz_inc_zones_effondrement", t("export.kmz.zonesEffondrement"), zByT.effondrement, true) +
-        rowSub("kmz_inc_zones_inaccessible", t("export.kmz.zonesInaccessible"), zByT.inaccessible, true) +
+        rowSub("kmz_inc_zones_eau",          _lp("zones", "eau", t("export.kmz.zonesEau")),          zByT.eau,          true) +
+        rowSub("kmz_inc_zones_remblais",     _lp("zones", "remblais", t("export.kmz.zonesRemblais")),     zByT.remblais,     true) +
+        rowSub("kmz_inc_zones_effondrement", _lp("zones", "effondrement", t("export.kmz.zonesEffondrement")), zByT.effondrement, true) +
+        rowSub("kmz_inc_zones_inaccessible", _lp("zones", "inaccessible", t("export.kmz.zonesInaccessible")), zByT.inaccessible, true) +
 
         // --- 🆕 v1.9.3-A1.b.1 + A1.b.2 : Structures + 5 sous-types ---
         row("kmz_inc_structures", t("export.kmz.structures"), structuresTotal, true) +
-        rowSub("kmz_inc_structures_pilier-1", t("export.kmz.structPilier1"), sByT["pilier-1"], true) +
-        rowSub("kmz_inc_structures_pilier-2", t("export.kmz.structPilier2"), sByT["pilier-2"], true) +
-        rowSub("kmz_inc_structures_mur",      t("export.kmz.structMur"),     sByT["mur"],      true) +
-        rowSub("kmz_inc_structures_front-1",  t("export.kmz.structFront1"),  sByT["front-1"] || 0, true) +
-        rowSub("kmz_inc_structures_front-2",  t("export.kmz.structFront2"),  sByT["front-2"] || 0, true) +
+        rowSub("kmz_inc_structures_pilier-1", _lp("structures", "pilier-1", t("export.kmz.structPilier1")), sByT["pilier-1"], true) +
+        rowSub("kmz_inc_structures_pilier-2", _lp("structures", "pilier-2", t("export.kmz.structPilier2")), sByT["pilier-2"], true) +
+        rowSub("kmz_inc_structures_mur",      _lp("structures", "mur", t("export.kmz.structMur")),     sByT["mur"],      true) +
+        rowSub("kmz_inc_structures_front-1",  _lp("structures", "front-1", t("export.kmz.structFront1")),  sByT["front-1"] || 0, true) +
+        rowSub("kmz_inc_structures_front-2",  _lp("structures", "front-2", t("export.kmz.structFront2")),  sByT["front-2"] || 0, true) +
 
         // --- Jonctions (uniquement si multi-niveau) ---
         (mlOn ? row("kmz_inc_jonctions", t("export.kmz.jonctions"), rByT.jonction, rByT.jonction > 0) : '') +

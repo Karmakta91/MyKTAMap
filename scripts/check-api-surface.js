@@ -181,6 +181,32 @@ if (LC) {
   LC.__win.PLAN_CONFIG = null;
   LC.loadPlanState();
 
+  // 🐛 05/08 — LA CARTE DOIT SE REPEINDRE, pas seulement l'état changer.
+  // Deux bugs successifs de la même famille : l'override livré sans
+  // repeinture, puis le RESET livré sans repeinture (retour des couleurs
+  // d'origine seulement au redémarrage). On vérifie donc que chaque mutation
+  // qui change un rendu déclenche bien les render* : setColor, resetSession,
+  // removeCustomEntry, updateCustomEntry.
+  (function() {
+    let repeints = 0;
+    ["renderRoads", "renderZones", "renderStructures"].forEach(function(fn) {
+      LC.__win[fn] = function() { repeints++; };
+    });
+    function _mutationRepeint(nom, mutation) {
+      repeints = 0;
+      mutation();
+      t(nom + " repeint la carte", repeints >= 3);
+    }
+    _mutationRepeint("setColor", function() { LC.setColor("traces", "principal", "#0000aa"); });
+    _mutationRepeint("resetSession (bug du restart)", function() { LC.resetSession(); });
+    // addCustomEntry retourne l'ID (string), pas l'entrée.
+    const idTmp = LC.addCustomEntry({ category: "traces", label: "tmp", geometry: "polyline", lineColor: "#123123" });
+    _mutationRepeint("updateCustomEntry", function() { LC.updateCustomEntry(idTmp, { lineColor: "#321321" }); });
+    _mutationRepeint("removeCustomEntry", function() { LC.removeCustomEntry(idTmp); });
+    ["renderRoads", "renderZones", "renderStructures"].forEach(function(fn) { delete LC.__win[fn]; });
+    LC.loadSessionState(null);
+  })();
+
   // L'override doit VOYAGER avec la session, sinon il est perdu au reload.
   LC.setColor("zones", "eau", "#010203");
   const snap = LC.getSessionState();

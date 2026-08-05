@@ -166,6 +166,13 @@ function creerIcones(iconConfig) {
       window._iconMap[tag] = _mkIcon(TAGS_BUILTIN[tag], 50, 50, 25, 25);
     }
   });
+  // 🐛 v1.76.0 — URLs built-in exposées comme FILET DE SECOURS. Un plan peut
+  // déclarer un de ces tags dans son plan-config.json > icons avec un chemin
+  // mort ; comme PLAN_CONFIG.icons est lu EN PREMIER par toute la cascade,
+  // l'URL cassée gagnait sur l'icône intégrée (ex. la porte SVG inline
+  // d'entree_plan) et la légende affichait une image morte. Les consommateurs
+  // (≡ Légende) se replient sur cette table quand leur <img> échoue.
+  window._ktaBuiltinIconUrls = TAGS_BUILTIN;
 
   // Garantir que "default" est toujours présent dans _iconMap
   if (!window._iconMap.default) {
