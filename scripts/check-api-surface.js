@@ -79,7 +79,7 @@ if (UP) {
 // Expose des fonctions LIBRES sur window, pas un objet d'API.
 const SR = charger("js/styleResolver.js", "ktaResolveStyle");
 t("window.ktaResolveStyle() exposee",  typeof SR === "function");
-["ktaStyleBuiltins", "ktaSwatchColor"].forEach(function(f) {
+["ktaStyleBuiltins", "ktaSwatchColor", "ktaTypeSwatchHtml"].forEach(function(f) {
   // Rechargement isole : on veut verifier CHAQUE nom, pas seulement le premier.
   const g = charger("js/styleResolver.js", f);
   t("window." + f + "() exposee", typeof g === "function");

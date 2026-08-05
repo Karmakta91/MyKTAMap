@@ -275,9 +275,31 @@
     return s.color || null;
   }
 
-  window.ktaResolveStyle  = ktaResolveStyle;
-  window.ktaStyleBuiltins = ktaStyleBuiltins;
-  window.ktaSwatchColor   = ktaSwatchColor;
+  // Pastille HTML d'un type — pour les surfaces qui affichaient un ÉMOJI
+  // (🟩 🟥 🟡…) en guise de couleur. Un émoji est un caractère : il garde sa
+  // couleur d'origine quoi qu'on fasse, donc après un override l'icône
+  // mentait sur la carte (bug remonté par KARMA le 05/08). Ici : un trait
+  // pour les lignes, un carré rempli+bordé pour les polygones, résolus LIVE.
+  // `repli` (l'émoji historique) est rendu si le type est introuvable.
+  // ⚠️ HTML — à n'injecter QUE dans des conteneurs innerHTML (boutons de
+  // sidebar, reflets de mode). Les titres de POPUP échappent leur texte
+  // (anti-XSS voulu) : l'émoji y reste, c'est une limite documentée.
+  function ktaTypeSwatchHtml(categorie, cle, repli) {
+    const s = ktaResolveStyle(categorie, cle, { flat: true });
+    if (!s) return repli || "";
+    const estLigne = (categorie === "traces") || !!s.isPolyline;
+    if (estLigne) {
+      return '<span style="display:inline-block;width:18px;height:4px;background:' + s.color +
+             ';vertical-align:middle;border-radius:1px;"></span>';
+    }
+    return '<span style="display:inline-block;width:13px;height:13px;background:' + (s.fillColor || s.color) +
+           ';border:2px solid ' + s.color + ';vertical-align:middle;border-radius:3px;"></span>';
+  }
+
+  window.ktaResolveStyle    = ktaResolveStyle;
+  window.ktaStyleBuiltins   = ktaStyleBuiltins;
+  window.ktaSwatchColor     = ktaSwatchColor;
+  window.ktaTypeSwatchHtml  = ktaTypeSwatchHtml;
   // Exposée pour les harnais de test et les outils de diagnostic UNIQUEMENT.
   // Aucun module applicatif ne doit lire cette table en direct : passer par
   // ktaResolveStyle(), sinon on recrée exactement le problème qu'on corrige.

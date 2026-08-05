@@ -1149,7 +1149,12 @@ function _creerGroupeAccordeon(config) {
       (config.sousActions || []).forEach(function(sub) {
         const extraCls = sub.cssClass ? (" " + sub.cssClass) : "";
         const btnSub = L.DomUtil.create("a", "kta-sub kta-hidden" + extraCls, div);
-        btnSub.innerHTML = sub.icone;
+        // 🎨 v1.76.0 — même résolution d'icône que le flyout (pastille de
+        // couleur live pour les boutons de type). Sans ça, ce chemin de rendu
+        // (accordéon) gardait l'émoji figé alors que le flyout suivait.
+        btnSub.innerHTML = (typeof sub.dynamicIcon === "function")
+                             ? (sub.dynamicIcon() || sub.icone || "")
+                             : sub.icone;
         btnSub.href      = "javascript:void(0)";
         btnSub.title     = sub.titre;
         if (sub.refClassName) btnSub.dataset.refClassName = sub.refClassName;
@@ -2744,6 +2749,20 @@ _setGroupeModeActif("tracker", isTracking, null);
     }
   });
 
+  // 🎨 v1.76.0 — pastille résolue pour les boutons de TYPE de la sidebar.
+  // Les émojis (🟩 🟥 🟡…) gardaient leur couleur d'origine après un override
+  // de légende : l'icône mentait sur la carte. Résolue à CHAQUE évaluation
+  // (le flyout se re-rend à l'ouverture → couleur toujours à jour).
+  // Émojis conservés là où ils sont un SYMBOLE et non une couleur :
+  // 🪜 jonction, ⛔ inaccessible, ✅ / 🗑️ outils.
+  function _iconeType(cat, key, repli) {
+    if (typeof window.ktaTypeSwatchHtml === "function") {
+      const h = window.ktaTypeSwatchHtml(cat, key, repli);
+      if (h) return h;
+    }
+    return repli;
+  }
+
   // 9. TRACÉS
   // Helper local : active un type de tracé
   function _activerRoute(type, btnCible, iconeReflet) {
@@ -2783,12 +2802,12 @@ _setGroupeModeActif("tracker", isTracking, null);
   const _sousActionsTraces = [];
 
   _sousActionsTraces.push(
-    { icone: "🟩", titre: window.I18n.t("ui.trace.principal"), isTypeAction: true, typeKey: "principal",
-      onClick: function(btn) { _activerRoute("principal",  btn, "🟩"); } },
-    { icone: "🟪", titre: window.I18n.t("ui.trace.secondaire"), isTypeAction: true, typeKey: "secondaire",
-      onClick: function(btn) { _activerRoute("secondaire", btn, "🟪"); } },
-    { icone: "🟨", titre: window.I18n.t("ui.trace.chemin"), isTypeAction: true, typeKey: "chemin",
-      onClick: function(btn) { _activerRoute("chemin",     btn, "🟨"); } }
+    { icone: "🟩", dynamicIcon: function() { return _iconeType("traces", "principal", "🟩"); }, titre: window.I18n.t("ui.trace.principal"), isTypeAction: true, typeKey: "principal",
+      onClick: function(btn) { _activerRoute("principal", btn, _iconeType("traces", "principal", "🟩")); } },
+    { icone: "🟪", dynamicIcon: function() { return _iconeType("traces", "secondaire", "🟪"); }, titre: window.I18n.t("ui.trace.secondaire"), isTypeAction: true, typeKey: "secondaire",
+      onClick: function(btn) { _activerRoute("secondaire", btn, _iconeType("traces", "secondaire", "🟪")); } },
+    { icone: "🟨", dynamicIcon: function() { return _iconeType("traces", "chemin", "🟨"); }, titre: window.I18n.t("ui.trace.chemin"), isTypeAction: true, typeKey: "chemin",
+      onClick: function(btn) { _activerRoute("chemin", btn, _iconeType("traces", "chemin", "🟨")); } }
   );
 
   if (_isMultiLevel) {
@@ -2920,7 +2939,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     // 🆕 v1.16.0 step2-flyout : panel latéral au lieu de cascade verticale
     useFlyout: true,
     lcCat: "traces",
-    customActivator: function(customId, btn) { _activerRoute(customId, btn, "✨"); }
+    customActivator: function(customId, btn) { _activerRoute(customId, btn, _iconeType("traces", customId, "✨")); }
   });
 
   // 10. ZONES (polygones remplis : remblais / effondrement)
@@ -2956,14 +2975,14 @@ _setGroupeModeActif("tracker", isTracking, null);
     // 🆕 v1.16.0 step2-flyout : panel latéral
     useFlyout: true,
     lcCat: "zones",
-    customActivator: function(customId, btn) { _activerZone(customId, btn, "✨"); },
+    customActivator: function(customId, btn) { _activerZone(customId, btn, _iconeType("zones", customId, "✨")); },
     sousActions: [
-      { icone: "⬛", titre: window.I18n.t("ui.zone.remblais"), isTypeAction: true, typeKey: "remblais",
-        onClick: function(btn) { _activerZone("remblais",     btn, "⬛"); } },
-      { icone: "🟥", titre: window.I18n.t("ui.zone.effondrement"), isTypeAction: true, typeKey: "effondrement",
-        onClick: function(btn) { _activerZone("effondrement", btn, "🟥"); } },
-      { icone: "🟦", titre: window.I18n.t("ui.zone.eau"), isTypeAction: true, typeKey: "eau",
-        onClick: function(btn) { _activerZone("eau",          btn, "🟦"); } },
+      { icone: "⬛", dynamicIcon: function() { return _iconeType("zones", "remblais", "⬛"); }, titre: window.I18n.t("ui.zone.remblais"), isTypeAction: true, typeKey: "remblais",
+        onClick: function(btn) { _activerZone("remblais", btn, _iconeType("zones", "remblais", "⬛")); } },
+      { icone: "🟥", dynamicIcon: function() { return _iconeType("zones", "effondrement", "🟥"); }, titre: window.I18n.t("ui.zone.effondrement"), isTypeAction: true, typeKey: "effondrement",
+        onClick: function(btn) { _activerZone("effondrement", btn, _iconeType("zones", "effondrement", "🟥")); } },
+      { icone: "🟦", dynamicIcon: function() { return _iconeType("zones", "eau", "🟦"); }, titre: window.I18n.t("ui.zone.eau"), isTypeAction: true, typeKey: "eau",
+        onClick: function(btn) { _activerZone("eau", btn, _iconeType("zones", "eau", "🟦")); } },
       // 🚫 v169 (Karma_dev) : zone bloquante pour le pathfinder. Hachures
       // rouge/noir 45°. Tout segment de route qui traverse est inutilisable
       // pour le calcul d'itinéraire (= contrainte dure).
@@ -3102,35 +3121,35 @@ _setGroupeModeActif("tracker", isTracking, null);
     // 🆕 v1.16.0 step2-flyout : panel latéral
     useFlyout: true,
     lcCat: "structures",
-    customActivator: function(customId, btn) { _activerStructure(customId, btn, "✨"); },
+    customActivator: function(customId, btn) { _activerStructure(customId, btn, _iconeType("structures", customId, "✨")); },
     sousActions: [
       // 🟡 Pilier 1ère masse : icone rond jaune (= couleur charte MKM,
       // cohérent avec le fill #f4c542 de la structure rendue sur carte).
       // KARMA-fix : 1ère masse en JAUNE (couleurs inversées par rapport
       // au draft initial qui avait orange / jaune dans le mauvais sens).
       // En multi-niveau : tagué au niveau actif.
-      { icone: "🟡", titre: window.I18n.t("ui.struct.pilier1"), isTypeAction: true, typeKey: "pilier-1",
-        onClick: function(btn) { _activerStructure("pilier-1", btn, "🟡"); } },
+      { icone: "🟡", dynamicIcon: function() { return _iconeType("structures", "pilier-1", "🟡"); }, titre: window.I18n.t("ui.struct.pilier1"), isTypeAction: true, typeKey: "pilier-1",
+        onClick: function(btn) { _activerStructure("pilier-1", btn, _iconeType("structures", "pilier-1", "🟡")); } },
       // 🟠 Pilier 2e masse : icone rond orange (fill #ff9933).
       // En multi-niveau : AUTO-tagué à `activeLevel - 1` (cf. structures.js)
       // car structurellement la masse inférieure visible depuis l'actuelle.
-      { icone: "🟠", titre: window.I18n.t("ui.struct.pilier2"), isTypeAction: true, typeKey: "pilier-2",
-        onClick: function(btn) { _activerStructure("pilier-2", btn, "🟠"); } },
+      { icone: "🟠", dynamicIcon: function() { return _iconeType("structures", "pilier-2", "🟠"); }, titre: window.I18n.t("ui.struct.pilier2"), isTypeAction: true, typeKey: "pilier-2",
+        onClick: function(btn) { _activerStructure("pilier-2", btn, _iconeType("structures", "pilier-2", "🟠")); } },
       // 🔵 Mur : KARMA "rond bleu pour pas confondre avec icône eau"
       // (la zone eau utilise 🟦 carré bleu clair, ici on prend ROND bleu
       // foncé pour distinguer visuellement).
-      { icone: "🔵", titre: window.I18n.t("ui.struct.mur"), isTypeAction: true, typeKey: "mur",
-        onClick: function(btn) { _activerStructure("mur", btn, "🔵"); } },
+      { icone: "🔵", dynamicIcon: function() { return _iconeType("structures", "mur", "🔵"); }, titre: window.I18n.t("ui.struct.mur"), isTypeAction: true, typeKey: "mur",
+        onClick: function(btn) { _activerStructure("mur", btn, _iconeType("structures", "mur", "🔵")); } },
       // 🆕 v1.9.3-A1.b.2 : fronts de taille (polylines épaisses sans
       // contour). KARMA : "ce sont des tracé ok mais il reste dans
       // 'structure'". Couleurs INVERSÉES vs piliers : front-1 = orange
       // (cohérent avec pilier-2), front-2 = jaune (cohérent avec pilier-1).
       // Même règle multi-niveau que les piliers : front-2 auto-tagué
       // activeLevel - 1.
-      { icone: "🟨", titre: window.I18n.t("ui.struct.front1"), isTypeAction: true, typeKey: "front-1",
-        onClick: function(btn) { _activerStructure("front-1", btn, "🟨"); } },
-      { icone: "🟧", titre: window.I18n.t("ui.struct.front2"), isTypeAction: true, typeKey: "front-2",
-        onClick: function(btn) { _activerStructure("front-2", btn, "🟧"); } },
+      { icone: "🟨", dynamicIcon: function() { return _iconeType("structures", "front-1", "🟨"); }, titre: window.I18n.t("ui.struct.front1"), isTypeAction: true, typeKey: "front-1",
+        onClick: function(btn) { _activerStructure("front-1", btn, _iconeType("structures", "front-1", "🟨")); } },
+      { icone: "🟧", dynamicIcon: function() { return _iconeType("structures", "front-2", "🟧"); }, titre: window.I18n.t("ui.struct.front2"), isTypeAction: true, typeKey: "front-2",
+        onClick: function(btn) { _activerStructure("front-2", btn, _iconeType("structures", "front-2", "🟧")); } },
       { icone: "✅", titre: window.I18n.t("ui.struct.fermer"),
         onClick: function() {
           if (!window.modeStructure) {

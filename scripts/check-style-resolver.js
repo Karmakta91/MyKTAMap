@@ -136,6 +136,23 @@ try { R("traces", "principal"); } catch (e) { crashOver = true; }
 t("un getColor qui jette ne fait pas planter", !crashOver);
 delete win.LegendCustomization;
 
+// ── pastille HTML (remplace les emojis de la sidebar) ──
+const H = win.ktaTypeSwatchHtml;
+t("pastille d'un trace = un trait de sa couleur",
+  /height:4px/.test(H("traces", "principal")) && /#00ff00/.test(H("traces", "principal")));
+t("pastille d'une zone = carre rempli + borde",
+  /#3aa9e8/.test(H("zones", "eau")) && /#0066aa/.test(H("zones", "eau")));
+t("pastille d'un front = un trait (isPolyline)", /height:4px/.test(H("structures", "front-1")));
+t("pastille d'un pilier = carre a bordure noire", /#000000/.test(H("structures", "pilier-1")));
+t("type inconnu -> repli emoji rendu tel quel", H("zones", "inexistant", "⛔") === "⛔");
+// La pastille doit suivre un override : c'est sa raison d'etre.
+win.LegendCustomization = {
+  findCustomEntry() { return null; },
+  getColor(cat, cle) { return (cat === "traces" && cle === "principal") ? "#ff0000" : null; }
+};
+t("pastille apres override = la couleur choisie", /#ff0000/.test(H("traces", "principal")));
+delete win.LegendCustomization;
+
 t("ktaStyleBuiltins(zones) = 4 types", win.ktaStyleBuiltins("zones").length === 4);
 t("ktaStyleBuiltins(bidon) = []", win.ktaStyleBuiltins("bidon").length === 0);
 
