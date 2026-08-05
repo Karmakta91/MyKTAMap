@@ -951,6 +951,22 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 
 > 🛡️ **Ouvrir une fenêtre coupe l'outil en cours (depuis v1.73.1)** — si tu es en **mesure, édition de points, tracé, zone, structure ou recalage** et que tu ouvres une modale par-dessus (Réglages, Filtres, Documentation, Mode Secours…), le mode se désarme tout seul. Avant, il restait actif derrière : en refermant, tes clics sur la carte partaient dans l'outil sans que rien ne le rappelle, et le bouton restait allumé sans effet. **Le tracker n'est jamais coupé** (il tourne en fond, ce n'est pas un mode de clic), et la fiche d'un point que tu viens de poser ne coupe pas l'édition — tu peux enchaîner tes points normalement.
 
+### 🎨 Personnaliser la légende (renommer, masquer, couleurs, types custom)
+
+Ouvre **≡ Légende** (groupe 📚 Aide / Doc / Légende) puis **✏️ Modifier**. Pour chaque type de tracé, zone ou structure :
+
+- **Renommer** : tape ton libellé (ex. « Principal » → « Grande galerie »). Il s'affiche partout : légende, popups, stats, filtres.
+- **🎨 Changer la couleur** *(depuis v1.76.0)* : un carré de couleur par ligne. La couleur choisie s'applique **partout** — carte, exports image/PDF, KMZ, statistiques, rapport de session — immédiatement, sans recharger. Un bouton **↺** apparaît pour revenir à la couleur d'origine. Détails de comportement : une zone recolorée dérive sa bordure automatiquement (version plus foncée), un pilier/mur garde son **contour noir** (c'est la signature des structures), et la zone *Inaccessible* recolorée perd ses hachures (motif fixe) au profit d'un aplat.
+- **👁️ Masquer** : la case retire l'entrée **de la boîte de légende uniquement** — rien ne disparaît de la carte. Pour masquer des objets de la carte, c'est le panneau **🔍 Filtres**.
+- **➕ Ajouter une entrée custom** : crée tes propres types (tracé, zone, structure, icône) avec leur couleur. Ils deviennent dessinables depuis la barre latérale, et une icône custom est proposée dans l'éditeur de point.
+- **🗑️ Supprimer un type custom** : si des objets dessinés l'utilisent encore, l'app te préviens avec le décompte avant de confirmer.
+
+> 🧳 **Ta légende voyage avec tes exports** *(depuis v1.76.0)* : un calque de données exporté emporte la définition des types qu'il utilise, et le générateur la récupère à l'import (ce qui existe déjà dans le plan garde la priorité). Le JSON de session et le ZIP Avancé l'emportent aussi.
+>
+> ⚠️ **Bandeau « types orphelins »** : si des objets utilisent un type qui n'existe plus dans la légende (entrée supprimée, vieux calque), la modale ≡ Légende l'affiche en tête avec le compte — ces objets sortent en couleur de repli tant que tu n'as pas recréé ou réimporté l'entrée.
+
+Tout est sauvegardé automatiquement dans ta session, **par plan**.
+
 ### 🔄 Changer rapidement de plan via le titre
 
 Le **titre du plan en cours** affiché en haut de l'écran est **cliquable** : il ouvre un petit menu déroulant avec :

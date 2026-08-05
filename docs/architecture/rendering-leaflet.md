@@ -5,6 +5,24 @@
 
 ---
 
+### 0. 🎨 Styles des types — source de vérité UNIQUE (v1.76.0)
+
+**`js/styleResolver.js` est le SEUL endroit où vivent les styles des 13 types built-in** (tracés `principal/secondaire/chemin/jonction/itinerary`, zones `eau/remblais/effondrement/inaccessible`, structures `pilier-1/pilier-2/mur/front-1/front-2`). Avant lui : ~25 tables recopiées sur 12 fichiers — c'est ainsi qu'une zone `inaccessible` de calque sortait en gris remblais dans l'export PNG (entrée oubliée + repli silencieux, même défaut que `jonction` en v1.7.1).
+
+**API** (globales `window.*`) :
+- `ktaResolveStyle(cat, clé[, {flat:true}])` → objet **NEUF** | `null` (l'appelant garde son repli). Résout aussi les customs `cust-*` via `LegendCustomization` (gabarit par catégorie/géométrie) et applique l'**override de couleur** utilisateur (`LegendCustomization.getColor`, cascade session > plan). `{flat:true}` = contexte qui ne sait pas peindre un `url(#pattern)` SVG (canvas d'export, KMZ, fond OSM) → `inaccessible` retombe sur son aplat `_flatFill`.
+- `ktaSwatchColor(cat, clé)` → LA couleur représentative (polygone = remplissage, ligne = trait) — pastilles, barres de stats, camemberts, rapport.
+- `ktaTypeSwatchHtml(cat, clé, repliEmoji)` → pastille HTML (les émojis 🟩🟥🟡 sont des glyphes à couleur figée — sidebar + reflets de mode).
+- `ktaLabelAvecPastille(cat, clé, label)` → remplace l'émoji de TÊTE d'un libellé i18n par la pastille (formulaires d'export).
+
+**Règles** :
+- ❌ **Jamais de table de couleurs locale** — `scripts/check-style-canon.js` (pré-commit BLOQUANT) refuse toute réintroduction. Exceptions assumées, listées dans le script : `emergencyMode.js` (palette vive dédiée), `osmView.js`/`osmHomePreview.js` (`inaccessible` en aplat orange, pas de motif SVG sur OSM).
+- ⚠️ Le **KML garde SES largeurs/alphas** (`width` KML ≠ `weight` Leaflet, ajustés à l'échelle GPS) — seules les couleurs viennent du canon. Figé par `scripts/check-kml-styles.js`.
+- Toute **mutation qui change un rendu** (setColor, resetSession, remove/updateCustomEntry) doit repeindre : `renderRoads/Zones/Structures` + `_ktaRestyleDataLayers` (calques de données — couleurs seules, les opacités restent au filtre multi-niveau). Vérifié par `check-api-surface.js`.
+- Chargé tôt dans `index.html` (avant `utils.js`) ; aucune dépendance au chargement (LegendCustomization interrogé à l'appel).
+
+---
+
 ### 1. Cycle de vie d'un plan
 
 ```

@@ -5,6 +5,14 @@
 
 ---
 
+### 0. 🎨 v1.76.0 — styles résolus + la légende voyage (résumé, détails dans `rendering-leaflet.md` §0)
+
+- **Plus aucune table de couleurs dans les exports** : toutes les pipes canvas (`exporter.js`, `utils.js`) et le KML (`kmzExport.js`) demandent `ktaResolveStyle(cat, clé, {flat:true})` — l'aplat de repli remplace le motif SVG d'`inaccessible`. Les **largeurs/alphas KML restent locaux** (unité ≠ Leaflet, figés par `scripts/check-kml-styles.js`) ; un type custom reçoit désormais son `<Style>` KML (avant : `styleUrl` pendant → couleur perdue dans Google Earth).
+- **La légende voyage** : payload `devmap-data` → champ `customLegend` **restreint aux types référencés** (`sessionExporter.js > _legendePourPayload`) ; lu par `createConf.js > _absorberLegendeCalque` (conflit : **l'existant du plan gagne**, ré-import idempotent, garde-fou `check-legend-roundtrip.js`). ZIP session Avancé → `session_legend.json`. Option KMZ/GPX « Légende personnalisée » → **fusion plan + session** (`_legendeCompleteAExporter`, la session prime).
+- **Granularité fine de la conversion** : le bucket `autres` (types non built-in) est **émis** en `roads_<type>.json` etc. (`_emettreTypesRestants`) — avant, les objets custom étaient silencieusement supprimés de l'export.
+
+---
+
 ### 5. Légende exportée — 5 groupes équilibrés (depuis 06/05/2026)
 
 Sections (cohérent avec la légende d'aide) :

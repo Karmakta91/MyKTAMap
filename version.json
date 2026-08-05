@@ -1,8 +1,8 @@
 {
-  "version": "v1.75.2",
-  "released": "2026-08-03",
+  "version": "v1.76.0",
+  "released": "2026-08-05",
   "notes": [
-    "🗺️ Nouveau : « Convertir depuis un SIG ». Dépose un fichier exporté de QGIS (GeoJSON, KML) et l'app en fait un plan — points, tracés et zones repris, avec un écran pour dire à quoi correspond chacune de tes appellations. Pas besoin d'image : un fond est généré et calé sur les coordonnées.",
-    "🖼️ Tu peux mettre ta propre image en fond d'écran de l'accueil, avec réglage du voile et du cadrage. Et si tu as perdu le ZIP d'un plan, tu peux le retélécharger depuis ℹ️ Infos — l'app en gardait une copie."
+    "🎨 Tu peux enfin changer la couleur des types de la légende (tracés, zones, structures) : ≡ Légende → ✏️ Modifier, un carré de couleur par ligne. La couleur choisie s'applique partout — carte, exports image, KMZ, statistiques — et un bouton ↺ la remet d'origine.",
+    "🧳 Ta légende voyage désormais avec tes exports : un calque de données réimporté dans le générateur retrouve tes types personnalisés (noms et couleurs), et la légende te prévient si des objets utilisent un type disparu."
   ]
 }

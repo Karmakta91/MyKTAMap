@@ -42,6 +42,7 @@
 **Coords** : TOUJOURS `convertCoord(x,y)` = `[imageHeight - y, x]`. Jamais `[y,x]` direct.
 **Distances** : TOUJOURS `window.formatDistance(distM, dec)`. Jamais `toFixed()+" m"`.
 **Icônes** : résolution unique `window._iconMap[tag]` / `getIconUrlForPoint`.
+**Styles des types** (tracés/zones/structures) : TOUJOURS `window.ktaResolveStyle(cat, clé[, {flat:true}])` (`flat` = contexte sans motif SVG : canvas, KMZ, OSM) · pastille/camembert = `ktaSwatchColor` · icône HTML = `ktaTypeSwatchHtml`. **Jamais de table de couleurs locale** — `scripts/check-style-canon.js` (pré-commit bloquant) refuse toute réintroduction. 2 exceptions documentées : `emergencyMode.js`, `osmView.js`/`osmHomePreview.js`.
 **Textes user-facing** : migration progressive vers `window.I18n.t("module.section.element")` (dicos `lang/<code>.json`, FR = fallback universel). Appeler au rendu, jamais au load. Hors modules migrés, le FR inline reste OK. Détails + état migration : `docs/architecture/i18n.md`.
 
 ## 🗺️ Où chercher (lis le bon fichier avant de coder)

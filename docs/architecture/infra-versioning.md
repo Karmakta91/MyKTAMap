@@ -575,3 +575,26 @@ documentées ici pour la doctrine.
 - ⚠️ Les 3 `<script src>` sont **SANS `defer`** et wrappés `addEventListener("load")` chacun — l'ordre d'enregistrement des listeners (`homeLoader → homeProfile → homeConfig → résiduel`) reproduit l'ordre d'exécution du bloc d'origine. **Ne pas réordonner, ne pas ajouter `defer`.**
 - Les fichiers partagent des symboles via **ponts `window.X = X`** en fin de wrapper (6 ponts : `setStatus`, `chargerPlanDuRegistre`, `onLoadPlanClick`, `reSelectionnerZipPourPlan`, `afficherChoixImportListe`, `getLoaderPerfPreset`) — les identifiants nus des autres closures se résolvent sur l'objet global. **Toute nouvelle dépendance croisée entre ces fichiers doit passer par un pont window.***, jamais par un identifiant de closure.
 - Extraction VERBATIM : si un bloc doit être retravaillé, le faire dans une release SÉPARÉE du moindre déplacement.
+
+---
+
+### 83. Suite de garde-fous pré-commit — état v1.76.0
+
+`node -c` (syntaxe) est le SEUL filet natif du projet — chaque garde-fou ci-dessous est né d'un bug réel qui l'avait traversé. Tous branchés dans `.githooks/pre-commit`, **BLOQUANTS** sauf mention :
+
+| Script | Garde quoi | Bug fondateur |
+|---|---|---|
+| `check-no-pro-leak.js` | frontière community ↔ pro | — (préventif) |
+| `check-modal-lifecycle.js` | cycle de vie des modales (**advisory**) | fuites de modales v1.44 |
+| `check-api-surface.js` | charge RÉELLEMENT les modules IIFE en VM, vérifie chaque export annoncé + comportements (repeinture après mutation, survie de l'override au save/load, migration `hidden` tableau, dédup collisions d'id) | `WALLPAPER_MAX_PX` (01/08) puis `DEFAULT_RENDERS` (04/08) : export fantôme → module mort au boot, `node -c` passe |
+| `check-prefs-survival.js` | toute pref écrite est bien relue par `buildAppConfigFromPlan` | magnétisme perdu au chargement de plan (03/08) |
+| `check-style-canon.js` | AUCUNE table de couleurs locale ne réapparaît (hex + `weight` + `fillOpacity` ; `width:` KML volontairement non assimilé) | 25 tables recopiées ; `inaccessible` absent de `ZS_EMBED` |
+| `check-style-resolver.js` | 57 cas fonctionnels du résolveur (built-in, customs, override, `{flat}`, swatch, pastilles) | valeurs fausses du canon vague 0 |
+| `check-kml-styles.js` | fige les 14 styles KML built-in (largeurs propres au KML) + les customs reçoivent un `<Style>` | bug 2 : couleur perdue dans Google Earth |
+| `check-legend-roundtrip.js` | rejoue custom → calque → plan régénéré sur du code **extrait des fichiers réels** (sous-ensemble, idempotence, conflit = le plan gagne) | F2/F3 : légende perdue, irréparable en UI |
+| `check-i18n.js` | clés appelées présentes fr+en, interpolations cohérentes | clés jamais injectées (« Wall Title ») |
+
+**Règles apprises, à respecter** :
+- Un garde-fou neuf doit être **éprouvé en le falsifiant** (altérer le canon, rejouer le commit cassé) — un vert jamais vu rouge ne prouve rien.
+- Éditions i18n : **jamais `perl -i` avec `\x{}`** (double-encode les lignes touchées — incident 04/08) → script Node, lecture/écriture `utf8` explicites, insertion EN PLACE (pas de re-tri : 994 lignes de diff), relecture JSON de contrôle.
+- `git commit -F fichier` pour les messages multi-lignes ; commit et push en **commandes séparées** (le chaînage `&&` déclenche un faux positif `--force` du guard-git).
