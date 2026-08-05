@@ -2010,6 +2010,7 @@
   "legendui.label.vehicule": "Véhicule",
   "legendui.modal.titre": "🗺️ Légende",
   "legendui.orphans.lier": "Lier",
+  "legendui.orphans.labelExiste": "Une entrée « {label} » existe déjà dans cette catégorie, mais elle n'est PAS liée à ce type (identifiant différent). Créer quand même une seconde entrée « {label} » liée à ce type ?\n\nAstuce : tu peux renommer ou supprimer l'ancienne dans ✏️ Modifier.",
   "legendui.orphans.intro": "{objets} objet(s) dessiné(s) utilisent {types} type(s) absent(s) de la légende :",
   "legendui.orphans.aide": "Ils s'affichent en couleur de repli (blanc / gris / bleu). Recrée l'entrée via ✏️ Modifier, ou ré-importe la légende d'origine (session ou calque).",
   "legendui.section.structures": "🏛️ Structures",

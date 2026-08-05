@@ -2021,6 +2021,7 @@
   "legendui.label.vehicule": "Vehículo",
   "legendui.modal.titre": "🗺️ Leyenda",
   "legendui.orphans.lier": "Vincular",
+  "legendui.orphans.labelExiste": "Ya existe una entrada «{label}» en esta categoría, pero NO está vinculada a este tipo (identificador diferente). ¿Crear igualmente una segunda entrada «{label}» vinculada a este tipo?\n\nConsejo: puedes renombrar o eliminar la antigua en ✏️ Editar.",
   "legendui.orphans.intro": "{objets} objeto(s) dibujado(s) usan {types} tipo(s) ausente(s) de la leyenda:",
   "legendui.orphans.aide": "Se muestran en colores de reserva (blanco / gris / azul). Recrea la entrada con ✏️ Editar, o reimporta la leyenda original (sesión o capa de datos).",
   "legendui.section.structures": "🏛️ Estructuras",

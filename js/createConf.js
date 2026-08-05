@@ -1238,6 +1238,11 @@ function _ouvrirEditeurLegendePlan() {
   if (typeof LC.getSessionState === "function") {
     try { savedSession = LC.getSessionState(); } catch(e) { savedSession = null; }
   }
+  // 🐛 v1.76.1 (annexe 6, audit 06/08) — SUSPENDRE la persistance pendant le
+  // swap : sans ça, chaque mutation dans l'éditeur écrivait la légende du
+  // PLAN dans le slot de SESSION du plan couramment chargé (entrées cust-…
+  // fantômes retrouvées en session par KARMA).
+  if (typeof LC.suspendPersist === "function") LC.suspendPersist(true);
   // Étape 2 : charge le state du plan en cours d'édition dans la session
   if (typeof LC.loadSessionState === "function") {
     try { LC.loadSessionState(_plannerPlanLegend || null); } catch(e) {
@@ -1264,6 +1269,10 @@ function _ouvrirEditeurLegendePlan() {
           console.warn("[Planner] Restore session échec :", e);
         }
       }
+      // 🐛 v1.76.1 (annexe 6) — réactive la persistance APRÈS le restore de
+      // la vraie session (dans un finally implicite : ce onClose est le seul
+      // chemin de sortie de l'éditeur).
+      if (typeof LC.suspendPersist === "function") LC.suspendPersist(false);
       // Étape 6 : refresh status display
       _plannerLegendStatus();
     }

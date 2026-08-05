@@ -221,7 +221,20 @@ window.LegendCustomization = (function() {
 
   function loadPlanState() {
     const config = window.PLAN_CONFIG;
-    _planState = _normalize(config && config.customLegend);
+    // 🐛 v1.76.1 — LA LIGNE QUI A TUÉ LA LÉGENDE PLAN-LEVEL DEPUIS SON
+    // INTRODUCTION (24/05, commit 613517b8). Ce lecteur cherchait
+    // `PLAN_CONFIG.customLegend` (racine) alors que TOUS les producteurs
+    // (createConf, kmzImport, gpxImport) écrivent `plan.customLegend`
+    // (sous-objet). `_planState` était donc structurellement toujours vide :
+    // une légende définie au Générateur n'a JAMAIS été appliquée au runtime,
+    // et toute la chaîne F2/F3 « la légende voyage » aboutissait dans un champ
+    // que personne ne lisait. Trouvé par l'audit indépendant du 06/08.
+    // On lit les DEUX formes (racine en priorité, rétro-compat d'éventuels
+    // fichiers édités à la main).
+    _planState = _normalize(
+      (config && config.customLegend) ||
+      (config && config.plan && config.plan.customLegend)
+    );
   }
 
   // ─────────────────────────────────────────────
@@ -381,6 +394,7 @@ window.LegendCustomization = (function() {
     const emis = new Set();
     _planState.customEntries.forEach(function(e) {
       if (category && e.category !== category) return;
+      if (emis.has(e.id)) return;   // audit 06/08 : deux entrées de même id DANS le plan = une seule ligne
       const src = sessionParId.get(e.id) || e;
       const source = sessionParId.has(e.id) ? "session" : "plan";
       emis.add(e.id);
@@ -408,7 +422,16 @@ window.LegendCustomization = (function() {
   // ─────────────────────────────────────────────
   // Setters (session uniquement, le plan n'est éditable que dans createConf)
   // ─────────────────────────────────────────────
+  // 🐛 v1.76.1 (annexe 6, audit 06/08) — le Générateur édite la légende du
+  // PLAN en la « swappant » temporairement dans _sessionState. Chaque mutation
+  // déclenchait alors _persistSession → la légende du plan s'écrivait dans le
+  // slot de SESSION du plan courant (fuite : entrées cust-… fantômes en
+  // session). Le Générateur suspend la persistance pendant le swap.
+  let _persistSuspendu = false;
+  function suspendPersist(on) { _persistSuspendu = !!on; }
+
   function _persistSession() {
+    if (_persistSuspendu) return;
     // Sauvegarde immédiate via SessionPersist si dispo. Sinon no-op (la
     // session sera sauvée à la prochaine save automatique).
     if (window.SessionPersist && typeof window.SessionPersist.save === "function") {
@@ -642,6 +665,13 @@ window.LegendCustomization = (function() {
     _sessionState.customEntries.push(clean);
     _persistSession();
     _fireCustomChange();
+    // 🐛 v1.76.1 (C1 audit 06/08) — LE chaînon manquant de l'intermittence :
+    // toutes les autres mutations repeignaient, PAS l'ajout. Lier un type
+    // depuis le bandeau ⚠️ colorait (rattrapage manuel dans interfaceLegende),
+    // créer la même entrée depuis ✏️ Modifier → ➕ ne colorait RIEN jusqu'à la
+    // mutation suivante — deux chemins d'UI identiques en apparence, deux
+    // comportements. Un objet dessiné du type ajouté doit se lier TOUT DE SUITE.
+    _repeindreCarte();
     return id;
   }
 
@@ -838,23 +868,30 @@ window.LegendCustomization = (function() {
       // choisir ici. Pour ces deux familles on garde la pastille statique.
       // La couleur affichée vient de `listEntries`, donc du style RÉEL — elle
       // reflète déjà l'override, sans calcul en double.
-      const estColorable = !isCustomEntry && e.category !== "icones";
+      // 🎨 v1.76.1 (S3 audit 06/08) — les entrées CUSTOM sont éditables comme
+      // les built-in (« iso », demande KARMA) : mêmes carrés de couleur, à
+      // chaud. Avant, leurs couleurs n'étaient choisies qu'à la CRÉATION —
+      // pastille statique ensuite, deux principes de fonctionnement pour deux
+      // familles de lignes dans le même éditeur.
+      const estColorable = e.category !== "icones";
       let champCouleur = "";
       if (estColorable) {
-        // 🎨 v1.76.1 — un POLYGONE (zone, pilier/mur : e.fillColor présent)
-        // expose DEUX carrés : fond + bordure. Une ligne (tracé, front) n'en a
-        // qu'un. Les valeurs viennent de _renduDefaut → du style RÉSOLU, donc
-        // les overrides en cours sont déjà reflétés.
-        const estPolygone = !!e.fillColor;
-        const curFond = estPolygone ? e.fillColor : (e.lineColor || "#888888");
+        // Un POLYGONE expose DEUX carrés : fond + bordure. Une ligne, un seul.
+        // Built-in : la géométrie se lit au style résolu (fillColor présent) ;
+        // custom : à la géométrie DÉCLARÉE (plus fiable que la présence d'un
+        // champ couleur, cf. audit).
+        const estPolygone = isCustomEntry ? (e.geometry === "polygon") : !!e.fillColor;
+        const curFond = estPolygone ? (e.fillColor || "#888888") : (e.lineColor || "#888888");
         champCouleur =
           '<input type="color" class="kta-legend-color" value="' + _esc(curFond) + '" ' +
             'title="' + window.I18n.t("legend.editor.colorTitle") + '" ' + dataAttrs + '>' +
           (estPolygone
-            ? '<input type="color" class="kta-legend-border" value="' + _esc(e.borderColor || "#000000") + '" ' +
+            ? '<input type="color" class="kta-legend-border" value="' + _esc(e.borderColor || (isCustomEntry ? curFond : "#000000")) + '" ' +
                 'title="' + window.I18n.t("legend.editor.borderTitle") + '" ' + dataAttrs + '>'
             : '') +
-          (e.hasColor
+          // ↺ n'a de sens que pour un built-in (retour au canon). Un custom
+          // n'a pas de couleur « d'origine ».
+          (!isCustomEntry && e.hasColor
             ? '<button type="button" class="kta-legend-color-reset" ' +
                 'title="' + window.I18n.t("legend.editor.colorResetTitle") + '" ' + dataAttrs + '>↺</button>'
             : '');
@@ -909,9 +946,18 @@ window.LegendCustomization = (function() {
         if (customId) updateCustomEntry(customId, { label: target.value });
         else if (cat && key) setSessionLabel(cat, key, target.value);
       } else if (target.classList.contains("kta-legend-color")) {
-        if (cat && key) setColor(cat, key, target.value);
+        // S3 (audit 06/08) : un custom se route par son id — sur sa géométrie
+        // déclarée (polyline → trait, polygon → fond). updateCustomEntry
+        // persiste ET repeint déjà.
+        if (customId) {
+          const ent = findCustomEntry(customId);
+          updateCustomEntry(customId, (ent && ent.geometry === "polyline")
+            ? { lineColor: target.value } : { fillColor: target.value });
+        }
+        else if (cat && key) setColor(cat, key, target.value);
       } else if (target.classList.contains("kta-legend-border")) {
-        if (cat && key) setBorderColor(cat, key, target.value);
+        if (customId) updateCustomEntry(customId, { borderColor: target.value });
+        else if (cat && key) setBorderColor(cat, key, target.value);
       }
       if (opts.onChange) opts.onChange();
     }
@@ -1288,6 +1334,8 @@ window.LegendCustomization = (function() {
     // 🧹 v1.76.0 (F19) — dialog « ajouter une entrée » exposée : exporter.js
     // en avait un clone intégral, supprimé au profit de cette API.
     ouvrirAddDialog:       _ouvrirAddDialog,
+    // 🐛 v1.76.1 (annexe 6) — pour le swap du Générateur uniquement.
+    suspendPersist:        suspendPersist,
     // 🧹 v1.76.0 (F23) — diagnostic des types orphelins, lu par ≡ Légende.
     listOrphanTypes:       listOrphanTypes,
 

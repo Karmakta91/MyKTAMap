@@ -2010,6 +2010,7 @@
   "legendui.label.vehicule": "Vehicle",
   "legendui.modal.titre": "🗺️ Legend",
   "legendui.orphans.lier": "Link",
+  "legendui.orphans.labelExiste": "An entry named \"{label}\" already exists in this category, but it is NOT linked to this type (different identifier). Create a second \"{label}\" entry linked to this type anyway?\n\nTip: you can rename or delete the old one in ✏️ Edit.",
   "legendui.orphans.intro": "{objets} drawn object(s) use {types} type(s) missing from the legend:",
   "legendui.orphans.aide": "They render in fallback colours (white / grey / blue). Recreate the entry via ✏️ Edit, or re-import the original legend (session or data layer).",
   "legendui.section.structures": "🏛️ Structures",

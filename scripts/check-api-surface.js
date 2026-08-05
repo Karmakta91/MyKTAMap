@@ -201,6 +201,11 @@ if (LC) {
     }
     _mutationRepeint("setColor", function() { LC.setColor("traces", "principal", "#0000aa"); });
     _mutationRepeint("resetSession (bug du restart)", function() { LC.resetSession(); });
+    // C1 (audit 06/08) : l'AJOUT repeint aussi — c'etait la seule mutation
+    // sans repeinture, source de l'intermittence « Lier colore, ➕ non ».
+    _mutationRepeint("addCustomEntry (C1, l'oublie de la famille)", function() {
+      LC.addCustomEntry({ category: "zones", label: "tmpC1", geometry: "polygon", fillColor: "#456789" });
+    });
     // addCustomEntry retourne l'ID (string), pas l'entrée.
     const idTmp = LC.addCustomEntry({ category: "traces", label: "tmp", geometry: "polyline", lineColor: "#123123" });
     _mutationRepeint("updateCustomEntry", function() { LC.updateCustomEntry(idTmp, { lineColor: "#321321" }); });
@@ -263,6 +268,39 @@ if (LC) {
   t("type built-in jamais orphelin", !orph.some(function(o) { return o.type === "eau"; }));
   delete LC.__win.getZones;
   LC.loadSessionState(null);
+
+  // C4 (audit 06/08) — LA LEGENDE PLAN-LEVEL ETAIT MORTE DEPUIS SON
+  // INTRODUCTION : loadPlanState lisait PLAN_CONFIG.customLegend (racine),
+  // tous les producteurs ecrivent plan.customLegend (sous-objet). Ces cas
+  // verrouillent la lecture des DEUX formes.
+  LC.__win.PLAN_CONFIG = { plan: { customLegend: { labels: { "traces.principal": "Nom plan" }, hidden: {}, customEntries: [
+    { id: "cust-duplan", category: "zones", geometry: "polygon", label: "Du plan", fillColor: "#9a9a9a" }
+  ] } } };
+  LC.loadPlanState();
+  t("C4 : plan.customLegend (sous-objet, forme REELLE des ZIP) est lu",
+    LC.getLabel("traces", "principal") === "Nom plan" &&
+    LC.listCustomEntries("zones").some(function(e) { return e.id === "cust-duplan"; }));
+  LC.__win.PLAN_CONFIG = { customLegend: { labels: { "traces.chemin": "Racine" }, hidden: {}, customEntries: [] } };
+  LC.loadPlanState();
+  t("C4 : la forme racine reste lue (retro-compat)", LC.getLabel("traces", "chemin") === "Racine");
+  LC.__win.PLAN_CONFIG = null;
+  LC.loadPlanState();
+
+  // Annexe 6 (audit 06/08) — suspendPersist coupe l'ecriture SessionPersist
+  // pendant le swap du Generateur (la legende du PLAN fuyait dans le slot de
+  // SESSION du plan charge).
+  (function() {
+    let saves = 0;
+    LC.__win.SessionPersist = { save: function() { saves++; } };
+    LC.suspendPersist(true);
+    LC.setColor("traces", "principal", "#0a0a0a");
+    t("suspendPersist(true) : aucune ecriture session", saves === 0);
+    LC.suspendPersist(false);
+    LC.setColor("traces", "principal", null);
+    t("suspendPersist(false) : la persistance repart", saves > 0);
+    delete LC.__win.SessionPersist;
+    LC.loadSessionState(null);
+  })();
 
   // L'override doit VOYAGER avec la session, sinon il est perdu au reload.
   LC.setColor("zones", "eau", "#010203");

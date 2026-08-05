@@ -418,13 +418,18 @@ function afficherLegende() {
     if (!LC || typeof LC.ouvrirAddDialog !== "function") return;
     const type = btn.getAttribute("data-otype");
     const cat  = btn.getAttribute("data-ocat");
+    // 🧷 v1.76.1 — garde anti-doublon de LABEL : si une entrée du même nom
+    // existe déjà dans la catégorie (ex. créée au Générateur ou à la main,
+    // avec un id différent donc NON liée à ce type), on prévient — sinon
+    // l'utilisateur se retrouve avec deux lignes « Bas » identiques sans
+    // comprendre laquelle agit (vécu KARMA, audit S1).
+    const dejaLabel = (typeof LC.listCustomEntries === "function") &&
+      LC.listCustomEntries(cat).some(function(e) { return e && e.label === type && e.id !== type; });
+    if (dejaLabel && !confirm(window.I18n.t("legendui.orphans.labelExiste", { label: type }))) return;
     LC.ouvrirAddDialog(function() {
       const corps = modal.querySelector(".kta-legende-corps");
       if (corps) corps.innerHTML = _construireContenuLegende();
-      // la carte doit adopter le style tout de suite (les objets étaient en repli)
-      ["renderRoads", "renderZones", "renderStructures", "_ktaRestyleDataLayers"].forEach(function(fn) {
-        if (typeof window[fn] === "function") { try { window[fn](); } catch(err) {} }
-      });
+      // (repeinture : addCustomEntry s'en charge désormais lui-même — C1)
     }, { id: type, category: cat, label: type });
   });
 
