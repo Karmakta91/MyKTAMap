@@ -877,7 +877,13 @@
     const idsStyleCustom = new Set();
     function _idStyleEtCollecte(prefixe, type) {
       const id = prefixe + "_" + type;
-      if (String(type).indexOf("cust-") === 0) idsStyleCustom.add(id);
+      // 🧷 v1.76.1 — tout type NON built-in est collecté (plus seulement les
+      // `cust-`) : une entrée liée à un id technique (« Bas ») doit recevoir
+      // son <Style> KML elle aussi.
+      const cat = PREFIXE_CATEGORIE[prefixe];
+      const builtins = (cat && typeof window.ktaStyleBuiltins === "function")
+                         ? window.ktaStyleBuiltins(cat) : [];
+      if (builtins.indexOf(String(type)) === -1) idsStyleCustom.add(id);
       return id;
     }
 

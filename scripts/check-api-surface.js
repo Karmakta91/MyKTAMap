@@ -110,7 +110,9 @@ if (LC) {
     // ouvrirAddDialog (son clone de 209 lignes a ete supprime) : si ce nom
     // change, le bouton ➕ de la modale Export devient un no-op silencieux.
     // listOrphanTypes est lu par le bandeau ⚠️ de la Legende.
-    "ouvrirAddDialog", "listOrphanTypes"
+    "ouvrirAddDialog", "listOrphanTypes",
+    // 🎨 v1.76.1 — bordure independante (lues par ktaResolveStyle).
+    "getBorderColor", "setBorderColor"
   ];
   ATTENDU_LC.forEach(function(m) {
     t("LegendCustomization." + m + "() exposee", typeof LC[m] === "function");
@@ -226,6 +228,40 @@ if (LC) {
     LC.loadSessionState({ labels: null, colors: [], hidden: {}, customEntries: [] });
     return LC.getLabel("traces", "principal") !== null && LC.getColor("traces", "principal") === null;
   })());
+  LC.loadSessionState(null);
+
+  // 🎨 v1.76.1 — bordure independante : persiste, voyage, se reset.
+  LC.setBorderColor("zones", "eau", "#121212");
+  t("setBorderColor est enregistre", LC.getBorderColor("zones", "eau") === "#121212");
+  t("hasColorOverride vrai sur bordure seule", LC.hasColorOverride("zones", "eau") === true);
+  const snapB = LC.getSessionState();
+  t("getSessionState embarque les bordures", !!snapB.borders && snapB.borders["zones.eau"] === "#121212");
+  LC.loadSessionState(snapB);
+  t("recharger la session restaure les bordures", LC.getBorderColor("zones", "eau") === "#121212");
+  LC.setBorderColor("zones", "eau", null);
+  t("retrait de la bordure -> plus d'override", LC.hasColorOverride("zones", "eau") === false);
+  LC.loadSessionState(null);
+
+  // 🧷 v1.76.1 — LIAISON PAR ID TECHNIQUE (le mur « Bas » de KARMA) :
+  // une entree peut porter l'id EXACT d'un type brut deja present dans les
+  // donnees ; le resolveur la sert comme n'importe quel custom.
+  const idBas = LC.addCustomEntry({ id: "Bas", category: "zones", geometry: "polygon", label: "Zone basse", fillColor: "#334455" });
+  t("addCustomEntry accepte un id explicite", idBas === "Bas");
+  t("le resolveur sert le type brut lie", (function() {
+    const s = LC.__win.ktaResolveStyle("zones", "Bas");
+    return !!s && s.fillColor === "#334455";
+  })());
+  // re-liaison (double-clic bandeau) : REMPLACE, n'empile pas
+  LC.addCustomEntry({ id: "Bas", category: "zones", geometry: "polygon", label: "Zone basse v2", fillColor: "#556677" });
+  const lstBas = LC.listCustomEntries("zones").filter(function(e) { return e.id === "Bas"; });
+  t("id explicite re-ajoute : remplace, pas de doublon", lstBas.length === 1 && lstBas[0].label === "Zone basse v2");
+  // orphelins : un type brut SANS entree est signale, AVEC entree non
+  LC.__win.getZones = function() { return [ { type: "Bas" }, { type: "Perdu" }, { type: "eau" } ]; };
+  const orph = LC.listOrphanTypes();
+  t("type brut sans entree = orphelin signale", orph.some(function(o) { return o.type === "Perdu"; }));
+  t("type brut AVEC entree liee = pas orphelin", !orph.some(function(o) { return o.type === "Bas"; }));
+  t("type built-in jamais orphelin", !orph.some(function(o) { return o.type === "eau"; }));
+  delete LC.__win.getZones;
   LC.loadSessionState(null);
 
   // L'override doit VOYAGER avec la session, sinon il est perdu au reload.

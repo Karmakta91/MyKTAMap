@@ -301,12 +301,15 @@
   // et pathfinder.js — ce module était le seul à l'avoir oublié.
   function _lcLabel(category, type, fallback) {
     const LC = window.LegendCustomization;
-    if (LC && typeof LC.findCustomEntry === "function" && String(type).indexOf("cust-") === 0) {
+    // 🧷 v1.76.1 — findCustomEntry pour TOUT type non résolu par getLabel
+    // (plus seulement `cust-`) : une entrée liée à un id technique (« Bas »)
+    // doit afficher son libellé ici aussi.
+    if (LC && typeof LC.findCustomEntry === "function") {
       try {
         const e = LC.findCustomEntry(type);
         if (e && e.label) return "✨ " + e.label;
       } catch(err) {}
-      return fallback || type;
+      if (String(type).indexOf("cust-") === 0) return fallback || type;
     }
     if (LC && typeof LC.getLabel === "function") {
       try {

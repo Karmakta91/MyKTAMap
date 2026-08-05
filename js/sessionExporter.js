@@ -2622,7 +2622,13 @@
 
     const idsUtilises = new Set();
     Object.keys(parCat).forEach(function(cat) {
-      parCat[cat].forEach(function(tp) { if (String(tp).indexOf("cust-") === 0) idsUtilises.add(tp); });
+      const builtins = (typeof window.ktaStyleBuiltins === "function") ? window.ktaStyleBuiltins(cat) : [];
+      parCat[cat].forEach(function(tp) {
+        // 🧷 v1.76.1 — tout type NON built-in est candidat, plus seulement les
+        // `cust-` : une entrée liée à un type brut (« Bas », id technique)
+        // doit voyager elle aussi, sinon le round-trip la perd.
+        if (builtins.indexOf(tp) === -1) idsUtilises.add(tp);
+      });
     });
 
     // Les entrées CUSTOM référencées, avec leur définition complète.
@@ -2642,16 +2648,18 @@
       });
       return out;
     }
-    const labels = _sousEnsemble(etat.labels);
-    const hidden = _sousEnsemble(etat.hidden);
-    const colors = _sousEnsemble(etat.colors);
+    const labels  = _sousEnsemble(etat.labels);
+    const hidden  = _sousEnsemble(etat.hidden);
+    const colors  = _sousEnsemble(etat.colors);
+    const borders = _sousEnsemble(etat.borders);   // 🎨 v1.76.1
 
     if (!customEntries.length && !Object.keys(labels).length &&
-        !Object.keys(hidden).length && !Object.keys(colors).length) return null;
+        !Object.keys(hidden).length && !Object.keys(colors).length &&
+        !Object.keys(borders).length) return null;
 
     return {
       schemaVersion: etat.schemaVersion,
-      labels: labels, hidden: hidden, colors: colors,
+      labels: labels, hidden: hidden, colors: colors, borders: borders,
       customEntries: customEntries
     };
   }
@@ -2682,10 +2690,10 @@
     }
     if (!plan && !sess) return null;
 
-    const out = { labels: {}, hidden: {}, colors: {}, customEntries: [] };
+    const out = { labels: {}, hidden: {}, colors: {}, borders: {}, customEntries: [] };
     function _fusionner(src) {
       if (!src || typeof src !== "object") return;
-      ["labels", "hidden", "colors"].forEach(function(champ) {
+      ["labels", "hidden", "colors", "borders"].forEach(function(champ) {
         const m = src[champ];
         if (!m || typeof m !== "object" || Array.isArray(m)) return;
         Object.keys(m).forEach(function(k) { out[champ][k] = m[k]; });

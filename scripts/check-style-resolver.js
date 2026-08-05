@@ -122,6 +122,20 @@ t("aucun champ interne ne fuit apres override",
 t("swatch suit l'override (zone)",  win.ktaSwatchColor("zones", "eau") === "#00ccff");
 t("swatch suit l'override (trace)", win.ktaSwatchColor("traces", "principal") === "#123456");
 
+// ── bordure INDEPENDANTE (v1.76.1) ──
+win.LegendCustomization.getBorderColor = function(cat, cle) { return _bord[cat + "." + cle] || null; };
+const _bord = {};
+_bord["zones.eau"] = "#111111";
+const zb = R("zones", "eau");
+t("bordure explicite d'une zone remplace la derivee", zb.color === "#111111");
+t("le fond overridee reste celui de colors", zb.fillColor === "#00ccff");
+delete _over["zones.eau"];
+t("bordure SEULE : le fond reste canon", R("zones", "eau").fillColor === "#3aa9e8" && R("zones", "eau").color === "#111111");
+_bord["structures.pilier-1"] = "#ff0000";
+t("bordure d'un pilier : le noir n'est plus un verrou", R("structures", "pilier-1").color === "#ff0000");
+delete _bord["zones.eau"]; delete _bord["structures.pilier-1"];
+_over["zones.eau"] = "#00ccff";   // retabli pour les tests suivants
+
 // Retrait de l'override → retour exact au canon.
 delete _over["traces.principal"];
 delete _over["zones.eau"];

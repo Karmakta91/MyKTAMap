@@ -18015,7 +18015,8 @@ body.kta-theme-light .kta-group-flyout-sep {
    ligne. Les navigateurs ajoutent un padding interne au <input type="color">
    qui laisserait un liseré autour de la couleur : on l'annule via ::-webkit-
    color-swatch-wrapper / ::-moz-color-swatch. */
-.kta-legend-color {
+.kta-legend-color,
+.kta-legend-border {
   width: 18px;
   height: 18px;
   flex: 0 0 18px;
@@ -18027,10 +18028,14 @@ body.kta-theme-light .kta-group-flyout-sep {
   appearance: none;
   -webkit-appearance: none;
 }
-.kta-legend-color::-webkit-color-swatch-wrapper { padding: 0; }
-.kta-legend-color::-webkit-color-swatch { border: none; border-radius: 2px; }
-.kta-legend-color::-moz-color-swatch { border: none; border-radius: 2px; }
-.kta-legend-color:hover { border-color: #8cb4ff; }
+.kta-legend-color::-webkit-color-swatch-wrapper,
+.kta-legend-border::-webkit-color-swatch-wrapper { padding: 0; }
+.kta-legend-color::-webkit-color-swatch,
+.kta-legend-border::-webkit-color-swatch { border: none; border-radius: 2px; }
+.kta-legend-color::-moz-color-swatch,
+.kta-legend-border::-moz-color-swatch { border: none; border-radius: 2px; }
+.kta-legend-color:hover,
+.kta-legend-border:hover { border-color: #8cb4ff; }
 
 .kta-legend-color-reset {
   background: transparent;
@@ -18049,7 +18054,8 @@ body.kta-theme-light .kta-group-flyout-sep {
   border-color: rgba(140, 180, 255, 0.6);
 }
 
-body.kta-theme-light .kta-legend-color { border-color: rgba(0, 0, 0, 0.25); }
+body.kta-theme-light .kta-legend-color,
+body.kta-theme-light .kta-legend-border { border-color: rgba(0, 0, 0, 0.25); }
 
 /* Mini-modale "Ajouter une entrée custom" — réutilise les classes
    kta-modal* existantes ; juste un override de z-index pour passer

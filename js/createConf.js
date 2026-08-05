@@ -1286,14 +1286,14 @@ function _absorberLegendeCalque(legende) {
   if (!legende || typeof legende !== "object") return;
   const cible = _plannerPlanLegend && typeof _plannerPlanLegend === "object"
                   ? _plannerPlanLegend
-                  : { labels: {}, hidden: {}, colors: {}, customEntries: [] };
-  ["labels", "hidden", "colors"].forEach(function(champ) {
+                  : { labels: {}, hidden: {}, colors: {}, borders: {}, customEntries: [] };
+  ["labels", "hidden", "colors", "borders"].forEach(function(champ) {
     if (!cible[champ] || typeof cible[champ] !== "object" || Array.isArray(cible[champ])) cible[champ] = {};
   });
   if (!Array.isArray(cible.customEntries)) cible.customEntries = [];
 
   let ajoutes = 0, ignores = 0;
-  ["labels", "hidden", "colors"].forEach(function(champ) {
+  ["labels", "hidden", "colors", "borders"].forEach(function(champ) {
     const src = legende[champ];
     if (!src || typeof src !== "object" || Array.isArray(src)) return;
     Object.keys(src).forEach(function(k) {
@@ -1339,8 +1339,9 @@ function _plannerLegendStateNormalize(state) {
   const hasLabels  = Object.keys(labels).length  > 0;
   const hasHidden  = (Array.isArray(hidden) ? hidden.length : Object.keys(hidden).length) > 0;
   const hasColors  = Object.keys(colors).length  > 0;
+  const hasBorders = Object.keys(state.borders || {}).length > 0;   // 🎨 v1.76.1
   const hasCustoms = Array.isArray(customs) && customs.length > 0;
-  if (!hasLabels && !hasHidden && !hasColors && !hasCustoms) return null;
+  if (!hasLabels && !hasHidden && !hasColors && !hasBorders && !hasCustoms) return null;
   return state;
 }
 

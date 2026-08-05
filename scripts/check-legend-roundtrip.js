@@ -40,6 +40,9 @@ const se = fs.readFileSync("js/sessionExporter.js", "utf8");
 const winE = { console: { log() {}, warn() {} } };
 winE.window = winE;
 const ctxE = vm.createContext(winE);
+// styleResolver charge en prealable : _legendePourPayload interroge
+// ktaStyleBuiltins depuis v1.76.1 (types bruts non-builtin candidats).
+vm.runInContext("var window=this;" + fs.readFileSync("js/styleResolver.js", "utf8"), ctxE);
 vm.runInContext("var window=this;" + extraire(se, "function _legendePourPayload", "\n  }") +
                 "\nthis._legendePourPayload=_legendePourPayload;", ctxE);
 
@@ -51,10 +54,13 @@ winE.LegendCustomization = {
       labels: { "traces.principal": "Grande galerie", "zones.eau": "Flotte" },
       hidden: { "structures.mur": true },
       colors: { "traces.chemin": "#ff8800", "zones.remblais": "#112233" },
+      borders: { "zones.eau": "#101010", "zones.remblais": "#202020" },
       customEntries: [
         { id: "cust-aaa", category: "traces", geometry: "polyline", label: "Boyau", lineColor: "#ff00aa" },
         { id: "cust-bbb", category: "zones",  geometry: "polygon",  label: "Argile", fillColor: "#00ffaa" },
-        { id: "cust-zzz", category: "traces", geometry: "polyline", label: "Jamais dessine", lineColor: "#000000" }
+        { id: "cust-zzz", category: "traces", geometry: "polyline", label: "Jamais dessine", lineColor: "#000000" },
+        // 🧷 v1.76.1 — entree liee a un ID TECHNIQUE brut (pas de prefixe cust-)
+        { id: "Bas", category: "zones", geometry: "polygon", label: "Zone basse", fillColor: "#334455" }
       ]
     };
   }
@@ -76,6 +82,13 @@ t("le masquage d'un type absent ne part pas", leg.hidden["structures.mur"] === u
 // Un calque sans aucune personnalisation ne doit rien trainer.
 t("calque sans perso -> pas de champ legende",
   winE._legendePourPayload({ data: [], roads: [{ type: "secondaire" }] }) === null);
+
+// 🧷 v1.76.1 — un type BRUT (id technique « Bas », sans prefixe cust-) voyage
+// lui aussi : c'etait le mur rencontre par KARMA.
+const legBas = winE._legendePourPayload({ data: [], zones: [ { type: "Bas" }, { type: "eau" } ] });
+t("l'entree a id technique part avec le calque", !!legBas && legBas.customEntries.some(e => e.id === "Bas"));
+t("les bordures overridees des types presents partent", !!legBas && legBas.borders["zones.eau"] === "#101010");
+t("les bordures des types ABSENTS ne partent pas", !!legBas && legBas.borders["zones.remblais"] === undefined);
 
 // ───────── cote IMPORT (createConf.js) ─────────
 const cc = fs.readFileSync("js/createConf.js", "utf8");

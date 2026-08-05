@@ -138,8 +138,13 @@ window.LegendCustomization = (function() {
   // ─────────────────────────────────────────────
   // États session + plan (cascade)
   // ─────────────────────────────────────────────
+  // 🎨 v1.76.1 — `borders` : couleur de BORDURE choisie pour un type built-in
+  // polygone (zones, piliers/mur), map séparée de `colors` et non un objet
+  // {fond, bordure} : une session v1.76.0 qui n'a que `colors` reste valide
+  // telle quelle, zéro migration de format. Absente → bordure dérivée (zones)
+  // ou noire (structures), comme avant.
   function _emptyState() {
-    return { labels: {}, hidden: {}, colors: {}, customEntries: [] };
+    return { labels: {}, hidden: {}, colors: {}, borders: {}, customEntries: [] };
   }
 
   let _sessionState = _emptyState();
@@ -181,6 +186,7 @@ window.LegendCustomization = (function() {
       labels:        (s.labels && typeof s.labels === "object" && !Array.isArray(s.labels)) ? s.labels : {},
       hidden:        _hiddenEnObjet(s.hidden),
       colors:        (s.colors && typeof s.colors === "object" && !Array.isArray(s.colors)) ? s.colors : {},
+      borders:       (s.borders && typeof s.borders === "object" && !Array.isArray(s.borders)) ? s.borders : {},
       customEntries: (Array.isArray(s.customEntries) ? s.customEntries : []).filter(function(e) {
         // une entrée exploitable a AU MINIMUM un id string ; le reste des
         // champs est déjà défendu à la lecture (repli par catégorie, etc.)
@@ -200,6 +206,7 @@ window.LegendCustomization = (function() {
       labels:        Object.assign({}, _sessionState.labels),
       hidden:        Object.assign({}, _sessionState.hidden),
       colors:        Object.assign({}, _sessionState.colors),
+      borders:       Object.assign({}, _sessionState.borders),
       customEntries: _sessionState.customEntries.map(function(e) { return Object.assign({}, e); })
     };
   }
@@ -208,6 +215,7 @@ window.LegendCustomization = (function() {
     return Object.keys(_sessionState.labels).length === 0
         && Object.keys(_sessionState.hidden).length === 0
         && Object.keys(_sessionState.colors).length === 0
+        && Object.keys(_sessionState.borders).length === 0
         && _sessionState.customEntries.length === 0;
   }
 
@@ -301,7 +309,28 @@ window.LegendCustomization = (function() {
   }
 
   function hasColorOverride(category, key) {
-    return getColor(category, key) !== null;
+    return getColor(category, key) !== null || getBorderColor(category, key) !== null;
+  }
+
+  // 🎨 v1.76.1 — bordure indépendante du remplissage (décision KARMA : « une
+  // zone ou une structure pouvait avoir un contour et un remplissage
+  // différents, on garde »). Même cascade que getColor. Null = pas d'override
+  // → bordure dérivée (zones) ou noire (structures), comme avant.
+  function getBorderColor(category, key) {
+    const k = _key(category, key);
+    const s = _sessionState.borders[k];
+    if (typeof s === "string" && s) return s;
+    const p = _planState.borders[k];
+    if (typeof p === "string" && p) return p;
+    return null;
+  }
+
+  function setBorderColor(category, key, color) {
+    const k = _key(category, key);
+    if (!color) delete _sessionState.borders[k];
+    else _sessionState.borders[k] = String(color);
+    _persistSession();
+    _repeindreCarte();
   }
 
   // ─────────────────────────────────────────────
@@ -511,7 +540,15 @@ window.LegendCustomization = (function() {
         let liste;
         try { liste = window[fn]() || []; } catch(e) { return; }
         liste.forEach(function(o) {
-          if (!o || typeof o.type !== "string" || o.type.indexOf("cust-") !== 0) return;
+          if (!o || typeof o.type !== "string" || !o.type) return;
+          // 🐛 v1.76.1 — le filtre `cust-` d'origine rendait INVISIBLES les
+          // types bruts hérités d'anciennes versions ou écrits à la main
+          // (« Bas ») : renommer un cust- orphelin en type brut faisait TAIRE
+          // le bandeau sans rien résoudre (vécu par KARMA le 05/08). Règle
+          // désormais : est orphelin tout type NON built-in de sa catégorie
+          // sans entrée de légende, quel que soit son nom.
+          if (typeof window.ktaStyleBuiltins === "function" &&
+              window.ktaStyleBuiltins(cat).indexOf(o.type) >= 0) return;
           if (findCustomEntry(o.type)) return;
           const k = cat + "|" + o.type;
           if (!orphelins.has(k)) orphelins.set(k, { type: o.type, categorie: cat, nb: 0 });
@@ -556,6 +593,13 @@ window.LegendCustomization = (function() {
     if (!entry || !entry.category) return null;
     if (CATEGORIES.indexOf(entry.category) < 0) return null;
     const id = entry.id || _newId();
+    // 🧷 v1.76.1 — un id EXPLICITE déjà présent en session (double-clic sur le
+    // bouton du bandeau orphelins, re-liaison) REMPLACE l'entrée au lieu d'en
+    // empiler une seconde du même id.
+    if (entry.id) {
+      const dejaIdx = _sessionState.customEntries.findIndex(function(e) { return e.id === id; });
+      if (dejaIdx >= 0) _sessionState.customEntries.splice(dejaIdx, 1);
+    }
     const geom = _defaultGeometry(entry.category, entry.geometry);
     // 🐛 v1.16.0 step2-drawable-fix (KARMA "il me fait les deux, le polygone
     // et un trait en plus") : on NORMALISE les champs de couleur en fonction
@@ -797,10 +841,19 @@ window.LegendCustomization = (function() {
       const estColorable = !isCustomEntry && e.category !== "icones";
       let champCouleur = "";
       if (estColorable) {
-        const cur = e.lineColor || e.fillColor || "#888888";
+        // 🎨 v1.76.1 — un POLYGONE (zone, pilier/mur : e.fillColor présent)
+        // expose DEUX carrés : fond + bordure. Une ligne (tracé, front) n'en a
+        // qu'un. Les valeurs viennent de _renduDefaut → du style RÉSOLU, donc
+        // les overrides en cours sont déjà reflétés.
+        const estPolygone = !!e.fillColor;
+        const curFond = estPolygone ? e.fillColor : (e.lineColor || "#888888");
         champCouleur =
-          '<input type="color" class="kta-legend-color" value="' + _esc(cur) + '" ' +
+          '<input type="color" class="kta-legend-color" value="' + _esc(curFond) + '" ' +
             'title="' + window.I18n.t("legend.editor.colorTitle") + '" ' + dataAttrs + '>' +
+          (estPolygone
+            ? '<input type="color" class="kta-legend-border" value="' + _esc(e.borderColor || "#000000") + '" ' +
+                'title="' + window.I18n.t("legend.editor.borderTitle") + '" ' + dataAttrs + '>'
+            : '') +
           (e.hasColor
             ? '<button type="button" class="kta-legend-color-reset" ' +
                 'title="' + window.I18n.t("legend.editor.colorResetTitle") + '" ' + dataAttrs + '>↺</button>'
@@ -857,6 +910,8 @@ window.LegendCustomization = (function() {
         else if (cat && key) setSessionLabel(cat, key, target.value);
       } else if (target.classList.contains("kta-legend-color")) {
         if (cat && key) setColor(cat, key, target.value);
+      } else if (target.classList.contains("kta-legend-border")) {
+        if (cat && key) setBorderColor(cat, key, target.value);
       }
       if (opts.onChange) opts.onChange();
     }
@@ -871,7 +926,7 @@ window.LegendCustomization = (function() {
         // fois par glissement. C'est exactement le mécanisme qui avait rendu
         // les Blob du fond d'écran illisibles le 02/08 — même piège, autre
         // module. `change` ne tire qu'à la validation.
-        if (e.target.matches(".kta-legend-color")) {
+        if (e.target.matches(".kta-legend-color") || e.target.matches(".kta-legend-border")) {
           _applyFromUI(e.target);
           _render();   // fait apparaître le bouton ↺
         }
@@ -903,7 +958,8 @@ window.LegendCustomization = (function() {
           const c = e.target.getAttribute("data-cat");
           const k = e.target.getAttribute("data-key");
           if (c && k) {
-            setColor(c, k, null);     // null = retour à la couleur d'origine
+            setColor(c, k, null);        // null = retour à la couleur d'origine
+            setBorderColor(c, k, null);  // 🎨 v1.76.1 — ↺ remet AUSSI la bordure
             _render();
             if (opts.onChange) opts.onChange();
           }
@@ -938,7 +994,14 @@ window.LegendCustomization = (function() {
   // Mini-modale « Ajouter une entrée custom » — utilisée par ouvrirEditeur.
   // Reprend la même structure que la version inline d'exporter.js mais en
   // version standalone (= peut être appelée hors contexte Export PNG).
-  function _ouvrirAddDialog(onAdded) {
+  // 🧷 v1.76.1 — `prefill` optionnel { id, category, label } : mode « lier un
+  // type existant ». Utilisé par le bandeau orphelins de ≡ Légende : l'entrée
+  // créée porte l'ID EXACT du type déjà présent dans les données (`Bas`,
+  // `cust-perdu`, …) au lieu d'un id neuf qui ne se lierait jamais — c'était
+  // le mur rencontré par KARMA (recréer l'entrée à la main = nouvel id).
+  // La catégorie est verrouillée (l'orphelin la connaît), l'id n'est jamais
+  // montré ni saisi à la main.
+  function _ouvrirAddDialog(onAdded, prefill) {
     const wrap = document.createElement("div");
     wrap.className = "kta-readme-modal-overlay";
     wrap.style.zIndex = "100100";  // au-dessus de l'éditeur (100050)
@@ -996,6 +1059,18 @@ window.LegendCustomization = (function() {
             '<span>' + window.I18n.t("legend.add.fillToggle") + '</span>' +
           '</label>' +
         '</div>' +
+        // 🎨 v1.76.1 — bordure INDÉPENDANTE du remplissage (zones + piliers/mur).
+        // Décochée = comportement historique (bordure = fond). Le sélecteur
+        // « trait » de v1.16 avait été caché pour les polygones avec la note
+        // « un éditeur plus tard » — c'est ce bloc, 60 versions après.
+        '<div style="margin-bottom:10px; display:none;" id="kta-lc-add-border-wrap">' +
+          '<label class="kta-cfg-label">' + window.I18n.t("legend.add.borderColor") + '</label>' +
+          '<input class="kta-cfg-input" id="kta-lc-add-border" type="color" value="#000000" style="height:32px; padding:2px;">' +
+          '<label class="kta-export-cb-row" style="margin-top:4px;">' +
+            '<input type="checkbox" id="kta-lc-add-border-on">' +
+            '<span>' + window.I18n.t("legend.add.borderToggle") + '</span>' +
+          '</label>' +
+        '</div>' +
         '<div style="margin-bottom:10px; display:none;" id="kta-lc-add-icon-wrap">' +
           '<label class="kta-cfg-label">' + window.I18n.t("legend.add.iconUrl") + '</label>' +
           '<input class="kta-cfg-input" id="kta-lc-add-icon" type="text" placeholder="' + window.I18n.t("legend.add.iconPlaceholder") + '">' +
@@ -1019,6 +1094,16 @@ window.LegendCustomization = (function() {
     const lineWrap = document.getElementById("kta-lc-add-line-wrap");
     const fillWrap = document.getElementById("kta-lc-add-fill-wrap");
     const iconWrap = document.getElementById("kta-lc-add-icon-wrap");
+    const borderWrap = document.getElementById("kta-lc-add-border-wrap");
+
+    // Mode « lier un type existant » (cf. en-tête de la fonction)
+    if (prefill && prefill.category) {
+      catSel.value = prefill.category;
+      catSel.disabled = true;
+    }
+    if (prefill && prefill.label) {
+      document.getElementById("kta-lc-add-label").value = prefill.label;
+    }
 
     function _getStructGeometry() {
       const r = wrap.querySelector('input[name="kta-lc-add-geom"]:checked');
@@ -1031,6 +1116,7 @@ window.LegendCustomization = (function() {
         geomWrap.style.display = "none";
         lineWrap.style.display = "none";
         fillWrap.style.display = "none";
+        borderWrap.style.display = "none";
         iconWrap.style.display = "block";
       } else {
         iconWrap.style.display = "none";
@@ -1038,6 +1124,7 @@ window.LegendCustomization = (function() {
           geomWrap.style.display = "none";
           lineWrap.style.display = "block";
           fillWrap.style.display = "none";
+          borderWrap.style.display = "none";
         } else if (cat === "zones") {
           geomWrap.style.display = "none";
           lineWrap.style.display = "none";
@@ -1050,6 +1137,7 @@ window.LegendCustomization = (function() {
           // promouvait ensuite en `borderColor` → TOUTE zone custom naissait
           // avec un contour VERT FLUO que l'utilisateur n'avait pas choisi.
           document.getElementById("kta-lc-add-line-on").checked = false;
+          borderWrap.style.display = "block";   // 🎨 v1.76.1 bordure optionnelle
         } else {
           // structures → afficher le sélecteur de géométrie + ajuster
           // les champs de couleur selon le choix.
@@ -1065,6 +1153,7 @@ window.LegendCustomization = (function() {
             // Front de taille : couleur trait obligatoire, pas de fill
             lineWrap.style.display = "block";
             fillWrap.style.display = "none";
+            borderWrap.style.display = "none";
             document.getElementById("kta-lc-add-line-on").checked = true;
           } else {
             // Pilier/mur : couleur fill obligatoire, pas de trait séparé
@@ -1076,6 +1165,7 @@ window.LegendCustomization = (function() {
             // décochage, un pilier/mur custom naissait avec une bordure verte
             // fluo au lieu du noir des piliers built-in.
             document.getElementById("kta-lc-add-line-on").checked = false;
+            borderWrap.style.display = "block";   // 🎨 v1.76.1 bordure optionnelle
           }
         }
       }
@@ -1092,6 +1182,9 @@ window.LegendCustomization = (function() {
       const label = (document.getElementById("kta-lc-add-label").value || "").trim();
       if (!label) { alert(window.I18n.t("legend.add.errNoLabel")); return; }
       const entry = { category: cat, label: label };
+      // Mode « lier un type existant » : l'id EST le type des objets déjà
+      // dessinés — c'est toute la liaison (addCustomEntry accepte entry.id).
+      if (prefill && prefill.id) entry.id = prefill.id;
 
       // 🆕 v1.16.0 step2-drawable : géométrie. Pour structures = choix user,
       // sinon implicite via category.
@@ -1115,7 +1208,12 @@ window.LegendCustomization = (function() {
         if (lineOn) entry.lineColor = document.getElementById("kta-lc-add-line").value;
         if (fillOn) {
           entry.fillColor = document.getElementById("kta-lc-add-fill").value;
-          if ((cat === "zones" || (cat === "structures" && entry.geometry === "polygon")) && !lineOn) {
+          // 🎨 v1.76.1 — bordure EXPLICITE si cochée ; sinon comportement
+          // historique (bordure = fond).
+          const bordOn = document.getElementById("kta-lc-add-border-on").checked;
+          if (bordOn && (cat === "zones" || (cat === "structures" && entry.geometry === "polygon"))) {
+            entry.borderColor = document.getElementById("kta-lc-add-border").value;
+          } else if ((cat === "zones" || (cat === "structures" && entry.geometry === "polygon")) && !lineOn) {
             // Polygones : bordure par défaut = même couleur que fill
             entry.borderColor = entry.fillColor;
           }
@@ -1168,6 +1266,10 @@ window.LegendCustomization = (function() {
     // ne jamais y rappeler le résolveur (réentrance).
     getColor:              getColor,
     hasColorOverride:      hasColorOverride,
+    // 🎨 v1.76.1 — bordure indépendante (getBorderColor est appelée par
+    // window.ktaResolveStyle : lecture PURE, jamais de rappel au résolveur).
+    getBorderColor:        getBorderColor,
+    setBorderColor:        setBorderColor,
     listEntries:           listEntries,
     listCustomEntries:     listCustomEntries,
     isCustomVisible:       isCustomVisible,

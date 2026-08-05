@@ -111,14 +111,26 @@ function afficherLegende() {
     try { orphelins = LC.listOrphanTypes(); } catch(e) { return ""; }
     if (!orphelins || !orphelins.length) return "";
     const totalObjets = orphelins.reduce(function(s, o) { return s + o.nb; }, 0);
+    // 🧷 v1.76.1 — chaque type orphelin porte un bouton « ➕ Lier » qui ouvre
+    // la dialog d'ajout PRÉ-REMPLIE avec l'id EXACT du type (catégorie
+    // verrouillée). C'est LE chemin de réparation qui manquait : recréer
+    // l'entrée à la main générait un id neuf qui ne se liait jamais (vécu
+    // KARMA sur son type « Bas »). L'id n'est jamais montré ni saisi.
     const details = orphelins.map(function(o) {
-      return '<code style="font-size:11px;">' + o.type + '</code> (' + o.nb + ')';
+      return '<span style="white-space:nowrap;"><code style="font-size:11px;">' + _escHtml(o.type) + '</code> (' + o.nb + ')' +
+             ' <button type="button" class="kta-orphan-link" data-otype="' + _escHtml(o.type) + '" data-ocat="' + o.categorie + '"' +
+             ' style="font-size:11px; padding:1px 6px; margin-left:2px; cursor:pointer; background:transparent; border:1px solid rgba(140,180,255,0.4); color:#8cb4ff; border-radius:4px;">➕ ' +
+             window.I18n.t("legendui.orphans.lier") + '</button></span>';
     }).join(" · ");
     return `<div style="border:1px solid rgba(255,120,80,0.5); background:rgba(255,120,80,0.08); border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:12px; line-height:1.5; color:#e8eaf0;">
         ⚠️ ${window.I18n.t("legendui.orphans.intro", { objets: totalObjets, types: orphelins.length })}<br>
         ${details}<br>
         <span style="color:#8892a4;">${window.I18n.t("legendui.orphans.aide")}</span>
       </div>`;
+  }
+  function _escHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
   let contenuIcones = "";
@@ -391,6 +403,24 @@ function afficherLegende() {
 
   document.getElementById("kta-legende-close").addEventListener("click", function () { modal.remove(); });
   modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
+
+  // 🧷 v1.76.1 — bouton « ➕ Lier » du bandeau orphelins (délégué : le corps
+  // est re-rendu par innerHTML à chaque édition de légende).
+  modal.addEventListener("click", function (e) {
+    const btn = e.target.closest ? e.target.closest(".kta-orphan-link") : null;
+    if (!btn) return;
+    if (!LC || typeof LC.ouvrirAddDialog !== "function") return;
+    const type = btn.getAttribute("data-otype");
+    const cat  = btn.getAttribute("data-ocat");
+    LC.ouvrirAddDialog(function() {
+      const corps = modal.querySelector(".kta-legende-corps");
+      if (corps) corps.innerHTML = _construireContenuLegende();
+      // la carte doit adopter le style tout de suite (les objets étaient en repli)
+      ["renderRoads", "renderZones", "renderStructures", "_ktaRestyleDataLayers"].forEach(function(fn) {
+        if (typeof window[fn] === "function") { try { window[fn](); } catch(err) {} }
+      });
+    }, { id: type, category: cat, label: type });
+  });
 
   // 🆕 v1.16.0 step 2 : bouton « ✏️ Modifier » → ouvre l'éditeur. À chaque
   // change dans l'éditeur, on rafraîchit UNIQUEMENT le contenu (.kta-legende-corps)

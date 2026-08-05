@@ -136,36 +136,46 @@
   }
 
   function _appliquerOverride(categorie, cle, s) {
-    if (!window.LegendCustomization || typeof window.LegendCustomization.getColor !== "function") return s;
-    let c = null;
-    try { c = window.LegendCustomization.getColor(categorie, cle); } catch(e) { return s; }
-    if (!c) return s;
+    const LC = window.LegendCustomization;
+    if (!LC || typeof LC.getColor !== "function") return s;
+    let c = null, b = null;
+    try {
+      c = LC.getColor(categorie, cle);
+      // 🎨 v1.76.1 — bordure INDÉPENDANTE (zones + piliers/mur). Sans elle :
+      // comportement v1.76.0 inchangé (dérivée / noire).
+      if (typeof LC.getBorderColor === "function") b = LC.getBorderColor(categorie, cle);
+    } catch(e) { return s; }
+    if (!c && !b) return s;
 
     if (categorie === "traces") {          // un tracé, c'est son trait
-      s.color = c;
+      if (c) s.color = c;
       return s;
     }
     if (categorie === "structures") {
       if (s.isPolyline) {                  // front de taille : trait épais
-        s.color = c;
-        s.fillColor = c;                   // le canon garde les deux alignés
+        if (c) { s.color = c; s.fillColor = c; }   // le canon garde les deux alignés
         return s;
       }
-      // Pilier / mur : on repeint le REMPLISSAGE et on garde le contour NOIR.
-      // Ce contour est la signature visuelle qui distingue une structure d'une
-      // zone — le laisser changer casserait la grammaire de la carte.
-      s.fillColor = c;
+      // Pilier / mur : remplissage = couleur choisie ; contour NOIR par
+      // DÉFAUT (signature visuelle des structures) — mais depuis v1.76.1 la
+      // bordure est un choix, plus un verrou (décision KARMA).
+      if (c) s.fillColor = c;
+      if (b) s.color = b;
       return s;
     }
-    // Zones : le remplissage prend la couleur, la bordure en est dérivée par
-    // assombrissement — c'est déjà la relation du canon (#3aa9e8 → #0066aa).
-    s.fillColor = c;
-    s.color     = _assombrir(c, 0.62);
-    // Un type à MOTIF (inaccessible) perd ses hachures quand il est repeint :
-    // le pattern SVG est statique dans index.html, il ne peut pas prendre une
-    // couleur choisie à l'exécution. On retombe donc sur un aplat, à l'opacité
-    // prévue pour son repli.
-    if (s._flatFillOpacity !== undefined) s.fillOpacity = s._flatFillOpacity;
+    // Zones : remplissage = couleur choisie ; bordure explicite si choisie,
+    // sinon dérivée par assombrissement — la relation du canon (#3aa9e8 → #0066aa).
+    if (c) {
+      s.fillColor = c;
+      s.color     = b || _assombrir(c, 0.62);
+      // Un type à MOTIF (inaccessible) perd ses hachures quand il est repeint :
+      // le pattern SVG est statique dans index.html, il ne peut pas prendre une
+      // couleur choisie à l'exécution. On retombe donc sur un aplat, à l'opacité
+      // prévue pour son repli.
+      if (s._flatFillOpacity !== undefined) s.fillOpacity = s._flatFillOpacity;
+    } else {
+      s.color = b;                         // bordure seule : le fond reste canon
+    }
     return s;
   }
 
