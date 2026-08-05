@@ -29,6 +29,7 @@
   - **Pas de ligne « Sources de vérité v1.X.Y »** (= dette technique inutile à l'user).
   - La doc technique détaillée vit dans `docs/architecture/<sujet>.md` + commit message + `NETWORK_AUDIT` pour le réseau, **PAS** dans `version.json`.
 - **Déploiement** : prod = **FTP manuel par KARMA**. Claude ne déploie/push-main JAMAIS.
+- **🚦 Porte de release** : AVANT tout merge `main`, franchir **`docs/RELEASE_GATE.md`** (guards auto → smoke 12 pts sur dev → checkup ciblé → trempage). `main` = déployable. Dérogations possibles sur items non-🔒, **accordées par KARMA seul**, consignées avec motif/risque/rattrapage.
 
 ## 🚨 Garde-fous — NE JAMAIS
 - `push main` / `push --force` / `reset --hard` → **bloqués en dur** (`.claude/hooks/guard-git.js`).
@@ -70,6 +71,7 @@
 | Frontière community/pro, mode serveur kiosque, confadmin | `docs/architecture/community-server-line.md` |
 | Pièges connus & renommages | `docs/architecture/gotchas.md` |
 | **Ce qui reste à faire** (sujets ouverts, dettes, sujets enterrés) | **`docs/BACKLOG.md`** ← lire AVANT d'annoncer qu'une feature manque |
+| Porte de release : smoke test 12 pts, dérogations, relevé | `docs/RELEASE_GATE.md` |
 
 ## 📝 Style KARMA
 - **Topo avant de coder** (choix numérotés + reco). Réponses courtes OK (`1:a 2:b`).
