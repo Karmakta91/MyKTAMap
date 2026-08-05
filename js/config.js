@@ -684,6 +684,76 @@ function resetPlanNorthOffset(planId) {
 }
 
 // =========================
+// 🧭 v1.76.1 — ESTIMATION DU POINT B DE GÉOREF (demande KARMA 06/08)
+// =========================
+// Cas d'usage : on connaît le GPS d'UN seul point (A, ex. l'entrée), mais le
+// plan a une ÉCHELLE fiable (px/m) et son orientation Nord est calibrée
+// (northOffsetDeg — 0 par défaut = Nord en haut, croissant HORAIRE, même
+// convention que la boussole/tracker). Ces deux données contiennent déjà tout
+// ce que le point B apporte : on peut donc le DÉDUIRE au lieu de le mesurer.
+//
+// Math : Δpixels → mètres via l'échelle, rotation ANTI-horaire de
+// +northOffsetDeg pour passer du repère image au repère géographique
+// (vérif. : offset 90° = « le Nord pointe vers la droite du plan » → un
+// vecteur vers la droite de l'image doit devenir plein Nord), puis mètres →
+// degrés en approximation locale (1° lat ≈ 111 320 m ; lng corrigé par
+// cos(lat) — erreur < 0,1 % sous 10 km d'emprise, négligeable devant
+// l'hypothèse d'orientation elle-même).
+//
+// REFUS, PAS DE CLAMP (règle KARMA) : rend null si A incomplet, échelle
+// invalide (≤ 0 / non finie) ou latitude trop polaire (|lat| > 85° :
+// cos(lat) → 0, le calcul de longitude diverge).
+//
+// Retourne { x, y, lat, lng, estimated: true } — le format EXACT d'un point
+// de calibration : tout l'aval (Vue OSM, KMZ/GPX, Secours) le consomme sans
+// modification. `estimated` est un marqueur d'honnêteté, affiché par les UI.
+function ktaEstimerPointB(pointA, pixelB, scalePxM, northOffsetDeg) {
+  if (!pointA || !pixelB) return null;
+  // ⚠️ null/undefined AVANT Number() : Number(null) vaut 0 (finite !) — un A
+  // avec lat:null serait « estimé » depuis l'équateur au lieu d'être refusé.
+  // Attrapé par check-georef-estimation au premier run.
+  if ([pointA.x, pointA.y, pointA.lat, pointA.lng, pixelB.x, pixelB.y]
+        .some(function(v) { return v == null || v === ""; })) return null;
+  const ax = Number(pointA.x), ay = Number(pointA.y);
+  const alat = Number(pointA.lat), alng = Number(pointA.lng);
+  const bx = Number(pixelB.x), by = Number(pixelB.y);
+  const s = Number(scalePxM);
+  if (![ax, ay, alat, alng, bx, by].every(Number.isFinite)) return null;
+  if (!Number.isFinite(s) || s <= 0) return null;
+  if (Math.abs(alat) > 85) return null;
+
+  const theta = ((Number(northOffsetDeg) || 0) * Math.PI) / 180;
+  // Repère image : x → droite, y → BAS. En « plan » : est = Δx, nord = −Δy.
+  const estPlan  = (bx - ax) / s;
+  const nordPlan = -(by - ay) / s;
+  // Rotation anti-horaire de +theta (cf. démonstration en tête).
+  const estVrai  = estPlan * Math.cos(theta) - nordPlan * Math.sin(theta);
+  const nordVrai = estPlan * Math.sin(theta) + nordPlan * Math.cos(theta);
+
+  const M_PAR_DEG = 111320;
+  const lat = alat + nordVrai / M_PAR_DEG;
+  const lng = alng + estVrai / (M_PAR_DEG * Math.cos(alat * Math.PI / 180));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { x: bx, y: by, lat: lat, lng: lng, estimated: true };
+}
+window.ktaEstimerPointB = ktaEstimerPointB;
+
+// Coin d'image le plus éloigné d'un point — position du B virtuel (longue
+// base = moins de bruit numérique dans le transform aval ; la position n'a
+// aucun sens physique, le point est synthétique par construction).
+function ktaCoinLePlusLoin(pointA, imageWidth, imageHeight) {
+  const w = Number(imageWidth), h = Number(imageHeight);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0 || !pointA) return null;
+  let best = null, bestD = -1;
+  [[0, 0], [w, 0], [0, h], [w, h]].forEach(function(c) {
+    const d = Math.hypot(c[0] - Number(pointA.x), c[1] - Number(pointA.y));
+    if (d > bestD) { bestD = d; best = { x: c[0], y: c[1] }; }
+  });
+  return best;
+}
+window.ktaCoinLePlusLoin = ktaCoinLePlusLoin;
+
+// =========================
 // EXPORTS GLOBAUX
 // =========================
 window.APP_CONFIG                  = APP_CONFIG;

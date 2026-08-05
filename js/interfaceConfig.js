@@ -258,7 +258,11 @@ function _renderCfgGeorefSection() {
         '<div class="kta-kmz-pt-actions">' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_search" type="button">' + window.I18n.t("config.georef.searchBtn") + '</button>' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
+          // 🧭 v1.76.1 — B ESTIMÉ depuis A + échelle + orientation Nord
+          // (northOffsetDeg per-plan, 0 par défaut = Nord en haut).
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_estimer" type="button" title="' + window.I18n.t("config.georef.estimerTitle") + '">🧭 ' + window.I18n.t("config.georef.estimerBtn") + '</button>' +
         '</div>' +
+        '<div id="cfg_kmz_B_estime_badge" class="kta-planner-info" style="display:none; color:#f4c542; margin:4px 0 0;">≈ ' + window.I18n.t("config.georef.estimeBadge") + '</div>' +
         '<div id="cfg_kmz_B_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
@@ -330,6 +334,55 @@ function _bindCfgGeorefHandlers() {
     );
   }
 
+  // 🧭 v1.76.1 — ESTIMER B depuis A + échelle + Nord calibré.
+  // `_bEstime` mémorise les valeurs posées : au save, si les inputs B sont
+  // toujours EXACTEMENT celles-là, le flag `estimated:true` est persisté avec
+  // la calibration (badge d'honnêteté). La moindre retouche manuelle des
+  // champs B = mesure de l'utilisateur → le flag tombe.
+  let _bEstime = null;
+  const _badgeEstime = document.getElementById("cfg_kmz_B_estime_badge");
+  // Badge relu depuis la calibration sauvée (3:a — visible tant que le B est estimé)
+  if (saved && saved.pointB && saved.pointB.estimated && _badgeEstime) _badgeEstime.style.display = "";
+  const _btnEstimer = document.getElementById("cfg_kmz_B_estimer");
+  if (_btnEstimer) _btnEstimer.addEventListener("click", function() {
+    const ax = parseFloat(document.getElementById("cfg_kmz_A_x").value);
+    const ay = parseFloat(document.getElementById("cfg_kmz_A_y").value);
+    const coordsA = _readCoordsCombo("cfg_kmz_A_coords", "cfg_kmz_A_err");
+    const scale = window.APP_CONFIG && Number(window.APP_CONFIG.scale);
+    // REFUS explicites, pas de clamp (règle KARMA)
+    if (!Number.isFinite(ax) || !Number.isFinite(ay) || !coordsA || coordsA.invalid || coordsA.lat == null) {
+      _setStatus(window.I18n.t("config.georef.estimerErrA"), "err"); return;
+    }
+    if (!Number.isFinite(scale) || scale <= 0) {
+      _setStatus(window.I18n.t("config.georef.estimerErrScale"), "err"); return;
+    }
+    const north = (typeof window.getPlanNorthOffset === "function") ? window.getPlanNorthOffset() : 0;
+    const coin = window.ktaCoinLePlusLoin({ x: ax, y: ay },
+                   window.APP_CONFIG.imageWidth, window.APP_CONFIG.imageHeight);
+    const pointA = { x: ax, y: ay, lat: coordsA.lat, lng: coordsA.lng };
+    const b = coin && window.ktaEstimerPointB(pointA, coin, scale, north);
+    if (!b) { _setStatus(window.I18n.t("config.georef.estimerErrCalc"), "err"); return; }
+    // Récap de confirmation — l'estimation N'EST PAS une mesure, on le dit.
+    const distM = Math.round(Math.hypot(b.x - ax, b.y - ay) / scale);
+    if (!confirm(window.I18n.t("config.georef.estimerConfirm",
+          { dist: distM, scale: scale, north: north }))) return;
+    document.getElementById("cfg_kmz_B_x").value = b.x;
+    document.getElementById("cfg_kmz_B_y").value = b.y;
+    document.getElementById("cfg_kmz_B_coords").value =
+      (typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(b.lat, b.lng) : (b.lat + ", " + b.lng);
+    _bEstime = { x: String(b.x), y: String(b.y) };
+    if (_badgeEstime) _badgeEstime.style.display = "";
+    _setStatus(window.I18n.t("config.georef.estimerOk"), "ok");
+  });
+  // Toute édition manuelle d'un champ B invalide l'estimation (badge + flag)
+  ["cfg_kmz_B_x", "cfg_kmz_B_y", "cfg_kmz_B_coords"].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", function() {
+      _bEstime = null;
+      if (_badgeEstime) _badgeEstime.style.display = "none";
+    });
+  });
+
   // 🆕 hotfix21 — Helper : lit l'input combiné "lat, lng", parse + applique
   // border rouge + message inline si format invalide. Retourne {lat, lng}
   // ou null (vide ou invalide). Le caller distingue via 2e param `errKey`.
@@ -377,6 +430,13 @@ function _bindCfgGeorefHandlers() {
                 lat: coordsB ? coordsB.lat : null,
                 lng: coordsB ? coordsB.lng : null }
     };
+    // 🧭 v1.76.1 — le B provient de l'estimation et n'a pas été retouché →
+    // le flag suit la calibration (badge d'honnêteté, relu à l'ouverture).
+    if (_bEstime &&
+        String(document.getElementById("cfg_kmz_B_x").value) === _bEstime.x &&
+        String(document.getElementById("cfg_kmz_B_y").value) === _bEstime.y) {
+      c.pointB.estimated = true;
+    }
     // Validation : tous les champs requis (x, y, lat, lng pour A et B)
     if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
         c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {

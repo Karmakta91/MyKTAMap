@@ -516,6 +516,11 @@ function afficherPlanner() {
               <input class="kta-cfg-input kta-kmz-input kta-gps-coords-input" id="pl_geo_B_coords" type="text" inputmode="decimal" autocomplete="off" placeholder="48.8520, 2.3050">
             </div>
             <div class="kta-gps-coords-error" id="pl_geo_B_err" style="display:none;"></div>
+            <!-- 🧭 v1.76.1 : B estimé depuis A + échelle (#pl_scale) + Nord (#pl_northOffset) -->
+            <div class="kta-kmz-pt-actions">
+              <button class="kta-btn kta-btn-ghost kta-btn-small" id="pl_geo_B_estimer" type="button" title="${window.I18n.t("config.georef.estimerTitle")}">🧭 ${window.I18n.t("config.georef.estimerBtn")}</button>
+            </div>
+            <div id="pl_geo_B_estime_badge" class="kta-planner-info" style="display:none; color:#f4c542; margin:4px 0 0;">≈ ${window.I18n.t("config.georef.estimeBadge")}</div>
           </div>
           <!-- 📐 v1.73.0 : Point C OPTIONNEL — affine anti-déformation (assemblages) -->
           <div class="kta-kmz-section" style="margin:8px 0;">
@@ -586,6 +591,51 @@ function afficherPlanner() {
       { errorEl: document.getElementById("pl_geo_C_err") }
     );
   }
+
+  // 🧭 v1.76.1 — B ESTIMÉ au Générateur : A + échelle (#pl_scale) + Nord
+  // (#pl_northOffset, 0 par défaut) + dimensions de l'image chargée
+  // (#pl_width/#pl_height). Mêmes règles que côté ⚙️ Réglages : refus
+  // explicites, récap de confirmation, badge « estimé » informatif.
+  // (Pas de flag persisté ici : le Générateur écrit plan.georef au ZIP via
+  // _geoB — le champ `estimated` n'y est pas conservé, dette notée BACKLOG.)
+  const _btnEstimerGen = document.getElementById("pl_geo_B_estimer");
+  if (_btnEstimerGen) _btnEstimerGen.addEventListener("click", function() {
+    const ax = parseFloat(document.getElementById("pl_geo_A_x").value);
+    const ay = parseFloat(document.getElementById("pl_geo_A_y").value);
+    const rawCoords = (document.getElementById("pl_geo_A_coords").value || "").trim();
+    const coordsA = (typeof window.parseGpsCoords === "function") ? window.parseGpsCoords(rawCoords) : null;
+    const scale = parseFloat(document.getElementById("pl_scale").value);
+    const w = parseInt(document.getElementById("pl_width").value, 10);
+    const h = parseInt(document.getElementById("pl_height").value, 10);
+    if (!Number.isFinite(ax) || !Number.isFinite(ay) || !coordsA) {
+      alert(window.I18n.t("config.georef.estimerErrA")); return;
+    }
+    if (!Number.isFinite(scale) || scale <= 0) {
+      alert(window.I18n.t("config.georef.estimerErrScale")); return;
+    }
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+      alert(window.I18n.t("config.georef.estimerErrDims")); return;
+    }
+    const north = parseFloat(document.getElementById("pl_northOffset")?.value) || 0;
+    const coin = window.ktaCoinLePlusLoin({ x: ax, y: ay }, w, h);
+    const b = coin && window.ktaEstimerPointB({ x: ax, y: ay, lat: coordsA.lat, lng: coordsA.lng }, coin, scale, north);
+    if (!b) { alert(window.I18n.t("config.georef.estimerErrCalc")); return; }
+    const distM = Math.round(Math.hypot(b.x - ax, b.y - ay) / scale);
+    if (!confirm(window.I18n.t("config.georef.estimerConfirm", { dist: distM, scale: scale, north: north }))) return;
+    document.getElementById("pl_geo_B_x").value = b.x;
+    document.getElementById("pl_geo_B_y").value = b.y;
+    document.getElementById("pl_geo_B_coords").value =
+      (typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(b.lat, b.lng) : (b.lat + ", " + b.lng);
+    const badge = document.getElementById("pl_geo_B_estime_badge");
+    if (badge) badge.style.display = "";
+  });
+  ["pl_geo_B_x", "pl_geo_B_y", "pl_geo_B_coords"].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", function() {
+      const badge = document.getElementById("pl_geo_B_estime_badge");
+      if (badge) badge.style.display = "none";
+    });
+  });
 
   _imageLayerCount   = 0;
   _dataLayerCount    = 0;

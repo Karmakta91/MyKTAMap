@@ -63,3 +63,8 @@ node scripts/check-kml-styles.js || exit $?
 # aussi l'idempotence du re-import et la regle de conflit (le plan gagne).
 # BLOQUANT.
 node scripts/check-legend-roundtrip.js || exit $?
+
+# 🧭 v1.76.1 — Math de l'estimation du point B de georef (A + echelle + Nord).
+# Fonction extraite du code REEL de config.js ; a attrape Number(null)=0 des
+# son premier run (un A a lat nulle serait parti a l'equateur). BLOQUANT.
+node scripts/check-georef-estimation.js || exit $?
