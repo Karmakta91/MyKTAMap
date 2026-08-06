@@ -1539,7 +1539,16 @@ function appliquerConfig() {
   const _oldStartX = APP_CONFIG.startX;
   const _oldStartY = APP_CONFIG.startY;
 
-  APP_CONFIG.scale         = parseFloat(document.getElementById("cfg_scale").value);
+  // 🎯 v1.76.1 (bug KARMA « l'échelle ne se sauvegarde plus ») — en réalité
+  // elle n'a JAMAIS été persistée : écrite en mémoire seulement, elle
+  // retombait sur le plan-config au chargement suivant. Désormais : pref
+  // per-plan (pattern northOffsetDeg). Valeur invalide (≤0/NaN) → on GARDE
+  // l'ancienne (refus, pas de clamp — même règle que startX/startY).
+  const _nouvelleEchelle = parseFloat(document.getElementById("cfg_scale").value);
+  if (Number.isFinite(_nouvelleEchelle) && _nouvelleEchelle > 0) {
+    APP_CONFIG.scale = _nouvelleEchelle;
+    if (typeof window.setPlanScale === "function") window.setPlanScale(null, _nouvelleEchelle);
+  }
   // taille d'un pas — déjà validée [0 ; 1,5] par le gate _validerReglagesTracking
   APP_CONFIG.stepLength    = parseFloat(document.getElementById("cfg_stepLength").value);
   // 🐛 v1.28.0 (#3) : ne pas écraser startX/startY avec NaN si le champ est

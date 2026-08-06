@@ -361,6 +361,11 @@ function buildAppConfigFromPlan(planConfig) {
   const cfg = {
     imageHeight:   Number(plan.imageHeight       ?? DEFAULT_CONFIG.imageHeight),
     imageWidth:    Number(plan.imageWidth        ?? DEFAULT_CONFIG.imageWidth),
+    // 🎯 v1.76.1 — l'override d'échelle per-plan n'est PAS appliqué ici :
+    // buildAppConfigFromPlan tourne AVANT que _currentLoadedPlanId soit posé
+    // (main.js:1079 vs :1104) — lire la pref ici prendrait celle du plan
+    // PRÉCÉDENT (fuite inter-plans). Il est appliqué par
+    // appliquerScalePerPlan() dans lancerApplication, une fois l'id connu.
     scale:         Number(tracking.scale         ?? DEFAULT_CONFIG.scale),
     stepLength:    Number(tracking.stepLength    ?? DEFAULT_CONFIG.stepLength),
     startX:        Number(tracking.startX        ?? DEFAULT_CONFIG.startX),
@@ -682,6 +687,51 @@ function resetPlanNorthOffset(planId) {
     }));
   } catch(e) {}
 }
+
+// =========================
+// 🎯 v1.76.1 — ÉCHELLE PER-PLAN (bug remonté par KARMA le 06/08)
+// =========================
+// L'échelle modifiée dans ⚙️ Réglages n'était persistée NULLE PART :
+// `appliquerConfig` écrivait APP_CONFIG.scale en mémoire, mais
+// `sauvegarderPrefsUtilisateur` ne la sauvait pas et le chargement de plan la
+// relisait exclusivement du plan-config.json — la valeur tenait jusqu'au
+// prochain reload puis retombait sur celle du ZIP. Frère jumeau du bug
+// magnétisme (v1.75.0), révélé par les reloads systématiques du checkup M3.
+// L'échelle est PER-PLAN par nature (chaque plan a la sienne) → même pattern
+// que northOffsetDeg : pref LS `myktamap_plan_prefs_<planId>.scale`,
+// cascade prefs > plan-config > défaut.
+function getPlanScale(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  if (typeof prefs.scale === "number" && Number.isFinite(prefs.scale) && prefs.scale > 0) {
+    return prefs.scale;
+  }
+  return null;   // pas d'override → l'appelant garde la valeur plan-config
+}
+
+function setPlanScale(planId, value) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = Number(value);
+  if (!Number.isFinite(v) || v <= 0) return false;   // refus, pas de clamp
+  const prefs = _readPlanPrefs(pid);
+  prefs.scale = v;
+  _writePlanPrefs(pid, prefs);
+  console.log("[Config] scale (plan " + pid + ") →", v, "px/m");
+  return true;
+}
+// Applique l'override per-plan sur APP_CONFIG.scale — à appeler UNE fois
+// l'id du plan connu (lancerApplication), jamais depuis buildAppConfigFromPlan
+// (l'id n'y est pas encore posé, on lirait la pref du plan précédent).
+function appliquerScalePerPlan() {
+  const v = getPlanScale();
+  if (v != null && window.APP_CONFIG) {
+    window.APP_CONFIG.scale = v;
+    console.log("[Config] échelle per-plan appliquée :", v, "px/m (prioritaire sur plan-config)");
+  }
+}
+window.getPlanScale = getPlanScale;
+window.setPlanScale = setPlanScale;
+window.appliquerScalePerPlan = appliquerScalePerPlan;
 
 // =========================
 // 🧭 v1.76.1 — ESTIMATION DU POINT B DE GÉOREF (demande KARMA 06/08)
