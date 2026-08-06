@@ -341,8 +341,16 @@ function _bindCfgGeorefHandlers() {
   // champs B = mesure de l'utilisateur → le flag tombe.
   let _bEstime = null;
   const _badgeEstime = document.getElementById("cfg_kmz_B_estime_badge");
-  // Badge relu depuis la calibration sauvée (3:a — visible tant que le B est estimé)
-  if (saved && saved.pointB && saved.pointB.estimated && _badgeEstime) _badgeEstime.style.display = "";
+  // Badge relu depuis la calibration sauvée (3:a — visible tant que le B est
+  // estimé). ⚠️ RELUE ICI : `saved` vit dans _renderCfgGeorefSection (le
+  // générateur de HTML), pas dans cette fonction de binding — la référencer
+  // levait un ReferenceError au setup qui tuait TOUS les handlers suivants
+  // (chercher point, calibrer Nord…). Bug remonté par KARMA le 06/08.
+  const _calibSauvee = (window.KmzExport && window.KmzExport.getCalibration)
+                         ? window.KmzExport.getCalibration(window._currentLoadedPlanId || "default") : null;
+  if (_calibSauvee && _calibSauvee.pointB && _calibSauvee.pointB.estimated && _badgeEstime) {
+    _badgeEstime.style.display = "";
+  }
   const _btnEstimer = document.getElementById("cfg_kmz_B_estimer");
   if (_btnEstimer) _btnEstimer.addEventListener("click", function() {
     const ax = parseFloat(document.getElementById("cfg_kmz_A_x").value);
