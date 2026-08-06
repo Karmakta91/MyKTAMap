@@ -51,15 +51,23 @@
   // MATH AFFINE 2D
   // =========================
 
-  // Construit une transformation affine 2D similarity (rotation+scale+translation)
-  // qui mappe (x,y) plan vers (lat,lng) GPS, à partir de 2 points de calibrage.
+  // Construit une transformation 2D qui mappe (x,y) plan vers (lat,lng) GPS.
   //
-  // planA, planB : {x, y} en pixels image
-  // gpsA, gpsB   : {lat, lng} en degrés décimaux
+  // planA, planB : {x, y} en pixels image      gpsA, gpsB : {lat, lng}
+  // 📐 v1.73.0 (KARMA « erreurs de projection sur un assemblage ») :
+  // planC/gpsC OPTIONNELS. Absents → similitude 2 points (rotation + échelle
+  // uniforme), comportement historique BIT-À-BIT. Présents → AFFINE 6 DOF
+  // (échelles X/Y indépendantes + cisaillement) résolue exactement sur les
+  // 3 correspondances — corrige une déformation GLOBALE constante, PAS les
+  // erreurs locales d'un assemblage morceau par morceau (l'affine moyenne).
+  // C quasi colinéaire avec A-B (aire du triangle < seuil) → C IGNORÉ,
+  // repli similitude + `degenereC: true` (jamais de throw pour C : optionnel).
   //
-  // Retourne { refPlan, refGps, metresParPixel, rotation, latMoyenne }
-  // ou throw si distance insuffisante.
-  function buildTransform(planA, planB, gpsA, gpsB) {
+  // Retourne { refPlan, refGps, metresParPixel, rotation, latMoyenne,
+  //            affine?, affineInv?, degenereC? } — metresParPixel/rotation
+  // restent dérivés de A/B même en affine (affichage d'échelle : approximation
+  // assumée, une affine n'a pas UNE échelle).
+  function buildTransform(planA, planB, gpsA, gpsB, planC, gpsC) {
     if (!planA || !planB || !gpsA || !gpsB) {
       throw new Error(window.I18n.t("kmz.err.calibIncomplete"));
     }
@@ -96,18 +104,96 @@
     const angleGps  = Math.atan2(dyGps,  dxGps);
     const rotation  = angleGps - anglePlan;
 
-    return {
+    const t = {
       refPlan:        { x: planA.x, y: planA.y },
       refGps:         { lat: gpsA.lat, lng: gpsA.lng },
       metresParPixel: metresParPixel,
       rotation:       rotation,
       latMoyenne:     latMoy
     };
+
+    // 📐 Point C optionnel → transformation AFFINE (repère : yF = -y, mètres
+    // équirectangulaires relatifs à gpsA, à la latitude moyenne des 3 points).
+    const _fin = function(v) { return typeof v === "number" && Number.isFinite(v); };
+    if (planC && gpsC && _fin(planC.x) && _fin(planC.y) && _fin(gpsC.lat) && _fin(gpsC.lng)) {
+      const x1 = planA.x, y1 = -planA.y,
+            x2 = planB.x, y2 = -planB.y,
+            x3 = planC.x, y3 = -planC.y;
+      // 2 × aire du triangle plan — quasi nul = C colinéaire avec A-B :
+      // l'affine serait dégénérée (matrice non inversible) → repli 2 points.
+      const det3 = x1 * (y2 - y3) - y1 * (x2 - x3) + (x2 * y3 - x3 * y2);
+      if (Math.abs(det3) < MIN_PLAN_DISTANCE * MIN_PLAN_DISTANCE * 0.05) {
+        t.degenereC = true;
+        console.warn("[KmzExport] Point C quasi colinéaire avec A-B — ignoré (repli 2 points)");
+        return t;
+      }
+      const latMoy3 = (gpsA.lat + gpsB.lat + gpsC.lat) / 3;
+      const kLng = 111320 * Math.cos(latMoy3 * Math.PI / 180), kLat = 110540;
+      // Mètres Est/Nord relatifs à gpsA
+      const E = [0, (gpsB.lng - gpsA.lng) * kLng, (gpsC.lng - gpsA.lng) * kLng];
+      const N = [0, (gpsB.lat - gpsA.lat) * kLat, (gpsC.lat - gpsA.lat) * kLat];
+      // Aire du triangle GPS quasi nulle → même dégénérescence côté monde
+      const detG = E[0] * (N[1] - N[2]) - N[0] * (E[1] - E[2]) + (E[1] * N[2] - E[2] * N[1]);
+      if (Math.abs(detG) < MIN_GPS_DISTANCE_M * MIN_GPS_DISTANCE_M * 0.05) {
+        t.degenereC = true;
+        console.warn("[KmzExport] Points GPS quasi colinéaires — C ignoré (repli 2 points)");
+        return t;
+      }
+      // Résolution exacte (Cramer) de  E = a·x + b·yF + e  ;  N = c·x + d·yF + f
+      const X = [x1, x2, x3], Y = [y1, y2, y3];
+      const solve = function(V) {
+        const d0 = det3;
+        const da = V[0] * (Y[1] - Y[2]) - Y[0] * (V[1] - V[2]) + (V[1] * Y[2] - V[2] * Y[1]);
+        const db = X[0] * (V[1] - V[2]) - V[0] * (X[1] - X[2]) + (X[1] * V[2] - X[2] * V[1]);
+        const dc = X[0] * (Y[1] * V[2] - Y[2] * V[1]) - Y[0] * (X[1] * V[2] - X[2] * V[1]) + V[0] * (X[1] * Y[2] - X[2] * Y[1]);
+        return [da / d0, db / d0, dc / d0];
+      };
+      const sE = solve(E), sN = solve(N);
+      const aff = { a: sE[0], b: sE[1], e: sE[2], c: sN[0], d: sN[1], f: sN[2], latMoy3: latMoy3, kLng: kLng, kLat: kLat };
+      const detA = aff.a * aff.d - aff.b * aff.c;
+      if (!Number.isFinite(detA) || Math.abs(detA) < 1e-12) {
+        t.degenereC = true;
+        console.warn("[KmzExport] Affine non inversible — C ignoré (repli 2 points)");
+        return t;
+      }
+      aff.det = detA;
+      t.affine = aff;
+    }
+    return t;
+  }
+
+  // 📐 v1.73.0 — Helper : transform depuis un objet calib/georef
+  // { pointA, pointB, pointC? } (chaque point = {x, y, lat, lng}).
+  // pointC incomplet → ignoré (warn). Throw identique à buildTransform si A/B invalides.
+  function buildTransformCalib(g) {
+    if (!g || !g.pointA || !g.pointB) {
+      throw new Error(window.I18n.t("kmz.err.calibIncomplete"));
+    }
+    const _fin = function(v) { return typeof v === "number" && Number.isFinite(v); };
+    let pC = g.pointC || null;
+    if (pC && !(_fin(pC.x) && _fin(pC.y) && _fin(pC.lat) && _fin(pC.lng))) {
+      console.warn("[KmzExport] pointC incomplet — ignoré");
+      pC = null;
+    }
+    return buildTransform(
+      { x: g.pointA.x, y: g.pointA.y }, { x: g.pointB.x, y: g.pointB.y },
+      { lat: g.pointA.lat, lng: g.pointA.lng }, { lat: g.pointB.lat, lng: g.pointB.lng },
+      pC ? { x: pC.x, y: pC.y } : null,
+      pC ? { lat: pC.lat, lng: pC.lng } : null
+    );
   }
 
   // Convertit (x,y) plan en (lat,lng) GPS via la transformation t.
   function planToGps(t, x, y) {
     if (!t) return null;
+    // 📐 v1.73.0 — chemin affine (3 points) : (x, -y) → mètres E/N relatifs
+    // à refGps → degrés. Exact sur A, B et C par construction.
+    if (t.affine) {
+      const f = t.affine, yF = -y;
+      const E = f.a * x + f.b * yF + f.e;
+      const N = f.c * x + f.d * yF + f.f;
+      return { lat: t.refGps.lat + N / f.kLat, lng: t.refGps.lng + E / f.kLng };
+    }
     // Position relative à refPlan (y inversé pour math standard, cf buildTransform)
     const dx = x - t.refPlan.x;
     const dy = -(y - t.refPlan.y);
@@ -139,6 +225,15 @@
   //   4. unflip Y (y plan = -dy + refPlan.y)
   function gpsToPlan(t, lat, lng) {
     if (!t) return null;
+    // 📐 v1.73.0 — inverse affine exacte (det vérifié non nul à la construction)
+    if (t.affine) {
+      const f = t.affine;
+      const E = (lng - t.refGps.lng) * f.kLng;
+      const N = (lat - t.refGps.lat) * f.kLat;
+      const x  = (f.d * (E - f.e) - f.b * (N - f.f)) / f.det;
+      const yF = (f.a * (N - f.f) - f.c * (E - f.e)) / f.det;
+      return { x: x, y: -yF };
+    }
     // Position relative à refGps en degrés
     const dlatDeg = lat - t.refGps.lat;
     const dlngDeg = lng - t.refGps.lng;
@@ -210,52 +305,103 @@
     return (a + b + g + r).toLowerCase();
   }
 
-  // Styles communs (1 fois par doc)
-  const STYLES_KML = {
-    road_principal:    { line: "#00ff00", width: 4, alpha: 1   },
-    road_secondaire:   { line: "#b000ff", width: 4, alpha: 1   },
-    road_chemin:       { line: "#ffff00", width: 3, alpha: 1   },
-    road_jonction:     { line: "#ff4ecb", width: 4, alpha: 1   },
-    road_itinerary:    { line: "#00d4ff", width: 6, alpha: 1   },
-    zone_eau:          { line: "#0066aa", fill: "#3aa9e8", fillAlpha: 0.6, width: 2 },
-    zone_remblais:     { line: "#3a3a44", fill: "#5a5a68", fillAlpha: 0.6, width: 2 },
-    zone_effondrement: { line: "#cc0000", fill: "#ff3333", fillAlpha: 0.6, width: 2 },
-    zone_inaccessible: { line: "#5a0a0a", fill: "#7a0000", fillAlpha: 0.65, width: 2 },
-    // 🆕 v1.9.3-A1.b.1 : structures (piliers + murs). Stroke noir (#000)
-    // signature visuelle qui distingue des zones. fill cohérent avec
-    // STRUCTURE_STYLES de structures.js (jaune charte / orange / bleu foncé).
-    "structure_pilier-1": { line: "#000000", fill: "#f4c542", fillAlpha: 0.85, width: 2 },
-    "structure_pilier-2": { line: "#000000", fill: "#ff9933", fillAlpha: 0.85, width: 2 },
-    "structure_mur":      { line: "#000000", fill: "#1e3a8a", fillAlpha: 0.85, width: 2 },
-    // 🆕 v1.9.3-A1.b.2 : fronts de taille — LineStrings épaisses sans
-    // contour. width: 5 dans KML car ≠ unité que le canvas Leaflet
-    // weight, ajusté visuellement pour rendre épais à l'échelle GPS.
-    // 🔧 v1.10.1-hotfix2 (KARMA) : front-1 jaune = pilier-1 jaune,
-    // front-2 orange = pilier-2 orange (alignement couleur/masse).
-    "structure_front-1":  { line: "#f4c542", width: 5, alpha: 1 },
-    "structure_front-2":  { line: "#ff9933", width: 5, alpha: 1 }
-  };
+  // =====================================================================
+  // 🎨 v1.76.0 — STYLES KML : couleurs résolues, épaisseurs propres au KML
+  // =====================================================================
+  // Les COULEURS viennent de `js/styleResolver.js` (table canonique) — c'est
+  // la seule chose qui doit rester alignée sur la carte.
+  // Les LARGEURS, elles, restent définies ICI et ne sont PAS les `weight`
+  // Leaflet : l'unité diffère et elles ont été ajustées visuellement à
+  // l'échelle GPS (un front de taille est à 5 ici, 10 sur la carte ; un
+  // pilier à 2 ici, 3 sur la carte). Les mélanger changerait le rendu dans
+  // Google Earth. Idem pour les alphas de remplissage (0.6 ici, 0.7 sur la
+  // carte). C'est une VARIANTE DÉLIBÉRÉE, pas une dérive.
+  //
+  // `{ flat: true }` : le KML ne sait pas peindre un motif SVG, `inaccessible`
+  // retombe donc sur son aplat de repli.
+  const PREFIXE_CATEGORIE = { road: "traces", zone: "zones", structure: "structures" };
 
-  function _genererStylesKml() {
+  function _traitsKml(categorie, cle, style) {
+    if (categorie === "traces") {
+      if (cle === "chemin")    return { width: 3, alpha: 1 };
+      if (cle === "itinerary") return { width: 6, alpha: 1 };
+      return { width: 4, alpha: 1 };
+    }
+    if (categorie === "zones") {
+      return { width: 2, fillAlpha: (cle === "inaccessible") ? 0.65 : 0.6 };
+    }
+    // Structures : la géométrie tranche. Un front (polyline) est une
+    // LineString épaisse SANS remplissage ; un pilier/mur est un polygone.
+    if (style && style.isPolyline) return { width: 5, alpha: 1 };
+    return { width: 2, fillAlpha: 0.85 };
+  }
+
+  // Retourne le descriptif de style KML d'un type, built-in OU custom, ou null
+  // si le type est inconnu (custom supprimé de la légende, par exemple).
+  function _styleKmlDe(categorie, cle) {
+    if (typeof window.ktaResolveStyle !== "function") return null;
+    const s = window.ktaResolveStyle(categorie, cle, { flat: true });
+    if (!s) return null;
+    const t = _traitsKml(categorie, cle, s);
+    const out = { line: s.color, width: t.width };
+    if (t.alpha != null) out.alpha = t.alpha;
+    // Pas de PolyStyle sur une polyline : le canon donne `fillColor` aux
+    // fronts (plusieurs consommateurs le lisent), mais un LineString KML ne
+    // doit pas se voir attribuer de remplissage.
+    if (s.fillColor && !s.isPolyline) {
+      out.fill = s.fillColor;
+      out.fillAlpha = t.fillAlpha;
+    }
+    return out;
+  }
+
+  function _blocStyleKml(id, s) {
+    let out = '<Style id="' + id + '">';
+    if (s.line) {
+      out += '<LineStyle>' +
+               '<color>' + _kmlColor(s.line, s.alpha != null ? s.alpha : 1) + '</color>' +
+               '<width>' + s.width + '</width>' +
+             '</LineStyle>';
+    }
+    if (s.fill) {
+      out += '<PolyStyle>' +
+               '<color>' + _kmlColor(s.fill, s.fillAlpha != null ? s.fillAlpha : 0.5) + '</color>' +
+               '<outline>1</outline>' +
+               '<fill>1</fill>' +
+             '</PolyStyle>';
+    }
+    return out + '</Style>';
+  }
+
+  // 🐛 v1.76.0 — CORRECTION DU BUG 2.
+  // Les Placemark émettent `<styleUrl>#road_<type></styleUrl>`. Pour un type
+  // CUSTOM ça donnait `#road_cust-abc123`, un id qui n'était JAMAIS déclaré
+  // dans le document (la table ne listait que les built-in) : styleUrl
+  // pendant → Google Earth retombait sur son trait par défaut et la couleur
+  // choisie par l'utilisateur était perdue.
+  // On déclare désormais un <Style> pour chaque type custom RÉELLEMENT
+  // utilisé — collectés pendant la génération du corps, cf. `_idStyleEtCollecte`.
+  function _genererStylesKml(idsCustomUtilises) {
     let out = "";
-    Object.keys(STYLES_KML).forEach(function(id) {
-      const s = STYLES_KML[id];
-      out += '<Style id="' + id + '">';
-      if (s.line) {
-        out += '<LineStyle>' +
-                 '<color>' + _kmlColor(s.line, s.alpha != null ? s.alpha : 1) + '</color>' +
-                 '<width>' + s.width + '</width>' +
-               '</LineStyle>';
-      }
-      if (s.fill) {
-        out += '<PolyStyle>' +
-                 '<color>' + _kmlColor(s.fill, s.fillAlpha != null ? s.fillAlpha : 0.5) + '</color>' +
-                 '<outline>1</outline>' +
-                 '<fill>1</fill>' +
-               '</PolyStyle>';
-      }
-      out += '</Style>';
+    Object.keys(PREFIXE_CATEGORIE).forEach(function(prefixe) {
+      const cat = PREFIXE_CATEGORIE[prefixe];
+      const cles = (typeof window.ktaStyleBuiltins === "function") ? window.ktaStyleBuiltins(cat) : [];
+      cles.forEach(function(cle) {
+        const s = _styleKmlDe(cat, cle);
+        if (s) out += _blocStyleKml(prefixe + "_" + cle, s);
+      });
     });
+    if (idsCustomUtilises && idsCustomUtilises.size) {
+      idsCustomUtilises.forEach(function(id) {
+        const sep = id.indexOf("_");
+        const cat = PREFIXE_CATEGORIE[id.slice(0, sep)];
+        const s   = cat ? _styleKmlDe(cat, id.slice(sep + 1)) : null;
+        // Type custom introuvable (supprimé de la légende entre-temps) : on
+        // n'émet rien. Le styleUrl reste pendant — mais c'est exactement le
+        // comportement d'avant, et la donnée elle-même est préservée.
+        if (s) out += _blocStyleKml(id, s);
+      });
+    }
     return out;
   }
 
@@ -724,6 +870,23 @@
     //   zoneTypesSet : Set<string> | null — whitelist des types eau/remblais/effondrement/inaccessible
     // null = pas de filtre (legacy compat). Set vide = drop tout (parent
     // coché mais aucun enfant sélectionné, edge case).
+    // 🐛 v1.76.0 (bug 2) — ids de style des types CUSTOM réellement rencontrés
+    // pendant la génération du corps. Ils sont déclarés en fin de document par
+    // `_genererStylesKml`. Sans ça leur <styleUrl> pointait dans le vide et
+    // Google Earth affichait un trait par défaut.
+    const idsStyleCustom = new Set();
+    function _idStyleEtCollecte(prefixe, type) {
+      const id = prefixe + "_" + type;
+      // 🧷 v1.76.1 — tout type NON built-in est collecté (plus seulement les
+      // `cust-`) : une entrée liée à un id technique (« Bas ») doit recevoir
+      // son <Style> KML elle aussi.
+      const cat = PREFIXE_CATEGORIE[prefixe];
+      const builtins = (cat && typeof window.ktaStyleBuiltins === "function")
+                         ? window.ktaStyleBuiltins(cat) : [];
+      if (builtins.indexOf(String(type)) === -1) idsStyleCustom.add(id);
+      return id;
+    }
+
     const pointTagsSet = (opts.include.pointTagsSet instanceof Set) ? opts.include.pointTagsSet : null;
     const roadTypesSet = (opts.include.roadTypesSet instanceof Set) ? opts.include.roadTypesSet : null;
     const zoneTypesSet = (opts.include.zoneTypesSet instanceof Set) ? opts.include.zoneTypesSet : null;
@@ -762,7 +925,7 @@
         if (roads.length > 0) {
           body += '<Folder><name>🛣️ Tracés (' + roads.length + ')</name>';
           roads.forEach(function(r) {
-            const styleId = "road_" + r.type;
+            const styleId = _idStyleEtCollecte("road", r.type);
             body += _emitLineString(r, styleId);
           });
           body += '</Folder>';
@@ -792,7 +955,7 @@
         if (zones.length > 0) {
           body += '<Folder><name>⬛ Zones (' + zones.length + ')</name>';
           zones.forEach(function(z) {
-            const styleId = "zone_" + z.type;
+            const styleId = _idStyleEtCollecte("zone", z.type);
             body += _emitPolygon(z, styleId);
           });
           body += '</Folder>';
@@ -811,7 +974,7 @@
         if (structures.length > 0) {
           body += '<Folder><name>🏛️ Structures (' + structures.length + ')</name>';
           structures.forEach(function(s) {
-            const styleId = "structure_" + s.type;
+            const styleId = _idStyleEtCollecte("structure", s.type);
             // Fronts (polylines) → KML LineString. Piliers/mur → Polygon.
             // _emitLineString attend road.type pour le nom — on patch
             // temporairement avec un objet adapté.
@@ -904,7 +1067,7 @@
             new Date().toISOString().slice(0, 10) +
             " — Calibrage GPS via 2 points (rotation + scale + translation)"
           ) + '</description>' +
-          _genererStylesKml() +
+          _genererStylesKml(idsStyleCustom) +
           stylesIcones +
           secoursStyles +
           (groundOverlay || "") +
@@ -1018,6 +1181,7 @@
   // =========================
   window.KmzExport = {
     buildTransform:  buildTransform,
+    buildTransformCalib: buildTransformCalib,
     planToGps:       planToGps,
     gpsToPlan:       gpsToPlan,    // 🆕 v1.14.0 : inverse pour import GPX
     getCalibration:  getCalibration,

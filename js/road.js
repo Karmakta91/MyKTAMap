@@ -37,29 +37,21 @@ let _roadRenderState = [];
 // calque est masqué, ses roads disparaissent ET leurs intersections aussi.
 let _embeddedRoads = [];
 
-// styles par type
-// smoothFactor 2.5 : Leaflet simplifie les polylines en interne via
-// Douglas-Peucker. Le defaut (1.0) garde tous les points. 2.5 reduit
-// significativement le nombre de points dessines au pan/zoom (gain perf
-// sur les polylines avec beaucoup de points), perte visuelle negligeable
-// (les segments restent visuellement equivalents au zoom usuel). Sur
-// l'itineraire on garde un facteur plus bas pour preserver la precision
-// du tracé calculé.
-const ROAD_STYLES = {
-  principal:   { color: "#00ff00", weight: 5, opacity: 1, smoothFactor: 2.5 },
-  secondaire:  { color: "#b000ff", weight: 5, opacity: 1, smoothFactor: 2.5 },
-  chemin:      { color: "#ffff00", weight: 5, opacity: 1, smoothFactor: 2.5 },
-  // Type "itinéraire" calculé par Pathfinder : couleur cyan distinctive,
-  // tracé plus épais pour bien se voir par-dessus les autres roads.
-  // smoothFactor 1.5 (un peu moins agressif) pour preserver la precision
-  // du chemin calcule par le pathfinder.
-  itinerary:   { color: "#00d4ff", weight: 7, opacity: 0.9, dashArray: "12 6", smoothFactor: 1.5 },
-  // Type "jonction" (multi-niveau, depuis v148) : tracé reliant 2 points sur
-  // des niveaux differents (escalier, pente, puits interne). Magenta pointille
-  // (coherent avec le surlignage distance totale). Toujours visible peu
-  // importe le filtre `activeLevel` car c'est le bridge entre niveaux.
-  jonction:    { color: "#ff4ecb", weight: 5, opacity: 1, dashArray: "10 6", smoothFactor: 2.0 }
-};
+// 🎨 v1.76.0 — Les styles des 5 types built-in ne sont plus declares ici : ils
+// viennent de `js/styleResolver.js` (table canonique unique). Voir l'en-tete de
+// ce module pour le pourquoi (les memes couleurs etaient recopiees dans ~25
+// tables, et une divergence y etait invisible).
+// Rappels utiles restes en commentaire, car la valeur seule ne les explique pas :
+//   • smoothFactor 2.5 sur les traces : Leaflet simplifie les polylines via
+//     Douglas-Peucker ; le defaut (1.0) garde tous les points. 2.5 reduit
+//     nettement le nombre de points dessines au pan/zoom, pour une perte
+//     visuelle negligeable au zoom usuel.
+//   • itinerary garde 1.5 (moins agressif) pour preserver la precision du
+//     chemin calcule par le pathfinder, et un trace plus epais pour passer
+//     au-dessus des autres roads.
+//   • jonction (multi-niveau, v148) relie 2 points de niveaux differents
+//     (escalier, pente, puits). Magenta pointille, toujours visible quel que
+//     soit le filtre `activeLevel` puisque c'est le pont entre niveaux.
 
 // Priorité couleur des intersections : chemin (jaune) > secondaire (violet) > principal (vert)
 // Quand 2 roads de types différents se croisent, un cercle plein est dessiné à l'intersection
@@ -71,25 +63,24 @@ const ROAD_INTERSECTION_PRIORITY = {
 };
 const ROAD_INTERSECTION_RADIUS = 8;  // 16px de diamètre
 
-// 🆕 v1.16.0 step2-drawable : résolution dynamique du style pour les types
-// CUSTOM ajoutés via LegendCustomization. Si type est un id custom (commence
-// par "cust-" et trouvé dans LC.findCustomEntry), retourne un style construit
-// à partir de l'entry.lineColor. Sinon ROAD_STYLES[type] (comportement
-// historique pour les 5 types built-in).
+// Résolution du style d'un tracé — built-in ET types CUSTOM (LegendCustomization).
+// 🎨 v1.76.0 : delegue integralement a window.ktaResolveStyle. Retourne
+// desormais un objet NEUF a chaque appel (avant : l'objet partage de la table),
+// donc un appelant qui mute son style ne contamine plus les autres traces.
+// Retourne null si le type est inconnu — l'appelant garde son propre repli.
+let _resolverManquantSignale = false;
 function _resolveRoadStyle(type) {
-  if (ROAD_STYLES[type]) return ROAD_STYLES[type];
-  if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
-    const e = window.LegendCustomization.findCustomEntry(type);
-    if (e && e.category === "traces") {
-      return {
-        color:       e.lineColor || "#ffffff",
-        weight:      5,
-        opacity:     1,
-        smoothFactor: 2.5
-      };
+  if (typeof window.ktaResolveStyle !== "function") {
+    // Ne peut arriver qu'avec un cache Service Worker incoherent (styleResolver.js
+    // absent alors que road.js est a jour). On le dit UNE fois, fort, plutot que
+    // de repeindre en blanc silencieusement.
+    if (!_resolverManquantSignale) {
+      _resolverManquantSignale = true;
+      console.error("[Roads] window.ktaResolveStyle absent — styles indisponibles. Cache SW incoherent ?");
     }
+    return null;
   }
-  return null;
+  return window.ktaResolveStyle("traces", type);
 }
 
 // 🐛 v1.57.4 — Abonnement PerfUltra ONE-SHOT (audit « fuites au plan
@@ -182,8 +173,22 @@ function initRoad() {
   window.map.on("mousedown", function(e) {
     if (!window.modeRoad) return;
 
-    const x = e.latlng.lng;
-    const y = APP_CONFIG.imageHeight - e.latlng.lat;
+    let x = e.latlng.lng;
+    let y = APP_CONFIG.imageHeight - e.latlng.lat;
+
+    // 🧲 C5 v1.74.0 — MAGNÉTISME EDIT-TIME. Corrige le problème à la SOURCE :
+    // deux tracés qui se rejoignent à l'œil atterrissent souvent à 5-10 px
+    // l'un de l'autre → deux nœuds distincts dans le graphe là où il devrait
+    // y en avoir UN. Le Pathfinder rattrape aujourd'hui à l'aveugle avec
+    // PROXIMITY_TOLERANCE = 15 px ; au-delà, la connexion n'existe pas et un
+    // itinéraire refuse de passer par une galerie visiblement reliée.
+    // Ici on accroche le point cliqué sur le sommet existant le plus proche.
+    const _snap = _snapSurSommetProche(x, y);
+    if (_snap) {
+      x = _snap.x;
+      y = _snap.y;
+      _flashSnap(_snap.x, _snap.y);
+    }
 
     // 🆕 v1.11.0 Undo/Redo : snapshot AVANT toute mutation (création
     // de currentRoad OU ajout d'un sommet à l'existant). Label adapté
@@ -436,6 +441,20 @@ function _calculerIntersectionsRoads(roads) {
   // pas physiquement (un est au-dessus de l'autre). Bug report user.
   const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
 
+  // 🎨 v1.76.0 — memo des couleurs par type gagnant. La boucle ci-dessous est
+  // en O(N²) sur les paires de routes ; depuis que le style vient du resolver,
+  // chaque appel construit un objet neuf. On resout donc chaque type UNE fois.
+  // Memo LOCAL a l'appel (pas au module) : une couleur custom modifiee a chaud
+  // doit etre reprise au rendu suivant.
+  const _couleurParType = {};
+  function _couleurDeType(t) {
+    if (!(t in _couleurParType)) {
+      const s = _resolveRoadStyle(t);
+      _couleurParType[t] = (s && s.color) || "#ffffff";
+    }
+    return _couleurParType[t];
+  }
+
   // Garde-fou anti-freeze sur les gros plans : skip total si trop de routes.
   // Seuil dynamique : 200 en mode normal, 50 si PerfUltra.noIntersect actif.
   const _maxRoads = _roadIntersectionMaxRoads();
@@ -488,7 +507,7 @@ function _calculerIntersectionsRoads(roads) {
       }
 
       const winner = _typeGagnant(A.type, B.type);
-      const color  = ROAD_STYLES[winner]?.color || "#ffffff";
+      const color  = _couleurDeType(winner);
 
       // 1) Croisement franc segment × segment
       for (let a = 0; a < A.points.length - 1; a++) {
@@ -545,6 +564,134 @@ function _calculerIntersectionsRoads(roads) {
   }
   return intersections;
 }
+
+// =========================
+// 🧲 C5 v1.74.0 — MAGNÉTISME EDIT-TIME
+// =========================
+// BUT : améliorer la qualité du graphe À LA SOURCE. Quand on trace deux
+// galeries qui se rejoignent, on clique « à peu près » : les extrémités
+// atterrissent à 5-10 px l'une de l'autre → le graphe voit DEUX nœuds là où
+// il devrait y en avoir UN. Le Pathfinder compense aujourd'hui à l'aveugle
+// (`PROXIMITY_TOLERANCE = 15` px) ; au-delà de cette tolérance la connexion
+// n'existe pas, et un itinéraire refuse de passer par une galerie qu'on voit
+// pourtant reliée à l'écran. Ici, on accroche pour de bon.
+//
+// ⚠️ N'aide que ce qui est dessiné APRÈS activation — les plans existants
+// gardent leur jitter, `PROXIMITY_TOLERANCE` reste indispensable.
+//
+// Choix d'implémentation :
+//   • On scanne les SOMMETS des roads (session + embedded), PAS le graphe
+//     RoadGraph : chaque clic ajoute un point → la signature du cache change →
+//     `getGraph()` reconstruirait tout le réseau À CHAQUE CLIC. Un scan O(N)
+//     des sommets est très largement moins cher et sémantiquement équivalent
+//     (un nœud du graphe EST un sommet de road, au spatial-merge près).
+//   • Rayon exprimé en pixels ÉCRAN puis converti en unités plan au clic :
+//     un rayon fixe en unités plan serait imperceptible au dézoom et
+//     ridiculement large au zoom. Règle mentale : « si c'est proche à l'œil,
+//     ça s'accroche », à tous les zooms.
+//   • Le DERNIER point de la road en cours est exclu (sinon un clic voisin du
+//     précédent s'y collerait). Les points ANTÉRIEURS de la road en cours
+//     restent éligibles → fermer une boucle sur son propre départ marche.
+//   • Multi-niveau : on n'accroche que sur des roads du niveau actif. Les
+//     `jonction` font exception (leurs extrémités existent POUR relier des
+//     niveaux). Sans ça, on se collerait à une galerie d'un autre étage
+//     superposée en x/y — exactement le défaut corrigé par C6.
+function _snapSurSommetProche(x, y) {
+  const cfg = window.APP_CONFIG || {};
+  if (cfg.snapDraw !== true) return null;
+  if (!window.map || typeof window.map.latLngToLayerPoint !== "function") return null;
+
+  // Rayon écran → unités plan, via la projection Leaflet courante (agnostique
+  // du CRS : on mesure ce que vaut 1 px écran en x plan au zoom courant).
+  const px = (Number.isFinite(cfg.snapDrawPx) && cfg.snapDrawPx > 0) ? cfg.snapDrawPx : 14;
+  let tol;
+  try {
+    // On mesure sur le CENTRE de la vue (référence toujours valide) : combien
+    // vaut un déplacement de `px` pixels écran, exprimé en unités plan.
+    const c   = window.map.getCenter();
+    const p0  = window.map.latLngToLayerPoint(c);
+    const ll1 = window.map.layerPointToLatLng(L.point(p0.x + px, p0.y));
+    tol = Math.abs(ll1.lng - c.lng);
+  } catch(e) { return null; }
+  if (!Number.isFinite(tol) || tol <= 0) return null;
+
+  const mlOn  = cfg.multiLevel === true;
+  const actif = Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0;
+
+  const session  = (typeof window.getRoads === "function" ? window.getRoads() : roadsData) || [];
+  const embedded = (typeof window.getAllEmbeddedRoads === "function")
+    ? (window.getAllEmbeddedRoads() || [])
+    : ((typeof window.getEmbeddedRoads === "function") ? (window.getEmbeddedRoads() || []) : []);
+
+  // Dernier sommet posé sur la road en cours → jamais candidat.
+  let exclu = null;
+  if (currentRoad && Array.isArray(currentRoad.points) && currentRoad.points.length > 0) {
+    exclu = currentRoad.points[currentRoad.points.length - 1];
+  }
+
+  let best = null;
+  const _scan = function(roads) {
+    for (let i = 0; i < roads.length; i++) {
+      const r = roads[i];
+      if (!r || !Array.isArray(r.points)) continue;
+      if (r.type === "itinerary") continue;        // calculé, pas cartographié
+      if (mlOn && r.type !== "jonction" && Number.isInteger(r.level) && r.level !== actif) continue;
+      for (let j = 0; j < r.points.length; j++) {
+        const p = r.points[j];
+        if (!p || p === exclu) continue;
+        const d = Math.hypot(p.x - x, p.y - y);
+        if (d <= tol && (!best || d < best.d)) best = { x: p.x, y: p.y, d: d };
+      }
+    }
+  };
+  _scan(session);
+  _scan(embedded);
+
+  if (best && window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+    console.log("[Road] 🧲 accrochage sur sommet à", best.d.toFixed(2), "px plan (tol", tol.toFixed(2), ")");
+  }
+  return best;
+}
+
+// Confirmation visuelle APRÈS l'accrochage (et non en survol prédictif comme
+// l'esquissait le design) : le survol n'existe pas au doigt, et un scan O(N)
+// à chaque mousemove coûterait cher sur réseau dense. Un flash court dit
+// « ça s'est collé ICI », identiquement sur mobile et desktop.
+let _snapFlashLayer = null;
+let _snapFlashTimer = null;
+function _flashSnap(x, y) {
+  if (!window.map || !window.L) return;
+  try {
+    if (_snapFlashTimer) { clearTimeout(_snapFlashTimer); _snapFlashTimer = null; }
+    if (_snapFlashLayer) { window.map.removeLayer(_snapFlashLayer); _snapFlashLayer = null; }
+    _snapFlashLayer = L.circleMarker(convertCoord(x, y), {
+      radius: 9, color: "#f4c542", weight: 3, opacity: 0.95,
+      fillColor: "#f4c542", fillOpacity: 0.25, interactive: false
+    }).addTo(window.map);
+    _snapFlashTimer = setTimeout(function() {
+      if (_snapFlashLayer) {
+        try { window.map.removeLayer(_snapFlashLayer); } catch(e) {}
+        _snapFlashLayer = null;
+      }
+      _snapFlashTimer = null;
+    }, 700);
+  } catch(e) {
+    // ⚠️ Ne JAMAIS ravaler l'erreur ici : un `catch` muet a masqué le vrai
+    // symptôme lors du diagnostic du 03/08 (« je n'ai pas le flash doré »),
+    // alors que la panne venait d'ailleurs. Un flash absent doit se voir.
+    console.warn("[Road] 🧲 flash d'accrochage impossible :", e);
+  }
+}
+
+// Purge du flash (changement de plan / sortie de mode) — sinon un layer
+// orphelin survit sur la carte recréée.
+window.ktaPurgerFlashSnap = function() {
+  if (_snapFlashTimer) { clearTimeout(_snapFlashTimer); _snapFlashTimer = null; }
+  if (_snapFlashLayer) {
+    try { window.map.removeLayer(_snapFlashLayer); } catch(e) {}
+    _snapFlashLayer = null;
+  }
+};
 
 // =========================
 // RENDU
@@ -961,10 +1108,11 @@ function renderRoads() {
     // carte densement remplie de tracés.
     if (road.type === "jonction" && workPoints.length >= 2) {
       const endpoints = [workPoints[0], workPoints[workPoints.length - 1]];
+      const _colJonction = (_resolveRoadStyle("jonction") || {}).color;
       endpoints.forEach(function(pt) {
         const cm = L.circleMarker(convertCoord(pt.x, pt.y), {
           radius:      7,
-          color:       ROAD_STYLES.jonction.color,   // bord magenta
+          color:       _colJonction,                 // bord magenta
           fillColor:   "#ffffff",                    // intérieur blanc → contraste
           fillOpacity: 1,
           weight:      3,

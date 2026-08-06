@@ -1,8 +1,8 @@
 {
-  "version": "v1.72.1",
-  "released": "2026-07-30",
+  "version": "v1.76.0",
+  "released": "2026-08-05",
   "notes": [
-    "🧙 Le Générateur devient un ASSISTANT pas-à-pas : une étape à la fois (Suivant / Précédent / Passer), champs vérifiés au fil de l'eau, et un RÉSUMÉ final qui signale ce qui manque avant de générer. Un ZIP importé pré-remplit toutes les étapes ; « Tout afficher » reste à un clic.",
-    "🔎 Les recherches montrent leurs résultats EN DIRECT sous la barre : celle de l'accueil (plans + points, clic = chargement et centrage) comme celle de la vue OSM — fini les listes qui débordent ou qui bloquent."
+    "🎨 Tu peux enfin changer la couleur des types de la légende (tracés, zones, structures) : ≡ Légende → ✏️ Modifier, un carré de couleur par ligne. La couleur choisie s'applique partout — carte, exports image, KMZ, statistiques — et un bouton ↺ la remet d'origine.",
+    "🧳 Ta légende voyage désormais avec tes exports : un calque de données réimporté dans le générateur retrouve tes types personnalisés (noms et couleurs), et la légende te prévient si des objets utilisent un type disparu."
   ]
 }

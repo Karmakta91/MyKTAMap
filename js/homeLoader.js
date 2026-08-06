@@ -244,6 +244,17 @@
         if (e.target.closest("#fsAccessHint")) return;
         zipFileInput.click();
       });
+      // 🗺️ v1.75.2 — extensions routées vers « Convertir depuis un SIG ».
+      // `.kmz` en est VOLONTAIREMENT absent : il part vers l'import KMZ
+      // historique (celui qui reconstruit un plan depuis un GroundOverlay).
+      // Un KMZ purement vectoriel y sera refusé — le message de refus renvoie
+      // vers la conversion SIG.
+      function _estFichierSig(nomMinuscule) {
+        return nomMinuscule.endsWith(".geojson")
+            || nomMinuscule.endsWith(".kml")
+            || nomMinuscule.endsWith(".json");
+      }
+
       zipFileInput.addEventListener("change", function () {
         const f = zipFileInput.files[0];
         if (!f) { zipFileName.textContent = ""; return; }
@@ -267,6 +278,25 @@
             window.afficherImporterGpx(f);
           } else {
             setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.gpxUnavailable") : "Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là."), true);
+          }
+          return;
+        }
+        // 🗺️ v1.75.2 (retour KARMA « l'endroit où on importe nos données SIG
+        // est mal indiqué ») — L'ACCUEIL LES REFUSAIT PUREMENT ET SIMPLEMENT.
+        // La conversion SIG n'était atteignable que depuis la zone d'import DU
+        // GÉNÉRATEUR ; ici, un .geojson tombait sur « le fichier doit être une
+        // archive .zip ». Or c'est ÇA, l'endroit évident pour déposer un fichier.
+        // ⚠️ `.json` est routé aussi : sur cette zone il ne peut pas être un
+        // plan (JSZip échouerait), donc l'envoyer au parser SIG — qui refuse
+        // proprement si ce n'est pas du GeoJSON — est strictement meilleur que
+        // le comportement actuel.
+        if (_estFichierSig(lower)) {
+          zipFileInput.value = "";
+          if (typeof window.afficherImporterSig === "function") {
+            zipFileName.textContent = "🗺️ " + f.name + " — ouverture de la conversion SIG…";
+            window.afficherImporterSig(f);
+          } else {
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.sigUnavailable") : "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG »."), true);
           }
           return;
         }
@@ -310,8 +340,16 @@
           } else {
             setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.gpxUnavailable") : "Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là."), true);
           }
+        } else if (_estFichierSig(lower)) {
+          // 🗺️ v1.75.2 — même routage que la sélection par clic (cf. plus haut).
+          if (typeof window.afficherImporterSig === "function") {
+            zipFileName.textContent = "🗺️ " + f.name + " — ouverture de la conversion SIG…";
+            window.afficherImporterSig(f);
+          } else {
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.sigUnavailable") : "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG »."), true);
+          }
         } else {
-          setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.badFileType") : "Le fichier doit être une archive .zip, un .kmz ou un .gpx MyKTAMap"), true);
+          setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.badFileType") : "Le fichier doit être une archive .zip, un .kmz, un .gpx ou un fichier SIG (.geojson, .kml)"), true);
         }
       });
 
@@ -360,6 +398,82 @@
 
       // === CHARGEMENT D'UN ZIP (utilisé par le bouton Charger ET les plans locaux du registre) ===
       // presetChoisi : "auto" | "quality" | "balanced" | "performance" (string)
+      // =========================
+      // 🔄 v1.73.1 — MÊME PLAN RÉIMPORTÉ : MISE À JOUR AU LIEU DE DOUBLON
+      // =========================
+      // (KARMA « j'importe le même plan des jours après → il duplique »)
+      // Rappel du modèle : l'id d'un plan local est DÉRIVÉ de nom+version
+      // (`local_<slug(nom)>_<slug(version)>`) → nom ET version identiques
+      // écrasaient DÉJÀ l'entrée. Le doublon vient donc d'une **version qui
+      // a changé** (regénération = c'est la norme). On détecte ce cas ici :
+      // même nom + même auteur (normalisés), version différente → on demande.
+      // Décisions KARMA 1:a 2:a 3:a — portée : import ZIP depuis l'accueil.
+      function _normId(s) {
+        return String(s == null ? "" : s).toLowerCase()
+          .normalize("NFD").replace(/[̀-ͯ]/g, "")
+          .replace(/[^a-z0-9]+/g, "").trim();
+      }
+
+      // Retourne l'entrée locale « même plan, autre version », ou null.
+      function _chercherPlanExistant(nom, version, auteur) {
+        if (!window.PlanRegistry || !nom) return null;
+        const nN = _normId(nom), nA = _normId(auteur), nV = _normId(version);
+        if (!nN) return null;
+        return window.PlanRegistry.getAll().find(function(p) {
+          return p.type === "local"
+              && _normId(p.name) === nN
+              && _normId(p.author) === nA
+              && _normId(p.version) !== nV;   // version identique → même id, déjà géré
+        }) || null;
+      }
+
+      // Modale de choix. Résout "update" | "both" | "cancel".
+      // ✕ / Escape / backdrop = "cancel" (on ne charge rien) : le choix par
+      // défaut ne doit jamais être celui qui écrase.
+      function _demanderQuoiFaireDoublon(existant, nouvelleVersion) {
+        return new Promise(function(resolve) {
+          const t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
+          const tiret = "—";
+          const ov = document.createElement("div");
+          ov.className = "kta-readme-modal-overlay";
+          ov.style.display = "flex";
+          const esc = (typeof window.ktaEsc === "function") ? window.ktaEsc : function(x){return x;};
+          ov.innerHTML =
+            '<div class="kta-modal" style="max-width:440px;">' +
+              '<div class="kta-modal-icon" style="color:#f4c542;">🔄</div>' +
+              '<div class="kta-modal-titre">' + esc(t("home.dup.titre")) + '</div>' +
+              '<div class="kta-modal-texte">' +
+                esc(t("home.dup.texte", {
+                  nom: existant.name || "?",
+                  vA:  existant.version || tiret,
+                  vB:  nouvelleVersion || tiret
+                })) +
+                '<br><span style="font-size:12px; color:#8892a4;">' + esc(t("home.dup.note")) + '</span>' +
+              '</div>' +
+              '<div class="kta-modal-actions" style="flex-wrap:wrap;">' +
+                '<button class="kta-btn kta-btn-ghost" id="kta-dup-cancel" type="button">' + esc(t("ui.btn.cancel")) + '</button>' +
+                '<button class="kta-btn kta-btn-ghost" id="kta-dup-both" type="button">' + esc(t("home.dup.btnBoth")) + '</button>' +
+                '<button class="kta-btn kta-btn-primary" id="kta-dup-update" type="button">' + esc(t("home.dup.btnUpdate")) + '</button>' +
+              '</div>' +
+            '</div>';
+          document.documentElement.appendChild(ov);
+          let fini = false;
+          function _fermer(choix) {
+            if (fini) return;
+            fini = true;
+            document.removeEventListener("keydown", _onKey);
+            try { ov.remove(); } catch(e) {}
+            resolve(choix);
+          }
+          function _onKey(e) { if (e.key === "Escape") _fermer("cancel"); }
+          document.addEventListener("keydown", _onKey);
+          ov.addEventListener("click", function(e) { if (e.target === ov) _fermer("cancel"); });
+          ov.querySelector("#kta-dup-cancel").addEventListener("click", function() { _fermer("cancel"); });
+          ov.querySelector("#kta-dup-both").addEventListener("click",   function() { _fermer("both"); });
+          ov.querySelector("#kta-dup-update").addEventListener("click", function() { _fermer("update"); });
+        });
+      }
+
       async function chargerZipFichier(zipFile, presetChoisi, meta) {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         if (typeof window.startImportedPlan !== "function") {
@@ -421,6 +535,40 @@
             const _m = (eExtr && eExtr.message) || (eExtr && eExtr.name) || String(eExtr) || "extraction ZIP échouée";
             console.error("[chargerZipFichier] Erreur étape '" + _step + "' :", _m, "| raw :", eExtr);
             throw new Error(_t("home.loader.errStep", { step: _step }) + _m);
+          }
+
+          // 🔄 v1.73.1 — Détection « même plan, autre version » (UNIQUEMENT sur
+          // un import frais : si meta.planId est déjà posé, le caller vise une
+          // entrée précise — rechargement depuis la liste, re-sélection de
+          // fichier — et rien ne doit être demandé).
+          if (!meta || !meta.planId) {
+            let _infosPlan = null;
+            try {
+              const _cfg = JSON.parse(await planConfigFile.text());
+              if (_cfg && _cfg.plan) _infosPlan = _cfg.plan;
+            } catch(e) { /* plan-config illisible → startImportedPlan lèvera proprement */ }
+            if (_infosPlan) {
+              const _exist = _chercherPlanExistant(_infosPlan.name, _infosPlan.version, _infosPlan.author);
+              if (_exist) {
+                _fermerOverlayChargement();   // la modale doit être lisible
+                const _choix = await _demanderQuoiFaireDoublon(_exist, _infosPlan.version);
+                if (_choix === "cancel") {
+                  setStatus(_t("home.dup.cancelled"), false);
+                  if (loadBtn) loadBtn.disabled = false;
+                  return;
+                }
+                if (_choix === "update") {
+                  meta = Object.assign({}, meta || {});
+                  meta.planId = _exist.id;   // → startImportedPlan écrase CETTE entrée
+                  // Le ZIP mémorisé doit suivre : sans ça l'entrée pointerait
+                  // encore sur l'ancienne archive (= « ça ne met pas à jour »).
+                  if (_exist.storedBlob) meta.storeBlob = true;
+                  console.log("[Loader] 🔄 Mise à jour du plan existant :", _exist.id,
+                              "(v" + (_exist.version || "—") + " → v" + (_infosPlan.version || "—") + ")");
+                }
+                _afficherOverlayChargement(_t("home.loader.mapLoading"));
+              }
+            }
           }
 
           _majOverlayChargement(_t("home.loader.mapLoading"));
@@ -1002,6 +1150,34 @@
                  '</tr>';
         }).join("");
 
+        // 💾 v1.74.0 — RÉCUPÉRATION DU ZIP (demande KARMA : « j'ai supprimé les
+        // zip de mon PC, le seul truc qui subsiste c'est la DB du navigateur »).
+        // L'export de profil n'embarque PAS les archives (exclu par design, cf.
+        // profileExportImport.js) — sans ce bouton, un ZIP mémorisé dans le
+        // navigateur était définitivement inatteignable.
+        //
+        // 3 états, et on AFFICHE le bouton grisé au lieu de le masquer quand la
+        // récupération est impossible : masqué, l'user chercherait pourquoi
+        // certains plans l'ont et pas d'autres.
+        //   • plan serveur      → pas de bouton du tout (retéléchargeable, rien à sauver)
+        //   • storedBlob        → actif
+        //   • fsHandle / re-pick → grisé + raison (le ZIP vit sur le disque, pas ici)
+        let dlHtml = "";
+        if (plan.type === "local") {
+          if (plan.storedBlob) {
+            dlHtml = '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-dl-zip" ' +
+                     'title="' + escapeHtml(_t("home.plans.info.dlZipTitle")) + '">💾 ' +
+                     escapeHtml(_t("home.plans.info.dlZip")) + '</button>';
+          } else {
+            const raison = plan.fsHandleId ? _t("home.plans.info.dlZipFs") : _t("home.plans.info.dlZipPick");
+            dlHtml = '<button class="kta-btn kta-btn-ghost kta-btn-small" disabled ' +
+                     'style="opacity:.5; cursor:not-allowed;">💾 ' + escapeHtml(_t("home.plans.info.dlZip")) +
+                     '</button>' +
+                     '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
+                     escapeHtml(raison) + '</div>';
+          }
+        }
+
         const modal = document.createElement("div");
         modal.id = "kta-plan-infos-modal";
         modal.className = "kta-readme-modal-overlay";
@@ -1013,9 +1189,51 @@
             '</div>' +
             '<div class="kta-readme-modal-corps">' +
               '<table class="kta-plan-infos-table">' + tableHtml + '</table>' +
+              (dlHtml ? '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
+                        dlHtml +
+                        '<div id="kta-plan-dl-status" style="font-size:12px; margin-top:8px; min-height:16px;"></div>' +
+                        '</div>' : '') +
             '</div>' +
           '</div>';
         document.documentElement.appendChild(modal);
+
+        const btnDl = document.getElementById("kta-plan-dl-zip");
+        if (btnDl) {
+          btnDl.addEventListener("click", async function() {
+            const st = document.getElementById("kta-plan-dl-status");
+            btnDl.disabled = true;
+            st.style.color = "#8cb4ff";
+            st.textContent = _t("home.plans.info.dlZipEnCours");
+            try {
+              const blob = await window.PlanRegistry.getBlob(plan.id);
+              // ⚠️ `storedBlob` n'est qu'un FLAG du registre : le navigateur a pu
+              // évincer l'archive (pression sur le quota) sans que le flag bouge.
+              // On le dit clairement plutôt que de télécharger un fichier vide.
+              if (!blob || blob.size === 0) {
+                st.style.color = "#ff8c8c";
+                st.textContent = _t("home.plans.info.dlZipMissing");
+                btnDl.disabled = false;
+                return;
+              }
+              const nom = plan.originalFilename
+                       || ("plan_" + String(plan.name || plan.id).replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
+                           + (plan.version ? "_" + String(plan.version).replace(/[^a-zA-Z0-9_.-]/g, "") : "") + ".zip");
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url; a.download = nom;
+              a.click();
+              setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+              st.style.color = "#6ce28a";
+              st.textContent = _t("home.plans.info.dlZipOk", { nom: nom, taille: fmtSize(blob.size) });
+            } catch(e) {
+              st.style.color = "#ff8c8c";
+              st.textContent = _t("home.plans.info.dlZipErr", { err: (e && e.message) || String(e) });
+            } finally {
+              btnDl.disabled = false;
+            }
+          });
+        }
+
         document.getElementById("kta-plan-infos-close").addEventListener("click", function() { modal.remove(); });
         modal.addEventListener("click", function(e) { if (e.target === modal) modal.remove(); });
         // Échap pour fermer (cohérent avec les autres modales du projet)

@@ -18,42 +18,14 @@ const CLOSE_TOLERANCE = 5;
 // =========================
 // STYLES
 // =========================
-const ZONE_STYLES = {
-  eau:          {
-    color:       "#0066aa",
-    fillColor:   "#3aa9e8",
-    fillOpacity: 0.7,
-    weight:      3,
-    opacity:     1
-  },
-  remblais:     {
-    color:       "#3a3a44",
-    fillColor:   "#5a5a68",
-    fillOpacity: 0.7,
-    weight:      3,
-    opacity:     1
-  },
-  effondrement: {
-    color:       "#cc0000",
-    fillColor:   "#ff3333",
-    fillOpacity: 0.7,
-    weight:      3,
-    opacity:     1
-  },
-  // 🚫 Zone INACCESSIBLE (depuis Karma_dev / v169) : bloque le pathfinder.
-  // Tout segment de route qui traverse ce polygone est retire du graphe.
-  // Style : hachures rouge fonce/noir 45° via pattern SVG defini dans index.html
-  // (id="kta-pattern-inaccessible"). Necessite un L.svg() renderer pour que
-  // le navigateur applique le url(#...) — un renderer canvas ignorerait le
-  // pattern et afficherait du remplissage uni.
-  inaccessible: {
-    color:       "#5a0a0a",
-    fillColor:   "url(#kta-pattern-inaccessible)",
-    fillOpacity: 1,          // 1 pour que le pattern soit pleinement visible
-    weight:      3,
-    opacity:     1
-  }
-};
+// 🎨 v1.76.0 — Les 4 types built-in ne sont plus declares ici : leurs valeurs
+// viennent de la table canonique de `js/styleResolver.js`.
+// Rappel qui ne se lit pas dans les valeurs : la zone INACCESSIBLE (v169)
+// bloque le pathfinder (tout segment qui traverse le polygone est retire du
+// graphe) et se peint en hachures 45° via le pattern SVG declare dans
+// index.html (id="kta-pattern-inaccessible"). Ce `url(#...)` EXIGE un renderer
+// L.svg() — un renderer canvas l'ignorerait et afficherait un aplat. D'ou le
+// renderer dedie ci-dessous.
 
 // Singleton SVG renderer dedie aux zones inaccessibles. Force pour que le
 // pattern url(#kta-pattern-inaccessible) s'applique correctement. Les autres
@@ -73,25 +45,20 @@ const ZONE_STYLE_PREVIEW = {
   dashArray: "8 5"
 };
 
-// 🆕 v1.16.0 step2-drawable : résolution dynamique du style des zones —
-// supporte les types CUSTOM via LegendCustomization. Si le type matche un
-// id custom catégorie "zones", construit un style à partir de fillColor +
-// borderColor (= color).
+// Résolution du style d'une zone — built-in ET types CUSTOM (LegendCustomization).
+// 🎨 v1.76.0 : delegue integralement a window.ktaResolveStyle. Retourne un objet
+// NEUF a chaque appel (avant : l'objet partage de la table), donc un appelant
+// qui mute son style ne contamine plus les autres zones.
+let _resolverManquantSignaleZ = false;
 function _resolveZoneStyle(type) {
-  if (ZONE_STYLES[type]) return ZONE_STYLES[type];
-  if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
-    const e = window.LegendCustomization.findCustomEntry(type);
-    if (e && e.category === "zones") {
-      return {
-        color:       e.borderColor || e.fillColor || "#888",
-        fillColor:   e.fillColor || "#888",
-        fillOpacity: 0.7,
-        weight:      3,
-        opacity:     1
-      };
+  if (typeof window.ktaResolveStyle !== "function") {
+    if (!_resolverManquantSignaleZ) {
+      _resolverManquantSignaleZ = true;
+      console.error("[Zones] window.ktaResolveStyle absent — styles indisponibles. Cache SW incoherent ?");
     }
+    return null;
   }
-  return null;
+  return window.ktaResolveStyle("zones", type);
 }
 
 // =========================
@@ -306,7 +273,7 @@ function renderZones() {
 
     const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
     // 🆕 v1.16.0 step2-drawable : résolution dynamique (custom support)
-    const style = _resolveZoneStyle(zone.type) || ZONE_STYLES.remblais;
+    const style = _resolveZoneStyle(zone.type) || _resolveZoneStyle("remblais");
 
     if (zone === currentZone) {
       // Zone en cours de tracé → polyline pointillée (aperçu)

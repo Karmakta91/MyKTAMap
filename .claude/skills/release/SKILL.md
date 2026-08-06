@@ -36,8 +36,14 @@ Si un nouveau fichier `js/` ou une icône a été ajouté → vérifier qu'il es
 - Le pre-commit anti-leak `.githooks/` tourne automatiquement (vérifie qu'activé : `git config core.hooksPath .githooks`).
 - Message : `release(vX.Y.Z): <résumé court>`.
 
-## 6. Déploiement (KARMA, manuel — pas Claude)
+## 6. 🚦 Porte de release (AVANT le merge main)
+La release préparée ne part pas en prod sans franchir **`docs/RELEASE_GATE.md`** :
+guards auto → smoke 12 points sur dev → checkup ciblé des modules touchés → trempage.
+Items non-🔒 dérogeables par **KARMA seul**, avec motif + risque + rattrapage consignés
+(le relevé de release est dans le gate). Rappeler à KARMA de recopier le relevé.
+
+## 7. Déploiement (KARMA, manuel — pas Claude)
 - KARMA pousse la branche ; le merge sur `main` déclenche le workflow GitHub Actions (`release.yml`) qui crée tag + Release auto.
-- Déploiement prod = **FTP manuel par KARMA**.
+- Déploiement prod = **FTP manuel par KARMA**. Règle : **`main` = déployable** (la porte se franchit avant le merge).
 
 📖 Détails complets : `docs/architecture/infra-versioning.md`.

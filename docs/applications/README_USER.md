@@ -6,7 +6,7 @@
 
 ## 🔴 Avertissements importants
 
-### ⚖️ Conditions d'utilisation & avertissement légal (depuis v1.56.0)
+### ⚖️ Conditions d'utilisation & avertissement légal
 
 Au **premier lancement**, une page de **conditions d'utilisation** rappelle que MyKTAMap est un **outil de repérage et de cartographie**, pas une incitation à pénétrer dans des lieux interdits. Elle doit être **lue et acceptée une fois** (case à cocher + « J'accepte »).
 
@@ -101,7 +101,7 @@ Au clic, le bouton 🚨 force le re-affichage de TOUTES les alertes actives en c
 
 > ⚠️ Ce système est destiné à des alertes **importantes pour la sécurité de la communauté**. Il ne sert pas à des messages commerciaux ou promotionnels.
 
-### 🛡️ Plans révoqués (kill-switch anti-fuite, depuis v1.42.0)
+### 🛡️ Plans révoqués (kill-switch anti-fuite)
 
 Si un plan ZIP **fuite massivement** (= il a été diffusé hors de son groupe de confiance — Telegram public, forum, site warez…), l'auteur peut le **révoquer** : son empreinte est ajoutée à une liste publique côté serveur (`denylist.json`). L'application refusera alors automatiquement de l'ouvrir chez **tous les utilisateurs**.
 
@@ -131,7 +131,7 @@ Si un plan ZIP **fuite massivement** (= il a été diffusé hors de son groupe d
 
 > 💡 **Pour les auteurs de plans qui veulent révoquer un ZIP** : contacte KARMA (auteur de l'app) avec l'empreinte SHA-256 de ton ZIP (commande : `sha256sum ton-plan.zip`) + un motif court. La révocation est appliquée côté serveur sous quelques jours.
 
-#### 🔄 Audit automatique au démarrage (depuis v1.42.3)
+#### 🔄 Audit automatique au démarrage
 
 Si un plan que **tu avais déjà importé** est révoqué par l'auteur APRÈS ton import (entre 2 sessions), l'app le détecte automatiquement au prochain démarrage :
 
@@ -235,6 +235,31 @@ Au démarrage, l'application affiche un **écran d'accueil** qui regroupe :
 2. **Cliquer sur un plan déjà connu** — dans **📚 Mes plans**, un clic relance directement un plan déjà ouvert (serveur 🌐 ou local 💾).
 3. **🏗️ Générer un plan** — bouton dédié dans la home pour créer un plan from scratch.
 
+> 🔄 **Réimporter un plan que tu as regénéré (depuis v1.73.1)** — si le ZIP que tu importes porte le **même nom et le même auteur** qu'un plan déjà dans ta liste mais une **version différente**, l'app te pose la question au lieu d'empiler un doublon :
+> - **🔄 Mettre à jour** — l'entrée existante est remplacée (nom, version, taille, archive mémorisée). Ta **session, tes notes et tes liaisons inter-plan sont conservées**. Les photos ne sont remplacées que si le nouveau ZIP en contient.
+> - **➕ Garder les deux** — comportement d'avant : les deux versions cohabitent dans la liste.
+> - **Annuler** (ou ✕ / Échap / clic à côté) — rien n'est touché. C'est toujours le choix par défaut : jamais d'écrasement accidentel.
+>
+> À savoir : si le ZIP a **exactement le même nom ET la même version**, il met à jour l'entrée existante sans rien demander (c'est le comportement historique). Aucune question non plus pour les plans serveur ni quand tu re-sélectionnes le fichier d'un plan précis depuis ta liste.
+
+### 🗺️ Convertir un fichier SIG (QGIS…) en plan — depuis v1.75.0
+
+Tu as des données dans un logiciel SIG et tu veux les exploiter dans MyKTAMap ? Dépose ton export **directement sur la zone « 📦 Charger un nouveau plan » de l'accueil** — celle où tu déposes déjà tes ZIP : l'app reconnaît le format et ouvre **« Convertir depuis un SIG »**. Ça marche aussi depuis la zone d'import du **🏗️ Générateur**.
+
+**Formats acceptés** : `.geojson`, `.json`, `.kml`, `.kmz` (vectoriel). Points, tracés et zones sont repris.
+
+**Pas besoin d'image de plan** : si tu n'as que des données vectorielles, l'app **génère un fond vierge automatiquement calé** sur les coordonnées de ton fichier — tes annotations tombent au bon endroit. Tu pourras remplacer ce fond par une vraie image plus tard via 🏗️ **Modifier un plan**.
+
+**Tes appellations sont respectées.** Un fichier SIG a sa propre nomenclature (`CANALISATION`, `galerie_tech`, `ZH`…). Un **écran de correspondance** te laisse choisir la colonne qui porte le type, puis dire à quoi chaque valeur correspond dans MyKTAMap. Les valeurs évidentes sont pré-remplies — vérifie-les, rien n'est imposé. Les valeurs listées sont **séparées par famille** : celles trouvées sur des polygones te proposent des types de zone, jamais des types de tracé.
+
+> ⚠️ **Ton fichier doit être en coordonnées GPS classiques (WGS84 / EPSG:4326).** Dans QGIS : *Exporter → Enregistrer les entités sous…* puis choisis **EPSG:4326** dans le champ SCR.
+>
+> Un fichier en **Lambert 93** ou dans une autre projection sera **refusé**, avec le nombre de coordonnées fautives et la manip à faire. C'est volontaire : accepter en silence placerait ton plan à des milliers de kilomètres sans que rien ne te l'indique.
+
+**À savoir** : les trous (anneaux intérieurs) des polygones sont ignorés — MyKTAMap n'a pas de zone à trous. Au-delà de 20 000 objets, l'import est refusé : filtre ta couche dans QGIS avant d'exporter.
+
+*Non gérés* : Shapefile et GeoPackage. Ils exigeraient des bibliothèques lourdes, incompatibles avec la promesse « 100 % hors-ligne, sans installation ». Réexporte en GeoJSON depuis QGIS, c'est deux clics.
+
 ### 👤 Profil utilisateur
 
 Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le header. Il regroupe ton identité visuelle et des statistiques configurables sur ton usage de l'app.
@@ -250,6 +275,22 @@ Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le hea
   - 💾 **Sauvegarde** : taille réelle des données MyKTAMap stockées localement (voir plus bas)
 
 > 💡 **Charte light theme** : en mode clair, le fond du bandeau profil s'aligne sur les cards "Mes plans" pour une intégration visuelle propre.
+
+#### 🖼️ Fond d'écran de l'accueil (depuis v1.75.0)
+
+Dans la modale **Profil** (clique le bandeau), tout en bas avant les boutons d'export, tu peux mettre **ta propre image en fond de l'écran d'accueil** à la place de la couleur du thème.
+
+Trois réglages, et ils comptent :
+
+- **🖼️ Choisir une image** — n'importe quelle photo. Elle est réduite et ré-encodée à l'ajout, ce qui **supprime au passage ses métadonnées**, dont le lieu de prise de vue.
+- **Voile** — assombrit (ou éclaircit, en thème clair) l'image pour que les textes restent lisibles par-dessus. À 0 % l'image est nue, à 100 % tu retrouves le fond uni d'avant. Par défaut 55 %.
+- **Cadrage ↔ / ↕** — l'écran ne montre **jamais toute la photo** : elle est agrandie pour couvrir, le reste est coupé. En portrait sur un téléphone, une photo paysage ne laisse voir qu'environ un quart de sa largeur. Ces curseurs choisissent **quelle partie reste visible**. Seul celui de l'axe qui dépasse a un effet — l'autre ne fait rien, c'est normal.
+
+**🗑️ Retirer** revient à la couleur du thème.
+
+> 💡 L'image reste **sur ton appareil**, dans le même stockage que ton avatar. Elle disparaît si tu réinitialises ton profil.
+>
+> ⚠️ Elle **ne voyage pas encore** avec l'export de profil : sur un nouvel appareil, il faudra la remettre.
 
 **Modifier ton profil** :
 
@@ -442,7 +483,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 1. **🖼️ Tiling de l'image (par plan)** — segmented control 5 presets (voir détail ci-dessous), qui choisit comment l'image principale est découpée en mémoire au chargement. Mémorisé **par plan** (un plan en Performance, un autre en Qualité, etc.).
 
-2. **🚀 Mode Performance ULTRA (tracés / markers)** — 7 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling, limite dézoom mobile). **Réglage PAR PLAN depuis v1.59.0** : cocher ULTRA sur un plan n'affecte plus les autres — chaque plan repart désactivé tant que tu ne coches pas pour lui. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
+2. **🚀 Mode Performance ULTRA (tracés / markers)** — 7 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling, limite dézoom mobile). **Réglage PAR PLAN** : cocher ULTRA sur un plan n'affecte plus les autres — chaque plan repart désactivé tant que tu ne coches pas pour lui. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
 
 3. **🛠️ Debug** — toggle **🐛 Logs détaillés** (verbose mode) **+ bouton 📋 Afficher les logs** qui ouvre directement la modale buffer des logs capturés. Utile pour consulter les logs sans avoir à charger un plan d'abord (ex : si tu cherches à diagnostiquer un bug bloquant au chargement).
 
@@ -451,9 +492,9 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 5. **🎨 Affichage** — toggles d'interface :
    - **🔆 Garder l'écran allumé** — empêche la mise en veille automatique de ton écran tant que MyKTAMap est ouvert (Wake Lock API). Utile en sortie cataphile pour ne pas avoir à toucher le tel toutes les 30 sec. Re-acquisition auto au retour d'arrière-plan (visibilitychange). Toggle masqué automatiquement sur les navigateurs qui ne supportent pas l'API (Firefox notamment). Le même toggle est aussi accessible dans **⚙️ Réglages** en mode carte (cf section dédiée).
 
-> 🌍 **Langue de l'application** *(depuis v1.46)* : MyKTAMap est traduit en **3 langues — Français, English, Español**. Le sélecteur de langue (drapeau + nom complet) se trouve dans **⚙️ Configuration**, dans sa propre section **juste après le bloc Incognito**. Le changement s'applique tout de suite, sans recharger l'app. *À savoir* : la **Documentation**, l'**Aide intégrée** et le **tutoriel de bienvenue** existent pour l'instant en français et en anglais seulement — si tu utilises l'app en espagnol, l'interface est bien en espagnol mais ces contenus s'affichent en **anglais par défaut**. Tu peux à tout moment basculer ces contenus entre 🇫🇷 et 🇬🇧 via le bouton drapeau en haut de leur fenêtre. À chaque changement de langue, un message te propose de **redémarrer l'app** pour une bascule 100 % propre (au choix). 💡 En **mode incognito**, ta langue d'interface est désormais **conservée** (les autres données restent, elles, totalement oubliées).
+> 🌍 **Langue de l'application** : MyKTAMap est traduit en **3 langues — Français, English, Español**. Le sélecteur de langue (drapeau + nom complet) se trouve dans **⚙️ Configuration**, dans sa propre section **juste après le bloc Incognito**. Le changement s'applique tout de suite, sans recharger l'app. *À savoir* : la **Documentation**, l'**Aide intégrée** et le **tutoriel de bienvenue** existent pour l'instant en français et en anglais seulement — si tu utilises l'app en espagnol, l'interface est bien en espagnol mais ces contenus s'affichent en **anglais par défaut**. Tu peux à tout moment basculer ces contenus entre 🇫🇷 et 🇬🇧 via le bouton drapeau en haut de leur fenêtre. À chaque changement de langue, un message te propose de **redémarrer l'app** pour une bascule 100 % propre (au choix). 💡 En **mode incognito**, ta langue d'interface est désormais **conservée** (les autres données restent, elles, totalement oubliées).
 
-> 💡 **Depuis v1.36.2** : l'option « Afficher les ronds aux intersections de tracés » n'est **plus dans Configuration home** mais dans **⚙️ Réglages en mode carte** (per-plan). Chaque plan a maintenant son propre réglage — pratique pour désactiver les cercles uniquement sur tes plans très denses sans toucher les autres.
+> 💡 L'option « Afficher les ronds aux intersections de tracés » n'est **pas dans Configuration home** mais dans **⚙️ Réglages en mode carte** (per-plan). Chaque plan a maintenant son propre réglage — pratique pour désactiver les cercles uniquement sur tes plans très denses sans toucher les autres.
 
 6. **📚 Plans serveur** — checkbox **"🚫 Ne pas charger les plans serveur au démarrage"** :
    - **Désactive l'auto-discovery** du fichier `data/index.json` au boot de l'app — l'app ne va plus interroger le serveur pour lister les plans de démo ou les plans publics hébergés.
@@ -526,7 +567,7 @@ Cliquez sur un bouton avant de charger — la description sous le sélecteur cha
 Vos **annotations en cours** (points ajoutés, tracés, zones, mesures) sont automatiquement sauvegardées en arrière-plan toutes les ~1,5 secondes. Ainsi, si vous fermez l'application et la rouvrez via **▶️ Reprendre**, votre travail est restauré.
 
 **Comment ça marche :**
-- À chaque modification, votre session est sauvegardée dans le navigateur, **dans un emplacement propre à chaque plan** (depuis v1.16.1) : travailler sur un autre plan n'écrase plus la session du premier
+- À chaque modification, votre session est sauvegardée dans le navigateur, **dans un emplacement propre à chaque plan** : travailler sur un autre plan n'écrase plus la session du premier
 - Au prochain lancement, si vous cliquez sur **▶️ Reprendre [nom du plan]**, votre session est restaurée — une **fenêtre centrée** vous confirme avec le détail (*"3 points · 1 tracé · 2 zones"*)
 - La fenêtre vous propose deux actions : **🗑️ Effacer la session** (commencer ce plan avec une session vierge) ou **✓ Continuer** (garder la session restaurée). Cliquer en dehors ou appuyer sur Échap = Continuer.
 
@@ -536,7 +577,7 @@ Vos **annotations en cours** (points ajoutés, tracés, zones, mesures) sont aut
 - Le **💥 Tout réinitialiser** efface aussi votre session sauvegardée
 - Pour conserver une session importante au-delà de l'auto-save, utilisez **⬆️ Exporter la session JSON** (sauvegarde explicite que vous pouvez ré-importer plus tard)
 
-### 📔 Mon carnet — l'historique de vos sorties (depuis v1.69.0)
+### 📔 Mon carnet — l'historique de vos sorties
 
 La sauvegarde automatique ci-dessus garde **l'état courant** d'un plan. Le **carnet**, lui, garde **l'histoire** : chaque fois que vous explorez un plan, une **sortie** est archivée avec sa date, sa durée, la distance parcourue et ce que vous avez ajouté. Effacer une session ne supprime pas les sorties déjà rangées au carnet.
 
@@ -575,7 +616,7 @@ Le **Mode Histoire** (note libre + PDF) était jusqu'ici enfermé dans l'écran 
 - ⚠️ Un PDF **livré dans le ZIP du plan** n'apparaît pas ici : il faut charger le plan pour le consulter (Mode Histoire).
 
 **Bon à savoir :**
-- Le carnet **démarre vide** : il ne peut pas reconstituer les sorties d'avant la v1.69.0, elles n'ont jamais été enregistrées en tant que telles.
+- Le carnet **démarre vide** : il ne peut pas reconstituer les sorties d'avant son arrivée, elles n'ont jamais été enregistrées en tant que telles.
 - Tout est **strictement local** à votre appareil (aucun envoi, aucun compte). Chaque sortie est supprimable individuellement depuis sa fiche.
 - Au-delà de **500 sorties**, les plus anciennes sont effacées automatiquement.
 - Le carnet n'est **pas** inclus dans l'export de profil pour le moment : changer d'appareil via l'export de profil ne transporte pas encore votre historique.
@@ -714,9 +755,11 @@ Le bouton **⛶** du widget Vue OSM s'appelle désormais **« Ouvrir le mode OSM
 - **100 % local** : la recherche lit vos propres plans, aucune adresse internet n'est interrogée ;
 - seuls les plans **géoréférencés** apparaissent — un plan sans calibrage GPS est invisible en mode OSM (calibrez-le via le Générateur ou les Réglages).
 
-**🗂️ Plusieurs plans en même temps (depuis v1.71.0)** — le panneau « Plans affichés » du mode OSM permet de **superposer vos plans géoréférencés** : ➕ pour en ajouter un, ▲▼ pour choisir qui passe dessus/dessous, un curseur d'**opacité par plan**, ✕ pour retirer. Le plan marqué ◉ est le « principal » (celui du sélecteur du haut). Toute cette gestion vit dans une **modale dédiée** ouverte par le bouton **≡** du bandeau (rien ne masque la carte) : réglages d'**affichage globaux**, **filtre par tag** (agrégé sur tous les plans affichés), et la pile des plans. Les anciennes rangées sous le sélecteur (opacité, cases, tags) ont disparu du widget — la carte y gagne leur hauteur. Chaque ligne y porte aussi **5 mini-boutons de filtrage propres au plan** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — les cases du bandeau restent des interrupteurs globaux, les deux se combinent. Idéal pour afficher deux secteurs voisins par-dessus un plan d'ensemble, en ne gardant par exemple que les POI de l'un et l'image de l'autre.
+**🗂️ Plusieurs plans en même temps (depuis v1.71.0)** — le panneau « Plans affichés » du mode OSM permet de **superposer vos plans géoréférencés** : ➕ pour en ajouter un, ▲▼ pour choisir qui passe dessus/dessous, un curseur d'**opacité par plan**, ✕ pour retirer. Le plan marqué ◉ est le « principal » (celui du sélecteur du haut). Toute cette gestion vit dans une **modale dédiée** ouverte par le bouton **≡** du bandeau (rien ne masque la carte) : réglages d'**affichage globaux**, **filtre par tag** (agrégé sur tous les plans affichés), et la pile des plans. Les anciennes rangées sous le sélecteur (opacité, cases, tags) ont disparu du widget — la carte y gagne leur hauteur. Chaque ligne y porte aussi **5 mini-boutons de filtrage propres au plan** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — les réglages globaux d'affichage vivent dans la même modale (section Affichage), les deux niveaux se combinent. Idéal pour afficher deux secteurs voisins par-dessus un plan d'ensemble, en ne gardant par exemple que les POI de l'un et l'image de l'autre.
 
 Au premier lancement du mode, un message rappelle que l'affichage de plans complets peut être plus lent sur mobile — et un second apparaît si vous affichez **plus de 3 plans** à la fois.
+
+> 👁️ **Calques masqués par défaut (depuis v1.73.1)** — un calque de données livré « décoché » dans le ZIP d'un plan (donc masqué à l'ouverture en mode carte) était jusqu'ici **totalement invisible en Vue OSM**, sans aucun moyen de l'afficher. Il est désormais rendu comme les autres : tu le masques ou l'affiches avec les filtres existants (chips de catégorie globaux et par plan, filtre par tag). La Vue OSM de l'écran plan n'est pas concernée — elle a toujours suivi les calques réellement affichés sur ta carte.
 
 ## 📖 Mode Histoire — Note libre + PDF du plan
 
@@ -732,7 +775,7 @@ La note supporte le **Markdown** :
 - Clique sur **👁 Aperçu** pour revoir le rendu.
 - Tout MD que tu tapes (`**gras**`, `# Titre`, `- item`…) est interprété au rendu.
 
-### 📚 Histoire (PDF) — **plusieurs documents par plan depuis v1.69.0**
+### 📚 Histoire (PDF) — **plusieurs documents par plan**
 
 Tu peux maintenant garder **jusqu'à 10 documents PDF par plan** (avant : un seul, et un nouvel import écrasait le précédent). Rapport de 2019, plan papier scanné, article de presse, relevé topo : tout tient au même endroit.
 
@@ -828,7 +871,7 @@ Si ton plan est **calibré GPS** (cf. section "Exporter en KMZ géolocalisé" po
 
 > 💡 **Cas d'usage typique** : en sortie cataphile, tu trouves un puits non répertorié, tu l'ajoutes via ✏️, tu cliques dessus → tu peux instantanément copier ses coords GPS pour les envoyer à un binôme par SMS ou pour les pointer plus tard dans Google Earth.
 
-### 🌀 Liaisons inter-plan (depuis v1.57.0)
+### 🌀 Liaisons inter-plan
 
 Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « portail » entre deux réseaux qui se touchent (deux carrières voisines, ou un plan général et un plan de détail).
 
@@ -837,29 +880,29 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 2. Choisis le **plan cible** dans ta bibliothèque, puis **recherche le point** d'arrivée (par nom, id ou tag) — pas besoin d'ouvrir l'autre plan, ses points sont lus sur place.
 3. La liaison est créée **dans les deux sens** : elle apparaît dans la fiche des deux points.
 
-**Sur la carte (depuis v1.59.0)** : à toi de choisir si un point lié se voit ou non. Par défaut, **rien ne le distingue** (il garde son tag et son icône habituels). Si tu veux le marquer visuellement, donne-lui le nouveau **tag « Portail »** : il prend alors une **icône vortex dédiée** (anneau doré, spirale bleue). *(L'ancien badge doré automatique a été retiré.)*
+**Sur la carte** : à toi de choisir si un point lié se voit ou non. Par défaut, **rien ne le distingue** (il garde son tag et son icône habituels). Si tu veux le marquer visuellement, donne-lui le nouveau **tag « Portail »** : il prend alors une **icône vortex dédiée** (anneau doré, spirale bleue). *(L'ancien badge doré automatique a été retiré.)*
 
-**🌀 Mes liaisons (depuis v1.59.0)** : sur l'**accueil**, le bouton **« 🌀 Mes liaisons »** liste toutes tes liaisons (tous plans confondus) : état de chaque côté (⛔ si le plan n'est pas sur l'appareil), bouton **➜** pour aller directement à l'un des deux points, **🗑️** pour supprimer. Si les données d'un plan sont injoignables (serveur hors-ligne…), l'app te le dit clairement au lieu d'afficher « 0 points ».
+**🌀 Mes liaisons** : sur l'**accueil**, le bouton **« 🌀 Mes liaisons »** liste toutes tes liaisons (tous plans confondus) : état de chaque côté (⛔ si le plan n'est pas sur l'appareil), bouton **➜** pour aller directement à l'un des deux points, **🗑️** pour supprimer. Si les données d'un plan sont injoignables (serveur hors-ligne…), l'app te le dit clairement au lieu d'afficher « 0 points ».
 
-**🕸️ Vue Graphe (depuis v1.65.0)** : dans la même fenêtre, bascule **📋 Liste ⇄ 🕸️ Graphe** — ta bibliothèque dessinée en **réseau** : chaque plan est une bulle (badges V2/M-LVL, compteur de liaisons, anneau doré sur le plan en cours, ⛔ grisé si absent de l'appareil), chaque frontière un trait dont **l'épaisseur suit le nombre de liaisons**. Les plans sans liaison sont rangés dans une bande en bas. **Clique une bulle** pour ouvrir le plan (arrivée sur son premier portail), **clique un trait** pour voir le détail des liaisons de cette frontière (la liste se filtre), et **déplace les bulles** au doigt pour arranger la vue à ta façon.
+**🕸️ Vue Graphe** : dans la même fenêtre, bascule **📋 Liste ⇄ 🕸️ Graphe** — ta bibliothèque dessinée en **réseau** : chaque plan est une bulle (badges V2/M-LVL, compteur de liaisons, anneau doré sur le plan en cours, ⛔ grisé si absent de l'appareil), chaque frontière un trait dont **l'épaisseur suit le nombre de liaisons**. Les plans sans liaison sont rangés dans une bande en bas. **Clique une bulle** pour ouvrir le plan (arrivée sur son premier portail), **clique un trait** pour voir le détail des liaisons de cette frontière (la liste se filtre), et **déplace les bulles** au doigt pour arranger la vue à ta façon.
 
 **Utiliser une liaison** : dans la fiche du point, ligne 🌀 avec le plan et le point de destination → bouton **➜** → confirmation → l'app **change de plan** (ta session actuelle est sauvegardée automatiquement), **bascule sur le niveau du point d'arrivée** (plans multi-niveaux) et te dépose **directement dessus** (flash bleu). Si un filtre de tags masque le point d'arrivée, un avertissement s'affiche — tes filtres ne sont jamais modifiés.
 
-**📍 Recalage automatique à l'arrivée (depuis v1.61.0)** : quand tu **traverses physiquement** un portail (bouton ➜ d'une liaison, ou « Prendre le portail » d'un itinéraire inter-plan), ta **position tracker est recalée sur le point d'arrivée** du plan cible — tu ES là, l'app le sait. La recherche multi-plans et le gestionnaire ne recalent **pas** (consulter un point ≠ s'y déplacer). Et si un itinéraire est actif sur le plan d'arrivée, il se replanifie depuis le portail.
+**📍 Recalage automatique à l'arrivée** : quand tu **traverses physiquement** un portail (bouton ➜ d'une liaison, ou « Prendre le portail » d'un itinéraire inter-plan), ta **position tracker est recalée sur le point d'arrivée** du plan cible — tu ES là, l'app le sait. La recherche multi-plans et le gestionnaire ne recalent **pas** (consulter un point ≠ s'y déplacer). Et si un itinéraire est actif sur le plan d'arrivée, il se replanifie depuis le portail.
 
-**🧭 Itinéraire inter-plan (depuis v1.60.0, refondu v1.64.0)** : demande un itinéraire vers un point **d'un autre plan** relié par un portail — depuis la modale **Itinéraire** (bouton « 🌐 Destination sur un autre plan ») ou la **recherche multi-plans** (bouton 🧭 sur un résultat distant). L'app compare les portails disponibles au **coût réel**, affiche le trajet en étapes (« ① Rejoindre 🌀 Puits nord — 450 m · ② Traverser · ③ Rejoindre la salle — 300 m · Total ≈ 750 m ») et **trace le trajet sur ton plan**. Les évitements (zones, points, tags) de **chaque plan** sont respectés. Si c'est impossible (aucun portail, plan hors-ligne, destination isolée du réseau…), un message t'explique **précisément pourquoi**.
+**🧭 Itinéraire inter-plan** : demande un itinéraire vers un point **d'un autre plan** relié par un portail — depuis la modale **Itinéraire** (bouton « 🌐 Destination sur un autre plan ») ou la **recherche multi-plans** (bouton 🧭 sur un résultat distant). L'app compare les portails disponibles au **coût réel**, affiche le trajet en étapes (« ① Rejoindre 🌀 Puits nord — 450 m · ② Traverser · ③ Rejoindre la salle — 300 m · Total ≈ 750 m ») et **trace le trajet sur ton plan**. Les évitements (zones, points, tags) de **chaque plan** sont respectés. Si c'est impossible (aucun portail, plan hors-ligne, destination isolée du réseau…), un message t'explique **précisément pourquoi**.
 
-**🚶 Le trajet suit ton rythme (depuis v1.64.0)** : le bouton du résumé s'appelle « **🗺️ C'est parti** » — il ne te téléporte plus. Tu **marches** ton trajet (avec la validation d'étapes « 📍 Je suis ici » et la replanification au recalage), et la traversée se propose quand tu es **au portail** : bouton flottant « **🌀 Portail suivant (X m)** » (fermable — « 📍 Je suis ici » sur le point-portail le fait réapparaître), ou bouton ➜ du popup du point-portail. À chaque traversée, la suite se trace automatiquement de l'autre côté, jusqu'à destination.
+**🚶 Le trajet suit ton rythme** : le bouton du résumé s'appelle « **🗺️ C'est parti** » — il ne te téléporte plus. Tu **marches** ton trajet (avec la validation d'étapes « 📍 Je suis ici » et la replanification au recalage), et la traversée se propose quand tu es **au portail** : bouton flottant « **🌀 Portail suivant (X m)** » (fermable — « 📍 Je suis ici » sur le point-portail le fait réapparaître), ou bouton ➜ du popup du point-portail. À chaque traversée, la suite se trace automatiquement de l'autre côté, jusqu'à destination.
 
-**🧭 Tes étapes d'abord (depuis v1.64.0)** : pose tes **points de passage** dans la modale Itinéraire (curiosité X, Y…) puis choisis la destination distante — le trajet passe par **toutes tes étapes dans l'ordre, avant le portail**.
+**🧭 Tes étapes d'abord** : pose tes **points de passage** dans la modale Itinéraire (curiosité X, Y…) puis choisis la destination distante — le trajet passe par **toutes tes étapes dans l'ordre, avant le portail**.
 
-**🌀 À travers plusieurs plans (depuis v1.64.0)** : coche « **🌀 Itinéraire via plusieurs plans** » dans la recherche multi-plans (choix mémorisé, décoché par défaut) → l'app peut calculer un trajet qui **traverse des plans intermédiaires** (A → B → C, jusqu'à 3 traversées), en comparant toutes les combinaisons de portails au coût réel. Un plan intermédiaire injoignable est écarté (et nommé si plus aucun chemin ne passe). Chaque arrivée trace le tronçon du plan et te propose le portail suivant.
+**🌀 À travers plusieurs plans** : coche « **🌀 Itinéraire via plusieurs plans** » dans la recherche multi-plans (choix mémorisé, décoché par défaut) → l'app peut calculer un trajet qui **traverse des plans intermédiaires** (A → B → C, jusqu'à 3 traversées), en comparant toutes les combinaisons de portails au coût réel. Un plan intermédiaire injoignable est écarté (et nommé si plus aucun chemin ne passe). Chaque arrivée trace le tronçon du plan et te propose le portail suivant.
 
-**🔄 Fiches toujours à jour (depuis v1.60.0)** : si tu renommes ou déplaces un point lié, les fiches de liaisons (des deux côtés) se **mettent à jour automatiquement** à la prochaine ouverture du plan concerné.
+**🔄 Fiches toujours à jour** : si tu renommes ou déplaces un point lié, les fiches de liaisons (des deux côtés) se **mettent à jour automatiquement** à la prochaine ouverture du plan concerné.
 
-**↩️ Revenir en arrière (depuis v1.58.0)** : après un passage de portail (ou un saut de recherche multi-plans), un bouton flottant **« ↩️ Retour : <plan> »** apparaît en bas de l'écran pendant 15 secondes — un clic te ramène au plan **et à la vue exacte** d'où tu venais (niveau et zoom compris). Les sauts s'empilent : enchaîne 3 portails, tu peux faire 3 retours.
+**↩️ Revenir en arrière** : après un passage de portail (ou un saut de recherche multi-plans), un bouton flottant **« ↩️ Retour : <plan> »** apparaît en bas de l'écran pendant 15 secondes — un clic te ramène au plan **et à la vue exacte** d'où tu venais (niveau et zoom compris). Les sauts s'empilent : enchaîne 3 portails, tu peux faire 3 retours.
 
-**↩️ Bouton Retour discret (depuis v1.61.0)** : si le bouton te gêne, deux nouvelles commandes dessus — **[–]** le réduit en **mini-pastille ↩️** discrète en bas à droite (elle reste jusqu'à son expiration, un clic la ré-agrandit), **[✕]** le ferme. Ton choix est retenu : une fois réduit, les prochains retours arrivent directement en mini-pastille.
+**↩️ Bouton Retour discret** : si le bouton te gêne, deux nouvelles commandes dessus — **[–]** le réduit en **mini-pastille ↩️** discrète en bas à droite (elle reste jusqu'à son expiration, un clic la ré-agrandit), **[✕]** le ferme **et oublie les retours empilés** (depuis v1.73.0 — fermer, c'est renoncer à la chaîne de retours ; avant, le bouton revenait au saut suivant). Ton choix [–] est retenu : une fois réduit, les prochains retours arrivent directement en mini-pastille.
 
 **Bon à savoir** :
 - Un point peut porter **plusieurs liaisons** (point « hub »).
@@ -868,7 +911,7 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 - Les liaisons **voyagent avec l'export de session** (elles sont restaurées à l'import sur un autre appareil).
 - Un plan distribué (« data layer ») peut embarquer des liaisons prêtes à l'emploi : tu peux les **utiliser**, pas les modifier.
 
-### 🔎 Recherche multi-plans (depuis v1.58.0, barre de recherche depuis v1.69.0)
+### 🔎 Recherche multi-plans
 
 Cherche un point dans **tous les plans de ta bibliothèque** d'un coup, sans les ouvrir un par un :
 
@@ -905,6 +948,24 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 - **Quand un mode est actif** (mesure, ajout, route, zone, recalage), le groupe **reste ouvert** pour que tu puisses accéder rapidement aux actions associées (effacer un point, etc.). L'icône principale change pour refléter le mode en cours
 - **Toucher en dehors** du groupe ouvert le ferme automatiquement
 - **Sur mobile en paysage**, la barre devient scrollable verticalement si elle dépasse de l'écran
+
+> 🛡️ **Ouvrir une fenêtre coupe l'outil en cours (depuis v1.73.1)** — si tu es en **mesure, édition de points, tracé, zone, structure ou recalage** et que tu ouvres une modale par-dessus (Réglages, Filtres, Documentation, Mode Secours…), le mode se désarme tout seul. Avant, il restait actif derrière : en refermant, tes clics sur la carte partaient dans l'outil sans que rien ne le rappelle, et le bouton restait allumé sans effet. **Le tracker n'est jamais coupé** (il tourne en fond, ce n'est pas un mode de clic), et la fiche d'un point que tu viens de poser ne coupe pas l'édition — tu peux enchaîner tes points normalement.
+
+### 🎨 Personnaliser la légende (renommer, masquer, couleurs, types custom)
+
+Ouvre **≡ Légende** (groupe 📚 Aide / Doc / Légende) puis **✏️ Modifier**. Pour chaque type de tracé, zone ou structure :
+
+- **Renommer** : tape ton libellé (ex. « Principal » → « Grande galerie »). Il s'affiche partout : légende, popups, stats, filtres.
+- **🎨 Changer la couleur** *(depuis v1.76.0)* : un carré de couleur par ligne. La couleur choisie s'applique **partout** — carte, exports image/PDF, KMZ, statistiques, rapport de session — immédiatement, sans recharger. Un bouton **↺** apparaît pour revenir à la couleur d'origine. Détails de comportement : une zone recolorée dérive sa bordure automatiquement (version plus foncée), un pilier/mur garde son **contour noir** (c'est la signature des structures), et la zone *Inaccessible* recolorée perd ses hachures (motif fixe) au profit d'un aplat.
+- **👁️ Masquer** : la case retire l'entrée **de la boîte de légende uniquement** — rien ne disparaît de la carte. Pour masquer des objets de la carte, c'est le panneau **🔍 Filtres**.
+- **➕ Ajouter une entrée custom** : crée tes propres types (tracé, zone, structure, icône) avec leur couleur. Ils deviennent dessinables depuis la barre latérale, et une icône custom est proposée dans l'éditeur de point.
+- **🗑️ Supprimer un type custom** : si des objets dessinés l'utilisent encore, l'app te préviens avec le décompte avant de confirmer.
+
+> 🧳 **Ta légende voyage avec tes exports** *(depuis v1.76.0)* : un calque de données exporté emporte la définition des types qu'il utilise, et le générateur la récupère à l'import (ce qui existe déjà dans le plan garde la priorité). Le JSON de session et le ZIP Avancé l'emportent aussi.
+>
+> ⚠️ **Bandeau « types orphelins »** : si des objets utilisent un type qui n'existe plus dans la légende (entrée supprimée, vieux calque), la modale ≡ Légende l'affiche en tête avec le compte — ces objets sortent en couleur de repli tant que tu n'as pas recréé ou réimporté l'entrée.
+
+Tout est sauvegardé automatiquement dans ta session, **par plan**.
 
 ### 🔄 Changer rapidement de plan via le titre
 
@@ -1040,8 +1101,8 @@ Le bouton **🧭 Tracker** ouvre un **panneau latéral (flyout)** adjacent au bo
 | **▶️** / **⏹️** | Play / Stop tracking (l'icône bascule dynamiquement selon l'état) |
 | **🧭** | Boussole (widget rose des vents) |
 | **📍** | Recalage position |
-| **🎯** | **Ma position** — recentre la carte sur toi *(v1.49.0)* |
-| **🔓** | **Suspendre le verrou sur tracé** — temporairement (30 s → 10 min) *(v1.49.0)* |
+| **🎯** | **Ma position** — recentre la carte sur toi |
+| **🔓** | **Suspendre le verrou sur tracé** — temporairement (30 s → 10 min) |
 | **🗺️** | Calculer un itinéraire |
 | **🎬** | Replay de session tracker |
 | **🔥** | Heatmap — voir section dédiée |
@@ -1050,7 +1111,7 @@ Le bouton **🧭 Tracker** ouvre un **panneau latéral (flyout)** adjacent au bo
 
 > 🚨 **Les 2 modes urgence sont délibérément placés en FIN de panneau avec un fond rouge vif** pour les rendre instantanément identifiables visuellement. En situation de stress, tu sais où regarder.
 
-> 🆕 **v1.49.0 — terrain** :
+> 🆕 **Sur le terrain** :
 > - **🎯 Ma position** : recentre la carte sur ta position courante (utile après avoir navigué ailleurs sur le plan).
 > - **🔓 Suspendre le verrou sur tracé** : si le « verrouillage sur tracé » (navigation intelligente) est activé et que tu **sors du réseau de galeries** (ex. entrer dans une cave), tu peux le couper temporairement (**30 s / 1 min / 10 min / jusqu'à réactivation**) sans passer par les réglages. Un **compte à rebours 🔓 s'affiche dans la barre du bas**, à côté du voyant tracker ON/OFF ; touche-le pour réactiver (confirmation demandée).
 > - **⚙️ Réglages avancés** : dans ⚙️ Réglages → *Navigation & Tracker*, la **tolérance latérale** et le **poids du cap** du verrou sont réglables (pour ajuster le comportement aux jonctions). La taille d'un pas, le seuil et le cooldown sont désormais **bornés** pour éviter les valeurs aberrantes. ⚠️ Réglages experts — règle d'abord l'échelle m/px du plan.
@@ -1309,7 +1370,7 @@ Le mode actif est affiché à côté du temps estimé dans le label bottomleft. 
 
 > 💡 **Astuce** : si vous voulez voir uniquement le tracé sans le label distance, fermez la modale puis ré-ouvrez-la en mode navigation pour utiliser les boutons de pilotage.
 
-#### 🔄 Itinéraire vivant — replanification au recalage + validation d'étapes *(depuis v1.61.0)*
+#### 🔄 Itinéraire vivant — replanification au recalage + validation d'étapes
 
 Pendant une sortie réelle, le tracker peut dériver et le téléphone passe du temps verrouillé dans la poche. L'itinéraire s'adapte tout seul à chaque **recalage de position** :
 
@@ -1329,7 +1390,7 @@ Dans la modale itinéraire, une section repliable **🚫 Préférences d'évitem
 |---|---|
 | **📍 Points à éviter** | **3 méthodes** au choix : (a) recherche autocomplete dans le champ texte, (b) saisie par ID exact, (c) **📍 Cliquer sur la carte** : bascule en mode clic, chaque clic sur la map ajoute un point. Chips orange avec ✕ pour retirer. |
 | **🏷️ Tags à éviter** | Clique un chip pour le toggler. Tous les points portant ce tag seront évités (ex: tu actives `pa` → tous les puits aération sont évités). |
-| **⬛ Zones à éviter** *(depuis v1.48.0)* | Coche un **type de zone** dans la liste (Eau, Effondrement, tes types personnalisés…) pour que l'itinéraire **contourne** toutes les zones de ce type. Les zones **⛔ inaccessibles** n'apparaissent pas ici : elles sont déjà infranchissables (contrainte dure, jamais relâchée). |
+| **⬛ Zones à éviter** | Coche un **type de zone** dans la liste (Eau, Effondrement, tes types personnalisés…) pour que l'itinéraire **contourne** toutes les zones de ce type. Les zones **⛔ inaccessibles** n'apparaissent pas ici : elles sont déjà infranchissables (contrainte dure, jamais relâchée). |
 | **📏 Marge** | Distance autour des points évités (px, défaut 100). Tout segment de route à moins de cette marge est exclu du graphe. |
 
 **Comportement** :
@@ -1603,9 +1664,9 @@ Default checked + 15 min (= comportement préservé). Modifiable → s'applique 
 
 > ⚠️ Comme tous les outils numériques en sous-sol : **garde une boussole physique** et une carte papier dans ta poche. Le téléphone peut tomber en panne, le magnétomètre peut être faussé par du métal local, le tracker peut dériver. Le 🚨 est une aide à la lecture rapide d'infos, pas un substitut à la préparation.
 
-### 🚨 Mode Secours × 🌍 Vue OSM — Coordination secours externes (v1.41)
+### 🚨 Mode Secours × 🌍 Vue OSM — Coordination secours externes
 
-Depuis v1.41.0, le Mode Secours est intégré avec la Vue OSM pour fournir aux **secours externes** (pompiers, GRIMP, SDIS) tout ce qu'il leur faut pour intervenir sur le site sans connaître les lieux.
+Le Mode Secours est intégré avec la Vue OSM pour fournir aux **secours externes** (pompiers, GRIMP, SDIS) tout ce qu'il leur faut pour intervenir sur le site sans connaître les lieux.
 
 #### 🚪 Tag « Point d'entrée du plan »
 
@@ -1657,9 +1718,9 @@ Le rapport PDF post-mission (généré au bouton 📤 Rapport) inclut désormais
 
 #### 🏷️ Filtre tags Vue OSM corrigé
 
-Auparavant, les chips de filtre par tag dans la modale Vue OSM ne montraient que ~3 tags (bug de source de données). Depuis v1.41.4, **tous les tags présents** dans le plan sont listés, alignés avec le widget Vue OSM Home.
+Les chips de filtre par tag de la modale Vue OSM listent **tous les tags présents** dans le plan, alignés avec le widget Vue OSM Home.
 
-#### 💾 Save Offline — Vue OSM hors-ligne (v1.43.0 → v1.43.8)
+#### 💾 Save Offline — Vue OSM hors-ligne
 
 Tu pars en sortie cataphile, ou tu te prépares à un Mode Secours dans une zone à cellular pourri ? Tu peux désormais **télécharger la carte OpenStreetMap autour de ton plan à l'avance**, et la consulter **sans Internet** une fois sur place.
 
@@ -1691,7 +1752,7 @@ Le bouton 💾 Save Offline est présent dans **3 contextes** — et le cache es
 
 > ✅ **Cache partagé** : tu télécharges UNE fois → c'est dispo partout, pas de doublon. Pas besoin de recommencer le téléchargement à chaque mode.
 
-**Comportement intelligent hors-ligne** (v1.43.1 → v1.43.7) :
+**Comportement intelligent hors-ligne** :
 
 Quand l'app détecte que t'as pas d'Internet, elle adapte le comportement de l'icône 🌍 selon ce qui est dispo sur ton appareil :
 
@@ -2188,9 +2249,9 @@ Tu peux attacher jusqu'à **5 photos par point** (limite anti-saturation stockag
 
 **Compression auto** : les photos sont compressées avant stockage (1920 px côté long max, qualité JPEG 85 %). Une photo brute de 5-10 Mo passe à ~200-500 Ko. Pour 5 photos = ~2 Mo par point.
 
-**🔒 Métadonnées nettoyées *(depuis v1.63.0)*** : **toute** photo est ré-encodée à l'ajout, même déjà petite — les métadonnées cachées du fichier (**EXIF : position GPS de la prise de vue, date, modèle d'appareil**) sont systématiquement supprimées. Rien de tout ça n'entre dans l'app ni ne sort dans un export. Les petites photos sont ré-encodées sans redimensionnement à qualité haute (dégradation invisible).
+**🔒 Métadonnées nettoyées** : **toute** photo est ré-encodée à l'ajout, même déjà petite — les métadonnées cachées du fichier (**EXIF : position GPS de la prise de vue, date, modèle d'appareil**) sont systématiquement supprimées. Rien de tout ça n'entre dans l'app ni ne sort dans un export. Les petites photos sont ré-encodées sans redimensionnement à qualité haute (dégradation invisible).
 
-**🛡️ Export anonymisé + photos *(depuis v1.63.0)*** : dans 💾 Enregistrer session → 📦 Full, la case « 🛡️ Anonymiser pour partage public » accepte maintenant les photos : chacune est **ré-encodée sans métadonnées** (y compris les photos ajoutées avant v1.63.0) et **renommée** (`photo-anon-1`, `photo-anon-2`…), rattachée aux codes anonymisés des points (`💎 POI #1`…). Une photo qui ne peut pas être ré-encodée est **exclue** de l'export — jamais embarquée telle quelle. La note libre et le PDF Histoire restent exclus de l'export anonymisé.
+**🛡️ Export anonymisé + photos** : dans 💾 Enregistrer session → 📦 Full, la case « 🛡️ Anonymiser pour partage public » accepte maintenant les photos : chacune est **ré-encodée sans métadonnées** (y compris les photos ajoutées avant l'arrivée de cette protection) et **renommée** (`photo-anon-1`, `photo-anon-2`…), rattachée aux codes anonymisés des points (`💎 POI #1`…). Une photo qui ne peut pas être ré-encodée est **exclue** de l'export — jamais embarquée telle quelle. La note libre et le PDF Histoire restent exclus de l'export anonymisé.
 
 **Retirer une photo** : clic sur la croix ✕ rouge en haut à droite de la miniature → elle apparaît grisée avec hachures rouges (marquée à supprimer). Si tu changes d'avis, clic sur la flèche verte ↺ pour annuler. La vraie suppression n'a lieu qu'au moment où tu **💾 Enregistres**.
 
@@ -2427,7 +2488,7 @@ Boutons radio `[ − ] [-2] [-1] [0] [1] [2] [ + ]` (5 niveaux par défaut, sym�
 
 Checkboxes par niveau. Les tracés/zones/points de niveaux **non cochés** sont cachés sur la carte (opacity 0). Les jonctions interniveau restent visibles si **au moins un** de leurs endpoints touche un niveau coché.
 
-**🏗️ Le plan principal EST le niveau 0 *(depuis v1.67.0)*** : décocher le niveau **0** masque aussi **l'image principale du plan** (tuiles comprises) — tu peux enfin regarder un étage seul (ex. uniquement le calque du niveau -1 transparent), sans le fond du niveau 0 qui pollue la superposition. Re-coche 0 et il revient. Sans mode multi-niveau, le plan principal n'est jamais masqué.
+**🏗️ Le plan principal EST le niveau 0** : décocher le niveau **0** masque aussi **l'image principale du plan** (tuiles comprises) — tu peux enfin regarder un étage seul (ex. uniquement le calque du niveau -1 transparent), sans le fond du niveau 0 qui pollue la superposition. Re-coche 0 et il revient. Sans mode multi-niveau, le plan principal n'est jamais masqué.
 
 **🫥 Transparence des calques de niveau** : pour que la superposition ait un sens, chaque calque de niveau (≠ 0) doit être un **PNG avec fond transparent**. Le générateur t'avertit désormais à la génération si un calque de niveau est opaque (JPEG, ou PNG au fond aplati) — il masquerait tout ce qui est en dessous.
 
@@ -2564,7 +2625,7 @@ Tu construis un gros plan en **plusieurs sessions** et tu te retrouves avec plei
 - Un **aperçu** affiche les totaux et te **prévient** si des identifiants de points sont en double (les doublons sont conservés tels quels).
 - **Télécharge** le résultat (un ZIP, ou un `.json` direct s'il n'y a qu'une seule catégorie), prêt à déposer dans le dossier de ton plan.
 
-Accessible **sans plan ouvert** depuis l'accueil : **📊 Éditeur de données → 🔗 Fusionner des calques de données** (depuis v1.69.0 ; c'était un bouton séparé de l'accueil avant, il a rejoint les sources de l'éditeur pour alléger l'écran). **100 % local**, aucune donnée envoyée.
+Accessible **sans plan ouvert** depuis l'accueil : **📊 Éditeur de données → 🔗 Fusionner des calques de données** (c'était un bouton séparé de l'accueil avant, il a rejoint les sources de l'éditeur pour alléger l'écran). **100 % local**, aucune donnée envoyée.
 
 ### 🖼️ Exporter en PNG/JPG
 
@@ -2674,6 +2735,8 @@ Pour chaque point (A et B), 3 méthodes au choix :
 
 > 💡 **Conseil** : choisis 2 points **éloignés** sur le plan (idéalement aux extrémités opposées) — plus la distance AB est grande, meilleure est la précision de la transformation. L'app refuse si AB fait moins de 50 px sur le plan ou moins de 1 mètre IRL.
 
+> 📐 **Point C (optionnel, depuis v1.73.0) — pour les plans déformés** : si ton plan est un **assemblage** qui se projette mal (étiré dans un sens, échelles différentes en X et Y), ajoute un **3e point** dans ⚙️ Réglages → Géoréférencement (ou dans le générateur) : l'app passe alors sur une transformation qui **corrige la déformation globale** — vue OSM, exports KMZ/GPX et Mode Secours en profitent tous. Choisis C **loin de la ligne A-B** (un C aligné n'apporte rien et est refusé). À savoir : ça corrige une déformation *d'ensemble* — si chaque morceau de l'assemblage a sa propre erreur, le résultat s'améliore mais ne peut pas être parfait partout. Laisse C vide si ton plan se projette déjà bien : rien ne change.
+
 #### Aperçu live
 
 Au fur et à mesure que tu remplis les champs, un bloc **🌐 Aperçu coins** s'affiche avec :
@@ -2731,7 +2794,7 @@ Appuyez sur **⬇️ → 📊 Éditeur de données du plan** (en mode carte) **o
 
 > ℹ️ Depuis l'**accueil**, aucun plan n'est encore chargé : seules les sources **📦 ZIP** et **📄 JSON** sont proposées (pas de « plan en cours »).
 
-#### Ouverture — 3 sources *(depuis v1.48.0)*
+#### Ouverture — 3 sources
 
 1. **🗺️ Plan en cours** — liste les calques de données du plan ouvert (puits, accès, tracés, zones…). Choisissez-en un à éditer.
 2. **📦 Importer un ZIP** — récupère la liste des calques de données d'un plan complet (`.zip`).
@@ -2884,7 +2947,7 @@ La case 🧱 Convertir en V2 apparaît dans le formulaire dès que tu as **uploa
 
 **Auto-crop intégré** : si ton image source a beaucoup de marges blanches (typique des plans scannés papier), le générateur détecte automatiquement le bbox du contenu utile et tuile uniquement cette zone. Tu gagnes en taille de ZIP + en netteté au zoom max. Si l'image est déjà bien cadrée, pas de crop.
 
-**🫥 Transparence conservée *(depuis v1.62.0)*** : si ton image source est un **PNG/WebP avec de la vraie transparence** (fond alpha), le générateur ne rajoute **plus de fond sombre** : les tuiles gardent la transparence (format WebP, ou PNG selon le navigateur). Résultat : derrière les zones transparentes tu vois le fond sombre de la carte — et dans la **Vue OSM**, la carte OpenStreetMap apparaît **à travers ton plan**. La détection est automatique (elle regarde les pixels, pas l'extension du fichier — un PNG dont le fond a déjà été aplati reste traité en opaque). Sur une source transparente, l'auto-crop ci-dessus est **désactivé** pour ne jamais décaler tes points/tracés/géoréférencement. **Plans V2 existants** : le fond a été cuit dans leurs tuiles à l'époque — régénère une fois (Modifier → recocher V2) pour en profiter ; sans régénération ils continuent de marcher comme avant.
+**🫥 Transparence conservée** : si ton image source est un **PNG/WebP avec de la vraie transparence** (fond alpha), le générateur ne rajoute **plus de fond sombre** : les tuiles gardent la transparence (format WebP, ou PNG selon le navigateur). Résultat : derrière les zones transparentes tu vois le fond sombre de la carte — et dans la **Vue OSM**, la carte OpenStreetMap apparaît **à travers ton plan**. La détection est automatique (elle regarde les pixels, pas l'extension du fichier — un PNG dont le fond a déjà été aplati reste traité en opaque). Sur une source transparente, l'auto-crop ci-dessus est **désactivé** pour ne jamais décaler tes points/tracés/géoréférencement. **Plans V2 existants** : le fond a été cuit dans leurs tuiles à l'époque — régénère une fois (Modifier → recocher V2) pour en profiter ; sans régénération ils continuent de marcher comme avant.
 
 **Trade-offs** :
 
@@ -3004,7 +3067,7 @@ Au chargement d'un plan, tu peux choisir parmi 5 presets dans le loader :
 
 Si malgré le mode Performance, ton plan crashe encore (typiquement plans 4000+ × 2000+ pixels avec beaucoup de tracés), ouvre **⚙️ Réglages → section "🚀 Mode Performance ULTRA"** et active le **toggle master 🚀 ULTRA**. Il active 6 optimisations agressives simultanément.
 
-> 🆕 **Depuis v1.59.0** — trois choses à savoir :
+> 🆕 **Trois choses à savoir** :
 > - **Réglage PAR PLAN** : cocher ULTRA ici ne concerne QUE le plan ouvert. Tes autres plans ne sont plus impactés (avant, le réglage était global et « suivait » silencieusement sur tous les plans). Après la mise à jour, les plans qui avaient ULTRA repartent désactivés — recoche-le sur ceux qui en ont besoin.
 > - **Tes points de session sont sacrés** : les POI que tu ajoutes à la main (✏️) restent **toujours affichés**, même avec le viewport culling actif — seul l'affichage des milliers de points des calques de données est allégé.
 > - **Message à l'ouverture** : quand des optimisations sont actives sur un plan, un message te le rappelle au chargement — un affichage « allégé » (tracés simplifiés, popups data désactivés…) n'est pas un bug.
@@ -3099,10 +3162,10 @@ Accédez aux paramètres en cliquant sur **⚙️** :
 
 ### 🔍 Affichage
 - **Icônes adaptatives au zoom** (`scaledMarkers`) — *préférence globale* : les icônes des points (puits, accès, signalétique, etc.) gardent une taille relative au plan constante. Au dézoom, elles rétrécissent ; au zoom in, elles grossissent. Reload requis au toggle.
-- **⚪ Afficher les ronds aux intersections de tracés (ce plan)** — *per-plan depuis v1.36.2* : cercle plein coloré au croisement de 2 tracés (vert × violet → jaune, etc.). Décocher pour aérer visuellement les plans très denses, ou si le calcul ralentit l'affichage. **Effet immédiat**, sauvegardé par plan (un autre plan garde son propre réglage). Avant v1.36.2 cette option était dans Configuration home et globale à tous les plans.
-- **🧭 Calibration du Nord (ce plan)** — *per-plan depuis v1.37.0* : utile quand le HAUT du plan **n'est pas** le Nord vrai (photo aérienne au cadrage arbitraire, plan cataphile sans rosace alignée). Champ angle [0,360[ en degrés ou bouton **📐 Calibrer (2 clics)** qui ouvre un picker WYSIWYG : clique d'abord le SUD du plan, puis le NORD, une flèche pointillée Sud→Nord s'affiche, et l'angle est calculé automatiquement. **Effet** : rotation icône tracker + sens de marche s'adaptent → le tracker pointe dans la bonne direction RELATIVE AU PLAN. La boussole physique 🧭 continue de pointer le vrai Nord magnétique (= comportement attendu d'une boussole). **Sauvegardé par plan**, **effet immédiat** sans reload. Bouton ↺ Reset pour revenir au default (0 = Nord vers le haut du plan).
+- **⚪ Afficher les ronds aux intersections de tracés (ce plan)** — *réglage par plan* : cercle plein coloré au croisement de 2 tracés (vert × violet → jaune, etc.). Décocher pour aérer visuellement les plans très denses, ou si le calcul ralentit l'affichage. **Effet immédiat**, sauvegardé par plan (un autre plan garde son propre réglage).
+- **🧭 Calibration du Nord (ce plan)** — *réglage par plan* : utile quand le HAUT du plan **n'est pas** le Nord vrai (photo aérienne au cadrage arbitraire, plan cataphile sans rosace alignée). Champ angle [0,360[ en degrés ou bouton **📐 Calibrer (2 clics)** qui ouvre un picker WYSIWYG : clique d'abord le SUD du plan, puis le NORD, une flèche pointillée Sud→Nord s'affiche, et l'angle est calculé automatiquement. **Effet** : rotation icône tracker + sens de marche s'adaptent → le tracker pointe dans la bonne direction RELATIVE AU PLAN. La boussole physique 🧭 continue de pointer le vrai Nord magnétique (= comportement attendu d'une boussole). **Sauvegardé par plan**, **effet immédiat** sans reload. Bouton ↺ Reset pour revenir au default (0 = Nord vers le haut du plan).
 
-> 💡 **Auteur de plan v1.37.0** : pour embarquer durablement le Nord ou un **PDF Histoire** dans le ZIP du plan (cross-utilisateurs), passe par le **générateur avancé** (champ "🧭 Orientation Nord" dans Tracking + section "📖 PDF Histoire" optionnelle). Pour un PDF Histoire chargé juste côté session (ton navigateur), continue d'utiliser le bouton d'import de la modale **📖 Mode Histoire** (status bar) — inchangé depuis v1.34.20.
+> 💡 **Auteur de plan** : pour embarquer durablement le Nord ou un **PDF Histoire** dans le ZIP du plan (cross-utilisateurs), passe par le **générateur avancé** (champ "🧭 Orientation Nord" dans Tracking + section "📖 PDF Histoire" optionnelle). Pour un PDF Histoire chargé juste côté session (ton navigateur), continue d'utiliser le bouton d'import de la modale **📖 Mode Histoire** (status bar).
 - **🔆 Garder l'écran allumé** — *préférence globale* : active la Wake Lock API pour empêcher la mise en veille automatique de l'écran tant que l'app est ouverte. Re-acquisition auto au retour d'arrière-plan. Masqué si le navigateur ne supporte pas l'API. Le même toggle est aussi disponible dans **⚙️ Configuration** sur la page d'accueil.
 
 ### 🎬 Mode présentation
@@ -3214,7 +3277,7 @@ En cas de problème ou pour forcer une mise à jour, utilisez **⚙️ → 🗑�
 
 ---
 
-## 🐳 Self-host avec Docker (NEW v1.36.0)
+## 🐳 Self-host avec Docker
 
 Si tu veux faire tourner MyKTAMap **sur ton propre matériel** (PC, Raspberry Pi, NAS, serveur dédié) — pour l'avoir disponible sur ton réseau local, garantir le 100 % offline, ou simplement par curiosité — il existe désormais une **image Docker prête à l'emploi**.
 
@@ -3395,11 +3458,11 @@ Aux anciens qui ont relevé les galeries au crayon, plan en main, génération a
 MyKTAMap repose entièrement sur des **briques open-source**. Sans ces projets, l'app n'existerait simplement pas :
 
 - 🍃 **[Leaflet](https://leafletjs.com/)** *(BSD 2-Clause)* — moteur cartographique interactif. Cœur de l'affichage des plans. Merci à **Vladimir Agafonkin** et aux nombreux contributeurs du projet.
-- 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin qui projette une image comme parallélogramme via 3 coins (transform CSS matrix). Utilisé pour le calage **2 ancres** des calques image (v1.38+) et pour la projection des plans MyKTAMap **sur la Vue OSM** (v1.39+). Merci à **Iván Sánchez Ortega** pour ce plugin élégant.
+- 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin qui projette une image comme parallélogramme via 3 coins (transform CSS matrix). Utilisé pour le calage **2 ancres** des calques image et pour la projection des plans MyKTAMap **sur la Vue OSM**. Merci à **Iván Sánchez Ortega** pour ce plugin élégant.
 - 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL au choix)* — lecture et écriture des archives `.zip` côté navigateur (plans, sessions, exports, extraction partielle pour la mini-carte de la HOME). Merci à **Stuart Knightley** et aux contributeurs.
 - 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — génération de PDF imprimables (A0 → A4, portrait/paysage, page miniature Mode Secours, embed Mode Histoire).
-- 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — capture du rendu DOM en image (canvas → PNG). Utilisée pour intégrer la **carte OSM Leaflet** dans les PDF **« Briefing pompiers »** du Mode Secours (depuis v1.42.5) : pile graphique webgl + tiles + overlays + plan projeté, le tout figé en une image embarquée dans le PDF remis aux secours externes. Merci à **Niklas von Hertzen** et aux contributeurs.
-- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & ses contributeurs** — sous licence **[ODbL](https://opendatacommons.org/licenses/odbl/)** pour les données et **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** pour la cartographie. Données cartographiques mondiales affichées dans la **Vue OSM** (modale plan + widget HOME, depuis v1.39+) **uniquement quand tu l'actives via l'opt-in dédié**. L'app affiche l'attribution `© OpenStreetMap contributors` dans le coin de chaque carte OSM, **comme la licence ODbL l'exige**. Hébergement des tuiles : **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (fondation non-commerciale, politique de logs publique, pas de tracking publicitaire). Sans ce bien commun monumental — bâti depuis 2004 par des **milliers de bénévoles** qui cartographient le monde rue par rue — la Vue OSM n'existerait pas.
+- 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — capture du rendu DOM en image (canvas → PNG). Utilisée pour intégrer la **carte OSM Leaflet** dans les PDF **« Briefing pompiers »** du Mode Secours : pile graphique webgl + tiles + overlays + plan projeté, le tout figé en une image embarquée dans le PDF remis aux secours externes. Merci à **Niklas von Hertzen** et aux contributeurs.
+- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & ses contributeurs** — sous licence **[ODbL](https://opendatacommons.org/licenses/odbl/)** pour les données et **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** pour la cartographie. Données cartographiques mondiales affichées dans la **Vue OSM** (modale plan + widget HOME) **uniquement quand tu l'actives via l'opt-in dédié**. L'app affiche l'attribution `© OpenStreetMap contributors` dans le coin de chaque carte OSM, **comme la licence ODbL l'exige**. Hébergement des tuiles : **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (fondation non-commerciale, politique de logs publique, pas de tracking publicitaire). Sans ce bien commun monumental — bâti depuis 2004 par des **milliers de bénévoles** qui cartographient le monde rue par rue — la Vue OSM n'existerait pas.
 - 🧭 **Algorithme de Dijkstra** (1959) — calcul du plus court chemin pour les itinéraires assistés. Edsger W. Dijkstra (1930-2002) : merci pour cette idée vieille de plus de 60 ans qui sous-tend encore Google Maps, OpenStreetMap routing, et chaque GPS du monde.
 - 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — format d'échange avec TopoDroid, OsmAnd, Strava, Garmin et l'écosystème outdoor.
 - 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintenus par des milliers de personnes qu'on ne croisera jamais et à qui on doit énormément.

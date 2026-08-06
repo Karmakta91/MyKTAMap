@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.72.1";
+const CACHE_NAME = "myktamap-cache-v1.76.0";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -195,6 +195,7 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.16.0 step 2 : module de personnalisation de la légende (cascade
   // session > plan > default). Doit être caché pour fonctionner offline.
   "./js/legendCustomization.js",
+  "./js/styleResolver.js",
   // 🆕 v1.16.0 step 3 : module Favoris (points POI par plan)
   "./js/favoris.js",
   // 🆕 v1.16.0 step 4 : module SessionBackups (10 snapshots FIFO en IDB)
@@ -223,6 +224,7 @@ const ASSETS_TO_CACHE = [
   "./js/gpxIO.js",
   // 🆕 v1.15.0 : GPX → ZIP MyKTAMap (canvas vierge auto-calibré)
   "./js/gpxImport.js",
+  "./js/sigImport.js",
   "./js/tableEditor.js",
   "./js/searchPoints.js",
   "./js/createConf.js",
@@ -1078,6 +1080,38 @@ self.addEventListener("fetch", (event) => {
           status: 200,
           headers: { "Content-Type": "application/json; charset=utf-8" }
         });
+      }
+    })());
+    return;
+  }
+
+  // 🛠️ v1.73.0 — NETWORK-FIRST POUR data/index.json (mode serveur kiosque).
+  // Le fichier est précaché (boot offline) MAIS il est aussi le canal de
+  // configuration d'une instance auto-hébergée (plans, flags, sous-titre,
+  // liaisons — cf community-server-line.md). En cache-first, un admin qui
+  // modifie son index ne propage RIEN avant réinstallation du SW. Pattern
+  // identique aux dicos i18n : réseau (no-store, timeout 3s) → maj cache
+  // silencieuse → fallback cache si offline/lent.
+  if (/\/data\/index\.json(\?|$)/.test(reqUrl)) {
+    event.respondWith((async function() {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const networkPromise = fetch(event.request, { cache: "no-store" });
+        const timeoutPromise = new Promise(function(_, reject) {
+          setTimeout(function() { reject(new Error("network timeout")); }, 3000);
+        });
+        const networkResp = await Promise.race([networkPromise, timeoutPromise]);
+        if (networkResp && networkResp.ok) {
+          try { cache.put(event.request, networkResp.clone()); } catch(e) {}
+          return networkResp;
+        }
+        throw new Error("non-ok status " + (networkResp && networkResp.status));
+      } catch (e) {
+        const cachedResp = await cache.match(event.request, { ignoreSearch: true });
+        if (cachedResp) return cachedResp;
+        // Pas en cache + offline → 404 JSON propre (decouvrirPlansServeur
+        // log « absent » et continue — jamais de crash au boot).
+        return new Response("", { status: 404, headers: { "Content-Type": "application/json" } });
       }
     })());
     return;

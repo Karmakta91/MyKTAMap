@@ -1775,3 +1775,24 @@ Liste d'outils : **5 → 4** entrées (Carnet · Éditeur de données · Mes lia
 - ❌ Réintroduire des ratios `fr` ou des paliers de correction sur `.loader-grid` — les rails fixes sont LE fix.
 - ❌ Redonner une grille à `.kta-loader-top-row`.
 - ❌ Sortir la recherche du header pour la remettre dans une colonne.
+
+---
+
+## 🛡️ Modale ouverte en mode map → coupure des modes outils (v1.73.1)
+
+**Problème** : un mode clic-carte armé (mesure, édition de points, recalage, tracé, zone, structure) + une modale par-dessus = état incohérent — le mode survit derrière la modale, les clics carte partent dans l'outil à la fermeture, le bouton reste surligné sans effet.
+
+**Implémentation** — `js/interface.js > _initCoupeModesSurModale()` (IIFE, ~l.784) :
+- **Détection CENTRALE** plutôt qu'un hook sur chacune des ~140 ouvertures de modale : `MutationObserver` `childList` **SANS `subtree`** sur `document.documentElement` **et** `document.body` — les 2 seuls points d'attache des overlays du projet. Sans subtree = **zéro coût** sur le churn DOM de Leaflet.
+- Match par classe : `RX_OVERLAY` = `kta-readme-modal-overlay` | `kta-secours-overlay`.
+- Coupure = **`_desactiverTousLesModes()`** (les 6 modes y sont tous enregistrés avec leur désactivation propre). Le **TRACKER n'est pas un mode exclusif** (il tourne en fond) → jamais coupé, comme demandé.
+- Ceinture : sortie immédiate si aucun mode actif, et si `window.ktaPlanAffiche()` est faux (au HOME les modes n'existent pas).
+- **Helper public** `window.ktaCouperModesOutils()` pour les cas particuliers futurs (couper depuis un flux qui n'ouvre pas d'overlay).
+
+**2 exclusions raisonnées** :
+| Exclu | Pourquoi |
+|---|---|
+| `#kta-poi-modal` (liste `IDS_EXCLUS`) | Formulaire ouvert PAR le clic-carte du mode édition — couper casserait l'enchaînement « poser plusieurs points d'affilée ». |
+| Confirmations `.kta-modal-overlay` (ex. ❌ Effacer mesure) | Hors filet **par classe** (autre classe que `kta-readme-modal-overlay`) — rien à exclure explicitement. |
+
+⚠️ **Piège** : toute nouvelle modale qui reprend la classe `kta-readme-modal-overlay` **coupera** les modes outils. Si c'est une modale de flux d'outil, l'ajouter à `IDS_EXCLUS` (elle doit alors porter un `id`).

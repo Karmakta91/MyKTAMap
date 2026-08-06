@@ -68,7 +68,15 @@ let DEFAULT_CONFIG = {
   // dans ⚙️ Réglages (map mode) ou ⚙️ Configuration (loader/home).
   // Pas de reload requis : un appel à renderRoads() après toggle suffit
   // pour faire disparaître / réapparaître les cercles à chaud.
-  showRoadIntersections: true,
+  // ⚠️ v1.74.0 — DÉFAUT BASCULÉ À false (décision KARMA). Les cercles ne
+  // signalent PAS un contact réel : `road.js > _calculerIntersectionsRoads`
+  // pose aussi un cercle quand une EXTRÉMITÉ passe à moins de
+  // ROAD_PROXIMITY_TOLERANCE (8 px plan) d'un segment voisin. Deux tracés qui
+  // se frôlent sans se toucher affichent donc un cercle — lecture trompeuse,
+  // signalée sur le terrain. Le toggle reste disponible partout, mais il
+  // s'active désormais en connaissance de cause. Dette associée : cf.
+  // docs/BACKLOG.md (« cercles d'intersection : symptôme vs cause »).
+  showRoadIntersections: false,
 
   // 🧭 Nav Intelligente (C2) : caler la position tracker sur le réseau de
   // tracés (map-matching). Pref GLOBALE, défaut OFF (rétrocompat stricte).
@@ -77,6 +85,17 @@ let DEFAULT_CONFIG = {
   smartNav: false,
   smartNavRadiusM:       6,    // 🆕 v1.49.0 — tolérance latérale du verrou sur tracé (m), réglable ⚙️
   smartNavHeadingWeight: 0.7,  // 🆕 v1.49.0 — poids du cap aux croisements (px/°), réglable ⚙️
+
+  // 🧲 C5 v1.74.0 — MAGNÉTISME EDIT-TIME (accrochage au dessin).
+  // Pref GLOBALE, défaut OFF (le geste de dessin historique reste le défaut —
+  // ce lot touche `road.js > mousedown`, utilisé à chaque session).
+  // ⚠️ INDÉPENDANT de `smartNav` malgré son rangement dans la même section de
+  // ⚙️ Réglages : le magnétisme améliore la qualité du GRAPHE, donc il sert
+  // aussi au Pathfinder (itinéraires) même si la nav intelligente est OFF.
+  snapDraw:   false,
+  snapDrawPx: 14,   // rayon d'accrochage en pixels ÉCRAN (converti en unités
+                    // plan au clic selon le zoom courant — « si c'est proche
+                    // à l'œil, ça s'accroche », quel que soit le niveau de zoom)
 
   // 🧭 v1.37.0 — Orientation du Nord (offset en degrés vs haut du plan).
   // Default 0 = haut du plan = Nord (comportement historique strict).
@@ -141,6 +160,9 @@ try {
   // 🆕 v1.49.0 — tolérances réglables du verrou sur tracé (override des défauts)
   if (Number.isFinite(saved.smartNavRadiusM))       APP_CONFIG.smartNavRadiusM       = saved.smartNavRadiusM;
   if (Number.isFinite(saved.smartNavHeadingWeight)) APP_CONFIG.smartNavHeadingWeight = saved.smartNavHeadingWeight;
+  // 🧲 C5 v1.74.0 — magnétisme edit-time (pref globale, défaut OFF)
+  if ("snapDraw" in saved) APP_CONFIG.snapDraw = !!saved.snapDraw;
+  if (Number.isFinite(saved.snapDrawPx) && saved.snapDrawPx > 0) APP_CONFIG.snapDrawPx = saved.snapDrawPx;
 } catch(e) {}
 
 // =========================
@@ -378,6 +400,17 @@ function buildAppConfigFromPlan(planConfig) {
     if ("smartNav"              in saved) cfg.smartNav              = !!saved.smartNav;
     if (Number.isFinite(saved.smartNavRadiusM))       cfg.smartNavRadiusM       = saved.smartNavRadiusM;
     if (Number.isFinite(saved.smartNavHeadingWeight)) cfg.smartNavHeadingWeight = saved.smartNavHeadingWeight;
+    // 🐛 v1.75.0 (repro KARMA « je n'ai pas le flash doré ») — `snapDraw`
+    // MANQUAIT ici. Il était bien sauvegardé et restauré au BOOT (bloc
+    // app_user_prefs plus haut), mais APP_CONFIG est RECONSTRUIT à chaque
+    // chargement de plan par cette fonction : toute pref absente de cette
+    // liste retombe silencieusement sur DEFAULT_CONFIG. Le magnétisme
+    // repassait donc à false dès l'ouverture d'un plan — c'est-à-dire
+    // exactement au moment où on veut dessiner.
+    // ⚠️ Toute nouvelle pref GLOBALE doit être ajoutée aux DEUX endroits :
+    // le bloc de restauration au boot ET cette liste.
+    if ("snapDraw" in saved) cfg.snapDraw = !!saved.snapDraw;
+    if (Number.isFinite(saved.snapDrawPx) && saved.snapDrawPx > 0) cfg.snapDrawPx = saved.snapDrawPx;
   } catch(e) {}
 
   // Fallback aux valeurs par défaut si absentes des prefs (= user a jamais
@@ -385,8 +418,12 @@ function buildAppConfigFromPlan(planConfig) {
   // champ resterait undefined et la check `!== false` le traiterait comme
   // truthy — fonctionnel mais moins explicite.
   if (cfg.scaledMarkers === undefined)         cfg.scaledMarkers         = DEFAULT_CONFIG.scaledMarkers !== false;
-  if (cfg.showRoadIntersections === undefined) cfg.showRoadIntersections = DEFAULT_CONFIG.showRoadIntersections !== false;
+  // ⚠️ v1.74.0 : passé de `!== false` à `=== true` — le défaut est désormais
+  // OFF, l'idiome `!== false` aurait continué à rendre true sur undefined.
+  if (cfg.showRoadIntersections === undefined) cfg.showRoadIntersections = DEFAULT_CONFIG.showRoadIntersections === true;
   if (cfg.smartNav === undefined)              cfg.smartNav              = DEFAULT_CONFIG.smartNav === true;  // défaut OFF
+  if (cfg.snapDraw === undefined)              cfg.snapDraw              = DEFAULT_CONFIG.snapDraw === true;  // défaut OFF
+  if (!Number.isFinite(cfg.snapDrawPx))        cfg.snapDrawPx            = DEFAULT_CONFIG.snapDrawPx;
 
   return cfg;
 }
@@ -465,10 +502,12 @@ function sauvegarderPrefsUtilisateur() {
     const existing = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
     existing.debugMode             = !!APP_CONFIG.debugMode;
     existing.scaledMarkers         = APP_CONFIG.scaledMarkers !== false;          // v174 : default true
-    existing.showRoadIntersections = APP_CONFIG.showRoadIntersections !== false;  // 🆕 v1.9.2 : default true
+    existing.showRoadIntersections = APP_CONFIG.showRoadIntersections === true;   // ⚠️ v1.74.0 : default FALSE
     existing.smartNav              = APP_CONFIG.smartNav === true;                 // 🧭 Nav C2 : default false
     if (Number.isFinite(APP_CONFIG.smartNavRadiusM))       existing.smartNavRadiusM       = APP_CONFIG.smartNavRadiusM;       // 🆕 v1.49.0
     if (Number.isFinite(APP_CONFIG.smartNavHeadingWeight)) existing.smartNavHeadingWeight = APP_CONFIG.smartNavHeadingWeight; // 🆕 v1.49.0
+    existing.snapDraw              = APP_CONFIG.snapDraw === true;                 // 🧲 C5 v1.74.0 : default false
+    if (Number.isFinite(APP_CONFIG.snapDrawPx) && APP_CONFIG.snapDrawPx > 0) existing.snapDrawPx = APP_CONFIG.snapDrawPx;
     localStorage.setItem("app_user_prefs", JSON.stringify(existing));
   } catch(e) {}
 }
@@ -550,8 +589,11 @@ function _writePlanPrefs(planId, prefs) {
 // Lecture avec fallback en cascade :
 //   1. Pref per-plan (clé dédiée localStorage)
 //   2. Pref globale historique APP_CONFIG.showRoadIntersections
-//   3. Default true
+//   3. Default FALSE (⚠️ basculé en v1.74.0 — cf. DEFAULT_CONFIG)
 // Renvoie un boolean.
+// ⚠️ Les 2 premiers niveaux restent prioritaires : un user qui avait activé
+// les cercles explicitement (per-plan ou global) les GARDE. Seuls ceux qui
+// n'ont jamais touché le toggle basculent sur OFF.
 function getPlanShowsIntersections(planId) {
   const pid = planId || window._currentLoadedPlanId || "default";
   const prefs = _readPlanPrefs(pid);
@@ -562,7 +604,7 @@ function getPlanShowsIntersections(planId) {
   if (window.APP_CONFIG && typeof window.APP_CONFIG.showRoadIntersections === "boolean") {
     return window.APP_CONFIG.showRoadIntersections;
   }
-  return true; // default
+  return false; // ⚠️ v1.74.0 : default OFF (était true)
 }
 
 // Setter per-plan + re-render à chaud. Appelé par le toggle dans Réglages
@@ -640,6 +682,76 @@ function resetPlanNorthOffset(planId) {
     }));
   } catch(e) {}
 }
+
+// =========================
+// 🧭 v1.76.1 — ESTIMATION DU POINT B DE GÉOREF (demande KARMA 06/08)
+// =========================
+// Cas d'usage : on connaît le GPS d'UN seul point (A, ex. l'entrée), mais le
+// plan a une ÉCHELLE fiable (px/m) et son orientation Nord est calibrée
+// (northOffsetDeg — 0 par défaut = Nord en haut, croissant HORAIRE, même
+// convention que la boussole/tracker). Ces deux données contiennent déjà tout
+// ce que le point B apporte : on peut donc le DÉDUIRE au lieu de le mesurer.
+//
+// Math : Δpixels → mètres via l'échelle, rotation ANTI-horaire de
+// +northOffsetDeg pour passer du repère image au repère géographique
+// (vérif. : offset 90° = « le Nord pointe vers la droite du plan » → un
+// vecteur vers la droite de l'image doit devenir plein Nord), puis mètres →
+// degrés en approximation locale (1° lat ≈ 111 320 m ; lng corrigé par
+// cos(lat) — erreur < 0,1 % sous 10 km d'emprise, négligeable devant
+// l'hypothèse d'orientation elle-même).
+//
+// REFUS, PAS DE CLAMP (règle KARMA) : rend null si A incomplet, échelle
+// invalide (≤ 0 / non finie) ou latitude trop polaire (|lat| > 85° :
+// cos(lat) → 0, le calcul de longitude diverge).
+//
+// Retourne { x, y, lat, lng, estimated: true } — le format EXACT d'un point
+// de calibration : tout l'aval (Vue OSM, KMZ/GPX, Secours) le consomme sans
+// modification. `estimated` est un marqueur d'honnêteté, affiché par les UI.
+function ktaEstimerPointB(pointA, pixelB, scalePxM, northOffsetDeg) {
+  if (!pointA || !pixelB) return null;
+  // ⚠️ null/undefined AVANT Number() : Number(null) vaut 0 (finite !) — un A
+  // avec lat:null serait « estimé » depuis l'équateur au lieu d'être refusé.
+  // Attrapé par check-georef-estimation au premier run.
+  if ([pointA.x, pointA.y, pointA.lat, pointA.lng, pixelB.x, pixelB.y]
+        .some(function(v) { return v == null || v === ""; })) return null;
+  const ax = Number(pointA.x), ay = Number(pointA.y);
+  const alat = Number(pointA.lat), alng = Number(pointA.lng);
+  const bx = Number(pixelB.x), by = Number(pixelB.y);
+  const s = Number(scalePxM);
+  if (![ax, ay, alat, alng, bx, by].every(Number.isFinite)) return null;
+  if (!Number.isFinite(s) || s <= 0) return null;
+  if (Math.abs(alat) > 85) return null;
+
+  const theta = ((Number(northOffsetDeg) || 0) * Math.PI) / 180;
+  // Repère image : x → droite, y → BAS. En « plan » : est = Δx, nord = −Δy.
+  const estPlan  = (bx - ax) / s;
+  const nordPlan = -(by - ay) / s;
+  // Rotation anti-horaire de +theta (cf. démonstration en tête).
+  const estVrai  = estPlan * Math.cos(theta) - nordPlan * Math.sin(theta);
+  const nordVrai = estPlan * Math.sin(theta) + nordPlan * Math.cos(theta);
+
+  const M_PAR_DEG = 111320;
+  const lat = alat + nordVrai / M_PAR_DEG;
+  const lng = alng + estVrai / (M_PAR_DEG * Math.cos(alat * Math.PI / 180));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { x: bx, y: by, lat: lat, lng: lng, estimated: true };
+}
+window.ktaEstimerPointB = ktaEstimerPointB;
+
+// Coin d'image le plus éloigné d'un point — position du B virtuel (longue
+// base = moins de bruit numérique dans le transform aval ; la position n'a
+// aucun sens physique, le point est synthétique par construction).
+function ktaCoinLePlusLoin(pointA, imageWidth, imageHeight) {
+  const w = Number(imageWidth), h = Number(imageHeight);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0 || !pointA) return null;
+  let best = null, bestD = -1;
+  [[0, 0], [w, 0], [0, h], [w, h]].forEach(function(c) {
+    const d = Math.hypot(c[0] - Number(pointA.x), c[1] - Number(pointA.y));
+    if (d > bestD) { bestD = d; best = { x: c[0], y: c[1] }; }
+  });
+  return best;
+}
+window.ktaCoinLePlusLoin = ktaCoinLePlusLoin;
 
 // =========================
 // EXPORTS GLOBAUX

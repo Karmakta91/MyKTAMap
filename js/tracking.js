@@ -737,12 +737,48 @@ function _avancerSurGraphe() {
     position.x = m.matched.x;
     position.y = m.matched.y;
     _navSegIdx = m.segIdx;
+    _basculerNiveauSiTraversee(m);   // 🏗️ C6 v1.74.0
     updateMap();
     _pushTimelinePoint("pdr");
   } else {
     // OFF network : repli raster (recalcule la même brute + collision + timeline).
     _navSegIdx = -1;
     _avancerRaster();
+  }
+}
+
+// 🏗️ C6 v1.74.0 — BASCULE AUTO DU NIVEAU AU FRANCHISSEMENT D'UNE JONCTION.
+// Le map-matching rouvre tous les niveaux tant que le segment précédent est
+// "transit" (cf. roadGraph > _levelEligible règle 4). Donc dès qu'on atterrit
+// sur un segment de niveau NUMÉRIQUE différent de l'actif, c'est qu'on vient
+// de sortir d'un puits / escalier : on suit.
+//
+// Pourquoi une bascule AUTO et pas une confirmation : en navigation on a les
+// mains prises et la lampe dans l'autre — une modale bloquante est ingérable.
+// Le risque résiduel (un point créé juste après hériterait du mauvais niveau
+// via editor.js) est fortement réduit depuis v1.74.0 : `ktaSetActiveLevel`
+// fait désormais une UNION sur visibleLevels, donc la bascule ne fait plus
+// DISPARAÎTRE l'étage quitté — rien ne se perd à l'écran, et l'user voit le
+// toast + la pastille changer. Retour manuel = 1 tap sur le chip de niveau.
+//
+// ⚠️ Ne se déclenche QUE si `multiLevel` est actif sur ce plan ET si smartNav
+// est ON (cette fonction n'est appelée que depuis _avancerSurGraphe).
+function _basculerNiveauSiTraversee(m) {
+  if (!m || !Number.isInteger(m.level)) return;   // "transit" ou null → on traverse encore
+  const cfg = window.APP_CONFIG;
+  if (!cfg || !cfg.multiLevel) return;
+  const actif = Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0;
+  if (m.level === actif) return;
+  if (typeof window.ktaSetActiveLevel !== "function") return;
+
+  window.ktaSetActiveLevel(m.level, { source: "nav-jonction" });
+  console.log("[Tracking] Jonction franchie → niveau", m.level);
+
+  if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+    const t = (window.I18n && typeof window.I18n.t === "function")
+      ? window.I18n.t("tracker.nav.niveauAuto", { level: String(m.level) })
+      : "🏗️ Niveau " + m.level + " — jonction franchie";
+    window.OOMGuard.showToast(t, "info");
   }
 }
 

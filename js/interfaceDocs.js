@@ -806,7 +806,7 @@ function _aideHtmlFr() {
           </p>
           <ul style="font-size:13px; color:#c0c8d8; margin:0 0 8px 16px; padding:0; line-height:1.5;">
             <li><strong>📝 Note libre</strong> — carnet de notes <strong>Markdown</strong> auto-sauvegardé (titres, gras, listes, liens, citations). Mode <strong>Aperçu</strong> pour lire / <strong>✏️ Éditer</strong> pour modifier la source.</li>
-            <li><strong>📚 Histoire</strong> — <strong>jusqu'à 10 documents PDF par plan</strong> (v1.69.0 : avant, un seul, et un nouvel import écrasait le précédent). Liste au-dessus de la visionneuse, <strong>📥 Importer</strong> ajoute, <strong>🗑️ Retirer</strong> supprime le document affiché. Le PDF livré dans le ZIP figure en tête (📕, non supprimable) et n'empêche plus d'ajouter les tiens. Avertissement au-delà de 25 Mo cumulés, refus au-delà de 100 Mo. Sur iPhone : bouton <strong>↗️ Ouvrir dans un onglet</strong> pour le plein écran natif.</li>
+            <li><strong>📚 Histoire</strong> — <strong>jusqu'à 10 documents PDF par plan</strong> (avant, un seul, et un nouvel import écrasait le précédent). Liste au-dessus de la visionneuse, <strong>📥 Importer</strong> ajoute, <strong>🗑️ Retirer</strong> supprime le document affiché. Le PDF livré dans le ZIP figure en tête (📕, non supprimable) et n'empêche plus d'ajouter les tiens. Avertissement au-delà de 25 Mo cumulés, refus au-delà de 100 Mo. Sur iPhone : bouton <strong>↗️ Ouvrir dans un onglet</strong> pour le plein écran natif.</li>
           </ul>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
             Note libre + PDF sont <strong>inclus automatiquement dans l'export de session</strong> (.mkmsession.zip) → tout voyage avec ta session pour partage ou transfert. 100 % offline.
@@ -853,7 +853,7 @@ function _aideHtmlFr() {
             <em>localement</em> et la compare à la liste publique <code>denylist.json</code> téléchargée au boot.
             Si match → <strong>modale rouge bloquante</strong> avec motif + date + bouton « Compris, supprimer ce plan » qui retire
             automatiquement le plan de ta liste. Couvre aussi le générateur (« Modifier un plan existant »).
-            <strong style="color:#e9a13b;">🔄 Audit auto au démarrage (v1.42.3) :</strong> les plans déjà importés sont aussi
+            <strong style="color:#e9a13b;">🔄 Audit auto au démarrage :</strong> les plans déjà importés sont aussi
             vérifiés ~2s après le boot. Si l'un d'eux est révoqué depuis ton dernier import, il est supprimé automatiquement
             et une <strong>modale orange</strong> t'en informe (motif + date). Privacy stricte : <strong>0 empreinte envoyée au serveur</strong>.
             Liste consultable à <code>https://myktamap.fr/denylist.json</code>.
@@ -867,7 +867,7 @@ function _aideHtmlFr() {
             <span class="kta-aide-icone">🎬</span><span><strong>Mode présentation</strong> — bouton <strong>« 🎬 Activer le mode présentation »</strong> placé <strong>tout en haut</strong> de la modale Réglages pour accès en 1 vue. La touche <kbd>F</kbd> y donne aussi accès sur PC. Sortie : touche <kbd>F</kbd> / <kbd>Échap</kbd> (PC) ou bouton flottant ✕ (mobile).</span>
             <span class="kta-aide-icone">🔆</span><span><strong>Garder l'écran allumé (Wake Lock)</strong> — toggle dans Réglages (et aussi dans ⚙️ Configuration loader). Empêche la mise en veille tant que l'app est ouverte. <strong>Idéal en cavité</strong> pour ne pas débloquer son téléphone toutes les 30s. Persistant entre sessions, auto-relâché en arrière-plan, ré-activé au retour. Compat Chrome 84+, Edge 84+, Safari iOS 16.4+ (PWA). Toggle masqué si la fonction n'est pas supportée (Firefox).</span>
             <span class="kta-aide-icone">☀️</span><span><strong>Thème clair / sombre</strong> — bascule entre fond beige cataphile (clair) et fond noir nuit (sombre, défaut). Activable <strong>uniquement depuis la home → Configuration → ☀️ Activer le thème CLAIR</strong>. Le toggle déclenche un rechargement complet de l'app pour éviter les bugs résiduels d'affichage. Choix conservé globalement par appareil.</span>
-            <span class="kta-aide-icone">🚀</span><span>Mode Performance ULTRA (dans ⚙️ Réglages) — pour les gros plans qui crashent. Réglage PAR PLAN depuis v1.59.0 (opt-in, tes points de session restent toujours affichés)</span>
+            <span class="kta-aide-icone">🚀</span><span>Mode Performance ULTRA (dans ⚙️ Réglages) — pour les gros plans qui crashent. Réglage PAR PLAN (opt-in, tes points de session restent toujours affichés)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             Contient le bouton 🎯 pour calibrer l'échelle, 🐛 pour les logs détaillés.
@@ -914,7 +914,7 @@ function _aideHtmlFr() {
           <div class="kta-aide-section-titre">⬇️ Charger / Import</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">📥</span><span><strong>Importer</strong> — un seul bouton qui ouvre une modale à 2 cards : 📥 <strong>Session MyKTAMap</strong> (.json / .zip avec photos) ou 📤 <strong>GPX externe</strong> (TopoDroid, OsmAnd, Avenza, Strava, Garmin… nécessite calibrage GPS). Preview avant import, Ctrl+Z pour annuler.</span>
-            <span class="kta-aide-icone">📊</span><span><strong>Éditeur de données du plan</strong> — modifie les données (points, tracés, zones) sous forme de tableau. Contient aussi <strong>🔗 Fusionner des calques de données</strong> (v1.69.0, arrivé de l'accueil).</span>
+            <span class="kta-aide-icone">📊</span><span><strong>Éditeur de données du plan</strong> — modifie les données (points, tracés, zones) sous forme de tableau. Contient aussi <strong>🔗 Fusionner des calques de données</strong> (arrivé de l'accueil).</span>
             <span class="kta-aide-icone">🗂️</span><span>Changer de plan (revenir au home)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
@@ -923,8 +923,8 @@ function _aideHtmlFr() {
           </p>
           <ul style="font-size:12px; color:#8892a4; margin:4px 0 0 18px; line-height:1.6;">
             <li><strong style="color:#a8b3c8;">▶️ Reprendre</strong> — relance le dernier plan ouvert en 1 clic.</li>
-            <li><strong style="color:#a8b3c8;">🔎 Barre de recherche</strong> (v1.69.0) — au centre de l'en-tête : cherche un point dans TOUS tes plans, Entrée ou 🔎 pour lancer.</li>
-            <li><strong style="color:#a8b3c8;">📔 Mon carnet</strong> (v1.69.0) — tuile de la carte 🧰 Outils : l'historique de tes sorties + tes notes et PDF de plan.</li>
+            <li><strong style="color:#a8b3c8;">🔎 Barre de recherche</strong> — au centre de l'en-tête : cherche un point dans TOUS tes plans — résultats en direct sous la barre dès 2 caractères, Entrée ou 🔎 pour la recherche complète.</li>
+            <li><strong style="color:#a8b3c8;">📔 Mon carnet</strong> — tuile de la carte 🧰 Outils : l'historique de tes sorties + tes notes et PDF de plan.</li>
             <li><strong style="color:#a8b3c8;">📅 Récents</strong> — les 5 derniers plans utilisés.</li>
             <li><strong style="color:#a8b3c8;">📂 Tous</strong> — l'ensemble de tes plans connus.</li>
             <li><strong style="color:#a8b3c8;">🌐</strong> = plan serveur · <strong style="color:#a8b3c8;">💾</strong> = plan ZIP local.</li>
@@ -960,6 +960,42 @@ function _aideHtmlFr() {
             qui fonctionne partout. Pour une persistance maximale sur iPhone, installez l'app en
             <strong>PWA</strong> (Partager → Sur l'écran d'accueil) avant de mémoriser le plan.
           </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">🔄 Réimport d'un plan regénéré (v1.73.1)</strong> — un ZIP de
+            <strong>même nom + même auteur</strong> qu'un plan déjà dans ta liste, mais de <strong>version différente</strong>,
+            ouvre un choix : <strong>🔄 Mettre à jour</strong> (remplace l'entrée et son archive mémorisée —
+            session, notes et liaisons conservées), <strong>➕ Garder les deux</strong>, ou <strong>Annuler</strong>
+            (défaut sur ✕ / Échap / clic à côté : jamais d'écrasement accidentel). Nom ET version identiques =
+            mise à jour directe sans question, comme avant.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">💾 Récupérer le ZIP d'un plan (v1.75.0)</strong> — l'export de profil
+            n'embarque pas les archives. Si tu as perdu le ZIP d'origine, ouvre <strong>ℹ️ Infos</strong> sur le plan :
+            un bouton <strong>💾 Télécharger le ZIP</strong> te le rend, à condition qu'il ait été
+            <strong>mémorisé dans l'app</strong>. Sur un plan en « accès permanent » ou en re-sélection, le bouton est
+            grisé — l'app ne détient rien, le fichier vit (ou vivait) sur ton disque.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🗺️ Convertir depuis un SIG (QGIS…)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🗺️</span><span>Dépose un <strong>.geojson</strong> ou <strong>.kml</strong> sur la zone <strong>« 📦 Charger un nouveau plan » de l'accueil</strong> (la même que pour les ZIP) → le panneau de conversion s'ouvre. Marche aussi depuis la zone d'import du Générateur</span>
+            <span class="kta-aide-icone">🖼️</span><span><strong>Pas besoin d'image</strong> : un fond vierge est généré et calé sur les coordonnées du fichier</span>
+            <span class="kta-aide-icone">🏷️</span><span><strong>Écran de correspondance</strong> : tu choisis la colonne qui porte le type, puis dis à quoi chaque valeur correspond</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#ffb380;">⚠️ Coordonnées GPS obligatoires (WGS84 / EPSG:4326).</strong>
+            Dans QGIS : <em>Exporter → Enregistrer les entités sous…</em> puis EPSG:4326 dans le champ SCR.
+            Un fichier en <strong>Lambert 93</strong> ou autre projection est <strong>refusé</strong>, avec le nombre
+            de coordonnées fautives — l'accepter placerait ton plan à des milliers de kilomètres sans rien signaler.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Les valeurs proposées sont <strong>séparées par famille</strong> (un polygone ne se voit jamais proposer un
+            type de tracé). Trous des polygones ignorés, plafond 20 000 objets.
+            <strong>Shapefile et GeoPackage non gérés</strong> : ils exigeraient des bibliothèques lourdes,
+            incompatibles avec le 100 % hors-ligne. Réexporte en GeoJSON.
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -968,7 +1004,7 @@ function _aideHtmlFr() {
             <span class="kta-aide-icone">🏗️</span><span>Ouvrir le générateur de plan (clic direct)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
-            Permet de créer un nouveau plan ou de modifier un plan existant à partir d'une archive ZIP.
+            Le générateur te guide désormais <strong>étape par étape</strong> (Suivant / Précédent / Passer) avec un <strong>résumé final</strong> qui signale ce qui manque avant de générer ; un ZIP importé pré-remplit toutes les étapes, et <strong>🗒️ Tout afficher</strong> restaure l'ancien affichage une-page (choix mémorisé). Permet de créer un nouveau plan ou de modifier un plan existant à partir d'une archive ZIP.
             2 modes — <strong>🚀 Simple</strong> (juste image + nom + version + V2/M-LVL → ZIP prêt en 30 sec)
             et <strong>⚙️ Avancé</strong> (calques, tracking, icônes, géoréf GPS, <strong>🏷️ légende du plan</strong>).
             Choix mémorisé localement. Mode Modifier force toujours Avancé pour préserver les customs du plan source.
@@ -990,6 +1026,17 @@ function _aideHtmlFr() {
             Aucune donnée transmise. Profil par défaut vide (👤 anonyme) : aucun utilisateur existant n'est forcé de configurer.
             <strong>Stats bandeau</strong> : dès 2 stats dispo le bandeau les affiche en mobile médian,
             temps cumulé survit aux rechargements.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">🖼️ Fond d'écran de l'accueil (v1.75.0)</strong> — en bas de la modale
+            Profil, tu peux mettre <strong>ta propre image</strong> à la place de la couleur du thème. Trois réglages :
+            le <strong>voile</strong> (assombrit l'image pour garder les textes lisibles — 0 % = image nue,
+            100 % = fond uni d'avant), et le <strong>cadrage ↔ / ↕</strong>. Ce dernier compte : l'écran ne montre
+            <strong>jamais toute la photo</strong> (elle est agrandie pour couvrir, le reste est coupé) — en portrait,
+            une photo paysage ne laisse voir qu'environ un quart de sa largeur. Seul le curseur de l'axe qui dépasse
+            a un effet. L'image reste sur l'appareil, dans le même stockage que l'avatar, et son ré-encodage
+            <strong>supprime ses métadonnées</strong> (dont le lieu de prise de vue).
+            ⚠️ Elle ne voyage pas encore avec l'export de profil.
           </p>
         </div>
 
@@ -1073,7 +1120,11 @@ function _aideHtmlFr() {
             <span class="kta-aide-icone">📐</span><span>Édition <strong>session</strong> (perso, locale) : modale 🖼️ Export PNG → « Personnaliser les libellés » ou bouton ✏️ Modifier dans 🗺️ Légende mode carte</span>
             <span class="kta-aide-icone">🏗️</span><span>Édition <strong>au niveau du plan</strong> (partagée avec tous les utilisateurs du plan) : Générateur de plan en <strong>mode Avancé</strong> → section « 🏷️ Légende du plan »</span>
             <span class="kta-aide-icone">✨</span><span>4 catégories couvertes : 📍 icônes / 🛣️ tracés / ⬛ zones / 🏛️ structures — renommer, masquer, ou ajouter des entrées <strong>custom dessinables</strong></span>
-            <span class="kta-aide-icone">🌍</span><span><strong>Aller-retour KMZ</strong> : la légende du plan voyage avec ton KMZ exporté → restaurée auto au ré-import dans une autre instance MyKTAMap. Ignorée par Google Earth / OsmAnd / Avenza.</span>
+            <span class="kta-aide-icone">🎨</span><span><strong>Couleur des types built-in (v1.76.0)</strong> : un sélecteur par ligne dans ✏️ Modifier. La couleur s'applique PARTOUT (carte, exports image/PDF, KMZ, stats, rapport), immédiatement. Bouton ↺ = retour à l'origine. Un pilier/mur garde son contour noir ; « Inaccessible » recolorée perd ses hachures (motif fixe → aplat).</span>
+            <span class="kta-aide-icone">👁️</span><span><strong>Masquer = boîte de légende uniquement</strong> — rien ne disparaît de la carte (ça, c'est 🔍 Filtres). Un custom masqué reste dessinable.</span>
+            <span class="kta-aide-icone">🧳</span><span><strong>La légende voyage (v1.76.0)</strong> : un calque de données exporté emporte la définition des types qu'il référence ; le générateur la lit au ré-import (l'existant du plan garde la priorité). Le ZIP session Avancé l'emporte aussi (session_legend.json).</span>
+            <span class="kta-aide-icone">⚠️</span><span><strong>Types orphelins</strong> : si des objets utilisent un type absent de la légende, la modale ≡ Légende l'annonce en tête (type + nombre d'objets) au lieu de les laisser sortir en couleur de repli sans explication.</span>
+            <span class="kta-aide-icone">🌍</span><span><strong>Aller-retour KMZ</strong> : la légende du plan voyage avec ton KMZ exporté → restaurée auto au ré-import dans une autre instance MyKTAMap. Ignorée par Google Earth / OsmAnd / Avenza. Depuis v1.76.0 l'option embarque <strong>plan + session fusionnés</strong> (avant : plan seul, l'option restait grisée pour une légende créée en session).</span>
             <span class="kta-aide-icone">📤</span><span><strong>Aller-retour GPX</strong> : pareil pour GPX via les métadonnées du fichier GPX. Compatible TopoDroid, OsmAnd, Strava, etc.</span>
             <span class="kta-aide-icone">👁️</span><span>Au ré-import (KMZ ou GPX), le résumé/preview affiche explicitement « ✅ Légende personnalisée du plan détectée : N renommés · M masqués · K customs » avant la génération du ZIP MyKTAMap.</span>
           </div>
@@ -1259,6 +1310,17 @@ function _aideHtmlFr() {
             Le cache est <strong>partagé</strong> entre la Vue OSM d'accueil, la modale Vue OSM et le Mode Secours — un seul Save Offline couvre les trois.
             <span style="color:#a8b3c8;">Réflexe terrain : Save Offline avant de partir, quand tu as encore du réseau.</span>
           </p>
+          <p style="font-size:12px; color:#8892a4; margin:14px 0 0; line-height:1.5;">
+            <strong style="color:#8cb4ff;">🌍 Mode OSM (bouton ⛶ du widget)</strong> — la carte OSM passe en grand.
+            Une <strong>barre de recherche</strong> (dans la ligne de titre, dispo aussi widget réduit) cherche dans
+            tes <strong>plans géoréférencés et leurs points</strong> — 100 % local, résultats en direct.
+            Tu peux <strong>superposer plusieurs plans</strong> (➕) et tout gérer dans la modale
+            <strong>≡ « Plans &amp; filtres »</strong> : ordre ▲▼ (images ET tracés), opacité par plan,
+            réglages d'affichage globaux, filtre par tag agrégé, et 5 filtres par plan (🖼️📍🛣️🌐🏛️).
+            <strong style="color:#a8b3c8;">Depuis v1.73.1</strong>, les calques de données livrés masqués par défaut
+            dans un ZIP sont eux aussi affichés (ils étaient invisibles sans aucun moyen de les activer) — filtre-les
+            comme les autres via les chips de catégorie ou les tags.
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -1284,7 +1346,7 @@ function _aideHtmlFr() {
             <strong>🔁 Tour complet</strong>, et 🎯 par waypoint pour centrer la carte dessus.
           </p>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
-            <strong style="color:#a8b3c8;">🔄 Itinéraire vivant (v1.61.0) :</strong> à chaque <strong>recalage de position</strong>
+            <strong style="color:#a8b3c8;">🔄 Itinéraire vivant :</strong> à chaque <strong>recalage de position</strong>
             (clic carte, « 📍 Je suis ici », arrivée par un portail), l'itinéraire actif est <strong>recalculé depuis ta
             nouvelle position</strong> (étapes restantes conservées dans l'ordre planifié, évitements respectés).
             « 📍 Je suis ici » sur un point qui est une <strong>étape de l'itinéraire</strong> = <strong>validation de
@@ -1414,9 +1476,15 @@ function _aideHtmlFr() {
             <strong>Mode actif</strong> : tant qu'un mode est actif, son groupe reste ouvert pour permettre
             l'accès direct aux actions secondaires (effacer le dernier point par exemple).
           </p>
-          <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.5;">
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>Icône qui change</strong> : l'icône principale du groupe reflète le mode actif (par exemple
             🟩 sur le bouton Tracés quand un tracé principal est en cours, ou 📍 sur le Tracker pendant le recalage).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.5;">
+            <strong>🛡️ Une fenêtre coupe l'outil en cours (v1.73.1)</strong> : ouvrir une modale (Réglages, Filtres,
+            Documentation, Mode Secours…) pendant une mesure, une édition, un tracé, une zone, une structure ou un
+            recalage <strong>désarme le mode</strong> — plus de clics fantômes en refermant. Le <strong>tracker n'est
+            jamais coupé</strong>, et la fiche du point que tu viens de poser n'interrompt pas l'édition.
           </p>
         </div>
 
@@ -1474,32 +1542,32 @@ function _aideHtmlFr() {
             d'arrivée</strong> et te dépose dessus (flash bleu). Marquage visuel au choix : donne le
             <strong>tag « Portail »</strong> au point pour son <strong>icône vortex dédiée</strong>, ou garde
             n'importe quel tag (aucun marquage).
-            <strong>📍 Recalage à l'arrivée</strong> (v1.61.0) : traverser physiquement un portail (➜ d'une liaison,
+            <strong>📍 Recalage à l'arrivée</strong> : traverser physiquement un portail (➜ d'une liaison,
             « Prendre le portail » d'un itinéraire) <strong>recale ta position tracker sur le point d'arrivée</strong> —
             la recherche multi-plans et le gestionnaire, eux, ne recalent pas (consulter ≠ se déplacer).
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>↩️ Retour</strong> (v1.58.0) : après un saut, un bouton flottant « Retour : &lt;plan&gt; »
+            <strong>↩️ Retour</strong> : après un saut, un bouton flottant « Retour : &lt;plan&gt; »
             (15 s, bas de l'écran) te ramène au plan et à la <strong>vue exacte</strong> d'où tu venais (niveau + zoom).
             Les sauts s'empilent — 3 portails enchaînés = 3 retours possibles.
-            <strong>Discret au besoin</strong> (v1.61.0) : <strong>[–]</strong> le réduit en mini-pastille ↩️
+            <strong>Discret au besoin</strong> : <strong>[–]</strong> le réduit en mini-pastille ↩️
             (clic = ré-agrandir), <strong>[✕]</strong> le ferme — le choix est retenu pour les prochains sauts.
-            <strong>🔎 Recherche multi-plans</strong> (v1.58.0) : cherche un point dans <strong>toute ta
+            <strong>🔎 Recherche multi-plans</strong> : cherche un point dans <strong>toute ta
             bibliothèque</strong> depuis la <strong>barre de recherche en haut de l'accueil</strong>
-            (au centre de l'en-tête — c'était un bouton d'outil avant v1.69.0 ; valide avec Entrée ou 🔎)
+            (au centre de l'en-tête — valide avec Entrée ou 🔎)
             ou via la recherche Ctrl+K (bouton « Chercher dans tous les plans »)
             — un clic charge le bon plan et te centre dessus.
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>🌀 Mes liaisons</strong> (v1.59.0) : sur l'<strong>accueil</strong>, liste toutes tes liaisons
+            <strong>🌀 Mes liaisons</strong> : sur l'<strong>accueil</strong>, liste toutes tes liaisons
             (état ⛔ si un plan est absent, ➜ pour y aller, 🗑️ pour supprimer).
-            <strong>🕸️ Vue Graphe</strong> (v1.65.0) : bascule 📋 Liste ⇄ 🕸️ Graphe — la bibliothèque en
+            <strong>🕸️ Vue Graphe</strong> : bascule 📋 Liste ⇄ 🕸️ Graphe — la bibliothèque en
             réseau (plans = bulles avec badges + compteur, portails = traits dont l'épaisseur suit le nombre
             de liaisons, plans sans liaison en bande dédiée). Clic bulle = ouvrir le plan, clic trait =
             détail de la frontière, bulles déplaçables au doigt.
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>🧭 Itinéraire inter-plan</strong> (v1.60.0, refondu v1.64.0) : demande un trajet vers un
+            <strong>🧭 Itinéraire inter-plan</strong> : demande un trajet vers un
             point d'un <strong>autre plan</strong> (modale Itinéraire → « 🌐 Destination sur un autre plan »,
             ou bouton 🧭 dans la recherche multi-plans). L'app compare les portails au coût réel, affiche les
             étapes et la distance totale — tes <strong>points de passage de la modale sont visités d'abord</strong>,
@@ -1550,7 +1618,7 @@ function _aideHtmlFr() {
             du plan reste consultable uniquement plan chargé.
           </p>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
-            Le carnet démarre vide en v1.69.0 : les sorties d'avant n'ont jamais été enregistrées. Tout est
+            Le carnet démarre vide : les sorties d'avant n'ont jamais été enregistrées. Tout est
             local (aucun envoi) ; chaque sortie est supprimable depuis sa fiche ; au-delà de 500 sorties les
             plus anciennes partent. Les photos ne sont pas recopiées (le carnet pointe vers les tiennes — une
             photo supprimée affiche 🚫). Le carnet n'est pas encore inclus dans l'export de profil.
@@ -1585,7 +1653,7 @@ function _aideHtmlEn() {
           </p>
           <ul style="font-size:13px; color:#c0c8d8; margin:0 0 8px 16px; padding:0; line-height:1.5;">
             <li><strong>📝 Free note</strong> — auto-saved <strong>Markdown</strong> notebook (headings, bold, lists, links, quotes). <strong>Preview</strong> mode to read / <strong>✏️ Edit</strong> to modify the source.</li>
-            <li><strong>📚 History</strong> — <strong>up to 10 PDF documents per map</strong> (v1.69.0: before, only one, and a new import overwrote the previous). List above the viewer, <strong>📥 Import</strong> adds, <strong>🗑️ Remove</strong> deletes the displayed document. The PDF shipped in the ZIP sits on top (📕, not deletable) and no longer blocks adding your own. Warning past 25 MB total, refusal past 100 MB. On iPhone: <strong>↗️ Open in a tab</strong> button for native full screen.</li>
+            <li><strong>📚 History</strong> — <strong>up to 10 PDF documents per map</strong> (before, only one, and a new import overwrote the previous). List above the viewer, <strong>📥 Import</strong> adds, <strong>🗑️ Remove</strong> deletes the displayed document. The PDF shipped in the ZIP sits on top (📕, not deletable) and no longer blocks adding your own. Warning past 25 MB total, refusal past 100 MB. On iPhone: <strong>↗️ Open in a tab</strong> button for native full screen.</li>
           </ul>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
             Free note + PDF are <strong>automatically included in the session export</strong> (.mkmsession.zip) → everything travels with your session for sharing or transfer. 100% offline.
@@ -1632,7 +1700,7 @@ function _aideHtmlEn() {
             <em>locally</em> and compares it against the public <code>denylist.json</code> list downloaded at boot.
             On a match → <strong>blocking red modal</strong> with reason + date + a "Got it, delete this map" button that automatically
             removes the map from your list. Also covers the generator ("Edit an existing map").
-            <strong style="color:#e9a13b;">🔄 Auto audit at startup (v1.42.3):</strong> already-imported maps are also
+            <strong style="color:#e9a13b;">🔄 Auto audit at startup:</strong> already-imported maps are also
             checked ~2s after boot. If one of them has been revoked since your last import, it is deleted automatically
             and an <strong>orange modal</strong> informs you (reason + date). Strict privacy: <strong>0 fingerprints sent to the server</strong>.
             List viewable at <code>https://myktamap.fr/denylist.json</code>.
@@ -1646,7 +1714,7 @@ function _aideHtmlEn() {
             <span class="kta-aide-icone">🎬</span><span><strong>Presentation mode</strong> — <strong>"🎬 Enable presentation mode"</strong> button placed <strong>at the very top</strong> of the Settings modal for one-glance access. The <kbd>F</kbd> key also opens it on PC. Exit: <kbd>F</kbd> / <kbd>Esc</kbd> key (PC) or floating ✕ button (mobile).</span>
             <span class="kta-aide-icone">🔆</span><span><strong>Keep the screen on (Wake Lock)</strong> — toggle in Settings (and also in ⚙️ loader Configuration). Prevents sleep while the app is open. <strong>Ideal underground</strong> so you don't have to unlock your phone every 30s. Persistent across sessions, auto-released in the background, re-enabled on return. Compatible with Chrome 84+, Edge 84+, Safari iOS 16.4+ (PWA). Toggle hidden if the feature isn't supported (Firefox).</span>
             <span class="kta-aide-icone">☀️</span><span><strong>Light / dark theme</strong> — switches between a beige cataphile background (light) and a black night background (dark, default). Can only be enabled <strong>from the home → Configuration → ☀️ Enable LIGHT theme</strong>. The toggle triggers a full app reload to avoid residual display bugs. Choice kept globally per device.</span>
-            <span class="kta-aide-icone">🚀</span><span>ULTRA Performance mode (in ⚙️ Settings) — for large maps that crash. PER-PLAN setting since v1.59.0 (opt-in, your session points always stay visible)</span>
+            <span class="kta-aide-icone">🚀</span><span>ULTRA Performance mode (in ⚙️ Settings) — for large maps that crash. PER-PLAN setting (opt-in, your session points always stay visible)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             Contains the 🎯 button to calibrate the scale, 🐛 for detailed logs.
@@ -1693,7 +1761,7 @@ function _aideHtmlEn() {
           <div class="kta-aide-section-titre">⬇️ Load / Import</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">📥</span><span><strong>Import</strong> — a single button that opens a 2-card modal: 📥 <strong>MyKTAMap session</strong> (.json / .zip with photos) or 📤 <strong>External GPX</strong> (TopoDroid, OsmAnd, Avenza, Strava, Garmin… requires GPS calibration). Preview before import, Ctrl+Z to undo.</span>
-            <span class="kta-aide-icone">📊</span><span><strong>Map data editor</strong> — edit the data (points, paths, zones) as a table. Also holds <strong>🔗 Merge data layers</strong> (v1.69.0, moved in from the home screen).</span>
+            <span class="kta-aide-icone">📊</span><span><strong>Map data editor</strong> — edit the data (points, paths, zones) as a table. Also holds <strong>🔗 Merge data layers</strong> (moved in from the home screen).</span>
             <span class="kta-aide-icone">🗂️</span><span>Switch map (back to home)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
@@ -1702,8 +1770,8 @@ function _aideHtmlEn() {
           </p>
           <ul style="font-size:12px; color:#8892a4; margin:4px 0 0 18px; line-height:1.6;">
             <li><strong style="color:#a8b3c8;">▶️ Resume</strong> — relaunches the last opened map in one click.</li>
-            <li><strong style="color:#a8b3c8;">🔎 Search bar</strong> (v1.69.0) — centered in the header: search a point across ALL your maps, Enter or 🔎 to run it.</li>
-            <li><strong style="color:#a8b3c8;">📔 My logbook</strong> (v1.69.0) — tile in the 🧰 Tools card: the history of your trips plus your map notes and PDFs.</li>
+            <li><strong style="color:#a8b3c8;">🔎 Search bar</strong> — centered in the header: search a point across ALL your maps — live results under the bar from 2 characters, Enter or 🔎 for the full search.</li>
+            <li><strong style="color:#a8b3c8;">📔 My logbook</strong> — tile in the 🧰 Tools card: the history of your trips plus your map notes and PDFs.</li>
             <li><strong style="color:#a8b3c8;">📅 Recent</strong> — the last 5 maps used.</li>
             <li><strong style="color:#a8b3c8;">📂 All</strong> — all your known maps.</li>
             <li><strong style="color:#a8b3c8;">🌐</strong> = server map · <strong style="color:#a8b3c8;">💾</strong> = local ZIP map.</li>
@@ -1739,6 +1807,40 @@ function _aideHtmlEn() {
             which works everywhere. For maximum persistence on iPhone, install the app as a
             <strong>PWA</strong> (Share → Add to Home Screen) before saving the map.
           </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">🔄 Re-importing a regenerated map (v1.73.1)</strong> — a ZIP with the
+            <strong>same name + same author</strong> as a map already in your list, but a <strong>different version</strong>,
+            opens a choice: <strong>🔄 Update</strong> (replaces the entry and its stored archive — session, notes and
+            links kept), <strong>➕ Keep both</strong>, or <strong>Cancel</strong> (default on ✕ / Escape / click outside:
+            no accidental overwrite). Same name AND version = direct update without asking, as before.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">💾 Retrieve a map's ZIP (v1.75.0)</strong> — the profile export does not
+            carry archives. If you lost the original ZIP, open <strong>ℹ️ Info</strong> on the map: a
+            <strong>💾 Download the ZIP</strong> button gives it back, provided it was <strong>saved in the app</strong>.
+            On a map using "permanent access" or re-selection the button is greyed out — the app holds nothing, the
+            file lives (or lived) on your disk.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🗺️ Convert from GIS (QGIS…)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🗺️</span><span>Drop a <strong>.geojson</strong> or <strong>.kml</strong> on the <strong>"📦 Load a new map" area of the home screen</strong> (the same one you use for ZIPs) → the conversion panel opens. Also works from the Generator import area</span>
+            <span class="kta-aide-icone">🖼️</span><span><strong>No image needed</strong>: a blank background is generated and aligned on the file's coordinates</span>
+            <span class="kta-aide-icone">🏷️</span><span><strong>Mapping screen</strong>: pick the column holding the type, then say what each value means</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#ffb380;">⚠️ GPS coordinates required (WGS84 / EPSG:4326).</strong>
+            In QGIS: <em>Export → Save Features As…</em> then EPSG:4326 in the CRS field.
+            A file in <strong>Lambert 93</strong> or another projection is <strong>refused</strong>, with the number of
+            offending coordinates — accepting it would place your map thousands of kilometres away with no warning.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Offered values are <strong>split by family</strong> (a polygon is never offered a path type). Polygon holes
+            ignored, 20,000-object cap. <strong>Shapefile and GeoPackage unsupported</strong>: they would require heavy
+            libraries, incompatible with 100% offline. Re-export as GeoJSON.
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -1747,7 +1849,7 @@ function _aideHtmlEn() {
             <span class="kta-aide-icone">🏗️</span><span>Open the map generator (direct click)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
-            Lets you create a new map or edit an existing one from a ZIP archive.
+            The generator now guides you <strong>step by step</strong> (Next / Previous / Skip) with a <strong>final summary</strong> flagging what is missing before generating; an imported ZIP pre-fills every step, and <strong>🗒️ Show all</strong> restores the classic one-page layout (choice remembered). Lets you create a new map or edit an existing one from a ZIP archive.
             2 modes — <strong>🚀 Simple</strong> (just image + name + version + V2/M-LVL → ZIP ready in 30 sec)
             and <strong>⚙️ Advanced</strong> (layers, tracking, icons, GPS georef, <strong>🏷️ map legend</strong>).
             Choice remembered locally. Edit mode always forces Advanced to preserve the source map's customizations.
@@ -1769,6 +1871,17 @@ function _aideHtmlEn() {
             No data transmitted. Default profile empty (👤 anonymous): no existing user is forced to configure anything.
             <strong>Banner stats</strong>: from 2 stats available the banner displays them in mobile median,
             cumulative time survives reloads.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">🖼️ Home wallpaper (v1.75.0)</strong> — at the bottom of the Profile modal
+            you can set <strong>your own image</strong> instead of the theme colour. Three settings: the
+            <strong>veil</strong> (darkens the image to keep text readable — 0% = bare image, 100% = the previous
+            plain background), and <strong>framing ↔ / ↕</strong>. That last one matters: the screen
+            <strong>never shows the whole photo</strong> (it is scaled up to cover, the rest is cropped) — in portrait,
+            a landscape photo only shows about a quarter of its width. Only the slider for the overflowing axis has an
+            effect. The image stays on the device, in the same storage as the avatar, and re-encoding
+            <strong>strips its metadata</strong> (including where it was taken).
+            ⚠️ It does not travel with the profile export yet.
           </p>
         </div>
 
@@ -2038,6 +2151,17 @@ function _aideHtmlEn() {
             The cache is <strong>shared</strong> between the home OSM View, the OSM View modal and Rescue Mode — a single Save Offline covers all three.
             <span style="color:#a8b3c8;">Field reflex: Save Offline before you leave, while you still have a signal.</span>
           </p>
+          <p style="font-size:12px; color:#8892a4; margin:14px 0 0; line-height:1.5;">
+            <strong style="color:#8cb4ff;">🌍 OSM mode (widget's ⛶ button)</strong> — the OSM map goes big.
+            A <strong>search bar</strong> (in the title line, also available on the collapsed widget) searches your
+            <strong>georeferenced maps and their points</strong> — 100% local, live results.
+            You can <strong>stack several maps</strong> (➕) and manage everything in the
+            <strong>≡ "Plans &amp; filters"</strong> modal: ▲▼ order (images AND paths), per-map opacity,
+            global display switches, aggregated tag filter, and 5 per-map filters (🖼️📍🛣️🌐🏛️).
+            <strong style="color:#a8b3c8;">Since v1.73.1</strong>, data layers shipped hidden by default in a ZIP are
+            displayed too (they used to be invisible with no way to enable them) — filter them like the others via the
+            category chips or the tags.
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -2063,7 +2187,7 @@ function _aideHtmlEn() {
             <strong>🔁 Full loop</strong> buttons, and 🎯 per waypoint to center the map on it.
           </p>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
-            <strong style="color:#a8b3c8;">🔄 Living route (v1.61.0):</strong> every <strong>position
+            <strong style="color:#a8b3c8;">🔄 Living route:</strong> every <strong>position
             recalibration</strong> (map click, "📍 I am here", portal arrival) <strong>recalculates the active
             route from your new position</strong> (remaining stops kept in planned order, avoidances respected).
             "📍 I am here" on a point that is a <strong>route stop</strong> = <strong>passage validation</strong>
@@ -2193,9 +2317,16 @@ function _aideHtmlEn() {
             <strong>Active mode</strong>: as long as a mode is active, its group stays open to allow
             direct access to the secondary actions (erasing the last point, for example).
           </p>
-          <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.5;">
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>Changing icon</strong>: the group's main icon reflects the active mode (for example
             🟩 on the Paths button when a main path is in progress, or 📍 on the Tracker during recalibration).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.5;">
+            <strong>🛡️ A window cancels the active tool (v1.73.1)</strong>: opening a modal (Settings, Filters,
+            Documentation, Rescue Mode…) during a measurement, an edit, a path, a zone, a structure or a
+            recalibration <strong>disarms the mode</strong> — no more ghost clicks after closing. The
+            <strong>tracker is never cancelled</strong>, and the form of the point you just placed does not
+            interrupt editing.
           </p>
         </div>
 
@@ -2253,31 +2384,31 @@ function _aideHtmlEn() {
             level</strong> and drops you on it (blue flash). Visual marking is your choice: give the point
             the <strong>"Portal" tag</strong> for its <strong>dedicated vortex icon</strong>, or keep any
             tag (no marking).
-            <strong>📍 Recalibration on arrival</strong> (v1.61.0): physically crossing a portal (a link's ➜,
+            <strong>📍 Recalibration on arrival</strong>: physically crossing a portal (a link's ➜,
             a route's "Take the portal") <strong>recalibrates your tracker position onto the arrival
             point</strong> — multi-plan search and the manager do not (viewing ≠ moving).
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>↩️ Back</strong> (v1.58.0): after a jump, a floating "Back: &lt;plan&gt;" button
+            <strong>↩️ Back</strong>: after a jump, a floating "Back: &lt;plan&gt;" button
             (15 s, bottom of screen) brings you back to the plan and the <strong>exact view</strong> you came
             from (level + zoom). Jumps stack — 3 chained portals = 3 possible returns.
-            <strong>Discreet when needed</strong> (v1.61.0): <strong>[–]</strong> shrinks it to a ↩️ mini-chip
+            <strong>Discreet when needed</strong>: <strong>[–]</strong> shrinks it to a ↩️ mini-chip
             (click = re-expand), <strong>[✕]</strong> closes it — your choice is remembered for future jumps.
-            <strong>🔎 Multi-plan search</strong> (v1.58.0): search a point across <strong>your whole
+            <strong>🔎 Multi-plan search</strong>: search a point across <strong>your whole
             library</strong> from the <strong>search bar at the top of the home screen</strong> (centered
-            in the header — it used to be a tool button before v1.69.0; confirm with Enter or 🔎) or via the Ctrl+K
+            in the header — confirm with Enter or 🔎) or via the Ctrl+K
             search ("Search across all plans" button) — one click loads the right plan and centers on it.
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>🌀 My links</strong> (v1.59.0): on the <strong>home screen</strong>, lists all your links
+            <strong>🌀 My links</strong>: on the <strong>home screen</strong>, lists all your links
             (⛔ if a plan is missing, ➜ to go there, 🗑️ to delete).
-            <strong>🕸️ Graph view</strong> (v1.65.0): toggle 📋 List ⇄ 🕸️ Graph — the library as a network
+            <strong>🕸️ Graph view</strong>: toggle 📋 List ⇄ 🕸️ Graph — the library as a network
             (plans = bubbles with badges + counter, portals = lines whose thickness follows the number of
             links, unlinked plans in a dedicated strip). Click a bubble = open the plan, click a line =
             border detail, bubbles draggable.
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>🧭 Inter-plan route</strong> (v1.60.0, revamped v1.64.0): request a route to a point on
+            <strong>🧭 Inter-plan route</strong>: request a route to a point on
             <strong>another plan</strong> (Route modal → "🌐 Destination on another plan", or 🧭 button in
             the multi-plan search). The app compares portals at real cost, shows the steps and total
             distance — your <strong>modal waypoints are visited first</strong>, in order.
@@ -2328,7 +2459,7 @@ function _aideHtmlEn() {
             still requires the plan to be loaded.
           </p>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
-            The logbook starts empty in v1.69.0: earlier trips were never recorded. Everything stays local
+            The logbook starts empty: earlier trips were never recorded. Everything stays local
             (nothing is uploaded); each trip can be deleted from its sheet; beyond 500 trips the oldest ones
             are removed. Photos are not copied (the logbook points at yours — a deleted photo shows 🚫).
             The logbook is not part of the profile export yet.

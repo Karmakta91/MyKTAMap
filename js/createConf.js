@@ -181,7 +181,7 @@ function afficherPlanner() {
             <input
               type="file"
               id="kta-planner-zip-input"
-              accept=".zip,.kmz,.gpx,application/zip,application/vnd.google-earth.kmz,application/gpx+xml"
+              accept=".zip,.kmz,.gpx,.geojson,.json,.kml,application/zip,application/vnd.google-earth.kmz,application/gpx+xml,application/geo+json,application/vnd.google-earth.kml+xml"
               style="
                 position:absolute;
                 inset:0;
@@ -516,6 +516,25 @@ function afficherPlanner() {
               <input class="kta-cfg-input kta-kmz-input kta-gps-coords-input" id="pl_geo_B_coords" type="text" inputmode="decimal" autocomplete="off" placeholder="48.8520, 2.3050">
             </div>
             <div class="kta-gps-coords-error" id="pl_geo_B_err" style="display:none;"></div>
+            <!-- 🧭 v1.76.1 : B estimé depuis A + échelle (#pl_scale) + Nord (#pl_northOffset) -->
+            <div class="kta-kmz-pt-actions">
+              <button class="kta-btn kta-btn-ghost kta-btn-small" id="pl_geo_B_estimer" type="button" title="${window.I18n.t("config.georef.estimerTitle")}">🧭 ${window.I18n.t("config.georef.estimerBtn")}</button>
+            </div>
+            <div id="pl_geo_B_estime_badge" class="kta-planner-info" style="display:none; color:#f4c542; margin:4px 0 0;">≈ ${window.I18n.t("config.georef.estimeBadge")}</div>
+          </div>
+          <!-- 📐 v1.73.0 : Point C OPTIONNEL — affine anti-déformation (assemblages) -->
+          <div class="kta-kmz-section" style="margin:8px 0;">
+            <div class="kta-kmz-section-titre">${window.I18n.t("gen.georef.pointC")}</div>
+            <p class="kta-planner-info" style="margin:2px 0 6px;">${window.I18n.t("gen.georef.pointCHint")}</p>
+            <div class="kta-kmz-pt-grille">
+              <label class="kta-kmz-lbl">${window.I18n.t("gen.georef.planX")}</label>
+              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_C_x"   type="number" step="any">
+              <label class="kta-kmz-lbl">${window.I18n.t("gen.georef.planY")}</label>
+              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_C_y"   type="number" step="any">
+              <label class="kta-kmz-lbl">${window.I18n.t("gen.georef.gpsLatLng")}</label>
+              <input class="kta-cfg-input kta-kmz-input kta-gps-coords-input" id="pl_geo_C_coords" type="text" inputmode="decimal" autocomplete="off" placeholder="48.8600, 2.2900">
+            </div>
+            <div class="kta-gps-coords-error" id="pl_geo_C_err" style="display:none;"></div>
           </div>
           <div id="pl_geo_status" style="font-size:12px; color:#8892a4; margin:6px 2px 0; min-height:18px;"></div>
         </div>
@@ -567,7 +586,56 @@ function afficherPlanner() {
       document.getElementById("pl_geo_B_coords"),
       { errorEl: document.getElementById("pl_geo_B_err") }
     );
+    window.attacherGpsValidationCombo(
+      document.getElementById("pl_geo_C_coords"),
+      { errorEl: document.getElementById("pl_geo_C_err") }
+    );
   }
+
+  // 🧭 v1.76.1 — B ESTIMÉ au Générateur : A + échelle (#pl_scale) + Nord
+  // (#pl_northOffset, 0 par défaut) + dimensions de l'image chargée
+  // (#pl_width/#pl_height). Mêmes règles que côté ⚙️ Réglages : refus
+  // explicites, récap de confirmation, badge « estimé » informatif.
+  // (Pas de flag persisté ici : le Générateur écrit plan.georef au ZIP via
+  // _geoB — le champ `estimated` n'y est pas conservé, dette notée BACKLOG.)
+  const _btnEstimerGen = document.getElementById("pl_geo_B_estimer");
+  if (_btnEstimerGen) _btnEstimerGen.addEventListener("click", function() {
+    const ax = parseFloat(document.getElementById("pl_geo_A_x").value);
+    const ay = parseFloat(document.getElementById("pl_geo_A_y").value);
+    const rawCoords = (document.getElementById("pl_geo_A_coords").value || "").trim();
+    const coordsA = (typeof window.parseGpsCoords === "function") ? window.parseGpsCoords(rawCoords) : null;
+    const scale = parseFloat(document.getElementById("pl_scale").value);
+    const w = parseInt(document.getElementById("pl_width").value, 10);
+    const h = parseInt(document.getElementById("pl_height").value, 10);
+    if (!Number.isFinite(ax) || !Number.isFinite(ay) || !coordsA) {
+      alert(window.I18n.t("config.georef.estimerErrA")); return;
+    }
+    if (!Number.isFinite(scale) || scale <= 0) {
+      alert(window.I18n.t("config.georef.estimerErrScale")); return;
+    }
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+      alert(window.I18n.t("config.georef.estimerErrDims")); return;
+    }
+    const north = parseFloat(document.getElementById("pl_northOffset")?.value) || 0;
+    const coin = window.ktaCoinLePlusLoin({ x: ax, y: ay }, w, h);
+    const b = coin && window.ktaEstimerPointB({ x: ax, y: ay, lat: coordsA.lat, lng: coordsA.lng }, coin, scale, north);
+    if (!b) { alert(window.I18n.t("config.georef.estimerErrCalc")); return; }
+    const distM = Math.round(Math.hypot(b.x - ax, b.y - ay) / scale);
+    if (!confirm(window.I18n.t("config.georef.estimerConfirm", { dist: distM, scale: scale, north: north }))) return;
+    document.getElementById("pl_geo_B_x").value = b.x;
+    document.getElementById("pl_geo_B_y").value = b.y;
+    document.getElementById("pl_geo_B_coords").value =
+      (typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(b.lat, b.lng) : (b.lat + ", " + b.lng);
+    const badge = document.getElementById("pl_geo_B_estime_badge");
+    if (badge) badge.style.display = "";
+  });
+  ["pl_geo_B_x", "pl_geo_B_y", "pl_geo_B_coords"].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", function() {
+      const badge = document.getElementById("pl_geo_B_estime_badge");
+      if (badge) badge.style.display = "none";
+    });
+  });
 
   _imageLayerCount   = 0;
   _dataLayerCount    = 0;
@@ -758,6 +826,16 @@ function afficherPlanner() {
         _afficherImporterGpx(f);
       } else {
         _plannerZipStatus(window.I18n.t("gen.router.gpxIndispo"), true);
+      }
+    } else if (lower.endsWith(".geojson") || lower.endsWith(".json") || lower.endsWith(".kml")) {
+      // 🗺️ v1.74.0 — Import SIG. ⚠️ `.json` est AMBIGU (config, session,
+      // calque de données…) : on route quand même vers le panneau SIG, c'est
+      // le parser qui tranchera au contenu et refusera proprement si ce n'est
+      // pas du GeoJSON (message `sig.err.pasDuGeojson`).
+      if (typeof _afficherImporterSig === "function") {
+        _afficherImporterSig(f);
+      } else {
+        _plannerZipStatus(window.I18n.t("gen.router.sigIndispo"), true);
       }
     } else {
       _plannerZipStatus(window.I18n.t("gen.router.badExt"), true);
@@ -1210,6 +1288,11 @@ function _ouvrirEditeurLegendePlan() {
   if (typeof LC.getSessionState === "function") {
     try { savedSession = LC.getSessionState(); } catch(e) { savedSession = null; }
   }
+  // 🐛 v1.76.1 (annexe 6, audit 06/08) — SUSPENDRE la persistance pendant le
+  // swap : sans ça, chaque mutation dans l'éditeur écrivait la légende du
+  // PLAN dans le slot de SESSION du plan couramment chargé (entrées cust-…
+  // fantômes retrouvées en session par KARMA).
+  if (typeof LC.suspendPersist === "function") LC.suspendPersist(true);
   // Étape 2 : charge le state du plan en cours d'édition dans la session
   if (typeof LC.loadSessionState === "function") {
     try { LC.loadSessionState(_plannerPlanLegend || null); } catch(e) {
@@ -1236,6 +1319,10 @@ function _ouvrirEditeurLegendePlan() {
           console.warn("[Planner] Restore session échec :", e);
         }
       }
+      // 🐛 v1.76.1 (annexe 6) — réactive la persistance APRÈS le restore de
+      // la vraie session (dans un finally implicite : ce onClose est le seul
+      // chemin de sortie de l'éditeur).
+      if (typeof LC.suspendPersist === "function") LC.suspendPersist(false);
       // Étape 6 : refresh status display
       _plannerLegendStatus();
     }
@@ -1245,15 +1332,75 @@ function _ouvrirEditeurLegendePlan() {
 // Normalise un state : retourne null si vide (zéro override), sinon objet
 // sérialisable propre. Évite d'écrire un customLegend tout vide dans le
 // plan-config.json (pollution inutile + cache PWA bumpé pour rien).
+// 🐛 v1.76.0 (F3) — Absorbe la légende embarquée dans un calque de données
+// importé, dans la légende du plan en cours de génération.
+//
+// RÈGLE DE CONFLIT : l'existant GAGNE, toujours. Une entrée déjà définie dans
+// le plan n'est jamais écrasée par celle d'un calque importé ; on ajoute
+// seulement ce qui manque. C'est le choix non destructif : réimporter deux
+// fois le même calque est sans effet, et un calque ne peut pas repeindre en
+// silence la légende que l'auteur du plan a construite. Ce qui est écarté est
+// journalisé — un conflit doit être visible, pas deviné.
+function _absorberLegendeCalque(legende) {
+  if (!legende || typeof legende !== "object") return;
+  const cible = _plannerPlanLegend && typeof _plannerPlanLegend === "object"
+                  ? _plannerPlanLegend
+                  : { labels: {}, hidden: {}, colors: {}, borders: {}, customEntries: [] };
+  ["labels", "hidden", "colors", "borders"].forEach(function(champ) {
+    if (!cible[champ] || typeof cible[champ] !== "object" || Array.isArray(cible[champ])) cible[champ] = {};
+  });
+  if (!Array.isArray(cible.customEntries)) cible.customEntries = [];
+
+  let ajoutes = 0, ignores = 0;
+  ["labels", "hidden", "colors", "borders"].forEach(function(champ) {
+    const src = legende[champ];
+    if (!src || typeof src !== "object" || Array.isArray(src)) return;
+    Object.keys(src).forEach(function(k) {
+      if (Object.prototype.hasOwnProperty.call(cible[champ], k)) { ignores++; return; }
+      cible[champ][k] = src[k];
+      ajoutes++;
+    });
+  });
+
+  const idsPresents = new Set(cible.customEntries.map(function(e) { return e && e.id; }));
+  (Array.isArray(legende.customEntries) ? legende.customEntries : []).forEach(function(e) {
+    if (!e || !e.id) return;
+    if (idsPresents.has(e.id)) { ignores++; return; }
+    idsPresents.add(e.id);
+    cible.customEntries.push(e);
+    ajoutes++;
+  });
+
+  if (ajoutes > 0 || ignores > 0) {
+    console.log("[Planner Import ZIP] légende du calque : " + ajoutes + " élément(s) repris, " +
+                ignores + " ignoré(s) (déjà définis dans le plan — l'existant prime).");
+  }
+  if (ajoutes > 0) {
+    _plannerPlanLegend = _plannerLegendStateNormalize(cible);
+    // La section « 🏷️ Légende du plan » doit refléter tout de suite qu'elle
+    // n'est plus vide, sinon l'utilisateur croit que rien n'a été repris.
+    if (typeof _plannerLegendStatus === "function") {
+      try { _plannerLegendStatus(); } catch(e) {}
+    }
+  }
+}
+
 function _plannerLegendStateNormalize(state) {
   if (!state || typeof state !== "object") return null;
   const labels  = state.labels        || {};
   const hidden  = state.hidden        || {};
   const customs = state.customEntries || [];
+  // 🎨 v1.76.0 — `colors` (override de couleur des types built-in) compte
+  // comme une personnalisation à part entière. Sans cette ligne, un plan dont
+  // la SEULE personnalisation serait des couleurs choisies se ferait
+  // normaliser à `null` et n'emporterait rien dans son plan-config.
+  const colors  = state.colors        || {};
   const hasLabels  = Object.keys(labels).length  > 0;
   const hasHidden  = (Array.isArray(hidden) ? hidden.length : Object.keys(hidden).length) > 0;
+  const hasColors  = Object.keys(colors).length  > 0;
+  const hasBorders = Object.keys(state.borders || {}).length > 0;   // 🎨 v1.76.1
   const hasCustoms = Array.isArray(customs) && customs.length > 0;
-  if (!hasLabels && !hasHidden && !hasCustoms) return null;
+  if (!hasLabels && !hasHidden && !hasColors && !hasBorders && !hasCustoms) return null;
   return state;
 }
 
@@ -1421,6 +1568,11 @@ function _preRemplirFormulaire(config) {
                 : function(a, b) { return (Number.isFinite(a) && Number.isFinite(b)) ? (a + ", " + b) : ""; };
     sv("pl_geo_A_coords", fmt(gA.lat, gA.lng));
     sv("pl_geo_B_coords", fmt(gB.lat, gB.lng));
+    // 📐 v1.73.0 : pointC optionnel
+    const gC = plan.georef.pointC || null;
+    sv("pl_geo_C_x", gC && gC.x != null ? gC.x : "");
+    sv("pl_geo_C_y", gC && gC.y != null ? gC.y : "");
+    sv("pl_geo_C_coords", gC ? fmt(gC.lat, gC.lng) : "");
   }
 
   // 🆕 hotfix21 — Validation live des inputs GPS combinés (idempotent).
@@ -2066,6 +2218,11 @@ function _importerDatalayerZip(zipFile) {
         if (Array.isArray(json.roads))      merged.roads      = merged.roads.concat(json.roads);
         if (Array.isArray(json.zones))      merged.zones      = merged.zones.concat(json.zones);
         if (Array.isArray(json.structures)) merged.structures = merged.structures.concat(json.structures);
+        // 🐛 v1.76.0 (F3) — la légende embarquée dans le calque est ENFIN lue.
+        // Sans ça, même un fichier qui la portait la voyait jetée ici, et les
+        // objets custom du calque devenaient des orphelins sans nom ni couleur
+        // dans le plan régénéré.
+        if (json.customLegend) _absorberLegendeCalque(json.customLegend);
       });
 
       const total = merged.data.length + merged.roads.length + merged.zones.length + merged.structures.length;
@@ -3419,6 +3576,7 @@ async function _genererZip() {
     }
     const _coordsA = _readGeoCoords("pl_geo_A_coords", "pl_geo_A_err", window.I18n.t("gen.geo.labelA"));
     const _coordsB = _readGeoCoords("pl_geo_B_coords", "pl_geo_B_err", window.I18n.t("gen.geo.labelB"));
+    const _coordsC = _readGeoCoords("pl_geo_C_coords", "pl_geo_C_err", window.I18n.t("gen.geo.labelC"));   // 📐 v1.73.0
     const _geoA = { x: _readGeo("pl_geo_A_x"), y: _readGeo("pl_geo_A_y"),
                     lat: _coordsA.lat, lng: _coordsA.lng };
     const _geoB = { x: _readGeo("pl_geo_B_x"), y: _readGeo("pl_geo_B_y"),
@@ -3427,16 +3585,30 @@ async function _genererZip() {
       _geoA.x != null && _geoA.y != null && _geoA.lat != null && _geoA.lng != null &&
       _geoB.x != null && _geoB.y != null && _geoB.lat != null && _geoB.lng != null;
     if (_allGeoFilled) {
-      // Validation transform (refus si points colinéaires / distance nulle)
+      // 📐 v1.73.0 — Point C optionnel mais TOUT-OU-RIEN (C partiel = oubli)
+      const _geoC = { x: _readGeo("pl_geo_C_x"), y: _readGeo("pl_geo_C_y"),
+                      lat: _coordsC.lat, lng: _coordsC.lng };
+      const _cRempli = _geoC.x != null || _geoC.y != null || _geoC.lat != null;
+      const _cComplet = _geoC.x != null && _geoC.y != null && _geoC.lat != null && _geoC.lng != null;
+      if (_cRempli && !_cComplet) {
+        _plannerErreur(window.I18n.t("gen.geo.pointCIncomplet"));
+        throw new Error("abort");
+      }
+      // Validation transform (refus si points colinéaires / distance nulle ;
+      // C colinéaire = refus franc à la saisie, même si le moteur sait replier)
       try {
-        if (window.KmzExport && typeof window.KmzExport.buildTransform === "function") {
-          window.KmzExport.buildTransform(
-            { x: _geoA.x, y: _geoA.y }, { x: _geoB.x, y: _geoB.y },
-            { lat: _geoA.lat, lng: _geoA.lng }, { lat: _geoB.lat, lng: _geoB.lng }
-          );
+        const _g = { pointA: _geoA, pointB: _geoB };
+        if (_cComplet) _g.pointC = _geoC;
+        if (window.KmzExport && typeof window.KmzExport.buildTransformCalib === "function") {
+          const _t = window.KmzExport.buildTransformCalib(_g);
+          if (_g.pointC && _t.degenereC) {
+            _plannerErreur(window.I18n.t("gen.geo.pointCColineaire"));
+            throw new Error("abort");
+          }
         }
-        planObj.georef = { pointA: _geoA, pointB: _geoB };
+        planObj.georef = _g;
       } catch(e) {
+        if (e.message === "abort") throw e;
         _plannerErreur(window.I18n.t("gen.geo.calibrageInvalide", { err: e.message }));
         throw new Error("abort");
       }
@@ -3707,7 +3879,7 @@ async function _kmzImpAnalyserFichier(file) {
     if (!window.KmzImport.estKmzMyktamap(kmlDoc)) {
       status.textContent = window.I18n.t("gen.kmz.nonCompatible");
       status.style.color = "#ff8c8c";
-      _kmzImpAfficherModaleNonCompatible();
+      _kmzImpAfficherModaleNonCompatible(file);   // 🗺️ v1.75.2 : propose la conversion SIG
       return;
     }
 
@@ -3837,31 +4009,77 @@ async function _kmzImpAnalyserFichier(file) {
 
 // Modale d'erreur "KMZ non compatible" (v173 simplifié — round-trip MyKTAMap only).
 // Affichée quand `estKmzMyktamap` retourne false (KMZ tiers).
-function _kmzImpAfficherModaleNonCompatible() {
+// 🗺️ v1.75.2 (demande KARMA « il faut rebrancher : une erreur précise +
+// redirection avec un timer de 3 s ») — `fichier` optionnel : quand il est
+// fourni, on propose la CONVERSION SIG au lieu d'un cul-de-sac.
+// Pourquoi ici : un export QGIS en .kmz est un KMZ *vectoriel*, il n'a pas la
+// signature MyKTAMap → il atterrit sur CE refus. Or c'est précisément le
+// fichier que sait traiter `sigImport`. Sans ce pont, l'utilisateur recevait
+// « format non compatible » alors que l'app savait parfaitement le lire.
+function _kmzImpAfficherModaleNonCompatible(fichier) {
   const existing = document.getElementById("kta-kmz-imp-incompat-modal");
   if (existing) existing.remove();
+  const T = function(k, p) { return window.I18n.t(k, p); };
+  // Bascule proposée seulement si on a le fichier ET le module SIG.
+  const peutBasculer = !!(fichier && typeof _afficherImporterSig === "function");
+  const DELAI = 3;
+
   const m = document.createElement("div");
   m.id = "kta-kmz-imp-incompat-modal";
   m.className = "kta-readme-modal-overlay";
   m.innerHTML =
     '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:80vh; border:1px solid rgba(255,140,140,0.35);">' +
       '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.20);">' +
-        '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">' + window.I18n.t("gen.kmzIncompat.titre") + '</span>' +
+        '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">' + T("gen.kmzIncompat.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-kmz-imp-incompat-close">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
-        '<p style="font-size:13.5px; color:#c0c8d8; line-height:1.6; margin:0 0 12px;">' + window.I18n.t("gen.kmzIncompat.txt") + '</p>' +
-        '<div style="padding:10px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:#c0c8d8;">' + window.I18n.t("gen.kmzIncompat.aide") + '</div>' +
-        '<div style="display:flex; justify-content:flex-end;">' +
-          '<button class="kta-btn kta-btn-primary" id="kta-kmz-imp-incompat-ok">' + window.I18n.t("gen.btn.jaiCompris") + '</button>' +
+        '<p style="font-size:13.5px; color:#c0c8d8; line-height:1.6; margin:0 0 12px;">' + T("gen.kmzIncompat.txt") + '</p>' +
+        (peutBasculer
+          ? '<div style="padding:10px 12px; background:rgba(108,226,138,0.08); border:1px solid rgba(108,226,138,0.30); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:#c0c8d8; line-height:1.55;">' +
+              T("gen.kmzIncompat.sigTxt") +
+              '<div style="margin-top:8px; color:#6ce28a; font-weight:600;" id="kta-kmz-sig-compte">' +
+                T("gen.kmzIncompat.sigCompte", { s: DELAI }) +
+              '</div>' +
+            '</div>'
+          : '<div style="padding:10px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:#c0c8d8;">' + T("gen.kmzIncompat.aide") + '</div>') +
+        '<div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
+          (peutBasculer
+            ? '<button class="kta-btn kta-btn-ghost" id="kta-kmz-imp-incompat-rester">' + T("gen.kmzIncompat.rester") + '</button>' +
+              '<button class="kta-btn kta-btn-primary" id="kta-kmz-imp-incompat-sig">' + T("gen.kmzIncompat.sigBtn") + '</button>'
+            : '<button class="kta-btn kta-btn-primary" id="kta-kmz-imp-incompat-ok">' + T("gen.btn.jaiCompris") + '</button>') +
         '</div>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(m);
-  const _c = function() { m.remove(); };
+
+  // ⚠️ Le compte à rebours DOIT être annulable par TOUTES les sorties (✕,
+  // clic sur le fond, Échap, bouton « Rester ici ») — sinon la modale se
+  // ferme et la conversion s'ouvre quand même 2 s plus tard, sur le dos de
+  // l'utilisateur qui venait d'annuler.
+  let _tick = null;
+  const _stop = function() { if (_tick) { clearInterval(_tick); _tick = null; } };
+  const _c = function() { _stop(); m.remove(); document.removeEventListener("keydown", _esc); };
+  const _esc = function(e) { if (e.key === "Escape" || e.key === "Esc") _c(); };
+  document.addEventListener("keydown", _esc);
+
   document.getElementById("kta-kmz-imp-incompat-close").addEventListener("click", _c);
-  document.getElementById("kta-kmz-imp-incompat-ok").addEventListener("click", _c);
   m.addEventListener("click", function(e) { if (e.target === m) _c(); });
+  const btnOk = document.getElementById("kta-kmz-imp-incompat-ok");
+  if (btnOk) btnOk.addEventListener("click", _c);
+
+  if (peutBasculer) {
+    const _basculer = function() { _c(); _afficherImporterSig(fichier); };
+    document.getElementById("kta-kmz-imp-incompat-sig").addEventListener("click", _basculer);
+    document.getElementById("kta-kmz-imp-incompat-rester").addEventListener("click", _c);
+    let reste = DELAI;
+    const el = document.getElementById("kta-kmz-sig-compte");
+    _tick = setInterval(function() {
+      reste--;
+      if (reste <= 0) { _basculer(); return; }
+      if (el) el.textContent = T("gen.kmzIncompat.sigCompte", { s: reste });
+    }, 1000);
+  }
 }
 
 // Modale d'erreur dédiée pour le Mode C (KMZ sans GroundOverlay).
@@ -4415,3 +4633,327 @@ async function _gpxImpGenerer() {
 }
 
 window.afficherImporterGpx = _afficherImporterGpx;
+
+// =====================================================================
+// 🗺️ IMPORT SIG (QGIS) — v1.74.0
+// =====================================================================
+// Panneau calqué sur _afficherImporterGpx (même squelette de modale, mêmes
+// classes CSS) + UNE section que le GPX n'a pas : l'ÉCRAN DE CORRESPONDANCE.
+//
+// Pourquoi cet écran existe : un fichier SIG porte ses propres nomenclatures
+// (« CANALISATION », « galerie_tech », « ZH »…). Deviner seul se tromperait
+// en silence sur des schémas qu'on ne connaît pas. On propose donc une
+// correspondance pré-remplie par synonymes, et l'utilisateur tranche.
+//
+// ⚠️ Les valeurs sont ventilées PAR FAMILLE de géométrie
+// (SigImport.valeursParFamille) : une valeur trouvée sur des polygones
+// propose des types de ZONE, pas des types de tracé.
+let _sigImportState = null;
+
+function _afficherImporterSig(prefilledFile) {
+  const existing = document.getElementById("kta-sig-import-modal");
+  if (existing) { existing.remove(); return; }
+
+  const T = function(k, p) { return window.I18n.t(k, p); };
+  const modal = document.createElement("div");
+  modal.id        = "kta-sig-import-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML = `
+    <div class="kta-readme-modal-boite kta-kmz-imp-boite">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">${T("gen.sig.titre")}</span>
+        <button class="kta-panneau-close" id="kta-sig-imp-close">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps">
+
+        <p class="kta-planner-info" style="margin-bottom:14px;">${T("gen.sig.intro")}</p>
+        <div style="padding:8px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; font-size:12px; color:#c0c8d8; margin-bottom:14px;">${T("gen.sig.crsInfo")}</div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">${T("gen.sig.fichierTitre")}</div>
+          <div class="kta-conv-drop" id="kta-sig-imp-drop" style="position:relative; overflow:hidden;">
+            <span style="font-size:28px;">🗺️</span>
+            <span id="kta-sig-imp-label">${T("gen.sig.dropLabel")}</span>
+            <input type="file" id="kta-sig-imp-input" accept=".geojson,.json,.kml,.kmz"
+              style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; z-index:5;">
+          </div>
+          <div id="kta-sig-imp-status" style="margin-top:8px;font-size:13px;min-height:18px;"></div>
+        </div>
+
+        <div class="kta-aide-section" id="kta-sig-imp-step-resume" style="display:none;">
+          <div class="kta-aide-section-titre">${T("gen.imp.apercu")}</div>
+          <div id="kta-sig-imp-resume" class="kta-conv-stats"></div>
+        </div>
+
+        <!-- ÉCRAN DE CORRESPONDANCE -->
+        <div class="kta-aide-section" id="kta-sig-imp-step-map" style="display:none;">
+          <div class="kta-aide-section-titre">${T("gen.sig.mapTitre")}</div>
+          <p class="kta-planner-info" style="margin-bottom:8px;">${T("gen.sig.mapInfo")}</p>
+          <div class="kta-planner-grille">
+            <label class="kta-cfg-label">${T("gen.sig.colonneType")}</label>
+            <select class="kta-cfg-input" id="kta-sig-imp-colonne"></select>
+          </div>
+          <div id="kta-sig-imp-map-tables" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="kta-aide-section" id="kta-sig-imp-step-config" style="display:none;">
+          <div class="kta-aide-section-titre">${T("gen.imp.configTitre")}</div>
+          <div class="kta-planner-grille">
+            <label class="kta-cfg-label">${T("gen.imp.nomPlan")} <span class="kta-planner-req">*</span></label>
+            <input class="kta-cfg-input" id="kta-sig-imp-name" type="text" placeholder="${T("gen.sig.nomPlaceholder")}">
+            <label class="kta-cfg-label">${T("gen.infos.version")}</label>
+            <input class="kta-cfg-input" id="kta-sig-imp-version" type="text" placeholder="v1" value="v1">
+            <label class="kta-cfg-label">${T("gen.infos.auteur")}</label>
+            <input class="kta-cfg-input" id="kta-sig-imp-author" type="text" placeholder="${T("gen.gpx.auteurPlaceholder")}">
+          </div>
+
+          <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">${T("gen.sig.canvasInfo")}</p>
+          <div class="kta-planner-grille">
+            <label class="kta-cfg-label">${T("gen.vierge.largeur")}</label>
+            <input class="kta-cfg-input" id="kta-sig-imp-w" type="number" min="500" max="12000" step="100" value="4000">
+            <label class="kta-cfg-label">${T("gen.vierge.hauteur")}</label>
+            <input class="kta-cfg-input" id="kta-sig-imp-h" type="number" min="500" max="12000" step="100" value="4000">
+          </div>
+
+          <div class="kta-cfg-label" style="margin-top:8px;">${T("gen.gpx.couleurCanvas")}</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px;">
+            <label class="kta-export-radio-row"><input type="radio" name="sig_imp_color" value="white"><span>⬜ ${T("gen.couleur.blanc")}</span></label>
+            <label class="kta-export-radio-row"><input type="radio" name="sig_imp_color" value="gray"><span>▫️ ${T("gen.couleur.gris")}</span></label>
+            <label class="kta-export-radio-row"><input type="radio" name="sig_imp_color" value="black"><span>⬛ ${T("gen.couleur.noir")}</span></label>
+            <label class="kta-export-radio-row"><input type="radio" name="sig_imp_color" value="sepia" checked><span>📜 ${T("gen.couleur.sepia")}</span></label>
+          </div>
+
+          <div style="margin-top:14px;">
+            <label class="kta-planner-multilevel-row">
+              <input type="checkbox" id="kta-sig-imp-mlvl">
+              <span><strong>${T("gen.mlvl.label")}</strong><em>${T("gen.gpx.mlvlHint")}</em></span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+      <div class="kta-aide-actions" style="padding:14px 18px; border-top:1px solid rgba(255,255,255,0.06); display:flex; gap:10px; justify-content:flex-end;">
+        <button class="kta-btn kta-btn-ghost" id="kta-sig-imp-annuler">${T("gen.btn.annuler")}</button>
+        <button class="kta-btn kta-btn-primary" id="kta-sig-imp-generer" disabled>${T("gen.imp.genererBtn")}</button>
+      </div>
+    </div>
+  `;
+  document.documentElement.appendChild(modal);
+  _sigImportState = null;
+
+  const _close = function() { modal.remove(); _sigImportState = null; };
+  document.getElementById("kta-sig-imp-close").addEventListener("click", _close);
+  document.getElementById("kta-sig-imp-annuler").addEventListener("click", _close);
+  modal.addEventListener("click", function(e) { if (e.target === modal) _close(); });
+
+  const input   = document.getElementById("kta-sig-imp-input");
+  const labelEl = document.getElementById("kta-sig-imp-label");
+  input.addEventListener("change", async function() {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    labelEl.textContent = "📦 " + file.name;
+    await _sigImpAnalyserFichier(file);
+  });
+  document.getElementById("kta-sig-imp-colonne").addEventListener("change", _sigImpRendreTables);
+  document.getElementById("kta-sig-imp-generer").addEventListener("click", _sigImpGenerer);
+
+  if (prefilledFile) {
+    if (labelEl) labelEl.textContent = "📦 " + prefilledFile.name;
+    setTimeout(function() { _sigImpAnalyserFichier(prefilledFile); }, 0);
+  }
+}
+
+async function _sigImpAnalyserFichier(file) {
+  const T      = function(k, p) { return window.I18n.t(k, p); };
+  const status = document.getElementById("kta-sig-imp-status");
+  const btnGen = document.getElementById("kta-sig-imp-generer");
+  status.style.color = "#8cb4ff";
+  status.textContent = T("gen.sig.analyse");
+  btnGen.disabled = true;
+
+  if (!window.SigImport) {
+    status.textContent = T("gen.sig.moduleNonCharge");
+    status.style.color = "#ff8c8c";
+    return;
+  }
+
+  try {
+    const { format, data } = await window.SigImport.parseFichier(file);
+
+    // ── Refus CRS : message ACTIONNABLE, pas un simple « erreur ». ──
+    const crs = window.SigImport.validerCrs(data);
+    if (!crs.ok) {
+      _sigImportState = null;
+      document.getElementById("kta-sig-imp-step-resume").style.display = "none";
+      document.getElementById("kta-sig-imp-step-map").style.display    = "none";
+      document.getElementById("kta-sig-imp-step-config").style.display = "none";
+      status.style.color = "#ff8c8c";
+      status.innerHTML = (crs.code === "vide")
+        ? T("gen.sig.err.vide")
+        : T("gen.sig.err.crsProjete", {
+            n:   crs.horsBornes,
+            tot: crs.total,
+            max: Math.round(Math.max(crs.maxAbsLat, crs.maxAbsLng))
+          });
+      return;
+    }
+
+    const bounds = window.SigImport.calculerBounds(data);
+    const cols   = window.SigImport.analyserAttributs(data);
+    _sigImportState = { file: file, format: format, data: data, bounds: bounds, colonnes: cols };
+
+    // Résumé
+    const dLat = bounds.latMax - bounds.latMin;
+    const dLng = bounds.lngMax - bounds.lngMin;
+    let html = '<div><strong>' + format.toUpperCase() + '</strong> — '
+             + T("gen.sig.resume", {
+                 p: data.points.length, l: data.lignes.length, z: data.polygones.length
+               }) + '</div>'
+             + '<div style="color:#8892a4; font-size:12px; margin-top:4px;">'
+             + '📍 ' + bounds.latMin.toFixed(5) + ', ' + bounds.lngMin.toFixed(5)
+             + ' → ' + bounds.latMax.toFixed(5) + ', ' + bounds.lngMax.toFixed(5)
+             + ' (Δ ' + dLat.toFixed(5) + '° × ' + dLng.toFixed(5) + '°)</div>';
+    (data.avertissements || []).forEach(function(a) {
+      html += '<div style="color:#ffb380; font-size:12px; margin-top:4px;">⚠️ ' + T(a) + '</div>';
+    });
+    document.getElementById("kta-sig-imp-resume").innerHTML = html;
+    document.getElementById("kta-sig-imp-step-resume").style.display = "";
+
+    // Sélecteur de colonne (option vide = tout au type par défaut)
+    const sel = document.getElementById("kta-sig-imp-colonne");
+    sel.innerHTML = '<option value="">' + T("gen.sig.colonneAucune") + '</option>'
+      + cols.map(function(c) {
+          return '<option value="' + _escAttrSig(c.cle) + '">' + _escHtmlSig(c.cle)
+               + ' (' + c.nbDistinctes + ')' + (c.probableType ? ' ⭐' : '') + '</option>';
+        }).join("");
+    if (cols.length > 0 && cols[0].probableType) sel.value = cols[0].cle;
+    document.getElementById("kta-sig-imp-step-map").style.display = "";
+    _sigImpRendreTables();
+
+    document.getElementById("kta-sig-imp-step-config").style.display = "";
+    const nameEl = document.getElementById("kta-sig-imp-name");
+    if (!nameEl.value) nameEl.value = file.name.replace(/\.(geojson|json|kml|kmz)$/i, "");
+    btnGen.disabled = false;
+    status.textContent = "";
+  } catch(err) {
+    _sigImportState = null;
+    status.style.color = "#ff8c8c";
+    const cle = String(err && err.message || "");
+    // Les erreurs du moteur SONT des clés i18n — on les traduit telles quelles.
+    status.textContent = cle.indexOf("sig.err.") === 0
+      ? T(cle) + (err.crsNom ? " (" + err.crsNom + ")" : "") + (err.n ? " (" + err.n + ")" : "")
+      : T("gen.sig.err.generique", { err: cle });
+  }
+}
+
+const _SIG_TYPES = {
+  points:    ["default", "pa", "pb", "pc", "pe", "ps", "salle", "chatiere", "passage", "danger", "info"],
+  lignes:    ["chemin", "secondaire", "principal"],
+  polygones: ["remblais", "eau", "effondrement", "inaccessible"]
+};
+const _SIG_CAT_I18N = { points: "gen.sig.famPoints", lignes: "gen.sig.famLignes", polygones: "gen.sig.famZones" };
+
+function _sigImpRendreTables() {
+  const T   = function(k, p) { return window.I18n.t(k, p); };
+  const box = document.getElementById("kta-sig-imp-map-tables");
+  if (!box || !_sigImportState) return;
+  const cle = document.getElementById("kta-sig-imp-colonne").value;
+  if (!cle) { box.innerHTML = '<div style="color:#8892a4; font-size:12px;">' + T("gen.sig.mapAucune") + '</div>'; return; }
+
+  const parFam = window.SigImport.valeursParFamille(_sigImportState.data, cle);
+  const catPour = { points: null, lignes: "traces", polygones: "zones" };
+  let html = "";
+  ["points", "lignes", "polygones"].forEach(function(fam) {
+    const vals = parFam[fam] || [];
+    if (vals.length === 0) return;
+    const propose = catPour[fam] ? window.SigImport.proposerMapping(vals, catPour[fam]) : {};
+    html += '<div style="margin-top:10px;"><div class="kta-cfg-label">' + T(_SIG_CAT_I18N[fam]) + '</div>';
+    vals.forEach(function(v) {
+      const sugg = propose[v] || "";
+      html += '<div style="display:flex; align-items:center; gap:8px; margin-top:4px;">'
+           +  '<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:#c0c8d8;" title="' + _escAttrSig(v) + '">' + _escHtmlSig(v) + '</span>'
+           +  '<select class="kta-cfg-input" data-sig-fam="' + fam + '" data-sig-val="' + _escAttrSig(v) + '" style="flex:0 0 46%;">'
+           +  _SIG_TYPES[fam].map(function(t) {
+                return '<option value="' + t + '"' + (t === sugg ? " selected" : "") + '>' + t + '</option>';
+              }).join("")
+           +  '</select></div>';
+    });
+    html += '</div>';
+  });
+  box.innerHTML = html || '<div style="color:#8892a4; font-size:12px;">' + T("gen.sig.mapVide") + '</div>';
+}
+
+function _escHtmlSig(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function _escAttrSig(s) { return _escHtmlSig(s).replace(/"/g, "&quot;"); }
+
+async function _sigImpGenerer() {
+  const T      = function(k, p) { return window.I18n.t(k, p); };
+  const status = document.getElementById("kta-sig-imp-status");
+  const btnGen = document.getElementById("kta-sig-imp-generer");
+  if (!_sigImportState) return;
+
+  const name = (document.getElementById("kta-sig-imp-name").value || "").trim();
+  if (!name) {
+    status.style.color = "#ff8c8c";
+    status.textContent = T("gen.sig.err.nomRequis");
+    return;
+  }
+
+  // Relecture de l'écran de correspondance
+  const cle = document.getElementById("kta-sig-imp-colonne").value || null;
+  const mapTags = {}, mapTraces = {}, mapZones = {};
+  document.querySelectorAll("#kta-sig-imp-map-tables select[data-sig-fam]").forEach(function(s) {
+    const fam = s.getAttribute("data-sig-fam");
+    const val = s.getAttribute("data-sig-val");
+    if (fam === "points")         mapTags[val]   = s.value;
+    else if (fam === "lignes")    mapTraces[val] = s.value;
+    else if (fam === "polygones") mapZones[val]  = s.value;
+  });
+
+  btnGen.disabled = true;
+  btnGen.textContent = T("gen.sig.generation");
+  status.style.color = "#8cb4ff";
+  status.textContent = T("gen.sig.generation");
+
+  try {
+    const result = await window.SigImport.genererZipMyktamap({
+      normalise:    _sigImportState.data,
+      bounds:       _sigImportState.bounds,
+      planName:     name,
+      planVersion:  (document.getElementById("kta-sig-imp-version").value || "v1").trim(),
+      planAuthor:   (document.getElementById("kta-sig-imp-author").value || "").trim(),
+      canvasWidth:  parseInt(document.getElementById("kta-sig-imp-w").value, 10) || 4000,
+      canvasHeight: parseInt(document.getElementById("kta-sig-imp-h").value, 10) || 4000,
+      canvasColor:  (document.querySelector('input[name="sig_imp_color"]:checked') || {}).value || "sepia",
+      multiLevel:   document.getElementById("kta-sig-imp-mlvl").checked,
+      layerLabel:   name,
+      mapping: { cleType: cle, mapTags: mapTags, mapTraces: mapTraces, mapZones: mapZones }
+    });
+
+    const url = URL.createObjectURL(result.blob);
+    const a   = document.createElement("a");
+    a.href = url;
+    a.download = "plan_" + name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() + "_from_sig.zip";
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+
+    status.style.color = "#6ce28a";
+    status.textContent = T("gen.sig.zipGenere", {
+      p: result.stats.points, l: result.stats.roads, z: result.stats.zones
+    });
+  } catch(err) {
+    status.style.color = "#ff8c8c";
+    const cleErr = String(err && err.message || "");
+    status.textContent = cleErr.indexOf("sig.err.") === 0
+      ? T(cleErr)
+      : T("gen.sig.err.generique", { err: cleErr });
+  } finally {
+    btnGen.disabled = false;
+    btnGen.textContent = T("gen.imp.genererBtn");
+  }
+}
+
+window.afficherImporterSig = _afficherImporterSig;

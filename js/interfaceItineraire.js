@@ -560,8 +560,29 @@ function _ajouterWaypointVisuel(p, num) {
     iconSize:  [28, 28],
     iconAnchor: [14, 14]
   });
-  const m = L.marker(convertCoord(p.x, p.y), { icon: icon, interactive: false })
+  // 🐛 v1.73.0 (KARMA « un point de passage fait au clic ne peut pas être
+  // validé ») : un waypoint-POI se valide via la popup du POI sous-jacent,
+  // mais un waypoint posé AU CLIC n'a AUCUN objet cliquable — son marker
+  // numéroté était interactive:false. Ce false reste VOULU pour les
+  // waypoints-POI (le clic doit traverser vers la popup du POI dessous) :
+  // le marker ne devient cliquable QUE pour source "click" non validée,
+  // avec une mini-popup « Je suis ici » qui emprunte EXACTEMENT le chemin
+  // POI (recalerTrackerSurPoint → _notifierRecalage("point") → coords
+  // exactes → validation d'étape + replanification).
+  const cliquable = !done && p.source === "click";
+  const m = L.marker(convertCoord(p.x, p.y), { icon: icon, interactive: cliquable })
               .addTo(_itineraryMarkerLayer);
+  if (cliquable) {
+    m.bindPopup(
+      '<div class="kta-popup-point"><b>' + window.I18n.t("iti.wp.popupEtape", { n: num }) + '</b>' +
+        '<div class="kta-popup-actions">' +
+          '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' +
+            'onclick="window.recalerTrackerSurPoint(' + p.x + ',' + p.y + '); return false;" ' +
+            'title="' + window.I18n.t("poi.iAmHere") + '">' +
+            window.I18n.t("iti.wp.jeSuisIci") +
+          '</button>' +
+        '</div></div>');
+  }
   return m;
 }
 
@@ -648,7 +669,9 @@ function _itineraryMapClick(e) {
   const x = e.latlng.lng;
   const y = APP_CONFIG.imageHeight - e.latlng.lat;
   _itineraryWaypoints.push({ x: x, y: y, source: "click" });
-  _ajouterWaypointVisuel({ x: x, y: y }, _itineraryWaypoints.length);
+  // v1.73.0 : passer l'objet POUSSÉ (avec source) — sinon le marker frais
+  // n'est pas cliquable avant le premier _redessinerWaypoints.
+  _ajouterWaypointVisuel(_itineraryWaypoints[_itineraryWaypoints.length - 1], _itineraryWaypoints.length);
   _rafraichirListeWaypointsModale();
   _majPanneauFloaterCount();
 }

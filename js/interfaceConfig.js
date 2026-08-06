@@ -207,6 +207,7 @@ function _renderCfgGeorefSection() {
                   ? window.KmzExport.getCalibration(planId) : null;
   const pA = (saved && saved.pointA) || { x: "", y: "", lat: "", lng: "" };
   const pB = (saved && saved.pointB) || { x: "", y: "", lat: "", lng: "" };
+  const pC = (saved && saved.pointC) || { x: "", y: "", lat: "", lng: "" };   // 📐 v1.73.0 : optionnel
 
   return '' +
     '<div class="kta-aide-section">' +
@@ -257,8 +258,32 @@ function _renderCfgGeorefSection() {
         '<div class="kta-kmz-pt-actions">' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_search" type="button">' + window.I18n.t("config.georef.searchBtn") + '</button>' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
+          // 🧭 v1.76.1 — B ESTIMÉ depuis A + échelle + orientation Nord
+          // (northOffsetDeg per-plan, 0 par défaut = Nord en haut).
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_estimer" type="button" title="' + window.I18n.t("config.georef.estimerTitle") + '">🧭 ' + window.I18n.t("config.georef.estimerBtn") + '</button>' +
         '</div>' +
+        '<div id="cfg_kmz_B_estime_badge" class="kta-planner-info" style="display:none; color:#f4c542; margin:4px 0 0;">≈ ' + window.I18n.t("config.georef.estimeBadge") + '</div>' +
         '<div id="cfg_kmz_B_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
+      '</div>' +
+
+      // ===== 📐 Point C (v1.73.0, OPTIONNEL — affine anti-déformation) =====
+      '<div class="kta-kmz-section" style="margin:8px 0;">' +
+        '<div class="kta-kmz-section-titre">' + window.I18n.t("config.georef.pointC") + '</div>' +
+        '<p style="font-size:11.5px; color:#8892a4; margin:2px 0 6px; line-height:1.45;">' + window.I18n.t("config.georef.pointCHint") + '</p>' +
+        '<div class="kta-kmz-pt-grille">' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planX") + '</label>' +
+          '<input type="number" id="cfg_kmz_C_x"   value="' + pC.x   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.planY") + '</label>' +
+          '<input type="number" id="cfg_kmz_C_y"   value="' + pC.y   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
+          '<label class="kta-kmz-lbl">' + window.I18n.t("config.georef.gpsLatLng") + '</label>' +
+          '<input type="text" id="cfg_kmz_C_coords" value="' + ((typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(pC.lat, pC.lng) : (Number.isFinite(pC.lat) && Number.isFinite(pC.lng) ? pC.lat + ", " + pC.lng : "")) + '" class="kta-cfg-input kta-kmz-input kta-gps-coords-input" inputmode="decimal" autocomplete="off" placeholder="48.8600, 2.2900">' +
+        '</div>' +
+        '<div class="kta-gps-coords-error" id="cfg_kmz_C_err" style="display:none;"></div>' +
+        '<div class="kta-kmz-pt-actions">' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_C_search" type="button">' + window.I18n.t("config.georef.searchBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_C_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
+        '</div>' +
+        '<div id="cfg_kmz_C_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
       '<div id="cfg_kmz_status" style="font-size:12px; margin:8px 2px 4px; min-height:18px;"></div>' +
@@ -309,6 +334,63 @@ function _bindCfgGeorefHandlers() {
     );
   }
 
+  // 🧭 v1.76.1 — ESTIMER B depuis A + échelle + Nord calibré.
+  // `_bEstime` mémorise les valeurs posées : au save, si les inputs B sont
+  // toujours EXACTEMENT celles-là, le flag `estimated:true` est persisté avec
+  // la calibration (badge d'honnêteté). La moindre retouche manuelle des
+  // champs B = mesure de l'utilisateur → le flag tombe.
+  let _bEstime = null;
+  const _badgeEstime = document.getElementById("cfg_kmz_B_estime_badge");
+  // Badge relu depuis la calibration sauvée (3:a — visible tant que le B est
+  // estimé). ⚠️ RELUE ICI : `saved` vit dans _renderCfgGeorefSection (le
+  // générateur de HTML), pas dans cette fonction de binding — la référencer
+  // levait un ReferenceError au setup qui tuait TOUS les handlers suivants
+  // (chercher point, calibrer Nord…). Bug remonté par KARMA le 06/08.
+  const _calibSauvee = (window.KmzExport && window.KmzExport.getCalibration)
+                         ? window.KmzExport.getCalibration(window._currentLoadedPlanId || "default") : null;
+  if (_calibSauvee && _calibSauvee.pointB && _calibSauvee.pointB.estimated && _badgeEstime) {
+    _badgeEstime.style.display = "";
+  }
+  const _btnEstimer = document.getElementById("cfg_kmz_B_estimer");
+  if (_btnEstimer) _btnEstimer.addEventListener("click", function() {
+    const ax = parseFloat(document.getElementById("cfg_kmz_A_x").value);
+    const ay = parseFloat(document.getElementById("cfg_kmz_A_y").value);
+    const coordsA = _readCoordsCombo("cfg_kmz_A_coords", "cfg_kmz_A_err");
+    const scale = window.APP_CONFIG && Number(window.APP_CONFIG.scale);
+    // REFUS explicites, pas de clamp (règle KARMA)
+    if (!Number.isFinite(ax) || !Number.isFinite(ay) || !coordsA || coordsA.invalid || coordsA.lat == null) {
+      _setStatus(window.I18n.t("config.georef.estimerErrA"), "err"); return;
+    }
+    if (!Number.isFinite(scale) || scale <= 0) {
+      _setStatus(window.I18n.t("config.georef.estimerErrScale"), "err"); return;
+    }
+    const north = (typeof window.getPlanNorthOffset === "function") ? window.getPlanNorthOffset() : 0;
+    const coin = window.ktaCoinLePlusLoin({ x: ax, y: ay },
+                   window.APP_CONFIG.imageWidth, window.APP_CONFIG.imageHeight);
+    const pointA = { x: ax, y: ay, lat: coordsA.lat, lng: coordsA.lng };
+    const b = coin && window.ktaEstimerPointB(pointA, coin, scale, north);
+    if (!b) { _setStatus(window.I18n.t("config.georef.estimerErrCalc"), "err"); return; }
+    // Récap de confirmation — l'estimation N'EST PAS une mesure, on le dit.
+    const distM = Math.round(Math.hypot(b.x - ax, b.y - ay) / scale);
+    if (!confirm(window.I18n.t("config.georef.estimerConfirm",
+          { dist: distM, scale: scale, north: north }))) return;
+    document.getElementById("cfg_kmz_B_x").value = b.x;
+    document.getElementById("cfg_kmz_B_y").value = b.y;
+    document.getElementById("cfg_kmz_B_coords").value =
+      (typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(b.lat, b.lng) : (b.lat + ", " + b.lng);
+    _bEstime = { x: String(b.x), y: String(b.y) };
+    if (_badgeEstime) _badgeEstime.style.display = "";
+    _setStatus(window.I18n.t("config.georef.estimerOk"), "ok");
+  });
+  // Toute édition manuelle d'un champ B invalide l'estimation (badge + flag)
+  ["cfg_kmz_B_x", "cfg_kmz_B_y", "cfg_kmz_B_coords"].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", function() {
+      _bEstime = null;
+      if (_badgeEstime) _badgeEstime.style.display = "none";
+    });
+  });
+
   // 🆕 hotfix21 — Helper : lit l'input combiné "lat, lng", parse + applique
   // border rouge + message inline si format invalide. Retourne {lat, lng}
   // ou null (vide ou invalide). Le caller distingue via 2e param `errKey`.
@@ -343,7 +425,8 @@ function _bindCfgGeorefHandlers() {
     // → border rouge + message + abort silencieux (la combo bloque le save).
     const coordsA = _readCoordsCombo("cfg_kmz_A_coords", "cfg_kmz_A_err");
     const coordsB = _readCoordsCombo("cfg_kmz_B_coords", "cfg_kmz_B_err");
-    if ((coordsA && coordsA.invalid) || (coordsB && coordsB.invalid)) {
+    const coordsC = _readCoordsCombo("cfg_kmz_C_coords", "cfg_kmz_C_err");   // 📐 v1.73.0
+    if ((coordsA && coordsA.invalid) || (coordsB && coordsB.invalid) || (coordsC && coordsC.invalid)) {
       _setStatus(window.I18n.t("config.georef.errInvalidGps"), "err");
       return;
     }
@@ -355,20 +438,38 @@ function _bindCfgGeorefHandlers() {
                 lat: coordsB ? coordsB.lat : null,
                 lng: coordsB ? coordsB.lng : null }
     };
+    // 🧭 v1.76.1 — le B provient de l'estimation et n'a pas été retouché →
+    // le flag suit la calibration (badge d'honnêteté, relu à l'ouverture).
+    if (_bEstime &&
+        String(document.getElementById("cfg_kmz_B_x").value) === _bEstime.x &&
+        String(document.getElementById("cfg_kmz_B_y").value) === _bEstime.y) {
+      c.pointB.estimated = true;
+    }
     // Validation : tous les champs requis (x, y, lat, lng pour A et B)
     if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
         c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {
       _setStatus(window.I18n.t("config.georef.errAllRequired"), "err");
       return;
     }
-    // Validation transform (lève si points colinéaires ou distance nulle)
+    // 📐 Point C : OPTIONNEL mais tout-ou-rien (un C partiel = oubli, pas un choix)
+    const _pcx = _readVal("cfg_kmz_C_x"), _pcy = _readVal("cfg_kmz_C_y");
+    const _pcRempli = _pcx != null || _pcy != null || (coordsC && coordsC.lat != null);
+    if (_pcRempli) {
+      if (_pcx == null || _pcy == null || !coordsC || coordsC.lat == null || coordsC.lng == null) {
+        _setStatus(window.I18n.t("config.georef.errCIncomplete"), "err");
+        return;
+      }
+      c.pointC = { x: _pcx, y: _pcy, lat: coordsC.lat, lng: coordsC.lng };
+    }
+    // Validation transform (lève si points colinéaires ou distance nulle ;
+    // un C colinéaire est TOLÉRÉ par le moteur — repli 2 points — mais ici,
+    // à la saisie, on préfère le signaler franchement)
     try {
-      window.KmzExport.buildTransform(
-        { x: c.pointA.x, y: c.pointA.y },
-        { x: c.pointB.x, y: c.pointB.y },
-        { lat: c.pointA.lat, lng: c.pointA.lng },
-        { lat: c.pointB.lat, lng: c.pointB.lng }
-      );
+      const _t = window.KmzExport.buildTransformCalib(c);
+      if (c.pointC && _t.degenereC) {
+        _setStatus(window.I18n.t("config.georef.errCColineaire"), "err");
+        return;
+      }
     } catch(e) {
       _setStatus(window.I18n.t("config.georef.errInvalidCalib", { msg: e.message }), "err");
       return;
@@ -384,7 +485,7 @@ function _bindCfgGeorefHandlers() {
 
   btnClear.addEventListener("click", function() {
     // 🆕 hotfix21 — Wipe x/y + coords combinés (au lieu des 4 inputs séparés).
-    ["A_x","A_y","A_coords","B_x","B_y","B_coords"].forEach(function(k) {
+    ["A_x","A_y","A_coords","B_x","B_y","B_coords","C_x","C_y","C_coords"].forEach(function(k) {
       const el = document.getElementById("cfg_kmz_" + k);
       if (el) {
         el.value = "";
@@ -392,7 +493,7 @@ function _bindCfgGeorefHandlers() {
       }
     });
     // Cache aussi les éventuels messages d'erreur restants
-    ["cfg_kmz_A_err", "cfg_kmz_B_err"].forEach(function(id) {
+    ["cfg_kmz_A_err", "cfg_kmz_B_err", "cfg_kmz_C_err"].forEach(function(id) {
       const e = document.getElementById(id);
       if (e) { e.textContent = ""; e.style.display = "none"; }
     });
@@ -409,7 +510,7 @@ function _bindCfgGeorefHandlers() {
   // avec la modale 💾 Enregistrer > 📡 Export externe). Pattern identique
   // à sessionExporter.js > _kmzOuvrirRecherche / _kmzActiverModeClic mais
   // sur les IDs `cfg_kmz_*` (au lieu de `kmz_*`).
-  ["A", "B"].forEach(function(letter) {
+  ["A", "B", "C"].forEach(function(letter) {
     const btnSearch = document.getElementById("cfg_kmz_" + letter + "_search");
     const btnClick  = document.getElementById("cfg_kmz_" + letter + "_click");
     if (btnSearch) btnSearch.addEventListener("click", function() { _cfgOuvrirRechercheGeoref(letter); });
@@ -881,6 +982,24 @@ function afficherConfig() {
             <input class="kta-cfg-input" id="cfg_smartNavHeading" type="number" step="0.05" min="0" max="5" value="${Number.isFinite(c.smartNavHeadingWeight) ? c.smartNavHeadingWeight : 0.7}">
           </div>
           <div style="font-size:11px; color:#8892a4; margin:-2px 0 0; line-height:1.4;">${window.I18n.t("config.smartnav.headingHint")}</div>
+
+          <!-- 🧲 C5 v1.74.0 — magnétisme edit-time. Rangé ici (section Navigation)
+               mais INDÉPENDANT du toggle ci-dessus : il améliore la qualité du
+               graphe, donc il sert aussi aux itinéraires sans nav intelligente. -->
+          <label class="kta-perf-ultra-row" style="margin-top:14px;">
+            <input type="checkbox" id="cfg_snapDraw" ${c.snapDraw === true ? "checked" : ""}>
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.snapdraw.label")}</span>
+              <span class="kta-perf-ultra-hint">
+                ${window.I18n.t("config.snapdraw.hint")}
+              </span>
+            </span>
+          </label>
+          <div class="kta-cfg-row">
+            <label class="kta-cfg-label">${window.I18n.t("config.snapdraw.radiusLabel")}</label>
+            <input class="kta-cfg-input" id="cfg_snapDrawPx" type="number" step="1" min="4" max="40" value="${Number.isFinite(c.snapDrawPx) ? c.snapDrawPx : 14}">
+          </div>
+          <div style="font-size:11px; color:#8892a4; margin:-2px 0 0; line-height:1.4;">${window.I18n.t("config.snapdraw.radiusHint")}</div>
         </div>
 
         <!-- ════════ 4. 🎨 AFFICHAGE ════════ -->
@@ -1389,7 +1508,8 @@ function _validerReglagesTracking() {
     { id: "cfg_stepThreshold",   min: 10,  max: 30   },
     { id: "cfg_stepCooldown",    min: 300, max: 3000 },
     { id: "cfg_smartNavRadius",  min: 1,   max: 50   },
-    { id: "cfg_smartNavHeading", min: 0,   max: 5    }
+    { id: "cfg_smartNavHeading", min: 0,   max: 5    },
+    { id: "cfg_snapDrawPx",      min: 4,   max: 40   }   // 🧲 C5 v1.74.0
   ];
   var ok = true;
   champs.forEach(function(c) {
@@ -1456,6 +1576,13 @@ function appliquerConfig() {
   if (inSnRadius) { var snr = parseFloat(inSnRadius.value); if (Number.isFinite(snr) && snr > 0) APP_CONFIG.smartNavRadiusM = snr; }
   var inSnHeading = document.getElementById("cfg_smartNavHeading");
   if (inSnHeading) { var snh = parseFloat(inSnHeading.value); if (Number.isFinite(snh) && snh >= 0) APP_CONFIG.smartNavHeadingWeight = snh; }
+
+  // 🧲 C5 v1.74.0 — magnétisme edit-time (pref globale, défaut OFF). Lu à chaud
+  // par road.js > _snapSurSommetProche() au clic — pas de reload requis.
+  const cbSnapDraw = document.getElementById("cfg_snapDraw");
+  if (cbSnapDraw) APP_CONFIG.snapDraw = !!cbSnapDraw.checked;
+  var inSnapPx = document.getElementById("cfg_snapDrawPx");
+  if (inSnapPx) { var spx = parseFloat(inSnapPx.value); if (Number.isFinite(spx) && spx > 0) APP_CONFIG.snapDrawPx = spx; }
 
   // 🆕 v1.9.2 : le handler de showRoadIntersections en mode carte a été retiré
   // (toggle exclusivement dans le ⚙️ Configuration du loader/home désormais).
@@ -1680,24 +1807,72 @@ function _changerNiveauActif(newLevel) {
   // v155 fix : retire le check newLevel < 0 qui bloquait les niveaux negatifs
   // (reste de v148 quand availableLevels etait [0..3] strict). Depuis v154 on
   // supporte les sous-sols (-1, -2, …), donc tout entier est valide.
-  if (!Number.isInteger(newLevel)) return;
+  // 🆕 v1.74.0 : simple delegation — toute la logique vit dans le helper unique.
+  window.ktaSetActiveLevel(newLevel, { source: "modale-niveaux" });
+}
 
-  // Annule le tracé en cours
-  if (typeof _fermerModeRoad === "function") _fermerModeRoad();
+// 🆕 v1.74.0 — SOURCE DE VÉRITÉ UNIQUE du niveau de travail.
+//
+// AVANT : 3 chemins concurrents écrivaient `APP_CONFIG.activeLevel` à la main
+// (modale Niveaux via _changerNiveauActif, modale ≡ Filtres ×2) et un seul
+// propageait réellement. Les 2 chemins de la modale ≡ se contentaient de
+// notifier `window._onLevelChange(...)` — un callback qui n'a **JAMAIS été
+// défini nulle part** : 7 appels tous gardés par `typeof === "function"`, donc
+// morts en silence. Conséquence vécue : changer le niveau actif depuis la
+// modale ≡ ne mettait à jour NI la pastille de la sidebar, NI les modules
+// level-aware. Le garde `typeof` a masqué le trou pendant des versions.
+//
+// ⚠️ CHANGEMENT DE SÉMANTIQUE ASSUMÉ (demande KARMA) : changer le niveau de
+// TRAVAIL n'écrase plus les niveaux AFFICHÉS. `_changerNiveauActif` faisait
+// `visibleLevels = [newLevel]` (« mode focalisé ») → passer au -2 faisait
+// DISPARAÎTRE toutes les galeries du -1. Rédhibitoire en exploration, et
+// bloquant pour la bascule automatique de C6 (franchir une jonction en
+// navigation ne doit pas effacer l'étage qu'on vient de quitter).
+//
+// Nouvelle règle = UNION : le niveau de travail s'AJOUTE aux niveaux visibles
+// s'il n'y est pas déjà. On garde l'invariant « tu vois toujours ce sur quoi
+// tu dessines » (sans quoi on dessinerait à l'aveugle) sans jamais rien
+// retirer de ce que l'user avait choisi d'afficher. Pour revenir à un seul
+// niveau, le bouton « Actif seul » existe toujours (modale ≡ et modale
+// Niveaux) — le mode focalisé devient un GESTE EXPLICITE au lieu d'un effet
+// de bord.
+//
+// @param {number} newLevel - entier (négatifs = sous-sols)
+// @param {Object} [opts]   - { source?: string } pour le log
+// @returns {boolean} true si appliqué
+window.ktaSetActiveLevel = function(newLevel, opts) {
+  if (!Number.isInteger(newLevel)) return false;
+  opts = opts || {};
+  if (!window.APP_CONFIG) return false;
 
-  APP_CONFIG.activeLevel   = newLevel;
-  APP_CONFIG.visibleLevels = [newLevel];  // reset filtre au mode focalise
+  // Annule le tracé en cours (un tracé ne peut pas enjamber 2 niveaux).
+  if (typeof _fermerModeRoad === "function") {
+    try { _fermerModeRoad(); } catch(e) {}
+  }
+
+  APP_CONFIG.activeLevel = newLevel;
+
+  // UNION (et pas remplacement) — cf. bloc de commentaire ci-dessus.
+  if (!Array.isArray(APP_CONFIG.visibleLevels)) APP_CONFIG.visibleLevels = [];
+  if (APP_CONFIG.visibleLevels.indexOf(newLevel) === -1) {
+    APP_CONFIG.visibleLevels = APP_CONFIG.visibleLevels.concat([newLevel]);
+  }
   window.APP_CONFIG = APP_CONFIG;
 
-  // Mise à jour de la pastille dans la sidebar (chiffre seul, pas de prefixe)
+  // Pastille sidebar (chiffre seul, pas de prefixe)
   const pill = document.getElementById("kta-niv-pastille-icone");
   if (pill) pill.textContent = String(newLevel);
 
-  // Propage le filtre a tous les modules level-aware
+  // Propage a tous les modules level-aware (re-render roads/zones + filtres).
+  // C'est aussi lui qui resynchronise la modale ≡ si elle est ouverte
+  // (FilterPanel.onLevelChange).
   if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
 
-  console.log("[MultiNiveau] Niveau actif →", newLevel, "| Visibles :", APP_CONFIG.visibleLevels);
-}
+  console.log("[MultiNiveau] Niveau actif →", newLevel,
+              "| Visibles :", APP_CONFIG.visibleLevels,
+              opts.source ? "| src: " + opts.source : "");
+  return true;
+};
 
 // 🏗️ Multi-niveau : helper global qui re-render / re-filtre TOUS les modules
 // level-aware. Appele apres tout changement de visibleLevels.

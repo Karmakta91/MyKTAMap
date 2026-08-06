@@ -18,6 +18,40 @@
   let _previewBusy  = false;
 
   // =========================
+  // 🎨 v1.76.0 — STYLES : plus aucune table locale
+  // =========================
+  // Toutes les couleurs viennent de `js/styleResolver.js` (table canonique).
+  // Ce fichier en portait 5 copies : c'est comme ca qu'une zone INACCESSIBLE
+  // venant d'un calque de donnees sortait en GRIS REMBLAIS dans l'export PNG
+  // avance — `ZS_EMBED` avait simplement oublie l'entree, et le repli
+  // `|| ZS_EMBED.remblais` rendait l'oubli invisible.
+  //
+  // { flat: true } : cette pipe est un CANVAS, il ne sait pas peindre un
+  // `url(#pattern)` SVG. Le resolveur substitue l'aplat de repli declare pour
+  // le type (rouge fonce semi-transparent pour `inaccessible`).
+  //
+  // `repli` est le type utilise quand `type` est introuvable — un custom
+  // supprime de la legende, par exemple. Passer `null` pour ne rien dessiner.
+  // 🎨 v1.76.0 (suite N2) — libellé de formulaire avec pastille RÉSOLUE.
+  // Les libellés i18n des cases à cocher portent leur émoji en dur
+  // (« 🟩 Principaux ») : après un override de couleur, le formulaire montrait
+  // l'ancienne couleur alors que l'export sortait la nouvelle.
+  function _lp(cat, key, label) {
+    return (typeof window.ktaLabelAvecPastille === "function")
+             ? window.ktaLabelAvecPastille(cat, key, label) : label;
+  }
+
+  function _styleCanvas(categorie, type, repli) {
+    const R = window.ktaResolveStyle;
+    if (typeof R !== "function") {
+      console.error("[Export] window.ktaResolveStyle absent — styles indisponibles.");
+      return null;
+    }
+    return R(categorie, type, { flat: true }) ||
+           (repli ? R(categorie, repli, { flat: true }) : null);
+  }
+
+  // =========================
   // INJECTION DES STYLES (au premier appel)
   // =========================
   function _injecterStyles() {
@@ -612,9 +646,9 @@
     // Sous-cases types de routes embarquées
     if (hasRoads) {
       const roadLabels = {
-        principal:  window.I18n.t("imgexport.roadType.principal"),
-        secondaire: window.I18n.t("imgexport.roadType.secondaire"),
-        chemin:     window.I18n.t("imgexport.roadType.chemin")
+        principal:  _lp("traces", "principal", window.I18n.t("imgexport.roadType.principal")),
+        secondaire: _lp("traces", "secondaire", window.I18n.t("imgexport.roadType.secondaire")),
+        chemin:     _lp("traces", "chemin", window.I18n.t("imgexport.roadType.chemin"))
       };
       ["principal","secondaire","chemin"].forEach(function(t) {
         if (!roadTypes[t]) return;
@@ -629,10 +663,10 @@
     // Sous-cases types de zones embarquées
     if (hasZones) {
       const zoneLabels = {
-        eau:          window.I18n.t("imgexport.zoneType.eau"),
-        remblais:     window.I18n.t("imgexport.zoneType.remblais"),
-        effondrement: window.I18n.t("imgexport.zoneType.effondrement"),
-        inaccessible: window.I18n.t("imgexport.zoneType.inaccessible")
+        eau:          _lp("zones", "eau", window.I18n.t("imgexport.zoneType.eau")),
+        remblais:     _lp("zones", "remblais", window.I18n.t("imgexport.zoneType.remblais")),
+        effondrement: _lp("zones", "effondrement", window.I18n.t("imgexport.zoneType.effondrement")),
+        inaccessible: _lp("zones", "inaccessible", window.I18n.t("imgexport.zoneType.inaccessible"))
       };
       ["eau","remblais","effondrement","inaccessible"].forEach(function(t) {
         if (!zoneTypes[t]) return;
@@ -870,24 +904,24 @@
       pointsTagsHtml +
 
       row("roads",   Ti("imgexport.ann.roads"),           nbRoads,   true) +
-      rowSub("roads_principal",  Ti("imgexport.roadType.principal"),  roadsByType.principal,  true) +
-      rowSub("roads_secondaire", Ti("imgexport.roadType.secondaire"), roadsByType.secondaire, true) +
-      rowSub("roads_chemin",     Ti("imgexport.roadType.chemin"),     roadsByType.chemin,     true) +
+      rowSub("roads_principal",  _lp("traces", "principal", Ti("imgexport.roadType.principal")),  roadsByType.principal,  true) +
+      rowSub("roads_secondaire", _lp("traces", "secondaire", Ti("imgexport.roadType.secondaire")), roadsByType.secondaire, true) +
+      rowSub("roads_chemin",     _lp("traces", "chemin", Ti("imgexport.roadType.chemin")),     roadsByType.chemin,     true) +
 
       row("zones",   Ti("imgexport.ann.zones"),           nbZones,   true) +
-      rowSub("zones_eau",          Ti("imgexport.zoneType.eau"),          zonesByType.eau,          true) +
-      rowSub("zones_remblais",     Ti("imgexport.zoneType.remblais"),     zonesByType.remblais,     true) +
-      rowSub("zones_effondrement", Ti("imgexport.zoneType.effondrement"), zonesByType.effondrement, true) +
-      rowSub("zones_inaccessible", Ti("imgexport.zoneType.inaccessible"), zonesByType.inaccessible, true) +
+      rowSub("zones_eau",          _lp("zones", "eau", Ti("imgexport.zoneType.eau")),          zonesByType.eau,          true) +
+      rowSub("zones_remblais",     _lp("zones", "remblais", Ti("imgexport.zoneType.remblais")),     zonesByType.remblais,     true) +
+      rowSub("zones_effondrement", _lp("zones", "effondrement", Ti("imgexport.zoneType.effondrement")), zonesByType.effondrement, true) +
+      rowSub("zones_inaccessible", _lp("zones", "inaccessible", Ti("imgexport.zoneType.inaccessible")), zonesByType.inaccessible, true) +
 
       // 🆕 v1.9.3-A1.b.2 : structures (piliers + murs + fronts) dans les
       // annotations session de l'export image. Calqué sur le bloc zones.
       row("structures", Ti("imgexport.ann.structures"), nbStructures, true) +
-      rowSub("structures_pilier-1", Ti("imgexport.structType.pilier1"), structuresByType["pilier-1"], true) +
-      rowSub("structures_pilier-2", Ti("imgexport.structType.pilier2"), structuresByType["pilier-2"], true) +
-      rowSub("structures_mur",      Ti("imgexport.structType.mur"),     structuresByType["mur"],      true) +
-      rowSub("structures_front-1",  Ti("imgexport.structType.front1"),  structuresByType["front-1"], true) +
-      rowSub("structures_front-2",  Ti("imgexport.structType.front2"),  structuresByType["front-2"], true) +
+      rowSub("structures_pilier-1", _lp("structures", "pilier-1", Ti("imgexport.structType.pilier1")), structuresByType["pilier-1"], true) +
+      rowSub("structures_pilier-2", _lp("structures", "pilier-2", Ti("imgexport.structType.pilier2")), structuresByType["pilier-2"], true) +
+      rowSub("structures_mur",      _lp("structures", "mur", Ti("imgexport.structType.mur")),     structuresByType["mur"],      true) +
+      rowSub("structures_front-1",  _lp("structures", "front-1", Ti("imgexport.structType.front1")),  structuresByType["front-1"], true) +
+      rowSub("structures_front-2",  _lp("structures", "front-2", Ti("imgexport.structType.front2")),  structuresByType["front-2"], true) +
 
       row("mesure",  Ti("imgexport.ann.mesure"),          nbMesure,  false) +
       `<label class="kta-export-cb-row" style="${trackerOk ? '' : 'opacity:0.4;'}">
@@ -1045,204 +1079,18 @@
     cont.innerHTML = html;
   }
 
-  // Ouvre une mini-modale pour ajouter une entrée custom à la légende.
-  // 4 champs : catégorie / libellé / couleur trait (optionnel) / couleur
-  // fill (optionnel). L'utilisateur peut faire :
-  //   - Catégorie "icones" + iconUrl       → entry icône (mais pas d'UI
-  //     pour uploader une icône en step 2 — placé pour step 2c suivant)
-  //   - Catégorie "traces"     + lineColor → ligne dans Tracés
-  //   - Catégorie "zones"      + fillColor → polygone dans Zones
-  //   - Catégorie "structures" + lineColor OU fillColor → idem
+  // 🧹 v1.76.0 (F19) — la dialog « ajouter une entrée custom » vivait ici EN
+  // DOUBLE, clone intégral de celle de legendCustomization.js (~200 lignes).
+  // Chaque bug devait être corrigé deux fois — le contour vert fantôme (F9)
+  // l'a prouvé. On délègue désormais à l'original, dont le z-index (100100)
+  // passe déjà au-dessus de la modale Export (99999).
   function _ouvrirAddCustomEntryDialog() {
-    // Mini-modale charte MKM. On utilise .kta-readme-modal-overlay
-    // (z-index 99999) mais bumpé à 100100 inline pour passer AU-DESSUS
-    // de la modale Export PNG parente (qui occupe la même classe).
-    const wrap = document.createElement("div");
-    wrap.className = "kta-readme-modal-overlay kta-legend-add-overlay";
-    wrap.style.zIndex = "100100";
-    const Ta = window.I18n.t;
-    wrap.innerHTML =
-      '<div class="kta-readme-modal-boite" style="width:auto; max-width:420px; height:auto; max-height:90vh; padding:20px; overflow-y:auto;">' +
-        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px;">' +
-          '<h3 style="margin:0; font-size:16px; color:#e8eaf0;">' + Ta("imgexport.addEntry.titre") + '</h3>' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-legend-add-close" style="padding:2px 8px;">✕</button>' +
-        '</div>' +
-        '<div style="margin-bottom:10px;">' +
-          '<label class="kta-cfg-label">' + Ta("imgexport.addEntry.categorie") + '</label>' +
-          '<select class="kta-cfg-input" id="kta-legend-add-cat">' +
-            '<option value="traces">' + Ta("imgexport.addEntry.cat.traces") + '</option>' +
-            '<option value="zones">' + Ta("imgexport.addEntry.cat.zones") + '</option>' +
-            '<option value="structures">' + Ta("imgexport.addEntry.cat.structures") + '</option>' +
-            '<option value="icones">' + Ta("imgexport.addEntry.cat.icones") + '</option>' +
-          '</select>' +
-        '</div>' +
-        // 🆕 v1.16.0 step2-drawable : choix géométrie pour STRUCTURES.
-        '<div style="margin-bottom:10px; display:none;" id="kta-legend-add-geom-wrap">' +
-          '<label class="kta-cfg-label">' + Ta("imgexport.addEntry.typeStructure") + '</label>' +
-          '<div style="display:flex; gap:6px;">' +
-            '<label class="kta-export-radio-row" style="flex:1;">' +
-              '<input type="radio" name="kta-legend-add-geom" value="polygon" checked>' +
-              '<span>' + Ta("imgexport.addEntry.geom.polygon") + ' <span style="color:#8892a4; font-size:11px;">' + Ta("imgexport.addEntry.geom.polygonNote") + '</span></span>' +
-            '</label>' +
-            '<label class="kta-export-radio-row" style="flex:1;">' +
-              '<input type="radio" name="kta-legend-add-geom" value="polyline">' +
-              '<span>' + Ta("imgexport.addEntry.geom.polyline") + ' <span style="color:#8892a4; font-size:11px;">' + Ta("imgexport.addEntry.geom.polylineNote") + '</span></span>' +
-            '</label>' +
-          '</div>' +
-        '</div>' +
-        '<div style="margin-bottom:10px;">' +
-          '<label class="kta-cfg-label">' + Ta("imgexport.addEntry.libelle") + '</label>' +
-          '<input class="kta-cfg-input" id="kta-legend-add-label" type="text" placeholder="' + Ta("imgexport.addEntry.libellePlaceholder") + '">' +
-        '</div>' +
-        '<div style="margin-bottom:10px;" id="kta-legend-add-line-wrap">' +
-          '<label class="kta-cfg-label">' + Ta("imgexport.addEntry.couleurTrait") + '</label>' +
-          '<input class="kta-cfg-input" id="kta-legend-add-line" type="color" value="#00ff00" style="height:32px; padding:2px;">' +
-          '<label class="kta-export-cb-row" style="margin-top:4px;">' +
-            '<input type="checkbox" id="kta-legend-add-line-on" checked>' +
-            '<span>' + Ta("imgexport.addEntry.activerTrait") + '</span>' +
-          '</label>' +
-        '</div>' +
-        '<div style="margin-bottom:10px;" id="kta-legend-add-fill-wrap">' +
-          '<label class="kta-cfg-label">' + Ta("imgexport.addEntry.couleurFill") + '</label>' +
-          '<input class="kta-cfg-input" id="kta-legend-add-fill" type="color" value="#3aa9e8" style="height:32px; padding:2px;">' +
-          '<label class="kta-export-cb-row" style="margin-top:4px;">' +
-            '<input type="checkbox" id="kta-legend-add-fill-on">' +
-            '<span>' + Ta("imgexport.addEntry.activerFill") + '</span>' +
-          '</label>' +
-        '</div>' +
-        '<div style="margin-bottom:10px; display:none;" id="kta-legend-add-icon-wrap">' +
-          '<label class="kta-cfg-label">' + Ta("imgexport.addEntry.urlIcone") + '</label>' +
-          '<input class="kta-cfg-input" id="kta-legend-add-icon" type="text" placeholder="https://... ou data:image/...">' +
-          '<p style="font-size:11px; color:#8892a4; margin:4px 0 0 0;">' +
-            Ta("imgexport.addEntry.urlIconeNote") +
-          '</p>' +
-        '</div>' +
-        '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">' +
-          '<button class="kta-btn kta-btn-ghost"   type="button" id="kta-legend-add-cancel">' + Ta("imgexport.addEntry.annuler") + '</button>' +
-          '<button class="kta-btn kta-btn-primary" type="button" id="kta-legend-add-ok">' + Ta("imgexport.addEntry.ajouter") + '</button>' +
-        '</div>' +
-      '</div>';
-
-    document.body.appendChild(wrap);
-
-    function fermerAdd() { try { wrap.remove(); } catch(e) {} }
-
-    document.getElementById("kta-legend-add-close").addEventListener("click", fermerAdd);
-    document.getElementById("kta-legend-add-cancel").addEventListener("click", fermerAdd);
-    wrap.addEventListener("click", function(e) { if (e.target === wrap) fermerAdd(); });
-
-    const catSel = document.getElementById("kta-legend-add-cat");
-    const geomWrap = document.getElementById("kta-legend-add-geom-wrap");
-    const lineWrap = document.getElementById("kta-legend-add-line-wrap");
-    const fillWrap = document.getElementById("kta-legend-add-fill-wrap");
-    const iconWrap = document.getElementById("kta-legend-add-icon-wrap");
-
-    function _getStructGeom() {
-      const r = wrap.querySelector('input[name="kta-legend-add-geom"]:checked');
-      return r ? r.value : "polygon";
-    }
-
-    function _majChamps() {
-      const cat = catSel.value;
-      // Icônes → uniquement iconUrl. Autres → couleurs trait/fill selon le type.
-      if (cat === "icones") {
-        geomWrap.style.display = "none";
-        lineWrap.style.display = "none";
-        fillWrap.style.display = "none";
-        iconWrap.style.display = "block";
-      } else {
-        iconWrap.style.display = "none";
-        // Tracés : trait obligatoire, fill caché.
-        // Zones : fill obligatoire, trait optionnel pour bordure.
-        // Structures : géométrie au choix → trait OU fill selon ce choix.
-        if (cat === "traces") {
-          geomWrap.style.display = "none";
-          lineWrap.style.display = "block";
-          fillWrap.style.display = "none";
-        } else if (cat === "zones") {
-          geomWrap.style.display = "none";
-          lineWrap.style.display = "none";
-          fillWrap.style.display = "block";
-          document.getElementById("kta-legend-add-fill-on").checked = true;
-        } else {
-          // structures
-          // 🐛 v1.16.0 step2-drawable-fix : pour polygone, on cache le
-          // sélecteur "trait" (cf legendCustomization.js).
-          geomWrap.style.display = "block";
-          const g = _getStructGeom();
-          if (g === "polyline") {
-            lineWrap.style.display = "block";
-            fillWrap.style.display = "none";
-            document.getElementById("kta-legend-add-line-on").checked = true;
-          } else {
-            lineWrap.style.display = "none";
-            fillWrap.style.display = "block";
-            document.getElementById("kta-legend-add-fill-on").checked = true;
-          }
-        }
-      }
-    }
-    catSel.addEventListener("change", _majChamps);
-    wrap.querySelectorAll('input[name="kta-legend-add-geom"]').forEach(function(r) {
-      r.addEventListener("change", _majChamps);
-    });
-    _majChamps();
-
-    document.getElementById("kta-legend-add-ok").addEventListener("click", function() {
-      const cat   = catSel.value;
-      const label = (document.getElementById("kta-legend-add-label").value || "").trim();
-      if (!label) {
-        alert(window.I18n.t("imgexport.addEntry.alert.labelRequis"));
-        return;
-      }
-      const entry = { category: cat, label: label };
-
-      // 🆕 v1.16.0 step2-drawable : géométrie
-      if (cat === "structures") {
-        entry.geometry = _getStructGeom();
-      } else if (cat === "traces") {
-        entry.geometry = "polyline";
-      } else if (cat === "zones") {
-        entry.geometry = "polygon";
-      } else {
-        entry.geometry = "marker";
-      }
-
-      if (cat === "icones") {
-        const url = (document.getElementById("kta-legend-add-icon").value || "").trim();
-        if (!url) { alert(window.I18n.t("imgexport.addEntry.alert.urlRequise")); return; }
-        entry.iconUrl = url;
-      } else {
-        const lineOn = document.getElementById("kta-legend-add-line-on").checked;
-        const fillOn = document.getElementById("kta-legend-add-fill-on").checked;
-        if (lineOn) entry.lineColor = document.getElementById("kta-legend-add-line").value;
-        if (fillOn) {
-          entry.fillColor = document.getElementById("kta-legend-add-fill").value;
-          // Pour zones/structures polygones : bordure par défaut = même couleur que fill
-          if ((cat === "zones" || (cat === "structures" && entry.geometry === "polygon")) && !lineOn) {
-            entry.borderColor = entry.fillColor;
-          }
-        }
-        if (entry.geometry === "polyline" && !entry.lineColor) {
-          alert(window.I18n.t("imgexport.addEntry.alert.traitRequis"));
-          return;
-        }
-        if (entry.geometry === "polygon" && !entry.fillColor) {
-          alert(window.I18n.t("imgexport.addEntry.alert.fillRequis"));
-          return;
-        }
-        if (!entry.lineColor && !entry.fillColor) {
-          alert(window.I18n.t("imgexport.addEntry.alert.couleurRequise"));
-          return;
-        }
-      }
-      if (window.LegendCustomization) {
-        window.LegendCustomization.addCustomEntry(entry);
+    if (window.LegendCustomization && typeof window.LegendCustomization.ouvrirAddDialog === "function") {
+      window.LegendCustomization.ouvrirAddDialog(function() {
         _peuplerLegendCustom();
         _planifierApercu();
-      }
-      fermerAdd();
-    });
+      });
+    }
   }
 
   // Lit les valeurs courantes du panneau Légende Custom et appelle les
@@ -1953,34 +1801,12 @@
     // ---------- zones (avant les tracés) ----------
     if (opts.ann.zones && window.getZones) {
       const zones = window.getZones();
-      const ZS = {
-        eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7,  weight: 3, opacity: 1 },
-        remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7,  weight: 3, opacity: 1 },
-        effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7,  weight: 3, opacity: 1 },
-        // v169 : Zone inaccessible. Pour l'export canvas PNG, on utilise un
-        // rouge fonce uni semi-transparent (les hachures SVG runtime ne sont
-        // pas portables tel quel au canvas — perte acceptable pour l'export).
-        inaccessible: { color: "#5a0a0a", fillColor: "#7a0000", fillOpacity: 0.65, weight: 3, opacity: 1 }
-      };
       const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       const filtreZ = opts.ann.zonesTypes || { eau: true, remblais: true, effondrement: true, inaccessible: true };
-      // 🆕 v1.16.0 step2-drawable : résolution custom pour les zones
-      function _styleZoneExp(type) {
-        if (ZS[type]) return ZS[type];
-        if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
-          const e = window.LegendCustomization.findCustomEntry(type);
-          if (e && e.category === "zones") {
-            return {
-              color:       e.borderColor || e.fillColor || "#888",
-              fillColor:   e.fillColor   || "#888",
-              fillOpacity: 0.7,
-              weight:      3,
-              opacity:     1
-            };
-          }
-        }
-        return ZS.remblais;
-      }
+      // v169 : `inaccessible` sort en rouge fonce uni semi-transparent — les
+      // hachures SVG du runtime ne sont pas portables au canvas. C'est le repli
+      // d'aplat que { flat: true } applique (cf. _styleCanvas).
+      function _styleZoneExp(type) { return _styleCanvas("zones", type, "remblais"); }
       const triees = [...zones]
         .filter(function(z) {
           // Custom zones toujours OK (pas dans filtreZ qui ne liste que built-in)
@@ -2020,17 +1846,8 @@
     // mur) vs polyline (fronts) au rendu canvas.
     if (opts.ann.structures && window.getStructures) {
       const structures = window.getStructures();
-      const SS = {
-        "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1 },
-        "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
-        "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
-        // Fronts : polylines épaisses sans contour. weight 10 (px Leaflet)
-        // converti via scale au canvas final.
-        // 🔧 v1.10.1-hotfix2 (KARMA) : front-1 jaune = pilier-1 jaune,
-        // front-2 orange = pilier-2 orange (alignement couleur/masse).
-        "front-1":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true },
-        "front-2":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true }
-      };
+      // Fronts : polylines épaisses sans contour. Le `weight` (px Leaflet) est
+      // converti via `scale` au canvas final.
       // 🆕 v1.10.0-hotfix1 : nouvel ordre Z mur < pilier-2 < pilier-1 <
       // front-2 < front-1 (fronts en avant-plan) + tri par level en M-LVL.
       // Cohérent avec structures.js > renderStructures et utils.js.
@@ -2039,29 +1856,10 @@
         "pilier-1": true, "pilier-2": true, "mur": true,
         "front-1":  true, "front-2": true
       };
-      // 🆕 v1.16.0 step2-drawable : résolution custom pour les structures.
-      // Pour polyline (front custom) : style isPolyline + lineColor.
-      // Pour polygon (pilier/mur custom) : style polygon avec fill + border.
-      function _styleStructExp(type) {
-        if (SS[type]) return SS[type];
-        if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
-          const e = window.LegendCustomization.findCustomEntry(type);
-          if (e && e.category === "structures") {
-            if (e.geometry === "polyline") {
-              return { color: e.lineColor || "#888", weight: 10, opacity: 1, isPolyline: true };
-            } else {
-              return {
-                color:       e.borderColor || "#000",
-                fillColor:   e.fillColor || "#888",
-                fillOpacity: 0.85,
-                weight:      3,
-                opacity:     1
-              };
-            }
-          }
-        }
-        return SS["mur"];
-      }
+      // Custom : la géométrie déclarée tranche — polyline (front) → trait épais,
+      // polygon (pilier/mur) → contour noir. C'est le résolveur qui applique le
+      // gabarit de la catégorie « structures ».
+      function _styleStructExp(type) { return _styleCanvas("structures", type, "mur"); }
       const _multiLevelOnExp = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
       const triees = [...structures]
         .filter(function(s) {
@@ -2152,19 +1950,13 @@
       ctx.restore();
     }
 
-    const ZS_EMBED = {
-      eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
-      remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
-      effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
-    };
-    const RS_EMBED = {
-      principal:   { color: "#00ff00", weight: 5, opacity: 1 },
-      secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },
-      chemin:      { color: "#ffff00", weight: 5, opacity: 1 },
-      // 🪜 v1.7.1 fix : entrée jonction manquante = blanc dans l'export PNG avancé
-      // des roads embedded. Magenta cohérent avec utils.js + road.js.
-      jonction:    { color: "#ff4ecb", weight: 5, opacity: 1 }
-    };
+    // 🐛 v1.76.0 — CORRECTION DU BUG HISTORIQUE. Ces deux tables etaient
+    // ecrites a la main et INCOMPLETES : `ZS_EMBED` n'avait pas `inaccessible`,
+    // donc le repli `|| ZS_EMBED.remblais` faisait sortir une zone DANGEREUSE
+    // en gris remblais. Exactement le meme oubli avait deja frappe `jonction`
+    // ici meme (corrige en v1.7.1) — deux fois le meme defaut, parce que la
+    // table etait recopiee. Elle ne l'est plus : le resolveur connait TOUS les
+    // types, built-in comme custom, et il n'y a plus rien a oublier.
 
     // Collecte des routes (embedded + editable) pour dessiner les cercles d'intersection à la fin
     const allRoadsForIntersect = [];
@@ -2255,7 +2047,7 @@
         return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
       }).forEach(function(z) {
         if (!_itemPasseLevels(z)) return;
-        _drawPolygon(z.points || [], ZS_EMBED[z.type] || ZS_EMBED.remblais);
+        _drawPolygon(z.points || [], _styleCanvas("zones", z.type, "remblais"));
         _diagAdv.embZones++;
       });
 
@@ -2268,13 +2060,6 @@
       // mêmes que pour les structures session — cohérent avec la modale
       // Avancé qui n'a qu'un seul groupe de checkbox pour les structures).
       if (opts.ann.structures && embeddedStructures.length > 0) {
-        const SS_EMBED = {
-          "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1 },
-          "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
-          "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
-          "front-1":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true },
-          "front-2":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true }
-        };
         const ordreS_E = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
         const filtreS_E = opts.ann.structuresTypes || {
           "pilier-1": true, "pilier-2": true, "mur": true,
@@ -2293,7 +2078,7 @@
             return (ordreS_E[a.type] ?? 99) - (ordreS_E[b.type] ?? 99);
           });
         for (const st of trieesEmb) {
-          const s = SS_EMBED[st.type] || SS_EMBED["mur"];
+          const s = _styleCanvas("structures", st.type, "mur");
           const isPolyline = !!s.isPolyline;
           const minPts = isPolyline ? 2 : 3;
           if (!st.points || st.points.length < minPts) continue;
@@ -2324,7 +2109,7 @@
       }
       drawnRoadsSorted.forEach(function(r) {
         if (!_itemPasseLevels(r)) return;
-        _drawPolyline(r.points || [], RS_EMBED[r.type] || { color: "#ffffff", weight: 5, opacity: 1 });
+        _drawPolyline(r.points || [], _styleCanvas("traces", r.type) || { color: "#ffffff", weight: 5, opacity: 1 });
         if (r.points && r.points.length >= 2) allRoadsForIntersect.push(r);
         _diagAdv.embRoads++;
       });
@@ -2373,25 +2158,13 @@
                  (T_ORDER[b.type] != null ? T_ORDER[b.type] : 99);
         });
       }
-      const RS = {
-        principal:   { color: "#00ff00", weight: 5 },
-        secondaire:  { color: "#b000ff", weight: 5 },
-        chemin:      { color: "#ffff00", weight: 5 },
-        // 🏗️ Multi-niveau (v148) : jonction = magenta plein (canvas n'a
-        // pas de dashArray natif dans cette pipe). Endpoints marques en
-        // ronds blanc+magenta plus bas pour parite avec l'on-map.
-        jonction:    { color: "#ff4ecb", weight: 5 }
-      };
-      // 🆕 v1.16.0 step2-drawable : pour les types CUSTOM (cust-XXX), on
-      // résout la couleur via LegendCustomization.findCustomEntry. Sinon
-      // fallback "white".
+      // 🏗️ Multi-niveau (v148) : la jonction sort en magenta PLEIN — cette pipe
+      // canvas ne gere pas le dashArray. Ses extremites sont marquees en ronds
+      // blanc+magenta plus bas, pour la parite avec l'affichage carte.
+      // Repli "white" pour un type totalement inconnu (custom supprime de la
+      // legende) : mieux vaut un trait visible qu'un trait absent.
       function _styleRoadExp(type) {
-        if (RS[type]) return RS[type];
-        if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
-          const e = window.LegendCustomization.findCustomEntry(type);
-          if (e && e.category === "traces") return { color: e.lineColor || "white", weight: 5 };
-        }
-        return { color: "white", weight: 5 };
+        return _styleCanvas("traces", type) || { color: "white", weight: 5 };
       }
       const filtreR = opts.ann.roadsTypes || { principal: true, secondaire: true, chemin: true };
       for (const r of roads) {

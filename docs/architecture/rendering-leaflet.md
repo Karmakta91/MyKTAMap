@@ -5,6 +5,24 @@
 
 ---
 
+### 0. 🎨 Styles des types — source de vérité UNIQUE (v1.76.0)
+
+**`js/styleResolver.js` est le SEUL endroit où vivent les styles des 13 types built-in** (tracés `principal/secondaire/chemin/jonction/itinerary`, zones `eau/remblais/effondrement/inaccessible`, structures `pilier-1/pilier-2/mur/front-1/front-2`). Avant lui : ~25 tables recopiées sur 12 fichiers — c'est ainsi qu'une zone `inaccessible` de calque sortait en gris remblais dans l'export PNG (entrée oubliée + repli silencieux, même défaut que `jonction` en v1.7.1).
+
+**API** (globales `window.*`) :
+- `ktaResolveStyle(cat, clé[, {flat:true}])` → objet **NEUF** | `null` (l'appelant garde son repli). Résout aussi les customs `cust-*` via `LegendCustomization` (gabarit par catégorie/géométrie) et applique l'**override de couleur** utilisateur (`LegendCustomization.getColor`, cascade session > plan). `{flat:true}` = contexte qui ne sait pas peindre un `url(#pattern)` SVG (canvas d'export, KMZ, fond OSM) → `inaccessible` retombe sur son aplat `_flatFill`.
+- `ktaSwatchColor(cat, clé)` → LA couleur représentative (polygone = remplissage, ligne = trait) — pastilles, barres de stats, camemberts, rapport.
+- `ktaTypeSwatchHtml(cat, clé, repliEmoji)` → pastille HTML (les émojis 🟩🟥🟡 sont des glyphes à couleur figée — sidebar + reflets de mode).
+- `ktaLabelAvecPastille(cat, clé, label)` → remplace l'émoji de TÊTE d'un libellé i18n par la pastille (formulaires d'export).
+
+**Règles** :
+- ❌ **Jamais de table de couleurs locale** — `scripts/check-style-canon.js` (pré-commit BLOQUANT) refuse toute réintroduction. Exceptions assumées, listées dans le script : `emergencyMode.js` (palette vive dédiée), `osmView.js`/`osmHomePreview.js` (`inaccessible` en aplat orange, pas de motif SVG sur OSM).
+- ⚠️ Le **KML garde SES largeurs/alphas** (`width` KML ≠ `weight` Leaflet, ajustés à l'échelle GPS) — seules les couleurs viennent du canon. Figé par `scripts/check-kml-styles.js`.
+- Toute **mutation qui change un rendu** (setColor, resetSession, remove/updateCustomEntry) doit repeindre : `renderRoads/Zones/Structures` + `_ktaRestyleDataLayers` (calques de données — couleurs seules, les opacités restent au filtre multi-niveau). Vérifié par `check-api-surface.js`.
+- Chargé tôt dans `index.html` (avant `utils.js`) ; aucune dépendance au chargement (LegendCustomization interrogé à l'appel).
+
+---
+
 ### 1. Cycle de vie d'un plan
 
 ```
@@ -104,7 +122,11 @@ Le calque `editor` dans le contrôle des couches Leaflet (label hardcoded **"Mes
 - `editor.js > _ajouterMarker` : `addTo(window.layerEditor)`.
 - `map.js > initMapFromConfig` : auto-création de `editor` si absent du plan-config (fallback pour vieux plans).
 
-**⚠️ Bug Leaflet observé non résolu** : sur certaines configurations, le toggle off du LayerGroup ne propage PAS aux polylines roads (zones + markers OK). Une tentative de calque séparé "Mes tracés" pour les roads a été rollback car ne résolvait pas le bug. À investiguer plus tard si critique pour un user.
+**⚠️ Bug observé, statut incertain** : sur certaines configurations, le toggle off du LayerGroup ne propage PAS aux polylines roads (zones + markers OK). Une tentative de calque séparé "Mes tracés" pour les roads a été rollback car ne résolvait pas le bug.
+
+> 🔍 **Piste (audit 01/08/2026, non testée en runtime)** — ce n'est probablement PAS un bug Leaflet, mais une **course au boot** : `_targetLayerForRoad()` retombe sur `window.map` quand `window.layerEditor` n'existe pas encore (fallback l. ~563, idem `zones.js > _zoneTarget`). Une road créée pendant cette fenêtre est attachée **directement à la map** → le toggle du LayerGroup `editor` ne la verra jamais, définitivement. Ça colle au « sur certaines configurations » (dépend du timing d'init). Le bug jumeau côté retrait a d'ailleurs été corrigé en v1.46.x (`layer.remove()` détache de la map mais pas du FeatureGroup parent → retrait FeatureGroup-aware, cf. `road.js` l. ~700).
+>
+> **Pour vérifier** : en console, `window.getRoads()` puis contrôler `window.layerEditor.hasLayer(<layer>)` sur les tracés récalcitrants. Si `false` alors qu'ils sont visibles → hypothèse confirmée, et le fix est de re-parenter au lieu de chercher côté Leaflet.
 
 **Label dans le contrôle des couches** : forcé hardcoded "Mes annotations" pour le calque `id: "editor"` (override le `layerConfig.label` du plan-config). Plans existants avec "Ajouts" affichent automatiquement "Mes annotations" sans regénération.
 

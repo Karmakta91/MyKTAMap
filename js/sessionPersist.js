@@ -229,10 +229,21 @@
     // (sans rien dessiner), on garde quand même la session pour ne pas
     // perdre ses overrides. Une session est "vide" seulement si rien du
     // tout n'est défini, y compris la légende.
+    // 🐛 v1.76.1 (audit 06/08 — PERTE DE DONNÉES) : ce test local ne
+    // connaissait ni `colors` ni `borders` (ajoutés v1.76.0/1) — une session
+    // où l'utilisateur avait UNIQUEMENT recoloré des types built-in était
+    // jugée vide → slot localStorage SUPPRIMÉ, couleurs perdues au reload
+    // sans un mot. Même famille que measureSurface (v1.12.0) et
+    // trackerTimeline (v1.28.0) ci-dessous. On délègue au module : SON
+    // isSessionStateEmpty teste les 5 champs et évoluera avec eux.
     const lcEmpty = !state.customLegend
-                 || (!state.customLegend.labels       || Object.keys(state.customLegend.labels).length === 0)
-                 && (!state.customLegend.hidden       || Object.keys(state.customLegend.hidden).length === 0)
-                 && (!state.customLegend.customEntries || state.customLegend.customEntries.length === 0);
+                 || ((window.LegendCustomization && typeof window.LegendCustomization.isSessionStateEmpty === "function")
+                      ? window.LegendCustomization.isSessionStateEmpty()
+                      : ((!state.customLegend.labels        || Object.keys(state.customLegend.labels).length === 0)
+                      && (!state.customLegend.hidden        || Object.keys(state.customLegend.hidden).length === 0)
+                      && (!state.customLegend.colors        || Object.keys(state.customLegend.colors).length === 0)
+                      && (!state.customLegend.borders       || Object.keys(state.customLegend.borders).length === 0)
+                      && (!state.customLegend.customEntries || state.customLegend.customEntries.length === 0)));
     return state.editorPoints.length === 0
         && state.roads.length        === 0
         && state.zones.length        === 0
@@ -426,6 +437,17 @@
     // de la modale de feedback "Session restaurée".
     const restored = { points: 0, roads: 0, zones: 0, structures: 0, measure: 0, measureSurface: 0 };
     try {
+      // 🐛 v1.76.1 (C2 audit 06/08) — LA LÉGENDE D'ABORD, LES OBJETS ENSUITE.
+      // Elle était chargée en FIN de restore, après setRoads/setZones/
+      // setStructures : à chaque boot, les objets de session d'un type custom
+      // se rendaient au repli (blanc/gris) et les couleurs override étaient
+      // invisibles — jusqu'à une mutation de légende ou, par accident, le
+      // replay des filtres runtime (présent seulement si la session en avait).
+      // C'était l'intermittence « un coup ça marche, l'autre non ».
+      if (window.LegendCustomization && typeof window.LegendCustomization.loadSessionState === "function") {
+        window.LegendCustomization.loadSessionState(payload.customLegend);
+      }
+
       // setEditorPoints redessine désormais en interne (depuis 09/05/2026, fix bug
       // toggle calque "Ajout" sur points restaurés) — symmetric avec setRoads/setZones
       if (window.setEditorPoints && Array.isArray(payload.editorPoints)) {
@@ -527,13 +549,8 @@
         window.setMeasurePointsSurface(payload.measureSurface);
         restored.measureSurface = payload.measureSurface.length;
       }
-      // 🆕 v1.16.0 step 2 : restore des overrides légende. Rétrocompat OK
-      // (anciens payloads n'ont pas customLegend → loadSessionState(null)
-      // initialise l'état vide). Le module LegendCustomization peut être
-      // absent au boot très précoce — guard.
-      if (window.LegendCustomization && typeof window.LegendCustomization.loadSessionState === "function") {
-        window.LegendCustomization.loadSessionState(payload.customLegend);
-      }
+      // (restore de la légende : déplacé EN TÊTE de _applyRestore — cf. C2
+      // ci-dessus. Les objets doivent se rendre avec la légende déjà en place.)
 
       // 🆕 v1.21.2 (KARMA "on active dans la sauvegarde auto le tracking") :
       // restore de la timeline tracker GPS. Rétrocompat : anciens payloads
@@ -782,6 +799,22 @@
       // Pas de planId connu → on ne touche pas au stockage existant, on démarre quand même le poll
       _startPolling();
       return null;
+    }
+
+    // 🐛 v1.76.0 — RESET DE LA LÉGENDE AVANT TOUTE RESTAURATION.
+    // `LegendCustomization._sessionState` n'était réinitialisé NULLE PART au
+    // changement de plan : `loadSessionState` n'était appelé que depuis
+    // `_applyRestore`, donc uniquement quand un slot existait ET que le
+    // `nameMatch` passait. Charger un plan jamais visité laissait donc en place
+    // les types custom du plan PRÉCÉDENT — affichés dans ≡ Légende, proposés au
+    // dessin dans la sidebar, puis écrits dans le slot du nouveau plan au
+    // premier poll d'auto-save. La légende d'un plan contaminait le suivant.
+    // On repart d'un état vide : soit `_applyRestore` recharge juste après la
+    // vraie légende du plan, soit il n'y en a pas et l'état vide est correct.
+    // (`_planState`, lui, vient de `loadPlanState()` et n'est pas concerné.)
+    if (window.LegendCustomization && typeof window.LegendCustomization.loadSessionState === "function") {
+      try { window.LegendCustomization.loadSessionState(null); }
+      catch(e) { console.warn("[SessionPersist] reset légende échec :", e); }
     }
 
     const saved = getSaved();  // lit le slot du plan courant

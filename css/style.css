@@ -18009,6 +18009,54 @@ body.kta-theme-light .kta-group-flyout-sep {
   border-color: rgba(255, 80, 80, 0.6);
 }
 
+/* 🎨 v1.76.0 — Sélecteur de couleur d'un type built-in dans l'éditeur de
+   légende. Il remplace la pastille statique, donc il doit occuper exactement
+   la même place (16px, flex fixe) pour ne pas décaler les colonnes de la
+   ligne. Les navigateurs ajoutent un padding interne au <input type="color">
+   qui laisserait un liseré autour de la couleur : on l'annule via ::-webkit-
+   color-swatch-wrapper / ::-moz-color-swatch. */
+.kta-legend-color,
+.kta-legend-border {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.kta-legend-color::-webkit-color-swatch-wrapper,
+.kta-legend-border::-webkit-color-swatch-wrapper { padding: 0; }
+.kta-legend-color::-webkit-color-swatch,
+.kta-legend-border::-webkit-color-swatch { border: none; border-radius: 2px; }
+.kta-legend-color::-moz-color-swatch,
+.kta-legend-border::-moz-color-swatch { border: none; border-radius: 2px; }
+.kta-legend-color:hover,
+.kta-legend-border:hover { border-color: #8cb4ff; }
+
+.kta-legend-color-reset {
+  background: transparent;
+  border: 1px solid rgba(140, 180, 255, 0.3);
+  color: #8cb4ff;
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  flex: 0 0 auto;
+}
+.kta-legend-color-reset:hover {
+  background: rgba(140, 180, 255, 0.15);
+  border-color: rgba(140, 180, 255, 0.6);
+}
+
+body.kta-theme-light .kta-legend-color,
+body.kta-theme-light .kta-legend-border { border-color: rgba(0, 0, 0, 0.25); }
+
 /* Mini-modale "Ajouter une entrée custom" — réutilise les classes
    kta-modal* existantes ; juste un override de z-index pour passer
    au-dessus de la modale Export. */
@@ -18313,14 +18361,27 @@ html.kta-theme-light .kta-net-cell-method {
     gap: 16px;
     margin-bottom: 16px;
   }
+  /* 📐 v1.72.2 (KARMA « symétrie ») : profil et Reprendre = MÊMES largeur
+     (flex égal, plafond 620 px chacune — le sans-plafond a été rollback
+     sur ordre KARMA) ET hauteur. ⚠️ Hauteur : #resumeBox porte un
+     margin-bottom:14px INLINE (index.html) jamais retiré par le JS — en
+     flex stretch la marge est soustraite → Reprendre 14 px plus courte.
+     D'où le margin !important (seul moyen de battre un style inline). */
   .kta-loader-top-row .kta-loader-profile-bar {
     margin: 0;
-    flex: 0 1 auto;
+    flex: 1 1 0;
     min-width: 0;
+    max-width: 620px;
+    min-height: 56px;
+    box-sizing: border-box;
   }
   .kta-loader-top-row #resumeBox {
-    margin: 0;
-    flex: 0 0 auto;
+    margin: 0 !important;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 620px;
+    min-height: 56px;
+    box-sizing: border-box;
     display: flex !important;
     align-items: stretch;
   }
@@ -18330,8 +18391,13 @@ html.kta-theme-light .kta-net-cell-method {
   }
   .kta-loader-top-row #resumeBox .loader-btn-resume {
     width: 100%;
+    height: 100%;
     text-align: center;
-    padding: 12px 28px;
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
   }
 }
 
@@ -20498,10 +20564,8 @@ html.kta-theme-light .kta-readme-modal-overlay *[style*="background: #1a1f2e"] {
 /* 🧹 v1.69.0 : « 📔 Mon carnet » a rejoint la liste des outils classiques —
    le conteneur dédié `.loader-journal-action` n'existe plus. Le liseré doré
    reste, posé directement sur le bouton, pour le distinguer dans la liste. */
-#loaderJournalBtn {
-  border-color: rgba(244, 197, 66, 0.30);
-  background: rgba(244, 197, 66, 0.08);
-}
+/* (v1.73.0, KARMA : l'accent doré du bouton Carnet est retiré — même
+   apparence que les autres outils de la grille, .loader-btn-secondary nue.) */
 
 /* ── Modale carnet ── */
 .kta-jrn-boite { max-width: 640px !important; height: auto !important; max-height: 90vh !important; }
@@ -21276,7 +21340,16 @@ html.kta-theme-light .kta-planner-hist-nom { color: #3a4256; }
 }
 .kta-wiz-lien { width: 14px; height: 1px; background: rgba(140, 180, 255, 0.25); }
 
-#kta-wiz-nav { display: flex; gap: 8px; margin-right: auto; }
+/* 🔄 v1.73.0 (KARMA) : convention installeur — Annuler seul à GAUCHE,
+   navigation Précédent/Passer/Suivant à DROITE (Générer encore plus à
+   droite sur la page Résumé). Réalisé en flex `order` + margin auto sur
+   Annuler : le DOM ne bouge pas (listeners/JS intacts), et wizard OFF
+   (« Tout afficher ») → nav display:none côté JS, rangée historique
+   Annuler·Générer à droite inchangée. */
+#kta-wiz-nav { display: flex; gap: 8px; order: 2; }
+#kta-planner-corps.kta-wiz-actif .kta-conv-actions { justify-content: flex-start; }
+#kta-planner-corps.kta-wiz-actif .kta-conv-actions #kta-planner-annuler { order: 0; margin-right: auto; }
+#kta-planner-corps.kta-wiz-actif .kta-conv-actions #kta-planner-generer { order: 3; }
 
 .kta-wiz-resume-liste { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
 .kta-wiz-resume-row {
@@ -21353,3 +21426,276 @@ html.kta-theme-light .kta-wiz-resume-warns { color: #6a5a1e; }
 html.kta-theme-light .loader-search-results { background: #f4ecd8; }
 html.kta-theme-light .loader-search-row { color: #3a4256; }
 html.kta-theme-light .loader-search-row b { color: #1a1f2e; }
+
+/* ═══════════════════════════════════════════════════════════
+   🖼️ FOND D'ÉCRAN DU HOME (v1.74.0 — demande KARMA)
+   ═══════════════════════════════════════════════════════════
+   Le fond visible du HOME est celui de #planLoaderBox (il couvre 100% de
+   la viewport ; #planLoaderOverlay est derrière). C'est donc lui qu'on
+   habille.
+
+   ⚠️ LISIBILITÉ : une photo derrière les cards rend les textes illisibles.
+   D'où le VOILE — un aplat semi-opaque de la couleur du thème posé PAR-DESSUS
+   l'image via un premier calque de background. Deux variables pilotent tout :
+     --kta-wall-img : url() de la Blob URL       (posée par homeProfile.js)
+     --kta-wall-a   : alpha du voile, 0 → 1      (posée par homeProfile.js)
+   La COULEUR du voile (--kta-wall-rgb) vient du thème ci-dessous : basculer
+   clair/sombre réajuste le voile tout seul, sans repasser par le JS.
+
+   ⚠️ REFONTE v1.75.0 — LE FOND EST PORTÉ PAR #planLoaderOverlay, PAS PAR LA BOX.
+   Constat KARMA : « en portrait, quand on défile, le fond défile aussi alors
+   qu'il devrait rester fixe derrière — c'est ce qui crée le zoom ». Diagnostic
+   confirmé, et c'est UN SEUL défaut à deux symptômes :
+     • #planLoaderOverlay est `position: fixed; inset:0` + `overflow-y: auto`
+       → c'est LUI le conteneur de défilement (cf. main.js, qui remet son
+       scrollTop à 0 au retour au HOME).
+     • #planLoaderBox est le CONTENU DÉFILÉ : `min-height: 100dvh` sans
+       `height`, donc sa hauteur utilisée = hauteur du contenu (2000-3000 px
+       en portrait mobile).
+   Peindre le fond sur la box revenait donc à calculer `cover` sur une boîte
+   de 2500 px de haut au lieu de ~700 : facteur d'échelle vertical énorme,
+   ~88 % de la largeur rognée. Le « zoom » n'était pas un effet du défilement,
+   c'était son frère jumeau — même cause.
+   Porté par l'overlay : sa padding box EST le viewport, et comme il est
+   lui-même le scroller, son fond (`background-attachment: scroll`, défaut)
+   est attaché à sa border box et ne suit pas le contenu.
+   → `background-attachment: fixed` devient INUTILE. L'ancien commentaire qui
+   l'écartait « car cassé sur iOS Safari » affirmait sans source dans ce dépôt ;
+   la question ne se pose plus.
+
+   ⚠️ SPÉCIFICITÉ — le piège qui a déjà mordu : `body.kta-theme-light
+   #planLoaderOverlay` et `body.kta-theme-light #planLoaderBox` sont des
+   SHORTHANDS `!important` de spécificité (1,1,1). À `!important` égal, c'est la
+   spécificité qui tranche, PAS l'ordre. Un sélecteur (1,1,0) perd et le
+   shorthand remet `background-image: none`. D'où le préfixe `body.kta-theme-light`
+   sur les règles claires ci-dessous → (1,2,1), qui l'emporte.
+
+   La classe `.kta-has-wall` RESTE sur la box : une douzaine de blocs de
+   contraste (header, profil, footer, titres) sont scopés dessus. L'overlay
+   reçoit sa propre classe miroir `.kta-has-wall-bg`, posée par le JS. */
+#planLoaderOverlay.kta-has-wall-bg,
+body.kta-theme-light #planLoaderOverlay.kta-has-wall-bg {
+  background-image:
+    linear-gradient(rgba(var(--kta-wall-rgb, 26,31,46), var(--kta-wall-a, .55)),
+                    rgba(var(--kta-wall-rgb, 26,31,46), var(--kta-wall-a, .55))),
+    var(--kta-wall-img) !important;
+  /* cover (rogne) ou contain (image entière). Sous contain, la couleur de
+     fond reste celle du thème : les bandes se lisent comme le fond de l'app. */
+  background-size: var(--kta-wall-size, cover) !important;
+  background-position: var(--kta-wall-pos, center center) !important;
+  background-repeat: no-repeat !important;
+}
+#planLoaderOverlay.kta-has-wall-bg          { --kta-wall-rgb: 26, 31, 46; }
+body.kta-theme-light #planLoaderOverlay.kta-has-wall-bg { --kta-wall-rgb: 201, 184, 143; }
+
+/* La box doit devenir TRANSPARENTE, sinon elle masque l'overlay (elle est
+   opaque et couvre 100 %). Deux règles : la sombre bat la base (0,1,0), la
+   claire doit atteindre (1,2,1) pour battre le shorthand du thème clair. */
+#planLoaderBox.kta-has-wall,
+body.kta-theme-light #planLoaderBox.kta-has-wall {
+  background: transparent !important;
+}
+
+/* Aperçu dans la modale Profil : même rendu que le vrai fond, en petit. */
+.kta-wall-preview {
+  width: 100%;
+  height: 110px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-color: #1a1f2e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #8892a4;
+}
+.kta-wall-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.kta-wall-voile-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.kta-wall-voile-row input[type="range"] { flex: 1; min-width: 0; }
+.kta-wall-voile-val { font-size: 12px; color: #8892a4; min-width: 40px; text-align: right; }
+
+/* Bloc « fond d'écran » de la modale Profil — calqué sur
+   .kta-profile-details-stats pour rester natif dans la modale. */
+.kta-profile-details-section {
+  background: rgba(140,180,255,0.05);
+  border: 1px solid rgba(140,180,255,0.18);
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 14px;
+}
+.kta-profile-details-section-titre {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 10px;
+}
+html.kta-theme-light .kta-profile-details-section {
+  background: rgba(140,180,255,0.10);
+}
+
+/* ── Fond d'écran : CADRAGE
+   `--kta-wall-pos` laisse l'utilisateur choisir CE QUI reste visible (mode
+   Remplir) ou OÙ l'image se pose (mode Image entière).
+   ⚠️ La règle qui appliquait ça sur #planLoaderBox a été SUPPRIMÉE en v1.75.0 :
+   le fond n'est plus porté par la box mais par #planLoaderOverlay, qui gère
+   déjà `background-position` dans son propre bloc. La laisser aurait posé un
+   background-position sur un élément désormais sans image — sans effet, mais
+   trompeur à la relecture. */
+
+/* ── Fond d'écran : LISIBILITÉ DU HEADER ET DU BANDEAU PROFIL
+   (retour KARMA « on distingue mal le header et le profil, pas assez
+   contrasté avec le fond d'écran »).
+   Le voile global ne suffit pas pour ces 2 zones : elles sont posées À MÊME
+   l'image, sans fond propre. On leur donne donc leur PROPRE fond semi-opaque
+   dès qu'un fond d'écran est actif — même principe qu'une barre de menus
+   système au-dessus d'un wallpaper. Scopé sous `.kta-has-wall` : sans fond
+   d'écran, rien ne change. */
+#planLoaderBox.kta-has-wall .loader-header {
+  background: rgba(10, 13, 24, 0.72);
+  border-radius: 10px;
+  padding: 8px 10px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+}
+/* ⚠️ Le bandeau profil porte son identité dans son BACKGROUND : un dégradé
+   doré→bleu très léger + une bordure dorée (le « halo » de la charte). Un
+   aplat opaque en `background` l'écrasait purement et simplement (retour
+   KARMA « on perd le petit halo doré »).
+   Fix : on EMPILE — le dégradé doré reste au-dessus, l'aplat opaque passe
+   en dernière couche pour bloquer l'image. Le halo est même renforcé
+   (0.08→0.16) : sur une photo il doit lutter contre plus de bruit visuel
+   que sur un fond uni. */
+#planLoaderBox.kta-has-wall .kta-loader-profile-bar {
+  background:
+    linear-gradient(135deg, rgba(244,197,66,0.16), rgba(140,180,255,0.10)),
+    rgba(10, 13, 24, 0.78) !important;
+  border-color: rgba(244,197,66,0.42) !important;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(244,197,66,0.10);
+}
+/* Le hover d'origine n'a pas de !important → il serait battu par la règle
+   ci-dessus et le bandeau perdrait tout retour au survol. On le rejoue. */
+#planLoaderBox.kta-has-wall .kta-loader-profile-bar:hover,
+#planLoaderBox.kta-has-wall .kta-loader-profile-bar:focus-visible {
+  background:
+    linear-gradient(135deg, rgba(244,197,66,0.26), rgba(140,180,255,0.16)),
+    rgba(10, 13, 24, 0.80) !important;
+  border-color: rgba(244,197,66,0.60) !important;
+}
+/* Le titre et les icônes gagnent une ombre portée : lisibles même si
+   l'utilisateur descend le voile à 0 sur une photo claire. */
+#planLoaderBox.kta-has-wall .loader-titre-nom,
+#planLoaderBox.kta-has-wall .loader-titre-tagline,
+#planLoaderBox.kta-has-wall .kta-loader-profile-surnom {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+}
+#planLoaderBox.kta-has-wall .loader-btn-help {
+  background: rgba(10, 13, 24, 0.55);
+  border-radius: 8px;
+}
+/* Thème clair : voile local clair, texte sombre — sinon on poserait du
+   sombre sur du sombre. */
+body.kta-theme-light #planLoaderBox.kta-has-wall .loader-header {
+  background: rgba(244, 236, 216, 0.82) !important;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
+}
+/* Thème clair : même empilement, le halo doré est conservé au-dessus d'un
+   aplat beige (l'or sur beige ressort moins → on monte l'alpha du dégradé). */
+body.kta-theme-light #planLoaderBox.kta-has-wall .kta-loader-profile-bar {
+  background:
+    linear-gradient(135deg, rgba(244,197,66,0.30), rgba(140,180,255,0.12)),
+    rgba(244, 236, 216, 0.86) !important;
+  border-color: rgba(196,150,20,0.50) !important;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.18);
+}
+body.kta-theme-light #planLoaderBox.kta-has-wall .kta-loader-profile-bar:hover,
+body.kta-theme-light #planLoaderBox.kta-has-wall .kta-loader-profile-bar:focus-visible {
+  background:
+    linear-gradient(135deg, rgba(244,197,66,0.42), rgba(140,180,255,0.18)),
+    rgba(244, 236, 216, 0.88) !important;
+  border-color: rgba(196,150,20,0.70) !important;
+}
+body.kta-theme-light #planLoaderBox.kta-has-wall .loader-titre-nom,
+body.kta-theme-light #planLoaderBox.kta-has-wall .loader-titre-tagline,
+body.kta-theme-light #planLoaderBox.kta-has-wall .kta-loader-profile-surnom {
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+}
+body.kta-theme-light #planLoaderBox.kta-has-wall .loader-btn-help {
+  background: rgba(244, 236, 216, 0.65);
+}
+
+/* ── Fond d'écran : LISIBILITÉ DU FOOTER (retour KARMA, 3e zone)
+   Même cause que le header et le bandeau profil : `.kta-loader-copyright`
+   n'a AUCUN background propre, elle est posée à même l'image.
+   Balayage fait à cette occasion — les zones du HOME sans fond propre sont :
+   le header (traité), le bandeau profil (traité), ce footer, et les titres
+   de section. Tout le reste (cards, filtres, bouton replier) a déjà le sien. */
+#planLoaderBox.kta-has-wall .kta-loader-copyright {
+  background: rgba(10, 13, 24, 0.72);
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+}
+#planLoaderBox.kta-has-wall .kta-loader-copyright a {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+/* Titres de section (« 📚 Mes plans », « 🌍 Vue OSM »…) : du TEXTE seul.
+   Un panneau derrière chaque titre alourdirait la page — une ombre portée
+   suffit à les décoller de l'image. */
+#planLoaderBox.kta-has-wall .loader-section-head,
+#planLoaderBox.kta-has-wall .loader-section-head * {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+}
+body.kta-theme-light #planLoaderBox.kta-has-wall .kta-loader-copyright {
+  background: rgba(244, 236, 216, 0.82);
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
+}
+body.kta-theme-light #planLoaderBox.kta-has-wall .kta-loader-copyright a {
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+}
+body.kta-theme-light #planLoaderBox.kta-has-wall .loader-section-head,
+body.kta-theme-light #planLoaderBox.kta-has-wall .loader-section-head * {
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.65);
+}
+
+/* ── Fond d'écran : le panneau du header NE DOIT PAS manger de largeur sur
+   mobile (régression signalée par KARMA : « les icônes passent à la ligne,
+   plus alignées avec MyKTAMap »).
+   Le calage mobile du header est SERRÉ et durement acquis (cf. bloc
+   @media max-width:640px, « fix ×3 ») : à 375 px il reste 327 px utiles
+   pour 313 px de contenu, soit 14 px de marge. Mon `padding: 8px 10px`
+   en consommait 20 → le flex-wrap de secours se déclenchait.
+   Correctif : sous 640 px, padding horizontal à 0. Le panneau s'étend sur
+   la largeur naturelle du header, la ligne reste intacte. Le padding
+   vertical est conservé (il ne joue sur aucun budget horizontal). */
+@media (max-width: 640px) {
+  #planLoaderBox.kta-has-wall .loader-header {
+    padding-left: 0;
+    padding-right: 0;
+    border-radius: 8px;
+  }
+  /* Les chips ne doivent pas non plus s'élargir : le fond des boutons
+     utilitaires reste purement visuel, sans padding ajouté. */
+  #planLoaderBox.kta-has-wall .loader-btn-help {
+    background: rgba(10, 13, 24, 0.55);
+  }
+  body.kta-theme-light #planLoaderBox.kta-has-wall .loader-btn-help {
+    background: rgba(244, 236, 216, 0.65);
+  }
+}
+
+/* 🗺️ v1.75.2 — mention SIG dans la zone de dépôt de l'accueil (retour KARMA
+   « l'endroit où on importe nos données SIG est mal indiqué »). Discrète : le
+   cas principal reste le ZIP de plan, on ne veut pas noyer le message. */
+.zip-drop-sig {
+  display: block;
+  margin-top: 8px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #8892a4;
+  opacity: 0.9;
+}
+.zip-drop-sig strong { color: #a8b3c8; font-weight: 600; }
+html.kta-theme-light .zip-drop-sig { color: #5a6478; }
+html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }

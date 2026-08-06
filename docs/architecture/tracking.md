@@ -599,8 +599,55 @@ latérale est annulée et on tourne correctement aux croisements. **Réversible*
   Helpers `_bearingDeg` (même convention que le déplacement) + `_angleDiffMod180` (galerie non orientée).
   Paramètres terrain : `W_HEADING_PX_PER_DEG=0.7`, `STICKY_FACTOR=2.5`, `T_EDGE=0.02`.
 
-> Reste à faire (non livré) : **C5** magnétisme edit-time, **C6** multi-niveau (jonctions = changement de
-> niveau). Voir design doc.
+> ✅ **C5 et C6 livrés en v1.74.0** — l'initiative `smartNav` est complète (§76.5 et §76.6, en fin de §76).
+
+#### 76.5 C6 — multi-niveau (v1.74.0)
+
+**La donnée était déjà là** : `Pathfinder.buildNetworkGraph` produit `segments[i].level` = entier pour une road, **`"transit"`** pour un segment de jonction interniveau. `matchPosition` ne le lisait simplement pas. Avant ce lot, sur un plan M-LVL : la position pouvait se caler sur une galerie d'un **autre étage superposé en x/y**, et franchir un puits ne basculait jamais le niveau actif.
+
+**Éligibilité d'un candidat** — `roadGraph.js > _levelEligible(seg, mlOn, activeLevel, prevSeg)` :
+
+| # | Règle | Pourquoi |
+|---|---|---|
+| 1 | `!mlOn` → tout éligible | `multiLevel` est un opt-in **par plan** — rétro-compat stricte quand il est off |
+| 2 | `seg.level === "transit"` | c'est le pont vertical, toujours empruntable |
+| 3 | `seg.level === activeLevel` | l'étage courant |
+| 4 | `prevSeg.level === "transit"` → **tous** niveaux rouverts | **la règle clé** : sans elle le segment d'arrivée (niveau N ≠ actif) serait filtré et on resterait bloqué dans la jonction pour toujours |
+
+Filtrage **STRICT**, pas pondéré : hors de ces cas un segment n'est pas candidat. Si l'étage courant est faux, on décroche franchement en off-network → repli PDR raster déjà en place. Mieux vaut décrocher que caler faux en silence.
+
+**Bascule** — `tracking.js > _basculerNiveauSiTraversee(m)` : dès que `m.level` est un entier ≠ `activeLevel`, on vient de sortir d'une jonction → `window.ktaSetActiveLevel(m.level, {source:"nav-jonction"})` + toast `tracker.nav.niveauAuto`. Auto et non confirmé : en navigation les mains sont prises, une modale bloquante est ingérable. Le risque (un point créé ensuite hériterait du mauvais niveau via `editor.js`) est amorti par l'**union** de v1.74.0 — la bascule ne fait plus disparaître l'étage quitté, donc rien ne se perd à l'écran ; retour manuel = 1 tap sur le chip.
+
+⚠️ **Pas de bouton Annuler dans le toast** : `OOMGuard.showToast(message, type)` n'accepte pas d'action. Y ajouter un bouton serait un lot à part.
+
+**Portée** : `smartNav` est **OFF par défaut** (lot C2) → aucune régression possible pour qui ne l'a pas activé. Validé par harness Node (7 cas — 2 galeries superposées en x/y sur 2 niveaux + jonction : non-saut d'étage, sortie de jonction, refus hors traversée, rétro-compat M-LVL off).
+
+#### 76.6 C5 — magnétisme edit-time (v1.74.0)
+
+**Ce n'est pas une feature de navigation, c'est une feature de DESSIN** — d'où le fait qu'elle ne partage rien avec C6 malgré la numérotation commune. Elle traite la **cause** dont C3/C4 traitent l'effet : un graphe propre au départ, plutôt qu'un calage rattrapé après coup.
+
+**Le défaut corrigé** : deux galeries qui se rejoignent à l'œil atterrissent à 5-10 px l'une de l'autre → **deux nœuds distincts** dans le graphe là où il devrait y en avoir un. Le Pathfinder compense en aveugle (`PROXIMITY_TOLERANCE = 15` px, `pathfinder.js`) ; au-delà, la connexion **n'existe pas** et un itinéraire refuse de passer par une galerie visiblement reliée.
+
+**Implémentation** — `road.js > _snapSurSommetProche(x, y)`, appelée dans `map.on("mousedown")` juste après le calcul de `x/y` et **avant** la capture undo (elle ne mute rien, elle change la valeur qui sera poussée → undo/redo inchangé).
+
+| Décision | Choix | Pourquoi |
+|---|---|---|
+| Cible | **sommets de roads**, pas les nœuds `RoadGraph` | chaque clic change la signature du cache → `getGraph()` reconstruirait **tout le réseau à chaque point posé**. Un scan O(N) des sommets est bien moins cher et sémantiquement équivalent (un nœud EST un sommet, au spatial-merge près) |
+| Rayon | **pixels ÉCRAN** convertis en unités plan au clic (via `map.latLngToLayerPoint` sur le centre) | un rayon fixe en unités plan serait imperceptible au dézoom et absurdement large au zoom. Règle : « si c'est proche à l'œil, ça s'accroche », à tous les zooms |
+| Feedback | **flash doré 700 ms APRÈS** l'accrochage | le survol prédictif de l'esquisse n'existe pas au doigt, et un scan à chaque `mousemove` coûterait cher sur réseau dense |
+| Toggle | **indépendant** de `smartNav`, défaut OFF | le magnétisme améliore le graphe → il sert au Pathfinder même nav intelligente OFF. Rangé dans la même section de ⚙️ Réglages, mais sans dépendance |
+
+**4 invariants** (tous couverts par harness) :
+- Le **dernier** point de la road en cours est exclu — sinon un clic voisin du précédent s'y collerait et on ne pourrait plus tracer court. Les points **antérieurs** restent éligibles → **fermer une boucle sur son propre départ marche**.
+- Multi-niveau : on n'accroche que sur le niveau actif, **sauf les `jonction`** (leurs extrémités existent pour relier des niveaux). Sans ça on se collerait à une galerie d'un autre étage superposée en x/y — le défaut même que corrige C6.
+- `itinerary` **jamais** accrochable (calculé, pas cartographié).
+- Les roads **embedded** (calques de données) SONT accrochables — c'est le cas d'usage « je relie ma galerie au réseau existant ».
+
+⚠️ **Aucun bénéfice rétroactif** : n'améliore que ce qui est dessiné **après activation**. Les plans existants gardent leur jitter, `PROXIMITY_TOLERANCE` reste indispensable — C5 ne le remplace pas.
+
+⚠️ **Zone sensible** : contrairement à C6 (toggle OFF + opt-in par plan), C5 touche `road.js > mousedown`, le geste utilisé à chaque session. D'où le défaut OFF. Le flash est purgé au plan switch (`window.ktaPurgerFlashSnap()` appelé par `_libererRessourcesPlanPrecedent`) — sinon un `circleMarker` orphelin survivrait sur la carte détruite.
+
+Validé par harness Node (12 cas). ⚠️ Le harness **réimplémente la règle** (road.js est trop couplé à Leaflet pour tourner en Node) : il valide la logique d'éligibilité, **pas** le câblage réel dans le handler.
 
 #### 76.3 Fix connexe — déplacement en paysage
 

@@ -671,7 +671,11 @@
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(7.5);
     pdf.setTextColor(120, 120, 120);
-    pdf.text(T("pdfexport.header.tagline"), pageW - margin, margin + 10, { align: "right" });
+    // 🛠️ v1.73.0 : sous-titre kiosque (index.json > config.subtitle) prioritaire
+    // sur le tagline i18n — un kiosque « Gironde » exporte des PDF « Gironde ».
+    const _kioskSt = (window.KIOSK_CONFIG && typeof window.KIOSK_CONFIG.subtitle === "string")
+      ? window.KIOSK_CONFIG.subtitle.trim().slice(0, 80) : "";
+    pdf.text(_kioskSt || T("pdfexport.header.tagline"), pageW - margin, margin + 10, { align: "right" });
   }
 
   // ============================================================

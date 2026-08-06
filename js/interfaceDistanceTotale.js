@@ -65,8 +65,55 @@
 // Le type "itinerary" est exclu (c'est un calcul dérivé du réseau, pas une route
 // indépendante).
 
-const _RD_TYPES_TOUS    = ["principal", "secondaire", "chemin"];
-const _RD_HIGHLIGHT_HEX = "#ff4ecb";
+const _RD_TYPES_BUILTIN = ["principal", "secondaire", "chemin"];
+
+// 🐛 v1.76.0 (F14) — les types CUSTOM comptent aussi.
+// La liste était figée aux 3 built-in : un plan tracé entièrement en types
+// custom affichait 0 m — le panneau « Distance totale » niait l'existence du
+// réseau. La liste des types est désormais calculée sur les tracés PRÉSENTS
+// (session + calques), à chaque ouverture : built-in d'abord, puis les customs
+// dans l'ordre de découverte. `itinerary` reste exclu (calcul dérivé du
+// réseau, pas une route) et `jonction` aussi (bridge inter-niveaux, pas une
+// distance parcourue en galerie).
+function _rdTypesPresents() {
+  const session  = (window.getRoads            ? window.getRoads()            : []) || [];
+  const embedded = (window.getAllEmbeddedRoads ? window.getAllEmbeddedRoads() : []) || [];
+  const types = _RD_TYPES_BUILTIN.slice();
+  session.concat(embedded).forEach(function(r) {
+    if (r && typeof r.type === "string" && r.type.indexOf("cust-") === 0 &&
+        types.indexOf(r.type) === -1) {
+      types.push(r.type);
+    }
+  });
+  return types;
+}
+
+// Libellé d'un type pour la modale : custom → nom choisi dans la légende.
+function _rdLabelType(type) {
+  if (String(type).indexOf("cust-") === 0) {
+    const LC = window.LegendCustomization;
+    if (LC && typeof LC.findCustomEntry === "function") {
+      try {
+        const e = LC.findCustomEntry(type);
+        if (e && e.label) return "✨ " + e.label;
+      } catch(err) {}
+    }
+    return type;
+  }
+  return window.I18n.t("disttot.type." + type);
+}
+// 🎨 v1.76.0 — le magenta de surlignage est celui de la jonction (cohérence
+// voulue de longue date, elle était jusqu'ici recopiée à la main).
+// Résolu à l'APPEL, pas au chargement : styleResolver.js est chargé avant ce
+// module, mais lire une couleur au load figerait la valeur avant qu'un futur
+// override de légende ne puisse s'appliquer.
+function _rdHighlightHex() {
+  return (typeof window.ktaSwatchColor === "function" && window.ktaSwatchColor("traces", "jonction")) || "#ff4ecb";
+}
+// Pastille de couleur d'un type de tracé, dans la modale Distance totale.
+function _rdSwatch(type) {
+  return (typeof window.ktaSwatchColor === "function" && window.ktaSwatchColor("traces", type)) || "#888888";
+}
 
 let _rdFloater         = null;
 let _rdHighlightLayer  = null;  // L.layerGroup contenant les polylines magenta
@@ -85,8 +132,11 @@ function _rdRoadsExploitables() {
   const session  = (window.getRoads             ? window.getRoads()             : []) || [];
   const embedded = (window.getAllEmbeddedRoads  ? window.getAllEmbeddedRoads()  : []) || [];
   return session.concat(embedded).filter(function(r) {
-    return r && Array.isArray(r.points) && r.points.length >= 2 &&
-           _RD_TYPES_TOUS.indexOf(r.type) !== -1;
+    if (!r || !Array.isArray(r.points) || r.points.length < 2) return false;
+    // F14 : built-in exploitables + tout custom. Exclusions inchangées :
+    // itinerary (dérivé) et jonction (bridge inter-niveaux).
+    return _RD_TYPES_BUILTIN.indexOf(r.type) !== -1 ||
+           String(r.type).indexOf("cust-") === 0;
   });
 }
 
@@ -106,14 +156,13 @@ function _rdLongueurPx(road) {
 // Retourne { principal: {nb, distM}, secondaire: {...}, chemin: {...}, totalM }.
 function _rdCalculerBreakdown() {
   const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
-  const out = {
-    principal:  { nb: 0, distM: 0 },
-    secondaire: { nb: 0, distM: 0 },
-    chemin:     { nb: 0, distM: 0 },
-    totalM:     0
-  };
+  const out = { totalM: 0 };
+  _rdTypesPresents().forEach(function(t) { out[t] = { nb: 0, distM: 0 }; });
   _rdRoadsExploitables().forEach(function(r) {
-    if (!_rdFiltres[r.type]) return;
+    // F14 : un type custom jamais vu (dessiné pendant que la modale est
+    // ouverte) est inclus par défaut — `undefined` ≠ false.
+    if (_rdFiltres[r.type] === false) return;
+    if (!out[r.type]) out[r.type] = { nb: 0, distM: 0 };
     const distM = _rdLongueurPx(r) / scale;
     out[r.type].nb    += 1;
     out[r.type].distM += distM;
@@ -141,12 +190,12 @@ function _rdRedessinerHighlight() {
   // Collecte de tous les segments inclus → array d'arrays de latlngs
   const multiSegments = [];
   _rdRoadsExploitables().forEach(function(r) {
-    if (!_rdFiltres[r.type]) return;
+    if (_rdFiltres[r.type] === false) return;   // F14 : custom inconnu = inclus
     multiSegments.push(r.points.map(function(p) { return convertCoord(p.x, p.y); }));
   });
   if (multiSegments.length === 0) return;  // rien à dessiner (toutes les cases décochées)
   L.polyline(multiSegments, {
-    color:     _RD_HIGHLIGHT_HEX,
+    color:     _rdHighlightHex(),
     weight:    9,
     opacity:   0.85,
     renderer:  L.svg(),       // SVG forcé pour drop-shadow CSS
@@ -177,10 +226,12 @@ function _rdRafraichirAffichage() {
     const el = document.getElementById(id);
     if (el) el.textContent = val;
   };
-  setTxt("kta-rd-cnt-principal",  b.principal.nb  + " — " + window.formatDistance(b.principal.distM,  1));
-  setTxt("kta-rd-cnt-secondaire", b.secondaire.nb + " — " + window.formatDistance(b.secondaire.distM, 1));
-  setTxt("kta-rd-cnt-chemin",     b.chemin.nb     + " — " + window.formatDistance(b.chemin.distM,     1));
-  setTxt("kta-rd-total",          window.formatDistance(b.totalM, 1));
+  // F14 : toutes les lignes présentes dans la modale, customs compris.
+  Object.keys(b).forEach(function(t) {
+    if (t === "totalM") return;
+    setTxt("kta-rd-cnt-" + t, b[t].nb + " — " + window.formatDistance(b[t].distM, 1));
+  });
+  setTxt("kta-rd-total", window.formatDistance(b.totalM, 1));
 }
 
 window.ouvrirRoadsDistanceFloater = function() {
@@ -204,7 +255,9 @@ window.ouvrirRoadsDistanceFloater = function() {
   // les filtres précédents si un highlight était déjà actif (réouverture après
   // fermeture sans avoir cliqué ❌ Effacer). Sinon reset à "tous cochés".
   if (!_rdHighlightLayer) {
-    _rdFiltres = { principal: true, secondaire: true, chemin: true };
+    // F14 : « tous cochés » couvre AUSSI les types custom présents.
+    _rdFiltres = {};
+    _rdTypesPresents().forEach(function(t) { _rdFiltres[t] = true; });
   }
 
   const modal = document.createElement("div");
@@ -221,24 +274,17 @@ window.ouvrirRoadsDistanceFloater = function() {
           '<p class="kta-rd-help">' +
             window.I18n.t("disttot.help") +
           '</p>' +
-          '<label class="kta-rd-row">' +
-            '<input type="checkbox" id="kta-rd-chk-principal"' + (_rdFiltres.principal ? ' checked' : '') + '>' +
-            '<span class="kta-rd-swatch" style="background:#00ff00;"></span>' +
-            '<span class="kta-rd-label">' + window.I18n.t("disttot.type.principal") + '</span>' +
-            '<span class="kta-rd-count" id="kta-rd-cnt-principal">—</span>' +
-          '</label>' +
-          '<label class="kta-rd-row">' +
-            '<input type="checkbox" id="kta-rd-chk-secondaire"' + (_rdFiltres.secondaire ? ' checked' : '') + '>' +
-            '<span class="kta-rd-swatch" style="background:#b000ff;"></span>' +
-            '<span class="kta-rd-label">' + window.I18n.t("disttot.type.secondaire") + '</span>' +
-            '<span class="kta-rd-count" id="kta-rd-cnt-secondaire">—</span>' +
-          '</label>' +
-          '<label class="kta-rd-row">' +
-            '<input type="checkbox" id="kta-rd-chk-chemin"' + (_rdFiltres.chemin ? ' checked' : '') + '>' +
-            '<span class="kta-rd-swatch" style="background:#ffff00;"></span>' +
-            '<span class="kta-rd-label">' + window.I18n.t("disttot.type.chemin") + '</span>' +
-            '<span class="kta-rd-count" id="kta-rd-cnt-chemin">—</span>' +
-          '</label>' +
+          // F14 : lignes GÉNÉRÉES depuis les types présents (built-in +
+          // customs), au lieu de 3 lignes écrites à la main. L'id DOM garde le
+          // type brut — les ids `cust-…` sont des tokens sûrs ([a-z0-9-]).
+          _rdTypesPresents().map(function(type) {
+            return '<label class="kta-rd-row">' +
+              '<input type="checkbox" id="kta-rd-chk-' + type + '"' + (_rdFiltres[type] !== false ? ' checked' : '') + '>' +
+              '<span class="kta-rd-swatch" style="background:' + _rdSwatch(type) + ';"></span>' +
+              '<span class="kta-rd-label">' + _rdLabelType(type) + '</span>' +
+              '<span class="kta-rd-count" id="kta-rd-cnt-' + type + '">—</span>' +
+            '</label>';
+          }).join('') +
           '<div class="kta-rd-total-wrap">' +
             '<span class="kta-rd-total-label">' + window.I18n.t("disttot.total") + '</span>' +
             '<span class="kta-rd-total-value" id="kta-rd-total">—</span>' +
@@ -254,7 +300,7 @@ window.ouvrirRoadsDistanceFloater = function() {
   _rdFloater = modal;
 
   // Wire-up des checkboxes : toggle filtre + redraw highlight + refresh affichage
-  _RD_TYPES_TOUS.forEach(function(type) {
+  _rdTypesPresents().forEach(function(type) {
     const chk = document.getElementById("kta-rd-chk-" + type);
     if (!chk) return;
     chk.addEventListener("change", function() {
@@ -307,14 +353,14 @@ window.getDistanceTotaleStatus = function() {
   if (!_rdHighlightLayer) return null;
   // Surlignage actif : recalcule en live depuis les roads + filtres courants
   const b = _rdCalculerBreakdown();
-  return {
-    totalM:    b.totalM,
-    breakdown: {
-      principal:  { nb: b.principal.nb,  distM: b.principal.distM  },
-      secondaire: { nb: b.secondaire.nb, distM: b.secondaire.distM },
-      chemin:     { nb: b.chemin.nb,     distM: b.chemin.distM     }
-    }
-  };
+  // F14 : breakdown DYNAMIQUE — les 3 built-in y sont toujours, les types
+  // custom présents s'y ajoutent. Le seul consommateur (statusbar refonte) ne
+  // lit que totalM ; le breakdown est là pour l'inspection/debug.
+  const breakdown = {};
+  Object.keys(b).forEach(function(t) {
+    if (t !== "totalM") breakdown[t] = { nb: b[t].nb, distM: b[t].distM };
+  });
+  return { totalM: b.totalM, breakdown: breakdown };
 };
 
 // Hook appelé par road.js > renderRoads (et par le listener overlayadd/remove)

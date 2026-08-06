@@ -166,10 +166,48 @@ function creerIcones(iconConfig) {
       window._iconMap[tag] = _mkIcon(TAGS_BUILTIN[tag], 50, 50, 25, 25);
     }
   });
+  // 🐛 v1.76.0 — URLs built-in exposées comme FILET DE SECOURS. Un plan peut
+  // déclarer un de ces tags dans son plan-config.json > icons avec un chemin
+  // mort ; comme PLAN_CONFIG.icons est lu EN PREMIER par toute la cascade,
+  // l'URL cassée gagnait sur l'icône intégrée (ex. la porte SVG inline
+  // d'entree_plan) et la légende affichait une image morte. Les consommateurs
+  // (≡ Légende) se replient sur cette table quand leur <img> échoue.
+  window._ktaBuiltinIconUrls = TAGS_BUILTIN;
 
   // Garantir que "default" est toujours présent dans _iconMap
   if (!window._iconMap.default) {
     window._iconMap.default = iconeDefault;
+  }
+
+  // 🐛 v1.76.0 (F10) — ICÔNES CUSTOM DE LA LÉGENDE.
+  // Une entrée custom de catégorie `icones` s'affichait dans ≡ Légende et dans
+  // la légende du PNG… et c'était tout : aucun point ne pouvait la porter, car
+  // son id n'existait pas dans `_iconMap` et l'éditeur de point ne la
+  // proposait pas. Une pure décoration qui promettait sans tenir.
+  // On l'enregistre ici comme n'importe quel tag (id `cust-…` → icône), et on
+  // RÉ-enregistre à chaque changement de légende : une icône créée pendant la
+  // session doit être utilisable immédiatement, pas au prochain plan.
+  // `_iconMap` étant LE résolveur unique (règle du projet), tout le reste —
+  // choisirIcone, getIconUrlForPoint, exports — suit sans modification.
+  function _enregistrerIconesCustom() {
+    const LC = window.LegendCustomization;
+    if (!LC || typeof LC.listCustomEntries !== "function") return;
+    let entries;
+    try { entries = LC.listCustomEntries("icones") || []; } catch(e) { return; }
+    entries.forEach(function(e) {
+      if (e && e.id && e.iconUrl) window._iconMap[e.id] = _mkIcon(e.iconUrl, 50, 50, 25, 25);
+    });
+  }
+  _enregistrerIconesCustom();
+  if (window.LegendCustomization &&
+      typeof window.LegendCustomization.onCustomEntriesChange === "function" &&
+      !window._ktaCustomIconSubBound) {
+    // Garde anti-doublon : creerIcones est rejouée à chaque plan switch, le
+    // listener ne doit être posé qu'une fois (même pattern que interface.js).
+    window._ktaCustomIconSubBound = true;
+    window.LegendCustomization.onCustomEntriesChange(function() {
+      _enregistrerIconesCustom();
+    });
   }
 
   console.log("[Map] Icônes créées —", Object.keys(window._iconMap).length, "tags |",

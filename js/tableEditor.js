@@ -902,7 +902,45 @@
     input.value = valOrig === undefined || valOrig === null ? "" : valOrig;
     if (isNum && col !== "profondeur") input.step = "1";
 
+    // 🧹 v1.76.0 (F20) — la colonne `type` était un champ texte TOTALEMENT
+    // libre : une faute de frappe (`pilierr-1`, `cust-` tronqué…) créait un
+    // objet orphelin, rendu en couleur de repli sans aucun signal. On ne
+    // BLOQUE pas (un type inconnu peut être voulu, ex. futur custom), mais :
+    //   1. une <datalist> propose les types VALIDES du tableau courant
+    //      (built-in du canon + customs de la légende) ;
+    //   2. à la validation, un type hors liste est signalé en console.
+    // Le bandeau « types orphelins » de ≡ Légende (F23) prend le relais.
+    let _typesValides = null;
+    let _dlTypes = null;
+    if (col === "type" && !_estPoints()) {
+      const cat = (_kind === "roads") ? "traces" : _kind;   // zones/structures = mêmes clés
+      _typesValides = [];
+      if (typeof window.ktaStyleBuiltins === "function") {
+        _typesValides = window.ktaStyleBuiltins(cat).slice();
+        if (cat === "traces") _typesValides.push("jonction", "itinerary");
+      }
+      if (window.LegendCustomization && typeof window.LegendCustomization.listCustomEntries === "function") {
+        try {
+          window.LegendCustomization.listCustomEntries(cat).forEach(function(e) {
+            if (e && e.id) _typesValides.push(e.id);
+          });
+        } catch(e) {}
+      }
+      if (_typesValides.length) {
+        _dlTypes = document.createElement("datalist");
+        _dlTypes.id = "kta-te-types-" + cat;
+        _typesValides.forEach(function(t) {
+          const opt = document.createElement("option");
+          opt.value = t;
+          _dlTypes.appendChild(opt);
+        });
+        input.setAttribute("list", _dlTypes.id);
+      }
+    }
+
     td.innerHTML = "";
+    // ⚠️ la datalist doit être (re)posée APRÈS le innerHTML="" qui vide la cellule
+    if (_dlTypes) td.appendChild(_dlTypes);
     td.appendChild(input);
     input.focus();
     input.select();
@@ -918,6 +956,12 @@
       if (nouvelle !== valOrig) {
         p[col] = nouvelle;
         _modifie = true;
+        // F20 : type hors de la liste des types connus → signal, pas blocage.
+        if (_typesValides && _typesValides.length && nouvelle &&
+            _typesValides.indexOf(nouvelle) === -1) {
+          console.warn("[TableEditor] type « " + nouvelle + " » inconnu de la légende — " +
+                       "l'objet sera rendu en couleur de repli (cf. bandeau ⚠️ de ≡ Légende).");
+        }
       }
       td.classList.remove("editing");
       _construireCorps();

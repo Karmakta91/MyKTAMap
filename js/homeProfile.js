@@ -27,9 +27,11 @@
         _renderProfileBarStatsSlots(_getProfileBarStatsKeys());
         await _refreshLoaderProfileBar();
         bar.style.display = "";  // révèle (default = none)
+        await _appliquerFondEcran();
         // Listener changement (notifie sur setSurnom / setPhoto / removePhoto / clear)
         window.UserProfile.onChange(function() {
           _refreshLoaderProfileBar();
+          _appliquerFondEcran();
         });
         // 🌍 v1.45.0 — Re-render au changement de langue (greeting + placeholder
         // "Mon profil" viennent du dico ; le pseudo reste inchangé). Couvre la
@@ -49,7 +51,96 @@
         });
       }
 
+      // 🖼️ v1.74.0 — FOND D'ÉCRAN DU HOME (demande KARMA « un peu comme Windows »).
+      // On pose 2 variables CSS sur #planLoaderBox : l'image et l'alpha du voile.
+      // La COULEUR du voile est définie côté CSS par thème (sombre / clair), donc
+      // basculer le thème réajuste automatiquement le voile sans repasser ici.
+      //
+      // ⚠️ La Blob URL précédente DOIT être révoquée : sans ça, chaque
+      // notification de profil (renommage, avatar, réglage du voile…) en créerait
+      // une nouvelle et l'image resterait en mémoire à chaque fois.
+      // 🐛 v1.75.0 (repro KARMA : « je perds ma photo de profil ET le fond
+      // d'écran en fermant la modale, ça revient au restart ») — JETON
+      // ANTI-COURSE. Chaque réglage du fond (voile, cadrage X, cadrage Y)
+      // déclenche un `_notify()`, donc plusieurs `_appliquerFondEcran()` et
+      // `_refreshLoaderProfileBar()` se chevauchent, chacun avec une lecture
+      // IDB asynchrone au milieu. Un appel ANCIEN pouvait alors se terminer
+      // APRÈS un plus récent : il réécrivait son URL périmée et révoquait
+      // celle réellement affichée. Le dégât ne se voyait qu'au repaint —
+      // c'est-à-dire à la fermeture de la modale, d'où le symptôme trompeur.
+      // Les données n'ont jamais été touchées : un rechargement recréait des
+      // URL fraîches, d'où le « ça revient au restart ».
+      // Règle : seul le DERNIER appel émis a le droit de commiter.
+      let _wallObjectUrl = null;
+      let _wallJeton     = 0;
+      async function _appliquerFondEcran() {
+        const box = document.getElementById("planLoaderBox");
+        if (!box || !window.UserProfile) return;
+        // ⚠️ v1.75.0 — L'IMAGE EST PORTÉE PAR L'OVERLAY, PAS PAR LA BOX.
+        // La box est le CONTENU DÉFILÉ (hauteur = hauteur du contenu, 2000-3000 px
+        // en portrait) ; l'overlay est `position:fixed; inset:0` + le scroller,
+        // donc sa boîte de fond EST le viewport et ne bouge pas au défilement.
+        // Peindre sur la box faisait calculer `cover` sur 2500 px de haut →
+        // ~88 % de la largeur rognée, et le fond défilait avec le contenu.
+        // La CLASSE `.kta-has-wall` reste sur la box : une douzaine de blocs
+        // de contraste (header, profil, footer, titres) sont scopés dessus.
+        // L'overlay reçoit sa propre classe miroir.
+        const fond = document.getElementById("planLoaderOverlay") || box;
+        const monJeton = ++_wallJeton;
+        try {
+          const snap = window.UserProfile.get();
+          // Même règle que pour l'avatar : on ne révoque qu'APRÈS avoir posé
+          // la nouvelle URL, sinon le fond disparaît le temps de la lecture.
+          const ancienne = _wallObjectUrl;
+          const liberer = function() {
+            if (ancienne) { try { URL.revokeObjectURL(ancienne); } catch(e) {} }
+          };
+          if (!snap.hasWallpaper) {
+            box.classList.remove("kta-has-wall");
+            fond.classList.remove("kta-has-wall-bg");
+            fond.style.removeProperty("--kta-wall-img");
+            fond.style.removeProperty("--kta-wall-a");
+            fond.style.removeProperty("--kta-wall-pos");
+            fond.style.removeProperty("--kta-wall-size");
+            _wallObjectUrl = null;
+            liberer();
+            return;
+          }
+          const url = await window.UserProfile.getWallpaperObjectUrl();
+          // Un appel plus récent est passé pendant la lecture : on abandonne
+          // en révoquant NOTRE url (jamais affichée) — surtout pas l'ancienne,
+          // qui est celle que le gagnant vient d'installer.
+          if (monJeton !== _wallJeton) {
+            if (url) { try { URL.revokeObjectURL(url); } catch(e) {} }
+            return;
+          }
+          if (!url) {
+            box.classList.remove("kta-has-wall");
+            fond.classList.remove("kta-has-wall-bg");
+            _wallObjectUrl = null; liberer(); return;
+          }
+          _wallObjectUrl = url;
+          const voile = Number.isFinite(snap.wallVoile) ? snap.wallVoile : 55;
+          const px    = Number.isFinite(snap.wallPosX) ? snap.wallPosX : 50;
+          const py    = Number.isFinite(snap.wallPosY) ? snap.wallPosY : 50;
+          fond.style.setProperty("--kta-wall-img", 'url("' + url + '")');
+          fond.style.setProperty("--kta-wall-a", String(Math.max(0, Math.min(100, voile)) / 100));
+          fond.style.setProperty("--kta-wall-pos", px + "% " + py + "%");
+          // 🖼️ v1.75.0 — mode d'affichage. `contain` = image entière, l'espace
+          // restant prend la couleur du thème (le voile joue déjà cette
+          // couleur, donc ça se lit comme une image posée sur le fond de
+          // l'app, pas comme un rendu raté).
+          fond.style.setProperty("--kta-wall-size", snap.wallFit === "contain" ? "contain" : "cover");
+          box.classList.add("kta-has-wall");        // ← blocs de contraste
+          fond.classList.add("kta-has-wall-bg");    // ← porteur de l'image
+          liberer();
+        } catch(e) {
+          console.warn("[Profile] fond d'écran non appliqué :", e);
+        }
+      }
+
       let _profileBarObjectUrl = null;  // tracker pour révoquer au refresh
+      let _barJeton = 0;                // 🐛 v1.75.0 — anti-course (cf. _appliquerFondEcran)
       async function _refreshLoaderProfileBar() {
         if (!window.UserProfile) return;
         const snap = window.UserProfile.get();
@@ -57,6 +148,10 @@
         const surnomEl   = document.getElementById("kta-loader-profile-surnom");
         const greetingEl = document.getElementById("kta-loader-profile-greeting");
         if (!avatarWrap || !surnomEl) return;
+        // ⚠️ Le jeton s'incrémente APRÈS les gardes de sortie — sinon un appel
+        // stérile (DOM absent) brûlait un numéro et faisait abandonner un appel
+        // légitime déjà en vol. `_appliquerFondEcran` avait déjà le bon ordre.
+        const monJetonBar = ++_barJeton;
 
         // 🆕 v1.52.0 : anneau de rang (sur le wrap → survit au remplacement du innerHTML)
         // + nom du rang sous le pseudo + médaille en coin bas-droite de la photo.
@@ -108,25 +203,45 @@
           if (greetingEl) greetingEl.textContent = _tGreeting;
         }
         // Avatar : photo si dispo, sinon initiale colorée
-        // Cleanup ancien objectURL
-        if (_profileBarObjectUrl) {
-          try { URL.revokeObjectURL(_profileBarObjectUrl); } catch(e) {}
-          _profileBarObjectUrl = null;
-        }
+        // 🐛 v1.75.0 (repro KARMA : « quand je charge un fond d'écran, la
+        // miniature de ma photo de profil devient un ? ») — l'ancienne URL
+        // était révoquée AVANT l'await : entre les deux, le <img> affiché
+        // pointait sur une URL morte → image cassée (le « ? » du navigateur).
+        // Invisible tant que les rafraîchissements étaient rares ; le fond
+        // d'écran en déclenche beaucoup plus (ajout, voile, cadrage) et la
+        // fenêtre est devenue systématiquement visible.
+        // Fix : on RETIENT l'ancienne URL, on installe la nouvelle, et on ne
+        // révoque qu'APRÈS le remplacement.
+        const _ancienneUrl = _profileBarObjectUrl;
+        const _libererAncienne = function() {
+          if (_ancienneUrl) { try { URL.revokeObjectURL(_ancienneUrl); } catch(e) {} }
+        };
         if (snap.hasPhoto) {
           try {
             const url = await window.UserProfile.getPhotoObjectUrl();
+            // Appel dépassé pendant la lecture IDB → on jette NOTRE url et on
+            // laisse le gagnant tranquille (cf. _appliquerFondEcran).
+            if (monJetonBar !== _barJeton) {
+              if (url) { try { URL.revokeObjectURL(url); } catch(e) {} }
+              return;
+            }
             if (url) {
               _profileBarObjectUrl = url;
               avatarWrap.innerHTML =
                 '<img class="kta-loader-profile-avatar-img" src="' + url + '" alt="Avatar de ' +
                   (snap.surnom || "profil").replace(/"/g, "&quot;") + '">';
+              _libererAncienne();
               return;
             }
           } catch(e) {
             console.warn("[Profile] avatar photo échec, fallback initiale :", e);
           }
         }
+        if (monJetonBar !== _barJeton) return;
+        // Pas de photo (ou lecture échouée) : l'initiale remplace le <img>,
+        // on peut libérer sans risque.
+        _profileBarObjectUrl = null;
+        _libererAncienne();
         // Fallback initiale
         const initial = hasName ? window.UserProfile.getInitial(snap.surnom) : "👤";
         const color   = window.UserProfile.getAvatarColor(snap.surnom || "");
@@ -520,7 +635,7 @@
         { db: "myktamap_handles", store: "blobs",   blobFields: ["blob"] },
         { db: "myktamap_backups", store: "backups", blobFields: [] },
         { db: "myktamap_photos",  store: "photos",  blobFields: ["blob"] },
-        { db: "myktamap_profile", store: "profile", blobFields: ["photoBlob"] },
+        { db: "myktamap_profile", store: "profile", blobFields: ["photoBlob", "wallBlob"] },
         { db: "myktamap_crashes", store: "crashes", blobFields: [] },
         // 🆕 v1.69.0 — Le Carnet (js/journal.js) : sans cette ligne, l'espace
         // occupé par les sorties archivées serait invisible dans « Stockage ».
@@ -813,6 +928,46 @@
                 '<input type="file" id="kta-profile-pro-input" accept=".json,application/json" style="display:none;">' +
               '</div>' +
 
+              // 🖼️ v1.74.0 — Fond d'écran du HOME. Placé JUSTE AVANT les actions
+              // (retour KARMA : « mal intégré, mets-le plus vers la fin ») —
+              // c'est de la déco, elle ne doit pas s'intercaler entre l'identité
+              // et les stats/rang qui, eux, se lisent d'affilée.
+              '<div class="kta-profile-details-section">' +
+                '<div class="kta-profile-details-section-titre">' + _t("home.profile.wallTitle") + '</div>' +
+                '<div class="kta-wall-preview" id="kta-wall-preview">' + _t("home.profile.wallNone") + '</div>' +
+                '<div class="kta-wall-actions">' +
+                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-wall-btn">' + _t("home.profile.wallBtn") + '</button>' +
+                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-wall-remove" style="' + (snap.hasWallpaper ? '' : 'display:none;') + '">' + _t("home.profile.wallRemove") + '</button>' +
+                  '<input type="file" id="kta-wall-input" accept="image/*" style="display:none;">' +
+                '</div>' +
+                '<div id="kta-wall-reglages" style="' + (snap.hasWallpaper ? '' : 'display:none;') + '">' +
+                  '<div class="kta-wall-voile-row">' +
+                    '<label class="kta-profile-details-label" for="kta-wall-fit">' + _t("home.profile.wallFit") + '</label>' +
+                    '<select class="kta-cfg-input" id="kta-wall-fit" style="flex:1; min-width:0;">' +
+                      '<option value="cover"' + (snap.wallFit !== "contain" ? " selected" : "") + '>' + _t("home.profile.wallFitCover") + '</option>' +
+                      '<option value="contain"' + (snap.wallFit === "contain" ? " selected" : "") + '>' + _t("home.profile.wallFitContain") + '</option>' +
+                    '</select>' +
+                  '</div>' +
+                  '<div class="kta-wall-voile-row">' +
+                    '<label class="kta-profile-details-label" for="kta-wall-voile">' + _t("home.profile.wallVoile") + '</label>' +
+                    '<input type="range" id="kta-wall-voile" min="0" max="100" step="5" value="' + (Number.isFinite(snap.wallVoile) ? snap.wallVoile : 55) + '">' +
+                    '<span class="kta-wall-voile-val" id="kta-wall-voile-val">' + (Number.isFinite(snap.wallVoile) ? snap.wallVoile : 55) + ' %</span>' +
+                  '</div>' +
+                  '<div class="kta-wall-voile-row">' +
+                    '<label class="kta-profile-details-label" for="kta-wall-posx">' + _t("home.profile.wallPosX") + '</label>' +
+                    '<input type="range" id="kta-wall-posx" min="0" max="100" step="5" value="' + (Number.isFinite(snap.wallPosX) ? snap.wallPosX : 50) + '">' +
+                    '<span class="kta-wall-voile-val" id="kta-wall-posx-val">' + (Number.isFinite(snap.wallPosX) ? snap.wallPosX : 50) + ' %</span>' +
+                  '</div>' +
+                  '<div class="kta-wall-voile-row">' +
+                    '<label class="kta-profile-details-label" for="kta-wall-posy">' + _t("home.profile.wallPosY") + '</label>' +
+                    '<input type="range" id="kta-wall-posy" min="0" max="100" step="5" value="' + (Number.isFinite(snap.wallPosY) ? snap.wallPosY : 50) + '">' +
+                    '<span class="kta-wall-voile-val" id="kta-wall-posy-val">' + (Number.isFinite(snap.wallPosY) ? snap.wallPosY : 50) + ' %</span>' +
+                  '</div>' +
+                  '<p class="kta-profile-details-hint">' + _t("home.profile.wallCadrageHint") + '</p>' +
+                '</div>' +
+                '<p class="kta-profile-details-hint">' + _t("home.profile.wallHint") + '</p>' +
+              '</div>' +
+
               // — Actions profil —
               '<div class="kta-profile-details-actions">' +
                 '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-details-export">' + _t("home.profile.exportBtn") + '</button>' +
@@ -845,6 +1000,14 @@
           const m = document.getElementById("kta-profile-details-modal");
           if (m) m.parentNode.removeChild(m);
           document.removeEventListener("keydown", escFn);
+          // 🐛 v1.75.0 — RESYNCHRONISATION du HOME à la fermeture. Le jeton
+          // anti-course règle les chevauchements, mais on ne veut pas dépendre
+          // du timing pour que l'accueil soit juste : après avoir édité son
+          // profil, l'user revient au HOME, et le HOME DOIT refléter l'état
+          // final. Deux rendus frais, coût négligeable (une fois par
+          // fermeture), et ça rend le symptôme impossible par construction.
+          try { _refreshLoaderProfileBar(); } catch(e) {}
+          try { _appliquerFondEcran(); }     catch(e) {}
         };
         const escFn = function(e) { if (e.key === "Escape" || e.key === "Esc") closeFn(); };
         document.getElementById("kta-profile-details-close").addEventListener("click", closeFn);
@@ -968,6 +1131,146 @@
           if (fileInput) fileInput.click();
         });
 
+        // 🖼️ v1.74.0 — FOND D'ÉCRAN. L'aperçu montre l'image AVEC son voile,
+        // exactement comme le vrai fond : sans ça on choisirait une image qui
+        // rend bien nue mais illisible une fois voilée.
+        const wallPreview = document.getElementById("kta-wall-preview");
+        const wallInput   = document.getElementById("kta-wall-input");
+        const wallBtn     = document.getElementById("kta-wall-btn");
+        const wallRemove  = document.getElementById("kta-wall-remove");
+        const wallRow     = document.getElementById("kta-wall-reglages");
+        const wallRange   = document.getElementById("kta-wall-voile");
+        const wallVal     = document.getElementById("kta-wall-voile-val");
+        const wallPosX    = document.getElementById("kta-wall-posx");
+        const wallPosXVal = document.getElementById("kta-wall-posx-val");
+        const wallPosY    = document.getElementById("kta-wall-posy");
+        const wallPosYVal = document.getElementById("kta-wall-posy-val");
+        let _wallPreviewUrl = null;
+
+        // Peint l'aperçu avec le voile ET le cadrage courants — l'aperçu doit
+        // montrer exactement ce que donnera le vrai fond, sinon on choisit une
+        // image qui rend bien nue et illisible une fois voilée.
+        const wallFit = document.getElementById("kta-wall-fit");
+        const _peindreApercu = function(url, voile, posX, posY, fit) {
+          const a = voile / 100;
+          const clair = document.body.classList.contains("kta-theme-light");
+          const rgb = clair ? "201,184,143" : "26,31,46";
+          wallPreview.style.backgroundImage =
+            'linear-gradient(rgba(' + rgb + ',' + a + '), rgba(' + rgb + ',' + a + ')), url("' + url + '")';
+          wallPreview.style.backgroundPosition = posX + "% " + posY + "%";
+          // L'aperçu doit montrer le MÊME mode que le vrai fond, sinon on
+          // choisit « Entière » sur une vignette qui affiche du « Remplir ».
+          wallPreview.style.backgroundSize = (fit === "contain") ? "contain" : "cover";
+        };
+        const _fitCourant = function() { return wallFit ? wallFit.value : "cover"; };
+
+        const _rafraichirApercuFond = async function() {
+          const s = window.UserProfile.get();
+          // Idem : révocation différée après remplacement (cf. avatar).
+          const ancienneP = _wallPreviewUrl;
+          const libererP = function() {
+            if (ancienneP) { try { URL.revokeObjectURL(ancienneP); } catch(e) {} }
+          };
+          if (!s.hasWallpaper) {
+            wallPreview.style.backgroundImage = "";
+            wallPreview.textContent = _t("home.profile.wallNone");
+            wallRemove.style.display = "none";
+            wallRow.style.display    = "none";
+            _wallPreviewUrl = null;
+            libererP();
+            return;
+          }
+          const url = await window.UserProfile.getWallpaperObjectUrl();
+          // ⚠️ `_wallPreviewUrl = null` INDISPENSABLE ici : sans ça la variable
+          // gardait l'URL qu'on vient de révoquer, et les handlers `input` des
+          // curseurs repeignaient l'aperçu avec une URL morte.
+          if (!url) { _wallPreviewUrl = null; libererP(); return; }
+          _wallPreviewUrl = url;
+          libererP();
+          wallPreview.textContent = "";
+          const vx = Number.isFinite(s.wallPosX) ? s.wallPosX : 50;
+          const vy = Number.isFinite(s.wallPosY) ? s.wallPosY : 50;
+          wallRange.value   = Number.isFinite(s.wallVoile) ? s.wallVoile : 55;
+          wallVal.textContent    = wallRange.value + " %";
+          wallPosX.value    = vx; wallPosXVal.textContent = vx + " %";
+          wallPosY.value    = vy; wallPosYVal.textContent = vy + " %";
+          if (wallFit) wallFit.value = (s.wallFit === "contain") ? "contain" : "cover";
+          _peindreApercu(url, Number(wallRange.value), vx, vy, _fitCourant());
+          wallRemove.style.display = "";
+          wallRow.style.display    = "";
+        };
+        _rafraichirApercuFond();
+
+        // Cadrage : `input` = aperçu live, `change` = persistance au relâchement
+        // (même contrat que le voile — sinon une écriture IDB par pixel parcouru).
+        [[wallPosX, wallPosXVal, "x"], [wallPosY, wallPosYVal, "y"]].forEach(function(t) {
+          const el = t[0], lab = t[1], axe = t[2];
+          el.addEventListener("input", function() {
+            lab.textContent = el.value + " %";
+            if (_wallPreviewUrl) {
+              _peindreApercu(_wallPreviewUrl, Number(wallRange.value),
+                             Number(wallPosX.value), Number(wallPosY.value), _fitCourant());
+            }
+          });
+          el.addEventListener("change", async function() {
+            try { await window.UserProfile.setWallpaperCadrage(axe, Number(el.value)); }
+            catch(e) { console.warn("[Profile] cadrage non enregistré :", e); }
+          });
+        });
+
+        wallBtn.addEventListener("click", function() { wallInput.click(); });
+        wallInput.addEventListener("change", async function() {
+          const f = wallInput.files && wallInput.files[0];
+          if (!f) return;
+          const label = wallBtn.textContent;
+          wallBtn.disabled = true;
+          wallBtn.textContent = _t("home.profile.photoCompressing");
+          try {
+            await window.UserProfile.setWallpaper(f);
+            await _rafraichirApercuFond();
+          } catch(e) {
+            alert(_t("home.profile.errGeneric") + (e.message || e));
+          } finally {
+            wallBtn.disabled = false;
+            wallBtn.textContent = label;
+            wallInput.value = "";   // re-sélectionner le MÊME fichier doit refonctionner
+          }
+        });
+        wallRemove.addEventListener("click", async function() {
+          try { await window.UserProfile.removeWallpaper(); await _rafraichirApercuFond(); }
+          catch(e) { alert(_t("home.profile.errGeneric") + (e.message || e)); }
+        });
+        // `input` = aperçu live pendant le glissement ; `change` = persistance
+        // au relâchement seulement (sinon une écriture IDB par pixel parcouru).
+        wallRange.addEventListener("input", function() {
+          wallVal.textContent = wallRange.value + " %";
+          if (_wallPreviewUrl) {
+            _peindreApercu(_wallPreviewUrl, Number(wallRange.value),
+                           Number(wallPosX.value), Number(wallPosY.value), _fitCourant());
+          }
+        });
+        wallRange.addEventListener("change", async function() {
+          try { await window.UserProfile.setWallpaperVoile(Number(wallRange.value)); }
+          catch(e) { console.warn("[Profile] voile non enregistré :", e); }
+        });
+
+        // 🖼️ v1.75.0 — mode d'affichage. Pas de `input`/`change` séparés ici :
+        // un <select> ne se « glisse » pas, un seul événement suffit.
+        // ⚠️ Les curseurs de cadrage restent ACTIFS en mode Entière : quand
+        // l'image ne remplit pas l'écran, ils ne choisissent plus ce qui est
+        // rogné mais OÙ l'image se pose dans le cadre. Même contrôle, usage
+        // différent — les griser aurait retiré une possibilité réelle.
+        if (wallFit) {
+          wallFit.addEventListener("change", async function() {
+            if (_wallPreviewUrl) {
+              _peindreApercu(_wallPreviewUrl, Number(wallRange.value),
+                             Number(wallPosX.value), Number(wallPosY.value), _fitCourant());
+            }
+            try { await window.UserProfile.setWallpaperFit(wallFit.value); }
+            catch(e) { console.warn("[Profile] mode d'affichage non enregistré :", e); }
+          });
+        }
+
         // Reset profil — modale custom charte (cf §35 CLAUDE.md, pattern
         // Promise-based, .kta-readme-modal-overlay + accent rouge danger).
         document.getElementById("kta-profile-details-reset").addEventListener("click", async function() {
@@ -983,6 +1286,9 @@
             removeBtn.style.display = "none";
             photoBtn.textContent = _t("home.profile.photoBtn");
             _refreshProfileDetailsAvatar(snap2);
+            // 🖼️ v1.74.0 : `clear()` efface l'entrée entière, fond compris —
+            // l'aperçu doit suivre, sinon il montre une image qui n'existe plus.
+            await _rafraichirApercuFond();
           } catch(e) { alert(_t("home.profile.errGeneric") + (e.message || e)); }
         });
       }
@@ -1075,10 +1381,14 @@
             _dBadge.style.display = "none";  // Touriste : pas de médaille
           }
         }
-        if (_profileDetailsObjectUrl) {
-          try { URL.revokeObjectURL(_profileDetailsObjectUrl); } catch(e) {}
-          _profileDetailsObjectUrl = null;
-        }
+        // 🐛 v1.75.0 — même correctif que le bandeau : révoquer AVANT l'await
+        // laissait le <img> sur une URL morte le temps de la lecture IDB.
+        // C'est l'avatar de CETTE modale que KARMA voyait passer en « ? »,
+        // puisque c'est là qu'on charge un fond d'écran.
+        const _ancienneUrlD = _profileDetailsObjectUrl;
+        const _libererAncienneD = function() {
+          if (_ancienneUrlD) { try { URL.revokeObjectURL(_ancienneUrlD); } catch(e) {} }
+        };
         snap = snap || window.UserProfile.get();
         if (snap.hasPhoto) {
           try {
@@ -1086,10 +1396,13 @@
             if (url) {
               _profileDetailsObjectUrl = url;
               avatarEl.innerHTML = '<img class="kta-profile-details-avatar-photo" src="' + url + '" alt="Photo profil">';
+              _libererAncienneD();
               return;
             }
           } catch(e) {}
         }
+        _profileDetailsObjectUrl = null;
+        _libererAncienneD();
         const hasName = !!(snap.surnom && snap.surnom.trim());
         const initial = hasName ? window.UserProfile.getInitial(snap.surnom) : "👤";
         const color   = window.UserProfile.getAvatarColor(snap.surnom || "");

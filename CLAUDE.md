@@ -29,6 +29,7 @@
   - **Pas de ligne « Sources de vérité v1.X.Y »** (= dette technique inutile à l'user).
   - La doc technique détaillée vit dans `docs/architecture/<sujet>.md` + commit message + `NETWORK_AUDIT` pour le réseau, **PAS** dans `version.json`.
 - **Déploiement** : prod = **FTP manuel par KARMA**. Claude ne déploie/push-main JAMAIS.
+- **🚦 Porte de release** : AVANT tout merge `main`, franchir **`docs/RELEASE_GATE.md`** (guards auto → smoke 12 pts sur dev → checkup ciblé → trempage). `main` = déployable. Dérogations possibles sur items non-🔒, **accordées par KARMA seul**, consignées avec motif/risque/rattrapage.
 
 ## 🚨 Garde-fous — NE JAMAIS
 - `push main` / `push --force` / `reset --hard` → **bloqués en dur** (`.claude/hooks/guard-git.js`).
@@ -42,6 +43,7 @@
 **Coords** : TOUJOURS `convertCoord(x,y)` = `[imageHeight - y, x]`. Jamais `[y,x]` direct.
 **Distances** : TOUJOURS `window.formatDistance(distM, dec)`. Jamais `toFixed()+" m"`.
 **Icônes** : résolution unique `window._iconMap[tag]` / `getIconUrlForPoint`.
+**Styles des types** (tracés/zones/structures) : TOUJOURS `window.ktaResolveStyle(cat, clé[, {flat:true}])` (`flat` = contexte sans motif SVG : canvas, KMZ, OSM) · pastille/camembert = `ktaSwatchColor` · icône HTML = `ktaTypeSwatchHtml`. **Jamais de table de couleurs locale** — `scripts/check-style-canon.js` (pré-commit bloquant) refuse toute réintroduction. 2 exceptions documentées : `emergencyMode.js`, `osmView.js`/`osmHomePreview.js`.
 **Textes user-facing** : migration progressive vers `window.I18n.t("module.section.element")` (dicos `lang/<code>.json`, FR = fallback universel). Appeler au rendu, jamais au load. Hors modules migrés, le FR inline reste OK. Détails + état migration : `docs/architecture/i18n.md`.
 
 ## 🗺️ Où chercher (lis le bon fichier avant de coder)
@@ -59,12 +61,17 @@
 | Refonte UI, thème, modales, filtres | `docs/architecture/ui.md` |
 | Multi-langue (i18n), dicos `lang/`, `window.I18n`, migration | `docs/architecture/i18n.md` |
 | Session, photos, undo, recherche, stats, favoris, **Carnet (sorties)** | `docs/architecture/session-data.md` |
+| Import **SIG** (GeoJSON/KML/KMZ), CRS, écran de correspondance | `js/sigImport.js` (en-tête) · `docs/BACKLOG.md` §1 |
+| Profil : avatar, rangs, hauts faits, **fond d'écran du HOME** | `js/userProfile.js` (en-tête) · `js/homeProfile.js` |
 | Sécurité : gates, PIN, audit, légal, licence | `docs/architecture/security-legal.md` |
 | Mode Secours (toutes phases) + urgence | `docs/architecture/secours.md` |
 | Vue OSM modale + widget HOME (georef, tuiles V2, opt-in) | `docs/architecture/vue-osm.md` |
 | Versioning, live-config, releases, DX (selfhost, hooks), logs | `docs/architecture/infra-versioning.md` |
 | Formats JSON (plan-config, point, session) | `docs/architecture/data-formats.md` |
+| Frontière community/pro, mode serveur kiosque, confadmin | `docs/architecture/community-server-line.md` |
 | Pièges connus & renommages | `docs/architecture/gotchas.md` |
+| **Ce qui reste à faire** (sujets ouverts, dettes, sujets enterrés) | **`docs/BACKLOG.md`** ← lire AVANT d'annoncer qu'une feature manque |
+| Porte de release : smoke test 12 pts, dérogations, relevé | `docs/RELEASE_GATE.md` |
 
 ## 📝 Style KARMA
 - **Topo avant de coder** (choix numérotés + reco). Réponses courtes OK (`1:a 2:b`).

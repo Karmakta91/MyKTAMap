@@ -25,3 +25,46 @@ node scripts/check-no-pro-leak.js || exit $?
 
 # 🆕 v1.44.0 — Advisory linter ModalLifecycle (avertit mais ne bloque pas)
 node scripts/check-modal-lifecycle.js
+
+# 🆕 v1.74.0 — Surface d'API : CHARGE les modules IIFE et vérifie que chaque
+# méthode annoncée existe. `node -c` ne valide QUE la syntaxe : un identifiant
+# supprimé mais encore référencé dans un bloc d'exports passe le check et
+# casse au chargement navigateur (ReferenceError vécu le 01/08 sur
+# WALLPAPER_MAX_PX — le même patch raté avait aussi fait sauter
+# setWallpaperCadrage des exports, sans aucun signal).
+# BLOQUANT : contrairement au linter ModalLifecycle, ici un échec = module
+# mort au boot, jamais un faux positif.
+node scripts/check-api-surface.js || exit $?
+
+# 🆕 v1.75.0 — Prefs globales : APP_CONFIG est RECONSTRUIT a chaque chargement
+# de plan. Une pref sauvegardee mais absente de la liste de relecture retombe
+# silencieusement sur son defaut (bug vecu le 03/08 : le magnetisme au dessin
+# repassait a OFF des l'ouverture d'un plan). BLOQUANT.
+node scripts/check-prefs-survival.js || exit $?
+
+# 🎨 v1.75.2 — Table canonique des styles : tant que des tables subsistent
+# (migration en cours), on verifie qu'elles ne DERIVENT pas de la reference.
+# Un oubli y est invisible : exporter.js avait perdu `inaccessible` et une zone
+# dangereuse sortait en gris remblais dans l'export PNG. BLOQUANT.
+node scripts/check-style-canon.js || exit $?
+node scripts/check-style-resolver.js || exit $?
+
+# 🌍 v1.76.0 — Sortie KML : le KMZ a ses PROPRES largeurs (unite different du
+# `weight` Leaflet, ajustee a l'echelle GPS) et ses propres alphas. Brancher
+# naivement le resolveur dessus changerait le rendu dans Google Earth sans que
+# personne le voie. Ce script fige les 14 styles built-in et verifie que les
+# types custom recoivent bien un <Style> (bug 2 : styleUrl pendant = couleur
+# perdue). BLOQUANT.
+node scripts/check-kml-styles.js || exit $?
+
+# 🔁 v1.76.0 — Round-trip de la legende : type custom -> calque de donnees ->
+# plan regenere. Avant, seul l'ID du type voyageait et les objets ressortaient
+# blancs/gris, sans aucune ligne de legende ni moyen de reparer. Verrouille
+# aussi l'idempotence du re-import et la regle de conflit (le plan gagne).
+# BLOQUANT.
+node scripts/check-legend-roundtrip.js || exit $?
+
+# 🧭 v1.76.1 — Math de l'estimation du point B de georef (A + echelle + Nord).
+# Fonction extraite du code REEL de config.js ; a attrape Number(null)=0 des
+# son premier run (un A a lat nulle serait parti a l'equateur). BLOQUANT.
+node scripts/check-georef-estimation.js || exit $?

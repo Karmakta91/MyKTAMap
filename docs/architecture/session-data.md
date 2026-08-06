@@ -1237,7 +1237,16 @@ La note libre et le PDF d'un plan étaient **enfermés dans l'écran plan** : il
 
 **Limite assumée** : aucun remplissage rétroactif — le carnet démarre vide en v1.69.0, il n'existait pas de « sortie » avant.
 
-**Dette connue (lot 2-3)** : le carnet n'est **pas** inclus dans l'export/import de profil (`profileExportImport.js`) — un profil réimporté sur un autre appareil arrive sans son carnet.
+**✅ Dette soldée en v1.74.0** (elle disait : « le carnet n'est pas inclus dans l'export/import de profil — un profil réimporté sur un autre appareil arrive sans son carnet »). Le carnet est désormais une **section à part entière** du profil (`profileExportImport.js`) :
+
+- **Collecte** `_collectCarnet()` — appelle `Journal.flush()` **avant** `Journal.list()` : la sortie en cours n'est écrite en IDB que toutes les 30 s (`FLUSH_MS`), sans ce flush un export lancé juste après une sortie perdrait les dernières minutes.
+- **Cochée par défaut** (comme sessions/backups, contrairement à photos/crashes) : ~2-8 Ko par sortie, plafond 500 → ~4 Mo pire cas, et **aucune image** (le carnet ne stocke que des refs photos).
+- **Apply** : ouverture IDB directe (`myktamap_journal` v1, store `sorties`) — même motif que les backups, `Journal` n'expose pas d'API d'import bulk. `put()` par id, `clear()` d'abord en mode replace, records sans `id` filtrés.
+- ⚠️ **L'`onupgradeneeded` de l'import DOIT recréer l'index `by_start`** : si la base n'existe pas encore sur l'appareil cible, c'est l'import qui la crée — sans l'index, la purge FIFO de `journal.js` casserait.
+- Les records `status: "encours"` sont exportés tels quels : `_balayerEnCours()` les clôturera proprement au boot suivant sur l'appareil cible.
+- `myktamap_journal_enabled` ajoutée à `PREF_KEYS` (le carnet désactivé reste désactivé après migration).
+
+⚠️ **Reste hors périmètre** : les **PDF du Mode Histoire** (IDB `myktamap_histoire_pdfs`, jusqu'à 100 Mo/plan) ne voyagent toujours pas. Conséquence à connaître : l'onglet **📖 Récits** du carnet arrive avec ses notes libres (elles, transportées via le préfixe per-plan `myktamap_note_libre_`) mais **sans les PDF**. Décision à trancher si le besoin remonte : section optionnelle décochée par défaut, sur le modèle des photos.
 
 ---
 

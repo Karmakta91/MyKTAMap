@@ -98,26 +98,10 @@
   // Palettes par catégorie alignées sur les rendus Leaflet (cf road.js,
   // zones.js, structures.js) + utils.js pour data layers.
 
-  const _PALETTE_ROADS = {
-    principal:  "#00ff00",
-    secondaire: "#b000ff",
-    chemin:     "#ffff00",
-    jonction:   "#ff4ecb",
-    itinerary:  "#00d4ff"  // cyan néon iti (au cas où)
-  };
-  const _PALETTE_ZONES = {
-    eau:           "#3aa9e8",
-    remblais:      "#5a5a68",
-    effondrement:  "#ff3333",
-    inaccessible:  "#7a0000"
-  };
-  const _PALETTE_STRUCTS = {
-    "pilier-1": "#f4c542",
-    "pilier-2": "#ff9933",
-    "mur":      "#1e3a8a",
-    "front-1":  "#f4c542",  // même que pilier-1 (alignement charte v1.10.1-hotfix2)
-    "front-2":  "#ff9933"   // même que pilier-2
-  };
+  // 🎨 v1.76.0 — les trois palettes par type sont supprimées : les couleurs
+  // viennent de `window.ktaSwatchColor` (cf. js/styleResolver.js). Un polygone
+  // est représenté par son remplissage, une ligne par son trait — c'est
+  // exactement ce que ces palettes recopiaient à la main.
   // Palette générique pour points par tag (10 couleurs cycle via hash djb2)
   const _PALETTE_TAGS = [
     "#f4c542", "#8cb4ff", "#6ee287", "#ff8c8c", "#ff4ecb",
@@ -138,10 +122,19 @@
     // alias de "roads", "icones" alias de "tags") pour résilience.
     // Avant : ma modale Profil envoyait "traces" → mismatch palette →
     // fallback hash → collision possible principal/jonction (même hash %10).
-    if ((category === "roads"  || category === "traces") && _PALETTE_ROADS[key])   return _PALETTE_ROADS[key];
-    if (category === "zones"      && _PALETTE_ZONES[key])      return _PALETTE_ZONES[key];
-    if (category === "structures" && _PALETTE_STRUCTS[key])    return _PALETTE_STRUCTS[key];
-    // Fallback : palette générique cycle via hash
+    // 🎨 v1.76.0 — résolution via le styleResolver. Effet de bord VOULU : les
+    // types CUSTOM ont désormais leur VRAIE couleur. Avant, ils tombaient dans
+    // le repli par hash ci-dessous et une part de camembert n'avait aucun
+    // rapport avec la couleur du tracé sur la carte.
+    const cat = (category === "roads" || category === "traces") ? "traces"
+              : (category === "zones" || category === "structures") ? category
+              : null;
+    if (cat && typeof window.ktaSwatchColor === "function") {
+      const c = window.ktaSwatchColor(cat, key);
+      if (c) return c;
+    }
+    // Fallback : palette générique cycle via hash (points par tag, et types
+    // réellement inconnus — un custom supprimé de la légende, par exemple).
     return _PALETTE_TAGS[_djb2Hash(key) % _PALETTE_TAGS.length];
   }
 

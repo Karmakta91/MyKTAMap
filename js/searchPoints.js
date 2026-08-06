@@ -1174,12 +1174,7 @@
     // 2) Conversion GPS → plan (pattern §32.7 transform rebuild on-demand)
     let transform, planCoords;
     try {
-      transform = window.KmzExport.buildTransform(
-        { x: calib.pointA.x,   y: calib.pointA.y   },
-        { x: calib.pointB.x,   y: calib.pointB.y   },
-        { lat: calib.pointA.lat, lng: calib.pointA.lng },
-        { lat: calib.pointB.lat, lng: calib.pointB.lng }
-      );
+      transform = window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
       planCoords = window.KmzExport.gpsToPlan(transform, gps.lat, gps.lng);
     } catch (e) {
       _renderGpsCardErreur(resEl, gps, window.I18n.t("search.gps.errInvalidCalib", { msg: (e && e.message) || "" }));

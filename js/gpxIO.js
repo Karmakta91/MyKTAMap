@@ -98,12 +98,7 @@
     // signaler un calibrage dégénéré).
     if (typeof window.KmzExport.buildTransform !== "function") return false;
     try {
-      window.KmzExport.buildTransform(
-        { x: calib.pointA.x, y: calib.pointA.y },
-        { x: calib.pointB.x, y: calib.pointB.y },
-        { lat: calib.pointA.lat, lng: calib.pointA.lng },
-        { lat: calib.pointB.lat, lng: calib.pointB.lng }
-      );
+      window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
       return true;
     } catch(e) {
       // Calibrage présent mais dégénéré (2 points identiques, etc.)
@@ -117,12 +112,7 @@
                   : null;
     if (!_calibComplet(calib)) return null;
     try {
-      return window.KmzExport.buildTransform(
-        { x: calib.pointA.x, y: calib.pointA.y },
-        { x: calib.pointB.x, y: calib.pointB.y },
-        { lat: calib.pointA.lat, lng: calib.pointA.lng },
-        { lat: calib.pointB.lat, lng: calib.pointB.lng }
-      );
+      return window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(e) {
       return null;
     }
@@ -512,8 +502,16 @@
           // Map type GPX → type road MyKTAMap (si reconnu).
           // v1.15.0 — ajout de "jonction" pour roundtrip complet (sans ça,
           // un tracé jonction exporté revenait en chemin à l'import).
+          // 🐛 v1.76.0 — les types CUSTOM (`cust-…`) étaient rejetés ici et
+          // TOUS convertis en "chemin" : perte de donnée silencieuse, pas
+          // seulement de couleur. `gpxImport.js` (le lecteur du générateur)
+          // avait reçu ce même correctif en v1.21.1 ; ce lecteur-ci a été
+          // oublié. Deux importeurs GPX, deux comportements sur le même
+          // fichier — c'est cette asymétrie qu'on supprime.
           const validTypes = ["principal", "secondaire", "chemin", "itinerary", "jonction"];
-          const type = (trk.type && validTypes.indexOf(trk.type) >= 0) ? trk.type : "chemin";
+          const type = (trk.type &&
+                        (validTypes.indexOf(trk.type) >= 0 || String(trk.type).indexOf("cust-") === 0))
+                         ? trk.type : "chemin";
           nouveauxTraces.push({
             id:          "gpx_trk_" + Date.now() + "_" + nouveauxTraces.length,
             type:        type,

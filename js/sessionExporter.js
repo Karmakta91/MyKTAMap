@@ -544,6 +544,39 @@
     return out;
   }
 
+  // 🐛 v1.76.0 — DÉVERSOIR DU BUCKET `autres`.
+  // `_trierParType` range tout type non built-in dans `out.autres`, et les
+  // appelants n'itéraient QUE sur `validTypes` : le bucket n'était écrit dans
+  // aucun fichier. Conséquence mesurée : en granularité « fine », TOUS les
+  // objets d'un type CUSTOM disparaissaient de l'export de calque de données,
+  // sans un log ni un avertissement. C'est le même défaut qui avait déjà
+  // effacé les `jonction` (corrigé en v169) — en pire, parce qu'un type custom
+  // est une création de l'utilisateur, pas un built-in qu'on peut redessiner.
+  //
+  // On émet un fichier par type restant, comme pour les built-in : la
+  // granularité fine tient enfin sa promesse. Le groupement se fait sur le
+  // type BRUT (deux types distincts ne doivent jamais fusionner) ; seul le nom
+  // de fichier est assaini.
+  function _emettreTypesRestants(items, prefixe, cleTableau, files) {
+    if (!items || !items.length) return;
+    const parType = new Map();
+    items.forEach(function(it) {
+      const t = String(it.type || "inconnu");
+      if (!parType.has(t)) parType.set(t, []);
+      parType.get(t).push(it);
+    });
+    let n = 0;
+    parType.forEach(function(liste, type) {
+      const nomSur = type.replace(/[^A-Za-z0-9_-]/g, "_");
+      const payload = { data: [] };
+      payload[cleTableau] = liste;
+      files.push({ name: prefixe + "_" + nomSur + ".json", payload: payload });
+      n += liste.length;
+    });
+    console.log("[SessionExport] granularité fine — " + n + " objet(s) de " + parType.size +
+                " type(s) hors built-in émis dans " + prefixe + "_*.json");
+  }
+
   // Liste tous les tags présents dans les points avec leur compte.
   // Un point peut avoir plusieurs tags → il sera compté dans chacun.
   // Cas spécial : points sans tag → catégorie "(sans tag)".
@@ -890,22 +923,22 @@
         ${pointsTagsHtml}
 
         ${row("adv_roads", t("export.adv.roads"), d.roads.length, true)}
-        ${rowSub("adv_roads_principal",  t("export.adv.roadsPrincipal"),  roadsByType.principal.length,  true)}
-        ${rowSub("adv_roads_secondaire", t("export.adv.roadsSecondaire"), roadsByType.secondaire.length, true)}
-        ${rowSub("adv_roads_chemin",     t("export.adv.roadsChemin"),     roadsByType.chemin.length,     true)}
+        ${rowSub("adv_roads_principal",  _lp("traces", "principal", t("export.adv.roadsPrincipal")),  roadsByType.principal.length,  true)}
+        ${rowSub("adv_roads_secondaire", _lp("traces", "secondaire", t("export.adv.roadsSecondaire")), roadsByType.secondaire.length, true)}
+        ${rowSub("adv_roads_chemin",     _lp("traces", "chemin", t("export.adv.roadsChemin")),     roadsByType.chemin.length,     true)}
 
         ${row("adv_zones", t("export.adv.zones"), d.zones.length, true)}
-        ${rowSub("adv_zones_eau",          t("export.adv.zonesEau"),           zonesByType.eau.length,          true)}
-        ${rowSub("adv_zones_remblais",     t("export.adv.zonesRemblais"),      zonesByType.remblais.length,     true)}
-        ${rowSub("adv_zones_effondrement", t("export.adv.zonesEffondrement"),  zonesByType.effondrement.length, true)}
-        ${rowSub("adv_zones_inaccessible", t("export.adv.zonesInaccessible"),  zonesByType.inaccessible.length, true)}
+        ${rowSub("adv_zones_eau",          _lp("zones", "eau", t("export.adv.zonesEau")),           zonesByType.eau.length,          true)}
+        ${rowSub("adv_zones_remblais",     _lp("zones", "remblais", t("export.adv.zonesRemblais")),      zonesByType.remblais.length,     true)}
+        ${rowSub("adv_zones_effondrement", _lp("zones", "effondrement", t("export.adv.zonesEffondrement")),  zonesByType.effondrement.length, true)}
+        ${rowSub("adv_zones_inaccessible", _lp("zones", "inaccessible", t("export.adv.zonesInaccessible")),  zonesByType.inaccessible.length, true)}
 
         ${row("adv_structures", t("export.adv.structures"), (d.structures || []).length, true)}
-        ${rowSub("adv_structures_pilier-1", t("export.adv.structPilier1"),     structuresByType["pilier-1"].length, true)}
-        ${rowSub("adv_structures_pilier-2", t("export.adv.structPilier2"),     structuresByType["pilier-2"].length, true)}
-        ${rowSub("adv_structures_mur",      t("export.adv.structMur"),         structuresByType["mur"].length,      true)}
-        ${rowSub("adv_structures_front-1",  t("export.adv.structFront1"),      structuresByType["front-1"].length,  true)}
-        ${rowSub("adv_structures_front-2",  t("export.adv.structFront2"),      structuresByType["front-2"].length,  true)}
+        ${rowSub("adv_structures_pilier-1", _lp("structures", "pilier-1", t("export.adv.structPilier1")),     structuresByType["pilier-1"].length, true)}
+        ${rowSub("adv_structures_pilier-2", _lp("structures", "pilier-2", t("export.adv.structPilier2")),     structuresByType["pilier-2"].length, true)}
+        ${rowSub("adv_structures_mur",      _lp("structures", "mur", t("export.adv.structMur")),         structuresByType["mur"].length,      true)}
+        ${rowSub("adv_structures_front-1",  _lp("structures", "front-1", t("export.adv.structFront1")),      structuresByType["front-1"].length,  true)}
+        ${rowSub("adv_structures_front-2",  _lp("structures", "front-2", t("export.adv.structFront2")),      structuresByType["front-2"].length,  true)}
 
         ${row("adv_mesure",        t("export.adv.mesureDistance"), (d.mesure || []).length,        (d.mesure || []).length > 0)}
         ${row("adv_mesure_surface",t("export.adv.mesureSurface"),  (d.mesureSurface || []).length, (d.mesureSurface || []).length >= 3)}
@@ -2258,6 +2291,27 @@
       zip.file(name, JSON.stringify(obj, null, 2));
     }
 
+    // 🐛 v1.76.0 (F13) — LA LÉGENDE MANQUAIT À CE ZIP.
+    // Le JSON de session simple la porte (`session.customLegend`), pas le ZIP
+    // multi-fichiers : deux boutons voisins, deux contenus différents.
+    //
+    // ⚠️ Précision vérifiée : ce format est un export SEUL — aucun importeur
+    // ne lit `session_points.json` & consorts (`_parseSessionZip` attend un
+    // `session.json`). Le tort n'est donc pas une perte au ré-import, mais une
+    // archive qui ne se DÉCRIT PAS : un fichier `session_roads.json` plein de
+    // types `cust-abc123` sans nulle part la définition de ces types. Pour une
+    // archive longue durée — la raison d'être de ce bouton — c'est un défaut
+    // suffisant.
+    // Fichier DÉDIÉ : le ZIP est déjà organisé un fichier par sujet, et la
+    // légende doit survivre même à une session sans aucun point.
+    (function() {
+      const LC = window.LegendCustomization;
+      if (!LC || typeof LC.getSessionState !== "function") return;
+      if (typeof LC.isSessionStateEmpty === "function" && LC.isSessionStateEmpty()) return;
+      try { file("session_legend.json", { customLegend: LC.getSessionState() }); }
+      catch(e) { console.warn("[SessionExport] légende non embarquée dans le ZIP :", e); }
+    })();
+
     if (points.length)     file("session_points.json",     { editorPoints: points });
     if (roads.length)      file("session_roads.json",      { roads: roads });
     if (zones.length)      file("session_zones.json",      { zones: zones });
@@ -2436,6 +2490,7 @@
             files.push({ name: "roads_" + t + ".json", payload: { data: [], roads: byType[t] } });
           }
         });
+        _emettreTypesRestants(byType.autres, "roads", "roads", files);
       }
 
       if (filteredZones.length) {
@@ -2445,6 +2500,7 @@
             files.push({ name: "zones_" + t + ".json", payload: { data: [], zones: byType[t] } });
           }
         });
+        _emettreTypesRestants(byType.autres, "zones", "zones", files);
       }
 
       // 🆕 v1.9.3-A1.a : structures en granularité fine, 1 fichier par
@@ -2458,6 +2514,7 @@
             files.push({ name: "structures_" + t + ".json", payload: { data: [], structures: byType[t] } });
           }
         });
+        _emettreTypesRestants(byType.autres, "structures", "structures", files);
       }
 
       _telechargerConversionFiles(files, photos);
@@ -2540,6 +2597,122 @@
   // photos dans le ZIP de conversion. Format identique au session ZIP
   // (B1.d.α) → photos/_index.json + photos/<photoId>.<ext>. Permet au
   // re-import data→session de reconnecter les photos automatiquement.
+  // 🐛 v1.76.0 (F2) — LA LÉGENDE VOYAGE AVEC LE CALQUE.
+  // Jusqu'ici seul l'ID du type partait (`cust-abc123`), jamais sa DÉFINITION.
+  // Conséquence : on régénérait un plan avec le calque, on l'ouvrait, et les
+  // tracés custom sortaient en BLANC, les zones en gris remblais, les
+  // structures en bleu mur — sans même une ligne dans ≡ Légende, puisque le
+  // panneau ne liste que les entrées connues et ne regarde jamais les objets
+  // dessinés. Aucun chemin d'UI ne permettait de réparer.
+  //
+  // On n'embarque QUE ce que le fichier référence réellement : un calque de
+  // 3 tracés ne doit pas traîner les 40 entrées de légende de la session.
+  function _legendePourPayload(payload) {
+    const LC = window.LegendCustomization;
+    if (!LC || typeof LC.getSessionState !== "function") return null;
+    let etat;
+    try { etat = LC.getSessionState(); } catch(e) { return null; }
+    if (!etat) return null;
+
+    // Types réellement présents, par catégorie de légende.
+    const parCat = { traces: new Set(), zones: new Set(), structures: new Set() };
+    (payload.roads      || []).forEach(function(o) { if (o && o.type) parCat.traces.add(o.type); });
+    (payload.zones      || []).forEach(function(o) { if (o && o.type) parCat.zones.add(o.type); });
+    (payload.structures || []).forEach(function(o) { if (o && o.type) parCat.structures.add(o.type); });
+
+    const idsUtilises = new Set();
+    Object.keys(parCat).forEach(function(cat) {
+      const builtins = (typeof window.ktaStyleBuiltins === "function") ? window.ktaStyleBuiltins(cat) : [];
+      parCat[cat].forEach(function(tp) {
+        // 🧷 v1.76.1 — tout type NON built-in est candidat, plus seulement les
+        // `cust-` : une entrée liée à un type brut (« Bas », id technique)
+        // doit voyager elle aussi, sinon le round-trip la perd.
+        if (builtins.indexOf(tp) === -1) idsUtilises.add(tp);
+      });
+    });
+
+    // Les entrées CUSTOM référencées, avec leur définition complète.
+    const customEntries = (etat.customEntries || []).filter(function(e) {
+      return e && idsUtilises.has(e.id);
+    });
+
+    // Les personnalisations de types BUILT-IN présents (libellé renommé,
+    // couleur choisie, masquage). Restreintes aux types du fichier.
+    function _sousEnsemble(map) {
+      const out = {};
+      Object.keys(map || {}).forEach(function(k) {
+        const sep = k.indexOf(".");
+        if (sep < 0) return;
+        const cat = k.slice(0, sep), tp = k.slice(sep + 1);
+        if (parCat[cat] && parCat[cat].has(tp)) out[k] = map[k];
+      });
+      return out;
+    }
+    const labels  = _sousEnsemble(etat.labels);
+    const hidden  = _sousEnsemble(etat.hidden);
+    const colors  = _sousEnsemble(etat.colors);
+    const borders = _sousEnsemble(etat.borders);   // 🎨 v1.76.1
+
+    if (!customEntries.length && !Object.keys(labels).length &&
+        !Object.keys(hidden).length && !Object.keys(colors).length &&
+        !Object.keys(borders).length) return null;
+
+    return {
+      schemaVersion: etat.schemaVersion,
+      labels: labels, hidden: hidden, colors: colors, borders: borders,
+      customEntries: customEntries
+    };
+  }
+
+  // 🐛 v1.76.0 (F12) — LA LÉGENDE EXPORTÉE EN KMZ/GPX DOIT ÊTRE CELLE QU'ON VOIT.
+  // L'option « Légende personnalisée du plan » ne lisait que
+  // `PLAN_CONFIG.customLegend`. Or 100 % des types créés sur le terrain vivent
+  // dans la SESSION (l'éditeur ≡ Légende n'écrit que là ; le niveau plan ne se
+  // remplit que depuis le générateur). Pour un utilisateur normal la case était
+  // donc grisée à 0 en permanence : le seul transport MyKTAMap ↔ MyKTAMap qui
+  // existe lui était inaccessible.
+  // On fusionne les deux, dans l'ordre de la cascade d'affichage — la SESSION
+  // prime sur le plan — pour que le fichier exporté décrive ce que l'auteur a
+  // réellement sous les yeux.
+  // 🎨 v1.76.0 (suite N2) — libellé de case à cocher avec pastille RÉSOLUE
+  // (cf. exporter.js > _lp, même besoin : l'émoji des libellés i18n est figé).
+  function _lp(cat, key, label) {
+    return (typeof window.ktaLabelAvecPastille === "function")
+             ? window.ktaLabelAvecPastille(cat, key, label) : label;
+  }
+
+  function _legendeCompleteAExporter() {
+    const plan = (window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend) || null;
+    const LC = window.LegendCustomization;
+    let sess = null;
+    if (LC && typeof LC.getSessionState === "function") {
+      try { sess = LC.getSessionState(); } catch(e) { sess = null; }
+    }
+    if (!plan && !sess) return null;
+
+    const out = { labels: {}, hidden: {}, colors: {}, borders: {}, customEntries: [] };
+    function _fusionner(src) {
+      if (!src || typeof src !== "object") return;
+      ["labels", "hidden", "colors", "borders"].forEach(function(champ) {
+        const m = src[champ];
+        if (!m || typeof m !== "object" || Array.isArray(m)) return;
+        Object.keys(m).forEach(function(k) { out[champ][k] = m[k]; });
+      });
+      const ids = new Set(out.customEntries.map(function(e) { return e && e.id; }));
+      (Array.isArray(src.customEntries) ? src.customEntries : []).forEach(function(e) {
+        if (!e || !e.id || ids.has(e.id)) return;
+        ids.add(e.id);
+        out.customEntries.push(e);
+      });
+    }
+    _fusionner(plan);
+    _fusionner(sess);   // en second : la session écrase le plan, comme à l'écran
+
+    if (!Object.keys(out.labels).length && !Object.keys(out.hidden).length &&
+        !Object.keys(out.colors).length && !out.customEntries.length) return null;
+    return out;
+  }
+
   function _telechargerConversionFiles(files, photos) {
     if (files.length === 0) {
       alert(t("export.err.convRien"));
@@ -2548,10 +2721,22 @@
     const now = new Date().toISOString();
     const hasPhotos = Array.isArray(photos) && photos.length > 0;
 
-    // Wrap en format devmap-data
+    // Wrap en format devmap-data + légende embarquée (F2).
+    // Par FICHIER et non une fois pour toutes : un data layer doit rester
+    // exploitable seul, sorti de son ZIP.
+    let nbAvecLegende = 0;
     files.forEach(function(f) {
-      f.payload = Object.assign({ type: "devmap-data", version: "1.0", date_export: now }, f.payload);
+      const leg = _legendePourPayload(f.payload);
+      if (leg) nbAvecLegende++;
+      f.payload = Object.assign(
+        { type: "devmap-data", version: "1.0", date_export: now },
+        f.payload,
+        leg ? { customLegend: leg } : {}
+      );
     });
+    if (nbAvecLegende > 0) {
+      console.log("[SessionExport] légende embarquée dans " + nbAvecLegende + "/" + files.length + " fichier(s)");
+    }
 
     // Cas le plus simple : 1 seul fichier, pas de photos → JSON direct (rétrocompat)
     if (files.length === 1 && !hasPhotos) {
@@ -3237,24 +3422,24 @@
 
         // --- Tracés + sous-cases par type ---
         row("kmz_inc_roads", t("export.kmz.roads"), roadsTotal, true) +
-        rowSub("kmz_inc_roads_principal",  t("export.kmz.roadsPrincipal"),  rByT.principal,  true) +
-        rowSub("kmz_inc_roads_secondaire", t("export.kmz.roadsSecondaire"), rByT.secondaire, true) +
-        rowSub("kmz_inc_roads_chemin",     t("export.kmz.roadsChemin"),     rByT.chemin,     true) +
+        rowSub("kmz_inc_roads_principal",  _lp("traces", "principal", t("export.kmz.roadsPrincipal")),  rByT.principal,  true) +
+        rowSub("kmz_inc_roads_secondaire", _lp("traces", "secondaire", t("export.kmz.roadsSecondaire")), rByT.secondaire, true) +
+        rowSub("kmz_inc_roads_chemin",     _lp("traces", "chemin", t("export.kmz.roadsChemin")),     rByT.chemin,     true) +
 
         // --- Zones + sous-cases par type ---
         row("kmz_inc_zones", t("export.kmz.zones"), zonesTotal, true) +
-        rowSub("kmz_inc_zones_eau",          t("export.kmz.zonesEau"),          zByT.eau,          true) +
-        rowSub("kmz_inc_zones_remblais",     t("export.kmz.zonesRemblais"),     zByT.remblais,     true) +
-        rowSub("kmz_inc_zones_effondrement", t("export.kmz.zonesEffondrement"), zByT.effondrement, true) +
-        rowSub("kmz_inc_zones_inaccessible", t("export.kmz.zonesInaccessible"), zByT.inaccessible, true) +
+        rowSub("kmz_inc_zones_eau",          _lp("zones", "eau", t("export.kmz.zonesEau")),          zByT.eau,          true) +
+        rowSub("kmz_inc_zones_remblais",     _lp("zones", "remblais", t("export.kmz.zonesRemblais")),     zByT.remblais,     true) +
+        rowSub("kmz_inc_zones_effondrement", _lp("zones", "effondrement", t("export.kmz.zonesEffondrement")), zByT.effondrement, true) +
+        rowSub("kmz_inc_zones_inaccessible", _lp("zones", "inaccessible", t("export.kmz.zonesInaccessible")), zByT.inaccessible, true) +
 
         // --- 🆕 v1.9.3-A1.b.1 + A1.b.2 : Structures + 5 sous-types ---
         row("kmz_inc_structures", t("export.kmz.structures"), structuresTotal, true) +
-        rowSub("kmz_inc_structures_pilier-1", t("export.kmz.structPilier1"), sByT["pilier-1"], true) +
-        rowSub("kmz_inc_structures_pilier-2", t("export.kmz.structPilier2"), sByT["pilier-2"], true) +
-        rowSub("kmz_inc_structures_mur",      t("export.kmz.structMur"),     sByT["mur"],      true) +
-        rowSub("kmz_inc_structures_front-1",  t("export.kmz.structFront1"),  sByT["front-1"] || 0, true) +
-        rowSub("kmz_inc_structures_front-2",  t("export.kmz.structFront2"),  sByT["front-2"] || 0, true) +
+        rowSub("kmz_inc_structures_pilier-1", _lp("structures", "pilier-1", t("export.kmz.structPilier1")), sByT["pilier-1"], true) +
+        rowSub("kmz_inc_structures_pilier-2", _lp("structures", "pilier-2", t("export.kmz.structPilier2")), sByT["pilier-2"], true) +
+        rowSub("kmz_inc_structures_mur",      _lp("structures", "mur", t("export.kmz.structMur")),     sByT["mur"],      true) +
+        rowSub("kmz_inc_structures_front-1",  _lp("structures", "front-1", t("export.kmz.structFront1")),  sByT["front-1"] || 0, true) +
+        rowSub("kmz_inc_structures_front-2",  _lp("structures", "front-2", t("export.kmz.structFront2")),  sByT["front-2"] || 0, true) +
 
         // --- Jonctions (uniquement si multi-niveau) ---
         (mlOn ? row("kmz_inc_jonctions", t("export.kmz.jonctions"), rByT.jonction, rByT.jonction > 0) : '') +
@@ -3267,11 +3452,10 @@
         // « nu » (cascade défaut MKM), la case s'affiche grisée à 0 — pas
         // d'incident, juste rien à embarquer.
         (function() {
-          const cl = window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend;
-          const hasCustomLegend = !!(cl && typeof cl === "object" &&
-            ((cl.labels && Object.keys(cl.labels).length) ||
-             (cl.hidden && (Array.isArray(cl.hidden) ? cl.hidden.length : Object.keys(cl.hidden).length)) ||
-             (Array.isArray(cl.customEntries) && cl.customEntries.length)));
+          // 🐛 v1.76.0 (F12) — plan ET session (cf. _legendeCompleteAExporter).
+          // Avant, la case restait grisée à 0 pour quiconque avait créé ses
+          // types depuis ≡ Légende, c'est-à-dire tout le monde sur le terrain.
+          const hasCustomLegend = !!_legendeCompleteAExporter();
           return row("kmz_inc_legend",
                      t("export.kmz.legend"),
                      hasCustomLegend ? 1 : 0,
@@ -3385,7 +3569,7 @@
     };
     const cA = getCoords("kmz_A_coords");
     const cB = getCoords("kmz_B_coords");
-    return {
+    const calib = {
       pointA: {
         x:   get("kmz_A_x"),   y:   get("kmz_A_y"),
         lat: cA.lat,           lng: cA.lng
@@ -3395,6 +3579,15 @@
         lat: cB.lat,           lng: cB.lng
       }
     };
+    // 📐 v1.73.0 — cette modale n'édite que A/B : on PRÉSERVE le pointC
+    // stocké (saisi via ⚙️ Réglages ou le Générateur), sinon chaque save
+    // KMZ écraserait silencieusement l'affine 3 points.
+    try {
+      const saved = (window.KmzExport && window.KmzExport.getCalibration)
+                     ? window.KmzExport.getCalibration(_kmzCurrentPlanId()) : null;
+      if (saved && saved.pointC) calib.pointC = saved.pointC;
+    } catch(e) {}
+    return calib;
   }
 
   function _kmzRafraichirApercu() {
@@ -3415,12 +3608,7 @@
     }
     let transform;
     try {
-      transform = window.KmzExport.buildTransform(
-        { x: c.pointA.x, y: c.pointA.y },
-        { x: c.pointB.x, y: c.pointB.y },
-        { lat: c.pointA.lat, lng: c.pointA.lng },
-        { lat: c.pointB.lat, lng: c.pointB.lng }
-      );
+      transform = window.KmzExport.buildTransformCalib(c);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(e) {
       target.innerHTML = '<span style="color:#ff9933;">⚠️ ' + String(e.message || e) + '</span>';
       return;
@@ -3605,12 +3793,7 @@
     // Build transform (avec validations bloquantes)
     let transform;
     try {
-      transform = window.KmzExport.buildTransform(
-        { x: c.pointA.x, y: c.pointA.y },
-        { x: c.pointB.x, y: c.pointB.y },
-        { lat: c.pointA.lat, lng: c.pointA.lng },
-        { lat: c.pointB.lat, lng: c.pointB.lng }
-      );
+      transform = window.KmzExport.buildTransformCalib(c);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(e) {
       alert(t("export.err.calibInvalide", { msg: e.message }));
       return;
@@ -3870,9 +4053,8 @@
         planCustomLegend: (function() {
           const inclLegend = !!document.getElementById("kmz_inc_legend")?.checked;
           if (!inclLegend) return null;
-          const cl = window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend;
-          if (!cl || typeof cl !== "object") return null;
-          return cl;
+          // F12 : plan + session fusionnes (la session prime, comme a l ecran).
+          return _legendeCompleteAExporter();
         })()
       });
 
@@ -3930,11 +4112,9 @@
         // <extensions><myktamap:customLegend> sous <metadata> GPX standard.
         // Ignoré par les apps tierces (TopoDroid, OsmAnd…), parsé par gpxIO.
         (function() {
-          const cl = window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend;
-          const has = !!(cl && typeof cl === "object" &&
-            ((cl.labels && Object.keys(cl.labels).length) ||
-             (cl.hidden && (Array.isArray(cl.hidden) ? cl.hidden.length : Object.keys(cl.hidden).length)) ||
-             (Array.isArray(cl.customEntries) && cl.customEntries.length)));
+          // F12 : la case ne doit plus etre grisee quand la legende vient de
+          // la SESSION (cas de tout utilisateur terrain).
+          const has = !!_legendeCompleteAExporter();
           return '<label class="kta-ses-cb-row" style="' + (has ? "" : "opacity:0.5;") + '">' +
             '<input type="checkbox" id="gpx_legend" ' + (has ? "checked" : "disabled") + '>' +
             '<span>' + t("export.gpx.legend") + ' ' +
@@ -3970,12 +4150,7 @@
       return;
     }
     try {
-      window.KmzExport.buildTransform(
-        { x: c.pointA.x, y: c.pointA.y },
-        { x: c.pointB.x, y: c.pointB.y },
-        { lat: c.pointA.lat, lng: c.pointA.lng },
-        { lat: c.pointB.lat, lng: c.pointB.lng }
-      );
+      window.KmzExport.buildTransformCalib(c);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
     } catch(e) {
       alert(t("export.err.calibInvalide", { msg: e.message }));
       return;
@@ -4004,9 +4179,8 @@
         // Skip si checkbox décochée OU si pas de customLegend dans le plan.
         planCustomLegend: (function() {
           if (!incLegend) return null;
-          const cl = window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend;
-          if (!cl || typeof cl !== "object") return null;
-          return cl;
+          // F12 : plan + session fusionnes (la session prime, comme a l ecran).
+          return _legendeCompleteAExporter();
         })()
       });
       if (!r.ok) {

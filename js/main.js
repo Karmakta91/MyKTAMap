@@ -120,15 +120,87 @@ let _importDemande = false;
 // =========================
 // AUTO-DISCOVERY SERVEUR (data/index.json)
 // =========================
-async function decouvrirPlansServeur() {
-  if (!window.PlanRegistry) return;
+// 🛠️ v1.73.0 — MODE SERVEUR KIOSQUE (gouvernance : community-server-line.md).
+// data/index.json porte, en plus de plans[], un bloc `config` (subtitle +
+// 2 flags MAX — règle figée) et un bloc `liaisons`. Le SW le sert
+// network-first → les changements d'un admin kiosque se propagent au boot
+// suivant, sans réinstallation.
+//
+// _chargerIndexServeur() : fetch + parse + application de la config.
+// TOUJOURS appelée au boot — la pref « ne pas charger les plans serveur »
+// ne skippe QUE l'enregistrement des plans (decouvrirPlansServeur), pas la
+// config d'instance (sinon : sous-titre/flags morts pour ces users).
+async function _chargerIndexServeur() {
   try {
     const r = await fetch("data/index.json");
     if (!r.ok) {
-      console.log("[Main] data/index.json absent — pas d'auto-discovery");
-      return;
+      console.log("[Main] data/index.json absent — pas de config d'instance");
+      return null;
     }
     const idx = await r.json();
+    window.KIOSK_CONFIG = (idx && typeof idx.config === "object" && idx.config) ? idx.config : null;
+    _appliquerConfigKiosque();
+    // 🌀 Liaisons fournies par l'instance : FUSION par id dans le registre
+    // local (idempotent — rejouée à chaque boot, dédup par link.id). Une
+    // liaison retirée côté serveur reste chez qui l'a déjà (assumé, doc).
+    try {
+      const lks = idx && idx.liaisons && Array.isArray(idx.liaisons.links) ? idx.liaisons.links : [];
+      if (lks.length && window.InterPlanLinks && typeof window.InterPlanLinks.importLinks === "function") {
+        const added = window.InterPlanLinks.importLinks(lks);
+        if (added > 0) console.log("[Main] Liaisons kiosque fusionnées : +" + added);
+      }
+    } catch(e) { console.warn("[Main] liaisons kiosque :", e); }
+    return idx;
+  } catch(e) {
+    console.warn("[Main] lecture data/index.json :", e);
+    return null;
+  }
+}
+
+// Application de `config` : sous-titre (splash + header loader — textContent
+// jamais innerHTML, + retrait de data-i18n pour survivre aux changements de
+// langue) et flags kiosque (= DÉCLUTTER UI, pas de la sécurité — assumé).
+function _appliquerConfigKiosque() {
+  const cfg = window.KIOSK_CONFIG || {};
+  const st = (typeof cfg.subtitle === "string") ? cfg.subtitle.trim().slice(0, 80) : "";
+  if (st) {
+    document.querySelectorAll('[data-i18n="home.tagline"]').forEach(function(el) {
+      el.textContent = st;
+      el.removeAttribute("data-i18n");
+    });
+    console.log("[Main] Sous-titre kiosque appliqué :", st);
+  }
+  if (cfg.serverPlansOnly === true) {
+    // Masque le flux d'import (dropzone + FS Access + « Charger ce plan »)
+    // et les prefs serveur devenues sans objet. La liste, les Outils et les
+    // données user (sessions, carnet…) restent intacts.
+    const pz = document.getElementById("panelZip");
+    if (pz) {
+      pz.style.display = "none";
+      const head = pz.previousElementSibling;
+      if (head && head.classList && head.classList.contains("loader-section-head")) head.style.display = "none";
+    }
+    const filtres = document.querySelector(".loader-plans-filters");
+    if (filtres) filtres.style.display = "none";
+    const skipCb = document.getElementById("loaderSkipServerPlansCb");
+    if (skipCb && skipCb.closest) {
+      const sec = skipCb.closest(".kta-aide-section");
+      if (sec) sec.style.display = "none";
+    }
+    console.log("[Main] Kiosque : serverPlansOnly actif (import masqué)");
+  }
+  if (cfg.disableGenerator === true) {
+    const gen = document.getElementById("loaderPlannerBtn");
+    if (gen) gen.style.display = "none";
+    console.log("[Main] Kiosque : disableGenerator actif");
+  }
+}
+
+async function decouvrirPlansServeur(idxDeja) {
+  if (!window.PlanRegistry) return;
+  try {
+    const idx = idxDeja || await _chargerIndexServeur();
+    if (!idx) return;
     const plans = Array.isArray(idx?.plans) ? idx.plans : [];
     console.log("[Main] index.json trouvé :", plans.length, "plan(s)");
 
@@ -704,6 +776,12 @@ function _libererRessourcesPlanPrecedent() {
   }
   if (typeof window.resetTrackingTimeline === "function") {
     try { window.resetTrackingTimeline(); } catch(e) {}
+  }
+
+  // 🧲 C5 v1.74.0 : purge du flash d'accrochage (magnétisme edit-time) — un
+  // circleMarker transitoire pourrait survivre sur la carte détruite.
+  if (typeof window.ktaPurgerFlashSnap === "function") {
+    try { window.ktaPurgerFlashSnap(); } catch(e) {}
   }
 
   // 🔥 v1.21.2 (KARMA "on reactive") : reset Heatmap au plan switch.
@@ -1659,10 +1737,14 @@ window.proposerRedemarrageLangue = function() {
   // loader → section 📚 Plans serveur. Default OFF (rétrocompat).
   const _skipServer = (typeof window._loaderSkipServerPlans === "function")
                       && window._loaderSkipServerPlans();
+  // 🛠️ v1.73.0 : la config d'instance (sous-titre, flags, liaisons kiosque)
+  // est chargée MÊME si la pref skippe la discovery — seule l'inscription
+  // des plans serveur est optionnelle.
+  const _idxServeur = await _chargerIndexServeur();
   if (_skipServer) {
     console.log("[Main] Auto-discovery serveur SKIPPÉ (pref user : myktamap_skip_server_plans_v1)");
-  } else {
-    await decouvrirPlansServeur();
+  } else if (_idxServeur) {
+    await decouvrirPlansServeur(_idxServeur);
   }
 
   // RÉTRO-COMPAT : si rien n'est dans le registre ET qu'un plan racine existe,
