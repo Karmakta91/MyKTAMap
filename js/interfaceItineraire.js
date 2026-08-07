@@ -805,8 +805,20 @@ window._onTrackerRecale = function(x, y, source) {
     const restantes = roadNow && Array.isArray(roadNow.waypoints)
       ? roadNow.waypoints.filter(function(w) { return !w.done && w.source !== "tracker"; }).length
       : 0;
-    if (restantes > 0 && !confirm(window.I18n.t("iti.replan.confirm"))) {
-      _toastIti(window.I18n.t("iti.replan.skipped"), "info");
+    if (restantes > 0) {
+      // Confirm CHARTÉ (ktaConfirm, utils.js) — retour KARMA : le confirm()
+      // natif jurait avec la charte graphique. Repli natif si utils absent.
+      const demander = (typeof window.ktaConfirm === "function")
+        ? window.ktaConfirm(window.I18n.t("iti.replan.confirm"), {
+            titre: window.I18n.t("iti.replan.confirmTitre"),
+            okLabel: window.I18n.t("iti.replan.confirmOk"),
+            cancelLabel: window.I18n.t("iti.replan.confirmNon")
+          })
+        : Promise.resolve(confirm(window.I18n.t("iti.replan.confirm")));
+      demander.then(function(ok) {
+        if (!ok) { _toastIti(window.I18n.t("iti.replan.skipped"), "info"); return; }
+        _replanifierDepuis(x, y);
+      });
       return;
     }
     _replanifierDepuis(x, y);
