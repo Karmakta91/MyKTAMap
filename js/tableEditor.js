@@ -1519,9 +1519,9 @@
     sub.style.zIndex = "100001";
     const champRes = function(id, w, h, hint) {
       return `<div class="kta-planner-grille" style="margin:4px 0 2px;">
-          <label class="kta-cfg-label">${window.I18n.t("tabledit.resol.largeur")}</label>
+          <label class="kta-cfg-label" for="${id}_w">${window.I18n.t("tabledit.resol.largeur")}</label>
           <input class="kta-cfg-input" id="${id}_w" type="number" min="1" step="1" value="${w}">
-          <label class="kta-cfg-label">${window.I18n.t("tabledit.resol.hauteur")}</label>
+          <label class="kta-cfg-label" for="${id}_h">${window.I18n.t("tabledit.resol.hauteur")}</label>
           <input class="kta-cfg-input" id="${id}_h" type="number" min="1" step="1" value="${h}">
         </div>
         <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:2px 0 8px; display:inline-block;">📷 ${window.I18n.t("tabledit.resol.depuisImage")}
