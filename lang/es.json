@@ -1,4 +1,6 @@
 {
+  "_meta.label": "Español",
+  "_meta.lang": "es",
   "aiia.btn.cancel": "Cancelar",
   "aiia.btn.copy": "📋 Copiar",
   "aiia.btn.download": "📥 Descargar el contexto (.md)",
