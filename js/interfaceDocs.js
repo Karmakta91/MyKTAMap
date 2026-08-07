@@ -1347,7 +1347,7 @@ function _aideHtmlFr() {
           </p>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             <strong style="color:#a8b3c8;">🔄 Itinéraire vivant :</strong> à chaque <strong>recalage de position</strong>
-            (clic carte, « 📍 Je suis ici », arrivée par un portail), l'itinéraire actif est <strong>recalculé depuis ta
+            (clic carte, « 📍 Je suis ici », arrivée par un portail), l'itinéraire actif propose un <strong>recalcul (avec confirmation depuis v1.76.3 — le calcul peut être long sur les grands plans) depuis ta
             nouvelle position</strong> (étapes restantes conservées dans l'ordre planifié, évitements respectés).
             « 📍 Je suis ici » sur un point qui est une <strong>étape de l'itinéraire</strong> = <strong>validation de
             passage</strong> (marker ✓ vert, ligne rayée dans la modale, étape exclue des prochains calculs) — dans

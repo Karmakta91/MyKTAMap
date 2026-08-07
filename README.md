@@ -12,8 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.76.2` (07/08/2026)
+## 📦 Version courante — `v1.76.3` (08/08/2026)
 
+> 🛠️ **v1.76.3 — Mode Développeur + confirmation d'itinéraire** : section Debug du HOME refondue en Mode Développeur (gate mdp SHA-256 + lockout, avertissement légal, logs unifiés — le select debugMode des Réglages carte est retiré) avec **📚 bibliothèque des 22 docs du repo** (fetch same-origin, rendu mdParser, navigation liste→doc façon Aide, garde-fou manifest n°13). Recaler sa position avec un itinéraire actif **demande confirmation** avant le Dijkstra (long sur grands plans) via **`ktaConfirm`**, nouveau confirm charté générique (dette D-confirm consignée). + encart « privilégier le géoref » dans la bannière de cohérence, fix chevauchement footer/widget OSM.
+>
 > 🔁 **v1.76.2 — Convertisseur de résolution/recalage** (Éditeur de données) : migrer les fichiers de données d'un scan A vers un scan B — homothétie par résolutions (📷 lues dans les en-têtes), recalage par 1-2 repères de correspondance (2 repères = échelle+rotation déduites, maths du géoref en pixel→pixel), multi-fichiers, garde-fou 24 cas. + 2 fixes UI (modale invisible : classe CSS fantôme ; labels a11y).
 >
 > 🧭 **Le train v1.76 sort en v1.76.1** (la v1.76.0 n'a été servie que sur dev). Par-dessus le lot Légende de v1.76.0 : ① **bordure indépendante du fond** (zones + piliers/mur, customs éditables à chaud « iso » built-in) ② **liaison par id technique** — le bandeau ⚠️ orphelins gagne un bouton « ➕ Lier » qui raccroche un type brut (« Bas ») à une entrée de légende ③ **audit indépendant** : 7 causes racines dont la légende plan-level MORTE depuis son introduction (24/05, plan.customLegend jamais lu) et une perte de données (session « couleurs seules » effacée) ④ **Estimer le point B** du géoref depuis A + échelle + Nord calibré ⑤ échelle enfin **persistée per-plan** ⑥ générateur : dimensions lues dans l'**en-tête binaire** (fin du « non décodable » 32K) + refus franc >32 767 px ⑦ audit i18n (dette données quasi nulle, filet +1 143 clés couvertes) ⑧ 2 nouveaux garde-fous (estimation géoref, parseur d'en-têtes) → **11 bloquants au pre-commit**.
@@ -453,7 +455,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.76.2 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.76.3 → v1.26)
+
+#### v1.76.3 (08/08/2026) — Mode Développeur, confirmation d'itinéraire
+
+- 🛠️ **Mode Développeur** (`js/devMode.js`, topo KARMA) : la section Debug du ⚙️ Configuration HOME devient un mode protégé — **mdp à la 1re activation** (hash SHA-256 fourni par KARMA, 5 essais + lockout 60 s, déverrouillage persisté), avertissement de responsabilité. Contenu : toggle logs détaillés (le select des Réglages carte est **retiré**, décision 2:b), 📋 buffer de logs, et **📚 bibliothèque** : les 22 `.md` du repo rendus par `kta_renderMd`, navigation **liste→doc** façon Aide (la v1 2-colonnes cassait — leçon : ne pas réinventer le squelette des modales). Garde-fou n°13 `check-devmode-docs` : chemins du manifest existants + aucun `.md` d'architecture oublié + hash au format.
+- 🧭 **Confirmation de replanification** : le recalage avec itinéraire actif demande avant de lancer le Dijkstra (30 s sur grands plans, parfois pour rien). Boutons explicites « Recalculer / Garder l'itinéraire » via **`ktaConfirm`** — premier confirm **charté** de l'app (Promise, Échap/overlay=annuler ; dette D-confirm : migrer les 10+ `confirm()` natifs au fil de l'eau). Exception : dernière étape validée = clôture directe.
+- 🎯 Bannière cohérence échelle↔géoref : encart « **privilégier la valeur du géoref** » (suite à la 1re prise réelle — l'échelle du plan de KARMA était fausse de 26 %).
+- 🐛 Fix : le footer du HOME chevauchait la barre Tiles du widget OSM (min-height en vh excédant la place du grid, overflow visible).
+
+
 
 #### v1.76.2 (07/08/2026) — convertisseur de résolution/recalage
 

@@ -484,7 +484,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 2. **🚀 Performance ULTRA mode (paths / markers)** — 7 optimization toggles that do **NOT** touch the image (already covered by Tiling above) but everything else (polylines, popups, intersections, auto-save, viewport culling, mobile zoom-out limit). **PER-PLAN setting**: enabling ULTRA on one plan no longer affects the others — each plan starts disabled until you opt in for it. See "🚀 Optimize your map" section below for details.
 
-3. **🛠️ Debug** — **🐛 Detailed logs** toggle (verbose mode) **+ 📋 Show logs button** which directly opens the modal buffer of captured logs. Useful for consulting logs without having to load a map first (e.g.: if you are trying to diagnose a blocking bug at load).
+3. **🛠️ Developer Mode** *(since v1.76.3)* — replaces the old Debug section. **Password-protected** on first activation (with a responsibility warning). Once active: **🐛 Detailed logs** toggle, **📋 Show logs** button (the buffer, viewable even without a map loaded), and **📚 Technical documentation** — the whole project doc (architecture, backlog, maths…) readable in-app (online only). The logs setting in the map-mode ⚙️ Settings was removed: everything is driven from here.
 
 4. **🔒 Privacy & Audit** — section dedicated to transparency: live network journal, "What does the app do on the network?" doc, and "Strict offline mode" toggle. See dedicated section below.
 

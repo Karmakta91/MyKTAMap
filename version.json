@@ -1,7 +1,8 @@
 {
-  "version": "v1.76.2",
+  "version": "v1.76.3",
   "released": "2026-08-05",
   "notes": [
-    "🔁 Nouvel outil dans l'Éditeur de données : convertis tes points, tracés et zones d'un ancien scan vers un nouveau scan du même plan. Donne les deux résolutions (ou laisse l'app les lire dans les images), un repère commun si les marges diffèrent — et récupère tes fichiers adaptés, prêts à charger sur le nouveau plan."
+    "🧭 Un itinéraire actif ne se recalcule plus tout seul quand tu recales ta position : l'app te demande d'abord (sur les grands plans le calcul peut être long) — tu peux garder l'itinéraire tel quel.",
+    "🛠️ Nouveau Mode Développeur dans ⚙️ Configuration (protégé par mot de passe) : logs détaillés et lecture de toute la documentation technique du projet."
   ]
 }
