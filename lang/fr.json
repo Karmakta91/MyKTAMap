@@ -4668,6 +4668,8 @@
   "jrn.recits.errMigration": "Ouvrez une fois le Mode Histoire de ce plan (📖) pour activer les documents multiples, puis réessayez.",
   "home.search.placeholder": "🔎 Chercher un point dans tous mes plans…",
   "home.search.btnTitle": "Chercher ce point dans tous les plans de ma bibliothèque",
+  "tabledit.source.resolHint": "Adapter un fichier de données à un nouveau scan du même plan (résolution A → B). Charge le fichier, la conversion s'ouvre directement.",
+  "tabledit.source.resol": "🔁 Convertir la résolution",
   "tabledit.source.fusion": "🔗 Fusionner des calques de données",
   "tabledit.source.fusionHint": "Combine plusieurs fichiers de calques (.json / .zip) en un seul, sans toucher au plan.",
   "home.tools.title": "🧰 Outils",

@@ -4668,6 +4668,8 @@
   "jrn.recits.errMigration": "Open this plan's Story mode (📖) once to enable multiple documents, then try again.",
   "home.search.placeholder": "🔎 Search a point across all my plans…",
   "home.search.btnTitle": "Search this point across every plan in my library",
+  "tabledit.source.resolHint": "Adapt a data file to a new scan of the same map (resolution A → B). Load the file, the conversion opens right away.",
+  "tabledit.source.resol": "🔁 Convert resolution",
   "tabledit.source.fusion": "🔗 Merge data layers",
   "tabledit.source.fusionHint": "Combines several data-layer files (.json / .zip) into one, without touching the plan.",
   "home.tools.title": "🧰 Tools",

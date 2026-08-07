@@ -31,6 +31,7 @@
   let _sourceMeta = {};           // fileName (téléchargement + titre)
   let _filtreTimer = null;
   let _lastSelectedIdx = null;    // pour shift-click
+  let _resolAutoOpen  = false;    // 🔁 v1.76.2 : carte accueil « Convertir la résolution » → dialog auto
 
   // Tableaux éditables reconnus dans une source + leur icône/typage
   var _ARRAYS_EDITABLES = [
@@ -319,6 +320,7 @@
   // ========== ÉCRAN D'ACCUEIL — 3 SOURCES ==========
   function _afficherAccueil(errMsg) {
     if (_modal) { _modal.remove(); _modal = null; }
+    _resolAutoOpen = false;   // repart propre : le flag ne survit pas à un aller-retour accueil
     // 🐛 v1.69.0 : PLAN_CONFIG survit au retour HOME (afficherLoader ne le remet
     // pas à null) → la carte « 🗺️ plan en cours » s'affichait depuis l'accueil
     // et menait à un plan qui n'est plus à l'écran. Cf. gotchas.md § PLAN_CONFIG.
@@ -369,6 +371,17 @@
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.fusionHint")}</span>
               </span>
             </button>
+            <!-- 🔁 v1.76.2 (demande KARMA) : la conversion de résolution est
+                 AUSSI une carte de cet accueil — clic → import JSON classique,
+                 puis la dialog de conversion s'ouvre toute seule sur le
+                 tableau (flag _resolAutoOpen consommé à l'ouverture). -->
+            <button class="kta-tbl-source-card" id="kta-tbl-src-resol">
+              <span class="kta-tbl-source-ico">🔁</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.resol")}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.resolHint")}</span>
+              </span>
+            </button>
           </div>
           <input type="file" id="kta-tbl-zip-input" accept=".zip,application/zip" style="display:none;">
         </div>
@@ -382,6 +395,12 @@
     modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
     if (planDispo) document.getElementById("kta-tbl-src-plan").addEventListener("click", _listerDatalayersPlanCourant);
     document.getElementById("kta-tbl-src-json").addEventListener("click", _afficherImport);
+    // 🔁 v1.76.2 — même flux d'import que JSON, mais la dialog de conversion
+    // s'ouvrira automatiquement une fois le tableau affiché.
+    document.getElementById("kta-tbl-src-resol").addEventListener("click", function() {
+      _resolAutoOpen = true;
+      _afficherImport();
+    });
     // 🔗 v1.69.0 — délègue au fusionneur existant (onglet « Fusion » de la
     // modale d'export de session), ouvert en mode solo comme depuis le HOME.
     document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
@@ -698,6 +717,9 @@
     document.getElementById("kta-tbl-close").addEventListener("click", _tenterFermer);
     document.getElementById("kta-tbl-annuler").addEventListener("click", _tenterFermer);
     document.getElementById("kta-tbl-resolution").addEventListener("click", _ouvrirConvertResolution);
+    // 🔁 v1.76.2 — arrivée par la carte « Convertir la résolution » de
+    // l'accueil : la dialog s'ouvre toute seule sur le tableau chargé.
+    if (_resolAutoOpen) { _resolAutoOpen = false; setTimeout(_ouvrirConvertResolution, 60); }
     modal.addEventListener("click", function(e) { if (e.target === modal) _tenterFermer(); });
 
     document.getElementById("kta-tbl-search").addEventListener("input", function(e) {

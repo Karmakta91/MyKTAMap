@@ -4668,6 +4668,8 @@
   "jrn.recits.errMigration": "Abre una vez el Modo Historia de este plano (📖) para activar los documentos múltiples y vuelve a intentarlo.",
   "home.search.placeholder": "🔎 Buscar un punto en todos mis planos…",
   "home.search.btnTitle": "Buscar este punto en todos los planos de mi biblioteca",
+  "tabledit.source.resolHint": "Adaptar un archivo de datos a un nuevo escaneo del mismo plano (resolución A → B). Carga el archivo y la conversión se abre directamente.",
+  "tabledit.source.resol": "🔁 Convertir la resolución",
   "tabledit.source.fusion": "🔗 Fusionar capas de datos",
   "tabledit.source.fusionHint": "Combina varios archivos de capas (.json / .zip) en uno solo, sin tocar el plano.",
   "home.tools.title": "🧰 Herramientas",
