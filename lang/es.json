@@ -4598,6 +4598,7 @@
   "utils.scaleCoherence.copyTitle": "Copiar el valor GPS al portapapeles",
   "utils.scaleCoherence.deltaSuffix": "% de diferencia",
   "utils.scaleCoherence.hintCheck": "Comprueba la georreferenciación (¿2 puntos GPS bien situados?) o la calibración de escala (✏️ Ajustes → 🎯 Calibrar escala).",
+  "utils.scaleCoherence.hintPreferGeoref": "Si la georreferenciación está bien hecha (puntos GPS verificados, superposición OSM correcta), prioriza el valor deducido de la georref: proviene de mediciones GPS reales, mientras que la escala px/m suele venir de una barra de escala dibujada en el plano — menos precisa, a veces errónea en planos antiguos.",
   "utils.scaleCoherence.hintNoFix": "No se aplicó corrección automática.",
   "utils.scaleCoherence.hintTrust": "Si confías en la georref., puedes copiar el valor GPS y pegarlo en el campo Escala.",
   "utils.scaleCoherence.introExport": "La exportación KMZ/GPX geolocalizada usa la georreferenciación GPS. Si la diferencia con la escala calibrada es grande, las distancias mostradas en Google Earth / OsmAnd NO coincidirán con las medidas hechas en MyKTAMap.",

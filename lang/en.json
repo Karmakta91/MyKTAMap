@@ -4598,6 +4598,7 @@
   "utils.scaleCoherence.copyTitle": "Copy the GPS value to clipboard",
   "utils.scaleCoherence.deltaSuffix": "% gap",
   "utils.scaleCoherence.hintCheck": "Check either the georeferencing (2 GPS points well placed?) or the scale calibration (✏️ Settings → 🎯 Calibrate scale).",
+  "utils.scaleCoherence.hintPreferGeoref": "If the georeferencing is done properly (verified GPS points, correct OSM overlay), prefer the value derived from the georef: it comes from real GPS measurements, whereas the px/m scale often comes from a scale bar drawn on the map — less precise, sometimes plain wrong on old maps.",
   "utils.scaleCoherence.hintNoFix": "No automatic correction applied.",
   "utils.scaleCoherence.hintTrust": "If you trust the georef, you can copy the GPS value and paste it into the Scale field.",
   "utils.scaleCoherence.introExport": "The geolocated KMZ/GPX export uses GPS georeferencing. If the gap with the calibrated scale is large, distances rendered in Google Earth / OsmAnd will NOT match the measurements made in MyKTAMap.",

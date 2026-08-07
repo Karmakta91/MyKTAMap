@@ -513,6 +513,11 @@ function renderBannerCoherenceEchelle(planId, opts) {
           t("utils.scaleCoherence.hintCheck") + ' ' +
           t("utils.scaleCoherence.hintTrust") +
         '</p>' +
+        // 💡 v1.76.2 (demande KARMA après sa première prise réelle de la
+        // bannière) : quelle valeur croire — le géoref bien fait gagne.
+        '<p class="kta-scale-coherence-hint" style="border-left:3px solid #f4c542; padding-left:8px; margin-top:6px;">' +
+          '💡 ' + t("utils.scaleCoherence.hintPreferGeoref") +
+        '</p>' +
       '</div>' +
     '</div>';
 }
