@@ -142,6 +142,7 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.21.1+ : Wake Lock API — toggle "Garder l'écran allumé" dans Réglages
   "./js/wakeLock.js",
   "./js/debug.js",
+  "./js/devMode.js",
   "./js/perfUltra.js",
   // 🎨 Refonte UI v1 (branche Refonte_interface). Module no-op si flag
   // localStorage["myktamap_refonte_v1"] absent. Cachée pour que le toggle

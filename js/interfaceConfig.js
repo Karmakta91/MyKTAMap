@@ -1138,13 +1138,10 @@ function afficherConfig() {
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("config.debug.titre")}</div>
-          <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">${window.I18n.t("config.debug.logs")}</label>
-            <select class="kta-cfg-input" id="cfg_debugMode">
-              <option value="true"  ${c.debugMode ? "selected" : ""}>${window.I18n.t("config.debug.yes")}</option>
-              <option value="false" ${!c.debugMode ? "selected" : ""}>${window.I18n.t("config.debug.no")}</option>
-            </select>
-          </div>
+          <!-- 🛠️ v1.76.3 (décision KARMA 2:b) : le select debugMode et le
+               bouton 📋 Afficher les logs ont été RETIRÉS d'ici — les logs
+               se pilotent depuis le Mode Développeur du ⚙️ Configuration
+               HOME (gate mdp). Le perfMode, lui, reste. -->
 
           <div style="display:flex; align-items:center; gap:12px; margin-top:12px;">
             <div style="flex:1;">
@@ -1170,7 +1167,6 @@ function afficherConfig() {
         <div class="kta-cfg-actions-bar">
           <button class="kta-btn kta-btn-ghost"   onclick="resetConfig()">${window.I18n.t("config.actions.reset")}</button>
           <button class="kta-btn kta-btn-primary"  onclick="appliquerConfig()">${window.I18n.t("config.actions.apply")}</button>
-          <button class="kta-btn kta-btn-ghost"    onclick="afficherLogsDebug()">${window.I18n.t("config.actions.logs")}</button>
         </div>
 
       </div>
@@ -1562,15 +1558,8 @@ function appliquerConfig() {
   APP_CONFIG.stepThreshold = parseFloat(document.getElementById("cfg_stepThreshold").value);
   // cooldown — déjà validé [300 ; 3000] ms par le gate
   APP_CONFIG.stepCooldown  = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
-  // ⚠️ Passer par setDebugMode() au lieu d'ecrire directement APP_CONFIG.debugMode :
-  // ainsi le toast feedback (copyright.js > __MKM_showWarning__) se declenche
-  // si l'utilisateur passe de OFF a ON via les Reglages.
-  const newDebugMode = document.getElementById("cfg_debugMode").value === "true";
-  if (typeof window.setDebugMode === "function") {
-    window.setDebugMode(newDebugMode);
-  } else {
-    APP_CONFIG.debugMode = newDebugMode;
-  }
+  // 🛠️ v1.76.3 (2:b) — debugMode ne se règle plus ici : Mode Développeur
+  // du HOME uniquement (devMode.js > setDebugMode global).
 
   // 🔍 v174 : scaledMarkers (lu une fois à creerIcones + au hook zoom, reload requis)
   const cbScaled = document.getElementById("cfg_scaledMarkers");

@@ -951,17 +951,15 @@
              le buffer est accessible directement depuis la home, ce qui est
              pratique en cas de bug bloquant au chargement (l'user n'a pas accès
              à la modale ⚙️ Réglages in-app). -->
+        <!-- 🛠️ v1.76.3 (refonte KARMA) : la section « Debug » devient le
+             MODE DÉVELOPPEUR — toggle protégé par mdp (hash SHA-256, même
+             principe que la gate communautaire), contenant les logs
+             détaillés (le select des Réglages plan a été supprimé — 2:b),
+             l'affichage des logs, et la 📚 bibliothèque des docs du repo.
+             Le conteneur est peuplé par js/devMode.js > initSection(). -->
         <div class="kta-aide-section">
-          <div class="kta-perf-titre" data-i18n="home.debug.title">🛠️ Debug</div>
-          <button class="loader-btn-secondary kta-debug-toggle" type="button" id="loaderDebugBtn" aria-pressed="false" style="width:100%;">
-            <span data-i18n="home.debug.logsLabel">🐛 Logs détaillés :</span> <span id="loaderDebugState">OFF</span>
-          </button>
-          <button class="loader-btn-secondary" type="button" id="loaderShowLogsBtn" style="width:100%; margin-top:8px;" data-i18n="home.debug.showLogs">
-            📋 Afficher les logs
-          </button>
-          <p class="kta-loader-perf-hint" style="margin-top:8px;" data-i18n="home.debug.hint">
-            Toggle active la console verbeuse (tracker, fetch, etc.). Le bouton 📋 affiche les logs capturés directement (utile aussi sans plan chargé).
-          </p>
+          <div class="kta-perf-titre" data-i18n="devmode.title">🛠️ Mode Développeur</div>
+          <div id="kta-devmode-wrap"></div>
         </div>
 
         <!-- 📊 Inspecteur mémoire (depuis v1.19.0)
@@ -1308,6 +1306,8 @@
        dépendance. Utilisé par modeHistoire.js (note libre rendu MD). Doit
        charger AVANT modeHistoire.js. -->
   <script src="js/mdParser.js" defer></script>
+  <!-- 🛠️ v1.76.3 : Mode Développeur (gate mdp + logs + bibliothèque docs) -->
+  <script src="js/devMode.js" defer></script>
   <!-- 🆕 v1.34.19 : ModeHistoire — bouton 📖 dans status bar, modale 2 onglets
        (📝 note libre per-plan localStorage [MD-rendered v1.34.30] + 📚 PDF
        embarqué dans le ZIP via plan-config.json > histoirePdf). Cf

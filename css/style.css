@@ -21705,3 +21705,56 @@ body.kta-theme-light #planLoaderBox.kta-has-wall .loader-section-head * {
 .zip-drop-sig strong { color: #a8b3c8; font-weight: 600; }
 html.kta-theme-light .zip-drop-sig { color: #5a6478; }
 html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
+
+/* 🛠️ v1.76.3 — Mode Développeur : 📚 bibliothèque des docs du repo.
+   Liste à gauche, lecture à droite ; en mobile la liste passe au-dessus. */
+.kta-devdocs-corps {
+  display: flex;
+  gap: 0;
+  height: calc(100% - 46px);
+  min-height: 0;
+}
+.kta-devdocs-liste {
+  flex: 0 0 260px;
+  overflow-y: auto;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.kta-devdocs-item {
+  text-align: left;
+  font-size: 12px;
+  padding: 7px 10px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #c8d0e0;
+  cursor: pointer;
+  line-height: 1.35;
+}
+.kta-devdocs-item:hover { background: rgba(140, 180, 255, 0.08); }
+.kta-devdocs-item.actif {
+  background: rgba(244, 197, 66, 0.10);
+  border-color: rgba(244, 197, 66, 0.35);
+  color: #f4c542;
+}
+.kta-devdocs-lecture {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding: 14px 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  min-width: 0;
+}
+.kta-devdocs-lecture pre { overflow-x: auto; background: rgba(255,255,255,0.04); padding: 8px; border-radius: 6px; }
+.kta-devdocs-lecture table { display: block; overflow-x: auto; }
+.kta-devdocs-lecture h1, .kta-devdocs-lecture h2 { color: #f4c542; }
+.kta-devdocs-lecture h3 { color: #8cb4ff; }
+.kta-devdocs-lecture code { background: rgba(140, 180, 255, 0.10); padding: 1px 4px; border-radius: 3px; }
+@media (max-width: 700px) {
+  .kta-devdocs-corps { flex-direction: column; }
+  .kta-devdocs-liste { flex: 0 0 34%; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); }
+}
