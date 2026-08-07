@@ -1,8 +1,8 @@
 {
-  "version": "v1.76.0",
+  "version": "v1.76.1",
   "released": "2026-08-05",
   "notes": [
-    "🎨 Tu peux enfin changer la couleur des types de la légende (tracés, zones, structures) : ≡ Légende → ✏️ Modifier, un carré de couleur par ligne. La couleur choisie s'applique partout — carte, exports image, KMZ, statistiques — et un bouton ↺ la remet d'origine.",
-    "🧳 Ta légende voyage désormais avec tes exports : un calque de données réimporté dans le générateur retrouve tes types personnalisés (noms et couleurs), et la légende te prévient si des objets utilisent un type disparu."
+    "🎨 Ta légende devient entièrement personnalisable : couleur de chaque type ET bordure indépendante pour les zones et piliers, entrées personnalisées modifiables à chaud, et un bouton « ➕ Lier » qui raccroche les objets d'un ancien plan à ta légende en un clic.",
+    "🧭 Le géoréférencement sait estimer le second point GPS tout seul (plan orienté nord + échelle fiable), l'échelle recalibrée est enfin mémorisée plan par plan, et le générateur lit les dimensions des très grandes images sans planter."
   ]
 }

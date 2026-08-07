@@ -956,12 +956,12 @@ All tools are accessible from the **right side bar**, organized into 11 groups:
 Open **≡ Legend** (📚 Help / Doc / Legend group) then **✏️ Edit**. For each trace, zone or structure type:
 
 - **Rename**: type your own label (e.g. "Principal" → "Main gallery"). It shows everywhere: legend, popups, stats, filters.
-- **🎨 Change the colour** *(since v1.76.0)*: one colour square per row. The chosen colour applies **everywhere** — map, image/PDF exports, KMZ, statistics, session report — immediately, no reload. A **↺** button appears to restore the original colour. Behaviour details: a recoloured zone derives its border automatically (darker shade), a pillar/wall keeps its **black outline** (the structures' visual signature), and a recoloured *Inaccessible* zone loses its hatching (fixed pattern) in favour of a flat fill.
+- **🎨 Change the colour** *(since v1.76.1)*: one colour square per row — and for **zones and pillars/walls, two squares**: fill and an **independent border**. The colour applies **everywhere** — map, image/PDF exports, KMZ, statistics, session report — immediately, no reload. A **↺** button restores both fill AND border. Details: with no border chosen, a zone derives it automatically (darker shade) and a pillar/wall keeps its black outline (the historical default); a recoloured *Inaccessible* zone loses its hatching (fixed pattern) in favour of a flat fill. **Custom entries** are edited the same way, live.
 - **👁️ Hide**: the checkbox removes the entry **from the legend box only** — nothing disappears from the map. To hide objects on the map, use the **🔍 Filters** panel.
 - **➕ Add a custom entry**: create your own types (trace, zone, structure, icon) with their colour. They become drawable from the sidebar, and a custom icon is offered in the point editor.
 - **🗑️ Delete a custom type**: if drawn objects still use it, the app warns you with the count before confirming.
 
-> 🧳 **Your legend travels with your exports** *(since v1.76.0)*: an exported data layer carries the definition of the types it uses, and the generator picks it up on import (whatever already exists in the plan keeps priority). The session JSON and the Advanced ZIP carry it too.
+> 🧳 **Your legend travels with your exports** *(since v1.76.1)*: an exported data layer carries the definition of the types it uses, and the generator picks it up on import (whatever already exists in the plan keeps priority). The session JSON and the Advanced ZIP carry it too.
 >
 > ⚠️ **"Orphan types" banner**: if objects use a type that no longer exists in the legend (deleted entry, old layer), the ≡ Legend modal shows it at the top with the count — those objects render in fallback colours until you recreate or re-import the entry.
 

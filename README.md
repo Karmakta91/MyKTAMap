@@ -12,9 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.76.0` (05/08/2026)
+## 📦 Version courante — `v1.76.1` (06/08/2026)
 
-> 🎨 **Le lot Légende, de bout en bout.** ① **Changer la couleur des types built-in** (tracés, zones, structures) depuis ≡ Légende → ✏️ Modifier — appliquée PARTOUT (carte, exports PNG/PDF, KMZ, pastilles, stats, rapport) parce qu'elle est branchée au point de passage unique : `js/styleResolver.js`, nouvelle **source de vérité des styles** qui a remplacé ~25 tables recopiées dans 12 fichiers ② **Le round-trip légende fonctionne** : un calque de données exporté emporte la définition de ses types custom, le générateur la lit (conflit : l'existant du plan gagne) ③ **Audit complet du module** : 23 constats, tous clos — dont 3 pertes de données (export fine qui supprimait les customs, gpxIO qui écrasait les types, fuite de légende inter-plans) ④ **5 nouveaux garde-fous pré-commit bloquants** (canon, résolveur, KML, round-trip, repeinture).
+> 🧭 **Le train v1.76 sort en v1.76.1** (la v1.76.0 n'a été servie que sur dev). Par-dessus le lot Légende de v1.76.0 : ① **bordure indépendante du fond** (zones + piliers/mur, customs éditables à chaud « iso » built-in) ② **liaison par id technique** — le bandeau ⚠️ orphelins gagne un bouton « ➕ Lier » qui raccroche un type brut (« Bas ») à une entrée de légende ③ **audit indépendant** : 7 causes racines dont la légende plan-level MORTE depuis son introduction (24/05, plan.customLegend jamais lu) et une perte de données (session « couleurs seules » effacée) ④ **Estimer le point B** du géoref depuis A + échelle + Nord calibré ⑤ échelle enfin **persistée per-plan** ⑥ générateur : dimensions lues dans l'**en-tête binaire** (fin du « non décodable » 32K) + refus franc >32 767 px ⑦ audit i18n (dette données quasi nulle, filet +1 143 clés couvertes) ⑧ 2 nouveaux garde-fous (estimation géoref, parseur d'en-têtes) → **11 bloquants au pre-commit**.
 >
 > Versions précédentes `v1.75.x` (03/08) : import SIG · fond d'écran du HOME · récupération de ZIP · smartNav complet · correctif Blob IDB du fond d'écran.
 >
@@ -451,7 +451,22 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.76.0 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.76.1 → v1.26)
+
+#### v1.76.1 (06/08/2026) — le train v1.76 complet : bordures, liaison, audits, géoref
+
+> ⚠️ La **v1.76.0 n'a jamais été déployée en prod** (dev uniquement, checkups M1-M3) — le train sort en v1.76.1, cache PWA repurgé.
+
+- 🎨 **Bordure indépendante du fond** (zones, piliers/mur) : deux carrés dans l'éditeur, bloc « Bordure personnalisée » dans la dialog ➕, map `borders` séparée de `colors` (rétro-compat), le noir des structures devient un défaut, plus un verrou. Entrées custom éditables à chaud comme les built-in.
+- 🧷 **Liaison par id technique** : le bandeau ⚠️ orphelins liste tout type non built-in (plus seulement `cust-`) et gagne « ➕ Lier » — dialog pré-remplie avec l'id EXACT du type, catégorie verrouillée. Garde anti-doublon de label.
+- 🔍 **Audit indépendant** (7 causes racines) : légende plan-level **morte depuis son introduction** (`loadPlanState` lisait la racine, les producteurs écrivent `plan.customLegend`) · `addCustomEntry` ne repeignait pas · légende restaurée APRÈS le rendu des objets · session « couleurs seules » **effacée** par l'auto-save · fuite Générateur→session · dédup intra-plan · anti-doublon Lier.
+- 🧭 **Estimer le point B** (géoref) depuis A + échelle + `northOffsetDeg` : B virtuel au coin le plus éloigné, format standard + `estimated:true`, refus francs, badge ≈ dans Réglages ET Générateur. Garde-fou `check-georef-estimation` (18 cas).
+- 🎯 **Échelle enfin persistée** (per-plan, pattern northOffsetDeg) — elle n'avait JAMAIS été sauvegardée ; piège de timing évité (`buildAppConfigFromPlan` tourne avant que l'id du plan soit posé).
+- 🖼️ **Générateur** : dimensions lues dans l'en-tête binaire (PNG/GIF/WebP/JPEG avec marche des marqueurs) — fin du « Image non décodable » sur les 32K ; refus explicite > 32 767 px (limite Chrome/Skia) + conseil dans la modale d'erreur V2 ; display 📐 et case V2 déménagés sur la page Images de l'assistant.
+- 🌍 **Audit i18n** (agent indépendant) : données quasi saines (parité 4691×3, 0 placeholder cassé, 16/16 traductions réelles) ; corrections `_meta` es + 2 clés fr en anglais ; `check-i18n` étendu (alias préfixants, ternaires, clés-variables, alias t/T, es en parité stricte) : 2 381 → 3 524 clés sous filet.
+- 🧹 Divers : en-tête de l'Audit réseau dégraissé (pavé historique déménagé en bas) · `docs/MATHS.md` (doc pédagogique des maths du projet) · gitignore checklists non ancré.
+
+
 
 **🎨 v1.76.0 (05/08/2026)** — le lot Légende : couleur des types, source de vérité unique des styles, round-trip, audit vidé :
 - **`js/styleResolver.js` — source de vérité UNIQUE des 13 types built-in.** Avant lui, les couleurs étaient recopiées à la main dans **~25 tables sur 12 fichiers** (`utils.js` en portait 3 copies, `exporter.js` jusqu'à 4) — c'est ainsi qu'une zone **inaccessible** venant d'un calque sortait en **gris remblais** dans l'export PNG (l'entrée manquait, le repli masquait l'oubli — même défaut déjà corrigé sur `jonction` en v1.7.1, reproduit à l'identique). Migration en 4 vagues (carte → exports image → KMZ → légende/stats/rapport) : **0 table restante**, hors 2 variantes délibérées documentées (`emergencyMode`, `osmView`). API : `ktaResolveStyle(cat, clé, {flat})` (l'aplat de repli remplace le motif SVG dans les contextes qui ne savent pas le peindre), `ktaSwatchColor` (couleur représentative pour pastilles/camemberts), `ktaTypeSwatchHtml` / `ktaLabelAvecPastille` (les émojis 🟩🟥🟡 de la sidebar et des formulaires étaient des **glyphes à couleur figée** — remplacés par des pastilles résolues live). ⚠️ La vague 1 a révélé que le canon initial portait **3 valeurs fausses** (relevées sur les tables d'export au lieu du rendu carte : `weight` KML ≠ `weight` Leaflet, aplat ≠ motif) — d'où l'élargissement du contrôle aux valeurs numériques.
