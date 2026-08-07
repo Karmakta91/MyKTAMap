@@ -4865,8 +4865,14 @@ body.kta-theme-light .splash-license-detail-pro {
   }
   .loader-col-osm .kta-osm-home-content {
     flex: 1 1 auto;
-    /* v2 : la hauteur suit l'écran (remplace les paliers 340/420/500 px) */
-    min-height: clamp(300px, 52vh, 660px);
+    /* 🐛 v1.76.2 (KARMA : le footer chevauche la barre Tiles sur PC) —
+       l'ancien min-height: clamp(300px, 52vh, 660px) pouvait EXCÉDER la
+       place restante du grid sur une fenêtre peu haute : le content
+       (overflow: visible depuis v1.40.22, pour les popups) débordait de sa
+       colonne et le footer, peint après dans le flux, passait par-dessus.
+       Le flex remplit déjà la colonne sur grand écran ; on garde juste le
+       plancher historique 260px — plus aucun minimum en vh qui force. */
+    min-height: 260px;
   }
 
   /* 🆕 v1.40.1 — Si l'user n'a pas opt-in OSM, la colonne OSM est masquée
