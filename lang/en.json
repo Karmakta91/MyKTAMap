@@ -967,6 +967,7 @@
   "gen.v2err.consJpeg": "<strong>Convert to JPEG quality 85</strong> if your source is PNG: 5 to 10× smaller in size with no visible loss.",
   "gen.v2err.consPC": "<strong>Generate on a PC rather than mobile</strong> — no practical memory ceiling, the generated V2 ZIP will then import at no cost on your phone.",
   "gen.v2err.consReduire": "<strong>Reduce the source image</strong> before retrying: resize to 6000-8000 px max via GIMP / Photoshop / <a href=\"https://squoosh.app\" target=\"_blank\" rel=\"noopener\" style=\"color:#8cb4ff;\">Squoosh</a>. You lose a little detail at max zoom but the conversion goes through.",
+  "gen.v2err.consLimite32k": "<strong>Hard limit: 32,767 px per side</strong> — beyond that, Chrome's engine (desktop and mobile) refuses to decode the image regardless of RAM. No workaround: resize or split it.",
   "gen.v2err.queFaire": "💡 What to do?",
   "gen.v2err.titreDefaut": "V2 generation error",
   "gen.v2prog.init": "Initializing…",

@@ -965,6 +965,7 @@
   "gen.v2err.consJpeg": "<strong>Convierte a JPEG calidad 85</strong> si tu fuente está en PNG: div / 5 a 10 en el peso sin pérdida visual.",
   "gen.v2err.consPC": "<strong>Genera en PC en lugar de móvil</strong> — sin tope de memoria en la práctica, el ZIP V2 generado se importará después sin coste en tu teléfono.",
   "gen.v2err.consReduire": "<strong>Reduce la imagen fuente</strong> antes de volver a intentarlo: redimensiona a 6000-8000 px máx mediante GIMP / Photoshop / <a href=\"https://squoosh.app\" target=\"_blank\" rel=\"noopener\" style=\"color:#8cb4ff;\">Squoosh</a>. Pierdes un poco de detalle en el zoom máximo pero la conversión funciona.",
+  "gen.v2err.consLimite32k": "<strong>Límite absoluto: 32 767 px por lado</strong> — más allá, el motor de Chrome (PC y móvil) se niega a decodificar la imagen, sea cual sea la RAM. Sin solución alternativa: reduce o divide la imagen.",
   "gen.v2err.queFaire": "💡 ¿Qué hacer?",
   "gen.v2err.titreDefaut": "Error de generación V2",
   "gen.v2prog.init": "Inicialización…",

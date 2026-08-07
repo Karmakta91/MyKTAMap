@@ -2535,6 +2535,8 @@ function _afficherErreurV2(titre, message) {
             '<li>' + window.I18n.t("gen.v2err.consPC") + '</li>' +
             '<li>' + window.I18n.t("gen.v2err.consReduire") + '</li>' +
             '<li>' + window.I18n.t("gen.v2err.consJpeg") + '</li>' +
+            // 🖼️ v1.76.1 — limite physique des décodeurs (cf. refus au drop)
+            '<li>' + window.I18n.t("gen.v2err.consLimite32k") + '</li>' +
           '</ul>' +
         '</div>' +
       '</div>' +
