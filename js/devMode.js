@@ -208,6 +208,14 @@
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.text();
       }).then(function(md) {
+        // 🐛 v1.76.3-fix (capture KARMA : la doc affichait... index.html) —
+        // le serveur PWA a un fallback « fichier inconnu → index.html » en
+        // 200 : un .md absent de la racine web renvoie la PAGE DE L'APP avec
+        // un statut OK. On démasque le mensonge : une réponse qui commence
+        // comme un document HTML n'est pas un markdown.
+        if (/^\s*(<!DOCTYPE|<html)/i.test(md)) {
+          throw new Error(t("devmode.docs.fallbackHtml"));
+        }
         const html = (typeof window.kta_renderMd === "function")
           ? window.kta_renderMd(_degonflerHtmlStructurel(md))
           : "<pre style='white-space:pre-wrap;'>" + (window.kta_escapeHtml ? window.kta_escapeHtml(md) : md) + "</pre>";
@@ -277,6 +285,16 @@
       }
     };
     rendre();
+    // 🐛 v1.76.3-fix (warns « Clé manquante » remontés par KARMA) — COURSE
+    // AU BOOT : initSection tourne au chargement, parfois AVANT l'arrivée du
+    // dico i18n (fetch async) → la section se rendait avec les clés brutes
+    // et rien ne la re-rendait. On se réabonne : le rendu se refait à
+    // l'arrivée du dico ET à chaque changement de langue (même pattern que
+    // _majPinStatusUI dans homeConfig).
+    if (window.I18n && typeof window.I18n.onChange === "function" && !window._devModeI18nHooked) {
+      window._devModeI18nHooked = true;
+      window.I18n.onChange(rendre);
+    }
   }
 
   window.DevMode = {

@@ -1177,6 +1177,7 @@
   "devmode.docs.titre": "Documentación técnica del proyecto",
   "devmode.docs.choisir": "Elige un documento de la lista.",
   "devmode.docs.chargement": "Cargando…",
+  "devmode.docs.fallbackHtml": "el servidor devolvió la página de la aplicación en lugar del documento (¿archivo ausente de la raíz web? Comprueba que README.md y docs/ estén desplegados)",
   "devmode.docs.indisponible": "Documento no disponible ({path}): {err}. Sin conexión, o la carpeta docs/ no se desplegó en este servidor.",
   "home.debug.hint": "El interruptor activa la consola detallada (tracker, fetch, etc.). El botón 📋 muestra los registros capturados directamente (útil también sin mapa cargado).",
   "home.debug.logsLabel": "🐛 Registros detallados:",

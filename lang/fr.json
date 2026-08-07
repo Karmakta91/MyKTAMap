@@ -1177,6 +1177,7 @@
   "devmode.docs.titre": "Documentation technique du projet",
   "devmode.docs.choisir": "Choisis un document dans la liste.",
   "devmode.docs.chargement": "Chargement…",
+  "devmode.docs.fallbackHtml": "le serveur a renvoyé la page de l'application à la place du document (fichier absent de la racine web ? Vérifie que README.md et docs/ sont bien déployés)",
   "devmode.docs.indisponible": "Document indisponible ({path}) : {err}. Hors-ligne, ou le dossier docs/ n'a pas été déployé sur ce serveur.",
   "home.debug.hint": "Toggle active la console verbeuse (tracker, fetch, etc.). Le bouton 📋 affiche les logs capturés directement (utile aussi sans plan chargé).",
   "home.debug.logsLabel": "🐛 Logs détaillés :",

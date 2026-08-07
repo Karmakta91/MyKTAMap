@@ -1177,6 +1177,7 @@
   "devmode.docs.titre": "Project technical documentation",
   "devmode.docs.choisir": "Pick a document from the list.",
   "devmode.docs.chargement": "Loading…",
+  "devmode.docs.fallbackHtml": "the server returned the app page instead of the document (file missing from the web root? Check that README.md and docs/ are deployed)",
   "devmode.docs.indisponible": "Document unavailable ({path}): {err}. Offline, or the docs/ folder was not deployed on this server.",
   "home.debug.hint": "The toggle enables the verbose console (tracker, fetch, etc.). The 📋 button shows the captured logs directly (also useful with no map loaded).",
   "home.debug.logsLabel": "🐛 Verbose logs:",
