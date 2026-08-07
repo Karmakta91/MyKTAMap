@@ -1806,6 +1806,8 @@
   "iti.err.aucuneRoute": "Aucune route disponible pour calculer un itinéraire",
   "iti.err.aucuneRouteTypes": "Aucune route correspondant aux types sélectionnés ({types})",
   "iti.err.compute": "Erreur calcul itinéraire : {err}",
+  "iti.replan.skipped": "🧭 Itinéraire conservé tel quel (non recalculé) — il ne part plus de ta position actuelle.",
+  "iti.replan.confirm": "Recalculer l'itinéraire depuis ta nouvelle position ?\n\nSur les grands plans, le calcul peut prendre plusieurs dizaines de secondes. Si tu ne fais que recaler ta position sans avoir besoin d'un nouveau tracé, choisis Annuler — l'itinéraire actuel reste affiché.",
   "iti.replan.stepDone": "✓ Étape {n} validée · {rest} restante(s)",
   "iti.replan.finished": "🎉 Itinéraire terminé — toutes les étapes sont validées",
   "iti.replan.err": "Recalcul d'itinéraire impossible depuis ta position : {err}",

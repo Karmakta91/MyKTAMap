@@ -1806,6 +1806,8 @@
   "iti.err.aucuneRoute": "No route available to compute an itinerary",
   "iti.err.aucuneRouteTypes": "No route matching the selected types ({types})",
   "iti.err.compute": "Route computation error: {err}",
+  "iti.replan.skipped": "🧭 Route kept as is (not recalculated) — it no longer starts from your current position.",
+  "iti.replan.confirm": "Recalculate the route from your new position?\n\nOn large maps this can take tens of seconds. If you are only realigning your position and don't need a new path, choose Cancel — the current route stays displayed.",
   "iti.replan.stepDone": "✓ Stop {n} validated · {rest} remaining",
   "iti.replan.finished": "🎉 Route complete — all stops validated",
   "iti.replan.err": "Route recalculation failed from your position: {err}",

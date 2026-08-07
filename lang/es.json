@@ -1806,6 +1806,8 @@
   "iti.err.aucuneRoute": "No hay ninguna ruta disponible para calcular un itinerario",
   "iti.err.aucuneRouteTypes": "Ninguna ruta coincide con los tipos seleccionados ({types})",
   "iti.err.compute": "Error al calcular la ruta: {err}",
+  "iti.replan.skipped": "🧭 Itinerario conservado tal cual (no recalculado) — ya no parte de tu posición actual.",
+  "iti.replan.confirm": "¿Recalcular el itinerario desde tu nueva posición?\n\nEn planos grandes el cálculo puede tardar decenas de segundos. Si solo estás reajustando tu posición y no necesitas un nuevo trazado, elige Cancelar — el itinerario actual sigue mostrado.",
   "iti.replan.stepDone": "✓ Etapa {n} validada · {rest} restante(s)",
   "iti.replan.finished": "🎉 Itinerario terminado — todas las etapas validadas",
   "iti.replan.err": "No se pudo recalcular el itinerario desde tu posición: {err}",
