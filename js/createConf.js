@@ -2689,6 +2689,11 @@ function _lireDimensionsEntete(buf) {
   return null;
 }
 
+// 🔁 v1.76.2 — exposé : l'éditeur de données (tableEditor > Convertir la
+// résolution) lit les dimensions des images source/destination par le même
+// parseur, sans décodage (une image 32K passe).
+window.ktaLireDimensionsEntete = _lireDimensionsEntete;
+
 function _lireImageDimensions(file) {
   // Étape 1 : en-tête binaire (1 Mo suffit, même avec un gros EXIF)
   return file.slice(0, 1048576).arrayBuffer().then(function(buf) {

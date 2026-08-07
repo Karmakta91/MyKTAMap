@@ -658,6 +658,7 @@
             <input type="text" class="kta-cfg-input" id="kta-tbl-search" placeholder="${_escapeAttr(window.I18n.t("tabledit.editor.recherche"))}">
             ${_estPoints() ? `<button class="kta-btn kta-btn-ghost" id="kta-tbl-add">${window.I18n.t("tabledit.editor.ajouterLigne")}</button>
             <button class="kta-btn kta-btn-ghost" id="kta-tbl-preview">${window.I18n.t("tabledit.editor.voirCarte")}</button>` : ""}
+            <button class="kta-btn kta-btn-ghost" id="kta-tbl-resolution" title="${_escapeAttr(window.I18n.t("tabledit.resol.btnTitle"))}">🔁 ${window.I18n.t("tabledit.resol.btn")}</button>
           </div>
 
           ${_estPoints() ? "" : `<div class="kta-tbl-gen-note">${window.I18n.t("tabledit.geom.lecture")}</div>`}
@@ -696,6 +697,7 @@
     // Listeners
     document.getElementById("kta-tbl-close").addEventListener("click", _tenterFermer);
     document.getElementById("kta-tbl-annuler").addEventListener("click", _tenterFermer);
+    document.getElementById("kta-tbl-resolution").addEventListener("click", _ouvrirConvertResolution);
     modal.addEventListener("click", function(e) { if (e.target === modal) _tenterFermer(); });
 
     document.getElementById("kta-tbl-search").addEventListener("input", function(e) {
@@ -1445,6 +1447,169 @@
     window.setEditorPoints(_data);
     if (window.renderEditorPoints) window.renderEditorPoints();
     alert(window.I18n.t("tabledit.save.sessionOk", { n: _data.length }));
+  }
+
+  // =========================
+  // 🔁 CONVERTIR LA RÉSOLUTION (v1.76.2, topo KARMA « migrer les données
+  // d'une carrière d'une résolution A vers une résolution B »)
+  // =========================
+  // Cas d'usage : nouveau scan du même plan en meilleure définition — refaire
+  // tous les tracés/POI serait délirant. On applique une HOMOTHÉTIE
+  // (kX = wB/wA, kY = hB/hA) à TOUT le fichier chargé (_sourceObj), pas
+  // seulement au tableau affiché : des zones restées à l'ancienne échelle
+  // pendant que les points migrent seraient pire que rien.
+  // LIMITE ASSUMÉE (phase 1) : ça convertit des RÉSOLUTIONS, pas des
+  // CADRAGES — un scan recadré/tourné demandera des points de correspondance
+  // (phase 2, maths du géoref). Avertissement si les aspects divergent.
+
+  // Fonction PURE (extraite par le garde-fou check-resolution-convert) :
+  // transforme en place tous les champs coordonnées connus de l'objet fichier
+  // (cf. docs/architecture/data-formats.md). Rend le compte par tableau.
+  function _transformerCoordsFichier(obj, kX, kY) {
+    const compte = {};
+    if (!obj || typeof obj !== "object") return compte;
+    const r2 = function(v, k) { return Math.round(v * k * 100) / 100; };  // centipixel : assez fin, JSON propre
+    const pt = function(p) {
+      if (p && typeof p.x === "number" && typeof p.y === "number") {
+        p.x = r2(p.x, kX); p.y = r2(p.y, kY); return 1;
+      }
+      return 0;
+    };
+    // Points « plats » (x/y au premier niveau de chaque ligne)
+    ["data", "editorPoints"].forEach(function(k) {
+      if (!Array.isArray(obj[k])) return;
+      compte[k] = obj[k].reduce(function(n, row) { return n + pt(row); }, 0);
+    });
+    // Géométries (points: [{x,y}…])
+    ["roads", "zones", "structures"].forEach(function(k) {
+      if (!Array.isArray(obj[k])) return;
+      compte[k] = 0;
+      obj[k].forEach(function(g) {
+        if (g && Array.isArray(g.points)) compte[k] += g.points.reduce(function(n, p) { return n + pt(p); }, 0);
+      });
+    });
+    // Mesures — DEUX formes selon la source : calque `{points:[…]}`,
+    // session `[…]` (tableau direct). measureSurface : tableau direct.
+    ["measure", "measureSurface"].forEach(function(k) {
+      const m = obj[k];
+      if (!m) return;
+      const arr = Array.isArray(m) ? m : (Array.isArray(m.points) ? m.points : null);
+      if (arr) compte[k] = arr.reduce(function(n, p) { return n + pt(p); }, 0);
+    });
+    return compte;
+  }
+
+  function _ouvrirConvertResolution() {
+    const w0 = (window.APP_CONFIG && window.APP_CONFIG.imageWidth)  || "";
+    const h0 = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || "";
+    const sub = document.createElement("div");
+    sub.className = "kta-readme-modal";
+    sub.style.zIndex = "100001";
+    const champRes = function(id, w, h, hint) {
+      return `<div class="kta-planner-grille" style="margin:4px 0 2px;">
+          <label class="kta-cfg-label">${window.I18n.t("tabledit.resol.largeur")}</label>
+          <input class="kta-cfg-input" id="${id}_w" type="number" min="1" step="1" value="${w}">
+          <label class="kta-cfg-label">${window.I18n.t("tabledit.resol.hauteur")}</label>
+          <input class="kta-cfg-input" id="${id}_h" type="number" min="1" step="1" value="${h}">
+        </div>
+        <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:2px 0 8px; display:inline-block;">📷 ${window.I18n.t("tabledit.resol.depuisImage")}
+          <input type="file" id="${id}_img" accept="image/*" style="display:none;">
+        </label>
+        <span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>`;
+    };
+    sub.innerHTML = `
+      <div class="kta-readme-modal-boite" style="max-width:460px; height:auto; max-height:90vh;">
+        <div class="kta-readme-modal-entete">
+          <span class="kta-readme-modal-titre">🔁 ${window.I18n.t("tabledit.resol.titre")}</span>
+          <button class="kta-panneau-close" id="kta-tbl-resol-close">✕</button>
+        </div>
+        <div class="kta-readme-modal-corps" style="font-size:13px;">
+          <p style="color:#8892a4; margin:0 0 10px; line-height:1.5;">${window.I18n.t("tabledit.resol.intro")}</p>
+          <p style="color:#8892a4; margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${window.I18n.t("tabledit.resol.nonTransforme")}</p>
+          <div class="kta-cfg-label" style="font-weight:600;">${window.I18n.t("tabledit.resol.source")}</div>
+          ${champRes("kta-tbl-resol-src", "", "", window.I18n.t("tabledit.resol.sourceHint"))}
+          <div class="kta-cfg-label" style="font-weight:600; margin-top:10px;">${window.I18n.t("tabledit.resol.dest")}</div>
+          ${champRes("kta-tbl-resol-dst", w0, h0, window.I18n.t("tabledit.resol.destHint"))}
+          <div id="kta-tbl-resol-recap" style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; margin-top:10px; font-family:'Courier New',monospace; font-size:12px; min-height:36px;">—</div>
+          <div id="kta-tbl-resol-warn" style="display:none; border:1px solid rgba(255,120,80,0.5); background:rgba(255,120,80,0.08); border-radius:6px; padding:8px 10px; margin-top:8px; font-size:12px;"></div>
+          <div class="kta-conv-actions" style="margin-top:12px;">
+            <button class="kta-btn kta-btn-ghost"   id="kta-tbl-resol-annuler">${window.I18n.t("tabledit.editor.annuler")}</button>
+            <button class="kta-btn kta-btn-primary" id="kta-tbl-resol-go" disabled>${window.I18n.t("tabledit.resol.appliquer")}</button>
+          </div>
+        </div>
+      </div>`;
+    document.documentElement.appendChild(sub);
+    const $ = function(id) { return document.getElementById(id); };
+    const fermer = function() { sub.remove(); };
+    $("kta-tbl-resol-close").addEventListener("click", fermer);
+    $("kta-tbl-resol-annuler").addEventListener("click", fermer);
+    sub.addEventListener("click", function(e) { if (e.target === sub) fermer(); });
+
+    // 📷 dimensions depuis une image — parseur d'en-têtes binaire (32K ok)
+    ["src", "dst"].forEach(function(côté) {
+      $("kta-tbl-resol-" + côté + "_img").addEventListener("change", function(e) {
+        const f = e.target.files && e.target.files[0];
+        if (!f || typeof window.ktaLireDimensionsEntete !== "function") return;
+        f.slice(0, 1048576).arrayBuffer().then(function(buf) {
+          const d = window.ktaLireDimensionsEntete(buf);
+          if (d && d.width > 0) {
+            $("kta-tbl-resol-" + côté + "_w").value = d.width;
+            $("kta-tbl-resol-" + côté + "_h").value = d.height;
+            recap();
+          } else {
+            alert(window.I18n.t("tabledit.resol.errImage", { nom: f.name }));
+          }
+        });
+      });
+    });
+
+    function lire() {
+      const v = function(id) { const n = parseInt($(id).value, 10); return (Number.isFinite(n) && n > 0) ? n : null; };
+      return { wA: v("kta-tbl-resol-src_w"), hA: v("kta-tbl-resol-src_h"),
+               wB: v("kta-tbl-resol-dst_w"), hB: v("kta-tbl-resol-dst_h") };
+    }
+    function recap() {
+      const r = lire();
+      const recapEl = $("kta-tbl-resol-recap"), warnEl = $("kta-tbl-resol-warn"), go = $("kta-tbl-resol-go");
+      if (!r.wA || !r.hA || !r.wB || !r.hB) { recapEl.textContent = "—"; go.disabled = true; warnEl.style.display = "none"; return; }
+      const kX = r.wB / r.wA, kY = r.hB / r.hA;
+      recapEl.innerHTML = "kX = " + r.wB + "/" + r.wA + " = <strong>" + kX.toFixed(4) + "</strong><br>" +
+                          "kY = " + r.hB + "/" + r.hA + " = <strong>" + kY.toFixed(4) + "</strong>";
+      // aspects divergents > 2 % : probablement pas le même cadrage
+      const ecart = Math.abs(kX - kY) / Math.max(kX, kY);
+      if (ecart > 0.02) {
+        warnEl.style.display = "";
+        warnEl.innerHTML = "⚠️ " + window.I18n.t("tabledit.resol.warnAspect", { pct: (ecart * 100).toFixed(1) });
+      } else warnEl.style.display = "none";
+      go.disabled = false;
+    }
+    ["src_w", "src_h", "dst_w", "dst_h"].forEach(function(s) {
+      $("kta-tbl-resol-" + s).addEventListener("input", recap);
+    });
+    recap();
+
+    $("kta-tbl-resol-go").addEventListener("click", function() {
+      const r = lire();
+      if (!r.wA || !r.hA || !r.wB || !r.hB) return;   // refus, pas de clamp
+      const kX = r.wB / r.wA, kY = r.hB / r.hA;
+      // ⚠️ Séquence anti-partage : _data contient des CLONES SUPERFICIELS des
+      // lignes de _sourceObj (cf. chargement) — plats pour les points, mais
+      // `points[]` PARTAGÉ pour les géométries. Transformer l'un ou l'autre
+      // naïvement = tableau affiché désynchronisé OU double transformation.
+      // On replie donc d'abord les éditions en cours dans un DEEP CLONE
+      // (_construireObjetSortie), on transforme CE clone, puis on re-clone
+      // _data depuis lui — zéro partage, zéro perte, zéro doublon.
+      _sourceObj = _construireObjetSortie();
+      const compte = _transformerCoordsFichier(_sourceObj, kX, kY);
+      _data = (_sourceObj[_kind] || []).map(function(p) { return Object.assign({}, p); });
+      const total = Object.keys(compte).reduce(function(s, k) { return s + compte[k]; }, 0);
+      const détail = Object.keys(compte).map(function(k) { return k + ": " + compte[k]; }).join(" · ") || "—";
+      _modifie = true;
+      _construireCorps();
+      _miseAJourInfos();
+      fermer();
+      alert(window.I18n.t("tabledit.resol.ok", { total: total, detail: détail }));
+    });
   }
 
 })();

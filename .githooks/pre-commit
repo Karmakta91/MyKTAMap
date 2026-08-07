@@ -73,3 +73,8 @@ node scripts/check-georef-estimation.js || exit $?
 # 32Kx32K « non decodable » : Chrome/Skia refuse un cote > 32767 px, on lit
 # l'en-tete sans decoder). Fixtures synthetiques PNG/GIF/WebP/JPEG. BLOQUANT.
 node scripts/check-image-header-dims.js || exit $?
+
+# 🔁 v1.76.2 — Convertisseur de resolution de l'editeur de donnees (migration
+# des donnees d'une carriere entre deux scans). Le champ coordonnee OUBLIE est
+# le bug classique : chaque tableau du format est eprouve + aller-retour. BLOQUANT.
+node scripts/check-resolution-convert.js || exit $?
