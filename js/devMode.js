@@ -139,6 +139,29 @@
     });
   }
 
+  // 🐛 v1.76.3-fix (retour KARMA : « README.md contient du HTML, c'est la
+  // seule doc qui s'affiche mal ») — kta_renderMd échappe TOUT le HTML par
+  // design (sécurité, on n'y touche pas). Or README.md plie son journal dans
+  // 32 blocs <details><summary> → texte brut illisible. On convertit donc
+  // les tags STRUCTURELS courants en markdown AVANT le rendu. Seuls des noms
+  // de tags précis sont visés : les pseudo-tags des exemples de code
+  // (<planId>, <ISO>, <extensions>…) ne matchent pas et restent intacts.
+  function _degonflerHtmlStructurel(md) {
+    return md
+      .replace(/<summary>\s*(?:<strong>)?([\s\S]*?)(?:<\/strong>)?\s*<\/summary>/gi, "\n### $1\n")
+      .replace(/<\/?details[^>]*>/gi, "\n")
+      .replace(/<strong>([\s\S]*?)<\/strong>/gi, "**$1**")
+      .replace(/<em>([\s\S]*?)<\/em>/gi, "*$1*")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<img[^>]*alt="([^"]*)"[^>]*>/gi, "🖼️ *$1*")
+      .replace(/<img[^>]*>/gi, "🖼️")
+      .replace(/<\/?(?:div|p|button|span)[^>]*>/gi, "")
+      // Filet final : tags visés restés ORPHELINS (ex. un <summary> jamais
+      // fermé dans le doc source) — mieux vaut les avaler que les afficher.
+      .replace(/<summary>\s*/gi, "\n### ")
+      .replace(/<\/?(?:summary|strong|em)>/gi, "");
+  }
+
   // ---- 📚 Bibliothèque de docs ----
   // 🔄 v2 (retour KARMA) : navigation en DEUX ÉCRANS comme l'Aide — d'abord
   // la LISTE des docs, clic → la doc plein cadre avec bouton ← retour.
@@ -186,7 +209,7 @@
         return r.text();
       }).then(function(md) {
         const html = (typeof window.kta_renderMd === "function")
-          ? window.kta_renderMd(md)
+          ? window.kta_renderMd(_degonflerHtmlStructurel(md))
           : "<pre style='white-space:pre-wrap;'>" + (window.kta_escapeHtml ? window.kta_escapeHtml(md) : md) + "</pre>";
         corps.innerHTML = '<div class="kta-devdocs-lecture">' + html + '</div>';
         corps.scrollTop = 0;
