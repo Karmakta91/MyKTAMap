@@ -31,7 +31,6 @@
   let _sourceMeta = {};           // fileName (téléchargement + titre)
   let _filtreTimer = null;
   let _lastSelectedIdx = null;    // pour shift-click
-  let _resolAutoOpen  = false;    // 🔁 v1.76.2 : carte accueil « Convertir la résolution » → dialog auto
 
   // Tableaux éditables reconnus dans une source + leur icône/typage
   var _ARRAYS_EDITABLES = [
@@ -320,7 +319,6 @@
   // ========== ÉCRAN D'ACCUEIL — 3 SOURCES ==========
   function _afficherAccueil(errMsg) {
     if (_modal) { _modal.remove(); _modal = null; }
-    _resolAutoOpen = false;   // repart propre : le flag ne survit pas à un aller-retour accueil
     // 🐛 v1.69.0 : PLAN_CONFIG survit au retour HOME (afficherLoader ne le remet
     // pas à null) → la carte « 🗺️ plan en cours » s'affichait depuis l'accueil
     // et menait à un plan qui n'est plus à l'écran. Cf. gotchas.md § PLAN_CONFIG.
@@ -397,10 +395,7 @@
     document.getElementById("kta-tbl-src-json").addEventListener("click", _afficherImport);
     // 🔁 v1.76.2 — même flux d'import que JSON, mais la dialog de conversion
     // s'ouvrira automatiquement une fois le tableau affiché.
-    document.getElementById("kta-tbl-src-resol").addEventListener("click", function() {
-      _resolAutoOpen = true;
-      _afficherImport();
-    });
+    document.getElementById("kta-tbl-src-resol").addEventListener("click", _ouvrirConvertResolution);
     // 🔗 v1.69.0 — délègue au fusionneur existant (onglet « Fusion » de la
     // modale d'export de session), ouvert en mode solo comme depuis le HOME.
     document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
@@ -677,7 +672,6 @@
             <input type="text" class="kta-cfg-input" id="kta-tbl-search" placeholder="${_escapeAttr(window.I18n.t("tabledit.editor.recherche"))}">
             ${_estPoints() ? `<button class="kta-btn kta-btn-ghost" id="kta-tbl-add">${window.I18n.t("tabledit.editor.ajouterLigne")}</button>
             <button class="kta-btn kta-btn-ghost" id="kta-tbl-preview">${window.I18n.t("tabledit.editor.voirCarte")}</button>` : ""}
-            <button class="kta-btn kta-btn-ghost" id="kta-tbl-resolution" title="${_escapeAttr(window.I18n.t("tabledit.resol.btnTitle"))}">🔁 ${window.I18n.t("tabledit.resol.btn")}</button>
           </div>
 
           ${_estPoints() ? "" : `<div class="kta-tbl-gen-note">${window.I18n.t("tabledit.geom.lecture")}</div>`}
@@ -716,10 +710,6 @@
     // Listeners
     document.getElementById("kta-tbl-close").addEventListener("click", _tenterFermer);
     document.getElementById("kta-tbl-annuler").addEventListener("click", _tenterFermer);
-    document.getElementById("kta-tbl-resolution").addEventListener("click", _ouvrirConvertResolution);
-    // 🔁 v1.76.2 — arrivée par la carte « Convertir la résolution » de
-    // l'accueil : la dialog s'ouvre toute seule sur le tableau chargé.
-    if (_resolAutoOpen) { _resolAutoOpen = false; setTimeout(_ouvrirConvertResolution, 60); }
     modal.addEventListener("click", function(e) { if (e.target === modal) _tenterFermer(); });
 
     document.getElementById("kta-tbl-search").addEventListener("input", function(e) {
@@ -1540,19 +1530,24 @@
         <span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>`;
     };
     sub.innerHTML = `
-      <div class="kta-readme-modal-boite" style="max-width:460px; height:auto; max-height:90vh;">
+      <div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:90vh;">
         <div class="kta-readme-modal-entete">
           <span class="kta-readme-modal-titre">🔁 ${window.I18n.t("tabledit.resol.titre")}</span>
           <button class="kta-panneau-close" id="kta-tbl-resol-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps" style="font-size:13px;">
-          <p style="color:#8892a4; margin:0 0 10px; line-height:1.5;">${window.I18n.t("tabledit.resol.intro")}</p>
+          <p style="color:#8892a4; margin:0 0 8px; line-height:1.5;">${window.I18n.t("tabledit.resol.intro")}</p>
           <p style="color:#8892a4; margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${window.I18n.t("tabledit.resol.nonTransforme")}</p>
           <div class="kta-cfg-label" style="font-weight:600;">${window.I18n.t("tabledit.resol.source")}</div>
           ${champRes("kta-tbl-resol-src", "", "", window.I18n.t("tabledit.resol.sourceHint"))}
           <div class="kta-cfg-label" style="font-weight:600; margin-top:10px;">${window.I18n.t("tabledit.resol.dest")}</div>
           ${champRes("kta-tbl-resol-dst", w0, h0, window.I18n.t("tabledit.resol.destHint"))}
-          <div id="kta-tbl-resol-recap" style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; margin-top:10px; font-family:'Courier New',monospace; font-size:12px; min-height:36px;">—</div>
+          <div class="kta-cfg-label" style="font-weight:600; margin-top:10px;">${window.I18n.t("tabledit.resol.fichiers")}</div>
+          <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:4px 0; display:inline-block;">📄 ${window.I18n.t("tabledit.resol.choisirFichiers")}
+            <input type="file" id="kta-tbl-resol-files" accept=".json,application/json" multiple style="display:none;">
+          </label>
+          <div id="kta-tbl-resol-files-liste" style="font-size:12px; color:#c8d0e0; margin:2px 0 6px;">${window.I18n.t("tabledit.resol.aucunFichier")}</div>
+          <div id="kta-tbl-resol-recap" style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; margin-top:6px; font-family:'Courier New',monospace; font-size:12px; min-height:36px;">—</div>
           <div id="kta-tbl-resol-warn" style="display:none; border:1px solid rgba(255,120,80,0.5); background:rgba(255,120,80,0.08); border-radius:6px; padding:8px 10px; margin-top:8px; font-size:12px;"></div>
           <div class="kta-conv-actions" style="margin-top:12px;">
             <button class="kta-btn kta-btn-ghost"   id="kta-tbl-resol-annuler">${window.I18n.t("tabledit.editor.annuler")}</button>
@@ -1568,15 +1563,15 @@
     sub.addEventListener("click", function(e) { if (e.target === sub) fermer(); });
 
     // 📷 dimensions depuis une image — parseur d'en-têtes binaire (32K ok)
-    ["src", "dst"].forEach(function(côté) {
-      $("kta-tbl-resol-" + côté + "_img").addEventListener("change", function(e) {
+    ["src", "dst"].forEach(function(cote) {
+      $("kta-tbl-resol-" + cote + "_img").addEventListener("change", function(e) {
         const f = e.target.files && e.target.files[0];
         if (!f || typeof window.ktaLireDimensionsEntete !== "function") return;
         f.slice(0, 1048576).arrayBuffer().then(function(buf) {
-          const d = window.ktaLireDimensionsEntete(buf);
-          if (d && d.width > 0) {
-            $("kta-tbl-resol-" + côté + "_w").value = d.width;
-            $("kta-tbl-resol-" + côté + "_h").value = d.height;
+          const dm = window.ktaLireDimensionsEntete(buf);
+          if (dm && dm.width > 0) {
+            $("kta-tbl-resol-" + cote + "_w").value = dm.width;
+            $("kta-tbl-resol-" + cote + "_h").value = dm.height;
             recap();
           } else {
             alert(window.I18n.t("tabledit.resol.errImage", { nom: f.name }));
@@ -1585,8 +1580,18 @@
       });
     });
 
+    // 📄 fichiers de données (un ou plusieurs .json)
+    let fichiers = [];
+    $("kta-tbl-resol-files").addEventListener("change", function(e) {
+      fichiers = Array.prototype.slice.call(e.target.files || []);
+      $("kta-tbl-resol-files-liste").textContent = fichiers.length
+        ? fichiers.map(function(f) { return f.name; }).join(" · ")
+        : window.I18n.t("tabledit.resol.aucunFichier");
+      recap();
+    });
+
     function lire() {
-      const v = function(id) { const n = parseInt($(id).value, 10); return (Number.isFinite(n) && n > 0) ? n : null; };
+      const v = function(id) { const x = parseInt($(id).value, 10); return (Number.isFinite(x) && x > 0) ? x : null; };
       return { wA: v("kta-tbl-resol-src_w"), hA: v("kta-tbl-resol-src_h"),
                wB: v("kta-tbl-resol-dst_w"), hB: v("kta-tbl-resol-dst_h") };
     }
@@ -1596,41 +1601,56 @@
       if (!r.wA || !r.hA || !r.wB || !r.hB) { recapEl.textContent = "—"; go.disabled = true; warnEl.style.display = "none"; return; }
       const kX = r.wB / r.wA, kY = r.hB / r.hA;
       recapEl.innerHTML = "kX = " + r.wB + "/" + r.wA + " = <strong>" + kX.toFixed(4) + "</strong><br>" +
-                          "kY = " + r.hB + "/" + r.hA + " = <strong>" + kY.toFixed(4) + "</strong>";
-      // aspects divergents > 2 % : probablement pas le même cadrage
+                          "kY = " + r.hB + "/" + r.hA + " = <strong>" + kY.toFixed(4) + "</strong>" +
+                          (fichiers.length ? "<br>" + window.I18n.t("tabledit.resol.nbFichiers", { n: fichiers.length }) : "");
       const ecart = Math.abs(kX - kY) / Math.max(kX, kY);
       if (ecart > 0.02) {
         warnEl.style.display = "";
         warnEl.innerHTML = "⚠️ " + window.I18n.t("tabledit.resol.warnAspect", { pct: (ecart * 100).toFixed(1) });
       } else warnEl.style.display = "none";
-      go.disabled = false;
+      go.disabled = !fichiers.length;   // refus tant qu'il manque résolutions OU fichiers
     }
-    ["src_w", "src_h", "dst_w", "dst_h"].forEach(function(s) {
-      $("kta-tbl-resol-" + s).addEventListener("input", recap);
+    ["src_w", "src_h", "dst_w", "dst_h"].forEach(function(sfx) {
+      $("kta-tbl-resol-" + sfx).addEventListener("input", recap);
     });
     recap();
 
+    // Conversion : chaque fichier est lu, transformé, retéléchargé
+    // « <nom>_<wB>x<hB>.json ». Un fichier illisible n'interrompt PAS le lot :
+    // il est listé en échec à la fin (l'utilisateur convertit 12 calques d'un
+    // coup, un raté silencieux serait pire qu'un refus).
     $("kta-tbl-resol-go").addEventListener("click", function() {
       const r = lire();
-      if (!r.wA || !r.hA || !r.wB || !r.hB) return;   // refus, pas de clamp
+      if (!r.wA || !r.hA || !r.wB || !r.hB || !fichiers.length) return;
       const kX = r.wB / r.wA, kY = r.hB / r.hA;
-      // ⚠️ Séquence anti-partage : _data contient des CLONES SUPERFICIELS des
-      // lignes de _sourceObj (cf. chargement) — plats pour les points, mais
-      // `points[]` PARTAGÉ pour les géométries. Transformer l'un ou l'autre
-      // naïvement = tableau affiché désynchronisé OU double transformation.
-      // On replie donc d'abord les éditions en cours dans un DEEP CLONE
-      // (_construireObjetSortie), on transforme CE clone, puis on re-clone
-      // _data depuis lui — zéro partage, zéro perte, zéro doublon.
-      _sourceObj = _construireObjetSortie();
-      const compte = _transformerCoordsFichier(_sourceObj, kX, kY);
-      _data = (_sourceObj[_kind] || []).map(function(p) { return Object.assign({}, p); });
-      const total = Object.keys(compte).reduce(function(s, k) { return s + compte[k]; }, 0);
-      const détail = Object.keys(compte).map(function(k) { return k + ": " + compte[k]; }).join(" · ") || "—";
-      _modifie = true;
-      _construireCorps();
-      _miseAJourInfos();
-      fermer();
-      alert(window.I18n.t("tabledit.resol.ok", { total: total, detail: détail }));
+      const bilans = [], echecs = [];
+      let restants = fichiers.length;
+      fichiers.forEach(function(f) {
+        f.text().then(function(txt) {
+          const obj = JSON.parse(txt);
+          const compte = _transformerCoordsFichier(obj, kX, kY);
+          const total = Object.keys(compte).reduce(function(acc, k) { return acc + compte[k]; }, 0);
+          if (!total) { echecs.push(f.name + " (" + window.I18n.t("tabledit.resol.aucuneCoord") + ")"); return; }
+          const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = f.name.replace(/\.json$/i, "") + "_" + r.wB + "x" + r.hB + ".json";
+          a.click();
+          setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
+          bilans.push(f.name + " → " + total);
+        }).catch(function() {
+          echecs.push(f.name + " (" + window.I18n.t("tabledit.resol.errLecture") + ")");
+        }).finally(function() {
+          restants--;
+          if (restants === 0) {
+            let msg = window.I18n.t("tabledit.resol.okMulti", { ok: bilans.length, detail: bilans.join("\n") || "—" });
+            if (echecs.length) msg += "\n\n⚠️ " + window.I18n.t("tabledit.resol.echecs", { n: echecs.length }) + "\n" + echecs.join("\n");
+            alert(msg);
+            if (bilans.length) fermer();
+          }
+        });
+      });
     });
   }
 
