@@ -21706,45 +21706,37 @@ body.kta-theme-light #planLoaderBox.kta-has-wall .loader-section-head * {
 html.kta-theme-light .zip-drop-sig { color: #5a6478; }
 html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
 
-/* 🛠️ v1.76.3 — Mode Développeur : 📚 bibliothèque des docs du repo.
-   Liste à gauche, lecture à droite ; en mobile la liste passe au-dessus. */
-.kta-devdocs-corps {
-  display: flex;
-  gap: 0;
-  height: calc(100% - 46px);
-  min-height: 0;
-}
+/* 🛠️ v1.76.3 — Mode Développeur : 📚 bibliothèque des docs (v2 : navigation
+   liste → doc plein cadre, comme l'Aide — le layout 2 colonnes v1 cassait). */
 .kta-devdocs-liste {
-  flex: 0 0 260px;
-  overflow-y: auto;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 .kta-devdocs-item {
   text-align: left;
-  font-size: 12px;
-  padding: 7px 10px;
-  background: none;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  color: #c8d0e0;
+  font-size: 13px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(140, 180, 255, 0.14);
+  border-radius: 8px;
+  color: #e8eaf0;
   cursor: pointer;
-  line-height: 1.35;
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-.kta-devdocs-item:hover { background: rgba(140, 180, 255, 0.08); }
-.kta-devdocs-item.actif {
-  background: rgba(244, 197, 66, 0.10);
-  border-color: rgba(244, 197, 66, 0.35);
-  color: #f4c542;
+.kta-devdocs-item:hover {
+  background: rgba(140, 180, 255, 0.08);
+  border-color: rgba(140, 180, 255, 0.35);
+}
+.kta-devdocs-chemin {
+  font-size: 10.5px;
+  color: #8892a4;
+  font-family: 'Courier New', monospace;
 }
 .kta-devdocs-lecture {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: auto;
-  padding: 14px 18px;
   font-size: 13px;
   line-height: 1.55;
   min-width: 0;
@@ -21754,7 +21746,3 @@ html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
 .kta-devdocs-lecture h1, .kta-devdocs-lecture h2 { color: #f4c542; }
 .kta-devdocs-lecture h3 { color: #8cb4ff; }
 .kta-devdocs-lecture code { background: rgba(140, 180, 255, 0.10); padding: 1px 4px; border-radius: 3px; }
-@media (max-width: 700px) {
-  .kta-devdocs-corps { flex-direction: column; }
-  .kta-devdocs-liste { flex: 0 0 34%; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); }
-}

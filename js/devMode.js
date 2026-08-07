@@ -140,38 +140,47 @@
   }
 
   // ---- 📚 Bibliothèque de docs ----
+  // 🔄 v2 (retour KARMA) : navigation en DEUX ÉCRANS comme l'Aide — d'abord
+  // la LISTE des docs, clic → la doc plein cadre avec bouton ← retour.
+  // Structure de modale STANDARD (entete + .kta-readme-modal-corps) : le
+  // layout 2 colonnes custom de la v1 cassait (hauteur calculée dans une
+  // boîte non-flex) — on ne réinvente plus le squelette des modales.
   function ouvrirBibliotheque() {
     const ov = document.createElement("div");
     ov.className = "kta-readme-modal-overlay";
     ov.style.zIndex = "100001";
-    const liste = DOCS.map(function(d, i) {
-      return '<button class="kta-devdocs-item" data-idx="' + i + '" type="button">' + d.titre + '</button>';
-    }).join("");
     ov.innerHTML = '' +
-      '<div class="kta-readme-modal-boite" style="max-width:980px; width:96vw; height:88vh;">' +
+      '<div class="kta-readme-modal-boite" style="max-width:820px; height:88vh;">' +
         '<div class="kta-readme-modal-entete">' +
-          '<span class="kta-readme-modal-titre">📚 ' + t("devmode.docs.titre") + '</span>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kta-devdocs-retour" style="display:none; margin-right:8px;">←</button>' +
+          '<span class="kta-readme-modal-titre" id="kta-devdocs-titre">📚 ' + t("devmode.docs.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-devdocs-close">✕</button>' +
         '</div>' +
-        '<div class="kta-devdocs-corps">' +
-          '<div class="kta-devdocs-liste">' + liste + '</div>' +
-          '<div class="kta-devdocs-lecture" id="kta-devdocs-lecture">' +
-            '<p style="color:#8892a4;">' + t("devmode.docs.choisir") + '</p>' +
-          '</div>' +
-        '</div>' +
+        '<div class="kta-readme-modal-corps" id="kta-devdocs-corps" style="font-size:13px;"></div>' +
       '</div>';
     document.documentElement.appendChild(ov);
+    const corps  = ov.querySelector("#kta-devdocs-corps");
+    const titre  = ov.querySelector("#kta-devdocs-titre");
+    const retour = ov.querySelector("#kta-devdocs-retour");
     const fermer = function() { ov.remove(); };
     ov.querySelector("#kta-devdocs-close").addEventListener("click", fermer);
     ov.addEventListener("click", function(e) { if (e.target === ov) fermer(); });
-    const lecture = ov.querySelector("#kta-devdocs-lecture");
-    ov.querySelector(".kta-devdocs-liste").addEventListener("click", function(e) {
-      const btn = e.target.closest(".kta-devdocs-item");
-      if (!btn) return;
-      ov.querySelectorAll(".kta-devdocs-item").forEach(function(b) { b.classList.remove("actif"); });
-      btn.classList.add("actif");
-      const doc = DOCS[parseInt(btn.getAttribute("data-idx"), 10)];
-      lecture.innerHTML = '<p style="color:#8892a4;">⏳ ' + t("devmode.docs.chargement") + '</p>';
+
+    function montrerListe() {
+      retour.style.display = "none";
+      titre.textContent = "📚 " + t("devmode.docs.titre");
+      corps.innerHTML = '<div class="kta-devdocs-liste">' +
+        DOCS.map(function(d, i) {
+          return '<button class="kta-devdocs-item" data-idx="' + i + '" type="button">' + d.titre +
+                 '<span class="kta-devdocs-chemin">' + d.path + '</span></button>';
+        }).join("") + '</div>';
+      corps.scrollTop = 0;
+    }
+
+    function montrerDoc(doc) {
+      retour.style.display = "";
+      titre.textContent = doc.titre;
+      corps.innerHTML = '<p style="color:#8892a4;">⏳ ' + t("devmode.docs.chargement") + '</p>';
       fetch(doc.path, { cache: "no-store" }).then(function(r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.text();
@@ -179,15 +188,22 @@
         const html = (typeof window.kta_renderMd === "function")
           ? window.kta_renderMd(md)
           : "<pre style='white-space:pre-wrap;'>" + (window.kta_escapeHtml ? window.kta_escapeHtml(md) : md) + "</pre>";
-        lecture.innerHTML = '<div class="kta-readme-md">' + html + '</div>';
-        lecture.scrollTop = 0;
+        corps.innerHTML = '<div class="kta-devdocs-lecture">' + html + '</div>';
+        corps.scrollTop = 0;
       }).catch(function(err) {
         // Hors-ligne, ou docs/ pas FTP-é (l'upload partiel récurrent) : on le
         // DIT, on n'affiche pas une page blanche.
-        lecture.innerHTML = '<div style="border:1px solid rgba(255,120,80,0.5); background:rgba(255,120,80,0.08); border-radius:8px; padding:12px;">' +
+        corps.innerHTML = '<div style="border:1px solid rgba(255,120,80,0.5); background:rgba(255,120,80,0.08); border-radius:8px; padding:12px;">' +
           '⚠️ ' + t("devmode.docs.indisponible", { path: doc.path, err: err.message }) + '</div>';
       });
+    }
+
+    retour.addEventListener("click", montrerListe);
+    corps.addEventListener("click", function(e) {
+      const btn = e.target.closest(".kta-devdocs-item");
+      if (btn) montrerDoc(DOCS[parseInt(btn.getAttribute("data-idx"), 10)]);
     });
+    montrerListe();
   }
 
   // ---- Section HOME (peuple le conteneur de index.html) ----
