@@ -211,13 +211,14 @@ function afficherPlanner() {
             <input class="kta-cfg-input" id="pl_author" type="text" placeholder="${window.I18n.t("gen.infos.auteurPlaceholder")}">
           </div>
 
-          <!-- Dimensions auto-détectées depuis l'image principale -->
+          <!-- Dimensions auto-détectées : les inputs hidden restent ici (lus
+               partout), mais le DISPLAY visuel 📐 a déménagé dans la section
+               « Image principale » (v1.76.1, retour KARMA) : en mode assistant,
+               il vivait sur la page « Informations » alors que l'upload est
+               sur la page « Images » — l'utilisateur ne voyait jamais les
+               dimensions ni leurs warnings au moment du chargement. -->
           <input type="hidden" id="pl_width">
           <input type="hidden" id="pl_height">
-          <div class="kta-planner-dim-display" id="pl_dimensions_display">
-            <span class="kta-planner-dim-icon">📐</span>
-            <span class="kta-planner-dim-text">${window.I18n.t("gen.infos.dimAttente")}</span>
-          </div>
 
           <!-- Multi-niveau (depuis v148) : opt-in pour les carrieres multi-etages.
                Si coche, ajoute plan.multiLevel:true dans plan-config.json. -->
@@ -237,18 +238,9 @@ function afficherPlanner() {
                L.imageOverlay par niveau avec swap on zoomend (Option B).
                Reduction memoire massive vs V1 (qui charge l'image entiere
                en RAM) — utile pour les gros plans > 50 Mo. -->
-          <!-- 🧙 v1.72.1 (KARMA « piège ! ») : wrap TOUJOURS visible — avant,
-               il n'apparaissait qu'une fois l'image chargée, donc en wizard on
-               pouvait quitter la page Image sans jamais avoir VU l'option V2. -->
-          <div id="pl_v2_convert_wrap" style="margin-top:10px;">
-            <label class="kta-planner-tiling-v2-row" id="pl_v2_convert_label" title="${window.I18n.t("gen.v2.rowTitle")}">
-              <input type="checkbox" id="pl_tilingV2">
-              <span>
-                <strong>${window.I18n.t("gen.v2.label")}</strong>
-                <em>${window.I18n.t("gen.v2.hint")}</em>
-              </span>
-            </label>
-          </div>
+          <!-- 🧱 Le bloc V2 (pl_v2_convert_wrap) a déménagé dans la section
+               « Image principale » (v1.76.1, même logique que le display 📐 :
+               l'option concerne l'image, elle vit à côté de l'image). -->
 
           <!-- 🆕 v1.9.3-B1d.γ : inclure les photos attachées (IDB) dans le ZIP
                plan. Visible uniquement en mode "Modifier" (les photos sont
@@ -300,6 +292,32 @@ function afficherPlanner() {
               <input type="file" id="pl_collision" accept="image/*" style="display:none">
               <span class="kta-planner-upload-nom" id="pl_collision_nom">${window.I18n.t("gen.upload.aucunFichier")}</span>
             </div>
+          </div>
+
+          <!-- 📐 v1.76.1 (retour KARMA) : le display des dimensions vivait
+               dans « Informations du plan » — en mode assistant, c'est une
+               AUTRE page que l'upload : on chargeait l'image sans jamais voir
+               les dimensions ni leurs warnings (>10 000 px, >30 Mo, refus
+               32 767). Désormais il vit ici, sous l'upload, hors du bloc
+               conditionnel upload/vierge pour rester visible dans les deux
+               modes image. -->
+          <div class="kta-planner-dim-display" id="pl_dimensions_display">
+            <span class="kta-planner-dim-icon">📐</span>
+            <span class="kta-planner-dim-text">${window.I18n.t("gen.infos.dimAttente")}</span>
+          </div>
+
+          <!-- 🧱 v1.76.1 : le bloc V2 déménage aussi (même logique — l'option
+               concerne l'image principale). 🧙 v1.72.1 (KARMA « piège ! ») :
+               wrap TOUJOURS visible pour que l'assistant le montre même avant
+               le chargement de l'image. -->
+          <div id="pl_v2_convert_wrap" style="margin-top:10px;">
+            <label class="kta-planner-tiling-v2-row" id="pl_v2_convert_label" title="${window.I18n.t("gen.v2.rowTitle")}">
+              <input type="checkbox" id="pl_tilingV2">
+              <span>
+                <strong>${window.I18n.t("gen.v2.label")}</strong>
+                <em>${window.I18n.t("gen.v2.hint")}</em>
+              </span>
+            </label>
           </div>
 
           <!-- 🆕 BLOC VIERGE (caché par défaut, généré dynamiquement) -->
