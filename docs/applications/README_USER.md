@@ -2799,6 +2799,7 @@ Appuyez sur **⬇️ → 📊 Éditeur de données du plan** (en mode carte) **o
 1. **🗺️ Plan en cours** — liste les calques de données du plan ouvert (puits, accès, tracés, zones…). Choisissez-en un à éditer.
 2. **📦 Importer un ZIP** — récupère la liste des calques de données d'un plan complet (`.zip`).
 3. **📄 Importer un fichier JSON** — un seul fichier de données ou de session (glisser-déposer).
+4. **🔁 Convertir la résolution** *(depuis v1.76.2)* — outil autonome pour **migrer tes données d'un ancien scan vers un nouveau scan du même plan**. Donne les deux résolutions (saisie ou 📷 auto-détection depuis les images — même géantes), un ou plusieurs fichiers `.json`, et récupère-les convertis. Si le nouveau scan n'a pas les mêmes marges : ajoute un **repère commun** aux deux plans (le même pilier lu sur chacun) — la conversion se cale exactement dessus, avec rotation optionnelle ; **deux repères** et l'échelle + la rotation sont déduites toutes seules. Ce qui n'est pas dans le fichier (liaisons inter-plans, géoref, échelle du plan) reste à refaire sur le nouveau plan.
 
 Si une source contient plusieurs jeux de données, un **sélecteur** s'affiche (chacun avec son nombre d'éléments). Le tableau s'ouvre ensuite avec une colonne par champ détecté.
 

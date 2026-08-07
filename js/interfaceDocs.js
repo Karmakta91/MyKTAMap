@@ -914,7 +914,7 @@ function _aideHtmlFr() {
           <div class="kta-aide-section-titre">⬇️ Charger / Import</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">📥</span><span><strong>Importer</strong> — un seul bouton qui ouvre une modale à 2 cards : 📥 <strong>Session MyKTAMap</strong> (.json / .zip avec photos) ou 📤 <strong>GPX externe</strong> (TopoDroid, OsmAnd, Avenza, Strava, Garmin… nécessite calibrage GPS). Preview avant import, Ctrl+Z pour annuler.</span>
-            <span class="kta-aide-icone">📊</span><span><strong>Éditeur de données du plan</strong> — modifie les données (points, tracés, zones) sous forme de tableau. Contient aussi <strong>🔗 Fusionner des calques de données</strong> (arrivé de l'accueil).</span>
+            <span class="kta-aide-icone">📊</span><span><strong>Éditeur de données du plan</strong> — modifie les données (points, tracés, zones) sous forme de tableau. Contient aussi <strong>🔗 Fusionner des calques de données</strong> (arrivé de l'accueil) et <strong>🔁 Convertir la résolution</strong> (v1.76.2) : migre tes fichiers de données d'un ancien scan vers un nouveau scan du même plan — résolutions + repère(s) commun(s) optionnel(s) si les marges diffèrent (2 repères = échelle et rotation déduites).</span>
             <span class="kta-aide-icone">🗂️</span><span>Changer de plan (revenir au home)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">

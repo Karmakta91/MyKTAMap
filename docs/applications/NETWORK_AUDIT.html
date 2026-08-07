@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.76.1</strong> (6 août 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.76.2</strong> (7 août 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.76.2 (convertisseur de résolution/recalage de l'Éditeur de données)</h3>
+  <p>Outil <strong>100 % local</strong> — les fichiers <code>.json</code> et les images dont on lit les dimensions sont traités dans le navigateur, les fichiers convertis sont <strong>téléchargés par toi</strong>. Aucune requête réseau, aucun nouveau domaine, whitelist <code>connect-src</code> inchangée.</p>
   <h3>v1.76.1 (train v1.76 complet — la v1.76.0 n'a été servie que sur le domaine de dev)</h3>
   <p>Mêmes garanties, périmètre élargi. En plus de la personnalisation des couleurs : <strong>bordures indépendantes</strong> (zones/piliers), <strong>liaison d'un type hérité</strong> à la légende (bouton ➕ Lier), <strong>estimation du point B</strong> du géoréférencement (calcul entièrement local à partir du point A, de l'échelle et de l'orientation Nord — aucune requête, aucun service de géocodage), <strong>échelle mémorisée par plan</strong> (localStorage), et lecture des dimensions d'images dans l'en-tête du fichier (traitement local, permet de refuser proprement les images trop grandes pour le navigateur). <strong>Aucune nouvelle surface réseau, aucun nouveau domaine, whitelist <code>connect-src</code> inchangée.</strong></p>
 

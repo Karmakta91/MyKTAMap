@@ -1,8 +1,7 @@
 {
-  "version": "v1.76.1",
+  "version": "v1.76.2",
   "released": "2026-08-05",
   "notes": [
-    "🎨 Ta légende devient entièrement personnalisable : couleur de chaque type ET bordure indépendante pour les zones et piliers, entrées personnalisées modifiables à chaud, et un bouton « ➕ Lier » qui raccroche les objets d'un ancien plan à ta légende en un clic.",
-    "🧭 Le géoréférencement sait estimer le second point GPS tout seul (plan orienté nord + échelle fiable), l'échelle recalibrée est enfin mémorisée plan par plan, et le générateur lit les dimensions des très grandes images sans planter."
+    "🔁 Nouvel outil dans l'Éditeur de données : convertis tes points, tracés et zones d'un ancien scan vers un nouveau scan du même plan. Donne les deux résolutions (ou laisse l'app les lire dans les images), un repère commun si les marges diffèrent — et récupère tes fichiers adaptés, prêts à charger sur le nouveau plan."
   ]
 }

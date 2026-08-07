@@ -12,8 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.76.1` (06/08/2026)
+## 📦 Version courante — `v1.76.2` (07/08/2026)
 
+> 🔁 **v1.76.2 — Convertisseur de résolution/recalage** (Éditeur de données) : migrer les fichiers de données d'un scan A vers un scan B — homothétie par résolutions (📷 lues dans les en-têtes), recalage par 1-2 repères de correspondance (2 repères = échelle+rotation déduites, maths du géoref en pixel→pixel), multi-fichiers, garde-fou 24 cas. + 2 fixes UI (modale invisible : classe CSS fantôme ; labels a11y).
+>
 > 🧭 **Le train v1.76 sort en v1.76.1** (la v1.76.0 n'a été servie que sur dev). Par-dessus le lot Légende de v1.76.0 : ① **bordure indépendante du fond** (zones + piliers/mur, customs éditables à chaud « iso » built-in) ② **liaison par id technique** — le bandeau ⚠️ orphelins gagne un bouton « ➕ Lier » qui raccroche un type brut (« Bas ») à une entrée de légende ③ **audit indépendant** : 7 causes racines dont la légende plan-level MORTE depuis son introduction (24/05, plan.customLegend jamais lu) et une perte de données (session « couleurs seules » effacée) ④ **Estimer le point B** du géoref depuis A + échelle + Nord calibré ⑤ échelle enfin **persistée per-plan** ⑥ générateur : dimensions lues dans l'**en-tête binaire** (fin du « non décodable » 32K) + refus franc >32 767 px ⑦ audit i18n (dette données quasi nulle, filet +1 143 clés couvertes) ⑧ 2 nouveaux garde-fous (estimation géoref, parseur d'en-têtes) → **11 bloquants au pre-commit**.
 >
 > Versions précédentes `v1.75.x` (03/08) : import SIG · fond d'écran du HOME · récupération de ZIP · smartNav complet · correctif Blob IDB du fond d'écran.
@@ -451,7 +453,15 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.76.1 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.76.2 → v1.26)
+
+#### v1.76.2 (07/08/2026) — convertisseur de résolution/recalage
+
+- 🔁 **Migrer les données d'une carrière entre deux scans** (topo KARMA) : carte « Convertir la résolution » dans l'accueil de l'**Éditeur de données** → modale autonome. Phase 1 : homothétie par résolutions (saisie ou 📷 en-têtes binaires, images géantes OK), multi-fichiers `.json`, re-téléchargés `_conv.json`. Phase 2 (retour terrain « échelle bonne mais décalé ») : **repère de correspondance** `xA,yA → xB,yB` qui cloue la transformation + rotation optionnelle ; **2 repères** = échelle uniforme et rotation **déduites** (maths du géoref pixel→pixel). Une seule matrice affine sous le capot, garde-fou 24 cas (ancres exactes, θ=90° sur les 2 axes, M·M⁻¹=identité, dégénérés refusés).
+- 🐛 Modale invisible (classe CSS inexistante `kta-readme-modal`) + labels associés à leurs inputs (a11y). 2ᵉ bug de la semaine que seul un navigateur voyait → le smoke Playwright monte en priorité post-release.
+- ✅ Première prise réelle de la **bannière de cohérence échelle↔géoref** : 26 % d'écart détecté chez KARMA — c'était l'échelle du plan qui était fausse. Le contrôle par redondance fonctionne.
+
+
 
 #### v1.76.1 (06/08/2026) — le train v1.76 complet : bordures, liaison, audits, géoref
 
