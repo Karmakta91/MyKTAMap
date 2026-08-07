@@ -153,6 +153,14 @@
       .replace(/<strong>([\s\S]*?)<\/strong>/gi, "**$1**")
       .replace(/<em>([\s\S]*?)<\/em>/gi, "*$1*")
       .replace(/<br\s*\/?>/gi, "\n")
+      // Images SAME-ORIGIN (chemin relatif strict — pas d'URL externe ni de
+      // schéma) : converties en marqueur inerte qui traverse l'échappement du
+      // parseur, reconstituées en <img> réel APRÈS le rendu (_regonflerImages).
+      // Ex. : l'architecture overview.svg en tête du README (retour KARMA).
+      .replace(/<img[^>]*src="([\w][\w.\/-]*)"[^>]*alt="([^"<>§]*)"[^>]*>/gi, "\n§§IMG§$1§$2§§\n")
+      .replace(/<img[^>]*src="([\w][\w.\/-]*)"[^>]*>/gi, "\n§§IMG§$1§§§\n")
+      // Images restantes (externes, data:, etc.) : placeholder — on ne laisse
+      // JAMAIS passer une URL non same-origin dans le HTML final.
       .replace(/<img[^>]*alt="([^"]*)"[^>]*>/gi, "🖼️ *$1*")
       .replace(/<img[^>]*>/gi, "🖼️")
       .replace(/<\/?(?:div|p|button|span)[^>]*>/gi, "")
@@ -160,6 +168,18 @@
       // fermé dans le doc source) — mieux vaut les avaler que les afficher.
       .replace(/<summary>\s*/gi, "\n### ")
       .replace(/<\/?(?:summary|strong|em)>/gi, "");
+  }
+
+  // Reconstitue les <img> same-origin depuis les marqueurs posés par
+  // _degonflerHtmlStructurel — appliqué au HTML DÉJÀ rendu/échappé. Le src
+  // reste borné aux chemins relatifs ([\w.\/-] uniquement, vérifié deux
+  // fois : au dégonflage ET ici). Fond clair : les diagrammes SVG des docs
+  // sont dessinés pour fond blanc (traits sombres).
+  function _regonflerImages(html) {
+    return html.replace(/§§IMG§([\w][\w.\/-]*)§([^§]*)§§/g, function(_, src, alt) {
+      return '<img src="' + src + '" alt="' + alt + '" loading="lazy" ' +
+             'style="max-width:100%; height:auto; background:#fff; border-radius:8px; padding:6px; margin:8px 0;">';
+    });
   }
 
   // ---- 📚 Bibliothèque de docs ----
@@ -217,7 +237,7 @@
           throw new Error(t("devmode.docs.fallbackHtml"));
         }
         const html = (typeof window.kta_renderMd === "function")
-          ? window.kta_renderMd(_degonflerHtmlStructurel(md))
+          ? _regonflerImages(window.kta_renderMd(_degonflerHtmlStructurel(md)))
           : "<pre style='white-space:pre-wrap;'>" + (window.kta_escapeHtml ? window.kta_escapeHtml(md) : md) + "</pre>";
         corps.innerHTML = '<div class="kta-devdocs-lecture">' + html + '</div>';
         corps.scrollTop = 0;
