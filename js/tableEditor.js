@@ -1515,7 +1515,10 @@
     const w0 = (window.APP_CONFIG && window.APP_CONFIG.imageWidth)  || "";
     const h0 = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || "";
     const sub = document.createElement("div");
-    sub.className = "kta-readme-modal";
+    // 🐛 v1.76.2 — "kta-readme-modal" (sans -overlay) N'EXISTE PAS dans le
+    // CSS : la modale s'ajoutait au DOM sans position:fixed, invisible en
+    // bas de page — « rien ne se passe » (remonté KARMA).
+    sub.className = "kta-readme-modal-overlay";
     sub.style.zIndex = "100001";
     const champRes = function(id, w, h, hint) {
       return `<div class="kta-planner-grille" style="margin:4px 0 2px;">
