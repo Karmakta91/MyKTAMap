@@ -670,6 +670,7 @@
   "gen.dim.warnGrande": "🚨 <strong>Grande dimension détectée</strong> ({w} × {h} px, > {lim} px). Risque de crash mémoire sur mobile. Pense à choisir un mode performance bas, ou réduire l'image avant import.",
   "gen.dim.warnGros": "🚨 <strong>Gros fichier détecté</strong> ({mo} Mo, > {lim} Mo). Le ZIP final sera lourd. Privilégie JPEG qualité 85 plutôt que PNG, ou recadre l'image pour gagner en taille.",
   "gen.err.detailInconnu": "inconnu",
+  "gen.err.imageTropGrande": "❌ {nom} : {w}×{h} px. Au-delà de {max} px de côté, AUCUN navigateur ne peut décoder l'image (limite du moteur Chrome/Skia) — ni ici, ni chez les lecteurs du plan. Réduis ou découpe l'image (ex. 2×2 dalles en calques de niveau, ou ré-échantillonne vers ≤ 16 384 px pour rester confortable sur mobile).",
   "gen.err.imageNonDecodable": "Image non décodable : {nom}",
   "gen.err.imageSourceNonDecodable": "Image source non décodable",
   "gen.warn.layerOpaque": "⚠️ Calque(s) de niveau SANS transparence : {layers} — en superposition, ils masqueront tout ce qui est en dessous. Ré-exporte-les en PNG avec fond transparent pour garder le sens du multi-niveau.",

@@ -668,6 +668,7 @@
   "gen.dim.warnGrande": "🚨 <strong>Dimensión grande detectada</strong> ({w} × {h} px, > {lim} px). Riesgo de fallo de memoria en móvil. Considera elegir un modo de rendimiento bajo, o reducir la imagen antes de importar.",
   "gen.dim.warnGros": "🚨 <strong>Archivo grande detectado</strong> ({mo} MB, > {lim} MB). El ZIP final será pesado. Prefiere JPEG calidad 85 en lugar de PNG, o recorta la imagen para reducir el tamaño.",
   "gen.err.detailInconnu": "desconocido",
+  "gen.err.imageTropGrande": "❌ {nom}: {w}×{h} px. Más allá de {max} px por lado, NINGÚN navegador puede decodificar la imagen (límite del motor Chrome/Skia) — ni aquí ni en los dispositivos de los lectores. Redúcela o divídela (p. ej. 2×2 mosaicos como capas de nivel, o remuestrea a ≤ 16 384 px para móvil).",
   "gen.err.imageNonDecodable": "Imagen no decodificable: {nom}",
   "gen.err.imageSourceNonDecodable": "Imagen fuente no decodificable",
   "gen.warn.layerOpaque": "⚠️ Capa(s) de nivel SIN transparencia: {layers} — superpuestas, ocultarán todo lo que esté debajo. Reexpórtalas en PNG con fondo transparente para conservar el sentido del multinivel.",

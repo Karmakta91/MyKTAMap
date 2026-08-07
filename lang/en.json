@@ -670,6 +670,7 @@
   "gen.dim.warnGrande": "🚨 <strong>Large dimension detected</strong> ({w} × {h} px, > {lim} px). Risk of memory crash on mobile. Consider choosing a low performance mode, or reducing the image before import.",
   "gen.dim.warnGros": "🚨 <strong>Large file detected</strong> ({mo} MB, > {lim} MB). The final ZIP will be heavy. Prefer JPEG quality 85 over PNG, or crop the image to save space.",
   "gen.err.detailInconnu": "unknown",
+  "gen.err.imageTropGrande": "❌ {nom}: {w}×{h} px. Beyond {max} px per side, NO browser can decode the image (Chrome/Skia engine limit) — neither here nor on your readers' devices. Resize or split it (e.g. 2×2 tiles as level layers, or resample to ≤ 16,384 px to stay mobile-friendly).",
   "gen.err.imageNonDecodable": "Image cannot be decoded: {nom}",
   "gen.err.imageSourceNonDecodable": "Source image cannot be decoded",
   "gen.warn.layerOpaque": "⚠️ Level layer(s) WITHOUT transparency: {layers} — when stacked, they will hide everything below. Re-export them as PNG with a transparent background to keep multi-level meaningful.",

@@ -68,3 +68,8 @@ node scripts/check-legend-roundtrip.js || exit $?
 # Fonction extraite du code REEL de config.js ; a attrape Number(null)=0 des
 # son premier run (un A a lat nulle serait parti a l'equateur). BLOQUANT.
 node scripts/check-georef-estimation.js || exit $?
+
+# 🖼️ v1.76.1 — Parseur binaire de dimensions d'images du Generateur (bug JPG
+# 32Kx32K « non decodable » : Chrome/Skia refuse un cote > 32767 px, on lit
+# l'en-tete sans decoder). Fixtures synthetiques PNG/GIF/WebP/JPEG. BLOQUANT.
+node scripts/check-image-header-dims.js || exit $?
