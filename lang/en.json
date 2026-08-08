@@ -1902,6 +1902,7 @@
   "kmz.geOverlay.annuler": "Cancel export",
   "kmz.geOverlay.okQuandMeme": "Export anyway",
   "kmz.geOverlay.tronque": "This map image is {w}×{h} px: beyond its texture limit (~8,192 px), Google Earth WILL DISPLAY A CROPPED OVERLAY (part of the map missing, with no message). It cannot be reduced here (image too large for the browser, map not V2-tiled — convert it to V2 for a clean overlay).\n\nExport anyway?",
+  "kmz.geOverlay.superoverlay": "🗼 Map embedded at full resolution: {n} tiles (Google Earth will show the detail level matching the zoom, like in the app).",
   "kmz.geOverlay.reduit": "🌍 Map image reduced to {w}×{h} px for Google Earth (its texture limit silently cropped large images).",
   "kmz.err.calibIncomplete": "Incomplete calibration: 2 points (map + GPS) required",
   "kmz.err.cornersIdentical": "NW and NE corners nearly identical (width < 0.1 m) — KMZ not validly geolocated",

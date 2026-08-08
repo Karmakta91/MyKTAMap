@@ -3790,68 +3790,87 @@
   //      Le padding noir des tuiles de bord est clippé par le canvas.
   //   2. Non-V2 : décodage entier + downscale — possible seulement sous la
   //      limite Skia (32 767) et raisonnable en RAM ; sinon null.
+  // Manifest tiling — RACINE de PLAN_CONFIG (comme osmView), forme .plan
+  // tolérée par prudence (piège des deux étages, cf audit 06/08).
+  function _tilingManifest() {
+    return (window.PLAN_CONFIG && window.PLAN_CONFIG.tiling) ||
+           (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.tiling) || null;
+  }
+
+  // Résout le blob d'une tuile V2 (RUNTIME_ASSETS + extraction lazy, fallback
+  // HTTP pour les plans serveur). null si introuvable.
+  async function _blobTuile(path) {
+    const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
+    if (asset) {
+      if (!asset.file && asset._zipPath && typeof window._extractLazyAsset === "function") {
+        try { await window._extractLazyAsset(path); } catch (e) {}
+      }
+      if (asset.file instanceof Blob) return asset.file;
+      if (asset.url) { try { const r = await fetch(asset.url); if (r.ok) return await r.blob(); } catch (e) {} }
+    }
+    try { const r = await fetch(path); if (r.ok) return await r.blob(); } catch (e) {}
+    return null;
+  }
+
+  // 🗼 v1.76.4 (retour KARMA : « 4K c'est très flou, je pensais qu'on ferait
+  // comme en OSM via les tuiles ») — SUPEROVERLAY : collecte TOUTE la
+  // pyramide V2 pour l'embarquer tuile par tuile dans le KMZ (Region/Lod
+  // côté KML : Google Earth n'affiche que le niveau adapté au zoom, pleine
+  // résolution au plus près — le mécanisme de nos tuiles OSM, en KML).
+  // Les tuiles partent BRUTES (aucun ré-encodage), SAUF celles des bords :
+  // leur padding noir ferait des bandes sombres au-delà du plan dans Google
+  // Earth → rognées à l'emprise réelle via un petit canvas (~2√N tuiles).
+  // Rend { tileSize, ext, levels: [{z, cols, rows, tiles: [...]}] } ou null.
+  async function _collecterPyramidePourSuperoverlay() {
+    const tiling = _tilingManifest();
+    if (!tiling || tiling.version !== 2) return null;
+    const W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight;
+    const TILE = tiling.tileSize || 512;
+    const ext = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(tiling) : "jpg";
+    const zMin = Number.isInteger(tiling.minNativeZoom) ? tiling.minNativeZoom : -3;
+    const zMax = Number.isInteger(tiling.maxNativeZoom) ? tiling.maxNativeZoom : 0;
+    const levels = [];
+    let total = 0;
+    for (let z = zMin; z <= zMax; z++) {
+      const scale = Math.pow(2, -z);
+      const lvlW = Math.ceil(W / scale), lvlH = Math.ceil(H / scale);
+      const cols = Math.ceil(lvlW / TILE), rows = Math.ceil(lvlH / TILE);
+      const tiles = [];
+      for (let k = 1; k <= rows; k++) {
+        for (let col = 0; col < cols; col++) {
+          let blob = await _blobTuile("data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + ext);
+          if (!blob) continue;   // tuile manquante : trou plutôt qu'échec total
+          // Rognage des tuiles de BORD (padding noir au-delà de l'emprise)
+          const utileW = Math.min(TILE, lvlW - col * TILE);
+          const utileH = Math.min(TILE, lvlH - (k - 1) * TILE);
+          if (utileW < TILE || utileH < TILE) {
+            try {
+              const bmp = await createImageBitmap(blob);
+              const cv = document.createElement("canvas");
+              cv.width = utileW; cv.height = utileH;
+              cv.getContext("2d").drawImage(bmp, 0, 0);
+              bmp.close();
+              const rognee = await new Promise(function(res) { cv.toBlob(res, "image/jpeg", 0.85); });
+              cv.width = cv.height = 0;
+              if (rognee) blob = rognee;
+            } catch (e) { /* rognage raté : tuile brute, bande noire tolérée */ }
+          }
+          tiles.push({ kmzPath: "tiles/z" + z + "/x" + col + "_y" + k + ".jpg", blob: blob, col: col, k: k });
+          total++;
+        }
+      }
+      levels.push({ z: z, cols: cols, rows: rows, tiles: tiles });
+    }
+    if (total === 0) return null;
+    console.log("[KMZ] Superoverlay : " + total + " tuiles collectées (" + levels.length + " niveaux)");
+    return { tileSize: TILE, ext: ext, levels: levels };
+  }
+
+  // 🌍 v1.76.4 — repli NON-V2 : downscale sous la limite de texture de
+  // Google Earth (un plan V2 passe par le superoverlay ci-dessus).
+  // Rend { blob, w, h, source } ou null (irréductible).
   async function _reduireImagePourGoogleEarth(imageBlob, dims) {
     const CIBLE = 4096;
-    const W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight;
-    // 🐛 v1.76.4-fix (KARMA : « message d'erreur alors que je suis déjà en
-    // V2 ») — le manifest tiling vit à PLAN_CONFIG.tiling (RACINE, comme le
-    // lit osmView ×3), pas sous .plan : ma lecture .plan.tiling rendait
-    // undefined → voie pyramide sautée → plan V2 déclaré « irréductible ».
-    // Le miroir exact du bug plan.customLegend (audit 06/08). Lecture des
-    // deux formes par prudence.
-    const tiling = (window.PLAN_CONFIG && window.PLAN_CONFIG.tiling) ||
-                   (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.tiling);
-
-    // ---- Voie 1 : pyramide V2 ----
-    if (tiling && tiling.version === 2) {
-      try {
-        const TILE = tiling.tileSize || 512;
-        const ext = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(tiling) : "jpg";
-        const zMin = Number.isInteger(tiling.minNativeZoom) ? tiling.minNativeZoom : -3;
-        // z le plus FIN (proche de 0) dont le niveau tient dans la cible
-        let z = null;
-        for (let cand = 0; cand >= zMin; cand--) {
-          const s = Math.pow(2, -cand);
-          if (Math.ceil(W / s) <= CIBLE && Math.ceil(H / s) <= CIBLE) { z = cand; break; }
-        }
-        if (z === null) z = zMin;   // plan colossal : le niveau le plus réduit fera l'affaire
-        const scale = Math.pow(2, -z);
-        const lvlW = Math.ceil(W / scale), lvlH = Math.ceil(H / scale);
-        const cols = Math.ceil(lvlW / TILE), rows = Math.ceil(lvlH / TILE);
-        const canvas = document.createElement("canvas");
-        canvas.width = lvlW; canvas.height = lvlH;
-        const ctx = canvas.getContext("2d");
-        let posees = 0;
-        for (let k = 1; k <= rows; k++) {
-          for (let col = 0; col < cols; col++) {
-            const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + ext;
-            let blob = null;
-            const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
-            if (asset) {
-              if (!asset.file && asset._zipPath && typeof window._extractLazyAsset === "function") {
-                try { await window._extractLazyAsset(path); } catch (e) {}
-              }
-              if (asset.file instanceof Blob) blob = asset.file;
-              else if (asset.url) { try { const r = await fetch(asset.url); if (r.ok) blob = await r.blob(); } catch (e) {} }
-            }
-            if (!blob) {   // plan serveur : les tuiles sont des fichiers HTTP
-              try { const r = await fetch(path); if (r.ok) blob = await r.blob(); } catch (e) {}
-            }
-            if (!blob) continue;   // tuile manquante : trou plutôt qu'échec total
-            const bmp = await createImageBitmap(blob);
-            ctx.drawImage(bmp, col * TILE, (k - 1) * TILE);
-            bmp.close();
-            posees++;
-          }
-        }
-        if (posees === 0) throw new Error("aucune tuile lisible");
-        const out = await new Promise(function(res) { canvas.toBlob(res, "image/jpeg", 0.85); });
-        canvas.width = canvas.height = 0;   // libération immédiate
-        if (out) return { blob: out, w: lvlW, h: lvlH, source: "pyramide V2 z=" + z + ", " + posees + " tuiles" };
-      } catch (eV2) {
-        console.warn("[KMZ] Composition pyramide V2 échouée, tentative downscale direct :", eV2);
-      }
-    }
 
     // ---- Voie 2 : downscale direct (image décodable seulement) ----
     if (Math.max(dims.width, dims.height) > 16384) return null;   // Skia/RAM : on ne tente même pas
@@ -3943,12 +3962,25 @@
       //     (niveau réduit : le plan entier, jamais l'image géante à décoder) ;
       //   - plan non-V2 décodable → downscale canvas ;
       //   - indécodable (≥ 32 767, limite Skia) → on le DIT et on demande.
+      let tilesOverlay = null;   // 🗼 superoverlay V2 (prioritaire sur l'image unique)
       if (imageBlob && typeof window.ktaLireDimensionsEntete === "function") {
         try {
           const _dims = window.ktaLireDimensionsEntete(await imageBlob.slice(0, 1048576).arrayBuffer());
           const _GE_MAX = 8192;
           if (_dims && Math.max(_dims.width, _dims.height) > _GE_MAX) {
-            const reduit = await _reduireImagePourGoogleEarth(imageBlob, _dims);
+            // 🗼 v1.76.4 — plan V2 : SUPEROVERLAY (pleine résolution par
+            // tuiles + Region/Lod, « comme en OSM ») au lieu d'une image
+            // composée floue. L'image unique ne part plus dans le KMZ.
+            tilesOverlay = await _collecterPyramidePourSuperoverlay();
+            if (tilesOverlay) {
+              const nbT = tilesOverlay.levels.reduce(function(s, l) { return s + l.tiles.length; }, 0);
+              imageBlob = null;
+              imageFilename = null;
+              if (window.OOMGuard && window.OOMGuard.showToast) {
+                window.OOMGuard.showToast(window.I18n.t("kmz.geOverlay.superoverlay", { n: nbT }), "info");
+              }
+            }
+            const reduit = tilesOverlay ? null : await _reduireImagePourGoogleEarth(imageBlob, _dims);
             if (reduit) {
               console.log("[KMZ] Overlay réduit pour Google Earth :", _dims.width + "×" + _dims.height,
                           "→", reduit.w + "×" + reduit.h, "(" + reduit.source + ")");
@@ -3957,7 +3989,7 @@
               if (window.OOMGuard && window.OOMGuard.showToast) {
                 window.OOMGuard.showToast(window.I18n.t("kmz.geOverlay.reduit", { w: reduit.w, h: reduit.h }), "info");
               }
-            } else {
+            } else if (!tilesOverlay) {
               // Irréductible (image géante non-V2) : choix explicite, jamais
               // d'erreur silencieuse (règle KARMA).
               const continuer = (typeof window.ktaConfirm === "function")
@@ -4178,6 +4210,7 @@
           structures:   allStructures
         },
         imageBlob:     imageBlob,
+        tilesOverlay:  tilesOverlay,   // 🗼 v1.76.4 superoverlay V2 (ou null)
         imageFilename: imageFilename,
         iconsToEmbed:  iconsToEmbed,
         // 🆕 v1.18.0 — Légende plan-level (roundtrip MyKTAMap ↔ MyKTAMap).

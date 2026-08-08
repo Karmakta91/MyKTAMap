@@ -468,7 +468,60 @@
 
     // === GroundOverlay (image plan géoréférencée) ===
     let groundOverlay = "";
-    if (opts.include.image && opts.imageBaseUrl) {
+    // 🗼 v1.76.4 — SUPEROVERLAY (plans V2) : un GroundOverlay PAR TUILE de la
+    // pyramide, chacun avec sa <Region>/<Lod> — Google Earth n'affiche que le
+    // niveau adapté au zoom (le mécanisme standard des superoverlays
+    // gdal2tiles/MapTiler, et l'équivalent KML de nos tuiles OSM). Les quads
+    // sont calculés par planToGps sur les PIXELS NATIFS couverts par chaque
+    // tuile (bornés à l'emprise réelle : les tuiles de bord sont rognées côté
+    // collecte). drawOrder croissant avec le niveau : le fin dessus.
+    if (opts.include.image && opts.tilesOverlay && Array.isArray(opts.tilesOverlay.levels)) {
+      const TO = opts.tilesOverlay;
+      const zVals = TO.levels.map(function(l) { return l.z; });
+      const zMinP = Math.min.apply(null, zVals), zMaxP = Math.max.apply(null, zVals);
+      const opPct2 = (typeof opts.imageOpacity === "number") ? opts.imageOpacity : 60;
+      const a255 = Math.round(Math.max(0, Math.min(100, opPct2)) * 2.55);
+      const colorTag2 = '<color>' + (a255 < 16 ? "0" : "") + a255.toString(16) + 'ffffff</color>';
+      const morceaux = ['<Folder><name>' + _xmlEsc(opts.planName + " — plan (superoverlay)") + '</name>'];
+      TO.levels.forEach(function(lvl) {
+        const scale = Math.pow(2, -lvl.z);
+        // Lod : un seul niveau visible à la fois (128→512 px écran par tuile),
+        // le plus grossier reste visible de loin (min 0), le plus fin n'a pas
+        // de plafond (max -1) — recettes standard des superoverlays.
+        const lodMin = (lvl.z === zMinP) ? 0 : 128;
+        const lodMax = (lvl.z === zMaxP) ? -1 : 512;
+        lvl.tiles.forEach(function(tu) {
+          const x0 = tu.col * TO.tileSize * scale;
+          const y0 = (tu.k - 1) * TO.tileSize * scale;
+          const x1 = Math.min((tu.col + 1) * TO.tileSize * scale, opts.imageW);
+          const y1 = Math.min(tu.k * TO.tileSize * scale, opts.imageH);
+          const qTL = planToGps(t, x0, y0), qTR = planToGps(t, x1, y0);
+          const qBR = planToGps(t, x1, y1), qBL = planToGps(t, x0, y1);
+          const lats = [qTL.lat, qTR.lat, qBR.lat, qBL.lat];
+          const lngs = [qTL.lng, qTR.lng, qBR.lng, qBL.lng];
+          morceaux.push(
+            '<GroundOverlay>' +
+              colorTag2 +
+              '<drawOrder>' + (lvl.z - zMinP) + '</drawOrder>' +
+              '<Icon><href>' + _xmlEsc(tu.kmzPath) + '</href></Icon>' +
+              '<Region>' +
+                '<LatLonAltBox>' +
+                  '<north>' + Math.max.apply(null, lats).toFixed(8) + '</north>' +
+                  '<south>' + Math.min.apply(null, lats).toFixed(8) + '</south>' +
+                  '<east>'  + Math.max.apply(null, lngs).toFixed(8) + '</east>' +
+                  '<west>'  + Math.min.apply(null, lngs).toFixed(8) + '</west>' +
+                '</LatLonAltBox>' +
+                '<Lod><minLodPixels>' + lodMin + '</minLodPixels><maxLodPixels>' + lodMax + '</maxLodPixels></Lod>' +
+              '</Region>' +
+              '<gx:LatLonQuad xmlns:gx="http://www.google.com/kml/ext/2.2">' +
+                '<coordinates>' + _coord(qBL) + ' ' + _coord(qBR) + ' ' + _coord(qTR) + ' ' + _coord(qTL) + '</coordinates>' +
+              '</gx:LatLonQuad>' +
+            '</GroundOverlay>');
+        });
+      });
+      morceaux.push('</Folder>');
+      groundOverlay = morceaux.join("");
+    } else if (opts.include.image && opts.imageBaseUrl) {
       // Calcule les 4 coins du plan en (lat,lng) via la transformation
       const cTL = planToGps(t, 0,          0);
       const cTR = planToGps(t, opts.imageW, 0);
@@ -1108,6 +1161,13 @@
       const basename = String(opts.imageFilename).split("/").pop() || "plan.png";
       imageBaseUrl = "files/" + basename;
       zip.folder("files").file(basename, opts.imageBlob);
+    }
+    // 🗼 v1.76.4 — tuiles du superoverlay V2 : embarquées telles quelles
+    // (kmzPath relatif référencé par les <Icon> des GroundOverlays)
+    if (opts.include.image && opts.tilesOverlay && Array.isArray(opts.tilesOverlay.levels)) {
+      opts.tilesOverlay.levels.forEach(function(lvl) {
+        lvl.tiles.forEach(function(tu) { zip.file(tu.kmzPath, tu.blob); });
+      });
     }
 
     // Préparation des icônes embedded (1 par tag dans tagsRencontres)

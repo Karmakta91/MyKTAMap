@@ -1902,6 +1902,7 @@
   "kmz.geOverlay.annuler": "Annuler l'export",
   "kmz.geOverlay.okQuandMeme": "Exporter quand même",
   "kmz.geOverlay.tronque": "L'image de ce plan fait {w}×{h} px : au-delà de sa limite de texture (~8 192 px), Google Earth AFFICHERA L'OVERLAY AMPUTÉ (une partie du plan manquera, sans message). Impossible de la réduire ici (image trop grande pour le navigateur, plan non tuilé V2 — convertis-le en V2 pour un overlay propre).\n\nExporter quand même ?",
+  "kmz.geOverlay.superoverlay": "🗼 Plan embarqué en pleine résolution : {n} tuiles (Google Earth affichera le niveau de détail adapté au zoom, comme dans l'app).",
   "kmz.geOverlay.reduit": "🌍 Image du plan réduite à {w}×{h} px pour Google Earth (sa limite de texture tronquait silencieusement les grandes images).",
   "kmz.err.calibIncomplete": "Calibrage incomplet : 2 points (plan + GPS) requis",
   "kmz.err.cornersIdentical": "Coins NW et NE quasi-identiques (largeur < 0.1 m) — KMZ non géolocalisé valablement",

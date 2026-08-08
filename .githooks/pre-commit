@@ -83,3 +83,8 @@ node scripts/check-resolution-convert.js || exit $?
 # chaque chemin liste existe, chaque .md d'architecture est liste, hash mdp
 # au format SHA-256. BLOQUANT.
 node scripts/check-devmode-docs.js || exit $?
+
+# 🗼 v1.76.4 — Geometrie du superoverlay KMZ (tuiles V2 -> GroundOverlays
+# Region/Lod) : pavage exact, jointures, bords bornes a l'emprise, coherence
+# inter-niveaux, Lod/drawOrder, non-regression image unique. BLOQUANT.
+node scripts/check-kmz-superoverlay.js || exit $?
