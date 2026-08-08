@@ -21772,3 +21772,31 @@ html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
 .kta-devdocs-lecture h1, .kta-devdocs-lecture h2 { color: #f4c542; }
 .kta-devdocs-lecture h3 { color: #8cb4ff; }
 .kta-devdocs-lecture code { background: rgba(140, 180, 255, 0.10); padding: 1px 4px; border-radius: 3px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   📐 v1.76.5 — LE FOOTER DÉPLIÉ TIENT DANS L'ÉCRAN PC (audit agent 09/08)
+   Budget mesuré : HOME desktop ≈ 870px déplié, gouverné par la colonne
+   ACTIONS (~556px) — pas par l'OSM (les compactages précédents sur la
+   colonne OSM ne gagnaient RIEN, elle est ~250px sous la contraignante).
+   Le footer déplié ne coûte que ~65px : on récupère ~92px sur le vrai
+   gras. ⚠️ Ce bloc DOIT rester en FIN de fichier : la règle des tuiles
+   doit battre le bloc HOME v2 (~ligne 21040) à spécificité égale.
+   Seuils honnêtes : ≥ ~780px de viewport = tient déplié ; en dessous de
+   ~715px le scroll est structurel (laptop 768 scrollera quoi qu'on fasse).
+   ═══════════════════════════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  /* 1) Footer : contact + libs sur UNE ligne (~18px). Mise en forme seule —
+     le CONTENU légal (licence, contacts, attributions) est intouchable. */
+  .kta-loader-copyright .kta-loader-credits { display: inline; margin-top: 0; }
+  .kta-loader-copyright .kta-loader-credits + .kta-loader-credits::before {
+    content: " · ";
+    color: #4a5468;
+  }
+  /* 2) #loaderStatus : 32px réservés en permanence pour un div VIDE la
+     plupart du temps (~26px). Léger reflow quand un statut s'affiche. */
+  #loaderStatus { margin-top: 6px; min-height: 0; }
+  /* 3) Tuiles Outils : 58px est une cible TACTILE — inutile à la souris (~28px). */
+  .loader-secondary-actions .loader-btn-secondary { min-height: 44px; }
+  /* 4) Drop-zone ZIP : padding vertical dégonflé (~20px). */
+  .zip-drop-zone { padding: 14px 16px; }
+}
