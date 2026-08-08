@@ -83,8 +83,19 @@ Dérogations :
 
 ---
 
-## 🔮 Prochaine marche prévue (non encore en place)
+## 🤖 Marche 1bis — smoke navigateur automatisé (EN PLACE depuis v1.76.4)
 
-- **Smoke navigateur automatisé** (Playwright minimal : boot + chargement d'un plan de test +
-  échec sur toute erreur console). Lancé à la main avant release — pas de CI tant que la
-  checklist manuelle n'est pas stabilisée. À monter dans une session dédiée.
+`cd scripts/smoke && npm install && npm run smoke` — boote l'app dans un
+Chromium headless (serveur local inclus), passe les gates, ouvre
+Configuration / Éditeur / plan de test / Réglages / Légende, et **échoue sur
+toute erreur console, pageerror, clé i18n manquante, 404 inattendu ou modale
+invisible**. Détails : `scripts/smoke/README.md`.
+
+À lancer **avant la marche 2** : il attrape en 30 s la classe de bugs
+(ReferenceError, classe CSS fantôme, variable hors portée) qui a traversé
+trois fois les garde-fous logiques la semaine du 06/08. Le smoke manuel
+(marche 2) reste : lui seul voit le VISUEL (décalages, chevauchements).
+
+## 🔮 Marches futures
+
+- (vide pour l'instant)

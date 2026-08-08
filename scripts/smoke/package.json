@@ -1,0 +1,12 @@
+{
+  "name": "myktamap-smoke",
+  "private": true,
+  "description": "Smoke navigateur MyKTAMap (Playwright) - marche du RELEASE_GATE",
+  "scripts": {
+    "smoke": "node smoke.js",
+    "postinstall": "playwright install chromium"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}
