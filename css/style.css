@@ -4861,7 +4861,15 @@ body.kta-theme-light .splash-license-detail-pro {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    /* 🐛 v1.76.5 (KARMA : le toggle du footer chevauche encore l'OSM sur PC,
+       2e passe) — le `min-height: 0` posé ici CASSAIT la propagation du
+       minimum réel du widget (carte 220px + bandeau + barre Tiles) vers la
+       rangée du grid : la rangée se croyait plus courte que son contenu, et
+       le widget débordait sur le footer (overflow visible pour les popups).
+       Sans lui, la rangée honore le min-content, la box (#planLoaderBox,
+       min-height:100dvh SANS height) grandit d'autant et la page scrolle de
+       quelques pixels — un scroll honnête plutôt qu'un chevauchement. Le
+       stretch grand-écran est intact (flex:1 continue de remplir). */
   }
   .loader-col-osm .kta-osm-home-content {
     flex: 1 1 auto;
