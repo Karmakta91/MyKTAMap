@@ -41,6 +41,13 @@
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
 
+  <!-- 🧭 v1.76.5 — FAVICON de l'onglet (bug KARMA : « plus de logo dans
+       l'onglet Chrome »). Le <link rel="icon"> d'origine (icon/mkm.png,
+       commit initial de mai) avait été retiré sans remplacement : l'onglet
+       vivait sur le cache favicon de Chrome, purgé par les killsw répétés.
+       SVG d'abord (net à toutes tailles), PNG en repli. -->
+  <link rel="icon" type="image/svg+xml" href="icon/compass.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon/compass-192.png">
   <!-- Icône écran d'accueil iOS — Safari iOS lit UNIQUEMENT apple-touch-icon -->
   <link rel="apple-touch-icon" href="icon/compass-180.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icon/compass-180.png">
