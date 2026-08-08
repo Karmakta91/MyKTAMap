@@ -2748,7 +2748,7 @@ Au fur et à mesure que tu remplis les champs, un bloc **🌐 Aperçu coins** s'
 
 Pareil que le mode Image Avancé : cases parent + sous-cases pour un contrôle précis.
 
-- 🖼️ **Image plan** (GroundOverlay) + slider **Opacité 0-100%** (défaut 60%) — permet de voir la cartographie satellite/OSM sous ton plan dans Google Earth
+- 🖼️ **Image plan** (GroundOverlay) + slider **Opacité 0-100%** (défaut 60%) — permet de voir la cartographie satellite/OSM sous ton plan dans Google Earth. *(depuis v1.76.4)* Les images au-delà de ~8 000 px sont **automatiquement réduites** (Google Earth les tronquait en silence) — un plan tuilé V2 est recomposé depuis ses tuiles ; si la réduction est impossible, l'app te demande avant d'exporter.
 - 📍 **Points** + sous-cases par tag avec icônes et compteurs (session + data layers)
 - 🛣️ **Tracés** + sous-cases Principaux / Secondaires / Chemins
 - ⬛ **Zones** + sous-cases Eau / Remblais / Effondrement / Inaccessible

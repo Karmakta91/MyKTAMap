@@ -2743,7 +2743,7 @@ As you fill in the fields, a **🌐 Corners preview** block displays with:
 
 Same as the Advanced Image mode: parent checkboxes + sub-checkboxes for precise control.
 
-- 🖼️ **Map image** (GroundOverlay) + **Opacity 0-100%** slider (default 60%) — lets you see satellite/OSM mapping under your map in Google Earth
+- 🖼️ **Map image** (GroundOverlay) + **Opacity 0-100%** slider (default 60%) — lets you see satellite/OSM mapping under your map in Google Earth *(since v1.76.4)* Images beyond ~8,000 px are **automatically reduced** (Google Earth silently cropped them) — a V2-tiled map is recomposed from its tiles; if reduction is impossible, the app asks before exporting.
 - 📍 **Points** + sub-checkboxes per tag with icons and counters (session + data layers)
 - 🛣️ **Paths** + sub-checkboxes Main / Secondary / Trails
 - ⬛ **Zones** + sub-checkboxes Water / Backfill / Collapse / Inaccessible

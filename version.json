@@ -1,8 +1,8 @@
 {
-  "version": "v1.76.3",
+  "version": "v1.76.4",
   "released": "2026-08-05",
   "notes": [
-    "🧭 Un itinéraire actif ne se recalcule plus tout seul quand tu recales ta position : l'app te demande d'abord (sur les grands plans le calcul peut être long) — tu peux garder l'itinéraire tel quel.",
-    "🛠️ Nouveau Mode Développeur dans ⚙️ Configuration (protégé par mot de passe) : logs détaillés et lecture de toute la documentation technique du projet."
+    "🌍 Export KMZ : l'image des grands plans n'est plus tronquée dans Google Earth — elle est adaptée automatiquement à sa limite d'affichage (plans tuilés : recomposée depuis les tuiles), et l'app te prévient clairement si ce n'est pas possible.",
+    "🛠️ Mode Développeur : la documentation technique s'affiche proprement (journal du projet déplié en sections, schéma d'architecture visible, message explicite si un document n'est pas déployé)."
   ]
 }

@@ -12,8 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.76.3` (08/08/2026)
+## 📦 Version courante — `v1.76.4` (08/08/2026)
 
+> 🌍 **v1.76.4 — L'overlay KMZ des grands plans n'est plus tronqué** : Google Earth ampute en silence les textures > ~8-16 K px — l'export réduit désormais l'image automatiquement (**plan V2 : recomposée depuis la pyramide de tuiles**, niveau ≤ 4 096 px, l'image géante n'est jamais décodée ; non-V2 : downscale canvas ; irréductible : `ktaConfirm` explicite). + finitions bibliothèque Mode Dev : README dégonflé (`<details>` → sections), fallback PWA `index.html` démasqué (un 200 qui ment), images same-origin reconstituées (whitelist chemins relatifs), course i18n au boot corrigée (abonnement `onChange`).
+>
 > 🛠️ **v1.76.3 — Mode Développeur + confirmation d'itinéraire** : section Debug du HOME refondue en Mode Développeur (gate mdp SHA-256 + lockout, avertissement légal, logs unifiés — le select debugMode des Réglages carte est retiré) avec **📚 bibliothèque des 22 docs du repo** (fetch same-origin, rendu mdParser, navigation liste→doc façon Aide, garde-fou manifest n°13). Recaler sa position avec un itinéraire actif **demande confirmation** avant le Dijkstra (long sur grands plans) via **`ktaConfirm`**, nouveau confirm charté générique (dette D-confirm consignée). + encart « privilégier le géoref » dans la bannière de cohérence, fix chevauchement footer/widget OSM.
 >
 > 🔁 **v1.76.2 — Convertisseur de résolution/recalage** (Éditeur de données) : migrer les fichiers de données d'un scan A vers un scan B — homothétie par résolutions (📷 lues dans les en-têtes), recalage par 1-2 repères de correspondance (2 repères = échelle+rotation déduites, maths du géoref en pixel→pixel), multi-fichiers, garde-fou 24 cas. + 2 fixes UI (modale invisible : classe CSS fantôme ; labels a11y).
@@ -455,7 +457,15 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.76.3 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.76.4 → v1.26)
+
+#### v1.76.4 (08/08/2026) — overlay KMZ des grands plans, finitions bibliothèque
+
+- 🌍 **Overlay KMZ tronqué** (bug KARMA : « le plan est au bon endroit MAIS il en manque une grosse partie ») : l'export était innocent (blob brut) mais complice par silence — **Google Earth tronque sans message au-delà de sa limite de texture GPU** (~8-16 K px). Fix `_reduireImagePourGoogleEarth` : plan **V2 → recomposition depuis la pyramide** (z le plus fin ≤ 4 096 px, tuile manquante = trou, lazy + serveur gérés, l'image géante jamais décodée) ; non-V2 ≤ 16 384 → downscale canvas ; irréductible → `ktaConfirm` « exporter quand même ? » + conseil V2. Détection par le parseur d'en-têtes, try/catch global (au pire : export inchangé). Cohérent avec les 3 constats terrain : Vue OSM parfaite (tuiles), petit plan parfait (sous la limite).
+- 📚 **Bibliothèque Mode Dev, 3 fixes** : README dégonflé (32 `<details><summary>` → sections `###`, pseudo-tags `<planId>` préservés, testé sur les 4 docs racine) · **fallback PWA démasqué** — un `.md` absent de la racine web renvoyait `index.html` en 200, affiché tel quel ; désormais détecté et expliqué (README.md doit être FTP-é à la racine) · **images same-origin reconstituées** (marqueur inerte à travers l'échappement du parseur, whitelist chemins relatifs stricts, URL externes bloquées — l'overview.svg s'affiche).
+- 🐛 **Course i18n au boot** : la section Mode Dev se rendait parfois avant l'arrivée du dico (clés brutes affichées + warns) — abonnement `I18n.onChange`, re-rendu à l'arrivée du dico et au changement de langue. Éclaire rétrospectivement les warns `home.profile.*` du 06/08.
+
+
 
 #### v1.76.3 (08/08/2026) — Mode Développeur, confirmation d'itinéraire
 
