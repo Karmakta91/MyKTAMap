@@ -4337,7 +4337,6 @@
   "ui.refonte.badge_other_plans_paren": "(+ {n} autres plans)",
   "ui.refonte.battery_charging_suffix": " — en charge",
   "ui.refonte.battery_title": "Batterie : {label}",
-  "ui.refonte.battery_unavailable_title": "Batterie : non supporté par ce navigateur (Safari/Firefox récents)",
   "ui.refonte.btn_cancel": "Annuler",
   "ui.refonte.btn_clear_all": "Tout vider",
   "ui.refonte.btn_close_aria": "Fermer",

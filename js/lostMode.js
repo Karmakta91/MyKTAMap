@@ -72,9 +72,7 @@
   const DEFAULT_SPEED_KMH = LOST_MODE_PRESETS[_initialPreset].kmh;
 
   const COLOR_ZONE      = "#ff6b35";
-  const COLOR_LAST_POS  = "#6ce28a";
   const COLOR_MATCH_IN  = "#b452ff";
-  const COLOR_MATCH_OUT = "#8892a4";
   // 🛣️ v173 : portée max sur le réseau de routes (rouge clair, choix 3b validé)
   // Cohérent avec le thème urgence — rouge sans être trop agressif.
   const COLOR_REACH     = "#ff8080";
@@ -100,9 +98,6 @@
   // 🆕 v1.44.0 — Pilote ModalLifecycle de la modale Lost Mode.
   let _lc               = null;
 
-  function _getLostPreset() {
-    return _currentPreset;
-  }
 
   function _setLostPreset(presetKey) {
     if (!LOST_MODE_PRESETS[presetKey]) return false;

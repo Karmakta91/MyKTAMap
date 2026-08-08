@@ -535,16 +535,11 @@ async function initMapFromConfig() {
   // natif par notre propre bouton ≡ qui ouvre la modale FilterPanel unifiée
   // (Images + Data + M-LVL + Tags + Types Road/Zone/Struct). On expose les
   // overlays globalement pour que FilterPanel puisse les toggler.
-  window._ktaOverlays = overlays;
   // ANCIEN : L.control.layers(null, overlays).addTo(map);
 
   // Collision
   await initCollisionMap(config.plan.collisionImage);
 
-  window.layerPuits     = dataLayerGroups.puits;
-  window.layerVehicule  = dataLayerGroups.vehicule;
-  window.layerCataphile = dataLayerGroups.cataphile;
-  window.layerCarry     = dataLayerGroups.carry;
   window.dataLayerGroups = dataLayerGroups;
   window.layerEditor    = dataLayerGroups.editor;
 

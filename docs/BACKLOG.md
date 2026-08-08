@@ -196,7 +196,7 @@ Tout ce qui suit est **corrigé et vérifié par garde-fou** (commits `e0f4bc3` 
 ## 🧹 Code mort — audit du 09/08/2026 (2 agents indépendants + scan i18n)
 
 > **Numéros de ligne ancrés sur le commit `bbd954e`** — ils dérivent à chaque suppression : exécuter les lots dans l'ordre, ou re-vérifier les ancres. Rapports complets rendus en session du 09/08 ; l'essentiel actionnable est ici.
-> **Décision KARMA : topo validé le __/__ · corrections lot par lot ensuite.**
+> **Décision KARMA : topo validé le 09/08 (reco) · lots ①②③④ EXÉCUTÉS le 09/08** — restent les 🟡 (à la demande) et les [Probable] CSS sautés par prudence (drawer perf, profile-pro-meta, tracker-replay-modal, fourre-tout ambigu). Bugs latents : batterie fantôme SUPPRIMÉE (arbitrage KARMA — le chip header vit), toast OSM RESSUSCITÉ (bon id), fuite blob URLs COLMATÉE (revoke branché avant chaque extraction), _setOptedIn doublon supprimé.
 
 ### ⚠️ Correctif d'inventaire préalable
 La liste « règles CSS mortes » de l'audit du 09/08 matin (consignée dans le commit `a87311a`) était **majoritairement fausse** : sur 76 paires de sélecteurs dupliqués, **8 seulement sont intégralement mortes** — le reste est du *layering volontaire* de la refonte loader (override **partiel** : l'antécédent porte des propriétés qui survivent, le supprimer casse le layout). Toute suppression de jumelle doit être vérifiée **propriété par propriété**, jamais au sélecteur.

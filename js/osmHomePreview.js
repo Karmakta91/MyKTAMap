@@ -243,10 +243,8 @@
   function _isOptedIn() {
     try { return localStorage.getItem(LS_OPT_IN_KEY) === "1"; } catch(e) { return false; }
   }
-  function _setOptedIn(value) {
-    try { localStorage.setItem(LS_OPT_IN_KEY, value ? "1" : "0"); } catch(e) {}
-    try { window.dispatchEvent(new CustomEvent("kta:osmOptInChange", { detail: { optedIn: !!value } })); } catch(e) {}
-  }
+  // 🧹 v1.76.5 (audit code mort) : _setOptedIn supprimé — jamais appelé,
+  // l'opt-in réel s'écrit via OsmView.setOptedIn (Configuration HOME).
   function _isOnline() {
     return (typeof navigator === "undefined") || navigator.onLine !== false;
   }
@@ -1330,6 +1328,13 @@
     const rows = Math.ceil(lvlH / tileSize);
 
     const tiles = [];
+    // 🐛 v1.76.5 (audit code mort → bug latent n°3) — _revokeTilesBlobUrls
+    // n'était appelé NULLE PART malgré son commentaire (« au close() ET avant
+    // chaque nouvelle extraction ») : les blob URLs des tuiles s'accumulaient
+    // à chaque re-render du widget sans jamais être révoquées (fuite RAM,
+    // aggravée sur les gros plans V2). Révocation des anciennes AVANT d'en
+    // créer de nouvelles — l'endroit exact que son commentaire promettait.
+    _revokeTilesBlobUrls();
     // 🫥 v1.62.0 : extension d'après le manifest (webp/png = alpha, jpg = legacy)
     const _tileExt = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(config.tiling) : "jpg";
     for (let col = 0; col < cols; col++) {

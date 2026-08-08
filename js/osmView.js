@@ -341,12 +341,6 @@
       } catch(e) {}
     }
   }
-  // Zoom recommandé pour le plan courant (échantillonnage tile cache).
-  function _planRecommendedZoom() {
-    // Fallback raisonnable si on n'a pas mieux : 14 = ville/quartier.
-    // Au moment d'ouvrir la modale on récupèrera le vrai zoom Leaflet.
-    return 14;
-  }
   // Combo online OU cache → permet d'ouvrir Vue OSM offline si on a
   // pré-caché les tuiles du plan (= sortie terrain Mode Secours).
   function _isOnlineOrCached() {
@@ -407,42 +401,6 @@
   // Retourne { tl, tr, bl } en latlng GPS, ou null en cas d'échec.
   // - Si calibration absente → utilise les 4 coins du plan principal
   //   (0,0)-(W,0)-(0,H). Sinon → 3 coins du parallélogramme calibré.
-  function _project3Corners(proj, sourceUrl, layerConfig) {
-    const planW = (window.APP_CONFIG && window.APP_CONFIG.imageWidth)  || 1;
-    const planH = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 1;
-    let tlPx, trPx, blPx;
-    if (layerConfig && layerConfig.calibration
-        && window.ImageLayerCalibration
-        && typeof window.ImageLayerCalibration.compute3CornersFromAnchorsPx === "function") {
-      // Layer calibré : on a besoin des dims natives de l'image source
-      // (sourceW, sourceH). On les récupère via une img preload async.
-      return new Promise(function(resolve) {
-        const img = new Image();
-        img.onload = function() {
-          const corners = window.ImageLayerCalibration.compute3CornersFromAnchorsPx(
-            layerConfig.calibration, img.naturalWidth, img.naturalHeight
-          );
-          if (!corners) return resolve(null);
-          const tl = proj.planToLatLng(corners.tl.x, corners.tl.y);
-          const tr = proj.planToLatLng(corners.tr.x, corners.tr.y);
-          const bl = proj.planToLatLng(corners.bl.x, corners.bl.y);
-          if (!tl || !tr || !bl) return resolve(null);
-          resolve({ tl: tl, tr: tr, bl: bl });
-        };
-        img.onerror = function() { resolve(null); };
-        img.src = sourceUrl;
-      });
-    }
-    // Layer non calibré (ou baseImage) : on utilise les coins du plan
-    tlPx = { x: 0,     y: 0 };
-    trPx = { x: planW, y: 0 };
-    blPx = { x: 0,     y: planH };
-    const tl = proj.planToLatLng(tlPx.x, tlPx.y);
-    const tr = proj.planToLatLng(trPx.x, trPx.y);
-    const bl = proj.planToLatLng(blPx.x, blPx.y);
-    if (!tl || !tr || !bl) return Promise.resolve(null);
-    return Promise.resolve({ tl: tl, tr: tr, bl: bl });
-  }
 
   // =========================
   // 🆕 v1.39.12 — POI SUR OSM (Step 1)
@@ -1937,7 +1895,11 @@
   // on injecte une petite barre dans l'overlay osm-modal directement).
   function _toast(msg, durationMs) {
     durationMs = durationMs || 3500;
-    const overlay = document.getElementById("kta-osm-modal");
+    // 🐛 v1.76.5 (audit code mort → bug latent n°2) — ce toast visait
+    // "kta-osm-modal", un id qui n'a JAMAIS existé (le vrai overlay est
+    // kta-osm-view-overlay) : le toast contextuel de la modale OSM n'a
+    // jamais fonctionné, repli silencieux sur showToast. Ressuscité.
+    const overlay = document.getElementById("kta-osm-view-overlay");
     if (!overlay) {
       try { if (window.showToast) window.showToast(msg); } catch(e) {}
       return;

@@ -440,11 +440,3 @@ window.setMeasureMode = function(mode) {
   return true;
 };
 
-// Helper pour la modale Détails / stats agrégées
-window.getMeasureValue = function() {
-  return {
-    mode: _activeMode,
-    distance: { distM:  calculDistance(),  points: _pointsDistance.length },
-    surface:  { areaM2: calculSurface(),   points: _pointsSurface.length  }
-  };
-};

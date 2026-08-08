@@ -4337,7 +4337,6 @@
   "ui.refonte.badge_other_plans_paren": "(+ {n} other maps)",
   "ui.refonte.battery_charging_suffix": " — charging",
   "ui.refonte.battery_title": "Battery: {label}",
-  "ui.refonte.battery_unavailable_title": "Battery: not supported by this browser (recent Safari/Firefox)",
   "ui.refonte.btn_cancel": "Cancel",
   "ui.refonte.btn_clear_all": "Clear all",
   "ui.refonte.btn_close_aria": "Close",

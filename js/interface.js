@@ -60,22 +60,6 @@ L.control.titleControl = function () {
 // =========================
 // PANNEAU "PLAN SWITCHER" — sélection rapide depuis le titre
 // =========================
-function _sessionAModif() {
-  const editorPts  = (window.getEditorPoints  && window.getEditorPoints())  || [];
-  const roads      = (window.getRoads         && window.getRoads())         || [];
-  const zones      = (window.getZones         && window.getZones())         || [];
-  // 🆕 v1.9.3-A1.a : structures comptent aussi comme modif (sinon
-  // l'utilisateur perdrait ses piliers sans avertissement au switch).
-  const structures = (window.getStructures    && window.getStructures())    || [];
-  const measure    = (window.getMeasurePoints && window.getMeasurePoints()) || [];
-  // 🆕 v1.12.0-fix : surface compte aussi comme session active
-  const measureSurf = (window.getMeasurePointsSurface && window.getMeasurePointsSurface()) || [];
-  const trackPath  = (window.getTrackingPath  && window.getTrackingPath())  || [];
-  return editorPts.length > 0 || roads.length > 0 || zones.length > 0
-      || structures.length > 0
-      || measure.length > 0   || measureSurf.length > 0
-      || trackPath.length > 1;
-}
 
 function _resumeSession() {
   // Liste détaillée des modifs en cours pour l'avertissement
@@ -444,71 +428,8 @@ function escapeHtmlSwitcher(s) {
 
   window.fermerPanneau = fermerPanneau;
 
-  window.ouvrirPanneauAncre = function (btnEl, html, titre) {
-    fermerPanneau();
-
-    const panneau = document.createElement("div");
-    panneau.className = "kta-panneau";
-
-    const fleche = document.createElement("div");
-    fleche.className = "kta-panneau-fleche";
-    panneau.appendChild(fleche);
-
-    if (titre) {
-      const header = document.createElement("div");
-      header.className = "kta-panneau-header";
-      header.innerHTML = `<span class="kta-panneau-titre">${titre}</span>`;
-
-      const btnClose = document.createElement("button");
-      btnClose.className = "kta-panneau-close";
-      btnClose.innerHTML = "✕";
-      btnClose.addEventListener("click", fermerPanneau);
-      header.appendChild(btnClose);
-
-      panneau.appendChild(header);
-    }
-
-    const corps = document.createElement("div");
-    corps.className = "kta-panneau-corps";
-    corps.innerHTML = html;
-    panneau.appendChild(corps);
-
-    document.body.appendChild(panneau);
-    _panneauActif = panneau;
-
-    const rect = btnEl.getBoundingClientRect();
-    const panH = panneau.offsetHeight || 400;
-
-    const left = rect.left - panneau.offsetWidth - 10;
-    let top = rect.top + rect.height / 2 - panH / 2;
-    top = Math.max(10, Math.min(top, window.innerHeight - panH - 10));
-
-    panneau.style.left = Math.max(8, left) + "px";
-    panneau.style.top = top + "px";
-
-    requestAnimationFrame(() => {
-      const realH = panneau.offsetHeight;
-      let realTop = rect.top + rect.height / 2 - realH / 2;
-      realTop = Math.max(10, Math.min(realTop, window.innerHeight - realH - 10));
-      panneau.style.top = realTop + "px";
-
-      const arrowTop = (rect.top + rect.height / 2) - panneau.getBoundingClientRect().top;
-      fleche.style.top = Math.max(16, arrowTop) + "px";
-    });
-
-    setTimeout(() => {
-      _closeOnOutside = function (ev) {
-        if (!panneau.contains(ev.target) && ev.target !== btnEl) {
-          fermerPanneau();
-        }
-      };
-      document.addEventListener("mousedown", _closeOnOutside);
-    }, 150);
-  };
 })();
 
-const _origAppliquerConfig_wrap = window.appliquerConfig;
-const _origResetConfig_wrap = window.resetConfig;
 
 // =========================
 // 📤 IMPORT / EXPORT SESSION — DÉPLACÉ (v1.31.0 P3 Lot 5)
@@ -532,24 +453,6 @@ const _origResetConfig_wrap = window.resetConfig;
 // =========================
 // HELPER — modale de confirmation simple (1 clic)
 // =========================
-function _confirmerAction(titre, texte, callback) {
-  const overlay = document.createElement("div");
-  overlay.className = "kta-modal-overlay";
-  overlay.innerHTML = `
-    <div class="kta-modal">
-      <div class="kta-modal-icon">⚠️</div>
-      <div class="kta-modal-titre">${titre}</div>
-      <div class="kta-modal-texte">${texte}</div>
-      <div class="kta-modal-actions">
-        <button class="kta-btn kta-btn-ghost" id="_conf-annuler">${window.I18n.t("ui.btn.cancel")}</button>
-        <button class="kta-btn kta-btn-danger" id="_conf-ok">${window.I18n.t("ui.btn.confirm")}</button>
-      </div>
-    </div>
-  `;
-  document.documentElement.appendChild(overlay);
-  document.getElementById("_conf-annuler").addEventListener("click", function () { overlay.remove(); });
-  document.getElementById("_conf-ok").addEventListener("click", function () { overlay.remove(); callback(); });
-}
 
 // =========================
 // HELPER — modale de choix de suppression (plusieurs options)
@@ -713,14 +616,6 @@ function _desactiverTousLesModes() {
   Object.keys(_modesActifs).forEach(function(k) { delete _modesActifs[k]; });
 }
 
-function _activerMode(cle, btnEl, activerFn, desactiverFn) {
-  const dejaActif = !!_modesActifs[cle];
-  _desactiverTousLesModes();
-  if (dejaActif) return;
-  activerFn();
-  btnEl.classList.add("kta-actif");
-  _modesActifs[cle] = { btnEl, desactiverFn };
-}
 
 // =========================
 // FERMETURE CIBLEE D'UN MODE (utilise par les onClicks suppression)

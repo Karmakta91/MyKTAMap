@@ -4337,7 +4337,6 @@
   "ui.refonte.badge_other_plans_paren": "(+ {n} otros mapas)",
   "ui.refonte.battery_charging_suffix": " — cargando",
   "ui.refonte.battery_title": "Batería: {label}",
-  "ui.refonte.battery_unavailable_title": "Batería: no compatible con este navegador (Safari/Firefox recientes)",
   "ui.refonte.btn_cancel": "Cancelar",
   "ui.refonte.btn_clear_all": "Vaciar todo",
   "ui.refonte.btn_close_aria": "Cerrar",
