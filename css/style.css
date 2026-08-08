@@ -13623,25 +13623,16 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
 @media (max-height: 500px) and (orientation: landscape) {
   body.kta-refonte-v1 .kta-refonte-header {
     height: calc(36px + env(safe-area-inset-top, 0px));
-    /* 🆕 v1.8.1-refonte-12 : passage en CSS Grid `1fr auto 1fr` UNIQUEMENT
-       en landscape pour centrage géométrique ABSOLU du titre. En portrait
-       on reste sur du flex classique (cf. règle principale plus haut).
-       Pourquoi le grid en landscape : sur petits écrans en paysage, le
-       titre flex pouvait apparaître décalé vers la droite (asymétrie
-       largeur home button vs counters). Le grid place le titre au
-       centre exact peu importe les côtés. */
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    /* 🐛 v1.76.4 (captures KARMA paysage mobile) — l'ancien grid
+       `1fr auto 1fr` (v1.8.1-refonte-12, centrage absolu du titre) datait
+       d'AVANT l'ajout des chips 📖/🌍/🚨/🔋 en ENFANTS DIRECTS du header
+       (v1.34.19 → v1.39) : avec 7 enfants pour 3 colonnes, tout ce qui
+       dépassait tombait sur une rangée implicite SOUS la barre, étiré sur
+       la largeur (les « barres » flottantes des captures). Retour au flex
+       du portrait : le titre peut être légèrement décentré, mais tous les
+       boutons restent DANS la barre — l'inverse n'est pas négociable. */
+    display: flex;
     align-items: center;
-  }
-  /* En grid, on aligne explicitement le home (col 1, gauche) et les
-     counters (col 3, droite) — la cellule auto centrale prend la place
-     du titre. */
-  body.kta-refonte-v1 .kta-refonte-header-home {
-    justify-self: start;
-  }
-  body.kta-refonte-v1 .kta-refonte-header-counters {
-    justify-self: end;
   }
   body.kta-refonte-v1 #map {
     top: calc(36px + env(safe-area-inset-top, 0px));

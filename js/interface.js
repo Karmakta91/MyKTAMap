@@ -2381,11 +2381,14 @@ function initInterface() {
             _setGroupeModeActif("tracker", true, null);
             isTracking = true;
           };
-          if (_trackerWarningAcknowledged) {
-            _doStart();
-          } else {
-            _afficherAvertissementTracker(_doStart);
-          }
+          // 🆕 v1.76.4 (demande KARMA) — l'avertissement des limites du
+          // tracker n'est PLUS affiché à l'activation : démarrage direct.
+          // iOS reste sain : le clic sur ce bouton est le geste utilisateur
+          // synchrone qu'exige DeviceMotionEvent.requestPermission() (rôle
+          // que tenait le bouton « J'ai compris » de la modale).
+          // _afficherAvertissementTracker est conservée (réutilisable via
+          // l'Aide si un jour on veut la remontrer), plus appelée ici.
+          _doStart();
         }
       },
       {
