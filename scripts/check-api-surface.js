@@ -302,6 +302,30 @@ if (LC) {
     LC.loadSessionState(null);
   })();
 
+  // 🪦 v1.76.5 — TOMBSTONES : une entrée PLAN-LEVEL supprimée par
+  // l'utilisateur ne doit PAS revenir du plan-config au prochain chargement
+  // (vécu KARMA : « Bas » embarqué dans un ZIP régénéré, insupprimable).
+  LC.__win.PLAN_CONFIG = { plan: { customLegend: { labels: {}, hidden: {}, customEntries: [
+    { id: "cust-fantome", category: "zones", geometry: "polygon", label: "Fantôme", fillColor: "#808080" }
+  ] } } };
+  LC.loadPlanState();
+  t("tombstone : l'entrée plan est listée avant suppression",
+    LC.listCustomEntries("zones").some(function(e) { return e.id === "cust-fantome"; }));
+  t("tombstone : removeCustomEntry accepte une entrée PLAN", LC.removeCustomEntry("cust-fantome") === true);
+  t("tombstone : l'entrée plan disparaît de la liste",
+    !LC.listCustomEntries("zones").some(function(e) { return e.id === "cust-fantome"; }));
+  t("tombstone : findCustomEntry ne la sert plus (résolveur au repli)", LC.findCustomEntry("cust-fantome") === null);
+  t("tombstone : persisté dans la session", (LC.getSessionState().removedPlan || []).indexOf("cust-fantome") >= 0);
+  LC.loadPlanState();   // re-chargement du plan : elle ne revient PAS
+  t("tombstone : survit au rechargement du plan",
+    !LC.listCustomEntries("zones").some(function(e) { return e.id === "cust-fantome"; }));
+  LC.resetSession();
+  t("tombstone : resetSession la fait revenir (voulu et documenté)",
+    LC.listCustomEntries("zones").some(function(e) { return e.id === "cust-fantome"; }));
+  LC.__win.PLAN_CONFIG = null;
+  LC.loadPlanState();
+  LC.loadSessionState(null);
+
   // L'override doit VOYAGER avec la session, sinon il est perdu au reload.
   LC.setColor("zones", "eau", "#010203");
   const snap = LC.getSessionState();

@@ -143,8 +143,14 @@ window.LegendCustomization = (function() {
   // {fond, bordure} : une session v1.76.0 qui n'a que `colors` reste valide
   // telle quelle, zéro migration de format. Absente → bordure dérivée (zones)
   // ou noire (structures), comme avant.
+  // 🪦 v1.76.5 — removedPlan : TOMBSTONES des entrées PLAN-LEVEL supprimées
+  // par l'utilisateur (bug KARMA : un « Bas » embarqué dans le plan-config
+  // d'un ZIP régénéré revenait à chaque chargement, insupprimable côté
+  // session depuis la résurrection de la légende plan-level — fix C4).
+  // LOCAL à la session de ce plan sur cet appareil : ne voyage pas dans les
+  // exports (comme un masquage, pas une donnée).
   function _emptyState() {
-    return { labels: {}, hidden: {}, colors: {}, borders: {}, customEntries: [] };
+    return { labels: {}, hidden: {}, colors: {}, borders: {}, customEntries: [], removedPlan: [] };
   }
 
   let _sessionState = _emptyState();
@@ -187,6 +193,7 @@ window.LegendCustomization = (function() {
       hidden:        _hiddenEnObjet(s.hidden),
       colors:        (s.colors && typeof s.colors === "object" && !Array.isArray(s.colors)) ? s.colors : {},
       borders:       (s.borders && typeof s.borders === "object" && !Array.isArray(s.borders)) ? s.borders : {},
+      removedPlan:   Array.isArray(s.removedPlan) ? s.removedPlan.filter(function(x) { return typeof x === "string"; }) : [],
       customEntries: (Array.isArray(s.customEntries) ? s.customEntries : []).filter(function(e) {
         // une entrée exploitable a AU MINIMUM un id string ; le reste des
         // champs est déjà défendu à la lecture (repli par catégorie, etc.)
@@ -207,6 +214,7 @@ window.LegendCustomization = (function() {
       hidden:        Object.assign({}, _sessionState.hidden),
       colors:        Object.assign({}, _sessionState.colors),
       borders:       Object.assign({}, _sessionState.borders),
+      removedPlan:   _sessionState.removedPlan.slice(),
       customEntries: _sessionState.customEntries.map(function(e) { return Object.assign({}, e); })
     };
   }
@@ -216,6 +224,7 @@ window.LegendCustomization = (function() {
         && Object.keys(_sessionState.hidden).length === 0
         && Object.keys(_sessionState.colors).length === 0
         && Object.keys(_sessionState.borders).length === 0
+        && _sessionState.removedPlan.length === 0
         && _sessionState.customEntries.length === 0;
   }
 
@@ -394,7 +403,8 @@ window.LegendCustomization = (function() {
     const emis = new Set();
     _planState.customEntries.forEach(function(e) {
       if (category && e.category !== category) return;
-      if (emis.has(e.id)) return;   // audit 06/08 : deux entrées de même id DANS le plan = une seule ligne
+      if (emis.has(e.id)) return;
+      if (_sessionState.removedPlan.indexOf(e.id) >= 0) return;   // 🪦 supprimée par l'utilisateur   // audit 06/08 : deux entrées de même id DANS le plan = une seule ligne
       const src = sessionParId.get(e.id) || e;
       const source = sessionParId.has(e.id) ? "session" : "plan";
       emis.add(e.id);
@@ -587,6 +597,7 @@ window.LegendCustomization = (function() {
     if (!id) return null;
     const fromSession = _sessionState.customEntries.find(function(e) { return e.id === id; });
     if (fromSession) return Object.assign({}, fromSession, { source: "session" });
+    if (_sessionState.removedPlan.indexOf(id) >= 0) return null;   // 🪦 supprimée par l'utilisateur
     const fromPlan = _planState.customEntries.find(function(e) { return e.id === id; });
     if (fromPlan) return Object.assign({}, fromPlan, { source: "plan" });
     return null;
@@ -676,9 +687,21 @@ window.LegendCustomization = (function() {
   }
 
   function removeCustomEntry(id) {
+    let touche = false;
     const idx = _sessionState.customEntries.findIndex(function(e) { return e.id === id; });
-    if (idx >= 0) {
-      _sessionState.customEntries.splice(idx, 1);
+    if (idx >= 0) { _sessionState.customEntries.splice(idx, 1); touche = true; }
+    // 🪦 v1.76.5 — l'entrée existe AUSSI (ou seulement) au niveau PLAN : la
+    // retirer de la session ne suffit pas, elle reviendrait du plan-config à
+    // chaque chargement (vécu KARMA avec son « Bas » embarqué dans un ZIP
+    // régénéré). On pose une pierre tombale en session : l'entrée plan est
+    // filtrée partout (liste, résolveur via findCustomEntry). resetSession
+    // ou réimport de la légende la font revenir — c'est voulu et dit.
+    const dansPlan = _planState.customEntries.some(function(e) { return e.id === id; });
+    if (dansPlan && _sessionState.removedPlan.indexOf(id) < 0) {
+      _sessionState.removedPlan.push(id);
+      touche = true;
+    }
+    if (touche) {
       _persistSession();
       _fireCustomChange();
       // Les objets du type supprimé doivent basculer en repli TOUT DE SUITE
@@ -962,6 +985,25 @@ window.LegendCustomization = (function() {
       if (opts.onChange) opts.onChange();
     }
 
+    // 🐛 v1.76.5 — insertion ciblée du bouton ↺ après un changement de
+    // couleur (remplace le _render destructeur, cf. handler change). Les
+    // customs n'ont pas de ↺ (pas de couleur « d'origine »).
+    function _majBoutonReset(input) {
+      if (!input || input.getAttribute("data-custom-id")) return;
+      const cellule = input.parentNode;
+      if (!cellule || cellule.querySelector(".kta-legend-color-reset")) return;
+      const cat = input.getAttribute("data-cat"), key = input.getAttribute("data-key");
+      if (!cat || !key) return;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "kta-legend-color-reset";
+      btn.title = window.I18n.t("legend.editor.colorResetTitle");
+      btn.setAttribute("data-cat", cat);
+      btn.setAttribute("data-key", key);
+      btn.textContent = "↺";
+      cellule.appendChild(btn);   // le clic est géré par la délégation existante
+    }
+
     const body = document.getElementById("kta-legend-editor-list");
     if (body) {
       body.addEventListener("change", function(e) {
@@ -974,7 +1016,15 @@ window.LegendCustomization = (function() {
         // module. `change` ne tire qu'à la validation.
         if (e.target.matches(".kta-legend-color") || e.target.matches(".kta-legend-border")) {
           _applyFromUI(e.target);
-          _render();   // fait apparaître le bouton ↺
+          // 🐛 v1.76.5 (bug KARMA PC : « le picker ne sauvegarde rien ») —
+          // NE JAMAIS _render() ici : sur desktop le sélecteur natif reste
+          // OUVERT après chaque `change` (panneau persistant, contrairement à
+          // la feuille modale iOS qui ferme) ; le re-render détruisait
+          // l'input pendant que le picker le tenait encore → tous les choix
+          // suivants partaient dans un élément DÉTACHÉ, jamais appliqués.
+          // Le seul but du _render était le bouton ↺ : on l'insère de façon
+          // CIBLÉE, sans toucher au reste du DOM.
+          _majBoutonReset(e.target);
         }
       });
       body.addEventListener("input", function(e) {
