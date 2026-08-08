@@ -484,7 +484,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 2. **🚀 Performance ULTRA mode (paths / markers)** — 7 optimization toggles that do **NOT** touch the image (already covered by Tiling above) but everything else (polylines, popups, intersections, auto-save, viewport culling, mobile zoom-out limit). **PER-PLAN setting**: enabling ULTRA on one plan no longer affects the others — each plan starts disabled until you opt in for it. See "🚀 Optimize your map" section below for details.
 
-3. **🛠️ Debug** — **🐛 Detailed logs** toggle (verbose mode) **+ 📋 Show logs button** which directly opens the modal buffer of captured logs. Useful for consulting logs without having to load a map first (e.g.: if you are trying to diagnose a blocking bug at load).
+3. **🛠️ Developer Mode** *(since v1.76.3)* — replaces the old Debug section. **Password-protected** on first activation (with a responsibility warning). Once active: **🐛 Detailed logs** toggle, **📋 Show logs** button (the buffer, viewable even without a map loaded), and **📚 Technical documentation** — the whole project doc (architecture, backlog, maths…) readable in-app (online only). The logs setting in the map-mode ⚙️ Settings was removed: everything is driven from here.
 
 4. **🔒 Privacy & Audit** — section dedicated to transparency: live network journal, "What does the app do on the network?" doc, and "Strict offline mode" toggle. See dedicated section below.
 
@@ -956,12 +956,12 @@ All tools are accessible from the **right side bar**, organized into 11 groups:
 Open **≡ Legend** (📚 Help / Doc / Legend group) then **✏️ Edit**. For each trace, zone or structure type:
 
 - **Rename**: type your own label (e.g. "Principal" → "Main gallery"). It shows everywhere: legend, popups, stats, filters.
-- **🎨 Change the colour** *(since v1.76.0)*: one colour square per row. The chosen colour applies **everywhere** — map, image/PDF exports, KMZ, statistics, session report — immediately, no reload. A **↺** button appears to restore the original colour. Behaviour details: a recoloured zone derives its border automatically (darker shade), a pillar/wall keeps its **black outline** (the structures' visual signature), and a recoloured *Inaccessible* zone loses its hatching (fixed pattern) in favour of a flat fill.
+- **🎨 Change the colour** *(since v1.76.1)*: one colour square per row — and for **zones and pillars/walls, two squares**: fill and an **independent border**. The colour applies **everywhere** — map, image/PDF exports, KMZ, statistics, session report — immediately, no reload. A **↺** button restores both fill AND border. Details: with no border chosen, a zone derives it automatically (darker shade) and a pillar/wall keeps its black outline (the historical default); a recoloured *Inaccessible* zone loses its hatching (fixed pattern) in favour of a flat fill. **Custom entries** are edited the same way, live.
 - **👁️ Hide**: the checkbox removes the entry **from the legend box only** — nothing disappears from the map. To hide objects on the map, use the **🔍 Filters** panel.
 - **➕ Add a custom entry**: create your own types (trace, zone, structure, icon) with their colour. They become drawable from the sidebar, and a custom icon is offered in the point editor.
 - **🗑️ Delete a custom type**: if drawn objects still use it, the app warns you with the count before confirming.
 
-> 🧳 **Your legend travels with your exports** *(since v1.76.0)*: an exported data layer carries the definition of the types it uses, and the generator picks it up on import (whatever already exists in the plan keeps priority). The session JSON and the Advanced ZIP carry it too.
+> 🧳 **Your legend travels with your exports** *(since v1.76.1)*: an exported data layer carries the definition of the types it uses, and the generator picks it up on import (whatever already exists in the plan keeps priority). The session JSON and the Advanced ZIP carry it too.
 >
 > ⚠️ **"Orphan types" banner**: if objects use a type that no longer exists in the legend (deleted entry, old layer), the ≡ Legend modal shows it at the top with the count — those objects render in fallback colours until you recreate or re-import the entry.
 
@@ -2743,7 +2743,7 @@ As you fill in the fields, a **🌐 Corners preview** block displays with:
 
 Same as the Advanced Image mode: parent checkboxes + sub-checkboxes for precise control.
 
-- 🖼️ **Map image** (GroundOverlay) + **Opacity 0-100%** slider (default 60%) — lets you see satellite/OSM mapping under your map in Google Earth
+- 🖼️ **Map image** (GroundOverlay) + **Opacity 0-100%** slider (default 60%) — lets you see satellite/OSM mapping under your map in Google Earth *(since v1.76.4)* Images beyond ~8,000 px are **automatically reduced** (Google Earth silently cropped them) — a V2-tiled map is recomposed from its tiles; if reduction is impossible, the app asks before exporting.
 - 📍 **Points** + sub-checkboxes per tag with icons and counters (session + data layers)
 - 🛣️ **Paths** + sub-checkboxes Main / Secondary / Trails
 - ⬛ **Zones** + sub-checkboxes Water / Backfill / Collapse / Inaccessible
@@ -2794,6 +2794,7 @@ Press **⬇️ → 📊 Plan data editor** (in map mode) **or** the **📊 Data 
 1. **🗺️ Current plan** — lists the data layers of the open plan (shafts, accesses, paths, zones…). Pick one to edit.
 2. **📦 Import a ZIP** — retrieves the data layers from a full plan (`.zip`).
 3. **📄 Import a JSON file** — a single data or session file (drag and drop).
+4. **🔁 Convert resolution** *(since v1.76.2)* — standalone tool to **migrate your data from an old scan to a new scan of the same map**. Give both resolutions (typed or 📷 auto-detected from the images — even huge ones), one or more `.json` files, and get them back converted. If the new scan has different margins: add a **landmark common to both maps** (the same pillar read on each) — the conversion anchors exactly on it, with optional rotation; with **two landmarks**, scale and rotation are derived automatically. Whatever is not in the file (inter-map links, georeferencing, map scale) must be redone on the new map.
 
 If a source contains several datasets, a **selector** appears (each with its element count). The table then opens with one column per detected field.
 

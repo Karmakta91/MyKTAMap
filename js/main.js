@@ -412,6 +412,11 @@ async function lancerApplication() {
     });
   }
 
+  // 🎯 v1.76.1 — échelle recalibrée per-plan (⚙️ Réglages / 🎯 Calibrer
+  // l'échelle) : appliquée ICI car _currentLoadedPlanId est enfin posé —
+  // buildAppConfigFromPlan tourne trop tôt pour lire la bonne pref.
+  if (typeof window.appliquerScalePerPlan === "function") window.appliquerScalePerPlan();
+
   // Restauration de session si correspond au plan courant (et démarrage du polling auto-save)
   if (window.SessionPersist) {
     window.SessionPersist.onPlanLoaded(window._currentLoadedPlanId || null);

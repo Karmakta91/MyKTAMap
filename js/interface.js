@@ -880,32 +880,13 @@ function _afficherAvertissementTracker(onConfirm) {
       '<div class="kta-readme-modal-header kta-tracker-warn-header">' +
         '<span class="kta-readme-modal-titre">' + window.I18n.t("ui.trackerWarn.title") + '</span>' +
       '</div>' +
+      // 🔄 v1.76.4 (KARMA : « remets la modale, mais message moins fort —
+      // juste l'autorisation d'accès et un léger avertissement, bref ») :
+      // l'ancien contenu (lead alarmiste + 2 listes ✅/❌ + note) est remplacé
+      // par 2 phrases : permission capteurs + limites en une ligne.
       '<div class="kta-readme-modal-corps">' +
-        '<p class="kta-tracker-warn-lead">' +
-          window.I18n.t("ui.trackerWarn.lead") +
-        '</p>' +
-        '<p>' +
-          window.I18n.t("ui.trackerWarn.intro") +
-        '</p>' +
-        '<div class="kta-tracker-warn-section">' +
-          '<div class="kta-tracker-warn-section-titre">' + window.I18n.t("ui.trackerWarn.okTitle") + '</div>' +
-          '<ul>' +
-            '<li>' + window.I18n.t("ui.trackerWarn.ok1") + '</li>' +
-            '<li>' + window.I18n.t("ui.trackerWarn.ok2") + '</li>' +
-            '<li>' + window.I18n.t("ui.trackerWarn.ok3") + '</li>' +
-          '</ul>' +
-        '</div>' +
-        '<div class="kta-tracker-warn-section kta-tracker-warn-section-bad">' +
-          '<div class="kta-tracker-warn-section-titre">' + window.I18n.t("ui.trackerWarn.badTitle") + '</div>' +
-          '<ul>' +
-            '<li>' + window.I18n.t("ui.trackerWarn.bad1") + '</li>' +
-            '<li>' + window.I18n.t("ui.trackerWarn.bad2") + '</li>' +
-            '<li>' + window.I18n.t("ui.trackerWarn.bad3") + '</li>' +
-          '</ul>' +
-        '</div>' +
-        '<p class="kta-tracker-warn-note">' +
-          window.I18n.t("ui.trackerWarn.note") +
-        '</p>' +
+        '<p>' + window.I18n.t("ui.trackerWarn.permission") + '</p>' +
+        '<p class="kta-tracker-warn-note">' + window.I18n.t("ui.trackerWarn.limites") + '</p>' +
       '</div>' +
       '<div class="kta-tracker-warn-actions">' +
         '<button class="kta-btn kta-btn-ghost"   id="kta-tracker-warn-cancel" type="button">' + window.I18n.t("ui.btn.cancel") + '</button>' +
@@ -2381,6 +2362,9 @@ function initInterface() {
             _setGroupeModeActif("tracker", true, null);
             isTracking = true;
           };
+          // 🔄 v1.76.4 (2e décision KARMA) — la modale est DE RETOUR mais
+          // allégée : autorisation capteurs + avertissement d'une ligne.
+          // Toujours montrée une fois par session d'app (acknowledged).
           if (_trackerWarningAcknowledged) {
             _doStart();
           } else {

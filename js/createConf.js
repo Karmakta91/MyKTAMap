@@ -211,13 +211,14 @@ function afficherPlanner() {
             <input class="kta-cfg-input" id="pl_author" type="text" placeholder="${window.I18n.t("gen.infos.auteurPlaceholder")}">
           </div>
 
-          <!-- Dimensions auto-détectées depuis l'image principale -->
+          <!-- Dimensions auto-détectées : les inputs hidden restent ici (lus
+               partout), mais le DISPLAY visuel 📐 a déménagé dans la section
+               « Image principale » (v1.76.1, retour KARMA) : en mode assistant,
+               il vivait sur la page « Informations » alors que l'upload est
+               sur la page « Images » — l'utilisateur ne voyait jamais les
+               dimensions ni leurs warnings au moment du chargement. -->
           <input type="hidden" id="pl_width">
           <input type="hidden" id="pl_height">
-          <div class="kta-planner-dim-display" id="pl_dimensions_display">
-            <span class="kta-planner-dim-icon">📐</span>
-            <span class="kta-planner-dim-text">${window.I18n.t("gen.infos.dimAttente")}</span>
-          </div>
 
           <!-- Multi-niveau (depuis v148) : opt-in pour les carrieres multi-etages.
                Si coche, ajoute plan.multiLevel:true dans plan-config.json. -->
@@ -237,18 +238,9 @@ function afficherPlanner() {
                L.imageOverlay par niveau avec swap on zoomend (Option B).
                Reduction memoire massive vs V1 (qui charge l'image entiere
                en RAM) — utile pour les gros plans > 50 Mo. -->
-          <!-- 🧙 v1.72.1 (KARMA « piège ! ») : wrap TOUJOURS visible — avant,
-               il n'apparaissait qu'une fois l'image chargée, donc en wizard on
-               pouvait quitter la page Image sans jamais avoir VU l'option V2. -->
-          <div id="pl_v2_convert_wrap" style="margin-top:10px;">
-            <label class="kta-planner-tiling-v2-row" id="pl_v2_convert_label" title="${window.I18n.t("gen.v2.rowTitle")}">
-              <input type="checkbox" id="pl_tilingV2">
-              <span>
-                <strong>${window.I18n.t("gen.v2.label")}</strong>
-                <em>${window.I18n.t("gen.v2.hint")}</em>
-              </span>
-            </label>
-          </div>
+          <!-- 🧱 Le bloc V2 (pl_v2_convert_wrap) a déménagé dans la section
+               « Image principale » (v1.76.1, même logique que le display 📐 :
+               l'option concerne l'image, elle vit à côté de l'image). -->
 
           <!-- 🆕 v1.9.3-B1d.γ : inclure les photos attachées (IDB) dans le ZIP
                plan. Visible uniquement en mode "Modifier" (les photos sont
@@ -300,6 +292,32 @@ function afficherPlanner() {
               <input type="file" id="pl_collision" accept="image/*" style="display:none">
               <span class="kta-planner-upload-nom" id="pl_collision_nom">${window.I18n.t("gen.upload.aucunFichier")}</span>
             </div>
+          </div>
+
+          <!-- 📐 v1.76.1 (retour KARMA) : le display des dimensions vivait
+               dans « Informations du plan » — en mode assistant, c'est une
+               AUTRE page que l'upload : on chargeait l'image sans jamais voir
+               les dimensions ni leurs warnings (>10 000 px, >30 Mo, refus
+               32 767). Désormais il vit ici, sous l'upload, hors du bloc
+               conditionnel upload/vierge pour rester visible dans les deux
+               modes image. -->
+          <div class="kta-planner-dim-display" id="pl_dimensions_display">
+            <span class="kta-planner-dim-icon">📐</span>
+            <span class="kta-planner-dim-text">${window.I18n.t("gen.infos.dimAttente")}</span>
+          </div>
+
+          <!-- 🧱 v1.76.1 : le bloc V2 déménage aussi (même logique — l'option
+               concerne l'image principale). 🧙 v1.72.1 (KARMA « piège ! ») :
+               wrap TOUJOURS visible pour que l'assistant le montre même avant
+               le chargement de l'image. -->
+          <div id="pl_v2_convert_wrap" style="margin-top:10px;">
+            <label class="kta-planner-tiling-v2-row" id="pl_v2_convert_label" title="${window.I18n.t("gen.v2.rowTitle")}">
+              <input type="checkbox" id="pl_tilingV2">
+              <span>
+                <strong>${window.I18n.t("gen.v2.label")}</strong>
+                <em>${window.I18n.t("gen.v2.hint")}</em>
+              </span>
+            </label>
           </div>
 
           <!-- 🆕 BLOC VIERGE (caché par défaut, généré dynamiquement) -->
@@ -716,6 +734,16 @@ function afficherPlanner() {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     _lireImageDimensions(file).then(function(dims) {
+      // 🐛 v1.76.1 — refus FRANC au-delà de la limite physique des décodeurs
+      // (Chrome/Skia : 32 767 px par côté). Avant, on échouait plus loin avec
+      // un « non décodable » cryptique (PC) ou un crash mémoire (mobile).
+      if (dims.width > MAX_COTE_IMAGE_PX || dims.height > MAX_COTE_IMAGE_PX) {
+        _plannerErreur(window.I18n.t("gen.err.imageTropGrande",
+          { nom: file.name, w: dims.width, h: dims.height, max: MAX_COTE_IMAGE_PX }));
+        try { e.target.value = ""; } catch(err2) {}
+        _appliquerDimensions(null, null, file.size);
+        return;
+      }
       _appliquerDimensions(dims.width, dims.height, file.size);
     }).catch(function(err) {
       console.warn("[Planner] Échec lecture dimensions :", err);
@@ -2507,6 +2535,8 @@ function _afficherErreurV2(titre, message) {
             '<li>' + window.I18n.t("gen.v2err.consPC") + '</li>' +
             '<li>' + window.I18n.t("gen.v2err.consReduire") + '</li>' +
             '<li>' + window.I18n.t("gen.v2err.consJpeg") + '</li>' +
+            // 🖼️ v1.76.1 — limite physique des décodeurs (cf. refus au drop)
+            '<li>' + window.I18n.t("gen.v2err.consLimite32k") + '</li>' +
           '</ul>' +
         '</div>' +
       '</div>' +
@@ -2596,25 +2626,106 @@ function _lireFichier(file) {
 // =========================
 // AUTO-DÉTECTION DIMENSIONS DU PLAN (depuis l'image principale)
 // =========================
-// Lit la largeur/hauteur naturelles d'une image File via blob URL + Image.
-// Plus léger que decodeImage() : pas de décompression complète, juste le header.
+// 🐛 v1.76.1 (bug KARMA : JPG 32K×32K « non décodable » sur PC) — l'ancienne
+// méthode (blob URL + Image + onload) prétendait « lire juste le header » :
+// FAUX. `onload` exige un décodage complet, et le décodeur de Chrome desktop
+// (Skia) refuse toute image dont un côté dépasse 32 767 px → onerror sec,
+// impossible de seulement CONNAÎTRE les dimensions. Mobile passait (décodeur
+// différent) puis crashait au tuilage — un 32K×32K = 1 gigapixel décodé.
+//
+// Nouvelle stratégie : lire les dimensions dans les OCTETS DE L'EN-TÊTE
+// (PNG / JPEG / WebP / GIF) — zéro décodage, aucune limite navigateur, on
+// peut ensuite REFUSER l'infaisable avec un message honnête au lieu d'un
+// « non décodable » cryptique. Fallback : décodage Image pour les formats
+// non parsés (BMP, AVIF…).
+
+// Parse binaire des dimensions. Rend {width, height} ou null (format inconnu
+// ou en-tête introuvable). Lit au plus 1 Mo (les marqueurs JPEG utiles
+// peuvent être après un gros bloc EXIF).
+function _lireDimensionsEntete(buf) {
+  const b = new DataView(buf);
+  const len = b.byteLength;
+  if (len < 26) return null;
+  // ---- PNG : signature 8 octets puis chunk IHDR (w/h en big-endian) ----
+  if (b.getUint32(0) === 0x89504E47) {
+    return { width: b.getUint32(16), height: b.getUint32(20) };
+  }
+  // ---- GIF : "GIF8" puis w/h en little-endian ----
+  if (b.getUint32(0) === 0x47494638) {
+    return { width: b.getUint16(6, true), height: b.getUint16(8, true) };
+  }
+  // ---- WebP : RIFF....WEBP puis chunk VP8 / VP8L / VP8X ----
+  if (b.getUint32(0) === 0x52494646 && b.getUint32(8) === 0x57454250) {
+    const fourcc = b.getUint32(12);
+    if (fourcc === 0x56503858) {          // VP8X : w-1 / h-1 sur 24 bits LE
+      return { width:  1 + (b.getUint8(24) | (b.getUint8(25) << 8) | (b.getUint8(26) << 16)),
+               height: 1 + (b.getUint8(27) | (b.getUint8(28) << 8) | (b.getUint8(29) << 16)) };
+    }
+    if (fourcc === 0x56503820) {          // "VP8 " lossy : dims 14 bits LE
+      return { width: b.getUint16(26, true) & 0x3FFF, height: b.getUint16(28, true) & 0x3FFF };
+    }
+    if (fourcc === 0x5650384C) {          // VP8L lossless : dims 14 bits packés
+      const bits = b.getUint32(21, true);
+      return { width: 1 + (bits & 0x3FFF), height: 1 + ((bits >> 14) & 0x3FFF) };
+    }
+    return null;
+  }
+  // ---- JPEG : marche des marqueurs jusqu'au SOF (C0-CF sauf C4/C8/CC) ----
+  if (b.getUint16(0) === 0xFFD8) {
+    let pos = 2;
+    while (pos + 9 < len) {
+      if (b.getUint8(pos) !== 0xFF) { pos++; continue; }   // padding toléré
+      const marker = b.getUint8(pos + 1);
+      if (marker === 0xFF) { pos++; continue; }
+      if (marker >= 0xC0 && marker <= 0xCF && marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC) {
+        // SOFn : [len:2][précision:1][height:2][width:2]
+        return { width: b.getUint16(pos + 7), height: b.getUint16(pos + 5) };
+      }
+      if (marker === 0xD8 || (marker >= 0xD0 && marker <= 0xD9)) { pos += 2; continue; }  // sans payload
+      pos += 2 + b.getUint16(pos + 2);    // saute le segment (longueur incluse)
+    }
+    return null;
+  }
+  return null;
+}
+
+// 🔁 v1.76.2 — exposé : l'éditeur de données (tableEditor > Convertir la
+// résolution) lit les dimensions des images source/destination par le même
+// parseur, sans décodage (une image 32K passe).
+window.ktaLireDimensionsEntete = _lireDimensionsEntete;
+
 function _lireImageDimensions(file) {
-  return new Promise(function(resolve, reject) {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = function() {
-      const w = img.naturalWidth, h = img.naturalHeight;
-      URL.revokeObjectURL(url);
-      if (w > 0 && h > 0) resolve({ width: w, height: h });
-      else reject(new Error("Dimensions naturelles 0 — image invalide"));
-    };
-    img.onerror = function() {
-      URL.revokeObjectURL(url);
-      reject(new Error(window.I18n.t("gen.err.imageNonDecodable", { nom: file.name })));
-    };
-    img.src = url;
+  // Étape 1 : en-tête binaire (1 Mo suffit, même avec un gros EXIF)
+  return file.slice(0, 1048576).arrayBuffer().then(function(buf) {
+    const dims = _lireDimensionsEntete(buf);
+    if (dims && dims.width > 0 && dims.height > 0) {
+      console.log("[Planner] Dimensions lues dans l'en-tête (sans décodage) :", dims.width + "×" + dims.height);
+      return dims;
+    }
+    // Étape 2 : fallback décodage navigateur (formats non parsés)
+    return new Promise(function(resolve, reject) {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = function() {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        URL.revokeObjectURL(url);
+        if (w > 0 && h > 0) resolve({ width: w, height: h });
+        else reject(new Error("Dimensions naturelles 0 — image invalide"));
+      };
+      img.onerror = function() {
+        URL.revokeObjectURL(url);
+        reject(new Error(window.I18n.t("gen.err.imageNonDecodable", { nom: file.name })));
+      };
+      img.src = url;
+    });
   });
 }
+
+// Limite PHYSIQUE des navigateurs : le décodeur de Chrome desktop (Skia)
+// refuse un côté > 32 767 px — au-delà, RIEN ne peut fonctionner (ni aperçu,
+// ni tuilage), quel que soit l'appareil de l'auteur OU DU LECTEUR du plan.
+// Refus franc, pas de clamp (règle KARMA).
+const MAX_COTE_IMAGE_PX = 32767;
 
 // Bouton 🎯 Recentrer : force pl_startX/Y au centre du plan en se basant sur
 // les dimensions actuelles. Si dims inconnues (pas d'image chargée), affiche

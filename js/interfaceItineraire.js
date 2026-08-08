@@ -792,6 +792,35 @@ window._onTrackerRecale = function(x, y, source) {
   if (_replanTimer) clearTimeout(_replanTimer);
   _replanTimer = setTimeout(function() {
     _replanTimer = null;
+    // 🆕 v1.76.2 (demande KARMA) — DEMANDER avant de recalculer : sur les
+    // grands plans, le Dijkstra peut prendre plusieurs dizaines de secondes,
+    // parfois pour rien (simple recalage sans besoin de nouvel itinéraire).
+    // Sûr ici : ce hook n'est déclenché QUE par un geste utilisateur (clic
+    // en mode recalage, « 📍 Je suis ici », portail) — jamais par le tracker
+    // automatique. EXCEPTION : dernière étape tout juste validée (restantes
+    // = 0) → replan direct, c'est la CLÔTURE de l'itinéraire (toast
+    // « terminé » + effacement du tracé, quasi instantané) — la soumettre à
+    // confirmation laisserait un itinéraire fini ouvert pour toujours.
+    const roadNow = _roadItineraireActive();
+    const restantes = roadNow && Array.isArray(roadNow.waypoints)
+      ? roadNow.waypoints.filter(function(w) { return !w.done && w.source !== "tracker"; }).length
+      : 0;
+    if (restantes > 0) {
+      // Confirm CHARTÉ (ktaConfirm, utils.js) — retour KARMA : le confirm()
+      // natif jurait avec la charte graphique. Repli natif si utils absent.
+      const demander = (typeof window.ktaConfirm === "function")
+        ? window.ktaConfirm(window.I18n.t("iti.replan.confirm"), {
+            titre: window.I18n.t("iti.replan.confirmTitre"),
+            okLabel: window.I18n.t("iti.replan.confirmOk"),
+            cancelLabel: window.I18n.t("iti.replan.confirmNon")
+          })
+        : Promise.resolve(confirm(window.I18n.t("iti.replan.confirm")));
+      demander.then(function(ok) {
+        if (!ok) { _toastIti(window.I18n.t("iti.replan.skipped"), "info"); return; }
+        _replanifierDepuis(x, y);
+      });
+      return;
+    }
     _replanifierDepuis(x, y);
   }, 500);
 };

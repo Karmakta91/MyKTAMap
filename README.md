@@ -12,9 +12,15 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.76.0` (05/08/2026)
+## 📦 Version courante — `v1.76.4` (08/08/2026)
 
-> 🎨 **Le lot Légende, de bout en bout.** ① **Changer la couleur des types built-in** (tracés, zones, structures) depuis ≡ Légende → ✏️ Modifier — appliquée PARTOUT (carte, exports PNG/PDF, KMZ, pastilles, stats, rapport) parce qu'elle est branchée au point de passage unique : `js/styleResolver.js`, nouvelle **source de vérité des styles** qui a remplacé ~25 tables recopiées dans 12 fichiers ② **Le round-trip légende fonctionne** : un calque de données exporté emporte la définition de ses types custom, le générateur la lit (conflit : l'existant du plan gagne) ③ **Audit complet du module** : 23 constats, tous clos — dont 3 pertes de données (export fine qui supprimait les customs, gpxIO qui écrasait les types, fuite de légende inter-plans) ④ **5 nouveaux garde-fous pré-commit bloquants** (canon, résolveur, KML, round-trip, repeinture).
+> 🌍 **v1.76.4 — L'overlay KMZ des grands plans n'est plus tronqué** : Google Earth ampute en silence les textures > ~8-16 K px — l'export réduit désormais l'image automatiquement (**plan V2 : recomposée depuis la pyramide de tuiles**, niveau ≤ 4 096 px, l'image géante n'est jamais décodée ; non-V2 : downscale canvas ; irréductible : `ktaConfirm` explicite). + finitions bibliothèque Mode Dev : README dégonflé (`<details>` → sections), fallback PWA `index.html` démasqué (un 200 qui ment), images same-origin reconstituées (whitelist chemins relatifs), course i18n au boot corrigée (abonnement `onChange`).
+>
+> 🛠️ **v1.76.3 — Mode Développeur + confirmation d'itinéraire** : section Debug du HOME refondue en Mode Développeur (gate mdp SHA-256 + lockout, avertissement légal, logs unifiés — le select debugMode des Réglages carte est retiré) avec **📚 bibliothèque des 22 docs du repo** (fetch same-origin, rendu mdParser, navigation liste→doc façon Aide, garde-fou manifest n°13). Recaler sa position avec un itinéraire actif **demande confirmation** avant le Dijkstra (long sur grands plans) via **`ktaConfirm`**, nouveau confirm charté générique (dette D-confirm consignée). + encart « privilégier le géoref » dans la bannière de cohérence, fix chevauchement footer/widget OSM.
+>
+> 🔁 **v1.76.2 — Convertisseur de résolution/recalage** (Éditeur de données) : migrer les fichiers de données d'un scan A vers un scan B — homothétie par résolutions (📷 lues dans les en-têtes), recalage par 1-2 repères de correspondance (2 repères = échelle+rotation déduites, maths du géoref en pixel→pixel), multi-fichiers, garde-fou 24 cas. + 2 fixes UI (modale invisible : classe CSS fantôme ; labels a11y).
+>
+> 🧭 **Le train v1.76 sort en v1.76.1** (la v1.76.0 n'a été servie que sur dev). Par-dessus le lot Légende de v1.76.0 : ① **bordure indépendante du fond** (zones + piliers/mur, customs éditables à chaud « iso » built-in) ② **liaison par id technique** — le bandeau ⚠️ orphelins gagne un bouton « ➕ Lier » qui raccroche un type brut (« Bas ») à une entrée de légende ③ **audit indépendant** : 7 causes racines dont la légende plan-level MORTE depuis son introduction (24/05, plan.customLegend jamais lu) et une perte de données (session « couleurs seules » effacée) ④ **Estimer le point B** du géoref depuis A + échelle + Nord calibré ⑤ échelle enfin **persistée per-plan** ⑥ générateur : dimensions lues dans l'**en-tête binaire** (fin du « non décodable » 32K) + refus franc >32 767 px ⑦ audit i18n (dette données quasi nulle, filet +1 143 clés couvertes) ⑧ 2 nouveaux garde-fous (estimation géoref, parseur d'en-têtes) → **11 bloquants au pre-commit**.
 >
 > Versions précédentes `v1.75.x` (03/08) : import SIG · fond d'écran du HOME · récupération de ZIP · smartNav complet · correctif Blob IDB du fond d'écran.
 >
@@ -451,7 +457,47 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.76.0 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.76.4 → v1.26)
+
+#### v1.76.4 (08/08/2026) — overlay KMZ des grands plans, finitions bibliothèque
+
+- 🌍 **Overlay KMZ tronqué** (bug KARMA : « le plan est au bon endroit MAIS il en manque une grosse partie ») : l'export était innocent (blob brut) mais complice par silence — **Google Earth tronque sans message au-delà de sa limite de texture GPU** (~8-16 K px). Fix `_reduireImagePourGoogleEarth` : plan **V2 → recomposition depuis la pyramide** (z le plus fin ≤ 4 096 px, tuile manquante = trou, lazy + serveur gérés, l'image géante jamais décodée) ; non-V2 ≤ 16 384 → downscale canvas ; irréductible → `ktaConfirm` « exporter quand même ? » + conseil V2. Détection par le parseur d'en-têtes, try/catch global (au pire : export inchangé). Cohérent avec les 3 constats terrain : Vue OSM parfaite (tuiles), petit plan parfait (sous la limite).
+- 📚 **Bibliothèque Mode Dev, 3 fixes** : README dégonflé (32 `<details><summary>` → sections `###`, pseudo-tags `<planId>` préservés, testé sur les 4 docs racine) · **fallback PWA démasqué** — un `.md` absent de la racine web renvoyait `index.html` en 200, affiché tel quel ; désormais détecté et expliqué (README.md doit être FTP-é à la racine) · **images same-origin reconstituées** (marqueur inerte à travers l'échappement du parseur, whitelist chemins relatifs stricts, URL externes bloquées — l'overview.svg s'affiche).
+- 🐛 **Course i18n au boot** : la section Mode Dev se rendait parfois avant l'arrivée du dico (clés brutes affichées + warns) — abonnement `I18n.onChange`, re-rendu à l'arrivée du dico et au changement de langue. Éclaire rétrospectivement les warns `home.profile.*` du 06/08.
+
+
+
+#### v1.76.3 (08/08/2026) — Mode Développeur, confirmation d'itinéraire
+
+- 🛠️ **Mode Développeur** (`js/devMode.js`, topo KARMA) : la section Debug du ⚙️ Configuration HOME devient un mode protégé — **mdp à la 1re activation** (hash SHA-256 fourni par KARMA, 5 essais + lockout 60 s, déverrouillage persisté), avertissement de responsabilité. Contenu : toggle logs détaillés (le select des Réglages carte est **retiré**, décision 2:b), 📋 buffer de logs, et **📚 bibliothèque** : les 22 `.md` du repo rendus par `kta_renderMd`, navigation **liste→doc** façon Aide (la v1 2-colonnes cassait — leçon : ne pas réinventer le squelette des modales). Garde-fou n°13 `check-devmode-docs` : chemins du manifest existants + aucun `.md` d'architecture oublié + hash au format.
+- 🧭 **Confirmation de replanification** : le recalage avec itinéraire actif demande avant de lancer le Dijkstra (30 s sur grands plans, parfois pour rien). Boutons explicites « Recalculer / Garder l'itinéraire » via **`ktaConfirm`** — premier confirm **charté** de l'app (Promise, Échap/overlay=annuler ; dette D-confirm : migrer les 10+ `confirm()` natifs au fil de l'eau). Exception : dernière étape validée = clôture directe.
+- 🎯 Bannière cohérence échelle↔géoref : encart « **privilégier la valeur du géoref** » (suite à la 1re prise réelle — l'échelle du plan de KARMA était fausse de 26 %).
+- 🐛 Fix : le footer du HOME chevauchait la barre Tiles du widget OSM (min-height en vh excédant la place du grid, overflow visible).
+
+
+
+#### v1.76.2 (07/08/2026) — convertisseur de résolution/recalage
+
+- 🔁 **Migrer les données d'une carrière entre deux scans** (topo KARMA) : carte « Convertir la résolution » dans l'accueil de l'**Éditeur de données** → modale autonome. Phase 1 : homothétie par résolutions (saisie ou 📷 en-têtes binaires, images géantes OK), multi-fichiers `.json`, re-téléchargés `_conv.json`. Phase 2 (retour terrain « échelle bonne mais décalé ») : **repère de correspondance** `xA,yA → xB,yB` qui cloue la transformation + rotation optionnelle ; **2 repères** = échelle uniforme et rotation **déduites** (maths du géoref pixel→pixel). Une seule matrice affine sous le capot, garde-fou 24 cas (ancres exactes, θ=90° sur les 2 axes, M·M⁻¹=identité, dégénérés refusés).
+- 🐛 Modale invisible (classe CSS inexistante `kta-readme-modal`) + labels associés à leurs inputs (a11y). 2ᵉ bug de la semaine que seul un navigateur voyait → le smoke Playwright monte en priorité post-release.
+- ✅ Première prise réelle de la **bannière de cohérence échelle↔géoref** : 26 % d'écart détecté chez KARMA — c'était l'échelle du plan qui était fausse. Le contrôle par redondance fonctionne.
+
+
+
+#### v1.76.1 (06/08/2026) — le train v1.76 complet : bordures, liaison, audits, géoref
+
+> ⚠️ La **v1.76.0 n'a jamais été déployée en prod** (dev uniquement, checkups M1-M3) — le train sort en v1.76.1, cache PWA repurgé.
+
+- 🎨 **Bordure indépendante du fond** (zones, piliers/mur) : deux carrés dans l'éditeur, bloc « Bordure personnalisée » dans la dialog ➕, map `borders` séparée de `colors` (rétro-compat), le noir des structures devient un défaut, plus un verrou. Entrées custom éditables à chaud comme les built-in.
+- 🧷 **Liaison par id technique** : le bandeau ⚠️ orphelins liste tout type non built-in (plus seulement `cust-`) et gagne « ➕ Lier » — dialog pré-remplie avec l'id EXACT du type, catégorie verrouillée. Garde anti-doublon de label.
+- 🔍 **Audit indépendant** (7 causes racines) : légende plan-level **morte depuis son introduction** (`loadPlanState` lisait la racine, les producteurs écrivent `plan.customLegend`) · `addCustomEntry` ne repeignait pas · légende restaurée APRÈS le rendu des objets · session « couleurs seules » **effacée** par l'auto-save · fuite Générateur→session · dédup intra-plan · anti-doublon Lier.
+- 🧭 **Estimer le point B** (géoref) depuis A + échelle + `northOffsetDeg` : B virtuel au coin le plus éloigné, format standard + `estimated:true`, refus francs, badge ≈ dans Réglages ET Générateur. Garde-fou `check-georef-estimation` (18 cas).
+- 🎯 **Échelle enfin persistée** (per-plan, pattern northOffsetDeg) — elle n'avait JAMAIS été sauvegardée ; piège de timing évité (`buildAppConfigFromPlan` tourne avant que l'id du plan soit posé).
+- 🖼️ **Générateur** : dimensions lues dans l'en-tête binaire (PNG/GIF/WebP/JPEG avec marche des marqueurs) — fin du « Image non décodable » sur les 32K ; refus explicite > 32 767 px (limite Chrome/Skia) + conseil dans la modale d'erreur V2 ; display 📐 et case V2 déménagés sur la page Images de l'assistant.
+- 🌍 **Audit i18n** (agent indépendant) : données quasi saines (parité 4691×3, 0 placeholder cassé, 16/16 traductions réelles) ; corrections `_meta` es + 2 clés fr en anglais ; `check-i18n` étendu (alias préfixants, ternaires, clés-variables, alias t/T, es en parité stricte) : 2 381 → 3 524 clés sous filet.
+- 🧹 Divers : en-tête de l'Audit réseau dégraissé (pavé historique déménagé en bas) · `docs/MATHS.md` (doc pédagogique des maths du projet) · gitignore checklists non ancré.
+
+
 
 **🎨 v1.76.0 (05/08/2026)** — le lot Légende : couleur des types, source de vérité unique des styles, round-trip, audit vidé :
 - **`js/styleResolver.js` — source de vérité UNIQUE des 13 types built-in.** Avant lui, les couleurs étaient recopiées à la main dans **~25 tables sur 12 fichiers** (`utils.js` en portait 3 copies, `exporter.js` jusqu'à 4) — c'est ainsi qu'une zone **inaccessible** venant d'un calque sortait en **gris remblais** dans l'export PNG (l'entrée manquait, le repli masquait l'oubli — même défaut déjà corrigé sur `jonction` en v1.7.1, reproduit à l'identique). Migration en 4 vagues (carte → exports image → KMZ → légende/stats/rapport) : **0 table restante**, hors 2 variantes délibérées documentées (`emergencyMode`, `osmView`). API : `ktaResolveStyle(cat, clé, {flat})` (l'aplat de repli remplace le motif SVG dans les contextes qui ne savent pas le peindre), `ktaSwatchColor` (couleur représentative pour pastilles/camemberts), `ktaTypeSwatchHtml` / `ktaLabelAvecPastille` (les émojis 🟩🟥🟡 de la sidebar et des formulaires étaient des **glyphes à couleur figée** — remplacés par des pastilles résolues live). ⚠️ La vague 1 a révélé que le canon initial portait **3 valeurs fausses** (relevées sur les tables d'export au lieu du rendu carte : `weight` KML ≠ `weight` Leaflet, aplat ≠ motif) — d'où l'élargissement du contrôle aux valeurs numériques.

@@ -513,10 +513,68 @@ function renderBannerCoherenceEchelle(planId, opts) {
           t("utils.scaleCoherence.hintCheck") + ' ' +
           t("utils.scaleCoherence.hintTrust") +
         '</p>' +
+        // 💡 v1.76.2 (demande KARMA après sa première prise réelle de la
+        // bannière) : quelle valeur croire — le géoref bien fait gagne.
+        '<p class="kta-scale-coherence-hint" style="border-left:3px solid #f4c542; padding-left:8px; margin-top:6px;">' +
+          '💡 ' + t("utils.scaleCoherence.hintPreferGeoref") +
+        '</p>' +
       '</div>' +
     '</div>';
 }
 window.renderBannerCoherenceEchelle = renderBannerCoherenceEchelle;
+
+// =========================
+// 🪟 v1.76.2 — CONFIRM CHARTÉ (remplaçant du confirm() natif)
+// =========================
+// Retour KARMA : « la popup n'est pas au style habituel / charte graphique ».
+// Le confirm() natif est utilisé dans 10+ fichiers — ce helper est le point
+// de migration progressive (nouveaux usages ICI, les anciens migreront au
+// fil de l'eau, dette notée au BACKLOG).
+// Promesse : ktaConfirm(message, opts) → Promise<boolean>.
+//   opts = { titre, okLabel, cancelLabel } (défauts i18n ui.confirm.*)
+// Charte : mêmes classes que les modales existantes (readme-modal), boutons
+// kta-btn, overlay clic = annuler, Échap = annuler. z-index 100002
+// (au-dessus des sous-modales 100001).
+window.ktaConfirm = function(message, opts) {
+  opts = opts || {};
+  return new Promise(function(resolve) {
+    const t = function(k, fallback) {
+      return (window.I18n && window.I18n.t) ? window.I18n.t(k) : fallback;
+    };
+    const ov = document.createElement("div");
+    ov.className = "kta-readme-modal-overlay";
+    ov.style.zIndex = "100002";
+    ov.innerHTML = '' +
+      '<div class="kta-readme-modal-boite" style="max-width:430px; height:auto; max-height:80vh;">' +
+        '<div class="kta-readme-modal-entete">' +
+          '<span class="kta-readme-modal-titre">' + (opts.titre || t("ui.confirm.title", "Confirmation")) + '</span>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps" style="font-size:13px;">' +
+          '<p style="white-space:pre-line; line-height:1.55; margin:0 0 14px; color:#c8d0e0;">' + message + '</p>' +
+          '<div class="kta-conv-actions">' +
+            '<button class="kta-btn kta-btn-ghost"   id="kta-confirm-non">' + (opts.cancelLabel || t("ui.confirm.cancel", "Annuler")) + '</button>' +
+            '<button class="kta-btn kta-btn-primary" id="kta-confirm-oui">' + (opts.okLabel || t("ui.confirm.ok", "OK")) + '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(ov);
+    let resolu = false;
+    const finir = function(val) {
+      if (resolu) return;
+      resolu = true;
+      document.removeEventListener("keydown", surTouche);
+      ov.remove();
+      resolve(val);
+    };
+    const surTouche = function(e) { if (e.key === "Escape") finir(false); };
+    document.addEventListener("keydown", surTouche);
+    ov.querySelector("#kta-confirm-oui").addEventListener("click", function() { finir(true); });
+    ov.querySelector("#kta-confirm-non").addEventListener("click", function() { finir(false); });
+    ov.addEventListener("click", function(e) { if (e.target === ov) finir(false); });
+    // focus sur OK : Entrée valide, comme le confirm natif
+    setTimeout(function() { try { ov.querySelector("#kta-confirm-oui").focus(); } catch(e) {} }, 30);
+  });
+};
 
 // Helper : attache les listeners click sur les boutons "📋 Copier" rendus
 // par renderBannerCoherenceEchelle. Idempotent (peut être appelé plusieurs

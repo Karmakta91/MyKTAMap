@@ -946,6 +946,14 @@
         });
       }
 
+      // 🛠️ v1.76.3 — la section Debug est devenue le MODE DÉVELOPPEUR
+      // (gate mdp + logs + 📚 bibliothèque docs) : peuplée par devMode.js.
+      // (loaderShowLogsBtn/loaderDebugBtn n'existent plus dans le DOM — les
+      // binds ci-dessus restent if-guardés, inoffensifs.)
+      if (window.DevMode && typeof window.DevMode.initSection === "function") {
+        window.DevMode.initSection();
+      }
+
       // 🆕 v1.19.0 — 📊 Inspecteur mémoire. Ouvre la modale de topo lisible
       // (localStorage / IndexedDB / Cache PWA / Storage estimate / Runtime).
       // Module js/memInspector.js chargé tôt (juste après networkAudit).

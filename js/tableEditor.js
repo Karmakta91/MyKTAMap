@@ -369,6 +369,17 @@
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.fusionHint")}</span>
               </span>
             </button>
+            <!-- 🔁 v1.76.2 (demande KARMA) : la conversion de résolution est
+                 AUSSI une carte de cet accueil — clic → import JSON classique,
+                 puis la dialog de conversion s'ouvre toute seule sur le
+                 tableau (flag _resolAutoOpen consommé à l'ouverture). -->
+            <button class="kta-tbl-source-card" id="kta-tbl-src-resol">
+              <span class="kta-tbl-source-ico">🔁</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.resol")}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.resolHint")}</span>
+              </span>
+            </button>
           </div>
           <input type="file" id="kta-tbl-zip-input" accept=".zip,application/zip" style="display:none;">
         </div>
@@ -382,6 +393,9 @@
     modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
     if (planDispo) document.getElementById("kta-tbl-src-plan").addEventListener("click", _listerDatalayersPlanCourant);
     document.getElementById("kta-tbl-src-json").addEventListener("click", _afficherImport);
+    // 🔁 v1.76.2 — même flux d'import que JSON, mais la dialog de conversion
+    // s'ouvrira automatiquement une fois le tableau affiché.
+    document.getElementById("kta-tbl-src-resol").addEventListener("click", _ouvrirConvertResolution);
     // 🔗 v1.69.0 — délègue au fusionneur existant (onglet « Fusion » de la
     // modale d'export de session), ouvert en mode solo comme depuis le HOME.
     document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
@@ -1447,4 +1461,311 @@
     alert(window.I18n.t("tabledit.save.sessionOk", { n: _data.length }));
   }
 
+  // =========================
+  // 🔁 CONVERTIR LA RÉSOLUTION (v1.76.2 — phases 1+2, topo KARMA « migrer
+  // les données d'une carrière d'un scan A vers un scan B »)
+  // =========================
+  // Phase 1 : homothétie (résolutions source/destination).
+  // Phase 2 (retour terrain KARMA : « échelle bonne mais décalé, les origines
+  // diffèrent ») : RECALAGE par correspondance — « POINT A sur plan X =
+  // POINT B sur plan Y » + rotation optionnelle (décalage du Nord entre les
+  // deux plans). Avec DEUX paires, échelle et rotation sont DÉDUITES (mêmes
+  // maths que le géoref 2 points, en pixel→pixel — cf. docs/MATHS.md §4).
+  //
+  // Tout passe par UNE transformation affine M = {a,b,c,d,e,f} :
+  //   x' = a·x + b·y + e ;  y' = c·x + d·y + f
+  // Les trois modes ne sont que trois façons de la remplir.
+
+  // Matrice de la phase 1 : homothétie pure.
+  function _matriceHomothetie(kX, kY) {
+    return { a: kX, b: 0, c: 0, d: kY, e: 0, f: 0 };
+  }
+
+  // Matrice « 1 paire » : échelle des résolutions + rotation θ (degrés,
+  // HORAIRE à l'écran — même sens visuel que northOffsetDeg), le tout CLOUÉ
+  // sur la paire de correspondance : ancreA tombe exactement sur ancreB.
+  // En repère image (y vers le bas), la matrice [cos −sin ; sin cos] tourne
+  // dans le sens horaire visuel — vérifié par le garde-fou sur les 2 axes.
+  function _matriceRecalage(kX, kY, thetaDeg, ancreA, ancreB) {
+    if (!ancreA || !ancreB) return null;
+    const t = ((Number(thetaDeg) || 0) * Math.PI) / 180;
+    const co = Math.cos(t), si = Math.sin(t);
+    const a = kX * co, b = -kY * si, c = kX * si, d = kY * co;
+    return { a: a, b: b, c: c, d: d,
+             e: ancreB.x - (a * ancreA.x + b * ancreA.y),
+             f: ancreB.y - (c * ancreA.x + d * ancreA.y) };
+  }
+
+  // Matrice « 2 paires » : échelle UNIFORME et rotation déduites des deux
+  // vecteurs A1→A2 et B1→B2, translation clouée sur la paire 1. Rend null si
+  // une base est trop courte (< 10 px : transformation dégénérée, refus).
+  function _matriceDeuxPaires(A1, B1, A2, B2) {
+    const dxA = A2.x - A1.x, dyA = A2.y - A1.y;
+    const dxB = B2.x - B1.x, dyB = B2.y - B1.y;
+    const lenA = Math.hypot(dxA, dyA), lenB = Math.hypot(dxB, dyB);
+    if (lenA < 10 || lenB < 10) return null;
+    const s = lenB / lenA;
+    const theta = Math.atan2(dyB, dxB) - Math.atan2(dyA, dxA);
+    const co = Math.cos(theta), si = Math.sin(theta);
+    const a = s * co, b = -s * si, c = s * si, d = s * co;
+    return { a: a, b: b, c: c, d: d,
+             e: B1.x - (a * A1.x + b * A1.y),
+             f: B1.y - (c * A1.x + d * A1.y),
+             _s: s, _thetaDeg: theta * 180 / Math.PI };
+  }
+
+  // Fonction PURE (extraite par le garde-fou check-resolution-convert) :
+  // applique la matrice affine M à tous les champs coordonnées connus de
+  // l'objet fichier (cf. docs/architecture/data-formats.md). Compte par tableau.
+  function _transformerCoordsFichier(obj, M) {
+    const compte = {};
+    if (!obj || typeof obj !== "object" || !M) return compte;
+    const r2 = function(v) { return Math.round(v * 100) / 100; };  // centipixel : assez fin, JSON propre
+    const pt = function(p) {
+      if (p && typeof p.x === "number" && typeof p.y === "number") {
+        const x = p.x, y = p.y;
+        p.x = r2(M.a * x + M.b * y + M.e);
+        p.y = r2(M.c * x + M.d * y + M.f);
+        return 1;
+      }
+      return 0;
+    };
+    // Points « plats » (x/y au premier niveau de chaque ligne)
+    ["data", "editorPoints"].forEach(function(k) {
+      if (!Array.isArray(obj[k])) return;
+      compte[k] = obj[k].reduce(function(n, row) { return n + pt(row); }, 0);
+    });
+    // Géométries (points: [{x,y}…])
+    ["roads", "zones", "structures"].forEach(function(k) {
+      if (!Array.isArray(obj[k])) return;
+      compte[k] = 0;
+      obj[k].forEach(function(g) {
+        if (g && Array.isArray(g.points)) compte[k] += g.points.reduce(function(n, p) { return n + pt(p); }, 0);
+      });
+    });
+    // Mesures — DEUX formes selon la source : calque `{points:[…]}`,
+    // session `[…]` (tableau direct). measureSurface : tableau direct.
+    ["measure", "measureSurface"].forEach(function(k) {
+      const m = obj[k];
+      if (!m) return;
+      const arr = Array.isArray(m) ? m : (Array.isArray(m.points) ? m.points : null);
+      if (arr) compte[k] = arr.reduce(function(n, p) { return n + pt(p); }, 0);
+    });
+    return compte;
+  }
+
+  function _ouvrirConvertResolution() {
+    const w0 = (window.APP_CONFIG && window.APP_CONFIG.imageWidth)  || "";
+    const h0 = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || "";
+    const sub = document.createElement("div");
+    // ⚠️ kta-readme-modal-overlay, PAS "kta-readme-modal" (classe inexistante
+    // → modale invisible, bug du 07/08).
+    sub.className = "kta-readme-modal-overlay";
+    sub.style.zIndex = "100001";
+    const champRes = function(id, w, h, hint) {
+      return `<div class="kta-planner-grille" style="margin:4px 0 2px;">
+          <label class="kta-cfg-label" for="${id}_w">${window.I18n.t("tabledit.resol.largeur")}</label>
+          <input class="kta-cfg-input" id="${id}_w" type="number" min="1" step="1" value="${w}">
+          <label class="kta-cfg-label" for="${id}_h">${window.I18n.t("tabledit.resol.hauteur")}</label>
+          <input class="kta-cfg-input" id="${id}_h" type="number" min="1" step="1" value="${h}">
+        </div>
+        <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:2px 0 8px; display:inline-block;">📷 ${window.I18n.t("tabledit.resol.depuisImage")}
+          <input type="file" id="${id}_img" accept="image/*" style="display:none;">
+        </label>
+        <span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>`;
+    };
+    // Paire de correspondance : xA,yA (plan source) → xB,yB (plan destination)
+    const champPaire = function(id, titre, hint) {
+      return `<div class="kta-cfg-label" style="margin-top:8px;">${titre}</div>
+        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin:4px 0 2px;">
+          <input class="kta-cfg-input" id="${id}_xa" type="number" step="any" placeholder="xA">
+          <input class="kta-cfg-input" id="${id}_ya" type="number" step="any" placeholder="yA">
+          <input class="kta-cfg-input" id="${id}_xb" type="number" step="any" placeholder="xB">
+          <input class="kta-cfg-input" id="${id}_yb" type="number" step="any" placeholder="yB">
+        </div>
+        <span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${hint}</span>`;
+    };
+    sub.innerHTML = `
+      <div class="kta-readme-modal-boite" style="max-width:500px; height:auto; max-height:90vh;">
+        <div class="kta-readme-modal-entete">
+          <span class="kta-readme-modal-titre">🔁 ${window.I18n.t("tabledit.resol.titre")}</span>
+          <button class="kta-panneau-close" id="kta-tbl-resol-close">✕</button>
+        </div>
+        <div class="kta-readme-modal-corps" style="font-size:13px;">
+          <p style="color:#8892a4; margin:0 0 8px; line-height:1.5;">${window.I18n.t("tabledit.resol.intro")}</p>
+          <p style="color:#8892a4; margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${window.I18n.t("tabledit.resol.nonTransforme")}</p>
+          <div class="kta-cfg-label" style="font-weight:600;">${window.I18n.t("tabledit.resol.source")}</div>
+          ${champRes("kta-tbl-resol-src", "", "", window.I18n.t("tabledit.resol.sourceHint"))}
+          <div class="kta-cfg-label" style="font-weight:600; margin-top:10px;">${window.I18n.t("tabledit.resol.dest")}</div>
+          ${champRes("kta-tbl-resol-dst", w0, h0, window.I18n.t("tabledit.resol.destHint"))}
+
+          <div class="kta-cfg-label" style="font-weight:600; margin-top:12px;">🎯 ${window.I18n.t("tabledit.resol.recalTitre")}</div>
+          <p style="color:#8892a4; margin:2px 0 4px; line-height:1.45; font-size:11.5px;">${window.I18n.t("tabledit.resol.recalIntro")}</p>
+          ${champPaire("kta-tbl-resol-p1", window.I18n.t("tabledit.resol.paire1"), window.I18n.t("tabledit.resol.paireHint"))}
+          <div class="kta-planner-grille" style="margin:8px 0 2px;">
+            <label class="kta-cfg-label" for="kta-tbl-resol-theta">${window.I18n.t("tabledit.resol.rotation")}</label>
+            <input class="kta-cfg-input" id="kta-tbl-resol-theta" type="number" step="any" value="0">
+          </div>
+          <span class="kta-planner-hint" style="font-size:11px; color:#8892a4;">${window.I18n.t("tabledit.resol.rotationHint")}</span>
+          ${champPaire("kta-tbl-resol-p2", window.I18n.t("tabledit.resol.paire2"), window.I18n.t("tabledit.resol.paire2Hint"))}
+
+          <div class="kta-cfg-label" style="font-weight:600; margin-top:12px;">${window.I18n.t("tabledit.resol.fichiers")}</div>
+          <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:4px 0; display:inline-block;">📄 ${window.I18n.t("tabledit.resol.choisirFichiers")}
+            <input type="file" id="kta-tbl-resol-files" accept=".json,application/json" multiple style="display:none;">
+          </label>
+          <div id="kta-tbl-resol-files-liste" style="font-size:12px; color:#c8d0e0; margin:2px 0 6px;">${window.I18n.t("tabledit.resol.aucunFichier")}</div>
+          <div id="kta-tbl-resol-recap" style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; margin-top:6px; font-family:'Courier New',monospace; font-size:12px; min-height:36px;">—</div>
+          <div id="kta-tbl-resol-warn" style="display:none; border:1px solid rgba(255,120,80,0.5); background:rgba(255,120,80,0.08); border-radius:6px; padding:8px 10px; margin-top:8px; font-size:12px;"></div>
+          <div class="kta-conv-actions" style="margin-top:12px;">
+            <button class="kta-btn kta-btn-ghost"   id="kta-tbl-resol-annuler">${window.I18n.t("tabledit.editor.annuler")}</button>
+            <button class="kta-btn kta-btn-primary" id="kta-tbl-resol-go" disabled>${window.I18n.t("tabledit.resol.appliquer")}</button>
+          </div>
+        </div>
+      </div>`;
+    document.documentElement.appendChild(sub);
+    const $ = function(id) { return document.getElementById(id); };
+    const fermer = function() { sub.remove(); };
+    $("kta-tbl-resol-close").addEventListener("click", fermer);
+    $("kta-tbl-resol-annuler").addEventListener("click", fermer);
+    sub.addEventListener("click", function(e) { if (e.target === sub) fermer(); });
+
+    // 📷 dimensions depuis une image — parseur d'en-têtes binaire (32K ok)
+    ["src", "dst"].forEach(function(cote) {
+      $("kta-tbl-resol-" + cote + "_img").addEventListener("change", function(e) {
+        const f = e.target.files && e.target.files[0];
+        if (!f || typeof window.ktaLireDimensionsEntete !== "function") return;
+        f.slice(0, 1048576).arrayBuffer().then(function(buf) {
+          const dm = window.ktaLireDimensionsEntete(buf);
+          if (dm && dm.width > 0) {
+            $("kta-tbl-resol-" + cote + "_w").value = dm.width;
+            $("kta-tbl-resol-" + cote + "_h").value = dm.height;
+            recap();
+          } else {
+            alert(window.I18n.t("tabledit.resol.errImage", { nom: f.name }));
+          }
+        });
+      });
+    });
+
+    // 📄 fichiers de données (un ou plusieurs .json)
+    let fichiers = [];
+    $("kta-tbl-resol-files").addEventListener("change", function(e) {
+      fichiers = Array.prototype.slice.call(e.target.files || []);
+      $("kta-tbl-resol-files-liste").textContent = fichiers.length
+        ? fichiers.map(function(f) { return f.name; }).join(" · ")
+        : window.I18n.t("tabledit.resol.aucunFichier");
+      recap();
+    });
+
+    function lireRes() {
+      const v = function(id) { const x = parseInt($(id).value, 10); return (Number.isFinite(x) && x > 0) ? x : null; };
+      return { wA: v("kta-tbl-resol-src_w"), hA: v("kta-tbl-resol-src_h"),
+               wB: v("kta-tbl-resol-dst_w"), hB: v("kta-tbl-resol-dst_h") };
+    }
+    // Une paire : null = vide, {invalid:true} = partielle (refus), sinon {A,B}
+    function lirePaire(id) {
+      const v = function(sfx) { const x = parseFloat($(id + "_" + sfx).value); return Number.isFinite(x) ? x : null; };
+      const xa = v("xa"), ya = v("ya"), xb = v("xb"), yb = v("yb");
+      const remplis = [xa, ya, xb, yb].filter(function(x) { return x !== null; }).length;
+      if (remplis === 0) return null;
+      if (remplis < 4) return { invalid: true };
+      return { A: { x: xa, y: ya }, B: { x: xb, y: yb } };
+    }
+
+    // Construit la matrice selon le mode. Rend { M, mode, warn } ou { err }.
+    function construireMatrice() {
+      const r = lireRes();
+      const p1 = lirePaire("kta-tbl-resol-p1");
+      const p2 = lirePaire("kta-tbl-resol-p2");
+      if ((p1 && p1.invalid) || (p2 && p2.invalid)) return { err: window.I18n.t("tabledit.resol.errPaire") };
+      if (p2 && !p1) return { err: window.I18n.t("tabledit.resol.errPaire2Seule") };
+      if (p1 && p2) {
+        // Mode 2 paires : tout est déduit. Résolutions = contre-contrôle.
+        const M = _matriceDeuxPaires(p1.A, p1.B, p2.A, p2.B);
+        if (!M) return { err: window.I18n.t("tabledit.resol.errDegenere") };
+        let warn = null;
+        if (r.wA && r.wB) {
+          const kRes = r.wB / r.wA;
+          const ecart = Math.abs(M._s - kRes) / Math.max(M._s, kRes);
+          if (ecart > 0.02) warn = window.I18n.t("tabledit.resol.warnEchelle2p", { deduit: M._s.toFixed(4), res: kRes.toFixed(4) });
+        }
+        return { M: M, mode: "2p", warn: warn };
+      }
+      if (!r.wA || !r.hA || !r.wB || !r.hB) return { err: null };   // pas encore prêt (pas une erreur à afficher)
+      const kX = r.wB / r.wA, kY = r.hB / r.hA;
+      let warn = null;
+      const ecartAspect = Math.abs(kX - kY) / Math.max(kX, kY);
+      if (ecartAspect > 0.02) warn = window.I18n.t("tabledit.resol.warnAspect", { pct: (ecartAspect * 100).toFixed(1) });
+      if (p1) {
+        const theta = parseFloat($("kta-tbl-resol-theta").value) || 0;
+        return { M: _matriceRecalage(kX, kY, theta, p1.A, p1.B), mode: "1p", warn: warn, kX: kX, kY: kY, theta: theta };
+      }
+      return { M: _matriceHomothetie(kX, kY), mode: "homo", warn: warn, kX: kX, kY: kY };
+    }
+
+    function recap() {
+      const recapEl = $("kta-tbl-resol-recap"), warnEl = $("kta-tbl-resol-warn"), go = $("kta-tbl-resol-go");
+      const res = construireMatrice();
+      warnEl.style.display = "none";
+      if (res.err !== undefined && res.err !== null) {
+        recapEl.textContent = "—";
+        warnEl.style.display = ""; warnEl.innerHTML = "⚠️ " + res.err;
+        go.disabled = true; return;
+      }
+      if (!res.M) { recapEl.textContent = "—"; go.disabled = true; return; }
+      let html = "";
+      if (res.mode === "homo") {
+        html = window.I18n.t("tabledit.resol.modeHomo") + "<br>kX = <strong>" + res.kX.toFixed(4) + "</strong> · kY = <strong>" + res.kY.toFixed(4) + "</strong>";
+      } else if (res.mode === "1p") {
+        html = window.I18n.t("tabledit.resol.mode1p") + "<br>kX = <strong>" + res.kX.toFixed(4) + "</strong> · kY = <strong>" + res.kY.toFixed(4) + "</strong> · θ = <strong>" + res.theta + "°</strong>";
+      } else {
+        html = window.I18n.t("tabledit.resol.mode2p") + "<br>échelle = <strong>" + res.M._s.toFixed(4) + "</strong> · θ = <strong>" + res.M._thetaDeg.toFixed(2) + "°</strong>";
+      }
+      if (fichiers.length) html += "<br>" + window.I18n.t("tabledit.resol.nbFichiers", { n: fichiers.length });
+      recapEl.innerHTML = html;
+      if (res.warn) { warnEl.style.display = ""; warnEl.innerHTML = "⚠️ " + res.warn; }
+      go.disabled = !fichiers.length;
+    }
+    ["src_w", "src_h", "dst_w", "dst_h", "theta",
+     "p1_xa", "p1_ya", "p1_xb", "p1_yb", "p2_xa", "p2_ya", "p2_xb", "p2_yb"].forEach(function(sfx) {
+      const el = $("kta-tbl-resol-" + sfx);
+      if (el) el.addEventListener("input", recap);
+    });
+    recap();
+
+    // Conversion : chaque fichier est lu, transformé, retéléchargé
+    // « <nom>_conv.json ». Un fichier illisible n'interrompt PAS le lot.
+    $("kta-tbl-resol-go").addEventListener("click", function() {
+      const res = construireMatrice();
+      if (!res.M || !fichiers.length) return;   // refus, pas de clamp
+      const bilans = [], echecs = [];
+      let restants = fichiers.length;
+      fichiers.forEach(function(f) {
+        f.text().then(function(txt) {
+          const obj = JSON.parse(txt);
+          const compte = _transformerCoordsFichier(obj, res.M);
+          const total = Object.keys(compte).reduce(function(acc, k) { return acc + compte[k]; }, 0);
+          if (!total) { echecs.push(f.name + " (" + window.I18n.t("tabledit.resol.aucuneCoord") + ")"); return; }
+          const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = f.name.replace(/\.json$/i, "") + "_conv.json";
+          a.click();
+          setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
+          bilans.push(f.name + " → " + total);
+        }).catch(function() {
+          echecs.push(f.name + " (" + window.I18n.t("tabledit.resol.errLecture") + ")");
+        }).finally(function() {
+          restants--;
+          if (restants === 0) {
+            let msg = window.I18n.t("tabledit.resol.okMulti", { ok: bilans.length, detail: bilans.join("\n") || "—" });
+            if (echecs.length) msg += "\n\n⚠️ " + window.I18n.t("tabledit.resol.echecs", { n: echecs.length }) + "\n" + echecs.join("\n");
+            alert(msg);
+            if (bilans.length) fermer();
+          }
+        });
+      });
+    });
+  }
 })();

@@ -68,3 +68,23 @@ node scripts/check-legend-roundtrip.js || exit $?
 # Fonction extraite du code REEL de config.js ; a attrape Number(null)=0 des
 # son premier run (un A a lat nulle serait parti a l'equateur). BLOQUANT.
 node scripts/check-georef-estimation.js || exit $?
+
+# 🖼️ v1.76.1 — Parseur binaire de dimensions d'images du Generateur (bug JPG
+# 32Kx32K « non decodable » : Chrome/Skia refuse un cote > 32767 px, on lit
+# l'en-tete sans decoder). Fixtures synthetiques PNG/GIF/WebP/JPEG. BLOQUANT.
+node scripts/check-image-header-dims.js || exit $?
+
+# 🔁 v1.76.2 — Convertisseur de resolution de l'editeur de donnees (migration
+# des donnees d'une carriere entre deux scans). Le champ coordonnee OUBLIE est
+# le bug classique : chaque tableau du format est eprouve + aller-retour. BLOQUANT.
+node scripts/check-resolution-convert.js || exit $?
+
+# 🛠️ v1.76.3 — Manifest de la bibliotheque de docs du Mode Developpeur :
+# chaque chemin liste existe, chaque .md d'architecture est liste, hash mdp
+# au format SHA-256. BLOQUANT.
+node scripts/check-devmode-docs.js || exit $?
+
+# 🗼 v1.76.4 — Geometrie du superoverlay KMZ (tuiles V2 -> GroundOverlays
+# Region/Lod) : pavage exact, jointures, bords bornes a l'emprise, coherence
+# inter-niveaux, Lod/drawOrder, non-regression image unique. BLOQUANT.
+node scripts/check-kmz-superoverlay.js || exit $?

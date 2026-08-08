@@ -485,7 +485,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 2. **🚀 Mode Performance ULTRA (tracés / markers)** — 7 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling, limite dézoom mobile). **Réglage PAR PLAN** : cocher ULTRA sur un plan n'affecte plus les autres — chaque plan repart désactivé tant que tu ne coches pas pour lui. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
 
-3. **🛠️ Debug** — toggle **🐛 Logs détaillés** (verbose mode) **+ bouton 📋 Afficher les logs** qui ouvre directement la modale buffer des logs capturés. Utile pour consulter les logs sans avoir à charger un plan d'abord (ex : si tu cherches à diagnostiquer un bug bloquant au chargement).
+3. **🛠️ Mode Développeur** *(depuis v1.76.3)* — remplace l'ancienne section Debug. Protégé par **mot de passe** à la première activation (avec avertissement de responsabilité). Une fois actif : toggle **🐛 Logs détaillés**, bouton **📋 Afficher les logs** (le buffer, consultable même sans plan chargé), et **📚 Documentation technique** — toute la doc du projet (architecture, backlog, maths…) lisible dans l'app (en ligne uniquement). Le réglage logs des ⚙️ Réglages en mode carte a été retiré : tout se pilote ici.
 
 4. **🔒 Confidentialité & Audit** — section dédiée à la transparence : journal réseau live, doc « Que fait l'app sur le réseau ? », et toggle « Mode hors-ligne strict ». Voir section dédiée plus bas.
 
@@ -892,7 +892,7 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 
 **🧭 Itinéraire inter-plan** : demande un itinéraire vers un point **d'un autre plan** relié par un portail — depuis la modale **Itinéraire** (bouton « 🌐 Destination sur un autre plan ») ou la **recherche multi-plans** (bouton 🧭 sur un résultat distant). L'app compare les portails disponibles au **coût réel**, affiche le trajet en étapes (« ① Rejoindre 🌀 Puits nord — 450 m · ② Traverser · ③ Rejoindre la salle — 300 m · Total ≈ 750 m ») et **trace le trajet sur ton plan**. Les évitements (zones, points, tags) de **chaque plan** sont respectés. Si c'est impossible (aucun portail, plan hors-ligne, destination isolée du réseau…), un message t'explique **précisément pourquoi**.
 
-**🚶 Le trajet suit ton rythme** : le bouton du résumé s'appelle « **🗺️ C'est parti** » — il ne te téléporte plus. Tu **marches** ton trajet (avec la validation d'étapes « 📍 Je suis ici » et la replanification au recalage), et la traversée se propose quand tu es **au portail** : bouton flottant « **🌀 Portail suivant (X m)** » (fermable — « 📍 Je suis ici » sur le point-portail le fait réapparaître), ou bouton ➜ du popup du point-portail. À chaque traversée, la suite se trace automatiquement de l'autre côté, jusqu'à destination.
+**🚶 Le trajet suit ton rythme** : le bouton du résumé s'appelle « **🗺️ C'est parti** » — il ne te téléporte plus. Tu **marches** ton trajet (avec la validation d'étapes « 📍 Je suis ici » et la replanification au recalage — **depuis v1.76.3 l'app demande confirmation** avant de recalculer, le calcul pouvant être long sur les grands plans), et la traversée se propose quand tu es **au portail** : bouton flottant « **🌀 Portail suivant (X m)** » (fermable — « 📍 Je suis ici » sur le point-portail le fait réapparaître), ou bouton ➜ du popup du point-portail. À chaque traversée, la suite se trace automatiquement de l'autre côté, jusqu'à destination.
 
 **🧭 Tes étapes d'abord** : pose tes **points de passage** dans la modale Itinéraire (curiosité X, Y…) puis choisis la destination distante — le trajet passe par **toutes tes étapes dans l'ordre, avant le portail**.
 
@@ -956,12 +956,12 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 Ouvre **≡ Légende** (groupe 📚 Aide / Doc / Légende) puis **✏️ Modifier**. Pour chaque type de tracé, zone ou structure :
 
 - **Renommer** : tape ton libellé (ex. « Principal » → « Grande galerie »). Il s'affiche partout : légende, popups, stats, filtres.
-- **🎨 Changer la couleur** *(depuis v1.76.0)* : un carré de couleur par ligne. La couleur choisie s'applique **partout** — carte, exports image/PDF, KMZ, statistiques, rapport de session — immédiatement, sans recharger. Un bouton **↺** apparaît pour revenir à la couleur d'origine. Détails de comportement : une zone recolorée dérive sa bordure automatiquement (version plus foncée), un pilier/mur garde son **contour noir** (c'est la signature des structures), et la zone *Inaccessible* recolorée perd ses hachures (motif fixe) au profit d'un aplat.
+- **🎨 Changer la couleur** *(depuis v1.76.1)* : un carré de couleur par ligne — et pour les **zones et piliers/murs, deux carrés** : fond et **bordure indépendante**. La couleur s'applique **partout** — carte, exports image/PDF, KMZ, statistiques, rapport de session — immédiatement, sans recharger. Un bouton **↺** remet fond ET bordure d'origine. Détails : sans bordure choisie, une zone la dérive automatiquement (version plus foncée) et un pilier/mur garde son contour noir (le défaut historique) ; la zone *Inaccessible* recolorée perd ses hachures (motif fixe) au profit d'un aplat. Les **entrées personnalisées** se modifient de la même façon, à chaud.
 - **👁️ Masquer** : la case retire l'entrée **de la boîte de légende uniquement** — rien ne disparaît de la carte. Pour masquer des objets de la carte, c'est le panneau **🔍 Filtres**.
 - **➕ Ajouter une entrée custom** : crée tes propres types (tracé, zone, structure, icône) avec leur couleur. Ils deviennent dessinables depuis la barre latérale, et une icône custom est proposée dans l'éditeur de point.
 - **🗑️ Supprimer un type custom** : si des objets dessinés l'utilisent encore, l'app te préviens avec le décompte avant de confirmer.
 
-> 🧳 **Ta légende voyage avec tes exports** *(depuis v1.76.0)* : un calque de données exporté emporte la définition des types qu'il utilise, et le générateur la récupère à l'import (ce qui existe déjà dans le plan garde la priorité). Le JSON de session et le ZIP Avancé l'emportent aussi.
+> 🧳 **Ta légende voyage avec tes exports** *(depuis v1.76.1)* : un calque de données exporté emporte la définition des types qu'il utilise, et le générateur la récupère à l'import (ce qui existe déjà dans le plan garde la priorité). Le JSON de session et le ZIP Avancé l'emportent aussi.
 >
 > ⚠️ **Bandeau « types orphelins »** : si des objets utilisent un type qui n'existe plus dans la légende (entrée supprimée, vieux calque), la modale ≡ Légende l'affiche en tête avec le compte — ces objets sortent en couleur de repli tant que tu n'as pas recréé ou réimporté l'entrée.
 
@@ -2748,7 +2748,7 @@ Au fur et à mesure que tu remplis les champs, un bloc **🌐 Aperçu coins** s'
 
 Pareil que le mode Image Avancé : cases parent + sous-cases pour un contrôle précis.
 
-- 🖼️ **Image plan** (GroundOverlay) + slider **Opacité 0-100%** (défaut 60%) — permet de voir la cartographie satellite/OSM sous ton plan dans Google Earth
+- 🖼️ **Image plan** (GroundOverlay) + slider **Opacité 0-100%** (défaut 60%) — permet de voir la cartographie satellite/OSM sous ton plan dans Google Earth. *(depuis v1.76.4)* Les images au-delà de ~8 000 px sont **automatiquement réduites** (Google Earth les tronquait en silence) — un plan tuilé V2 est recomposé depuis ses tuiles ; si la réduction est impossible, l'app te demande avant d'exporter.
 - 📍 **Points** + sous-cases par tag avec icônes et compteurs (session + data layers)
 - 🛣️ **Tracés** + sous-cases Principaux / Secondaires / Chemins
 - ⬛ **Zones** + sous-cases Eau / Remblais / Effondrement / Inaccessible
@@ -2799,6 +2799,7 @@ Appuyez sur **⬇️ → 📊 Éditeur de données du plan** (en mode carte) **o
 1. **🗺️ Plan en cours** — liste les calques de données du plan ouvert (puits, accès, tracés, zones…). Choisissez-en un à éditer.
 2. **📦 Importer un ZIP** — récupère la liste des calques de données d'un plan complet (`.zip`).
 3. **📄 Importer un fichier JSON** — un seul fichier de données ou de session (glisser-déposer).
+4. **🔁 Convertir la résolution** *(depuis v1.76.2)* — outil autonome pour **migrer tes données d'un ancien scan vers un nouveau scan du même plan**. Donne les deux résolutions (saisie ou 📷 auto-détection depuis les images — même géantes), un ou plusieurs fichiers `.json`, et récupère-les convertis. Si le nouveau scan n'a pas les mêmes marges : ajoute un **repère commun** aux deux plans (le même pilier lu sur chacun) — la conversion se cale exactement dessus, avec rotation optionnelle ; **deux repères** et l'échelle + la rotation sont déduites toutes seules. Ce qui n'est pas dans le fichier (liaisons inter-plans, géoref, échelle du plan) reste à refaire sur le nouveau plan.
 
 Si une source contient plusieurs jeux de données, un **sélecteur** s'affiche (chacun avec son nombre d'éléments). Le tableau s'ouvre ensuite avec une colonne par champ détecté.
 

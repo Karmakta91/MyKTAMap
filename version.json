@@ -1,8 +1,8 @@
 {
-  "version": "v1.76.0",
+  "version": "v1.76.4",
   "released": "2026-08-05",
   "notes": [
-    "🎨 Tu peux enfin changer la couleur des types de la légende (tracés, zones, structures) : ≡ Légende → ✏️ Modifier, un carré de couleur par ligne. La couleur choisie s'applique partout — carte, exports image, KMZ, statistiques — et un bouton ↺ la remet d'origine.",
-    "🧳 Ta légende voyage désormais avec tes exports : un calque de données réimporté dans le générateur retrouve tes types personnalisés (noms et couleurs), et la légende te prévient si des objets utilisent un type disparu."
+    "🌍 Export KMZ : l'image des grands plans n'est plus tronquée dans Google Earth — elle est adaptée automatiquement à sa limite d'affichage (plans tuilés : recomposée depuis les tuiles), et l'app te prévient clairement si ce n'est pas possible.",
+    "🛠️ Mode Développeur : la documentation technique s'affiche proprement (journal du projet déplié en sections, schéma d'architecture visible, message explicite si un document n'est pas déployé)."
   ]
 }
