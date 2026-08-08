@@ -3793,7 +3793,14 @@
   async function _reduireImagePourGoogleEarth(imageBlob, dims) {
     const CIBLE = 4096;
     const W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight;
-    const tiling = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.tiling;
+    // 🐛 v1.76.4-fix (KARMA : « message d'erreur alors que je suis déjà en
+    // V2 ») — le manifest tiling vit à PLAN_CONFIG.tiling (RACINE, comme le
+    // lit osmView ×3), pas sous .plan : ma lecture .plan.tiling rendait
+    // undefined → voie pyramide sautée → plan V2 déclaré « irréductible ».
+    // Le miroir exact du bug plan.customLegend (audit 06/08). Lecture des
+    // deux formes par prudence.
+    const tiling = (window.PLAN_CONFIG && window.PLAN_CONFIG.tiling) ||
+                   (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.tiling);
 
     // ---- Voie 1 : pyramide V2 ----
     if (tiling && tiling.version === 2) {
