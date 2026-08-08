@@ -4585,6 +4585,8 @@
   "ui.trace.principal": "Route principale",
   "ui.trace.secondaire": "Route secondaire",
   "ui.trace.valider": "Valider le tracé en cours",
+  "ui.trackerWarn.limites": "⚠️ La position estimée est approximative (dérive des capteurs) : recale-toi de temps en temps via 📍, et fie-toi d'abord au terrain.",
+  "ui.trackerWarn.permission": "Le tracker utilise les capteurs de mouvement du téléphone — une autorisation d'accès peut t'être demandée juste après.",
   "ui.trackerWarn.bad1": "Te localiser réellement (utilise un fil d'Ariane physique)",
   "ui.trackerWarn.bad2": "Tracer un itinéraire fiable",
   "ui.trackerWarn.bad3": "Retrouver ton chemin en cas de perte (utilise ⛑️ Je suis perdu)",

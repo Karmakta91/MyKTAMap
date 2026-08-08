@@ -4585,6 +4585,8 @@
   "ui.trace.principal": "Main road",
   "ui.trace.secondaire": "Secondary road",
   "ui.trace.valider": "Confirm the current path",
+  "ui.trackerWarn.limites": "⚠️ The estimated position is approximate (sensor drift): realign from time to time via 📍, and trust the terrain first.",
+  "ui.trackerWarn.permission": "The tracker uses the phone's motion sensors — an access permission may be requested right after.",
   "ui.trackerWarn.bad1": "Actually locating yourself (use a physical guide line)",
   "ui.trackerWarn.bad2": "Tracing a reliable route",
   "ui.trackerWarn.bad3": "Finding your way if you get lost (use ⛑️ I'm lost)",

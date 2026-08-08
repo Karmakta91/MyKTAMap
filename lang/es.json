@@ -4585,6 +4585,8 @@
   "ui.trace.principal": "Ruta principal",
   "ui.trace.secondaire": "Ruta secundaria",
   "ui.trace.valider": "Validar el trazado en curso",
+  "ui.trackerWarn.limites": "⚠️ La posición estimada es aproximada (deriva de los sensores): reajústate de vez en cuando con 📍 y confía primero en el terreno.",
+  "ui.trackerWarn.permission": "El tracker usa los sensores de movimiento del teléfono — puede pedirse una autorización de acceso justo después.",
   "ui.trackerWarn.bad1": "Localizarte realmente (usa un hilo de Ariadna físico)",
   "ui.trackerWarn.bad2": "Trazar una ruta fiable",
   "ui.trackerWarn.bad3": "Reencontrar tu camino en caso de pérdida (usa ⛑️ Estoy perdido)",
