@@ -4886,9 +4886,20 @@ body.kta-theme-light .splash-license-detail-pro {
        place restante du grid sur une fenêtre peu haute : le content
        (overflow: visible depuis v1.40.22, pour les popups) débordait de sa
        colonne et le footer, peint après dans le flux, passait par-dessus.
-       Le flex remplit déjà la colonne sur grand écran ; on garde juste le
-       plancher historique 260px — plus aucun minimum en vh qui force. */
-    min-height: 260px;
+       Le flex remplit déjà la colonne sur grand écran ; on garde juste un
+       plancher — plus aucun minimum en vh qui force.
+       📐 v1.76.5 (KARMA : « tout doit tenir dans l'écran, je ne veux pas
+       scroller pour voir le footer ») : minima COMPACTÉS — 260→200 ici,
+       carte 220→160, marge de box 14→6 — ~120 px d'incompressible en moins.
+       Sur grand écran rien ne change (le flex remplit) ; la fenêtre doit
+       être vraiment courte pour que le scroll honnête réapparaisse. */
+    min-height: 200px;
+  }
+  .loader-col-osm .kta-osm-home-map {
+    min-height: 160px;
+  }
+  .loader-col-osm .kta-osm-home-box {
+    margin-bottom: 6px;
   }
 
   /* 🆕 v1.40.1 — Si l'user n'a pas opt-in OSM, la colonne OSM est masquée
@@ -21292,7 +21303,7 @@ html.kta-theme-light .kta-osm-multi-cat.active { color: #1a1f2e; }
 /* 🔽 v1.71.0 — Footer HOME repliable (flèche classique, état persisté) */
 .kta-footer-toggle {
   display: block;
-  margin: 8px auto 0;
+  margin: 4px auto 0;   /* 📐 v1.76.5 : 8→4, le footer doit tenir dans l'écran (KARMA) */
   padding: 3px 18px;
   font-size: 11px;
   color: #8892a4;
