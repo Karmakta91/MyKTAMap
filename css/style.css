@@ -21800,3 +21800,13 @@ html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
   /* 4) Drop-zone ZIP : padding vertical dégonflé (~20px). */
   .zip-drop-zone { padding: 14px 16px; }
 }
+
+/* 📐 v1.76.5 (suite — retour KARMA : « quelques pixels en trop font
+   apparaître la barre de scroll ») : 2e rabotage sur les leviers restants
+   de l'audit, ~38px. Même contrainte : bloc en FIN de fichier. */
+@media (min-width: 1024px) {
+  #planLoaderBox { padding-top: 16px; }                          /* 24→16 : ~8px */
+  .loader-header { margin-bottom: 14px; padding-bottom: 10px; }  /* 22+16→14+10 : ~14px */
+  .loader-tools-head { margin-top: 8px; }                        /* 16→8 : ~8px */
+  .loaderActions { margin-top: 8px; }                            /* 16→8 : ~8px */
+}
