@@ -3931,6 +3931,10 @@
     // Image plan (Blob) + nom de fichier — résolu via RUNTIME_ASSETS si dispo
     let imageBlob = null;
     let imageFilename = null;
+    // 🐛 v1.76.4-fix (KARMA : « tilesOverlay is not defined ») — declare ICI,
+    // au niveau de imageBlob : la version precedente le declarait DANS le
+    // bloc if(inclImage) alors que le call-site genererKmz le lit apres.
+    let tilesOverlay = null;   // 🗼 superoverlay V2 (ou null)
     const inclImage = document.getElementById("kmz_inc_image")?.checked;
     if (inclImage && window.PLAN_CONFIG?.plan?.baseImage) {
       const baseImagePath = window.PLAN_CONFIG.plan.baseImage;
@@ -3962,7 +3966,6 @@
       //     (niveau réduit : le plan entier, jamais l'image géante à décoder) ;
       //   - plan non-V2 décodable → downscale canvas ;
       //   - indécodable (≥ 32 767, limite Skia) → on le DIT et on demande.
-      let tilesOverlay = null;   // 🗼 superoverlay V2 (prioritaire sur l'image unique)
       if (imageBlob && typeof window.ktaLireDimensionsEntete === "function") {
         try {
           const _dims = window.ktaLireDimensionsEntete(await imageBlob.slice(0, 1048576).arrayBuffer());

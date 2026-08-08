@@ -12557,9 +12557,13 @@ body.kta-refonte-v1 .kta-refonte-counter-summary .kta-refonte-counter-val {
   font-variant-numeric: tabular-nums;
 }
 
-/* Mobile portrait : un seul chip résumé visible.
-   Breakpoint 480px = phone portrait standard (iPhone SE/Mini, Android compact). */
-@media (max-width: 480px) {
+/* Mobile : un seul chip résumé visible.
+   Breakpoint 480px = phone portrait standard (iPhone SE/Mini, Android compact).
+   🐛 v1.76.4 (KARMA) : en PAYSAGE mobile, la largeur (740-900px) échappait au
+   480px → les 5 compteurs s'affichaient tous et poussaient Histoire/OSM/
+   Sortie hors du cadre. On ajoute le combo paysage bas (déjà utilisé
+   ailleurs dans ce fichier) : un téléphone couché reste un téléphone. */
+@media (max-width: 480px), (max-height: 500px) and (orientation: landscape) {
   body.kta-refonte-v1 #kta-refonte-counter-points,
   body.kta-refonte-v1 #kta-refonte-counter-roads,
   body.kta-refonte-v1 #kta-refonte-counter-zones,
