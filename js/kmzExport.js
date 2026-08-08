@@ -490,11 +490,19 @@
         // de plafond (max -1) — recettes standard des superoverlays.
         const lodMin = (lvl.z === zMinP) ? 0 : 128;
         const lodMax = (lvl.z === zMaxP) ? -1 : 512;
+        // 🐛 v1.76.4-fix (capture KARMA : « tuiles décalées », double image) —
+        // k=1 est la bande du BAS du plan (Leaflet CRS.Simple : lat = H − y,
+        // vérifié dans tiling.js ET _genererTuilesV2), pas du haut : la
+        // v1 plaçait chaque niveau à l'envers, et les rangées partielles
+        // décalaient les niveaux entre eux. Mapping bas-en-haut, en pixels
+        // NIVEAU convertis au natif, bornés à l'emprise.
+        const lvlH = Math.ceil(opts.imageH / scale);
+        const lvlW = Math.ceil(opts.imageW / scale);
         lvl.tiles.forEach(function(tu) {
           const x0 = tu.col * TO.tileSize * scale;
-          const y0 = (tu.k - 1) * TO.tileSize * scale;
-          const x1 = Math.min((tu.col + 1) * TO.tileSize * scale, opts.imageW);
-          const y1 = Math.min(tu.k * TO.tileSize * scale, opts.imageH);
+          const x1 = Math.min(Math.min(lvlW, (tu.col + 1) * TO.tileSize) * scale, opts.imageW);
+          const y1 = Math.min((lvlH - (tu.k - 1) * TO.tileSize) * scale, opts.imageH);   // bas de la tuile
+          const y0 = Math.max(0, (lvlH - tu.k * TO.tileSize)) * scale;                   // haut de la tuile
           const qTL = planToGps(t, x0, y0), qTR = planToGps(t, x1, y0);
           const qBR = planToGps(t, x1, y1), qBL = planToGps(t, x0, y1);
           const lats = [qTL.lat, qTR.lat, qBR.lat, qBL.lat];

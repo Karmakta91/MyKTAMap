@@ -74,6 +74,8 @@ while ((m = reQ.exec(kml)) !== null) {
 }
 t("5 quads extraits", quads.length === 5);
 
+// ⚠️ Orientation réelle (vérifiée dans tiling.js/_genererTuilesV2) :
+// k=1 = bande du BAS du plan, la tuile partielle est celle du HAUT (k=rows).
 // Le quad z-1 (plan entier) doit coïncider avec les coins du plan natif
 const pTL = KE.planToGps(T, 0, 0), pBR = KE.planToGps(T, 1024, 768);
 const q1 = quads[0];   // ordre d'émission : z-1 d'abord
@@ -90,14 +92,24 @@ const q00 = quads[1], q10 = quads[2];
 t("jointure horizontale exacte entre tuiles adjacentes",
   Math.abs(q00[1].lng - q10[0].lng) < eps && Math.abs(q00[2].lat - q10[3].lat) < eps);
 
-// Bord bas z0 : borné à l'emprise (pixel 768, PAS 1024 = padding)
-const q01 = quads[3];   // x0_y2
+// k=1 (bande du bas) : son bord bas = pixel 768 (bas du plan)
+const q00bas = quads[1];   // x0_y1
 const attenduBas = KE.planToGps(T, 0, 768);
-t("tuile de bord : bornée à l'emprise réelle (pas de padding)",
-  Math.abs(q01[0].lat - attenduBas.lat) < eps);
+t('tuile k=1 : bord bas = bas du plan (pixel 768)',
+  Math.abs(q00bas[0].lat - attenduBas.lat) < eps);
+// k=2 (tuile PARTIELLE du haut) : bornée au pixel 0, pas de dépassement négatif
+const q01 = quads[3];   // x0_y2
+const attenduHaut = KE.planToGps(T, 0, 0);
+t('tuile partielle du haut : bornée au pixel 0 (padding exclu)',
+  Math.abs(q01[3].lat - attenduHaut.lat) < eps);
+// jointure VERTICALE : haut de k=1 = bas de k=2 (pixel 256)
+const attenduJoint = KE.planToGps(T, 0, 256);
+t('jointure verticale exacte entre k=1 et k=2 (pixel 256)',
+  Math.abs(q00bas[3].lat - attenduJoint.lat) < eps && Math.abs(q01[0].lat - attenduJoint.lat) < eps);
 
-// Cohérence inter-niveaux : le coin BR de la pyramide z0 = coin BR de z-1
-const qBR0 = quads[4];   // x1_y2
+// Cohérence inter-niveaux : le coin BAS-droit du plan est sur la tuile k=1
+// (bande du bas) — x1_y1, PAS x1_y2 (qui est la tuile du haut).
+const qBR0 = quads[2];   // x1_y1
 t("les niveaux couvrent la même emprise (BR z0 = BR z-1)",
   Math.abs(qBR0[1].lat - q1[1].lat) < eps && Math.abs(qBR0[1].lng - q1[1].lng) < eps);
 

@@ -1898,6 +1898,8 @@
   "iti.wp.srcClick": "Clic carte",
   "iti.wp.srcSearch": "Point existant",
   "iti.wp.srcTracker": "Position tracker (snapshot)",
+  "kmz.gen.enCoursToast": "⏳ Génération du KMZ en cours — sur un grand plan (collecte des tuiles), ça peut prendre plusieurs secondes. Le téléchargement partira tout seul.",
+  "kmz.gen.enCours": "Génération du KMZ…",
   "kmz.geOverlay.exportAnnule": "Export KMZ annulé (image trop grande pour Google Earth).",
   "kmz.geOverlay.annuler": "Annuler l'export",
   "kmz.geOverlay.okQuandMeme": "Exporter quand même",

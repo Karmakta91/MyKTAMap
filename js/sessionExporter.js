@@ -3840,15 +3840,20 @@
         for (let col = 0; col < cols; col++) {
           let blob = await _blobTuile("data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + ext);
           if (!blob) continue;   // tuile manquante : trou plutôt qu'échec total
-          // Rognage des tuiles de BORD (padding noir au-delà de l'emprise)
+          // Rognage des tuiles de BORD (padding noir au-delà de l'emprise).
+          // ⚠️ Orientation VÉRIFIÉE dans _genererTuilesV2 : k=1 = bande du BAS
+          // du plan ; la tuile PARTIELLE est celle du HAUT (k = rows), son
+          // contenu est collé en BAS de l'image (destY = 512 − slice), padding
+          // noir AU-DESSUS → le crop vertical prend le bas (sy = TILE − utile).
+          // Horizontal : contenu à gauche, padding à droite → sx = 0.
           const utileW = Math.min(TILE, lvlW - col * TILE);
-          const utileH = Math.min(TILE, lvlH - (k - 1) * TILE);
+          const utileH = (lvlH - (k - 1) * TILE) - Math.max(0, lvlH - k * TILE);
           if (utileW < TILE || utileH < TILE) {
             try {
               const bmp = await createImageBitmap(blob);
               const cv = document.createElement("canvas");
               cv.width = utileW; cv.height = utileH;
-              cv.getContext("2d").drawImage(bmp, 0, 0);
+              cv.getContext("2d").drawImage(bmp, 0, TILE - utileH, utileW, utileH, 0, 0, utileW, utileH);
               bmp.close();
               const rognee = await new Promise(function(res) { cv.toBlob(res, "image/jpeg", 0.85); });
               cv.width = cv.height = 0;
@@ -3892,6 +3897,24 @@
   }
 
   async function _exportKmz() {
+    // 🐛 v1.76.4 (retour KARMA : « aucune info que la génération est en
+    // cours, l'user va recliquer ») — la collecte superoverlay d'un gros
+    // plan prend plusieurs secondes : bouton verrouillé + libellé d'attente
+    // + toast immédiat. try/finally : le bouton revit quoi qu'il arrive.
+    const btnDl = document.getElementById("kta-ses-download");
+    const btnTexteAvant = btnDl ? btnDl.textContent : null;
+    if (btnDl) { btnDl.disabled = true; btnDl.textContent = "⏳ " + window.I18n.t("kmz.gen.enCours"); }
+    if (window.OOMGuard && window.OOMGuard.showToast) {
+      window.OOMGuard.showToast(window.I18n.t("kmz.gen.enCoursToast"), "info");
+    }
+    try {
+      await _exportKmzInterne();
+    } finally {
+      if (btnDl) { btnDl.disabled = false; btnDl.textContent = btnTexteAvant; }
+    }
+  }
+
+  async function _exportKmzInterne() {
     if (!window.KmzExport) {
       alert(t("export.err.kmzModuleKo"));
       return;
