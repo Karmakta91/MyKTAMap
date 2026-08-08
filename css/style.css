@@ -4798,7 +4798,15 @@ body.kta-theme-light .splash-license-detail-pro {
      ne peuvent pas grandir car leur parent n'a pas de hauteur définie). */
   .loader-grid {
     flex: 1 1 auto;
-    min-height: 0;
+    /* 🐛 v1.76.5 (audit agent 08/08) — min-height:0 autorisait la GRID à
+       être comprimée sous le min-content de ses colonnes (la box étant
+       figée à 100dvh par align-items:stretch, l'espace manquant se prenait
+       ici) : la rangée auto, elle, ne descend jamais sous le min-content →
+       débordement par le bas sur le toggle/copyright, peints par-dessus.
+       min-content = la grid ne se comprime plus, le surplus POUSSE le
+       footer, la page scrolle honnêtement (le garde-fou structurel qui rend
+       le bug impossible même si un futur min-height en vh réapparaît). */
+    min-height: min-content;
     align-items: stretch;
   }
 
@@ -21242,8 +21250,12 @@ html.kta-theme-light .kta-osm-multi-cat.active { color: #1a1f2e; }
   .kta-loader-top-row .kta-loader-profile-avatar-wrap { width: 36px; height: 36px; }
   .kta-loader-top-row .kta-loader-profile-stats > * { padding: 3px 8px; font-size: 11px; }
   .kta-loader-top-row #resumeBox .loader-btn-resume { padding: 8px 22px; font-size: 13.5px; }
-  /* La hauteur gagnée va à la carte : 52 → 58vh */
-  .loader-col-osm .kta-osm-home-content { min-height: clamp(300px, 58vh, 700px); }
+  /* 🐛 v1.76.5 (audit agent 08/08) — la règle « 52 → 58vh » qui vivait ici
+     ÉCRASAIT (même spécificité, plus bas dans la cascade) le fix v1.76.2 de
+     la ligne ~4880 : min-height:260px était une déclaration MORTE, la vraie
+     valeur restait un clamp en vh qui excédait la place du grid → le widget
+     débordait sur le footer. Supprimée : le flex:1 remplit déjà la colonne
+     sur grand écran, un plancher en vh n'apportait rien de visible. */
 }
 
 /* 🎚️ v1.71.0 — modale ≡ enrichie : sections + chips libellés + tags */
