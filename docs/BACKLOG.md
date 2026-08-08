@@ -205,6 +205,7 @@ La liste « règles CSS mortes » de l'audit du 09/08 matin (consignée dans le 
 1. **`refonteInterface.js:850-863`** — la stat batterie de la status bar ne s'affiche **jamais** : l'id `kta-refonte-stat-battery` n'est créé nulle part (`if (stat)` toujours faux). Arbitrage : créer l'élément dans `_creerStatusBar`, ou supprimer le bloc + la clé i18n `ui.refonte.battery_unavailable_title` + les classes CSS associées.
 2. **`osmView.js:1944-1961`** — `_toast()` vise `kta-osm-modal` qui n'existe pas (le vrai id : `kta-osm-view-overlay`) : le toast contextuel de la modale OSM n'a jamais fonctionné, repli silencieux sur `showToast`. Corriger l'id ressuscite 17 lignes.
 3. **`osmHomePreview.js:1427`** — `_revokeTilesBlobUrls()` jamais appelé malgré son commentaire (« appelé au close() ») : **fuite RAM potentielle** de blob URLs de tuiles. Vérifier si la révocation existe ailleurs ; sinon la bonne action est de l'APPELER, pas de le supprimer. (Idem `_setOptedIn` `:246` — l'opt-in OSM home n'est jamais écrit par cette voie : par où passe-t-il ?)
+   ⚠️ **Post-mortem 09/08 : le « fix » n°3 était FAUX et a été RÉVOQUÉ en v1.76.5.** Il n'y avait pas de fuite : `_planDataCache` borne l'extraction à 1×/plan et le design v1.71.0 veut que les URLs vivent avec le cache (« re-ajout gratuit »). L'appel ajouté révoquait les URLs du plan A encore affiché au chargement d'un plan B (multi-plans cassé + cache empoisonné). La fonction et sa liste ont été SUPPRIMÉES ; les tuiles hi-res (v1.76.5) ont leur propre cycle de révocation. Leçon : « jamais appelé » ≠ « à appeler » — vérifier le design AVANT de brancher un cleanup.
 
 ### 🟢 Lot JS — ~265 lignes, suppression sûre (26 items, preuve grep « occurrence unique corpus complet » pour chacun)
 - `interface.js` (~105 l.) : `ouvrirPanneauAncre` (447-507), `_confirmerAction` (535-552), `_sessionAModif` (63-78), `_activerMode` (716-723), `_orig*_wrap` (510-511)
@@ -232,6 +233,10 @@ La liste « règles CSS mortes » de l'audit du 09/08 matin (consignée dans le 
 108 fichiers js/ = 108 script tags = 108 entrées précache (zéro orphelin) · précache SW 188/188 présents sur disque · les 4 CSS lazy parfaitement cloisonnés (0 duplication avec style.css) · 29/30 icônes référencées · 0 id HTML orphelin.
 
 ## 🔴 Dettes ouvertes
+
+### D-osm-home-couleurs — 🎨 Overrides de légende invisibles au HOME après boot froid — noté 09/08/2026
+
+Depuis v1.76.5, les vues OSM (modale + widget HOME) résolvent leurs couleurs via `ktaResolveStyle` (l'override légende prime enfin sur les tables locales). **Limite restante au HOME** : les overrides *session* vivent dans `LegendCustomization`, chargé par SessionPersist **au chargement d'un plan** — après un boot froid direct sur le HOME (aucun plan chargé), le widget OSM affiche les défauts canon. Idem multi-plans : c'est l'état du plan CHARGÉ qui colore TOUTE la pile. Piste si KARMA le demande : lire l'état `legendCustomization` de la session de chaque plan depuis le storage SessionPersist (lecture ciblée, sans charger la session). Coût modéré, bénéfice cosmétique — en attente d'un cas réel.
 
 ### D-confirm — 🪟 confirm() natifs hors charte (10+ fichiers) — noté 07/08/2026
 

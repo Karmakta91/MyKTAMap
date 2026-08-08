@@ -167,9 +167,26 @@ return tiling.minNativeZoom;  // fallback safety pour plans extrêmes
 | 16K | z=-2 | 64 | 64 MB |
 | 32K+ | minNative | ≤80 | ≤80 MB |
 
-**Pas de viewport culling dynamique** dans le widget (carte fixe, pas de zoom user). Toutes les tuiles sont chargées d'un coup.
+~~**Pas de viewport culling dynamique** dans le widget~~ → **obsolète depuis v1.76.5**, voir §3.4bis.
 
 Render : `L.imageOverlay.rotated(url, tl, tr, bl, { interactive: false, opacity: _planOpacity })`. Pattern identique à `osmView.js > _renderTilesV2OnOsm` (convention CRS.Simple `pxTop = planH - k * tileSize * scale`).
+
+### 3.4bis Tuiles HI-RES au zoom (v1.76.5)
+
+Bug KARMA : « un plan X est très flou si je zoome [au HOME], alors qu'il est lisible en mode OSM plan ». Cause : le widget n'avait QUE le niveau baseline (≤80 tuiles, très réduit sur un gros plan), là où la modale swape de niveau au `zoomend`.
+
+Mécanisme (bloc `TUILES HI-RES` de `osmHomePreview.js`) :
+- `zoomend/moveend` → débounce 300 ms → `_majTuilesHiRes()` (garde anti-réentrance `_hiResBusy` + re-planification).
+- Par plan de la pile (`_stackOrder` ∪ principal) : niveau cible = le plus grossier dont la largeur (`planW/2^-z`) couvre la **largeur écran du plan** (coins bas projetés via `latLngToContainerPoint`). Si le baseline suffit → hi-res retiré.
+- Culling : seules les tuiles intersectant `getBounds().pad(0.15)` sont extraites, budget `HIRES_BUDGET_TUILES = 60`/plan — dépassé → un cran plus grossier.
+- Extraction depuis le **handle JSZip gardé dans `_planDataCache[planId].zip`** (lazy : central directory seul, RAM négligeable) — pas de re-parse du ZIP.
+- Rendu AU-DESSUS du baseline (même pane par plan, `_zIndexPour(planId)+1`) → jamais de trou pendant le chargement ; le baseline reste le filet.
+- Pan à niveau constant : **delta** (tuiles communes réutilisées, sorties révoquées). Swap de niveau / plan retiré / carte recréée : `_retirerHiRes` révoque tout. Garde anti-race : la carte capturée avant les `await` doit être la même à la pose de l'état.
+- Opacité/visibilité : `_setPlanOpacity`, `_setOpaciteExtra` et `_appliquerVisibilites` pilotent aussi les groupes hi-res.
+
+**Blob URLs — deux régimes distincts** (réparation v1.76.5 d'un faux fix de l'audit code-mort du 09/08) :
+- *baseline* : vivent avec `_planDataCache`, **jamais révoquées en session** (design v1.71.0 — re-ajout d'un plan gratuit, cache borne l'extraction à 1×/plan). La révocation ajoutée par l'audit cassait le multi-plans (charger B révoquait les URLs de A encore affiché).
+- *hi-res* : éphémères, révoquées à chaque swap/sortie/refresh.
 
 **Slider opacité** (v1.40.6) : `_setPlanOpacity(v)` itère `_tilesLayer.eachLayer` + `setOpacity`. Default `_planOpacity = 0.7`.
 
@@ -210,10 +227,14 @@ Cohérent avec `getIconUrlForPoint` (`utils.js:38`) qui fait pareil pour la map 
 | chemin | `#ffff00` jaune |
 | jonction | `#ff4ecb` rose |
 
-Cascade dans `_renderDataLayersOnMiniMap` :
+Cascade **v1.76.5** (bug KARMA « galerie principale reste verte en OSM ») — le canon passe AVANT les tables locales, dans les DEUX vues (`osmView` + `osmHomePreview`, roads/zones/structures) :
 ```js
-const color = r.color || ROAD_STYLES_DATA_HOME[r.type] || "#8892a4";
+explicit (r.color) → ktaResolveStyle(cat, type, {flat:true})  // override légende
+                   → table locale → findCustomEntry → "#8892a4"
 ```
+Avant, la table locale court-circuitait l'override utilisateur des types built-in (défauts identiques au canon → la bascule est invisible sans override). Structures : seules les COULEURS viennent du canon, les variantes locales gardent leurs weight/fillOpacity allégés OSM.
+
+⚠️ **Limitation HOME** : l'état session de `LegendCustomization` est celui du dernier plan CHARGÉ dans cette vie de page — au boot froid direct sur le HOME, les overrides session ne sont pas chargés (défauts canon). Noté au BACKLOG.
 
 **Structures** : `STRUCT_STYLES_HOME` variant LIGHT (weight/fillOpacity allégés) aligné sur `structures.js > STRUCTURE_STYLES`. Adaptatif polyline (fronts) ou polygon (mur/pilier).
 

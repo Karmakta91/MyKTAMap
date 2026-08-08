@@ -1064,6 +1064,15 @@
   // Aligné comportementalement sur road.js > _resolveRoadStyle.
   function _resolveRoadColor(road) {
     if (road && typeof road.color === "string" && road.color) return road.color;
+    // 🎨 v1.76.5 (bug KARMA « galerie principale reste verte en OSM ») — le
+    // CANON d'abord : ktaResolveStyle applique l'override de couleur choisi
+    // dans la légende (session > plan > défaut). La table locale passait
+    // AVANT et court-circuitait l'override des types built-in. Défauts
+    // identiques au canon → zéro changement de rendu sans override.
+    if (road && road.type && typeof window.ktaResolveStyle === "function") {
+      const s = window.ktaResolveStyle("traces", road.type, { flat: true });
+      if (s && s.color) return s.color;
+    }
     if (road && road.type && ROAD_STYLES_OSM[road.type]) return ROAD_STYLES_OSM[road.type];
     if (road && road.type && window.LegendCustomization
         && typeof window.LegendCustomization.findCustomEntry === "function") {
@@ -1230,6 +1239,16 @@
         fill:   z.fillColor || z.color     || "#8892a4"
       };
     }
+    // 🎨 v1.76.5 — canon d'abord (override légende), cf _resolveRoadColor.
+    if (z && z.type && typeof window.ktaResolveStyle === "function") {
+      const s = window.ktaResolveStyle("zones", z.type, { flat: true });
+      if (s) {
+        return {
+          stroke: s.color     || s.fillColor || "#8892a4",
+          fill:   s.fillColor || s.color     || "#8892a4"
+        };
+      }
+    }
     if (z && z.type && ZONE_STYLES_OSM[z.type]) {
       return ZONE_STYLES_OSM[z.type];
     }
@@ -1287,7 +1306,16 @@
       const polyline = isPolylineType(s.type);
       const minPts = polyline ? 2 : 3;
       if (latlngs.length < minPts) { skipped++; continue; }
-      const style = STRUCTURE_STYLES_OSM[s.type] || STRUCTURE_STYLES_OSM["mur"];
+      const style = Object.assign({}, STRUCTURE_STYLES_OSM[s.type] || STRUCTURE_STYLES_OSM["mur"]);
+      // 🎨 v1.76.5 — couleurs du canon (override légende) par-dessus la
+      // variante OSM locale (qui ne garde que weight/opacity allégés).
+      if (s.type && typeof window.ktaResolveStyle === "function") {
+        const cs = window.ktaResolveStyle("structures", s.type, { flat: true });
+        if (cs) {
+          if (cs.color) style.color = cs.color;
+          if (cs.fillColor && !style.isPolyline) style.fillColor = cs.fillColor;
+        }
+      }
       try {
         if (polyline) {
           L.polyline(latlngs, {

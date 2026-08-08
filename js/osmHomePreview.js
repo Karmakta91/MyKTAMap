@@ -112,10 +112,6 @@
   // Évite ré-extraction du ZIP si user re-sélectionne un plan déjà vu pendant
   // la session HOME. Cache cleared au unload page (RAM-only, pas de LS).
   const _planDataCache = {};
-  // 🆕 v1.40.6 — Tracking des blob URLs créés pour les tuiles V2 overview.
-  // Revoke au close() pour libérer la RAM (sinon fuite à chaque sélection
-  // d'un nouveau plan = bloat RAM).
-  let _tilesBlobUrls  = [];
   let _tilesLayer     = null;   // L.layerGroup pour les tuiles plan projetées
   let _planOpacity    = 0.5;    // 🆕 v1.40.6 / v1.42.4 — opacité plan (slider bandeau). KARMA : default 50% (meilleur compromis lecture OSM + plan, cohérent avec modale plan).
 
@@ -179,6 +175,16 @@
   // Helper résolution couleur road (cascade complète)
   function _resolveRoadColorHome(r) {
     if (r && typeof r.color === "string" && r.color) return r.color;
+    // 🎨 v1.76.5 (bug KARMA « galerie principale reste verte en OSM ») — le
+    // CANON d'abord : ktaResolveStyle applique l'override de couleur choisi
+    // dans la légende. La table locale court-circuitait l'override des types
+    // built-in. ⚠️ Au HOME, l'état session de LegendCustomization est celui
+    // du dernier plan CHARGÉ dans cette vie de page (boot froid → défauts) :
+    // limitation documentée au BACKLOG.
+    if (r && r.type && typeof window.ktaResolveStyle === "function") {
+      const s = window.ktaResolveStyle("traces", r.type, { flat: true });
+      if (s && s.color) return s.color;
+    }
     if (r && r.type && ROAD_STYLES_DATA_HOME[r.type]) return ROAD_STYLES_DATA_HOME[r.type];
     if (r && r.type && window.LegendCustomization
         && typeof window.LegendCustomization.findCustomEntry === "function") {
@@ -196,6 +202,16 @@
         stroke: z.color     || z.fillColor || "#8892a4",
         fill:   z.fillColor || z.color     || "#8892a4"
       };
+    }
+    // 🎨 v1.76.5 — canon d'abord (override légende), cf _resolveRoadColorHome.
+    if (z && z.type && typeof window.ktaResolveStyle === "function") {
+      const s = window.ktaResolveStyle("zones", z.type, { flat: true });
+      if (s) {
+        return {
+          stroke: s.color     || s.fillColor || "#8892a4",
+          fill:   s.fillColor || s.color     || "#8892a4"
+        };
+      }
     }
     if (z && z.type && ZONE_STYLES_DATA_HOME[z.type]) return ZONE_STYLES_DATA_HOME[z.type];
     if (z && z.type && window.LegendCustomization
@@ -550,6 +566,7 @@
     }
     // Cleanup ancienne instance si refresh
     if (_mapInstance) {
+      _retirerToutHiRes(); // 🔍 v1.76.5 — URLs hi-res éphémères, à révoquer ici
       try { _mapInstance.remove(); } catch(e) {}
       _mapInstance = null;
       _panesParPlan = {};   // v1.72.2 : les panes appartiennent à la carte détruite
@@ -585,6 +602,8 @@
     _markerLayer = L.featureGroup().addTo(_mapInstance);
     _tilesLayer  = L.layerGroup().addTo(_mapInstance); // 🆕 v1.40.6 (en premier = en dessous des data)
     _dataLayer   = L.layerGroup().addTo(_mapInstance); // 🆕 v1.40.4 (au dessus des tuiles)
+    // 🔍 v1.76.5 — tuiles hi-res au zoom (débounce, cf bloc TUILES HI-RES)
+    _mapInstance.on("zoomend moveend", _onCarteBougeHiRes);
     _renderGeorefMarkers(georef);
     // 🐛 v1.40.40-41 — KARMA : « les tuiles OSM ne se chargent pas au boot ».
     // Cause racine : Leaflet calcule la taille du container AVANT que le DOM
@@ -806,7 +825,11 @@
       } catch(e) {
         console.warn("[OsmHomePreview] icons extraction échec :", e);
       }
-      const result = { config: config, dataLayers: dataLayers, tilesOverview: tilesOverview, iconUrls: iconUrls };
+      // 🔍 v1.76.5 — le handle JSZip est GARDÉ dans le cache pour les tuiles
+      // hi-res au zoom : loadAsync est lazy (central directory seul, le
+      // File/Blob sous-jacent est une référence) → coût RAM négligeable,
+      // et on évite de re-parser le ZIP à chaque changement de niveau.
+      const result = { config: config, dataLayers: dataLayers, tilesOverview: tilesOverview, iconUrls: iconUrls, zip: zip };
       _planDataCache[planId] = result;
       console.log("[OsmHomePreview] Plan data extrait (" + (Date.now() - tDebut) + " ms) — " +
         dataLayers.length + " dataLayer(s) parsés" +
@@ -1077,7 +1100,16 @@
       // Structures → structL (adaptatif polyline/polygon)
       for (const s of layer.structures) {
         if (!Array.isArray(s.points)) continue;
-        const style = STRUCT_STYLES_HOME[s.type] || STRUCT_STYLES_HOME["mur"];
+        const style = Object.assign({}, STRUCT_STYLES_HOME[s.type] || STRUCT_STYLES_HOME["mur"]);
+        // 🎨 v1.76.5 — couleurs du canon (override légende) par-dessus la
+        // variante HOME locale (qui ne garde que weight/fillOpacity allégés).
+        if (s.type && typeof window.ktaResolveStyle === "function") {
+          const cs = window.ktaResolveStyle("structures", s.type, { flat: true });
+          if (cs) {
+            if (cs.color) style.color = cs.color;
+            if (cs.fillColor && !style.isPolyline) style.fillColor = cs.fillColor;
+          }
+        }
         const polyline = style.isPolyline;
         const minPts = polyline ? 2 : 3;
         if (s.points.length < minPts) continue;
@@ -1141,6 +1173,11 @@
       _montrer(g.data, g.roads,  _showRoads      && v.roads);
       _montrer(g.data, g.zones,  _showZones      && v.zones);
       _montrer(g.data, g.struct, _showStructures && v.struct);
+    });
+    // 🔍 v1.76.5 — les groupes hi-res suivent le même régime que les tuiles.
+    Object.keys(_hiRes).forEach(function(id) {
+      const h = _hiRes[id];
+      if (h && h.groupe) _montrer(_mapInstance, h.groupe, _showTiles && _visDe(id).tiles);
     });
   }
 
@@ -1328,13 +1365,14 @@
     const rows = Math.ceil(lvlH / tileSize);
 
     const tiles = [];
-    // 🐛 v1.76.5 (audit code mort → bug latent n°3) — _revokeTilesBlobUrls
-    // n'était appelé NULLE PART malgré son commentaire (« au close() ET avant
-    // chaque nouvelle extraction ») : les blob URLs des tuiles s'accumulaient
-    // à chaque re-render du widget sans jamais être révoquées (fuite RAM,
-    // aggravée sur les gros plans V2). Révocation des anciennes AVANT d'en
-    // créer de nouvelles — l'endroit exact que son commentaire promettait.
-    _revokeTilesBlobUrls();
+    // ⚠️ v1.76.5 (réparation du fix code-mort du 09/08) — PAS de révocation
+    // ici : les blob URLs baseline vivent avec _planDataCache (design v1.71.0,
+    // « un plan retiré puis re-ajouté est gratuit »). La révocation ajoutée
+    // par l'audit cassait le multi-plans : charger un plan B révoquait les
+    // URLs du plan A encore AFFICHÉ, et le cache de A gardait des URLs mortes
+    // pour toute la session. Le cache borne déjà l'extraction à 1×/plan — il
+    // n'y avait pas de fuite. Les tuiles HI-RES (zoom), elles, sont éphémères
+    // et révoquées à chaque swap (cf bloc TUILES HI-RES plus bas).
     // 🫥 v1.62.0 : extension d'après le manifest (webp/png = alpha, jpg = legacy)
     const _tileExt = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(config.tiling) : "jpg";
     for (let col = 0; col < cols; col++) {
@@ -1348,7 +1386,6 @@
         try {
           const blob = await entry.async("blob");
           const url  = URL.createObjectURL(blob);
-          _tilesBlobUrls.push(url); // tracker pour cleanup
           tiles.push({ col: col, k: k, url: url });
         } catch(e) {
           console.warn("[OsmHomePreview] tuile extract échec :", path, e);
@@ -1420,6 +1457,7 @@
   // N'affecte pas les data layers (qui ont leur propre fillOpacity native).
   function _setPlanOpacity(opacity) {
     _planOpacity = Math.max(0, Math.min(1, opacity));
+    _appliquerOpaciteHiRes(_selectedPlanId, _planOpacity); // 🔍 v1.76.5
     if (!_tilesLayer) return;
     _tilesLayer.eachLayer(function(l) {
       try {
@@ -1429,13 +1467,211 @@
     });
   }
 
-  // Cleanup blob URLs des tuiles (libère la RAM).
-  // Appelé au close() ET avant chaque nouvelle extraction si plan changé.
-  function _revokeTilesBlobUrls() {
-    for (const url of _tilesBlobUrls) {
-      try { URL.revokeObjectURL(url); } catch(e) {}
+  // ═══════════════════════════════════════════════════════════
+  // 🔍 v1.76.5 — TUILES HI-RES AU ZOOM (bug KARMA « un plan X est très flou
+  // si je zoome dans le widget HOME, alors qu'il est lisible en OSM plan »)
+  // ═══════════════════════════════════════════════════════════
+  // Le baseline (≤80 tuiles, _chooseTileLevelForHome) reste le socle affiché
+  // en permanence — sur un gros plan c'est un niveau très réduit, d'où le
+  // flou. Au zoomend/moveend (débounce 300 ms) : pour chaque plan V2 visible,
+  // on calcule le niveau adapté à la taille ÉCRAN du plan, on extrait du ZIP
+  // (gardé lazy dans _planDataCache) les seules tuiles de ce niveau qui
+  // intersectent le viewport (budget 60/plan, sinon on redescend d'un cran),
+  // rendues AU-DESSUS du baseline (même pane, zIndex+1 → pas de trou pendant
+  // le chargement). Au pan à niveau constant : delta (tuiles communes
+  // réutilisées, sorties révoquées). Retour à un zoom où le baseline suffit
+  // → groupe retiré + URLs révoquées. Miroir frugal de osmView.js > zoomend
+  // → _renderLevel, qui explique l'écart de netteté constaté par KARMA.
+  const HIRES_BUDGET_TUILES = 60;   // par plan — ~15 Mo décodés à 512px
+  const HIRES_DEBOUNCE_MS   = 300;
+  let _hiRes      = {};    // planId → { z, tuiles: {"col_k": {url, overlay}}, groupe }
+  let _hiResTimer = null;
+  let _hiResBusy  = false; // extraction async en cours → on re-planifie au lieu d'empiler
+  let _hiResRedo  = false;
+
+  function _opaciteDe(planId) {
+    return planId === _selectedPlanId ? _planOpacity
+         : (_extraOpacity[planId] != null ? _extraOpacity[planId] : 0.5);
+  }
+
+  function _retirerHiRes(planId) {
+    const h = _hiRes[planId];
+    if (!h) return;
+    try { if (_mapInstance && h.groupe) _mapInstance.removeLayer(h.groupe); } catch(e) {}
+    Object.keys(h.tuiles).forEach(function(cle) {
+      try { URL.revokeObjectURL(h.tuiles[cle].url); } catch(e) {}
+    });
+    delete _hiRes[planId];
+  }
+
+  function _retirerToutHiRes() {
+    Object.keys(_hiRes).forEach(_retirerHiRes);
+    if (_hiResTimer) { clearTimeout(_hiResTimer); _hiResTimer = null; }
+  }
+
+  function _onCarteBougeHiRes() {
+    if (_hiResTimer) clearTimeout(_hiResTimer);
+    _hiResTimer = setTimeout(function() {
+      _hiResTimer = null;
+      _majTuilesHiRes();
+    }, HIRES_DEBOUNCE_MS);
+  }
+
+  // Tuiles du niveau z qui intersectent la vue (bounds GPS avec marge).
+  // Même convention que _renderTilesInto : k=1 = tuile la plus basse (sud),
+  // tuiles de bord PLEINES (padding au-dessus du plan) → pas de clamp.
+  function _tuilesVisiblesPour(z, scale, planW, planH, tileSize, proj, vue) {
+    const lvlW = Math.ceil(planW / scale), lvlH = Math.ceil(planH / scale);
+    const cols = Math.ceil(lvlW / tileSize), rows = Math.ceil(lvlH / tileSize);
+    const out = [];
+    for (let col = 0; col < cols; col++) {
+      for (let k = 1; k <= rows; k++) {
+        const pxLeft   = col * tileSize * scale;
+        const pxRight  = (col + 1) * tileSize * scale;
+        const pxTop    = planH - k * tileSize * scale;
+        const pxBottom = planH - (k - 1) * tileSize * scale;
+        const tl = proj.planToLatLng(pxLeft,  pxTop);
+        const tr = proj.planToLatLng(pxRight, pxTop);
+        const bl = proj.planToLatLng(pxLeft,  pxBottom);
+        const br = proj.planToLatLng(pxRight, pxBottom);
+        if (!tl || !tr || !bl || !br) continue;
+        if (vue.intersects(L.latLngBounds([tl, tr, bl, br]))) out.push({ col: col, k: k });
+      }
     }
-    _tilesBlobUrls = [];
+    return out;
+  }
+
+  async function _majTuilesHiRes() {
+    if (!_mapInstance) return;
+    if (_hiResBusy) { _hiResRedo = true; return; }
+    _hiResBusy = true;
+    try {
+      const georefs = {};
+      _listGeorefPlans().forEach(function(p) { georefs[p.id] = p.georef; });
+      const ids = _stackOrder.slice();
+      if (_selectedPlanId && ids.indexOf(_selectedPlanId) === -1) ids.push(_selectedPlanId);
+      const vus = {};
+      for (const id of ids) {
+        if (!id || vus[id]) continue;
+        vus[id] = true;
+        try { await _majHiResPlan(id, georefs[id]); }
+        catch(e) { console.warn("[OsmHomePreview] hi-res échec plan " + id + " :", e); }
+      }
+      // Plans sortis de la pile depuis le dernier passage → purge
+      Object.keys(_hiRes).forEach(function(id) { if (!vus[id]) _retirerHiRes(id); });
+    } finally {
+      _hiResBusy = false;
+      if (_hiResRedo) { _hiResRedo = false; _onCarteBougeHiRes(); }
+    }
+  }
+
+  async function _majHiResPlan(planId, georef) {
+    const data = _planDataCache[planId];
+    const tv   = data && data.tilesOverview;
+    if (!tv || !data.zip || !data.config || !data.config.tiling || !georef) { _retirerHiRes(planId); return; }
+    if (!(_showTiles && _visDe(planId).tiles)) { _retirerHiRes(planId); return; }
+    const proj = _buildProjection(georef);
+    if (!proj) { _retirerHiRes(planId); return; }
+
+    const tiling   = data.config.tiling;
+    const planW    = tv.planW, planH = tv.planH;
+    const tileSize = tv.tileSize;
+
+    // Taille ÉCRAN du plan : distance px entre ses coins bas projetés.
+    const bg = proj.planToLatLng(0, planH), bd = proj.planToLatLng(planW, planH);
+    if (!bg || !bd) { _retirerHiRes(planId); return; }
+    const pG = _mapInstance.latLngToContainerPoint(bg);
+    const pD = _mapInstance.latLngToContainerPoint(bd);
+    const ecranW = Math.hypot(pD.x - pG.x, pD.y - pG.y);
+
+    // Baseline déjà net (≥ 1 px de tuile par px écran) → pas de hi-res.
+    if (planW / Math.pow(2, -tv.z) >= ecranW) { _retirerHiRes(planId); return; }
+
+    // Niveau idéal = le plus GROSSIER qui couvre la largeur écran.
+    let zCible = tiling.maxNativeZoom;
+    for (let z = tv.z + 1; z <= tiling.maxNativeZoom; z++) {
+      if (planW / Math.pow(2, -z) >= ecranW) { zCible = z; break; }
+    }
+
+    // Budget : si trop de tuiles dans la vue, on redescend d'un cran.
+    const vue = _mapInstance.getBounds().pad(0.15);
+    let choix = null;
+    for (let z = zCible; z > tv.z; z--) {
+      const scale = Math.pow(2, -z);
+      const t = _tuilesVisiblesPour(z, scale, planW, planH, tileSize, proj, vue);
+      if (t.length === 0) break;                      // plan hors viewport
+      if (t.length <= HIRES_BUDGET_TUILES) { choix = { z: z, scale: scale, tuiles: t }; break; }
+    }
+    if (!choix) { _retirerHiRes(planId); return; }
+
+    // Delta vs état courant : même niveau → réutiliser les tuiles communes.
+    const h        = _hiRes[planId];
+    const memeZ    = !!(h && h.z === choix.z);
+    if (h && !memeZ) _retirerHiRes(planId);           // swap de niveau → purge
+    const ancien   = memeZ ? h.tuiles : {};
+    const groupe   = (memeZ && h.groupe) ? h.groupe : L.layerGroup();
+    if (!_mapInstance.hasLayer(groupe)) groupe.addTo(_mapInstance);
+
+    const pn   = _panePour(planId);
+    const op   = _opaciteDe(planId);
+    const zIdx = _zIndexPour(planId) + 1;
+    const ext  = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(tiling) : "jpg";
+    const nouvelles = {};
+    // Garde anti-race : si la carte est détruite/recréée pendant un await
+    // (refresh widget), on abandonne SANS poser l'état — sinon on recréerait
+    // une entrée _hiRes orpheline avec des URLs jamais révoquées.
+    const carte = _mapInstance;
+
+    for (const t of choix.tuiles) {
+      if (_mapInstance !== carte) break;
+      const cle = t.col + "_" + t.k;
+      if (ancien[cle]) { nouvelles[cle] = ancien[cle]; delete ancien[cle]; continue; }
+      const entry = data.zip.file("data/tiles/z" + choix.z + "/x" + t.col + "_y" + (-t.k) + "." + ext);
+      if (!entry) continue;
+      let url = null;
+      try { url = URL.createObjectURL(await entry.async("blob")); } catch(e) { continue; }
+      const pxLeft   = t.col * tileSize * choix.scale;
+      const pxRight  = (t.col + 1) * tileSize * choix.scale;
+      const pxTop    = planH - t.k * tileSize * choix.scale;
+      const pxBottom = planH - (t.k - 1) * tileSize * choix.scale;
+      const tl = proj.planToLatLng(pxLeft,  pxTop);
+      const tr = proj.planToLatLng(pxRight, pxTop);
+      const bl = proj.planToLatLng(pxLeft,  pxBottom);
+      if (!tl || !tr || !bl) { try { URL.revokeObjectURL(url); } catch(e) {} continue; }
+      try {
+        const ov = L.imageOverlay.rotated(url, tl, tr, bl, Object.assign(
+          { interactive: false, opacity: op, zIndex: zIdx }, pn ? { pane: pn.nom } : {}));
+        ov.addTo(groupe);
+        nouvelles[cle] = { url: url, overlay: ov };
+      } catch(e) {
+        try { URL.revokeObjectURL(url); } catch(e2) {}
+      }
+    }
+    if (_mapInstance !== carte) {
+      Object.keys(nouvelles).forEach(function(cle) {
+        try { URL.revokeObjectURL(nouvelles[cle].url); } catch(e) {}
+      });
+      return;
+    }
+    // Tuiles sorties du viewport (même niveau) : overlay retiré + URL révoquée.
+    Object.keys(ancien).forEach(function(cle) {
+      try { groupe.removeLayer(ancien[cle].overlay); } catch(e) {}
+      try { URL.revokeObjectURL(ancien[cle].url); } catch(e) {}
+    });
+    _hiRes[planId] = { z: choix.z, tuiles: nouvelles, groupe: groupe };
+    console.log("[OsmHomePreview] Hi-res " + planId + " : z=" + choix.z +
+      ", " + Object.keys(nouvelles).length + " tuile(s) viewport");
+  }
+
+  function _appliquerOpaciteHiRes(planId, op) {
+    const h = _hiRes[planId];
+    if (!h || !h.groupe) return;
+    h.groupe.eachLayer(function(l) {
+      try {
+        if (typeof l.setOpacity === "function") l.setOpacity(op);
+        else if (l._image) l._image.style.opacity = String(op);
+      } catch(e) {}
+    });
   }
 
   // =========================
@@ -1568,8 +1804,9 @@
     delete _extraLayers[planId];
     const i = _stackOrder.indexOf(planId);
     if (i !== -1) _stackOrder.splice(i, 1);
-    // Pas de revoke des blob URLs : elles vivent dans _planDataCache (re-ajout
-    // gratuit) et peuvent servir au plan principal.
+    _retirerHiRes(planId); // 🔍 v1.76.5 — les hi-res, elles, sont éphémères
+    // Pas de revoke des blob URLs BASELINE : elles vivent dans _planDataCache
+    // (re-ajout gratuit) et peuvent servir au plan principal.
     _appliquerOrdre();
     _renderMultiPanel();
     _renderModalTags();   // 🐛 v1.72.2 : retirer un plan retire aussi ses tags
@@ -1588,6 +1825,7 @@
 
   function _setOpaciteExtra(planId, v) {
     _extraOpacity[planId] = Math.max(0, Math.min(1, v));
+    _appliquerOpaciteHiRes(planId, _extraOpacity[planId]); // 🔍 v1.76.5
     const g = _extraLayers[planId];
     if (!g) return;
     g.tiles.eachLayer(function(l) {
