@@ -107,6 +107,22 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Remove-Item -Recurse -Force $stage
+
+# ---- Normalisation des DROITS après envoi (post-mortem du 08/08) ----
+# scp crée les nouveaux fichiers/dossiers avec l'umask du compte SFTP :
+# sans lecture « others », nginx (www-data) ne peut plus les servir → la
+# dev de KARMA est tombée en 404 généralisé alors que le transfert était
+# 100 % OK. `a+rX` = lecture pour tous + traversée des dossiers, suffisant
+# pour servir (le chown www-data reste la convention serveur de KARMA,
+# hors périmètre : il exigerait sudo). 2e prompt de mot de passe (ou clé SSH).
+$sshExe = Join-Path (Split-Path $scpExe) "ssh.exe"
+Write-Host "🔧 Normalisation des droits (chmod -R a+rX)..." -ForegroundColor Cyan
+& $sshExe -p $port ($conf.user + "@" + $conf.host) ("chmod -R a+rX '" + $remote + "'")
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "⚠️ chmod distant échoué — le site peut répondre 404 tant que les droits ne sont pas corrigés :" -ForegroundColor Yellow
+  Write-Host "   à lancer à la main :  chmod -R a+rX $remote" -ForegroundColor Yellow
+}
+
 Write-Host ""
 Write-Host "✅ Déployé sur $Cible ($ver)." -ForegroundColor Green
 Write-Host "   Prochaines étapes : killsw.html sur ton navigateur → badge version = $ver"

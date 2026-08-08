@@ -33,5 +33,10 @@ Une clé SSH (`ssh-keygen` + clé publique sur le serveur) supprime le prompt.
   le serveur, les écraser détruirait les vrais plans (le flag est refusé en prod).
 - **Jamais** : `.git*`, `scripts/`, `docker/`, `CLAUDE.md`.
 
+Après l'envoi, le script normalise les DROITS distants (chmod -R a+rX,
+2e prompt de mot de passe) : sans ça, les fichiers crées par scp héritent de
+l'umask SFTP et nginx répond 404 (post-mortem du 08/08 — la dev est tombée
+ainsi). Le chown www-data reste ta convention serveur, hors script (sudo).
+
 Avant l'envoi, le script affiche **version.json + CACHE_NAME** et avertit
 s'ils divergent. Après : `killsw.html` → badge version → Audit → console propre.
