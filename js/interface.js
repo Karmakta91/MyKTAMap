@@ -60,22 +60,6 @@ L.control.titleControl = function () {
 // =========================
 // PANNEAU "PLAN SWITCHER" — sélection rapide depuis le titre
 // =========================
-function _sessionAModif() {
-  const editorPts  = (window.getEditorPoints  && window.getEditorPoints())  || [];
-  const roads      = (window.getRoads         && window.getRoads())         || [];
-  const zones      = (window.getZones         && window.getZones())         || [];
-  // 🆕 v1.9.3-A1.a : structures comptent aussi comme modif (sinon
-  // l'utilisateur perdrait ses piliers sans avertissement au switch).
-  const structures = (window.getStructures    && window.getStructures())    || [];
-  const measure    = (window.getMeasurePoints && window.getMeasurePoints()) || [];
-  // 🆕 v1.12.0-fix : surface compte aussi comme session active
-  const measureSurf = (window.getMeasurePointsSurface && window.getMeasurePointsSurface()) || [];
-  const trackPath  = (window.getTrackingPath  && window.getTrackingPath())  || [];
-  return editorPts.length > 0 || roads.length > 0 || zones.length > 0
-      || structures.length > 0
-      || measure.length > 0   || measureSurf.length > 0
-      || trackPath.length > 1;
-}
 
 function _resumeSession() {
   // Liste détaillée des modifs en cours pour l'avertissement
@@ -444,71 +428,8 @@ function escapeHtmlSwitcher(s) {
 
   window.fermerPanneau = fermerPanneau;
 
-  window.ouvrirPanneauAncre = function (btnEl, html, titre) {
-    fermerPanneau();
-
-    const panneau = document.createElement("div");
-    panneau.className = "kta-panneau";
-
-    const fleche = document.createElement("div");
-    fleche.className = "kta-panneau-fleche";
-    panneau.appendChild(fleche);
-
-    if (titre) {
-      const header = document.createElement("div");
-      header.className = "kta-panneau-header";
-      header.innerHTML = `<span class="kta-panneau-titre">${titre}</span>`;
-
-      const btnClose = document.createElement("button");
-      btnClose.className = "kta-panneau-close";
-      btnClose.innerHTML = "✕";
-      btnClose.addEventListener("click", fermerPanneau);
-      header.appendChild(btnClose);
-
-      panneau.appendChild(header);
-    }
-
-    const corps = document.createElement("div");
-    corps.className = "kta-panneau-corps";
-    corps.innerHTML = html;
-    panneau.appendChild(corps);
-
-    document.body.appendChild(panneau);
-    _panneauActif = panneau;
-
-    const rect = btnEl.getBoundingClientRect();
-    const panH = panneau.offsetHeight || 400;
-
-    const left = rect.left - panneau.offsetWidth - 10;
-    let top = rect.top + rect.height / 2 - panH / 2;
-    top = Math.max(10, Math.min(top, window.innerHeight - panH - 10));
-
-    panneau.style.left = Math.max(8, left) + "px";
-    panneau.style.top = top + "px";
-
-    requestAnimationFrame(() => {
-      const realH = panneau.offsetHeight;
-      let realTop = rect.top + rect.height / 2 - realH / 2;
-      realTop = Math.max(10, Math.min(realTop, window.innerHeight - realH - 10));
-      panneau.style.top = realTop + "px";
-
-      const arrowTop = (rect.top + rect.height / 2) - panneau.getBoundingClientRect().top;
-      fleche.style.top = Math.max(16, arrowTop) + "px";
-    });
-
-    setTimeout(() => {
-      _closeOnOutside = function (ev) {
-        if (!panneau.contains(ev.target) && ev.target !== btnEl) {
-          fermerPanneau();
-        }
-      };
-      document.addEventListener("mousedown", _closeOnOutside);
-    }, 150);
-  };
 })();
 
-const _origAppliquerConfig_wrap = window.appliquerConfig;
-const _origResetConfig_wrap = window.resetConfig;
 
 // =========================
 // 📤 IMPORT / EXPORT SESSION — DÉPLACÉ (v1.31.0 P3 Lot 5)
@@ -532,24 +453,6 @@ const _origResetConfig_wrap = window.resetConfig;
 // =========================
 // HELPER — modale de confirmation simple (1 clic)
 // =========================
-function _confirmerAction(titre, texte, callback) {
-  const overlay = document.createElement("div");
-  overlay.className = "kta-modal-overlay";
-  overlay.innerHTML = `
-    <div class="kta-modal">
-      <div class="kta-modal-icon">⚠️</div>
-      <div class="kta-modal-titre">${titre}</div>
-      <div class="kta-modal-texte">${texte}</div>
-      <div class="kta-modal-actions">
-        <button class="kta-btn kta-btn-ghost" id="_conf-annuler">${window.I18n.t("ui.btn.cancel")}</button>
-        <button class="kta-btn kta-btn-danger" id="_conf-ok">${window.I18n.t("ui.btn.confirm")}</button>
-      </div>
-    </div>
-  `;
-  document.documentElement.appendChild(overlay);
-  document.getElementById("_conf-annuler").addEventListener("click", function () { overlay.remove(); });
-  document.getElementById("_conf-ok").addEventListener("click", function () { overlay.remove(); callback(); });
-}
 
 // =========================
 // HELPER — modale de choix de suppression (plusieurs options)
@@ -713,14 +616,6 @@ function _desactiverTousLesModes() {
   Object.keys(_modesActifs).forEach(function(k) { delete _modesActifs[k]; });
 }
 
-function _activerMode(cle, btnEl, activerFn, desactiverFn) {
-  const dejaActif = !!_modesActifs[cle];
-  _desactiverTousLesModes();
-  if (dejaActif) return;
-  activerFn();
-  btnEl.classList.add("kta-actif");
-  _modesActifs[cle] = { btnEl, desactiverFn };
-}
 
 // =========================
 // FERMETURE CIBLEE D'UN MODE (utilise par les onClicks suppression)
@@ -1137,7 +1032,9 @@ function _creerGroupeAccordeon(config) {
                              ? (sub.dynamicIcon() || sub.icone || "")
                              : sub.icone;
         btnSub.href      = "javascript:void(0)";
-        btnSub.title     = sub.titre;
+        btnSub.title     = (typeof sub.dynamicTitre === "function")
+                             ? (sub.dynamicTitre() || sub.titre || "")
+                             : sub.titre;
         if (sub.refClassName) btnSub.dataset.refClassName = sub.refClassName;
         // 🆕 v1.16.0 step2-drawable-fix : marqueur des boutons « type »
         // (activent un mode de dessin). Les customs s'insèrent ENTRE les
@@ -1287,7 +1184,9 @@ function _creerTuileTracker(sub) {
                  : (sub.icone || "");
   const lbl = document.createElement("span");
   lbl.className = "kta-tracker-modal-tile-label";
-  lbl.textContent = sub.titre || "";
+  lbl.textContent = (typeof sub.dynamicTitre === "function")
+                    ? (sub.dynamicTitre() || sub.titre || "")
+                    : (sub.titre || "");
   tile.appendChild(ic);
   tile.appendChild(lbl);
   tile.addEventListener("click", function(ev) {
@@ -1629,7 +1528,12 @@ function _ouvrirFlyout(groupId) {
                        : (sub.icone || "");
     const lblEl = document.createElement("span");
     lblEl.className = "kta-group-flyout-btn-label";
-    lblEl.textContent = sub.titre || "";
+    // 🏷️ v1.77.0 — libellé dynamique (miroir de dynamicIcon) : un type
+    // renommé dans la légende s'affiche sous son nom choisi au prochain
+    // rendu du flyout, comme la couleur le faisait déjà.
+    lblEl.textContent = (typeof sub.dynamicTitre === "function")
+                        ? (sub.dynamicTitre() || sub.titre || "")
+                        : (sub.titre || "");
     btn.appendChild(iconEl);
     btn.appendChild(lblEl);
 
@@ -2747,6 +2651,25 @@ _setGroupeModeActif("tracker", isTracking, null);
     return repli;
   }
 
+  // 🏷️ v1.77.0 (bug KARMA « renommé en légende mais la sidebar garde
+  // "galerie principale" ») — miroir de _iconeType pour le LIBELLÉ : si le
+  // type porte un nom personnalisé (session ou plan), c'est lui qu'on
+  // affiche ; sinon le libellé i18n historique de la sidebar (les défauts
+  // de la légende et de la sidebar ne sont pas mot à mot identiques —
+  // getSource() ≠ "default" garantit zéro changement sans renommage).
+  function _titreType(cat, key, repli) {
+    const LC = window.LegendCustomization;
+    if (LC && typeof LC.getLabel === "function" && typeof LC.getSource === "function") {
+      try {
+        if (LC.getSource(cat, key) !== "default") {
+          const l = LC.getLabel(cat, key);
+          if (l) return l;
+        }
+      } catch(e) {}
+    }
+    return repli;
+  }
+
   // 9. TRACÉS
   // Helper local : active un type de tracé
   function _activerRoute(type, btnCible, iconeReflet) {
@@ -2786,11 +2709,11 @@ _setGroupeModeActif("tracker", isTracking, null);
   const _sousActionsTraces = [];
 
   _sousActionsTraces.push(
-    { icone: "🟩", dynamicIcon: function() { return _iconeType("traces", "principal", "🟩"); }, titre: window.I18n.t("ui.trace.principal"), isTypeAction: true, typeKey: "principal",
+    { icone: "🟩", dynamicIcon: function() { return _iconeType("traces", "principal", "🟩"); }, titre: window.I18n.t("ui.trace.principal"), dynamicTitre: function() { return _titreType("traces", "principal", window.I18n.t("ui.trace.principal")); }, isTypeAction: true, typeKey: "principal",
       onClick: function(btn) { _activerRoute("principal", btn, _iconeType("traces", "principal", "🟩")); } },
-    { icone: "🟪", dynamicIcon: function() { return _iconeType("traces", "secondaire", "🟪"); }, titre: window.I18n.t("ui.trace.secondaire"), isTypeAction: true, typeKey: "secondaire",
+    { icone: "🟪", dynamicIcon: function() { return _iconeType("traces", "secondaire", "🟪"); }, titre: window.I18n.t("ui.trace.secondaire"), dynamicTitre: function() { return _titreType("traces", "secondaire", window.I18n.t("ui.trace.secondaire")); }, isTypeAction: true, typeKey: "secondaire",
       onClick: function(btn) { _activerRoute("secondaire", btn, _iconeType("traces", "secondaire", "🟪")); } },
-    { icone: "🟨", dynamicIcon: function() { return _iconeType("traces", "chemin", "🟨"); }, titre: window.I18n.t("ui.trace.chemin"), isTypeAction: true, typeKey: "chemin",
+    { icone: "🟨", dynamicIcon: function() { return _iconeType("traces", "chemin", "🟨"); }, titre: window.I18n.t("ui.trace.chemin"), dynamicTitre: function() { return _titreType("traces", "chemin", window.I18n.t("ui.trace.chemin")); }, isTypeAction: true, typeKey: "chemin",
       onClick: function(btn) { _activerRoute("chemin", btn, _iconeType("traces", "chemin", "🟨")); } }
   );
 
@@ -2798,6 +2721,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     _sousActionsTraces.push({
       icone: "🪜",
       titre: window.I18n.t("ui.trace.jonction"),
+      dynamicTitre: function() { return _titreType("traces", "jonction", window.I18n.t("ui.trace.jonction")); },
       isTypeAction: true,
       typeKey: "jonction",
       onClick: function(btn) {
@@ -2961,16 +2885,16 @@ _setGroupeModeActif("tracker", isTracking, null);
     lcCat: "zones",
     customActivator: function(customId, btn) { _activerZone(customId, btn, _iconeType("zones", customId, "✨")); },
     sousActions: [
-      { icone: "⬛", dynamicIcon: function() { return _iconeType("zones", "remblais", "⬛"); }, titre: window.I18n.t("ui.zone.remblais"), isTypeAction: true, typeKey: "remblais",
+      { icone: "⬛", dynamicIcon: function() { return _iconeType("zones", "remblais", "⬛"); }, titre: window.I18n.t("ui.zone.remblais"), dynamicTitre: function() { return _titreType("zones", "remblais", window.I18n.t("ui.zone.remblais")); }, isTypeAction: true, typeKey: "remblais",
         onClick: function(btn) { _activerZone("remblais", btn, _iconeType("zones", "remblais", "⬛")); } },
-      { icone: "🟥", dynamicIcon: function() { return _iconeType("zones", "effondrement", "🟥"); }, titre: window.I18n.t("ui.zone.effondrement"), isTypeAction: true, typeKey: "effondrement",
+      { icone: "🟥", dynamicIcon: function() { return _iconeType("zones", "effondrement", "🟥"); }, titre: window.I18n.t("ui.zone.effondrement"), dynamicTitre: function() { return _titreType("zones", "effondrement", window.I18n.t("ui.zone.effondrement")); }, isTypeAction: true, typeKey: "effondrement",
         onClick: function(btn) { _activerZone("effondrement", btn, _iconeType("zones", "effondrement", "🟥")); } },
-      { icone: "🟦", dynamicIcon: function() { return _iconeType("zones", "eau", "🟦"); }, titre: window.I18n.t("ui.zone.eau"), isTypeAction: true, typeKey: "eau",
+      { icone: "🟦", dynamicIcon: function() { return _iconeType("zones", "eau", "🟦"); }, titre: window.I18n.t("ui.zone.eau"), dynamicTitre: function() { return _titreType("zones", "eau", window.I18n.t("ui.zone.eau")); }, isTypeAction: true, typeKey: "eau",
         onClick: function(btn) { _activerZone("eau", btn, _iconeType("zones", "eau", "🟦")); } },
       // 🚫 v169 (Karma_dev) : zone bloquante pour le pathfinder. Hachures
       // rouge/noir 45°. Tout segment de route qui traverse est inutilisable
       // pour le calcul d'itinéraire (= contrainte dure).
-      { icone: "⛔", titre: window.I18n.t("ui.zone.inaccessible"), isTypeAction: true, typeKey: "inaccessible",
+      { icone: "⛔", titre: window.I18n.t("ui.zone.inaccessible"), dynamicTitre: function() { return _titreType("zones", "inaccessible", window.I18n.t("ui.zone.inaccessible")); }, isTypeAction: true, typeKey: "inaccessible",
         onClick: function(btn) { _activerZone("inaccessible", btn, "⛔"); } },
       { icone: "✅", titre: window.I18n.t("ui.zone.fermer"),
         onClick: function() {
@@ -3112,17 +3036,17 @@ _setGroupeModeActif("tracker", isTracking, null);
       // KARMA-fix : 1ère masse en JAUNE (couleurs inversées par rapport
       // au draft initial qui avait orange / jaune dans le mauvais sens).
       // En multi-niveau : tagué au niveau actif.
-      { icone: "🟡", dynamicIcon: function() { return _iconeType("structures", "pilier-1", "🟡"); }, titre: window.I18n.t("ui.struct.pilier1"), isTypeAction: true, typeKey: "pilier-1",
+      { icone: "🟡", dynamicIcon: function() { return _iconeType("structures", "pilier-1", "🟡"); }, titre: window.I18n.t("ui.struct.pilier1"), dynamicTitre: function() { return _titreType("structures", "pilier-1", window.I18n.t("ui.struct.pilier1")); }, isTypeAction: true, typeKey: "pilier-1",
         onClick: function(btn) { _activerStructure("pilier-1", btn, _iconeType("structures", "pilier-1", "🟡")); } },
       // 🟠 Pilier 2e masse : icone rond orange (fill #ff9933).
       // En multi-niveau : AUTO-tagué à `activeLevel - 1` (cf. structures.js)
       // car structurellement la masse inférieure visible depuis l'actuelle.
-      { icone: "🟠", dynamicIcon: function() { return _iconeType("structures", "pilier-2", "🟠"); }, titre: window.I18n.t("ui.struct.pilier2"), isTypeAction: true, typeKey: "pilier-2",
+      { icone: "🟠", dynamicIcon: function() { return _iconeType("structures", "pilier-2", "🟠"); }, titre: window.I18n.t("ui.struct.pilier2"), dynamicTitre: function() { return _titreType("structures", "pilier-2", window.I18n.t("ui.struct.pilier2")); }, isTypeAction: true, typeKey: "pilier-2",
         onClick: function(btn) { _activerStructure("pilier-2", btn, _iconeType("structures", "pilier-2", "🟠")); } },
       // 🔵 Mur : KARMA "rond bleu pour pas confondre avec icône eau"
       // (la zone eau utilise 🟦 carré bleu clair, ici on prend ROND bleu
       // foncé pour distinguer visuellement).
-      { icone: "🔵", dynamicIcon: function() { return _iconeType("structures", "mur", "🔵"); }, titre: window.I18n.t("ui.struct.mur"), isTypeAction: true, typeKey: "mur",
+      { icone: "🔵", dynamicIcon: function() { return _iconeType("structures", "mur", "🔵"); }, titre: window.I18n.t("ui.struct.mur"), dynamicTitre: function() { return _titreType("structures", "mur", window.I18n.t("ui.struct.mur")); }, isTypeAction: true, typeKey: "mur",
         onClick: function(btn) { _activerStructure("mur", btn, _iconeType("structures", "mur", "🔵")); } },
       // 🆕 v1.9.3-A1.b.2 : fronts de taille (polylines épaisses sans
       // contour). KARMA : "ce sont des tracé ok mais il reste dans
@@ -3130,9 +3054,9 @@ _setGroupeModeActif("tracker", isTracking, null);
       // (cohérent avec pilier-2), front-2 = jaune (cohérent avec pilier-1).
       // Même règle multi-niveau que les piliers : front-2 auto-tagué
       // activeLevel - 1.
-      { icone: "🟨", dynamicIcon: function() { return _iconeType("structures", "front-1", "🟨"); }, titre: window.I18n.t("ui.struct.front1"), isTypeAction: true, typeKey: "front-1",
+      { icone: "🟨", dynamicIcon: function() { return _iconeType("structures", "front-1", "🟨"); }, titre: window.I18n.t("ui.struct.front1"), dynamicTitre: function() { return _titreType("structures", "front-1", window.I18n.t("ui.struct.front1")); }, isTypeAction: true, typeKey: "front-1",
         onClick: function(btn) { _activerStructure("front-1", btn, _iconeType("structures", "front-1", "🟨")); } },
-      { icone: "🟧", dynamicIcon: function() { return _iconeType("structures", "front-2", "🟧"); }, titre: window.I18n.t("ui.struct.front2"), isTypeAction: true, typeKey: "front-2",
+      { icone: "🟧", dynamicIcon: function() { return _iconeType("structures", "front-2", "🟧"); }, titre: window.I18n.t("ui.struct.front2"), dynamicTitre: function() { return _titreType("structures", "front-2", window.I18n.t("ui.struct.front2")); }, isTypeAction: true, typeKey: "front-2",
         onClick: function(btn) { _activerStructure("front-2", btn, _iconeType("structures", "front-2", "🟧")); } },
       { icone: "✅", titre: window.I18n.t("ui.struct.fermer"),
         onClick: function() {

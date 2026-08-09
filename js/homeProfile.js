@@ -783,11 +783,6 @@
         _storageCalcCache = { ts: now, bytes: bytes };
         return bytes;
       }
-      // Exposé global pour permettre de forcer un recalcul depuis ailleurs
-      // (ex: après import/export profil, après reset, etc.)
-      window._kta_invalidateStorageCalcCache = function() {
-        _storageCalcCache = null;
-      };
 
       // Hydrate les stats compactes du bandeau profil — refactor dynamique
       // 🆕 v1.21.3 : itère les slots PRÉSENTS dans le DOM (data-stat-key)

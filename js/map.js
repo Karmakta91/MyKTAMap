@@ -4,6 +4,28 @@
 
 let map, bounds, collisionCanvas, collisionCtx;
 
+// 🐛 v1.77.0 — Handler CAPTURE du mode « clic carte » (cf. bloc v1.28.0 dans
+// initMapFromConfig). Fonction NOMMÉE de portée module : c'est ce qui rend le
+// removeEventListener possible (une closure anonyme re-créée à chaque
+// chargement de plan ne peut jamais être détachée — c'était le bug des
+// « 6 points d'un coup »). Elle lit la variable module `map`, qui pointe
+// toujours sur la carte courante — rien à capturer.
+function _ktaPickCaptureClick(domEvt) {
+  if (!(window._modeClicCarteActif && window._modeClicCarteActif())) return;
+  if (domEvt.target && domEvt.target.closest &&
+      domEvt.target.closest(".leaflet-control")) return;  // garder zoom & co
+  let latlng;
+  try { latlng = map.mouseEventToLatLng(domEvt); } catch(_) { return; }
+  domEvt.stopImmediatePropagation();
+  domEvt.preventDefault();
+  map.fire("click", {
+    latlng:         latlng,
+    originalEvent:  domEvt,
+    containerPoint: map.mouseEventToContainerPoint(domEvt),
+    layerPoint:     map.mouseEventToLayerPoint(domEvt)
+  });
+}
+
 // Options communes à tous les popups markers — autoPanPadding généreux pour
 // éviter les popups clippés par les bords d'écran sur mobile. Combiné au
 // buffer maxBounds (cf. initMapFromConfig), Leaflet a la marge de manœuvre
@@ -370,21 +392,20 @@ async function initMapFromConfig() {
   // ait cliqué. On n'intercepte QUE le click (pas le mousedown) → le pan reste
   // intact. Les contrôles Leaflet (zoom…) et les floaters (hors conteneur) sont
   // épargnés. Sans mode actif : pass-through immédiat.
-  map.getContainer().addEventListener("click", function(domEvt) {
-    if (!(window._modeClicCarteActif && window._modeClicCarteActif())) return;
-    if (domEvt.target && domEvt.target.closest &&
-        domEvt.target.closest(".leaflet-control")) return;  // garder zoom & co
-    let latlng;
-    try { latlng = map.mouseEventToLatLng(domEvt); } catch(_) { return; }
-    domEvt.stopPropagation();
-    domEvt.preventDefault();
-    map.fire("click", {
-      latlng:         latlng,
-      originalEvent:  domEvt,
-      containerPoint: map.mouseEventToContainerPoint(domEvt),
-      layerPoint:     map.mouseEventToLayerPoint(domEvt)
-    });
-  }, true);  // true = phase capture (avant les handlers des layers)
+  //
+  // 🐛 v1.77.0 (KARMA « 6 points d'un coup, puis 11, 16… » en itinéraire) —
+  // ce listener était ANONYME et le div #map est PERSISTANT (index.html,
+  // cleanupExistingMap ne vide que innerHTML) : chaque chargement de plan en
+  // EMPILAIT un de plus, chacun ré-émettant map.fire("click") sur la map
+  // COURANTE (variable module) → un clic devenait N clics, N = nb de plans
+  // chargés depuis le F5 (ses « +5 » = 5 chargements). Même principe que le
+  // fix 67ef865 de juin (couche Leaflet), appliqué ici à la couche DOM :
+  // référence STABLE + retrait-avant-ajout = binding idempotent. Défense en
+  // profondeur : stopImmediatePropagation (aucun doublon résiduel possible
+  // sur le même nœud).
+  map.getContainer().removeEventListener("click", _ktaPickCaptureClick, true);
+  map.getContainer().addEventListener("click", _ktaPickCaptureClick, true);
+  // true = phase capture (avant les handlers des layers)
 
   // 🔍 v174 : hook zoom pour adapter la taille visuelle des icônes.
   // Variable CSS --kta-marker-scale appliquée aux <img> des markers divIcon
@@ -535,16 +556,11 @@ async function initMapFromConfig() {
   // natif par notre propre bouton ≡ qui ouvre la modale FilterPanel unifiée
   // (Images + Data + M-LVL + Tags + Types Road/Zone/Struct). On expose les
   // overlays globalement pour que FilterPanel puisse les toggler.
-  window._ktaOverlays = overlays;
   // ANCIEN : L.control.layers(null, overlays).addTo(map);
 
   // Collision
   await initCollisionMap(config.plan.collisionImage);
 
-  window.layerPuits     = dataLayerGroups.puits;
-  window.layerVehicule  = dataLayerGroups.vehicule;
-  window.layerCataphile = dataLayerGroups.cataphile;
-  window.layerCarry     = dataLayerGroups.carry;
   window.dataLayerGroups = dataLayerGroups;
   window.layerEditor    = dataLayerGroups.editor;
 

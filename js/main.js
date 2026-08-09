@@ -1027,7 +1027,6 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
   const validation = validateImportedPlan(rawConfig);
   if (!validation.ok) throw new Error(validation.errors.join(" | "));
 
-  window.RAW_PLAN_CONFIG = rawConfig;
 
   const files = Array.from(assetFiles || []);
   const allLogicalPaths = [];

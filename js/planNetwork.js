@@ -191,7 +191,12 @@
     // Bande « plans isolés » en bas — centres de rangée SOUS le titre
     if (hasIsolated) {
       data.isolated.forEach(function(nd, i) {
-        nd.x = 70 + (i % perRow) * ((W - 110) / Math.max(1, perRow - 1) || 0);
+        // 🐛 v1.77.0 (KARMA « la deuxième colonne, les titres sortent du
+        // cadre ») — marges SYMÉTRIQUES : l'ancien pas (W-110) posait la
+        // dernière colonne à x = W-40, et le nom centré (jusqu'à ~100 px de
+        // large) débordait du viewBox à droite. W-140 → dernière colonne à
+        // W-70, même marge que la première.
+        nd.x = 70 + (i % perRow) * ((W - 140) / Math.max(1, perRow - 1) || 0);
         if (perRow === 1) nd.x = W / 2;
         nd.y = graphH + ISO_TITLE_H + 28 + Math.floor(i / perRow) * ISO_ROW_H;
       });

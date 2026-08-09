@@ -30,13 +30,6 @@
 
   // Marges PDF en mm
   const PDF_MARGIN_MM     = 12;
-  const HEADER_HEIGHT_MM  = 18;
-  // 🆕 v1.10.3-pdf-v3 (KARMA "en plus gros") : 55mm (au lieu de 40) car
-  // la légende est rendue en image canvas size "large" (icônes 30px +
-  // texte 18pt) et style "print" — il faut plus de hauteur pour qu'elle
-  // soit lisible sur A4. ~26% de la zone A4 paysage (page 210mm haute,
-  // marge 12 + header 18 + footer 55 = 85mm utilisé, plan 125mm haut).
-  // A3/A2/A1/A0 → négligeable car footer fixe en mm vs page très grande.
   const FOOTER_HEIGHT_MM  = 55;
   // JPEG quality du canvas → image PDF (compromis taille / qualité)
   const JPEG_QUALITY      = 0.88;
@@ -93,10 +86,6 @@
     return true;
   }
 
-  function _checkExporter() {
-    return typeof window._genererCanvasExportPublic === "function"
-        || typeof window.MyKTAMapExporter !== "undefined";
-  }
 
   // ============================================================
   // STYLES — réutilise le subset kta-ses-* de sessionExporter

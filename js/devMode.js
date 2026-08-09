@@ -304,17 +304,20 @@
         document.getElementById("kta-devmode-docs").addEventListener("click", ouvrirBibliotheque);
       }
     };
-    rendre();
-    // 🐛 v1.76.3-fix (warns « Clé manquante » remontés par KARMA) — COURSE
-    // AU BOOT : initSection tourne au chargement, parfois AVANT l'arrivée du
-    // dico i18n (fetch async) → la section se rendait avec les clés brutes
-    // et rien ne la re-rendait. On se réabonne : le rendu se refait à
-    // l'arrivée du dico ET à chaque changement de langue (même pattern que
-    // _majPinStatusUI dans homeConfig).
+    // 🐛 v3 du fix course i18n (le SMOKE a demasque la v2) : onChange ne
+    // fire PAS au chargement initial du dico — uniquement setLang/reload.
+    // Le pattern canonique est I18n.init().then(render) : barriere
+    // idempotente, resolue en microtask si le dico est deja la (doc en tete
+    // de langManager). onChange reste pose pour les changements de langue.
     if (window.I18n && typeof window.I18n.onChange === "function" && !window._devModeI18nHooked) {
       window._devModeI18nHooked = true;
       window.I18n.onChange(rendre);
     }
+    if (window.I18n && typeof window.I18n.init === "function") {
+      window.I18n.init().then(rendre);
+      return;
+    }
+    rendre();
   }
 
   window.DevMode = {

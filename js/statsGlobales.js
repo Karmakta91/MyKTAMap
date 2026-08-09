@@ -923,13 +923,6 @@
       pdf.setTextColor(40, 40, 40);
     }
 
-    function _drawText(text, size) {
-      _newPageIfNeeded(lineH);
-      pdf.setFontSize(size || 10);
-      pdf.setTextColor(40, 40, 40);
-      pdf.text(text, margin, y);
-      y += lineH;
-    }
 
     function _drawKV(key, val) {
       _newPageIfNeeded(lineH);

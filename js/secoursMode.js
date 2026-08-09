@@ -1209,24 +1209,6 @@
   }
 
   // Update une note libre par id (whitelist : statut, texte, photoIds).
-  function updateNoteLibre(scenarioId, noteId, partial) {
-    const s = get(scenarioId);
-    if (!s || !s.execution || !s.execution.etapes._notes_libres) return null;
-    const note = s.execution.etapes._notes_libres.find(function(n) { return n.id === noteId; });
-    if (!note || !partial) return null;
-    if ("statut" in partial && typeof partial.statut === "string") {
-      const info = TABLEAU_STATUTS.find(function(st) { return st.id === partial.statut; });
-      if (info) note.statut = info.id;
-    }
-    if ("texte" in partial && typeof partial.texte === "string") {
-      note.texte = partial.texte.slice(0, 2000);
-    }
-    if ("photoIds" in partial && Array.isArray(partial.photoIds)) {
-      note.photoIds = partial.photoIds.slice();
-    }
-    _commitMutation(s);
-    return note;
-  }
 
   // Supprime une note libre par id.
   function supprimerNoteLibre(scenarioId, noteId) {
@@ -4341,7 +4323,8 @@
     const existing = document.getElementById("kta-briefing-options-modal");
     if (existing) existing.remove();
 
-    const hasSecours = true;  // toujours afficher si on est dans Mode Secours
+    // 🧹 v1.77.0 (audit code mort) : le flag constant hasSecours=true et ses
+    // branches inatteignables sont inlines (on est TOUJOURS dans Mode Secours ici).
 
     // 🆕 v1.42.14 — Palette adaptée au thème actif (dark / light cataphile)
     const isLight = _isLightTheme();
@@ -4403,7 +4386,7 @@
           _renderToggleOpt("opt-iti",     t("secours.briefing.optIti"),     true) +
           _renderToggleOpt("opt-zone",    t("secours.briefing.optZone"),    true) +
           _renderToggleOpt("opt-struct",  t("secours.briefing.optStruct"),  true) +
-          (hasSecours ? _renderToggleOpt("opt-secours", t("secours.briefing.optSecours"), true) : "") +
+          _renderToggleOpt("opt-secours", t("secours.briefing.optSecours"), true) +
         '</div>' +
       '</div>' +
       '<div style="font-size:11px;color:' + pal.textMuted + ';margin-bottom:14px;line-height:1.5;">' +
@@ -4437,7 +4420,7 @@
         showIti:     box.querySelector("#kta-bo-opt-iti").checked,
         showZone:    box.querySelector("#kta-bo-opt-zone").checked,
         showStruct:  box.querySelector("#kta-bo-opt-struct").checked,
-        showSecours: hasSecours ? box.querySelector("#kta-bo-opt-secours").checked : false
+        showSecours: box.querySelector("#kta-bo-opt-secours").checked
       };
       overlay.remove();
       // Note : overlay déjà retiré → le bouton n'est plus dans le DOM, le

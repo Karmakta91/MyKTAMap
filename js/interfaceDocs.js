@@ -1320,6 +1320,10 @@ function _aideHtmlFr() {
             <strong style="color:#a8b3c8;">Depuis v1.73.1</strong>, les calques de données livrés masqués par défaut
             dans un ZIP sont eux aussi affichés (ils étaient invisibles sans aucun moyen de les activer) — filtre-les
             comme les autres via les chips de catégorie ou les tags.
+            <strong style="color:#a8b3c8;">Depuis v1.77.0</strong> : zoomer dans l'aperçu OSM de l'accueil charge des
+            <strong>tuiles plus détaillées</strong> automatiquement (zone visible seulement, plans V2 — fini le plan flou
+            au zoom), et tes <strong>couleurs de légende personnalisées</strong> s'affichent aussi sur fond OSM
+            (plein écran ET accueil, chaque plan de la pile avec ses propres couleurs).
           </p>
         </div>
 

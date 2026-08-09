@@ -817,19 +817,21 @@
     // complètement). L'option B fallback `?` grisé a servi pour le debug
     // initial mais n'a pas d'intérêt en prod — sur Safari iOS / Firefox
     // l'user n'a rien à faire de ce chip.
+    // 🧹 v1.77.0 (audit code mort → bug latent n°1, arbitrage KARMA) — le
+    // bloc « Status bar stat » batterie ciblait un id jamais créé
+    // (kta-refonte-stat-battery) : cette 2e jauge n'a JAMAIS existé à
+    // l'écran. Le chip du HEADER (celui que KARMA voit sur PC/Android) est
+    // le seul affichage batterie — le fantôme est supprimé, ainsi que le
+    // flag constant isUnavailable=false et ses branches inatteignables.
     if (!state || state.available === false) {
       const chip = document.getElementById("kta-refonte-counter-battery");
-      const stat = document.getElementById("kta-refonte-stat-battery");
       if (chip) chip.style.display = "none";
-      if (stat) stat.style.display = "none";
       return;
     }
 
-    const isUnavailable = false;  // arrivée ici = état dispo
-    const titleText = isUnavailable
-      ? window.I18n.t("ui.refonte.battery_unavailable_title")
-      : window.I18n.t("ui.refonte.battery_title", { label: state.label }) +
-        (state.charging ? window.I18n.t("ui.refonte.battery_charging_suffix") : "");
+    const titleText =
+      window.I18n.t("ui.refonte.battery_title", { label: state.label }) +
+      (state.charging ? window.I18n.t("ui.refonte.battery_charging_suffix") : "");
 
     // Header chip (à droite du compteur 📸)
     const chip = document.getElementById("kta-refonte-counter-battery");
@@ -839,27 +841,12 @@
       // ne suffisait pas dans tous les browsers (race avec inline style).
       chip.style.removeProperty("display");
       chip.style.display = "flex";
-      chip.classList.toggle("kta-refonte-counter-battery-unavailable", isUnavailable);
       const emojiEl = document.getElementById("kta-refonte-battery-emoji");
       const valEl   = document.getElementById("kta-refonte-battery-val");
       if (emojiEl) emojiEl.textContent = state.emoji;
       if (valEl)   valEl.textContent   = state.label;
       chip.style.color = state.color;
       chip.title = titleText;
-    }
-    // Status bar stat
-    const stat = document.getElementById("kta-refonte-stat-battery");
-    if (stat) {
-      stat.style.removeProperty("display");
-      stat.style.display = "flex";
-      stat.classList.toggle("kta-refonte-stat-battery-unavailable", isUnavailable);
-      const valEl  = document.getElementById("kta-refonte-stat-battery-val");
-      const iconEl = document.getElementById("kta-refonte-stat-battery-icon");
-      if (iconEl) iconEl.textContent = state.emoji;
-      if (valEl)  valEl.textContent  = state.label;
-      stat.style.color = state.color;
-      stat.classList.remove("kta-refonte-stat-empty");
-      stat.title = titleText;
     }
   }
 

@@ -205,14 +205,6 @@ html, body {
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-.kta-switcher-head {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #8892a4;
-  padding: 6px 14px;
-  font-weight: 600;
-}
 
 .kta-switcher-list {
   display: flex;
@@ -278,26 +270,6 @@ html, body {
   text-align: center;
 }
 
-.kta-switcher-divider {
-  height: 1px;
-  background: rgba(255,255,255,0.06);
-  margin: 4px 0;
-}
-
-.kta-switcher-link {
-  padding: 8px 14px;
-  font-size: 12px;
-  color: #8cb4ff;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background 0.12s, color 0.12s;
-  text-align: center;
-}
-
-.kta-switcher-link:hover {
-  background: rgba(140,180,255,0.14);
-  color: #e8eaf0;
-}
 
 /* Mobile : adapter taille panneau */
 @media (max-width: 480px) {
@@ -696,11 +668,6 @@ html, body {
   margin-bottom: 4px !important;
 }
 
-.leaflet-popup-content input,
-.leaflet-popup-content textarea {
-  font-size: 16px !important;
-  padding: 6px;
-}
 
 
 /* ==============================================
@@ -1453,18 +1420,6 @@ body.kta-theme-light .kta-aide-submodal-back {
   font-size: 13px;
   text-align: center;
 }
-.kta-lost-param-label {
-  min-width: 80px;
-  font-size: 12px;
-  color: #8892a4;
-}
-.kta-lost-param-val {
-  min-width: 80px;
-  text-align: right;
-  font-family: ui-monospace, monospace;
-  font-size: 12.5px;
-  color: #ff8a5c;
-}
 
 /* Textarea indices */
 .kta-lost-clues {
@@ -1566,9 +1521,6 @@ html.kta-theme-light .kta-lost-warn-overflow strong {
 .kta-lost-actions .kta-btn { flex: 1; }
 
 /* Markers/cercles sur la carte */
-.kta-lost-zone {
-  animation: kta-lost-pulse-zone 2.5s ease-in-out infinite;
-}
 @keyframes kta-lost-pulse-zone {
   0%, 100% { stroke-opacity: 0.65; fill-opacity: 0.08; }
   50%      { stroke-opacity: 1.00; fill-opacity: 0.16; }
@@ -4748,9 +4700,6 @@ body.kta-theme-light .splash-license-detail-pro {
     cursor: default;
   }
 
-  #advancedHead .loader-collapse-chevron {
-    display: none;
-  }
 
   /* 🆕 v1.9.2 — Loader PC plus "fullscreen" (KARMA feedback :
      « avoir une sorte de full screen » / « éviter tout ce noir autour »).
@@ -4798,7 +4747,15 @@ body.kta-theme-light .splash-license-detail-pro {
      ne peuvent pas grandir car leur parent n'a pas de hauteur définie). */
   .loader-grid {
     flex: 1 1 auto;
-    min-height: 0;
+    /* 🐛 v1.77.0 (audit agent 08/08) — min-height:0 autorisait la GRID à
+       être comprimée sous le min-content de ses colonnes (la box étant
+       figée à 100dvh par align-items:stretch, l'espace manquant se prenait
+       ici) : la rangée auto, elle, ne descend jamais sous le min-content →
+       débordement par le bas sur le toggle/copyright, peints par-dessus.
+       min-content = la grid ne se comprime plus, le surplus POUSSE le
+       footer, la page scrolle honnêtement (le garde-fou structurel qui rend
+       le bug impossible même si un futur min-height en vh réapparaît). */
+    min-height: min-content;
     align-items: stretch;
   }
 
@@ -4861,7 +4818,15 @@ body.kta-theme-light .splash-license-detail-pro {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    /* 🐛 v1.77.0 (KARMA : le toggle du footer chevauche encore l'OSM sur PC,
+       2e passe) — le `min-height: 0` posé ici CASSAIT la propagation du
+       minimum réel du widget (carte 220px + bandeau + barre Tiles) vers la
+       rangée du grid : la rangée se croyait plus courte que son contenu, et
+       le widget débordait sur le footer (overflow visible pour les popups).
+       Sans lui, la rangée honore le min-content, la box (#planLoaderBox,
+       min-height:100dvh SANS height) grandit d'autant et la page scrolle de
+       quelques pixels — un scroll honnête plutôt qu'un chevauchement. Le
+       stretch grand-écran est intact (flex:1 continue de remplir). */
   }
   .loader-col-osm .kta-osm-home-content {
     flex: 1 1 auto;
@@ -4870,9 +4835,20 @@ body.kta-theme-light .splash-license-detail-pro {
        place restante du grid sur une fenêtre peu haute : le content
        (overflow: visible depuis v1.40.22, pour les popups) débordait de sa
        colonne et le footer, peint après dans le flux, passait par-dessus.
-       Le flex remplit déjà la colonne sur grand écran ; on garde juste le
-       plancher historique 260px — plus aucun minimum en vh qui force. */
-    min-height: 260px;
+       Le flex remplit déjà la colonne sur grand écran ; on garde juste un
+       plancher — plus aucun minimum en vh qui force.
+       📐 v1.77.0 (KARMA : « tout doit tenir dans l'écran, je ne veux pas
+       scroller pour voir le footer ») : minima COMPACTÉS — 260→200 ici,
+       carte 220→160, marge de box 14→6 — ~120 px d'incompressible en moins.
+       Sur grand écran rien ne change (le flex remplit) ; la fenêtre doit
+       être vraiment courte pour que le scroll honnête réapparaisse. */
+    min-height: 200px;
+  }
+  .loader-col-osm .kta-osm-home-map {
+    min-height: 160px;
+  }
+  .loader-col-osm .kta-osm-home-box {
+    margin-bottom: 6px;
   }
 
   /* 🆕 v1.40.1 — Si l'user n'a pas opt-in OSM, la colonne OSM est masquée
@@ -4886,9 +4862,6 @@ body.kta-theme-light .splash-license-detail-pro {
 }
 
 /* 🆕 v1.40.0 — Widget Vue OSM HOME (mini-preview entre Mes plans et Ajouter) */
-.kta-osm-home-box {
-  margin-bottom: 14px;
-}
 .kta-osm-home-content {
   display: flex;
   flex-direction: column;
@@ -4917,18 +4890,6 @@ body.kta-theme-light .splash-license-detail-pro {
   gap: 10px;
 }
 .kta-osm-home-empty strong { color: #e8eaf0; }
-.kta-osm-home-empty .kta-osm-home-cta {
-  margin-top: 6px;
-  padding: 6px 14px;
-  font-size: 12px;
-  background: #f4c542;
-  color: #1a1f2e;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-}
-.kta-osm-home-empty .kta-osm-home-cta:hover { filter: brightness(1.1); }
 .kta-osm-home-bandeau {
   display: flex;
   gap: 8px;
@@ -4996,58 +4957,6 @@ body.kta-theme-light .splash-license-detail-pro {
 }
 
 /* 🆕 v1.40.12 — 2e ligne du bandeau : toggles catégorie compactés */
-.kta-osm-home-toggles {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 4px 10px;
-  background: rgba(140, 180, 255, 0.04);
-  border-bottom: 1px solid rgba(140, 180, 255, 0.12);
-  flex-wrap: wrap;
-}
-.kta-osm-home-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  cursor: pointer;
-  user-select: none;
-  color: #c8d0e0;
-}
-.kta-osm-home-toggle input[type="checkbox"] {
-  margin: 0;
-  cursor: pointer;
-}
-.kta-osm-home-toggle:hover { color: #e8eaf0; }
-/* Thème clair : toggles lisibles sur fond clair */
-body.kta-theme-light .kta-osm-home-toggles,
-html.kta-theme-light .kta-osm-home-toggles {
-  background: rgba(140, 180, 255, 0.08) !important;
-  border-bottom-color: rgba(140, 180, 255, 0.18) !important;
-}
-body.kta-theme-light .kta-osm-home-toggle,
-html.kta-theme-light .kta-osm-home-toggle {
-  color: var(--kta-light-text, #2a2620) !important;
-}
-
-/* 🆕 v1.40.17 — 3e ligne du bandeau : filtre par tag (chips cliquables) */
-.kta-osm-home-tagrow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: rgba(140, 180, 255, 0.03);
-  border-bottom: 1px solid rgba(140, 180, 255, 0.10);
-  max-height: 60px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-}
-.kta-osm-home-tagrow-label {
-  font-size: 12px;
-  opacity: 0.6;
-  flex-shrink: 0;
-}
 .kta-osm-home-tagchips {
   display: flex;
   gap: 4px;
@@ -5073,11 +4982,6 @@ html.kta-theme-light .kta-osm-home-toggle {
   background: rgba(244, 197, 66, 0.18);
   border-color: rgba(244, 197, 66, 0.55);
   color: #f4c542;
-}
-body.kta-theme-light .kta-osm-home-tagrow,
-html.kta-theme-light .kta-osm-home-tagrow {
-  background: rgba(140, 180, 255, 0.06) !important;
-  border-bottom-color: rgba(140, 180, 255, 0.16) !important;
 }
 body.kta-theme-light .kta-osm-home-tag-chip,
 html.kta-theme-light .kta-osm-home-tag-chip {
@@ -5819,30 +5723,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   margin-bottom: 3px;
 }
 
-.loader-desc {
-  font-size: 13px;
-  color: #8892a4;
-  margin: 0 0 12px;
-  line-height: 1.5;
-}
-
-.loader-desc code {
-  background: #0d1117;
-  padding: 1px 5px;
-  border-radius: 4px;
-  color: #e06c75;
-  font-size: 12px;
-}
-
-.loaderLabel {
-  display: block;
-  margin-top: 12px;
-  margin-bottom: 5px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #8892a4;
-  letter-spacing: 0.04em;
-}
 
 #planLoaderBox input[type="file"] {
   width: 100%;
@@ -5893,28 +5773,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   cursor: wait;
 }
 
-.loader-btn-ghost {
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 8px;
-  background: rgba(255,255,255,0.06);
-  color: #c0c8d8;
-  padding: 10px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
 
-.loader-btn-ghost:hover {
-  background: rgba(255,255,255,0.1);
-}
-
-.loader-secondary-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 4px;
-}
 
 .loader-btn-secondary {
   border: 1px solid rgba(140,180,255,0.25);
@@ -5998,50 +5857,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
-.loader-section-head-collapse {
-  cursor: pointer;
-  user-select: none;
-  transition: color 0.15s;
-}
-.loader-section-head-collapse:hover {
-  color: #e8eaf0;
-}
-
-.loader-collapse-chevron {
-  font-size: 14px;
-  color: #8892a4;
-  transition: transform 0.15s;
-}
-
-.loader-section-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.loader-btn-mini {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  color: #c0c8d8;
-  font-size: 14px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.loader-btn-mini:hover {
-  background: rgba(140,180,255,0.12);
-  border-color: rgba(140,180,255,0.4);
-  color: #e8eaf0;
-}
-
-.loader-section-subhead {
-  font-size: 11px;
-  font-weight: 600;
-  color: #8892a4;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 8px 4px 4px;
-}
 
 .loader-plans-list {
   display: flex;
@@ -6171,16 +5986,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   text-overflow: ellipsis;
 }
 
-.plan-row-version {
-  flex-shrink: 0;
-  display: inline-block;
-  font-size: 10px;
-  color: #8cb4ff;
-  background: rgba(140,180,255,0.12);
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-weight: 500;
-}
 
 /* Container des badges historique — DEPRECATED v170 :
    anciennement à droite du nom sur ligne 1 (modes + storage).
@@ -6189,12 +5994,6 @@ html.kta-theme-light .kta-cfg-group-titre {
    désormais dans .plan-row-modes (ligne 2 avec les badges modes V1/V2/M-LVL).
    Si on supprime cette classe à terme, vérifier qu'aucun consommateur tiers
    n'en dépend. */
-.plan-row-badges {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
 
 /* 🆕 v170 : ligne 2 dédiée aux badges meta (sous le nom du plan).
    - Suite 1 : badges modes V1/V2/M-LVL uniquement
@@ -6244,21 +6043,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   border: 1px solid rgba(255, 255, 255, 0.10);
 }
 
-.plan-row-sub {
-  font-size: 11px;
-  color: #8892a4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-}
-
-.plan-row-date {
-  display: block;
-  font-size: 10px;
-  color: #6c7689;
-  margin-top: 2px;
-}
 
 .plan-row-actions {
   display: flex;
@@ -6409,36 +6193,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 .plan-row-badge-pick   { color: #c0c8d8; opacity: 0.7; }
 
 /* Onglets loader */
-.loader-tabs {
-  display: flex;
-  gap: 0;
-  margin-bottom: 16px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.1);
-}
-
-.loader-tab {
-  flex: 1;
-  padding: 9px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  background: rgba(255,255,255,0.04);
-  color: #8892a4;
-  transition: background 0.15s, color 0.15s;
-}
-
-.loader-tab.active {
-  background: #1f6feb;
-  color: #fff;
-}
-
-.loader-tab:hover:not(.active) {
-  background: rgba(255,255,255,0.08);
-  color: #c8d0e0;
-}
 
 .loader-panel {
   display: none;
@@ -7668,9 +7422,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-dark .kta-emergency-value        { color: #f4c542; }
 .kta-emergency-dark .kta-emergency-sub          { color: #c8d0e0; }
 .kta-emergency-dark .kta-emergency-bloc         { background: rgba(255,255,255,0.04); border-color: rgba(244,197,66,0.25); }
-.kta-emergency-dark .kta-emergency-compass      { background: rgba(244,197,66,0.08); border-color: rgba(244,197,66,0.4); }
-.kta-emergency-dark .kta-emergency-compass-n    { color: #f4c542; }
-.kta-emergency-dark .kta-emergency-compass-needle { color: #ff6b6b; text-shadow: 0 0 12px rgba(255,107,107,0.6); }
 .kta-emergency-dark .kta-emergency-hint         { background: rgba(255,107,107,0.08); border-color: rgba(255,107,107,0.3); color: #ffb380; }
 .kta-emergency-dark .kta-emergency-exit-btn     { background: #f4c542; color: #0a0d18; border-color: #f4c542; }
 .kta-emergency-dark .kta-emergency-exit-btn:hover { background: #ffd860; }
@@ -7686,9 +7437,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-light .kta-emergency-value        { color: #b8740b; }
 .kta-emergency-light .kta-emergency-sub          { color: #2c3848; }
 .kta-emergency-light .kta-emergency-bloc         { background: rgba(0,0,0,0.04); border-color: rgba(184,116,11,0.35); }
-.kta-emergency-light .kta-emergency-compass      { background: rgba(184,116,11,0.1); border-color: rgba(184,116,11,0.5); }
-.kta-emergency-light .kta-emergency-compass-n    { color: #b8740b; }
-.kta-emergency-light .kta-emergency-compass-needle { color: #c0392b; text-shadow: 0 0 8px rgba(192,57,43,0.4); }
 .kta-emergency-light .kta-emergency-hint         { background: rgba(192,57,43,0.08); border-color: rgba(192,57,43,0.35); color: #c0392b; }
 .kta-emergency-light .kta-emergency-exit-btn     { background: #c0392b; color: #ffffff; border-color: #c0392b; }
 .kta-emergency-light .kta-emergency-exit-btn:hover { background: #a02818; }
@@ -7741,43 +7489,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 /* Toggle "🗺️ Itinéraire" — checkbox stylée façon chip cliquable.
    En landscape mobile (cf media query plus haut), on réduit la taille pour
    ne pas écraser l'espace du header (déjà compact). */
-.kta-emergency-toggle-iti {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border: 1.5px solid currentColor;
-  border-radius: 999px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  background: transparent;
-  transition: background 0.12s, opacity 0.12s;
-  opacity: 0.7;
-  user-select: none;
-}
-.kta-emergency-toggle-iti:hover { opacity: 1; }
-.kta-emergency-toggle-iti input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: currentColor;
-  margin: 0;
-}
-.kta-emergency-toggle-iti input:checked ~ span,
-.kta-emergency-toggle-iti:has(input:checked) {
-  opacity: 1;
-}
-.kta-emergency-dark  .kta-emergency-toggle-iti:has(input:checked) {
-  background: rgba(0, 212, 255, 0.15);
-  border-color: #00d4ff;
-  color: #00d4ff;
-}
-.kta-emergency-light .kta-emergency-toggle-iti:has(input:checked) {
-  background: rgba(0, 86, 153, 0.12);
-  border-color: #005699;
-  color: #005699;
-}
 
 .kta-emergency-grid {
   display: grid;
@@ -7921,30 +7632,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   opacity: 1;
 }
 
-.kta-emergency-compass {
-  margin-top: 8px;
-  width: 160px;
-  height: 160px;
-  border: 3px solid;
-  border-radius: 50%;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* 🔧 v1.10.2-fix8 (KARMA "ca parait flooté dans le rond, défloute") :
-     - retrait du backdrop-filter: blur(2px) qui floutait la portion de
-       minimap derrière le cercle compass (cause principale du "flou
-       dans le rond")
-     - background plus opaque pour compenser (lisibilité conservée sans
-       blur, mais on voit moins la map à travers le cercle — compromis
-       acceptable car le bloc heading entier montre déjà la map en
-       background, le rond compass est juste là pour cadrer l'aiguille). */
-  background: rgba(0, 0, 0, 0.55);
-}
-/* Thème clair : fond clair plus opaque sans blur */
-.kta-emergency-light .kta-emergency-compass {
-  background: rgba(255, 255, 255, 0.7);
-}
 
 /* 🆕 v1.10.2 + fix3 (KARMA "il peut prendre tout le rectangle cap") :
    minimap Leaflet remplit TOUT le bloc heading (pas juste le rond compass).
@@ -8090,31 +7777,6 @@ html.kta-theme-light .kta-cfg-group-titre {
     drop-shadow(0 0 7px rgba(192, 57, 43, 0.35));
 }
 
-.kta-emergency-compass-needle {
-  font-size: 60px;
-  line-height: 1;
-  /* 🔧 v1.10.2-fix1 : transition retirée pour rotation unwrapped — la
-     transition causait un flicker visuel quand la valeur appliquée
-     dépassait ±360°. Le throttle 1° + polling 250ms suffit à un
-     mouvement fluide perçu sans transition CSS. */
-  transform-origin: center 50%;
-  position: relative;
-  z-index: 2;  /* devant le minimap */
-  /* Glow rouge accentué pour rester lisible par-dessus le minimap */
-  filter: drop-shadow(0 0 10px rgba(255, 107, 107, 0.85))
-          drop-shadow(0 0 18px rgba(255, 107, 107, 0.55));
-}
-
-.kta-emergency-compass-n {
-  position: absolute;
-  top: 6px;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  z-index: 2;  /* devant le minimap */
-  /* Halo pour rester lisible */
-  text-shadow: 0 0 6px currentColor, 0 0 12px rgba(0,0,0,0.6);
-}
 
 /* Meta bloc — lignes label / value */
 .kta-emergency-meta-row {
@@ -8160,8 +7822,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   .kta-emergency-heading-num { font-size: 44px; }
   .kta-emergency-heading-card { font-size: 22px; }
   .kta-emergency-bloc-heading { min-height: 260px; }
-  .kta-emergency-compass    { width: 130px; height: 130px; }
-  .kta-emergency-compass-needle { font-size: 48px; }
   .kta-emergency-exit-btn   { padding: 16px; font-size: 14px; }
 }
 
@@ -8181,14 +7841,10 @@ html.kta-theme-light .kta-cfg-group-titre {
   .kta-emergency-heading-card { font-size: 18px; }
   .kta-emergency-bloc       { padding: 8px 10px; }
   .kta-emergency-bloc-heading { min-height: 160px; }
-  .kta-emergency-compass    { width: 90px; height: 90px; }
-  .kta-emergency-compass-needle { font-size: 34px; }
   .kta-emergency-exit-btn   { padding: 10px; font-size: 12px; }
   .kta-emergency-mini-map   { min-height: 140px; }
   /* Toggle "🗺️ Itinéraire" réduit en landscape pour ne pas surcharger header */
   .kta-emergency-header-actions { gap: 8px; }
-  .kta-emergency-toggle-iti { padding: 4px 8px; font-size: 11px; gap: 4px; }
-  .kta-emergency-toggle-iti input[type="checkbox"] { width: 13px; height: 13px; }
   .kta-emergency-theme-btn { width: 36px; height: 36px; font-size: 18px; }
 }
 
@@ -9716,12 +9372,6 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   padding: 8px 0;
 }
 
-.kta-iti-wp-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-}
 
 .kta-iti-wp-num {
   display: inline-flex;
@@ -11646,43 +11296,6 @@ a.kta-level-btn {
   font-weight: 700;
 }
 
-.kta-tracker-warn-lead {
-  background: rgba(255, 107, 107, 0.10);
-  border-left: 3px solid #ff6b6b;
-  color: #ffb3b3;
-  padding: 10px 12px;
-  border-radius: 4px;
-  margin: 0 0 14px 0;
-  font-size: 15px;
-}
-
-.kta-tracker-warn-section {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 6px;
-  padding: 10px 14px;
-  margin: 12px 0;
-}
-.kta-tracker-warn-section ul {
-  margin: 6px 0 0 0;
-  padding-left: 22px;
-}
-.kta-tracker-warn-section li {
-  margin-bottom: 4px;
-}
-.kta-tracker-warn-section-titre {
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #c8d0e0;
-  margin-bottom: 6px;
-}
-.kta-tracker-warn-section-bad .kta-tracker-warn-section-titre {
-  color: #ff8a8a;
-}
-.kta-tracker-warn-section-bad {
-  background: rgba(255, 107, 107, 0.05);
-}
 
 .kta-tracker-warn-note {
   font-style: italic;
@@ -12592,10 +12205,6 @@ body.kta-refonte-v1 .kta-refonte-counter-battery .kta-refonte-counter-val {
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, "SF Mono", monospace;
   /* La couleur est inline depuis JS (vert/jaune/orange/rouge/bleu) */
-  color: inherit;
-}
-body.kta-refonte-v1 .kta-refonte-stat-battery .kta-refonte-stat-val {
-  font-variant-numeric: tabular-nums;
   color: inherit;
 }
 
@@ -13998,21 +13607,6 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
 
 /* Hint en bas de l'écran (PC + tablette, caché sur petit mobile pour
    économiser la hauteur) */
-.kta-photo-viewer-hint {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 10px 16px;
-  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
-  color: #c8d0e0;
-  font-size: 12px;
-  text-align: center;
-  font-style: italic;
-  pointer-events: none;
-  z-index: 2;
-}
 
 /* Sur mobile en portrait : flèches plus compactes pour ne pas masquer
    trop la photo */
@@ -14024,16 +13618,10 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   }
   .kta-photo-viewer-nav-prev { left: 6px; }
   .kta-photo-viewer-nav-next { right: 6px; }
-  .kta-photo-viewer-hint {
-    font-size: 11px;
-    padding: 8px 10px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-  }
 }
 
 /* Landscape mobile très bas : on cache le hint pour gagner de la place */
 @media (max-height: 400px) and (orientation: landscape) {
-  .kta-photo-viewer-hint { display: none; }
 }
 
 /* Curseur grab quand zoomé (set dynamiquement par le JS aussi mais
@@ -14315,9 +13903,6 @@ body.kta-theme-light .leaflet-control-layers-separator {
 }
 
 /* === MODALES (kta-readme-modal-* pattern utilisé partout) === */
-body.kta-theme-light .kta-readme-modal-overlay {
-  background: rgba(40, 32, 20, 0.55);
-}
 body.kta-theme-light .kta-readme-modal-boite {
   background: var(--kta-light-bg-elevated);
   color: var(--kta-light-text);
@@ -14327,9 +13912,6 @@ body.kta-theme-light .kta-readme-modal-boite {
 body.kta-theme-light .kta-readme-modal-header {
   background: var(--kta-light-bg-deep);
   border-bottom: 1px solid var(--kta-light-border);
-}
-body.kta-theme-light .kta-readme-modal-titre {
-  color: var(--kta-light-text);
 }
 body.kta-theme-light .kta-readme-modal-corps {
   color: var(--kta-light-text);
@@ -14342,9 +13924,6 @@ body.kta-theme-light .kta-readme-modal-corps code {
   background: rgba(0,0,0,0.06);
   color: #8b3a00;
   border-color: var(--kta-light-border);
-}
-body.kta-theme-light .kta-readme-modal-corps strong {
-  color: var(--kta-light-text);
 }
 
 /* === v1.34.28 — Dropdown recherche Mode Itinéraire en theme clair ===
@@ -15094,10 +14673,6 @@ body.kta-theme-light .leaflet-popup-content,
 html.kta-theme-light .leaflet-popup-content {
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .leaflet-popup-content b,
-html.kta-theme-light .leaflet-popup-content b {
-  color: var(--kta-light-accent-strong, #a16e10) !important;
-}
 body.kta-theme-light .leaflet-popup-close-button,
 html.kta-theme-light .leaflet-popup-close-button {
   color: var(--kta-light-text-muted) !important;
@@ -15202,26 +14777,6 @@ html.kta-theme-light .leaflet-popup-content select {
 }
 
 /* === Plan switcher (titre clickable + modale) === */
-body.kta-theme-light .kta-refonte-plan-switch-modal-overlay {
-  background: rgba(40, 32, 20, 0.55);
-}
-body.kta-theme-light .kta-refonte-plan-switch-modal {
-  background: var(--kta-light-bg-elevated);
-  color: var(--kta-light-text);
-  border: 1px solid var(--kta-light-border);
-}
-body.kta-theme-light .kta-refonte-plan-card {
-  background: rgba(0,0,0,0.03);
-  border: 1px solid var(--kta-light-border);
-  color: var(--kta-light-text);
-}
-body.kta-theme-light .kta-refonte-plan-card.kta-refonte-plan-card-active {
-  background: var(--kta-light-accent-bg);
-  border-color: var(--kta-light-accent);
-}
-body.kta-theme-light .kta-refonte-plan-card:hover {
-  background: var(--kta-light-accent-bg);
-}
 
 /* === Modale Aide / Doc (kta-aide-* / kta-readme-*) === */
 body.kta-theme-light .kta-aide-section-titre {
@@ -15236,26 +14791,6 @@ body.kta-theme-light .kta-aide-grille {
 }
 
 /* === Recherche unifiée (Ctrl+K) === */
-body.kta-theme-light .kta-search-modal-boite,
-body.kta-theme-light .kta-search-result-item {
-  background: var(--kta-light-bg-elevated);
-  color: var(--kta-light-text);
-  border-color: var(--kta-light-border);
-}
-body.kta-theme-light .kta-search-result-item:hover,
-body.kta-theme-light .kta-search-result-item.kta-search-selected {
-  background: var(--kta-light-accent-bg);
-}
-body.kta-theme-light .kta-search-filter-chip {
-  background: rgba(0,0,0,0.05);
-  color: var(--kta-light-text);
-  border: 1px solid var(--kta-light-border);
-}
-body.kta-theme-light .kta-search-filter-chip.active {
-  background: var(--kta-light-accent-bg);
-  border-color: var(--kta-light-accent);
-  color: var(--kta-light-text);
-}
 
 /* === Tableaux / lignes (édition JSON, stats, etc.) === */
 body.kta-theme-light table {
@@ -15379,21 +14914,8 @@ body.kta-theme-light .kta-iti-avoid-chip {
 }
 
 /* === Tag autocomplete suggestions === */
-body.kta-theme-light .kta-tag-suggestion {
-  background: var(--kta-light-bg-elevated);
-  color: var(--kta-light-text);
-  border: 1px solid var(--kta-light-border);
-}
-body.kta-theme-light .kta-tag-suggestion:hover,
-body.kta-theme-light .kta-tag-suggestion.kta-active {
-  background: var(--kta-light-accent-bg);
-}
 
 /* === Hint / accordions / sections expandables === */
-body.kta-theme-light .kta-aide-section,
-body.kta-theme-light details {
-  border: 1px solid var(--kta-light-border);
-}
 body.kta-theme-light summary {
   color: var(--kta-light-text);
 }
@@ -15402,31 +14924,6 @@ body.kta-theme-light summary:hover {
 }
 
 /* === Confirmation suppressions (kta-choix-suppr) === */
-body.kta-theme-light .kta-choix-suppr-overlay {
-  background: rgba(40, 32, 20, 0.55);
-}
-body.kta-theme-light .kta-choix-suppr-boite {
-  background: var(--kta-light-bg-elevated);
-  color: var(--kta-light-text);
-  border: 1px solid var(--kta-light-border);
-}
-body.kta-theme-light .kta-choix-suppr-btn {
-  background: rgba(0,0,0,0.04);
-  color: var(--kta-light-text);
-  border: 1px solid var(--kta-light-border);
-}
-body.kta-theme-light .kta-choix-suppr-btn:hover {
-  background: var(--kta-light-accent-bg);
-  border-color: var(--kta-light-accent);
-}
-body.kta-theme-light .kta-choix-suppr-btn.kta-danger {
-  background: rgba(220, 50, 50, 0.1);
-  color: #b02020;
-  border-color: rgba(220, 50, 50, 0.4);
-}
-body.kta-theme-light .kta-choix-suppr-btn.kta-danger:hover {
-  background: rgba(220, 50, 50, 0.2);
-}
 
 /* === Refresh button du chip Counter Session (mobile compact) === */
 body.kta-theme-light .kta-refonte-counters-btn {
@@ -15514,9 +15011,6 @@ body.kta-theme-light .kta-readme-modal-corps blockquote {
 }
 
 /* === Section Mes plans dans la modale Plan switcher (refonte v1.2) === */
-body.kta-theme-light .kta-refonte-plan-grid-titre {
-  color: var(--kta-light-accent-hover);
-}
 
 /* === Tooltips Leaflet === */
 body.kta-theme-light .leaflet-tooltip {
@@ -15535,45 +15029,11 @@ body.kta-theme-light .leaflet-tooltip {
    cohérent avec les autres icônes sidebar). La canonique reste seule. */
 
 /* === Modale Niveaux M-LVL === */
-body.kta-theme-light .kta-mlvl-niveau-row,
-body.kta-theme-light .kta-mlvl-card {
-  background: rgba(0,0,0,0.03);
-  border: 1px solid var(--kta-light-border);
-  color: var(--kta-light-text);
-}
-body.kta-theme-light .kta-mlvl-niveau-row.kta-mlvl-actif,
-body.kta-theme-light .kta-mlvl-card.kta-mlvl-actif {
-  background: var(--kta-light-accent-bg);
-  border-color: var(--kta-light-accent);
-}
-body.kta-theme-light .kta-mlvl-niveau-badge {
-  background: var(--kta-light-bg-deep);
-  color: var(--kta-light-text);
-  border: 1px solid var(--kta-light-border);
-}
 
 /* === Légende in-app (kta-legende-*) === */
 body.kta-theme-light .kta-legende-modal-boite {
   background: var(--kta-light-bg-elevated);
   color: var(--kta-light-text);
-}
-body.kta-theme-light .kta-legende-section-titre {
-  color: var(--kta-light-accent-hover);
-}
-body.kta-theme-light .kta-legende-item {
-  border-bottom: 1px solid var(--kta-light-border);
-  color: var(--kta-light-text);
-}
-
-/* === Boutons d'action header (PIN, theme emergency, etc.) === */
-body.kta-theme-light .kta-refonte-header-action-btn {
-  background: rgba(0,0,0,0.05);
-  color: var(--kta-light-text);
-  border: 1px solid var(--kta-light-border);
-}
-body.kta-theme-light .kta-refonte-header-action-btn:hover {
-  background: var(--kta-light-accent-bg);
-  border-color: var(--kta-light-accent);
 }
 
 /* === Splash KARMA (reste dark, mais juste au cas où une transition
@@ -16919,17 +16379,6 @@ html.kta-theme-light .loader-plans-list li:hover {
 }
 
 /* === Section actions (boutons mini export/import liste) === */
-html.kta-theme-light .loader-btn-mini {
-  background: rgba(0, 0, 0, 0.04) !important;
-  color: #2a2620 !important;
-  border: 1px solid rgba(154, 135, 84, 0.30) !important;
-  border-radius: 6px !important;
-}
-html.kta-theme-light .loader-btn-mini:hover {
-  background: rgba(244, 197, 66, 0.18) !important;
-  border-color: #f4c542 !important;
-  color: #1a1612 !important;
-}
 
 /* === Box Resume (Reprendre) — quand visible, doit aussi être arrondi === */
 html.kta-theme-light #resumeBox {
@@ -17017,51 +16466,6 @@ html.kta-theme-light .kta-search-clear-filters:hover {
 /* Lignes de filtres : Catégorie / Calques / Tags */
 html.kta-theme-light .kta-search-filters {
   background: transparent !important;
-}
-html.kta-theme-light .kta-search-filter-label {
-  color: #6b6354 !important;
-  font-weight: 700 !important;
-}
-html.kta-theme-light .kta-search-filter-chip {
-  background: rgba(0, 0, 0, 0.04) !important;
-  color: #2a2620 !important;
-  border: 1px solid rgba(154, 135, 84, 0.30) !important;
-}
-html.kta-theme-light .kta-search-filter-chip:hover {
-  background: rgba(244, 197, 66, 0.12) !important;
-  border-color: rgba(244, 197, 66, 0.50) !important;
-}
-html.kta-theme-light .kta-search-filter-chip.active {
-  background: rgba(244, 197, 66, 0.30) !important;
-  border-color: #f4c542 !important;
-  color: #2a2620 !important;
-  font-weight: 600 !important;
-}
-/* Groupes de résultats (Points / Tracés / Zones / Structures) */
-html.kta-theme-light .kta-search-group-titre {
-  color: #d9a82e !important;
-  border-bottom: 1px solid rgba(154, 135, 84, 0.30) !important;
-}
-html.kta-theme-light .kta-search-result-item {
-  background: rgba(0, 0, 0, 0.02) !important;
-  border: 1px solid rgba(154, 135, 84, 0.18) !important;
-  color: #2a2620 !important;
-}
-html.kta-theme-light .kta-search-result-item:hover,
-html.kta-theme-light .kta-search-result-item.kta-search-selected {
-  background: rgba(244, 197, 66, 0.15) !important;
-  border-color: rgba(244, 197, 66, 0.50) !important;
-}
-html.kta-theme-light .kta-search-result-item .kta-search-result-meta,
-html.kta-theme-light .kta-search-result-item .kta-search-result-sub {
-  color: #6b6354 !important;
-}
-html.kta-theme-light .kta-search-result-item strong,
-html.kta-theme-light .kta-search-result-item mark {
-  background: rgba(244, 197, 66, 0.40) !important;
-  color: #1a1612 !important;
-  padding: 0 2px !important;
-  border-radius: 2px !important;
 }
 
 /* === Onglets "Mode rapide / Mode avancé" (.kta-conv-sens-btn) — bug
@@ -17394,28 +16798,6 @@ html.kta-theme-light #loaderParanoiaBadge {
 }
 
 /* === Modale Choix suppression (apparaît sur clic ❌ Mesure, ❌ Tracé, etc.) === */
-html.kta-theme-light .kta-choix-suppr-overlay {
-  background: rgba(40, 32, 20, 0.55) !important;
-}
-html.kta-theme-light .kta-choix-suppr-boite {
-  background: #fdf8eb !important;
-  color: #2a2620 !important;
-  border: 1px solid rgba(0,0,0,0.22) !important;
-}
-html.kta-theme-light .kta-choix-suppr-btn {
-  background: rgba(0,0,0,0.04) !important;
-  color: #2a2620 !important;
-  border: 1px solid rgba(0,0,0,0.12) !important;
-}
-html.kta-theme-light .kta-choix-suppr-btn:hover {
-  background: rgba(244,197,66,0.22) !important;
-  border-color: #f4c542 !important;
-}
-html.kta-theme-light .kta-choix-suppr-btn.kta-danger {
-  background: rgba(220, 50, 50, 0.1) !important;
-  color: #b02020 !important;
-  border-color: rgba(220, 50, 50, 0.4) !important;
-}
 
 /* === Toast (OOMGuard) === */
 html.kta-theme-light .kta-toast {
@@ -17450,15 +16832,6 @@ html.kta-theme-light .kta-iti-avoid-chip {
   color: #2a2620 !important;
   border-color: rgba(0,0,0,0.12) !important;
 }
-html.kta-theme-light .kta-search-result-item {
-  background: #fdf8eb !important;
-  color: #2a2620 !important;
-  border-color: rgba(0,0,0,0.12) !important;
-}
-html.kta-theme-light .kta-search-result-item:hover,
-html.kta-theme-light .kta-search-result-item.kta-search-selected {
-  background: rgba(244,197,66,0.22) !important;
-}
 
 /* === 🔧 v1.13.0-fix3 (KARMA "LE BOUTON QUI permet de charger le dernier
    plan ne prend pas la modif, les modals non plus") : .loader-btn-resume
@@ -17480,24 +16853,6 @@ body.kta-theme-light .loader-btn-resume strong {
 }
 
 /* === Autres .loader-btn-* non couverts précédemment === */
-body.kta-theme-light .loader-btn-ghost {
-  background: rgba(0,0,0,0.04) !important;
-  color: var(--kta-light-text) !important;
-  border: 1px solid var(--kta-light-border-strong) !important;
-}
-body.kta-theme-light .loader-btn-ghost:hover {
-  background: var(--kta-light-accent-bg) !important;
-  border-color: var(--kta-light-accent) !important;
-}
-body.kta-theme-light .loader-btn-mini {
-  background: rgba(0,0,0,0.04) !important;
-  color: var(--kta-light-text) !important;
-  border: 1px solid var(--kta-light-border) !important;
-}
-body.kta-theme-light .loader-btn-mini:hover {
-  background: var(--kta-light-accent-bg) !important;
-  border-color: var(--kta-light-accent) !important;
-}
 body.kta-theme-light .loader-btn-fs {
   background: rgba(0,0,0,0.05) !important;
   color: var(--kta-light-text) !important;
@@ -18061,14 +17416,6 @@ body.kta-theme-light .kta-legend-border { border-color: rgba(0, 0, 0, 0.25); }
 /* Mini-modale "Ajouter une entrée custom" — réutilise les classes
    kta-modal* existantes ; juste un override de z-index pour passer
    au-dessus de la modale Export. */
-.kta-legend-add-overlay {
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-}
 
 /* Theme clair — overrides pour lisibilité */
 body.kta-theme-light .kta-legend-cat {
@@ -18782,11 +18129,6 @@ html.kta-theme-light .kta-loader-profile-stat-val {
   .kta-loader-profile-surnom {
     font-size: 15px;
   }
-  .kta-loader-profile-btn-details {
-    width: 32px;
-    height: 32px;
-    font-size: 15px;
-  }
 }
 
 /* PC ≥ 1024px : un peu plus spacieux pour valoriser */
@@ -19343,16 +18685,6 @@ html.kta-theme-light .kta-loader-profile-surnom {
 body.kta-theme-light .kta-loader-profile-surnom-empty,
 html.kta-theme-light .kta-loader-profile-surnom-empty {
   color: var(--kta-light-text-muted, #6b6354) !important;
-}
-body.kta-theme-light .kta-loader-profile-btn-details,
-html.kta-theme-light .kta-loader-profile-btn-details {
-  background: rgba(0,0,0,0.06) !important;
-  border-color: var(--kta-light-border-strong, rgba(0,0,0,0.22)) !important;
-  color: var(--kta-light-text, #2a2620) !important;
-}
-body.kta-theme-light .kta-loader-profile-btn-details:hover,
-html.kta-theme-light .kta-loader-profile-btn-details:hover {
-  background: rgba(0,0,0,0.12) !important;
 }
 
 /* Modale détails */
@@ -21234,8 +20566,12 @@ html.kta-theme-light .kta-osm-multi-cat.active { color: #1a1f2e; }
   .kta-loader-top-row .kta-loader-profile-avatar-wrap { width: 36px; height: 36px; }
   .kta-loader-top-row .kta-loader-profile-stats > * { padding: 3px 8px; font-size: 11px; }
   .kta-loader-top-row #resumeBox .loader-btn-resume { padding: 8px 22px; font-size: 13.5px; }
-  /* La hauteur gagnée va à la carte : 52 → 58vh */
-  .loader-col-osm .kta-osm-home-content { min-height: clamp(300px, 58vh, 700px); }
+  /* 🐛 v1.77.0 (audit agent 08/08) — la règle « 52 → 58vh » qui vivait ici
+     ÉCRASAIT (même spécificité, plus bas dans la cascade) le fix v1.76.2 de
+     la ligne ~4880 : min-height:260px était une déclaration MORTE, la vraie
+     valeur restait un clamp en vh qui excédait la place du grid → le widget
+     débordait sur le footer. Supprimée : le flex:1 remplit déjà la colonne
+     sur grand écran, un plancher en vh n'apportait rien de visible. */
 }
 
 /* 🎚️ v1.71.0 — modale ≡ enrichie : sections + chips libellés + tags */
@@ -21272,7 +20608,7 @@ html.kta-theme-light .kta-osm-multi-cat.active { color: #1a1f2e; }
 /* 🔽 v1.71.0 — Footer HOME repliable (flèche classique, état persisté) */
 .kta-footer-toggle {
   display: block;
-  margin: 8px auto 0;
+  margin: 4px auto 0;   /* 📐 v1.77.0 : 8→4, le footer doit tenir dans l'écran (KARMA) */
   padding: 3px 18px;
   font-size: 11px;
   color: #8892a4;
@@ -21741,3 +21077,41 @@ html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
 .kta-devdocs-lecture h1, .kta-devdocs-lecture h2 { color: #f4c542; }
 .kta-devdocs-lecture h3 { color: #8cb4ff; }
 .kta-devdocs-lecture code { background: rgba(140, 180, 255, 0.10); padding: 1px 4px; border-radius: 3px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   📐 v1.77.0 — LE FOOTER DÉPLIÉ TIENT DANS L'ÉCRAN PC (audit agent 09/08)
+   Budget mesuré : HOME desktop ≈ 870px déplié, gouverné par la colonne
+   ACTIONS (~556px) — pas par l'OSM (les compactages précédents sur la
+   colonne OSM ne gagnaient RIEN, elle est ~250px sous la contraignante).
+   Le footer déplié ne coûte que ~65px : on récupère ~92px sur le vrai
+   gras. ⚠️ Ce bloc DOIT rester en FIN de fichier : la règle des tuiles
+   doit battre le bloc HOME v2 (~ligne 21040) à spécificité égale.
+   Seuils honnêtes : ≥ ~780px de viewport = tient déplié ; en dessous de
+   ~715px le scroll est structurel (laptop 768 scrollera quoi qu'on fasse).
+   ═══════════════════════════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  /* 1) Footer : contact + libs sur UNE ligne (~18px). Mise en forme seule —
+     le CONTENU légal (licence, contacts, attributions) est intouchable. */
+  .kta-loader-copyright .kta-loader-credits { display: inline; margin-top: 0; }
+  .kta-loader-copyright .kta-loader-credits + .kta-loader-credits::before {
+    content: " · ";
+    color: #4a5468;
+  }
+  /* 2) #loaderStatus : 32px réservés en permanence pour un div VIDE la
+     plupart du temps (~26px). Léger reflow quand un statut s'affiche. */
+  #loaderStatus { margin-top: 6px; min-height: 0; }
+  /* 3) Tuiles Outils : 58px est une cible TACTILE — inutile à la souris (~28px). */
+  .loader-secondary-actions .loader-btn-secondary { min-height: 44px; }
+  /* 4) Drop-zone ZIP : padding vertical dégonflé (~20px). */
+  .zip-drop-zone { padding: 14px 16px; }
+}
+
+/* 📐 v1.77.0 (suite — retour KARMA : « quelques pixels en trop font
+   apparaître la barre de scroll ») : 2e rabotage sur les leviers restants
+   de l'audit, ~38px. Même contrainte : bloc en FIN de fichier. */
+@media (min-width: 1024px) {
+  #planLoaderBox { padding-top: 16px; }                          /* 24→16 : ~8px */
+  .loader-header { margin-bottom: 14px; padding-bottom: 10px; }  /* 22+16→14+10 : ~14px */
+  .loader-tools-head { margin-top: 8px; }                        /* 16→8 : ~8px */
+  .loaderActions { margin-top: 8px; }                            /* 16→8 : ~8px */
+}

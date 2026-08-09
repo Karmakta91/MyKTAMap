@@ -344,17 +344,6 @@
     });
   }
 
-  // Test si un point passe les filtres actifs (legacy — points uniquement)
-  // Logique : AND entre catégories, OR à l'intérieur d'une catégorie
-  function _matchesFilters(it) {
-    if (_filterLayers.size > 0 && !_filterLayers.has(it.layerId)) return false;
-    if (_filterTags.size > 0) {
-      const tags = Array.isArray(it.point.tags) ? it.point.tags : [];
-      const hasMatch = tags.some(function(t) { return _filterTags.has(t); });
-      if (!hasMatch) return false;
-    }
-    return true;
-  }
 
   // 🆕 v1.10.3-search-unified : version unifiée pour les 4 catégories.
   // - filterKinds (Set vide = tout) : filtre par "point"|"road"|"zone"|"structure"

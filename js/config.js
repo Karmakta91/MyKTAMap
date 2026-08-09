@@ -168,7 +168,6 @@ try {
 // =========================
 // RUNTIME ASSETS (mode import navigateur)
 // =========================
-window.RAW_PLAN_CONFIG  = null;
 window.PLAN_CONFIG      = null;
 window.RUNTIME_ASSETS   = {};
 
@@ -201,7 +200,6 @@ function resetRuntimeAssets() {
     }
   });
   window.RUNTIME_ASSETS  = {};
-  window.RAW_PLAN_CONFIG = null;
   window.PLAN_CONFIG     = null;
   // 🐛 v1.34.11 (Pack RAM Phase 2) — Libère la référence au ZIP source du
   // plan précédent. Sans ça, le JSZip + ses entrées compressées resteraient

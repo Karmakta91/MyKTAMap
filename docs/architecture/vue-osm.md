@@ -167,9 +167,26 @@ return tiling.minNativeZoom;  // fallback safety pour plans extrêmes
 | 16K | z=-2 | 64 | 64 MB |
 | 32K+ | minNative | ≤80 | ≤80 MB |
 
-**Pas de viewport culling dynamique** dans le widget (carte fixe, pas de zoom user). Toutes les tuiles sont chargées d'un coup.
+~~**Pas de viewport culling dynamique** dans le widget~~ → **obsolète depuis v1.77.0**, voir §3.4bis.
 
 Render : `L.imageOverlay.rotated(url, tl, tr, bl, { interactive: false, opacity: _planOpacity })`. Pattern identique à `osmView.js > _renderTilesV2OnOsm` (convention CRS.Simple `pxTop = planH - k * tileSize * scale`).
+
+### 3.4bis Tuiles HI-RES au zoom (v1.77.0)
+
+Bug KARMA : « un plan X est très flou si je zoome [au HOME], alors qu'il est lisible en mode OSM plan ». Cause : le widget n'avait QUE le niveau baseline (≤80 tuiles, très réduit sur un gros plan), là où la modale swape de niveau au `zoomend`.
+
+Mécanisme (bloc `TUILES HI-RES` de `osmHomePreview.js`) :
+- `zoomend/moveend` → débounce 300 ms → `_majTuilesHiRes()` (garde anti-réentrance `_hiResBusy` + re-planification).
+- Par plan de la pile (`_stackOrder` ∪ principal) : niveau cible = le plus grossier dont la largeur (`planW/2^-z`) couvre la **largeur écran du plan** (coins bas projetés via `latLngToContainerPoint`). Si le baseline suffit → hi-res retiré.
+- Culling : seules les tuiles intersectant `getBounds().pad(0.15)` sont extraites, budget `HIRES_BUDGET_TUILES = 60`/plan — dépassé → un cran plus grossier.
+- Extraction depuis le **handle JSZip gardé dans `_planDataCache[planId].zip`** (lazy : central directory seul, RAM négligeable) — pas de re-parse du ZIP.
+- Rendu AU-DESSUS du baseline (même pane par plan, `_zIndexPour(planId)+1`) → jamais de trou pendant le chargement ; le baseline reste le filet.
+- Pan à niveau constant : **delta** (tuiles communes réutilisées, sorties révoquées). Swap de niveau / plan retiré / carte recréée : `_retirerHiRes` révoque tout. Garde anti-race : la carte capturée avant les `await` doit être la même à la pose de l'état.
+- Opacité/visibilité : `_setPlanOpacity`, `_setOpaciteExtra` et `_appliquerVisibilites` pilotent aussi les groupes hi-res.
+
+**Blob URLs — deux régimes distincts** (réparation v1.77.0 d'un faux fix de l'audit code-mort du 09/08) :
+- *baseline* : vivent avec `_planDataCache`, **jamais révoquées en session** (design v1.71.0 — re-ajout d'un plan gratuit, cache borne l'extraction à 1×/plan). La révocation ajoutée par l'audit cassait le multi-plans (charger B révoquait les URLs de A encore affiché).
+- *hi-res* : éphémères, révoquées à chaque swap/sortie/refresh.
 
 **Slider opacité** (v1.40.6) : `_setPlanOpacity(v)` itère `_tilesLayer.eachLayer` + `setOpacity`. Default `_planOpacity = 0.7`.
 
@@ -210,10 +227,18 @@ Cohérent avec `getIconUrlForPoint` (`utils.js:38`) qui fait pareil pour la map 
 | chemin | `#ffff00` jaune |
 | jonction | `#ff4ecb` rose |
 
-Cascade dans `_renderDataLayersOnMiniMap` :
+Cascade **v1.77.0** (bug KARMA « galerie principale reste verte en OSM », puis « OSM PLAN OK mais pas OSM HOME ») — deux mécanismes DIFFÉRENTS selon la vue :
+
+**Modale `osmView`** (session live chargée) — le canon passe avant les tables locales :
 ```js
-const color = r.color || ROAD_STYLES_DATA_HOME[r.type] || "#8892a4";
+explicit (r.color) → ktaResolveStyle(cat, type, {flat:true})  // override légende live
+                   → table locale → findCustomEntry → "#8892a4"
 ```
+
+**Widget HOME `osmHomePreview`** — PAS ktaResolveStyle : le canon applique l'état LIVE de `LegendCustomization`, qui au HOME est soit **vide** (boot froid = le cas normal, on est au HOME avant de charger un plan), soit celui du **dernier plan chargé** (faux pour les autres plans de la pile). Résolution **PAR PLAN** (bloc `OVERRIDES DE LÉGENDE PAR PLAN`) :
+- `_legendeDe(planId)` : lit le slot SessionPersist du plan (`localStorage myktamap_session_v1_<id>` → `payload.customLegend`, auto-savé ~1,5 s en mode plan) puis le `customLegend` du plan-config du ZIP (double-lecture `plan.customLegend`/racine comme `loadPlanState`). Cache RAM par planId, invalidé à chaque `mount()`.
+- Cascade : explicit → `colors["<cat>.<type>"]` du slot (session > plan) → table locale (défauts canon) → `customEntries` du slot → `findCustomEntry` live (dernier recours) → gris.
+- Zones : bordure = `borders[...]` explicite sinon dérivée via `window.ktaAssombrir(fill, 0.62)` (helper du canon exposé v1.77.0 — même relation visuelle que le mode plan). Structures : couleurs seules, les variantes locales gardent leurs weight/fillOpacity allégés.
 
 **Structures** : `STRUCT_STYLES_HOME` variant LIGHT (weight/fillOpacity allégés) aligné sur `structures.js > STRUCTURE_STYLES`. Adaptatif polyline (fronts) ou polygon (mur/pilier).
 

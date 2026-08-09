@@ -380,6 +380,15 @@
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.resolHint")}</span>
               </span>
             </button>
+            <!-- 🧹 v1.77.0 (demande KARMA, suite au bug clic-carte multiplié) :
+                 nettoyage des sommets dupliqués accumulés dans les fichiers. -->
+            <button class="kta-tbl-source-card" id="kta-tbl-src-dedup">
+              <span class="kta-tbl-source-ico">🧹</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.dedup")}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.dedupHint")}</span>
+              </span>
+            </button>
           </div>
           <input type="file" id="kta-tbl-zip-input" accept=".zip,application/zip" style="display:none;">
         </div>
@@ -396,6 +405,7 @@
     // 🔁 v1.76.2 — même flux d'import que JSON, mais la dialog de conversion
     // s'ouvrira automatiquement une fois le tableau affiché.
     document.getElementById("kta-tbl-src-resol").addEventListener("click", _ouvrirConvertResolution);
+    document.getElementById("kta-tbl-src-dedup").addEventListener("click", _ouvrirDedup); // 🧹 v1.77.0
     // 🔗 v1.69.0 — délègue au fusionneur existant (onglet « Fusion » de la
     // modale d'export de session), ouvert en mode solo comme depuis le HOME.
     document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
@@ -1552,6 +1562,144 @@
       if (arr) compte[k] = arr.reduce(function(n, p) { return n + pt(p); }, 0);
     });
     return compte;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 🧹 v1.77.0 — DÉDOUBLONNAGE (demande KARMA, suite au bug clic-carte
+  // multiplié : N sommets confondus empilés par clic dans les dessins de
+  // tracés/zones/structures et les mesures — invisibles à l'écran, mais
+  // sessions et exports gonflés)
+  // ═══════════════════════════════════════════════════════════
+  // Fonction PURE : retire les sommets IDENTIQUES CONSÉCUTIFS (x, y, level)
+  // des géométries et mesures. Les POI (data/editorPoints) ne sont PAS
+  // touchés : deux points volontairement superposés sont légitimes.
+  // Un objet n'est supprimé QUE si le nettoyage l'a réduit sous son minimum
+  // (tracé/ligne < 2, zone/polygone < 3) — un objet déjà petit mais sans
+  // doublon n'est jamais touché (cas : structure custom polyline à 2
+  // sommets, dont la géométrie vit dans la légende, pas dans l'objet).
+  function _dedupliquerFichier(obj) {
+    const bilan = { sommets: 0, objets: 0 };
+    if (!obj || typeof obj !== "object") return bilan;
+    const memes = function(a, b) {
+      return a && b && a.x === b.x && a.y === b.y
+        && (a.level === b.level || (a.level == null && b.level == null));
+    };
+    const nettoyer = function(points) {
+      if (!Array.isArray(points) || points.length < 2) return points;
+      const out = [points[0]];
+      for (let i = 1; i < points.length; i++) {
+        if (memes(points[i], out[out.length - 1])) { bilan.sommets++; continue; }
+        out.push(points[i]);
+      }
+      return out;
+    };
+    ["roads", "zones", "structures"].forEach(function(k) {
+      if (!Array.isArray(obj[k])) return;
+      obj[k] = obj[k].filter(function(g) {
+        if (!g || !Array.isArray(g.points)) return true;
+        const avant = g.points.length;
+        g.points = nettoyer(g.points);
+        if (g.points.length === avant) return true;   // rien retiré → jamais supprimé
+        const estLigne = (k === "roads")
+          || (k === "structures" && !(typeof g.type === "string"
+              && (g.type === "pilier-1" || g.type === "pilier-2" || g.type === "mur")));
+        const min = (k === "zones") ? 3 : (estLigne ? 2 : 3);
+        if (g.points.length < min) { bilan.objets++; return false; }
+        return true;
+      });
+    });
+    // Mesures — deux formes selon la source : calque `{points:[…]}`, session
+    // tableau direct (même dualité que _transformerCoordsFichier).
+    ["measure", "measureSurface"].forEach(function(k) {
+      const m = obj[k];
+      if (!m) return;
+      if (Array.isArray(m)) obj[k] = nettoyer(m);
+      else if (Array.isArray(m.points)) m.points = nettoyer(m.points);
+    });
+    return bilan;
+  }
+
+  function _ouvrirDedup() {
+    const t = function(k, p) { return window.I18n.t(k, p); };
+    const sub = document.createElement("div");
+    // ⚠️ kta-readme-modal-overlay, PAS "kta-readme-modal" (bug du 07/08).
+    sub.className = "kta-readme-modal-overlay";
+    sub.style.zIndex = "100001";
+    sub.innerHTML = `
+      <div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:90vh;">
+        <div class="kta-readme-modal-entete">
+          <span class="kta-readme-modal-titre">🧹 ${t("tabledit.dedup.titre")}</span>
+          <button class="kta-panneau-close" id="kta-tbl-dedup-close">✕</button>
+        </div>
+        <div class="kta-readme-modal-corps" style="font-size:13px;">
+          <p style="color:#8892a4; margin:0 0 8px; line-height:1.5;">${t("tabledit.dedup.intro")}</p>
+          <p style="color:#8892a4; margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${t("tabledit.dedup.note")}</p>
+          <div class="kta-cfg-label" style="font-weight:600;">${t("tabledit.dedup.fichiers")}</div>
+          <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:4px 0; display:inline-block;">📄 ${t("tabledit.dedup.choisirFichiers")}
+            <input type="file" id="kta-tbl-dedup-files" accept=".json,application/json" multiple style="display:none;">
+          </label>
+          <div id="kta-tbl-dedup-files-liste" style="font-size:12px; color:#c8d0e0; margin:2px 0 6px;">${t("tabledit.dedup.aucunFichier")}</div>
+          <div class="kta-conv-actions" style="margin-top:12px;">
+            <button class="kta-btn kta-btn-ghost"   id="kta-tbl-dedup-annuler">${t("tabledit.editor.annuler")}</button>
+            <button class="kta-btn kta-btn-primary" id="kta-tbl-dedup-go" disabled>🧹 ${t("tabledit.dedup.nettoyer")}</button>
+          </div>
+        </div>
+      </div>`;
+    document.documentElement.appendChild(sub);
+    const $ = function(id) { return document.getElementById(id); };
+    const fermer = function() { sub.remove(); };
+    $("kta-tbl-dedup-close").addEventListener("click", fermer);
+    $("kta-tbl-dedup-annuler").addEventListener("click", fermer);
+    sub.addEventListener("click", function(e) { if (e.target === sub) fermer(); });
+
+    let fichiers = [];
+    $("kta-tbl-dedup-files").addEventListener("change", function(e) {
+      fichiers = Array.prototype.slice.call(e.target.files || []);
+      $("kta-tbl-dedup-files-liste").textContent = fichiers.length
+        ? fichiers.map(function(f) { return f.name; }).join(" · ")
+        : t("tabledit.dedup.aucunFichier");
+      $("kta-tbl-dedup-go").disabled = !fichiers.length;
+    });
+
+    // Nettoyage : chaque fichier modifié est retéléchargé « <nom>_dedup.json ».
+    // Un fichier illisible n'interrompt PAS le lot (pattern du convertisseur).
+    $("kta-tbl-dedup-go").addEventListener("click", function() {
+      if (!fichiers.length) return;
+      const bilans = [], echecs = [];
+      let ok = 0, restants = fichiers.length;
+      fichiers.forEach(function(f) {
+        f.text().then(function(txt) {
+          const obj = JSON.parse(txt);
+          const b = _dedupliquerFichier(obj);
+          if (b.sommets === 0 && b.objets === 0) {
+            bilans.push(f.name + " → " + t("tabledit.dedup.propre"));
+            return;
+          }
+          const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = f.name.replace(/\.json$/i, "") + "_dedup.json";
+          a.click();
+          setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
+          ok++;
+          bilans.push(f.name + " → " + t("tabledit.dedup.bilan", {
+            sommets: b.sommets,
+            objets: b.objets ? t("tabledit.dedup.bilanObjets", { n: b.objets }) : ""
+          }));
+        }).catch(function() {
+          echecs.push(f.name + " (" + t("tabledit.dedup.errLecture") + ")");
+        }).finally(function() {
+          restants--;
+          if (restants === 0) {
+            let msg = t("tabledit.dedup.okMulti", { ok: ok, detail: bilans.join("\n") || "—" });
+            if (echecs.length) msg += "\n\n⚠️ " + t("tabledit.dedup.echecs", { n: echecs.length }) + "\n" + echecs.join("\n");
+            alert(msg);
+            if (ok) fermer();
+          }
+        });
+      });
+    });
   }
 
   function _ouvrirConvertResolution() {

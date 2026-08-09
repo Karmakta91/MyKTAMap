@@ -193,7 +193,50 @@ Tout ce qui suit est **corrigé et vérifié par garde-fou** (commits `e0f4bc3` 
 - **Sélection + garde-fou de taille** plutôt que tout-ou-rien : liste des plans avec tailles et total, refus/avertissement franc au-delà d'un seuil selon la plateforme (iOS plafonne autour de 50 Mo, Android/desktop plusieurs Go).
 - **Piste RAM** : File System Access API (`showSaveFilePicker` + flux d'écriture) pour écrire sur le disque sans tout garder en mémoire — **Chrome/Edge desktop uniquement**, fallback blob ailleurs. [Probable — l'API de flux de JSZip existe, non testée ici]
 
+## 🧹 Code mort — audit du 09/08/2026 (2 agents indépendants + scan i18n)
+
+> **Numéros de ligne ancrés sur le commit `bbd954e`** — ils dérivent à chaque suppression : exécuter les lots dans l'ordre, ou re-vérifier les ancres. Rapports complets rendus en session du 09/08 ; l'essentiel actionnable est ici.
+> **Décision KARMA : topo validé le 09/08 (reco) · lots ①②③④ EXÉCUTÉS le 09/08** — restent les 🟡 (à la demande) et les [Probable] CSS sautés par prudence (drawer perf, profile-pro-meta, tracker-replay-modal, fourre-tout ambigu). Bugs latents : batterie fantôme SUPPRIMÉE (arbitrage KARMA — le chip header vit), toast OSM RESSUSCITÉ (bon id), fuite blob URLs COLMATÉE (revoke branché avant chaque extraction), _setOptedIn doublon supprimé.
+
+### ⚠️ Correctif d'inventaire préalable
+La liste « règles CSS mortes » de l'audit du 09/08 matin (consignée dans le commit `a87311a`) était **majoritairement fausse** : sur 76 paires de sélecteurs dupliqués, **8 seulement sont intégralement mortes** — le reste est du *layering volontaire* de la refonte loader (override **partiel** : l'antécédent porte des propriétés qui survivent, le supprimer casse le layout). Toute suppression de jumelle doit être vérifiée **propriété par propriété**, jamais au sélecteur.
+
+### 🐛 3 bugs latents découverts par l'audit (à traiter AVANT le nettoyage — ce ne sont pas des lignes à jeter)
+1. **`refonteInterface.js:850-863`** — la stat batterie de la status bar ne s'affiche **jamais** : l'id `kta-refonte-stat-battery` n'est créé nulle part (`if (stat)` toujours faux). Arbitrage : créer l'élément dans `_creerStatusBar`, ou supprimer le bloc + la clé i18n `ui.refonte.battery_unavailable_title` + les classes CSS associées.
+2. **`osmView.js:1944-1961`** — `_toast()` vise `kta-osm-modal` qui n'existe pas (le vrai id : `kta-osm-view-overlay`) : le toast contextuel de la modale OSM n'a jamais fonctionné, repli silencieux sur `showToast`. Corriger l'id ressuscite 17 lignes.
+3. **`osmHomePreview.js:1427`** — `_revokeTilesBlobUrls()` jamais appelé malgré son commentaire (« appelé au close() ») : **fuite RAM potentielle** de blob URLs de tuiles. Vérifier si la révocation existe ailleurs ; sinon la bonne action est de l'APPELER, pas de le supprimer. (Idem `_setOptedIn` `:246` — l'opt-in OSM home n'est jamais écrit par cette voie : par où passe-t-il ?)
+   ⚠️ **Post-mortem 09/08 : le « fix » n°3 était FAUX et a été RÉVOQUÉ en v1.77.0.** Il n'y avait pas de fuite : `_planDataCache` borne l'extraction à 1×/plan et le design v1.71.0 veut que les URLs vivent avec le cache (« re-ajout gratuit »). L'appel ajouté révoquait les URLs du plan A encore affiché au chargement d'un plan B (multi-plans cassé + cache empoisonné). La fonction et sa liste ont été SUPPRIMÉES ; les tuiles hi-res (v1.77.0) ont leur propre cycle de révocation. Leçon : « jamais appelé » ≠ « à appeler » — vérifier le design AVANT de brancher un cleanup.
+
+### 🟢 Lot JS — ~265 lignes, suppression sûre (26 items, preuve grep « occurrence unique corpus complet » pour chacun)
+- `interface.js` (~105 l.) : `ouvrirPanneauAncre` (447-507), `_confirmerAction` (535-552), `_sessionAModif` (63-78), `_activerMode` (716-723), `_orig*_wrap` (510-511)
+- `osmView.js` (~59 l.) : `_project3Corners` (410-445), `_planRecommendedZoom` (344-349), corps `_toast` (si bug n°2 tranché en suppression)
+- `secoursMode.js` : `updateNoteLibre` (1212-1229) + flag `hasSecours = true` et ses branches mortes (4344/4406/4440)
+- `map.js` : alias `layerPuits/Vehicule/Cataphile/Carry` (544-547), `_ktaOverlays` (538)
+- Divers : `searchPoints._matchesFilters` (347-357), `statsGlobales._drawText` (926-932), `pdfExport._checkExporter` (96-99) + `FOOTER_HEIGHT_MM` (40), `modeHistoire._hasEmbeddedPdf` (262-264), `lostMode._getLostPreset` (103-105) + `COLOR_LAST_POS`/`COLOR_MATCH_OUT` (75/77), `measure.getMeasureValue` (443-450), `homeProfile._kta_invalidateStorageCalcCache` (786-790), `config/main RAW_PLAN_CONFIG` (jamais lu — retient un gros objet en RAM), `refonteInterface isUnavailable=false` (828-831) + clé i18n et classes `battery_unavailable` associées
+
+### 🟢 Lot CSS — 778 lignes + 1,92 Mo d'assets, suppression sûre
+- **Assets** (1,92 Mo) : `lib/leaflet/leaflet-src.js.map`, `leaflet-src.esm.js.map`, `leaflet.js.map`, `images/marker-icon.old`, `icon/app-icon.svg` (hors manifest et précache)
+- **Blocs orphelins** (745 l., classes à 0 occurrence dans 251 fichiers) — les gros : vieux toggles OSM home (5026-5077+), ancien nommage recherche (17048-17092+), UI loader repliable (6028-6071+), drawer perf (6542-6584+), boussole secours retirée (7951-8144 partiel), modale choix-suppression (15432+17424), sections tracker-warn dépeuplées (11676-11712), switcher/mlvl/legend-add/photo-viewer-hint/lost-param divers — liste ligne à ligne dans le rapport de session
+- **9 jumelles intégralement mortes** (33 l.) : 699-703, 9746-9751, 15420-15423, 15124-15127, 4916-4918, 14345-14347, 14358-14360, 14373-14375, 5938-5944
+- **HTML** : classe `.kta-loader-contact` (index.html), seule morte sur 109 ids
+
+### 🟡 À vérifier avant de toucher
+- Fragments de sélecteurs morts dans des groupes vivants (supprimer la ligne du sélecteur, pas le bloc) : `.kta-btn-action` 19843+, `.plan-card` ×4, `.kta-modal-btn-*` 17302/17312, `.kta-mesure-distance` 13606, `.drag-over` 16866, `.kta-rd-total-pill` 14621, `style-secours.css:829` — contrôle runtime (`querySelectorAll(...).length === 0`)
+- `kta-toast-error/info` : classes **concaténées** (`"kta-toast-" + type`) — NON supprimables sans inventaire des `type`
+- JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?), `getTrackerLevel` (« phase 2B » — abandonnée ?), scope `kta-ses-modal` inexistant dans sessionExporter:3495 (bug de scope bénin ?), ~13 exports d'API publique jamais consommés (API = contrat, gain faible risque non nul)
+- **i18n : 1 071 clés hors du champ du scanner — PAS un gisement de suppression** : les gros paquets (`export.conv` 42, `home.profile` 42, `export.adv` 31, `lost.*`…) sont des modules vivants appelés via des motifs non couverts (templates, helpers locaux). Chantier = étendre le scanner, PUIS trier le résidu.
+
+### 📌 Mort documenté — gardé exprès, ne pas supprimer sans arbitrage KARMA
+`_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, 49 l., rétro-compat v1.7.3) · wrappers compat exporter/measure · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)
+
+### ✅ Résultats négatifs (hygiène confirmée, rien à faire)
+108 fichiers js/ = 108 script tags = 108 entrées précache (zéro orphelin) · précache SW 188/188 présents sur disque · les 4 CSS lazy parfaitement cloisonnés (0 duplication avec style.css) · 29/30 icônes référencées · 0 id HTML orphelin.
+
 ## 🔴 Dettes ouvertes
+
+### ~~D-osm-home-couleurs~~ — ✅ RÉSOLU le 09/08/2026 (même jour)
+
+~~Overrides de légende invisibles au HOME après boot froid~~ — la « limitation boot froid » du 1er fix était en réalité le CAS PRINCIPAL du widget (on est au HOME avant de charger un plan) : KARMA l'a rencontrée immédiatement (« OSM PLAN OK mais pas OSM HOME »). Résolu par la lecture PAR PLAN des slots SessionPersist (`myktamap_session_v1_<id>` → `payload.customLegend`) + `customLegend` du ZIP, sans passer par l'état live — ce qui règle AUSSI le multi-plans (chaque plan de la pile a ses propres couleurs). Cf `vue-osm.md` §3.6.
 
 ### D-confirm — 🪟 confirm() natifs hors charte (10+ fichiers) — noté 07/08/2026
 

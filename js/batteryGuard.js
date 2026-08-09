@@ -242,24 +242,43 @@
   // ============================================================
   // UX : TOASTS + MODALES
   // ============================================================
-  function _toastInfo20(lvl) {
-    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
-    const msg = t("battery.toast.info20", { n: lvl });
-    if (window.OOMGuard && window.OOMGuard.showToast) {
-      window.OOMGuard.showToast(msg, "warn");
-    } else {
-      console.warn("[BatteryGuard] " + msg);
+  // 🐛 v1.77.0 — COURSE AU BOOT : _init() tourne au chargement du module et
+  // _notify() évalue tout de suite → sur un appareil déjà ≤20 %, le toast
+  // partait AVANT l'arrivée du dico i18n (« Clé manquante : battery.toast.
+  // info20 », attrapé par le smoke sur un laptop déchargé). Même famille que
+  // la course du Mode Dev — même remède : barrière I18n.init() avant tout
+  // émetteur UX. `fn` est appelée aussi en cas d'échec d'init (une modale
+  // critique 5 % doit sortir même si les dicos plantent — clé brute plutôt
+  // que silence).
+  function _quandI18nPret(fn) {
+    if (window.I18n && typeof window.I18n.init === "function") {
+      try { window.I18n.init().then(fn, fn); return; } catch(e) {}
     }
+    fn();
+  }
+
+  function _toastInfo20(lvl) {
+    _quandI18nPret(function() {
+      const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+      const msg = t("battery.toast.info20", { n: lvl });
+      if (window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast(msg, "warn");
+      } else {
+        console.warn("[BatteryGuard] " + msg);
+      }
+    });
   }
 
   function _toastWarning10(lvl) {
-    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
-    const msg = t("battery.toast.warn10", { n: lvl });
-    if (window.OOMGuard && window.OOMGuard.showToast) {
-      window.OOMGuard.showToast(msg, "warn");
-    } else {
-      console.warn("[BatteryGuard] " + msg);
-    }
+    _quandI18nPret(function() {
+      const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+      const msg = t("battery.toast.warn10", { n: lvl });
+      if (window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast(msg, "warn");
+      } else {
+        console.warn("[BatteryGuard] " + msg);
+      }
+    });
   }
 
   // Modale critique 5% — overlay rouge plein écran, ne se ferme qu'à
@@ -267,6 +286,13 @@
   // qui mérite l'attention (en sous-sol, batterie faible = grosse perte
   // de temps si tu ne réagis pas).
   function _afficherModaleCritique(lvl) {
+    // 🐛 v1.77.0 — même barrière i18n que les toasts (cf _quandI18nPret).
+    // Le garde anti-doublon vit dans _construireModaleCritique : valable
+    // aussi après le détour par la barrière.
+    _quandI18nPret(function() { _construireModaleCritique(lvl); });
+  }
+
+  function _construireModaleCritique(lvl) {
     if (document.getElementById("kta-battery-critical-modal")) return;
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
 

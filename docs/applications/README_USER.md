@@ -761,6 +761,10 @@ Au premier lancement du mode, un message rappelle que l'affichage de plans compl
 
 > 👁️ **Calques masqués par défaut (depuis v1.73.1)** — un calque de données livré « décoché » dans le ZIP d'un plan (donc masqué à l'ouverture en mode carte) était jusqu'ici **totalement invisible en Vue OSM**, sans aucun moyen de l'afficher. Il est désormais rendu comme les autres : tu le masques ou l'affiches avec les filtres existants (chips de catégorie globaux et par plan, filtre par tag). La Vue OSM de l'écran plan n'est pas concernée — elle a toujours suivi les calques réellement affichés sur ta carte.
 
+> 🔍 **Net au zoom (depuis v1.77.0)** — dans l'aperçu OSM de l'accueil, zoomer sur un plan charge automatiquement des **tuiles plus détaillées** (seulement la zone que tu regardes, plans tuilés V2). Avant, le plan restait flou au zoom alors qu'il était net en mode OSM plein écran. Rien à régler, et aucune requête réseau en plus : les tuiles viennent du fichier du plan, déjà sur ton appareil.
+
+> 🎨 **Tes couleurs partout (depuis v1.77.0)** — les couleurs de légende que tu personnalises (≡ Légende → ✏️ Modifier) s'affichent désormais **aussi sur le fond OSM** : mode plein écran ET aperçu de l'accueil, et en multi-plans chaque plan garde **ses propres** couleurs. Avant, ces vues restaient sur les couleurs d'origine (une galerie principale repeinte en rouge s'affichait quand même verte).
+
 ## 📖 Mode Histoire — Note libre + PDF du plan
 
 Le bouton **📖** dans la barre du haut (à gauche de la batterie 🔋) ouvre une modale à deux onglets propre à chaque plan. C'est ton **carnet d'exploration personnel** pour chaque site souterrain.
@@ -2800,6 +2804,7 @@ Appuyez sur **⬇️ → 📊 Éditeur de données du plan** (en mode carte) **o
 2. **📦 Importer un ZIP** — récupère la liste des calques de données d'un plan complet (`.zip`).
 3. **📄 Importer un fichier JSON** — un seul fichier de données ou de session (glisser-déposer).
 4. **🔁 Convertir la résolution** *(depuis v1.76.2)* — outil autonome pour **migrer tes données d'un ancien scan vers un nouveau scan du même plan**. Donne les deux résolutions (saisie ou 📷 auto-détection depuis les images — même géantes), un ou plusieurs fichiers `.json`, et récupère-les convertis. Si le nouveau scan n'a pas les mêmes marges : ajoute un **repère commun** aux deux plans (le même pilier lu sur chacun) — la conversion se cale exactement dessus, avec rotation optionnelle ; **deux repères** et l'échelle + la rotation sont déduites toutes seules. Ce qui n'est pas dans le fichier (liaisons inter-plans, géoref, échelle du plan) reste à refaire sur le nouveau plan.
+5. **🧹 Dédoublonner les données** *(depuis v1.77.0)* — retire les **sommets identiques consécutifs** accumulés dans les tracés, zones, structures et mesures d'un fichier `.json` (calque de données ou session exportée) : un ancien bug du mode « clic carte » pouvait en empiler plusieurs par clic — invisibles à l'écran, mais ils gonflent les fichiers et les exports. Choisis un ou plusieurs fichiers, récupère-les nettoyés en `_dedup.json` avec le compte de ce qui a été retiré. Les points (POI) ne sont **jamais touchés** — deux points volontairement superposés restent distincts.
 
 Si une source contient plusieurs jeux de données, un **sélecteur** s'affiche (chacun avec son nombre d'éléments). Le tableau s'ouvre ensuite avec une colonne par champ détecté.
 

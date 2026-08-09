@@ -259,9 +259,6 @@
     return out;
   }
 
-  function _hasEmbeddedPdf() {
-    return _getEmbeddedPdfUrls().length > 0;
-  }
 
   // ========== DOCUMENTS PDF DU PLAN (IDB, multi depuis v1.69.0) ==========
 
