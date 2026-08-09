@@ -6073,11 +6073,8 @@ html.kta-theme-light .kta-cfg-group-titre {
   border-color: rgba(140,255,140,0.4);
   color: #8cffb4;
 }
-.plan-row-remove:hover {
-  background: rgba(255,140,140,0.12);
-  border-color: rgba(255,140,140,0.4);
-  color: #ff8c8c;
-}
+/* 🧹 v1.78.0 : .plan-row-remove:hover supprimée — le ✕ des lignes a quitté
+   la liste (suppression déplacée en fin de modale ℹ️ Infos, décision KARMA). */
 /* ℹ️ v170 (suite 3) : bouton infos — accent bleu cohérent avec la charte */
 .plan-row-info-btn:hover {
   background: rgba(140,180,255,0.12);

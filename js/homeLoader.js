@@ -948,7 +948,6 @@
             <div class="plan-row-actions">
               <button class="plan-row-btn kta-plan-row-pin${plan.pinned ? " kta-actif" : ""}" title="${pinTitle}">${plan.pinned ? "⭐" : "☆"}</button>
               <button class="plan-row-btn plan-row-info-btn" title="${_homeT("home.plans.infoBtnTitle", "Informations détaillées sur cette archive")}">ℹ️</button>
-              <button class="plan-row-btn plan-row-remove" title="${_homeT("home.plans.removeBtnTitle", "Retirer de la liste")}">✕</button>
             </div>
           </div>
         `;
@@ -1224,9 +1223,34 @@
                         dlHtml +
                         '<div id="kta-plan-dl-status" style="font-size:12px; margin-top:8px; min-height:16px;"></div>' +
                         '</div>' : '') +
+              // 🧹 v1.78.0 (KARMA) — la suppression vit ICI, en fin de modale
+              // (le ✕ de la liste est retiré : clic accidentel trop facile).
+              '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
+                '<button class="kta-btn kta-btn-danger kta-btn-small" id="kta-plan-infos-remove">🗑️ ' +
+                  escapeHtml(_t("home.plans.removeBtnTitle")) + '</button>' +
+                '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
+                  escapeHtml(_t("home.plans.info.removeHint")) + '</div>' +
+              '</div>' +
             '</div>' +
           '</div>';
         document.documentElement.appendChild(modal);
+
+        // 🧹 v1.78.0 — suppression du plan depuis la modale (ktaConfirm,
+        // règle D-confirm : nouveaux usages jamais en confirm() natif).
+        const btnRemove = document.getElementById("kta-plan-infos-remove");
+        if (btnRemove) {
+          btnRemove.addEventListener("click", function() {
+            const confirmer = (typeof window.ktaConfirm === "function")
+              ? window.ktaConfirm(_t("home.plans.confirmRemove"), { okLabel: _t("home.plans.removeBtnTitle") })
+              : Promise.resolve(confirm(_t("home.plans.confirmRemove")));
+            confirmer.then(function(ok) {
+              if (!ok) return;
+              window.PlanRegistry.remove(plan.id);
+              modal.remove();
+              window.refreshPlansList();
+            });
+          });
+        }
 
         // 🏷️ v1.78.0 — sauvegarde des tags (split virgules, normalisation
         // dans PlanRegistry.setTags : trim, vides, doublons, 12×24 max).
@@ -1436,13 +1460,10 @@
               window.refreshPlansList();
             });
           }
-          row.querySelector(".plan-row-remove").addEventListener("click", function(e) {
-            e.stopPropagation();
-            if (confirm(_t("home.plans.confirmRemove"))) {
-              window.PlanRegistry.remove(id);
-              window.refreshPlansList();
-            }
-          });
+          // 🧹 v1.78.0 (KARMA) — le ✕ de suppression a quitté la liste : la
+          // suppression vit désormais EN FIN de modale ℹ️ Infos (ktaConfirm).
+          // Moins de risque de clic accidentel dans une liste où chaque row
+          // est cliquable.
           // ℹ️ v170 (suite 3) : bouton infos détaillées (compense le retrait
           // de l'affichage sub/date qui surchargeait la liste compacte)
           const infoBtn = row.querySelector(".plan-row-info-btn");

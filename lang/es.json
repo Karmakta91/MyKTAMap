@@ -1377,6 +1377,7 @@
   "home.plans.info.storedBlob": "✅ Guardado en la app (IndexedDB)",
   "home.plans.info.storedFs": "🔐 Acceso permanente concedido (File System Access API)",
   "home.plans.info.storedPick": "📁 Reselección requerida al cargar (pick)",
+  "home.plans.info.removeHint": "Quita el plano de tu lista: el archivo ZIP de tu disco no se toca, pero el archivo eventualmente guardado en la app se borra. Las etiquetas y el fijado se pierden.",
   "home.plans.info.tagsTitle": "Etiquetas del plano",
   "home.plans.info.tagsPlaceholder": "ej.: París 13, GTech, por terminar…",
   "home.plans.info.tagsSave": "Guardar etiquetas",

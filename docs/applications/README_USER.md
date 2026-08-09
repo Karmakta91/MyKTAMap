@@ -411,11 +411,11 @@ L'application mémorise tous les plans que vous chargez, qu'ils viennent du serv
 | 🔐 | Plan local avec **accès permanent autorisé** (Chrome/Edge desktop) |
 | 📁 | Plan local sans persistance — re-sélection requise au chargement |
 
-**Actions disponibles** sur chaque ligne (3 boutons) :
+**Actions disponibles** sur chaque ligne :
 
-- **ℹ️** — ouvre une fenêtre **Infos détaillées** sur cette archive (id interne, nom, version, auteur, type, fichier source, taille, persistance, mode V1/V2/multi-niveau, préset performance, dates d'ajout et d'ouverture). Pratique pour vérifier ce que l'app sait du plan sans le charger.
-- **▶️** — charge le plan
-- **✕** — retire le plan de la liste (ne supprime pas le fichier ZIP sur votre disque, juste l'entrée dans la liste)
+- **⭐/☆** — épingle/désépingle le plan en tête de liste *(depuis v1.78.0)*
+- **ℹ️** — ouvre une fenêtre **Infos détaillées** sur cette archive (id interne, nom, version, auteur, type, fichier source, taille, persistance, mode V1/V2/multi-niveau, préset performance, dates d'ajout et d'ouverture), l'édition des **🏷️ tags**, et — en fin de fenêtre — le bouton **🗑️ Retirer de la liste** *(depuis v1.78.0, le ✕ des lignes a disparu : la suppression demande confirmation ici, fini le retrait accidentel)*. Retirer un plan n'efface pas le fichier ZIP sur votre disque, mais supprime l'archive éventuellement mémorisée dans l'app.
+- **Clic sur la ligne** — charge le plan
 
 **Boutons en haut de la liste :**
 
