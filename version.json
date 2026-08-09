@@ -2,7 +2,6 @@
   "version": "v1.79.0",
   "released": "2026-08-09",
   "notes": [
-    "📦 Ton profil peut maintenant emporter les archives ZIP de tes plans mémorisés : exporte un « profil complet », importe-le sur un autre appareil — tes plans se réinstallent tout seuls.",
-    "🖥️ Sur PC, l'écran d'accueil tient sur une page même avec le pied de page déplié, et un plan renommé dans la légende garde son nom jusque dans la recherche."
+    "📦 Ton profil peut maintenant emporter les archives ZIP de tes plans mémorisés : exporte un « profil complet », importe-le sur un autre appareil — tes plans se réinstallent tout seuls."
   ]
 }
