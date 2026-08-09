@@ -173,25 +173,11 @@ Tout ce qui suit est **corrigé et vérifié par garde-fou** (commits `e0f4bc3` 
 
 ---
 
-### 3. 📦 Export de profil AVEC les archives de plans
+### 3. 📦 Export de profil AVEC les archives de plans — ✅ LIVRÉ (v1.79.0, 09/08/2026)
 
-**Besoin KARMA (01/08)** : « j'ai importé N plans au fil du temps, tous en base locale ; j'exporte mon profil et je récupère liste/sessions/liaisons **mais pas les ZIP** — or je les ai supprimés de mon PC, la seule copie restante est dans la base du navigateur ».
+Récupération unitaire v1.74.0 (💾 dans ℹ️ Infos) + **export FULL v1.79.0** : conteneur ZIP `profil.json` + `plans/<id>.zip` (STORE), sélection par plan (rien coché par défaut), garde-fou de taille en validation (50 Mo iOS / 500 Mo, `ktaConfirm`), éviction quota LISTÉE à l'export, restauration séquentielle à l'import (fusion : le local gagne ; quota plein : échec par plan, bilan chiffré), rétrocompat totale (JSON classique inchangé sans archive cochée, détection au contenu « PK »). Round-trip du format validé par harnais JSZip Node.
 
-**État : 🟡 récupération UNITAIRE livrée (v1.74.0), export FULL à faire.**
-
-✅ Fait — bouton **💾 Télécharger le ZIP** dans la modale ℹ️ Infos d'un plan (`homeLoader.js > _afficherInfosPlan`). `PlanRegistry.getBlob(id)` était **déjà public** : il ne manquait que l'exposition. **3 états**, le bouton étant **affiché grisé plutôt que masqué** quand la récupération est impossible (sinon on cherche pourquoi certains plans l'ont et d'autres non) :
-- plan **serveur** → pas de bouton (retéléchargeable, rien à sauver)
-- **`storedBlob`** → actif ; nom de fichier = `originalFilename`, sinon reconstruit depuis nom+version
-- **`fsHandle`** ou **re-sélection** → grisé + explication (le ZIP vit sur le disque, pas dans l'app)
-
-⚠️ Garde-fou : `storedBlob` n'est qu'un **flag du registre**. Le navigateur peut avoir évincé l'archive sous pression de quota sans que le flag bouge → si `getBlob` rend vide, message explicite (« le navigateur l'a supprimée pour libérer de la place ») plutôt qu'un fichier vide téléchargé.
-
-❌ **Reste — export FULL** (décisions déjà prises, non implémenté) :
-- **Format** : conteneur **ZIP** (`profil.json` + `plans/<id>.zip`), **pas** le JSON actuel — le base64 inline gonfle de +33 % et `JSON.stringify` construit tout en RAM → plantage assuré sur mobile, risqué sur PC.
-- **Compression `STORE`** : les ZIP de plans sont déjà compressés, recompresser coûte du temps pour rien.
-- **Aller-retour** : à l'import, réinjecter les blobs en base **et** rattacher aux entrées du registre (flag `storedBlob`, collisions d'`id`). C'est ce qui a de la valeur, et c'est le gros du coût.
-- **Sélection + garde-fou de taille** plutôt que tout-ou-rien : liste des plans avec tailles et total, refus/avertissement franc au-delà d'un seuil selon la plateforme (iOS plafonne autour de 50 Mo, Android/desktop plusieurs Go).
-- **Piste RAM** : File System Access API (`showSaveFilePicker` + flux d'écriture) pour écrire sur le disque sans tout garder en mémoire — **Chrome/Edge desktop uniquement**, fallback blob ailleurs. [Probable — l'API de flux de JSZip existe, non testée ici]
+**Reste optionnel (lot 5, si un cas réel le demande)** : streaming FS Access (`showSaveFilePicker` + `generateInternalStream`, Chrome/Edge desktop) pour réduire le pic RAM de `generateAsync` sur les très gros exports. [Probable — API JSZip existante, non testée ici]
 
 ## 🧹 Code mort — audit du 09/08/2026 (2 agents indépendants + scan i18n)
 

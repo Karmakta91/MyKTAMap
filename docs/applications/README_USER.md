@@ -158,7 +158,7 @@ Tes données (liste de plans, sessions, préférences) sont **liées au domaine*
 
 1. **📚 Exporte ta liste de plans** : dans le loader, section **📚 Mes plans** → bouton **💾** → télécharge un fichier `.config` qui contient tous tes plans enregistrés (métadatas + références). Sur le nouveau domaine, tu importeras ce `.config` via le bouton **📂** au même endroit.
 2. **💾 Exporte tes sessions** : sur chaque plan ouvert, utilise **💾 Sauvegarde session** (Full ou Avancé) → télécharge un `.json` par session (annotations, tracés, zones, points perso en cours).
-3. **📦 Garde tes ZIPs de plans** que tu avais importés. Les blobs locaux stockés dans le navigateur ne sont pas exportables — il faudra ré-importer les ZIPs manuellement sur le nouveau domaine via le drag-and-drop habituel.
+3. **📦 Tes ZIPs de plans voyagent aussi** *(depuis v1.79.0)* : l'export de profil peut embarquer les archives des plans **mémorisés dans l'app** (section 📦 de la fenêtre d'export) — sur le nouveau domaine, elles sont réinjectées automatiquement. Seuls les plans en « accès fichier » ou « re-sélection » restent à re-déposer à la main (leur ZIP vit sur ton disque, pas dans l'app).
 4. **Au 15 juillet 2026** : va sur `myktamap.fr` → importe le `.config` de liste de plans + ré-importe les ZIPs + importe les `.json` de session sur chaque plan correspondant.
 5. **📱 Si tu avais installé l'app sur ton écran d'accueil** (PWA) : tu devras supprimer l'ancienne icône manuellement puis réinstaller depuis `myktamap.fr` (les origins étant différents, l'icône installée pointe sur l'ancien domaine).
 
@@ -376,6 +376,15 @@ Résultat : la valeur est **stable, prévisible, et reflète vraiment ce que tu 
 Ton profil est inclus dans l'**Export Avancé** des sessions (onglet 🎨 Avancé → section "Identité user"). Pratique pour transférer ton identité visuelle vers un autre appareil. À l'import d'un profil :
 
 - Un toast modal te suggère un **reload** de la page pour que l'avatar et le surnom soient correctement mis à jour partout dans l'UI (header, sidebar, etc.)
+
+**📦 Profil complet avec les archives de plans** *(depuis v1.79.0)* :
+
+L'export de profil peut désormais **embarquer les archives ZIP des plans mémorisés dans l'app**. Dans la fenêtre d'export, une section « 📦 Archives de plans » liste tes plans mémorisés avec leur taille : coche ceux que tu veux emporter (rien n'est coché par défaut) — l'export devient alors un fichier **`.zip` « profil complet »** au lieu du JSON habituel. À l'import sur un autre appareil, les archives sont **réinjectées et rattachées à leurs plans** : plus besoin de re-déposer les ZIP un par un.
+
+- **Garde-fou de taille** : au-delà de ~50 Mo sur iPhone/iPad (Safari fragile sur les gros téléchargements) ou ~500 Mo ailleurs, un avertissement rouge demande une **confirmation explicite** — rien n'est bloqué, tu décides.
+- **Honnêteté sur l'éviction** : si le navigateur a supprimé une archive pour libérer de la place (le flag « mémorisé » peut survivre à l'éviction), l'export te **liste les plans concernés** au lieu de produire un zip silencieusement incomplet.
+- En mode **Fusionner** à l'import, un plan qui a déjà son archive sur l'appareil **garde la sienne** ; en mode **Remplacer**, celle du profil gagne. Un échec de stockage (quota plein) est signalé **par plan**, le reste continue.
+- Les plans en « accès permanent au fichier » ou « re-sélection » n'apparaissent pas dans la liste : leur ZIP vit sur ton disque, pas dans l'app — il n'y a rien à embarquer.
 
 > 🔒 **100 % local** : ton surnom et ta photo restent dans ton navigateur (IndexedDB). Rien n'est envoyé à un serveur. L'export profil est explicite et contrôlé par toi.
 
@@ -622,7 +631,7 @@ Le **Mode Histoire** (note libre + PDF) était jusqu'ici enfermé dans l'écran 
 - Le carnet **démarre vide** : il ne peut pas reconstituer les sorties d'avant son arrivée, elles n'ont jamais été enregistrées en tant que telles.
 - Tout est **strictement local** à votre appareil (aucun envoi, aucun compte). Chaque sortie est supprimable individuellement depuis sa fiche.
 - Au-delà de **500 sorties**, les plus anciennes sont effacées automatiquement.
-- Le carnet n'est **pas** inclus dans l'export de profil pour le moment : changer d'appareil via l'export de profil ne transporte pas encore votre historique.
+- Le carnet **est inclus dans l'export de profil** depuis v1.74.0 (cette doc affirmait le contraire — corrigée le 09/08/2026) : changer d'appareil via l'export de profil transporte votre historique de sorties.
 
 ### 🧙 Générateur : assistant pas-à-pas (depuis v1.72.1)
 

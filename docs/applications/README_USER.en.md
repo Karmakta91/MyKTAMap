@@ -158,7 +158,7 @@ Your data (list of maps, sessions, preferences) is **linked to the domain** (web
 
 1. **📚 Export your map list**: in the loader, **📚 My maps** section → **💾** button → download a `.config` file containing all your saved maps (metadata + references). On the new domain, you will import this `.config` via the **📂** button at the same place.
 2. **💾 Export your sessions**: on each open map, use **📤 Export** (Full or Advanced) → download a `.json` per session (annotations, paths, zones, custom points in progress).
-3. **📦 Keep your map ZIPs** that you had imported. Local blobs stored in the browser are not exportable — you will need to re-import the ZIPs manually on the new domain via the usual drag-and-drop.
+3. **📦 Your map ZIPs travel too** *(since v1.79.0)*: the profile export can bundle the archives of maps **stored in the app** (📦 section of the export window) — on the new domain they are injected back automatically. Only maps in "file access" or "re-selection" mode still need manual re-dropping (their ZIP lives on your disk, not in the app).
 4. **On July 15, 2026**: go to `myktamap.fr` → import the map list `.config` + re-import the ZIPs + import the session `.json` files on each corresponding map.
 5. **📱 If you had installed the app on your home screen** (PWA): you will need to manually delete the old icon then reinstall from `myktamap.fr` (since the origins are different, the installed icon points to the old domain).
 
@@ -377,6 +377,15 @@ Result: the value is **stable, predictable, and truly reflects what you have map
 Your profile is included in the **Advanced Export** of sessions (🎨 Advanced tab → "User identity" section). Useful for transferring your visual identity to another device. When importing a profile:
 
 - A modal toast suggests a **reload** of the page so that the avatar and nickname are correctly updated everywhere in the UI (header, sidebar, etc.)
+
+**📦 Full profile with map archives** *(since v1.79.0)*:
+
+The profile export can now **bundle the ZIP archives of maps stored in the app**. In the export window, a "📦 Map archives" section lists your stored maps with their size: tick the ones to carry (nothing is ticked by default) — the export then becomes a **"full profile" `.zip` file** instead of the usual JSON. On import on another device, archives are **injected back and attached to their maps**: no more re-dropping ZIPs one by one.
+
+- **Size guard**: beyond ~50 MB on iPhone/iPad (Safari is fragile with large downloads) or ~500 MB elsewhere, a red warning asks for an **explicit confirmation** — nothing is blocked, you decide.
+- **Honesty about eviction**: if the browser deleted an archive to free space (the "stored" flag can outlive the eviction), the export **lists the affected maps** instead of producing a silently incomplete zip.
+- In **Merge** mode on import, a map that already has its archive on the device **keeps its own**; in **Replace** mode, the profile's wins. A storage failure (quota full) is reported **per map**, the rest continues.
+- Maps in "permanent file access" or "re-selection" mode don't appear in the list: their ZIP lives on your disk, not in the app — there is nothing to bundle.
 
 > 🔒 **100% local**: your nickname and photo remain in your browser (IndexedDB). Nothing is sent to a server. The profile export is explicit and controlled by you.
 
@@ -624,7 +633,7 @@ The logbook tells them apart on its own, and it matters: preparing a map at home
 - The logbook **starts empty**: it cannot reconstruct trips from before it existed, they were never recorded as such.
 - Everything is **strictly local** to your device (no upload, no account). Each trip can be deleted individually from its sheet.
 - Beyond **500 trips**, the oldest ones are removed automatically.
-- The logbook is **not** part of the profile export yet: switching devices via the profile export does not carry your history over.
+- The logbook **is part of the profile export** since v1.74.0 (this doc claimed otherwise — corrected 2026-08-09): switching devices via the profile export does carry your outing history over.
 
 ---
 
