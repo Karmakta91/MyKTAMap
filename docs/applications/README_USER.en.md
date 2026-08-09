@@ -2799,6 +2799,7 @@ Press **⬇️ → 📊 Plan data editor** (in map mode) **or** the **📊 Data 
 2. **📦 Import a ZIP** — retrieves the data layers from a full plan (`.zip`).
 3. **📄 Import a JSON file** — a single data or session file (drag and drop).
 4. **🔁 Convert resolution** *(since v1.76.2)* — standalone tool to **migrate your data from an old scan to a new scan of the same map**. Give both resolutions (typed or 📷 auto-detected from the images — even huge ones), one or more `.json` files, and get them back converted. If the new scan has different margins: add a **landmark common to both maps** (the same pillar read on each) — the conversion anchors exactly on it, with optional rotation; with **two landmarks**, scale and rotation are derived automatically. Whatever is not in the file (inter-map links, georeferencing, map scale) must be redone on the new map.
+5. **🧹 Deduplicate data** *(since v1.77.0)* — removes **consecutive identical vertices** accumulated in the roads, zones, structures and measurements of a `.json` file (data layer or exported session): an old "map click" mode bug could stack several per click — invisible on screen, but they bloat files and exports. Pick one or more files, get them back cleaned as `_dedup.json` with a count of what was removed. Points (POIs) are **never touched** — two deliberately overlapping points stay distinct.
 
 If a source contains several datasets, a **selector** appears (each with its element count). The table then opens with one column per detected field.
 
