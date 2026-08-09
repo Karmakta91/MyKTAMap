@@ -178,6 +178,48 @@
   const _PERF_VALID = ["off", "auto", "quality", "balanced", "performance"];
 
   // Récupère le preset perf mémorisé pour un plan, ou null si jamais réglé.
+  // ═══ 🏷️ v1.78.0 — ORGANISATION DE LA LISTE (décision KARMA 1+3+4) ═══
+  // `pinned` (bool) et `tags` (string[]) sont des MÉTADONNÉES UTILISATEUR
+  // locales : elles vivent dans le registre (LS), ne voyagent PAS avec les
+  // ZIP, mais suivent l'export de profil (qui embarque le registre entier)
+  // et l'export .config (exportToFile clone tout).
+
+  // Épingle/désépingle un plan (remonte en tête de liste). true si appliqué.
+  function setPinned(id, pinned) {
+    init();
+    const p = findById(id);
+    if (!p) { console.warn("[PlanRegistry] setPinned : plan introuvable", id); return false; }
+    if (pinned) p.pinned = true;
+    else delete p.pinned;          // pas de false qui traîne dans le LS
+    _save();
+    return true;
+  }
+
+  // Remplace les tags d'un plan. Normalisation : trim, vides éliminés,
+  // doublons (insensible casse) éliminés, 12 tags max de 24 chars max —
+  // refus au-delà de la troncature silencieuse serait pire : on tronque en
+  // loggant (métadonnée cosmétique, pas un réglage expert).
+  function setTags(id, tags) {
+    init();
+    const p = findById(id);
+    if (!p) { console.warn("[PlanRegistry] setTags : plan introuvable", id); return false; }
+    const vus = {};
+    const propres = (Array.isArray(tags) ? tags : [])
+      .map(function(t2) { return String(t2 || "").trim().slice(0, 24); })
+      .filter(function(t2) {
+        if (!t2) return false;
+        const k = t2.toLowerCase();
+        if (vus[k]) return false;
+        vus[k] = true;
+        return true;
+      })
+      .slice(0, 12);
+    if (propres.length) p.tags = propres;
+    else delete p.tags;
+    _save();
+    return true;
+  }
+
   function getPerfPreset(id) {
     init();
     const p = findById(id);
@@ -510,6 +552,8 @@
     getLastOpened:        getLastOpened,
     setLastPlanId:        setLastPlanId,
     addOrUpdate:          addOrUpdate,
+    setPinned:            setPinned,   // 🏷️ v1.78.0
+    setTags:              setTags,     // 🏷️ v1.78.0
     markOpened:           markOpened,
     remove:               remove,
     removeAll:            removeAll,
