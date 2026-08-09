@@ -1,8 +1,8 @@
 {
-  "version": "v1.78.0",
+  "version": "v1.79.0",
   "released": "2026-08-09",
   "notes": [
-    "🏷️ Organise ta liste de plans : épingle tes préférés en tête (⭐), ajoute des tags et filtre par tag ou par nom — tout se règle depuis la liste et la fenêtre ℹ️ Infos.",
-    "🗑️ Retirer un plan se fait maintenant depuis la fenêtre ℹ️ Infos, avec confirmation — fini la croix sous le doigt qui retirait un plan par accident."
+    "📦 Ton profil peut maintenant emporter les archives ZIP de tes plans mémorisés : exporte un « profil complet », importe-le sur un autre appareil — tes plans se réinstallent tout seuls.",
+    "🖥️ Sur PC, l'écran d'accueil tient sur une page même avec le pied de page déplié, et un plan renommé dans la légende garde son nom jusque dans la recherche."
   ]
 }

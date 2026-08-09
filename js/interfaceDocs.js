@@ -1027,7 +1027,7 @@ function _aideHtmlFr() {
             <span class="kta-aide-icone">🏆</span><span><strong>Hauts faits</strong> — <strong>38 succès</strong> à débloquer : 8 familles × 4 paliers (🥉🥈🥇👑, plans/km/temps/POIs/tracés/zones/structures) <strong>+ 6 « 🎉 Spéciaux »</strong> one-shot (Touche-à-tout, Centurion, Taupe, Multi-niveaux, Marathon, Complétiste). Toast au déblocage + grille N/38 dans la fiche profil. Score + nb de hauts faits affichables au bandeau (section 🎨 Stats du bandeau)</span>
             <span class="kta-aide-icone">✏️</span><span>Clic sur le <strong>surnom</strong> ou l'<strong>avatar</strong> → modale d'édition (surnom libre + upload photo profil)</span>
             <span class="kta-aide-icone">🖼️</span><span>Photo profil compressée auto (max 512px, JPEG q88) — sinon avatar par défaut = initiale du surnom dans un cercle coloré</span>
-            <span class="kta-aide-icone">📦</span><span>Profil exportable / importable — partage entre appareils sans serveur</span>
+            <span class="kta-aide-icone">📦</span><span>Profil exportable / importable — partage entre appareils sans serveur. <strong style="color:#a8b3c8;">Depuis v1.79.0</strong> : la fenêtre d'export peut embarquer les <strong>archives ZIP des plans mémorisés</strong> (section 📦, cases par plan) — le profil devient un .zip « complet », les plans se réinstallent tout seuls à l'import</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             <strong>Stockage 100 % local</strong> dans un stockage local dédié — surnom + photo + dates.

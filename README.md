@@ -12,8 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.78.0` (09/08/2026)
+## 📦 Version courante — `v1.79.0` (09/08/2026)
 
+> 📦 **v1.79.0 — Le profil emporte les archives de plans** : la fenêtre d'export gagne une section « 📦 Archives de plans » — cocher des plans mémorisés produit un **ZIP « profil complet »** (`profil.json` + `plans/<id>.zip`, STORE) ; à l'import les archives sont **réinjectées et rattachées** (bilan chiffré, fusion : le local gagne, quota plein signalé par plan). Garde-fous : sélection décochée par défaut, seuil 50 Mo iOS / 500 Mo en validation explicite, archives évincées par le navigateur LISTÉES. Corrigé en route : l'import n'actualisait pas la RAM du registre (liste après F5, archives « orphelines ») + filet anti-blocage sur la chaîne d'import. Aussi : **HOME PC structurel** (footer déplié tient sur une page — rangée grid `minmax(0,1fr)`, fini les constantes ; fond tronqué réglé ; `#myPlansBox` flex dormant réparé), renommage de type visible dans la **recherche** et l'**undo**, recherche OSM du HOME **à la ligne** (cohérence filtre plans).
+>
 > 🏷️ **v1.78.0 — Organisation de la bibliothèque de plans** : **tags** libres par plan (édition dans ℹ️ Infos, chips-filtres au-dessus de la liste dès qu'un plan est tagué), **⭐ épinglage** en tête de liste, **🔎 filtre par nom** en direct. Tags et épinglages vivent dans l'app (pas dans le ZIP) et suivent l'export de profil et l'export 💾 de la liste. La **suppression d'un plan** déménage : plus de ✕ sur les lignes (retrait accidentel trop facile), elle vit en fin de fenêtre ℹ️ Infos avec confirmation chartée.
 >
 > 🔍 **v1.77.0 — Vue OSM nette et fidèle, outillage, grand nettoyage** : le widget OSM du HOME charge des **tuiles hi-res au zoom** (niveau adapté à l'écran, tuiles du viewport seulement — fini le plan flou alors que la modale OSM était nette) ; les **couleurs personnalisées de la légende s'appliquent enfin sur fond OSM** (modale : canon en tête de cascade ; widget HOME : résolution PAR PLAN depuis les slots de session — corrige aussi le multi-plans). Favicon d'onglet restauré (disparu depuis mai), HOME PC sans barre de défilement (footer déplié compris). Sous le capot : **smoke navigateur Playwright** + **deploy.ps1** (fin des uploads partiels), audit code mort exécuté (−~930 lignes, −1,92 Mo, 3 bugs latents traités dont 1 faux fix révoqué avec post-mortem), color picker PC de la légende réparé + tombstones des entrées plan.
@@ -461,7 +463,15 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.78.0 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.79.0 → v1.26)
+
+#### v1.79.0 (09/08/2026) — Le profil emporte les archives de plans, HOME PC structurel
+
+- 📦 **Export de profil AVEC archives** (backlog §3 soldé, décisions du 01/08 exécutées telles quelles) : conteneur ZIP `profil.json` + `plans/<id>.zip` en **STORE**, section « 📦 Archives de plans » dans la fenêtre d'export (cases par plan décochées par défaut, tailles du registre, total live), **garde-fou de taille en validation** (50 Mo iOS / 500 Mo, `ktaConfirm`), archives **évincées par le quota LISTÉES** à l'export (jamais un zip silencieusement incomplet). Import : détection au **contenu** (signature `PK`), restauration séquentielle post-`applyProfile` (fusion : un plan avec archive locale vivante la garde ; quota plein = échec par plan, bilan chiffré ; orphelins comptés). Rétrocompat totale (JSON classique inchangé). Round-trip validé par harnais JSZip Node + repro Playwright.
+- 🐛 **Deux bugs d'import trouvés par harnais dédié** (`scripts/smoke/repro-import.js`, conservé comme outil) : `applyProfile` écrit le registre en localStorage **sans resynchroniser la RAM** de `PlanRegistry` → liste invisible avant F5 et archives toutes « orphelines » (fix : `PlanRegistry.reload()`) ; et la chaîne du bouton import n'avait **aucun `.catch`** — toute exception figeait « Import en cours » à jamais (filet + logs de progression par section).
+- 🖥️ **HOME PC — fix STRUCTUREL** (audit agent mesuré Playwright, 4 viewports) : le footer **déplié** tient sur une page — la rangée grid passe en `minmax(0,1fr)` (le corps se comprime seul, la liste des plans s'étire à la place réelle et scrolle en interne — **fini les bornes `calc(100vh − N)` recalibrées à chaque ajout**) ; **fond tronqué** au dépliement réglé (fond overlay unifié, le décor « puits de lumière » invisible depuis v1.9.2 supprimé) ; bug dormant `#myPlansBox` en `display:block` inline qui tuait les règles flex de la colonne ; 3e rabotage `max-height:820px` sur la colonne Actions. Post-mortem : l'épisode « CSS cassé » venait d'un **serveur en état mixte** (JS anciens own `www-data` non remplaçables par scp + CSS neuf) — diagnostiqué par audit des marqueurs servis ; l'erreur « SW non actif » était le faux négatif du hard-reload (`controller` null en Ctrl+F5).
+- 🏷️ **Renommage de type partout** (suite v1.77.0) : les 2 dernières surfaces oubliées — résultats de **recherche** (roads/zones/structures, + les customs qui affichaient une chaîne vide) et libellé d'**historique undo**.
+- 🔎 **Recherche OSM du HOME à la ligne** (décision KARMA, annule la montée dans le titre de v1.71.0) : pleine largeur entre le bandeau et la carte, cohérente avec le champ 🔎 de la liste de plans.
 
 #### v1.78.0 (09/08/2026) — Organisation de la bibliothèque de plans
 
