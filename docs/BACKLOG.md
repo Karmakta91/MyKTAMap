@@ -234,9 +234,9 @@ La liste « règles CSS mortes » de l'audit du 09/08 matin (consignée dans le 
 
 ## 🔴 Dettes ouvertes
 
-### D-osm-home-couleurs — 🎨 Overrides de légende invisibles au HOME après boot froid — noté 09/08/2026
+### ~~D-osm-home-couleurs~~ — ✅ RÉSOLU le 09/08/2026 (même jour)
 
-Depuis v1.76.5, les vues OSM (modale + widget HOME) résolvent leurs couleurs via `ktaResolveStyle` (l'override légende prime enfin sur les tables locales). **Limite restante au HOME** : les overrides *session* vivent dans `LegendCustomization`, chargé par SessionPersist **au chargement d'un plan** — après un boot froid direct sur le HOME (aucun plan chargé), le widget OSM affiche les défauts canon. Idem multi-plans : c'est l'état du plan CHARGÉ qui colore TOUTE la pile. Piste si KARMA le demande : lire l'état `legendCustomization` de la session de chaque plan depuis le storage SessionPersist (lecture ciblée, sans charger la session). Coût modéré, bénéfice cosmétique — en attente d'un cas réel.
+~~Overrides de légende invisibles au HOME après boot froid~~ — la « limitation boot froid » du 1er fix était en réalité le CAS PRINCIPAL du widget (on est au HOME avant de charger un plan) : KARMA l'a rencontrée immédiatement (« OSM PLAN OK mais pas OSM HOME »). Résolu par la lecture PAR PLAN des slots SessionPersist (`myktamap_session_v1_<id>` → `payload.customLegend`) + `customLegend` du ZIP, sans passer par l'état live — ce qui règle AUSSI le multi-plans (chaque plan de la pile a ses propres couleurs). Cf `vue-osm.md` §3.6.
 
 ### D-confirm — 🪟 confirm() natifs hors charte (10+ fichiers) — noté 07/08/2026
 

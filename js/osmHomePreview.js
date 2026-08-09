@@ -173,19 +173,74 @@
     "inaccessible": { stroke: "#5a0a0a", fill: "#b8743c" }
   };
   // Helper résolution couleur road (cascade complète)
-  function _resolveRoadColorHome(r) {
-    if (r && typeof r.color === "string" && r.color) return r.color;
-    // 🎨 v1.76.5 (bug KARMA « galerie principale reste verte en OSM ») — le
-    // CANON d'abord : ktaResolveStyle applique l'override de couleur choisi
-    // dans la légende. La table locale court-circuitait l'override des types
-    // built-in. ⚠️ Au HOME, l'état session de LegendCustomization est celui
-    // du dernier plan CHARGÉ dans cette vie de page (boot froid → défauts) :
-    // limitation documentée au BACKLOG.
-    if (r && r.type && typeof window.ktaResolveStyle === "function") {
-      const s = window.ktaResolveStyle("traces", r.type, { flat: true });
-      if (s && s.color) return s.color;
+  // ═══════════════════════════════════════════════════════════
+  // 🎨 v1.76.5 — OVERRIDES DE LÉGENDE PAR PLAN (bug KARMA « galerie
+  // principale reste verte en OSM », puis « OSM PLAN OK mais pas OSM HOME »)
+  // ═══════════════════════════════════════════════════════════
+  // Pourquoi PAS ktaResolveStyle ici (contrairement à osmView) : le canon
+  // applique l'état LIVE de LegendCustomization, qui au HOME est soit VIDE
+  // (boot froid — le cas NORMAL : on est au HOME avant de charger un plan),
+  // soit celui du DERNIER plan chargé (faux pour les autres plans de la
+  // pile). La source correcte PAR PLAN : son slot SessionPersist
+  // (localStorage myktamap_session_v1_<id> → payload.customLegend, auto-savé
+  // ~1,5 s en mode plan) puis le customLegend du plan-config (ZIP, niveau
+  // auteur). Cache RAM par planId, invalidé au mount() (retour HOME =
+  // re-mount → les modifs faites en mode plan sont reprises).
+  let _legendeParPlan = {};
+
+  function _legendeDe(planId) {
+    if (!planId) return null;
+    if (Object.prototype.hasOwnProperty.call(_legendeParPlan, planId)) return _legendeParPlan[planId];
+    let sess = null;
+    try {
+      const p = (window.SessionPersist && typeof window.SessionPersist.getSaved === "function")
+        ? window.SessionPersist.getSaved(planId) : null;
+      if (p && p.customLegend) sess = p.customLegend;
+    } catch(e) {}
+    let plan = null;
+    const cache = _planDataCache[planId];
+    const cfg   = cache && cache.config;
+    // Même double-lecture que legendCustomization.loadPlanState (v1.76.1) :
+    // les producteurs écrivent plan.customLegend, rétro-compat racine.
+    if (cfg) plan = (cfg.plan && cfg.plan.customLegend) || cfg.customLegend || null;
+    const out = (sess || plan) ? { session: sess || {}, plan: plan || {} } : null;
+    _legendeParPlan[planId] = out;
+    return out;
+  }
+
+  // Couleur override d'un type built-in pour UN plan. quoi = "colors"|"borders".
+  function _couleurOverrideDe(planId, categorie, type, quoi) {
+    const lg = _legendeDe(planId);
+    if (!lg || !type) return null;
+    const k = categorie + "." + type;
+    const s = lg.session[quoi];
+    if (s && typeof s[k] === "string" && s[k]) return s[k];
+    const p = lg.plan[quoi];
+    if (p && typeof p[k] === "string" && p[k]) return p[k];
+    return null;
+  }
+
+  // Entrée custom (cust-…) pour UN plan (session > plan).
+  function _entreeCustomDe(planId, type) {
+    const lg = _legendeDe(planId);
+    if (!lg || !type) return null;
+    function chercher(arr) {
+      if (!Array.isArray(arr)) return null;
+      for (const e of arr) { if (e && e.id === type) return e; }
+      return null;
     }
+    return chercher(lg.session.customEntries) || chercher(lg.plan.customEntries);
+  }
+
+  function _resolveRoadColorHome(r, planId) {
+    if (r && typeof r.color === "string" && r.color) return r.color;
+    const ov = r && _couleurOverrideDe(planId, "traces", r.type, "colors");
+    if (ov) return ov;
     if (r && r.type && ROAD_STYLES_DATA_HOME[r.type]) return ROAD_STYLES_DATA_HOME[r.type];
+    const ce = r && _entreeCustomDe(planId, r.type);
+    if (ce && (!ce.category || ce.category === "traces") && ce.lineColor) return ce.lineColor;
+    // Dernier recours : état live (couvre le plan couramment chargé même si
+    // son slot n'a pas encore été écrit par l'auto-save).
     if (r && r.type && window.LegendCustomization
         && typeof window.LegendCustomization.findCustomEntry === "function") {
       try {
@@ -196,24 +251,35 @@
     return "#8892a4";
   }
   // Helper résolution couleurs zone (stroke + fill, cascade complète)
-  function _resolveZoneColorsHome(z) {
+  function _resolveZoneColorsHome(z, planId) {
     if (z && (z.color || z.fillColor)) {
       return {
         stroke: z.color     || z.fillColor || "#8892a4",
         fill:   z.fillColor || z.color     || "#8892a4"
       };
     }
-    // 🎨 v1.76.5 — canon d'abord (override légende), cf _resolveRoadColorHome.
-    if (z && z.type && typeof window.ktaResolveStyle === "function") {
-      const s = window.ktaResolveStyle("zones", z.type, { flat: true });
-      if (s) {
-        return {
-          stroke: s.color     || s.fillColor || "#8892a4",
-          fill:   s.fillColor || s.color     || "#8892a4"
-        };
+    // 🎨 v1.76.5 — override par plan : remplissage choisi, bordure explicite
+    // ou dérivée par assombrissement (même relation que le canon).
+    const fillOv   = z && _couleurOverrideDe(planId, "zones", z.type, "colors");
+    const borderOv = z && _couleurOverrideDe(planId, "zones", z.type, "borders");
+    if (fillOv || borderOv) {
+      const base = (z && z.type && ZONE_STYLES_DATA_HOME[z.type]) || null;
+      const fill = fillOv || (base ? base.fill : (borderOv || "#8892a4"));
+      let stroke = borderOv;
+      if (!stroke) {
+        if (fillOv && typeof window.ktaAssombrir === "function") stroke = window.ktaAssombrir(fillOv, 0.62);
+        else stroke = base ? base.stroke : fill;
       }
+      return { stroke: stroke, fill: fill };
     }
     if (z && z.type && ZONE_STYLES_DATA_HOME[z.type]) return ZONE_STYLES_DATA_HOME[z.type];
+    const ce = z && _entreeCustomDe(planId, z.type);
+    if (ce && (!ce.category || ce.category === "zones")) {
+      return {
+        stroke: ce.borderColor || ce.lineColor || ce.fillColor || "#8892a4",
+        fill:   ce.fillColor   || ce.lineColor || "#8892a4"
+      };
+    }
     if (z && z.type && window.LegendCustomization
         && typeof window.LegendCustomization.findCustomEntry === "function") {
       try {
@@ -976,7 +1042,8 @@
     if (!data || !Array.isArray(data.dataLayers)) return;
     // v1.72.2 — pane du plan : markers via `pane`, chemins SVG via `renderer`
     // dédié au pane (un L.Path ignore `pane`, seul son renderer compte).
-    const paneCtx = _panePour(planIdPourPane || _selectedPlanId);
+    const planIdFx = planIdPourPane || _selectedPlanId; // 🎨 v1.76.5 — overrides par plan
+    const paneCtx = _panePour(planIdFx);
     const optsPane = paneCtx ? { pane: paneCtx.nom } : {};
     const optsRendu = paneCtx ? { renderer: paneCtx.renderer } : {};
     const proj = _buildProjection(georef);
@@ -1074,7 +1141,7 @@
         if (r.type === "itinerary") continue;
         const lls = _projectPoints(r.points, proj);
         if (lls.length < 2) continue;
-        const color = _resolveRoadColorHome(r);
+        const color = _resolveRoadColorHome(r, planIdFx);
         L.polyline(lls, Object.assign({
           color: color, weight: 3, opacity: 0.85, interactive: false
         }, optsRendu)).addTo(roadsL);
@@ -1088,7 +1155,7 @@
         if (!Array.isArray(z.points) || z.points.length < 3) continue;
         const lls = _projectPoints(z.points, proj);
         if (lls.length < 3) continue;
-        const cols = _resolveZoneColorsHome(z);
+        const cols = _resolveZoneColorsHome(z, planIdFx);
         L.polygon(lls, Object.assign({
           color: cols.stroke, fillColor: cols.fill,
           fillOpacity: (typeof z.fillOpacity === "number") ? z.fillOpacity * 0.7 : 0.25,
@@ -1101,14 +1168,16 @@
       for (const s of layer.structures) {
         if (!Array.isArray(s.points)) continue;
         const style = Object.assign({}, STRUCT_STYLES_HOME[s.type] || STRUCT_STYLES_HOME["mur"]);
-        // 🎨 v1.76.5 — couleurs du canon (override légende) par-dessus la
-        // variante HOME locale (qui ne garde que weight/fillOpacity allégés).
-        if (s.type && typeof window.ktaResolveStyle === "function") {
-          const cs = window.ktaResolveStyle("structures", s.type, { flat: true });
-          if (cs) {
-            if (cs.color) style.color = cs.color;
-            if (cs.fillColor && !style.isPolyline) style.fillColor = cs.fillColor;
-          }
+        // 🎨 v1.76.5 — couleurs overridées PAR PLAN par-dessus la variante
+        // HOME locale (qui ne garde que weight/fillOpacity allégés). Fronts
+        // (polyline) : le trait ; piliers/murs : remplissage + bordure.
+        const fillOvS   = _couleurOverrideDe(planIdFx, "structures", s.type, "colors");
+        const borderOvS = _couleurOverrideDe(planIdFx, "structures", s.type, "borders");
+        if (style.isPolyline) {
+          if (fillOvS) style.color = fillOvS;
+        } else {
+          if (fillOvS)   style.fillColor = fillOvS;
+          if (borderOvS) style.color     = borderOvS;
         }
         const polyline = style.isPolyline;
         const minPts = polyline ? 2 : 3;
@@ -2309,6 +2378,11 @@
   function mount() {
     const container = document.getElementById("ktaOsmHomeContent");
     if (!container) return; // pas en HOME, abort silencieux
+
+    // 🎨 v1.76.5 — cache des overrides de légende par plan invalidé à chaque
+    // mount : un retour au HOME après des modifs de couleur en mode plan
+    // relit les slots SessionPersist (auto-savés ~1,5 s).
+    _legendeParPlan = {};
 
     // 🆕 v1.40.1 — Avant tout : restore la colonne (au cas où un mount
     // précédent l'aurait masquée et qu'on rebascule en opt-in ON).

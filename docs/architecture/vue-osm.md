@@ -227,14 +227,18 @@ Cohérent avec `getIconUrlForPoint` (`utils.js:38`) qui fait pareil pour la map 
 | chemin | `#ffff00` jaune |
 | jonction | `#ff4ecb` rose |
 
-Cascade **v1.76.5** (bug KARMA « galerie principale reste verte en OSM ») — le canon passe AVANT les tables locales, dans les DEUX vues (`osmView` + `osmHomePreview`, roads/zones/structures) :
+Cascade **v1.76.5** (bug KARMA « galerie principale reste verte en OSM », puis « OSM PLAN OK mais pas OSM HOME ») — deux mécanismes DIFFÉRENTS selon la vue :
+
+**Modale `osmView`** (session live chargée) — le canon passe avant les tables locales :
 ```js
-explicit (r.color) → ktaResolveStyle(cat, type, {flat:true})  // override légende
+explicit (r.color) → ktaResolveStyle(cat, type, {flat:true})  // override légende live
                    → table locale → findCustomEntry → "#8892a4"
 ```
-Avant, la table locale court-circuitait l'override utilisateur des types built-in (défauts identiques au canon → la bascule est invisible sans override). Structures : seules les COULEURS viennent du canon, les variantes locales gardent leurs weight/fillOpacity allégés OSM.
 
-⚠️ **Limitation HOME** : l'état session de `LegendCustomization` est celui du dernier plan CHARGÉ dans cette vie de page — au boot froid direct sur le HOME, les overrides session ne sont pas chargés (défauts canon). Noté au BACKLOG.
+**Widget HOME `osmHomePreview`** — PAS ktaResolveStyle : le canon applique l'état LIVE de `LegendCustomization`, qui au HOME est soit **vide** (boot froid = le cas normal, on est au HOME avant de charger un plan), soit celui du **dernier plan chargé** (faux pour les autres plans de la pile). Résolution **PAR PLAN** (bloc `OVERRIDES DE LÉGENDE PAR PLAN`) :
+- `_legendeDe(planId)` : lit le slot SessionPersist du plan (`localStorage myktamap_session_v1_<id>` → `payload.customLegend`, auto-savé ~1,5 s en mode plan) puis le `customLegend` du plan-config du ZIP (double-lecture `plan.customLegend`/racine comme `loadPlanState`). Cache RAM par planId, invalidé à chaque `mount()`.
+- Cascade : explicit → `colors["<cat>.<type>"]` du slot (session > plan) → table locale (défauts canon) → `customEntries` du slot → `findCustomEntry` live (dernier recours) → gris.
+- Zones : bordure = `borders[...]` explicite sinon dérivée via `window.ktaAssombrir(fill, 0.62)` (helper du canon exposé v1.76.5 — même relation visuelle que le mode plan). Structures : couleurs seules, les variantes locales gardent leurs weight/fillOpacity allégés.
 
 **Structures** : `STRUCT_STYLES_HOME` variant LIGHT (weight/fillOpacity allégés) aligné sur `structures.js > STRUCTURE_STYLES`. Adaptatif polyline (fronts) ou polygon (mur/pilier).
 
