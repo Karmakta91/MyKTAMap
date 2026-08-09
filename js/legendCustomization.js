@@ -143,7 +143,7 @@ window.LegendCustomization = (function() {
   // {fond, bordure} : une session v1.76.0 qui n'a que `colors` reste valide
   // telle quelle, zéro migration de format. Absente → bordure dérivée (zones)
   // ou noire (structures), comme avant.
-  // 🪦 v1.76.5 — removedPlan : TOMBSTONES des entrées PLAN-LEVEL supprimées
+  // 🪦 v1.77.0 — removedPlan : TOMBSTONES des entrées PLAN-LEVEL supprimées
   // par l'utilisateur (bug KARMA : un « Bas » embarqué dans le plan-config
   // d'un ZIP régénéré revenait à chaque chargement, insupprimable côté
   // session depuis la résurrection de la légende plan-level — fix C4).
@@ -690,7 +690,7 @@ window.LegendCustomization = (function() {
     let touche = false;
     const idx = _sessionState.customEntries.findIndex(function(e) { return e.id === id; });
     if (idx >= 0) { _sessionState.customEntries.splice(idx, 1); touche = true; }
-    // 🪦 v1.76.5 — l'entrée existe AUSSI (ou seulement) au niveau PLAN : la
+    // 🪦 v1.77.0 — l'entrée existe AUSSI (ou seulement) au niveau PLAN : la
     // retirer de la session ne suffit pas, elle reviendrait du plan-config à
     // chaque chargement (vécu KARMA avec son « Bas » embarqué dans un ZIP
     // régénéré). On pose une pierre tombale en session : l'entrée plan est
@@ -985,7 +985,7 @@ window.LegendCustomization = (function() {
       if (opts.onChange) opts.onChange();
     }
 
-    // 🐛 v1.76.5 — insertion ciblée du bouton ↺ après un changement de
+    // 🐛 v1.77.0 — insertion ciblée du bouton ↺ après un changement de
     // couleur (remplace le _render destructeur, cf. handler change). Les
     // customs n'ont pas de ↺ (pas de couleur « d'origine »).
     function _majBoutonReset(input) {
@@ -1016,7 +1016,7 @@ window.LegendCustomization = (function() {
         // module. `change` ne tire qu'à la validation.
         if (e.target.matches(".kta-legend-color") || e.target.matches(".kta-legend-border")) {
           _applyFromUI(e.target);
-          // 🐛 v1.76.5 (bug KARMA PC : « le picker ne sauvegarde rien ») —
+          // 🐛 v1.77.0 (bug KARMA PC : « le picker ne sauvegarde rien ») —
           // NE JAMAIS _render() ici : sur desktop le sélecteur natif reste
           // OUVERT après chaque `change` (panneau persistant, contrairement à
           // la feuille modale iOS qui ferme) ; le re-render détruisait

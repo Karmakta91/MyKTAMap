@@ -1064,7 +1064,7 @@
   // Aligné comportementalement sur road.js > _resolveRoadStyle.
   function _resolveRoadColor(road) {
     if (road && typeof road.color === "string" && road.color) return road.color;
-    // 🎨 v1.76.5 (bug KARMA « galerie principale reste verte en OSM ») — le
+    // 🎨 v1.77.0 (bug KARMA « galerie principale reste verte en OSM ») — le
     // CANON d'abord : ktaResolveStyle applique l'override de couleur choisi
     // dans la légende (session > plan > défaut). La table locale passait
     // AVANT et court-circuitait l'override des types built-in. Défauts
@@ -1239,7 +1239,7 @@
         fill:   z.fillColor || z.color     || "#8892a4"
       };
     }
-    // 🎨 v1.76.5 — canon d'abord (override légende), cf _resolveRoadColor.
+    // 🎨 v1.77.0 — canon d'abord (override légende), cf _resolveRoadColor.
     if (z && z.type && typeof window.ktaResolveStyle === "function") {
       const s = window.ktaResolveStyle("zones", z.type, { flat: true });
       if (s) {
@@ -1307,7 +1307,7 @@
       const minPts = polyline ? 2 : 3;
       if (latlngs.length < minPts) { skipped++; continue; }
       const style = Object.assign({}, STRUCTURE_STYLES_OSM[s.type] || STRUCTURE_STYLES_OSM["mur"]);
-      // 🎨 v1.76.5 — couleurs du canon (override légende) par-dessus la
+      // 🎨 v1.77.0 — couleurs du canon (override légende) par-dessus la
       // variante OSM locale (qui ne garde que weight/opacity allégés).
       if (s.type && typeof window.ktaResolveStyle === "function") {
         const cs = window.ktaResolveStyle("structures", s.type, { flat: true });
@@ -1923,7 +1923,7 @@
   // on injecte une petite barre dans l'overlay osm-modal directement).
   function _toast(msg, durationMs) {
     durationMs = durationMs || 3500;
-    // 🐛 v1.76.5 (audit code mort → bug latent n°2) — ce toast visait
+    // 🐛 v1.77.0 (audit code mort → bug latent n°2) — ce toast visait
     // "kta-osm-modal", un id qui n'a JAMAIS existé (le vrai overlay est
     // kta-osm-view-overlay) : le toast contextuel de la modale OSM n'a
     // jamais fonctionné, repli silencieux sur showToast. Ressuscité.

@@ -4747,7 +4747,7 @@ body.kta-theme-light .splash-license-detail-pro {
      ne peuvent pas grandir car leur parent n'a pas de hauteur définie). */
   .loader-grid {
     flex: 1 1 auto;
-    /* 🐛 v1.76.5 (audit agent 08/08) — min-height:0 autorisait la GRID à
+    /* 🐛 v1.77.0 (audit agent 08/08) — min-height:0 autorisait la GRID à
        être comprimée sous le min-content de ses colonnes (la box étant
        figée à 100dvh par align-items:stretch, l'espace manquant se prenait
        ici) : la rangée auto, elle, ne descend jamais sous le min-content →
@@ -4818,7 +4818,7 @@ body.kta-theme-light .splash-license-detail-pro {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
-    /* 🐛 v1.76.5 (KARMA : le toggle du footer chevauche encore l'OSM sur PC,
+    /* 🐛 v1.77.0 (KARMA : le toggle du footer chevauche encore l'OSM sur PC,
        2e passe) — le `min-height: 0` posé ici CASSAIT la propagation du
        minimum réel du widget (carte 220px + bandeau + barre Tiles) vers la
        rangée du grid : la rangée se croyait plus courte que son contenu, et
@@ -4837,7 +4837,7 @@ body.kta-theme-light .splash-license-detail-pro {
        colonne et le footer, peint après dans le flux, passait par-dessus.
        Le flex remplit déjà la colonne sur grand écran ; on garde juste un
        plancher — plus aucun minimum en vh qui force.
-       📐 v1.76.5 (KARMA : « tout doit tenir dans l'écran, je ne veux pas
+       📐 v1.77.0 (KARMA : « tout doit tenir dans l'écran, je ne veux pas
        scroller pour voir le footer ») : minima COMPACTÉS — 260→200 ici,
        carte 220→160, marge de box 14→6 — ~120 px d'incompressible en moins.
        Sur grand écran rien ne change (le flex remplit) ; la fenêtre doit
@@ -20566,7 +20566,7 @@ html.kta-theme-light .kta-osm-multi-cat.active { color: #1a1f2e; }
   .kta-loader-top-row .kta-loader-profile-avatar-wrap { width: 36px; height: 36px; }
   .kta-loader-top-row .kta-loader-profile-stats > * { padding: 3px 8px; font-size: 11px; }
   .kta-loader-top-row #resumeBox .loader-btn-resume { padding: 8px 22px; font-size: 13.5px; }
-  /* 🐛 v1.76.5 (audit agent 08/08) — la règle « 52 → 58vh » qui vivait ici
+  /* 🐛 v1.77.0 (audit agent 08/08) — la règle « 52 → 58vh » qui vivait ici
      ÉCRASAIT (même spécificité, plus bas dans la cascade) le fix v1.76.2 de
      la ligne ~4880 : min-height:260px était une déclaration MORTE, la vraie
      valeur restait un clamp en vh qui excédait la place du grid → le widget
@@ -20608,7 +20608,7 @@ html.kta-theme-light .kta-osm-multi-cat.active { color: #1a1f2e; }
 /* 🔽 v1.71.0 — Footer HOME repliable (flèche classique, état persisté) */
 .kta-footer-toggle {
   display: block;
-  margin: 4px auto 0;   /* 📐 v1.76.5 : 8→4, le footer doit tenir dans l'écran (KARMA) */
+  margin: 4px auto 0;   /* 📐 v1.77.0 : 8→4, le footer doit tenir dans l'écran (KARMA) */
   padding: 3px 18px;
   font-size: 11px;
   color: #8892a4;
@@ -21079,7 +21079,7 @@ html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
 .kta-devdocs-lecture code { background: rgba(140, 180, 255, 0.10); padding: 1px 4px; border-radius: 3px; }
 
 /* ═══════════════════════════════════════════════════════════════════
-   📐 v1.76.5 — LE FOOTER DÉPLIÉ TIENT DANS L'ÉCRAN PC (audit agent 09/08)
+   📐 v1.77.0 — LE FOOTER DÉPLIÉ TIENT DANS L'ÉCRAN PC (audit agent 09/08)
    Budget mesuré : HOME desktop ≈ 870px déplié, gouverné par la colonne
    ACTIONS (~556px) — pas par l'OSM (les compactages précédents sur la
    colonne OSM ne gagnaient RIEN, elle est ~250px sous la contraignante).
@@ -21106,7 +21106,7 @@ html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
   .zip-drop-zone { padding: 14px 16px; }
 }
 
-/* 📐 v1.76.5 (suite — retour KARMA : « quelques pixels en trop font
+/* 📐 v1.77.0 (suite — retour KARMA : « quelques pixels en trop font
    apparaître la barre de scroll ») : 2e rabotage sur les leviers restants
    de l'audit, ~38px. Même contrainte : bloc en FIN de fichier. */
 @media (min-width: 1024px) {

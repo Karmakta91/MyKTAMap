@@ -4323,7 +4323,7 @@
     const existing = document.getElementById("kta-briefing-options-modal");
     if (existing) existing.remove();
 
-    // 🧹 v1.76.5 (audit code mort) : le flag constant hasSecours=true et ses
+    // 🧹 v1.77.0 (audit code mort) : le flag constant hasSecours=true et ses
     // branches inatteignables sont inlines (on est TOUJOURS dans Mode Secours ici).
 
     // 🆕 v1.42.14 — Palette adaptée au thème actif (dark / light cataphile)

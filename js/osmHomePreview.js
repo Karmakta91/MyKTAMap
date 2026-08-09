@@ -174,7 +174,7 @@
   };
   // Helper résolution couleur road (cascade complète)
   // ═══════════════════════════════════════════════════════════
-  // 🎨 v1.76.5 — OVERRIDES DE LÉGENDE PAR PLAN (bug KARMA « galerie
+  // 🎨 v1.77.0 — OVERRIDES DE LÉGENDE PAR PLAN (bug KARMA « galerie
   // principale reste verte en OSM », puis « OSM PLAN OK mais pas OSM HOME »)
   // ═══════════════════════════════════════════════════════════
   // Pourquoi PAS ktaResolveStyle ici (contrairement à osmView) : le canon
@@ -258,7 +258,7 @@
         fill:   z.fillColor || z.color     || "#8892a4"
       };
     }
-    // 🎨 v1.76.5 — override par plan : remplissage choisi, bordure explicite
+    // 🎨 v1.77.0 — override par plan : remplissage choisi, bordure explicite
     // ou dérivée par assombrissement (même relation que le canon).
     const fillOv   = z && _couleurOverrideDe(planId, "zones", z.type, "colors");
     const borderOv = z && _couleurOverrideDe(planId, "zones", z.type, "borders");
@@ -325,7 +325,7 @@
   function _isOptedIn() {
     try { return localStorage.getItem(LS_OPT_IN_KEY) === "1"; } catch(e) { return false; }
   }
-  // 🧹 v1.76.5 (audit code mort) : _setOptedIn supprimé — jamais appelé,
+  // 🧹 v1.77.0 (audit code mort) : _setOptedIn supprimé — jamais appelé,
   // l'opt-in réel s'écrit via OsmView.setOptedIn (Configuration HOME).
   function _isOnline() {
     return (typeof navigator === "undefined") || navigator.onLine !== false;
@@ -632,7 +632,7 @@
     }
     // Cleanup ancienne instance si refresh
     if (_mapInstance) {
-      _retirerToutHiRes(); // 🔍 v1.76.5 — URLs hi-res éphémères, à révoquer ici
+      _retirerToutHiRes(); // 🔍 v1.77.0 — URLs hi-res éphémères, à révoquer ici
       try { _mapInstance.remove(); } catch(e) {}
       _mapInstance = null;
       _panesParPlan = {};   // v1.72.2 : les panes appartiennent à la carte détruite
@@ -668,7 +668,7 @@
     _markerLayer = L.featureGroup().addTo(_mapInstance);
     _tilesLayer  = L.layerGroup().addTo(_mapInstance); // 🆕 v1.40.6 (en premier = en dessous des data)
     _dataLayer   = L.layerGroup().addTo(_mapInstance); // 🆕 v1.40.4 (au dessus des tuiles)
-    // 🔍 v1.76.5 — tuiles hi-res au zoom (débounce, cf bloc TUILES HI-RES)
+    // 🔍 v1.77.0 — tuiles hi-res au zoom (débounce, cf bloc TUILES HI-RES)
     _mapInstance.on("zoomend moveend", _onCarteBougeHiRes);
     _renderGeorefMarkers(georef);
     // 🐛 v1.40.40-41 — KARMA : « les tuiles OSM ne se chargent pas au boot ».
@@ -891,7 +891,7 @@
       } catch(e) {
         console.warn("[OsmHomePreview] icons extraction échec :", e);
       }
-      // 🔍 v1.76.5 — le handle JSZip est GARDÉ dans le cache pour les tuiles
+      // 🔍 v1.77.0 — le handle JSZip est GARDÉ dans le cache pour les tuiles
       // hi-res au zoom : loadAsync est lazy (central directory seul, le
       // File/Blob sous-jacent est une référence) → coût RAM négligeable,
       // et on évite de re-parser le ZIP à chaque changement de niveau.
@@ -1042,7 +1042,7 @@
     if (!data || !Array.isArray(data.dataLayers)) return;
     // v1.72.2 — pane du plan : markers via `pane`, chemins SVG via `renderer`
     // dédié au pane (un L.Path ignore `pane`, seul son renderer compte).
-    const planIdFx = planIdPourPane || _selectedPlanId; // 🎨 v1.76.5 — overrides par plan
+    const planIdFx = planIdPourPane || _selectedPlanId; // 🎨 v1.77.0 — overrides par plan
     const paneCtx = _panePour(planIdFx);
     const optsPane = paneCtx ? { pane: paneCtx.nom } : {};
     const optsRendu = paneCtx ? { renderer: paneCtx.renderer } : {};
@@ -1168,7 +1168,7 @@
       for (const s of layer.structures) {
         if (!Array.isArray(s.points)) continue;
         const style = Object.assign({}, STRUCT_STYLES_HOME[s.type] || STRUCT_STYLES_HOME["mur"]);
-        // 🎨 v1.76.5 — couleurs overridées PAR PLAN par-dessus la variante
+        // 🎨 v1.77.0 — couleurs overridées PAR PLAN par-dessus la variante
         // HOME locale (qui ne garde que weight/fillOpacity allégés). Fronts
         // (polyline) : le trait ; piliers/murs : remplissage + bordure.
         const fillOvS   = _couleurOverrideDe(planIdFx, "structures", s.type, "colors");
@@ -1243,7 +1243,7 @@
       _montrer(g.data, g.zones,  _showZones      && v.zones);
       _montrer(g.data, g.struct, _showStructures && v.struct);
     });
-    // 🔍 v1.76.5 — les groupes hi-res suivent le même régime que les tuiles.
+    // 🔍 v1.77.0 — les groupes hi-res suivent le même régime que les tuiles.
     Object.keys(_hiRes).forEach(function(id) {
       const h = _hiRes[id];
       if (h && h.groupe) _montrer(_mapInstance, h.groupe, _showTiles && _visDe(id).tiles);
@@ -1434,7 +1434,7 @@
     const rows = Math.ceil(lvlH / tileSize);
 
     const tiles = [];
-    // ⚠️ v1.76.5 (réparation du fix code-mort du 09/08) — PAS de révocation
+    // ⚠️ v1.77.0 (réparation du fix code-mort du 09/08) — PAS de révocation
     // ici : les blob URLs baseline vivent avec _planDataCache (design v1.71.0,
     // « un plan retiré puis re-ajouté est gratuit »). La révocation ajoutée
     // par l'audit cassait le multi-plans : charger un plan B révoquait les
@@ -1526,7 +1526,7 @@
   // N'affecte pas les data layers (qui ont leur propre fillOpacity native).
   function _setPlanOpacity(opacity) {
     _planOpacity = Math.max(0, Math.min(1, opacity));
-    _appliquerOpaciteHiRes(_selectedPlanId, _planOpacity); // 🔍 v1.76.5
+    _appliquerOpaciteHiRes(_selectedPlanId, _planOpacity); // 🔍 v1.77.0
     if (!_tilesLayer) return;
     _tilesLayer.eachLayer(function(l) {
       try {
@@ -1537,7 +1537,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  // 🔍 v1.76.5 — TUILES HI-RES AU ZOOM (bug KARMA « un plan X est très flou
+  // 🔍 v1.77.0 — TUILES HI-RES AU ZOOM (bug KARMA « un plan X est très flou
   // si je zoome dans le widget HOME, alors qu'il est lisible en OSM plan »)
   // ═══════════════════════════════════════════════════════════
   // Le baseline (≤80 tuiles, _chooseTileLevelForHome) reste le socle affiché
@@ -1873,7 +1873,7 @@
     delete _extraLayers[planId];
     const i = _stackOrder.indexOf(planId);
     if (i !== -1) _stackOrder.splice(i, 1);
-    _retirerHiRes(planId); // 🔍 v1.76.5 — les hi-res, elles, sont éphémères
+    _retirerHiRes(planId); // 🔍 v1.77.0 — les hi-res, elles, sont éphémères
     // Pas de revoke des blob URLs BASELINE : elles vivent dans _planDataCache
     // (re-ajout gratuit) et peuvent servir au plan principal.
     _appliquerOrdre();
@@ -1894,7 +1894,7 @@
 
   function _setOpaciteExtra(planId, v) {
     _extraOpacity[planId] = Math.max(0, Math.min(1, v));
-    _appliquerOpaciteHiRes(planId, _extraOpacity[planId]); // 🔍 v1.76.5
+    _appliquerOpaciteHiRes(planId, _extraOpacity[planId]); // 🔍 v1.77.0
     const g = _extraLayers[planId];
     if (!g) return;
     g.tiles.eachLayer(function(l) {
@@ -2379,7 +2379,7 @@
     const container = document.getElementById("ktaOsmHomeContent");
     if (!container) return; // pas en HOME, abort silencieux
 
-    // 🎨 v1.76.5 — cache des overrides de légende par plan invalidé à chaque
+    // 🎨 v1.77.0 — cache des overrides de légende par plan invalidé à chaque
     // mount : un retour au HOME après des modifs de couleur en mode plan
     // relit les slots SessionPersist (auto-savés ~1,5 s).
     _legendeParPlan = {};

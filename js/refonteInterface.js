@@ -817,7 +817,7 @@
     // complètement). L'option B fallback `?` grisé a servi pour le debug
     // initial mais n'a pas d'intérêt en prod — sur Safari iOS / Firefox
     // l'user n'a rien à faire de ce chip.
-    // 🧹 v1.76.5 (audit code mort → bug latent n°1, arbitrage KARMA) — le
+    // 🧹 v1.77.0 (audit code mort → bug latent n°1, arbitrage KARMA) — le
     // bloc « Status bar stat » batterie ciblait un id jamais créé
     // (kta-refonte-stat-battery) : cette 2e jauge n'a JAMAIS existé à
     // l'écran. Le chip du HEADER (celui que KARMA voit sur PC/Android) est

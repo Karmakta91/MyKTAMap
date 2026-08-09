@@ -761,6 +761,10 @@ Au premier lancement du mode, un message rappelle que l'affichage de plans compl
 
 > 👁️ **Calques masqués par défaut (depuis v1.73.1)** — un calque de données livré « décoché » dans le ZIP d'un plan (donc masqué à l'ouverture en mode carte) était jusqu'ici **totalement invisible en Vue OSM**, sans aucun moyen de l'afficher. Il est désormais rendu comme les autres : tu le masques ou l'affiches avec les filtres existants (chips de catégorie globaux et par plan, filtre par tag). La Vue OSM de l'écran plan n'est pas concernée — elle a toujours suivi les calques réellement affichés sur ta carte.
 
+> 🔍 **Net au zoom (depuis v1.77.0)** — dans l'aperçu OSM de l'accueil, zoomer sur un plan charge automatiquement des **tuiles plus détaillées** (seulement la zone que tu regardes, plans tuilés V2). Avant, le plan restait flou au zoom alors qu'il était net en mode OSM plein écran. Rien à régler, et aucune requête réseau en plus : les tuiles viennent du fichier du plan, déjà sur ton appareil.
+
+> 🎨 **Tes couleurs partout (depuis v1.77.0)** — les couleurs de légende que tu personnalises (≡ Légende → ✏️ Modifier) s'affichent désormais **aussi sur le fond OSM** : mode plein écran ET aperçu de l'accueil, et en multi-plans chaque plan garde **ses propres** couleurs. Avant, ces vues restaient sur les couleurs d'origine (une galerie principale repeinte en rouge s'affichait quand même verte).
+
 ## 📖 Mode Histoire — Note libre + PDF du plan
 
 Le bouton **📖** dans la barre du haut (à gauche de la batterie 🔋) ouvre une modale à deux onglets propre à chaque plan. C'est ton **carnet d'exploration personnel** pour chaque site souterrain.

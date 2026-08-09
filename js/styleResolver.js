@@ -330,7 +330,7 @@
 
   window.ktaResolveStyle    = ktaResolveStyle;
   window.ktaStyleBuiltins   = ktaStyleBuiltins;
-  // 🎨 v1.76.5 — dérivation bordure↔remplissage du canon, exposée pour que
+  // 🎨 v1.77.0 — dérivation bordure↔remplissage du canon, exposée pour que
   // le widget OSM HOME (qui résout ses overrides PAR PLAN depuis les slots
   // SessionPersist, hors état live) garde la même relation visuelle.
   window.ktaAssombrir       = _assombrir;

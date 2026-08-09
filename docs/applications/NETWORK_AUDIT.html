@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.76.4</strong> (8 août 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.77.0</strong> (9 août 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.77.0 (netteté OSM au zoom, couleurs de légende sur OSM, outillage, nettoyage)</h3>
+  <p>Traitement <strong>100 % local</strong> — les tuiles détaillées chargées au zoom dans l'aperçu OSM de l'accueil viennent du <strong>ZIP du plan déjà sur ton appareil</strong> (extraction locale, AUCUNE requête — seul le fond de carte OpenStreetMap reste, inchangé, opt-in) ; les couleurs personnalisées sont lues dans le <strong>stockage local</strong>. Le nettoyage de code supprime des fichiers jamais téléchargés par l'app (cartes de débogage de la bibliothèque Leaflet). Aucune nouvelle requête, aucun nouveau domaine, whitelist <code>connect-src</code> inchangée.</p>
   <h3>v1.76.4 (overlay KMZ des grands plans, finitions Mode Développeur)</h3>
   <p>Traitement <strong>100 % local</strong> — la réduction d'image pour Google Earth se fait dans le navigateur (canvas, tuiles déjà locales), le KMZ est téléchargé par toi. Aucune nouvelle requête, aucun nouveau domaine, whitelist <code>connect-src</code> inchangée.</p>
   <h3>v1.76.3 (Mode Développeur, confirmation d'itinéraire)</h3>

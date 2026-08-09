@@ -764,6 +764,10 @@ On the first opening of the mode, a message reminds you that rendering full plan
 
 > 👁️ **Layers hidden by default (since v1.73.1)** — a data layer shipped "unchecked" in a plan ZIP (so hidden when the map opens) used to be **completely invisible in OSM view**, with no way to show it. It is now rendered like the others: hide or show it with the existing filters (global and per-plan category chips, tag filter). The OSM view of the map screen is unaffected — it has always followed the layers actually displayed on your map.
 
+> 🔍 **Sharp when zooming (since v1.77.0)** — in the home screen's OSM preview, zooming on a plan automatically loads **more detailed tiles** (only the area you're looking at, V2-tiled plans). Before, the plan stayed blurry when zooming even though it was sharp in full-screen OSM mode. Nothing to configure, and no extra network requests: the tiles come from the plan file, already on your device.
+
+> 🎨 **Your colors everywhere (since v1.77.0)** — the legend colors you customize (≡ Legend → ✏️ Edit) now show up **on the OSM background too**: full-screen mode AND home preview, and with multiple plans each one keeps **its own** colors. Before, these views stuck to the original colors (a main gallery repainted red still showed green).
+
 ## 📖 Story Mode — Free note + PDF for each plan
 
 The **📖** button in the top bar (left of the battery 🔋) opens a two-tab modal scoped to each plan. It's your **personal exploration notebook** for each underground site.
