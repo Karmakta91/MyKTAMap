@@ -239,6 +239,18 @@ function initRoad() {
                   : window.modeRoad === "chemin"     ? window.I18n.t("road.type.chemin")
                   : window.modeRoad === "jonction"   ? window.I18n.t("road.type.jonction")
                   : window.modeRoad;
+        // 🏷️ v1.78.0 — un type built-in RENOMMÉ dans la légende garde son
+        // nom choisi jusque dans le libellé d'historique (undo). Sans
+        // renommage : libellé i18n ci-dessus, inchangé.
+        const _LC = window.LegendCustomization;
+        if (_LC && typeof _LC.getLabel === "function" && typeof _LC.getSource === "function") {
+          try {
+            if (_LC.getSource("traces", window.modeRoad) !== "default") {
+              const _l = _LC.getLabel("traces", window.modeRoad);
+              if (_l) typeLabel = _l;
+            }
+          } catch(e) {}
+        }
       }
       const lbl = _isNewRoad
         ? window.I18n.t("road.history.new", { type: typeLabel })
