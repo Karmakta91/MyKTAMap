@@ -102,7 +102,18 @@ if (-not $scpExe) { $c = Get-Command scp.exe -ErrorAction SilentlyContinue | Whe
 if (-not $scpExe) { Write-Host 'Client OpenSSH Windows absent — Paramètres > Fonctionnalités facultatives.' -ForegroundColor Red ; exit 1 }
 & $scpExe -r -P $port (Join-Path $stage '.') ($conf.user + '@' + $conf.host + ':' + $remote + '/')
 if ($LASTEXITCODE -ne 0) {
-  Write-Host "❌ scp a échoué (code $LASTEXITCODE) — RIEN à considérer comme déployé." -ForegroundColor Red
+  Write-Host "❌ scp a signalé des erreurs (code $LASTEXITCODE)." -ForegroundColor Red
+  Write-Host ""
+  Write-Host "   CAS CONNU (post-mortem 09/08) : si TOUS les fichiers affichent 100% et que les" -ForegroundColor Yellow
+  Write-Host "   seules erreurs sont « remote setstat ... : Permission denied » sur des DOSSIERS," -ForegroundColor Yellow
+  Write-Host "   le CONTENU est bien transféré — mais les dossiers du serveur ne t'appartiennent" -ForegroundColor Yellow
+  Write-Host "   plus (chown www-data) et scp ne peut plus poser leurs attributs." -ForegroundColor Yellow
+  Write-Host "   FIX DÉFINITIF (une fois, en SSH sur le serveur — nginx n'a besoin que de LIRE) :" -ForegroundColor Yellow
+  Write-Host "     sudo chown -R `$(whoami) $remote && chmod -R a+rX $remote" -ForegroundColor Cyan
+  Write-Host "   puis relance ce script : il repassera au vert." -ForegroundColor Yellow
+  Write-Host ""
+  Write-Host "   Toute AUTRE erreur (auth, réseau, fichier refusé) = vrai échec, rien à considérer" -ForegroundColor Red
+  Write-Host "   comme déployé." -ForegroundColor Red
   exit $LASTEXITCODE
 }
 
