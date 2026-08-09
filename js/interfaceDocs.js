@@ -1012,6 +1012,14 @@ function _aideHtmlFr() {
         </div>
 
         <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📚 Bibliothèque de plans (accueil)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">⭐</span><span><strong>Épingler</strong> (v1.78.0) — l'étoile de chaque ligne remonte le plan en tête de liste ; re-clic pour désépingler</span>
+            <span class="kta-aide-icone">🏷️</span><span><strong>Tags</strong> (v1.78.0) — étiquettes libres par plan (ℹ️ Infos → « Tags du plan », séparées par des virgules). Dès qu'un plan est tagué, des <strong>chips-filtres</strong> apparaissent au-dessus de la liste. Rangés dans l'app (pas dans le ZIP), ils suivent l'export de profil</span>
+            <span class="kta-aide-icone">🔎</span><span><strong>Filtre par nom</strong> (v1.78.0) — champ au-dessus de la liste, filtre en direct</span>
+            <span class="kta-aide-icone">🗑️</span><span><strong>Retirer un plan</strong> (v1.78.0) — en <strong>fin de fenêtre ℹ️ Infos</strong> avec confirmation (le ✕ des lignes a disparu — fini le retrait accidentel). Le ZIP de ton disque n'est pas touché</span>
+          </div>
+
           <div class="kta-aide-section-titre">👤 Mode profil</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">👤</span><span><strong>Bandeau profil</strong> en en-tête du loader (au-dessus de « Mes plans ») — avatar + surnom + mini-stats globales (📍 points · 🛣️ tracés · ⬛ zones · 🏛️ structures + temps cumulé, conservés)</span>

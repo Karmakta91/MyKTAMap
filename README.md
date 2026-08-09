@@ -12,8 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.77.0` (09/08/2026)
+## 📦 Version courante — `v1.78.0` (09/08/2026)
 
+> 🏷️ **v1.78.0 — Organisation de la bibliothèque de plans** : **tags** libres par plan (édition dans ℹ️ Infos, chips-filtres au-dessus de la liste dès qu'un plan est tagué), **⭐ épinglage** en tête de liste, **🔎 filtre par nom** en direct. Tags et épinglages vivent dans l'app (pas dans le ZIP) et suivent l'export de profil et l'export 💾 de la liste. La **suppression d'un plan** déménage : plus de ✕ sur les lignes (retrait accidentel trop facile), elle vit en fin de fenêtre ℹ️ Infos avec confirmation chartée.
+>
 > 🔍 **v1.77.0 — Vue OSM nette et fidèle, outillage, grand nettoyage** : le widget OSM du HOME charge des **tuiles hi-res au zoom** (niveau adapté à l'écran, tuiles du viewport seulement — fini le plan flou alors que la modale OSM était nette) ; les **couleurs personnalisées de la légende s'appliquent enfin sur fond OSM** (modale : canon en tête de cascade ; widget HOME : résolution PAR PLAN depuis les slots de session — corrige aussi le multi-plans). Favicon d'onglet restauré (disparu depuis mai), HOME PC sans barre de défilement (footer déplié compris). Sous le capot : **smoke navigateur Playwright** + **deploy.ps1** (fin des uploads partiels), audit code mort exécuté (−~930 lignes, −1,92 Mo, 3 bugs latents traités dont 1 faux fix révoqué avec post-mortem), color picker PC de la légende réparé + tombstones des entrées plan.
 >
 > 🌍 **v1.76.4 — L'overlay KMZ des grands plans n'est plus tronqué** : Google Earth ampute en silence les textures > ~8-16 K px — l'export réduit désormais l'image automatiquement (**plan V2 : recomposée depuis la pyramide de tuiles**, niveau ≤ 4 096 px, l'image géante n'est jamais décodée ; non-V2 : downscale canvas ; irréductible : `ktaConfirm` explicite). + finitions bibliothèque Mode Dev : README dégonflé (`<details>` → sections), fallback PWA `index.html` démasqué (un 200 qui ment), images same-origin reconstituées (whitelist chemins relatifs), course i18n au boot corrigée (abonnement `onChange`).
@@ -459,7 +461,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.77.0 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.78.0 → v1.26)
+
+#### v1.78.0 (09/08/2026) — Organisation de la bibliothèque de plans
+
+- 🏷️ **Tags + ⭐ épinglage + 🔎 filtre par nom** (décision KARMA « 1, 3, 4 » sur topo — pas de dossiers, couverts par les tags sans la rigidité) : `PlanRegistry.setTags/setPinned` (normalisation 12 tags × 24 chars, doublons insensibles casse), tri épinglés d'abord (entre eux : lastOpened), mini-chips sur la ligne 2 des rows, chips-filtres au-dessus de la liste (réutilisent `.kta-osm-home-tag-chip`, invisibles tant qu'aucun plan n'est tagué, multi-sélection en OU, Set épuré des tags disparus), filtre nom live RAM-only. Édition des tags dans la modale ℹ️ Infos. `tags`/`pinned` = métadonnées user locales : pas dans le ZIP, mais suivent **gratuitement** l'export de profil et l'export `.config` (les deux embarquent le registre — vérifié dans les deux sens ; nuance : l'import en mode *fusion* ne touche pas les plans déjà présents, leurs tags locaux gagnent).
+- 🗑️ **La suppression d'un plan quitte la liste** (décision KARMA) : le ✕ des lignes (clic accidentel facile, la row entière étant cliquable) est remplacé par un bouton danger **en fin de modale ℹ️ Infos**, confirmation `ktaConfirm` (règle D-confirm), hint honnête (ZIP du disque intact, archive mémorisée/tags/épinglage perdus). Listener et règle CSS `:hover` orphelins purgés (leçon audit code mort). Au passage, la doc user décrivait encore un bouton ▶️ disparu en v1.71.0 — corrigée.
+- 📱 8 + 1 clés i18n ×3 langues (parité stricte es), section « 📚 Bibliothèque de plans » ajoutée à l'Aide intégrée.
 
 #### v1.77.0 (09/08/2026) — Vue OSM nette et fidèle, outillage, grand nettoyage
 
