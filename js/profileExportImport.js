@@ -770,6 +770,12 @@
         }
         if (s.registry.lastPlanId && !store.lastPlanId) store.lastPlanId = s.registry.lastPlanId;
         localStorage.setItem("myktamap_plans", JSON.stringify(store));
+        // 🐛 v1.79.0 — resync la RAM de PlanRegistry : sans ça, findById ne
+        // voyait pas les plans importés (liste invisible avant F5, et la
+        // restauration d'archives les classait tous « orphelins »).
+        if (window.PlanRegistry && typeof window.PlanRegistry.reload === "function") {
+          window.PlanRegistry.reload();
+        }
         result.applied.registry = s.registry.plans.length;
       } catch(e) {
         console.warn("[ProfileExportImport] apply registry échec :", e);
@@ -886,6 +892,7 @@
 
     // ─── Carnet / sorties (IDB myktamap_journal) — 🆕 v1.74.0 ───
     if (include.carnet !== false && Array.isArray(s.carnet) && s.carnet.length > 0) {
+      console.log("[ProfileExportImport] import : section carnet…");
       try {
         // Open IDB direct (même raison que les backups : Journal n'expose pas
         // d'API d'import bulk). ⚠️ L'index `by_start` DOIT être créé ici aussi :
@@ -922,6 +929,7 @@
 
     // ─── Backups (IDB myktamap_backups) ───
     if (include.backups !== false && Array.isArray(s.backups) && s.backups.length > 0) {
+      console.log("[ProfileExportImport] import : section backups…");
       try {
         // Open IDB direct (on évite la dépendance circulaire avec SessionBackups
         // qui ne fournit pas d'API d'import bulk)
@@ -995,6 +1003,7 @@
     // ─── User profile (v1.21.0 Karma_dev — surnom + photo) ───
     if (include.user !== false && s.user) {
       try {
+        console.log("[ProfileExportImport] import : section user…");
         const r = await _restoreUser(s.user);
         result.applied.user = (r && r.ok) ? 1 : 0;
       } catch(e) {
@@ -1385,6 +1394,15 @@
             _afficherModaleImportTermine(res, mode);
           });
         }, 800);
+      }).catch(function(e) {
+        // 🐛 v1.79.0 — FILET : sans ce catch, toute exception dans la chaîne
+        // (applyProfile ou restauration) laissait le bouton figé sur
+        // « Import en cours » POUR TOUJOURS, sans un mot (unhandled
+        // rejection visible qu'en console). L'user voit l'erreur, le bouton
+        // revit, il peut réessayer.
+        console.error("[ProfileExportImport] import échoué :", e);
+        btn.disabled = false; btn.textContent = orig;
+        alert(window.I18n.t("profileio.import_fail", { error: (e && e.message) || String(e) }));
       });
     });
   }

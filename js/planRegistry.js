@@ -46,6 +46,17 @@
   let _data = null;
 
   // ========== INIT ==========
+  // 🐛 v1.79.0 (bug KARMA « import de profil : la liste n'apparaît qu'après
+  // F5, sans les archives ») — applyProfile écrit `myktamap_plans` DIRECT
+  // dans le localStorage : l'état RAM (_data) devenait obsolète, findById ne
+  // voyait pas les plans importés → la restauration d'archives les classait
+  // tous « orphelins ». reload() force la relecture du LS ; à appeler après
+  // toute écriture externe de la clé.
+  function reload() {
+    _data = null;
+    return init();
+  }
+
   function init() {
     if (_data) return _data;
     try {
@@ -552,6 +563,7 @@
     getLastOpened:        getLastOpened,
     setLastPlanId:        setLastPlanId,
     addOrUpdate:          addOrUpdate,
+    reload:               reload,      // 🐛 v1.79.0 — resync RAM après écriture LS externe
     setPinned:            setPinned,   // 🏷️ v1.78.0
     setTags:              setTags,     // 🏷️ v1.78.0
     markOpened:           markOpened,
