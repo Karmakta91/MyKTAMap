@@ -4685,7 +4685,11 @@ body.kta-theme-light .splash-license-detail-pro {
      (sinon la colonne droite finit en bas pendant que la gauche
      s'étend à l'infini). Hauteur max alignée sur la fenêtre. */
   .loader-col-plans .loader-plans-list {
-    max-height: calc(100vh - 320px);
+    /* 🐛 v1.79.0 (KARMA « le bug affichage est revenu ») — la réserve de ce
+       calc était calibrée AVANT le filtre par nom + les chips tags v1.78.0
+       (~67 px au-dessus de la liste) : la colonne re-débordait, footer coupé
+       sans scroll. 320 → 390 : la liste rend ce que les filtres ont pris. */
+    max-height: calc(100vh - 390px);
     overflow-y: auto;
   }
 
@@ -4759,10 +4763,15 @@ body.kta-theme-light .splash-license-detail-pro {
     align-items: stretch;
   }
 
-  /* La liste des plans peut prendre toute la hauteur dispo dans sa col
-     (override la valeur fixe calc(100vh - 320px) de plus bas). */
+  /* La liste des plans peut prendre toute la hauteur dispo dans sa col.
+     🐛 v1.79.0 (mesure Playwright) — `max-height:none` ici annulait la borne
+     pour TOUT 1024-1439px (la règle ≥1440 la rétablissait) : dans une grid,
+     height:100% ne borne RIEN quand la colonne plans est la plus haute (la
+     rangée suit son min-content) → N plans = colonne géante, footer coupé
+     sans scroll. On garde l'étirement (height:100%) mais JAMAIS au-delà du
+     budget viewport — même calc que la règle de base. */
   .loader-col-plans .loader-plans-list {
-    max-height: none;
+    max-height: calc(100vh - 390px);
     height: 100%;
     min-height: 0;
   }
@@ -5204,8 +5213,9 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
     padding-right: 64px;
   }
   .loader-col-plans .loader-plans-list {
-    /* Hauteur scroll mieux adaptée à la grandeur écran */
-    max-height: calc(100vh - 340px);
+    /* Hauteur scroll mieux adaptée à la grandeur écran.
+       🐛 v1.79.0 : 340 → 410, même compensation filtre+chips qu'en 1024+. */
+    max-height: calc(100vh - 410px);
   }
 }
 

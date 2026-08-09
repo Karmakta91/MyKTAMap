@@ -224,6 +224,10 @@ La liste « règles CSS mortes » de l'audit du 09/08 matin (consignée dans le 
 
 ~~Overrides de légende invisibles au HOME après boot froid~~ — la « limitation boot froid » du 1er fix était en réalité le CAS PRINCIPAL du widget (on est au HOME avant de charger un plan) : KARMA l'a rencontrée immédiatement (« OSM PLAN OK mais pas OSM HOME »). Résolu par la lecture PAR PLAN des slots SessionPersist (`myktamap_session_v1_<id>` → `payload.customLegend`) + `customLegend` du ZIP, sans passer par l'état live — ce qui règle AUSSI le multi-plans (chaque plan de la pile a ses propres couleurs). Cf `vue-osm.md` §3.6.
 
+### D-home-mini — 🖥️ HOME PC : fenêtres < ~760 px de haut, footer coupé sans scroll — mesuré 09/08/2026
+
+✅ **vérifié (Playwright)** — la colonne « Ajouter un plan » (Actions) fait ~586 px incompressibles + header 164 : sous ~760 px de viewport, la grille dépasse et le bas (footer) est **coupé sans scroll possible** (`scrollHeight` ne grandit pas — un overflow caché quelque part avale le dépassement, le « scroll honnête » promis par le `min-height:min-content` de v1.77.0 ne se déclenche pas). Préexistant à v1.78 (Actions n'a pas bougé) ; le cas nominal FullHD est sain depuis le fix v1.79.0 des bornes de liste. À traiter si un user remonte le cas : compacter Actions sous 1366×768 OU trouver l'overflow qui avale le scroll.
+
 ### D-confirm — 🪟 confirm() natifs hors charte (10+ fichiers) — noté 07/08/2026
 
 `window.ktaConfirm` (utils.js, v1.76.2, Promise + charte) existe depuis le retour KARMA sur la popup de replanification d'itinéraire. Les `confirm()` natifs restants (createConf, exporter, homeConfig, homeLoader, homeProfile, interface, interfaceConfig, interfaceLegende, journalUi…) **migrent au fil de l'eau** quand on touche leur module — pas de sweep massif (risque de régression sur des flux critiques type suppression). Nouveaux usages : `ktaConfirm` obligatoire. Attention à la migration : `ktaConfirm` est **asynchrone** (le code qui suit un `if (!confirm(...)) return;` doit passer en `.then()`).
