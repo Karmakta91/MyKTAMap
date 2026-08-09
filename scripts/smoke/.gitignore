@@ -1,1 +1,4 @@
 node_modules/
+
+# Captures de repro Playwright (debug local, jamais versionnees)
+repro-*.png
