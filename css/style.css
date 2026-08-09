@@ -20366,18 +20366,15 @@ html.kta-theme-light .loader-section-head { border-bottom-color: rgba(20, 30, 50
 /* 🔎 v1.71.0 (retour KARMA) — la barre vit dans la LIGNE DE TITRE
    « 🌍 Vue OSM » (mode réduit ET mode OSM) : le nœud y est déplacé par
    _monterRechercheDansHead. */
-/* Le head qui héberge la barre doit pouvoir WRAPPER (barre en 2e ligne
-   pleine largeur quand la place manque) au lieu de laisser déborder. */
-#ktaOsmHomeBox .loader-section-head { flex-wrap: wrap; min-width: 0; }
+/* 🔎 v1.78.0 (KARMA « à la ligne, même logique que le filtre plans ») — la
+   barre ne vit PLUS dans la ligne de titre : bloc pleine largeur entre le
+   bandeau et la carte. Les règles flex/head de v1.71.0 sont retirées. */
 .kta-osm-home-search {
   position: relative;
-  flex: 1 1 220px;      /* < 220 px dispo → passe en 2e ligne du head */
-  min-width: 0;
-  max-width: 100%;
-  margin-left: 14px;
+  display: block;
+  width: 100%;
+  margin: 6px 0 4px;
 }
-/* En 2e ligne (wrap), pas de marge orpheline à gauche */
-#ktaOsmHomeBox .loader-section-head .kta-osm-home-search { margin-left: 0; }
 .kta-osm-home-search input {
   width: 100%;
   display: block;
