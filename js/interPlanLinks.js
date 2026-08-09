@@ -447,6 +447,18 @@
           // reco 2:a — clic nœud = ouvrir le plan (ancré sur son premier
           // portail si dispo, sinon simple switch sans pan)
           onOpenPlan: function(planId, anchorSide) {
+            // 🐛 v1.77.1 (KARMA « clic sur un nœud → fenêtre de chargement de
+            // fichier ») — GHOST CLICK : le nœud du graphe se déclenche au
+            // pointerup ; retirer l'overlay ICI fait atterrir le click que le
+            // navigateur génère juste après sur le HOME découvert — pile sur
+            // la drop-zone « 📦 Charger un plan », dont TOUT click ouvre le
+            // sélecteur de fichier (homeLoader). On avale ce click en phase
+            // capture (once) avec un filet 350 ms si aucun click ne suit.
+            const avaler = function(ev) { ev.stopPropagation(); ev.preventDefault(); };
+            document.addEventListener("click", avaler, { capture: true, once: true });
+            setTimeout(function() {
+              document.removeEventListener("click", avaler, { capture: true });
+            }, 350);
             overlay.remove();
             const cible = anchorSide ? {
               x: anchorSide.x, y: anchorSide.y, level: anchorSide.level,
