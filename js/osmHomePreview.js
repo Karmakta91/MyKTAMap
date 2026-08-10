@@ -400,7 +400,7 @@
       if (!p || !p.id) continue;
       const g = window.KmzExport.getCalibration(p.id);
       if (_isValidGeoref(g)) {
-        out.push({ id: p.id, name: p.name || p.id, georef: g, lastOpened: p.lastOpened || 0 });
+        out.push({ id: p.id, name: (window.PlanRegistry.displayName ? window.PlanRegistry.displayName(p) : (p.name || p.id)), georef: g, lastOpened: p.lastOpened || 0 });
       }
     }
     out.sort(function(a, b) { return (b.lastOpened || 0) - (a.lastOpened || 0); });

@@ -206,6 +206,33 @@
     return true;
   }
 
+  // ✏️ v1.79.1 (KARMA « deux Catacombes d'auteurs différents — renommer
+  // depuis le HOME pour différencier ») — NOM D'AFFICHAGE local. On ne
+  // touche JAMAIS à `name` (le vrai nom du plan-config) : il sert aux
+  // vérifications fonctionnelles (nameMatch de la re-sélection de ZIP,
+  // double-check de session, détection de doublon, nom de fichier du 💾).
+  // `displayName` n'est qu'un HABILLAGE local — il suit l'export de profil
+  // et l'export .config comme tags/pinned.
+  function setDisplayName(id, nom) {
+    init();
+    const p = findById(id);
+    if (!p) { console.warn("[PlanRegistry] setDisplayName : plan introuvable", id); return false; }
+    const propre = String(nom || "").trim().slice(0, 40);
+    if (propre && propre !== String(p.name || "").trim()) p.displayName = propre;
+    else delete p.displayName;   // vide OU identique au vrai nom → retour au nom d'origine
+    _save();
+    return true;
+  }
+
+  // Libellé à AFFICHER pour un plan (entrée ou id) : displayName > name > id.
+  // Toute surface d'affichage passe par ici ; les usages FONCTIONNELS de
+  // `name` (nameMatch, fichiers) ne doivent PAS l'utiliser.
+  function displayName(planOuId) {
+    const p = (planOuId && typeof planOuId === "object") ? planOuId : findById(planOuId);
+    if (!p) return String(planOuId || "");
+    return p.displayName || p.name || p.id;
+  }
+
   // Remplace les tags d'un plan. Normalisation : trim, vides éliminés,
   // doublons (insensible casse) éliminés, 12 tags max de 24 chars max —
   // refus au-delà de la troncature silencieuse serait pire : on tronque en
@@ -566,6 +593,8 @@
     reload:               reload,      // 🐛 v1.79.0 — resync RAM après écriture LS externe
     setPinned:            setPinned,   // 🏷️ v1.78.0
     setTags:              setTags,     // 🏷️ v1.78.0
+    setDisplayName:       setDisplayName, // ✏️ v1.79.1
+    displayName:          displayName,    // ✏️ v1.79.1 — libellé d'affichage
     markOpened:           markOpened,
     remove:               remove,
     removeAll:            removeAll,

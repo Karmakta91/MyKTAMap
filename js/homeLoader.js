@@ -450,7 +450,7 @@
               '<div class="kta-modal-titre">' + esc(t("home.dup.titre")) + '</div>' +
               '<div class="kta-modal-texte">' +
                 esc(t("home.dup.texte", {
-                  nom: existant.name || "?",
+                  nom: window.PlanRegistry.displayName(existant) || "?",
                   vA:  existant.version || tiret,
                   vB:  nouvelleVersion || tiret
                 })) +
@@ -789,7 +789,7 @@
             html += '<button type="button" class="loader-search-row" data-lpt="' + i + '">' +
                     (e.pt.source === "session" ? "✏️" : "📄") + ' ' +
                     escapeHtml(e.pt.nom || e.pt.id || (e.pt.x + "," + e.pt.y)) +
-                    '<span class="loader-search-badge">' + escapeHtml(e.plan.name || e.plan.id) + '</span>' +
+                    '<span class="loader-search-badge">' + escapeHtml(window.PlanRegistry.displayName(e.plan)) + '</span>' +
                     '</button>';
           });
           html += '<button type="button" class="loader-search-row loader-search-tous" data-ltous="1">' +
@@ -813,7 +813,7 @@
               window.InterPlanLinks.goTo(e.plan.id, {
                 x: e.pt.x, y: e.pt.y, level: e.pt.level,
                 tag: (Array.isArray(e.pt.tags) && e.pt.tags[0]) || undefined,
-                planName: e.plan.name || e.plan.id,
+                planName: window.PlanRegistry.displayName(e.plan),
                 label: e.pt.nom || e.pt.id || (e.pt.x + "," + e.pt.y)
               }, { confirm: false });
             });
@@ -961,7 +961,7 @@
             <span class="plan-row-icon">${icon}</span>
             <div class="plan-row-info">
               <div class="plan-row-title">
-                <span class="plan-row-name-text">${escapeHtml(plan.name || plan.id)}</span>
+                <span class="plan-row-name-text">${escapeHtml(window.PlanRegistry.displayName(plan))}</span>
               </div>
               <div class="plan-row-modes">${badgesMode}${badgeStorage}${tagsHtml}</div>
             </div>
@@ -1221,13 +1221,28 @@
         modal.innerHTML =
           '<div class="kta-readme-modal-boite kta-plan-infos-boite">' +
             '<div class="kta-readme-modal-header">' +
-              '<span class="kta-readme-modal-titre">' + _t("home.plans.info.title", {nom: escapeHtml(plan.name || plan.id)}) + '</span>' +
+              '<span class="kta-readme-modal-titre">' + _t("home.plans.info.title", {nom: escapeHtml(window.PlanRegistry.displayName(plan))}) + '</span>' +
               '<button class="kta-panneau-close" id="kta-plan-infos-close">✕</button>' +
             '</div>' +
             '<div class="kta-readme-modal-corps">' +
               '<table class="kta-plan-infos-table">' + tableHtml + '</table>' +
               // 🏷️ v1.78.0 — édition des tags du plan (saisie libre, séparés
               // par des virgules ; normalisation côté PlanRegistry.setTags).
+              // ✏️ v1.79.1 — renommage d'AFFICHAGE (cas KARMA : deux plans
+              // homonymes d'auteurs différents). Le vrai nom (table keyName
+              // ci-dessus) reste intact : re-sélection de ZIP, session et
+              // détection de doublon continuent de s'y référer.
+              '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
+                '<div style="font-weight:600; margin-bottom:6px;">✏️ ' + escapeHtml(_t("home.plans.info.renameTitle")) + '</div>' +
+                '<input class="kta-cfg-input" id="kta-plan-rename-input" type="text" style="width:100%;" maxlength="40" ' +
+                  'placeholder="' + escapeHtml(plan.name || plan.id) + '" ' +
+                  'value="' + escapeHtml(plan.displayName || "") + '">' +
+                '<div style="display:flex; align-items:center; gap:10px; margin-top:8px;">' +
+                  '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-rename-save">💾 ' + escapeHtml(_t("home.plans.info.renameSave")) + '</button>' +
+                  '<span id="kta-plan-rename-status" style="font-size:12px; color:#8892a4;"></span>' +
+                '</div>' +
+                '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.renameHint")) + '</div>' +
+              '</div>' +
               '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
                 '<div style="font-weight:600; margin-bottom:6px;">🏷️ ' + escapeHtml(_t("home.plans.info.tagsTitle")) + '</div>' +
                 '<input class="kta-cfg-input" id="kta-plan-tags-input" type="text" style="width:100%;" ' +
@@ -1269,6 +1284,25 @@
               modal.remove();
               window.refreshPlansList();
             });
+          });
+        }
+
+        // ✏️ v1.79.1 — renommage d'affichage (vide = retour au nom d'origine)
+        const btnRename = document.getElementById("kta-plan-rename-save");
+        if (btnRename) {
+          btnRename.addEventListener("click", function() {
+            const inp = document.getElementById("kta-plan-rename-input");
+            const st  = document.getElementById("kta-plan-rename-status");
+            if (window.PlanRegistry.setDisplayName(plan.id, inp.value)) {
+              const maj = window.PlanRegistry.findById(plan.id);
+              inp.value = (maj && maj.displayName) || "";
+              st.textContent = _t("home.plans.info.renameSaved");
+              setTimeout(function() { st.textContent = ""; }, 2500);
+              // Le titre de la modale suit tout de suite (cohérence visuelle)
+              const titre = modal.querySelector(".kta-readme-modal-titre");
+              if (titre) titre.textContent = _t("home.plans.info.title", { nom: window.PlanRegistry.displayName(plan.id) });
+              window.refreshPlansList();
+            }
           });
         }
 
@@ -1352,7 +1386,7 @@
         const resumeBox = document.getElementById("resumeBox");
         const resumeName = document.getElementById("resumeName");
         if (last && resumeBox && resumeName) {
-          resumeName.textContent = (last.name || last.id) + (last.version ? " (" + last.version + ")" : "");
+          resumeName.textContent = window.PlanRegistry.displayName(last) + (last.version ? " (" + last.version + ")" : "");
           resumeBox.style.display = "block";
           resumeBox.dataset.planId = last.id;
         } else if (resumeBox) {
@@ -1435,8 +1469,11 @@
         // 🏷️ v1.78.0 — filtres nom + tags (RAM only, sur la liste déjà
         // filtrée serveur). Tags : il suffit qu'UN tag du plan matche (OU).
         const visibles = filtered.filter(function(p) {
+          // ✏️ v1.79.1 — le filtre matche le nom AFFICHÉ **et** le nom réel
+          // (retrouver « Cata KARMA » ou « Catacombes » doit marcher pareil).
           if (_plansNameFilter &&
-              String(p.name || p.id).toLowerCase().indexOf(_plansNameFilter) === -1) return false;
+              String(p.name || p.id).toLowerCase().indexOf(_plansNameFilter) === -1 &&
+              String(p.displayName || "").toLowerCase().indexOf(_plansNameFilter) === -1) return false;
           if (_plansTagFilter) {
             const tags = Array.isArray(p.tags) ? p.tags : [];
             if (!tags.some(function(tg) { return _plansTagFilter.has(tg.toLowerCase()); })) return false;
@@ -1458,7 +1495,7 @@
               if (a.lastOpened && b.lastOpened) return b.lastOpened.localeCompare(a.lastOpened);
               if (a.lastOpened) return -1;
               if (b.lastOpened) return 1;
-              return (a.name || "").localeCompare(b.name || "");
+              return (a.displayName || a.name || "").localeCompare(b.displayName || b.name || ""); // ✏️ v1.79.1 : tri sur le nom affiché
             });
             allPlansList.innerHTML = sorted.map(planRowHTML).join("");
           }
@@ -1602,7 +1639,7 @@
         let canRetry = false;
         let canReSelect = false;
 
-        const _nom = escapeHtml(plan.name || plan.id);
+        const _nom = escapeHtml(window.PlanRegistry.displayName(plan));
         if (reason === "server") {
           titre = _t("home.plans.notFound.titleServer");
           explication = _t("home.plans.notFound.bodyServer", { nom: _nom, path: escapeHtml(plan.path) });
@@ -1749,7 +1786,7 @@
           // v171 : modale custom (orange warning) au lieu de confirm() natif.
           // Continue offert car le ZIP fait foi (sync automatique des flags).
           if (discordances.length > 0) {
-            const ok = await _afficherModaleModeDifferent(plan.name || plan.id, discordances);
+            const ok = await _afficherModaleModeDifferent(window.PlanRegistry.displayName(plan), discordances);
             if (!ok) return;
           }
         } catch(e) {

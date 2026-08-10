@@ -426,6 +426,7 @@ The application remembers all the maps you load, whether they come from the serv
 - **ℹ️** — opens a **Detailed info** window on this archive (internal id, name, version, author, type, source file, size, persistence, V1/V2/multi-level mode, performance preset, dates added and opened). Useful for checking what the app knows about the map without loading it.
 - **▶️** — loads the map
 - **⭐/☆** — pins/unpins the map to the top of the list *(since v1.78.0)*
+- **✏️ Rename display** *(since v1.79.1)* — in the ℹ️ Info window: a local display name (40 chars max) to tell two same-named maps apart; empty = back to the original name; the map's real name is still used for file checks.
 - **🗑️ Remove from list** now lives **at the end of the ℹ️ Info window** *(since v1.78.0, the row ✕ is gone: removal asks for confirmation there — no more accidental removal)*. Removing a map does not delete the ZIP file on your disk, but it does clear the archive possibly stored in the app.
 
 **Buttons at the top of the list:**

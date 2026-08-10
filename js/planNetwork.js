@@ -61,7 +61,7 @@
       const badges = [];
       if (p.tiledV2 === true)   badges.push("V2");
       if (p.multiLevel === true) badges.push("M-LVL");
-      nodes[p.id] = { id: p.id, name: p.name || p.id, present: true,
+      nodes[p.id] = { id: p.id, name: (window.PlanRegistry.displayName ? window.PlanRegistry.displayName(p) : (p.name || p.id)), present: true,
                       badges: badges, linkCount: 0, anchorSide: null };
     });
 
