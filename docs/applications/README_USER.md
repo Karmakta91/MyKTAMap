@@ -142,29 +142,6 @@ Si un plan que **tu avais déjà importé** est révoqué par l'auteur APRÈS to
 
 > ✅ **Privacy** : tout reste local, comme à l'import. Aucune empreinte n'est envoyée au serveur.
 
----
-
-### 🌐 Migration vers `myktamap.fr`
-
-L'application change de domaine officiel. À partir du **15 juillet 2026**, la nouvelle adresse sera **`myktamap.fr`** (au lieu de l'actuelle `myktamap.fr`).
-
-**Comment es-tu informé ?**
-
-Une **alerte info permanente** (badge 🚨 bleu) est diffusée via le système d'alertes publiques. Tu la consultes quand tu veux en cliquant sur le badge 🚨 dans le header du loader. L'alerte affiche la date de coupure + la checklist complète des données à exporter avant migration.
-
-**Que faire pour migrer mes données ?**
-
-Tes données (liste de plans, sessions, préférences) sont **liées au domaine** (règle de sécurité web — origins isolés). Elles ne suivront PAS automatiquement. Tu dois agir avant la coupure :
-
-1. **📚 Exporte ta liste de plans** : dans le loader, section **📚 Mes plans** → bouton **💾** → télécharge un fichier `.config` qui contient tous tes plans enregistrés (métadatas + références). Sur le nouveau domaine, tu importeras ce `.config` via le bouton **📂** au même endroit.
-2. **💾 Exporte tes sessions** : sur chaque plan ouvert, utilise **💾 Sauvegarde session** (Full ou Avancé) → télécharge un `.json` par session (annotations, tracés, zones, points perso en cours).
-3. **📦 Tes ZIPs de plans voyagent aussi** *(depuis v1.79.0)* : l'export de profil peut embarquer les archives des plans **mémorisés dans l'app** (section 📦 de la fenêtre d'export) — sur le nouveau domaine, elles sont réinjectées automatiquement. Seuls les plans en « accès fichier » ou « re-sélection » restent à re-déposer à la main (leur ZIP vit sur ton disque, pas dans l'app).
-4. **Au 15 juillet 2026** : va sur `myktamap.fr` → importe le `.config` de liste de plans + ré-importe les ZIPs + importe les `.json` de session sur chaque plan correspondant.
-5. **📱 Si tu avais installé l'app sur ton écran d'accueil** (PWA) : tu devras supprimer l'ancienne icône manuellement puis réinstaller depuis `myktamap.fr` (les origins étant différents, l'icône installée pointe sur l'ancien domaine).
-
-**Pendant la transition (jusqu'au 15 juillet 2026)** : les 2 domaines fonctionneront en parallèle. Tu peux continuer à utiliser ce site comme avant, et migrer à ton rythme.
-
-**Après le 15 juillet 2026** : l'ancien domaine affichera une page de transition qui te redirigera automatiquement vers `myktamap.fr`. La PWA installée se désactivera automatiquement à son prochain check de mise à jour (≤24h après la coupure).
 
 ---
 

@@ -142,29 +142,6 @@ If a plan **you have already imported** is revoked by the author AFTER your impo
 
 > ✅ **Privacy**: everything stays local, like at import. No fingerprint is ever sent to the server.
 
----
-
-### 🌐 Migration to `myktamap.fr`
-
-The application is changing its official domain. Starting **July 15, 2026**, the new address will be **`myktamap.fr`** (instead of the current `myktamap.fr`).
-
-**How are you informed?**
-
-A **permanent info alert** (blue 🚨 badge) is broadcast via the public alerts system. You can check it whenever you want by clicking the 🚨 badge in the loader header. The alert displays the cutoff date + the complete checklist of data to export before migration.
-
-**What should I do to migrate my data?**
-
-Your data (list of maps, sessions, preferences) is **linked to the domain** (web security rule — isolated origins). It will NOT follow automatically. You must act before the cutoff:
-
-1. **📚 Export your map list**: in the loader, **📚 My maps** section → **💾** button → download a `.config` file containing all your saved maps (metadata + references). On the new domain, you will import this `.config` via the **📂** button at the same place.
-2. **💾 Export your sessions**: on each open map, use **📤 Export** (Full or Advanced) → download a `.json` per session (annotations, paths, zones, custom points in progress).
-3. **📦 Your map ZIPs travel too** *(since v1.79.0)*: the profile export can bundle the archives of maps **stored in the app** (📦 section of the export window) — on the new domain they are injected back automatically. Only maps in "file access" or "re-selection" mode still need manual re-dropping (their ZIP lives on your disk, not in the app).
-4. **On July 15, 2026**: go to `myktamap.fr` → import the map list `.config` + re-import the ZIPs + import the session `.json` files on each corresponding map.
-5. **📱 If you had installed the app on your home screen** (PWA): you will need to manually delete the old icon then reinstall from `myktamap.fr` (since the origins are different, the installed icon points to the old domain).
-
-**During the transition (until July 15, 2026)**: both domains will work in parallel. You can continue to use this site as before, and migrate at your own pace.
-
-**After July 15, 2026**: the old domain will display a transition page that will automatically redirect you to `myktamap.fr`. The installed PWA will automatically deactivate at its next update check (≤24h after the cutoff).
 
 ---
 
