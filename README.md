@@ -12,8 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.79.0` (09/08/2026)
+## 📦 Version courante — `v1.79.1` (10/08/2026)
 
+> 📚 **v1.79.1 — Plans homonymes maîtrisés** : importer un ZIP portant le même nom qu'un plan de la liste déclenche **toujours** la popup « Ce plan existe déjà » (avant : même version = écrasement silencieux de l'entrée existante, y compris celle d'un plan homonyme d'un **autre auteur** — fusion d'archives/tags/sessions sous un seul id) ; « Garder les deux » suffixe l'id en cas de collision nom+version. Et **✏️ renommage d'affichage** depuis ℹ️ Infos : nom local (40 car.) pour différencier deux homonymes — le vrai nom du plan-config reste intact (re-sélection de ZIP, session, doublon s'y réfèrent toujours) ; propagé sur 13 surfaces (liste, Reprendre, OSM, switcher, graphe…), filtre de liste sur les deux noms.
+>
 > 📦 **v1.79.0 — Le profil emporte les archives de plans** : la fenêtre d'export gagne une section « 📦 Archives de plans » — cocher des plans mémorisés produit un **ZIP « profil complet »** (`profil.json` + `plans/<id>.zip`, STORE) ; à l'import les archives sont **réinjectées et rattachées** (bilan chiffré, fusion : le local gagne, quota plein signalé par plan). Garde-fous : sélection décochée par défaut, seuil 50 Mo iOS / 500 Mo en validation explicite, archives évincées par le navigateur LISTÉES. Corrigé en route : l'import n'actualisait pas la RAM du registre (liste après F5, archives « orphelines ») + filet anti-blocage sur la chaîne d'import. Aussi : **HOME PC structurel** (footer déplié tient sur une page — rangée grid `minmax(0,1fr)`, fini les constantes ; fond tronqué réglé ; `#myPlansBox` flex dormant réparé), renommage de type visible dans la **recherche** et l'**undo**, recherche OSM du HOME **à la ligne** (cohérence filtre plans).
 >
 > 🏷️ **v1.78.0 — Organisation de la bibliothèque de plans** : **tags** libres par plan (édition dans ℹ️ Infos, chips-filtres au-dessus de la liste dès qu'un plan est tagué), **⭐ épinglage** en tête de liste, **🔎 filtre par nom** en direct. Tags et épinglages vivent dans l'app (pas dans le ZIP) et suivent l'export de profil et l'export 💾 de la liste. La **suppression d'un plan** déménage : plus de ✕ sur les lignes (retrait accidentel trop facile), elle vit en fin de fenêtre ℹ️ Infos avec confirmation chartée.
@@ -463,7 +465,12 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.79.0 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.79.1 → v1.26)
+
+#### v1.79.1 (10/08/2026) — Plans homonymes : popup systématique + renommage d'affichage
+
+- 📚 **La popup doublon se déclenche dès que le NOM matche** (bug KARMA « même nom → pas de popup, et le plan ne s'ajoute jamais à la liste ») : le détecteur v1.73.1 exigeait même auteur ET version différente — un ZIP régénéré (même nom + même version) **écrasait silencieusement** l'entrée existante via l'id commun `genLocalId(nom, version)`, y compris l'entrée d'un plan homonyme d'un **autre auteur** (fusion de deux plans distincts : archives, tags, sessions mélangés). Désormais : import frais + nom local identique = la popup tranche (Mettre à jour / Garder les deux / annuler) ; les rechargements ciblés (clic de row, re-sélection) restent exemptés. **« Garder les deux » apprend la collision d'id** : nom+version identiques → suffixe `_2`, `_3`… (sans ça, le choix mentait — les deux plans fusionnaient quand même).
+- ✏️ **Renommage d'AFFICHAGE d'un plan** (demande KARMA « deux Catacombes d'auteurs différents ») : ℹ️ Infos → « Renommer l'affichage » — `displayName` local (40 car., vide = retour à l'origine), le **vrai `name` jamais touché** (nameMatch de re-sélection, double-check session, détection doublon, nom de fichier 💾 s'y réfèrent). `PlanRegistry.displayName()` = helper unique, **13 surfaces migrées** (liste, Reprendre, modale Infos live, popup doublon, recherche HOME, dropdown + recherche OSM, switcher carte, graphe liaisons) ; filtre 🔎 sur les deux noms, tri sur l'affiché ; suit l'export de profil et le `.config` gratuitement. 4 clés i18n ×3.
 
 #### v1.79.0 (09/08/2026) — Le profil emporte les archives de plans, HOME PC structurel
 
