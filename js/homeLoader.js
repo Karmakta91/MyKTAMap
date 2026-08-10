@@ -414,16 +414,22 @@
           .replace(/[^a-z0-9]+/g, "").trim();
       }
 
-      // Retourne l'entrée locale « même plan, autre version », ou null.
-      function _chercherPlanExistant(nom, version, auteur) {
+      // Retourne l'entrée locale de MÊME NOM, ou null.
+      // 🐛 v1.79.1 (KARMA « même nom → pas de popup, et le plan ne s'ajoute
+      // jamais à la liste ») — l'ancien filtre exigeait même auteur ET version
+      // DIFFÉRENTE (« version identique → même id, déjà géré ») : un ZIP
+      // régénéré (même nom + même version) passait sous le radar et ÉCRASAIT
+      // silencieusement l'entrée existante via l'id commun genLocalId(nom,
+      // version) — y compris l'entrée d'un AUTRE plan homonyme d'un autre
+      // auteur. Désormais : même nom (local) = la popup tranche. Les
+      // rechargements ciblés (meta.planId posé : clic de row, re-sélection)
+      // restent exemptés par le garde du caller.
+      function _chercherPlanExistant(nom) {
         if (!window.PlanRegistry || !nom) return null;
-        const nN = _normId(nom), nA = _normId(auteur), nV = _normId(version);
+        const nN = _normId(nom);
         if (!nN) return null;
         return window.PlanRegistry.getAll().find(function(p) {
-          return p.type === "local"
-              && _normId(p.name) === nN
-              && _normId(p.author) === nA
-              && _normId(p.version) !== nV;   // version identique → même id, déjà géré
+          return p.type === "local" && _normId(p.name) === nN;
         }) || null;
       }
 
@@ -548,7 +554,7 @@
               if (_cfg && _cfg.plan) _infosPlan = _cfg.plan;
             } catch(e) { /* plan-config illisible → startImportedPlan lèvera proprement */ }
             if (_infosPlan) {
-              const _exist = _chercherPlanExistant(_infosPlan.name, _infosPlan.version, _infosPlan.author);
+              const _exist = _chercherPlanExistant(_infosPlan.name);
               if (_exist) {
                 _fermerOverlayChargement();   // la modale doit être lisible
                 const _choix = await _demanderQuoiFaireDoublon(_exist, _infosPlan.version);
@@ -565,6 +571,20 @@
                   if (_exist.storedBlob) meta.storeBlob = true;
                   console.log("[Loader] 🔄 Mise à jour du plan existant :", _exist.id,
                               "(v" + (_exist.version || "—") + " → v" + (_infosPlan.version || "—") + ")");
+                }
+                // 🐛 v1.79.1 — « Garder les deux » avec nom + version IDENTIQUES :
+                // l'id naturel genLocalId(nom, version) collisionne avec
+                // l'existant → sans suffixe, addOrUpdate aurait fusionné les
+                // deux plans en une seule entrée (le « garder les deux » mentait).
+                if (_choix === "both" && window.PlanRegistry) {
+                  const _idNatif = window.PlanRegistry.genLocalId(_infosPlan.name, _infosPlan.version || "");
+                  if (window.PlanRegistry.findById(_idNatif)) {
+                    let _n = 2, _idLibre = _idNatif + "_" + _n;
+                    while (window.PlanRegistry.findById(_idLibre)) _idLibre = _idNatif + "_" + (++_n);
+                    meta = Object.assign({}, meta || {});
+                    meta.planId = _idLibre;
+                    console.log("[Loader] ➕ Garder les deux : id suffixé", _idLibre);
+                  }
                 }
                 _afficherOverlayChargement(_t("home.loader.mapLoading"));
               }
