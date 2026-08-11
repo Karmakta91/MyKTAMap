@@ -301,7 +301,7 @@
             }
             _safeCall(window.Tracker && window.Tracker.stop, "Tracker.stop");
             _safeCall(window.EmergencyMode && window.EmergencyMode.desactiver, "EmergencyMode.desactiver");
-            // 🐛 v1.79.4 — visait window.TrackerReplay.arreter : mauvais nom
+            // 🐛 v1.79.3 — visait window.TrackerReplay.arreter : mauvais nom
             // (MyKTAMapTrackerReplay) ET méthode inexistante (l'API est
             // ouvrirModale/fermer) → no-op silencieux depuis sa naissance.
             // Impact réel nul (location.reload() suit), corrigé pour que le
