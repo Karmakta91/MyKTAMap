@@ -414,16 +414,22 @@
           .replace(/[^a-z0-9]+/g, "").trim();
       }
 
-      // Retourne l'entrée locale « même plan, autre version », ou null.
-      function _chercherPlanExistant(nom, version, auteur) {
+      // Retourne l'entrée locale de MÊME NOM, ou null.
+      // 🐛 v1.79.1 (KARMA « même nom → pas de popup, et le plan ne s'ajoute
+      // jamais à la liste ») — l'ancien filtre exigeait même auteur ET version
+      // DIFFÉRENTE (« version identique → même id, déjà géré ») : un ZIP
+      // régénéré (même nom + même version) passait sous le radar et ÉCRASAIT
+      // silencieusement l'entrée existante via l'id commun genLocalId(nom,
+      // version) — y compris l'entrée d'un AUTRE plan homonyme d'un autre
+      // auteur. Désormais : même nom (local) = la popup tranche. Les
+      // rechargements ciblés (meta.planId posé : clic de row, re-sélection)
+      // restent exemptés par le garde du caller.
+      function _chercherPlanExistant(nom) {
         if (!window.PlanRegistry || !nom) return null;
-        const nN = _normId(nom), nA = _normId(auteur), nV = _normId(version);
+        const nN = _normId(nom);
         if (!nN) return null;
         return window.PlanRegistry.getAll().find(function(p) {
-          return p.type === "local"
-              && _normId(p.name) === nN
-              && _normId(p.author) === nA
-              && _normId(p.version) !== nV;   // version identique → même id, déjà géré
+          return p.type === "local" && _normId(p.name) === nN;
         }) || null;
       }
 
@@ -444,7 +450,7 @@
               '<div class="kta-modal-titre">' + esc(t("home.dup.titre")) + '</div>' +
               '<div class="kta-modal-texte">' +
                 esc(t("home.dup.texte", {
-                  nom: existant.name || "?",
+                  nom: window.PlanRegistry.displayName(existant) || "?",
                   vA:  existant.version || tiret,
                   vB:  nouvelleVersion || tiret
                 })) +
@@ -548,7 +554,7 @@
               if (_cfg && _cfg.plan) _infosPlan = _cfg.plan;
             } catch(e) { /* plan-config illisible → startImportedPlan lèvera proprement */ }
             if (_infosPlan) {
-              const _exist = _chercherPlanExistant(_infosPlan.name, _infosPlan.version, _infosPlan.author);
+              const _exist = _chercherPlanExistant(_infosPlan.name);
               if (_exist) {
                 _fermerOverlayChargement();   // la modale doit être lisible
                 const _choix = await _demanderQuoiFaireDoublon(_exist, _infosPlan.version);
@@ -565,6 +571,20 @@
                   if (_exist.storedBlob) meta.storeBlob = true;
                   console.log("[Loader] 🔄 Mise à jour du plan existant :", _exist.id,
                               "(v" + (_exist.version || "—") + " → v" + (_infosPlan.version || "—") + ")");
+                }
+                // 🐛 v1.79.1 — « Garder les deux » avec nom + version IDENTIQUES :
+                // l'id naturel genLocalId(nom, version) collisionne avec
+                // l'existant → sans suffixe, addOrUpdate aurait fusionné les
+                // deux plans en une seule entrée (le « garder les deux » mentait).
+                if (_choix === "both" && window.PlanRegistry) {
+                  const _idNatif = window.PlanRegistry.genLocalId(_infosPlan.name, _infosPlan.version || "");
+                  if (window.PlanRegistry.findById(_idNatif)) {
+                    let _n = 2, _idLibre = _idNatif + "_" + _n;
+                    while (window.PlanRegistry.findById(_idLibre)) _idLibre = _idNatif + "_" + (++_n);
+                    meta = Object.assign({}, meta || {});
+                    meta.planId = _idLibre;
+                    console.log("[Loader] ➕ Garder les deux : id suffixé", _idLibre);
+                  }
                 }
                 _afficherOverlayChargement(_t("home.loader.mapLoading"));
               }
@@ -769,7 +789,7 @@
             html += '<button type="button" class="loader-search-row" data-lpt="' + i + '">' +
                     (e.pt.source === "session" ? "✏️" : "📄") + ' ' +
                     escapeHtml(e.pt.nom || e.pt.id || (e.pt.x + "," + e.pt.y)) +
-                    '<span class="loader-search-badge">' + escapeHtml(e.plan.name || e.plan.id) + '</span>' +
+                    '<span class="loader-search-badge">' + escapeHtml(window.PlanRegistry.displayName(e.plan)) + '</span>' +
                     '</button>';
           });
           html += '<button type="button" class="loader-search-row loader-search-tous" data-ltous="1">' +
@@ -793,7 +813,7 @@
               window.InterPlanLinks.goTo(e.plan.id, {
                 x: e.pt.x, y: e.pt.y, level: e.pt.level,
                 tag: (Array.isArray(e.pt.tags) && e.pt.tags[0]) || undefined,
-                planName: e.plan.name || e.plan.id,
+                planName: window.PlanRegistry.displayName(e.plan),
                 label: e.pt.nom || e.pt.id || (e.pt.x + "," + e.pt.y)
               }, { confirm: false });
             });
@@ -925,22 +945,39 @@
         // - Sub (nom zip + taille) et date d'ouverture déplacés vers la
         //   modale ℹ️ Informations détaillées (bouton dans .plan-row-actions).
         //   Allège la liste, surtout quand on en a beaucoup.
+        // 🏷️ v1.78.0 — tags du plan en mini-chips sur la ligne 2 (après les
+        // badges de mode) + bouton ⭐/☆ d'épinglage dans les actions.
+        let tagsHtml = "";
+        if (Array.isArray(plan.tags) && plan.tags.length) {
+          tagsHtml = plan.tags.map(function(tg) {
+            return '<span class="kta-plan-row-tag">' + escapeHtml(tg) + '</span>';
+          }).join("");
+        }
+        const pinTitle = plan.pinned
+          ? _homeT("home.plans.unpinTitle", "Désépingler ce plan")
+          : _homeT("home.plans.pinTitle", "Épingler ce plan en tête de liste");
         return `
-          <div class="plan-row" data-id="${plan.id}" title="${_homeT("home.plans.loadBtnTitle", "Charger ce plan")}">
+          <div class="plan-row${plan.pinned ? " kta-plan-row-pinned" : ""}" data-id="${plan.id}" title="${_homeT("home.plans.loadBtnTitle", "Charger ce plan")}">
             <span class="plan-row-icon">${icon}</span>
             <div class="plan-row-info">
               <div class="plan-row-title">
-                <span class="plan-row-name-text">${escapeHtml(plan.name || plan.id)}</span>
+                <span class="plan-row-name-text">${escapeHtml(window.PlanRegistry.displayName(plan))}</span>
               </div>
-              <div class="plan-row-modes">${badgesMode}${badgeStorage}</div>
+              <div class="plan-row-modes">${badgesMode}${badgeStorage}${tagsHtml}</div>
             </div>
             <div class="plan-row-actions">
+              <button class="plan-row-btn kta-plan-row-pin${plan.pinned ? " kta-actif" : ""}" title="${pinTitle}">${plan.pinned ? "⭐" : "☆"}</button>
               <button class="plan-row-btn plan-row-info-btn" title="${_homeT("home.plans.infoBtnTitle", "Informations détaillées sur cette archive")}">ℹ️</button>
-              <button class="plan-row-btn plan-row-remove" title="${_homeT("home.plans.removeBtnTitle", "Retirer de la liste")}">✕</button>
             </div>
           </div>
         `;
       }
+
+      // 🏷️ v1.78.0 — ORGANISATION DE LA LISTE (décision KARMA « 1, 3, 4 ») :
+      // tags par plan (chips-filtres, édition dans ℹ️ Infos), épinglage ⭐
+      // (remonte en tête), filtre par nom. Les filtres sont RAM only.
+      let _plansNameFilter = "";     // minuscule, "" = pas de filtre
+      let _plansTagFilter  = null;   // Set<string> (clés minuscules) | null
 
       // 🌐 v170 : helpers de filtrage "Afficher plans serveur" (persisté localStorage)
       const LS_SHOW_SERVER = "myktamap_loader_show_server_plans";
@@ -1184,18 +1221,108 @@
         modal.innerHTML =
           '<div class="kta-readme-modal-boite kta-plan-infos-boite">' +
             '<div class="kta-readme-modal-header">' +
-              '<span class="kta-readme-modal-titre">' + _t("home.plans.info.title", {nom: escapeHtml(plan.name || plan.id)}) + '</span>' +
+              '<span class="kta-readme-modal-titre">' + _t("home.plans.info.title", {nom: escapeHtml(window.PlanRegistry.displayName(plan))}) + '</span>' +
               '<button class="kta-panneau-close" id="kta-plan-infos-close">✕</button>' +
             '</div>' +
             '<div class="kta-readme-modal-corps">' +
               '<table class="kta-plan-infos-table">' + tableHtml + '</table>' +
+              // 🏷️ v1.78.0 — édition des tags du plan (saisie libre, séparés
+              // par des virgules ; normalisation côté PlanRegistry.setTags).
+              // ✏️ v1.79.1 — renommage d'AFFICHAGE (cas KARMA : deux plans
+              // homonymes d'auteurs différents). Le vrai nom (table keyName
+              // ci-dessus) reste intact : re-sélection de ZIP, session et
+              // détection de doublon continuent de s'y référer.
+              '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
+                '<div style="font-weight:600; margin-bottom:6px;">✏️ ' + escapeHtml(_t("home.plans.info.renameTitle")) + '</div>' +
+                '<input class="kta-cfg-input" id="kta-plan-rename-input" type="text" style="width:100%;" maxlength="40" ' +
+                  'placeholder="' + escapeHtml(plan.name || plan.id) + '" ' +
+                  'value="' + escapeHtml(plan.displayName || "") + '">' +
+                '<div style="display:flex; align-items:center; gap:10px; margin-top:8px;">' +
+                  '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-rename-save">💾 ' + escapeHtml(_t("home.plans.info.renameSave")) + '</button>' +
+                  '<span id="kta-plan-rename-status" style="font-size:12px; color:#8892a4;"></span>' +
+                '</div>' +
+                '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.renameHint")) + '</div>' +
+              '</div>' +
+              '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
+                '<div style="font-weight:600; margin-bottom:6px;">🏷️ ' + escapeHtml(_t("home.plans.info.tagsTitle")) + '</div>' +
+                '<input class="kta-cfg-input" id="kta-plan-tags-input" type="text" style="width:100%;" ' +
+                  'placeholder="' + escapeHtml(_t("home.plans.info.tagsPlaceholder")) + '" ' +
+                  'value="' + escapeHtml(Array.isArray(plan.tags) ? plan.tags.join(", ") : "") + '">' +
+                '<div style="display:flex; align-items:center; gap:10px; margin-top:8px;">' +
+                  '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-tags-save">💾 ' + escapeHtml(_t("home.plans.info.tagsSave")) + '</button>' +
+                  '<span id="kta-plan-tags-status" style="font-size:12px; color:#8892a4;"></span>' +
+                '</div>' +
+                '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.tagsHint")) + '</div>' +
+              '</div>' +
               (dlHtml ? '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
                         dlHtml +
                         '<div id="kta-plan-dl-status" style="font-size:12px; margin-top:8px; min-height:16px;"></div>' +
                         '</div>' : '') +
+              // 🧹 v1.78.0 (KARMA) — la suppression vit ICI, en fin de modale
+              // (le ✕ de la liste est retiré : clic accidentel trop facile).
+              '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
+                '<button class="kta-btn kta-btn-danger kta-btn-small" id="kta-plan-infos-remove">🗑️ ' +
+                  escapeHtml(_t("home.plans.removeBtnTitle")) + '</button>' +
+                '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
+                  escapeHtml(_t("home.plans.info.removeHint")) + '</div>' +
+              '</div>' +
             '</div>' +
           '</div>';
         document.documentElement.appendChild(modal);
+
+        // 🧹 v1.78.0 — suppression du plan depuis la modale (ktaConfirm,
+        // règle D-confirm : nouveaux usages jamais en confirm() natif).
+        const btnRemove = document.getElementById("kta-plan-infos-remove");
+        if (btnRemove) {
+          btnRemove.addEventListener("click", function() {
+            const confirmer = (typeof window.ktaConfirm === "function")
+              ? window.ktaConfirm(_t("home.plans.confirmRemove"), { okLabel: _t("home.plans.removeBtnTitle") })
+              : Promise.resolve(confirm(_t("home.plans.confirmRemove")));
+            confirmer.then(function(ok) {
+              if (!ok) return;
+              window.PlanRegistry.remove(plan.id);
+              modal.remove();
+              window.refreshPlansList();
+            });
+          });
+        }
+
+        // ✏️ v1.79.1 — renommage d'affichage (vide = retour au nom d'origine)
+        const btnRename = document.getElementById("kta-plan-rename-save");
+        if (btnRename) {
+          btnRename.addEventListener("click", function() {
+            const inp = document.getElementById("kta-plan-rename-input");
+            const st  = document.getElementById("kta-plan-rename-status");
+            if (window.PlanRegistry.setDisplayName(plan.id, inp.value)) {
+              const maj = window.PlanRegistry.findById(plan.id);
+              inp.value = (maj && maj.displayName) || "";
+              st.textContent = _t("home.plans.info.renameSaved");
+              setTimeout(function() { st.textContent = ""; }, 2500);
+              // Le titre de la modale suit tout de suite (cohérence visuelle)
+              const titre = modal.querySelector(".kta-readme-modal-titre");
+              if (titre) titre.textContent = _t("home.plans.info.title", { nom: window.PlanRegistry.displayName(plan.id) });
+              window.refreshPlansList();
+            }
+          });
+        }
+
+        // 🏷️ v1.78.0 — sauvegarde des tags (split virgules, normalisation
+        // dans PlanRegistry.setTags : trim, vides, doublons, 12×24 max).
+        const btnTags = document.getElementById("kta-plan-tags-save");
+        if (btnTags) {
+          btnTags.addEventListener("click", function() {
+            const inp = document.getElementById("kta-plan-tags-input");
+            const st  = document.getElementById("kta-plan-tags-status");
+            const ok  = window.PlanRegistry.setTags(plan.id, String(inp.value || "").split(","));
+            if (ok) {
+              const maj = window.PlanRegistry.findById(plan.id);
+              inp.value = Array.isArray(maj.tags) ? maj.tags.join(", ") : "";
+              st.textContent = _t("home.plans.info.tagsSaved");
+              setTimeout(function() { st.textContent = ""; }, 2500);
+              window.refreshPlansList();
+            }
+          });
+        }
 
         const btnDl = document.getElementById("kta-plan-dl-zip");
         if (btnDl) {
@@ -1259,7 +1386,7 @@
         const resumeBox = document.getElementById("resumeBox");
         const resumeName = document.getElementById("resumeName");
         if (last && resumeBox && resumeName) {
-          resumeName.textContent = (last.name || last.id) + (last.version ? " (" + last.version + ")" : "");
+          resumeName.textContent = window.PlanRegistry.displayName(last) + (last.version ? " (" + last.version + ")" : "");
           resumeBox.style.display = "block";
           resumeBox.dataset.planId = last.id;
         } else if (resumeBox) {
@@ -1297,20 +1424,78 @@
         const cbServer = document.getElementById("loaderShowServerPlans");
         if (cbServer) cbServer.checked = showServer;
 
+        // 🏷️ v1.78.0 — CHIPS TAGS : union des tags des plans visibles (avant
+        // les filtres nom/tag, sinon les chips disparaissent dès qu'on filtre).
+        // Le bandeau n'existe à l'écran que si au moins un plan est tagué —
+        // zéro impact pour qui n'utilise pas la feature. Le Set de filtre est
+        // épuré des tags disparus (plan retiré/détagué).
+        const chipsBox = document.getElementById("loaderPlansTagChips");
+        if (chipsBox) {
+          const tousTags = {};   // clé minuscule → libellé d'origine (1er vu)
+          filtered.forEach(function(p) {
+            (Array.isArray(p.tags) ? p.tags : []).forEach(function(tg) {
+              const k = tg.toLowerCase();
+              if (!tousTags[k]) tousTags[k] = tg;
+            });
+          });
+          const cles = Object.keys(tousTags).sort();
+          if (_plansTagFilter) {
+            _plansTagFilter.forEach(function(k) { if (!tousTags[k]) _plansTagFilter.delete(k); });
+            if (_plansTagFilter.size === 0) _plansTagFilter = null;
+          }
+          if (cles.length === 0) {
+            chipsBox.style.display = "none";
+            chipsBox.innerHTML = "";
+          } else {
+            chipsBox.style.display = "flex";
+            chipsBox.innerHTML = cles.map(function(k) {
+              const actif = _plansTagFilter && _plansTagFilter.has(k);
+              return '<button type="button" class="kta-osm-home-tag-chip' + (actif ? " active" : "") +
+                     '" data-tagkey="' + escapeHtml(k) + '">' + escapeHtml(tousTags[k]) + '</button>';
+            }).join("");
+            chipsBox.querySelectorAll("[data-tagkey]").forEach(function(chip) {
+              chip.addEventListener("click", function() {
+                const k = chip.dataset.tagkey;
+                if (!_plansTagFilter) _plansTagFilter = new Set();
+                if (_plansTagFilter.has(k)) _plansTagFilter.delete(k);
+                else _plansTagFilter.add(k);
+                if (_plansTagFilter.size === 0) _plansTagFilter = null;
+                window.refreshPlansList();
+              });
+            });
+          }
+        }
+
+        // 🏷️ v1.78.0 — filtres nom + tags (RAM only, sur la liste déjà
+        // filtrée serveur). Tags : il suffit qu'UN tag du plan matche (OU).
+        const visibles = filtered.filter(function(p) {
+          // ✏️ v1.79.1 — le filtre matche le nom AFFICHÉ **et** le nom réel
+          // (retrouver « Cata KARMA » ou « Catacombes » doit marcher pareil).
+          if (_plansNameFilter &&
+              String(p.name || p.id).toLowerCase().indexOf(_plansNameFilter) === -1 &&
+              String(p.displayName || "").toLowerCase().indexOf(_plansNameFilter) === -1) return false;
+          if (_plansTagFilter) {
+            const tags = Array.isArray(p.tags) ? p.tags : [];
+            if (!tags.some(function(tg) { return _plansTagFilter.has(tg.toLowerCase()); })) return false;
+          }
+          return true;
+        });
+
         const allPlansList = document.getElementById("allPlansList");
         if (allPlansList) {
-          if (filtered.length === 0) {
-            // Cas particulier : registre non vide mais filtre cache tout
-            // → message d'aide pour réactiver les serveurs.
+          if (visibles.length === 0) {
+            // Cas particulier : registre non vide mais filtres cachent tout
+            // (serveurs masqués, nom ou tags sans correspondance).
             allPlansList.innerHTML =
               '<div class="loader-plans-empty">' + _t("home.plans.emptyLocal") + '</div>';
           } else {
-            // Tri : par lastOpened desc, puis par name
-            const sorted = filtered.slice().sort(function(a, b) {
+            // Tri : ⭐ épinglés d'abord (v1.78.0), puis lastOpened desc, puis name
+            const sorted = visibles.slice().sort(function(a, b) {
+              if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
               if (a.lastOpened && b.lastOpened) return b.lastOpened.localeCompare(a.lastOpened);
               if (a.lastOpened) return -1;
               if (b.lastOpened) return 1;
-              return (a.name || "").localeCompare(b.name || "");
+              return (a.displayName || a.name || "").localeCompare(b.displayName || b.name || ""); // ✏️ v1.79.1 : tri sur le nom affiché
             });
             allPlansList.innerHTML = sorted.map(planRowHTML).join("");
           }
@@ -1322,13 +1507,20 @@
           const id = row.dataset.id;
           // 🧹 v1.71.0 : plus de bouton ▶️ — la row entière est cliquable
           // (listener plus bas) et porte le title « Charger ce plan ».
-          row.querySelector(".plan-row-remove").addEventListener("click", function(e) {
-            e.stopPropagation();
-            if (confirm(_t("home.plans.confirmRemove"))) {
-              window.PlanRegistry.remove(id);
+          // 🏷️ v1.78.0 — toggle épinglage (⭐/☆), sans charger le plan
+          const pinBtn = row.querySelector(".kta-plan-row-pin");
+          if (pinBtn) {
+            pinBtn.addEventListener("click", function(e) {
+              e.stopPropagation();
+              const p = window.PlanRegistry.findById(id);
+              window.PlanRegistry.setPinned(id, !(p && p.pinned));
               window.refreshPlansList();
-            }
-          });
+            });
+          }
+          // 🧹 v1.78.0 (KARMA) — le ✕ de suppression a quitté la liste : la
+          // suppression vit désormais EN FIN de modale ℹ️ Infos (ktaConfirm).
+          // Moins de risque de clic accidentel dans une liste où chaque row
+          // est cliquable.
           // ℹ️ v170 (suite 3) : bouton infos détaillées (compense le retrait
           // de l'affichage sub/date qui surchargeait la liste compacte)
           const infoBtn = row.querySelector(".plan-row-info-btn");
@@ -1447,7 +1639,7 @@
         let canRetry = false;
         let canReSelect = false;
 
-        const _nom = escapeHtml(plan.name || plan.id);
+        const _nom = escapeHtml(window.PlanRegistry.displayName(plan));
         if (reason === "server") {
           titre = _t("home.plans.notFound.titleServer");
           explication = _t("home.plans.notFound.bodyServer", { nom: _nom, path: escapeHtml(plan.path) });
@@ -1594,7 +1786,7 @@
           // v171 : modale custom (orange warning) au lieu de confirm() natif.
           // Continue offert car le ZIP fait foi (sync automatique des flags).
           if (discordances.length > 0) {
-            const ok = await _afficherModaleModeDifferent(plan.name || plan.id, discordances);
+            const ok = await _afficherModaleModeDifferent(window.PlanRegistry.displayName(plan), discordances);
             if (!ok) return;
           }
         } catch(e) {
@@ -1678,6 +1870,16 @@
         showServerCb.checked = _loaderShowServerPlans();
         showServerCb.addEventListener("change", function() {
           _loaderSetShowServerPlans(showServerCb.checked);
+          window.refreshPlansList();
+        });
+      }
+
+      // 🏷️ v1.78.0 — filtre par NOM (bind unique au boot, état RAM only :
+      // un filtre est un geste de session, pas une préférence).
+      const nameFilterInput = document.getElementById("loaderPlansNameFilter");
+      if (nameFilterInput) {
+        nameFilterInput.addEventListener("input", function() {
+          _plansNameFilter = nameFilterInput.value.trim().toLowerCase();
           window.refreshPlansList();
         });
       }

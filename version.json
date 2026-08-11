@@ -1,8 +1,7 @@
 {
-  "version": "v1.77.0",
-  "released": "2026-08-09",
+  "version": "v1.79.2",
+  "released": "2026-08-11",
   "notes": [
-    "🗺️ Vue OSM : le plan reste net quand tu zoomes dans l'aperçu de l'accueil, et tes couleurs personnalisées de légende s'affichent enfin sur le fond OSM (accueil comme mode carte).",
-    "🖥️ Sur PC, l'écran d'accueil tient entièrement dans la fenêtre, l'icône de l'app est de retour dans l'onglet du navigateur, et l'app est plus légère après un grand nettoyage interne."
+    "🧹 Entretien : les traductions (français, anglais, espagnol) sont désormais vérifiées de bout en bout, et la documentation a été dépoussiérée. Aucune nouveauté visible — une app plus fiable."
   ]
 }

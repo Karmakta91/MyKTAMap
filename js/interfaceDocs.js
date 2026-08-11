@@ -1012,6 +1012,16 @@ function _aideHtmlFr() {
         </div>
 
         <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📚 Bibliothèque de plans (accueil)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">⭐</span><span><strong>Épingler</strong> (v1.78.0) — l'étoile de chaque ligne remonte le plan en tête de liste ; re-clic pour désépingler</span>
+            <span class="kta-aide-icone">🏷️</span><span><strong>Tags</strong> (v1.78.0) — étiquettes libres par plan (ℹ️ Infos → « Tags du plan », séparées par des virgules). Dès qu'un plan est tagué, des <strong>chips-filtres</strong> apparaissent au-dessus de la liste. Rangés dans l'app (pas dans le ZIP), ils suivent l'export de profil</span>
+            <span class="kta-aide-icone">🔎</span><span><strong>Filtre par nom</strong> (v1.78.0) — champ au-dessus de la liste, filtre en direct</span>
+            <span class="kta-aide-icone">✏️</span><span><strong>Renommer l'affichage</strong> (v1.79.1) — dans ℹ️ Infos : nom local pour différencier deux plans homonymes (deux « Catacombes » d'auteurs différents). Le vrai nom du plan n'est pas modifié ; champ vide = retour à l'origine</span>
+            <span class="kta-aide-icone">📚</span><span><strong>Import d'un plan homonyme</strong> (v1.79.1) — la popup « Ce plan existe déjà » se déclenche <strong>toujours</strong> : Mettre à jour / Garder les deux / annuler. Plus d'écrasement silencieux</span>
+            <span class="kta-aide-icone">🗑️</span><span><strong>Retirer un plan</strong> (v1.78.0) — en <strong>fin de fenêtre ℹ️ Infos</strong> avec confirmation (le ✕ des lignes a disparu — fini le retrait accidentel). Le ZIP de ton disque n'est pas touché</span>
+          </div>
+
           <div class="kta-aide-section-titre">👤 Mode profil</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">👤</span><span><strong>Bandeau profil</strong> en en-tête du loader (au-dessus de « Mes plans ») — avatar + surnom + mini-stats globales (📍 points · 🛣️ tracés · ⬛ zones · 🏛️ structures + temps cumulé, conservés)</span>
@@ -1019,7 +1029,7 @@ function _aideHtmlFr() {
             <span class="kta-aide-icone">🏆</span><span><strong>Hauts faits</strong> — <strong>38 succès</strong> à débloquer : 8 familles × 4 paliers (🥉🥈🥇👑, plans/km/temps/POIs/tracés/zones/structures) <strong>+ 6 « 🎉 Spéciaux »</strong> one-shot (Touche-à-tout, Centurion, Taupe, Multi-niveaux, Marathon, Complétiste). Toast au déblocage + grille N/38 dans la fiche profil. Score + nb de hauts faits affichables au bandeau (section 🎨 Stats du bandeau)</span>
             <span class="kta-aide-icone">✏️</span><span>Clic sur le <strong>surnom</strong> ou l'<strong>avatar</strong> → modale d'édition (surnom libre + upload photo profil)</span>
             <span class="kta-aide-icone">🖼️</span><span>Photo profil compressée auto (max 512px, JPEG q88) — sinon avatar par défaut = initiale du surnom dans un cercle coloré</span>
-            <span class="kta-aide-icone">📦</span><span>Profil exportable / importable — partage entre appareils sans serveur</span>
+            <span class="kta-aide-icone">📦</span><span>Profil exportable / importable — partage entre appareils sans serveur. <strong style="color:#a8b3c8;">Depuis v1.79.0</strong> : la fenêtre d'export peut embarquer les <strong>archives ZIP des plans mémorisés</strong> (section 📦, cases par plan) — le profil devient un .zip « complet », les plans se réinstallent tout seuls à l'import</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             <strong>Stockage 100 % local</strong> dans un stockage local dédié — surnom + photo + dates.

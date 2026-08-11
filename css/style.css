@@ -4683,9 +4683,17 @@ body.kta-theme-light .splash-license-detail-pro {
 
   /* Liste des plans : permet un scroll interne si beaucoup de plans
      (sinon la colonne droite finit en bas pendant que la gauche
-     s'étend à l'infini). Hauteur max alignée sur la fenêtre. */
+     s'étend à l'infini).
+     🐛 v1.79.0 (agent, bug KARMA « vide avant le footer / footer coupé ») —
+     fin des bornes max-height: calc(100vh - N px) : N fixe (390/410) SOUS-
+     réservait dès que le footer était déplié (le min-content de la colonne
+     excédait la place restante → footer poussé hors écran, mesuré +10 px à
+     1920×937 et +45 px à 1280×800) et SUR-réservait ailleurs (liste arrêtée
+     avant la place dispo = vide disgracieux). La hauteur est désormais
+     pilotée par le CONTENEUR : rangée du grid en minmax(0, 1fr) + liste
+     enfant flexible de sa colonne (cf règles plus bas) — elle suit la place
+     réelle, footer replié OU déplié, et scrolle en interne au-delà. */
   .loader-col-plans .loader-plans-list {
-    max-height: calc(100vh - 320px);
     overflow-y: auto;
   }
 
@@ -4701,28 +4709,28 @@ body.kta-theme-light .splash-license-detail-pro {
   }
 
 
-  /* 🆕 v1.9.2 — Loader PC plus "fullscreen" (KARMA feedback :
-     « avoir une sorte de full screen » / « éviter tout ce noir autour »).
-     Itéré (KARMA "toujours du noir juste plus alongé") : on rend
-     l'effet plus marqué :
-       1. Pattern de points dorés opacity bumpée 0.035 → 0.07 (= visible
-          au lieu de quasi invisible)
-       2. Radial gradient avec centre plus clair (rgba(...,0.85)) pour
-          un vrai effet "puits de lumière" perceptible
-       3. Box loader étiré en HAUTEUR pour prendre presque tout l'écran
-          → plus de noir au-dessus / en-dessous
+  /* 🆕 v1.9.2 — Loader PC "fullscreen".
+     🐛 v1.79.0 (agent, bug KARMA « background tronqué quand le footer se
+     déplie ») — le décor "puits de lumière" (radial #050810 + points dorés,
+     posé en v1.9.2) est SUPPRIMÉ : depuis la box edge-to-edge (v1.9.2-fix12,
+     opaque, 100% × ≥100dvh), il n'était plus visible NULLE PART… sauf dans
+     la zone de débordement quand le contenu dépasse 100dvh (footer déplié
+     sur fenêtre basse) : la box, figée à la hauteur de l'overlay par
+     align-items:stretch, laissait le contenu se peindre sur ce fond
+     étranger → la « bande de background tronqué » (mesurée : 57 px à
+     1366×768). Fond unifié sur le #1a1f2e de la box = débordement
+     indétectable, l'overlay (le scroller) scrolle honnêtement.
+     ⚠️ align-items:stretch doit RESTER : c'est lui qui donne à la box sa
+     hauteur DÉFINIE (100dvh), sans laquelle la distribution flex interne
+     (grid flex:1 + compression) ne s'opère plus du tout — testé flex-start :
+     +257 px de débordement à 1366×768, le corps ne se comprimait plus.
+     Thème clair : déjà unifié (règle body.kta-theme-light #planLoaderOverlay
+     !important plus bas). Wallpaper : non concerné, l'image est peinte sur
+     l'overlay fixe avec !important (classe kta-has-wall-bg, fin de fichier)
+     et seule la background-color ci-dessous reste sous `contain`.
      RÈGLE : ne s'applique QUE sur PC (≥1024px) — mobile inchangé. */
   #planLoaderOverlay {
-    background-color: #050810;
-    background-image:
-      radial-gradient(circle, rgba(244, 197, 66, 0.07) 1px, transparent 1px),
-      radial-gradient(ellipse 1400px 900px at center,
-        rgba(38, 55, 88, 0.85) 0%,
-        rgba(12, 18, 32, 0.96) 55%,
-        rgba(5, 8, 15, 1) 100%);
-    background-size: 28px 28px, 100% 100%;
-    background-position: center center, center center;
-    background-repeat: repeat, no-repeat;
+    background: #1a1f2e;
     /* Aligner le contenu en haut au lieu de center → box prend la hauteur
        (et plus de noir résiduel au-dessus). */
     align-items: stretch;
@@ -4748,22 +4756,37 @@ body.kta-theme-light .splash-license-detail-pro {
   .loader-grid {
     flex: 1 1 auto;
     /* 🐛 v1.77.0 (audit agent 08/08) — min-height:0 autorisait la GRID à
-       être comprimée sous le min-content de ses colonnes (la box étant
-       figée à 100dvh par align-items:stretch, l'espace manquant se prenait
-       ici) : la rangée auto, elle, ne descend jamais sous le min-content →
-       débordement par le bas sur le toggle/copyright, peints par-dessus.
-       min-content = la grid ne se comprime plus, le surplus POUSSE le
-       footer, la page scrolle honnêtement (le garde-fou structurel qui rend
-       le bug impossible même si un futur min-height en vh réapparaît). */
-    min-height: min-content;
+       être comprimée sous le min-content de ses colonnes : la rangée auto,
+       elle, ne descendait jamais sous le min-content → débordement par le
+       bas sur le toggle/copyright. min-height:min-content inversait : le
+       surplus poussait le footer hors écran dès qu'il était déplié.
+       🐛 v1.79.0 (agent, bug KARMA « vide avant le footer / footer coupé »,
+       mesures Playwright) — nouveau modèle : la rangée unique vaut
+       minmax(0, 1fr) = EXACTEMENT la hauteur de la grid (elle ne suit plus
+       le min-content des colonnes), et chaque colonne gère son contenu EN
+       INTERNE : liste des plans flexible + scroll (cf plus bas), colonne
+       Actions compactée sous 821 px de haut (média dédié en fin de bloc).
+       Le corps se comprime donc SEUL de la hauteur du footer quand on le
+       déplie — plus aucune constante calc(100vh - N) à recalibrer.
+       Le plancher 520px est le filet petites fenêtres : il couvre le
+       min-content mesuré des colonnes incompressibles (Actions compactée
+       ~510 px, OSM ~315 px) → aucune colonne ne peut déborder sur le
+       footer ; en dessous, la box dépasse 100dvh et l'overlay scrolle
+       honnêtement, fond compris (cf align-items:flex-start plus haut). */
+    min-height: 520px;
+    grid-template-rows: minmax(0, 1fr);
     align-items: stretch;
   }
 
-  /* La liste des plans peut prendre toute la hauteur dispo dans sa col
-     (override la valeur fixe calc(100vh - 320px) de plus bas). */
+  /* La liste des plans prend toute la hauteur dispo dans sa colonne.
+     🐛 v1.79.0 (agent, mesure Playwright) — c'est ELLE l'élément flexible
+     de la colonne : elle s'étire jusqu'à la place réellement disponible
+     (fini le vide sous la liste sur fenêtre haute) et scrolle en interne
+     quand le contenu dépasse (min-height:0 = droit de compression sous le
+     min-content). Remplace l'ancien couple height:100% + max-height:
+     calc(100vh - 390px), qui servait de borne ET de plancher à la fois. */
   .loader-col-plans .loader-plans-list {
-    max-height: none;
-    height: 100%;
+    flex: 1 1 auto;
     min-height: 0;
   }
   .loader-col-plans {
@@ -4772,7 +4795,13 @@ body.kta-theme-light .splash-license-detail-pro {
   }
   .loader-col-plans #myPlansBox {
     flex: 1 1 auto;
-    display: flex;
+    /* 🐛 v1.79.0 (agent) — !important requis : homeLoader.js pose
+       style.display = "block" en inline à l'affichage du bloc (computed
+       mesuré "block" → les enfants n'étaient PAS en layout flex : la liste
+       ne pouvait ni s'étirer ni se comprimer, le flex:1/min-height:0
+       ci-dessous étaient morts). Même pattern que #advancedBox plus haut.
+       Mobile (<1024) non touché : ce bloc est dans le média PC. */
+    display: flex !important;
     flex-direction: column;
     min-height: 0;
   }
@@ -4860,6 +4889,11 @@ body.kta-theme-light .splash-license-detail-pro {
     grid-template-columns: minmax(0, 1fr) 300px;
   }
 }
+
+/* 🐛 v1.79.0 (agent, bug KARMA « footer coupé ») — la compaction PC BAS de la
+   colonne Actions vit en FIN de fichier, à côté du bloc 📐 v1.77.0 « LE
+   FOOTER DÉPLIÉ TIENT DANS L'ÉCRAN PC » (même logique, même contrainte
+   d'ordre de cascade). */
 
 /* 🆕 v1.40.0 — Widget Vue OSM HOME (mini-preview entre Mes plans et Ajouter) */
 .kta-osm-home-content {
@@ -5203,10 +5237,10 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
     padding-left: 64px;
     padding-right: 64px;
   }
-  .loader-col-plans .loader-plans-list {
-    /* Hauteur scroll mieux adaptée à la grandeur écran */
-    max-height: calc(100vh - 340px);
-  }
+  /* 🐛 v1.79.0 (agent) — la borne max-height: calc(100vh - 410px) posée ici
+     est SUPPRIMÉE avec ses sœurs du média ≥1024 : la hauteur de la liste est
+     désormais pilotée par le conteneur (rangée grid minmax(0,1fr) + liste
+     flexible). La rétablir recréerait le couple footer coupé / vide. */
 }
 
 /* 🆕 v1.9.2 — Loader PC ULTRA-LARGE ≥ 1920px : padding latéral maxi. */
@@ -6073,11 +6107,8 @@ html.kta-theme-light .kta-cfg-group-titre {
   border-color: rgba(140,255,140,0.4);
   color: #8cffb4;
 }
-.plan-row-remove:hover {
-  background: rgba(255,140,140,0.12);
-  border-color: rgba(255,140,140,0.4);
-  color: #ff8c8c;
-}
+/* 🧹 v1.78.0 : .plan-row-remove:hover supprimée — le ✕ des lignes a quitté
+   la liste (suppression déplacée en fin de modale ℹ️ Infos, décision KARMA). */
 /* ℹ️ v170 (suite 3) : bouton infos — accent bleu cohérent avec la charte */
 .plan-row-info-btn:hover {
   background: rgba(140,180,255,0.12);
@@ -20369,18 +20400,15 @@ html.kta-theme-light .loader-section-head { border-bottom-color: rgba(20, 30, 50
 /* 🔎 v1.71.0 (retour KARMA) — la barre vit dans la LIGNE DE TITRE
    « 🌍 Vue OSM » (mode réduit ET mode OSM) : le nœud y est déplacé par
    _monterRechercheDansHead. */
-/* Le head qui héberge la barre doit pouvoir WRAPPER (barre en 2e ligne
-   pleine largeur quand la place manque) au lieu de laisser déborder. */
-#ktaOsmHomeBox .loader-section-head { flex-wrap: wrap; min-width: 0; }
+/* 🔎 v1.78.0 (KARMA « à la ligne, même logique que le filtre plans ») — la
+   barre ne vit PLUS dans la ligne de titre : bloc pleine largeur entre le
+   bandeau et la carte. Les règles flex/head de v1.71.0 sont retirées. */
 .kta-osm-home-search {
   position: relative;
-  flex: 1 1 220px;      /* < 220 px dispo → passe en 2e ligne du head */
-  min-width: 0;
-  max-width: 100%;
-  margin-left: 14px;
+  display: block;
+  width: 100%;
+  margin: 6px 0 4px;
 }
-/* En 2e ligne (wrap), pas de marge orpheline à gauche */
-#ktaOsmHomeBox .loader-section-head .kta-osm-home-search { margin-left: 0; }
 .kta-osm-home-search input {
   width: 100%;
   display: block;
@@ -21115,3 +21143,77 @@ html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
   .loader-tools-head { margin-top: 8px; }                        /* 16→8 : ~8px */
   .loaderActions { margin-top: 8px; }                            /* 16→8 : ~8px */
 }
+
+/* 🐛 v1.79.0 (agent, bug KARMA « footer coupé ») — 3e rabotage, PC BAS
+   uniquement (portables ≤820px de haut, ex. 1366×768) : même après les deux
+   passes v1.77.0 ci-dessus, la colonne Actions cumule ~556 px incompressibles
+   (drop-zone 181 + hint FS Access 109 + boutons + têtes, mesure Playwright)
+   pour ~525 px de place footer déplié à 1366×768 → ses enfants débordaient
+   sur le toggle/footer. On compacte ~45 px de gras DÉCORATIF : paddings
+   drop-zone + hint FS Access, pictogramme 📦, marges des têtes. Sélecteurs
+   préfixés .loader-col-actions : bat les règles de base à spécificité égale
+   quel que soit l'ordre, et scope la compaction au HOME PC. Le plancher
+   min-height:520px de .loader-grid (média ≥1024) suppose que la colonne
+   compactée reste ≤ ~515 px — re-mesurer si on ajoute un bloc à la colonne.
+   Hauteur d'ÉCRAN seulement — aucune règle mobile (<1024 de large) touchée. */
+@media (min-width: 1024px) and (max-height: 820px) {
+  .loader-col-actions .zip-drop-zone {
+    padding: 12px 14px;
+  }
+  .loader-col-actions .zip-drop-zone .zip-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+  .loader-col-actions .fs-access-hint {
+    margin-top: 4px;
+    padding: 6px 10px;
+    gap: 4px;
+  }
+  .loader-col-actions .loader-tools-head {
+    margin-top: 4px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   🏷️ v1.78.0 — ORGANISATION DE LA LISTE DE PLANS (KARMA 1+3+4)
+   Filtre par nom + chips tags (réutilisent .kta-osm-home-tag-chip) +
+   épinglage ⭐. Les chips ne sont rendues que si des tags existent.
+   ═══════════════════════════════════════════════════════════ */
+.kta-plans-name-filter {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 6px 0 4px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #e8eaf0;
+  font-size: 13px;
+}
+.kta-plans-name-filter::placeholder { color: #8892a4; }
+.kta-plans-name-filter:focus {
+  outline: none;
+  border-color: rgba(140, 180, 255, 0.55);
+}
+.kta-plans-tagchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+.kta-plan-row-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 9px;
+  background: rgba(244, 197, 66, 0.12);
+  border: 1px solid rgba(244, 197, 66, 0.30);
+  color: #f4c542;
+  font-size: 10px;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+.kta-plan-row-pin { opacity: 0.55; }
+.kta-plan-row-pin.kta-actif,
+.kta-plan-row-pin:hover { opacity: 1; }
+.kta-plan-row-pinned { border-left: 2px solid rgba(244, 197, 66, 0.55); }

@@ -400,7 +400,7 @@
       if (!p || !p.id) continue;
       const g = window.KmzExport.getCalibration(p.id);
       if (_isValidGeoref(g)) {
-        out.push({ id: p.id, name: p.name || p.id, georef: g, lastOpened: p.lastOpened || 0 });
+        out.push({ id: p.id, name: (window.PlanRegistry.displayName ? window.PlanRegistry.displayName(p) : (p.name || p.id)), georef: g, lastOpened: p.lastOpened || 0 });
       }
     }
     out.sort(function(a, b) { return (b.lastOpened || 0) - (a.lastOpened || 0); });
@@ -582,17 +582,17 @@
     }
     // 🔎 v1.70.0 — Recherche du mode OSM (bindings)
     _bindOsmSearch(container);
-    // 🔎 v1.71.0 (retour KARMA) — la barre vit dans la LIGNE DE TITRE
-    // « 🌍 Vue OSM » : visible en mode réduit ET en mode OSM. Le nœud est
-    // DÉPLACÉ (listeners conservés) ; l'ancien exemplaire d'un render
-    // précédent est purgé du head d'abord.
-    (function _monterRechercheDansHead() {
+    // 🔎 v1.78.0 (retour KARMA « fait passer à la ligne, même logique que le
+    // filtre de la liste de plans ») — la barre NE monte PLUS dans la ligne
+    // de titre (v1.71.0 annulée par volonté de cohérence) : elle reste là où
+    // le HTML la crée, en ligne PLEINE LARGEUR entre le bandeau et la carte.
+    // Visibilité inchangée (mode réduit ET plein écran). Purge défensive d'un
+    // exemplaire encore accroché au head par une version précédente (le head
+    // est HORS container, il survit aux re-renders du widget).
+    (function _purgerRechercheDuHead() {
       const head = document.querySelector("#ktaOsmHomeBox .loader-section-head");
-      if (!head) return;
-      const ancien = head.querySelector("#ktaOsmHomeSearch");
+      const ancien = head && head.querySelector("#ktaOsmHomeSearch");
       if (ancien) ancien.remove();
-      const barre = container.querySelector("#ktaOsmHomeSearch");
-      if (barre) head.appendChild(barre);
     })();
     // 🗂️ v1.71.0 — Panneau multi-plans : bind du sélecteur d'ajout + 1er render
     const filtresBtn = container.querySelector("#ktaOsmHomeFiltersBtn");

@@ -142,29 +142,6 @@ Si un plan que **tu avais déjà importé** est révoqué par l'auteur APRÈS to
 
 > ✅ **Privacy** : tout reste local, comme à l'import. Aucune empreinte n'est envoyée au serveur.
 
----
-
-### 🌐 Migration vers `myktamap.fr`
-
-L'application change de domaine officiel. À partir du **15 juillet 2026**, la nouvelle adresse sera **`myktamap.fr`** (au lieu de l'actuelle `myktamap.fr`).
-
-**Comment es-tu informé ?**
-
-Une **alerte info permanente** (badge 🚨 bleu) est diffusée via le système d'alertes publiques. Tu la consultes quand tu veux en cliquant sur le badge 🚨 dans le header du loader. L'alerte affiche la date de coupure + la checklist complète des données à exporter avant migration.
-
-**Que faire pour migrer mes données ?**
-
-Tes données (liste de plans, sessions, préférences) sont **liées au domaine** (règle de sécurité web — origins isolés). Elles ne suivront PAS automatiquement. Tu dois agir avant la coupure :
-
-1. **📚 Exporte ta liste de plans** : dans le loader, section **📚 Mes plans** → bouton **💾** → télécharge un fichier `.config` qui contient tous tes plans enregistrés (métadatas + références). Sur le nouveau domaine, tu importeras ce `.config` via le bouton **📂** au même endroit.
-2. **💾 Exporte tes sessions** : sur chaque plan ouvert, utilise **💾 Sauvegarde session** (Full ou Avancé) → télécharge un `.json` par session (annotations, tracés, zones, points perso en cours).
-3. **📦 Garde tes ZIPs de plans** que tu avais importés. Les blobs locaux stockés dans le navigateur ne sont pas exportables — il faudra ré-importer les ZIPs manuellement sur le nouveau domaine via le drag-and-drop habituel.
-4. **Au 15 juillet 2026** : va sur `myktamap.fr` → importe le `.config` de liste de plans + ré-importe les ZIPs + importe les `.json` de session sur chaque plan correspondant.
-5. **📱 Si tu avais installé l'app sur ton écran d'accueil** (PWA) : tu devras supprimer l'ancienne icône manuellement puis réinstaller depuis `myktamap.fr` (les origins étant différents, l'icône installée pointe sur l'ancien domaine).
-
-**Pendant la transition (jusqu'au 15 juillet 2026)** : les 2 domaines fonctionneront en parallèle. Tu peux continuer à utiliser ce site comme avant, et migrer à ton rythme.
-
-**Après le 15 juillet 2026** : l'ancien domaine affichera une page de transition qui te redirigera automatiquement vers `myktamap.fr`. La PWA installée se désactivera automatiquement à son prochain check de mise à jour (≤24h après la coupure).
 
 ---
 
@@ -377,6 +354,15 @@ Ton profil est inclus dans l'**Export Avancé** des sessions (onglet 🎨 Avanc�
 
 - Un toast modal te suggère un **reload** de la page pour que l'avatar et le surnom soient correctement mis à jour partout dans l'UI (header, sidebar, etc.)
 
+**📦 Profil complet avec les archives de plans** *(depuis v1.79.0)* :
+
+L'export de profil peut désormais **embarquer les archives ZIP des plans mémorisés dans l'app**. Dans la fenêtre d'export, une section « 📦 Archives de plans » liste tes plans mémorisés avec leur taille : coche ceux que tu veux emporter (rien n'est coché par défaut) — l'export devient alors un fichier **`.zip` « profil complet »** au lieu du JSON habituel. À l'import sur un autre appareil, les archives sont **réinjectées et rattachées à leurs plans** : plus besoin de re-déposer les ZIP un par un.
+
+- **Garde-fou de taille** : au-delà de ~50 Mo sur iPhone/iPad (Safari fragile sur les gros téléchargements) ou ~500 Mo ailleurs, un avertissement rouge demande une **confirmation explicite** — rien n'est bloqué, tu décides.
+- **Honnêteté sur l'éviction** : si le navigateur a supprimé une archive pour libérer de la place (le flag « mémorisé » peut survivre à l'éviction), l'export te **liste les plans concernés** au lieu de produire un zip silencieusement incomplet.
+- En mode **Fusionner** à l'import, un plan qui a déjà son archive sur l'appareil **garde la sienne** ; en mode **Remplacer**, celle du profil gagne. Un échec de stockage (quota plein) est signalé **par plan**, le reste continue.
+- Les plans en « accès permanent au fichier » ou « re-sélection » n'apparaissent pas dans la liste : leur ZIP vit sur ton disque, pas dans l'app — il n'y a rien à embarquer.
+
 > 🔒 **100 % local** : ton surnom et ta photo restent dans ton navigateur (IndexedDB). Rien n'est envoyé à un serveur. L'export profil est explicite et contrôlé par toi.
 
 #### 💼 Édition pro — importer une licence
@@ -411,20 +397,23 @@ L'application mémorise tous les plans que vous chargez, qu'ils viennent du serv
 | 🔐 | Plan local avec **accès permanent autorisé** (Chrome/Edge desktop) |
 | 📁 | Plan local sans persistance — re-sélection requise au chargement |
 
-**Actions disponibles** sur chaque ligne (3 boutons) :
+**Actions disponibles** sur chaque ligne :
 
-- **ℹ️** — ouvre une fenêtre **Infos détaillées** sur cette archive (id interne, nom, version, auteur, type, fichier source, taille, persistance, mode V1/V2/multi-niveau, préset performance, dates d'ajout et d'ouverture). Pratique pour vérifier ce que l'app sait du plan sans le charger.
-- **▶️** — charge le plan
-- **✕** — retire le plan de la liste (ne supprime pas le fichier ZIP sur votre disque, juste l'entrée dans la liste)
+- **⭐/☆** — épingle/désépingle le plan en tête de liste *(depuis v1.78.0)*
+- **ℹ️** — ouvre une fenêtre **Infos détaillées** sur cette archive (id interne, nom, version, auteur, type, fichier source, taille, persistance, mode V1/V2/multi-niveau, préset performance, dates d'ajout et d'ouverture), le **✏️ renommage d'affichage** *(depuis v1.79.1 — nom local, 40 caractères max, pratique pour différencier deux plans homonymes ; champ vide = retour au nom d'origine ; le vrai nom du plan reste utilisé pour les vérifications de fichier)*, l'édition des **🏷️ tags**, et — en fin de fenêtre — le bouton **🗑️ Retirer de la liste** *(depuis v1.78.0, le ✕ des lignes a disparu : la suppression demande confirmation ici, fini le retrait accidentel)*. Retirer un plan n'efface pas le fichier ZIP sur votre disque, mais supprime l'archive éventuellement mémorisée dans l'app.
+- **Clic sur la ligne** — charge le plan
 
 **Boutons en haut de la liste :**
 
 - **💾 Exporter ma liste** — télécharge un fichier `myktamap_plans_AAAAMMJJ.config` que vous pouvez sauvegarder ou partager.
 - **📂 Charger une liste** — importe un fichier de liste précédemment exporté. Trois choix : Remplacer, Fusionner, ou Annuler.
 
-**Filtre d'affichage** :
+**Filtres d'affichage & organisation** :
 
 - **🌐 Afficher les plans serveur** — cochez/décochez ce toggle au-dessus de la liste pour masquer les plans serveur découverts automatiquement (test1, test2, démos…) et ne voir que vos plans persos. **Préservé** entre les sessions (localStorage). Décocher ne supprime rien — recocher → les plans réapparaissent intacts.
+- **🔎 Filtrer par nom** *(depuis v1.78.0)* — un champ au-dessus de la liste filtre en direct pendant la frappe. Filtre d'affichage pur, remis à zéro au prochain passage sur l'accueil.
+- **⭐ Épingler** *(depuis v1.78.0)* — l'étoile de chaque ligne remonte le plan **en tête de liste** (les épinglés gardent entre eux le tri « dernier ouvert »). Re-clic pour désépingler.
+- **🏷️ Tags** *(depuis v1.78.0)* — donnez des étiquettes à vos plans (« Paris 13 », « GTech », « à finir »…) via **ℹ️ Infos → Tags du plan** (saisie libre, séparées par des virgules — 12 max de 24 caractères). Elles s'affichent sous le nom du plan, et dès qu'un plan est tagué, une rangée de **chips-filtres** apparaît au-dessus de la liste : cliquez une ou plusieurs chips pour ne voir que ces plans (un plan matche s'il porte **au moins un** des tags choisis). Les tags vivent **dans l'app** (pas dans le ZIP — ils ne voyagent pas avec un plan partagé) mais suivent l'**export de profil** et l'export 💾 de la liste.
 
 > 💡 **Astuce** — Si vous changez de PC ou de téléphone, exportez votre liste sur l'ancien appareil puis importez-la sur le nouveau pour retrouver tous vos plans en un clic. Note : les autorisations d'accès aux fichiers ne sont pas portables (vous devrez re-sélectionner les ZIP locaux la première fois sur le nouvel appareil). À la re-sélection, si vous fournissez un ZIP dans un autre mode (ex: vous aviez ce plan en V2 mais le ZIP est un V1), un message d'avertissement vous le signale clairement avant de continuer.
 
@@ -619,7 +608,7 @@ Le **Mode Histoire** (note libre + PDF) était jusqu'ici enfermé dans l'écran 
 - Le carnet **démarre vide** : il ne peut pas reconstituer les sorties d'avant son arrivée, elles n'ont jamais été enregistrées en tant que telles.
 - Tout est **strictement local** à votre appareil (aucun envoi, aucun compte). Chaque sortie est supprimable individuellement depuis sa fiche.
 - Au-delà de **500 sorties**, les plus anciennes sont effacées automatiquement.
-- Le carnet n'est **pas** inclus dans l'export de profil pour le moment : changer d'appareil via l'export de profil ne transporte pas encore votre historique.
+- Le carnet **est inclus dans l'export de profil** depuis v1.74.0 (cette doc affirmait le contraire — corrigée le 09/08/2026) : changer d'appareil via l'export de profil transporte votre historique de sorties.
 
 ### 🧙 Générateur : assistant pas-à-pas (depuis v1.72.1)
 

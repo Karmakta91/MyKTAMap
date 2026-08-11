@@ -155,7 +155,7 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
         '<div class="kta-plan-switcher-current-label">' + window.I18n.t("ui.switcher.currentLabel") + '</div>' +
         '<div class="kta-plan-switcher-current-name">' +
           '<span class="kta-plan-switcher-current-icon">' + icon + '</span>' +
-          '<span>' + escapeHtmlSwitcher(current.name || current.id) + '</span>' + ver +
+          '<span>' + escapeHtmlSwitcher(window.PlanRegistry.displayName(current)) + '</span>' + ver +
         '</div>' +
         '<div class="kta-plan-switcher-current-sub">' + escapeHtmlSwitcher(sub) + '</div>' +
       '</div>';
@@ -174,7 +174,7 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
         '<div class="kta-switcher-row" data-plan-id="' + escapeHtmlSwitcher(p.id) + '">' +
           '<span class="kta-switcher-icon">' + icon + '</span>' +
           '<div class="kta-switcher-info">' +
-            '<div class="kta-switcher-name">' + escapeHtmlSwitcher(p.name || p.id) + ver + '</div>' +
+            '<div class="kta-switcher-name">' + escapeHtmlSwitcher(window.PlanRegistry.displayName(p)) + ver + '</div>' +
             (sub ? '<div class="kta-switcher-sub">' + sub + '</div>' : '') +
           '</div>' +
           '<span class="kta-switcher-row-arrow">›</span>' +
@@ -327,7 +327,7 @@ function _confirmEtChargerPlan(planId) {
         '<span style="color:#a8b3c8; font-size:12.5px;">' +
           window.I18n.t("ui.loadOther.snapshots") +
         '</span><br><br>' +
-        window.I18n.t("ui.loadOther.confirm", { nom: escapeHtmlSwitcher(plan.name || plan.id) }) +
+        window.I18n.t("ui.loadOther.confirm", { nom: escapeHtmlSwitcher(window.PlanRegistry.displayName(plan)) }) +
       '</div>' +
       '<div class="kta-modal-actions">' +
         '<button class="kta-btn kta-btn-ghost"   id="kta-switch-annuler">' + window.I18n.t("ui.btn.cancel") + '</button>' +

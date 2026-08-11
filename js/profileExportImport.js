@@ -45,12 +45,17 @@
 // API : window.ProfileExportImport = {
 //   buildProfile(opts),           // assemble selon opts.sections (checkboxes)
 //   computeSectionSizes(),        // pour afficher les MB par section
-//   exportToFile(opts),           // build + Blob + download
+//   exportToFile(opts),           // build + Blob + download (JSON classique)
+//   buildProfileArchive(opts),    // 📦 v1.79.0 : conteneur ZIP profil.json + plans/<id>.zip
+//   exportArchiveToFile(opts),    // 📦 v1.79.0 : build conteneur + download .zip
 //   parseProfile(input),          // valide + retourne {ok, profile, format, error}
 //   computeImportStats(profile),  // pour preview UI avant apply
 //   applyProfile(profile, opts),  // injecte dans le système (mode merge/replace)
 //   isLegacyFormat(input)         // helper détection rétro-compat
 // };
+// Import : ouvrirImportModale détecte le CONTENEUR au contenu (signature
+// « PK ») — un .zip contient profil.json (parsé comme un profil normal) et
+// ses archives sont restaurées APRÈS applyProfile (_restaurerArchives).
 // =========================
 
 (function() {
@@ -545,6 +550,115 @@
     return { ok: true, filename: filename, bytes: json.length };
   }
 
+  // ═══════════════════════════════════════════════════════════
+  // 📦 v1.79.0 — ARCHIVES DE PLANS DANS L'EXPORT (backlog §3, GO KARMA)
+  // ═══════════════════════════════════════════════════════════
+  // Conteneur ZIP « profil complet » : profil.json (le profil actuel à
+  // l'identique — parseProfile/applyProfile réutilisés tels quels) +
+  // plans/<id>.zip (archives sélectionnées, STORE : déjà compressées, la
+  // recompression coûterait du temps pour rien). Décisions backlog : pas de
+  // base64 inline (+33 % et tout en RAM), sélection par plan + garde-fou de
+  // taille en VALIDATION (encadré + confirmation, jamais de clamp silencieux).
+
+  const SEUIL_ARCHIVES_IOS = 50 * 1048576;   // Safari iOS fragile sur les gros blobs
+  const SEUIL_ARCHIVES_STD = 500 * 1048576;  // pic RAM generateAsync (desktop/Android)
+
+  function _estIOS() {
+    const ua = navigator.userAgent || "";
+    return /iPad|iPhone|iPod/.test(ua)
+      || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); // iPadOS desktop-UA
+  }
+  function _seuilArchives() { return _estIOS() ? SEUIL_ARCHIVES_IOS : SEUIL_ARCHIVES_STD; }
+
+  // Plans dont l'archive est mémorisée dans l'app (flag storedBlob). La
+  // taille vient du registre (fileSize) — zéro lecture IDB pour l'UI.
+  // ⚠️ storedBlob n'est qu'un FLAG : l'éviction par quota est détectée au
+  // moment de l'export (getBlob vide → plan signalé, jamais un zip muet).
+  function _listerPlansArchivables() {
+    if (!window.PlanRegistry) return [];
+    return (window.PlanRegistry.getAll() || [])
+      .filter(function(p) { return p && p.type === "local" && p.storedBlob === true; })
+      .map(function(p) { return { id: p.id, name: p.name || p.id, bytes: p.fileSize || 0 }; });
+  }
+
+  /**
+   * Assemble le conteneur ZIP : profil.json + plans/<id>.zip.
+   * opts.include = sections du profil ; opts.planIds = archives à embarquer.
+   * Lecture SÉQUENTIELLE des blobs (un seul en RAM côté lecture à la fois).
+   * @returns {Promise<{blob, nb, sautes: string[]}>}
+   */
+  async function buildProfileArchive(opts) {
+    opts = opts || {};
+    if (typeof window.JSZip === "undefined") throw new Error("JSZip indisponible");
+    const profile = await buildProfile(opts);
+    const zip = new window.JSZip();
+    zip.file("profil.json", JSON.stringify(profile, null, 2));
+    const dossier = zip.folder("plans");
+    const sautes = [];
+    let nb = 0;
+    for (const id of (opts.planIds || [])) {
+      const p = window.PlanRegistry ? window.PlanRegistry.findById(id) : null;
+      const nom = (p && p.name) || id;
+      let blob = null;
+      try { blob = await window.PlanRegistry.getBlob(id); } catch(e) {}
+      if (!blob || blob.size === 0) { sautes.push(nom); continue; }  // évincé par le quota
+      dossier.file(id + ".zip", blob, { compression: "STORE" });
+      nb++;
+    }
+    const out = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+    return { blob: out, nb: nb, sautes: sautes };
+  }
+
+  async function exportArchiveToFile(opts) {
+    const res = await buildProfileArchive(opts);
+    const d = new Date();
+    const stamp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
+    const filename = "myktamap_profil_complet_" + stamp + ".zip";
+    const url = URL.createObjectURL(res.blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
+    return { ok: true, filename: filename, bytes: res.blob.size, nb: res.nb, sautes: res.sautes };
+  }
+
+  /**
+   * Restaure les archives d'un conteneur APRÈS applyProfile (le registre
+   * contient alors les entrées importées → rattachement par id). Séquentiel :
+   * un blob en RAM à la fois. Politique fusion : un plan déjà présent AVEC
+   * une archive locale VIVANTE garde la sienne (cohérent registre) ; en
+   * remplacement, celle du profil gagne. QuotaExceeded → échec DU PLAN,
+   * le lot continue (bilan chiffré).
+   * @returns {Promise<{restaures, conserves, orphelins, echecs: string[]}>}
+   */
+  async function _restaurerArchives(zipConteneur, mode) {
+    const bilan = { restaures: 0, conserves: 0, orphelins: 0, echecs: [] };
+    const entrees = [];
+    zipConteneur.folder("plans").forEach(function(chemin, entry) {
+      if (!entry.dir && /\.zip$/i.test(chemin)) entrees.push({ id: chemin.replace(/\.zip$/i, ""), entry: entry });
+    });
+    for (const e of entrees) {
+      const p = window.PlanRegistry ? window.PlanRegistry.findById(e.id) : null;
+      if (!p) { bilan.orphelins++; continue; }   // pas d'entrée registre → blob sans foyer
+      if (mode !== "replace" && p.storedBlob === true) {
+        const dejaLa = await window.PlanRegistry.getBlob(e.id);
+        if (dejaLa && dejaLa.size > 0) { bilan.conserves++; continue; }  // le local gagne
+      }
+      let blob = null;
+      try { blob = await e.entry.async("blob"); } catch(err) {
+        bilan.echecs.push((p.name || e.id) + " (lecture)");
+        continue;
+      }
+      const res = await window.PlanRegistry.saveBlob(e.id, blob);
+      if (res && res.ok) {
+        window.PlanRegistry.addOrUpdate({ id: e.id, storedBlob: true });
+        bilan.restaures++;
+      } else {
+        bilan.echecs.push((p.name || e.id) + " (" + ((res && res.error) || "?") + ")");
+      }
+    }
+    return bilan;
+  }
+
   // ───────── PARSE / DÉTECTION FORMAT ─────────
 
   /**
@@ -656,6 +770,12 @@
         }
         if (s.registry.lastPlanId && !store.lastPlanId) store.lastPlanId = s.registry.lastPlanId;
         localStorage.setItem("myktamap_plans", JSON.stringify(store));
+        // 🐛 v1.79.0 — resync la RAM de PlanRegistry : sans ça, findById ne
+        // voyait pas les plans importés (liste invisible avant F5, et la
+        // restauration d'archives les classait tous « orphelins »).
+        if (window.PlanRegistry && typeof window.PlanRegistry.reload === "function") {
+          window.PlanRegistry.reload();
+        }
         result.applied.registry = s.registry.plans.length;
       } catch(e) {
         console.warn("[ProfileExportImport] apply registry échec :", e);
@@ -772,6 +892,7 @@
 
     // ─── Carnet / sorties (IDB myktamap_journal) — 🆕 v1.74.0 ───
     if (include.carnet !== false && Array.isArray(s.carnet) && s.carnet.length > 0) {
+      console.log("[ProfileExportImport] import : section carnet…");
       try {
         // Open IDB direct (même raison que les backups : Journal n'expose pas
         // d'API d'import bulk). ⚠️ L'index `by_start` DOIT être créé ici aussi :
@@ -808,6 +929,7 @@
 
     // ─── Backups (IDB myktamap_backups) ───
     if (include.backups !== false && Array.isArray(s.backups) && s.backups.length > 0) {
+      console.log("[ProfileExportImport] import : section backups…");
       try {
         // Open IDB direct (on évite la dépendance circulaire avec SessionBackups
         // qui ne fournit pas d'API d'import bulk)
@@ -881,6 +1003,7 @@
     // ─── User profile (v1.21.0 Karma_dev — surnom + photo) ───
     if (include.user !== false && s.user) {
       try {
+        console.log("[ProfileExportImport] import : section user…");
         const r = await _restoreUser(s.user);
         result.applied.user = (r && r.ok) ? 1 : 0;
       } catch(e) {
@@ -994,11 +1117,50 @@
     html += _renderSectionRow("crashes",     "📋", T("profileio.sec_crashes_label"),     sizes.crashes,     false, T("profileio.sec_crashes_hint"));
     html += '</div>';
 
+    // 📦 v1.79.0 — ARCHIVES DE PLANS : sous-liste des plans mémorisés
+    // (storedBlob), décochés par défaut (sélection voulue, pas de gros
+    // fichier surprise). Cocher au moins un → l'export bascule en conteneur
+    // ZIP (profil.json + plans/). Tailles depuis le registre (fileSize).
+    const archivables = _listerPlansArchivables();
+    if (archivables.length) {
+      html += '<div class="kta-profile-sections" style="margin-top:10px;">';
+      html += '<div style="font-weight:600; margin:2px 0 4px;">📦 ' + T("profileio.arch_title") + '</div>';
+      html += '<div class="kta-profile-row-hint" style="margin:0 0 6px;">' + T("profileio.arch_hint") + '</div>';
+      html += '<label class="kta-profile-row" style="font-size:12px;">' +
+                '<input type="checkbox" id="kta-profile-arch-all">' +
+                '<span class="kta-profile-row-label"><strong>' + T("profileio.arch_all") + '</strong></span>' +
+              '</label>';
+      archivables.forEach(function(p) {
+        html += '<label class="kta-profile-row">' +
+                  '<input type="checkbox" data-plan-zip="' + _escHtml(p.id) + '" data-bytes="' + p.bytes + '">' +
+                  '<span class="kta-profile-row-emoji">💾</span>' +
+                  '<span class="kta-profile-row-label">' +
+                    '<strong>' + _escHtml(p.name) + '</strong> ' +
+                    '<span class="kta-profile-row-meta">' + _formatBytes(p.bytes) + '</span>' +
+                  '</span>' +
+                '</label>';
+      });
+      html += '</div>';
+    }
+
     html += '<div class="kta-profile-total" id="kta-profile-export-total">' +
               '<strong>' + T("profileio.estimated_size") + '</strong> <span id="kta-profile-export-totalsize">—</span>' +
             '</div>';
+    html += '<div id="kta-profile-arch-warn" style="display:none; border:1px solid rgba(255,80,80,0.55); background:rgba(255,80,80,0.08); border-radius:6px; padding:8px 10px; margin-top:8px; font-size:12px; color:#ff9c9c;"></div>';
 
     corps.innerHTML = html;
+
+    // 📦 v1.79.0 — case « tout » + recalcul du total sur les archives
+    const cbAll = document.getElementById("kta-profile-arch-all");
+    if (cbAll) {
+      cbAll.addEventListener("change", function() {
+        corps.querySelectorAll('input[data-plan-zip]').forEach(function(cb) { cb.checked = cbAll.checked; });
+        _majTotalEstime(sizes);
+      });
+      corps.querySelectorAll('input[data-plan-zip]').forEach(function(cb) {
+        cb.addEventListener("change", function() { _majTotalEstime(sizes); });
+      });
+    }
 
     // Bind change handlers pour recalculer le total
     corps.querySelectorAll('input[type="checkbox"][data-section]').forEach(function(cb) {
@@ -1017,23 +1179,54 @@
         corps.querySelectorAll('input[type="checkbox"][data-section]').forEach(function(cb) {
           include[cb.dataset.section] = cb.checked;
         });
-        const origText = btnGo.textContent;
-        btnGo.disabled = true; btnGo.textContent = "⏳ " + window.I18n.t("profileio.generating");
-        exportToFile({ include: include }).then(function(res) {
-          btnGo.textContent = "✅ " + window.I18n.t("profileio.exported_done");
-          setTimeout(function() {
-            _fermerModales();
-            if (window.OOMGuard && window.OOMGuard.showToast) {
-              window.OOMGuard.showToast(
-                "📤 " + window.I18n.t("profileio.export_toast", { filename: res.filename, size: _formatBytes(res.bytes) }),
-                "info"
-              );
-            }
-          }, 800);
-        }).catch(function(e) {
-          btnGo.disabled = false; btnGo.textContent = origText;
-          alert(window.I18n.t("profileio.export_fail", { error: (e.message || e) }));
+        // 📦 v1.79.0 — archives cochées → export CONTENEUR ZIP ; aucune →
+        // JSON classique (comportement historique bit-à-bit).
+        const planIds = [];
+        let octetsArchives = 0;
+        corps.querySelectorAll('input[data-plan-zip]:checked').forEach(function(cb) {
+          planIds.push(cb.dataset.planZip);
+          octetsArchives += parseInt(cb.dataset.bytes, 10) || 0;
         });
+
+        const lancer = function() {
+          const origText = btnGo.textContent;
+          btnGo.disabled = true; btnGo.textContent = "⏳ " + window.I18n.t("profileio.generating");
+          const promesse = planIds.length
+            ? exportArchiveToFile({ include: include, planIds: planIds })
+            : exportToFile({ include: include });
+          promesse.then(function(res) {
+            btnGo.textContent = "✅ " + window.I18n.t("profileio.exported_done");
+            // Archives évincées par le quota → dit franchement, pas un zip muet
+            if (res.sautes && res.sautes.length) {
+              alert("⚠️ " + window.I18n.t("profileio.arch_sautes", { n: res.sautes.length }) + "\n" + res.sautes.join("\n"));
+            }
+            setTimeout(function() {
+              _fermerModales();
+              if (window.OOMGuard && window.OOMGuard.showToast) {
+                window.OOMGuard.showToast(
+                  "📤 " + window.I18n.t("profileio.export_toast", { filename: res.filename, size: _formatBytes(res.bytes) }),
+                  "info"
+                );
+              }
+            }, 800);
+          }).catch(function(e) {
+            btnGo.disabled = false; btnGo.textContent = origText;
+            alert(window.I18n.t("profileio.export_fail", { error: (e.message || e) }));
+          });
+        };
+
+        // Garde-fou de taille : VALIDATION explicite au-delà du seuil
+        // plateforme (iOS 50 Mo / 500 Mo ailleurs), jamais de clamp.
+        if (planIds.length && octetsArchives > _seuilArchives()) {
+          const msg = window.I18n.t(_estIOS() ? "profileio.arch_seuil_ios" : "profileio.arch_seuil_std",
+                                    { taille: _formatBytes(octetsArchives), seuil: _formatBytes(_seuilArchives()) });
+          const confirmer = (typeof window.ktaConfirm === "function")
+            ? window.ktaConfirm(msg, { okLabel: window.I18n.t("profileio.arch_seuil_ok") })
+            : Promise.resolve(confirm(msg));
+          confirmer.then(function(ok) { if (ok) lancer(); });
+        } else {
+          lancer();
+        }
       });
     }
   }
@@ -1063,8 +1256,26 @@
     });
     // overhead JSON wrapper (~200 bytes) + indent (~2x sur le total)
     totalBytes = Math.round(totalBytes * 1.1) + 200;
+    // 📦 v1.79.0 — archives (STORE : taille ≈ somme des ZIP, sans marge)
+    let octetsArchives = 0;
+    corps.querySelectorAll('input[data-plan-zip]:checked').forEach(function(cb) {
+      octetsArchives += parseInt(cb.dataset.bytes, 10) || 0;
+    });
+    totalBytes += octetsArchives;
     const el = document.getElementById("kta-profile-export-totalsize");
     if (el) el.textContent = _formatBytes(totalBytes);
+    // Encadré rouge de dépassement (l'export reste possible — confirmation
+    // explicite au clic, cf garde-fou du bouton).
+    const warn = document.getElementById("kta-profile-arch-warn");
+    if (warn) {
+      if (octetsArchives > _seuilArchives()) {
+        warn.style.display = "";
+        warn.textContent = "⚠️ " + window.I18n.t(_estIOS() ? "profileio.arch_seuil_ios" : "profileio.arch_seuil_std",
+          { taille: _formatBytes(octetsArchives), seuil: _formatBytes(_seuilArchives()) });
+      } else {
+        warn.style.display = "none";
+      }
+    }
   }
 
   // ===========================================================
@@ -1075,8 +1286,27 @@
     if (!file) { alert(window.I18n.t("profileio.no_file")); return; }
     _fermerModales();
 
+    // 📦 v1.79.0 — détection CONTENEUR au contenu (signature ZIP « PK »),
+    // pas à l'extension : un conteneur renommé .json reste importable, un
+    // JSON renommé .zip est refusé proprement par JSZip.
     let text;
-    try { text = await file.text(); }
+    let zipConteneur = null;   // JSZip lazy si conteneur — gardé pour la restauration
+    let nbArchives = 0;
+    try {
+      const entete = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+      if (entete[0] === 0x50 && entete[1] === 0x4B) {  // "PK"
+        if (typeof window.JSZip === "undefined") throw new Error("JSZip indisponible");
+        zipConteneur = await window.JSZip.loadAsync(file);
+        const entree = zipConteneur.file("profil.json");
+        if (!entree) { alert(window.I18n.t("profileio.arch_pas_profil")); return; }
+        text = await entree.async("string");
+        zipConteneur.folder("plans").forEach(function(chemin, e2) {
+          if (!e2.dir && /\.zip$/i.test(chemin)) nbArchives++;
+        });
+      } else {
+        text = await file.text();
+      }
+    }
     catch(e) { alert(window.I18n.t("profileio.file_read_fail", { error: (e.message || e) })); return; }
 
     const parsed = parseProfile(text);
@@ -1101,6 +1331,18 @@
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-profile-import-corps">' +
           _renderImportContent(profile, stats, isLegacy, file.name) +
+          // 📦 v1.79.0 — ligne archives si conteneur (case cochée par défaut :
+          // c'est la raison d'être d'un profil complet)
+          (nbArchives ? (
+            '<label class="kta-profile-row" style="margin-top:8px;">' +
+              '<input type="checkbox" id="kta-profile-import-archives" checked>' +
+              '<span class="kta-profile-row-emoji">📦</span>' +
+              '<span class="kta-profile-row-label">' +
+                '<strong>' + T("profileio.arch_import_label", { n: nbArchives }) + '</strong> ' +
+                '<span class="kta-profile-row-meta">' + _formatBytes(file.size) + '</span>' +
+                '<div class="kta-profile-row-hint">' + T("profileio.arch_import_hint") + '</div>' +
+              '</span>' +
+            '</label>') : '') +
         '</div>' +
         '<div class="kta-profile-footer">' +
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-profile-import-cancel">' + T("profileio.cancel") + '</button>' +
@@ -1127,11 +1369,20 @@
       const btn = document.getElementById("kta-profile-import-go");
       const orig = btn.textContent;
       btn.disabled = true; btn.textContent = "⏳ " + window.I18n.t("profileio.importing");
-      applyProfile(profile, { mode: mode, include: include }).then(function(res) {
+      applyProfile(profile, { mode: mode, include: include }).then(async function(res) {
         if (!res || !res.ok) {
           btn.disabled = false; btn.textContent = orig;
           alert(window.I18n.t("profileio.import_fail", { error: (res && res.error) || window.I18n.t("profileio.unknown_reason") }));
           return;
+        }
+        // 📦 v1.79.0 — restauration des archives APRÈS le registre (le
+        // rattachement par id exige les entrées importées). Séquentiel,
+        // bilan intégré à la modale de fin.
+        const cbArch = document.getElementById("kta-profile-import-archives");
+        if (zipConteneur && cbArch && cbArch.checked) {
+          btn.textContent = "⏳ " + window.I18n.t("profileio.arch_restauration");
+          try { res.archives = await _restaurerArchives(zipConteneur, mode); }
+          catch(e) { res.archives = { restaures: 0, conserves: 0, orphelins: 0, echecs: ["(" + (e.message || e) + ")"] }; }
         }
         btn.textContent = "✅ " + window.I18n.t("profileio.imported_done");
         setTimeout(function() {
@@ -1143,6 +1394,15 @@
             _afficherModaleImportTermine(res, mode);
           });
         }, 800);
+      }).catch(function(e) {
+        // 🐛 v1.79.0 — FILET : sans ce catch, toute exception dans la chaîne
+        // (applyProfile ou restauration) laissait le bouton figé sur
+        // « Import en cours » POUR TOUJOURS, sans un mot (unhandled
+        // rejection visible qu'en console). L'user voit l'erreur, le bouton
+        // revit, il peut réessayer.
+        console.error("[ProfileExportImport] import échoué :", e);
+        btn.disabled = false; btn.textContent = orig;
+        alert(window.I18n.t("profileio.import_fail", { error: (e && e.message) || String(e) }));
       });
     });
   }
@@ -1192,6 +1452,7 @@
       user:        "👤 " + T("profileio.done_sec_user"),
       registry:    "🗂️ " + T("profileio.done_sec_registry"),
       preferences: "⚙️ " + T("profileio.done_sec_preferences"),
+      perPlanLs:   T("profileio.done_sec_perPlanLs"),  // 🐛 v1.79.0 : affichait « perPlanLs » brut
       favoris:     "⭐ " + T("profileio.done_sec_favoris"),
       sessions:    "💾 " + T("profileio.done_sec_sessions"),
       carnet:      "📔 " + T("profileio.done_sec_carnet"),
@@ -1207,6 +1468,19 @@
         parts.push('<li><strong>' + lbl + '</strong> : ' + res.applied[k] + '</li>');
       }
     });
+    // 📦 v1.79.0 — bilan des archives restaurées (si conteneur)
+    if (res.archives) {
+      const a = res.archives;
+      let lbl = T("profileio.arch_bilan", { n: a.restaures });
+      if (a.conserves) lbl += " · " + T("profileio.arch_bilan_conserves", { n: a.conserves });
+      if (a.orphelins) lbl += " · " + T("profileio.arch_bilan_orphelins", { n: a.orphelins });
+      parts.push('<li><strong>📦 ' + lbl + '</strong></li>');
+      if (a.echecs.length) {
+        parts.push('<li style="color:#ff9c9c;"><strong>⚠️ ' +
+          T("profileio.arch_bilan_echecs", { n: a.echecs.length }) + '</strong> : ' +
+          _escHtml(a.echecs.join(", ")) + '</li>');
+      }
+    }
     const summaryHtml = parts.length
       ? '<ul style="margin:8px 0 12px 18px; padding:0;">' + parts.join("") + '</ul>'
       : '<p style="font-style:italic; color:#8892a4;">' + T("profileio.done_nothing") + '</p>';
@@ -1358,6 +1632,8 @@
     buildProfile:        buildProfile,
     computeSectionSizes: computeSectionSizes,
     exportToFile:        exportToFile,
+    buildProfileArchive: buildProfileArchive,  // 📦 v1.79.0
+    exportArchiveToFile: exportArchiveToFile,  // 📦 v1.79.0
     parseProfile:        parseProfile,
     computeImportStats:  computeImportStats,
     applyProfile:        applyProfile,

@@ -613,17 +613,39 @@
   // ========== 🆕 v1.10.3-search-unified : COLLECTEURS ROADS/ZONES/STRUCTURES ==========
   // Labels lisibles par type (cohérent UI app). Résolus via I18n AU RENDU
   // (fonctions, pas constantes) pour ne pas appeler t() au load du module.
+  // 🏷️ v1.78.0 (retour KARMA « le renommage doit prendre partout ») — un
+  // type RENOMMÉ dans la légende (session ou plan) s'affiche sous son nom
+  // choisi dans les résultats ; sans renommage, libellé i18n historique
+  // (getSource() ≠ "default" = même garde que la sidebar, zéro changement
+  // par défaut). Un type custom (cust-…) est résolu via findCustomEntry.
+  function _lcOuI18n(cat, type, cleI18n) {
+    const LC = window.LegendCustomization;
+    if (LC) {
+      try {
+        if (typeof LC.getLabel === "function" && typeof LC.getSource === "function"
+            && LC.getSource(cat, type) !== "default") {
+          const l = LC.getLabel(cat, type);
+          if (l) return l;
+        }
+        if (!cleI18n && typeof LC.findCustomEntry === "function") {
+          const e = LC.findCustomEntry(type);
+          if (e && e.label) return "✨ " + e.label;
+        }
+      } catch(e) {}
+    }
+    return cleI18n ? window.I18n.t(cleI18n) : "";
+  }
   function _roadTypeLabel(type) {
     const keys = { principal: "search.roadType.principal", secondaire: "search.roadType.secondaire", chemin: "search.roadType.chemin", jonction: "search.roadType.jonction", itinerary: "search.roadType.itinerary" };
-    return keys[type] ? window.I18n.t(keys[type]) : "";
+    return _lcOuI18n("traces", type, keys[type] || null);
   }
   function _zoneTypeLabel(type) {
     const keys = { eau: "search.zoneType.eau", remblais: "search.zoneType.remblais", effondrement: "search.zoneType.effondrement", inaccessible: "search.zoneType.inaccessible" };
-    return keys[type] ? window.I18n.t(keys[type]) : "";
+    return _lcOuI18n("zones", type, keys[type] || null);
   }
   function _structTypeLabel(type) {
     const keys = { "pilier-1": "search.structType.pilier1", "pilier-2": "search.structType.pilier2", "mur": "search.structType.mur", "front-1": "search.structType.front1", "front-2": "search.structType.front2" };
-    return keys[type] ? window.I18n.t(keys[type]) : "";
+    return _lcOuI18n("structures", type, keys[type] || null); // 🏷️ v1.78.0
   }
 
   // Icônes emoji utilisés dans les résultats (pas d'image PNG dédiée pour

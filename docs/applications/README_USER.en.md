@@ -142,29 +142,6 @@ If a plan **you have already imported** is revoked by the author AFTER your impo
 
 > ✅ **Privacy**: everything stays local, like at import. No fingerprint is ever sent to the server.
 
----
-
-### 🌐 Migration to `myktamap.fr`
-
-The application is changing its official domain. Starting **July 15, 2026**, the new address will be **`myktamap.fr`** (instead of the current `myktamap.fr`).
-
-**How are you informed?**
-
-A **permanent info alert** (blue 🚨 badge) is broadcast via the public alerts system. You can check it whenever you want by clicking the 🚨 badge in the loader header. The alert displays the cutoff date + the complete checklist of data to export before migration.
-
-**What should I do to migrate my data?**
-
-Your data (list of maps, sessions, preferences) is **linked to the domain** (web security rule — isolated origins). It will NOT follow automatically. You must act before the cutoff:
-
-1. **📚 Export your map list**: in the loader, **📚 My maps** section → **💾** button → download a `.config` file containing all your saved maps (metadata + references). On the new domain, you will import this `.config` via the **📂** button at the same place.
-2. **💾 Export your sessions**: on each open map, use **📤 Export** (Full or Advanced) → download a `.json` per session (annotations, paths, zones, custom points in progress).
-3. **📦 Keep your map ZIPs** that you had imported. Local blobs stored in the browser are not exportable — you will need to re-import the ZIPs manually on the new domain via the usual drag-and-drop.
-4. **On July 15, 2026**: go to `myktamap.fr` → import the map list `.config` + re-import the ZIPs + import the session `.json` files on each corresponding map.
-5. **📱 If you had installed the app on your home screen** (PWA): you will need to manually delete the old icon then reinstall from `myktamap.fr` (since the origins are different, the installed icon points to the old domain).
-
-**During the transition (until July 15, 2026)**: both domains will work in parallel. You can continue to use this site as before, and migrate at your own pace.
-
-**After July 15, 2026**: the old domain will display a transition page that will automatically redirect you to `myktamap.fr`. The installed PWA will automatically deactivate at its next update check (≤24h after the cutoff).
 
 ---
 
@@ -378,6 +355,15 @@ Your profile is included in the **Advanced Export** of sessions (🎨 Advanced t
 
 - A modal toast suggests a **reload** of the page so that the avatar and nickname are correctly updated everywhere in the UI (header, sidebar, etc.)
 
+**📦 Full profile with map archives** *(since v1.79.0)*:
+
+The profile export can now **bundle the ZIP archives of maps stored in the app**. In the export window, a "📦 Map archives" section lists your stored maps with their size: tick the ones to carry (nothing is ticked by default) — the export then becomes a **"full profile" `.zip` file** instead of the usual JSON. On import on another device, archives are **injected back and attached to their maps**: no more re-dropping ZIPs one by one.
+
+- **Size guard**: beyond ~50 MB on iPhone/iPad (Safari is fragile with large downloads) or ~500 MB elsewhere, a red warning asks for an **explicit confirmation** — nothing is blocked, you decide.
+- **Honesty about eviction**: if the browser deleted an archive to free space (the "stored" flag can outlive the eviction), the export **lists the affected maps** instead of producing a silently incomplete zip.
+- In **Merge** mode on import, a map that already has its archive on the device **keeps its own**; in **Replace** mode, the profile's wins. A storage failure (quota full) is reported **per map**, the rest continues.
+- Maps in "permanent file access" or "re-selection" mode don't appear in the list: their ZIP lives on your disk, not in the app — there is nothing to bundle.
+
 > 🔒 **100% local**: your nickname and photo remain in your browser (IndexedDB). Nothing is sent to a server. The profile export is explicit and controlled by you.
 
 #### 💼 Pro edition — import a license
@@ -416,16 +402,21 @@ The application remembers all the maps you load, whether they come from the serv
 
 - **ℹ️** — opens a **Detailed info** window on this archive (internal id, name, version, author, type, source file, size, persistence, V1/V2/multi-level mode, performance preset, dates added and opened). Useful for checking what the app knows about the map without loading it.
 - **▶️** — loads the map
-- **✕** — removes the map from the list (does not delete the ZIP file on your disk, just the entry in the list)
+- **⭐/☆** — pins/unpins the map to the top of the list *(since v1.78.0)*
+- **✏️ Rename display** *(since v1.79.1)* — in the ℹ️ Info window: a local display name (40 chars max) to tell two same-named maps apart; empty = back to the original name; the map's real name is still used for file checks.
+- **🗑️ Remove from list** now lives **at the end of the ℹ️ Info window** *(since v1.78.0, the row ✕ is gone: removal asks for confirmation there — no more accidental removal)*. Removing a map does not delete the ZIP file on your disk, but it does clear the archive possibly stored in the app.
 
 **Buttons at the top of the list:**
 
 - **💾 Export my list** — downloads a `myktamap_plans_YYYYMMDD.config` file that you can save or share.
 - **📂 Load a list** — imports a previously exported list file. Three choices: Replace, Merge, or Cancel.
 
-**Display filter**:
+**Display filters & organization**:
 
 - **🌐 Show server maps** — check/uncheck this toggle above the list to hide automatically discovered server maps (test1, test2, demos…) and only see your personal maps. **Preserved** between sessions (localStorage). Unchecking does not delete anything — re-checking → the maps reappear intact.
+- **🔎 Filter by name** *(since v1.78.0)* — a field above the list filters live as you type. Pure display filter, reset the next time you visit the home screen.
+- **⭐ Pin** *(since v1.78.0)* — each row's star moves the map **to the top of the list** (pinned maps keep the "last opened" order among themselves). Click again to unpin.
+- **🏷️ Tags** *(since v1.78.0)* — label your maps ("Paris 13", "GTech", "to finish"…) via **ℹ️ Info → Map tags** (free input, comma-separated — 12 max, 24 characters each). They show under the map name, and as soon as one map is tagged, a row of **filter chips** appears above the list: click one or more chips to only see those maps (a map matches if it carries **at least one** of the selected tags). Tags live **in the app** (not in the ZIP — they don't travel with a shared map) but follow the **profile export** and the 💾 list export.
 
 > 💡 **Tip** — If you change PC or phone, export your list on the old device then import it on the new one to find all your maps in one click. Note: file access permissions are not portable (you will have to re-select local ZIPs the first time on the new device). When re-selecting, if you provide a ZIP in a different mode (e.g.: you had this map in V2 but the ZIP is V1), a warning message will clearly notify you before continuing.
 
@@ -620,7 +611,7 @@ The logbook tells them apart on its own, and it matters: preparing a map at home
 - The logbook **starts empty**: it cannot reconstruct trips from before it existed, they were never recorded as such.
 - Everything is **strictly local** to your device (no upload, no account). Each trip can be deleted individually from its sheet.
 - Beyond **500 trips**, the oldest ones are removed automatically.
-- The logbook is **not** part of the profile export yet: switching devices via the profile export does not carry your history over.
+- The logbook **is part of the profile export** since v1.74.0 (this doc claimed otherwise — corrected 2026-08-09): switching devices via the profile export does carry your outing history over.
 
 ---
 

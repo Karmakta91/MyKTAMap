@@ -173,25 +173,11 @@ Tout ce qui suit est **corrigé et vérifié par garde-fou** (commits `e0f4bc3` 
 
 ---
 
-### 3. 📦 Export de profil AVEC les archives de plans
+### 3. 📦 Export de profil AVEC les archives de plans — ✅ LIVRÉ (v1.79.0, 09/08/2026)
 
-**Besoin KARMA (01/08)** : « j'ai importé N plans au fil du temps, tous en base locale ; j'exporte mon profil et je récupère liste/sessions/liaisons **mais pas les ZIP** — or je les ai supprimés de mon PC, la seule copie restante est dans la base du navigateur ».
+Récupération unitaire v1.74.0 (💾 dans ℹ️ Infos) + **export FULL v1.79.0** : conteneur ZIP `profil.json` + `plans/<id>.zip` (STORE), sélection par plan (rien coché par défaut), garde-fou de taille en validation (50 Mo iOS / 500 Mo, `ktaConfirm`), éviction quota LISTÉE à l'export, restauration séquentielle à l'import (fusion : le local gagne ; quota plein : échec par plan, bilan chiffré), rétrocompat totale (JSON classique inchangé sans archive cochée, détection au contenu « PK »). Round-trip du format validé par harnais JSZip Node.
 
-**État : 🟡 récupération UNITAIRE livrée (v1.74.0), export FULL à faire.**
-
-✅ Fait — bouton **💾 Télécharger le ZIP** dans la modale ℹ️ Infos d'un plan (`homeLoader.js > _afficherInfosPlan`). `PlanRegistry.getBlob(id)` était **déjà public** : il ne manquait que l'exposition. **3 états**, le bouton étant **affiché grisé plutôt que masqué** quand la récupération est impossible (sinon on cherche pourquoi certains plans l'ont et d'autres non) :
-- plan **serveur** → pas de bouton (retéléchargeable, rien à sauver)
-- **`storedBlob`** → actif ; nom de fichier = `originalFilename`, sinon reconstruit depuis nom+version
-- **`fsHandle`** ou **re-sélection** → grisé + explication (le ZIP vit sur le disque, pas dans l'app)
-
-⚠️ Garde-fou : `storedBlob` n'est qu'un **flag du registre**. Le navigateur peut avoir évincé l'archive sous pression de quota sans que le flag bouge → si `getBlob` rend vide, message explicite (« le navigateur l'a supprimée pour libérer de la place ») plutôt qu'un fichier vide téléchargé.
-
-❌ **Reste — export FULL** (décisions déjà prises, non implémenté) :
-- **Format** : conteneur **ZIP** (`profil.json` + `plans/<id>.zip`), **pas** le JSON actuel — le base64 inline gonfle de +33 % et `JSON.stringify` construit tout en RAM → plantage assuré sur mobile, risqué sur PC.
-- **Compression `STORE`** : les ZIP de plans sont déjà compressés, recompresser coûte du temps pour rien.
-- **Aller-retour** : à l'import, réinjecter les blobs en base **et** rattacher aux entrées du registre (flag `storedBlob`, collisions d'`id`). C'est ce qui a de la valeur, et c'est le gros du coût.
-- **Sélection + garde-fou de taille** plutôt que tout-ou-rien : liste des plans avec tailles et total, refus/avertissement franc au-delà d'un seuil selon la plateforme (iOS plafonne autour de 50 Mo, Android/desktop plusieurs Go).
-- **Piste RAM** : File System Access API (`showSaveFilePicker` + flux d'écriture) pour écrire sur le disque sans tout garder en mémoire — **Chrome/Edge desktop uniquement**, fallback blob ailleurs. [Probable — l'API de flux de JSZip existe, non testée ici]
+**Reste optionnel (lot 5, si un cas réel le demande)** : streaming FS Access (`showSaveFilePicker` + `generateInternalStream`, Chrome/Edge desktop) pour réduire le pic RAM de `generateAsync` sur les très gros exports. [Probable — API JSZip existante, non testée ici]
 
 ## 🧹 Code mort — audit du 09/08/2026 (2 agents indépendants + scan i18n)
 
@@ -224,7 +210,7 @@ La liste « règles CSS mortes » de l'audit du 09/08 matin (consignée dans le 
 - Fragments de sélecteurs morts dans des groupes vivants (supprimer la ligne du sélecteur, pas le bloc) : `.kta-btn-action` 19843+, `.plan-card` ×4, `.kta-modal-btn-*` 17302/17312, `.kta-mesure-distance` 13606, `.drag-over` 16866, `.kta-rd-total-pill` 14621, `style-secours.css:829` — contrôle runtime (`querySelectorAll(...).length === 0`)
 - `kta-toast-error/info` : classes **concaténées** (`"kta-toast-" + type`) — NON supprimables sans inventaire des `type`
 - JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?), `getTrackerLevel` (« phase 2B » — abandonnée ?), scope `kta-ses-modal` inexistant dans sessionExporter:3495 (bug de scope bénin ?), ~13 exports d'API publique jamais consommés (API = contrat, gain faible risque non nul)
-- **i18n : 1 071 clés hors du champ du scanner — PAS un gisement de suppression** : les gros paquets (`export.conv` 42, `home.profile` 42, `export.adv` 31, `lost.*`…) sont des modules vivants appelés via des motifs non couverts (templates, helpers locaux). Chantier = étendre le scanner, PUIS trier le résidu.
+- ~~i18n : 1 071 clés hors du champ du scanner~~ — ✅ **CHANTIER SOLDÉ (v1.79.2, 11/08/2026)** : scanner étendu (cause n°1 : le « mangeur de blocs » — `accept="image/*"` dans les templates ouvrait un faux commentaire `/*` qui avalait 149 065 caractères de createConf, 67 % du fichier invisible ; + alias déclarés par `function t()`, helpers à fallback `_homeT`/`_tNL` génériques, ternaires `I18n.t(cond ? … : …)`, propriétés `labelKey:`, littéraux suivis de `+`, `data-i18n-placeholder`, passe large « littéral présent au dico » pour le canal orphelines seul). **1 076 → 0 orphelines** : 1 007 remises sous filet (4 495 clés appelées couvertes), 64 vraies mortes purgées ×3 dicos (imgexport.addEntry 26, ui.trackerWarn 11, tabledit 10, refonte Mode Dev 9…), 5 dynamiques couvertes. `CHECK_I18N_DUMP=1` écrit la liste pour les audits futurs.
 
 ### 📌 Mort documenté — gardé exprès, ne pas supprimer sans arbitrage KARMA
 `_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, 49 l., rétro-compat v1.7.3) · wrappers compat exporter/measure · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)
@@ -237,6 +223,14 @@ La liste « règles CSS mortes » de l'audit du 09/08 matin (consignée dans le 
 ### ~~D-osm-home-couleurs~~ — ✅ RÉSOLU le 09/08/2026 (même jour)
 
 ~~Overrides de légende invisibles au HOME après boot froid~~ — la « limitation boot froid » du 1er fix était en réalité le CAS PRINCIPAL du widget (on est au HOME avant de charger un plan) : KARMA l'a rencontrée immédiatement (« OSM PLAN OK mais pas OSM HOME »). Résolu par la lecture PAR PLAN des slots SessionPersist (`myktamap_session_v1_<id>` → `payload.customLegend`) + `customLegend` du ZIP, sans passer par l'état live — ce qui règle AUSSI le multi-plans (chaque plan de la pile a ses propres couleurs). Cf `vue-osm.md` §3.6.
+
+### D-light-icons — 🎨 Thème clair PC : les émojis sortent du cadre à zoom 100 %, OK à 90 % — noté 09/08/2026
+
+🔬 **hypothèse** — chez KARMA (Chrome FullHD, thème clair, wallpaper actif), les émojis en tête des boutons/titres de la colonne Actions (📦 Ajouter un plan, 🧰 Outils, 📔 Mon carnet, 🌀 Mes liaisons…) s'affichent **détachés du texte, à cheval sur le bord gauche** de leur conteneur. Disparaît à **zoom 90 %**. **NON REPRODUIT au harnais Playwright** malgré : clair + wallpaper simulé + 1920×937 + 1536×750 @ deviceScaleFactor 1.25 — émojis toujours inline dans les cadres, `text-indent: 0`. Vérifié aussi : CSS servi sur dev **bit-à-bit identique** au repo (hash), structure HTML = texte inline simple (« 📔 Mon carnet »). Pistes restantes pour la reprise : extension navigateur injectant du CSS sur les sites clairs (non écarté — test navigation privée pas fait), rendu Segoe UI Emoji à échelle fractionnaire (zoom 100 % sur scaling Windows 125 % = ratio effectif 1,25), largeur réelle de sa colonne au moment du bug. Cosmétique, contournement connu (zoom 90 %) — à reprendre avec une capture DevTools (Computed de `text-indent`/`display` sur un bouton touché).
+
+### D-home-mini — 🖥️ HOME PC : fenêtres < ~760 px de haut, footer coupé sans scroll — mesuré 09/08/2026
+
+✅ **vérifié (Playwright)** — la colonne « Ajouter un plan » (Actions) fait ~586 px incompressibles + header 164 : sous ~760 px de viewport, la grille dépasse et le bas (footer) est **coupé sans scroll possible** (`scrollHeight` ne grandit pas — un overflow caché quelque part avale le dépassement, le « scroll honnête » promis par le `min-height:min-content` de v1.77.0 ne se déclenche pas). Préexistant à v1.78 (Actions n'a pas bougé) ; le cas nominal FullHD est sain depuis le fix v1.79.0 des bornes de liste. À traiter si un user remonte le cas : compacter Actions sous 1366×768 OU trouver l'overflow qui avale le scroll.
 
 ### D-confirm — 🪟 confirm() natifs hors charte (10+ fichiers) — noté 07/08/2026
 

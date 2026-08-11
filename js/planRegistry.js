@@ -46,6 +46,17 @@
   let _data = null;
 
   // ========== INIT ==========
+  // 🐛 v1.79.0 (bug KARMA « import de profil : la liste n'apparaît qu'après
+  // F5, sans les archives ») — applyProfile écrit `myktamap_plans` DIRECT
+  // dans le localStorage : l'état RAM (_data) devenait obsolète, findById ne
+  // voyait pas les plans importés → la restauration d'archives les classait
+  // tous « orphelins ». reload() force la relecture du LS ; à appeler après
+  // toute écriture externe de la clé.
+  function reload() {
+    _data = null;
+    return init();
+  }
+
   function init() {
     if (_data) return _data;
     try {
@@ -178,6 +189,75 @@
   const _PERF_VALID = ["off", "auto", "quality", "balanced", "performance"];
 
   // Récupère le preset perf mémorisé pour un plan, ou null si jamais réglé.
+  // ═══ 🏷️ v1.78.0 — ORGANISATION DE LA LISTE (décision KARMA 1+3+4) ═══
+  // `pinned` (bool) et `tags` (string[]) sont des MÉTADONNÉES UTILISATEUR
+  // locales : elles vivent dans le registre (LS), ne voyagent PAS avec les
+  // ZIP, mais suivent l'export de profil (qui embarque le registre entier)
+  // et l'export .config (exportToFile clone tout).
+
+  // Épingle/désépingle un plan (remonte en tête de liste). true si appliqué.
+  function setPinned(id, pinned) {
+    init();
+    const p = findById(id);
+    if (!p) { console.warn("[PlanRegistry] setPinned : plan introuvable", id); return false; }
+    if (pinned) p.pinned = true;
+    else delete p.pinned;          // pas de false qui traîne dans le LS
+    _save();
+    return true;
+  }
+
+  // ✏️ v1.79.1 (KARMA « deux Catacombes d'auteurs différents — renommer
+  // depuis le HOME pour différencier ») — NOM D'AFFICHAGE local. On ne
+  // touche JAMAIS à `name` (le vrai nom du plan-config) : il sert aux
+  // vérifications fonctionnelles (nameMatch de la re-sélection de ZIP,
+  // double-check de session, détection de doublon, nom de fichier du 💾).
+  // `displayName` n'est qu'un HABILLAGE local — il suit l'export de profil
+  // et l'export .config comme tags/pinned.
+  function setDisplayName(id, nom) {
+    init();
+    const p = findById(id);
+    if (!p) { console.warn("[PlanRegistry] setDisplayName : plan introuvable", id); return false; }
+    const propre = String(nom || "").trim().slice(0, 40);
+    if (propre && propre !== String(p.name || "").trim()) p.displayName = propre;
+    else delete p.displayName;   // vide OU identique au vrai nom → retour au nom d'origine
+    _save();
+    return true;
+  }
+
+  // Libellé à AFFICHER pour un plan (entrée ou id) : displayName > name > id.
+  // Toute surface d'affichage passe par ici ; les usages FONCTIONNELS de
+  // `name` (nameMatch, fichiers) ne doivent PAS l'utiliser.
+  function displayName(planOuId) {
+    const p = (planOuId && typeof planOuId === "object") ? planOuId : findById(planOuId);
+    if (!p) return String(planOuId || "");
+    return p.displayName || p.name || p.id;
+  }
+
+  // Remplace les tags d'un plan. Normalisation : trim, vides éliminés,
+  // doublons (insensible casse) éliminés, 12 tags max de 24 chars max —
+  // refus au-delà de la troncature silencieuse serait pire : on tronque en
+  // loggant (métadonnée cosmétique, pas un réglage expert).
+  function setTags(id, tags) {
+    init();
+    const p = findById(id);
+    if (!p) { console.warn("[PlanRegistry] setTags : plan introuvable", id); return false; }
+    const vus = {};
+    const propres = (Array.isArray(tags) ? tags : [])
+      .map(function(t2) { return String(t2 || "").trim().slice(0, 24); })
+      .filter(function(t2) {
+        if (!t2) return false;
+        const k = t2.toLowerCase();
+        if (vus[k]) return false;
+        vus[k] = true;
+        return true;
+      })
+      .slice(0, 12);
+    if (propres.length) p.tags = propres;
+    else delete p.tags;
+    _save();
+    return true;
+  }
+
   function getPerfPreset(id) {
     init();
     const p = findById(id);
@@ -510,6 +590,11 @@
     getLastOpened:        getLastOpened,
     setLastPlanId:        setLastPlanId,
     addOrUpdate:          addOrUpdate,
+    reload:               reload,      // 🐛 v1.79.0 — resync RAM après écriture LS externe
+    setPinned:            setPinned,   // 🏷️ v1.78.0
+    setTags:              setTags,     // 🏷️ v1.78.0
+    setDisplayName:       setDisplayName, // ✏️ v1.79.1
+    displayName:          displayName,    // ✏️ v1.79.1 — libellé d'affichage
     markOpened:           markOpened,
     remove:               remove,
     removeAll:            removeAll,
