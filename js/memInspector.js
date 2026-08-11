@@ -260,7 +260,10 @@
     "KmzImport", "GpxIO", "GpxImport", "ThemeManager", "BatteryGuard",
     "HistoryManager", "MyKTAMapPinLock", "UnlockGate", "OOMGuard",
     "NetworkAudit", "UpdateChecker", "AlertChecker", "PerfUltra",
-    "CompassWidget", "TrackerReplay", "Pathfinder", "SearchPoints",
+    // 🐛 v1.79.4 (KARMA « 31/32, pourquoi ? ») — le module s'expose sous
+    // MyKTAMapTrackerReplay depuis toujours : « TrackerReplay » n'a JAMAIS
+    // existé sur window, le compteur ne pouvait pas atteindre 32/32.
+    "CompassWidget", "MyKTAMapTrackerReplay", "Pathfinder", "SearchPoints",
     "MyKTAMapPdfExport", "RefonteInterface", "MemInspector",
     // 🆕 v1.20.0
     "CrashReports", "StatsGlobales",
