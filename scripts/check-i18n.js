@@ -46,13 +46,28 @@ if (!missingInEn.length && !missingInFr.length) console.log("✅ Parité fr/en O
 
 // ---- 2. Clés appelées ----
 const called = new Set();
+const concatPrefixes = new Set();  // 🆕 v1.79.2 — littéraux suivis d'un « + » (préfixes, pas des clés)
+const literalsInCode = new Set();  // 🆕 v1.79.2 — tout littéral à-point du source (canal orphelines seul)
 function stripComments(src) {
   // Retire commentaires bloc /* */, HTML <!-- -->, et ligne // (évite les
   // faux positifs sur les exemples en commentaire, ex. `I18n.t("cle")`).
+  //
+  // 🐛 v1.79.2 (chantier scanner) — LE MANGEUR DE BLOCS : l'ancienne regex
+  // bloc /\/\*[\s\S]*?\*\//g matchait le « /* » de `accept="image/*"` dans
+  // les templates HTML et avalait TOUT jusqu'au prochain « */ » réel —
+  // 149 065 caractères de createConf.js (67 % du fichier) invisibles au
+  // scanner, idem homeProfile (−42 %) : ~150 clés faussement « orphelines »
+  // et surtout AUCUN filet sur ces zones (une clé inexistante y passait le
+  // CI en vert). Fix : ne traiter comme commentaires que ceux qui OUVRENT
+  // la ligne (indentation tolérée) — la convention du repo pour tout
+  // commentaire contenant des exemples. Un « /* » ou « // » en fin de ligne
+  // de code n'est plus strippé : au pire un exemple en marge est SCANNÉ
+  // (sur-couverture bénigne), plus jamais de code avalé (sous-couverture
+  // dangereuse).
   return src
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/^[ \t]*\/\*[\s\S]*?\*\//gm, " ")
     .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/\/\/[^\n]*/g, " ");
+    .replace(/^[ \t]*(?:\*\s|\/\/)[^\n]*/gm, " ");
 }
 function scanFile(file) {
   const src = stripComments(fs.readFileSync(file, "utf8"));
@@ -88,12 +103,19 @@ function scanFile(file) {
   // `cond ? "a.png" : "b.png"` quelconque deviendrait un ❌ bloquant à tort.
   // Les conditions contenant parenthèses/quotes ne matchent pas — couverture
   // partielle assumée, préférable à un faux positif bloquant.
-  const reTern = /(?<![\w.$])[tT]\(\s*[^()"'`]*\?\s*["'`]([\w.]+\.[\w.]+)["'`]\s*:\s*["'`]([\w.]+\.[\w.]+)["'`]/g;
+  // 🆕 v1.79.2 : couvre aussi `I18n.t(cond ? "a" : "b")` et `_t(...)` — le
+  // lookbehind de l'ancienne forme refusait le point de `I18n.t(` (24 clés
+  // heatmap/createConf hors filet).
+  const reTern = /(?:I18n\.t|(?<![\w.$])_t|(?<![\w.$])[tT])\(\s*[^()"'`]*\?\s*["'`]([\w.]+\.[\w.]+)["'`]\s*:\s*["'`]([\w.]+\.[\w.]+)["'`]/g;
   while ((m = reTern.exec(src)) !== null) { called.add(m[1]); called.add(m[2]); }
   // 🆕 v1.76.1 — CLÉ EN VARIABLE : `const xKey = "prefixe." + …` puis
   // t(xKey) (legendCustomization, profileGamification). Le préfixe littéral
   // devient un préfixe dynamique (même traitement que t("prefixe." + v)).
-  const reVarKey = /(?:const|let|var)\s+\w*[Kk]ey\w*\s*=\s*["'`]([\w.]+\.)["'`]\s*\+/g;
+  // v1.79.2 : TOUTE variable (plus seulement *key*) — `const _k = "home.perf.
+  // desc." + preset` (index.html) échappait au filtre de nom. Sans risque :
+  // le préfixe finit par un point → il ne nourrit que les préfixes
+  // dynamiques, jamais le canal bloquant.
+  const reVarKey = /(?:const|let|var)\s+[\w$]+\s*=\s*["'`]([\w.]+\.)["'`]\s*\+/g;
   while ((m = reVarKey.exec(src)) !== null) called.add(m[1]);
   // 🆕 v1.76.1 — ALIAS LOCAUX NON PRÉFIXANTS `t` et `T` (batteryGuard,
   // compass, exporter, pdfExport, createConf, homeLoader…) : capté UNIQUEMENT
@@ -106,8 +128,51 @@ function scanFile(file) {
     const reCall = new RegExp("(?<![\\w.$])" + alias + "\\(\\s*[\"'`]([\\w.]+\\.[\\w.]+)[\"'`]", "g");
     while ((m = reCall.exec(src)) !== null) called.add(m[1]);
   });
-  const reAttr = /data-i18n(?:-html|-title)?\s*=\s*"([^"]+)"/g;
+  // 🆕 v1.79.2 (chantier scanner) — ALIAS DÉCLARÉS PAR FONCTION, NON
+  // PRÉFIXANTS : `function t(key, params) { … I18n.t(key …` (sessionExporter,
+  // sessionReport, proLicense) et `function _t(key, params) { … }` (lostMode,
+  // journalUi). Les gardes existantes exigeaient une AFFECTATION (`const t =
+  // … I18n.t`) ou une déclaration PRÉFIXANTE — ~300 clés de ces modules
+  // étaient hors filet. Garde : le 1er PARAMÈTRE doit être repassé TEL QUEL
+  // à I18n.t (sinon ce n'est pas un alias direct) ; seuls les littéraux « à
+  // point » sont captés (forme d'une clé).
+  // Détection GÉNÉRIQUE des noms d'alias du fichier : toute fonction locale
+  // dont le 1er paramètre est repassé TEL QUEL à I18n.t (avec ou sans
+  // fallback 2e arg : _homeT, _tNL, t, _t…). v1.79.2 : plus de liste en dur.
+  const aliasNoms = new Set();
+  const reDeclFn = /function\s+([A-Za-z_$][\w$]*)\s*\(\s*([A-Za-z_$][\w$]*)[^)]*\)\s*\{[\s\S]{0,260}?I18n\.t\(\s*\2\b/g;
+  while ((m = reDeclFn.exec(src)) !== null) aliasNoms.add(m[1]);
+  aliasNoms.forEach(function(alias) {
+    const reCall = new RegExp("(?<![\\w.$])" + alias.replace(/\$/g, "\\$") + "\\(\\s*[\"'`]([\\w.]+\\.[\\w.]+)[\"'`]", "g");
+    while ((m = reCall.exec(src)) !== null) called.add(m[1]);
+  });
+  // 🆕 v1.79.2 — CLÉS EN PROPRIÉTÉ `labelKey: "voice.cmd.zoomIn"` (tables de
+  // config consommées plus tard via t(entry.labelKey) — voiceCommand). Noms
+  // de propriété RESTREINTS (labelKey, titleKey…) : un `apiKey: "x.y"`
+  // quelconque ne doit pas devenir un ❌ bloquant à tort.
+  const reProp = /(?:label|title|hint|text|msg|desc|name|status)Key\s*:\s*["'`]([\w.]+\.[\w.]+)["'`]/g;
+  while ((m = reProp.exec(src)) !== null) called.add(m[1]);
+  // v1.79.2 : + data-i18n-placeholder (home.search.placeholder & co étaient
+  // hors filet — l'attribut existe depuis v1.69 mais le scanner l'ignorait).
+  const reAttr = /data-i18n(?:-html|-title|-placeholder)?\s*=\s*"([^"]+)"/g;
   while ((m = reAttr.exec(src)) !== null) called.add(m[1]);
+  // 🆕 v1.79.2 — CANAL ORPHELINES UNIQUEMENT : tout littéral « à point »
+  // présent dans le source (tables de clés `_SIG_CAT_I18N = {...}`, mappings
+  // `"fn:boussole": "cheatsheet.tool.boussole"`, clés stockées puis
+  // consommées ailleurs). JAMAIS utilisé pour le canal bloquant (« appelée
+  // manquante ») : un littéral quelconque ("image/png"…) ne doit pas casser
+  // le CI — il ne fait que retirer de FAUSSES orphelines.
+  const reLit = /["'`]([\w]+(?:\.[\w-]+)+)["'`]/g;
+  while ((m = reLit.exec(src)) !== null) literalsInCode.add(m[1]);
+  // 🆕 v1.79.2 — LITTÉRAL SUIVI D'UNE CONCATÉNATION : `_t("lost.report.
+  // reach.full" + (fc > 1 ? ".plural" : ".one"))` — le littéral n'est PAS
+  // une clé complète mais un PRÉFIXE (sans point final, contrairement à
+  // `t("prefix." + v)` déjà géré). Sans ce set, l'extension « alias
+  // fonction » le prenait pour une clé → ❌ bloquant à tort ; et les clés
+  // réelles (.one/.plural) restaient « orphelines ». Collecté À PART :
+  // exclu des clés exigées, ajouté aux préfixes qui couvrent les orphelines.
+  const reConcat = /(?<![\w.$])(?:I18n\.t|_t|t|T)\(\s*["'`]([\w.]+)["'`]\s*\+/g;
+  while ((m = reConcat.exec(src)) !== null) concatPrefixes.add(m[1]);
 }
 function walk(dir) {
   for (const name of fs.readdirSync(dir)) {
@@ -122,8 +187,10 @@ scanFile(path.join(ROOT, "index.html"));
 
 // Ignore les clés à construction DYNAMIQUE : I18n.t("prefix." + var) capture le
 // littéral "prefix." (terminé par un point) → ce n'est pas une vraie clé.
-const calledLiteral = [...called].filter(k => !k.endsWith("."));
-const dynamicPrefixes = [...called].filter(k => k.endsWith("."));
+// 🆕 v1.79.2 : idem pour les littéraux SANS point final suivis d'un « + »
+// (concatPrefixes) — exclus des clés exigées, ajoutés aux préfixes couvrants.
+const calledLiteral = [...called].filter(k => !k.endsWith(".") && !concatPrefixes.has(k));
+const dynamicPrefixes = [...called].filter(k => k.endsWith(".")).concat([...concatPrefixes]);
 const calledMissing = calledLiteral.filter(k => !frKeys.has(k) || !enKeys.has(k));
 if (calledMissing.length) {
   blocking++;
@@ -163,11 +230,18 @@ if (paramMismatch.length) {
 const orphans = [...frKeys].filter(k =>
   !k.startsWith("_meta") &&
   !called.has(k) &&
+  !literalsInCode.has(k) &&                      // 🆕 v1.79.2 : présent textuellement ≠ orphelin
   !dynamicPrefixes.some(p => k.startsWith(p))
 );
 if (orphans.length) {
   console.log("ℹ️  Clés dico jamais appelées (" + orphans.length + ") — info, pas bloquant" +
               (orphans.length <= 40 ? " :\n   " + orphans.join("\n   ") : " (liste tronquée)."));
+  // 🆕 v1.79.2 — audit : CHECK_I18N_DUMP=1 écrit la liste complète (une clé
+  // par ligne) dans scripts/i18n-orphelines.txt pour le tri périodique.
+  if (process.env.CHECK_I18N_DUMP === "1") {
+    fs.writeFileSync(path.join(__dirname, "i18n-orphelines.txt"), orphans.sort().join("\n") + "\n");
+    console.log("   → liste complète écrite dans scripts/i18n-orphelines.txt (CHECK_I18N_DUMP)");
+  }
 }
 
 // ---- 4. Langues additionnelles WIP (ex. es) : contrôle SOUPLE ----
