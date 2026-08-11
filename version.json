@@ -1,8 +1,7 @@
 {
-  "version": "v1.79.1",
-  "released": "2026-08-10",
+  "version": "v1.79.2",
+  "released": "2026-08-11",
   "notes": [
-    "📚 Importer un plan qui porte le même nom qu'un plan de ta liste demande maintenant toujours quoi faire (mettre à jour / garder les deux) — fini l'écrasement silencieux.",
-    "✏️ Tu peux renommer l'affichage d'un plan depuis sa fenêtre ℹ️ Infos — pratique pour différencier deux plans homonymes gardés côte à côte."
+    "🧹 Entretien : les traductions (français, anglais, espagnol) sont désormais vérifiées de bout en bout, et la documentation a été dépoussiérée. Aucune nouveauté visible — une app plus fiable."
   ]
 }

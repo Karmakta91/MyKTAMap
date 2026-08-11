@@ -12,8 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.79.1` (10/08/2026)
+## 📦 Version courante — `v1.79.2` (11/08/2026)
 
+> 🧹 **v1.79.2 — Chantier scanner i18n** : `check-i18n` couvrait mal le code réel — cause n°1 : le « **mangeur de blocs** », le `/*` de `accept="image/*"` dans les templates ouvrait un faux commentaire qui avalait **67 % de createConf.js** (149 065 caractères en un match) — aucune vérification sur ces zones. 8 extensions (alias par fonction génériques, ternaires, `labelKey:`, concat-préfixes, `data-i18n-placeholder`…) : **1 076 « orphelines » → 0** (1 007 remises sous filet, 64 vraies mortes purgées ×3 dicos, 5 dynamiques couvertes), 4 495 clés appelées vérifiées. + docs user : section Migration de domaine (périmée) retirée FR/EN.
+>
 > 📚 **v1.79.1 — Plans homonymes maîtrisés** : importer un ZIP portant le même nom qu'un plan de la liste déclenche **toujours** la popup « Ce plan existe déjà » (avant : même version = écrasement silencieux de l'entrée existante, y compris celle d'un plan homonyme d'un **autre auteur** — fusion d'archives/tags/sessions sous un seul id) ; « Garder les deux » suffixe l'id en cas de collision nom+version. Et **✏️ renommage d'affichage** depuis ℹ️ Infos : nom local (40 car.) pour différencier deux homonymes — le vrai nom du plan-config reste intact (re-sélection de ZIP, session, doublon s'y réfèrent toujours) ; propagé sur 13 surfaces (liste, Reprendre, OSM, switcher, graphe…), filtre de liste sur les deux noms.
 >
 > 📦 **v1.79.0 — Le profil emporte les archives de plans** : la fenêtre d'export gagne une section « 📦 Archives de plans » — cocher des plans mémorisés produit un **ZIP « profil complet »** (`profil.json` + `plans/<id>.zip`, STORE) ; à l'import les archives sont **réinjectées et rattachées** (bilan chiffré, fusion : le local gagne, quota plein signalé par plan). Garde-fous : sélection décochée par défaut, seuil 50 Mo iOS / 500 Mo en validation explicite, archives évincées par le navigateur LISTÉES. Corrigé en route : l'import n'actualisait pas la RAM du registre (liste après F5, archives « orphelines ») + filet anti-blocage sur la chaîne d'import. Aussi : **HOME PC structurel** (footer déplié tient sur une page — rangée grid `minmax(0,1fr)`, fini les constantes ; fond tronqué réglé ; `#myPlansBox` flex dormant réparé), renommage de type visible dans la **recherche** et l'**undo**, recherche OSM du HOME **à la ligne** (cohérence filtre plans).
@@ -465,7 +467,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.79.1 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.79.2 → v1.26)
+
+#### v1.79.2 (11/08/2026) — Chantier scanner i18n : le filet couvre enfin tout le code
+
+- 🕳️ **Le « mangeur de blocs »** [mesuré] : la regex de nettoyage des commentaires de `check-i18n` matchait le `/*` de `accept="image/*"` dans les templates HTML et avalait tout jusqu'au `*/` réel suivant — **149 065 caractères de createConf.js en un match** (67 % du fichier invisible), homeProfile −42 %. Une clé inexistante dans ces zones passait le CI en vert. Fix : seuls les commentaires qui ouvrent la ligne sont strippés.
+- 🧰 **8 extensions de motifs** : alias par fonction détectés **génériquement** (`function X(key…){…I18n.t(key…}` — `t`, `_t`, `_homeT`, `_tNL`… sans liste en dur), ternaires `I18n.t(cond ? … : …)`, propriétés `labelKey:`, littéral suivi de `+` = préfixe (`lost.report.reach.full` + `".plural"`), clé en variable généralisée, `data-i18n-placeholder` (ignoré depuis sa création v1.69), passe large « littéral présent au dico » pour le canal orphelines (jamais bloquante), `CHECK_I18N_DUMP=1` → liste d'audit.
+- 🧹 **Tri du résidu : 1 076 → 0 orphelines** — 1 007 angles morts remis sous filet (4 495 clés appelées vérifiées, ~3 700 avant), **64 vraies mortes purgées ×3 dicos** (dialog d'entrée custom de l'export image 26, allègement du modal tracker 11, refontes tableEditor 10 et Mode Dev 9…), 5 dynamiques couvertes. Le signal « orpheline » redevient exploitable : toute nouvelle occurrence = clé fraîchement morte ou motif réellement nouveau.
+- 📖 Docs user : section « Migration vers myktamap.fr » (périmée, coupure du 15/07 passée) retirée FR + EN.
 
 #### v1.79.1 (10/08/2026) — Plans homonymes : popup systématique + renommage d'affichage
 
