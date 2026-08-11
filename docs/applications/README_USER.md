@@ -286,7 +286,7 @@ La modale Profil affiche **6 cells de stats globales** :
 | 🗂️ **N plans** | Nombre de plans dans ton registre (serveur + locaux) |
 | 💾 **N sessions** | Nombre total de sessions sauvegardées (per-plan slots) |
 | ⭐ **N favoris** | Nombre cumulé de points marqués favoris, tous plans confondus |
-| 📦 **N snapshots** | Nombre de snapshots de session backups en IndexedDB (max 10 FIFO) |
+| 📦 **N snapshots** | Nombre de snapshots de session backups en IndexedDB (max 10 FIFO **par plan** depuis v1.79.3 — avant : 10 tous plans confondus, un plan actif purgeait l'historique des autres) |
 | 📸 **N photos POI** | Nombre de photos attachées à des points + taille totale |
 | 💾 **N MB sauvegarde** | **Taille réelle des données MyKTAMap** (localStorage avec préfixe MyKTAMap + 6 stores IndexedDB connus). Hors Cache PWA volatile (qui n'est pas une donnée user). |
 

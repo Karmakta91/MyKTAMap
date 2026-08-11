@@ -3,7 +3,9 @@
 // =========================
 //
 // Filet de sécurité : conserve les 10 dernières sauvegardes de session
-// dans IndexedDB (rotation FIFO). Permet de revenir en arrière si l'user
+// PAR PLAN (📦 v1.79.3 — avant : 10 GLOBAL, un plan actif purgeait
+// l'historique des autres) dans IndexedDB (rotation FIFO). Permet de
+// revenir en arrière si l'user
 // fait une action regrettable (reset, suppression masse, plan switch, etc.).
 //
 // Triggers de snapshot (cf KARMA spec v1.16.0 step 4) :
@@ -16,7 +18,8 @@
 //   4. Manuel           : bouton "📦 Snapshot maintenant" dans la modale
 //                          Session active
 //
-// Portée : GLOBAL (10 derniers tous plans confondus). Restaurer un backup
+// Portée : PAR PLAN depuis v1.79.3 (10 derniers par planId ; avant : 10
+// global tous plans confondus). Restaurer un backup
 // peut switcher de plan automatiquement (le payload contient planId +
 // planName).
 //
@@ -179,11 +182,36 @@ window.SessionBackups = (function() {
   }
 
   // Rotation FIFO : si on dépasse MAX, supprime les plus anciens.
+  // 📦 v1.79.3 (décision KARMA — reco 1:a) — FIFO PAR PLAN et non plus
+  // global : avant, 10 snapshots TOUS PLANS CONFONDUS — un plan très
+  // utilisé purgeait l'historique des autres. Désormais chaque plan garde
+  // ses 10 derniers (les backups sans planId — legacy — tournent entre eux).
+  // On ne passe PAS en illimité : croissance sans borne = pression quota →
+  // éviction SILENCIEUSE par le navigateur (la leçon des blobs ZIP évincés).
   function _enforceLimit() {
     return listAll().then(function(arr) {
-      if (arr.length <= MAX) return null;
-      const toDelete = arr.slice(MAX); // après tri DESC, ceux au-delà du 10e
-      return Promise.all(toDelete.map(function(e) { return remove(e.id); }));
+      const parPlan = {};
+      arr.forEach(function(e) {   // arr déjà trié DESC (plus récent d'abord)
+        const g = e.planId || "__legacy__";
+        (parPlan[g] = parPlan[g] || []).push(e);
+      });
+      const aSupprimer = [];
+      Object.keys(parPlan).forEach(function(g) {
+        parPlan[g].slice(MAX).forEach(function(e) { aSupprimer.push(e); });
+      });
+      if (!aSupprimer.length) return null;
+      return Promise.all(aSupprimer.map(function(e) { return remove(e.id); }));
+    });
+  }
+
+  // 🧹 v1.79.3 — supprime TOUS les backups d'un plan (purge à la suppression
+  // du plan depuis la modale ℹ️ Infos, + nettoyeur d'orphelins).
+  function deleteForPlan(planId) {
+    if (!planId) return Promise.resolve(0);
+    return listAll().then(function(arr) {
+      const cibles = arr.filter(function(e) { return e.planId === planId; });
+      return Promise.all(cibles.map(function(e) { return remove(e.id); }))
+        .then(function() { return cibles.length; });
     });
   }
 
@@ -419,6 +447,7 @@ window.SessionBackups = (function() {
     listAll:     listAll,
     restore:     restore,
     remove:      remove,
+    deleteForPlan: deleteForPlan,  // 🧹 v1.79.3 — purge tous les backups d'un plan
     clearAll:    clearAll,
     onChange:    onChange,
     // Constantes exposées pour debug

@@ -286,7 +286,7 @@ The Profile modal displays **6 global stats cells**:
 | 🗂️ **N maps** | Number of maps in your registry (server + local) |
 | 💾 **N sessions** | Total number of saved sessions (per-map slots) |
 | ⭐ **N favorites** | Cumulative number of points marked as favorites, across all maps |
-| 📦 **N snapshots** | Number of session backup snapshots in IndexedDB (max 10 FIFO) |
+| 📦 **N snapshots** | Number of session backup snapshots in IndexedDB (max 10 FIFO **per map** since v1.79.3 — before: 10 across all maps, an active map purged the others' history) |
 | 📸 **N POI photos** | Number of photos attached to points + total size |
 | 💾 **N MB save** | **Actual size of MyKTAMap data** (localStorage with MyKTAMap prefix + 6 known IndexedDB stores). Excluding volatile PWA Cache (which is not user data). |
 

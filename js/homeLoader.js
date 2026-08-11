@@ -1272,14 +1272,22 @@
 
         // 🧹 v1.78.0 — suppression du plan depuis la modale (ktaConfirm,
         // règle D-confirm : nouveaux usages jamais en confirm() natif).
+        // 🧹 v1.79.3 (décision KARMA) — la suppression PURGE aussi les
+        // données associées (session, géoref, photos, backups) via
+        // PlanRegistry.purgeAssociatedData ; le confirm LISTE ce qui part.
+        // Carnet, récits (PDF/notes Histoire) et liaisons sont conservés.
         const btnRemove = document.getElementById("kta-plan-infos-remove");
         if (btnRemove) {
           btnRemove.addEventListener("click", function() {
+            const msg = _t("home.plans.confirmRemove") + "\n\n" + _t("home.plans.confirmRemovePurge");
             const confirmer = (typeof window.ktaConfirm === "function")
-              ? window.ktaConfirm(_t("home.plans.confirmRemove"), { okLabel: _t("home.plans.removeBtnTitle") })
-              : Promise.resolve(confirm(_t("home.plans.confirmRemove")));
-            confirmer.then(function(ok) {
+              ? window.ktaConfirm(msg, { okLabel: _t("home.plans.removeBtnTitle") })
+              : Promise.resolve(confirm(msg));
+            confirmer.then(async function(ok) {
               if (!ok) return;
+              try { await window.PlanRegistry.purgeAssociatedData(plan.id); } catch(e) {
+                console.warn("[Loader] purge données associées :", e);
+              }
               window.PlanRegistry.remove(plan.id);
               modal.remove();
               window.refreshPlansList();
