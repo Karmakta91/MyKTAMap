@@ -12,8 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.79.2` (11/08/2026)
+## 📦 Version courante — `v1.79.3` (11/08/2026)
 
+> 🗄️ **v1.79.3 — Hygiène du stockage** : backups de session en **FIFO 10 PAR PLAN** (avant : 10 tous plans confondus — un plan actif purgeait l'historique des autres ; l'illimité est refusé : croissance sans borne = éviction silencieuse par le quota navigateur). **Supprimer un plan purge ses données associées** (session, géoref, photos, backups — le confirm liste tout ; carnet, récits et liaisons conservés par design « l'histoire survit aux plans »). Et **🧹 nettoyeur de données orphelines** dans l'inspecteur DB (📊 État mémoire) : compare la liste de plans à date au stockage réel, liste par plan disparu le détail chiffré, propose le nettoyage — jamais automatique.
+>
 > 🧹 **v1.79.2 — Chantier scanner i18n** : `check-i18n` couvrait mal le code réel — cause n°1 : le « **mangeur de blocs** », le `/*` de `accept="image/*"` dans les templates ouvrait un faux commentaire qui avalait **67 % de createConf.js** (149 065 caractères en un match) — aucune vérification sur ces zones. 8 extensions (alias par fonction génériques, ternaires, `labelKey:`, concat-préfixes, `data-i18n-placeholder`…) : **1 076 « orphelines » → 0** (1 007 remises sous filet, 64 vraies mortes purgées ×3 dicos, 5 dynamiques couvertes), 4 495 clés appelées vérifiées. + docs user : section Migration de domaine (périmée) retirée FR/EN.
 >
 > 📚 **v1.79.1 — Plans homonymes maîtrisés** : importer un ZIP portant le même nom qu'un plan de la liste déclenche **toujours** la popup « Ce plan existe déjà » (avant : même version = écrasement silencieux de l'entrée existante, y compris celle d'un plan homonyme d'un **autre auteur** — fusion d'archives/tags/sessions sous un seul id) ; « Garder les deux » suffixe l'id en cas de collision nom+version. Et **✏️ renommage d'affichage** depuis ℹ️ Infos : nom local (40 car.) pour différencier deux homonymes — le vrai nom du plan-config reste intact (re-sélection de ZIP, session, doublon s'y réfèrent toujours) ; propagé sur 13 surfaces (liste, Reprendre, OSM, switcher, graphe…), filtre de liste sur les deux noms.
@@ -467,7 +469,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.79.2 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.79.3 → v1.26)
+
+#### v1.79.3 (11/08/2026) — Hygiène du stockage : FIFO par plan, purge à la suppression, nettoyeur d'orphelines
+
+- 📦 **Backups : FIFO 10 PAR PLAN** (`sessionBackups`, décision KARMA — reco 1:a) : avant, 10 snapshots GLOBAL tous plans confondus. Les backups legacy sans `planId` tournent entre eux. L'illimité (souhait initial) a été **écarté avec argument** : croissance sans borne → pression quota → éviction silencieuse par le navigateur (la leçon des blobs ZIP évincés). + `SessionBackups.deleteForPlan(id)`.
+- 🗑️ **Suppression d'un plan = purge des données associées** (`PlanRegistry.purgeAssociatedData`, décision 2:a) : session auto (LS), géoref/calib KMZ (LS), photos (IDB), backups (IDB) — branchée au 🗑️ de la modale ℹ️ Infos, le `ktaConfirm` **liste ce qui part**. **Préservés par design v1.69** (« l'HISTOIRE survit aux plans ») : Carnet, récits (PDF/notes du Mode Histoire — listés tous plans confondus dans l'onglet Récits) et liaisons inter-plans (nœuds fantômes gérés).
+- 🧹 **Nettoyeur de données orphelines** dans l'inspecteur DB (décision KARMA « à mettre dans l'inspecteur db ») : nouvelle section de 📊 État mémoire — compare la liste de plans à date aux entrées par-plan du stockage (sessions/calibs LS, archives+handles IDB, photos IDB, backups IDB), affiche **par plan disparu** le détail chiffré (nom retrouvé via les payloads quand possible), bouton « Nettoyer tout » sous `ktaConfirm` explicite — **jamais automatique** (une session orpheline redevient utile si l'user réimporte le ZIP). Cas d'usage : profil historique ayant traversé toutes les versions. 13+1 clés i18n ×3.
 
 #### v1.79.2 (11/08/2026) — Chantier scanner i18n : le filet couvre enfin tout le code
 
