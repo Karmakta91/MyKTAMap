@@ -151,6 +151,8 @@ If a plan **you have already imported** is revoked by the author AFTER your impo
 
 The application is protected by a **single shared password** for all authorized users. The code will be communicated to you by the author (forum, direct message, etc.).
 
+> 🌍 *(since v1.79.4)* At the top of this screen, a **FR · EN · ES** selector lets you pick your language **from the very first launch** (pre-selected from your browser's) — the screen translates immediately and the whole app follows, tutorial included.
+
 **On first installation** (or after a complete reset):
 1. The splash displays normally (3.5 seconds)
 2. A **🗝️ Restricted access** screen appears with an input field

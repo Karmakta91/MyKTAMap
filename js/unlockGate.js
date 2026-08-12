@@ -92,12 +92,29 @@
   // =========================================================================
   // Crée l'overlay plein écran avec champ de saisie, bouton et signature.
   // Style charte MyKTAMap (gradient noir, accent jaune #f4c542).
+  // 🌍 v1.79.4 — rang de langues de la gate (drapeau + code natif, actif
+  // surligné). Libellés = métadonnées de I18n.available(), rien à traduire.
+  function _langsHtml() {
+    if (!window.I18n || typeof window.I18n.available !== "function") return "";
+    const active = (typeof window.I18n.getLang === "function") ? window.I18n.getLang() : "fr";
+    return window.I18n.available().map(function(l) {
+      return '<button type="button" class="kta-unlock-lang-btn' + (l.code === active ? " kta-actif" : "") +
+             '" data-lang="' + l.code + '" title="' + l.label + '">' + l.flag + " " + l.code.toUpperCase() + '</button>';
+    }).join("");
+  }
+
   function _creerOverlay() {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     const o = document.createElement("div");
     o.id = "kta-unlock-overlay";
     o.innerHTML =
       '<div class="kta-unlock-box">' +
+        // 🌍 v1.79.4 (demande KARMA « choisir sa langue au premier
+        // lancement ») — le choix de langue vit sur la TOUTE PREMIÈRE gate :
+        // il pilote la langue GLOBALE (I18n.setLang, même clé que ⚙️ Config)
+        // → tout le funnel suit (gate légale, tutoriel, home). Pré-sélection
+        // = langue détectée (navigator.language, mécanisme existant).
+        '<div class="kta-unlock-langs" role="group" aria-label="Language">' + _langsHtml() + '</div>' +
         '<div class="kta-unlock-icon">🗝️</div>' +
         '<div class="kta-unlock-titre">' + t("gate.titre") + '</div>' +
         '<p class="kta-unlock-info">' +
@@ -280,13 +297,35 @@
   // qui ne résout JAMAIS si lockout (5 tentatives ratées). Le caller
   // (main.js > initApp) await ça → l'app reste bloquée tant que pas auth.
   function ouvrirGate() {
-    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+    // 🌍 v1.79.4 — corps extrait dans _monterGate : le changement de langue
+    // re-monte la gate dans la nouvelle langue SANS toucher la Promise
+    // (_resolveGate survit au re-render).
     return new Promise(function(resolve) {
       _resolveGate = resolve;
+      _monterGate();
+    });
+  }
+
+  function _monterGate() {
+    const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+    (function() {
 
       // Si déjà en lockout au boot (= localStorage attempts ≥ 5), afficher
       // l'overlay directement en mode lockout (pas de form).
       const overlay = _creerOverlay();
+
+      // 🌍 v1.79.4 — sélecteur de langue : setLang recharge le dico puis on
+      // re-monte la gate (l'overlay actuel est remplacé, la Promise survit).
+      overlay.querySelectorAll(".kta-unlock-lang-btn").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const code = btn.dataset.lang;
+          if (!window.I18n || typeof window.I18n.setLang !== "function") return;
+          window.I18n.setLang(code).then(function() {
+            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+            _monterGate();
+          }).catch(function(e) { console.warn("[UnlockGate] setLang :", e); });
+        });
+      });
 
       if (isLockedOut()) {
         _afficherLockout(overlay);
@@ -377,7 +416,7 @@
             t("gate.warn.remaining", { n: (MAX_ATTEMPTS - ap) }) +
           '</div>';
       }
-    });
+    })();
   }
 
   // Retire la flag unlock du localStorage. Utilisé par viderCacheAppli

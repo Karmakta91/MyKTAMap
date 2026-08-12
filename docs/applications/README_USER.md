@@ -151,6 +151,8 @@ Si un plan que **tu avais déjà importé** est révoqué par l'auteur APRÈS to
 
 L'application est protégée par un **mot de passe unique commun** à tous les utilisateurs autorisés. Le code te sera communiqué par l'auteur (forum, message direct, etc.).
 
+> 🌍 *(depuis v1.79.4)* En haut de cet écran, un sélecteur **FR · EN · ES** te permet de choisir ta langue **dès le premier lancement** (pré-sélectionnée d'après celle de ton navigateur) — l'écran se traduit immédiatement et toute l'app suit, tutoriel compris.
+
 **À la première installation** (ou après un reset complet) :
 1. Le splash s'affiche normalement (3,5 secondes)
 2. Un écran **🗝️ Accès restreint** apparaît avec un champ de saisie

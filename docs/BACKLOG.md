@@ -236,10 +236,6 @@ La liste « règles CSS mortes » de l'audit du 09/08 matin (consignée dans le 
 
 `window.ktaConfirm` (utils.js, v1.76.2, Promise + charte) existe depuis le retour KARMA sur la popup de replanification d'itinéraire. Les `confirm()` natifs restants (createConf, exporter, homeConfig, homeLoader, homeProfile, interface, interfaceConfig, interfaceLegende, journalUi…) **migrent au fil de l'eau** quand on touche leur module — pas de sweep massif (risque de régression sur des flux critiques type suppression). Nouveaux usages : `ktaConfirm` obligatoire. Attention à la migration : `ktaConfirm` est **asynchrone** (le code qui suit un `if (!confirm(...)) return;` doit passer en `.then()`).
 
-### D-tutorial — 🌍 tutorial.js hors i18n (audit 06/08)
-
-`UI_STRINGS` + `CARDS`/`CARDS_EN` codés en dur fr/en, propre `_t()` qui n'utilise jamais `window.I18n` — un utilisateur **es** voit l'onboarding en français. Migration vers les dicos `lang/` à faire. (~90 chaînes.)
-
 ### D0 — 🧲 Magnétisme C5 : rayon non plafonné en unités plan ✅ vérifié 01/08
 
 **Symptôme constaté par KARMA** : magnétisme actif + cercles d'intersection actifs → un cercle apparaît alors que les deux tracés ne se touchent pas.
