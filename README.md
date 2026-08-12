@@ -12,8 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.79.3` (11/08/2026)
+## 📦 Version courante — `v1.79.4` (12/08/2026)
 
+> 🌍 **v1.79.4 — La langue se choisit dès le premier écran** : sélecteur **FR · EN · ES** en tête de la gate du mot de passe (pré-sélectionné sur la langue du navigateur) — un clic re-traduit la gate et **tout le funnel suit** (gate légale, tutoriel, home : c'est le choix global). Et le **tutoriel est enfin multilingue** (dette D-tutorial soldée) : les 26 cartes migrées dans les dicos `lang/` (fr/en + **es traduit**), −1 657 lignes de code, le toggle interne 🇫🇷/🇬🇧 disparaît (la langue vient du choix global). Formes d'appel calibrées pour le scanner : UI au canal bloquant, cartes en préfixe dynamique — parité stricte es maintenue, 0 orpheline.
+>
 > 🗄️ **v1.79.3 — Hygiène du stockage** : backups de session en **FIFO 10 PAR PLAN** (avant : 10 tous plans confondus — un plan actif purgeait l'historique des autres ; l'illimité est refusé : croissance sans borne = éviction silencieuse par le quota navigateur). **Supprimer un plan purge ses données associées** (session, géoref, photos, backups — le confirm liste tout ; carnet, récits et liaisons conservés par design « l'histoire survit aux plans »). Et **🧹 nettoyeur de données orphelines** dans l'inspecteur DB (📊 État mémoire) : compare la liste de plans à date au stockage réel, liste par plan disparu le détail chiffré, propose le nettoyage — jamais automatique.
 >
 > 🧹 **v1.79.2 — Chantier scanner i18n** : `check-i18n` couvrait mal le code réel — cause n°1 : le « **mangeur de blocs** », le `/*` de `accept="image/*"` dans les templates ouvrait un faux commentaire qui avalait **67 % de createConf.js** (149 065 caractères en un match) — aucune vérification sur ces zones. 8 extensions (alias par fonction génériques, ternaires, `labelKey:`, concat-préfixes, `data-i18n-placeholder`…) : **1 076 « orphelines » → 0** (1 007 remises sous filet, 64 vraies mortes purgées ×3 dicos, 5 dynamiques couvertes), 4 495 clés appelées vérifiées. + docs user : section Migration de domaine (périmée) retirée FR/EN.
@@ -469,7 +471,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
-### 🕐 Versions récentes — entrées détaillées (v1.79.3 → v1.26)
+### 🕐 Versions récentes — entrées détaillées (v1.79.4 → v1.26)
+
+#### v1.79.4 (12/08/2026) — La langue dès le premier écran, tutoriel multilingue
+
+- 🌍 **Sélecteur de langue sur la gate** (demande KARMA « choisir sa langue au premier lancement ») : rang **FR · EN · ES** en tête de la gate mdp (`unlockGate`), libellés/drapeaux depuis `I18n.available()` (rien à traduire), pré-sélection = langue détectée (`navigator.language`, mécanisme existant). Clic → `I18n.setLang` (langue **globale**, même clé que ⚙️ Config) → la gate se re-monte traduite (refacto `ouvrirGate` → `_monterGate`, la Promise survit au re-render) → gate légale, tutoriel et home suivent. Fonctionne en mode lockout, thème clair couvert.
+- 🎓 **Tutoriel migré dans les dicos** (dette **D-tutorial soldée**) : 26 cartes + UI extraites **fidèlement** (programmatique, zéro réécriture) vers `tutorial.cardNN.*`/`tutorial.ui.*` — 68 clés × fr/en + **es traduit** (2 sous-agents, balises HTML vérifiées). `tutorial.js` : **−1 657 lignes** (ne reste que la structure emoji+hint) ; cartes construites **au rendu** ; formes d'appel calibrées pour le scanner (alias préfixant = UI au canal bloquant, `"tutorial." +` = préfixe dynamique, 0 orpheline). Le toggle interne 🇫🇷/🇬🇧 et l'usage de `myktamap_readme_lang` quittent le tutoriel (la modale Documentation garde les siens). Validé e2e Playwright : gate → ES → « Acceso restringido » → tutoriel « Bienvenido a MyKTAMap ». Post-mortem méthode : 2 résidus à crash runtime après la chirurgie, attrapés par grep de contrôle (`node -c` aveugle aux identifiants morts).
+- 🧪 **Smoke adapté à la refonte des plans de test** (KARMA a réduit `data/` à un plan « Relevé fictif de test », M-LVL) — effet de bord positif : l'étape « chargement plan » du harnais traverse désormais un plan multi-niveau.
 
 #### v1.79.3 (11/08/2026) — Hygiène du stockage : FIFO par plan, purge à la suppression, nettoyeur d'orphelines
 

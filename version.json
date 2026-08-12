@@ -1,8 +1,7 @@
 {
-  "version": "v1.79.3",
-  "released": "2026-08-11",
+  "version": "v1.79.4",
+  "released": "2026-08-12",
   "notes": [
-    "🗑️ Supprimer un plan efface maintenant aussi sa session, son géoréférencement, ses photos et ses backups — ton carnet et tes récits sont toujours conservés.",
-    "🧹 L'inspecteur de stockage (⚙️ Configuration → État mémoire) repère les données de plans disparus de ta liste et propose de les nettoyer — rien ne part sans ton accord."
+    "🌍 Choisis ta langue (français, anglais, espagnol) dès le premier écran — et le tutoriel de bienvenue parle désormais les trois langues."
   ]
 }
