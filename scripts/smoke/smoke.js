@@ -109,8 +109,8 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
       const encore = await page.locator("#kta-alert-modal").isVisible().catch(function () { return false; });
       if (encore) pb("boot", "la modale Alertes ne se ferme pas"); else ok("modale Alertes fermée (annonce au boot)");
     }
-    const planListe = await page.getByText("Test Legacy", { exact: false }).first().isVisible().catch(function () { return false; });
-    if (planListe) ok("liste des plans peuplée (Test Legacy)"); else pb("boot", "plan de test absent de la liste");
+    const planListe = await page.getByText("Relevé fictif de test", { exact: false }).first().isVisible().catch(function () { return false; });
+    if (planListe) ok("liste des plans peuplée (Relevé fictif de test)"); else pb("boot", "plan de test absent de la liste");
 
     // ─────────────────── 2. ⚙️ CONFIGURATION (HOME) ──────────────────
     console.log("— 2. ⚙️ Configuration HOME —");
@@ -146,8 +146,8 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
     else ok("tous les overlays fermés");
 
     // ───────────────────── 4. CHARGER LE PLAN DE TEST ─────────────────────
-    console.log("— 4. Chargement du plan Test Legacy —");
-    await page.getByText("Test Legacy", { exact: false }).first().click();
+    console.log("— 4. Chargement du plan Relevé fictif de test —");
+    await page.getByText("Relevé fictif de test", { exact: false }).first().click();
     await page.waitForFunction(function () { return !!window.PLAN_CONFIG && !!document.getElementById("map"); }, null, { timeout: 15000 })
       .then(function () { ok("plan chargé (PLAN_CONFIG posé, #map présent)"); })
       .catch(function () { pb("plan", "le plan ne s'est pas chargé en 15 s"); });
