@@ -1,6 +1,5 @@
 {
   "plans": [
-    { "id": "test1", "path": "data/test1", "name": "Test Legacy", "version": "V1" },
-    { "id": "test2", "path": "data/test2", "name": "Test MultiLVL", "version": "V1", "multiLevel": true }
+    { "id": "test", "path": "data/test", "name": "Relevé fictif de test", "version": "V1", "multiLevel": true }
   ]
 }
