@@ -15,10 +15,20 @@ unique : **aucun guard n'exécute l'app dans un navigateur**. La porte comble ce
 
 | # | Marche | Qui | Dérogeable ? |
 |---|---|---|---|
-| 1 | **Garde-fous automatiques** — la suite pre-commit complète verte (`.githooks/pre-commit`, 9 scripts) | auto | ❌ jamais |
+| 1 | **Garde-fous automatiques** — la suite pre-commit complète verte (`.githooks/pre-commit`, 13 scripts) **+ le guard de release** (`.githooks/commit-msg` : 3 sources de version cohérentes, docs à jour — cf. encadré sous le tableau) | auto | ❌ noyau · ⚠️ doc |
 | 2 | **Smoke test standard** — les 12 points ci-dessous, sur **dev.myktamap.fr**, cache vidé | KARMA (~10 min) | ⚠️ par item, sauf 🔒 |
 | 3 | **Checkup ciblé** — tableau destructif du/des modules **touchés par la release** (façon SIG, Légende) | KARMA + Claude | ⚠️ par item |
 | 4 | **Trempage** — la release vit sur dev pendant l'usage réel de KARMA (24-48 h) | KARMA | ⚠️ (hotfix urgent = cas typique) |
+
+> **Marche 1 — le guard de release (`commit-msg`, depuis le 16/08/2026)** : dès qu'un commit bumpe `version.json`,
+> il est refusé si `sw.js > CACHE_NAME` ou `js/copyright.js > build` ne suivent pas (🔒 **noyau, jamais
+> dérogeable** — sans eux la mise à jour n'atteint jamais les clients), ou si `README.md` (bloc « Version
+> courante » + entrée du journal), `NETWORK_AUDIT.md`/`.html` (en-tête + historique) et `AI_CONTEXT.md`
+> n'ont pas suivi (📄 dérogeable).
+> **Déroger = une ligne dans le message de commit**, qui reste donc dans l'historique Git :
+> `Docs-deroge: <motif · risque accepté · rattrapage>`. C'est la même règle que ci-dessous — jamais en
+> silence — appliquée au niveau du commit. ⚠️ Il lit le **repo**, pas le serveur : il ne remplace pas
+> l'item 13 du smoke.
 
 ---
 

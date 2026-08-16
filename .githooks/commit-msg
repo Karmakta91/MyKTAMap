@@ -1,0 +1,28 @@
+#!/bin/sh
+# ============================================================
+# 🚦 Commit-msg hook MyKTAMap community
+# ============================================================
+# Le pre-commit ne voit PAS le message de commit (il tourne avant
+# que git l'écrive). Ce hook-ci voit le message ET l'index : c'est
+# le seul endroit d'où une dérogation peut être exigée dans le
+# message, donc archivée dans l'historique Git.
+#
+# Pour activer (comme le pre-commit) :
+#   git config core.hooksPath .githooks
+#
+# Pour bypass en urgence :
+#   git commit --no-verify   (⚠️ désarme AUSSI l'anti-fuite pro)
+# ============================================================
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "⚠️  [commit-msg] Node.js introuvable — check release/docs skippé."
+  exit 0
+fi
+
+# 🚦 16/08/2026 — Un bump de version.json exige que les 3 sources de version
+# concordent (noyau, jamais dérogeable) et que README / Audit réseau /
+# AI_CONTEXT suivent (dérogeable via une ligne `Docs-deroge:`). Sans ce
+# garde-fou, la règle des 4 axes de CLAUDE.md n'était vérifiée par RIEN :
+# AI_CONTEXT.md a raté la v1.73.0 entière. Un commit sans bump sort en
+# silence. BLOQUANT.
+node scripts/check-release-docs.js "$1" || exit $?

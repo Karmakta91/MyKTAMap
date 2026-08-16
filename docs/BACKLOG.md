@@ -263,12 +263,6 @@ La liste « règles CSS mortes » de l'audit du 09/08 matin (consignée dans le 
 | D7 | **Duplication ~2 fonctions** pickers géoréf ↔ picker départ tracker | ⚠️ doc seule — [`tracking.md`](architecture/tracking.md) | Seuil explicite : mutualiser **si une 3ᵉ cible apparaît**. Pas atteint → ne rien faire |
 | D8 | **`secoursPlan.groupes[].statut`** — ⚠️ signalé mort par la doc, **il est exploité** | ✅ vérifié (doc corrigée) | Aucune action. Gardé ici comme rappel que la doc mentait |
 
-## ⚫ Dette de process (se recrée toute seule)
-
-**La règle des 4 axes de `CLAUDE.md` n'est vérifiée par rien.** Le hook `pre-commit` contrôle les fuites pro, pas la fraîcheur des docs. Constaté : `AI_CONTEXT.md` n'avait **jamais** reçu les nouveautés v1.73.0 (point C géoref, mode kiosque) — pendant une version entière, l'Aide IA a répondu « ça n'existe pas » sur deux features livrées.
-
-**Piste** : le hook compare la version des 3 sources et **refuse un commit `release(...)`** si `AI_CONTEXT.md` / `NETWORK_AUDIT.md` n'ont pas bougé. ~1 h, et la dette cesse de se recréer.
-
 ## 🚫 Enterré volontairement — ne pas repayer
 
 | Sujet | Statut |

@@ -213,7 +213,7 @@ lib/                            ← Librairies locales (aucun CDN)
 js/                             ← 105 modules IIFE — voir section suivante
 docs/                           ← Docs user (README_USER, AI_CONTEXT, NETWORK_AUDIT) + architecture/
 scripts/                        ← Outillage dev (check-no-pro-leak, find-hardcoded-fr…)
-.githooks/                      ← Hook pre-commit anti-fuite pro
+.githooks/                      ← Hooks pre-commit (anti-fuite pro + 12 garde-fous) et commit-msg (guard de release)
 docker/                         ← Self-host (voir docs/architecture/docker-selfhost.md)
 ```
 
@@ -464,6 +464,8 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 3. Sync docs 4 axes : 📱 in-app (`README_USER` fr/en, `interfaceDocs.js`, `AI_CONTEXT.md`) · 🔒 audit (`NETWORK_AUDIT.md` + `.html`) · 📖 ce README · 🤖 archi IA (`CLAUDE.md` + `docs/architecture/<sujet>.md`).
 4. **Ce README à chaque bump** : remplacer le bloc **📦 Version courante** en tête + ajouter l'entrée détaillée **en tête du [journal](#-journal-des-versions)**.
 5. Déploiement : **FTP manuel par KARMA** (prod). Détails : `docs/architecture/infra-versioning.md`.
+
+> 🛡️ **Les points 1, 3 et 4 sont vérifiés au commit** (`.githooks/commit-msg`, depuis le 16/08/2026) : un bump de `version.json` est refusé si les 3 sources divergent (🔒 non dérogeable) ou si README / Audit réseau / `AI_CONTEXT.md` n'ont pas suivi (📄 dérogeable par une ligne `Docs-deroge: <motif · risque · rattrapage>` dans le message). Détails : `infra-versioning.md` §84.
 
 ---
 
