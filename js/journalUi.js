@@ -171,7 +171,14 @@
               // croire à un tracker en panne. On montre les photos à la place.
               (_estTerrain(rec)
                 ? '<div class="kta-jrn-metric"><span class="kta-jrn-metric-val">' + _esc(_dist(rec.distM)) + '</span>' +
-                    '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.distance")) + '</span></div>'
+                    // 📏 16/08/2026 — la part estimée (tronçons entre « 📍 Je suis
+                    // ici », podomètre muet) est dite, jamais fondue dans le total :
+                    // l'user doit savoir ce que vaut le chiffre qu'il lit.
+                    '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.distance")) +
+                      ((rec.distEstimeeM || 0) > 0
+                        ? ' ' + _esc(_t("jrn.section.dontEstime", { dist: _dist(rec.distEstimeeM) }))
+                        : '') +
+                    '</span></div>'
                 : '<div class="kta-jrn-metric"><span class="kta-jrn-metric-val">' +
                     ((rec.ajouts && rec.ajouts.photos) || 0) + '</span>' +
                     '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.photos")) + '</span></div>') +

@@ -1672,7 +1672,33 @@
                   (terrain
                     ? window.I18n.t("jrn.section.encours", {
                         duree: duree, dist: window.formatDistance(cur.distM || 0, 0), n: nbAj })
-                    : window.I18n.t("jrn.section.encoursBureau", { duree: duree, n: nbAj })) +
+                    : window.I18n.t("jrn.section.encoursBureau", { duree: duree, n: nbAj }));
+        // 📏 16/08/2026 — la part ESTIMÉE est annoncée, jamais noyée dans le
+        // total : elle vient des « 📍 Je suis ici » (chemin réseau ou vol
+        // d'oiseau), pas du podomètre. L'user doit savoir ce que vaut le chiffre.
+        if (terrain && (cur.distEstimeeM || 0) > 0) {
+          html += ' <span style="color:#8cb4ff;">' +
+                    window.I18n.t("jrn.section.dontEstime", {
+                      dist: window.formatDistance(cur.distEstimeeM, 0) }) +
+                  '</span>';
+        }
+        html += '</div>';
+        // 🚶/🖥️ Correction du classement DEPUIS L'ÉCRAN PLAN (demande KARMA
+        // 16/08) : jusqu'ici il fallait ouvrir le Carnet au HOME pour corriger.
+        // Le choix pose `typeManuel` → plus aucun recalcul auto derrière.
+        html += '<div style="display:flex; gap:6px; align-items:center; margin-bottom:8px;">' +
+                  '<span style="font-size:11px; color:#8892a4;">' +
+                    window.I18n.t("jrn.section.natureLabel") + '</span>' +
+                  '<button type="button" class="kta-btn kta-btn-small ' +
+                    (terrain ? 'kta-btn-primary' : 'kta-btn-ghost') + '" data-kta-jrn-type="terrain"' +
+                    ' id="kta-refonte-session-carnet-type-terrain">🚶</button>' +
+                  '<button type="button" class="kta-btn kta-btn-small ' +
+                    (terrain ? 'kta-btn-ghost' : 'kta-btn-primary') + '" data-kta-jrn-type="bureau"' +
+                    ' id="kta-refonte-session-carnet-type-bureau">🖥️</button>' +
+                  (cur.typeManuel
+                    ? '<span style="font-size:11px; color:#8892a4;">' +
+                        window.I18n.t("jrn.section.natureFigee") + '</span>'
+                    : '') +
                 '</div>';
       } else {
         html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
@@ -1787,6 +1813,39 @@
         }
       });
     }
+
+    // 🚶/🖥️ 16/08/2026 — correction du classement sans quitter l'écran plan.
+    // On repeint les deux boutons À LA MAIN plutôt que de re-rendre la section :
+    // un re-render détruirait les éléments sous le doigt de l'user (c'est le
+    // mécanisme exact du bug de color picker de la Légende, v1.77.0).
+    (function _wireTypeCarnet() {
+      const btns = [
+        document.getElementById("kta-refonte-session-carnet-type-terrain"),
+        document.getElementById("kta-refonte-session-carnet-type-bureau")
+      ].filter(Boolean);
+      if (btns.length !== 2) return;
+      btns.forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const type = btn.getAttribute("data-kta-jrn-type");
+          const cur  = (window.Journal && typeof window.Journal.getCurrent === "function")
+                         ? window.Journal.getCurrent() : null;
+          if (!cur || typeof window.Journal.setType !== "function") return;
+          window.Journal.setType(cur.id, type).then(function(ok) {
+            if (!ok) return;
+            btns.forEach(function(b) {
+              const actif = (b.getAttribute("data-kta-jrn-type") === type);
+              b.classList.toggle("kta-btn-primary", actif);
+              b.classList.toggle("kta-btn-ghost", !actif);
+            });
+            if (window.OOMGuard && window.OOMGuard.showToast) {
+              window.OOMGuard.showToast(
+                window.I18n.t(type === "terrain" ? "jrn.toast.natureTerrain" : "jrn.toast.natureBureau"),
+                "info");
+            }
+          });
+        });
+      });
+    })();
 
     // 🆕 v1.20.0 — CTA Stats globales du plan (modale dédiée)
     const _btnStatsGlob = document.getElementById("kta-refonte-session-open-stats-glob");

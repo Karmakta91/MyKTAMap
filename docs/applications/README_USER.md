@@ -585,17 +585,27 @@ La sauvegarde automatique ci-dessus garde **l'état courant** d'un plan. Le **ca
 
 Le carnet fait la différence tout seul, et c'est important : préparer un plan chez soi n'est pas une sortie.
 
-- Si vous vous êtes **déplacé** pendant la session (le tracker a enregistré de la distance ou des pas) → **sortie terrain**.
+- Si vous vous êtes **déplacé** pendant la session → **sortie terrain**. Un seul **« 📍 Je suis ici »** suffit : vous affirmez être physiquement passé par un point, c'est une sortie, même tracker éteint.
 - Si vous n'avez fait qu'**annoter sans bouger** → **travail sur plan**, rangé dans une section repliée à part, en bas du carnet.
 - Les **totaux** en haut du carnet (nombre de sorties, temps, distance) ne comptent **que le terrain** — le temps passé à dessiner à la maison n'a rien à y faire.
-- L'app s'est trompée ? Par exemple une sortie faite tracker éteint : ouvrez la fiche et cliquez **🚶 Classer en sortie terrain** (ou l'inverse). Votre correction est définitive, elle ne sera jamais recalculée.
+- L'app s'est trompée ? Ouvrez la fiche et cliquez **🚶 Classer en sortie terrain** (ou l'inverse). Depuis un plan, les mêmes boutons **🚶 / 🖥️** sont dans la modale **Session**, section 📔, à côté de « Clôturer ma sortie ». Votre correction est définitive, elle ne sera jamais recalculée.
+
+**📏 La distance quand vous n'utilisez pas le podomètre**
+
+Vous naviguez souvent sans le tracker : vous marchez, et de temps en temps vous faites **« 📍 Je suis ici »** sur un point. L'app **relie ces repères entre eux** pour estimer ce que vous avez parcouru — et elle suit les **galeries** pour le faire, pas la ligne droite (dans un réseau labyrinthique, la ligne droite raconterait n'importe quoi).
+
+Concrètement : vous partez de **A**, vous passez par **C**, puis vous rejoignez **B** → l'app compte A→C, puis C→B.
+
+- Cette distance est toujours **annoncée comme estimée** (« 820 m dont 600 estimés ») : elle ne se fait jamais passer pour une mesure.
+- Si le podomètre **a** mesuré entre deux repères, c'est lui qui compte — jamais les deux à la fois.
+- Un **clic sur la carte** pour corriger votre position ne compte pas comme un trajet, et une **traversée de portail** vers un autre plan non plus.
 
 **Quand une session est-elle archivée ?**
-- **Automatiquement** quand vous quittez le plan (changement de plan ou retour à l'accueil), selon la nature :
-  - une **sortie terrain** est gardée à partir de **50 m parcourus**,
-  - un **travail sur plan** est gardé à partir de **10 minutes** de travail réel **et** au moins une annotation.
+- **Automatiquement** quand vous quittez le plan (changement de plan ou retour à l'accueil), si **l'une** de ces conditions est remplie :
+  - **50 m parcourus** (mesurés au podomètre ou estimés entre vos « 📍 Je suis ici »),
+  - **ou** 10 minutes de travail réel **et** au moins une annotation.
   - En dessous, rien n'est conservé — ouvrir un plan 20 secondes pour vérifier un détail ne pollue pas le carnet.
-- **À la main** avec **🏁 Clôturer ma sortie** : elle est rangée sans condition, et une nouvelle démarre aussitôt. Pratique pour découper une longue journée en étapes.
+- **À la main** avec **🏁 Clôturer ma sortie** : elle est rangée sans condition, et une nouvelle démarre aussitôt. Pratique pour découper une longue journée en étapes — et c'est le geste sûr si vous tenez à garder une session courte.
 
 **📖 L'onglet Récits — vos notes et PDF de plan, enfin réunis**
 

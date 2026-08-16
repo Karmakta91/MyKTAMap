@@ -1,7 +1,8 @@
 {
-  "version": "v1.79.4",
-  "released": "2026-08-12",
+  "version": "v1.79.5",
+  "released": "2026-08-16",
   "notes": [
-    "🌍 Choisis ta langue (français, anglais, espagnol) dès le premier écran — et le tutoriel de bienvenue parle désormais les trois langues."
+    "📏 Tu marches sans le podomètre ? Pose des « 📍 Je suis ici » en chemin : l’app relie tes repères en suivant les galeries pour estimer ta distance, et te dit toujours quelle part est estimée.",
+    "📔 Ton carnet ne jette plus les sorties de navigation : un seul « Je suis ici » suffit à compter comme sortie, et tu peux corriger 🚶 / 🖥️ sans quitter le plan."
   ]
 }

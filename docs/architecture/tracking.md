@@ -711,3 +711,35 @@ Aucune nouvelle surface réseau ni permission. Tout local (état runtime + `app_
 **À NE PAS faire** :
 - ❌ Différer le recalage portail « par prudence » (l'ancienne version +2.8 s laissait l'user croire que rien ne s'était passé — c'est un bug signalé KARMA).
 - ❌ Poser `recalerTracker` sur un `goTo` de consultation (recherche, gestionnaire) — le tracker doit refléter le corps, pas la vue.
+
+---
+
+## 📏 Distance estimée entre ancres (2026-08-16)
+
+**Le manque** (sortie réelle de KARMA perdue par le Carnet) : `getTrackingDistanceM()` ne mesure QUE le podomètre — tout segment touchant un `recalage` est sauté, et c'est **sain** (un recalage peut être une téléportation ou une correction). Conséquence : une sortie menée au « 📍 Je suis ici » de point en point, sans PDR, valait **0 m**, et le Carnet la jetait sous ses seuils.
+
+**La règle — on comble UNIQUEMENT le silence du podomètre** :
+
+| Situation | Traitement |
+|---|---|
+| ancre A → ancre C, **aucun pas PDR** entre les deux | A→C est **estimée** |
+| ancre A → … pas PDR … → ancre C | **rien** — le podomètre a mesuré, jamais de double comptage |
+
+Le test est structurel, pas heuristique : on regarde si l'entrée qui **précède immédiatement** l'ancre est elle-même une ancre (`recalage`/`start`). Si oui, aucun pas n'a été enregistré entre les deux.
+
+**La mesure (décision KARMA, « hybride »)** : longueur du **chemin réel sur le réseau** via `Pathfinder.computeRoute([A, C]).totalDistance` (unités plan → `/ APP_CONFIG.scale`). À vol d'oiseau, 40 m dans un labyrinthe peuvent valoir 300 m réels — une estimation euclidienne serait systématiquement et silencieusement optimiste. **Repli vol d'oiseau** si un bout n'accroche pas le réseau (Dijkstra sans chemin).
+
+**Jamais cumulé** :
+- `src: "click"` — le clic carte libre corrige le plus souvent une position fausse, il ne raconte pas un trajet ;
+- `tp: 1` — arrivée de portail. `interPlanLinks` passe désormais `recalerTrackerSurPoint(x, y, level, { teleport: true })`. **La source reste `"point"`** pour ne rien changer aux consommateurs du hook (la validation d'étape d'itinéraire sur arrivée de portail continue de fonctionner).
+
+**Où vit la valeur** : sur l'ancre elle-même (`estM` + `estSrc: "reseau"|"vol"`). Elle voyage donc avec la timeline persistée, survit au rechargement du plan, et la décimation ne peut pas la perdre — `_decimateTimeline` conserve **toutes** les ancres, seuls les PDR sont sacrifiés.
+
+**Pièges traités** :
+- Le hook de recalage est **synchrone**, le Dijkstra ne l'est pas → le vol d'oiseau est posé **immédiatement**, le réseau l'affine après. Quitter le plan pendant le calcul ne perd jamais le tronçon, il reste seulement moins précis.
+- Un résultat tardif ne s'écrit que si l'ancre est **toujours** dans la timeline (`indexOf !== -1`) — sinon on peuple un objet orphelin après un reset.
+- `EST_RATIO_MAX = 30` : un chemin réseau > 30× le vol d'oiseau trahit un artefact de graphe (détour par une galerie mal reliée), pas un labyrinthe → vol d'oiseau conservé. Sous-estimer vaut mieux qu'inventer 2 km.
+
+**API** : `getTrackingDistanceEstimeeM()` · `getTrackingDistanceTotaleM()` (= mesurée + estimée) · `getTrackingValidations()` (nombre de « 📍 Je suis ici », hors clics et portails — signal de terrain pour le Carnet).
+
+⚠️ **`getTrackingDistanceM()` est volontairement INCHANGÉE** : mesuré et estimé ne se valent pas. Les consommateurs affichent le **total** en nommant la part estimée (modale Tracker, 📊 Stats globales, fiche du Carnet) ; `trackerReplay` reste sur la mesurée (il rejoue le tracé PDR, pas un trajet reconstruit).

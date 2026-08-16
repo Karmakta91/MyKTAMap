@@ -588,17 +588,27 @@ The auto-save above keeps the **current state** of a map. The **logbook** keeps 
 
 The logbook tells them apart on its own, and it matters: preparing a map at home is not a trip.
 
-- If you **moved** during the session (the tracker recorded distance or steps) → **field trip**.
+- If you **moved** during the session → **field trip**. A single **"📍 I am here"** is enough: you are stating you physically walked to a point, so it counts as a trip even with the tracker off.
 - If you only **annotated without moving** → **desk work**, filed in a collapsed section of its own at the bottom of the logbook.
 - The **totals** at the top of the logbook (number of trips, time, distance) count **field trips only** — time spent drawing at home has no business there.
-- Got it wrong? A trip made with the tracker off, for instance: open the sheet and click **🚶 Mark as field trip** (or the other way round). Your correction is final, it is never recomputed.
+- Got it wrong? Open the sheet and click **🚶 Mark as field trip** (or the other way round). From a map, the same **🚶 / 🖥️** buttons sit in the **Session** modal, 📔 section, next to "Close my trip". Your correction is final, it is never recomputed.
+
+**📏 Distance when you don't use the pedometer**
+
+You often navigate without the tracker: you walk, and now and then you tap **"📍 I am here"** on a point. The app **links those markers together** to estimate how far you travelled — and it follows the **galleries** to do so, not the straight line (in a maze, a straight line would tell you nonsense).
+
+In practice: you start at **A**, pass through **C**, then reach **B** → the app counts A→C, then C→B.
+
+- This distance is always **flagged as estimated** ("820 m, 600 m of it estimated"): it never passes itself off as a measurement.
+- If the pedometer **did** measure between two markers, the pedometer wins — never both at once.
+- A **map click** to correct your position does not count as travel, and neither does a **portal crossing** to another map.
 
 **When is a session archived?**
-- **Automatically** when you leave the map (map switch or back to home), depending on its nature:
-  - a **field trip** is kept from **50 m travelled**,
-  - **desk work** is kept from **10 minutes** of actual work **and** at least one annotation.
+- **Automatically** when you leave the map (map switch or back to home), if **either** condition is met:
+  - **50 m travelled** (measured by the pedometer or estimated between your "📍 I am here" markers),
+  - **or** 10 minutes of actual work **and** at least one annotation.
   - Below that, nothing is kept — opening a map for 20 seconds to check a detail does not clutter the logbook.
-- **Manually** with **🏁 Close my trip**: it is filed unconditionally, and a new one starts right away. Handy to split a long day into stages.
+- **Manually** with **🏁 Close my trip**: it is filed unconditionally, and a new one starts right away. Handy to split a long day into stages — and it is the safe move whenever you want to keep a short session.
 
 **📖 The Stories tab — your plan notes and PDFs, gathered at last**
 

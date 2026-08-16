@@ -1617,12 +1617,23 @@ function _aideHtmlFr() {
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>🚶 Sortie terrain ou 🖥️ travail sur plan ?</strong> Le carnet fait la différence tout seul :
-            si le tracker a enregistré du déplacement, c'est une <strong>sortie</strong> ; si tu n'as fait
-            qu'annoter sans bouger, c'est du <strong>travail sur plan</strong>, rangé dans une section repliée
-            à part. Les <strong>totaux ne comptent que le terrain</strong>. Seuils d'archivage auto :
-            <strong>50 m</strong> parcourus pour une sortie · <strong>10 min de travail + 1 annotation</strong>
-            pour une séance sur plan (en dessous, rien n'est gardé). L'app s'est trompée — sortie faite tracker
-            éteint ? La fiche a un bouton pour <strong>corriger le classement</strong>, définitivement.
+            si tu t'es déplacé, c'est une <strong>sortie</strong> — et un seul
+            <strong>« 📍 Je suis ici »</strong> suffit, même tracker éteint. Si tu n'as fait qu'annoter sans
+            bouger, c'est du <strong>travail sur plan</strong>, rangé dans une section repliée à part. Les
+            <strong>totaux ne comptent que le terrain</strong>. La session est gardée si
+            <strong>50 m</strong> ont été parcourus <strong>OU</strong> si tu as travaillé
+            <strong>10 min avec au moins 1 annotation</strong> (en dessous, rien n'est gardé). Classement à
+            corriger : boutons <strong>🚶 / 🖥️</strong> sur la fiche du carnet, ou directement depuis un plan
+            dans la modale <strong>Session</strong> → section 📔. La correction est définitive.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>📏 Distance sans le podomètre</strong> — si tu marches sans tracker et que tu poses des
+            <strong>« 📍 Je suis ici »</strong> en chemin, l'app relie ces repères pour estimer ta distance,
+            <strong>en suivant les galeries</strong> et non la ligne droite. Tu pars de A, tu passes par C,
+            tu rejoins B → A→C puis C→B sont comptés. Le chiffre est toujours annoncé comme
+            <strong>estimé</strong> (« dont 600 m estimés ») : il ne se fait jamais passer pour une mesure. Si
+            le podomètre a mesuré entre deux repères, c'est lui qui compte. Un clic carte pour te corriger et
+            une traversée de portail ne comptent pas comme un trajet.
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>📖 Onglet Récits</strong> : la note libre et le PDF du <strong>Mode Histoire</strong> étaient
@@ -2457,13 +2468,23 @@ function _aideHtmlEn() {
             <strong>🏁 Close my trip</strong> to file it right away — a new one starts immediately.
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>🚶 Field trip or 🖥️ desk work?</strong> The logbook tells them apart on its own: if the
-            tracker recorded movement it is a <strong>trip</strong>; if you only annotated without moving it is
-            <strong>desk work</strong>, filed in a collapsed section of its own. <strong>Totals count field
-            trips only</strong>. Auto-archiving thresholds: <strong>50 m</strong> travelled for a trip ·
-            <strong>10 min of work + 1 annotation</strong> for a desk session (below that, nothing is kept).
-            Got it wrong — a trip made with the tracker off? The sheet has a button to
-            <strong>fix the classification</strong>, for good.
+            <strong>🚶 Field trip or 🖥️ desk work?</strong> The logbook tells them apart on its own: if you
+            moved it is a <strong>trip</strong> — and a single <strong>"📍 I am here"</strong> is enough, even
+            with the tracker off. If you only annotated without moving it is <strong>desk work</strong>, filed
+            in a collapsed section of its own. <strong>Totals count field trips only</strong>. A session is kept
+            if <strong>50 m</strong> were travelled <strong>OR</strong> if you worked <strong>10 min with at
+            least 1 annotation</strong> (below that, nothing is kept). To fix the classification: the
+            <strong>🚶 / 🖥️</strong> buttons on the logbook sheet, or straight from a map in the
+            <strong>Session</strong> modal → 📔 section. The fix is final.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>📏 Distance without the pedometer</strong> — if you walk without the tracker and drop
+            <strong>"📍 I am here"</strong> markers along the way, the app links them to estimate your distance,
+            <strong>following the galleries</strong> rather than the straight line. You start at A, pass through
+            C, reach B → A→C then C→B are counted. The figure is always flagged as <strong>estimated</strong>
+            ("600 m of it estimated"): it never passes itself off as a measurement. If the pedometer measured
+            between two markers, the pedometer wins. A map click to correct yourself and a portal crossing do
+            not count as travel.
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>📖 Stories tab</strong>: the free note and the PDF of <strong>Story mode</strong> were locked

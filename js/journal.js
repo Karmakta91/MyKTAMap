@@ -54,7 +54,22 @@
 // 🚶 TERRAIN vs 🖥️ BUREAU (v1.69.0, retour KARMA 29/07) : une session sans AUCUN
 // déplacement tracker est du « travail sur plan », pas une sortie. Classement
 // auto (`type`), corrigeable à la main (`setType` → `typeManuel: true`, plus
-// jamais recalculé), seuils d'archivage distincts, totaux = terrain SEULEMENT.
+// jamais recalculé), totaux = terrain SEULEMENT.
+//
+// 🔧 RÉVISION DU 16/08/2026 (sortie réelle de KARMA jetée par le carnet) — une
+// sortie de NAVIGATION PURE (itinéraire + « 📍 Je suis ici » jusqu'à la sortie,
+// sans annoter ni marcher au podomètre) ne pouvait STRUCTURELLEMENT pas entrer
+// au carnet. Trois causes cumulées, les trois corrigées :
+//   1. les validations d'étapes sont des recalages → 0 m mesuré (la distance
+//      estimée de tracking.js comble désormais les trous sans PDR) ;
+//   2. l'itinéraire est EFFACÉ à l'arrivée → son ajout disparaissait du delta
+//      (les compteurs d'ajouts sont des différences de longueurs de tableaux :
+//      ce qui est créé puis supprimé pendant la sortie reste invisible — limite
+//      connue, non corrigée ici) ;
+//   3. la rétention n'examinait QUE la branche du type classé — un pas PDR
+//      parasite suffisait à exiger 50 m et à jeter 3 h de travail.
+// Les seuils sont maintenant un OU, et le classement a un seuil de bascule
+// (`MIN_TERRAIN_DIST_M`) + un signal fort (une validation = terrain).
 //
 // API : window.Journal = {
 //   onPlanLoaded(planId, planName), onPlanUnload(), onPhotoAdded(photoId, planId, pointId),
@@ -96,6 +111,12 @@
   const MIN_DIST_M            = 50;               // terrain : 50 m parcourus
   const MIN_BUREAU_ACTIVE_MS  = 10 * 60 * 1000;   // bureau : 10 min actives…
   const MIN_BUREAU_AJOUTS     = 1;                // …ET au moins un ajout
+
+  // Seuil de BASCULE terrain (≠ seuils de rétention ci-dessus). Avant le
+  // 16/08/2026 il n'existait pas : UN pas PDR parasite suffisait à classer
+  // une soirée de dessin en « sortie », et comme les totaux ne comptent que
+  // le terrain, ça polluait les stats. 20 m = on a vraiment marché.
+  const MIN_TERRAIN_DIST_M = 20;
 
   // Delta de temps ignoré (veille machine / onglet suspendu) — cf homeProfile.
   const MAX_TICK_MS = 5 * 60 * 1000;
@@ -258,10 +279,35 @@
     };
   }
 
+  // Distance EXPLOITABLE : podomètre + tronçons estimés entre les
+  // « 📍 Je suis ici » (tracking.js, 16/08/2026). Avant, le carnet ne lisait
+  // que le podomètre — une sortie de navigation pure valait 0 m et se faisait
+  // jeter. Repli sur la mesure seule si le tracker est d'une version antérieure.
   function _trackerDistM() {
     try {
+      if (typeof window.getTrackingDistanceTotaleM === "function") {
+        return Number(window.getTrackingDistanceTotaleM()) || 0;
+      }
       return (typeof window.getTrackingDistanceM === "function")
         ? (Number(window.getTrackingDistanceM()) || 0) : 0;
+    } catch(e) { return 0; }
+  }
+
+  // Part estimée du total ci-dessus — stockée à part pour que la fiche puisse
+  // dire « 820 m dont 600 estimés » : mesuré et estimé ne se valent pas.
+  function _trackerDistEstimeeM() {
+    try {
+      return (typeof window.getTrackingDistanceEstimeeM === "function")
+        ? (Number(window.getTrackingDistanceEstimeeM()) || 0) : 0;
+    } catch(e) { return 0; }
+  }
+
+  // Nombre de « 📍 Je suis ici » validés depuis le début de la sortie.
+  function _validationsDepuis(baseline) {
+    try {
+      if (typeof window.getTrackingValidations !== "function") return 0;
+      const n = Number(window.getTrackingValidations()) || 0;
+      return Math.max(0, n - (Number(baseline) || 0));
     } catch(e) { return 0; }
   }
 
@@ -317,10 +363,18 @@
   // 🚶 / 🖥️ — classement AUTO d'après le seul signal fiable : le déplacement.
   // Ni la durée ni le nombre d'ajouts ne discriminent (on peut passer 3 h à
   // dessiner assis, comme parcourir 2 km sans rien annoter).
+  //
+  // 16/08/2026 — deux corrections :
+  //   • un « 📍 Je suis ici » validé bascule en terrain À LUI SEUL : l'user
+  //     affirme être physiquement passé par un point précis, c'est le geste
+  //     terrain le moins ambigu de l'app (et il ne produit AUCUN pas PDR).
+  //   • le déplacement mesuré doit franchir MIN_TERRAIN_DIST_M. Avant, un
+  //     unique pas parasite (téléphone posé sur une table qui vibre) classait
+  //     une soirée de dessin en « sortie » et faussait les totaux.
   function _classer(rec) {
     if (!rec) return TYPE_BUREAU;
-    const bouge = (Number(rec.distM) > 0) || (Number(rec.steps) > 0);
-    return bouge ? TYPE_TERRAIN : TYPE_BUREAU;
+    if (Number(rec.validations) > 0) return TYPE_TERRAIN;
+    return (Number(rec.distM) >= MIN_TERRAIN_DIST_M) ? TYPE_TERRAIN : TYPE_BUREAU;
   }
 
   function _nbAjouts(rec) {
@@ -347,6 +401,11 @@
     // sans ça, le delta partirait négatif pour le reste de la sortie.
     if (d < _baseline.distM) _baseline.distM = d;
     _cur.distM = Math.max(0, d - _baseline.distM);
+    // Part estimée (tronçons entre « 📍 Je suis ici ») — même ré-ancrage.
+    const de = _trackerDistEstimeeM();
+    if (de < _baseline.distEstM) _baseline.distEstM = de;
+    _cur.distEstimeeM = Math.max(0, de - _baseline.distEstM);
+    _cur.validations  = _validationsDepuis(_baseline.validations);
     _cur.track = _trackDepuis(_cur.startedAtMs);
     // steps = VRAIS pas PDR appliqués (même définition que statsGlobales), pas
     // la longueur du tracé archivé : celui-ci est décimé, il ne compte rien.
@@ -392,7 +451,13 @@
 
     const startMs = _now();
     _baseline = _counts();
-    _baseline.distM = _trackerDistM();
+    _baseline.distM       = _trackerDistM();
+    _baseline.distEstM    = _trackerDistEstimeeM();
+    // La timeline du plan est RESTAURÉE au chargement : les validations d'une
+    // sortie précédente y sont déjà. Sans cette baseline, elles seraient
+    // recomptées et classeraient d'office la nouvelle session en terrain.
+    _baseline.validations = (typeof window.getTrackingValidations === "function")
+      ? (Number(window.getTrackingValidations()) || 0) : 0;
     _photoIds = [];
     _cur = {
       id:          _genId(),
@@ -405,7 +470,9 @@
       endedAt:     null,
       activeMs:    0,
       wallMs:      0,
-      distM:       0,
+      distM:       0,          // podomètre + tronçons estimés
+      distEstimeeM: 0,         // part estimée du total ci-dessus
+      validations: 0,          // « 📍 Je suis ici » validés
       steps:       0,
       levels:      [],
       ajouts:      { points: 0, roads: 0, zones: 0, structures: 0, photos: 0 },
@@ -435,17 +502,24 @@
 
   // Vaut-il le coup de garder cette session ? (archivage AUTO uniquement — la
   // clôture manuelle garde sans condition).
-  //   • terrain : ≥ 50 m parcourus. Le critère « ≥ 1 ajout » du lot 1 est
-  //     VOLONTAIREMENT supprimé — c'est lui qui faisait entrer chaque soirée de
+  //   • critère terrain : ≥ 50 m parcourus. Le « ≥ 1 ajout » du lot 1 est
+  //     VOLONTAIREMENT absent — c'est lui qui faisait entrer chaque soirée de
   //     dessin dans le carnet.
-  //   • bureau : ≥ 10 min actives ET ≥ 1 ajout (une vraie séance de travail,
-  //     pas un plan ouvert puis refermé).
+  //   • critère bureau : ≥ 10 min actives ET ≥ 1 ajout (une vraie séance de
+  //     travail, pas un plan ouvert puis refermé).
+  //
+  // ⚠️ 16/08/2026 — les deux critères sont désormais un OU, plus un AIGUILLAGE
+  // sur le type. L'ancienne version ne testait QUE la branche correspondant au
+  // classement : une session basculée « terrain » par un seul pas PDR n'était
+  // plus jugée que sur ses 50 m, et 3 h de travail avec 20 ajouts partaient à
+  // la poubelle sans appel. Le type redevient ce qu'il aurait toujours dû
+  // être — un libellé d'affichage, pas un juge.
   function _pertinente(rec) {
     if (!rec) return false;
-    if ((rec.type || _classer(rec)) === TYPE_TERRAIN) {
-      return Number(rec.distM) >= MIN_DIST_M;
-    }
-    return (Number(rec.activeMs) >= MIN_BUREAU_ACTIVE_MS) && (_nbAjouts(rec) >= MIN_BUREAU_AJOUTS);
+    const terrainOk = Number(rec.distM) >= MIN_DIST_M;
+    const bureauOk  = (Number(rec.activeMs) >= MIN_BUREAU_ACTIVE_MS) &&
+                      (_nbAjouts(rec) >= MIN_BUREAU_AJOUTS);
+    return terrainOk || bureauOk;
   }
 
   // reason : "auto" (teardown / fermeture) | "manual" (bouton Clôturer)
@@ -523,12 +597,23 @@
   // seulement perdu mais ACTIVEMENT écrasé par le classement auto.
   function setType(id, type) {
     const t = (type === TYPE_TERRAIN) ? TYPE_TERRAIN : TYPE_BUREAU;
+    const estCourante = !!(_cur && String(_cur.id) === String(id));
     return get(id).then(function(rec) {
-      if (!rec) return false;
+      // ⚠️ 16/08/2026 — la sortie EN COURS n'est écrite en IDB qu'au premier
+      // flush (30 s). Avant ce délai, `get` rendait null et le reclassement
+      // partait en SILENCE : invisible tant que le seul point d'entrée était
+      // la fiche d'une sortie archivée, mais le bouton 🚶/🖥️ de la modale
+      // Session vise justement la sortie en cours, souvent toute fraîche.
+      if (!rec) {
+        if (!estCourante) return false;
+        _cur.type       = t;
+        _cur.typeManuel = true;
+        return flush().then(function() { return true; });
+      }
       rec.type       = t;
       rec.typeManuel = true;
       rec.updatedAt  = new Date().toISOString();
-      if (_cur && String(_cur.id) === String(id)) {
+      if (estCourante) {
         _cur.type       = t;
         _cur.typeManuel = true;
       }

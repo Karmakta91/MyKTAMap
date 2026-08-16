@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.79.4</strong> (12 août 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.79.5</strong> (16 août 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.79.5 (distance des « 📍 Je suis ici », carnet, garde-fou de release)</h3>
+  <p><strong>100 % local</strong> — la distance estimée est calculée <strong>dans ton navigateur</strong> à partir des tracés du plan déjà chargé (même moteur d’itinéraire que le bouton Itinéraire) ; aucune position, aucun repère et aucune distance ne quitte l’appareil. Le reste du lot (carnet, garde-fou de release) est du stockage local et de l’outillage interne. Aucune nouvelle requête, aucun nouveau domaine, whitelist <code>connect-src</code> inchangée.</p>
   <h3>v1.79.4 (langue dès le premier écran, tutoriel multilingue)</h3>
   <p><strong>100 % local</strong> — le sélecteur charge les dictionnaires de langue <strong>déjà précachés</strong> par l'application (<code>lang/*.json</code>, même origine), le tutoriel lit ces mêmes dictionnaires. Aucune nouvelle requête, aucun nouveau domaine, whitelist <code>connect-src</code> inchangée.</p>
   <h3>v1.79.3 (hygiène du stockage : backups par plan, purge à la suppression, nettoyeur d'orphelines)</h3>

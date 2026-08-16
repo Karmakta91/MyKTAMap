@@ -1283,12 +1283,27 @@ function _ouvrirTrackerModal(groupId) {
   status.appendChild(etatWrap);
   // Distance + pas affichés seulement si le tracking a produit des données.
   let distM = 0, pas = 0;
-  try { if (typeof window.getTrackingDistanceM === "function") distM = window.getTrackingDistanceM() || 0; } catch(e) {}
+  // 📏 16/08/2026 — total exploitable (podomètre + tronçons estimés entre les
+  // « 📍 Je suis ici »). Sans ça, une sortie menée au recalage affichait 0 m
+  // ici alors que l'user venait de traverser la carrière.
+  let distEstM = 0;
+  try {
+    distM = (typeof window.getTrackingDistanceTotaleM === "function")
+      ? (window.getTrackingDistanceTotaleM() || 0)
+      : ((typeof window.getTrackingDistanceM === "function") ? (window.getTrackingDistanceM() || 0) : 0);
+    if (typeof window.getTrackingDistanceEstimeeM === "function") {
+      distEstM = window.getTrackingDistanceEstimeeM() || 0;
+    }
+  } catch(e) {}
   try { if (typeof window.getStepCount === "function") pas = window.getStepCount() || 0; } catch(e) {}
   if (distM > 0 || pas > 0) {
     const distEl = document.createElement("span");
     distEl.className = "kta-tracker-modal-status-item";
-    distEl.textContent = "📏 " + (window.formatDistance ? window.formatDistance(distM, 0) : Math.round(distM) + " m");
+    distEl.textContent = "📏 " + (window.formatDistance ? window.formatDistance(distM, 0) : Math.round(distM) + " m") +
+      (distEstM > 0
+        ? " " + window.I18n.t("jrn.section.dontEstime", {
+            dist: (window.formatDistance ? window.formatDistance(distEstM, 0) : Math.round(distEstM) + " m") })
+        : "");
     status.appendChild(distEl);
     const pasEl = document.createElement("span");
     pasEl.className = "kta-tracker-modal-status-item";
