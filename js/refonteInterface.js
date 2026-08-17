@@ -1705,9 +1705,20 @@
                   window.I18n.t("jrn.section.aucune") +
                 '</div>';
       }
+      // 🧭 Affiner : recalcule distance ET tracé en suivant les galeries entre
+      // les « 📍 Je suis ici ». Grisé quand il n'y a rien à affiner — masquer
+      // le bouton ferait chercher pourquoi il apparaît chez d'autres sorties.
+      const nbAAffiner = (typeof window.getTrackingTronconsAAffiner === "function")
+        ? window.getTrackingTronconsAAffiner() : 0;
       html += '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
                 (cur ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-carnet-cloture">' +
                          '🏁 ' + window.I18n.t("jrn.section.cloturer") + '</button>' : '') +
+                (cur ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
+                         'id="kta-refonte-session-carnet-affiner"' + (nbAAffiner > 0 ? '' : ' disabled') +
+                         ' title="' + window.I18n.t(nbAAffiner > 0 ? "jrn.section.affinerTitre"
+                                                                  : "jrn.section.affinerRien") + '">' +
+                         '🧭 ' + window.I18n.t("jrn.section.affiner") +
+                         (nbAAffiner > 0 ? ' (' + nbAAffiner + ')' : '') + '</button>' : '') +
                 '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-carnet-ouvrir">' +
                   '📔 ' + window.I18n.t("jrn.section.ouvrir") + '</button>' +
               '</div>';
@@ -1811,6 +1822,50 @@
           _close();
           window.JournalUi.ouvrir();
         }
+      });
+    }
+
+    // 🧭 17/08/2026 — « Affiner le tracé » : rejoue les tronçons estimés à vol
+    // d'oiseau en suivant les galeries. On tente D'ABORD sans forcer : si le
+    // plan dépasse le budget de sommets, l'appel revient immédiatement avec
+    // `skipped: "trop-gros"` (aucun calcul gaspillé) et on demande alors à
+    // l'user s'il accepte le gel — c'est sur les gros plans qu'il en a le plus
+    // besoin, lui interdire le calcul rendrait le bouton inutile là où il sert.
+    const _btnAffiner = document.getElementById("kta-refonte-session-carnet-affiner");
+    if (_btnAffiner) {
+      _btnAffiner.addEventListener("click", function() {
+        if (_btnAffiner.disabled) return;
+        if (!window.Journal || typeof window.Journal.affinerEnCours !== "function") return;
+        _btnAffiner.disabled = true;
+        const _fini = function(bilan) {
+          const t = window.I18n.t;
+          if (bilan && bilan.runs > 0) {
+            const av = window.formatDistance(bilan.avantM, 0);
+            const ap = window.formatDistance(bilan.apresM, 0);
+            if (window.OOMGuard && window.OOMGuard.showToast) {
+              window.OOMGuard.showToast(t("jrn.toast.affine", { avant: av, apres: ap }), "info");
+            }
+          } else if (window.OOMGuard && window.OOMGuard.showToast) {
+            window.OOMGuard.showToast(t("jrn.toast.affineRien"), "warn");
+          }
+        };
+        window.Journal.affinerEnCours().then(function(bilan) {
+          if (bilan && bilan.skipped === "trop-gros") {
+            const demander = (typeof window.ktaConfirm === "function")
+              ? window.ktaConfirm(window.I18n.t("jrn.affiner.confirmGros", { n: bilan.nbPts || "?" }),
+                                  { titre: window.I18n.t("jrn.affiner.confirmTitre") })
+              : Promise.resolve(window.confirm(window.I18n.t("jrn.affiner.confirmGros",
+                                                             { n: bilan.nbPts || "?" })));
+            return demander.then(function(ok) {
+              if (!ok) return null;
+              return window.Journal.affinerEnCours({ force: true });
+            });
+          }
+          return bilan;
+        }).then(function(bilan) {
+          _fini(bilan);
+          _btnAffiner.disabled = false;
+        }).catch(function() { _btnAffiner.disabled = false; });
       });
     }
 

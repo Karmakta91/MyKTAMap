@@ -1204,7 +1204,7 @@ function _estimerSegmentDepuisAncre(entry) {
 // une approximation assumée.
 window.affinerEstimationsTracker = function(roads, opts) {
   opts = opts || {};
-  const bilan = { runs: 0, avantM: 0, apresM: 0, skipped: null };
+  const bilan = { runs: 0, avantM: 0, apresM: 0, skipped: null, trace: null };
   if (!window.Pathfinder || typeof window.Pathfinder.computeRouteOnRoads !== "function") {
     bilan.skipped = "pathfinder-absent";
     return Promise.resolve(bilan);
@@ -1217,11 +1217,16 @@ window.affinerEstimationsTracker = function(roads, opts) {
   for (let r = 0; r < roads.length; r++) {
     if (roads[r] && Array.isArray(roads[r].points)) nbPts += roads[r].points.length;
   }
+  // `force` : demande EXPLICITE de l'utilisateur (bouton « Affiner le tracé »).
+  // Le budget protège l'archivage automatique, qui doit rester invisible ; il
+  // n'a pas à interdire un calcul que l'user réclame en connaissance de cause —
+  // et c'est justement sur les gros plans qu'il en a le plus besoin.
   const plafond = Number(opts.maxPts) || MAX_PTS_AFFINAGE;
-  if (nbPts > plafond) {
+  if (nbPts > plafond && !opts.force) {
     console.log("[Tracking] Affinage réseau ignoré : " + nbPts + " sommets (> " + plafond +
                 ") — vol d'oiseau conservé.");
     bilan.skipped = "trop-gros";
+    bilan.nbPts   = nbPts;
     return Promise.resolve(bilan);
   }
 
@@ -1270,16 +1275,70 @@ window.affinerEstimationsTracker = function(roads, opts) {
       _trackingTimeline[i].estM   = _trackingTimeline[i].estM * facteur;
       _trackingTimeline[i].estSrc = "reseau";
     }
+    // La GÉOMÉTRIE du chemin était calculée puis jetée : on la garde pour
+    // reconstruire le tracé de la sortie (`res.path` = [{x, y}, …]).
+    if (Array.isArray(res.path) && res.path.length >= 2) run.path = res.path;
     bilan.runs++;
     bilan.avantM += sumVolM;
     bilan.apresM += totalM;
   });
 
   if (bilan.runs > 0) {
+    bilan.trace = _construireTraceAffinee(runs, opts.depuisMs);
     console.log("[Tracking] Affinage réseau : " + bilan.runs + " tronçon(s) — " +
                 Math.round(bilan.avantM) + " m → " + Math.round(bilan.apresM) + " m");
   }
   return Promise.resolve(bilan);
+};
+
+// Tracé RECONSTRUIT : la timeline, dans laquelle chaque tronçon comblé est
+// remplacé par le chemin réseau qui vient d'être calculé.
+//
+// ⚠️ C'EST UNE HYPOTHÈSE, PAS UNE MESURE. Entre deux « 📍 Je suis ici », le
+// Dijkstra prend le chemin le plus court : un détour, une diverticule explorée
+// puis abandonnée, un demi-tour n'y figureront jamais. D'où la règle posée avec
+// KARMA le 17/08 : ce tracé vit dans le CARNET (fiche de sortie) et nulle part
+// ailleurs — ni exports GPX/KMZ, ni heatmap, ni replay, qui doivent continuer à
+// ne montrer que du mesuré. Le tracé brut (`track`) n'est jamais écrasé.
+function _construireTraceAffinee(runs, depuisMs) {
+  const parDebut = {};
+  runs.forEach(function(r) { if (r.path) parDebut[r.debut - 1] = r; });
+  const seuil = Number(depuisMs) || 0;
+  const out = [];
+  function pousser(x, y, level) {
+    const last = out[out.length - 1];
+    if (last && Math.abs(last.x - x) < 0.01 && Math.abs(last.y - y) < 0.01) return;
+    const p = { x: x, y: y };
+    if (typeof level === "number") p.level = level;
+    out.push(p);
+  }
+  for (let i = 0; i < _trackingTimeline.length; i++) {
+    const e = _trackingTimeline[i];
+    if (!e) continue;
+    const run = parDebut[i];
+    if (run) {
+      // Un run qui commence avant la fenêtre est inclus entièrement : le
+      // tronçon a bien été parcouru pendant la sortie, le couper au milieu
+      // dessinerait un saut.
+      run.path.forEach(function(p) { pousser(p.x, p.y); });
+      i = run.fin;
+      continue;
+    }
+    if (seuil && Number(e.t) < seuil) continue;
+    pousser(e.x, e.y, e.level);
+  }
+  return out.length >= 2 ? out : null;
+}
+
+// Combien de tronçons attendent encore un affinage (source « vol d'oiseau ») ?
+// Sert à griser le bouton « Affiner le tracé » quand il n'y a rien à faire.
+window.getTrackingTronconsAAffiner = function() {
+  let n = 0;
+  for (let i = 0; i < _trackingTimeline.length; i++) {
+    const e = _trackingTimeline[i];
+    if (e && isFinite(e.estM) && e.estM > 0 && e.estSrc === "vol") n++;
+  }
+  return n;
 };
 
 // Somme des tronçons estimés (0 si le podomètre a tout couvert).

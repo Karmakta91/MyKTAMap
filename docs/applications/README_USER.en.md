@@ -601,6 +601,8 @@ In practice: you start at **A**, pass through **C**, then reach **B** → the ap
 
 - This distance is always **flagged as estimated** ("820 m, 600 m of it estimated"): it never passes itself off as a measurement.
 - ⏱️ **During the trip the figure is deliberately conservative**: the app counts in a straight line so that "📍 I am here" stays **instant** underground. The gallery-following calculation happens **once, when the trip is filed into the logbook** — which is why the distance **goes up** at that point. On a very large map the app may skip that final pass and keep the straight-line figure rather than freeze.
+- 🧭 **The "Refine track" button** (**Session** modal, 📔 section) runs that calculation **whenever you want**, without waiting for the end: it recomputes the distance **and redraws the route** along the galleries between your markers. The counter next to it shows how many legs are pending. On a very large map the app warns you it will freeze for a few seconds and lets you decide.
+- ⚠️ **That redrawn route is a reconstruction, not a survey.** The app assumes you went from one marker to the next by the shortest path: a detour, a gallery explored then abandoned, a U-turn will not show up. It is therefore displayed **in the trip sheet only**, clearly labelled — your **GPX/KMZ exports and the heatmap keep the actually recorded track**, never the reconstruction.
 - If the pedometer **did** measure between two markers, the pedometer wins — never both at once.
 - A **map click** to correct your position does not count as travel, and neither does a **portal crossing** to another map.
 

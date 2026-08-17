@@ -1636,6 +1636,16 @@ function _aideHtmlFr() {
             une traversée de portail ne comptent pas comme un trajet.
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🧭 Affiner le tracé</strong> — pendant la sortie, l'app compte à <strong>vol d'oiseau</strong>
+            pour que « Je suis ici » reste instantané sous terre ; le calcul qui suit les galeries se fait
+            <strong>une fois, à l'archivage</strong> (ta distance augmente donc à ce moment-là). Le bouton
+            <strong>🧭 Affiner le tracé</strong> de la modale <strong>Session</strong> le lance quand tu veux :
+            il recalcule la distance <strong>et redessine le trajet</strong> entre tes repères. ⚠️ Ce trajet
+            redessiné est une <strong>reconstitution</strong> : l'app suppose le chemin le plus court, donc un
+            détour ou un demi-tour n'y apparaît pas. Il ne s'affiche que dans la <strong>fiche de la sortie</strong> —
+            tes exports GPX/KMZ et la heatmap gardent le tracé réellement enregistré.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>📖 Onglet Récits</strong> : la note libre et le PDF du <strong>Mode Histoire</strong> étaient
             enfermés dans l'écran plan — il fallait charger la carrière pour relire ses propres notes. Ils sont
             désormais listés ici <strong>tous plans confondus</strong>, avec la note affichée en Markdown et
@@ -2485,6 +2495,16 @@ function _aideHtmlEn() {
             ("600 m of it estimated"): it never passes itself off as a measurement. If the pedometer measured
             between two markers, the pedometer wins. A map click to correct yourself and a portal crossing do
             not count as travel.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🧭 Refine track</strong> — during the trip the app counts in a <strong>straight line</strong>
+            so that "I am here" stays instant underground; the gallery-following pass runs <strong>once, when the
+            trip is filed</strong> (which is why your distance goes up then). The <strong>🧭 Refine track</strong>
+            button in the <strong>Session</strong> modal runs it whenever you like: it recomputes the distance
+            <strong>and redraws the route</strong> between your markers. ⚠️ That redrawn route is a
+            <strong>reconstruction</strong>: the app assumes the shortest path, so a detour or a U-turn will not
+            show up. It appears in the <strong>trip sheet only</strong> — your GPX/KMZ exports and the heatmap
+            keep the actually recorded track.
           </p>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>📖 Stories tab</strong>: the free note and the PDF of <strong>Story mode</strong> were locked

@@ -598,6 +598,8 @@ Concrètement : vous partez de **A**, vous passez par **C**, puis vous rejoignez
 
 - Cette distance est toujours **annoncée comme estimée** (« 820 m dont 600 estimés ») : elle ne se fait jamais passer pour une mesure.
 - ⏱️ **Pendant la sortie, le chiffre est volontairement prudent** : l'app compte à vol d'oiseau, pour que « 📍 Je suis ici » reste **instantané** sous terre. Le calcul qui suit les galeries se fait **une seule fois, quand la sortie est rangée dans le carnet** — c'est pourquoi la distance **augmente** à ce moment-là. Sur un très grand plan, l'app peut renoncer à ce calcul final : elle garde alors la distance à vol d'oiseau plutôt que de se figer.
+- 🧭 **Le bouton « Affiner le tracé »** (modale **Session**, section 📔) fait le calcul **quand vous voulez**, sans attendre la fin : il recalcule la distance **et redessine le trajet** en suivant les galeries entre vos repères. Le compteur à côté indique combien de tronçons attendent. Sur un plan très volumineux, l'app prévient que ça va la bloquer quelques secondes et vous laisse décider.
+- ⚠️ **Ce trajet redessiné est une reconstitution, pas un relevé.** L'app suppose que vous êtes allé d'un repère à l'autre par le chemin le plus court : un détour, une galerie explorée puis abandonnée, un demi-tour n'y apparaîtront pas. Il s'affiche donc **dans la fiche de la sortie uniquement**, avec la mention qui va bien — vos **exports GPX/KMZ et la heatmap gardent le tracé réellement enregistré**, jamais la reconstitution.
 - Si le podomètre **a** mesuré entre deux repères, c'est lui qui compte — jamais les deux à la fois.
 - Un **clic sur la carte** pour corriger votre position ne compte pas comme un trajet, et une **traversée de portail** vers un autre plan non plus.
 

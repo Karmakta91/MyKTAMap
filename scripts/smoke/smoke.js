@@ -237,6 +237,16 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
           else pb("session", "clic de classement sans bascule visible (setType échoué ? cible=" +
                              cibleOk + " autre_desactive=" + autreOk + ")");
         }
+        // 🧭 « Affiner le tracé » : présent, et GRISÉ ici — le scénario ne pose
+        // aucun « 📍 Je suis ici », donc il n'y a rien à affiner. Un bouton actif
+        // à ce stade signalerait un compteur de tronçons faux.
+        const aff = await page.locator("#kta-refonte-session-carnet-affiner").count();
+        if (aff > 0) {
+          const grise = await page.locator("#kta-refonte-session-carnet-affiner")
+            .evaluate(function (el) { return el.disabled === true; }).catch(function () { return false; });
+          if (grise) ok("bouton 🧭 Affiner présent et grisé (rien à affiner)");
+          else pb("session", "bouton Affiner actif alors qu'aucun « Je suis ici » n'a été posé");
+        } else pb("session", "bouton 🧭 Affiner absent de la section Carnet");
       } else {
         console.log("  ℹ️ aucune sortie en cours (carnet désactivé ?) — boutons de classement non exigés");
       }

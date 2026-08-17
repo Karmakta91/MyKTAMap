@@ -757,6 +757,21 @@ Le test est structurel, pas heuristique : on regarde si l'entrée qui **précèd
 
 **Où vit la valeur** : sur l'ancre elle-même (`estM` + `estSrc: "reseau"|"vol"`). Elle voyage donc avec la timeline persistée, survit au rechargement du plan, et la décimation ne peut pas la perdre — `_decimateTimeline` conserve **toutes** les ancres, seuls les PDR sont sacrifiés.
 
+### 🧭 Bouton « Affiner le tracé » + tracé reconstruit (17/08/2026)
+
+`computeRouteOnRoads` rend `{ path, totalDistance }` — la **géométrie était calculée puis jetée**. Elle sert désormais à reconstruire le tracé de la sortie : chaque tronçon comblé est remplacé par le chemin de galeries (`_construireTraceAffinee`), les points **PDR réellement enregistrés** étant conservés tels quels.
+
+🚨 **C'est une HYPOTHÈSE, pas une mesure.** Entre deux « 📍 Je suis ici », le Dijkstra prend le plus court : un détour, une diverticule explorée puis abandonnée, un demi-tour n'y figureront **jamais**. D'où la règle arrêtée avec KARMA (décision `4:b`) :
+
+| Consommateur | Tracé servi |
+|---|---|
+| Fiche du carnet | **reconstruit** (`trackAffine`), avec mention explicite sous le dessin |
+| Exports GPX / KMZ · heatmap · replay tracker | **brut uniquement** — jamais de donnée inventée présentée comme relevée |
+
+`track` (brut) n'est **jamais écrasé** : `trackAffine` vit à côté, décimé au même plafond `MAX_TRACK_PTS` (un chemin de galeries est bien plus dense qu'une timeline d'ancres, sans plafond une sortie pèserait plusieurs fois le budget annoncé de 2-8 Ko).
+
+**Le bouton** (`refonteInterface.js`, modale Session) : `Journal.affinerEnCours(opts)` affine **sans clôturer**. Grisé — et non masqué — quand `getTrackingTronconsAAffiner() === 0`. Sur un plan au-dessus du budget, le premier appel revient **immédiatement** avec `skipped: "trop-gros"` + `nbPts` (aucun calcul gaspillé) ; l'UI demande alors confirmation et rappelle avec `force: true`. Le budget protège l'archivage **automatique**, il n'a pas à interdire un calcul que l'user réclame en connaissance de cause — et c'est sur les gros plans qu'il en a le plus besoin.
+
 **Pièges traités** :
 - `EST_RATIO_MAX = 30` : un chemin réseau > 30× le vol d'oiseau trahit un artefact de graphe (détour par une galerie mal reliée), pas un labyrinthe → vol d'oiseau conservé. Sous-estimer vaut mieux qu'inventer 2 km.
 - **Idempotence** : seuls les tronçons `estSrc === "vol"` sont affinés — une seconde passe ne recalcule rien.

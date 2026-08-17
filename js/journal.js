@@ -76,6 +76,7 @@
 //   cloturer(),                  // clôture manuelle → retourne la sortie archivée (Promise)
 //   getCurrent(),                // snapshot RAM de la sortie en cours (ou null)
 //   list(), get(id), remove(id), setNote(id, texte), setType(id, "terrain"|"bureau"),
+//   affinerEnCours(opts),        // recalcule distance + tracé sur le réseau (bouton)
 //   stats(),                     // totaux TERRAIN + compteurs bureau à part
 //   isEnabled(), setEnabled(bool), TYPE_TERRAIN, TYPE_BUREAU
 // };
@@ -341,6 +342,19 @@
     });
   }
 
+  // Décimation partagée avec `_trackDepuis` : premier et dernier points toujours
+  // conservés. Le tracé reconstruit suit un chemin de galeries, donc il peut être
+  // BEAUCOUP plus dense que la timeline d'origine — sans ce plafond, une sortie
+  // pèserait plusieurs fois le budget de 2-8 Ko annoncé.
+  function _decimer(pts) {
+    if (!Array.isArray(pts) || pts.length === 0) return null;
+    if (pts.length <= MAX_TRACK_PTS) return pts;
+    const stride = Math.ceil(pts.length / MAX_TRACK_PTS);
+    const out = pts.filter(function(p, i) { return i % stride === 0; });
+    if (out[out.length - 1] !== pts[pts.length - 1]) out.push(pts[pts.length - 1]);
+    return out;
+  }
+
   function _stepsDepuis(startMs) {
     return _timeline().filter(function(e) {
       const t = Number(e && e.t);
@@ -530,23 +544,45 @@
   // Les roads sont CAPTURÉES ici et passées explicitement : l'affinage tourne au
   // moment où on quitte le plan, lire l'état courant plus tard calculerait sur le
   // plan suivant.
-  function _affinerDistances(rec, baseDist, baseEst) {
-    if (typeof window.affinerEstimationsTracker !== "function") return Promise.resolve();
-    let roads = [];
+  function _roadsDuPlan() {
     try {
       const s = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
       const e = (typeof window.getAllEmbeddedRoads === "function")
         ? (window.getAllEmbeddedRoads() || [])
         : ((typeof window.getEmbeddedRoads === "function") ? (window.getEmbeddedRoads() || []) : []);
-      roads = s.concat(e);
-    } catch(e) { roads = []; }
-    if (!roads.length) return Promise.resolve();
-    return window.affinerEstimationsTracker(roads).then(function(bilan) {
-      if (!bilan || !bilan.runs) return;
+      return s.concat(e);
+    } catch(e) { return []; }
+  }
+
+  function _affinerDistances(rec, baseDist, baseEst, opts) {
+    if (typeof window.affinerEstimationsTracker !== "function") return Promise.resolve(null);
+    const roads = _roadsDuPlan();
+    if (!roads.length) return Promise.resolve(null);
+    const o = Object.assign({ depuisMs: rec.startedAtMs }, opts || {});
+    return window.affinerEstimationsTracker(roads, o).then(function(bilan) {
+      if (!bilan || !bilan.runs) return bilan || null;
       rec.distM        = Math.max(0, _trackerDistM()        - (Number(baseDist) || 0));
       rec.distEstimeeM = Math.max(0, _trackerDistEstimeeM() - (Number(baseEst)  || 0));
+      // Tracé RECONSTRUIT stocké À CÔTÉ du brut, jamais à sa place (`track`
+      // reste ce qui a réellement été enregistré). Décimé comme lui.
+      if (bilan.trace) rec.trackAffine = _decimer(bilan.trace);
       if (!rec.typeManuel) rec.type = _classer(rec);
-    }).catch(function() {});
+      return bilan;
+    }).catch(function() { return null; });
+  }
+
+  // Affine la sortie EN COURS sans la clôturer (bouton « 🧭 Affiner le tracé »
+  // de la modale Session). `opts.force` outrepasse le budget de sommets — c'est
+  // un geste explicite de l'user, cf. tracking.js.
+  function affinerEnCours(opts) {
+    if (!_cur || !_baseline) return Promise.resolve(null);
+    const rec = _snapshot();
+    if (!rec) return Promise.resolve(null);
+    return _affinerDistances(rec, _baseline.distM, _baseline.distEstM, opts)
+      .then(function(bilan) {
+        if (!bilan || !bilan.runs) return bilan;
+        return flush().then(function() { return bilan; });
+      });
   }
 
   // reason : "auto" (teardown / fermeture) | "manual" (bouton Clôturer)
@@ -751,6 +787,7 @@
     remove:       remove,
     setNote:      setNote,
     setType:      setType,
+    affinerEnCours: affinerEnCours,
     stats:        stats,
     TYPE_TERRAIN: TYPE_TERRAIN,
     TYPE_BUREAU:  TYPE_BUREAU,
