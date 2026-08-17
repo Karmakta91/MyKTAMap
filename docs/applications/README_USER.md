@@ -597,6 +597,7 @@ Vous naviguez souvent sans le tracker : vous marchez, et de temps en temps vous 
 Concrètement : vous partez de **A**, vous passez par **C**, puis vous rejoignez **B** → l'app compte A→C, puis C→B.
 
 - Cette distance est toujours **annoncée comme estimée** (« 820 m dont 600 estimés ») : elle ne se fait jamais passer pour une mesure.
+- ⏱️ **Pendant la sortie, le chiffre est volontairement prudent** : l'app compte à vol d'oiseau, pour que « 📍 Je suis ici » reste **instantané** sous terre. Le calcul qui suit les galeries se fait **une seule fois, quand la sortie est rangée dans le carnet** — c'est pourquoi la distance **augmente** à ce moment-là. Sur un très grand plan, l'app peut renoncer à ce calcul final : elle garde alors la distance à vol d'oiseau plutôt que de se figer.
 - Si le podomètre **a** mesuré entre deux repères, c'est lui qui compte — jamais les deux à la fois.
 - Un **clic sur la carte** pour corriger votre position ne compte pas comme un trajet, et une **traversée de portail** vers un autre plan non plus.
 

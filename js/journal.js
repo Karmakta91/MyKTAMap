@@ -522,6 +522,33 @@
     return terrainOk || bureauOk;
   }
 
+  // 🐢 Repasse les tronçons estimés « à vol d'oiseau » en distance RÉELLE sur le
+  // réseau, puis recalcule les distances du record. Le calcul ne se fait PLUS au
+  // clic « 📍 Je suis ici » (il y coûtait une reconstruction de graphe par clic,
+  // doublée par la replanification d'itinéraire — retour terrain KARMA 17/08).
+  //
+  // Les roads sont CAPTURÉES ici et passées explicitement : l'affinage tourne au
+  // moment où on quitte le plan, lire l'état courant plus tard calculerait sur le
+  // plan suivant.
+  function _affinerDistances(rec, baseDist, baseEst) {
+    if (typeof window.affinerEstimationsTracker !== "function") return Promise.resolve();
+    let roads = [];
+    try {
+      const s = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
+      const e = (typeof window.getAllEmbeddedRoads === "function")
+        ? (window.getAllEmbeddedRoads() || [])
+        : ((typeof window.getEmbeddedRoads === "function") ? (window.getEmbeddedRoads() || []) : []);
+      roads = s.concat(e);
+    } catch(e) { roads = []; }
+    if (!roads.length) return Promise.resolve();
+    return window.affinerEstimationsTracker(roads).then(function(bilan) {
+      if (!bilan || !bilan.runs) return;
+      rec.distM        = Math.max(0, _trackerDistM()        - (Number(baseDist) || 0));
+      rec.distEstimeeM = Math.max(0, _trackerDistEstimeeM() - (Number(baseEst)  || 0));
+      if (!rec.typeManuel) rec.type = _classer(rec);
+    }).catch(function() {});
+  }
+
   // reason : "auto" (teardown / fermeture) | "manual" (bouton Clôturer)
   function _finaliser(reason) {
     if (!_cur) return Promise.resolve(null);
@@ -531,8 +558,19 @@
     rec.status  = "close";
     rec.endedAt = new Date().toISOString();
     rec.closedBy = (reason === "manual") ? "manual" : "auto";
+    const baseDist = _baseline ? _baseline.distM    : 0;
+    const baseEst  = _baseline ? _baseline.distEstM : 0;
     _cur = null; _baseline = null; _photoIds = [];
 
+    // ⚠️ L'affinage passe AVANT le test de pertinence : 30 m à vol d'oiseau
+    // peuvent valoir 200 m de galeries. Juger la sortie sur la ligne droite puis
+    // la jeter reproduirait EXACTEMENT le défaut que ce lot corrige.
+    return _affinerDistances(rec, baseDist, baseEst).then(function() {
+      return _finaliserSuite(rec, id, reason);
+    });
+  }
+
+  function _finaliserSuite(rec, id, reason) {
     if (reason !== "manual" && !_pertinente(rec)) {
       // Sortie trop maigre : on jette, y compris l'éventuel flush « en cours »
       // déjà écrit en IDB (sinon un fantôme « en cours » resterait au carnet).

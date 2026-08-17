@@ -1159,10 +1159,19 @@ function _scaleOuUn() {
   return (isFinite(s) && s > 0) ? s : 1;
 }
 
-// Estime la distance depuis l'ancre précédente et l'écrit SUR `entry`.
-// Le vol d'oiseau est posé immédiatement (le hook de recalage est synchrone,
-// le Dijkstra ne l'est pas) : quitter le plan pendant le calcul ne perd donc
-// jamais le tronçon, il reste seulement moins précis.
+// Budget de l'affinage réseau : `Pathfinder` reconstruit ENTIÈREMENT son graphe
+// à chaque appel (`_buildGraph` + enrichissement des croisements en O(N²), aucun
+// cache — pathfinder.js:773). Au-delà de ce volume de sommets, on garde le vol
+// d'oiseau plutôt que de figer l'app.
+const MAX_PTS_AFFINAGE = 20000;
+
+// ⚡ CHEMIN CHAUD — appelé au clic « 📍 Je suis ici ». AUCUN calcul de réseau
+// ici : la première version lançait un Dijkstra par clic, et comme la
+// replanification d'itinéraire en lance un second juste après, chaque « Je suis
+// ici » coûtait DEUX reconstructions de graphe (retour terrain KARMA 17/08 :
+// « c'est long, et ensuite le recalcul est tout aussi long »). Le vol d'oiseau
+// est posé tout de suite ; `affinerEstimationsTracker` repasse dessus plus tard,
+// hors du geste.
 function _estimerSegmentDepuisAncre(entry) {
   if (!entry || entry.tp) return;
   const i = _trackingTimeline.indexOf(entry);
@@ -1174,41 +1183,104 @@ function _estimerSegmentDepuisAncre(entry) {
 
   const volPx = Math.hypot(entry.x - prev.x, entry.y - prev.y);
   if (!(volPx > 0)) return;
-  const sc = _scaleOuUn();
-  entry.estM   = volPx / sc;
+  entry.estM   = volPx / _scaleOuUn();
   entry.estSrc = "vol";
-
-  if (!window.Pathfinder || typeof window.Pathfinder.computeRoute !== "function") return;
-  Promise.resolve()
-    .then(function() {
-      return window.Pathfinder.computeRoute([
-        { x: prev.x, y: prev.y },
-        { x: entry.x, y: entry.y }
-      ]);
-    })
-    .then(function(res) {
-      // L'entrée a pu quitter la timeline entre-temps (reset, changement de
-      // plan) : ne rien écrire dans un objet devenu orphelin.
-      if (!res || !isFinite(res.totalDistance) || res.totalDistance <= 0) return;
-      if (_trackingTimeline.indexOf(entry) === -1) return;
-      if (res.totalDistance > volPx * EST_RATIO_MAX) {
-        console.warn("[Tracking] Chemin réseau anormal (" + Math.round(res.totalDistance) +
-                     " px pour " + Math.round(volPx) + " px à vol d'oiseau) — vol d'oiseau conservé.");
-        return;
-      }
-      entry.estM   = res.totalDistance / sc;
-      entry.estSrc = "reseau";
-      if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
-        console.log("[Tracking] Tronçon estimé sur le réseau :", Math.round(entry.estM), "m");
-      }
-    })
-    .catch(function(e) {
-      // Aucun chemin (un bout hors réseau) : le vol d'oiseau déjà posé reste.
-      if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
-        console.log("[Tracking] Estimation réseau indisponible :", e && e.message);
-      }
-    });
 }
+
+// 🐢 CHEMIN FROID — repasse les tronçons « vol d'oiseau » en distance RÉELLE sur
+// le réseau. Appelé à l'archivage d'une sortie (journal.js), jamais au clic.
+//
+// `roads` est FOURNI par l'appelant (`computeRouteOnRoads`, v1.60.0) et non lu
+// depuis l'état courant : l'affinage tourne pendant/après un changement de plan,
+// et lire `getRoads()` à ce moment calculerait sur le plan SUIVANT.
+//
+// Un seul appel par « run » d'ancres consécutives : `computeRouteOnRoads` accepte
+// une chaîne de waypoints et ne construit son graphe QU'UNE fois pour toute la
+// chaîne. Une sortie de navigation pure = 1 run = 1 seule construction.
+//
+// ⚠️ La distance réseau du run est répartie sur ses tronçons **au prorata de
+// leur vol d'oiseau** : `computeRouteOnRoads` ne rend qu'un total. La SOMME est
+// donc exacte (c'est elle qui compte pour le carnet), le détail par ancre est
+// une approximation assumée.
+window.affinerEstimationsTracker = function(roads, opts) {
+  opts = opts || {};
+  const bilan = { runs: 0, avantM: 0, apresM: 0, skipped: null };
+  if (!window.Pathfinder || typeof window.Pathfinder.computeRouteOnRoads !== "function") {
+    bilan.skipped = "pathfinder-absent";
+    return Promise.resolve(bilan);
+  }
+  if (!Array.isArray(roads) || roads.length === 0) {
+    bilan.skipped = "aucune-road";
+    return Promise.resolve(bilan);
+  }
+  let nbPts = 0;
+  for (let r = 0; r < roads.length; r++) {
+    if (roads[r] && Array.isArray(roads[r].points)) nbPts += roads[r].points.length;
+  }
+  const plafond = Number(opts.maxPts) || MAX_PTS_AFFINAGE;
+  if (nbPts > plafond) {
+    console.log("[Tracking] Affinage réseau ignoré : " + nbPts + " sommets (> " + plafond +
+                ") — vol d'oiseau conservé.");
+    bilan.skipped = "trop-gros";
+    return Promise.resolve(bilan);
+  }
+
+  // Regroupe les ancres comblées consécutives (indices adjacents dans la timeline).
+  const runs = [];
+  let courant = null;
+  for (let i = 1; i < _trackingTimeline.length; i++) {
+    const e = _trackingTimeline[i];
+    const aCombler = !!(e && isFinite(e.estM) && e.estM > 0 && e.estSrc === "vol");
+    if (aCombler) {
+      if (courant && courant.fin === i - 1) courant.fin = i;
+      else { courant = { debut: i, fin: i }; runs.push(courant); }
+    } else courant = null;
+  }
+  if (runs.length === 0) return Promise.resolve(bilan);
+
+  const sc = _scaleOuUn();
+  runs.forEach(function(run) {
+    const ancres = [];
+    for (let i = run.debut - 1; i <= run.fin; i++) {
+      ancres.push({ x: _trackingTimeline[i].x, y: _trackingTimeline[i].y });
+    }
+    let sumVolM = 0;
+    for (let i = run.debut; i <= run.fin; i++) sumVolM += _trackingTimeline[i].estM;
+    if (!(sumVolM > 0)) return;
+
+    let res;
+    try {
+      res = window.Pathfinder.computeRouteOnRoads(ancres, roads, opts.routeOpts || {});
+    } catch (e) {
+      // Bouts hors réseau, aucun chemin : le vol d'oiseau reste, c'est voulu.
+      if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+        console.log("[Tracking] Affinage impossible sur un run :", e && e.message);
+      }
+      return;
+    }
+    if (!res || !isFinite(res.totalDistance) || res.totalDistance <= 0) return;
+    const totalM = res.totalDistance / sc;
+    if (totalM > sumVolM * EST_RATIO_MAX) {
+      console.warn("[Tracking] Chemin réseau anormal (" + Math.round(totalM) + " m pour " +
+                   Math.round(sumVolM) + " m à vol d'oiseau) — vol d'oiseau conservé.");
+      return;
+    }
+    const facteur = totalM / sumVolM;
+    for (let i = run.debut; i <= run.fin; i++) {
+      _trackingTimeline[i].estM   = _trackingTimeline[i].estM * facteur;
+      _trackingTimeline[i].estSrc = "reseau";
+    }
+    bilan.runs++;
+    bilan.avantM += sumVolM;
+    bilan.apresM += totalM;
+  });
+
+  if (bilan.runs > 0) {
+    console.log("[Tracking] Affinage réseau : " + bilan.runs + " tronçon(s) — " +
+                Math.round(bilan.avantM) + " m → " + Math.round(bilan.apresM) + " m");
+  }
+  return Promise.resolve(bilan);
+};
 
 // Somme des tronçons estimés (0 si le podomètre a tout couvert).
 window.getTrackingDistanceEstimeeM = function() {

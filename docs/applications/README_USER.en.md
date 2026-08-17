@@ -600,6 +600,7 @@ You often navigate without the tracker: you walk, and now and then you tap **"�
 In practice: you start at **A**, pass through **C**, then reach **B** → the app counts A→C, then C→B.
 
 - This distance is always **flagged as estimated** ("820 m, 600 m of it estimated"): it never passes itself off as a measurement.
+- ⏱️ **During the trip the figure is deliberately conservative**: the app counts in a straight line so that "📍 I am here" stays **instant** underground. The gallery-following calculation happens **once, when the trip is filed into the logbook** — which is why the distance **goes up** at that point. On a very large map the app may skip that final pass and keep the straight-line figure rather than freeze.
 - If the pedometer **did** measure between two markers, the pedometer wins — never both at once.
 - A **map click** to correct your position does not count as travel, and neither does a **portal crossing** to another map.
 
