@@ -44,6 +44,10 @@ const ASSETS_TO_CACHE = [
   // README.md (GitHub) + CLAUDE.md (agents IA). Le reste dans docs/.
   "./docs/applications/README_USER.md",
   "./docs/applications/README_USER.en.md",
+  // 🆕 Doc user espagnole (dette D2 du backlog). Précachée comme ses sœurs —
+  // sans ça, un hispanophone hors-ligne tomberait sur un fetch en échec et la
+  // modale Documentation replierait sur le FR sans rien expliquer.
+  "./docs/applications/README_USER.es.md",
   // 🆕 v1.36.1 : guide installation Docker pas-à-pas (FR + EN). Consultable
   // offline pour l'user qui veut self-host mais n'a jamais utilisé Docker.
   // Cf section "🐳 Self-host avec Docker" du README_USER qui linke ces docs.
@@ -394,6 +398,7 @@ const CRITICAL_APP_SHELL = [
   "./docs/applications/NETWORK_AUDIT.html",
   "./docs/applications/README_USER.md",
   "./docs/applications/README_USER.en.md",
+  "./docs/applications/README_USER.es.md",
   "./docs/applications/AI_CONTEXT.md"
 ];
 

@@ -72,7 +72,7 @@ const README_LANG_STORAGE_KEY = "myktamap_readme_lang";
 // fr = README_USER.md (sans suffixe, historique) ; les autres = README_USER.<code>.md.
 // Ajouter une langue (ru, es…) = déposer le fichier + ajouter son code ici
 // (+ l'ajouter à ASSETS_TO_CACHE du SW). 100% générique, aucun code figé.
-const DOC_AVAILABLE_LANGS = ["fr", "en"];
+const DOC_AVAILABLE_LANGS = ["fr", "en", "es"];
 
 // 🆕 v1.45.0 — Langue à PRÉSÉLECTIONNER pour la doc :
 //   1. choix manuel mémorisé (myktamap_readme_lang) s'il est encore dispo ;
