@@ -10,12 +10,19 @@
 // hispanophones (elle tombait sur l'anglais avant) — un recul, invisible de
 // bout en bout parce qu'aucun harnais n'ouvrait ces écrans en espagnol.
 //
-// Ce script rejoue le parcours d'un utilisateur espagnol et vérifie les
-// TROIS régimes, qui sont volontairement différents :
-//   📖 Documentation   → doit être en ESPAGNOL (fichier README_USER.es.md)
-//   ❓ Aide intégrée   → doit être en ANGLAIS (repli : pas de contenu ES)
-//   🇪🇸 drapeaux       → la Documentation en propose 3, l'Aide seulement 2
-//      (un drapeau sans contenu derrière est un mensonge d'interface)
+// Ce script rejoue le parcours d'un utilisateur espagnol et vérifie que les
+// DEUX contenus longs sont bien dans sa langue :
+//   📖 Documentation   → ESPAGNOL (fichier README_USER.es.md)
+//   ❓ Aide intégrée   → ESPAGNOL (clés `aide.sec.*` des dicos, lot 2)
+//   🇪🇸 drapeaux       → la Documentation en propose 3 (elle reste sur des
+//      fichiers, avec sa portée de langue propre) ; l'Aide n'en a PLUS AUCUN,
+//      elle suit la langue globale de l'app comme le tutoriel.
+//
+// ⚠️ CE FICHIER A DÉJÀ ENCODÉ UN CONTRAT PÉRIMÉ : avant le lot 2 il exigeait
+// une Aide en ANGLAIS (repli assumé, faute de contenu espagnol) et exactement
+// 2 drapeaux. Ces attentes-là sont devenues fausses le jour où l'Aide a été
+// traduite — un test qui n'évolue pas avec le produit finit par défendre
+// l'ancien comportement contre le nouveau.
 //
 // Usage : cd scripts/smoke && node checkup-langues.js
 // Non branché au pre-commit (lance un navigateur) — c'est un contrôle de
@@ -100,8 +107,8 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
       await page.waitForTimeout(400);
     }
 
-    // ───────── ❓ AIDE : doit retomber sur l'ANGLAIS ─────────
-    console.log("— ❓ Aide intégrée (repli attendu : anglais) —");
+    // ───────── ❓ AIDE : doit être en ESPAGNOL (lot 2) ─────────
+    console.log("— ❓ Aide intégrée (attendu : espagnol) —");
     const aideOk = await page.evaluate(function () {
       if (typeof window.afficherAide === "function") { window.afficherAide(); return true; }
       return false;
@@ -113,22 +120,29 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
         const t = document.querySelector("#kta-aide-modal .kta-readme-modal-titre");
         return t ? t.textContent.trim() : "";
       });
-      // FR = « ❓ Aide — Référence des boutons » · EN = « ❓ Help — Button reference »
-      if (/Help/i.test(titre)) ok("Aide servie en ANGLAIS (repli correct) — « " + titre + " »");
-      else if (/Aide/i.test(titre)) pb("Aide servie en FRANÇAIS — c'est LA régression du 31/08 : elle doit tomber sur l'anglais, pas sur le français (« " + titre + " »)");
+      // ES = « ❓ Ayuda — Referencia de los botones »
+      if (/Ayuda/i.test(titre)) ok("Aide servie en ESPAGNOL — « " + titre + " »");
+      else if (/Help/i.test(titre)) pb("Aide en ANGLAIS — c'était le repli d'AVANT le lot 2 ; le contenu espagnol existe désormais (« " + titre + " »)");
+      else if (/Aide/i.test(titre)) pb("Aide en FRANÇAIS — la résolution de langue ne prend pas 'es' (« " + titre + " »)");
       else pb("titre d'Aide non reconnu : « " + titre + " »");
 
+      // Plus AUCUN drapeau : l'Aide suit la langue globale (comme le tutoriel).
       const drapAide = await page.locator("#kta-aide-modal .kta-readme-lang-btn").count();
-      if (drapAide === 2) ok("Aide : 2 drapeaux seulement (pas de 🇪🇸 sans contenu derrière)");
-      else pb("Aide : " + drapAide + " drapeau(x) au lieu de 2 — un drapeau sans contenu est un mensonge d'UI");
+      if (drapAide === 0) ok("Aide : aucun drapeau (elle suit la langue globale)");
+      else pb("Aide : " + drapAide + " drapeau(x) — le toggle local a été retiré au lot 2, il piloterait une clé que l'Aide ne lit plus");
 
-      // Les 2 sections réparées au lot 0 doivent avoir CHACUNE leur ligne.
+      // Les 2 sections réparées au lot 0 doivent avoir CHACUNE leur ligne,
+      // et en espagnol.
       const lignes = await page.locator("#kta-aide-modal .kta-aide-row").allTextContents();
       const joint = lignes.join(" | ");
-      if (/Profile mode/i.test(joint)) ok("fiche « Profile mode » présente dans le hub (bug du conteneur oublié)");
-      else pb("« Profile mode » absente du hub — la séparation des 2 sections a régressé");
-      if (/Map library/i.test(joint)) ok("fiche « Map library » présente en anglais (section qui n'existait pas)");
-      else pb("« Map library » absente — la section anglaise manque");
+      if (/Modo perfil/i.test(joint)) ok("fiche « Modo perfil » présente et traduite (bug du conteneur oublié)");
+      else pb("« Modo perfil » absente du hub — séparation des 2 sections ou traduction manquante");
+      if (/Biblioteca de planos/i.test(joint)) ok("fiche « Biblioteca de planos » présente (section qui n'existait même pas en EN)");
+      else pb("« Biblioteca de planos » absente");
+      // Un titre resté français signalerait une clé non traduite passée au filet.
+      const residusFr = lignes.filter(function (t) { return /Réglages|Recherche unifiée|Mon carnet|Astuces/i.test(t); });
+      if (!residusFr.length) ok("aucun titre de section resté en français");
+      else pb("titre(s) non traduit(s) : " + residusFr.slice(0, 3).join(" / "));
       console.log("     (" + lignes.length + " lignes dans le hub)");
     }
   } catch (e) {
@@ -144,6 +158,6 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
     problemes.forEach(function (p) { console.log("   " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP LANGUES VERT — doc en espagnol, Aide en repli anglais, drapeaux honnêtes.");
+  console.log("🎉 CHECKUP LANGUES VERT — Documentation ET Aide en espagnol, aucun drapeau trompeur.");
   process.exit(0);
 })();

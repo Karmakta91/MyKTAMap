@@ -2,7 +2,7 @@
   "version": "v1.80.0",
   "released": "2026-09-01",
   "notes": [
-    "📚 La documentation utilisateur est maintenant disponible en espagnol : si tu utilises l’app en español, elle s’affiche dans ta langue (le bouton drapeau en haut de la fenêtre permet toujours de changer).",
-    "❓ Aide intégrée réparée : la fiche « Mode profil » était inaccessible, et la version anglaise ne parlait pas de la bibliothèque de plans."
+    "📚 La documentation utilisateur ET l’aide intégrée sont maintenant en espagnol : si tu utilises l’app en español, tout s’affiche dans ta langue.",
+    "❓ L’aide suit désormais la langue de l’app (son petit sélecteur de drapeaux disparaît) et deux fiches manquantes sont revenues : « Mode profil » et « Bibliothèque de plans »."
   ]
 }
