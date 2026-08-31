@@ -1,8 +1,8 @@
 {
-  "version": "v1.79.6",
-  "released": "2026-08-31",
+  "version": "v1.79.7",
+  "released": "2026-09-01",
   "notes": [
-    "🧭 Nouveau bouton « Affiner le tracé » (modale Session, section 📔) : il recalcule ta distance et redessine ton trajet en suivant les galeries entre tes repères, quand tu veux. Le trajet redessiné est une reconstitution — il s’affiche dans la fiche de ta sortie, jamais dans tes exports.",
-    "⚡ Poser un « 📍 Je suis ici » redevient instantané : plus aucun calcul lourd au moment du clic, et l’app ne te propose plus de recalculer l’itinéraire dans la foulée."
+    "📚 La documentation utilisateur est maintenant disponible en espagnol : si tu utilises l’app en español, elle s’affiche dans ta langue (le bouton drapeau en haut de la fenêtre permet toujours de changer).",
+    "❓ Aide intégrée réparée : la fiche « Mode profil » était inaccessible, et la version anglaise ne parlait pas de la bibliothèque de plans."
   ]
 }
