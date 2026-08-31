@@ -639,15 +639,29 @@ function afficherAide() {
 // ⚠️ Si tu AJOUTES / SUPPRIMES / RÉORDONNES une section dans _aideHtmlFr ET
 // _aideHtmlEn, mets À JOUR ces index. Toute section non listée ici retombe
 // automatiquement dans la catégorie « Autres » (filet de sécurité).
+// 🩸 RÉVISÉ le 01/09/2026 — trois défauts corrigés d'un coup, tous causés par
+// ce mécanisme d'index numériques maintenus à la main :
+//   1. la section FR « 📚 Bibliothèque de plans » n'avait pas son conteneur et
+//      était COLLÉE dans « 👤 Mode profil » (un seul `.kta-aide-section` pour
+//      deux titres) → le hub n'affichait qu'une ligne et « Mode profil » était
+//      inatteignable ;
+//   2. cette même section n'existait PAS en anglais → l'aide EN ne documentait
+//      pas une feature livrée en v1.78.0, et FR/EN n'avaient donc pas le même
+//      découpage alors que ces index sont COMMUNS aux deux langues ;
+//   3. le commentaire annonçait « Mon carnet = index 29 » : elle était en 30.
+//      L'index 29 pointait donc sur « Liaisons inter-plan », et « Mon carnet »
+//      tombait dans le filet « Autres » sans que personne ne le voie.
+// Les index ci-dessous ont été recalculés PAR SCRIPT depuis les titres réels,
+// puis chaque ligne a été confrontée FR ↔ EN (même sujet au même index).
+// 🛡️ `scripts/check-aide-sections.js` (pré-commit) verrouille tout ça : même
+// nombre de sections FR/EN, exactement 1 titre par section, couverture 32/32.
 const AIDE_CATEGORIES = [
-  { fr: "🚀 Prise en main",        en: "🚀 Getting started",     idx: [2, 26, 27] },
-  { fr: "🗺️ Outils carte",         en: "🗺️ Map tools",           idx: [20, 22, 23, 21, 19, 17, 14, 15, 1, 28] },
-  // 📔 v1.69.0 : la section « Mon carnet » est AJOUTÉE EN FIN de _aideHtmlFr/En
-  // (index 29) — ajout en queue volontaire pour ne renuméroter aucun index.
-  { fr: "💾 Données & session",     en: "💾 Data & session",      idx: [16, 5, 8, 9, 11, 13, 0, 24, 6, 29] },
+  { fr: "🚀 Prise en main",        en: "🚀 Getting started",     idx: [2, 27, 28] },
+  { fr: "🗺️ Outils carte",         en: "🗺️ Map tools",           idx: [21, 23, 24, 22, 20, 18, 15, 16, 1, 29, 30] },
+  { fr: "💾 Données & session",     en: "💾 Data & session",      idx: [17, 5, 8, 9, 10, 12, 14, 0, 25, 6, 31] },
   { fr: "🔍 Recherche",            en: "🔍 Search",              idx: [4] },
-  { fr: "🚨 Coordination secours", en: "🚨 Rescue coordination", idx: [18] },
-  { fr: "⚙️ Système & sécurité",   en: "⚙️ System & security",   idx: [3, 25, 10, 12, 7] }
+  { fr: "🚨 Coordination secours", en: "🚨 Rescue coordination", idx: [19] },
+  { fr: "⚙️ Système & sécurité",   en: "⚙️ System & security",   idx: [3, 26, 11, 13, 7] }
 ];
 
 // Une ligne cliquable du hub (titre + chevron).
@@ -1039,7 +1053,9 @@ function _aideHtmlFr() {
             <span class="kta-aide-icone">📚</span><span><strong>Import d'un plan homonyme</strong> (v1.79.1) — la popup « Ce plan existe déjà » se déclenche <strong>toujours</strong> : Mettre à jour / Garder les deux / annuler. Plus d'écrasement silencieux</span>
             <span class="kta-aide-icone">🗑️</span><span><strong>Retirer un plan</strong> (v1.78.0) — en <strong>fin de fenêtre ℹ️ Infos</strong> avec confirmation (le ✕ des lignes a disparu — fini le retrait accidentel). Le ZIP de ton disque n'est pas touché</span>
           </div>
+        </div>
 
+        <div class="kta-aide-section">
           <div class="kta-aide-section-titre">👤 Mode profil</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">👤</span><span><strong>Bandeau profil</strong> en en-tête du loader (au-dessus de « Mes plans ») — avatar + surnom + mini-stats globales (📍 points · 🛣️ tracés · ⬛ zones · 🏛️ structures + temps cumulé, conservés)</span>
@@ -1907,6 +1923,18 @@ function _aideHtmlEn() {
             and <strong>⚙️ Advanced</strong> (layers, tracking, icons, GPS georef, <strong>🏷️ map legend</strong>).
             Choice remembered locally. Edit mode always forces Advanced to preserve the source map's customizations.
           </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📚 Map library (home)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">⭐</span><span><strong>Pin</strong> (v1.78.0) — the star on each row moves the map to the top of the list; click again to unpin</span>
+            <span class="kta-aide-icone">🏷️</span><span><strong>Tags</strong> (v1.78.0) — free labels per map (ℹ️ Info → "Map tags", comma-separated). As soon as one map is tagged, <strong>filter chips</strong> appear above the list. Stored in the app (not in the ZIP), they travel with the profile export</span>
+            <span class="kta-aide-icone">🔎</span><span><strong>Filter by name</strong> (v1.78.0) — field above the list, filters live as you type</span>
+            <span class="kta-aide-icone">✏️</span><span><strong>Rename display</strong> (v1.79.1) — in ℹ️ Info: a local name to tell two identically-named maps apart (two "Catacombs" from different authors). The map's real name is left untouched; empty field = back to the original</span>
+            <span class="kta-aide-icone">📚</span><span><strong>Importing a same-name map</strong> (v1.79.1) — the "This map already exists" popup <strong>always</strong> fires: Update / Keep both / cancel. No more silent overwrite</span>
+            <span class="kta-aide-icone">🗑️</span><span><strong>Remove a map</strong> (v1.78.0) — at the <strong>bottom of the ℹ️ Info window</strong> with confirmation (the row ✕ is gone — no more accidental removal). The ZIP on your disk is untouched</span>
+          </div>
         </div>
 
         <div class="kta-aide-section">

@@ -88,3 +88,13 @@ node scripts/check-devmode-docs.js || exit $?
 # Region/Lod) : pavage exact, jointures, bords bornes a l'emprise, coherence
 # inter-niveaux, Lod/drawOrder, non-regression image unique. BLOQUANT.
 node scripts/check-kmz-superoverlay.js || exit $?
+
+# ❓ Structure de l'Aide integree. Elle vit en HTML DUR dans deux
+# fonctions jumelles (_aideHtmlFr / _aideHtmlEn) rangees par des INDEX
+# NUMERIQUES communs aux 2 langues. Trois bugs le 01/09 : un conteneur oublie
+# fusionnait 2 sections FR (« Mode profil » inatteignable), la meme section
+# n'existait pas en EN (index communs pointant sur des sujets differents), et
+# un index annonce a 29 pour une section en 30 laissait « Mon carnet » dans le
+# filet « Autres ». Verifie : meme nombre de sections FR/EN, 1 titre par
+# section, couverture complete, pas de doublon ni de hors-bornes. BLOQUANT.
+node scripts/check-aide-sections.js || exit $?

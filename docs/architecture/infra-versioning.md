@@ -578,7 +578,7 @@ documentées ici pour la doctrine.
 
 ---
 
-### 83. Suite de garde-fous pré-commit — état au 16/08/2026
+### 83. Suite de garde-fous pré-commit — état au 01/09/2026
 
 `node -c` (syntaxe) est le SEUL filet natif du projet — chaque garde-fou ci-dessous est né d'un bug réel qui l'avait traversé. Tous branchés dans `.githooks/pre-commit`, **BLOQUANTS** sauf mention :
 
@@ -597,6 +597,7 @@ documentées ici pour la doctrine.
 | `check-resolution-convert.js` | convertisseur de résolution/recalage de l'Éditeur de données | le champ coordonnée oublié à la migration |
 | `check-devmode-docs.js` | manifest de la bibliothèque du Mode Dev (chemins existants, aucun `.md` d'archi oublié, hash SHA-256) | doc renommée = modale cassée en silence |
 | `check-kmz-superoverlay.js` | géométrie du superoverlay KMZ (pavage, jointures, Lod/drawOrder) | overlay tronqué dans Google Earth |
+| `check-aide-sections.js` | structure de l'Aide intégrée : même nombre de sections FR/EN, **1 seul titre par section**, `AIDE_CATEGORIES` couvre tout (ni orpheline, ni doublon, ni hors-bornes) | **3 bugs d'un coup le 01/09** : conteneur oublié fusionnant 2 sections FR (« Mode profil » inatteignable) · section absente en EN alors que les index sont **communs aux 2 langues** · index annoncé à 29 pour une section en 30 (« Mon carnet » tombée dans le filet « Autres ») |
 
 ⚠️ **`check-i18n.js` n'est PAS branché au hook** — il se lance à la main (`node scripts/check-i18n.js`, `CHECK_I18N_DUMP=1` pour la liste d'audit). La table le donnait pour pré-commit depuis la v1.76.0 : c'était faux, corrigé le 16/08/2026. Le filet i18n au commit, c'est le smoke Playwright (il échoue sur toute clé manquante au runtime).
 
