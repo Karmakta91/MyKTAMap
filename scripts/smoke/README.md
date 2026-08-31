@@ -22,6 +22,14 @@ passe les gates (mdp communautaire, CGU, tutoriel, alerte, proposition PIN
 4. **Chargement de `Relevé fictif de test`** (`data/test`, servi tel quel — plan **multi-niveau** depuis la refonte de `data/` par KARMA, donc l'étape traverse aussi le M-LVL)
 5. **⚙️ Réglages carte** — la section géoref se construit (bouton Estimer B)
 6. **≡ Légende**
+7. **📊 Modale Session + section 📔 Carnet** — boutons 🚶/🖥️ de classement (le clic bascule bien la cible), bouton 🧭 « Affiner le tracé » **présent ET grisé** (aucun « Je suis ici » posé dans le scénario : un bouton actif ici signalerait un compteur de tronçons faux)
+8. **❓ Aide intégrée** — hub peuplé (≥ 10 lignes : une modale vide serait « visible » donc verte au seul test de dimensions), **classes de typographie réellement servies** (`kta-aide-note` doit calculer 12px — sinon le bloc CSS n'est pas déployé et le texte perd taille et couleur *sans aucune erreur console*), ouverture d'une sous-modale de section
+
+> Les étapes 7 et 8 sont nées de trous constatés : ces deux écrans n'étaient
+> traversés par AUCUNE étape. L'Aide porte ~1 700 lignes de HTML en dur et a
+> encaissé coup sur coup une régression de langue (elle sortait en français
+> pour les hispanophones) et trois défauts de structure — invisibles ici tant
+> que le harnais ne l'ouvrait pas.
 
 **Échec (exit 1) sur** : toute erreur console, toute `pageerror`, tout
 `[I18n] Clé manquante`, tout 404 non listé dans le bruit toléré, toute

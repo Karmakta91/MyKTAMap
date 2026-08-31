@@ -253,6 +253,47 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
       await fermerModales();
     } else console.log("  ℹ️ bouton compteurs absent — étape sautée (non bloquant)");
 
+    // ───────── 8. ❓ AIDE INTÉGRÉE (hub + une sous-modale) ─────────
+    // AUCUNE étape ne traversait l'Aide, alors qu'elle porte ~1 700 lignes de
+    // HTML en dur. Deux incidents l'ont prouvé : une régression de langue (elle
+    // s'est mise à sortir en français pour les hispanophones) et trois défauts
+    // de structure — tous invisibles au harnais parce qu'il ne l'ouvrait jamais.
+    console.log("— 8. ❓ Aide intégrée —");
+    const aideOuverte = await page.evaluate(function () {
+      if (typeof window.afficherAide === "function") { window.afficherAide(); return true; }
+      return false;
+    });
+    if (aideOuverte) {
+      await modaleVisible("❓ Aide", "#kta-aide-modal");
+      // Le hub doit lister des lignes : un parsing cassé rendrait une modale
+      // vide et VISIBLE — donc verte au seul test de visibilité.
+      const nbLignes = await page.locator("#kta-aide-modal .kta-aide-row").count();
+      if (nbLignes >= 10) ok("hub d'aide peuplé (" + nbLignes + " lignes)");
+      else pb("aide", "hub d'aide quasi vide (" + nbLignes + " lignes) — parsing des sections cassé ?");
+
+      // Les classes de typographie du lot 1 doivent EXISTER dans le CSS servi :
+      // si le bloc n'était pas déployé, le texte perdrait taille et couleur
+      // sans lever la moindre erreur console.
+      const cssOk = await page.evaluate(function () {
+        const d = document.createElement("p");
+        d.className = "kta-aide-note";
+        document.body.appendChild(d);
+        const c = getComputedStyle(d).fontSize;
+        d.remove();
+        return c;
+      });
+      if (cssOk === "12px") ok("classes de typographie de l'Aide servies (kta-aide-note = 12px)");
+      else pb("aide", "classe kta-aide-note sans effet (font-size lu : " + cssOk + ") — bloc CSS absent du fichier servi ?");
+
+      // Ouvrir une section : c'est le chemin qui construit la sous-modale.
+      await page.locator("#kta-aide-modal .kta-aide-row").nth(1).click().catch(function () {});
+      await page.waitForTimeout(300);
+      const sous = await page.locator(".kta-aide-submodal").count();
+      if (sous > 0) ok("sous-modale d'une section s'ouvre");
+      else console.log("  ℹ️ sous-modale non détectée — non bloquant (la 2e ligne peut être un lien externe)");
+      await fermerModales();
+    } else console.log("  ℹ️ afficherAide non exposée — étape sautée (non bloquant)");
+
     await page.waitForTimeout(800);   // laisser sortir les erreurs asynchrones
   } catch (e) {
     pb("smoke", "exception du scénario : " + String(e).slice(0, 300));
@@ -267,6 +308,6 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
     problemes.forEach(function (p) { console.log("   " + p); });
     process.exit(1);
   }
-  console.log("🎉 SMOKE VERT — boot, modales, plan, Réglages, Légende, Session : zéro erreur runtime.");
+  console.log("🎉 SMOKE VERT — boot, modales, plan, Réglages, Légende, Session, Aide : zéro erreur runtime.");
   process.exit(0);
 })();

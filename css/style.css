@@ -3682,6 +3682,46 @@ html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
   align-items: center;
 }
 
+/* =========================================================
+   ❓ AIDE INTÉGRÉE — typographie des sections (lot 1, 01/09/2026)
+   =========================================================
+   Ces classes remplacent 278 attributs `style=` qui vivaient en dur
+   dans _aideHtmlFr() / _aideHtmlEn(). Motif : ce contenu part dans les
+   dictionnaires lang/ (migration i18n de l'Aide) — y laisser du CSS
+   aurait obligé chaque traducteur à recopier des marges, et un
+   changement de charte aurait imposé d'éditer fr/en/es.json.
+   ⚠️ GÉNÉRÉES depuis le relevé des styles réels : les valeurs sont
+   celles d'avant, à l'identique. Les écarts de marge (6/8/14px) sont
+   du bruit accumulé et NON une intention — mais les normaliser aurait
+   changé le rendu, donc ils sont conservés tels quels.
+   ========================================================= */
+/* blocs */
+.kta-aide-p { font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5; }
+.kta-aide-liste { font-size:13px; color:#c0c8d8; margin:0 0 8px 16px; padding:0; line-height:1.5; }
+.kta-aide-note { font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5; }
+.kta-aide-sousliste { font-size:12px; color:#8892a4; margin:4px 0 0 18px; line-height:1.6; }
+.kta-aide-mini { font-size:10px; color:#8892a4; font-weight:400; }
+/* modificateurs de marge — APRÈS les blocs (même spécificité : l'ordre tranche) */
+.kta-aide-m0 { margin:0; }
+.kta-aide-mt6 { margin:6px 0 0; }
+.kta-aide-mb8 { margin:0 0 8px; }
+.kta-aide-mt14 { margin:14px 0 0; }
+.kta-aide-mt14b8 { margin:14px 0 8px; }
+/* couleurs — en dernier, elles doivent gagner sur la couleur du bloc */
+.kta-aide-c-bleu { color:#8cb4ff; }
+.kta-aide-c-lead { color:#a8b3c8; }
+.kta-aide-c-jaune { color:#f4c542; }
+.kta-aide-c-orange { color:#ff8a5c; }
+.kta-aide-c-rouge { color:#ff5555; }
+.kta-aide-c-rouge-fonce { color:#d32f2f; }
+.kta-aide-c-ambre { color:#e9a13b; }
+.kta-aide-c-vert { color:#6ce28a; }
+.kta-aide-c-corps { color:#c0c8d8; }
+.kta-aide-c-peche { color:#ffb380; }
+.kta-aide-c-abricot { color:#ffb266; }
+/* divers */
+.kta-aide-surligne { background:rgba(255,80,80,0.18); border-radius:4px; }
+
 /* === Modale 🤖 Aide IA — prompt prêt à coller === */
 .kta-aide-ia-prompt-wrap {
   position: relative;
