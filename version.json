@@ -1,8 +1,8 @@
 {
-  "version": "v1.79.5",
-  "released": "2026-08-16",
+  "version": "v1.79.6",
+  "released": "2026-08-31",
   "notes": [
-    "📏 Tu marches sans le podomètre ? Pose des « 📍 Je suis ici » en chemin : l’app relie tes repères en suivant les galeries pour estimer ta distance, et te dit toujours quelle part est estimée.",
-    "📔 Ton carnet ne jette plus les sorties de navigation : un seul « Je suis ici » suffit à compter comme sortie, et tu peux corriger 🚶 / 🖥️ sans quitter le plan."
+    "🧭 Nouveau bouton « Affiner le tracé » (modale Session, section 📔) : il recalcule ta distance et redessine ton trajet en suivant les galeries entre tes repères, quand tu veux. Le trajet redessiné est une reconstitution — il s’affiche dans la fiche de ta sortie, jamais dans tes exports.",
+    "⚡ Poser un « 📍 Je suis ici » redevient instantané : plus aucun calcul lourd au moment du clic, et l’app ne te propose plus de recalculer l’itinéraire dans la foulée."
   ]
 }
