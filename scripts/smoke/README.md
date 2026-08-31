@@ -19,7 +19,7 @@ passe les gates (mdp communautaire, CGU, tutoriel, alerte, proposition PIN
 1. **Boot HOME** — en-tête + liste des plans peuplée
 2. **⚙️ Configuration** — section Mode Développeur présente, fermeture propre
 3. **📊 Éditeur de données** — accueil + modale du convertisseur **avec dimensions réelles** (une modale « présente mais invisible » est un échec)
-4. **Chargement de `Test Legacy`** (`data/test1`, servi tel quel)
+4. **Chargement de `Relevé fictif de test`** (`data/test`, servi tel quel — plan **multi-niveau** depuis la refonte de `data/` par KARMA, donc l'étape traverse aussi le M-LVL)
 5. **⚙️ Réglages carte** — la section géoref se construit (bouton Estimer B)
 6. **≡ Légende**
 

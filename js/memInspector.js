@@ -260,7 +260,10 @@
     "KmzImport", "GpxIO", "GpxImport", "ThemeManager", "BatteryGuard",
     "HistoryManager", "MyKTAMapPinLock", "UnlockGate", "OOMGuard",
     "NetworkAudit", "UpdateChecker", "AlertChecker", "PerfUltra",
-    "CompassWidget", "TrackerReplay", "Pathfinder", "SearchPoints",
+    // 🐛 v1.79.3 (KARMA « 31/32, pourquoi ? ») — le module s'expose sous
+    // MyKTAMapTrackerReplay depuis toujours : « TrackerReplay » n'a JAMAIS
+    // existé sur window, le compteur ne pouvait pas atteindre 32/32.
+    "CompassWidget", "MyKTAMapTrackerReplay", "Pathfinder", "SearchPoints",
     "MyKTAMapPdfExport", "RefonteInterface", "MemInspector",
     // 🆕 v1.20.0
     "CrashReports", "StatsGlobales",
@@ -360,15 +363,122 @@
   }
 
   // ========== COLLECTE GLOBALE ==========
+  // ========== 🧹 v1.79.3 — DONNÉES ORPHELINES (demande KARMA : « un profil
+  // historique a plein de données IDB liées à des plans qui n'existent
+  // plus ») : compare la liste de plans à date (registre) aux entrées
+  // par-plan du stockage local, et PROPOSE la suppression (jamais auto —
+  // une session orpheline redevient utile si l'user réimporte le ZIP).
+  // Scanné : sessions auto (LS), géoref/calib KMZ (LS), archives ZIP +
+  // handles (IDB), photos (IDB), backups (IDB). EXCLUS par design : Carnet
+  // et récits du Mode Histoire (l'HISTOIRE survit aux plans, v1.69).
+  async function _collectOrphelins() {
+    const out = { plans: [], totalBytes: 0, error: null };
+    try {
+      const vivants = new Set(
+        (window.PlanRegistry && window.PlanRegistry.getAll ? window.PlanRegistry.getAll() : [])
+          .map(function(p) { return p.id; })
+      );
+      const parId = {};   // planId → { session, calib, blobBytes, handles, photos, backups, nom }
+      const entree = function(id) {
+        return parId[id] || (parId[id] = { id: id, sessionBytes: 0, calib: false, blobBytes: 0, handle: false, photos: 0, photoBytes: 0, backups: 0, nom: null });
+      };
+      // LS : sessions + calibs
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        let id = null, type = null;
+        if (k.indexOf("myktamap_session_v1_") === 0) { id = k.slice("myktamap_session_v1_".length); type = "session"; }
+        else if (k.indexOf("myktamap_kmz_calib_") === 0) { id = k.slice("myktamap_kmz_calib_".length); type = "calib"; }
+        if (!id || id === "default" || vivants.has(id)) continue;
+        const e = entree(id);
+        const val = localStorage.getItem(k) || "";
+        if (type === "session") {
+          e.sessionBytes = val.length;
+          try { const p = JSON.parse(val); if (p && p.planName) e.nom = p.planName; } catch(err) {}
+        } else e.calib = true;
+      }
+      // IDB myktamap_handles : blobs (archives ZIP) + handles FS
+      try {
+        const db = await _openDb("myktamap_handles");
+        for (const st of ["blobs", "handles"]) {
+          if (!db.objectStoreNames.contains(st)) continue;
+          const cles = await new Promise(function(resolve) {
+            const req = db.transaction([st], "readonly").objectStore(st).getAllKeys();
+            req.onsuccess = function() { resolve(req.result || []); };
+            req.onerror   = function() { resolve([]); };
+          });
+          for (const id of cles) {
+            if (typeof id !== "string" || vivants.has(id)) continue;
+            const e = entree(id);
+            if (st === "handles") e.handle = true;
+            else {
+              const blob = await new Promise(function(resolve) {
+                const req = db.transaction([st], "readonly").objectStore(st).get(id);
+                req.onsuccess = function() { resolve(req.result || null); };
+                req.onerror   = function() { resolve(null); };
+              });
+              e.blobBytes = (blob && blob.size) || 0;
+            }
+          }
+        }
+        db.close();
+      } catch(e) { /* base absente : rien à scanner */ }
+      // IDB photos
+      try {
+        const db = await _openDb("myktamap_photos");
+        if (db.objectStoreNames.contains("photos")) {
+          const toutes = await new Promise(function(resolve) {
+            const req = db.transaction(["photos"], "readonly").objectStore("photos").getAll();
+            req.onsuccess = function() { resolve(req.result || []); };
+            req.onerror   = function() { resolve([]); };
+          });
+          toutes.forEach(function(ph) {
+            if (!ph || !ph.planId || vivants.has(ph.planId)) return;
+            const e = entree(ph.planId);
+            e.photos++;
+            e.photoBytes += (ph.size || (ph.blob && ph.blob.size) || 0);
+          });
+        }
+        db.close();
+      } catch(e) {}
+      // IDB backups (via l'API : léger, payloads en RAM le temps du scan)
+      if (window.SessionBackups && typeof window.SessionBackups.listAll === "function") {
+        try {
+          const backs = await window.SessionBackups.listAll();
+          backs.forEach(function(b) {
+            if (!b || !b.planId || vivants.has(b.planId)) return;
+            const e = entree(b.planId);
+            e.backups++;
+            if (!e.nom && b.planName) e.nom = b.planName;
+          });
+        } catch(e) {}
+      }
+      out.plans = Object.values(parId);
+      out.plans.forEach(function(e) { out.totalBytes += e.sessionBytes + e.blobBytes + e.photoBytes; });
+    } catch(e) {
+      out.error = String(e && e.message || e);
+    }
+    return out;
+  }
+
+  // Purge d'UN plan orphelin : données associées + archive/handle IDB.
+  async function _purgerOrphelin(id) {
+    if (window.PlanRegistry) {
+      try { await window.PlanRegistry.purgeAssociatedData(id); } catch(e) {}
+      try { await window.PlanRegistry.removeBlob(id); } catch(e) {}
+      try { await window.PlanRegistry.removeHandle(id); } catch(e) {}
+    }
+  }
+
   async function collecter() {
     const ts = new Date().toISOString();
     const runtime = _collectRuntime();
     const localS = _collectLocalStorage();
-    const [idb, cachePwa, storageEst, crashes] = await Promise.all([
+    const [idb, cachePwa, storageEst, crashes, orphelins] = await Promise.all([
       _collectIndexedDB(),
       _collectCachePWA(),
       _collectStorageEstimate(),
-      _collectCrashReports()
+      _collectCrashReports(),
+      _collectOrphelins()
     ]);
     return {
       timestamp:       ts,
@@ -377,7 +487,8 @@
       indexedDB:       idb,
       cachePWA:        cachePwa,
       storageEstimate: storageEst,
-      crashReports:    crashes
+      crashReports:    crashes,
+      orphelins:       orphelins
     };
   }
 
@@ -722,6 +833,38 @@
     }
     html += '</div>';
 
+    // === Section 🧹 DONNÉES ORPHELINES (v1.79.3) ===
+    const orph = rep.orphelins || { plans: [], totalBytes: 0, error: null };
+    html += '<div class="kta-mem-section">';
+    html += '<div class="kta-mem-section-titre">' + _t("orph.titre");
+    if (orph.plans.length > 0) html += ' <span class="kta-mem-total">' + orph.plans.length + ' · ' + _formatBytes(orph.totalBytes) + '</span>';
+    html += '</div>';
+    if (orph.error) {
+      html += '<div class="kta-mem-warn">⚠️ ' + _escapeHtml(orph.error) + '</div>';
+    } else if (orph.plans.length === 0) {
+      html += '<div class="kta-mem-dim">' + _t("orph.aucun") + '</div>';
+    } else {
+      html += '<div class="kta-mem-dim" style="margin-bottom:6px;">' + _t("orph.intro") + '</div>';
+      orph.plans.forEach(function(e) {
+        const parts = [];
+        if (e.sessionBytes) parts.push(_t("orph.session", { taille: _formatBytes(e.sessionBytes) }));
+        if (e.calib)        parts.push(_t("orph.calib"));
+        if (e.blobBytes)    parts.push(_t("orph.archive", { taille: _formatBytes(e.blobBytes) }));
+        if (e.handle)       parts.push(_t("orph.handle"));
+        if (e.photos)       parts.push(_t("orph.photos", { n: e.photos, taille: _formatBytes(e.photoBytes) }));
+        if (e.backups)      parts.push(_t("orph.backups", { n: e.backups }));
+        html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' +
+                _escapeHtml(e.nom || e.id) +
+                (e.nom ? ' <span class="kta-mem-dim">(' + _escapeHtml(e.id) + ')</span>' : '') +
+                '</span><span class="kta-mem-val">' + _escapeHtml(parts.join(" · ") || "—") + '</span></div>';
+      });
+      html += '<div style="margin-top:8px;">' +
+              '<button type="button" class="kta-btn kta-btn-danger kta-btn-small" id="kta-mem-orph-clean">🧹 ' + _t("orph.btnClean") + '</button>' +
+              '</div>';
+      html += '<div class="kta-mem-dim" style="margin-top:6px;">' + _t("orph.note") + '</div>';
+    }
+    html += '</div>';
+
     // === Section CRASH REPORTS (v1.20.0) ===
     const cr = rep.crashReports || { reports: [], error: null };
     html += '<div class="kta-mem-section">';
@@ -781,6 +924,25 @@
     const corps = document.getElementById("kta-mem-corps");
     if (!corps) return;
     _crashHandlersBound = true;
+    // 🧹 v1.79.3 — nettoyage des données orphelines (ktaConfirm, jamais
+    // silencieux : une session orpheline redevient utile si l'user
+    // réimporte le ZIP — c'est LUI qui tranche).
+    _lc.delegate(corps, "click", "#kta-mem-orph-clean", async function() {
+      const btn = this;
+      const rep = _lastReport;
+      const plans = (rep && rep.orphelins && rep.orphelins.plans) || [];
+      if (!plans.length) return;
+      const msg = _t("orph.confirm", { n: plans.length, taille: _formatBytes(rep.orphelins.totalBytes) });
+      const ok = (typeof window.ktaConfirm === "function")
+        ? await window.ktaConfirm(msg, { okLabel: _t("orph.btnClean") })
+        : confirm(msg);
+      if (!ok) return;
+      btn.disabled = true; btn.textContent = "⏳";
+      for (const e of plans) {
+        try { await _purgerOrphelin(e.id); } catch(err) { console.warn("[MemInspector] purge orphelin " + e.id + " :", err); }
+      }
+      _refreshAndRender();
+    });
     _lc.delegate(corps, "click", ".kta-mem-crash-view", function() {
       const id = parseInt(this.dataset.crashId, 10);
       _afficherCrashDetail(id);

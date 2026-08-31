@@ -1161,8 +1161,11 @@
       const _recaler = function() {
         if (typeof window.recalerTrackerSurPoint !== "function") return;
         try {
+          // `teleport` : une traversée de portail n'est PAS une distance
+          // parcourue sur CE plan — sans ce marqueur, elle gonflerait la
+          // distance estimée du Carnet (cf. tracking.js > _estimerSegmentDepuisAncre).
           window.recalerTrackerSurPoint(t.x, t.y,
-            Number.isInteger(t.level) ? t.level : undefined);
+            Number.isInteger(t.level) ? t.level : undefined, { teleport: true });
           console.log("[InterPlanLinks] Tracker recalé sur le point d'arrivée du portail (" +
                       Math.round(t.x) + "," + Math.round(t.y) + ")");
         } catch(e) { console.warn("[InterPlanLinks] recalage tracker échoué :", e); }

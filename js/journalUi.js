@@ -145,7 +145,13 @@
       _fermerFiche();
 
       const chips = _chipsAjouts(rec);
-      const svg   = _svgTrace(rec.track);   // calculé une fois (jusqu'à 1500 points)
+      // 🧭 17/08/2026 — si la sortie a été affinée, on dessine le tracé
+      // RECONSTRUIT (chemin de galeries entre les « 📍 Je suis ici »). Le brut
+      // reste stocké et n'est jamais écrasé ; la mention sous le dessin dit
+      // lequel est affiché, parce qu'un tracé reconstruit est une HYPOTHÈSE :
+      // un détour ou un demi-tour n'y figure pas.
+      const traceAffinee = Array.isArray(rec.trackAffine) && rec.trackAffine.length >= 2;
+      const svg   = _svgTrace(traceAffinee ? rec.trackAffine : rec.track);
       const overlay = document.createElement("div");
       overlay.id = FICHE_ID;
       overlay.className = "kta-readme-modal-overlay";
@@ -171,7 +177,14 @@
               // croire à un tracker en panne. On montre les photos à la place.
               (_estTerrain(rec)
                 ? '<div class="kta-jrn-metric"><span class="kta-jrn-metric-val">' + _esc(_dist(rec.distM)) + '</span>' +
-                    '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.distance")) + '</span></div>'
+                    // 📏 16/08/2026 — la part estimée (tronçons entre « 📍 Je suis
+                    // ici », podomètre muet) est dite, jamais fondue dans le total :
+                    // l'user doit savoir ce que vaut le chiffre qu'il lit.
+                    '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.distance")) +
+                      ((rec.distEstimeeM || 0) > 0
+                        ? ' ' + _esc(_t("jrn.section.dontEstime", { dist: _dist(rec.distEstimeeM) }))
+                        : '') +
+                    '</span></div>'
                 : '<div class="kta-jrn-metric"><span class="kta-jrn-metric-val">' +
                     ((rec.ajouts && rec.ajouts.photos) || 0) + '</span>' +
                     '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.photos")) + '</span></div>') +
@@ -185,7 +198,12 @@
             (chips.length ? '<div class="kta-jrn-chips">' + chips.map(function(c) {
               return '<span class="kta-jrn-chip">' + _esc(c) + '</span>';
             }).join("") + '</div>' : '') +
-            (svg ? '<div class="kta-jrn-trace-wrap">' + svg + '</div>' : '') +
+            (svg ? '<div class="kta-jrn-trace-wrap">' + svg +
+                     (traceAffinee
+                       ? '<div style="font-size:11px; color:#8892a4; text-align:center; margin-top:4px;">' +
+                           _esc(_t("jrn.fiche.traceAffinee")) + '</div>'
+                       : '') +
+                   '</div>' : '') +
             '<div class="kta-jrn-photos" id="kta-jrn-fiche-photos"></div>' +
             '<label class="kta-jrn-note-lab" for="kta-jrn-note">' + _esc(_t("jrn.fiche.note")) + '</label>' +
             '<textarea id="kta-jrn-note" class="kta-jrn-note" rows="4" ' +

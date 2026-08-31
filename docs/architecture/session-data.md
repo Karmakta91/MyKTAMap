@@ -1192,20 +1192,37 @@ CSS : `.kta-secours-imported-chip` (badge bleu clair + variants thème clair). T
 
 **Le lot 1 confondait deux natures de session** : une soirée de dessin à la maison atterrissait dans le carnet à côté d'une vraie sortie — et le seuil « ≥ 1 ajout » le *garantissait*. Correction :
 
-- **Classement AUTO sur le seul signal fiable, le déplacement tracker** (`distM > 0 || steps > 0`) → `type: "terrain"`, sinon `"bureau"`. Ni la durée ni le nombre d'ajouts ne discriminent (on peut passer 3 h à dessiner assis, comme parcourir 2 km sans rien annoter).
-- Ré-évalué **à chaque snapshot** : une session démarre toujours `bureau` et bascule `terrain` au premier pas. L'inverse n'arrive jamais (le déplacement ne se dé-parcourt pas) → pas d'oscillation.
+- **Classement AUTO sur le seul signal fiable, le déplacement tracker** → `type: "terrain"`, sinon `"bureau"`. Ni la durée ni le nombre d'ajouts ne discriminent (on peut passer 3 h à dessiner assis, comme parcourir 2 km sans rien annoter). ⚠️ La règle d'origine (`distM > 0 || steps > 0`) a été **révisée le 16/08/2026** — cf. section dédiée plus bas.
+- Ré-évalué **à chaque snapshot** : une session démarre toujours `bureau` et bascule `terrain` quand le seuil est franchi. L'inverse n'arrive jamais (le déplacement ne se dé-parcourt pas) → pas d'oscillation.
 - **Correction manuelle** possible sur la fiche (`Journal.setType`) → pose `typeManuel: true`, et le record n'est **plus jamais** reclassé automatiquement (cas d'usage : sortie faite tracker éteint).
 - **Totaux du carnet = terrain UNIQUEMENT** (`stats()` renvoie `bureau`/`bureauMs` à part). Mélanger du temps de dessin à des heures passées sous terre rendrait le chiffre faux.
 - **UI** : liste scindée — sorties terrain en premier, section **repliée** « 🖥️ Travail sur plan (N) » en dessous. La modale Session de l'écran plan annonce la nature **en direct**, sinon l'user découvrirait le classement après coup.
 
-**Seuils d'archivage AUTO**, distincts par nature (la clôture **manuelle** garde toujours, puis **rouvre immédiatement** une sortie sur le même plan) :
+**Seuils d'archivage AUTO** (la clôture **manuelle** garde toujours, puis **rouvre immédiatement** une sortie sur le même plan). Depuis le **16/08/2026**, ce sont deux critères en **OU**, plus un aiguillage sur le type :
 
-| Nature | Gardée si |
+| Critère | Rempli si |
 |---|---|
-| 🚶 terrain | ≥ **50 m** parcourus |
-| 🖥️ bureau | ≥ **10 min** actives **ET** ≥ 1 ajout |
+| terrain | ≥ **50 m** de distance exploitable (podomètre **+ tronçons estimés**) |
+| bureau | ≥ **10 min** actives **ET** ≥ 1 ajout |
 
 ⚠️ Le critère « ≥ 1 ajout » du lot 1 a été **supprimé** — c'était lui le coupable. En dessous des seuils, la session est **jetée** (`remove(id)` — y compris l'éventuel flush « en cours » déjà écrit, sinon un fantôme resterait au carnet).
+
+### 🔧 Révision du 16/08/2026 — la sortie de navigation pure ne pouvait pas entrer
+
+**Constat KARMA** : sortie réelle (itinéraire posé, tracker à peine activé, validations d'étapes jusqu'à la sortie) **absente du carnet**, alors que ses sessions de travail y entrent. Trois causes cumulées, chacune suffisante :
+
+1. **Les validations d'étapes sont des `recalage`** → `getTrackingDistanceM()` les saute → **0 m**. Corrigé par la distance estimée entre ancres (`tracking.md § Distance estimée`) : le Carnet lit désormais `getTrackingDistanceTotaleM()`, et stocke la part estimée à part (`distEstimeeM`) pour pouvoir dire « 820 m *dont 600 estimés* ».
+   ⚠️ **`_affinerDistances` tourne AVANT `_pertinente`** (révision du 17/08) : au clic, seul le vol d'oiseau est posé — le chemin réseau coûtait une reconstruction de graphe **par clic**, doublée par la replanification d'itinéraire. L'affinage se fait donc en une passe à l'archivage, sur les roads **capturées** à cet instant (jamais relues plus tard : on serait déjà sur le plan suivant), et **avant** le verdict de rétention — sinon une sortie à 45 m de ligne droite valant 200 m de galeries serait jetée, soit exactement le bug d'origine.
+2. **L'itinéraire est EFFACÉ à l'arrivée** (`interfaceItineraire` clôture à la dernière étape) → son `+1 road` disparaissait du delta. ⚠️ **Limite non corrigée** : les `ajouts` sont des **différences de longueurs de tableaux**, donc tout objet créé PUIS supprimé pendant la sortie reste invisible. Corriger demanderait de compter des événements, pas des états.
+3. **La rétention n'examinait QUE la branche du type classé** : un seul pas PDR parasite basculait la session en terrain, qui n'était alors jugée que sur ses 50 m — 3 h de travail et 20 ajouts partaient à la poubelle sans appel. C'est le passage au **OU** ci-dessus. Le type redevient un **libellé d'affichage**, plus un juge.
+
+**Classement révisé** (`_classer`) : `validations > 0` → terrain **à lui seul** (l'user affirme être physiquement passé par un point, et ce geste ne produit aucun pas PDR) ; sinon terrain si `distM ≥ MIN_TERRAIN_DIST_M` (**20 m**). L'ancienne bascule « dès le 1er pas » polluait les totaux, qui ne comptent que le terrain.
+
+**Baseline des validations** : `onPlanLoaded` mémorise `getTrackingValidations()` au démarrage — la timeline est **restaurée** au chargement du plan, donc sans cette baseline les validations d'une sortie précédente seraient recomptées et classeraient d'office la nouvelle session en terrain.
+
+**Correction du type depuis l'écran plan** (demande KARMA) : boutons 🚶/🖥️ dans la section 📔 de la modale Session, à côté de « 🏁 Clôturer ma sortie ». Les deux boutons sont repeints **à la main** plutôt que par un re-render de la section — un re-render détruirait l'élément sous le doigt (mécanisme exact du bug de color picker de la Légende, v1.77.0).
+
+⚠️ **Piège corrigé au passage** : `setType` faisait `get(id)` en IDB et rendait `false` si le record n'existait pas encore. Or la sortie **en cours** n'est écrite qu'au premier flush (30 s) — le reclassement partait donc **en silence** sur une sortie fraîche. Invisible tant que le seul point d'entrée était la fiche d'une sortie archivée ; le bouton de la modale Session vise justement l'inverse. `setType` applique désormais sur l'état RAM + `flush()` quand le record n'est pas encore en base.
 
 **Deltas** : `ajouts` = compteurs courants − baseline, clampés à 0 (une suppression nette n'affiche pas un ajout négatif). La distance se **ré-ancre** si elle recule (session effacée / tracker reset) — sans ça le delta partirait négatif pour le reste de la sortie.
 

@@ -711,3 +711,72 @@ Aucune nouvelle surface réseau ni permission. Tout local (état runtime + `app_
 **À NE PAS faire** :
 - ❌ Différer le recalage portail « par prudence » (l'ancienne version +2.8 s laissait l'user croire que rien ne s'était passé — c'est un bug signalé KARMA).
 - ❌ Poser `recalerTracker` sur un `goTo` de consultation (recherche, gestionnaire) — le tracker doit refléter le corps, pas la vue.
+
+---
+
+## 📏 Distance estimée entre ancres (2026-08-16)
+
+**Le manque** (sortie réelle de KARMA perdue par le Carnet) : `getTrackingDistanceM()` ne mesure QUE le podomètre — tout segment touchant un `recalage` est sauté, et c'est **sain** (un recalage peut être une téléportation ou une correction). Conséquence : une sortie menée au « 📍 Je suis ici » de point en point, sans PDR, valait **0 m**, et le Carnet la jetait sous ses seuils.
+
+**La règle — on comble UNIQUEMENT le silence du podomètre** :
+
+| Situation | Traitement |
+|---|---|
+| ancre A → ancre C, **aucun pas PDR** entre les deux | A→C est **estimée** |
+| ancre A → … pas PDR … → ancre C | **rien** — le podomètre a mesuré, jamais de double comptage |
+
+Le test est structurel, pas heuristique : on regarde si l'entrée qui **précède immédiatement** l'ancre est elle-même une ancre (`recalage`/`start`). Si oui, aucun pas n'a été enregistré entre les deux.
+
+**La mesure (décision KARMA, « hybride »)** : longueur du **chemin réel sur le réseau** (`Pathfinder`, unités plan → `/ APP_CONFIG.scale`). À vol d'oiseau, 40 m dans un labyrinthe peuvent valoir 300 m réels — une estimation euclidienne serait systématiquement et silencieusement optimiste. **Repli vol d'oiseau** si un bout n'accroche pas le réseau (Dijkstra sans chemin).
+
+### ⚡ Chemin chaud / 🐢 chemin froid (révisé le 17/08/2026)
+
+**Le premier jet calculait le réseau AU CLIC — inutilisable en pratique** (retour terrain KARMA : « si je clique sur je suis ici, c'est long, et ensuite j'ai un truc qui me propose de recalculer l'itinéraire tout aussi long »). Cause : [`pathfinder.js:773`](../../js/pathfinder.js#L773) — `computeRoute` appelle `_buildGraph` **à chaque appel, sans aucun cache**, suivi de l'enrichissement des croisements en **O(N²)**. Chaque « 📍 Je suis ici » payait donc **deux** reconstructions complètes du graphe : la mienne, puis celle de la replanification d'itinéraire.
+
+| | Quand | Ce qui se passe |
+|---|---|---|
+| ⚡ **chaud** | au clic « 📍 Je suis ici » | `_estimerSegmentDepuisAncre` — **vol d'oiseau seul, zéro calcul de réseau**. Instantané. |
+| 🐢 **froid** | à l'archivage de la sortie (`journal.js > _affinerDistances`) | `affinerEstimationsTracker(roads)` — repasse les tronçons en distance réseau. |
+
+**Trois choses rendent le chemin froid sûr** :
+1. **`roads` est FOURNI par l'appelant** (`computeRouteOnRoads`, v1.60.0) et jamais lu depuis l'état courant : l'affinage tourne au moment où on quitte le plan, et lire `getRoads()` à cet instant calculerait sur le **plan suivant**.
+2. **Un seul appel par « run »** d'ancres consécutives — `computeRouteOnRoads` accepte une chaîne de waypoints et ne construit son graphe **qu'une fois** pour toute la chaîne. Une sortie de navigation pure = 1 run = 1 construction, au lieu d'une par clic. ⚠️ La séparation des runs est gardée **deux fois** (`courant.fin === i - 1` **et** `else courant = null`) : casser l'une seule ne change rien, il faut les deux pour observer une régression — vérifié en falsifiant.
+3. **Budget `MAX_PTS_AFFINAGE = 20000`** sommets : au-delà, aucun calcul, le vol d'oiseau est conservé. Mieux vaut une distance basse qu'une app figée.
+
+⚠️ **La distance réseau du run est répartie sur ses tronçons au prorata de leur vol d'oiseau** — `computeRouteOnRoads` ne rend qu'un total. La **somme** est donc exacte (c'est elle qui compte pour le carnet et ses seuils), le détail par ancre est une approximation assumée.
+
+⚠️ **L'affinage passe AVANT le test de pertinence** du Carnet (`_finaliser` → `_affinerDistances` → `_pertinente`). Juger une sortie sur sa ligne droite puis la jeter reproduirait exactement le défaut que ce lot corrige : 45 m à vol d'oiseau peuvent valoir 200 m de galeries.
+
+⚠️ **Effet visible assumé** : pendant la sortie, le chiffre affiché est la **ligne droite** (sous-estimé) ; il monte à la clôture. Documenté côté user.
+
+**Ce qui n'est PAS réglé** : la replanification d'itinéraire reste lente, pour la même cause (`_buildGraph` non caché). Elle est **antérieure** à ce lot — la confirmation `ktaConfirm` de la v1.76.3 existe précisément parce que ce calcul est long. Le vrai correctif serait un **cache de graphe dans `pathfinder.js`**, qui profiterait aussi au Mode Secours et à la sortie d'urgence : lot séparé, non fait.
+
+**Jamais cumulé** :
+- `src: "click"` — le clic carte libre corrige le plus souvent une position fausse, il ne raconte pas un trajet ;
+- `tp: 1` — arrivée de portail. `interPlanLinks` passe désormais `recalerTrackerSurPoint(x, y, level, { teleport: true })`. **La source reste `"point"`** pour ne rien changer aux consommateurs du hook (la validation d'étape d'itinéraire sur arrivée de portail continue de fonctionner).
+
+**Où vit la valeur** : sur l'ancre elle-même (`estM` + `estSrc: "reseau"|"vol"`). Elle voyage donc avec la timeline persistée, survit au rechargement du plan, et la décimation ne peut pas la perdre — `_decimateTimeline` conserve **toutes** les ancres, seuls les PDR sont sacrifiés.
+
+### 🧭 Bouton « Affiner le tracé » + tracé reconstruit (17/08/2026)
+
+`computeRouteOnRoads` rend `{ path, totalDistance }` — la **géométrie était calculée puis jetée**. Elle sert désormais à reconstruire le tracé de la sortie : chaque tronçon comblé est remplacé par le chemin de galeries (`_construireTraceAffinee`), les points **PDR réellement enregistrés** étant conservés tels quels.
+
+🚨 **C'est une HYPOTHÈSE, pas une mesure.** Entre deux « 📍 Je suis ici », le Dijkstra prend le plus court : un détour, une diverticule explorée puis abandonnée, un demi-tour n'y figureront **jamais**. D'où la règle arrêtée avec KARMA (décision `4:b`) :
+
+| Consommateur | Tracé servi |
+|---|---|
+| Fiche du carnet | **reconstruit** (`trackAffine`), avec mention explicite sous le dessin |
+| Exports GPX / KMZ · heatmap · replay tracker | **brut uniquement** — jamais de donnée inventée présentée comme relevée |
+
+`track` (brut) n'est **jamais écrasé** : `trackAffine` vit à côté, décimé au même plafond `MAX_TRACK_PTS` (un chemin de galeries est bien plus dense qu'une timeline d'ancres, sans plafond une sortie pèserait plusieurs fois le budget annoncé de 2-8 Ko).
+
+**Le bouton** (`refonteInterface.js`, modale Session) : `Journal.affinerEnCours(opts)` affine **sans clôturer**. Grisé — et non masqué — quand `getTrackingTronconsAAffiner() === 0`. Sur un plan au-dessus du budget, le premier appel revient **immédiatement** avec `skipped: "trop-gros"` + `nbPts` (aucun calcul gaspillé) ; l'UI demande alors confirmation et rappelle avec `force: true`. Le budget protège l'archivage **automatique**, il n'a pas à interdire un calcul que l'user réclame en connaissance de cause — et c'est sur les gros plans qu'il en a le plus besoin.
+
+**Pièges traités** :
+- `EST_RATIO_MAX = 30` : un chemin réseau > 30× le vol d'oiseau trahit un artefact de graphe (détour par une galerie mal reliée), pas un labyrinthe → vol d'oiseau conservé. Sous-estimer vaut mieux qu'inventer 2 km.
+- **Idempotence** : seuls les tronçons `estSrc === "vol"` sont affinés — une seconde passe ne recalcule rien.
+- Un `computeRouteOnRoads` qui **jette** (bouts hors réseau, aucune road) laisse le vol d'oiseau en place : l'affinage ne peut jamais dégrader une valeur déjà posée.
+
+**API** : `getTrackingDistanceEstimeeM()` · `getTrackingDistanceTotaleM()` (= mesurée + estimée) · `getTrackingValidations()` (nombre de « 📍 Je suis ici », hors clics et portails — signal de terrain pour le Carnet).
+
+⚠️ **`getTrackingDistanceM()` est volontairement INCHANGÉE** : mesuré et estimé ne se valent pas. Les consommateurs affichent le **total** en nommant la part estimée (modale Tracker, 📊 Stats globales, fiche du Carnet) ; `trackerReplay` reste sur la mesurée (il rejoue le tracé PDR, pas un trajet reconstruit).

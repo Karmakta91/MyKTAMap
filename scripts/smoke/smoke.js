@@ -48,7 +48,19 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
 
 (async function main() {
   const server = require("./server.js");
-  const navigateur = await chromium.launch();
+  // Playwright ≥ 1.49 lance par défaut le « headless shell », un binaire DISTINCT
+  // du Chromium complet. Quand seul ce dernier est installé — téléchargement du
+  // shell coupé par un proxy TLS (ERR_SSL_DECRYPTION_FAILED, vécu le 17/08/2026
+  // sur le poste de KARMA alors que `chromium` lui-même passait) — on retombe
+  // sur le build complet au lieu de renoncer à la marche 1bis du RELEASE_GATE.
+  let navigateur;
+  try {
+    navigateur = await chromium.launch();
+  } catch (e) {
+    if (!/Executable doesn't exist/i.test(String((e && e.message) || ""))) throw e;
+    console.log("[smoke] headless shell absent → repli sur le Chromium complet (channel: chromium)");
+    navigateur = await chromium.launch({ channel: "chromium" });
+  }
   const contexte = await navigateur.newContext({ serviceWorkers: "block", viewport: { width: 1280, height: 800 } });
   const page = await contexte.newPage();
 
@@ -109,8 +121,8 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
       const encore = await page.locator("#kta-alert-modal").isVisible().catch(function () { return false; });
       if (encore) pb("boot", "la modale Alertes ne se ferme pas"); else ok("modale Alertes fermée (annonce au boot)");
     }
-    const planListe = await page.getByText("Test Legacy", { exact: false }).first().isVisible().catch(function () { return false; });
-    if (planListe) ok("liste des plans peuplée (Test Legacy)"); else pb("boot", "plan de test absent de la liste");
+    const planListe = await page.getByText("Relevé fictif de test", { exact: false }).first().isVisible().catch(function () { return false; });
+    if (planListe) ok("liste des plans peuplée (Relevé fictif de test)"); else pb("boot", "plan de test absent de la liste");
 
     // ─────────────────── 2. ⚙️ CONFIGURATION (HOME) ──────────────────
     console.log("— 2. ⚙️ Configuration HOME —");
@@ -146,8 +158,8 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
     else ok("tous les overlays fermés");
 
     // ───────────────────── 4. CHARGER LE PLAN DE TEST ─────────────────────
-    console.log("— 4. Chargement du plan Test Legacy —");
-    await page.getByText("Test Legacy", { exact: false }).first().click();
+    console.log("— 4. Chargement du plan Relevé fictif de test —");
+    await page.getByText("Relevé fictif de test", { exact: false }).first().click();
     await page.waitForFunction(function () { return !!window.PLAN_CONFIG && !!document.getElementById("map"); }, null, { timeout: 15000 })
       .then(function () { ok("plan chargé (PLAN_CONFIG posé, #map présent)"); })
       .catch(function () { pb("plan", "le plan ne s'est pas chargé en 15 s"); });
@@ -177,6 +189,70 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
     if (legendeOuverte) { await modaleVisible("≡ Légende", ".kta-legende-modal, #kta-legende-modal, .kta-readme-modal-overlay"); await fermerModales(); }
     else console.log("  ℹ️ afficherLegende non exposée — étape sautée (non bloquant)");
 
+    // ───────── 7. 📊 MODALE SESSION + section 📔 Carnet (v1.79.5) ─────────
+    // Ajoutée avec les boutons 🚶/🖥️ de correction du classement : cette modale
+    // n'était traversée par AUCUNE étape, donc une classe CSS fantôme ou un
+    // libellé i18n manquant y passait inaperçu (c'est exactement le bug qui a
+    // motivé ce harnais en v1.76.2).
+    console.log("— 7. 📊 Modale Session + section Carnet —");
+    const compteurs = await page.locator("#kta-refonte-counters-btn").count();
+    if (compteurs > 0) {
+      await page.locator("#kta-refonte-counters-btn").click();
+      await modaleVisible("📊 Session", "#kta-refonte-session-modal");
+      const carnet = await page.locator("#kta-refonte-session-carnet-section").count();
+      if (carnet > 0) ok("section 📔 Carnet présente");
+      else pb("session", "section Carnet absente de la modale Session");
+      // Les boutons de classement n'existent QUE s'il y a une sortie en cours.
+      // On n'exige leur présence que dans ce cas — sinon faux rouge quand le
+      // carnet est désactivé.
+      const sortieEnCours = await page.evaluate(function () {
+        try { return !!(window.Journal && window.Journal.getCurrent && window.Journal.getCurrent()); }
+        catch (e) { return false; }
+      });
+      if (sortieEnCours) {
+        const nbT = await page.locator("#kta-refonte-session-carnet-type-terrain").count();
+        const nbB = await page.locator("#kta-refonte-session-carnet-type-bureau").count();
+        if (nbT > 0 && nbB > 0) ok("boutons 🚶/🖥️ de classement présents");
+        else pb("session", "boutons de classement absents alors qu'une sortie est en cours");
+        // Le clic doit BASCULER le classement. ⚠️ On clique sur le bouton qui
+        // n'est PAS actif : une sortie de smoke démarre « bureau », donc
+        // vérifier que 🖥️ est primary APRÈS avoir cliqué 🖥️ serait vrai sans
+        // rien faire (tautologie — attrapée en falsifiant ce test le 17/08).
+        if (nbT > 0 && nbB > 0) {
+          const idT = "#kta-refonte-session-carnet-type-terrain";
+          const idB = "#kta-refonte-session-carnet-type-bureau";
+          const estPrimary = function (sel) {
+            return page.locator(sel).evaluate(function (el) {
+              return el.classList.contains("kta-btn-primary");
+            }).catch(function () { return false; });
+          };
+          const tAvant = await estPrimary(idT);
+          const cible  = tAvant ? idB : idT;     // celui qui n'est pas actif
+          const autre  = tAvant ? idT : idB;
+          await page.locator(cible).click();
+          await page.waitForTimeout(600);
+          const cibleOk = await estPrimary(cible);
+          const autreOk = !(await estPrimary(autre));
+          if (cibleOk && autreOk) ok("le classement bascule (cible active, autre désactivée)");
+          else pb("session", "clic de classement sans bascule visible (setType échoué ? cible=" +
+                             cibleOk + " autre_desactive=" + autreOk + ")");
+        }
+        // 🧭 « Affiner le tracé » : présent, et GRISÉ ici — le scénario ne pose
+        // aucun « 📍 Je suis ici », donc il n'y a rien à affiner. Un bouton actif
+        // à ce stade signalerait un compteur de tronçons faux.
+        const aff = await page.locator("#kta-refonte-session-carnet-affiner").count();
+        if (aff > 0) {
+          const grise = await page.locator("#kta-refonte-session-carnet-affiner")
+            .evaluate(function (el) { return el.disabled === true; }).catch(function () { return false; });
+          if (grise) ok("bouton 🧭 Affiner présent et grisé (rien à affiner)");
+          else pb("session", "bouton Affiner actif alors qu'aucun « Je suis ici » n'a été posé");
+        } else pb("session", "bouton 🧭 Affiner absent de la section Carnet");
+      } else {
+        console.log("  ℹ️ aucune sortie en cours (carnet désactivé ?) — boutons de classement non exigés");
+      }
+      await fermerModales();
+    } else console.log("  ℹ️ bouton compteurs absent — étape sautée (non bloquant)");
+
     await page.waitForTimeout(800);   // laisser sortir les erreurs asynchrones
   } catch (e) {
     pb("smoke", "exception du scénario : " + String(e).slice(0, 300));
@@ -191,6 +267,6 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
     problemes.forEach(function (p) { console.log("   " + p); });
     process.exit(1);
   }
-  console.log("🎉 SMOKE VERT — boot, modales, plan, Réglages, Légende : zéro erreur runtime.");
+  console.log("🎉 SMOKE VERT — boot, modales, plan, Réglages, Légende, Session : zéro erreur runtime.");
   process.exit(0);
 })();

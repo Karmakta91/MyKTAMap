@@ -178,6 +178,38 @@
     return true;
   }
 
+  // 🧹 v1.79.3 (décision KARMA — reco 2:a) — PURGE des données associées à
+  // un plan (appelée par le 🗑️ de la modale ℹ️ Infos et le nettoyeur
+  // d'orphelins de l'inspecteur DB). Supprime : session auto (LS), géoref/
+  // calibration KMZ (LS), photos (IDB), backups (IDB). PRÉSERVE
+  // volontairement : le Carnet et les PDF/notes du Mode Histoire (famille
+  // « Récits » — l'HISTOIRE survit aux plans, design v1.69) et les liaisons
+  // inter-plans (nœuds fantômes gérés par le graphe, réutilisables si le
+  // plan revient). Chaque module externe est optionnel (gardes défensives).
+  async function purgeAssociatedData(id) {
+    const bilan = { session: false, calib: false, photos: 0, backups: 0 };
+    if (!id) return bilan;
+    try {
+      if (localStorage.getItem("myktamap_session_v1_" + id) != null) {
+        localStorage.removeItem("myktamap_session_v1_" + id);
+        bilan.session = true;
+      }
+    } catch(e) {}
+    try {
+      if (localStorage.getItem("myktamap_kmz_calib_" + id) != null) {
+        localStorage.removeItem("myktamap_kmz_calib_" + id);
+        bilan.calib = true;
+      }
+    } catch(e) {}
+    if (window.MyKTAMapPhotos && typeof window.MyKTAMapPhotos.deletePhotosForPlan === "function") {
+      try { bilan.photos = (await window.MyKTAMapPhotos.deletePhotosForPlan(id)) || 0; } catch(e) {}
+    }
+    if (window.SessionBackups && typeof window.SessionBackups.deleteForPlan === "function") {
+      try { bilan.backups = (await window.SessionBackups.deleteForPlan(id)) || 0; } catch(e) {}
+    }
+    return bilan;
+  }
+
   function removeAll() {
     init();
     _data.plans = [];
@@ -591,6 +623,7 @@
     setLastPlanId:        setLastPlanId,
     addOrUpdate:          addOrUpdate,
     reload:               reload,      // 🐛 v1.79.0 — resync RAM après écriture LS externe
+    purgeAssociatedData:  purgeAssociatedData,  // 🧹 v1.79.3 — session/géoref/photos/backups d'un plan
     setPinned:            setPinned,   // 🏷️ v1.78.0
     setTags:              setTags,     // 🏷️ v1.78.0
     setDisplayName:       setDisplayName, // ✏️ v1.79.1

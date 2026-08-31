@@ -578,7 +578,7 @@ documentées ici pour la doctrine.
 
 ---
 
-### 83. Suite de garde-fous pré-commit — état v1.76.0
+### 83. Suite de garde-fous pré-commit — état au 16/08/2026
 
 `node -c` (syntaxe) est le SEUL filet natif du projet — chaque garde-fou ci-dessous est né d'un bug réel qui l'avait traversé. Tous branchés dans `.githooks/pre-commit`, **BLOQUANTS** sauf mention :
 
@@ -592,9 +592,43 @@ documentées ici pour la doctrine.
 | `check-style-resolver.js` | 57 cas fonctionnels du résolveur (built-in, customs, override, `{flat}`, swatch, pastilles) | valeurs fausses du canon vague 0 |
 | `check-kml-styles.js` | fige les 14 styles KML built-in (largeurs propres au KML) + les customs reçoivent un `<Style>` | bug 2 : couleur perdue dans Google Earth |
 | `check-legend-roundtrip.js` | rejoue custom → calque → plan régénéré sur du code **extrait des fichiers réels** (sous-ensemble, idempotence, conflit = le plan gagne) | F2/F3 : légende perdue, irréparable en UI |
-| `check-i18n.js` | clés appelées présentes fr+en, interpolations cohérentes | clés jamais injectées (« Wall Title ») |
+| `check-georef-estimation.js` | maths de l'estimation du point B (A + échelle + Nord) | `Number(null) = 0` → un A à lat nulle partait à l'équateur |
+| `check-image-header-dims.js` | parseur binaire des dimensions d'image du Générateur | « Image non décodable » sur les JPG 32K×32K (limite Chrome/Skia) |
+| `check-resolution-convert.js` | convertisseur de résolution/recalage de l'Éditeur de données | le champ coordonnée oublié à la migration |
+| `check-devmode-docs.js` | manifest de la bibliothèque du Mode Dev (chemins existants, aucun `.md` d'archi oublié, hash SHA-256) | doc renommée = modale cassée en silence |
+| `check-kmz-superoverlay.js` | géométrie du superoverlay KMZ (pavage, jointures, Lod/drawOrder) | overlay tronqué dans Google Earth |
+
+⚠️ **`check-i18n.js` n'est PAS branché au hook** — il se lance à la main (`node scripts/check-i18n.js`, `CHECK_I18N_DUMP=1` pour la liste d'audit). La table le donnait pour pré-commit depuis la v1.76.0 : c'était faux, corrigé le 16/08/2026. Le filet i18n au commit, c'est le smoke Playwright (il échoue sur toute clé manquante au runtime).
 
 **Règles apprises, à respecter** :
 - Un garde-fou neuf doit être **éprouvé en le falsifiant** (altérer le canon, rejouer le commit cassé) — un vert jamais vu rouge ne prouve rien.
 - Éditions i18n : **jamais `perl -i` avec `\x{}`** (double-encode les lignes touchées — incident 04/08) → script Node, lecture/écriture `utf8` explicites, insertion EN PLACE (pas de re-tri : 994 lignes de diff), relecture JSON de contrôle.
 - `git commit -F fichier` pour les messages multi-lignes ; commit et push en **commandes séparées** (le chaînage `&&` déclenche un faux positif `--force` du guard-git).
+
+---
+
+### 84. Garde-fou de release — hook `commit-msg` (2026-08-16)
+
+**La dette qu'il paie** : la règle des 4 axes (« un bump = les docs suivent ») n'était vérifiée par RIEN. Constat fondateur : `AI_CONTEXT.md` n'a jamais reçu les nouveautés v1.73.0 — pendant une version entière, la modale 🤖 Aide IA a répondu « ça n'existe pas » sur deux features livrées. Et personne ne vérifiait non plus que les **3 sources de version** concordent : un `CACHE_NAME` oublié = le SW ressert l'ancien cache, donc la mise à jour **n'atteint jamais les clients**.
+
+**Pourquoi `commit-msg` et pas `pre-commit`** : le pre-commit tourne **avant** que git écrive le message (ordre : pre-commit → prepare-commit-msg → éditeur → commit-msg). Il ne peut donc ni lire un préfixe `release(...)`, ni exiger une dérogation dans le message. `commit-msg` voit le message **et** l'index — c'est le seul endroit d'où une dérogation peut être **archivée dans l'historique Git**.
+
+**Déclencheur = le bump, pas le message** : le script compare la clé `version` de `version.json` entre `HEAD` et l'**index**. Un commit qui ne bumpe pas sort en silence (zéro friction au quotidien). Se fier au préfixe `release(...)` serait plus faible — le commit `2751ff5` s'appelait `fix(v1.73.1-dev)`.
+
+**Deux niveaux, calqués sur `RELEASE_GATE.md`** :
+
+| | Contrôle | Dérogeable |
+|---|---|---|
+| 🔒 **Noyau** | `sw.js > CACHE_NAME` et `js/copyright.js > build` portent la version de `version.json` | ❌ jamais — un échec ici = l'app ne se met pas à jour chez l'user |
+| 📄 **Doc** | `README.md` (bloc « Version courante » + entrée en tête du journal) · `NETWORK_AUDIT.md`/`.html` (en-tête « À jour pour la version » + entrée d'historique) · `AI_CONTEXT.md` a bougé dans le commit | ⚠️ oui |
+
+**Déroger** : une ligne `Docs-deroge: <motif · risque accepté · rattrapage>` dans le message (≥ 5 caractères, lignes commentées `#` ignorées — sinon la trace disparaîtrait du commit final). Cas légitime canonique : le hotfix « bump de cache seul » type v1.75.1.
+
+**Ce qu'il ne fait pas** (à ne pas confondre) :
+- `AI_CONTEXT.md` ne porte **pas** de marqueur de version (il a `{{BUILD}}`, rempli à la génération) → seul « a bougé » est contrôlable. Un `AI_CONTEXT` touché pour une virgule passe.
+- `README_USER.md`/`.en.md` et `js/interfaceDocs.js` ne sont **pas** contrôlés : un hotfix peut légitimement n'avoir rien à leur dire, l'exiger produirait des faux positifs à répétition.
+- L'axe archi (`CLAUDE.md`, `docs/architecture/*`) est conditionnel par nature — non automatisable.
+- Il lit le **repo**, jamais le serveur : il ne remplace pas l'item 13 du smoke (marche 2 du gate), qui attrape les uploads FTP partiels.
+- `git commit --amend` sur un commit de release déjà bumpé ne le redéclenche pas (HEAD porte déjà la nouvelle version) — le commit d'origine, lui, est passé par la porte.
+
+**Éprouvé en le falsifiant** (règle du §83) : 5 scénarios rejoués sur l'index réel — pas de bump (silence), bump nu (9 ❌), dérogation qui ne débloque PAS le noyau, noyau vert + dérogation (passe avec avertissement), release complète (vert). Le test a d'ailleurs sorti un vrai défaut : le contrôle du journal visait la **première mention** de « Journal des versions » (le sommaire, ligne 53) au lieu du **titre de section** — un README correct aurait été refusé.

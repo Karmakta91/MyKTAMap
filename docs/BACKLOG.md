@@ -236,10 +236,6 @@ La liste « règles CSS mortes » de l'audit du 09/08 matin (consignée dans le 
 
 `window.ktaConfirm` (utils.js, v1.76.2, Promise + charte) existe depuis le retour KARMA sur la popup de replanification d'itinéraire. Les `confirm()` natifs restants (createConf, exporter, homeConfig, homeLoader, homeProfile, interface, interfaceConfig, interfaceLegende, journalUi…) **migrent au fil de l'eau** quand on touche leur module — pas de sweep massif (risque de régression sur des flux critiques type suppression). Nouveaux usages : `ktaConfirm` obligatoire. Attention à la migration : `ktaConfirm` est **asynchrone** (le code qui suit un `if (!confirm(...)) return;` doit passer en `.then()`).
 
-### D-tutorial — 🌍 tutorial.js hors i18n (audit 06/08)
-
-`UI_STRINGS` + `CARDS`/`CARDS_EN` codés en dur fr/en, propre `_t()` qui n'utilise jamais `window.I18n` — un utilisateur **es** voit l'onboarding en français. Migration vers les dicos `lang/` à faire. (~90 chaînes.)
-
 ### D0 — 🧲 Magnétisme C5 : rayon non plafonné en unités plan ✅ vérifié 01/08
 
 **Symptôme constaté par KARMA** : magnétisme actif + cercles d'intersection actifs → un cercle apparaît alors que les deux tracés ne se touchent pas.
@@ -266,12 +262,6 @@ La liste « règles CSS mortes » de l'audit du 09/08 matin (consignée dans le 
 | D6 | **Constantes `ITI_*` dupliquées** de `road.js > ROAD_TYPES.itinerary` | ⚠️ doc seule | Sync manuelle si le style iti change. Sera absorbé par le résolveur central (sujet 2) |
 | D7 | **Duplication ~2 fonctions** pickers géoréf ↔ picker départ tracker | ⚠️ doc seule — [`tracking.md`](architecture/tracking.md) | Seuil explicite : mutualiser **si une 3ᵉ cible apparaît**. Pas atteint → ne rien faire |
 | D8 | **`secoursPlan.groupes[].statut`** — ⚠️ signalé mort par la doc, **il est exploité** | ✅ vérifié (doc corrigée) | Aucune action. Gardé ici comme rappel que la doc mentait |
-
-## ⚫ Dette de process (se recrée toute seule)
-
-**La règle des 4 axes de `CLAUDE.md` n'est vérifiée par rien.** Le hook `pre-commit` contrôle les fuites pro, pas la fraîcheur des docs. Constaté : `AI_CONTEXT.md` n'avait **jamais** reçu les nouveautés v1.73.0 (point C géoref, mode kiosque) — pendant une version entière, l'Aide IA a répondu « ça n'existe pas » sur deux features livrées.
-
-**Piste** : le hook compare la version des 3 sources et **refuse un commit `release(...)`** si `AI_CONTEXT.md` / `NETWORK_AUDIT.md` n'ont pas bougé. ~1 h, et la dette cesse de se recréer.
 
 ## 🚫 Enterré volontairement — ne pas repayer
 

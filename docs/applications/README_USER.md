@@ -151,6 +151,8 @@ Si un plan que **tu avais déjà importé** est révoqué par l'auteur APRÈS to
 
 L'application est protégée par un **mot de passe unique commun** à tous les utilisateurs autorisés. Le code te sera communiqué par l'auteur (forum, message direct, etc.).
 
+> 🌍 *(depuis v1.79.4)* En haut de cet écran, un sélecteur **FR · EN · ES** te permet de choisir ta langue **dès le premier lancement** (pré-sélectionnée d'après celle de ton navigateur) — l'écran se traduit immédiatement et toute l'app suit, tutoriel compris.
+
 **À la première installation** (ou après un reset complet) :
 1. Le splash s'affiche normalement (3,5 secondes)
 2. Un écran **🗝️ Accès restreint** apparaît avec un champ de saisie
@@ -286,7 +288,7 @@ La modale Profil affiche **6 cells de stats globales** :
 | 🗂️ **N plans** | Nombre de plans dans ton registre (serveur + locaux) |
 | 💾 **N sessions** | Nombre total de sessions sauvegardées (per-plan slots) |
 | ⭐ **N favoris** | Nombre cumulé de points marqués favoris, tous plans confondus |
-| 📦 **N snapshots** | Nombre de snapshots de session backups en IndexedDB (max 10 FIFO) |
+| 📦 **N snapshots** | Nombre de snapshots de session backups en IndexedDB (max 10 FIFO **par plan** depuis v1.79.3 — avant : 10 tous plans confondus, un plan actif purgeait l'historique des autres) |
 | 📸 **N photos POI** | Nombre de photos attachées à des points + taille totale |
 | 💾 **N MB sauvegarde** | **Taille réelle des données MyKTAMap** (localStorage avec préfixe MyKTAMap + 6 stores IndexedDB connus). Hors Cache PWA volatile (qui n'est pas une donnée user). |
 
@@ -583,17 +585,30 @@ La sauvegarde automatique ci-dessus garde **l'état courant** d'un plan. Le **ca
 
 Le carnet fait la différence tout seul, et c'est important : préparer un plan chez soi n'est pas une sortie.
 
-- Si vous vous êtes **déplacé** pendant la session (le tracker a enregistré de la distance ou des pas) → **sortie terrain**.
+- Si vous vous êtes **déplacé** pendant la session → **sortie terrain**. Un seul **« 📍 Je suis ici »** suffit : vous affirmez être physiquement passé par un point, c'est une sortie, même tracker éteint.
 - Si vous n'avez fait qu'**annoter sans bouger** → **travail sur plan**, rangé dans une section repliée à part, en bas du carnet.
 - Les **totaux** en haut du carnet (nombre de sorties, temps, distance) ne comptent **que le terrain** — le temps passé à dessiner à la maison n'a rien à y faire.
-- L'app s'est trompée ? Par exemple une sortie faite tracker éteint : ouvrez la fiche et cliquez **🚶 Classer en sortie terrain** (ou l'inverse). Votre correction est définitive, elle ne sera jamais recalculée.
+- L'app s'est trompée ? Ouvrez la fiche et cliquez **🚶 Classer en sortie terrain** (ou l'inverse). Depuis un plan, les mêmes boutons **🚶 / 🖥️** sont dans la modale **Session**, section 📔, à côté de « Clôturer ma sortie ». Votre correction est définitive, elle ne sera jamais recalculée.
+
+**📏 La distance quand vous n'utilisez pas le podomètre**
+
+Vous naviguez souvent sans le tracker : vous marchez, et de temps en temps vous faites **« 📍 Je suis ici »** sur un point. L'app **relie ces repères entre eux** pour estimer ce que vous avez parcouru — et elle suit les **galeries** pour le faire, pas la ligne droite (dans un réseau labyrinthique, la ligne droite raconterait n'importe quoi).
+
+Concrètement : vous partez de **A**, vous passez par **C**, puis vous rejoignez **B** → l'app compte A→C, puis C→B.
+
+- Cette distance est toujours **annoncée comme estimée** (« 820 m dont 600 estimés ») : elle ne se fait jamais passer pour une mesure.
+- ⏱️ **Pendant la sortie, le chiffre est volontairement prudent** : l'app compte à vol d'oiseau, pour que « 📍 Je suis ici » reste **instantané** sous terre. Le calcul qui suit les galeries se fait **une seule fois, quand la sortie est rangée dans le carnet** — c'est pourquoi la distance **augmente** à ce moment-là. Sur un très grand plan, l'app peut renoncer à ce calcul final : elle garde alors la distance à vol d'oiseau plutôt que de se figer.
+- 🧭 **Le bouton « Affiner le tracé »** (modale **Session**, section 📔) fait le calcul **quand vous voulez**, sans attendre la fin : il recalcule la distance **et redessine le trajet** en suivant les galeries entre vos repères. Le compteur à côté indique combien de tronçons attendent. Sur un plan très volumineux, l'app prévient que ça va la bloquer quelques secondes et vous laisse décider.
+- ⚠️ **Ce trajet redessiné est une reconstitution, pas un relevé.** L'app suppose que vous êtes allé d'un repère à l'autre par le chemin le plus court : un détour, une galerie explorée puis abandonnée, un demi-tour n'y apparaîtront pas. Il s'affiche donc **dans la fiche de la sortie uniquement**, avec la mention qui va bien — vos **exports GPX/KMZ et la heatmap gardent le tracé réellement enregistré**, jamais la reconstitution.
+- Si le podomètre **a** mesuré entre deux repères, c'est lui qui compte — jamais les deux à la fois.
+- Un **clic sur la carte** pour corriger votre position ne compte pas comme un trajet, et une **traversée de portail** vers un autre plan non plus.
 
 **Quand une session est-elle archivée ?**
-- **Automatiquement** quand vous quittez le plan (changement de plan ou retour à l'accueil), selon la nature :
-  - une **sortie terrain** est gardée à partir de **50 m parcourus**,
-  - un **travail sur plan** est gardé à partir de **10 minutes** de travail réel **et** au moins une annotation.
+- **Automatiquement** quand vous quittez le plan (changement de plan ou retour à l'accueil), si **l'une** de ces conditions est remplie :
+  - **50 m parcourus** (mesurés au podomètre ou estimés entre vos « 📍 Je suis ici »),
+  - **ou** 10 minutes de travail réel **et** au moins une annotation.
   - En dessous, rien n'est conservé — ouvrir un plan 20 secondes pour vérifier un détail ne pollue pas le carnet.
-- **À la main** avec **🏁 Clôturer ma sortie** : elle est rangée sans condition, et une nouvelle démarre aussitôt. Pratique pour découper une longue journée en étapes.
+- **À la main** avec **🏁 Clôturer ma sortie** : elle est rangée sans condition, et une nouvelle démarre aussitôt. Pratique pour découper une longue journée en étapes — et c'est le geste sûr si vous tenez à garder une session courte.
 
 **📖 L'onglet Récits — vos notes et PDF de plan, enfin réunis**
 

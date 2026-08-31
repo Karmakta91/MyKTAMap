@@ -1672,16 +1672,53 @@
                   (terrain
                     ? window.I18n.t("jrn.section.encours", {
                         duree: duree, dist: window.formatDistance(cur.distM || 0, 0), n: nbAj })
-                    : window.I18n.t("jrn.section.encoursBureau", { duree: duree, n: nbAj })) +
+                    : window.I18n.t("jrn.section.encoursBureau", { duree: duree, n: nbAj }));
+        // 📏 16/08/2026 — la part ESTIMÉE est annoncée, jamais noyée dans le
+        // total : elle vient des « 📍 Je suis ici » (chemin réseau ou vol
+        // d'oiseau), pas du podomètre. L'user doit savoir ce que vaut le chiffre.
+        if (terrain && (cur.distEstimeeM || 0) > 0) {
+          html += ' <span style="color:#8cb4ff;">' +
+                    window.I18n.t("jrn.section.dontEstime", {
+                      dist: window.formatDistance(cur.distEstimeeM, 0) }) +
+                  '</span>';
+        }
+        html += '</div>';
+        // 🚶/🖥️ Correction du classement DEPUIS L'ÉCRAN PLAN (demande KARMA
+        // 16/08) : jusqu'ici il fallait ouvrir le Carnet au HOME pour corriger.
+        // Le choix pose `typeManuel` → plus aucun recalcul auto derrière.
+        html += '<div style="display:flex; gap:6px; align-items:center; margin-bottom:8px;">' +
+                  '<span style="font-size:11px; color:#8892a4;">' +
+                    window.I18n.t("jrn.section.natureLabel") + '</span>' +
+                  '<button type="button" class="kta-btn kta-btn-small ' +
+                    (terrain ? 'kta-btn-primary' : 'kta-btn-ghost') + '" data-kta-jrn-type="terrain"' +
+                    ' id="kta-refonte-session-carnet-type-terrain">🚶</button>' +
+                  '<button type="button" class="kta-btn kta-btn-small ' +
+                    (terrain ? 'kta-btn-ghost' : 'kta-btn-primary') + '" data-kta-jrn-type="bureau"' +
+                    ' id="kta-refonte-session-carnet-type-bureau">🖥️</button>' +
+                  (cur.typeManuel
+                    ? '<span style="font-size:11px; color:#8892a4;">' +
+                        window.I18n.t("jrn.section.natureFigee") + '</span>'
+                    : '') +
                 '</div>';
       } else {
         html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
                   window.I18n.t("jrn.section.aucune") +
                 '</div>';
       }
+      // 🧭 Affiner : recalcule distance ET tracé en suivant les galeries entre
+      // les « 📍 Je suis ici ». Grisé quand il n'y a rien à affiner — masquer
+      // le bouton ferait chercher pourquoi il apparaît chez d'autres sorties.
+      const nbAAffiner = (typeof window.getTrackingTronconsAAffiner === "function")
+        ? window.getTrackingTronconsAAffiner() : 0;
       html += '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
                 (cur ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-carnet-cloture">' +
                          '🏁 ' + window.I18n.t("jrn.section.cloturer") + '</button>' : '') +
+                (cur ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
+                         'id="kta-refonte-session-carnet-affiner"' + (nbAAffiner > 0 ? '' : ' disabled') +
+                         ' title="' + window.I18n.t(nbAAffiner > 0 ? "jrn.section.affinerTitre"
+                                                                  : "jrn.section.affinerRien") + '">' +
+                         '🧭 ' + window.I18n.t("jrn.section.affiner") +
+                         (nbAAffiner > 0 ? ' (' + nbAAffiner + ')' : '') + '</button>' : '') +
                 '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-carnet-ouvrir">' +
                   '📔 ' + window.I18n.t("jrn.section.ouvrir") + '</button>' +
               '</div>';
@@ -1787,6 +1824,83 @@
         }
       });
     }
+
+    // 🧭 17/08/2026 — « Affiner le tracé » : rejoue les tronçons estimés à vol
+    // d'oiseau en suivant les galeries. On tente D'ABORD sans forcer : si le
+    // plan dépasse le budget de sommets, l'appel revient immédiatement avec
+    // `skipped: "trop-gros"` (aucun calcul gaspillé) et on demande alors à
+    // l'user s'il accepte le gel — c'est sur les gros plans qu'il en a le plus
+    // besoin, lui interdire le calcul rendrait le bouton inutile là où il sert.
+    const _btnAffiner = document.getElementById("kta-refonte-session-carnet-affiner");
+    if (_btnAffiner) {
+      _btnAffiner.addEventListener("click", function() {
+        if (_btnAffiner.disabled) return;
+        if (!window.Journal || typeof window.Journal.affinerEnCours !== "function") return;
+        _btnAffiner.disabled = true;
+        const _fini = function(bilan) {
+          const t = window.I18n.t;
+          if (bilan && bilan.runs > 0) {
+            const av = window.formatDistance(bilan.avantM, 0);
+            const ap = window.formatDistance(bilan.apresM, 0);
+            if (window.OOMGuard && window.OOMGuard.showToast) {
+              window.OOMGuard.showToast(t("jrn.toast.affine", { avant: av, apres: ap }), "info");
+            }
+          } else if (window.OOMGuard && window.OOMGuard.showToast) {
+            window.OOMGuard.showToast(t("jrn.toast.affineRien"), "warn");
+          }
+        };
+        window.Journal.affinerEnCours().then(function(bilan) {
+          if (bilan && bilan.skipped === "trop-gros") {
+            const demander = (typeof window.ktaConfirm === "function")
+              ? window.ktaConfirm(window.I18n.t("jrn.affiner.confirmGros", { n: bilan.nbPts || "?" }),
+                                  { titre: window.I18n.t("jrn.affiner.confirmTitre") })
+              : Promise.resolve(window.confirm(window.I18n.t("jrn.affiner.confirmGros",
+                                                             { n: bilan.nbPts || "?" })));
+            return demander.then(function(ok) {
+              if (!ok) return null;
+              return window.Journal.affinerEnCours({ force: true });
+            });
+          }
+          return bilan;
+        }).then(function(bilan) {
+          _fini(bilan);
+          _btnAffiner.disabled = false;
+        }).catch(function() { _btnAffiner.disabled = false; });
+      });
+    }
+
+    // 🚶/🖥️ 16/08/2026 — correction du classement sans quitter l'écran plan.
+    // On repeint les deux boutons À LA MAIN plutôt que de re-rendre la section :
+    // un re-render détruirait les éléments sous le doigt de l'user (c'est le
+    // mécanisme exact du bug de color picker de la Légende, v1.77.0).
+    (function _wireTypeCarnet() {
+      const btns = [
+        document.getElementById("kta-refonte-session-carnet-type-terrain"),
+        document.getElementById("kta-refonte-session-carnet-type-bureau")
+      ].filter(Boolean);
+      if (btns.length !== 2) return;
+      btns.forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const type = btn.getAttribute("data-kta-jrn-type");
+          const cur  = (window.Journal && typeof window.Journal.getCurrent === "function")
+                         ? window.Journal.getCurrent() : null;
+          if (!cur || typeof window.Journal.setType !== "function") return;
+          window.Journal.setType(cur.id, type).then(function(ok) {
+            if (!ok) return;
+            btns.forEach(function(b) {
+              const actif = (b.getAttribute("data-kta-jrn-type") === type);
+              b.classList.toggle("kta-btn-primary", actif);
+              b.classList.toggle("kta-btn-ghost", !actif);
+            });
+            if (window.OOMGuard && window.OOMGuard.showToast) {
+              window.OOMGuard.showToast(
+                window.I18n.t(type === "terrain" ? "jrn.toast.natureTerrain" : "jrn.toast.natureBureau"),
+                "info");
+            }
+          });
+        });
+      });
+    })();
 
     // 🆕 v1.20.0 — CTA Stats globales du plan (modale dédiée)
     const _btnStatsGlob = document.getElementById("kta-refonte-session-open-stats-glob");

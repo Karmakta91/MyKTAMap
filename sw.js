@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.79.2";
+const CACHE_NAME = "myktamap-cache-v1.79.6";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -320,26 +320,16 @@ const ASSETS_TO_CACHE = [
 
   // Données JSON
   "./data/index.json",
-  "./data/test1/editor.json",
-  "./data/test1/carriere.json",
-  "./data/test1/puits.json",
-  "./data/test1/chemin.json",
-  "./data/test1/plan-config.json",
-  "./data/test1/zone.json",
   // 🆕 v1.9.3-A1.a : fichier structure.json (vide par défaut pour les
   // plans de test livrés avec l'app — KARMA peut y dessiner ses piliers).
-  "./data/test1/structure.json",
-  "./data/test1/TestMAP.png",
-  "./data/test1/collision.png",
-  "./data/test2/editor.json",
-  "./data/test2/carriere.json",
-  "./data/test2/puits.json",
-  "./data/test2/chemin.json",
-  "./data/test2/plan-config.json",
-  "./data/test2/zone.json",
-  "./data/test2/structure.json",
-  "./data/test2/TestMAP.png",
-  "./data/test2/collision.png",
+  "./data/test/carriere.json",
+  "./data/test/puits.json",
+  "./data/test/chemin.json",
+  "./data/test/plan-config.json",
+  "./data/test/zone.json",
+  "./data/test/structure.json",
+  "./data/test/TestMAP.png",
+  "./data/test/collision.png",
 
   // Icônes app / points
   "./icon/mkm-full.png",

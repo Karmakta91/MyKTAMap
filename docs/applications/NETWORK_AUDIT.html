@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.79.2</strong> (11 août 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.79.6</strong> (31 août 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,14 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.79.6 (« Affiner le tracé » à la demande, clic « Je suis ici » instantané)</h3>
+  <p><strong>100 % local</strong> — le recalcul suit les mêmes tracés du plan déjà chargés dans ton navigateur, avec le même moteur d'itinéraire qu'avant ; ce qui change est <strong>quand</strong> le calcul a lieu (à ta demande ou à l'archivage, plus au moment du clic), pas où il se fait. Le trajet redessiné vit dans ta base locale de sorties, à côté du tracé brut qui n'est jamais remplacé. Aucune nouvelle requête, aucun nouveau domaine, whitelist <code>connect-src</code> inchangée.</p>
+  <h3>v1.79.5 (distance des « 📍 Je suis ici », carnet, garde-fou de release)</h3>
+  <p><strong>100 % local</strong> — la distance estimée est calculée <strong>dans ton navigateur</strong> à partir des tracés du plan déjà chargé (même moteur d’itinéraire que le bouton Itinéraire) ; aucune position, aucun repère et aucune distance ne quitte l’appareil. Le reste du lot (carnet, garde-fou de release) est du stockage local et de l’outillage interne. Aucune nouvelle requête, aucun nouveau domaine, whitelist <code>connect-src</code> inchangée.</p>
+  <h3>v1.79.4 (langue dès le premier écran, tutoriel multilingue)</h3>
+  <p><strong>100 % local</strong> — le sélecteur charge les dictionnaires de langue <strong>déjà précachés</strong> par l'application (<code>lang/*.json</code>, même origine), le tutoriel lit ces mêmes dictionnaires. Aucune nouvelle requête, aucun nouveau domaine, whitelist <code>connect-src</code> inchangée.</p>
+  <h3>v1.79.3 (hygiène du stockage : backups par plan, purge à la suppression, nettoyeur d'orphelines)</h3>
+  <p><strong>100 % local</strong> — tout se passe entre ta liste de plans et le stockage de ton navigateur (localStorage + IndexedDB). Aucune requête, aucun nouveau domaine, whitelist <code>connect-src</code> inchangée.</p>
   <h3>v1.79.2 (entretien : vérification des traductions, docs dépoussiérées)</h3>
   <p>Changement <strong>100 % outillage interne</strong> (vérificateur de traductions) + retrait d'une section de doc périmée. Aucun changement réseau d'aucune sorte, whitelist <code>connect-src</code> inchangée.</p>
   <h3>v1.79.1 (popup doublon systématique, renommage d'affichage)</h3>

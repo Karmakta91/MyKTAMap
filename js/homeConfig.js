@@ -301,7 +301,12 @@
             }
             _safeCall(window.Tracker && window.Tracker.stop, "Tracker.stop");
             _safeCall(window.EmergencyMode && window.EmergencyMode.desactiver, "EmergencyMode.desactiver");
-            _safeCall(window.TrackerReplay && window.TrackerReplay.arreter, "TrackerReplay.arreter");
+            // 🐛 v1.79.3 — visait window.TrackerReplay.arreter : mauvais nom
+            // (MyKTAMapTrackerReplay) ET méthode inexistante (l'API est
+            // ouvrirModale/fermer) → no-op silencieux depuis sa naissance.
+            // Impact réel nul (location.reload() suit), corrigé pour que le
+            // cleanup fasse ce qu'il annonce.
+            _safeCall(window.MyKTAMapTrackerReplay && window.MyKTAMapTrackerReplay.fermer, "MyKTAMapTrackerReplay.fermer");
             _safeCall(window.OOMGuard && window.OOMGuard.stop, "OOMGuard.stop");
             _safeCall(window.LostMode && window.LostMode.desactiver, "LostMode.desactiver");
 

@@ -93,7 +93,11 @@ function initTracking() {
     // vide le tracé visible (polyline.setLatLngs([])) mais on garde la
     // timeline historique pour le replay (= cumul depuis le start de
     // tracking, pas effacé par les recalages successifs).
-    _pushTimelinePoint("recalage");
+    // `src: "click"` — ce recalage-ci n'alimente JAMAIS la distance estimée :
+    // un clic carte libre corrige le plus souvent une position fausse, il ne
+    // raconte pas un trajet (décision KARMA 16/08 : seul « 📍 Je suis ici »
+    // sur un point compte).
+    _pushTimelinePoint("recalage", { src: "click" });
 
     // 🆕 v1.11.3-fix (KARMA "quand on a fini de l'utiliser, on doit
     // repartir sur la boussole") : auto-désactive le mode recalage après
@@ -885,8 +889,12 @@ function _decimateTimeline() {
 
 // Helper interne : push une entrée timeline avec timestamp + type.
 // Lit position.x, position.y au moment de l'appel (= snapshot atomique).
-function _pushTimelinePoint(type) {
-  if (typeof position.x !== "number" || typeof position.y !== "number") return;
+// `extra` (optionnel) enrichit l'entrée : `src` ("point" = « 📍 Je suis ici »,
+// "click" = clic carte en mode recalage) et `tp` (téléportation : arrivée de
+// portail — jamais une distance parcourue). Rend l'entrée poussée, ou null si
+// la position n'était pas exploitable.
+function _pushTimelinePoint(type, extra) {
+  if (typeof position.x !== "number" || typeof position.y !== "number") return null;
   const now = Date.now();
   if (_trackingStartTs === null) _trackingStartTs = now;
   const entry = {
@@ -896,6 +904,7 @@ function _pushTimelinePoint(type) {
     deltaMs: now - _trackingStartTs,
     type: type || "pdr"
   };
+  if (extra) Object.assign(entry, extra);
   // Multi-niveau : on tag aussi le niveau du tracker au moment du point
   if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
     entry.level = typeof trackerLevel === "number" ? trackerLevel : (window.APP_CONFIG.activeLevel || 0);
@@ -906,6 +915,7 @@ function _pushTimelinePoint(type) {
   if (_trackingTimeline.length > MAX_TIMELINE_ENTRIES) {
     _decimateTimeline();
   }
+  return entry;
 }
 
 function startTracking() {
@@ -1104,6 +1114,261 @@ window.getTrackingDistanceM = function() {
   return total / scale;
 };
 
+// ═══════════════════════════════════════════════════════════════════════
+// 📏 DISTANCE ESTIMÉE ENTRE ANCRES (demande KARMA — 16/08/2026)
+// ═══════════════════════════════════════════════════════════════════════
+// LE MANQUE : `getTrackingDistanceM` ci-dessus ne mesure QUE le podomètre —
+// tout segment touchant un recalage est sauté (un recalage PEUT être une
+// téléportation, l'exclusion est saine). Conséquence : une sortie menée au
+// « 📍 Je suis ici » de point en point, sans PDR, valait 0 m, et le Carnet
+// la jetait sous ses seuils.
+//
+// LA RÈGLE — on comble le trou UNIQUEMENT quand le podomètre n'a rien vu :
+//   ancre A ──(aucun pas PDR)──→ ancre C   →  A→C est estimée
+//   ancre A ──(des pas PDR)────→ ancre C   →  on ne touche à rien (le
+//                                             podomètre fait foi, jamais de
+//                                             double comptage)
+//
+// LA MESURE (décision KARMA « hybride ») : longueur du CHEMIN RÉEL sur le
+// réseau de galeries (Pathfinder → Dijkstra). À vol d'oiseau, 40 m dans un
+// labyrinthe peuvent valoir 300 m réels — l'estimation serait un mensonge
+// systématiquement optimiste. Repli vol d'oiseau si un bout n'accroche pas
+// le réseau (Dijkstra sans chemin).
+//
+// JAMAIS CUMULÉ : le clic carte libre (`src: "click"` — c'est le plus souvent
+// une CORRECTION de position, pas un déplacement) et l'arrivée de portail
+// (`tp` — saut entre deux plans).
+//
+// OÙ VIT LA VALEUR : sur l'ancre elle-même (`estM` + `estSrc`). Donc elle
+// voyage avec la timeline persistée, survit au rechargement du plan, et la
+// décimation ne peut pas la perdre (`_decimateTimeline` conserve TOUTES les
+// ancres, seuls les PDR sont sacrifiés).
+//
+// ⚠️ Volontairement SÉPARÉE de `getTrackingDistanceM` : mesuré et estimé ne
+// se valent pas, et 4 modules consomment déjà la distance mesurée. Le total
+// s'obtient par `getTrackingDistanceTotaleM()`, qui sait dire ce qu'il doit
+// à l'estimation.
+
+// Un chemin réseau plus long que N× le vol d'oiseau trahit un artefact de
+// graphe (détour par une galerie mal reliée), pas un labyrinthe. On garde
+// alors le vol d'oiseau : sous-estimer est moins grave qu'inventer 2 km.
+const EST_RATIO_MAX = 30;
+
+function _scaleOuUn() {
+  const s = (window.APP_CONFIG && window.APP_CONFIG.scale) || 1;
+  return (isFinite(s) && s > 0) ? s : 1;
+}
+
+// Budget de l'affinage réseau : `Pathfinder` reconstruit ENTIÈREMENT son graphe
+// à chaque appel (`_buildGraph` + enrichissement des croisements en O(N²), aucun
+// cache — pathfinder.js:773). Au-delà de ce volume de sommets, on garde le vol
+// d'oiseau plutôt que de figer l'app.
+const MAX_PTS_AFFINAGE = 20000;
+
+// ⚡ CHEMIN CHAUD — appelé au clic « 📍 Je suis ici ». AUCUN calcul de réseau
+// ici : la première version lançait un Dijkstra par clic, et comme la
+// replanification d'itinéraire en lance un second juste après, chaque « Je suis
+// ici » coûtait DEUX reconstructions de graphe (retour terrain KARMA 17/08 :
+// « c'est long, et ensuite le recalcul est tout aussi long »). Le vol d'oiseau
+// est posé tout de suite ; `affinerEstimationsTracker` repasse dessus plus tard,
+// hors du geste.
+function _estimerSegmentDepuisAncre(entry) {
+  if (!entry || entry.tp) return;
+  const i = _trackingTimeline.indexOf(entry);
+  if (i <= 0) return;
+  const prev = _trackingTimeline[i - 1];
+  // Le point précédent n'est pas une ancre → des pas PDR ont été enregistrés
+  // entre les deux, le podomètre a déjà mesuré ce tronçon.
+  if (!prev || (prev.type !== "recalage" && prev.type !== "start")) return;
+
+  const volPx = Math.hypot(entry.x - prev.x, entry.y - prev.y);
+  if (!(volPx > 0)) return;
+  entry.estM   = volPx / _scaleOuUn();
+  entry.estSrc = "vol";
+}
+
+// 🐢 CHEMIN FROID — repasse les tronçons « vol d'oiseau » en distance RÉELLE sur
+// le réseau. Appelé à l'archivage d'une sortie (journal.js), jamais au clic.
+//
+// `roads` est FOURNI par l'appelant (`computeRouteOnRoads`, v1.60.0) et non lu
+// depuis l'état courant : l'affinage tourne pendant/après un changement de plan,
+// et lire `getRoads()` à ce moment calculerait sur le plan SUIVANT.
+//
+// Un seul appel par « run » d'ancres consécutives : `computeRouteOnRoads` accepte
+// une chaîne de waypoints et ne construit son graphe QU'UNE fois pour toute la
+// chaîne. Une sortie de navigation pure = 1 run = 1 seule construction.
+//
+// ⚠️ La distance réseau du run est répartie sur ses tronçons **au prorata de
+// leur vol d'oiseau** : `computeRouteOnRoads` ne rend qu'un total. La SOMME est
+// donc exacte (c'est elle qui compte pour le carnet), le détail par ancre est
+// une approximation assumée.
+window.affinerEstimationsTracker = function(roads, opts) {
+  opts = opts || {};
+  const bilan = { runs: 0, avantM: 0, apresM: 0, skipped: null, trace: null };
+  if (!window.Pathfinder || typeof window.Pathfinder.computeRouteOnRoads !== "function") {
+    bilan.skipped = "pathfinder-absent";
+    return Promise.resolve(bilan);
+  }
+  if (!Array.isArray(roads) || roads.length === 0) {
+    bilan.skipped = "aucune-road";
+    return Promise.resolve(bilan);
+  }
+  let nbPts = 0;
+  for (let r = 0; r < roads.length; r++) {
+    if (roads[r] && Array.isArray(roads[r].points)) nbPts += roads[r].points.length;
+  }
+  // `force` : demande EXPLICITE de l'utilisateur (bouton « Affiner le tracé »).
+  // Le budget protège l'archivage automatique, qui doit rester invisible ; il
+  // n'a pas à interdire un calcul que l'user réclame en connaissance de cause —
+  // et c'est justement sur les gros plans qu'il en a le plus besoin.
+  const plafond = Number(opts.maxPts) || MAX_PTS_AFFINAGE;
+  if (nbPts > plafond && !opts.force) {
+    console.log("[Tracking] Affinage réseau ignoré : " + nbPts + " sommets (> " + plafond +
+                ") — vol d'oiseau conservé.");
+    bilan.skipped = "trop-gros";
+    bilan.nbPts   = nbPts;
+    return Promise.resolve(bilan);
+  }
+
+  // Regroupe les ancres comblées consécutives (indices adjacents dans la timeline).
+  const runs = [];
+  let courant = null;
+  for (let i = 1; i < _trackingTimeline.length; i++) {
+    const e = _trackingTimeline[i];
+    const aCombler = !!(e && isFinite(e.estM) && e.estM > 0 && e.estSrc === "vol");
+    if (aCombler) {
+      if (courant && courant.fin === i - 1) courant.fin = i;
+      else { courant = { debut: i, fin: i }; runs.push(courant); }
+    } else courant = null;
+  }
+  if (runs.length === 0) return Promise.resolve(bilan);
+
+  const sc = _scaleOuUn();
+  runs.forEach(function(run) {
+    const ancres = [];
+    for (let i = run.debut - 1; i <= run.fin; i++) {
+      ancres.push({ x: _trackingTimeline[i].x, y: _trackingTimeline[i].y });
+    }
+    let sumVolM = 0;
+    for (let i = run.debut; i <= run.fin; i++) sumVolM += _trackingTimeline[i].estM;
+    if (!(sumVolM > 0)) return;
+
+    let res;
+    try {
+      res = window.Pathfinder.computeRouteOnRoads(ancres, roads, opts.routeOpts || {});
+    } catch (e) {
+      // Bouts hors réseau, aucun chemin : le vol d'oiseau reste, c'est voulu.
+      if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+        console.log("[Tracking] Affinage impossible sur un run :", e && e.message);
+      }
+      return;
+    }
+    if (!res || !isFinite(res.totalDistance) || res.totalDistance <= 0) return;
+    const totalM = res.totalDistance / sc;
+    if (totalM > sumVolM * EST_RATIO_MAX) {
+      console.warn("[Tracking] Chemin réseau anormal (" + Math.round(totalM) + " m pour " +
+                   Math.round(sumVolM) + " m à vol d'oiseau) — vol d'oiseau conservé.");
+      return;
+    }
+    const facteur = totalM / sumVolM;
+    for (let i = run.debut; i <= run.fin; i++) {
+      _trackingTimeline[i].estM   = _trackingTimeline[i].estM * facteur;
+      _trackingTimeline[i].estSrc = "reseau";
+    }
+    // La GÉOMÉTRIE du chemin était calculée puis jetée : on la garde pour
+    // reconstruire le tracé de la sortie (`res.path` = [{x, y}, …]).
+    if (Array.isArray(res.path) && res.path.length >= 2) run.path = res.path;
+    bilan.runs++;
+    bilan.avantM += sumVolM;
+    bilan.apresM += totalM;
+  });
+
+  if (bilan.runs > 0) {
+    bilan.trace = _construireTraceAffinee(runs, opts.depuisMs);
+    console.log("[Tracking] Affinage réseau : " + bilan.runs + " tronçon(s) — " +
+                Math.round(bilan.avantM) + " m → " + Math.round(bilan.apresM) + " m");
+  }
+  return Promise.resolve(bilan);
+};
+
+// Tracé RECONSTRUIT : la timeline, dans laquelle chaque tronçon comblé est
+// remplacé par le chemin réseau qui vient d'être calculé.
+//
+// ⚠️ C'EST UNE HYPOTHÈSE, PAS UNE MESURE. Entre deux « 📍 Je suis ici », le
+// Dijkstra prend le chemin le plus court : un détour, une diverticule explorée
+// puis abandonnée, un demi-tour n'y figureront jamais. D'où la règle posée avec
+// KARMA le 17/08 : ce tracé vit dans le CARNET (fiche de sortie) et nulle part
+// ailleurs — ni exports GPX/KMZ, ni heatmap, ni replay, qui doivent continuer à
+// ne montrer que du mesuré. Le tracé brut (`track`) n'est jamais écrasé.
+function _construireTraceAffinee(runs, depuisMs) {
+  const parDebut = {};
+  runs.forEach(function(r) { if (r.path) parDebut[r.debut - 1] = r; });
+  const seuil = Number(depuisMs) || 0;
+  const out = [];
+  function pousser(x, y, level) {
+    const last = out[out.length - 1];
+    if (last && Math.abs(last.x - x) < 0.01 && Math.abs(last.y - y) < 0.01) return;
+    const p = { x: x, y: y };
+    if (typeof level === "number") p.level = level;
+    out.push(p);
+  }
+  for (let i = 0; i < _trackingTimeline.length; i++) {
+    const e = _trackingTimeline[i];
+    if (!e) continue;
+    const run = parDebut[i];
+    if (run) {
+      // Un run qui commence avant la fenêtre est inclus entièrement : le
+      // tronçon a bien été parcouru pendant la sortie, le couper au milieu
+      // dessinerait un saut.
+      run.path.forEach(function(p) { pousser(p.x, p.y); });
+      i = run.fin;
+      continue;
+    }
+    if (seuil && Number(e.t) < seuil) continue;
+    pousser(e.x, e.y, e.level);
+  }
+  return out.length >= 2 ? out : null;
+}
+
+// Combien de tronçons attendent encore un affinage (source « vol d'oiseau ») ?
+// Sert à griser le bouton « Affiner le tracé » quand il n'y a rien à faire.
+window.getTrackingTronconsAAffiner = function() {
+  let n = 0;
+  for (let i = 0; i < _trackingTimeline.length; i++) {
+    const e = _trackingTimeline[i];
+    if (e && isFinite(e.estM) && e.estM > 0 && e.estSrc === "vol") n++;
+  }
+  return n;
+};
+
+// Somme des tronçons estimés (0 si le podomètre a tout couvert).
+window.getTrackingDistanceEstimeeM = function() {
+  let total = 0;
+  for (let i = 0; i < _trackingTimeline.length; i++) {
+    const e = _trackingTimeline[i];
+    if (e && isFinite(e.estM) && e.estM > 0) total += e.estM;
+  }
+  return total;
+};
+
+// Distance exploitable de la sortie : mesurée au podomètre + estimée entre
+// les « 📍 Je suis ici ». C'est celle que lisent le Carnet et les stats.
+window.getTrackingDistanceTotaleM = function() {
+  return window.getTrackingDistanceM() + window.getTrackingDistanceEstimeeM();
+};
+
+// Nombre de « 📍 Je suis ici » validés — hors clics carte et téléportations.
+// Signal de TERRAIN sans ambiguïté : l'user affirme être physiquement passé
+// par un point précis (cf. journal.js > _classer).
+window.getTrackingValidations = function() {
+  let n = 0;
+  for (let i = 0; i < _trackingTimeline.length; i++) {
+    const e = _trackingTimeline[i];
+    if (e && e.type === "recalage" && e.src === "point" && !e.tp) n++;
+  }
+  return n;
+};
+
 // Reset explicite de la timeline (utile pour le bouton "Effacer historique"
 // futur). API publique pour les modules consommateurs.
 window.resetTrackingTimeline = function() {
@@ -1206,7 +1471,12 @@ function _rebuildTrailFromTimeline() {
 // Equivalent du mode recalage clic-carte mais avec coords exactes du point
 // existant (plus precis qu'un clic approximatif). Reset le tracé en cours
 // (polyline) et le compteur de pas, comme le mode recalage classique.
-window.recalerTrackerSurPoint = function(x, y, level) {
+// `opts.teleport` (v16/08/2026) : l'appelant sait que le déplacement n'a PAS
+// été parcouru — c'est le cas de l'arrivée de portail (interPlanLinks), qui
+// emprunte ce même chemin. L'ancre est alors marquée `tp` et n'entre jamais
+// dans la distance estimée. La source reste "point" pour ne rien changer aux
+// consommateurs existants du hook (validation d'étape d'itinéraire comprise).
+window.recalerTrackerSurPoint = function(x, y, level, opts) {
   if (typeof x !== "number" || typeof y !== "number") return;
   position.x = x;
   position.y = y;
@@ -1215,7 +1485,14 @@ window.recalerTrackerSurPoint = function(x, y, level) {
   stepCount = 0;
 
   // 🆕 v1.11.3 V2.3 : log timeline du recalage sur point existant
-  _pushTimelinePoint("recalage");
+  const _ancre = _pushTimelinePoint(
+    "recalage",
+    (opts && opts.teleport) ? { src: "point", tp: 1 } : { src: "point" }
+  );
+  // 📏 Comble la distance depuis l'ancre précédente si le podomètre n'a rien
+  // vu entre les deux (async : le chemin réseau arrive après, cf. la section
+  // « DISTANCE ESTIMÉE ENTRE ANCRES »).
+  if (_ancre) { try { _estimerSegmentDepuisAncre(_ancre); } catch(e) {} }
   // 🏗️ Multi-niveau (v148) : si un level explicite est fourni (depuis la popup
   // d'un point qui porte son level), on l'utilise. Sinon, par defaut on prend
   // le niveau actif (le user a cliqué un point visible donc forcément actif).

@@ -1,12 +1,12 @@
 {
   "plan": {
-    "name": "Test MultiLVL",
+    "name": "Relevé fictif de test",
     "version": "V2",
     "author": "Karma",
     "imageWidth": 4000,
     "imageHeight": 2251,
-    "baseImage": "data/test2/TestMAP.png",
-    "collisionImage": "data/test2/collision.png",
+    "baseImage": "data/test/TestMAP.png",
+    "collisionImage": "data/test/collision.png",
      "multiLevel": true
   },
   "imageLayers": [],
@@ -14,37 +14,37 @@
     {
       "id": "puits",
       "label": "Puits",
-      "file": "data/test2/puits.json",
+      "file": "data/test/puits.json",
       "visible": true
     },
     {
       "id": "carriere",
       "label": "Carrière",
-      "file": "data/test2/carriere.json",
+      "file": "data/test/carriere.json",
       "visible": true
     },
     {
       "id": "chemin",
       "label": "Chemin",
-      "file": "data/test2/chemin.json",
+      "file": "data/test/chemin.json",
       "visible": true
     },
     {
       "id": "zone",
       "label": "Zone",
-      "file": "data/test2/zone.json",
+      "file": "data/test/zone.json",
       "visible": true
     },
     {
       "id": "structure",
       "label": "Structures",
-      "file": "data/test2/structure.json",
+      "file": "data/test/structure.json",
       "visible": true
     },
     {
       "id": "editor",
       "label": "Mes annotations",
-      "file": "data/test2/editor.json",
+      "file": "data/test/editor.json",
       "visible": true
     }
   ],

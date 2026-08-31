@@ -21,6 +21,7 @@ Vérifier qu'aucune n'est oubliée :
 ```
 grep -n "vX\.Y\.Z" sw.js js/copyright.js version.json
 ```
+🛡️ Depuis le 16/08/2026, ce contrôle est **automatique et bloquant** : `.githooks/commit-msg` refuse tout commit qui bumpe `version.json` sans que les 3 sources concordent (noyau **non dérogeable**) ni que `README.md` / `NETWORK_AUDIT.md` / `.html` / `AI_CONTEXT.md` suivent (dérogeable par une ligne `Docs-deroge: <motif · risque · rattrapage>` dans le message). Le grep reste utile pour corriger AVANT de buter dessus.
 
 ## 3. Notes user-facing + journal README
 - `version.json > notes` : 1-2 puces concises orientées **utilisateur** (pas technique), **uniquement le bump courant** (les notes précédentes sont remplacées).
