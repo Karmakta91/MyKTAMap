@@ -74,6 +74,19 @@ const README_LANG_STORAGE_KEY = "myktamap_readme_lang";
 // (+ l'ajouter à ASSETS_TO_CACHE du SW). 100% générique, aucun code figé.
 const DOC_AVAILABLE_LANGS = ["fr", "en", "es"];
 
+// ⚠️ L'AIDE INTÉGRÉE A SA PROPRE LISTE — ne pas la confondre avec celle
+// ci-dessus. La doc user est un FICHIER par langue (README_USER.<code>.md) ;
+// l'Aide, elle, est du HTML EN DUR dans ce module (`_aideHtmlFr` / `_aideHtmlEn`,
+// ~870 lignes chacune, système séparé qui n'utilise PAS window.I18n.t).
+// Ajouter une langue à la doc n'en crée donc AUCUNE ici.
+// 🩸 Vécu (31/08/2026) : `es` ajouté à DOC_AVAILABLE_LANGS pour livrer la doc
+// espagnole → `_getReadmeLang()` a commencé à rendre "es" → le booléen
+// `aideEn` est retombé à false → l'Aide s'affichait en FRANÇAIS à un
+// hispanophone (avant, elle tombait sur l'anglais : régression nette), et un
+// drapeau 🇪🇸 promettait un contenu inexistant.
+// Toute langue absente d'ici retombe sur "en" (cf. `afficherAide`).
+const AIDE_AVAILABLE_LANGS = ["fr", "en"];
+
 // 🆕 v1.45.0 — Langue à PRÉSÉLECTIONNER pour la doc :
 //   1. choix manuel mémorisé (myktamap_readme_lang) s'il est encore dispo ;
 //   2. sinon défaut dérivé de la langue de l'app via I18n.resolveContentLang
@@ -552,17 +565,22 @@ function afficherAide() {
   // la langue suit l'app via _getReadmeLang() (qui respecte aussi le toggle
   // drapeau local mémorisé myktamap_readme_lang). Le contenu HTML vit dans
   // _aideHtmlFr() / _aideHtmlEn() — système doc séparé, PAS window.I18n.t.
-  const _aideLang = _getReadmeLang();
+  // Repli EXPLICITE : la langue doc peut valoir une langue que l'Aide n'a pas
+  // (es depuis le 31/08). Sans ce repli, `aideEn` retombe à false et l'Aide
+  // sort en français — pire que l'anglais pour qui ne lit ni l'un ni l'autre.
+  let _aideLang = _getReadmeLang();
+  if (AIDE_AVAILABLE_LANGS.indexOf(_aideLang) < 0) _aideLang = "en";
   const aideEn = (_aideLang === "en");
 
-  // Onglets de langue identiques à la modale Documentation : UN drapeau par
-  // langue réellement dispo (DOC_AVAILABLE_LANGS), la langue courante .active.
+  // Onglets de langue : UN drapeau par langue que l'AIDE possède réellement
+  // (AIDE_AVAILABLE_LANGS — PAS DOC_AVAILABLE_LANGS, cf. l'encadré en tête de
+  // fichier). Afficher un drapeau sans contenu derrière est un mensonge d'UI.
   const _aideLangMeta = (window.I18n && window.I18n.available) ? window.I18n.available() : [
     { code: "fr", label: "Français", flag: "🇫🇷" },
     { code: "en", label: "English",  flag: "🇬🇧" }
   ];
   const btnLang = '<span class="kta-readme-lang-tabs">' +
-    DOC_AVAILABLE_LANGS.map(function(code) {
+    AIDE_AVAILABLE_LANGS.map(function(code) {
       const meta = _aideLangMeta.filter(function(l){ return l.code === code; })[0] ||
                    { code: code, label: code.toUpperCase(), flag: code.toUpperCase() };
       const isCur = (code === _aideLang);
@@ -601,8 +619,8 @@ function afficherAide() {
   modal.querySelectorAll(".kta-readme-lang-btn").forEach(function(btn) {
     btn.addEventListener("click", function() {
       const target = btn.getAttribute("data-target-lang");
-      if (DOC_AVAILABLE_LANGS.indexOf(target) < 0) return;
-      if (target === _getReadmeLang()) return; // déjà la langue courante
+      if (AIDE_AVAILABLE_LANGS.indexOf(target) < 0) return; // jamais DOC_ ici
+      if (target === _aideLang) return; // déjà la langue courante DE L'AIDE
       _setReadmeLang(target);
       _closeAll();
       afficherAide();
