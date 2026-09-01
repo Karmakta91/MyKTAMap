@@ -834,7 +834,7 @@ function _aideFermerSousModal() {
 // =========================
 // AIDE — le contenu vit dans les DICOS (lot 2, 01/09/2026)
 // =========================
-// _aideHtmlFr() et _aideHtmlEn() ont été SUPPRIMÉES ici : 1 745 lignes de
+// _aideHtmlFr() et _aideHtmlEn() ont été SUPPRIMÉES ici : 1 738 lignes de
 // HTML en dur, dupliquées en deux langues, que personne ne pouvait traduire
 // sans écrire 870 lignes de plus par langue.
 // Le contenu est désormais dans lang/<code>.json :
