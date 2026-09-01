@@ -106,6 +106,22 @@ invisible**. Détails : `scripts/smoke/README.md`.
 trois fois les garde-fous logiques la semaine du 06/08. Le smoke manuel
 (marche 2) reste : lui seul voit le VISUEL (décalages, chevauchements).
 
+## 🌍 Marche 3 — checkups ciblés automatisés (à lancer selon les modules touchés)
+
+Le smoke (1bis) boote l'app **en français** : tout défaut propre à une autre
+langue lui est structurellement invisible. Ces scripts comblent des angles
+morts précis et se lancent à la main, comme le smoke.
+
+| Script | Quand le lancer | Ce qu'il a déjà attrapé |
+|---|---|---|
+| `node scripts/smoke/checkup-langues.js` | dès qu'on touche à l'i18n, aux dicos `lang/`, à la Documentation ou à l'Aide | **v1.80.0** : un utilisateur EN/ES lisait « **Incognito Start Label** » sur le HOME — la clé technique humanisée, ni traduite ni en français, et qui ne se réparait jamais. Invisible des 14 garde-fous ET du smoke |
+
+Il vérifie que les **trois régimes de langue restent distincts** (ils le sont
+volontairement) : Documentation en **espagnol**, Aide intégrée en **anglais**
+(repli assumé — pas de contenu ES), et des drapeaux honnêtes (3 pour la doc,
+2 pour l'Aide). *Un drapeau sans contenu derrière est un mensonge d'interface :
+c'est exactement ce qu'avait produit l'ajout de `es` à la mauvaise liste.*
+
 ## 🔮 Marches futures
 
 - (vide pour l'instant)

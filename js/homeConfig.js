@@ -120,7 +120,27 @@
               "<span style=\"color:#a78bfa;\">Au reload : tout disparaît.</span>");
           }
         }
-        _refresh();
+        // Rendu immédiat UNIQUEMENT si le dico est déjà là (cas FR, et tout cas
+        // où l'IIFE passe après le chargement). Sinon on ne rend RIEN tout de
+        // suite : appeler `_refresh()` à vide ferait humaniser les clés et
+        // émettrait un « [I18n] Clé manquante » qui fait échouer le smoke — un
+        // faux signal, puisque la clé existe et arrive une fraction de seconde
+        // plus tard. La barrière ci-dessous s'en charge.
+        var _dicoPret = !(window.I18n && typeof window.I18n.has === "function") ||
+                        window.I18n.has("home.privacy.incognitoStartLabel");
+        if (_dicoPret) _refresh();
+        // 🐛 v1.80.0 — BARRIÈRE I18n.init() : ce premier _refresh() tombe AVANT
+        // l'arrivée du dico quand la langue n'est pas le FR (fr.json est le dico
+        // de référence, chargé en premier). `I18n.has()` répondait donc false et
+        // `I18n.t()` HUMANISAIT la clé : un utilisateur EN ou ES lisait
+        // « Incognito Start Label » sur le HOME — la clé technique, ni traduite
+        // ni en français. Et ça ne se réparait JAMAIS : `onChange` ci-dessous ne
+        // se déclenche qu'au CHANGEMENT de langue, pas à l'arrivée du dico.
+        // Mesuré le 01/09/2026 sur les 3 langues : FR correct, EN et ES cassés.
+        // Même barrière que `_majPinStatusUI` plus bas dans ce fichier (v1.68.1).
+        if (window.I18n && typeof window.I18n.init === "function") {
+          window.I18n.init().then(_refresh).catch(function () {});
+        }
         // Re-render du label/hint à chaque changement de langue (live, sans
         // reload — cohérent avec _applyI18nDom appliqué au reste du HOME).
         if (window.I18n && typeof window.I18n.onChange === "function") {
