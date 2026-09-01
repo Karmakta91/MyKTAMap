@@ -115,12 +115,25 @@ morts précis et se lancent à la main, comme le smoke.
 | Script | Quand le lancer | Ce qu'il a déjà attrapé |
 |---|---|---|
 | `node scripts/smoke/checkup-langues.js` | dès qu'on touche à l'i18n, aux dicos `lang/`, à la Documentation ou à l'Aide | **v1.80.0** : un utilisateur EN/ES lisait « **Incognito Start Label** » sur le HOME — la clé technique humanisée, ni traduite ni en français, et qui ne se réparait jamais. Invisible des 14 garde-fous ET du smoke |
+| `node scripts/smoke/checkup-home-scroll.js` | dès qu'on touche au CSS du HOME (`#planLoaderOverlay`, `#planLoaderBox`, `.loader-grid`, `.loader-col-*`) ou au pied de page | **v1.81.0** : rien — il a au contraire **innocenté** la dette D-home-mini (« footer coupé sans scroll »), non reproductible sur 6 configurations. Il verrouille désormais ce comportement : sur une petite fenêtre PC le contenu déborde, mais la **molette** scrolle et le footer se rejoint |
 
-Il vérifie que les **trois régimes de langue restent distincts** (ils le sont
-volontairement) : Documentation en **espagnol**, Aide intégrée en **anglais**
-(repli assumé — pas de contenu ES), et des drapeaux honnêtes (3 pour la doc,
-2 pour l'Aide). *Un drapeau sans contenu derrière est un mensonge d'interface :
-c'est exactement ce qu'avait produit l'ajout de `es` à la mauvaise liste.*
+**`checkup-langues.js`** rejoue le parcours d'un utilisateur espagnol : depuis
+la v1.80.0, Documentation **et** Aide intégrée doivent être en **espagnol**, et
+l'Aide ne porte **plus aucun drapeau** (elle suit la langue de l'app). *Un
+drapeau sans contenu derrière est un mensonge d'interface : c'est exactement ce
+qu'avait produit l'ajout de `es` à la mauvaise liste.* ⚠️ Ce paragraphe décrivait
+encore le régime d'avant (« Aide en anglais, repli assumé ») jusqu'au 02/09 —
+**un test et sa doc qui n'évoluent pas avec le produit finissent par défendre
+l'ancien comportement contre le nouveau.**
+
+**`checkup-home-scroll.js`** mesure le HOME en petite fenêtre. Sa vraie valeur
+est ailleurs que dans ses assertions : il **refuse de conclure** tant qu'un
+overlay couvre la page. Le splash reste 3,5 s puis est *retiré du DOM* (et comme
+il est en `position:fixed`, son `offsetParent` vaut `null` — l'attendre par ce
+biais réussit trop tôt), et la modale « Accès hors-ligne » s'ouvre dès que le
+service worker est bloqué. Les deux figent `scrollHeight` et mangent la molette.
+*C'est ce qui a inventé la dette D-home-mini de toutes pièces — un harnais qui
+mesure trop tôt ne trouve pas un bug, il en fabrique un.*
 
 ## 🔮 Marches futures
 
