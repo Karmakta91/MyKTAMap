@@ -98,3 +98,11 @@ node scripts/check-kmz-superoverlay.js || exit $?
 # filet « Autres ». Verifie : meme nombre de sections FR/EN, 1 titre par
 # section, couverture complete, pas de doublon ni de hors-bornes. BLOQUANT.
 node scripts/check-aide-sections.js || exit $?
+
+# 📄 Transport des PDF du Mode Histoire dans l'export de profil (dette D1).
+# Le carnet voyageait depuis v1.74.0, pas ses documents : un profil reimporte
+# arrivait avec les notes libres et des PDF absents, sans un mot. Verifie :
+# opt-in STRICT (un plan peut porter 100 Mo), les 5 points de branchement UI,
+# aucune 3e copie du schema IDB (deja duplique modeHistoire/journalUi), et
+# l'idempotence du reimport (put, pas add). BLOQUANT.
+node scripts/check-profile-histpdf.js || exit $?

@@ -356,6 +356,14 @@ Ton profil est inclus dans l'**Export Avancé** des sessions (onglet 🎨 Avanc�
 
 - Un toast modal te suggère un **reload** de la page pour que l'avatar et le surnom soient correctement mis à jour partout dans l'UI (header, sidebar, etc.)
 
+**📄 Les PDF du Mode Histoire voyagent aussi** *(depuis v1.81.0)* :
+
+La fenêtre d'export gagne une case **📄 PDF du Mode Histoire**, **décochée par défaut**. Cochée, tes documents partent avec le profil et sont **remis en place à l'import**, avec leur nom et leur date d'origine. Sans elle, un profil réimporté arrivait avec tes notes libres mais **sans les documents** — l'onglet 📖 Récits était à moitié vide sans que rien ne l'explique.
+
+> ⚠️ **Décochée par défaut, et pour une bonne raison** : un seul plan peut porter jusqu'à **100 Mo** de PDF. Le poids estimé s'affiche à côté de la case et compte dans le total de la fenêtre — au-delà du seuil, l'app demande confirmation avant d'exporter.
+>
+> 💡 Réimporter deux fois le même profil ne crée **pas** de doublons : chaque document reprend sa place.
+
 **📦 Profil complet avec les archives de plans** *(depuis v1.79.0)* :
 
 L'export de profil peut désormais **embarquer les archives ZIP des plans mémorisés dans l'app**. Dans la fenêtre d'export, une section « 📦 Archives de plans » liste tes plans mémorisés avec leur taille : coche ceux que tu veux emporter (rien n'est coché par défaut) — l'export devient alors un fichier **`.zip` « profil complet »** au lieu du JSON habituel. À l'import sur un autre appareil, les archives sont **réinjectées et rattachées à leurs plans** : plus besoin de re-déposer les ZIP un par un.

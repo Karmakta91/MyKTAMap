@@ -357,6 +357,14 @@ Your profile is included in the **Advanced Export** of sessions (🎨 Advanced t
 
 - A modal toast suggests a **reload** of the page so that the avatar and nickname are correctly updated everywhere in the UI (header, sidebar, etc.)
 
+**📄 History Mode PDFs travel too** *(since v1.81.0)*:
+
+The export window gains a **📄 History Mode PDFs** checkbox, **unchecked by default**. Tick it and your documents leave with the profile, then get **put back on import** with their original name and date. Without it, a re-imported profile arrived with your free notes but **no documents** — the 📖 Stories tab was half empty with nothing to explain why.
+
+> ⚠️ **Unchecked by default, for a good reason**: a single map can carry up to **100 MB** of PDFs. The estimated weight shows next to the checkbox and counts towards the window total — past the threshold, the app asks for confirmation before exporting.
+>
+> 💡 Re-importing the same profile twice does **not** create duplicates: each document takes its place back.
+
 **📦 Full profile with map archives** *(since v1.79.0)*:
 
 The profile export can now **bundle the ZIP archives of maps stored in the app**. In the export window, a "📦 Map archives" section lists your stored maps with their size: tick the ones to carry (nothing is ticked by default) — the export then becomes a **"full profile" `.zip` file** instead of the usual JSON. On import on another device, archives are **injected back and attached to their maps**: no more re-dropping ZIPs one by one.

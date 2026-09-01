@@ -355,6 +355,14 @@ Tu perfil está incluido en la **Exportación avanzada** de las sesiones (pesta�
 
 - Un aviso modal te sugiere **recargar** la página para que el avatar y el apodo se actualicen correctamente en toda la interfaz (cabecera, barra lateral, etc.)
 
+**📄 Los PDF del Modo Historia también viajan** *(desde v1.81.0)*:
+
+La ventana de exportación gana una casilla **📄 PDF del Modo Historia**, **desmarcada por defecto**. Al marcarla, tus documentos salen con el perfil y se **vuelven a colocar al importarlo**, con su nombre y su fecha de origen. Sin ella, un perfil reimportado llegaba con tus notas libres pero **sin los documentos** — la pestaña 📖 Relatos quedaba medio vacía sin que nada lo explicara.
+
+> ⚠️ **Desmarcada por defecto, y por un buen motivo**: un solo plano puede llevar hasta **100 MB** de PDF. El peso estimado aparece junto a la casilla y cuenta en el total de la ventana — por encima del umbral, la app pide confirmación antes de exportar.
+>
+> 💡 Reimportar dos veces el mismo perfil **no** crea duplicados: cada documento recupera su sitio.
+
 **📦 Perfil completo con los archivos de planos** *(desde v1.79.0)*:
 
 La exportación de perfil puede ahora **llevarse los archivos ZIP de los planos memorizados en la app**. En la ventana de exportación, una sección «📦 Archivos de planos» enumera tus planos memorizados con su tamaño: marca los que quieras llevarte (no hay nada marcado por defecto) — la exportación se convierte entonces en un archivo **`.zip` «perfil completo»** en lugar del JSON habitual. Al importarlo en otro dispositivo, los archivos se **reinyectan y se vinculan a sus planos**: ya no hace falta volver a soltar los ZIP uno por uno.

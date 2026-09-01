@@ -4916,5 +4916,8 @@
   "aide.cat.recherche": "🔍 Search",
   "aide.cat.secours": "🚨 Rescue coordination",
   "aide.cat.systeme": "⚙️ System & security",
-  "aide.ui.empty": "No section found."
+  "aide.ui.empty": "No section found.",
+  "profileio.sec_histpdf_label": "History Mode PDFs",
+  "profileio.sec_histpdf_hint": "PDF documents attached to your maps (📖 Stories tab). <strong>⚠️ Very heavy</strong>: up to 100 MB per map. Unchecked by default — without them, a re-imported profile arrives with the free notes but no documents.",
+  "profileio.done_sec_histpdf": "History Mode PDFs"
 }

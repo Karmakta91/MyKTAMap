@@ -522,6 +522,42 @@
     });
   }
 
+  // 🆕 v1.81.0 (dette D1) — RESTAURATION d'un document venu d'un export de
+  // profil. Distinct de `_histAjouter` : celui-ci reçoit un File fraîchement
+  // choisi et forge un id ; ici on REPOSE un document existant en conservant
+  // son id, son nom et sa date d'origine — sans quoi un profil réimporté deux
+  // fois créerait des doublons, et les dates d'ajout seraient toutes écrasées
+  // par celle de l'import.
+  // `put` et non `add` : réimporter le même profil doit être IDEMPOTENT.
+  function _histRestaurer(doc) {
+    return _histOpen().then(function(db) {
+      if (!db) return Promise.reject(new Error("base indisponible"));
+      return new Promise(function(resolve, reject) {
+        try {
+          const st = db.transaction(HIST_STORE, "readwrite").objectStore(HIST_STORE);
+          if (!st.indexNames.contains(HIST_INDEX)) {
+            // Base encore en v1 (1 PDF par plan, keyPath planId) : y écrire un
+            // doc v2 écraserait le PDF existant. On laisse le Mode Histoire
+            // migrer d'abord — même garde que `_histAjouter`.
+            try { db.close(); } catch(e) {}
+            reject(new Error("v1"));
+            return;
+          }
+          const req = st.put({
+            id:      String(doc.id),
+            planId:  String(doc.planId),
+            blob:    doc.blob,
+            name:    doc.name || "histoire.pdf",
+            size:    doc.size || (doc.blob && doc.blob.size) || 0,
+            addedAt: doc.addedAt || Date.now()
+          });
+          req.onsuccess = function() { try { db.close(); } catch(e) {} resolve(true); };
+          req.onerror   = function() { try { db.close(); } catch(e) {} reject(req.error); };
+        } catch(e) { try { db.close(); } catch(e2) {} reject(e); }
+      });
+    });
+  }
+
   function _histSupprimer(docId) {
     return _histOpen().then(function(db) {
       if (!db) return false;
@@ -903,7 +939,19 @@
   window.JournalUi = {
     ouvrir:           ouvrir,
     ouvrirFiche:      ouvrirFiche,
-    cloturerDepuisUi: cloturerDepuisUi
+    cloturerDepuisUi: cloturerDepuisUi,
+    // 🆕 v1.81.0 (dette D1) — accès aux documents du Mode Histoire pour
+    // l'export/import de profil. Exposé ICI et pas réécrit dans
+    // `profileExportImport.js` : le schéma de cette base est DÉJÀ dupliqué
+    // entre `modeHistoire.js` et ce module, une 3ᵉ copie garantissait la
+    // dérive (c'est la leçon des 25 tables de styles). En particulier
+    // `_histOpen` porte un piège non évident — `indexedDB.open(nom)` SANS
+    // version CRÉE une base vide, ce qui casserait ensuite le Mode Histoire.
+    histoire: {
+      lister:    _histTousDocs,    // → [{id, planId, name, size, addedAt}] (sans blob)
+      getDoc:    _histGet,         // → l'enregistrement COMPLET, blob inclus
+      restaurer: _histRestaurer    // ← repose un doc exporté (idempotent)
+    }
   };
 
   console.log("[JournalUi] Module chargé");

@@ -4916,5 +4916,8 @@
   "aide.cat.recherche": "🔍 Recherche",
   "aide.cat.secours": "🚨 Coordination secours",
   "aide.cat.systeme": "⚙️ Système & sécurité",
-  "aide.ui.empty": "Aucune section trouvée."
+  "aide.ui.empty": "Aucune section trouvée.",
+  "profileio.sec_histpdf_label": "PDF du Mode Histoire",
+  "profileio.sec_histpdf_hint": "Les documents PDF attachés à tes plans (onglet 📖 Récits). <strong>⚠️ Très lourd</strong> : jusqu’à 100 Mo par plan. Décoché par défaut — sans eux, un profil réimporté arrive avec les notes libres mais sans les documents.",
+  "profileio.done_sec_histpdf": "PDF du Mode Histoire"
 }

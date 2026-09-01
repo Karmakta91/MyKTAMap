@@ -338,6 +338,49 @@
     }
   }
 
+  // 🆕 v1.81.0 — PDF du Mode Histoire (dette D1). L'onglet 📖 Récits arrivait
+  // sur un nouvel appareil avec ses notes libres mais SANS les documents : le
+  // carnet voyageait depuis v1.74.0, pas eux. Même régime que les photos —
+  // OPT-IN strict (`include.histoirePdfs === true`), car un plan peut porter
+  // jusqu'à 100 Mo de PDF (plafond de modeHistoire.js) : cocher par défaut
+  // ferait exploser des exports en silence.
+  // Lecture via `window.JournalUi.histoire` — le schéma IDB n'est PAS
+  // redupliqué ici (cf. le commentaire de l'API côté journalUi.js).
+  async function _collectHistoirePdfs() {
+    const api = window.JournalUi && window.JournalUi.histoire;
+    if (!api || typeof api.lister !== "function") {
+      return { docs: [], note: "Module JournalUi indisponible" };
+    }
+    try {
+      const metas = await api.lister();
+      if (!Array.isArray(metas) || !metas.length) return { docs: [] };
+      const out = [];
+      for (const m of metas) {
+        try {
+          const rec = await api.getDoc(m.id);
+          if (!rec || !rec.blob) continue;
+          out.push({
+            id:      String(m.id),
+            planId:  String(m.planId),
+            name:    m.name || "histoire.pdf",
+            size:    m.size || rec.blob.size || 0,
+            addedAt: m.addedAt || null,
+            mime:    rec.blob.type || "application/pdf",
+            data:    await _blobToBase64(rec.blob)
+          });
+        } catch(e) {
+          // Un document illisible ne doit pas faire échouer TOUT l'export :
+          // on le saute en le disant, le reste part.
+          console.warn("[ProfileExportImport] PDF histoire " + m.id + " ignoré :", e);
+        }
+      }
+      return { docs: out };
+    } catch(e) {
+      console.warn("[ProfileExportImport] PDF histoire collect échec :", e);
+      return { docs: [] };
+    }
+  }
+
   async function _collectCrashes() {
     if (!window.CrashReports || typeof window.CrashReports.listAll !== "function") return [];
     try {
@@ -421,6 +464,7 @@
     if (include.carnet !== false)      profile.sections.carnet      = await _collectCarnet(); // 🆕 v1.74.0
     if (include.backups !== false)     profile.sections.backups     = await _collectBackups();
     if (include.photos === true)       profile.sections.photos      = await _collectPhotos();
+    if (include.histoirePdfs === true) profile.sections.histoirePdfs = await _collectHistoirePdfs(); // 🆕 v1.81.0 (D1)
     if (include.crashes === true)      profile.sections.crashes     = await _collectCrashes();
     return profile;
   }
@@ -521,6 +565,21 @@
       } catch(e) { sizes.photos = { count: 0, bytes: 0 }; }
     } else {
       sizes.photos = { count: 0, bytes: 0 };
+    }
+    // 🆕 v1.81.0 — PDF du Mode Histoire (D1). Compte + poids depuis les
+    // MÉTADONNÉES seulement (`lister()` ne charge aucun blob) : lire les
+    // documents pour estimer coûterait jusqu'à 100 Mo de RAM par plan, alors
+    // que l'écran d'export doit s'afficher tout de suite. Même facteur
+    // d'inflation base64 (~1,34×) que les photos.
+    if (window.JournalUi && window.JournalUi.histoire && typeof window.JournalUi.histoire.lister === "function") {
+      try {
+        const docs = await window.JournalUi.histoire.lister();
+        let n = 0, b = 0;
+        (Array.isArray(docs) ? docs : []).forEach(function(d) { n++; b += (d.size || 0); });
+        sizes.histoirePdfs = { count: n, bytes: Math.round(b * 1.34) };
+      } catch(e) { sizes.histoirePdfs = { count: 0, bytes: 0 }; }
+    } else {
+      sizes.histoirePdfs = { count: 0, bytes: 0 };
     }
     // Crashes
     try {
@@ -727,6 +786,7 @@
       backups:     s.backups     ? (Array.isArray(s.backups) ? s.backups.length : 0) : 0,
       tutorial:    s.tutorial    ? (s.tutorial.seen ? 1 : 0) : 0,
       photos:      (s.photos && Array.isArray(s.photos.photos)) ? s.photos.photos.length : 0,
+      histoirePdfs: (s.histoirePdfs && Array.isArray(s.histoirePdfs.docs)) ? s.histoirePdfs.docs.length : 0, // 🆕 v1.81.0 (D1)
       crashes:     s.crashes     ? (Array.isArray(s.crashes) ? s.crashes.length : 0) : 0,
       appVersion:  profile.appVersion || "?",
       exportedAt:  profile.exportedAt || "?"
@@ -748,7 +808,7 @@
     const include = opts.include || {
       registry: true, preferences: true, perPlanLs: true,
       favoris: true, sessions: true, carnet: true, backups: true, tutorial: true,
-      photos: false, crashes: false
+photos: false, histoirePdfs: false, crashes: false
     };
     const s = profile.sections;
     const result = { ok: true, mode: mode, applied: {} };
@@ -1000,6 +1060,46 @@
       }
     }
 
+    // ─── 🆕 v1.81.0 — PDF du Mode Histoire (dette D1) ───
+    // Restauration document par document : un PDF illisible ou une base restée
+    // en v1 ne doit pas faire échouer le reste de l'import. Pas de wipe en mode
+    // « replace » : contrairement aux photos, il n'existe pas d'API de purge
+    // globale ici, et `restaurer()` fait un `put` — réimporter le même profil
+    // écrase donc les mêmes ids sans créer de doublon (idempotent), ce qui est
+    // le comportement voulu dans les deux modes.
+    if (include.histoirePdfs !== false && s.histoirePdfs && Array.isArray(s.histoirePdfs.docs)
+        && s.histoirePdfs.docs.length > 0
+        && window.JournalUi && window.JournalUi.histoire
+        && typeof window.JournalUi.histoire.restaurer === "function") {
+      let n = 0, v1 = false;
+      for (const d of s.histoirePdfs.docs) {
+        if (!d || !d.id || !d.planId || !d.data) continue;
+        try {
+          const blob = _base64ToBlob(d.data, d.mime || "application/pdf");
+          if (!blob) continue;
+          await window.JournalUi.histoire.restaurer({
+            id: d.id, planId: d.planId, name: d.name,
+            size: d.size || blob.size, addedAt: d.addedAt, blob: blob
+          });
+          n++;
+        } catch(e) {
+          if (String(e && e.message) === "v1") { v1 = true; break; }
+          console.warn("[ProfileExportImport] restore PDF histoire " + d.id + " échec :", e);
+        }
+      }
+      result.applied.histoirePdfs = n;
+      if (v1) {
+        // Base encore au schéma v1 (1 PDF par plan) : y écrire écraserait le
+        // document existant. On s'arrête et on le DIT, plutôt que d'abîmer des
+        // données en silence. Ouvrir le Mode Histoire une fois déclenche la
+        // migration, puis le réimport passe.
+        result.warnings = result.warnings || [];
+        result.warnings.push("histoirePdfs:v1");
+        console.warn("[ProfileExportImport] PDF histoire NON restaurés : base au schéma v1. " +
+                     "Ouvre le Mode Histoire une fois (migration auto) puis réimporte.");
+      }
+    }
+
     // ─── User profile (v1.21.0 Karma_dev — surnom + photo) ───
     if (include.user !== false && s.user) {
       try {
@@ -1114,6 +1214,7 @@
     html += _renderSectionRow("backups",     "📦", T("profileio.sec_backups_label"),     sizes.backups,     true,  T("profileio.sec_backups_hint"));
     html += _renderSectionRow("tutorial",    "🎓", T("profileio.sec_tutorial_label"),    sizes.tutorial,    true,  T("profileio.sec_tutorial_hint"));
     html += _renderSectionRow("photos",      "📸", T("profileio.sec_photos_label"),      sizes.photos,      false, T("profileio.sec_photos_hint"));
+    html += _renderSectionRow("histoirePdfs", "📄", T("profileio.sec_histpdf_label"),    sizes.histoirePdfs, false, T("profileio.sec_histpdf_hint"));
     html += _renderSectionRow("crashes",     "📋", T("profileio.sec_crashes_label"),     sizes.crashes,     false, T("profileio.sec_crashes_hint"));
     html += '</div>';
 
@@ -1459,6 +1560,7 @@
       backups:     "📦 " + T("profileio.done_sec_backups"),
       tutorial:    "🎓 " + T("profileio.done_sec_tutorial"),
       photos:      "📸 " + T("profileio.done_sec_photos"),
+      histoirePdfs: "📄 " + T("profileio.done_sec_histpdf"),
       crashes:     "📋 " + T("profileio.done_sec_crashes")
     };
     const parts = [];
@@ -1582,6 +1684,7 @@
     html += _renderImportSection("backups",     "📦", T("profileio.import_sec_backups"),    stats.backups);
     html += _renderImportSection("tutorial",    "🎓", T("profileio.sec_tutorial_label"),    stats.tutorial);
     if (stats.photos > 0)  html += _renderImportSection("photos",  "📸", T("profileio.sec_photos_label"),    stats.photos);
+    if (stats.histoirePdfs > 0) html += _renderImportSection("histoirePdfs", "📄", T("profileio.sec_histpdf_label"), stats.histoirePdfs);
     if (stats.crashes > 0) html += _renderImportSection("crashes", "📋", T("profileio.sec_crashes_label"),   stats.crashes);
     html += '</div>';
 
