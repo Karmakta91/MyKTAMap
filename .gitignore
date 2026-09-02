@@ -20,3 +20,21 @@
 .notes-*.md
 .todo-*.md
 scripts/i18n-orphelines.txt
+
+# ═══════════════════════════════════════════════════════════════════
+# 🔒 DONNEES PERSONNELLES DEPOSEES DANS data/ — JAMAIS SUR GIT
+# ═══════════════════════════════════════════════════════════════════
+# data/ heberge le plan de TEST du depot (data/test/, index.json,
+# myktamap.zip : suivis, ils doivent le rester). Mais c'est aussi la ou
+# KARMA depose ses fichiers de travail - relevés, exports KML/KMZ de
+# carrieres reelles. Ces fichiers sont volumineux ET sensibles : la
+# localisation de sites souterrains n'a rien a faire sur un depot public.
+#
+# Regle : tout KML/KMZ/GPX/GeoJSON depose a la racine de data/ est ignore.
+# Les sous-dossiers de plans suivis (data/test/...) ne sont pas concernes.
+# Ajoute ici tout nouveau fichier de travail plutot que de compter sur
+# l'attention au moment du commit.
+/data/*.kml
+/data/*.kmz
+/data/*.gpx
+/data/*.geojson
