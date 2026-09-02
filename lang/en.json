@@ -4925,5 +4925,9 @@
   "ipl.mgr.ecart": "Alignment gap: {d}",
   "ipl.mgr.ecartTitre": "Distance between this link's two ends, projected through each plan's georeferencing. They mark the same spot: the smaller the figure, the better the alignment.",
   "osm_home.portails.qualiteTitre": "Alignment quality — {n} link(s) measured",
-  "osm_home.portails.qualiteVide": "No measurable link: BOTH plans of a portal must be displayed and georeferenced."
+  "osm_home.portails.qualiteVide": "No measurable link: BOTH plans of a portal must be displayed and georeferenced.",
+  "osm_home.session.calque": "Current session",
+  "osm_home.session.label": "Session",
+  "osm_home.session.hint": "Also shows work in progress (points, tracks, zones, structures) saved in each plan's session, on top of what the plan itself contains.",
+  "osm_home.session.badge": "Current session — not in the plan yet"
 }

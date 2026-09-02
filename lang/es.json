@@ -4925,5 +4925,9 @@
   "ipl.mgr.ecart": "Desfase de calibración: {d}",
   "ipl.mgr.ecartTitre": "Distancia entre los dos extremos de este enlace, proyectados mediante la georreferenciación de cada plano. Señalan el mismo punto: cuanto menor sea la cifra, mejor es la calibración.",
   "osm_home.portails.qualiteTitre": "Calidad de la calibración — {n} enlace(s) medido(s)",
-  "osm_home.portails.qualiteVide": "Ningún enlace medible: AMBOS planos de un portal deben estar mostrados y georreferenciados."
+  "osm_home.portails.qualiteVide": "Ningún enlace medible: AMBOS planos de un portal deben estar mostrados y georreferenciados.",
+  "osm_home.session.calque": "Sesión en curso",
+  "osm_home.session.label": "Sesión",
+  "osm_home.session.hint": "Muestra también el trabajo en curso (puntos, trazados, zonas, estructuras) guardado en la sesión de cada plano, además de lo que contiene el plano en sí.",
+  "osm_home.session.badge": "Sesión en curso — todavía no está en el plano"
 }

@@ -4925,5 +4925,9 @@
   "ipl.mgr.ecart": "Écart de calage : {d}",
   "ipl.mgr.ecartTitre": "Distance entre les deux bouts de cette liaison, projetés via le géoréférencement de chaque plan. Ils désignent le même endroit : plus le chiffre est petit, meilleur est le calage.",
   "osm_home.portails.qualiteTitre": "Qualité du calage — {n} liaison(s) mesurée(s)",
-  "osm_home.portails.qualiteVide": "Aucune liaison mesurable : il faut que les DEUX plans d'un portail soient affichés et géoréférencés."
+  "osm_home.portails.qualiteVide": "Aucune liaison mesurable : il faut que les DEUX plans d'un portail soient affichés et géoréférencés.",
+  "osm_home.session.calque": "Session en cours",
+  "osm_home.session.label": "Session",
+  "osm_home.session.hint": "Affiche aussi le travail en cours (points, tracés, zones, structures) enregistré dans la session de chaque plan, en plus de ce que contient le plan lui-même.",
+  "osm_home.session.badge": "Session en cours — pas encore dans le plan"
 }

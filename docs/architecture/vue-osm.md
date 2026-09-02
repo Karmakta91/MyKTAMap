@@ -733,3 +733,67 @@ renvoie `null` et n'affiche rien. La **liste de la Vue OSM n'a PAS pu être
 exécutée** : le mode plein écran exige des plans réellement chargeables (ZIP), que
 le harnais ne sait pas fabriquer — le bouton 🎚️ n'existe qu'une fois ce mode
 ouvert. À valider sur un vrai jeu de plans géoréférencés.
+
+---
+
+## 📝 Le travail de session en Vue OSM (v1.81.0)
+
+**Le symptôme, remonté par KARMA le 03/09** : « je ne vois pas mes points en OSM
+HOME ». Ils étaient créés **en session**. `_loadPlanDataForPreview` ne lit que le
+**ZIP** (plan-config + dataLayers) : tout ce qui n'a pas été exporté restait
+invisible.
+
+**Ce qui rendait la situation intenable** : la **recherche cross-plan les trouvait
+déjà** — `InterPlanLinks.collectPointsForPlan` lit la session depuis toujours.
+Une carte qui n'affiche pas ce que la recherche renvoie est indéfendable. Le
+module lisait d'ailleurs *déjà* la session pour les **couleurs de légende**
+(`payload.customLegend`) : il allait chercher les couleurs, pas les objets qui les
+portent.
+
+**Le correctif.** Un **calque virtuel** bâti sur `SessionPersist.getSaved(planId)`
+— API qui existait déjà, aucune fonction nouvelle. Le payload porte exactement les
+4 familles que la Vue OSM sait rendre (`editorPoints`, `roads`, `zones`,
+`structures`), aux mêmes noms de champs : aucune conversion.
+
+🩸 **Pourquoi la lecture se fait au RENDU et non à l'extraction du ZIP** :
+`_planDataCache` **n'est jamais invalidé** — il vit toute la durée de la page. Y
+ranger la session la figerait au premier affichage : on édite en mode plan, on
+revient au HOME, on voit l'état d'avant. La lecture au rendu coûte un `getItem` +
+un `JSON.parse` par plan affiché, négligeable devant l'extraction ZIP, et elle est
+toujours fraîche.
+
+**Les trois consommateurs passent par `_tousCalques(data, planId)`** — le rendu,
+les chips de filtre par tag, et l'index de recherche du HOME. En oublier un
+donnerait un point affiché dont le tag manque aux chips : **masqué dès qu'un
+filtre est posé**, sans que rien ne l'explique.
+
+**Choix d'affichage** (arbitrage KARMA : les 4 familles, et un calque identifiable) :
+
+- chip global **📝 Session**, **ON par défaut** — le masquer par défaut ferait
+  chercher l'utilisateur exactement comme aujourd'hui ;
+- posé **hors de `_CATS`**, comme le chip 🌀 : la session n'est pas une catégorie
+  d'objets mais une **origine de données**, transversale aux 4 familles ;
+- le popup d'un POI de session porte « 📝 Session en cours — pas encore dans le
+  plan ». *La Vue OSM montre l'état **enregistré** des plans ; y mêler du travail
+  non exporté sans le nommer créerait une confusion pire que son absence.*
+
+**Limites connues** :
+
+- `getSaved` **rejette un payload dont la `version` diffère** de celle de
+  `sessionPersist.js` (1 aujourd'hui). Une vieille session ne s'affichera pas —
+  cohérent avec le reste de l'app, mais silencieux.
+- Si le ZIP d'un plan est irrécupérable, `_renderDataLayersOnMiniMap` n'est pas
+  appelé du tout : **sa session ne s'affiche pas non plus**. Le plan n'ayant ni
+  fond ni tuiles, l'afficher seul n'aurait pas de sens.
+- Pas de déduplication avec les dataLayers. Session et calques du plan sont deux
+  ensembles distincts ; le seul recouvrement possible vient d'un export « baked »
+  qui a figé la session dans le ZIP. `collectPointsForPlan` vit déjà avec ce cas
+  sans dédupliquer — on reste cohérent plutôt que d'inventer une règle ici.
+
+⚠️ **État de validation au 03/09.** `SessionPersist.getSaved` renvoie bien les 4
+familles au harnais (2 points, 1 tracé, 1 zone, 1 structure lus), les 4 clés i18n
+résolvent en fr/en/es, le smoke est vert et les 308 contrôles des garde-fous
+passent. **Le rendu n'a PAS pu être exécuté** : le widget OSM reste bloqué sur
+« ⏳ Préparation… » en headless — il lui faut une connectivité réelle pour les
+tuiles. C'est une limite du harnais, pas du correctif : **aucune** partie de la
+Vue OSM n'est testable automatiquement aujourd'hui. À valider sur l'appareil.

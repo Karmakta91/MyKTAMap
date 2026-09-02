@@ -1046,6 +1046,55 @@
   // 🔧 v1.40.12 — Refactor : chaque catégorie va dans son propre sub-layerGroup
   // pour permettre les toggles individuels via add/removeLayer. Pattern aligné
   // sur osmView.js modale (5 layers indépendants par catégorie).
+  // =========================
+  // 📝 v1.81.0 — TRAVAIL DE SESSION EN VUE OSM
+  // =========================
+  // KARMA, 03/09 : « je ne vois pas mes points en OSM HOME » — ils étaient
+  // créés EN SESSION. La Vue OSM ne lisait que le ZIP (plan-config +
+  // dataLayers), donc tout le travail non exporté restait invisible. Le pire :
+  // la recherche cross-plan, elle, les trouvait déjà (`collectPointsForPlan`
+  // lit la session). Une carte qui n'affiche pas ce que la recherche trouve
+  // est indéfendable côté utilisateur.
+  //
+  // 🩸 POURQUOI LA LECTURE EST FAITE AU RENDU ET NON À L'EXTRACTION :
+  // `_planDataCache` n'est JAMAIS invalidé (il vit toute la durée de la page).
+  // Ranger la session dedans la figerait au premier affichage — on édite en
+  // mode plan, on revient au HOME, on voit l'état d'avant. Ici c'est un
+  // `getItem` + un `JSON.parse` par plan affiché : négligeable devant
+  // l'extraction ZIP, et toujours frais.
+  let _showSession = true;   // ON par défaut : c'est le travail en cours de
+                             // l'utilisateur, le masquer par défaut le ferait
+                             // chercher exactement comme aujourd'hui.
+
+  // Calque VIRTUEL bâti sur le slot de session du plan. `null` si rien.
+  // Le payload de SessionPersist porte déjà les 4 familles que la Vue OSM
+  // sait rendre, aux mêmes noms de champs — aucune conversion.
+  function _calqueSession(planId) {
+    if (!_showSession || !planId) return null;
+    if (!window.SessionPersist || typeof window.SessionPersist.getSaved !== "function") return null;
+    let p = null;
+    try { p = window.SessionPersist.getSaved(planId); } catch(e) { return null; }
+    if (!p) return null;
+    const pts  = Array.isArray(p.editorPoints) ? p.editorPoints : [];
+    const rds  = Array.isArray(p.roads)        ? p.roads        : [];
+    const zns  = Array.isArray(p.zones)        ? p.zones        : [];
+    const strs = Array.isArray(p.structures)   ? p.structures   : [];
+    if (!pts.length && !rds.length && !zns.length && !strs.length) return null;
+    return { name: window.I18n.t("osm_home.session.calque"), visible: true, estSession: true,
+             points: pts, roads: rds, zones: zns, structures: strs };
+  }
+
+  // LA liste de calques d'un plan = ceux du ZIP + celui de la session.
+  // Les 3 consommateurs de `dataLayers` passent par ici : le rendu, les chips
+  // de filtre par tag et l'index de recherche. En oublier un donnerait un
+  // point affiché dont le tag manque aux chips — donc masqué dès qu'un filtre
+  // est posé, sans que rien ne l'explique.
+  function _tousCalques(data, planId) {
+    const base = (data && Array.isArray(data.dataLayers)) ? data.dataLayers : [];
+    const s = _calqueSession(planId);
+    return s ? base.concat([s]) : base;
+  }
+
   function _renderDataLayersOnMiniMap(data, georef, cible, planIdPourPane) {
     // 🗂️ v1.71.0 — PARAMÉTRÉ : sans `cible`, rend dans les groupes MODULE du
     // plan principal (comportement historique, clear inclus). Avec `cible`
@@ -1099,7 +1148,7 @@
       return iconCache[tag];
     }
 
-    for (const layer of data.dataLayers) {
+    for (const layer of _tousCalques(data, planIdPourPane || _selectedPlanId)) {
       // 🐛 v1.73.1 (KARMA « un datalayer généré invisible n'est pas affichable
       // en Vue OSM ») : on ne skippe PLUS les calques `visible: false` du
       // plan-config. Cette visibilité est un DÉFAUT D'AFFICHAGE du mode plan
@@ -1133,6 +1182,13 @@
               (desc ? _escapeHtml(desc) : _escapeHtml(tag)) + lvlSfx +
             '</span>' +
             (desc ? '<br><span style="color:#8892a4; font-size:10.5px; opacity:0.75;">🏷️ ' + _escapeHtml(tag) + '</span>' : '') +
+            // 📝 v1.81.0 — dire d'où vient le point. La Vue OSM montre l'état
+            // ENREGISTRÉ des plans ; y mêler du travail non exporté sans le
+            // nommer créerait une confusion pire que son absence.
+            (layer.estSession
+              ? '<br><span style="color:#f4c542; font-size:10.5px;">📝 ' +
+                _escapeHtml(window.I18n.t("osm_home.session.badge")) + '</span>'
+              : '') +
           '</div>';
         let marker;
         if (icon) {
@@ -1287,6 +1343,14 @@
   function _toggleZones(visible)      { _showZones      = !!visible; _appliquerVisibilites(); }
   function _toggleStructures(visible) { _showStructures = !!visible; _appliquerVisibilites(); }
   function _togglePortails(visible)   { _showPortails   = !!visible; _renderPortails(); }
+  // 📝 v1.81.0 — bascule du travail de session. Un `_reRenderDataTous()` complet
+  // est nécessaire : le calque session traverse le rendu, les chips de tag et
+  // l'index de recherche.
+  function _toggleSession(visible) {
+    _showSession = !!visible;
+    _reRenderDataTous();
+    _renderModalTags();   // les tags de session entrent ou sortent des chips
+  }
 
   // =========================
   // 🌀 LIAISONS INTER-PLANS SUR OSM (dette D5, v1.81.0)
@@ -1580,10 +1644,10 @@
 
   // 🆕 v1.40.17 — Énumération des tags présents dans les data layers
   // (avec compteur de POI par tag pour tri par fréquence).
-  function _collectAvailableTags(data) {
+  function _collectAvailableTags(data, planId) {
     const counts = {};
-    if (!data || !Array.isArray(data.dataLayers)) return counts;
-    for (const layer of data.dataLayers) {
+    if (!data) return counts;
+    for (const layer of _tousCalques(data, planId)) {
       if (!Array.isArray(layer.points)) continue;
       for (const p of layer.points) {
         const tag = (Array.isArray(p.tags) && p.tags[0]) || "default";
@@ -2204,6 +2268,13 @@
         'title="' + _escapeHtml(window.I18n.t("osm_home.portails.hint")) + '">🌀 <span>' +
         _escapeHtml(window.I18n.t("osm_home.portails.label")) + '</span></button>';
     }
+    // 📝 v1.81.0 — chip SESSION, hors `_CATS` lui aussi : le travail de
+    // session n'est pas une catégorie d'objets mais une ORIGINE de données,
+    // transversale aux POI, tracés, zones et structures.
+    cont.innerHTML += '<button type="button" class="kta-osm-multi-cat kta-osm-cat-libelle' +
+      (_showSession ? " active" : "") + '" data-gsession="1" ' +
+      'title="' + _escapeHtml(window.I18n.t("osm_home.session.hint")) + '">📝 <span>' +
+      _escapeHtml(window.I18n.t("osm_home.session.label")) + '</span></button>';
 
     cont.querySelectorAll("[data-gcat]").forEach(function(b) {
       b.addEventListener("click", function() {
@@ -2220,6 +2291,11 @@
       bp.classList.toggle("active", _showPortails);
       _renderPortailsQualite();
     });
+    const bs = cont.querySelector("[data-gsession]");
+    if (bs) bs.addEventListener("click", function() {
+      _toggleSession(!_showSession);
+      bs.classList.toggle("active", _showSession);
+    });
     _renderPortailsQualite();
   }
 
@@ -2232,7 +2308,7 @@
     _stackOrder.forEach(function(id) {
       const data = _planDataCache[id];
       if (!data) return;
-      const c = _collectAvailableTags(data);
+      const c = _collectAvailableTags(data, id);
       Object.keys(c).forEach(function(t) { counts[t] = (counts[t] || 0) + c[t]; });
     });
     const tags = Object.keys(counts).sort(function(a, b) { return counts[b] - counts[a]; });
@@ -2403,8 +2479,8 @@
     plans.forEach(function(p) {
       chaine = chaine.then(function() {
         return _loadPlanDataForPreview(p.id).then(function(data) {
-          if (!data || !Array.isArray(data.dataLayers)) return;
-          data.dataLayers.forEach(function(layer) {
+          if (!data) return;
+          _tousCalques(data, p.id).forEach(function(layer) {
             (layer.points || []).forEach(function(pt) {
               if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return;
               index.push({
