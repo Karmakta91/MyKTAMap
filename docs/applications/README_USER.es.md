@@ -898,6 +898,14 @@ Puedes **enlazar un punto de un plano con un punto de otro plano** — como un �
 
 **🌀 Mis enlaces**: en la **pantalla de inicio**, el botón **«🌀 Mis enlaces»** enumera todos tus enlaces (de todos los planos): estado de cada lado (⛔ si el plano no está en el dispositivo), botón **➜** para ir directamente a uno de los dos puntos, **🗑️** para eliminar. Si los datos de un plano son inalcanzables (servidor fuera de línea…), la app te lo dice claramente en lugar de mostrar «0 puntos».
 
+> 📐 **«Desfase de calibración» (desde v1.81.0)** — cada enlace puede mostrar una distancia en metros. **No es una distancia que haya que recorrer.** Los dos extremos de un portal señalan el **mismo punto físico**, visto desde dos planos distintos: si ambos planos están bien georreferenciados, esos dos extremos deberían caer exactamente en el mismo lugar del mapa del mundo. El desfase mostrado mide cuánto se desvían — es decir, **la calidad de tu calibración**. Cuanto menor sea la cifra, mejor. Es el único lugar de la aplicación que puede decírtelo, porque hacen falta **dos** georreferenciaciones para revelarlo.
+> 
+> - La cifra solo aparece si **ambos** planos están georreferenciados. Si no, **no se muestra nada**: la medición es imposible, y escribir «0» te haría creer en una calibración perfecta.
+> - **Sin colores ni umbrales** — deliberadamente. Un desfase de 20 m es enorme en una cantera pequeña y despreciable en una red de 5 km. Se te da la cifra; eres tú quien juzga, con tu escala en mente.
+> - En la **Vista OSM** (pantalla completa → 🎚️ Filtros → 🌀), encuentras la misma medición en forma de lista **ordenada de peor a mejor**: lo que merece una recalibración está arriba. Un clic encuadra ambos extremos del enlace en el mapa.
+> - Un desfase que te parezca absurdo casi siempre proviene de **la georreferenciación de uno de los dos planos**, no del enlace en sí.
+
+
 **🕸️ Vista de grafo**: en la misma ventana, cambia entre **📋 Lista ⇄ 🕸️ Grafo** — tu biblioteca dibujada como una **red**: cada plano es una burbuja (distintivos V2/M-LVL, contador de enlaces, anillo dorado en el plano actual, ⛔ atenuado si no está en el dispositivo), y cada frontera es un trazo cuyo **grosor refleja el número de enlaces**. Los planos sin enlaces se agrupan en una franja inferior. **Pulsa una burbuja** para abrir el plano (llegando a su primer portal), **pulsa un trazo** para ver el detalle de los enlaces de esa frontera (la lista se filtra), y **mueve las burbujas** con el dedo para organizar la vista a tu gusto.
 
 **Usar un enlace**: en la ficha del punto, línea 🌀 con el plano y el punto de destino → botón **➜** → confirmación → la app **cambia de plano** (tu sesión actual se guarda automáticamente), **salta al nivel del punto de llegada** (planos multinivel) y te deja **directamente sobre él** (destello azul). Si un filtro de etiquetas oculta el punto de llegada, se muestra una advertencia — tus filtros nunca se modifican.

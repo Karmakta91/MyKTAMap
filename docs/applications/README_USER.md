@@ -900,6 +900,14 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 
 **🌀 Mes liaisons** : sur l'**accueil**, le bouton **« 🌀 Mes liaisons »** liste toutes tes liaisons (tous plans confondus) : état de chaque côté (⛔ si le plan n'est pas sur l'appareil), bouton **➜** pour aller directement à l'un des deux points, **🗑️** pour supprimer. Si les données d'un plan sont injoignables (serveur hors-ligne…), l'app te le dit clairement au lieu d'afficher « 0 points ».
 
+> 📐 **« Écart de calage » (depuis v1.81.0)** — chaque liaison peut afficher une distance en mètres. **Ce n'est pas une distance à parcourir.** Les deux bouts d'un portail désignent le **même endroit physique**, vu depuis deux plans différents : si tes deux plans sont bien géoréférencés, ces deux bouts devraient tomber exactement au même endroit sur la carte du monde. L'écart affiché mesure de combien ils ratent — autrement dit, **la qualité de ton calage**. Plus le chiffre est petit, mieux c'est. C'est le seul endroit de l'app qui peut te le dire, parce qu'il faut **deux** géoréférencements pour le révéler.
+> 
+> - Le chiffre n'apparaît que si **les deux** plans sont géoréférencés. Sinon **rien** ne s'affiche : la mesure est impossible, et écrire « 0 » te ferait croire à un calage parfait.
+> - **Aucune couleur, aucun seuil** — volontairement. 20 m d'écart, c'est énorme sur une petite carrière et négligeable sur un réseau de 5 km. Le chiffre t'est donné, c'est toi qui juges avec ton échelle en tête.
+> - En **Vue OSM** (plein écran → 🎚️ Filtres → 🌀), tu retrouves la même mesure sous forme de liste **classée du pire au meilleur** : ce qui mérite un recalage est en haut. Un clic cadre les deux bouts de la liaison sur la carte.
+> - Un écart qui te paraît aberrant vient presque toujours du **géoréférencement d'un des deux plans**, pas de la liaison elle-même.
+
+
 **🕸️ Vue Graphe** : dans la même fenêtre, bascule **📋 Liste ⇄ 🕸️ Graphe** — ta bibliothèque dessinée en **réseau** : chaque plan est une bulle (badges V2/M-LVL, compteur de liaisons, anneau doré sur le plan en cours, ⛔ grisé si absent de l'appareil), chaque frontière un trait dont **l'épaisseur suit le nombre de liaisons**. Les plans sans liaison sont rangés dans une bande en bas. **Clique une bulle** pour ouvrir le plan (arrivée sur son premier portail), **clique un trait** pour voir le détail des liaisons de cette frontière (la liste se filtre), et **déplace les bulles** au doigt pour arranger la vue à ta façon.
 
 **Utiliser une liaison** : dans la fiche du point, ligne 🌀 avec le plan et le point de destination → bouton **➜** → confirmation → l'app **change de plan** (ta session actuelle est sauvegardée automatiquement), **bascule sur le niveau du point d'arrivée** (plans multi-niveaux) et te dépose **directement dessus** (flash bleu). Si un filtre de tags masque le point d'arrivée, un avertissement s'affiche — tes filtres ne sont jamais modifiés.

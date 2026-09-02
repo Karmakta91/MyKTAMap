@@ -1,8 +1,8 @@
 {
-  "version": "v1.80.0",
-  "released": "2026-09-01",
+  "version": "v1.81.0",
+  "released": "2026-09-03",
   "notes": [
-    "📚 La documentation utilisateur ET l’aide intégrée sont maintenant en espagnol : si tu utilises l’app en español, tout s’affiche dans ta langue.",
-    "❓ L’aide suit désormais la langue de l’app (son petit sélecteur de drapeaux disparaît) et deux fiches manquantes sont revenues : « Mode profil » et « Bibliothèque de plans »."
+    "🌀 Tes liaisons entre plans affichent maintenant leur « écart de calage » : la distance entre les deux bouts d’un même passage. Plus le chiffre est petit, mieux tes plans sont calés l’un sur l’autre.",
+    "📝 La Vue OSM de l’accueil montre enfin ton travail en cours (points, tracés, zones, structures) et plus seulement ce qui est enregistré dans le plan."
   ]
 }

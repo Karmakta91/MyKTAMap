@@ -902,6 +902,14 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 **🌀 My links**: on the **home screen**, the **"🌀 My links"** button lists all your links (across all plans): each side's status (⛔ if the plan is not on this device), **➜** button to jump straight to either point, **🗑️** to delete. If a plan's data is unreachable (server offline…), the app tells you clearly instead of showing "0 points".
 
+> 📐 **“Alignment gap” (since v1.81.0)** — each link can show a distance in metres. **This is not a distance to walk.** A portal's two ends mark the **same physical spot**, seen from two different plans: if both plans are properly georeferenced, those two ends should land at the exact same place on the world map. The gap shown measures how far they miss by — in other words, **how good your alignment is**. The smaller the figure, the better. This is the only place in the app that can tell you, because it takes **two** georeferences to reveal it.
+> 
+> - The figure only appears if **both** plans are georeferenced. Otherwise **nothing** is shown: the measurement is impossible, and writing “0” would suggest a perfect alignment.
+> - **No colours, no thresholds** — deliberately. A 20 m gap is huge in a small quarry and negligible across a 5 km network. You get the figure; you are the one who judges, with your own scale in mind.
+> - In **OSM View** (full screen → 🎚️ Filters → 🌀), the same measurement appears as a list sorted **worst first**: whatever needs realigning is at the top. Clicking an entry frames both ends of the link on the map.
+> - A gap that looks absurd almost always comes from **one of the two plans' georeferencing**, not from the link itself.
+
+
 **🕸️ Graph view**: in the same window, toggle **📋 List ⇄ 🕸️ Graph** — your library drawn as a **network**: each plan is a bubble (V2/M-LVL badges, link counter, golden ring on the current plan, grayed ⛔ if missing from this device), each border a line whose **thickness follows the number of links**. Plans without links sit in a strip at the bottom. **Click a bubble** to open the plan (arriving at its first portal), **click a line** to see that border's links in detail (the list filters itself), and **drag the bubbles** to arrange the view your way.
 
 **Use a link**: in the point's popup, a 🌀 line shows the destination plan and point → **➜** button → confirmation → the app **switches plan** (your current session is saved automatically), **switches to the arrival point's level** (multi-level plans) and drops you **right on it** (blue flash). If a tag filter hides the arrival point, a warning is shown — your filters are never modified.
