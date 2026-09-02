@@ -121,18 +121,92 @@ révocation.
 
 ## 🔴 Dettes ouvertes
 
-### D-light-icons — 🎨 Thème clair PC : les émojis sortent du cadre à zoom 100 %, OK à 90 % — noté 09/08/2026
+> **Comment lire cette section.** Les dettes sont rangées par **qui doit agir**,
+> pas par numéro : c'est la seule question utile quand on ouvre ce fichier.
+> Une dette « bloquée sur KARMA » n'attend pas du code — elle attend une mesure
+> sur sa machine, parce que le harnais ne sait pas la reproduire.
+> Les entrées « aucune action » ne sont **pas** des dettes : ce sont des
+> décisions déjà prises, gardées ici pour qu'on ne les re-signale pas comme
+> des trous. Elles ne se soldent pas, elles se relisent.
+
+| # | Sujet | État | Qui débloque |
+|---|---|---|---|
+| **D-light-icons** | Thème clair PC : émojis hors cadre à zoom 100 % | 🔬 non reproduit au harnais | **KARMA** — capture DevTools |
+| **D3** | Toggle « Mes annotations » ne masque pas les roads | 🔬 mécanisme corroboré, non reproduit | **KARMA** — un `hasLayer()` sur un plan réel |
+| **D5** | Vue OSM : afficher les liaisons portails | 🚧 codé, en attente d'arbitrage | **KARMA** — garder / transformer / enterrer |
+| **D-confirm** | 55 `confirm()` natifs hors charte | 📋 politique arrêtée, pas un chantier | personne — migration au fil de l'eau |
+| **D0** | Magnétisme : rayon non plafonné en unités plan | ⚪ décision prise (v1.74.0) + désaccord consigné | aucune action |
+| **D4** | `<script>` inline d'`index.html` | ⚪ description périmée, re-mesurée le 31/08 | aucune action |
+| **D7** | Duplication ~2 fonctions (pickers géoréf ↔ tracker) | ⚪ seuil explicite non atteint | aucune action |
+| **D8** | `secoursPlan.groupes[].statut` | ⚪ faux positif : le champ est exploité | aucune action |
+
+---
+
+### 🟠 Bloquées sur KARMA — pas de code à écrire, une mesure à faire
+
+*Les deux sont **non reproductibles au harnais Playwright**. Les rouvrir sans
+mesure fraîche, c'est répéter le faux fix de la v1.77.0 (révoqué). Ce qui
+manque n'est pas du temps de dev, c'est une observation sur la machine où le
+symptôme apparaît.*
+
+#### D-light-icons — 🎨 Thème clair PC : les émojis sortent du cadre à zoom 100 %, OK à 90 % — noté 09/08/2026
 
 🔬 **hypothèse** — chez KARMA (Chrome FullHD, thème clair, wallpaper actif), les émojis en tête des boutons/titres de la colonne Actions (📦 Ajouter un plan, 🧰 Outils, 📔 Mon carnet, 🌀 Mes liaisons…) s'affichent **détachés du texte, à cheval sur le bord gauche** de leur conteneur. Disparaît à **zoom 90 %**. **NON REPRODUIT au harnais Playwright** malgré : clair + wallpaper simulé + 1920×937 + 1536×750 @ deviceScaleFactor 1.25 — émojis toujours inline dans les cadres, `text-indent: 0`. Vérifié aussi : CSS servi sur dev **bit-à-bit identique** au repo (hash), structure HTML = texte inline simple (« 📔 Mon carnet »). Pistes restantes pour la reprise : extension navigateur injectant du CSS sur les sites clairs (non écarté — test navigation privée pas fait), rendu Segoe UI Emoji à échelle fractionnaire (zoom 100 % sur scaling Windows 125 % = ratio effectif 1,25), largeur réelle de sa colonne au moment du bug. Cosmétique, contournement connu (zoom 90 %) — à reprendre avec une capture DevTools (Computed de `text-indent`/`display` sur un bouton touché).
 
+#### D3 — 🗺️ Toggle « Mes annotations » ne masque pas les polylines roads
 
-### D-confirm — 🪟 confirm() natifs hors charte — ✅ **mesuré 31/08/2026 : 55 occurrences dans 17 fichiers**
+🔬 **hypothèse — mécanisme corroboré par le code le 31/08.** Le symptôme n'apparaît que sur certaines configs.
+
+**Mécanisme suspecté** : [`road.js:722`](../js/road.js#L722) fait `return window.layerEditor || window.map`. Si `layerEditor` n'existe pas encore au moment de l'`addTo`, la road part sur la **map** — et le toggle, qui n'agit que sur `layerEditor`, **ne la reprendra jamais**. Le commentaire juste au-dessus (l. 716-719) documente lui-même le bug comme « Leaflet subtil non identifié » depuis le 09/05.
+
+**Ce qu'il faut avant tout code** (leçon du faux fix v1.77.0, révoqué) : sur un plan réel, chez KARMA, un tracé récalcitrant → `window.layerEditor.hasLayer(<layer>)`. S'il renvoie `false`, le mécanisme est confirmé et le fix est court. Sans cette mesure, on corrige à l'aveugle.
+
+---
+
+### 🟡 Sur la table — arbitrage ou avancement possible
+
+#### D5 — 🌀 Vue OSM lot 3 : afficher les liaisons portails
+
+✅ **vérifié** — arbitré le 01/08 : la **traversée** de portail en Vue OSM n'a pas de sens (cf. « Enterré volontairement »), seul l'**affichage** en avait.
+
+**Intérêt réel** = un **diagnostic de géoréf**. Les deux bouts d'un portail désignent le même endroit physique vu depuis deux plans : projetés via leurs géoréfs respectifs, ils devraient se superposer. L'écart qui apparaît mesure directement la qualité du calage — et c'est le seul endroit de l'app qui peut le révéler, puisqu'il faut **deux** géoréfs pour le faire apparaître.
+
+**Contrainte technique** : les deux plans doivent être affichés **et** géoréférencés, donc ça ne vit que dans le mode OSM plein écran (`js/osmHomePreview.js`), pas dans la modale mono-plan. **Coût principal** = une 6ᵉ catégorie dans le système de filtres.
+
+> 🚧 **Statut au 02/09/2026** : le code existe (`js/osmHomePreview.js` — calque
+> `_renderPortails`, chip global, écart affiché via `window.formatDistance`),
+> **non commité, jamais exécuté sur des données réelles**.
+> ⚠️ **Objection soulevée par KARMA, non tranchée** : deux portails
+> correctement calés se **superposent déjà**, donc la polyligne est de longueur
+> nulle et le calque ne montre **rien** dans le cas nominal. Ce n'est donc pas
+> un calque de contenu mais un **détecteur d'erreur de calage** — sa seule
+> valeur est le cas raté. Reste à décider : garder le calque tel quel, le
+> transformer en **contrôle qualité** (une liste « tes portails sont décalés de
+> 33 m, 4 m, 2 m »), ou enterrer.
+
+#### D-confirm — 🪟 confirm() natifs hors charte — ✅ **mesuré 31/08/2026 : 55 occurrences dans 17 fichiers**
 
 Relevé du 31/08 (`grep` sur `js/`) : **55** `confirm()` natifs restants, dont **`secoursMode.js` en porte 15 à lui seul** (de loin le premier contributeur — c'est là qu'un sweep aurait le plus d'effet, et le plus de risque). Suivent `refonteInterface` 5, `homeConfig` 5, `interfaceItineraire` 4, `memInspector` 3, `homeLoader` 3, puis une longue traîne à 2 et 1. En face, **7 fichiers** utilisent déjà `ktaConfirm`.
 
 `window.ktaConfirm` (utils.js, v1.76.2, Promise + charte) existe depuis le retour KARMA sur la popup de replanification d'itinéraire. Les natifs restants **migrent au fil de l'eau** quand on touche leur module — pas de sweep massif (risque de régression sur des flux critiques type suppression). Nouveaux usages : `ktaConfirm` obligatoire. Attention à la migration : `ktaConfirm` est **asynchrone** (le code qui suit un `if (!confirm(...)) return;` doit passer en `.then()`).
 
-### D0 — 🧲 Magnétisme C5 : rayon non plafonné en unités plan ✅ vérifié 01/08
+---
+
+### ⚪ Aucune action — décisions arrêtées, gardées pour mémoire
+
+*Ce ne sont pas des dettes. Elles restent écrites parce que chacune a déjà été
+re-signalée à tort au moins une fois : les effacer ferait repayer le
+diagnostic. **Ne rien coder ici sans un fait nouveau.***
+
+| # | Sujet | Preuve | Pourquoi on ne fait rien |
+|---|---|---|---|
+| D4 | `<script>` inline d'`index.html` — l'étiquette « monolithe » est **PÉRIMÉE**, re-mesurée le 31/08 | ✅ mesuré 31/08 | **305 lignes** d'inline sur 2 blocs, dans un fichier de 1 823. La v1.66.0 en a extrait 3 modules (`homeLoader`, `homeProfile`, `homeConfig`) : « monolithe » ne décrit plus l'objet. Reste de l'inline, mais ce n'est plus une dette prioritaire — **ne pas re-signaler sans re-mesurer** |
+| D7 | **Duplication ~2 fonctions** pickers géoréf ↔ picker départ tracker | ⚠️ doc seule — [`tracking.md`](architecture/tracking.md) | Seuil explicite : mutualiser **si une 3ᵉ cible apparaît**. Pas atteint → ne rien faire |
+| D8 | **`secoursPlan.groupes[].statut`** — ⚠️ signalé mort par la doc, **il est exploité** | ✅ vérifié (doc corrigée) | Aucune action. Gardé ici comme rappel que la doc mentait |
+
+La suivante est ici pour la même raison, mais elle demande plus qu'une ligne : c'est un **arbitrage de KARMA avec un désaccord de Claude consigné en face**. Elle ne se rouvre que si le symptôme décrit en dernier paragraphe se manifeste.
+
+#### D0 — 🧲 Magnétisme C5 : rayon non plafonné en unités plan ✅ vérifié 01/08
 
 **Symptôme constaté par KARMA** : magnétisme actif + cercles d'intersection actifs → un cercle apparaît alors que les deux tracés ne se touchent pas.
 
@@ -147,14 +221,6 @@ Relevé du 31/08 (`grep` sur `js/`) : **55** `confirm()` natifs restants, dont *
 > ⚠️ **Désaccord consigné (Claude)** : masquer les cercles supprime le *signal*, pas la *cause*. Dézoomé, le point reste déplacé jusqu'à ~100 unités plan de l'endroit cliqué — la géométrie du tracé est altérée sans que rien ne le montre, et ça se répercute sur le graphe d'itinéraire. Le correctif est un `Math.min(tolÉcran, ~15 unités plan)` d'une ligne dans `road.js > _snapSurSommetProche`, aligné sur `PROXIMITY_TOLERANCE` du pathfinder. **À reconsidérer si un tracé fait au magnétisme dézoomé se révèle déformé.**
 
 **Non traité** : les points déjà déplacés par un accrochage dézoomé. Ils sont dans les données, aucun moyen automatique de les distinguer d'un accrochage voulu.
-
-| # | Dette | Preuve | Impact |
-|---|---|---|---|
-| D3 | **Toggle « Mes annotations » ne masque pas les polylines roads** sur certaines configs | 🔬 hypothèse — **mécanisme corroboré par le code le 31/08** | [`road.js:722`](../js/road.js#L722) : `return window.layerEditor \|\| window.map` — si `layerEditor` n'existe pas encore à l'`addTo`, la road part sur la map et **le toggle ne la reprendra jamais**. Le commentaire au-dessus (l. 716-719) documente lui-même le bug comme « Leaflet subtil non identifié » depuis le 09/05. **Diagnostiquer AVANT de fixer** (leçon du faux fix v1.77.0) : `window.layerEditor.hasLayer(<layer>)` sur les tracés récalcitrants, chez KARMA, sur un plan réel |
-| D4 | ~~`<script>` inline d'`index.html` = monolithe~~ — **description PÉRIMÉE, corrigée le 31/08** | ✅ mesuré 31/08 | **305 lignes** d'inline sur 2 blocs, dans un fichier de 1 823. La v1.66.0 en a extrait 3 modules (`homeLoader`, `homeProfile`, `homeConfig`) : « monolithe » ne décrit plus l'objet. Reste de l'inline, mais ce n'est plus une dette prioritaire — **ne pas re-signaler sans re-mesurer** |
-| D5 | **Vue OSM lot 3** — liaisons portails dessinées entre plans | ✅ vérifié (arbitré 01/08 : la traversée n'a pas de sens, seul l'affichage en a) | Intérêt réel = **diagnostic de géoréf** (l'écart entre les 2 bouts d'un portail révèle un mauvais calage). Coût principal = 6ᵉ catégorie dans le système de filtres |
-| D7 | **Duplication ~2 fonctions** pickers géoréf ↔ picker départ tracker | ⚠️ doc seule — [`tracking.md`](architecture/tracking.md) | Seuil explicite : mutualiser **si une 3ᵉ cible apparaît**. Pas atteint → ne rien faire |
-| D8 | **`secoursPlan.groupes[].statut`** — ⚠️ signalé mort par la doc, **il est exploité** | ✅ vérifié (doc corrigée) | Aucune action. Gardé ici comme rappel que la doc mentait |
 
 ## 🚫 Enterré volontairement — ne pas repayer
 
