@@ -38,3 +38,7 @@ scripts/i18n-orphelines.txt
 /data/*.kmz
 /data/*.gpx
 /data/*.geojson
+
+# Sorties de scripts/decouper-atlas.js : extraits d'un releve departemental.
+# Memes donnees sensibles que la source (localisation de carrieres) + volume.
+/sorties-atlas/

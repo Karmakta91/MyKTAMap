@@ -123,6 +123,53 @@ révocation.
 ### ✅ Résultats négatifs (hygiène confirmée, rien à faire)
 108 fichiers js/ = 108 script tags = 108 entrées précache (zéro orphelin) · précache SW 188/188 présents sur disque · les 4 CSS lazy parfaitement cloisonnés (0 duplication avec style.css) · 29/30 icônes référencées · 0 id HTML orphelin.
 
+## 🗺️ Atlas départementaux — découper un gros relevé en plans (03/09/2026)
+
+**Le cas réel** : KARMA a fourni un relevé KML de la Gironde — **171 Mo, 4,1 M de lignes, 245 504 Placemarks** (233 286 galeries, 13 685 polygones, 1 471 points) couvrant **65 × 72 km**. Arborescence : six dossiers `niveau1` à `niveau6` (galeries + piliers par étage), un **topo historique** (JP Cassou), et une couche **« Zone de carrière souterraine répertoriée »** de **1 471 emprises nommées**.
+
+🔒 **Le fichier ne doit JAMAIS partir sur git** — poids *et* sensibilité (localisation de carrières réelles, avec identifiants et nombre d'accès). Il était `untracked` **mais pas ignoré** : un `git add -A` l'aurait embarqué. Règle posée dans `.gitignore` sur la **racine** de `data/` (`*.kml`, `*.kmz`, `*.gpx`, `*.geojson`) — les 11 fichiers du plan de test restent suivis. Les sorties de découpage (`sorties-atlas/`) sont ignorées pour les mêmes raisons.
+
+### En l'état : l'app refuse, et c'est correct
+
+245 504 features contre `MAX_FEATURES = 20000` : **12× la limite**. Même sans cette borne, 171 Mo de XML dans `DOMParser` font plusieurs Go de DOM. Et surtout : **un plan MyKTAMap est une carrière, pas un département.** Le refus n'est pas le problème — ce qui manquait, c'est la **sortie**.
+
+### ✅ Livré : `scripts/decouper-atlas.js`
+
+Outil de **préparation de données**, hors navigateur, hors build. Lit le KML **en flux** (ligne à ligne : 171 Mo d'UTF-8 font ~340 Mo de string V8) et écrit un **GeoJSON** par carrière.
+
+> 🎯 **Pourquoi du GeoJSON et pas un ZIP de plan** : l'app sait déjà faire le reste. Le fichier passe par > « Convertir depuis SIG », qui génère le **fond vierge calé** (`GpxImport.genererCanvasVierge`) et l'écran de > correspondance. Écrire ici un second générateur de ZIP serait une deuxième implémentation du même travail — la > dette classique de ce projet. **Bonus : ça fait passer l'import SIG sur des données réelles**, ce qu'il n'avait > jamais connu (cf. §1, la réserve qui traînait depuis la v1.7x).
+
+**🩸 Trois pièges du format, payés en les découvrant :**
+
+1. **Chaque emprise est un `<MultiGeometry>` : un `<Point>` de placement PUIS le `<Polygon>`.** Prendre le premier `<coordinates>` venu donne le point — une emprise d'un seul sommet, et **zéro galerie retenue**. Il faut viser `<outerBoundaryIs>`.
+2. **Le niveau vient du `<Folder>` englobant, pas du Placemark** — et le fichier ne contient pas que des niveaux. Après `niveau6` viennent le topo historique et les emprises : sans changer de contexte, **tout retombait en « -6 »**. Première extraction : 16 676 features au niveau -6 pour une carrière qui en déclare **4 étages**. Le chiffre absurde est ce qui a révélé le bug.
+3. **Les emprises ne sont pas du contenu de plan.** Ce sont les contours administratifs, y compris ceux des carrières voisines qui débordent dans la bbox. Les importer donnerait de fausses galeries épousant les limites de zone.
+
+**Deux relevés se superposent** — le structuré par étages et le topo historique. Sur `Citon_Graves_RD` : **3 890 features** pour les six niveaux réunis, **16 612** pour le seul historique. Les mélanger dépasse la limite ET superpose deux relevés du même endroit. D'où `--couches niveaux|historique|tout`, **défaut `niveaux`** : c'est celui qui porte l'information d'étage dont le multi-niveau de l'app a besoin.
+
+**Autres arbitrages** : une galerie est retenue **entière** dès qu'un de ses sommets tombe dans l'emprise (la découper produirait des tronçons orphelins et fausserait les longueurs) ; une **marge de 50 m** autour du contour évite de couper net des galeries au bord (`--marge`).
+
+### Résultat mesuré — `Citon_Graves_RD` (carrière témoin choisie par KARMA)
+
+| Étape | Mesure |
+|---|---|
+| Découpage de 171 Mo | **5,7 s**, 245 504 Placemarks lus |
+| Emprise | 11 005 sommets · 1 335 × 1 580 m · 4 étages · 50 accès |
+| Retenu (couche `niveaux`) | **3 890 features** — 1,56 Mo |
+| Parse par `sigImport` | **44 ms**, CRS validé WGS84 sur 28 447 coordonnées |
+| Colonnes détectées | `type` (galerie/pilier), `niveau` (-1 à -6), `couche` |
+| Ventilation par famille | lignes : 6 niveaux · polygones : 5 — l'écran de correspondance a ce qu'il lui faut |
+
+⚠️ **Non fait** : le plan n'a pas été **généré ni ouvert** dans l'app. Le parse, la validation CRS et l'analyse d'attributs sont prouvés ; la génération du ZIP, le rendu Leaflet et la navigation sur 3 890 objets ne le sont pas. **C'est l'étape suivante, et elle demande KARMA** — c'est aussi la première fois que le SIG verra un vrai plan.
+
+### Ce qui reste ouvert
+
+- **Le seuil de pertinence** : surface **médiane 196 m²**, 1 181 zones sur 1 471 n'ont qu'un étage. La grande majorité de ces « carrières » sont des petits vides ou des accès — un plan pour 196 m² n'a pas de sens. Un traitement en masse demandera un seuil, ou un regroupement par proximité.
+- **Passe 1 ne retrouve que 1 204 emprises sur 1 471** : les Placemarks sans `outerBoundaryIs` exploitable sont ignorés. Sans conséquence pour une extraction ciblée, à creuser avant tout traitement de masse.
+- **Le sort des plans produits** : mêmes données sensibles que la source. Ils ne vont pas sur git.
+
+---
+
 ## 💡 Pistes de features — évaluées le 03/09/2026
 
 > Demandées par KARMA (« que pourrions-nous envisager comme nouvelle feature ? »), classées par **valeur / effort**.
