@@ -916,7 +916,7 @@
   "gen.sig.canvasInfo": "Taille du fond vierge généré. Plus il est grand, plus tes annotations seront précises — mais plus le fichier sera lourd.",
   "gen.sig.generation": "Génération du plan…",
   "gen.sig.zipGenere": "✅ Plan généré : {p} point(s), {l} tracé(s), {z} zone(s). Le ZIP est dans tes téléchargements — charge-le depuis l'accueil.",
-  "gen.sig.err.crsProjete": "❌ Coordonnées non reconnues : {n} sur {tot} sortent des bornes GPS (valeur max ≈ {max}). Ton fichier est sans doute en projection type Lambert 93. Réexporte-le depuis QGIS en <strong>EPSG:4326 (WGS84)</strong>.",
+  "gen.sig.err.crsProjete": "❌ Coordonnées non reconnues : {n} sur {tot} sortent des bornes GPS (valeur max ≈ {max}). Le <strong>Lambert 93</strong> est converti automatiquement — ton fichier est donc dans une autre projection (UTM, Web Mercator…). Réexporte-le depuis QGIS en <strong>EPSG:4326 (WGS84)</strong>.",
   "gen.sig.err.vide": "❌ Aucune coordonnée trouvée dans ce fichier.",
   "gen.sig.err.nomRequis": "Donne un nom à ton plan.",
   "gen.sig.err.generique": "Échec : {err}",
@@ -4929,5 +4929,6 @@
   "osm_home.session.calque": "Session en cours",
   "osm_home.session.label": "Session",
   "osm_home.session.hint": "Affiche aussi le travail en cours (points, tracés, zones, structures) enregistré dans la session de chaque plan, en plus de ce que contient le plan lui-même.",
-  "osm_home.session.badge": "Session en cours — pas encore dans le plan"
+  "osm_home.session.badge": "Session en cours — pas encore dans le plan",
+  "gen.sig.l93Converti": "Fichier reconnu en <strong>Lambert 93</strong> (EPSG:2154) : {n} coordonnées ont été converties en latitude/longitude. Vérifie que la position sur la carte correspond bien à ton site avant de continuer."
 }

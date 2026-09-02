@@ -232,8 +232,11 @@ Tu as des données dans un logiciel SIG et tu veux les exploiter dans MyKTAMap ?
 **Tes appellations sont respectées.** Un fichier SIG a sa propre nomenclature (`CANALISATION`, `galerie_tech`, `ZH`…). Un **écran de correspondance** te laisse choisir la colonne qui porte le type, puis dire à quoi chaque valeur correspond dans MyKTAMap. Les valeurs évidentes sont pré-remplies — vérifie-les, rien n'est imposé. Les valeurs listées sont **séparées par famille** : celles trouvées sur des polygones te proposent des types de zone, jamais des types de tracé.
 
 > ⚠️ **Ton fichier doit être en coordonnées GPS classiques (WGS84 / EPSG:4326).** Dans QGIS : *Exporter → Enregistrer les entités sous…* puis choisis **EPSG:4326** dans le champ SCR.
+
+> 📐 **Lambert 93 converti automatiquement (depuis v1.82.0)** — si ton export QGIS est en **Lambert 93** (EPSG:2154, le système officiel français : des coordonnées en **mètres** comme 650000 / 6860000, pas en degrés), l'app le **reconnaît et le convertit** toute seule. Un bandeau te dit combien de coordonnées ont été reprojetées : vérifie que la position obtenue correspond bien à ton site avant de continuer. Les **autres** projections (UTM, Web Mercator…) restent refusées — réexporte alors depuis QGIS en **EPSG:4326 (WGS84)**.
+
 >
-> Un fichier en **Lambert 93** ou dans une autre projection sera **refusé**, avec le nombre de coordonnées fautives et la manip à faire. C'est volontaire : accepter en silence placerait ton plan à des milliers de kilomètres sans que rien ne te l'indique.
+> Un fichier dans une **autre** projection (UTM, Web Mercator…) sera **refusé**, avec le nombre de coordonnées fautives et la manip à faire. C'est volontaire : accepter en silence des coordonnées qu'on ne sait pas interpréter placerait ton site à des milliers de kilomètres, sans le moindre avertissement. *(Le Lambert 93, lui, est reconnu et converti — voir juste au-dessus.)*
 
 **À savoir** : les trous (anneaux intérieurs) des polygones sont ignorés — MyKTAMap n'a pas de zone à trous. Au-delà de 20 000 objets, l'import est refusé : filtre ta couche dans QGIS avant d'exporter.
 

@@ -916,7 +916,7 @@
   "gen.sig.canvasInfo": "Size of the generated blank background. Bigger means more precise annotations — but a heavier file.",
   "gen.sig.generation": "Generating map…",
   "gen.sig.zipGenere": "✅ Map generated: {p} point(s), {l} path(s), {z} zone(s). The ZIP is in your downloads — load it from the home screen.",
-  "gen.sig.err.crsProjete": "❌ Unrecognised coordinates: {n} out of {tot} fall outside GPS bounds (max value ≈ {max}). Your file is most likely in a projection such as Lambert 93. Re-export it from QGIS in <strong>EPSG:4326 (WGS84)</strong>.",
+  "gen.sig.err.crsProjete": "❌ Unrecognised coordinates: {n} of {tot} fall outside GPS bounds (max value ≈ {max}). <strong>Lambert 93</strong> is converted automatically — so your file uses another projection (UTM, Web Mercator…). Re-export it from QGIS as <strong>EPSG:4326 (WGS84)</strong>.",
   "gen.sig.err.vide": "❌ No coordinate found in this file.",
   "gen.sig.err.nomRequis": "Give your map a name.",
   "gen.sig.err.generique": "Failed: {err}",
@@ -4929,5 +4929,6 @@
   "osm_home.session.calque": "Current session",
   "osm_home.session.label": "Session",
   "osm_home.session.hint": "Also shows work in progress (points, tracks, zones, structures) saved in each plan's session, on top of what the plan itself contains.",
-  "osm_home.session.badge": "Current session — not in the plan yet"
+  "osm_home.session.badge": "Current session — not in the plan yet",
+  "gen.sig.l93Converti": "File detected as <strong>Lambert 93</strong> (EPSG:2154): {n} coordinates were converted to latitude/longitude. Check that the position on the map matches your site before continuing."
 }

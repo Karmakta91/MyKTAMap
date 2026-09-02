@@ -232,8 +232,11 @@ Got data in a GIS package you want to use in MyKTAMap? Drop your export **straig
 **Your own naming is respected.** A GIS file has its own vocabulary (`CANALISATION`, `galerie_tech`, `ZH`…). A **mapping screen** lets you pick the column holding the type, then say what each value means in MyKTAMap. Obvious values are pre-filled — check them, nothing is forced. Listed values are **split by family**: those found on polygons offer zone types, never path types.
 
 > ⚠️ **Your file must use standard GPS coordinates (WGS84 / EPSG:4326).** In QGIS: *Export → Save Features As…* then pick **EPSG:4326** in the CRS field.
+
+> 📐 **Lambert 93 converted automatically (since v1.82.0)** — if your QGIS export uses **Lambert 93** (EPSG:2154, the official French system: coordinates in **metres** such as 650000 / 6860000, not degrees), the app **recognises and converts** it on its own. A banner tells you how many coordinates were reprojected: check that the resulting position matches your site before continuing. **Other** projections (UTM, Web Mercator…) are still rejected — re-export from QGIS as **EPSG:4326 (WGS84)** in that case.
+
 >
-> A file in **Lambert 93** or another projection will be **refused**, with the number of offending coordinates and what to do. This is deliberate: accepting it silently would place your map thousands of kilometres away with nothing to warn you.
+> A file in **another** projection (UTM, Web Mercator…) will be **refused**, with the number of offending coordinates and what to do. This is deliberate: silently accepting coordinates we cannot interpret would place your site thousands of kilometres away, without the slightest warning. *(Lambert 93 itself is recognised and converted — see just above.)*
 
 **Good to know**: polygon holes (inner rings) are ignored — MyKTAMap has no zone with holes. Beyond 20,000 objects the import is refused: filter your layer in QGIS before exporting.
 

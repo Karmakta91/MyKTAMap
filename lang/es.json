@@ -916,7 +916,7 @@
   "gen.sig.canvasInfo": "Tamaño del fondo en blanco generado. Cuanto más grande, más precisas tus anotaciones — pero más pesado el archivo.",
   "gen.sig.generation": "Generando el mapa…",
   "gen.sig.zipGenere": "✅ Mapa generado: {p} punto(s), {l} trazado(s), {z} zona(s). El ZIP está en tus descargas — cárgalo desde el inicio.",
-  "gen.sig.err.crsProjete": "❌ Coordenadas no reconocidas: {n} de {tot} salen de los límites GPS (valor máx. ≈ {max}). Tu archivo probablemente está en una proyección tipo Lambert 93. Vuelve a exportarlo desde QGIS en <strong>EPSG:4326 (WGS84)</strong>.",
+  "gen.sig.err.crsProjete": "❌ Coordenadas no reconocidas: {n} de {tot} quedan fuera de los límites GPS (valor máx. ≈ {max}). El <strong>Lambert 93</strong> se convierte automáticamente, así que tu archivo usa otra proyección (UTM, Web Mercator…). Vuelve a exportarlo desde QGIS en <strong>EPSG:4326 (WGS84)</strong>.",
   "gen.sig.err.vide": "❌ No se encontró ninguna coordenada en este archivo.",
   "gen.sig.err.nomRequis": "Ponle un nombre a tu mapa.",
   "gen.sig.err.generique": "Fallo: {err}",
@@ -4929,5 +4929,6 @@
   "osm_home.session.calque": "Sesión en curso",
   "osm_home.session.label": "Sesión",
   "osm_home.session.hint": "Muestra también el trabajo en curso (puntos, trazados, zonas, estructuras) guardado en la sesión de cada plano, además de lo que contiene el plano en sí.",
-  "osm_home.session.badge": "Sesión en curso — todavía no está en el plano"
+  "osm_home.session.badge": "Sesión en curso — todavía no está en el plano",
+  "gen.sig.l93Converti": "Archivo reconocido como <strong>Lambert 93</strong> (EPSG:2154): se han convertido {n} coordenadas a latitud/longitud. Comprueba que la posición en el mapa corresponde a tu sitio antes de continuar."
 }

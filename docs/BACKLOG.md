@@ -58,7 +58,11 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 
 ⚠️ **`.json` est routé vers le panneau SIG** : extension ambiguë (config, session, calque…). C'est le parser qui tranche au contenu et refuse proprement (`sig.err.pasDuGeojson`). Si ça gêne un flux existant, router `.json` ailleurs.
 
-**Extensions possibles plus tard** : Shapefile (lib ~50 Ko), reprojection proj4 (~30 Ko) pour accepter le Lambert 93 au lieu de le refuser, import des styles SIG.
+**Extensions possibles plus tard** : Shapefile (lib ~50 Ko), import des styles SIG. ~~reprojection proj4~~ → **le Lambert 93 est LIVRÉ** (v1.82.0, sans proj4 : cf. ci-dessous).
+
+✅ **Lambert 93 (EPSG:2154) — LIVRÉ le 03/09/2026.** Un export QGIS français en L93 n'est plus refusé : il est **reconnu et converti**, la conversion étant **annoncée** avec le nombre de coordonnées reprojetées (la règle du module reste « jamais de correction silencieuse » — on ne refuse plus, mais on ne convertit pas en douce non plus). **Sans `proj4`** : ~30 Ko pour couvrir des milliers de CRS quand on en veut un seul, dans un projet offline-first sans bundler dont `lib/` est volontairement minimal. La conique conforme de Lambert tient en ~50 lignes dans `sigImport.js`. ⚠️ **Le message de refus des AUTRES projections a été corrigé** : il citait le Lambert 93 comme cause probable, ce qui est devenu faux. Verrouillé par `scripts/check-lambert93.js` (17ᵉ garde-fou, **falsifié 7×**).
+
+> 🎯 **Comment ce garde-fou est construit, et pourquoi c'est important** : il ne compare à **aucune table de référence**. Une table recopiée depuis un site web est elle-même une source d'erreur — si le chiffre est faux, le test valide le bug. Tout est déduit des **propriétés définitoires** de la projection : l'origine (3°E, 46,5°N) tombe *exactement* sur (700000, 6600000), le facteur d'échelle vaut *exactement* 1 sur les deux parallèles standard, l'échelle est identique dans toutes les directions (conformité), et l'aller-retour revient au point de départ. *L'aller-retour seul ne prouverait rien : deux fonctions fausses mais mutuellement inverses passeraient.*
 
 ---
 
@@ -118,6 +122,34 @@ révocation.
 
 ### ✅ Résultats négatifs (hygiène confirmée, rien à faire)
 108 fichiers js/ = 108 script tags = 108 entrées précache (zéro orphelin) · précache SW 188/188 présents sur disque · les 4 CSS lazy parfaitement cloisonnés (0 duplication avec style.css) · 29/30 icônes référencées · 0 id HTML orphelin.
+
+## 💡 Pistes de features — évaluées le 03/09/2026
+
+> Demandées par KARMA (« que pourrions-nous envisager comme nouvelle feature ? »), classées par **valeur / effort**.
+> Vérifiées **contre le code** avant d'être proposées : ni l'altitude, ni les formats topo, ni la reprojection > n'existaient. La **fusion de sessions**, elle, existe déjà (`sessionExporter.js` — `_fusionInputs`, > `_fusionMerged`) : **ne pas la reproposer**.
+
+| # | Piste | Valeur | Effort | État |
+|---|---|---|---|---|
+| 1 | **Reprojection Lambert 93** | débloque les exports QGIS français, massivement en L93 | faible | ✅ **LIVRÉ 03/09** (cf. §1) |
+| 2 | **Import VisualTopo (`.tro`)** | la cible **spéléo** de `CLAUDE.md` n'a aucun format topo lisible | moyen | 🔜 à lancer |
+| 3 | **Profondeur des niveaux + profil en long** | la profondeur est la métrique reine du milieu souterrain | moyen-élevé | 💭 à concevoir |
+| 4 | **Shapefile** | complète le SIG, mais contournable (QGIS sait exporter en GeoJSON) | moyen | 💤 basse priorité |
+
+### 2. 🕳️ Import de formats topo spéléo — `.tro` d'abord
+
+**Le trou** : `CLAUDE.md` annonce la spéléo comme cible, mais l'app ne lit **aucun** format de topographie — ni VisualTopo, ni Therion, ni Compass, ni Survex (vérifié par `grep` le 03/09 : zéro occurrence). Un spéléo doit passer par QGIS pour faire entrer **son propre relevé**.
+
+**Pourquoi c'est abordable** : le socle est déjà là. `sigImport.js` a les parsers, l'écran de correspondance, et surtout `GpxImport.genererCanvasVierge` — la brique qui crée un plan **sans image de fond**. Un `.tro` est du texte tabulé (départ, arrivée, longueur, azimut, pente) ; le dérouler en coordonnées est de la trigonométrie simple, et ça produit des points + polylignes, soit exactement le modèle de données de l'app.
+
+⚠️ **À confirmer par KARMA avant de coder** : que VisualTopo soit bien le format le plus répandu chez les cataphiles et spéléos français — c'est une **supposition** de Claude, pas une mesure. Se tromper de format ferait livrer un parser que personne n'utilise.
+
+### 3. 📉 Profondeur des niveaux + profil en long
+
+**Le trou** : les niveaux sont de **simples entiers** (`Set<number>`, cf. `multilevel-pathfinding.md`) — aucune notion d'altitude ou de profondeur nulle part dans `js/` (vérifié le 03/09). Leur donner une profondeur en mètres (saisie utilisateur, stockée **hors `data/`**) ouvrirait un **profil en long** d'itinéraire : distance en abscisse, profondeur en ordonnée.
+
+C'est la seule des quatre pistes qui demande une **vraie conception d'interface**, pas juste un parser — d'où l'effort plus élevé. À reprendre quand 2 sera livré, ou si un utilisateur le demande.
+
+---
 
 ## 🔴 Dettes ouvertes
 

@@ -4893,6 +4893,19 @@ async function _sigImpAnalyserFichier(file) {
 
     // ── Refus CRS : message ACTIONNABLE, pas un simple « erreur ». ──
     const crs = window.SigImport.validerCrs(data);
+
+    // 📐 v1.82.0 — LAMBERT 93 : on convertit au lieu de renvoyer l'utilisateur
+    // dans QGIS. La conversion est ANNONCÉE (jamais silencieuse) et le compte
+    // de coordonnées reprojetées reste affiché dans le résumé : une
+    // reprojection déplace TOUT le fichier, ça ne se fait pas sans le dire.
+    let _sigReproj = 0;
+    if (!crs.ok && crs.code === "lambert93" && crs.convertible) {
+      _sigReproj = window.SigImport.reprojeterLambert93(data);
+      data.avertissements = data.avertissements || [];
+      // Marqueur porté par le résumé (cf. rendu plus bas) plutôt qu'une clé
+      // i18n figée : le compte doit apparaître dans le message.
+      crs.ok = true; crs.code = "lambert93-converti";
+    }
     if (!crs.ok) {
       _sigImportState = null;
       document.getElementById("kta-sig-imp-step-resume").style.display = "none";
@@ -4924,6 +4937,11 @@ async function _sigImpAnalyserFichier(file) {
              + '📍 ' + bounds.latMin.toFixed(5) + ', ' + bounds.lngMin.toFixed(5)
              + ' → ' + bounds.latMax.toFixed(5) + ', ' + bounds.lngMax.toFixed(5)
              + ' (Δ ' + dLat.toFixed(5) + '° × ' + dLng.toFixed(5) + '°)</div>';
+    if (_sigReproj > 0) {
+      html += '<div style="color:#8cb4ff; font-size:12px; margin-top:6px; padding:6px 8px;'
+            + ' background:rgba(140,180,255,0.08); border-left:3px solid rgba(140,180,255,0.5);'
+            + ' border-radius:3px;">📐 ' + T("gen.sig.l93Converti", { n: _sigReproj }) + '</div>';
+    }
     (data.avertissements || []).forEach(function(a) {
       html += '<div style="color:#ffb380; font-size:12px; margin-top:4px;">⚠️ ' + T(a) + '</div>';
     });

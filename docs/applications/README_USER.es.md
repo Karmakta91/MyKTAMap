@@ -231,8 +231,11 @@ Al arrancar, la aplicación muestra una **pantalla de inicio** que reúne:
 **Tus denominaciones se respetan.** Un archivo SIG tiene su propia nomenclatura (`CANALIZACION`, `galeria_tec`, `ZH`…). Una **pantalla de correspondencia** te deja elegir la columna que lleva el tipo, y luego indicar a qué corresponde cada valor en MyKTAMap. Los valores evidentes vienen precargados — compruébalos, no se impone nada. Los valores listados están **separados por familia**: los encontrados en polígonos te proponen tipos de zona, nunca tipos de trazado.
 
 > ⚠️ **Tu archivo debe estar en coordenadas GPS clásicas (WGS84 / EPSG:4326).** En QGIS: *Exportar → Guardar entidades como…* y elige **EPSG:4326** en el campo SRC.
+
+> 📐 **Lambert 93 convertido automáticamente (desde v1.82.0)** — si tu exportación de QGIS usa **Lambert 93** (EPSG:2154, el sistema oficial francés: coordenadas en **metros** como 650000 / 6860000, no en grados), la aplicación lo **reconoce y lo convierte** por sí sola. Un aviso te indica cuántas coordenadas se han reproyectado: comprueba que la posición obtenida corresponde a tu sitio antes de continuar. Las **demás** proyecciones (UTM, Web Mercator…) siguen rechazándose — en ese caso vuelve a exportar desde QGIS en **EPSG:4326 (WGS84)**.
+
 >
-> Un archivo en **Lambert 93** o en otra proyección será **rechazado**, indicando el número de coordenadas erróneas y la operación a realizar. Es intencionado: aceptarlo en silencio situaría tu plano a miles de kilómetros sin que nada te lo indicara.
+> Un archivo en **otra** proyección (UTM, Web Mercator…) será **rechazado**, indicando el número de coordenadas erróneas y la operación a realizar. Es intencionado: aceptar en silencio coordenadas que no sabemos interpretar situaría tu sitio a miles de kilómetros, sin el menor aviso. *(El Lambert 93, en cambio, se reconoce y se convierte — ver justo arriba.)*
 
 **A tener en cuenta**: los huecos (anillos interiores) de los polígonos se ignoran — MyKTAMap no tiene zonas con huecos. Por encima de 20 000 objetos, la importación se rechaza: filtra tu capa en QGIS antes de exportar.
 

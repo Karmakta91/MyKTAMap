@@ -28,9 +28,17 @@
 // ⚠️ CRS — LE PIÈGE PRINCIPAL :
 //   QGIS exporte volontiers dans le CRS de la couche. En France c'est très
 //   souvent du Lambert 93 (EPSG:2154) : des MÈTRES (650000, 6860000), pas des
-//   degrés. Aucune lib de reprojection n'est vendored (pas de proj4).
-//   → On REFUSE FRANCHEMENT avec un message actionnable plutôt que de laisser
-//     l'utilisateur atterrir au milieu de l'Atlantique sans comprendre.
+//   degrés.
+//   → 📐 v1.82.0 : le Lambert 93 est désormais RECONNU ET CONVERTI, sans
+//     `proj4` (~30 Ko pour des milliers de CRS quand on en veut UN, dans un
+//     projet offline-first sans bundler). La conique conforme de Lambert
+//     tient en ~50 lignes plus bas, et se vérifie EXACTEMENT : par
+//     construction, l'origine (3°E, 46,5°N) tombe sur (700000, 6600000).
+//     La conversion est ANNONCÉE avec le nombre de coordonnées reprojetées —
+//     on ne refuse plus, mais on ne corrige pas en douce non plus.
+//   → TOUTE AUTRE projection (UTM, Web Mercator…) reste REFUSÉE FRANCHEMENT,
+//     avec un message actionnable, plutôt que de laisser l'utilisateur
+//     atterrir au milieu de l'Atlantique sans comprendre.
 //     (Règle KARMA : valider et refuser, jamais clamper en silence.)
 //
 // PIPELINE :
@@ -102,6 +110,12 @@
     // encore). S'il annonce autre chose que CRS84/4326, c'est un refus net.
     if (obj.crs && obj.crs.properties && obj.crs.properties.name) {
       const nom = String(obj.crs.properties.name).toUpperCase();
+      // 📐 v1.82.0 — un `crs` annonçant Lambert 93 n'est plus un refus :
+      // les coordonnées seront reconnues et la conversion proposée. On
+      // laisse simplement passer, `validerCrs` tranchera sur les CHIFFRES
+      // (plus fiables qu'une étiquette : QGIS écrit parfois un `crs` qui ne
+      // correspond pas au contenu réel du fichier).
+      if (/2154|LAMBERT.?93|RGF.?93/.test(nom)) { /* on n'interrompt pas */ } else
       if (!/CRS84|4326/.test(nom)) {
         const e = new Error("sig.err.crsDeclare");
         e.crsNom = obj.crs.properties.name;
@@ -322,6 +336,128 @@
   }
 
   // =========================================================================
+  // LAMBERT 93 (EPSG:2154) ⇄ WGS84 — v1.82.0
+  // =========================================================================
+  // POURQUOI CE CODE EXISTE : QGIS, en France, exporte massivement en Lambert
+  // 93 — des MÈTRES (650000, 6860000), pas des degrés. Jusqu'ici l'import les
+  // refusait proprement en comptant les coordonnées fautives. Le refus était
+  // juste, mais il laissait l'utilisateur devant un mur : reprojeter dans QGIS
+  // ou renoncer.
+  //
+  // POURQUOI PAS proj4 : ~30 Ko pour couvrir des milliers de CRS quand on en
+  // veut UN, dans un projet offline-first, sans bundler, dont `lib/` est
+  // volontairement minimal (leaflet, jszip, jspdf, html2canvas, rotated).
+  // La projection conique conforme de Lambert tient en ~50 lignes et se
+  // vérifie EXACTEMENT — voir plus bas.
+  //
+  // 🎯 CE QUI REND CE CODE TESTABLE SANS SOURCE EXTERNE : par construction de
+  // la projection, le point d'origine (3°E, 46,5°N) tombe EXACTEMENT sur
+  // (700000, 6600000). Aucune table de référence à recopier, aucune valeur
+  // mémorisée à croire : l'égalité se déduit des paramètres eux-mêmes.
+  // `scripts/check-lambert93.js` en fait son premier contrôle, puis vérifie
+  // l'aller-retour sur une grille couvrant la France.
+  //
+  // Paramètres officiels EPSG:2154 (IGN / EPSG registry) :
+  //   ellipsoïde GRS80 · lat_0 46.5 · lon_0 3 · lat_1 44 · lat_2 49
+  //   x_0 700000 · y_0 6600000
+  const L93 = (function () {
+    const a  = 6378137.0;                 // demi-grand axe GRS80
+    const f  = 1 / 298.257222101;         // aplatissement GRS80
+    const e  = Math.sqrt(2 * f - f * f);  // première excentricité
+    const D  = Math.PI / 180;
+    const lat0 = 46.5 * D, lon0 = 3 * D, lat1 = 44 * D, lat2 = 49 * D;
+    const x0 = 700000, y0 = 6600000;
+
+    // m(φ) et t(φ) de Snyder — les deux briques de toute conique conforme.
+    function m(p) { const s = Math.sin(p); return Math.cos(p) / Math.sqrt(1 - e * e * s * s); }
+    function t(p) {
+      const s = Math.sin(p);
+      return Math.tan(Math.PI / 4 - p / 2) / Math.pow((1 - e * s) / (1 + e * s), e / 2);
+    }
+
+    const m1 = m(lat1), m2 = m(lat2);
+    const t0 = t(lat0), t1 = t(lat1), t2 = t(lat2);
+    const n  = (Math.log(m1) - Math.log(m2)) / (Math.log(t1) - Math.log(t2));
+    const F  = m1 / (n * Math.pow(t1, n));
+    const r0 = a * F * Math.pow(t0, n);
+
+    // WGS84 → Lambert 93. Sert au contrôle d'aller-retour du garde-fou ; c'est
+    // lui qui prouve que l'inverse n'est pas juste « cohérent avec lui-même ».
+    function versL93(lat, lng) {
+      const p = lat * D, l = lng * D;
+      const r = a * F * Math.pow(t(p), n);
+      const th = n * (l - lon0);
+      return { x: x0 + r * Math.sin(th), y: y0 + r0 - r * Math.cos(th) };
+    }
+
+    // Lambert 93 → WGS84. C'est celle dont l'import a besoin.
+    function versWgs84(x, y) {
+      const dx = x - x0, dy = r0 - (y - y0);
+      const r  = Math.sign(n) * Math.sqrt(dx * dx + dy * dy);
+      const th = Math.atan2(dx, dy);
+      const tt = Math.pow(r / (a * F), 1 / n);
+      let p = Math.PI / 2 - 2 * Math.atan(tt);
+      // Convergence de la latitude isométrique. 8 tours suffisent très
+      // largement (le résidu passe sous le micromètre dès le 5e) ; la sortie
+      // anticipée évite de tourner pour rien.
+      for (let k = 0; k < 8; k++) {
+        const s = Math.sin(p);
+        const pn = Math.PI / 2 - 2 * Math.atan(tt * Math.pow((1 - e * s) / (1 + e * s), e / 2));
+        if (Math.abs(pn - p) < 1e-12) { p = pn; break; }
+        p = pn;
+      }
+      return { lat: p / D, lng: (th / n + lon0) / D };
+    }
+
+    return { versL93: versL93, versWgs84: versWgs84 };
+  })();
+
+  // Enveloppe Lambert 93 du territoire métropolitain, LARGE à dessein : elle
+  // sert à RECONNAÎTRE du L93, pas à valider une position. Un fichier qui y
+  // tombe entièrement est du Lambert 93 avec une quasi-certitude — aucun autre
+  // CRS courant ne produit ces ordres de grandeur (UTM 31N : Y ≈ 5 400 000 ;
+  // Web Mercator : X jusqu'à 20 000 000).
+  const L93_BBOX = { xMin: 0, xMax: 1300000, yMin: 6000000, yMax: 7200000 };
+
+  function _dansEnveloppeL93(c) {
+    // ⚠️ Dans un GeoJSON projeté, `lng` porte l'ABSCISSE (X) et `lat`
+    // l'ORDONNÉE (Y) : le parser range coordinates[0] dans lng et [1] dans
+    // lat sans rien interpréter. Les inverser ici enverrait tout le fichier
+    // au milieu de l'Atlantique.
+    return c.lng >= L93_BBOX.xMin && c.lng <= L93_BBOX.xMax &&
+           c.lat >= L93_BBOX.yMin && c.lat <= L93_BBOX.yMax;
+  }
+
+  // Le fichier est-il du Lambert 93 reconnaissable ? On exige que TOUTES les
+  // coordonnées soient dans l'enveloppe : un fichier mixte (des degrés ET des
+  // mètres) est un fichier cassé, et le reprojeter à moitié produirait une
+  // carte muette où l'erreur ne se voit pas.
+  function detecterLambert93(normalise) {
+    const tous = _toutesLesCoords(normalise);
+    if (!tous.length) return false;
+    for (let i = 0; i < tous.length; i++) {
+      if (!_dansEnveloppeL93(tous[i])) return false;
+    }
+    return true;
+  }
+
+  // Reprojette EN PLACE une structure normalisée. Retourne le nombre de
+  // coordonnées converties, pour que l'appelant puisse le DIRE à
+  // l'utilisateur — la règle de ce module reste « jamais de correction
+  // silencieuse » : on ne refuse plus, mais on annonce.
+  function reprojeterLambert93(normalise) {
+    let n = 0;
+    const conv = function (c) {
+      const g = L93.versWgs84(c.lng, c.lat);   // lng = X, lat = Y (cf. ci-dessus)
+      c.lat = g.lat; c.lng = g.lng; n++;
+    };
+    (normalise.points || []).forEach(conv);
+    (normalise.lignes || []).forEach(function (l) { (l.coords || []).forEach(conv); });
+    (normalise.polygones || []).forEach(function (z) { (z.coords || []).forEach(conv); });
+    return n;
+  }
+
+  // =========================================================================
   // VALIDATION CRS — refus franc, jamais de correction silencieuse
   // =========================================================================
   function validerCrs(normalise) {
@@ -334,6 +470,17 @@
       if (la > maxAbsLat) maxAbsLat = la;
       if (ln > maxAbsLng) maxAbsLng = ln;
       if (la > LAT_MAX || ln > LNG_MAX) horsBornes++;
+    }
+    if (horsBornes > 0) {
+      // 📐 v1.82.0 — avant de refuser, on regarde si c'est du Lambert 93.
+      // Si oui, ce n'est plus une erreur mais une CONVERSION À PROPOSER :
+      // l'appelant décide, l'utilisateur est prévenu. La règle du module
+      // (« jamais de correction silencieuse ») tient toujours — on ne
+      // reprojette pas ici, on dit seulement que c'est possible.
+      if (detecterLambert93(normalise)) {
+        return { ok: false, code: "lambert93", convertible: true,
+                 total: tous.length, horsBornes: horsBornes };
+      }
     }
     if (horsBornes > 0) {
       return {
@@ -657,6 +804,13 @@
     parseKml:           parseKml,
     parseFichier:       parseFichier,
     validerCrs:         validerCrs,
+    // 📐 v1.82.0 — Lambert 93. `L93` est exposé pour le garde-fou
+    // `scripts/check-lambert93.js`, qui vérifie les propriétés
+    // définitoires de la projection (origine exacte, échelle 1 aux
+    // parallèles standard, conformité) sans aucune table de référence.
+    detecterLambert93:  detecterLambert93,
+    reprojeterLambert93: reprojeterLambert93,
+    L93:                L93,
     calculerBounds:     calculerBounds,
     analyserAttributs:  analyserAttributs,
     valeursParFamille:  valeursParFamille,

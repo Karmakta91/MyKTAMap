@@ -116,3 +116,13 @@ node scripts/check-profile-histpdf.js || exit $?
 # son icone. Verifie la parite des deux tables DANS LES DEUX SENS, que le HOME
 # lit bien la globale, et qu'elle est exposee au TOP-LEVEL. BLOQUANT.
 node scripts/check-icon-catalog.js || exit $?
+
+# 📐 Projection Lambert 93 (EPSG:2154) de l'import SIG. QGIS exporte
+# massivement en L93 en France : l'app le convertit au lieu de le refuser.
+# Le controle ne compare a AUCUNE table de reference (une table recopiee est
+# elle-meme une source d'erreur) : il verifie les PROPRIETES DEFINITOIRES de
+# la projection - origine exacte sur (700000, 6600000), echelle 1 sur les deux
+# paralleles standard, conformite, aller-retour - plus la surete de la
+# detection (ne jamais confondre des degres avec des metres, ne jamais
+# reprojeter un fichier mixte a moitie). BLOQUANT.
+node scripts/check-lambert93.js || exit $?
