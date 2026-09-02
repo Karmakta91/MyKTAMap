@@ -683,3 +683,53 @@ alors que `_iconMap` est encore vide (donc `creerIcones` n'a pas tourné), le fi
 `icon/portail.png` existe et est précaché, et le smoke reste vert. **Ce qui ne l'est
 pas** : le rendu de l'icône sur un vrai point portail d'un plan géoréférencé — à
 valider par KARMA, c'est ce qui débloque le test de D5.
+
+---
+
+## 📐 Écart de calage des liaisons (D5, v1.81.0)
+
+**L'objection qui a façonné la feature.** Le premier jet dessinait une polyligne
+entre les deux bouts de chaque portail. KARMA a relevé le défaut le 02/09 : *deux
+portails correctement calés se superposent déjà*. La ligne est alors de longueur
+nulle et le calque **ne montre rien** dans le cas nominal — l'utilisateur ne sait
+même pas s'il fonctionne. Ce n'est donc pas un calque de contenu, c'est un
+**détecteur d'erreur de calage** : sa seule valeur est le cas raté.
+
+**Ce qui est livré** (arbitrage du 03/09 — contrôle qualité *et* affichage dans
+🌀 Mes liaisons) :
+
+| Où | Quoi |
+|---|---|
+| `InterPlanLinks.ecartCalage(link)` | le calcul, **fonction unique** |
+| 🌀 **Mes liaisons** (HOME) | un badge `📐 Écart de calage : N m` par ligne |
+| **Vue OSM** → 🎚️ Filtres → chip 🌀 | liste classée **du pire au meilleur**, clic = `fitBounds` sur les deux bouts |
+| **Vue OSM** (calque) | la polyligne dorée + les deux bouts, en complément |
+
+**Le calcul.** Les deux bouts d'un portail désignent le même endroit physique vu
+depuis deux plans. Projetés en GPS via le géoréf de **leur** plan respectif, ils
+devraient tomber au même point ; la distance qui les sépare mesure la qualité du
+calage. C'est la seule mesure de ce genre que l'app puisse produire — il faut
+**deux** géoréfs pour la révéler.
+
+`ecartCalage` retourne **`null`, jamais `0`**, quand la mesure est impossible
+(plan absent, pas de géoréf) : `0` voudrait dire « calage parfait », le contraire
+de « je ne sais pas ». Dans 🌀 Mes liaisons, une liaison non mesurable n'affiche
+**rien** — ni tiret ni « n/a » : la grande majorité des plans n'étant pas
+géoréférencée, une colonne vide partout ferait croire à un défaut.
+
+**Aucun seuil de couleur, volontairement.** 20 m d'écart, c'est énorme sur une
+petite carrière et négligeable sur un réseau de 5 km. Colorer reviendrait à juger
+à la place de l'utilisateur avec un seuil qui ignore son échelle. On donne le
+chiffre, il tranche.
+
+**Contrainte.** La liste OSM ne compte que les liaisons dont les **deux** plans
+sont affichés dans la pile *et* géoréférencés — un écart qu'on ne peut pas montrer
+sur la carte devant soi n'aide personne ; celui-là se lit dans 🌀 Mes liaisons.
+
+⚠️ **État de validation au 03/09.** `ecartCalage` et le badge de 🌀 Mes liaisons
+sont **prouvés au harnais** : sur deux plans calés à 33 m l'un de l'autre, l'API
+renvoie 33 m et le badge l'affiche ; une liaison dont un plan n'a pas de géoréf
+renvoie `null` et n'affiche rien. La **liste de la Vue OSM n'a PAS pu être
+exécutée** : le mode plein écran exige des plans réellement chargeables (ZIP), que
+le harnais ne sait pas fabriquer — le bouton 🎚️ n'existe qu'une fois ce mode
+ouvert. À valider sur un vrai jeu de plans géoréférencés.

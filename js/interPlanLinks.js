@@ -303,6 +303,48 @@
   }
 
   // ---------------------------------------------------------------
+  // 📐 v1.81.0 (D5) — ÉCART DE CALAGE D'UNE LIAISON
+  // ---------------------------------------------------------------
+  // Les deux bouts d'un portail désignent LE MÊME endroit physique, vu depuis
+  // deux plans. Projetés en GPS via le géoréf de LEUR plan respectif, ils
+  // devraient donc tomber au même point. La distance qui les sépare mesure
+  // directement la qualité du calage — et c'est la seule mesure de ce genre
+  // que l'app puisse produire, puisqu'il faut DEUX géoréfs pour la révéler.
+  //
+  // Retourne null (et non 0) quand la mesure est IMPOSSIBLE : plan absent de
+  // l'appareil, ou pas de géoréf. `0` voudrait dire « calage parfait » — le
+  // contraire de « je ne sais pas ». Les deux cas ne doivent jamais se
+  // confondre à l'affichage.
+  //
+  // ⚠️ Fonction UNIQUE, exposée en `InterPlanLinks.ecartCalage` : la Vue OSM
+  // la consomme au lieu d'en refaire une copie. C'est la leçon du bug des
+  // icônes portail du 02/09 — une copie locale finit toujours par diverger.
+  function ecartCalage(link) {
+    if (!link || !link.a || !link.b) return null;
+    if (!window.KmzExport || typeof window.KmzExport.getCalibration !== "function") return null;
+    const gA = window.KmzExport.getCalibration(link.a.planId);
+    const gB = window.KmzExport.getCalibration(link.b.planId);
+    if (!gA || !gB) return null;
+    let pa, pb;
+    try {
+      const tA = window.KmzExport.buildTransformCalib(gA);
+      const tB = window.KmzExport.buildTransformCalib(gB);
+      pa = window.KmzExport.planToGps(tA, Number(link.a.x) || 0, Number(link.a.y) || 0);
+      pb = window.KmzExport.planToGps(tB, Number(link.b.x) || 0, Number(link.b.y) || 0);
+    } catch (e) { return null; }
+    if (!pa || !pb) return null;
+    if (![pa.lat, pa.lng, pb.lat, pb.lng].every(Number.isFinite)) return null;
+    // Haversine. Leaflet ferait l'affaire, mais ce module est appelé depuis le
+    // HOME où aucune carte n'existe : pas de dépendance à `L` ici.
+    const R = 6371000, rad = Math.PI / 180;
+    const dLat = (pb.lat - pa.lat) * rad, dLng = (pb.lng - pa.lng) * rad;
+    const h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(pa.lat * rad) * Math.cos(pb.lat * rad) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+
+  // ---------------------------------------------------------------
   // 🆕 v1.59.0 (A3) — GESTIONNAIRE DE LIAISONS (vue globale du registre)
   // ---------------------------------------------------------------
   // Modale listant TOUTES les liaisons (tous plans confondus, triées par date
@@ -372,6 +414,22 @@
       if (x) x.addEventListener("click", function() { _filterPair = null; _render(); });
     }
 
+    // 📐 v1.81.0 (D5) — écart de calage, affiché SEULEMENT quand il est
+    // mesurable (les deux plans présents ET géoréférencés). Pas de « — » ni
+    // de « n/a » : une colonne vide sur la plupart des lignes ferait croire à
+    // un défaut, alors que l'immense majorité des plans n'est pas géoréférencée.
+    // Volontairement AUCUN seuil de couleur : 20 m, c'est énorme sur une petite
+    // carrière et négligeable sur un réseau de 5 km. On donne le chiffre,
+    // l'utilisateur juge avec son échelle en tête.
+    function _ecartHtml(l) {
+      const m = (typeof ecartCalage === "function") ? ecartCalage(l) : null;
+      if (m === null || !isFinite(m)) return "";
+      const txt = window.formatDistance ? window.formatDistance(m, 0) : (Math.round(m) + " m");
+      return '<div class="kta-ipl-mgr-ecart" title="' + _esc(_t("ipl.mgr.ecartTitre")) + '">' +
+               '📐 ' + _esc(_t("ipl.mgr.ecart", { d: txt })) +
+             '</div>';
+    }
+
     function _render() {
       let links = _load().links.slice().sort(function(a, b) {
         return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
@@ -399,6 +457,7 @@
                  '<div class="kta-ipl-mgr-sides">' +
                    _sideHtml(l.a) + '<span class="kta-ipl-mgr-arrow">⇄</span>' + _sideHtml(l.b) +
                  '</div>' +
+                 _ecartHtml(l) +
                  '<div class="kta-ipl-mgr-actions">' +
                    (dispoA ? '<button class="kta-popup-btn kta-ipl-go" type="button" data-go="a" title="' +
                      _esc(_t("ipl.mgr.goSide", { plan: l.a.planName || l.a.planId })) + '">➜ A</button>' : '') +
@@ -1358,7 +1417,10 @@
     collectPointsForPlan: _collecterPointsDuPlan,
     collectRoutingDataForPlan: _collecterRoutingDuPlan,   // 🆕 v1.60.0 (A6) — roads+zones d'un plan non chargé
     // 🆕 v1.59.0 (A3) — gestionnaire global (bouton HOME « 🌀 Mes liaisons »)
-    ouvrirGestionnaire:   ouvrirGestionnaire
+    ouvrirGestionnaire:   ouvrirGestionnaire,
+    // 📐 v1.81.0 (D5) — écart de calage en mètres, ou null si non mesurable.
+    // Consommée par la Vue OSM : ne PAS en refaire une copie ailleurs.
+    ecartCalage:          ecartCalage
   };
 
   console.log("[InterPlanLinks] Module chargé (" + _load().links.length + " liaison(s))");

@@ -133,7 +133,6 @@ révocation.
 |---|---|---|---|
 | **D-light-icons** | Thème clair PC : émojis hors cadre à zoom 100 % | 🔬 non reproduit au harnais | **KARMA** — capture DevTools |
 | **D3** | Toggle « Mes annotations » ne masque pas les roads | 🔬 mécanisme corroboré, non reproduit | **KARMA** — un `hasLayer()` sur un plan réel |
-| **D5** | Vue OSM : afficher les liaisons portails | 🚧 codé, en attente d'arbitrage | **KARMA** — garder / transformer / enterrer |
 | **D-confirm** | 55 `confirm()` natifs hors charte | 📋 politique arrêtée, pas un chantier | personne — migration au fil de l'eau |
 | **D0** | Magnétisme : rayon non plafonné en unités plan | ⚪ décision prise (v1.74.0) + désaccord consigné | aucune action |
 | **D4** | `<script>` inline d'`index.html` | ⚪ description périmée, re-mesurée le 31/08 | aucune action |
@@ -164,25 +163,6 @@ symptôme apparaît.*
 ---
 
 ### 🟡 Sur la table — arbitrage ou avancement possible
-
-#### D5 — 🌀 Vue OSM lot 3 : afficher les liaisons portails
-
-✅ **vérifié** — arbitré le 01/08 : la **traversée** de portail en Vue OSM n'a pas de sens (cf. « Enterré volontairement »), seul l'**affichage** en avait.
-
-**Intérêt réel** = un **diagnostic de géoréf**. Les deux bouts d'un portail désignent le même endroit physique vu depuis deux plans : projetés via leurs géoréfs respectifs, ils devraient se superposer. L'écart qui apparaît mesure directement la qualité du calage — et c'est le seul endroit de l'app qui peut le révéler, puisqu'il faut **deux** géoréfs pour le faire apparaître.
-
-**Contrainte technique** : les deux plans doivent être affichés **et** géoréférencés, donc ça ne vit que dans le mode OSM plein écran (`js/osmHomePreview.js`), pas dans la modale mono-plan. **Coût principal** = une 6ᵉ catégorie dans le système de filtres.
-
-> 🚧 **Statut au 02/09/2026** : le code existe (`js/osmHomePreview.js` — calque
-> `_renderPortails`, chip global, écart affiché via `window.formatDistance`),
-> **non commité, jamais exécuté sur des données réelles**.
-> ⚠️ **Objection soulevée par KARMA, non tranchée** : deux portails
-> correctement calés se **superposent déjà**, donc la polyligne est de longueur
-> nulle et le calque ne montre **rien** dans le cas nominal. Ce n'est donc pas
-> un calque de contenu mais un **détecteur d'erreur de calage** — sa seule
-> valeur est le cas raté. Reste à décider : garder le calque tel quel, le
-> transformer en **contrôle qualité** (une liste « tes portails sont décalés de
-> 33 m, 4 m, 2 m »), ou enterrer.
 
 #### D-confirm — 🪟 confirm() natifs hors charte — ✅ **mesuré 31/08/2026 : 55 occurrences dans 17 fichiers**
 
@@ -246,3 +226,4 @@ Signalées à tort (doc périmée), **elles sont faites** — vérifiées dans l
 - **D2 « contenus longs en espagnol » — SOLDÉE EN ENTIER** (v1.80.0) : ses 3 volets sont livrés — tutoriel (v1.79.4), doc user `README_USER.es.md` (3 501 lignes), et **Aide intégrée** (32 sections migrées du HTML en dur vers les dicos puis traduites ; `interfaceDocs.js` −1 738 lignes). Ajouter une 4ᵉ langue ne demande plus une ligne de code. Verrouillé par `check-aide-sections.js` (32 sections × 3 langues) et `checkup-langues.js` (parcours réel d un utilisateur espagnol) · *01/09*
 - **Onboarding multilingue (part de D2)** — tutoriel migré fr/en/es en v1.79.4 (68 clés dans `es.json`) · *31/08*
 - **D-home-mini « footer coupé sans scroll sous 760 px » — NON REPRODUITE, retirée** (v1.81.0) : rediagnostiquée sur **6 configurations** (1280→1920 × 500→768), footer déplié, 8 plans. Le contenu déborde (normal), **la molette scrolle** et le footer se rejoint **partout**. Deux postulats de la fiche d'origine étaient faux : la colonne Actions n'est pas « ~586 px incompressibles » (elle est **élastique** : 852 px à 1080 de haut, 520 px à 560), et `overflow-y:auto` sur `#planLoaderOverlay` date du **27/04** — donc antérieur à la mesure du 09/08, rien n'a été « réparé » entre-temps. 🩸 **Cause probable de la fausse mesure** : un overlay couvrait la page. Pendant le rediagnostic, **3 mesures successives** ont été faussées par le splash (retiré du DOM après 3,5 s, et `offsetParent` vaut `null` en `position:fixed` — donc l'attendre par `offsetParent` réussit trop tôt) puis par la modale `#kta-alert-modal` (« Accès hors-ligne », déclenchée quand le SW est bloqué). Les deux figent `scrollHeight` et mangent la molette : **exactement** le symptôme décrit. Comportement verrouillé par `scripts/smoke/checkup-home-scroll.js` (checkup de release, **falsifié 3×** : scroll cassé, modale laissée, splash non attendu) — il **refuse de conclure** si un overlay traîne, au lieu de rendre un faux vert · *02/09*
+- **D5 « liaisons portails sur OSM » — SOLDÉE, mais pas sous la forme prévue** (v1.81.0) : le premier jet dessinait une polyligne entre les deux bouts de chaque portail. **KARMA a cassé la prémisse le 02/09** : deux portails bien calés *se superposent déjà*, donc la ligne est de longueur nulle et le calque ne montre **rien** dans le cas nominal. D5 n'était pas un calque de contenu mais un **détecteur d'erreur de calage** — sa seule valeur est le cas raté. Arbitré le 03/09 : **contrôle qualité** (liste classée du pire au meilleur dans les filtres de la Vue OSM, clic = `fitBounds` sur les deux bouts) **+ badge `📐 Écart de calage` dans 🌀 Mes liaisons**, le calque restant en complément. Le calcul vit dans `InterPlanLinks.ecartCalage` — **fonction unique**, consommée par la Vue OSM et jamais recopiée (leçon du bug des icônes portail, la veille). Retourne **`null` et jamais `0`** quand la mesure est impossible : `0` dirait « calage parfait », le contraire de « je ne sais pas ». **Aucun seuil de couleur** — 20 m est énorme sur une petite carrière et négligeable sur un réseau de 5 km. ⚠️ **Prouvé au harnais** : API et badge (33 m mesurés sur deux plans calés à 33 m, `null` sans géoréf). **Non exécuté** : la liste de la Vue OSM — le plein écran exige des plans réellement chargeables, hors de portée du harnais. À valider sur de vrais plans · *03/09*

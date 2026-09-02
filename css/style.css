@@ -8307,6 +8307,66 @@ html.kta-theme-light .kta-ipl-back-float {
 }
 .kta-ipl-mgr-absent { color: #8892a4; }
 .kta-ipl-mgr-arrow { color: #f4c542; flex: 0 0 auto; }
+/* 📐 v1.81.0 (D5) — écart de calage d'une liaison. Discret par construction :
+   c'est une mesure de diagnostic, pas le contenu de la ligne. Aucun seuil de
+   couleur — 20 m est énorme sur une petite carrière et négligeable sur un
+   réseau de 5 km ; colorer reviendrait à juger à la place de l'utilisateur
+   avec un seuil qui ignore son échelle. */
+/* 📐 v1.81.0 (D5) — contrôle qualité du calage, sous les chips de la Vue OSM.
+   Classé du PIRE au meilleur : ce qui mérite un recalage est en tête. Aucun
+   seuil de couleur, même raison que le badge de 🌀 Mes liaisons. */
+.kta-osm-qualite { margin: 6px 0 2px; }
+.kta-osm-qualite:empty { display: none; }
+.kta-osm-qualite-titre {
+  color: #c8d0e0;
+  font-size: 11.5px;
+  margin: 0 0 4px;
+}
+.kta-osm-qualite-vide {
+  color: #8892a4;
+  font-size: 11px;
+  margin: 4px 0 0;
+  line-height: 1.45;
+}
+.kta-osm-qualite-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 4px 8px;
+  margin-bottom: 3px;
+  background: rgba(244, 197, 66, 0.07);
+  border: 1px solid rgba(244, 197, 66, 0.18);
+  border-radius: 4px;
+  color: #e8eaf0;
+  font-size: 11.5px;
+  cursor: pointer;
+  text-align: left;
+}
+.kta-osm-qualite-ligne:hover { background: rgba(244, 197, 66, 0.14); }
+.kta-osm-qualite-noms {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kta-osm-qualite-val { flex: 0 0 auto; color: #f4c542; }
+html.kta-theme-light .kta-osm-qualite-titre,
+html.kta-theme-light .kta-osm-qualite-ligne { color: var(--kta-light-text, #1a1f2e); }
+
+.kta-ipl-mgr-ecart {
+  flex: 0 0 auto;
+  color: #8892a4;
+  font-size: 11.5px;
+  white-space: nowrap;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(244, 197, 66, 0.08);
+  border: 1px solid rgba(244, 197, 66, 0.18);
+}
+html.kta-theme-light .kta-ipl-mgr-ecart { color: var(--kta-light-text-2, #4a5568); }
 .kta-ipl-mgr-actions { flex: 0 0 auto; display: flex; gap: 4px; }
 html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); }
 

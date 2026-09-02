@@ -1864,9 +1864,9 @@
   "iti.time.hourMin": "{h}h{m}",
   "iti.time.lessMin": "<1 min",
   "iti.time.min": "{n} min",
-    "iti.wp.popupEtape": "Step {n}",
+  "iti.wp.popupEtape": "Step {n}",
   "iti.wp.jeSuisIci": "📍 I am here",
-"iti.wp.coordShort": "x:{x} y:{y}",
+  "iti.wp.coordShort": "x:{x} y:{y}",
   "iti.wp.currentPos": "🧭 Current position ({x}, {y})",
   "iti.wp.empty": "No waypoint — click on the map or select a point above",
   "iti.wp.gotoTitle": "Go to this waypoint",
@@ -4838,7 +4838,6 @@
   "gen.wiz.warnGeoref": "Without GPS georeferencing, OSM view and KMZ/GPX exports will be unavailable for this plan.",
   "gen.wiz.warnData": "No data layer: the plan will be generated without points or paths.",
   "home.search.tousResultats": "🌐 See all results…",
-
   "__comment_aide": "❓ Aide integree — migree du HTML en dur (js/interfaceDocs.js) vers les dicos, lot 2. 1 intro + 32 titres + 32 corps HTML. Le HTML est VOULU dans la valeur : ce sont des sections de doc mises en forme, pas des libellés.",
   "aide.intro": "The right-hand sidebar is organized into collapsible groups. Only one group can be open at a time — clicking another closes the previous one.",
   "aide.sec.histoire.titre": "📖 History Mode — Map note + PDF",
@@ -4919,5 +4918,12 @@
   "aide.ui.empty": "No section found.",
   "profileio.sec_histpdf_label": "History Mode PDFs",
   "profileio.sec_histpdf_hint": "PDF documents attached to your maps (📖 Stories tab). <strong>⚠️ Very heavy</strong>: up to 100 MB per map. Unchecked by default — without them, a re-imported profile arrives with the free notes but no documents.",
-  "profileio.done_sec_histpdf": "History Mode PDFs"
+  "profileio.done_sec_histpdf": "History Mode PDFs",
+  "osm_home.portails.label": "Portals",
+  "osm_home.portails.hint": "Links both ends of each inter-plan connection. The gap shown measures georeferencing quality: both points mark the same real place, they should overlap.",
+  "osm_home.portails.ecart": "Gap between the two ends",
+  "ipl.mgr.ecart": "Alignment gap: {d}",
+  "ipl.mgr.ecartTitre": "Distance between this link's two ends, projected through each plan's georeferencing. They mark the same spot: the smaller the figure, the better the alignment.",
+  "osm_home.portails.qualiteTitre": "Alignment quality — {n} link(s) measured",
+  "osm_home.portails.qualiteVide": "No measurable link: BOTH plans of a portal must be displayed and georeferenced."
 }

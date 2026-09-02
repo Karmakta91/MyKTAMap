@@ -102,6 +102,15 @@
   let _showRoads       = true;
   let _showZones       = true;
   let _showStructures  = true;
+  // 🌀 v1.81.0 (dette D5) — liaisons inter-plans dessinées sur le fond OSM.
+  // OFF par défaut, contrairement aux 5 autres catégories : ce n'est pas un
+  // calque de contenu mais un OUTIL DE DIAGNOSTIC. L'arbitrage du 01/08 a
+  // enterré la traversée (le mode OSM n'a ni position courante ni « plan où tu
+  // es ») ; ce qui reste utile, c'est de VOIR l'écart entre les deux bouts d'un
+  // portail — deux points censés être au même endroit physique. Un écart
+  // important = un géoréférencement à revoir sur l'un des deux plans.
+  let _showPortails    = false;
+  let _portailsLayer   = null;  // L.layerGroup, reconstruit à chaque rendu
   let _selectedPlanId = null;
   let _isFullscreen  = false; // v1.40.2 — état overlay plein-viewport
   let _fsEscapeHandler = null; // ref pour cleanup au close()
@@ -1277,6 +1286,169 @@
   function _toggleRoads(visible)      { _showRoads      = !!visible; _appliquerVisibilites(); }
   function _toggleZones(visible)      { _showZones      = !!visible; _appliquerVisibilites(); }
   function _toggleStructures(visible) { _showStructures = !!visible; _appliquerVisibilites(); }
+  function _togglePortails(visible)   { _showPortails   = !!visible; _renderPortails(); }
+
+  // =========================
+  // 🌀 LIAISONS INTER-PLANS SUR OSM (dette D5, v1.81.0)
+  // =========================
+  // À quoi ça sert : les deux bouts d'un portail désignent LE MÊME endroit
+  // physique, vu depuis deux plans. Projetés sur OSM via le géoréf de leur plan
+  // respectif, ils devraient donc se superposer. L'écart qui apparaît est une
+  // mesure directe de la qualité du calage — et c'est le seul endroit de l'app
+  // où on peut le VOIR, puisqu'il faut deux géoréfs pour le révéler.
+  //
+  // Contrainte non négociable : les DEUX plans doivent être affichés ET
+  // géoréférencés. Sans le géoréf du plan d'en face, un des bouts n'est pas
+  // plaçable — on saute la liaison au lieu d'inventer une position.
+  //
+  // Pas de seuil de couleur volontairement : 20 m d'écart, c'est énorme sur une
+  // petite carrière et négligeable sur un réseau de 5 km. On affiche le chiffre,
+  // l'utilisateur juge avec son échelle en tête.
+  function _plansAffichesAvecGeoref() {
+    const out = {};
+    const georefs = {};
+    _listGeorefPlans().forEach(function(p) { georefs[p.id] = p.georef; });
+    if (_selectedPlanId && georefs[_selectedPlanId]) out[_selectedPlanId] = georefs[_selectedPlanId];
+    Object.keys(_extraLayers).forEach(function(id) {
+      if (georefs[id]) out[id] = georefs[id];
+    });
+    return out;
+  }
+
+  function _renderPortails() {
+    if (!_mapInstance) return;
+    if (_portailsLayer) {
+      try { _mapInstance.removeLayer(_portailsLayer); } catch(e) {}
+      _portailsLayer = null;
+    }
+    if (!_showPortails) return;
+    if (!window.InterPlanLinks || typeof window.InterPlanLinks.getAllLinks !== "function") return;
+
+    let liens = [];
+    try { liens = window.InterPlanLinks.getAllLinks() || []; } catch(e) { return; }
+    if (!liens.length) return;
+
+    const affiches = _plansAffichesAvecGeoref();
+    const projections = {};
+    Object.keys(affiches).forEach(function(id) { projections[id] = _buildProjection(affiches[id]); });
+
+    const grp = L.layerGroup();
+    let tracees = 0;
+    liens.forEach(function(lk) {
+      if (!lk || !lk.a || !lk.b) return;
+      const pa = projections[lk.a.planId], pb = projections[lk.b.planId];
+      if (!pa || !pb) return;   // au moins un des deux plans n'est pas affiché/géoréf
+      const la = pa.planToLatLng(Number(lk.a.x) || 0, Number(lk.a.y) || 0);
+      const lb = pb.planToLatLng(Number(lk.b.x) || 0, Number(lk.b.y) || 0);
+      if (!la || !lb) return;
+
+      const ecartM = Math.round(la.distanceTo(lb));
+      L.polyline([la, lb], {
+        color: "#f4c542", weight: 2, opacity: 0.9, dashArray: "6,5",
+        interactive: true
+      }).bindPopup(
+        '<div style="font-size:13px;line-height:1.5;">' +
+          '<strong>🌀 ' + _escapeHtml(lk.a.nom || lk.a.pointId || "?") + '</strong> ↔ ' +
+          '<strong>' + _escapeHtml(lk.b.nom || lk.b.pointId || "?") + '</strong><br>' +
+          _escapeHtml(window.I18n.t("osm_home.portails.ecart")) + ' : <strong>' +
+          (window.formatDistance ? window.formatDistance(ecartM, 0) : (ecartM + " m")) + '</strong>' +
+        '</div>'
+      ).addTo(grp);
+
+      // Les deux bouts, pour voir LEQUEL est décalé (et pas seulement de combien).
+      [la, lb].forEach(function(pt) {
+        L.circleMarker(pt, {
+          radius: 4, color: "#f4c542", weight: 2, fillColor: "#1a1f2e", fillOpacity: 1
+        }).addTo(grp);
+      });
+      tracees++;
+    });
+
+    if (tracees) {
+      _portailsLayer = grp;
+      grp.addTo(_mapInstance);
+    }
+    console.log("[OsmHomePreview] portails tracés : " + tracees + "/" + liens.length +
+                " (les autres ont au moins un plan non affiché ou non géoréférencé)");
+  }
+
+  // 📐 v1.81.0 (D5) — CONTRÔLE QUALITÉ DU CALAGE (arbitrage KARMA du 03/09)
+  //
+  // Pourquoi une LISTE et pas seulement le calque : deux portails bien calés
+  // se superposent, donc la polyligne est de longueur nulle et le calque ne
+  // montre RIEN dans le cas nominal. Un outil dont le cas nominal est
+  // invisible se lit mal — l'utilisateur ne sait pas s'il fonctionne. La
+  // liste, elle, répond directement à « mes géoréfs sont-ils bons ? » : elle
+  // affiche le compte mesuré et classe du PIRE au meilleur, donc ce qui
+  // mérite un recalage est en première ligne.
+  //
+  // L'écart vient de `InterPlanLinks.ecartCalage` — fonction UNIQUE, jamais
+  // recopiée ici (leçon du bug des icônes portail du 02/09).
+  function _renderPortailsQualite() {
+    const cont = document.getElementById("ktaOsmPortailsQualite");
+    if (!cont) return;
+    if (!_showPortails) { cont.innerHTML = ""; return; }
+    if (!window.InterPlanLinks || typeof window.InterPlanLinks.ecartCalage !== "function") {
+      cont.innerHTML = ""; return;
+    }
+
+    let liens = [];
+    try { liens = window.InterPlanLinks.getAllLinks() || []; } catch(e) { liens = []; }
+    const affiches = _plansAffichesAvecGeoref();
+
+    // Mesurables = les deux plans AFFICHÉS dans la pile et géoréférencés.
+    // On ne liste pas les autres : un écart qu'on ne peut pas montrer sur la
+    // carte devant soi n'aide personne — il se lit dans 🌀 Mes liaisons.
+    const mesures = [];
+    liens.forEach(function(lk) {
+      if (!lk || !lk.a || !lk.b) return;
+      if (!affiches[lk.a.planId] || !affiches[lk.b.planId]) return;
+      const m = window.InterPlanLinks.ecartCalage(lk);
+      if (m === null || !isFinite(m)) return;
+      mesures.push({ lk: lk, m: m });
+    });
+    if (!mesures.length) {
+      cont.innerHTML = '<p class="kta-osm-qualite-vide">' +
+        _escapeHtml(window.I18n.t("osm_home.portails.qualiteVide")) + '</p>';
+      return;
+    }
+    mesures.sort(function(a, b) { return b.m - a.m; });   // le pire en tête
+
+    const fmt = function(m) {
+      return window.formatDistance ? window.formatDistance(m, 0) : (Math.round(m) + " m");
+    };
+    cont.innerHTML =
+      '<div class="kta-osm-qualite-titre">📐 ' +
+        _escapeHtml(window.I18n.t("osm_home.portails.qualiteTitre", { n: mesures.length })) +
+      '</div>' +
+      mesures.map(function(e, i) {
+        return '<button type="button" class="kta-osm-qualite-ligne" data-q="' + i + '">' +
+                 '<span class="kta-osm-qualite-noms">' +
+                   _escapeHtml(e.lk.a.pointNom || e.lk.a.nom || e.lk.a.pointId || "?") + ' ⇄ ' +
+                   _escapeHtml(e.lk.b.pointNom || e.lk.b.nom || e.lk.b.pointId || "?") +
+                 '</span>' +
+                 '<span class="kta-osm-qualite-val">' + _escapeHtml(fmt(e.m)) + '</span>' +
+               '</button>';
+      }).join("");
+
+    // Clic → on cadre les DEUX bouts. `fitBounds` plutôt qu'un centrage sur le
+    // milieu : avec un gros écart, se poser au milieu laisse les deux bouts
+    // hors champ — exactement les deux choses qu'on voulait voir.
+    cont.querySelectorAll("[data-q]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const e = mesures[parseInt(btn.getAttribute("data-q"), 10)];
+        if (!e || !_mapInstance) return;
+        const pa = _buildProjection(affiches[e.lk.a.planId]);
+        const pb = _buildProjection(affiches[e.lk.b.planId]);
+        if (!pa || !pb) return;
+        const la = pa.planToLatLng(Number(e.lk.a.x) || 0, Number(e.lk.a.y) || 0);
+        const lb = pb.planToLatLng(Number(e.lk.b.x) || 0, Number(e.lk.b.y) || 0);
+        if (!la || !lb) return;
+        try { _mapInstance.fitBounds(L.latLngBounds([la, lb]), { padding: [80, 80], maxZoom: 19 }); }
+        catch(err) { /* bornes dégénérées (écart nul) : Leaflet gère, on ignore */ }
+      });
+    });
+  }
 
   // 🆕 v1.40.21 — Bbox GPS du plan sélectionné (4 coins projetés via la georef).
   // Utilisée pour le garde-fou "GPS hors champ du plan" du bouton 📍 widget HOME.
@@ -1865,6 +2037,7 @@
 
     _avertirMultiSiBesoin();
     _renderMultiPanel();
+    _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
 
     _loadPlanDataForPreview(planId).then(function(data) {
       // Garde anti-race : retiré (ou devenu principal) pendant l'extraction ?
@@ -1900,6 +2073,7 @@
     // (re-ajout gratuit) et peuvent servir au plan principal.
     _appliquerOrdre();
     _renderMultiPanel();
+    _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
     _renderModalTags();   // 🐛 v1.72.2 : retirer un plan retire aussi ses tags
   }
 
@@ -1964,6 +2138,9 @@
           '<p class="kta-osm-filters-hint">' + _escapeHtml(window.I18n.t("osm_mode.filters.hint")) + '</p>' +
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.global")) + '</div>' +
           '<div class="kta-osm-multi-cats kta-osm-filters-globaux" id="ktaOsmFiltersGlobaux"></div>' +
+          // 📐 v1.81.0 (D5) — bloc « qualité du calage », rempli seulement
+          // quand le chip 🌀 est actif (cf. _renderPortailsQualite).
+          '<div class="kta-osm-qualite" id="ktaOsmPortailsQualite"></div>' +
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.tags")) + '</div>' +
           '<div class="kta-osm-home-tagchips kta-osm-filters-tags" id="ktaOsmFiltersTags"></div>' +
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.plans")) + '</div>' +
@@ -2011,6 +2188,23 @@
              (etats[c[0]] ? " active" : "") + '" data-gcat="' + c[0] + '">' +
              c[1] + ' <span>' + _escapeHtml(window.I18n.t(c[2])) + '</span></button>';
     }).join("");
+    // 🌀 v1.81.0 (D5) — chip PORTAILS ajouté ICI et non dans `_CATS` : ce
+    // catalogue alimente aussi les filtres PAR PLAN, or un portail appartient à
+    // DEUX plans — le filtrer depuis la ligne d'un seul n'aurait pas de sens.
+    // Il n'apparaît que s'il existe au moins une liaison, sinon c'est un bouton
+    // qui ne peut rien montrer.
+    let nbLiens = 0;
+    try {
+      nbLiens = (window.InterPlanLinks && typeof window.InterPlanLinks.getAllLinks === "function")
+        ? (window.InterPlanLinks.getAllLinks() || []).length : 0;
+    } catch(e) { nbLiens = 0; }
+    if (nbLiens > 0) {
+      cont.innerHTML += '<button type="button" class="kta-osm-multi-cat kta-osm-cat-libelle' +
+        (_showPortails ? " active" : "") + '" data-gportails="1" ' +
+        'title="' + _escapeHtml(window.I18n.t("osm_home.portails.hint")) + '">🌀 <span>' +
+        _escapeHtml(window.I18n.t("osm_home.portails.label")) + '</span></button>';
+    }
+
     cont.querySelectorAll("[data-gcat]").forEach(function(b) {
       b.addEventListener("click", function() {
         const cat = b.getAttribute("data-gcat");
@@ -2020,6 +2214,13 @@
         b.classList.toggle("active", nouveau);
       });
     });
+    const bp = cont.querySelector("[data-gportails]");
+    if (bp) bp.addEventListener("click", function() {
+      _togglePortails(!_showPortails);
+      bp.classList.toggle("active", _showPortails);
+      _renderPortailsQualite();
+    });
+    _renderPortailsQualite();
   }
 
   // 🏷️ v1.71.0 (retour KARMA « on doit aussi pouvoir filtrer au tag ») — chips
@@ -2484,6 +2685,7 @@
       if (iPrev !== -1) _stackOrder.splice(iPrev, 1);
     }
     _renderMultiPanel();
+    _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
     _saveLastSelected(planId);
     _renderGeorefMarkers(sel.georef);
     // 🆕 v1.43.3 — Si offline, vérifier si ce plan a des tuiles cachées.

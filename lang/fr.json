@@ -1864,9 +1864,9 @@
   "iti.time.hourMin": "{h}h{m}",
   "iti.time.lessMin": "<1 min",
   "iti.time.min": "{n} min",
-    "iti.wp.popupEtape": "Étape {n}",
+  "iti.wp.popupEtape": "Étape {n}",
   "iti.wp.jeSuisIci": "📍 Je suis ici",
-"iti.wp.coordShort": "x:{x} y:{y}",
+  "iti.wp.coordShort": "x:{x} y:{y}",
   "iti.wp.currentPos": "🧭 Position actuelle ({x}, {y})",
   "iti.wp.empty": "Aucun waypoint — clique sur la carte ou sélectionne un point ci-dessus",
   "iti.wp.gotoTitle": "Aller à ce waypoint",
@@ -4838,7 +4838,6 @@
   "gen.wiz.warnGeoref": "Sans géoréférencement GPS, la Vue OSM et les exports KMZ/GPX seront indisponibles pour ce plan.",
   "gen.wiz.warnData": "Aucun calque de données : le plan sera généré sans points ni tracés.",
   "home.search.tousResultats": "🌐 Voir tous les résultats…",
-
   "__comment_aide": "❓ Aide integree — migree du HTML en dur (js/interfaceDocs.js) vers les dicos, lot 2. 1 intro + 32 titres + 32 corps HTML. Le HTML est VOULU dans la valeur : ce sont des sections de doc mises en forme, pas des libellés.",
   "aide.intro": "La barre latérale droite est organisée en groupes déroulables. Un seul groupe peut être ouvert à la fois — cliquer sur un autre referme le précédent.",
   "aide.sec.histoire.titre": "📖 Mode Histoire — Note + PDF du plan",
@@ -4919,5 +4918,12 @@
   "aide.ui.empty": "Aucune section trouvée.",
   "profileio.sec_histpdf_label": "PDF du Mode Histoire",
   "profileio.sec_histpdf_hint": "Les documents PDF attachés à tes plans (onglet 📖 Récits). <strong>⚠️ Très lourd</strong> : jusqu’à 100 Mo par plan. Décoché par défaut — sans eux, un profil réimporté arrive avec les notes libres mais sans les documents.",
-  "profileio.done_sec_histpdf": "PDF du Mode Histoire"
+  "profileio.done_sec_histpdf": "PDF du Mode Histoire",
+  "osm_home.portails.label": "Portails",
+  "osm_home.portails.hint": "Relie les deux bouts de chaque liaison inter-plans. L’écart affiché mesure la qualité du géoréférencement : les deux points désignent le même endroit réel, ils devraient se superposer.",
+  "osm_home.portails.ecart": "Écart entre les deux bouts",
+  "ipl.mgr.ecart": "Écart de calage : {d}",
+  "ipl.mgr.ecartTitre": "Distance entre les deux bouts de cette liaison, projetés via le géoréférencement de chaque plan. Ils désignent le même endroit : plus le chiffre est petit, meilleur est le calage.",
+  "osm_home.portails.qualiteTitre": "Qualité du calage — {n} liaison(s) mesurée(s)",
+  "osm_home.portails.qualiteVide": "Aucune liaison mesurable : il faut que les DEUX plans d'un portail soient affichés et géoréférencés."
 }
