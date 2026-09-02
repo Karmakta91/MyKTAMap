@@ -363,7 +363,7 @@
     overlay.className = "kta-readme-modal-overlay";
     overlay.style.display = "flex";
     overlay.innerHTML =
-      '<div class="kta-readme-modal-boite kta-ipl-boite">' +
+      '<div class="kta-readme-modal-boite kta-ipl-boite kta-ipl-mgr-boite">' +
         '<div class="kta-readme-modal-header">' +
           '<span class="kta-readme-modal-titre">🌀 ' + _esc(_t("ipl.mgr.titre")) + '</span>' +
           '<button class="kta-readme-modal-close" id="kta-ipl-mgr-close" type="button" aria-label="✕">✕</button>' +
