@@ -635,3 +635,51 @@ Clé IDB = "z/x/y" (slippy tilenames OSM, EPSG:3857)
 **👁️ Datalayers `visible: false` (fix v1.73.1)** : `_renderDataLayersOnMiniMap` **ne skippe plus** les calques marqués non visibles (`if (!layer.visible) continue` supprimé — il sautait le calque ENTIER, tracés et zones compris). Raison : `layer.visible` est un défaut d'affichage du **MODE PLAN**, retoggable là-bas via ⊞ Calques ; la Vue OSM n'ayant aucun toggle par calque, le skip = **zéro voie d'affichage**. L'affichage est désormais gouverné par les filtres existants (chips catégories globales + par plan, tags). Effet assumé : un calque volontairement masqué par défaut apparaît en Vue OSM. `layer.visible` reste **parsé** (si des toggles par calque arrivent un jour dans la modale ≡). ⚠️ La modale OSM du **mode plan** n'est pas concernée : elle lit les calques vivants de la carte, pas le plan-config.
 
 **Reste au lot 3 (v1.72)** : croisement fin (filtres par plan ?, popups enrichis cross-plan), liaisons portails dessinées entre plans sur OSM.
+
+---
+
+## 🏷️ Icônes POI en Vue OSM : une seule source (v1.81.0)
+
+**Le bug.** En Vue OSM plein écran, un point portant le tag **`portail`** (l'icône
+vortex des liaisons inter-plans) s'affichait comme un **petit rond jaune de rayon 4**
+au lieu de son icône. Idem pour **`entree_plan`** — dont le commentaire d'origine dit
+pourtant « Vue OSM × Mode Secours ». Découvert par KARMA le 02/09/2026 en testant
+D5 : les icônes manquantes l'empêchaient de repérer ses portails sur la carte.
+
+**Pourquoi.** `js/osmHomePreview.js` dessine des plans qui **ne sont pas chargés** —
+il lit leur ZIP — sur un HOME affiché **avant** tout plan. Il ne peut donc pas passer
+par `window._iconMap`, qui est le résolveur du plan **courant**. Il en gardait donc une
+copie locale, `TAGS_BUILTIN_HOME`, avec ce commentaire :
+
+> « Cohérence stricte avec map.js — si `TAGS_BUILTIN` change là-bas, sync ici. »
+
+La sync a été oubliée **deux fois** : `entree_plan` (v1.41.0) et `portail` (v1.59.0).
+Quand un tag est inconnu, `_extractIcons` ne résout rien et le rendu tombe sur le
+`circleMarker` de secours. Le module le **savait** et l'écrivait —
+`⚠️ Tags POI sans icône : portail(N)` — mais en `console.log`, dégradé depuis
+`console.warn` en v1.40.15 : noyé dans le bruit, et invisible du smoke qui ne
+surveille que les erreurs.
+
+**Le piège qui a fait durer le bug.** `window._ktaBuiltinIconUrls` existait déjà
+(v1.76.0), mais l'affectation vivait **à l'intérieur de `creerIcones()`** : la globale
+n'apparaissait donc qu'**après le chargement d'un plan**. Sur le HOME, elle était
+`undefined`. La consommer telle quelle aurait donné un bug **intermittent** — icônes
+correctes si l'utilisateur avait déjà ouvert un plan dans la session, absentes sinon.
+C'est pire qu'une copie franche.
+
+**Le fix.** `TAGS_BUILTIN` est remontée au **top-level** de `js/map.js` et exposée
+immédiatement ; `osmHomePreview` lit `window._ktaBuiltinIconUrls || TAGS_BUILTIN_HOME`.
+La copie locale subsiste en **filet de secours** (si `map.js` n'était pas chargé) et
+n'est plus la source.
+
+**Verrou.** `scripts/check-icon-catalog.js` (pré-commit **bloquant**, falsifié 4×)
+confronte les deux tables **dans les deux sens**, vérifie que le HOME lit bien la
+globale, et que celle-ci est exposée **au top-level** (une ligne à la colonne 0 =
+hors de toute fonction — c'est tout l'enjeu). *Un commentaire « sync ici » n'a rien
+empêché pendant deux versions ; un test, si.*
+
+⚠️ **Ce qui est prouvé** : la globale est disponible sur le HOME avec ses 22 tags
+alors que `_iconMap` est encore vide (donc `creerIcones` n'a pas tourné), le fichier
+`icon/portail.png` existe et est précaché, et le smoke reste vert. **Ce qui ne l'est
+pas** : le rendu de l'icône sur un vrai point portail d'un plan géoréférencé — à
+valider par KARMA, c'est ce qui débloque le test de D5.

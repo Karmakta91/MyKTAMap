@@ -43,7 +43,7 @@
 **CSS** : charte dark (`#1a1f2e`→`#0a0d18`, texte `#e8eaf0`/`#c8d0e0`/`#8892a4`), accent `#f4c542`, interaction `#8cb4ff`. Préfixe **`kta-`**. Pas de Tailwind/SCSS. Z-index : 1100 titre · 5000 loader · 9999 splash · 99999 modales · 100001 sous-modales.
 **Coords** : TOUJOURS `convertCoord(x,y)` = `[imageHeight - y, x]`. Jamais `[y,x]` direct.
 **Distances** : TOUJOURS `window.formatDistance(distM, dec)`. Jamais `toFixed()+" m"`.
-**Icônes** : résolution unique `window._iconMap[tag]` / `getIconUrlForPoint`.
+**Icônes** : résolution unique `window._iconMap[tag]` / `getIconUrlForPoint` — vrai **pour un plan chargé**. Hors plan (HOME, Vue OSM multi-plans), la source est `window._ktaBuiltinIconUrls` (= `map.js > TAGS_BUILTIN`, exposé au **top-level**). **Jamais de copie locale du catalogue** : `scripts/check-icon-catalog.js` (pré-commit) la confronte à la source dans les deux sens.
 **Styles des types** (tracés/zones/structures) : TOUJOURS `window.ktaResolveStyle(cat, clé[, {flat:true}])` (`flat` = contexte sans motif SVG : canvas, KMZ, OSM) · pastille/camembert = `ktaSwatchColor` · icône HTML = `ktaTypeSwatchHtml`. **Jamais de table de couleurs locale** — `scripts/check-style-canon.js` (pré-commit bloquant) refuse toute réintroduction. 2 exceptions documentées : `emergencyMode.js`, `osmView.js`/`osmHomePreview.js`.
 **Textes user-facing** : migration progressive vers `window.I18n.t("module.section.element")` (dicos `lang/<code>.json`, FR = fallback universel). Appeler au rendu, jamais au load. Hors modules migrés, le FR inline reste OK. Détails + état migration : `docs/architecture/i18n.md`.
 

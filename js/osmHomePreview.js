@@ -294,9 +294,15 @@
     }
     return { stroke: "#8892a4", fill: "#8892a4" };
   }
-  // 🆕 v1.40.13 — Tags built-in (aligné sur map.js > TAGS_BUILTIN). Utilisé
-  // pour extraire les icônes par défaut du ZIP si le plan-config n'override pas.
-  // Cohérence stricte avec map.js — si TAGS_BUILTIN change là-bas, sync ici.
+  // 🔁 v1.81.0 — FILET DE SECOURS, PLUS LA SOURCE. Le catalogue de référence
+  // est `window._ktaBuiltinIconUrls` (map.js > TAGS_BUILTIN), désormais exposé
+  // dès le chargement du script — donc lisible ici, sur un HOME où aucun plan
+  // n'est encore ouvert. Cette copie ne sert que si map.js n'a pas été chargé.
+  // 🩸 Elle a dérivé DEUX FOIS pendant qu'elle faisait autorité : `entree_plan`
+  // (v1.41.0) et `portail` (v1.59.0) n'y sont jamais arrivés, et un point
+  // portail s'affichait en Vue OSM comme un petit rond jaune au lieu de son
+  // icône vortex. Le commentaire qui disait « sync ici » n'a rien empêché :
+  // `scripts/check-icon-catalog.js` (pré-commit bloquant) confronte les deux.
   const TAGS_BUILTIN_HOME = {
     salle:    "icon/house.png",
     pa:       "icon/pa.png", pc: "icon/pc.png", pb: "icon/pb.png",
@@ -308,7 +314,20 @@
     elec:     "icon/elec.png", epure: "icon/epure.png",
     info:     "icon/info.png",
     chatiere: "icon/chatiere.png", passage: "icon/passage.png",
-    danger:   "icon/danger.png", plaque: "icon/plaque.png"
+    danger:   "icon/danger.png", plaque: "icon/plaque.png",
+    // 🔁 v1.81.0 — les 2 tags qui manquaient. Ils sont la RAISON de ce fix :
+    // absents ici, un point portail / entrée de plan tombait sur le
+    // circleMarker de secours en Vue OSM. Tenus alignés par
+    // `scripts/check-icon-catalog.js`.
+    portail:  "icon/portail.png",
+    entree_plan: 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">' +
+        '<circle cx="25" cy="25" r="23" fill="#f4c542" stroke="#1a1f2e" stroke-width="2.5"/>' +
+        '<rect x="17" y="13" width="16" height="26" fill="#1a1f2e" rx="1"/>' +
+        '<rect x="19" y="15" width="12" height="22" fill="#f4c542" rx="0.5"/>' +
+        '<circle cx="28.5" cy="26" r="1.5" fill="#1a1f2e"/>' +
+      '</svg>'
+    )
   };
   // 🆕 v1.40.13 — Tracker des blob URLs créés pour les icônes POI
   let _iconBlobUrls = [];
@@ -966,10 +985,13 @@
         await _resolveIcon(tag, config.icons[tag]);
       }
     }
-    // 2. TAGS_BUILTIN_HOME (fallback non-overridé)
-    for (const tag in TAGS_BUILTIN_HOME) {
+    // 2. Catalogue built-in (fallback non-overridé). SOURCE UNIQUE =
+    //    `window._ktaBuiltinIconUrls` (map.js) ; la copie locale ne prend le
+    //    relais que si map.js n'est pas là. Voir le bandeau de TAGS_BUILTIN_HOME.
+    const CATALOGUE = window._ktaBuiltinIconUrls || TAGS_BUILTIN_HOME;
+    for (const tag in CATALOGUE) {
       if (iconUrls[tag]) continue; // déjà overridé par config.icons
-      await _resolveIcon(tag, TAGS_BUILTIN_HOME[tag]);
+      await _resolveIcon(tag, CATALOGUE[tag]);
     }
     // 3. Default fallback Leaflet marker (au cas où POI sans tag)
     if (!iconUrls.default) {

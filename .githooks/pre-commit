@@ -106,3 +106,13 @@ node scripts/check-aide-sections.js || exit $?
 # aucune 3e copie du schema IDB (deja duplique modeHistoire/journalUi), et
 # l'idempotence du reimport (put, pas add). BLOQUANT.
 node scripts/check-profile-histpdf.js || exit $?
+
+# 🏷️ Catalogue des tags built-in : UNE seule source (dette : icones portail
+# absentes en Vue OSM, v1.81.0). `js/osmHomePreview.js` gardait une COPIE de
+# `js/map.js > TAGS_BUILTIN` parce que la globale n'existait qu'apres le
+# chargement d'un plan, alors que le HOME s'affiche AVANT. La copie a derive
+# deux fois en silence (`entree_plan` v1.41.0, `portail` v1.59.0) : un point
+# portail tombait sur le circleMarker de secours, petit rond jaune au lieu de
+# son icone. Verifie la parite des deux tables DANS LES DEUX SENS, que le HOME
+# lit bien la globale, et qu'elle est exposee au TOP-LEVEL. BLOQUANT.
+node scripts/check-icon-catalog.js || exit $?
