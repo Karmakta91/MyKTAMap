@@ -57,6 +57,15 @@ const SRC     = opt("src", "data/doc.kml");
 const OUT_DIR = opt("out", "sorties-atlas");
 const ZONE    = opt("zone", null);
 const LISTER  = A.includes("--lister");
+// 🗺️ EXTRACTION PAR ZONE GÉOGRAPHIQUE (demande KARMA, 03/09 : Saint-Émilion).
+// Un site n'est pas toujours UNE emprise nommée. Sous Saint-Émilion, le
+// sous-sol est éclaté en 154 emprises dans un rayon de 4 km, dont la plupart
+// SANS NOM — la plus grande (5 470 sommets, à 510 m du bourg) en fait partie.
+// Chercher par nom n'y donne rien ; il faut prendre tout ce qui tombe autour
+// d'un point.
+const AUTOUR = opt("autour", null);              // "lat,lng"
+const RAYON  = parseFloat(opt("rayon", "2"));    // km
+const NOM_SORTIE = opt("nom", null);             // nom du fichier produit
 const MARGE_M = parseFloat(opt("marge", "50"));   // cf. « galeries à cheval »
 // Quelles couches verser dans le plan. Le fichier Gironde en porte deux qui se
 // recouvrent : le relevé STRUCTURÉ par niveaux (`niveau1`…`niveau6`) et un TOPO
@@ -73,8 +82,24 @@ const MARGE_M = parseFloat(opt("marge", "50"));   // cf. « galeries à cheval �
 const COUCHES   = opt("couches", "tout");        // niveaux | historique | tout
 const NIV_HISTO = parseInt(opt("historique-niveau", "1"), 10);
 
-if (!LISTER && !ZONE) {
-  console.error("Usage : node scripts/decouper-atlas.js --zone \"<nom>\"  |  --lister");
+let CENTRE = null;
+if (AUTOUR) {
+  const p = AUTOUR.split(",").map(function (s) { return parseFloat(s.trim()); });
+  if (p.length !== 2 || !p.every(Number.isFinite)) {
+    console.error("❌ --autour attend \"lat,lng\" (ex. --autour \"44.8944,-0.1556\")");
+    process.exit(2);
+  }
+  // 🩸 Le SIGNE de la longitude est le piège de cette option : la Gironde est
+  // à l'OUEST de Greenwich, donc toutes ses longitudes sont NÉGATIVES. Une
+  // recherche à +0,15 au lieu de −0,15 ne trouve rien et laisse croire que le
+  // site est absent du relevé — c'est exactement l'erreur commise sur
+  // Saint-Émilion avant d'ajouter cette option.
+  CENTRE = { lat: p[0], lng: p[1] };
+}
+if (!LISTER && !ZONE && !CENTRE) {
+  console.error("Usage : node scripts/decouper-atlas.js --zone \"<nom>\"");
+  console.error("     ou : --autour \"lat,lng\" [--rayon 2] [--nom \"Saint-Emilion\"]");
+  console.error("     ou : --lister");
   process.exit(2);
 }
 if (!fs.existsSync(SRC)) {
@@ -211,6 +236,20 @@ function passe1() {
             // (multipolygone éclaté à l'export). On les GARDE TOUTES et on teste
             // l'appartenance à l'une OU l'autre.
             if (ZONE && buf.nom === ZONE) cibles.push({ nom: buf.nom, poly: pts, bbox: bboxDe(pts) });
+            // Sélection GÉOGRAPHIQUE : le centre de l'emprise tombe dans le
+            // rayon demandé. On prend le centre plutôt qu'un test d'intersection
+            // exact — sur 1 471 emprises c'est instantané, et une carrière dont
+            // le centre est à plus de N km du point demandé n'est de toute façon
+            // pas le site qu'on cherche.
+            if (CENTRE) {
+              const bb2 = bboxDe(pts);
+              const cx = (bb2.x0 + bb2.x1) / 2, cy = (bb2.y0 + bb2.y1) / 2;
+              const dx = (cx - CENTRE.lng) * 111320 * Math.cos(CENTRE.lat * Math.PI / 180);
+              const dy = (cy - CENTRE.lat) * 111320;
+              if (Math.hypot(dx, dy) <= RAYON * 1000) {
+                cibles.push({ nom: buf.nom, poly: pts, bbox: bb2 });
+              }
+            }
           }
         }
         dansPm = false; buf = null; coordsOuter = ""; dansOuter = false; dansCoords = false;
@@ -362,6 +401,14 @@ function passe2(cibles) {
   }
 
   if (!p1.cibles.length) {
+    if (CENTRE) {
+      console.error("\n❌ Aucune emprise dans un rayon de " + RAYON + " km autour de " +
+                    CENTRE.lat + ", " + CENTRE.lng + ".");
+      console.error("   ⚠️ Vérifie le SIGNE de la longitude : la Gironde est à l'ouest de");
+      console.error("      Greenwich, ses longitudes sont NÉGATIVES (-0.1556, pas 0.1556).");
+      console.error("   Sinon, élargis avec --rayon.");
+      process.exit(1);
+    }
     console.error("\n❌ Zone « " + ZONE + " » introuvable.");
     const proches = p1.zones.filter(function (z) {
       return z.nom.toLowerCase().includes(ZONE.toLowerCase().slice(0, 5));
@@ -380,8 +427,10 @@ function passe2(cibles) {
   }, { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity });
   const lat = (bb.y0 + bb.y1) / 2;
   const nSom = p1.cibles.reduce(function (n, c) { return n + c.poly.length; }, 0);
-  console.log("Zone      : " + p1.cibles[0].nom +
-              (p1.cibles.length > 1 ? "  (" + p1.cibles.length + " emprises distinctes, fusionnées)" : "") +
+  const _nomSite = NOM_SORTIE || (CENTRE ? ("autour_" + CENTRE.lat + "_" + CENTRE.lng) : p1.cibles[0].nom);
+  console.log("Zone      : " + _nomSite +
+              (p1.cibles.length > 1 ? "  (" + p1.cibles.length + " emprises" +
+                (CENTRE ? " dans " + RAYON + " km" : " distinctes") + ", fusionnées)" : "") +
               " — " + nSom + " sommets au total");
   console.log("Emprise   : " + Math.round((bb.x1 - bb.x0) * 111320 * Math.cos(lat * Math.PI / 180)) +
               " m (E-O) × " + Math.round((bb.y1 - bb.y0) * 111320) + " m (N-S)");
@@ -417,7 +466,7 @@ function passe2(cibles) {
     };
   });
   if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
-  const dest = path.join(OUT_DIR, p1.cibles[0].nom.replace(/[^\w.-]+/g, "_") + ".geojson");
+  const dest = path.join(OUT_DIR, _nomSite.replace(/[^\w.-]+/g, "_") + ".geojson");
   fs.writeFileSync(dest, JSON.stringify({ type: "FeatureCollection", features: feats }));
 
   const mo = (fs.statSync(dest).size / 1048576).toFixed(2);
