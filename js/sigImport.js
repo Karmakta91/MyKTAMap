@@ -718,6 +718,30 @@
     return "cust-sig-" + categorie + "-n" + String(n).replace("-", "m");
   }
 
+  // Préfixe des types de STRUCTURE. Déclaré ICI, avant toutes les boucles :
+  // il est lu par celle des lignes comme par celle des polygones, et un const
+  // posé plus bas tombait dans sa zone morte temporelle (ReferenceError au
+  // premier tracé — vécu au premier essai sur le relevé réel).
+  // 🔀 v1.82.0 — ROUTAGE LIBRE (retour KARMA : « des zones peuvent aussi
+  // être des fronts de taille — quelqu'un qui aurait fait un polygone via un
+  // front de taille »). Exact, et la règle vaut dans tous les sens : la
+  // GÉOMÉTRIE du fichier SIG ne dit pas ce que l'objet EST. Un polygone peut
+  // être une zone, un pilier, un mur ou un front ; une polyligne peut être
+  // une galerie, un front, ou le contour d'une zone tracé sans le fermer.
+  // Le type choisi porte donc un préfixe de FAMILLE. Sans préfixe, l'objet
+  // va dans la famille naturelle de sa géométrie (ligne → tracé, polygone →
+  // zone), ce qui garde tout le comportement d'avant.
+  const PREFIXES = { "struct:": "structures", "zone:": "zones", "trace:": "roads" };
+
+  // Retourne { famille, type } depuis le choix de l'utilisateur.
+  function _router(choisi, familleNaturelle) {
+    const s = String(choisi || "");
+    for (const p in PREFIXES) {
+      if (s.startsWith(p)) return { famille: PREFIXES[p], type: s.slice(p.length) };
+    }
+    return { famille: familleNaturelle, type: s };
+  }
+
   // 🏷️ v1.82.0 — PRÉVISUALISER les entrées de légende AVANT de générer.
   // L'écran SIG en a besoin pour les proposer à l'édition : au moment où
   // l'utilisateur veut les renommer, la génération n'a pas encore eu lieu et
@@ -727,38 +751,71 @@
   function previsualiserEntreesNiveaux(normalise, opts) {
     opts = opts || {};
     if (opts.couleurParNiveau !== true || !opts.cleNiveau) return [];
-    // Niveaux présents, par famille de géométrie, dans l'ordre RENCONTRÉ
-    // (c'est cet ordre qui attribue les couleurs — cf. `_rangs`).
-    const vus = [];
-    const familles = [];
-    const scan = function (items, categorieNaturelle) {
+
+    // 🩸 v1.82.0 (retour KARMA : « il me crée des tracés et zones alors que
+    // j'ai demandé que des structures »). La première version déduisait la
+    // famille de la GÉOMÉTRIE (ligne → tracé, polygone → zone) en ignorant le
+    // mapping. Elle annonçait donc autre chose que ce que `ingest` allait
+    // produire — l'inverse exact de ce qu'une prévisualisation doit faire.
+    // On rejoue ici le MÊME routeur, avec le MÊME mapping.
+    const mapTraces  = opts.mapTraces || {};
+    const mapZones   = opts.mapZones  || {};
+    const typeDefaut = opts.roadType  || "secondaire";
+    const zoneDefaut = opts.zoneType  || "remblais";
+    const cleType    = opts.cleType   || null;
+    const TYPES_POLYLIGNE = ["front-1", "front-2"];
+
+    const valeurType = function (props) {
+      if (!cleType || !props) return null;
+      const k = _trouverCle(props, cleType);
+      return (k && props[k] != null) ? String(props[k]).trim() : null;
+    };
+    const niveauDe = function (props) {
+      const k = _trouverCle(props, opts.cleNiveau);
+      if (!k || !props || props[k] == null) return null;
+      const m = /-?\d+/.exec(String(props[k]));
+      if (!m) return null;
+      const n = parseInt(m[0], 10);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const vus = [];        // niveaux dans l'ordre RENCONTRÉ (attribue la couleur)
+    const cles = [];       // "categorie|forme|niveau" déjà vues
+    const out = [];
+
+    const scan = function (items, familleNaturelle, mapping, defaut) {
       (items || []).forEach(function (it) {
-        const k = _trouverCle(it.props, opts.cleNiveau);
-        if (!k || it.props[k] == null) return;
-        const m = /-?\d+/.exec(String(it.props[k]));
-        if (!m) return;
-        const n = parseInt(m[0], 10);
-        if (!Number.isFinite(n)) return;
+        const n = niveauDe(it.props);
+        if (n === null) return;
         if (vus.indexOf(n) < 0) vus.push(n);
-        const cle = categorieNaturelle + "|" + n;
-        if (familles.indexOf(cle) < 0) familles.push(cle);
+        const v = valeurType(it.props);
+        const r = _router((v && mapping[v]) || defaut, familleNaturelle);
+        // Catégorie de LÉGENDE (pas de famille de stockage) : `roads` se dit
+        // `traces` côté LegendCustomization.
+        const cat = (r.famille === "structures") ? "structures"
+                  : (r.famille === "zones")      ? "zones" : "traces";
+        const estLigne = (cat === "traces") || TYPES_POLYLIGNE.indexOf(r.type) >= 0;
+        const id = _idNiveau(cat + (estLigne ? "-l" : ""), n);
+        if (cles.indexOf(id) >= 0) return;
+        cles.push(id);
+        const libelle = (cat === "structures") ? (estLigne ? "Structure" : "Pilier")
+                      : (cat === "zones") ? "Zone" : "Galerie";
+        out.push({ id: id, category: cat,
+                   label: libelle + " " + (n < 0 ? n : "+" + n),
+                   geometry: estLigne ? "polyline" : "polygon",
+                   _niveau: n, _estLigne: estLigne });
       });
     };
-    scan(normalise.lignes,    "traces");
-    scan(normalise.polygones, "zones");
-    const out = [];
-    familles.forEach(function (cle) {
-      const p = cle.split("|");
-      const cat = p[0], n = parseInt(p[1], 10);
-      const c = _couleurNiveau(n, vus.indexOf(n));
-      const libelle = (cat === "traces") ? "Galerie" : "Zone";
-      const e = { id: _idNiveau(cat === "traces" ? "traces-l" : cat, n),
-                  category: cat,
-                  label: libelle + " " + (n < 0 ? n : "+" + n),
-                  geometry: (cat === "traces") ? "polyline" : "polygon",
-                  lineColor: c };
-      if (cat !== "traces") { e.fillColor = c; e.borderColor = c; }
-      out.push(e);
+    scan(normalise.lignes,    "roads", mapTraces, typeDefaut);
+    scan(normalise.polygones, "zones", mapZones,  zoneDefaut);
+
+    // Les couleurs seulement une fois tous les niveaux connus : le rang dépend
+    // de l'ordre d'apparition GLOBAL, pas de celui de la première famille.
+    out.forEach(function (e) {
+      const c = _couleurNiveau(e._niveau, vus.indexOf(e._niveau));
+      e.lineColor = c;
+      if (!e._estLigne) { e.fillColor = c; e.borderColor = c; }
+      delete e._niveau; delete e._estLigne;
     });
     return out;
   }
@@ -817,29 +874,6 @@
     }
 
     const points = [], roads = [], zones = [], structures = [];
-    // Préfixe des types de STRUCTURE. Déclaré ICI, avant toutes les boucles :
-    // il est lu par celle des lignes comme par celle des polygones, et un const
-    // posé plus bas tombait dans sa zone morte temporelle (ReferenceError au
-    // premier tracé — vécu au premier essai sur le relevé réel).
-    // 🔀 v1.82.0 — ROUTAGE LIBRE (retour KARMA : « des zones peuvent aussi
-    // être des fronts de taille — quelqu'un qui aurait fait un polygone via un
-    // front de taille »). Exact, et la règle vaut dans tous les sens : la
-    // GÉOMÉTRIE du fichier SIG ne dit pas ce que l'objet EST. Un polygone peut
-    // être une zone, un pilier, un mur ou un front ; une polyligne peut être
-    // une galerie, un front, ou le contour d'une zone tracé sans le fermer.
-    // Le type choisi porte donc un préfixe de FAMILLE. Sans préfixe, l'objet
-    // va dans la famille naturelle de sa géométrie (ligne → tracé, polygone →
-    // zone), ce qui garde tout le comportement d'avant.
-    const PREFIXES = { "struct:": "structures", "zone:": "zones", "trace:": "roads" };
-
-    // Retourne { famille, type } depuis le choix de l'utilisateur.
-    function _router(choisi, familleNaturelle) {
-      const s = String(choisi || "");
-      for (const p in PREFIXES) {
-        if (s.startsWith(p)) return { famille: PREFIXES[p], type: s.slice(p.length) };
-      }
-      return { famille: familleNaturelle, type: s };
-    }
 
     // 🎨 Types par niveau : opt-in. Sans lui, rien ne change.
     const couleurParNiveau = opts.couleurParNiveau === true;

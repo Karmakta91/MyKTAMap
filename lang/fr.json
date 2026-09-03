@@ -4945,5 +4945,6 @@
   "gen.sig.canvasAlerteIos": "Fond de {mpx} millions de pixels. Au-delà d'environ 16, un <strong>iPhone</strong> peut afficher un fond vide (limite de Safari). Sur PC et Android, aucun souci. Si le plan doit servir sur iPhone, une largeur d'environ <strong>{conseil} px</strong> reste sous la limite.",
   "gen.sig.canvasAlerteRam": "Fond de {mpx} millions de pixels — c'est <strong>beaucoup</strong>. La génération peut échouer faute de mémoire (l'app manipule deux images de cette taille en même temps), et le fond sera vide sur iPhone. Tu peux essayer : si ça n'aboutit pas, redescends vers <strong>{conseil} px</strong> de large.",
   "gen.sig.legendeBtn": "Nommer et colorer les niveaux",
-  "gen.sig.legendeEdite": "{n} entrée(s) personnalisée(s) — seront embarquées dans le plan."
+  "gen.sig.legendeEdite": "{n} entrée(s) personnalisée(s) — seront embarquées dans le plan.",
+  "gen.sig.legendeReset": "Le routage a changé — la personnalisation de la légende a été réinitialisée."
 }

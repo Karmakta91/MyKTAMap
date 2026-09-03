@@ -5082,8 +5082,12 @@ async function _sigImpAnalyserFichier(file) {
       // Pré-remplir à la PREMIÈRE ouverture avec ce qui SERA généré : sans ça,
       // l'éditeur s'ouvrirait vide et il n'y aurait rien à renommer.
       if (!_sigPlanLegend) {
+        // Le MÊME mapping que celui qui sera généré : sans lui, la
+        // prévisualisation retombe sur la famille naturelle des géométries.
+        const mp = _sigImpLireMapping();
         const entrees = window.SigImport.previsualiserEntreesNiveaux(_sigImportState.data, {
-          cleNiveau: cleN, couleurParNiveau: true
+          cleNiveau: cleN, couleurParNiveau: true,
+          cleType: mp.cle, mapTraces: mp.mapTraces, mapZones: mp.mapZones
         });
         _sigPlanLegend = { schemaVersion: 1, labels: {}, hidden: {}, customEntries: entrees };
       }
@@ -5261,6 +5265,20 @@ function _sigImpRendreTables() {
     html += '</div>';
   });
   box.innerHTML = html || '<div style="color:#8892a4; font-size:12px;">' + T("gen.sig.mapVide") + '</div>';
+
+  // 🩸 Changer le routage change les ID des entrées de légende : celles déjà
+  // éditées ne seraient plus retrouvées et l'utilisateur perdrait ses noms
+  // sans comprendre. On repart d'une légende vierge, et le bouton se
+  // réactualise pour le dire.
+  box.querySelectorAll("select[data-sig-fam]").forEach(function (s) {
+    s.addEventListener("change", function () {
+      if (_sigPlanLegend) {
+        _sigPlanLegend = null;
+        const eta = document.getElementById("kta-sig-imp-legende-etat");
+        if (eta) eta.textContent = T("gen.sig.legendeReset");
+      }
+    });
+  });
 }
 
 function _escHtmlSig(s) {
@@ -5268,6 +5286,24 @@ function _escHtmlSig(s) {
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 function _escAttrSig(s) { return _escHtmlSig(s).replace(/"/g, "&quot;"); }
+
+// 🏷️ v1.82.0 — LECTURE DU MAPPING, extraite pour être partagée.
+// La génération n'est plus seule à en avoir besoin : la prévisualisation des
+// entrées de légende doit rejouer EXACTEMENT le même routage, sinon elle
+// annonce des tracés et des zones là où l'utilisateur a demandé des
+// structures (bug remonté par KARMA).
+function _sigImpLireMapping() {
+  const cle = (document.getElementById("kta-sig-imp-colonne") || {}).value || null;
+  const mapTags = {}, mapTraces = {}, mapZones = {};
+  document.querySelectorAll("#kta-sig-imp-map-tables select[data-sig-fam]").forEach(function(s) {
+    const fam = s.getAttribute("data-sig-fam");
+    const val = s.getAttribute("data-sig-val");
+    if (fam === "points")         mapTags[val]   = s.value;
+    else if (fam === "lignes")    mapTraces[val] = s.value;
+    else if (fam === "polygones") mapZones[val]  = s.value;
+  });
+  return { cle: cle, mapTags: mapTags, mapTraces: mapTraces, mapZones: mapZones };
+}
 
 async function _sigImpGenerer() {
   const T      = function(k, p) { return window.I18n.t(k, p); };
@@ -5283,15 +5319,8 @@ async function _sigImpGenerer() {
   }
 
   // Relecture de l'écran de correspondance
-  const cle = document.getElementById("kta-sig-imp-colonne").value || null;
-  const mapTags = {}, mapTraces = {}, mapZones = {};
-  document.querySelectorAll("#kta-sig-imp-map-tables select[data-sig-fam]").forEach(function(s) {
-    const fam = s.getAttribute("data-sig-fam");
-    const val = s.getAttribute("data-sig-val");
-    if (fam === "points")         mapTags[val]   = s.value;
-    else if (fam === "lignes")    mapTraces[val] = s.value;
-    else if (fam === "polygones") mapZones[val]  = s.value;
-  });
+  const _m = _sigImpLireMapping();
+  const cle = _m.cle, mapTags = _m.mapTags, mapTraces = _m.mapTraces, mapZones = _m.mapZones;
 
   btnGen.disabled = true;
   btnGen.textContent = T("gen.sig.generation");
