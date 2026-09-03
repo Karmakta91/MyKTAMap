@@ -331,7 +331,19 @@
       tracking: {
         startX:        Math.round(finalW / 2),
         startY:        Math.round(finalH / 2),
-        scale:         50,
+        // 📏 v1.82.0 — MÊME DÉFAUT QUE L'IMPORT SIG, corrigé au même endroit :
+        // l'échelle était figée à 50 px/m alors qu'elle dépend entièrement du
+        // canvas et de l'étendue GPS. Sur un tracé d'un kilomètre rendu sur
+        // 4000 px, la vraie valeur est de l'ordre de 4 px/m — soit un facteur
+        // dix. Toute distance lue sur le plan était donc fausse.
+        // `buildTransform` calcule DÉJÀ `metresParPixel` ; `scale` en est
+        // exactement l'inverse. La valeur était disponible, elle n'était pas lue.
+        // KARMA n'a signalé le symptôme que sur le SIG, mais le GPX produit des
+        // plans par le même chemin : le corriger d'un seul côté aurait laissé
+        // une moitié fausse en attendant qu'on la retrouve.
+        scale:         (transform && transform.metresParPixel > 0)
+                         ? Math.round((1 / transform.metresParPixel) * 1000) / 1000
+                         : 50,
         stepLength:    0.75,
         stepThreshold: 1.2,
         stepCooldown:  280

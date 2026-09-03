@@ -1124,7 +1124,18 @@
       },
       tracking: {
         startX: Math.round(W / 2), startY: Math.round(H / 2),
-        scale: 50, stepLength: 0.75, stepThreshold: 1.2, stepCooldown: 280
+        // 📏 v1.82.0 — L ECHELLE ETAIT EN DUR A 50 px/m, et donc FAUSSE de
+        // plusieurs centaines de pour cent sur tout plan SIG (KARMA : « meme
+        // si je prends celle calculee par le georef c est completement faux »).
+        // Sur Citon : 4000 px pour 1199 m de terrain = 3,34 px/m reels,
+        // contre 50 annonces — un facteur 15.
+        // La bonne valeur etait DEJA calculee : buildTransform retourne
+        // `metresParPixel`, dont scale est exactement l inverse. Rien a
+        // recalculer, il fallait juste la lire au lieu d inventer 50.
+        scale: (transform && transform.metresParPixel > 0)
+               ? Math.round((1 / transform.metresParPixel) * 1000) / 1000
+               : 50,
+        stepLength: 0.75, stepThreshold: 1.2, stepCooldown: 280
       },
       icons: { default: "icon/iconetrack.png", track: "icon/iconetrack.png" },
       imageLayers: [],
