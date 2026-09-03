@@ -813,3 +813,43 @@ attachée **après** lui — les listeners se déclenchent dans l'ordre
 d'attachement, et posée avant, son message était aussitôt effacé.
 
 ---
+
+---
+
+### 69.3 Altitude réelle : KMZ oui, GPX non — et pourquoi (v1.83.0)
+
+Les profondeurs de niveaux existent depuis la v1.83.0. Les deux exports ne les
+traitent **pas** de la même façon, et l'asymétrie est délibérée.
+
+**KMZ — l'altitude est écrite.** `_coord` produisait `lng,lat,0` en dur : un
+relevé de carrière ouvert dans Google Earth **flottait sur les vignes**. Il se
+pose maintenant à sa profondeur.
+
+⚠️ **L'altitude seule ne suffit pas.** Par défaut KML est en `clampToGround` et
+l'ignore, et `<tessellate>1</tessellate>` force ce collage au sol. Toute
+géométrie porteuse d'altitude doit donc déclarer `relativeToGround` **et**
+renoncer au tessellate — les deux, sinon rien ne bouge. `_modeAltitude(alt)`
+émet l'un ou l'autre : à altitude nulle, le KML est **inchangé** pour les plans
+sans profondeurs.
+
+`relativeToGround` et non `absolute` : notre profondeur est mesurée **sous la
+surface**, pas depuis le niveau de la mer. L'altitude du terrain nous est
+inconnue, et l'inventer serait plus faux que zéro.
+
+Une **jonction** est posée au plus haut de ses deux étages : une `LineString`
+n'a qu'un mode d'altitude, on ne peut pas l'incliner.
+
+**GPX — pas de `<ele>`, et c'est le choix honnête.** En GPX, `<ele>` est
+l'altitude **au-dessus du niveau de la mer** : c'est ce que lisent les GPS et
+les logiciels de rando. Y écrire « -30 » pour une galerie à 30 m sous une
+colline à 100 m annoncerait un point à **30 m sous la mer** — une erreur de
+130 m, parfaitement plausible à l'œil, donc indétectable.
+
+Il faudrait l'altitude du terrain, que l'app ne connaît pas. La profondeur part
+donc dans la **`<desc>`** (« Niveau -2 · -35.0 m sous la surface »), lue par un
+humain et par rien d'autre.
+
+> C'est le même arbitrage que partout ailleurs ici : **on ne remplit pas un
+> champ normalisé avec une grandeur qui n'est pas la sienne.** Le jour où l'app
+> saura l'altitude du terrain (géoréf + modèle d'élévation), `<ele>` deviendra
+> calculable — pas avant.

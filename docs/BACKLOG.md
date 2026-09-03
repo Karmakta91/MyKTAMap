@@ -213,9 +213,23 @@ d'empilement).
    annonçait « une vraie conception d'interface » comme le gros du sujet, c'était
    en partie faux.
 
-**Reste ouvert** : altitude réelle dans les exports KMZ/GPX (`kmzExport.js` écrit
-encore `alt = 0` en dur, le GPX n'émet aucun `<ele>`), et profondeur dans la fiche
-de Mode Secours — « la victime est à -37 m » change ce qu'une équipe prépare.
+**Soldé dans la foulée (même version)** : les exports et le Mode Secours.
+
+- 🌍 **KMZ** : l'altitude était `0` en dur — un relevé exporté flottait sur les
+  vignes dans Google Earth. Il se pose désormais à sa profondeur, en
+  `relativeToGround` (qui veut dire exactement ce qu'on mesure : sous la
+  surface). ⚠️ L'altitude seule ne suffisait pas : `<tessellate>1</tessellate>`
+  colle au sol et fait ignorer la valeur — il fallait les deux.
+- 🧭 **GPX : pas de `<ele>`, délibérément.** En GPX, `<ele>` est l'altitude
+  au-dessus du NIVEAU DE LA MER. Y écrire « -30 » pour une galerie sous une
+  colline à 100 m annoncerait un point à 30 m sous la mer — une erreur de 130 m,
+  plausible à l'œil donc indétectable. Il faudrait l'altitude du terrain, que
+  l'app ne connaît pas. La profondeur part dans la **description**, lue par un
+  humain et par rien d'autre.
+- 🆘 **Mode Secours** : « -2 » devient « -2 · -35 m ». Un numéro de niveau est une
+  coordonnée interne ; une profondeur dit combien de corde et quelle équipe.
+  Branché sur `_formatLevelShort`, source unique du relevé texte, du PDF et des
+  cartes de scénario — l'écrire trois fois aurait garanti qu'une des trois dérive.
 
 ---
 
