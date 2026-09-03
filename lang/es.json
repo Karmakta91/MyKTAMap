@@ -4936,5 +4936,7 @@
   "gen.sig.colonneNiveau": "Columna del nivel (planta)",
   "gen.sig.niveauAucun": "— ninguna (todo en una sola planta) —",
   "gen.sig.niveauApercu": "{n} planta(s) detectada(s)",
-  "gen.sig.hAuto": "Calculada automáticamente para respetar las proporciones del terreno; de lo contrario el plano se sale del lienzo."
+  "gen.sig.hAuto": "Calculada automáticamente para respetar las proporciones del terreno; de lo contrario el plano se sale del lienzo.",
+  "gen.sig.couleursNiveauTitre": "Un color por planta",
+  "gen.sig.couleursNiveauHint": "Crea un tipo de leyenda distinto para cada nivel, con su propio color. Sin esto, todas las plantas salen del mismo tono y se confunden. Podrás renombrar y recolorear cada entrada después en ≡ Leyenda."
 }

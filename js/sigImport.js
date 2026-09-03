@@ -648,6 +648,40 @@
     return out;
   }
 
+  // 🎨 v1.82.0 — UNE COULEUR PAR NIVEAU (retour KARMA : « je ne peux pas créer
+  // de légende custom depuis Convertir SIG, du coup je peux pas créer des
+  // couleurs pour les N niveaux et les N zones »).
+  //
+  // LE BESOIN RÉEL : sur un relevé multi-étages, tous les tracés sortaient de
+  // la même couleur quel que soit leur niveau. Six étages superposés dans une
+  // seule teinte, c'est illisible — et le multi-niveau perd l'essentiel de son
+  // intérêt si on ne distingue pas les étages à l'œil.
+  //
+  // COMMENT : on fabrique une entrée de légende custom par (famille, niveau),
+  // au format exact de `LegendCustomization` — { id, category, label,
+  // lineColor, fillColor, borderColor } — et les objets portent son id
+  // `cust-…` comme type. C'est le mécanisme que l'app utilise déjà pour les
+  // types créés à la main : rien de nouveau à comprendre côté runtime.
+  //
+  // Palette lisible sur fond sombre, distincte à teintes voisines. Elle cycle
+  // au-delà de 8 étages — un relevé à 9 niveaux réutilisera une teinte plutôt
+  // que d'en inventer une illisible.
+  const PALETTE_NIVEAUX = [
+    "#8cb4ff", "#7ee0a0", "#f4c542", "#ff9f6b",
+    "#e879c8", "#64d8d8", "#b79cff", "#9fd356"
+  ];
+
+  function _couleurNiveau(n, rang) {
+    return PALETTE_NIVEAUX[((rang % PALETTE_NIVEAUX.length) + PALETTE_NIVEAUX.length) % PALETTE_NIVEAUX.length];
+  }
+
+  // Id stable et lisible plutôt que le `cust-<ts>-<rnd>` aléatoire de
+  // LegendCustomization : deux imports du même fichier doivent produire les
+  // mêmes types, sinon réimporter multiplierait les entrées de légende.
+  function _idNiveau(categorie, n) {
+    return "cust-sig-" + categorie + "-n" + String(n).replace("-", "m");
+  }
+
   // =========================================================================
   // INGESTION → objets MyKTAMap en coordonnées PLAN
   // =========================================================================
@@ -707,6 +741,38 @@
     // posé plus bas tombait dans sa zone morte temporelle (ReferenceError au
     // premier tracé — vécu au premier essai sur le relevé réel).
     const PREFIXE_STRUCT = "struct:";
+
+    // 🎨 Types par niveau : opt-in. Sans lui, rien ne change.
+    const couleurParNiveau = opts.couleurParNiveau === true;
+    const customEntries = [];
+    const _dejaVu = {};
+    // Rang d'apparition du niveau, pour que la palette soit attribuée dans
+    // l'ordre des étages rencontrés et non selon la valeur brute (un relevé
+    // numéroté -3 à -8 doit démarrer sur la 1re couleur, pas la 4e).
+    const _rangs = {};
+    let _rangSuivant = 0;
+
+    // Remplace le type d'un objet par un type custom propre à son niveau.
+    // Retourne le type à utiliser — inchangé si l'option est off, si l'objet
+    // n'a pas de niveau, ou si la famille n'est pas colorable.
+    function _typeNiveau(typeBase, categorie, lvl, libelleBase) {
+      if (!couleurParNiveau || lvl === null || typeof lvl !== "number") return typeBase;
+      const id = _idNiveau(categorie, lvl);
+      if (!_dejaVu[id]) {
+        if (!(lvl in _rangs)) { _rangs[lvl] = _rangSuivant++; }
+        const c = _couleurNiveau(lvl, _rangs[lvl]);
+        const e = { id: id, category: categorie,
+                    label: libelleBase + " " + (lvl < 0 ? lvl : "+" + lvl) };
+        // Une entrée de tracé porte `lineColor` ; une zone ou une structure
+        // portent aussi `fillColor` et `borderColor` — sans quoi elles
+        // s'afficheraient en remplissage par défaut, donc toutes pareilles.
+        e.lineColor = c;
+        if (categorie !== "traces") { e.fillColor = c; e.borderColor = c; }
+        customEntries.push(e);
+        _dejaVu[id] = true;
+      }
+      return id;
+    }
     let idSeq = 1;
 
     (normalise.points || []).forEach(function(p) {
@@ -741,6 +807,9 @@
       if (l.nom) o.note = l.nom;
       const lvl = _niveauDe(l.props);
       if (lvl !== null) o.level = lvl;
+      o.type = _typeNiveau(o.type, estStructL ? "structures" : "traces", 
+                           (typeof o.level === "number") ? o.level : null,
+                           estStructL ? "Structure" : "Galerie");
       (estStructL ? structures : roads).push(o);
     });
 
@@ -769,11 +838,16 @@
       if (z.nom) o.note = z.nom;
       const lvl = _niveauDe(z.props);
       if (lvl !== null) o.level = lvl;
+      o.type = _typeNiveau(o.type, estStruct ? "structures" : "zones",
+                           (typeof o.level === "number") ? o.level : null,
+                           estStruct ? "Pilier" : "Zone");
       (estStruct ? structures : zones).push(o);
     });
 
     return {
       points: points, roads: roads, zones: zones, structures: structures,
+      // 🎨 Entrées de légende fabriquées pour les niveaux (vide si opt-out).
+      customEntries: customEntries,
       stats: { points: points.length, roads: roads.length, zones: zones.length,
                structures: structures.length,
                // Répartition réelle par étage : c'est elle qui permet à l'UI de
@@ -947,6 +1021,19 @@
     // 🧱 Les DEUX marqueurs sont nécessaires : le drapeau `plan.tiledV2` et la
     // section `tiling`. `osmView._isV2Plan()` vérifie les deux, plus la présence
     // de `minNativeZoom` et `tileSize` — un drapeau seul ne suffirait pas.
+    // 🎨 v1.82.0 — LÉGENDE CUSTOM embarquée dans le plan-config, au format
+    // exact de LegendCustomization.getSessionState(). C est ce qui donne une
+    // couleur propre à chaque étage : sans elle, les six niveaux sortaient
+    // tous de la même teinte et le multi-niveau perdait son intérêt visuel.
+    if (ingested.customEntries && ingested.customEntries.length) {
+      planConfig.plan.customLegend = {
+        schemaVersion: 1,
+        labels: {},
+        hidden: {},
+        customEntries: ingested.customEntries
+      };
+    }
+
     if (tilingManifest) {
       planConfig.plan.tiledV2 = true;
       planConfig.tiling = tilingManifest;

@@ -4813,6 +4813,14 @@ function _afficherImporterSig(prefilledFile) {
             <select class="kta-cfg-input" id="kta-sig-imp-niveau"></select>
           </div>
           <div id="kta-sig-imp-niveau-apercu" style="margin-top:6px;"></div>
+          <!-- 🎨 v1.82.0 — une couleur par etage. Sans elle, six niveaux
+               superposes sortaient tous de la meme teinte : illisible, et le
+               multi-niveau perdait l essentiel de son interet. -->
+          <label class="kta-planner-check" style="margin-top:8px; display:flex; align-items:flex-start; gap:8px;">
+            <input type="checkbox" id="kta-sig-imp-couleurs-niveau" checked style="margin-top:3px;">
+            <span><strong>🎨 ${T("gen.sig.couleursNiveauTitre")}</strong><br>
+            <span style="color:#8892a4; font-size:11.5px;">${T("gen.sig.couleursNiveauHint")}</span></span>
+          </label>
           <div id="kta-sig-imp-map-tables" style="margin-top:10px;"></div>
         </div>
 
@@ -5165,7 +5173,9 @@ async function _sigImpGenerer() {
       layerLabel:   name,
       mapping: { cleType: cle, mapTags: mapTags, mapTraces: mapTraces, mapZones: mapZones,
                  // 🏔️ v1.82.0 — la colonne du niveau voyage avec le reste du mapping.
-                 cleNiveau: (document.getElementById("kta-sig-imp-niveau") || {}).value || null }
+                 cleNiveau: (document.getElementById("kta-sig-imp-niveau") || {}).value || null,
+                 // 🎨 v1.82.0 — types de legende par etage (case cochee par defaut).
+                 couleurParNiveau: !!(document.getElementById("kta-sig-imp-couleurs-niveau") || {}).checked }
     });
 
     const url = URL.createObjectURL(result.blob);
