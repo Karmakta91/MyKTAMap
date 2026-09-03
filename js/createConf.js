@@ -5182,6 +5182,33 @@ async function _sigImpGenerer() {
   status.textContent = T("gen.sig.generation");
 
   try {
+    // 📊 v1.82.0 — barre de progression du tuilage, calquée sur celle de
+    // l'import GPX (même overlay, mêmes clés i18n). Sans elle, la génération
+    // d'un gros plan est une attente muette de plusieurs secondes.
+    const v2Overlay = document.createElement("div");
+    v2Overlay.id = "kta-sig-imp-v2-progress";
+    v2Overlay.className = "kta-modal-overlay";
+    v2Overlay.style.zIndex = "100000";
+    v2Overlay.innerHTML =
+      '<div class="kta-modal">' +
+        '<div class="kta-modal-icon">🧱</div>' +
+        '<div class="kta-modal-titre">' + T("gen.v2prog.titreImp") + '</div>' +
+        '<div class="kta-modal-texte">' +
+          '<div id="kta-sig-v2-progress-text" style="margin-bottom:10px;">' + T("gen.v2prog.init") + '</div>' +
+          '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
+            '<div id="kta-sig-v2-progress-bar" style="height:100%; width:0%; background:#8cb4ff; transition:width 0.2s;"></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(v2Overlay);
+    const onTilingProgress = function(done, total, currentZ) {
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      const txt = document.getElementById("kta-sig-v2-progress-text");
+      const bar = document.getElementById("kta-sig-v2-progress-bar");
+      if (txt) txt.textContent = T("gen.v2prog.niveau", { z: currentZ, done: done, total: total, pct: pct });
+      if (bar) bar.style.width = pct + "%";
+    };
+
     const result = await window.SigImport.genererZipMyktamap({
       normalise:    _sigImportState.data,
       bounds:       _sigImportState.bounds,
@@ -5189,7 +5216,10 @@ async function _sigImpGenerer() {
       planVersion:  (document.getElementById("kta-sig-imp-version").value || "v1").trim(),
       planAuthor:   (document.getElementById("kta-sig-imp-author").value || "").trim(),
       canvasWidth:  parseInt(document.getElementById("kta-sig-imp-w").value, 10) || 4000,
-      canvasHeight: parseInt(document.getElementById("kta-sig-imp-h").value, 10) || 4000,
+      // 🧹 v1.82.0 — `canvasHeight` RETIRÉ : `genererZipMyktamap` ne le lit plus
+      // depuis que la hauteur est déduite du terrain. Le passer entretenait
+      // l'illusion qu'il servait encore.
+      onProgress:   onTilingProgress,
       canvasColor:  (document.querySelector('input[name="sig_imp_color"]:checked') || {}).value || "sepia",
       multiLevel:   document.getElementById("kta-sig-imp-mlvl").checked,
       layerLabel:   name,

@@ -4939,5 +4939,7 @@
   "gen.sig.hAuto": "Calculada automáticamente para respetar las proporciones del terreno; de lo contrario el plano se sale del lienzo.",
   "gen.sig.couleursNiveauTitre": "Un color por planta",
   "gen.sig.couleursNiveauHint": "Crea un tipo de leyenda distinto para cada nivel, con su propio color. Sin esto, todas las plantas salen del mismo tono y se confunden. Podrás renombrar y recolorear cada entrada después en ≡ Leyenda.",
-  "gen.sig.beaucoupFeatures": "Archivo voluminoso: {n} objetos. La importación los acepta, pero mostrar el plano puede resultar pesado en móvil. Si el mapa va lento, vuelve a importar con menos capas."
+  "gen.sig.beaucoupFeatures": "Archivo voluminoso: {n} objetos. La importación los acepta, pero mostrar el plano puede resultar pesado en móvil. Si el mapa va lento, vuelve a importar con menos capas.",
+  "osm_home.niveaux.titre": "🏔️ Plantas",
+  "osm_home.niveaux.tous": "Todas"
 }

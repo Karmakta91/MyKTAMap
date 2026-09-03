@@ -4939,5 +4939,7 @@
   "gen.sig.hAuto": "Calculée automatiquement pour respecter les proportions du terrain — sinon le plan sort du cadre.",
   "gen.sig.couleursNiveauTitre": "Une couleur par étage",
   "gen.sig.couleursNiveauHint": "Crée un type de légende distinct pour chaque niveau, avec sa propre couleur. Sans ça, tous les étages sortent de la même teinte et se confondent. Tu pourras renommer et recolorer chaque entrée ensuite dans ≡ Légende.",
-  "gen.sig.beaucoupFeatures": "Fichier volumineux : {n} objets. L'import les accepte, mais l'affichage du plan pourra être lourd sur mobile. Si la carte rame, réimporte avec moins de calques."
+  "gen.sig.beaucoupFeatures": "Fichier volumineux : {n} objets. L'import les accepte, mais l'affichage du plan pourra être lourd sur mobile. Si la carte rame, réimporte avec moins de calques.",
+  "osm_home.niveaux.titre": "🏔️ Étages",
+  "osm_home.niveaux.tous": "Tous"
 }

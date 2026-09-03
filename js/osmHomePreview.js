@@ -260,6 +260,40 @@
     return "#8892a4";
   }
   // Helper résolution couleurs zone (stroke + fill, cascade complète)
+  // 🏛️ v1.82.0 — STYLE D'UNE STRUCTURE, types CUSTOM compris.
+  //
+  // 🩸 Le bug corrigé ici : le rendu faisait
+  //     STRUCT_STYLES_HOME[s.type] || STRUCT_STYLES_HOME["mur"]
+  // Un type custom (`cust-…`) n'est évidemment pas dans cette table locale —
+  // TOUTES les structures personnalisées retombaient donc sur le style « mur » :
+  // même couleur pour tous les étages, et forme de POLYGONE même pour un front
+  // de taille. Les tracés et les zones, eux, consultaient déjà la légende
+  // custom : les structures étaient les seules oubliées. Signalé par KARMA sur
+  // un plan importé où chaque niveau avait pourtant sa couleur.
+  //
+  // La forme vient de `entry.geometry` — même champ que celui lu par
+  // `structures.js > _isPolylineType`. Une seule source, pas d'heuristique.
+  function _styleStructHome(s, planId) {
+    const base = STRUCT_STYLES_HOME[s.type];
+    if (base) return Object.assign({}, base);
+    const ce = _entreeCustomDe(planId, s.type);
+    if (ce && (!ce.category || ce.category === "structures")) {
+      const ligne = (ce.geometry === "polyline");
+      const gabarit = Object.assign({}, STRUCT_STYLES_HOME[ligne ? "front-1" : "mur"]);
+      const c = ce.lineColor || ce.borderColor || ce.fillColor;
+      if (ligne) { if (c) gabarit.color = c; }
+      else {
+        if (ce.fillColor)   gabarit.fillColor = ce.fillColor;
+        if (ce.borderColor) gabarit.color     = ce.borderColor;
+        else if (c)         gabarit.color     = c;
+      }
+      gabarit.isPolyline = ligne;
+      return gabarit;
+    }
+    // Type inconnu ET absent de la légende : on garde le repli historique.
+    return Object.assign({}, STRUCT_STYLES_HOME["mur"]);
+  }
+
   function _resolveZoneColorsHome(z, planId) {
     if (z && (z.color || z.fillColor)) {
       return {
@@ -343,6 +377,23 @@
   // 🆕 v1.40.17 — Filtre par tag : null = pas de filtre (tout affiché),
   // Set<string> non-vide = ne montre que les POI dont le tag est dans le Set
   let _homeTagFilter = null;
+  // 🏔️ v1.82.0 — FILTRE PAR ÉTAGE (signalé par KARMA : « la gestion des
+  // niveaux est mal gérée, le cas de Citon est un exemple flagrant »).
+  // Il n'y en avait AUCUN : `level` ne servait que dans le popup d'un POI, et
+  // tous les étages étaient dessinés les uns sur les autres. Sur un relevé à
+  // sept niveaux dont un topo historique de 16 747 objets, la carte devenait
+  // illisible — le niveau du dessus masquant tout le reste.
+  // Même convention que le filtre par tag : `null` ou Set vide = tout afficher
+  // (aucun plan mono-niveau n'est impacté).
+  let _homeLevelFilter = null;
+
+  // Un objet sans `level` est considéré au niveau 0 : c'est la convention de
+  // l'app (cf. road.js), et un plan mono-niveau n'écrit pas ce champ.
+  function _niveauDe(o) { return (o && typeof o.level === "number") ? o.level : 0; }
+  function _passeNiveau(o) {
+    if (!_homeLevelFilter || _homeLevelFilter.size === 0) return true;
+    return _homeLevelFilter.has(_niveauDe(o));
+  }
   // 🆕 v1.40.18 — Marker "📍 Moi" (GPS device, 1 fix ponctuel, 0 stockage)
   let _myGpsMarkerHome         = null;
   let _myGpsAccuracyCircleHome = null;
@@ -753,6 +804,7 @@
         _renderDataLayersOnMiniMap(data, georef);
         // 🎚️ v1.71.0 : les tags vivent dans la modale ≡ (guard si fermée)
         _renderModalTags();
+        _renderModalNiveaux();
         _appliquerOrdre();   // 🗂️ v1.71.0 — renormalise les zIndex de la pile
         _appliquerVisibilites();
       });
@@ -1166,6 +1218,7 @@
         if (!ll) continue;
         const tag  = (Array.isArray(p.tags) && p.tags[0]) || "default";
         // 🆕 v1.40.17 — Filtre par tag (skip si tag pas dans le Set actif)
+        if (!_passeNiveau(p)) continue;
         if (_homeTagFilter && _homeTagFilter.size > 0 && !_homeTagFilter.has(tag)) continue;
         const icon = _getOrBuildIcon(tag) || _getOrBuildIcon("default");
         // 🆕 v1.40.17 — Popup info : nom + tag + niveau (si M-LVL)
@@ -1224,6 +1277,7 @@
       // persister ». Inclut les types custom (cust-*) définis dans
       // LegendCustomization, à l'identique de la map principale.)
       for (const r of layer.roads) {
+        if (!_passeNiveau(r)) continue;
         if (!Array.isArray(r.points) || r.points.length < 2) continue;
         if (r.type === "itinerary") continue;
         const lls = _projectPoints(r.points, proj);
@@ -1239,6 +1293,7 @@
       // _resolveZoneColorsHome — couleurs natives ZONE_STYLES respectées
       // et custom legend persistée.)
       for (const z of layer.zones) {
+        if (!_passeNiveau(z)) continue;
         if (!Array.isArray(z.points) || z.points.length < 3) continue;
         const lls = _projectPoints(z.points, proj);
         if (lls.length < 3) continue;
@@ -1253,8 +1308,9 @@
 
       // Structures → structL (adaptatif polyline/polygon)
       for (const s of layer.structures) {
+        if (!_passeNiveau(s)) continue;
         if (!Array.isArray(s.points)) continue;
-        const style = Object.assign({}, STRUCT_STYLES_HOME[s.type] || STRUCT_STYLES_HOME["mur"]);
+        const style = _styleStructHome(s, planIdFx);
         // 🎨 v1.77.0 — couleurs overridées PAR PLAN par-dessus la variante
         // HOME locale (qui ne garde que weight/fillOpacity allégés). Fronts
         // (polyline) : le trait ; piliers/murs : remplissage + bordure.
@@ -1350,6 +1406,7 @@
     _showSession = !!visible;
     _reRenderDataTous();
     _renderModalTags();   // les tags de session entrent ou sortent des chips
+    _renderModalNiveaux();
   }
 
   // =========================
@@ -1644,6 +1701,19 @@
 
   // 🆕 v1.40.17 — Énumération des tags présents dans les data layers
   // (avec compteur de POI par tag pour tri par fréquence).
+  // Étages réellement présents dans un plan, toutes familles confondues.
+  // Sert à ne proposer que des chips qui montrent quelque chose : un étage
+  // vide dans la liste ferait croire à un bug d'affichage quand on le coche.
+  function _collectNiveaux(data, planId) {
+    const set = new Set();
+    _tousCalques(data, planId).forEach(function (layer) {
+      ["points", "roads", "zones", "structures"].forEach(function (fam) {
+        (layer[fam] || []).forEach(function (o) { set.add(_niveauDe(o)); });
+      });
+    });
+    return set;
+  }
+
   function _collectAvailableTags(data, planId) {
     const counts = {};
     if (!data) return counts;
@@ -2116,6 +2186,7 @@
       _appliquerOrdre();
       _appliquerVisibilites();
       _renderModalTags();   // 🐛 v1.72.2 : les tags du plan ajouté arrivent DÈS son extraction
+      _renderModalNiveaux();
     });
   }
 
@@ -2139,6 +2210,7 @@
     _renderMultiPanel();
     _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
     _renderModalTags();   // 🐛 v1.72.2 : retirer un plan retire aussi ses tags
+    _renderModalNiveaux();
   }
 
   // sens : -1 = monter (vers le dessus), +1 = descendre
@@ -2205,6 +2277,11 @@
           // 📐 v1.81.0 (D5) — bloc « qualité du calage », rempli seulement
           // quand le chip 🌀 est actif (cf. _renderPortailsQualite).
           '<div class="kta-osm-qualite" id="ktaOsmPortailsQualite"></div>' +
+          // 🏔️ v1.82.0 — chips d'ÉTAGE. Vide et masqué sur un plan
+          // mono-niveau : afficher « niveau 0 » tout seul n'apprendrait rien.
+          '<div class="kta-osm-filters-sect" id="ktaOsmFiltersNivSect" style="display:none;">' +
+            _escapeHtml(window.I18n.t("osm_home.niveaux.titre")) + '</div>' +
+          '<div class="kta-osm-home-tagchips" id="ktaOsmFiltersNiveaux"></div>' +
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.tags")) + '</div>' +
           '<div class="kta-osm-home-tagchips kta-osm-filters-tags" id="ktaOsmFiltersTags"></div>' +
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.plans")) + '</div>' +
@@ -2226,6 +2303,7 @@
     }
     _renderModalGlobaux();
     _renderModalTags();
+    _renderModalNiveaux();
     _renderMultiPanel();
   }
 
@@ -2301,6 +2379,63 @@
 
   // 🏷️ v1.71.0 (retour KARMA « on doit aussi pouvoir filtrer au tag ») — chips
   // tags dans la modale, agrégés sur TOUTE la pile (plus seulement le principal).
+  // 🏔️ v1.82.0 — chips d'étage, agrégés sur TOUTE la pile (comme les tags).
+  // Tri décroissant : +1 (l'historique, s'il est là) en tête, puis -1, -2…
+  // C'est l'ordre physique vu du dessus, celui qu'attend quelqu'un qui pense
+  // en étages.
+  function _renderModalNiveaux() {
+    const cont = document.getElementById("ktaOsmFiltersNiveaux");
+    const sect = document.getElementById("ktaOsmFiltersNivSect");
+    if (!cont) return;
+    const tous = new Set();
+    _stackOrder.forEach(function(id) {
+      const data = _planDataCache[id];
+      if (data) _collectNiveaux(data, id).forEach(function(n) { tous.add(n); });
+    });
+    const niveaux = Array.from(tous).sort(function(a, b) { return b - a; });
+    // Un seul étage = rien à filtrer.
+    if (niveaux.length < 2) {
+      cont.innerHTML = "";
+      if (sect) sect.style.display = "none";
+      return;
+    }
+    if (sect) sect.style.display = "";
+    const tousActifs = !_homeLevelFilter || _homeLevelFilter.size === 0;
+    cont.innerHTML =
+      '<button type="button" class="kta-osm-home-tag-chip' + (tousActifs ? " active" : "") +
+        '" data-nivall="1">' + _escapeHtml(window.I18n.t("osm_home.niveaux.tous")) + '</button>' +
+      niveaux.map(function(n) {
+        const on = tousActifs || _homeLevelFilter.has(n);
+        return '<button type="button" class="kta-osm-home-tag-chip' + (on ? " active" : "") +
+               '" data-niv="' + n + '">' + (n > 0 ? "+" + n : n) + '</button>';
+      }).join("");
+
+    cont.querySelectorAll("[data-niv]").forEach(function(b) {
+      b.addEventListener("click", function() {
+        const n = parseInt(b.getAttribute("data-niv"), 10);
+        // Premier clic depuis « tout » : on ISOLE l'étage cliqué plutôt que de
+        // le retirer. Sur sept étages superposés, c'est le geste attendu — et
+        // retirer un seul étage sur sept ne changerait quasiment rien à l'écran.
+        if (!_homeLevelFilter || _homeLevelFilter.size === 0) {
+          _homeLevelFilter = new Set([n]);
+        } else if (_homeLevelFilter.has(n)) {
+          _homeLevelFilter.delete(n);
+          if (_homeLevelFilter.size === 0) _homeLevelFilter = null;   // plus rien coché = tout
+        } else {
+          _homeLevelFilter.add(n);
+        }
+        _renderModalNiveaux();
+        _reRenderDataTous();
+      });
+    });
+    const ball = cont.querySelector("[data-nivall]");
+    if (ball) ball.addEventListener("click", function() {
+      _homeLevelFilter = null;
+      _renderModalNiveaux();
+      _reRenderDataTous();
+    });
+  }
+
   function _renderModalTags() {
     const cont = document.getElementById("ktaOsmFiltersTags");
     if (!cont) return;
@@ -2337,6 +2472,7 @@
         }
         _reRenderDataTous();
         _renderModalTags();
+        _renderModalNiveaux();
       });
     });
   }
@@ -2780,6 +2916,7 @@
       _renderDataLayersOnMiniMap(data, sel.georef);
       // 🎚️ v1.71.0 : tags en modale (guard si fermée) + parité pile
       _renderModalTags();
+      _renderModalNiveaux();
       _appliquerOrdre();
       _appliquerVisibilites();
     });

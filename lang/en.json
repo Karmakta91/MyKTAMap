@@ -4939,5 +4939,7 @@
   "gen.sig.hAuto": "Computed automatically to match the terrain proportions — otherwise the plan overflows the canvas.",
   "gen.sig.couleursNiveauTitre": "One colour per floor",
   "gen.sig.couleursNiveauHint": "Creates a distinct legend type for each level, with its own colour. Without this, every floor comes out in the same shade and they blend together. You can rename and recolour each entry afterwards in ≡ Legend.",
-  "gen.sig.beaucoupFeatures": "Large file: {n} objects. The import accepts them, but displaying the plan may be heavy on mobile. If the map struggles, re-import with fewer layers."
+  "gen.sig.beaucoupFeatures": "Large file: {n} objects. The import accepts them, but displaying the plan may be heavy on mobile. If the map struggles, re-import with fewer layers.",
+  "osm_home.niveaux.titre": "🏔️ Floors",
+  "osm_home.niveaux.tous": "All"
 }

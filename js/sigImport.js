@@ -1033,7 +1033,13 @@
     let tilingManifest = null;
     try {
       if (typeof _genererTuilesV2 === "function") {
-        const v2 = await _genererTuilesV2(baseBlob, zip);
+        // 📊 v1.82.0 — le 3ᵉ paramètre du tuileur est un callback de PROGRESSION,
+        // et il n'était pas passé. Le tuilage d'un canvas 10000×11680 prend une
+        // dizaine de secondes : sans retour à l'écran, l'utilisateur regarde un
+        // label figé et croit que ça a planté. Le jumeau GPX affiche une barre
+        // depuis toujours — on fait pareil. C'est la première cause du « très
+        // long » ressenti, avant même le coût réel.
+        const v2 = await _genererTuilesV2(baseBlob, zip, opts.onProgress || null);
         if (v2 && v2.manifest) tilingManifest = v2.manifest;
       } else {
         console.warn("[SigImport] _genererTuilesV2 indisponible — plan généré en V1 " +
