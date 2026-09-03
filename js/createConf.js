@@ -5218,11 +5218,15 @@ async function _sigImpGenerer() {
   status.style.color = "#8cb4ff";
   status.textContent = T("gen.sig.generation");
 
+  // Declare AVANT le try : le finally doit pouvoir le retirer, y compris
+  // quand la generation echoue. Declare a l interieur, il etait hors de
+  // portee et la popup restait a l ecran.
+  let v2Overlay = null;
   try {
     // 📊 v1.82.0 — barre de progression du tuilage, calquée sur celle de
     // l'import GPX (même overlay, mêmes clés i18n). Sans elle, la génération
     // d'un gros plan est une attente muette de plusieurs secondes.
-    const v2Overlay = document.createElement("div");
+    v2Overlay = document.createElement("div");
     v2Overlay.id = "kta-sig-imp-v2-progress";
     v2Overlay.className = "kta-modal-overlay";
     v2Overlay.style.zIndex = "100000";
@@ -5285,6 +5289,12 @@ async function _sigImpGenerer() {
       ? T(cleErr)
       : T("gen.sig.err.generique", { err: cleErr });
   } finally {
+    // 🩸 v1.82.0 — RETRAIT DE L OVERLAY DE PROGRESSION. Il etait cree mais
+    // jamais retire : le ZIP se telechargeait bien, et la popup "tuiles V2 en
+    // cours" restait figee a l ecran, donnant l impression que la generation
+    // n avait pas abouti. Dans le finally, donc retire aussi quand la
+    // generation echoue - sinon une erreur laissait l ecran bloque.
+    if (v2Overlay && v2Overlay.parentNode) v2Overlay.remove();
     btnGen.disabled = false;
     btnGen.textContent = T("gen.imp.genererBtn");
   }
