@@ -102,17 +102,40 @@ const STRUCT_CLOSE_TOLERANCE = 5;
 //     design » — c'etait une erreur : sur le terrain la coherence couleur/masse
 //     prime (un trait orange = 2e masse, un trait jaune = 1ere).
 
-// 🔍 v1.82.0 — Largeur des fronts selon le zoom.
-// Le trait d'un front représente une largeur RÉELLE sur le terrain : il doit
-// donc maigrir quand on s'éloigne, comme le plan lui-même. On garde toutefois
-// un plancher : un front invisible serait pire qu'un front un peu épais.
+// 🔍 v1.82.0 — LARGEUR DES FRONTS : UNE LARGEUR RÉELLE, PAS UN NOMBRE DE PIXELS.
+//
+// 🩸 Première version : des paliers fixes par zoom (10 / 7 / 5 / 3 / 2 px).
+// Ils marchaient sur le plan de test et n'ont RIEN changé sur un vrai relevé —
+// parce qu'ils ignoraient l'ÉCHELLE du plan. Or c'est elle qui décide de tout :
+// un front de taille mesure 1 à 2 m sur le terrain, donc sur un plan à
+// 1,4 px/m il doit faire 2 px, pas 10. Avec 17 000 galeries espacées de
+// quelques mètres, un trait de 10 px comble tout l'intervalle : la carte
+// devient un aplat, et aucun palier fixe ne peut le corriger.
+//
+// La largeur se calcule donc physiquement :
+//     pixels écran = largeur réelle (m) × échelle (px/m) × 2^zoom
+// En CRS.Simple, une unité plan vaut 2^zoom pixels écran — le facteur de zoom
+// est donc exact, pas approché.
+const FRONT_LARGEUR_M = 1.5;    // largeur physique typique d'un front de taille
+const FRONT_MIN_PX    = 1;      // plancher : un front invisible serait pire
+const FRONT_MAX_PX    = 14;     // plafond : au-delà c'est un pâté, pas un trait
+
 function _largeurFrontPourZoom(z) {
-  if (!Number.isFinite(z)) return 10;
-  if (z >= 0)  return 10;
-  if (z >= -1) return 7;
-  if (z >= -2) return 5;
-  if (z >= -3) return 3;
-  return 2;                       // plancher : au-delà, le trait resterait lisible
+  if (!Number.isFinite(z)) z = 0;
+  // `APP_CONFIG.scale` est en px/m (cf. tracking.scale du plan-config).
+  const scale = (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0)
+    ? Number(window.APP_CONFIG.scale) : null;
+  // Pas d'échelle connue (plan sans calibrage) : on retombe sur les paliers
+  // d'avant, qui valaient mieux que rien.
+  if (!scale) {
+    if (z >= 0)  return 10;
+    if (z >= -1) return 7;
+    if (z >= -2) return 5;
+    if (z >= -3) return 3;
+    return 2;
+  }
+  const px = FRONT_LARGEUR_M * scale * Math.pow(2, z);
+  return Math.max(FRONT_MIN_PX, Math.min(FRONT_MAX_PX, Math.round(px * 10) / 10));
 }
 
 // Appliquée au niveau du DOCUMENT : une seule écriture, quel que soit le
