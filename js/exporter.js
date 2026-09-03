@@ -148,10 +148,13 @@
       return;
     }
 
-    // Compter les éléments de session
-    const nbPoints  = window.getEditorPoints  ? window.getEditorPoints().length  : 0;
-    const nbRoads   = window.getRoads         ? window.getRoads().length         : 0;
-    const nbZones   = window.getZones         ? window.getZones().length         : 0;
+    // 🩸 v1.82.0 — MÊME PIÈGE QUE DANS LA MODALE PDF : `row()` désactive la case
+    // quand le compteur est nul. Comptés sur la seule session, points, tracés et
+    // zones d'un plan importé étaient donc INEXPORTABLES — la case grisée, sans
+    // que rien n'explique pourquoi.
+    const nbPoints  = _sessionEtEmbarques("points").length;
+    const nbRoads   = _sessionEtEmbarques("roads").length;
+    const nbZones   = _sessionEtEmbarques("zones").length;
     const nbMesure  = window.getMeasurePoints        ? window.getMeasurePoints().length        : 0;
     // 🆕 v1.12.0-fix : surface comptée séparément pour l'affichage de la modale export
     const nbMesureSurf = window.getMeasurePointsSurface ? window.getMeasurePointsSurface().length : 0;
@@ -560,9 +563,15 @@
         roads  = Array.isArray(j.roads) ? j.roads : [];
         zones  = Array.isArray(j.zones) ? j.zones : [];
       } catch(e) {
-        const empty = { tags: [], roadTypes: {}, zoneTypes: {} };
-        _layerPointsCache[layerCfg.id] = empty;
-        return empty;
+        // 🩸 v1.82.0 — un plan importé n'a pas de fichier servi par le site :
+        // ses données vivent en mémoire (cf. le repli du même nom plus bas).
+        // Sans ce repli, la modale n'affichait aucun sous-filtre pour ce calque.
+        const duCalque = function (arr) {
+          return (arr || []).filter(function (o) { return !o.layerId || o.layerId === layerCfg.id; });
+        };
+        points = duCalque(typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : []);
+        roads  = duCalque(typeof window.getAllEmbeddedRoads  === "function" ? window.getAllEmbeddedRoads()  : []);
+        zones  = duCalque(typeof window.getAllEmbeddedZones  === "function" ? window.getAllEmbeddedZones()  : []);
       }
     }
 
@@ -751,17 +760,24 @@
   // ⚠️ Regex `[^_]+$` : voir explication identique sur `_lireRoadTypesCochesCalque`.
   //    Bug observé sur layer id="zone" : id checkbox = "export_layer_zone_zone_eau",
   //    le `.+$` capturait "zone_eau" au lieu de "eau" → toutes les zones filtrées.
+  // Retourne aussi `connus` = les types pour lesquels une case EXISTE. Un type
+  // absent de cette liste n'a pas été refusé par l'utilisateur : il n'a jamais
+  // été proposé. Les cases ne couvrent que les quatre types intégrés — un type
+  // personnalisé (import SIG) n'en a donc aucune, et le filtrer sur `types`
+  // seul revenait à le supprimer de l'export sans que personne l'ait demandé.
   function _lireZoneTypesCochesCalque(layerId) {
     const cont = document.getElementById("export_layer_tags_" + _slugLayerId(layerId));
     const inputs = cont ? cont.querySelectorAll('input[data-layer-zonetype-of]') : [];
-    if (inputs.length === 0) return { types: new Set(), tousActifs: true };
+    if (inputs.length === 0) return { types: new Set(), connus: new Set(), tousActifs: true };
     const types = new Set();
+    const connus = new Set();
     inputs.forEach(function(cb) {
-      if (!cb.checked) return;
       const m = cb.id.match(/_zone_([^_]+)$/);
-      if (m) types.add(m[1]);
+      if (!m) return;
+      connus.add(m[1]);
+      if (cb.checked) types.add(m[1]);
     });
-    return { types: types, tousActifs: false };
+    return { types: types, connus: connus, tousActifs: false };
   }
 
   // Filtre une liste de points selon les tags cochés d'un calque
@@ -842,10 +858,10 @@
     }
 
     // Compter les routes et zones par type
-    const roads = _sessionEtEmbarques("getRoads", "getAllEmbeddedRoads");
-    const zones = _sessionEtEmbarques("getZones", "getAllEmbeddedZones");
+    const roads = _sessionEtEmbarques("roads");
+    const zones = _sessionEtEmbarques("zones");
     // 🆕 v1.9.3-A1.b.2 : structures session (piliers + murs)
-    const structures = _sessionEtEmbarques("getStructures", "getAllEmbeddedStructures");
+    const structures = _sessionEtEmbarques("structures");
     const nbStructures = structures.length;
     const roadsByType = {
       principal:  roads.filter(function(r) { return r.type === "principal";  }).length,
@@ -863,13 +879,43 @@
     };
     // 🆕 v1.9.3-A1.b.2 : compteur sous-types structures pour la modale
     // annotations session (parallèle à zonesByType). Inclut les fronts.
-    const structuresByType = {
-      "pilier-1": structures.filter(function(s) { return s.type === "pilier-1"; }).length,
-      "pilier-2": structures.filter(function(s) { return s.type === "pilier-2"; }).length,
-      "mur":      structures.filter(function(s) { return s.type === "mur";      }).length,
-      "front-1":  structures.filter(function(s) { return s.type === "front-1";  }).length,
-      "front-2":  structures.filter(function(s) { return s.type === "front-2";  }).length
-    };
+    // Compte les types RÉELLEMENT présents et distingue les personnalisés, dont
+    // le nom brut (`cust-sig-…`) doit céder la place au libellé de la légende.
+    function _compterEtCustom(items, builtins) {
+      const par = {};
+      (items || []).forEach(function (o) {
+        if (!o || !o.type) return;
+        par[o.type] = (par[o.type] || 0) + 1;
+      });
+      // Les intégrés restent listés même à zéro : les voir disparaître ferait
+      // croire à un filtre, alors qu'il n'y en a simplement pas sur ce plan.
+      builtins.forEach(function (t) { if (par[t] === undefined) par[t] = 0; });
+      const custom = Object.keys(par)
+        .filter(function (t) { return String(t).indexOf("cust-") === 0; })
+        .map(function (t) {
+          let lib = t;
+          try {
+            const LC = window.LegendCustomization;
+            const e = (LC && typeof LC.findCustomEntry === "function") ? LC.findCustomEntry(t) : null;
+            if (e && e.label) lib = e.label;
+          } catch (err) {}
+          return { type: t, label: lib, n: par[t] };
+        })
+        .sort(function (a, b) { return b.n - a.n; });
+      return { par: par, custom: custom };
+    }
+
+    // 🩸 v1.82.0 — LES SOUS-TYPES ÉTAIENT LISTÉS EN DUR. La modale n'affichait
+    // que les types intégrés : un plan importé, dont toutes les annotations
+    // portent des types PERSONNALISÉS, voyait donc son total juste (20 664
+    // structures) et TOUS ses sous-types à zéro. Signalé par KARMA.
+    const _sS = _compterEtCustom(structures, ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
+    const structuresByType   = _sS.par;
+    const structTypesCustom  = _sS.custom;
+    const _sR = _compterEtCustom(roads, ["principal", "secondaire", "chemin"]);
+    const roadTypesCustom    = _sR.custom;
+    const _sZ = _compterEtCustom(zones, ["eau", "remblais", "effondrement", "inaccessible"]);
+    const zoneTypesCustom    = _sZ.custom;
 
     // Position du tracker : toujours active (la position courante existe au minimum)
     // Inclut le tracé parcouru si > 1 point
@@ -877,8 +923,9 @@
       ? window.I18n.t("imgexport.ann.trackerPath", { count: nbTrackerPath })
       : window.I18n.t("imgexport.ann.tracker");
 
-    // Lister les tags présents dans les points de session
-    const sessionPoints = window.getEditorPoints ? window.getEditorPoints() : [];
+    // Tags présents — calques compris, sinon les sous-filtres par tag d'un plan
+    // importé restaient vides alors que ses points en portent.
+    const sessionPoints = _sessionEtEmbarques("points");
     const sessionTags = _listerTagsPoints(sessionPoints);
 
     let pointsTagsHtml = "";
@@ -907,12 +954,18 @@
       rowSub("roads_principal",  _lp("traces", "principal", Ti("imgexport.roadType.principal")),  roadsByType.principal,  true) +
       rowSub("roads_secondaire", _lp("traces", "secondaire", Ti("imgexport.roadType.secondaire")), roadsByType.secondaire, true) +
       rowSub("roads_chemin",     _lp("traces", "chemin", Ti("imgexport.roadType.chemin")),     roadsByType.chemin,     true) +
+      roadTypesCustom.map(function (c) {
+        return rowSub("roads_" + c.type, c.label, c.n, true);
+      }).join("") +
 
       row("zones",   Ti("imgexport.ann.zones"),           nbZones,   true) +
       rowSub("zones_eau",          _lp("zones", "eau", Ti("imgexport.zoneType.eau")),          zonesByType.eau,          true) +
       rowSub("zones_remblais",     _lp("zones", "remblais", Ti("imgexport.zoneType.remblais")),     zonesByType.remblais,     true) +
       rowSub("zones_effondrement", _lp("zones", "effondrement", Ti("imgexport.zoneType.effondrement")), zonesByType.effondrement, true) +
       rowSub("zones_inaccessible", _lp("zones", "inaccessible", Ti("imgexport.zoneType.inaccessible")), zonesByType.inaccessible, true) +
+      zoneTypesCustom.map(function (c) {
+        return rowSub("zones_" + c.type, c.label, c.n, true);
+      }).join("") +
 
       // 🆕 v1.9.3-A1.b.2 : structures (piliers + murs + fronts) dans les
       // annotations session de l'export image. Calqué sur le bloc zones.
@@ -922,6 +975,10 @@
       rowSub("structures_mur",      _lp("structures", "mur", Ti("imgexport.structType.mur")),     structuresByType["mur"],      true) +
       rowSub("structures_front-1",  _lp("structures", "front-1", Ti("imgexport.structType.front1")),  structuresByType["front-1"], true) +
       rowSub("structures_front-2",  _lp("structures", "front-2", Ti("imgexport.structType.front2")),  structuresByType["front-2"], true) +
+      // Une ligne par type custom réellement présent.
+      structTypesCustom.map(function (c) {
+        return rowSub("structures_" + c.type, c.label, c.n, true);
+      }).join("") +
 
       row("mesure",  Ti("imgexport.ann.mesure"),          nbMesure,  false) +
       `<label class="kta-export-cb-row" style="${trackerOk ? '' : 'opacity:0.4;'}">
@@ -934,10 +991,17 @@
 
     // Synchronisation parent ↔ enfants
     setTimeout(function() {
-      _syncAnnotParent("ann_roads", ["ann_roads_principal", "ann_roads_secondaire", "ann_roads_chemin"]);
-      _syncAnnotParent("ann_zones", ["ann_zones_eau", "ann_zones_remblais", "ann_zones_effondrement", "ann_zones_inaccessible"]);
+      _syncAnnotParent("ann_roads", ["ann_roads_principal", "ann_roads_secondaire", "ann_roads_chemin"]
+        .concat(roadTypesCustom.map(function (c) { return "ann_roads_" + c.type; })));
+      _syncAnnotParent("ann_zones", ["ann_zones_eau", "ann_zones_remblais", "ann_zones_effondrement", "ann_zones_inaccessible"]
+        .concat(zoneTypesCustom.map(function (c) { return "ann_zones_" + c.type; })));
       // 🆕 v1.9.3-A1.b.2 : sync parent↔enfants pour les structures (5 sous-types)
-      _syncAnnotParent("ann_structures", ["ann_structures_pilier-1", "ann_structures_pilier-2", "ann_structures_mur", "ann_structures_front-1", "ann_structures_front-2"]);
+      // Les sous-types custom sont ajoutés à la volée : la liste ne peut pas
+      // être écrite en dur, sinon décocher « Structures » ne les décoche pas.
+      _syncAnnotParent("ann_structures",
+        ["ann_structures_pilier-1", "ann_structures_pilier-2", "ann_structures_mur",
+         "ann_structures_front-1", "ann_structures_front-2"]
+        .concat(structTypesCustom.map(function (c) { return "ann_structures_" + c.type; })));
 
       // Sync parent Points ↔ tags
       const pointsTagIds = sessionTags.map(function(item) { return "ann_points_tag_" + _slugTagId(item.tag); });
@@ -1564,6 +1628,16 @@
       "front-1":  document.getElementById("ann_structures_front-1")?.checked  ?? true,
       "front-2":  document.getElementById("ann_structures_front-2")?.checked  ?? true
     };
+    // 🩸 Les sous-cases PERSONNALISÉES aussi : sans elles, décocher un niveau
+    // importé dans la modale n'avait aucun effet à l'export. On balaie le DOM
+    // plutôt que de rejouer les listes — elles sont construites à la volée.
+    [["roads", opts.ann.roadsTypes], ["zones", opts.ann.zonesTypes],
+     ["structures", opts.ann.structuresTypes]].forEach(function (p) {
+      const prefixe = "ann_" + p[0] + "_cust-";
+      document.querySelectorAll('[id^="' + prefixe + '"]').forEach(function (el) {
+        p[1][el.id.replace("ann_" + p[0] + "_", "")] = !!el.checked;
+      });
+    });
     // 🏗️ Multi-niveau (v148) : Set des niveaux coches dans la section dediee.
     // - null → multiLevel OFF pour ce plan → pas de filtrage niveau
     // - Set → filtre actif : on n'exporte que les items dont level ∈ Set
@@ -1664,25 +1738,21 @@
     }
   }
 
-  // 🩸 v1.82.0 — L'EXPORT NE VOYAIT QUE LA SESSION.
-  // `getRoads()`, `getZones()` et `getStructures()` retournent uniquement les
-  // objets DESSINÉS À LA MAIN (roadsData / zonesData / structuresData). Les
-  // annotations d'un DATA LAYER n'en font pas partie — elles vivent dans les
-  // registres `_ktaData*`, alimentés par `ajouterPointsDepuisJSON`.
+  // 🩸 v1.82.0 — LES COMPTEURS DE LA MODALE NE VOYAIENT QUE LA SESSION.
+  // `getRoads()`, `getZones()` et `getStructures()` ne retournent que les
+  // objets DESSINÉS À LA MAIN. Sur un plan IMPORTÉ, où tout le relevé vit
+  // dans un data layer, la modale annonçait donc « (0) » partout — et le PDF
+  // allait plus loin encore : `_cbRow` DÉSACTIVE la case quand le compteur
+  // est nul, si bien qu'aucune annotation n'était exportable. « L'export PDF
+  // n'exporte rien », signalé par KARMA — son diagnostic était le bon.
   //
-  // Conséquence : sur un plan IMPORTÉ, où l'intégralité du relevé est dans un
-  // data layer, l'export PNG/PDF sortait le fond et RIEN d'autre. Signalé par
-  // KARMA sur un plan SIG (« il ne trouve pas mes structures personnalisées ») —
-  // ce n'est pas propre aux structures ni aux types custom : tracés et zones
-  // embarqués manquaient tout autant, depuis toujours.
-  //
-  // Les collecteurs `getAllEmbedded*` existent déjà (utils.js) et sont ceux
-  // qu'utilisent le KMZ et le pathfinder. On les réutilise plutôt que de relire
-  // les registres à la main.
-  function _sessionEtEmbarques(getSession, getEmbedded) {
-    const a = (typeof window[getSession] === "function" ? window[getSession]() : []) || [];
-    const b = (typeof window[getEmbedded] === "function" ? window[getEmbedded]() : []) || [];
-    return a.concat(b);
+  // ⚠️ RÉSERVÉ AUX COMPTEURS. Le DESSIN, lui, ne doit surtout pas cumuler :
+  // la boucle des calques data (plus bas) peint déjà le contenu embarqué,
+  // calque par calque, en respectant les cases de la modale. S'en servir des
+  // deux côtés dessinerait tout en double.
+  function _sessionEtEmbarques(famille) {
+    return (typeof window.ktaAnnotationsCompletes === "function")
+      ? window.ktaAnnotationsCompletes(famille) : [];
   }
 
   // =========================
@@ -1733,6 +1803,38 @@
 
     // Toutes les coords plan sont multipliées par "scale" pour matcher le canvas
     const sc = function(v) { return v * scale; };
+
+    // 🩸 v1.82.0 — L'EXPORT REPRODUISAIT LE PÂTÉ DU DÉZOOM.
+    // Un front de taille était peint à `style.weight × scale`, soit une largeur
+    // décidée par la légende et non par le terrain. Sur un relevé réel — des
+    // milliers de galeries espacées de quelques mètres — 10 px de plan valent
+    // 3,6 m au sol : les traits se touchent et la carte devient un aplat. Le
+    // rapport trait/écart ne dépend pas de la résolution choisie, donc exporter
+    // plus grand n'y changeait rien.
+    //
+    // Même loi qu'à l'écran (structures.js), même fonction : `scale` joue ici le
+    // rôle que 2^zoom joue là-bas — des pixels rendus par pixel de plan.
+    // Repli sur l'ancien calcul si structures.js n'est pas chargé.
+    // Sur un plan NON CALIBRÉ la loi n'a pas de sens : sans px/m, aucune largeur
+    // réelle n'est calculable. Là, `weight × scale` reste le bon repère — le
+    // trait dessiné à la résolution où le style a été pensé. (À l'écran c'est
+    // différent : il n'y a pas de résolution native, d'où les paliers de zoom.)
+    const _planCalibre = !!(window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0);
+    function _largeurFrontExp(style) {
+      if (!_planCalibre) return ((style && style.weight) || 5) * scale;
+      return (typeof window.ktaLargeurFrontPourRatio === "function")
+        ? window.ktaLargeurFrontPourRatio(scale)
+        : ((style && style.weight) || 5) * scale;
+    }
+    // Les tracés de galerie suivent la même loi, minorée — cf. `wTrace` dans
+    // structures.js. Réservé aux tracés EMBARQUÉS : à l'écran, seuls ceux-là
+    // sont ajustés, et l'export doit montrer ce que montre la carte.
+    function _largeurTraceExp(style) {
+      if (!_planCalibre) return ((style && style.weight) || 5) * scale;
+      return (typeof window.ktaLargeurTracePourRatio === "function")
+        ? window.ktaLargeurTracePourRatio(scale)
+        : ((style && style.weight) || 5) * scale;
+    }
 
     // 🏗️ Multi-niveau (v148) : helper local de filtrage selon les niveaux
     // CHOISIS dans la modale Avancé (opts.ann.levels = Set<number> ou null).
@@ -1821,7 +1923,7 @@
 
     // ---------- zones (avant les tracés) ----------
     if (opts.ann.zones && window.getZones) {
-      const zones = _sessionEtEmbarques("getZones", "getAllEmbeddedZones");
+      const zones = window.getZones();
       const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       const filtreZ = opts.ann.zonesTypes || { eau: true, remblais: true, effondrement: true, inaccessible: true };
       // v169 : `inaccessible` sort en rouge fonce uni semi-transparent — les
@@ -1830,8 +1932,9 @@
       function _styleZoneExp(type) { return _styleCanvas("zones", type, "remblais"); }
       const triees = [...zones]
         .filter(function(z) {
-          // Custom zones toujours OK (pas dans filtreZ qui ne liste que built-in)
-          if (String(z.type).startsWith("cust-")) return true;
+          // 🩸 v1.82.0 — un type personnalisé passait TOUJOURS, faute d'avoir sa
+          // case dans la modale. Il en a une maintenant : elle doit compter.
+          // `!== false` suffit — une clé absente reste permissive.
           return filtreZ[z.type] !== false;
         })
         // 🏗️ Multi-niveau : filtre sur les niveaux coches dans la modale Avancé
@@ -1866,7 +1969,7 @@
     // structures.js > STRUCTURE_STYLES. Différenciation polygon (piliers,
     // mur) vs polyline (fronts) au rendu canvas.
     if (opts.ann.structures && window.getStructures) {
-      const structures = _sessionEtEmbarques("getStructures", "getAllEmbeddedStructures");
+      const structures = window.getStructures();
       // Fronts : polylines épaisses sans contour. Le `weight` (px Leaflet) est
       // converti via `scale` au canvas final.
       // 🆕 v1.10.0-hotfix1 : nouvel ordre Z mur < pilier-2 < pilier-1 <
@@ -1884,8 +1987,7 @@
       const _multiLevelOnExp = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
       const triees = [...structures]
         .filter(function(s) {
-          // Custom structures toujours OK
-          if (String(s.type).startsWith("cust-")) return true;
+          // Idem (cf. zones ci-dessus).
           return filtreS[s.type] !== false;
         })
         .filter(_itemPasseLevels)
@@ -1913,7 +2015,7 @@
           // Front : polyline solide épaisse colorée, pas de fill ni
           // de stroke noir contour. Round cap/join pour douceur visuelle.
           ctx.strokeStyle = s.color;
-          ctx.lineWidth = s.weight * scale;
+          ctx.lineWidth = _largeurFrontExp(s);
           ctx.globalAlpha = s.opacity;
           ctx.lineCap = "round";
           ctx.lineJoin = "round";
@@ -1954,11 +2056,11 @@
       ctx.stroke();
       ctx.restore();
     }
-    function _drawPolyline(points, style) {
+    function _drawPolyline(points, style, largeurPx) {
       if (!points || points.length < 2) return;
       ctx.save();
       ctx.strokeStyle = style.color;
-      ctx.lineWidth = (style.weight || 5) * scale;
+      ctx.lineWidth = (largeurPx > 0) ? largeurPx : (style.weight || 5) * scale;
       ctx.globalAlpha = style.opacity ?? 1;
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
@@ -2021,6 +2123,42 @@
         }
       }
 
+      // 🩸 v1.82.0 — UN PLAN IMPORTÉ N'A PAS DE FICHIER À ALLER CHERCHER.
+      // Le fetch ci-dessus suppose que `layerCfg.file` est servi par le site.
+      // C'est vrai des plans livrés avec l'app, faux de tout plan généré par
+      // l'import SIG : son `sig.json` vit en IndexedDB, jamais sur le serveur.
+      // Le fetch tombait donc en 404 — silencieusement, un simple `console.warn` —
+      // et l'export ne sortait QUE le fond de plan. C'est ce que KARMA a vu sur
+      // sa carrière importée : 20 664 structures à l'écran, zéro à l'export.
+      //
+      // Le contenu est pourtant déjà en mémoire : `ajouterPointsDepuisJSON` l'a
+      // rangé dans les registres au chargement du calque. On les relit, filtrés
+      // sur l'id du calque courant pour que les cases de la modale gardent leur
+      // sens. Repli seulement : quand le fichier existe, il fait foi.
+      if (layerCfg.id !== "editor"
+          && !embeddedRoads.length && !embeddedZones.length && !embeddedStructures.length) {
+        const duCalque = function (arr) {
+          return (arr || []).filter(function (o) {
+            // `layerId` null = registre d'avant cette version, ou plan à calque
+            // unique : on ne l'écarte pas, faute de mieux que de tout perdre.
+            return !o.layerId || o.layerId === layerCfg.id;
+          });
+        };
+        embeddedRoads = duCalque(typeof window.getAllEmbeddedRoads === "function"
+          ? window.getAllEmbeddedRoads() : []);
+        embeddedZones = duCalque(typeof window.getAllEmbeddedZones === "function"
+          ? window.getAllEmbeddedZones() : []);
+        embeddedStructures = duCalque(typeof window.getAllEmbeddedStructures === "function"
+          ? window.getAllEmbeddedStructures() : []);
+        if (!pts.length) {
+          pts = duCalque(typeof window.getAllEmbeddedPoints === "function"
+            ? window.getAllEmbeddedPoints() : []);
+        }
+        if (_debugAdv) console.log("[Export avancé] repli registre", layerCfg.id,
+          "→ roads:", embeddedRoads.length, "zones:", embeddedZones.length,
+          "structures:", embeddedStructures.length);
+      }
+
       // Filtrer les points selon les tags cochés du calque (si la modale est ouverte)
       // Si la fonction n'existe pas (mode rapide), on prend tout.
       if (typeof _filtrerPointsParTagsCalque === "function") {
@@ -2057,7 +2195,9 @@
             "types:", Array.from(zs.types));
         }
         if (!zs.tousActifs) {
-          drawnZones = embeddedZones.filter(function(z) { return zs.types.has(z.type); });
+          drawnZones = embeddedZones.filter(function(z) {
+            return !zs.connus.has(z.type) || zs.types.has(z.type);
+          });
         }
       }
 
@@ -2104,7 +2244,7 @@
           const minPts = isPolyline ? 2 : 3;
           if (!st.points || st.points.length < minPts) continue;
           if (isPolyline) {
-            _drawPolyline(st.points, s);
+            _drawPolyline(st.points, s, _largeurFrontExp(s));
           } else {
             _drawPolygon(st.points, s);
           }
@@ -2130,7 +2270,8 @@
       }
       drawnRoadsSorted.forEach(function(r) {
         if (!_itemPasseLevels(r)) return;
-        _drawPolyline(r.points || [], _styleCanvas("traces", r.type) || { color: "#ffffff", weight: 5, opacity: 1 });
+        const _sr = _styleCanvas("traces", r.type) || { color: "#ffffff", weight: 5, opacity: 1 };
+        _drawPolyline(r.points || [], _sr, _largeurTraceExp(_sr));
         if (r.points && r.points.length >= 2) allRoadsForIntersect.push(r);
         _diagAdv.embRoads++;
       });
@@ -2159,8 +2300,7 @@
     // pas une route à exporter. Sans ce filtre, le fallback "white" effaçait les
     // segments du réseau sous-jacent par-dessus lesquels passait l'itinéraire.
     if (opts.ann.roads && window.getRoads) {
-      const roads = _sessionEtEmbarques("getRoads", "getAllEmbeddedRoads")
-        .filter(function(r) { return r.type !== "itinerary"; });
+      const roads = window.getRoads().filter(function(r) { return r.type !== "itinerary"; });
       // 🏗️ v169 (Karma_dev) : tri Z-index ascending par level si multiLevel ON.
       // Cohérent avec road.js > renderRoads. Niveau bas en arrière, haut au-dessus.
       const _mlOnExp = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
@@ -2196,7 +2336,10 @@
         // 🆕 v1.16.0 step2-drawable : les customs (cust-XXX) sont toujours
         // exportés (pas filtrés par roadsTypes qui ne liste que les
         // built-in). KARMA peut les masquer via le toggle visibilité.
-        if (r.type !== "jonction" && !String(r.type).startsWith("cust-") && filtreR[r.type] === false) continue;
+        // 🩸 v1.82.0 — idem : le filtre s'applique désormais aussi aux types
+        // personnalisés, qui ont leur case. Les jonctions restent hors filtre
+        // (elles ne sont pas listées dans la modale).
+        if (r.type !== "jonction" && filtreR[r.type] === false) continue;
         // 🏗️ Multi-niveau : filtre sur les niveaux choisis dans la modale.
         if (!_itemPasseLevels(r)) continue;
         const s = _styleRoadExp(r.type);

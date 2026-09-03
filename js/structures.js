@@ -120,22 +120,41 @@ const FRONT_LARGEUR_M = 1.5;    // largeur physique typique d'un front de taille
 const FRONT_MIN_PX    = 1;      // plancher : un front invisible serait pire
 const FRONT_MAX_PX    = 14;     // plafond : au-delà c'est un pâté, pas un trait
 
-function _largeurFrontPourZoom(z) {
-  if (!Number.isFinite(z)) z = 0;
+// 🩸 v1.82.0 — LA LOI EST PARTAGÉE AVEC L'EXPORT, ELLE NE PEUT PAS ÊTRE
+// RECOPIÉE. À l'écran le facteur d'agrandissement vaut 2^zoom ; à l'export
+// PNG/PDF il vaut la résolution choisie (1 = natif, 2 = HD). C'est le MÊME
+// nombre — des pixels rendus par pixel de plan — donc la même formule.
+// L'export appelle ceci via `window.ktaLargeurFrontPourRatio`.
+function _largeurFrontPourRatio(ratio) {
+  if (!Number.isFinite(ratio) || ratio <= 0) ratio = 1;
   // `APP_CONFIG.scale` est en px/m (cf. tracking.scale du plan-config).
   const scale = (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0)
     ? Number(window.APP_CONFIG.scale) : null;
   // Pas d'échelle connue (plan sans calibrage) : on retombe sur les paliers
   // d'avant, qui valaient mieux que rien.
   if (!scale) {
+    const z = Math.log(ratio) / Math.LN2;
     if (z >= 0)  return 10;
     if (z >= -1) return 7;
     if (z >= -2) return 5;
     if (z >= -3) return 3;
     return 2;
   }
-  const px = FRONT_LARGEUR_M * scale * Math.pow(2, z);
+  const px = FRONT_LARGEUR_M * scale * ratio;
   return Math.max(FRONT_MIN_PX, Math.min(FRONT_MAX_PX, Math.round(px * 10) / 10));
+}
+window.ktaLargeurFrontPourRatio = _largeurFrontPourRatio;
+
+// Un tracé de galerie est plus fin qu'un front de taille, mais il suit la
+// même loi physique. Facteur unique, appliqué à l'écran comme à l'export.
+const FRONT_FACTEUR_TRACE = 0.6;
+window.ktaLargeurTracePourRatio = function (ratio) {
+  return Math.max(1, Math.round(_largeurFrontPourRatio(ratio) * FRONT_FACTEUR_TRACE * 10) / 10);
+};
+
+function _largeurFrontPourZoom(z) {
+  if (!Number.isFinite(z)) z = 0;
+  return _largeurFrontPourRatio(Math.pow(2, z));
 }
 
 // 🩸 v1.82.0 — LA LARGEUR SE PILOTE PAR `options.weight`, PAS PAR LE CSS.
@@ -165,10 +184,7 @@ function majLargeurFronts() {
   } catch (e) { return; }
 
   const wFront = _largeurFrontPourZoom(z);
-  // Un tracé de galerie est plus fin qu'un front de taille, mais il suit la
-  // même loi physique : sur ce relevé, 85 % des objets sont des lignes. Les
-  // laisser à leur largeur d'origine aurait laissé l'aplat intact.
-  const wTrace = Math.max(1, Math.round(wFront * 0.6 * 10) / 10);
+  const wTrace = window.ktaLargeurTracePourRatio(Math.pow(2, z));
 
   // Les registres portent le layer sous la clé `polygon` — nom historique
   // conservé pour `_filtreNiveauSurPolygonData`, les polylignes y sont aussi

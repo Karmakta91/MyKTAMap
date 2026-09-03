@@ -1671,6 +1671,32 @@ window._applyLevelFilterToDataStructures = function() {
 };
 
 // =========================
+// 🧮 TOUT CE QUE PORTE LE PLAN — session + calques de données
+// =========================
+// 🩸 v1.82.0 — DEUX MODALES COMPTAIENT LA SESSION SEULE, chacune de son côté.
+// Sur un plan importé, où le relevé entier vit dans un calque de données, elles
+// annonçaient « (0) » — et l'export PDF, qui désactive une case dont le compteur
+// est nul, n'exportait alors plus rien du tout. Le compte juste se fait ici, une
+// fois, pour que la prochaine modale ne refasse pas l'erreur une troisième fois.
+//
+// Sert à COMPTER, pas à dessiner : les exports peignent les calques par leur
+// propre boucle, calque par calque, pour respecter les cases de leur modale.
+window.ktaAnnotationsCompletes = function (famille) {
+  const paires = {
+    points:     ["getEditorPoints", "getAllEmbeddedPoints"],
+    roads:      ["getRoads",        "getAllEmbeddedRoads"],
+    zones:      ["getZones",        "getAllEmbeddedZones"],
+    structures: ["getStructures",   "getAllEmbeddedStructures"]
+  };
+  const p = paires[famille];
+  if (!p) return [];
+  const lire = function (nom) {
+    return (typeof window[nom] === "function" ? window[nom]() : []) || [];
+  };
+  return lire(p[0]).concat(lire(p[1]));
+};
+
+// =========================
 // 🌍 GETTERS PUBLICS — embedded points (data layers) — v1.20.0-fix1
 // =========================
 // Symetrique de window.getEditorPoints (editor.js) : expose les points
@@ -1708,7 +1734,8 @@ window.getAllEmbeddedPoints = function() {
         nom:   m._ktaNom  || "",
         id:    m._ktaId   || "",
         tags:  Array.isArray(m._ktaTags) ? m._ktaTags : [],
-        level: (typeof m._ktaLevel === "number") ? m._ktaLevel : 0
+        level: (typeof m._ktaLevel === "number") ? m._ktaLevel : 0,
+        layerId: m._ktaLayerId || null
       };
       // 🆕 v1.21.1 (audit fix #8) : expose description embedded
       if (m._ktaDescription) item.description = m._ktaDescription;
@@ -1735,7 +1762,7 @@ window.getAllEmbeddedZones = function() {
     })
     .map(function(e) {
       // 🆕 v1.21.1 (audit fix #8) : expose description embedded
-      const out = { type: e.type, points: e.points, level: e.level || 0 };
+      const out = { type: e.type, points: e.points, level: e.level || 0, layerId: e.layerId || null };
       if (e.description) out.description = e.description;
       return out;
     });
@@ -1776,7 +1803,7 @@ window.getAllEmbeddedStructures = function() {
     })
     .map(function(e) {
       // 🆕 v1.21.1 (audit fix #8) : expose description embedded
-      const out = { type: e.type, points: e.points, level: e.level || 0 };
+      const out = { type: e.type, points: e.points, level: e.level || 0, layerId: e.layerId || null };
       if (e.description) out.description = e.description;
       return out;
     });
@@ -1994,6 +2021,9 @@ function ajouterPointsDepuisJSON(url, layer) {
           // 🆕 v1.21.1 (audit fix #8) : description embarquée pour KMZ/GPX export
           // (cohérent avec _ktaDataPolylines/Polygons/Structures).
           marker._ktaDescription = p.description || "";
+          // 🩸 v1.82.0 — calque d origine (cf. entry des roads plus bas) : sans
+          // lui, l export ne peut pas rattacher un point à sa case « calque ».
+          marker._ktaLayerId = _layerInfo ? _layerInfo.layerId : null;
           window._ktaDataMarkers.push(marker);
           _filtreNiveauSurMarkerData(marker);  // applique le filtre courant
 
@@ -2109,6 +2139,10 @@ function ajouterPointsDepuisJSON(url, layer) {
           // pour que getAllEmbeddedRoads expose les méta complètes au KMZ/GPX
           // export. Avant : description perdue à l'export embedded data layers.
           const entry = {
+            // 🩸 v1.82.0 — SANS L'ID DU CALQUE, LE REGISTRE EST INEXPLOITABLE
+            // à l'export : impossible de dire quel objet vient de quel calque,
+            // donc impossible de respecter les cases « calques » de la modale.
+            layerId:      _layerInfo ? _layerInfo.layerId : null,
             polyline:    polyline,
             type:        road.type,
             points:      road.points,
@@ -2288,6 +2322,8 @@ function ajouterPointsDepuisJSON(url, layer) {
           // polyline Leaflet supporte setStyle aussi → no breakage.
           const entry = {
             polygon:         leafletLayer,
+            // 🩸 v1.82.0 — calque d origine (cf. entry des roads ci-dessus).
+            layerId:         _layerInfo ? _layerInfo.layerId : null,
             type:            structure.type,
             points:          structure.points,
             level:           Number.isInteger(structure.level) ? structure.level : 0,
@@ -2363,6 +2399,8 @@ function ajouterPointsDepuisJSON(url, layer) {
           // dure (= polygon bloque les segments qui le traversent).
           const entry = {
             polygon:         polygon,
+            // 🩸 v1.82.0 — calque d origine (cf. entry des roads ci-dessus).
+            layerId:         _layerInfo ? _layerInfo.layerId : null,
             type:            zone.type,
             points:          zone.points,
             level:           Number.isInteger(zone.level) ? zone.level : 0,

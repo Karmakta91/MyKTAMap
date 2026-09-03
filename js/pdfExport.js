@@ -146,11 +146,16 @@
       return;
     }
 
-    // Stats actuelles pour les compteurs (session uniquement)
-    const points     = (window.getEditorPoints  && window.getEditorPoints())  || [];
-    const roads      = (window.getRoads         && window.getRoads())         || [];
-    const zones      = (window.getZones         && window.getZones())         || [];
-    const structures = (window.getStructures    && window.getStructures())    || [];
+    // 🩸 v1.82.0 — CES COMPTEURS NE SONT PAS DÉCORATIFS : `_cbRow` DÉSACTIVE
+    // la case quand ils valent zéro. Comptés sur la seule session, ils mettaient
+    // donc l'export PDF d'un plan importé — dont tout le relevé vit dans un
+    // calque de données — dans l'impossibilité de sortir la moindre annotation.
+    // « L'export PDF n'exporte rien », signalé par KARMA : diagnostic exact.
+    const C = window.ktaAnnotationsCompletes || function () { return []; };
+    const points     = C("points");
+    const roads      = C("roads");
+    const zones      = C("zones");
+    const structures = C("structures");
 
     // Calques du plan (auto-listés comme dans l'export PNG avancé)
     const cfg          = window.PLAN_CONFIG || {};
