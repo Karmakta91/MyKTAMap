@@ -92,6 +92,12 @@ let _plannerMode       = "nouveau";
 // `config.plan.customLegend` du ZIP source.
 let _plannerPlanLegend = null;
 
+// 🏷️ v1.82.0 — état de légende propre à l'écran « Convertir depuis SIG ».
+// Séparé de `_plannerPlanLegend` : les deux écrans peuvent être utilisés dans
+// la même session, mélanger leurs états ferait fuiter les entrées de l'un
+// dans le plan de l'autre.
+let _sigPlanLegend = null;
+
 // 🆕 v1.17.0 — Clé localStorage pour la persistance sticky du mode Simple/
 // Avancé du Générateur. Valeurs : "simple" (default) | "avance". Lu au boot
 // de la modale via _lirePlannerMode. Forcé à "avance" en mode Modifier
@@ -1305,7 +1311,16 @@ function _wizInit() {
 //   4. Au close : capture session courante → _plannerPlanLegend
 //   5. Restore la session originelle
 //   6. Refresh le status display
-function _ouvrirEditeurLegendePlan() {
+// 🏷️ v1.82.0 — `etat` optionnel : { get, set }. Sans lui, la fonction opère
+// sur `_plannerPlanLegend` comme avant (générateur de plans). Avec, elle
+// travaille sur l'état de l'appelant — c'est ce qui permet à l'écran
+// « Convertir depuis SIG » de rouvrir CE MÊME éditeur sur SES entrées.
+// KARMA : « légende custom via SIG, obligé de repasser ensuite en génération
+// normale pour renommer les entrées custom ». Écrire un second éditeur pour
+// ça aurait été la dette classique : deux UI pour le même geste.
+function _ouvrirEditeurLegendePlan(etat) {
+  const _lire  = (etat && etat.get) ? etat.get : function () { return _plannerPlanLegend; };
+  const _ecrire = (etat && etat.set) ? etat.set : function (v) { _plannerPlanLegend = v; };
   if (!window.LegendCustomization || typeof window.LegendCustomization.ouvrirEditeur !== "function") {
     alert(window.I18n.t("gen.legende.moduleIndispo"));
     return;
@@ -1323,7 +1338,7 @@ function _ouvrirEditeurLegendePlan() {
   if (typeof LC.suspendPersist === "function") LC.suspendPersist(true);
   // Étape 2 : charge le state du plan en cours d'édition dans la session
   if (typeof LC.loadSessionState === "function") {
-    try { LC.loadSessionState(_plannerPlanLegend || null); } catch(e) {
+    try { LC.loadSessionState(_lire() || null); } catch(e) {
       console.warn("[Planner] loadSessionState échec :", e);
     }
   }
@@ -1340,7 +1355,7 @@ function _ouvrirEditeurLegendePlan() {
       if (typeof LC.getSessionState === "function") {
         try { editedState = LC.getSessionState(); } catch(e) {}
       }
-      _plannerPlanLegend = _plannerLegendStateNormalize(editedState);
+      _ecrire(_plannerLegendStateNormalize(editedState));
       // Étape 5 : restore de la session originelle
       if (typeof LC.loadSessionState === "function") {
         try { LC.loadSessionState(savedSession || null); } catch(e) {
@@ -4854,6 +4869,13 @@ function _afficherImporterSig(prefilledFile) {
             <span><strong>🎨 ${T("gen.sig.couleursNiveauTitre")}</strong><br>
             <span style="color:#8892a4; font-size:11.5px;">${T("gen.sig.couleursNiveauHint")}</span></span>
           </label>
+          <!-- 🏷️ v1.82.0 — renommer/recolorer SANS repasser par le générateur.
+               KARMA : « obligé de repasser ensuite en génération normale pour
+               renommer les entrées custom ». Le bouton ouvre LE MEME éditeur
+               que le générateur de plans, sur les entrées de cet import. -->
+          <button type="button" class="kta-planner-btn" id="kta-sig-imp-legende"
+                  style="margin-top:8px; display:none;">🏷️ ${T("gen.sig.legendeBtn")}</button>
+          <div id="kta-sig-imp-legende-etat" style="font-size:11.5px; color:#8892a4; margin-top:4px;"></div>
           <div id="kta-sig-imp-map-tables" style="margin-top:10px;"></div>
         </div>
 
@@ -4902,6 +4924,7 @@ function _afficherImporterSig(prefilledFile) {
   `;
   document.documentElement.appendChild(modal);
   _sigImportState = null;
+  _sigPlanLegend  = null;   // 🏷️ un nouvel import repart d'une légende vierge
 
   const _close = function() { modal.remove(); _sigImportState = null; };
   document.getElementById("kta-sig-imp-close").addEventListener("click", _close);
@@ -5032,6 +5055,44 @@ async function _sigImpAnalyserFichier(file) {
     if (devine) selN.value = devine.cle;
     selN.addEventListener("change", _sigImpApercuNiveaux);
     _sigImpApercuNiveaux();
+
+    // 🏷️ Le bouton n'a de sens que si des entrées vont réellement être créées
+    // (colonne de niveau choisie ET couleurs par niveau cochées). Sinon il
+    // ouvrirait un éditeur vide.
+    const majBtnLegende = function () {
+      const btn = document.getElementById("kta-sig-imp-legende");
+      const eta = document.getElementById("kta-sig-imp-legende-etat");
+      if (!btn || !_sigImportState) return;
+      const cleN = (document.getElementById("kta-sig-imp-niveau") || {}).value || null;
+      const cases = document.getElementById("kta-sig-imp-couleurs-niveau");
+      const actif = !!(cleN && cases && cases.checked);
+      btn.style.display = actif ? "" : "none";
+      if (!actif) { if (eta) eta.textContent = ""; return; }
+      const n = (_sigPlanLegend && _sigPlanLegend.customEntries)
+        ? _sigPlanLegend.customEntries.length : 0;
+      if (eta) eta.textContent = n ? T("gen.sig.legendeEdite", { n: n }) : "";
+    };
+    const selNiv = document.getElementById("kta-sig-imp-niveau");
+    const caseCol = document.getElementById("kta-sig-imp-couleurs-niveau");
+    if (selNiv)  selNiv.addEventListener("change", majBtnLegende);
+    if (caseCol) caseCol.addEventListener("change", majBtnLegende);
+    const btnLeg = document.getElementById("kta-sig-imp-legende");
+    if (btnLeg) btnLeg.addEventListener("click", function () {
+      const cleN = (document.getElementById("kta-sig-imp-niveau") || {}).value || null;
+      // Pré-remplir à la PREMIÈRE ouverture avec ce qui SERA généré : sans ça,
+      // l'éditeur s'ouvrirait vide et il n'y aurait rien à renommer.
+      if (!_sigPlanLegend) {
+        const entrees = window.SigImport.previsualiserEntreesNiveaux(_sigImportState.data, {
+          cleNiveau: cleN, couleurParNiveau: true
+        });
+        _sigPlanLegend = { schemaVersion: 1, labels: {}, hidden: {}, customEntries: entrees };
+      }
+      _ouvrirEditeurLegendePlan({
+        get: function () { return _sigPlanLegend; },
+        set: function (v) { _sigPlanLegend = v; majBtnLegende(); }
+      });
+    });
+    majBtnLegende();
 
     // 📐 v1.82.0 — la hauteur du canvas n est plus saisie : elle decoule des
     // proportions du terrain. On l affiche pour que l utilisateur sache ce
@@ -5287,7 +5348,10 @@ async function _sigImpGenerer() {
                  // 🏔️ v1.82.0 — la colonne du niveau voyage avec le reste du mapping.
                  cleNiveau: (document.getElementById("kta-sig-imp-niveau") || {}).value || null,
                  // 🎨 v1.82.0 — types de legende par etage (case cochee par defaut).
-                 couleurParNiveau: !!(document.getElementById("kta-sig-imp-couleurs-niveau") || {}).checked }
+                 couleurParNiveau: !!(document.getElementById("kta-sig-imp-couleurs-niveau") || {}).checked,
+                 // 🏷️ Entrées renommées/recolorées par l'utilisateur, s'il
+                 // a ouvert l'éditeur. Sinon `ingest` les fabrique lui-même.
+                 customEntries: (_sigPlanLegend && _sigPlanLegend.customEntries) || null }
     });
 
     const url = URL.createObjectURL(result.blob);

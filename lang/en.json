@@ -4943,5 +4943,7 @@
   "osm_home.niveaux.titre": "🏗️ Levels",
   "osm_home.niveaux.tous": "All",
   "gen.sig.canvasAlerteIos": "Background of {mpx} million pixels. Above roughly 16, an <strong>iPhone</strong> may show an empty background (Safari limit). No issue on PC or Android. If the plan is meant for iPhone, a width of about <strong>{conseil} px</strong> stays under the limit.",
-  "gen.sig.canvasAlerteRam": "Background of {mpx} million pixels — that is <strong>a lot</strong>. Generation may fail for lack of memory (the app holds two images that size at once), and the background will be empty on iPhone. You can try: if it does not complete, go back down to about <strong>{conseil} px</strong> wide."
+  "gen.sig.canvasAlerteRam": "Background of {mpx} million pixels — that is <strong>a lot</strong>. Generation may fail for lack of memory (the app holds two images that size at once), and the background will be empty on iPhone. You can try: if it does not complete, go back down to about <strong>{conseil} px</strong> wide.",
+  "gen.sig.legendeBtn": "Name and colour the levels",
+  "gen.sig.legendeEdite": "{n} customised entry/entries — will be embedded in the plan."
 }

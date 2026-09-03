@@ -718,6 +718,51 @@
     return "cust-sig-" + categorie + "-n" + String(n).replace("-", "m");
   }
 
+  // 🏷️ v1.82.0 — PRÉVISUALISER les entrées de légende AVANT de générer.
+  // L'écran SIG en a besoin pour les proposer à l'édition : au moment où
+  // l'utilisateur veut les renommer, la génération n'a pas encore eu lieu et
+  // les entrées n'existent donc pas encore.
+  // Même logique d'id et de couleur que `_typeNiveau` — volontairement, pour
+  // que ce qu'on montre soit exactement ce qui sera produit.
+  function previsualiserEntreesNiveaux(normalise, opts) {
+    opts = opts || {};
+    if (opts.couleurParNiveau !== true || !opts.cleNiveau) return [];
+    // Niveaux présents, par famille de géométrie, dans l'ordre RENCONTRÉ
+    // (c'est cet ordre qui attribue les couleurs — cf. `_rangs`).
+    const vus = [];
+    const familles = [];
+    const scan = function (items, categorieNaturelle) {
+      (items || []).forEach(function (it) {
+        const k = _trouverCle(it.props, opts.cleNiveau);
+        if (!k || it.props[k] == null) return;
+        const m = /-?\d+/.exec(String(it.props[k]));
+        if (!m) return;
+        const n = parseInt(m[0], 10);
+        if (!Number.isFinite(n)) return;
+        if (vus.indexOf(n) < 0) vus.push(n);
+        const cle = categorieNaturelle + "|" + n;
+        if (familles.indexOf(cle) < 0) familles.push(cle);
+      });
+    };
+    scan(normalise.lignes,    "traces");
+    scan(normalise.polygones, "zones");
+    const out = [];
+    familles.forEach(function (cle) {
+      const p = cle.split("|");
+      const cat = p[0], n = parseInt(p[1], 10);
+      const c = _couleurNiveau(n, vus.indexOf(n));
+      const libelle = (cat === "traces") ? "Galerie" : "Zone";
+      const e = { id: _idNiveau(cat === "traces" ? "traces-l" : cat, n),
+                  category: cat,
+                  label: libelle + " " + (n < 0 ? n : "+" + n),
+                  geometry: (cat === "traces") ? "polyline" : "polygon",
+                  lineColor: c };
+      if (cat !== "traces") { e.fillColor = c; e.borderColor = c; }
+      out.push(e);
+    });
+    return out;
+  }
+
   // =========================================================================
   // INGESTION → objets MyKTAMap en coordonnées PLAN
   // =========================================================================
@@ -798,6 +843,16 @@
 
     // 🎨 Types par niveau : opt-in. Sans lui, rien ne change.
     const couleurParNiveau = opts.couleurParNiveau === true;
+    // 🏷️ v1.82.0 — entrées de légende PRÉ-ÉDITÉES par l'utilisateur (libellé,
+    // couleur). Fournies, elles sont utilisées TELLES QUELLES : c'est ce qui
+    // permet de renommer « Galerie -3 » en son vrai nom depuis l'écran SIG,
+    // sans repasser par le générateur de plans.
+    // Indexées par id : `_typeNiveau` fabrique le même id de façon
+    // déterministe, donc il retrouve l'entrée éditée au lieu d'en créer une.
+    const entreesPreEditees = {};
+    (opts.customEntries || []).forEach(function (e) {
+      if (e && e.id) entreesPreEditees[e.id] = e;
+    });
     const customEntries = [];
     const _dejaVu = {};
     // Rang d'apparition du niveau, pour que la palette soit attribuée dans
@@ -828,6 +883,19 @@
       // l'un est une ligne, l'autre un polygone.
       const id = _idNiveau(categorie + (estLigne ? "-l" : ""), lvl);
       if (!_dejaVu[id]) {
+        // Une entrée éditée gagne sur celle qu'on aurait fabriquée : le
+        // libellé et la couleur viennent de l'utilisateur. On conserve
+        // `geometry` calculée si l'éditeur ne l'a pas portée — c'est elle qui
+        // décide ligne ou polygone, et l'éditeur de légende ne l'expose pas.
+        const pre = entreesPreEditees[id];
+        if (pre) {
+          const copie = Object.assign({}, pre);
+          if (!copie.geometry) copie.geometry = estLigne ? "polyline" : "polygon";
+          if (!copie.category) copie.category = categorie;
+          customEntries.push(copie);
+          _dejaVu[id] = true;
+          return id;
+        }
         if (!(lvl in _rangs)) { _rangs[lvl] = _rangSuivant++; }
         const c = _couleurNiveau(lvl, _rangs[lvl]);
         const e = { id: id, category: categorie,
@@ -1216,6 +1284,7 @@
     analyserAttributs:  analyserAttributs,
     valeursParFamille:  valeursParFamille,
     proposerMapping:    proposerMapping,
+    previsualiserEntreesNiveaux: previsualiserEntreesNiveaux,
     ingest:             ingest,
     genererZipMyktamap: genererZipMyktamap
   };
