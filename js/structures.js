@@ -221,8 +221,17 @@ function majLargeurFronts() {
   // Le canvas ne redessine pas de lui-même hors zoom/pan : on le force une
   // fois, sinon le changement n'apparaît qu'au prochain mouvement.
   try {
-    if (window.map && window.map._renderer && typeof window.map._renderer._redraw === "function") {
-      window.map._renderer._redraw();
+    const r = window.map && window.map._renderer;
+    if (r && typeof r._redraw === "function") {
+      // 🩸 v1.82.0 (bis) — `_redrawBounds` DOIT ÊTRE NEUTRALISÉ D'ABORD.
+      // Lu dans `lib/leaflet/leaflet.js` (1.1.1) : `_redraw` clippe `_draw`
+      // sur ces bornes et saute tout layer qui ne les croise pas. Si une
+      // demande de redraw par layer est en attente (`_requestRedraw` les a
+      // posées), notre repeinture ne couvre que ce petit rectangle et le
+      // reste de la carte garde l'ancienne largeur. À null, `_clear` efface
+      // tout le canvas et `_draw` repeint sans clip.
+      r._redrawBounds = null;
+      r._redraw();
     }
   } catch (e) {}
 }
@@ -232,13 +241,30 @@ window.majLargeurFronts = majLargeurFronts;
 // Il y était posé au départ, et ça ne marchait que pour les structures de
 // SESSION : un plan importé porte les siennes dans un DATALAYER, rendu par
 // `utils.js > ajouterPointsDepuisJSON`. Sur ces plans — précisément ceux qui
-// ont des milliers de fronts — `renderStructures` n'est jamais appelé, la
-// variable CSS n'est jamais posée, et la largeur reste au défaut de 10 px.
+// ont des milliers de fronts — `renderStructures` n'est jamais appelé, rien ne
+// branche le recalcul, et la largeur reste au défaut de 10 px.
 // D'où : un point d'entrée unique, appelable de partout et idempotent.
+// 🩸 v1.82.0 (bis) — LE DRAPEAU ÉTAIT GLOBAL, IL DOIT ÊTRE SUR LA MAP.
+// `window._ktaFrontZoomBound` survivait au changement de plan : la map est
+// recréée, la nouvelle n'a donc PLUS de listener `zoomend`, mais le drapeau
+// dit le contraire et le branchement est sauté. Résultat : la largeur ne se
+// recalcule plus au dézoom, seulement quand un re-rendu passe par ici.
+//
+// C'est exactement le symptôme décrit par KARMA : « je dois masquer tous les
+// niveaux, dézoomer, les réactiver, sinon ça ne prend pas ». Réactiver les
+// niveaux déclenche `renderStructures`, qui rappelle cette fonction, qui
+// recalcule à la volée — d'où un contournement qui marche et un dézoom seul
+// qui ne fait rien.
+//
+// Le dépôt avait DÉJÀ payé cette leçon : `_bindMarkerViewportHook` porte son
+// drapeau sur `map._mkmMarkerHookBound`, avec le commentaire « au plan switch
+// → nouvelle map → nouveau bind ». Même convention ici.
 window.brancherLargeurFronts = function () {
-  if (!window.map || window._ktaFrontZoomBound) { majLargeurFronts(); return; }
-  window._ktaFrontZoomBound = true;
-  window.map.on("zoomend", majLargeurFronts);
+  if (!window.map) { majLargeurFronts(); return; }
+  if (!window.map._ktaFrontZoomBound) {
+    window.map.on("zoomend", majLargeurFronts);
+    window.map._ktaFrontZoomBound = true;
+  }
   majLargeurFronts();
 };
 
@@ -627,9 +653,10 @@ function renderStructures() {
           // zoom, donc en dézoomant les traits se rapprochent sans maigrir et
           // finissent par fusionner. Sur un plan importé qui porte 10 000
           // fronts, ça devient un aplat.
-          // La largeur passe par une variable CSS mise à jour au zoomend :
-          // O(1) par changement de zoom, au lieu d'un setStyle sur chaque
-          // objet — ce qui serait intenable à ce volume.
+          // La largeur est donc recalculée au zoomend et écrite dans
+          // `options.weight`, que le renderer canvas relit à chaque frame :
+          // une affectation de nombre par objet, au lieu d'un `setStyle` —
+          // ce qui serait intenable à ce volume.
         }).addTo(target);
       } else {
         // Structure fermée → polygone rempli avec stroke noir.

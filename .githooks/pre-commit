@@ -135,3 +135,14 @@ node scripts/check-lambert93.js || exit $?
 # C est le linter minimal que ce projet n a pas, sur le seul motif qui a
 # reellement mordu. BLOQUANT.
 node scripts/check-constantes-orphelines.js || exit $?
+
+# 🗺️ Listener pose sur la map Leaflet dont la garde anti-doublon vit ailleurs
+# que sur la map. `window.map` est REMPLACEE a chaque plan charge : un drapeau
+# global survit au remplacement, annonce « deja branche » et le listener ne se
+# pose plus jamais. Le piege a mordu deux fois - v1.30.0 (culling des markers,
+# corrige en portant le drapeau sur la map) puis v1.82.0 (largeur des fronts au
+# zoom), la lecon de la premiere fois etant pourtant ecrite dans le depot.
+# Symptome qui egare : le contournement de l utilisateur marche, parce qu un
+# re-rendu rappelle la fonction. Le mecanisme a l air vivant, seul son
+# declencheur a disparu. BLOQUANT.
+node scripts/check-map-listeners.js || exit $?

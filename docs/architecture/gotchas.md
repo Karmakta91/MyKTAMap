@@ -368,3 +368,73 @@ Voir `exporter.js > _dessinerLegende`. La répartition est automatique (algorith
 - ❌ Réutiliser `PLAN_CONFIG && PLAN_CONFIG.plan` pour savoir si l'on est sur un plan ou au HOME (c'est valide uniquement pour LIRE les métadonnées du dernier plan chargé : nom, échelle…).
 - ❌ Se fier à `window._currentLoadedPlanId` : lui aussi **persiste** au retour HOME.
 - ❌ « Corriger » en remettant `PLAN_CONFIG = null` dans `afficherLoader()` : des dizaines de call-sites lisent ce champ sans garde, ça déplacerait le bug ailleurs.
+
+---
+
+## 🔌 Un listener de map ne se garde JAMAIS par un drapeau global (v1.82.0)
+
+`window.map` est **remplacée** à chaque plan chargé : nouvelle instance, aucun
+listener. Un drapeau global du genre `window._ktaXxxBound` survit à ce
+remplacement — il annonce « déjà branché » alors que la nouvelle map ne l'est
+pas, le branchement est sauté, et le listener ne se pose **plus jamais** pour le
+reste de la session.
+
+```js
+// ❌ le drapeau survit à la map
+if (window._monHookBound) return;
+window._monHookBound = true;
+window.map.on("zoomend", monHandler);
+
+// ✅ le drapeau meurt avec la map
+if (!window.map._monHookBound) {
+  window.map.on("zoomend", monHandler);
+  window.map._monHookBound = true;
+}
+```
+
+**Ce piège a mordu deux fois.** v1.30.0 (culling des markers → corrigé en
+portant le drapeau sur `map._mkmMarkerHookBound`, le commentaire « au plan
+switch → nouvelle map → nouveau bind » est encore dans `utils.js`), puis
+v1.82.0 (largeur des fronts au zoom) — la leçon était donc **déjà écrite dans le
+dépôt** quand elle a été refaite. D'où `scripts/check-map-listeners.js`,
+bloquant au pre-commit.
+
+🩸 **POURQUOI LE SYMPTÔME ÉGARE** : le contournement de l'utilisateur marche.
+KARMA : « je dois masquer tous les niveaux, dézoomer, les réactiver, sinon ça ne
+prend pas » — parce que réactiver déclenche un re-rendu, lequel rappelle la
+fonction, laquelle recalcule à la volée. On cherche alors un défaut dans le
+calcul, qui est juste. **Le mécanisme a l'air vivant : seul son déclencheur a
+disparu.** Devant un bug qui se contourne par un geste d'UI, vérifier d'abord ce
+qui déclenche.
+
+Corollaire : `_repeindreCarte`, `renderRoads`, `renderStructures` etc.
+recalculent tout au passage. Un bug qu'un re-rendu masque n'est pas un bug de
+rendu.
+
+## 🎨 Forcer une repeinture du canvas Leaflet : neutraliser `_redrawBounds`
+
+`preferCanvas: true` — muter `layer.options.weight` suffit, le renderer le relit
+à chaque frame, mais **il faut provoquer la frame**. Or, lu dans
+`lib/leaflet/leaflet.js` (**1.1.1**, vendoré) :
+
+```js
+_redraw: function(){ this._redrawRequest=null,
+  this._redrawBounds&&(…floor/ceil…), this._clear(), this._draw(), this._redrawBounds=null }
+_draw: function(){ …i=this._redrawBounds; i&&(…rect…,clip());
+  for(…) (!i || layer._pxBounds.intersects(i)) && layer._updatePath(); … }
+```
+
+`_draw` **clippe** sur `_redrawBounds` et **saute** tout layer qui ne les croise
+pas ; `_clear` n'efface que ce rectangle. Si une demande par layer est en
+attente (`_requestRedraw` les a posées), un `_redraw()` forcé ne repeint donc
+qu'un petit rectangle — le reste de la carte garde l'ancien style, sans erreur ni
+avertissement.
+
+```js
+r._redrawBounds = null;   // pas de clip : `_clear` efface tout, `_draw` repeint tout
+r._redraw();
+```
+
+⚠️ Ne pas confondre avec `_repeindreCarte()` (legendCustomization), qui rejoue
+les `render*` complets : c'est le bon outil pour un changement de style ponctuel,
+et l'inverse de ce qu'il faut sur un `zoomend` à 20 000 objets.

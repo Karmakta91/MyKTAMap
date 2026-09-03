@@ -1923,8 +1923,8 @@ window._bindMarkerViewportHook = function() {
 
 function ajouterPointsDepuisJSON(url, layer) {
   // 🔍 v1.82.0 — la largeur des fronts dépend du zoom, et un plan importé
-  // porte ses structures ICI, pas dans la session. Sans cet appel, la
-  // variable CSS n'est jamais posée sur ces plans et les traits restent
+  // porte ses structures ICI, pas dans la session. Sans cet appel, le
+  // branchement au zoom n’a jamais lieu sur ces plans et les traits restent
   // à 10 px quel que soit le dézoom. Idempotent.
   try { if (typeof window.brancherLargeurFronts === "function") window.brancherLargeurFronts(); } catch (e) {}
   const _loadToken = window._ktaDataLayerLoadToken;
