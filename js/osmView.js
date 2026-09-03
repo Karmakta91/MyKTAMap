@@ -432,6 +432,29 @@
   //   2. Si _visibleLevels = Set non-vide → check membership
   //   3. Sinon → fallback APP_CONFIG.activeLevel (mode mono historique v1.39.12)
   // Sémantique items sans level : level = 0 (cohérent §51.4 Heatmap).
+  // 🔍 v1.82.0 — Largeur des fronts selon le zoom OSM.
+  // L'échelle diffère de celle du mode plan : ici le zoom va de ~10 (région) à
+  // 19 (rue). Un front dessine une largeur RÉELLE — il doit donc maigrir quand
+  // on s'éloigne, sinon les traits fusionnent en aplat.
+  function _largeurFrontOsm(z) {
+    if (!Number.isFinite(z)) return 6;
+    if (z >= 18) return 10;
+    if (z >= 17) return 7;
+    if (z >= 16) return 5;
+    if (z >= 15) return 3;
+    return 2;                     // plancher : en dessous, le trait resterait lisible
+  }
+
+  // ⚠️ La variable est partagée avec le mode plan (une seule carte est visible
+  // à la fois). On la restaure à la fermeture de la Vue OSM, sinon le plan
+  // hériterait de la largeur calculée pour un zoom qui n'est pas le sien.
+  function _majLargeurFrontOsm() {
+    try {
+      const z = _osmMap && typeof _osmMap.getZoom === "function" ? _osmMap.getZoom() : null;
+      document.documentElement.style.setProperty("--kta-front-w", _largeurFrontOsm(z) + "px");
+    } catch (e) {}
+  }
+
   function _isLevelAllowed(p) {
     const cfg = window.APP_CONFIG || {};
     if (!cfg.multiLevel) return true;
@@ -1322,7 +1345,12 @@
             color:   style.color,
             weight:  style.weight,
             opacity: style.opacity || 1,
-            interactive: false
+            interactive: false,
+            // 🔍 v1.82.0 — même classe qu'en mode plan : la largeur du trait
+            // est pilotée par la variable CSS `--kta-front-w`, recalculée au
+            // zoom. Sans ça, un plan portant des milliers de fronts devient un
+            // aplat dès qu'on s'éloigne.
+            className: "kta-struct-front"
           }).addTo(_structLayer);
         } else {
           L.polygon(latlngs, {
@@ -2221,6 +2249,9 @@
     // 5) Bind handler zoom/pan pour swap niveau adaptatif + cull dynamique
     _moveEndHandler = _onMoveEnd;
     _osmMap.on("zoomend moveend", _moveEndHandler);
+    // 🔍 v1.82.0 — largeur des fronts recalculee au zoom OSM.
+    _osmMap.on("zoomend", _majLargeurFrontOsm);
+    _majLargeurFrontOsm();
 
     // 6) 🆕 v1.39.12 — Step 1 : POI session + data layers
     if (_poiVisible) _renderPoi();
@@ -2402,6 +2433,13 @@
   }
 
   function close() {
+    // 🔍 Rendre la main au mode plan : la variable de largeur est partagee, et
+    // la laisser sur la valeur du zoom OSM donnerait au plan une largeur qui
+    // ne correspond pas au sien.
+    try {
+      if (typeof window.majLargeurFronts === "function") window.majLargeurFronts();
+      else document.documentElement.style.removeProperty("--kta-front-w");
+    } catch (e) {}
     // 🆕 v1.39.11 — Cleanup state niveau adaptatif + culling
     if (_osmMap && _moveEndHandler) {
       try { _osmMap.off("zoomend moveend", _moveEndHandler); } catch(e) {}

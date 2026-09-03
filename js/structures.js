@@ -102,6 +102,29 @@ const STRUCT_CLOSE_TOLERANCE = 5;
 //     design » — c'etait une erreur : sur le terrain la coherence couleur/masse
 //     prime (un trait orange = 2e masse, un trait jaune = 1ere).
 
+// 🔍 v1.82.0 — Largeur des fronts selon le zoom.
+// Le trait d'un front représente une largeur RÉELLE sur le terrain : il doit
+// donc maigrir quand on s'éloigne, comme le plan lui-même. On garde toutefois
+// un plancher : un front invisible serait pire qu'un front un peu épais.
+function _largeurFrontPourZoom(z) {
+  if (!Number.isFinite(z)) return 10;
+  if (z >= 0)  return 10;
+  if (z >= -1) return 7;
+  if (z >= -2) return 5;
+  if (z >= -3) return 3;
+  return 2;                       // plancher : au-delà, le trait resterait lisible
+}
+
+// Appliquée au niveau du DOCUMENT : une seule écriture, quel que soit le
+// nombre de fronts affichés.
+function majLargeurFronts() {
+  try {
+    const z = (window.map && typeof window.map.getZoom === "function") ? window.map.getZoom() : 0;
+    document.documentElement.style.setProperty("--kta-front-w", _largeurFrontPourZoom(z) + "px");
+  } catch (e) { /* pas de carte : rien à ajuster */ }
+}
+window.majLargeurFronts = majLargeurFronts;
+
 const STRUCTURE_STYLE_PREVIEW = {
   weight:    3,
   opacity:   1,
@@ -320,6 +343,14 @@ function fermerStructureEnCours() {
 // RENDU
 // =========================
 function renderStructures() {
+  // 🔍 v1.82.0 — largeur des fronts recalculee au zoom. Le binding est pose
+  // ICI, une seule fois, et non a chaque rendu : Leaflet dedoublonne les
+  // handlers identiques, mais une closure fraiche a chaque appel empilerait.
+  if (window.map && !window._ktaFrontZoomBound) {
+    window._ktaFrontZoomBound = true;
+    window.map.on("zoomend", majLargeurFronts);
+  }
+  majLargeurFronts();
   // Vider les layers existants — .remove() détache où qu'ils soient
   structureLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
   structureLayers = [];
@@ -475,7 +506,18 @@ function renderStructures() {
           weight:    style.weight,
           opacity:   style.opacity,
           lineCap:   "round",
-          lineJoin:  "round"
+          lineJoin:  "round",
+          // 🔍 v1.82.0 — LARGEUR ADAPTÉE AU ZOOM (retour KARMA : « vu que nos
+          // vecteurs sont des fronts de taille, quand on dézoome la largeur
+          // des traits fait qu'on voit une grosse tache »).
+          // `weight` est en pixels ÉCRAN : il reste à 10 px quel que soit le
+          // zoom, donc en dézoomant les traits se rapprochent sans maigrir et
+          // finissent par fusionner. Sur un plan importé qui porte 10 000
+          // fronts, ça devient un aplat.
+          // La largeur passe par une variable CSS mise à jour au zoomend :
+          // O(1) par changement de zoom, au lieu d'un setStyle sur chaque
+          // objet — ce qui serait intenable à ce volume.
+          className: "kta-struct-front"
         }).addTo(target);
       } else {
         // Structure fermée → polygone rempli avec stroke noir.
