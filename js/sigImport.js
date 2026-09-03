@@ -631,8 +631,28 @@
     // export SIG écrit « pilier », « PILIER_1 », « mur »… Le préfixe `struct:`
     // dit à `ingest` de ranger l'objet dans les structures et non les zones.
     structures: {
-      pilier: "struct:pilier-1", piliers: "struct:pilier-1",
-      pilier1: "struct:pilier-1", "pilier-1": "struct:pilier-1",
+      // 🎯 v1.82.0 — DÉFAUTS CALÉS SUR LE TERRAIN (arbitrage KARMA, 03/09).
+      // Dans un relevé SIG de carrière, ce qui est nommé « galerie » ou
+      // « pilier » n'est pas un cheminement ni un volume : c'est le CONTOUR
+      // relevé au décamètre, donc un FRONT DE TAILLE. KARMA les mappait déjà
+      // ainsi à la main sur chaque import (« ce que j'ai mis moi pour que ça
+      // fonctionne ») — autant que ce soit le défaut.
+      // ⚠️ Conséquence assumée : un polygone « pilier » devient une polyligne,
+      // donc un contour épais au lieu d'une surface pleine. C'est le rendu
+      // voulu pour un relevé de carrière ; pour un vrai volume, `pilier-1`
+      // reste à un clic dans le même select.
+      galerie: "struct:front-1", galeries: "struct:front-1",
+      galerie_tech: "struct:front-1", cheminement: "struct:front-1",
+      front: "struct:front-1", fronts: "struct:front-1",
+      frontdetaille: "struct:front-1", "frontdetaille1": "struct:front-1",
+      // `pilier` bascule lui aussi : sa valeur historique (`struct:pilier-1`)
+      // reste accessible d'un clic, mais elle n'était pas ce qu'on veut voir
+      // par défaut sur un import SIG.
+      pilier: "struct:front-1", piliers: "struct:front-1",
+      // Formes EXPLICITES : quand le relevé dit « pilier-1 » ou « 1ère masse »,
+      // l'intention est claire et on la respecte.
+      pilier1: "struct:pilier-1",
+      "pilier-1": "struct:pilier-1",
       "pilier1eremasse": "struct:pilier-1", "1eremasse": "struct:pilier-1",
       pilier2: "struct:pilier-2", "pilier-2": "struct:pilier-2",
       "pilier2emasse": "struct:pilier-2", "2emasse": "struct:pilier-2",
