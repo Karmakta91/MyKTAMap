@@ -1,8 +1,8 @@
 {
-  "version": "v1.82.1",
-  "released": "2026-09-03",
+  "version": "v1.83.0",
+  "released": "2026-09-04",
   "notes": [
-    "🏗️ Tous les niveaux d’un plan s’affichent désormais à l’ouverture. Une case dans les réglages de performance du menu d’accueil permet de revenir à l’ancien comportement (niveaux -1, 0 et +1 seulement).",
-    "👣 Correctif important : sur les plans créés depuis un GPX, un KMZ ou un SIG, le podomètre comptait des pas à l’arrêt — jusqu’à plusieurs kilomètres imaginaires par sortie. Tes plans existants sont réparés tout seuls, rien à régénérer. Et tes réglages de pas sont enfin conservés quand tu reviens sur un plan."
+    "📉 Les niveaux ont enfin une profondeur. Tu la saisis au Générateur ou depuis le menu des niveaux, et l’app en tire un profil en long de ton itinéraire — avec le dénivelé monté et descendu. Au passage, un puits n’est plus compté comme s’il était à plat : les distances qui en empruntent un s’allongent, elles sont désormais justes.",
+    "📏 Tu peux mesurer directement dans la Vue OSM : distance et surface, en cliquant sur la carte. Et un plan exporté en KMZ se pose enfin à sa vraie profondeur au lieu de flotter en surface."
   ]
 }
