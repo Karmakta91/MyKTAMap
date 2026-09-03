@@ -234,6 +234,15 @@ Al arrancar, la aplicación muestra una **pantalla de inicio** que reúne:
 
 > 📐 **Lambert 93 convertido automáticamente (desde v1.82.0)** — si tu exportación de QGIS usa **Lambert 93** (EPSG:2154, el sistema oficial francés: coordenadas en **metros** como 650000 / 6860000, no en grados), la aplicación lo **reconoce y lo convierte** por sí sola. Un aviso te indica cuántas coordenadas se han reproyectado: comprueba que la posición obtenida corresponde a tu sitio antes de continuar. Las **demás** proyecciones (UTM, Web Mercator…) siguen rechazándose — en ese caso vuelve a exportar desde QGIS en **EPSG:4326 (WGS84)**.
 
+> 🗺️ **Levantamientos de canteras: lo que el importador sabe hacer desde la v1.82.0.**
+> 
+> - **Un nivel por planta.** Si tu archivo tiene una columna de nivel (`niveau`, `level`, `etage`…), elígela en «Columna del nivel»: cada objeto conserva su planta, y una vista previa te muestra el reparto **antes** de generar. Marca «Un color por nivel» para que cada planta tenga su tono; sin eso, seis plantas superpuestas se confunden. Puedes **renombrar y recolorear** cada nivel con el botón 🏷️ sin salir de la pantalla.
+> - **Cada tipo va donde tú quieras.** La forma de un objeto en el archivo no dice lo que es: un polígono puede ser una zona, un pilar, un muro — o un **frente de explotación**, si quien lo dibujó cerró el contorno. Cada valor puede apuntar a cualquier familia en el desplegable.
+> - **La altura del plano se calcula**, solo indicas el ancho. Es lo que garantiza que el plano no se salga del marco: con proporciones libres, el contenido desbordaba. A partir de cierto tamaño aparece un aviso (posible fondo vacío en iPhone, o generación pesada): es un **consejo**, no un bloqueo.
+> 
+> ⚠️ **Si creaste un plano desde un GPX o un SIG antes de la v1.82.0**: su **escala era incorrecta** (un valor fijo sin relación con el terreno), y por tanto también las distancias medidas en él. Vuelve a generarlo desde el archivo de origen para obtener medidas correctas. Los planos creados a partir de una imagen escaneada no están afectados.
+
+
 >
 > Un archivo en **otra** proyección (UTM, Web Mercator…) será **rechazado**, indicando el número de coordenadas erróneas y la operación a realizar. Es intencionado: aceptar en silencio coordenadas que no sabemos interpretar situaría tu sitio a miles de kilómetros, sin el menor aviso. *(El Lambert 93, en cambio, se reconoce y se convierte — ver justo arriba.)*
 

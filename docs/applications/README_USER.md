@@ -235,6 +235,15 @@ Tu as des données dans un logiciel SIG et tu veux les exploiter dans MyKTAMap ?
 
 > 📐 **Lambert 93 converti automatiquement (depuis v1.82.0)** — si ton export QGIS est en **Lambert 93** (EPSG:2154, le système officiel français : des coordonnées en **mètres** comme 650000 / 6860000, pas en degrés), l'app le **reconnaît et le convertit** toute seule. Un bandeau te dit combien de coordonnées ont été reprojetées : vérifie que la position obtenue correspond bien à ton site avant de continuer. Les **autres** projections (UTM, Web Mercator…) restent refusées — réexporte alors depuis QGIS en **EPSG:4326 (WGS84)**.
 
+> 🗺️ **Relevés de carrière : ce que l'import sait faire depuis la v1.82.0.**
+> 
+> - **Un niveau par étage.** Si ton fichier porte une colonne de niveau (`niveau`, `level`, `etage`…), choisis-la dans « Colonne du niveau » : chaque objet garde son étage, et un aperçu te montre la répartition **avant** de générer. Coche « Une couleur par niveau » pour que chaque étage ait sa teinte — sans ça, six étages superposés se confondent. Tu peux **renommer et recolorer** chaque niveau avec le bouton 🏷️ sans quitter l'écran.
+> - **Chaque type va où tu veux.** La forme d'un objet dans le fichier ne dit pas ce qu'il est : un polygone peut être une zone, un pilier, un mur — ou un **front de taille**, si son auteur l'a dessiné fermé. Chaque valeur peut viser n'importe quelle famille dans le menu déroulant.
+> - **La hauteur du plan est calculée**, tu ne donnes que la largeur. C'est ce qui garantit que le plan ne sort pas du cadre : avec des proportions libres, le contenu débordait. Au-delà d'une certaine taille, un avertissement apparaît (fond vide possible sur iPhone, ou génération lourde) — c'est un **conseil**, pas un blocage.
+> 
+> ⚠️ **Si tu as créé un plan depuis un GPX ou un SIG avant la v1.82.0** : son **échelle était fausse** (une valeur fixe sans rapport avec le terrain), donc les distances mesurées dessus aussi. Régénère-le depuis le fichier d'origine pour repartir sur des mesures justes. Les plans faits à partir d'une image scannée ne sont pas concernés.
+
+
 >
 > Un fichier dans une **autre** projection (UTM, Web Mercator…) sera **refusé**, avec le nombre de coordonnées fautives et la manip à faire. C'est volontaire : accepter en silence des coordonnées qu'on ne sait pas interpréter placerait ton site à des milliers de kilomètres, sans le moindre avertissement. *(Le Lambert 93, lui, est reconnu et converti — voir juste au-dessus.)*
 

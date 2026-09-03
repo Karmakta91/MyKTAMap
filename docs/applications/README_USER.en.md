@@ -235,6 +235,15 @@ Got data in a GIS package you want to use in MyKTAMap? Drop your export **straig
 
 > 📐 **Lambert 93 converted automatically (since v1.82.0)** — if your QGIS export uses **Lambert 93** (EPSG:2154, the official French system: coordinates in **metres** such as 650000 / 6860000, not degrees), the app **recognises and converts** it on its own. A banner tells you how many coordinates were reprojected: check that the resulting position matches your site before continuing. **Other** projections (UTM, Web Mercator…) are still rejected — re-export from QGIS as **EPSG:4326 (WGS84)** in that case.
 
+> 🗺️ **Quarry surveys: what the import can do since v1.82.0.**
+> 
+> - **One level per floor.** If your file has a level column (`niveau`, `level`, `etage`…), pick it under “Level column”: every object keeps its floor, and a preview shows you the breakdown **before** generating. Tick “One colour per level” so each floor gets its own shade — without it, six stacked floors blend together. You can **rename and recolour** each level with the 🏷️ button without leaving the screen.
+> - **Every type goes where you want.** An object's shape in the file does not say what it is: a polygon may be a zone, a pillar, a wall — or a **working face**, if whoever drew it closed the outline. Each value can target any family in the dropdown.
+> - **The plan's height is computed**, you only give the width. That is what keeps the plan inside the frame: with free proportions, content overflowed. Past a certain size a warning appears (possible empty background on iPhone, or heavy generation) — it is **advice**, not a block.
+> 
+> ⚠️ **If you created a plan from a GPX or SIG file before v1.82.0**: its **scale was wrong** (a fixed value unrelated to the terrain), and so were the distances measured on it. Regenerate it from the source file to get correct measurements. Plans built from a scanned image are unaffected.
+
+
 >
 > A file in **another** projection (UTM, Web Mercator…) will be **refused**, with the number of offending coordinates and what to do. This is deliberate: silently accepting coordinates we cannot interpret would place your site thousands of kilometres away, without the slightest warning. *(Lambert 93 itself is recognised and converted — see just above.)*
 

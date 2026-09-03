@@ -1,8 +1,8 @@
 {
-  "version": "v1.81.0",
+  "version": "v1.82.0",
   "released": "2026-09-03",
   "notes": [
-    "🌀 Tes liaisons entre plans affichent maintenant leur « écart de calage » : la distance entre les deux bouts d’un même passage. Plus le chiffre est petit, mieux tes plans sont calés l’un sur l’autre.",
-    "📝 La Vue OSM de l’accueil montre enfin ton travail en cours (points, tracés, zones, structures) et plus seulement ce qui est enregistré dans le plan."
+    "🗺️ L’import « Convertir depuis SIG » comprend enfin les relevés de carrière : le Lambert 93 des exports QGIS est converti tout seul, chaque niveau garde son étage et sa couleur, et les piliers ou fronts de taille arrivent au bon endroit.",
+    "📏 Correctif important : l’échelle des plans créés depuis un GPX ou un SIG était fausse — les distances mesurées peuvent donc changer sur ces plans. Régénère-les pour repartir sur des mesures justes."
   ]
 }
