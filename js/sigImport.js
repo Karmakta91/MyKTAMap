@@ -740,7 +740,25 @@
     // il est lu par celle des lignes comme par celle des polygones, et un const
     // posé plus bas tombait dans sa zone morte temporelle (ReferenceError au
     // premier tracé — vécu au premier essai sur le relevé réel).
-    const PREFIXE_STRUCT = "struct:";
+    // 🔀 v1.82.0 — ROUTAGE LIBRE (retour KARMA : « des zones peuvent aussi
+    // être des fronts de taille — quelqu'un qui aurait fait un polygone via un
+    // front de taille »). Exact, et la règle vaut dans tous les sens : la
+    // GÉOMÉTRIE du fichier SIG ne dit pas ce que l'objet EST. Un polygone peut
+    // être une zone, un pilier, un mur ou un front ; une polyligne peut être
+    // une galerie, un front, ou le contour d'une zone tracé sans le fermer.
+    // Le type choisi porte donc un préfixe de FAMILLE. Sans préfixe, l'objet
+    // va dans la famille naturelle de sa géométrie (ligne → tracé, polygone →
+    // zone), ce qui garde tout le comportement d'avant.
+    const PREFIXES = { "struct:": "structures", "zone:": "zones", "trace:": "roads" };
+
+    // Retourne { famille, type } depuis le choix de l'utilisateur.
+    function _router(choisi, familleNaturelle) {
+      const s = String(choisi || "");
+      for (const p in PREFIXES) {
+        if (s.startsWith(p)) return { famille: PREFIXES[p], type: s.slice(p.length) };
+      }
+      return { famille: familleNaturelle, type: s };
+    }
 
     // 🎨 Types par niveau : opt-in. Sans lui, rien ne change.
     const couleurParNiveau = opts.couleurParNiveau === true;
@@ -801,16 +819,16 @@
       const v = _valeurType(l.props);
       // Un front de taille est une STRUCTURE en polyligne (front-1 / front-2,
       // cf. STRUCTURE_TYPES_POLYLINE dans structures.js) : même aiguillage.
-      const choisiL = (v && mapTraces[v]) || typeDefaut;
-      const estStructL = String(choisiL).startsWith(PREFIXE_STRUCT);
-      const o = { type: estStructL ? choisiL.slice(PREFIXE_STRUCT.length) : choisiL, points: pts };
+      const rL = _router((v && mapTraces[v]) || typeDefaut, "roads");
+      const o = { type: rL.type, points: pts };
       if (l.nom) o.note = l.nom;
       const lvl = _niveauDe(l.props);
       if (lvl !== null) o.level = lvl;
-      o.type = _typeNiveau(o.type, estStructL ? "structures" : "traces", 
+      o.type = _typeNiveau(o.type,
+                           rL.famille === "structures" ? "structures" : (rL.famille === "zones" ? "zones" : "traces"),
                            (typeof o.level === "number") ? o.level : null,
-                           estStructL ? "Structure" : "Galerie");
-      (estStructL ? structures : roads).push(o);
+                           rL.famille === "structures" ? "Structure" : (rL.famille === "zones" ? "Zone" : "Galerie"));
+      ({ structures: structures, zones: zones, roads: roads }[rL.famille] || roads).push(o);
     });
 
     // 🏛️ v1.82.0 — LES STRUCTURES, 4e famille (retour KARMA du 03/09 sur un
@@ -832,16 +850,16 @@
       });
       if (pts.length < 3) return;
       const v = _valeurType(z.props);
-      const choisi = (v && mapZones[v]) || zoneDefaut;
-      const estStruct = String(choisi).startsWith(PREFIXE_STRUCT);
-      const o = { type: estStruct ? choisi.slice(PREFIXE_STRUCT.length) : choisi, points: pts };
+      const rZ = _router((v && mapZones[v]) || zoneDefaut, "zones");
+      const o = { type: rZ.type, points: pts };
       if (z.nom) o.note = z.nom;
       const lvl = _niveauDe(z.props);
       if (lvl !== null) o.level = lvl;
-      o.type = _typeNiveau(o.type, estStruct ? "structures" : "zones",
+      o.type = _typeNiveau(o.type,
+                           rZ.famille === "structures" ? "structures" : (rZ.famille === "roads" ? "traces" : "zones"),
                            (typeof o.level === "number") ? o.level : null,
-                           estStruct ? "Pilier" : "Zone");
-      (estStruct ? structures : zones).push(o);
+                           rZ.famille === "structures" ? "Pilier" : (rZ.famille === "roads" ? "Galerie" : "Zone"));
+      ({ structures: structures, zones: zones, roads: roads }[rZ.famille] || zones).push(o);
     });
 
     return {

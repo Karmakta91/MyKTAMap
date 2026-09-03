@@ -173,6 +173,18 @@ function passe1() {
 }
 
 // ── PASSE 2 ────────────────────────────────────────────────────────────────
+// 🩸 UNE GÉOMÉTRIE PAR <LineString> / <Polygon>, PAS UNE PAR <Placemark>.
+// La première version accumulait TOUS les `<coordinates>` d'un Placemark dans
+// une seule chaîne, puis en faisait une seule polyligne. Or un Placemark peut
+// contenir un `<MultiGeometry>` avec plusieurs LineString : sur le relevé de
+// Gironde, 66 Placemarks en portent 1 440 à eux tous — et l'un d'eux en
+// contient 554 À LUI SEUL. Fusionnés bout à bout, ces segments produisaient de
+// longues diagonales reliant des galeries éloignées : un fouillis de traits
+// qui n'existent pas sur le terrain. Repéré par KARMA sur le niveau -3, au
+// sud-est de Citon_Graves_RD.
+// On suit donc l'ouverture et la fermeture de CHAQUE géométrie, et on émet
+// séparément. Le `<Point>` de placement d'un MultiGeometry est ignoré : ce
+// n'est pas du contenu, c'est une ancre d'affichage.
 function passe2(cible) {
   return new Promise(function (resolve) {
     const bb = cible.bbox;
@@ -184,78 +196,84 @@ function passe2(cible) {
     const BB = { x0: bb.x0 - dLng, x1: bb.x1 + dLng, y0: bb.y0 - dLat, y1: bb.y1 + dLat };
 
     let niveau = 0, couche = "niveau";
-    let dansPm = false, nomPm = null, geom = null, coords = "", dansCoords = false;
+    let dansPm = false, nomPm = null;
+    let geom = null;          // "LineString" | "Polygon" en cours
+    let coords = "";          // coordonnées de la géométrie COURANTE
+    let dansCoords = false;
+    let dansOuter = false;    // anneau extérieur d'un Polygon
     const retenus = [];
-    const stats = { lus: 0, bboxOk: 0, retenus: 0, parNiveau: {} };
+    const stats = { lus: 0, geoms: 0, bboxOk: 0, retenus: 0, parNiveau: {} };
+
+    // Teste puis range UNE géométrie complète.
+    function emettre() {
+      if (!geom || !coords.trim()) { geom = null; coords = ""; return; }
+      stats.geoms++;
+      const pts = parseCoords(coords);
+      coords = "";
+      const g = geom; geom = null;
+      if (pts.length < 2) return;
+      const b = bboxDe(pts);
+      if (b.x1 < BB.x0 || b.x0 > BB.x1 || b.y1 < BB.y0 || b.y0 > BB.y1) return;
+      stats.bboxOk++;
+      let dedans = false;
+      for (let k = 0; k < pts.length; k += Math.max(1, Math.floor(pts.length / 40))) {
+        if (dansPolygone(pts[k][0], pts[k][1], cible.poly)) { dedans = true; break; }
+      }
+      // Les EMPRISES ne sont pas du contenu de plan : ce sont les contours
+      // administratifs, y compris ceux des carrières voisines qui débordent
+      // dans la bbox. Les importer donnerait de fausses galeries épousant les
+      // limites de zone.
+      const gardee = (COUCHES === "tout") ? (couche !== "emprises")
+                   : (COUCHES === "historique") ? (couche === "historique")
+                   : (couche === "niveau");
+      if (!dedans || !gardee) return;
+      retenus.push({ nom: nomPm, geom: g, pts: pts, niveau: niveau, couche: couche });
+      stats.retenus++;
+      const cle = (couche === "niveau") ? ("niveau " + niveau) : couche;
+      stats.parNiveau[cle] = (stats.parNiveau[cle] || 0) + 1;
+    }
 
     lireLignes(function (l) {
-      // 🩸 Piège n°2 (corrigé après la 1re extraction réelle) : le niveau
-      // vient du Folder englobant, MAIS le fichier ne contient pas que des
-      // niveaux. Après `niveau6` viennent un topo historique et la couche des
-      // EMPRISES — sans changer de contexte, tout cela retombait en « -6 » :
-      // 16 676 features pour une carrière qui en déclare 4 étages, et les
-      // contours des carrières voisines importés comme des galeries.
-      // On suit donc la COUCHE, pas seulement le niveau.
+      // 🩸 Le niveau vient du Folder englobant, et le fichier ne contient pas
+      // que des niveaux : après `niveau6` viennent un topo historique et les
+      // emprises. Sans changer de contexte, tout retombait en « -6 ».
       const mf = /<name>niveau(\d+)<\/name>/.exec(l);
       if (mf) { niveau = -parseInt(mf[1], 10); couche = "niveau"; return; }
-      if (/<name>topo_[^<]*<\/name>/.test(l))            { couche = "historique"; niveau = null; return; }
-      if (/<name>0?Zone de carri[^<]*<\/name>/.test(l))   { couche = "emprises";   niveau = null; return; }
+      if (/<name>topo_[^<]*<\/name>/.test(l))          { couche = "historique"; niveau = null; return; }
+      if (/<name>0?Zone de carri[^<]*<\/name>/.test(l)) { couche = "emprises";   niveau = null; return; }
 
-      if (l.includes("<Placemark")) {
-        dansPm = true; nomPm = null; geom = null; coords = ""; dansCoords = false; stats.lus++;
-      }
+      if (l.includes("<Placemark")) { dansPm = true; nomPm = null; geom = null; coords = ""; stats.lus++; }
       if (!dansPm) return;
 
       const mn = /<name>([^<]*)<\/name>/.exec(l);
       if (mn && !nomPm) nomPm = mn[1];
-      if (l.includes("<LineString")) geom = "LineString";
-      else if (l.includes("<Polygon") && !geom) geom = "Polygon";
 
-      if (l.includes("<coordinates>")) {
-        dansCoords = true;
-        const apres = l.split("<coordinates>")[1] || "";
-        coords += apres.split("</coordinates>")[0] + " ";
-        if (l.includes("</coordinates>")) dansCoords = false;
-      } else if (dansCoords) {
-        if (l.includes("</coordinates>")) { coords += l.split("</coordinates>")[0] + " "; dansCoords = false; }
-        else coords += l + " ";
-      }
+      // Ouverture d'une géométrie. Le <Point> d'un MultiGeometry n'en est pas
+      // une : on ne le prend jamais.
+      if (l.includes("<LineString")) { geom = "LineString"; coords = ""; }
+      else if (l.includes("<Polygon")) { geom = "Polygon"; coords = ""; dansOuter = false; }
+      if (l.includes("<outerBoundaryIs>"))  dansOuter = true;
+      if (l.includes("</outerBoundaryIs>")) dansOuter = false;
 
-      if (l.includes("</Placemark>")) {
-        if (geom && coords.trim()) {
-          const pts = parseCoords(coords);
-          if (pts.length >= 2) {
-            const b = bboxDe(pts);
-            // Rejet bbox d'abord : trois comparaisons écartent 99 % du
-            // département avant tout ray-casting.
-            if (!(b.x1 < BB.x0 || b.x0 > BB.x1 || b.y1 < BB.y0 || b.y0 > BB.y1)) {
-              stats.bboxOk++;
-              // Une géométrie est retenue si AU MOINS un de ses sommets est
-              // dans le contour : on garde la galerie ENTIÈRE plutôt que de la
-              // découper. Couper produirait des tronçons orphelins et fausserait
-              // les longueurs ; déborder un peu est sans conséquence.
-              let dedans = false;
-              for (let i = 0; i < pts.length; i += Math.max(1, Math.floor(pts.length / 40))) {
-                if (dansPolygone(pts[i][0], pts[i][1], cible.poly)) { dedans = true; break; }
-              }
-              // Les EMPRISES ne sont pas du contenu de plan : ce sont les
-              // contours administratifs des carrières, y compris des voisines
-              // qui débordent dans la bbox. Les importer donnerait de fausses
-              // galeries épousant les limites de zone.
-              const gardee = (COUCHES === "tout") ? (couche !== "emprises")
-                           : (COUCHES === "historique") ? (couche === "historique")
-                           : (couche === "niveau");
-              if (dedans && gardee) {
-                retenus.push({ nom: nomPm, geom: geom, pts: pts, niveau: niveau, couche: couche });
-                stats.retenus++;
-                const cle = (couche === "niveau") ? ("niveau " + niveau) : couche;
-                stats.parNiveau[cle] = (stats.parNiveau[cle] || 0) + 1;
-              }
-            }
-          }
+      // Coordonnées : pour un Polygon, SEUL l'anneau extérieur (les trous
+      // deviendraient des polygones parasites).
+      const prendre = (geom === "LineString") || (geom === "Polygon" && dansOuter);
+      if (prendre) {
+        if (l.includes("<coordinates>")) {
+          dansCoords = true;
+          const apres = l.split("<coordinates>")[1] || "";
+          coords += apres.split("</coordinates>")[0] + " ";
+          if (l.includes("</coordinates>")) dansCoords = false;
+        } else if (dansCoords) {
+          if (l.includes("</coordinates>")) { coords += l.split("</coordinates>")[0] + " "; dansCoords = false; }
+          else coords += l + " ";
         }
-        dansPm = false; geom = null; coords = ""; nomPm = null;
       }
+
+      // Fermeture : on émet TOUT DE SUITE, sans attendre la fin du Placemark.
+      // C'est là toute la correction.
+      if (l.includes("</LineString>") || l.includes("</Polygon>")) { emettre(); dansCoords = false; }
+      if (l.includes("</Placemark>")) { emettre(); dansPm = false; nomPm = null; dansCoords = false; }
     }, function () { resolve({ retenus: retenus, stats: stats }); });
   });
 }
@@ -305,6 +323,7 @@ function passe2(cible) {
 
   const st = p2.stats;
   console.log("Placemarks lus        : " + st.lus.toLocaleString("fr-FR"));
+  console.log("Geometries lues       : " + st.geoms.toLocaleString("fr-FR"));
   console.log("Passant la bbox       : " + st.bboxOk.toLocaleString("fr-FR"));
   console.log("RETENUS dans l'emprise: " + st.retenus.toLocaleString("fr-FR"));
   Object.keys(st.parNiveau).sort().forEach(function (n) {

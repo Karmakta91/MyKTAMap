@@ -5033,10 +5033,21 @@ const _SIG_TYPES = {
   polygones: ["remblais", "eau", "effondrement", "inaccessible"]
 };
 // Structures proposées EN PLUS, par famille de géométrie.
-const _SIG_TYPES_STRUCT = {
+// 🔀 v1.82.0 — CHAQUE GÉOMÉTRIE PEUT VISER TOUTES LES FAMILLES. La géométrie
+// du fichier SIG ne dit pas ce que l'objet EST : un polygone peut être une
+// zone, un pilier, un mur — ou un FRONT DE TAILLE, si son auteur l'a dessiné
+// fermé (cas remonté par KARMA sur un relevé réel). Réciproquement une
+// polyligne peut porter le contour d'une zone.
+// Le préfixe (`struct:`, `zone:`, `trace:`) dit à `SigImport.ingest` dans
+// quelle famille ranger l'objet ; sans préfixe, il va dans la famille
+// naturelle de sa géométrie.
+const _SIG_TYPES_SUP = {
   points:    [],
-  lignes:    ["struct:front-1", "struct:front-2"],
-  polygones: ["struct:pilier-1", "struct:pilier-2", "struct:mur"]
+  lignes:    ["struct:front-1", "struct:front-2", "struct:mur",
+              "zone:remblais", "zone:eau", "zone:effondrement", "zone:inaccessible"],
+  polygones: ["struct:pilier-1", "struct:pilier-2", "struct:mur",
+              "struct:front-1", "struct:front-2",
+              "trace:chemin", "trace:secondaire", "trace:principal"]
 };
 const _SIG_CAT_I18N = { points: "gen.sig.famPoints", lignes: "gen.sig.famLignes", polygones: "gen.sig.famZones" };
 
@@ -5093,7 +5104,7 @@ function _sigImpRendreTables() {
     const propose = catPour[fam] ? window.SigImport.proposerMapping(vals, catPour[fam]) : {};
     // Le pré-remplissage regarde AUSSI les structures : « pilier » doit tomber
     // sur pilier-1 tout seul, sinon la nouveauté ne sert à personne.
-    if ((_SIG_TYPES_STRUCT[fam] || []).length) {
+    if ((_SIG_TYPES_SUP[fam] || []).length) {
       const ps = window.SigImport.proposerMapping(vals, "structures");
       Object.keys(ps).forEach(function(v) { if (!propose[v] && ps[v]) propose[v] = ps[v]; });
     }
@@ -5105,11 +5116,12 @@ function _sigImpRendreTables() {
            +  '<select class="kta-cfg-input" data-sig-fam="' + fam + '" data-sig-val="' + _escAttrSig(v) + '" style="flex:0 0 46%;">'
            +  (function() {
                 const opt = function(t) {
-                  const lib = t.startsWith("struct:") ? t.slice(7) : t;
+                  // Le libellé montre le type, pas le préfixe technique.
+                  const lib = t.replace(/^(struct|zone|trace):/, "");
                   return '<option value="' + t + '"' + (t === sugg ? " selected" : "") + '>' + lib + '</option>';
                 };
                 const zonesHtml = _SIG_TYPES[fam].map(opt).join("");
-                const st = _SIG_TYPES_STRUCT[fam] || [];
+                const st = _SIG_TYPES_SUP[fam] || [];
                 if (!st.length) return zonesHtml;
                 // Deux groupes nommés : sans eux, « pilier-1 » et « remblais »
                 // se retrouvent dans la même liste plate et rien ne dit qu'ils
