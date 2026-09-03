@@ -856,6 +856,98 @@ window.setPlanTracking         = setPlanTracking;
 window.appliquerTrackingPerPlan = appliquerTrackingPerPlan;
 
 // =========================
+// 📉 v1.83.0 — PROFONDEUR DES NIVEAUX
+// =========================
+// Jusqu'ici un niveau était un ENTIER NU : -1, 0, +1. Aucune altitude nulle
+// part dans le projet (vérifié : `kmzExport.js` écrit même `alt = 0` en dur,
+// et le GPX n'émet aucun `<ele>`). Un relevé multi-étages était donc plat.
+//
+// RÉFÉRENCE : la SURFACE, négatif vers le bas (arbitrage KARMA). Le niveau 0
+// vaut -25 m par défaut, le pas entre étages 5 m. C'est plus informatif que
+// « relatif au niveau 0 » — un cataphile sait qu'il est à 20 m sous la rue —
+// et ça ne coûte rien : un profil ne lit que des DIFFÉRENCES, n'importe
+// quelle référence cohérente conviendrait.
+//
+// TROIS ÉTATS, et la distinction porte du sens :
+//   • absent            → NON RENSEIGNÉ. C'est l'état de tout plan généré
+//                         avant cette version : on ne peut pas deviner la
+//                         profondeur d'un plan existant, et l'inventer
+//                         changerait ses distances en silence.
+//   • nombre            → profondeur en mètres sous la surface (négative).
+//   • null              → SANS PROFONDEUR, explicitement. Le cas du niveau
+//                         +1 que l'import SIG utilise pour le topo
+//                         historique : ce n'est pas un étage physique au
+//                         dessus, c'est une convention d'empilement pour
+//                         séparer deux relevés du MÊME endroit. Lui donner
+//                         une altitude fausserait tout profil qui le
+//                         traverse.
+//
+// Les deux derniers états s'excluent du profil et laissent les jonctions en
+// 2D. Seul l'affichage les distingue.
+const PROF_NIVEAU0_DEFAUT = -25;   // mètres sous la surface
+const PROF_PAS_DEFAUT     = 5;     // mètres entre deux étages
+
+// Profondeurs d'un plan : { "<niveau>": nombre|null }. {} = rien renseigné.
+// Cascade : préférence per-plan d'abord (l'utilisateur), puis le plan-config
+// (ce que le générateur a écrit) — même ordre que l'échelle.
+function getPlanProfondeurs(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  if (prefs.niveauxProfondeur && typeof prefs.niveauxProfondeur === "object") {
+    return prefs.niveauxProfondeur;
+  }
+  const duPlan = window.PLAN_CONFIG && window.PLAN_CONFIG.plan
+                 && window.PLAN_CONFIG.plan.niveauxProfondeur;
+  return (duPlan && typeof duPlan === "object") ? duPlan : {};
+}
+
+function setPlanProfondeurs(planId, table) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  if (!table || typeof table !== "object") return false;
+  const propre = {};
+  Object.keys(table).forEach(function (k) {
+    if (!/^-?\d+$/.test(k)) return;
+    const v = table[k];
+    if (v === null) { propre[k] = null; return; }   // sans profondeur, explicite
+    const n = Number(v);
+    if (Number.isFinite(n)) propre[k] = n;
+  });
+  const prefs = _readPlanPrefs(pid);
+  prefs.niveauxProfondeur = propre;
+  _writePlanPrefs(pid, prefs);
+  console.log("[Config] profondeurs (plan " + pid + ") →", propre);
+  return true;
+}
+
+// Profondeur d'UN niveau, ou null si non renseignée / sans profondeur.
+// Les deux cas se traitent pareil partout : c'est le point.
+function getProfondeurNiveau(niveau, planId) {
+  const t = getPlanProfondeurs(planId);
+  const v = t[String(niveau)];
+  return Number.isFinite(v) ? v : null;
+}
+
+// Table pré-remplie proposée à la saisie : niveau 0 au défaut, puis le pas
+// de part et d'autre. Ce n'est qu'une PROPOSITION — une carrière réelle n'a
+// pas un pas régulier, chaque valeur reste éditable.
+function proposerProfondeurs(niveaux, niveau0, pas) {
+  const z0 = Number.isFinite(niveau0) ? niveau0 : PROF_NIVEAU0_DEFAUT;
+  const dz = Number.isFinite(pas) && pas > 0 ? pas : PROF_PAS_DEFAUT;
+  const out = {};
+  (Array.isArray(niveaux) ? niveaux : []).forEach(function (n) {
+    if (Number.isInteger(n)) out[String(n)] = z0 + n * dz;
+  });
+  return out;
+}
+
+window.getPlanProfondeurs   = getPlanProfondeurs;
+window.setPlanProfondeurs   = setPlanProfondeurs;
+window.getProfondeurNiveau  = getProfondeurNiveau;
+window.proposerProfondeurs  = proposerProfondeurs;
+window.PROF_NIVEAU0_DEFAUT  = PROF_NIVEAU0_DEFAUT;
+window.PROF_PAS_DEFAUT      = PROF_PAS_DEFAUT;
+
+// =========================
 // 🧭 v1.76.1 — ESTIMATION DU POINT B DE GÉOREF (demande KARMA 06/08)
 // =========================
 // Cas d'usage : on connaît le GPS d'UN seul point (A, ex. l'entrée), mais le

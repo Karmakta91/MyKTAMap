@@ -1706,6 +1706,11 @@ function _ouvrirSelecteurNiveau(btnPastille) {
         '<p style="font-size:11.5px; color:#8892a4; margin:6px 0 0 0; line-height:1.5;">' +
           window.I18n.t("config.niveaux.warn") +
         '</p>' +
+        // 📉 v1.83.0 — accès à la saisie des profondeurs. Rangé ici parce
+        // qu'une profondeur EST une propriété du niveau : la chercher
+        // ailleurs que dans l'écran des niveaux serait une devinette.
+        '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-prof" type="button"' +
+          ' style="margin-top:10px;">📉 ' + window.I18n.t("prof.btn.saisir") + '</button>' +
       '</div>' +
     '</div>';
 
@@ -1719,6 +1724,13 @@ function _ouvrirSelecteurNiveau(btnPastille) {
   overlay.addEventListener("click", function(e) { if (e.target === overlay) _cleanup(); });
   document.addEventListener("keydown", _onKey);
   document.getElementById("kta-niv-close").addEventListener("click", _cleanup);
+  const btnProf = document.getElementById("kta-niv-prof");
+  if (btnProf) {
+    btnProf.addEventListener("click", function () {
+      _cleanup();
+      if (window.ProfondeurNiveaux) window.ProfondeurNiveaux.ouvrirSaisie();
+    });
+  }
 
   // v155 : segmented en mode nowrap (scroll horizontal si trop de niveaux).
   // Scroll vers le bouton actif pour qu'il soit visible a l'ouverture.

@@ -1490,8 +1490,27 @@ window.ouvrirItinerairModal = function() {
           '<span class="kta-iti-temps-speed-hint" id="kta-iti-temps-speed-hint">(' + currentPreset.icon + ' ' + _presetLabel(currentPresetKey) + ')</span>' +
         '</div>' +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.segments") + '</strong> ' + (existingItinerary.points.length - 1) + '</div>' +
+        // 📉 v1.83.0 — accès au profil en long. Le chemin est DÉJÀ là :
+        // `existingItinerary.points` porte le niveau de chaque point depuis
+        // que `computeRoute` cesse de le jeter. Aucune plomberie en plus.
+        '<button id="kta-iti-profil" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
+          ' style="width:100%; margin-top:6px;">📉 ' + window.I18n.t("prof.profil.btn") + '</button>' +
       '</div>';
   }
+  // Délégation plutôt qu'un listener direct : ce bloc est réécrit à chaque
+  // rafraîchissement du panneau, un `addEventListener` posé sur le bouton
+  // partirait avec lui au premier recalcul.
+  if (!window._itiProfilBound) {
+    window._itiProfilBound = true;
+    document.addEventListener("click", function (e) {
+      const b = e.target && e.target.closest && e.target.closest("#kta-iti-profil");
+      if (!b || !window.ProfondeurNiveaux) return;
+      const roads = (window.getRoads && window.getRoads()) || [];
+      const iti = roads.find(function (r) { return r && r.type === "itinerary"; });
+      if (iti && Array.isArray(iti.points)) window.ProfondeurNiveaux.ouvrirProfil(iti.points);
+    });
+  }
+
   const eraseBtn = modeNavigation
     ? '<button id="kta-iti-erase" class="kta-btn kta-btn-danger" type="button" style="width:100%; margin-top:8px;">' + window.I18n.t("iti.btn.erase") + '</button>'
     : '';

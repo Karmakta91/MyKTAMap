@@ -1251,6 +1251,10 @@
        au clic — l'ordre exact n'est donc pas critique, mais rester derrière
        ses trois familles évite de dépendre d'un hasard de chargement. -->
   <script src="js/convertirObjet.js" defer></script>
+  <!-- 📉 v1.83.0 : profondeur des niveaux + profil en long. Après config.js
+       (dont il lit l'API de stockage) et pathfinder.js (dont il consomme le
+       niveau désormais rendu par computeRoute). -->
+  <script src="js/profondeurNiveaux.js" defer></script>
   <!-- 🆕 v1.9.3-B1 : module photos (backend IndexedDB pour les photos
        attachées aux POI). Self-contained, exposé via window.MyKTAMapPhotos.
        Init paresseuse (= IDB ouverte à la 1ère opération, pas au load). -->

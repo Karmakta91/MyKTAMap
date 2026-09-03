@@ -48,6 +48,55 @@ function charger(fichier, nomGlobal, prealables) {
   return api;
 }
 
+// ───────── profondeurNiveaux.js (v1.83.0) ─────────
+// 📉 PROFIL EN LONG. Deux règles qui ne se devinent pas et qu'un rendu
+// « à peu près juste » masquerait :
+//   • un point de niveau INDÉTERMINÉ (milieu de jonction) s'interpole — c'est
+//     exactement ce qu'est un puits ;
+//   • un niveau SANS PROFONDEUR en bout de chemin ne s'extrapole PAS. Le cas
+//     du +1 que l'import SIG donne au topo historique : ce n'est pas un étage
+//     au-dessus, c'est une convention d'empilement. Inventer son altitude
+//     fausserait tout profil qui le traverse.
+(function () {
+  const PN = charger("js/profondeurNiveaux.js", "ProfondeurNiveaux");
+  if (!PN) return;
+  const w = PN.__win;
+  w.APP_CONFIG = { scale: 2 };            // 2 px/m
+  const TABLE = { "0": -25, "-1": -30, "-2": -35 };
+  w.getProfondeurNiveau = function (n) {
+    const v = TABLE[String(n)];
+    return (v === undefined) ? null : v;
+  };
+  const CP = PN.construireProfil;
+
+  let r = CP([{x:0,y:0,level:0},{x:20,y:0,level:0},{x:40,y:0,level:0}]);
+  t("profil : longueur convertie en mètres par l'échelle", Math.abs(r.longueur - 20) < 1e-9);
+  t("profil : à plat, aucun dénivelé", r.montee === 0 && r.descente === 0);
+
+  r = CP([{x:0,y:0,level:0},{x:10,y:0,level:null},{x:20,y:0,level:-1}]);
+  t("profil : le point de transit d'une jonction est INTERPOLÉ",
+    r.pts[1].z === -27.5 && r.pts[1].interpole === true);
+  t("profil : 5 m de descente comptés", Math.abs(r.descente - 5) < 1e-9 && r.montee === 0);
+  t("profil : zMin / zMax justes", r.zMin === -30 && r.zMax === -25);
+
+  r = CP([{x:0,y:0,level:0},{x:10,y:0,level:-1},{x:20,y:0,level:0}]);
+  t("profil : aller-retour = 5 m de descente ET 5 m de montée",
+    Math.abs(r.descente - 5) < 1e-9 && Math.abs(r.montee - 5) < 1e-9);
+
+  r = CP([{x:0,y:0,level:1},{x:10,y:0,level:0},{x:20,y:0,level:-1}]);
+  t("profil : un niveau SANS PROFONDEUR n'est pas extrapolé", r.pts[0].z === null);
+  t("profil : et le résultat se déclare incomplet", r.incomplet === true);
+
+  w.getProfondeurNiveau = function () { return null; };
+  r = CP([{x:0,y:0,level:0},{x:10,y:0,level:-1}]);
+  t("profil : aucune profondeur → incomplet, sans planter", r.incomplet === true && r.connus === 0);
+
+  w.APP_CONFIG = { scale: 0 };
+  t("profil : plan sans échelle → null, aucun mètre inventé",
+    CP([{x:0,y:0,level:0},{x:1,y:0,level:0}]) === null);
+  t("profil : chemin trop court → null", CP([{x:0,y:0,level:0}]) === null);
+})();
+
 // ───────── convertirObjet.js (v1.82.0) ─────────
 // 🔄 RECLASSER UN OBJET. L'enjeu n'est pas cosmétique : le Pathfinder ne
 // construit son graphe QUE sur les `roads`. Un relevé importé dont tout est

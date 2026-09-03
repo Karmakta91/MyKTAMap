@@ -21478,3 +21478,51 @@ body.kta-theme-light .kta-convert-choix {
   color: #24304a;
 }
 body.kta-theme-light .kta-convert-choix:hover { background: rgba(60, 110, 200, 0.10); }
+
+/* ==============================================
+   📉 v1.83.0 — Profondeur des niveaux + profil en long
+   ============================================== */
+.kta-prof-boite, .kta-profil-boite { max-width: 520px; }
+.kta-prof-hint { font-size: 12px; color: #8892a4; line-height: 1.5; margin: 0 0 10px; }
+.kta-prof-propose { color: #8cb4ff; }
+.kta-prof-avert { color: #ffb380; margin-top: 12px; }
+.kta-prof-ligne {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; margin-bottom: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+.kta-prof-niv {
+  flex: 0 0 44px; font-weight: 700; font-size: 13px; color: #f4c542; text-align: center;
+}
+.kta-prof-val { flex: 0 0 90px; }
+.kta-prof-val:disabled { opacity: 0.35; }
+.kta-prof-unite { font-size: 12px; color: #8892a4; }
+.kta-prof-sans {
+  margin-left: auto; display: flex; align-items: center; gap: 5px;
+  font-size: 11.5px; color: #8892a4; cursor: pointer; white-space: nowrap;
+}
+.kta-prof-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+
+.kta-profil-chiffres {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  font-size: 12.5px; color: #c8d0e0; margin-bottom: 10px;
+}
+.kta-profil-chiffres b { color: #e8eaf0; }
+.kta-profil-monte b   { color: #7ee0a0; }
+.kta-profil-descend b { color: #ff9f6b; }
+.kta-profil-svg {
+  width: 100%; height: auto; display: block;
+  background: rgba(0, 0, 0, 0.22); border-radius: 8px;
+}
+.kta-profil-grille { stroke: rgba(255, 255, 255, 0.10); stroke-width: 1; }
+.kta-profil-tick   { fill: #8892a4; font-size: 9px; font-family: inherit; }
+.kta-profil-trace  {
+  fill: none; stroke: #8cb4ff; stroke-width: 2.2;
+  stroke-linejoin: round; stroke-linecap: round;
+}
+body.kta-theme-light .kta-prof-ligne { background: rgba(0, 0, 0, 0.03); border-color: rgba(0, 0, 0, 0.10); }
+body.kta-theme-light .kta-profil-svg { background: rgba(0, 0, 0, 0.05); }
+body.kta-theme-light .kta-profil-grille { stroke: rgba(0, 0, 0, 0.12); }
+body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }

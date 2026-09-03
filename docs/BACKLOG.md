@@ -190,11 +190,32 @@ Outil de **préparation de données**, hors navigateur, hors build. Lit le KML *
 
 ⚠️ **À confirmer par KARMA avant de coder** : que VisualTopo soit bien le format le plus répandu chez les cataphiles et spéléos français — c'est une **supposition** de Claude, pas une mesure. Se tromper de format ferait livrer un parser que personne n'utilise.
 
-### 3. 📉 Profondeur des niveaux + profil en long
+### 3. 📉 Profondeur des niveaux + profil en long — ✅ **LIVRÉ (v1.83.0)**
 
-**Le trou** : les niveaux sont de **simples entiers** (`Set<number>`, cf. `multilevel-pathfinding.md`) — aucune notion d'altitude ou de profondeur nulle part dans `js/` (vérifié le 03/09). Leur donner une profondeur en mètres (saisie utilisateur, stockée **hors `data/`**) ouvrirait un **profil en long** d'itinéraire : distance en abscisse, profondeur en ordonnée.
+Les niveaux ont une profondeur (référence : la **surface**, négatif vers le bas ;
+niveau 0 à **-25 m**, pas de **5 m** — arbitrage KARMA). Stockage per-plan, cascade
+sur le plan-config. Trois états : **absent** (non renseigné — l'état de tout plan
+d'avant), **nombre**, **null** (« sans profondeur », pour le +1 que l'import SIG
+donne au topo historique : ce n'est pas un étage au-dessus, c'est une convention
+d'empilement).
 
-C'est la seule des quatre pistes qui demande une **vraie conception d'interface**, pas juste un parser — d'où l'effort plus élevé. À reprendre quand 2 sera livré, ou si un utilisateur le demande.
+🩸 **Ce que le chantier a sorti au passage, et que personne ne cherchait** :
+
+1. **Les jonctions étaient mesurées à plat.** Le coût d'une arête, jonctions
+   comprises, était la distance DANS LE PLAN. Un puits dessiné sur 3 px entre deux
+   étages distants de 12 m comptait pour 3 px : les itinéraires multi-niveaux
+   étaient sous-comptés, et Dijkstra préférait systématiquement le puits au détour
+   à plat. Corrigé — mais **uniquement quand les deux niveaux ont une profondeur** :
+   un plan sans profondeurs garde son ancien calcul au pixel près.
+2. **`computeRoute` jetait le niveau.** Les nœuds du graphe le portent
+   (`nodeLevels[i]`), le retour était un `{x, y}` plat. Aucun profil n'était donc
+   calculable. C'était le vrai premier chantier, avant toute interface — le backlog
+   annonçait « une vraie conception d'interface » comme le gros du sujet, c'était
+   en partie faux.
+
+**Reste ouvert** : altitude réelle dans les exports KMZ/GPX (`kmzExport.js` écrit
+encore `alt = 0` en dur, le GPX n'émet aucun `<ele>`), et profondeur dans la fiche
+de Mode Secours — « la victime est à -37 m » change ce qu'une équipe prépare.
 
 ---
 
