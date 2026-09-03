@@ -904,6 +904,8 @@
   "gen.photos.label": "📸 Inclure les photos attachées",
   "gen.photos.loading": "(chargement…)",
   "gen.photos.rowTitle": "Embarque les photos attachées aux points dans le ZIP plan généré (data/photos/). Permet de partager le plan avec ses photos vers un autre appareil.",
+  "gen.prof.niveau0": "Profondeur du niveau 0 (m)",
+  "gen.prof.pas": "Pas entre étages (m)",
   "gen.router.badExt": "❌ Le fichier doit être un .zip, un .kmz, un .gpx, ou un export SIG (.geojson, .kml)",
   "gen.sig.titre": "🗺️ Convertir depuis un SIG",
   "gen.sig.intro": "Transforme un export de logiciel SIG (QGIS…) en plan MyKTAMap. L'app crée un fond vierge calé sur les coordonnées du fichier — tu pourras le remplacer par une vraie image ensuite via « Modifier un plan ».",

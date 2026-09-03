@@ -904,6 +904,8 @@
   "gen.photos.label": "📸 Incluir las fotos adjuntas",
   "gen.photos.loading": "(cargando…)",
   "gen.photos.rowTitle": "Integra las fotos adjuntas a los puntos en el ZIP del mapa generado (data/photos/). Permite compartir el mapa con sus fotos a otro dispositivo.",
+  "gen.prof.niveau0": "Profundidad del nivel 0 (m)",
+  "gen.prof.pas": "Separación entre plantas (m)",
   "gen.router.badExt": "❌ El archivo debe ser un .zip, un .kmz, un .gpx, o una exportación SIG (.geojson, .kml)",
   "gen.sig.titre": "🗺️ Convertir desde SIG",
   "gen.sig.intro": "Convierte una exportación de un SIG (QGIS…) en un mapa MyKTAMap. La app crea un fondo en blanco ajustado a las coordenadas del archivo — luego podrás sustituirlo por una imagen real con «Editar un mapa».",

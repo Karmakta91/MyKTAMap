@@ -236,6 +236,19 @@ function afficherPlanner() {
             </span>
           </label>
 
+          <!-- 📉 v1.83.0 (demande KARMA) : profondeur des niveaux, saisie a la
+               generation. Le plan-config porte alors une valeur d'ORIGINE qui
+               voyage avec le ZIP ; l'utilisateur peut la reprendre par plan
+               dans le menu M-LVL (la preference per-plan prime).
+               Visible seulement si multi-niveau est coche : sur un plan a un
+               seul etage, il n'y a rien a echelonner. -->
+          <div class="kta-planner-prof-row" id="pl_prof_row" style="display:none;">
+            <label class="kta-cfg-label">${window.I18n.t("gen.prof.niveau0")}</label>
+            <input class="kta-cfg-input" id="pl_prof0" type="number" step="0.5" value="-25">
+            <label class="kta-cfg-label">${window.I18n.t("gen.prof.pas")}</label>
+            <input class="kta-cfg-input" id="pl_profPas" type="number" step="0.5" min="0.5" value="5">
+          </div>
+
           <!-- Tiling V2 (depuis v149) : opt-in conversion en plan tuile.
                Visible UNIQUEMENT en mode "Modifier" (besoin du File source du V1)
                ET seulement si le plan source n'a PAS deja une section tiling
@@ -764,6 +777,13 @@ function afficherPlanner() {
   // l'etat de la case pl_multiLevel. Cache si plan single-level (pas pertinent),
   // affiche si plan multi-niveau (l'user peut tagger chaque image layer).
   const mlCbBind = document.getElementById("pl_multiLevel");
+  // 📉 v1.83.0 — les champs de profondeur suivent la case multi-niveau.
+  const _majProfRow = function () {
+    const row = document.getElementById("pl_prof_row");
+    if (row) row.style.display = (mlCbBind && mlCbBind.checked) ? "" : "none";
+  };
+  if (mlCbBind) mlCbBind.addEventListener("change", _majProfRow);
+  _majProfRow();
   if (mlCbBind) {
     mlCbBind.addEventListener("change", function() {
       const show = mlCbBind.checked;
@@ -1572,6 +1592,22 @@ function _preRemplirFormulaire(config) {
   // du champ = false implicite (retro-compat plans v147 et avant).
   const mlEl = document.getElementById("pl_multiLevel");
   if (mlEl) mlEl.checked = (plan.multiLevel === true);
+  // 📉 v1.83.0 — relire les profondeurs d'un plan qu'on rouvre pour le
+  // modifier : on deduit le niveau 0 et le pas de la table enregistree,
+  // sinon le formulaire proposerait les defauts et ecraserait la saisie.
+  const _tblProf = plan.niveauxProfondeur;
+  if (_tblProf && typeof _tblProf === "object") {
+    const z0 = Number(_tblProf["0"]);
+    const zm1 = Number(_tblProf["-1"]);
+    if (Number.isFinite(z0)) {
+      const e0 = document.getElementById("pl_prof0");
+      if (e0) e0.value = z0;
+      if (Number.isFinite(zm1)) {
+        const ep = document.getElementById("pl_profPas");
+        if (ep) ep.value = Math.abs(z0 - zm1);
+      }
+    }
+  }
 
   // 🆕 v1.17.0 — Légende plan-level : pre-fill depuis plan.customLegend si
   // présent dans le ZIP source. Sinon null (= cascade défaut MKM). Refresh
@@ -3645,6 +3681,18 @@ async function _genererZip() {
       baseImage: baseImageName, collisionImage: collisionName
     };
     if (multiLevel)     planObj.multiLevel = true;
+    // 📉 v1.83.0 — table des profondeurs, construite depuis le niveau 0 et le
+    // pas. On ne l'ecrit QUE si le multi-niveau est actif : sur un plan a un
+    // seul etage elle n'aurait aucun sens, et l'absence du champ garantit un
+    // JSON identique a celui des generateurs precedents.
+    if (multiLevel && typeof window.proposerProfondeurs === "function") {
+      const _z0 = parseFloat((document.getElementById("pl_prof0") || {}).value);
+      const _pas = parseFloat((document.getElementById("pl_profPas") || {}).value);
+      if (Number.isFinite(_z0) && Number.isFinite(_pas) && _pas > 0) {
+        // Meme range par defaut que le runtime (config.js > availableLevels).
+        planObj.niveauxProfondeur = window.proposerProfondeurs([-2, -1, 0, 1, 2], _z0, _pas);
+      }
+    }
     if (tilingManifest) planObj.tiledV2    = true;
 
     // 🧭 v1.37.0 — Calibration Nord. Embed UNIQUEMENT si ≠ 0 (rétrocompat

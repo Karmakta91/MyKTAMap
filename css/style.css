@@ -21557,3 +21557,14 @@ body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }
 body.kta-theme-light #kta-osm-mes-floater {
   background: #ffffff; color: #24304a; border-color: rgba(180, 140, 20, 0.5);
 }
+
+/* 📉 v1.83.0 — champs de profondeur du Générateur (sous la case multi-niveau) */
+.kta-planner-prof-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 8px 0 4px 26px; padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid rgba(244, 197, 66, 0.35);
+  border-radius: 0 6px 6px 0;
+}
+.kta-planner-prof-row .kta-cfg-input { width: 90px; }
+.kta-planner-prof-row .kta-cfg-label { font-size: 12px; margin: 0; }

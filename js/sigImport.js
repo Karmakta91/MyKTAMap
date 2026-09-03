@@ -1270,6 +1270,29 @@
       dataLayers: [{ id: "sig", label: opts.layerLabel || "Import SIG", file: "sig.json", visible: true }]
     };
     if (opts.multiLevel === true) planConfig.plan.multiLevel = true;
+    // 📉 v1.83.0 — profondeurs proposées d'office sur un plan importé, avec
+    // les mêmes défauts que le Générateur (niveau 0 à -25 m, pas de 5 m).
+    //
+    // 🩸 SAUF le niveau qui porte le TOPO HISTORIQUE : ce n'est pas un étage
+    // physique au-dessus, c'est une convention d'empilement pour séparer deux
+    // relevés du MÊME endroit. Lui donner une altitude fausserait tout profil
+    // en long qui le traverse — il est donc marqué `null`, « sans profondeur »,
+    // le seul état qui dise la vérité.
+    if (opts.multiLevel === true && typeof window.proposerProfondeurs === "function") {
+      const _niv = [];
+      (ingested.roads || []).concat(ingested.zones || [], ingested.structures || [])
+        .forEach(function (o) {
+          if (o && Number.isInteger(o.level) && _niv.indexOf(o.level) < 0) _niv.push(o.level);
+        });
+      if (_niv.length) {
+        const _t = window.proposerProfondeurs(_niv);
+        // Le niveau de l'historique est celui que l'outil de découpage range
+        // au-dessus de tout — `opts.historiqueNiveau` s'il est passé, +1 sinon.
+        const _histo = Number.isInteger(opts.historiqueNiveau) ? opts.historiqueNiveau : 1;
+        if (String(_histo) in _t) _t[String(_histo)] = null;
+        planConfig.plan.niveauxProfondeur = _t;
+      }
+    }
     // 🧱 Les DEUX marqueurs sont nécessaires : le drapeau `plan.tiledV2` et la
     // section `tiling`. `osmView._isV2Plan()` vérifie les deux, plus la présence
     // de `minNativeZoom` et `tileSize` — un drapeau seul ne suffirait pas.

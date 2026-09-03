@@ -904,6 +904,8 @@
   "gen.photos.label": "📸 Include attached photos",
   "gen.photos.loading": "(loading…)",
   "gen.photos.rowTitle": "Bundles the photos attached to points into the generated map ZIP (data/photos/). Lets you share the map with its photos to another device.",
+  "gen.prof.niveau0": "Depth of level 0 (m)",
+  "gen.prof.pas": "Spacing between floors (m)",
   "gen.router.badExt": "❌ The file must be a .zip, a .kmz, a .gpx, or a GIS export (.geojson, .kml)",
   "gen.sig.titre": "🗺️ Convert from GIS",
   "gen.sig.intro": "Turns a GIS export (QGIS…) into a MyKTAMap map. The app creates a blank background aligned on the file's coordinates — you can replace it with a real image later via \"Edit a map\".",
