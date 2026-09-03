@@ -1587,6 +1587,21 @@ function appliquerConfig() {
   // La valeur reste lue depuis APP_CONFIG par road.js > renderRoads()
   // peu importe d'où elle a été modifiée.
 
+  // 👣 v1.82.0 — LES RÉGLAGES DE PODOMÈTRE SONT ENFIN PERSISTÉS. Ils ne
+  // l'étaient nulle part : écrits dans APP_CONFIG en mémoire, puis effacés
+  // par le rechargement du plan-config au load suivant. Per-plan, comme
+  // l'échelle juste au-dessus — un podomètre se règle sur la foulée ET sur
+  // le terrain. (Signalé par KARMA : « quand je quitte et reviens elles
+  // sont revenues par défaut ».)
+  if (typeof window.setPlanTracking === "function") {
+    window.setPlanTracking(null, {
+      stepLength:    APP_CONFIG.stepLength,
+      stepThreshold: APP_CONFIG.stepThreshold,
+      stepCooldown:  APP_CONFIG.stepCooldown,
+      startX:        APP_CONFIG.startX,
+      startY:        APP_CONFIG.startY
+    });
+  }
   if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
   // 🐛 v1.28.0 : ne replacer le tracker au départ QUE si la position initiale
   // (startX/startY) a explicitement changé. Pour tout autre réglage (toggle

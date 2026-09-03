@@ -791,6 +791,71 @@ window.setPlanScale = setPlanScale;
 window.appliquerScalePerPlan = appliquerScalePerPlan;
 
 // =========================
+// 👣 v1.82.0 — RÉGLAGES DE PODOMÈTRE PERSISTÉS PER-PLAN
+// =========================
+// TROISIÈME OCCURRENCE DU MÊME DÉFAUT. Un réglage modifié dans ⚙️ Réglages
+// était écrit dans APP_CONFIG *en mémoire*, que `sauvegarderPrefsUtilisateur`
+// ne sauvait pas et que `buildAppConfigFromPlan` réécrivait depuis le
+// plan-config au chargement suivant. La valeur tenait jusqu'au reload, puis
+// retombait — sans rien dire.
+//   • v1.75.0 : le magnétisme (résolu en pref globale)
+//   • v1.76.1 : l'échelle (résolue en pref PER-PLAN, cf. setPlanScale)
+//   • v1.82.0 : la taille du pas, le seuil et le cooldown — signalés par
+//     KARMA : « je modifie ces valeurs et applique, quand je quitte et
+//     reviens elles sont revenues par défaut ».
+//
+// Per-plan, comme l'échelle : un podomètre se règle sur la foulée de
+// l'utilisateur ET sur le terrain du plan. Le stocker globalement
+// contaminerait tous les autres plans.
+//
+// Les bornes sont celles de l'écran de saisie (interfaceConfig.js), et le
+// refus est SEC — pas de clamp, comme setPlanScale : une valeur hors bornes
+// est un bug d'appelant, la corriger en silence le masquerait.
+const PODO_BORNES = {
+  stepLength:    { min: 0,   max: 1.5  },
+  stepThreshold: { min: 10,  max: 30   },
+  stepCooldown:  { min: 300, max: 3000 },
+  startX:        { min: 0,   max: Infinity },
+  startY:        { min: 0,   max: Infinity }
+};
+
+function setPlanTracking(planId, patch) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  if (!patch || typeof patch !== "object") return false;
+  const prefs = _readPlanPrefs(pid);
+  let n = 0;
+  Object.keys(PODO_BORNES).forEach(function (k) {
+    if (!(k in patch)) return;
+    const v = Number(patch[k]);
+    const b = PODO_BORNES[k];
+    if (!Number.isFinite(v) || v < b.min || v > b.max) return;
+    prefs[k] = v; n++;
+  });
+  if (!n) return false;
+  _writePlanPrefs(pid, prefs);
+  console.log("[Config] podomètre (plan " + pid + ") →", n, "réglage(s) enregistré(s)");
+  return true;
+}
+
+// Applique les overrides — MÊME CONTRAINTE que appliquerScalePerPlan : à
+// appeler une fois l'id du plan connu (lancerApplication), jamais depuis
+// buildAppConfigFromPlan où l'on lirait les prefs du plan PRÉCÉDENT.
+function appliquerTrackingPerPlan() {
+  const pid = window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  if (!window.APP_CONFIG) return;
+  Object.keys(PODO_BORNES).forEach(function (k) {
+    const v = Number(prefs[k]);
+    const b = PODO_BORNES[k];
+    if (!Number.isFinite(v) || v < b.min || v > b.max) return;
+    window.APP_CONFIG[k] = v;
+    console.log("[Config] " + k + " per-plan appliqué :", v);
+  });
+}
+window.setPlanTracking         = setPlanTracking;
+window.appliquerTrackingPerPlan = appliquerTrackingPerPlan;
+
+// =========================
 // 🧭 v1.76.1 — ESTIMATION DU POINT B DE GÉOREF (demande KARMA 06/08)
 // =========================
 // Cas d'usage : on connaît le GPS d'UN seul point (A, ex. l'entrée), mais le

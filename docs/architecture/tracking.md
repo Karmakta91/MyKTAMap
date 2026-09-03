@@ -839,3 +839,41 @@ la donnée corrompue, et elle repart à l'usine, avec un `console.warn`.
 
 Même raisonnement que le calibrage périmé (`main.js`) : on ne touche jamais une
 préférence valide, seulement ce qui est hors du possible.
+
+### 👣 Persistance des réglages — le défaut à trois occurrences (v1.82.0)
+
+Un réglage modifié dans ⚙️ Réglages était écrit dans `APP_CONFIG` **en mémoire**.
+`sauvegarderPrefsUtilisateur` ne le sauvait pas, et `buildAppConfigFromPlan` le
+réécrivait depuis le plan-config au chargement suivant. La valeur tenait
+jusqu'au reload, puis retombait — **sans rien dire**.
+
+| Version | Réglage perdu | Résolution |
+|---|---|---|
+| v1.75.0 | magnétisme (`snapDraw`) | pref **globale** |
+| v1.76.1 | échelle (`scale`) | pref **per-plan** (`setPlanScale`) |
+| **v1.82.0** | `stepLength`, `stepThreshold`, `stepCooldown`, `startX`, `startY` | pref **per-plan** (`setPlanTracking`) |
+
+Signalé par KARMA : « je modifie ces valeurs et applique, quand je quitte et
+reviens elles sont revenues par défaut ».
+
+**Per-plan, comme l'échelle** : un podomètre se règle sur la foulée de
+l'utilisateur *et* sur le terrain du plan. Le stocker globalement contaminerait
+tous les autres plans.
+
+**Un réglage per-plan a besoin de DEUX choses**, et l'oubli de l'une ou de
+l'autre produit exactement le même symptôme muet :
+
+1. un **écrivain** `setPlanX(planId, …)`, appelé par l'écran ⚙️ Réglages ;
+2. un **applicateur** `appliquerXPerPlan()`, appelé par `main.js` **une fois
+   l'id du plan connu** — ⚠️ jamais depuis `buildAppConfigFromPlan`, où l'on
+   lirait les prefs du plan **précédent**.
+
+Refus **sec** hors bornes, pas de clamp (même règle que `setPlanScale`) : une
+valeur hors bornes est un bug d'appelant, la corriger en silence le masquerait.
+Les bornes sont celles de l'écran de saisie.
+
+🛡️ `check-prefs-survival.js` couvre désormais les deux moitiés : pour chaque
+`appliquerXPerPlan` déclaré, il exige l'exposition, l'appel dans `main.js`,
+l'existence de l'écrivain et son appel depuis l'écran de réglages — plus la
+transmission effective des trois clés du podomètre. Les trois oublis possibles
+ont été falsifiés un par un.
