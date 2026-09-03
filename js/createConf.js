@@ -2968,7 +2968,19 @@ function _detectContentBBox(img) {
 // Génère les tuiles V2 dans le ZIP fourni. Retourne { tilesCount, manifest, dims }
 // où dims = { width, height, cropOffset?: {x, y} } reflète la zone effective tuilée
 // (post-crop si auto-crop a été appliqué).
-async function _genererTuilesV2(imageFile, zip, onProgress) {
+// 🧱 `uniformSource` : l'appelant GARANTIT que l'image source est un aplat de
+// couleur unie (c'est le cas du fond vierge généré pour les imports GPX et SIG,
+// cf. GpxImport.genererCanvasVierge). Dans ce cas, toute tuile intérieure
+// PLEINE est strictement identique aux autres, à tous les niveaux de zoom, et
+// le JPEG est déterministe : on l'encode UNE fois et on réutilise les octets.
+// Mesuré sur un relevé réel : 71 % des tuiles à 4000 px de large, 88 % à 10000,
+// 90 % à 12000 — donc autant d'encodages identiques refaits pour rien.
+// ⚠️ À NE JAMAIS activer pour le générateur de plans classique : un vrai scan
+// n'a aucune tuile identique, et le cache y produirait un plan uniformément
+// gris. Le flag est explicite pour cette raison.
+async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
+  // Octets de la tuile pleine, encodés au plus une fois.
+  let _tuileUnieBuf = null;
   // Decode initial de l'image source (HTMLImageElement, pas de canvas)
   const imgUrl = URL.createObjectURL(imageFile);
   // 🆕 v1.43.26 — try/finally garantit que le blob URL est TOUJOURS revoké,
@@ -3013,7 +3025,11 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
   // marges transparentes sont invisibles au rendu et se compressent à ~0 en
   // WebP/PNG : le crop n'apporte rien ici. Inchangé pour les scans opaques
   // à marges blanches (comportement historique v149).
-  const bbox = hasAlpha ? null : _detectContentBBox(img);
+  // 🧱 v1.82.0 — sur une source UNIE, l auto-crop est du travail toujours jeté :
+  // il downscale l image entière puis parcourt 1,4 M de pixels pour conclure
+  // que « tout est du contenu » (un aplat n a pas de marge vide), et la bbox
+  // est rejetée. On saute.
+  const bbox = (hasAlpha || uniformSource) ? null : _detectContentBBox(img);
   if (hasAlpha) console.log("[Planner] Auto-crop : skip (source transparente — coords préservées)");
   const cropX = bbox ? bbox.x : 0;
   const cropY = bbox ? bbox.y : 0;
@@ -3097,6 +3113,18 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
           }));
         }
 
+        // 🧱 Tuile PLEINE d'une source unie : on réutilise les octets déjà
+        // encodés. Une tuile de bord (partielle) garde son encodage propre —
+        // elle contient de la transparence ou du fond, pas la même chose.
+        const estPleine = (sliceWidthLvl === TILING_V2_TILE_SIZE &&
+                           sliceHeightLvl === TILING_V2_TILE_SIZE && destY === 0);
+        if (uniformSource && estPleine && _tuileUnieBuf) {
+          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, _tuileUnieBuf);
+          tilesDone++;
+          if (onProgress) onProgress(tilesDone, tilesTotal, z);
+          continue;
+        }
+
         // toBlob peut renvoyer null silencieusement si le canvas est dans un
         // état dégradé (OOM, contexte perdu). On wrap dans une Promise qui
         // throw si blob === null.
@@ -3117,6 +3145,11 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
 
         try {
           const arrBuf = await blob.arrayBuffer();
+          // Première tuile pleine d'une source unie : on garde ses octets.
+          // `slice()` pour détacher du buffer d'origine — JSZip conserve la
+          // référence, et réutiliser le même ArrayBuffer pour N entrées est
+          // sûr en lecture mais fragile si un jour il était transféré.
+          if (uniformSource && estPleine && !_tuileUnieBuf) _tuileUnieBuf = arrBuf.slice(0);
           zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, arrBuf);
         } catch(zipErr) {
           throw new Error(window.I18n.t("gen.err.tuileZip", {
@@ -5007,7 +5040,11 @@ async function _sigImpAnalyserFichier(file) {
       const eH = document.getElementById("kta-sig-imp-h");
       if (!eW || !eH || !_sigImportState) return;
       const LW = parseInt(eW.value, 10) || 4000;
-      eH.value = window.SigImport.calculerHauteurCanvas(_sigImportState.bounds, LW);
+      // Affiche les dimensions REELLES, plafond de surface compris : sinon on
+      // annoncerait une taille que la generation ne produira pas.
+      const d = window.SigImport.dimensionsCanvas(_sigImportState.bounds, LW);
+      eH.value = d.h;
+      if (d.w !== LW) eW.value = d.w;   // largeur rognee par le plafond de surface
     };
     const eWl = document.getElementById("kta-sig-imp-w");
     if (eWl) { eWl.addEventListener("input", majH); eWl.addEventListener("change", majH); }

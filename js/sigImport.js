@@ -95,6 +95,28 @@
   const MAX_FEATURES  = 60000;   // refus dur : au-delà, c'est un atlas, pas un plan
   const WARN_FEATURES = 20000;   // au-delà : on accepte, mais on prévient
 
+  // 🩸 PLAFOND DE SURFACE DU CANVAS (v1.82.0). KARMA : « ma génération depuis
+  // qu'on prend tout l'historique n'a JAMAIS abouti ». Chez moi elle passait en
+  // 10,4 s — la différence n'est pas le temps, c'est la MÉMOIRE.
+  //
+  // Un canvas 10000×11680 fait 117 Mpx, soit ~467 Mo de RGBA. Le pipeline en
+  // tient DEUX en même temps : le canvas source et l'image re-décodée pour le
+  // tuilage. Près d'un gigaoctet, pour un aplat de couleur unie. Selon la
+  // machine, ça passe ou `toBlob` renvoie `null` sans un mot.
+  //
+  // Le plafond est fixé à 16 Mpx, et ce chiffre n'est pas arbitraire : c'est
+  // l'ordre de grandeur du plafond de canvas d'iOS Safari (~16,7 Mpx). Au-delà,
+  // un iPhone rend une image VIDE. Le réglage par défaut d'avant (4000×4672 =
+  // 18,7 Mpx) le dépassait déjà — l'import SIG était donc cassé sur iPhone dans
+  // sa configuration par DÉFAUT. [Probable : plafond iOS non testé ici, mais le
+  // calcul de surface est certain.]
+  //
+  // Conséquence assumée : sur un terrain très allongé, le plan est un peu moins
+  // précis. C'est préférable à un fond vide ou à une génération qui n'aboutit
+  // jamais — et la précision d'un FOND UNI n'a de toute façon aucun sens : elle
+  // ne sert qu'à borner les coordonnées des annotations.
+  const MAX_CANVAS_MPX = 16;
+
   // =========================================================================
   // DÉTECTION DE FORMAT
   // =========================================================================
@@ -917,6 +939,36 @@
     };
   }
 
+  // 📐 v1.82.0 — DIMENSIONS FINALES DU CANVAS : la largeur demandée, la hauteur
+  // déduite du terrain, puis un plafond de SURFACE appliqué aux deux à la fois.
+  //
+  // Le plafond répond à deux problèmes distincts qui ont la même cause :
+  //   • KARMA : « ma génération depuis qu'on prend tout l'historique n'a JAMAIS
+  //     abouti ». 10000×11680 = 117 Mpx, soit ~467 Mo de RGBA — et le pipeline
+  //     en tient DEUX (le canvas, puis l'image re-décodée pour le tuilage).
+  //     Près d'un gigaoctet pour un aplat de couleur : selon la machine, ça
+  //     passe ou `toBlob` renvoie `null` sans un mot.
+  //   • iOS Safari plafonne le canvas autour de 16,7 Mpx. L'ancien réglage par
+  //     DÉFAUT (4000×4672 = 18,7 Mpx) le dépassait déjà : l'import SIG rendait
+  //     un fond vide sur iPhone dans sa configuration de sortie de boîte.
+  //     [Probable — plafond iOS non testé ici ; le calcul de surface, lui,
+  //     est certain.]
+  //
+  // On réduit les DEUX dimensions du même facteur : le plan reste à l'échelle,
+  // simplement moins fin. Pour un FOND UNI la finesse n'a aucun sens de toute
+  // façon — elle ne sert qu'à borner les coordonnées des annotations.
+  function dimensionsCanvas(bounds, W) {
+    W = Math.max(64, W || 4000);
+    let H = calculerHauteurCanvas(bounds, W);
+    const maxPx = MAX_CANVAS_MPX * 1e6;
+    if (W * H > maxPx) {
+      const k = Math.sqrt(maxPx / (W * H));
+      W = Math.max(64, Math.round(W * k));
+      H = Math.max(64, Math.round(H * k));
+    }
+    return { w: W, h: H };
+  }
+
   // 📐 v1.82.0 — HAUTEUR DU CANVAS, DÉDUITE DE LA FORME DU TERRAIN.
   // Exposée : le générateur l'utilise pour de vrai, et l'écran d'import s'en
   // sert pour AFFICHER la valeur avant de générer. Une seule implémentation —
@@ -949,6 +1001,11 @@
     // Plafond : un relevé en bande très étroite donnerait un canvas démesuré.
     // Mieux vaut un plan un peu comprimé qu'une image que le navigateur ne
     // saura jamais peindre.
+    // Plafond de HAUTEUR seul. Le plafond de SURFACE, lui, ne peut pas être
+    // appliqué ici : rogner la hauteur sans toucher à la largeur ÉCRASE le plan
+    // (mesuré : 10000×11680 devenait 10000×1600, soit un ratio de 0,16 au lieu
+    // de 1,17 — le terrain était aplati). Il vit dans `dimensionsCanvas`, qui
+    // réduit les DEUX dimensions du même facteur.
     return Math.max(64, Math.min(h, 30000));
   }
 
@@ -987,8 +1044,8 @@
     // par la rotation qu'on cherche à annuler. On CONVERGE donc : on mesure,
     // on ajuste, on remesure. Sur le cas réel, 6 tours suffisent pour tomber à
     // 0 px de débordement (1097 → 276 → 69 → 17 → 5 → 1 → 0).
-    const W = opts.canvasWidth || 4000;
-    const H = calculerHauteurCanvas(opts.bounds, W);
+    const _dim = dimensionsCanvas(opts.bounds, opts.canvasWidth || 4000);
+    const W = _dim.w, H = _dim.h;
 
     const pA_plan = { x: 0, y: H };
     const pB_plan = { x: W, y: 0 };
@@ -1039,7 +1096,9 @@
         // label figé et croit que ça a planté. Le jumeau GPX affiche une barre
         // depuis toujours — on fait pareil. C'est la première cause du « très
         // long » ressenti, avant même le coût réel.
-        const v2 = await _genererTuilesV2(baseBlob, zip, opts.onProgress || null);
+        // 4e argument : le fond d un plan SIG est TOUJOURS un aplat uni
+        // (genererCanvasVierge), donc toutes ses tuiles pleines sont identiques.
+        const v2 = await _genererTuilesV2(baseBlob, zip, opts.onProgress || null, true);
         if (v2 && v2.manifest) tilingManifest = v2.manifest;
       } else {
         console.warn("[SigImport] _genererTuilesV2 indisponible — plan généré en V1 " +
@@ -1102,7 +1161,9 @@
       zones:  ingested.zones,
       // 🏛️ v1.82.0 — 4e famille. `structures.js` lit cette clé comme les autres.
       structures: ingested.structures || []
-    }, null, 2));
+    }));   // 📦 v1.82.0 : plus de pretty-print — x2,7 en taille pour un
+                //    fichier que personne ne lit à la main, et tout ce poids
+                //    repasse ensuite dans le DEFLATE en JS pur.
     zip.file("plan-config.json", JSON.stringify(planConfig, null, 2));
 
     // Icône tracker : même reprise que gpxImport (sinon le plan importé
@@ -1115,7 +1176,12 @@
       }
     } catch(e) {}
 
-    const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+    // 📦 v1.82.0 — DEFLATE niveau 3 au lieu du 6 par défaut. Le contenu est
+    // déjà pour l essentiel des JPEG (incompressibles) ; seul le JSON gagne
+    // à être compressé, et le niveau 3 en récupère la quasi-totalité pour
+    // une fraction du temps. Le jumeau GPX, lui, écrit carrément en STORE.
+    const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE",
+                                           compressionOptions: { level: 3 } });
     return { blob: blob, stats: ingested.stats, transform: transform };
   }
 
@@ -1135,7 +1201,9 @@
     L93:                L93,
     calculerBounds:     calculerBounds,
     WARN_FEATURES:      WARN_FEATURES,
+    MAX_CANVAS_MPX:     MAX_CANVAS_MPX,
     calculerHauteurCanvas: calculerHauteurCanvas,
+    dimensionsCanvas:   dimensionsCanvas,
     analyserAttributs:  analyserAttributs,
     valeursParFamille:  valeursParFamille,
     proposerMapping:    proposerMapping,

@@ -137,15 +137,45 @@ function passe1() {
   return new Promise(function (resolve) {
     let nomCourant = null, dansPm = false, buf = null;
     let dansOuter = false, coordsOuter = "", dansCoords = false;
+    let anonymes = 0;
+    // 🩸 La passe 1 ne doit collecter QUE la couche des emprises. Sans ce
+    // suivi, le repli « (sans nom) » attrapait aussi les 13 685 polygones de
+    // PILIERS des niveaux — qui n ont pas de <name> non plus : --lister
+    // annonçait 13 588 zones au lieu de 1 471. Avant le repli, le filtre était
+    // implicite (pas de nom = ignoré) ; en le levant, il faut le rendre explicite.
+    let coucheP1 = null;
     const zones = [];
     let cible = null;
 
     lireLignes(function (l) {
-      if (l.includes("<Placemark")) { dansPm = true; buf = { nom: null }; dansOuter = false; coordsOuter = ""; }
+      if (l.indexOf("<name>") >= 0) {
+        if (/<name>niveau\d+<\/name>/.test(l))           { coucheP1 = "niveau"; return; }
+        if (/<name>topo_[^<]*<\/name>/.test(l))           { coucheP1 = "historique"; return; }
+        if (/<name>0?Zone de carri[^<]*<\/name>/.test(l)) { coucheP1 = "emprises"; return; }
+      }
+      if (coucheP1 !== "emprises") return;   // hors de la couche des emprises
+      if (l.includes("<Placemark")) { dansPm = true; buf = { nom: null, com: null }; dansOuter = false; coordsOuter = ""; }
       if (!dansPm) return;
 
-      const mn = /<name>([^<]*)<\/name>/.exec(l);
-      if (mn && !buf.nom) buf.nom = mn[1];
+      // ⚡ Garde de perf : 1 237 lignes sur 4 143 622 (0,03 %) contiennent
+      // `<name>`. Sans ce test préalable, la regex balaye les 4,1 M de lignes,
+      // dont celles de coordonnées qui font jusqu'à 437 ko.
+      if (l.indexOf("<name>") >= 0 && !buf.nom) {
+        const mn = /<name>([^<]*)<\/name>/.exec(l);
+        if (mn) buf.nom = mn[1];
+      }
+      // 🕳️ Emprises ANONYMES : 267 des 1 471 zones du relevé de Gironde n'ont
+      // aucun `<name>` — ni `nom_usage`, ni identifiant, ni rien. Ce n'est pas
+      // un défaut de lecture, la donnée source est incomplète. Sans repli elles
+      // étaient invisibles à `--lister` ET inextractables : 18 % du fichier
+      // hors d'atteinte, sans que rien ne le dise.
+      // On récupère au moins le commentaire quand il existe (10 cas), sinon un
+      // numéro d'ordre. Un nom inventé mais STABLE vaut mieux qu'une zone
+      // inaccessible — et le préfixe dit franchement que le nom vient de nous.
+      if (!buf.nom && l.indexOf("<td>commentair</td>") >= 0) {
+        const mc = /<td>commentair<\/td><td>([^<]+)<\/td>/.exec(l);
+        if (mc && mc[1].trim()) buf.com = mc[1].trim();
+      }
 
       // 🩸 Piège n°1 : viser l'anneau extérieur, pas le premier <coordinates>
       // (qui est le <Point> de placement du MultiGeometry).
@@ -164,10 +194,15 @@ function passe1() {
       }
 
       if (l.includes("</Placemark>")) {
+        if (!buf.nom && coordsOuter.trim()) {
+          anonymes++;
+          buf.nom = "(sans nom) " + (buf.com ? buf.com + " " : "") + "#" + anonymes;
+          buf.anonyme = true;
+        }
         if (buf.nom && coordsOuter.trim()) {
           const pts = parseCoords(coordsOuter);
           if (pts.length >= 4) {
-            zones.push({ nom: buf.nom, n: pts.length });
+            zones.push({ nom: buf.nom, n: pts.length, anonyme: !!buf.anonyme });
             if (ZONE && buf.nom === ZONE) cible = { nom: buf.nom, poly: pts, bbox: bboxDe(pts) };
           }
         }
@@ -302,6 +337,12 @@ function passe2(cible) {
       console.log("  " + String(z.n).padStart(6) + " sommets   " + z.nom);
     });
     console.log("\n(" + p1.zones.length + " au total — `--zone \"<nom>\"` pour en extraire une)");
+    const nAnon = p1.zones.filter(function (z) { return z.anonyme; }).length;
+    if (nAnon) {
+      console.log("⚠️  " + nAnon + " zone(s) SANS NOM dans la source (ni nom_usage, ni identifiant).");
+      console.log("    Nommées « (sans nom) #N » pour rester extractables — la numérotation");
+      console.log("    est stable tant que le fichier source ne change pas.");
+    }
     return;
   }
 
