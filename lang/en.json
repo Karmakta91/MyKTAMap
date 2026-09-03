@@ -4935,5 +4935,6 @@
   "gen.sig.grpStructures": "Structures (pillars, walls, faces)",
   "gen.sig.colonneNiveau": "Level (floor) column",
   "gen.sig.niveauAucun": "— none (everything on one floor) —",
-  "gen.sig.niveauApercu": "{n} floor(s) detected"
+  "gen.sig.niveauApercu": "{n} floor(s) detected",
+  "gen.sig.hAuto": "Computed automatically to match the terrain proportions — otherwise the plan overflows the canvas."
 }

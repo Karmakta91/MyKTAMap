@@ -4935,5 +4935,6 @@
   "gen.sig.grpStructures": "Estructuras (pilares, muros, frentes)",
   "gen.sig.colonneNiveau": "Columna del nivel (planta)",
   "gen.sig.niveauAucun": "— ninguna (todo en una sola planta) —",
-  "gen.sig.niveauApercu": "{n} planta(s) detectada(s)"
+  "gen.sig.niveauApercu": "{n} planta(s) detectada(s)",
+  "gen.sig.hAuto": "Calculada automáticamente para respetar las proporciones del terreno; de lo contrario el plano se sale del lienzo."
 }

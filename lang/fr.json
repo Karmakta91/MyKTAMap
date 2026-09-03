@@ -4935,5 +4935,6 @@
   "gen.sig.grpStructures": "Structures (piliers, murs, fronts)",
   "gen.sig.colonneNiveau": "Colonne du niveau (étage)",
   "gen.sig.niveauAucun": "— aucune (tout sur un seul étage) —",
-  "gen.sig.niveauApercu": "{n} étage(s) détecté(s)"
+  "gen.sig.niveauApercu": "{n} étage(s) détecté(s)",
+  "gen.sig.hAuto": "Calculée automatiquement pour respecter les proportions du terrain — sinon le plan sort du cadre."
 }

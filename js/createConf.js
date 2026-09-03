@@ -4832,7 +4832,7 @@ function _afficherImporterSig(prefilledFile) {
             <label class="kta-cfg-label">${T("gen.vierge.largeur")}</label>
             <input class="kta-cfg-input" id="kta-sig-imp-w" type="number" min="500" max="12000" step="100" value="4000">
             <label class="kta-cfg-label">${T("gen.vierge.hauteur")}</label>
-            <input class="kta-cfg-input" id="kta-sig-imp-h" type="number" min="500" max="12000" step="100" value="4000">
+            <input class="kta-cfg-input" id="kta-sig-imp-h" readonly title="${T('gen.sig.hAuto')}" type="number" min="500" max="12000" step="100" value="4000">
           </div>
 
           <div class="kta-cfg-label" style="margin-top:8px;">${T("gen.gpx.couleurCanvas")}</div>
@@ -4980,6 +4980,20 @@ async function _sigImpAnalyserFichier(file) {
     if (devine) selN.value = devine.cle;
     selN.addEventListener("change", _sigImpApercuNiveaux);
     _sigImpApercuNiveaux();
+
+    // 📐 v1.82.0 — la hauteur du canvas n est plus saisie : elle decoule des
+    // proportions du terrain. On l affiche pour que l utilisateur sache ce
+    // qu il va obtenir, et on la recalcule des qu il change la largeur.
+    const majH = function () {
+      const eW = document.getElementById("kta-sig-imp-w");
+      const eH = document.getElementById("kta-sig-imp-h");
+      if (!eW || !eH || !_sigImportState) return;
+      const LW = parseInt(eW.value, 10) || 4000;
+      eH.value = window.SigImport.calculerHauteurCanvas(_sigImportState.bounds, LW);
+    };
+    const eWl = document.getElementById("kta-sig-imp-w");
+    if (eWl) { eWl.addEventListener("input", majH); eWl.addEventListener("change", majH); }
+    majH();
     document.getElementById("kta-sig-imp-step-map").style.display = "";
     _sigImpRendreTables();
 

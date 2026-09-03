@@ -792,6 +792,41 @@
     };
   }
 
+  // 📐 v1.82.0 — HAUTEUR DU CANVAS, DÉDUITE DE LA FORME DU TERRAIN.
+  // Exposée : le générateur l'utilise pour de vrai, et l'écran d'import s'en
+  // sert pour AFFICHER la valeur avant de générer. Une seule implémentation —
+  // deux calculs séparés finiraient par diverger, et l'utilisateur verrait
+  // une taille annoncée différente de celle qu'il obtient.
+  function calculerHauteurCanvas(bounds, W) {
+    if (!bounds || !window.KmzExport || !window.KmzExport.buildTransform) return W;
+    const _mesurer = function (w, h) {
+      const t = window.KmzExport.buildTransform(
+        { x: 0, y: h }, { x: w, y: 0 },
+        { lat: bounds.latMin, lng: bounds.lngMin },
+        { lat: bounds.latMax, lng: bounds.lngMax });
+      const c = [[bounds.latMin, bounds.lngMin], [bounds.latMin, bounds.lngMax],
+                 [bounds.latMax, bounds.lngMin], [bounds.latMax, bounds.lngMax]]
+        .map(function (g) { return window.KmzExport.gpsToPlan(t, g[0], g[1]); });
+      const xs = c.map(function (q) { return q.x; }), ys = c.map(function (q) { return q.y; });
+      return { w: Math.max.apply(null, xs) - Math.min.apply(null, xs),
+               h: Math.max.apply(null, ys) - Math.min.apply(null, ys) };
+    };
+    let h = W, precedent = -1;
+    try {
+      for (let k = 0; k < 12; k++) {
+        const m = _mesurer(W, h);
+        if (!(m.w > 0) || !(m.h > 0)) break;
+        const suivant = Math.round(W * (m.h / m.w));
+        if (suivant === precedent || suivant === h) { h = suivant; break; }
+        precedent = h; h = suivant;
+      }
+    } catch (e) { return W; }
+    // Plafond : un relevé en bande très étroite donnerait un canvas démesuré.
+    // Mieux vaut un plan un peu comprimé qu'une image que le navigateur ne
+    // saura jamais peindre.
+    return Math.max(64, Math.min(h, 30000));
+  }
+
   // =========================================================================
   // GÉNÉRATION DU ZIP MyKTAMap
   // =========================================================================
@@ -806,8 +841,29 @@
       throw new Error("sig.err.gpxImportMissing");
     }
 
-    const W = opts.canvasWidth  || 4000;
-    const H = opts.canvasHeight || 4000;
+    // 📐 v1.82.0 — LA HAUTEUR EST DÉDUITE, PLUS SAISIE (retour KARMA du 03/09 :
+    // « si mon plan est plus grand, il sort du canvas »).
+    //
+    // 🩸 LA CAUSE : `buildTransform` à 2 points est une SIMILITUDE — rotation
+    // + échelle UNIFORME. En calant les deux coins opposés du terrain sur les
+    // deux coins opposés du canvas, elle n'a qu'un seul degré de liberté : si
+    // les proportions diffèrent, elle fait TOURNER le rectangle pour que les
+    // diagonales coïncident. Le contenu sort alors du cadre, des deux côtés.
+    // Mesuré sur un relevé réel (terrain 1199 × 1562 m, canvas carré
+    // 10000 × 10000) : les coins projetés allaient de y = -1097 à y = 11097.
+    // Plus de 1 000 px hors cadre en haut ET en bas — soit un plan faux, sans
+    // le moindre avertissement.
+    //
+    // LE CORRECTIF : l'utilisateur donne la LARGEUR, la hauteur est calculée
+    // pour que le canvas ait exactement les proportions du terrain projeté.
+    // Ce ratio ne se calcule pas à la main : la projection interne de
+    // `buildTransform` n'est pas une simple règle de trois sur les degrés, et
+    // une mesure faite avec un canvas mal proportionné est elle-même faussée
+    // par la rotation qu'on cherche à annuler. On CONVERGE donc : on mesure,
+    // on ajuste, on remesure. Sur le cas réel, 6 tours suffisent pour tomber à
+    // 0 px de débordement (1097 → 276 → 69 → 17 → 5 → 1 → 0).
+    const W = opts.canvasWidth || 4000;
+    const H = calculerHauteurCanvas(opts.bounds, W);
 
     const pA_plan = { x: 0, y: H };
     const pB_plan = { x: W, y: 0 };
@@ -893,6 +949,7 @@
     reprojeterLambert93: reprojeterLambert93,
     L93:                L93,
     calculerBounds:     calculerBounds,
+    calculerHauteurCanvas: calculerHauteurCanvas,
     analyserAttributs:  analyserAttributs,
     valeursParFamille:  valeursParFamille,
     proposerMapping:    proposerMapping,
