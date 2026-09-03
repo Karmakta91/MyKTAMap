@@ -1756,7 +1756,21 @@ window.getAllEmbeddedStructures = function() {
       // fronts data layer (alors qu'ils étaient visibles à l'écran via
       // ajouterPointsDepuisJSON qui accepte minPts = 2 pour polylines).
       if (!e || !e.type || !Array.isArray(e.points)) return false;
-      const isPolyline = (e.type === "front-1" || e.type === "front-2");
+      // 🩸 v1.82.0 — LE MEME PIEGE QUE v1.21.1, A MOITIE CORRIGE. Le test
+      // litteral ne reconnait que `front-1` et `front-2` : un type CUSTOM
+      // polyligne (`cust-...` avec geometry "polyline") retombe donc sur
+      // minPts = 3 et disparait des qu il n a que 2 points.
+      // Le commentaire ci-dessus decrit exactement le symptome qui en resulte :
+      // visible a l ecran (ajouterPointsDepuisJSON accepte 2 points pour les
+      // polylignes) mais ABSENT de tout ce qui passe par ici - Vue OSM, export
+      // KMZ/GPX, collision du pathfinder. Signale par KARMA sur un plan importe
+      // dont les fronts portaient des types custom.
+      // `structures.js > _isPolylineType` sait deja lire la geometrie declaree
+      // dans la legende. On l utilise, avec repli sur le test litteral si le
+      // module n est pas encore charge.
+      const isPolyline = (typeof window.isStructurePolylineType === "function")
+        ? window.isStructurePolylineType(e.type)
+        : (e.type === "front-1" || e.type === "front-2");
       const minPts = isPolyline ? 2 : 3;
       return e.points.length >= minPts;
     })
