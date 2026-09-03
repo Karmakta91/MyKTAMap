@@ -145,7 +145,7 @@ function passe1() {
     // implicite (pas de nom = ignoré) ; en le levant, il faut le rendre explicite.
     let coucheP1 = null;
     const zones = [];
-    let cible = null;
+    const cibles = [];
 
     lireLignes(function (l) {
       if (l.indexOf("<name>") >= 0) {
@@ -203,13 +203,20 @@ function passe1() {
           const pts = parseCoords(coordsOuter);
           if (pts.length >= 4) {
             zones.push({ nom: buf.nom, n: pts.length, anonyme: !!buf.anonyme });
-            if (ZONE && buf.nom === ZONE) cible = { nom: buf.nom, poly: pts, bbox: bboxDe(pts) };
+            // 🩸 EMPRISES HOMONYMES. Découvert sur « Grande_carrière_de_Latresne » :
+            // la couche en porte DEUX, de 6 445 et 2 582 sommets. La version
+            // précédente écrasait la première par la seconde et perdait donc
+            // les deux tiers du site, sans rien dire.
+            // Deux polygones de même nom sont deux parties d'une même carrière
+            // (multipolygone éclaté à l'export). On les GARDE TOUTES et on teste
+            // l'appartenance à l'une OU l'autre.
+            if (ZONE && buf.nom === ZONE) cibles.push({ nom: buf.nom, poly: pts, bbox: bboxDe(pts) });
           }
         }
         dansPm = false; buf = null; coordsOuter = ""; dansOuter = false; dansCoords = false;
       }
       void nomCourant;
-    }, function () { resolve({ zones: zones, cible: cible }); });
+    }, function () { resolve({ zones: zones, cibles: cibles }); });
   });
 }
 
@@ -226,9 +233,13 @@ function passe1() {
 // On suit donc l'ouverture et la fermeture de CHAQUE géométrie, et on émet
 // séparément. Le `<Point>` de placement d'un MultiGeometry est ignoré : ce
 // n'est pas du contenu, c'est une ancre d'affichage.
-function passe2(cible) {
+function passe2(cibles) {
   return new Promise(function (resolve) {
-    const bb = cible.bbox;
+    // Bbox ENGLOBANTE de toutes les emprises homonymes.
+    const bb = cibles.reduce(function (a, c) {
+      return { x0: Math.min(a.x0, c.bbox.x0), x1: Math.max(a.x1, c.bbox.x1),
+               y0: Math.min(a.y0, c.bbox.y0), y1: Math.max(a.y1, c.bbox.y1) };
+    }, { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity });
     // Marge : une galerie qui frôle l'emprise appartient au réseau. Sans elle,
     // on couperait net des tronçons au bord — l'utilisateur verrait des
     // galeries qui s'arrêtent dans le vide sans raison.
@@ -258,7 +269,11 @@ function passe2(cible) {
       stats.bboxOk++;
       let dedans = false;
       for (let k = 0; k < pts.length; k += Math.max(1, Math.floor(pts.length / 40))) {
-        if (dansPolygone(pts[k][0], pts[k][1], cible.poly)) { dedans = true; break; }
+        // Dans N'IMPORTE LAQUELLE des emprises du même nom.
+        for (let c = 0; c < cibles.length; c++) {
+          if (dansPolygone(pts[k][0], pts[k][1], cibles[c].poly)) { dedans = true; break; }
+        }
+        if (dedans) break;
       }
       // Les EMPRISES ne sont pas du contenu de plan : ce sont les contours
       // administratifs, y compris ceux des carrières voisines qui débordent
@@ -346,7 +361,7 @@ function passe2(cible) {
     return;
   }
 
-  if (!p1.cible) {
+  if (!p1.cibles.length) {
     console.error("\n❌ Zone « " + ZONE + " » introuvable.");
     const proches = p1.zones.filter(function (z) {
       return z.nom.toLowerCase().includes(ZONE.toLowerCase().slice(0, 5));
@@ -358,9 +373,16 @@ function passe2(cible) {
     process.exit(1);
   }
 
-  const bb = p1.cible.bbox;
+  // Emprise englobante, pour l'affichage récapitulatif.
+  const bb = p1.cibles.reduce(function (a, c) {
+    return { x0: Math.min(a.x0, c.bbox.x0), x1: Math.max(a.x1, c.bbox.x1),
+             y0: Math.min(a.y0, c.bbox.y0), y1: Math.max(a.y1, c.bbox.y1) };
+  }, { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity });
   const lat = (bb.y0 + bb.y1) / 2;
-  console.log("Zone      : " + p1.cible.nom + " — contour de " + p1.cible.poly.length + " sommets");
+  const nSom = p1.cibles.reduce(function (n, c) { return n + c.poly.length; }, 0);
+  console.log("Zone      : " + p1.cibles[0].nom +
+              (p1.cibles.length > 1 ? "  (" + p1.cibles.length + " emprises distinctes, fusionnées)" : "") +
+              " — " + nSom + " sommets au total");
   console.log("Emprise   : " + Math.round((bb.x1 - bb.x0) * 111320 * Math.cos(lat * Math.PI / 180)) +
               " m (E-O) × " + Math.round((bb.y1 - bb.y0) * 111320) + " m (N-S)");
   console.log("Marge     : " + MARGE_M + " m autour du contour");
@@ -371,7 +393,7 @@ function passe2(cible) {
   } else { console.log(""); }
 
   process.stdout.write("Passe 2/2 — filtrage des galeries… ");
-  const p2 = await passe2(p1.cible);
+  const p2 = await passe2(p1.cibles);
   console.log("terminé\n");
 
   const st = p2.stats;
@@ -395,7 +417,7 @@ function passe2(cible) {
     };
   });
   if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
-  const dest = path.join(OUT_DIR, p1.cible.nom.replace(/[^\w.-]+/g, "_") + ".geojson");
+  const dest = path.join(OUT_DIR, p1.cibles[0].nom.replace(/[^\w.-]+/g, "_") + ".geojson");
   fs.writeFileSync(dest, JSON.stringify({ type: "FeatureCollection", features: feats }));
 
   const mo = (fs.statSync(dest).size / 1048576).toFixed(2);
