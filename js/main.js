@@ -1020,6 +1020,26 @@ function _propagerGeorefVersKmzExport(planId) {
     }
     window.KmzExport.setCalibration(planId, georef);
     console.log("[Main] 🌐 Géoréférencement plan.georef propagé vers KmzExport (planId=" + planId + ")");
+
+    // 🩸 v1.82.0 — ET DANS LE REGISTRE, parce que le HOME ne peut pas lire
+    // `PLAN_CONFIG` : aucun plan n'y est chargé. Le widget OSM du HOME ne
+    // listait donc que les plans dont le géoréf avait atteint le
+    // localStorage — un plan importé du SIG, pourtant parfaitement calé par
+    // construction, restait invisible (signalé par KARMA).
+    //
+    // `osmView.js` (la modale, en mode plan) lit DEUX sources depuis la
+    // v1.39.2 : `PLAN_CONFIG.plan.georef` puis le localStorage. Le widget du
+    // HOME n'a jamais reçu l'équivalent, et son en-tête érigeait le manque en
+    // « limitation acceptable ». Elle ne l'est plus : l'import SIG produit
+    // des plans dont le géoréf est calculé, que l'utilisateur n'a aucune
+    // raison de ressaisir à la main.
+    //
+    // Le registre est le seul endroit que le HOME lit déjà. On y dépose donc
+    // le géoréf du plan — sa donnée propre, pas une préférence : le
+    // localStorage reste la voix de l'utilisateur, et garde la priorité.
+    if (window.PlanRegistry && typeof window.PlanRegistry.addOrUpdate === "function") {
+      window.PlanRegistry.addOrUpdate({ id: planId, georef: georef });
+    }
   } catch(e) {
     console.warn("[Main] _propagerGeorefVersKmzExport :", e);
   }

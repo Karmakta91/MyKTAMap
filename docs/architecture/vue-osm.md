@@ -797,3 +797,37 @@ passent. **Le rendu n'a PAS pu être exécuté** : le widget OSM reste bloqué s
 « ⏳ Préparation… » en headless — il lui faut une connectivité réelle pour les
 tuiles. C'est une limite du harnais, pas du correctif : **aucune** partie de la
 Vue OSM n'est testable automatiquement aujourd'hui. À valider sur l'appareil.
+
+---
+
+## 8. Le géoréf a TROIS sources, et le HOME n'en lisait qu'une (v1.82.0)
+
+| Source | Contenu | Lue par la modale (`osmView`) | Lue par le widget HOME |
+|---|---|---|---|
+| `PLAN_CONFIG.plan.georef` | géoréf embarqué dans le ZIP | ✅ depuis v1.39.2 | ❌ *impossible* — aucun plan chargé au HOME |
+| `KmzExport.getCalibration(id)` | saisie utilisateur (localStorage) | ✅ depuis v1.39.2 | ✅ |
+| `PlanRegistry` → `plan.georef` | **🆕 v1.82.0** — déposé au chargement | — | ✅ second recours |
+
+🩸 **Le même défaut avait été trouvé et corrigé d'un seul côté.** `osmView.js`
+a gagné sa cascade à deux sources en v1.39.2 (« je vois pas l'icône »). Le
+widget du HOME ne l'a jamais reçue, et son en-tête érigeait le manque en
+**« limitation acceptable »** : l'utilisateur n'avait qu'à saisir sa géoréf une
+fois en mode plan.
+
+C'était défendable tant qu'une géoréf se saisissait à la main. **L'import SIG
+l'a rendu faux** : il produit des plans calés *par construction*, dont personne
+n'a de raison de ressaisir les points — et c'étaient précisément ceux qui
+manquaient à la liste (signalé par KARMA : « les plans issus de SIG
+n'apparaissent pas dans la liste vue OSM »).
+
+**Correction.** Le HOME ne peut pas lire `PLAN_CONFIG`. Le registre, lui, il le
+lit déjà : `main.js > _propagerGeorefVersKmzExport` y dépose donc le géoréf du
+plan à son chargement, et `_listGeorefPlans` s'en sert en second recours.
+
+Priorité inchangée : **le localStorage d'abord**. Il porte la voix de
+l'utilisateur ; le registre ne porte que la donnée propre du plan.
+
+⚠️ **Ce qui reste hors d'atteinte** : un plan enregistré sans avoir jamais été
+chargé. En pratique un ZIP importé est chargé dans la foulée, donc le cas se
+limite aux plans serveur déclarés dans `data/index.json` — qui pourraient
+porter leur géoréf dans cette déclaration si le besoin se présente.

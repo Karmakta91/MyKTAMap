@@ -17,12 +17,19 @@
 //     - Liste des plans : `PlanRegistry.getAll()` (en mémoire)
 //     - Georef de chaque plan : `KmzExport.getCalibration(planId)` (LS session)
 //       Note : pas de fallback `PLAN_CONFIG.plan.georef` car PLAN_CONFIG est
-//       VIDE en HOME (aucun plan chargé). Donc les plans qui ont leur georef
-//       UNIQUEMENT dans le plan-config.json embedded (et JAMAIS saisie via
-//       Réglages map mode) ne seront pas listés ici. Limitation acceptable :
-//       l'user qui veut utiliser le widget HOME doit avoir saisi sa georef
-//       au moins 1 fois via Réglages map mode → propagée automatiquement
-//       en LS par `_propagerGeorefVersKmzExport` au prochain load du plan.
+//       VIDE en HOME (aucun plan chargé). Le géoréf embarqué dans le
+//       plan-config.json ne peut donc pas être lu ici.
+//
+//       🩸 v1.82.0 — CE MANQUE ÉTAIT ÉRIGÉ EN « LIMITATION ACCEPTABLE » :
+//       l'utilisateur devait avoir saisi sa géoréf au moins une fois en mode
+//       plan. C'était défendable tant que la géoréf se saisissait à la main.
+//       L'import SIG produit désormais des plans calés PAR CONSTRUCTION, que
+//       personne n'a de raison de ressaisir — et ils étaient précisément ceux
+//       qui manquaient à cette liste (signalé par KARMA).
+//       Le géoréf du plan est donc déposé dans le REGISTRE à son chargement
+//       (main.js), seul endroit que le HOME lit déjà, et `_listGeorefPlans`
+//       s'en sert en second recours. `osmView.js` lisait ses deux sources
+//       depuis la v1.39.2 ; le widget du HOME n'avait jamais suivi.
 //
 // CONTENU AFFICHÉ
 //   v1.40.0 : Tile layer OSM + markers pointA/pointB georef + ligne d'échelle
@@ -477,7 +484,13 @@
     const out = [];
     for (const p of all) {
       if (!p || !p.id) continue;
-      const g = window.KmzExport.getCalibration(p.id);
+      // 🩸 v1.82.0 — DEUX SOURCES, comme `osmView.js` depuis la v1.39.2.
+      // Le localStorage porte la saisie de l'utilisateur et garde donc la
+      // priorité ; le registre porte le géoréf embarqué dans le plan, déposé
+      // à son chargement (cf. main.js > _propagerGeorefVersKmzExport). Sans
+      // ce second recours, un plan importé du SIG — calé par construction —
+      // n'apparaissait pas dans cette liste.
+      const g = window.KmzExport.getCalibration(p.id) || p.georef;
       if (_isValidGeoref(g)) {
         out.push({ id: p.id, name: (window.PlanRegistry.displayName ? window.PlanRegistry.displayName(p) : (p.name || p.id)), georef: g, lastOpened: p.lastOpened || 0 });
       }
