@@ -4954,6 +4954,16 @@ async function _sigImpAnalyserFichier(file) {
              + '📍 ' + bounds.latMin.toFixed(5) + ', ' + bounds.lngMin.toFixed(5)
              + ' → ' + bounds.latMax.toFixed(5) + ', ' + bounds.lngMax.toFixed(5)
              + ' (Δ ' + dLat.toFixed(5) + '° × ' + dLng.toFixed(5) + '°)</div>';
+    // ⚠️ v1.82.0 — au-dela du seuil d alerte, on PREVIENT au lieu de refuser.
+    // Le refus sec a 20 000 bloquait un releve reel pour 3 % de depassement.
+    // Ce qui reste non mesure, c est le RENDU du plan une fois importe : on le
+    // dit franchement plutot que de decider a la place de l utilisateur.
+    const _nSig = (data.points||[]).length + (data.lignes||[]).length + (data.polygones||[]).length;
+    if (window.SigImport.WARN_FEATURES && _nSig > window.SigImport.WARN_FEATURES) {
+      html += '<div style="color:#ffb380; font-size:12px; margin-top:6px; padding:6px 8px;'
+            + ' background:rgba(255,179,128,0.08); border-left:3px solid rgba(255,179,128,0.55);'
+            + ' border-radius:3px;">⚠️ ' + T("gen.sig.beaucoupFeatures", { n: _nSig }) + '</div>';
+    }
     if (_sigReproj > 0) {
       html += '<div style="color:#8cb4ff; font-size:12px; margin-top:6px; padding:6px 8px;'
             + ' background:rgba(140,180,255,0.08); border-left:3px solid rgba(140,180,255,0.5);'

@@ -58,14 +58,20 @@ const OUT_DIR = opt("out", "sorties-atlas");
 const ZONE    = opt("zone", null);
 const LISTER  = A.includes("--lister");
 const MARGE_M = parseFloat(opt("marge", "50"));   // cf. « galeries à cheval »
-// Quelles couches verser dans le plan. Le fichier Gironde en porte deux qui
-// se recouvrent : le relevé STRUCTURÉ par étages (`niveau1`…`niveau6`) et un
-// TOPO HISTORIQUE, bien plus dense — sur Citon_Graves_RD, 16 612 features
-// contre 3 890 pour les six niveaux réunis. Les mélanger dépasse la limite
-// de l'import ET superpose deux relevés du même endroit.
-// Défaut « niveaux » : le relevé structuré, celui qui porte l'information
-// d'étage dont le multi-niveau de l'app a besoin.
-const COUCHES = opt("couches", "niveaux");   // niveaux | historique | tout
+// Quelles couches verser dans le plan. Le fichier Gironde en porte deux qui se
+// recouvrent : le relevé STRUCTURÉ par étages (`niveau1`…`niveau6`) et un TOPO
+// HISTORIQUE, bien plus dense — sur Citon_Graves_RD, 16 612 features contre
+// 3 917 pour les six niveaux réunis.
+//
+// 🕰️ v2 (demande KARMA) : l'historique est désormais inclus PAR DÉFAUT, et
+// rangé sur un ÉTAGE À LUI. C'est ce qui permet de le manipuler dans l'app
+// comme n'importe quel niveau — l'afficher, le masquer, lui donner sa couleur —
+// au lieu de le superposer aveuglément au relevé moderne. Sans étage propre,
+// deux relevés du même endroit se seraient mélangés sans moyen de les séparer.
+// Niveau +1 par défaut : au-dessus de tout ce qui existe (les étages réels
+// sont négatifs), donc jamais en collision.
+const COUCHES   = opt("couches", "tout");        // niveaux | historique | tout
+const NIV_HISTO = parseInt(opt("historique-niveau", "1"), 10);
 
 if (!LISTER && !ZONE) {
   console.error("Usage : node scripts/decouper-atlas.js --zone \"<nom>\"  |  --lister");
@@ -229,7 +235,9 @@ function passe2(cible) {
       if (!dedans || !gardee) return;
       retenus.push({ nom: nomPm, geom: g, pts: pts, niveau: niveau, couche: couche });
       stats.retenus++;
-      const cle = (couche === "niveau") ? ("niveau " + niveau) : couche;
+      const cle = (couche === "niveau") ? ("niveau " + niveau)
+                : (couche === "historique") ? ("historique (niv " + NIV_HISTO + ")")
+                : couche;
       stats.parNiveau[cle] = (stats.parNiveau[cle] || 0) + 1;
     }
 
@@ -239,7 +247,7 @@ function passe2(cible) {
       // emprises. Sans changer de contexte, tout retombait en « -6 ».
       const mf = /<name>niveau(\d+)<\/name>/.exec(l);
       if (mf) { niveau = -parseInt(mf[1], 10); couche = "niveau"; return; }
-      if (/<name>topo_[^<]*<\/name>/.test(l))          { couche = "historique"; niveau = null; return; }
+      if (/<name>topo_[^<]*<\/name>/.test(l))          { couche = "historique"; niveau = NIV_HISTO; return; }
       if (/<name>0?Zone de carri[^<]*<\/name>/.test(l)) { couche = "emprises";   niveau = null; return; }
 
       if (l.includes("<Placemark")) { dansPm = true; nomPm = null; geom = null; coords = ""; stats.lus++; }
@@ -315,7 +323,11 @@ function passe2(cible) {
   console.log("Emprise   : " + Math.round((bb.x1 - bb.x0) * 111320 * Math.cos(lat * Math.PI / 180)) +
               " m (E-O) × " + Math.round((bb.y1 - bb.y0) * 111320) + " m (N-S)");
   console.log("Marge     : " + MARGE_M + " m autour du contour");
-  console.log("Couches   : " + COUCHES + "   (niveaux | historique | tout)\n");
+  console.log("Couches   : " + COUCHES + "   (niveaux | historique | tout)");
+  if (COUCHES !== "niveaux") {
+    console.log("Historique: rangé au niveau " + (NIV_HISTO >= 0 ? "+" + NIV_HISTO : NIV_HISTO) +
+                "  (--historique-niveau pour changer)\n");
+  } else { console.log(""); }
 
   process.stdout.write("Passe 2/2 — filtrage des galeries… ");
   const p2 = await passe2(p1.cible);
@@ -349,11 +361,13 @@ function passe2(cible) {
   console.log("\n📄 " + dest + "  (" + mo + " Mo, " + feats.length + " features)");
 
   // Le seuil de l'app, dit ICI plutôt que découvert à l'import.
-  const MAX = 20000;
+  // Aligne sur sigImport : avertissement a 20 000, refus dur a 60 000.
+  const MAX = 60000, WARN = 20000;
   if (feats.length > MAX) {
     console.log("\n⚠️  " + feats.length + " features > la limite de " + MAX + " de l'import SIG.");
     console.log("   Ce fichier sera REFUSÉ par l'app. Pistes, dans l'ordre :");
-    console.log("     • `--couches niveaux` (défaut) : le relevé structuré seul ;");
+    console.log("     • `--couches niveaux` : le relevé structuré SEUL, sans le topo");
+    console.log("       historique — c'est lui qui pèse le plus lourd ;");
     console.log("     • `--marge 0` : sans la marge de sécurité autour du contour ;");
     console.log("     • sinon la carrière est trop dense pour un seul plan, il faut");
     console.log("       la découper en secteurs.");

@@ -74,9 +74,26 @@
   const LAT_MAX = 90;
   const LNG_MAX = 180;
 
-  // Au-delà, on refuse d'ingérer : un fichier SIG de cette taille ferait
-  // fondre le navigateur au rendu Leaflet bien avant l'export.
-  const MAX_FEATURES = 20000;
+  // 🎚️ v1.82.0 — DEUX SEUILS, plus un refus sec à 20 000.
+  //
+  // Le seuil unique venait d'une crainte raisonnable — « un fichier SIG de
+  // cette taille ferait fondre le navigateur au rendu Leaflet » — mais il n'a
+  // jamais été confronté à un relevé réel. Il l'a été le 03/09, sur une
+  // carrière de Gironde dont le relevé structuré ET le topo historique font
+  // ensemble 20 664 objets : refusés pour 3 % de dépassement, alors que
+  // l'import les encaisse sans peine (mesuré : parse 217 ms, génération du ZIP
+  // 1,6 s, 137 Mo de heap).
+  //
+  // Refuser à 3 % près sur un chiffre jamais vérifié, c'est arbitraire. Mais
+  // le supprimer serait pire : un atlas départemental entier (245 000 objets)
+  // doit toujours être arrêté net.
+  //
+  // ⚠️ CE QUI N'EST PAS MESURÉ : le RENDU Leaflet du plan une fois importé.
+  // C'était la crainte d'origine, et elle reste entière — l'import qui tient
+  // ne dit rien de la carte qui suit. D'où l'avertissement : on prévient
+  // l'utilisateur au lieu de décider à sa place.
+  const MAX_FEATURES  = 60000;   // refus dur : au-delà, c'est un atlas, pas un plan
+  const WARN_FEATURES = 20000;   // au-delà : on accepte, mais on prévient
 
   // =========================================================================
   // DÉTECTION DE FORMAT
@@ -1111,6 +1128,7 @@
     reprojeterLambert93: reprojeterLambert93,
     L93:                L93,
     calculerBounds:     calculerBounds,
+    WARN_FEATURES:      WARN_FEATURES,
     calculerHauteurCanvas: calculerHauteurCanvas,
     analyserAttributs:  analyserAttributs,
     valeursParFamille:  valeursParFamille,
