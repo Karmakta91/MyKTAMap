@@ -869,3 +869,65 @@ tomber la surface, retirer la valeur absolue fait tomber le sens de parcours.
 
 *C'est la leçon de l'import SIG — 34 tests verts qui ne prouvaient que la
 cohérence du code avec ses propres suppositions.*
+
+---
+
+## 10. Largeur des fronts : la Vue OSM applique la loi du mode plan (v1.83.0)
+
+KARMA : « en mode OSM c'était pas mal, mais on peut faire aussi bien qu'en mode
+plan, ça reste encore limite ».
+
+🩸 **Ce qui tenait lieu de solution était un accident.** Le commentaire posé en
+v1.82.0 le disait déjà : le rendu convenait parce que le repli des types
+personnalisés tombe sur le gabarit « mur » (`weight: 2`). Consigné au backlog
+plutôt que corrigé à l'aveugle — demander le `weight` au canon aurait ramené
+10 px et refait l'aplat.
+
+### Une loi, trois consommateurs
+
+La loi est désormais formulée sur la seule grandeur que les trois partagent :
+des **pixels rendus par mètre de terrain**.
+
+| Contexte | px/m |
+|---|---|
+| Écran, mode plan | `APP_CONFIG.scale × 2^zoom` |
+| Export PNG/PDF | `APP_CONFIG.scale × résolution` |
+| **Vue OSM** | `1 / résolution Web Mercator` |
+
+Les deux premiers passent par une échelle de plan ; **la Vue OSM n'en a pas** —
+elle travaille en lat/lng. D'où `window.ktaPxParMetreOsm(map)`, qui calcule la
+résolution Web Mercator du moment.
+
+⚠️ **La latitude compte autant que le zoom** : `156543,034 × cos(lat) / 2^zoom`.
+Un même zoom couvre ~40 % de moins au nord de la France qu'à l'équateur. La
+calculer, plutôt que de tabler sur des paliers de zoom réglés à la main, est ce
+qui rend la largeur juste **partout** et pas seulement là où on a réglé.
+
+### Ce que ça change, chiffré (44,8°N)
+
+| Zoom | m/px | Avant | Après |
+|---|---|---|---|
+| 15 | 3,39 | 6 px | **1 px** |
+| 16 | 1,69 | 6 px | **1 px** |
+| 17 | 0,85 | 6 px | **1,8 px** |
+| 18 | 0,42 | 6 px | **3,5 px** |
+| 19 | 0,21 | 6 px | **7,1 px** |
+
+Le `6` fixe était juste à **un seul** niveau de zoom. Il est six fois trop large
+là où la carrière tient dans l'écran — précisément là où l'aplat se forme.
+
+### Mise en œuvre
+
+Même technique qu'en mode plan : on **mute `options.weight` en place** (le
+renderer canvas le relit à chaque frame), puis une repeinture **non clippée**
+(`_redrawBounds = null` avant `_redraw()`, cf. `gotchas.md`). Aucun `setStyle`,
+intenable à ce volume.
+
+Reposée à chaque **re-rendu** en plus du `zoomend` : recréer les layers remet le
+`weight` du gabarit. Le widget HOME traite le plan principal **et chaque plan
+empilé** — n'en faire qu'un laisserait les autres en aplat.
+
+🛡️ **Prouvé, et le test lui-même a été corrigé après falsification** : il ne
+comparait les deux chemins qu'à **une seule densité**, si bien qu'une copie ayant
+dérivé sur les **bornes** (plafond à 12 px au lieu de 14) passait au travers. Il
+balaie désormais 8 densités, bornes comprises — et la dérive tombe.

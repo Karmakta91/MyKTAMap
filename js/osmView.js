@@ -428,13 +428,54 @@
   }
 
 
-  // 🩸 v1.82.0 — `_majLargeurFrontOsm` et `_largeurFrontOsm` ont ete RETIRES :
-  // ils posaient une variable CSS que personne ne lit (la Vue OSM est elle aussi
-  // en `preferCanvas: true`, l.2194). Le rendu actuel convient parce que le
-  // repli l.1332 fait tomber les types custom sur le gabarit « mur »
-  // (weight 2) - c est un HEUREUX ACCIDENT, pas un choix. Consigne dans le
-  // BACKLOG plutot que corrige a l aveugle : demander le weight au canon
-  // ramenerait 10 px et referait l aplat.
+  // 🩸 v1.83.0 — LA VUE OSM APPLIQUE LA MÊME LOI QUE LE MODE PLAN.
+  //
+  // En v1.82.0, une première tentative posait une variable CSS que personne
+  // ne lit (la Vue OSM est elle aussi en `preferCanvas`) : retirée. Le rendu
+  // restait acceptable parce que le repli des types custom tombe sur le
+  // gabarit « mur » (weight 2) — un HEUREUX ACCIDENT, consigné au backlog
+  // plutôt que corrigé à l'aveugle. KARMA : « en mode OSM c'était pas mal,
+  // mais ça reste encore limite ».
+  //
+  // La loi est maintenant formulée en PIXELS PAR MÈTRE (structures.js), donc
+  // utilisable ici : la Vue OSM n'a pas d'échelle de plan, mais elle sait sa
+  // résolution Web Mercator — laquelle dépend de la LATITUDE autant que du
+  // zoom. Un front de 1,5 m fait 1 px quand la carrière tient dans l'écran,
+  // 7 px quand on est dessus. Plus aucun palier réglé à la main.
+  //
+  // Même technique qu'en mode plan : on mute `options.weight` en place — le
+  // renderer canvas le relit à chaque frame — puis on force UNE repeinture
+  // non clippée. Aucun `setStyle`, intenable à ce volume.
+  function _majLargeurFrontsOsm() {
+    if (!_osmMap || !_structLayer) return;
+    if (typeof window.ktaPxParMetreOsm !== "function") return;
+    const pxm = window.ktaPxParMetreOsm(_osmMap);
+    const w = (typeof window.ktaLargeurFrontPourPxParMetre === "function")
+      ? window.ktaLargeurFrontPourPxParMetre(pxm) : null;
+    if (!w) return;
+    const wTrace = (typeof window.ktaLargeurTracePourRatio === "function")
+      ? Math.max(1, Math.round(w * 0.6 * 10) / 10) : w;
+    try {
+      _structLayer.eachLayer(function (lay) {
+        // Les surfaces gardent leur trait : un pilier se lit à son
+        // remplissage, pas à l'épaisseur de son contour.
+        if (!lay || !lay.options || lay.options.fill === true) return;
+        lay.options.weight = w;
+      });
+      if (_roadLayer && typeof _roadLayer.eachLayer === "function") {
+        _roadLayer.eachLayer(function (lay) {
+          if (!lay || !lay.options || lay.options.fill === true) return;
+          lay.options.weight = wTrace;
+        });
+      }
+    } catch (e) { return; }
+    // ⚠️ `_redrawBounds` d'abord : sinon `_draw` clippe sur une demande en
+    // attente et ne repeint qu'un rectangle (cf. gotchas.md).
+    try {
+      const r = _osmMap._renderer;
+      if (r && typeof r._redraw === "function") { r._redrawBounds = null; r._redraw(); }
+    } catch (e) {}
+  }
 
   function _isLevelAllowed(p) {
     const cfg = window.APP_CONFIG || {};
@@ -1365,6 +1406,9 @@
     if (_structVisible) {
       if (!_structLayer) _renderStructures();
       else if (!_osmMap.hasLayer(_structLayer)) _osmMap.addLayer(_structLayer);
+      // Première largeur posée dès que les structures existent : sans cet
+      // appel, elle n'arriverait qu'au premier geste de zoom.
+      _majLargeurFrontsOsm();
     } else if (_structLayer && _osmMap.hasLayer(_structLayer)) {
       _osmMap.removeLayer(_structLayer);
     }
@@ -1580,6 +1624,9 @@
     if (_itiVisible)    _renderItinerary();
     if (_zoneVisible)   _renderZones();
     if (_structVisible) _renderStructures();
+    // Un re-rendu recrée les layers : la largeur du gabarit revient, il
+    // faut la reposer. Sinon elle ne serait juste qu'au prochain zoom.
+    _majLargeurFrontsOsm();
     if (_secoursVisible && _hasActiveSecoursScenario()) _renderSecoursLayer();
   }
 
@@ -2161,6 +2208,10 @@
   // Throttle implicite via Leaflet (events firés une fois par cran de zoom/pan).
   function _onMoveEnd() {
     if (!_osmMap) return;
+    // 📏 v1.83.0 — la largeur des fronts suit le zoom. AVANT le retour
+    // anticipé ci-dessous : il ne concerne que le tuilage, et un plan non
+    // tuilé a exactement le même besoin.
+    _majLargeurFrontsOsm();
     const tiling = window.PLAN_CONFIG && window.PLAN_CONFIG.tiling;
     if (!tiling) return;
     const targetZ = _targetLevelForZoom(_osmMap.getZoom(), tiling);
@@ -2259,6 +2310,9 @@
     _renderLevelsBar();
     if (_zoneVisible)   _renderZones();
     if (_structVisible) _renderStructures();
+    // Un re-rendu recrée les layers : la largeur du gabarit revient, il
+    // faut la reposer. Sinon elle ne serait juste qu'au prochain zoom.
+    _majLargeurFrontsOsm();
 
     // 10) 🆕 v1.40.34 (Synergie A v2) — Layer Mode Secours auto-affiché si
     // un scénario est actif au moment de l'ouverture de la modale. Sinon

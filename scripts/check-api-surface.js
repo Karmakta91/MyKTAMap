@@ -48,6 +48,57 @@ function charger(fichier, nomGlobal, prealables) {
   return api;
 }
 
+// ───────── largeur des fronts : UNE loi, TROIS consommateurs (v1.83.0) ─────────
+// 📏 Le mode plan, l'export PNG/PDF et la Vue OSM doivent donner la MÊME
+// largeur à densité de pixels égale. Les deux premiers passent par l'échelle
+// du plan, la Vue OSM par sa résolution Web Mercator — mais la règle est la
+// même, et c'est ce qu'on vérifie ici. Trois copies dériveraient ; une seule
+// formule ne le peut pas.
+(function () {
+  const src = fs.readFileSync("js/structures.js", "utf8");
+  const a = src.indexOf("const FRONT_LARGEUR_M");
+  const b = src.indexOf("function majLargeurFronts()");
+  if (a < 0 || b < 0) { t("largeur fronts : bloc de la loi localisé", false); return; }
+  const win = { APP_CONFIG: { scale: 2.764 } };   // px/m d'un relevé réel
+  const ctx = vm.createContext({ window: win, Math: Math, Number: Number, console: { log(){} } });
+  try { vm.runInContext("var window = this.window;" + src.slice(a, b), ctx); }
+  catch (e) { t("largeur fronts : la loi s'évalue", false); return; }
+  t("largeur fronts : la loi s'évalue", true);
+  const map = function (z, lat) {
+    return { getZoom: function () { return z; }, getCenter: function () { return { lat: lat }; } };
+  };
+
+  // Résolution Web Mercator : valeur de référence connue, pas déduite du code.
+  t("px/m : équateur au zoom 0 = 1/156543 (valeur canonique)",
+    Math.abs(win.ktaPxParMetreOsm(map(0, 0)) - 1 / 156543.03392804097) < 1e-12);
+  const r45 = win.ktaPxParMetreOsm(map(10, 45)), r0 = win.ktaPxParMetreOsm(map(10, 0));
+  t("px/m : la LATITUDE compte — 45°N vaut 1/cos(45) fois l'équateur",
+    Math.abs(r45 / r0 - 1 / Math.cos(45 * Math.PI / 180)) < 1e-9);
+
+  // 🩸 LE test qui empêche les trois consommateurs de diverger — et il doit
+  // BALAYER PLUSIEURS DENSITÉS. Une première version n'en échantillonnait
+  // qu'une (2,764 px/m) : une copie qui aurait dérivé sur les BORNES, par
+  // exemple un plafond à 12 px au lieu de 14, passait au travers, puisque les
+  // deux chemins concordent partout entre les bornes. Falsifié, justement.
+  const DENSITES = [0.005, 0.5, 1, 2.764, 9, 12, 50, 500];
+  const divergentes = DENSITES.filter(function (d) {
+    // Même densité exprimée des deux façons : par le ratio du mode plan
+    // (échelle 2,764 px/m × ratio) et directement en px/m pour la Vue OSM.
+    return win.ktaLargeurFrontPourRatio(d / 2.764) !== win.ktaLargeurFrontPourPxParMetre(d);
+  });
+  t("largeur : plan et Vue OSM concordent sur " + DENSITES.length + " densités, bornes comprises",
+    divergentes.length === 0);
+  t("largeur : plus de pixels par mètre = trait plus large",
+    win.ktaLargeurFrontPourPxParMetre(10) > win.ktaLargeurFrontPourPxParMetre(1));
+  t("largeur : bornée à 14 px (au-delà c'est un pâté)",
+    win.ktaLargeurFrontPourPxParMetre(1000) === 14);
+  t("largeur : plancher à 1 px (invisible serait pire)",
+    win.ktaLargeurFrontPourPxParMetre(0.01) === 1);
+  t("largeur : densité nulle → null, aucune largeur inventée",
+    win.ktaLargeurFrontPourPxParMetre(0) === null);
+  t("px/m : sans carte → null", win.ktaPxParMetreOsm(null) === null);
+})();
+
 // ───────── osmMesure.js (v1.83.0) ─────────
 // 📏 MESURER EN VUE OSM. La math est confrontée à des VALEURS CONNUES, pas
 // à elle-même : un degré de latitude vaut ~111,2 km, un degré de longitude

@@ -778,6 +778,8 @@
     _dataLayer   = L.layerGroup().addTo(_mapInstance); // 🆕 v1.40.4 (au dessus des tuiles)
     // 🔍 v1.77.0 — tuiles hi-res au zoom (débounce, cf bloc TUILES HI-RES)
     _mapInstance.on("zoomend moveend", _onCarteBougeHiRes);
+    // 📏 v1.83.0 — la largeur des fronts suit le zoom, comme en mode plan.
+    _mapInstance.on("zoomend", _majLargeurFrontsHome);
     _renderGeorefMarkers(georef);
     // 🐛 v1.40.40-41 — KARMA : « les tuiles OSM ne se chargent pas au boot ».
     // Cause racine : Leaflet calcule la taille du container AVANT que le DOM
@@ -831,6 +833,7 @@
         // 🆕 v1.40.6 — Render tuiles V2 EN PREMIER (sous les data layers)
         if (data.tilesOverview) _renderTilesOnMiniMap(data.tilesOverview, georef);
         _renderDataLayersOnMiniMap(data, georef);
+        _majLargeurFrontsHome();
         // 🎚️ v1.71.0 : les tags vivent dans la modale ≡ (guard si fermée)
         _renderModalTags();
         _renderModalNiveaux();
@@ -1174,6 +1177,51 @@
     const base = (data && Array.isArray(data.dataLayers)) ? data.dataLayers : [];
     const s = _calqueSession(planId);
     return s ? base.concat([s]) : base;
+  }
+
+  // 📏 v1.83.0 — MÊME LOI QUE LE MODE PLAN ET QUE LA MODALE OSM.
+  //
+  // Le widget HOME empile PLUSIEURS plans et s'ouvre très dézoomé : c'est
+  // l'endroit où des traits de largeur fixe fusionnent le plus vite. Sa table
+  // de styles « light » posait 4 px pour un front — réglé à la main, donc juste
+  // à un seul zoom.
+  //
+  // La loi est formulée en pixels par mètre (structures.js) : la Vue OSM n'a
+  // pas d'échelle de plan, mais elle sait sa résolution Web Mercator, laquelle
+  // dépend de la LATITUDE autant que du zoom.
+  //
+  // On mute `options.weight` en place — le renderer canvas le relit à chaque
+  // frame — puis une repeinture NON CLIPPÉE. Aucun `setStyle` : le widget peut
+  // porter plusieurs relevés de plusieurs milliers d'objets.
+  function _majLargeurFrontsHome() {
+    if (!_mapInstance || typeof window.ktaPxParMetreOsm !== "function") return;
+    const w = (typeof window.ktaLargeurFrontPourPxParMetre === "function")
+      ? window.ktaLargeurFrontPourPxParMetre(window.ktaPxParMetreOsm(_mapInstance))
+      : null;
+    if (!w) return;
+    const wTrace = Math.max(1, Math.round(w * 0.6 * 10) / 10);
+    const appliquer = function (grp, largeur) {
+      if (!grp || typeof grp.eachLayer !== "function") return;
+      grp.eachLayer(function (lay) {
+        // Les surfaces gardent leur trait : un pilier se lit à son
+        // remplissage, pas à l'épaisseur de son contour.
+        if (!lay || !lay.options || lay.options.fill === true) return;
+        lay.options.weight = largeur;
+      });
+    };
+    // Le plan principal ET chaque plan empilé : le widget est multi-plans,
+    // n'en traiter qu'un laisserait les autres en aplat.
+    appliquer(_dataLayer, w);
+    Object.keys(_extraLayers || {}).forEach(function (id) {
+      const g = _extraLayers[id];
+      if (!g) return;
+      appliquer(g.struct, w);
+      appliquer(g.roads, wTrace);
+    });
+    try {
+      const r = _mapInstance._renderer;
+      if (r && typeof r._redraw === "function") { r._redrawBounds = null; r._redraw(); }
+    } catch (e) {}
   }
 
   function _renderDataLayersOnMiniMap(data, georef, cible, planIdPourPane) {
@@ -2212,6 +2260,7 @@
                          _extraOpacity[planId], _zIndexPour(planId), pn ? pn.nom : null);
       }
       _renderDataLayersOnMiniMap(data, p.georef, g, planId);
+      _majLargeurFrontsHome();
       _appliquerOrdre();
       _appliquerVisibilites();
       _renderModalTags();   // 🐛 v1.72.2 : les tags du plan ajouté arrivent DÈS son extraction
@@ -2513,6 +2562,7 @@
     const principal = plans.find(function(p) { return p.id === _selectedPlanId; });
     const dataP = _selectedPlanId ? _planDataCache[_selectedPlanId] : null;
     if (principal && dataP) _renderDataLayersOnMiniMap(dataP, principal.georef);
+    _majLargeurFrontsHome();
     _chaqueExtra(function(g, id) {
       const p = plans.find(function(x) { return x.id === id; });
       const data = _planDataCache[id];

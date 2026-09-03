@@ -125,6 +125,38 @@ const FRONT_MAX_PX    = 14;     // plafond : au-delà c'est un pâté, pas un tr
 // PNG/PDF il vaut la résolution choisie (1 = natif, 2 = HD). C'est le MÊME
 // nombre — des pixels rendus par pixel de plan — donc la même formule.
 // L'export appelle ceci via `window.ktaLargeurFrontPourRatio`.
+// 🩸 v1.83.0 — LE CŒUR DE LA LOI, en PIXELS PAR MÈTRE. Trois consommateurs,
+// une seule formule :
+//   • l'écran (mode plan) : px/m = APP_CONFIG.scale × 2^zoom
+//   • l'export PNG/PDF    : px/m = APP_CONFIG.scale × résolution
+//   • la Vue OSM          : px/m = 1 / résolution Web Mercator à cette latitude
+//
+// Les deux premiers passent par une échelle de PLAN ; la Vue OSM n'en a pas —
+// elle travaille en lat/lng. C'est pourquoi la loi se formule ici sur la seule
+// grandeur qu'ils partagent tous les trois : des pixels rendus par mètre de
+// terrain. Chaque contexte sait calculer la sienne, aucun ne recopie la règle.
+function _largeurFrontPourPxParMetre(pxParM) {
+  if (!Number.isFinite(pxParM) || pxParM <= 0) return null;
+  const px = FRONT_LARGEUR_M * pxParM;
+  return Math.max(FRONT_MIN_PX, Math.min(FRONT_MAX_PX, Math.round(px * 10) / 10));
+}
+window.ktaLargeurFrontPourPxParMetre = _largeurFrontPourPxParMetre;
+
+// Pixels par mètre d'une carte Leaflet en Web Mercator (la Vue OSM). La
+// résolution y dépend de la LATITUDE autant que du zoom — un même zoom
+// couvre 40 % de moins au nord de la France qu'à l'équateur. La calculer
+// plutôt que de tabler sur des paliers de zoom est ce qui rend la largeur
+// juste partout, et pas seulement là où on a réglé.
+window.ktaPxParMetreOsm = function (map) {
+  try {
+    if (!map || typeof map.getZoom !== "function") return null;
+    const lat = map.getCenter().lat;
+    const mpp = 156543.03392804097 * Math.cos(lat * Math.PI / 180) /
+                Math.pow(2, map.getZoom());
+    return (mpp > 0) ? (1 / mpp) : null;
+  } catch (e) { return null; }
+};
+
 function _largeurFrontPourRatio(ratio) {
   if (!Number.isFinite(ratio) || ratio <= 0) ratio = 1;
   // `APP_CONFIG.scale` est en px/m (cf. tracking.scale du plan-config).
@@ -140,8 +172,7 @@ function _largeurFrontPourRatio(ratio) {
     if (z >= -3) return 3;
     return 2;
   }
-  const px = FRONT_LARGEUR_M * scale * ratio;
-  return Math.max(FRONT_MIN_PX, Math.min(FRONT_MAX_PX, Math.round(px * 10) / 10));
+  return _largeurFrontPourPxParMetre(scale * ratio);
 }
 window.ktaLargeurFrontPourRatio = _largeurFrontPourRatio;
 
