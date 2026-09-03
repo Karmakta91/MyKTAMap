@@ -4804,6 +4804,15 @@ function _afficherImporterSig(prefilledFile) {
             <label class="kta-cfg-label">${T("gen.sig.colonneType")}</label>
             <select class="kta-cfg-input" id="kta-sig-imp-colonne"></select>
           </div>
+          <!-- 🏔️ v1.82.0 — COLONNE DU NIVEAU. Sans elle, un releve multi-etages
+               arrivait entierement a plat : ingest n avait qu un level unique pour
+               tout l import, et la case Plan multi-niveau ne faisait que poser un
+               drapeau dans le plan-config. -->
+          <div class="kta-planner-grille" style="margin-top:8px;">
+            <label class="kta-cfg-label">${T("gen.sig.colonneNiveau")}</label>
+            <select class="kta-cfg-input" id="kta-sig-imp-niveau"></select>
+          </div>
+          <div id="kta-sig-imp-niveau-apercu" style="margin-top:6px;"></div>
           <div id="kta-sig-imp-map-tables" style="margin-top:10px;"></div>
         </div>
 
@@ -4956,6 +4965,21 @@ async function _sigImpAnalyserFichier(file) {
                + ' (' + c.nbDistinctes + ')' + (c.probableType ? ' ⭐' : '') + '</option>';
         }).join("");
     if (cols.length > 0 && cols[0].probableType) sel.value = cols[0].cle;
+
+    // Colonne du niveau. Pré-sélectionnée si une colonne s'appelle sans
+    // ambiguïté « niveau » / « level » / « etage » : c'est le cas des fichiers
+    // produits par `scripts/decouper-atlas.js`, et l'oubli coûte cher (tout
+    // l'import se retrouve sur un seul étage sans que rien ne le signale).
+    const selN = document.getElementById("kta-sig-imp-niveau");
+    selN.innerHTML = '<option value="">' + T("gen.sig.niveauAucun") + '</option>'
+      + cols.map(function(c) {
+          return '<option value="' + _escAttrSig(c.cle) + '">' + _escHtmlSig(c.cle)
+               + ' (' + c.nbDistinctes + ')</option>';
+        }).join("");
+    const devine = cols.find(function(c) { return /^(niveau|level|etage|étage|lvl)$/i.test(c.cle); });
+    if (devine) selN.value = devine.cle;
+    selN.addEventListener("change", _sigImpApercuNiveaux);
+    _sigImpApercuNiveaux();
     document.getElementById("kta-sig-imp-step-map").style.display = "";
     _sigImpRendreTables();
 
@@ -4975,12 +4999,61 @@ async function _sigImpAnalyserFichier(file) {
   }
 }
 
+// 🏛️ v1.82.0 (retour KARMA sur un vrai relevé) — un polygone SIG n'est pas
+// forcément une zone : dans une carrière, c'est très souvent un PILIER, donc
+// une STRUCTURE. Les deux familles sont proposées dans le même select, en
+// deux groupes ; le préfixe `struct:` dit à `SigImport.ingest` où ranger
+// l'objet. Idem pour les tracés : un front de taille est une structure en
+// polyligne (front-1 / front-2).
 const _SIG_TYPES = {
   points:    ["default", "pa", "pb", "pc", "pe", "ps", "salle", "chatiere", "passage", "danger", "info"],
   lignes:    ["chemin", "secondaire", "principal"],
   polygones: ["remblais", "eau", "effondrement", "inaccessible"]
 };
+// Structures proposées EN PLUS, par famille de géométrie.
+const _SIG_TYPES_STRUCT = {
+  points:    [],
+  lignes:    ["struct:front-1", "struct:front-2"],
+  polygones: ["struct:pilier-1", "struct:pilier-2", "struct:mur"]
+};
 const _SIG_CAT_I18N = { points: "gen.sig.famPoints", lignes: "gen.sig.famLignes", polygones: "gen.sig.famZones" };
+
+// 🏔️ v1.82.0 — APERÇU DE LA RÉPARTITION PAR ÉTAGE, avant de générer.
+// Un import multi-niveaux qui retombe à plat ne se voyait qu'une fois le plan
+// ouvert, trop tard. Ici le compte par étage s'affiche dès le choix de la
+// colonne — et la case « Plan multi-niveau » se coche toute seule, parce que
+// choisir une colonne de niveau ET oublier la case donne exactement le même
+// résultat qu'avant : un plan à plat.
+function _sigImpApercuNiveaux() {
+  const box = document.getElementById("kta-sig-imp-niveau-apercu");
+  const selN = document.getElementById("kta-sig-imp-niveau");
+  if (!box || !selN || !_sigImportState) return;
+  const cle = selN.value;
+  if (!cle) { box.innerHTML = ""; return; }
+  const T = function(k, p) { return window.I18n.t(k, p); };
+  const compte = {};
+  const scan = function(items) {
+    (items || []).forEach(function(it) {
+      const p = it.props || {};
+      let v = null;
+      for (const k in p) { if (k.toLowerCase() === cle.toLowerCase()) { v = p[k]; break; } }
+      const m = (v == null) ? null : /-?\d+/.exec(String(v));
+      const n = m ? parseInt(m[0], 10) : "?";
+      compte[n] = (compte[n] || 0) + 1;
+    });
+  };
+  const d = _sigImportState.data;
+  scan(d.points); scan(d.lignes); scan(d.polygones);
+  const cles = Object.keys(compte).sort(function(a, b) { return Number(b) - Number(a); });
+  if (!cles.length) { box.innerHTML = ""; return; }
+  box.innerHTML = '<div style="font-size:12px; color:#c8d0e0; padding:6px 8px;'
+    + ' background:rgba(140,180,255,0.08); border-left:3px solid rgba(140,180,255,0.5);'
+    + ' border-radius:3px;">🏔️ ' + T("gen.sig.niveauApercu", { n: cles.length }) + ' — '
+    + cles.map(function(k) { return k + ' : ' + compte[k]; }).join(' · ') + '</div>';
+  // Cocher le multi-niveau : sans lui le plan-config ne déclare pas les étages.
+  const mlvl = document.getElementById("kta-sig-imp-mlvl");
+  if (mlvl && cles.length > 1) mlvl.checked = true;
+}
 
 function _sigImpRendreTables() {
   const T   = function(k, p) { return window.I18n.t(k, p); };
@@ -4996,15 +5069,32 @@ function _sigImpRendreTables() {
     const vals = parFam[fam] || [];
     if (vals.length === 0) return;
     const propose = catPour[fam] ? window.SigImport.proposerMapping(vals, catPour[fam]) : {};
+    // Le pré-remplissage regarde AUSSI les structures : « pilier » doit tomber
+    // sur pilier-1 tout seul, sinon la nouveauté ne sert à personne.
+    if ((_SIG_TYPES_STRUCT[fam] || []).length) {
+      const ps = window.SigImport.proposerMapping(vals, "structures");
+      Object.keys(ps).forEach(function(v) { if (!propose[v] && ps[v]) propose[v] = ps[v]; });
+    }
     html += '<div style="margin-top:10px;"><div class="kta-cfg-label">' + T(_SIG_CAT_I18N[fam]) + '</div>';
     vals.forEach(function(v) {
       const sugg = propose[v] || "";
       html += '<div style="display:flex; align-items:center; gap:8px; margin-top:4px;">'
            +  '<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:#c0c8d8;" title="' + _escAttrSig(v) + '">' + _escHtmlSig(v) + '</span>'
            +  '<select class="kta-cfg-input" data-sig-fam="' + fam + '" data-sig-val="' + _escAttrSig(v) + '" style="flex:0 0 46%;">'
-           +  _SIG_TYPES[fam].map(function(t) {
-                return '<option value="' + t + '"' + (t === sugg ? " selected" : "") + '>' + t + '</option>';
-              }).join("")
+           +  (function() {
+                const opt = function(t) {
+                  const lib = t.startsWith("struct:") ? t.slice(7) : t;
+                  return '<option value="' + t + '"' + (t === sugg ? " selected" : "") + '>' + lib + '</option>';
+                };
+                const zonesHtml = _SIG_TYPES[fam].map(opt).join("");
+                const st = _SIG_TYPES_STRUCT[fam] || [];
+                if (!st.length) return zonesHtml;
+                // Deux groupes nommés : sans eux, « pilier-1 » et « remblais »
+                // se retrouvent dans la même liste plate et rien ne dit qu'ils
+                // ne produisent pas le même genre d'objet.
+                return '<optgroup label="' + T("gen.sig.grpZones") + '">' + zonesHtml + '</optgroup>'
+                     + '<optgroup label="' + T("gen.sig.grpStructures") + '">' + st.map(opt).join("") + '</optgroup>';
+              })()
            +  '</select></div>';
     });
     html += '</div>';
@@ -5059,7 +5149,9 @@ async function _sigImpGenerer() {
       canvasColor:  (document.querySelector('input[name="sig_imp_color"]:checked') || {}).value || "sepia",
       multiLevel:   document.getElementById("kta-sig-imp-mlvl").checked,
       layerLabel:   name,
-      mapping: { cleType: cle, mapTags: mapTags, mapTraces: mapTraces, mapZones: mapZones }
+      mapping: { cleType: cle, mapTags: mapTags, mapTraces: mapTraces, mapZones: mapZones,
+                 // 🏔️ v1.82.0 — la colonne du niveau voyage avec le reste du mapping.
+                 cleNiveau: (document.getElementById("kta-sig-imp-niveau") || {}).value || null }
     });
 
     const url = URL.createObjectURL(result.blob);

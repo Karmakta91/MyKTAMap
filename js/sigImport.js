@@ -591,6 +591,20 @@
       chemin: "chemin", sentier: "chemin", passage: "chemin",
       jonction: "jonction", puits: "jonction", escalier: "jonction"
     },
+    // 🏛️ v1.82.0 — structures. Les valeurs viennent de relevés réels : un
+    // export SIG écrit « pilier », « PILIER_1 », « mur »… Le préfixe `struct:`
+    // dit à `ingest` de ranger l'objet dans les structures et non les zones.
+    structures: {
+      pilier: "struct:pilier-1", piliers: "struct:pilier-1",
+      pilier1: "struct:pilier-1", "pilier-1": "struct:pilier-1",
+      "pilier1eremasse": "struct:pilier-1", "1eremasse": "struct:pilier-1",
+      pilier2: "struct:pilier-2", "pilier-2": "struct:pilier-2",
+      "pilier2emasse": "struct:pilier-2", "2emasse": "struct:pilier-2",
+      mur: "struct:mur", murs: "struct:mur", muret: "struct:mur",
+      maconnerie: "struct:mur", beton: "struct:mur",
+      front: "struct:front-1", "frontdetaille": "struct:front-1",
+      "front1": "struct:front-1", "front2": "struct:front-2"
+    },
     zones: {
       eau: "eau", water: "eau", inondation: "eau", "zone humide": "eau",
       remblais: "remblais", remblai: "remblais", comblement: "remblais",
@@ -648,7 +662,33 @@
     const mapTraces   = opts.mapTraces || {};
     const mapZones    = opts.mapZones  || {};
     const mapTags     = opts.mapTags   || {};
-    const niveau      = Number.isInteger(opts.level) ? opts.level : null;
+    // 🏔️ v1.82.0 — LE NIVEAU SE LIT PAR OBJET (retour KARMA du 03/09 sur le
+    // relevé de Citon_Graves_RD, qui porte SIX étages).
+    // AVANT : `opts.level` était un entier UNIQUE appliqué à tout l'import —
+    // un relevé multi-étages arrivait donc entièrement à plat, pendant que la
+    // case « Plan multi-niveau » promettait une gestion des étages qu'aucun
+    // objet ne pouvait honorer. La case posait un drapeau, rien de plus.
+    // MAINTENANT : `opts.cleNiveau` désigne une colonne du fichier SIG, lue
+    // objet par objet. `opts.level` reste accepté comme valeur de repli pour
+    // les objets dont la colonne est vide ou illisible.
+    const cleNiveau   = opts.cleNiveau || null;
+    const niveauFixe  = Number.isInteger(opts.level) ? opts.level : null;
+
+    // Les relevés écrivent le niveau de toutes les façons : -3, "-3", "3",
+    // "niveau3", "N-3", "étage -3". On extrait le premier entier signé trouvé.
+    // Un niveau non lisible ne devient PAS 0 : il retombe sur le repli, sinon
+    // une valeur exotique enverrait silencieusement l'objet à la surface.
+    function _niveauDe(props) {
+      if (!cleNiveau || !props) return niveauFixe;
+      const k = _trouverCle(props, cleNiveau);
+      if (!k || props[k] == null) return niveauFixe;
+      const brut = String(props[k]).trim();
+      if (brut === "") return niveauFixe;
+      const m = /-?\d+/.exec(brut);
+      if (!m) return niveauFixe;
+      const n = parseInt(m[0], 10);
+      return Number.isFinite(n) ? n : niveauFixe;
+    }
 
     if (!window.KmzExport || typeof window.KmzExport.gpsToPlan !== "function") {
       throw new Error("sig.err.kmzExportMissing");
@@ -661,7 +701,12 @@
       return (k && props[k] != null) ? String(props[k]).trim() : null;
     }
 
-    const points = [], roads = [], zones = [];
+    const points = [], roads = [], zones = [], structures = [];
+    // Préfixe des types de STRUCTURE. Déclaré ICI, avant toutes les boucles :
+    // il est lu par celle des lignes comme par celle des polygones, et un const
+    // posé plus bas tombait dans sa zone morte temporelle (ReferenceError au
+    // premier tracé — vécu au premier essai sur le relevé réel).
+    const PREFIXE_STRUCT = "struct:";
     let idSeq = 1;
 
     (normalise.points || []).forEach(function(p) {
@@ -675,7 +720,8 @@
         nom:  p.nom || "",
         tags: [ (v && mapTags[v]) || tagDefaut ]
       };
-      if (niveau !== null) o.level = niveau;
+      const lvl = _niveauDe(p.props);
+      if (lvl !== null) o.level = lvl;
       points.push(o);
     });
 
@@ -687,11 +733,27 @@
       });
       if (pts.length < 2) return;
       const v = _valeurType(l.props);
-      const o = { type: (v && mapTraces[v]) || typeDefaut, points: pts };
+      // Un front de taille est une STRUCTURE en polyligne (front-1 / front-2,
+      // cf. STRUCTURE_TYPES_POLYLINE dans structures.js) : même aiguillage.
+      const choisiL = (v && mapTraces[v]) || typeDefaut;
+      const estStructL = String(choisiL).startsWith(PREFIXE_STRUCT);
+      const o = { type: estStructL ? choisiL.slice(PREFIXE_STRUCT.length) : choisiL, points: pts };
       if (l.nom) o.note = l.nom;
-      if (niveau !== null) o.level = niveau;
-      roads.push(o);
+      const lvl = _niveauDe(l.props);
+      if (lvl !== null) o.level = lvl;
+      (estStructL ? structures : roads).push(o);
     });
+
+    // 🏛️ v1.82.0 — LES STRUCTURES, 4e famille (retour KARMA du 03/09 sur un
+    // vrai relevé) : « mes zones ne peuvent pas être des structures, or c'est
+    // justement ça (pilier) ». L'import ne connaissait que points / tracés /
+    // zones, alors qu'un polygone SIG est très souvent un PILIER — l'objet le
+    // plus courant d'une carrière. Le forcer en « remblais » était faux.
+    //
+    // Le type choisi porte le préfixe `struct:` quand il désigne une
+    // structure : c'est ce qui permet à UN MÊME select de proposer les zones
+    // ET les structures sans ambiguïté — un polygone peut légitimement être
+    // l'un ou l'autre, seul l'utilisateur sait lequel.
 
     (normalise.polygones || []).forEach(function(z) {
       const pts = [];
@@ -701,15 +763,32 @@
       });
       if (pts.length < 3) return;
       const v = _valeurType(z.props);
-      const o = { type: (v && mapZones[v]) || zoneDefaut, points: pts };
+      const choisi = (v && mapZones[v]) || zoneDefaut;
+      const estStruct = String(choisi).startsWith(PREFIXE_STRUCT);
+      const o = { type: estStruct ? choisi.slice(PREFIXE_STRUCT.length) : choisi, points: pts };
       if (z.nom) o.note = z.nom;
-      if (niveau !== null) o.level = niveau;
-      zones.push(o);
+      const lvl = _niveauDe(z.props);
+      if (lvl !== null) o.level = lvl;
+      (estStruct ? structures : zones).push(o);
     });
 
     return {
-      points: points, roads: roads, zones: zones,
-      stats: { points: points.length, roads: roads.length, zones: zones.length }
+      points: points, roads: roads, zones: zones, structures: structures,
+      stats: { points: points.length, roads: roads.length, zones: zones.length,
+               structures: structures.length,
+               // Répartition réelle par étage : c'est elle qui permet à l'UI de
+               // montrer « -1: 8 · -2: 134 · … » AVANT de générer. Un import
+               // multi-niveaux qui retombe à plat se voit alors immédiatement.
+               parNiveau: (function() {
+                 const r = {};
+                 [points, roads, zones, structures].forEach(function(arr) {
+                   arr.forEach(function(o) {
+                     const k = (typeof o.level === "number") ? o.level : 0;
+                     r[k] = (r[k] || 0) + 1;
+                   });
+                 });
+                 return r;
+               })() }
     };
   }
 
@@ -779,7 +858,9 @@
     zip.file("data/sig.json", JSON.stringify({
       points: ingested.points,
       roads:  ingested.roads,
-      zones:  ingested.zones
+      zones:  ingested.zones,
+      // 🏛️ v1.82.0 — 4e famille. `structures.js` lit cette clé comme les autres.
+      structures: ingested.structures || []
     }, null, 2));
     zip.file("plan-config.json", JSON.stringify(planConfig, null, 2));
 

@@ -4930,5 +4930,10 @@
   "osm_home.session.label": "Session",
   "osm_home.session.hint": "Affiche aussi le travail en cours (points, tracés, zones, structures) enregistré dans la session de chaque plan, en plus de ce que contient le plan lui-même.",
   "osm_home.session.badge": "Session en cours — pas encore dans le plan",
-  "gen.sig.l93Converti": "Fichier reconnu en <strong>Lambert 93</strong> (EPSG:2154) : {n} coordonnées ont été converties en latitude/longitude. Vérifie que la position sur la carte correspond bien à ton site avant de continuer."
+  "gen.sig.l93Converti": "Fichier reconnu en <strong>Lambert 93</strong> (EPSG:2154) : {n} coordonnées ont été converties en latitude/longitude. Vérifie que la position sur la carte correspond bien à ton site avant de continuer.",
+  "gen.sig.grpZones": "Zones",
+  "gen.sig.grpStructures": "Structures (piliers, murs, fronts)",
+  "gen.sig.colonneNiveau": "Colonne du niveau (étage)",
+  "gen.sig.niveauAucun": "— aucune (tout sur un seul étage) —",
+  "gen.sig.niveauApercu": "{n} étage(s) détecté(s)"
 }
