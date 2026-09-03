@@ -146,3 +146,12 @@ node scripts/check-constantes-orphelines.js || exit $?
 # re-rendu rappelle la fonction. Le mecanisme a l air vivant, seul son
 # declencheur a disparu. BLOQUANT.
 node scripts/check-map-listeners.js || exit $?
+
+# 👣 Reglage de podometre recopie en dur avec une valeur qui diverge de
+# l'usine (js/config.js > DEFAULT_CONFIG). Ne le 03/09 : trois generateurs
+# (SIG, GPX, KMZ) ecrivaient `stepThreshold: 1.2` la ou l'usine dit 13. Or
+# tracking.js compare ce seuil a la magnitude de accelerationIncludingGravity,
+# qui vaut DEJA ~9,81 telephone pose : la condition etait vraie en permanence
+# et fabriquait ~3,6 pas/seconde A L'ARRET, soit pres de 10 km/h de distance
+# fantome sur tout plan issu d'un import. BLOQUANT.
+node scripts/check-tracking-defaults.js || exit $?

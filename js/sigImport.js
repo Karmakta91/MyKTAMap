@@ -1257,7 +1257,13 @@
         scale: (transform && transform.metresParPixel > 0)
                ? Math.round((1 / transform.metresParPixel) * 1000) / 1000
                : 50,
-        stepLength: 0.75, stepThreshold: 1.2, stepCooldown: 280
+        // 🩸 v1.82.0 — RÉGLAGES DE PODOMÈTRE LUS À LA SOURCE, plus recopiés.
+        // Ils valaient `stepThreshold: 1.2` alors que l'usine dit 13. Or
+        // `tracking.js` compare ce seuil à `accelerationIncludingGravity`,
+        // qui vaut ~9,81 téléphone POSÉ : la condition était toujours vraie,
+        // et le cooldown de 280 ms fabriquait ~3,6 pas/seconde à l'arrêt.
+        // Tout plan produit ici comptait donc des kilomètres fantômes.
+        ...(window.KTA_TRACKING_USINE || { stepLength: 0.7, stepThreshold: 13, stepCooldown: 400 })
       },
       icons: { default: "icon/iconetrack.png", track: "icon/iconetrack.png" },
       imageLayers: [],

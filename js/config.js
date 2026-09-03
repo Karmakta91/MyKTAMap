@@ -142,6 +142,31 @@ let DEFAULT_CONFIG = {
                                      // hors range (ex: level: 4 → ajout du 3 et 4).
 };
 
+// 🩸 v1.82.0 — LES RÉGLAGES DE PODOMÈTRE, FIGÉS À LEUR VALEUR D'USINE.
+//
+// `DEFAULT_CONFIG` porte mal son nom : il est RÉÉCRIT à chaque chargement de
+// plan (`Object.assign(DEFAULT_CONFIG, cfg)`) pour que `resetConfig()` rende
+// les valeurs DU PLAN COURANT. Le lire depuis un générateur donnerait donc
+// les réglages du plan ouvert à ce moment-là — au petit bonheur.
+//
+// D'où cette copie gelée, prise ici, avant la première mutation. C'est elle
+// que les générateurs (SIG, GPX) doivent écrire dans les plans qu'ils
+// produisent, au lieu de recopier des littéraux qui dérivent.
+//
+// CE QUI A MOTIVÉ CE GEL : `sigImport.js` et `gpxImport.js` écrivaient
+// `stepThreshold: 1.2` là où la valeur d'usine est 13. Or `tracking.js`
+// compare ce seuil à la magnitude de `accelerationIncludingGravity`, qui
+// vaut DÉJÀ ~9,81 téléphone posé : la condition était vraie en permanence,
+// et seul le cooldown limitait encore le comptage. À 280 ms, cela fabriquait
+// ~3,6 pas par seconde À L'ARRÊT — près de 10 km/h de distance fantôme sur
+// tout plan issu d'un import. Signalé par KARMA sur l'écran SIG.
+const TRACKING_USINE = Object.freeze({
+  stepLength:    DEFAULT_CONFIG.stepLength,
+  stepThreshold: DEFAULT_CONFIG.stepThreshold,
+  stepCooldown:  DEFAULT_CONFIG.stepCooldown
+});
+window.KTA_TRACKING_USINE = TRACKING_USINE;
+
 let APP_CONFIG = { ...DEFAULT_CONFIG };
 
 // Restaurer dès le chargement la pref globale debugMode (avant tout plan)
@@ -349,6 +374,21 @@ function _normalizeAngleDeg(v) {
   return a;
 }
 
+// Réglage de podomètre lu dans un plan-config : repris tel quel s'il est
+// dans les bornes que l'écran ⚙️ Réglages autorise, remplacé par la valeur
+// d'usine sinon. Voir le pavé dans buildAppConfigFromPlan pour le pourquoi.
+function _reglagePodometre(valeur, cle, min, max) {
+  const n = Number(valeur ?? DEFAULT_CONFIG[cle]);
+  if (Number.isFinite(n) && n >= min && n <= max) return n;
+  const usine = TRACKING_USINE[cle];
+  if (Number.isFinite(n)) {
+    console.warn("[Config] 👣 " + cle + " = " + n + " hors des bornes [" + min +
+                 ", " + max + "] — plan généré avant le correctif du 03/09/2026. " +
+                 "Remplacé par la valeur d'usine (" + usine + ").");
+  }
+  return usine;
+}
+
 // =========================
 // CONSTRUCTION APP_CONFIG depuis un plan
 // =========================
@@ -368,8 +408,27 @@ function buildAppConfigFromPlan(planConfig) {
     stepLength:    Number(tracking.stepLength    ?? DEFAULT_CONFIG.stepLength),
     startX:        Number(tracking.startX        ?? DEFAULT_CONFIG.startX),
     startY:        Number(tracking.startY        ?? DEFAULT_CONFIG.startY),
-    stepThreshold: Number(tracking.stepThreshold ?? DEFAULT_CONFIG.stepThreshold),
-    stepCooldown:  Number(tracking.stepCooldown  ?? DEFAULT_CONFIG.stepCooldown),
+    // 🩸 v1.82.0 — RÉPARATION D'UN RÉGLAGE STRUCTURELLEMENT IMPOSSIBLE.
+    //
+    // Trois générateurs (SIG, GPX, KMZ) ont écrit pendant des mois
+    // `stepThreshold: 1.2` et `stepCooldown: 280` dans les plans qu'ils
+    // produisaient. Or `tracking.js` compare le seuil à la magnitude de
+    // `accelerationIncludingGravity`, qui vaut DÉJÀ ~9,81 téléphone posé :
+    // à 1,2 la condition est vraie en permanence, et un pas était compté
+    // toutes les 280 ms À L'ARRÊT — près de 10 km/h de distance fantôme.
+    //
+    // Corriger les générateurs ne répare pas les plans DÉJÀ produits, dont
+    // le plan-config porte la mauvaise valeur. D'où cette réparation au
+    // chargement, sur un critère qui n'est pas une opinion : l'écran
+    // ⚙️ Réglages borne lui-même ces champs à [10, 30] et [300, 3000]
+    // (interfaceConfig.js). Une valeur hors de ces bornes ne peut donc PAS
+    // être un choix de l'utilisateur — l'app ne lui permet pas de la saisir.
+    // C'est de la donnée corrompue, et on la remplace par l'usine.
+    //
+    // Même raisonnement que le calibrage périmé (main.js) : on ne touche
+    // jamais une préférence valide, seulement ce qui est hors du possible.
+    stepThreshold: _reglagePodometre(tracking.stepThreshold, "stepThreshold", 10, 30),
+    stepCooldown:  _reglagePodometre(tracking.stepCooldown,  "stepCooldown", 300, 3000),
     // Lit `debugMode` du plan-config en priorité, fallback sur l'ancien `motionDebug`
     // pour les plans pas encore migrés (rétro-compat zip terrains).
     debugMode:     Boolean(tracking.debugMode ?? tracking.motionDebug ?? DEFAULT_CONFIG.debugMode),
