@@ -4831,6 +4831,8 @@
   "tabledit.source.fusion": "🔗 Fusionar capas de datos",
   "tabledit.source.fusionHint": "Combina varios archivos de capas (.json / .zip) en uno solo, sin tocar el plano.",
   "home.tools.title": "🧰 Herramientas",
+  "osm_mes.btnTitle": "Medir una distancia o una superficie",
+  "osm_mes.poser": "Haz clic en el mapa para colocar puntos.",
   "osm_mode.search.placeholder": "🔎 Buscar un plano o un punto (planos georreferenciados)…",
   "osm_mode.search.scanning": "Leyendo los planos georreferenciados…",
   "osm_mode.search.noResult": "Ningún resultado en los planos georreferenciados.",

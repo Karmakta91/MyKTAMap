@@ -48,6 +48,44 @@ function charger(fichier, nomGlobal, prealables) {
   return api;
 }
 
+// ───────── osmMesure.js (v1.83.0) ─────────
+// 📏 MESURER EN VUE OSM. La math est confrontée à des VALEURS CONNUES, pas
+// à elle-même : un degré de latitude vaut ~111,2 km, un degré de longitude
+// à 45°N ~78,6 km. C'est la leçon de l'import SIG — 34 tests verts qui ne
+// prouvaient que la cohérence du code avec ses propres suppositions.
+(function () {
+  const OM = charger("js/osmMesure.js", "OsmMesure");
+  if (!OM) return;
+  const w = OM.__win;
+  // Leaflet n'est pas là : on fournit le strict nécessaire, dont un
+  // `distanceTo` géodésique INDÉPENDANT du code testé.
+  function LL(lat, lng) {
+    return { lat: lat, lng: lng, distanceTo: function (o) {
+      const R = 6371008.8, r = Math.PI / 180;
+      const dLat = (o.lat - lat) * r, dLng = (o.lng - lng) * r;
+      const a = Math.pow(Math.sin(dLat / 2), 2) +
+                Math.cos(lat * r) * Math.cos(o.lat * r) * Math.pow(Math.sin(dLng / 2), 2);
+      return 2 * R * Math.asin(Math.sqrt(a));
+    } };
+  }
+  w.L = { latLng: function (a, b) { return LL(a, b); } };
+
+  let d = OM._distance([LL(44, 0), LL(45, 0)]);
+  t("mesure OSM : 1° de latitude ≈ 111,2 km", Math.abs(d - 111195) < 200);
+  d = OM._distance([LL(45, 0), LL(45, 1)]);
+  t("mesure OSM : 1° de longitude à 45°N ≈ 78,6 km", Math.abs(d - 78626) < 400);
+  d = OM._distance([LL(44.8, -0.25), LL(44.801, -0.25), LL(44.802, -0.25)]);
+  t("mesure OSM : les segments se cumulent", Math.abs(d - 222.4) < 2);
+  t("mesure OSM : un seul point → 0", OM._distance([LL(44, 0)]) === 0);
+
+  const s = OM._surface([LL(44.80, -0.25), LL(44.80, -0.24), LL(44.81, -0.24), LL(44.81, -0.25)]);
+  const att = (0.01 * 111195) * (0.01 * 111195 * Math.cos(44.805 * Math.PI / 180));
+  t("mesure OSM : surface d'un carré de 0,01° (1 % près)", Math.abs(s - att) / att < 0.01);
+  const s2 = OM._surface([LL(44.81, -0.25), LL(44.81, -0.24), LL(44.80, -0.24), LL(44.80, -0.25)]);
+  t("mesure OSM : le sens de parcours ne change pas la surface", Math.abs(s - s2) < 1);
+  t("mesure OSM : moins de 3 points → surface nulle", OM._surface([LL(44, 0), LL(45, 0)]) === 0);
+})();
+
 // ───────── profondeurNiveaux.js (v1.83.0) ─────────
 // 📉 PROFIL EN LONG. Deux règles qui ne se devinent pas et qu'un rendu
 // « à peu près juste » masquerait :

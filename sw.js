@@ -178,6 +178,8 @@ const ASSETS_TO_CACHE = [
   "./js/convertirObjet.js",
   // 📉 v1.83.0 : profondeur des niveaux + profil en long.
   "./js/profondeurNiveaux.js",
+  // 📏 v1.83.0 : mesure dans la Vue OSM.
+  "./js/osmMesure.js",
   // 🆕 v1.9.3-B1 : module photos (backend IndexedDB + compression).
   // Self-contained, exposé via window.MyKTAMapPhotos. Doit être caché
   // pour que l'attachement photo fonctionne offline.

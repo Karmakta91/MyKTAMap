@@ -21526,3 +21526,34 @@ body.kta-theme-light .kta-prof-ligne { background: rgba(0, 0, 0, 0.03); border-c
 body.kta-theme-light .kta-profil-svg { background: rgba(0, 0, 0, 0.05); }
 body.kta-theme-light .kta-profil-grille { stroke: rgba(0, 0, 0, 0.12); }
 body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }
+
+/* ==============================================
+   📏 v1.83.0 — Mesure dans la Vue OSM
+   ============================================== */
+#kta-osm-mes-floater {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 100002;                 /* au-dessus de la Vue OSM plein écran */
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, #1a1f2e 0%, #0f1320 100%);
+  border: 1px solid rgba(244, 197, 66, 0.45);
+  border-radius: 10px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+  font-size: 13px; color: #e8eaf0;
+  max-width: calc(100vw - 24px);
+}
+.kta-osm-mes-icone { font-size: 15px; }
+.kta-osm-mes-info  { font-weight: 600; white-space: nowrap; }
+/* Libellé de segment : lisible sur fond de carte clair comme sombre. */
+.kta-osm-mes-seg { background: none !important; border: none !important; }
+.kta-osm-mes-seg span {
+  display: inline-block; transform: translate(-50%, -50%);
+  padding: 1px 6px; border-radius: 6px;
+  background: rgba(26, 31, 46, 0.88);
+  border: 1px solid rgba(244, 197, 66, 0.5);
+  color: #f4c542; font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+body.kta-theme-light #kta-osm-mes-floater {
+  background: #ffffff; color: #24304a; border-color: rgba(180, 140, 20, 0.5);
+}

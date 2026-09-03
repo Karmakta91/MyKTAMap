@@ -4831,6 +4831,8 @@
   "tabledit.source.fusion": "🔗 Fusionner des calques de données",
   "tabledit.source.fusionHint": "Combine plusieurs fichiers de calques (.json / .zip) en un seul, sans toucher au plan.",
   "home.tools.title": "🧰 Outils",
+  "osm_mes.btnTitle": "Mesurer une distance ou une surface",
+  "osm_mes.poser": "Clique sur la carte pour poser des points.",
   "osm_mode.search.placeholder": "🔎 Chercher un plan ou un point (plans géoréférencés)…",
   "osm_mode.search.scanning": "Lecture des plans géoréférencés…",
   "osm_mode.search.noResult": "Aucun résultat dans les plans géoréférencés.",

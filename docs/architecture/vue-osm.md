@@ -831,3 +831,41 @@ l'utilisateur ; le registre ne porte que la donnée propre du plan.
 chargé. En pratique un ZIP importé est chargé dans la foulée, donc le cas se
 limite aux plans serveur déclarés dans `data/index.json` — qui pourraient
 porter leur géoréf dans cette déclaration si le besoin se présente.
+
+---
+
+## 9. Mesurer en Vue OSM — distance + surface (v1.83.0)
+
+Bouton 📏 dans la barre du widget HOME. Clics successifs = sommets ; segment
+étiqueté à sa longueur, total et surface dans un bandeau flottant ; ↩ retire le
+dernier point, 🗑️ vide, ✕ quitte.
+
+🩸 **`measure.js` n'est pas réutilisable — et c'est une bonne nouvelle.** Le
+module du mode plan (442 lignes) est bâti sur `convertCoord` et
+`APP_CONFIG.scale` : il travaille en **pixels d'un plan**, divisés par une
+échelle calibrée. En Vue OSM il n'y a pas *un* plan (il y en a plusieurs
+empilés, chacun avec la sienne) et il n'y a **pas besoin d'échelle** : les
+coordonnées sont déjà des latitudes et des longitudes.
+
+> Une mesure faite ici est donc **structurellement plus fiable qu'en mode plan** :
+> elle ne dépend d'aucun calibrage. C'est exactement la source du bug vécu sur le
+> relevé SIG — 480 m annoncés contre 1 644 réels, parce que l'échelle du plan
+> était fausse. Ici, la question ne se pose pas.
+
+| Grandeur | Méthode | Précision |
+|---|---|---|
+| **Distance** | `L.latLng.distanceTo` — géodésique (Haversine, rayon moyen IUGG) | exacte au mètre sur nos ordres de grandeur |
+| **Surface** | projection **équirectangulaire locale** centrée sur le barycentre, longitude corrigée par `cos(latitude)`, puis **formule du lacet** | < 1 % sur quelques kilomètres |
+
+On ne prétend pas mieux sur la surface : une surface géodésique exacte
+demanderait une projection équivalente, et la précision gagnée serait très
+inférieure à celle d'un tracé fait à la main.
+
+**Prouvé contre des valeurs connues**, pas contre lui-même : 1° de latitude
+≈ 111,2 km, 1° de longitude à 45°N ≈ 78,6 km, un carré de 0,01° à 44,8°N.
+7 cas dans `check-api-surface.js`, avec un `distanceTo` de référence
+**indépendant du code testé**. Falsifiés : retirer la correction `cos(lat)` fait
+tomber la surface, retirer la valeur absolue fait tomber le sens de parcours.
+
+*C'est la leçon de l'import SIG — 34 tests verts qui ne prouvaient que la
+cohérence du code avec ses propres suppositions.*

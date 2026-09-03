@@ -4831,6 +4831,8 @@
   "tabledit.source.fusion": "🔗 Merge data layers",
   "tabledit.source.fusionHint": "Combines several data-layer files (.json / .zip) into one, without touching the plan.",
   "home.tools.title": "🧰 Tools",
+  "osm_mes.btnTitle": "Measure a distance or an area",
+  "osm_mes.poser": "Click the map to drop points.",
   "osm_mode.search.placeholder": "🔎 Search a plan or a point (georeferenced plans)…",
   "osm_mode.search.scanning": "Reading georeferenced plans…",
   "osm_mode.search.noResult": "No result among georeferenced plans.",

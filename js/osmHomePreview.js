@@ -628,6 +628,14 @@
         // 🎚️ v1.71.0 (retour KARMA « un icône Filtre → modale dédiée, comme en
         // mode plan ») : toute la gestion multi-plans (priorités, opacités,
         // filtres par plan) vit dans une MODALE — zéro emprise sur la carte.
+        // 📏 v1.83.0 — mesurer ici (demande KARMA). Une mesure faite en vue OSM
+        // ne dépend d'AUCUN calibrage : les coordonnées sont déjà des lat/lng.
+        // Elle est donc structurellement plus fiable qu'en mode plan, où une
+        // échelle fausse a donné 480 m pour 1 644 réels sur un relevé importé.
+        '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeMesureBtn" type="button" ' +
+                'title="' + _escapeHtml(window.I18n.t("osm_mes.btnTitle")) + '">' +
+          '📏' +
+        '</button>' +
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFiltersBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_mode.filters.btnTitle")) + '" ' +
                 'style="background: rgba(244,197,66,0.10); border-color: rgba(244,197,66,0.4); color: #f4c542;">' +
@@ -690,6 +698,14 @@
     const filtresBtn = container.querySelector("#ktaOsmHomeFiltersBtn");
     if (filtresBtn) {
       filtresBtn.addEventListener("click", _ouvrirModalFiltresOsm);
+    }
+    // 📏 v1.83.0 — bascule de l'outil de mesure. Le module se démonte de
+    // lui-même au second clic (`activer` appelle `desactiver` s'il est actif).
+    const mesureBtn = container.querySelector("#ktaOsmHomeMesureBtn");
+    if (mesureBtn) {
+      mesureBtn.addEventListener("click", function () {
+        if (window.OsmMesure) window.OsmMesure.activer(_mapInstance);
+      });
     }
     // 🆕 v1.40.18 — Bouton "Ma position GPS"
     const myGpsBtn = container.querySelector("#ktaOsmHomeMyGpsBtn");
