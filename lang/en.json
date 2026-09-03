@@ -4941,5 +4941,7 @@
   "gen.sig.couleursNiveauHint": "Creates a distinct legend type for each level, with its own colour. Without this, every level comes out in the same shade and they blend together. You can rename and recolour each entry afterwards in ≡ Legend.",
   "gen.sig.beaucoupFeatures": "Large file: {n} objects. The import accepts them, but displaying the plan may be heavy on mobile. If the map struggles, re-import with fewer layers.",
   "osm_home.niveaux.titre": "🏗️ Levels",
-  "osm_home.niveaux.tous": "All"
+  "osm_home.niveaux.tous": "All",
+  "gen.sig.canvasAlerteIos": "Background of {mpx} million pixels. Above roughly 16, an <strong>iPhone</strong> may show an empty background (Safari limit). No issue on PC or Android. If the plan is meant for iPhone, a width of about <strong>{conseil} px</strong> stays under the limit.",
+  "gen.sig.canvasAlerteRam": "Background of {mpx} million pixels — that is <strong>a lot</strong>. Generation may fail for lack of memory (the app holds two images that size at once), and the background will be empty on iPhone. You can try: if it does not complete, go back down to about <strong>{conseil} px</strong> wide."
 }

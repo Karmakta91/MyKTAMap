@@ -4875,6 +4875,7 @@ function _afficherImporterSig(prefilledFile) {
             <label class="kta-cfg-label">${T("gen.vierge.hauteur")}</label>
             <input class="kta-cfg-input" id="kta-sig-imp-h" readonly title="${T('gen.sig.hAuto')}" type="number" min="500" max="12000" step="100" value="4000">
           </div>
+          <div id="kta-sig-imp-canvas-alerte"></div>
 
           <div class="kta-cfg-label" style="margin-top:8px;">${T("gen.gpx.couleurCanvas")}</div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px;">
@@ -5044,7 +5045,25 @@ async function _sigImpAnalyserFichier(file) {
       // annoncerait une taille que la generation ne produira pas.
       const d = window.SigImport.dimensionsCanvas(_sigImportState.bounds, LW);
       eH.value = d.h;
-      if (d.w !== LW) eW.value = d.w;   // largeur rognee par le plafond de surface
+      // 🎚️ On PRÉVIENT, on ne bloque pas (arbitrage KARMA). La largeur n'est
+      // plus rognée : l'utilisateur obtient ce qu'il demande, en sachant ce
+      // qu'il risque.
+      const boite = document.getElementById("kta-sig-imp-canvas-alerte");
+      if (boite) {
+        if (!d.alerte) { boite.innerHTML = ""; }
+        else {
+          const grave = (d.alerte === "ram");
+          const cle = grave ? "gen.sig.canvasAlerteRam" : "gen.sig.canvasAlerteIos";
+          const col = grave ? "#ff8c8c" : "#ffb380";
+          boite.innerHTML = '<div style="color:' + col + '; font-size:12px; margin-top:6px;'
+            + ' padding:6px 8px; background:rgba(255,179,128,0.08);'
+            + ' border-left:3px solid ' + col + '; border-radius:3px;">'
+            + (grave ? "🛑 " : "⚠️ ")
+            + T(cle, { mpx: d.mpx.toFixed(1), conseil: Math.floor(Math.sqrt(
+                (window.SigImport.ALERTE_CANVAS_MPX_IOS * 1e6) * (LW / d.h))) })
+            + '</div>';
+        }
+      }
     };
     const eWl = document.getElementById("kta-sig-imp-w");
     if (eWl) { eWl.addEventListener("input", majH); eWl.addEventListener("change", majH); }

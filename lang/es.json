@@ -4941,5 +4941,7 @@
   "gen.sig.couleursNiveauHint": "Crea un tipo de leyenda distinto para cada nivel, con su propio color. Sin esto, todos los niveles salen del mismo tono y se confunden. Podrás renombrar y recolorear cada entrada después en ≡ Leyenda.",
   "gen.sig.beaucoupFeatures": "Archivo voluminoso: {n} objetos. La importación los acepta, pero mostrar el plano puede resultar pesado en móvil. Si el mapa va lento, vuelve a importar con menos capas.",
   "osm_home.niveaux.titre": "🏗️ Niveles",
-  "osm_home.niveaux.tous": "Todos"
+  "osm_home.niveaux.tous": "Todos",
+  "gen.sig.canvasAlerteIos": "Fondo de {mpx} millones de píxeles. Por encima de unos 16, un <strong>iPhone</strong> puede mostrar un fondo vacío (límite de Safari). En PC y Android no hay problema. Si el plano se usará en iPhone, un ancho de unos <strong>{conseil} px</strong> se mantiene por debajo del límite.",
+  "gen.sig.canvasAlerteRam": "Fondo de {mpx} millones de píxeles: es <strong>mucho</strong>. La generación puede fallar por falta de memoria (la aplicación maneja dos imágenes de ese tamaño a la vez) y el fondo quedará vacío en iPhone. Puedes intentarlo: si no termina, baja a unos <strong>{conseil} px</strong> de ancho."
 }

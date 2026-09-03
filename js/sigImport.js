@@ -95,27 +95,24 @@
   const MAX_FEATURES  = 60000;   // refus dur : au-delà, c'est un atlas, pas un plan
   const WARN_FEATURES = 20000;   // au-delà : on accepte, mais on prévient
 
-  // 🩸 PLAFOND DE SURFACE DU CANVAS (v1.82.0). KARMA : « ma génération depuis
-  // qu'on prend tout l'historique n'a JAMAIS abouti ». Chez moi elle passait en
-  // 10,4 s — la différence n'est pas le temps, c'est la MÉMOIRE.
+  // 🎚️ SEUILS D'ALERTE DE SURFACE DU CANVAS — on PRÉVIENT, on ne BLOQUE PAS.
+  // (arbitrage KARMA du 03/09 : « trop restrictif, on prévient, on conseille,
+  // mais on bloque pas »)
   //
-  // Un canvas 10000×11680 fait 117 Mpx, soit ~467 Mo de RGBA. Le pipeline en
-  // tient DEUX en même temps : le canvas source et l'image re-décodée pour le
-  // tuilage. Près d'un gigaoctet, pour un aplat de couleur unie. Selon la
-  // machine, ça passe ou `toBlob` renvoie `null` sans un mot.
+  // La première version plafonnait à 16 Mpx et rognait les dimensions en
+  // silence : quelle que soit la largeur demandée on obtenait la même, ce qui
+  // rendait le champ inopérant sans rien expliquer. Décider à la place de
+  // l'utilisateur sur un risque qu'on n'a pas mesuré soi-même, c'est trop.
   //
-  // Le plafond est fixé à 16 Mpx, et ce chiffre n'est pas arbitraire : c'est
-  // l'ordre de grandeur du plafond de canvas d'iOS Safari (~16,7 Mpx). Au-delà,
-  // un iPhone rend une image VIDE. Le réglage par défaut d'avant (4000×4672 =
-  // 18,7 Mpx) le dépassait déjà — l'import SIG était donc cassé sur iPhone dans
-  // sa configuration par DÉFAUT. [Probable : plafond iOS non testé ici, mais le
-  // calcul de surface est certain.]
-  //
-  // Conséquence assumée : sur un terrain très allongé, le plan est un peu moins
-  // précis. C'est préférable à un fond vide ou à une génération qui n'aboutit
-  // jamais — et la précision d'un FOND UNI n'a de toute façon aucun sens : elle
-  // ne sert qu'à borner les coordonnées des annotations.
-  const MAX_CANVAS_MPX = 16;
+  // Ce que les seuils signalent, et d'où ils viennent :
+  //   • 16 Mpx — ordre de grandeur du plafond de canvas d'iOS Safari
+  //     (~16,7 Mpx). Au-delà, un iPhone rend une image VIDE. [Probable :
+  //     estimation non testée ici, mais le calcul de surface est certain.]
+  //   • 60 Mpx — territoire où le pipeline tient DEUX bitmaps simultanés (le
+  //     canvas et l'image re-décodée pour le tuilage), soit ~480 Mo de RGBA.
+  //     C'est là que la génération de KARMA n'aboutissait jamais.
+  const ALERTE_CANVAS_MPX_IOS = 16;
+  const ALERTE_CANVAS_MPX_RAM = 60;
 
   // =========================================================================
   // DÉTECTION DE FORMAT
@@ -959,14 +956,14 @@
   // façon — elle ne sert qu'à borner les coordonnées des annotations.
   function dimensionsCanvas(bounds, W) {
     W = Math.max(64, W || 4000);
-    let H = calculerHauteurCanvas(bounds, W);
-    const maxPx = MAX_CANVAS_MPX * 1e6;
-    if (W * H > maxPx) {
-      const k = Math.sqrt(maxPx / (W * H));
-      W = Math.max(64, Math.round(W * k));
-      H = Math.max(64, Math.round(H * k));
-    }
-    return { w: W, h: H };
+    const H = calculerHauteurCanvas(bounds, W);
+    const mpx = (W * H) / 1e6;
+    // `alerte` : null | "ios" | "ram". L'appelant décide quoi en faire —
+    // ici on ne fait que qualifier, jamais rogner.
+    let alerte = null;
+    if (mpx > ALERTE_CANVAS_MPX_RAM)      alerte = "ram";
+    else if (mpx > ALERTE_CANVAS_MPX_IOS) alerte = "ios";
+    return { w: W, h: H, mpx: mpx, alerte: alerte };
   }
 
   // 📐 v1.82.0 — HAUTEUR DU CANVAS, DÉDUITE DE LA FORME DU TERRAIN.
@@ -1201,7 +1198,8 @@
     L93:                L93,
     calculerBounds:     calculerBounds,
     WARN_FEATURES:      WARN_FEATURES,
-    MAX_CANVAS_MPX:     MAX_CANVAS_MPX,
+    ALERTE_CANVAS_MPX_IOS: ALERTE_CANVAS_MPX_IOS,
+    ALERTE_CANVAS_MPX_RAM: ALERTE_CANVAS_MPX_RAM,
     calculerHauteurCanvas: calculerHauteurCanvas,
     dimensionsCanvas:   dimensionsCanvas,
     analyserAttributs:  analyserAttributs,
