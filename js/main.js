@@ -317,14 +317,27 @@ async function lancerApplication() {
     }
     // 🆕 v1.10.0 (KARMA "en mode M-LVL, fait en sorte que -1, 0, +1 soit
     // affiché par défaut") : si multi-niveau actif → on montre les 3
-    // niveaux centraux par défaut, filtrés par les niveaux effectivement
-    // disponibles dans availableLevels. Si single-level → [0] strict
-    // (retro-compat absolue, pas de comportement inattendu).
+    // 🏗️ v1.82.1 — TOUS LES NIVEAUX AU LANCEMENT (demande KARMA), réglable.
+    //
+    // Le défaut de v1.10.0 montrait les trois niveaux centraux (-1, 0, +1).
+    // Il tenait tant qu'un plan en comptait trois ou quatre. Un relevé importé
+    // du SIG en porte SIX ou SEPT : la carte s'ouvrait alors sur une fraction
+    // du travail, sans que rien n'indique que le reste existait.
+    //
+    // Décocher « Afficher tous les niveaux au lancement » (panneau Performance
+    // du HOME) rend l'ancien comportement. La case est là et pas ailleurs
+    // parce que c'est un arbitrage de CHARGE — mais elle est hors du méta
+    // ULTRA : afficher plus n'est pas optimiser.
     if (APP_CONFIG.multiLevel) {
-      const _candidats = [-1, 0, 1].filter(function(l) {
-        return APP_CONFIG.availableLevels.indexOf(l) >= 0;
-      });
-      APP_CONFIG.visibleLevels = _candidats.length > 0 ? _candidats : [0];
+      const _tous = !(window.PerfUltra && window.PerfUltra.get("tousNiveaux") === false);
+      if (_tous) {
+        APP_CONFIG.visibleLevels = APP_CONFIG.availableLevels.slice();
+      } else {
+        const _candidats = [-1, 0, 1].filter(function(l) {
+          return APP_CONFIG.availableLevels.indexOf(l) >= 0;
+        });
+        APP_CONFIG.visibleLevels = _candidats.length > 0 ? _candidats : [0];
+      }
     } else {
       APP_CONFIG.visibleLevels = [0];   // reset filtre : montre uniquement le niveau 0 au load
     }
@@ -681,6 +694,19 @@ window._etendreAvailableLevelsSiBesoin = function() {
       console.log("[Main] availableLevels auto-etendu :",
                   "items min/max =", minF, "/", maxF,
                   "→ availableLevels =", avail);
+      // 🏗️ v1.82.1 — LES NIVEAUX DÉCOUVERTS DOIVENT ÊTRE VISIBLES AUSSI.
+      // Sans ça, « Afficher tous les niveaux au lancement » ne portait que sur
+      // le range PAR DÉFAUT (-2..+2) : les niveaux d'un plan importé, trouvés
+      // ici même en lisant le calque de données APRÈS le calcul initial de
+      // `visibleLevels`, restaient masqués. Sur un relevé à six étages, l'option
+      // n'aurait donc rien changé là où elle sert le plus.
+      const _tousNiv = !(window.PerfUltra && window.PerfUltra.get("tousNiveaux") === false);
+      if (_tousNiv) {
+        window.APP_CONFIG.visibleLevels = avail.slice();
+        if (typeof window.appliquerFiltreNiveau === "function") {
+          try { window.appliquerFiltreNiveau(); } catch(e) {}
+        }
+      }
     }
     return extended;
   } catch(e) {

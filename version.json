@@ -1,8 +1,8 @@
 {
-  "version": "v1.82.0",
+  "version": "v1.82.1",
   "released": "2026-09-03",
   "notes": [
-    "🗺️ L’import « Convertir depuis SIG » comprend enfin les relevés de carrière : le Lambert 93 des exports QGIS est converti tout seul, chaque niveau garde son étage et sa couleur, et les piliers ou fronts de taille arrivent au bon endroit. Les exports PNG et PDF de ces plans, qui ne sortaient que le fond, sont réparés — et les traits n’empâtent plus la carte quand on prend du recul.",
-    "📏 Correctif important : l’échelle des plans créés depuis un GPX ou un SIG était fausse — les distances mesurées peuvent donc changer sur ces plans. Régénère-les pour repartir sur des mesures justes."
+    "🏗️ Tous les niveaux d’un plan s’affichent désormais à l’ouverture. Une case dans les réglages de performance du menu d’accueil permet de revenir à l’ancien comportement (niveaux -1, 0 et +1 seulement).",
+    "👣 Correctif important : sur les plans créés depuis un GPX, un KMZ ou un SIG, le podomètre comptait des pas à l’arrêt — jusqu’à plusieurs kilomètres imaginaires par sortie. Tes plans existants sont réparés tout seuls, rien à régénérer. Et tes réglages de pas sont enfin conservés quand tu reviens sur un plan."
   ]
 }

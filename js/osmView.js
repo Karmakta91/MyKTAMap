@@ -1544,9 +1544,20 @@
   function _initVisibleLevels() {
     const cfg = window.APP_CONFIG || {};
     if (!cfg.multiLevel) { _visibleLevels = null; return; }
-    const active = cfg.activeLevel;
+    // 🏗️ v1.82.1 — LA MODALE SUIT CE QUE LA CARTE MONTRE.
+    // Elle s'ouvrait sur le SEUL niveau actif, quand la carte du dessous en
+    // affichait plusieurs : passer en Vue OSM faisait donc disparaître le
+    // reste du relevé, sans que ce soit demandé. On reprend `visibleLevels`,
+    // qui porte déjà le choix de l'utilisateur (et l'option « afficher tous
+    // les niveaux au lancement »). Repli sur le niveau actif si absent.
     _visibleLevels = new Set();
-    if (Number.isFinite(active)) _visibleLevels.add(active);
+    const vis = Array.isArray(cfg.visibleLevels) ? cfg.visibleLevels : null;
+    if (vis && vis.length) {
+      vis.forEach(function (n) { if (Number.isFinite(n)) _visibleLevels.add(n); });
+    }
+    if (_visibleLevels.size === 0 && Number.isFinite(cfg.activeLevel)) {
+      _visibleLevels.add(cfg.activeLevel);
+    }
   }
 
   // Toggle d'un niveau dans _visibleLevels + re-render des layers filtrés.

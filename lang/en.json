@@ -1336,6 +1336,8 @@
   "home.perf.tilingTitle": "🖼️ Image tiling (per map)",
   "home.perf.ultraIntro": "For large maps that crash. Does NOT affect the image (already handled by the tiling above). Global preference, kept across sessions.",
   "home.perf.ultraMasterTitle": "Enables the 7 toggles below all at once",
+  "home.perf.tousNiveauxLabel": "🏗️ Show all levels at startup",
+  "home.perf.tousNiveauxHint": "Unchecked: only levels -1, 0 and +1 are shown when opening.",
   "home.perf.ultraTitle": "🚀 ULTRA Performance mode (tracks / markers)",
   "home.perf.viewportCullHint": "Slight pop-in when panning, big gain on dense maps.",
   "home.perf.viewportCullLabel": "👁️ Only render visible tracks",

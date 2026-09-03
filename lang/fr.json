@@ -1336,6 +1336,8 @@
   "home.perf.tilingTitle": "🖼️ Tiling de l'image (par plan)",
   "home.perf.ultraIntro": "Pour les gros plans qui crashent. N'affecte PAS l'image (déjà gérée par le Tiling ci-dessus). Préférence globale, conservée entre sessions.",
   "home.perf.ultraMasterTitle": "Active les 7 toggles ci-dessous en bloc",
+  "home.perf.tousNiveauxLabel": "🏗️ Afficher tous les niveaux au lancement",
+  "home.perf.tousNiveauxHint": "Décoché : seuls les niveaux -1, 0 et +1 s'affichent à l'ouverture.",
   "home.perf.ultraTitle": "🚀 Mode Performance ULTRA (tracés / markers)",
   "home.perf.viewportCullHint": "Pop-in léger au pan, gros gain sur plans denses.",
   "home.perf.viewportCullLabel": "👁️ Ne rendre que les tracés visibles",

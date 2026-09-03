@@ -439,6 +439,17 @@
             });
           });
         }
+        // 🏗️ v1.82.1 — branché À PART : cette case ne suit pas le méta ULTRA
+        // (afficher plus de niveaux n'est pas une optimisation). Elle se lit
+        // et s'écrit comme les autres, mais `setUltra` ne la touche pas.
+        const nivEl = document.getElementById("loader_perf_tousNiveaux");
+        if (nivEl) {
+          nivEl.checked = window.PerfUltra.get("tousNiveaux");
+          nivEl.addEventListener("change", function() {
+            window.PerfUltra.set("tousNiveaux", nivEl.checked);
+          });
+        }
+
         // Bind toggles individuels
         Object.keys(map).forEach(function(id) {
           const el = document.getElementById(id);

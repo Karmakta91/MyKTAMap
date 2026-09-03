@@ -1336,6 +1336,8 @@
   "home.perf.tilingTitle": "🖼️ Tiling de la imagen (por mapa)",
   "home.perf.ultraIntro": "Para los mapas grandes que crashean. NO afecta a la imagen (ya gestionada por el Tiling de arriba). Preferencia global, conservada entre sesiones.",
   "home.perf.ultraMasterTitle": "Activa los 7 interruptores siguientes en bloque",
+  "home.perf.tousNiveauxLabel": "🏗️ Mostrar todos los niveles al iniciar",
+  "home.perf.tousNiveauxHint": "Sin marcar: al abrir solo se muestran los niveles -1, 0 y +1.",
   "home.perf.ultraTitle": "🚀 Modo Rendimiento ULTRA (trazados / marcadores)",
   "home.perf.viewportCullHint": "Pequeño pop-in al panear, gran ganancia en mapas densos.",
   "home.perf.viewportCullLabel": "👁️ Renderizar solo los trazados visibles",

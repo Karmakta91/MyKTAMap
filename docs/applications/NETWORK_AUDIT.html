@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.82.0</strong> (3 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.82.1</strong> (3 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.82.1 (podomètre, persistance des réglages, tous les niveaux à l’ouverture)</h3>
+  <p><strong>100 % local, aucune requête nouvelle, aucun domaine ajouté.</strong> Le correctif du podomètre touche un <strong>capteur de l'appareil</strong> déjà utilisé depuis toujours (<code>devicemotion</code>, l'accéléromètre) : il était mal interprété, il l'est correctement — <strong>aucune mesure ne sort de ton téléphone</strong>, et aucune permission nouvelle n'est demandée. La réparation des plans déjà créés se fait <strong>à leur ouverture, sur ton appareil</strong>, en corrigeant une valeur du fichier de plan local. Les réglages de pas sont désormais conservés dans le <strong>stockage local de ton navigateur</strong>, par plan — même emplacement que l'échelle depuis la v1.76.1. L'affichage de tous les niveaux à l'ouverture, la case qui permet d'y renoncer et le reclassement d'un objet sont de l'affichage et de la donnée locale. Whitelist <code>connect-src</code> inchangée. ⚠️ Rappel inchangé : la Vue OSM <strong>télécharge des fonds de carte</strong> auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0.</p>
   <h3>v1.82.0 (import SIG : relevés de carrière, Lambert 93, découpage d’atlas)</h3>
   <p><strong>100 % local, aucune requête nouvelle, aucun domaine ajouté.</strong> La conversion du <strong>Lambert 93</strong>
   est un calcul fait sur ton appareil — une cinquantaine de lignes ajoutées à l’app, et surtout <strong>aucun service de
