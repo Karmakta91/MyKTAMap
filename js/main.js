@@ -984,8 +984,40 @@ function _propagerGeorefVersKmzExport(planId) {
     const georef = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.georef;
     if (!georef || !georef.pointA || !georef.pointB) return;
     if (!window.KmzExport || typeof window.KmzExport.setCalibration !== "function") return;
-    // Skip si un calibrage local existe déjà (l'user a saisi manuellement → on respecte)
-    if (window.KmzExport.getCalibration && window.KmzExport.getCalibration(planId)) return;
+    // Skip si un calibrage local existe déjà (l'user a saisi manuellement → on respecte).
+    //
+    // 🩸 v1.82.0 — SAUF S'IL EST STRUCTURELLEMENT PÉRIMÉ. Le planId est
+    // DÉTERMINISTE (slug nom+version) : régénérer un plan sous le même nom
+    // réutilise le même id, et l'ancien calibrage lui survit. Si les dimensions
+    // du plan ont changé entre-temps, ses coordonnées x/y désignent un canvas
+    // QUI N'EXISTE PLUS — `buildTransformCalib` calcule alors une longueur plan
+    // fausse, donc une échelle fausse.
+    //
+    // Symptôme vécu (KARMA, 03/09) : plan régénéré en 4000×4672, calibrage
+    // resté sur un 12000×14017. Les distances lues étaient justes (elles
+    // viennent de `tracking.scale`), mais la modale criait « Incohérence
+    // échelle critique, +246,9 % d'écart » — l'alerte comparait la bonne
+    // échelle à une déduction faite sur un géoréf mort. Elle avait tort, et
+    // rien ne permettait de le deviner.
+    //
+    // Un calibrage dont les points sortent du plan n'est pas une préférence
+    // utilisateur : c'est une donnée morte. On la remplace. Un calibrage
+    // manuel VALIDE, lui, a forcément ses points dans le plan — il est
+    // préservé, la règle d'origine tient.
+    const dejaLa = window.KmzExport.getCalibration && window.KmzExport.getCalibration(planId);
+    if (dejaLa) {
+      const W = window.PLAN_CONFIG.plan.imageWidth;
+      const H = window.PLAN_CONFIG.plan.imageHeight;
+      const dansLePlan = function (pt) {
+        return pt && Number.isFinite(pt.x) && Number.isFinite(pt.y)
+            && pt.x >= -1 && pt.x <= W + 1 && pt.y >= -1 && pt.y <= H + 1;
+      };
+      // Dimensions inconnues : on ne peut rien juger, on respecte l'existant.
+      if (!Number.isFinite(W) || !Number.isFinite(H)) return;
+      if (dansLePlan(dejaLa.pointA) && dansLePlan(dejaLa.pointB)) return;
+      console.warn("[Main] 🌐 Calibrage périmé pour planId=" + planId +
+                   " (points hors du plan " + W + "×" + H + ") → remplacé par plan.georef.");
+    }
     window.KmzExport.setCalibration(planId, georef);
     console.log("[Main] 🌐 Géoréférencement plan.georef propagé vers KmzExport (planId=" + planId + ")");
   } catch(e) {
