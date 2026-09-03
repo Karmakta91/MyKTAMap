@@ -39,6 +39,9 @@
 //
 // Usage :
 //   node scripts/decouper-atlas.js --zone "Citon_Graves_RD"
+//   node scripts/decouper-atlas.js --zone "A,B,C" --nom "Le_Bourg"   (fusionnees)
+//   node scripts/decouper-atlas.js --zone "A,B" --autour "44.8,-0.25" --rayon 2
+//                                    (noms ET position — departage les homonymes)
 //   node scripts/decouper-atlas.js --zone "X" --src data/doc.kml --out sorties-atlas
 //   node scripts/decouper-atlas.js --lister                  (les zones dispo)
 // =====================================================================
@@ -48,6 +51,7 @@ const path = require("path");
 const readline = require("readline");
 
 // ---------------------------------------------------------------- args ----
+const NL = String.fromCharCode(10);
 const A = process.argv.slice(2);
 function opt(nom, def) {
   const i = A.indexOf("--" + nom);
@@ -56,6 +60,22 @@ function opt(nom, def) {
 const SRC     = opt("src", "data/doc.kml");
 const OUT_DIR = opt("out", "sorties-atlas");
 const ZONE    = opt("zone", null);
+// 🩸 PLUSIEURS NOMS, ET LE PIÈGE DES HOMONYMES (demande KARMA, 03/09 : « Le
+// Bourg », un ensemble de plusieurs carrières). Un site peut être découpé en
+// emprises nommées séparément — Le_Bourg_01, _02_dite_du_Genie, _03_dite
+// _Grotte_des_Brigands, _04, _05 — qui forment un seul plan.
+//
+// MAIS « Le Bourg » désigne le centre d'un village : le département en compte
+// 49 emprises, réparties en 16 grappes distantes de dizaines de kilomètres,
+// dont QUATRE nommées exactement `Le_Bourg_01`. Sélectionner par nom seul
+// fabriquerait un plan à l'échelle du département — le défaut même que cet
+// outil existe pour éviter.
+//
+// D'où la combinaison : `--zone "A,B,C" --autour "lat,lng" --rayon N` prend
+// les emprises qui portent CES noms ET qui sont LÀ. Les deux critères se
+// croisent au lieu de s'ajouter — c'est ce croisement qui départage.
+const ZONES   = ZONE ? ZONE.split(",").map(function (s) { return s.trim(); })
+                           .filter(Boolean) : [];
 const LISTER  = A.includes("--lister");
 // 🗺️ EXTRACTION PAR ZONE GÉOGRAPHIQUE (demande KARMA, 03/09 : Saint-Émilion).
 // Un site n'est pas toujours UNE emprise nommée. Sous Saint-Émilion, le
@@ -235,13 +255,19 @@ function passe1() {
             // Deux polygones de même nom sont deux parties d'une même carrière
             // (multipolygone éclaté à l'export). On les GARDE TOUTES et on teste
             // l'appartenance à l'une OU l'autre.
-            if (ZONE && buf.nom === ZONE) cibles.push({ nom: buf.nom, poly: pts, bbox: bboxDe(pts) });
+            const parNom = ZONES.length > 0 && ZONES.indexOf(buf.nom) >= 0;
+            // Nom seul : on prend tout de suite. Nom + position : c'est le test
+            // géographique juste en dessous qui tranche, en relisant `parNom`.
+            if (parNom && !CENTRE) cibles.push({ nom: buf.nom, poly: pts, bbox: bboxDe(pts) });
             // Sélection GÉOGRAPHIQUE : le centre de l'emprise tombe dans le
             // rayon demandé. On prend le centre plutôt qu'un test d'intersection
             // exact — sur 1 471 emprises c'est instantané, et une carrière dont
             // le centre est à plus de N km du point demandé n'est de toute façon
             // pas le site qu'on cherche.
-            if (CENTRE) {
+            // Un filtre de noms actif restreint AUSSI la sélection géographique :
+            // sans ça, `--zone` + `--autour` ramènerait tout ce qui est dans le
+            // rayon, noms demandés ou non.
+            if (CENTRE && (ZONES.length === 0 || parNom)) {
               const bb2 = bboxDe(pts);
               const cx = (bb2.x0 + bb2.x1) / 2, cy = (bb2.y0 + bb2.y1) / 2;
               const dx = (cx - CENTRE.lng) * 111320 * Math.cos(CENTRE.lat * Math.PI / 180);
@@ -409,9 +435,17 @@ function passe2(cibles) {
       console.error("   Sinon, élargis avec --rayon.");
       process.exit(1);
     }
-    console.error("\n❌ Zone « " + ZONE + " » introuvable.");
+    console.error(NL + "❌ Zone " + ZONES.map(function (z) { return "« " + z + " »"; }).join(" / ") +
+                  " introuvable" + (CENTRE ? " dans le rayon demandé" : "") + ".");
+    if (CENTRE) {
+      console.error("   Ces noms existent peut-être AILLEURS : `--zone` et `--autour`");
+      console.error("   se CROISENT, ils ne s'additionnent pas. Élargis `--rayon`, ou");
+      console.error("   retire `--autour` si le nom est déjà sans ambiguïté.");
+    }
     const proches = p1.zones.filter(function (z) {
-      return z.nom.toLowerCase().includes(ZONE.toLowerCase().slice(0, 5));
+      return ZONES.some(function (Z) {
+        return z.nom.toLowerCase().includes(Z.toLowerCase().slice(0, 5));
+      });
     }).slice(0, 8);
     if (proches.length) {
       console.error("   Peut-être : " + proches.map(function (z) { return z.nom; }).join(", "));
