@@ -888,6 +888,40 @@
     const zip = new JSZip();
     zip.file("data/baseImage.png", baseBlob);
 
+    // 🧱 v1.82.0 — TUILAGE V2 (retour KARMA : « le plan n'est pas généré en V2,
+    // donc inutilisable en OSM »). Exact, et le blocage est franc : la Vue OSM
+    // du MODE PLAN (`osmView.js`) refuse tout plan non tuilé — pas par confort
+    // mais pour une raison documentée, le CRASH MOBILE : avant la v1.39.10 elle
+    // chargeait l'image entière via `imageOverlay.rotated`, ce qui saturait le
+    // GPU d'un iPhone. Depuis, seuls les plans V2 passent.
+    // (La Vue OSM du HOME, elle, accepte les plans V1 : elle affiche alors les
+    // données sans le fond. Deux écrans, deux exigences — ne pas les confondre.)
+    //
+    // Un plan issu d'un SIG est le meilleur candidat qui soit pour la Vue OSM :
+    // son géoréférencement est CALCULÉ, pas saisi à la main. Le priver de cet
+    // écran pour un fond uni serait absurde — et l'aplat ne gêne pas, la Vue OSM
+    // a un toggle « 🖼️ Plan » pour le masquer.
+    //
+    // On RÉUTILISE le tuileur du générateur de plans (`_genererTuilesV2`) plutôt
+    // que d'en écrire un second : c'est lui qui définit le format, la pyramide
+    // et le manifeste. Une deuxième implémentation dériverait.
+    let tilingManifest = null;
+    try {
+      if (typeof _genererTuilesV2 === "function") {
+        const v2 = await _genererTuilesV2(baseBlob, zip);
+        if (v2 && v2.manifest) tilingManifest = v2.manifest;
+      } else {
+        console.warn("[SigImport] _genererTuilesV2 indisponible — plan généré en V1 " +
+                     "(la Vue OSM du mode plan le refusera).");
+      }
+    } catch(e) {
+      // Dégradation assumée : mieux vaut un plan V1 utilisable en mode carte
+      // qu'aucun plan du tout. L'utilisateur pourra le retuiler via
+      // « Modifier un plan ».
+      console.warn("[SigImport] tuilage V2 échoué, plan livré en V1 :", e);
+      tilingManifest = null;
+    }
+
     const planConfig = {
       plan: {
         name:        opts.planName    || "Import SIG",
@@ -910,6 +944,13 @@
       dataLayers: [{ id: "sig", label: opts.layerLabel || "Import SIG", file: "sig.json", visible: true }]
     };
     if (opts.multiLevel === true) planConfig.plan.multiLevel = true;
+    // 🧱 Les DEUX marqueurs sont nécessaires : le drapeau `plan.tiledV2` et la
+    // section `tiling`. `osmView._isV2Plan()` vérifie les deux, plus la présence
+    // de `minNativeZoom` et `tileSize` — un drapeau seul ne suffirait pas.
+    if (tilingManifest) {
+      planConfig.plan.tiledV2 = true;
+      planConfig.tiling = tilingManifest;
+    }
 
     zip.file("data/sig.json", JSON.stringify({
       points: ingested.points,
