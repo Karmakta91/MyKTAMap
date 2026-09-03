@@ -1796,3 +1796,44 @@ Liste d'outils : **5 → 4** entrées (Carnet · Éditeur de données · Mes lia
 | Confirmations `.kta-modal-overlay` (ex. ❌ Effacer mesure) | Hors filet **par classe** (autre classe que `kta-readme-modal-overlay`) — rien à exclure explicitement. |
 
 ⚠️ **Piège** : toute nouvelle modale qui reprend la classe `kta-readme-modal-overlay` **coupera** les modes outils. Si c'est une modale de flux d'outil, l'ajouter à `IDS_EXCLUS` (elle doit alors porter un `id`).
+
+---
+
+### 96. Flyout de sidebar : borné au viewport VISIBLE, pas au viewport de mise en page (v1.82.0)
+
+Sur mobile, le panneau 🏛️ **Structures** descendait sous le bord de l'écran :
+« Fermer la structure en cours » et tout ce qui le suit restaient inatteignables.
+Signalé par KARMA sur un plan importé, dont la liste s'allonge d'un type par
+niveau — mais le défaut est général à tous les flyouts assez chargés.
+
+🩸 **`window.innerHeight` n'est pas ce que l'utilisateur voit.** Il mesure le
+viewport de **mise en page**, qui inclut la bande occupée par la barre d'URL du
+navigateur (iOS Safari notamment, où il correspond au *large viewport*, barre
+masquée). `_positionnerFlyout` en tirait un `max-height`, donc un panneau plus
+haut que l'écran réel.
+
+**Et le scroll interne n'y changeait rien** — c'est ce qui rend le symptôme
+déroutant. Le contenu défile jusqu'au **bas du panneau**, or ce bas est hors
+champ : les derniers boutons ne peuvent être atteints par aucun geste.
+
+**Correction** — `window.visualViewport` :
+
+| Grandeur | Avant | Après |
+|---|---|---|
+| Hauteur / largeur | `window.innerHeight` / `innerWidth` | `visualViewport.height` / `.width` |
+| Origine | implicite `0,0` | `+ visualViewport.offsetTop` / `.offsetLeft` |
+| Encoche / barre d'accueil | ignorées | `env(safe-area-inset-*)` retranchés |
+
+`offsetTop` dit de combien la zone visible est décalée dans le viewport de mise
+en page : c'est ce décalage qu'un élément `position: fixed` doit rattraper, ses
+coordonnées étant elles-mêmes exprimées dans le viewport de mise en page.
+
+Les insets sont lus par une **sonde CSS jetable** (un `div` `position: fixed`
+portant `top: env(safe-area-inset-top)`, dont on lit le style calculé) : c'est la
+seule façon d'obtenir un `env()` en JS. Cache invalidé sur changement de
+`innerWidth`, donc à la rotation.
+
+⚠️ **La barre d'URL mobile va et vient sans émettre de `resize`** — seul
+`visualViewport` le signale. Ses événements `resize` et `scroll` sont donc
+écoutés en plus des listeners existants, et **retirés dans `_fermerFlyout`** avec
+les autres.

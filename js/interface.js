@@ -1386,6 +1386,10 @@ function _fermerFlyout() {
   document.removeEventListener("touchend", _onDocClickFlyout, true);
   window.removeEventListener("resize",     _onResizeFlyout);
   window.removeEventListener("scroll",     _onResizeFlyout, true);
+  if (window.visualViewport) {
+    window.visualViewport.removeEventListener("resize", _onResizeFlyout);
+    window.visualViewport.removeEventListener("scroll", _onResizeFlyout);
+  }
 }
 
 function _onDocClickFlyout(e) {
@@ -1599,15 +1603,65 @@ function _ouvrirFlyout(groupId) {
     document.addEventListener("touchend", _onDocClickFlyout, true);
     window.addEventListener("resize",     _onResizeFlyout);
     window.addEventListener("scroll",     _onResizeFlyout, true);
+    // La barre d'URL mobile apparaît et disparaît sans provoquer de `resize` :
+    // seul `visualViewport` le signale. Sans ça, le panneau garde la taille
+    // qu'il avait à l'ouverture et redéborde au premier geste de défilement.
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", _onResizeFlyout);
+      window.visualViewport.addEventListener("scroll", _onResizeFlyout);
+    }
   }, 0);
+}
+
+// Lit les `env(safe-area-inset-*)` du device. Une sonde suffit — les valeurs
+// ne changent qu'à la rotation, et le flyout est repositionné à chaque resize.
+let _safeAreaCache = null;
+function _lireSafeAreaInsets() {
+  if (_safeAreaCache && _safeAreaCache.w === window.innerWidth) return _safeAreaCache;
+  const d = { top: 0, bottom: 0, left: 0, right: 0 };
+  try {
+    const sonde = document.createElement("div");
+    sonde.style.cssText = "position:fixed;visibility:hidden;pointer-events:none;" +
+      "top:env(safe-area-inset-top,0px);bottom:env(safe-area-inset-bottom,0px);" +
+      "left:env(safe-area-inset-left,0px);right:env(safe-area-inset-right,0px);";
+    document.body.appendChild(sonde);
+    const cs = getComputedStyle(sonde);
+    d.top    = parseFloat(cs.top)    || 0;
+    d.bottom = parseFloat(cs.bottom) || 0;
+    d.left   = parseFloat(cs.left)   || 0;
+    d.right  = parseFloat(cs.right)  || 0;
+    sonde.remove();
+  } catch (e) {}
+  d.w = window.innerWidth;
+  _safeAreaCache = d;
+  return d;
 }
 
 function _positionnerFlyout(fly, btnPrincipal, sidebarPosition) {
   const rect    = btnPrincipal.getBoundingClientRect();
   const padding = 8;
-  const vpW     = window.innerWidth;
-  const vpH     = window.innerHeight;
+  // 🩸 v1.82.0 — `innerHeight` N'EST PAS CE QUE L'UTILISATEUR VOIT.
+  // Sur mobile il mesure le viewport de MISE EN PAGE, qui inclut la bande
+  // occupée par la barre d'URL du navigateur. Un panneau dimensionné dessus
+  // descend donc sous le bord visible de l'écran — et son scroll interne n'y
+  // change rien : le contenu défile jusqu'au bas du panneau, qui est hors
+  // champ. Signalé par KARMA sur 🏛️ Structures, dont la liste s'allonge d'un
+  // type par niveau sur un plan importé : « Fermer la structure en cours » et
+  // tout ce qui suit restaient inatteignables.
+  //
+  // `visualViewport` donne la zone RÉELLEMENT visible, et son `offsetTop` dit
+  // de combien elle est décalée dans le viewport de mise en page — c'est ce
+  // décalage qu'un élément `position: fixed` doit rattraper.
+  const vv      = window.visualViewport || null;
+  const vpW     = vv ? vv.width  : window.innerWidth;
+  const vpH     = vv ? vv.height : window.innerHeight;
+  const offX    = vv ? vv.offsetLeft : 0;
+  const offY    = vv ? vv.offsetTop  : 0;
   const safeMargin = 12;
+  // Encoche et barre d'accueil : `visualViewport` les compte comme visibles,
+  // alors qu'un bouton posé dessous est difficile voire impossible à atteindre.
+  // Mesuré via une sonde CSS jetable, seule façon de lire un `env()` en JS.
+  const insets = _lireSafeAreaInsets();
 
   // 🐛 v1.16.0 step2-flyout-fix (KARMA "le modal doit pouvoir se dérouler
   // et ne pas sortir du cadre en horizontal") : on COMPUTE la max-height
@@ -1615,13 +1669,13 @@ function _positionnerFlyout(fly, btnPrincipal, sidebarPosition) {
   // jamais du viewport — particulièrement en landscape mobile où 78vh peut
   // dépasser 80% de l'écran et où Safari iOS a parfois des soucis avec vh
   // (URL bar dynamique, safe-area, etc.). Le scroll INTERNE prend le relais.
-  const maxH = Math.max(120, vpH - 2 * safeMargin);
+  const maxH = Math.max(120, vpH - 2 * safeMargin - insets.top - insets.bottom);
   fly.style.maxHeight = maxH + "px";
 
   // Idem pour la largeur (utile en portrait étroit où 280px peut être trop
   // large par rapport au viewport, et en landscape étroit où l'espace
   // dispo de chaque côté de la sidebar est limité).
-  const maxW = Math.max(180, vpW - 2 * safeMargin);
+  const maxW = Math.max(180, vpW - 2 * safeMargin - insets.left - insets.right);
   fly.style.maxWidth = Math.min(maxW, 320) + "px";
 
   // Mesure réelle après application des max-* (le navigateur clamp si
@@ -1633,10 +1687,10 @@ function _positionnerFlyout(fly, btnPrincipal, sidebarPosition) {
   // Si le panel dépasserait en bas → on le remonte. Si le top dépasse
   // déjà en bas (cas extrême), on clamp à safeMargin.
   let top = rect.top;
-  if (top + flyHeight > vpH - safeMargin) {
-    top = vpH - flyHeight - safeMargin;
+  if (top + flyHeight > offY + vpH - safeMargin - insets.bottom) {
+    top = offY + vpH - flyHeight - safeMargin - insets.bottom;
   }
-  if (top < safeMargin) top = safeMargin;
+  if (top < offY + safeMargin + insets.top) top = offY + safeMargin + insets.top;
 
   // Position horizontale : selon sidebar (topleft → flyout à droite ;
   // topright → flyout à gauche). Clamp + bascule si pas de place.
@@ -1644,19 +1698,19 @@ function _positionnerFlyout(fly, btnPrincipal, sidebarPosition) {
   const isLeft = (sidebarPosition === "topleft");
   if (isLeft) {
     left = rect.right + padding;
-    if (left + flyWidth > vpW - safeMargin) {
+    if (left + flyWidth > offX + vpW - safeMargin - insets.right) {
       left = rect.left - flyWidth - padding;
     }
   } else {
     left = rect.left - flyWidth - padding;
-    if (left < safeMargin) {
+    if (left < offX + safeMargin + insets.left) {
       left = rect.right + padding;
     }
   }
   // Clamp final
-  if (left < safeMargin) left = safeMargin;
-  if (left + flyWidth > vpW - safeMargin) {
-    left = vpW - flyWidth - safeMargin;
+  if (left < offX + safeMargin + insets.left) left = offX + safeMargin + insets.left;
+  if (left + flyWidth > offX + vpW - safeMargin - insets.right) {
+    left = offX + vpW - flyWidth - safeMargin - insets.right;
   }
 
   fly.style.top  = top  + "px";
