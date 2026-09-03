@@ -773,19 +773,35 @@
     // Remplace le type d'un objet par un type custom propre à son niveau.
     // Retourne le type à utiliser — inchangé si l'option est off, si l'objet
     // n'a pas de niveau, ou si la famille n'est pas colorable.
+    // 🩸 v1.82.0 (bug remonté par KARMA : « j'ai bien pris front-1 et pourtant
+    // il me fait encore des zones »). La cause était ICI.
+    // Pour un type CUSTOM, `structures.js > _isPolylineType` ne peut pas deviner
+    // la forme depuis le nom : il lit `entry.geometry === "polyline"` dans la
+    // légende. Les entrées fabriquées plus haut n'avaient pas ce champ — un
+    // front de taille repeint par niveau redevenait donc un POLYGONE PLEIN,
+    // exactement ce que l'utilisateur voyait. La couleur par étage écrasait
+    // l'information de forme.
+    // On garde donc le type de base pour en déduire `geometry`.
+    const TYPES_POLYLIGNE = ["front-1", "front-2"];   // cf. STRUCTURE_TYPES_POLYLINE
+
     function _typeNiveau(typeBase, categorie, lvl, libelleBase) {
       if (!couleurParNiveau || lvl === null || typeof lvl !== "number") return typeBase;
-      const id = _idNiveau(categorie, lvl);
+      const estLigne = (categorie === "traces") || TYPES_POLYLIGNE.indexOf(typeBase) >= 0;
+      // Un id par (catégorie, FORME, niveau) : dans une même catégorie et un
+      // même étage, un front et un pilier ne doivent pas partager une entrée —
+      // l'un est une ligne, l'autre un polygone.
+      const id = _idNiveau(categorie + (estLigne ? "-l" : ""), lvl);
       if (!_dejaVu[id]) {
         if (!(lvl in _rangs)) { _rangs[lvl] = _rangSuivant++; }
         const c = _couleurNiveau(lvl, _rangs[lvl]);
         const e = { id: id, category: categorie,
-                    label: libelleBase + " " + (lvl < 0 ? lvl : "+" + lvl) };
-        // Une entrée de tracé porte `lineColor` ; une zone ou une structure
-        // portent aussi `fillColor` et `borderColor` — sans quoi elles
-        // s'afficheraient en remplissage par défaut, donc toutes pareilles.
+                    label: libelleBase + " " + (lvl < 0 ? lvl : "+" + lvl),
+                    // Champ LU par structures.js pour trancher ligne/polygone.
+                    geometry: estLigne ? "polyline" : "polygon" };
         e.lineColor = c;
-        if (categorie !== "traces") { e.fillColor = c; e.borderColor = c; }
+        // Remplissage seulement pour ce qui est réellement fermé : donner un
+        // fillColor à un front le ferait apparaître plein dans la légende.
+        if (!estLigne) { e.fillColor = c; e.borderColor = c; }
         customEntries.push(e);
         _dejaVu[id] = true;
       }
