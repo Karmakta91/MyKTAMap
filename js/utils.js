@@ -790,6 +790,16 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                  '<button class="kta-popup-btn kta-popup-btn-aller kta-note-popup-save" type="button">' +
                    '💾 Sauver la note' +
                  '</button>' +
+                 // 🔄 v1.82.0 — RECLASSER L'OBJET. Un vecteur importé du SIG peut
+                 // avoir été rangé dans la mauvaise famille : un front de taille qui
+                 // est en fait une galerie n'entre pas dans le graphe d'itinéraire,
+                 // puisque le Pathfinder ne lit que les tracés. La popup est le bon
+                 // hôte : elle tient déjà une référence directe sur l'objet de session.
+                 (opts.convertir
+                   ? '<button class="kta-popup-btn kta-note-popup-convertir" type="button">' +
+                       '🔄 ' + window.I18n.t("convert.btn") +
+                     '</button>'
+                   : '') +
                '</div>' +
                '<div class="kta-note-popup-status" style="display:none;"></div>' +
              '</div>' +
@@ -815,6 +825,12 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
       if (!popupRoot) return;
       const textarea = popupRoot.querySelector(".kta-note-popup-textarea");
       const saveBtn  = popupRoot.querySelector(".kta-note-popup-save");
+      const convBtn  = popupRoot.querySelector(".kta-note-popup-convertir");
+      if (convBtn && opts.convertir && window.KtaConvertir) {
+        convBtn.addEventListener("click", function () {
+          window.KtaConvertir.ouvrir(opts.convertir.famille, opts.convertir.obj);
+        });
+      }
       const statusEl = popupRoot.querySelector(".kta-note-popup-status");
       if (!textarea || !saveBtn) return;
 
@@ -1768,10 +1784,17 @@ window.getAllEmbeddedZones = function() {
     });
 };
 
-// 🆕 v1.9.3-A1.a : équivalent pour structures embarquées (lecture seule
-// via data layer). Utilisé en A1.b pour la collision pathfinder (les
-// structures bloquent comme les zones inaccessibles) + KMZ export
-// (embarquer le contenu data layer dans le .kmz).
+// 🆕 v1.9.3-A1.a : équivalent pour structures embarquées (lecture seule via
+// data layer). Consommé par l'export KMZ/GPX, la Vue OSM, les exports image
+// et le Mode Secours.
+//
+// 🩸 v1.82.0 — CE COMMENTAIRE ANNONÇAIT UNE COLLISION QUI N'EXISTE PAS. Il
+// disait « utilisé en A1.b pour la collision pathfinder (les structures
+// bloquent comme les zones inaccessibles) ». C'est faux : `pathfinder.js` ne
+// contient AUCUNE référence aux structures — ni arêtes, ni obstacles. La seule
+// contrainte dure du moteur reste les zones `inaccessible`. Ce commentaire a
+// coûté un aller-retour de diagnostic à KARMA, parti débrayer un blocage
+// inexistant. Un commentaire faux est pire qu'absent.
 window.getAllEmbeddedStructures = function() {
   if (!Array.isArray(window._ktaDataStructurePolygons)) return [];
   return window._ktaDataStructurePolygons

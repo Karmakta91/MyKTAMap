@@ -839,6 +839,10 @@
   //                    via SearchPoints.getAllPoints + filtre par tag)
   //   - avoidRadius  : px (defaut 100). Tout segment a moins de cette distance
   //                    d'un point d'evitement est exclu du graphe.
+  //   - respecterInaccessibles : false pour SUSPENDRE la contrainte dure des
+  //                    zones "inaccessible" (v1.82.0). Absent/true = comportement
+  //                    historique. Seule contrainte du moteur qui ne se relache
+  //                    jamais d'elle-meme, d'ou le besoin d'un interrupteur.
   //
   // ALGO 2 PASSES
   //   Passe 1 : avec zones inaccessibles (dur) + evitements (souple)
@@ -890,7 +894,21 @@
     }
 
     // 🚫 v169 (Karma_dev) : collecte des zones "inaccessibles" (contrainte dure).
-    const zonesInacc = _collecterZonesInaccessibles();
+    // 🆕 v1.82.0 — DÉBRAYABLE (demande KARMA). C'est la SEULE contrainte dure du
+    // moteur : jamais relâchée, même en passe 2. Sur un relevé importé encore
+    // incomplet, un polygone typé « inaccessible » par erreur ferme donc un
+    // passage qui existe, sans recours. La case de la modale itinéraire permet
+    // de le suspendre — cochée par défaut : le comportement sûr reste l'implicite,
+    // et le lever est un geste explicite de l'utilisateur qui connaît son terrain.
+    //
+    // ⚠️ Volontairement limité à `computeRoute`. `computeReachable` (Mode
+    // Secours / Perdu) garde les zones inaccessibles en toutes circonstances :
+    // une préférence de confort n'a pas à élargir un périmètre de secours.
+    const zonesInacc = (opts.respecterInaccessibles === false)
+      ? [] : _collecterZonesInaccessibles();
+    if (opts.respecterInaccessibles === false) {
+      console.log("[Pathfinder] zones inaccessibles IGNORÉES (choix utilisateur)");
+    }
     if (zonesInacc.length > 0) {
       console.log("[Pathfinder] " + zonesInacc.length + " zone(s) inaccessible(s) — contrainte dure");
     }

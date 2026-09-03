@@ -21401,3 +21401,80 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
    Une règle `stroke-width` était donc un no-op complet — en mode plan ET en
    Vue OSM. La largeur se pilote désormais par `options.weight`, muté en
    place (cf. structures.js > majLargeurFronts). */
+
+/* ==============================================
+   🔄 v1.82.0 — Modale « Convertir cet objet »
+   ==============================================
+   Reclassement d'un objet de session d'un type (et d'une famille) à l'autre.
+   Réutilise la boîte de modale charte (.kta-readme-modal-*) ; seuls les
+   éléments propres au choix de type sont définis ici. */
+.kta-convert-boite { max-width: 460px; }
+.kta-convert-source {
+  font-size: 13px;
+  color: #e8eaf0;
+  margin: 0 0 4px;
+}
+.kta-convert-regle {
+  font-size: 12px;
+  color: #8892a4;
+  line-height: 1.45;
+  margin: 0 0 14px;
+}
+.kta-convert-groupe { margin-bottom: 14px; }
+.kta-convert-groupe-titre {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8cb4ff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.kta-convert-choix {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #d7dbe6;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.kta-convert-choix:hover {
+  background: rgba(140, 180, 255, 0.10);
+  border-color: rgba(140, 180, 255, 0.35);
+}
+.kta-convert-swatch {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-width: 22px;
+}
+.kta-convert-label { flex: 1 1 auto; }
+.kta-convert-vide {
+  font-size: 13px;
+  color: #8892a4;
+  font-style: italic;
+  margin: 8px 0;
+}
+/* Le bouton de la popup de note : discret à côté de « Sauver la note ». */
+.kta-note-popup-convertir {
+  background: rgba(140, 180, 255, 0.14);
+  border: 1px solid rgba(140, 180, 255, 0.30);
+  color: #c8d0e0;
+}
+.kta-note-popup-convertir:hover {
+  background: rgba(140, 180, 255, 0.24);
+}
+body.kta-theme-light .kta-convert-source { color: #1a1f2e; }
+body.kta-theme-light .kta-convert-choix {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.10);
+  color: #24304a;
+}
+body.kta-theme-light .kta-convert-choix:hover { background: rgba(60, 110, 200, 0.10); }

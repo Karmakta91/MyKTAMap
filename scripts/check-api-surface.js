@@ -48,6 +48,109 @@ function charger(fichier, nomGlobal, prealables) {
   return api;
 }
 
+// ───────── convertirObjet.js (v1.82.0) ─────────
+// 🔄 RECLASSER UN OBJET. L'enjeu n'est pas cosmétique : le Pathfinder ne
+// construit son graphe QUE sur les `roads`. Un relevé importé dont tout est
+// en structures n'a aucun itinéraire possible — convertir est ce qui le fait
+// exister. D'où des tests sur la RÈGLE (ouvert/fermé) autant que sur le
+// DÉPLACEMENT lui-même.
+(function () {
+  const CV = charger("js/convertirObjet.js", "KtaConvertir",
+    ["js/styleResolver.js", "js/legendCustomization.js"]);
+  if (!CV) return;
+  const w = CV.__win;
+  // `isStructurePolylineType` vit dans structures.js, qui exige un vrai
+  // Leaflet : on fournit la même règle que lui (built-in + géométrie de la
+  // légende), c'est ce que le module consomme.
+  w.isStructurePolylineType = function (t) {
+    if (t === "front-1" || t === "front-2") return true;
+    const e = w.LegendCustomization && w.LegendCustomization.findCustomEntry(t);
+    return !!(e && e.category === "structures" && e.geometry === "polyline");
+  };
+
+  t("convert : un tracé est OUVERT",    CV.estOuvert("roads", "principal") === true);
+  t("convert : une zone est FERMÉE",    CV.estOuvert("zones", "eau") === false);
+  t("convert : un front est OUVERT",    CV.estOuvert("structures", "front-1") === true);
+  t("convert : un pilier est FERMÉ",    CV.estOuvert("structures", "pilier-1") === false);
+
+  const dOuvert = CV.listerCibles("structures", "front-1");
+  const typesO = dOuvert.map(function (c) { return c.famille + ":" + c.type; });
+  t("convert : un front peut devenir un tracé (LE cas de KARMA)",
+    typesO.indexOf("roads:principal") >= 0);
+  t("convert : un front peut devenir l'autre front",  typesO.indexOf("structures:front-2") >= 0);
+  t("convert : un front ne peut PAS devenir une zone",
+    !typesO.some(function (s) { return s.indexOf("zones:") === 0; }));
+  t("convert : un front ne peut PAS devenir un pilier",
+    typesO.indexOf("structures:pilier-1") < 0);
+  t("convert : la source elle-même n'est pas proposée", typesO.indexOf("structures:front-1") < 0);
+  t("convert : `jonction` exclue (elle porte fromLevel/toLevel)",
+    typesO.indexOf("roads:jonction") < 0);
+  t("convert : `itinerary` exclu (c'est le trajet calculé)",
+    typesO.indexOf("roads:itinerary") < 0);
+
+  const dFerme = CV.listerCibles("zones", "eau");
+  const typesF = dFerme.map(function (c) { return c.famille + ":" + c.type; });
+  t("convert : une zone peut devenir un pilier",  typesF.indexOf("structures:pilier-1") >= 0);
+  t("convert : une zone ne peut PAS devenir un tracé",
+    !typesF.some(function (s) { return s.indexOf("roads:") === 0; }));
+  t("convert : une zone ne peut PAS devenir un front",
+    typesF.indexOf("structures:front-1") < 0);
+
+  // Un type CUSTOM polyligne doit être proposé : sur un plan importé, TOUS
+  // les types le sont — sans eux la modale serait quasi vide.
+  w.LegendCustomization.loadSessionState({
+    schemaVersion: 1, labels: {}, hidden: {}, customEntries: [
+      { id: "cust-sig-l", category: "structures", geometry: "polyline", label: "Galerie N+1", lineColor: "#8cb4ff" },
+      { id: "cust-sig-p", category: "structures", geometry: "polygon",  label: "Pilier N+1",  fillColor: "#8cb4ff" }
+    ]
+  });
+  const avecCustom = CV.listerCibles("structures", "front-1")
+    .map(function (c) { return c.type; });
+  t("convert : un type custom POLYLIGNE est proposé", avecCustom.indexOf("cust-sig-l") >= 0);
+  t("convert : un type custom POLYGONE ne l'est pas",  avecCustom.indexOf("cust-sig-p") < 0);
+  t("convert : le libellé de la légende est servi, pas l'id brut",
+    (CV.listerCibles("structures", "front-1").find(function (c) { return c.type === "cust-sig-l"; }) || {})
+      .label === "Galerie N+1");
+  w.LegendCustomization.loadSessionState(null);
+
+  // ── LE DÉPLACEMENT ──
+  const front = { type: "front-1", level: 2, description: "note", points: [{x:0,y:0},{x:9,y:9}] };
+  let R = [{ type: "principal", points: [] }], Z = [], S = [front];
+  w.getRoads = function () { return R; };  w.setRoads = function (v) { R = v; };
+  w.getZones = function () { return Z; };  w.setZones = function (v) { Z = v; };
+  w.getStructures = function () { return S; }; w.setStructures = function (v) { S = v; };
+
+  t("convert : l'opération réussit", CV.convertir("structures", front, "roads", "chemin") === true);
+  t("convert : l'objet a QUITTÉ les structures", S.length === 0);
+  t("convert : il est arrivé dans les tracés",   R.length === 2);
+  const arrive = R[1];
+  t("convert : le nouveau type est appliqué",    arrive.type === "chemin");
+  t("convert : le NIVEAU est conservé",          arrive.level === 2);
+  t("convert : la note est conservée",           arrive.description === "note");
+  t("convert : la géométrie est conservée",      arrive.points.length === 2 && arrive.points[1].x === 9);
+  t("convert : l'objet d'origine n'est pas muté", front.type === "front-1");
+
+  // Même famille : le piège du lire-écrire-relire. Une première rédaction
+  // écrivait la liste amputée PUIS la relisait pour ajouter — et perdait
+  // l'objet au lieu de le reclasser.
+  const pilier = { type: "pilier-1", level: 0, points: [{x:0,y:0},{x:1,y:0},{x:1,y:1}] };
+  S = [pilier];
+  t("convert : reclassement DANS la même famille", CV.convertir("structures", pilier, "structures", "mur") === true);
+  t("convert : l'objet n'a pas disparu", S.length === 1);
+  t("convert : il porte le nouveau type", S[0].type === "mur");
+
+  // Une jonction reclassée perd fromLevel/toLevel : ils n'ont de sens que
+  // pour elle, et les laisser traîner ferait mentir tout filtre de niveau.
+  const jonc = { type: "jonction", fromLevel: 0, toLevel: -1, level: 0, points: [{x:0,y:0},{x:2,y:2}] };
+  R = [jonc]; S = [];
+  CV.convertir("roads", jonc, "structures", "front-2");
+  t("convert : fromLevel/toLevel retirés au reclassement",
+    S.length === 1 && S[0].fromLevel === undefined && S[0].toLevel === undefined);
+
+  t("convert : un objet absent de sa famille est refusé",
+    CV.convertir("roads", { type: "x" }, "zones", "eau") === false);
+})();
+
 // ───────── userProfile.js ─────────
 const UP = charger("js/userProfile.js", "UserProfile");
 if (UP) {

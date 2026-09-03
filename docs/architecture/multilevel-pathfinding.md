@@ -465,3 +465,46 @@ C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne 
 
 - `InterPlanLinks.onPlanExit(ctx)` + `InterPlanRoute.onPlanExit(ctx)`, appelés côté boot/teardown : `afficherLoader()` → ctx `"home"` · `_libererRessourcesPlanPrecedent()` → ctx `"switch"`.
 - ⚠️ **Subtilités à ne pas casser** : ① côté liaison, le hook "switch" est **no-op si `_pendingTarget` existe** (= goTo en cours qui gère déjà bouton + pile ; sans ce garde, tout saut de portail perdrait son bouton Retour). ② côté route, la **chaîne multi-hop (`_pendingChain`) survit au "switch"** — c'est elle qui trace les legs aux arrivées ; elle n'est abandonnée qu'au retour HOME. ③ Tout NOUVEAU flottant de navigation doit s'enregistrer dans un de ces hooks (ou avoir un timer d'expiration).
+
+---
+
+## ⛔ Ce qui contraint réellement l'itinéraire — et la case pour le suspendre (v1.82.0)
+
+État établi en lisant `pathfinder.js`, parce que la question revient et que le
+code disait le contraire de ses propres commentaires.
+
+| Contrainte | Source | Nature | Réglable |
+|---|---|---|---|
+| Zones `inaccessible` | session + `_ktaDataPolygons` | **dure**, jamais relâchée | ✅ **depuis v1.82.0** |
+| Autres types de zones | idem | souple (relâchée en passe 2) | ✅ cases « 🚫 Préférences d'évitement » |
+| Points / tags à éviter | `SearchPoints` | souple | ✅ |
+| **Structures** (piliers, murs, fronts) | — | **aucune** | sans objet |
+
+🩸 **Les structures ne bloquent rien.** Aucune référence dans `pathfinder.js` :
+elles ne sont ni arêtes ni obstacles. Le commentaire de `utils.js` au-dessus de
+`getAllEmbeddedStructures` affirmait le contraire (« utilisé pour la collision
+pathfinder, les structures bloquent comme les zones inaccessibles ») — c'était
+faux depuis le début, et ça a coûté un aller-retour de diagnostic à KARMA.
+
+🩸 **Le graphe se construit UNIQUEMENT sur les `roads`** (`getRoads` +
+`getAllEmbeddedRoads`). Conséquence sur un plan importé dont tout le relevé est
+parti en structures : **aucun itinéraire n'est possible**, pas même dégradé.
+C'est ce qui motive le reclassement d'objet (cf. `session-data.md`).
+
+### La case « Respecter les zones inaccessibles »
+
+Les zones `inaccessible` étaient la **seule** contrainte que le moteur ne relâche
+jamais — même la passe 2 les garde. Sur un relevé encore incomplet, un polygone
+typé par erreur ferme donc un passage réel, sans recours.
+
+`computeRoute(waypoints, { respecterInaccessibles: false })` la suspend. Case
+dans la section « 🚫 Préférences d'évitement », **cochée par défaut**, persistée
+avec les autres préférences (`respecterInaccessibles !== false` : une préférence
+enregistrée avant cette version n'a pas le champ et garde le comportement
+historique).
+
+⚠️ **Volontairement limité à `computeRoute`.** `computeReachable` (Mode Secours /
+Perdu) garde les zones inaccessibles en toutes circonstances : une préférence de
+confort n'a pas à élargir un périmètre de secours. `interPlanRoute`,
+`secoursMode` et `sortieUrgence` ne passent pas l'option — ils héritent donc du
+comportement sûr, et c'est intentionnel.

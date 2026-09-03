@@ -1109,7 +1109,9 @@ function renderRoads() {
         ghost,
         function() { return _roadRef.description; },
         function(v) { _roadRef.description = v; },
-        _roadPopupTitle(road.type)
+        _roadPopupTitle(road.type),
+        // 🔄 v1.82.0 — reclassement depuis la popup (cf. convertirObjet.js).
+        { convertir: { famille: "roads", obj: _roadRef } }
       );
     }
 

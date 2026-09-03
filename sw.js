@@ -173,6 +173,9 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.9.3-A1.a : module structures (piliers 1ère/2e masse + murs).
   // Doit être caché pour fonctionner offline comme le reste.
   "./js/structures.js",
+  // 🔄 v1.82.0 : reclassement d'un objet (front de taille → tracé, etc.).
+  // Sans lui en cache, le bouton « Convertir » serait mort hors ligne.
+  "./js/convertirObjet.js",
   // 🆕 v1.9.3-B1 : module photos (backend IndexedDB + compression).
   // Self-contained, exposé via window.MyKTAMapPhotos. Doit être caché
   // pour que l'attachement photo fonctionne offline.

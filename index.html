@@ -1235,6 +1235,12 @@
        de définition n'est pas strict mais reste lisible (cohérence avec
        le DOM dans la sidebar : Zones puis Structures). -->
   <script src="js/structures.js" defer></script>
+  <!-- 🔄 v1.82.0 : reclassement d'un objet de session (type et famille).
+       Chargé APRÈS road/zones/structures : il appelle leurs setteurs. Le
+       bouton vit dans la popup de note (utils.js), qui teste window.KtaConvertir
+       au clic — l'ordre exact n'est donc pas critique, mais rester derrière
+       ses trois familles évite de dépendre d'un hasard de chargement. -->
+  <script src="js/convertirObjet.js" defer></script>
   <!-- 🆕 v1.9.3-B1 : module photos (backend IndexedDB pour les photos
        attachées aux POI). Self-contained, exposé via window.MyKTAMapPhotos.
        Init paresseuse (= IDB ouverte à la 1ère opération, pas au load). -->

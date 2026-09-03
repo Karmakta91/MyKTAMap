@@ -223,6 +223,8 @@ window.itineraireYAller = function(x, y, nom) {
           avoidPoints: avoidPrefs.points || [],
           avoidTags:   avoidPrefs.tags   || [],
           avoidZones:  avoidPrefs.zones  || [],
+          // 🆕 v1.82.0 — la seule contrainte DURE du moteur suit la case de la modale.
+          respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
           avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
         });
       });
@@ -857,6 +859,8 @@ async function _replanifierDepuis(px, py) {
         avoidPoints: avoidPrefs.points || [],
         avoidTags:   avoidPrefs.tags   || [],
         avoidZones:  avoidPrefs.zones  || [],
+        // 🆕 v1.82.0 — la seule contrainte DURE du moteur suit la case de la modale.
+        respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
         avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
       });
     });
@@ -905,16 +909,22 @@ function _itiAvoidLsKey() {
 function _getItiAvoidPrefs() {
   try {
     const raw = localStorage.getItem(_itiAvoidLsKey());
-    if (!raw) return { points: [], tags: [], zones: [], radius: ITI_AVOID_DEFAULT_RADIUS };
+    if (!raw) return { points: [], tags: [], zones: [], radius: ITI_AVOID_DEFAULT_RADIUS,
+                       respecterInaccessibles: true };
     const obj = JSON.parse(raw);
     return {
       points: Array.isArray(obj.points) ? obj.points : [],
       tags:   Array.isArray(obj.tags)   ? obj.tags   : [],
       zones:  Array.isArray(obj.zones)  ? obj.zones  : [],   // 🆕 v1.48.0 : ids dérivés des zones à éviter
-      radius: Number.isFinite(obj.radius) ? obj.radius : ITI_AVOID_DEFAULT_RADIUS
+      radius: Number.isFinite(obj.radius) ? obj.radius : ITI_AVOID_DEFAULT_RADIUS,
+      // 🆕 v1.82.0 — seule contrainte DURE du moteur, desormais debrayable.
+      // `!== false` : une pref enregistree avant cette version n'a pas le
+      // champ, et doit garder le comportement historique (= respecter).
+      respecterInaccessibles: obj.respecterInaccessibles !== false
     };
   } catch(e) {
-    return { points: [], tags: [], zones: [], radius: ITI_AVOID_DEFAULT_RADIUS };
+    return { points: [], tags: [], zones: [], radius: ITI_AVOID_DEFAULT_RADIUS,
+             respecterInaccessibles: true };
   }
 }
 
@@ -1114,6 +1124,21 @@ function _htmlSectionAvoidItineraire(prefs) {
             window.I18n.t("iti.avoid.tagsHelp") +
           '</p>' +
           '<div id="kta-iti-avoid-tags-chips" class="kta-iti-avoid-tags-chips"></div>' +
+        '</div>' +
+
+        // === Zones inaccessibles (🆕 v1.82.0) ===
+        // Placée AVANT les évitements souples : c'est la contrainte la plus
+        // forte, et la seule que le moteur ne relâche jamais de lui-même.
+        '<div class="kta-iti-avoid-group">' +
+          '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.inacc.title") + '</div>' +
+          '<label class="kta-iti-avoid-zone-row">' +
+            '<input type="checkbox" id="kta-iti-respect-inacc"' +
+              (prefs.respecterInaccessibles === false ? '' : ' checked') + '>' +
+            '<span>' + window.I18n.t("iti.inacc.label") + '</span>' +
+          '</label>' +
+          '<p class="kta-iti-help" style="margin:2px 0 0; font-size:11.5px;">' +
+            window.I18n.t("iti.inacc.help") +
+          '</p>' +
         '</div>' +
 
         // === Zones à éviter (🆕 v1.48.0) ===
@@ -1346,11 +1371,27 @@ function _bindAvoidSectionHandlers() {
   }
 
   // 4. Reset complet
+  // 🆕 v1.82.0 — persiste immédiatement, comme les autres réglages de la
+  // section : la modale peut être fermée par le calcul lui-même.
+  const inaccCb = document.getElementById("kta-iti-respect-inacc");
+  if (inaccCb) {
+    inaccCb.addEventListener("change", function () {
+      const p = _getItiAvoidPrefs();
+      p.respecterInaccessibles = !!inaccCb.checked;
+      _setItiAvoidPrefs(p);
+    });
+  }
+
   const resetBtn = document.getElementById("kta-iti-avoid-reset");
   if (resetBtn) {
     resetBtn.addEventListener("click", function() {
       if (!confirm(window.I18n.t("iti.avoid.resetConfirm"))) return;
-      _setItiAvoidPrefs({ points: [], tags: [], zones: [], radius: ITI_AVOID_DEFAULT_RADIUS });
+      // Le reset rend le comportement SÛR, pas le dernier choix : la case
+      // revient cochée comme le reste revient à vide.
+      _setItiAvoidPrefs({ points: [], tags: [], zones: [], radius: ITI_AVOID_DEFAULT_RADIUS,
+                          respecterInaccessibles: true });
+      const cbI = document.getElementById("kta-iti-respect-inacc");
+      if (cbI) cbI.checked = true;
       _rafraichirListeAvoidPoints();
       _rafraichirChipsAvoidTags();
       _rafraichirListeAvoidZones();
@@ -1892,6 +1933,8 @@ window.ouvrirItinerairModal = function() {
           avoidPoints: avoidPrefs.points || [],
           avoidTags:   avoidPrefs.tags   || [],
           avoidZones:  avoidPrefs.zones  || [],
+          // 🆕 v1.82.0 — la seule contrainte DURE du moteur suit la case de la modale.
+          respecterInaccessibles: avoidPrefs.respecterInaccessibles !== false,
           avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
         });
       });

@@ -1302,3 +1302,56 @@ La note libre et le PDF d'un plan étaient **enfermés dans l'écran plan** : il
 - ❌ Rouvrir la base avec un numéro de version figé (`open(nom, 1)`) — c'est le bug n°1 ci-dessus, silencieux.
 - ❌ Écrire dans le store depuis un module tiers sans vérifier la présence de l'index `by_plan` (base encore en v1 → clé `planId` → écrasement).
 - ❌ Réintroduire « l'embarqué masque l'import ».
+
+---
+
+### 🔄 Reclasser un objet — changer de type, et au besoin de FAMILLE (v1.82.0)
+
+`js/convertirObjet.js` — bouton **🔄 Convertir** dans la popup d'un objet de
+session (tracé, zone, structure).
+
+**Pourquoi ce n'est pas cosmétique** : à l'import SIG, tout part en « front de
+taille » — globalement juste, la géométrie d'un fichier SIG ne disant pas ce que
+l'objet *est*. Mais le Pathfinder ne construit son graphe que sur les `roads`
+(cf. `multilevel-pathfinding.md`) : un plan dont tout le relevé est en structures
+n'a **aucun** itinéraire possible. Reclasser un vecteur est ce qui le fait
+exister.
+
+**La règle, énoncée par KARMA** : « un vecteur fermé = zone ou pilier, un vecteur
+non fermé = tracé ou front de taille ».
+
+```
+OUVERT  ⇄  tracés (galeries)  ⇄  structures polylignes (fronts)
+FERMÉ   ⇄  zones              ⇄  structures polygones (piliers, murs)
+```
+
+La traversée ouvert↔fermé est **refusée**. Ce n'est pas une convention : la
+frontière porte les **minimums de points** — un front peut n'avoir que 2 points,
+une zone en exige 3. L'autoriser obligerait à fermer ou ouvrir la géométrie,
+c'est-à-dire à **inventer de la donnée relevée sur le terrain**.
+
+L'« ouverture » se lit sur le **type**, pas sur la géométrie : les mêmes `points`
+se peignent en trait ou en surface selon lui. `isStructurePolylineType` sait déjà
+lire la géométrie déclarée dans la légende, types personnalisés compris — ce sont
+d'ailleurs les seuls d'un plan importé, sans eux la modale serait vide.
+
+**Conservés** : `points`, `level`, `description`. **Retirés** : `fromLevel` /
+`toLevel` (ils n'ont de sens que pour une jonction et feraient mentir les filtres
+de niveau). **Exclus des cibles** : `jonction` (deux niveaux qu'une conversion ne
+peut pas deviner) et `itinerary` (le trajet calculé, pas une donnée).
+
+🩸 **Le piège du lire-écrire-relire** : les trois listes sont lues d'un bloc AVANT
+toute écriture. Sinon un reclassement **dans la même famille** (front → pilier)
+retire l'objet, réécrit la liste, puis la relit — et le duplique ou le perd. On
+n'écrit ensuite que les familles réellement touchées : `setStructures` relance un
+rendu complet, ce qui coûte cher sur un relevé à 20 000 objets.
+
+Undo par `HistoryManager` (snapshot des trois familles avant l'opération).
+
+⚠️ **Session uniquement.** Un objet de calque de données n'est pas éditable en
+place. Le chemin est « Session → Conversion » pour rapatrier le calque, puis
+ici — c'est la manœuvre que KARMA avait déjà trouvée.
+
+**Prouvé** : 30 cas dans `check-api-surface.js`, module réellement chargé en VM.
+Falsifiés — retirer la règle ouvert/fermé fait tomber 2 cas, écrire avant de
+relire en fait tomber 1 (celui de la même famille).

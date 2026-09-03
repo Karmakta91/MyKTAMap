@@ -721,7 +721,9 @@ function renderStructures() {
           cibleClic,
           function() { return _structRef.description; },
           function(v) { _structRef.description = v; },
-          _structPopupTitle(s.type)
+          _structPopupTitle(s.type),
+          // 🔄 v1.82.0 — reclassement depuis la popup (cf. convertirObjet.js).
+          { convertir: { famille: "structures", obj: _structRef } }
         );
       }
     }
