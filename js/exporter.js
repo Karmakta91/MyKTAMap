@@ -842,10 +842,10 @@
     }
 
     // Compter les routes et zones par type
-    const roads = (window.getRoads ? window.getRoads() : []) || [];
-    const zones = (window.getZones ? window.getZones() : []) || [];
+    const roads = _sessionEtEmbarques("getRoads", "getAllEmbeddedRoads");
+    const zones = _sessionEtEmbarques("getZones", "getAllEmbeddedZones");
     // 🆕 v1.9.3-A1.b.2 : structures session (piliers + murs)
-    const structures = (window.getStructures ? window.getStructures() : []) || [];
+    const structures = _sessionEtEmbarques("getStructures", "getAllEmbeddedStructures");
     const nbStructures = structures.length;
     const roadsByType = {
       principal:  roads.filter(function(r) { return r.type === "principal";  }).length,
@@ -1664,6 +1664,27 @@
     }
   }
 
+  // 🩸 v1.82.0 — L'EXPORT NE VOYAIT QUE LA SESSION.
+  // `getRoads()`, `getZones()` et `getStructures()` retournent uniquement les
+  // objets DESSINÉS À LA MAIN (roadsData / zonesData / structuresData). Les
+  // annotations d'un DATA LAYER n'en font pas partie — elles vivent dans les
+  // registres `_ktaData*`, alimentés par `ajouterPointsDepuisJSON`.
+  //
+  // Conséquence : sur un plan IMPORTÉ, où l'intégralité du relevé est dans un
+  // data layer, l'export PNG/PDF sortait le fond et RIEN d'autre. Signalé par
+  // KARMA sur un plan SIG (« il ne trouve pas mes structures personnalisées ») —
+  // ce n'est pas propre aux structures ni aux types custom : tracés et zones
+  // embarqués manquaient tout autant, depuis toujours.
+  //
+  // Les collecteurs `getAllEmbedded*` existent déjà (utils.js) et sont ceux
+  // qu'utilisent le KMZ et le pathfinder. On les réutilise plutôt que de relire
+  // les registres à la main.
+  function _sessionEtEmbarques(getSession, getEmbedded) {
+    const a = (typeof window[getSession] === "function" ? window[getSession]() : []) || [];
+    const b = (typeof window[getEmbedded] === "function" ? window[getEmbedded]() : []) || [];
+    return a.concat(b);
+  }
+
   // =========================
   // GÉNÉRATION DU CANVAS — cœur de l'export
   // =========================
@@ -1800,7 +1821,7 @@
 
     // ---------- zones (avant les tracés) ----------
     if (opts.ann.zones && window.getZones) {
-      const zones = window.getZones();
+      const zones = _sessionEtEmbarques("getZones", "getAllEmbeddedZones");
       const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       const filtreZ = opts.ann.zonesTypes || { eau: true, remblais: true, effondrement: true, inaccessible: true };
       // v169 : `inaccessible` sort en rouge fonce uni semi-transparent — les
@@ -1845,7 +1866,7 @@
     // structures.js > STRUCTURE_STYLES. Différenciation polygon (piliers,
     // mur) vs polyline (fronts) au rendu canvas.
     if (opts.ann.structures && window.getStructures) {
-      const structures = window.getStructures();
+      const structures = _sessionEtEmbarques("getStructures", "getAllEmbeddedStructures");
       // Fronts : polylines épaisses sans contour. Le `weight` (px Leaflet) est
       // converti via `scale` au canvas final.
       // 🆕 v1.10.0-hotfix1 : nouvel ordre Z mur < pilier-2 < pilier-1 <
@@ -2138,7 +2159,8 @@
     // pas une route à exporter. Sans ce filtre, le fallback "white" effaçait les
     // segments du réseau sous-jacent par-dessus lesquels passait l'itinéraire.
     if (opts.ann.roads && window.getRoads) {
-      const roads = window.getRoads().filter(function(r) { return r.type !== "itinerary"; });
+      const roads = _sessionEtEmbarques("getRoads", "getAllEmbeddedRoads")
+        .filter(function(r) { return r.type !== "itinerary"; });
       // 🏗️ v169 (Karma_dev) : tri Z-index ascending par level si multiLevel ON.
       // Cohérent avec road.js > renderRoads. Niveau bas en arrière, haut au-dessus.
       const _mlOnExp = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);

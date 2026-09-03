@@ -30,6 +30,14 @@
 
   // Marges PDF en mm
   const PDF_MARGIN_MM     = 12;
+  // 🩸 RESTAUREE le 03/09/2026 — supprimee A TORT par le nettoyage de code mort
+  // du 09/08 (commit 9834504) alors qu elle est UTILISEE l.517. Consequence :
+  // toute generation PDF avec en-tete echouait sur
+  // « HEADER_HEIGHT_MM is not defined », et ce depuis pres d un mois - le smoke
+  // ne genere pas de PDF, aucun des 18 garde-fous ne lisait les identifiants.
+  // C est exactement le risque que documente docs/BACKLOG.md > « Lecon du faux
+  // fix » : un symbole qui n apparait qu une fois passe pour mort.
+  const HEADER_HEIGHT_MM  = 18;
   const FOOTER_HEIGHT_MM  = 55;
   // JPEG quality du canvas → image PDF (compromis taille / qualité)
   const JPEG_QUALITY      = 0.88;
