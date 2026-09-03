@@ -32,7 +32,7 @@
 //      sommet, et zéro galerie retenue. On cible `<outerBoundaryIs>`.
 //   2. Le niveau (-1 à -6) n'est PAS porté par le Placemark : il vient du
 //      `<Folder><name>niveauN</name>` qui l'englobe. Il faut suivre ce
-//      contexte en streaming, sinon tout retombe sur un seul étage.
+//      contexte en streaming, sinon tout retombe sur un seul niveau.
 //
 // LECTURE EN FLUX, ligne à ligne : le fichier ne tient pas confortablement en
 // mémoire (171 Mo d'UTF-8 → ~340 Mo de string V8, avant les structures).
@@ -59,16 +59,16 @@ const ZONE    = opt("zone", null);
 const LISTER  = A.includes("--lister");
 const MARGE_M = parseFloat(opt("marge", "50"));   // cf. « galeries à cheval »
 // Quelles couches verser dans le plan. Le fichier Gironde en porte deux qui se
-// recouvrent : le relevé STRUCTURÉ par étages (`niveau1`…`niveau6`) et un TOPO
+// recouvrent : le relevé STRUCTURÉ par niveaux (`niveau1`…`niveau6`) et un TOPO
 // HISTORIQUE, bien plus dense — sur Citon_Graves_RD, 16 612 features contre
 // 3 917 pour les six niveaux réunis.
 //
 // 🕰️ v2 (demande KARMA) : l'historique est désormais inclus PAR DÉFAUT, et
 // rangé sur un ÉTAGE À LUI. C'est ce qui permet de le manipuler dans l'app
 // comme n'importe quel niveau — l'afficher, le masquer, lui donner sa couleur —
-// au lieu de le superposer aveuglément au relevé moderne. Sans étage propre,
+// au lieu de le superposer aveuglément au relevé moderne. Sans niveau propre,
 // deux relevés du même endroit se seraient mélangés sans moyen de les séparer.
-// Niveau +1 par défaut : au-dessus de tout ce qui existe (les étages réels
+// Niveau +1 par défaut : au-dessus de tout ce qui existe (les niveaux réels
 // sont négatifs), donc jamais en collision.
 const COUCHES   = opt("couches", "tout");        // niveaux | historique | tout
 const NIV_HISTO = parseInt(opt("historique-niveau", "1"), 10);

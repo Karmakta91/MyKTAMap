@@ -4933,13 +4933,13 @@
   "gen.sig.l93Converti": "Archivo reconocido como <strong>Lambert 93</strong> (EPSG:2154): se han convertido {n} coordenadas a latitud/longitud. Comprueba que la posición en el mapa corresponde a tu sitio antes de continuar.",
   "gen.sig.grpZones": "Familia natural de la geometría",
   "gen.sig.grpStructures": "Otras familias (estructuras, zonas, trazados)",
-  "gen.sig.colonneNiveau": "Columna del nivel (planta)",
-  "gen.sig.niveauAucun": "— ninguna (todo en una sola planta) —",
-  "gen.sig.niveauApercu": "{n} planta(s) detectada(s)",
+  "gen.sig.colonneNiveau": "Columna del nivel",
+  "gen.sig.niveauAucun": "— ninguna (todo en un solo nivel) —",
+  "gen.sig.niveauApercu": "{n} nivel(es) detectado(s)",
   "gen.sig.hAuto": "Calculada automáticamente para respetar las proporciones del terreno; de lo contrario el plano se sale del lienzo.",
-  "gen.sig.couleursNiveauTitre": "Un color por planta",
-  "gen.sig.couleursNiveauHint": "Crea un tipo de leyenda distinto para cada nivel, con su propio color. Sin esto, todas las plantas salen del mismo tono y se confunden. Podrás renombrar y recolorear cada entrada después en ≡ Leyenda.",
+  "gen.sig.couleursNiveauTitre": "Un color por nivel",
+  "gen.sig.couleursNiveauHint": "Crea un tipo de leyenda distinto para cada nivel, con su propio color. Sin esto, todos los niveles salen del mismo tono y se confunden. Podrás renombrar y recolorear cada entrada después en ≡ Leyenda.",
   "gen.sig.beaucoupFeatures": "Archivo voluminoso: {n} objetos. La importación los acepta, pero mostrar el plano puede resultar pesado en móvil. Si el mapa va lento, vuelve a importar con menos capas.",
-  "osm_home.niveaux.titre": "🏔️ Plantas",
-  "osm_home.niveaux.tous": "Todas"
+  "osm_home.niveaux.titre": "🏗️ Niveles",
+  "osm_home.niveaux.tous": "Todos"
 }

@@ -691,10 +691,10 @@
   // de légende custom depuis Convertir SIG, du coup je peux pas créer des
   // couleurs pour les N niveaux et les N zones »).
   //
-  // LE BESOIN RÉEL : sur un relevé multi-étages, tous les tracés sortaient de
-  // la même couleur quel que soit leur niveau. Six étages superposés dans une
+  // LE BESOIN RÉEL : sur un relevé multi-niveaux, tous les tracés sortaient de
+  // la même couleur quel que soit leur niveau. Six niveaux superposés dans une
   // seule teinte, c'est illisible — et le multi-niveau perd l'essentiel de son
-  // intérêt si on ne distingue pas les étages à l'œil.
+  // intérêt si on ne distingue pas les niveaux à l'œil.
   //
   // COMMENT : on fabrique une entrée de légende custom par (famille, niveau),
   // au format exact de `LegendCustomization` — { id, category, label,
@@ -703,7 +703,7 @@
   // types créés à la main : rien de nouveau à comprendre côté runtime.
   //
   // Palette lisible sur fond sombre, distincte à teintes voisines. Elle cycle
-  // au-delà de 8 étages — un relevé à 9 niveaux réutilisera une teinte plutôt
+  // au-delà de 8 niveaux — un relevé à 9 niveaux réutilisera une teinte plutôt
   // que d'en inventer une illisible.
   const PALETTE_NIVEAUX = [
     "#8cb4ff", "#7ee0a0", "#f4c542", "#ff9f6b",
@@ -736,10 +736,10 @@
     const mapZones    = opts.mapZones  || {};
     const mapTags     = opts.mapTags   || {};
     // 🏔️ v1.82.0 — LE NIVEAU SE LIT PAR OBJET (retour KARMA du 03/09 sur le
-    // relevé de Citon_Graves_RD, qui porte SIX étages).
+    // relevé de Citon_Graves_RD, qui porte SIX niveaux).
     // AVANT : `opts.level` était un entier UNIQUE appliqué à tout l'import —
-    // un relevé multi-étages arrivait donc entièrement à plat, pendant que la
-    // case « Plan multi-niveau » promettait une gestion des étages qu'aucun
+    // un relevé multi-niveaux arrivait donc entièrement à plat, pendant que la
+    // case « Plan multi-niveau » promettait une gestion des niveaux qu'aucun
     // objet ne pouvait honorer. La case posait un drapeau, rien de plus.
     // MAINTENANT : `opts.cleNiveau` désigne une colonne du fichier SIG, lue
     // objet par objet. `opts.level` reste accepté comme valeur de repli pour
@@ -748,7 +748,7 @@
     const niveauFixe  = Number.isInteger(opts.level) ? opts.level : null;
 
     // Les relevés écrivent le niveau de toutes les façons : -3, "-3", "3",
-    // "niveau3", "N-3", "étage -3". On extrait le premier entier signé trouvé.
+    // "niveau3", "N-3", "niveau -3". On extrait le premier entier signé trouvé.
     // Un niveau non lisible ne devient PAS 0 : il retombe sur le repli, sinon
     // une valeur exotique enverrait silencieusement l'objet à la surface.
     function _niveauDe(props) {
@@ -804,7 +804,7 @@
     const customEntries = [];
     const _dejaVu = {};
     // Rang d'apparition du niveau, pour que la palette soit attribuée dans
-    // l'ordre des étages rencontrés et non selon la valeur brute (un relevé
+    // l'ordre des niveaux rencontrés et non selon la valeur brute (un relevé
     // numéroté -3 à -8 doit démarrer sur la 1re couleur, pas la 4e).
     const _rangs = {};
     let _rangSuivant = 0;
@@ -818,7 +818,7 @@
     // la forme depuis le nom : il lit `entry.geometry === "polyline"` dans la
     // légende. Les entrées fabriquées plus haut n'avaient pas ce champ — un
     // front de taille repeint par niveau redevenait donc un POLYGONE PLEIN,
-    // exactement ce que l'utilisateur voyait. La couleur par étage écrasait
+    // exactement ce que l'utilisateur voyait. La couleur par niveau écrasait
     // l'information de forme.
     // On garde donc le type de base pour en déduire `geometry`.
     const TYPES_POLYLIGNE = ["front-1", "front-2"];   // cf. STRUCTURE_TYPES_POLYLINE
@@ -827,7 +827,7 @@
       if (!couleurParNiveau || lvl === null || typeof lvl !== "number") return typeBase;
       const estLigne = (categorie === "traces") || TYPES_POLYLIGNE.indexOf(typeBase) >= 0;
       // Un id par (catégorie, FORME, niveau) : dans une même catégorie et un
-      // même étage, un front et un pilier ne doivent pas partager une entrée —
+      // même niveau, un front et un pilier ne doivent pas partager une entrée —
       // l'un est une ligne, l'autre un polygone.
       const id = _idNiveau(categorie + (estLigne ? "-l" : ""), lvl);
       if (!_dejaVu[id]) {
@@ -923,7 +923,7 @@
       customEntries: customEntries,
       stats: { points: points.length, roads: roads.length, zones: zones.length,
                structures: structures.length,
-               // Répartition réelle par étage : c'est elle qui permet à l'UI de
+               // Répartition réelle par niveau : c'est elle qui permet à l'UI de
                // montrer « -1: 8 · -2: 134 · … » AVANT de générer. Un import
                // multi-niveaux qui retombe à plat se voit alors immédiatement.
                parNiveau: (function() {
@@ -1139,7 +1139,7 @@
     // de `minNativeZoom` et `tileSize` — un drapeau seul ne suffirait pas.
     // 🎨 v1.82.0 — LÉGENDE CUSTOM embarquée dans le plan-config, au format
     // exact de LegendCustomization.getSessionState(). C est ce qui donne une
-    // couleur propre à chaque étage : sans elle, les six niveaux sortaient
+    // couleur propre à chaque niveau : sans elle, les six niveaux sortaient
     // tous de la même teinte et le multi-niveau perdait son intérêt visuel.
     if (ingested.customEntries && ingested.customEntries.length) {
       planConfig.plan.customLegend = {

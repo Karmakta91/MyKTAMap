@@ -266,7 +266,7 @@
   //     STRUCT_STYLES_HOME[s.type] || STRUCT_STYLES_HOME["mur"]
   // Un type custom (`cust-…`) n'est évidemment pas dans cette table locale —
   // TOUTES les structures personnalisées retombaient donc sur le style « mur » :
-  // même couleur pour tous les étages, et forme de POLYGONE même pour un front
+  // même couleur pour tous les niveaux, et forme de POLYGONE même pour un front
   // de taille. Les tracés et les zones, eux, consultaient déjà la légende
   // custom : les structures étaient les seules oubliées. Signalé par KARMA sur
   // un plan importé où chaque niveau avait pourtant sa couleur.
@@ -380,7 +380,7 @@
   // 🏔️ v1.82.0 — FILTRE PAR ÉTAGE (signalé par KARMA : « la gestion des
   // niveaux est mal gérée, le cas de Citon est un exemple flagrant »).
   // Il n'y en avait AUCUN : `level` ne servait que dans le popup d'un POI, et
-  // tous les étages étaient dessinés les uns sur les autres. Sur un relevé à
+  // tous les niveaux étaient dessinés les uns sur les autres. Sur un relevé à
   // sept niveaux dont un topo historique de 16 747 objets, la carte devenait
   // illisible — le niveau du dessus masquant tout le reste.
   // Même convention que le filtre par tag : `null` ou Set vide = tout afficher
@@ -1701,8 +1701,8 @@
 
   // 🆕 v1.40.17 — Énumération des tags présents dans les data layers
   // (avec compteur de POI par tag pour tri par fréquence).
-  // Étages réellement présents dans un plan, toutes familles confondues.
-  // Sert à ne proposer que des chips qui montrent quelque chose : un étage
+  // Niveaux réellement présents dans un plan, toutes familles confondues.
+  // Sert à ne proposer que des chips qui montrent quelque chose : un niveau
   // vide dans la liste ferait croire à un bug d'affichage quand on le coche.
   function _collectNiveaux(data, planId) {
     const set = new Set();
@@ -2379,10 +2379,10 @@
 
   // 🏷️ v1.71.0 (retour KARMA « on doit aussi pouvoir filtrer au tag ») — chips
   // tags dans la modale, agrégés sur TOUTE la pile (plus seulement le principal).
-  // 🏔️ v1.82.0 — chips d'étage, agrégés sur TOUTE la pile (comme les tags).
+  // 🏔️ v1.82.0 — chips de niveau, agrégés sur TOUTE la pile (comme les tags).
   // Tri décroissant : +1 (l'historique, s'il est là) en tête, puis -1, -2…
   // C'est l'ordre physique vu du dessus, celui qu'attend quelqu'un qui pense
-  // en étages.
+  // en niveaux.
   function _renderModalNiveaux() {
     const cont = document.getElementById("ktaOsmFiltersNiveaux");
     const sect = document.getElementById("ktaOsmFiltersNivSect");
@@ -2393,7 +2393,7 @@
       if (data) _collectNiveaux(data, id).forEach(function(n) { tous.add(n); });
     });
     const niveaux = Array.from(tous).sort(function(a, b) { return b - a; });
-    // Un seul étage = rien à filtrer.
+    // Un seul niveau = rien à filtrer.
     if (niveaux.length < 2) {
       cont.innerHTML = "";
       if (sect) sect.style.display = "none";
@@ -2413,9 +2413,9 @@
     cont.querySelectorAll("[data-niv]").forEach(function(b) {
       b.addEventListener("click", function() {
         const n = parseInt(b.getAttribute("data-niv"), 10);
-        // Premier clic depuis « tout » : on ISOLE l'étage cliqué plutôt que de
-        // le retirer. Sur sept étages superposés, c'est le geste attendu — et
-        // retirer un seul étage sur sept ne changerait quasiment rien à l'écran.
+        // Premier clic depuis « tout » : on ISOLE le niveau cliqué plutôt que de
+        // le retirer. Sur sept niveaux superposés, c'est le geste attendu — et
+        // retirer un seul niveau sur sept ne changerait quasiment rien à l'écran.
         if (!_homeLevelFilter || _homeLevelFilter.size === 0) {
           _homeLevelFilter = new Set([n]);
         } else if (_homeLevelFilter.has(n)) {

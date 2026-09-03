@@ -5020,7 +5020,7 @@ async function _sigImpAnalyserFichier(file) {
     // Colonne du niveau. Pré-sélectionnée si une colonne s'appelle sans
     // ambiguïté « niveau » / « level » / « etage » : c'est le cas des fichiers
     // produits par `scripts/decouper-atlas.js`, et l'oubli coûte cher (tout
-    // l'import se retrouve sur un seul étage sans que rien ne le signale).
+    // l'import se retrouve sur un seul niveau sans que rien ne le signale).
     const selN = document.getElementById("kta-sig-imp-niveau");
     selN.innerHTML = '<option value="">' + T("gen.sig.niveauAucun") + '</option>'
       + cols.map(function(c) {
@@ -5100,7 +5100,7 @@ const _SIG_CAT_I18N = { points: "gen.sig.famPoints", lignes: "gen.sig.famLignes"
 
 // 🏔️ v1.82.0 — APERÇU DE LA RÉPARTITION PAR ÉTAGE, avant de générer.
 // Un import multi-niveaux qui retombe à plat ne se voyait qu'une fois le plan
-// ouvert, trop tard. Ici le compte par étage s'affiche dès le choix de la
+// ouvert, trop tard. Ici le compte par niveau s'affiche dès le choix de la
 // colonne — et la case « Plan multi-niveau » se coche toute seule, parce que
 // choisir une colonne de niveau ET oublier la case donne exactement le même
 // résultat qu'avant : un plan à plat.
@@ -5130,7 +5130,7 @@ function _sigImpApercuNiveaux() {
     + ' background:rgba(140,180,255,0.08); border-left:3px solid rgba(140,180,255,0.5);'
     + ' border-radius:3px;">🏔️ ' + T("gen.sig.niveauApercu", { n: cles.length }) + ' — '
     + cles.map(function(k) { return k + ' : ' + compte[k]; }).join(' · ') + '</div>';
-  // Cocher le multi-niveau : sans lui le plan-config ne déclare pas les étages.
+  // Cocher le multi-niveau : sans lui le plan-config ne déclare pas les niveaux.
   const mlvl = document.getElementById("kta-sig-imp-mlvl");
   if (mlvl && cles.length > 1) mlvl.checked = true;
 }
