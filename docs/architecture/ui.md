@@ -1837,3 +1837,42 @@ seule façon d'obtenir un `env()` en JS. Cache invalidé sur changement de
 `visualViewport` le signale. Ses événements `resize` et `scroll` sont donc
 écoutés en plus des listeners existants, et **retirés dans `_fermerFlyout`** avec
 les autres.
+
+---
+
+### 97. Légende : la SESSION se superpose au PLAN — et `updateCustomEntry` l'ignorait (v1.82.0)
+
+`LegendCustomization` tient **deux** niveaux d'état :
+
+| | Source | Éditable |
+|---|---|---|
+| `_planState` | `PLAN_CONFIG.plan.customLegend` (le ZIP du plan) | non — le plan n'est modifiable que dans le Générateur |
+| `_sessionState` | `SessionPersist` | oui |
+
+La règle de résolution est constante et vaut partout : **à id égal, la session
+gagne**. `listCustomEntries` et `findCustomEntry` l'appliquent tous les deux.
+
+🩸 **`updateCustomEntry` ne cherchait que dans la session** et sortait sur un
+`return false` muet. Or les entrées d'un plan **importé** vivent dans
+`_planState` — celles que l'import SIG fabrique par niveau y sont toutes.
+L'éditeur les **listait** (les deux niveaux sont émis) mais **aucune
+modification ne prenait**. Signalé par KARMA sur « +1 (historique) » : « ça ne
+fait rien, même sur le plan en cours ».
+
+Le renommage **et les trois couleurs** (`lineColor`, `fillColor`,
+`borderColor`) passent par cette fonction : les quatre étaient mortes sur une
+entrée de plan.
+
+**`removeCustomEntry` avait déjà rencontré le problème** et l'avait traité en
+v1.77.0 (pierre tombale `removedPlan`, après un autre retour KARMA sur une
+entrée « Bas » insupprimable). Le mécanisme était donc là, et dit — la
+symétrique est simplement restée en plan.
+
+**Correction** : l'entrée du plan est **promue en session**, patch appliqué.
+Copie et non mutation — `_planState` vient de `PLAN_CONFIG`. Elle passe alors en
+source `"session"`, ce qui est exact : l'utilisateur l'a reprise. `resetSession`
+rend l'originale du plan.
+
+**Prouvé par falsification** : 12 cas ajoutés à `check-api-surface.js`, dont
+**7 tombent** quand on remet le `return false` (les 5 autres sont des témoins —
+listage, absence de doublon, `resetSession`, id inconnu).

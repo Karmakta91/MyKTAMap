@@ -180,6 +180,53 @@ if (LC) {
   t("l'entree plan sans collision reste listee", lst.some(function(e) { return e.id === "cust-planonly"; }));
   t("ordre historique conserve (plan d'abord)", lst[0].id === "cust-dup" && lst[1].id === "cust-planonly");
   LC.loadSessionState(null);
+  // 🖊️ v1.82.0 — RENOMMER / RECOLORER une entrée PLAN-LEVEL. Symétrique du
+  // tombstone ci-dessus, et resté en plan pendant tout ce temps :
+  // `updateCustomEntry` ne cherchait que dans la session et sortait sur
+  // `return false` sans rien dire. Les entrées d'un plan importé (un type par
+  // niveau, fabriqués par l'import SIG) étaient donc listées mais inertes.
+  // Vécu KARMA sur « +1 (historique) ».
+  (function () {
+    LC.loadSessionState(null);
+    LC.__win.PLAN_CONFIG = { plan: { customLegend: { labels: {}, hidden: {}, customEntries: [
+      { id: "cust-sig-structures-l-n1", category: "structures", geometry: "polyline",
+        label: "Structure +1", lineColor: "#8cb4ff" }
+    ] } } };
+    LC.loadPlanState();
+    const avant = LC.listCustomEntries("structures").find(function (e) { return e.id === "cust-sig-structures-l-n1"; });
+    t("plan-level : l'entrée est listée, source « plan »", !!avant && avant.source === "plan");
+    t("plan-level : renommer RETOURNE VRAI (le bug : c'était false)",
+      LC.updateCustomEntry("cust-sig-structures-l-n1", { label: "Topo historique" }) === true);
+    const apres = LC.listCustomEntries("structures").find(function (e) { return e.id === "cust-sig-structures-l-n1"; });
+    t("plan-level : le nouveau nom est servi", !!apres && apres.label === "Topo historique");
+    t("plan-level : l'entrée passe en source « session » (l'user l'a reprise)",
+      !!apres && apres.source === "session");
+    t("plan-level : une seule ligne, pas un doublon",
+      LC.listCustomEntries("structures").filter(function (e) { return e.id === "cust-sig-structures-l-n1"; }).length === 1);
+    t("plan-level : le résolveur sert le nom repris",
+      (LC.findCustomEntry("cust-sig-structures-l-n1") || {}).label === "Topo historique");
+    t("plan-level : la géométrie déclarée survit à la promotion",
+      (LC.findCustomEntry("cust-sig-structures-l-n1") || {}).geometry === "polyline");
+    t("plan-level : recolorer marche aussi (mêmes 3 couleurs, même chemin)",
+      LC.updateCustomEntry("cust-sig-structures-l-n1", { lineColor: "#ff0000" }) === true
+      && (LC.findCustomEntry("cust-sig-structures-l-n1") || {}).lineColor === "#ff0000");
+    t("plan-level : la modification voyage avec la session",
+      (LC.getSessionState().customEntries || []).some(function (e) {
+        return e.id === "cust-sig-structures-l-n1" && e.label === "Topo historique";
+      }));
+    LC.loadPlanState();   // recharger le plan ne doit pas ecraser la reprise
+    t("plan-level : survit au rechargement du plan",
+      (LC.findCustomEntry("cust-sig-structures-l-n1") || {}).label === "Topo historique");
+    LC.resetSession();
+    t("plan-level : resetSession rend le nom d'origine du plan",
+      (LC.findCustomEntry("cust-sig-structures-l-n1") || {}).label === "Structure +1");
+    t("plan-level : un id inconnu du plan ET de la session reste refusé",
+      LC.updateCustomEntry("cust-inexistant", { label: "x" }) === false);
+    LC.__win.PLAN_CONFIG = null;
+    LC.loadPlanState();
+    LC.loadSessionState(null);
+  })();
+
   LC.__win.PLAN_CONFIG = null;
   LC.loadPlanState();
 
