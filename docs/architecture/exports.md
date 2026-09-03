@@ -782,3 +782,34 @@ const t = KmzExport.buildTransform(
 **ATTENTION** : `buildTransform` accepte 4 args distincts `(planA, planB, gpsA, gpsB)` où chaque arg est `{x, y}` ou `{lat, lng}`. NE PAS passer `calib.pointA` directement (qui contient les 4 champs mélangés).
 
 ---
+### 69.2 « Nommer et colorer les niveaux » : ce qui périme les entrées (v1.82.0)
+
+L'écran d'import SIG propose de renommer et recolorer les entrées de légende
+**avant** génération (`SigImport.previsualiserEntreesNiveaux`). Leur état vit
+dans `createConf.js > _sigPlanLegend`, et le pré-remplissage est gardé par un
+`if (!_sigPlanLegend)` — donc tout ce qui devrait le périmer doit le remettre à
+`null`, sinon l'éditeur ressert l'ancien contenu.
+
+L'id d'une entrée est **déterministe** (`_idNiveau` → `cust-sig-<cat>-n<niveau>`,
+pour qu'un ré-import du même fichier ne multiplie pas les entrées). Il encode
+donc la **catégorie** et le **niveau** : quatre choses le périment.
+
+| Ce qui change | Invalidait avant ? |
+|---|---|
+| Le **fichier** chargé | ❌ — *le bug signalé par KARMA* |
+| La colonne du **niveau** | ❌ |
+| La colonne des **types** | ❌ |
+| Un select de **routage** | ✅ |
+
+Les quatre passent désormais par `_sigImpInvaliderLegende(avecMessage)`.
+
+⚠️ **Une génération réussie n'invalide rien**, volontairement : régénérer le même
+fichier (autre largeur de canvas, autre couleur de fond) doit conserver les noms
+saisis. C'est le changement de **fichier** qui périme, pas l'export.
+
+🩸 **Piège d'ordre des listeners** : `majBtnLegende` remet l'état affiché à vide
+quand il n'y a plus d'entrées. L'invalidation de la colonne du niveau est donc
+attachée **après** lui — les listeners se déclenchent dans l'ordre
+d'attachement, et posée avant, son message était aussitôt effacé.
+
+---

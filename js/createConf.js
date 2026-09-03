@@ -4940,12 +4940,37 @@ function _afficherImporterSig(prefilledFile) {
     await _sigImpAnalyserFichier(file);
   });
   document.getElementById("kta-sig-imp-colonne").addEventListener("change", _sigImpRendreTables);
+  // Changer la colonne des types rebâtit tout le routage — donc les catégories
+  // des entrées. Le listener posé sur les selects ne suffit pas : ils sont
+  // recréés par `_sigImpRendreTables` sans qu'aucun n'ait « changé ».
+  document.getElementById("kta-sig-imp-colonne")
+    .addEventListener("change", function () { _sigImpInvaliderLegende(true); });
   document.getElementById("kta-sig-imp-generer").addEventListener("click", _sigImpGenerer);
 
   if (prefilledFile) {
     if (labelEl) labelEl.textContent = "📦 " + prefilledFile.name;
     setTimeout(function() { _sigImpAnalyserFichier(prefilledFile); }, 0);
   }
+}
+
+// 🩸 v1.82.0 — LES ENTRÉES DE LÉGENDE SONT LIÉES AU FICHIER *ET* AU MAPPING.
+// Leur id encode la catégorie et le niveau (`_idNiveau`), donc tout ce qui
+// change l'un ou l'autre les périme. Elles n'étaient remises à zéro qu'à
+// l'ouverture de la modale et au changement d'un select de routage — pas au
+// CHARGEMENT D'UN NOUVEAU FICHIER. Enchaîner deux carrières sans fermer la
+// modale montrait donc les niveaux de la précédente : « on dirait qu'il
+// récupère un cache de la précédente génération », signalé par KARMA.
+//
+// Une seule fonction pour les quatre points d'invalidation : le prochain
+// oubli sera une ligne à ajouter, pas un raisonnement à refaire.
+// ⚠️ Ne PAS invalider après une génération réussie : régénérer le même
+// fichier (autre largeur de canvas, autre couleur de fond) doit conserver
+// les noms saisis. C'est le changement de fichier qui périme, pas l'export.
+function _sigImpInvaliderLegende(avecMessage) {
+  if (!_sigPlanLegend) return;
+  _sigPlanLegend = null;
+  const eta = document.getElementById("kta-sig-imp-legende-etat");
+  if (eta) eta.textContent = avecMessage ? window.I18n.t("gen.sig.legendeReset") : "";
 }
 
 async function _sigImpAnalyserFichier(file) {
@@ -4955,6 +4980,9 @@ async function _sigImpAnalyserFichier(file) {
   status.style.color = "#8cb4ff";
   status.textContent = T("gen.sig.analyse");
   btnGen.disabled = true;
+  // Nouveau fichier = nouvelle carrière : réinitialisation SILENCIEUSE. Un
+  // « légende réinitialisée » ici serait du bruit, tout l'écran est neuf.
+  _sigImpInvaliderLegende(false);
 
   if (!window.SigImport) {
     status.textContent = T("gen.sig.moduleNonCharge");
@@ -5076,6 +5104,12 @@ async function _sigImpAnalyserFichier(file) {
     const caseCol = document.getElementById("kta-sig-imp-couleurs-niveau");
     if (selNiv)  selNiv.addEventListener("change", majBtnLegende);
     if (caseCol) caseCol.addEventListener("change", majBtnLegende);
+    // Le niveau fait partie de l'id de chaque entrée : changer de colonne les
+    // périme aussi sûrement que changer le routage.
+    // ⚠️ ATTACHÉ APRÈS `majBtnLegende` — les listeners se déclenchent dans
+    // l'ordre d'attachement, et `majBtnLegende` remet l'état à vide quand il
+    // n'y a plus d'entrées : posé avant, le message serait aussitôt effacé.
+    if (selNiv) selNiv.addEventListener("change", function () { _sigImpInvaliderLegende(true); });
     const btnLeg = document.getElementById("kta-sig-imp-legende");
     if (btnLeg) btnLeg.addEventListener("click", function () {
       const cleN = (document.getElementById("kta-sig-imp-niveau") || {}).value || null;
@@ -5272,11 +5306,7 @@ function _sigImpRendreTables() {
   // réactualise pour le dire.
   box.querySelectorAll("select[data-sig-fam]").forEach(function (s) {
     s.addEventListener("change", function () {
-      if (_sigPlanLegend) {
-        _sigPlanLegend = null;
-        const eta = document.getElementById("kta-sig-imp-legende-etat");
-        if (eta) eta.textContent = T("gen.sig.legendeReset");
-      }
+      _sigImpInvaliderLegende(true);
     });
   });
 }
