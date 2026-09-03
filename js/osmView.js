@@ -427,33 +427,14 @@
     return true;
   }
 
-  // 🆕 v1.39.16 — Cascade unifiée level (POI/Roads/Zones/Structures).
-  //   1. Si plan non multi-LVL → tout passe
-  //   2. Si _visibleLevels = Set non-vide → check membership
-  //   3. Sinon → fallback APP_CONFIG.activeLevel (mode mono historique v1.39.12)
-  // Sémantique items sans level : level = 0 (cohérent §51.4 Heatmap).
-  // 🔍 v1.82.0 — Largeur des fronts selon le zoom OSM.
-  // L'échelle diffère de celle du mode plan : ici le zoom va de ~10 (région) à
-  // 19 (rue). Un front dessine une largeur RÉELLE — il doit donc maigrir quand
-  // on s'éloigne, sinon les traits fusionnent en aplat.
-  function _largeurFrontOsm(z) {
-    if (!Number.isFinite(z)) return 6;
-    if (z >= 18) return 10;
-    if (z >= 17) return 7;
-    if (z >= 16) return 5;
-    if (z >= 15) return 3;
-    return 2;                     // plancher : en dessous, le trait resterait lisible
-  }
 
-  // ⚠️ La variable est partagée avec le mode plan (une seule carte est visible
-  // à la fois). On la restaure à la fermeture de la Vue OSM, sinon le plan
-  // hériterait de la largeur calculée pour un zoom qui n'est pas le sien.
-  function _majLargeurFrontOsm() {
-    try {
-      const z = _osmMap && typeof _osmMap.getZoom === "function" ? _osmMap.getZoom() : null;
-      document.documentElement.style.setProperty("--kta-front-w", _largeurFrontOsm(z) + "px");
-    } catch (e) {}
-  }
+  // 🩸 v1.82.0 — `_majLargeurFrontOsm` et `_largeurFrontOsm` ont ete RETIRES :
+  // ils posaient une variable CSS que personne ne lit (la Vue OSM est elle aussi
+  // en `preferCanvas: true`, l.2194). Le rendu actuel convient parce que le
+  // repli l.1332 fait tomber les types custom sur le gabarit « mur »
+  // (weight 2) - c est un HEUREUX ACCIDENT, pas un choix. Consigne dans le
+  // BACKLOG plutot que corrige a l aveugle : demander le weight au canon
+  // ramenerait 10 px et referait l aplat.
 
   function _isLevelAllowed(p) {
     const cfg = window.APP_CONFIG || {};
@@ -1350,7 +1331,6 @@
             // est pilotée par la variable CSS `--kta-front-w`, recalculée au
             // zoom. Sans ça, un plan portant des milliers de fronts devient un
             // aplat dès qu'on s'éloigne.
-            className: "kta-struct-front"
           }).addTo(_structLayer);
         } else {
           L.polygon(latlngs, {
@@ -2249,9 +2229,6 @@
     // 5) Bind handler zoom/pan pour swap niveau adaptatif + cull dynamique
     _moveEndHandler = _onMoveEnd;
     _osmMap.on("zoomend moveend", _moveEndHandler);
-    // 🔍 v1.82.0 — largeur des fronts recalculee au zoom OSM.
-    _osmMap.on("zoomend", _majLargeurFrontOsm);
-    _majLargeurFrontOsm();
 
     // 6) 🆕 v1.39.12 — Step 1 : POI session + data layers
     if (_poiVisible) _renderPoi();

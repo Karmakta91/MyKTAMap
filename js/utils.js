@@ -2231,7 +2231,6 @@ function ajouterPointsDepuisJSON(url, layer) {
               // structures.js : poser la classe d un seul cote laissait la
               // largeur figee a 10 px pour tous les plans importes - c est-a-dire
               // precisement ceux qui portent des milliers de fronts.
-              className: "kta-struct-front",
               interactive: false
             }).addTo(layer);
           } else {

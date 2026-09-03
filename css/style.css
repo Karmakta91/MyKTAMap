@@ -21393,7 +21393,11 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
    `!important` est nécessaire : Leaflet écrit `stroke-width` en attribut
    inline sur chaque path, et un attribut de présentation perdrait face à
    lui sans ça. La variable est mise à jour au zoomend — une écriture pour
-   toute la carte, au lieu d'un setStyle par objet. */
-.kta-struct-front {
-  stroke-width: var(--kta-front-w, 10px) !important;
-}
+/* 🩸 v1.82.0 — LA VOIE CSS A ÉTÉ RETIRÉE, elle ne pouvait pas fonctionner.
+   La carte est rendue en CANVAS (`preferCanvas: true`, map.js:382), pas en
+   SVG. Or l'option `className` de Leaflet est documentée « Only for SVG
+   renderer » : sur un canvas il n'existe aucun élément DOM à styler, et le
+   renderer peint avec `ctx.lineWidth = options.weight`, relu à chaque frame.
+   Une règle `stroke-width` était donc un no-op complet — en mode plan ET en
+   Vue OSM. La largeur se pilote désormais par `options.weight`, muté en
+   place (cf. structures.js > majLargeurFronts). */

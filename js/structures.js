@@ -138,13 +138,77 @@ function _largeurFrontPourZoom(z) {
   return Math.max(FRONT_MIN_PX, Math.min(FRONT_MAX_PX, Math.round(px * 10) / 10));
 }
 
-// Appliquée au niveau du DOCUMENT : une seule écriture, quel que soit le
-// nombre de fronts affichés.
+// 🩸 v1.82.0 — LA LARGEUR SE PILOTE PAR `options.weight`, PAS PAR LE CSS.
+//
+// La première version posait une classe et une variable CSS. Elle n'a jamais
+// rien fait : la carte est rendue en CANVAS (`preferCanvas: true`, map.js:382),
+// et l'option `className` de Leaflet est documentée « Only for SVG renderer ».
+// Sur un canvas il n'y a aucun élément DOM à styler — le renderer peint avec
+// `ctx.lineWidth = options.weight`, RELU À CHAQUE FRAME.
+//
+// C'est justement ce qui rend la correction bon marché : il suffit de muter
+// `layer.options.weight` en place. Le redraw que le canvas déclenche déjà
+// seul au zoom reprend la nouvelle valeur — aucun `setStyle()`, aucun redraw
+// supplémentaire. 17 000 affectations de nombre coûtent moins d'une
+// milliseconde ; ce qui aurait été intenable, c'était `setStyle()`, pas
+// l'écriture.
+//
+// L'ORDRE DE GRANDEUR DU PROBLÈME, mesuré sur un relevé réel : à l'ouverture
+// (zoom -2), un trait de 10 px couvre 28,9 m AU SOL, pour des galeries dont le
+// segment médian fait 0,75 m. Chaque segment était peint comme un disque de
+// 29 m de diamètre — d'où l'aplat en « chapelet », le cap arrondi dépassant la
+// longueur du segment d'un facteur ~19.
 function majLargeurFronts() {
+  let z = 0;
   try {
-    const z = (window.map && typeof window.map.getZoom === "function") ? window.map.getZoom() : 0;
-    document.documentElement.style.setProperty("--kta-front-w", _largeurFrontPourZoom(z) + "px");
-  } catch (e) { /* pas de carte : rien à ajuster */ }
+    if (window.map && typeof window.map.getZoom === "function") z = window.map.getZoom();
+  } catch (e) { return; }
+
+  const wFront = _largeurFrontPourZoom(z);
+  // Un tracé de galerie est plus fin qu'un front de taille, mais il suit la
+  // même loi physique : sur ce relevé, 85 % des objets sont des lignes. Les
+  // laisser à leur largeur d'origine aurait laissé l'aplat intact.
+  const wTrace = Math.max(1, Math.round(wFront * 0.6 * 10) / 10);
+
+  // Les registres portent le layer sous la clé `polygon` — nom historique
+  // conservé pour `_filtreNiveauSurPolygonData`, les polylignes y sont aussi
+  // (cf. utils.js, commentaire du push).
+  const appliquer = function (arr, largeur) {
+    if (!Array.isArray(arr)) return 0;
+    let n = 0;
+    for (let i = 0; i < arr.length; i++) {
+      const e = arr[i]; if (!e) continue;
+      const lay = e.polygon || e.polyline || e.layer;
+      if (!lay || !lay.options) continue;
+      // Les surfaces gardent leur trait : un pilier est lu par son
+      // remplissage, pas par l'épaisseur de son contour.
+      if (lay.options.fill === true || lay._latlngs && Array.isArray(lay._latlngs[0])) continue;
+      if (e._wOrig === undefined) e._wOrig = lay.options.weight;
+      lay.options.weight = largeur;
+      n++;
+    }
+    return n;
+  };
+
+  appliquer(window._ktaDataStructurePolygons, wFront);
+  appliquer(window._ktaDataPolylines, wTrace);
+
+  // Structures de SESSION : pas de registre, on parcourt les layers rendus.
+  try {
+    if (Array.isArray(structureLayers)) {
+      structureLayers.forEach(function (l) {
+        if (l && l.options && l.options.fill !== true) l.options.weight = wFront;
+      });
+    }
+  } catch (e) {}
+
+  // Le canvas ne redessine pas de lui-même hors zoom/pan : on le force une
+  // fois, sinon le changement n'apparaît qu'au prochain mouvement.
+  try {
+    if (window.map && window.map._renderer && typeof window.map._renderer._redraw === "function") {
+      window.map._renderer._redraw();
+    }
+  } catch (e) {}
 }
 window.majLargeurFronts = majLargeurFronts;
 
@@ -550,7 +614,6 @@ function renderStructures() {
           // La largeur passe par une variable CSS mise à jour au zoomend :
           // O(1) par changement de zoom, au lieu d'un setStyle sur chaque
           // objet — ce qui serait intenable à ce volume.
-          className: "kta-struct-front"
         }).addTo(target);
       } else {
         // Structure fermée → polygone rempli avec stroke noir.
