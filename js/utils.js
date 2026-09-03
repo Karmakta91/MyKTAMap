@@ -1895,6 +1895,11 @@ window._bindMarkerViewportHook = function() {
 };
 
 function ajouterPointsDepuisJSON(url, layer) {
+  // 🔍 v1.82.0 — la largeur des fronts dépend du zoom, et un plan importé
+  // porte ses structures ICI, pas dans la session. Sans cet appel, la
+  // variable CSS n'est jamais posée sur ces plans et les traits restent
+  // à 10 px quel que soit le dézoom. Idempotent.
+  try { if (typeof window.brancherLargeurFronts === "function") window.brancherLargeurFronts(); } catch (e) {}
   const _loadToken = window._ktaDataLayerLoadToken;
 
   // 🚀 v1.30.0 (P5 viewport culling) : pose le hook moveend/zoomend sur
@@ -2221,6 +2226,12 @@ function ajouterPointsDepuisJSON(url, layer) {
               opacity:  style.opacity,
               lineCap:  "round",
               lineJoin: "round",
+              // 🔍 v1.82.0 — MEME CLASSE QUE LES STRUCTURES DE SESSION.
+              // Les structures des DATALAYERS sont dessinees ici, pas dans
+              // structures.js : poser la classe d un seul cote laissait la
+              // largeur figee a 10 px pour tous les plans importes - c est-a-dire
+              // precisement ceux qui portent des milliers de fronts.
+              className: "kta-struct-front",
               interactive: false
             }).addTo(layer);
           } else {

@@ -125,6 +125,20 @@ function majLargeurFronts() {
 }
 window.majLargeurFronts = majLargeurFronts;
 
+// 🩸 v1.82.0 — LE BRANCHEMENT NE PEUT PAS DÉPENDRE DE `renderStructures`.
+// Il y était posé au départ, et ça ne marchait que pour les structures de
+// SESSION : un plan importé porte les siennes dans un DATALAYER, rendu par
+// `utils.js > ajouterPointsDepuisJSON`. Sur ces plans — précisément ceux qui
+// ont des milliers de fronts — `renderStructures` n'est jamais appelé, la
+// variable CSS n'est jamais posée, et la largeur reste au défaut de 10 px.
+// D'où : un point d'entrée unique, appelable de partout et idempotent.
+window.brancherLargeurFronts = function () {
+  if (!window.map || window._ktaFrontZoomBound) { majLargeurFronts(); return; }
+  window._ktaFrontZoomBound = true;
+  window.map.on("zoomend", majLargeurFronts);
+  majLargeurFronts();
+};
+
 const STRUCTURE_STYLE_PREVIEW = {
   weight:    3,
   opacity:   1,
@@ -346,11 +360,7 @@ function renderStructures() {
   // 🔍 v1.82.0 — largeur des fronts recalculee au zoom. Le binding est pose
   // ICI, une seule fois, et non a chaque rendu : Leaflet dedoublonne les
   // handlers identiques, mais une closure fraiche a chaque appel empilerait.
-  if (window.map && !window._ktaFrontZoomBound) {
-    window._ktaFrontZoomBound = true;
-    window.map.on("zoomend", majLargeurFronts);
-  }
-  majLargeurFronts();
+  window.brancherLargeurFronts();
   // Vider les layers existants — .remove() détache où qu'ils soient
   structureLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
   structureLayers = [];
