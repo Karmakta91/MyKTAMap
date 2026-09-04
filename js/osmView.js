@@ -1719,7 +1719,7 @@
           // geographique, `e.latlng` est deja la reponse.
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-coords" ' +
             'style="font-size:12px; padding:5px 10px;" title="' +
-            _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">📍</button>' +
+            _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">🎯</button>' +
           // 🆕 v1.43.4 — Bouton "Cacher pour offline" placé juste après 📍 Moi
           // (KARMA : groupé avec les actions, AVANT les toggles d'affichage).
           // Télécharge les tuiles visibles + zoom ±1 dans IDB pour consultation

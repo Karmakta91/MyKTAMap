@@ -4,7 +4,7 @@
 // 🧰 check-osm-outils.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
 // Les DEUX outils de lecture de la carte en Vue OSM — 📏 mesure
-// (`osmMesure.js`) et 📍 coordonnées de surface (`osmCoords.js`) — et la règle
+// (`osmMesure.js`) et 🎯 coordonnées de surface (`osmCoords.js`) — et la règle
 // qui les lie.
 //
 // 🩸 CE QUI RÉGRESSE ICI, ET SANS BRUIT :
@@ -150,7 +150,22 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
 
   // L'avertissement d'honnetete doit rester : la coordonnee est exacte pour la
   // carte, pas forcement pour la galerie d'un plan mal cale.
+  // 🩸 DEUX BOUTONS VOISINS NE PARTAGENT PAS UNE ICONE. Le releve de
+  // coordonnees est ne avec 📍 — deja celle de « Ma position » (`osm.btn.mygps`
+  // = « 📍 Moi »), dans la MEME barre. L un donne TA position, l autre celle
+  // d un point que tu choisis : rien ne les distinguait a l oeil. Et la
+  // correction a d abord casse le bouton « Ma position » du HOME en lui
+  // prenant sa nouvelle icone — la collision avait juste change de camp.
   const FR = JSON.parse(fs.readFileSync("lang/fr.json", "utf8"));
+  const ICONE_MOI = "📍", ICONE_COORD = "🎯";
+  t("🩸 icones : « Ma position » garde la sienne (" + ICONE_MOI + ")",
+    (FR["osm.btn.mygps"] || "").indexOf(ICONE_MOI) >= 0);
+  t("🩸 icones : le releve de coordonnees a la SIENNE (" + ICONE_COORD + ")",
+    (FR["osm.coords.btnTitle"] || "").indexOf(ICONE_COORD) === 0);
+  t("🩸 icones : les deux boutons du HOME sont distincts",
+    /ktaOsmHomeMyGpsBtn[\s\S]{0,300}?📍/.test(HOME) && /ktaOsmHomeCoordBtn[\s\S]{0,300}?🎯/.test(HOME));
+  t("🩸 icones : le bouton du mode plan porte celle des coordonnees",
+    /kta-osm-coords[\s\S]{0,300}?🎯/.test(VIEW));
   t("honnetete : l'infobulle dit que la justesse depend du calage du plan",
     /calage du plan/i.test(FR["osm.coords.btnTitle"] || ""));
   ["osm.coords.invite", "osm.coords.copier", "osm.coords.copie", "osm.coords.copieKo"]

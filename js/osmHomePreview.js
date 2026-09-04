@@ -640,12 +640,12 @@
                 'title="' + _escapeHtml(window.I18n.t("osm_mes.btnTitle")) + '">' +
           '📏' +
         '</button>' +
-        // 📍 v1.85.0 — relever les coordonnees GPS de SURFACE d un point.
+        // 🎯 v1.85.0 — relever les coordonnees GPS de SURFACE d un point.
         // Range a cote de la mesure : meme famille (des outils de lecture de
         // la carte), et les deux arment le meme evenement `click`.
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeCoordBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">' +
-          '📍' +
+          '🎯' +
         '</button>' +
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFiltersBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_mode.filters.btnTitle")) + '" ' +

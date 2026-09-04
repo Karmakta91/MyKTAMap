@@ -79,6 +79,8 @@
   // chaque fonction"). Découpe granulaire : 1 sujet = 1 carte = lecture digeste.
   // 🆕 v1.25.3 : 22 → 23 cards (ajout carte 13 « 🚨 Mode Secours » après modes urgence).
   // 🆕 v1.69.0 : 25 → 26 cards (ajout carte 25 « 📔 Mon carnet », après Mode Histoire).
+  // 🆕 v1.85.0 : 26 → 27 cards (ajout carte 6 « 🗺️ Convertir un relevé SIG »,
+  //              après les deux cartes de création de plan).
   // ⚠️ Depuis v1.79.4, la parité des langues est garantie par les DICOS
   // (check-i18n : parité fr/en + es stricte) — plus de tableaux par langue ici.
   // ═══ 🌍 v1.79.4 — CONTENU MIGRÉ DANS LES DICOS lang/*.json (dette
@@ -98,6 +100,13 @@
     { emoji: "🗂️" },
     { emoji: "🏗️", hint: true },
     { emoji: "🎨" },
+    // 🗺️ v1.85.0 — l’import SIG etait ABSENT des 26 cartes : zero occurrence
+    // de « SIG », « GeoJSON » ou « QGIS ». Porte d’entree majeure des cinq
+    // dernieres versions, invisible pour un nouvel utilisateur. Rangee en 6e,
+    // apres les deux facons de CREER un plan — c’en est une troisieme.
+    // ⚠️ Le rang FAIT la cle (`card{NN}`) : inserer ici a renumerote 06..26
+    // en 07..27 dans les trois dicos.
+    { emoji: "🗺️", hint: true },
     { emoji: "📍" },
     { emoji: "🛣️" },
     { emoji: "⬛" },

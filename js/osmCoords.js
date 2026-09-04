@@ -6,7 +6,7 @@
  */
 
 // =====================================================================
-// 📍 osmCoords.js — relever les coordonnees GPS DE SURFACE en Vue OSM
+// 🎯 osmCoords.js — relever les coordonnees GPS DE SURFACE en Vue OSM
 // =====================================================================
 // LE BESOIN (KARMA, 05/09/2026) : savoir, depuis un point du releve souterrain,
 // QUELLES SONT LES COORDONNEES EN SURFACE juste au-dessus. C'est ce qu'on donne
@@ -144,7 +144,7 @@
     _floater = document.createElement("div");
     _floater.id = "kta-osm-coord-floater";
     _floater.innerHTML =
-      '<span class="kta-osm-coord-icone">📍</span>' +
+      '<span class="kta-osm-coord-icone">🎯</span>' +
       '<span class="kta-osm-coord-info"></span>' +
       '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-osm-coord-copy" disabled>' +
         _t("osm.coords.copier") + '</button>' +
