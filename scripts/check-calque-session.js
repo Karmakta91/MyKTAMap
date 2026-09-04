@@ -52,7 +52,11 @@ function monter(calque, sessionInitiale) {
   const surCarte = { sig: true };
   const ctx = {
     console: { log() {}, warn() {} },
-    Promise, JSON, Array, Object, String, Number, Blob: undefined,
+    Promise, JSON, Array, Object, String, Number,
+    // Blob minimal : `_octets` lit `.size`, et `_telecharger` en construit un.
+    // Le laisser `undefined` faisait echouer le telechargement DANS son
+    // try/catch — le test passait a cote sans rien voir.
+    Blob: function (parts) { this.size = (parts || []).join("").length; },
     setTimeout,
     localStorage: {
       length: 2,
@@ -71,7 +75,10 @@ function monter(calque, sessionInitiale) {
       removeLayer: (g) => { surCarte[g.__id] = false; },
       addLayer: (g) => { surCarte[g.__id] = true; }
     },
-    I18n: { t: (k) => k }
+    I18n: { t: (k) => k },
+    // `exporterCalque` télécharge : on capture au lieu d'écrire.
+    URL: { createObjectURL: (b) => { ctx.__blob = b; return "blob:x"; }, revokeObjectURL() {} },
+    document: { createElement: () => ({ click() { ctx.__telecharge = true; } }) }
   };
   ctx.window = ctx;
   vm.createContext(ctx);
@@ -91,7 +98,7 @@ const CALQUE = {
 {
   const { CS } = monter(CALQUE);
   ["estRapatrie", "listeRapatries", "compterCopie", "peser", "occupationLocalStorage",
-   "rapatrier", "restituer", "appliquerVerrous", "getSessionState", "loadSessionState"]
+   "rapatrier", "restituer", "exporterCalque", "appliquerVerrous", "getSessionState", "loadSessionState"]
     .forEach(function (m) {
       t("API : CalqueSession." + m + "()", typeof CS[m] === "function");
     });
@@ -136,6 +143,40 @@ const CALQUE = {
   t("rapatrier deux fois : refuse (pas de doublon)", r2.ok === false && r2.code === "dejaRapatrie");
   const r3 = await CS.rapatrier("inconnu");
   t("rapatrier un calque inconnu : refuse", r3.ok === false && r3.code === "calqueInconnu");
+
+  // ───────── 2 bis. L'EXPORT QUI FERME LA BOUCLE VERS LE ZIP ─────────
+  {
+    const m = monter(CALQUE);
+    await m.CS.rapatrier("sig");
+    m.etat.roads.push({ type: "principal", points: [{ x: 7, y: 7 }] });   // cree a la main
+    m.etat.zones.length = 0;                                             // toutes supprimees
+    const ex = m.CS.exporterCalque("sig");
+
+    t("export : reussit", !!(ex && ex.ok));
+    t("export : nomme d'apres l'ID du calque (le `file` resolu peut etre un blob:)",
+      ex.nom === "sig.json");
+    t("export : n'emporte QUE les objets marques", ex.total === 4);
+    t("export : compte a part les objets crees a la main", ex.horsCalque === 1);
+    t("export : le fichier est bien telecharge", m.ctx.__telecharge === true);
+
+    const p = ex.stats;
+    t("export : forme de data layer (data/roads/zones/structures)",
+      Array.isArray(p.data) && Array.isArray(p.roads) && Array.isArray(p.zones) && Array.isArray(p.structures));
+    // 🩸 REMPLACEMENT : un tableau VIDE doit etre ECRIT. L'omettre laisserait
+    // les anciennes zones en place au rechargement — la suppression serait
+    // silencieusement annulee.
+    t("🩸 export : les zones supprimees sortent en tableau VIDE, pas omises",
+      p.zones.length === 0 && "zones" in p);
+    t("export : l'objet cree a la main n'y est pas", p.roads.length === 2);
+    t("🧹 export : la marque interne `_srcCalque` est RETIREE",
+      p.roads.concat(p.zones, p.structures, p.data).every(function (o) { return o._srcCalque === undefined; }));
+    t("export : la session n'est pas alteree par l'export",
+      m.CS.compterCopie("sig") === 4 && m.CS.estRapatrie("sig") === true);
+  }
+  {
+    const m = monter(CALQUE);
+    t("export sans rapatriement : refuse", m.CS.exporterCalque("sig").ok === false);
+  }
 
   // ───────── 3. LE RETOUR EST CHIRURGICAL ─────────
   etat.roads.push({ type: "principal", points: [{ x: 0, y: 0 }] });   // cree a la main
@@ -192,8 +233,10 @@ const CALQUE = {
     SP.indexOf("CalqueSession.appliquerVerrous") > SP.indexOf("CalqueSession.loadSessionState(payload"));
   t("🩸 cablage : effacer la session RESTITUE les calques (piege 1)",
     /function clear\(\)[\s\S]{0,2000}CalqueSession\.listeRapatries[\s\S]{0,300}restituer\(/.test(SP));
-  t("cablage : le panneau de filtres porte les deux actions",
-    /data-calque-rapatrier/.test(FP) && /data-calque-restituer/.test(FP));
+  t("cablage : le panneau de filtres porte les trois actions",
+    /data-calque-rapatrier/.test(FP) && /data-calque-restituer/.test(FP) && /data-calque-exporter/.test(FP));
+  t("cablage : l export dit OU deposer le fichier (sinon il est inutilisable)",
+    /filter.calque.exporte"/.test(FP) && /filter.calque.exporteAvecReste/.test(FP));
   t("cablage : le panneau annonce le POIDS avant de rapatrier",
     /CS\.peser\(id\)/.test(FP) && /occupationLocalStorage/.test(FP));
   t("cablage : le calque « editor » n'est pas rapatriable (il EST la session)",

@@ -517,6 +517,17 @@
                                 + _escHtml(window.I18n.t("filter.calque.remplace")) + '</em>' : '') +
                   '</span>' +
                 '</label>' +
+                // 💾 Exporter ne s'affiche que sur un calque rapatrié : c'est
+                // ce qui ferme la boucle vers le ZIP. Un fichier, à déposer sur
+                // la ligne de CE calque dans « Modifier un plan » — la ligne
+                // étant le calque, aucun doublon n'est possible.
+                (rapatrie
+                  ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-calque-btn" ' +
+                      'data-calque-exporter="' + _escAttr(id) + '" ' +
+                      'title="' + _escAttr(window.I18n.t("filter.calque.exporterTitle")) + '">' +
+                      _escHtml(window.I18n.t("filter.calque.exporter")) +
+                    '</button>'
+                  : '') +
                 (rapatriable
                   ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-calque-btn" ' +
                       (rapatrie ? 'data-calque-restituer="' : 'data-calque-rapatrier="') + _escAttr(id) + '" ' +
@@ -676,6 +687,10 @@
       }
       if (t.matches('[data-calque-restituer]')) {
         _restituerCalque(t.getAttribute("data-calque-restituer"));
+        return;
+      }
+      if (t.matches('[data-calque-exporter]')) {
+        _exporterCalque(t.getAttribute("data-calque-exporter"));
         return;
       }
       // === Tags + Types (set-based) ===
@@ -906,6 +921,22 @@
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       window.OOMGuard.showToast(window.I18n.t("filter.calque.okRestitue", { n: r.retires }), "info");
     }
+  }
+
+  // 💾 Ferme la boucle vers le ZIP. Le message dit QUOI FAIRE du fichier —
+  // sans ça, l'utilisateur se retrouve avec un `.json` dans ses
+  // téléchargements et aucune idée de la ligne où le déposer.
+  function _exporterCalque(id) {
+    const CS = window.CalqueSession;
+    if (!CS || !id) return;
+    const r = CS.exporterCalque(id);
+    if (!r || !r.ok) { alert(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" })); return; }
+    // ⚠️ On ANNONCE les objets créés à la main qui ne sont PAS partis : ils
+    // n'appartiennent pas à ce calque, et les verser d'office serait décider
+    // à la place de l'utilisateur. Le taire lui ferait croire tout embarqué.
+    alert(window.I18n.t(r.horsCalque > 0 ? "filter.calque.exporteAvecReste"
+                                         : "filter.calque.exporte",
+                        { nom: r.nom, n: r.total, reste: r.horsCalque, id: id }));
   }
 
   // ============================================================

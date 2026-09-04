@@ -62,7 +62,7 @@
 //
 // API : window.CalqueSession = {
 //   estRapatrie, listeRapatries, peser, occupationLocalStorage,
-//   rapatrier, restituer, compterCopie, appliquerVerrous,
+//   rapatrier, restituer, exporterCalque, compterCopie, appliquerVerrous,
 //   getSessionState, loadSessionState, CLE_SOURCE
 // };
 // 100 % local, aucune surface reseau nouvelle (le `fetch` du calque est celui
@@ -247,6 +247,70 @@ window.CalqueSession = (function () {
     return { ok: true, retires: retires };
   }
 
+  // ── retour vers le ZIP ────────────────────────────────────────────────
+  // 🎯 CE QUI FERME LA BOUCLE, ET POURQUOI C'EST UN FICHIER UNIQUE.
+  // Le convertisseur « session -> data layer » existant eclate la sortie en
+  // `points.json` + `roads.json` + `zones.json` + `structure.json` (voire un
+  // fichier par TYPE en granularite fine). Excellent pour fabriquer un plan,
+  // inutilisable pour REMPLACER un calque : quatre fichiers ne remplacent pas
+  // une ligne. Ici on produit UN fichier de la meme forme que l'original.
+  //
+  // Le Generateur fait alors le reste sans rien apprendre de nouveau : dans
+  // « Modifier un plan », chaque calque est UNE LIGNE avec son id et son
+  // selecteur de fichier. Choisir le fichier corrige sur la ligne du calque
+  // remplace son contenu — le doublon est impossible, la ligne EST le calque.
+  //
+  // 🩸 LES TABLEAUX VIDES SONT ECRITS, PAS OMIS. C'est un REMPLACEMENT : si
+  // l'utilisateur a supprime toutes les zones, le fichier doit dire
+  // `zones: []`. Les omettre laisserait les anciennes en place au rechargement,
+  // et la suppression serait silencieusement annulee.
+  //
+  // 🧹 La marque `_srcCalque` est RETIREE : c'est un outil interne de session,
+  // elle n'a rien a faire dans le ZIP d'un plan qu'on partage.
+  function exporterCalque(id) {
+    if (!estRapatrie(id)) return { ok: false, code: "pasRapatrie" };
+    const payload = { data: [], roads: [], zones: [], structures: [] };
+    let horsCalque = 0;
+    FAMILLES.forEach(function (fam) {
+      // Cote calque, les points se disent `data` (cf. FAMILLES).
+      const cible = (fam.cle === "editorPoints") ? "data" : fam.cle;
+      _lire(fam).forEach(function (o) {
+        if (!o) return;
+        if (o[CLE_SOURCE] === id) {
+          const c = JSON.parse(JSON.stringify(o));
+          delete c[CLE_SOURCE];
+          payload[cible].push(c);
+        } else if (o[CLE_SOURCE] === undefined) {
+          // Objet cree a la main pendant la session : il n'appartient pas a ce
+          // calque, on ne l'y verse pas d'autorite. On le COMPTE, pour pouvoir
+          // le dire — sinon l'utilisateur croirait son travail embarque.
+          horsCalque++;
+        }
+      });
+    });
+
+    const total = payload.data.length + payload.roads.length
+                + payload.zones.length + payload.structures.length;
+    // `file` est RESOLU au chargement (parfois en `blob:`), son basename n'est
+    // donc pas fiable. L'id, lui, est celui de la ligne du Generateur.
+    const nom = id + ".json";
+    _telecharger(payload, nom);
+    _log("calque « " + id + " » exporte vers " + nom + " (" + total + " objets)");
+    return { ok: true, total: total, horsCalque: horsCalque, nom: nom, stats: payload };
+  }
+
+  function _telecharger(obj, nom) {
+    try {
+      const url = URL.createObjectURL(new Blob([JSON.stringify(obj)], { type: "application/json" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = nom;
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    } catch (e) {
+      console.warn("[CalqueSession] telechargement impossible :", e);
+    }
+  }
+
   // ── verrou d'affichage ────────────────────────────────────────────────
   function _masquer(id) {
     const g = _groupe(id);
@@ -316,6 +380,7 @@ window.CalqueSession = (function () {
     occupationLocalStorage: occupationLocalStorage,
     rapatrier:              rapatrier,
     restituer:              restituer,
+    exporterCalque:         exporterCalque,
     appliquerVerrous:       appliquerVerrous,
     getSessionState:        getSessionState,
     loadSessionState:       loadSessionState
