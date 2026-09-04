@@ -256,6 +256,26 @@ const CALQUE = {
     }
   }
 
+  // ───────── 2 quinquies. 🩸 ET LES POI (question KARMA, 05/09) ─────────
+  // « Convertir » ne gere que les VECTEURS — un point n'a pas de geometrie a
+  // ouvrir ou fermer, la question ne se pose pas pour lui. Un POI se corrige
+  // par sa FICHE (tag, nom, description), et cette porte-la existait deja.
+  //
+  // Le risque est le meme que pour la conversion : si la sauvegarde de la
+  // fiche RECONSTRUISAIT le point au lieu de le muter, `_srcCalque` sauterait
+  // et le POI corrige survivrait a la restauration pendant que son original
+  // reviendrait du calque — un doublon, exactement comme pour les vecteurs.
+  // `editor.js` mute en place (`existingPoint.nom = …`). Controle STRUCTUREL :
+  // le formulaire est trop lie au DOM pour tourner ici, on verifie la forme du
+  // code, pas son execution — et on le dit.
+  {
+    const ED = fs.readFileSync("js/editor.js", "utf8");
+    t("🩸 POI : la fiche MUTE le point, elle ne le reconstruit pas",
+      /existingPoint\.nom\s*=/.test(ED) && /existingPoint\.tags\s*=/.test(ED));
+    t("POI : « Convertir » ne pretend PAS gerer les points",
+      fs.readFileSync("js/convertirObjet.js", "utf8").indexOf("editorPoints") < 0);
+  }
+
   // ───────── 3. LE RETOUR EST CHIRURGICAL ─────────
   etat.roads.push({ type: "principal", points: [{ x: 0, y: 0 }] });   // cree a la main
   const rr = CS.restituer("sig");
