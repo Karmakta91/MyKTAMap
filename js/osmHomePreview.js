@@ -640,6 +640,13 @@
                 'title="' + _escapeHtml(window.I18n.t("osm_mes.btnTitle")) + '">' +
           '📏' +
         '</button>' +
+        // 📍 v1.85.0 — relever les coordonnees GPS de SURFACE d un point.
+        // Range a cote de la mesure : meme famille (des outils de lecture de
+        // la carte), et les deux arment le meme evenement `click`.
+        '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeCoordBtn" type="button" ' +
+                'title="' + _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">' +
+          '📍' +
+        '</button>' +
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFiltersBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_mode.filters.btnTitle")) + '" ' +
                 'style="background: rgba(244,197,66,0.10); border-color: rgba(244,197,66,0.4); color: #f4c542;">' +
@@ -705,6 +712,12 @@
     }
     // 📏 v1.83.0 — bascule de l'outil de mesure. Le module se démonte de
     // lui-même au second clic (`activer` appelle `desactiver` s'il est actif).
+    const coordBtn = container.querySelector("#ktaOsmHomeCoordBtn");
+    if (coordBtn) {
+      coordBtn.addEventListener("click", function () {
+        if (window.OsmCoords) window.OsmCoords.activer(_mapInstance);
+      });
+    }
     const mesureBtn = container.querySelector("#ktaOsmHomeMesureBtn");
     if (mesureBtn) {
       mesureBtn.addEventListener("click", function () {

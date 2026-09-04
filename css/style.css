@@ -21554,6 +21554,36 @@ body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }
   border: 1px solid rgba(244, 197, 66, 0.5);
   color: #f4c542; font-size: 11px; font-weight: 600; white-space: nowrap;
 }
+/* 📍 v1.85.0 — releve de coordonnees GPS de surface. Meme gabarit que le
+   bandeau de mesure : les deux outils vivent au meme endroit de l ecran et
+   sont exclusifs, ils ne se chevaucheront jamais. */
+#kta-osm-coord-floater {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 100002;                 /* au-dessus de la Vue OSM plein ecran */
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, #1a1f2e 0%, #0f1320 100%);
+  border: 1px solid rgba(140, 180, 255, 0.45);
+  border-radius: 10px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+  font-size: 13px; color: #e8eaf0;
+  max-width: calc(100vw - 24px);
+}
+.kta-osm-coord-icone { font-size: 15px; }
+/* La coordonnee est faite pour etre LUE et RECOPIEE : chasse fixe, et
+   selectionnable a la souris meme sans passer par le bouton Copier. */
+.kta-osm-coord-info {
+  font-weight: 600; white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px; color: #8cb4ff;
+  user-select: text; -webkit-user-select: text;
+}
+body.kta-theme-light #kta-osm-coord-floater {
+  background: #ffffff; color: #24304a; border-color: rgba(60, 110, 200, 0.5);
+}
+body.kta-theme-light .kta-osm-coord-info { color: #1c4fa8; }
+
 body.kta-theme-light #kta-osm-mes-floater {
   background: #ffffff; color: #24304a; border-color: rgba(180, 140, 20, 0.5);
 }

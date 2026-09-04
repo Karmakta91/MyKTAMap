@@ -1710,6 +1710,16 @@
                 : _isIncognitoOn() ? window.I18n.t("osm.btn.mygps.title.incognito")
                 : window.I18n.t("osm.btn.mygps.title.default")) +
             '">' + window.I18n.t("osm.btn.mygps") + '</button>' +
+          // 📏 v1.85.0 — la mesure, jusqu'ici reservee a la Vue OSM du HOME.
+          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-mesure" ' +
+            'style="font-size:12px; padding:5px 10px;" title="' +
+            _escapeHtml(window.I18n.t("osm_mes.btnTitle")) + '">📏</button>' +
+          // 📍 v1.85.0 — relever les coordonnees GPS DE SURFACE d'un point du
+          // releve. Trivial ici et penible en mode plan : la carte EST
+          // geographique, `e.latlng` est deja la reponse.
+          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-coords" ' +
+            'style="font-size:12px; padding:5px 10px;" title="' +
+            _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">📍</button>' +
           // 🆕 v1.43.4 — Bouton "Cacher pour offline" placé juste après 📍 Moi
           // (KARMA : groupé avec les actions, AVANT les toggles d'affichage).
           // Télécharge les tuiles visibles + zoom ±1 dans IDB pour consultation
@@ -1830,6 +1840,21 @@
     const mygpsBtn = overlay.querySelector("#kta-osm-mygps");
     if (mygpsBtn) {
       mygpsBtn.addEventListener("click", _showMyGpsPositionOsm);
+    }
+    // 📏 + 📍 v1.85.0 — mesure et releve de coordonnees. Les deux modules
+    // basculent d'eux-memes au second clic (`activer` appelle `desactiver`
+    // s'il est deja actif), donc rien a garder ici.
+    const mesureBtn = overlay.querySelector("#kta-osm-mesure");
+    if (mesureBtn) {
+      mesureBtn.addEventListener("click", function () {
+        if (window.OsmMesure) window.OsmMesure.activer(_osmMap);
+      });
+    }
+    const coordsBtn = overlay.querySelector("#kta-osm-coords");
+    if (coordsBtn) {
+      coordsBtn.addEventListener("click", function () {
+        if (window.OsmCoords) window.OsmCoords.activer(_osmMap);
+      });
     }
     // 🆕 v1.39.14 — Toggles Roads + Iti
     const roadCb = overlay.querySelector("#kta-osm-road-toggle");

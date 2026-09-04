@@ -172,3 +172,12 @@ node scripts/check-osm-etiquettes.js || exit $?
 # Verifie aussi que la copie est defensive (muter le calque source serait une
 # corruption definitive) et que le retour ne retire QUE ce qui est marque. BLOQUANT.
 node scripts/check-calque-session.js || exit $?
+
+# 🧰 Les DEUX outils de lecture de la carte en Vue OSM (📏 mesure et 📍
+# coordonnees de surface) et la regle qui les lie. Trois choses y regressent
+# sans bruit : l ASYMETRIE entre les deux vues (la mesure a vecu deux versions
+# dans le HOME et pas dans le mode plan, sans raison technique), l EXCLUSION
+# MUTUELLE (les deux arment le meme evenement `click` : coexistants, chaque
+# releve de coordonnee pose aussi un point de mesure), et le DEMONTAGE (un
+# listener laisse sur la map continue d agir apres fermeture). BLOQUANT.
+node scripts/check-osm-outils.js || exit $?

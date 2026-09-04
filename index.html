@@ -1265,6 +1265,11 @@
   <!-- 📏 v1.83.0 : mesure dans la Vue OSM (distance géodésique + surface).
        Indépendant de measure.js, qui travaille en pixels d'UN plan. -->
   <script src="js/osmMesure.js" defer></script>
+  <!-- 📍 v1.85.0 — relever les coordonnees GPS DE SURFACE d un point du releve.
+       Meme famille que osmMesure : les deux n existent que dans la Vue OSM,
+       ou la carte est geographique et ou un clic donne deja du lat/lng. Les
+       deux arment le meme evenement `click` et se desarment mutuellement. -->
+  <script src="js/osmCoords.js" defer></script>
   <!-- 🆕 v1.9.3-B1 : module photos (backend IndexedDB pour les photos
        attachées aux POI). Self-contained, exposé via window.MyKTAMapPhotos.
        Init paresseuse (= IDB ouverte à la 1ère opération, pas au load). -->
