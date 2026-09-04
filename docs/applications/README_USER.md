@@ -1431,7 +1431,7 @@ Dans la modale itinéraire, une section repliable **🚫 Préférences d'évitem
 |---|---|
 | **📍 Points à éviter** | **3 méthodes** au choix : (a) recherche autocomplete dans le champ texte, (b) saisie par ID exact, (c) **📍 Cliquer sur la carte** : bascule en mode clic, chaque clic sur la map ajoute un point. Chips orange avec ✕ pour retirer. |
 | **🏷️ Tags à éviter** | Clique un chip pour le toggler. Tous les points portant ce tag seront évités (ex: tu actives `pa` → tous les puits aération sont évités). |
-| **⬛ Zones à éviter** | Coche un **type de zone** dans la liste (Eau, Effondrement, tes types personnalisés…) pour que l'itinéraire **contourne** toutes les zones de ce type. Les zones **⛔ inaccessibles** n'apparaissent pas ici : elles sont déjà infranchissables (contrainte dure, jamais relâchée). |
+| **⬛ Zones à éviter** | Coche un **type de zone** dans la liste (Eau, Effondrement, tes types personnalisés…) pour que l'itinéraire **contourne** toutes les zones de ce type. Les zones **⛔ inaccessibles** n'apparaissent pas ici : elles sont infranchissables par défaut (contrainte dure, relâchable par la case « Respecter les zones inaccessibles » de cette même fenêtre). |
 | **📏 Marge** | Distance autour des points évités (px, défaut 100). Tout segment de route à moins de cette marge est exclu du graphe. |
 
 **Comportement** :
@@ -1440,7 +1440,7 @@ Dans la modale itinéraire, une section repliable **🚫 Préférences d'évitem
 - ❌ Si même le fallback échoue (= vraie absence de chemin) → message d'erreur classique
 
 **Différence avec ⛔ Zone Inaccessible** :
-- ⛔ Zone = contrainte **dure** (jamais relâchée même en fallback)
+- ⛔ Zone = contrainte **dure par défaut** — relâchable depuis la v1.82.0 par la case « Respecter les zones inaccessibles » de la modale Itinéraire. Le Mode Secours et « Perdu », eux, les respectent toujours.
 - 🚫 Évitement = contrainte **souple** (fallback possible avec message)
 
 **Persistance** : tes préférences sont sauvegardées par plan (localStorage). Au prochain calcul sur le même plan, elles sont restaurées. Bouton **🗑️ Reset** pour tout effacer.
@@ -2395,7 +2395,7 @@ Trace une zone de type **⛔ Inaccessible** sur une partie du plan que tu veux *
 
 **Effet** : tout itinéraire calculé qui aurait traversé cette zone passera désormais par un autre chemin. Si aucun autre chemin n'existe, le calcul échoue avec un message clair.
 
-C'est une **contrainte dure** — jamais relâchée. Si tu veux une contrainte **souple** (éviter si possible, sinon passer quand même avec un message), utilise plutôt les **🚫 Préférences d'évitement** dans la modale itinéraire (voir section dédiée plus bas).
+C'est une **contrainte dure par défaut**, mais tu peux la relâcher : la case « Respecter les zones inaccessibles » de la modale Itinéraire est cochée d'origine ; la décocher laisse le trajet les traverser. ⚠️ Le **Mode Secours** et le mode « Perdu » les respectent en toutes circonstances — une préférence de confort n'élargit pas un périmètre de secours. Si tu veux une contrainte **souple** (éviter si possible, sinon passer quand même avec un message), utilise plutôt les **🚫 Préférences d'évitement** dans la modale itinéraire (voir section dédiée plus bas).
 
 **Multi-niveau** : la zone ⛔ bloque uniquement les segments du **même niveau** (cohérent avec le filtre niveau). Une zone inaccessible au Niv 0 n'affecte pas l'itinéraire au Niv -1.
 

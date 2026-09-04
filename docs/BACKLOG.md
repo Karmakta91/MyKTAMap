@@ -37,7 +37,7 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 
 **Formats** : GeoJSON ✅ (`JSON.parse`, zéro dép.) · KML/KMZ ✅ (parser écrit) · Shapefile ⚠️ (lib ~50 Ko à vendorer) · GeoPackage ❌ (SQLite → `sql.js` ~1 Mo WASM, hors périmètre offline).
 
-⚠️ **Piège CRS** : QGIS exporte souvent en **Lambert 93 (EPSG:2154)** — mètres, pas degrés. **Aucune lib de reprojection vendored** (`lib/` = leaflet, jszip, jspdf, html2canvas, imageoverlay-rotated). Détection triviale (coords hors `[-180,180]`/`[-90,90]`).
+⚠️ **Piège CRS** : QGIS exporte souvent en **Lambert 93 (EPSG:2154)** — mètres, pas degrés. **Aucune lib de reprojection vendored** — et il n’en faut pas : depuis la v1.82.0 la conique conforme de Lambert est écrite à la main dans `js/sigImport.js` (~50 lignes) et verrouillée par `scripts/check-lambert93.js`, qui la confronte à ses propriétés définitoires plutôt qu’à une table recopiée. Le reste de ce paragraphe décrit l’état d’AVANT (`lib/` = leaflet, jszip, jspdf, html2canvas, imageoverlay-rotated). Détection triviale (coords hors `[-180,180]`/`[-90,90]`).
 
 **Décisions tranchées le 01/08 (KARMA « GO RECO ») : `1:b 2:a 3:a`.**
 
@@ -121,7 +121,7 @@ révocation.
 `_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, 49 l., rétro-compat v1.7.3) · wrappers compat exporter/measure · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)
 
 ### ✅ Résultats négatifs (hygiène confirmée, rien à faire)
-108 fichiers js/ = 108 script tags = 108 entrées précache (zéro orphelin) · précache SW 188/188 présents sur disque · les 4 CSS lazy parfaitement cloisonnés (0 duplication avec style.css) · 29/30 icônes référencées · 0 id HTML orphelin.
+112 fichiers js/ = 112 script tags = 112 entrées précache (recompté le 05/09/2026) (zéro orphelin) · précache SW 188/188 présents sur disque · les 4 CSS lazy parfaitement cloisonnés (0 duplication avec style.css) · 29/30 icônes référencées · 0 id HTML orphelin.
 
 ## 🗺️ Atlas départementaux — découper un gros relevé en plans (03/09/2026)
 
@@ -131,7 +131,7 @@ révocation.
 
 ### En l'état : l'app refuse, et c'est correct
 
-245 504 features contre `MAX_FEATURES = 20000` : **12× la limite**. Même sans cette borne, 171 Mo de XML dans `DOMParser` font plusieurs Go de DOM. Et surtout : **un plan MyKTAMap est une carrière, pas un département.** Le refus n'est pas le problème — ce qui manquait, c'est la **sortie**.
+245 504 features contre `MAX_FEATURES = 60000` (refus dur ; `WARN_FEATURES = 20000` se contente d’avertir depuis la v1.82.0) : **4× la limite**. Même sans cette borne, 171 Mo de XML dans `DOMParser` font plusieurs Go de DOM. Et surtout : **un plan MyKTAMap est une carrière, pas un département.** Le refus n'est pas le problème — ce qui manquait, c'est la **sortie**.
 
 ### ✅ Livré : `scripts/decouper-atlas.js`
 

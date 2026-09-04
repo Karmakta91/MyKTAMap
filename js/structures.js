@@ -12,9 +12,15 @@
 //
 // Permet de tracer des structures fermées et remplies représentant les
 // éléments physiques d'une carrière :
-//   - "pilier-1" : pilier de 1ère masse (orange entouré de noir)
-//   - "pilier-2" : pilier de 2e masse (jaune entouré de noir)
-//   - "mur"      : mur en pierre / béton (bleu foncé entouré de noir)
+//   - "pilier-1" : pilier de 1ère masse
+//   - "pilier-2" : pilier de 2e masse
+//   - "mur"      : mur en pierre / béton
+// ⚠️ Les couleurs NE SONT PLUS écrites ici — elles y étaient, et À L’ENVERS
+// (pilier-1 annoncé orange alors qu’il est jaune #f4c542, pilier-2 jaune
+// alors qu’il est orange #ff9933). Depuis la v1.76.1 la couleur n’est plus
+// une propriété du type : l’utilisateur la choisit dans ≡ Légende. La SOURCE
+// est `js/styleResolver.js` (table canonique), et `scripts/check-style-canon.js`
+// refuse toute réintroduction d’une table locale.
 //
 // Côté technique, ce module est un clone adapté de js/zones.js — la donnée
 // est très similaire (polygones avec sous-type + style associé), mais on
@@ -22,9 +28,14 @@
 // zone.json) pour bien découpler les 2 notions côté user et faciliter la
 // rétrocompat des KMZ anciens (= sans structure.json → array vide).
 //
-// Collision pathfinder : sera ajoutée en A1.b (les structures bloquent le
-// calcul d'itinéraire comme les zones "inaccessible"). Le DATA est déjà
-// prêt à recevoir cette logique.
+// 🩸 Collision pathfinder : ANNONCÉE en A1.b, JAMAIS IMPLÉMENTÉE — et cette
+// ligne a coûté un aller-retour de diagnostic à qui l’a crue. État RÉEL : le
+// Pathfinder construit son graphe UNIQUEMENT sur les `roads` (`getRoads` +
+// `getAllEmbeddedRoads`) ; les structures n’y sont NI ARÊTES NI OBSTACLES,
+// contrairement aux zones "inaccessible". Conséquence pratique : un relevé
+// entièrement rangé en structures n’a pas « un itinéraire médiocre », il n’en
+// a AUCUN — d’où `js/convertirObjet.js`, qui reclasse un vecteur en tracé.
+// Le DATA reste prêt à recevoir la logique si elle est un jour écrite.
 //
 // Multi-niveau : supporté de la même façon que zones (champ `level` tagé
 // au tracé si APP_CONFIG.multiLevel === true).

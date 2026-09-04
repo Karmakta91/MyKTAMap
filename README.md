@@ -69,7 +69,7 @@
 1. [🧭 Introduction](#-introduction)
 2. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalités-principales)
 3. [🏗️ Structure du projet](#%EF%B8%8F-structure-du-projet)
-4. [📦 Modules JS — référentiel (105 modules)](#-modules-js--référentiel-105-modules)
+4. [📦 Modules JS — référentiel (112 modules)](#-modules-js--référentiel-112-modules)
 5. [📚 Documentation d'architecture](#-documentation-darchitecture)
 6. [⚙️ Développement, conventions & release](#%EF%B8%8F-développement-conventions--release)
 7. [📋 Journal des versions](#-journal-des-versions)
@@ -232,7 +232,7 @@ lib/                            ← Librairies locales (aucun CDN)
   jspdf.umd.min.js              ← jsPDF (PDF imprimable)
   html2canvas.min.js            ← html2canvas (rendus export)
 
-js/                             ← 105 modules IIFE — voir section suivante
+js/                             ← 112 modules IIFE — voir section suivante
 docs/                           ← Docs user (README_USER, AI_CONTEXT, NETWORK_AUDIT) + architecture/
 scripts/                        ← Outillage dev (check-no-pro-leak, find-hardcoded-fr…)
 .githooks/                      ← Hooks pre-commit (anti-fuite pro + 12 garde-fous) et commit-msg (guard de release)
@@ -241,7 +241,7 @@ docker/                         ← Self-host (voir docs/architecture/docker-sel
 
 ---
 
-## 📦 Modules JS — référentiel (105 modules)
+## 📦 Modules JS — référentiel (112 modules)
 
 > Tous les modules sont en **IIFE** (`(function() { "use strict"; ... })()`) avec API publique exposée via `window.<NomDuModule>`. Pas de bundler, pas de transpiler. **L'ordre de chargement = l'ordre des `<script>` dans `index.html`** (source de vérité) — les groupes ci-dessous le suivent.
 
