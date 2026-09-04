@@ -97,6 +97,12 @@ let _plannerPlanLegend = null;
 // la même session, mélanger leurs états ferait fuiter les entrées de l'un
 // dans le plan de l'autre.
 let _sigPlanLegend = null;
+// 🏷️ v1.83.1 — une invalidation de légende à signaler jusqu'à la prochaine
+// édition. Un booléen plutôt qu'un texte posé dans le DOM : `_sigImpMajEtat
+// Legende` est rappelée par plusieurs chemins (changement de niveau, de
+// colonne, de routage) et écrasait le message aussitôt affiché — d'où l'ordre
+// d'attachement des listeners dont dépendait l'ancienne version.
+let _sigLegendeReset = false;
 
 // 🆕 v1.17.0 — Clé localStorage pour la persistance sticky du mode Simple/
 // Avancé du Générateur. Valeurs : "simple" (default) | "avance". Lu au boot
@@ -4964,7 +4970,14 @@ function _afficherImporterSig(prefilledFile) {
         </div>
 
       </div>
-      <div class="kta-aide-actions" style="padding:14px 18px; border-top:1px solid rgba(255,255,255,0.06); display:flex; gap:10px; justify-content:flex-end;">
+      <div class="kta-aide-actions" style="padding:14px 18px; border-top:1px solid rgba(255,255,255,0.06); display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+        <!-- 🏷️ v1.83.1 — L ETAT DE LA LEGENDE, REPETE AU RAS DU BOUTON.
+             Toucher un select de correspondance apres avoir renomme les entrees
+             efface la legende (_sigImpInvaliderLegende) ; le seul signal etait
+             une ligne grise de 11 px, a un ecran de distance du bouton. On
+             generait alors un plan aux libelles d usine en croyant garder les
+             siens (bug KARMA, 04/09). -->
+        <div id="kta-sig-imp-legende-recap" style="flex:1 1 220px; min-width:0; text-align:left; font-size:11.5px; line-height:1.35;"></div>
         <button class="kta-btn kta-btn-ghost" id="kta-sig-imp-annuler">${T("gen.btn.annuler")}</button>
         <button class="kta-btn kta-btn-primary" id="kta-sig-imp-generer" disabled>${T("gen.imp.genererBtn")}</button>
       </div>
@@ -4973,6 +4986,7 @@ function _afficherImporterSig(prefilledFile) {
   document.documentElement.appendChild(modal);
   _sigImportState = null;
   _sigPlanLegend  = null;   // 🏷️ un nouvel import repart d'une légende vierge
+  _sigLegendeReset = false;
 
   const _close = function() { modal.remove(); _sigImportState = null; };
   document.getElementById("kta-sig-imp-close").addEventListener("click", _close);
@@ -5015,10 +5029,61 @@ function _afficherImporterSig(prefilledFile) {
 // fichier (autre largeur de canvas, autre couleur de fond) doit conserver
 // les noms saisis. C'est le changement de fichier qui périme, pas l'export.
 function _sigImpInvaliderLegende(avecMessage) {
-  if (!_sigPlanLegend) return;
-  _sigPlanLegend = null;
-  const eta = document.getElementById("kta-sig-imp-legende-etat");
-  if (eta) eta.textContent = avecMessage ? window.I18n.t("gen.sig.legendeReset") : "";
+  if (_sigPlanLegend) {
+    _sigPlanLegend = null;
+    if (avecMessage) _sigLegendeReset = true;
+  }
+  // Nouveau fichier = ecran neuf : on efface aussi le signal precedent.
+  if (!avecMessage) _sigLegendeReset = false;
+  _sigImpMajEtatLegende();
+}
+
+// 🏷️ v1.83.1 — L ETAT DE LA LEGENDE, DIT EN COULEUR ET A DEUX ENDROITS.
+//
+// On ne DEVINE pas ce que l utilisateur voulait garder : remapper les entrees
+// sur les nouveaux ids apres un changement de routage reviendrait a leur
+// inventer un sens (un routage change la semantique d une entree, pas
+// seulement son identifiant) — le genre de code qui rend un mauvais nom sans
+// le dire. On rend l effacement impossible a rater, c est tout.
+function _sigImpMajEtatLegende() {
+  const btn   = document.getElementById("kta-sig-imp-legende");
+  const eta   = document.getElementById("kta-sig-imp-legende-etat");
+  const recap = document.getElementById("kta-sig-imp-legende-recap");
+  if (btn) {
+    const cleN  = (document.getElementById("kta-sig-imp-niveau") || {}).value || null;
+    const cases = document.getElementById("kta-sig-imp-couleurs-niveau");
+    btn.style.display = (_sigImportState && cleN && cases && cases.checked) ? "" : "none";
+  }
+  // Le MESSAGE, lui, ne depend PAS de la visibilite du bouton : les libelles et
+  // les couleurs des types built-in partent dans le plan meme si la couleur par
+  // niveau a ete decochee entre-temps. L annoncer seulement quand le bouton est
+  // la mentirait par omission.
+  let txt = "", couleur = "#8892a4";
+  if (_sigLegendeReset) {
+    txt = "⚠️ " + window.I18n.t("gen.sig.legendeReset");
+    couleur = "#ffb380";
+  } else {
+    const n = _sigImpCompterLegende(_sigPlanLegend);
+    if (n) { txt = "🏷️ " + window.I18n.t("gen.sig.legendeEdite", { n: n }); couleur = "#8cb4ff"; }
+  }
+  [eta, recap].forEach(function (el) {
+    if (!el) return;
+    el.textContent = txt;
+    el.style.color = couleur;
+  });
+}
+
+// Compte TOUT ce qui a ete personnalise, pas seulement les entrees : depuis que
+// libelles, masquages et couleurs voyagent aussi (cf. sigImport.js >
+// assemblerLegendePlan), n annoncer que les entrees sous-declarerait ce qui
+// part reellement dans le plan.
+function _sigImpCompterLegende(st) {
+  if (!st || typeof st !== "object") return 0;
+  const n = function (o) {
+    return (o && typeof o === "object" && !Array.isArray(o)) ? Object.keys(o).length : 0;
+  };
+  return (Array.isArray(st.customEntries) ? st.customEntries.length : 0)
+       + n(st.labels) + n(st.hidden) + n(st.colors) + n(st.borders);
 }
 
 async function _sigImpAnalyserFichier(file) {
@@ -5135,32 +5200,25 @@ async function _sigImpAnalyserFichier(file) {
     // 🏷️ Le bouton n'a de sens que si des entrées vont réellement être créées
     // (colonne de niveau choisie ET couleurs par niveau cochées). Sinon il
     // ouvrirait un éditeur vide.
-    const majBtnLegende = function () {
-      const btn = document.getElementById("kta-sig-imp-legende");
-      const eta = document.getElementById("kta-sig-imp-legende-etat");
-      if (!btn || !_sigImportState) return;
-      const cleN = (document.getElementById("kta-sig-imp-niveau") || {}).value || null;
-      const cases = document.getElementById("kta-sig-imp-couleurs-niveau");
-      const actif = !!(cleN && cases && cases.checked);
-      btn.style.display = actif ? "" : "none";
-      if (!actif) { if (eta) eta.textContent = ""; return; }
-      const n = (_sigPlanLegend && _sigPlanLegend.customEntries)
-        ? _sigPlanLegend.customEntries.length : 0;
-      if (eta) eta.textContent = n ? T("gen.sig.legendeEdite", { n: n }) : "";
-    };
+    // 🏷️ v1.83.1 — l'affichage de l'état vit maintenant dans
+    // `_sigImpMajEtatLegende` (module-level) : `_sigImpInvaliderLegende` doit
+    // pouvoir le rafraîchir, et le drapeau `_sigLegendeReset` a supprimé la
+    // dépendance à l'ORDRE d'attachement des listeners qu'avait l'ancienne
+    // version (le rafraîchissement effaçait le message qu'on venait de poser).
+    const majBtnLegende = _sigImpMajEtatLegende;
     const selNiv = document.getElementById("kta-sig-imp-niveau");
     const caseCol = document.getElementById("kta-sig-imp-couleurs-niveau");
-    if (selNiv)  selNiv.addEventListener("change", majBtnLegende);
     if (caseCol) caseCol.addEventListener("change", majBtnLegende);
     // Le niveau fait partie de l'id de chaque entrée : changer de colonne les
-    // périme aussi sûrement que changer le routage.
-    // ⚠️ ATTACHÉ APRÈS `majBtnLegende` — les listeners se déclenchent dans
-    // l'ordre d'attachement, et `majBtnLegende` remet l'état à vide quand il
-    // n'y a plus d'entrées : posé avant, le message serait aussitôt effacé.
+    // périme aussi sûrement que changer le routage. (`_sigImpInvaliderLegende`
+    // rafraîchit l'affichage lui-même — un seul listener suffit désormais.)
     if (selNiv) selNiv.addEventListener("change", function () { _sigImpInvaliderLegende(true); });
     const btnLeg = document.getElementById("kta-sig-imp-legende");
     if (btnLeg) btnLeg.addEventListener("click", function () {
       const cleN = (document.getElementById("kta-sig-imp-niveau") || {}).value || null;
+      // L'utilisateur reprend la main sur la légende : le signal d'invalidation
+      // a fait son travail, il n'a plus lieu d'être affiché.
+      _sigLegendeReset = false;
       // Pré-remplir à la PREMIÈRE ouverture avec ce qui SERA généré : sans ça,
       // l'éditeur s'ouvrirait vide et il n'y aurait rien à renommer.
       if (!_sigPlanLegend) {
@@ -5458,7 +5516,14 @@ async function _sigImpGenerer() {
                  couleurParNiveau: !!(document.getElementById("kta-sig-imp-couleurs-niveau") || {}).checked,
                  // 🏷️ Entrées renommées/recolorées par l'utilisateur, s'il
                  // a ouvert l'éditeur. Sinon `ingest` les fabrique lui-même.
-                 customEntries: (_sigPlanLegend && _sigPlanLegend.customEntries) || null }
+                 customEntries: (_sigPlanLegend && _sigPlanLegend.customEntries) || null,
+                 // 🏷️ v1.83.1 — et l'état COMPLET, pour ce que `ingest` ne
+                 // regarde pas : libellés des types built-in, masquages,
+                 // couleurs, entrées ajoutées à la main. `customEntries`
+                 // ci-dessus reste : c'est par lui qu'`ingest` retrouve le
+                 // libellé édité d'une entrée par niveau, au moment où il la
+                 // fabrique. Les deux ne font pas le même travail.
+                 planLegend: _sigPlanLegend || null }
     });
 
     const url = URL.createObjectURL(result.blob);

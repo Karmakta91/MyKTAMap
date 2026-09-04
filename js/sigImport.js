@@ -50,6 +50,14 @@
 //      (l'UI en fait un écran de correspondance « valeur SIG → tag MyKTAMap »)
 //   6. genererZipMyktamap({...})           → Blob ZIP
 //
+// 🏷️ LA LÉGENDE ÉDITÉE DANS L'ÉCRAN SIG VOYAGE EN ENTIER (v1.83.1). Le bouton
+// « Nommer et colorer les niveaux » ouvre l'éditeur de LegendCustomization sur
+// les entrées de cet import ; son état complet revient dans
+// `opts.mapping.planLegend` et `assemblerLegendePlan` le pose dans
+// `plan.customLegend`. Avant, seules les entrées `cust-sig-…` par niveau
+// survivaient : libellés des types built-in, masquages, couleurs et entrées
+// ajoutées à la main étaient jetés en silence à la génération.
+//
 // STRUCTURE NORMALISÉE (pivot commun aux 2 parsers) :
 //   { points:    [{ lat, lng, nom, props }],
 //     lignes:    [{ coords: [{lat,lng}], nom, props }],
@@ -1129,6 +1137,65 @@
   }
 
   // =========================================================================
+  // LÉGENDE DU PLAN — assemblage de ce qui part dans plan-config.json
+  // =========================================================================
+  // 🏷️ v1.83.1 — TOUT l'état édité voyage, plus seulement les entrées par niveau.
+  //
+  // 🩸 LE BUG (KARMA, 04/09 : « j'avais modifié ma légende, elle n'a pas été
+  // emportée dans l'export ») : `plan.customLegend` était assemblé ICI avec
+  // `labels: {}` et `hidden: {}` ÉCRITS EN DUR, et sans `colors` ni `borders`.
+  // Renommer un type BUILT-IN dans l'éditeur 🏷️ de l'écran SIG, en masquer un,
+  // en recolorer un : tout finissait à la poubelle à la génération, sans un mot.
+  // Seules survivaient les entrées `cust-sig-…` fabriquées par `_typeNiveau`.
+  // Deuxième moitié du même trou : une entrée ajoutée À LA MAIN (➕) n'était
+  // jamais réémise — `ingest` ne recopie que les ids qu'il fabrique lui-même.
+  //
+  // 🧹 CE QU'ON ÉCARTE QUAND MÊME : les entrées `cust-sig-…` que CETTE
+  // génération n'a PAS produites. Elles viennent d'un routage précédent, ou
+  // d'un import où la couleur par niveau a été décochée après l'édition :
+  // les garder poserait dans la légende du plan des types qu'aucun objet ne
+  // porte. Une entrée ajoutée à la main n'a pas ce préfixe et reste — c'est
+  // l'utilisateur qui l'a voulue.
+  //
+  // Ce qui n'est volontairement PAS repris : `removedPlan`, qui désigne des
+  // entrées du plan COURANT masquées en session. Un plan qu'on fabrique n'a
+  // pas de « plan précédent » où enterrer quoi que ce soit.
+  const PREFIXE_AUTO_NIVEAU = "cust-sig-";
+
+  function assemblerLegendePlan(edite, auto) {
+    const listeAuto = Array.isArray(auto) ? auto : [];
+    const src = (edite && typeof edite === "object") ? edite : {};
+    const obj = function (o) {
+      return (o && typeof o === "object" && !Array.isArray(o)) ? o : {};
+    };
+    const entrees = listeAuto.slice();
+    const vus = {};
+    listeAuto.forEach(function (e) { if (e && e.id) vus[e.id] = true; });
+    (Array.isArray(src.customEntries) ? src.customEntries : []).forEach(function (e) {
+      if (!e || typeof e.id !== "string" || !e.id || vus[e.id]) return;
+      if (e.id.indexOf(PREFIXE_AUTO_NIVEAU) === 0) return;   // orpheline d'un routage périmé
+      vus[e.id] = true;
+      entrees.push(e);
+    });
+    const legende = {
+      schemaVersion: 1,
+      labels:  obj(src.labels),
+      hidden:  obj(src.hidden),
+      colors:  obj(src.colors),
+      borders: obj(src.borders),
+      customEntries: entrees
+    };
+    // Rien de personnalisé = pas de section du tout : un `customLegend` vide
+    // dans le plan-config est du bruit que le runtime relira à chaque boot.
+    const vide = entrees.length === 0
+      && Object.keys(legende.labels).length === 0
+      && Object.keys(legende.hidden).length === 0
+      && Object.keys(legende.colors).length === 0
+      && Object.keys(legende.borders).length === 0;
+    return vide ? null : legende;
+  }
+
+  // =========================================================================
   // GÉNÉRATION DU ZIP MyKTAMap
   // =========================================================================
   // Même stratégie que gpxImport : canvas vierge + calibrage 2 points sur les
@@ -1300,14 +1367,13 @@
     // exact de LegendCustomization.getSessionState(). C est ce qui donne une
     // couleur propre à chaque niveau : sans elle, les six niveaux sortaient
     // tous de la même teinte et le multi-niveau perdait son intérêt visuel.
-    if (ingested.customEntries && ingested.customEntries.length) {
-      planConfig.plan.customLegend = {
-        schemaVersion: 1,
-        labels: {},
-        hidden: {},
-        customEntries: ingested.customEntries
-      };
-    }
+    // 🏷️ v1.83.1 — et DÉSORMAIS tout le reste de l'état édité (cf.
+    // `assemblerLegendePlan`), qui partait à la poubelle.
+    const legendePlan = assemblerLegendePlan(
+      (opts.mapping && opts.mapping.planLegend) || opts.planLegend || null,
+      ingested.customEntries
+    );
+    if (legendePlan) planConfig.plan.customLegend = legendePlan;
 
     if (tilingManifest) {
       planConfig.plan.tiledV2 = true;

@@ -1,8 +1,8 @@
 {
-  "version": "v1.83.0",
+  "version": "v1.83.1",
   "released": "2026-09-04",
   "notes": [
-    "📉 Les niveaux ont enfin une profondeur. Tu la saisis au Générateur ou depuis le menu des niveaux, et l’app en tire un profil en long de ton itinéraire — avec le dénivelé monté et descendu. Au passage, un puits n’est plus compté comme s’il était à plat : les distances qui en empruntent un s’allongent, elles sont désormais justes.",
-    "📏 Tu peux mesurer directement dans la Vue OSM : distance et surface, en cliquant sur la carte. Et un plan exporté en KMZ se pose enfin à sa vraie profondeur au lieu de flotter en surface."
+    "🏷️ Quand tu convertis un relevé SIG en plan, la légende que tu personnalises part enfin EN ENTIER dans le plan : les noms et les couleurs que tu donnes aux types, ceux que tu masques, et les entrées que tu ajoutes toi-même. Avant, seuls les noms des niveaux survivaient.",
+    "⚠️ Et l’écran te prévient clairement quand un changement de correspondance efface les noms que tu venais de saisir — le message était trop discret pour être vu."
   ]
 }
