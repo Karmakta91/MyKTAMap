@@ -199,65 +199,21 @@ Outil de **préparation de données**, hors navigateur, hors build. Lit le KML *
 
 ## 💡 Pistes de features — évaluées le 03/09/2026
 
-> Demandées par KARMA (« que pourrions-nous envisager comme nouvelle feature ? »), classées par **valeur / effort**.
-> Vérifiées **contre le code** avant d'être proposées : ni l'altitude, ni les formats topo, ni la reprojection > n'existaient. La **fusion de sessions**, elle, existe déjà (`sessionExporter.js` — `_fusionInputs`, > `_fusionMerged`) : **ne pas la reproposer**.
+> Demandées par KARMA (« que pourrions-nous envisager comme nouvelle feature ? »), classées par **valeur / effort**. **Seules les pistes ENCORE OUVERTES figurent ici** : la reprojection Lambert 93 (v1.82.0), la profondeur des niveaux et le profil en long (v1.83.0) et l’affichage des plans par étiquette (v1.84.0) sont livrés — leur histoire vit dans `README.md` et les commits, conformément à la règle de tête de ce fichier.
+> Chaque piste est **vérifiée contre le CODE** avant d’être proposée — c’est ce qui a évité d’en réinventer une déjà là : la **fusion de sessions** existe depuis longtemps (`sessionExporter.js` > `_fusionInputs`, `_fusionMerged`), **ne pas la reproposer**.
 
 | # | Piste | Valeur | Effort | État |
 |---|---|---|---|---|
-| 1 | **Reprojection Lambert 93** | débloque les exports QGIS français, massivement en L93 | faible | ✅ **LIVRÉ 03/09** (cf. §1) |
-| 2 | **Import VisualTopo (`.tro`)** | la cible **spéléo** de `CLAUDE.md` n'a aucun format topo lisible | moyen | 🔜 à lancer |
-| 3 | **Profondeur des niveaux + profil en long** | la profondeur est la métrique reine du milieu souterrain | moyen-élevé | 💭 à concevoir |
-| 5 | **Afficher les plans par étiquette en Vue OSM** | un atlas découpé produit des dizaines de plans du même secteur | faible | ✅ **LIVRÉ (v1.84.0)** — `docs/architecture/vue-osm.md` §Ajout de la pile par étiquette. ⚠️ Dette de MESURE ouverte (cf. §Atlas > Ce qui reste ouvert) |
-| 4 | **Shapefile** | complète le SIG, mais contournable (QGIS sait exporter en GeoJSON) | moyen | 💤 basse priorité |
+| 1 | **Import VisualTopo (`.tro`)** | la cible **spéléo** de `CLAUDE.md` n’a aucun format topo lisible | moyen | 🔜 à lancer |
+| 2 | **Shapefile** | complète le SIG, mais contournable (QGIS sait exporter en GeoJSON) | moyen | 💤 basse priorité |
 
-### 2. 🕳️ Import de formats topo spéléo — `.tro` d'abord
+### 1. 🕳️ Import de formats topo spéléo — `.tro` d'abord
 
-**Le trou** : `CLAUDE.md` annonce la spéléo comme cible, mais l'app ne lit **aucun** format de topographie — ni VisualTopo, ni Therion, ni Compass, ni Survex (vérifié par `grep` le 03/09 : zéro occurrence). Un spéléo doit passer par QGIS pour faire entrer **son propre relevé**.
+**Le trou** : `CLAUDE.md` annonce la spéléo comme cible, mais l'app ne lit **aucun** format de topographie — ni VisualTopo, ni Therion, ni Compass, ni Survex (vérifié par `grep` le 03/09, **re-vérifié le 04/09** : `FORMATS_ACCEPTES = ".geojson,.json,.kml,.kmz"`, et l’`accept=` de `index.html` n’en connaît pas davantage : zéro occurrence). Un spéléo doit passer par QGIS pour faire entrer **son propre relevé**.
 
 **Pourquoi c'est abordable** : le socle est déjà là. `sigImport.js` a les parsers, l'écran de correspondance, et surtout `GpxImport.genererCanvasVierge` — la brique qui crée un plan **sans image de fond**. Un `.tro` est du texte tabulé (départ, arrivée, longueur, azimut, pente) ; le dérouler en coordonnées est de la trigonométrie simple, et ça produit des points + polylignes, soit exactement le modèle de données de l'app.
 
 ⚠️ **À confirmer par KARMA avant de coder** : que VisualTopo soit bien le format le plus répandu chez les cataphiles et spéléos français — c'est une **supposition** de Claude, pas une mesure. Se tromper de format ferait livrer un parser que personne n'utilise.
-
-### 3. 📉 Profondeur des niveaux + profil en long — ✅ **LIVRÉ (v1.83.0)**
-
-Les niveaux ont une profondeur (référence : la **surface**, négatif vers le bas ;
-niveau 0 à **-25 m**, pas de **5 m** — arbitrage KARMA). Stockage per-plan, cascade
-sur le plan-config. Trois états : **absent** (non renseigné — l'état de tout plan
-d'avant), **nombre**, **null** (« sans profondeur », pour le +1 que l'import SIG
-donne au topo historique : ce n'est pas un étage au-dessus, c'est une convention
-d'empilement).
-
-🩸 **Ce que le chantier a sorti au passage, et que personne ne cherchait** :
-
-1. **Les jonctions étaient mesurées à plat.** Le coût d'une arête, jonctions
-   comprises, était la distance DANS LE PLAN. Un puits dessiné sur 3 px entre deux
-   étages distants de 12 m comptait pour 3 px : les itinéraires multi-niveaux
-   étaient sous-comptés, et Dijkstra préférait systématiquement le puits au détour
-   à plat. Corrigé — mais **uniquement quand les deux niveaux ont une profondeur** :
-   un plan sans profondeurs garde son ancien calcul au pixel près.
-2. **`computeRoute` jetait le niveau.** Les nœuds du graphe le portent
-   (`nodeLevels[i]`), le retour était un `{x, y}` plat. Aucun profil n'était donc
-   calculable. C'était le vrai premier chantier, avant toute interface — le backlog
-   annonçait « une vraie conception d'interface » comme le gros du sujet, c'était
-   en partie faux.
-
-**Soldé dans la foulée (même version)** : les exports et le Mode Secours.
-
-- 🌍 **KMZ** : l'altitude était `0` en dur — un relevé exporté flottait sur les
-  vignes dans Google Earth. Il se pose désormais à sa profondeur, en
-  `relativeToGround` (qui veut dire exactement ce qu'on mesure : sous la
-  surface). ⚠️ L'altitude seule ne suffisait pas : `<tessellate>1</tessellate>`
-  colle au sol et fait ignorer la valeur — il fallait les deux.
-- 🧭 **GPX : pas de `<ele>`, délibérément.** En GPX, `<ele>` est l'altitude
-  au-dessus du NIVEAU DE LA MER. Y écrire « -30 » pour une galerie sous une
-  colline à 100 m annoncerait un point à 30 m sous la mer — une erreur de 130 m,
-  plausible à l'œil donc indétectable. Il faudrait l'altitude du terrain, que
-  l'app ne connaît pas. La profondeur part dans la **description**, lue par un
-  humain et par rien d'autre.
-- 🆘 **Mode Secours** : « -2 » devient « -2 · -35 m ». Un numéro de niveau est une
-  coordonnée interne ; une profondeur dit combien de corde et quelle équipe.
-  Branché sur `_formatLevelShort`, source unique du relevé texte, du PDF et des
-  cartes de scénario — l'écrire trois fois aurait garanti qu'une des trois dérive.
 
 ---
 
