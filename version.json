@@ -1,8 +1,8 @@
 {
-  "version": "v1.84.0",
+  "version": "v1.85.0",
   "released": "2026-09-04",
   "notes": [
-    "🏷️ La Vue OSM de l’accueil affiche d’un coup tous les plans qui portent la même étiquette — « Gironde » par exemple. Un clic les met tous sur la carte, un autre les enlève. Les étiquettes se saisissent dans ta bibliothèque de plans.",
-    "🗺️ Et en conversion SIG, la légende que tu personnalises part enfin EN ENTIER dans le plan généré : les noms et les couleurs que tu donnes aux types, ceux que tu masques, et ceux que tu ajoutes toi-même."
+    "🔄 Tu peux enfin corriger un relevé importé sans quitter la carte. Dans 🔍 Filtres, chaque calque de données a un bouton « Rapatrier » : son contenu passe dans ta session, tu corriges directement à l’écran (changer un front de taille en galerie, par exemple), puis « Exporter » te rend un fichier corrigé à redonner au plan. Le calque d’origine se masque tout seul pour éviter les doublons, et « Restituer » annule tout.",
+    "🏷️ Les types de structures n’annoncent plus une couleur dans leur nom : tu la choisis toi-même dans la légende, la pastille la montre déjà."
   ]
 }

@@ -1355,3 +1355,69 @@ ici — c'est la manœuvre que KARMA avait déjà trouvée.
 **Prouvé** : 30 cas dans `check-api-surface.js`, module réellement chargé en VM.
 Falsifiés — retirer la règle ouvert/fermé fait tomber 2 cas, écrire avant de
 relire en fait tomber 1 (celui de la même famille).
+
+---
+
+## 🔄 Rapatrier un calque de données dans la session (v1.85.0)
+
+**Le besoin** (KARMA, 04/09) : corriger un front de taille en tracé sur un relevé de Bordeaux importé du SIG imposait **huit étapes** et deux allers-retours par des fichiers — Éditeur de données → export du calque → conversion en session → masquage manuel → réimport → correction → reconversion → réinjection.
+
+### 🩸 La cause est structurelle, pas ergonomique
+
+> « Un data layer est rendu **UNE seule fois** à l'import — on ne peut pas re-render comme `renderRoads`/`renderStructures` » — `utils.js`, registre des ghosts
+
+Les objets de **session** ont `renderRoads()` / `renderZones()` / `renderStructures()`, qui reconstruisent le rendu depuis l'état. Le calque, non. Tout le détour existait pour **amener la donnée là où un re-render existe** — `convertirObjet.js` l'assumait déjà : « ⚠️ SESSION UNIQUEMENT ».
+
+**Ce qui n'a pas été réécrit** : la transformation calque → session existe depuis longtemps (`sessionExporter.js > _exportConvData2Session`) et c'est un **pur remappage** (`roads` reste `roads`). Ce module la fait **en place**, et pose le verrou.
+
+### ⚖️ Pourquoi le calque ENTIER, et pas objet par objet
+
+Le rapatriement par objet serait ~5× plus léger en session. Il a été **écarté sur objection de KARMA**, et l'objection est décisive : il reporte la douleur sur la **reconstruction du ZIP**, où il faudrait retirer les originaux un par un.
+
+Or *roads* et *zones* **n'ont pas d'`id`** (`data-formats.md` : snapshot brut `{type, points, label?, level?}`). Il faudrait donc une clé dérivée de la **géométrie** — que `tabledit.dedup` **casserait en silence**, puisqu'il retire les sommets consécutifs identiques. *Une clé qu'un outil maison peut invalider sans le dire est une fausse solution.*
+
+Le calque entier donne **une seule source de vérité** : la reconstruction devient « ce fichier remplace ce calque ». Pas d'ids, pas de dédoublonnage, **pas de doublon possible par construction**.
+
+### 💰 Le coût, mesuré et annoncé AVANT
+
+| | |
+|---|---|
+| Poids en session | **225 o/objet** (mesuré sur les extraits Gironde) → ~**1,1 Mo** pour 5 000 objets |
+| Plafond `localStorage` | ~**5 Mo pour tout le domaine**, tous plans confondus |
+| Aggravant | `SessionPersist` **re-sérialise la session entière** à chaque sauvegarde |
+
+`peser(id)` lit le **vrai JSON** du calque (la moyenne de 225 o vaut pour un relevé Gironde, pas pour un calque de douze points) et `occupationLocalStorage()` somme les clés réelles. La confirmation donne les deux. **Aucune supposition sur le nombre de plans convertis en parallèle : l'app le mesure.**
+
+### 🔒 Le verrou d'affichage
+
+Règle KARMA : un calque rapatrié est **interdit d'affichage**, automatiquement, **déblocable en recochant sa case** (on affiche alors les deux volontairement, pour comparer avant/après).
+
+Il vit dans `filterPanel.js` — **seul point de contrôle** de la visibilité d'un calque. Le poser ailleurs ferait deux contrôles concurrents sur le même état.
+
+### 🩸 Les deux pièges, et pourquoi ils coûtent cher
+
+1. **« Effacer la session » RESTITUE les calques.** Le verrou vit dans la session. S'il survivait à l'effacement de la copie, le calque d'origine resterait masqué : l'utilisateur verrait **son relevé disparaître** et croirait le plan cassé. `sessionPersist.js > clear()` restitue d'abord — les deux tombent ensemble, jamais l'un sans l'autre.
+2. **Au chargement, le verrou ne s'applique QUE SI la copie est là.** Cas mortel : la sauvegarde saute sur quota (1,1 Mo, c'est *exactement* le seuil), on recharge, le verrou masque et la copie manque → **plan vide et muet**. `appliquerVerrous()` vérifie la présence avant de masquer, **libère** sinon, et le dit. Appelée en **fin** de restore (différé 250 ms), après les objets — sans eux elle ne peut pas juger.
+
+### 💾 Le retour vers le ZIP
+
+`exporterCalque(id)` produit **UN** fichier de la forme du calque d'origine. *Le convertisseur « session → data layer » ne pouvait pas servir : il éclate la sortie en `points.json` + `roads.json` + `zones.json` + `structure.json`, voire un fichier par type — **quatre fichiers ne remplacent pas une ligne**.*
+
+🎯 **Le protocole de remplacement prévu s'est révélé inutile.** Le Générateur le fait déjà : dans « Modifier un plan », chaque calque est **une ligne portant son id et son propre sélecteur de fichier**. Choisir le fichier corrigé sur cette ligne remplace son contenu — **la ligne EST le calque**.
+
+Trois règles dans l'export :
+- 🩸 **Les tableaux vides sont ÉCRITS, pas omis.** C'est un remplacement : `zones: []` est la seule façon de dire « j'ai tout supprimé ». Les omettre annulerait la suppression au rechargement.
+- 🧹 La marque interne **`_srcCalque` est retirée** — elle n'a rien à faire dans le ZIP d'un plan partagé.
+- ⚠️ Les objets **créés à la main** pendant la session ne partent pas (ils n'appartiennent pas au calque) mais sont **comptés et annoncés** : les verser d'office déciderait à la place de l'utilisateur, les taire lui ferait croire tout embarqué.
+
+Le nom du fichier vient de **l'id du calque**, pas du chemin : `dataLayers[].file` est résolu au chargement (`config.js > cloneAndResolvePlanConfig`) et vaut souvent une URL `blob:` sur un plan importé.
+
+### État persisté
+
+```json
+"calquesSession": { "rapatries": ["sig"] }
+```
+
+Rien de plus : les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque`. `null` tant que rien n'est rapatrié → **zéro octet** pour qui ne s'en sert pas.
+
+**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 63 assertions, le vrai module chargé dans un `vm`.

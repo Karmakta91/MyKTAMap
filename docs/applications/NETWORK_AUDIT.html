@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.84.0</strong> (4 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.85.0</strong> (4 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.85.0 (corriger un calque de données sans quitter la carte)</h3>
+  <p><strong>100 % local, aucune requête nouvelle, aucun domaine ajouté.</strong> « Rapatrier » un calque <strong>relit le fichier déjà présent dans ton plan</strong>, sur ton appareil — c'est la même lecture que celle faite à l'ouverture du plan, pas une requête de plus. Son contenu va dans la <strong>sauvegarde de session de ton navigateur</strong> (<code>localStorage</code>), qui n'a jamais quitté ton appareil et ne le quitte pas davantage ici. ⚠️ Point de transparence utile : cette copie peut peser <strong>plus d'un mégaoctet</strong> sur un gros relevé, et l'app te l'annonce <strong>avant</strong> en te montrant la place déjà occupée — c'est du stockage local, rien n'est envoyé. « Exporter » produit un fichier <strong>téléchargé sur ton appareil</strong>, que tu es seul à décider de partager. Whitelist <code>connect-src</code> inchangée. ⚠️ Rappel inchangé : la Vue OSM <strong>télécharge des fonds de carte</strong> auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0.</p>
   <h3>v1.84.0 (plans par étiquette en Vue OSM, légende des imports SIG)</h3>
   <p><strong>100 % local, aucune requête nouvelle, aucun domaine ajouté.</strong> Afficher d'un coup tous les plans d'une étiquette ne va rien chercher en ligne : les étiquettes sont <strong>celles que tu as tapées toi-même</strong> dans ta bibliothèque, rangées dans le stockage local de ton navigateur, et les plans sont lus <strong>sur ton appareil</strong> (mêmes archives locales qu'avant, simplement plusieurs d'affilée). Le correctif de la légende des imports SIG ne touche qu'au <strong>contenu du fichier de plan que tu fabriques toi-même</strong>, téléchargé sur ton appareil et envoyé nulle part. Whitelist <code>connect-src</code> inchangée. ⚠️ Rappel inchangé : la Vue OSM <strong>télécharge des fonds de carte</strong> auprès d'OpenStreetMap quand tu l'ouvres — seul appel extérieur de cet écran, présent depuis la v1.40.0 ; <strong>afficher plus de plans n'en demande pas davantage</strong>, le nombre de tuiles dépend de la zone regardée, pas du nombre de plans posés dessus.</p>
   <h3>v1.83.1 (légende des imports SIG)</h3>
