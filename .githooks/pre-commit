@@ -155,3 +155,11 @@ node scripts/check-map-listeners.js || exit $?
 # et fabriquait ~3,6 pas/seconde A L'ARRET, soit pres de 10 km/h de distance
 # fantome sur tout plan issu d'un import. BLOQUANT.
 node scripts/check-tracking-defaults.js || exit $?
+
+# 🏷️ Ajout de plans PAR ETIQUETTE dans la pile multi-plans de la Vue OSM du
+# HOME. Deux regles y regressent en silence : le regroupement INSENSIBLE A LA
+# CASSE (« Gironde » et « GIRONDE » doivent faire UNE etiquette — sinon deux
+# chips montrent chacun la moitie de leurs plans, et le bug ne se voit que si
+# on a justement tape les deux orthographes), et l ASYMETRIE du clic (ajouter
+# seulement les manquants, retirer seulement quand ils y sont tous). BLOQUANT.
+node scripts/check-osm-etiquettes.js || exit $?

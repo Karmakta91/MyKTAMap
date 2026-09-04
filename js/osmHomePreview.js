@@ -492,7 +492,11 @@
       // n'apparaissait pas dans cette liste.
       const g = window.KmzExport.getCalibration(p.id) || p.georef;
       if (_isValidGeoref(g)) {
-        out.push({ id: p.id, name: (window.PlanRegistry.displayName ? window.PlanRegistry.displayName(p) : (p.name || p.id)), georef: g, lastOpened: p.lastOpened || 0 });
+        // 🏷️ v1.84.0 — `tags` transporte les ÉTIQUETTES DE PLAN du registre
+        // (v1.78.0). Elles ne servaient nulle part ici : la pile ne savait
+        // ajouter qu’un plan à la fois, par son nom.
+        out.push({ id: p.id, name: (window.PlanRegistry.displayName ? window.PlanRegistry.displayName(p) : (p.name || p.id)), georef: g, lastOpened: p.lastOpened || 0,
+                   tags: Array.isArray(p.tags) ? p.tags : [] });
       }
     }
     out.sort(function(a, b) { return (b.lastOpened || 0) - (a.lastOpened || 0); });
@@ -2227,11 +2231,22 @@
     }
   }
 
-  function _ajouterPlanOsm(planId) {
-    if (!planId || planId === _selectedPlanId || _extraLayers[planId]) return;
+  // 🗂️ v1.84.0 — L'AJOUT D'UN PLAN EST COUPÉ EN DEUX : le MONTAGE (synchrone,
+  // bon marché : on pousse dans la pile et on crée les layerGroups) et le
+  // CHARGEMENT DE SA DONNÉE (asynchrone, cher : extraction du ZIP).
+  //
+  // 🩸 POURQUOI : l'ajout par étiquette peut en demander vingt d'un coup.
+  // Appeler vingt fois `_ajouterPlanOsm` déclencherait vingt re-rendus du
+  // panneau ET vingt extractions de ZIP EN PARALLÈLE — exactement la charge
+  // que `_avertirMultiSiBesoin` existe pour signaler, mais concentrée sur une
+  // seule frame. Découpé, un lot monte tout d'un coup, rend UNE fois, puis
+  // charge les données EN SÉRIE : la carte se remplit progressivement au lieu
+  // de figer l'onglet.
+  function _monterPlanOsm(planId) {
+    if (!planId || planId === _selectedPlanId || _extraLayers[planId]) return null;
     const plans = _listGeorefPlans();
     const p = plans.find(function(x) { return x.id === planId; });
-    if (!p) return;
+    if (!p) return null;
 
     if (_stackOrder.indexOf(planId) === -1) _stackOrder.unshift(planId); // nouveau = au-dessus
     const g = {
@@ -2245,12 +2260,11 @@
     if (_showTiles) g.tiles.addTo(_mapInstance);
     _extraLayers[planId] = g;
     if (!(planId in _extraOpacity)) _extraOpacity[planId] = 0.5;
+    return { p: p, g: g };
+  }
 
-    _avertirMultiSiBesoin();
-    _renderMultiPanel();
-    _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
-
-    _loadPlanDataForPreview(planId).then(function(data) {
+  function _chargerDataPlanOsm(planId, p, g) {
+    return _loadPlanDataForPreview(planId).then(function(data) {
       // Garde anti-race : retiré (ou devenu principal) pendant l'extraction ?
       if (!_extraLayers[planId] || _extraLayers[planId] !== g) return;
       if (!data) return;
@@ -2268,9 +2282,21 @@
     });
   }
 
-  function _retirerPlanOsm(planId) {
+  function _ajouterPlanOsm(planId) {
+    const m = _monterPlanOsm(planId);
+    if (!m) return;
+    _avertirMultiSiBesoin();
+    _renderMultiPanel();
+    _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
+    _chargerDataPlanOsm(planId, m.p, m.g);
+  }
+
+  // Démontage SANS re-rendu : le lot (retrait par étiquette) en enlève
+  // plusieurs et ne veut rendre qu'une fois. `_retirerPlanOsm` reste le
+  // chemin unitaire et garde son comportement d'origine.
+  function _demonterPlanOsm(planId) {
     const g = _extraLayers[planId];
-    if (!g) return;
+    if (!g) return false;
     try {
       if (_mapInstance) {
         if (_mapInstance.hasLayer(g.tiles)) _mapInstance.removeLayer(g.tiles);
@@ -2284,10 +2310,143 @@
     _retirerHiRes(planId); // 🔍 v1.77.0 — les hi-res, elles, sont éphémères
     // Pas de revoke des blob URLs BASELINE : elles vivent dans _planDataCache
     // (re-ajout gratuit) et peuvent servir au plan principal.
+    return true;
+  }
+
+  function _retirerPlanOsm(planId) {
+    if (!_demonterPlanOsm(planId)) return;
     _appliquerOrdre();
     _renderMultiPanel();
     _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
     _renderModalTags();   // 🐛 v1.72.2 : retirer un plan retire aussi ses tags
+    _renderModalNiveaux();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 🏷️ v1.84.0 — AJOUTER LA PILE PAR ÉTIQUETTE DE PLAN
+  // ═══════════════════════════════════════════════════════════
+  // LE BESOIN (KARMA, 04/09) : un atlas départemental découpé produit des
+  // DIZAINES de plans du même secteur — « je veux voir d'un coup tous les
+  // plans étiquetés GIRONDE ». Les deux moitiés existaient depuis longtemps
+  // sans se parler : `plan.tags` (registre, v1.78.0, saisi depuis la
+  // bibliothèque) et la pile multi-plans (v1.71.0), dont le seul chemin
+  // d'ajout était un `<select>` UN PLAN À LA FOIS.
+  //
+  // ⚠️ NE PAS CONFONDRE avec la section « 🏷️ Filtrer par tag » juste au-dessus :
+  // celle-là filtre les POI *à l'intérieur* des plans affichés. Ici on choisit
+  // QUELS PLANS sont affichés. Deux notions homonymes dans la même modale —
+  // d'où un intitulé qui dit explicitement « étiquette de plan ».
+  //
+  // 🔠 Regroupement INSENSIBLE À LA CASSE : `PlanRegistry.setTags` dédoublonne
+  // par plan, pas entre plans. « Gironde » sur l'un et « GIRONDE » sur l'autre
+  // afficherait deux chips pour ce que l'utilisateur tient pour une seule
+  // étiquette — et chacune ne montrerait que la moitié de ses plans.
+  function _etiquettesDesPlans() {
+    const parTag = {};   // clé minuscule → { libelle, ids: [] }
+    _listGeorefPlans().forEach(function (p) {
+      (Array.isArray(p.tags) ? p.tags : []).forEach(function (t) {
+        const brut = String(t == null ? "" : t).trim();
+        if (!brut) return;
+        const cle = brut.toLowerCase();
+        if (!parTag[cle]) parTag[cle] = { libelle: brut, ids: [] };
+        if (parTag[cle].ids.indexOf(p.id) < 0) parTag[cle].ids.push(p.id);
+      });
+    });
+    return parTag;
+  }
+
+  function _renderMultiTags() {
+    const cont = document.getElementById("ktaOsmMultiTags");
+    const sect = document.getElementById("ktaOsmMultiTagsSect");
+    if (!cont) return;
+    const parTag = _etiquettesDesPlans();
+    // Une étiquette qui ne porte QU'UN plan n'apprend rien ici : le sélecteur
+    // juste en dessous fait déjà ce travail, et vingt chips à un plan
+    // noieraient les deux qui servent.
+    const cles = Object.keys(parTag)
+      .filter(function (c) { return parTag[c].ids.length >= 2; })
+      .sort(function (a, b) {
+        return parTag[b].ids.length - parTag[a].ids.length || a.localeCompare(b);
+      });
+    if (!cles.length) { cont.innerHTML = ""; if (sect) sect.style.display = "none"; return; }
+    if (sect) sect.style.display = "";
+    cont.innerHTML = cles.map(function (c) {
+      const e = parTag[c];
+      const dans = e.ids.filter(function (id) { return _stackOrder.indexOf(id) >= 0; }).length;
+      const tous = (dans === e.ids.length);
+      const cle18n = tous ? "osm_mode.multi.tagRetirerTitle" : "osm_mode.multi.tagAjouterTitle";
+      return '<button type="button" class="kta-osm-home-tag-chip' + (tous ? " active" : "") + '"' +
+             ' data-ptag="' + _escapeHtml(c) + '"' +
+             ' title="' + _escapeHtml(window.I18n.t(cle18n, { n: e.ids.length })) + '">' +
+             _escapeHtml(e.libelle) + ' <span>' + dans + '/' + e.ids.length + '</span></button>';
+    }).join("");
+    cont.querySelectorAll("[data-ptag]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        _basculerEtiquettePlans(b.getAttribute("data-ptag"));
+      });
+    });
+  }
+
+  // Un clic fait l'un OU l'autre selon ce qui manque : tant qu'un plan de
+  // l'étiquette n'est pas là, le chip AJOUTE ce qui manque ; quand ils y sont
+  // tous, il les RETIRE. Sans le retrait groupé, afficher vingt plans se
+  // défait en vingt clics sur des ✕ — ce n'est pas du confort, c'est ce qui
+  // rend la fonction utilisable deux fois de suite.
+  function _basculerEtiquettePlans(cle) {
+    const e = _etiquettesDesPlans()[cle];
+    if (!e) return;
+    const absents = e.ids.filter(function (id) { return _stackOrder.indexOf(id) < 0; });
+    if (absents.length) _ajouterPlansOsm(absents, e.libelle);
+    else _retirerPlansOsm(e.ids);
+  }
+
+  function _ajouterPlansOsm(ids, libelle) {
+    // ⚠️ ON DEMANDE AVANT, avec le compte. La pile n'a pas de cap dur
+    // (arbitrage KARMA 2:b) et `_avertirMultiSiBesoin` prévient APRÈS coup —
+    // sur un lot, « après coup » veut dire une fois les vingt plans montés,
+    // donc trop tard pour renoncer. Le seuil de la confirmation est CELUI DE
+    // L'AVERTISSEMENT EXISTANT (3), pas un nombre inventé ici.
+    const total = _stackOrder.length + ids.length;
+    if (ids.length >= 2 && total > 3) {
+      const ok = window.confirm(window.I18n.t("osm_mode.multi.tagConfirm",
+        { n: ids.length, tag: libelle || "", total: total }));
+      if (!ok) return;
+    }
+    const montes = [];
+    ids.forEach(function (id) {
+      const m = _monterPlanOsm(id);
+      if (m) montes.push({ id: id, p: m.p, g: m.g });
+    });
+    if (!montes.length) return;
+    _avertirMultiSiBesoin();
+    _renderMultiPanel();
+    _renderPortails();
+    // EN SÉRIE, jamais en parallèle : chaque chargement extrait un ZIP.
+    // Vingt extractions lancées ensemble figent l'onglet ; enchaînées, la
+    // carte se remplit plan par plan et reste manipulable.
+    montes.reduce(function (chaine, m) {
+      return chaine.then(function () { return _chargerDataPlanOsm(m.id, m.p, m.g); })
+                   .catch(function (e) {
+                     console.warn("[OsmHome] chargement du plan " + m.id + " échoué :", e);
+                   });
+    }, Promise.resolve());
+  }
+
+  function _retirerPlansOsm(ids) {
+    // Le plan PRINCIPAL ne se retire pas : il n'a même pas de ✕ dans le
+    // panneau, et `_renderMultiPanel` le remettrait dans la pile au rendu
+    // suivant (ceinture v1.72.2). Le chip repasse alors à « 1/N », ce qui est
+    // la vérité : il reste ce plan-là.
+    let n = 0;
+    ids.forEach(function (id) {
+      if (id === _selectedPlanId) return;
+      if (_demonterPlanOsm(id)) n++;
+    });
+    if (!n) return;
+    _appliquerOrdre();
+    _renderMultiPanel();
+    _renderPortails();
+    _renderModalTags();
     _renderModalNiveaux();
   }
 
@@ -2363,6 +2522,11 @@
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.tags")) + '</div>' +
           '<div class="kta-osm-home-tagchips kta-osm-filters-tags" id="ktaOsmFiltersTags"></div>' +
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.plans")) + '</div>' +
+          // 🏷️ v1.84.0 — ajout par ÉTIQUETTE DE PLAN. Masqué tant qu’aucune
+          // étiquette ne porte au moins deux plans (cf. `_renderMultiTags`).
+          '<div class="kta-osm-filters-sect" id="ktaOsmMultiTagsSect" style="display:none;">' +
+            _escapeHtml(window.I18n.t("osm_mode.multi.tagsTitre")) + '</div>' +
+          '<div class="kta-osm-home-tagchips" id="ktaOsmMultiTags"></div>' +
           '<select id="ktaOsmMultiAdd" class="kta-osm-filters-add"></select>' +
           '<div id="ktaOsmMultiRows"></div>' +
         '</div>' +
@@ -2648,6 +2812,10 @@
         _appliquerVisibilites();
       });
     });
+    // 🏷️ v1.84.0 — les chips d’étiquette suivent l’état de la pile (« 3/12 »)
+    // : tout ce qui la modifie passe par ici, donc un seul point de rendu.
+    _renderMultiTags();
+
     rows.querySelectorAll("[data-op]").forEach(function(r) {
       r.addEventListener("input", function() {
         const id = r.getAttribute("data-op");
