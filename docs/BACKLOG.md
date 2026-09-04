@@ -160,12 +160,38 @@ Outil de **préparation de données**, hors navigateur, hors build. Lit le KML *
 | Colonnes détectées | `type` (galerie/pilier), `niveau` (-1 à -6), `couche` |
 | Ventilation par famille | lignes : 6 niveaux · polygones : 5 — l'écran de correspondance a ce qu'il lui faut |
 
-⚠️ **Non fait** : le plan n'a pas été **généré ni ouvert** dans l'app. Le parse, la validation CRS et l'analyse d'attributs sont prouvés ; la génération du ZIP, le rendu Leaflet et la navigation sur 3 890 objets ne le sont pas. **C'est l'étape suivante, et elle demande KARMA** — c'est aussi la première fois que le SIG verra un vrai plan.
+### Campagne d'extraction du 04/09 — 11 plans, et ce que l'atlas a appris
+
+**✅ vérifié — l'anatomie des emprises, mesurée** (script jetable, couche « Zone de carrière » seule) :
+
+| Mesure | Valeur |
+|---|---|
+| Placemarks d'emprise | **1 471** (1 479 contours : quelques `MultiGeometry` en portent plusieurs) |
+| … **sans nom** | **267** — extractibles via le repli « (sans nom) #N » de `--lister` |
+| … nommés | **1 212 contours** pour **1 157 noms distincts** |
+| Noms portés par plusieurs emprises | **34 — 2,9 % des noms**, 89 contours |
+| … dont exemplaires distants de **plus d'1 km** | **17 sur 34** |
+
+**✅ Au passage, un vieux diagnostic tombé : ces 267 anonymes SONT l’écart** que le backlog attribuait depuis le 03/09 à des « Placemarks sans `outerBoundaryIs` exploitable » (1 471 − 267 = 1 204). Rien n’est perdu, rien n’est à creuser : `--lister` les nomme « (sans nom) #N » et elles restent extractables. L’entrée a été **supprimée** de « Ce qui reste ouvert ».
+
+**🩸 Le nombre d'exemplaires ne dit RIEN — c'est l'ÉTENDUE qui départage.** `Grande_carrière_de_Latresne` compte **15 emprises mais tient dans 1,6 km** : c'est une grande carrière découpée en parcelles, et `--zone` seul y est correct. À l'inverse `Barreau_01` n'en a que **3, étalées sur 39,6 km**, et `Le_Puy_02` **2 sur 61,6 km**. Trier les homonymes par leur nombre trompe ; il faut regarder la dispersion.
+
+**Conséquence pour l'outil** : sur les 18 noms visés le 04/09, **4** portaient des homonymes dispersés (`Barreau_01` ×3/39,6 km · `Barreau_03` ×2/39,7 km · `Le_Château_02` ×2/21,5 km · `Salle_la_Mouleyre` ×2/0,3 km — cette dernière groupée, donc fusionnable telle quelle). `--autour/--rayon` n'est pas réservé au cas « Le Bourg » documenté dans l'en-tête : c'est le réflexe à avoir dès qu'un nom est générique.
+
+**🩸 Trois pièges de nommage payés le 04/09**
+
+1. **Les entités XML ne sont pas décodées.** L'apostrophe est écrite `&apos;` dans la source : la zone s'appelle littéralement `La_Grangeotte_Plantey_d&apos;oline`, et c'est **cette forme échappée** qu'il faut passer à `--zone` (vérifié : le script ne traite aucune entité). Passer l'apostrophe réelle ne trouve rien, sans que rien ne le dise.
+2. **Deux orthographes, deux sites différents** : `Lamothe_02` (underscore, 44.7355,-0.3775) et `Lamothe 02` (**espace**, 44.7848,-0.4772) sont deux carrières distantes de **8 km**. Chercher « Lamothe » sans regarder la position donne le mauvais site en silence.
+3. **Le nombre de sommets du contour n'est PAS un proxy du contenu.** `Le_Grand_Parc_02` déclare **1 290 sommets** d'emprise et ne contient que **51 features** ; `Le_Château_02`, à 500 m, en déclare 2 659 et en contient **1 416**. Or `--lister` trie par « sommets *(proxy de taille)* » : il met donc en tête des emprises potentiellement vides. **À corriger** — trier par contenu réel exigerait la passe 2 — **ou au minimum à dire** dans le libellé.
+
+**Le topo historique ne couvre pas le département** : **0** feature historique sur les 11 extraits du 04/09, contre 656 sur `Belllevue_Gardera_…`. Ne pas conclure d'un extrait sans historique que `--couches` a échoué.
+
+> ⚠️ **Leçon de méthode, pour le prochain script jetable sur ce KML.** Mon premier compteur d'homonymes ne réinitialisait pas le nom à chaque `<Placemark>` : les 267 emprises **anonymes** héritaient du nom de la précédente et fabriquaient de faux doublons — **180 homonymes annoncés au lieu de 34**, un facteur 5, et deux « ambiguïtés » soumises à KARMA qui n'existaient pas. `decouper-atlas.js`, lui, remet bien `buf = { nom: null }` sur `<Placemark` : l'outil est sain, c'est le harnais qui mentait. Sur ce fichier, **tout compteur ad hoc doit borner son état au Placemark**.
 
 ### Ce qui reste ouvert
 
 - **Le seuil de pertinence** : surface **médiane 196 m²**, 1 181 zones sur 1 471 n'ont qu'un étage. La grande majorité de ces « carrières » sont des petits vides ou des accès — un plan pour 196 m² n'a pas de sens. Un traitement en masse demandera un seuil, ou un regroupement par proximité.
-- **Passe 1 ne retrouve que 1 204 emprises sur 1 471** : les Placemarks sans `outerBoundaryIs` exploitable sont ignorés. Sans conséquence pour une extraction ciblée, à creuser avant tout traitement de masse.
+- **`--lister` trie par un proxy trompeur** (✅ vérifié 04/09) : il classe les zones par le nombre de sommets du CONTOUR, qui ne prédit pas le contenu — `Le_Grand_Parc_02` déclare 1 290 sommets et ne renferme que **51 features**. Les têtes de liste peuvent donc être vides. Trier par contenu réel exigerait la passe 2 sur toutes les zones ; a minima, changer le libellé « proxy de taille ».
 - **Le sort des plans produits** : mêmes données sensibles que la source. Ils ne vont pas sur git.
 - **⚡ La pile multi-plans de la Vue OSM n'a PAS été mesurée** (dette ouverte par la v1.84.0, 04/09). L'ajout par étiquette permet d'en afficher vingt d'un clic, et un plan issu d'un atlas porte couramment **5 000 objets** — soit ~100 000 objets Leaflet dans une seule carte. Deux garde-fous posés **à la place** d'une mesure : confirmation au-delà de 3 plans (seuil de l'avertissement existant) et chargement **en série**. **À faire** : ouvrir 5, 10 puis 20 plans Gironde réels et relever mémoire + fluidité, puis décider si un cap dur s'impose. Tant que ce n'est pas fait, le chiffre « 3 » reste un arbitrage de 2026, pas une mesure.
 
