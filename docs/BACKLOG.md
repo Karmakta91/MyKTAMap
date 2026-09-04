@@ -167,6 +167,7 @@ Outil de **préparation de données**, hors navigateur, hors build. Lit le KML *
 - **Le seuil de pertinence** : surface **médiane 196 m²**, 1 181 zones sur 1 471 n'ont qu'un étage. La grande majorité de ces « carrières » sont des petits vides ou des accès — un plan pour 196 m² n'a pas de sens. Un traitement en masse demandera un seuil, ou un regroupement par proximité.
 - **Passe 1 ne retrouve que 1 204 emprises sur 1 471** : les Placemarks sans `outerBoundaryIs` exploitable sont ignorés. Sans conséquence pour une extraction ciblée, à creuser avant tout traitement de masse.
 - **Le sort des plans produits** : mêmes données sensibles que la source. Ils ne vont pas sur git.
+- **⚡ La pile multi-plans de la Vue OSM n'a PAS été mesurée** (dette ouverte par la v1.84.0, 04/09). L'ajout par étiquette permet d'en afficher vingt d'un clic, et un plan issu d'un atlas porte couramment **5 000 objets** — soit ~100 000 objets Leaflet dans une seule carte. Deux garde-fous posés **à la place** d'une mesure : confirmation au-delà de 3 plans (seuil de l'avertissement existant) et chargement **en série**. **À faire** : ouvrir 5, 10 puis 20 plans Gironde réels et relever mémoire + fluidité, puis décider si un cap dur s'impose. Tant que ce n'est pas fait, le chiffre « 3 » reste un arbitrage de 2026, pas une mesure.
 
 ---
 
@@ -180,6 +181,7 @@ Outil de **préparation de données**, hors navigateur, hors build. Lit le KML *
 | 1 | **Reprojection Lambert 93** | débloque les exports QGIS français, massivement en L93 | faible | ✅ **LIVRÉ 03/09** (cf. §1) |
 | 2 | **Import VisualTopo (`.tro`)** | la cible **spéléo** de `CLAUDE.md` n'a aucun format topo lisible | moyen | 🔜 à lancer |
 | 3 | **Profondeur des niveaux + profil en long** | la profondeur est la métrique reine du milieu souterrain | moyen-élevé | 💭 à concevoir |
+| 5 | **Afficher les plans par étiquette en Vue OSM** | un atlas découpé produit des dizaines de plans du même secteur | faible | ✅ **LIVRÉ (v1.84.0)** — `docs/architecture/vue-osm.md` §Ajout de la pile par étiquette. ⚠️ Dette de MESURE ouverte (cf. §Atlas > Ce qui reste ouvert) |
 | 4 | **Shapefile** | complète le SIG, mais contournable (QGIS sait exporter en GeoJSON) | moyen | 💤 basse priorité |
 
 ### 2. 🕳️ Import de formats topo spéléo — `.tro` d'abord

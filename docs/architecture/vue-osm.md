@@ -634,6 +634,31 @@ Clé IDB = "z/x/y" (slippy tilenames OSM, EPSG:3857)
 
 **👁️ Datalayers `visible: false` (fix v1.73.1)** : `_renderDataLayersOnMiniMap` **ne skippe plus** les calques marqués non visibles (`if (!layer.visible) continue` supprimé — il sautait le calque ENTIER, tracés et zones compris). Raison : `layer.visible` est un défaut d'affichage du **MODE PLAN**, retoggable là-bas via ⊞ Calques ; la Vue OSM n'ayant aucun toggle par calque, le skip = **zéro voie d'affichage**. L'affichage est désormais gouverné par les filtres existants (chips catégories globales + par plan, tags). Effet assumé : un calque volontairement masqué par défaut apparaît en Vue OSM. `layer.visible` reste **parsé** (si des toggles par calque arrivent un jour dans la modale ≡). ⚠️ La modale OSM du **mode plan** n'est pas concernée : elle lit les calques vivants de la carte, pas le plan-config.
 
+### 🏷️ Ajout de la pile PAR ÉTIQUETTE DE PLAN (v1.84.0)
+
+**Le trou comblé** : `plan.tags` existait depuis la v1.78.0 (registre, saisi depuis la bibliothèque, normalisé par `PlanRegistry.setTags` — 12 × 24 car.), la pile multi-plans depuis la v1.71.0. **Aucun lien** : `_listGeorefPlans` ne rapatriait même pas `tags`, et le seul chemin d'ajout était le `<select>` unitaire. Un atlas départemental découpé en vingt plans se montait donc en vingt gestes.
+
+**UI** — modale 🎚️ Plans & filtres, section `#ktaOsmMultiTagsSect` / `#ktaOsmMultiTags`, **au-dessus** du `<select>` (qui reste). Un chip par étiquette portée par **≥ 2** plans géoréférencés, libellé + compteur `dans/total`. Rendu par `_renderMultiTags()`, appelée depuis `_renderMultiPanel()` — **point de rendu unique** : tout ce qui modifie la pile passe déjà par là.
+
+⚠️ **Homonymie dans la même modale** : la section « 🏷️ Filtrer par tag » (`#ktaOsmFiltersTags`, `_renderModalTags`) filtre les **POI à l'intérieur** des plans affichés ; celle-ci choisit **quels plans** sont affichés. Deux notions, deux mots identiques — d'où l'intitulé explicite « étiquette de plan » (`osm_mode.multi.tagsTitre`).
+
+**Les trois règles non évidentes**
+
+| Règle | Pourquoi |
+|---|---|
+| Regroupement **insensible à la casse** (`_etiquettesDesPlans`, clé minuscule → `{libelle, ids}`) | `setTags` dédoublonne les étiquettes **d'un** plan, jamais **entre** plans. « Gironde » + « GIRONDE » = deux chips montrant chacun la moitié de leurs plans. Ne se voit que si on a tapé les deux orthographes |
+| Chip masqué à **1 seul plan** | Le `<select>` juste en dessous fait déjà ce travail ; vingt chips à un plan noieraient les deux qui servent |
+| Clic **asymétrique** (`_basculerEtiquettePlans`) : ajoute les **manquants**, ne retire que si **tous** présents | Ré-ajouter un plan déjà monté le dupliquerait dans `_stackOrder`. Et sans le retrait groupé, vingt plans se défont en vingt clics sur des ✕ |
+
+**Charge — deux garde-fous, PAS une mesure.** ⚠️ La pile n'a **jamais** été éprouvée à 5/10/20 plans réels : c'est une dette ouverte de la v1.84.0, à lever sur le terrain (un plan issu d'un atlas porte couramment 5 000 objets).
+
+1. `_ajouterPlansOsm` **confirme avant** si le lot fait ≥ 2 plans **et** ferait dépasser 3 dans la pile — le seuil est **celui de `_avertirMultiSiBesoin`** (arbitrage KARMA 2:b), pas un nombre inventé. Cet avertissement-là prévient *après* coup : sur un lot, ça veut dire une fois les vingt plans montés, donc trop tard pour renoncer.
+2. `_ajouterPlanOsm` est **coupé en deux** : `_monterPlanOsm` (synchrone — pousse dans `_stackOrder`, crée les `layerGroup`) et `_chargerDataPlanOsm` (asynchrone — `_loadPlanDataForPreview`, donc **extraction ZIP**). Un lot monte tout, rend **une** fois, puis enchaîne les chargements **en série** (`montes.reduce(...)`). Vingt extractions lancées ensemble figeraient l'onglet. Symétrique au retrait : `_demonterPlanOsm` (sans rendu) + `_retirerPlansOsm` (rendu unique).
+
+**Protection du principal** : `_retirerPlansOsm` saute `_selectedPlanId`. Sans ça, la ceinture v1.72.2 de `_renderMultiPanel` le remettrait dans la pile au rendu suivant — état incohérent entre le chip (« 0/12 ») et la carte. Le chip retombe donc à `1/12` après un retrait groupé, ce qui est la vérité.
+
+**Garde-fou** : `scripts/check-osm-etiquettes.js` (pré-commit **bloquant**), code **extrait** de `osmHomePreview.js` — 12 assertions de logique + 6 de câblage (le `tags` transporté, le conteneur, l'appel de rendu, la confirmation, la protection du principal, le `reduce` en série).
+
 **Reste au lot 3 (v1.72)** : croisement fin (filtres par plan ?, popups enrichis cross-plan), liaisons portails dessinées entre plans sur OSM.
 
 ---

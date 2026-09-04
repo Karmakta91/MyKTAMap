@@ -1,8 +1,8 @@
 {
-  "version": "v1.83.1",
+  "version": "v1.84.0",
   "released": "2026-09-04",
   "notes": [
-    "🏷️ Quand tu convertis un relevé SIG en plan, la légende que tu personnalises part enfin EN ENTIER dans le plan : les noms et les couleurs que tu donnes aux types, ceux que tu masques, et les entrées que tu ajoutes toi-même. Avant, seuls les noms des niveaux survivaient.",
-    "⚠️ Et l’écran te prévient clairement quand un changement de correspondance efface les noms que tu venais de saisir — le message était trop discret pour être vu."
+    "🏷️ La Vue OSM de l’accueil affiche d’un coup tous les plans qui portent la même étiquette — « Gironde » par exemple. Un clic les met tous sur la carte, un autre les enlève. Les étiquettes se saisissent dans ta bibliothèque de plans.",
+    "🗺️ Et en conversion SIG, la légende que tu personnalises part enfin EN ENTIER dans le plan généré : les noms et les couleurs que tu donnes aux types, ceux que tu masques, et ceux que tu ajoutes toi-même."
   ]
 }
