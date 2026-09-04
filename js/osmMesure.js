@@ -38,6 +38,7 @@
   let _layer = null;           // groupe des tracés + libellés
   let _floater = null;
   let _onClic = null;
+  let _onResize = null;
 
   function _t(cle, p) {
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(cle, p) : cle;
@@ -54,6 +55,22 @@
     return (m2 / 10000).toFixed(2).replace(".", ",") + " ha";
   }
 
+
+  // 📌 Place le bandeau EN HAUT DE LA CARTE, centre — pas en haut de la
+  // FENETRE : en mode plan la barre d'outils occupe ce haut-la, et un `top`
+  // fixe recouvrirait ses boutons. Le conteneur Leaflet, lui, sait ou il
+  // commence. Rappele au resize et a la rotation, sinon le bandeau reste ou
+  // la carte etait.
+  function _placer() {
+    if (!_floater || !_map) return;
+    try {
+      const r = _map.getContainer().getBoundingClientRect();
+      if (!r || !r.width) return;
+      _floater.style.left = Math.round(r.left + r.width / 2) + "px";
+      _floater.style.top  = Math.round(r.top + 12) + "px";
+      _floater.style.bottom = "auto";
+    } catch (e) {}
+  }
   function _distanceTotale() {
     let d = 0;
     for (let i = 1; i < _pts.length; i++) d += _pts[i - 1].distanceTo(_pts[i]);
@@ -153,6 +170,12 @@
       '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-osm-mes-clear">🗑️</button>' +
       '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-osm-mes-close">✕</button>';
     document.body.appendChild(_floater);
+    _placer();
+    _onResize = function () { _placer(); };
+    try {
+      window.addEventListener("resize", _onResize);
+      window.addEventListener("orientationchange", _onResize);
+    } catch (e) {}
     _floater.querySelector("#kta-osm-mes-undo").addEventListener("click", function () {
       _pts.pop(); _redessiner();
     });
@@ -176,6 +199,13 @@
     try { if (_map && _onClic) _map.off("click", _onClic); } catch (e) {}
     try { if (_map && _layer) _map.removeLayer(_layer); } catch (e) {}
     try { if (_map) _map.getContainer().style.cursor = ""; } catch (e) {}
+    try {
+      if (_onResize) {
+        window.removeEventListener("resize", _onResize);
+        window.removeEventListener("orientationchange", _onResize);
+      }
+    } catch (e) {}
+    _onResize = null;
     if (_floater && _floater.parentNode) _floater.remove();
     _layer = null; _floater = null; _onClic = null; _pts = [];
   }

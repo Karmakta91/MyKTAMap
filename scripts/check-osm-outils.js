@@ -67,6 +67,9 @@ function contexte() {
       body: { appendChild(el) { el.parentNode = { }; } }
     },
     navigator: {},
+    // Un navigateur a TOUJOURS ces methodes : le bouchon qui ne les avait
+    // pas faisait echouer le module pour une raison qui n existe pas en vrai.
+    addEventListener() {}, removeEventListener() {},
     formatGpsCoords: (a, b) => a.toFixed(6) + ", " + b.toFixed(6)
   };
   ctx.window = ctx;
@@ -126,6 +129,18 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   const HOME = fs.readFileSync("js/osmHomePreview.js", "utf8");
   const IDX  = fs.readFileSync("index.html", "utf8");
   const SW   = fs.readFileSync("sw.js", "utf8");
+
+  // 📌 Le bandeau se cale sur LE CONTENEUR DE LA CARTE, pas sur la fenetre :
+  // en mode plan la barre d outils occupe le haut de la fenetre, un `top`
+  // fixe recouvrirait ses boutons.
+  const CRD = fs.readFileSync("js/osmCoords.js", "utf8");
+  const MES = fs.readFileSync("js/osmMesure.js", "utf8");
+  [["coordonnees", CRD], ["mesure", MES]].forEach(function (pair) {
+    t("📌 " + pair[0] + " : le bandeau se place sur la CARTE, pas sur la fenetre",
+      pair[1].indexOf("getContainer().getBoundingClientRect()") >= 0);
+    t("🩸 " + pair[0] + " : le listener de resize est RETIRE au demontage",
+      pair[1].indexOf('removeEventListener("resize"') >= 0);
+  });
 
   t("cablage : osmCoords.js est charge par index.html", /src="js\/osmCoords\.js"/.test(IDX));
   t("cablage : osmCoords.js est precache", SW.indexOf('"./js/osmCoords.js"') >= 0);

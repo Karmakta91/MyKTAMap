@@ -21532,7 +21532,7 @@ body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }
    ============================================== */
 #kta-osm-mes-floater {
   position: fixed; left: 50%; transform: translateX(-50%);
-  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  top: calc(12px + env(safe-area-inset-top, 0px));   /* repositionne sur la carte par JS */
   z-index: 100002;                 /* au-dessus de la Vue OSM plein écran */
   display: flex; align-items: center; gap: 8px;
   padding: 8px 12px;
@@ -21559,7 +21559,7 @@ body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }
    sont exclusifs, ils ne se chevaucheront jamais. */
 #kta-osm-coord-floater {
   position: fixed; left: 50%; transform: translateX(-50%);
-  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  top: calc(12px + env(safe-area-inset-top, 0px));   /* repositionne sur la carte par JS */
   z-index: 100002;                 /* au-dessus de la Vue OSM plein ecran */
   display: flex; align-items: center; gap: 8px;
   padding: 8px 12px;
