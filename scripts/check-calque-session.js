@@ -178,6 +178,47 @@ const CALQUE = {
     t("export sans rapatriement : refuse", m.CS.exporterCalque("sig").ok === false);
   }
 
+  // ───────── 2 ter. 🩸 PLUSIEURS CALQUES EN MÊME TEMPS ─────────
+  // Question KARMA (05/09) : « si je rapatrie plusieurs layers, ils se cumulent
+  // en session ? » Oui — et chacun doit rester INDÉPENDANT. C'est `_srcCalque`
+  // qui le permet : sans lui, restituer un calque emporterait le contenu de
+  // l'autre, et l'export du premier embarquerait les objets du second.
+  {
+    const CALQUE_B = { roads: [{ type: "chemin", points: [{ x: 50, y: 60 }] }],
+                       zones: [{ type: "eau", points: [{ x: 1, y: 1 }, { x: 2, y: 2 }, { x: 3, y: 3 }] }] };
+    // Deux calques declares, et un `fetch` qui rend celui qu'on demande.
+    const m = monter(CALQUE);
+    m.ctx.PLAN_CONFIG.dataLayers.push({ id: "puits", label: "Puits", file: "data/puits.json" });
+    m.ctx.dataLayerGroups.puits = { __id: "puits" };
+    m.surCarte.puits = true;
+    m.ctx.fetch = (url) => Promise.resolve({
+      json: () => Promise.resolve(String(url).indexOf("puits") >= 0 ? CALQUE_B : CALQUE)
+    });
+
+    await m.CS.rapatrier("sig");
+    await m.CS.rapatrier("puits");
+    t("multi : les DEUX calques sont rapatries",
+      m.CS.estRapatrie("sig") && m.CS.estRapatrie("puits"));
+    t("multi : les objets se CUMULENT en session", m.etat.roads.length === 3);
+    t("multi : chaque calque garde son compte", m.CS.compterCopie("sig") === 5 && m.CS.compterCopie("puits") === 2);
+    t("multi : les deux originaux sont masques", m.surCarte.sig === false && m.surCarte.puits === false);
+    t("multi : l'etat porte les deux ids",
+      JSON.stringify(m.CS.getSessionState()) === JSON.stringify({ rapatries: ["sig", "puits"] }));
+
+    // 🩸 L'EXPORT NE MELANGE PAS : il ne sort QUE le calque demande.
+    const exB = m.CS.exporterCalque("puits");
+    t("🩸 multi : l'export d'un calque n'emporte QUE le sien", exB.total === 2);
+    t("  -> et ne compte pas les objets de l'autre comme « crees a la main »", exB.horsCalque === 0);
+
+    // 🩸 LA RESTITUTION EST CHIRURGICALE ENTRE CALQUES.
+    const rr = m.CS.restituer("sig");
+    t("🩸 multi : restituer « sig » ne retire QUE ses 5 objets", rr.retires === 5);
+    t("  -> « puits » est intact en session", m.CS.compterCopie("puits") === 2);
+    t("  -> et reste rapatrie", m.CS.estRapatrie("puits") === true);
+    t("  -> son original reste masque", m.surCarte.puits === false);
+    t("  -> tandis que « sig » revient sur la carte", m.surCarte.sig === true);
+  }
+
   // ───────── 3. LE RETOUR EST CHIRURGICAL ─────────
   etat.roads.push({ type: "principal", points: [{ x: 0, y: 0 }] });   // cree a la main
   const rr = CS.restituer("sig");
@@ -233,6 +274,20 @@ const CALQUE = {
     SP.indexOf("CalqueSession.appliquerVerrous") > SP.indexOf("CalqueSession.loadSessionState(payload"));
   t("🩸 cablage : effacer la session RESTITUE les calques (piege 1)",
     /function clear\(\)[\s\S]{0,2000}CalqueSession\.listeRapatries[\s\S]{0,300}restituer\(/.test(SP));
+  // 🩸 UN <button> N'EMET JAMAIS `change`. Les trois actions ont d'abord ete
+  // posees dans le listener `change` du panneau, avec les cases a cocher :
+  // elles y etaient MORTES SILENCIEUSEMENT — aucune erreur console, juste
+  // rien au clic. C'est KARMA qui l'a vu a l'ecran, pas la relecture.
+  // On verifie donc le TYPE D'EVENEMENT, pas seulement la presence de
+  // l'attribut : c'est la difference entre « c'est ecrit » et « ca marche ».
+  ["rapatrier", "restituer", "exporter"].forEach(function (act) {
+    const i = FP.indexOf("[data-calque-" + act + "]");
+    const avant = i < 0 ? "" : FP.slice(0, i);
+    const dernier = avant.lastIndexOf("addEventListener(\"");
+    const type = dernier < 0 ? "?" : avant.slice(dernier + 18).split("\"")[0];
+    t("🩸 cablage : « " + act + " » est branche sur CLICK (lu : " + type + ")", type === "click");
+  });
+
   t("cablage : le panneau de filtres porte les trois actions",
     /data-calque-rapatrier/.test(FP) && /data-calque-restituer/.test(FP) && /data-calque-exporter/.test(FP));
   t("cablage : l export dit OU deposer le fichier (sinon il est inutilisable)",

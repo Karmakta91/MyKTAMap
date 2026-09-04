@@ -680,19 +680,6 @@
         _scheduleRoadsRecalc();
         return;
       }
-      // === Calques : rapatriement en session / restitution (v1.85.0) ===
-      if (t.matches('[data-calque-rapatrier]')) {
-        _rapatrierCalque(t.getAttribute("data-calque-rapatrier"));
-        return;
-      }
-      if (t.matches('[data-calque-restituer]')) {
-        _restituerCalque(t.getAttribute("data-calque-restituer"));
-        return;
-      }
-      if (t.matches('[data-calque-exporter]')) {
-        _exporterCalque(t.getAttribute("data-calque-exporter"));
-        return;
-      }
       // === Tags + Types (set-based) ===
       if (t.matches('[data-set][data-type]')) {
         const setName = t.getAttribute("data-set");
@@ -762,6 +749,23 @@
     overlay.addEventListener("click", function(e) {
       const t = e.target;
       if (!t || !t.matches) return;
+      // === Calques : rapatriement en session / restitution / export (v1.85.0) ===
+      // 🩸 ICI, et pas dans le listener `change` juste au-dessus : ce sont des
+      // <button>, et un bouton n’emet JAMAIS `change`. Places la-bas, ils
+      // etaient morts SILENCIEUSEMENT — aucune erreur console, juste rien au
+      // clic. C’est KARMA qui l’a vu a l’ecran, pas la relecture.
+      if (t.matches('[data-calque-rapatrier]')) {
+        _rapatrierCalque(t.getAttribute("data-calque-rapatrier"));
+        return;
+      }
+      if (t.matches('[data-calque-restituer]')) {
+        _restituerCalque(t.getAttribute("data-calque-restituer"));
+        return;
+      }
+      if (t.matches('[data-calque-exporter]')) {
+        _exporterCalque(t.getAttribute("data-calque-exporter"));
+        return;
+      }
       if (t.matches('[data-action="show-all"]') || t.matches('[data-action="hide-all"]')) {
         const wantShow = t.matches('[data-action="show-all"]');
         const setName  = t.getAttribute("data-set");
