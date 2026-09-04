@@ -1,8 +1,8 @@
 {
   "version": "v1.85.0",
-  "released": "2026-09-04",
+  "released": "2026-09-05",
   "notes": [
     "🔄 Tu peux enfin corriger un relevé importé sans quitter la carte. Dans 🔍 Filtres, chaque calque de données a un bouton « Rapatrier » : son contenu passe dans ta session, tu corriges directement à l’écran (changer un front de taille en galerie, par exemple), puis « Exporter » te rend un fichier corrigé à redonner au plan. Le calque d’origine se masque tout seul pour éviter les doublons, et « Restituer » annule tout.",
-    "🏷️ Les types de structures n’annoncent plus une couleur dans leur nom : tu la choisis toi-même dans la légende, la pastille la montre déjà."
+    "📍 En Vue OSM, un clic te donne les coordonnées GPS de la surface juste au-dessus du point choisi, prêtes à copier — de quoi guider une équipe qui arrive par le haut. Et l’outil de mesure, qui n’existait que sur l’aperçu de l’accueil, est maintenant aussi dans la Vue OSM d’un plan ouvert."
   ]
 }

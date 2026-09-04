@@ -1345,3 +1345,31 @@ fetch, zéro nouvelle permission).
 - ❌ Décider du format sur le MIME du fichier (un PNG peut être 100 % opaque → JPEG reste le bon choix poids).
 - ❌ Hardcoder une extension de tuile — TOUJOURS `ktaTileExt(manifest)`.
 - ❌ Migrer les plans V2 legacy au runtime — le fond est cuit dans leurs JPEG, seule la régénération (Modifier → recocher V2, baseImage du ZIP garde son alpha) le retire.
+
+---
+
+## 🧱 Tuilage V2 des plans SIG, et le ré-encodage qu'on ne faisait pour rien (v1.82.0)
+
+### Pourquoi un plan SIG est tuilé alors que son fond est un aplat
+
+La Vue OSM du **mode plan** (`osmView.js`) refuse tout plan non tuilé — pas par confort, pour une raison mesurée : avant la v1.39.10 elle chargeait l'image entière via `imageOverlay.rotated`, ce qui **saturait le GPU d'un iPhone**. Un plan issu d'un SIG est pourtant le meilleur candidat qui soit pour cet écran, son géoréférencement étant **calculé** et non saisi à la main. `sigImport.js > genererZipMyktamap` réutilise donc `_genererTuilesV2` du Générateur plutôt que d'écrire un second tuileur.
+
+**Dégradation assumée** : si le tuilage échoue, le plan sort en **V1** avec un `console.warn` — mieux vaut un plan utilisable en mode carte qu'aucun plan. L'utilisateur pourra le re-tuiler via « Modifier un plan ».
+
+### 10,4 s → 0,8 s : ne pas ré-encoder ce qui est identique
+
+Le fond d'un plan SIG est un **aplat uni** (`genererCanvasVierge`) : toutes ses tuiles pleines sont **le même octet**. Le tuileur les ré-encodait pourtant une par une. Le 4ᵉ paramètre de `_genererTuilesV2` dit « fond uni » et fait réutiliser l'encodage — **10,4 s → 0,8 s** sur un canvas de 10 000 × 11 680.
+
+### Le plafond de SURFACE du canvas
+
+Deux problèmes de même cause : un canvas 10 000 × 11 680 = **117 Mpx ≈ 467 Mo de RGBA**, et le pipeline en tient **deux** (le canvas, puis l'image re-décodée pour le tuilage). Près d'un gigaoctet pour un aplat — selon la machine, `toBlob` rend `null` **sans un mot**. S'y ajoute le plafond d'iOS Safari, autour de **16,7 Mpx** : l'ancien réglage par défaut (4 000 × 4 672 = 18,7 Mpx) le dépassait déjà, donc l'import SIG rendait un fond **vide sur iPhone** dans sa configuration de sortie de boîte. `dimensionsCanvas` borne désormais la surface et **prévient** au lieu de rogner en silence.
+
+---
+
+## 🏗️ « Afficher tous les niveaux au lancement » (v1.82.1)
+
+Le défaut de la v1.10.0 ouvrait un plan sur les **trois niveaux centraux** — tenable à trois ou quatre étages, absurde sur un relevé importé qui en porte **six ou sept** : la carte s'ouvrait sur une fraction du travail sans que rien n'indique que le reste existait.
+
+Case dans les réglages de performance du HOME, **cochée par défaut**. 🩸 Elle est rangée là parce que c'est un arbitrage de charge, mais **volontairement HORS du méta-bouton ULTRA** : afficher plus n'est pas optimiser, et « activer toutes les optimisations » ne doit jamais alourdir l'app.
+
+⚠️ Les niveaux **découverts** dans un calque de données (après le calcul initial) deviennent visibles eux aussi — sans quoi l'option n'aurait rien changé là où elle sert le plus.

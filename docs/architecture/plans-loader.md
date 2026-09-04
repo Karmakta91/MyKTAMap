@@ -519,3 +519,21 @@ Cf `perf-memory.md §88` pour le contexte du sprint Pack RAM et la mesure d'impa
 - ⚠️ **Plus aucun élément du form ne doit être révélé « au chargement de quelque chose »** : en wizard, un élément caché au moment où l'user est sur sa page est un élément JAMAIS VU (piège vécu : la checkbox V2, révélée à l'upload de l'image, se ratait — rendue toujours visible en v1.72.1). Un état non-applicable se montre grisé/inerte, pas caché.
 
 **LS** : `myktamap_planner_wizard_v1` (« 0 » = tout afficher).
+
+---
+
+## 📏 L'échelle d'un plan importé se DÉDUIT du géoréférencement (v1.82.0)
+
+**Le bug** : `sigImport.js` et `gpxImport.js` écrivaient `tracking.scale = 50` **en dur** dans le plan-config. Sur `Citon_Graves_RD` — 4 000 px pour 1 199 m de terrain — la vraie valeur est **3,34 px/m** : un **facteur 15**. Toute distance affichée sur un plan importé était fausse dans cette proportion, et la mesure de KARMA annonçait 480 m pour 1 644 m réels.
+
+**La correction ne calcule rien de neuf** : `KmzExport.buildTransform` retournait déjà `metresParPixel`, dont l'échelle est exactement l'inverse.
+
+```js
+scale: (transform && transform.metresParPixel > 0)
+       ? Math.round((1 / transform.metresParPixel) * 1000) / 1000
+       : 50
+```
+
+⚠️ **Un plan généré AVANT la v1.82.0 garde son échelle fausse** : elle est écrite dans son ZIP. Il faut le **régénérer** depuis le fichier source — l'app ne peut pas la corriger après coup, elle ne sait pas quelle emprise a servi.
+
+🩸 **Le repli à 50 est conservé** et c'est volontaire : sans transform utilisable, une valeur arbitraire assumée vaut mieux qu'un `NaN` qui se propagerait silencieusement dans toutes les distances.

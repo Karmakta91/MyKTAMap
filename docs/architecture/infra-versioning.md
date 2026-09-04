@@ -578,7 +578,9 @@ documentées ici pour la doctrine.
 
 ---
 
-### 83. Suite de garde-fous pré-commit — état au 01/09/2026
+### 83. Suite de garde-fous pré-commit — état au 05/09/2026
+
+> ⚠️ **La table ci-dessous a compté 14 lignes pendant que le hook en câblait 22** — exactement le défaut que ce fichier existe pour éviter. Les **dix** manquants, tous BLOQUANTS, dans l'ordre où ils ont été ajoutés : `check-profile-histpdf` (transport des PDF du Mode Histoire), `check-icon-catalog` (une seule source pour les tags built-in), `check-lambert93` (la projection confrontée à ses propriétés définitoires, sans table recopiée), `check-constantes-orphelines` (une constante utilisée mais supprimée — le PDF est resté cassé un mois), `check-map-listeners` (une garde anti-doublon posée ailleurs que sur la map, qui a mordu deux fois), `check-tracking-defaults` (le seuil de podomètre recopié à une valeur impossible), `check-osm-etiquettes` (regroupement insensible à la casse, clic asymétrique), `check-calque-session` (le verrou sans sa copie, l'effacement qui rend le calque), `check-osm-outils` (symétrie des deux vues OSM, exclusion mutuelle des outils), `check-release-docs` (le guard `commit-msg`, hors pre-commit). **Total réel : 24.**
 
 `node -c` (syntaxe) est le SEUL filet natif du projet — chaque garde-fou ci-dessous est né d'un bug réel qui l'avait traversé. Tous branchés dans `.githooks/pre-commit`, **BLOQUANTS** sauf mention :
 

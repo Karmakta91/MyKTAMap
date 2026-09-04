@@ -636,7 +636,12 @@ const AIDE_SECTIONS = [
   "menu-tracker", "replay-tracker", "enregistrer", "tracker",
   "mode-secours", "mesure", "edition-points", "structures",
   "traces", "zones", "optimiser-plan", "code-acces",
-  "astuces", "depannage", "liaisons-inter-plan", "carnet"
+  "astuces", "depannage", "liaisons-inter-plan", "carnet",
+  // 🌍 v1.85.0 — la Vue OSM n’avait AUCUNE fiche : six fonctions y
+  // vivaient sans foyer documentaire (mesure, coordonnees de surface,
+  // plans par etiquette, couleurs personnalisees, travail de session,
+  // ecart de calage). Un ecran entier absent de l’aide.
+  "vue-osm"
 ];
 
 // 🩸 4ᵉ DÉFAUT DU MÉCANISME D'INDEX, découvert en migrant (01/09/2026) :
@@ -651,7 +656,7 @@ const AIDE_CATEGORIES = [
   { cle: "prise-en-main",    slugs: ["aide-doc-legende", "code-acces", "astuces"] },
   { cle: "outils-carte",     slugs: ["mesure", "structures", "traces", "edition-points", "tracker",
                                      "enregistrer", "legende", "menu-tracker", "sortie-urgence",
-                                     "depannage", "liaisons-inter-plan"] },
+                                     "depannage", "liaisons-inter-plan", "vue-osm"] },
   { cle: "donnees-session",  slugs: ["replay-tracker", "charger-import", "bibliotheque-plans", "profil",
                                      "favoris", "batterie", "inspecteur-memoire", "histoire",
                                      "zones", "import-sig", "carnet"] },

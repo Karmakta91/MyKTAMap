@@ -1388,3 +1388,15 @@ Pas de capture canvas Leaflet (`html2canvas` non dispo dans `lib/`) — choix MV
 - **Multi-entrée_plan** : actuellement 0..N tags `entree_plan` possibles. Si KARMA veut limiter à 1 (= entrée principale unique), ajouter validation côté éditeur POI + warning si double tag.
 
 ---
+
+---
+
+## 📉 La fiche dit la PROFONDEUR, pas seulement le niveau (v1.83.0)
+
+**Pourquoi ça compte ici plus qu'ailleurs** : un numéro de niveau (« -2 ») est une **coordonnée interne** à l'app. Une profondeur (« -35 m ») dit **combien de corde et quelle équipe**. C'est une information opérationnelle, pas un détail d'affichage.
+
+Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « -2 » devient « **-2 · -35 m** » — dans le relevé texte, dans le PDF et sur les cartes de scénario.
+
+🩸 **Branché sur `_formatLevelShort`, source UNIQUE des trois sorties.** L'écrire trois fois aurait garanti qu'une des trois dérive — c'est le défaut que ce dépôt a déjà payé sur les tables de styles et sur le catalogue d'icônes.
+
+⚠️ Un plan **sans profondeurs** affiche le niveau seul, exactement comme avant : rien n'est inventé.
