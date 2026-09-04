@@ -215,10 +215,10 @@ Al arrancar, la aplicación muestra una **pantalla de inicio** que reúne:
 
 > 🔄 **Reimportar un plano que has regenerado (desde v1.73.1)** — si el ZIP que importas lleva el **mismo nombre y el mismo autor** que un plano ya presente en tu lista pero una **versión diferente**, la app te pregunta en lugar de acumular un duplicado:
 > - **🔄 Actualizar** — la entrada existente se reemplaza (nombre, versión, tamaño, archivo memorizado). Tu **sesión, tus notas y tus enlaces entre planos se conservan**. Las fotos solo se reemplazan si el nuevo ZIP contiene alguna.
-> - **➕ Conservar ambos** — comportamiento anterior: las dos versiones conviven en la lista.
+> - **➕ Conservar ambos** — las dos versiones conviven en la lista.
 > - **Cancelar** (o ✕ / Esc / clic fuera) — no se toca nada. Es siempre la opción por defecto: nunca hay sobrescritura accidental.
 >
-> A tener en cuenta: si el ZIP tiene **exactamente el mismo nombre Y la misma versión**, actualiza la entrada existente sin preguntar nada (es el comportamiento histórico). Tampoco hay pregunta para los planos de servidor ni cuando vuelves a seleccionar el archivo de un plano concreto desde tu lista.
+> A tener en cuenta: si el ZIP tiene **exactamente el mismo nombre Y la misma versión**, actualiza la entrada existente sin preguntar nada. Tampoco hay pregunta para los planos de servidor ni cuando vuelves a seleccionar el archivo de un plano concreto desde tu lista.
 
 ### 🗺️ Convertir un archivo SIG (QGIS…) en plano — desde v1.75.0
 
@@ -256,7 +256,7 @@ Un **panel de perfil** se muestra en la parte superior de la pantalla de inicio,
 
 **Lo que ves en el panel**:
 
-- **Avatar**: foto personal (cuadrada, ~64 px) O inicial coloreada autogenerada si no hay foto. El color de la inicial se elige de forma determinista (mediante hash djb2 del apodo) dentro de una paleta de 10 colores de la línea gráfica — tu avatar se mantiene, por tanto, visualmente estable de una sesión a otra mientras no cambies de apodo.
+- **Avatar**: foto personal (cuadrada, ~64 px) O inicial coloreada autogenerada si no hay foto. El color de la inicial se elige de forma determinista dentro de una paleta de 10 colores de la línea gráfica — tu avatar se mantiene, por tanto, visualmente estable de una sesión a otra mientras no cambies de apodo.
 - **Apodo**: tu alias (modificable). Por defecto, «Cataphile» en el primer arranque.
 - **🏅 Rango**: una **insignia** (de *Turista* a *Gran Maestro*) calculada según tu **tiempo de uso** de la app, el **número de planos** explorados y los **km de galería** cartografiados. Se materializa en un **anillo de color** alrededor de la foto + una **medalla** en la esquina + el **nombre del rango bajo tu alias**. El detalle (las 3 métricas + el progreso «Faltan X para el siguiente rango» + una puntuación) está en la ficha de perfil. *(100 % local y lúdico — no desbloquea nada, es solo por gusto.)*
 - **🏆 Logros**: **38 logros** por desbloquear. **8 familias × 4 niveles** (🥉🥈🥇👑) — *Cartógrafo* (planos), *Topógrafo* (planos georreferenciados), *Caminante de las profundidades* (km), *Rata de sótano* (tiempo), *Puntilloso* (POI), *Trazador* (trazados), *Zonificador* (zonas), *Constructor* (estructuras) — **+ 6 «🎉 Especiales» de una sola vez**: *Todoterreno* (un poco de todo), *Centurión* (puntuación ≥ 100), *Topo* (has usado el rastreador), *Espeleólogo multinivel*, *Maratón subterráneo* (sesión de rastreador > 4 h), *Completista* (todo lo demás). Un **aviso emergente** te informa al desbloquear, y la cuadrícula **N/38** está en la ficha de perfil. También puedes mostrar tu **puntuación** y tu **número de logros** en las estadísticas del panel de inicio (sección 🎨 *Estadísticas del panel*).
@@ -288,7 +288,7 @@ Clic en el panel de perfil → ventana **👤 Mi perfil**:
 
 - **✏️ Apodo**: escribe lo que quieras (letras / cifras / espacio). Sirve únicamente para personalizar la visualización local.
 - **📷 Foto**: elige una imagen de tu galería. La app la **comprime automáticamente** (512 px como máximo en el lado largo, JPEG calidad 88 %) antes de guardarla en IndexedDB, para no saturar tu cuota del navegador.
-- **🗑️ Reiniciar perfil**: botón de puesta a cero (ventana de confirmación con la línea gráfica — no un `confirm()` nativo del sistema). Vacía el apodo + la foto + los contadores.
+- **🗑️ Reiniciar perfil**: botón de puesta a cero (con confirmación). Vacía el apodo + la foto + los contadores.
 
 #### 📊 Cuadrícula de estadísticas
 
@@ -299,7 +299,7 @@ La ventana de Perfil muestra **6 celdas de estadísticas globales**:
 | 🗂️ **N planos** | Número de planos en tu registro (servidor + locales) |
 | 💾 **N sesiones** | Número total de sesiones guardadas (espacios por plano) |
 | ⭐ **N favoritos** | Número acumulado de puntos marcados como favoritos, en todos los planos |
-| 📦 **N copias** | Número de copias de seguridad de sesión en IndexedDB (máx. 10 FIFO **por plano** desde v1.79.3 — antes: 10 para todos los planos juntos, un plano activo purgaba el historial de los demás) |
+| 📦 **N copias** | Número de copias de seguridad de sesión en IndexedDB (máx. 10 **por plano** — por encima, los más antiguos se eliminan) |
 | 📸 **N fotos POI** | Número de fotos adjuntas a puntos + tamaño total |
 | 💾 **N MB de almacenamiento** | **Tamaño real de los datos de MyKTAMap** (localStorage con prefijo MyKTAMap + 6 almacenes IndexedDB conocidos). Excluye la caché PWA volátil (que no es un dato de usuario). |
 
@@ -396,11 +396,11 @@ Si el autor te ha entregado un archivo **`Licence-pro.json`** (por correo, canal
 - **Si hay una licencia local activa**: un botón **🗑️ Retirar la licencia local** permite volver al modo comunitario. La licencia sigue disponible en el archivo original por si quieres reimportarla más tarde.
 - **Si hay una licencia de servidor activa** (instancia desplegada por un administrador con `Licence-pro.json` en la raíz del servidor): solo insignia ✓, sin botón — es el administrador del servidor quien decide.
 
-**Formato del archivo**: JSON mínimo `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. Si el hash falta o está mal formado (expresión regular estricta `MKTM-LIC-` + 32 caracteres hexadecimales), el archivo se rechaza con un mensaje de error.
+**Formato del archivo**: JSON mínimo `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. Si el hash falta o está mal formado (formato estricto `MKTM-LIC-` + 32 caracteres hexadecimales), el archivo se rechaza con un mensaje de error.
 
 **🆕 Vía de acceso en la primera carga**: si instalas MyKTAMap por primera vez en un dispositivo nuevo (= pantalla de introducción del **código comunitario** al arrancar), bajo el formulario del código encontrarás ahora un segundo bloque separado por «o» con un botón **📂 Importar mi licencia pro**. Al pulsarlo, selector de archivos `.json` → seleccionas tu archivo → si todo es correcto, la app entra **directamente en modo pro** (sin necesidad de introducir el código comunitario). Práctico para los usuarios pro que descubren la app: no hace falta pedir el código comunitario a un tercero, la licencia pro es de por sí un canal de acceso legítimo.
 
-> 🔒 **100 % local**: el archivo de licencia lo lee el navegador mediante `FileReader` y después se guarda en `localStorage`. **Nunca se envía a un servidor**, nunca se transmite. No se añade ninguna conexión de red.
+> 🔒 **100 % local**: el archivo de licencia lo lee el navegador y después se guarda en tu almacenamiento local. **Nunca se envía a un servidor**, nunca se transmite. No se añade ninguna conexión de red.
 
 > ⚖️ **Valor jurídico**: el hash `MKTM-LIC-...` que figura en el archivo es **nominativo** — vinculado a un contrato concreto entre el autor y el titular de la licencia. **Su reproducción o su difusión a un tercero no autorizado constituye una infracción contractual** (el autor puede hacer valer sus derechos). El mecanismo del lado del navegador es cosmético: no verifica criptográficamente el hash, es la firma del contrato la que da fe.
 
@@ -509,7 +509,7 @@ En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del
 6. **📚 Planos de servidor** — casilla **«🚫 No cargar los planos de servidor al arrancar»**:
    - **Desactiva el descubrimiento automático** del archivo `data/index.json` al arrancar la app — la app deja de interrogar al servidor para listar los planos de demostración o los planos públicos alojados.
    - **Oculta el interruptor «🌐 Mostrar planos de servidor»** de la pantalla de inicio (deja de ser útil, puesto que ya no hay nada que mostrar).
-   - **Excluye los planos `type === "server"` de las estadísticas agregadas** de la ventana de Perfil → deja de falsear el recuento «Planos visitados» con planos que nunca usas.
+   - **Excluye los planos de servidor de las estadísticas agregadas** de la ventana de Perfil → deja de falsear el recuento «Planos visitados» con planos que nunca usas.
    - **Requiere recargar** para surtir pleno efecto (el descubrimiento automático se hace en el splash, no durante la sesión).
    - **Desactivado por defecto** (retrocompatibilidad absoluta — la app sigue descubriendo automáticamente los planos de servidor mientras no marques explícitamente esta casilla).
 
@@ -630,7 +630,7 @@ En concreto: sales de **A**, pasas por **C** y luego llegas a **B** → la app c
 
 **📖 La pestaña Relatos — tus notas y PDF de plano, por fin reunidos**
 
-El **Modo Historia** (nota libre + PDF) estaba hasta ahora encerrado en la pantalla de un plano: para releer tus notas sobre una cantera, había que cargar la cantera. La segunda pestaña del cuaderno, **📖 Relatos**, las reúne **todas, de todos los planos, sin cargar nada**:
+El **Modo Historia** (nota libre + PDF) vive en la pantalla de un plano: para releer tus notas sobre una cantera, hay que cargar la cantera. La segunda pestaña del cuaderno, **📖 Relatos**, las reúne **todas, de todos los planos, sin cargar nada**:
 
 - la lista muestra cada plano que tenga una nota o un PDF, con un extracto de la nota;
 - abrir una ficha muestra la nota **con formato** (Markdown) y permite **modificarla in situ** — es exactamente la misma nota que la del Modo Historia del plano, no una copia;
@@ -641,7 +641,7 @@ El **Modo Historia** (nota libre + PDF) estaba hasta ahora encerrado en la panta
 - El cuaderno **empieza vacío**: no puede reconstruir las salidas anteriores a su llegada, nunca se registraron como tales.
 - Todo es **estrictamente local** en tu dispositivo (ningún envío, ninguna cuenta). Cada salida puede eliminarse individualmente desde su ficha.
 - Por encima de **500 salidas**, las más antiguas se borran automáticamente.
-- El cuaderno **está incluido en la exportación de perfil** desde v1.74.0 (esta documentación afirmaba lo contrario — corregido el 09/08/2026): cambiar de dispositivo mediante la exportación de perfil transporta tu historial de salidas.
+- El cuaderno **está incluido en la exportación de perfil** desde v1.74.0: cambiar de dispositivo mediante la exportación de perfil transporta tu historial de salidas.
 
 ### 🧙 Generador: asistente paso a paso (desde v1.72.1)
 
@@ -808,7 +808,7 @@ Ahora puedes guardar **hasta 10 documentos PDF por plano** (antes: uno solo, y u
 - Aparece una **lista de documentos** sobre el visor en cuanto hay varios; pulsa un documento para abrirlo.
 - **📥 Importar** añade un documento (ya no reemplaza nada). **🗑️ Retirar** elimina el que se está mostrando.
 - El autor del plano puede incluir PDF en el ZIP — **varios desde v1.71.0** (el Generador acepta ahora una lista de archivos): aparecen al principio de la lista (📕), consultables y no eliminables (solo el generador puede cambiarlos). **Novedad**: su presencia ya no te impide añadir tus propios documentos — antes, la importación quedaba oculta en esos planos.
-- Salvaguardas: **10 documentos como máximo** por plano, advertencia por encima de **25 MB** acumulados, rechazo por encima de **100 MB**. El espacio ocupado aparece ahora en **Almacenamiento** (hasta ahora era invisible).
+- Salvaguardas: **10 documentos como máximo** por plano, advertencia por encima de **25 MB** acumulados, rechazo por encima de **100 MB**. El espacio ocupado aparece en **Almacenamiento**.
 - En iPhone, un botón **↗️ Abrir en una pestaña** saca el documento a pantalla completa nativa si la visualización integrada no está disponible.
 - Tus documentos también se enumeran, se añaden y se eliminan desde **📔 Mi cuaderno → 📖 Relatos**, sin cargar el plano.
 
@@ -1308,7 +1308,7 @@ El botón **≡ de tres barras horizontales** de arriba a la derecha del mapa ab
 
 **Cómo funciona:**
 
-- **Actualización en vivo**: cada interruptor (casilla marcada o desmarcada) aplica el filtro **inmediatamente** sobre el mapa (con un retardo antiparpadeo de 200 ms para los planos densos).
+- **Actualización en vivo**: cada interruptor (casilla marcada o desmarcada) aplica el filtro **inmediatamente** sobre el mapa.
 - **Secciones plegables**: pulsa el encabezado de una sección para plegarla o desplegarla. Todas abiertas por defecto.
 - **Botones rápidos por sección**: `👁️ Todo` y `🚫 Ninguno` para cambiar todos los elementos de una vez.
 - **Botón 🔄 Mostrar todo** (pie): reinicia todos los filtros de ejecución (etiquetas + tipos) a su estado neutro (= todo visible). NO toca los interruptores multinivel ni las capas de imagen/datos — cada uno se mantiene independiente.
@@ -1316,7 +1316,7 @@ El botón **≡ de tres barras horizontales** de arriba a la derecha del mapa ab
 
 **Persistencia por plano**:
 
-Los filtros de etiquetas + tipos se **guardan en la sesión del plano** (`SessionPersist`). Si activas «ocultar los pozos» en el plano A, luego cambias al plano B y después vuelves al A → tus filtros se **restauran automáticamente**. Cada plano tiene sus propios filtros.
+Los filtros de etiquetas + tipos se **guardan en la sesión del plano**. Si activas «ocultar los pozos» en el plano A, luego cambias al plano B y después vuelves al A → tus filtros se **restauran automáticamente**. Cada plano tiene sus propios filtros.
 
 **Sincronización multinivel bidireccional**:
 
@@ -1545,7 +1545,7 @@ Botón 🚨 del grupo **🧭 Rastreador** (panel de emergencias), junto a ⛑️
 
 #### Flujo de trabajo
 
-1. **Lista de escenarios** — Ves todos los escenarios guardados para este plano (máx. 10, FIFO).
+1. **Lista de escenarios** — Ves todos los escenarios guardados para este plano (máx. 10, los más antiguos se eliminan).
 2. **➕ Nuevo escenario** — Asistente ligero: Nombre + Notas de contexto + Hora del incidente.
 3. **Edición libre** — 3 secciones plegables:
    - **📝 Contexto**: nombre, hora del incidente, notas (p. ej. «Marc salió sobre las 14 h para comprobar la galería Este…»)
@@ -1606,16 +1606,16 @@ Un escenario puede ahora **secuenciar varias fases** con un debriefing intercala
 **✓ Terminar una fase + debriefing (solo Operador)**:
 
 1. Durante la fase activa, el pie de la vista en directo del operador muestra un nuevo botón **«✓ Fase terminada»** en ámbar (visible solo si hay varias fases)
-2. **Detección automática**: en cuanto **todos los equipos participantes han marcado su etapa de Salida como `completedAt`**, el botón pasa a **verde pulsante** + un aviso asistente te informa («✅ Todos los equipos han salido — la fase está lista para cerrarse»). El operador conserva la decisión final.
+2. **Detección automática**: en cuanto **todos los equipos participantes han marcado su etapa de Salida como terminada**, el botón pasa a **verde pulsante** + un aviso asistente te informa («✅ Todos los equipos han salido — la fase está lista para cerrarse»). El operador conserva la decisión final.
 3. **Clic en «✓ Fase terminada»** → ventana de debriefing: área de texto libre (5000 caracteres máx.) para anotar las conclusiones de la fase (equipos que han vuelto, puntos encontrados, zonas a explorar con prioridad, restricciones que han aparecido). Este debriefing se intercalará en el informe final entre las secciones de cada fase.
-4. **Valida «✓ Terminar la fase»** → la fase actual se **archiva** (clonación profunda, nunca se sobrescribe, historial preservado) + se registra `phase.endedAt`
+4. **Valida «✓ Terminar la fase»** → la fase actual se **archiva** (nunca se sobrescribe, historial preservado)
 5. **Si existe una fase siguiente** → encadenamiento automático con la ventana **«🚀 ¿Iniciar la fase X+1?»** con un resumen de los equipos participantes
 6. **Confirmas** → la nueva fase empieza y las etapas de los equipos participantes se **reconstruyen a partir de su recorrido ACTUAL** (así que si has modificado la `entrada/salida/intermedios` de un equipo entre F1 y F2, las nuevas etapas lo tienen en cuenta)
-7. **Si no hay fase siguiente** → `confirm()` nativo «¿Detener el plan por completo?» (equivalente a ⏹️ Terminar el plan)
+7. **Si no hay fase siguiente** → una confirmación «¿Detener el plan por completo?» (equivalente a ⏹️ Terminar el plan)
 
 **🔍 Salvaguardas del historial**:
 
-- `terminerPhase` **NUNCA** elimina etapas — las archiva en `s.execution.etapesArchive[phaseIdx]` mediante clonación profunda
+- Cerrar una fase **NUNCA** elimina etapas — se archivan tal cual
 - Una fase ya iniciada no puede eliminarse desde la interfaz (red de seguridad)
 - Una fase activa en la ejecución no puede eliminarse (pasa antes por «✓ Fase terminada»)
 - El aviso de detección automática no se repite (una sola vez por fase)
@@ -1749,7 +1749,7 @@ Nuevo botón **🚒 Briefing para bomberos** en todas las barras del Modo Rescat
 
 El informe PDF posmisión (generado con el botón 📤 Informe) incluye ahora una nueva página «BRIEFING DE SUPERFICIE» con la misma información. Útil para el debriefing geográfico con los bomberos o para archivar el expediente de intervención.
 
-#### 🏷️ Filtro de etiquetas de la Vista OSM corregido
+#### 🏷️ Filtro de etiquetas de la Vista OSM
 
 Las fichas de filtro por etiqueta de la ventana de Vista OSM enumeran **todas las etiquetas presentes** en el plano, en línea con el widget de Vista OSM de la pantalla de inicio.
 
@@ -1885,7 +1885,7 @@ Para el rescatador sobre el terreno que sigue su recorrido:
 | 🟣 | Media vuelta forzada | Recorrido abandonado, regreso anticipado |
 | 🚨 | **Víctima encontrada** | **Urgencia absoluta** — dispara una señal roja intermitente en el puesto de mando |
 
-**Fotos**: pulsa «📸 Foto (X/5)» → cámara trasera automática en móvil (`capture="environment"`) O galería. Máximo 5 fotos por etapa, compresión automática JPEG q85 con un máximo de 1920 px. Pulsa una miniatura → visor a pantalla completa con deslizamiento y zoom.
+**Fotos**: pulsa «📸 Foto (X/5)» → cámara trasera automática en móvil O galería. Máximo 5 fotos por etapa, compresión automática JPEG q85 con un máximo de 1920 px. Pulsa una miniatura → visor a pantalla completa con deslizamiento y zoom.
 
 **Guardado automático**: las observaciones se guardan al salir del área de texto Y al cambiar de etapa. No hace falta ningún botón de «Guardar».
 
@@ -1928,7 +1928,7 @@ Para el puesto de mando que coordina varios equipos en paralelo:
 
 **Botón «🚨 Tomar el mando»** → cambia a la vista de Miembro de equipo centrada en ese equipo concreto. Te conviertes TEMPORALMENTE en el miembro de Alfa para introducir una observación detallada en su lugar (caso típico: estás en el puesto de mando pero recibes una llamada por radio de Alfa que te dicta sus observaciones).
 
-**Vuelta fácil**: una vez en modo Miembro de equipo tras «Tomar el mando», aparece un botón **«👤 Volver a Operador»** en el pie. Al pulsarlo → vuelta a la visión de conjunto del Operador intacta (las marcas `_previousRole` sobreviven a la recarga y al cambio de plano).
+**Vuelta fácil**: una vez en modo Miembro de equipo tras «Tomar el mando», aparece un botón **«👤 Volver a Operador»** en el pie. Al pulsarlo → vuelta a la visión de conjunto del Operador intacta (la vuelta sigue siendo posible tras una recarga o un cambio de plano).
 
 **Botón «🗺️ Ver mapa global»**: oculta la ventana y dibuja la superposición del mapa con todas las zonas + puntos de paso + itinerarios de los equipos en colores OTAN.
 
@@ -1989,7 +1989,7 @@ En cualquier momento durante la ejecución Y tras la detención del plan, puedes
 
 #### ⏱️ Cronómetro global con pausa justa
 
-El cronómetro ⏱️ que aparece en la parte superior de cada vista en directo se calcula desde el `startedAt` MENOS el tiempo de pausa acumulado. Puedes pausar con el botón **«⏸️ Pausa»** (el cronómetro se congela) y luego reanudar con **«▶️ Reanudar»** — la duración de la pausa NO se contabiliza.
+El cronómetro ⏱️ que aparece en la parte superior de cada vista en directo se calcula desde el inicio MENOS el tiempo de pausa acumulado. Puedes pausar con el botón **«⏸️ Pausa»** (el cronómetro se congela) y luego reanudar con **«▶️ Reanudar»** — la duración de la pausa NO se contabiliza.
 
 **Redibujado 1×/segundo** sin parpadeo visual y sin pérdida de foco en el área de texto de observaciones que estés escribiendo. Permite mantener el informe en tiempo real preciso durante misiones largas (de horas).
 
@@ -2104,7 +2104,7 @@ Cada acción dispara un **aviso discreto** en la parte inferior: `↩ Deshecho: 
 ### Lo que NO está cubierto
 
 - ❌ **Fotos** adjuntas a los puntos: su eliminación sigue siendo **irreversible** (los blobs se borran de la base IndexedDB local y no se pueden restaurar)
-- ❌ **Importaciones de sesión**: una importación que sobrescribe tu sesión no se puede deshacer con Ctrl+Z (usa el guardado automático de SessionPersist para recuperarla)
+- ❌ **Importaciones de sesión**: una importación que sobrescribe tu sesión no se puede deshacer con Ctrl+Z (usa el guardado automático de sesión para recuperarla)
 - ❌ **Rastreador** (modo de sensores en tiempo real)
 - ❌ **Medición de distancia** (= herramienta efímera, no una modificación persistente)
 
@@ -2112,7 +2112,7 @@ Cada acción dispara un **aviso discreto** en la parte inferior: `↩ Deshecho: 
 
 - **Solo en memoria**: el historial se guarda únicamente en memoria RAM y **se pierde al recargar** la página (es intencionado, para no hinchar el almacenamiento local).
 - **Reinicio al cambiar de plano**: si cargas otro plano, el historial se vacía (lógico: no querrás deshacer una acción hecha en otro plano).
-- **Límite de 50 acciones**: por encima, las más antiguas se olvidan (FIFO).
+- **Límite de 50 acciones**: por encima, las más antiguas se olvidan.
 - **Una acción nueva borra el rehacer**: si haces 5 deshacer y luego colocas un punto nuevo, rehacer deja de ser posible (lógica de rama de historial).
 
 ---
@@ -2200,7 +2200,7 @@ Práctico para hacer balance de la sesión con tu compañero a la salida, o para
 3. El área se muestra abajo a la izquierda, en m² (`⬛ Superficie: X m²`)
 4. Por encima de 10 000 m², la app pasa automáticamente a hectáreas (ha)
 
-> **Cómo funciona**: la app aplica la fórmula del cordón de zapato (Shoelace) a las coordenadas del plano y convierte a m² mediante la escala calibrada del plano (`APP_CONFIG.scale` en px/m). La precisión depende, por tanto, del calibrado inicial del plano (`📏 ESCALA` en ⚙️ Ajustes).
+> **Cómo funciona**: la app convierte la superficie a m² mediante la escala calibrada del plano. La precisión depende, por tanto, del calibrado inicial del plano (`📏 ESCALA` en ⚙️ Ajustes).
 
 ### ❌ Borrar la medición
 
@@ -2627,7 +2627,7 @@ Selección precisa de lo que quieres exportar:
 - 🛣️ **Trazados** + casillas por tipo (principales, secundarios, caminos)
 - ⬛ **Zonas** + casillas por tipo (agua, escombros, derrumbe, inaccesible)
 - 🏛️ **Estructuras** + casillas por tipo (pilares / muros / frentes)
-- 🧭 **Rastreador** *(opcional)* — si se marca, la casilla muestra en tiempo real un contador: *«línea de tiempo N eventos · recorrido M pts»*. Al exportar incluye: posición actual + camino recorrido + línea de tiempo completa + marca de tiempo de inicio. La reimportación lo restaura todo mediante `setTrackingTimeline` → tu repetición 🎬 funciona después de reimportar.
+- 🧭 **Rastreador** *(opcional)* — si se marca, la casilla muestra en tiempo real un contador: *«línea de tiempo N eventos · recorrido M pts»*. Al exportar incluye: posición actual + camino recorrido + línea de tiempo completa + marca de tiempo de inicio. La reimportación lo restaura todo → tu repetición 🎬 funciona después de reimportar.
 - 👤 **Identidad de usuario** — casilla dedicada para incluir tu **perfil** (apodo + foto + contadores). Útil para migrar tu identidad visual a otro dispositivo. Al importarlo, un aviso modal sugiere recargar para que el panel de perfil se actualice en toda la interfaz.
 
 **Formato de salida** a elegir:
@@ -2657,7 +2657,7 @@ Descarga directa si es un solo archivo, ZIP en caso contrario.
 - Una **vista previa** muestra los totales y te **avisa** si hay identificadores de puntos duplicados (los duplicados se conservan tal cual).
 - **Descarga** el resultado (un ZIP, o un `.json` directo si solo hay una categoría), listo para colocarlo en la carpeta de tu plano.
 
-Accesible **sin ningún plano abierto** desde la pantalla de inicio: **📊 Editor de datos → 🔗 Fusionar capas de datos** (antes era un botón aparte de la pantalla de inicio; se ha integrado en las fuentes del editor para aligerar la pantalla). **100 % local**, no se envía ningún dato.
+Accesible **sin ningún plano abierto** desde la pantalla de inicio: **📊 Editor de datos → 🔗 Fusionar capas de datos**. **100 % local**, no se envía ningún dato.
 
 ### 🖼️ Exportar a PNG/JPG
 
@@ -2709,8 +2709,8 @@ Pulsa **⬆️ → 📤 PDF imprimible**. Genera un PDF listo para imprimir con 
 Igual que en la exportación PNG avanzada, marcas exactamente lo que quieres incluir:
 
 - **📦 Anotaciones de sesión** — Puntos / Trazados / Zonas / Estructuras (contadores en tiempo real basados en tu sesión)
-- **🖼️ Imagen base y capas** — casilla «Imagen del plano base» + 1 casilla por cada `imageLayers[]` del plano (capas de imagen tipo leyenda, anotaciones fotográficas, etc.). El premarcado corresponde a la visibilidad actual en el mapa.
-- **📊 Capas de datos** — 1 casilla por cada `dataLayers[]` del plano (pozos, vehículos, caminos, estructuras incrustadas, etc.). La capa `editor` aparece con la etiqueta especial «Mis anotaciones (= capa de sesión)».
+- **🖼️ Imagen base y capas** — casilla «Imagen del plano base» + 1 casilla por cada capa de imagen del plano (capas de imagen tipo leyenda, anotaciones fotográficas, etc.). El premarcado corresponde a la visibilidad actual en el mapa.
+- **📊 Capas de datos** — 1 casilla por cada capa de datos del plano (pozos, vehículos, caminos, estructuras incrustadas, etc.). La capa de tus anotaciones aparece con la etiqueta especial «Mis anotaciones (= capa de sesión)».
 - **🎨 Maquetación** — casilla de Cabecera (título + metadatos arriba)
 - **📏 Calidad** — Estándar ×1 (por defecto, recomendada para A3/A4) · HD ×2 (archivo más pesado, recomendada para A0/A1) · Borrador ×0,5
 
@@ -3006,7 +3006,7 @@ La casilla 🧱 Convertir a V2 aparece en el formulario en cuanto has **cargado 
 
 #### 🎛️ Desactivar el teselado en la lectura (V2 → V1 en bruto)
 
-Al cargar un plano V2, puedes elegir **Modo de rendimiento: Desactivado** en la ventana **⚙️ Configuración** del cargador. En ese caso, la ejecución ignora las teselas y carga directamente la **imagen de origen** (`baseImage` del ZIP, conservada intacta) como un plano V1 clásico.
+Al cargar un plano V2, puedes elegir **Modo de rendimiento: Desactivado** en la ventana **⚙️ Configuración** del cargador. En ese caso, la ejecución ignora las teselas y carga directamente la **imagen de origen** del ZIP, conservada intacta, como un plano V1 clásico.
 
 Casos de uso:
 - Comparar el resultado V2 frente al V1 en el mismo plano
@@ -3101,7 +3101,7 @@ Al cargar un plano, puedes elegir entre 5 preajustes en el cargador:
 Si a pesar del modo Rendimiento tu plano sigue fallando (típicamente planos de más de 4000 × 2000 píxeles con muchos trazados), abre **⚙️ Ajustes → sección «🚀 Modo Rendimiento ULTRA»** y activa el **interruptor maestro 🚀 ULTRA**. Activa 6 optimizaciones agresivas de forma simultánea.
 
 > 🆕 **Tres cosas que debes saber**:
-> - **Ajuste POR PLANO**: marcar ULTRA aquí afecta ÚNICAMENTE al plano abierto. Tus demás planos ya no se ven afectados (antes, el ajuste era global y «arrastraba» silenciosamente a todos los planos). Tras la actualización, los planos que tenían ULTRA arrancan desactivados — vuelve a marcarlo en los que lo necesiten.
+> - **Ajuste POR PLANO**: marcar ULTRA aquí afecta ÚNICAMENTE al plano abierto. Tus demás planos no se ven afectados. Tras la actualización, los planos que tenían ULTRA arrancan desactivados — vuelve a marcarlo en los que lo necesiten.
 > - **Tus puntos de sesión son sagrados**: los POI que añades a mano (✏️) siguen **siempre visibles**, incluso con el recorte por ventana visible activo — solo se aligera la visualización de los miles de puntos de las capas de datos.
 > - **Mensaje al abrir**: cuando hay optimizaciones activas en un plano, un mensaje te lo recuerda al cargarlo — una visualización «aligerada» (trazados simplificados, ventanas emergentes de datos desactivadas…) no es un error.
 
@@ -3190,11 +3190,11 @@ Accede a los parámetros pulsando **⚙️**:
 
 ### 🧭 Seguimiento (específico del plano)
 - **Posición inicial del rastreador**: coordenadas de partida X/Y
-- **Detección de pasos**: sensibilidad (`stepThreshold`), tamaño del paso (`stepLength`), tiempo de espera antirrebote
+- **Detección de pasos**: sensibilidad, tamaño del paso, tiempo de espera antirrebote
 - **Escala (px/m)** con botón **🎯 Calibrar**: calcula la escala correcta a partir de una distancia medida
 
 ### 🔍 Visualización
-- **Iconos adaptativos al zoom** (`scaledMarkers`) — *preferencia global*: los iconos de los puntos (pozos, accesos, señalización, etc.) mantienen un tamaño constante en relación con el plano. Al alejar se encogen; al acercar, crecen. Requiere recargar al cambiarlo.
+- **Iconos adaptativos al zoom** — *preferencia global*: los iconos de los puntos (pozos, accesos, señalización, etc.) mantienen un tamaño constante en relación con el plano. Al alejar se encogen; al acercar, crecen. Requiere recargar al cambiarlo.
 - **⚪ Mostrar los círculos en los cruces de trazados (este plano)** — *ajuste por plano*: círculo relleno de color en el cruce de 2 trazados (verde × violeta → amarillo, etc.). Desmárcalo para despejar visualmente los planos muy densos, o si el cálculo ralentiza la visualización. **Efecto inmediato**, guardado por plano (otro plano conserva su propio ajuste).
 - **🧭 Calibración del Norte (este plano)** — *ajuste por plano*: útil cuando la PARTE SUPERIOR del plano **no es** el Norte verdadero (foto aérea con encuadre arbitrario, plano sin rosa de los vientos alineada). Campo de ángulo [0,360[ en grados o botón **📐 Calibrar (2 clics)** que abre un selector visual: pulsa primero el SUR del plano y después el NORTE, aparece una flecha discontinua Sur→Norte y el ángulo se calcula automáticamente. **Efecto**: la rotación del icono del rastreador y el sentido de la marcha se adaptan → el rastreador apunta en la dirección correcta RESPECTO AL PLANO. La brújula física 🧭 sigue apuntando al Norte magnético real (= el comportamiento esperado de una brújula). **Guardado por plano**, **efecto inmediato** sin recargar. Botón ↺ Reiniciar para volver al valor por defecto (0 = Norte hacia la parte superior del plano).
 
@@ -3385,7 +3385,7 @@ También puedes **fijar** una versión exacta en lugar de `latest`:
 - **Conflicto de puertos**: si ya tienes otro servicio en el `8443` del host, cambia el mapeo: `-p 9443:8443`, por ejemplo.
 - **Sin actualizaciones automáticas**: tú decides cuándo hacer `docker pull`. Para actualizaciones automáticas, mira [Watchtower](https://github.com/containrrr/watchtower).
 
-> 🔒 **Ningún dato se envía a ninguna parte**. La imagen incluye la app vanilla, exactamente igual que la versión oficial, pero servida desde tu propio equipo. Es incluso un poco más apta para el uso sin conexión que la versión de producción (sin la petición ocasional a `gstatic.com` para el ping de conectividad — el módulo `networkAudit.js` sigue activo si quieres comprobarlo).
+> 🔒 **Ningún dato se envía a ninguna parte**. La imagen incluye la app vanilla, exactamente igual que la versión oficial, pero servida desde tu propio equipo. Es incluso un poco más apta para el uso sin conexión que la versión de producción (sin la petición ocasional a `gstatic.com` para el ping de conectividad — la auditoría de red sigue activa si quieres comprobarlo).
 
 > 📖 **¿Nunca has usado Docker?** Existe una guía paso a paso dedicada: **[`docs/applications/DOCKER_INSTALL.md`](DOCKER_INSTALL.md)** — instalación de Docker Desktop (Windows/Mac/Linux), arranque del demonio, resolución de los errores más comunes (certificado autofirmado, conflictos de puertos, WSL 2), alternativas sin Docker.
 

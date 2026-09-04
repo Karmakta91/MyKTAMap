@@ -216,10 +216,10 @@ At startup, the application displays a **home screen** that groups together:
 
 > 🔄 **Re-importing a map you regenerated (since v1.73.1)** — if the ZIP you import has the **same name and same author** as a map already in your list but a **different version**, the app asks instead of stacking a duplicate:
 > - **🔄 Update** — the existing entry is replaced (name, version, size, stored archive). Your **session, notes and inter-map links are kept**. Photos are only replaced if the new ZIP contains some.
-> - **➕ Keep both** — previous behaviour: both versions live side by side in the list.
+> - **➕ Keep both** — both versions live side by side in the list.
 > - **Cancel** (or ✕ / Escape / click outside) — nothing is touched. This is always the default: no accidental overwrite.
 >
-> Good to know: a ZIP with **exactly the same name AND version** updates the existing entry without asking (historical behaviour). No question either for server maps, or when you re-select the file of a specific map from your list.
+> Good to know: a ZIP with **exactly the same name AND version** updates the existing entry without asking. No question either for server maps, or when you re-select the file of a specific map from your list.
 
 ### 🗺️ Convert a GIS file (QGIS…) into a map — since v1.75.0
 
@@ -257,7 +257,7 @@ A **profile banner** is displayed at the top of the home screen, just below the 
 
 **What you see on the banner**:
 
-- **Avatar**: personal photo (square, ~64 px) OR colored auto-generated initial if no photo. The color of the initial is chosen deterministically (via djb2 hash of the nickname) from a palette of 10 colors of the chart — your avatar therefore remains visually stable from one session to the next as long as you do not change your nickname.
+- **Avatar**: personal photo (square, ~64 px) OR colored auto-generated initial if no photo. The color of the initial is chosen deterministically from a palette of 10 colors of the chart — your avatar therefore remains visually stable from one session to the next as long as you do not change your nickname.
 - **Nickname**: your alias (editable). Default "Cataphile" on first launch.
 - **🏅 Rank**: a **badge** (from *Tourist* to *Grandmaster*) computed from your **time spent** in the app, the **number of maps** explored and the **km of gallery** mapped. It shows as a **colored ring** around the photo + a **medal** in the corner + the **rank name under your nickname**. The breakdown (the 3 metrics + progress "X left for the next rank" + a score) is in the profile card. *(100% local and fun — it unlocks nothing, it's just for the joy of it.)*
 - **🏆 Achievements**: **38 achievements** to unlock. **8 families × 4 tiers** (🥉🥈🥇👑) — *Cartographer* (maps), *Surveyor* (georeferenced maps), *Deep walker* (km), *Cellar rat* (time), *Pin master* (POIs), *Tracer* (paths), *Zoner* (zones), *Builder* (structures) — **+ 6 one-shot « 🎉 Special »**: *Jack of all trades*, *Centurion* (score ≥ 100), *Mole* (used the tracker), *Multi-level caver*, *Underground marathon* (tracker session > 4 h), *Completionist* (all the rest). A **toast** notifies you on unlock, the **N/38** grid lives in the profile card. You can also show your **score** and your **number of achievements** in the home banner stats (🎨 *Banner stats* section).
@@ -289,7 +289,7 @@ Click on the profile banner → **👤 My profile** modal:
 
 - **✏️ Nickname**: type whatever you want (letters / numbers / space). Used only to personalize local display.
 - **📷 Photo**: choose an image from your gallery. The app **automatically compresses it** (512 px max long side, JPEG quality 88%) before IndexedDB storage to avoid saturating your browser quota.
-- **🗑️ Reset profile**: reset button (chart confirmation modal — no native system `confirm()`). Empties nickname + photo + counters.
+- **🗑️ Reset profile**: reset button (with confirmation). Empties nickname + photo + counters.
 
 #### 📊 Stats grid
 
@@ -300,7 +300,7 @@ The Profile modal displays **6 global stats cells**:
 | 🗂️ **N maps** | Number of maps in your registry (server + local) |
 | 💾 **N sessions** | Total number of saved sessions (per-map slots) |
 | ⭐ **N favorites** | Cumulative number of points marked as favorites, across all maps |
-| 📦 **N snapshots** | Number of session backup snapshots in IndexedDB (max 10 FIFO **per map** since v1.79.3 — before: 10 across all maps, an active map purged the others' history) |
+| 📦 **N snapshots** | Number of session backup snapshots in IndexedDB (max 10 **per map** — beyond that, the oldest are dropped) |
 | 📸 **N POI photos** | Number of photos attached to points + total size |
 | 💾 **N MB save** | **Actual size of MyKTAMap data** (localStorage with MyKTAMap prefix + 6 known IndexedDB stores). Excluding volatile PWA Cache (which is not user data). |
 
@@ -398,11 +398,11 @@ If the author has provided you with a **`Licence-pro.json`** file (by mail, priv
 - **If a local license is active**: a **🗑️ Remove local license** button allows you to return to community mode. The license remains available in the original file if you want to re-import it later.
 - **If a server license is active** (instance deployed by an admin with `Licence-pro.json` at the server root): ✓ badge only, no button — it's the server administrator who decides.
 
-**File format**: minimum JSON `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. If the hash is missing or malformed (strict regex `MKTM-LIC-` + 32 hexadecimal characters), the file is refused with an error message.
+**File format**: minimum JSON `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. If the hash is missing or malformed (strict format `MKTM-LIC-` + 32 hexadecimal characters), the file is refused with an error message.
 
 **🆕 Access route on first load**: if you install MyKTAMap for the first time on a new device (= **community code** entry screen at boot), under the code form you will now find a second block separated by "or" with a **📂 Import my pro license** button. On click, `.json` file picker → you select your file → if OK the app enters **directly into pro mode** (no need to enter the community code). Useful for pro users discovering the app: no need to ask a third party for the community code, the pro license is a legitimate access channel in itself.
 
-> 🔒 **100% local**: the license file is read by the browser via `FileReader` then persisted in `localStorage`. It is **never sent to a server**, never transmitted. No network connection is added.
+> 🔒 **100% local**: the license file is read by the browser then kept in your local storage. It is **never sent to a server**, never transmitted. No network connection is added.
 
 > ⚖️ **Legal value**: the `MKTM-LIC-...` hash that appears in the file is **nominative** — linked to a specific contract between the author and the license holder. **Its reproduction or sharing with an unauthorized third party constitutes a contractual breach** (the author can enforce their rights). The browser-side mechanism remains cosmetic: it does not cryptographically verify the hash, the contract signature is what matters legally.
 
@@ -511,7 +511,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 6. **📚 Server maps** — **"🚫 Do not load server maps at startup"** checkbox:
    - **Disables auto-discovery** of the `data/index.json` file at app boot — the app will no longer query the server to list demo maps or public hosted maps.
    - **Hides the "🌐 Show server maps" toggle** of the home (becomes useless since there is nothing to show anymore).
-   - **Excludes `type === "server"` maps from aggregated stats** in the Profile modal → no longer skews the "Visited maps" count with maps you never use.
+   - **Excludes server maps from aggregated stats** in the Profile modal → no longer skews the "Visited maps" count with maps you never use.
    - **Reload required** for full effect (auto-discovery happens at splash, not during session).
    - **Default OFF** (absolute backward compatibility — the app continues to auto-discover server maps as long as you have not explicitly checked this box).
 
@@ -635,7 +635,7 @@ In practice: you start at **A**, pass through **C**, then reach **B** → the ap
 
 **📖 The Stories tab — your plan notes and PDFs, gathered at last**
 
-**Story mode** (free note + PDF) used to be locked inside a plan's screen: to re-read your notes about a quarry, you had to load that quarry. The logbook's second tab, **📖 Stories**, gathers them **across all plans, without loading anything**:
+**Story mode** (free note + PDF) lives inside a plan's screen: to re-read your notes about a quarry, you have to load that quarry. The logbook's second tab, **📖 Stories**, gathers them **across all plans, without loading anything**:
 
 - the list shows every plan that has a note or a PDF, with an excerpt of the note;
 - opening a sheet shows the note **formatted** (Markdown) and lets you **edit it right there** — it is the very same note as in the plan's Story mode, not a copy;
@@ -646,7 +646,7 @@ In practice: you start at **A**, pass through **C**, then reach **B** → the ap
 - The logbook **starts empty**: it cannot reconstruct trips from before it existed, they were never recorded as such.
 - Everything is **strictly local** to your device (no upload, no account). Each trip can be deleted individually from its sheet.
 - Beyond **500 trips**, the oldest ones are removed automatically.
-- The logbook **is part of the profile export** since v1.74.0 (this doc claimed otherwise — corrected 2026-08-09): switching devices via the profile export does carry your outing history over.
+- The logbook **is part of the profile export** since v1.74.0: switching devices via the profile export does carry your outing history over.
 
 ---
 
@@ -788,11 +788,11 @@ The **⛶** button of the OSM view widget is now called **"Open OSM mode"**: the
 
 On the first opening of the mode, a message reminds you that rendering full plans can be slower on mobile — and another one shows if you display **more than 3 plans** at once.
 
-> 👁️ **Layers hidden by default (since v1.73.1)** — a data layer shipped "unchecked" in a plan ZIP (so hidden when the map opens) used to be **completely invisible in OSM view**, with no way to show it. It is now rendered like the others: hide or show it with the existing filters (global and per-plan category chips, tag filter). The OSM view of the map screen is unaffected — it has always followed the layers actually displayed on your map.
+> 👁️ **Layers hidden by default (since v1.73.1)** — a data layer shipped "unchecked" in a plan ZIP (so hidden when the map opens) is rendered like the others: hide or show it with the existing filters (global and per-plan category chips, tag filter). The OSM view of the map screen is unaffected — it has always followed the layers actually displayed on your map.
 
-> 🔍 **Sharp when zooming (since v1.77.0)** — in the home screen's OSM preview, zooming on a plan automatically loads **more detailed tiles** (only the area you're looking at, V2-tiled plans). Before, the plan stayed blurry when zooming even though it was sharp in full-screen OSM mode. Nothing to configure, and no extra network requests: the tiles come from the plan file, already on your device.
+> 🔍 **Sharp when zooming (since v1.77.0)** — in the home screen's OSM preview, zooming on a plan automatically loads **more detailed tiles** (only the area you're looking at, V2-tiled plans). Nothing to configure, and no extra network requests: the tiles come from the plan file, already on your device.
 
-> 🎨 **Your colors everywhere (since v1.77.0)** — the legend colors you customize (≡ Legend → ✏️ Edit) now show up **on the OSM background too**: full-screen mode AND home preview, and with multiple plans each one keeps **its own** colors. Before, these views stuck to the original colors (a main gallery repainted red still showed green).
+> 🎨 **Your colors everywhere (since v1.77.0)** — the legend colors you customize (≡ Legend → ✏️ Edit) now show up **on the OSM background too**: full-screen mode AND home preview, and with multiple plans each one keeps **its own** colors.
 
 ## 📖 Story Mode — Free note + PDF for each plan
 
@@ -810,12 +810,12 @@ The note supports **Markdown**:
 
 ### 📚 Story (PDF) — **several documents per plan**
 
-You can now keep **up to 10 PDF documents per plan** (before: only one, and a new import overwrote the previous one). A 2019 report, a scanned paper map, a press article, a survey sheet: all in the same place.
+You can now keep **up to 10 PDF documents per plan**. A 2019 report, a scanned paper map, a press article, a survey sheet: all in the same place.
 
 - A **document list** appears above the viewer as soon as there is more than one; click a document to open it.
-- **📥 Import** adds a document (it no longer replaces anything). **🗑️ Remove** deletes the one being displayed.
-- The plan author can embed PDFs in the ZIP — **several since v1.71.0** (the Generator now accepts a list of files): they appear at the top of the list (📕), readable, not deletable (only the generator can change them). **New**: its presence no longer prevents you from adding your own documents — import used to be hidden on those plans.
-- Guardrails: **10 documents maximum** per plan, warning past **25 MB** total, refusal past **100 MB**. The space used now shows up in **Storage** (it was invisible until now).
+- **📥 Import** adds a document (it replaces nothing). **🗑️ Remove** deletes the one being displayed.
+- The plan author can embed PDFs in the ZIP — **several since v1.71.0** (the Generator now accepts a list of files): they appear at the top of the list (📕), readable, not deletable (only the generator can change them). Their presence does not prevent you from adding your own documents.
+- Guardrails: **10 documents maximum** per plan, warning past **25 MB** total, refusal past **100 MB**. The space used shows up in **Storage**.
 - On iPhone, an **↗️ Open in a tab** button kicks a document into native fullscreen if the inline view isn't available.
 - Your documents are also listed, added and deleted from **📔 My logbook → 📖 Stories**, without loading the plan.
 
@@ -930,7 +930,7 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 **🧭 Inter-plan route**: request a route to a point **on another plan** connected by a portal — from the **Route** modal ("🌐 Destination on another plan" button) or the **multi-plan search** (🧭 button on a distant result). The app compares available portals at **real cost**, shows the trip in steps ("① Reach 🌀 North well — 450 m · ② Cross · ③ Reach the room — 300 m · Total ≈ 750 m") and **draws the route on your plan**. Each plan's avoidances (zones, points, tags) are honored. If it's impossible (no portal, plan offline, destination cut off from the network…), a message tells you **exactly why**.
 
-**🚶 The trip follows your pace**: the summary button is "**🗺️ Let's go**" — it no longer teleports you. You **walk** your route (with "📍 I am here" stop validation and replanning on recalibration), and the crossing is offered when you are **at the portal**: floating "**🌀 Next portal (X m)**" button (dismissible — "📍 I am here" on the portal point brings it back), or the portal point's ➜ button. At each crossing, the rest is drawn automatically on the other side, all the way to the destination.
+**🚶 The trip follows your pace**: the summary button is "**🗺️ Let's go**" — it does not teleport you. You **walk** your route (with "📍 I am here" stop validation and replanning on recalibration), and the crossing is offered when you are **at the portal**: floating "**🌀 Next portal (X m)**" button (dismissible — "📍 I am here" on the portal point brings it back), or the portal point's ➜ button. At each crossing, the rest is drawn automatically on the other side, all the way to the destination.
 
 **🧭 Your stops first**: set your **waypoints** in the Route modal (curiosity X, Y…) then pick the distant destination — the trip goes through **all your stops in order, before the portal**.
 
@@ -940,7 +940,7 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 **↩️ Going back**: after taking a portal (or a multi-plan search jump), a floating **"↩️ Back: <plan>"** button appears at the bottom of the screen for 15 seconds — one click brings you back to the plan **and the exact view** you came from (level and zoom included). Jumps stack up: chain 3 portals, you can go back 3 times.
 
-**↩️ Discreet Back button**: if the button bothers you, two new controls on it — **[–]** shrinks it to a discreet **↩️ mini-chip** at the bottom right (it stays until it expires, one click re-expands it), **[✕]** closes it **and forgets the stacked returns** (since v1.73.0 — closing means giving up the return chain; before, the button came back on the next jump). Your [–] choice is remembered: once minimized, future returns arrive directly as a mini-chip.
+**↩️ Discreet Back button**: if the button bothers you, two new controls on it — **[–]** shrinks it to a discreet **↩️ mini-chip** at the bottom right (it stays until it expires, one click re-expands it), **[✕]** closes it **and forgets the stacked returns** (since v1.73.0 — closing means giving up the return chain). Your [–] choice is remembered: once minimized, future returns arrive directly as a mini-chip.
 
 **Good to know**:
 - A point can carry **several links** (a "hub" point).
@@ -1306,7 +1306,7 @@ The **≡ three horizontal bars** button at the top right of the map opens the *
 
 **How it works:**
 
-- **Live update**: each toggle (checked/unchecked) applies the filter **immediately** on the map (200 ms anti-flicker debounce for dense maps).
+- **Live update**: each toggle (checked/unchecked) applies the filter **immediately** on the map.
 - **Accordion sections**: click on a section header to collapse/expand. All open by default.
 - **Quick buttons per section**: `👁️ All` and `🚫 None` to toggle all items at once.
 - **🔄 Show all button** (footer): resets all runtime filters (tags + types) to their neutral state (= everything visible). Does NOT touch the M-LVL toggles or the image/data layers — each kept independent.
@@ -1314,7 +1314,7 @@ The **≡ three horizontal bars** button at the top right of the map opens the *
 
 **Per-map persistence**:
 
-The tags + types filters are **saved in the map's session** (`SessionPersist`). If you enable "hide shafts" on map A, then switch to map B, then come back to A → your filters are **automatically restored**. Each map has its own filters.
+The tags + types filters are **saved in the map's session**. If you enable "hide shafts" on map A, then switch to map B, then come back to A → your filters are **automatically restored**. Each map has its own filters.
 
 **Bidirectional M-LVL synchronization**:
 
@@ -1545,7 +1545,7 @@ Operational tool to **methodically assign rescue teams** to search areas on a ca
 
 #### Workflow
 
-1. **List of scenarios** — You see all scenarios saved for this map (max 10, FIFO).
+1. **List of scenarios** — You see all scenarios saved for this map (max 10, the oldest are dropped).
 2. **➕ New scenario** — Lightweight stepper: Name + Context notes + Incident time.
 3. **Free-form editing** — 3 accordion sections:
    - **📝 Context**: name, incident time, notes (e.g.: "Marc left around 2pm to check East gallery…")
@@ -1609,16 +1609,16 @@ A scenario can now **sequence several phases** with a debrief intercalated betwe
 **✓ End a phase + debrief (Operator only)**:
 
 1. During the active phase, the Op Live footer displays a new **"✓ Phase ended"** amber button (visible only if multi-phase)
-2. **Auto-detection**: as soon as **all participating teams have marked their Exit step as `completedAt`**, the button turns **pulsing green** + an assistant toast informs you ("✅ All teams are out — the phase is ready to close"). The Op keeps the final decision.
+2. **Auto-detection**: as soon as **all participating teams have marked their Exit step as done**, the button turns **pulsing green** + an assistant toast informs you ("✅ All teams are out — the phase is ready to close"). The Op keeps the final decision.
 3. **Click "✓ Phase ended"** → debrief modal: free textarea (5000 chars max) to capture the lessons from the phase (teams returned, points found, priority zones to explore, constraints encountered). This debrief will be intercalated in the final report between each phase section.
-4. **Validate "✓ End the phase"** → the current phase is **archived** (deep clone, never overwritten, history preserved) + `phase.endedAt` is set
+4. **Validate "✓ End the phase"** → the current phase is **archived** (never overwritten, history preserved)
 5. **If a next phase exists** → automatic chaining to **"🚀 Start phase X+1?"** modal with summary of participating teams
 6. **You confirm** → the new phase starts, the steps of participating teams are **rebuilt from their CURRENT route** (so if you modified `entry/exit/intermediate` of a team between P1 and P2, the new steps take this into account)
-7. **If no next phase** → native `confirm()` "Stop the plan completely?" (equivalent to ⏹️ End the plan)
+7. **If no next phase** → a confirmation "Stop the plan completely?" (equivalent to ⏹️ End the plan)
 
 **🔍 History safeguards**:
 
-- `terminerPhase` **NEVER** deletes steps — it archives them in `s.execution.etapesArchive[phaseIdx]` as deep clone
+- Closing a phase **NEVER** deletes steps — they are archived as they are
 - A phase already started can no longer be deleted from the UI (safety net)
 - An active phase in the execution cannot be deleted (go through "✓ Phase ended" first)
 - The auto-detection toast does not repeat (single display per phase)
@@ -1752,7 +1752,7 @@ New **🚒 Firefighter Briefing** button in all Rescue Mode banners. Generates a
 
 The post-mission PDF report (generated via 📤 Report button) now includes a new "SURFACE BRIEFING" page with the same info. Useful for geographic debrief with firefighters or archiving the intervention file.
 
-#### 🏷️ OSM View tag filter fix
+#### 🏷️ OSM View tag filter
 
 The tag filter chips in the OSM View modal list **all tags present** in the plan, aligned with the OSM View Home widget.
 
@@ -1888,7 +1888,7 @@ For the rescuer on the field who follows their route:
 | 🟣 | Forced u-turn | Abandoned route, early return |
 | 🚨 | **Victim found** | **Absolute emergency** — triggers flashing red signal on the operator side |
 
-**Photos**: tap "📸 Photo (X/5)" → auto rear camera on mobile (`capture="environment"`) OR gallery. Max 5 photos per step, auto JPEG q85 compression max 1920px. Click a thumbnail → fullscreen viewer with swipe + zoom.
+**Photos**: tap "📸 Photo (X/5)" → auto rear camera on mobile OR gallery. Max 5 photos per step, auto JPEG q85 compression max 1920px. Click a thumbnail → fullscreen viewer with swipe + zoom.
 
 **Auto-save**: observations saved on textarea blur AND on step change. No need for "Save" button.
 
@@ -1931,7 +1931,7 @@ For the command center coordinating several teams in parallel:
 
 **"🚨 Take over" button** → switches to the Team Member view focused on this specific team. You become TEMPORARILY Alpha's team member to enter a detailed observation on their behalf (typical case: you are at the command post but you receive a radio call from Alpha who dictates their obs to you).
 
-**Easy return**: once in Team Member mode after "Take over", a **"👤 Back to Operator"** button appears in the footer. On click → return to the intact Operator overview (the `_previousRole` flags survive reload + plan switch).
+**Easy return**: once in Team Member mode after "Take over", a **"👤 Back to Operator"** button appears in the footer. On click → return to the intact Operator overview (going back stays possible after a reload or a map switch).
 
 **"🗺️ View global map" button**: hides the modal + renders the map overlay with all the zones + waypoints + routes of the teams in NATO colors.
 
@@ -1991,7 +1991,7 @@ At any time during execution AND after the plan stops, you can generate a report
 
 #### ⏱️ Global timer with fair pause
 
-The ⏱️ timer displayed at the top of each Live view is calculated from `startedAt` MINUS the cumulative pause time. You can pause with the **"⏸️ Pause"** button (the timer freezes) then resume with **"▶️ Resume"** — the pause duration is NOT counted.
+The ⏱️ timer displayed at the top of each Live view is calculated from the start time MINUS the cumulative pause time. You can pause with the **"⏸️ Pause"** button (the timer freezes) then resume with **"▶️ Resume"** — the pause duration is NOT counted.
 
 **Re-render 1×/second** without visual flash, without focus loss in the textarea observations during input. Allows keeping the real-time report accurate during long missions (h+).
 
@@ -2106,7 +2106,7 @@ Each action triggers a **discreet toast** at the bottom: `↩ Undone: Placement 
 ### What is NOT covered
 
 - ❌ **Photos** attached to points: their deletion remains **irreversible** (the blobs are erased from the local IndexedDB database, not restorable)
-- ❌ **Session imports**: an import that overwrites your session cannot be undone via Ctrl+Z (use the SessionPersist auto-save to recover)
+- ❌ **Session imports**: an import that overwrites your session cannot be undone via Ctrl+Z (use the automatic session save to recover)
 - ❌ **Tracker** (real-time sensor mode)
 - ❌ **Distance measurement** (= ephemeral tool, not a persistent mutation)
 
@@ -2114,7 +2114,7 @@ Each action triggers a **discreet toast** at the bottom: `↩ Undone: Placement 
 
 - **RAM only**: history is kept in volatile memory only, **lost on reload** of the page (this is intentional, to avoid bloating local storage).
 - **Reset on map change**: if you load another map, history is cleared (logical: you don't want to undo an action done on another map).
-- **Limit 50 actions**: beyond, the oldest are forgotten (FIFO).
+- **Limit 50 actions**: beyond, the oldest are forgotten.
 - **A new action erases the redo**: if you do 5 undos then place a new point, redo becomes impossible (history branch logic).
 
 ---
@@ -2202,7 +2202,7 @@ Handy for doing a session check-in with your partner at the exit, or for archivi
 3. The area is displayed at the bottom left, in m² (`⬛ Area: X m²`)
 4. Beyond 10,000 m², the app automatically displays in hectares (ha)
 
-> **How it works** : the app applies the Shoelace formula to map coordinates and converts to m² via the map's calibrated scale (`APP_CONFIG.scale` in px/m). Accuracy therefore depends on the initial map calibration (`📏 SCALE` in ⚙️ Settings).
+> **How it works** : the app converts the area to m² via the map's calibrated scale. Accuracy therefore depends on the initial map calibration (`📏 SCALE` in ⚙️ Settings).
 
 ### ❌ Clear the measurement
 
@@ -2631,7 +2631,7 @@ Precise selection of what you want to export:
 - 🛣️ **Paths** + boxes per type (main, secondary, trails)
 - ⬛ **Zones** + boxes per type (water, backfill, collapse, inaccessible)
 - 🏛️ **Structures** + boxes per type (pillars / wall / faces)
-- 🧭 **Tracker** *(optional)* — if checked, the box shows a real-time counter: *"timeline N evt · path M pts"*. On export includes: current position + traveled path + complete timeline + start timestamp. Re-import restores everything via `setTrackingTimeline` → your 🎬 replay is functional after re-import.
+- 🧭 **Tracker** *(optional)* — if checked, the box shows a real-time counter: *"timeline N evt · path M pts"*. On export includes: current position + traveled path + complete timeline + start timestamp. Re-import restores everything → your 🎬 replay is functional after re-import.
 - 👤 **User identity** — dedicated box to include your **profile** (nickname + photo + counters). Useful for migrating your visual identity to another device. On import, a modal toast suggests a reload so the profile banner is updated everywhere in the UI.
 
 **Output format** of choice:
@@ -2661,7 +2661,7 @@ Building a large map across **several sessions** and ending up with lots of file
 - A **preview** shows the totals and **warns** you if any point ids are duplicated (duplicates are kept as-is).
 - **Download** the result (a ZIP, or a direct `.json` if there is only one category), ready to drop into your map folder.
 
-Available **without an open map** from the home screen: **📊 Data editor → 🔗 Merge data layers** (it used to be a separate home button, now folded into the editor's sources to declutter the screen). **100% local**, no data sent.
+Available **without an open map** from the home screen: **📊 Data editor → 🔗 Merge data layers**. **100% local**, no data sent.
 
 ### 🖼️ Export to PNG/JPG
 
@@ -2712,8 +2712,8 @@ Press **⬆️ → 📤 Printable PDF**. Generates a print-ready PDF with header
 Like the advanced PNG export, you tick exactly what you want to include:
 
 - **📦 Session annotations** — Points / Paths / Zones / Structures (real-time counters based on your session)
-- **🖼️ Base image & layers** — "Base map image" checkbox + 1 checkbox per `imageLayers[]` of the map (image layers like legends, photo annotations, etc.). Pre-checked = current visibility on the map.
-- **📊 Data layers** — 1 checkbox per `dataLayers[]` of the map (wells, vehicles, paths, embedded structures, etc.). The `editor` layer appears with a special label "My annotations (= session layer)".
+- **🖼️ Base image & layers** — "Base map image" checkbox + 1 checkbox per image layer of the map (image layers like legends, photo annotations, etc.). Pre-checked = current visibility on the map.
+- **📊 Data layers** — 1 checkbox per data layer of the map (wells, vehicles, paths, embedded structures, etc.). Your own annotations layer appears with a special label "My annotations (= session layer)".
 - **🎨 Layout** — Header checkbox (title + metadata at top)
 - **📏 Quality** — Standard ×1 (default, recommended A3/A4) · HD ×2 (heavier file, recommended A0/A1) · Draft ×0.5
 
@@ -3008,7 +3008,7 @@ The 🧱 Convert to V2 checkbox appears in the form as soon as you have **upload
 
 #### 🎛️ Disable tiling on read (V2 → V1 raw)
 
-When loading a V2 map, you can choose **Performance mode: Disabled** in the loader's **⚙️ Configuration** modal. In this case, the runtime ignores the tiles and directly loads the **source image** (`baseImage` of the ZIP, kept intact) as a classic V1 map.
+When loading a V2 map, you can choose **Performance mode: Disabled** in the loader's **⚙️ Configuration** modal. In this case, the runtime ignores the tiles and directly loads the **source image** of the ZIP, kept intact, as a classic V1 map.
 
 Use cases:
 - Compare V2 vs V1 rendering on the same map
@@ -3103,8 +3103,8 @@ When loading a map, you can choose from 5 presets in the loader:
 If despite Performance mode, your map still crashes (typically 4000+ × 2000+ pixel maps with many paths), open **⚙️ Settings → "🚀 Performance ULTRA mode" section** and enable the **🚀 ULTRA master toggle**. It enables 6 aggressive optimizations simultaneously.
 
 > 🆕 **Three things to know**:
-> - **PER-PLAN setting**: enabling ULTRA here only affects the open plan. Your other plans are no longer impacted (before, the setting was global and silently "followed" you on every plan). After the update, plans that had ULTRA start disabled again — re-enable it on the ones that need it.
-> - **Your session points are sacred**: POIs you add by hand (✏️) stay **always visible**, even with viewport culling on — only the thousands of data-layer points get lightened.
+> - **PER-PLAN setting**: enabling ULTRA here only affects the open plan. Your other plans are not impacted. After the update, plans that had ULTRA start disabled again — re-enable it on the ones that need it.
+> - **Your session points are sacred**: POIs you add by hand (✏️) stay **always visible**, even with the "Viewport culling" option on — only the thousands of data-layer points get lightened.
 > - **Message on load**: when optimizations are active on a plan, a message reminds you at load time — a "lightened" display (simplified paths, data popups off…) is not a bug.
 
 > ⚠️ These optims do **NOT** touch the image (already managed by the performance mode above). They target vector elements (paths, points, calculations).
@@ -3192,11 +3192,11 @@ Access the settings by clicking **⚙️**:
 
 ### 🧭 Tracking (map-specific)
 - **Initial tracker position**: X/Y start coordinates
-- **Step detection**: sensitivity (`stepThreshold`), step size (`stepLength`), anti-bounce cooldown
+- **Step detection**: sensitivity, step size, anti-bounce delay
 - **Scale (px/m)** with **🎯 Calibrate** button: computes the correct scale from a measured distance
 
 ### 🔍 Display
-- **Zoom-adaptive icons** (`scaledMarkers`) — *global preference*: the point icons (shafts, accesses, signage, etc.) keep a constant size relative to the map. On zoom-out, they shrink; on zoom-in, they grow. Reload required on toggle.
+- **Zoom-adaptive icons** — *global preference*: the point icons (shafts, accesses, signage, etc.) keep a constant size relative to the map. On zoom-out, they shrink; on zoom-in, they grow. Reload required on toggle.
 - **⚪ Show circles at path intersections (this map)** — *per-plan setting*: solid colored circle at the crossing of 2 paths (green × purple → yellow, etc.). Uncheck to visually clear very dense maps, or if the computation slows down rendering. **Immediate effect**, saved per map (another map keeps its own setting). 
 - **🧭 North calibration (this map)** — *per-plan setting*: useful when the TOP of the map is **not** the true North (aerial photo with arbitrary framing, cataphile map without aligned compass rose). Angle field [0,360[ in degrees or button **📐 Calibrate (2 clicks)** which opens a WYSIWYG picker: click first the SOUTH of the map, then the NORTH, a dashed Sud→Nord arrow appears and the angle is auto-computed. **Effect**: tracker icon rotation + walking direction adapt → the tracker points in the right direction RELATIVE TO THE MAP. The physical compass 🧭 keeps pointing to the real magnetic North (= expected behavior of a compass). **Saved per map**, **immediate effect** without reload. ↺ Reset button to return to default (0 = North toward top of map).
 
@@ -3388,7 +3388,7 @@ You can also **pin** a specific version instead of `latest`:
 - **Port conflict**: if you already have another service on `8443` on the host, change the mapping: `-p 9443:8443` for example.
 - **No automatic updates**: you decide when to `docker pull`. For auto-update, check [Watchtower](https://github.com/containrrr/watchtower).
 
-> 🔒 **No data sent elsewhere**. The image bundles the vanilla app exactly as the official version, but served from your own hardware. It's even slightly more offline-friendly than production (no occasional fetch to `gstatic.com` for the connectivity ping — the `networkAudit.js` module stays active if you want to verify).
+> 🔒 **No data sent elsewhere**. The image bundles the vanilla app exactly as the official version, but served from your own hardware. It's even slightly more offline-friendly than production (no occasional fetch to `gstatic.com` for the connectivity ping — the network audit stays active if you want to verify).
 
 > 📖 **Never used Docker?** A dedicated step-by-step guide exists: **[`docs/applications/DOCKER_INSTALL.en.md`](DOCKER_INSTALL.en.md)** — Docker Desktop install (Windows/Mac/Linux), daemon startup, troubleshooting common errors (self-signed cert, port conflicts, WSL 2), Docker-free alternatives.
 
