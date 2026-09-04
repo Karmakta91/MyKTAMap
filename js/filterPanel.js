@@ -910,13 +910,41 @@
     });
   }
 
+  // 🩸 CE QUE LA RESTITUTION DÉTRUIT, EXACTEMENT (question KARMA, 05/09) :
+  // les objets qui portent la marque du calque — donc **tes corrections
+  // dessus**, y compris celles faites avec 🔄 Convertir (la conversion repart
+  // de l'objet d'origine, elle conserve la marque). Elle ne touche RIEN
+  // d'autre : les structures et tracés que tu as dessinés, ton itinéraire, tes
+  // points restent, parce qu'ils ne portent pas cette marque.
+  //
+  // Le travail perdu peut valoir des heures. On propose donc d'ABORD
+  // l'exporter — le fichier produit EST le calque corrigé, prêt à redonner au
+  // plan. Deux questions enchaînées plutôt qu'un `confirm` binaire : il faut
+  // trois issues (exporter puis restituer · restituer quand même · annuler),
+  // et un choix destructeur ne doit pas partager un bouton avec un choix sûr.
   function _restituerCalque(id) {
     const CS = window.CalqueSession;
     if (!CS || !id) return;
     const n = CS.compterCopie(id);
-    // Le message dit « y compris tes corrections » : c'est exactement ce que
-    // la restitution détruit, et personne ne doit le découvrir après coup.
-    if (!window.confirm(window.I18n.t("filter.calque.confirmRestituer", { n: n }))) return;
+    if (n <= 0) { _restituerVraiment(id); return; }   // rien à perdre
+
+    window.ktaConfirm(window.I18n.t("filter.calque.exportAvantMsg", { n: n }), {
+      titre:       window.I18n.t("filter.calque.exportAvantTitre"),
+      okLabel:     window.I18n.t("filter.calque.exportAvantOui"),
+      cancelLabel: window.I18n.t("filter.calque.exportAvantNon")
+    }).then(function (exporter) {
+      if (exporter) { _exporterCalque(id); _restituerVraiment(id); return; }
+      // Refus d'exporter → on redemande, et là le message dit ce qui se perd.
+      window.ktaConfirm(window.I18n.t("filter.calque.confirmRestituer", { n: n }), {
+        titre:       window.I18n.t("filter.calque.exportAvantTitre"),
+        okLabel:     window.I18n.t("filter.calque.restituerOk"),
+        cancelLabel: window.I18n.t("filter.calque.restituerAnnuler")
+      }).then(function (ok) { if (ok) _restituerVraiment(id); });
+    });
+  }
+
+  function _restituerVraiment(id) {
+    const CS = window.CalqueSession;
     const r = CS.restituer(id);
     if (!r || !r.ok) { alert(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" })); return; }
     refreshDataLayers();

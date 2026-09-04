@@ -219,6 +219,43 @@ const CALQUE = {
     t("  -> tandis que « sig » revient sur la carte", m.surCarte.sig === true);
   }
 
+  // ───────── 2 quater. 🩸 L'INTERACTION AVEC « CONVERTIR CET OBJET » ─────────
+  // Question KARMA (05/09) : « je rapatrie, je CORRIGE des objets du calque,
+  // puis je restitue — je perds quoi ? »
+  //
+  // Tout repose sur un detail de `convertirObjet.js` : il reconstruit l'objet
+  // par `Object.assign({}, obj, { type })`, donc il REPART DE L'ORIGINAL et
+  // conserve `_srcCalque`. Si un jour quelqu'un le reecrit en ne recopiant que
+  // les champs connus (points / level / description), la marque sauterait —
+  // et un objet converti SURVIVRAIT a la restitution pendant que son original
+  // reviendrait du calque : LE DOUBLON QUE TOUTE CETTE CONCEPTION EXISTE POUR
+  // EMPECHER. Ce controle est la pour ca.
+  {
+    const m = monter(CALQUE);
+    m.ctx.HistoryManager = { captureState: () => null, pushState() {} };
+    m.ctx.ktaResolveStyle = () => ({});
+    vm.runInContext(fs.readFileSync("js/convertirObjet.js", "utf8"), m.ctx, { filename: "convertirObjet.js" });
+    await m.CS.rapatrier("sig");
+
+    const CV = m.ctx.KtaConvertir;
+    if (!CV || typeof CV.convertir !== "function") {
+      t("interaction : KtaConvertir expose `convertir`", false);
+    } else {
+      const front = m.etat.structures[0];
+      t("depart : l'objet du calque porte la marque", front._srcCalque === "sig");
+      const ok = CV.convertir("structures", front, "roads", "secondaire");
+      t("interaction : la conversion structure -> trace reussit", ok === true);
+      const converti = m.etat.roads.find(function (o) { return o.type === "secondaire" && o.points === front.points; })
+                    || m.etat.roads[m.etat.roads.length - 1];
+      t("🩸 interaction : l'objet CONVERTI GARDE `_srcCalque`",
+        !!converti && converti._srcCalque === "sig");
+      const rr = m.CS.restituer("sig");
+      t("🩸 interaction : la restitution l'emporte donc AVEC les autres — pas de doublon",
+        m.etat.roads.filter(function (o) { return o._srcCalque === "sig"; }).length === 0);
+      t("  -> et le compte total retire est bien celui du calque", rr.retires === 5);
+    }
+  }
+
   // ───────── 3. LE RETOUR EST CHIRURGICAL ─────────
   etat.roads.push({ type: "principal", points: [{ x: 0, y: 0 }] });   // cree a la main
   const rr = CS.restituer("sig");
@@ -292,6 +329,18 @@ const CALQUE = {
     /data-calque-rapatrier/.test(FP) && /data-calque-restituer/.test(FP) && /data-calque-exporter/.test(FP));
   t("cablage : l export dit OU deposer le fichier (sinon il est inutilisable)",
     /filter.calque.exporte"/.test(FP) && /filter.calque.exporteAvecReste/.test(FP));
+  // 🩸 LE RETOUR PROPOSE D EXPORTER AVANT. Ce qu il detruit peut valoir des
+  // heures de correction ; un `confirm` binaire ne laissait le choix qu entre
+  // perdre et renoncer. Trois issues desormais, et le chemin sur est le
+  // bouton principal.
+  t("🩸 retour : l export est PROPOSE avant de restituer",
+    FP.indexOf("filter.calque.exportAvantMsg") >= 0 && FP.indexOf("_exporterCalque(id)") >= 0);
+  t("🩸 retour : trois issues (exporter / restituer quand meme / annuler)",
+    FP.indexOf("filter.calque.exportAvantOui") >= 0 &&
+    FP.indexOf("filter.calque.restituerOk") >= 0 &&
+    FP.indexOf("filter.calque.restituerAnnuler") >= 0);
+  t("retour : un calque sans objet ne pose aucune question",
+    /n <= 0.{0,40}_restituerVraiment/.test(FP));
   t("cablage : le panneau annonce le POIDS avant de rapatrier",
     /CS\.peser\(id\)/.test(FP) && /occupationLocalStorage/.test(FP));
   t("cablage : le calque « editor » n'est pas rapatriable (il EST la session)",
