@@ -1251,6 +1251,13 @@
        au clic — l'ordre exact n'est donc pas critique, mais rester derrière
        ses trois familles évite de dépendre d'un hasard de chargement. -->
   <script src="js/convertirObjet.js" defer></script>
+  <!-- 🔄 v1.85.0 — rapatrier un calque de donnees dans la session, pour
+       pouvoir l editer (un calque est rendu UNE fois et n a pas de
+       re-render : cf. l en-tete du module). Doit charger AVANT
+       sessionPersist.js, qui appelle ses hooks getSessionState /
+       loadSessionState / appliquerVerrous, et avant filterPanel.js, qui
+       porte son interface. -->
+  <script src="js/calqueSession.js" defer></script>
   <!-- 📉 v1.83.0 : profondeur des niveaux + profil en long. Après config.js
        (dont il lit l'API de stockage) et pathfinder.js (dont il consomme le
        niveau désormais rendu par computeRoute). -->

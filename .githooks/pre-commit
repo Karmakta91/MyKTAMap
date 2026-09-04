@@ -163,3 +163,12 @@ node scripts/check-tracking-defaults.js || exit $?
 # on a justement tape les deux orthographes), et l ASYMETRIE du clic (ajouter
 # seulement les manquants, retirer seulement quand ils y sont tous). BLOQUANT.
 node scripts/check-osm-etiquettes.js || exit $?
+
+# 🔄 Rapatriement d un calque de donnees dans la session. Deux pieges y sont
+# mortels et silencieux : un VERROU POSE SANS SA COPIE masque le calque et
+# donne un plan vide sans un mot (cas reel : la sauvegarde saute sur quota,
+# 1,1 Mo etant exactement le seuil sur un releve SIG), et un EFFACEMENT DE
+# SESSION qui laisserait le verrou ferait disparaitre le releve de l auteur.
+# Verifie aussi que la copie est defensive (muter le calque source serait une
+# corruption definitive) et que le retour ne retire QUE ce qui est marque. BLOQUANT.
+node scripts/check-calque-session.js || exit $?
