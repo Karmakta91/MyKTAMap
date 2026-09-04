@@ -274,6 +274,17 @@ const CALQUE = {
       /existingPoint\.nom\s*=/.test(ED) && /existingPoint\.tags\s*=/.test(ED));
     t("POI : « Convertir » ne pretend PAS gerer les points",
       fs.readFileSync("js/convertirObjet.js", "utf8").indexOf("editorPoints") < 0);
+
+    // 🩸 LA SECONDE PORTE : le Tableau. Il relit les points, les fait editer en
+    // masse, puis les REPOSE en session (`_remplacerSession`). S'il copiait par
+    // liste blanche de champs au lieu de copier l'objet entier, il effacerait
+    // `_srcCalque` sur TOUTE la table d'un coup — bien plus large que la fiche.
+    const TAB = fs.readFileSync("js/tableEditor.js", "utf8");
+    t("🩸 POI : le Tableau copie l'objet ENTIER (Object.assign), pas une liste de champs",
+      /\.map\(function \(?p\)? \{ return Object\.assign\(\{\}, p\); \}\)/.test(TAB) ||
+      /Object\.assign\(\{\}, p\)/.test(TAB));
+    t("POI : le Tableau repose bien les points en session",
+      TAB.indexOf("window.setEditorPoints(_data)") >= 0);
   }
 
   // ───────── 3. LE RETOUR EST CHIRURGICAL ─────────
