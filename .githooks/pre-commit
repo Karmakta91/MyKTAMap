@@ -194,3 +194,15 @@ node scripts/check-osm-outils.js || exit $?
 # servant au trace du lien a l export KMZ : sans recalage le lien part de
 # l ancienne position. Les 7 sabotages de reference rougissent. BLOQUANT.
 node scripts/check-repositionner.js || exit $?
+
+# 🧭 Le tableau recapitulatif des groupes de la barre laterale (3 langues)
+# confronte a ce que interface.js declare vraiment. Rien ne faisait ce
+# rapprochement, d ou une doc qui a decrit pendant des MOIS une interface
+# disparue : un bouton 🗑️ voisin de ✏️ retire le 25/05 (b9de2fa), et surtout
+# « 🏗️ Creer / Modifier plan » presente comme un groupe de la barre alors
+# qu il en a ete RETIRE a la refonte v1.14.19, code supprime en v1.26.2 —
+# l utilisateur pouvait chercher ce bouton indefiniment. Plus « 11 groupes »
+# annonces pour 13 declares, trois groupes reels absents du tableau, et une
+# note inseree AU MILIEU qui le coupait en deux au rendu Markdown. Les 5
+# defauts reels rougissent. BLOQUANT.
+node scripts/check-doc-sidebar.js || exit $?

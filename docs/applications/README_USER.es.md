@@ -958,23 +958,27 @@ La app lee los puntos (sesión + capas de datos) de cada plano **sobre la marcha
 
 ## 🧭 Presentación de la interfaz
 
-Todas las herramientas están accesibles desde la **barra lateral derecha**, organizada en 11 grupos:
+Todas las herramientas están accesibles desde la **barra lateral derecha**, organizada en **13 grupos**:
 
 | Grupo | Icono | Para qué sirve |
 |---|---|---|
-| **Ayuda / Doc / Leyenda** | 📚 | Ayuda, documentación, leyenda de los iconos |
-| **Parámetros** | ⚙️ | Ajustes, calibrado de la escala, depuración *(clic directo)* |
+| **Favoritos** | ⭐ | Tus puntos marcados como favoritos, a un clic |
+| **Ayuda / Doc / Leyenda** | 📚 | Ayuda, documentación, Ayuda IA, leyenda de iconos |
+| **Ajustes** | ⚙️ | Ajustes, calibración de la escala, depuración *(clic directo)* |
 | **Búsqueda** | 🔍 | Encontrar rápidamente un punto en el plano *(clic directo)* |
-| **Cargar / Importar** | ⬇️ | Importar una sesión, editar un archivo JSON, cambiar de plano |
-| **Crear / Modificar plano** | 🏗️ | Generador de planos *(clic directo)* |
-| **Guardar** | ⬆️ | Guardar tu sesión (3 modos), exportar el plano como imagen |
-| **Rastreador** | 🧭 | **Menú a pantalla completa**: iniciar / detener el seguimiento, reajustar, Mi posición, bloqueo sobre trazado, brújula, itinerario, repetición, mapa de calor, emergencia |
-| **Medición** | 📐 | Medir una distancia, borrar |
-| **Edición de puntos** | ✏️ | Añadir tus propios puntos, borrar |
-| **Trazados** | 🛣️ | Trazar vías principales, secundarias, caminos, **calcular la distancia total** |
+| **Cargar / Importar** | ⬇️ | Importar una sesión o un GPX, editor de datos del plano |
+| **Guardar** | ⬆️ | Exportar tu sesión, el plano como imagen o un PDF imprimible |
+| **Historial** | ⏪ | Deshacer (`Ctrl+Z`) / Rehacer (`Ctrl+Y`) |
+| **Rastreador** | 🧭 | **Menú a pantalla completa**: iniciar / detener el rastreo, recalibrar, Mi posición, bloqueo en trazado, itinerario, repetición, mapa de calor, Modo perdido, Modo Rescate |
+| **Medición** | 📐 | Medir una distancia o una superficie, borrar |
+| **Edición de puntos** | ✏️ | Añadir tus propios puntos *(clic directo: interruptor ON/OFF)* |
+| **Trazados** | 🛣️ | Trazar vías principales, secundarias, caminos, uniones, **calcular la distancia total** |
+| **Zonas** | ⬛ | Trazar zonas de escombros, hundimiento, agua o inaccesibles |
+| **Estructuras** | 🏛️ | Pilares, muros y frentes de explotación |
 
-> 💡 **Capa «Mis anotaciones»** en la ventana ≡ Filtros (arriba a la derecha del mapa, botón de tres barras horizontales — ventana unificada propia de MyKTAMap): esta capa agrupa los puntos que has añadido y las zonas trazadas en la sesión. Desmarcar la casilla los oculta, volver a marcarla los muestra. **El itinerario, la medición y el rastreador** no se ven afectados (tienen su propio ciclo de vida).
-| **Zonas** | ⬛ | Trazar zonas de escombros, derrumbe o agua |
+> ⚠️ **El Generador de planos NO está en esta barra.** Crear o modificar un plano se hace **desde la pantalla de inicio**, con el botón **🏗️ Generar un plano**: las acciones de creación viven fuera del modo mapa.
+
+> 💡 **Capa «Mis anotaciones»** en la ventana ≡ Filtros (arriba a la derecha del mapa, botón de tres barras): agrupa **todo lo que añades** (puntos, trazados, zonas, estructuras). Desmarcarla oculta todos tus añadidos de golpe sin borrar nada.
 
 **Cómo funciona:**
 

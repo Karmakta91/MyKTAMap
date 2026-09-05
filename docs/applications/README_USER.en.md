@@ -962,23 +962,27 @@ The app reads each plan's points (session + data layers) **in place**, showing p
 
 ## 🧭 Interface overview
 
-All tools are accessible from the **right side bar**, organized into 11 groups:
+All tools are accessible from the **right side bar**, organized into **13 groups**:
 
 | Group | Icon | What it's for |
 |---|---|---|
-| **Help / Docs / Legend** | 📚 | Help, documentation, icon legend |
+| **Favorites** | ⭐ | Your favorited points, one click away |
+| **Help / Docs / Legend** | 📚 | Help, documentation, AI Help, icon legend |
 | **Settings** | ⚙️ | Settings, scale calibration, debug *(direct click)* |
-| **Search** | 🔍 | Quickly find a point on the map *(direct click)* |
-| **Load / Import** | ⬇️ | Import a session, open the plan data editor, change map |
-| **Create / Modify map** | 🏗️ | Map generator *(direct click)* |
-| **Save** | ⬆️ | Save your session (3 modes), export the map as an image |
-| **Tracker** | 🧭 | **Full-screen menu**: start / stop tracking, recalibrate, My position, path lock, compass, route, replay, heatmap, emergency |
-| **Measure** | 📐 | Measure a distance, erase |
-| **Point editing** | ✏️ | Add your own points, erase |
-| **Paths** | 🛣️ | Draw main, secondary roads, paths, **calculate total distance** |
+| **Search** | 🔍 | Quickly find a point on the plan *(direct click)* |
+| **Load / Import** | ⬇️ | Import a session or a GPX, plan data editor |
+| **Save** | ⬆️ | Export your session, the plan as an image, or a printable PDF |
+| **History** | ⏪ | Undo (`Ctrl+Z`) / Redo (`Ctrl+Y`) |
+| **Tracker** | 🧭 | **Full-screen menu**: start / stop tracking, recalibrate, My position, path lock, route, replay, heatmap, Lost Mode, Rescue Mode |
+| **Measurement** | 📐 | Measure a distance or an area, clear |
+| **Point editing** | ✏️ | Add your own points *(direct click — ON/OFF switch)* |
+| **Paths** | 🛣️ | Draw main roads, secondary roads, paths, junctions, **compute the total distance** |
+| **Zones** | ⬛ | Draw backfill, collapse, water or inaccessible zones |
+| **Structures** | 🏛️ | Pillars, walls and working faces |
 
-> 💡 **"My annotations" layer** in the ≡ Filters modal (top right of the map, three horizontal bars button — custom MyKTAMap unified modal): this layer groups your added points and zones drawn during the session. Unchecking the box hides them, rechecking displays them again. **The route, measurement, tracker** are not affected (own lifecycle).
-| **Zones** | ⬛ | Draw backfill, collapse or water zones |
+> ⚠️ **The plan Generator is NOT in this bar.** Creating or editing a plan happens **from the home screen**, via the **🏗️ Generate a plan** button — creation actions live outside map mode.
+
+> 💡 **“My annotations” layer** in the ≡ Filters modal (top right of the map, three-bar button): it groups **everything you add** — points, paths, zones, structures. Unchecking it hides all your additions at once without deleting anything.
 
 **How it works:**
 

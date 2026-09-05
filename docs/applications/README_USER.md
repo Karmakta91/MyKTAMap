@@ -960,23 +960,27 @@ L'app lit les points (session + calques de données) de chaque plan **sur place*
 
 ## 🧭 Présentation de l'interface
 
-Tous les outils sont accessibles depuis la **barre latérale droite**, organisée en 11 groupes :
+Tous les outils sont accessibles depuis la **barre latérale droite**, organisée en **13 groupes** :
 
 | Groupe | Icône | À quoi ça sert |
 |---|---|---|
-| **Aide / Doc / Légende** | 📚 | Aide, documentation, légende des icônes |
+| **Favoris** | ⭐ | Tes points mis en favori, accessibles en un clic |
+| **Aide / Doc / Légende** | 📚 | Aide, documentation, Aide IA, légende des icônes |
 | **Paramètres** | ⚙️ | Réglages, calibrage de l'échelle, debug *(clic direct)* |
 | **Recherche** | 🔍 | Trouver rapidement un point sur le plan *(clic direct)* |
-| **Charger / Import** | ⬇️ | Importer une session, éditer un fichier JSON, changer de plan |
-| **Créer / Modifier plan** | 🏗️ | Générateur de plan *(clic direct)* |
-| **Enregistrer** | ⬆️ | Enregistrer ta session (3 modes), exporter le plan en image |
-| **Tracker** | 🧭 | **Menu plein écran** : démarrer / arrêter le tracking, recaler, Ma position, verrou sur tracé, boussole, itinéraire, replay, heatmap, urgence |
-| **Mesure** | 📐 | Mesurer une distance, effacer |
-| **Édition de points** | ✏️ | Ajouter tes propres points, effacer |
-| **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins, **calculer la distance totale** |
+| **Charger / Import** | ⬇️ | Importer une session ou un GPX, éditeur de données du plan |
+| **Enregistrer** | ⬆️ | Exporter ta session, le plan en image, ou un PDF imprimable |
+| **Historique** | ⏪ | Annuler (`Ctrl+Z`) / Rétablir (`Ctrl+Y`) |
+| **Tracker** | 🧭 | **Menu plein écran** : démarrer / arrêter le tracking, recaler, Ma position, verrou sur tracé, itinéraire, replay, heatmap, Mode perdu, Mode Secours |
+| **Mesure** | 📐 | Mesurer une distance ou une surface, effacer |
+| **Édition de points** | ✏️ | Ajouter tes propres points *(clic direct — interrupteur ON/OFF)* |
+| **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins, jonctions, **calculer la distance totale** |
+| **Zones** | ⬛ | Tracer des zones de remblais, effondrement, eau ou inaccessibles |
+| **Structures** | 🏛️ | Piliers, murs et fronts de taille |
 
-> 💡 **Calque "Mes annotations"** dans la modale ≡ Filtres (en haut à droite de la carte, bouton trois barres horizontales — modale unifiée custom MyKTAMap) : ce calque regroupe tes points ajoutés et zones tracées en session. Décocher la case les masque, recocher les réaffiche. **L'itinéraire, la mesure, le tracker** ne sont pas affectés (cycle de vie propre).
-| **Zones** | ⬛ | Tracer des zones de remblais, effondrement ou eau |
+> ⚠️ **Le Générateur de plan n'est PAS dans cette barre.** Créer ou modifier un plan se fait **depuis l'accueil**, bouton **🏗️ Générer un plan** — les actions de création vivent hors du mode carte.
+
+> 💡 **Calque « Mes annotations »** dans la modale ≡ Filtres (en haut à droite de la carte, bouton trois barres horizontales) : il regroupe **tout ce que tu ajoutes** — points, tracés, zones, structures. Le décocher masque tes ajouts d'un coup sans rien supprimer.
 
 **Comment ça marche :**
 
