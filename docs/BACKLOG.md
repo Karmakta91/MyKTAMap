@@ -20,6 +20,30 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 
 ---
 
+## 👣 Podometre / mode poche — ETUDE FAITE, decision en attente (06/09/2026)
+
+Demande KARMA : « recuperer les infos d un podometre pour une meilleure precision et pouvoir garder le telephone
+en poche, via une case a cocher ». **Etude complete : `docs/ETUDE_PODOMETRE.md`.**
+
+Les trois faits qui tranchent :
+
+- **Le podometre materiel du telephone est inaccessible depuis une page web**, sur aucune plateforme. Aucune
+  interface `StepCounter` n existe dans la Generic Sensor API — le comptage de pas y est cite comme cas d usage,
+  jamais standardise.
+- **Web Bluetooth n existe pas sur iOS** et Apple a annonce ne pas vouloir l implementer : un podometre externe est
+  illisible sur iPhone, quel qu il soit. **Ne rien acheter.**
+- 🩸 **Le vrai obstacle du telephone en poche n est pas le comptage, c est le CAP.** L app fait du dead-reckoning :
+  elle avance dans la direction de la BOUSSOLE, qui en poche donne l orientation de la poche. Aucun podometre ne
+  corrige ca. Le comptage, lui, est meilleur en poche qu en main.
+
+Ce qui reste faisable et rentable — et qui ne demande aucun materiel : le detecteur de pas actuel est un simple
+seuil sur franchissement, sans filtrage ni detection de pic, avec une longueur de pas CONSTANTE. C est cette
+derniere qui coute le plus de precision. Reco : **mesurer d abord** (enregistrer des traces reelles et compter a la
+main), corriger l algorithme, puis offrir un « mode poche » — pas un « utiliser le podometre », qui ne peut pas
+exister.
+
+⚠️ **Rien n a ete mesure dans cette etude** : tous les gains annonces sont raisonnes depuis le code, pas observes.
+
 ## 🆕 Sujets ouverts (demandes KARMA du 01/08/2026)
 
 ### 1. 🗺️ Import depuis SIG — « Convertir depuis SIG »
