@@ -134,17 +134,31 @@
   // l'objet, réécrirait la liste, puis la relirait — et perdrait l'ajout.
   // On n'écrit ensuite QUE les familles réellement touchées : `setStructures`
   // relance un rendu complet, ce qui coûte cher sur un relevé à 20 000 objets.
+  // Les accesseurs des trois familles. HISSES ici (et non dans `convertir`)
+  // depuis que la suppression existe : elle a besoin des memes, et une 4e
+  // copie de cette table serait exactement la dette qu on vient de solder
+  // ailleurs. Lus a chaque appel — `window.setRoads` peut ne pas encore
+  // exister au chargement du module.
+  function _lire(famille) {
+    const g = { roads: "getRoads", zones: "getZones", structures: "getStructures" }[famille];
+    return (g && typeof window[g] === "function") ? (window[g]() || []) : [];
+  }
+  function _ecrivain(famille) {
+    const s = { roads: "setRoads", zones: "setZones", structures: "setStructures" }[famille];
+    return (s && typeof window[s] === "function") ? window[s] : null;
+  }
+
   function convertir(famille, obj, familleCible, typeCible) {
     if (!obj || !famille || !familleCible || !typeCible) return false;
     const lire = {
-      roads:      function () { return (window.getRoads      && window.getRoads())      || []; },
-      zones:      function () { return (window.getZones      && window.getZones())      || []; },
-      structures: function () { return (window.getStructures && window.getStructures()) || []; }
+      roads:      function () { return _lire("roads"); },
+      zones:      function () { return _lire("zones"); },
+      structures: function () { return _lire("structures"); }
     };
     const ecrire = {
-      roads:      window.setRoads,
-      zones:      window.setZones,
-      structures: window.setStructures
+      roads:      _ecrivain("roads"),
+      zones:      _ecrivain("zones"),
+      structures: _ecrivain("structures")
     };
     if (typeof ecrire[famille] !== "function" || typeof ecrire[familleCible] !== "function") {
       console.warn("[Convertir] setteur manquant :", famille, "→", familleCible);
@@ -179,6 +193,44 @@
 
     if (window.HistoryManager && avant && window.HistoryManager.record) {
       window.HistoryManager.record(_t("convert.history"), avant);
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    return true;
+  }
+
+  // 🗑️ SUPPRIMER L'OBJET (KARMA, 05/09 : « rajoute, dans le truc pour
+  // convertir, un bouton supprimer »). Meme popup, meme reference directe sur
+  // l objet : le seul endroit du code ou l on tient a la fois la famille et
+  // l objet vise.
+  //
+  // 🩸 IDENTITE PAR REFERENCE, jamais par contenu. `roads` et `zones` n ont
+  // PAS d id (`data-formats.md`) et deux tracés peuvent avoir exactement la
+  // meme geometrie et le meme type : chercher par egalite de contenu
+  // supprimerait le mauvais. `indexOf(obj)` compare les references — la popup
+  // porte l objet lui-meme, c est la seule cle fiable.
+  //
+  // 🩸 PAS DE CONFIRMATION, par coherence avec la suppression d un POINT
+  // (`supprimerPointEditor`) qui s appuie sur Ctrl+Z. Le filet est donc le
+  // snapshot d historique : sans lui, l objet serait perdu pour de bon.
+  function supprimer(famille, obj) {
+    if (!obj || !famille) return false;
+    const ecrire = _ecrivain(famille);
+    if (typeof ecrire !== "function") {
+      console.warn("[Convertir] setteur manquant pour la suppression :", famille);
+      return false;
+    }
+    const liste = _lire(famille).slice();
+    const idx = liste.indexOf(obj);
+    if (idx < 0) {
+      console.warn("[Convertir] objet introuvable dans", famille);
+      return false;
+    }
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState() : null;
+    liste.splice(idx, 1);
+    ecrire(liste);
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      window.HistoryManager.record(_t("convert.histoireSuppr"), avant);
     }
     if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
     return true;
@@ -272,6 +324,7 @@
   window.KtaConvertir = {
     ouvrir:        ouvrir,
     convertir:     convertir,
+    supprimer:     supprimer,   // 🗑️ v1.85.0 — depuis la popup de l objet
     listerCibles:  listerCibles,
     estOuvert:     _estOuvert
   };

@@ -287,6 +287,82 @@ function charger(fichier, nomGlobal, prealables) {
 
   t("convert : un objet absent de sa famille est refusé",
     CV.convertir("roads", { type: "x" }, "zones", "eau") === false);
+
+  // ── 🗑️ LA SUPPRESSION (KARMA, 05/09 : « rajoute, dans le truc pour
+  // convertir, un bouton supprimer ») ──
+  // Meme popup, meme reference directe sur l objet.
+  t("suppr : l'API est exposée", typeof CV.supprimer === "function");
+
+  const journal = { snap: 0, record: [], saves: 0 };
+  w.HistoryManager = {
+    captureState: function () { journal.snap++; return { s: journal.snap }; },
+    record: function (label, avant) { journal.record.push({ label: label, avant: avant }); }
+  };
+  w.SessionPersist = { save: function () { journal.saves++; } };
+
+  // 🩸 LE PIEGE CENTRAL : `roads` et `zones` n'ont PAS d'id (data-formats.md).
+  // Deux tracés peuvent porter EXACTEMENT le même type et la même géométrie.
+  // Une suppression qui chercherait par égalité de contenu retirerait le
+  // mauvais — et l'utilisateur ne verrait qu'un objet en moins, au bon
+  // endroit. Seule l'identité par RÉFÉRENCE tient, et la popup la porte.
+  const jumeauA = { type: "principal", points: [{ x: 1, y: 1 }, { x: 5, y: 5 }] };
+  const jumeauB = { type: "principal", points: [{ x: 1, y: 1 }, { x: 5, y: 5 }] };
+  const temoin  = { type: "chemin",    points: [{ x: 0, y: 0 }] };
+  R = [jumeauA, jumeauB, temoin];
+  Z = [{ type: "eau", points: [] }];
+  S = [{ type: "mur", points: [] }];
+
+  t("suppr : l'opération réussit", CV.supprimer("roads", jumeauB) === true);
+  t("suppr : un seul objet est parti", R.length === 2);
+  t("🩸 suppr : c'est le JUMEAU VISÉ qui part, pas son sosie (identité par référence)",
+    R[0] === jumeauA && R.indexOf(jumeauB) < 0);
+  t("suppr : le témoin de la même famille est intact", R.indexOf(temoin) >= 0);
+  t("suppr : les autres familles ne sont pas touchées", Z.length === 1 && S.length === 1);
+  t("🩸 suppr : un instantané est pris AVANT (sans lui l'objet serait perdu pour de bon)",
+    journal.snap === 1);
+  t("suppr : l'action est enregistrée dans l'historique", journal.record.length === 1);
+  t("suppr : la session est sauvegardée tout de suite", journal.saves === 1);
+
+  // Le marquage de calque ne protège pas l'objet : le retirer est légitime,
+  // c'est même le geste qu'on veut pouvoir faire sur un calque ouvert à la
+  // modification avant de l'exporter.
+  const duCalque = { type: "eau", points: [], _srcCalque: "sig" };
+  Z = [duCalque];
+  t("suppr : un objet venu d'un calque se supprime aussi",
+    CV.supprimer("zones", duCalque) === true && Z.length === 0);
+
+  // Refus propres : ni suppression fantôme, ni entrée d'historique fantôme.
+  const avantRefus = journal.record.length;
+  t("suppr : un objet absent de sa famille est refusé",
+    CV.supprimer("structures", { type: "mur" }) === false);
+  t("suppr : arguments vides refusés",
+    CV.supprimer("roads", null) === false && CV.supprimer(null, jumeauA) === false);
+  t("suppr : une famille inconnue est refusée", CV.supprimer("bidon", jumeauA) === false);
+  t("suppr : aucun refus n'a laissé d'entrée d'historique", journal.record.length === avantRefus);
+
+  // ── le câblage, que l'extraction ne voit pas ──
+  {
+    const U = fs.readFileSync("js/utils.js", "utf8");
+    t("câblage : le bouton Supprimer est dans la popup de l'objet",
+      U.indexOf("kta-note-popup-supprimer") >= 0);
+    t("câblage : il appelle bien KtaConvertir.supprimer",
+      /KtaConvertir\.supprimer\(opts\.convertir\.famille, opts\.convertir\.obj\)/.test(U));
+    // 🩸 Une action destructrice collée au « Sauver » se cliquerait par
+    // accident : elle vit dans sa propre ligne danger, comme pour un point.
+    t("🩸 câblage : le bouton est dans une ligne DANGER séparée",
+      /kta-popup-actions-danger[^']*'[\s\S]{0,220}kta-note-popup-supprimer/.test(U));
+    // 🩸 Le setteur relance un rendu complet : le layer qui porte la popup
+    // est detruit. Sans fermeture, la popup reste a l ecran, orpheline.
+    const iSup = U.indexOf("kta-note-popup-supprimer\");");
+    t("🩸 câblage : la popup est FERMÉE (sinon elle survit à son layer détruit)",
+      iSup > 0 && U.slice(iSup, iSup + 900).indexOf("closePopup") >= 0);
+    ["convert.btnSuppr", "convert.toastSuppr", "convert.histoireSuppr"].forEach(function (k) {
+      ["fr", "en", "es"].forEach(function (l) {
+        const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
+        t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);
+      });
+    });
+  }
 })();
 
 // ───────── userProfile.js ─────────

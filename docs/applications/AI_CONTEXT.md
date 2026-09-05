@@ -418,6 +418,8 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 6. Le point est sauvegardé automatiquement dans la session (auto-save toutes les 1.5s).
 7. Re-clic sur ✏️ pour sortir du mode.
 
+**Pour supprimer un tracé / une zone / une structure** : clic sur l'objet → sa bulle → **🗑️ Supprimer** (ligne rouge, sous « Sauver la note » et « Convertir »). Pas de confirmation : `Ctrl+Z` annule, et le message le rappelle. Réservé aux objets de SESSION — un objet de calque de données ouvre une bulle en lecture seule.
+
 **Pour repositionner un point** : clic sur le marker → popup → **📌 Repositionner** → le prochain clic sur la carte y déplace le point (bandeau en haut avec Annuler). Le point garde nom, type, description, photos, niveau et son appartenance de calque ; seule la position change, et le déplacement est annulable par ↩️. Bouton réservé aux points de SESSION — un point de calque de données est en lecture seule (l'ouvrir à la modification d'abord).
 
 **Pour supprimer un point** : clic sur le marker → popup → bouton **🗑️ Supprimer ce point**. Pour annuler : `Ctrl+Z`.

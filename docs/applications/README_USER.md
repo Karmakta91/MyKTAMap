@@ -2492,6 +2492,31 @@ Appuyez sur **🧹** dans le groupe Structures :
 
 ---
 
+## 🫧 La bulle d'un objet — note, conversion, suppression
+
+Un clic sur **un tracé, une zone ou une structure que tu as dessinés** ouvre une petite bulle. Elle vaut pour les trois familles, avec le même contenu.
+
+| Élément | À quoi ça sert |
+|---|---|
+| **Zone de texte** | Une note libre, sur plusieurs lignes si tu veux — l'état du passage, une observation, un rappel |
+| **💾 Sauver la note** | Enregistre la note. La bulle se referme toute seule |
+| **🔄 Convertir** | Change le **type** de l'objet, et au besoin sa **famille** |
+| **🗑️ Supprimer** | Retire l'objet. En rouge, sur sa propre ligne |
+
+### 🔄 Convertir — changer un objet de type, ou de famille
+
+Le cas typique : sur un relevé importé du SIG, un **front de taille** est en fait une **galerie**. Tant qu'il reste une structure, il n'entre pas dans le calcul d'itinéraire — le calculateur ne lit que les tracés. Le convertir en tracé le fait entrer dans le graphe.
+
+La fenêtre ne propose que des cibles **compatibles avec la forme** de l'objet : une **ligne** (tracé, front de taille) ne peut devenir qu'une autre ligne, une **surface fermée** (zone, pilier, mur) qu'une autre surface fermée. On ne peut pas transformer un trait en polygone : il n'y a rien pour le refermer.
+
+L'objet garde tout le reste — sa géométrie, son niveau, sa note.
+
+### 🗑️ Supprimer
+
+**Pas de fenêtre de confirmation** : c'est `Ctrl+Z` qui rattrape, comme pour un point, et le message qui s'affiche te le rappelle. Le bouton est **rouge et sur sa propre ligne**, à l'écart du « Sauver », pour qu'on ne le clique pas par mégarde.
+
+> ℹ️ Ces trois actions ne s'affichent que sur **tes** objets. Un objet qui vient d'un calque de données ouvre une bulle en **lecture seule** : pour le corriger ou le supprimer, ouvre d'abord son calque à la modification depuis 🔍 **Filtres**, puis exporte le calque corrigé.
+
 ## 🏗️ Mode multi-niveau (carrières multi-étages)
 
 Certaines carrières / galeries ont **plusieurs niveaux empilés physiquement** (Glacière, Capucins, sites avec étages). Le mode multi-niveau permet de gérer ces plans correctement : chaque tracé/zone/point appartient à un niveau, et le pathfinder ne traverse pas magiquement d'un niveau à l'autre par les croisements visuels 2D.

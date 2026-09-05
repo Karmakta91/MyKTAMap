@@ -2487,6 +2487,31 @@ Press **🧹** in the Structures group:
 
 ---
 
+## 🫧 An object's popup — note, convert, delete
+
+Clicking **a path, a zone or a structure you drew** opens a small popup. It is the same for all three families.
+
+| Item | What it's for |
+|---|---|
+| **Text area** | A free note, multi-line if you want — the state of a passage, an observation, a reminder |
+| **💾 Save note** | Saves the note. The popup closes on its own |
+| **🔄 Convert** | Changes the object's **type**, and if needed its **family** |
+| **🗑️ Delete** | Removes the object. Red, on its own row |
+
+### 🔄 Convert — change an object's type, or family
+
+The typical case: on a survey imported from GIS, a **working face** is in fact a **gallery**. As long as it stays a structure, it does not enter route calculation — the router only reads paths. Converting it into a path puts it in the graph.
+
+The dialog only offers targets **compatible with the object's shape**: a **line** (path, working face) can only become another line, a **closed surface** (zone, pillar, wall) another closed surface. You cannot turn a line into a polygon: there is nothing to close it with.
+
+The object keeps everything else — its geometry, its level, its note.
+
+### 🗑️ Delete
+
+**No confirmation dialog**: `Ctrl+Z` is the safety net, as for a point, and the message that appears reminds you. The button is **red and on its own row**, away from “Save”, so it is not clicked by accident.
+
+> ℹ️ These three actions only show on **your** objects. An object coming from a data layer opens a **read-only** popup: to fix or delete it, first open its layer for editing from 🔍 **Filters**, then export the corrected layer.
+
 ## 🏗️ Multi-level mode (multi-story underground quarries)
 
 Some underground quarries / galleries have **several physically stacked levels** (Glacière, Capucins, sites with stories). Multi-level mode lets you manage these maps correctly: each path/zone/point belongs to a level, and the pathfinder doesn't magically cross from one level to another through 2D visual intersections.

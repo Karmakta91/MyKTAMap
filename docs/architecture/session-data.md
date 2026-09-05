@@ -1358,6 +1358,37 @@ relire en fait tomber 1 (celui de la même famille).
 
 ---
 
+### 🗑️ Supprimer l'objet — même bulle, même référence (v1.85.0)
+
+KARMA, 05/09 : « rajoute, dans le truc pour convertir, un bouton supprimer ». Supprimer un tracé imposait de repasser par
+la barre latérale et son sélecteur, alors que la bulle tient déjà **la famille et l'objet lui-même** — c'est le seul
+endroit du code où les deux sont réunis. D'où `KtaConvertir.supprimer(famille, obj)`, voisine de `convertir()`.
+
+**🩸 L'identité est prise par RÉFÉRENCE, jamais par contenu.** `roads` et `zones` **n'ont pas d'`id`**
+(cf. `data-formats.md` : snapshot brut `{type, points, label?, level?}`), et deux tracés peuvent porter exactement le même
+type et la même géométrie — deux passages parallèles relevés à l'identique, ça arrive. Une recherche par égalité de contenu
+supprimerait le **sosie**, et le symptôme serait invisible : l'utilisateur verrait un objet en moins, au bon endroit.
+`indexOf(obj)` compare les références, et la bulle porte l'objet.
+
+**⚖️ Pas de confirmation.** C'est le parti-pris déjà tenu pour la suppression d'un POINT (`supprimerPointEditor`), qui
+s'appuie sur `Ctrl+Z`. Un second dialogue là où le premier n'en a pas serait incohérent. Deux conséquences assumées :
+le snapshot d'historique est **le seul filet** — sans lui l'objet serait perdu pour de bon —, et le toast **rappelle**
+l'annulation, sinon le filet existe sans que personne le sache. Le bouton vit dans sa **propre ligne rouge** :
+collé au « Sauver la note », il se cliquerait par accident.
+
+**🩸 La bulle est fermée avant tout.** Le setteur (`setRoads`…) relance un rendu complet de la famille : le layer qui
+porte la bulle est détruit. Sans fermeture explicite, la bulle reste à l'écran, accrochée à un layer mort.
+
+**🧹 Effet de bord réglé** : les accesseurs des trois familles vivaient **dans** `convertir()`. La suppression avait besoin
+des mêmes — les recopier aurait fait une 4ᵉ table. Hissés en `_lire(famille)` / `_ecrivain(famille)`, lus à chaque appel
+(`window.setRoads` peut ne pas exister au chargement du module).
+
+**Garde-fou** : `scripts/check-api-surface.js` — 14 assertions, dont le cas des **deux jumeaux** (même type, même
+géométrie : seul le visé doit partir). 4 sabotages rougissent : chercher par contenu, sauter le snapshot, accepter un
+objet absent, ne pas fermer la bulle.
+
+---
+
 ## 🔄 Rapatrier un calque de données dans la session (v1.85.0)
 
 **Le besoin** (KARMA, 04/09) : corriger un front de taille en tracé sur un relevé de Bordeaux importé du SIG imposait **huit étapes** et deux allers-retours par des fichiers — Éditeur de données → export du calque → conversion en session → masquage manuel → réimport → correction → reconversion → réinjection.

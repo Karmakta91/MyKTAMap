@@ -2484,6 +2484,31 @@ Pulsa **🧹** en el grupo Estructuras:
 
 ---
 
+## 🫧 La ventana de un objeto: nota, conversión, eliminación
+
+Al hacer clic en **un trazado, una zona o una estructura que hayas dibujado** se abre una pequeña ventana. Es la misma para las tres familias.
+
+| Elemento | Para qué sirve |
+|---|---|
+| **Área de texto** | Una nota libre, con varias líneas si quieres: el estado del paso, una observación, un recordatorio |
+| **💾 Guardar la nota** | Guarda la nota. La ventana se cierra sola |
+| **🔄 Convertir** | Cambia el **tipo** del objeto y, si hace falta, su **familia** |
+| **🗑️ Eliminar** | Retira el objeto. En rojo, en su propia línea |
+
+### 🔄 Convertir: cambiar un objeto de tipo o de familia
+
+El caso típico: en un levantamiento importado del SIG, un **frente de explotación** es en realidad una **galería**. Mientras siga siendo una estructura, no entra en el cálculo de itinerarios: el calculador solo lee los trazados. Convertirlo en trazado lo mete en el grafo.
+
+La ventana solo propone destinos **compatibles con la forma** del objeto: una **línea** (trazado, frente) solo puede convertirse en otra línea, y una **superficie cerrada** (zona, pilar, muro) en otra superficie cerrada. No se puede transformar una línea en un polígono: no hay con qué cerrarla.
+
+El objeto conserva todo lo demás: su geometría, su nivel y su nota.
+
+### 🗑️ Eliminar
+
+**Sin ventana de confirmación**: la red de seguridad es `Ctrl+Z`, igual que para un punto, y el mensaje que aparece te lo recuerda. El botón es **rojo y está en su propia línea**, apartado de «Guardar», para que no se pulse sin querer.
+
+> ℹ️ Estas tres acciones solo aparecen en **tus** objetos. Un objeto que viene de una capa de datos abre una ventana de **solo lectura**: para corregirlo o eliminarlo, abre antes su capa para modificarla desde 🔍 **Filtros** y luego exporta la capa corregida.
+
 ## 🏗️ Modo multinivel (canteras de varias plantas)
 Algunas canteras y galerías tienen **varios niveles físicamente apilados** (Glacière, Capucins, yacimientos con plantas). El modo multinivel permite gestionar correctamente esos planos: cada trazado/zona/punto pertenece a un nivel, y el buscador de rutas no atraviesa mágicamente de un nivel a otro por los cruces visuales en 2D.
 

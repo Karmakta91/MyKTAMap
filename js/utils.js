@@ -801,6 +801,20 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                      '</button>'
                    : '') +
                '</div>' +
+               // 🗑️ v1.85.0 (KARMA « rajoute, dans le truc pour convertir, un
+               // bouton supprimer »). LIGNE SEPAREE, classe danger : meme
+               // parti-pris que la popup d un point — une action destructrice
+               // ne se pose pas a cote d un « Sauver », le clic serait trop
+               // facile. `opts.convertir` porte { famille, obj } : c est la
+               // meme donnee qui sert aux DEUX boutons, d ou sa reutilisation
+               // ici malgre son nom (herite de la v1.82.0).
+               (opts.convertir
+                 ? '<div class="kta-popup-actions kta-popup-actions-danger kta-note-popup-actions">' +
+                     '<button class="kta-popup-btn kta-popup-btn-delete kta-note-popup-supprimer" type="button">' +
+                       '🗑️ ' + window.I18n.t("convert.btnSuppr") +
+                     '</button>' +
+                   '</div>'
+                 : '') +
                '<div class="kta-note-popup-status" style="display:none;"></div>' +
              '</div>' +
            '</div>';
@@ -829,6 +843,22 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
       if (convBtn && opts.convertir && window.KtaConvertir) {
         convBtn.addEventListener("click", function () {
           window.KtaConvertir.ouvrir(opts.convertir.famille, opts.convertir.obj);
+        });
+      }
+      // 🗑️ Suppression. Pas de confirmation — coherent avec la suppression
+      // d un POINT, qui s appuie sur Ctrl+Z. Le toast le RAPPELLE : sans lui,
+      // l utilisateur ne sait pas que son geste est rattrapable.
+      const supprBtn = popupRoot.querySelector(".kta-note-popup-supprimer");
+      if (supprBtn && opts.convertir && window.KtaConvertir && window.KtaConvertir.supprimer) {
+        supprBtn.addEventListener("click", function () {
+          const ok = window.KtaConvertir.supprimer(opts.convertir.famille, opts.convertir.obj);
+          // 🩸 Fermer la popup AVANT le rendu : le setteur relance un rendu
+          // complet de la famille, le layer qui porte cette popup est detruit,
+          // et une popup accrochee a un layer mort reste a l ecran.
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          if (ok && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t("convert.toastSuppr"), "info");
+          }
         });
       }
       const statusEl = popupRoot.querySelector(".kta-note-popup-status");
