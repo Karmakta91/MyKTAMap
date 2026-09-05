@@ -2270,6 +2270,18 @@ Pulsa un marcador que hayas añadido → la ventana emergente muestra el botón 
 
 Puedes cambiar lo que quieras y luego **💾 Guardar**. Si renombras el punto Y este tiene fotos, las fotos lo siguen automáticamente (migración interna transparente).
 
+### 📌 Reposicionar un punto mal colocado
+
+¿Colocaste un punto más o menos en el sitio correcto y quieres ajustarlo? Clic en el marcador → ventana → **📌 Reposicionar**.
+
+La ventana se cierra y aparece un aviso arriba: **«Haz clic en la nueva posición de …»**. El siguiente clic en el mapa mueve el punto ahí. Hay un botón **Cancelar** por si cambias de opinión, y nada se mueve hasta que hagas clic.
+
+Lo que el punto **conserva**: su nombre, su tipo, su descripción, sus fotos, su nivel (no cambia de planta) y su pertenencia a una capa si la abriste para modificarla. Solo cambia su posición.
+
+El desplazamiento se puede **deshacer** con ↩️ como cualquier otra acción.
+
+> ℹ️ El botón solo aparece en **tus** puntos (los de tu sesión). Un punto que viene de una capa de datos es de solo lectura: para reposicionarlo, abre antes su capa para modificarla desde 🔍 Filtros.
+
 ### 📸 Fotos adjuntas a los puntos
 
 Puedes adjuntar hasta **5 fotos por punto** (límite para evitar saturar el almacenamiento del navegador). 100 % local — ninguna foto se envía a Internet.

@@ -2277,6 +2277,18 @@ Cliquez sur un marker que vous avez ajouté → la popup affiche le bouton **✏
 
 Tu peux changer ce que tu veux puis **💾 Enregistrer**. Si tu renommes le point ET qu'il a des photos, les photos suivent automatiquement (migration interne transparente).
 
+### 📌 Repositionner un point mal posé
+
+Tu as posé un point à peu près au bon endroit, et tu veux le recaler ? Clic sur le marker → popup → **📌 Repositionner**.
+
+La popup se ferme et un bandeau apparaît en haut : **« Clique la nouvelle position de … »**. Le prochain clic sur la carte y déplace le point. Un bouton **Annuler** est là si tu changes d'avis, et rien ne bouge tant que tu n'as pas cliqué.
+
+Ce que le point **garde** : son nom, son type, sa description, ses photos, son niveau (il ne change pas d'étage), et son appartenance à un calque si tu l'as ouvert à la modification. Seule sa position change.
+
+Le déplacement est **annulable** par ↩️ comme n'importe quelle autre action.
+
+> ℹ️ Le bouton n'apparaît que sur **tes** points (ceux de ta session). Un point qui vient d'un calque de données est en lecture seule — pour le repositionner, ouvre d'abord son calque à la modification depuis 🔍 Filtres.
+
 ### 📸 Photos attachées aux points
 
 Tu peux attacher jusqu'à **5 photos par point** (limite anti-saturation stockage navigateur). 100 % local — aucune photo n'est envoyée sur Internet.

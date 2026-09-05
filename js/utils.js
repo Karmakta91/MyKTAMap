@@ -1078,6 +1078,14 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
           'title="' + window.I18n.t("poi.editPoint") + '">' +
           window.I18n.t("poi.editBtn") +
         '</button>' +
+        // 📌 v1.85.0 (KARMA « si le POI a ete mal mis ») : arme le picker
+        // « clic carte » de editor.js. Classe generique volontaire : la
+        // reposition n'est pas l'edition, elle n'emprunte pas sa teinte.
+        '<button class="kta-popup-btn" type="button" ' +
+          'onclick="window.repositionnerPointEditor(\'' + jsId + "'," + x + ',' + y + '); return false;" ' +
+          'title="' + window.I18n.t("poi.movePoint") + '">' +
+          window.I18n.t("poi.moveBtn") +
+        '</button>' +
       '</div>'
     : '';
   const deleteRow = showSessionActions

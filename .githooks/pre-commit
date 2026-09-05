@@ -181,3 +181,16 @@ node scripts/check-calque-session.js || exit $?
 # releve de coordonnee pose aussi un point de mesure), et le DEMONTAGE (un
 # listener laisse sur la map continue d agir apres fermeture). BLOQUANT.
 node scripts/check-osm-outils.js || exit $?
+
+# 📌 Le repositionnement d un POI de session (« si le POI a ete mal mis »).
+# Premier picker « clic carte » qui MUTE un objet de la session au lieu de
+# remplir un champ : quatre choses y regressent sans bruit. La CONVERSION
+# INVERSE de convertCoord (inverser lat/lng deplace le point ailleurs que sous
+# le doigt, et ca a l air volontaire). L INDEX PERIME (entre l armement et le
+# clic la session a pu changer : un index fige deplacerait le mauvais point).
+# La MUTATION EN PLACE (reconstruire le point lui ferait perdre `_srcCalque`
+# — donc un doublon a la restauration du calque — et son `level`, donc un
+# etage change en douce). Et les LIAISONS INTER-PLAN, qui stockent les coords
+# servant au trace du lien a l export KMZ : sans recalage le lien part de
+# l ancienne position. Les 7 sabotages de reference rougissent. BLOQUANT.
+node scripts/check-repositionner.js || exit $?

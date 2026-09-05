@@ -418,6 +418,8 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 6. Le point est sauvegardé automatiquement dans la session (auto-save toutes les 1.5s).
 7. Re-clic sur ✏️ pour sortir du mode.
 
+**Pour repositionner un point** : clic sur le marker → popup → **📌 Repositionner** → le prochain clic sur la carte y déplace le point (bandeau en haut avec Annuler). Le point garde nom, type, description, photos, niveau et son appartenance de calque ; seule la position change, et le déplacement est annulable par ↩️. Bouton réservé aux points de SESSION — un point de calque de données est en lecture seule (l'ouvrir à la modification d'abord).
+
 **Pour supprimer un point** : clic sur le marker → popup → bouton **🗑️ Supprimer ce point**. Pour annuler : `Ctrl+Z`.
 
 <!-- @@PROFIL usage -->

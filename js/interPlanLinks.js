@@ -1392,6 +1392,39 @@
     return removed;
   }
 
+  // 📌 v1.85.0 — un point de session REPOSITIONNÉ (cf. editor.js >
+  // repositionnerPointEditor). La liaison SURVIT au déplacement : elle est
+  // indexée par `id:<id>` et un point de session en a toujours un.
+  //
+  // 🩸 Mais les coordonnées STOCKÉES dans le lien, elles, deviendraient
+  // périmées — et elles servent ailleurs : le tracé du lien à l'export KMZ
+  // (`planToGps(t, link.a.x, link.a.y)`) et le repli d'affichage quand le
+  // point n'a pas de nom. Sans ce recalage, déplacer un point relié ferait
+  // partir sa liaison de l'ancienne position dans le KMZ, sans rien dire.
+  //
+  // `ancX/ancY` = la position AVANT le clic : c'est la seule clé valable si
+  // le point n'a pas d'id (cas data layer) ; avec un id elle est ignorée.
+  function onPointMoved(planId, point, ancX, ancY) {
+    if (!planId || !point) return 0;
+    const key = _pointKey(point.id, ancX, ancY);
+    const reg = _load();
+    let recales = 0;
+    reg.links.forEach(function(l) {
+      ["a", "b"].forEach(function(cote) {
+        const side = l[cote];
+        if (!side || side.planId !== planId || _sideKey(side) !== key) return;
+        side.x = Number(point.x) || 0;
+        side.y = Number(point.y) || 0;
+        recales++;
+      });
+    });
+    if (recales > 0) {
+      _save(reg);
+      refreshBadges();
+      console.log("[InterPlanLinks] " + recales + " côté(s) de liaison recalé(s) (point déplacé)");
+    }
+    return recales;
+  }
   // ---------------------------------------------------------------
   // EXPORT
   // ---------------------------------------------------------------
@@ -1409,6 +1442,7 @@
     supprimerDepuisPopup: supprimerDepuisPopup,
     onPlanLoaded:         onPlanLoaded,
     onPointDeleted:       onPointDeleted,
+    onPointMoved:         onPointMoved,   // 📌 v1.85.0 : recale les coords d'un point déplacé
     refreshBadges:        refreshBadges,
     // 🆕 v1.58.0 — navigation générique (liaisons, retour, recherche
     // cross-plan) + lecture des points d'un plan non chargé (réutilisée par

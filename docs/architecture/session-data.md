@@ -1421,3 +1421,68 @@ Le nom du fichier vient de **l'id du calque**, pas du chemin : `dataLayers[].fil
 Rien de plus : les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque`. `null` tant que rien n'est rapatrié → **zéro octet** pour qui ne s'en sert pas.
 
 **Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 63 assertions, le vrai module chargé dans un `vm`.
+
+---
+
+## 📌 Repositionner un POI de session (v1.85.0)
+
+KARMA, 05/09/2026 : « pour un POI modifiable de session, un bouton *repositionner* peut servir, si le POI a été mal mis ».
+
+La fiche d'un point savait déjà changer son **nom**, son **tag**, sa description et ses photos. Sa **position**, non — seul
+le Tableau permettait de retoucher X/Y, en aveugle, hors carte. `window.repositionnerPointEditor(id, x, y)`
+(`js/editor.js`) comble ce trou : la popup se ferme, un floater s'affiche, le prochain clic sur la carte déplace le point.
+
+### 🩸 Pourquoi `.kta-iti-floater` et pas un floater maison
+
+C'est le **septième** picker « clic carte » du code (Géoréf, départ tracker, itinéraire, évitement, KMZ, Mode perdu…), et
+la classe n'est **pas cosmétique** : `window._modeClicCarteActif()` (`js/utils.js`) la reconnaît, ce qui donne deux
+comportements gratuitement, tous deux issus de bugs déjà payés en v1.28.0 :
+
+1. **aucune popup d'annotation ne s'ouvre** pendant le mode (`map.on("popupopen")` la referme) — sinon viser un point
+   proche ouvrirait sa popup au lieu de consommer le clic ;
+2. **le clic est ré-émis en phase capture** sur le conteneur (`js/map.js`) — sinon un clic sur un marqueur, un tracé ou
+   une zone serait mangé par ce layer et « ne prendrait pas ».
+
+Renommer cette classe casserait le mode **en silence**. Le garde-fou l'assure.
+
+### ⚖️ Glisser-déposer écarté
+
+`draggable: true` sur le marqueur donnerait un seul geste, mais un `touchmove` démarré sur un marqueur devient un **drag
+au lieu d'un pan** : des POI déplacés par accident en manipulant la carte, symptôme silencieux sur une app terrain. Et le
+doigt cache la cible pendant le geste, alors qu'on repositionne justement pour gagner en précision. Le picker laisse
+zoomer et déplacer la carte le mode armé, puis viser.
+
+### 🩸 Les trois pièges
+
+| Piège | Ce qui casserait | La règle |
+|---|---|---|
+| **Conversion inverse** | `convertCoord(x,y) = [imageHeight - y, x]` ; inverser lat/lng ou oublier le `imageHeight -` déplace le point ailleurs que sous le doigt — et le marqueur se re-rend là, donc ça a l'air volontaire | `x = latlng.lng` · `y = imageHeight - latlng.lat` |
+| **Index périmé** | Entre l'armement et le clic, la session peut changer (suppression, effacement, rechargement) : un index figé déplacerait le **mauvais** point | le point est **re-cherché** au clic via `_indexPointSession()` |
+| **Reconstruction** | Rebâtir l'objet lui ferait perdre `_srcCalque` (→ doublon à la restauration du calque, cf. §Rapatrier) et son `level` (→ étage changé en douce sur un plan multi-niveau) | mutation **en place** de `pt.x` / `pt.y`, rien d'autre |
+
+### 🌀 Les liaisons inter-plan sont RECALÉES, pas purgées
+
+`InterPlanLinks` indexe un côté de liaison par `id:<id>` quand le point a un id — un point de session en a toujours un
+(`id === nom`). La liaison **survit** donc au déplacement. Mais le lien **stocke aussi** `side.x` / `side.y`, et ces
+coordonnées servent au tracé du lien à l'export KMZ (`planToGps(t, link.a.x, link.a.y)`) : sans recalage, le lien
+partirait de l'**ancienne** position dans le KMZ, sans un mot. D'où `InterPlanLinks.onPointMoved(planId, point, ancX,
+ancY)`, qui met à jour les deux champs. ⚠️ Il **recale**, il ne filtre pas : purger comme `onPointDeleted` détruirait une
+liaison à chaque déplacement.
+
+### 🧹 Effet de bord réglé au passage
+
+`modifierPointEditor`, `supprimerPointEditor` et le picker portaient chacun la même boucle « match exact `id`+coords,
+repli sur les coords seules » — trois copies. Extraite en `_indexPointSession(id, x, y)`.
+
+### Portée
+
+Le bouton vit dans `editRow` (`js/utils.js > buildPointPopupHtml`), gouverné par `showSessionActions` : il n'apparaît que
+sur les points de **session** — donc aussi sur les POI d'un calque ouvert à la modification, qui en sont devenus. Un point
+de calque non rapatrié reste en lecture seule. Le déplacement est enregistré dans l'historique (`editorPoints`), donc
+annulable par `Ctrl+Z`.
+
+**Garde-fou** : `scripts/check-repositionner.js` (pré-commit bloquant) — `js/editor.js` chargé dans un `vm`, conversion
+inverse refaite dans les deux sens, index périmé éprouvé sur **trois** index distincts, mutation en place, recalage des
+liaisons, démontage, ré-armement, annulation, et le repli sans géoréf ni dépendances. **7 sabotages de référence**
+rougissent — dont deux ont révélé que le test initial était faux : lat et lng valaient la même valeur (les inverser ne
+cassait rien) et le point visé retombait justement en index 0 (une tautologie).

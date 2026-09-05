@@ -2272,6 +2272,18 @@ Click on a marker you added → the popup displays the **✏️ Modify** (blue) 
 
 You can change whatever you want then **💾 Save**. If you rename the point AND it has photos, the photos automatically follow (transparent internal migration).
 
+### 📌 Reposition a misplaced point
+
+Dropped a point roughly in the right place and want to fine-tune it? Click the marker → popup → **📌 Reposition**.
+
+The popup closes and a banner appears at the top: **“Click the new position for …”**. Your next click on the map moves the point there. A **Cancel** button is there if you change your mind, and nothing moves until you click.
+
+What the point **keeps**: its name, type, description, photos, level (it does not change floor), and its layer membership if you opened that layer for editing. Only its position changes.
+
+The move is **undoable** with ↩️ like any other action.
+
+> ℹ️ The button only shows on **your** points (session ones). A point coming from a data layer is read-only — to reposition it, first open its layer for editing from 🔍 Filters.
+
 ### 📸 Photos attached to points
 
 You can attach up to **5 photos per point** (anti-saturation limit for browser storage). 100% local — no photo is sent over the Internet.
