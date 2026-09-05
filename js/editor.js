@@ -745,6 +745,29 @@ window.repositionnerPointEditor = function(id, x, y) {
     return;
   }
   _repoDesactiver();   // annule un repositionnement deja arme
+
+  // 🩸 LES AUTRES MODES « CLIC CARTE » DOIVENT TOMBER AVANT D ARMER, sinon le
+  // meme clic est consomme DEUX FOIS. `_modeClicCarteActif()` (utils.js) ne
+  // suffit pas, pour deux raisons distinctes :
+  //   1. il EXCLUT VOLONTAIREMENT `modeEdition` — « y ajouter un point peut
+  //      ouvrir une popup de nommage legitime qu il ne faut pas fermer ». En
+  //      mode ajout, le clic repositionnait donc le point ET ouvrait la fiche
+  //      d un point tout neuf (KARMA, 05/09) ;
+  //   2. meme quand il rend vrai, il n empeche que les POPUPS d annotation :
+  //      `modeRoad` / `modeZone` / `modeStructure` posent quand meme leur
+  //      sommet, et `modeMesure` son jalon.
+  // Meme remede qu a la v1.57.2 (« le bouton ajouter point est actif quand
+  // j ouvre le plan ») : le registre des modes d abord — lui seul retire la
+  // surbrillance du bouton, sinon la sidebar mentirait —, puis les drapeaux
+  // en filet, pour un mode jamais enregistre ou un etat incoherent.
+  try { _desactiverTousLesModes(); } catch(e) {}
+  window.modeEdition   = false;
+  window.modeMesure    = false;
+  window.modeRecalage  = false;
+  window.modeRoad      = false;
+  window.modeZone      = false;
+  window.modeStructure = false;
+
   try { window.map.closePopup(); } catch(e) {}
 
   const nom = String(listePoints[_indexPointSession(id, x, y)].nom || id || "");

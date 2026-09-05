@@ -1460,6 +1460,21 @@ zoomer et déplacer la carte le mode armé, puis viser.
 | **Index périmé** | Entre l'armement et le clic, la session peut changer (suppression, effacement, rechargement) : un index figé déplacerait le **mauvais** point | le point est **re-cherché** au clic via `_indexPointSession()` |
 | **Reconstruction** | Rebâtir l'objet lui ferait perdre `_srcCalque` (→ doublon à la restauration du calque, cf. §Rapatrier) et son `level` (→ étage changé en douce sur un plan multi-niveau) | mutation **en place** de `pt.x` / `pt.y`, rien d'autre |
 
+### 🩸 Le picker COUPE les autres modes — `_modeClicCarteActif()` ne suffit pas
+
+Retour KARMA du 05/09 : en **mode ajout de point**, un clic repositionnait le point **et** ouvrait la fiche d'un point
+tout neuf. Le même clic était consommé deux fois. Deux raisons distinctes, et aucune n'est un défaut de la garde :
+
+1. `_modeClicCarteActif()` **exclut volontairement** `window.modeEdition` — son propre commentaire le dit : « y ajouter
+   un point peut ouvrir une popup de nommage légitime qu'il ne faut pas fermer » ;
+2. même quand la garde rend `true`, elle n'empêche que les **popups d'annotation**. `modeRoad` / `modeZone` /
+   `modeStructure` posent quand même leur sommet, `modeMesure` son jalon.
+
+Le picker coupe donc les modes lui-même, comme les six autres pickers (`_desactiverTousLesModes()` est appelé par la
+Géoréf, l'itinéraire, l'évitement, le KMZ…). Même remède qu'à la **v1.57.2** (« le bouton ajouter point est actif quand
+j'ouvre le plan ») : **le registre d'abord** — lui seul retire la surbrillance du bouton, sinon la sidebar mentirait —,
+**puis les six drapeaux en filet**, pour un mode jamais enregistré ou un état incohérent.
+
 ### 🌀 Les liaisons inter-plan sont RECALÉES, pas purgées
 
 `InterPlanLinks` indexe un côté de liaison par `id:<id>` quand le point a un id — un point de session en a toujours un

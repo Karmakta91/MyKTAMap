@@ -31,10 +31,16 @@
 //      qui servent au tracé du lien à l'export KMZ. Sans recalage, le lien
 //      part de l'ancienne position dans le KMZ, et rien ne le dit.
 //
-//   5. LE DÉMONTAGE. Un handler `click` laissé sur la map déplacerait le
+//   5. LES AUTRES MODES « CLIC CARTE ». Armer le picker sans les couper fait
+//      consommer le MEME clic deux fois : en mode ajout de point, la carte
+//      repositionne ET ouvre la fiche d'un point tout neuf (KARMA, 05/09).
+//      `_modeClicCarteActif()` ne sauve pas la mise — il exclut volontairement
+//      `modeEdition`, et il n'empêche de toute façon que les POPUPS.
+//
+//   6. LE DÉMONTAGE. Un handler `click` laissé sur la map déplacerait le
 //      point au clic suivant, longtemps après la fermeture du floater.
 //
-//   6. LA CLASSE DU FLOATER. `.kta-iti-floater` n'est pas cosmétique :
+//   7. LA CLASSE DU FLOATER. `.kta-iti-floater` n'est pas cosmétique :
 //      `_modeClicCarteActif()` (utils.js) la reconnaît, ce qui empêche les
 //      popups d'annotation pendant le mode et fait ré-émettre le clic en
 //      phase capture (map.js). La renommer casserait le mode en silence.
@@ -104,6 +110,7 @@ function contexte(hauteur) {
         return 1;
       }
     },
+    _desactiverTousLesModes: () => { journal.modesCoupes = (journal.modesCoupes || 0) + 1; },
     _currentLoadedPlanId: "plan-test",
     layerEditor: null,          // → renderEditorPoints sort tôt, pas de Leaflet à monter
     addEventListener() {}, removeEventListener() {}
@@ -238,6 +245,33 @@ function pointDeBase() {
   t("🩸 point disparu pendant le mode : rien n'est déplacé", ctx.getEditorPoints().length === 0);
   t("  -> aucune entrée d'historique fantôme", journal.record.length === 0);
   t("  -> le mode se démonte quand même", (ecoutes.click || []).length === 0 && !noeuds["kta-repo-floater"]);
+}
+
+// ───────── 4 bis. 🩸 les autres modes « clic carte » tombent a l armement ─────────
+// KARMA, 05/09 : « si je suis en train d ajouter des points et que je clique
+// sur repositionner, ca me le repositionne mais m ouvre EN PLUS une fenetre de
+// point nouveau ». Le meme clic etait consomme deux fois.
+//
+// 🩸 `_modeClicCarteActif()` NE COUVRE PAS CE CAS, et c est deliberé de sa part :
+// il exclut `modeEdition` (« y ajouter un point peut ouvrir une popup de
+// nommage legitime »). Et meme quand il rend vrai, il n empeche que les POPUPS
+// d annotation — modeRoad/Zone/Structure posent quand meme leur sommet. Donc
+// le picker doit COUPER les modes lui-meme, comme les six autres pickers.
+{
+  const { ctx, journal } = contexte(1000);
+  ctx.setEditorPoints([pointDeBase()]);
+  ctx.modeEdition = true;
+  ctx.modeRoad = true; ctx.modeZone = true; ctx.modeStructure = true;
+  ctx.modeMesure = true; ctx.modeRecalage = true;
+
+  ctx.repositionnerPointEditor("Puits nord", 10, 20);
+
+  t("🩸 armer : le mode AJOUT DE POINT est coupé (le bug de KARMA)", ctx.modeEdition === false);
+  t("🩸 armer : le registre des modes est appelé (seul lui éteint le bouton)",
+    journal.modesCoupes === 1);
+  ["modeRoad", "modeZone", "modeStructure", "modeMesure", "modeRecalage"].forEach(function (m) {
+    t("armer : " + m + " est coupé en filet", ctx[m] === false);
+  });
 }
 
 // ───────── 5. annulation ─────────
