@@ -66,7 +66,16 @@
     try {
       const r = _map.getContainer().getBoundingClientRect();
       if (!r || !r.width) return;
-      _floater.style.left = Math.round(r.left + r.width / 2) + "px";
+      // 🩸 Bride sur la CARTE, pas sur la fenetre : en mode plan la carte
+      // n occupe pas toute la largeur, et un `max-width: 100vw` du CSS
+      // laisserait le bandeau deborder de son cadre (KARMA, mobile).
+      _floater.style.maxWidth = Math.max(180, Math.round(r.width - 24)) + "px";
+      // Puis on CENTRE sur la carte en restant dedans : si le bandeau est
+      // plus large que la moitie, un centrage nu le ferait sortir d un cote.
+      const demi = (_floater.offsetWidth || 0) / 2;
+      let cx = r.left + r.width / 2;
+      if (demi > 0) cx = Math.min(Math.max(cx, r.left + 12 + demi), r.right - 12 - demi);
+      _floater.style.left = Math.round(cx) + "px";
       _floater.style.top  = Math.round(r.top + 12) + "px";
       _floater.style.bottom = "auto";
     } catch (e) {}

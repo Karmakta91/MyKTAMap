@@ -187,5 +187,63 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
     .forEach((k) => t("i18n : " + k + " existe", typeof FR[k] === "string" && FR[k].length > 0));
 }
 
+// ───────── 5. 🩸 le bandeau NE SORT PAS DU CADRE (KARMA, mobile) ─────────
+// `max-width` plafonne la BOÎTE, jamais son CONTENU. Avec un message en
+// `white-space: nowrap` et des boutons en `flex-shrink: 0`, la ligne ne peut
+// ni se couper ni se comprimer : elle déborde de la boîte, qui déborde de
+// l'écran. Invisible sur un grand écran — tout y tient —, systématique sur
+// téléphone. Le défaut vivait dans la règle PARTAGÉE `.kta-iti-floater`,
+// donc dans les six pickers, pas seulement dans les deux outils OSM.
+//
+// Contrôle STRUCTUREL : on ne peut pas mesurer un débordement sans
+// navigateur. On vérifie donc les trois conditions qui le rendent possible,
+// et on le dit plutôt que de laisser croire à une mesure.
+{
+  const CSS = fs.readFileSync("css/style.css", "utf8");
+  // Relus ICI : les blocs sont scopes, et les constantes de la section 4 ne
+  // sont pas visibles depuis celle-ci (plantage a la premiere execution).
+  const CRD = fs.readFileSync("js/osmCoords.js", "utf8");
+  const MES = fs.readFileSync("js/osmMesure.js", "utf8");
+  // 🩸 Tolérant à l'espacement : le projet aligne certains sélecteurs sur
+  // DEUX espaces avant l'accolade. Un `indexOf(sel + " {")` strict rendait
+  // alors "" — et sur une chaîne vide, une assertion NÉGATIVE (« plus de
+  // nowrap ») passe À VIDE. Un sélecteur introuvable rend `null`, et c'est
+  // traité comme un ÉCHEC, jamais comme un succès silencieux.
+  function bloc(sel) {
+    for (let n = 1; n <= 4; n++) {
+      const i = CSS.indexOf(sel + " ".repeat(n) + "{");
+      if (i >= 0) return CSS.slice(i, CSS.indexOf("}", i));
+    }
+    return null;
+  }
+  [".kta-iti-floater", "#kta-osm-mes-floater", "#kta-osm-coord-floater"].forEach(function (sel) {
+    const b = bloc(sel);
+    t("🩸 " + sel + " : la règle existe (sinon les contrôles passent à vide)", b !== null);
+    t("🩸 " + sel + " : le contenu peut passer à la ligne (flex-wrap)",
+      b !== null && /flex-wrap:\s*wrap/.test(b));
+  });
+  // 🩸 `min-width: 0` est la moitié qu'on oublie : sans lui un enfant flex
+  // refuse de descendre sous sa largeur de contenu, et `flex-wrap` ne sert
+  // à rien. Et un `nowrap` réintroduit ramènerait le bug tel quel.
+  [[".kta-iti-floater-msg", true], [".kta-osm-mes-info", false], [".kta-osm-coord-info", false]]
+    .forEach(function (row) {
+      const b = bloc(row[0]);
+      t("🩸 " + row[0] + " : la règle existe (sinon les contrôles passent à vide)", b !== null);
+      t("🩸 " + row[0] + " : plus de `white-space: nowrap`",
+        b !== null && !/white-space:\s*nowrap/.test(b));
+      t("🩸 " + row[0] + " : `min-width: 0` (sinon flex-wrap est inopérant)",
+        b !== null && /min-width:\s*0/.test(b));
+    });
+
+  // Côté JS : la largeur est bridée sur la CARTE (en mode plan elle n'occupe
+  // pas toute la fenêtre), et le centrage reste DANS la carte.
+  [["coordonnées", CRD], ["mesure", MES]].forEach(function (pair) {
+    t("🩸 " + pair[0] + " : la largeur est bridée sur la carte, pas sur la fenêtre",
+      /style\.maxWidth\s*=\s*Math\.max\(180, Math\.round\(r\.width - 24\)\)/.test(pair[1]));
+    t("🩸 " + pair[0] + " : le centrage est borné aux bords de la carte",
+      /Math\.min\(Math\.max\(cx, r\.left \+ 12 \+ demi\), r\.right - 12 - demi\)/.test(pair[1]));
+  });
+}
+
 console.log(ko === 0 ? "\n🎉 outils de la Vue OSM : tout passe" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

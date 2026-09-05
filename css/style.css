@@ -9638,6 +9638,13 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   font-size: 13px;
   color: #c8d0e0;
   max-width: calc(100vw - 24px);
+  /* 🩸 v1.85.0 (KARMA « ca sort du cadre sur mobile ») : `max-width`
+     plafonne la BOITE, pas son CONTENU. Sans `flex-wrap`, un message non
+     coupable et des boutons incompressibles debordent de la boite, qui
+     deborde de l ecran. Invisible sur grand ecran, systematique sur
+     telephone. */
+  flex-wrap: wrap;
+  box-sizing: border-box;
 }
 
 .kta-iti-floater-icon {
@@ -9646,8 +9653,14 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
 }
 
 .kta-iti-floater-msg {
-  flex: 1;
-  white-space: nowrap;
+  flex: 1 1 auto;
+  /* Le message se COUPE plutot que de sortir du cadre. Une phrase sur deux
+     lignes reste lisible ; hors de l ecran, non. `min-width: 0` est
+     indispensable : sans lui un enfant flex refuse de descendre sous sa
+     largeur de contenu, et `flex-wrap` ne sert a rien. */
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
   color: #e8eaf0;
 }
 
@@ -21542,9 +21555,11 @@ body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
   font-size: 13px; color: #e8eaf0;
   max-width: calc(100vw - 24px);
+  /* 🩸 Mobile : sans coupure, le contenu sort du cadre (cf. .kta-iti-floater). */
+  flex-wrap: wrap; box-sizing: border-box;
 }
 .kta-osm-mes-icone { font-size: 15px; }
-.kta-osm-mes-info  { font-weight: 600; white-space: nowrap; }
+.kta-osm-mes-info  { font-weight: 600; white-space: normal; overflow-wrap: anywhere; min-width: 0; }
 /* Libellé de segment : lisible sur fond de carte clair comme sombre. */
 .kta-osm-mes-seg { background: none !important; border: none !important; }
 .kta-osm-mes-seg span {
@@ -21569,12 +21584,16 @@ body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
   font-size: 13px; color: #e8eaf0;
   max-width: calc(100vw - 24px);
+  /* 🩸 Mobile : sans coupure, le contenu sort du cadre (cf. .kta-iti-floater). */
+  flex-wrap: wrap; box-sizing: border-box;
 }
 .kta-osm-coord-icone { font-size: 15px; }
 /* La coordonnee est faite pour etre LUE et RECOPIEE : chasse fixe, et
    selectionnable a la souris meme sans passer par le bouton Copier. */
 .kta-osm-coord-info {
-  font-weight: 600; white-space: nowrap;
+  /* Coupable au besoin : une coordonnee sur deux lignes reste lisible et
+     recopiable, hors de l ecran non. */
+  font-weight: 600; white-space: normal; overflow-wrap: anywhere; min-width: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12.5px; color: #8cb4ff;
   user-select: text; -webkit-user-select: text;
