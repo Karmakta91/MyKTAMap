@@ -239,12 +239,91 @@
   // ─────────────────────────────────────────────
   // MODALE DE CHOIX
   // ─────────────────────────────────────────────
-  function ouvrir(famille, obj) {
+  // 🎯 LE LOT (KARMA, 05/09 : « sélectionner N vecteurs et les convertir
+  // d'un coup »). `items` = [{ famille, obj }].
+  //
+  // 🩸 UN SEUL INSTANTANÉ, UNE SEULE ÉCRITURE PAR FAMILLE, UN SEUL RENDU.
+  // Appeler `convertir()` N fois donnerait N re-rendus complets — `setRoads`
+  // reconstruit tout, ce qui coûte cher à 20 000 objets — et N entrées
+  // d'historique : annuler la conversion demanderait N Ctrl+Z. Le lot est UN
+  // geste, il doit s'annuler en UN geste.
+  //
+  // 🩸 UNE CIBLE DÉJÀ ATTEINTE N'EST PAS UNE ERREUR. Sur une sélection mixte
+  // (40 fronts + 5 chemins → galerie), les objets déjà du bon type sont
+  // SAUTÉS et comptés à part. L'alternative — masquer une cible parce qu'un
+  // seul objet de la sélection l'a déjà — rendrait la liste incompréhensible.
+  function convertirLot(items, familleCible, typeCible) {
+    const bilan = { convertis: 0, sautes: 0, echecs: 0 };
+    if (!Array.isArray(items) || !items.length || !familleCible || !typeCible) return bilan;
+    if (typeof _ecrivain(familleCible) !== "function") {
+      console.warn("[Convertir] setteur manquant :", familleCible);
+      bilan.echecs = items.length;
+      return bilan;
+    }
+
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState() : null;
+
+    // Les trois listes sont lues d'un bloc AVANT toute écriture — même raison
+    // que pour `convertir` : une conversion intra-famille lirait une liste
+    // déjà amputée et perdrait les objets.
+    const listes = {
+      roads:      _lire("roads").slice(),
+      zones:      _lire("zones").slice(),
+      structures: _lire("structures").slice()
+    };
+    const touchees = {};
+
+    items.forEach(function (it) {
+      if (!it || !it.obj || !listes[it.famille]) { bilan.echecs++; return; }
+      if (it.famille === familleCible && it.obj.type === typeCible) { bilan.sautes++; return; }
+      const idx = listes[it.famille].indexOf(it.obj);
+      if (idx < 0) { bilan.echecs++; return; }
+      listes[it.famille].splice(idx, 1);
+      const neuf = Object.assign({}, it.obj, { type: typeCible });
+      delete neuf.fromLevel;
+      delete neuf.toLevel;
+      listes[familleCible].push(neuf);
+      touchees[it.famille] = true;
+      touchees[familleCible] = true;
+      bilan.convertis++;
+    });
+
+    if (bilan.convertis === 0) return bilan;   // rien écrit, donc rien à annuler
+    Object.keys(touchees).forEach(function (f) { _ecrivain(f)(listes[f]); });
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      window.HistoryManager.record(_t("convert.histoireLot", { n: bilan.convertis }), avant);
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    return bilan;
+  }
+
+  // Cibles d'un LOT : l'UNION de celles de chaque objet. Un type qui est la
+  // source de l'un peut être la cible d'un autre (40 fronts + 5 chemins →
+  // « chemin » reste une cible valable pour les fronts). L'intersection
+  // ferait disparaître des cibles légitimes sans que rien ne l'explique.
+  function listerCiblesLot(items) {
+    const vues = {}, out = [];
+    (items || []).forEach(function (it) {
+      if (!it || !it.obj) return;
+      listerCibles(it.famille, it.obj.type).forEach(function (c) {
+        const k = c.famille + ":" + c.type;
+        if (vues[k]) return;
+        vues[k] = true;
+        out.push(c);
+      });
+    });
+    return out;
+  }
+
+  function ouvrir(famille, obj, opts) {
     if (!obj) return;
+    opts = opts || {};
+    const lot = Array.isArray(opts.lot) && opts.lot.length ? opts.lot : null;
     const existante = document.getElementById("kta-convert-modal");
     if (existante) existante.remove();
 
-    const cibles = listerCibles(famille, obj.type);
+    const cibles = lot ? listerCiblesLot(lot) : listerCibles(famille, obj.type);
     const ouvert = _estOuvert(famille, obj.type);
     const catSrc = CAT_DE_FAMILLE[famille] || famille;
     const nomSrc = _libelle(catSrc, obj.type);
@@ -294,11 +373,19 @@
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           '<p class="kta-convert-source">' +
-            _esc(_t("convert.source", { type: nomSrc, niveau: (niveau < 0 ? niveau : "+" + niveau) })) +
+            _esc(lot
+              ? _t("convert.lotSource", { n: lot.length })
+              : _t("convert.source", { type: nomSrc, niveau: (niveau < 0 ? niveau : "+" + niveau) })) +
           '</p>' +
           '<p class="kta-convert-regle">' +
             _esc(_t(ouvert ? "convert.regleOuvert" : "convert.regleFerme")) +
           '</p>' +
+          // 🎯 Entrée du mode lot. Absente quand on EST déjà en lot : on ne
+          // relance pas une sélection depuis l'écran qui en présente une.
+          (lot ? '' :
+            '<button class="kta-btn kta-btn-ghost kta-convert-multi" type="button" id="kta-convert-multi">' +
+              _esc(_t("convert.selMulti")) +
+            '</button>') +
           corps +
         '</div>' +
       '</div>';
@@ -316,14 +403,37 @@
         // pointerait un layer détruit. On ferme avant.
         try { if (window.map && window.map.closePopup) window.map.closePopup(); } catch (e) {}
         fermer();
-        convertir(famille, obj, fam, typ);
+        if (lot) {
+          const bilan = convertirLot(lot, fam, typ);
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(_t("convert.lotBilan", bilan), "info");
+          }
+        } else {
+          convertir(famille, obj, fam, typ);
+        }
       });
     });
+
+    const btnMulti = document.getElementById("kta-convert-multi");
+    if (btnMulti && window.SelectionMulti) {
+      btnMulti.addEventListener("click", function () {
+        // La modale disparaît le temps de la désignation : elle couvre la
+        // carte sur laquelle il faut justement cliquer. Elle revient à la
+        // validation, avec le lot.
+        try { if (window.map && window.map.closePopup) window.map.closePopup(); } catch (e) {}
+        fermer();
+        window.SelectionMulti.ouvrir({ famille: famille, obj: obj }, function (sel) {
+          ouvrir(famille, obj, { lot: sel });
+        });
+      });
+    }
   }
 
   window.KtaConvertir = {
     ouvrir:        ouvrir,
     convertir:     convertir,
+    convertirLot:  convertirLot,   // 🎯 v1.85.0 — N objets d un coup
+    listerCiblesLot: listerCiblesLot,
     supprimer:     supprimer,   // 🗑️ v1.85.0 — depuis la popup de l objet
     listerCibles:  listerCibles,
     estOuvert:     _estOuvert

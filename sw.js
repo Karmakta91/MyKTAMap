@@ -176,6 +176,7 @@ const ASSETS_TO_CACHE = [
   // 🔄 v1.82.0 : reclassement d'un objet (front de taille → tracé, etc.).
   // Sans lui en cache, le bouton « Convertir » serait mort hors ligne.
   "./js/convertirObjet.js",
+  "./js/selectionMulti.js",
   "./js/calqueSession.js",
   // 📉 v1.83.0 : profondeur des niveaux + profil en long.
   "./js/profondeurNiveaux.js",

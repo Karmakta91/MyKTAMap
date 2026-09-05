@@ -2511,6 +2511,28 @@ La fenêtre ne propose que des cibles **compatibles avec la forme** de l'objet :
 
 L'objet garde tout le reste — sa géométrie, son niveau, sa note.
 
+### 🎯 Convertir plusieurs objets d'un coup
+
+Sur un relevé importé, il est fréquent d'avoir **des dizaines** d'objets mal typés — tous les fronts de taille d'un niveau qui sont en fait des galeries, par exemple. Les reprendre un par un serait interminable.
+
+Dans la fenêtre de conversion, clique **🎯 Sélectionner plusieurs objets à convertir**. La fenêtre s'efface et un bandeau apparaît :
+
+| Geste | Effet |
+|---|---|
+| **Clic sur un objet** | L'ajoute à la sélection (elle s'affiche en bleu pointillé) |
+| **Re-clic sur un objet sélectionné** | Le retire — pour corriger une erreur de visée sans tout recommencer |
+| **➕ Tous les « type » du niveau affiché** | Étend la sélection à **tous** les objets du même type que le dernier ajouté |
+| **✅ Convertir (N)** | Rouvre la fenêtre de choix, avec le lot |
+| **Annuler** | Abandonne la sélection |
+
+**⛔ On ne mélange pas les lignes et les surfaces fermées.** Si ta sélection est faite de **lignes** (tracés, fronts de taille), cliquer une **zone** ou un **pilier** est refusé — et le bandeau te dit pourquoi. C'est la même règle que pour une conversion simple : il n'existe aucune cible commune, on ne referme pas un trait.
+
+En revanche **tu peux mélanger les familles** tant que la forme est la même : des fronts de taille (structures) et des chemins (tracés) sont tous deux des lignes, tu peux les convertir ensemble en galeries.
+
+Les objets qui sont **déjà** du type choisi sont simplement laissés tels quels — le message de fin te dit combien ont été convertis et combien étaient déjà bons.
+
+> 💡 Tout le lot s'annule d'un **seul** `Ctrl+Z`. Ce n'est pas N conversions, c'est une seule.
+
 ### 🗑️ Supprimer
 
 **Pas de fenêtre de confirmation** : c'est `Ctrl+Z` qui rattrape, comme pour un point, et le message qui s'affiche te le rappelle. Le bouton est **rouge et sur sa propre ligne**, à l'écart du « Sauver », pour qu'on ne le clique pas par mégarde.

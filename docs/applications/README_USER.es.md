@@ -2503,6 +2503,28 @@ La ventana solo propone destinos **compatibles con la forma** del objeto: una **
 
 El objeto conserva todo lo demás: su geometría, su nivel y su nota.
 
+### 🎯 Convertir varios objetos de golpe
+
+En un levantamiento importado es habitual tener **decenas** de objetos mal tipados: por ejemplo, todos los frentes de explotación de un nivel que en realidad son galerías. Rehacerlos uno a uno sería interminable.
+
+En la ventana de conversión, pulsa **🎯 Seleccionar varios objetos para convertir**. La ventana se aparta y aparece un aviso:
+
+| Gesto | Efecto |
+|---|---|
+| **Clic en un objeto** | Lo añade a la selección (se muestra en azul discontinuo) |
+| **Volver a hacer clic en un objeto ya seleccionado** | Lo quita, para corregir un fallo de puntería sin empezar de cero |
+| **➕ Todos los «tipo» del nivel mostrado** | Extiende la selección a **todos** los objetos del mismo tipo que el último añadido |
+| **✅ Convertir (N)** | Vuelve a abrir la ventana de elección, con el lote |
+| **Cancelar** | Abandona la selección |
+
+**⛔ No se mezclan líneas y superficies cerradas.** Si tu selección está hecha de **líneas** (trazados, frentes), hacer clic en una **zona** o un **pilar** se rechaza, y el aviso te dice por qué. Es la misma regla que en una conversión simple: no hay ningún destino común, no se puede cerrar una línea.
+
+En cambio **sí puedes mezclar familias** mientras la forma coincida: los frentes (estructuras) y los caminos (trazados) son ambos líneas, así que puedes convertirlos juntos en galerías.
+
+Los objetos que **ya** son del tipo elegido simplemente se dejan como están: el mensaje final te dice cuántos se convirtieron y cuántos ya estaban bien.
+
+> 💡 Todo el lote se deshace con un **solo** `Ctrl+Z`. No son N conversiones, es una.
+
 ### 🗑️ Eliminar
 
 **Sin ventana de confirmación**: la red de seguridad es `Ctrl+Z`, igual que para un punto, y el mensaje que aparece te lo recuerda. El botón es **rojo y está en su propia línea**, apartado de «Guardar», para que no se pulse sin querer.

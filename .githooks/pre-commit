@@ -206,3 +206,17 @@ node scripts/check-repositionner.js || exit $?
 # note inseree AU MILIEU qui le coupait en deux au rendu Markdown. Les 5
 # defauts reels rougissent. BLOQUANT.
 node scripts/check-doc-sidebar.js || exit $?
+
+# 🎯 La selection multiple et la conversion EN LOT. Six choses y regressent
+# sans bruit. La REGLE DE COMPATIBILITE porte sur l OUVERTURE (ligne vs
+# surface fermee), PAS sur la famille : un trace et un front de taille sont
+# tous deux des lignes, et les melanger est LE cas utile — 40 fronts mal
+# types qui deviennent des galeries. La resserrer sur la famille tuerait la
+# raison d etre de la feature sans casser un test naif. Le REFUS doit etre
+# EXPLIQUE (un clic sans effet et sans mot se lit comme un bug). Le LOT doit
+# etre UN geste : un instantane, une entree d historique, une ecriture par
+# famille TOUCHEE — sinon annuler demanderait N Ctrl+Z et on paierait N
+# re-rendus complets. Les trois listes sont lues AVANT toute ecriture. Une
+# cible DEJA atteinte est sautee, pas comptee en echec. Et `itinerary` reste
+# hors selection. Les 8 sabotages de reference rougissent. BLOQUANT.
+node scripts/check-selection-multi.js || exit $?

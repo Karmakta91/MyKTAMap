@@ -5025,5 +5025,19 @@
   "editor.undo.movePoint": "Repositionner le point {nom}",
   "convert.btnSuppr": "Supprimer",
   "convert.toastSuppr": "🗑️ Objet supprimé — Ctrl+Z pour annuler",
-  "convert.histoireSuppr": "Supprimer un objet"
+  "convert.histoireSuppr": "Supprimer un objet",
+  "convert.selMulti": "🎯 Sélectionner plusieurs objets à convertir",
+  "convert.lotSource": "{n} objets sélectionnés",
+  "convert.lotBilan": "🔄 {convertis} objet(s) converti(s) · {sautes} déjà de ce type · {echecs} ignoré(s) — Ctrl+Z pour annuler",
+  "convert.histoireLot": "Convertir {n} objets",
+  "selm.compte": "{n} objet(s) sélectionné(s) — clique pour ajouter, re-clique pour retirer",
+  "selm.valider": "✅ Convertir ({n})",
+  "selm.annuler": "Annuler",
+  "selm.tousDuType": "➕ Tous les « {type} » du niveau affiché",
+  "selm.ajoutes": "➕ {n} objet(s) ajouté(s)",
+  "selm.aucunAjout": "Aucun objet de plus à ajouter",
+  "selm.retire": "Objet retiré de la sélection",
+  "selm.rien": "Rien sous le clic — vise le trait ou l'intérieur de la forme",
+  "selm.refusOuvert": "⛔ Celui-ci est une LIGNE, ta sélection est en surfaces fermées",
+  "selm.refusFerme": "⛔ Celui-ci est une SURFACE FERMÉE, ta sélection est en lignes"
 }

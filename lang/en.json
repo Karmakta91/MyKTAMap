@@ -5025,5 +5025,19 @@
   "editor.undo.movePoint": "Reposition point {nom}",
   "convert.btnSuppr": "Delete",
   "convert.toastSuppr": "🗑️ Object deleted — Ctrl+Z to undo",
-  "convert.histoireSuppr": "Delete an object"
+  "convert.histoireSuppr": "Delete an object",
+  "convert.selMulti": "🎯 Select several objects to convert",
+  "convert.lotSource": "{n} objects selected",
+  "convert.lotBilan": "🔄 {convertis} object(s) converted · {sautes} already of this type · {echecs} skipped — Ctrl+Z to undo",
+  "convert.histoireLot": "Convert {n} objects",
+  "selm.compte": "{n} object(s) selected — click to add, click again to remove",
+  "selm.valider": "✅ Convert ({n})",
+  "selm.annuler": "Cancel",
+  "selm.tousDuType": "➕ All “{type}” on the displayed level",
+  "selm.ajoutes": "➕ {n} object(s) added",
+  "selm.aucunAjout": "No further object to add",
+  "selm.retire": "Object removed from the selection",
+  "selm.rien": "Nothing under the click — aim at the line or inside the shape",
+  "selm.refusOuvert": "⛔ This one is a LINE, your selection holds closed surfaces",
+  "selm.refusFerme": "⛔ This one is a CLOSED SURFACE, your selection holds lines"
 }

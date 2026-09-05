@@ -2506,6 +2506,28 @@ The dialog only offers targets **compatible with the object's shape**: a **line*
 
 The object keeps everything else — its geometry, its level, its note.
 
+### 🎯 Convert several objects at once
+
+On an imported survey it is common to have **dozens** of mis-typed objects — every working face on a level that is in fact a gallery, for instance. Redoing them one by one would take forever.
+
+In the conversion dialog, click **🎯 Select several objects to convert**. The dialog steps aside and a banner appears:
+
+| Action | Effect |
+|---|---|
+| **Click an object** | Adds it to the selection (shown as a blue dashed outline) |
+| **Click a selected object again** | Removes it — to fix a mis-click without starting over |
+| **➕ All “type” on the displayed level** | Extends the selection to **every** object of the same type as the last one added |
+| **✅ Convert (N)** | Reopens the choice dialog, with the batch |
+| **Cancel** | Drops the selection |
+
+**⛔ Lines and closed surfaces don't mix.** If your selection is made of **lines** (paths, working faces), clicking a **zone** or a **pillar** is refused — and the banner tells you why. Same rule as for a single conversion: there is no common target, you cannot close a line.
+
+You **can** mix families as long as the shape matches: working faces (structures) and tracks (paths) are both lines, so you can convert them together into galleries.
+
+Objects that are **already** of the chosen type are simply left alone — the closing message says how many were converted and how many were already right.
+
+> 💡 The whole batch undoes with a **single** `Ctrl+Z`. It is not N conversions, it is one.
+
 ### 🗑️ Delete
 
 **No confirmation dialog**: `Ctrl+Z` is the safety net, as for a point, and the message that appears reminds you. The button is **red and on its own row**, away from “Save”, so it is not clicked by accident.

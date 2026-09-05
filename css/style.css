@@ -21598,3 +21598,13 @@ body.kta-theme-light #kta-osm-mes-floater {
 }
 .kta-planner-prof-row .kta-cfg-input { width: 90px; }
 .kta-planner-prof-row .kta-cfg-label { font-size: 12px; margin: 0; }
+
+/* 🎯 v1.85.0 — bandeau de sélection multiple. Il hérite de .kta-iti-floater
+   (position, fond, ombre) : seul l'écart des boutons change, parce qu'il en
+   porte quatre là où les autres pickers en ont un. */
+.kta-selm-floater { gap: 8px; flex-wrap: wrap; max-width: min(94vw, 720px); }
+.kta-selm-floater .kta-btn { white-space: nowrap; }
+.kta-selm-floater #kta-selm-ok[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* Le bouton d'entrée en sélection multiple, dans la modale de conversion. */
+.kta-convert-multi { display: block; width: 100%; margin: 4px 0 12px; }

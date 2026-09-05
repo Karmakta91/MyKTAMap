@@ -1358,6 +1358,50 @@ relire en fait tomber 1 (celui de la même famille).
 
 ---
 
+### 🎯 Convertir EN LOT — sélection multiple (v1.85.0)
+
+KARMA, 05/09 : « sélectionner N vecteurs et les convertir d'un coup ». `js/selectionMulti.js` arme un mode de désignation
+sur la carte ; `KtaConvertir.convertirLot(items, familleCible, typeCible)` applique le lot.
+
+**🩸 La règle porte sur l'OUVERTURE, pas sur la famille.** Un tracé et un front de taille sont tous deux des **lignes** :
+les mélanger est légitime, et c'est LE cas utile — 40 fronts mal typés qui deviennent des galeries. Ce qu'on refuse, c'est
+de mêler une ligne et une surface fermée : aucune cible commune, on ne referme pas un trait. Resserrer la règle sur la
+famille tuerait la raison d'être de la feature **sans casser un seul test naïf** — d'où l'assertion dédiée.
+
+**Le refus est EXPLIQUÉ.** `_choisir()` rend `{ cible, refus }` : `refus` porte l'objet incompatible visé, pour pouvoir
+dire pourquoi. Un clic sans effet et sans mot se lit comme un bug de la carte — symptôme déjà payé sur les pickers en
+v1.28.0.
+
+**🩸 Le lot est UN geste.** Un instantané d'historique, **une** entrée, une écriture par famille *touchée*. Appeler
+`convertir()` N fois donnerait N re-rendus complets (`setRoads` reconstruit tout — coûteux à 20 000 objets) et N `Ctrl+Z`
+pour annuler. Les trois listes sont lues **avant** toute écriture, même piège que `convertir()` en v1.82.0. Zéro
+conversion ⇒ aucune écriture et aucune entrée d'historique : il n'y a rien à annuler.
+
+**Cibles du lot = UNION**, jamais intersection. Un type qui est la *source* de l'un peut être la *cible* d'un autre
+(« chemin » reste valable pour des fronts même si un chemin est dans la sélection). Les objets déjà du type choisi sont
+**sautés**, comptés à part, jamais en échec.
+
+**La surbrillance est un calque à part**, pas un `setStyle` sur les layers existants : il n'existe pas de registre
+objet → layer fiable pour les trois familles, et un re-render écraserait des styles modifiés à la main. Le calque est
+`interactive: false` — sinon il mangerait les clics qu'il aide à viser. Sa couleur est l'accent d'interaction de la charte
+(`#8cb4ff`) : ce n'est pas un style de *type*, c'est un état d'interface, et `check-style-canon.js` refuse toute table de
+couleurs locale.
+
+**➕ « Tous les \<type\> du niveau affiché »** n'est pas un confort : sans lui, désigner 200 objets un par un coûte autant
+qu'avant. On divise le nombre de *conversions*, pas celui des *clics*.
+
+**🧭 Dette adressée à moitié, sciemment.** `_pointInPolygon` vivait en **quatre** copies locales (`interface.js`,
+`pathfinder.js`, `secoursMode.js`…). Le module devient le **foyer canonique** (`window.ktaPointInPolygon`,
+`window.ktaDistPointSegment`) sans rouvrir les quatre : elles servent trois chemins de suppression qui fonctionnent, et on
+ne les touche pas dans une version non déployée. Migration au BACKLOG.
+
+**Garde-fou** : `scripts/check-selection-multi.js` — le cœur de la visée (`_choisir`) est exposé et éprouvé **sans
+Leaflet**. **8 sabotages** rougissent. Deux faiblesses du garde-fou lui-même ont été trouvées par cette falsification :
+les assertions déréférençaient `.cible.obj` sans garde (une régression rendant `null` faisait *planter* le script au lieu
+d'échouer lisiblement), et le contrôle `interactive: false` était satisfait par le **commentaire** qui explique la règle.
+
+---
+
 ### 🗑️ Supprimer l'objet — même bulle, même référence (v1.85.0)
 
 KARMA, 05/09 : « rajoute, dans le truc pour convertir, un bouton supprimer ». Supprimer un tracé imposait de repasser par
