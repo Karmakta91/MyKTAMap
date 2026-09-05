@@ -245,5 +245,76 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   });
 }
 
+// ───────── 6. 🐛 pas DEUX règles dans le bandeau de mesure ─────────
+// KARMA, 05/09 : « on voit deux fois la règle ». Le bandeau porte une icône
+// FIXE 📏, et le texte de mesure la re-préfixait — deux règles côte à côte.
+// Le ⬛ de la surface, lui, reste : elle n'a pas d'icône fixe, et c'est ce
+// qui la distingue de la distance dans la même ligne.
+{
+  const MESJS = fs.readFileSync("js/osmMesure.js", "utf8");
+  const iMaj = MESJS.indexOf("function _majFloater");
+  const bloc = iMaj < 0 ? null : MESJS.slice(iMaj, iMaj + 900);
+  t("la fonction d'affichage du bandeau existe", bloc !== null);
+  t("🐛 mesure : le texte ne re-préfixe PAS l'icône 📏 (elle est déjà dans le bandeau)",
+    bloc !== null && bloc.indexOf('"📏 "') < 0);
+  t("mesure : l'icône fixe du bandeau est bien là, elle", MESJS.indexOf('mes-icone">📏') >= 0);
+  // 🩸 Viser la ligne qui l'ECRIT : le commentaire juste au-dessus contient
+  // le meme caractere et suffisait a satisfaire une recherche de sous-chaine.
+  t("mesure : le ⬛ de la surface est conservé (rien ne la distingue sinon)",
+    bloc !== null && /txt \+= "\s+⬛ " \+ _fmtS\(/.test(bloc));
+}
+
+// ───────── 7. 🪟 les panneaux d'outils ne passent plus sous le footer ─────────
+// KARMA, 05/09 : « la fenêtre structure passe sous le footer, toujours ».
+// Le correctif de v1.82.0 (mesurer le viewport RÉEL via `visualViewport` au
+// lieu de `innerHeight`) était juste mais insuffisant : le panneau reste
+// ANCRÉ au haut de son bouton, donc plus sa liste s'allonge — un plan importé
+// ajoute un type de structure PAR NIVEAU — plus il descend, et le clamp ne
+// peut que le remonter jusqu'à buter. Centré, sa hauteur se répartit des deux
+// côtés et la question ne se pose plus.
+//
+// L'ancrage reste offert en réglage : sur grand écran il ne gêne pas, et le
+// retirer d'office serait une régression pour qui travaille à la souris.
+{
+  const ITF = fs.readFileSync("js/interface.js", "utf8");
+  const CFG = fs.readFileSync("js/config.js", "utf8");
+  const UIC = fs.readFileSync("js/interfaceConfig.js", "utf8");
+  const i = ITF.indexOf("function _positionnerFlyout");
+  const fn = i < 0 ? null : ITF.slice(i, ITF.indexOf("\n}", i));
+  t("le positionneur de panneau existe", fn !== null);
+  t("🪟 par défaut le panneau est CENTRÉ (le défaut est la négation du réglage)",
+    fn !== null && /if \(!\(window\.APP_CONFIG && window\.APP_CONFIG\.panneauxAncres === true\)\)/.test(fn));
+  t("🪟 centrage vertical sur le viewport RÉEL, encoches déduites",
+    fn !== null && /top\s*=\s*offY \+ insets\.top \+ \(vpH - insets\.top - insets\.bottom - flyHeight\) \/ 2/.test(fn));
+  t("🪟 centrage horizontal de même",
+    fn !== null && /left\s*=\s*offX \+ insets\.left \+ \(vpW - insets\.left - insets\.right - flyWidth\) \/ 2/.test(fn));
+  // 🩸 Un panneau plus haut que l'écran donne un `top` négatif : il doit être
+  // collé en haut (son scroll interne prend le relais), pas laissé au-dessus
+  // du bord — sinon on remplace un débordement par le bas par un par le haut.
+  //
+  // Ce clamp existe DÉJÀ plus haut dans la fonction, pour le mode ancré : une
+  // recherche sur toute la fonction serait satisfaite par celui-là et ne dirait
+  // rien du mode centré. On délimite donc la BRANCHE de centrage.
+  const iC = fn === null ? -1 : fn.indexOf("panneauxAncres === true))");
+  const branche = iC < 0 ? null : fn.slice(iC, fn.indexOf("}", fn.indexOf("insets.left) left", iC)));
+  t("la branche de centrage est délimitable", branche !== null);
+  t("🩸 un panneau plus haut que l'écran est collé EN HAUT, pas au-dessus du bord",
+    branche !== null && /if \(top\s+< offY \+ safeMargin \+ insets\.top\)\s+top\s+= offY \+ safeMargin \+ insets\.top;/.test(branche));
+  t("🩸 et de même à gauche",
+    branche !== null && /if \(left < offX \+ safeMargin \+ insets\.left\) left = offX \+ safeMargin \+ insets\.left;/.test(branche));
+
+  t("réglage : `panneauxAncres` a un défaut déclaré", /panneauxAncres:\s*false/.test(CFG));
+  t("🩸 réglage : sauvegardé par le chemin CANONIQUE (sinon invisible au contrôle des prefs)",
+    /existing\.panneauxAncres\s*=/.test(CFG) && /sauvegarderPrefsUtilisateur\(\)/.test(UIC));
+  t("réglage : relu au chargement d'un plan", /"panneauxAncres" in saved/.test(CFG));
+  t("réglage : la case existe dans ⚙️ Paramètres", /id="cfg_panneauxAncres"/.test(UIC));
+  ["config.panneaux.label", "config.panneaux.hint"].forEach(function (k) {
+    ["fr", "en", "es"].forEach(function (l) {
+      const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
+      t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);
+    });
+  });
+}
+
 console.log(ko === 0 ? "\n🎉 outils de la Vue OSM : tout passe" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

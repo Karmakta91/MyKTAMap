@@ -2511,6 +2511,14 @@ La fenêtre ne propose que des cibles **compatibles avec la forme** de l'objet :
 
 L'objet garde tout le reste — sa géométrie, son niveau, sa note.
 
+### 🪟 Où s'ouvrent les panneaux d'outils
+
+Les panneaux **Tracés**, **Zones** et **Structures** s'ouvrent **centrés à l'écran**, comme le Tracker et les Filtres.
+
+> 🐛 **Pourquoi ça a changé (v1.85.1)** — ils étaient collés au haut de leur bouton. Plus leur liste s'allonge — un plan importé ajoute un type par niveau —, plus ils descendaient, jusqu'à passer sous le bas de l'écran sur téléphone : les derniers boutons devenaient inatteignables.
+
+Si tu préfères l'ancien affichage, coche **🪟 Ancrer les panneaux d'outils au bouton** dans ⚙️ **Paramètres**. C'est confortable sur grand écran, où la place ne manque pas — déconseillé sur téléphone.
+
 ### 🎯 Convertir plusieurs objets d'un coup
 
 Sur un relevé importé, il est fréquent d'avoir **des dizaines** d'objets mal typés — tous les fronts de taille d'un niveau qui sont en fait des galeries, par exemple. Les reprendre un par un serait interminable.

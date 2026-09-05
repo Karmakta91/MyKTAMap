@@ -5039,5 +5039,7 @@
   "selm.retire": "Objet retiré de la sélection",
   "selm.rien": "Rien sous le clic — vise le trait ou l'intérieur de la forme",
   "selm.refusOuvert": "⛔ Celui-ci est une LIGNE, ta sélection est en surfaces fermées",
-  "selm.refusFerme": "⛔ Celui-ci est une SURFACE FERMÉE, ta sélection est en lignes"
+  "selm.refusFerme": "⛔ Celui-ci est une SURFACE FERMÉE, ta sélection est en lignes",
+  "config.panneaux.label": "🪟 Ancrer les panneaux d'outils au bouton",
+  "config.panneaux.hint": "Par défaut, les panneaux Tracés / Zones / Structures s'ouvrent centrés à l'écran, comme le Tracker et les Filtres. Coche pour les rouvrir collés à leur bouton — pratique sur grand écran, déconseillé sur téléphone où la liste peut passer sous le bas de l'écran."
 }

@@ -93,6 +93,12 @@ let DEFAULT_CONFIG = {
   // ⚙️ Réglages : le magnétisme améliore la qualité du GRAPHE, donc il sert
   // aussi au Pathfinder (itinéraires) même si la nav intelligente est OFF.
   snapDraw:   false,
+  // 🪟 v1.85.1 (KARMA) : les panneaux d outils (Tracés / Zones / Structures)
+  // s ouvrent CENTRÉS par défaut. Ancrés au bouton, ils passaient sous le
+  // footer sur téléphone dès que leur liste s allongeait — un plan importé
+  // ajoute un type par niveau. Le réglage rend l ancrage à qui le préfère,
+  // typiquement sur grand écran où la place ne manque pas.
+  panneauxAncres: false,
   snapDrawPx: 14,   // rayon d'accrochage en pixels ÉCRAN (converti en unités
                     // plan au clic selon le zoom courant — « si c'est proche
                     // à l'œil, ça s'accroche », quel que soit le niveau de zoom)
@@ -187,6 +193,7 @@ try {
   if (Number.isFinite(saved.smartNavHeadingWeight)) APP_CONFIG.smartNavHeadingWeight = saved.smartNavHeadingWeight;
   // 🧲 C5 v1.74.0 — magnétisme edit-time (pref globale, défaut OFF)
   if ("snapDraw" in saved) APP_CONFIG.snapDraw = !!saved.snapDraw;
+  if ("panneauxAncres" in saved) APP_CONFIG.panneauxAncres = !!saved.panneauxAncres;
   if (Number.isFinite(saved.snapDrawPx) && saved.snapDrawPx > 0) APP_CONFIG.snapDrawPx = saved.snapDrawPx;
 } catch(e) {}
 
@@ -472,6 +479,7 @@ function buildAppConfigFromPlan(planConfig) {
     // ⚠️ Toute nouvelle pref GLOBALE doit être ajoutée aux DEUX endroits :
     // le bloc de restauration au boot ET cette liste.
     if ("snapDraw" in saved) cfg.snapDraw = !!saved.snapDraw;
+    if ("panneauxAncres" in saved) cfg.panneauxAncres = !!saved.panneauxAncres;
     if (Number.isFinite(saved.snapDrawPx) && saved.snapDrawPx > 0) cfg.snapDrawPx = saved.snapDrawPx;
   } catch(e) {}
 
@@ -486,6 +494,7 @@ function buildAppConfigFromPlan(planConfig) {
   if (cfg.smartNav === undefined)              cfg.smartNav              = DEFAULT_CONFIG.smartNav === true;  // défaut OFF
   if (cfg.snapDraw === undefined)              cfg.snapDraw              = DEFAULT_CONFIG.snapDraw === true;  // défaut OFF
   if (!Number.isFinite(cfg.snapDrawPx))        cfg.snapDrawPx            = DEFAULT_CONFIG.snapDrawPx;
+  if (cfg.panneauxAncres === undefined)        cfg.panneauxAncres        = DEFAULT_CONFIG.panneauxAncres === true;
 
   return cfg;
 }
@@ -568,7 +577,8 @@ function sauvegarderPrefsUtilisateur() {
     existing.smartNav              = APP_CONFIG.smartNav === true;                 // 🧭 Nav C2 : default false
     if (Number.isFinite(APP_CONFIG.smartNavRadiusM))       existing.smartNavRadiusM       = APP_CONFIG.smartNavRadiusM;       // 🆕 v1.49.0
     if (Number.isFinite(APP_CONFIG.smartNavHeadingWeight)) existing.smartNavHeadingWeight = APP_CONFIG.smartNavHeadingWeight; // 🆕 v1.49.0
-    existing.snapDraw              = APP_CONFIG.snapDraw === true;                 // 🧲 C5 v1.74.0 : default false
+    existing.snapDraw              = APP_CONFIG.snapDraw === true;
+    existing.panneauxAncres        = APP_CONFIG.panneauxAncres === true;        // 🪟 v1.85.1 : defaut CENTRE                 // 🧲 C5 v1.74.0 : default false
     if (Number.isFinite(APP_CONFIG.snapDrawPx) && APP_CONFIG.snapDrawPx > 0) existing.snapDrawPx = APP_CONFIG.snapDrawPx;
     localStorage.setItem("app_user_prefs", JSON.stringify(existing));
   } catch(e) {}

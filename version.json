@@ -1,8 +1,9 @@
 {
-  "version": "v1.85.0",
+  "version": "v1.85.1",
   "released": "2026-09-05",
   "notes": [
     "🔄 Tu peux enfin corriger un relevé importé sans quitter la carte. Dans 🔍 Filtres, chaque calque de données a un bouton « Modifier » : son contenu passe dans ta session, tu corriges directement à l’écran (changer un front de taille en galerie, par exemple), puis « Exporter » te rend un fichier corrigé à redonner au plan. Le calque d’origine se masque tout seul pour éviter les doublons, et « Restaurer » annule tout. Dans la foulée, un point mal posé se corrige aussi : sa bulle a maintenant un bouton « Repositionner », et le clic suivant sur la carte le déplace. Et un tracé, une zone ou une structure se supprime maintenant depuis sa propre bulle, sans passer par la barre d'outils. Et quand plusieurs objets sont à reclasser, un bouton permet d'en sélectionner autant que tu veux sur la carte et de tous les convertir d'un coup.",
-    "🎯 En Vue OSM, un clic te donne les coordonnées GPS de la surface juste au-dessus du point choisi, prêtes à copier — de quoi guider une équipe qui arrive par le haut. Et l’outil de mesure, qui n’existait que sur l’aperçu de l’accueil, est maintenant aussi dans la Vue OSM d’un plan ouvert."
+    "🎯 En Vue OSM, un clic te donne les coordonnées GPS de la surface juste au-dessus du point choisi, prêtes à copier — de quoi guider une équipe qui arrive par le haut. Et l’outil de mesure, qui n’existait que sur l’aperçu de l’accueil, est maintenant aussi dans la Vue OSM d’un plan ouvert.",
+    "📱 Deux corrections d'affichage sur téléphone : les panneaux Tracés, Zones et Structures s'ouvrent maintenant centrés à l'écran — leur liste ne passe plus sous le bas de l'écran — et le bandeau de mesure en Vue OSM n'affiche plus deux fois la même icône. Si tu préfères l'ancien affichage collé au bouton, une case dans ⚙️ Paramètres le rend."
   ]
 }

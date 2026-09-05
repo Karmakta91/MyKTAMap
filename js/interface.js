@@ -1713,8 +1713,27 @@ function _positionnerFlyout(fly, btnPrincipal, sidebarPosition) {
     left = offX + vpW - flyWidth - safeMargin - insets.right;
   }
 
-  fly.style.top  = top  + "px";
-  fly.style.left = left + "px";
+  // 🪟 v1.85.1 (KARMA « les 3 modales tracé / zone / structure doivent être
+  // centrées comme tracker et filtres »). ANCRER AU BOUTON était le vrai
+  // problème : le panneau part du haut du bouton, donc plus sa liste est
+  // longue — un plan importé ajoute un type de structure PAR NIVEAU — plus
+  // il descend, et le clamp ne peut que le remonter jusqu'à buter. Centré,
+  // sa hauteur se répartit des deux côtés et le problème ne se pose plus.
+  //
+  // L'ancrage reste disponible en réglage : sur grand écran il place le
+  // panneau à côté de son bouton sans jamais gêner, et le retirer d'office
+  // serait une régression pour ceux qui travaillent à la souris.
+  if (!(window.APP_CONFIG && window.APP_CONFIG.panneauxAncres === true)) {
+    top  = offY + insets.top + (vpH - insets.top - insets.bottom - flyHeight) / 2;
+    left = offX + insets.left + (vpW - insets.left - insets.right - flyWidth) / 2;
+    // Un panneau plus haut que l'écran donnerait un `top` négatif : on le
+    // colle en haut, son scroll interne prend le relais.
+    if (top  < offY + safeMargin + insets.top)  top  = offY + safeMargin + insets.top;
+    if (left < offX + safeMargin + insets.left) left = offX + safeMargin + insets.left;
+  }
+
+  fly.style.top  = Math.round(top)  + "px";
+  fly.style.left = Math.round(left) + "px";
 }
 
 // =========================

@@ -2503,6 +2503,14 @@ La ventana solo propone destinos **compatibles con la forma** del objeto: una **
 
 El objeto conserva todo lo demás: su geometría, su nivel y su nota.
 
+### 🪟 Dónde se abren los paneles de herramientas
+
+Los paneles **Trazados**, **Zonas** y **Estructuras** se abren **centrados en pantalla**, como el Rastreador y los Filtros.
+
+> 🐛 **Por qué cambió (v1.85.1)**: antes quedaban pegados a la parte superior de su botón. Cuanto más larga era su lista —un plano importado añade un tipo por nivel—, más bajaban, hasta pasar por debajo del borde inferior en el móvil: los últimos botones quedaban fuera de alcance.
+
+Si prefieres el comportamiento anterior, marca **🪟 Anclar los paneles de herramientas a su botón** en ⚙️ **Ajustes**. Es cómodo en pantalla grande, donde no falta sitio; poco recomendable en móvil.
+
 ### 🎯 Convertir varios objetos de golpe
 
 En un levantamiento importado es habitual tener **decenas** de objetos mal tipados: por ejemplo, todos los frentes de explotación de un nivel que en realidad son galerías. Rehacerlos uno a uno sería interminable.

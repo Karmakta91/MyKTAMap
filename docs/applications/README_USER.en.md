@@ -2506,6 +2506,14 @@ The dialog only offers targets **compatible with the object's shape**: a **line*
 
 The object keeps everything else — its geometry, its level, its note.
 
+### 🪟 Where tool panels open
+
+The **Paths**, **Zones** and **Structures** panels open **centred on screen**, like the Tracker and the Filters.
+
+> 🐛 **Why this changed (v1.85.1)** — they used to stick to the top of their button. The longer their list got — an imported plan adds one type per level — the further down they reached, until they ran past the bottom edge on a phone: the last buttons became unreachable.
+
+If you prefer the old behaviour, tick **🪟 Anchor tool panels to their button** in ⚙️ **Settings**. It is comfortable on a large screen, where space is not an issue — not advised on a phone.
+
 ### 🎯 Convert several objects at once
 
 On an imported survey it is common to have **dozens** of mis-typed objects — every working face on a level that is in fact a gallery, for instance. Redoing them one by one would take forever.

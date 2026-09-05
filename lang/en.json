@@ -5039,5 +5039,7 @@
   "selm.retire": "Object removed from the selection",
   "selm.rien": "Nothing under the click — aim at the line or inside the shape",
   "selm.refusOuvert": "⛔ This one is a LINE, your selection holds closed surfaces",
-  "selm.refusFerme": "⛔ This one is a CLOSED SURFACE, your selection holds lines"
+  "selm.refusFerme": "⛔ This one is a CLOSED SURFACE, your selection holds lines",
+  "config.panneaux.label": "🪟 Anchor tool panels to their button",
+  "config.panneaux.hint": "By default the Paths / Zones / Structures panels open centred on screen, like the Tracker and Filters. Tick this to reopen them next to their button — handy on a large screen, not advised on a phone where the list can run past the bottom edge."
 }

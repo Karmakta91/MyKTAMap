@@ -5039,5 +5039,7 @@
   "selm.retire": "Objeto quitado de la selección",
   "selm.rien": "Nada bajo el clic: apunta a la línea o al interior de la forma",
   "selm.refusOuvert": "⛔ Este es una LÍNEA y tu selección tiene superficies cerradas",
-  "selm.refusFerme": "⛔ Este es una SUPERFICIE CERRADA y tu selección tiene líneas"
+  "selm.refusFerme": "⛔ Este es una SUPERFICIE CERRADA y tu selección tiene líneas",
+  "config.panneaux.label": "🪟 Anclar los paneles de herramientas a su botón",
+  "config.panneaux.hint": "Por defecto, los paneles Trazados / Zonas / Estructuras se abren centrados en pantalla, como el Rastreador y los Filtros. Marca esta casilla para reabrirlos pegados a su botón: cómodo en pantalla grande, poco recomendable en móvil, donde la lista puede pasar por debajo del borde inferior."
 }

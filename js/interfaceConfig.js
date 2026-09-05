@@ -986,6 +986,16 @@ function afficherConfig() {
           <!-- 🧲 C5 v1.74.0 — magnétisme edit-time. Rangé ici (section Navigation)
                mais INDÉPENDANT du toggle ci-dessus : il améliore la qualité du
                graphe, donc il sert aussi aux itinéraires sans nav intelligente. -->
+          <!-- 🪟 v1.85.1 — ancrage des panneaux d outils. -->
+          <label class="kta-perf-ultra-row" style="margin-top:14px;">
+            <input type="checkbox" id="cfg_panneauxAncres" ${c.panneauxAncres === true ? "checked" : ""}>
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.panneaux.label")}</span>
+              <span class="kta-perf-ultra-hint">
+                ${window.I18n.t("config.panneaux.hint")}
+              </span>
+            </span>
+          </label>
           <label class="kta-perf-ultra-row" style="margin-top:14px;">
             <input type="checkbox" id="cfg_snapDraw" ${c.snapDraw === true ? "checked" : ""}>
             <span class="kta-perf-ultra-text">
@@ -1426,6 +1436,24 @@ function afficherConfig() {
   // Visible UNIQUEMENT si navigator.vibrate est supporté (Android oui,
   // iOS Safari NON par choix d'Apple). Sync UI ↔ APP_CONFIG.vibrationEnabled
   // + persistence app_user_prefs.
+  // 🪟 v1.85.1 — ancrage des panneaux d outils. Applique a la volee : le
+  // panneau suivant s ouvre au bon endroit sans recharger.
+  const panCb = document.getElementById("cfg_panneauxAncres");
+  if (panCb) {
+    panCb.checked = !!(window.APP_CONFIG && window.APP_CONFIG.panneauxAncres === true);
+    panCb.addEventListener("change", function () {
+      if (!window.APP_CONFIG) window.APP_CONFIG = {};
+      window.APP_CONFIG.panneauxAncres = !!panCb.checked;
+      // 🩸 Par le chemin CANONIQUE, pas par une ecriture directe : c est lui
+      // que `check-prefs-survival.js` inspecte pour verifier qu une pref
+      // sauvegardee est bien relue au chargement d un plan. Une ecriture
+      // directe (cas `vibrationEnabled`) rend la pref invisible au controle.
+      if (typeof window.sauvegarderPrefsUtilisateur === "function") {
+        window.sauvegarderPrefsUtilisateur();
+      }
+    });
+  }
+
   const vibRow = document.getElementById("cfg_vibration_row");
   const vibCb  = document.getElementById("cfg_vibration");
   if (vibRow && vibCb && window.kta_vibrate && window.kta_vibrate.isSupported()) {
