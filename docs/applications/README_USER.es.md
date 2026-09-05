@@ -2252,17 +2252,17 @@ La nueva etiqueta se añade a tu sesión y usará el icono por defecto. Para per
 
 ### 🗑️ Borrar los puntos
 
-Pulsa **🗑️** (junto a ✏️). Se abre una ventana con dos opciones:
+El borrado se hace **directamente sobre el punto**, no desde la barra de herramientas: clic en el marcador → ventana → **🗑️ Eliminar este punto**.
 
-| Opción | Efecto |
+| Lo que quieres | Cómo |
 |---|---|
-| **↩️ Último punto** | Elimina el punto añadido más recientemente |
-| **🗑️ Todos los puntos** | Borra todos los puntos añadidos manualmente (irreversible) |
-| Cancelar | Cierra la ventana sin borrar nada |
+| Quitar **un** punto | Clic en el marcador → **🗑️ Eliminar este punto** |
+| Deshacer el borrado | `Ctrl+Z` (o ↩️ en la barra) |
+| Borrarlo **todo** | ⚙️ **Borrar la sesión**: deja el plano a cero (puntos, trazados, zonas, estructuras) |
 
-> Puedes retirar varios puntos uno a uno pulsando sucesivamente **🗑️ → ↩️ Último punto**.
+> ℹ️ El botón 🗑️ solo aparece en **tus** puntos. Los que vienen del propio plano o de una capa de datos son de solo lectura: para quitar uno, abre antes su capa para modificarla desde 🔍 **Filtros** y luego exporta la capa corregida.
 
-> ⚠️ **Todos los puntos** solo elimina los puntos que **tú** has añadido — los puntos del plano original permanecen intactos.
+> 💡 **No** hay botón 🗑️ al lado de ✏️: el grupo Edición es un simple interruptor (modo añadir ON/OFF).
 
 ### ✏️ Modificar un punto existente
 

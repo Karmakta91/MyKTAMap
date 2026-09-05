@@ -2259,17 +2259,17 @@ Le nouveau tag est ajouté à votre session et utilisera l'icône par défaut. P
 
 ### 🗑️ Effacer les points
 
-Appuyez sur **🗑️** (à côté de ✏️). Une fenêtre s'ouvre avec deux options :
+La suppression se fait **directement sur le point**, pas depuis la barre d'outils : clic sur le marker → popup → **🗑️ Supprimer ce point**.
 
-| Option | Effet |
+| Ce que tu veux | Comment |
 |---|---|
-| **↩️ Dernier point** | Supprime le point le plus récemment ajouté |
-| **🗑️ Tous les points** | Efface tous les points ajoutés manuellement (irréversible) |
-| Annuler | Ferme la fenêtre sans rien supprimer |
+| Retirer **un** point | Clic sur le marker → **🗑️ Supprimer ce point** |
+| Annuler la suppression | `Ctrl+Z` (ou ↩️ dans la barre) |
+| **Tout** effacer | ⚙️ **Effacer la session** — remet le plan à zéro (points, tracés, zones, structures) |
 
-> Tu peux retirer plusieurs points un par un en cliquant successivement **🗑️ → ↩️ Dernier point**.
+> ℹ️ Le bouton 🗑️ n'apparaît que sur **tes** points. Ceux qui viennent du plan lui-même ou d'un calque de données sont en lecture seule : pour en retirer un, ouvre d'abord son calque à la modification depuis 🔍 **Filtres**, puis exporte le calque corrigé.
 
-> ⚠️ **Tous les points** ne supprime que les points que **tu** as ajoutés — les points du plan original restent intacts.
+> 💡 Il n'y a **pas** de bouton 🗑️ à côté de ✏️ : le groupe Édition est un simple interrupteur (mode ajout ON/OFF).
 
 ### ✏️ Modifier un point existant
 

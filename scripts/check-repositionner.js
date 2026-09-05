@@ -356,5 +356,48 @@ function pointDeBase() {
   });
 }
 
+// ───────── 10. 🩸 la doc ne promet pas un bouton retire ─────────
+// Le 25/05/2026 (commit b9de2fa, demande KARMA « on garde le crayon, mais on
+// enleve la poubelle maintenant qu on peut supprimer directement le point au
+// clic »), la sous-action 🗑️ du groupe Edition a ete retiree : le groupe est
+// devenu un `soloAction`, un simple interrupteur. Le commit annoncait « on
+// adapte doc en consequence » — ca n a pas ete fait, et `README_USER` a decrit
+// pendant QUATRE MOIS une fenetre a deux options (« ↩️ Dernier point » /
+// « 🗑️ Tous les points ») qui n existait plus, plus un bouton 🗑️ voisin de ✏️
+// qui n existait plus non plus. Trouve par KARMA le 05/09.
+//
+// Rien ne confrontait la doc au code : c est ca qu on verrouille ici. Le
+// signal cote code est double — le groupe est un `soloAction`, et
+// `removeLastEditorPoint()` n est plus appelee par personne.
+{
+  const ITF = fs.readFileSync("js/interface.js", "utf8");
+  const i = ITF.indexOf('id: "edition"');
+  const groupe = i < 0 ? "" : ITF.slice(i, i + 1400);
+  t("le groupe Édition est un interrupteur simple (soloAction)",
+    i >= 0 && /soloAction:/.test(groupe) && !/subActions:/.test(groupe));
+
+  // La fonction survit (atteignable en console) mais plus AUCUN appel : c est
+  // le marqueur que la sous-action est bien partie. Si elle etait recablee, ce
+  // controle tomberait et la doc devrait etre rouverte — c est voulu.
+  const APPELS = ["js/interface.js", "js/interfaceConfig.js", "js/utils.js", "index.html"]
+    .filter((f) => fs.existsSync(f))
+    .some((f) => fs.readFileSync(f, "utf8").indexOf("removeLastEditorPoint") >= 0);
+  t("🪦 `removeLastEditorPoint` n'est recâblée nulle part (sous-action retirée)", !APPELS);
+
+  // 🩸 Et la doc des 3 langues ne doit plus promettre la fenetre disparue.
+  [["fr", "docs/applications/README_USER.md",    ["↩️ Dernier point** | Supprime", "🗑️ Tous les points**"]],
+   ["en", "docs/applications/README_USER.en.md", ["↩️ Last point** | Deletes",     "🗑️ All points**"]],
+   ["es", "docs/applications/README_USER.es.md", ["↩️ Último punto** | Elimina",   "🗑️ Todos los puntos**"]]
+  ].forEach(function (row) {
+    const DOC = fs.readFileSync(row[1], "utf8");
+    row[2].forEach(function (fantome) {
+      t("🩸 doc " + row[0] + " : ne promet plus « " + fantome.slice(0, 22) + "… »",
+        DOC.indexOf(fantome) < 0);
+    });
+    t("doc " + row[0] + " : renvoie bien vers la popup du point",
+      /🗑️ (Supprimer ce point|Delete this point|Eliminar este punto)/.test(DOC));
+  });
+}
+
 console.log(ko === 0 ? "\n🎉 repositionnement d'un POI : tout passe" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

@@ -2254,17 +2254,17 @@ The new tag is added to your session and will use the default icon. To customize
 
 ### 🗑️ Clear the points
 
-Press **🗑️** (next to ✏️). A window opens with two options:
+Deletion happens **on the point itself**, not from the toolbar: click the marker → popup → **🗑️ Delete this point**.
 
-| Option | Effect |
+| What you want | How |
 |---|---|
-| **↩️ Last point** | Deletes the most recently added point |
-| **🗑️ All points** | Clears all manually added points (irreversible) |
-| Cancel | Closes the window without deleting anything |
+| Remove **one** point | Click the marker → **🗑️ Delete this point** |
+| Undo the deletion | `Ctrl+Z` (or ↩️ in the bar) |
+| Clear **everything** | ⚙️ **Clear session** — resets the plan (points, paths, zones, structures) |
 
-> You can remove several points one by one by successively clicking **🗑️ → ↩️ Last point**.
+> ℹ️ The 🗑️ button only shows on **your** points. Points coming from the plan itself or from a data layer are read-only: to remove one, first open its layer for editing from 🔍 **Filters**, then export the corrected layer.
 
-> ⚠️ **All points** only deletes the points that **you** added — the points of the original map remain intact.
+> 💡 There is **no** 🗑️ button next to ✏️: the Edition group is a plain switch (add mode ON/OFF).
 
 ### ✏️ Modify an existing point
 
