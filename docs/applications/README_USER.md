@@ -2511,6 +2511,28 @@ La fenêtre ne propose que des cibles **compatibles avec la forme** de l'objet :
 
 L'objet garde tout le reste — sa géométrie, son niveau, sa note.
 
+### 🔁 Une sortie coupée en plusieurs — reprise et fusion
+
+Si tu quittes MyKTAMap pendant une sortie — changer de musique, prendre un appel — le téléphone peut **décharger l'app** pour libérer de la mémoire. Avant la v1.85.2, revenir dessus démarrait une **nouvelle** sortie : une seule vraie sortie ressortait en deux ou trois au carnet, chacune avec un bout des compteurs.
+
+**Maintenant elle reprend toute seule.** Au retour, si la sortie précédente sur le même plan a été interrompue de cette façon il y a moins de **45 minutes**, l'app la **continue** au lieu d'en ouvrir une autre. Un message te le dit.
+
+> ℹ️ Une sortie que tu as **clôturée toi-même** (🏁) n'est jamais recollée. L'app ne reprend que ce qui a été coupé *malgré toi*.
+
+#### 🔗 Recoller des sorties déjà coupées
+
+Pour celles d'avant, ou si le délai a été dépassé : 📔 **Mon carnet** → **🔗 Fusionner des sorties** → coche celles à réunir (au moins 2) → **Fusionner**.
+
+| Ce qui est réuni | Comment |
+|---|---|
+| Durée, distance, pas, ajouts | Additionnés |
+| Durée totale | Du **début de la première à la fin de la dernière**, trous compris |
+| Notes | Empilées, séparées par un trait |
+| Photos, tracés, niveaux | Réunis |
+| Terrain / bureau | Si **un seul** morceau était du terrain, l'ensemble l'est |
+
+> ⚠️ **Irréversible** : les sorties d'origine disparaissent du carnet. L'app demande confirmation — c'est le seul geste du carnet qui efface quelque chose.
+
 ### 🪟 Où s'ouvrent les panneaux d'outils
 
 Les panneaux **Tracés**, **Zones** et **Structures** s'ouvrent **centrés à l'écran**, comme le Tracker et les Filtres.

@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.85.1</strong> (4 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.85.2</strong> (4 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.85.2 (reprise de sortie, fusion au carnet, wake lock réparé)</h3>
+  <p><strong>100 % local.</strong> La reprise et la fusion lisent et écrivent la base IndexedDB du Carnet, déjà présente ; le wake lock relit une préférence de <code>localStorage</code>. <strong>Aucune requête réseau ajoutée, aucune donnée nouvelle collectée, aucun domaine nouveau contacté.</strong></p>
   <h3>v1.85.1 (affichage mobile : panneaux centrés, bandeau de mesure)</h3>
   <p><strong>100 % local.</strong> Deux corrections d'interface uniquement — position d'un panneau, icône d'un bandeau — plus une préférence d'affichage écrite dans <code>localStorage</code> (<code>app_user_prefs.panneauxAncres</code>). <strong>Aucune requête réseau ajoutée, aucune donnée nouvelle collectée, aucun domaine nouveau contacté.</strong></p>
   <h3>v1.85.0 (corriger un calque de données sans quitter la carte)</h3>

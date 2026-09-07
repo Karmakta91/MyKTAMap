@@ -1789,6 +1789,22 @@ window.proposerRedemarrageLangue = function() {
   // ne pas bloquer le boot principal). Si des plans sont purgés → modale
   // orange affichée 1s après pour informer l'user. Cache hash dans le
   // registry pour éviter le re-hash au prochain boot.
+  // 🩸 v1.85.2 (KARMA « l option qui garde le tel allume ne fonctionne pas sur
+  // iPhone en PWA ») — `WakeLock.init()` n etait appele NULLE PART. Le module
+  // etait charge, les deux cases appelaient bien `setEnabled()`, mais la
+  // preference n etait JAMAIS relue au demarrage : `_enabled` restait false, le
+  // verrou n etait pas repris, et `isEnabled()` rendant false, la case
+  // s affichait DECOCHEE a chaque lancement.
+  //
+  // Pourquoi ca n a saute aux yeux que sur iPhone : sur PC on ne recharge pas,
+  // donc cocher la case marchait pour la session en cours. En PWA iOS, quitter
+  // l app pour une autre la fait decharger — chaque retour est un boot, donc
+  // chaque retour perdait le reglage. Meme famille que le bug `snapDraw` du
+  // 03/08 : une preference sauvegardee mais jamais relue.
+  if (window.WakeLock && typeof window.WakeLock.init === "function") {
+    window.WakeLock.init().catch(function () {});
+  }
+
   if (window.PlanDenylist && typeof window.PlanDenylist.init === "function") {
     window.PlanDenylist.init().then(function() {
       // Affiche la modale de notif si des plans ont été purgés au DERNIER boot

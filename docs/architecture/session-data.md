@@ -1499,6 +1499,59 @@ Rien de plus : les **objets** vivent déjà dans `roads`/`zones`/`structures`/`e
 
 ---
 
+## 🔁 Reprise d'une sortie interrompue, et fusion (v1.85.2)
+
+Sortie terrain de KARMA, 06/09 : « j'ai plusieurs sorties détectées sur la même sortie car j'ai utilisé d'autres
+applis pour changer de musique ». Trois entrées au carnet pour une seule vraie sortie.
+
+**Le mécanisme** : quitter la PWA la fait décharger par iOS. La sortie, restée `encours`, est régularisée au boot
+suivant par le balayage et marquée **`closedBy: "crash"`**. Puis `onPlanLoaded` ouvrait **systématiquement** une
+sortie neuve — aucune reprise n'existait.
+
+**🩸 Le signal de reprise est `closedBy: "crash"`, pas un délai.** Ce marqueur ne se pose que lorsque l'app a été
+tuée *sous* l'utilisateur. Se fier au délai seul recollerait une sortie qu'il vient de clôturer à la main (🏁) :
+son geste serait annulé sans un mot. La fenêtre de 45 min n'est qu'une borne de bon sens par-dessus — l'écart réel
+est de quelques secondes, le dernier flush datant de moins de 30 s.
+
+**🩸 La baseline est RECONSTRUITE, jamais repartie de zéro.** Les compteurs d'une sortie sont des **différences**
+(`compte − baseline`) recalculées à chaque `_snapshot`, pas des accumulations : une baseline neuve remettrait tout
+à zéro et la reprise n'aurait que l'apparence de fonctionner. Mais la session est restaurée à l'identique au
+reboot, donc :
+
+```
+baseline = compte_actuel − déjà_en_banque
+```
+
+redonne **exactement** la baseline d'origine sans l'avoir stockée. Et si la session n'a PAS été restaurée à
+l'identique (l'utilisateur l'a effacée entre-temps), les gardes de ré-ancrage déjà présentes dans `_snapshot`
+empêchent les compteurs de partir en négatif.
+
+**🩸 La course.** La recherche d'un candidat est **asynchrone** (lecture IDB), la création de sortie est
+**synchrone**. Première rédaction : la tentative était placée avant, avec une garde « si `_cur` existe, on
+abandonne » — qui annulait la reprise **à tous les coups**, puisque la création synchrone posait `_cur` en
+premier. Mort-né, et vert au harnais si on n'avait testé que la règle de recherche. La sortie neuve est donc créée
+normalement, son id retenu, et **remplacée seulement si c'est toujours elle** : sans cette garde, une reprise
+arrivée en retard écraserait une sortie déjà repartie (changement de plan rapide). Elle n'a jamais touché IDB
+(premier flush à 30 s) : rien à nettoyer derrière elle.
+
+### 🔗 Fusion manuelle
+
+La reprise **empêche** le problème ; elle ne répare pas ce qui est déjà haché. `Journal.fusionner(ids)` recolle N
+sorties : durées, distances, pas et ajouts sommés ; notes empilées ; photos, tracés (retriés par temps) et niveaux
+réunis ; terrain domine sur bureau.
+
+**🩸 `wallMs` n'est PAS une somme** : c'est la durée du début de la première à la fin de la dernière, **trous
+compris**. La sommer donnerait une sortie plus courte que le temps qu'elle a réellement duré.
+
+**La plus ancienne sert de socle et garde son id** (une fiche ouverte, des références et l'ordre du carnet restent
+valides), et le résultat est **écrit avant** que les autres soient supprimées — l'inverse perdrait tout si
+l'écriture échouait. C'est le seul geste destructif d'une archive conçue *append-only*, donc il est confirmé.
+
+**Garde-fou** : `scripts/check-journal-reprise.js` — la règle de reprise est extraite du module et éprouvée sur
+huit cas avec un `list()` bouchonné. **7 sabotages** rougissent.
+
+---
+
 ## 📌 Repositionner un POI de session (v1.85.0)
 
 KARMA, 05/09/2026 : « pour un POI modifiable de session, un bouton *repositionner* peut servir, si le POI a été mal mis ».

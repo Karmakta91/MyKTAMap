@@ -132,7 +132,9 @@
       // Tente d'acquire au boot. Si l'app vient juste de boot, document
       // est visible → ok. Si caché ou si la pref demande user-gesture sur
       // certains browsers, on retentera au visibilitychange→visible.
-      await _acquire();
+      const ok = await _acquire();
+      // Refuse faute de geste utilisateur : on arme le rattrapage au 1er tap.
+      if (!ok) _reprendreAuPremierGeste();
     }
   }
 
@@ -143,6 +145,23 @@
       const i = _listeners.indexOf(cb);
       if (i >= 0) _listeners.splice(i, 1);
     };
+  }
+
+  // ─── Reprise au PREMIER GESTE utilisateur ───
+  // 🩸 Un `wakeLock.request()` au boot peut etre refuse faute de geste
+  // utilisateur : au lancement a froid, personne ne bascule d onglet, donc le
+  // filet `visibilitychange` ne se declenche jamais et la preference reste
+  // lettre morte. Le premier tap sur l ecran sert de rattrapage. Une seule
+  // fois : le listener se retire des qu il a servi.
+  function _reprendreAuPremierGeste() {
+    if (!_enabled || isActive()) return;
+    const rattraper = function () {
+      document.removeEventListener("pointerdown", rattraper, true);
+      document.removeEventListener("touchstart", rattraper, true);
+      if (_enabled && !isActive()) _acquire();
+    };
+    document.addEventListener("pointerdown", rattraper, true);
+    document.addEventListener("touchstart", rattraper, true);
   }
 
   // ─── Re-acquire au retour visibility ───

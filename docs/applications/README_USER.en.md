@@ -2506,6 +2506,28 @@ The dialog only offers targets **compatible with the object's shape**: a **line*
 
 The object keeps everything else — its geometry, its level, its note.
 
+### 🔁 An outing split in several — resume and merge
+
+If you leave MyKTAMap during an outing — to change music, to take a call — the phone may **unload the app** to free memory. Before v1.85.2, coming back started a **new** outing: one real outing showed up as two or three in the logbook, each with part of the counters.
+
+**It now resumes on its own.** On return, if the previous outing on the same plan was interrupted that way less than **45 minutes** ago, the app **continues** it instead of opening another. A message tells you.
+
+> ℹ️ An outing you closed **yourself** (🏁) is never re-joined. The app only resumes what was cut *against your will*.
+
+#### 🔗 Re-joining outings that were already split
+
+For older ones, or if the delay was exceeded: 📔 **My logbook** → **🔗 Merge outings** → tick the ones to join (at least 2) → **Merge**.
+
+| What gets joined | How |
+|---|---|
+| Duration, distance, steps, additions | Summed |
+| Total duration | From the **start of the first to the end of the last**, gaps included |
+| Notes | Stacked, separated by a rule |
+| Photos, tracks, levels | Joined |
+| Field / desk | If **a single** piece was field work, the whole thing is |
+
+> ⚠️ **Irreversible**: the original outings disappear from the logbook. The app asks for confirmation — it is the only action in the logbook that erases anything.
+
 ### 🪟 Where tool panels open
 
 The **Paths**, **Zones** and **Structures** panels open **centred on screen**, like the Tracker and the Filters.

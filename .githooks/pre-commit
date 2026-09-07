@@ -220,3 +220,18 @@ node scripts/check-doc-sidebar.js || exit $?
 # cible DEJA atteinte est sautee, pas comptee en echec. Et `itinerary` reste
 # hors selection. Les 8 sabotages de reference rougissent. BLOQUANT.
 node scripts/check-selection-multi.js || exit $?
+
+# 🔁 La REPRISE d une sortie interrompue et la FUSION manuelle. Cinq choses y
+# regressent sans bruit. Le SIGNAL de reprise n est pas un delai mais
+# `closedBy: crash` — pose uniquement quand l app a ete tuee SOUS
+# l utilisateur : reprendre sur le delai seul recollerait une sortie qu il a
+# cloturee expres. La BASELINE est RECONSTRUITE par soustraction de ce qui est
+# deja en banque — une baseline neuve remettrait tous les compteurs a zero et
+# la reprise n aurait l air de marcher que de loin. La GARDE D ID protege la
+# substitution asynchrone (sans elle, soit la reprise n arrive jamais, soit
+# elle ecrase une sortie deja repartie). A la fusion, `wallMs` est debut->fin
+# TROUS COMPRIS, jamais une somme, et le resultat est ECRIT avant que les
+# autres soient supprimees. Enfin `WakeLock.init()` doit rester appele au boot
+# — il ne l etait NULLE PART, d ou l option ecran-allume morte en PWA iOS.
+# Les 7 sabotages de reference rougissent. BLOQUANT.
+node scripts/check-journal-reprise.js || exit $?

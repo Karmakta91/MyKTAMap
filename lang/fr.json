@@ -5041,5 +5041,13 @@
   "selm.refusOuvert": "⛔ Celui-ci est une LIGNE, ta sélection est en surfaces fermées",
   "selm.refusFerme": "⛔ Celui-ci est une SURFACE FERMÉE, ta sélection est en lignes",
   "config.panneaux.label": "🪟 Ancrer les panneaux d'outils au bouton",
-  "config.panneaux.hint": "Par défaut, les panneaux Tracés / Zones / Structures s'ouvrent centrés à l'écran, comme le Tracker et les Filtres. Coche pour les rouvrir collés à leur bouton — pratique sur grand écran, déconseillé sur téléphone où la liste peut passer sous le bas de l'écran."
+  "config.panneaux.hint": "Par défaut, les panneaux Tracés / Zones / Structures s'ouvrent centrés à l'écran, comme le Tracker et les Filtres. Coche pour les rouvrir collés à leur bouton — pratique sur grand écran, déconseillé sur téléphone où la liste peut passer sous le bas de l'écran.",
+  "journal.reprise.toast": "🔁 Sortie reprise — elle continue au lieu d'en créer une nouvelle",
+  "jrn.fusion.entrer": "Fusionner des sorties",
+  "jrn.fusion.compte": "{n} sortie(s) cochée(s) — il en faut au moins 2",
+  "jrn.fusion.valider": "Fusionner",
+  "jrn.fusion.annuler": "Annuler",
+  "jrn.fusion.confirm": "Fusionner {n} sorties en une seule ?\n\nLeurs durées, distances et ajouts sont additionnés, leurs notes empilées, leurs photos et tracés réunis. Les sorties d'origine disparaissent du carnet : c'est irréversible.",
+  "jrn.fusion.ok": "🔗 {n} sorties fusionnées en une",
+  "jrn.fusion.ko": "⚠️ Fusion impossible — il faut au moins 2 sorties terminées"
 }

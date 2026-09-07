@@ -5041,5 +5041,13 @@
   "selm.refusOuvert": "⛔ This one is a LINE, your selection holds closed surfaces",
   "selm.refusFerme": "⛔ This one is a CLOSED SURFACE, your selection holds lines",
   "config.panneaux.label": "🪟 Anchor tool panels to their button",
-  "config.panneaux.hint": "By default the Paths / Zones / Structures panels open centred on screen, like the Tracker and Filters. Tick this to reopen them next to their button — handy on a large screen, not advised on a phone where the list can run past the bottom edge."
+  "config.panneaux.hint": "By default the Paths / Zones / Structures panels open centred on screen, like the Tracker and Filters. Tick this to reopen them next to their button — handy on a large screen, not advised on a phone where the list can run past the bottom edge.",
+  "journal.reprise.toast": "🔁 Outing resumed — it continues instead of starting a new one",
+  "jrn.fusion.entrer": "Merge outings",
+  "jrn.fusion.compte": "{n} outing(s) ticked — at least 2 are needed",
+  "jrn.fusion.valider": "Merge",
+  "jrn.fusion.annuler": "Cancel",
+  "jrn.fusion.confirm": "Merge {n} outings into one?\n\nTheir durations, distances and additions are summed, their notes stacked, their photos and tracks joined. The original outings disappear from the logbook: this cannot be undone.",
+  "jrn.fusion.ok": "🔗 {n} outings merged into one",
+  "jrn.fusion.ko": "⚠️ Merge not possible — at least 2 finished outings are needed"
 }

@@ -418,6 +418,8 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 6. Le point est sauvegardé automatiquement dans la session (auto-save toutes les 1.5s).
 7. Re-clic sur ✏️ pour sortir du mode.
 
+**Une sortie coupée en plusieurs au carnet** (corrigé v1.85.2) : quitter la PWA pour une autre appli la fait décharger par iOS ; au retour l'app rebootait et ouvrait une sortie NEUVE. Elle **reprend** désormais toute seule si la précédente, sur le même plan, a été interrompue par un kill (`closedBy: "crash"`) il y a moins de 45 min. Une sortie clôturée à la main n'est JAMAIS recollée. Pour les sorties déjà coupées : 📔 Mon carnet → **🔗 Fusionner des sorties** → cocher → Fusionner (irréversible, confirmé).
+
 **Où s'ouvrent les panneaux d'outils** (depuis v1.85.1) : les panneaux **Tracés / Zones / Structures** s'ouvrent **centrés à l'écran**, comme le Tracker et les Filtres. Avant, ils étaient ancrés au haut de leur bouton et passaient sous le bas de l'écran sur téléphone dès que leur liste s'allongeait (un plan importé ajoute un type par niveau). ⚙️ **Paramètres** → « 🪟 Ancrer les panneaux d'outils au bouton » rend l'ancien comportement — utile sur grand écran.
 
 **Pour convertir PLUSIEURS objets d'un coup** : bulle d'un objet → 🔄 Convertir → **🎯 Sélectionner plusieurs objets à convertir** → clic sur la carte pour ajouter (re-clic pour retirer), **➕ Tous les « type » du niveau affiché** pour étendre, puis ✅ Convertir. La sélection ne mélange PAS lignes et surfaces fermées (le refus est expliqué). Tout le lot s'annule en UN `Ctrl+Z`.

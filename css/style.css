@@ -21627,3 +21627,15 @@ body.kta-theme-light #kta-osm-mes-floater {
 
 /* Le bouton d'entrée en sélection multiple, dans la modale de conversion. */
 .kta-convert-multi { display: block; width: 100%; margin: 4px 0 12px; }
+
+/* 🔗 v1.85.2 — fusion de sorties dans le carnet. La barre vit SOUS la liste :
+   au-dessus, elle repousserait les sorties hors de l'écran sur téléphone. */
+.kta-jrn-fusion-barre {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 10px 0 2px; padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.10);
+}
+.kta-jrn-fusion-msg { flex: 1 1 auto; min-width: 0; font-size: 12px; color: #8892a4; }
+.kta-jrn-fusion-barre .kta-btn[disabled] { opacity: .45; cursor: not-allowed; }
+.kta-jrn-coche { margin-right: 6px; font-size: 14px; }
+.kta-jrn-row-sel { border-color: rgba(140, 180, 255, 0.55) !important; }

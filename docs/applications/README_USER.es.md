@@ -2503,6 +2503,28 @@ La ventana solo propone destinos **compatibles con la forma** del objeto: una **
 
 El objeto conserva todo lo demás: su geometría, su nivel y su nota.
 
+### 🔁 Una salida partida en varias: reanudación y fusión
+
+Si sales de MyKTAMap durante una salida —para cambiar de música, para atender una llamada— el teléfono puede **descargar la app** para liberar memoria. Antes de la v1.85.2, al volver se iniciaba una salida **nueva**: una sola salida real aparecía como dos o tres en el cuaderno, cada una con parte de los contadores.
+
+**Ahora se reanuda sola.** Al volver, si la salida anterior del mismo plano se interrumpió así hace menos de **45 minutos**, la app la **continúa** en vez de abrir otra. Un mensaje te lo indica.
+
+> ℹ️ Una salida que hayas cerrado **tú mismo** (🏁) nunca se vuelve a unir. La app solo reanuda lo que se cortó *sin que lo quisieras*.
+
+#### 🔗 Volver a unir salidas ya partidas
+
+Para las anteriores, o si se superó el plazo: 📔 **Mi cuaderno** → **🔗 Fusionar salidas** → marca las que quieras unir (al menos 2) → **Fusionar**.
+
+| Lo que se une | Cómo |
+|---|---|
+| Duración, distancia, pasos, añadidos | Se suman |
+| Duración total | Del **inicio de la primera al final de la última**, huecos incluidos |
+| Notas | Se apilan, separadas por una línea |
+| Fotos, trazados, niveles | Se reúnen |
+| Campo / escritorio | Si **una sola** parte era de campo, el conjunto lo es |
+
+> ⚠️ **Irreversible**: las salidas originales desaparecen del cuaderno. La app pide confirmación: es la única acción del cuaderno que borra algo.
+
 ### 🪟 Dónde se abren los paneles de herramientas
 
 Los paneles **Trazados**, **Zonas** y **Estructuras** se abren **centrados en pantalla**, como el Rastreador y los Filtros.

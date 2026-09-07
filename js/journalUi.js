@@ -339,11 +339,27 @@
         : '');
   }
 
+  // ───────── 🔗 FUSION DE SORTIES (v1.85.2) ─────────
+  // KARMA, sortie terrain : une seule vraie sortie ressortait en TROIS au
+  // carnet, parce que quitter la PWA pour changer de musique la fait décharger
+  // par iOS et que le retour rouvrait une sortie neuve. La reprise automatique
+  // (`journal.js`) empêche désormais le problème — elle ne répare pas ce qui
+  // est déjà haché. D'où ce mode : cocher N sorties, les recoller en une.
+  let _modeFusion = false;
+  const _selFusion = {};       // id -> true
+
   function _ligne(r, idx) {
     const chips = _chipsAjouts(r);
     const terrain = _estTerrain(r);
+    // En mode fusion la ligne ne mène plus à la fiche : elle coche. On garde
+    // un <button> — la cible tactile et le style restent ceux de la liste.
+    const coche = _modeFusion
+      ? '<span class="kta-jrn-coche">' + (_selFusion[r.id] ? '☑️' : '⬜') + '</span>'
+      : '';
     return '<button type="button" class="kta-jrn-row' + (terrain ? '' : ' kta-jrn-row-bureau') +
-             '" data-i="' + idx + '">' +
+             (_modeFusion && _selFusion[r.id] ? ' kta-jrn-row-sel' : '') +
+             '" data-i="' + idx + '" data-id="' + _esc(r.id) + '">' +
+             coche +
              '<span class="kta-jrn-row-date">' + _esc(_fmtDate(r.startedAtMs)) + '</span>' +
              '<span class="kta-jrn-row-plan">' + (terrain ? '🚶' : '🖥️') + ' ' +
                _esc(r.planName || "?") + '</span>' +
@@ -403,9 +419,68 @@
     el.querySelectorAll(".kta-jrn-row").forEach(function(btn) {
       btn.addEventListener("click", function() {
         const r = rows[parseInt(btn.getAttribute("data-i"), 10)];
-        if (r) ouvrirFiche(r.id);
+        if (!r) return;
+        if (!_modeFusion) { ouvrirFiche(r.id); return; }
+        if (_selFusion[r.id]) delete _selFusion[r.id]; else _selFusion[r.id] = true;
+        _renderListe();
       });
     });
+    _renderBarreFusion();
+  }
+
+  // Barre d'actions, rendue SOUS la liste pour ne pas repousser les sorties
+  // hors de l'écran sur téléphone.
+  function _renderBarreFusion() {
+    const el = document.getElementById("kta-jrn-liste");
+    if (!el) return;
+    let barre = document.getElementById("kta-jrn-fusion-barre");
+    if (!barre) {
+      barre = document.createElement("div");
+      barre.id = "kta-jrn-fusion-barre";
+      barre.className = "kta-jrn-fusion-barre";
+      el.parentNode.insertBefore(barre, el.nextSibling);
+    }
+    const n = Object.keys(_selFusion).length;
+    if (!_modeFusion) {
+      barre.innerHTML = '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
+        'id="kta-jrn-fusion-on">🔗 ' + _esc(_t("jrn.fusion.entrer")) + '</button>';
+      document.getElementById("kta-jrn-fusion-on").addEventListener("click", function () {
+        _modeFusion = true; _renderListe();
+      });
+      return;
+    }
+    barre.innerHTML =
+      '<span class="kta-jrn-fusion-msg">' + _esc(_t("jrn.fusion.compte", { n: n })) + '</span>' +
+      '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="kta-jrn-fusion-go"' +
+        (n < 2 ? ' disabled' : '') + '>🔗 ' + _esc(_t("jrn.fusion.valider")) + '</button>' +
+      '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-jrn-fusion-off">' +
+        _esc(_t("jrn.fusion.annuler")) + '</button>';
+    document.getElementById("kta-jrn-fusion-off").addEventListener("click", function () {
+      _modeFusion = false;
+      Object.keys(_selFusion).forEach(function (k) { delete _selFusion[k]; });
+      _renderListe();
+    });
+    const go = document.getElementById("kta-jrn-fusion-go");
+    if (go && n >= 2) {
+      go.addEventListener("click", function () {
+        const ids = Object.keys(_selFusion);
+        // 🩸 La fusion SUPPRIME des enregistrements : on confirme. C'est le
+        // seul geste destructif du carnet, dont la raison d'être est d'être
+        // une archive append-only.
+        const demander = (typeof window.ktaConfirm === "function")
+          ? window.ktaConfirm(_t("jrn.fusion.confirm", { n: ids.length }))
+          : Promise.resolve(window.confirm(_t("jrn.fusion.confirm", { n: ids.length })));
+        demander.then(function (ok) {
+          if (!ok) return;
+          return window.Journal.fusionner(ids).then(function (rec) {
+            _modeFusion = false;
+            Object.keys(_selFusion).forEach(function (k) { delete _selFusion[k]; });
+            _toast(rec ? _t("jrn.fusion.ok", { n: ids.length }) : _t("jrn.fusion.ko"), rec ? "info" : "warn");
+            return _rafraichirListe();
+          });
+        });
+      });
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
