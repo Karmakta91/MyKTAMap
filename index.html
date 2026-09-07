@@ -692,6 +692,37 @@
         <!-- ═══ GROUPE 2 : 🎨 Affichage ═══ -->
         <div class="kta-cfg-group-titre" data-i18n="config.group.affichage" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">🎨 Affichage</div>
 
+        <!-- ⚙️ v1.85.3 (audit KARMA) — QUATRE RÉGLAGES GLOBAUX RAPATRIÉS ICI
+             depuis la config du mode plan. Ils valent pour TOUS les plans :
+             les régler depuis un plan donnait l'impression du contraire. -->
+        <div class="kta-aide-section">
+          <label class="kta-perf-ultra-row">
+            <input type="checkbox" id="loaderScaledMarkers">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label" data-i18n="config.display.scaledMarkers.label"></span>
+              <span class="kta-perf-ultra-hint" data-i18n-html="config.display.scaledMarkers.hint"></span>
+            </span>
+          </label>
+          <label class="kta-perf-ultra-row" style="margin-top:10px;">
+            <input type="checkbox" id="loaderPanneauxAncres">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label" data-i18n="config.panneaux.label"></span>
+              <span class="kta-perf-ultra-hint" data-i18n-html="config.panneaux.hint"></span>
+            </span>
+          </label>
+          <label class="kta-perf-ultra-row" style="margin-top:10px;">
+            <input type="checkbox" id="loaderSnapDraw">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label" data-i18n="config.snapdraw.label"></span>
+              <span class="kta-perf-ultra-hint" data-i18n-html="config.snapdraw.hint"></span>
+            </span>
+          </label>
+          <div class="kta-cfg-row" style="margin-top:8px;">
+            <label class="kta-cfg-label" for="loaderSnapDrawPx" data-i18n="config.snapdraw.radiusLabel"></label>
+            <input class="kta-cfg-input" id="loaderSnapDrawPx" type="number" step="1" min="4" max="40">
+          </div>
+        </div>
+
         <!-- 🎨 Affichage : choix interface (depuis v1.8.1-refonte-8)
              Pareil que dans ⚙️ Réglages map mode pour cohérence — l'user
              peut basculer ici aussi sans avoir à charger un plan.
@@ -792,101 +823,23 @@
             <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>
           </div>
 
-          <hr class="kta-loader-perf-sep">
+          <!-- ⚠️ v1.85.3 (audit KARMA) — LES TOGGLES PERF ULTRA ONT ÉTÉ RETIRÉS D'ICI.
+               Ils étaient affichés et câblés, mais ne sauvegardaient RIEN :
+               `perfUltra.js > _persist()` sort sans écrire quand aucun plan
+               n'est chargé, ce qui est TOUJOURS le cas au HOME. L'utilisateur
+               cochait, l'interface répondait, et le réglage mourait au
+               chargement du plan suivant — qui reconstruit son état depuis SA
+               clé `myktamap_perf_toggles_v2_<planId>`. Le seul signal était un
+               `console.warn` que personne ne lit.
 
-          <!-- ─── Mode Performance ULTRA : toggles tracés/markers ─── -->
-          <div class="kta-perf-wrap">
-            <div class="kta-perf-titre" data-i18n="home.perf.ultraTitle">🚀 Mode Performance ULTRA (tracés / markers)</div>
-            <p class="kta-loader-perf-hint" data-i18n="home.perf.ultraIntro">
-              Pour les gros plans qui crashent. N'affecte PAS l'image (déjà gérée par le Tiling ci-dessus).
-              Préférence globale, conservée entre sessions.
-            </p>
+               Ce sont des réglages PAR PLAN depuis la v1.59.0 : ils se règlent
+               dans ⚙️ Réglages une fois le plan ouvert. Les remettre ici avec
+               une persistance « défaut pour les prochains plans » ré-introduirait
+               exactement le bug corrigé alors (cocher ULTRA sur un gros plan
+               l'appliquait silencieusement à TOUS).
 
-            <label class="kta-perf-ultra-row" data-i18n-title="home.perf.ultraMasterTitle" title="Active les 7 toggles ci-dessous en bloc">
-              <input type="checkbox" id="loader_perf_ultra">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.masterLabel">🚀 Mode ULTRA (active tout)</span>
-                <span class="kta-perf-ultra-hint" data-i18n="home.perf.masterHint">Préset : active les 7 optims ci-dessous en bloc.</span>
-              </span>
-            </label>
-
-            <!-- 🏗️ v1.82.1 — hors du méta ULTRA : afficher plus de niveaux
-                 n'est pas une optimisation, c'est son contraire. -->
-            <label class="kta-perf-ultra-row">
-              <input type="checkbox" id="loader_perf_tousNiveaux">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.tousNiveauxLabel">🏗️ Afficher tous les niveaux au lancement</span>
-                <span class="kta-perf-ultra-hint" data-i18n="home.perf.tousNiveauxHint">Décoché : seuls les niveaux -1, 0 et +1 s'affichent à l'ouverture.</span>
-              </span>
-            </label>
-
-            <div class="kta-loader-perf-divider"></div>
-
-            <label class="kta-perf-ultra-row">
-              <input type="checkbox" id="loader_perf_decim">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.decimLabel">🪜 Décimer les tracés au dézoom</span>
-                <span class="kta-perf-ultra-hint" data-i18n="home.perf.decimHint">Simplifie les polylines. Tracés moins lisses mais plus rapides.</span>
-              </span>
-            </label>
-
-            <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
-              <input type="checkbox" id="loader_perf_animOff">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.animOffLabel">⚡ Désactiver animations zoom/pan</span>
-                <span class="kta-perf-ultra-hint" data-i18n-html="home.perf.animOffHint">Transitions instantanées. <strong>Reload requis</strong>.</span>
-              </span>
-            </label>
-
-            <label class="kta-perf-ultra-row">
-              <input type="checkbox" id="loader_perf_noIntersect">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.noIntersectLabel">🎯 Désactiver cercles intersections (gros plans)</span>
-                <span class="kta-perf-ultra-hint" data-i18n="home.perf.noIntersectHint">Seuil 50 routes (vs 200). Pas de cercles aux carrefours au-delà.</span>
-              </span>
-            </label>
-
-            <label class="kta-perf-ultra-row">
-              <input type="checkbox" id="loader_perf_noTooltips">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.noTooltipsLabel">🚫 Désactiver popups sur calques données</span>
-                <span class="kta-perf-ultra-hint" data-i18n="home.perf.noTooltipsHint">Points session restent interactifs. Utilise 🔍 pour les data-layers.</span>
-              </span>
-            </label>
-
-            <label class="kta-perf-ultra-row">
-              <input type="checkbox" id="loader_perf_slowSave">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.slowSaveLabel">🐢 Auto-save lent (30s)</span>
-                <span class="kta-perf-ultra-hint" data-i18n="home.perf.slowSaveHint">Sauvegarde toutes les 30s au lieu de 1.5s. Risque ~30s de modifs en cas de crash.</span>
-              </span>
-            </label>
-
-            <label class="kta-perf-ultra-row">
-              <input type="checkbox" id="loader_perf_viewportCull">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.viewportCullLabel">👁️ Ne rendre que les tracés visibles</span>
-                <span class="kta-perf-ultra-hint" data-i18n="home.perf.viewportCullHint">Pop-in léger au pan, gros gain sur plans denses.</span>
-              </span>
-            </label>
-
-            <!-- 🆕 v1.9.2-hotfix-loader-zoom (KARMA "limiter le dezoom n'est
-                 present que dans la conf en mode carte, corrige pour qu'il
-                 soit aussi en mode home") : toggle mobileZoomLimit déplacé
-                 ici pour être accessible AVANT le chargement d'un plan.
-                 Utile : si l'user crash sur un gros plan au minZoom mobile,
-                 il peut désormais réactiver la limite depuis la home
-                 directement (au lieu d'avoir à charger un plan d'abord,
-                 risquer un crash, etc.). Cohérent avec le toggle map-mode
-                 dans interface.js _renderPerfUltraSection. -->
-            <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
-              <input type="checkbox" id="loader_perf_mobileZoomLimit">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.mobileZoomLabel">🛡️ Limiter le dézoom sur mobile (anti-crash mémoire)</span>
-                <span class="kta-perf-ultra-hint" data-i18n-html="home.perf.mobileZoomHint"><strong>Coché par défaut</strong>. Plafonne le dézoom max sur smartphone pour éviter le crash OOM. <strong>Décocher</strong> = autorise le même dézoom que sur PC (vue d'ensemble) mais risque de crash sur gros plans. <strong>Reload requis</strong>.</span>
-              </span>
-            </label>
-          </div>
+               Le sélecteur de TUILAGE ci-dessus reste : il est lié à l'import
+               en cours, donc c'est bien un réglage d'accueil. -->
         </div>
 
         <!-- ═══ GROUPE 4 : 🔒 Confidentialité & sécurité ═══ -->

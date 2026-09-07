@@ -292,13 +292,19 @@ function geste(ctx) {
       t("🩸 le rendu « capteur refusé » est partagé (utils.js), pas dupliqué",
         /window\.ktaCapteurRefuse\s*=/.test(fs.readFileSync("js/utils.js", "utf8")) &&
         /window\.ktaCapteurRefuse/.test(HC) && /window\.ktaCapteurRefuse/.test(UIC));
-      // 🪟 L'ancrage des panneaux décide OÙ s'ouvre un panneau : c'est de
-      // l'AFFICHAGE, pas de la navigation. Il avait atterri près du magnétisme.
-      const iAff = UIC.indexOf("config.group.affichage");
-      const iPan = UIC.indexOf("cfg_panneauxAncres");
-      const iPerf = UIC.indexOf("config.group.perf");
-      t("🪟 l'ancrage des panneaux est dans AFFICHAGE, pas dans la navigation",
-        iAff > 0 && iPan > iAff && iPan < iPerf);
+      // 🪟 v1.85.3 — L'ancrage des panneaux a QUITTÉ le mode plan : c'est un
+      // réglage GLOBAL, il valait pour tous les plans alors qu'on le réglait
+      // depuis un seul (audit KARMA). Il vit maintenant dans la ⚙️ Configuration
+      // de l'accueil, groupe Affichage — et NE DOIT PLUS reparaître côté plan.
+      t("🪟 l'ancrage des panneaux a quitté la config du mode plan",
+        UIC.indexOf("cfg_panneauxAncres") < 0);
+      t("🪟 et il est dans le groupe Affichage de l'accueil",
+        (function () {
+          const a = IDX2.indexOf('data-i18n="config.group.affichage"');
+          const p = IDX2.indexOf('id="loaderPanneauxAncres"');
+          const q = IDX2.indexOf('data-i18n="config.group.perf"');
+          return a > 0 && p > a && p < q;
+        })());
     }
     t("batterie : sauvegardée par le chemin canonique",
       /existing\.batterieEnabled/.test(CFG));

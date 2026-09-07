@@ -983,49 +983,21 @@ function afficherConfig() {
           </div>
           <div style="font-size:11px; color:#8892a4; margin:-2px 0 0; line-height:1.4;">${window.I18n.t("config.smartnav.headingHint")}</div>
 
-          <!-- 🧲 C5 v1.74.0 — magnétisme edit-time. Rangé ici (section Navigation)
-               mais INDÉPENDANT du toggle ci-dessus : il améliore la qualité du
-               graphe, donc il sert aussi aux itinéraires sans nav intelligente. -->
-          <label class="kta-perf-ultra-row" style="margin-top:14px;">
-            <input type="checkbox" id="cfg_snapDraw" ${c.snapDraw === true ? "checked" : ""}>
-            <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.snapdraw.label")}</span>
-              <span class="kta-perf-ultra-hint">
-                ${window.I18n.t("config.snapdraw.hint")}
-              </span>
-            </span>
-          </label>
-          <div class="kta-cfg-row">
-            <label class="kta-cfg-label">${window.I18n.t("config.snapdraw.radiusLabel")}</label>
-            <input class="kta-cfg-input" id="cfg_snapDrawPx" type="number" step="1" min="4" max="40" value="${Number.isFinite(c.snapDrawPx) ? c.snapDrawPx : 14}">
-          </div>
-          <div style="font-size:11px; color:#8892a4; margin:-2px 0 0; line-height:1.4;">${window.I18n.t("config.snapdraw.radiusHint")}</div>
         </div>
 
         <!-- ════════ 4. 🎨 AFFICHAGE ════════ -->
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.affichage")}</div>
 
-          <!-- 🪟 v1.85.1 — ancrage des panneaux d outils. -->
-          <label class="kta-perf-ultra-row" style="margin-top:14px;">
-            <input type="checkbox" id="cfg_panneauxAncres" ${c.panneauxAncres === true ? "checked" : ""}>
-            <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.panneaux.label")}</span>
-              <span class="kta-perf-ultra-hint">
-                ${window.I18n.t("config.panneaux.hint")}
-              </span>
-            </span>
-          </label>
+          <!-- ⚠️ v1.85.3 (audit KARMA) — QUATRE RÉGLAGES ONT QUITTÉ CET ÉCRAN :
+               taille des icônes au zoom, ancrage des panneaux, magnétisme au
+               dessin et son rayon. Ils sont GLOBAUX — une seule valeur pour
+               toute l'application — donc les modifier depuis un plan changeait
+               le comportement de TOUS les autres, sans que rien ne le dise.
+               Ils vivent désormais dans ⚙️ Configuration de l'ACCUEIL, où on
+               les décide une fois. Ce qui reste ici ne concerne que CE plan. -->
+
 
         <div class="kta-aide-section">
-          <label class="kta-perf-ultra-row kta-perf-ultra-row-danger" style="margin-top:0;">
-            <input type="checkbox" id="cfg_scaledMarkers" ${c.scaledMarkers !== false ? "checked" : ""}>
-            <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.scaledMarkers.label")}</span>
-              <span class="kta-perf-ultra-hint">
-                ${window.I18n.t("config.display.scaledMarkers.hint")}
-              </span>
-            </span>
-          </label>
           <!-- v1.9.2 to v1.36.2 : le toggle "Afficher les ronds aux
                intersections de tracés" REVIENT ici, mais cette fois en
                PER-PLAN (KARMA : enleve du home, met le dans la config du plan).
@@ -1463,23 +1435,12 @@ function afficherConfig() {
   // Visible UNIQUEMENT si navigator.vibrate est supporté (Android oui,
   // iOS Safari NON par choix d'Apple). Sync UI ↔ APP_CONFIG.vibrationEnabled
   // + persistence app_user_prefs.
-  // 🪟 v1.85.1 — ancrage des panneaux d outils. Applique a la volee : le
-  // panneau suivant s ouvre au bon endroit sans recharger.
-  const panCb = document.getElementById("cfg_panneauxAncres");
-  if (panCb) {
-    panCb.checked = !!(window.APP_CONFIG && window.APP_CONFIG.panneauxAncres === true);
-    panCb.addEventListener("change", function () {
-      if (!window.APP_CONFIG) window.APP_CONFIG = {};
-      window.APP_CONFIG.panneauxAncres = !!panCb.checked;
-      // 🩸 Par le chemin CANONIQUE, pas par une ecriture directe : c est lui
-      // que `check-prefs-survival.js` inspecte pour verifier qu une pref
-      // sauvegardee est bien relue au chargement d un plan. Une ecriture
-      // directe (cas `vibrationEnabled`) rend la pref invisible au controle.
-      if (typeof window.sauvegarderPrefsUtilisateur === "function") {
-        window.sauvegarderPrefsUtilisateur();
-      }
-    });
-  }
+  // ⚠️ v1.85.3 (audit KARMA) — LE CABLAGE DE QUATRE REGLAGES GLOBAUX A ETE
+  // RETIRE D ICI avec leurs cases : taille des icones au zoom, ancrage des
+  // panneaux, magnetisme au dessin et son rayon. Ils se reglent desormais dans
+  // la ⚙️ Configuration de l ACCUEIL. Le laisser en place aurait ete inoffensif
+  // (les `getElementById` rendent null) mais trompeur : du code qui a l air de
+  // brancher une interface qui n existe plus.
 
   // 🛰️ v1.85.2 — LES DEUX CAPTEURS, ET CE QU'ON DIT QUAND ILS SONT REFUSÉS.
   //
@@ -1636,26 +1597,35 @@ function appliquerConfig() {
   // 🛠️ v1.76.3 (2:b) — debugMode ne se règle plus ici : Mode Développeur
   // du HOME uniquement (devMode.js > setDebugMode global).
 
-  // 🔍 v174 : scaledMarkers (lu une fois à creerIcones + au hook zoom, reload requis)
-  const cbScaled = document.getElementById("cfg_scaledMarkers");
-  if (cbScaled) APP_CONFIG.scaledMarkers = !!cbScaled.checked;
 
-  // 🧭 Nav Intelligente C2 : toggle smartNav (pref globale, défaut OFF). Lu à
-  // chaud par tracking.js > avancer() — pas de reload requis.
-  const cbSmartNav = document.getElementById("cfg_smartNav");
-  if (cbSmartNav) APP_CONFIG.smartNav = !!cbSmartNav.checked;
-  // 🆕 v1.49.0 (Lot C) — tolérances réglables du verrou sur tracé (smartNav)
-  var inSnRadius = document.getElementById("cfg_smartNavRadius");
-  if (inSnRadius) { var snr = parseFloat(inSnRadius.value); if (Number.isFinite(snr) && snr > 0) APP_CONFIG.smartNavRadiusM = snr; }
-  var inSnHeading = document.getElementById("cfg_smartNavHeading");
-  if (inSnHeading) { var snh = parseFloat(inSnHeading.value); if (Number.isFinite(snh) && snh >= 0) APP_CONFIG.smartNavHeadingWeight = snh; }
-
-  // 🧲 C5 v1.74.0 — magnétisme edit-time (pref globale, défaut OFF). Lu à chaud
-  // par road.js > _snapSurSommetProche() au clic — pas de reload requis.
-  const cbSnapDraw = document.getElementById("cfg_snapDraw");
-  if (cbSnapDraw) APP_CONFIG.snapDraw = !!cbSnapDraw.checked;
-  var inSnapPx = document.getElementById("cfg_snapDrawPx");
-  if (inSnapPx) { var spx = parseFloat(inSnapPx.value); if (Number.isFinite(spx) && spx > 0) APP_CONFIG.snapDrawPx = spx; }
+  // 🧭 v1.85.3 — NAV INTELLIGENTE : DÉSORMAIS PAR PLAN (audit KARMA).
+  // Elle dépend de la qualité du réseau de tracés DU PLAN COURANT : l'activer
+  // sur un relevé bien tracé l'activait aussi sur un plan sans aucun tracé, où
+  // elle ne peut rien caler. « Afficher les ronds aux intersections », qui
+  // dépend du même réseau, était déjà par plan depuis la v1.36.2 — deux
+  // réglages de même nature, deux portées différentes.
+  //
+  // ⚠️ On n'écrit PLUS dans `app_user_prefs` : la valeur globale reste lue
+  // comme REPLI de migration par `getPlanSmartNav`, tant que le plan n'a pas
+  // la sienne. Rien n'est perdu pour qui l'avait déjà activée.
+  {
+    const patchSN = {};
+    const cbSmartNav = document.getElementById("cfg_smartNav");
+    if (cbSmartNav) patchSN.smartNav = !!cbSmartNav.checked;
+    const inSnRadius = document.getElementById("cfg_smartNavRadius");
+    if (inSnRadius) {
+      const snr = parseFloat(inSnRadius.value);
+      if (Number.isFinite(snr) && snr > 0) patchSN.smartNavRadiusM = snr;
+    }
+    const inSnHeading = document.getElementById("cfg_smartNavHeading");
+    if (inSnHeading) {
+      const snh = parseFloat(inSnHeading.value);
+      if (Number.isFinite(snh) && snh >= 0) patchSN.smartNavHeadingWeight = snh;
+    }
+    if (Object.keys(patchSN).length && typeof window.setPlanSmartNav === "function") {
+      window.setPlanSmartNav(null, patchSN);
+    }
+  }
 
   // 🆕 v1.9.2 : le handler de showRoadIntersections en mode carte a été retiré
   // (toggle exclusivement dans le ⚙️ Configuration du loader/home désormais).

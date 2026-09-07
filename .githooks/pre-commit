@@ -247,3 +247,17 @@ node scripts/check-journal-reprise.js || exit $?
 # haptique et l absence de tout `!== false` (qui rend VRAI sur undefined et
 # rallumerait l option). BLOQUANT.
 node scripts/check-wakelock.js || exit $?
+
+# ⚖️ LA PORTEE DES REGLAGES (audit KARMA du 07/09). La config du MODE PLAN ne
+# doit concerner QUE le plan : un reglage qui, modifie la, affecte toute
+# l application n y a rien a faire. Dix y vivaient — cocher « magnetisme au
+# dessin » depuis un releve le cochait pour TOUS, sans un mot. Le pire cas
+# avait deja ete paye en v1.59.0 sur les toggles Perf ULTRA.
+# On tranche sur la PERSISTANCE, jamais sur l onglet : est global ce que
+# `sauvegarderPrefsUtilisateur()` ecrit dans `app_user_prefs`. Deux tolerances
+# EXPLICITES (vibration, batterie) : on les ajuste en cavite, remonter au HOME
+# pour couper la vibration serait absurde. Verifie aussi que les rapatries sont
+# ATTEIGNABLES au HOME — les sortir sans les y mettre serait pire —, que la nav
+# intelligente est passee par plan AVEC son repli de migration, et que les
+# toggles Perf ne sont plus affiches au HOME ou ils ne persistaient rien.
+node scripts/check-portee-reglages.js || exit $?

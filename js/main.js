@@ -432,6 +432,7 @@ async function lancerApplication() {
   // 👣 v1.82.0 — même contrainte, même endroit : les réglages de podomètre
   // per-plan se posent une fois l'id connu (cf. config.js).
   if (typeof window.appliquerTrackingPerPlan === "function") window.appliquerTrackingPerPlan();
+  if (typeof window.appliquerSmartNavPerPlan === "function") window.appliquerSmartNavPerPlan();
 
   // Restauration de session si correspond au plan courant (et démarrage du polling auto-save)
   if (window.SessionPersist) {

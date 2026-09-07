@@ -493,6 +493,9 @@ function buildAppConfigFromPlan(planConfig) {
     if ("snapDraw" in saved) cfg.snapDraw = !!saved.snapDraw;
     if ("panneauxAncres" in saved) cfg.panneauxAncres = !!saved.panneauxAncres;
     if ("batterieEnabled" in saved) cfg.batterieEnabled = !!saved.batterieEnabled;
+    // ⚠️ smartNav* ne sont PLUS lus ici : ils sont devenus PAR PLAN (v1.85.3).
+    // La valeur globale reste lue plus bas comme REPLI de migration, via
+    // `getPlanSmartNav`, appelé au chargement du plan.
     if (Number.isFinite(saved.snapDrawPx) && saved.snapDrawPx > 0) cfg.snapDrawPx = saved.snapDrawPx;
   } catch(e) {}
 
@@ -715,6 +718,61 @@ function setPlanShowsIntersections(planId, value) {
 }
 
 // =========================
+// HELPER PER-PLAN : NAVIGATION INTELLIGENTE (v1.85.3)
+// =========================
+// 🩸 POURQUOI ELLE CHANGE DE PORTÉE. « Caler la position sur les tracés »
+// dépend de la QUALITÉ DU RÉSEAU DE TRACÉS DU PLAN COURANT. Stockée
+// globalement, l'activer sur un relevé bien tracé l'activait aussi sur un plan
+// qui n'a aucun tracé — où elle ne peut rien caler. Or « Afficher les ronds aux
+// intersections », qui dépend exactement du même réseau, était DÉJÀ par plan
+// depuis la v1.36.2 : deux réglages de même nature, deux portées différentes.
+// Audit KARMA du 07/09.
+//
+// 🩸 AUCUNE PERTE : la lecture retombe sur la valeur GLOBALE existante tant que
+// le plan n'a pas la sienne. Un utilisateur qui avait activé la nav la retrouve
+// activée partout, puis chaque plan diverge dès qu'il y touche. Même mécanique
+// de migration que `getPlanShowsIntersections`.
+function getPlanSmartNav(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  const g = window.APP_CONFIG || {};
+  const out = {};
+  out.smartNav = (typeof prefs.smartNav === "boolean") ? prefs.smartNav
+               : (g.smartNav === true);
+  out.smartNavRadiusM = Number.isFinite(Number(prefs.smartNavRadiusM))
+    ? Number(prefs.smartNavRadiusM)
+    : (Number.isFinite(Number(g.smartNavRadiusM)) ? Number(g.smartNavRadiusM)
+                                                  : DEFAULT_CONFIG.smartNavRadiusM);
+  out.smartNavHeadingWeight = Number.isFinite(Number(prefs.smartNavHeadingWeight))
+    ? Number(prefs.smartNavHeadingWeight)
+    : (Number.isFinite(Number(g.smartNavHeadingWeight)) ? Number(g.smartNavHeadingWeight)
+                                                        : DEFAULT_CONFIG.smartNavHeadingWeight);
+  return out;
+}
+
+// Écrit pour LE PLAN COURANT et applique à chaud. `patch` = sous-ensemble de
+// { smartNav, smartNavRadiusM, smartNavHeadingWeight }.
+function setPlanSmartNav(planId, patch) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  if (!patch || typeof patch !== "object") return;
+  const prefs = _readPlanPrefs(pid);
+  if (typeof patch.smartNav === "boolean") prefs.smartNav = patch.smartNav;
+  ["smartNavRadiusM", "smartNavHeadingWeight"].forEach(function (k) {
+    const v = Number(patch[k]);
+    // Bornes reprises de la validation existante des Réglages : une valeur
+    // hors bornes n'est pas une préférence, c'est une saisie fautive.
+    if (Number.isFinite(v) && v > 0) prefs[k] = v;
+  });
+  _writePlanPrefs(pid, prefs);
+  // Applique tout de suite : le tracker lit APP_CONFIG, pas les prefs.
+  if (typeof prefs.smartNav === "boolean") APP_CONFIG.smartNav = prefs.smartNav;
+  if (Number.isFinite(Number(prefs.smartNavRadiusM))) APP_CONFIG.smartNavRadiusM = Number(prefs.smartNavRadiusM);
+  if (Number.isFinite(Number(prefs.smartNavHeadingWeight))) APP_CONFIG.smartNavHeadingWeight = Number(prefs.smartNavHeadingWeight);
+  window.APP_CONFIG = APP_CONFIG;
+  console.log("[Config] smartNav (plan " + pid + ") →", JSON.stringify(patch));
+}
+
+// =========================
 // HELPER PER-PLAN : northOffsetDeg (v1.37.0)
 // =========================
 // Lecture cascade pour la calibration Nord du plan courant :
@@ -883,6 +941,19 @@ function appliquerTrackingPerPlan() {
 }
 window.setPlanTracking         = setPlanTracking;
 window.appliquerTrackingPerPlan = appliquerTrackingPerPlan;
+
+// 🧭 v1.85.3 — la nav intelligente suit la MEME contrainte : appliquee une fois
+// l id du plan connu, JAMAIS depuis buildAppConfigFromPlan ou l on lirait les
+// prefs du plan PRECEDENT.
+function appliquerSmartNavPerPlan() {
+  const v = getPlanSmartNav();
+  APP_CONFIG.smartNav              = v.smartNav === true;
+  APP_CONFIG.smartNavRadiusM       = v.smartNavRadiusM;
+  APP_CONFIG.smartNavHeadingWeight = v.smartNavHeadingWeight;
+  window.APP_CONFIG = APP_CONFIG;
+  console.log("[Config] smartNav applique pour ce plan :", v.smartNav);
+}
+window.appliquerSmartNavPerPlan = appliquerSmartNavPerPlan;
 
 // =========================
 // 📉 v1.83.0 — PROFONDEUR DES NIVEAUX
@@ -1060,6 +1131,8 @@ window.setShowRoadIntersections    = setShowRoadIntersections;
 // de Configuration home → Réglages map mode, persistée par plan)
 window.getPlanShowsIntersections   = getPlanShowsIntersections;
 window.setPlanShowsIntersections   = setPlanShowsIntersections;
+window.getPlanSmartNav             = getPlanSmartNav;    // 🧭 v1.85.3 — par plan
+window.setPlanSmartNav             = setPlanSmartNav;
 // 🧭 v1.37.0 — helpers per-plan pour northOffsetDeg (calibration Nord du
 // plan — appliquée au tracker, à la boussole et à la rose des vents header)
 window.getPlanNorthOffset          = getPlanNorthOffset;

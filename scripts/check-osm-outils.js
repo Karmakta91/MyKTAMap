@@ -307,7 +307,10 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   t("🩸 réglage : sauvegardé par le chemin CANONIQUE (sinon invisible au contrôle des prefs)",
     /existing\.panneauxAncres\s*=/.test(CFG) && /sauvegarderPrefsUtilisateur\(\)/.test(UIC));
   t("réglage : relu au chargement d'un plan", /"panneauxAncres" in saved/.test(CFG));
-  t("réglage : la case existe dans ⚙️ Paramètres", /id="cfg_panneauxAncres"/.test(UIC));
+  // ⚠️ v1.85.3 : l'option a MIGRÉ vers la config de l'ACCUEIL (audit KARMA —
+  // c'est un réglage global, il n'avait rien à faire dans la config d'un plan).
+  t("réglage : la case existe dans ⚙️ Configuration de l'accueil",
+    /id="loaderPanneauxAncres"/.test(fs.readFileSync("index.html", "utf8")));
   ["config.panneaux.label", "config.panneaux.hint"].forEach(function (k) {
     ["fr", "en", "es"].forEach(function (l) {
       const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
