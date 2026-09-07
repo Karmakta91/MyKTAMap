@@ -2506,6 +2506,27 @@ The dialog only offers targets **compatible with the object's shape**: a **line*
 
 The object keeps everything else — its geometry, its level, its note.
 
+### 🏁 Your distance when the pedometer saw nothing
+
+With the phone in your pocket the pedometer counts almost nothing. But every **📍 I am here** you place on a point of the plan leaves a **timestamped marker**. The app links those markers **following your galleries** — the same computation as a route — and derives the distance actually walked between them.
+
+In practice: a marker at 12:00, one at 12:30, one at 13:00 → the app computes A→B→C through the galleries, not as the crow flies.
+
+#### 🏁 The last leg, the one that was lost
+
+A leg is only computed when the **next** marker arrives. So everything you walk **after your last marker** was counted by nobody.
+
+Since v1.85.2, when you tap **🏁 Close my outing**, the app asks **where you came out**. One tap on the map and the last leg joins the total. You can **Skip** if you are closing from home.
+
+#### What the record tells you about the number
+
+| What it says | What it means |
+|---|---|
+| *including 900 m computed through the galleries between 6 markers* | The path was rebuilt on your drawn paths — trustworthy |
+| *including 900 m as the crow flies between 6 markers (not refined)* | Straight lines between markers — **underestimated**, sometimes badly |
+
+> ⚠️ **What this computation cannot do**: it takes the **shortest** path between two markers, not necessarily yours. Back-and-forth, dead ends explored, hesitations — all underestimated. And with no “I am here” at all there is nothing to link: the distance stays the pedometer's.
+
 ### ⏱️ How an outing's duration is counted
 
 A **field** outing is counted **from start to end**, not from the time the app was open. That is what you mean by “we were down there 3 hours”: the phone in your pocket counts, and so does the app going to sleep.

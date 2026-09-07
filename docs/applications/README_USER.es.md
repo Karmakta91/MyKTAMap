@@ -2503,6 +2503,27 @@ La ventana solo propone destinos **compatibles con la forma** del objeto: una **
 
 El objeto conserva todo lo demás: su geometría, su nivel y su nota.
 
+### 🏁 Tu distancia cuando el podómetro no vio nada
+
+Con el teléfono en el bolsillo, el podómetro cuenta casi nada. Pero cada **📍 Estoy aquí** que colocas sobre un punto del plano deja una **referencia con hora**. La app une esas referencias **siguiendo tus galerías** —el mismo cálculo que un itinerario— y deduce la distancia realmente recorrida entre ellas.
+
+En la práctica: una referencia a las 12:00, otra a las 12:30, otra a las 13:00 → la app calcula A→B→C por las galerías, no en línea recta.
+
+#### 🏁 El último tramo, el que se perdía
+
+Un tramo solo se calcula cuando llega la referencia **siguiente**. Así que todo lo que andas **después de tu última referencia** no lo contaba nadie.
+
+Desde la v1.85.2, al pulsar **🏁 Cerrar mi salida**, la app te pregunta **por dónde saliste**. Un toque en el mapa y el último tramo entra en el total. Puedes **Omitir** si cierras desde casa.
+
+#### Lo que la ficha te dice del número
+
+| Lo que pone | Qué significa |
+|---|---|
+| *de los cuales 900 m calculados por las galerías entre 6 referencias* | El recorrido se reconstruyó sobre tus trazados: es fiable |
+| *de los cuales 900 m en línea recta entre 6 referencias (sin afinar)* | Líneas rectas entre referencias: **infravalorado**, a veces mucho |
+
+> ⚠️ **Lo que este cálculo no sabe hacer**: toma el camino **más corto** entre dos referencias, no necesariamente el tuyo. Idas y vueltas, callejones explorados, dudas: todo queda infravalorado. Y sin ningún «Estoy aquí» no hay nada que unir: la distancia seguirá siendo la del podómetro.
+
 ### ⏱️ Cómo se cuenta la duración de una salida
 
 Una salida de **campo** se cuenta **de la salida al final**, no por el tiempo que la app estuvo abierta. Es lo que quieres decir con «estuvimos 3 horas»: el teléfono en el bolsillo cuenta, y la app en reposo también.

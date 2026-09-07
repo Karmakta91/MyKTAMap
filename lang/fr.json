@@ -2858,7 +2858,7 @@
   "jrn.metric.niveaux": "niveau(x)",
   "jrn.fiche.manuelle": "clôturée à la main",
   "jrn.fiche.note": "📝 Ma note sur cette sortie",
-  "jrn.fiche.notePlaceholder": "Ce qu'on a vu, qui était là, ce qu'il faut retenir pour la prochaine fois…",
+  "jrn.fiche.notePlaceholder": "Ce que tu veux retenir…",
   "jrn.fiche.enregistrer": "Enregistrer la note",
   "jrn.fiche.supprimer": "Supprimer cette sortie",
   "jrn.fiche.photos": "{n} photo(s) prise(s) pendant la sortie",
@@ -5057,5 +5057,9 @@
   "jrn.fin.ok": "⏱️ Fin corrigée — la durée a été recalculée",
   "jrn.fin.koFormat": "⚠️ Format non reconnu — attendu AAAA-MM-JJTHH:MM",
   "jrn.fin.koAvant": "⚠️ La fin doit être APRÈS le départ",
-  "config.display.wakelock.toastKo": "⚠️ Ton appareil a refusé de garder l'écran allumé — touche l'écran une fois, l'app réessaie"
+  "config.display.wakelock.toastKo": "⚠️ Ton appareil a refusé de garder l'écran allumé — touche l'écran une fois, l'app réessaie",
+  "jrn.section.dontReseau": "dont {dist} calculés dans les galeries entre {n} repères",
+  "jrn.section.dontVol": "dont {dist} à vol d'oiseau entre {n} repères (non affinés)",
+  "jrn.finPos.invite": "Clique où tu es ressorti — le dernier trajet sera compté",
+  "jrn.finPos.passer": "Passer"
 }

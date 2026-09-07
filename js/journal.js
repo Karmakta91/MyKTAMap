@@ -690,7 +690,19 @@
     // ⚠️ L'affinage passe AVANT le test de pertinence : 30 m à vol d'oiseau
     // peuvent valoir 200 m de galeries. Juger la sortie sur la ligne droite puis
     // la jeter reproduirait EXACTEMENT le défaut que ce lot corrige.
-    return _affinerDistances(rec, baseDist, baseEst).then(function() {
+    // 🩸 v1.85.2 — `force` sur une CLOTURE MANUELLE. Le budget de sommets
+    // (20 000, cf. tracking.js) protege l archivage AUTOMATIQUE, qui doit
+    // rester invisible : au-dela, l affinage reseau est saute et le vol
+    // d oiseau conserve, SANS un mot. Sur un releve importe, c est
+    // systematique — le carnet affichait donc une distance a vol d oiseau en
+    // la presentant comme la distance parcourue.
+    //
+    // Une cloture manuelle n est pas ce cas : l utilisateur vient d appuyer
+    // sur « Cloturer », il attend un resultat, un calcul un peu long est
+    // legitime. On leve donc le plafond — le meme raisonnement que le bouton
+    // « 🧭 Affiner le trace ».
+    const optsAff = (reason === "manual") ? { force: true } : undefined;
+    return _affinerDistances(rec, baseDist, baseEst, optsAff).then(function() {
       return _finaliserSuite(rec, id, reason);
     });
   }

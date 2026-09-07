@@ -205,8 +205,15 @@
                     // ici », podomètre muet) est dite, jamais fondue dans le total :
                     // l'user doit savoir ce que vaut le chiffre qu'il lit.
                     '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.distance")) +
+                      // 🩸 v1.85.2 — DIRE D OU VIENT LA PART ESTIMEE. « Calculee
+                      // sur les galeries » et « a vol d oiseau » n ont pas la
+                      // meme valeur : dans un labyrinthe l ecart est un facteur
+                      // 2 ou 3. `trackAffine` n existe QUE si l affinage reseau
+                      // a tourne — c est le marqueur, et il est deja stocke.
                       ((rec.distEstimeeM || 0) > 0
-                        ? ' ' + _esc(_t("jrn.section.dontEstime", { dist: _dist(rec.distEstimeeM) }))
+                        ? ' ' + _esc(_t(rec.trackAffine ? "jrn.section.dontReseau" : "jrn.section.dontVol",
+                                        { dist: _dist(rec.distEstimeeM),
+                                          n: Number(rec.validations) || 0 }))
                         : '') +
                     '</span></div>'
                 : '<div class="kta-jrn-metric"><span class="kta-jrn-metric-val">' +
@@ -1049,12 +1056,83 @@
   // Bouton « 🏁 Clôturer ma sortie » (modale Session de l'écran plan).
   // La clôture manuelle garde TOUJOURS la sortie (pas de seuil), puis en
   // rouvre une nouvelle — cf journal.js > cloturer().
+  // 📍 v1.85.2 — DEMANDER OU L ON EST AVANT DE CLOTURER.
+  //
+  // 🩸 LE TROU QUE CA FERME : la distance entre deux « 📍 Je suis ici » est
+  // comblee quand l ancre SUIVANTE arrive, en regardant en arriere. Apres le
+  // dernier repere, tout ce qui est marche jusqu a la sortie n est donc compte
+  // que par le podometre — c est-a-dire RIEN quand le telephone est en poche.
+  // Et `cloturer()` ne posait aucune ancre.
+  //
+  // 🩸 UNE HEURE N EST PAS UNE POSITION. Poser l ancre a la position tracker
+  // courante n ajouterait 0 m : si le podometre s est tu, on est
+  // encore affiche au dernier repere. Il FAUT demander ou l on est.
+  //
+  // On passe par `recalerTrackerSurPoint` — le meme chemin que « Je suis ici »
+  // sur un point, seul a alimenter la distance estimee. Un clic carte LIBRE
+  // (`src: "click"`) est volontairement exclu depuis le 16/08 parce qu il
+  // corrige le plus souvent une position fausse ; ici c est l inverse, la
+  // personne DECLARE ou elle est ressortie. Meme geste, sens oppose.
+  let _finPickHandler = null;
+  let _finPickFloater = null;
+
+  function _finPickFermer() {
+    if (window.map && _finPickHandler) { try { window.map.off("click", _finPickHandler); } catch (e) {} }
+    _finPickHandler = null;
+    if (_finPickFloater && _finPickFloater.parentNode) _finPickFloater.remove();
+    _finPickFloater = null;
+    try { if (window.map) window.map.getContainer().style.cursor = ""; } catch (e) {}
+  }
+
+  // Rend une promesse resolue quand la position est posee OU passee.
+  function _demanderPositionSortie() {
+    if (!window.map || typeof window.recalerTrackerSurPoint !== "function") {
+      return Promise.resolve(false);
+    }
+    return new Promise(function (resolve) {
+      _finPickFermer();
+      // `.kta-iti-floater` : reconnue par `_modeClicCarteActif()`, donc aucune
+      // popup d annotation n avale le clic et celui-ci est re-emis en phase
+      // capture. Huitieme picker du meme moule.
+      _finPickFloater = document.createElement("div");
+      _finPickFloater.id = "kta-jrn-fin-pick";
+      _finPickFloater.className = "kta-iti-floater";
+      _finPickFloater.innerHTML =
+        '<span class="kta-iti-floater-icon">🏁</span>' +
+        '<span class="kta-iti-floater-msg"></span>' +
+        '<button class="kta-btn kta-btn-ghost" id="kta-jrn-fin-skip" type="button"></button>';
+      _finPickFloater.querySelector(".kta-iti-floater-msg").textContent = _t("jrn.finPos.invite");
+      const skip = _finPickFloater.querySelector("#kta-jrn-fin-skip");
+      skip.textContent = _t("jrn.finPos.passer");
+      document.body.appendChild(_finPickFloater);
+      skip.addEventListener("click", function () { _finPickFermer(); resolve(false); });
+
+      _finPickHandler = function (e) {
+        if (!e || !e.latlng) return;
+        const x = e.latlng.lng;
+        const y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
+                    ? (window.APP_CONFIG.imageHeight - e.latlng.lat) : e.latlng.lat;
+        _finPickFermer();
+        try { window.recalerTrackerSurPoint(x, y, undefined); } catch (err) {
+          console.warn("[JournalUi] ancre de fin :", err && err.message);
+        }
+        resolve(true);
+      };
+      window.map.on("click", _finPickHandler);
+      try { window.map.getContainer().style.cursor = "crosshair"; } catch (e) {}
+    });
+  }
+
   function cloturerDepuisUi() {
     if (!window.Journal || !window.Journal.getCurrent()) {
       _toast(_t("jrn.err.aucuneSortie"), "warn");
       return Promise.resolve(null);
     }
-    return window.Journal.cloturer().then(function(rec) {
+    // La demande est FACULTATIVE : on ne bloque jamais une cloture. Qui ferme
+    // depuis le canape n a pas de position de sortie a donner.
+    return _demanderPositionSortie().then(function () {
+      return window.Journal.cloturer();
+    }).then(function(rec) {
       if (!rec) return null;
       _toast(_t("jrn.toast.cloturee"), "info");
       ouvrirFiche(rec.id);

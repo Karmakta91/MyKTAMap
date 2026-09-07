@@ -2871,7 +2871,7 @@
   "jrn.metric.niveaux": "nivel(es)",
   "jrn.fiche.manuelle": "cerrada a mano",
   "jrn.fiche.note": "📝 Mi nota sobre esta salida",
-  "jrn.fiche.notePlaceholder": "Lo que vimos, quién estaba, qué recordar para la próxima vez…",
+  "jrn.fiche.notePlaceholder": "Lo que quieras recordar…",
   "jrn.fiche.enregistrer": "Guardar la nota",
   "jrn.fiche.supprimer": "Eliminar esta salida",
   "jrn.fiche.photos": "{n} foto(s) tomada(s) durante la salida",
@@ -5057,5 +5057,9 @@
   "jrn.fin.ok": "⏱️ Final corregido: se ha recalculado la duración",
   "jrn.fin.koFormat": "⚠️ Formato no reconocido: se esperaba AAAA-MM-DDTHH:MM",
   "jrn.fin.koAvant": "⚠️ El final debe ser POSTERIOR al inicio",
-  "config.display.wakelock.toastKo": "⚠️ Tu dispositivo se negó a mantener la pantalla encendida: toca la pantalla una vez y la app lo reintenta"
+  "config.display.wakelock.toastKo": "⚠️ Tu dispositivo se negó a mantener la pantalla encendida: toca la pantalla una vez y la app lo reintenta",
+  "jrn.section.dontReseau": "de los cuales {dist} calculados por las galerías entre {n} referencias",
+  "jrn.section.dontVol": "de los cuales {dist} en línea recta entre {n} referencias (sin afinar)",
+  "jrn.finPos.invite": "Toca por dónde saliste: se contará el último tramo",
+  "jrn.finPos.passer": "Omitir"
 }

@@ -20181,6 +20181,11 @@ html.kta-theme-light .kta-readme-modal-overlay *[style*="background: #1a1f2e"] {
 .kta-jrn-note-lab { display: block; font-size: 12px; color: #c8d0e0; margin-bottom: 4px; }
 .kta-jrn-note {
   width: 100%;
+  /* 🐛 v1.85.2 (capture KARMA) : sans ça, le champ DEBORDE du cadre à droite.
+     `width: 100%` + 20px de padding + 2px de bordure = 122 % du conteneur —
+     un <textarea> est en `content-box` par défaut, et le projet n'a aucun
+     reset global qui le rattraperait. */
+  box-sizing: border-box;
   padding: 8px 10px;
   font-size: 12.5px;
   font-family: inherit;

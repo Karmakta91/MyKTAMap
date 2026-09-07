@@ -217,6 +217,66 @@ function partie2() {
   t("durée : la fiche dit AUSSI le temps d'app (il dit ce que vaut la mesure)",
     /jrn\.metric\.dontActif/.test(JUI));
   t("fin : le bouton de correction existe dans la fiche", /id="kta-jrn-fin"/.test(JUI));
+
+  // ───────── 🏁 LA POSITION DE SORTIE (KARMA, 07/09) ─────────
+  // 🩸 LE TROU : la distance entre deux « Je suis ici » est comblée quand
+  // l'ancre SUIVANTE arrive, en regardant en arrière. Après le dernier repère,
+  // tout ce qui est marché jusqu'à la sortie n'est compté que par le podomètre
+  // — donc rien quand le téléphone est en poche. Et `cloturer()` ne posait
+  // aucune ancre.
+  const TRK = fs.readFileSync("js/tracking.js", "utf8");
+  t("🩸 fin : la clôture DEMANDE la position de sortie avant de fermer",
+    /_demanderPositionSortie\(\)\.then\(function \(\) \{[\s\S]{0,80}Journal\.cloturer\(\)/.test(JUI));
+  // 🩸 Elle doit passer par le chemin « Je suis ici SUR UN POINT » : un clic
+  // carte LIBRE porte `src: "click"` et n'alimente JAMAIS la distance estimée
+  // (décision du 16/08). Utiliser le mauvais chemin ajouterait 0 m en silence.
+  t("🩸 fin : elle passe par `recalerTrackerSurPoint`, seul chemin qui compte",
+    /window\.recalerTrackerSurPoint\(x, y, undefined\)/.test(JUI));
+  t("🩸 tracking : seul `src: \"point\"` déclenche le comblement de tronçon",
+    /_estimerSegmentDepuisAncre\(_ancre\)/.test(TRK) &&
+    /src: "click"/.test(TRK));
+  t("fin : la demande est FACULTATIVE (un bouton Passer existe)",
+    /jrn\.finPos\.passer/.test(JUI));
+  t("fin : le bandeau porte `kta-iti-floater` (sinon la popup avale le clic)",
+    /_finPickFloater\.className = "kta-iti-floater"/.test(JUI));
+  t("🩸 fin : le listener `click` est retiré à la fermeture du picker",
+    /map\.off\("click", _finPickHandler\)/.test(JUI));
+
+  // 🩸 LE BUDGET DÉGRADAIT EN SILENCE. Au-delà de 20 000 sommets l'affinage
+  // réseau est sauté et le vol d'oiseau conservé — pour que l'archivage
+  // AUTOMATIQUE reste invisible. Une clôture MANUELLE n'est pas ce cas :
+  // l'utilisateur attend un résultat.
+  t("🩸 budget : la clôture manuelle affine SANS plafond (`force`)",
+    /const optsAff = \(reason === "manual"\) \? \{ force: true \} : undefined;/.test(J) &&
+    /_affinerDistances\(rec, baseDist, baseEst, optsAff\)/.test(J));
+  t("budget : l'archivage automatique, lui, garde son plafond",
+    /!opts\.force/.test(TRK));
+
+  // 📊 La fiche distingue enfin la QUALITÉ du chiffre.
+  t("📊 qualité : réseau et vol d'oiseau ne s'affichent pas pareil",
+    /jrn\.section\.dontReseau/.test(JUI) && /jrn\.section\.dontVol/.test(JUI));
+  t("📊 qualité : le marqueur est `trackAffine` (présent seulement si l'affinage a tourné)",
+    /rec\.trackAffine \? "jrn\.section\.dontReseau" : "jrn\.section\.dontVol"/.test(JUI));
+
+  // 🐛 Le champ de note débordait du cadre à droite (capture KARMA).
+  {
+    const CSS = fs.readFileSync("css/style.css", "utf8");
+    const i = CSS.indexOf(".kta-jrn-note {");
+    const b = i < 0 ? "" : CSS.slice(i, CSS.indexOf("}", i));
+    t("🐛 note : `box-sizing: border-box` (sans lui le champ déborde du cadre)",
+      /box-sizing:\s*border-box/.test(b));
+    const FRD = JSON.parse(fs.readFileSync("lang/fr.json", "utf8"));
+    t("note : le remplissage est court (il suggère, il n'occupe pas)",
+      (FRD["jrn.fiche.notePlaceholder"] || "").length <= 40);
+  }
+
+  ["jrn.section.dontReseau", "jrn.section.dontVol", "jrn.finPos.invite", "jrn.finPos.passer"]
+    .forEach(function (k) {
+      ["fr", "en", "es"].forEach(function (l) {
+        const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
+        t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);
+      });
+    });
   t("fin : l'API est exposée", /setFin:\s+setFin/.test(J));
   t("fin : une fin saisie à la main est signalée dans la fiche", /jrn\.metric\.finCorrigee/.test(JUI));
 

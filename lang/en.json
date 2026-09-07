@@ -2858,7 +2858,7 @@
   "jrn.metric.niveaux": "level(s)",
   "jrn.fiche.manuelle": "closed manually",
   "jrn.fiche.note": "📝 My note about this trip",
-  "jrn.fiche.notePlaceholder": "What we saw, who was there, what to remember for next time…",
+  "jrn.fiche.notePlaceholder": "Anything worth remembering…",
   "jrn.fiche.enregistrer": "Save note",
   "jrn.fiche.supprimer": "Delete this trip",
   "jrn.fiche.photos": "{n} photo(s) taken during the trip",
@@ -5057,5 +5057,9 @@
   "jrn.fin.ok": "⏱️ End fixed — the duration has been recomputed",
   "jrn.fin.koFormat": "⚠️ Unrecognised format — expected YYYY-MM-DDTHH:MM",
   "jrn.fin.koAvant": "⚠️ The end must be AFTER the start",
-  "config.display.wakelock.toastKo": "⚠️ Your device refused to keep the screen on — tap the screen once, the app retries"
+  "config.display.wakelock.toastKo": "⚠️ Your device refused to keep the screen on — tap the screen once, the app retries",
+  "jrn.section.dontReseau": "including {dist} computed through the galleries between {n} markers",
+  "jrn.section.dontVol": "including {dist} as the crow flies between {n} markers (not refined)",
+  "jrn.finPos.invite": "Tap where you came out — the last leg will be counted",
+  "jrn.finPos.passer": "Skip"
 }

@@ -2511,6 +2511,27 @@ La fenêtre ne propose que des cibles **compatibles avec la forme** de l'objet :
 
 L'objet garde tout le reste — sa géométrie, son niveau, sa note.
 
+### 🏁 Ta distance quand le podomètre n'a rien vu
+
+Téléphone en poche, le podomètre ne compte presque rien. Mais chaque **📍 Je suis ici** que tu poses sur un point du plan laisse un **repère daté**. L'app relie ces repères **en suivant tes galeries** — le même calcul que pour un itinéraire — et en tire la distance réellement parcourue entre eux.
+
+Concrètement : repère à 12 h, repère à 12 h 30, repère à 13 h → l'app calcule A→B→C dans les galeries, pas à vol d'oiseau.
+
+#### 🏁 Le dernier trajet, celui qu'on oubliait
+
+Un tronçon n'est calculé qu'au moment où le repère **suivant** arrive. Donc tout ce que tu marches **après ton dernier repère** n'était compté par personne.
+
+Depuis la v1.85.2, quand tu appuies sur **🏁 Clôturer ma sortie**, l'app te demande **où tu es ressorti**. Un clic sur la carte, et le dernier trajet entre dans le total. Tu peux **Passer** si tu clôtures depuis chez toi.
+
+#### Ce que la fiche te dit du chiffre
+
+| Ce qui est écrit | Ce que ça veut dire |
+|---|---|
+| *dont 900 m calculés dans les galeries entre 6 repères* | Le trajet a été reconstitué sur tes tracés — c'est fiable |
+| *dont 900 m à vol d'oiseau entre 6 repères (non affinés)* | Ligne droite entre les repères — **sous-estimé**, parfois de beaucoup |
+
+> ⚠️ **Ce que ce calcul ne sait pas faire** : il prend le chemin **le plus court** entre deux repères, pas forcément le tien. Allers-retours, culs-de-sac explorés, hésitations — tout ça est sous-estimé. Et sans aucun « Je suis ici », il n'y a rien à relier : la distance restera celle du podomètre.
+
 ### ⏱️ La durée d'une sortie
 
 Une sortie **terrain** est comptée **du départ à la fin**, pas au temps où l'app était ouverte. C'est ce que tu veux dire quand tu dis « on est restés 3 h » : le téléphone rangé dans la poche compte, l'app mise en veille aussi.
