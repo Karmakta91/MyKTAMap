@@ -112,7 +112,7 @@
   "config.display.north.resetTitle": "Volver al valor por defecto (cascada plan-config / 0°)",
   "config.display.scaledMarkers.hint": "Seleccionado por defecto: los iconos de los puntos se encogen al alejar el zoom (tamaño relativo al mapa constante). <strong>Deselecciona</strong> = comportamiento estándar de Leaflet (iconos de tamaño de pantalla fijo, se vuelven enormes al alejar). <strong>Recarga necesaria</strong> tras el cambio.",
   "config.display.scaledMarkers.label": "📐 Adaptar el tamaño de los iconos al zoom",
-  "config.display.vibration.hint": "Pequeña vibración para las confirmaciones (waypoint alcanzado, acción validada, alerta). <strong>Deselecciona</strong> = silencio total (útil en cavidad con otras personas, o para meditación). <strong>iOS Safari no admite</strong> la Web Vibration API — en iPhone, este interruptor permanece oculto. Preferencia global, conservada entre sesiones.",
+  "config.display.vibration.hint": "Una vibración corta en las confirmaciones (waypoint alcanzado, acción validada, alerta). <strong>Desmarcarla</strong> significa silencio total, útil bajo tierra con más gente. <strong>iOS no cede este sensor a las páginas web</strong>: en iPhone la opción se muestra, pero atenuada.",
   "config.display.vibration.label": "📳 Vibración háptica",
   "config.display.vibration.toastOff": "🔇 Vibración desactivada",
   "config.display.vibration.toastOn": "📳 Vibración activada",

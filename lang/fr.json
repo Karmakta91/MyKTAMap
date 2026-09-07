@@ -112,7 +112,7 @@
   "config.display.north.resetTitle": "Retour au défaut (cascade plan-config / 0°)",
   "config.display.scaledMarkers.hint": "Coché par défaut : les icônes des points rétrécissent quand tu dézoomes (taille relative au plan constante). <strong>Décocher</strong> = comportement Leaflet standard (icônes taille écran fixe, elles deviennent énormes au dézoom). <strong>Reload requis</strong> après changement.",
   "config.display.scaledMarkers.label": "📐 Adapter la taille des icônes au zoom",
-  "config.display.vibration.hint": "Petite vibration pour les confirmations (waypoint atteint, action validée, alerte). <strong>Décocher</strong> = silence total (utile en cavité avec d'autres personnes, ou pour méditation). <strong>iOS Safari ne supporte pas</strong> la Web Vibration API — sur iPhone, ce toggle reste masqué. Pref globale, conservée entre les sessions.",
+  "config.display.vibration.hint": "Petite vibration pour les confirmations (waypoint atteint, action validée, alerte). <strong>Décocher</strong> = silence total, utile en cavité à plusieurs. <strong>iOS ne donne pas ce capteur aux pages web</strong> : sur iPhone l'option s'affiche, mais grisée.",
   "config.display.vibration.label": "📳 Vibration haptique",
   "config.display.vibration.toastOff": "🔇 Vibration désactivée",
   "config.display.vibration.toastOn": "📳 Vibration activée",

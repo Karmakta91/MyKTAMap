@@ -112,7 +112,7 @@
   "config.display.north.resetTitle": "Back to default (plan-config cascade / 0°)",
   "config.display.scaledMarkers.hint": "On by default: point icons shrink when you zoom out (constant size relative to the map). <strong>Uncheck</strong> = standard Leaflet behavior (fixed screen-size icons, they become huge when zoomed out). <strong>Reload required</strong> after changing.",
   "config.display.scaledMarkers.label": "📐 Scale icon size with zoom",
-  "config.display.vibration.hint": "Small vibration for confirmations (waypoint reached, action validated, alert). <strong>Uncheck</strong> = total silence (useful underground with other people, or for meditation). <strong>iOS Safari does not support</strong> the Web Vibration API — on iPhone, this toggle stays hidden. Global preference, kept across sessions.",
+  "config.display.vibration.hint": "A short vibration on confirmations (waypoint reached, action validated, alert). <strong>Unticking</strong> means complete silence, handy underground with others. <strong>iOS does not give this sensor to web pages</strong>: on iPhone the option shows, but greyed out.",
   "config.display.vibration.label": "📳 Haptic vibration",
   "config.display.vibration.toastOff": "🔇 Vibration disabled",
   "config.display.vibration.toastOn": "📳 Vibration enabled",
