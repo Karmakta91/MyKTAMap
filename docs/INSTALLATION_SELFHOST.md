@@ -371,10 +371,13 @@ dans `data/`. Pour ajouter vos plans à l'instance :
 ```
 /var/www/myktamap/data/
 ├── index.json                ← liste les plans dispo
-├── mon-plan-1/
+├── mon-plan-1/            ← le CONTENU du ZIP, dézippé tel quel
 │   ├── plan-config.json
-│   ├── *.png                  ← image plan + calques
-│   └── *.json                 ← données (POI, tracés, zones, etc.)
+│   ├── data/
+│   │   ├── *.png             ← image plan + calques
+│   │   ├── *.json            ← données (POI, tracés, zones…)
+│   │   └── tiles/z0/…        ← tuiles, si le plan est tuilé (V2)
+│   └── icon/                 ← icônes personnalisées éventuelles
 └── mon-plan-2/
     └── ...
 ```
@@ -390,6 +393,10 @@ Le fichier `index.json` doit ressembler à :
 }
 ```
 
+> ✅ **Depuis la v1.86.1, le ZIP se dézippe tel quel** — aucun chemin à réécrire. Avant, il fallait aplatir le dossier `data/` **et** réécrire chaque chemin du `plan-config.json` : sans ça, tout renvoyait 404 sauf le `plan-config.json` lui-même, sans message clair. Un déploiement déjà réécrit à la main continue de fonctionner à l'identique.
+>
+> ⚠️ **Icônes personnalisées** : les chemins `icon/…` restent résolus depuis la racine du site. Une icône perso livrée dans le ZIP n'est pas trouvée — déposez-la aussi dans le `icon/` du site. Détail : `docs/TILING.md` §5.
+>
 > 💡 **Pour créer vos plans facilement**, utilisez le **📦 Générateur**
 > intégré à l'app (icône loader → « 🏗️ Générer un plan ») qui produit
 > un ZIP prêt à uploader dans `/var/www/myktamap/data/`.

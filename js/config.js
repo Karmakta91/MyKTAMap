@@ -536,9 +536,34 @@ function resolveServerPath(p, baseDir) {
   if (!p) return p;
   if (/^(https?:|blob:|data:)/.test(p)) return p;
   if (p.charAt(0) === "/") return p;
-  if (p.indexOf("data/") === 0) return p;
+  const base = String(baseDir || "").replace(/\/$/, "");
+
+  // 🩸 v1.86.1 — UN CHEMIN `data/…` EST RELATIF AU ZIP, PAS À LA RACINE DU SITE.
+  // Le générateur écrit `data/MonPlan.png` dans le plan-config parce que c'est
+  // la mise en page DU ZIP. Jusqu'ici ce chemin était rendu tel quel : déployé
+  // dans `data/toto/`, le fichier réel est à `data/toto/data/MonPlan.png` mais
+  // l'app allait chercher `data/MonPlan.png` à la racine du site → 404 sur
+  // TOUT sauf le plan-config lui-même. Un simple dézip n'a donc jamais marché ;
+  // il fallait aplatir le dossier `data/` ET réécrire chaque chemin à la main
+  // (c'est ce qu'est `data/test`), sans que rien ne le dise nulle part.
+  //
+  // On préfixe donc par le dossier du plan — SAUF si le chemin le contient
+  // déjà, ce qui préserve exactement les déploiements réécrits à la main.
+  // (baseDir === "data" est déjà traité en amont par resolveServerPaths, qui
+  // sort sans rien réécrire : un plan à la racine reste correct.)
+  if (p.indexOf("data/") === 0) {
+    return (base && base !== "data" && p.indexOf(base + "/") !== 0) ? base + "/" + p : p;
+  }
+
+  // ⚠️ `icon/…` reste résolu à la RACINE DU SITE, volontairement. Ce préfixe est
+  // ambigu : il désigne aussi bien les icônes livrées avec l'app (`icon/house.png`,
+  // présentes à la racine et ABSENTES du ZIP) que les icônes personnalisées
+  // ajoutées dans le générateur (présentes, elles, dans le ZIP). Les préfixer
+  // toutes casserait les premières. Conséquence assumée et connue : une icône
+  // personnalisée d'un plan servi n'est pas résolue. Voir docs/TILING.md §5.
   if (p.indexOf("icon/") === 0) return p;
-  return baseDir.replace(/\/$/, "") + "/" + p;
+
+  return base + "/" + p;
 }
 
 function resolveServerPaths(config, baseDir) {

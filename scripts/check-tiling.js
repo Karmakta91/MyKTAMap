@@ -144,6 +144,57 @@ t("le chemin d'une tuile ZIP a UN seul point de vérité (_cheminTuileZip)",
 t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
   /preset === "off" && \(W \* H\) > TUILING_NECESSAIRE_PIXELS/.test(CODE));
 
+
+// ───────── 9. 🌐 DÉPLOIEMENT SERVEUR : ON EXÉCUTE, ON NE DEVINE PAS ─────────
+// 🩸 VÉCU (v1.86.1) : « je crée un dossier toto et j'y mets le contenu du ZIP ».
+// Ça ne marchait pas, et ça n'avait JAMAIS marché — ni en V1 ni en V2. Le
+// générateur écrit `data/MonPlan.png` dans le plan-config (mise en page DU ZIP)
+// et `resolveServerPath` rendait tout chemin `data/…` TEL QUEL, donc résolu à
+// la racine du site : 404 sur tout sauf le plan-config. Il fallait aplatir le
+// dossier `data/` ET réécrire chaque chemin à la main, sans que rien ne le dise.
+//
+// Ce contrôle CHARGE config.js dans un vm et APPELLE la fonction : une
+// assertion de chaîne aurait laissé passer une régression de logique.
+{
+  const vm = require("vm");
+  const win = { location: { href: "http://x/", search: "" }, navigator: { userAgent: "node" },
+                localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+                document: { addEventListener: () => {}, documentElement: {},
+                            querySelector: () => null, getElementById: () => null },
+                addEventListener: () => {}, console: console, indexedDB: null };
+  win.window = win;
+  let f = null;
+  try {
+    const ctx = vm.createContext(win);
+    vm.runInContext("var window = this; var document = this.document; var localStorage = this.localStorage;" +
+                    fs.readFileSync("js/config.js", "utf8"), ctx);
+    f = win.resolveServerPath;
+  } catch (e) {
+    console.log("   ↳ " + e.name + " : " + e.message);
+  }
+  t("config.js se charge et expose resolveServerPath", typeof f === "function");
+
+  if (typeof f === "function") {
+    const cas = [
+      // LE CAS KARMA : dézip brut du ZIP dans data/toto/
+      ["data/MonPlan.png",        "data/toto", "data/toto/data/MonPlan.png", "🩸 dézip brut : le chemin du ZIP est préfixé"],
+      ["data/tiles/z0/x0_y-1.jpg","data/toto", "data/toto/data/tiles/z0/x0_y-1.jpg", "🩸 les tuiles suivent le même chemin"],
+      // RÉTRO-COMPAT : déploiement réécrit à la main (data/test)
+      ["data/test/TestMAP.png",   "data/test", "data/test/TestMAP.png",      "🩸 déploiement déjà préfixé : INCHANGÉ"],
+      ["data/test/puits.json",    "data/test", "data/test/puits.json",       "…y compris les calques de données"],
+      // Ce qui ne doit jamais bouger
+      ["icon/house.png",          "data/toto", "icon/house.png",             "icon/ reste à la racine (icônes de l'app)"],
+      ["https://x/y.png",         "data/toto", "https://x/y.png",            "URL absolue intacte"],
+      ["/racine.png",             "data/toto", "/racine.png",                "chemin absolu intact"],
+      ["autre.json",              "data/toto", "data/toto/autre.json",       "chemin nu : relatif au plan"]
+    ];
+    cas.forEach(function (c) {
+      const got = f(c[0], c[1]);
+      t(c[3] + "  [" + c[0] + " @ " + c[1] + " → " + got + "]", got === c[2]);
+    });
+  }
+}
+
 console.log(ko === 0 ? "\n🎉 tuilage : un plan V2 tuile toujours, et un plan serveur trouve ses tuiles"
                      : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

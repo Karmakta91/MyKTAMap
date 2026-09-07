@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.86.0</strong> (7 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.86.1</strong> (7 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.86.1 (déployer un plan sur son serveur : il suffit de dézipper)</h3>
+  <p><strong>100 % local.</strong> Aucune requête vers un tiers, aucun domaine nouveau, aucune donnée qui sort. Un plan déposé sur <strong>votre propre serveur</strong> voit enfin ses fichiers trouvés : ses images, ses données et ses tuiles sont cherchées <strong>dans le dossier du plan</strong> et non plus à la racine du site, où elles n'étaient jamais. Mêmes fichiers, même serveur, bonne adresse — rien de plus n'est téléchargé. Les déploiements déjà en place, dont les chemins avaient été corrigés à la main, sont inchangés.</p>
   <h3>v1.86.0 (le tuilage, audité)</h3>
   <p><strong>100 % local.</strong> Aucune requête nouvelle vers un tiers, aucune donnée qui sort. Une seule nouveauté réseau, et elle reste <strong>sur ton propre serveur</strong> : un plan hébergé et découpé en tuiles va désormais chercher ces tuiles en HTTP dans son propre dossier (<code>data/&lt;plan&gt;/tiles/…</code>) — avant elles n'étaient cherchées qu'en mémoire, donc jamais trouvées, et la carte restait blanche. Aucun domaine externe n'est contacté. Le reste est de l'interface : le sélecteur d'image passe de cinq choix à deux, un plan déjà découpé utilise toujours ses tuiles, et un repli affiche l'image entière si les tuiles sont inatteignables. Stockage inchangé. Un bouton <strong>ConfAdmin</strong> apparaît en Mode Développeur : il ouvre une page <strong>locale</strong> du site, rien n'y est envoyé.</p>
   <h3>v1.85.4 (la langue et le tuilage retrouvent leur place)</h3>

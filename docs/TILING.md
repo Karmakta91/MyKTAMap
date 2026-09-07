@@ -68,26 +68,31 @@ Pire, sur un **plan serveur** : `map.js` cherche la taille du fichier dans `RUNT
 
 ---
 
-## 5. Déployer un plan V2 sur le serveur
+## 5. Déployer un plan sur le serveur
 
-Les chemins d'un plan serveur sont **absolus depuis la racine du site** (`data/mon-plan/MonPlan.png`), alors que le manifest V2 code des chemins **relatifs au ZIP** (`data/tiles/…`). Le runtime dérive donc la racine des tuiles du **dossier du `baseImage`**.
+**Depuis la v1.86.1, il suffit de dézipper.** Créez un dossier, videz-y le ZIP tel quel, déclarez-le dans `index.json`.
 
 ```
 data/
-  index.json
-  mon-plan/
-    plan-config.json      ← chemins réécrits en data/mon-plan/…
-    MonPlan.png           ← baseImage (dézip manuel / repli)
-    tiles/
-      z0/x0_y0.jpg  …     ← les tuiles arrivent ici
-      z-1/ z-2/ z-3/
+  index.json          ← { "plans": [ { "id":"toto", "path":"data/toto", "name":"Toto" } ] }
+  toto/
+    plan-config.json  ← inchangé, tel qu'il sort du générateur
+    data/
+      MonPlan.png
+      puits.json, editor.json …
+      tiles/z0/… z-1/ z-2/ z-3/
+    icon/
 ```
 
-**Recette** : dézipper le ZIP dans `data/<nom>/` **en aplatissant le dossier `data/` du ZIP**, exactement comme pour les autres plans serveur. Les tuiles atterrissent alors dans `data/<nom>/tiles/`.
+> 🩸 **Ça n'a jamais marché avant la v1.86.1, et rien ne le disait.** Le générateur écrit `data/MonPlan.png` dans le `plan-config.json` — c'est la mise en page **du ZIP**. Or `resolveServerPath` rendait tout chemin commençant par `data/` **tel quel**, donc résolu depuis la **racine du site** : le fichier réel étant à `data/toto/data/MonPlan.png`, l'app allait chercher `data/MonPlan.png` → **404 sur tout, sauf le `plan-config.json` lui-même**. Il fallait aplatir le dossier `data/` **et** réécrire chaque chemin à la main — c'est ce qu'est `data/test`. Deux opérations manuelles, documentées nulle part.
+>
+> Désormais un chemin `data/…` est **préfixé par le dossier du plan**, sauf s'il le contient déjà — ce qui préserve à l'identique les déploiements réécrits à la main. Vérifié en **exécutant** la fonction (`scripts/check-tiling.js` §9 charge `config.js` dans un `vm`), pas en cherchant une chaîne.
 
-**Échappatoire** : un champ `tiling.tilesDir` dans le `plan-config.json` force la racine, pour un déploiement non standard.
+**Les tuiles suivent sans réglage** : leur racine est dérivée du dossier du `baseImage` résolu → `data/toto/data/tiles/`, exactement là où le dézip les pose. Un champ `tiling.tilesDir` dans le `plan-config.json` force la racine pour un déploiement non standard.
 
-> 🩸 **Repli d'erreur — ce n'est pas un mode, c'est une récupération.** Si les tuiles sont réellement inatteignables, l'app affiche l'image entière plutôt qu'une carte blanche muette. Deux déclencheurs : *(1)* aucune tuile résolue ; *(2)* **toutes** les tuiles du premier rendu en **erreur de chargement** — indispensable ici, car une URL HTTP « résout » toujours, même en 404. Une seule fois par chargement.
+⚠️ **Limite connue — les icônes personnalisées.** Les chemins `icon/…` restent résolus depuis la **racine du site**, volontairement : ce préfixe désigne aussi bien les icônes livrées avec l'app (`icon/house.png`, présentes à la racine et **absentes** du ZIP) que les icônes perso ajoutées dans le générateur (présentes, elles, **dans** le ZIP). Les préfixer toutes casserait les premières. Conséquence : **une icône personnalisée d'un plan servi n'est pas résolue**. Contournement : la déposer aussi dans le `icon/` du site.
+
+> 🛟 **Repli d'erreur — une récupération, pas un mode.** Si les tuiles restent inatteignables (déploiement bancal), l'app affiche l'image entière plutôt qu'une carte blanche muette. Deux déclencheurs : aucune tuile résolue, **ou** toutes les tuiles du premier rendu en **erreur de chargement** — indispensable ici, car une URL HTTP « résout » toujours, même en 404. Une seule fois par chargement.
 
 ---
 
@@ -96,6 +101,7 @@ data/
 - ❌ **Faire dépendre le rendu V2 d'un preset.** Les paramètres V2 sont figés à la génération ; tout réglage runtime qui prétend les changer ment.
 - ❌ **Rendre `auto` dépendant du seul poids fichier.** Il est inconnu (`null`) sur les plans serveur, et sans rapport avec la limite GPU, qui est en pixels.
 - ❌ **Rouvrir un contournement `off → baseImage` pour les plans V2.** C'est le cas de crash iOS offert en un clic.
+- ❌ **Re-traiter un chemin `data/…` du plan-config comme relatif à la racine du site.** Il est relatif **au ZIP**. C'est ce qui rendait tout déploiement serveur muet et 404 avant la v1.86.1.
 - ❌ **Coder le chemin des tuiles en dur.** Un seul point de vérité : `_cheminTuileZip()`.
 - ⚠️ `tuilingNecessaire()` est exporté mais **appelé nulle part** — dette connue, laissée en place.
 

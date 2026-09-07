@@ -1,8 +1,7 @@
 {
-  "version": "v1.86.0",
+  "version": "v1.86.1",
   "released": "2026-09-07",
   "notes": [
-    "🖼️ Le réglage d’image du chargement passe de cinq choix à deux : Auto (recommandé) ou Désactivé. Les trois autres ne changeaient rien sur les plans récents, et « Auto » protégeait mal les très grands plans — c’est corrigé.",
-    "🌐 Un plan hébergé sur un serveur s’affiche enfin correctement quand il est découpé en morceaux."
+    "🌐 Pour mettre un plan sur un serveur, il suffit maintenant de dézipper l’archive dans un dossier : les images, les données et les tuiles sont enfin trouvées toutes seules."
   ]
 }
