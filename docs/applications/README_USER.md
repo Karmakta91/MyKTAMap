@@ -434,6 +434,7 @@ Ouvre la fiche **ℹ️ Infos** d'un plan serveur : une section **💾 Disponibi
 | **Non téléchargé** + bouton ⬇️ | Seul ce que tu as affiché est gardé, sans garantie |
 | **✅ Disponible hors-ligne** + ↻ / 🗑️ | Tout est là. Le bouton de téléchargement **a disparu** — il est devenu « Mettre à jour » |
 | **⚠️ Incomplet — n sur N** + ⬇️ | Téléchargement interrompu, ou fichiers effacés par le navigateur : le bouton **revient** pour compléter |
+| **✅ Disponible, mais n introuvable(s)** + ↻ *(depuis v1.87.1)* | Le serveur n'a pas fourni certains fichiers déclarés par le plan. L'app **te dit lesquels** : le plan est utilisable, et tu peux corriger ton déploiement puis « Réessayer » |
 
 > 💡 **L'état est lu du cache réel, pas d'une case mémorisée.** Si le navigateur fait le ménage dans son stockage, l'app le voit et te repropose le téléchargement — au lieu d'afficher « disponible » sur du vide et de te le faire découvrir en cavité.
 

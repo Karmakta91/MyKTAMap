@@ -1327,6 +1327,13 @@
               html += '<span style="color:#7bd88f;">' +
                       escapeHtml(_t("home.plans.offline.complet", { n: st.total, date: _fmtQuand(st.date) })) +
                       '</span>';
+            } else if (st.etat === "partiel") {
+              // 🩸 v1.87.1 — Le plan est utilisable : tout ce que le serveur a
+              // servi est là. Ce qui manque, il ne l'a pas. On le DIT au lieu
+              // de laisser un « incomplet » perpétuel (constat KARMA).
+              html += '<span style="color:#f4c542;">' +
+                      escapeHtml(_t("home.plans.offline.partiel", { n: st.manquants.length })) +
+                      '</span>';
             } else if (st.etat === "incomplet") {
               html += '<span style="color:#f4c542;">' +
                       escapeHtml(_t("home.plans.offline.incomplet", { present: st.present, total: st.total })) +
@@ -1336,8 +1343,28 @@
             }
             html += '</div>';
 
+            // 🩸 On NOMME les fichiers manquants. « 9 sur 10 » sans dire lequel
+            // ne permet ni de comprendre ni de corriger le déploiement.
+            if (st.manquants && st.manquants.length) {
+              const apercu = st.manquants.slice(0, 5);
+              html += '<div style="font-size:11px; color:#8892a4; margin:-4px 0 8px; line-height:1.5;">' +
+                        escapeHtml(_t("home.plans.offline.manquantsTitre")) + '<br>' +
+                        apercu.map(function (u) {
+                          return '<span style="font-family:monospace; font-size:10.5px; color:#c8d0e0;">' +
+                                 escapeHtml(u) + '</span>';
+                        }).join('<br>') +
+                        (st.manquants.length > apercu.length
+                          ? '<br>' + escapeHtml(_t("home.plans.offline.manquantsPlus",
+                                                   { n: st.manquants.length - apercu.length }))
+                          : '') +
+                      '</div>';
+            }
+
             if (st.etat === "complet") {
               html += _bouton("kta-offline-maj", "kta-btn-ghost",  _t("home.plans.offline.btnMaj"));
+              html += _bouton("kta-offline-del", "kta-btn-danger", _t("home.plans.offline.btnRetirer"));
+            } else if (st.etat === "partiel") {
+              html += _bouton("kta-offline-maj", "kta-btn-ghost",  _t("home.plans.offline.btnReessayer"));
               html += _bouton("kta-offline-del", "kta-btn-danger", _t("home.plans.offline.btnRetirer"));
             } else if (st.etat === "incomplet") {
               html += _bouton("kta-offline-dl",  "kta-btn-primary", _t("home.plans.offline.btnCompleter"));

@@ -72,6 +72,34 @@ t("🩸 le manifeste n'est écrit qu'APRÈS la boucle (une interruption laisse �
   // bien avant la boucle : on vise l ECRITURE (`cache.put(_urlManifeste`).
   POC.indexOf("await Promise.all(pool)") > 0 &&
   POC.indexOf("cache.put(_urlManifeste(plan)") > POC.indexOf("await Promise.all(pool)"));
+t("🩸 les URLs manquantes sont retenues sur LES DEUX chemins d échec (HTTP + réseau)",
+  // 🩸 La 1re version exigeait UNE occurrence : saboter le seul cas HTTP la
+  // laissait verte, alors que la moitié des échecs cessait d être tracée.
+  POC.split("manquants.push(u)").length - 1 === 2);
+t("🩸 le MANIFESTE porte la liste des manquants",
+  (function () {
+    // 🩸 Chercher « manquants: manquants » dans tout le fichier ne prouvait
+    // rien : la valeur de retour de precacher() le contient aussi. On borne
+    // sur l écriture du manifeste.
+    const i = POC.indexOf("cache.put(_urlManifeste(plan)");
+    return i >= 0 && POC.slice(i, i + 400).indexOf("manquants: manquants") >= 0;
+  })());
+t("🩸 l UI nomme les fichiers manquants au lieu de dire seulement « n sur N »",
+  HLC.indexOf("manquantsTitre") >= 0 && HLC.indexOf("st.manquants.slice(0, 5)") >= 0);
+t("🩸 l état « partiel » propose un RÉESSAI, pas un retéléchargement complet",
+  (function () {
+    // Tranche du bloc BOUTONS pour l état « partiel », bornée par appariement
+    // de branches : viser une chaîne dans tout le fichier aurait attrapé le
+    // bloc des MESSAGES, qui parle du même état sans contenir de bouton.
+    const iZ = HLC.indexOf("zone.innerHTML = html;");
+    const d  = HLC.lastIndexOf("} else if (st.etat === \"partiel\") {", iZ);
+    const f  = HLC.indexOf("} else if (st.etat === \"incomplet\") {", d);
+    if (d < 0 || f < d) return false;
+    const b = HLC.slice(d, f);
+    return b.indexOf("btnReessayer") >= 0 &&
+           b.indexOf("btnTelecharger") < 0 &&
+           b.indexOf("btnCompleter") < 0;
+  })());
 t("🩸 seul un 200 est mis en cache (un 404 caché rendrait le plan faussement complet)",
   /r\.status === 200/.test(POC));
 
@@ -143,6 +171,53 @@ t("💾 le module est chargé par index.html", IDX.indexOf("js/planOffline.js") 
   }
 }
 
-console.log(ko === 0 ? "\n🎉 hors-ligne : un plan serveur se télécharge en entier et l'état ne ment pas"
-                     : "\n⚠️ " + ko + " echec(s)");
-process.exit(ko === 0 ? 0 : 1);
+// ───────── 6. 🩸 TROIS ÉTATS — ON EXÉCUTE statut() SUR UN FAUX CACHE ─────────
+// VÉCU (v1.87.1, constat KARMA « ⚠️ incomplet — 9 fichiers sur 10 ») : le
+// manifeste v1 listait tout ce qu'on avait TENTÉ, échecs compris. Un plan dont
+// le plan-config déclare un fichier non déployé restait donc « incomplet » À
+// VIE — le bouton invitait à retélécharger sans fin un fichier qui n'existe
+// pas, sans jamais dire lequel.
+// Une assertion de chaîne n'aurait rien vu de cette arithmétique : on APPELLE.
+function _statutAvecCache(entrees, manifeste) {
+  const win = { console: { log: () => {}, warn: () => {} }, navigator: {}, location: { href: "http://x/" } };
+  win.window = win;
+  const faux = {
+    keys: async () => entrees.map(u => ({ url: "http://x/" + u })),
+    match: async (req) => (String(req.url).indexOf("__kta_offline.json") >= 0 && manifeste)
+      ? { json: async () => manifeste } : null
+  };
+  win.caches = {
+    keys: async () => (entrees.length ? ["myktamap-plan-p1"] : []),
+    open: async () => faux
+  };
+  const ctx = vm.createContext(win);
+  vm.runInContext("var window = this; var caches = this.caches; var navigator = this.navigator;" +
+                  fs.readFileSync("js/planOffline.js", "utf8"), ctx);
+  return win.PlanOffline.statut("p1");
+}
+
+const URLS10 = Array.from({ length: 10 }, (_, i) => "data/p/f" + i + ".json");
+const _fichiers = n => URLS10.slice(0, n).concat(["data/p/__kta_offline.json"]);
+
+Promise.all([
+  _statutAvecCache([], null),
+  _statutAvecCache(_fichiers(10), { version: 2, urls: URLS10, manquants: [], date: "2026-09-07" }),
+  _statutAvecCache(_fichiers(9),  { version: 2, urls: URLS10, manquants: [URLS10[9]], date: "2026-09-07" }),
+  _statutAvecCache(_fichiers(5),  { version: 2, urls: URLS10, manquants: [], date: "2026-09-07" }),
+  _statutAvecCache(_fichiers(9),  { version: 1, urls: URLS10, date: "2026-09-07" })
+]).then(function (r) {
+  t("aucun cache → absent", r[0].etat === "absent");
+  t("tout présent → complet", r[1].etat === "complet");
+  t("🩸 9/10 avec le 10e ABSENT DU SERVEUR → « partiel », plus « incomplet » à vie",
+    r[2].etat === "partiel" && r[2].manquants.length === 1);
+  t("🩸 …et il NOMME le fichier manquant", r[2].manquants[0] === URLS10[9]);
+  t("téléchargement réellement interrompu → incomplet", r[3].etat === "incomplet");
+  t("manifeste v1 (sans « manquants ») → ancien calcul, jamais de faux « complet »",
+    r[4].etat === "incomplet");
+}).catch(function (e) {
+  t("§6 statut() s'exécute sans planter — " + (e && e.message), false);
+}).then(function () {
+  console.log(ko === 0 ? "\n🎉 hors-ligne : un plan serveur se télécharge en entier et l'état ne ment pas"
+                       : "\n⚠️ " + ko + " echec(s)");
+  process.exit(ko === 0 ? 0 : 1);
+});

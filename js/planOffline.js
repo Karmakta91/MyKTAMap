@@ -113,13 +113,35 @@
     }
     const present = Math.max(0, entrees.length - (man ? 1 : 0));
     if (!man || !Array.isArray(man.urls)) {
-      return { etat: present > 0 ? "incomplet" : "absent", present: present, total: 0, date: null };
+      return { etat: present > 0 ? "incomplet" : "absent", present: present, total: 0, manquants: [], date: null };
     }
+    // 🩸 v1.87.1 — TROIS ÉTATS, PAS DEUX. Le manifeste v1 listait tout ce qu'on
+    // avait TENTÉ, y compris les fichiers absents du serveur. Un plan dont le
+    // plan-config déclare un fichier non déployé restait donc « incomplet — 9
+    // sur 10 » À VIE : le bouton invitait à retélécharger indéfiniment un
+    // fichier qui n'existe pas, sans jamais dire lequel. Constaté par KARMA.
+    // On distingue désormais :
+    //   • complet   : tout est là ;
+    //   • partiel   : tout ce qui EXISTE est là, mais le serveur n'a pas
+    //                 répondu 200 sur N fichiers — utilisable, et on DIT
+    //                 lesquels ;
+    //   • incomplet : téléchargement réellement interrompu (il en manque plus
+    //                 que ce que le serveur avait refusé).
+    // ⚠️ Manifeste v1 (sans `manquants`) → on retombe sur l'ancien calcul :
+    // il sera remplacé par un v2 au prochain téléchargement.
+    const manquants  = Array.isArray(man.manquants) ? man.manquants : [];
+    const attendus   = man.urls.length;
+    const obtenables = Math.max(0, attendus - manquants.length);
+    let etat;
+    if (present >= attendus)                             etat = "complet";
+    else if (manquants.length > 0 && present >= obtenables) etat = "partiel";
+    else                                                 etat = "incomplet";
     return {
-      etat:    (present >= man.urls.length) ? "complet" : "incomplet",
-      present: present,
-      total:   man.urls.length,
-      date:    man.date || null
+      etat:      etat,
+      present:   present,
+      total:     attendus,
+      manquants: manquants,
+      date:      man.date || null
     };
   }
 
@@ -132,6 +154,10 @@
     const urls  = liste.urls;
     const cache = await caches.open(nomCache(plan.id));
     let fait = 0, ok = 0, echecs = 0, annule = false;
+    // 🩸 v1.87.1 — on retient QUELS fichiers manquent, pas juste combien.
+    // Sans la liste, l utilisateur voyait « 9 sur 10 » sans jamais savoir
+    // lequel, et retelechargait en boucle un fichier absent du serveur.
+    const manquants = [];
 
     let curseur = 0;
     const suivant = function () { return (curseur < urls.length) ? urls[curseur++] : null; };
@@ -146,8 +172,8 @@
           // 🩸 On ne met en cache QUE du 200 : cacher un 404 rendrait le plan
           // « complet » avec des fichiers morts, invisibles jusqu'au terrain.
           if (r && r.status === 200) { await cache.put(u, r.clone()); ok++; }
-          else { echecs++; _warn("HTTP " + (r && r.status) + " :", u); }
-        } catch (e) { echecs++; _warn("echec :", u, e && e.message); }
+          else { echecs++; manquants.push(u); _warn("HTTP " + (r && r.status) + " :", u); }
+        } catch (e) { echecs++; manquants.push(u); _warn("echec :", u, e && e.message); }
         fait++;
         if (typeof onProgress === "function") onProgress({ fait: fait, total: urls.length, echecs: echecs });
       }
@@ -161,12 +187,14 @@
       // laisse donc un cache SANS manifeste → etat « incomplet », le bouton
       // revient. C'est voulu.
       await cache.put(_urlManifeste(plan), new Response(JSON.stringify({
-        version: 1, planId: plan.id, urls: urls, date: new Date().toISOString(), echecs: echecs
+        version: 2, planId: plan.id, urls: urls, manquants: manquants,
+        date: new Date().toISOString(), echecs: echecs
       }), { status: 200, headers: { "Content-Type": "application/json" } }));
     }
     _notifierSW();
     _log("plan " + plan.id + " : " + ok + "/" + urls.length + " fichiers, " + echecs + " echec(s)");
-    return { total: urls.length, ok: ok, echecs: echecs, annule: annule };
+    if (manquants.length) _warn("introuvables sur le serveur :", manquants);
+    return { total: urls.length, ok: ok, echecs: echecs, annule: annule, manquants: manquants };
   }
 
   async function supprimer(planId) {

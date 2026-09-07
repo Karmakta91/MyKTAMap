@@ -435,6 +435,7 @@ Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** secti
 | **Not downloaded** + ⬇️ button | Only what you displayed is kept, with no guarantee |
 | **✅ Available offline** + ↻ / 🗑️ | Everything is there. The download button **is gone** — it became "Update" |
 | **⚠️ Incomplete — n of N** + ⬇️ | Interrupted download, or files cleared by the browser: the button **comes back** to finish |
+| **✅ Available, but n not found** + ↻ *(since v1.87.1)* | The server did not provide some files declared by the map. The app **names them**: the map is usable, and you can fix your deployment then hit "Retry" |
 
 > 💡 **The state is read from the real cache, not from a remembered flag.** If the browser clears its storage, the app notices and offers the download again — instead of showing "available" over nothing and letting you find out underground.
 

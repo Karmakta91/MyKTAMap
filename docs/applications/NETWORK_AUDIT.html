@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.87.0</strong> (7 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.87.1</strong> (7 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.87.1 (le hors-ligne dit ce qui manque)</h3>
+  <p><strong>100 % local</strong>, aucune requête nouvelle, aucun domaine, aucune donnée qui sort. Correction d'affichage sur le téléchargement hors-ligne : quand un fichier déclaré par un plan n'existe pas sur le serveur, l'application le <strong>nomme</strong> et considère le plan comme disponible, au lieu d'annoncer « incomplet » indéfiniment et d'inviter à retélécharger sans fin un fichier absent. Les fichiers demandés sont exactement les mêmes qu'avant.</p>
   <h3>v1.87.0 (télécharger un plan serveur pour le hors-ligne)</h3>
   <p><strong>100 % local.</strong> un plan hébergé sur <strong>votre propre serveur</strong> peut être téléchargé en entier pour le hors-ligne. Le bouton lance le téléchargement de son image, de ses données et de toutes ses tuiles — <strong>depuis votre serveur, et lui seul</strong>. Aucun domaine externe n'est contacté, rien n'est envoyé : ce sont des requêtes de lecture vers les mêmes fichiers que ceux déjà servis à l'affichage, simplement demandés d'un coup au lieu d'au fil du zoom. Le résultat est stocké <strong>dans votre navigateur</strong>, dans un espace réservé au plan, que vous pouvez vider quand vous voulez depuis la même fiche.</p>
   <h3>v1.86.2 (les icônes personnalisées d'un plan servi)</h3>

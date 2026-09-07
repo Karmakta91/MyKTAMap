@@ -131,9 +131,12 @@ data/
 
 - **absent** → bouton « ⬇️ Rendre disponible hors-ligne »
 - **complet** → « ↻ Mettre à jour » + « 🗑️ Retirer » — 🩸 **le bouton de téléchargement DISPARAÎT** (exigence KARMA : pas de bouton fantôme)
+- **partiel** *(v1.87.1)* → « ↻ Réessayer » — tout ce que le serveur **a** est là, mais il n'a pas fourni N fichiers, et l'app **les nomme**
 - **incomplet** → « ⬇️ Compléter » — le bouton **revient** tout seul si le navigateur a fait du ménage
 
 *C'est gratuit précisément parce qu'aucun drapeau n'est stocké : un drapeau survivrait à la purge et annoncerait « disponible » sur du vide.*
+
+🩸 **Pourquoi « partiel » existe (v1.87.1).** Le manifeste v1 listait tout ce qu'on avait **tenté**, échecs compris. Un plan dont le `plan-config.json` déclare un fichier non déployé restait donc **« incomplet — 9 sur 10 » à vie** : le bouton invitait à retélécharger sans fin un fichier qui n'existe pas, et ne disait **jamais lequel**. Constaté par KARMA dès la première utilisation. Le manifeste v2 retient la liste des **manquants** ; l'état distingue désormais « interrompu » (à compléter) de « le serveur ne les a pas » (utilisable, et on affiche les chemins).
 
 🩸 **Le manifeste n'est écrit qu'à la FIN du téléchargement.** Une interruption laisse donc un cache sans manifeste → état « incomplet ». Et seul un **HTTP 200** est mis en cache : cacher un 404 rendrait le plan « complet » avec des fichiers morts, invisibles jusqu'au terrain.
 

@@ -1,7 +1,7 @@
 {
-  "version": "v1.87.0",
+  "version": "v1.87.1",
   "released": "2026-09-07",
   "notes": [
-    "💾 Un plan hébergé sur un serveur peut enfin être téléchargé en entier pour le hors-ligne : ouvre sa fiche ℹ️ Infos, section « Disponibilité hors-ligne ». Avant, seul ce que tu avais affiché était gardé, et une mise à jour de l’app effaçait tout."
+    "💾 Le téléchargement hors-ligne d’un plan te dit maintenant QUELS fichiers le serveur n’a pas fournis, au lieu d’afficher « incomplet » sans fin. Si tout ce qui existe est bien là, le plan est marqué disponible."
   ]
 }
