@@ -740,6 +740,28 @@
           </label>
         </div>
 
+        <!-- ═══ GROUPE 2 bis : 🛰️ Options via capteur (v1.85.2) ═══
+             Réglages d'APPAREIL, pas de plan : on les décide une fois, avant
+             de descendre. Ils existent aussi dans la modale du mode plan —
+             même état partagé (APP_CONFIG + app_user_prefs), aucune divergence
+             possible, comme pour le Wake Lock juste au-dessus.
+             ⚠️ Une option dont le capteur manque n'est PAS masquée : elle
+             s'affiche désactivée avec sa raison (cf. window.ktaCapteurRefuse). -->
+        <div class="kta-cfg-group-titre" data-i18n="config.group.capteurs" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;">🛰️ Options via capteur</div>
+        <div class="kta-aide-section">
+          <div style="font-size:11.5px; color:#8892a4; margin:2px 0 10px; line-height:1.5;" data-i18n="config.capteurs.intro">Ces options s'appuient sur un capteur du téléphone.</div>
+          <label class="kta-net-paranoia-toggle" id="loaderBatterieRow">
+            <input type="checkbox" id="loaderBatterieCb">
+            <span><strong data-i18n="config.batterie.label">🔋 Niveau de batterie</strong><br>
+              <span id="loaderBatterieHint" data-i18n="config.batterie.hint" style="font-size:11.5px;color:#8892a4;"></span></span>
+          </label>
+          <label class="kta-net-paranoia-toggle" id="loaderVibrationRow" style="margin-top:10px;">
+            <input type="checkbox" id="loaderVibrationCb">
+            <span><strong data-i18n="config.display.vibration.label">📳 Vibration haptique</strong><br>
+              <span id="loaderVibrationHint" data-i18n="config.display.vibration.hint" style="font-size:11.5px;color:#8892a4;"></span></span>
+          </label>
+        </div>
+
         <!-- ═══ GROUPE 3 : 🚀 Performance ═══ -->
         <div class="kta-cfg-group-titre" data-i18n="config.group.perf" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">🚀 Performance</div>
 

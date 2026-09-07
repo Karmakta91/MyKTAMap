@@ -986,16 +986,6 @@ function afficherConfig() {
           <!-- 🧲 C5 v1.74.0 — magnétisme edit-time. Rangé ici (section Navigation)
                mais INDÉPENDANT du toggle ci-dessus : il améliore la qualité du
                graphe, donc il sert aussi aux itinéraires sans nav intelligente. -->
-          <!-- 🪟 v1.85.1 — ancrage des panneaux d outils. -->
-          <label class="kta-perf-ultra-row" style="margin-top:14px;">
-            <input type="checkbox" id="cfg_panneauxAncres" ${c.panneauxAncres === true ? "checked" : ""}>
-            <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.panneaux.label")}</span>
-              <span class="kta-perf-ultra-hint">
-                ${window.I18n.t("config.panneaux.hint")}
-              </span>
-            </span>
-          </label>
           <label class="kta-perf-ultra-row" style="margin-top:14px;">
             <input type="checkbox" id="cfg_snapDraw" ${c.snapDraw === true ? "checked" : ""}>
             <span class="kta-perf-ultra-text">
@@ -1014,6 +1004,17 @@ function afficherConfig() {
 
         <!-- ════════ 4. 🎨 AFFICHAGE ════════ -->
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.affichage")}</div>
+
+          <!-- 🪟 v1.85.1 — ancrage des panneaux d outils. -->
+          <label class="kta-perf-ultra-row" style="margin-top:14px;">
+            <input type="checkbox" id="cfg_panneauxAncres" ${c.panneauxAncres === true ? "checked" : ""}>
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.panneaux.label")}</span>
+              <span class="kta-perf-ultra-hint">
+                ${window.I18n.t("config.panneaux.hint")}
+              </span>
+            </span>
+          </label>
 
         <div class="kta-aide-section">
           <label class="kta-perf-ultra-row kta-perf-ultra-row-danger" style="margin-top:0;">
@@ -1486,29 +1487,15 @@ function afficherConfig() {
   // Sur iPhone, la vibration disparaissait donc de la modale : impossible pour
   // l'utilisateur de savoir si l'option n'existe pas, s'il l'a ratée, ou si
   // son téléphone refuse. On l'affiche désormais désactivée, avec la raison.
-  function _capteurRefuse(row, cb, hintEl, iosProbable) {
-    if (!row) return;
-    row.style.display = "";
-    row.style.opacity = "0.55";
-    if (cb) { cb.checked = false; cb.disabled = true; }
-    if (hintEl) {
-      hintEl.textContent = window.I18n.t(iosProbable
-        ? "config.capteurs.refuseIos" : "config.capteurs.refuse");
-    }
-  }
-
-  // iOS ne donne NI `navigator.vibrate` NI `navigator.getBattery` aux pages
-  // web. Le dire nommément vaut mieux qu'un « non disponible » vague : la
-  // personne sait que ce n'est ni son app ni son téléphone qui est en cause.
-  const _estIos = /iPad|iPhone|iPod/.test(navigator.userAgent || "") ||
-                  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
+  // Le rendu « capteur refusé » vit dans utils.js — partagé avec la modale
+  // d'accueil, qui porte exactement les mêmes options.
+  const _capteurRefuse = window.ktaCapteurRefuse || function () {};
   // ── 🔋 Batterie ──
   const batRow = document.getElementById("cfg_batterie_row");
   const batCb  = document.getElementById("cfg_batterie");
   if (batRow && batCb) {
     if (typeof navigator.getBattery !== "function") {
-      _capteurRefuse(batRow, batCb, document.getElementById("cfg_batterie_hint"), _estIos);
+      _capteurRefuse(batRow, batCb, document.getElementById("cfg_batterie_hint"));
     } else {
       batCb.checked = !(window.APP_CONFIG && window.APP_CONFIG.batterieEnabled === false);
       batCb.addEventListener("change", function () {
@@ -1535,7 +1522,7 @@ function afficherConfig() {
   if (vibRow && vibCb) {
     const dispo = !!(window.kta_vibrate && window.kta_vibrate.isSupported());
     if (!dispo) {
-      _capteurRefuse(vibRow, vibCb, document.getElementById("cfg_vibration_hint"), _estIos);
+      _capteurRefuse(vibRow, vibCb, document.getElementById("cfg_vibration_hint"));
     } else {
       vibCb.checked = !!(window.APP_CONFIG && window.APP_CONFIG.vibrationEnabled === true);
       vibCb.addEventListener("change", function() {

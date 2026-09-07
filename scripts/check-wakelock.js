@@ -228,15 +228,24 @@ function geste(ctx) {
       t("🐛 colonnes : la règle sur les titres de groupe existe", i >= 0);
       t("🐛 colonnes : aucune coupure juste APRÈS un titre de groupe",
         /break-after:\s*avoid/.test(b));
+      // 🩸 DEUX CORPS coulent en colonnes avec les MÊMES titres. Scoper la
+      // règle sur un seul laissait le bug intact de l'autre côté — c'est
+      // exactement ce qui est arrivé : corrigé côté plan, toujours cassé au
+      // HOME, et KARMA l'a revu sur sa capture suivante.
+      t("🩸 colonnes : la règle couvre AUSSI le corps de l'accueil",
+        /\.kta-loader-config-corps \.kta-cfg-group-titre/.test(CSS));
       t("colonnes : les sections restent protégées d'une coupure interne",
         /\.kta-cfg-corps \.kta-aide-section \{[\s\S]{0,160}break-inside:\s*avoid/.test(CSS));
     }
+    // ⚠️ Le rendu a MIGRÉ dans `utils.js` pour être partagé avec l'accueil :
+    // c'est là qu'il faut le chercher désormais, pas dans interfaceConfig.
+    const UTL2 = fs.readFileSync("js/utils.js", "utf8");
     t("🩸 un capteur refusé est AFFICHÉ, pas masqué",
-      /function _capteurRefuse/.test(UIC) && /row\.style\.display = "";/.test(UIC));
+      /window\.ktaCapteurRefuse = function/.test(UTL2) && /row\.style\.display = "";/.test(UTL2));
     t("🩸 et la raison est NOMMÉE (iOS distingué du reste)",
-      /config\.capteurs\.refuseIos/.test(UIC) && /config\.capteurs\.refuse"/.test(UIC));
+      /config\.capteurs\.refuseIos/.test(UTL2) && /config\.capteurs\.refuse"/.test(UTL2));
     t("la case d'un capteur refusé est désactivée, pas juste décochée",
-      /cb\.disabled = true/.test(UIC));
+      /cb\.disabled = true/.test(UTL2));
 
     // 🔋 La batterie est débrayable — icône ET écoute du capteur.
     t("🔋 batterie : la préférence existe, défaut ON", /batterieEnabled:\s*true/.test(CFG));
@@ -252,6 +261,29 @@ function geste(ctx) {
         return iPref > 0 && iGet > 0 && iPref < iGet;
       })());
     t("batterie : la case est dans la modale", /id="cfg_batterie"/.test(UIC));
+    // 🛰️ Les options capteur vivent AUSSI dans la modale d'accueil : ce sont
+    // des réglages d'APPAREIL, qu'on décide avant de descendre, pas des
+    // réglages de plan.
+    {
+      const IDX2 = fs.readFileSync("index.html", "utf8");
+      const HC   = fs.readFileSync("js/homeConfig.js", "utf8");
+      t("🛰️ accueil : la rubrique capteur y est aussi", /config\.group\.capteurs/.test(IDX2));
+      t("accueil : les deux cases existent",
+        /id="loaderBatterieCb"/.test(IDX2) && /id="loaderVibrationCb"/.test(IDX2));
+      t("accueil : elles sont câblées", /loaderBatterieCb/.test(HC) && /loaderVibrationCb/.test(HC));
+      // 🩸 Le rendu « capteur refusé » est PARTAGÉ, pas recopié : deux copies
+      // auraient fini par diverger — la dette qu'on solde à répétition ici.
+      t("🩸 le rendu « capteur refusé » est partagé (utils.js), pas dupliqué",
+        /window\.ktaCapteurRefuse\s*=/.test(fs.readFileSync("js/utils.js", "utf8")) &&
+        /window\.ktaCapteurRefuse/.test(HC) && /window\.ktaCapteurRefuse/.test(UIC));
+      // 🪟 L'ancrage des panneaux décide OÙ s'ouvre un panneau : c'est de
+      // l'AFFICHAGE, pas de la navigation. Il avait atterri près du magnétisme.
+      const iAff = UIC.indexOf("config.group.affichage");
+      const iPan = UIC.indexOf("cfg_panneauxAncres");
+      const iPerf = UIC.indexOf("config.group.perf");
+      t("🪟 l'ancrage des panneaux est dans AFFICHAGE, pas dans la navigation",
+        iAff > 0 && iPan > iAff && iPan < iPerf);
+    }
     t("batterie : sauvegardée par le chemin canonique",
       /existing\.batterieEnabled/.test(CFG));
     t("🩸 batterie : défaut ON donc test en `!== false` (l'idiome inverse des défauts OFF)",

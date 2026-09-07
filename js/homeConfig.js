@@ -1146,6 +1146,56 @@
       // du home") : toggle Wake Lock dans Configuration home. Parité avec
       // ⚙️ Réglages map mode > 🔍 Affichage. Les 2 toggles pointent sur le
       // même window.WakeLock → state synchronisé entre les 2 modales.
+      // 🛰️ v1.85.2 — Options via capteur, côté ACCUEIL (demande KARMA :
+      // « elles ont plus de pertinence en HOME »). Même état que la modale du
+      // mode plan — `APP_CONFIG` + `app_user_prefs` —, donc aucune divergence
+      // possible entre les deux écrans.
+      const batRowH = document.getElementById("loaderBatterieRow");
+      const batCbH  = document.getElementById("loaderBatterieCb");
+      if (batRowH && batCbH) {
+        if (typeof navigator.getBattery !== "function") {
+          // 🩸 Affiché et expliqué, jamais masqué : cacher la ligne laissait
+          // croire que l'option n'existe pas.
+          if (window.ktaCapteurRefuse) {
+            window.ktaCapteurRefuse(batRowH, batCbH, document.getElementById("loaderBatterieHint"));
+          }
+        } else {
+          batCbH.checked = !(window.APP_CONFIG && window.APP_CONFIG.batterieEnabled === false);
+          batCbH.addEventListener("change", function () {
+            if (!window.APP_CONFIG) window.APP_CONFIG = {};
+            window.APP_CONFIG.batterieEnabled = !!batCbH.checked;
+            if (typeof window.sauvegarderPrefsUtilisateur === "function") {
+              window.sauvegarderPrefsUtilisateur();
+            }
+            if (window.OOMGuard && typeof window.OOMGuard.showToast === "function" && window.I18n) {
+              window.OOMGuard.showToast(window.I18n.t(batCbH.checked
+                ? "config.batterie.toastOn" : "config.batterie.toastOff"), "info");
+            }
+          });
+        }
+      }
+
+      const vibRowH = document.getElementById("loaderVibrationRow");
+      const vibCbH  = document.getElementById("loaderVibrationCb");
+      if (vibRowH && vibCbH) {
+        const dispoH = !!(window.kta_vibrate && window.kta_vibrate.isSupported());
+        if (!dispoH) {
+          if (window.ktaCapteurRefuse) {
+            window.ktaCapteurRefuse(vibRowH, vibCbH, document.getElementById("loaderVibrationHint"));
+          }
+        } else {
+          vibCbH.checked = !!(window.APP_CONFIG && window.APP_CONFIG.vibrationEnabled === true);
+          vibCbH.addEventListener("change", function () {
+            if (!window.APP_CONFIG) window.APP_CONFIG = {};
+            window.APP_CONFIG.vibrationEnabled = !!vibCbH.checked;
+            if (typeof window.sauvegarderPrefsUtilisateur === "function") {
+              window.sauvegarderPrefsUtilisateur();
+            }
+            if (vibCbH.checked) { window.kta_vibrate.light(); }
+          });
+        }
+      }
+
       const loaderWlRow = document.getElementById("loaderWakeLockRow");
       const loaderWlCb  = document.getElementById("loaderWakeLockCb");
       if (loaderWlRow && loaderWlCb && window.WakeLock) {

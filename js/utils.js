@@ -535,6 +535,35 @@ window.renderBannerCoherenceEchelle = renderBannerCoherenceEchelle;
 // Charte : mêmes classes que les modales existantes (readme-modal), boutons
 // kta-btn, overlay clic = annuler, Échap = annuler. z-index 100002
 // (au-dessus des sous-modales 100001).
+// 🛰️ v1.85.2 — CAPTEURS REFUSES : le meme rendu pour les DEUX modales de
+// reglages (plan et accueil). Ecrit ici plutot que copie de chaque cote : une
+// des deux aurait fini par diverger, et c est la dette qu on solde a repetition
+// dans ce projet.
+//
+// 🩸 Un capteur indisponible est AFFICHE, desactive, avec sa RAISON — jamais
+// masque. Cacher la ligne laissait croire que l option n existait pas ;
+// l utilisateur ne pouvait pas savoir que c est son systeme qui refuse.
+window.ktaEstIos = function() {
+  try {
+    const ua = navigator.userAgent || "";
+    return /iPad|iPhone|iPod/.test(ua) ||
+           (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  } catch (e) { return false; }
+};
+
+window.ktaCapteurRefuse = function(row, cb, hintEl) {
+  if (!row) return;
+  row.style.display = "";
+  row.style.opacity = "0.55";
+  if (cb) { cb.checked = false; cb.disabled = true; }
+  if (hintEl && window.I18n && window.I18n.t) {
+    // Nommer iOS quand c est lui : la personne sait alors que ce n est ni son
+    // application ni son telephone qui est en cause.
+    hintEl.textContent = window.I18n.t(window.ktaEstIos()
+      ? "config.capteurs.refuseIos" : "config.capteurs.refuse");
+  }
+};
+
 window.ktaConfirm = function(message, opts) {
   opts = opts || {};
   return new Promise(function(resolve) {

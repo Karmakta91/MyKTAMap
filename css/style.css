@@ -3878,7 +3878,12 @@ html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
      Un titre orphelin est pire qu'un titre déplacé — il annonce un contenu
      qui n'est pas là. `avoid-column` est la valeur propre au multi-colonnes ;
      `avoid` et le legacy couvrent les moteurs qui ne la connaissent pas. */
-  .kta-cfg-corps .kta-cfg-group-titre {
+  /* ⚠️ LES DEUX CORPS. Le HOME a son propre conteneur, avec les MEMES titres :
+     scoper la règle sur un seul laissait le bug intact de l'autre côté (c'est
+     ce qui vient d'arriver). Toute modale qui coule en colonnes et réutilise
+     `.kta-cfg-group-titre` doit figurer ici. */
+  .kta-cfg-corps .kta-cfg-group-titre,
+  .kta-loader-config-corps .kta-cfg-group-titre {
     break-after: avoid-column;
     break-after: avoid;
     page-break-after: avoid;
