@@ -2506,6 +2506,22 @@ The dialog only offers targets **compatible with the object's shape**: a **line*
 
 The object keeps everything else — its geometry, its level, its note.
 
+### ⏱️ How an outing's duration is counted
+
+A **field** outing is counted **from start to end**, not from the time the app was open. That is what you mean by “we were down there 3 hours”: the phone in your pocket counts, and so does the app going to sleep.
+
+The record also shows the **time the app was open**, right below. It is not a duplicate: it tells you what the measurement is worth. *3 hours of outing for 12 minutes of app* means a pedometer that saw almost nothing — treat the distance with caution.
+
+> ℹ️ A **desk work** session keeps the usage time: you leave a plan open all evening without looking at it, so the real duration would mean nothing.
+
+#### ✏️ Fixing a forgotten end
+
+If you did not tap **🏁 Close my outing** on the way out, the app does not know when you left: it takes the last moment it was alive — often when the phone put it to sleep. The duration is then underestimated.
+
+Open the outing's record → **✏️ Fix the end**, and enter the real time. The duration is recomputed at once.
+
+> ℹ️ The **app-open time** is never changed: it is a measurement, not a statement. And an end before the start is refused.
+
 ### 🔁 An outing split in several — resume and merge
 
 If you leave MyKTAMap during an outing — to change music, to take a call — the phone may **unload the app** to free memory. Before v1.85.2, coming back started a **new** outing: one real outing showed up as two or three in the logbook, each with part of the counters.

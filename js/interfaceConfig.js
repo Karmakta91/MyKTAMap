@@ -1290,16 +1290,22 @@ function afficherConfig() {
       wlRow.style.display = "";  // révèle (default = none pour rétrocompat)
       wlCb.checked = window.WakeLock.isEnabled();
       wlCb.addEventListener("change", function() {
-        window.WakeLock.setEnabled(wlCb.checked);
-        // Feedback toast (optionnel, discret)
-        if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        // 🩸 v1.85.2 — ON ATTEND LE RESULTAT REEL avant de parler. L ancienne
+        // version annonçait « ecran maintenu allume » sans jamais verifier que
+        // le verrou avait ete pose : quand le navigateur refusait, l app
+        // mentait, et on cherchait la panne du mauvais cote (constate sur
+        // iPhone en PWA, 06/09).
+        Promise.resolve(window.WakeLock.setEnabled(wlCb.checked)).then(function (ok) {
+          if (!(window.OOMGuard && typeof window.OOMGuard.showToast === "function")) return;
+          if (!wlCb.checked) {
+            window.OOMGuard.showToast(window.I18n.t("config.display.wakelock.toastOff"), "info");
+            return;
+          }
           window.OOMGuard.showToast(
-            wlCb.checked
-              ? window.I18n.t("config.display.wakelock.toastOn")
-              : window.I18n.t("config.display.wakelock.toastOff"),
-            "info"
-          );
-        }
+            ok ? window.I18n.t("config.display.wakelock.toastOn")
+               : window.I18n.t("config.display.wakelock.toastKo"),
+            ok ? "info" : "warn");
+        });
       });
     } else {
       // API pas supportée → on garde le row caché (display:none par défaut

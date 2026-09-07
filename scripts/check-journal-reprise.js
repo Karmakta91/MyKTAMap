@@ -91,7 +91,76 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
     .then(() => attend("reprise : carnet vide → rien, sans planter", [], (r) => r === null))
     .then(suite);
 
-  function suite() { partie2(); }
+  function suite() {
+    partie1bis(SRC);
+    partie1ter(SRC).then(partie2);
+  }
+}
+
+// ───────── 1 bis. ⏱️ LA DURÉE D'UNE SORTIE ─────────
+// KARMA : « on ne se base que sur le temps d'ouverture de l'app, or on a une
+// date de début et une date de fin ». Les deux mesures existaient depuis la
+// v1.69.0 — c'est leur USAGE qui était faux : liste, fiche ET totaux
+// affichaient tous `activeMs`, et `wallMs` n'était montré nulle part.
+//
+// 🩸 La règle DÉPEND DU TYPE. Terrain → temps réel (le téléphone en poche ne
+// compte pas, l'app tuée par iOS non plus). Bureau → temps d'usage : on laisse
+// un plan ouvert toute la soirée sans le regarder, le temps réel n'y veut rien
+// dire. Confondre les deux gonflerait les totaux de travail sur plan.
+function partie1bis(SRC) {
+  const i = SRC.indexOf("function dureeMs");
+  const fn = i < 0 ? null : SRC.slice(i, SRC.indexOf("\n  }", i) + 4);
+  const ctx = { Number: Number, TYPE_TERRAIN: "terrain" };
+  vm.createContext(ctx);
+  vm.runInContext(fn + "\nglobalThis.__d = dureeMs;", ctx, { filename: "duree" });
+  const d = ctx.__d;
+
+  t("🩸 durée : une sortie TERRAIN compte du début à la fin, pas le temps d'app",
+    d({ type: "terrain", wallMs: 10800000, activeMs: 720000 }) === 10800000);
+  t("🩸 durée : une session BUREAU compte le temps d'USAGE, pas le temps réel",
+    d({ type: "bureau", wallMs: 36000000, activeMs: 900000 }) === 900000);
+  t("durée : terrain sans wallMs retombe sur l'actif plutôt que de rendre 0",
+    d({ type: "terrain", wallMs: 0, activeMs: 600000 }) === 600000);
+  t("durée : une donnée corrompue (wallMs négatif) ne rend jamais de négatif",
+    d({ type: "terrain", wallMs: -5, activeMs: 300000 }) === 300000);
+  t("durée : record vide → 0, sans planter", d(null) === 0 && d({}) === 0);
+}
+
+// ───────── 1 ter. ✏️ CORRIGER LA FIN OUBLIÉE ─────────
+// « Si la personne n'a pas cliqué sur fin de sortie, il faut un truc pour
+// re-saisir la fin. » Sans ça, une sortie non clôturée porte pour fin le
+// dernier instant où l'app était vivante — donc, en pratique, le moment où iOS
+// l'a tuée, pas celui où l'on est ressorti.
+function partie1ter(SRC) {
+  const i = SRC.indexOf("function setFin");
+  const fn = i < 0 ? null : SRC.slice(i, SRC.indexOf("\n  }", i) + 4);
+  t("la correction de fin est extractible", fn !== null);
+  let ecrit = null;
+  const REC = { id: "s1", startedAtMs: 1000, activeMs: 500, wallMs: 700 };
+  const ctx = {
+    console: { warn() {} }, Promise, Date, Number,
+    get: () => Promise.resolve(REC),
+    _put: (r) => { ecrit = r; return Promise.resolve(r); }
+  };
+  vm.createContext(ctx);
+  vm.runInContext(fn + "\nglobalThis.__f = setFin;", ctx, { filename: "setFin" });
+  const f = ctx.__f;
+
+  return f("s1", 4000).then(function (r) {
+    t("fin : la correction est acceptée", !!r);
+    t("🩸 fin : `wallMs` est RECALCULÉ depuis le début", ecrit && ecrit.wallMs === 3000);
+    t("🩸 fin : `activeMs` n'est PAS touché (c'est une mesure, pas une déclaration)",
+      ecrit && ecrit.activeMs === 500);
+    t("fin : la saisie manuelle est tracée", ecrit && ecrit.finManuelle === true);
+    ecrit = null;
+    return f("s1", 500);
+  }).then(function (r) {
+    t("🩸 fin : une fin AVANT le départ est refusée (jamais de durée négative)",
+      r === null && ecrit === null);
+    return f("s1", "pas une date");
+  }).then(function (r) {
+    t("fin : une saisie illisible est refusée", r === null && ecrit === null);
+  });
 }
 
 // ───────── 2. le câblage, que l'extraction ne voit pas ─────────
@@ -136,15 +205,49 @@ function partie2() {
   t("🩸 fusion : elle SUPPRIME, donc elle demande confirmation", /ktaConfirm\(_t\("jrn\.fusion\.confirm"/.test(JUI));
   t("fusion : le mode sélection existe dans le carnet", /_modeFusion/.test(JUI));
 
+  // 🩸 LA RÈGLE DE DURÉE VIT DANS `journal.js` ET NULLE PART AILLEURS. La
+  // recalculer dans l'UI ferait diverger le détail du total à la première
+  // retouche — c'est la dette qu'on a soldée trois fois cette semaine.
+  t("🩸 durée : l'UI APPELLE la règle, elle ne la refait pas",
+    /window\.Journal\.dureeMs\(rec\)/.test(JUI) && !/rec\.wallMs\s*:\s*rec\.activeMs/.test(JUI));
+  t("🩸 durée : les TOTAUX du carnet passent par la même règle",
+    /ms \+= dureeMs\(r\)/.test(J) && /bureauMs \+= dureeMs\(r\)/.test(J));
+  t("durée : la liste affiche la durée de SORTIE, plus `activeMs` brut",
+    /_dur\(_dureeAffichee\(r\)\)/.test(JUI));
+  t("durée : la fiche dit AUSSI le temps d'app (il dit ce que vaut la mesure)",
+    /jrn\.metric\.dontActif/.test(JUI));
+  t("fin : le bouton de correction existe dans la fiche", /id="kta-jrn-fin"/.test(JUI));
+  t("fin : l'API est exposée", /setFin:\s+setFin/.test(J));
+  t("fin : une fin saisie à la main est signalée dans la fiche", /jrn\.metric\.finCorrigee/.test(JUI));
+
   // 🩸 LE WAKE LOCK. Le module vivait complet mais n'était jamais initialisé.
   t("🩸 wakeLock : `init()` est appelé au boot (il ne l'était NULLE PART)",
     /window\.WakeLock\.init\(\)/.test(MAIN));
   t("🩸 wakeLock : rattrapage au premier geste si l'acquisition du boot échoue",
     /_reprendreAuPremierGeste/.test(WL) && /pointerdown/.test(WL));
+  // 🩸 Le toast MENTAIT : il annonçait « écran maintenu allumé » sans jamais
+  // vérifier que le verrou avait été posé. C'est ce mensonge qui a fait
+  // chercher la panne du mauvais côté pendant deux tours.
+  t("🩸 wakeLock : `setEnabled` REND le résultat réel de l'acquisition",
+    /const ok = await _acquire\(\);[\s\S]{0,120}return ok;/.test(WL));
+  t("🩸 wakeLock : ⚙️ Paramètres attend ce résultat avant d'annoncer quoi que ce soit",
+    /Promise\.resolve\(window\.WakeLock\.setEnabled\(wlCb\.checked\)\)\.then/.test(
+      fs.readFileSync("js/interfaceConfig.js", "utf8")));
+  t("🩸 wakeLock : l'accueil aussi",
+    /Promise\.resolve\(window\.WakeLock\.setEnabled\(loaderWlCb\.checked\)\)\.then/.test(
+      fs.readFileSync("js/homeConfig.js", "utf8")));
+  ["fr", "en", "es"].forEach(function (l) {
+    const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
+    t("i18n " + l + " : config.display.wakelock.toastKo",
+      typeof D["config.display.wakelock.toastKo"] === "string");
+  });
+
   t("wakeLock : le listener de rattrapage se retire après usage",
     /removeEventListener\("pointerdown", rattraper, true\)/.test(WL));
 
-  ["journal.reprise.toast", "jrn.fusion.entrer", "jrn.fusion.compte", "jrn.fusion.valider",
+  ["jrn.metric.dontActif", "jrn.metric.finCorrigee", "jrn.fin.corriger", "jrn.fin.invite",
+   "jrn.fin.ok", "jrn.fin.koFormat", "jrn.fin.koAvant",
+   "journal.reprise.toast", "jrn.fusion.entrer", "jrn.fusion.compte", "jrn.fusion.valider",
    "jrn.fusion.annuler", "jrn.fusion.confirm", "jrn.fusion.ok", "jrn.fusion.ko"
   ].forEach(function (k) {
     ["fr", "en", "es"].forEach(function (l) {

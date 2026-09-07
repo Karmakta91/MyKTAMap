@@ -114,16 +114,23 @@
     _notify();
   }
 
+  // 🩸 v1.85.2 — REND LE RESULTAT REEL. Avant, la fonction ne rendait rien :
+  // l appelant affichait « 🔆 Ecran maintenu allume » sans savoir si le verrou
+  // avait ete pose. Quand le navigateur refuse — pas de geste utilisateur,
+  // batterie faible, ou implementation qui accepte puis ignore — l app MENTAIT.
+  // C est ce mensonge qui a fait chercher la panne du mauvais cote.
   async function setEnabled(v) {
     const newVal = !!v;
-    if (newVal === _enabled) return;
+    if (newVal === _enabled) return isActive();
     _enabled = newVal;
     _writePref(newVal);
     if (newVal) {
-      await _acquire();
-    } else {
-      await _release();
+      const ok = await _acquire();
+      if (!ok) _reprendreAuPremierGeste();
+      return ok;
     }
+    await _release();
+    return false;
   }
 
   async function init() {

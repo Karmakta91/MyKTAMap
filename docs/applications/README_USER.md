@@ -2511,6 +2511,22 @@ La fenêtre ne propose que des cibles **compatibles avec la forme** de l'objet :
 
 L'objet garde tout le reste — sa géométrie, son niveau, sa note.
 
+### ⏱️ La durée d'une sortie
+
+Une sortie **terrain** est comptée **du départ à la fin**, pas au temps où l'app était ouverte. C'est ce que tu veux dire quand tu dis « on est restés 3 h » : le téléphone rangé dans la poche compte, l'app mise en veille aussi.
+
+La fiche te donne aussi le **temps où l'app était ouverte**, juste en dessous. Ce n'est pas un doublon : il dit ce que vaut la mesure. *3 h de sortie pour 12 min d'app*, c'est un podomètre qui n'a presque rien vu — la distance affichée est donc à prendre avec des pincettes.
+
+> ℹ️ Une session de **travail sur plan** garde le temps d'usage : on laisse un plan ouvert toute une soirée sans le regarder, la durée réelle n'y voudrait rien dire.
+
+#### ✏️ Corriger une fin oubliée
+
+Si tu n'as pas cliqué sur **🏁 Clôturer ma sortie** en ressortant, l'app ne sait pas quand tu es sorti : elle prend le dernier moment où elle était vivante — souvent celui où le téléphone l'a mise en veille. La durée est alors sous-évaluée.
+
+Ouvre la fiche de la sortie → **✏️ Corriger la fin**, et saisis l'heure réelle. La durée est recalculée aussitôt.
+
+> ℹ️ Le **temps d'app ouverte** n'est jamais modifié : c'est une mesure, pas une déclaration. Et une fin antérieure au départ est refusée.
+
 ### 🔁 Une sortie coupée en plusieurs — reprise et fusion
 
 Si tu quittes MyKTAMap pendant une sortie — changer de musique, prendre un appel — le téléphone peut **décharger l'app** pour libérer de la mémoire. Avant la v1.85.2, revenir dessus démarrait une **nouvelle** sortie : une seule vraie sortie ressortait en deux ou trois au carnet, chacune avec un bout des compteurs.

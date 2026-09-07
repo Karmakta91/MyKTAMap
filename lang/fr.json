@@ -5049,5 +5049,13 @@
   "jrn.fusion.annuler": "Annuler",
   "jrn.fusion.confirm": "Fusionner {n} sorties en une seule ?\n\nLeurs durées, distances et ajouts sont additionnés, leurs notes empilées, leurs photos et tracés réunis. Les sorties d'origine disparaissent du carnet : c'est irréversible.",
   "jrn.fusion.ok": "🔗 {n} sorties fusionnées en une",
-  "jrn.fusion.ko": "⚠️ Fusion impossible — il faut au moins 2 sorties terminées"
+  "jrn.fusion.ko": "⚠️ Fusion impossible — il faut au moins 2 sorties terminées",
+  "jrn.metric.dontActif": "· {d} d'app ouverte",
+  "jrn.metric.finCorrigee": "· fin saisie à la main",
+  "jrn.fin.corriger": "Corriger la fin",
+  "jrn.fin.invite": "Heure de fin réelle de la sortie ?\n\nDépart : {debut}\nFormat : AAAA-MM-JJTHH:MM (ex. 2026-09-06T18:30)",
+  "jrn.fin.ok": "⏱️ Fin corrigée — la durée a été recalculée",
+  "jrn.fin.koFormat": "⚠️ Format non reconnu — attendu AAAA-MM-JJTHH:MM",
+  "jrn.fin.koAvant": "⚠️ La fin doit être APRÈS le départ",
+  "config.display.wakelock.toastKo": "⚠️ Ton appareil a refusé de garder l'écran allumé — touche l'écran une fois, l'app réessaie"
 }

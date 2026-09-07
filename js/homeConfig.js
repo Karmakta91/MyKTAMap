@@ -1153,15 +1153,22 @@
           loaderWlRow.style.display = "";  // révèle (default = none)
           loaderWlCb.checked = window.WakeLock.isEnabled();
           loaderWlCb.addEventListener("change", function() {
-            window.WakeLock.setEnabled(loaderWlCb.checked);
-            if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            // 🩸 v1.85.2 — meme correctif qu en ⚙️ Parametres : on n annonce
+            // le verrou qu une fois qu il est REELLEMENT pose.
+            Promise.resolve(window.WakeLock.setEnabled(loaderWlCb.checked)).then(function (ok) {
+              if (!(window.OOMGuard && typeof window.OOMGuard.showToast === "function")) return;
+              const t = function (k, repli) {
+                return (window.I18n && window.I18n.t) ? window.I18n.t(k) : repli;
+              };
+              if (!loaderWlCb.checked) {
+                window.OOMGuard.showToast(t("config.display.wakelock.toastOff", "🔅 Mise en veille écran ré-activée"), "info");
+                return;
+              }
               window.OOMGuard.showToast(
-                loaderWlCb.checked
-                  ? "🔆 Écran maintenu allumé tant que l'app est ouverte"
-                  : "🔅 Mise en veille écran ré-activée",
-                "info"
-              );
-            }
+                ok ? t("config.display.wakelock.toastOn", "🔆 Écran maintenu allumé tant que l'app est ouverte")
+                   : t("config.display.wakelock.toastKo", "⚠️ Ton navigateur a refusé de garder l'écran allumé"),
+                ok ? "info" : "warn");
+            });
           });
           // Sync UI si le state change ailleurs (ex: toggle dans ⚙️ Réglages
           // map mode pendant que la home est ouverte en arrière-plan)

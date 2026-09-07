@@ -2503,6 +2503,22 @@ La ventana solo propone destinos **compatibles con la forma** del objeto: una **
 
 El objeto conserva todo lo demás: su geometría, su nivel y su nota.
 
+### ⏱️ Cómo se cuenta la duración de una salida
+
+Una salida de **campo** se cuenta **de la salida al final**, no por el tiempo que la app estuvo abierta. Es lo que quieres decir con «estuvimos 3 horas»: el teléfono en el bolsillo cuenta, y la app en reposo también.
+
+La ficha también muestra el **tiempo con la app abierta**, justo debajo. No es un duplicado: indica cuánto vale la medición. *3 h de salida con 12 min de app* es un podómetro que apenas vio nada, así que la distancia hay que cogerla con pinzas.
+
+> ℹ️ Una sesión de **trabajo sobre plano** conserva el tiempo de uso: dejas un plano abierto toda la tarde sin mirarlo, así que la duración real no significaría nada.
+
+#### ✏️ Corregir un final olvidado
+
+Si no pulsaste **🏁 Cerrar mi salida** al salir, la app no sabe cuándo te fuiste: toma el último momento en que estuvo viva, a menudo cuando el teléfono la durmió. La duración queda entonces infravalorada.
+
+Abre la ficha de la salida → **✏️ Corregir el final** e introduce la hora real. La duración se recalcula al instante.
+
+> ℹ️ El **tiempo con la app abierta** nunca se modifica: es una medición, no una declaración. Y un final anterior al inicio se rechaza.
+
 ### 🔁 Una salida partida en varias: reanudación y fusión
 
 Si sales de MyKTAMap durante una salida —para cambiar de música, para atender una llamada— el teléfono puede **descargar la app** para liberar memoria. Antes de la v1.85.2, al volver se iniciaba una salida **nueva**: una sola salida real aparecía como dos o tres en el cuaderno, cada una con parte de los contadores.

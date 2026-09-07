@@ -793,12 +793,12 @@
       all.forEach(function(r) {
         if ((r.type || TYPE_BUREAU) === TYPE_TERRAIN) {
           nbT++;
-          ms += Number(r.activeMs) || 0;
+          ms += dureeMs(r);
           m  += Number(r.distM)    || 0;
           if (r.planId) plans[r.planId] = 1;
         } else {
           nbB++;
-          bureauMs += Number(r.activeMs) || 0;
+          bureauMs += dureeMs(r);
         }
       });
       const terrain = all.filter(function(r) { return (r.type || TYPE_BUREAU) === TYPE_TERRAIN; });
@@ -863,6 +863,65 @@
   window.addEventListener("beforeunload", function() { _tickActive(); flush(); });
 
   // ───────── EXPORT ─────────
+
+  // ───────── ⏱️ LA DUREE D UNE SORTIE (KARMA, v1.85.2) ─────────
+  // « On ne se base que sur le temps d ouverture de l app. Or on a une date de
+  // debut et une date de fin, ce qui permettrait un temps plus pertinent. »
+  //
+  // Les deux mesures existaient deja et cohabitent — c est leur USAGE qui etait
+  // faux, tout affichait `activeMs` :
+  //   • `activeMs` = temps ou l app etait OUVERTE ET VISIBLE, deltas > 5 min
+  //     ignores. Il dit combien de temps on s est SERVI de l app.
+  //   • `wallMs`   = fin - debut, trous compris. Il dit combien de temps la
+  //     SORTIE a dure.
+  //
+  // 🩸 LA REGLE DEPEND DU TYPE, et c est le coeur du sujet. Sur une sortie
+  // TERRAIN, « on est restes 3 h » est le temps reel : le telephone en poche ne
+  // compte pas, et l app tuee par iOS non plus. Sur du travail BUREAU, le temps
+  // reel n a aucun sens — on laisse un plan ouvert toute la soiree sans le
+  // regarder ; c est le temps d usage qui compte.
+  //
+  // Cette regle vit ICI et nulle part ailleurs : l affichage, les totaux et la
+  // fiche l appellent. La dupliquer dans l UI ferait diverger le detail du
+  // total a la premiere retouche.
+  function dureeMs(rec) {
+    if (!rec) return 0;
+    if (rec.type !== TYPE_TERRAIN) return Number(rec.activeMs) || 0;
+    const w = Number(rec.wallMs) || 0;
+    // Filet : une sortie dont la fin serait anterieure au debut (donnee
+    // corrompue) ne doit pas rendre une duree negative ni ecraser l actif.
+    return w > 0 ? w : (Number(rec.activeMs) || 0);
+  }
+
+  // ✏️ Corriger la fin apres coup. Sans ca, une sortie ou l on a oublie de
+  // cliquer « Cloturer » porte pour fin le dernier instant ou l app etait
+  // vivante — soit, en pratique, le moment ou iOS l a tuee, pas celui ou l on
+  // est ressorti. La duree reelle est alors sous-evaluee sans recours.
+  //
+  // 🩸 On NE TOUCHE PAS a `activeMs` : c est une mesure, pas une declaration.
+  // Seul `wallMs` est recalcule. Les deux restent lisibles cote a cote, et
+  // `finManuelle` dit que le chiffre vient de l utilisateur.
+  function setFin(id, quand) {
+    const ms = (quand instanceof Date) ? quand.getTime()
+             : (typeof quand === "number") ? quand
+             : Date.parse(quand);
+    if (!Number.isFinite(ms)) return Promise.resolve(null);
+    return get(id).then(function (rec) {
+      if (!rec) return null;
+      const debut = Number(rec.startedAtMs) || 0;
+      // Une fin AVANT le debut n a pas de sens : on refuse plutot que de
+      // stocker une duree negative que tout le reste devrait ensuite gerer.
+      if (!debut || ms <= debut) return null;
+      rec.endedAt     = new Date(ms).toISOString();
+      rec.wallMs      = ms - debut;
+      rec.finManuelle = true;
+      rec.updatedAt   = new Date().toISOString();
+      return _put(rec).then(function () { return rec; });
+    }).catch(function (e) {
+      console.warn("[Journal] setFin echoue :", e && e.message);
+      return null;
+    });
+  }
 
   // ───────── FUSION MANUELLE (KARMA, v1.85.2) ─────────
   // La reprise automatique EMPECHE le probleme ; elle ne repare pas les
@@ -952,6 +1011,8 @@
     setNote:      setNote,
     setType:      setType,
     fusionner:    fusionner,     // 🔗 v1.85.2 — recoller des sorties hachees
+    dureeMs:      dureeMs,       // ⏱️ v1.85.2 — LA regle, une seule fois
+    setFin:       setFin,        // ✏️ v1.85.2 — corriger la fin oubliee
     REPRISE_MS:   REPRISE_MS,
     affinerEnCours: affinerEnCours,
     stats:        stats,

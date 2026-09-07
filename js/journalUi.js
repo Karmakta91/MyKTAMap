@@ -84,6 +84,16 @@
 
   // 🚶 terrain / 🖥️ bureau — les records d'avant la distinction (aucun `type`)
   // sont traités comme du bureau : ils n'avaient pas de déplacement mesuré.
+  // ⏱️ La durée AFFICHÉE vient de `Journal.dureeMs()` — la règle vit là-bas et
+  // nulle part ailleurs. La recalculer ici ferait diverger le détail du total à
+  // la première retouche.
+  function _dureeAffichee(rec) {
+    if (window.Journal && typeof window.Journal.dureeMs === "function") {
+      return window.Journal.dureeMs(rec);
+    }
+    return Number(rec && rec.activeMs) || 0;
+  }
+
   function _estTerrain(rec) {
     return !!rec && rec.type === "terrain";
   }
@@ -169,10 +179,24 @@
                 (_estTerrain(rec) ? '🚶 ' + _esc(_t("jrn.type.terrain")) : '🖥️ ' + _esc(_t("jrn.type.bureau"))) +
               '</span>' +
               (rec.closedBy === "manual" ? ' <span class="kta-jrn-tag">' + _esc(_t("jrn.fiche.manuelle")) + '</span>' : '') +
+              // ✏️ Corriger la fin : sans ça, une sortie où l'on a oublié de
+              // clôturer porte pour fin le moment où iOS a tué l'app, pas celui
+              // où l'on est ressorti — durée sous-évaluée, sans recours.
+              ' <button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-jrn-fin-btn" ' +
+                'id="kta-jrn-fin">✏️ ' + _esc(_t("jrn.fin.corriger")) + '</button>' +
             '</div>' +
             '<div class="kta-jrn-metrics">' +
-              '<div class="kta-jrn-metric"><span class="kta-jrn-metric-val">' + _esc(_dur(rec.activeMs)) + '</span>' +
-                '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.duree")) + '</span></div>' +
+              // ⏱️ v1.85.2 — la durée de la SORTIE (début → fin) en premier ;
+              // le temps d'usage de l'app reste dit juste dessous, parce qu'il
+              // dit ce que vaut la mesure : 3 h de sortie pour 12 min d'app,
+              // c'est un podomètre qui n'a presque rien vu.
+              '<div class="kta-jrn-metric"><span class="kta-jrn-metric-val">' + _esc(_dur(_dureeAffichee(rec))) + '</span>' +
+                '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.duree")) +
+                  (_estTerrain(rec)
+                    ? ' ' + _esc(_t("jrn.metric.dontActif", { d: _dur(rec.activeMs) }))
+                    : '') +
+                  (rec.finManuelle ? ' ' + _esc(_t("jrn.metric.finCorrigee")) : '') +
+                '</span></div>' +
               // Une session bureau n'a pas de distance : afficher « 0 m » ferait
               // croire à un tracker en panne. On montre les photos à la place.
               (_estTerrain(rec)
@@ -224,6 +248,33 @@
 
       document.getElementById("kta-jrn-fiche-close").addEventListener("click", _fermerFiche);
       overlay.addEventListener("click", function(e) { if (e.target === overlay) _fermerFiche(); });
+
+      // ✏️ Corriger la fin de sortie.
+      // 🩸 On saisit une HEURE, pas une durée. Une durée obligerait à calculer
+      // de tête depuis une heure de départ qu'on ne voit pas ; l'heure de
+      // sortie, elle, on s'en souvient. Le champ est pré-rempli avec la fin
+      // actuelle, au format local du navigateur (`datetime-local`), et le
+      // module refuse une fin antérieure au départ.
+      const finBtn = document.getElementById("kta-jrn-fin");
+      if (finBtn) {
+        finBtn.addEventListener("click", function () {
+          const finMs = Date.parse(rec.endedAt || rec.updatedAt || 0) || Date.now();
+          // `datetime-local` veut du temps LOCAL sans fuseau : `toISOString()`
+          // rendrait de l'UTC et décalerait le champ de l'écart horaire.
+          const d = new Date(finMs - new Date(finMs).getTimezoneOffset() * 60000);
+          const val = d.toISOString().slice(0, 16);
+          const saisi = window.prompt(
+            _t("jrn.fin.invite", { debut: _fmtDate(rec.startedAtMs) }), val);
+          if (saisi === null) return;
+          const ms = Date.parse(saisi);
+          if (!Number.isFinite(ms)) { _toast(_t("jrn.fin.koFormat"), "warn"); return; }
+          window.Journal.setFin(rec.id, ms).then(function (maj) {
+            if (!maj) { _toast(_t("jrn.fin.koAvant"), "warn"); return; }
+            _toast(_t("jrn.fin.ok"), "info");
+            return _rafraichirListe().then(function () { ouvrirFiche(rec.id); });
+          });
+        });
+      }
 
       document.getElementById("kta-jrn-note-save").addEventListener("click", function() {
         const txt = document.getElementById("kta-jrn-note").value;
@@ -363,7 +414,7 @@
              '<span class="kta-jrn-row-date">' + _esc(_fmtDate(r.startedAtMs)) + '</span>' +
              '<span class="kta-jrn-row-plan">' + (terrain ? '🚶' : '🖥️') + ' ' +
                _esc(r.planName || "?") + '</span>' +
-             '<span class="kta-jrn-row-meta">⏱️ ' + _esc(_dur(r.activeMs)) +
+             '<span class="kta-jrn-row-meta">⏱️ ' + _esc(_dur(_dureeAffichee(r))) +
                (terrain ? ' · 📏 ' + _esc(_dist(r.distM)) : '') +
                (chips.length ? ' · ' + _esc(chips.join(" ")) : '') + '</span>' +
              (r.note ? '<span class="kta-jrn-row-note">📝 ' +

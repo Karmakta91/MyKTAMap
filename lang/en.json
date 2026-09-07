@@ -5049,5 +5049,13 @@
   "jrn.fusion.annuler": "Cancel",
   "jrn.fusion.confirm": "Merge {n} outings into one?\n\nTheir durations, distances and additions are summed, their notes stacked, their photos and tracks joined. The original outings disappear from the logbook: this cannot be undone.",
   "jrn.fusion.ok": "🔗 {n} outings merged into one",
-  "jrn.fusion.ko": "⚠️ Merge not possible — at least 2 finished outings are needed"
+  "jrn.fusion.ko": "⚠️ Merge not possible — at least 2 finished outings are needed",
+  "jrn.metric.dontActif": "· {d} with the app open",
+  "jrn.metric.finCorrigee": "· end entered by hand",
+  "jrn.fin.corriger": "Fix the end",
+  "jrn.fin.invite": "Actual end time of the outing?\n\nStart: {debut}\nFormat: YYYY-MM-DDTHH:MM (e.g. 2026-09-06T18:30)",
+  "jrn.fin.ok": "⏱️ End fixed — the duration has been recomputed",
+  "jrn.fin.koFormat": "⚠️ Unrecognised format — expected YYYY-MM-DDTHH:MM",
+  "jrn.fin.koAvant": "⚠️ The end must be AFTER the start",
+  "config.display.wakelock.toastKo": "⚠️ Your device refused to keep the screen on — tap the screen once, the app retries"
 }
