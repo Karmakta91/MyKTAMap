@@ -6,6 +6,22 @@
 ---
 
 
+## 📦 Un asset de plan vit TOUJOURS sous `data/` — et le plan-config doit le DIRE
+
+Quatre producteurs écrivent un `plan-config.json` : `createConf.js` (Générateur), `sigImport.js`, `gpxImport.js`, `kmzImport.js`. Tous écrivent leurs fichiers dans `data/` du ZIP. **Seul le Générateur les déclarait avec le préfixe.**
+
+```js
+zip.file("data/sig.json", …);                    // écrit ICI
+dataLayers: [{ file: "sig.json" }]               // ❌ déclaré SANS le préfixe
+dataLayers: [{ file: "data/sig.json" }]          // ✅
+```
+
+🩸 **Pourquoi ça survit des années** : en import **local**, `findMatchingFile` retrouve l'asset par son **nom de base**. L'incohérence est donc totalement invisible — jusqu'au **mode serveur**, où la résolution est stricte et rend un 404. `kmzImport` a corrigé ce motif pour ses **calques** en v1.21.0-fix5 et l'a laissé sur son `baseImage` ; `sigImport` et `gpxImport` ne l'avaient jamais corrigé. Réparé en **v1.88.4**, avec un garde-fou qui refuse la réapparition d'un `baseImage` nu.
+
+⚠️ **Conséquence de conception** : la tolérance de l'import local **masque** les erreurs de chemin. Tout nouveau producteur doit être vérifié **en mode serveur**, pas seulement par un import ZIP.
+
+---
+
 ## 🕳️ Le « mangeur de blocs » — il revient dès qu'on nettoie les commentaires à la regex
 
 **Vécu deux fois** : `check-i18n` en v1.79.2, puis **mes propres garde-fous en v1.88.2**.

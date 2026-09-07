@@ -581,6 +581,23 @@ function resolveServerPath(p, baseDir) {
   // l'icône par défaut de TOUS les points sans tag.
   if (/^(lib|css|js|docs|assets)\//.test(p)) return p;
 
+  // 🩸 v1.88.4 — RÉTRO-COMPAT : UN NOM DE FICHIER NU VIENT DU DOSSIER `data/`.
+  // Les importateurs SIG / GPX / KMZ écrivaient le fichier dans `data/` du ZIP
+  // mais le déclaraient SANS le préfixe dans le plan-config (corrigé à la
+  // source en v1.88.4). En import LOCAL ça passait — `findMatchingFile`
+  // retrouve l'asset par son NOM DE BASE — donc l'incohérence est restée
+  // invisible jusqu'au mode serveur, où la résolution est stricte : 404.
+  // Constat KARMA : ses plans issus d'un import SIG (`*_from_v2`) échouaient,
+  // ceux du Générateur passaient.
+  //
+  // Les plans DÉJÀ DÉPLOYÉS gardent leur plan-config fautif. On les rattrape
+  // sans rien retoucher côté serveur : dans un ZIP produit par cette app, un
+  // asset est TOUJOURS sous `data/` (ou `icon/`, traité plus haut). Un nom nu
+  // ne peut donc désigner que `<dossier du plan>/data/<nom>`.
+  // ⚠️ Ce n'est pas une sonde : c'est la mise en page du ZIP, comme pour les
+  // tuiles. Aucun producteur n'écrit d'asset à la racine de l'archive.
+  if (base && base !== "data" && p.indexOf("/") < 0) return base + "/data/" + p;
+
   return base + "/" + p;
 }
 

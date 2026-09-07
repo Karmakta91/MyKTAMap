@@ -316,7 +316,15 @@
         author:      opts.planAuthor  || window.I18n.t("gpx.import.authorDefault"),
         imageWidth:  finalW,
         imageHeight: finalH,
-        baseImage:   baseFilename,
+        // 🩸 v1.88.4 — PRÉFIXE `data/` OBLIGATOIRE. Le fichier est écrit dans
+        // `data/` du ZIP, mais était déclaré ICI sans le préfixe. En import
+        // LOCAL ça passait : `findMatchingFile` retrouve l'asset par son NOM DE
+        // BASE, donc l'incohérence était invisible. En mode SERVEUR la résolution
+        // est stricte → 404 sur l'image et les calques (constat KARMA : ses plans
+        // `*_from_v2` échouaient, les plans du Générateur passaient).
+        // ⚠️ `kmzImport` avait déjà corrigé ce motif pour ses CALQUES en
+        // v1.21.0-fix5 — jamais pour son `baseImage`.
+        baseImage:   "data/" + baseFilename,
         // Embarque le calibrage GPS dans le plan-config.json (cf v1.14.20
         // pattern plan.georef → propagation auto vers KmzExport au load
         // du plan via main.js > _propagerGeorefVersKmzExport).

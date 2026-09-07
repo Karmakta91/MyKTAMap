@@ -1305,7 +1305,15 @@
         author:      opts.planAuthor  || "",
         imageWidth:  W,
         imageHeight: H,
-        baseImage:   "baseImage.png",
+        // 🩸 v1.88.4 — PRÉFIXE `data/` OBLIGATOIRE. Le fichier est écrit dans
+        // `data/` du ZIP, mais était déclaré ICI sans le préfixe. En import
+        // LOCAL ça passait : `findMatchingFile` retrouve l'asset par son NOM DE
+        // BASE, donc l'incohérence était invisible. En mode SERVEUR la résolution
+        // est stricte → 404 sur l'image et les calques (constat KARMA : ses plans
+        // `*_from_v2` échouaient, les plans du Générateur passaient).
+        // ⚠️ `kmzImport` avait déjà corrigé ce motif pour ses CALQUES en
+        // v1.21.0-fix5 — jamais pour son `baseImage`.
+        baseImage:   "data/baseImage.png",
         georef: {
           pointA: { x: pA_plan.x, y: pA_plan.y, lat: pA_gps.lat, lng: pA_gps.lng },
           pointB: { x: pB_plan.x, y: pB_plan.y, lat: pB_gps.lat, lng: pB_gps.lng }
@@ -1334,7 +1342,7 @@
       },
       icons: { default: "icon/iconetrack.png", track: "icon/iconetrack.png" },
       imageLayers: [],
-      dataLayers: [{ id: "sig", label: opts.layerLabel || "Import SIG", file: "sig.json", visible: true }]
+      dataLayers: [{ id: "sig", label: opts.layerLabel || "Import SIG", file: "data/sig.json", visible: true }]
     };
     if (opts.multiLevel === true) planConfig.plan.multiLevel = true;
     // 📉 v1.83.0 — profondeurs proposées d'office sur un plan importé, avec

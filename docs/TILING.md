@@ -74,6 +74,10 @@ Pire, sur un **plan serveur** : `map.js` cherche la taille du fichier dans `RUNT
 
 **Depuis la v1.86.1, il suffit de dézipper.** Créez un dossier, videz-y le ZIP tel quel, déclarez-le dans `index.json`.
 
+🩸 **Un plan issu d'un IMPORT (SIG / GPX / KMZ) n'est pas produit par le Générateur — et jusqu'en v1.88.4 il déclarait ses fichiers SANS le préfixe `data/`** alors qu'il les écrivait bien dedans. En import **local** l'incohérence était invisible (`findMatchingFile` retrouve l'asset par son **nom de base**) ; en **serveur**, la résolution est stricte → **404 sur l'image et les calques**. Symptôme vécu : sur 18 plans servis, ceux du Générateur passaient, ceux issus d'un import SIG (`*_from_v2`) échouaient tous — avec des ZIP « tous produits par l'app ».
+
+✅ **Corrigé aux quatre sources** (`sigImport` ×2, `gpxImport`, `kmzImport`) **et rattrapé pour les plans déjà déployés** : dans une archive produite par cette app, un asset vit **toujours** sous `data/` (ou `icon/`). Un nom de fichier **nu** dans un plan-config ne peut donc désigner que `<dossier du plan>/data/<nom>` — ce n'est pas une sonde, c'est la mise en page du ZIP. ⚠️ *`kmzImport` avait déjà corrigé ce motif pour ses **calques** en v1.21.0-fix5, jamais pour son `baseImage` : la moitié d'une leçon, pendant deux ans.*
+
 ```
 data/
   index.json          ← { "plans": [ { "id":"toto", "path":"data/toto", "name":"Toto" } ] }

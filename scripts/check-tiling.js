@@ -216,7 +216,15 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
       ["icon/house.png",          "data/toto", "icon/house.png",             "icon/ reste à la racine (icônes de l'app)"],
       ["https://x/y.png",         "data/toto", "https://x/y.png",            "URL absolue intacte"],
       ["/racine.png",             "data/toto", "/racine.png",                "chemin absolu intact"],
-      ["autre.json",              "data/toto", "data/toto/autre.json",       "chemin nu : relatif au plan"]
+      // 🩸 v1.88.4 : un nom NU vient du dossier `data/` du ZIP — c est la mise
+      // en page de toute archive produite par l app. Rattrape les plans SIG
+      // deja deployes, dont le plan-config omet le prefixe.
+      ["sig.json",                "data/toto", "data/toto/data/sig.json",   "🩸 nom NU (import SIG) : sous data/"],
+      ["baseImage.png",           "data/toto", "data/toto/data/baseImage.png", "🩸 idem pour l image"],
+      // 🩸 Epingle la BORNE de la regle : seuls les noms NUS passent par
+      // `data/`. Sans ce cas, remplacer la condition par `true` ne se voyait
+      // pas -- aucun chemin relatif AVEC dossier n etait teste.
+      ["sous/x.json",             "data/toto", "data/toto/sous/x.json",      "relatif AVEC dossier : pas de data/ injecte"],
     ];
     cas.forEach(function (c) {
       const got = f(c[0], c[1]);
@@ -453,6 +461,35 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
     /Aucune racine de tuiles ne répond/.test(TIL));
   t("🧱 le dossier du plan est connu du runtime (`_baseDir`)",
     sansCommentaires(fs.readFileSync("js/config.js", "utf8")).indexOf("config._baseDir = baseDir") >= 0);
+}
+
+
+// ───────── 17. 🩸 LES IMPORTATEURS DÉCLARENT LEURS FICHIERS AVEC `data/` ─────────
+// VÉCU (KARMA, diagnostic console sur 18 plans servis) : ses plans issus d'un
+// import SIG (`*_from_v2`) donnaient 404 sur l'image ET le calque, ceux du
+// Générateur passaient. Cause : `sigImport`, `gpxImport` et `kmzImport`
+// ÉCRIVAIENT le fichier dans `data/` du ZIP mais le DÉCLARAIENT sans préfixe
+// dans le plan-config.
+// 🩸 POURQUOI ÇA A SURVÉCU SI LONGTEMPS : en import LOCAL, `findMatchingFile`
+// retrouve l'asset par son NOM DE BASE — l'incohérence était donc invisible.
+// Seul le mode serveur, où la résolution est stricte, la révèle.
+// ⚠️ `kmzImport` avait déjà corrigé ce motif pour ses CALQUES en v1.21.0-fix5,
+// jamais pour son `baseImage` : la moitié d'une leçon.
+{
+  const PROD = [["js/sigImport.js", 2], ["js/gpxImport.js", 1], ["js/kmzImport.js", 1]];
+  PROD.forEach(function (r) {
+    const src = sansCommentaires(fs.readFileSync(r[0], "utf8"));
+    const nus = (src.match(/baseImage:\s*"?baseImage\.png"?,|baseImage:\s*baseFilename,/g) || []);
+    t("🩸 " + r[0] + " : plus de `baseImage` sans préfixe `data/`", nus.length === 0);
+    t("🩸 " + r[0] + " : le fichier est ÉCRIT dans `data/` du ZIP",
+      /zip\.file\("data\//.test(src));
+  });
+  t("🩸 sigImport déclare son calque en `data/sig.json`",
+    sansCommentaires(fs.readFileSync("js/sigImport.js", "utf8")).indexOf('file: "data/sig.json"') >= 0);
+  // Le Générateur, lui, a toujours été correct — on le VÉRIFIE, sinon une
+  // régression future y passerait inaperçue.
+  t("✅ le Générateur préfixe déjà (référence)",
+    sansCommentaires(fs.readFileSync("js/createConf.js", "utf8")).indexOf('file: "data/" + fileName') >= 0);
 }
 
 // ───────── 11. 🎨 ON EXÉCUTE LE SONDEUR ─────────

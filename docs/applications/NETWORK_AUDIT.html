@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.88.3</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.88.4</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.88.4 (les plans importés s'affichent enfin en mode serveur)</h3>
+  <p><strong>100 % local</strong>, aucune requête nouvelle, aucun domaine, aucune donnée qui sort. Un plan créé par un <strong>import SIG, GPX ou KMZ</strong> et hébergé sur <strong>votre propre serveur</strong> demandait son image et ses données à une adresse qui n'existait pas — ces imports écrivaient bien les fichiers dans le dossier `data/` de l'archive, mais les déclaraient sans ce dossier. Invisible tant que le plan restait dans votre navigateur, bloquant dès qu'il était servi. Corrigé pour les futurs imports, <strong>et pour ceux déjà en ligne</strong> : rien à re-déployer. Les fichiers demandés sont les mêmes, simplement à la bonne adresse.</p>
   <h3>v1.88.3 (les images découpées cherchées au bon endroit)</h3>
   <p><strong>100 % local</strong>, aucun domaine nouveau, aucune donnée qui sort. Sur un plan hébergé sur <strong>votre propre serveur</strong>, l'application vérifie désormais où se trouvent réellement les images découpées, au lieu de le déduire de l'emplacement de l'image principale — une déduction fausse dès que le plan avait été déposé selon une recette plus ancienne, d'où des plans qui marchaient et d'autres non. Concrètement : <strong>une à deux requêtes de plus à l'ouverture d'un plan</strong>, sur une seule image témoin, <strong>vers votre serveur uniquement</strong>.</p>
   <h3>v1.88.2 (Service Worker réparé + liste serveur à jour)</h3>
