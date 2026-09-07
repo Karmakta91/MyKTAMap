@@ -5069,5 +5069,6 @@
   "config.batterie.label": "🔋 Nivel de batería",
   "config.batterie.hint": "Muestra la carga restante en la barra superior y avisa por debajo del 20 %, 10 % y 5 %. Desmárcala para quitar el icono Y dejar de escuchar el sensor.",
   "config.batterie.toastOn": "🔋 Batería reactivada: visible la próxima vez que se recargue la app",
-  "config.batterie.toastOff": "🔕 Batería desactivada: el icono desaparecerá al recargar la app"
+  "config.batterie.toastOff": "🔕 Batería desactivada: el icono desaparecerá al recargar la app",
+  "config.group.capteurs": "🛰️ Opciones por sensor"
 }

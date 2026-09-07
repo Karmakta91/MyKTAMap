@@ -205,6 +205,32 @@ function geste(ctx) {
     // L'utilisateur ne pouvait pas distinguer « ça n'existe pas » de « ton
     // système refuse ». On l'affiche désormais, désactivée, avec la raison.
     t("🛰️ la rubrique capteur existe", /config\.capteurs\.titre/.test(UIC));
+    // 🩸 Elle doit être un GROUPE DE PREMIER NIVEAU, pas une sous-section
+    // d'« Affichage » — c'est précisément l'endroit que KARMA voulait quitter,
+    // et ma première version l'y avait laissée (« je vois pas où tu as mis ça »).
+    t("🩸 capteurs : c'est un GROUPE de 1er niveau, pas une sous-section d'Affichage",
+      /config\.group\.capteurs/.test(UIC) &&
+      UIC.indexOf("config.group.capteurs") > UIC.indexOf("config.group.perf") &&
+      UIC.indexOf("config.group.capteurs") < UIC.indexOf("config.group.privacy"));
+    ["fr", "en", "es"].forEach(function (l) {
+      const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
+      t("i18n " + l + " : config.group.capteurs", typeof D["config.group.capteurs"] === "string");
+    });
+
+    // 🐛 Modale en 2 colonnes : un TITRE DE GROUPE ne doit jamais rester seul
+    // en bas de colonne pendant que son contenu passe à droite. Les sections
+    // avaient `break-inside`, les titres n'avaient RIEN — et un titre orphelin
+    // est pire qu'un titre déplacé : il annonce un contenu absent.
+    {
+      const CSS = fs.readFileSync("css/style.css", "utf8");
+      const i = CSS.indexOf(".kta-cfg-corps .kta-cfg-group-titre");
+      const b = i < 0 ? "" : CSS.slice(i, CSS.indexOf("}", i));
+      t("🐛 colonnes : la règle sur les titres de groupe existe", i >= 0);
+      t("🐛 colonnes : aucune coupure juste APRÈS un titre de groupe",
+        /break-after:\s*avoid/.test(b));
+      t("colonnes : les sections restent protégées d'une coupure interne",
+        /\.kta-cfg-corps \.kta-aide-section \{[\s\S]{0,160}break-inside:\s*avoid/.test(CSS));
+    }
     t("🩸 un capteur refusé est AFFICHÉ, pas masqué",
       /function _capteurRefuse/.test(UIC) && /row\.style\.display = "";/.test(UIC));
     t("🩸 et la raison est NOMMÉE (iOS distingué du reste)",

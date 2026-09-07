@@ -3871,6 +3871,20 @@ html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
     margin-bottom: 16px;
   }
 
+  /* 🐛 v1.85.2 (capture KARMA) — UN TITRE DE GROUPE NE RESTE PAS SEUL EN BAS
+     DE COLONNE. `break-inside` protégeait les sections, mais rien n'empêchait
+     une coupure JUSTE APRÈS un titre : « 🔒 Confidentialité & sécurité »
+     s'affichait en bas à gauche pendant que son contenu commençait à droite.
+     Un titre orphelin est pire qu'un titre déplacé — il annonce un contenu
+     qui n'est pas là. `avoid-column` est la valeur propre au multi-colonnes ;
+     `avoid` et le legacy couvrent les moteurs qui ne la connaissent pas. */
+  .kta-cfg-corps .kta-cfg-group-titre {
+    break-after: avoid-column;
+    break-after: avoid;
+    page-break-after: avoid;
+    break-inside: avoid;
+  }
+
   /* Barre d'actions en bas : doit traverser les 2 colonnes en pleine largeur
      pour que les 4 boutons restent visibles d'un coup sans devoir scroller
      une colonne. En 4 colonnes pour exploiter l'espace dispo sur PC. */

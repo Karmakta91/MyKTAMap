@@ -1077,6 +1077,30 @@ function afficherConfig() {
             </span>
           </label>
 
+
+          <!-- 🆕 v1.34.0 E1 : toggle commandes vocales. Visible UNIQUEMENT si
+               Web Speech API supportée (SpeechRecognition / webkitSpeechRecognition).
+               Permission micro demandée à la 1ère utilisation par le navigateur.
+               Init en post-render via setTimeout dans bindHandlers (cf script
+               plus bas). Pas de prérequis matériel exotique côté serveur. -->
+          <label class="kta-perf-ultra-row" id="cfg_voice_row" style="margin-top:8px; display:none;">
+            <input type="checkbox" id="cfg_voice">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.voice.label")}</span>
+              <span class="kta-perf-ultra-hint">
+                ${window.I18n.t("config.display.voice.hint")}
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <!-- ════════ 5. 🚀 PERFORMANCE ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.perf")}</div>
+
+        ${_renderPerfUltraSection()}
+
+        <!-- ════════ 6. 🛰️ OPTIONS VIA CAPTEUR ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.capteurs")}</div>
           <!-- 🛰️ v1.85.2 (KARMA) — RUBRIQUE « Options via capteur ».
                La vibration vivait dans « Affichage », ce qu'elle n'est pas :
                elle dépend d'un CAPTEUR, comme la batterie. Les deux sont
@@ -1110,28 +1134,6 @@ function afficherConfig() {
               </span>
             </label>
           </div>
-
-          <!-- 🆕 v1.34.0 E1 : toggle commandes vocales. Visible UNIQUEMENT si
-               Web Speech API supportée (SpeechRecognition / webkitSpeechRecognition).
-               Permission micro demandée à la 1ère utilisation par le navigateur.
-               Init en post-render via setTimeout dans bindHandlers (cf script
-               plus bas). Pas de prérequis matériel exotique côté serveur. -->
-          <label class="kta-perf-ultra-row" id="cfg_voice_row" style="margin-top:8px; display:none;">
-            <input type="checkbox" id="cfg_voice">
-            <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.voice.label")}</span>
-              <span class="kta-perf-ultra-hint">
-                ${window.I18n.t("config.display.voice.hint")}
-              </span>
-            </span>
-          </label>
-        </div>
-
-        <!-- ════════ 5. 🚀 PERFORMANCE ════════ -->
-        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.perf")}</div>
-
-        ${_renderPerfUltraSection()}
-
         <!-- ════════ 6. 🔒 CONFIDENTIALITÉ & SÉCURITÉ ════════ -->
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.privacy")}</div>
 
