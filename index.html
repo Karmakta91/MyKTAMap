@@ -525,6 +525,38 @@
           </span>
         </div>
 
+        <!-- 🖼️ v1.85.4 (audit KARMA, suite) — LE TUILAGE EST ICI, PAS DANS
+             ⚙️ Configuration. Ce n'est pas un réglage : il ne se mémorise nulle
+             part (getLoaderPerfPreset lit une classe CSS), il revient à « Auto »
+             à chaque démarrage, et quand il vaut ≠ auto il ÉCRASE le preset
+             mémorisé du plan qu'on ouvre (homeLoader.js). C'est donc un
+             modificateur du chargement en cours — sa place est à côté du bouton
+             qui le déclenche. Il reste le SEUL point de réglage : côté plan, le
+             preset est affiché en lecture seule (interfaceConfig.js). -->
+          <div class="kta-perf-wrap">
+            <div class="kta-perf-titre" data-i18n="home.perf.tilingTitle">🖼️ Tuilage pour ce chargement</div>
+            <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" data-i18n-title="home.perf.tilingAria" aria-label="Mode performance">
+              <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
+                <span class="kta-perf-emoji">💤</span><span class="kta-perf-label" data-i18n="home.perf.presetOff">Désactivé</span>
+              </button>
+              <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
+                <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label" data-i18n="home.perf.presetAuto">Auto</span>
+              </button>
+              <button type="button" class="kta-perf-btn"        data-preset="quality"     role="radio" aria-checked="false">
+                <span class="kta-perf-emoji">🌟</span><span class="kta-perf-label" data-i18n="home.perf.presetQuality">Qualité</span>
+              </button>
+              <button type="button" class="kta-perf-btn"        data-preset="balanced"    role="radio" aria-checked="false">
+                <span class="kta-perf-emoji">🎯</span><span class="kta-perf-label" data-i18n="home.perf.presetBalanced">Équilibré</span>
+              </button>
+              <button type="button" class="kta-perf-btn"        data-preset="performance" role="radio" aria-checked="false">
+                <span class="kta-perf-emoji">⚡</span><span class="kta-perf-label" data-i18n="home.perf.presetPerformance">Performance</span>
+              </button>
+            </div>
+            <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
+            <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>
+            <div class="kta-perf-hint" data-i18n="home.perf.tilingHint">Non mémorisé : revient à « Auto » au prochain démarrage.</div>
+          </div>
+
         <!-- Bouton principal Charger -->
         <div class="loaderActions">
           <button id="loadPlanBtn" type="button" data-i18n="home.add.load">▶️ Charger ce plan</button>
@@ -793,55 +825,26 @@
           </label>
         </div>
 
-        <!-- ═══ GROUPE 3 : 🚀 Performance ═══ -->
-        <div class="kta-cfg-group-titre" data-i18n="config.group.perf" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">🚀 Performance</div>
+        <!-- ⚠️ v1.85.3 / v1.85.4 (audit KARMA) — LE GROUPE « 🚀 PERFORMANCE »
+             A DISPARU DE CET ÉCRAN, en deux temps et pour deux raisons
+             différentes :
 
-        <!-- 🎚️ Réglages de performance (drawer ouvert par défaut dans la modale) -->
-        <div class="kta-aide-section">
-
-          <!-- ─── Tiling : mode performance image, lié à l'import en cours ─── -->
-          <div class="kta-perf-wrap">
-            <div class="kta-perf-titre" data-i18n="home.perf.tilingTitle">🖼️ Tiling de l'image (par plan)</div>
-            <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" data-i18n-title="home.perf.tilingAria" aria-label="Mode performance">
-              <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">💤</span><span class="kta-perf-label" data-i18n="home.perf.presetOff">Désactivé</span>
-              </button>
-              <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
-                <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label" data-i18n="home.perf.presetAuto">Auto</span>
-              </button>
-              <button type="button" class="kta-perf-btn"        data-preset="quality"     role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">🌟</span><span class="kta-perf-label" data-i18n="home.perf.presetQuality">Qualité</span>
-              </button>
-              <button type="button" class="kta-perf-btn"        data-preset="balanced"    role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">🎯</span><span class="kta-perf-label" data-i18n="home.perf.presetBalanced">Équilibré</span>
-              </button>
-              <button type="button" class="kta-perf-btn"        data-preset="performance" role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">⚡</span><span class="kta-perf-label" data-i18n="home.perf.presetPerformance">Performance</span>
-              </button>
-            </div>
-            <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
-            <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>
-          </div>
-
-          <!-- ⚠️ v1.85.3 (audit KARMA) — LES TOGGLES PERF ULTRA ONT ÉTÉ RETIRÉS D'ICI.
-               Ils étaient affichés et câblés, mais ne sauvegardaient RIEN :
+             • v1.85.3 — les toggles PERF ULTRA ne sauvegardaient RIEN ici :
                `perfUltra.js > _persist()` sort sans écrire quand aucun plan
-               n'est chargé, ce qui est TOUJOURS le cas au HOME. L'utilisateur
-               cochait, l'interface répondait, et le réglage mourait au
-               chargement du plan suivant — qui reconstruit son état depuis SA
-               clé `myktamap_perf_toggles_v2_<planId>`. Le seul signal était un
-               `console.warn` que personne ne lit.
-
+               n'est chargé, ce qui est TOUJOURS le cas au HOME. On cochait,
+               l'interface répondait, le réglage mourait au plan suivant — qui
+               reconstruit son état depuis SA clé `myktamap_perf_toggles_v2_…`.
                Ce sont des réglages PAR PLAN depuis la v1.59.0 : ils se règlent
                dans ⚙️ Réglages une fois le plan ouvert. Les remettre ici avec
                une persistance « défaut pour les prochains plans » ré-introduirait
-               exactement le bug corrigé alors (cocher ULTRA sur un gros plan
-               l'appliquait silencieusement à TOUS).
+               le bug corrigé alors (cocher ULTRA sur un gros plan l'appliquait
+               silencieusement à TOUS).
 
-               Le sélecteur de TUILAGE ci-dessus reste : il est lié à l'import
-               en cours, donc c'est bien un réglage d'accueil. -->
-        </div>
-
+             • v1.85.4 — le sélecteur de TUILAGE est descendu dans la carte de
+               chargement, contre le bouton « Charger ce plan ». Il n'est pas
+               mémorisé et ne vaut que pour le chargement qu'on lance : le
+               ranger parmi les réglages le faisait passer pour une préférence
+               durable, ce qu'il n'a jamais été. -->
         <!-- ═══ GROUPE 4 : 🔒 Confidentialité & sécurité ═══ -->
         <div class="kta-cfg-group-titre" data-i18n="config.group.privacy" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">🔒 Confidentialité &amp; sécurité</div>
 

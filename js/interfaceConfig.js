@@ -789,16 +789,6 @@ function afficherConfig() {
   };
   const presetMeta = _PRESET_LABELS[c.perfPreset] || _PRESET_LABELS.auto;
 
-  // 🌍 v1.45.0 : sélecteur de langue GLOBALE de l'app (pilote I18n via la clé
-  // myktamap_app_lang, découplée du toggle local doc/onboarding). Options
-  // construites depuis I18n.available() → 1 seul endroit à éditer pour ajouter
-  // une langue. Fallback FR si I18n indispo (très improbable, chargé au boot).
-  const _curLang = (window.I18n && typeof window.I18n.getLang === "function") ? window.I18n.getLang() : "fr";
-  const _langOptions = ((window.I18n && window.I18n.available) ? window.I18n.available() : [{ code: "fr", label: "Français", flag: "🇫🇷" }])
-    .map(function(l) {
-      return '<option value="' + l.code + '"' + (l.code === _curLang ? ' selected' : '') + '>' +
-             (l.flag ? l.flag + ' ' : '') + l.label + '</option>';
-    }).join("");
 
   const modal = document.createElement("div");
   modal.id = "kta-cfg-modal";
@@ -840,18 +830,14 @@ function afficherConfig() {
           </div>
         </div>
 
-        <!-- 🌍 v1.45.0 : sélecteur de langue GLOBALE de l'app (= LE point d'entrée
-             du changement complet, ≠ toggle local doc/onboarding). Le change
-             handler appelle I18n.setLang() puis re-render la modale. -->
-        <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">${window.I18n.t("config.lang.titre")}</div>
-          <select class="kta-cfg-input" id="cfg_app_lang" style="width:100%;">
-            ${_langOptions}
-          </select>
-          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
-            ${window.I18n.t("config.lang.hint")}
-          </div>
-        </div>
+        <!-- 🌍 v1.85.4 (audit KARMA) — LE SÉLECTEUR DE LANGUE A QUITTÉ CET ÉCRAN.
+             I18n.setLang() persiste dans la clé myktamap_app_lang : c'est un
+             réglage GLOBAL, il n'a rien à faire dans la config d'UN plan. Pire,
+             il ouvre une modale « redémarrer l'app » — le plus mauvais moment
+             possible quand on est en cavité. Il reste atteignable à deux
+             endroits, tous deux hors plan : la Configuration de l'accueil
+             (#loaderAppLang) et l'écran de déverrouillage (unlockGate.js).
+             ⚠️ Zéro backtick ici : ce commentaire vit dans un template literal. -->
 
         <!-- ════════ 2. 📐 PLAN : ÉCHELLE & GÉOLOCALISATION ════════ -->
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.planCalib")}</div>
@@ -1043,7 +1029,7 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_wake_lock_row" style="margin-top:8px; display:none;">
             <input type="checkbox" id="cfg_wake_lock">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.wakelock.label")}</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.wakelock.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
               <span class="kta-perf-ultra-hint">
                 ${window.I18n.t("config.display.wakelock.hint")}
               </span>
@@ -1090,7 +1076,7 @@ function afficherConfig() {
             <label class="kta-perf-ultra-row" id="cfg_batterie_row">
               <input type="checkbox" id="cfg_batterie" ${c.batterieEnabled !== false ? "checked" : ""}>
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">${window.I18n.t("config.batterie.label")}</span>
+                <span class="kta-perf-ultra-label">${window.I18n.t("config.batterie.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
                 <span class="kta-perf-ultra-hint" id="cfg_batterie_hint">
                   ${window.I18n.t("config.batterie.hint")}
                 </span>
@@ -1100,7 +1086,7 @@ function afficherConfig() {
             <label class="kta-perf-ultra-row" id="cfg_vibration_row" style="margin-top:8px;">
               <input type="checkbox" id="cfg_vibration" ${c.vibrationEnabled === true ? "checked" : ""}>
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">${window.I18n.t("config.display.vibration.label")}</span>
+                <span class="kta-perf-ultra-label">${window.I18n.t("config.display.vibration.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
                 <span class="kta-perf-ultra-hint" id="cfg_vibration_hint">
                   ${window.I18n.t("config.display.vibration.hint")}
                 </span>
@@ -1219,29 +1205,6 @@ function afficherConfig() {
           alert(window.I18n.t("config.presentation.unavailable"));
         }
       }, 50);
-    });
-  }
-
-  // 🌍 v1.45.0 — Sélecteur de langue GLOBALE de l'app. Au change : on bascule
-  // I18n (charge le dico cible + persiste myktamap_app_lang + notifie onChange)
-  // PUIS on re-render la modale Réglages pour refléter la nouvelle langue en
-  // live. Les textes sont figés dans l'innerHTML → un rebuild complet est le
-  // moyen le plus sûr. Les saisies non appliquées repartent des valeurs
-  // APP_CONFIG : acceptable (on choisit la langue avant d'éditer, en pratique).
-  const selAppLang = document.getElementById("cfg_app_lang");
-  if (selAppLang) {
-    selAppLang.addEventListener("change", function() {
-      const code = selAppLang.value;
-      const done = (window.I18n && typeof window.I18n.setLang === "function")
-        ? window.I18n.setLang(code)
-        : Promise.resolve();
-      Promise.resolve(done).then(function() {
-        const m = document.getElementById("kta-cfg-modal");
-        if (m) m.remove();   // retire la modale courante…
-        afficherConfig();    // …puis rebuild fraîche dans la nouvelle langue
-        // 🌍 v1.46.4 (KARMA) : proposer un redémarrage (bascule 100% propre).
-        if (typeof window.proposerRedemarrageLangue === "function") window.proposerRedemarrageLangue();
-      });
     });
   }
 

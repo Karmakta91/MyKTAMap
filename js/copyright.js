@@ -39,7 +39,7 @@
     site:      "https://myktamap.fr",
     license:   "CC BY-NC-SA 4.0",
     licenseUrl:"https://creativecommons.org/licenses/by-nc-sa/4.0/",
-    build:     "v1.85.3",
+    build:     "v1.85.4",
     note:      "Usage commercial interdit sans accord ecrit prealable."
   });
 

@@ -6503,6 +6503,17 @@ html.kta-theme-light .kta-cfg-group-titre {
   min-height: 1.4em;
 }
 
+/* 🖼️ v1.85.4 — Mention sous le tuilage, dans la carte de chargement : elle dit
+   que le choix N'EST PAS mémorisé. Plus discrète que .kta-perf-desc, qui porte
+   la description dynamique du preset (remplie en JS depuis les metas tiling). */
+.kta-perf-hint {
+  font-size: 11px;
+  color: #8892a4;
+  line-height: 1.4;
+  padding: 0 2px;
+  opacity: 0.85;
+}
+
 .kta-perf-debug {
   font-size: 10px;
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;

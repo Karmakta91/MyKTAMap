@@ -493,18 +493,23 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 > **Order of sections in the modal (top to bottom, identical to UI)**:
 
-1. **🖼️ Image tiling (per map)** — 5-preset segmented control (see detail below), which chooses how the main image is split in memory at load. Stored **per map** (one map in Performance, another in Quality, etc.).
+1. **🌍 Application** — the **language selector** for the whole app (🇫🇷 Français · 🇬🇧 English · 🇪🇸 Español). *(since v1.85.4)* This is now the **only place** to change it while using the app: it left ⚙️ Settings in map mode, where it looked like it only concerned the open map — and where it offered to restart the app at the worst possible moment, deep underground. You can still pick it on the unlock screen, before going in.
 
-2. **🚀 Performance ULTRA mode (paths / markers)** — 7 optimization toggles that do **NOT** touch the image (already covered by Tiling above) but everything else (polylines, popups, intersections, auto-save, viewport culling, mobile zoom-out limit). **PER-PLAN setting**: enabling ULTRA on one plan no longer affects the others — each plan starts disabled until you opt in for it. See "🚀 Optimize your map" section below for details.
+2. **🛰️ Sensor-based options** *(since v1.85.2)* — the options that rely on a phone sensor: **🔋 Battery level** and **📳 Haptic vibration**. Each one can be turned off, and an option that is off displays nothing **and stops listening to the sensor**. When the system refuses the sensor — vibration on iPhone, for instance — the option stays **visible but greyed out, with the reason**, instead of vanishing with no explanation.
+
+> 🖼️ **Image tiling is no longer in this modal** *(since v1.85.4)*. It moved down into the **load card**, right above the **▶️ Load this map** button — because it is not a setting: it is **not remembered**, it goes back to **Auto** every time the app starts, and it only applies to the load you are about to trigger (when it is not on Auto, it replaces the preset stored for that map). Filed among the settings, it looked like a lasting preference.
+>
+> 🚀 **The Performance ULTRA toggles are gone too** *(since v1.85.3)*. They were displayed here but **saved nothing** — they are **per-map** settings: you set them in **⚙️ Settings**, once the map is open. See "🚀 Optimize your map" below.
 
 3. **🛠️ Developer Mode** *(since v1.76.3)* — replaces the old Debug section. **Password-protected** on first activation (with a responsibility warning). Once active: **🐛 Detailed logs** toggle, **📋 Show logs** button (the buffer, viewable even without a map loaded), and **📚 Technical documentation** — the whole project doc (architecture, backlog, maths…) readable in-app (online only). The logs setting in the map-mode ⚙️ Settings was removed: everything is driven from here.
 
 4. **🔒 Privacy & Audit** — section dedicated to transparency: live network journal, "What does the app do on the network?" doc, and "Strict offline mode" toggle. See dedicated section below.
 
 5. **🎨 Display** — interface toggles:
+   - **🔎 Icons that grow with zoom**, **📌 Anchor tool panels to their button**, **🧲 Snap while drawing** and its **radius** *(since v1.85.3)* — these four apply to **all your maps**. They used to live in ⚙️ Settings in map mode, where you changed them from one map without knowing you were changing them everywhere.
    - **🔆 Keep screen on** — prevents your screen from auto-sleeping while MyKTAMap is open (Wake Lock API). Useful on cataphile outings to avoid having to touch the phone every 30 sec. Auto re-acquire on return from background (visibilitychange). Toggle automatically hidden on browsers that don't support the API (Firefox notably). The same toggle is also accessible in **⚙️ Settings** in map mode (see dedicated section).
 
-> 🌍 **Application language**: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is located in **⚙️ Configuration**, in its own section **right after the Incognito block**. The change applies immediately, without reloading the app. *Good to know*: the **Documentation** (this guide) and the **welcome tutorial** exist in all **3 languages** — they follow your app language automatically, and the flag button at the top of the Documentation window lets you switch 🇫🇷 / 🇬🇧 / 🇪🇸 whenever you want. Only the **built-in Help** (the 📚 in the sidebar in map mode) remains French and English: in Spanish, it is displayed in **English by default**. On each language change, a message offers to **restart the app** for a fully clean switch (optional). 💡 In **incognito mode**, your interface language is now **kept** (all other data stays completely forgotten).
+> 🌍 **Application language**: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is in **⚙️ Configuration → 🌍 Application**, at the very top of the modal. The change applies immediately, without reloading the app. *Good to know*: the **Documentation** (this guide) and the **welcome tutorial** exist in all **3 languages** — they follow your app language automatically, and the flag button at the top of the Documentation window lets you switch 🇫🇷 / 🇬🇧 / 🇪🇸 whenever you want. Only the **built-in Help** (the 📚 in the sidebar in map mode) remains French and English: in Spanish, it is displayed in **English by default**. On each language change, a message offers to **restart the app** for a fully clean switch (optional). 💡 In **incognito mode**, your interface language is now **kept** (all other data stays completely forgotten).
 
 > 💡 The "Show circles at path intersections" option is **not in Configuration home** but in **⚙️ Settings in map mode** (per-plan). Each map now has its own setting — handy to disable circles only on your very dense maps without touching the others.
 
@@ -3374,7 +3379,7 @@ The calibration entered here is shared with the KMZ / GPX exports of the same ma
 - **🐛 Logs**: displays the captured debug logs
 - **Reset**: restores default values for THIS map (does not delete anything — different from **💥 Reset everything** in ⚙️ Configuration loader, which purges everything)
 
-> 💡 **Performance mode is only modified at map load** (5-preset selector in the loader → ⚙️ Configuration → 🖼️ Tiling). Settings just displays the current one.
+> 💡 **Performance mode is only modified at map load** (5-preset selector in the **load card**, right above the ▶️ Load this map button). Settings just displays the current one.
 
 > ⚠️ **To enable / modify the local access code (PIN / Face ID)**, you must go through **⚙️ Configuration on the home page** — the 🔐 Local access code section is NOT in ⚙️ Settings (by design — global critical setting, not per map).
 

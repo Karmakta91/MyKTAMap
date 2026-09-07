@@ -248,6 +248,15 @@ node scripts/check-journal-reprise.js || exit $?
 # rallumerait l option). BLOQUANT.
 node scripts/check-wakelock.js || exit $?
 
+# 🌍 v1.85.4 — i18n. Le script existait depuis la v1.45 mais n etait JAMAIS
+# lance automatiquement : outil manuel, donc filet absent au moment ou il
+# servait. Il verifie la parite fr/en/es, les cles appelees mais absentes, et
+# depuis la v1.85.4 qu aucune cle rendue en textContent (data-i18n) ne contient
+# de HTML — le bug vu par KARMA : « Niveau de batterie <em>(s applique a tous
+# tes plans)</em> » affiche balises comprises, parce que la meme cle passait en
+# innerHTML cote plan et en textContent cote accueil.
+node scripts/check-i18n.js || exit $?
+
 # ⚖️ LA PORTEE DES REGLAGES (audit KARMA du 07/09). La config du MODE PLAN ne
 # doit concerner QUE le plan : un reglage qui, modifie la, affecte toute
 # l application n y a rien a faire. Dix y vivaient — cocher « magnetisme au

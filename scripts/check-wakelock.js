@@ -302,7 +302,11 @@ function geste(ctx) {
         (function () {
           const a = IDX2.indexOf('data-i18n="config.group.affichage"');
           const p = IDX2.indexOf('id="loaderPanneauxAncres"');
-          const q = IDX2.indexOf('data-i18n="config.group.perf"');
+          // 🖼️ v1.85.4 — la borne haute etait le groupe « Performance » ; il a
+          // disparu de l accueil (le tuilage est descendu dans la carte de
+          // chargement, ce n est pas un reglage). On borne sur le groupe
+          // suivant, qui existe toujours.
+          const q = IDX2.indexOf('data-i18n="config.group.capteurs"');
           return a > 0 && p > a && p < q;
         })());
     }

@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.85.3</strong> (4 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.85.4</strong> (7 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.85.4 (la langue et le tuilage retrouvent leur place)</h3>
+  <p><strong>100 % local.</strong> Aucune requête nouvelle, aucun domaine nouveau, aucune donnée qui sort. Trois déplacements d'interface et une correction d'affichage : le <strong>sélecteur de langue</strong> quitte les réglages du mode plan — il pilotait toute l'application depuis l'écran d'un seul plan — et ne vit plus que hors plan (⚙️ Configuration de l'accueil, écran de déverrouillage) ; le <strong>tuilage de l'image</strong> descend dans la carte de chargement, contre le bouton « Charger » ; et la mention « (s'applique à tous tes plans) » cesse de s'afficher avec ses balises HTML en clair. Stockage inchangé : la langue reste dans <code>myktamap_app_lang</code> (localStorage), le tuilage n'est mémorisé nulle part, et le preset retenu par plan reste dans le registre des plans. Deux garde-fous s'ajoutent au pre-commit, dont <code>check-i18n.js</code> qui existait mais n'y était pas branché.</p>
   <h3>v1.85.3 (portée des réglages : plan vs application)</h3>
   <p><strong>100 % local.</strong> Uniquement des déplacements de réglages entre deux écrans et un changement de clé de stockage pour la navigation intelligente. <strong>Aucune requête réseau ajoutée, aucune donnée nouvelle collectée, aucun domaine nouveau contacté.</strong></p>
   <h3>v1.85.2 (reprise de sortie, fusion au carnet, wake lock réparé)</h3>

@@ -99,10 +99,72 @@ t("🩸 nav intelligente : la valeur globale sert de REPLI (aucune perte à la m
 t("🩸 perf : les toggles ULTRA ne sont plus affichés au HOME",
   IDX.indexOf('id="loader_perf_') < 0);
 t("perf : ni câblés", fs.readFileSync("js/homeConfig.js", "utf8").indexOf("loader_perf_") < 0);
-t("perf : le sélecteur de TUILAGE reste, lui (il est lié à l'import en cours)",
-  IDX.indexOf('id="loaderPerfSegmented"') >= 0);
+// (l assertion « le tuilage reste ici » a ete remplacee par le §8 ci-dessous)
 t("perf : la persistance reste bien par plan",
   /STORAGE_PREFIX\s*=\s*"myktamap_perf_toggles_v2_"/.test(fs.readFileSync("js/perfUltra.js", "utf8")));
+
+// 🩸 ON TESTE DU CODE, PAS DES COMMENTAIRES. Vécu deux fois : une assertion qui
+// cherche une chaîne dans tout un fichier est satisfaite — ou cassée — par le
+// commentaire qui EXPLIQUE la règle. Ici le commentaire « le sélecteur de langue
+// a quitté cet écran » cite `I18n.setLang()` et rendait le contrôle rouge alors
+// que le code était juste. On retire donc les commentaires avant de chercher :
+// HTML (ils vivent dans les gabarits template literal), bloc, et ligne entière.
+function sansCommentaires(src) {
+  return src
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/^[ \t]*\/\/.*$/gm, " ");
+}
+const UIC_CODE = sansCommentaires(UIC);
+
+// ───────── 7. 🌍 LES ÉCRITURES GLOBALES *INDIRECTES* ─────────
+// 🩸 LA LIMITE DU §3 A MORDU EN MOINS D'UNE JOURNÉE. Le contrôle ci-dessus ne
+// voit que les écritures directes `APP_CONFIG.x = …`. Or le sélecteur de LANGUE
+// vivait dans la config du mode plan et persistait via `I18n.setLang()` →
+// localStorage `myktamap_app_lang`. Aussi global que le reste, invisible pour
+// l'audit. KARMA l'a vu à l'œil nu ; le garde-fou, non.
+//
+// On liste donc les SETTEURS qui persistent quelque chose de global. Un réglage
+// du mode plan qui en appelle un est fautif, quel que soit son onglet. Cette
+// liste est le point d'extension : tout nouveau setteur global s'ajoute ici.
+const SETTEURS_GLOBAUX = [
+  ["I18n.setLang", "la langue de toute l'application"]
+];
+SETTEURS_GLOBAUX.forEach(function (r) {
+  t("🌍 écriture globale indirecte absente du mode plan : " + r[1] + " (" + r[0] + ")",
+    UIC_CODE.indexOf(r[0] + "(") < 0);
+});
+t("🌍 le sélecteur de langue a bien quitté la config du mode plan",
+  UIC_CODE.indexOf("cfg_app_lang") < 0);
+
+// 🩸 …et il reste ATTEIGNABLE hors plan, sinon on l'aurait rendu introuvable.
+t("🌍 langue atteignable : ⚙️ Configuration de l'accueil",
+  IDX.indexOf('id="loaderAppLang"') >= 0);
+t("🌍 langue atteignable : écran de déverrouillage",
+  fs.readFileSync("js/unlockGate.js", "utf8").indexOf("I18n.setLang(") >= 0);
+
+// ───────── 8. 🖼️ LE TUILAGE N'EST PAS UN RÉGLAGE ─────────
+// Il ne se mémorise NULLE PART : `getLoaderPerfPreset()` lit une classe CSS,
+// le markup naît sur "auto" à chaque démarrage, et quand il vaut ≠ auto il
+// écrase le preset mémorisé du plan qu'on ouvre. Le ranger parmi les réglages
+// le faisait passer pour une préférence durable. Sa place est contre le bouton
+// qui le déclenche. Il reste le SEUL point de réglage : côté plan le preset est
+// affiché en lecture seule.
+t("🖼️ le groupe « Performance » a disparu de la config de l'accueil",
+  IDX.indexOf('data-i18n="config.group.perf"') < 0);
+t("🖼️ le tuilage est DANS la carte de chargement (entre le choix du fichier et le bouton Charger)",
+  (function () {
+    const zip = IDX.indexOf('id="zipFile"');
+    const til = IDX.indexOf('id="loaderPerfSegmented"');
+    const btn = IDX.indexOf('id="loadPlanBtn"');
+    return zip > 0 && til > zip && btn > til;
+  })());
+t("🖼️ et il dit qu'il n'est pas mémorisé",
+  IDX.indexOf('data-i18n="home.perf.tilingHint"') >= 0 &&
+  JSON.parse(fs.readFileSync("lang/fr.json", "utf8"))["home.perf.tilingHint"].indexOf("Non mémorisé") === 0);
+t("🖼️ côté plan, le preset reste en LECTURE SEULE (aucun second point de réglage)",
+  UIC.indexOf("affichage read-only") >= 0 && !/id="cfg_perfPreset"/.test(UIC));
+
 
 console.log(ko === 0 ? "\n🎉 portée des réglages : le plan ne décide plus pour l'app"
                      : "\n⚠️ " + ko + " echec(s)");
