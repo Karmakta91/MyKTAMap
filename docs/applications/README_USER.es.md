@@ -2503,6 +2503,23 @@ La ventana solo propone destinos **compatibles con la forma** del objeto: una **
 
 El objeto conserva todo lo demás: su geometría, su nivel y su nota.
 
+### 🛰️ Las opciones que usan un sensor
+
+⚙️ **Ajustes** → **🛰️ Opciones por sensor**. Estos ajustes dependen de un sensor del teléfono y **cada uno se puede apagar por completo**: una opción desactivada no muestra nada y no escucha nada.
+
+| Opción | Por defecto | Qué hace |
+|---|---|---|
+| **🔋 Nivel de batería** | activado | Muestra la carga restante arriba y avisa por debajo del 20 %, 10 % y 5 %. Desmarcada: sin icono **y** sin escucha del sensor |
+| **📳 Vibración háptica** | **desactivada** | Respuesta táctil en algunas acciones |
+
+> ℹ️ **Apagar la batería surte efecto en el próximo arranque.** La escucha se establece al iniciar la app y no hay forma limpia de retirarla sobre la marcha: la app te lo dice en vez de disimular.
+
+#### ⛔ «Sensor rechazado»
+
+Si una opción aparece **atenuada** con «Sensor rechazado por iOS» o «por este dispositivo», no es un fallo ni un olvido: **tu sistema no cede ese sensor a las páginas web**. Apple no ofrece ni la vibración ni el nivel de batería a un sitio, aunque esté instalado como aplicación.
+
+> 💡 Antes estas opciones simplemente se **ocultaban**: era imposible saber si no existían o si el teléfono las rechazaba. Ahora se muestran, con el motivo.
+
 ### 🏁 Tu distancia cuando el podómetro no vio nada
 
 Con el teléfono en el bolsillo, el podómetro cuenta casi nada. Pero cada **📍 Estoy aquí** que colocas sobre un punto del plano deja una **referencia con hora**. La app une esas referencias **siguiendo tus galerías** —el mismo cálculo que un itinerario— y deduce la distancia realmente recorrida entre ellas.

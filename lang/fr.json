@@ -5061,5 +5061,13 @@
   "jrn.section.dontReseau": "dont {dist} calculés dans les galeries entre {n} repères",
   "jrn.section.dontVol": "dont {dist} à vol d'oiseau entre {n} repères (non affinés)",
   "jrn.finPos.invite": "Clique où tu es ressorti — le dernier trajet sera compté",
-  "jrn.finPos.passer": "Passer"
+  "jrn.finPos.passer": "Passer",
+  "config.capteurs.titre": "🛰️ Options via capteur",
+  "config.capteurs.intro": "Ces options s'appuient sur un capteur du téléphone. Chacune se coupe : une option coupée n'affiche rien et n'écoute plus rien.",
+  "config.capteurs.refuse": "⛔ Capteur refusé par cet appareil",
+  "config.capteurs.refuseIos": "⛔ Capteur refusé par iOS — Apple ne l'expose pas aux sites web",
+  "config.batterie.label": "🔋 Niveau de batterie",
+  "config.batterie.hint": "Affiche la charge restante dans le bandeau du haut et prévient sous 20 %, 10 % et 5 %. Décoche pour retirer l'icône ET cesser d'écouter le capteur.",
+  "config.batterie.toastOn": "🔋 Batterie réactivée — visible au prochain rechargement de l'app",
+  "config.batterie.toastOff": "🔕 Batterie coupée — l'icône disparaît au prochain rechargement de l'app"
 }

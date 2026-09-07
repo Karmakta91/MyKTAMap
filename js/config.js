@@ -134,6 +134,11 @@ let DEFAULT_CONFIG = {
   // vrai sur `undefined` et rallumerait l'option. Même piège que
   // `showRoadIntersections` en v1.74.0 — les lecteurs doivent tester `=== true`.
   vibrationEnabled: false,
+  // 🔋 v1.85.2 (KARMA) : l'écoute du capteur de batterie est débrayable. Elle
+  // reste ON par défaut — sous terre, savoir combien il reste vaut mieux que
+  // de le découvrir —, mais tout le monde n'a pas envie d'une icône de plus
+  // ni d'un capteur écouté en permanence.
+  batterieEnabled: true,
 
   // ========== MULTI-NIVEAU (depuis v148) ==========
   // Opt-in par plan (PlanRegistry[planId].multiLevel). Quand `multiLevel` est
@@ -188,6 +193,7 @@ try {
   if ("debugMode" in saved) APP_CONFIG.debugMode = !!saved.debugMode;
   // 🆕 v1.34.26 — Restaure la pref vibration au boot
   if ("vibrationEnabled" in saved) APP_CONFIG.vibrationEnabled = !!saved.vibrationEnabled;
+  if ("batterieEnabled" in saved) APP_CONFIG.batterieEnabled = !!saved.batterieEnabled;
   // 🔍 v174 : restaurer scaledMarkers avant que creerIcones tourne
   if ("scaledMarkers" in saved) APP_CONFIG.scaledMarkers = !!saved.scaledMarkers;
   // 🆕 v1.9.2 : restaurer showRoadIntersections avant que renderRoads tourne
@@ -486,6 +492,7 @@ function buildAppConfigFromPlan(planConfig) {
     // le bloc de restauration au boot ET cette liste.
     if ("snapDraw" in saved) cfg.snapDraw = !!saved.snapDraw;
     if ("panneauxAncres" in saved) cfg.panneauxAncres = !!saved.panneauxAncres;
+    if ("batterieEnabled" in saved) cfg.batterieEnabled = !!saved.batterieEnabled;
     if (Number.isFinite(saved.snapDrawPx) && saved.snapDrawPx > 0) cfg.snapDrawPx = saved.snapDrawPx;
   } catch(e) {}
 
@@ -501,6 +508,10 @@ function buildAppConfigFromPlan(planConfig) {
   if (cfg.snapDraw === undefined)              cfg.snapDraw              = DEFAULT_CONFIG.snapDraw === true;  // défaut OFF
   if (!Number.isFinite(cfg.snapDrawPx))        cfg.snapDrawPx            = DEFAULT_CONFIG.snapDrawPx;
   if (cfg.panneauxAncres === undefined)        cfg.panneauxAncres        = DEFAULT_CONFIG.panneauxAncres === true;
+  // 🩸 Défaut ON : on teste donc `!== false`, l'idiome inverse de celui des
+  // préférences par défaut OFF. Se tromper d'idiome ici éteindrait la
+  // batterie pour tout le monde au premier chargement de plan.
+  if (cfg.batterieEnabled === undefined)       cfg.batterieEnabled       = DEFAULT_CONFIG.batterieEnabled !== false;
 
   return cfg;
 }
@@ -584,7 +595,9 @@ function sauvegarderPrefsUtilisateur() {
     if (Number.isFinite(APP_CONFIG.smartNavRadiusM))       existing.smartNavRadiusM       = APP_CONFIG.smartNavRadiusM;       // 🆕 v1.49.0
     if (Number.isFinite(APP_CONFIG.smartNavHeadingWeight)) existing.smartNavHeadingWeight = APP_CONFIG.smartNavHeadingWeight; // 🆕 v1.49.0
     existing.snapDraw              = APP_CONFIG.snapDraw === true;
-    existing.panneauxAncres        = APP_CONFIG.panneauxAncres === true;        // 🪟 v1.85.1 : defaut CENTRE                 // 🧲 C5 v1.74.0 : default false
+    existing.panneauxAncres        = APP_CONFIG.panneauxAncres === true;        // 🪟 v1.85.1 : defaut CENTRE
+    existing.vibrationEnabled      = APP_CONFIG.vibrationEnabled === true;      // 📳 v1.85.2 : defaut OFF
+    existing.batterieEnabled       = APP_CONFIG.batterieEnabled !== false;      // 🔋 v1.85.2 : defaut ON                 // 🧲 C5 v1.74.0 : default false
     if (Number.isFinite(APP_CONFIG.snapDrawPx) && APP_CONFIG.snapDrawPx > 0) existing.snapDrawPx = APP_CONFIG.snapDrawPx;
     localStorage.setItem("app_user_prefs", JSON.stringify(existing));
   } catch(e) {}

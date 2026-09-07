@@ -5061,5 +5061,13 @@
   "jrn.section.dontReseau": "including {dist} computed through the galleries between {n} markers",
   "jrn.section.dontVol": "including {dist} as the crow flies between {n} markers (not refined)",
   "jrn.finPos.invite": "Tap where you came out — the last leg will be counted",
-  "jrn.finPos.passer": "Skip"
+  "jrn.finPos.passer": "Skip",
+  "config.capteurs.titre": "🛰️ Sensor-based options",
+  "config.capteurs.intro": "These options rely on a phone sensor. Each can be turned off: a disabled option shows nothing and listens to nothing.",
+  "config.capteurs.refuse": "⛔ Sensor refused by this device",
+  "config.capteurs.refuseIos": "⛔ Sensor refused by iOS — Apple does not expose it to web pages",
+  "config.batterie.label": "🔋 Battery level",
+  "config.batterie.hint": "Shows the remaining charge in the top bar and warns below 20 %, 10 % and 5 %. Untick to remove the icon AND stop listening to the sensor.",
+  "config.batterie.toastOn": "🔋 Battery re-enabled — visible next time the app reloads",
+  "config.batterie.toastOff": "🔕 Battery turned off — the icon goes away next time the app reloads"
 }

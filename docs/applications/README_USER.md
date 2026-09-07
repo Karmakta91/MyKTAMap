@@ -2511,6 +2511,23 @@ La fenêtre ne propose que des cibles **compatibles avec la forme** de l'objet :
 
 L'objet garde tout le reste — sa géométrie, son niveau, sa note.
 
+### 🛰️ Les options qui utilisent un capteur
+
+⚙️ **Paramètres** → **🛰️ Options via capteur**. Ces réglages s'appuient sur un capteur du téléphone, et **chacun se coupe entièrement** : une option coupée n'affiche rien et n'écoute plus rien.
+
+| Option | Par défaut | Ce que ça fait |
+|---|---|---|
+| **🔋 Niveau de batterie** | activé | Affiche la charge restante en haut, prévient sous 20 %, 10 % et 5 %. Décoché : plus d'icône **et** plus d'écoute du capteur |
+| **📳 Vibration haptique** | **désactivé** | Un retour tactile sur certaines actions |
+
+> ℹ️ **Couper la batterie prend effet au prochain lancement.** L'écoute est mise en place au démarrage de l'app, et il n'existe aucun moyen propre de la retirer en cours de route — l'app te le dit plutôt que de faire semblant.
+
+#### ⛔ « Capteur refusé »
+
+Si une option s'affiche **grisée** avec « Capteur refusé par iOS » ou « par cet appareil », ce n'est ni un bug ni un oubli : **ton système ne donne pas ce capteur aux pages web**. Apple ne fournit ni la vibration ni le niveau de batterie à un site, même installé en application.
+
+> 💡 Avant, ces options étaient simplement **cachées** — impossible de savoir si elles n'existaient pas ou si le téléphone les refusait. Elles s'affichent maintenant, avec la raison.
+
 ### 🏁 Ta distance quand le podomètre n'a rien vu
 
 Téléphone en poche, le podomètre ne compte presque rien. Mais chaque **📍 Je suis ici** que tu poses sur un point du plan laisse un **repère daté**. L'app relie ces repères **en suivant tes galeries** — le même calcul que pour un itinéraire — et en tire la distance réellement parcourue entre eux.

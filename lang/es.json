@@ -5061,5 +5061,13 @@
   "jrn.section.dontReseau": "de los cuales {dist} calculados por las galerías entre {n} referencias",
   "jrn.section.dontVol": "de los cuales {dist} en línea recta entre {n} referencias (sin afinar)",
   "jrn.finPos.invite": "Toca por dónde saliste: se contará el último tramo",
-  "jrn.finPos.passer": "Omitir"
+  "jrn.finPos.passer": "Omitir",
+  "config.capteurs.titre": "🛰️ Opciones por sensor",
+  "config.capteurs.intro": "Estas opciones dependen de un sensor del teléfono. Cada una se puede desactivar: una opción apagada no muestra nada y no escucha nada.",
+  "config.capteurs.refuse": "⛔ Sensor rechazado por este dispositivo",
+  "config.capteurs.refuseIos": "⛔ Sensor rechazado por iOS: Apple no lo expone a las páginas web",
+  "config.batterie.label": "🔋 Nivel de batería",
+  "config.batterie.hint": "Muestra la carga restante en la barra superior y avisa por debajo del 20 %, 10 % y 5 %. Desmárcala para quitar el icono Y dejar de escuchar el sensor.",
+  "config.batterie.toastOn": "🔋 Batería reactivada: visible la próxima vez que se recargue la app",
+  "config.batterie.toastOff": "🔕 Batería desactivada: el icono desaparecerá al recargar la app"
 }

@@ -2506,6 +2506,23 @@ The dialog only offers targets **compatible with the object's shape**: a **line*
 
 The object keeps everything else — its geometry, its level, its note.
 
+### 🛰️ Options that use a sensor
+
+⚙️ **Settings** → **🛰️ Sensor-based options**. These settings rely on a phone sensor, and **each can be turned off entirely**: a disabled option shows nothing and listens to nothing.
+
+| Option | Default | What it does |
+|---|---|---|
+| **🔋 Battery level** | on | Shows the remaining charge at the top, warns below 20 %, 10 % and 5 %. Unticked: no icon **and** no sensor listening |
+| **📳 Haptic vibration** | **off** | Tactile feedback on some actions |
+
+> ℹ️ **Turning the battery off takes effect on the next launch.** The listening is set up at startup and there is no clean way to remove it mid-session — the app tells you rather than pretending.
+
+#### ⛔ “Sensor refused”
+
+If an option appears **greyed out** with “Sensor refused by iOS” or “by this device”, it is neither a bug nor an oversight: **your system does not give that sensor to web pages**. Apple provides neither vibration nor battery level to a website, even installed as an app.
+
+> 💡 These options used to be simply **hidden** — you could not tell whether they did not exist or whether the phone refused them. They now show up, with the reason.
+
 ### 🏁 Your distance when the pedometer saw nothing
 
 With the phone in your pocket the pedometer counts almost nothing. But every **📍 I am here** you place on a point of the plan leaves a **timestamped marker**. The app links those markers **following your galleries** — the same computation as a route — and derives the distance actually walked between them.

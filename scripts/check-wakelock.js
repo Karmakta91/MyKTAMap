@@ -199,6 +199,46 @@ function geste(ctx) {
     t("🩸 vibration : plus aucun test en `!== false` (il rendrait vrai sur undefined)",
       !/vibrationEnabled\s*!==\s*false/.test(CFG + UIC + UTL));
     t("vibration : la case coche sur `=== true`", /c\.vibrationEnabled === true/.test(UIC));
+    // 🛰️ v1.85.2 — LA RUBRIQUE « Options via capteur », et ce qu'elle DIT.
+    // 🩸 Avant, une option dont le capteur manque était MASQUÉE : sur iPhone la
+    // vibration disparaissait de la modale, sans que rien ne dise pourquoi.
+    // L'utilisateur ne pouvait pas distinguer « ça n'existe pas » de « ton
+    // système refuse ». On l'affiche désormais, désactivée, avec la raison.
+    t("🛰️ la rubrique capteur existe", /config\.capteurs\.titre/.test(UIC));
+    t("🩸 un capteur refusé est AFFICHÉ, pas masqué",
+      /function _capteurRefuse/.test(UIC) && /row\.style\.display = "";/.test(UIC));
+    t("🩸 et la raison est NOMMÉE (iOS distingué du reste)",
+      /config\.capteurs\.refuseIos/.test(UIC) && /config\.capteurs\.refuse"/.test(UIC));
+    t("la case d'un capteur refusé est désactivée, pas juste décochée",
+      /cb\.disabled = true/.test(UIC));
+
+    // 🔋 La batterie est débrayable — icône ET écoute du capteur.
+    t("🔋 batterie : la préférence existe, défaut ON", /batterieEnabled:\s*true/.test(CFG));
+    t("🩸 batterie : l'écoute est coupée AVANT `getBattery()` (pas seulement l'icône)",
+      (function () {
+        const BG = fs.readFileSync("js/batteryGuard.js", "utf8");
+        const iPref = BG.indexOf("batterieEnabled === false");
+        // 🩸 Viser le SITE D'APPEL : `navigator.getBattery()` apparaît
+        // d'abord dans le COMMENTAIRE d'en-tête du module, vingt lignes
+        // avant tout code. Chercher la chaîne nue rendait donc un index
+        // situé AVANT la garde, et l'assertion échouait sur du code juste.
+        const iGet  = BG.indexOf("navigator.getBattery().then(");
+        return iPref > 0 && iGet > 0 && iPref < iGet;
+      })());
+    t("batterie : la case est dans la modale", /id="cfg_batterie"/.test(UIC));
+    t("batterie : sauvegardée par le chemin canonique",
+      /existing\.batterieEnabled/.test(CFG));
+    t("🩸 batterie : défaut ON donc test en `!== false` (l'idiome inverse des défauts OFF)",
+      /cfg\.batterieEnabled\s*=\s*DEFAULT_CONFIG\.batterieEnabled !== false/.test(CFG));
+    ["config.capteurs.titre", "config.capteurs.intro", "config.capteurs.refuse",
+     "config.capteurs.refuseIos", "config.batterie.label", "config.batterie.hint",
+     "config.batterie.toastOn", "config.batterie.toastOff"].forEach(function (k) {
+      ["fr", "en", "es"].forEach(function (l) {
+        const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
+        t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);
+      });
+    });
+
     t("vibration : celui qui fait vibrer teste `=== true` aussi",
       /vibrationEnabled !== true\) return false/.test(UTL));
   }

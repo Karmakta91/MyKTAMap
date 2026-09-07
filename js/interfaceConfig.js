@@ -1077,21 +1077,39 @@ function afficherConfig() {
             </span>
           </label>
 
-          <!-- 🆕 v1.34.26 — Toggle vibration haptique. Visible UNIQUEMENT si
-               navigator.vibrate supporté (Android oui, iOS Safari NON par
-               choix d'Apple). Init en post-render via bindHandlers (auto-
-               masqué si pas supporté). Pref persistée dans app_user_prefs
-               (config.js l~104). Le helper window.kta_vibrate() check
-               APP_CONFIG.vibrationEnabled avant de vibrer. -->
-          <label class="kta-perf-ultra-row" id="cfg_vibration_row" style="margin-top:8px; display:none;">
-            <input type="checkbox" id="cfg_vibration" ${c.vibrationEnabled === true ? "checked" : ""}>
-            <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.vibration.label")}</span>
-              <span class="kta-perf-ultra-hint">
-                ${window.I18n.t("config.display.vibration.hint")}
+          <!-- 🛰️ v1.85.2 (KARMA) — RUBRIQUE « Options via capteur ».
+               La vibration vivait dans « Affichage », ce qu'elle n'est pas :
+               elle dépend d'un CAPTEUR, comme la batterie. Les deux sont
+               regroupées ici, et surtout : un capteur indisponible n'est plus
+               MASQUÉ mais AFFICHÉ, désactivé, avec la raison. Cacher la ligne
+               laissait croire que l'option n'existait pas — l'utilisateur ne
+               pouvait pas savoir que c'est son système qui refuse. -->
+          <div class="kta-aide-section" style="margin-top:16px;">
+            <div class="kta-aide-section-titre">${window.I18n.t("config.capteurs.titre")}</div>
+            <div style="font-size:11.5px; color:#8892a4; margin:2px 0 10px; line-height:1.5;">
+              ${window.I18n.t("config.capteurs.intro")}
+            </div>
+
+            <label class="kta-perf-ultra-row" id="cfg_batterie_row">
+              <input type="checkbox" id="cfg_batterie" ${c.batterieEnabled !== false ? "checked" : ""}>
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">${window.I18n.t("config.batterie.label")}</span>
+                <span class="kta-perf-ultra-hint" id="cfg_batterie_hint">
+                  ${window.I18n.t("config.batterie.hint")}
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+
+            <label class="kta-perf-ultra-row" id="cfg_vibration_row" style="margin-top:8px;">
+              <input type="checkbox" id="cfg_vibration" ${c.vibrationEnabled === true ? "checked" : ""}>
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">${window.I18n.t("config.display.vibration.label")}</span>
+                <span class="kta-perf-ultra-hint" id="cfg_vibration_hint">
+                  ${window.I18n.t("config.display.vibration.hint")}
+                </span>
+              </span>
+            </label>
+          </div>
 
           <!-- 🆕 v1.34.0 E1 : toggle commandes vocales. Visible UNIQUEMENT si
                Web Speech API supportée (SpeechRecognition / webkitSpeechRecognition).
@@ -1460,40 +1478,74 @@ function afficherConfig() {
     });
   }
 
+  // 🛰️ v1.85.2 — LES DEUX CAPTEURS, ET CE QU'ON DIT QUAND ILS SONT REFUSÉS.
+  //
+  // 🩸 AVANT, une option dont le capteur manquait était simplement MASQUÉE.
+  // Sur iPhone, la vibration disparaissait donc de la modale : impossible pour
+  // l'utilisateur de savoir si l'option n'existe pas, s'il l'a ratée, ou si
+  // son téléphone refuse. On l'affiche désormais désactivée, avec la raison.
+  function _capteurRefuse(row, cb, hintEl, iosProbable) {
+    if (!row) return;
+    row.style.display = "";
+    row.style.opacity = "0.55";
+    if (cb) { cb.checked = false; cb.disabled = true; }
+    if (hintEl) {
+      hintEl.textContent = window.I18n.t(iosProbable
+        ? "config.capteurs.refuseIos" : "config.capteurs.refuse");
+    }
+  }
+
+  // iOS ne donne NI `navigator.vibrate` NI `navigator.getBattery` aux pages
+  // web. Le dire nommément vaut mieux qu'un « non disponible » vague : la
+  // personne sait que ce n'est ni son app ni son téléphone qui est en cause.
+  const _estIos = /iPad|iPhone|iPod/.test(navigator.userAgent || "") ||
+                  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  // ── 🔋 Batterie ──
+  const batRow = document.getElementById("cfg_batterie_row");
+  const batCb  = document.getElementById("cfg_batterie");
+  if (batRow && batCb) {
+    if (typeof navigator.getBattery !== "function") {
+      _capteurRefuse(batRow, batCb, document.getElementById("cfg_batterie_hint"), _estIos);
+    } else {
+      batCb.checked = !(window.APP_CONFIG && window.APP_CONFIG.batterieEnabled === false);
+      batCb.addEventListener("change", function () {
+        if (!window.APP_CONFIG) window.APP_CONFIG = {};
+        window.APP_CONFIG.batterieEnabled = !!batCb.checked;
+        if (typeof window.sauvegarderPrefsUtilisateur === "function") {
+          window.sauvegarderPrefsUtilisateur();
+        }
+        // 🩸 Couper l'écoute demande un rechargement : `getBattery()` a déjà
+        // posé ses écouteurs sur le BatteryManager, et rien ne permet de les
+        // retirer proprement. On le DIT plutôt que de laisser croire que
+        // c'est immédiat.
+        if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+          window.OOMGuard.showToast(window.I18n.t(batCb.checked
+            ? "config.batterie.toastOn" : "config.batterie.toastOff"), "info");
+        }
+      });
+    }
+  }
+
+  // ── 📳 Vibration haptique ──
   const vibRow = document.getElementById("cfg_vibration_row");
   const vibCb  = document.getElementById("cfg_vibration");
-  if (vibRow && vibCb && window.kta_vibrate && window.kta_vibrate.isSupported()) {
-    vibRow.style.display = "";
-    vibCb.checked = !!(window.APP_CONFIG && window.APP_CONFIG.vibrationEnabled === true);
-    vibCb.addEventListener("change", function() {
-      if (!window.APP_CONFIG) window.APP_CONFIG = {};
-      window.APP_CONFIG.vibrationEnabled = !!vibCb.checked;
-      // Persiste dans app_user_prefs (lu au boot par config.js l~104)
-      try {
-        const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
-        saved.vibrationEnabled = !!vibCb.checked;
-        localStorage.setItem("app_user_prefs", JSON.stringify(saved));
-      } catch(e) {
-        console.warn("[Vibration] save pref échec :", e);
-      }
-      // Si activé, petite vibration de confirmation pour que l'user sente
-      // que ça marche.
-      if (vibCb.checked) {
-        window.kta_vibrate.light();
-      }
-      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-        window.OOMGuard.showToast(
-          vibCb.checked
-            ? window.I18n.t("config.display.vibration.toastOn")
-            : window.I18n.t("config.display.vibration.toastOff"),
-          "info"
-        );
-      }
-    });
+  if (vibRow && vibCb) {
+    const dispo = !!(window.kta_vibrate && window.kta_vibrate.isSupported());
+    if (!dispo) {
+      _capteurRefuse(vibRow, vibCb, document.getElementById("cfg_vibration_hint"), _estIos);
+    } else {
+      vibCb.checked = !!(window.APP_CONFIG && window.APP_CONFIG.vibrationEnabled === true);
+      vibCb.addEventListener("change", function() {
+        if (!window.APP_CONFIG) window.APP_CONFIG = {};
+        window.APP_CONFIG.vibrationEnabled = !!vibCb.checked;
+        if (typeof window.sauvegarderPrefsUtilisateur === "function") {
+          window.sauvegarderPrefsUtilisateur();
+        }
+        if (vibCb.checked) { window.kta_vibrate.light(); }
+      });
+    }
   }
-  // Si !isSupported() (iPhone Safari notamment) → row caché silencieusement,
-  // pas de message frustrant à l'user.
-
   // 🆕 v1.34.0 E1 : toggle "🎤 Commandes vocales (BETA)".
   // Visible UNIQUEMENT si Web Speech API supportée (SpeechRecognition
   // ou webkitSpeechRecognition). Sync UI ↔ state via window.VoiceCommand.
