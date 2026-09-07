@@ -32,6 +32,28 @@ unique : **aucun guard n'exécute l'app dans un navigateur**. La porte comble ce
 
 ---
 
+## 🤖 Le script qui tient la porte (depuis le 07/09/2026)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scriptselease\merge-main.ps1
+```
+
+Il enchaîne ce qui est **vérifiable par une machine** et refuse d'aller plus loin au premier échec : arbre de
+travail propre, branche légitime (jamais `Chig_Dev`, jamais `main`), **concordance des trois sources de version**
+(volet 🔒 de la marche 1), suite complète des garde-fous, `main` local à jour vis-à-vis du distant. Puis il montre
+ce qui va partir, merge en `--no-ff`, pose le tag de version et publie — chaque étape vérifiée, un merge en conflit
+étant annulé et la branche de travail restaurée.
+
+🩸 **Ce qu'il ne peut pas vérifier, il le DEMANDE** : les marches 2 à 4 (smoke, checkup, trempage) exigent une
+confirmation tapée. Aucun script n'exécute l'app dans un navigateur — c'est précisément le trou que cette porte
+existe pour combler, et l'automatiser serait le rouvrir. Répondre « OUI » sans avoir fait les marches ne trompe
+que soi-même.
+
+`-DryRun` montre la séquence complète sans rien modifier. `-SkipGuards` saute la suite pre-commit quand elle vient
+d'être passée à l'instant.
+
+---
+
 ## 🔥 Marche 2 — le smoke test standard (liste FIXE, ne pas adapter par release)
 
 Les items 🔒 sont le **noyau dur : jamais dérogeables** — ils couvrent le démarrage et les

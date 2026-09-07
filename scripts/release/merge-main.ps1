@@ -1,0 +1,196 @@
+﻿# =====================================================================
+# 🚀 merge-main.ps1 — passer Karma_dev sur main, sans oublier une marche
+# =====================================================================
+# À EXÉCUTER PAR KARMA. Claude ne peut pas : `.claude/hooks/guard-git.js`
+# lui interdit en dur tout push vers `main` sur le repo community.
+#
+# Ce que ce script fait POUR toi (et refuse de sauter) :
+#   1. l'arbre de travail est propre ;
+#   2. tu n'es pas sur `Chig_Dev` (branche collaborateur, intouchable) ;
+#   3. les TROIS sources de version disent la même chose — un `CACHE_NAME`
+#      oublié, et la mise à jour n'atteint jamais personne ;
+#   4. la suite complète des garde-fous est verte ;
+#   5. `main` est à jour vis-à-vis du dépôt distant (sinon le merge diverge) ;
+#   6. il te montre ce qui va partir, puis attend une confirmation TAPÉE.
+#
+# 🩸 CE QU'IL NE PEUT PAS VÉRIFIER, et qu'il te DEMANDE donc explicitement :
+# les marches 2 à 4 de `docs/RELEASE_GATE.md` — smoke test sur dev, checkup
+# ciblé, trempage. Aucun script n'exécute l'app dans un navigateur ; c'est
+# exactement le trou que la porte de release existe pour combler. Répondre
+# « oui » sans les avoir faites, c'est se mentir à soi-même, pas au script.
+#
+# Usage :
+#   powershell -ExecutionPolicy Bypass -File scripts\release\merge-main.ps1
+#   ... -SkipGuards   → saute la suite de garde-fous (déjà tournée à l'instant)
+#   ... -DryRun       → montre tout, ne touche à rien
+# =====================================================================
+[CmdletBinding()]
+param(
+  [switch]$SkipGuards,
+  [switch]$DryRun
+)
+
+$ErrorActionPreference = "Stop"
+
+function Titre($t) { Write-Host ""; Write-Host "── $t " -ForegroundColor Cyan }
+function Ok($t)    { Write-Host "  [OK] $t" -ForegroundColor Green }
+function Ko($t)    { Write-Host "  [KO] $t" -ForegroundColor Red }
+function Info($t)  { Write-Host "  $t" -ForegroundColor Gray }
+function Stop-Net($t) { Write-Host ""; Write-Host "⛔ $t" -ForegroundColor Red; Write-Host ""; exit 1 }
+
+# Toujours travailler depuis la racine du dépôt, quel que soit le dossier courant.
+$racine = (git rev-parse --show-toplevel 2>$null)
+if (-not $racine) { Stop-Net "Pas dans un dépôt Git." }
+Set-Location $racine
+
+Write-Host ""
+Write-Host "🚀 MyKTAMap — mise sur main" -ForegroundColor Yellow
+if ($DryRun) { Write-Host "   (DRY RUN — rien ne sera modifié)" -ForegroundColor Yellow }
+
+# ───────── 1. la branche ─────────
+Titre "1. Branche"
+$branche = (git rev-parse --abbrev-ref HEAD).Trim()
+Info "branche courante : $branche"
+if ($branche -eq "Chig_Dev") {
+  Stop-Net "Chig_Dev est la branche d'un collaborateur — on n'y touche pas."
+}
+if ($branche -eq "main") {
+  Stop-Net "Tu es déjà sur main. Ce script part d'une branche de travail."
+}
+Ok "branche de travail valide"
+
+# ───────── 2. arbre propre ─────────
+Titre "2. Arbre de travail"
+$sale = (git status --porcelain)
+if ($sale) {
+  Write-Host $sale
+  Stop-Net "Des fichiers ne sont ni commités ni ignorés. Commite ou remise avant de merger."
+}
+Ok "arbre propre"
+
+# ───────── 3. les trois sources de version ─────────
+# 🔒 Marche 1 de la porte, volet JAMAIS dérogeable : si les trois divergent,
+# le service worker ressert l'ancien cache et la mise à jour n'arrive JAMAIS
+# chez l'utilisateur — sans le moindre message d'erreur.
+Titre "3. Cohérence des versions"
+$vJson = (node -e "process.stdout.write(require('./version.json').version)")
+$swTxt = Get-Content "sw.js" -Raw
+$cpTxt = Get-Content "js/copyright.js" -Raw
+$mSw = [regex]::Match($swTxt, 'CACHE_NAME\s*=\s*"myktamap-cache-(v[0-9.]+)"')
+$mCp = [regex]::Match($cpTxt, 'build:\s*"(v[0-9.]+)"')
+$vSw = if ($mSw.Success) { $mSw.Groups[1].Value } else { "?" }
+$vCp = if ($mCp.Success) { $mCp.Groups[1].Value } else { "?" }
+Info "version.json      : $vJson"
+Info "sw.js CACHE_NAME  : $vSw"
+Info "copyright.js build: $vCp"
+if (($vJson -ne $vSw) -or ($vJson -ne $vCp)) {
+  Stop-Net "Les trois sources divergent. Un CACHE_NAME oublié = mise à jour jamais livrée."
+}
+Ok "les trois disent $vJson"
+
+# ───────── 4. garde-fous ─────────
+Titre "4. Garde-fous"
+if ($SkipGuards) {
+  Info "sautés (-SkipGuards)"
+} else {
+  Info "exécution de .githooks/pre-commit ..."
+  $sortie = (bash .githooks/pre-commit 2>&1)
+  $code = $LASTEXITCODE
+  $verts = ([regex]::Matches($sortie, "(?m)^✅")).Count
+  $rouges = ([regex]::Matches($sortie, "(?m)^❌")).Count
+  if ($code -ne 0 -or $rouges -gt 0) {
+    $sortie | Select-String -Pattern "^❌" | ForEach-Object { Ko $_.Line }
+    Stop-Net "$rouges assertion(s) en échec. On ne merge pas sur main avec du rouge."
+  }
+  Ok "$verts assertions vertes, 0 rouge"
+}
+
+# ───────── 5. le distant ─────────
+Titre "5. Dépôt distant"
+git fetch origin --quiet
+$retard = (git rev-list --count "main..origin/main" 2>$null)
+if ($retard -and [int]$retard -gt 0) {
+  Stop-Net "main local est en retard de $retard commit(s) sur origin/main. Fais d'abord : git checkout main ; git pull ; git checkout $branche"
+}
+Ok "main local est à jour"
+
+# ───────── 6. ce qui va partir ─────────
+Titre "6. Ce qui va être mergé"
+$nb = (git rev-list --count "main..$branche").Trim()
+Info "$nb commit(s) de $branche vers main"
+Write-Host ""
+git log --oneline "main..$branche" | Select-Object -First 15 | ForEach-Object { Write-Host "     $_" -ForegroundColor DarkGray }
+if ([int]$nb -gt 15) { Write-Host "     ... et $([int]$nb - 15) de plus" -ForegroundColor DarkGray }
+
+# ───────── 7. la porte de release, ce que le script NE PEUT PAS voir ─────────
+Titre "7. Porte de release (docs/RELEASE_GATE.md)"
+Write-Host ""
+Write-Host "  Aucun script n'exécute l'app dans un navigateur. Les marches" -ForegroundColor Yellow
+Write-Host "  suivantes ne peuvent être confirmées que par toi :" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "    [ ] Marche 2 — smoke test 12 points sur dev.myktamap.fr, cache vidé"
+Write-Host "    [ ] Marche 3 — checkup ciblé des modules touchés par cette release"
+Write-Host "    [ ] Marche 4 — trempage 24-48 h sur dev, usage réel"
+Write-Host ""
+$rep = Read-Host "  Ces trois marches sont-elles franchies ? (tape OUI en majuscules)"
+if ($rep -ne "OUI") {
+  Stop-Net "Merge annule. main = deployable : la porte se franchit AVANT, pas apres."
+}
+Ok "porte franchie (déclaré par KARMA)"
+
+# ───────── 8. le merge ─────────
+Titre "8. Merge et publication"
+if ($DryRun) {
+  Info "DRY RUN — commandes qui seraient exécutées :"
+  Info "  git checkout main"
+  Info ("  git merge --no-ff $branche -m " + [char]34 + "Merge branch '$branche' ($vJson)" + [char]34)
+  Info ("  git tag -a $vJson -m " + [char]34 + "MyKTAMap $vJson" + [char]34)
+  Info "  git push origin main --follow-tags"
+  Info "  git checkout $branche"
+  Write-Host ""
+  Write-Host "✅ DRY RUN terminé — rien n'a été modifié." -ForegroundColor Green
+  exit 0
+}
+
+$confirm = Read-Host "  Dernier appel : merger $branche ($nb commits, $vJson) sur main ? (tape MERGE)"
+if ($confirm -ne "MERGE") { Stop-Net "Merge annulé." }
+
+# 🩸 À partir d'ici on modifie l'état du dépôt. Chaque étape est vérifiée :
+# un échec au milieu laisserait KARMA sur main sans qu'il s'en aperçoive.
+git checkout main
+if ($LASTEXITCODE -ne 0) { Stop-Net "Impossible de passer sur main." }
+
+git merge --no-ff $branche -m "Merge branch '$branche' ($vJson)"
+if ($LASTEXITCODE -ne 0) {
+  git merge --abort
+  git checkout $branche
+  Stop-Net "Merge en conflit — annulé, tu es de retour sur $branche."
+}
+Ok "merge effectué"
+
+# Un tag existant n'est pas une erreur : on le signale et on continue.
+$dejaTag = (git tag --list $vJson)
+if ($dejaTag) {
+  Info "tag $vJson déjà présent — conservé tel quel"
+} else {
+  git tag -a $vJson -m "MyKTAMap $vJson"
+  Ok "tag $vJson posé"
+}
+
+git push origin main --follow-tags
+if ($LASTEXITCODE -ne 0) {
+  git checkout $branche
+  Stop-Net "Publication refusée. Le merge local est fait ; règle le problème puis relance la publication à la main."
+}
+Ok "main publié"
+
+git checkout $branche
+Ok "retour sur $branche"
+
+Write-Host ""
+Write-Host "🎉 $vJson est sur main." -ForegroundColor Green
+Write-Host ""
+Write-Host "   Il reste le déploiement PROD, qui est manuel :" -ForegroundColor Yellow
+Write-Host "     powershell -ExecutionPolicy Bypass -File scripts\deploy\deploy.ps1" -ForegroundColor Yellow
+Write-Host "   puis ouvrir /killsw.html une fois, et vérifier la version en pied de page." -ForegroundColor Yellow
+Write-Host ""
