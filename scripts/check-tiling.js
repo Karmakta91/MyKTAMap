@@ -204,70 +204,90 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
 }
 
 
-// ───────── 10. 🎨 ICÔNES : APP vs PERSONNALISÉES ─────────
-// 🩸 v1.86.2 — Le préfixe `icon/` est AMBIGU : il désigne les icônes livrées
-// avec l'app (à la racine du site, ABSENTES du ZIP) ET celles ajoutées dans le
-// générateur (présentes, elles, DANS le ZIP). Jusqu'ici `resolveServerPaths`
-// ne parcourait pas `config.icons` du tout : les premières marchaient par
-// ABSENCE de traitement, les secondes étaient condamnées.
-// ⚠️ Le catalogue est LU DEPUIS `js/map.js` — jamais recopié ici (règle
-// CLAUDE.md, vérifiée par check-icon-catalog.js dans les deux sens).
+// ───────── 10. 🎨 ICÔNES : ON SONDE, ON NE DEVINE PLUS ─────────
+// 🩸 VÉCU DEUX FOIS, ET LA 2e ÉTAIT MA CORRECTION DE LA 1re.
+//   v1.86.1 — les icônes PERSO d'un plan servi n'étaient pas résolues
+//             (`icon/…` toujours lu depuis la racine du site).
+//   v1.86.2 — j'ai voulu trancher sur le catalogue `TAGS_BUILTIN` : hors
+//             catalogue = icône du ZIP → préfixée. FAUX. `TAGS_BUILTIN` liste
+//             des **tags de POI**, pas les icônes livrées avec l'app :
+//             `icon/iconetrack.png` (marqueur du tracker) existe bien à la
+//             racine et n'y figure pas. Sur un plan serveur, l'icône du
+//             tracker partait donc en `data/<plan>/icon/iconetrack.png` → 404.
+//             Régression d'AFFICHAGE, révélée par hasard par le pré-cache
+//             hors-ligne (« 9 fichiers sur 10 », constat KARMA).
+//   v1.87.2 — on ne devine plus : on DEMANDE au serveur. Une icône n'est
+//             réécrite que si elle est VRAIMENT dans le dossier du plan.
+// Aucun catalogue ne liste toutes les icônes de l'app : tout critère fondé
+// sur une liste rejouera ce bug. C'est ce que ce contrôle empêche.
 {
-  const vm2 = require("vm");
-  const msrc = fs.readFileSync("js/map.js", "utf8");
-  const d = msrc.indexOf("const TAGS_BUILTIN = {");
-  const f = msrc.indexOf("\n};", d);
-  t("🏷️ le catalogue canonique est extractible de map.js", d >= 0 && f > d);
-  let CAT = null;
-  try { CAT = vm2.runInNewContext("(" + msrc.slice(d + "const TAGS_BUILTIN = ".length, f + 2) + ")"); } catch (e) {
-    console.log("   ↳ " + e.message);
-  }
-  t("🏷️ il contient au moins 15 tags (pas de copie locale : lu à la source)",
-    CAT && Object.keys(CAT).length >= 15);
-
-  const mkWin = function (avecCatalogue) {
-    const w = { location: { href: "http://x/", search: "" }, navigator: { userAgent: "node" },
-                localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
-                document: { addEventListener: () => {}, documentElement: {},
-                            querySelector: () => null, getElementById: () => null },
-                addEventListener: () => {}, console: console, indexedDB: null };
-    w.window = w;
-    if (avecCatalogue) w._ktaBuiltinIconUrls = CAT;
-    const ctx = vm2.createContext(w);
-    vm2.runInContext("var window = this; var document = this.document; var localStorage = this.localStorage;" +
-                     fs.readFileSync("js/config.js", "utf8"), ctx);
-    return w;
-  };
-
-  const w = mkWin(true);
-  const g = w.resolveServerPath;
-  const unBuiltin = CAT ? CAT[Object.keys(CAT)[0]] : "icon/house.png";
-  [[unBuiltin,                            "data/toto", unBuiltin,                          "icône de l'APP : reste à la racine"],
-   ["icon/moncustom.png",                 "data/toto", "data/toto/icon/moncustom.png",     "🩸 icône PERSO : préfixée (elle est dans le ZIP)"],
-   ["lib/leaflet/images/marker-icon.png", "data/toto", "lib/leaflet/images/marker-icon.png","🩸 asset de l'app (lib/) : jamais préfixé"],
-   ["css/style.css",                      "data/toto", "css/style.css",                    "…idem css/"]
-  ].forEach(function (c) {
-    const got = g(c[0], c[1]);
-    t(c[3] + "  [" + c[0] + " → " + got + "]", got === c[2]);
-  });
-
-  // 🩸 FAIL-SAFE : catalogue indisponible (map.js pas encore chargé) → on ne
-  // préfixe RIEN. Se tromper dans ce sens = comportement d'avant ; dans
-  // l'autre = toutes les icônes de l'app cassées.
-  const wSans = mkWin(false);
-  t("🩸 sans catalogue, aucune icône n'est préfixée (fail-safe)",
-    wSans.resolveServerPath("icon/moncustom.png", "data/toto") === "icon/moncustom.png");
-
-  // Et le parcours doit exister : sans lui, rien de tout ça n'est appliqué.
-  const cfg = { plan: { baseImage: "data/x.png" },
-                icons: { salle: unBuiltin, perso: "icon/moncustom.png", default: "lib/leaflet/images/marker-icon.png" } };
-  const out = w.resolveServerPaths(cfg, "data/toto");
-  t("🩸 resolveServerPaths PARCOURT bien config.icons (il ne le faisait pas du tout)",
-    out.icons.perso === "data/toto/icon/moncustom.png" &&
-    out.icons.salle === unBuiltin &&
-    out.icons.default === "lib/leaflet/images/marker-icon.png");
+  const CFG = fs.readFileSync("js/config.js", "utf8");
+  const CFGC = sansCommentaires(CFG);
+  t("🩸 `icon/…` n'est plus jamais préfixé en synchrone (fin de la devinette)",
+    CFGC.indexOf("_ktaBuiltinIconUrls") < 0);
+  t("🎨 un sondeur asynchrone existe", CFGC.indexOf("async function resoudreIconesPlanServeur") >= 0);
+  t("🎨 loadAppConfig l'ATTEND (le rendu lit config.icons juste après)",
+    CFGC.indexOf("await resoudreIconesPlanServeur(config, baseDir)") >= 0);
+  t("🎨 il est exposé pour le pré-cache hors-ligne",
+    CFGC.indexOf("window.resoudreIconesPlanServeur") >= 0 &&
+    sansCommentaires(fs.readFileSync("js/planOffline.js", "utf8"))
+      .indexOf("await window.resoudreIconesPlanServeur") >= 0);
+  t("🩸 seule une réponse 200 fait basculer l'icône vers le dossier du plan",
+    /r\.status === 200/.test(CFGC));
 }
 
-console.log(ko === 0 ? "\n🎉 tuilage : un plan V2 tuile toujours, et un plan serveur trouve ses tuiles"
-                     : "\n⚠️ " + ko + " echec(s)");
-process.exit(ko === 0 ? 0 : 1);
+// ───────── 11. 🎨 ON EXÉCUTE LE SONDEUR ─────────
+// Le cas de la régression est rejoué tel quel : une icône de l'app absente du
+// dossier du plan NE DOIT PAS être réécrite, une icône perso présente DOIT
+// l'être. Une assertion de chaîne n'aurait rien dit de ce comportement.
+// 🩸 `async` : sans ça, un throw de `vm.runInContext` (module renommé, syntaxe
+// cassée…) remontait SYNCHRONEMENT hors du Promise.all et faisait PLANTER le
+// script au lieu de le faire échouer. Un crash n'est pas un échec annoncé :
+// mon falsificateur le lisait comme « reste vert ».
+async function _sonderIcones(icons, presentsLocalement, fetchPlante) {
+  const vm = require("vm");   // require local : le §9 le scope dans son bloc
+  const win = { console: { log: () => {}, warn: () => {} }, navigator: { userAgent: "node" },
+                location: { href: "http://x/" },
+                document: { addEventListener: () => {}, documentElement: {},
+                            querySelector: () => null, getElementById: () => null },
+                localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+                addEventListener: () => {} };
+  win.window = win;
+  win._sondes = [];
+  win.fetch = async function (u) {
+    win._sondes.push(u);
+    if (fetchPlante) throw new Error("reseau");
+    return { status: presentsLocalement.indexOf(u) >= 0 ? 200 : 404 };
+  };
+  const ctx = vm.createContext(win);
+  vm.runInContext("var window = this; var document = this.document; var localStorage = this.localStorage;" +
+                  "var fetch = this.fetch;" + fs.readFileSync("js/config.js", "utf8"), ctx);
+  const cfg = await win.resoudreIconesPlanServeur({ icons: Object.assign({}, icons) }, "data/toto");
+  return { icons: cfg.icons, sondes: win._sondes };
+}
+
+Promise.all([
+  _sonderIcones({ track: "icon/iconetrack.png", perso: "icon/moncustom.png",
+                  def: "lib/leaflet/images/marker-icon.png" },
+                ["data/toto/icon/moncustom.png"], false),
+  _sonderIcones({ track: "icon/iconetrack.png" }, [], true)
+]).then(function (r) {
+  const a = r[0].icons, b = r[1].icons;
+  t("🩸 icône de l'APP absente du dossier du plan → NON réécrite (la régression v1.86.2)",
+    a.track === "icon/iconetrack.png");
+  t("🎨 icône PERSO réellement présente → réécrite vers le dossier du plan",
+    a.perso === "data/toto/icon/moncustom.png");
+  // 🩸 Vérifier seulement « def n'a pas changé » ne prouvait RIEN : sondé, il
+  // aurait pris un 404 et serait resté identique de toute façon. On compte les
+  // SONDES : un chemin hors `icon/` ne doit même pas générer de requête.
+  t("🎨 un chemin hors `icon/` n'est même pas SONDÉ (2 sondes, pas 3)",
+    a.def === "lib/leaflet/images/marker-icon.png" && r[0].sondes.length === 2 &&
+    r[0].sondes.every(function (u) { return u.indexOf("/icon/") >= 0; }));
+  t("🛟 fail-safe : le réseau plante → tout reste à la racine", b.track === "icon/iconetrack.png");
+}).catch(function (e) {
+  t("§11 le sondeur s'exécute sans planter — " + (e && e.message), false);
+}).then(function () {
+  console.log(ko === 0 ? "\n🎉 tuilage : un plan V2 tuile toujours, et un plan serveur trouve ses tuiles"
+                       : "\n⚠️ " + ko + " echec(s)");
+  process.exit(ko === 0 ? 0 : 1);
+});

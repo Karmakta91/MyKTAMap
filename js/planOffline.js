@@ -64,6 +64,12 @@
     if (typeof window.resolveServerPaths === "function") {
       cfg = window.resolveServerPaths(cfg, dir);
     }
+    // 🎨 v1.87.2 — memes icones que le chargement reel : on SONDE aussi,
+    // sinon le pre-cache listerait une icone que le rendu n utilise pas
+    // (ou l inverse), et le plan serait « incomplet » a vie.
+    if (typeof window.resoudreIconesPlanServeur === "function") {
+      cfg = await window.resoudreIconesPlanServeur(cfg, dir);
+    }
 
     const urls = [urlCfg];
     const ajouter = function (u) {

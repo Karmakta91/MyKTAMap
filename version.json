@@ -1,7 +1,7 @@
 {
-  "version": "v1.87.1",
+  "version": "v1.87.2",
   "released": "2026-09-07",
   "notes": [
-    "💾 Le téléchargement hors-ligne d’un plan te dit maintenant QUELS fichiers le serveur n’a pas fournis, au lieu d’afficher « incomplet » sans fin. Si tout ce qui existe est bien là, le plan est marqué disponible."
+    "🎨 Correction : sur un plan hébergé sur un serveur, l’icône du tracker ne s’affichait plus depuis la v1.86.2. Les icônes sont désormais cherchées au bon endroit, vérification à l’appui."
   ]
 }

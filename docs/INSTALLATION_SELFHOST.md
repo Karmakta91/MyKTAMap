@@ -395,7 +395,7 @@ Le fichier `index.json` doit ressembler à :
 
 > ✅ **Depuis la v1.86.1, le ZIP se dézippe tel quel** — aucun chemin à réécrire. Avant, il fallait aplatir le dossier `data/` **et** réécrire chaque chemin du `plan-config.json` : sans ça, tout renvoyait 404 sauf le `plan-config.json` lui-même, sans message clair. Un déploiement déjà réécrit à la main continue de fonctionner à l'identique.
 >
-> ✅ **Icônes personnalisées** : prises en charge depuis la v1.86.2 — celles livrées dans le ZIP sont résolues dans le dossier du plan, celles de l'app restent à la racine. Rien à faire. Détail : `docs/TILING.md` §5.
+> ✅ **Icônes personnalisées** : prises en charge *(v1.87.2)*. À l'ouverture d'un plan serveur, chaque icône déclarée est **demandée au serveur** dans le dossier du plan : si elle s'y trouve, elle est utilisée ; sinon on garde celle de l'app, à la racine. Rien à faire. Détail : `docs/TILING.md` §5.
 >
 > 💡 **Pour créer vos plans facilement**, utilisez le **📦 Générateur**
 > intégré à l'app (icône loader → « 🏗️ Générer un plan ») qui produit

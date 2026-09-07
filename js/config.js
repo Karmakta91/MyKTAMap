@@ -555,28 +555,23 @@ function resolveServerPath(p, baseDir) {
     return (base && base !== "data" && p.indexOf(base + "/") !== 0) ? base + "/" + p : p;
   }
 
-  // 🎨 v1.86.2 — ICÔNES : on distingue enfin les DEUX familles qui partagent le
-  // préfixe `icon/`.
-  //   • celles LIVRÉES AVEC L'APP (`icon/house.png`…) vivent à la racine du site
-  //     et sont ABSENTES du ZIP → on n'y touche pas ;
-  //   • celles PERSONNALISÉES, ajoutées dans le générateur, sont DANS le ZIP
-  //     (`icon/moncustom.png`) → elles doivent être préfixées par le dossier du
-  //     plan, sinon elles sont cherchées à la racine du site où elles n'existent
-  //     pas. C'était la limite documentée en v1.86.1 ; KARMA l'a levée (« pour
-  //     les icônes corrige, personne d'autre que moi n'utilise le mode serveur »).
+  // 🎨 v1.87.2 — `icon/…` RESTE À LA RACINE DU SITE, toujours.
   //
-  // La distinction se fait sur le CATALOGUE CANONIQUE `window._ktaBuiltinIconUrls`
-  // (= `map.js > TAGS_BUILTIN`). ⚠️ JAMAIS de copie locale : `check-icon-catalog.js`
-  // (pré-commit) confronte toute copie à la source dans les deux sens.
-  // 🩸 Fail-safe : catalogue indisponible (map.js pas encore chargé) → on ne
-  // préfixe RIEN. Se tromper dans ce sens laisse le comportement d'avant ; se
-  // tromper dans l'autre casserait toutes les icônes de l'app.
-  if (p.indexOf("icon/") === 0) {
-    const cat = (typeof window !== "undefined") ? window._ktaBuiltinIconUrls : null;
-    if (!cat) return p;
-    for (const k in cat) { if (cat[k] === p) return p; }
-    return (base && base !== "data") ? base + "/" + p : p;
-  }
+  // 🩸 CE QUE LA v1.86.2 AVAIT TENTÉ, ET POURQUOI C'ÉTAIT FAUX. On préfixait
+  // par le dossier du plan toute icône ABSENTE du catalogue `TAGS_BUILTIN`,
+  // en supposant qu'elle venait du ZIP. Mais `TAGS_BUILTIN` liste des **tags
+  // de POI**, PAS les icônes livrées avec l'app : `icon/iconetrack.png`
+  // (le marqueur du tracker) existe bien à la racine et n'y figure pas.
+  // Résultat : sur un plan serveur, l'icône du tracker était réécrite en
+  // `data/<plan>/icon/iconetrack.png` → 404. Régression d'AFFICHAGE, révélée
+  // par hasard par le téléchargement hors-ligne (constat KARMA).
+  //
+  // Le bon critère n'est pas « est-ce dans un catalogue » — aucun catalogue ne
+  // liste TOUTES les icônes de l'app — mais « le fichier existe-t-il dans le
+  // dossier du plan ». C'est indécidable ici, en synchrone : la résolution des
+  // icônes perso se fait donc en ASYNCHRONE dans `resoudreIconesPlanServeur`,
+  // qui SONDE réellement le serveur. Ici, on ne touche à rien.
+  if (p.indexOf("icon/") === 0) return p;
 
   // 🩸 v1.86.2 — DOSSIERS DE L'APPLICATION, jamais relatifs à un plan.
   // Trouvé en écrivant le correctif ci-dessus : `icons.default` vaut
@@ -611,6 +606,49 @@ function resolveServerPaths(config, baseDir) {
   return config;
 }
 
+
+// =====================================================================
+// 🎨 v1.87.2 — ICÔNES PERSONNALISÉES D'UN PLAN SERVEUR : ON SONDE
+// =====================================================================
+// Le préfixe `icon/` est ambigu : il désigne les icônes livrées avec l'app
+// (à la racine du site) ET celles ajoutées dans le générateur, qui vivent
+// dans le ZIP et atterrissent donc dans `<dossier du plan>/icon/`.
+//
+// 🩸 Deviner d'après un catalogue a échoué (v1.86.2 → régression sur
+// `icon/iconetrack.png`, absent de `TAGS_BUILTIN` alors qu'il est bien une
+// icône de l'app). On ne devine plus : on DEMANDE au serveur. Une icône n'est
+// réécrite vers le dossier du plan que si elle s'y trouve VRAIMENT.
+//
+// Coût : une requête par icône déclarée, uniquement pour les plans SERVEUR,
+// en parallèle, et le Service Worker les met en cache ensuite.
+// 🛟 Fail-safe : toute erreur (réseau, 404, CORS) laisse le chemin à la
+// racine — c'est le comportement historique, celui qui marche pour l'immense
+// majorité des cas.
+async function resoudreIconesPlanServeur(config, baseDir) {
+  const base = String(baseDir || "").replace(/\/+$/, "");
+  if (!config || !config.icons || !base || base === "data") return config;
+  const cles = Object.keys(config.icons).filter(function (k) {
+    const v = config.icons[k];
+    return typeof v === "string" && v.indexOf("icon/") === 0;
+  });
+  if (!cles.length) return config;
+  await Promise.all(cles.map(async function (k) {
+    const local = base + "/" + config.icons[k];
+    try {
+      const r = await fetch(local);
+      if (r && r.status === 200) {
+        config.icons[k] = local;
+        console.log("[Config] Icône propre au plan :", local);
+      }
+    } catch (e) { /* on garde la racine */ }
+  }));
+  return config;
+}
+
+// Exposé : `planOffline.js` doit énumérer EXACTEMENT les mêmes icônes que
+// le chargement réel, sinon le pré-cache et le rendu divergent.
+window.resoudreIconesPlanServeur = resoudreIconesPlanServeur;
+
 async function loadAppConfig(planPath) {
   const baseDir   = planPath || "data";
   const configUrl = baseDir.replace(/\/$/, "") + "/plan-config.json";
@@ -623,6 +661,11 @@ async function loadAppConfig(planPath) {
 
     // Résoudre les chemins relatifs au dossier du plan
     config = resolveServerPaths(config, baseDir);
+
+    // 🎨 v1.87.2 — les icônes PERSO du plan, sondées pour de vrai (cf.
+    // resoudreIconesPlanServeur). Await : le rendu des marqueurs lit
+    // config.icons juste après, une résolution tardive arriverait trop tard.
+    config = await resoudreIconesPlanServeur(config, baseDir);
 
     window.PLAN_CONFIG = config;
     const cfg = buildAppConfigFromPlan(config);
