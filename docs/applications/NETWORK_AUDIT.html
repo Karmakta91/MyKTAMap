@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.88.0</strong> (7 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.88.1</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.88.1 (débordement de l'accueil à 125 % de zoom)</h3>
+  <p><strong>100 % local</strong>, aucune requête, aucun domaine, aucune donnée. Correction d'affichage uniquement : sur l'accueil, le bloc de réglage d'image de la carte de chargement débordait sur le pied de page quand l'affichage de Windows est réglé à 125 %. Il est désormais replié par défaut, et la colonne peut défiler si son contenu grandit à l'avenir. Rien d'autre ne change.</p>
   <h3>v1.88.0 (savoir qu'un plan hors-ligne est périmé)</h3>
   <p><strong>100 % local</strong>, aucun domaine nouveau, aucune donnée qui sort. <strong>Une nouveauté réseau, vers votre serveur et lui seul</strong> : à l'ouverture de la fiche d'un plan téléchargé pour le hors-ligne, l'application demande à votre serveur si les fichiers du plan ont changé. Ce sont des requêtes <strong>conditionnelles</strong> — le serveur répond « rien n'a bougé » avec un <strong>corps vide</strong> dans la quasi-totalité des cas, donc quelques centaines d'octets en tout. Les tuiles d'image en sont exclues (elles se déduisent de l'image, qui est vérifiée) : cela fait une quinzaine de requêtes pour un plan comme celui de démonstration. Rien n'est envoyé, rien n'est stocké côté serveur, et ces requêtes ne sont <strong>pas</strong> mises en cache.</p>
   <h3>v1.87.2 (les icônes d'un plan servi, sondées)</h3>

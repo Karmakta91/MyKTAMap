@@ -553,7 +553,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 ### 🎚️ Image splitting — 2 choices *(since v1.86.0)*
 
-Right above the **▶️ Load this map** button, a small selector decides how the background image is displayed.
+Right above the **▶️ Load this map** button, a strip reading **🖼️ Tiling for this load: Auto** shows the active mode. Click it to expand and change *(collapsed by default since v1.88.1: permanently expanded, it pushed the column over the footer when Windows display scaling is at 125%)*.
 
 | Button | What it does |
 |---|---|

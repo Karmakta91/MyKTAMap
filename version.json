@@ -1,7 +1,7 @@
 {
-  "version": "v1.88.0",
-  "released": "2026-09-07",
+  "version": "v1.88.1",
+  "released": "2026-09-08",
   "notes": [
-    "🔎 Un plan téléchargé pour le hors-ligne te dit maintenant si le serveur a changé depuis : ouvre sa fiche ℹ️ Infos. Avant, il pouvait rester périmé indéfiniment sans que rien ne le signale."
+    "🖼️ Correction d’affichage sur l’accueil : le bloc de réglage d’image débordait sur le pied de page quand l’affichage de Windows est à 125 %. Il est désormais replié, et son mode actif reste visible."
   ]
 }

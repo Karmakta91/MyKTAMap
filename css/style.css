@@ -6506,6 +6506,46 @@ html.kta-theme-light .kta-cfg-group-titre {
 /* 🖼️ v1.85.4 — Mention sous le tuilage, dans la carte de chargement : elle dit
    que le choix N'EST PAS mémorisé. Plus discrète que .kta-perf-desc, qui porte
    la description dynamique du preset (remplie en JS depuis les metas tiling). */
+/* ═══════════════════════════════════
+   🖼️ v1.88.1 — TUILAGE REPLIABLE DANS LA CARTE DE CHARGEMENT
+   🩸 Le bloc, posé là en v1.86.0, ajoutait ~207 px a la colonne Actions —
+   dont le min-content mesure ~510 px sous un plancher de grid de 520 px
+   (cf .loader-grid). A 125 % de zoom (viewport 1229x691) la colonne
+   debordait sur le footer : le bug « des % qui cassent le home », deja
+   clos en v1.60.x, revenait par ma faute.
+   Replie, il coute ~38 px au lieu de ~207. La valeur courante reste
+   visible dans le resume : on n a pas besoin de deplier pour savoir.
+   ═══════════════════════════════════ */
+.kta-perf-details {
+  margin-top: 14px;
+}
+.kta-perf-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  color: #c8d0e0;
+  font-size: 12.5px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;          /* Chrome/Safari : masque le triangle natif */
+}
+.kta-perf-summary::-webkit-details-marker { display: none; }
+.kta-perf-summary::after {
+  content: "▾";
+  margin-left: auto;
+  opacity: 0.6;
+  transition: transform 0.15s ease;
+}
+.kta-perf-details[open] > .kta-perf-summary::after { transform: rotate(180deg); }
+.kta-perf-summary b { color: #f4c542; font-weight: 600; }
+.kta-perf-summary:hover { border-color: rgba(140,180,255,0.45); }
+/* Deplie : le wrap perd sa marge propre, le resume la porte deja. */
+.kta-perf-details > .kta-perf-wrap { margin-top: 8px; }
+
 .kta-perf-hint {
   font-size: 11px;
   color: #8892a4;
@@ -21331,6 +21371,23 @@ html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
    compactée reste ≤ ~515 px — re-mesurer si on ajoute un bloc à la colonne.
    Hauteur d'ÉCRAN seulement — aucune règle mobile (<1024 de large) touchée. */
 @media (min-width: 1024px) and (max-height: 820px) {
+  /* 🩸 v1.88.1 — FILET : la colonne Actions peut scroller EN INTERNE.
+     Jusqu ici elle etait « incompressible » et le plancher de 520 px de la
+     grid reposait sur une hauteur MESUREE A LA MAIN en v1.79.0 (~510 px).
+     Toute ligne ajoutee depuis perimait cette constante en silence — c est
+     exactement ce qui s est produit avec le bloc de tuilage (v1.86.0,
+     ~207 px) : debordement sur le footer a 125 % de zoom.
+     Le meme modele que la colonne des plans (flex + min-height:0 + scroll)
+     rend la colonne robuste a la PROCHAINE addition, au lieu de recalibrer
+     une constante a chaque fois. Le bouton « Charger ce plan » reste colle
+     en bas du contenu (margin-top:auto), donc atteignable au scroll. */
+  .loader-col-actions { min-height: 0; }
+  .loader-col-actions #panelZip {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .loader-col-actions .zip-drop-zone {
     padding: 12px 14px;
   }

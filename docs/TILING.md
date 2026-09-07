@@ -37,6 +37,8 @@ MyKTAMap en a **deux implémentations, très différentes**. Confondre les deux 
 
 Le sélecteur vit dans la **carte de chargement**, juste au-dessus du bouton ▶️ Charger ce plan — parce qu'il modifie **le chargement qu'on lance**, ce n'est pas un réglage mémorisé.
 
+🩸 **Replié par défaut depuis la v1.88.1.** Posé déplié, il ajoutait **~207 px** à une colonne dont le min-content mesurait ~510 px sous un plancher de grid de 520 px : à 125 % de zoom, elle débordait sur le footer. Le résumé porte la valeur courante (« 🖼️ Tuilage pour ce chargement : **Auto** »), donc on n'a pas besoin de déplier pour savoir. Détail et filet : `docs/architecture/ui.md`.
+
 | | Effet sur un plan **V1** | Effet sur un plan **V2** |
 |---|---|---|
 | 🔄 **Auto** *(défaut)* | tuile si `W × H > 4096²` **ou** fichier > 60 Mo | — (le plan utilise ses tuiles) |

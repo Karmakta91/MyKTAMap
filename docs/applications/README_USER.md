@@ -552,7 +552,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 ### 🎚️ Découpage de l'image — 2 choix *(depuis v1.86.0)*
 
-Juste au-dessus du bouton **▶️ Charger ce plan**, un petit sélecteur choisit comment l'image de fond est affichée.
+Juste au-dessus du bouton **▶️ Charger ce plan**, un bandeau **🖼️ Tuilage pour ce chargement : Auto** montre le mode actif. Clique dessus pour le déplier et changer *(replié par défaut depuis la v1.88.1 : déplié en permanence, il faisait déborder la colonne sur le pied de page quand l'affichage de Windows est à 125 %)*.
 
 | Bouton | Ce qu'il fait |
 |---|---|

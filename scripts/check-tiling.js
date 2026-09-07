@@ -272,6 +272,87 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
     })());
 }
 
+
+// ───────── 13. 🩸 ON APPELLE setLoaderPerfPreset (ReferenceError = invisible pour node -c) ─────────
+// VÉCU (v1.88.1) : en repliant le bloc de tuilage, j'ai ajouté à la fin de
+// `setLoaderPerfPreset` un accès à `meta` — variable déclarée DANS le
+// `if (descEl) { … }` juste au-dessus. Hors portée : ReferenceError au premier
+// appel, donc tout le bloc perf du HOME cassé. `node -c` ne voit RIEN de ça,
+// et aucune assertion de chaîne non plus. La seule façon de l'attraper est
+// d'EXÉCUTER la fonction.
+// On extrait le morceau de script inline dont elle dépend (`_PERF_VALID` …
+// fin de la fonction), on le charge dans un vm avec des stubs DOM, et on
+// l'appelle sur chaque preset proposé.
+{
+  const vm3 = require("vm");
+  const d = IDX.indexOf("const _PERF_VALID");
+  const iFn = IDX.indexOf("function setLoaderPerfPreset(", d);
+  let fin = -1;
+  if (iFn > 0) {
+    let prof = 0;
+    for (let k = IDX.indexOf("{", iFn); k < IDX.length; k++) {
+      if (IDX[k] === "{") prof++;
+      else if (IDX[k] === "}") { prof--; if (prof === 0) { fin = k + 1; break; } }
+    }
+  }
+  t("le bloc setLoaderPerfPreset est extractible d'index.html", d >= 0 && iFn > d && fin > iFn);
+
+  if (fin > iFn) {
+    const faits = [];
+    const elem = function (id) {
+      return { id: id, textContent: "", style: {}, dataset: {}, classList: { toggle: function () {} },
+               setAttribute: function () {}, forEach: function () {} };
+    };
+    const resume = elem("loaderPerfResume");
+    const win = {
+      console: { log: () => {}, warn: () => {} },
+      PERF_AUTO_META: { label: "Auto", description: "d1" },
+      PERF_OFF_META:  { label: "Désactivé", description: "d2" },
+      PERF_PRESETS:   { balanced: { label: "Équilibré", description: "d3" } },
+      I18n: { has: function () { return false; }, t: function (k) { return k; } },
+      APP_CONFIG: { debugMode: false }
+    };
+    win.window = win;
+    win.document = {
+      getElementById: function (id) { return id === "loaderPerfResume" ? resume : elem(id); },
+      querySelector:    function () { return null; },
+      querySelectorAll: function () { return { forEach: function () {} }; }
+    };
+    let erreur = null;
+    try {
+      const ctx = vm3.createContext(win);
+      vm3.runInContext("var window = this; var document = this.document;" +
+                       "function updatePerfDebugLine(){}" +
+                       IDX.slice(d, fin) +
+                       ";this.__set = setLoaderPerfPreset;", ctx);
+      ["auto", "off"].forEach(function (p) { win.__set(p); faits.push(resume.textContent); });
+    } catch (e) { erreur = e; }
+
+    t("🩸 setLoaderPerfPreset s'EXÉCUTE sans ReferenceError" + (erreur ? " — " + erreur.message : ""),
+      !erreur);
+    t("🖼️ le résumé du bloc replié porte la valeur courante  [" + faits.join(" / ") + "]",
+      faits.length === 2 && faits[0] === "Auto" && faits[1] === "Désactivé");
+  }
+}
+
+// ───────── 14. 🖼️ LE BLOC DE TUILAGE NE DOIT PLUS FAIRE DÉBORDER LA COLONNE ─────────
+// 🩸 Posé déplié en v1.86.0, il ajoutait ~207 px à la colonne Actions — dont
+// le min-content mesuré en v1.79.0 vaut ~510 px, sous un plancher de grid de
+// 520 px. À 125 % de zoom (viewport 1229×691) la colonne débordait sur le
+// footer : le bug « des % qui cassent le home », déjà clos en v1.60.x.
+{
+  const CSS = fs.readFileSync("css/style.css", "utf8");
+  t("🖼️ le bloc est repliable (details/summary)",
+    IDX.indexOf('<details class="kta-perf-details"') >= 0 &&
+    IDX.indexOf('class="kta-perf-summary"') >= 0);
+  t("🩸 …et REPLIÉ par défaut (pas d'attribut open)",
+    /<details class="kta-perf-details" id="loaderPerfDetails">/.test(IDX));
+  t("🖼️ la valeur courante reste lisible sans déplier",
+    IDX.indexOf('id="loaderPerfResume"') >= 0);
+  t("🩸 FILET : la colonne Actions peut scroller en interne (robuste à la PROCHAINE addition)",
+    /\.loader-col-actions #panelZip \{[\s\S]{0,200}overflow-y: auto;/.test(CSS));
+}
+
 // ───────── 11. 🎨 ON EXÉCUTE LE SONDEUR ─────────
 // Le cas de la régression est rejoué tel quel : une icône de l'app absente du
 // dossier du plan NE DOIT PAS être réécrite, une icône perso présente DOIT

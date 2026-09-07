@@ -1771,8 +1771,23 @@ Liste d'outils : **5 → 4** entrées (Carnet · Éditeur de données · Mes lia
 
 **`.kta-no-osm`** (pas d'opt-in OSM) : `minmax(0,1fr) 300px` — la liste des plans devient la zone fluide.
 
+### 🩸 La hauteur de la colonne Actions est un budget, pas un acquis (v1.88.1)
+
+`.loader-grid` porte `min-height: 520px`, calibré en v1.79.0 sur le **min-content mesuré** des colonnes incompressibles — *« Actions compactée ~510 px, OSM ~315 px »*. **C'est une constante mesurée à la main : toute ligne ajoutée à la colonne Actions la périme en silence.**
+
+C'est exactement ce qui s'est produit : le bloc de tuilage, posé **déplié** dans la carte de chargement en v1.86.0, ajoutait **~207 px**. À 125 % de zoom (viewport 1229×691, sous les 820 px de la media query de compaction — qui ne le compactait pas) la colonne débordait **sur le footer**. Le bug « des % qui cassent le home », clos en v1.60.x, revenait.
+
+Deux réponses, et la seconde compte plus que la première :
+1. le bloc est **replié par défaut** (`<details>`), ~40 px au lieu de ~207, la valeur courante restant lisible dans le résumé ;
+2. 🛡️ **la colonne Actions scrolle désormais en interne** (`min-height: 0` + `overflow-y: auto` sur `#panelZip`, sous la media query de compaction), comme le fait déjà la colonne des plans. **Le prochain ajout ne pourra plus déborder** — on cesse de dépendre d'une constante recalibrée à la main à chaque fois.
+
+⚠️ *Le bouton « Charger ce plan » reste collé en bas du contenu (`margin-top: auto`) : il est donc atteignable au scroll, pas perdu.*
+
+---
+
 **À NE PAS faire** :
 - ❌ Réintroduire des ratios `fr` ou des paliers de correction sur `.loader-grid` — les rails fixes sont LE fix.
+- ❌ Ajouter un bloc **déplié** dans la colonne Actions sans mesurer ce qu'il coûte — le plancher de 520 px ne pardonne pas.
 - ❌ Redonner une grille à `.kta-loader-top-row`.
 - ❌ Sortir la recherche du header pour la remettre dans une colonne.
 

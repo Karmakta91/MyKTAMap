@@ -533,8 +533,12 @@
              modificateur du chargement en cours — sa place est à côté du bouton
              qui le déclenche. Il reste le SEUL point de réglage : côté plan, le
              preset est affiché en lecture seule (interfaceConfig.js). -->
-          <div class="kta-perf-wrap">
-            <div class="kta-perf-titre" data-i18n="home.perf.tilingTitle">🖼️ Tuilage pour ce chargement</div>
+          <details class="kta-perf-details" id="loaderPerfDetails">
+            <summary class="kta-perf-summary">
+              <span data-i18n="home.perf.tilingTitle">🖼️ Tuilage pour ce chargement</span>
+              <b id="loaderPerfResume">Auto</b>
+            </summary>
+            <div class="kta-perf-wrap">
             <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" data-i18n-title="home.perf.tilingAria" aria-label="Mode performance">
               <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
                 <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label" data-i18n="home.perf.presetAuto">Auto</span>
@@ -554,7 +558,8 @@
             <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
             <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>
             <div class="kta-perf-hint" data-i18n="home.perf.tilingHint">Non mémorisé : revient à « Auto » au prochain démarrage.</div>
-          </div>
+            </div>
+          </details>
 
         <!-- Bouton principal Charger -->
         <div class="loaderActions">
@@ -1576,6 +1581,23 @@
           } else {
             descEl.textContent = _frDesc;
           }
+        }
+        // 🖼️ v1.88.1 — Le bloc est REPLIÉ par défaut (il coûtait ~207 px à une
+        // colonne qui débordait sur le footer à 125 % de zoom). La valeur
+        // courante s'affiche donc dans le résumé : on n'a pas besoin de
+        // déplier pour savoir sur quoi on est.
+        // 🩸 AUTONOME À DESSEIN : `meta` est déclaré DANS le `if (descEl)`
+        // ci-dessus. Le référencer ici serait une ReferenceError au runtime —
+        // que `node -c` ne voit pas, et qui casserait tout le bloc perf du HOME.
+        const resumeEl = document.getElementById("loaderPerfResume");
+        if (resumeEl) {
+          const _metaL = (preset === "off")  ? window.PERF_OFF_META
+                       : (preset === "auto") ? window.PERF_AUTO_META
+                       : (window.PERF_PRESETS ? window.PERF_PRESETS[preset] : null);
+          const _kL = "config.preset." + preset;
+          resumeEl.textContent = (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(_kL))
+            ? window.I18n.t(_kL)
+            : ((_metaL && _metaL.label) ? _metaL.label : preset);
         }
         // Mettre à jour la ligne debug (chiffres techniques)
         updatePerfDebugLine();
