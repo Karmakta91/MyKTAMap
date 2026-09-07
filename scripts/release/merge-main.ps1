@@ -89,18 +89,57 @@ if (($vJson -ne $vSw) -or ($vJson -ne $vCp)) {
 Ok "les trois disent $vJson"
 
 # ───────── 4. garde-fous ─────────
+# 🩸 NE PAS APPELER `bash` TOUT COURT. Sur Windows, `bash` résout vers
+# `C:\Windows\system32\bash.exe` — le lanceur WSL, qui sur cette machine n'a
+# AUCUNE distribution installée. Le hook ne tournait donc jamais : il rendait
+# 1 avec dix lignes de message Microsoft, et le script s'arrêtait en annonçant
+# « 0 assertion en échec » — un message absurde, symptôme du vrai problème.
+# On localise Git Bash à partir de git lui-même, et on REFUSE de continuer si
+# on ne le trouve pas plutôt que de laisser passer un contrôle non exécuté.
+function Trouver-GitBash {
+  $g = (Get-Command git -ErrorAction SilentlyContinue)
+  $pistes = @()
+  if ($g) { $pistes += (Join-Path (Split-Path (Split-Path $g.Source)) "bin\bash.exe") }
+  $pistes += "C:\Program Files\Git\bin\bash.exe"
+  $pistes += "C:\Program Files (x86)\Git\bin\bash.exe"
+  $pistes += "$env:LOCALAPPDATA\Programs\Git\bin\bash.exe"
+  foreach ($p in $pistes) { if ($p -and (Test-Path $p)) { return $p } }
+  return $null
+}
+
 Titre "4. Garde-fous"
 if ($SkipGuards) {
   Info "sautés (-SkipGuards)"
 } else {
+  $gitBash = Trouver-GitBash
+  if (-not $gitBash) {
+    Stop-Net "Git Bash introuvable — impossible de lancer les garde-fous. Relance avec -SkipGuards UNIQUEMENT si tu viens de les passer à la main."
+  }
   Info "exécution de .githooks/pre-commit ..."
-  $sortie = (bash .githooks/pre-commit 2>&1)
+  # 🩸 Sortie envoyée dans un FICHIER, pas capturée : en PS 5.1, `2>&1` sur un
+  # exécutable natif emballe chaque ligne dans un ErrorRecord et fausse le
+  # comptage — et un tableau d'objets stringifié colle les lignes bout à bout,
+  # donc `(?m)^✅` ne matche plus rien. Un fichier, lu ligne par ligne, ne ment pas.
+  $tmp = Join-Path $env:TEMP ("mkm-guards-" + [guid]::NewGuid().ToString("N") + ".log")
+  & $gitBash ".githooks/pre-commit" > $tmp 2>&1
   $code = $LASTEXITCODE
-  $verts = ([regex]::Matches($sortie, "(?m)^✅")).Count
-  $rouges = ([regex]::Matches($sortie, "(?m)^❌")).Count
-  if ($code -ne 0 -or $rouges -gt 0) {
-    $sortie | Select-String -Pattern "^❌" | ForEach-Object { Ko $_.Line }
+  $lignes = @(Get-Content $tmp -Encoding UTF8 -ErrorAction SilentlyContinue)
+  Remove-Item $tmp -ErrorAction SilentlyContinue
+  $verts  = @($lignes | Where-Object { $_ -match "^✅" }).Count
+  $rouges = @($lignes | Where-Object { $_ -match "^❌" }).Count
+  if ($rouges -gt 0) {
+    $lignes | Where-Object { $_ -match "^❌" } | ForEach-Object { Ko $_ }
     Stop-Net "$rouges assertion(s) en échec. On ne merge pas sur main avec du rouge."
+  }
+  # 🩸 Zéro vert AVEC un code non nul = le hook n'a pas tourné du tout (bash
+  # absent, droits, chemin). Le dire, plutôt que d'annoncer « 0 échec » et de
+  # laisser croire à un contrôle passé.
+  if ($code -ne 0 -and $verts -eq 0) {
+    $lignes | Select-Object -First 5 | ForEach-Object { Info $_ }
+    Stop-Net "Les garde-fous n'ont pas pu s'exécuter (code $code, aucune assertion lue). Ce n'est PAS un succès."
+  }
+  if ($code -ne 0) {
+    Stop-Net "La suite pre-commit sort en erreur (code $code) malgré $verts assertions vertes."
   }
   Ok "$verts assertions vertes, 0 rouge"
 }
