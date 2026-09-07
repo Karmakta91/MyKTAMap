@@ -555,13 +555,36 @@ function resolveServerPath(p, baseDir) {
     return (base && base !== "data" && p.indexOf(base + "/") !== 0) ? base + "/" + p : p;
   }
 
-  // ⚠️ `icon/…` reste résolu à la RACINE DU SITE, volontairement. Ce préfixe est
-  // ambigu : il désigne aussi bien les icônes livrées avec l'app (`icon/house.png`,
-  // présentes à la racine et ABSENTES du ZIP) que les icônes personnalisées
-  // ajoutées dans le générateur (présentes, elles, dans le ZIP). Les préfixer
-  // toutes casserait les premières. Conséquence assumée et connue : une icône
-  // personnalisée d'un plan servi n'est pas résolue. Voir docs/TILING.md §5.
-  if (p.indexOf("icon/") === 0) return p;
+  // 🎨 v1.86.2 — ICÔNES : on distingue enfin les DEUX familles qui partagent le
+  // préfixe `icon/`.
+  //   • celles LIVRÉES AVEC L'APP (`icon/house.png`…) vivent à la racine du site
+  //     et sont ABSENTES du ZIP → on n'y touche pas ;
+  //   • celles PERSONNALISÉES, ajoutées dans le générateur, sont DANS le ZIP
+  //     (`icon/moncustom.png`) → elles doivent être préfixées par le dossier du
+  //     plan, sinon elles sont cherchées à la racine du site où elles n'existent
+  //     pas. C'était la limite documentée en v1.86.1 ; KARMA l'a levée (« pour
+  //     les icônes corrige, personne d'autre que moi n'utilise le mode serveur »).
+  //
+  // La distinction se fait sur le CATALOGUE CANONIQUE `window._ktaBuiltinIconUrls`
+  // (= `map.js > TAGS_BUILTIN`). ⚠️ JAMAIS de copie locale : `check-icon-catalog.js`
+  // (pré-commit) confronte toute copie à la source dans les deux sens.
+  // 🩸 Fail-safe : catalogue indisponible (map.js pas encore chargé) → on ne
+  // préfixe RIEN. Se tromper dans ce sens laisse le comportement d'avant ; se
+  // tromper dans l'autre casserait toutes les icônes de l'app.
+  if (p.indexOf("icon/") === 0) {
+    const cat = (typeof window !== "undefined") ? window._ktaBuiltinIconUrls : null;
+    if (!cat) return p;
+    for (const k in cat) { if (cat[k] === p) return p; }
+    return (base && base !== "data") ? base + "/" + p : p;
+  }
+
+  // 🩸 v1.86.2 — DOSSIERS DE L'APPLICATION, jamais relatifs à un plan.
+  // Trouvé en écrivant le correctif ci-dessus : `icons.default` vaut
+  // `lib/leaflet/images/marker-icon.png`. Tant que `resolveServerPaths` ne
+  // touchait pas à `icons`, ce chemin passait au travers ; dès qu'on le traite,
+  // la branche générique en ferait `data/<plan>/lib/leaflet/…` → 404 sur
+  // l'icône par défaut de TOUS les points sans tag.
+  if (/^(lib|css|js|docs|assets)\//.test(p)) return p;
 
   return base + "/" + p;
 }
@@ -572,7 +595,19 @@ function resolveServerPaths(config, baseDir) {
   if (config.plan?.collisionImage) config.plan.collisionImage = resolveServerPath(config.plan.collisionImage, baseDir);
   (config.imageLayers || []).forEach(function(l) { if (l.file) l.file = resolveServerPath(l.file, baseDir); });
   (config.dataLayers  || []).forEach(function(l) { if (l.file) l.file = resolveServerPath(l.file, baseDir); });
-  // Note : icons.* déjà gérés par resolveServerPath (icon/ → tel quel)
+  // 🎨 v1.86.2 — LES ICÔNES SONT ENFIN TRAITÉES.
+  // 🩸 L'ancien commentaire ici disait « icons.* déjà gérés par
+  // resolveServerPath » — c'était FAUX : `resolveServerPaths` ne les
+  // parcourait pas du tout. Elles fonctionnaient donc par ABSENCE de
+  // traitement (chemin laissé tel quel → racine du site), ce qui marchait
+  // pour les icônes de l'app et condamnait les icônes personnalisées.
+  if (config.icons && typeof config.icons === "object") {
+    Object.keys(config.icons).forEach(function(k) {
+      if (typeof config.icons[k] === "string") {
+        config.icons[k] = resolveServerPath(config.icons[k], baseDir);
+      }
+    });
+  }
   return config;
 }
 

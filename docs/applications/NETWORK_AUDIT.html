@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.86.1</strong> (7 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.86.2</strong> (7 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.86.2 (les icônes personnalisées d'un plan servi)</h3>
+  <p><strong>100 % local.</strong> Aucune requête vers un tiers, aucun domaine nouveau, aucune donnée qui sort. Une icône que vous avez ajoutée à un plan hébergé sur <strong>votre propre serveur</strong> est désormais cherchée <strong>dans le dossier du plan</strong>, où elle se trouve, au lieu de la racine du site où elle n'a jamais été. Les icônes livrées avec l'application continuent d'être servies depuis la racine — c'est le catalogue interne de l'app qui départage, pas une devinette. Mêmes fichiers, même serveur, bonne adresse.</p>
   <h3>v1.86.1 (déployer un plan sur son serveur : il suffit de dézipper)</h3>
   <p><strong>100 % local.</strong> Aucune requête vers un tiers, aucun domaine nouveau, aucune donnée qui sort. Un plan déposé sur <strong>votre propre serveur</strong> voit enfin ses fichiers trouvés : ses images, ses données et ses tuiles sont cherchées <strong>dans le dossier du plan</strong> et non plus à la racine du site, où elles n'étaient jamais. Mêmes fichiers, même serveur, bonne adresse — rien de plus n'est téléchargé. Les déploiements déjà en place, dont les chemins avaient été corrigés à la main, sont inchangés.</p>
   <h3>v1.86.0 (le tuilage, audité)</h3>

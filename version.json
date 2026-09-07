@@ -1,7 +1,7 @@
 {
-  "version": "v1.86.1",
+  "version": "v1.86.2",
   "released": "2026-09-07",
   "notes": [
-    "🌐 Pour mettre un plan sur un serveur, il suffit maintenant de dézipper l’archive dans un dossier : les images, les données et les tuiles sont enfin trouvées toutes seules."
+    "🎨 Les icônes personnalisées d’un plan hébergé sur un serveur s’affichent enfin : elles étaient cherchées au mauvais endroit."
   ]
 }

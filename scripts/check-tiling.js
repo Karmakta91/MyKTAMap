@@ -195,6 +195,71 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
   }
 }
 
+
+// ───────── 10. 🎨 ICÔNES : APP vs PERSONNALISÉES ─────────
+// 🩸 v1.86.2 — Le préfixe `icon/` est AMBIGU : il désigne les icônes livrées
+// avec l'app (à la racine du site, ABSENTES du ZIP) ET celles ajoutées dans le
+// générateur (présentes, elles, DANS le ZIP). Jusqu'ici `resolveServerPaths`
+// ne parcourait pas `config.icons` du tout : les premières marchaient par
+// ABSENCE de traitement, les secondes étaient condamnées.
+// ⚠️ Le catalogue est LU DEPUIS `js/map.js` — jamais recopié ici (règle
+// CLAUDE.md, vérifiée par check-icon-catalog.js dans les deux sens).
+{
+  const vm2 = require("vm");
+  const msrc = fs.readFileSync("js/map.js", "utf8");
+  const d = msrc.indexOf("const TAGS_BUILTIN = {");
+  const f = msrc.indexOf("\n};", d);
+  t("🏷️ le catalogue canonique est extractible de map.js", d >= 0 && f > d);
+  let CAT = null;
+  try { CAT = vm2.runInNewContext("(" + msrc.slice(d + "const TAGS_BUILTIN = ".length, f + 2) + ")"); } catch (e) {
+    console.log("   ↳ " + e.message);
+  }
+  t("🏷️ il contient au moins 15 tags (pas de copie locale : lu à la source)",
+    CAT && Object.keys(CAT).length >= 15);
+
+  const mkWin = function (avecCatalogue) {
+    const w = { location: { href: "http://x/", search: "" }, navigator: { userAgent: "node" },
+                localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+                document: { addEventListener: () => {}, documentElement: {},
+                            querySelector: () => null, getElementById: () => null },
+                addEventListener: () => {}, console: console, indexedDB: null };
+    w.window = w;
+    if (avecCatalogue) w._ktaBuiltinIconUrls = CAT;
+    const ctx = vm2.createContext(w);
+    vm2.runInContext("var window = this; var document = this.document; var localStorage = this.localStorage;" +
+                     fs.readFileSync("js/config.js", "utf8"), ctx);
+    return w;
+  };
+
+  const w = mkWin(true);
+  const g = w.resolveServerPath;
+  const unBuiltin = CAT ? CAT[Object.keys(CAT)[0]] : "icon/house.png";
+  [[unBuiltin,                            "data/toto", unBuiltin,                          "icône de l'APP : reste à la racine"],
+   ["icon/moncustom.png",                 "data/toto", "data/toto/icon/moncustom.png",     "🩸 icône PERSO : préfixée (elle est dans le ZIP)"],
+   ["lib/leaflet/images/marker-icon.png", "data/toto", "lib/leaflet/images/marker-icon.png","🩸 asset de l'app (lib/) : jamais préfixé"],
+   ["css/style.css",                      "data/toto", "css/style.css",                    "…idem css/"]
+  ].forEach(function (c) {
+    const got = g(c[0], c[1]);
+    t(c[3] + "  [" + c[0] + " → " + got + "]", got === c[2]);
+  });
+
+  // 🩸 FAIL-SAFE : catalogue indisponible (map.js pas encore chargé) → on ne
+  // préfixe RIEN. Se tromper dans ce sens = comportement d'avant ; dans
+  // l'autre = toutes les icônes de l'app cassées.
+  const wSans = mkWin(false);
+  t("🩸 sans catalogue, aucune icône n'est préfixée (fail-safe)",
+    wSans.resolveServerPath("icon/moncustom.png", "data/toto") === "icon/moncustom.png");
+
+  // Et le parcours doit exister : sans lui, rien de tout ça n'est appliqué.
+  const cfg = { plan: { baseImage: "data/x.png" },
+                icons: { salle: unBuiltin, perso: "icon/moncustom.png", default: "lib/leaflet/images/marker-icon.png" } };
+  const out = w.resolveServerPaths(cfg, "data/toto");
+  t("🩸 resolveServerPaths PARCOURT bien config.icons (il ne le faisait pas du tout)",
+    out.icons.perso === "data/toto/icon/moncustom.png" &&
+    out.icons.salle === unBuiltin &&
+    out.icons.default === "lib/leaflet/images/marker-icon.png");
+}
+
 console.log(ko === 0 ? "\n🎉 tuilage : un plan V2 tuile toujours, et un plan serveur trouve ses tuiles"
                      : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);
