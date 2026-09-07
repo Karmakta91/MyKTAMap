@@ -90,7 +90,18 @@ data/
 >
 > Désormais un chemin `data/…` est **préfixé par le dossier du plan**, sauf s'il le contient déjà — ce qui préserve à l'identique les déploiements réécrits à la main. Vérifié en **exécutant** la fonction (`scripts/check-tiling.js` §9 charge `config.js` dans un `vm`), pas en cherchant une chaîne.
 
-**Les tuiles suivent sans réglage** : leur racine est dérivée du dossier du `baseImage` résolu → `data/toto/data/tiles/`, exactement là où le dézip les pose. Un champ `tiling.tilesDir` dans le `plan-config.json` force la racine pour un déploiement non standard.
+**Les tuiles sont SONDÉES, plus devinées** *(v1.88.3)*. 🩸 *Jusque-là leur racine était dérivée du dossier du `baseImage` — ce qui suppose que l'image et les tuiles ont bougé ensemble. Faux : le générateur écrit **toujours** les tuiles dans `zip.folder("data").folder("tiles")`, alors que l'emplacement de l'image dépend de la **recette de déploiement**. Avant la v1.86.1 il fallait réécrire les chemins à la main, ce qui remontait souvent l'image d'un cran sans toucher aux tuiles. D'où le symptôme de KARMA : « sur certains plans ça fonctionne bien » — le ZIP est le même, le déploiement non.*
+
+À l'ouverture d'un plan V2 servi, l'app essaie donc les candidats **dans l'ordre**, en demandant une **tuile témoin** (`z<max>/x0_y-1`) à chacun :
+
+| # | Candidat | Couvre |
+|---|---|---|
+| 1 | `tiling.tilesDir` | surcharge explicite du plan-config |
+| 2 | `<dossier du plan>/data/tiles` | **la mise en page du générateur** — le cas normal |
+| 3 | `<dossier du baseImage>/tiles` | déploiements aplatis (image ET tuiles remontées) |
+| 4 | `<dossier du plan>/tiles` | dernier recours |
+
+Deux requêtes au pire. 🛟 *Si aucune ne répond (hors-ligne, CORS), on retombe sur le 1ᵉʳ candidat — soit exactement le comportement d'avant — et le repli `baseImage` reste le filet final.* Le pré-cache hors-ligne utilise **la même** racine sondée : sans ça il téléchargerait 1275 URLs en 404.
 
 ✅ **Icônes personnalisées — on SONDE, on ne devine plus** *(v1.87.2)*. Le préfixe `icon/` désigne deux familles : les icônes **livrées avec l'app** (à la racine du site, absentes du ZIP) et celles **ajoutées dans le générateur** (présentes dans le ZIP, donc dans `<plan>/icon/`). Au chargement d'un plan serveur, chaque `icon/…` déclaré est **réellement demandé au serveur** dans le dossier du plan : il n'est réécrit que s'il répond **200**. 🛟 *Fail-safe : toute erreur (404, réseau, CORS) laisse le chemin à la racine.*
 

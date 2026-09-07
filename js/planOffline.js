@@ -87,14 +87,19 @@
         if (typeof u === "string" && u.indexOf(dir + "/") === 0) ajouter(u);
       });
     }
-    if (typeof window.ktaTuilesV2Urls === "function") {
-      (window.ktaTuilesV2Urls(cfg) || []).forEach(ajouter);
-    }
     // La racine des tuiles est rendue avec la liste : `verifierMaj` s en sert
     // pour EXCLURE les tuiles des sondes. Sonder 1275 tuiles serait absurde,
     // et inutile : elles derivent de l image, qui est sondee, elle.
-    const racineTuiles = (typeof window.ktaRacineTuilesServeur === "function")
-      ? window.ktaRacineTuilesServeur(cfg) : null;
+    // 🩸 v1.88.3 — on SONDE, comme le rendu. L hypothese synchrone se
+    // trompait sur les plans dont le deploiement a deplace l image sans
+    // deplacer les tuiles : le pre-cache telechargeait alors 1275 URLs en 404.
+    const racineTuiles = (typeof window.ktaResoudreRacineTuiles === "function")
+      ? await window.ktaResoudreRacineTuiles(cfg)
+      : ((typeof window.ktaRacineTuilesServeur === "function") ? window.ktaRacineTuilesServeur(cfg) : null);
+
+    if (typeof window.ktaTuilesV2Urls === "function") {
+      (window.ktaTuilesV2Urls(cfg, racineTuiles) || []).forEach(ajouter);
+    }
     return { urls: urls, cfg: cfg, racineTuiles: racineTuiles };
   }
 

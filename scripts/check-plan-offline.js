@@ -287,6 +287,26 @@ const MAN3 = {
 
 async function _fraicheur() {
   try {
+    const r = await _listerUrlsAvec({
+      plan: { baseImage: "data/p/data/img.png", tiledV2: true, imageWidth: 4096, imageHeight: 4096 },
+      tiling: { version: 2, tileSize: 512, minNativeZoom: -3, maxNativeZoom: 0 },
+      dataLayers: [{ id: "puits", file: "data/p/data/puits.json" }],
+      icons: { perso: "data/p/icon/x.png", appli: "icon/house.png" }
+    });
+    t("🩸 listerUrls s'EXÉCUTE sans ReferenceError (zone morte temporelle)", true);
+    t("🔗 la racine SONDÉE est celle qui sert à lister les tuiles",
+      r.racineTuiles === "data/p/data/tiles" &&
+      r.urls.indexOf("data/p/data/tiles/z0/x0_y-1.jpg") >= 0);
+    t("📄 le plan-config, l'image et les calques sont dans la liste",
+      r.urls.indexOf("data/p/plan-config.json") >= 0 &&
+      r.urls.indexOf("data/p/data/img.png") >= 0 &&
+      r.urls.indexOf("data/p/data/puits.json") >= 0);
+    t("🎨 seule l'icône PROPRE au plan est listée (celle de l'app vit à la racine)",
+      r.urls.indexOf("data/p/icon/x.png") >= 0 && r.urls.indexOf("icon/house.png") < 0);
+  } catch (e) {
+    t("🩸 listerUrls s'EXÉCUTE sans ReferenceError — " + (e && e.message), false);
+  }
+  try {
     const o = await Promise.all([
       _verifierAvec(MAN3, {}),
       _verifierAvec(MAN3, { "data/p/plan-config.json": 200 }),
@@ -379,6 +399,31 @@ async function _fraicheur() {
     });
   }
 }
+
+
+// ───────── 10. 🩸 ON EXÉCUTE listerUrls() ─────────
+// VÉCU DEUX FOIS EN UNE HEURE (v1.88.2 dans sw.js, v1.88.3 ici) : une variable
+// `const` utilisée AVANT sa déclaration — zone morte temporelle. `node -c` ne
+// voit rien, aucune assertion de chaîne non plus. La 2e fois, c'est en câblant
+// la racine de tuiles sondée que j'ai remis l'usage avant la déclaration.
+// Seule l'exécution attrape ça.
+async function _listerUrlsAvec(planConfig) {
+  const vm5 = require("vm");
+  const win = { console: { log: () => {}, warn: () => {} }, navigator: {}, location: { href: "http://x/" } };
+  win.window = win;
+  win.caches = { keys: async () => [], open: async () => ({ keys: async () => [], match: async () => null }) };
+  win.fetch = async function () { return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(planConfig)) }; };
+  // Stubs des helpers que listerUrls consomme — mêmes noms qu'au runtime.
+  win.resolveServerPaths = function (c) { return c; };
+  win.resoudreIconesPlanServeur = async function (c) { return c; };
+  win.ktaResoudreRacineTuiles = async function () { return "data/p/data/tiles"; };
+  win.ktaTuilesV2Urls = function (c, racine) { return [racine + "/z0/x0_y-1.jpg"]; };
+  const ctx = vm5.createContext(win);
+  vm5.runInContext("var window = this; var caches = this.caches; var fetch = this.fetch;" +
+                   "var navigator = this.navigator;" + fs.readFileSync("js/planOffline.js", "utf8"), ctx);
+  return win.PlanOffline.listerUrls({ id: "p1", path: "data/p" });
+}
+
 
 // 🩸 `async` OBLIGATOIRE : un throw de vm.runInContext doit devenir une
 // REJECTION, pas un crash synchrone hors du Promise.all. Un crash n est pas

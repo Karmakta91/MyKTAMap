@@ -114,8 +114,12 @@ function blocOffV2() {
 // divergé, et le symptôme aurait été un plan « téléchargé » mais troué.
 t("🌐 la racine des tuiles serveur est une fonction PARTAGÉE",
   /function ktaRacineTuilesServeur\(pc\)/.test(CODE));
-t("🩸 le runtime V2 l'APPELLE au lieu de recalculer",
-  /const RACINE_SRV = ktaRacineTuilesServeur\(/.test(CODE));
+// 🩸 v1.88.3 : le runtime NE calcule plus la racine — il la REÇOIT, sondée,
+// de chargerImage. L'ancienne assertion visait `const RACINE_SRV =
+// ktaRacineTuilesServeur(` et est devenue fausse par le refactor lui-même.
+// Le §16 couvre désormais la chaîne complète ; ici on garde le repli.
+t("🩸 le runtime garde un repli synchrone si la sonde n'a rien donné",
+  /const RACINE_SRV = racineSrv \|\| ktaRacineTuilesServeur\(/.test(CODE));
 t("🌐 elle est exposée pour le pré-cache hors-ligne",
   /window\.ktaRacineTuilesServeur\s*=/.test(CODE) && /window\.ktaTuilesV2Urls\s*=/.test(CODE));
 t("🌐 elle est dérivée du dossier du baseImage", /lastIndexOf\("\/"\)[\s\S]{0,200}\/tiles/.test(CODE));
@@ -398,6 +402,57 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
     })());
   t("🔄 index.json est demandé en `no-store` (le SW ne contrôle pas toujours l'onglet)",
     /fetch\("data\/index\.json", \{ cache: "no-store" \}\)/.test(MAIN2));
+}
+
+
+// ───────── 16. 🧱 LA RACINE DES TUILES EST SONDÉE, PAS DEVINÉE ─────────
+// 🩸 VÉCU (KARMA) : « il va chercher les tuiles ici
+// dev.myktamap.fr/data/plan_jean_may_from_v2.zip-d/tiles/… hors le dossier
+// tiles est dans un dossier data. Sur certains plans ça fonctionne bien. »
+// La v1.86.0 dérivait la racine du dossier du `baseImage`. Or le générateur
+// écrit TOUJOURS les tuiles dans `zip.folder("data").folder("tiles")`, tandis
+// que l'emplacement de l'IMAGE, lui, dépend de la recette de déploiement :
+// avant la v1.86.1 il fallait réécrire les chemins à la main, ce qui remontait
+// souvent l'image d'un cran sans toucher aux tuiles. D'où « certains oui,
+// d'autres non » — le ZIP est le même, le déploiement non.
+{
+  const vm6 = require("vm");
+  const d = CODE.indexOf("function ktaCandidatsRacineTuiles");
+  const f = CODE.indexOf("\n}", CODE.indexOf("return out;", d)) + 2;
+  t("les candidats sont extractibles", d >= 0 && f > d);
+  let cands = null;
+  try { cands = vm6.runInNewContext("(" + CODE.slice(d, f) + ")"); } catch (e) { /* noop */ }
+  t("🧱 la fonction des candidats s'exécute", typeof cands === "function");
+
+  if (typeof cands === "function") {
+    const pc = { _baseDir: "data/mon-plan",
+                 plan: { baseImage: "data/mon-plan/plan.png" },
+                 tiling: { maxNativeZoom: 0 } };
+    const l = cands(pc);
+    // 🩸 LE CAS KARMA : image remontée à la racine du plan, tuiles restées
+    // dans `data/`. Le 1er candidat doit être celui du GÉNÉRATEUR.
+    t("🩸 1er candidat = la mise en page du générateur  [" + l[0] + "]",
+      l[0] === "data/mon-plan/data/tiles");
+    t("🧱 le voisinage de l'image reste proposé en secours", l.indexOf("data/mon-plan/tiles") > 0);
+    // Surcharge explicite : elle passe devant tout.
+    const l2 = cands({ _baseDir: "data/mon-plan", plan: { baseImage: "data/mon-plan/plan.png" },
+                       tiling: { tilesDir: "autre/part/tiles" } });
+    t("🧱 `tiling.tilesDir` gagne toujours", l2[0] === "autre/part/tiles");
+    // Plan LOCAL : rien à sonder, tout vient de RUNTIME_ASSETS.
+    t("🩸 plan LOCAL (blob:) → aucun candidat",
+      cands({ _baseDir: "x", plan: { baseImage: "blob:http://x/a" }, tiling: {} }).length === 0);
+  }
+
+  t("🧱 la racine est SONDÉE avant le rendu (une tuile témoin par candidat)",
+    /async function ktaResoudreRacineTuiles/.test(CODE) &&
+    CODE.indexOf("_urlTuileTemoin") >= 0 &&
+    /const _racine = await ktaResoudreRacineTuiles\(pc\);/.test(CODE));
+  t("🩸 le runtime V2 REÇOIT la racine, il ne la recalcule plus",
+    /_chargerImageV2OptionB\(url, bounds, map, pc\.tiling, _racine\)/.test(CODE));
+  t("🛟 aucune sonde n'aboutit → on retombe sur le 1er candidat (comportement d'avant)",
+    /Aucune racine de tuiles ne répond/.test(TIL));
+  t("🧱 le dossier du plan est connu du runtime (`_baseDir`)",
+    sansCommentaires(fs.readFileSync("js/config.js", "utf8")).indexOf("config._baseDir = baseDir") >= 0);
 }
 
 // ───────── 11. 🎨 ON EXÉCUTE LE SONDEUR ─────────

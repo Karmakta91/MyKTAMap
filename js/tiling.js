@@ -145,7 +145,10 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
       console.log("[Tiling] Plan V2 : « Désactivé » ignoré — un plan tuilé utilise toujours ses tuiles");
     }
     console.log("[Tiling] Mode V2 (Option B : multi-imageOverlay swap on zoom)");
-    return _chargerImageV2OptionB(url, bounds, map, pc.tiling);
+    // On SONDE la racine des tuiles avant de rendre : une requete sur une
+    // tuile temoin par candidat, deux au pire. Cf ktaCandidatsRacineTuiles.
+    const _racine = await ktaResoudreRacineTuiles(pc);
+    return _chargerImageV2OptionB(url, bounds, map, pc.tiling, _racine);
   }
   // ⚠️ v1.86.0 — « Désactivé » sur un plan V1 TROP GRAND : c'est exactement le
   // cas de crash Safari iOS (une seule texture > limite GPU). On ne l'interdit
@@ -249,23 +252,92 @@ function _extTuile(tilingManifest) {
 
 // Racine HTTP des tuiles, ou null pour un plan LOCAL (baseImage en `blob:`) —
 // auquel cas les tuiles viennent de RUNTIME_ASSETS et rien de tout ceci ne sert.
+// Meilleure hypothese SYNCHRONE = le premier candidat. Conservee pour les
+// appelants qui ne peuvent pas attendre ; le rendu, lui, passe par le
+// resolveur ASYNCHRONE qui sonde reellement (ktaResoudreRacineTuiles).
 function ktaRacineTuilesServeur(pc) {
-  if (!pc || !pc.plan) return null;
-  const tm = pc.tiling || {};
-  const dir = (typeof tm.tilesDir === "string" && tm.tilesDir) ? tm.tilesDir : null;
-  if (dir) return dir.replace(/\/+$/, "");
+  const c = ktaCandidatsRacineTuiles(pc);
+  return c.length ? c[0] : null;
+}
+
+// 🩸 v1.88.3 — L'EMPLACEMENT DES TUILES EST INDÉPENDANT DE CELUI DE L'IMAGE.
+// La v1.86.0 dérivait la racine du dossier du `baseImage`. Ça marche pour deux
+// mises en page sur trois :
+//   dézip brut          data/<plan>/data/img.png  → data/<plan>/data/tiles  ✅
+//   aplati + réécrit    data/<plan>/img.png       → data/<plan>/tiles       ✅
+//   image à la racine,  data/<plan>/img.png       → data/<plan>/tiles       ❌
+//     tuiles dans data/                             (elles sont dans data/)
+// Le 3e cas est réel (constat KARMA : l'app cherchait
+// `…/plan_jean_may_from_v2.zip-d/tiles/z0/…` alors que les tuiles étaient dans
+// le sous-dossier `data/`). D'où « sur certains plans ça fonctionne bien ».
+//
+// On ne devine donc plus : on SONDE, comme pour les icônes. Une requête sur UNE
+// tuile témoin par candidat — deux au pire —, à l'ouverture du plan.
+function ktaCandidatsRacineTuiles(pc) {
+  if (!pc || !pc.plan) return [];
   const bi = pc.plan.baseImage;
-  if (typeof bi !== "string" || /^(blob:|data:)/.test(bi)) return null;
+  if (typeof bi !== "string" || /^(blob:|data:)/.test(bi)) return [];   // plan importé (ZIP)
+  const out = [];
+  const push = function (r) { if (r && out.indexOf(r) < 0) out.push(r); };
+  const tm = pc.tiling || {};
+  const dir = (typeof pc._baseDir === "string" && pc._baseDir) ? pc._baseDir.replace(/\/+$/, "") : null;
+  // 1. surcharge explicite du plan-config — elle gagne toujours
+  if (typeof tm.tilesDir === "string" && tm.tilesDir) push(tm.tilesDir.replace(/\/+$/, ""));
+  // 2. 🩸 LA MISE EN PAGE DU GÉNÉRATEUR, relative au dossier du plan. C'est le
+  //    candidat le plus sûr : `_genererTuilesV2` écrit TOUJOURS dans
+  //    `zip.folder("data").folder("tiles")`, quel que soit le plan. Un ZIP
+  //    déposé tel quel a donc ses tuiles là — même si l'image, elle, a été
+  //    déplacée par une recette de déploiement plus ancienne.
+  if (dir) push(dir + "/data/tiles");
+  // 3. à côté de l'image (comportement v1.86.0) : couvre les déploiements
+  //    aplatis, où image ET tuiles ont été remontées d'un cran.
   const i = bi.lastIndexOf("/");
-  return (i > 0) ? bi.slice(0, i) + "/tiles" : "tiles";
+  push((i > 0) ? bi.slice(0, i) + "/tiles" : "tiles");
+  // 4. dernier recours
+  if (dir) push(dir + "/tiles");
+  return out;
+}
+
+// URL d'une tuile témoin : niveau le plus détaillé, première colonne, première
+// rangée. Le générateur écrit toutes les colonnes/rangées de chaque niveau,
+// donc elle existe forcément si le dossier est le bon.
+function _urlTuileTemoin(racine, tm) {
+  const z = Number.isInteger(tm && tm.maxNativeZoom) ? tm.maxNativeZoom : 0;
+  const ext = _extTuile(tm || {});
+  return racine + "/z" + z + "/x0_y-1." + ext;
+}
+
+// Racine RÉELLE, sondée. Retourne null pour un plan local (rien à sonder).
+// 🛟 Si aucune sonde n'aboutit (hors-ligne, CORS, serveur muet), on rend le
+// PREMIER candidat : on retombe exactement sur le comportement d'avant plutôt
+// que de ne rien afficher. Le repli baseImage reste le filet final.
+async function ktaResoudreRacineTuiles(pc) {
+  const cands = ktaCandidatsRacineTuiles(pc);
+  if (!cands.length) return null;
+  if (cands.length === 1) return cands[0];
+  for (let k = 0; k < cands.length; k++) {
+    try {
+      const r = await fetch(_urlTuileTemoin(cands[k], pc.tiling), { method: "GET" });
+      if (r && r.status === 200) {
+        if (k > 0) console.log("[Tiling V2] Racine tuiles sondée :", cands[k], "(candidat " + (k + 1) + ")");
+        return cands[k];
+      }
+    } catch (e) { /* candidat suivant */ }
+  }
+  console.warn("[Tiling V2] Aucune racine de tuiles ne répond — repli sur", cands[0]);
+  return cands[0];
 }
 
 // Liste COMPLÈTE des URLs de tuiles, tous niveaux — pour le pré-cache hors-ligne.
 // La grille est calculée exactement comme `_renderNiveau` : scale = 2^-z, puis
 // cols/rows par division entière supérieure. Le générateur utilise scale = 2^L
 // avec z = -L : c'est la même chose.
-function ktaTuilesV2Urls(pc) {
-  const racine = ktaRacineTuilesServeur(pc);
+function ktaTuilesV2Urls(pc, racineDejaResolue) {
+  // 🩸 v1.88.3 — la racine peut etre passee : le pre-cache hors-ligne la
+  // resout en ASYNCHRONE (sonde) et doit lister EXACTEMENT les memes URLs
+  // que le rendu. Sans ce parametre, il retomberait sur l hypothese
+  // synchrone et pourrait telecharger des URLs 404.
+  const racine = racineDejaResolue || ktaRacineTuilesServeur(pc);
   if (!racine || !pc.tiling || !pc.plan) return [];
   const tm    = pc.tiling;
   const T     = tm.tileSize || 512;
@@ -289,7 +361,7 @@ function ktaTuilesV2Urls(pc) {
   return urls;
 }
 
-function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest) {
+function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv) {
   const H = bounds[1][0];
   const W = bounds[1][1];
 
@@ -321,7 +393,11 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest) {
 
   // Racine des tuiles serveur — dérivation PARTAGÉE avec le pré-cache hors-ligne
   // (`ktaRacineTuilesServeur` ci-dessus). Deux copies auraient divergé.
-  const RACINE_SRV = ktaRacineTuilesServeur(window.PLAN_CONFIG);
+  // 🩸 v1.88.3 — racine SONDEE, passee par chargerImage. La deriver ici
+  // du seul baseImage se trompait des que le deploiement avait deplace
+  // l image sans deplacer les tuiles (cas KARMA : l app cherchait
+  // `<plan>/tiles/` alors que le generateur les ecrit dans `<plan>/data/tiles/`).
+  const RACINE_SRV = racineSrv || ktaRacineTuilesServeur(window.PLAN_CONFIG);
   if (RACINE_SRV) console.log("[Tiling V2] Racine tuiles serveur :", RACINE_SRV);
 
   // Chemin d'une tuile TEL QU'IL EST DANS LE ZIP. Utilisé pour la recherche
@@ -908,3 +984,5 @@ window.PERF_MODE_SIZE_BYTES     = PERF_AUTO_TILE_THRESHOLD;
 // énumérer EXACTEMENT les mêmes URLs que le rendu, pas une seconde dérivation.
 window.ktaRacineTuilesServeur   = ktaRacineTuilesServeur;
 window.ktaTuilesV2Urls          = ktaTuilesV2Urls;
+window.ktaCandidatsRacineTuiles = ktaCandidatsRacineTuiles;
+window.ktaResoudreRacineTuiles  = ktaResoudreRacineTuiles;

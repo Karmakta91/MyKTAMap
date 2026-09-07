@@ -1,8 +1,7 @@
 {
-  "version": "v1.88.2",
+  "version": "v1.88.3",
   "released": "2026-09-08",
   "notes": [
-    "🩹 Correctif important : depuis la v1.88.0, une erreur interne empêchait l’app de servir ses fichiers depuis son cache — le mode hors-ligne était touché. Réparé.",
-    "🧹 Un plan hébergé sur un serveur puis retiré de la liste du serveur disparaît enfin de « Mes plans ». Avant, il restait affiché et suivait même l’export de profil."
+    "🧱 Certains plans hébergés sur un serveur ne trouvaient pas leurs images découpées : l’app les cherchait au mauvais endroit selon la façon dont le plan avait été déposé. Elle vérifie désormais où elles sont réellement."
   ]
 }

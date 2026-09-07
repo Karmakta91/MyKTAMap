@@ -667,6 +667,13 @@ async function loadAppConfig(planPath) {
     // config.icons juste après, une résolution tardive arriverait trop tard.
     config = await resoudreIconesPlanServeur(config, baseDir);
 
+    // 🩸 v1.88.3 — le DOSSIER DU PLAN, retenu sur la config. Le tuilage en a
+    // besoin : le generateur ecrit toujours les tuiles dans `<plan>/data/tiles`,
+    // alors que l emplacement de l image, lui, depend de la recette de
+    // deploiement. Deriver la racine des tuiles du seul baseImage se trompait
+    // donc sur les plans deployes a l ancienne (constat KARMA).
+    config._baseDir = baseDir;
+
     window.PLAN_CONFIG = config;
     const cfg = buildAppConfigFromPlan(config);
 
