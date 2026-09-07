@@ -132,7 +132,16 @@ let _importDemande = false;
 // config d'instance (sinon : sous-titre/flags morts pour ces users).
 async function _chargerIndexServeur() {
   try {
-    const r = await fetch("data/index.json");
+    // 🩸 v1.88.2 — `no-store` EXPLICITE. Le Service Worker sert deja ce fichier
+    // en network-first, mais ce fetch-ci part de la PAGE : quand le SW ne
+    // controle pas encore l onglet (tout premier chargement, SW en cours de
+    // mise a jour), c est le cache HTTP du navigateur qui repond. Or la conf
+    // Nginx documentee ne pose `no-cache` que sur sw.js / version.json /
+    // alert.json / Licence-pro.json : `data/**` tombe dans « le reste » et
+    // herite d une fraicheur heuristique. Un index modifie pouvait donc
+    // remonter perime (bug KARMA : « j ai refait un fichier index et ca ne
+    // semble pas bien remonter »).
+    const r = await fetch("data/index.json", { cache: "no-store" });
     if (!r.ok) {
       console.log("[Main] data/index.json absent — pas de config d'instance");
       return null;
@@ -202,6 +211,9 @@ async function decouvrirPlansServeur(idxDeja) {
     const idx = idxDeja || await _chargerIndexServeur();
     if (!idx) return;
     const plans = Array.isArray(idx?.plans) ? idx.plans : [];
+    // 🩸 v1.88.2 — on retient les ids VUS dans l index pour elaguer ensuite
+    // les entrees du registre qui n y sont plus (cf bloc en fin de fonction).
+    const vus = [];
     console.log("[Main] index.json trouvé :", plans.length, "plan(s)");
 
     plans.forEach(function(entry) {
@@ -261,8 +273,40 @@ async function decouvrirPlansServeur(idxDeja) {
       // un user-override explicite en multiLevel:false par setMultiLevel).
       if (multiLevel === true) regEntry.multiLevel = true;
       if (tiledV2    === true) regEntry.tiledV2    = true;
+      vus.push(id);
       window.PlanRegistry.addOrUpdate(regEntry);
     });
+
+    // 🩸 v1.88.2 — ÉLAGAGE DES PLANS SERVEUR DISPARUS (bug KARMA : « un plan
+    // serveur est embarqué dans l'export profil et affiché même s'il n'est
+    // plus présent côté serveur ; si je reset full, la liste remonte »).
+    // La découverte ne faisait QUE des addOrUpdate : rien ne retirait jamais
+    // une entrée. Un plan sorti de index.json restait donc dans le registre
+    // (localStorage), s'affichait dans « Mes plans », et partait dans l'export
+    // de profil — où il polluait l'instance d'en face.
+    //
+    // On ne retire QUE des entrées auto-découvertes (`discovered: true`) et de
+    // type serveur : un plan local importé, ou un plan serveur ajouté
+    // autrement, n'est jamais touché.
+    //
+    // 🛟 Ce code n'est atteint que si le fetch de index.json a RÉUSSI
+    // (`decouvrirPlansServeur` sort plus haut sinon) : un serveur injoignable
+    // ou hors-ligne ne peut donc pas vider la liste.
+    // ⚠️ On ne purge PAS les données associées (sessions, photos, géoréf) :
+    // si le plan revient sous le même id, elles se rattachent d'elles-mêmes.
+    try {
+      const connus = new Set(vus);
+      const aRetirer = (window.PlanRegistry.getAll() || []).filter(function (p) {
+        return p && p.type === "server" && p.discovered === true && !connus.has(p.id);
+      });
+      aRetirer.forEach(function (p) {
+        console.log("[Main] Plan serveur disparu de index.json — retiré du registre :", p.id);
+        window.PlanRegistry.remove(p.id);
+      });
+      if (aRetirer.length) console.log("[Main] Élagage serveur :", aRetirer.length, "entrée(s)");
+    } catch (e) {
+      console.warn("[Main] élagage des plans serveur :", e);
+    }
   } catch(e) {
     console.warn("[Main] Erreur auto-discovery serveur :", e);
   }

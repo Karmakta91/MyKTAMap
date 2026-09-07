@@ -5,6 +5,31 @@
 
 ---
 
+
+## 🕳️ Le « mangeur de blocs » — il revient dès qu'on nettoie les commentaires à la regex
+
+**Vécu deux fois** : `check-i18n` en v1.79.2, puis **mes propres garde-fous en v1.88.2**.
+
+```js
+src.replace(/\/\*[\s\S]*?\*\//g, " ")   // ❌ JAMAIS
+```
+
+Un `/*` n'apparaît pas que dans un commentaire : `accept="image/*"`, un chemin cité comme `` `data/**` ``, une regex. Le non-greedy avale alors **tout jusqu'au `*/` suivant**.
+
+**Mesuré en v1.88.2**, sur les fichiers que mes garde-fous inspectaient :
+
+| Fichier | Perte |
+|---|---|
+| `js/main.js` | **88 %** (98 986 → 12 170 octets) |
+| `sw.js`, `index.html`, `js/config.js` | ~50 % |
+| `js/homeLoader.js` | ~28 % |
+
+🩸 **Le danger n'est pas le faux rouge, qui se voit.** Ce sont les assertions de la forme **« X n'est PAS présent »** — `indexOf(...) < 0` — **vraies par accident** dès que la zone a été mangée. Un garde-fou vert qui ne garde plus rien.
+
+✅ **La règle** : ne retirer que des **lignes entières** de commentaire (`^\s*//`, et les plages `/*` → `*/` dont la ligne *commence* par `/*`). Un `/*` au milieu d'une ligne de code est laissé tel quel — il ne peut plus rien avaler. Implémentation de référence : `sansCommentaires()` dans `scripts/check-tiling.js`.
+
+⚠️ Ironie utile : le `/*` qui a déclenché la 2ᵉ occurrence venait d'un commentaire que je venais d'écrire — `` // … `data/**` tombe dans « le reste » `` — dans le fichier même que le garde-fou inspectait.
+
 ## 🚨 Pièges connus & règles importantes
 
 ### Regex JavaScript sur emojis (surrogate pairs)

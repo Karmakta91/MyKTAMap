@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.88.1</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.88.2</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.88.2 (Service Worker réparé + liste serveur à jour)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune donnée qui sort. <strong>Correctif important</strong> : depuis la v1.88.0, une erreur interne dans le Service Worker faisait échouer son interception des requêtes — l'application continuait de fonctionner en ligne, mais <strong>elle ne servait plus ses fichiers depuis son cache</strong>, donc le mode hors-ligne était atteint et chaque requête repartait vers le serveur. Réparé. Deux autres changements, tous deux <strong>vers votre serveur uniquement</strong> : la liste des plans du serveur (`data/index.json`) est désormais demandée en <strong>`no-store`</strong>, pour qu'une liste modifiée ne remonte plus depuis le cache du navigateur ; et un plan retiré de cette liste est retiré de « Mes plans » au démarrage — <strong>aucune de vos données n'est supprimée</strong> (sessions, photos, géoréférencement restent).</p>
   <h3>v1.88.1 (débordement de l'accueil à 125 % de zoom)</h3>
   <p><strong>100 % local</strong>, aucune requête, aucun domaine, aucune donnée. Correction d'affichage uniquement : sur l'accueil, le bloc de réglage d'image de la carte de chargement débordait sur le pied de page quand l'affichage de Windows est réglé à 125 %. Il est désormais replié par défaut, et la colonne peut défiler si son contenu grandit à l'avenir. Rien d'autre ne change.</p>
   <h3>v1.88.0 (savoir qu'un plan hors-ligne est périmé)</h3>

@@ -34,11 +34,32 @@ const PO  = fs.readFileSync("js/planOffline.js", "utf8");
 const HL  = fs.readFileSync("js/homeLoader.js", "utf8");
 const IDX = fs.readFileSync("index.html", "utf8");
 
-// 🩸 On teste du CODE, pas des commentaires (piège vécu 3 fois).
+// 🩸 STRIPPER LIGNE À LIGNE, JAMAIS INLINE — « le mangeur de blocs », 2e round.
+// La version précédente faisait `.replace(/\/\*[\s\S]*?\*\//g, " ")`. Or un
+// `/*` peut apparaître AILLEURS que dans un commentaire : dans une chaîne
+// (`accept="image/*"`), dans un chemin cité (`data/**`), dans une regex. Le
+// non-greedy avalait alors tout jusqu'au `*/` suivant — MESURÉ : de 28 % à
+// 88 % du fichier détruit selon les cas (main.js : 98 986 → 12 170 octets).
+// 🩸 Le danger n'était pas les faux rouges, qui se voient : c'étaient les
+// assertions de la forme « X n'est PAS présent », vraies par accident dès que
+// la zone avait été mangée. Le même piège est documenté dans README.md pour
+// check-i18n (« le mangeur de blocs »), et je l'ai réintroduit ici.
+// On ne retire donc QUE des lignes ENTIÈRES de commentaire : un `/*` au milieu
+// d'une ligne de code est laissé tel quel, il ne peut plus rien avaler.
 function sansCommentaires(src) {
-  return src.replace(/<!--[\s\S]*?-->/g, " ")
-            .replace(/\/\*[\s\S]*?\*\//g, " ")
-            .replace(/^[ \t]*\/\/.*$/gm, " ");
+  const nl = src.indexOf("\r\n") >= 0 ? "\r\n" : "\n";
+  const out = [];
+  let dansBloc = false, dansHtml = false;
+  src.split(/\r?\n/).forEach(function (l) {
+    const t = l.trim();
+    if (dansBloc) { if (t.indexOf("*/") >= 0) dansBloc = false; out.push(""); return; }
+    if (dansHtml) { if (t.indexOf("-->") >= 0) dansHtml = false; out.push(""); return; }
+    if (t.indexOf("//") === 0) { out.push(""); return; }
+    if (t.indexOf("/*") === 0) { if (t.indexOf("*/") < 0) dansBloc = true; out.push(""); return; }
+    if (t.indexOf("<!--") === 0) { if (t.indexOf("-->") < 0) dansHtml = true; out.push(""); return; }
+    out.push(l);
+  });
+  return out.join(nl);
 }
 const SWC = sansCommentaires(SW);
 const POC = sansCommentaires(PO);
@@ -286,6 +307,76 @@ async function _fraicheur() {
     t("🩸 manifeste sans validateurs (v2) → « inconnu », pas de faux « à jour »", o[3].r.etat === "inconnu");
   } catch (e) {
     t("§8 verifierMaj s'exécute sans planter — " + (e && e.message), false);
+  }
+}
+
+
+// ───────── 9. 🩸 ON APPELLE LE HANDLER `fetch` DU SERVICE WORKER ─────────
+// VÉCU (v1.88.0 → corrigé en v1.88.2, signalé par KARMA depuis sa console) :
+// j'ai inséré la branche des sondes `_ktacheck` AVANT la ligne
+// `const reqUrl = event.request.url || "";`. `const` en ZONE MORTE
+// TEMPORELLE → `ReferenceError: Cannot access 'reqUrl' before initialization`
+// à CHAQUE requête. Le handler `fetch` du SW mourait donc entièrement : plus
+// de cache, plus de hors-ligne, console noyée.
+// ⚠️ `node -c` ne voit RIEN d'une TDZ, et aucune assertion de chaîne non plus.
+// Le seul filet possible est d'EXÉCUTER le handler.
+{
+  const vm4 = require("vm");
+  const self0 = {};
+  const handlers = {};
+  const noop = function () {};
+  self0.self = self0;
+  self0.addEventListener = function (t, h) { handlers[t] = h; };
+  self0.skipWaiting = noop;
+  self0.clients = { claim: noop, matchAll: async () => [] };
+  self0.console = { log: noop, warn: noop, error: noop };
+  self0.location = { origin: "http://x", href: "http://x/" };
+  self0.caches = { open: async () => ({ match: async () => null, put: async () => {},
+                                        keys: async () => [], add: async () => {}, delete: async () => true }),
+                   keys: async () => [], match: async () => null, delete: async () => true };
+  self0.fetch = async function () { return { ok: true, status: 200, type: "basic", clone: function () { return this; } }; };
+  self0.Response = function (body, init) { Object.assign(this, init || {}); this.body = body; };
+  self0.Request  = function (url, init) { this.url = url; Object.assign(this, init || {}); };
+  self0.URL = URL;
+  self0.setTimeout = setTimeout;
+  self0.indexedDB = null;
+
+  let chargement = null;
+  try {
+    const ctx = vm4.createContext(self0);
+    vm4.runInContext("var self = this; var caches = this.caches; var fetch = this.fetch;" +
+                     "var Response = this.Response; var Request = this.Request;" +
+                     "var location = this.location; var console = this.console;" +
+                     "var setTimeout = this.setTimeout; var URL = this.URL;" +
+                     fs.readFileSync("sw.js", "utf8"), ctx);
+  } catch (e) { chargement = e; }
+  t("sw.js se charge dans un vm" + (chargement ? " — " + chargement.message : ""), !chargement);
+  t("il enregistre bien un handler `fetch`", typeof handlers.fetch === "function");
+
+  if (typeof handlers.fetch === "function") {
+    // 🩸 Chaque URL emprunte une BRANCHE différente du handler. Une TDZ, une
+    // faute de frappe ou une variable manquante dans n'importe laquelle fait
+    // lever ICI — ce que la relecture ne voit pas.
+    const cas = [
+      ["sonde de fraîcheur",   "http://x/data/p/plan-config.json?_ktacheck=1"],
+      ["page de reset",        "http://x/killsw.html"],
+      ["index serveur",        "http://x/data/index.json"],
+      ["dico i18n",            "http://x/lang/fr.json"],
+      ["doc applicative",      "http://x/docs/applications/README_USER.md"],
+      ["asset ordinaire",      "http://x/js/map.js"],
+      ["tuile OSM",            "https://a.tile.openstreetmap.org/12/2048/1362.png"]
+    ];
+    cas.forEach(function (c) {
+      let err = null;
+      try {
+        handlers.fetch({
+          request: { url: c[1], method: "GET", destination: "", headers: { get: () => null } },
+          respondWith: function (p) { if (p && typeof p.catch === "function") p.catch(function () {}); },
+          waitUntil: noop
+        });
+      } catch (e) { err = e; }
+      t("🩸 le handler fetch survit à : " + c[0] + (err ? " — " + err.name + " : " + err.message : ""), !err);
+    });
   }
 }
 

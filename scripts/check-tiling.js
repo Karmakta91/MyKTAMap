@@ -35,14 +35,32 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
 const TIL = fs.readFileSync("js/tiling.js", "utf8");
 const IDX = fs.readFileSync("index.html", "utf8");
 
-// 🩸 On teste du CODE, pas des commentaires : une assertion qui cherche une
-// chaîne dans tout un fichier est satisfaite — ou cassée — par le commentaire
-// qui explique la règle. Piège déjà vécu deux fois (v1.85.3, v1.85.4).
+// 🩸 STRIPPER LIGNE À LIGNE, JAMAIS INLINE — « le mangeur de blocs », 2e round.
+// La version précédente faisait `.replace(/\/\*[\s\S]*?\*\//g, " ")`. Or un
+// `/*` peut apparaître AILLEURS que dans un commentaire : dans une chaîne
+// (`accept="image/*"`), dans un chemin cité (`data/**`), dans une regex. Le
+// non-greedy avalait alors tout jusqu'au `*/` suivant — MESURÉ : de 28 % à
+// 88 % du fichier détruit selon les cas (main.js : 98 986 → 12 170 octets).
+// 🩸 Le danger n'était pas les faux rouges, qui se voient : c'étaient les
+// assertions de la forme « X n'est PAS présent », vraies par accident dès que
+// la zone avait été mangée. Le même piège est documenté dans README.md pour
+// check-i18n (« le mangeur de blocs »), et je l'ai réintroduit ici.
+// On ne retire donc QUE des lignes ENTIÈRES de commentaire : un `/*` au milieu
+// d'une ligne de code est laissé tel quel, il ne peut plus rien avaler.
 function sansCommentaires(src) {
-  return src
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/^[ \t]*\/\/.*$/gm, " ");
+  const nl = src.indexOf("\r\n") >= 0 ? "\r\n" : "\n";
+  const out = [];
+  let dansBloc = false, dansHtml = false;
+  src.split(/\r?\n/).forEach(function (l) {
+    const t = l.trim();
+    if (dansBloc) { if (t.indexOf("*/") >= 0) dansBloc = false; out.push(""); return; }
+    if (dansHtml) { if (t.indexOf("-->") >= 0) dansHtml = false; out.push(""); return; }
+    if (t.indexOf("//") === 0) { out.push(""); return; }
+    if (t.indexOf("/*") === 0) { if (t.indexOf("*/") < 0) dansBloc = true; out.push(""); return; }
+    if (t.indexOf("<!--") === 0) { if (t.indexOf("-->") < 0) dansHtml = true; out.push(""); return; }
+    out.push(l);
+  });
+  return out.join(nl);
 }
 const CODE = sansCommentaires(TIL);
 const IDXC = sansCommentaires(IDX);
@@ -351,6 +369,35 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
     IDX.indexOf('id="loaderPerfResume"') >= 0);
   t("🩸 FILET : la colonne Actions peut scroller en interne (robuste à la PROCHAINE addition)",
     /\.loader-col-actions #panelZip \{[\s\S]{0,200}overflow-y: auto;/.test(CSS));
+}
+
+
+// ───────── 15. 🧹 LES PLANS SERVEUR DISPARUS SONT ÉLAGUÉS ─────────
+// 🩸 VÉCU (KARMA) : « un plan serveur est embarqué dans l'export profil et
+// affiché même s'il n'est plus présent côté serveur ; si je reset full, la
+// liste remonte ». La découverte ne faisait QUE des `addOrUpdate` : rien ne
+// retirait jamais une entrée. Un plan sorti de `index.json` restait donc dans
+// le registre (localStorage), s'affichait dans « Mes plans », et partait dans
+// l'export de profil — polluant l'instance d'en face.
+// 🍖 Corriger la SOURCE suffit : l'export reste inchangé, car une entrée
+// périmée importée ailleurs sera élaguée au premier boot de cette instance.
+{
+  const MAIN2 = sansCommentaires(fs.readFileSync("js/main.js", "utf8"));
+  t("🧹 les ids vus dans l'index sont collectés", /const vus = \[\];/.test(MAIN2) && /vus\.push\(id\);/.test(MAIN2));
+  t("🧹 les entrées absentes de l'index sont retirées du registre",
+    /PlanRegistry\.remove\(p\.id\)/.test(MAIN2));
+  t("🩸 …UNIQUEMENT les plans SERVEUR auto-découverts (un plan local n'est jamais touché)",
+    /p\.type === "server" && p\.discovered === true/.test(MAIN2));
+  t("🛟 l'élagage est APRÈS la boucle, donc après un fetch d'index réussi",
+    MAIN2.indexOf("vus.push(id)") < MAIN2.indexOf("PlanRegistry.remove(p.id)"));
+  t("🩸 les données associées ne sont PAS purgées (sessions, photos, géoréf)",
+    (function () {
+      const i = MAIN2.indexOf("const connus = new Set(vus)");
+      const j = MAIN2.indexOf("catch", i);
+      return i >= 0 && j > i && MAIN2.slice(i, j).indexOf("purgeAssociatedData") < 0;
+    })());
+  t("🔄 index.json est demandé en `no-store` (le SW ne contrôle pas toujours l'onglet)",
+    /fetch\("data\/index\.json", \{ cache: "no-store" \}\)/.test(MAIN2));
 }
 
 // ───────── 11. 🎨 ON EXÉCUTE LE SONDEUR ─────────

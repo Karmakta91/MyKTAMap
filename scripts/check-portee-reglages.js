@@ -103,17 +103,32 @@ t("perf : ni câblés", fs.readFileSync("js/homeConfig.js", "utf8").indexOf("loa
 t("perf : la persistance reste bien par plan",
   /STORAGE_PREFIX\s*=\s*"myktamap_perf_toggles_v2_"/.test(fs.readFileSync("js/perfUltra.js", "utf8")));
 
-// 🩸 ON TESTE DU CODE, PAS DES COMMENTAIRES. Vécu deux fois : une assertion qui
-// cherche une chaîne dans tout un fichier est satisfaite — ou cassée — par le
-// commentaire qui EXPLIQUE la règle. Ici le commentaire « le sélecteur de langue
-// a quitté cet écran » cite `I18n.setLang()` et rendait le contrôle rouge alors
-// que le code était juste. On retire donc les commentaires avant de chercher :
-// HTML (ils vivent dans les gabarits template literal), bloc, et ligne entière.
+// 🩸 STRIPPER LIGNE À LIGNE, JAMAIS INLINE — « le mangeur de blocs », 2e round.
+// La version précédente faisait `.replace(/\/\*[\s\S]*?\*\//g, " ")`. Or un
+// `/*` peut apparaître AILLEURS que dans un commentaire : dans une chaîne
+// (`accept="image/*"`), dans un chemin cité (`data/**`), dans une regex. Le
+// non-greedy avalait alors tout jusqu'au `*/` suivant — MESURÉ : de 28 % à
+// 88 % du fichier détruit selon les cas (main.js : 98 986 → 12 170 octets).
+// 🩸 Le danger n'était pas les faux rouges, qui se voient : c'étaient les
+// assertions de la forme « X n'est PAS présent », vraies par accident dès que
+// la zone avait été mangée. Le même piège est documenté dans README.md pour
+// check-i18n (« le mangeur de blocs »), et je l'ai réintroduit ici.
+// On ne retire donc QUE des lignes ENTIÈRES de commentaire : un `/*` au milieu
+// d'une ligne de code est laissé tel quel, il ne peut plus rien avaler.
 function sansCommentaires(src) {
-  return src
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/^[ \t]*\/\/.*$/gm, " ");
+  const nl = src.indexOf("\r\n") >= 0 ? "\r\n" : "\n";
+  const out = [];
+  let dansBloc = false, dansHtml = false;
+  src.split(/\r?\n/).forEach(function (l) {
+    const t = l.trim();
+    if (dansBloc) { if (t.indexOf("*/") >= 0) dansBloc = false; out.push(""); return; }
+    if (dansHtml) { if (t.indexOf("-->") >= 0) dansHtml = false; out.push(""); return; }
+    if (t.indexOf("//") === 0) { out.push(""); return; }
+    if (t.indexOf("/*") === 0) { if (t.indexOf("*/") < 0) dansBloc = true; out.push(""); return; }
+    if (t.indexOf("<!--") === 0) { if (t.indexOf("-->") < 0) dansHtml = true; out.push(""); return; }
+    out.push(l);
+  });
+  return out.join(nl);
 }
 const UIC_CODE = sansCommentaires(UIC);
 

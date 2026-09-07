@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.88.1";
+const CACHE_NAME = "myktamap-cache-v1.88.2";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -961,6 +961,13 @@ self.addEventListener("fetch", (event) => {
   const reqProtocol = (event.request.url || "").split(":")[0];
   if (reqProtocol !== "http" && reqProtocol !== "https") return;
 
+  // 🩸 v1.88.2 — `reqUrl` est declare ICI, en TETE du handler, et plus juste
+  // avant le test killsw. En v1.88.0 j ai insere la sonde `_ktacheck` AVANT
+  // cette declaration : `const` en zone morte temporelle -> ReferenceError a
+  // CHAQUE requete, donc handler fetch mort et cache hors-ligne contourne.
+  // Toute branche ajoutee plus bas doit pouvoir lire reqUrl sans y penser.
+  const reqUrl = event.request.url || "";
+
   // 🔎 v1.88.0 — SONDES DE FRAÎCHEUR : RÉSEAU SEUL, JAMAIS DE CACHE.
   // `planOffline.verifierMaj()` envoie des requêtes CONDITIONNELLES sur les
   // fichiers d'un plan pré-téléchargé pour savoir s'ils ont changé côté
@@ -987,7 +994,6 @@ self.addEventListener("fetch", (event) => {
   // récupérer la dernière version depuis le serveur, JAMAIS cacher.
   // Le `network-only + no-store` garantit qu'elle est toujours fraîche
   // même si le SW est zombie ailleurs.
-  const reqUrl = event.request.url || "";
   if (/\/killsw\.html(\?|$)/.test(reqUrl)) {
     event.respondWith(
       fetch(event.request, { cache: "no-store" })
