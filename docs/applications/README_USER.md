@@ -419,6 +419,24 @@ L'application mémorise tous les plans que vous chargez, qu'ils viennent du serv
 | 🔐 | Plan local avec **accès permanent autorisé** (Chrome/Edge desktop) |
 | 📁 | Plan local sans persistance — re-sélection requise au chargement |
 
+#### 💾 Rendre un plan serveur disponible hors-ligne *(depuis v1.87.0)*
+
+Un plan **local** vit déjà dans ton navigateur : il fonctionne hors-ligne sans rien faire. Un plan **serveur**, non — et jusqu'ici il ne survivait que par le cache automatique de l'app, ce qui **ne suffisait pas** :
+
+- l'app ne garde qu'un nombre limité de fichiers récents, et **un gros plan dépasse ce nombre à lui seul** : il chassait ses propres morceaux en se chargeant. Hors-ligne, tu n'avais pas une erreur mais une carte **trouée** ;
+- seules les tuiles que tu avais **affichées** étaient gardées — ouvrir un plan sans zoomer n'en gardait qu'un niveau ;
+- et **chaque mise à jour de l'app remettait tout à zéro**.
+
+Ouvre la fiche **ℹ️ Infos** d'un plan serveur : une section **💾 Disponibilité hors-ligne** te propose de **tout télécharger** — image, données et **toutes les tuiles de tous les niveaux de zoom** — dans un espace réservé qui **survit aux mises à jour**.
+
+| Ce que tu vois | Ce que ça veut dire |
+|---|---|
+| **Non téléchargé** + bouton ⬇️ | Seul ce que tu as affiché est gardé, sans garantie |
+| **✅ Disponible hors-ligne** + ↻ / 🗑️ | Tout est là. Le bouton de téléchargement **a disparu** — il est devenu « Mettre à jour » |
+| **⚠️ Incomplet — n sur N** + ⬇️ | Téléchargement interrompu, ou fichiers effacés par le navigateur : le bouton **revient** pour compléter |
+
+> 💡 **L'état est lu du cache réel, pas d'une case mémorisée.** Si le navigateur fait le ménage dans son stockage, l'app le voit et te repropose le téléchargement — au lieu d'afficher « disponible » sur du vide et de te le faire découvrir en cavité.
+
 **Actions disponibles** sur chaque ligne :
 
 - **⭐/☆** — épingle/désépingle le plan en tête de liste *(depuis v1.78.0)*

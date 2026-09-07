@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.86.2</strong> (7 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.87.0</strong> (7 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.87.0 (télécharger un plan serveur pour le hors-ligne)</h3>
+  <p><strong>100 % local.</strong> un plan hébergé sur <strong>votre propre serveur</strong> peut être téléchargé en entier pour le hors-ligne. Le bouton lance le téléchargement de son image, de ses données et de toutes ses tuiles — <strong>depuis votre serveur, et lui seul</strong>. Aucun domaine externe n'est contacté, rien n'est envoyé : ce sont des requêtes de lecture vers les mêmes fichiers que ceux déjà servis à l'affichage, simplement demandés d'un coup au lieu d'au fil du zoom. Le résultat est stocké <strong>dans votre navigateur</strong>, dans un espace réservé au plan, que vous pouvez vider quand vous voulez depuis la même fiche.</p>
   <h3>v1.86.2 (les icônes personnalisées d'un plan servi)</h3>
   <p><strong>100 % local.</strong> Aucune requête vers un tiers, aucun domaine nouveau, aucune donnée qui sort. Une icône que vous avez ajoutée à un plan hébergé sur <strong>votre propre serveur</strong> est désormais cherchée <strong>dans le dossier du plan</strong>, où elle se trouve, au lieu de la racine du site où elle n'a jamais été. Les icônes livrées avec l'application continuent d'être servies depuis la racine — c'est le catalogue interne de l'app qui départage, pas une devinette. Mêmes fichiers, même serveur, bonne adresse.</p>
   <h3>v1.86.1 (déployer un plan sur son serveur : il suffit de dézipper)</h3>

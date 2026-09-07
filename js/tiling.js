@@ -229,6 +229,66 @@ window._applyLevelFilterToBasePlan = function() {
 // plus haut, la tuile est paddée avec du noir (canvas 512×512). Les bounds
 // FULL la placent au-dessus du plan (lat > imageHeight). Le black border
 // visible si l'utilisateur dezoome très loin. Acceptable pour v1.
+// =========================
+// 🌐 RACINE + LISTE DES TUILES V2 EN MODE SERVEUR — POINT DE VÉRITÉ UNIQUE
+// =========================
+// `chargerPlanServeur` ne fait AUCUN registerAsset : pour un plan servi en HTTP,
+// RUNTIME_ASSETS est vide et toutes les tuiles étaient introuvables → carte
+// blanche (corrigé v1.86.0). Les chemins d'un plan serveur sont ABSOLUS depuis
+// la racine du site, alors que le manifest V2 code des chemins relatifs au ZIP.
+//
+// 🩸 v1.87.0 — CES DEUX FONCTIONS SONT EXPOSÉES parce que le PRÉ-CACHE HORS-LIGNE
+// (`planOffline.js`) doit énumérer EXACTEMENT les mêmes URLs que le rendu. Deux
+// dérivations séparées auraient divergé au premier changement de mise en page du
+// générateur, et le symptôme aurait été un plan « téléchargé » mais troué.
+
+// Extension des tuiles d'après le manifest (webp/png = alpha, jpg = historique).
+function _extTuile(tilingManifest) {
+  return (typeof window.ktaTileExt === "function") ? window.ktaTileExt(tilingManifest) : "jpg";
+}
+
+// Racine HTTP des tuiles, ou null pour un plan LOCAL (baseImage en `blob:`) —
+// auquel cas les tuiles viennent de RUNTIME_ASSETS et rien de tout ceci ne sert.
+function ktaRacineTuilesServeur(pc) {
+  if (!pc || !pc.plan) return null;
+  const tm = pc.tiling || {};
+  const dir = (typeof tm.tilesDir === "string" && tm.tilesDir) ? tm.tilesDir : null;
+  if (dir) return dir.replace(/\/+$/, "");
+  const bi = pc.plan.baseImage;
+  if (typeof bi !== "string" || /^(blob:|data:)/.test(bi)) return null;
+  const i = bi.lastIndexOf("/");
+  return (i > 0) ? bi.slice(0, i) + "/tiles" : "tiles";
+}
+
+// Liste COMPLÈTE des URLs de tuiles, tous niveaux — pour le pré-cache hors-ligne.
+// La grille est calculée exactement comme `_renderNiveau` : scale = 2^-z, puis
+// cols/rows par division entière supérieure. Le générateur utilise scale = 2^L
+// avec z = -L : c'est la même chose.
+function ktaTuilesV2Urls(pc) {
+  const racine = ktaRacineTuilesServeur(pc);
+  if (!racine || !pc.tiling || !pc.plan) return [];
+  const tm    = pc.tiling;
+  const T     = tm.tileSize || 512;
+  const ext   = _extTuile(tm);
+  const zMin  = Number.isInteger(tm.minNativeZoom) ? tm.minNativeZoom : -3;
+  const zMax  = Number.isInteger(tm.maxNativeZoom) ? tm.maxNativeZoom : 0;
+  const W     = Number(pc.plan.imageWidth)  || 0;
+  const H     = Number(pc.plan.imageHeight) || 0;
+  if (!W || !H) return [];
+  const urls = [];
+  for (let z = zMax; z >= zMin; z--) {
+    const scale = Math.pow(2, -z);
+    const cols  = Math.ceil(Math.ceil(W / scale) / T);
+    const rows  = Math.ceil(Math.ceil(H / scale) / T);
+    for (let k = 1; k <= rows; k++) {
+      for (let col = 0; col < cols; col++) {
+        urls.push(racine + "/z" + z + "/x" + col + "_y" + (-k) + "." + ext);
+      }
+    }
+  }
+  return urls;
+}
+
 function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest) {
   const H = bounds[1][0];
   const W = bounds[1][1];
@@ -259,27 +319,9 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest) {
   };
   window._tilingV2State = state;
 
-  // 🌐 v1.86.0 — RACINE DES TUILES EN MODE SERVEUR.
-  // `chargerPlanServeur` ne fait AUCUN registerAsset : pour un plan servi en
-  // HTTP, RUNTIME_ASSETS est vide et toutes les tuiles étaient introuvables
-  // → carte blanche. Or les chemins d'un plan serveur sont ABSOLUS depuis la
-  // racine du site (`data/test/TestMAP.png`), alors que le manifest V2 code
-  // des chemins relatifs au ZIP (`data/tiles/…`).
-  // On dérive donc la racine HTTP du dossier du baseImage, sauf si le
-  // plan-config fournit un `tiling.tilesDir` explicite (échappatoire pour un
-  // déploiement non standard).
-  // ⚠️ Un plan LOCAL a un baseImage réécrit en `blob:` (config.js) → on rend
-  // null et RIEN ne change pour l'import ZIP, qui n'a jamais eu besoin de ça.
-  const RACINE_SRV = (function () {
-    const pc = window.PLAN_CONFIG;
-    if (!pc || !pc.plan) return null;
-    const dir = tilingManifest && typeof tilingManifest.tilesDir === "string" && tilingManifest.tilesDir;
-    if (dir) return dir.replace(/\/+$/, "");
-    const bi = pc.plan.baseImage;
-    if (typeof bi !== "string" || /^(blob:|data:)/.test(bi)) return null;  // plan importé (ZIP)
-    const i = bi.lastIndexOf("/");
-    return (i > 0) ? bi.slice(0, i) + "/tiles" : "tiles";
-  })();
+  // Racine des tuiles serveur — dérivation PARTAGÉE avec le pré-cache hors-ligne
+  // (`ktaRacineTuilesServeur` ci-dessus). Deux copies auraient divergé.
+  const RACINE_SRV = ktaRacineTuilesServeur(window.PLAN_CONFIG);
   if (RACINE_SRV) console.log("[Tiling V2] Racine tuiles serveur :", RACINE_SRV);
 
   // Chemin d'une tuile TEL QU'IL EST DANS LE ZIP. Utilisé pour la recherche
@@ -862,3 +904,7 @@ window.PERF_AUTO_TILE_THRESHOLD = PERF_AUTO_TILE_THRESHOLD;
 
 // Conservé pour rétro-compat (alias de PERF_AUTO_TILE_THRESHOLD)
 window.PERF_MODE_SIZE_BYTES     = PERF_AUTO_TILE_THRESHOLD;
+// 🌐 v1.87.0 — exposés pour le pré-cache hors-ligne (planOffline.js) : il doit
+// énumérer EXACTEMENT les mêmes URLs que le rendu, pas une seconde dérivation.
+window.ktaRacineTuilesServeur   = ktaRacineTuilesServeur;
+window.ktaTuilesV2Urls          = ktaTuilesV2Urls;

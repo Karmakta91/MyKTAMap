@@ -108,3 +108,35 @@ data/
 - ⚠️ `tuilingNecessaire()` est exporté mais **appelé nulle part** — dette connue, laissée en place.
 
 🛡️ Tout ce qui précède est vérifié par **`scripts/check-tiling.js`** (pré-commit, bloquant, 16 sabotages falsifiés).
+
+---
+
+## 7. Disponibilité hors-ligne d'un plan serveur *(v1.87.0)*
+
+**Question KARMA : « une fois un plan serveur chargé une fois, il est en cache, offline ok ? » — non, et pour trois raisons cumulées.**
+
+| Obstacle | Détail |
+|---|---|
+| **Plafond** | Le cache principal du SW est borné à `MAX_DYNAMIC_ENTRIES = 800` avec éviction **FIFO**. Un plan V2 de 20000×12000 fait **1275 tuiles**, et son **seul** niveau z=0 en fait **960** → le plan **s'évinçait lui-même en se chargeant**. Hors-ligne : carte **trouée**, pas une erreur. |
+| **Paresse** | `_renderNiveau` ne demande que les tuiles du **niveau de zoom courant**. Ouvrir un plan sans zoomer n'en cachait **qu'un sur quatre**. |
+| **Bump** | `activate` supprimait tout cache dont la clé ≠ `CACHE_NAME` → chaque release remettait le plan à zéro. |
+
+🍖 *`data/test` masquait le problème : il est dans `ASSETS_TO_CACHE`, donc **précaché et protégé** de l'éviction. Tester avec le plan de démo donnait un faux « ça marche ».*
+
+**La solution** : un cache **dédié par plan**, `myktamap-plan-<id>`, écrit depuis la page (`js/planOffline.js`) et que le SW **exclut des deux mécanismes** (`sw.js > _estCachePlan`). Le bouton vit dans la fiche **ℹ️ Infos** d'un plan serveur.
+
+### L'état ne doit jamais mentir
+
+⚠️ **Rien n'est mémorisé** — ni `localStorage`, ni IndexedDB. Le statut est **recalculé en lisant le cache** : un manifeste (`__kta_offline.json`, stocké *dans* le cache et jamais servi) liste les URLs attendues, et on les compare aux entrées réellement présentes.
+
+- **absent** → bouton « ⬇️ Rendre disponible hors-ligne »
+- **complet** → « ↻ Mettre à jour » + « 🗑️ Retirer » — 🩸 **le bouton de téléchargement DISPARAÎT** (exigence KARMA : pas de bouton fantôme)
+- **incomplet** → « ⬇️ Compléter » — le bouton **revient** tout seul si le navigateur a fait du ménage
+
+*C'est gratuit précisément parce qu'aucun drapeau n'est stocké : un drapeau survivrait à la purge et annoncerait « disponible » sur du vide.*
+
+🩸 **Le manifeste n'est écrit qu'à la FIN du téléchargement.** Une interruption laisse donc un cache sans manifeste → état « incomplet ». Et seul un **HTTP 200** est mis en cache : cacher un 404 rendrait le plan « complet » avec des fichiers morts, invisibles jusqu'au terrain.
+
+🩸 **Un seul point de vérité pour les tuiles.** `planOffline` n'énumère rien lui-même : il appelle `window.ktaTuilesV2Urls` (tiling.js), la fonction dont dérive aussi le rendu. Deux dérivations auraient divergé au premier changement de mise en page du générateur, et le symptôme aurait été un plan « téléchargé » mais troué — le bug qu'on corrige.
+
+🛡️ Vérifié par **`scripts/check-plan-offline.js`** (pré-commit, bloquant) : il **exécute** `ktaTuilesV2Urls` sur un cas dont le compte est calculable à la main (1275), et vérifie qu'un plan local (`blob:`) ne produit **aucune** URL. 10 sabotages falsifiés.

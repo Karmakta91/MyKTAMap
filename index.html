@@ -1364,6 +1364,10 @@
   <script src="js/sigImport.js" defer></script>
   <script src="js/createConf.js" defer></script>
   <script src="js/planRegistry.js" defer></script>
+  <!-- 💾 v1.87.0 — Pre-cache hors-ligne dun plan serveur. Apres planRegistry
+       (il lit les entrees de plan) et apres tiling.js (il reutilise
+       ktaTuilesV2Urls pour enumerer les tuiles : un seul point de verite). -->
+  <script src="js/planOffline.js" defer></script>
   <!-- 🆕 v1.42.0 — Kill-switch anti-fuite (denylist.json côté serveur). Charge
        APRÈS planRegistry.js (dépend de window.PlanRegistry pour suppression). -->
   <script src="js/planDenylist.js" defer></script>

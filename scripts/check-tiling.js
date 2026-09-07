@@ -91,10 +91,18 @@ function blocOffV2() {
 }
 
 // ───────── 3. les plans SERVEUR résolvent leurs tuiles en HTTP ─────────
-t("🌐 une racine de tuiles serveur est calculée", /RACINE_SRV\s*=\s*\(function/.test(CODE));
+// 🩸 v1.87.0 : la dérivation a quitté l'IIFE locale pour une fonction
+// TOP-LEVEL partagée avec le pré-cache hors-ligne. Deux copies auraient
+// divergé, et le symptôme aurait été un plan « téléchargé » mais troué.
+t("🌐 la racine des tuiles serveur est une fonction PARTAGÉE",
+  /function ktaRacineTuilesServeur\(pc\)/.test(CODE));
+t("🩸 le runtime V2 l'APPELLE au lieu de recalculer",
+  /const RACINE_SRV = ktaRacineTuilesServeur\(/.test(CODE));
+t("🌐 elle est exposée pour le pré-cache hors-ligne",
+  /window\.ktaRacineTuilesServeur\s*=/.test(CODE) && /window\.ktaTuilesV2Urls\s*=/.test(CODE));
 t("🌐 elle est dérivée du dossier du baseImage", /lastIndexOf\("\/"\)[\s\S]{0,200}\/tiles/.test(CODE));
 t("🌐 un déploiement non standard peut la surcharger (tilesDir)",
-  CODE.indexOf("tilingManifest.tilesDir") >= 0);
+  /tm\.tilesDir/.test(CODE));
 t("🩸 un plan LOCAL (baseImage en blob:) n'est PAS pris pour un plan serveur",
   /blob:\|data:/.test(CODE));
 t("🌐 sans asset en mémoire, la tuile est résolue en HTTP au lieu de null",

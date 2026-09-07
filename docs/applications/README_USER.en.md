@@ -420,6 +420,24 @@ The application remembers all the maps you load, whether they come from the serv
 | 🔐 | Local map with **permanent access granted** (Chrome/Edge desktop) |
 | 📁 | Local map without persistence — re-selection required at load |
 
+#### 💾 Making a server map available offline *(since v1.87.0)*
+
+A **local** map already lives in your browser: it works offline with no effort. A **server** map does not — and until now it only survived through the app's automatic cache, which **was not enough**:
+
+- the app only keeps a limited number of recent files, and **a large map exceeds that number on its own**: it evicted its own pieces while loading. Offline, you got no error — you got a map full of **holes**;
+- only the tiles you had **displayed** were kept — opening a map without zooming kept one level out of four;
+- and **every app update wiped it all**.
+
+Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** section offers to **download everything** — image, data and **every tile of every zoom level** — into a reserved space that **survives app updates**.
+
+| What you see | What it means |
+|---|---|
+| **Not downloaded** + ⬇️ button | Only what you displayed is kept, with no guarantee |
+| **✅ Available offline** + ↻ / 🗑️ | Everything is there. The download button **is gone** — it became "Update" |
+| **⚠️ Incomplete — n of N** + ⬇️ | Interrupted download, or files cleared by the browser: the button **comes back** to finish |
+
+> 💡 **The state is read from the real cache, not from a remembered flag.** If the browser clears its storage, the app notices and offers the download again — instead of showing "available" over nothing and letting you find out underground.
+
 **Available actions** on each row (3 buttons):
 
 - **ℹ️** — opens a **Detailed info** window on this archive (internal id, name, version, author, type, source file, size, persistence, V1/V2/multi-level mode, performance preset, dates added and opened). Useful for checking what the app knows about the map without loading it.

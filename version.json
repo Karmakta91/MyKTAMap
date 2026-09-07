@@ -1,7 +1,7 @@
 {
-  "version": "v1.86.2",
+  "version": "v1.87.0",
   "released": "2026-09-07",
   "notes": [
-    "🎨 Les icônes personnalisées d’un plan hébergé sur un serveur s’affichent enfin : elles étaient cherchées au mauvais endroit."
+    "💾 Un plan hébergé sur un serveur peut enfin être téléchargé en entier pour le hors-ligne : ouvre sa fiche ℹ️ Infos, section « Disponibilité hors-ligne ». Avant, seul ce que tu avais affiché était gardé, et une mise à jour de l’app effaçait tout."
   ]
 }

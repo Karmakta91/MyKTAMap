@@ -266,6 +266,18 @@ node scripts/check-wakelock.js || exit $?
 # par les imports ZIP). Ce controle verifie que rien de tout ca ne revient.
 node scripts/check-tiling.js || exit $?
 
+# 💾 v1.87.0 — HORS-LIGNE D UN PLAN SERVEUR. Question KARMA : « une fois
+# charge, il est en cache, offline ok ? » Non : le cache principal plafonne a
+# 800 entrees en FIFO (un plan V2 de 20000x12000 fait 1275 tuiles, dont 960
+# pour le seul niveau z=0 : il s evincait lui-meme), seules les tuiles
+# AFFICHEES etaient telechargees, et `activate` purgeait tout au bump.
+# D ou un cache DEDIE par plan, exclu des deux mecanismes.
+# Ce controle protege surtout l exigence la plus facile a casser : l etat
+# affiche est lu du CACHE REEL, jamais d un drapeau -- un drapeau survit a une
+# purge navigateur et annonce « disponible » sur du vide (bouton fantome).
+node scripts/check-plan-offline.js || exit $?
+
+
 node scripts/check-i18n.js || exit $?
 
 # ⚖️ LA PORTEE DES REGLAGES (audit KARMA du 07/09). La config du MODE PLAN ne
