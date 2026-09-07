@@ -47,7 +47,7 @@ const PERF_PRESETS = {
 const PERF_AUTO_META = {
   label:        "Auto",
   emoji:        "🔄",
-  description:  "L'app décide selon la taille du plan."
+  description:  "Découpe automatiquement les plans trop grands pour être affichés d’un bloc."
 };
 
 // Métadonnées du mode "off" — rendu direct via L.imageOverlay, pas de tiling du tout
@@ -55,7 +55,7 @@ const PERF_AUTO_META = {
 const PERF_OFF_META = {
   label:        "Désactivé",
   emoji:        "💤",
-  description:  "Aucun tiling. Image en direct (qualité brute, risqué sur mobile)."
+  description:  "Aucun découpage : image entière. Sans effet sur un plan déjà tuilé."
 };
 
 // =========================
@@ -73,14 +73,25 @@ function resoudrePerfPreset(preset, fileSize, imageW, imageH) {
     return { tile: false, params: null };
   }
 
-  // Mode auto : tile uniquement si fichier > seuil legacy, avec params Équilibré
+  // Mode auto : 🩸 v1.86.0 — TRANCHE SUR LES PIXELS, plus sur le poids fichier.
+  // AVANT : `fileSize > 60 Mo`. Un JPEG de 100 Mpx pèse ~15 Mo → auto ne tuilait
+  // PAS, texture géante, crash Safari iOS ; alors que « Qualité » l'aurait tuilé.
+  // Le défaut était donc le mode le MOINS protecteur — l'inverse de ce qu'il
+  // promet. Pire, sur un plan SERVEUR `fileSize` vaut toujours null (map.js le
+  // cherche dans RUNTIME_ASSETS, que chargerPlanServeur ne remplit jamais) :
+  // auto ne tuilait alors JAMAIS, quelle que soit la taille.
+  // Le poids fichier reste en second critère (un gros fichier peu défini reste
+  // coûteux à décoder), mais il n'est plus le seul.
   if (p === "auto") {
-    const tile = (typeof fileSize === "number" && fileSize > PERF_AUTO_TILE_THRESHOLD);
+    const surfaceKO = (typeof imageW === "number" && typeof imageH === "number")
+      && (imageW * imageH) > TUILING_NECESSAIRE_PIXELS;
+    const poidsKO   = (typeof fileSize === "number" && fileSize > PERF_AUTO_TILE_THRESHOLD);
+    const tile      = surfaceKO || poidsKO;
     return {
       tile:   tile,
       params: tile ? PERF_PRESETS.balanced : null
     };
-  }
+  }
 
   // Presets explicites : tile uniquement si l'image est techniquement trop grande
   // pour un rendu direct (sécurité GPU mobile). Sinon rendu direct (qualité native).
@@ -113,11 +124,15 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
   // contient une section `tiling` (manifest), on bascule sur le runtime
   // Option B : N L.imageOverlay par niveau de zoom, swap on zoomend.
   // Cf createConf.js > _genererTuilesV2 pour la génération côté planner.
-  // ⚠️ v151 : si le user a force perfPreset="off" (Mode perf Désactivé), on
-  // SKIP le tuilage V2 et on charge directement l'image source (baseImage) en
-  // L.imageOverlay — comportement V1 brut. Use case : comparer V2 vs V1 sur le
-  // meme plan, ou contourner un bug perçu du runtime tuile. Le baseImage reste
-  // toujours present dans le ZIP/asset (le generateur V2 ne le supprime pas).
+  //
+  // 🩸 v1.86.0 (décision KARMA) — UN PLAN V2 TUILE TOUJOURS. Le contournement
+  // `perfPreset === "off"` de la v151, qui rechargeait le baseImage entier en
+  // un seul L.imageOverlay, est SUPPRIMÉ : c'était exactement le cas de crash
+  // Safari iOS qu'on cherche à éviter, offert en un clic, sans avertissement.
+  // Le baseImage reste dans le ZIP — il sert au dézip manuel et au repli
+  // d'erreur ci-dessous — mais il n'est plus un MODE proposé à l'utilisateur.
+  // `off` ne concerne donc plus que les plans V1.
+  //
   // 🏗️ v1.67.0 : registre des overlays du plan PRINCIPAL en rendu direct
   // (non tuilé) — sans référence, le filtre multi-niveau ne pourrait pas le
   // masquer. Reset à chaque chargement (un seul plan à la fois).
@@ -127,12 +142,25 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
   const pc = window.PLAN_CONFIG;
   if (pc && pc.plan && pc.plan.tiledV2 === true && pc.tiling) {
     if (preset === "off") {
-      console.log("[Tiling] Plan V2 mais perfPreset=off → fallback baseImage direct (V1-like)");
-      window._ktaBaseLayers.push(L.imageOverlay(url, bounds).addTo(map));
-      return [];
+      console.log("[Tiling] Plan V2 : « Désactivé » ignoré — un plan tuilé utilise toujours ses tuiles");
     }
     console.log("[Tiling] Mode V2 (Option B : multi-imageOverlay swap on zoom)");
-    return _chargerImageV2OptionB(bounds, map, pc.tiling);
+    return _chargerImageV2OptionB(url, bounds, map, pc.tiling);
+  }
+  // ⚠️ v1.86.0 — « Désactivé » sur un plan V1 TROP GRAND : c'est exactement le
+  // cas de crash Safari iOS (une seule texture > limite GPU). On ne l'interdit
+  // pas — c'est un choix explicite, utile sur PC pour la qualité native — mais
+  // on le DIT, ce qui n'était fait nulle part.
+  if (preset === "off" && (W * H) > TUILING_NECESSAIRE_PIXELS) {
+    console.warn("[Tiling] « Désactivé » sur une image de " + W + "×" + H +
+                 " px (> 4096²) — rendu direct, risque de crash mémoire sur mobile.");
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(
+        (window.I18n && window.I18n.t)
+          ? window.I18n.t("tiling.off.grosPlan")
+          : "Découpage désactivé sur un très grand plan — risque de plantage sur mobile.",
+        "warn");
+    }
   }
   const r = resoudrePerfPreset(preset, fileSize, W, H);
 
@@ -201,7 +229,7 @@ window._applyLevelFilterToBasePlan = function() {
 // plus haut, la tuile est paddée avec du noir (canvas 512×512). Les bounds
 // FULL la placent au-dessus du plan (lat > imageHeight). Le black border
 // visible si l'utilisateur dezoome très loin. Acceptable pour v1.
-function _chargerImageV2OptionB(bounds, map, tilingManifest) {
+function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest) {
   const H = bounds[1][0];
   const W = bounds[1][1];
 
@@ -224,9 +252,42 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
     // niveaux les plus récents ; les autres sont révoqués (bitmap GC), quitte
     // à re-décoder au retour (coût CPU acceptable vs fuite RAM).
     blobAssetsByLevel: {},     // { z: [asset, ...] } — assets décodés par niveau
-    levelLRU: []               // ordre d'accès des niveaux (MRU en fin de tableau)
+    levelLRU: [],              // ordre d'accès des niveaux (MRU en fin de tableau)
+    repliFait: false,          // 🩸 v1.86.0 — repli baseImage déjà posé (une seule fois)
+    erreursPremier: 0,         // tuiles du PREMIER rendu qui ont échoué à charger
+    attendusPremier: 0         // tuiles du PREMIER rendu qu'on a demandées
   };
   window._tilingV2State = state;
+
+  // 🌐 v1.86.0 — RACINE DES TUILES EN MODE SERVEUR.
+  // `chargerPlanServeur` ne fait AUCUN registerAsset : pour un plan servi en
+  // HTTP, RUNTIME_ASSETS est vide et toutes les tuiles étaient introuvables
+  // → carte blanche. Or les chemins d'un plan serveur sont ABSOLUS depuis la
+  // racine du site (`data/test/TestMAP.png`), alors que le manifest V2 code
+  // des chemins relatifs au ZIP (`data/tiles/…`).
+  // On dérive donc la racine HTTP du dossier du baseImage, sauf si le
+  // plan-config fournit un `tiling.tilesDir` explicite (échappatoire pour un
+  // déploiement non standard).
+  // ⚠️ Un plan LOCAL a un baseImage réécrit en `blob:` (config.js) → on rend
+  // null et RIEN ne change pour l'import ZIP, qui n'a jamais eu besoin de ça.
+  const RACINE_SRV = (function () {
+    const pc = window.PLAN_CONFIG;
+    if (!pc || !pc.plan) return null;
+    const dir = tilingManifest && typeof tilingManifest.tilesDir === "string" && tilingManifest.tilesDir;
+    if (dir) return dir.replace(/\/+$/, "");
+    const bi = pc.plan.baseImage;
+    if (typeof bi !== "string" || /^(blob:|data:)/.test(bi)) return null;  // plan importé (ZIP)
+    const i = bi.lastIndexOf("/");
+    return (i > 0) ? bi.slice(0, i) + "/tiles" : "tiles";
+  })();
+  if (RACINE_SRV) console.log("[Tiling V2] Racine tuiles serveur :", RACINE_SRV);
+
+  // Chemin d'une tuile TEL QU'IL EST DANS LE ZIP. Utilisé pour la recherche
+  // dans RUNTIME_ASSETS et pour le pré-extract lazy — un seul endroit à
+  // changer si le générateur change sa mise en page.
+  function _cheminTuileZip(z, col, k) {
+    return "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + TILE_EXT;
+  }
 
   // Nombre de niveaux dont on garde les bitmaps décodés en RAM. Courant + 1
   // adjacent suffit pour un zoom/dézoom fluide. Sur device riche, on peut se
@@ -240,9 +301,15 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
   // au premier appel et la réutilise ensuite (asset.url cached). Range l'asset
   // dans le bucket du niveau z pour le LRU.
   function _resoudreUrlTuile(z, col, k) {
-    const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + TILE_EXT;
+    const path = _cheminTuileZip(z, col, k);
     const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
-    if (!asset) return null;  // tuile manquante (edge case ou erreur génération)
+    if (!asset) {
+      // 🌐 v1.86.0 — pas d'asset en mémoire : plan SERVEUR, on lit en HTTP.
+      // (null seulement si on n'est pas en mode serveur : vraie tuile manquante)
+      return RACINE_SRV
+        ? RACINE_SRV + "/z" + z + "/x" + col + "_y" + (-k) + "." + TILE_EXT
+        : null;
+    }
     if (!asset.url && asset.file) {
       asset.url = URL.createObjectURL(asset.file);
       state.blobUrlsCreated.push(asset.url);
@@ -323,7 +390,7 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
       const aExtraire = [];
       for (let k = 1; k <= rows; k++) {
         for (let col = 0; col < cols; col++) {
-          const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + TILE_EXT;
+          const path = _cheminTuileZip(z, col, k);
           const asset = window.RUNTIME_ASSETS[path];
           if (asset && !asset.file && asset._zipPath) {
             aExtraire.push(path);
@@ -355,6 +422,8 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
     state.activeOverlays = [];
 
     let added = 0, missing = 0;
+    // Capturé AVANT la boucle : state.currentLevel sera réaffecté juste après.
+    const premierRendu = (state.currentLevel === null);
     for (let k = 1; k <= rows; k++) {
       for (let col = 0; col < cols; col++) {
         const url = _resoudreUrlTuile(z, col, k);
@@ -380,17 +449,64 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
         // 🏗️ v1.67.0 : le plan principal EST le niveau 0 — si le filtre
         // multi-niveau le masque, les tuiles du swap zoom restent hors map
         // (mais tracées dans activeOverlays pour le ré-affichage).
+        // 🌐 v1.86.0 — DÉTECTION D'UN DÉPLOIEMENT SERVEUR RATÉ. En mode
+        // serveur les URLs sont des chemins HTTP : elles « résolvent »
+        // toujours, même si le fichier n'existe pas. `added` ne dit donc plus
+        // rien — c'est l'événement `error` de Leaflet qui parle. Si TOUTES les
+        // tuiles du tout premier rendu échouent, on replie sur baseImage.
+        // Capturé sur `premierRendu` (local) et non sur `state.currentLevel`,
+        // qui est déjà réaffecté quand l'erreur asynchrone arrive.
+        overlay.on("error", function () {
+          if (!premierRendu || state.repliFait) return;
+          state.erreursPremier++;
+          if (state.attendusPremier > 0 && state.erreursPremier >= state.attendusPremier) {
+            _repliBaseImage("les " + state.attendusPremier + " tuiles du premier rendu ont échoué au chargement");
+          }
+        });
         if (!window._ktaBaseHidden) overlay.addTo(map);
         state.activeOverlays.push(overlay);
         added++;
       }
     }
+    if (premierRendu) state.attendusPremier = added;
     state.currentLevel = z;
     // 🆕 v1.26.4 (P0-2 RAM) — marque z comme MRU + révoque les bitmaps des
     // niveaux les moins récents au-delà du cap (libère la RAM décodée).
     _trimLevelsLRU(z);
     console.log("[Tiling V2] Niveau z=" + z + " — " + added + " tuiles affichées" +
                 (missing > 0 ? " (" + missing + " manquantes)" : ""));
+
+    // 🩸 v1.86.0 — REPLI D'ERREUR (pas un mode : une récupération).
+    // Un plan V2 tuile TOUJOURS (décision KARMA) — mais si les tuiles sont
+    // réellement inatteignables, mieux vaut l'image entière qu'une carte
+    // blanche muette. Deux déclencheurs :
+    //   • aucune tuile RÉSOLUE  → ni en mémoire, ni de racine serveur ;
+    //   • toutes les tuiles du premier rendu en ERREUR de chargement →
+    //     déploiement serveur incorrect (tuiles ailleurs que `<plan>/tiles/`).
+    // Une seule fois par chargement : sans le drapeau, chaque zoom empilerait
+    // un overlay plein format de plus.
+    function _repliBaseImage(motif) {
+      if (state.repliFait) return;
+      state.repliFait = true;
+      console.error("[Tiling V2] " + motif + " — repli sur baseImage. " +
+                    "Plan V2 servi en HTTP : les tuiles doivent être dans « " +
+                    (RACINE_SRV || "<dossier du plan>/tiles") + " ».");
+      try {
+        const ovRepli = L.imageOverlay(urlBase, bounds).addTo(map);
+        window._ktaBaseLayers.push(ovRepli);
+        if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+          window.OOMGuard.showToast(
+            (window.I18n && window.I18n.t)
+              ? window.I18n.t("tiling.v2.repli")
+              : "Tuiles introuvables — image entière affichée.",
+            "warn");
+        }
+      } catch (e) {
+        console.error("[Tiling V2] Repli baseImage impossible :", e);
+      }
+    }
+
+    if (added === 0 && missing > 0) _repliBaseImage("AUCUNE tuile résolue (" + missing + " manquantes)");
   }
 
   // Écoute des changements de zoom : swap de niveau si nécessaire.

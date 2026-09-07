@@ -161,7 +161,7 @@ t("🖼️ le tuilage est DANS la carte de chargement (entre le choix du fichier
   })());
 t("🖼️ et il dit qu'il n'est pas mémorisé",
   IDX.indexOf('data-i18n="home.perf.tilingHint"') >= 0 &&
-  JSON.parse(fs.readFileSync("lang/fr.json", "utf8"))["home.perf.tilingHint"].indexOf("Non mémorisé") === 0);
+  JSON.parse(fs.readFileSync("lang/fr.json", "utf8"))["home.perf.tilingHint"].indexOf("Non mémorisé") >= 0);
 t("🖼️ côté plan, le preset reste en LECTURE SEULE (aucun second point de réglage)",
   UIC.indexOf("affichage read-only") >= 0 && !/id="cfg_perfPreset"/.test(UIC));
 

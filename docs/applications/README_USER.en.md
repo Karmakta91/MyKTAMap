@@ -530,21 +530,20 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 **Organization**: **everything is grouped in a single ⚙️ Configuration modal**, accessible from the loader header. The 🏗️ Generate a map button remains directly visible in the home (not in the Configuration modal) because it is a creation action, not a setting.
 
-### 🎚️ Performance mode — 5 presets
+### 🎚️ Image splitting — 2 choices *(since v1.86.0)*
 
-The **Performance mode** block in the loader lets you choose how to display your map, with 5 modes presented as a selector (in the style of DLSS in video games):
+Right above the **▶️ Load this map** button, a small selector decides how the background image is displayed.
 
-| Button | For which case? |
+| Button | What it does |
 |---|---|
-| 💤 **Disabled** | **No tiling at all.** Image displayed raw (native quality, but ⚠️ may crash on mobile for very large maps). Use only if you know your device can handle it. |
-| 🔄 **Auto** *(default)* | The app decides based on file size — activated if the map exceeds 60 MB. **Recommended for most cases.** |
-| 🌟 **Quality** | Very detailed maps to zoom deeply into. **Recommended on desktop PC** with enough RAM. Sharper image. |
-| 🎯 **Balanced** | Compromise between sharpness and smoothness. Reproduces the historical "Performance" mode of the app. |
-| ⚡ **Performance** | **Low mobile**, very heavy maps, field emergency. Slightly blurrier image but loads much faster. |
+| 🔄 **Auto** *(default)* | Automatically splits maps too large to be displayed in one piece. **This is the right choice in every case.** |
+| 💤 **Disabled** | No splitting: the whole image at once. Native quality on desktop, but ⚠️ **may crash your phone** on a very large map — a message warns you when it applies. |
 
-Click on a button before loading — the description under the selector changes to explain what it does.
+> 🩸 **There were 5 buttons before v1.86.0** (🌟 Quality, 🎯 Balanced, ⚡ Performance). They only tuned the splitting done **by the browser at load time**, which only concerns **older** maps. On a map **already split at generation** — today's common case — they changed **absolutely nothing**, while the app still claimed "Sharper. Recommended on desktop PC.". They were removed. An already-split map **always uses its pieces**: that is what makes it both smooth and sharp.
 
-**The setting is stored for each map**: if you load a map in "Performance", the next time you open it via 📚 My maps, it will open directly in "Performance". To change the setting of an already-stored map, re-import its ZIP by selecting another mode in the selector.
+> 🩸 **And "Auto" protected you less than the others, even though it was the default.** It decided on **file weight** (60 MB) while the others decided on **pixel size**. A well-compressed 100-megapixel map weighs ~15 MB: "Auto" did not split it, and the app could crash on iPhone. Fixed: pixel size now decides.
+
+**This choice is not remembered**: it goes back to **Auto** every time the app starts, and only applies to the load you trigger. When it is not on Auto, it replaces the setting stored for that map.
 
 ### 🎨 The interface in map mode
 
@@ -3236,19 +3235,19 @@ Each JSON layer of points (`puits.json`, `chatieres.json`, etc.) creates Leaflet
 
 **Tip**: separate your points into several data layers (e.g.: `puits.json`, `passages.json`, `electricite.json`) so the user can hide those that interest them less.
 
-### 6. ⚡ Performance mode — choose the right preset
+### 6. ⚡ Image splitting — Auto, unless you have a reason
 
-When loading a map, you can choose from 5 presets in the loader:
+Right above the **▶️ Load this map** button, two choices *(five before v1.86.0)*:
 
-| Preset | For which case |
+| Choice | When |
 |---|---|
-| **💤 Disabled** | Small map ≤ 4 000 px, powerful desktop. **Risk of crash on Safari iOS beyond 8 000 px** |
-| **🔄 Auto** (default) | Smart behavior — tiles if file > 60 MB. ✅ Good default choice |
-| **🌟 Quality** | High-definition images, full perf (desktop/laptop) |
-| **🎯 Balanced** | Good quality/perf compromise, recommended on most modern mobiles |
-| **⚡ Performance** | Old mobile, very large map, absolute priority to stability |
+| **🔄 Auto** (default) | Splits as soon as the image exceeds 4,096 × 4,096 px, or the file exceeds 60 MB. ✅ **The right choice unless you have a specific reason.** |
+| **💤 Disabled** | Small map on a powerful desktop, when you want native quality with no re-encoding. **⚠️ Risk of crash on Safari iOS beyond 8,000 px** — a message warns you. **No effect on an already-split map** (V2), which always uses its pieces. |
 
-> 💡 The preset is memorized **per map**: you can have one map in Performance mode for your old phone and another in Quality for your iPad.
+> 🩸 **What changed in v1.86.0, and why.** The 🌟 Quality / 🎯 Balanced / ⚡ Performance presets were **removed**: they only tuned the splitting done by the browser at load time, which only concerns **V1** maps. On a **V2** map — today's common case — they changed **nothing at all**.
+> And "Auto" decided on **file weight**, not pixel size: a well-compressed 100 Mpx map (~15 MB) **was not split** and could crash an iPhone, while "Quality" would have split it. The default was therefore the **least** protective mode. Fixed.
+
+> 💡 The chosen mode is still remembered **per map** by the app. The selector itself is **not**: it returns to Auto at every start and only applies to the load you trigger.
 
 ### 6 bis. 🚀 Performance ULTRA mode — for the really big maps that crash
 
@@ -3379,7 +3378,7 @@ The calibration entered here is shared with the KMZ / GPX exports of the same ma
 - **🐛 Logs**: displays the captured debug logs
 - **Reset**: restores default values for THIS map (does not delete anything — different from **💥 Reset everything** in ⚙️ Configuration loader, which purges everything)
 
-> 💡 **Performance mode is only modified at map load** (5-preset selector in the **load card**, right above the ▶️ Load this map button). Settings just displays the current one.
+> 💡 **Performance mode is only modified at map load** (Auto / Disabled selector in the **load card**, right above the ▶️ Load this map button). Settings just displays the current one.
 
 > ⚠️ **To enable / modify the local access code (PIN / Face ID)**, you must go through **⚙️ Configuration on the home page** — the 🔐 Local access code section is NOT in ⚙️ Settings (by design — global critical setting, not per map).
 

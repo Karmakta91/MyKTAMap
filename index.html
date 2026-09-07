@@ -536,21 +536,20 @@
           <div class="kta-perf-wrap">
             <div class="kta-perf-titre" data-i18n="home.perf.tilingTitle">🖼️ Tuilage pour ce chargement</div>
             <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" data-i18n-title="home.perf.tilingAria" aria-label="Mode performance">
-              <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">💤</span><span class="kta-perf-label" data-i18n="home.perf.presetOff">Désactivé</span>
-              </button>
               <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
                 <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label" data-i18n="home.perf.presetAuto">Auto</span>
               </button>
-              <button type="button" class="kta-perf-btn"        data-preset="quality"     role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">🌟</span><span class="kta-perf-label" data-i18n="home.perf.presetQuality">Qualité</span>
+              <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
+                <span class="kta-perf-emoji">💤</span><span class="kta-perf-label" data-i18n="home.perf.presetOff">Désactivé</span>
               </button>
-              <button type="button" class="kta-perf-btn"        data-preset="balanced"    role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">🎯</span><span class="kta-perf-label" data-i18n="home.perf.presetBalanced">Équilibré</span>
-              </button>
-              <button type="button" class="kta-perf-btn"        data-preset="performance" role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">⚡</span><span class="kta-perf-label" data-i18n="home.perf.presetPerformance">Performance</span>
-              </button>
+              <!-- 🩸 v1.86.0 (audit tuilage) — LES PRESETS 🌟 QUALITÉ / 🎯 ÉQUILIBRÉ /
+                   ⚡ PERFORMANCE ONT ÉTÉ RETIRÉS DE L’UI. Ils ne réglaient que le tuilage
+                   fait par le NAVIGATEUR au chargement (V1). Sur un plan V2 — le cas
+                   courant — la branche tuiles est prise avant eux et ils ne changent
+                   STRICTEMENT RIEN ; en V1 ils ne se distinguaient qu’au-dessus de
+                   4096² px. Le code les accepte toujours (rétro-compat : un plan peut
+                   avoir « quality » mémorisé dans le registre), ils ne sont juste plus
+                   proposés. Reste ce qui a un sens : Auto (défaut) et Désactivé. -->
             </div>
             <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
             <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>

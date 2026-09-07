@@ -60,6 +60,7 @@
 | Rendu Leaflet, icônes, calques, splash | `docs/architecture/rendering-leaflet.md` |
 | Plans : registre, loader, générateur | `docs/architecture/plans-loader.md` |
 | Perf, mémoire, OOM, tiling V2, ULTRA, batterie | `docs/architecture/perf-memory.md` |
+| **Tuilage** : V1 vs V2, 2 modes, déploiement d'un plan V2 serveur | **`docs/TILING.md`** |
 | Tracker, boussole, heading, navigation | `docs/architecture/tracking.md` |
 | Multi-niveau, pathfinding, itinéraire | `docs/architecture/multilevel-pathfinding.md` |
 | Exports PNG/PDF/KMZ/GPX + légende | `docs/architecture/exports.md` |

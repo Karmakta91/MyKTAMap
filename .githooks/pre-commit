@@ -255,6 +255,17 @@ node scripts/check-wakelock.js || exit $?
 # de HTML — le bug vu par KARMA : « Niveau de batterie <em>(s applique a tous
 # tes plans)</em> » affiche balises comprises, parce que la meme cle passait en
 # innerHTML cote plan et en textContent cote accueil.
+# 🖼️ v1.86.0 — TUILAGE. Regle KARMA : « un plan V2 doit OBLIGATOIREMENT
+# profiter du mode tuile ; le fichier complet reste pour le dezip manuel mais
+# en principe n est pas utilise ». L audit avait trouve trois choses : sur un
+# plan V2 les presets Qualite/Equilibre/Performance ne changeaient RIEN (la
+# branche tuiles est prise avant eux) ; `auto`, le defaut, tranchait sur le
+# poids fichier quand les autres tranchaient sur la surface, donc un JPEG de
+# 100 Mpx a 15 Mo passait en rendu direct et crashait iOS ; et un plan V2
+# servi en HTTP affichait une CARTE BLANCHE (RUNTIME_ASSETS n est rempli que
+# par les imports ZIP). Ce controle verifie que rien de tout ca ne revient.
+node scripts/check-tiling.js || exit $?
+
 node scripts/check-i18n.js || exit $?
 
 # ⚖️ LA PORTEE DES REGLAGES (audit KARMA du 07/09). La config du MODE PLAN ne

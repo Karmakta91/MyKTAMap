@@ -529,21 +529,20 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 **Organisation** : **tout est regroupé dans une seule modale ⚙️ Configuration**, accessible depuis le header du loader. Le bouton 🏗️ Générer un plan reste visible directement dans la home (pas dans la modale Configuration) car c'est une action de création, pas un réglage.
 
-### 🎚️ Mode performance — 5 presets
+### 🎚️ Découpage de l'image — 2 choix *(depuis v1.86.0)*
 
-Le bloc **Mode performance** dans le chargeur permet de choisir comment afficher votre plan, avec 5 modes présentés comme un sélecteur (à la manière du DLSS dans les jeux vidéo) :
+Juste au-dessus du bouton **▶️ Charger ce plan**, un petit sélecteur choisit comment l'image de fond est affichée.
 
-| Bouton | Pour quel cas ? |
+| Bouton | Ce qu'il fait |
 |---|---|
-| 💤 **Désactivé** | **Aucun découpage du tout.** Image affichée brute (qualité native, mais ⚠️ peut planter sur mobile pour les très gros plans). À utiliser uniquement si vous savez que votre appareil tient. |
-| 🔄 **Auto** *(défaut)* | L'app décide selon la taille du fichier — activé si le plan dépasse 60 Mo. **Recommandé pour la plupart des cas.** |
-| 🌟 **Qualité** | Plans très détaillés à zoomer profondément. **Recommandé sur PC desktop** avec assez de RAM. Image plus nette. |
-| 🎯 **Équilibré** | Compromis entre netteté et fluidité. Reproduit le mode "Performance" historique de l'app. |
-| ⚡ **Performance** | **Mobile faible**, plans très lourds, urgence terrain. Image un peu plus floue mais charge bien plus vite. |
+| 🔄 **Auto** *(défaut)* | Découpe automatiquement les plans trop grands pour être affichés d'un bloc. **C'est le bon choix dans tous les cas.** |
+| 💤 **Désactivé** | Aucun découpage : l'image entière d'un coup. Qualité native sur PC, mais ⚠️ **peut faire planter le téléphone** sur un très grand plan — un message vous prévient si c'est le cas. |
 
-Cliquez sur un bouton avant de charger — la description sous le sélecteur change pour vous expliquer ce qu'il fait.
+> 🩸 **Il y avait 5 boutons avant la v1.86.0** (🌟 Qualité, 🎯 Équilibré, ⚡ Performance). Ils ne réglaient que le découpage fait **par le navigateur au chargement**, qui ne concerne que les plans **anciens**. Sur un plan **déjà découpé à la génération** — le cas courant aujourd'hui — ils ne changeaient **strictement rien**, alors que l'app affichait « Plus net. Recommandé sur PC desktop. ». Ils ont été retirés. Un plan déjà découpé **utilise toujours ses morceaux** : c'est ce qui le rend fluide et net à la fois.
 
-**Le réglage est mémorisé pour chaque plan** : si vous chargez un plan en "Performance", la prochaine fois que vous l'ouvrirez via 📚 Mes plans, il s'ouvrira directement en "Performance". Pour changer le réglage d'un plan déjà mémorisé, ré-importez son ZIP en sélectionnant un autre mode dans le sélecteur.
+> 🩸 **Et « Auto » protégeait moins bien que les autres, alors que c'était le défaut.** Il se décidait sur le **poids du fichier** (60 Mo) quand les autres se décidaient sur la **taille en pixels**. Un plan de 100 millions de pixels bien compressé pèse ~15 Mo : « Auto » ne le découpait pas, et l'app pouvait planter sur iPhone. Corrigé : c'est désormais la taille en pixels qui décide.
+
+**Ce choix n'est pas mémorisé** : il revient sur **Auto** à chaque démarrage de l'app, et ne vaut que pour le chargement que vous lancez. S'il n'est pas sur Auto, il remplace le réglage retenu pour ce plan.
 
 ### 🎨 L'interface en mode carte
 
@@ -3244,19 +3243,19 @@ Chaque calque JSON de points (`puits.json`, `chatieres.json`, etc.) crée des ma
 
 **Astuce** : sépare tes points en plusieurs calques de données (ex: `puits.json`, `passages.json`, `électricité.json`) pour que l'utilisateur puisse en masquer ceux qui l'intéressent moins.
 
-### 6. ⚡ Mode performance — choisir le bon preset
+### 6. ⚡ Découpage de l'image — Auto, sauf raison contraire
 
-Au chargement d'un plan, tu peux choisir parmi 5 presets dans le loader :
+Juste au-dessus du bouton **▶️ Charger ce plan**, deux choix *(cinq avant la v1.86.0)* :
 
-| Preset | Pour quel cas |
+| Choix | Pour quel cas |
 |---|---|
-| **💤 Désactivé** | Petit plan ≤ 4 000 px, desktop puissant. **Risque de crash sur Safari iOS au-delà de 8 000 px** |
-| **🔄 Auto** (défaut) | Comportement intelligent — tuile si fichier > 60 Mo. ✅ Bon choix par défaut |
-| **🌟 Qualité** | Images haute définition, perf à fond (desktop/laptop) |
-| **🎯 Équilibré** | Bon compromis qualité/perf, recommandé sur la plupart des mobiles modernes |
-| **⚡ Performance** | Vieux mobile, plan très gros, priorité absolue à la stabilité |
+| **🔄 Auto** (défaut) | Découpe dès que l'image dépasse 4 096 × 4 096 px, ou que le fichier dépasse 60 Mo. ✅ **Le bon choix, sauf raison précise.** |
+| **💤 Désactivé** | Petit plan sur desktop puissant, quand tu veux la qualité native sans aucun ré-encodage. **⚠️ Risque de plantage sur Safari iOS au-delà de 8 000 px** — un message te prévient. **Sans effet sur un plan déjà découpé** (V2), qui utilise toujours ses morceaux. |
 
-> 💡 Le preset est mémorisé **par plan** : tu peux avoir un plan en mode Performance pour ton vieux téléphone et un autre en Qualité pour ton iPad.
+> 🩸 **Ce qui a changé en v1.86.0, et pourquoi.** Les presets 🌟 Qualité / 🎯 Équilibré / ⚡ Performance ont été **retirés** : ils ne réglaient que le découpage fait par le navigateur au chargement, qui ne concerne que les plans **V1**. Sur un plan **V2** — le cas courant — ils ne changeaient **rien du tout**.
+> Et « Auto » se décidait sur le **poids du fichier**, pas sur la taille en pixels : un plan de 100 Mpx bien compressé (~15 Mo) **n'était pas découpé** et pouvait faire planter l'iPhone, alors que « Qualité » l'aurait découpé. Le défaut était donc le mode le **moins** protecteur. Corrigé.
+
+> 💡 Le choix retenu reste mémorisé **par plan** dans l'app. Le sélecteur, lui, n'est **pas** mémorisé : il revient sur Auto à chaque démarrage et ne s'applique qu'au chargement que tu lances.
 
 ### 6 bis. 🚀 Mode Performance ULTRA — pour les vrais gros plans qui crashent
 
@@ -3387,7 +3386,7 @@ Le calibrage saisi ici est partagé avec les exports KMZ / GPX du même plan (pe
 - **🐛 Logs** : affiche les journaux de débogage capturés
 - **Réinitialiser** : remet les valeurs par défaut pour CE plan (ne supprime rien — c'est différent de **💥 Tout réinitialiser** dans ⚙️ Configuration loader, qui purge tout)
 
-> 💡 **Le mode performance ne se modifie qu'au chargement du plan** (sélecteur 5 presets dans la **carte de chargement**, juste au-dessus du bouton ▶️ Charger ce plan). Réglages affiche juste celui en cours.
+> 💡 **Le mode performance ne se modifie qu'au chargement du plan** (sélecteur Auto / Désactivé dans la **carte de chargement**, juste au-dessus du bouton ▶️ Charger ce plan). Réglages affiche juste celui en cours.
 
 > ⚠️ **Pour activer / modifier le code d'accès local (PIN / Face ID)**, il faut passer par **⚙️ Configuration sur la page d'accueil** — la section 🔐 Code d'accès local n'est PAS dans ⚙️ Réglages (par design — réglage critique global, pas par plan).
 

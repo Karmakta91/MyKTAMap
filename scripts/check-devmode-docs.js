@@ -62,5 +62,26 @@ t("aucune doc oubliée du manifest (docs/ + docs/architecture/)" + (oublies.leng
 const h = /DEV_HASH\s*=\s*"([0-9a-f]*)"/.exec(src);
 t("hash du mdp au format SHA-256 (64 hex)", !!h && h[1].length === 64);
 
+
+// ───────── 🏗️ v1.86.0 — bouton ConfAdmin (mode dev uniquement) ─────────
+// 🩸 confadmin.html n'était linké NULLE PART : il fallait taper l'URL à la
+// main. C'est l'outil qui génère le data/index.json d'un serveur kiosque.
+// Il vit derrière le mot de passe développeur — donc dans le bloc `actif`,
+// jamais dans la branche « mode dev éteint ».
+{
+  t("🏗️ la page ConfAdmin existe bien dans le repo", fs.existsSync("confadmin.html"));
+  t("🏗️ un bouton ConfAdmin est rendu", src.indexOf('id="kta-devmode-confadmin"') >= 0);
+  t("🏗️ il ouvre confadmin.html", /window\.open\("confadmin\.html"/.test(src));
+  // Le bouton et son handler doivent être DANS la branche `actif ?` : rendus
+  // hors mode dev, ils exposeraient l'outil à tout le monde (et le
+  // getElementById du handler planterait sur un bouton absent).
+  const iActif = src.indexOf("(actif ? (");
+  const iSinon = src.indexOf("        ) : (", iActif);
+  t("🩸 le bouton n'est rendu QUE si le mode dev est actif",
+    iActif > 0 && iSinon > iActif &&
+    src.indexOf('id="kta-devmode-confadmin"') > iActif &&
+    src.indexOf('id="kta-devmode-confadmin"') < iSinon);
+}
+
 console.log(ko === 0 ? "\n🎉 bibliothèque devMode : tout passe" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko ? 1 : 0);

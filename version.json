@@ -1,8 +1,8 @@
 {
-  "version": "v1.85.4",
+  "version": "v1.86.0",
   "released": "2026-09-07",
   "notes": [
-    "🌍 La langue de l’app se choisit désormais depuis l’accueil, et le réglage d’image est passé juste au-dessus du bouton « Charger ce plan » — là où il agit vraiment.",
-    "🩸 Dans les options de capteurs, la mention « s’applique à tous tes plans » s’affichait avec des bouts de code : corrigé."
+    "🖼️ Le réglage d’image du chargement passe de cinq choix à deux : Auto (recommandé) ou Désactivé. Les trois autres ne changeaient rien sur les plans récents, et « Auto » protégeait mal les très grands plans — c’est corrigé.",
+    "🌐 Un plan hébergé sur un serveur s’affiche enfin correctement quand il est découpé en morceaux."
   ]
 }
