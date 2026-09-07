@@ -331,6 +331,30 @@ async function _fraicheur() {
 }
 
 
+
+// ───────── 11. 🧹 LE PLAN DE DÉMO N'EST PAS PRÉ-CACHÉ ─────────
+// 🩸 DEUX RAISONS, et la seconde vaut plus que la première.
+//   1. POIDS : ses 8 fichiers pèsent ~2 Mo (dont 2,0 Mo pour TestMAP.png +
+//      collision.png), téléchargés à l'INSTALL par tout le monde — y compris
+//      ceux qui ne l'ouvriront jamais.
+//   2. 🍖 FAUX TÉMOIN : pré-caché, il était INÉVINÇABLE (`_staticAssetUrls`
+//      le protège de l'éviction LRU). Tester le hors-ligne avec lui donnait
+//      donc un « ça marche » MENSONGER, alors qu'un plan ajouté par
+//      l'utilisateur pouvait s'évincer lui-même en se chargeant. Ce faux
+//      témoin a masqué le vrai comportement jusqu'à la v1.87.0.
+// `data/index.json` reste pré-caché : canal de config d'instance, minuscule.
+{
+  const iList = SW.indexOf("const ASSETS_TO_CACHE = [");
+  const fList = SW.indexOf("];", iList);
+  const liste = (iList >= 0 && fList > iList) ? SW.slice(iList, fList) : "";
+  t("la liste de pré-cache est trouvable", liste.length > 0);
+  t("🩸 aucun fichier du plan de démo n'est pré-caché", liste.indexOf("./data/test/") < 0);
+  t("🧹 …et plus largement, aucun fichier de plan (`data/<plan>/`)",
+    (liste.match(/"\.\/data\/[^"]+\/[^"]+"/g) || []).length === 0);
+  t("data/index.json reste pré-caché (config d'instance, minuscule)",
+    liste.indexOf("./data/index.json") >= 0);
+}
+
 // ───────── 9. 🩸 ON APPELLE LE HANDLER `fetch` DU SERVICE WORKER ─────────
 // VÉCU (v1.88.0 → corrigé en v1.88.2, signalé par KARMA depuis sa console) :
 // j'ai inséré la branche des sondes `_ktacheck` AVANT la ligne

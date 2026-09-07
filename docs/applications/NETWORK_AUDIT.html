@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.88.4</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.89.0</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.89.0 (Vue OSM des plans serveur + installation allégée)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune donnée qui sort. <strong>Moins de réseau, pas plus</strong> : le plan de démonstration (~2 Mo) n'est plus téléchargé à l'installation — il se charge comme n'importe quel plan, quand vous l'ouvrez. Par ailleurs, la Vue OSM de l'accueil sait désormais lire un plan hébergé sur <strong>votre propre serveur</strong> : elle demande son descriptif et ses calques <strong>à ce serveur</strong>, les mêmes fichiers que ceux déjà servis à l'affichage du plan. Aucun tiers n'est contacté.</p>
   <h3>v1.88.4 (les plans importés s'affichent enfin en mode serveur)</h3>
   <p><strong>100 % local</strong>, aucune requête nouvelle, aucun domaine, aucune donnée qui sort. Un plan créé par un <strong>import SIG, GPX ou KMZ</strong> et hébergé sur <strong>votre propre serveur</strong> demandait son image et ses données à une adresse qui n'existait pas — ces imports écrivaient bien les fichiers dans le dossier `data/` de l'archive, mais les déclaraient sans ce dossier. Invisible tant que le plan restait dans votre navigateur, bloquant dès qu'il était servi. Corrigé pour les futurs imports, <strong>et pour ceux déjà en ligne</strong> : rien à re-déployer. Les fichiers demandés sont les mêmes, simplement à la bonne adresse.</p>
   <h3>v1.88.3 (les images découpées cherchées au bon endroit)</h3>

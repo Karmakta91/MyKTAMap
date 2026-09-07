@@ -492,6 +492,96 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
     sansCommentaires(fs.readFileSync("js/createConf.js", "utf8")).indexOf('file: "data/" + fileName') >= 0);
 }
 
+
+// ───────── 18. 🌐 LA VUE OSM DU HOME SAIT LIRE UN PLAN SERVEUR ─────────
+// 🩸 VÉCU (KARMA, console) : « [OsmHomePreview] ZIP non récupérable pour
+// planId=server_plan_carmelet_v2 (FS handle absent + IDB blob purgé) ».
+// `_loadPlanDataForPreview` passait EXCLUSIVEMENT par le ZIP
+// (`PlanRegistry.getHandle()` / `getBlob()`) — qu'un plan serveur n'a ni l'un
+// ni l'autre. Le widget ne rendait donc aucun calque. Ce n'était pas une
+// régression : ce module n'avait AUCUN chemin HTTP.
+// ⚠️ On EXÉCUTE le chargeur. Les trois fautes du jour (deux zones mortes
+// temporelles, une ReferenceError) n'ont été attrapées que comme ça.
+async function _osmServeur() {
+  const vm7 = require("vm");
+  const OHP = fs.readFileSync("js/osmHomePreview.js", "utf8");
+  const OHPC = sansCommentaires(OHP);
+  const d = OHP.indexOf("async function _loadPlanDataServeur(plan) {");
+  let f = -1;
+  if (d >= 0) {
+    let prof = 0;
+    for (let k = OHP.indexOf("{", d); k < OHP.length; k++) {
+      if (OHP[k] === "{") prof++;
+      else if (OHP[k] === "}") { prof--; if (prof === 0) { f = k + 1; break; } }
+    }
+  }
+  t("🌐 le chargeur serveur est extractible", d >= 0 && f > d);
+  t("🩸 il est BRANCHÉ sur le type de plan, AVANT la voie ZIP",
+    (function () {
+      // 🩸 Borner au CORPS de `_loadPlanDataForPreview` : chercher
+      // `_getPlanZipFile(planId)` dans tout le fichier tombait sur sa
+      // DÉFINITION, située plus haut — l'assertion rougissait sur du code sain.
+      const i = OHPC.indexOf("async function _loadPlanDataForPreview(planId)");
+      if (i < 0) return false;
+      const j = OHPC.indexOf("const file = await _getPlanZipFile(planId);", i);
+      if (j < 0) return false;
+      const corps = OHPC.slice(i, j);
+      return corps.indexOf("_plan.type === \"server\"") >= 0 &&
+             corps.indexOf("await _loadPlanDataServeur(_plan)") >= 0;
+    })());
+  if (f <= d) return;
+
+  const win = { console: { log: function () {}, warn: function () {} } };
+  win.window = win;
+  const sondes = [];
+  win.fetch = async function (u) {
+    sondes.push(String(u));
+    if (String(u).indexOf("plan-config.json") >= 0) {
+      return { ok: true, status: 200, json: async function () { return {
+        plan: { baseImage: "img.png", tiledV2: true, imageWidth: 1024, imageHeight: 1024 },
+        tiling: { tileSize: 512, minNativeZoom: -3, maxNativeZoom: 0 },
+        dataLayers: [{ id: "sig", label: "SIG", file: "sig.json" }],
+        icons: { salle: "icon/house.png", perso: "data/p/icon/x.png" }
+      }; } };
+    }
+    return { ok: true, status: 200, json: async function () {
+      return { data: [{ x: 1, y: 2 }], roads: [{ id: "r" }], zones: [] }; } };
+  };
+  // Mêmes helpers qu'au runtime : la résolution des chemins et la racine des
+  // tuiles SONDÉE. Les stuber ici garantit qu'on teste le chargeur, pas eux.
+  win.resolveServerPaths = function (c, dir) {
+    if (c.plan && c.plan.baseImage) c.plan.baseImage = dir + "/data/" + c.plan.baseImage;
+    (c.dataLayers || []).forEach(function (l) { if (l.file) l.file = dir + "/data/" + l.file; });
+    return c;
+  };
+  win.ktaResoudreRacineTuiles = async function () { return "data/p/data/tiles"; };
+  win.ktaTileExt = function () { return "jpg"; };
+
+  let res = null, err = null;
+  try {
+    const ctx = vm7.createContext(win);
+    vm7.runInContext("var window = this; var fetch = this.fetch; var console = this.console;" +
+                     "function _chooseTileLevelForHome(){ return -2; }" +
+                     OHP.slice(d, f) + ";this.__load = _loadPlanDataServeur;", ctx);
+    res = await win.__load({ id: "p1", path: "data/p" });
+  } catch (e) { err = e; }
+
+  t("🩸 le chargeur serveur s'EXÉCUTE sans erreur" + (err ? " — " + err.message : ""), !err);
+  if (!res) { t("🌐 il rend des données", false); return; }
+  t("🌐 les calques sont lus en HTTP (plus de « ZIP non récupérable »)",
+    res.dataLayers.length === 1 && res.dataLayers[0].points.length === 1 &&
+    res.dataLayers[0].roads.length === 1);
+  t("🌐 les chemins passent par la MÊME résolution qu'au chargement réel",
+    sondes.indexOf("data/p/data/sig.json") >= 0);
+  t("🧱 l'aperçu tuilé utilise la racine SONDÉE",
+    !!res.tilesOverview && res.tilesOverview.tiles.length > 0 &&
+    res.tilesOverview.tiles[0].url.indexOf("data/p/data/tiles/z-2/") === 0);
+  t("🎨 les icônes sont reprises telles quelles (rien à extraire en HTTP)",
+    res.iconUrls.salle === "icon/house.png" && res.iconUrls.perso === "data/p/icon/x.png");
+  t("🛟 aucune blob URL créée côté serveur (rien à révoquer, donc rien à fuir)",
+    OHP.slice(d, f).indexOf("createObjectURL") < 0);
+}
+
 // ───────── 11. 🎨 ON EXÉCUTE LE SONDEUR ─────────
 // Le cas de la régression est rejoué tel quel : une icône de l'app absente du
 // dossier du plan NE DOIT PAS être réécrite, une icône perso présente DOIT
@@ -542,7 +632,7 @@ Promise.all([
   t("🛟 fail-safe : le réseau plante → tout reste à la racine", b.track === "icon/iconetrack.png");
 }).catch(function (e) {
   t("§11 le sondeur s'exécute sans planter — " + (e && e.message), false);
-}).then(function () {
+}).then(_osmServeur).then(function () {
   console.log(ko === 0 ? "\n🎉 tuilage : un plan V2 tuile toujours, et un plan serveur trouve ses tuiles"
                        : "\n⚠️ " + ko + " echec(s)");
   process.exit(ko === 0 ? 0 : 1);

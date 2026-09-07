@@ -5,6 +5,21 @@
 
 ---
 
+## 🌐 Le widget du HOME et les plans SERVEUR (v1.89.0)
+
+🩸 **Jusqu'ici, le widget ne rendait RIEN pour un plan servi.** `_loadPlanDataForPreview` passait **exclusivement** par le ZIP — `PlanRegistry.getHandle()` (FS Access) ou `getBlob()` (IndexedDB) — qu'un plan serveur n'a **ni l'un ni l'autre**. Symptôme en console : `[OsmHomePreview] ZIP non récupérable pour planId=server_… (FS handle absent + IDB blob purgé)`. **Ce n'était pas une régression** : ce module n'avait aucun chemin HTTP.
+
+`_loadPlanDataServeur(plan)` produit la **même** sortie `{ config, dataLayers, tilesOverview, iconUrls }`, en HTTP :
+
+- le `plan-config.json` passe par **`resolveServerPaths`**, exactement comme au chargement réel — sinon l'aperçu et le mode plan divergeraient sur les mêmes fichiers ;
+- les tuiles sont demandées à la racine **SONDÉE** (`ktaResoudreRacineTuiles`, `tiling.js`) : la deviner ici rejouerait le bug de la v1.88.3 ;
+- les icônes sont déjà des URLs utilisables après résolution — **rien à extraire** ;
+- 🛟 **aucune blob URL n'est créée** côté serveur : rien à révoquer, donc rien à fuir, contrairement à la voie ZIP qui doit gérer son cycle de vie (cf `_iconBlobUrls`).
+
+🛡️ Vérifié par `scripts/check-tiling.js` §18, qui **exécute** le chargeur dans un `vm` avec `fetch` stubé et contrôle que la branche serveur est prise **avant** la voie ZIP.
+
+---
+
 ## 1. Vision
 
 La **Vue OSM** projette les plans MyKTAMap géoréférencés sur OpenStreetMap (EPSG:3857), avec leur image plan en transparence, leurs POI, tracés, zones et structures par-dessus. Deux modules complémentaires :

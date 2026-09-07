@@ -1,7 +1,8 @@
 {
-  "version": "v1.88.4",
+  "version": "v1.89.0",
   "released": "2026-09-08",
   "notes": [
-    "🗺️ Les plans créés par un import SIG, GPX ou KMZ s’affichent enfin quand ils sont hébergés sur un serveur : leur image et leurs données étaient cherchées au mauvais endroit. Les plans déjà en ligne sont rattrapés sans rien avoir à refaire."
+    "🌍 La Vue OSM de l’accueil affiche enfin les plans hébergés sur un serveur : leurs points, tracés et zones étaient invisibles.",
+    "🧹 L’installation est allégée d’environ 2 Mo : le plan de démonstration n’est plus téléchargé d’office."
   ]
 }

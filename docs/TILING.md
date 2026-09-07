@@ -139,7 +139,7 @@ Deux requêtes au pire. 🛟 *Si aucune ne répond (hors-ligne, CORS), on retomb
 | **Paresse** | `_renderNiveau` ne demande que les tuiles du **niveau de zoom courant**. Ouvrir un plan sans zoomer n'en cachait **qu'un sur quatre**. |
 | **Bump** | `activate` supprimait tout cache dont la clé ≠ `CACHE_NAME` → chaque release remettait le plan à zéro. |
 
-🍖 *`data/test` masquait le problème : il est dans `ASSETS_TO_CACHE`, donc **précaché et protégé** de l'éviction. Tester avec le plan de démo donnait un faux « ça marche ».*
+🍖 *`data/test` masquait le problème : il ÉTAIT dans `ASSETS_TO_CACHE`, donc **précaché et protégé** de l'éviction — retiré en v1.88.5 pour cette raison même (et pour les ~2 Mo qu'il coûtait à l'install). Tester avec le plan de démo donnait un faux « ça marche ».*
 
 **La solution** : un cache **dédié par plan**, `myktamap-plan-<id>`, écrit depuis la page (`js/planOffline.js`) et que le SW **exclut des deux mécanismes** (`sw.js > _estCachePlan`). Le bouton vit dans la fiche **ℹ️ Infos** d'un plan serveur.
 

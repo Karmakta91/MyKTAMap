@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.88.4";
+const CACHE_NAME = "myktamap-cache-v1.89.0";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -349,16 +349,19 @@ const ASSETS_TO_CACHE = [
 
   // Données JSON
   "./data/index.json",
-  // 🆕 v1.9.3-A1.a : fichier structure.json (vide par défaut pour les
-  // plans de test livrés avec l'app — KARMA peut y dessiner ses piliers).
-  "./data/test/carriere.json",
-  "./data/test/puits.json",
-  "./data/test/chemin.json",
-  "./data/test/plan-config.json",
-  "./data/test/zone.json",
-  "./data/test/structure.json",
-  "./data/test/TestMAP.png",
-  "./data/test/collision.png",
+  // 🩸 v1.88.5 (demande KARMA) — LE PLAN DE DÉMO N'EST PLUS PRÉ-CACHÉ.
+  // Ses 8 fichiers pesaient ~2 Mo (dont 2,0 Mo pour TestMAP.png +
+  // collision.png), téléchargés à l'INSTALL par tout le monde — y compris
+  // ceux qui ne l'ouvriront jamais.
+  // 🍖 Et surtout, être pré-caché le rendait INÉVINÇABLE (cf _staticAssetUrls
+  // et l'éviction LRU) : tester le hors-ligne avec lui donnait un faux
+  // « ça marche », alors qu'un plan ajouté par l'utilisateur, lui, pouvait
+  // s'évincer tout seul. Ce faux témoin a masqué le vrai comportement
+  // jusqu'à la v1.87.0.
+  // Il se comporte désormais comme n'importe quel plan servi : mis en cache
+  // au premier chargement, évinçable, et pré-téléchargeable via 💾
+  // Disponibilité hors-ligne. `data/index.json` reste pré-caché — c'est le
+  // canal de configuration d'instance, et il est minuscule.
 
   // Icônes app / points
   "./icon/mkm-full.png",

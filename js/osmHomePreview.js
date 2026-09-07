@@ -943,8 +943,126 @@
 
   // Extraction partielle ZIP : plan-config.json + chaque dataLayer JSON.
   // Cache RAM par planId. Returns null si extraction impossible.
+  // ══════════════════════════════════════════════════════════════════
+  // 🌐 v1.88.4 — CHARGEMENT D'UN PLAN **SERVEUR** POUR L'APERÇU
+  // ══════════════════════════════════════════════════════════════════
+  // 🩸 Constat KARMA : « le mode OSM HOME ne fonctionne pas sur un plan
+  // serveur, OK en mode plan ». Ce n'était pas une régression : tout
+  // `_loadPlanDataForPreview` passait par le ZIP (`PlanRegistry.getHandle()`
+  // ou `getBlob()`) — qu'un plan serveur n'a NI l'un NI l'autre. Le widget
+  // rendait donc, au mieux, les marqueurs de géoréf et rien d'autre.
+  //
+  // On reproduit ici la MÊME sortie `{ config, dataLayers, tilesOverview,
+  // iconUrls }`, mais en HTTP. Les chemins passent par `resolveServerPaths`,
+  // exactement comme au chargement réel — sinon l'aperçu et le mode plan
+  // divergeraient sur les mêmes fichiers.
+  // ⚠️ Les tuiles sont demandées à la racine **SONDÉE** (`ktaResoudreRacineTuiles`,
+  // tiling.js) : la deviner ferait rejouer ici le bug de la v1.88.3.
+  async function _loadPlanDataServeur(plan) {
+    const dir = String((plan && plan.path) || "").replace(/\/+$/, "");
+    if (!dir) return null;
+    let config;
+    try {
+      const r = await fetch(dir + "/plan-config.json");
+      if (!r.ok) { console.warn("[OsmHomePreview] plan-config serveur HTTP " + r.status); return null; }
+      config = await r.json();
+    } catch (e) {
+      console.warn("[OsmHomePreview] plan-config serveur illisible :", e && e.message);
+      return null;
+    }
+    if (typeof window.resolveServerPaths === "function") config = window.resolveServerPaths(config, dir);
+    config._baseDir = dir;
+
+    // ── Calques de données ──
+    const dataLayers = [];
+    for (const layerCfg of (Array.isArray(config.dataLayers) ? config.dataLayers : [])) {
+      if (!layerCfg || !layerCfg.file) continue;
+      try {
+        const rr = await fetch(layerCfg.file);
+        if (!rr.ok) { console.warn("[OsmHomePreview] calque HTTP " + rr.status + " :", layerCfg.file); continue; }
+        const json = await rr.json();
+        // Mêmes clés que la branche ZIP (cf normaliserPoints) : `data` pour le
+        // format embarqué, `editorPoints` pour un export de session.
+        const poiArray = Array.isArray(json.data)         ? json.data
+                       : Array.isArray(json.editorPoints) ? json.editorPoints
+                       : Array.isArray(json.points)       ? json.points
+                       : [];
+        dataLayers.push({
+          name:       layerCfg.label || layerCfg.id || layerCfg.file,
+          visible:    layerCfg.visible !== false,
+          points:     poiArray,
+          roads:      Array.isArray(json.roads)      ? json.roads      : [],
+          zones:      Array.isArray(json.zones)      ? json.zones      : [],
+          structures: Array.isArray(json.structures) ? json.structures : []
+        });
+      } catch (e) {
+        console.warn("[OsmHomePreview] calque serveur échec :", layerCfg.file, e && e.message);
+      }
+    }
+
+    // ── Aperçu tuilé V2 ──
+    let tilesOverview = null;
+    if (config.plan && config.plan.tiledV2 === true && config.tiling) {
+      try {
+        const racine = (typeof window.ktaResoudreRacineTuiles === "function")
+          ? await window.ktaResoudreRacineTuiles(config)
+          : null;
+        if (racine) {
+          const planW = config.plan.imageWidth  || 1;
+          const planH = config.plan.imageHeight || 1;
+          const z     = _chooseTileLevelForHome(config.tiling, planW, planH);
+          const scale = Math.pow(2, -z);
+          const tileSize = config.tiling.tileSize || 512;
+          const cols = Math.ceil(Math.ceil(planW / scale) / tileSize);
+          const rows = Math.ceil(Math.ceil(planH / scale) / tileSize);
+          const ext  = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(config.tiling) : "jpg";
+          const tiles = [];
+          // 🛟 Pas de blob URL ici : on pointe directement l'URL HTTP. Rien à
+          // révoquer, donc rien à fuir — et le Service Worker les met en cache.
+          for (let col = 0; col < cols; col++) {
+            for (let k = 1; k <= rows; k++) {
+              tiles.push({ col: col, k: k, url: racine + "/z" + z + "/x" + col + "_y" + (-k) + "." + ext });
+            }
+          }
+          tilesOverview = { tiles: tiles, planW: planW, planH: planH, z: z, scale: scale, tileSize: tileSize };
+        }
+      } catch (e) {
+        console.warn("[OsmHomePreview] aperçu tuilé serveur échec :", e && e.message);
+      }
+    }
+
+    // ── Icônes : déjà des URLs utilisables après resolveServerPaths ──
+    // (celles de l'app pointent la racine du site, les perso le dossier du
+    // plan — cf config.js > resoudreIconesPlanServeur). Rien à extraire.
+    const iconUrls = {};
+    if (config.icons) {
+      Object.keys(config.icons).forEach(function (tag) {
+        const u = config.icons[tag];
+        if (typeof u === "string" && u) iconUrls[tag] = u;
+      });
+    }
+
+    console.log("[OsmHomePreview] plan serveur chargé en HTTP :", plan.id,
+                "— " + dataLayers.length + " calque(s)" + (tilesOverview ? ", aperçu tuilé" : ""));
+    return { config: config, dataLayers: dataLayers, tilesOverview: tilesOverview, iconUrls: iconUrls };
+  }
+
   async function _loadPlanDataForPreview(planId) {
     if (_planDataCache[planId]) return _planDataCache[planId];
+
+    // 🌐 v1.89.0 — PLAN SERVEUR : pas de ZIP, on lit en HTTP.
+    // 🩸 Avant, la fonction sortait ici avec « ZIP non récupérable » (constat
+    // KARMA, console) : le widget n'affichait donc AUCUN calque pour un plan
+    // servi. Ce n'était pas une régression — le mode serveur n'avait jamais
+    // été câblé dans ce module, qui n'a aucun chemin HTTP.
+    const _plan = (window.PlanRegistry && typeof window.PlanRegistry.findById === "function")
+      ? window.PlanRegistry.findById(planId) : null;
+    if (_plan && _plan.type === "server") {
+      const dataSrv = await _loadPlanDataServeur(_plan);
+      if (dataSrv) _planDataCache[planId] = dataSrv;
+      return dataSrv;
+    }
+
     if (typeof window.JSZip === "undefined") {
       console.warn("[OsmHomePreview] JSZip indisponible, abandon data extraction");
       return null;
