@@ -101,7 +101,14 @@ t("🩸 l état « partiel » propose un RÉESSAI, pas un retéléchargement com
            b.indexOf("btnCompleter") < 0;
   })());
 t("🩸 seul un 200 est mis en cache (un 404 caché rendrait le plan faussement complet)",
-  /r\.status === 200/.test(POC));
+  (function () {
+    // 🩸 Chercher `r.status === 200` dans tout le fichier ne prouvait plus rien
+    // depuis que `verifierMaj` en contient un aussi : saboter celui de
+    // `precacher` laissait l'assertion verte. On borne à la mise en cache.
+    const i = POC.indexOf("async function precacher");
+    const j = POC.indexOf("cache.put(u, r.clone())", i);
+    return i >= 0 && j > i && POC.slice(i, j).indexOf("r.status === 200") >= 0;
+  })());
 
 // ───────── 3. un seul point de vérité pour les tuiles ─────────
 t("🩸 planOffline énumère les tuiles via ktaTuilesV2Urls (pas sa propre grille)",
@@ -178,7 +185,114 @@ t("💾 le module est chargé par index.html", IDX.indexOf("js/planOffline.js") 
 // VIE — le bouton invitait à retélécharger sans fin un fichier qui n'existe
 // pas, sans jamais dire lequel.
 // Une assertion de chaîne n'aurait rien vu de cette arithmétique : on APPELLE.
-function _statutAvecCache(entrees, manifeste) {
+// ───────── 7. 🔎 FRAÎCHEUR : SAVOIR QUE LE SERVEUR A CHANGÉ ─────────
+// 🩸 LE TROU QUE LE PRÉ-CACHE A CREUSÉ (v1.87.0). Un plan téléchargé est servi
+// depuis son cache dédié, que RIEN ne purge — ni l'éviction, ni le bump. Il
+// pouvait donc servir du contenu périmé indéfiniment, sans le dire.
+// 🩸 POURQUOI PAS LE CHAMP `version` : saisi à la main dans `index.json`, il
+// dérive déjà dans ce repo (index dit « V1 », le plan-config du plan de test
+// dit « V2 »), et `plan-config.json` ne porte AUCUN horodatage. Le seul signal
+// fiable sans changer de format est HTTP : ETag / Last-Modified.
+{
+  t("🔎 le SW laisse passer les sondes en RÉSEAU SEUL",
+    /_ktacheck=1/.test(SWC) && SWC.indexOf("event.respondWith(") >= 0);
+  t("🩸 …et la sortie anticipée précède la branche cache-first (sinon la sonde " +
+    "serait servie du cache et répondrait toujours « rien n'a changé »)",
+    SWC.indexOf("_ktacheck") < SWC.indexOf("caches.open(CACHE_NAME).then(function(c)"));
+  t("🩸 la sonde n'est JAMAIS mise en cache (sinon N entrées jetables par vérification)",
+    (function () {
+      const i = SWC.indexOf("_ktacheck");
+      const j = SWC.indexOf("return;", i);
+      // 🩸 `cache.put` etait trop etroit : un sabotage ecrivant `c.put(...)`
+      // passait au travers. On refuse TOUTE ecriture de cache dans la branche.
+      return i >= 0 && j > i && SWC.slice(i, j).indexOf(".put(") < 0;
+    })());
+  t("🔎 les validateurs HTTP sont retenus au téléchargement",
+    POC.indexOf("validateurs[u] = { etag:") >= 0 && POC.indexOf("version: 3") >= 0);
+  t("🔎 une fonction de vérification existe et est exposée",
+    /async function verifierMaj/.test(POC) && POC.indexOf("verifierMaj: verifierMaj") >= 0);
+  t("🩸 les TUILES sont exclues des sondes (elles dérivent de l'image, qui l'est)",
+    POC.indexOf("racineTuiles") >= 0 && POC.indexOf("u.indexOf(racine") >= 0);
+  t("🔎 les requêtes sont CONDITIONNELLES (304 = corps vide)",
+    POC.indexOf("If-None-Match") >= 0 && POC.indexOf("If-Modified-Since") >= 0);
+  t("🩸 aucune sonde aboutie → « inconnu », jamais « à jour » sans preuve",
+    /verifies === 0\) return \{ etat: "inconnu"/.test(POC));
+  t("🔎 l'UI affiche les trois verdicts",
+    HLC.indexOf("majDispo") >= 0 && HLC.indexOf("majAjour") >= 0 && HLC.indexOf("majInconnu") >= 0);
+}
+
+
+// ───────── 8. 🔎 ON EXÉCUTE verifierMaj() ─────────
+// Une assertion de chaîne ne dit rien de ce que la fonction CONCLUT. On charge
+// planOffline.js dans un vm avec `caches` et `fetch` stubés, et on rejoue les
+// quatre cas qui comptent — dont les deux où elle doit refuser de conclure.
+async function _verifierAvec(manifeste, reponses) {
+  const vm2 = require("vm");
+  const win = { console: { log: () => {}, warn: () => {} }, navigator: {}, location: { href: "http://x/" } };
+  win.window = win;
+  win._sondes = [];
+  const faux = {
+    keys: async () => [],
+    match: async (u) => (String(u).indexOf("__kta_offline.json") >= 0 && manifeste)
+      ? { json: async () => manifeste } : null
+  };
+  win.caches = { keys: async () => ["myktamap-plan-p1"], open: async () => faux };
+  win.fetch = async function (u, opts) {
+    win._sondes.push({ url: String(u), headers: (opts && opts.headers) || {} });
+    const nu = String(u).split("?")[0];
+    if (reponses[nu] === "boom") throw new Error("hors-ligne");
+    return { status: reponses[nu] || 304 };
+  };
+  const ctx = vm2.createContext(win);
+  vm2.runInContext("var window = this; var caches = this.caches; var fetch = this.fetch;" +
+                   "var navigator = this.navigator;" + fs.readFileSync("js/planOffline.js", "utf8"), ctx);
+  const r = await win.PlanOffline.verifierMaj({ id: "p1", path: "data/p" });
+  return { r: r, sondes: win._sondes };
+}
+
+const MAN3 = {
+  version: 3, planId: "p1",
+  urls: ["data/p/plan-config.json", "data/p/data/img.png",
+         "data/p/data/tiles/z0/x0_y-1.jpg", "data/p/data/tiles/z0/x1_y-1.jpg"],
+  manquants: [],
+  validateurs: {
+    "data/p/plan-config.json":         { etag: "W/a1", lm: null },
+    "data/p/data/img.png":             { etag: null, lm: "Mon, 01 Jan 2026 00:00:00 GMT" },
+    "data/p/data/tiles/z0/x0_y-1.jpg": { etag: "W/c3", lm: null },
+    "data/p/data/tiles/z0/x1_y-1.jpg": { etag: "W/d4", lm: null }
+  },
+  racineTuiles: "data/p/data/tiles", date: "2026-09-07T10:00:00.000Z"
+};
+
+async function _fraicheur() {
+  try {
+    const o = await Promise.all([
+      _verifierAvec(MAN3, {}),
+      _verifierAvec(MAN3, { "data/p/plan-config.json": 200 }),
+      _verifierAvec(MAN3, { "data/p/plan-config.json": "boom", "data/p/data/img.png": "boom" }),
+      _verifierAvec({ version: 2, planId: "p1", urls: MAN3.urls, manquants: [] }, {})
+    ]);
+    t("tout en 304 → à jour", o[0].r.etat === "ajour" && o[0].r.verifies === 2);
+    t("🩸 les TUILES ne sont pas sondées (2 sondes pour 4 fichiers)", o[0].sondes.length === 2);
+    t("🩸 chaque sonde porte le marqueur qui contourne le cache du SW",
+      o[0].sondes.every(function (s) { return s.url.indexOf("_ktacheck=1") >= 0; }));
+    t("🔎 les en-têtes conditionnels sont bien envoyés",
+      o[0].sondes.some(function (s) { return s.headers["If-None-Match"]; }) &&
+      o[0].sondes.some(function (s) { return s.headers["If-Modified-Since"]; }));
+    t("un 200 → mise à jour disponible, et le fichier est NOMMÉ",
+      o[1].r.etat === "maj" && o[1].r.changes.length === 1 &&
+      o[1].r.changes[0] === "data/p/plan-config.json");
+    t("🩸 toutes les sondes échouent → « inconnu », JAMAIS « à jour »", o[2].r.etat === "inconnu");
+    t("🩸 manifeste sans validateurs (v2) → « inconnu », pas de faux « à jour »", o[3].r.etat === "inconnu");
+  } catch (e) {
+    t("§8 verifierMaj s'exécute sans planter — " + (e && e.message), false);
+  }
+}
+
+// 🩸 `async` OBLIGATOIRE : un throw de vm.runInContext doit devenir une
+// REJECTION, pas un crash synchrone hors du Promise.all. Un crash n est pas
+// un echec annonce -- il passe pour un succes aux yeux d un falsificateur.
+async function _statutAvecCache(entrees, manifeste) {
   const win = { console: { log: () => {}, warn: () => {} }, navigator: {}, location: { href: "http://x/" } };
   win.window = win;
   const faux = {
@@ -216,7 +330,7 @@ Promise.all([
     r[4].etat === "incomplet");
 }).catch(function (e) {
   t("§6 statut() s'exécute sans planter — " + (e && e.message), false);
-}).then(function () {
+}).then(_fraicheur).then(function () {
   console.log(ko === 0 ? "\n🎉 hors-ligne : un plan serveur se télécharge en entier et l'état ne ment pas"
                        : "\n⚠️ " + ko + " echec(s)");
   process.exit(ko === 0 ? 0 : 1);

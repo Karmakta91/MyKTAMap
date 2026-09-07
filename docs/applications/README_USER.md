@@ -436,6 +436,8 @@ Ouvre la fiche **ℹ️ Infos** d'un plan serveur : une section **💾 Disponibi
 | **⚠️ Incomplet — n sur N** + ⬇️ | Téléchargement interrompu, ou fichiers effacés par le navigateur : le bouton **revient** pour compléter |
 | **✅ Disponible, mais n introuvable(s)** + ↻ *(depuis v1.87.1)* | Le serveur n'a pas fourni certains fichiers déclarés par le plan. L'app **te dit lesquels** : le plan est utilisable, et tu peux corriger ton déploiement puis « Réessayer » |
 
+**🔎 Et l'app te dit si le serveur a changé** *(depuis v1.88.0)*. Un plan téléchargé est servi depuis ton téléphone, sans jamais redemander au serveur — pratique, mais il pouvait rester périmé **sans que rien ne le dise**. À l'ouverture de la fiche, l'app vérifie maintenant, fichier par fichier, si quelque chose a bougé côté serveur et affiche l'un des trois verdicts : **⚠️ Mise à jour disponible**, **✓ À jour**, ou **Impossible de vérifier** (hors-ligne, ou plan téléchargé avant cette version). *Elle ne dit jamais « à jour » sans avoir réellement vérifié.*
+
 > 💡 **L'état est lu du cache réel, pas d'une case mémorisée.** Si le navigateur fait le ménage dans son stockage, l'app le voit et te repropose le téléchargement — au lieu d'afficher « disponible » sur du vide et de te le faire découvrir en cavité.
 
 **Actions disponibles** sur chaque ligne :

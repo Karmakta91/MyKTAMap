@@ -1408,6 +1408,34 @@
                 window.PlanOffline.supprimer(plan.id).then(rendreOffline);
               });
             });
+
+            // 🔎 v1.88.0 — FRAÎCHEUR. Un plan pré-téléchargé est servi depuis
+            // son cache dédié, que rien ne purge : il pouvait donc servir du
+            // contenu périmé INDÉFINIMENT, et rien ne le disait. On sonde le
+            // serveur en conditionnel (304 = inchangé) sur tout SAUF les
+            // tuiles, et on affiche le verdict.
+            // 🩸 On n'affiche « à jour » que si des sondes ont réellement
+            // abouti : sans preuve, on dit « impossible de vérifier ».
+            if (st.etat === "complet" || st.etat === "partiel") {
+              const ligne = document.createElement("div");
+              ligne.style.cssText = "font-size:11.5px; margin-top:8px; line-height:1.45; color:#8892a4;";
+              ligne.textContent = _t("home.plans.offline.majCheck");
+              zone.appendChild(ligne);
+              window.PlanOffline.verifierMaj(plan).then(function (v) {
+                if (!ligne.isConnected) return;   // fiche refermée entre-temps
+                if (v.etat === "maj") {
+                  ligne.style.color = "#f4c542";
+                  ligne.textContent = _t("home.plans.offline.majDispo", { n: v.changes.length });
+                } else if (v.etat === "ajour") {
+                  ligne.style.color = "#7bd88f";
+                  ligne.textContent = _t("home.plans.offline.majAjour", { n: v.verifies });
+                } else {
+                  ligne.textContent = _t("home.plans.offline.majInconnu");
+                }
+              }).catch(function () {
+                if (ligne.isConnected) ligne.textContent = _t("home.plans.offline.majInconnu");
+              });
+            }
           };
           rendreOffline();
         }

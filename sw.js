@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.87.2";
+const CACHE_NAME = "myktamap-cache-v1.88.0";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -960,6 +960,26 @@ self.addEventListener("fetch", (event) => {
   // le navigateur résout la requête directement.
   const reqProtocol = (event.request.url || "").split(":")[0];
   if (reqProtocol !== "http" && reqProtocol !== "https") return;
+
+  // 🔎 v1.88.0 — SONDES DE FRAÎCHEUR : RÉSEAU SEUL, JAMAIS DE CACHE.
+  // `planOffline.verifierMaj()` envoie des requêtes CONDITIONNELLES sur les
+  // fichiers d'un plan pré-téléchargé pour savoir s'ils ont changé côté
+  // serveur. 🩸 Sans cette sortie anticipée, la branche par défaut (cache-first)
+  // les servirait depuis le cache : la sonde n'atteindrait JAMAIS le serveur et
+  // répondrait toujours « rien n'a changé » — exactement le mensonge qu'elle
+  // est censée lever.
+  // Le marqueur est dans la query : il rend aussi la requête distincte pour le
+  // Cache API (pas de collision avec l'entrée réelle). On ne met RIEN en cache
+  // ici — sinon chaque vérification polluerait le cache de N entrées jetables,
+  // comptées dans le plafond de 800.
+  if (/[?&]_ktacheck=1(&|$)/.test(reqUrl)) {
+    event.respondWith(
+      fetch(event.request).catch(function() {
+        return new Response("", { status: 504, statusText: "Sonde impossible (hors-ligne)" });
+      })
+    );
+    return;
+  }
 
   // 🆘 hotfix20 — Bypass cache TOTAL pour /killsw.html (page de reset
   // d'urgence). Si on cachait cette page, le SW coincé servirait

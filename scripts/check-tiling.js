@@ -236,6 +236,42 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
     /r\.status === 200/.test(CFGC));
 }
 
+
+// ───────── 12. 🔢 LA VERSION D'UN PLAN SERVEUR NE PING-PONG PLUS ─────────
+// 🩸 VÉCU : `index.json` et `plan-config.json` portent tous deux un champ
+// `version`, et ils DIVERGENT déjà dans ce repo — l'index dit « V1 », le
+// plan-config du plan de test dit « V2 ». Or `addOrUpdate` fait un
+// Object.assign : au boot on écrivait celle de l'index, au chargement celle du
+// plan-config, au boot suivant on revenait à la première. La ligne « Version »
+// de la fiche ℹ️ Infos changeait donc selon la dernière action.
+// Pire : `entry.version || null` écrivait NULL quand l'index omet le champ —
+// la version connue était EFFACÉE à chaque démarrage.
+// Règle : le plan-config fait autorité (il est DANS le plan) ; l'index n'est
+// qu'un indice utile avant le premier chargement.
+{
+  const MAIN = sansCommentaires(fs.readFileSync("js/main.js", "utf8"));
+  t("🩸 la découverte n'écrit plus la version inconditionnellement",
+    MAIN.indexOf("version: version,") < 0);
+  t("🩸 …et jamais NULL (l'index qui omet le champ n'efface plus rien)",
+    /if \(version && !\(_dejaLa && _dejaLa\.versionSrc === "plan"\)\)/.test(MAIN));
+  t("🔢 l'origine de la version est tracée",
+    MAIN.indexOf("versionSrc = \"index\"") >= 0 && MAIN.indexOf("versionSrc: window.PLAN_CONFIG.plan.version") >= 0);
+  t("🔢 le plan-config fait autorité : une version d'origine « plan » n'est pas écrasée",
+    MAIN.indexOf("_dejaLa.versionSrc === \"plan\"") >= 0);
+  // ⚠️ Le désaccord de données lui-même n'est PAS une erreur : `index.json` est
+  // rempli à la main par le déployeur. Ce qui était faux, c'est que l'app en
+  // faisait une source d'autorité alternée.
+  t("📄 le repo montre bien les deux sources qui divergent (le cas qui a servi de preuve)",
+    (function () {
+      try {
+        const idx = JSON.parse(fs.readFileSync("data/index.json", "utf8"));
+        const pc  = JSON.parse(fs.readFileSync("data/test/plan-config.json", "utf8"));
+        const e   = (idx.plans || []).find(function (x) { return x && x.id === "test"; });
+        return !!e && !!pc.plan && e.version !== pc.plan.version;
+      } catch (err) { return false; }
+    })());
+}
+
 // ───────── 11. 🎨 ON EXÉCUTE LE SONDEUR ─────────
 // Le cas de la régression est rejoué tel quel : une icône de l'app absente du
 // dossier du plan NE DOIT PAS être réécrite, une icône perso présente DOIT

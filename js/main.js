@@ -234,11 +234,29 @@ async function decouvrirPlansServeur(idxDeja) {
         type: "server",
         path: path,
         name: name,
-        version: version,
         author: author,
         discovered: true,
         addedAt: new Date().toISOString()
       };
+      // 🩸 v1.88.0 — LA VERSION NE PING-PONGAIT PLUS QU'ENTRE DEUX SOURCES QUI
+      // SE CONTREDISENT. `addOrUpdate` fait un Object.assign : au boot on
+      // écrivait celle de `index.json`, au chargement du plan celle du
+      // `plan-config.json`, et au boot suivant on revenait à la première. La
+      // ligne « Version » de la fiche ℹ️ Infos changeait donc selon la dernière
+      // action. Constaté dans le repo même : index.json dit « V1 », le
+      // plan-config du plan de test dit « V2 ».
+      // Pire : `entry.version || null` écrivait NULL quand index.json omet le
+      // champ — la version connue était EFFACÉE à chaque démarrage.
+      //
+      // Règle : le `plan-config.json` fait autorité (il est DANS le plan) ;
+      // `index.json` n'est qu'un indice d'affichage, utile avant le premier
+      // chargement. On n'écrase donc jamais une version d'origine « plan », et
+      // on n'écrit jamais `null`.
+      const _dejaLa = window.PlanRegistry.findById ? window.PlanRegistry.findById(id) : null;
+      if (version && !(_dejaLa && _dejaLa.versionSrc === "plan")) {
+        regEntry.version    = version;
+        regEntry.versionSrc = "index";
+      }
       // Ajout conditionnel des flags (sinon Object.assign dans addOrUpdate effacerait
       // un user-override explicite en multiLevel:false par setMultiLevel).
       if (multiLevel === true) regEntry.multiLevel = true;
@@ -981,6 +999,9 @@ async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
       path: planPath,
       name:    window.PLAN_CONFIG.plan.name    || (registryEntry && registryEntry.name) || planPath,
       version: window.PLAN_CONFIG.plan.version || (registryEntry && registryEntry.version) || null,
+      // 🩸 v1.88.0 — marque lorigine : le plan-config fait autorite, la
+      // decouverte via index.json ne doit plus lecraser au boot suivant.
+      versionSrc: window.PLAN_CONFIG.plan.version ? "plan" : undefined,
       author:  window.PLAN_CONFIG.plan.author  || (registryEntry && registryEntry.author)  || null,
       discovered: registryEntry?.discovered || false,
       perfPreset: APP_CONFIG.perfPreset

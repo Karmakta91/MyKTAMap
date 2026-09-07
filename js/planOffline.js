@@ -90,7 +90,12 @@
     if (typeof window.ktaTuilesV2Urls === "function") {
       (window.ktaTuilesV2Urls(cfg) || []).forEach(ajouter);
     }
-    return { urls: urls, cfg: cfg };
+    // La racine des tuiles est rendue avec la liste : `verifierMaj` s en sert
+    // pour EXCLURE les tuiles des sondes. Sonder 1275 tuiles serait absurde,
+    // et inutile : elles derivent de l image, qui est sondee, elle.
+    const racineTuiles = (typeof window.ktaRacineTuilesServeur === "function")
+      ? window.ktaRacineTuilesServeur(cfg) : null;
+    return { urls: urls, cfg: cfg, racineTuiles: racineTuiles };
   }
 
   // ── Etat REEL, lu du cache ──────────────────────────────────────────
@@ -164,6 +169,12 @@
     // Sans la liste, l utilisateur voyait « 9 sur 10 » sans jamais savoir
     // lequel, et retelechargait en boucle un fichier absent du serveur.
     const manquants = [];
+    // 🔎 v1.88.0 — VALIDATEURS HTTP, retenus au telechargement. Ils sont la
+    // seule facon FIABLE de savoir plus tard si le serveur a change : le
+    // champ `version` de index.json est saisi a la main et derive (dans ce
+    // repo meme, index dit V1 et le plan-config dit V2), et le generateur
+    // n ecrit aucun horodatage dans plan-config.json.
+    const validateurs = {};
 
     let curseur = 0;
     const suivant = function () { return (curseur < urls.length) ? urls[curseur++] : null; };
@@ -177,7 +188,11 @@
           const r = await fetch(u, { cache: "reload" });
           // 🩸 On ne met en cache QUE du 200 : cacher un 404 rendrait le plan
           // « complet » avec des fichiers morts, invisibles jusqu'au terrain.
-          if (r && r.status === 200) { await cache.put(u, r.clone()); ok++; }
+          if (r && r.status === 200) {
+            const et = r.headers.get("ETag"), lm = r.headers.get("Last-Modified");
+            if (et || lm) validateurs[u] = { etag: et || null, lm: lm || null };
+            await cache.put(u, r.clone()); ok++;
+          }
           else { echecs++; manquants.push(u); _warn("HTTP " + (r && r.status) + " :", u); }
         } catch (e) { echecs++; manquants.push(u); _warn("echec :", u, e && e.message); }
         fait++;
@@ -193,7 +208,8 @@
       // laisse donc un cache SANS manifeste → etat « incomplet », le bouton
       // revient. C'est voulu.
       await cache.put(_urlManifeste(plan), new Response(JSON.stringify({
-        version: 2, planId: plan.id, urls: urls, manquants: manquants,
+        version: 3, planId: plan.id, urls: urls, manquants: manquants,
+        validateurs: validateurs, racineTuiles: liste.racineTuiles || null,
         date: new Date().toISOString(), echecs: echecs
       }), { status: 200, headers: { "Content-Type": "application/json" } }));
     }
@@ -201,6 +217,78 @@
     _log("plan " + plan.id + " : " + ok + "/" + urls.length + " fichiers, " + echecs + " echec(s)");
     if (manquants.length) _warn("introuvables sur le serveur :", manquants);
     return { total: urls.length, ok: ok, echecs: echecs, annule: annule, manquants: manquants };
+  }
+
+
+  // ── Y a-t-il du neuf sur le serveur ? ───────────────────────────────
+  // 🔎 v1.88.0 — On envoie des requetes CONDITIONNELLES : 304 = inchange
+  // (corps vide, cout quasi nul), 200 = le fichier a change.
+  //
+  // 🩸 POURQUOI PAS LE CHAMP `version` : il est saisi a la main dans
+  // index.json et derive deja dans ce repo (index dit V1, plan-config dit V2).
+  // Et `plan-config.json` ne porte AUCUN horodatage. Le seul signal fiable
+  // sans changer de format est donc HTTP : ETag / Last-Modified, que tout
+  // serveur statique emet par defaut.
+  //
+  // 🩸 LES TUILES SONT EXCLUES : elles peuvent etre 1275, et elles derivent de
+  // l image — qui, elle, EST sondee. Si l image a change, la mise a jour est
+  // annoncee et le retelechargement reprend tout.
+  //
+  // 🩸 LE MARQUEUR `_ktacheck=1` EST INDISPENSABLE : sans lui, la branche
+  // cache-first du Service Worker servirait la sonde depuis le cache et elle
+  // repondrait TOUJOURS « rien n a change » (cf sw.js).
+  //
+  // Retourne { etat: "ajour" | "maj" | "inconnu", changes: [...], verifies, date }
+  async function verifierMaj(plan) {
+    const inconnu = { etat: "inconnu", changes: [], verifies: 0, date: null };
+    if (!supporte() || !plan || !plan.id) return inconnu;
+    let cles;
+    try { cles = await caches.keys(); } catch (e) { return inconnu; }
+    if (cles.indexOf(nomCache(plan.id)) < 0) return inconnu;
+    const cache = await caches.open(nomCache(plan.id));
+    const rep = await cache.match(_urlManifeste(plan));
+    if (!rep) return inconnu;
+    let man;
+    try { man = await rep.json(); } catch (e) { return inconnu; }
+    // Manifeste v2 ou anterieur : aucun validateur retenu, on ne peut RIEN
+    // affirmer. On le dit, plutot que d annoncer « a jour » sans preuve.
+    if (!man || !man.validateurs || !Array.isArray(man.urls)) {
+      return { etat: "inconnu", changes: [], verifies: 0, date: man && man.date || null };
+    }
+    const racine = man.racineTuiles;
+    const aSonder = man.urls.filter(function (u) {
+      if (racine && u.indexOf(racine + "/") === 0) return false;   // tuiles : exclues
+      return !!man.validateurs[u];
+    });
+    if (!aSonder.length) return { etat: "inconnu", changes: [], verifies: 0, date: man.date || null };
+
+    const changes = [];
+    let verifies = 0, echecs = 0;
+    await Promise.all(aSonder.map(async function (u) {
+      const v = man.validateurs[u];
+      const h = {};
+      if (v.etag) h["If-None-Match"] = v.etag;
+      else if (v.lm) h["If-Modified-Since"] = v.lm;
+      try {
+        const r = await fetch(u + (u.indexOf("?") >= 0 ? "&" : "?") + "_ktacheck=1",
+                              { headers: h, cache: "no-store" });
+        if (r.status === 304) { verifies++; return; }
+        if (r.status === 200) { verifies++; changes.push(u); return; }
+        echecs++;
+      } catch (e) { echecs++; }
+    }));
+    // 🩸 Aucune sonde n a abouti (hors-ligne, CORS, serveur muet) : on ne
+    // conclut pas. Annoncer « a jour » sans avoir rien verifie serait le
+    // meme mensonge qu un drapeau memorise.
+    if (verifies === 0) return { etat: "inconnu", changes: [], verifies: 0, date: man.date || null };
+    _log("verif maj " + plan.id + " : " + verifies + " sonde(s), " + changes.length + " change(s)" +
+         (echecs ? ", " + echecs + " sans reponse" : ""));
+    return {
+      etat:     changes.length ? "maj" : "ajour",
+      changes:  changes,
+      verifies: verifies,
+      date:     man.date || null
+    };
   }
 
   async function supprimer(planId) {
@@ -229,6 +317,7 @@
     listerUrls: listerUrls,
     statut:     statut,
     precacher:  precacher,
+    verifierMaj: verifierMaj,
     supprimer:  supprimer
   };
 })();

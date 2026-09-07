@@ -437,6 +437,8 @@ Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** secti
 | **⚠️ Incomplete — n of N** + ⬇️ | Interrupted download, or files cleared by the browser: the button **comes back** to finish |
 | **✅ Available, but n not found** + ↻ *(since v1.87.1)* | The server did not provide some files declared by the map. The app **names them**: the map is usable, and you can fix your deployment then hit "Retry" |
 
+**🔎 And the app tells you when the server has changed** *(since v1.88.0)*. A downloaded map is served from your phone and never asks the server again — handy, but it could stay stale **with nothing to tell you**. When you open the info panel, the app now checks, file by file, whether anything moved on the server, and shows one of three verdicts: **⚠️ Update available**, **✓ Up to date**, or **Cannot check** (offline, or map downloaded before this version). *It never claims "up to date" without actually checking.*
+
 > 💡 **The state is read from the real cache, not from a remembered flag.** If the browser clears its storage, the app notices and offers the download again — instead of showing "available" over nothing and letting you find out underground.
 
 **Available actions** on each row (3 buttons):

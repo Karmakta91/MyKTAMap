@@ -144,3 +144,37 @@ data/
 🩸 **Un seul point de vérité pour les tuiles.** `planOffline` n'énumère rien lui-même : il appelle `window.ktaTuilesV2Urls` (tiling.js), la fonction dont dérive aussi le rendu. Deux dérivations auraient divergé au premier changement de mise en page du générateur, et le symptôme aurait été un plan « téléchargé » mais troué — le bug qu'on corrige.
 
 🛡️ Vérifié par **`scripts/check-plan-offline.js`** (pré-commit, bloquant) : il **exécute** `ktaTuilesV2Urls` sur un cas dont le compte est calculable à la main (1275), et vérifie qu'un plan local (`blob:`) ne produit **aucune** URL. 10 sabotages falsifiés.
+
+---
+
+## 8. Fraîcheur : savoir que le serveur a changé *(v1.88.0)*
+
+Le §7 a créé un trou : un plan pré-téléchargé est servi depuis son cache dédié, **que rien ne purge** — ni l'éviction, ni le bump. Il pouvait donc servir du contenu **périmé indéfiniment**, sans jamais le dire.
+
+### Pourquoi pas le champ `version`
+
+| Source | Problème |
+|---|---|
+| `index.json > plans[].version` | **saisi à la main** par le déployeur. Il a **déjà dérivé dans ce repo** : l'index dit `V1`, `data/test/plan-config.json` dit `V2`. |
+| `plan-config.json > plan.version` | fiable seulement si l'auteur pense à l'incrémenter. |
+| un horodatage | **il n'y en a aucun** — `plan{}` = `name, version, author, imageWidth, imageHeight, baseImage, collisionImage, multiLevel` (+ options). Le générateur n'écrit ni date ni build. |
+
+### Ce qu'on fait à la place : HTTP
+
+Les **validateurs** (`ETag`, `Last-Modified`) sont retenus **au téléchargement**, dans le manifeste (v3). À l'ouverture de la fiche d'un plan hors-ligne, `PlanOffline.verifierMaj()` envoie une requête **conditionnelle** par fichier : **304** = inchangé (corps vide, coût quasi nul), **200** = ça a bougé.
+
+🩸 **Les tuiles sont exclues** — elles peuvent être 1275, et elles **dérivent de l'image**, qui est sondée, elle. Si l'image a changé, la mise à jour est annoncée et le retéléchargement reprend tout. Il reste ~15 sondes pour un plan comme `data/test`.
+
+🩸 **Le marqueur `?_ktacheck=1` est indispensable.** Sans lui, la branche cache-first du Service Worker servirait la sonde **depuis le cache** : elle n'atteindrait jamais le serveur et répondrait toujours « rien n'a changé » — exactement le mensonge qu'elle est censée lever. `sw.js` la laisse donc passer en **réseau seul**, et **ne la met pas en cache** (sinon chaque vérification y laisserait N entrées jetables, comptées dans le plafond de 800).
+
+🩸 **On ne conclut jamais sans preuve.** Si aucune sonde n'aboutit (hors-ligne, CORS, serveur muet) ou si le manifeste est antérieur à la v3, l'état est **« inconnu »**, pas « à jour ». Annoncer « à jour » sans avoir rien vérifié serait le même mensonge qu'un drapeau mémorisé.
+
+⚠️ **Limite assumée** : un fichier remplacé **sans** que son ETag change (serveur mal configuré, `Last-Modified` figé) passera inaperçu. Et si tu ne modifies qu'une **tuile** sans toucher à l'image source, la sonde ne le verra pas.
+
+### Effet de bord réglé au passage : la version ne ping-pong plus
+
+`addOrUpdate` fait un `Object.assign`. Au boot, la découverte écrivait la version d'`index.json` ; au chargement, celle du `plan-config.json` ; au boot suivant, retour à la première. La ligne « Version » de la fiche ℹ️ Infos changeait donc **selon la dernière action**. Pire : `entry.version || null` écrivait **`null`** quand l'index omet le champ — la version connue était **effacée à chaque démarrage**.
+
+**Règle posée** : le `plan-config.json` fait autorité (il est *dans* le plan) ; `index.json` n'est qu'un indice utile **avant** le premier chargement. L'origine est tracée (`versionSrc`), et on n'écrit jamais `null`.
+
+🛡️ Vérifié par `scripts/check-plan-offline.js` §7-8 (qui **exécute** `verifierMaj` sur quatre scénarios, dont les deux où elle doit **refuser de conclure**) et `scripts/check-tiling.js` §12.
