@@ -127,7 +127,13 @@ let DEFAULT_CONFIG = {
   // L'user reste maître : même sur device supporté, peut décocher s'il
   // ne veut pas de vibration sous terre (anti-bruit pour méditation /
   // discrétion en cavité avec d'autres personnes).
-  vibrationEnabled: true,
+  // 🔕 v1.85.2 (KARMA « je le vois coché par défaut ») : OFF par défaut. Une
+  // app qui vibre sans qu'on l'ait demandé surprend, et sous terre chaque
+  // vibration est de la batterie en moins.
+  // ⚠️ Passer ce défaut à false NE SUFFIT PAS : tout test en `!== false` rend
+  // vrai sur `undefined` et rallumerait l'option. Même piège que
+  // `showRoadIntersections` en v1.74.0 — les lecteurs doivent tester `=== true`.
+  vibrationEnabled: false,
 
   // ========== MULTI-NIVEAU (depuis v148) ==========
   // Opt-in par plan (PlanRegistry[planId].multiLevel). Quand `multiLevel` est

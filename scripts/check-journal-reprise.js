@@ -281,7 +281,11 @@ function partie2() {
   t("fin : une fin saisie à la main est signalée dans la fiche", /jrn\.metric\.finCorrigee/.test(JUI));
 
   // 🩸 LE WAKE LOCK. Le module vivait complet mais n'était jamais initialisé.
-  t("🩸 wakeLock : `init()` est appelé au boot (il ne l'était NULLE PART)",
+  // ⚠️ Le module s'initialise DEJA lui-meme en fin de fichier ; cet appel-ci
+  // est un second filet, plus tard dans le boot. Le diagnostic initial (« il
+  // n'etait appele nulle part ») etait FAUX — la vraie panne est le verrou
+  // fantome, couverte par `check-wakelock.js`.
+  t("wakeLock : `init()` est aussi appelé depuis le boot de l'app",
     /window\.WakeLock\.init\(\)/.test(MAIN));
   t("🩸 wakeLock : rattrapage au premier geste si l'acquisition du boot échoue",
     /_reprendreAuPremierGeste/.test(WL) && /pointerdown/.test(WL));

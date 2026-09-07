@@ -1084,7 +1084,7 @@ function afficherConfig() {
                (config.js l~104). Le helper window.kta_vibrate() check
                APP_CONFIG.vibrationEnabled avant de vibrer. -->
           <label class="kta-perf-ultra-row" id="cfg_vibration_row" style="margin-top:8px; display:none;">
-            <input type="checkbox" id="cfg_vibration" ${c.vibrationEnabled !== false ? "checked" : ""}>
+            <input type="checkbox" id="cfg_vibration" ${c.vibrationEnabled === true ? "checked" : ""}>
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label">${window.I18n.t("config.display.vibration.label")}</span>
               <span class="kta-perf-ultra-hint">
@@ -1464,7 +1464,7 @@ function afficherConfig() {
   const vibCb  = document.getElementById("cfg_vibration");
   if (vibRow && vibCb && window.kta_vibrate && window.kta_vibrate.isSupported()) {
     vibRow.style.display = "";
-    vibCb.checked = (window.APP_CONFIG && window.APP_CONFIG.vibrationEnabled !== false);
+    vibCb.checked = !!(window.APP_CONFIG && window.APP_CONFIG.vibrationEnabled === true);
     vibCb.addEventListener("change", function() {
       if (!window.APP_CONFIG) window.APP_CONFIG = {};
       window.APP_CONFIG.vibrationEnabled = !!vibCb.checked;

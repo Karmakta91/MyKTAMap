@@ -235,3 +235,15 @@ node scripts/check-selection-multi.js || exit $?
 # — il ne l etait NULLE PART, d ou l option ecran-allume morte en PWA iOS.
 # Les 7 sabotages de reference rougissent. BLOQUANT.
 node scripts/check-journal-reprise.js || exit $?
+
+# 🔆 L option « garder l ecran allume », et le VERROU FANTOME qui a resiste a
+# deux diagnostics. Au demarrage, sans geste utilisateur, iOS ACCEPTE la
+# demande — `request()` resout, on tient un sentinel, `isActive()` rend vrai —
+# puis il l IGNORE : ni erreur, ni evenement `release`. Et le fantome se
+# verrouille lui-meme, `_acquire()` sortant des qu un sentinel est en main :
+# aucune reprise n etait possible. Decocher/recocher reparait parce que c est
+# un relachement puis une acquisition SOUS GESTE — le module refait donc ce
+# geste seul au premier contact. Couvre aussi le defaut OFF de la vibration
+# haptique et l absence de tout `!== false` (qui rend VRAI sur undefined et
+# rallumerait l option). BLOQUANT.
+node scripts/check-wakelock.js || exit $?

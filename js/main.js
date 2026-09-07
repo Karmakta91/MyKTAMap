@@ -1789,6 +1789,12 @@ window.proposerRedemarrageLangue = function() {
   // ne pas bloquer le boot principal). Si des plans sont purgés → modale
   // orange affichée 1s après pour informer l'user. Cache hash dans le
   // registry pour éviter le re-hash au prochain boot.
+  // 🔆 v1.85.2 — SECOND FILET. ⚠️ Le module s initialise DEJA lui-meme en fin
+  // de fichier : cet appel n est pas ce qui repare quoi que ce soit (mon
+  // premier diagnostic, corrige le 07/09). Il vaut comme reprise plus tard
+  // dans le boot, quand l app est stabilisee. La vraie panne etait le VERROU
+  // FANTOME — cf. l en-tete de js/wakeLock.js.
+  // (ancien commentaire, faux, conserve pour memoire du raisonnement :)
   // 🩸 v1.85.2 (KARMA « l option qui garde le tel allume ne fonctionne pas sur
   // iPhone en PWA ») — `WakeLock.init()` n etait appele NULLE PART. Le module
   // etait charge, les deux cases appelaient bien `setEnabled()`, mais la
