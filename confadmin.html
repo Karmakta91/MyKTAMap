@@ -125,10 +125,17 @@
     <input type="file" id="caZipInput" accept=".zip" multiple style="display:none">
     <div id="caPlansStatus"></div>
     <table class="kta-ca-table" id="caPlansTable" style="display:none;">
-      <thead><tr><th></th><th>id (dossier)</th><th>Nom affiché</th><th>Version</th><th>Auteur</th><th>Badges</th><th></th></tr></thead>
+      <thead><tr><th></th><th>id (dossier)</th><th>Nom affiché</th><th>Version</th><th>Auteur</th><th>Tags</th><th>Badges</th><th></th></tr></thead>
       <tbody id="caPlansBody"></tbody>
     </table>
-    <div class="kta-ca-actions"><button class="kta-ca-btn" id="caAddManual" type="button">➕ Ajouter une entrée à la main</button></div>
+    <div class="kta-ca-actions">
+      <button class="kta-ca-btn" id="caAddManual" type="button">➕ Ajouter une entrée à la main</button>
+      <!-- 🩸 Sans ce bouton, éditer les tags d'un parc déjà en ligne obligeait à
+           REDÉPOSER tous les ZIPs et à retaper chaque nom : la page ne savait que
+           créer un index, jamais en reprendre un. -->
+      <button class="kta-ca-btn" id="caLoadIndex" type="button">📂 Reprendre un index.json existant</button>
+      <input type="file" id="caIndexInput" accept=".json,application/json" style="display:none">
+    </div>
   </div>
 
   <!-- ═══ 2. LIAISONS ═══ -->
@@ -197,7 +204,8 @@
   "use strict";
 
   // ───────── État ─────────
-  const _plans = [];        // { id, name, version, author, multiLevel, tiledV2 }
+  const _plans = [];        // { id, name, version, author, multiLevel, tiledV2, tags }
+  let _liaisonsReprises = null; // liaisons d'un index.json rechargé (cf _construire)
   let _links = [];          // liaisons source (objets du registre, intacts)
   let _linksOrigine = "";   // libellé de provenance
   const _linkSel = {};      // linkId → bool (cochée)
@@ -210,6 +218,25 @@
       return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
     });
   }
+  // 🏷️ v1.90.1 — MÊMES RÈGLES QUE `PlanRegistry.setTags` (trim, 24 caractères,
+  // dédup insensible à la casse, 12 max). 🩸 Si elles divergeaient, ConfAdmin
+  // publierait des tags que l'app rognerait en silence : l'auteur du kiosque
+  // verrait un filtre annoncé qui ne remonte pas. Le champ accepte des virgules
+  // ou des points-virgules — on ne fait pas deviner la syntaxe à l'utilisateur.
+  function _normTags(v) {
+    const vus = {};
+    return String(v == null ? "" : v).split(/[,;]/)
+      .map(function(t) { return t.trim().slice(0, 24); })
+      .filter(function(t) {
+        if (!t) return false;
+        const k = t.toLowerCase();
+        if (vus[k]) return false;
+        vus[k] = true;
+        return true;
+      })
+      .slice(0, 12);
+  }
+
   // Même sanitisation que le moteur (main.js decouvrirPlansServeur)
   function _sanitId(s) { return String(s || "").replace(/[^a-z0-9_-]/gi, "_"); }
   function _slug(s) {
@@ -244,7 +271,8 @@
       version:    plan.version || "",
       author:     plan.author || "",
       multiLevel: plan.multiLevel === true,
-      tiledV2:    plan.tiledV2 === true || !!cfg.tiling   // même détection que config.js
+      tiledV2:    plan.tiledV2 === true || !!cfg.tiling,  // même détection que config.js
+      tags:       Array.isArray(plan.tags) ? plan.tags.join(", ") : ""
     };
   }
 
@@ -278,6 +306,7 @@
         '<td><input type="text" data-f="name" data-i="' + i + '" value="' + _esc(p.name) + '"></td>' +
         '<td style="width:80px;"><input type="text" data-f="version" data-i="' + i + '" value="' + _esc(p.version) + '"></td>' +
         '<td style="width:110px;"><input type="text" data-f="author" data-i="' + i + '" value="' + _esc(p.author) + '"></td>' +
+        '<td style="width:170px;"><input type="text" data-f="tags" data-i="' + i + '" placeholder="gironde, carrière" title="Séparés par des virgules — 12 max, 24 caractères chacun" value="' + _esc(p.tags || "") + '"></td>' +
         "<td>" + (p.tiledV2 ? '<span class="kta-ca-badge">V2</span>' : "") +
                  (p.multiLevel ? '<span class="kta-ca-badge">Multi-LVL</span>' : "") + "</td>" +
         '<td><button class="kta-ca-x" data-x="' + i + '" title="Retirer">✕</button></td>';
@@ -314,8 +343,59 @@
   drop.addEventListener("drop", function(e) { _ajouterZips(Array.from((e.dataTransfer || {}).files || [])); });
 
   $("caAddManual").addEventListener("click", function() {
-    _plans.push({ id: "plan-" + (_plans.length + 1), name: "Nouveau plan", version: "", author: "", multiLevel: false, tiledV2: false });
+    _plans.push({ id: "plan-" + (_plans.length + 1), name: "Nouveau plan", version: "", author: "",
+                  multiLevel: false, tiledV2: false, tags: "" });
     _renderPlans(); _renderMapping(); _renderOut();
+  });
+
+
+  // ───────── 📂 REPRENDRE UN INDEX.JSON EXISTANT ─────────
+  // 🩸 La page ne savait que PRODUIRE un index. Pour ajouter un tag à un parc
+  // déjà en ligne, il fallait redéposer tous les ZIPs et retaper chaque nom —
+  // et la moindre faute de frappe sur un `id` cassait le chemin du plan.
+  // On relit donc l'index publié : ce qu'il contient fait foi, y compris les
+  // liaisons, que ce navigateur ne peut pas reconstruire (cf _construire).
+  $("caLoadIndex").addEventListener("click", function() { $("caIndexInput").click(); });
+  $("caIndexInput").addEventListener("change", function(e) {
+    const f = (e.target.files || [])[0]; e.target.value = "";
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = function() {
+      try {
+        const d = JSON.parse(r.result);
+        if (!d || !Array.isArray(d.plans)) {
+          _statut($("caPlansStatus"), "Format non reconnu : il manque un tableau « plans » (attendu : un data/index.json).", true);
+          return;
+        }
+        _plans.length = 0;
+        d.plans.forEach(function(x) {
+          if (!x || !x.id) return;
+          _plans.push({
+            id:         String(x.id),
+            name:       String(x.name || x.id),
+            version:    x.version ? String(x.version) : "",
+            author:     x.author  ? String(x.author)  : "",
+            multiLevel: x.multiLevel === true,
+            tiledV2:    x.tiledV2 === true,
+            tags:       Array.isArray(x.tags) ? x.tags.join(", ") : ""
+          });
+        });
+        const c = d.config || {};
+        $("caSubtitle").value        = c.subtitle || "";
+        $("caFlagServerOnly").checked = c.serverPlansOnly === true;
+        $("caFlagNoGen").checked      = c.disableGenerator === true;
+        _liaisonsReprises = (d.liaisons && Array.isArray(d.liaisons.links) && d.liaisons.links.length)
+          ? d.liaisons : null;
+        _statut($("caPlansStatus"),
+          "✅ " + _plans.length + " plan(s) repris depuis « " + f.name + " »" +
+          (_liaisonsReprises ? " · " + _liaisonsReprises.links.length + " liaison(s) conservée(s) telles quelles" : "") +
+          " — les ZIPs ne sont pas nécessaires pour éditer les tags.");
+        _renderPlans(); _renderMapping(); _renderOut();
+      } catch(err) {
+        _statut($("caPlansStatus"), "Lecture impossible : " + err.message, true);
+      }
+    };
+    r.readAsText(f);
   });
 
   // ───────── 2. LIAISONS ─────────
@@ -441,6 +521,8 @@
       const e = { id: p.id, path: "data/" + p.id, name: p.name };
       if (p.version) e.version = p.version;
       if (p.author)  e.author  = p.author;
+      const tg = _normTags(p.tags);
+      if (tg.length) e.tags = tg;
       if (p.multiLevel) e.multiLevel = true;
       if (p.tiledV2)    e.tiledV2    = true;
       return e;
@@ -461,7 +543,13 @@
         nl.a = remap(l.a); nl.b = remap(l.b);
         return nl;
       });
+    // 🩸 REPRENDRE UN INDEX NE DOIT RIEN DÉTRUIRE. Les liaisons se construisent
+    // depuis le registre de CE navigateur ; sur une machine qui n'en a pas, un
+    // index rechargé pour corriger un tag serait redescendu SANS ses liaisons —
+    // perte silencieuse. On les repose telles quelles tant qu'aucune liaison
+    // locale n'est sélectionnée pour les remplacer.
     if (links.length) out.liaisons = { version: 1, links: links };
+    else if (_liaisonsReprises) out.liaisons = _liaisonsReprises;
     return out;
   }
 

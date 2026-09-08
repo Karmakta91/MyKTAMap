@@ -1384,6 +1384,17 @@ photos: false, histoirePdfs: false, crashes: false
   // ===========================================================
 
   async function ouvrirImportModale(file) {
+    // 🔒 v1.90.1 (bug KARMA) — REFUS EN KIOSQUE, AU GOULOT ET PAS SUR UN
+    // BOUTON. Un import de profil restaure les ARCHIVES ZIP : sur une
+    // instance `serverPlansOnly`, il remettait des plans locaux que le mode
+    // interdit, et pouvait réécrire les préférences d'affichage des plans
+    // serveur — vidant l'accueil. Cacher le bouton n'aurait rien fermé :
+    // la modale se déclenche depuis au moins deux endroits, et le sera
+    // peut-être depuis un troisième demain.
+    if (typeof window.ktaKiosqueServeurSeul === "function" && window.ktaKiosqueServeurSeul()) {
+      alert(window.I18n.t("profileio.kiosque_refus"));
+      return;
+    }
     if (!file) { alert(window.I18n.t("profileio.no_file")); return; }
     _fermerModales();
 

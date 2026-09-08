@@ -3119,6 +3119,7 @@
   "profileio.mode_replace": "<strong>♻️ Replace</strong> — <strong>Vacía</strong> las secciones seleccionadas en tu dispositivo antes de inyectar. <span style=\"color:#ff8c8c;\">Irreversible</span>, se pide doble confirmación.",
   "profileio.mode_title": "Modo de importación:",
   "profileio.no_file": "Ningún archivo proporcionado",
+  "profileio.kiosque_refus": "Importación desactivada: esta instancia está configurada solo con planos del servidor. Los planos vienen del servidor y una importación de perfil podría ocultarlos.",
   "profileio.replace_confirm": "⚠️ Modo REPLACE\n\nEsto VACIARÁ las secciones seleccionadas en tu dispositivo antes de inyectar los datos del perfil importado. Acción irreversible.\n\n¿Confirmar?",
   "profileio.sec_backups_hint": "10 últimos snapshots FIFO por mapa (auto + manuales).",
   "profileio.sec_backups_label": "Snapshots IDB",

@@ -269,7 +269,12 @@
   // doublons (insensible casse) éliminés, 12 tags max de 24 chars max —
   // refus au-delà de la troncature silencieuse serait pire : on tronque en
   // loggant (métadonnée cosmétique, pas un réglage expert).
-  function setTags(id, tags) {
+  // 🏷️ v1.90.1 — `origine` : "user" (défaut, édition dans ℹ️ Infos) ou
+  // "index" (tags proposés par `data/index.json`, cf decouvrirPlansServeur).
+  // 🩸 Sans cette distinction, la découverte réécrirait les tags à CHAQUE boot
+  // et effacerait ceux que l'utilisateur a posés — exactement le ping-pong
+  // corrigé sur `version` en v1.88.0. L'index PROPOSE, l'utilisateur DISPOSE.
+  function setTags(id, tags, origine) {
     init();
     const p = findById(id);
     if (!p) { console.warn("[PlanRegistry] setTags : plan introuvable", id); return false; }
@@ -284,8 +289,19 @@
         return true;
       })
       .slice(0, 12);
-    if (propres.length) p.tags = propres;
-    else delete p.tags;
+    if (propres.length) {
+      p.tags = propres;
+      p.tagsSrc = (origine === "index") ? "index" : "user";
+    } else {
+      delete p.tags;
+      // 🩸 VIDER EST UN CHOIX, PAS UNE ABSENCE. Si on effaçait aussi
+      // l'origine, la découverte verrait un plan « sans tags édités » et
+      // REPROPOSERAIT ceux de l'index au démarrage suivant : l'utilisateur
+      // effacerait, et ils reviendraient tout seuls. On garde donc la trace
+      // du refus — seule une reprise en main par l'index la relâche.
+      if (origine === "index") delete p.tagsSrc;
+      else p.tagsSrc = "user";
+    }
     _save();
     return true;
   }

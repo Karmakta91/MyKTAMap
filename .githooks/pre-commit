@@ -293,3 +293,28 @@ node scripts/check-i18n.js || exit $?
 # intelligente est passee par plan AVEC son repli de migration, et que les
 # toggles Perf ne sont plus affiches au HOME ou ils ne persistaient rien.
 node scripts/check-portee-reglages.js || exit $?
+
+# TAGS PROPOSES PAR L INDEX (demande KARMA du 07/09 : taguer un plan serveur
+# depuis le generateur de conf, pour filtrer facilement). LE CONTRAT :
+# l index PROPOSE, l utilisateur DISPOSE. decouvrirPlansServeur tourne a
+# CHAQUE demarrage : une ecriture inconditionnelle ecraserait les tags poses
+# a la main, en silence, boot apres boot — le ping-pong exact corrige en
+# v1.88.0 sur `version`. Et son symetrique : vider ses tags est un CHOIX, la
+# trace du refus doit survivre sinon l index les repropose.
+# On EXECUTE (vm) : le registre, le bloc de decision extrait de main.js sur
+# ses 5 cas, et les DEUX normalisations (ConfAdmin vs moteur) comparees — si
+# elles divergeaient, le kiosque publierait des tags que l app rogne en
+# silence. 9 sabotages rougissent.
+node scripts/check-tags-index.js || exit $?
+
+# KIOSQUE SERVEUR (bug KARMA du 08/09 : « en mode serveur, avec generateur et
+# import desactives, je peux importer un profil et donc recuperer tous les
+# ZIP ; et si ce profil a une preference de mode serveur desactive, ca casse
+# tout »). Deux trous : l import de PROFIL restaure les archives (la
+# restriction se contournait par la porte d a cote), et un profil transporte
+# `myktamap_loader_show_server_plans` — importe a false sur un kiosque, il
+# masque les plans serveur dont la case de reglage est justement CACHEE :
+# accueil vide, aucun moyen d en sortir. Un flag qui cache son propre remede
+# est un piege. LA REGLE : ce qui est interdit l est AU GOULOT, pas sur un
+# bouton — la modale d import se declenche depuis au moins deux endroits.
+node scripts/check-kiosque-serveur.js || exit $?

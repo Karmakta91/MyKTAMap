@@ -169,6 +169,16 @@ async function _chargerIndexServeur() {
 // Application de `config` : sous-titre (splash + header loader — textContent
 // jamais innerHTML, + retrait de data-i18n pour survivre aux changements de
 // langue) et flags kiosque (= DÉCLUTTER UI, pas de la sécurité — assumé).
+// 🔒 v1.90.1 (bug KARMA) — LE VERROU KIOSQUE, EN UN SEUL POINT.
+// « en mode serveur, avec générateur et import désactivés, je peux importer
+//   un profil, et donc récupérer tous les ZIP ; et si ce profil a une
+//   préférence de mode serveur désactivé, ça casse tout. »
+// Masquer un bouton ne ferme pas une porte : tout ce qui doit être refusé en
+// kiosque interroge CE prédicat, jamais `KIOSK_CONFIG` à la main.
+window.ktaKiosqueServeurSeul = function() {
+  return !!(window.KIOSK_CONFIG && window.KIOSK_CONFIG.serverPlansOnly === true);
+};
+
 function _appliquerConfigKiosque() {
   const cfg = window.KIOSK_CONFIG || {};
   const st = (typeof cfg.subtitle === "string") ? cfg.subtitle.trim().slice(0, 80) : "";
@@ -196,6 +206,19 @@ function _appliquerConfigKiosque() {
       const sec = skipCb.closest(".kta-aide-section");
       if (sec) sec.style.display = "none";
     }
+    // 🩸 LES DEUX PRÉFÉRENCES QUI VIDENT UN KIOSQUE, ET DONT LES CASES SONT
+    // JUSTEMENT MASQUÉES ICI. « Ne pas charger les plans serveur » et
+    // « Afficher les plans serveur » suffisent chacune à ne RIEN afficher :
+    // plus de plans serveur, et pas d'import local pour compenser — écran
+    // vide, sans aucun réglage visible pour s'en sortir. Elles arrivent soit
+    // d'un import de profil (`myktamap_loader_show_server_plans` voyage dans
+    // la section préférences), soit d'un choix fait AVANT que l'instance ne
+    // devienne un kiosque. Un flag qui cache son propre remède est un piège :
+    // on remet les deux à leur valeur sûre.
+    try {
+      localStorage.setItem("myktamap_loader_show_server_plans", "true");
+      localStorage.setItem("myktamap_skip_server_plans_v1", "false");
+    } catch(e) {}
     console.log("[Main] Kiosque : serverPlansOnly actif (import masqué)");
   }
   if (cfg.disableGenerator === true) {
@@ -275,6 +298,24 @@ async function decouvrirPlansServeur(idxDeja) {
       if (tiledV2    === true) regEntry.tiledV2    = true;
       vus.push(id);
       window.PlanRegistry.addOrUpdate(regEntry);
+
+      // 🏷️ v1.90.1 — TAGS PROPOSÉS PAR L'INDEX (demande KARMA : pouvoir
+      // taguer un plan serveur depuis ConfAdmin, pour filtrer facilement).
+      // 🩸 L'INDEX PROPOSE, L'UTILISATEUR DISPOSE : on n'écrit que si le plan
+      // n'a pas de tags posés à la main. Sans ça, la découverte les
+      // réécrirait à CHAQUE boot et effacerait le travail de l'utilisateur —
+      // le ping-pong exact corrigé sur `version` en v1.88.0.
+      // La normalisation (trim, dédup, 12 max, 24 car.) reste dans
+      // `PlanRegistry.setTags` : un seul endroit pour toute l'app.
+      if (Array.isArray(entry && entry.tags) && entry.tags.length &&
+          !(_dejaLa && _dejaLa.tagsSrc === "user")) {
+        window.PlanRegistry.setTags(id, entry.tags, "index");
+      } else if (_dejaLa && _dejaLa.tagsSrc === "index" && _dejaLa.tags) {
+        // Le kiosque a RETIRÉ les tags de son index : ceux qu il avait posés
+        // s en vont avec. Il reste maître de ce qu il a lui-même proposé —
+        // et ne touche jamais à ce que l utilisateur a écrit (tagsSrc user).
+        window.PlanRegistry.setTags(id, [], "index");
+      }
     });
 
     // 🩸 v1.88.2 — ÉLAGAGE DES PLANS SERVEUR DISPARUS (bug KARMA : « un plan
@@ -1908,12 +1949,17 @@ window.proposerRedemarrageLangue = function() {
   // 🆕 v1.21.3 (KARMA "rajoute une option — ne pas charger les plan serveur
   // au démarrage") : skip total si l'user a coché la pref dans ⚙️ Configuration
   // loader → section 📚 Plans serveur. Default OFF (rétrocompat).
-  const _skipServer = (typeof window._loaderSkipServerPlans === "function")
-                      && window._loaderSkipServerPlans();
   // 🛠️ v1.73.0 : la config d'instance (sous-titre, flags, liaisons kiosque)
   // est chargée MÊME si la pref skippe la discovery — seule l'inscription
   // des plans serveur est optionnelle.
+  // 🩸 v1.90.1 — ET ELLE EST CHARGÉE D'ABORD. La pref était lue AVANT
+  // l'index : le kiosque avait beau remettre `skip_server_plans` à false, la
+  // décision était déjà prise, et l'accueil restait vide pour CE démarrage —
+  // il aurait fallu relancer l'app pour voir ses plans. On lit l'index, puis
+  // la pref, une fois le kiosque appliqué.
   const _idxServeur = await _chargerIndexServeur();
+  const _skipServer = (typeof window._loaderSkipServerPlans === "function")
+                      && window._loaderSkipServerPlans();
   if (_skipServer) {
     console.log("[Main] Auto-discovery serveur SKIPPÉ (pref user : myktamap_skip_server_plans_v1)");
   } else if (_idxServeur) {

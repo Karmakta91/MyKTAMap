@@ -30,6 +30,7 @@ pré-installe **ses plans** dans `data/` + un `data/index.json` enrichi (génér
 | Sous-titre personnalisé (ex. « Gironde ») | `index.json > config.subtitle` | v1.73.0 |
 | Masquer l'import de plans | `index.json > config.serverPlansOnly` | v1.73.0 |
 | Masquer le Générateur | `index.json > config.disableGenerator` | v1.73.0 |
+| Étiquettes proposées par plan | `index.json > plans[].tags` (12 × 24 car.) | v1.90.1 |
 
 **Règle des 2 flags** : `serverPlansOnly` et `disableGenerator` sont les DEUX SEULS
 flags de comportement kiosque. Tout flag supplémentaire = topo + décision KARMA
@@ -58,5 +59,30 @@ photos restent locales et exportables).
 - Les liaisons kiosque sont **fusionnées** dans le registre local (`importLinks`,
   dédup par id) : l'utilisateur peut en créer d'autres ; une liaison retirée côté
   serveur ne disparaît PAS chez ceux qui l'ont déjà (assumé, documenté SELFHOST.md).
+- **Tags de l'index (v1.90.1) — « l'index PROPOSE, l'utilisateur DISPOSE »** : `decouvrirPlansServeur`
+  n'écrit `plans[].tags` que si l'entrée du registre ne porte pas `tagsSrc === "user"`.
+  🩸 La découverte tourne à CHAQUE boot : une écriture inconditionnelle écraserait les
+  tags de l'utilisateur en silence, boot après boot — le ping-pong exact corrigé en
+  v1.88.0 sur `version`/`versionSrc`. Symétrique : **vider ses tags est un choix**, la
+  trace du refus (`tagsSrc = "user"` sans `tags`) survit, sinon l'index les repropose.
+  Le kiosque reste maître de ce qu'il a lui-même posé : retirer les tags de l'index
+  retire ceux marqués `tagsSrc === "index"`. Normalisation unique : `PlanRegistry.setTags`
+  (trim, 24 car., dédup insensible à la casse, 12 max) — `confadmin.html` applique les
+  MÊMES règles, et `check-tags-index.js` compare les deux en les exécutant.
+- **Le verrou kiosque est AU GOULOT, pas sur un bouton (v1.90.1)** : `window.ktaKiosqueServeurSeul()`
+  est le point unique de décision ; `ouvrirImportModale` refuse avant même de lire le
+  fichier. 🩸 Deux trous réels : l'import de PROFIL restaurait les archives ZIP (la
+  restriction se contournait par la porte d'à côté), et un profil transporte
+  `myktamap_loader_show_server_plans` — importé à `false` sur un kiosque, il masquait les
+  plans serveur **dont la case de réglage est justement cachée par le mode** : accueil
+  vide, aucun moyen d'en sortir. La branche kiosque remet donc `show_server_plans` à true
+  et `skip_server_plans_v1` à false, **et l'index est chargé AVANT que la pref de skip ne
+  soit lue** (sinon le remède n'agissait qu'au démarrage suivant). ⚠️ Cela reste du
+  déclutter, pas de la sécurité : contournable en console, et c'est assumé.
+- **ConfAdmin sait REPRENDRE un `index.json` existant (v1.90.1)** : sans ça, éditer une
+  étiquette sur un parc déjà en ligne obligeait à redéposer tous les ZIP et à retaper
+  chaque nom. Les liaisons d'un index repris sont **reposées telles quelles** tant
+  qu'aucune liaison locale n'est sélectionnée — sur une machine sans registre, un index
+  rechargé pour corriger un tag serait redescendu SANS ses liaisons.
 - Guide déployeur : `docs/applications/SELFHOST.md`. Licence CC BY-NC-SA 4.0 :
   un kiosque commercial nécessite un accord de l'auteur.

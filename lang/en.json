@@ -3119,6 +3119,7 @@
   "profileio.mode_replace": "<strong>♻️ Replace</strong> — <strong>Wipes</strong> the ticked sections on your device before injecting. <span style=\"color:#ff8c8c;\">Irreversible</span>, double confirmation required.",
   "profileio.mode_title": "Import mode:",
   "profileio.no_file": "No file provided",
+  "profileio.kiosque_refus": "Import disabled: this instance is configured for server plans only. Plans come from the server, and importing a profile could hide them.",
   "profileio.replace_confirm": "⚠️ REPLACE mode\n\nThis will WIPE the ticked sections on your device before injecting the imported profile's data. Irreversible action.\n\nConfirm?",
   "profileio.sec_backups_hint": "Last 10 FIFO snapshots per plan (auto + manual).",
   "profileio.sec_backups_label": "IDB snapshots",

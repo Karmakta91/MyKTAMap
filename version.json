@@ -1,7 +1,8 @@
 {
-  "version": "v1.90.0",
+  "version": "v1.90.1",
   "released": "2026-09-08",
   "notes": [
-    "💾 Un plan hébergé sur un serveur se télécharge maintenant pour le hors-ligne d’un seul clic, depuis la liste de l’accueil. Une fois complet, le bouton devient « mettre à jour »."
+    "🏷️ Les plans proposés par un serveur peuvent arriver avec leurs étiquettes, pour les retrouver plus vite. Celles que tu poses toi-même restent prioritaires.",
+    "🔒 Sur une installation qui ne propose que des plans du serveur, l'import d'un profil est désormais refusé : il pouvait vider la liste des plans."
   ]
 }

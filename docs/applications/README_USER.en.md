@@ -377,6 +377,8 @@ The export window gains a **📄 History Mode PDFs** checkbox, **unchecked by de
 >
 > 💡 Re-importing the same profile twice does **not** create duplicates: each document takes its place back.
 
+> 🔒 **On an installation that only offers its own server's maps** *(since v1.90.1)* — the ones where the "Load a new map" block is missing —, **profile import is refused**, with a message saying why. Two reasons: it would bring back maps this installation does not offer, and above all it carries your display preferences — a profile where "show server maps" was unchecked **emptied the list**, leaving no visible setting to get it back. **Export** stays available: your logbook, sessions and notes are yours and leave whenever you want.
+
 **📦 Full profile with map archives** *(since v1.79.0)*:
 
 The profile export can now **bundle the ZIP archives of maps stored in the app**. In the export window, a "📦 Map archives" section lists your stored maps with their size: tick the ones to carry (nothing is ticked by default) — the export then becomes a **"full profile" `.zip` file** instead of the usual JSON. On import on another device, archives are **injected back and attached to their maps**: no more re-dropping ZIPs one by one.
@@ -460,6 +462,7 @@ Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** secti
 - **🔎 Filter by name** *(since v1.78.0)* — a field above the list filters live as you type. Pure display filter, reset the next time you visit the home screen.
 - **⭐ Pin** *(since v1.78.0)* — each row's star moves the map **to the top of the list** (pinned maps keep the "last opened" order among themselves). Click again to unpin.
 - **🏷️ Tags** *(since v1.78.0)* — label your maps ("Paris 13", "GTech", "to finish"…) via **ℹ️ Info → Map tags** (free input, comma-separated — 12 max, 24 characters each). They show under the map name, and as soon as one map is tagged, a row of **filter chips** appears above the list: click one or more chips to only see those maps (a map matches if it carries **at least one** of the selected tags). Tags live **in the app** (not in the ZIP — they don't travel with a shared map) but follow the **profile export** and the 💾 list export.
+  - **🌐 Maps from a server can arrive already tagged** *(since v1.90.1)* — if the deployer filled in tags in their map list, those show up and filter exactly like yours, with nothing to do. **Yours always win**: as soon as you edit a map's tags, the server never touches them again, neither on the next start nor on any later one. And **clearing them is a choice**: empty the field and they will not grow back. To get the server's tags back, nothing special is needed — remove the map from the list and it will be rediscovered with them.
 
 > 💡 **Tip** — If you change PC or phone, export your list on the old device then import it on the new one to find all your maps in one click. Note: file access permissions are not portable (you will have to re-select local ZIPs the first time on the new device). When re-selecting, if you provide a ZIP in a different mode (e.g.: you had this map in V2 but the ZIP is V1), a warning message will clearly notify you before continuing.
 

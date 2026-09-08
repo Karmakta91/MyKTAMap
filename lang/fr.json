@@ -3119,6 +3119,7 @@
   "profileio.mode_replace": "<strong>♻️ Replace</strong> — <strong>Vide</strong> les sections cochées chez toi avant d'injecter. <span style=\"color:#ff8c8c;\">Irréversible</span>, double confirmation demandée.",
   "profileio.mode_title": "Mode d'import :",
   "profileio.no_file": "Aucun fichier fourni",
+  "profileio.kiosque_refus": "Import désactivé : cette instance est configurée en mode serveur uniquement. Les plans viennent du serveur, et un import de profil pourrait les masquer.",
   "profileio.replace_confirm": "⚠️ Mode REPLACE\n\nCela va VIDER les sections cochées chez toi avant d'injecter les données du profil importé. Action irréversible.\n\nConfirmer ?",
   "profileio.sec_backups_hint": "10 derniers snapshots FIFO par plan (auto + manuels).",
   "profileio.sec_backups_label": "Snapshots IDB",
