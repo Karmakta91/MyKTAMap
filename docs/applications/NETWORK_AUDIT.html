@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.90.9</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.90.10</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.90.10 (niveau manquant à l'ouverture de la Vue OSM — correctif d'affichage)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif d'affichage : dans la Vue OSM d'un plan à plusieurs niveaux, un niveau pourtant actif pouvait manquer à l'ouverture (il fallait le décocher puis le recocher). Purement un ordre de rendu interne — aucun effet réseau.</p>
   <h3>v1.90.9 (même une licence pro servie par l'instance ne contourne plus son mot de passe)</h3>
   <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Achève le correctif v1.90.7/8 : sur une installation qui publie un mot de passe d'accès, <strong>plus aucune licence pro ne l'ouvre à la place du mot de passe</strong> — y compris le <code>Licence-pro.json</code> que l'installation sert elle-même. Ce fichier est récupéré par <strong>tous</strong> les visiteurs ; le laisser bypasser rendait le mot de passe muet. La licence active désormais le <strong>mode pro</strong> une fois le mot de passe saisi, elle n'est plus une clé d'accès. Une installation <strong>sans</strong> mot de passe s'ouvre toujours directement avec sa licence.</p>
   <h3>v1.90.8 (la licence pro importée ne contourne plus le mot de passe d'instance)</h3>

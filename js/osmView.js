@@ -2338,6 +2338,18 @@
     _moveEndHandler = _onMoveEnd;
     _osmMap.on("zoomend moveend", _moveEndHandler);
 
+    // 🏗️ v1.90.10 (bug KARMA) — L'INIT DES NIVEAUX DOIT PRÉCÉDER TOUT RENDU
+    // LEVEL-AWARE. Symptôme : à l'ouverture, le niveau -1 n'apparaissait pas
+    // alors qu'il était actif ; couper puis rallumer le toggle le faisait
+    // surgir. Cause : `_initVisibleLevels()` vivait à l'étape 9, APRÈS le rendu
+    // des POI (6) et des tracés/itinéraire (8). Ces rendus utilisaient donc le
+    // `_visibleLevels` HÉRITÉ de la modale précédente (état module, persistant
+    // entre deux ouvertures) : s'il ne contenait pas -1, ses POI et tracés
+    // étaient filtrés. Zones et structures, rendues APRÈS l'init, apparaissaient
+    // — d'où le « sur certain plan », selon l'historique de la session. On
+    // initialise donc AVANT, une fois pour tous les calques.
+    _initVisibleLevels();
+
     // 6) 🆕 v1.39.12 — Step 1 : POI session + data layers
     if (_poiVisible) _renderPoi();
 
@@ -2351,8 +2363,8 @@
     if (_roadVisible) _renderRoads();
     if (_itiVisible)  _renderItinerary();
 
-    // 9) 🆕 v1.39.16 — Multi-LVL init + Step 3b : zones + structures
-    _initVisibleLevels();
+    // 9) 🆕 v1.39.16 — Barre des niveaux + Step 3b : zones + structures
+    // (l'init de `_visibleLevels` est remontée AVANT l'étape 6 — cf. v1.90.10.)
     _renderLevelsBar();
     if (_zoneVisible)   _renderZones();
     if (_structVisible) _renderStructures();

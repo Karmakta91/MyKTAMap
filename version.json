@@ -1,7 +1,7 @@
 {
-  "version": "v1.90.9",
+  "version": "v1.90.10",
   "released": "2026-09-08",
   "notes": [
-    "🔒 Sur une installation qui définit son propre mot de passe d'accès, plus aucune licence pro ne l'ouvre à la place du mot de passe — même une licence fournie par l'installation elle-même. La licence active le mode pro une fois le mot de passe saisi."
+    "🗺️ Dans la Vue OSM d'un plan multi-niveaux, un niveau actif (par exemple -1) pouvait ne pas s'afficher à l'ouverture — il fallait le décocher puis le recocher. Corrigé : tous les niveaux actifs apparaissent dès l'ouverture."
   ]
 }

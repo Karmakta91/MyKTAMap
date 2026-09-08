@@ -130,6 +130,22 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   const IDX  = fs.readFileSync("index.html", "utf8");
   const SW   = fs.readFileSync("sw.js", "utf8");
 
+  // 🏗️ v1.90.10 (bug KARMA) — L'INIT DES NIVEAUX PRÉCÈDE LE RENDU LEVEL-AWARE.
+  // À l'ouverture, le niveau -1 n'apparaissait pas alors qu'il était actif :
+  // `_initVisibleLevels()` était appelé APRÈS le rendu des POI/tracés, qui
+  // filtraient donc sur un `_visibleLevels` hérité de la modale précédente. Un
+  // seul appel, et il doit tomber AVANT le rendu des POI (étape 6 de la
+  // séquence). Cette assertion rougit si quelqu'un le redescend.
+  {
+    const nCall = (VIEW.match(/_initVisibleLevels\(\);/g) || []).length;
+    t("🏗️ Vue OSM : un seul appel à _initVisibleLevels()", nCall === 1);
+    const iStep6 = VIEW.indexOf("// 6) 🆕 v1.39.12 — Step 1 : POI session");
+    const iInit  = VIEW.indexOf("_initVisibleLevels();");
+    t("🏗️ Vue OSM : les niveaux sont initialisés AVANT le rendu des POI/tracés " +
+      "(sinon le niveau -1 manque à l'ouverture)",
+      iStep6 > 0 && iInit > 0 && iInit < iStep6);
+  }
+
   // 📌 Le bandeau se cale sur LE CONTENEUR DE LA CARTE, pas sur la fenetre :
   // en mode plan la barre d outils occupe le haut de la fenetre, un `top`
   // fixe recouvrirait ses boutons.

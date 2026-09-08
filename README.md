@@ -12,8 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.90.9` (08/09/2026)
+## 📦 Version courante — `v1.90.10` (08/09/2026)
 
+> 🗺️ **v1.90.10 — Un niveau actif manquait à l'ouverture de la Vue OSM** : bug KARMA — *« sur certain plan, à l'ouverture je ne vois pas le niveau -1 malgré qu'il est actif, obligé de couper et rallumer pour qu'il apparaisse »*. 🩸 *Bug d'**ordre**, pas de théorie : dans `osmView.js`, `_initVisibleLevels()` vivait à l'étape 9, mais les POI (6) et les tracés/itinéraire (8) étaient rendus **avant** — ils filtraient donc sur le `_visibleLevels` **hérité de la modale précédente** (état module, persistant). S'il ne contenait pas -1, ses POI et tracés étaient coupés ; zones et structures, rendues après l'init, s'affichaient — d'où « certain plan ». L'init est remontée avant le 1ᵉʳ rendu.* Une **assertion d'ordre** rougit si on la redescend. 1 sabotage, 1 rouge.
+>
 > 🔒 **v1.90.9 — Même une licence pro SERVEUR ne contourne plus le mot de passe d'instance** : question de KARMA — *« et donc si j'ai un fichier licence-pro.json sur le serveur ça bypass tout ? »*. **Oui, ça bypassait tout** — et c'était le trou. La v1.90.8 avait laissé la source `"server"` passer (sur ma reco), mais ce `/Licence-pro.json` est fetché pour **tous** les visiteurs : dès qu'il était là, le `accessHash` était **muet**, tout le monde entrait. 🩸 *Corrigé : quand une instance publie un mot de passe, `main.js` refuse le bypass **quelle que soit la source** — le mot de passe est l'accès, la licence n'accorde que le mode pro (après la saisie). Une instance SANS mot de passe laisse toujours la licence serveur bypasser (rien à garder).* 🍖 *J'avais recommandé de garder l'exception serveur en v1.90.8 ; c'était une erreur de ma part, KARMA l'a vue.* **Garde-fou** : matrice source × protection exécutée, dont « serveur + protégé → refusé ». 3 sabotages, 3 rouges.
 >
 > 🔒 **v1.90.8 — Et la licence pro importée ne contourne plus le mot de passe d'instance** : suite logique du trou v1.90.7, pointée par KARMA — *« même chose côté licence pro : si mot de passe présent dans l'index, on désactive le déverrouillage via licence-pro (le fichier que l'user donne, pas la licence côté serveur) »*. 🩸 *Une instance protégée par `accessHash` aurait sinon été ouverte par n'importe qui important **sa propre** licence pro — la même porte dérobée que le code communautaire. La licence de source `"local"` (fichier importé) ne déverrouille plus la gate ; la source `"server"` (fournie par l'instance) reste un accès légitime, c'est le choix du déployeur.* Fermé aux **trois** endroits où un fichier de licence ouvrait la gate : le bypass de boot (`main.js`), le bloc d'import de l'écran de code (retiré), et son clic (refusé). ⚖️ *Le mode pro peut toujours s'activer — seul le contournement de la gate est refusé.* **Garde-fou étendu** : la décision de bypass est **exécutée** sur la matrice source × protection. 4 sabotages, 4 rouges.
@@ -550,6 +552,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.90.10 (08/09/2026) — Un niveau actif manquait à l'ouverture de la Vue OSM
+
+- 🗺️ **Le bug (KARMA)** : *« sur certain plan, à l'ouverture je ne vois pas le niveau -1 malgré qu'il est actif, obligé de couper et rallumer pour qu'il apparaisse »*.
+- 🩸 **Cause : un ordre de rendu, lu dans le code, pas deviné.** Dans `osmView.js`, la séquence d'ouverture rendait les POI (étape 6) et les tracés/itinéraire (étape 8), PUIS appelait `_initVisibleLevels()` (étape 9). Les POI et tracés filtraient donc sur `_visibleLevels` **hérité de l'ouverture précédente** (l'état est au niveau module, persistant entre deux ouvertures). S'il ne contenait pas -1, ses POI et tracés étaient coupés. **Zones et structures**, elles, sont rendues APRÈS l'init → elles s'affichaient : d'où le « sur certain plan » (selon l'historique de la session) et l'impression que « couper/rallumer » réparait — le toggle force un re-rendu de TOUS les calques avec le bon état.
+- 🎯 **Le fix** : `_initVisibleLevels()` est remontée **avant** le premier rendu level-aware. Les POI, tracés, itinéraire, zones et structures partent tous avec le bon `_visibleLevels`.
+- 🧪 **Assertion d'ordre** dans `check-osm-outils.js` : un seul appel à `_initVisibleLevels()`, et il tombe AVANT le rendu des POI. Redescendre l'appel rougit. 1 sabotage, 1 rouge.
+- ✅ **Le widget OSM de l'accueil n'est pas concerné** (mécanisme multi-plans différent, pas de `_visibleLevels`).
 
 #### v1.90.9 (08/09/2026) — Même une licence pro SERVEUR ne contourne plus le mot de passe d'instance
 
