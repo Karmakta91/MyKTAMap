@@ -52,9 +52,33 @@ const HORS_BIBLIO = new Set([
   // Historique daté : consultable dans Git, pas une référence courante.
   "docs/audits/INDEX.md"
 ]);
-const surDisque = fs.readdirSync("docs/architecture").filter(f => f.endsWith(".md")).map(f => "docs/architecture/" + f)
-  .concat(fs.readdirSync("docs").filter(f => f.endsWith(".md")).map(f => "docs/" + f))
-  .filter(p => !HORS_BIBLIO.has(p) && !/^docs\/audits\/\d/.test(p));
+// 🩸 08/09/2026 — UN DOC QUE GIT IGNORE N'EST PAS UN DOC DU PROJET. KARMA a
+// déposé un audit sécurité offensive (`docs/architecture/audit-serveur-*.md`)
+// qui décrit comment exfiltrer des données réelles : il est `.gitignore`, donc
+// il ne part ni sur GitHub, ni sur une branche, ni en prod (deploy.ps1 l'exclut
+// aussi). L'inscrire dans la bibliothèque in-app serait exactement le contraire
+// du but. On retire donc du scan tout ce que Git ignore — la règle « chaque doc
+// est dans le manifest » ne gouverne que les docs VERSIONNÉES. Un fichier
+// ignoré ne peut pas y figurer, et ne doit pas.
+function _ignoresParGit(chemins) {
+  if (!chemins.length) return new Set();
+  const { execFileSync } = require("child_process");
+  try {
+    const out = execFileSync("git", ["check-ignore", "--stdin"],
+      { input: chemins.join("\n"), encoding: "utf8" });
+    return new Set(out.split(/\r?\n/).filter(Boolean).map(p => p.replace(/\\/g, "/")));
+  } catch (e) {
+    // `git check-ignore` sort en code 1 quand AUCUN chemin n'est ignoré — ce
+    // n'est pas une erreur : stdout est alors vide, et le Set l'est aussi.
+    const out = (e.stdout || "").toString();
+    return new Set(out.split(/\r?\n/).filter(Boolean).map(p => p.replace(/\\/g, "/")));
+  }
+}
+const _tousLesMd = fs.readdirSync("docs/architecture").filter(f => f.endsWith(".md")).map(f => "docs/architecture/" + f)
+  .concat(fs.readdirSync("docs").filter(f => f.endsWith(".md")).map(f => "docs/" + f));
+const _ignores = _ignoresParGit(_tousLesMd);
+const surDisque = _tousLesMd
+  .filter(p => !HORS_BIBLIO.has(p) && !/^docs\/audits\/\d/.test(p) && !_ignores.has(p));
 const oublies = surDisque.filter(p => paths.indexOf(p) === -1);
 t("aucune doc oubliée du manifest (docs/ + docs/architecture/)" + (oublies.length ? " — OUBLIÉS : " + oublies.join(", ") : ""), oublies.length === 0);
 

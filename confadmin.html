@@ -177,18 +177,17 @@
          index.json, et le champ n'est ni pré-rempli ni relu à la reprise d'un
          index existant — on ne peut pas retrouver un mot de passe depuis son
          hash, et faire semblant du contraire serait pire que rien. -->
-    <div class="kta-ca-field" style="margin-top:10px;">
-      <label for="caAccessPwd">🔑 Mot de passe d'accès de cette instance <span style="color:#8892a4;">(optionnel)</span></label>
-      <input type="text" id="caAccessPwd" placeholder="laisser vide = seul le code communautaire ouvre l'app" maxlength="120"
-             autocomplete="off" spellcheck="false">
-      <div id="caAccessPwdEtat" style="font-size:12px; color:#8892a4; margin-top:4px;"></div>
-      <div style="font-size:11.5px; color:#8892a4; margin-top:4px; line-height:1.5;">
-        Tes visiteurs pourront ouvrir l'app avec CE mot de passe <strong>ou</strong> avec le code communautaire.
-        Seul le <strong>hash SHA-256</strong> part dans <code>index.json</code> — le mot de passe lui-même ne quitte pas ce navigateur.
-        ⚠️ <strong>Barrière sociale, pas une authentification</strong> : <code>index.json</code> est public, donc le hash aussi.
-        N'y mets rien que tu ne dirais pas à voix haute.
-      </div>
-    </div>
+    <label class="kta-ca-flag" style="flex-direction:column; align-items:stretch; gap:4px; cursor:default;">
+      <span><strong>🔑 Mot de passe d'accès de cette instance</strong> — optionnel<br>
+      <small>Tes visiteurs pourront ouvrir l'app avec CE mot de passe <strong>ou</strong> avec le code communautaire.
+      Seul le <strong>hash SHA-256</strong> part dans <code>index.json</code> : le mot de passe lui-même ne quitte pas ce navigateur.<br>
+      ⚠️ <strong>Barrière sociale, pas une authentification</strong> — <code>index.json</code> est public, donc le hash aussi,
+      et il se casse hors ligne comme n'importe quel hash publié. N'y mets rien que tu ne dirais pas à voix haute.</small></span>
+      <input type="text" id="caAccessPwd" placeholder="vide = seul le code communautaire ouvre l'app" maxlength="120"
+             autocomplete="off" spellcheck="false"
+             style="background:rgba(0,0,0,0.3); border:1px solid rgba(140,180,255,0.25); border-radius:6px; color:#e8eaf0; padding:6px 10px; font-size:13px; max-width:340px;">
+      <div id="caAccessPwdEtat" style="font-size:12px; color:#8892a4;"></div>
+    </label>
 
     <label class="kta-ca-flag"><input type="checkbox" id="caFlagNoGen">
       <span><strong>disableGenerator</strong> — sans Générateur<br>

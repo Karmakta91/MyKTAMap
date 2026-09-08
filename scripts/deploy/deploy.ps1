@@ -75,6 +75,13 @@ foreach ($d in $dossiers) {
 }
 # le smoke et ses node_modules ne partent jamais, même si docs/ les côtoie un jour
 Remove-Item -Recurse -Force (Join-Path $stage "docs\.checklist-tests.md") -ErrorAction SilentlyContinue
+# 🔒 AUDITS SECURITE OFFENSIVE — JAMAIS EN PROD. Ces .md decrivent comment
+# exfiltrer des donnees reelles ; servis a une URL publique, ils seraient un
+# mode d'emploi telechargeable. Ils sont deja ignores par Git (.gitignore),
+# mais ce stage COPIE docs/ depuis le DISQUE : sans cette exclusion, un fichier
+# ignore mais present sur disque partirait quand meme au FTP. Double filet.
+Get-ChildItem -Path (Join-Path $stage "docs\architecture") -Filter "audit-*.md" -ErrorAction SilentlyContinue |
+  ForEach-Object { Remove-Item -Force $_.FullName -ErrorAction SilentlyContinue; Write-Host "   🔒 exclu du deploiement : docs/architecture/$($_.Name)" -ForegroundColor DarkYellow }
 
 $nb = (Get-ChildItem -Recurse -File $stage | Measure-Object).Count
 $mo = [math]::Round(((Get-ChildItem -Recurse -File $stage | Measure-Object -Sum Length).Sum / 1MB), 1)
