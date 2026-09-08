@@ -18,6 +18,23 @@
 > consentement préalable : les premières tuiles sont déjà demandées quand il s'affiche. Assumé, et écrit tel
 > quel dans `NETWORK_AUDIT`.
 >
+> 🩸 **`_listGeorefPlans` NE VOIT QUE CE QUI A ÉTÉ OUVERT.** Elle lit le géoréf à deux endroits : le
+> localStorage (saisie manuelle) et `p.georef` du registre — mais ce dernier n'est écrit qu'au **chargement**
+> du plan (`main.js > _propagerGeorefVersKmzExport`). Un plan jamais ouvert peut donc être parfaitement calibré
+> dans son propre `plan-config.json` et rester invisible. Le message d'état distingue désormais **trois**
+> situations (v1.90.2, remarque KARMA) : bibliothèque vide · des plans mais aucun jamais ouvert · des plans
+> ouverts et aucun calé — ce dernier annonçant en plus le **nombre de plans jamais ouverts**, dont la
+> calibration est *inconnue*, pas absente.
+>
+> ⚠️ **On ne va pas la chercher pour le savoir** : il faudrait ouvrir chaque ZIP, ou demander au réseau le
+> `plan-config.json` de chaque plan serveur — autant de requêtes que de plans, au chargement de l'accueil, pour
+> un widget que l'utilisateur n'a peut-être pas regardé. On dit la vérité sur ce qu'on sait.
+>
+> 🚨 **Les clés de ces messages sont construites dynamiquement** (`"osm_home." + cle + ".title"`) :
+> `check-i18n` ne peut pas les voir. `check-osm-defaut.js` §7 **exécute** le rendu sur les trois scénarios et
+> confronte les clés demandées aux trois dictionnaires — sans quoi une faute de frappe sortirait un libellé
+> humanisé en production, sans un mot.
+>
 > 🔒 **Restent prioritaires sur le défaut** : hors-ligne strict, incognito, hors-ligne réel, aucun plan
 > géoréférencé — testés dans `mount()` **après** l'opt-in, et le garde-fou tient cet ordre.
 

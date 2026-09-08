@@ -587,13 +587,47 @@
       '</div>';
   }
 
+  // 🩸 v1.90.2 (KARMA : « à compléter, pour le cas où un plan n'a pas été
+  // chargé une fois ») — « AUCUN PLAN GÉORÉFÉRENCÉ » ÉTAIT UN MENSONGE DANS UN
+  // CAS SUR TROIS.
+  //
+  // `_listGeorefPlans` lit le géoréf à deux endroits : le localStorage (saisie
+  // manuelle) et `p.georef` du registre — mais ce dernier n'est écrit qu'au
+  // CHARGEMENT du plan (`main.js > _propagerGeorefVersKmzExport`). Un plan
+  // jamais ouvert peut donc être parfaitement calibré dans son propre
+  // `plan-config.json` et rester invisible ici. L'app affirmait « aucun plan
+  // géoréférencé » alors que la vraie phrase est « je n'ai pas encore regardé ».
+  //
+  // ⚠️ POURQUOI ON NE VA PAS LIRE LES PLANS POUR LE SAVOIR : il faudrait ouvrir
+  // chaque ZIP, ou — pour un plan serveur — demander son `plan-config.json` au
+  // réseau. Autant de requêtes que de plans, au chargement de l'accueil, pour
+  // remplir un widget que l'utilisateur n'a peut-être pas regardé. On préfère
+  // dire la vérité sur ce qu'on sait.
+  //
+  // Trois situations, trois messages :
+  //   A. bibliothèque vide            → « commence par charger un plan »
+  //   B. des plans, aucun jamais ouvert → « ouvre-les une fois »
+  //   C. des plans ouverts, aucun calé  → le message d'origine, + le compte
+  //      des plans jamais ouverts s'il en reste (leur calibration est inconnue,
+  //      pas absente : la nuance change ce que l'utilisateur doit faire)
   function _renderNoGeorefPlans(container) {
+    const tous = (window.PlanRegistry && typeof window.PlanRegistry.getAll === "function")
+      ? (window.PlanRegistry.getAll() || []) : [];
+    const jamaisOuverts = tous.filter(function(p) { return p && !p.lastOpened; }).length;
+
+    let cle = "nogeoref", extra = "";
+    if (tous.length === 0)                 cle = "noplan";
+    else if (jamaisOuverts === tous.length) cle = "jamaisouvert";
+    else if (jamaisOuverts > 0) {
+      extra = '<br><br>' + window.I18n.t("osm_home.nogeoref.reste", { n: jamaisOuverts });
+    }
+
     container.innerHTML =
       '<div class="kta-osm-home-empty">' +
-        '<div style="font-size:32px;">📍</div>' +
-        '<div><strong>' + window.I18n.t("osm_home.nogeoref.title") + '</strong></div>' +
+        '<div style="font-size:32px;">' + (cle === "nogeoref" ? "📍" : "📂") + '</div>' +
+        '<div><strong>' + window.I18n.t("osm_home." + cle + ".title") + '</strong></div>' +
         '<div style="max-width:300px; font-size:12px; line-height:1.6;">' +
-          window.I18n.t("osm_home.nogeoref.body") +
+          window.I18n.t("osm_home." + cle + ".body") + extra +
         '</div>' +
       '</div>';
   }
@@ -3212,6 +3246,9 @@
     _setOsmColumnVisible(true);
 
     // Cas 1 : pas opt-in OSM → masque la colonne (cf _setOsmColumnVisible)
+    // 🩸 LE SEUL CHEMIN SANS BANDEAU, et c'est voulu : `_renderOptInNeeded`
+    // MASQUE la colonne entière. Il n'y a rien où l'afficher, et il n'y a rien
+    // à annoncer — l'utilisateur a refusé, on respecte son refus en silence.
     if (!_isOptedIn()) {
       _renderOptInNeeded(container);
       return;
@@ -3219,11 +3256,13 @@
     // 🆕 v1.40.19 — Cas 1bis : strict offline → message dédié, bloque tout
     if (_isStrictOfflineOn()) {
       _renderStrictOffline(container);
+      _afficherBandeauDefaut(container);
       return;
     }
     // 🆕 v1.40.19 — Cas 1ter : incognito → idem (pas de leak metadata plan)
     if (_isIncognitoOn()) {
       _renderIncognito(container);
+      _afficherBandeauDefaut(container);
       return;
     }
     // Cas 2 : hors-ligne → message UNIQUEMENT si aucun cache OSM n'existe
@@ -3237,6 +3276,7 @@
       _refreshAnyCachePresent();
       if (!_anyCachePresent) {
         _renderOffline(container);
+        _afficherBandeauDefaut(container);
         return;
       }
     }
@@ -3244,6 +3284,7 @@
     const plans = _listGeorefPlans();
     if (plans.length === 0) {
       _renderNoGeorefPlans(container);
+      _afficherBandeauDefaut(container);
       return;
     }
     // Cas 4 : widget complet — choix initial = lastSelected OU lastOpened

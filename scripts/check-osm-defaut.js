@@ -44,8 +44,11 @@ const IDX  = fs.readFileSync("index.html", "utf8");
 
 // ═════════ 1. LES DEUX LECTEURS, EXÉCUTÉS SUR LES 4 ÉTATS ═════════
 // 🩸 On extrait du VRAI fichier : une copie recopiée ici testerait le garde-fou.
+// 🩸 Accepte une fonction AVEC paramètres : la première version cherchait
+// `function <nom>() {` et rendait `null` en silence sur `(container)` — le
+// contrôle se désactivait tout seul au lieu de rougir.
 function extraire(src, nom) {
-  const d = src.indexOf("function " + nom + "() {");
+  const d = src.search(new RegExp("function\\s+" + nom + "\\s*\\([^)]*\\)\\s*\\{"));
   if (d < 0) return null;
   let prof = 0;
   for (let i = src.indexOf("{", d); i < src.length; i++) {
@@ -182,6 +185,130 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
     t("🔒 " + f.split("/").pop() + " …et nomme le tiers contacté sans clic",
       D.indexOf("tile.openstreetmap.org") >= 0);
   });
+}
+
+// ═════════ 7. « AUCUN PLAN GÉORÉFÉRENCÉ » NE DOIT PAS MENTIR ═════════
+// VÉCU (KARMA) : « (A compléter, pour le cas où un plan n'a pas été chargé
+// une fois) ». Le géoréf embarqué dans un plan n'est écrit au registre qu'à sa
+// PREMIÈRE OUVERTURE : un plan jamais ouvert peut être parfaitement calibré et
+// rester invisible ici. L'app affirmait « aucun plan géoréférencé » quand la
+// vraie phrase était « je n'ai pas encore regardé ».
+//
+// 🩸 ET LES CLÉS SONT CONSTRUITES DYNAMIQUEMENT (`"osm_home." + cle + …`) :
+// `check-i18n` ne peut PAS les voir. Une faute de frappe sortirait un libellé
+// humanisé en production sans que rien ne rougisse. On EXÉCUTE donc la
+// fonction sur les trois scénarios et on confronte les clés demandées aux
+// trois dictionnaires.
+{
+  const code = extraire(HOME, "_renderNoGeorefPlans");
+  t("le rendu « aucun plan géoréférencé » est extractible", !!code);
+  const DICOS = ["fr", "en", "es"].map(function (c) {
+    return [c, JSON.parse(fs.readFileSync("lang/" + c + ".json", "utf8"))];
+  });
+
+  const SCENARIOS = [
+    ["bibliothèque vide",                 [],                                              "osm_home.noplan.title"],
+    ["des plans, aucun jamais ouvert",     [{ id: "a" }, { id: "b" }],                      "osm_home.jamaisouvert.title"],
+    ["des plans ouverts, aucun calé",      [{ id: "a", lastOpened: 12 }, { id: "b" }],      "osm_home.nogeoref.title"]
+  ];
+
+  if (code) SCENARIOS.forEach(function (sc) {
+    const demandees = [];
+    const conteneur = { innerHTML: "" };
+    const sb = {
+      window: {
+        PlanRegistry: { getAll: function () { return sc[1]; } },
+        I18n: { t: function (k) { demandees.push(k); return "[" + k + "]"; } }
+      }
+    };
+    let err = null;
+    try {
+      vm.runInNewContext(code + "; _renderNoGeorefPlans(conteneur);",
+        Object.assign(sb, { conteneur: conteneur }), { filename: "osm.nogeoref.js" });
+    } catch (e) { err = e.message; }
+
+    t("🧪 " + sc[0] + " → le bon message" + (err ? " — EXCEPTION : " + err : ""),
+      !err && demandees.indexOf(sc[2]) >= 0);
+
+    // 🩸 Toutes les clés demandées doivent EXISTER, dans les trois langues.
+    demandees.forEach(function (k) {
+      const manquantes = DICOS.filter(function (d) { return typeof d[1][k] !== "string"; })
+                              .map(function (d) { return d[0]; });
+      t("  clé « " + k + " » présente dans fr/en/es" +
+        (manquantes.length ? " — MANQUE : " + manquantes.join(", ") : ""),
+        manquantes.length === 0);
+    });
+  });
+
+  // 🩸 Le troisième cas doit AUSSI compter les plans jamais ouverts : leur
+  // calibration est INCONNUE, pas absente — la nuance change ce que
+  // l'utilisateur doit faire ensuite.
+  t("🩸 le cas mixte annonce les plans jamais ouverts (calibration inconnue ≠ absente)",
+    /osm_home\.nogeoref\.reste", \{ n: jamaisOuverts \}/.test(HOME));
+}
+
+// ═════════ 8. LE BANDEAU NE DÉPEND PAS D'UN AFFICHAGE RÉUSSI ═════════
+// VÉCU (KARMA, une heure après la mise en place) : « le panneau que tu as
+// rajouté ne s'affiche qu'une fois qu'il a fait un premier affichage — pas
+// dans le cas “aucun plan géoréférencé” ».
+// 🩸 Exact : il n'était posé que dans le dernier cas de `mount()`. Les quatre
+// chemins qui sortent AVANT (hors-ligne strict, incognito, hors-ligne, aucun
+// plan géoréférencé) écrivaient leur message et rentraient — le défaut n'était
+// donc annoncé qu'à ceux qui voyaient déjà la carte. Or il est ACTIF dans tous
+// ces états : il attend seulement que la condition tombe.
+//
+// UN SEUL chemin en est exempt, et c'est une décision : `_renderOptInNeeded`
+// MASQUE la colonne entière — il n'y a nulle part où l'afficher, et rien à
+// annoncer à quelqu'un qui a refusé.
+{
+  const iM = HOME.indexOf("function mount() {");
+  let fin = iM, prof = 0;
+  for (let i = HOME.indexOf("{", iM); i < HOME.length; i++) {
+    if (HOME[i] === "{") prof++;
+    else if (HOME[i] === "}") { prof--; if (prof === 0) { fin = i; break; } }
+  }
+  const corps = iM >= 0 ? HOME.slice(iM, fin) : "";
+  t("le corps de mount() est délimitable", corps.length > 200);
+
+  // Chaque `return;` du corps doit être précédé du bandeau — sauf celui du
+  // refus, reconnaissable à `_renderOptInNeeded` juste au-dessus.
+  const lignes = corps.split(/\r?\n/);
+  const sorties = [];
+  lignes.forEach(function (l, i) {
+    if (!/^\s*return;\s*$/.test(l)) return;
+    const avant = lignes.slice(Math.max(0, i - 3), i).join(" ");
+    sorties.push({
+      ligne: i,
+      refus: avant.indexOf("_renderOptInNeeded") >= 0,
+      bandeau: avant.indexOf("_afficherBandeauDefaut(container)") >= 0,
+      apercu: (lignes[i - 1] || "").trim().slice(0, 46)
+    });
+  });
+
+  t("🩸 mount() a bien plusieurs sorties anticipées à couvrir (" + sorties.length + ")",
+    sorties.length >= 4);
+  const orphelines = sorties.filter(function (s2) { return !s2.refus && !s2.bandeau; });
+  t("🩸 CHAQUE sortie de mount() annonce le défaut" +
+    (orphelines.length ? " — MANQUE après : " + orphelines.map(function (o) { return o.apercu; }).join(" · ") : ""),
+    orphelines.length === 0);
+  t("🩸 …sauf le refus explicite, où la colonne est masquée (rien à annoncer)",
+    sorties.filter(function (s2) { return s2.refus; }).length === 1);
+
+  // La sortie normale (fin de fonction, sans `return;`) compte aussi.
+  t("le cas nominal l'annonce également",
+    /_renderWidget\(container, plans, initialId\);\s*[\r\n]+\s*_afficherBandeauDefaut\(container\);/.test(corps));
+}
+
+// 🩸 …ET LE TEXTE DOIT RESTER VRAI DANS CES CINQ ÉTATS. « le fond ci-dessous
+// est fourni par OpenStreetMap » devenait faux dès qu'aucune carte n'est
+// affichée — donc dans quatre des cinq cas où le bandeau apparaît désormais.
+{
+  const fr = JSON.parse(fs.readFileSync("lang/fr.json", "utf8"));
+  const txt = fr["osm_home.defautOn.corps"] || "";
+  t("📄 le bandeau ne prétend pas qu'une carte est déjà affichée",
+    txt.indexOf("ci-dessous") < 0);
+  t("📄 …il dit ce qui se passera quand elle le sera", /quand la carte s'affiche/i.test(txt));
+  t("📄 …et rappelle où couper", txt.indexOf("Configuration") >= 0);
 }
 
 console.log(ko === 0 ? "\n🎉 défaut OSM : un refus reste un refus, et le défaut s'annonce"
