@@ -172,12 +172,41 @@
   // Utilisé dans le rendu camemberts cross-plan home : l'user a pu renommer
   // "principal" → "route de surface" sur le plan A, mais sur la modale Profil
   // home on agrège plusieurs plans → afficher des labels génériques cohérents.
+  // 🐛 v1.90.3 (bug KARMA, capture des stats du profil) — LES TYPES
+  // PERSONNALISÉS S'AFFICHAIENT EN CLAIR : « cust-sig-structures-l-nm2 »,
+  // « cust-mrcevuxu-41f8 ». Illisible, et c'est justement là qu'on a le plus
+  // besoin du nom : un type personnalisé n'a QUE son nom pour identité.
+  //
+  // 🩸 POURQUOI ÇA RATAIT. `findCustomEntry` interroge l'état COURANT de
+  // LegendCustomization — c'est-à-dire le plan chargé. Sur l'accueil, aucun
+  // plan n'est chargé : la fonction ne trouve rien et on retombait sur la clé
+  // brute. Pire, les types nés d'un import SIG ont leur nom dans le
+  // `plan-config.json` DU ZIP : même en cherchant, il n'est pas dans le
+  // localStorage.
+  //
+  // La parade est un dictionnaire construit AILLEURS (homeProfile agrège les
+  // labels mémorisés au chargement de chaque plan) et passé ici. Il n'est
+  // consulté que pour les clés `cust-` : la règle de la v1.21.5-fix1 — en
+  // agrégat cross-plan, un type BUILT-IN garde son libellé par défaut, sinon
+  // le renommage du plan A polluerait le total — reste intacte.
+  let _labelsExternes = null;   // { "structures.cust-…": "Niveau -2", … }
+  function _setLabelsExternes(map) { _labelsExternes = map || null; }
+
   function _defaultLabelStat(category, type, fallback) {
     if (typeof type !== "string" || !type) return fallback || "?";
     // Entrée custom (cust-XYZ) : préfixe ✨ — même traitement que _lcLabelStat
     // car les customs n'ont JAMAIS de version "default" (ils sont par essence
     // personnalisés). Le préfixe ✨ signale visuellement l'origine.
     if (type.indexOf("cust-") === 0) {
+      // 1. le dictionnaire cross-plan, seul à savoir sur l'accueil
+      if (_labelsExternes) {
+        const lcCat2 = (category === "roads") ? "traces"
+                     : (category === "tags")  ? "icones"
+                     : category;
+        const ext = _labelsExternes[lcCat2 + "." + type] || _labelsExternes[category + "." + type];
+        if (ext) return "✨ " + ext;
+      }
+      // 2. l'état courant (mode plan : la légende du plan ouvert)
       if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
         try {
           const e = window.LegendCustomization.findCustomEntry(type);
@@ -209,15 +238,23 @@
    *                                       par défaut (bypass LC cascade). Utile cross-plan.
    * @returns {String} HTML <div> contenant SVG + légende
    */
-  function _renderPieChart(data, category, size, useDefaultLabels) {
+  function _renderPieChart(data, category, size, useDefaultLabels, labelsExternes) {
+    // 🐛 v1.90.3 — dictionnaire de labels cross-plan (cf _defaultLabelStat).
+    // Posé le temps du rendu puis RETIRÉ : laisser un état global traînant
+    // ferait fuiter les noms d'un agrégat dans la modale d'un plan.
+    if (arguments.length >= 5) _setLabelsExternes(labelsExternes);
     size = size || 160;
     const r = size / 2 - 4;        // rayon (avec marge)
     const cx = size / 2;
     const cy = size / 2;
     const keys = Object.keys(data || {});
-    if (keys.length === 0) return "";
+    // 🩸 Les DEUX sorties anticipees doivent RETIRER le dictionnaire, sinon il
+    // survit au rendu et fait fuiter les noms d un agregat cross-plan dans la
+    // modale d un plan. Un camembert vide est justement le cas ou personne ne
+    // regarde -- donc celui ou la fuite passerait inapercue.
+    if (keys.length === 0) { _setLabelsExternes(null); return ""; }
     const total = keys.reduce(function(s, k) { return s + (data[k] || 0); }, 0);
-    if (total === 0) return "";
+    if (total === 0) { _setLabelsExternes(null); return ""; }
 
     // Tri desc par count (le plus gros slice en premier visuellement)
     const sortedKeys = keys.slice().sort(function(a, b) { return (data[b] || 0) - (data[a] || 0); });
@@ -266,6 +303,8 @@
                 '</div>';
     });
     legend += '</div>';
+
+    if (arguments.length >= 5) _setLabelsExternes(null);
 
     return '<div class="kta-stats-glob-pie-wrap">' +
              '<svg class="kta-stats-glob-pie-svg" viewBox="0 0 ' + size + ' ' + size +

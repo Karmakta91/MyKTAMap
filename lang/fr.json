@@ -1499,6 +1499,7 @@
   "home.privacy.osmToggle": "<strong>🗺️ Vue OSM (OpenStreetMap)</strong> — affiche tes plans calibrés GPS au-dessus d'une carte du monde. Contacte <code>tile.openstreetmap.org</code> dès que le widget de l'accueil ou la modale Vue OSM s'affiche. <strong>Activé par défaut</strong> depuis la v1.90.2 ; décoché, il le reste (aucune mise à jour ne revient dessus).",
   "home.privacy.strictToggle": "<strong>🔒 Mode hors-ligne strict</strong> — bloque activement toute requête sortante non-whitelistée (l'app reste 100% fonctionnelle offline). Préférence persistée.",
   "home.privacy.title": "🔒 Confidentialité & Audit",
+  "home.profile.pies.typesInconnus": "⚠️ {n} type(s) personnalisé(s) affiché(s) par leur identifiant : leur nom vit dans le plan, et n'est mémorisé qu'à sa première ouverture. Ouvre ces plans une fois.",
   "home.profile.barStatsHeader": "🎨 Stats du bandeau d'accueil",
   "home.profile.barStatsHint": "Choisis 1 à 3 stats à afficher dans l'en-tête du loader. Cap mobile pour rester compact.",
   "home.profile.barStatsMax": "⚠️ Max {n} stats dans le bandeau",

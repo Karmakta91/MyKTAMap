@@ -1499,6 +1499,7 @@
   "home.privacy.osmToggle": "<strong>🗺️ OSM view (OpenStreetMap)</strong> — shows your GPS-calibrated maps on top of a world map. Contacts <code>tile.openstreetmap.org</code> as soon as the home widget or the OSM view modal is displayed. <strong>On by default</strong> since v1.90.2; once unchecked it stays unchecked (no update ever turns it back on).",
   "home.privacy.strictToggle": "<strong>🔒 Strict offline mode</strong> — actively blocks any non-whitelisted outgoing request (the app stays 100% functional offline). Persisted preference.",
   "home.privacy.title": "🔒 Privacy & Audit",
+  "home.profile.pies.typesInconnus": "⚠️ {n} custom type(s) shown by their identifier: their name lives inside the map, and is only remembered on its first open. Open those maps once.",
   "home.profile.barStatsHeader": "🎨 Home banner stats",
   "home.profile.barStatsHint": "Choose 1 to 3 stats to show in the loader header. Mobile cap to stay compact.",
   "home.profile.barStatsMax": "⚠️ Max {n} stats in the banner",

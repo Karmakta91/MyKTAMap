@@ -1769,9 +1769,43 @@
             zonesByType:   zonesByType,
             structsByType: structsByType
           },
+          // 🐛 v1.90.3 (bug KARMA) — LE NOM DES TYPES PERSONNALISÉS, MÉMORISÉ
+          // ICI PARCE QUE C'EST LE SEUL MOMENT OÙ ON LE CONNAÎT. Sur l'accueil
+          // aucun plan n'est chargé : `LegendCustomization` ne peut rien
+          // résoudre, et le nom d'un type né d'un import SIG vit dans le
+          // `plan-config.json` DU ZIP — hors de portée du localStorage. Les
+          // camemberts du profil affichaient donc « cust-sig-structures-l-nm2 ».
+          // Ici, le plan est ouvert : la cascade complète répond.
+          labels: _labelsCustomCourants(pointsByTag, roadsByType, zonesByType, structsByType),
           ts:     Date.now(),
           source: "live"
         };
+      }
+
+      // 🐛 v1.90.3 — Récolte le libellé des types `cust-…` PRÉSENTS dans les
+      // décomptes du plan courant. On n'en garde QUE les personnalisés : un
+      // type built-in doit rester au libellé par défaut dans un agrégat
+      // cross-plan (règle v1.21.5-fix1), sinon le renommage d'un plan A
+      // s'imposerait au total de tous les autres.
+      function _labelsCustomCourants(parTag, parTrace, parZone, parStruct) {
+        const out = {};
+        const LC = window.LegendCustomization;
+        if (!LC || typeof LC.getLabel !== "function") return out;
+        [["icones", parTag], ["traces", parTrace],
+         ["zones", parZone], ["structures", parStruct]].forEach(function(paire) {
+          const cat = paire[0];
+          Object.keys(paire[1] || {}).forEach(function(cle) {
+            if (cle.indexOf("cust-") !== 0) return;
+            try {
+              const lbl = LC.getLabel(cat, cle);
+              // 🩸 `getLabel` retombe sur la CLÉ quand il ne sait pas : la
+              // stocker telle quelle ferait croire à un nom résolu et
+              // masquerait le trou pour toujours.
+              if (lbl && lbl !== cle) out[cat + "." + cle] = String(lbl).slice(0, 60);
+            } catch(e) {}
+          });
+        });
+        return out;
       }
 
       // Persiste les stats COMPLÈTES du plan courant dans localStorage.
@@ -1832,6 +1866,12 @@
         let totalDistM = 0, totalDistPxOrphan = 0, nbPxOrphan = 0;
         let nbAvecData = 0, nbPartial = 0;
         // 🆕 v1.21.3 : agrégation des breakdowns cross-plan pour les camemberts
+        // 🐛 v1.90.3 — dictionnaire cross-plan des noms de types personnalisés.
+        // Premier arrivé, premier servi : deux plans peuvent avoir forgé la même
+        // clé `cust-<ts36>-<rnd36>` (le module la dit lui-même « probabiliste,
+        // pas structurellement unique »). Afficher un nom plutôt qu'une clé
+        // reste le bon choix même dans ce cas rare.
+        const aggLabels = {};
         const aggBreakdowns = {
           pointsByTag:   {},
           roadsByType:   {},
@@ -1999,6 +2039,11 @@
             _mergeBreakdown(aggBreakdowns.roadsByType,   stats.breakdowns.roadsByType);
             _mergeBreakdown(aggBreakdowns.zonesByType,   stats.breakdowns.zonesByType);
             _mergeBreakdown(aggBreakdowns.structsByType, stats.breakdowns.structsByType);
+            if (stats.labels) {
+              Object.keys(stats.labels).forEach(function(k) {
+                if (aggLabels[k] == null) aggLabels[k] = stats.labels[k];
+              });
+            }
           }
 
           // Append row au tbody (rendu progressif visible par l'user)
@@ -2060,14 +2105,14 @@
         // agrégés cross-plan, après la table. Réutilise renderPieChart
         // exposé par window.StatsGlobales (= même rendu que la modale Stats
         // Globales d'un plan, mais agrégé sur tous les plans accessibles).
-        _renderProfilePies(aggBreakdowns);
+        _renderProfilePies(aggBreakdowns, aggLabels);
       }
 
       // 🆕 v1.21.3 — Rend la section camemberts dans la modale Profil.
       // Construit ou met à jour le DOM #kta-profile-pies (après la table
       // "📊 Mes plans"). Une grille de 4 camemberts max (4 catégories) ;
       // chaque camembert n'apparaît QUE si sa catégorie a des données.
-      function _renderProfilePies(breakdowns) {
+      function _renderProfilePies(breakdowns, labels) {
         const wrap = document.getElementById("kta-profile-plansstats");
         if (!wrap) return;
         // Cleanup précédent (en cas de re-render)
@@ -2093,6 +2138,30 @@
         });
         if (activeSections.length === 0) return;  // rien à dessiner
 
+        // 🩸 v1.90.3 — QUAND ON NE SAIT PAS, ON LE DIT. Le nom d'un type
+        // personnalisé n'est mémorisé qu'au chargement du plan : pour un plan
+        // jamais ouvert depuis cette version, la clé brute reste le seul
+        // affichage possible. Sans cette note, l'utilisateur croit à un bug
+        // permanent au lieu de comprendre qu'il lui suffit d'ouvrir le plan.
+        // Même honnêteté que le message « aucun plan géoréférencé ».
+        function _noteTypesNonResolus(data, categorie, labels) {
+          const cat = (categorie === "roads") ? "traces"
+                    : (categorie === "tags")  ? "icones"
+                    : categorie;
+          const inconnus = Object.keys(data || {}).filter(function(k) {
+            return k.indexOf("cust-") === 0 && !(labels && labels[cat + "." + k]);
+          });
+          if (inconnus.length === 0) return "";
+          // 🩸 AUTONOME À DESSEIN. `_t` et `escapeHtml` sont declares dans
+          // d autres fonctions de ce fichier, pas au niveau de l IIFE : les
+          // referencer ici serait une ReferenceError au runtime, que `node -c`
+          // ne voit pas. C est la faute exacte de `meta` en v1.88.1.
+          const tr = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
+          const txt = String(tr("home.profile.pies.typesInconnus", { n: inconnus.length }))
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          return '<div class="kta-profile-pies-note">' + txt + '</div>';
+        }
+
         const piesContainer = document.createElement("div");
         piesContainer.id = "kta-profile-pies";
         piesContainer.className = "kta-profile-pies-wrap";
@@ -2107,7 +2176,8 @@
                     // cascade LegendCustomization (qui appliquerait le renommage
                     // local du plan A à l'agrégat cross-plan home). Cross-plan =
                     // labels par défaut cohérents partout.
-                    renderPie(data, s.category, 140, true) +
+                    renderPie(data, s.category, 140, true, labels || {}) +
+                    _noteTypesNonResolus(data, s.category, labels) +
                   '</div>';
         });
         html += '</div>';

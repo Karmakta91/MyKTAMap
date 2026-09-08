@@ -185,5 +185,95 @@ t("SIG : rien de personnalise -> pas de section customLegend",
 t("SIG : sans etat edite, les entrees par niveau partent quand meme",
   (winS._assembler(null, autoSig) || {}).customEntries.length === 2);
 
+// ═════════════════════════════════════════════════════════════════════
+// 🏷️ LE NOM D'UN TYPE PERSONNALISÉ, VU DEPUIS L'ACCUEIL (v1.90.3)
+// ═════════════════════════════════════════════════════════════════════
+// BUG KARMA (capture des stats du profil) : les camemberts affichaient
+// « cust-sig-structures-l-nm2 », « cust-mrcevuxu-41f8 ». Illisible — et c'est
+// précisément là qu'on a besoin du nom : un type personnalisé n'a QUE son nom
+// pour identité, contrairement à un built-in qui a un libellé par défaut.
+//
+// 🩸 POURQUOI ÇA RATAIT. `_defaultLabelStat` demandait à `findCustomEntry`,
+// qui interroge l'état COURANT de LegendCustomization — donc le plan chargé.
+// Sur l'accueil il n'y en a aucun. Et le nom d'un type né d'un import SIG vit
+// dans le `plan-config.json` DU ZIP : même en cherchant, il n'est pas dans le
+// localStorage.
+//
+// LA RÈGLE À NE PAS CASSER EN RÉPARANT (v1.21.5-fix1, décision KARMA) : en
+// agrégat cross-plan, un type BUILT-IN garde son libellé PAR DÉFAUT. Sinon le
+// renommage de « principal » en « route de surface » sur le plan A s'imposerait
+// au total de tous les autres. Le dictionnaire externe ne doit donc servir
+// QUE les clés `cust-`.
+{
+  const SG = fs.readFileSync("js/statsGlobales.js", "utf8");
+  const d = SG.indexOf("let _labelsExternes = null;");
+  const f = SG.indexOf("  /**", d);
+  t("le résolveur de libellé est extractible de statsGlobales.js", d >= 0 && f > d);
+
+  if (d >= 0 && f > d) {
+    const sb = {
+      window: {
+        LegendCustomization: {
+          getDefaultLabel: function (cat, k) {
+            return (cat === "traces" && k === "principal") ? "Principal" : null;
+          },
+          findCustomEntry: function () { return null; }   // l'accueil : aucun plan chargé
+        }
+      }
+    };
+    let err = null;
+    try {
+      vm.runInNewContext(SG.slice(d, f) + ";this.__set = _setLabelsExternes; this.__lbl = _defaultLabelStat;",
+        sb, { filename: "statsGlobales.labels.js" });
+    } catch (e) { err = e.message; }
+    t("🩸 le résolveur s'EXÉCUTE sans ReferenceError" + (err ? " — " + err : ""), !err);
+
+    if (!err) {
+      const DICO = { "structures.cust-sig-structures-l-nm2": "Niveau -2",
+                     "traces.principal": "NE DOIT PAS SERVIR" };
+
+      // 1. sans dictionnaire : le comportement d'AVANT le correctif
+      sb.__set(null);
+      t("sans dictionnaire, une clé custom reste brute (état d'avant le fix)",
+        sb.__lbl("structures", "cust-sig-structures-l-nm2", "cust-sig-structures-l-nm2")
+          === "cust-sig-structures-l-nm2");
+
+      // 2. avec dictionnaire : le nom, préfixé ✨ comme partout ailleurs
+      sb.__set(DICO);
+      t("🏷️ avec dictionnaire, la clé custom devient son NOM",
+        sb.__lbl("structures", "cust-sig-structures-l-nm2", "x") === "✨ Niveau -2");
+
+      // 3. 🩸 LA RÈGLE : un built-in ignore le dictionnaire, même s'il y figure
+      t("🩸 un type BUILT-IN garde son libellé par défaut (règle v1.21.5-fix1)",
+        sb.__lbl("roads", "principal", "x") === "Principal");
+
+      // 4. une clé custom absente du dictionnaire ne s'invente pas un nom
+      t("une clé custom inconnue reste brute (aucun nom inventé)",
+        sb.__lbl("zones", "cust-inconnu-42", "cust-inconnu-42") === "cust-inconnu-42");
+
+      // 5. 🩸 le dictionnaire ne doit pas SURVIVRE au rendu
+      t("🩸 le dictionnaire se retire (sinon il fuiterait dans la modale d'un plan)",
+        /if \(arguments\.length >= 5\) _setLabelsExternes\(null\);/.test(SG) &&
+        /keys\.length === 0\) \{ _setLabelsExternes\(null\); return "";/.test(SG) &&
+        /total === 0\) \{ _setLabelsExternes\(null\); return "";/.test(SG));
+    }
+  }
+
+  // Côté profil : le dictionnaire est alimenté au CHARGEMENT du plan, seul
+  // moment où la cascade complète peut répondre.
+  const HP = fs.readFileSync("js/homeProfile.js", "utf8");
+  t("les libellés custom sont mémorisés dans le cache de stats du plan",
+    /labels: _labelsCustomCourants\(/.test(HP));
+  t("🩸 …et SEULEMENT les custom (un built-in polluerait l'agrégat)",
+    /if \(cle\.indexOf\("cust-"\) !== 0\) return;/.test(HP));
+  t("🩸 …et jamais un libellé égal à la clé (ça masquerait le trou pour toujours)",
+    /if \(lbl && lbl !== cle\)/.test(HP));
+  t("l'agrégat cross-plan les fusionne", /aggLabels\[k\] == null\) aggLabels\[k\]/.test(HP));
+  t("et les passe au camembert", /renderPie\(data, s\.category, 140, true, labels \|\| \{\}\)/.test(HP));
+  t("🩸 quand un nom manque encore, on le DIT au lieu d'afficher une clé sans un mot",
+    /_noteTypesNonResolus\(data, s\.category, labels\)/.test(HP) &&
+    /home\.profile\.pies\.typesInconnus/.test(HP));
+}
+
 console.log(ko === 0 ? "\n🎉 round-trip complet OK" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);
