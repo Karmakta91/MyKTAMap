@@ -7,11 +7,12 @@
 > toute instance privée. Le refus est appliqué au submit ET au boot (révocation d'un accès communautaire
 > hérité). Un club distribue le sien ; le code de l'auteur n'entre pas.
 >
-> 🔒 **v1.90.8 — et la licence pro IMPORTÉE non plus.** Sur une instance protégée par `accessHash`, une
-> licence pro de source `"local"` (le fichier que l'utilisateur importe lui-même) ne déverrouille plus la
-> gate : ce serait la même porte dérobée que le code communautaire. La licence **servie par l'instance**
-> (source `"server"`) reste un accès légitime — le déployeur la fournit. Le mode pro peut s'activer malgré
-> tout ; seul le contournement de la gate est refusé, la personne saisit le mot de passe.
+> 🔒 **v1.90.8 / v1.90.9 — AUCUNE licence pro ne contourne un `accessHash`.** Sur une instance protégée, ni
+> la licence importée par l'utilisateur (`"local"`, v1.90.8) ni celle servie par l'instance (`"server"`,
+> v1.90.9) n'ouvre la gate. 🩸 La licence serveur est fetchée pour TOUS les visiteurs : la laisser bypasser
+> rendait le mot de passe muet. `main.js` refuse donc le bypass **quelle que soit la source** dès que
+> l'instance impose un mot de passe. Le mode pro s'active après la saisie ; la licence n'est pas une clé
+> d'accès. Seule une instance SANS mot de passe laisse la licence serveur bypasser (rien à garder).
 >
 > 🔒 **Le niveau de sécurité est IDENTIQUE, et il est faible — c'est assumé et écrit partout.** Le hash
 > d'instance vit dans un fichier public ; le hash communautaire est sur GitHub. Les deux se brute-forcent hors

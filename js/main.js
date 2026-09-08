@@ -1823,22 +1823,29 @@ window.proposerRedemarrageLangue = function() {
 
     const _proActive = await _proLicenseReady(2000);
 
-    // 🔒 v1.90.8 (demande KARMA) — UNE LICENCE PRO IMPORTÉE PAR L'UTILISATEUR
-    // (source "local") NE CONTOURNE PAS le mot de passe d'une instance protégée.
-    // Le déployeur pose un `accessHash` pour filtrer l'accès ; sans ce garde, un
-    // utilisateur ouvrirait quand même en important SON fichier de licence, ce
-    // qui viderait la protection de son sens. Une licence SERVEUR (fournie par
-    // l'instance elle-même) reste un bypass légitime — c'est le choix du
-    // déployeur, pas un contournement. Le mode pro peut s'activer malgré tout ;
-    // seul le BYPASS de la gate est refusé, la personne saisit le mot de passe.
+    // 🔒 v1.90.9 (décision KARMA) — QUAND UNE INSTANCE PUBLIE UN MOT DE PASSE
+    // (`accessHash`), PLUS AUCUNE LICENCE PRO NE LE CONTOURNE — ni celle
+    // importée par l'utilisateur (source "local"), ni celle servie par
+    // l'instance (source "server"). Le mot de passe est LA porte d'accès ; la
+    // licence n'accorde que le MODE pro, pas l'accès.
+    //
+    // 🩸 POURQUOI ON A RETIRÉ L'EXCEPTION "server" (elle datait de la v1.90.8).
+    // Le `/Licence-pro.json` servi par l'instance est fetché pour TOUS les
+    // visiteurs : le laisser bypasser l'`accessHash` rendait le mot de passe
+    // MUET dès qu'une licence serveur était présente — quiconque ouvrait
+    // l'instance entrait. Or `accessHash` ET licence serveur ensemble n'ont
+    // qu'une lecture cohérente : le déployeur veut un accès filtré ET le mode
+    // pro. Le mode pro reste actif après la saisie du mot de passe ; seul le
+    // contournement de la gate est refusé.
+    //
+    // Cas inchangé : une instance pro SANS mot de passe → la licence bypasse
+    // toujours (pas d'`accessHash` → pas de gate à contourner).
     let _proBypass = _proActive;
     if (_proActive
-        && window.MyKTAMapProLicense
-        && window.MyKTAMapProLicense.getSource() === "local"
         && typeof window.UnlockGate.instanceRequiertMotDePasse === "function"
         && await window.UnlockGate.instanceRequiertMotDePasse()) {
       _proBypass = false;
-      console.log("[Main] Licence pro LOCALE ignorée pour le déverrouillage : " +
+      console.log("[Main] Licence pro (toute source) ignorée pour le déverrouillage : " +
                   "instance protégée par mot de passe → saisie requise");
     }
 

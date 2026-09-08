@@ -285,14 +285,14 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   });
 }
 
-// ═════════ 9. 🔒 LICENCE PRO LOCALE ≠ PASSE-DROIT (v1.90.8, demande KARMA) ═════════
-// « si mot de passe présent dans le index, on désactive le déverrouillage via
-//   licence-pro — le FICHIER que l'user donne, pas la licence côté serveur ».
-// 🩸 Sinon un utilisateur ouvrirait une instance protégée en important SA
-// propre licence, ce qui viderait l'accessHash de son sens. Une licence SERVEUR
-// (choix du déployeur) reste un bypass légitime.
-// On EXÉCUTE la décision de bypass extraite de main.js sur la matrice
-// source × protection.
+// ═════════ 9. 🔒 AUCUNE LICENCE PRO NE CONTOURNE UN MOT DE PASSE (v1.90.9) ═════════
+// v1.90.8 ne bloquait que la licence IMPORTÉE (source "local") et laissait
+// passer la licence SERVEUR. KARMA a tranché (v1.90.9) : le `/Licence-pro.json`
+// servi par l'instance est fetché pour TOUS les visiteurs, donc le laisser
+// bypasser rendait l'`accessHash` MUET — quiconque ouvrait l'instance entrait.
+// 🩸 Désormais, quand l'instance impose un mot de passe, PLUS AUCUNE source ne
+// bypasse : le mot de passe est l'accès, la licence n'accorde que le MODE pro.
+// On EXÉCUTE la décision de bypass extraite de main.js.
 {
   const frag = MAIN.match(/let _proBypass = _proActive;[\s\S]*?_proBypass = false;[\s\S]*?\n    \}/);
   t("la décision de bypass licence est extractible de main.js", !!frag);
@@ -311,10 +311,12 @@ const KIOSK = "b".repeat(64);         // hash d'instance
       return vm.runInNewContext("(function(){ " + code + " return _proBypass; })()",
         sb, { filename: "main.bypass.js" });
     };
-    t("🔒 licence LOCALE + instance protégée → PAS de bypass (le trou fermé)",
+    t("🔒 licence LOCALE + instance protégée → PAS de bypass",
       jouer(true, "local", true) === false);
-    t("🔑 licence SERVEUR + instance protégée → bypass conservé (choix du déployeur)",
-      jouer(true, "server", true) === true);
+    t("🔒 licence SERVEUR + instance protégée → PAS de bypass NON PLUS (v1.90.9, le trou fermé)",
+      jouer(true, "server", true) === false);
+    t("licence SERVEUR + instance NON protégée → bypass (instance pro sans mot de passe : inchangé)",
+      jouer(true, "server", false) === true);
     t("licence locale + instance NON protégée → bypass (app communautaire : inchangé)",
       jouer(true, "local", false) === true);
     t("pas de licence pro → pas de bypass, quoi qu'il arrive",
@@ -330,10 +332,11 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   t("le prédicat instanceRequiertMotDePasse est exposé",
     /instanceRequiertMotDePasse: instanceRequiertMotDePasse/.test(GATE) &&
     /async function instanceRequiertMotDePasse\(\)/.test(GATE));
-  // 🩸 SEULE la source "local" est bloquée. Si le garde de main.js oubliait le
-  // test de source, une licence serveur serait refusée à tort.
-  t("🩸 le blocage vise la source \"local\", jamais \"server\"",
-    /getSource\(\) === "local"/.test(MAIN));
+  // 🩸 v1.90.9 — LE BLOCAGE NE DÉPEND PLUS DE LA SOURCE. Il ne reste AUCUN test
+  // `getSource() === "local"` dans la décision de bypass : le laisser aurait
+  // épargné la licence serveur, exactement le trou que KARMA a fait fermer.
+  t("🩸 la décision de bypass ne discrimine plus par source (plus de test \"local\")",
+    !/getSource\(\) === "local"/.test(MAIN));
   // Le message de refus existe dans les 3 langues.
   ["fr", "en", "es"].forEach(function (c) {
     const d = JSON.parse(fs.readFileSync("lang/" + c + ".json", "utf8"));

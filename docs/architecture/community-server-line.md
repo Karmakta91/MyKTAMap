@@ -74,8 +74,11 @@ photos restent locales et exportables).
   une licence pro de **source `"local"`** (fichier importé par l'utilisateur, cf. `proLicense.js`) n'ouvre
   plus la gate — sinon elle contournerait le mot de passe. Enforcement : `main.js` refuse le bypass de boot
   si `getSource() === "local"` **et** `UnlockGate.instanceRequiertMotDePasse()`, et la gate retire le bloc
-  d'import (`.kta-licence-community`) plus un refus au clic (`_instanceProtegeeGate`). La source `"server"`
-  (le `/Licence-pro.json` fourni par l'instance) reste un bypass légitime — c'est le choix du déployeur.
+  d'import (`.kta-licence-community`) plus un refus au clic (`_instanceProtegeeGate`). 🩸 v1.90.9 — la source
+  `"server"` NE bypasse PLUS non plus : fetchée pour tous les visiteurs, elle rendait l'`accessHash` muet.
+  Quand l'instance impose un mot de passe, `main.js` refuse le bypass **quelle que soit la source** ; la
+  licence n'accorde que le mode pro, après la gate. Seule une instance SANS `accessHash` laisse la licence
+  serveur bypasser (pas de gate à contourner).
 - **Le verrou kiosque est AU GOULOT, pas sur un bouton (v1.90.1)** : `window.ktaKiosqueServeurSeul()`
   est le point unique de décision ; `ouvrirImportModale` refuse avant même de lire le
   fichier. 🩸 Deux trous réels : l'import de PROFIL restaurait les archives ZIP (la
