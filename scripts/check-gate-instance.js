@@ -285,6 +285,62 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   });
 }
 
+// ═════════ 9. 🔒 LICENCE PRO LOCALE ≠ PASSE-DROIT (v1.90.8, demande KARMA) ═════════
+// « si mot de passe présent dans le index, on désactive le déverrouillage via
+//   licence-pro — le FICHIER que l'user donne, pas la licence côté serveur ».
+// 🩸 Sinon un utilisateur ouvrirait une instance protégée en important SA
+// propre licence, ce qui viderait l'accessHash de son sens. Une licence SERVEUR
+// (choix du déployeur) reste un bypass légitime.
+// On EXÉCUTE la décision de bypass extraite de main.js sur la matrice
+// source × protection.
+{
+  const frag = MAIN.match(/let _proBypass = _proActive;[\s\S]*?_proBypass = false;[\s\S]*?\n    \}/);
+  t("la décision de bypass licence est extractible de main.js", !!frag);
+  if (frag) {
+    const code = frag[0].replace("await window.UnlockGate.instanceRequiertMotDePasse()",
+                                 "window.UnlockGate.instanceRequiertMotDePasse()");
+    const jouer = (proActive, source, protegee) => {
+      const sb = {
+        _proActive: proActive,
+        console: { log: function () {} },
+        window: {
+          MyKTAMapProLicense: { getSource: function () { return source; } },
+          UnlockGate: { instanceRequiertMotDePasse: function () { return protegee; } }
+        }
+      };
+      return vm.runInNewContext("(function(){ " + code + " return _proBypass; })()",
+        sb, { filename: "main.bypass.js" });
+    };
+    t("🔒 licence LOCALE + instance protégée → PAS de bypass (le trou fermé)",
+      jouer(true, "local", true) === false);
+    t("🔑 licence SERVEUR + instance protégée → bypass conservé (choix du déployeur)",
+      jouer(true, "server", true) === true);
+    t("licence locale + instance NON protégée → bypass (app communautaire : inchangé)",
+      jouer(true, "local", false) === true);
+    t("pas de licence pro → pas de bypass, quoi qu'il arrive",
+      jouer(false, "local", true) === false && jouer(false, "server", false) === false);
+  }
+
+  // La gate retire le bloc d'import de licence sur une instance protégée…
+  t("🔒 la gate RETIRE le bloc « importer ma licence » sur instance protégée",
+    /_hashInstance\(\)\.then\(function\(h\) \{[\s\S]{0,260}kta-licence-community[\s\S]{0,120}removeChild/.test(GATE));
+  // …et refuse l'unlock au clic, défense en profondeur.
+  t("🩸 …et refuse l'unlock même si le bloc est rendu (garde `_instanceProtegeeGate`)",
+    /if \(_instanceProtegeeGate\) \{[\s\S]{0,160}return;/.test(GATE));
+  t("le prédicat instanceRequiertMotDePasse est exposé",
+    /instanceRequiertMotDePasse: instanceRequiertMotDePasse/.test(GATE) &&
+    /async function instanceRequiertMotDePasse\(\)/.test(GATE));
+  // 🩸 SEULE la source "local" est bloquée. Si le garde de main.js oubliait le
+  // test de source, une licence serveur serait refusée à tort.
+  t("🩸 le blocage vise la source \"local\", jamais \"server\"",
+    /getSource\(\) === "local"/.test(MAIN));
+  // Le message de refus existe dans les 3 langues.
+  ["fr", "en", "es"].forEach(function (c) {
+    const d = JSON.parse(fs.readFileSync("lang/" + c + ".json", "utf8"));
+    t("🌍 message de refus traduit : " + c, typeof d["gate.licence.instanceProtegee"] === "string");
+  });
+}
+
 console.log(ko === 0 ? "\n🎉 gate d'instance : deux mots de passe, et aucune promesse de trop"
                      : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

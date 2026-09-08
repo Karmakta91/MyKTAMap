@@ -71,6 +71,13 @@
   // État interne
   let _resolveGate = null;  // Promise resolver pour main.js qui attend
 
+  // 🔒 v1.90.8 — Vrai quand la gate courante est montée sur une instance qui
+  // publie un `accessHash` valide. Sert à RETIRER le bloc « importer ma licence
+  // pro » de l'écran : sur une instance protégée, une licence importée par
+  // l'utilisateur ne doit pas être un contournement du mot de passe du
+  // déployeur. Remis à false à chaque (re)montage de la gate.
+  let _instanceProtegeeGate = false;
+
   // =========================================================================
   // HELPERS HASH (SubtleCrypto SHA-256)
   // =========================================================================
@@ -123,6 +130,16 @@
       }
       return propre;
     } catch(e) { return null; }
+  }
+
+  // 🔒 v1.90.8 — L'instance impose-t-elle un mot de passe d'accès ? (accessHash
+  // publié et valide.) Async : demande l'index. Utilisé par main.js pour
+  // refuser le bypass d'une licence pro LOCALE, et par la gate pour masquer le
+  // bloc d'import. 🩸 Échec réseau → false : hors-ligne au 1ᵉʳ contact, on ne
+  // peut pas savoir, et fermer par défaut bloquerait un accès légitime — le
+  // Service Worker sert l'index en cache dès la 2ᵉ visite.
+  async function instanceRequiertMotDePasse() {
+    return !!(await _hashInstance());
   }
 
   // 🔑 v1.90.6 — Le déployeur a changé son mot de passe : on oublie l'ancien,
@@ -473,6 +490,22 @@
       const btnDoc = overlay.querySelector("#kta-unlock-readme-btn");
       if (btnDoc) btnDoc.addEventListener("click", _ouvrirDocReadme);
 
+      // 🔒 v1.90.8 — INSTANCE PROTÉGÉE : on RETIRE le bloc « importer ma
+      // licence pro ». Async (une requête d'index), donc le bloc peut clignoter
+      // une fraction de seconde avant de disparaître — la gate est un écran
+      // rare (1ᵉʳ lancement / reset) et le SW sert l'index en cache, donc
+      // c'est instantané en pratique. Le flag `_instanceProtegeeGate` double
+      // ce retrait d'un refus au clic (ci-dessous) au cas où le bloc serait
+      // rendu autrement un jour.
+      _instanceProtegeeGate = false;
+      _hashInstance().then(function(h) {
+        if (!h) return;
+        _instanceProtegeeGate = true;
+        overlay.querySelectorAll(".kta-licence-community").forEach(function(el) {
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        });
+      }).catch(function() {});
+
       // 🆕 v1.28.5 — Voie alternative "Ou importer ma licence pro".
       // L'user clique sur le bouton → file picker .json → import via
       // MyKTAMapProLicense.importFile() (réutilise tout le pipeline de
@@ -499,6 +532,14 @@
           }
           window.MyKTAMapProLicense.importFile(file).then(function(result) {
             if (result && result.ok) {
+              // 🔒 v1.90.8 — Sur une instance protégée, la licence peut activer
+              // le mode pro, mais elle N'OUVRE PAS la gate : le mot de passe du
+              // déployeur reste requis. On ne pose donc PAS le flag unlock.
+              if (_instanceProtegeeGate) {
+                fb.innerHTML = '<div class="kta-unlock-error">' +
+                  t("gate.licence.instanceProtegee") + '</div>';
+                return;
+              }
               // Set le flag unlock (= bypass définitif pour les boots suivants).
               // Cohérent : détenir une licence pro = canal légitime, pas besoin
               // de re-saisir le code partagé à chaque reload.
@@ -572,7 +613,8 @@
     ouvrirGate:  ouvrirGate,
     lock:        lock,
     markUnlockedViaLicensePro: markUnlockedViaLicensePro,
-    revaliderInstance: revaliderInstance   // 🔑 v1.90.6 (appelé par main.js)
+    revaliderInstance: revaliderInstance,   // 🔑 v1.90.6 (appelé par main.js)
+    instanceRequiertMotDePasse: instanceRequiertMotDePasse   // 🔒 v1.90.8
   };
 
   console.log("[UnlockGate] Module chargé — unlock state :", isUnlocked());

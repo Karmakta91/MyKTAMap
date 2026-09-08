@@ -75,6 +75,10 @@
   n'ouvre plus votre instance (v1.90.7). 🩸 *Sinon quiconque connaît le code communautaire — distribué
   largement, il ouvre la prod qui n'héberge rien — ouvrirait votre instance, et le mot de passe ne
   protégerait rien.*
+  - 🔒 **Et l'import d'un fichier de licence pro non plus** (v1.90.8) : dès que vous publiez un `accessHash`,
+    un visiteur ne peut plus déverrouiller en important **son propre** `Licence-pro.json` — sinon ce serait la
+    même porte dérobée. Une licence que **vous** servez (votre `/Licence-pro.json` côté serveur) reste, elle,
+    un accès légitime : c'est votre choix de déployeur.
   Pratique pour un club : vous distribuez votre mot de passe à vos membres sans avoir à leur transmettre
   celui de la communauté.
   - 🔒 **Ce que ça vaut, exactement.** `index.json` est un fichier **public** : n'importe qui peut le

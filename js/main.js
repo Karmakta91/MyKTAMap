@@ -1822,7 +1822,27 @@ window.proposerRedemarrageLangue = function() {
     };
 
     const _proActive = await _proLicenseReady(2000);
-    if (_proActive) {
+
+    // 🔒 v1.90.8 (demande KARMA) — UNE LICENCE PRO IMPORTÉE PAR L'UTILISATEUR
+    // (source "local") NE CONTOURNE PAS le mot de passe d'une instance protégée.
+    // Le déployeur pose un `accessHash` pour filtrer l'accès ; sans ce garde, un
+    // utilisateur ouvrirait quand même en important SON fichier de licence, ce
+    // qui viderait la protection de son sens. Une licence SERVEUR (fournie par
+    // l'instance elle-même) reste un bypass légitime — c'est le choix du
+    // déployeur, pas un contournement. Le mode pro peut s'activer malgré tout ;
+    // seul le BYPASS de la gate est refusé, la personne saisit le mot de passe.
+    let _proBypass = _proActive;
+    if (_proActive
+        && window.MyKTAMapProLicense
+        && window.MyKTAMapProLicense.getSource() === "local"
+        && typeof window.UnlockGate.instanceRequiertMotDePasse === "function"
+        && await window.UnlockGate.instanceRequiertMotDePasse()) {
+      _proBypass = false;
+      console.log("[Main] Licence pro LOCALE ignorée pour le déverrouillage : " +
+                  "instance protégée par mot de passe → saisie requise");
+    }
+
+    if (_proBypass) {
       console.log("[Main] Licence pro active (source=" +
                   window.MyKTAMapProLicense.getSource() +
                   ") → bypass UnlockGate community");

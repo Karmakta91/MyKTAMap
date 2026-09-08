@@ -7,6 +7,12 @@
 > toute instance privée. Le refus est appliqué au submit ET au boot (révocation d'un accès communautaire
 > hérité). Un club distribue le sien ; le code de l'auteur n'entre pas.
 >
+> 🔒 **v1.90.8 — et la licence pro IMPORTÉE non plus.** Sur une instance protégée par `accessHash`, une
+> licence pro de source `"local"` (le fichier que l'utilisateur importe lui-même) ne déverrouille plus la
+> gate : ce serait la même porte dérobée que le code communautaire. La licence **servie par l'instance**
+> (source `"server"`) reste un accès légitime — le déployeur la fournit. Le mode pro peut s'activer malgré
+> tout ; seul le contournement de la gate est refusé, la personne saisit le mot de passe.
+>
 > 🔒 **Le niveau de sécurité est IDENTIQUE, et il est faible — c'est assumé et écrit partout.** Le hash
 > d'instance vit dans un fichier public ; le hash communautaire est sur GitHub. Les deux se brute-forcent hors
 > ligne. Barrière **sociale** (« il faut connaître le code »), **jamais une authentification**. Le lockout à 5

@@ -637,6 +637,7 @@
   "gate.licence.importBtn": "📂 Importar mi licencia pro",
   "gate.licence.info": "¿Has recibido un archivo de <strong>licencia profesional</strong>?&nbsp;Impórtalo a continuación para activar la edición pro en este dispositivo&nbsp;: no se requiere ningún código.",
   "gate.licence.moduleUnavailable": "❌ Módulo de gestión de licencias no disponible. Recarga la página.",
+  "gate.licence.instanceProtegee": "Esta instancia exige su propia contraseña: una licencia pro no da acceso aquí. Introduce la contraseña de arriba.",
   "gate.licence.refused": "❌ Licencia rechazada: {msg}",
   "gate.lockout.hint": "Si conoces legítimamente el código, contacta con el autor:",
   "gate.lockout.msg": "Acceso bloqueado por seguridad.",

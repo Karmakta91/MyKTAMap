@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.90.7</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.90.8</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.90.8 (la licence pro importée ne contourne plus le mot de passe d'instance)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Suite du correctif de sécurité v1.90.7 : sur une installation qui publie un mot de passe d'accès, <strong>importer soi-même un fichier de licence pro n'ouvre plus l'application</strong> — il fallait fermer cette porte, sinon elle contournait le mot de passe. Une licence <strong>fournie par l'installation elle-même</strong> (côté serveur) reste acceptée : c'est le choix du déployeur, pas un contournement. La vérification reste <strong>entièrement locale</strong>.</p>
   <h3>v1.90.7 (le mot de passe d'instance devient exclusif — correctif de sécurité)</h3>
   <p><strong>100 % local</strong>, aucun domaine nouveau, aucune donnée qui sort. Correctif de sécurité, sans effet réseau. Depuis la v1.90.6, une instance auto-hébergée peut publier l'empreinte d'un mot de passe ; désormais, <strong>quand elle le fait, c'est le SEUL mot de passe qui ouvre son application</strong> — le code communautaire n'ouvre plus une instance protégée. Sans ce correctif, quiconque connaît le code communautaire (public, il ouvre le site de démonstration) aurait pu ouvrir n'importe quelle instance privée. La vérification reste <strong>entièrement locale</strong> : votre navigateur compare l'empreinte, rien n'est transmis.</p>
   <h3>v1.90.6 (mot de passe d'accès propre à une instance)</h3>

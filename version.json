@@ -1,7 +1,7 @@
 {
-  "version": "v1.90.7",
+  "version": "v1.90.8",
   "released": "2026-09-08",
   "notes": [
-    "🔒 Sur une installation qui définit son propre mot de passe d'accès, seul ce mot de passe ouvre l'application. Le code communautaire ne débloque plus une installation protégée."
+    "🔒 Sur une installation qui définit son propre mot de passe d'accès, importer un fichier de licence pro ne permet plus de contourner ce mot de passe. Une licence fournie par l'installation elle-même reste acceptée."
   ]
 }

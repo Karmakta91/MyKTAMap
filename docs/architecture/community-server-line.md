@@ -70,6 +70,12 @@ photos restent locales et exportables).
   retire ceux marqués `tagsSrc === "index"`. Normalisation unique : `PlanRegistry.setTags`
   (trim, 24 car., dédup insensible à la casse, 12 max) — `confadmin.html` applique les
   MÊMES règles, et `check-tags-index.js` compare les deux en les exécutant.
+- **Licence pro locale ≠ passe-droit sur instance protégée (v1.90.8)** : quand `accessHash` est publié,
+  une licence pro de **source `"local"`** (fichier importé par l'utilisateur, cf. `proLicense.js`) n'ouvre
+  plus la gate — sinon elle contournerait le mot de passe. Enforcement : `main.js` refuse le bypass de boot
+  si `getSource() === "local"` **et** `UnlockGate.instanceRequiertMotDePasse()`, et la gate retire le bloc
+  d'import (`.kta-licence-community`) plus un refus au clic (`_instanceProtegeeGate`). La source `"server"`
+  (le `/Licence-pro.json` fourni par l'instance) reste un bypass légitime — c'est le choix du déployeur.
 - **Le verrou kiosque est AU GOULOT, pas sur un bouton (v1.90.1)** : `window.ktaKiosqueServeurSeul()`
   est le point unique de décision ; `ouvrirImportModale` refuse avant même de lire le
   fichier. 🩸 Deux trous réels : l'import de PROFIL restaurait les archives ZIP (la
