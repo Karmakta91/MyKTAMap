@@ -71,7 +71,10 @@
   justement masquée par le mode. L'**export** de profil, lui, reste ouvert : les données du visiteur lui
   appartiennent.
 - `accessHash` : SHA-256 d'un **mot de passe propre à votre instance**. Vos visiteurs peuvent alors ouvrir
-  l'app avec **ce** mot de passe **ou** avec le code communautaire — aucun des deux ne remplace l'autre.
+  l'app avec **ce** mot de passe, **et lui seul** : dès que vous en publiez un, le code communautaire
+  n'ouvre plus votre instance (v1.90.7). 🩸 *Sinon quiconque connaît le code communautaire — distribué
+  largement, il ouvre la prod qui n'héberge rien — ouvrirait votre instance, et le mot de passe ne
+  protégerait rien.*
   Pratique pour un club : vous distribuez votre mot de passe à vos membres sans avoir à leur transmettre
   celui de la communauté.
   - 🔒 **Ce que ça vaut, exactement.** `index.json` est un fichier **public** : n'importe qui peut le

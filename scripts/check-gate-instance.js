@@ -3,10 +3,14 @@
 // =====================================================================
 // 🔑 check-gate-instance.js — garde-fou pré-commit BLOQUANT
 // =====================================================================
-// LA DEMANDE (KARMA, 08/09/2026) : « pour un mode serveur, avoir un hash perso
-// pour le mot de passe de la gate. Du coup pour déverrouiller l'application on
-// a soit le mdp lié au hash de la gate (celui saisi depuis toujours), soit
-// celui lié au hash dans le index.json. »
+// LA RÈGLE (KARMA, 08/09/2026) : quand une instance publie un hash valide dans
+// `index.json`, il est le SEUL qui ouvre : le code communautaire ne vaut plus
+// que sur une app SANS hash d'instance.
+//
+// 🩸 POURQUOI L'EXCLUSIVITÉ, ET PAS « l'un OU l'autre » (ma 1ʳᵉ version, corrigée
+// par KARMA). Le code communautaire est distribué largement — il ouvre la prod
+// qui n'héberge rien. S'il ouvrait AUSSI les instances privées, quiconque le
+// connaît les ouvrirait toutes, et l'accessHash ne protégerait rien.
 //
 // ⚠️ CE QUE ÇA N'EST PAS. Le hash vit dans `data/index.json`, un fichier
 // PUBLIC : n'importe qui peut le télécharger et le brute-forcer hors ligne.
@@ -91,50 +95,70 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   const code = extraire("revaliderInstance");
   t("revaliderInstance est extractible", !!code);
 
-  const jouer = (memo, publie, repondu) => {
-    const store = { u: memo, k: memo };
+  // `u` = LS_UNLOCK (hash accepté), `k` = LS_UNLOCK_KIOSQUE (mémoire instance).
+  // On les pose SÉPARÉMENT : le cas « accès communautaire hérité » a un `u` mais
+  // pas de `k`, ce que l'ancien helper (u = k) ne pouvait pas exprimer.
+  const jouer = (u, k, publie, repondu) => {
+    const store = {};
+    if (u !== undefined) store.u = u;
+    if (k !== undefined) store.k = k;
     const sb = {
+      HASH_VALIDE: VRAI,
       LS_UNLOCK: "u", LS_UNLOCK_KIOSQUE: "k",
       RE_HASH: /^[0-9a-f]{64}$/,
       console: { log: function () {} },
       localStorage: {
-        getItem: function (k) { return k in store ? store[k] : null; },
-        removeItem: function (k) { delete store[k]; }
+        getItem: function (kk) { return kk in store ? store[kk] : null; },
+        removeItem: function (kk) { delete store[kk]; },
+        setItem: function (kk, vv) { store[kk] = vv; }
       }
     };
     vm.runInNewContext(code + "; revaliderInstance(" + JSON.stringify(publie) +
       ", " + (repondu === false ? "false" : "true") + ");",
       sb, { filename: "gate.revalider.js" });
-    return { garde: store.k === memo, deverrouille: store.u === memo };
+    return store;   // ce qu'il reste après revalidation
   };
 
   if (code) {
-    const inchange = jouer(KIOSK, KIOSK, true);
-    t("🔑 hash inchangé : rien n'est touché", inchange.garde && inchange.deverrouille);
+    // — l'utilisateur d'instance, hash inchangé : on ne le déloge pas —
+    const inchange = jouer(KIOSK, KIOSK, KIOSK, true);
+    t("🔑 hash d'instance inchangé : accès conservé", inchange.u === KIOSK);
 
-    const change = jouer(KIOSK, "c".repeat(64), true);
-    t("🔑 hash changé : la mémoire est effacée (ressaisie au prochain démarrage)",
-      !change.garde && !change.deverrouille);
+    // — le déployeur a changé son mot de passe : ressaisie —
+    const change = jouer(KIOSK, KIOSK, "c".repeat(64), true);
+    t("🔑 hash d'instance changé : accès révoqué", change.u === undefined && change.k === undefined);
 
-    const retireParLeDeployeur = jouer(KIOSK, null, true);
-    t("🔑 index répondu SANS accessHash : le déployeur l'a retiré, on reverrouille",
-      !retireParLeDeployeur.garde);
+    // 🩸 LE TROU QUE KARMA A POINTÉ, CÔTÉ ÉTAT STOCKÉ. Un utilisateur entré avec
+    // le CODE COMMUNAUTAIRE quand l'instance était ouverte, puis l'instance pose
+    // son mot de passe. Sans révocation, son accès communautaire hérité
+    // rouvrirait l'instance — exactement ce que le refus au submit ferme.
+    const herite = jouer(VRAI /* code communautaire */, undefined /* aucune mémoire instance */, KIOSK, true);
+    t("🩸 accès COMMUNAUTAIRE hérité + l'instance pose un mot de passe → RÉVOQUÉ",
+      herite.u === undefined);
 
-    // 🩸 LE CAS QUI COMPTE, ET QUE CE GARDE-FOU A TROUVÉ. `null` veut dire DEUX
-    // choses incompatibles : « le déployeur a retiré le mot de passe » et
-    // « l'index est injoignable ». La première version ne pouvait pas les
-    // distinguer et effaçait dans les deux cas : une coupure réseau
-    // reverrouillait l'app. La sûreté reposait sur la discipline d'un site
-    // d'appel situé à 1800 lignes de là — elle est maintenant DANS LA SIGNATURE.
-    const horsLigne = jouer(KIOSK, null, false);
+    // — l'instance RETIRE son mot de passe : l'accès instance ne vaut plus —
+    const retireAccesInstance = jouer(KIOSK, KIOSK, null, true);
+    t("🔑 mot de passe d'instance retiré : l'accès qui en venait est révoqué",
+      retireAccesInstance.u === undefined && retireAccesInstance.k === undefined);
+
+    // — app communautaire pure (jamais d'accessHash) : on ne touche à rien —
+    const communautairePur = jouer(VRAI, undefined, null, true);
+    t("app communautaire pure : l'accès communautaire est conservé", communautairePur.u === VRAI);
+
+    // 🩸 HORS-LIGNE : `null` veut dire DEUX choses — « retiré » et
+    // « injoignable ». La distinction est dans la SIGNATURE (indexRepondu).
+    // Index injoignable → on n'efface RIEN, sinon une coupure réseau
+    // reverrouille l'app.
+    const horsLigne = jouer(KIOSK, KIOSK, null, false);
     t("🩸 INDEX INJOIGNABLE : on n'efface RIEN (sinon une coupure réseau reverrouille l'app)",
-      horsLigne.garde && horsLigne.deverrouille);
+      horsLigne.u === KIOSK && horsLigne.k === KIOSK);
     t("🩸 …et la distinction est DANS LA SIGNATURE, pas dans la discipline de l'appelant",
       /function revaliderInstance\(hashPublie, indexRepondu\)/.test(GATE) &&
       /if \(indexRepondu !== true\) return;/.test(GATE));
 
-    const vide = jouer(null, KIOSK, true);
-    t("aucune mémoire d'instance : rien à faire, aucun plantage", vide.garde);
+    // — rien de stocké : aucun plantage —
+    const vide = jouer(undefined, undefined, KIOSK, true);
+    t("aucun état stocké : rien à faire, aucun plantage", vide.u === undefined);
   }
 }
 
@@ -150,16 +174,46 @@ const KIOSK = "b".repeat(64);         // hash d'instance
     /idx\.config \? idx\.config\.accessHash : null/.test(GATE));
 }
 
-// ═════════ 4. AUCUNE REQUÊTE POUR QUI EST DÉJÀ ENTRÉ ═════════
-// 🩸 La gate s'ouvre à la première installation ou après un reset. Aller
-// chercher l'index à chaque démarrage, pour tout le monde, coûterait une
-// requête à des gens que ça ne concerne pas.
+// ═════════ 4. 🔒 LE HASH D'INSTANCE EST EXCLUSIF — EXÉCUTÉ ═════════
+// 🩸 LE TROU (KARMA) : la première version acceptait le code communautaire EN
+// PLUS du mot de passe d'instance. Or le code communautaire est distribué
+// largement (il ouvre la prod qui n'héberge rien) : quiconque le connaît aurait
+// ouvert n'importe quelle instance privée, et l'accessHash n'aurait rien
+// protégé. Quand une instance publie un hash valide, il doit être le SEUL.
+// On extrait la décision du vrai `_onSubmit` et on la joue sur les quatre cas.
 {
-  const iSubmit = GATE.indexOf("async function _onSubmit(");
-  const iAppel  = GATE.indexOf("hashInstance = await _hashInstance();");
-  t("l'index n'est demandé que depuis la saisie de la gate", iAppel > iSubmit && iSubmit > 0);
-  t("🩸 …et SEULEMENT si le code communautaire a échoué (chemin nominal : zéro requête)",
-    /if \(hashed !== HASH_VALIDE\) hashInstance = await _hashInstance\(\);/.test(GATE));
+  // Le cœur de la décision : de `const hashInstance = …` jusqu'aux deux lignes
+  // okInstance / okCommunaute. On le rend SYNCHRONE — `_hashInstance` stubé
+  // renvoie la valeur directement et l'`await` est retiré — pour jouer les
+  // quatre cas sans tordre tout le garde-fou en async.
+  const m = GATE.match(/const hashInstance = await _hashInstance\(\);[\s\S]*?const okCommunaute = \(![^\n]*\);/);
+  t("la décision de déverrouillage est extractible", !!m);
+  if (m) {
+    const frag = m[0].replace("await _hashInstance()", "_hashInstance()");
+    const jouer = (hashInstance, hashed) => {
+      const sb = { HASH_VALIDE: VRAI, _hashInstance: function () { return hashInstance; }, hashed: hashed };
+      return vm.runInNewContext("(function(){ " + frag + " return (okCommunaute || okInstance); })()",
+        sb, { filename: "gate.decision.js" });
+    };
+    t("🔑 instance : SON mot de passe ouvre", jouer(KIOSK, KIOSK) === true);
+    t("🩸 instance : le code communautaire est REFUSÉ (LE TROU FERMÉ)", jouer(KIOSK, VRAI) === false);
+    t("app communautaire (pas d'accessHash) : le code communautaire ouvre", jouer(null, VRAI) === true);
+    t("app communautaire : un autre mot de passe est refusé", jouer(null, KIOSK) === false);
+    t("instance : un mot de passe quelconque est refusé", jouer(KIOSK, "d".repeat(64)) === false);
+  }
+}
+
+// ═════════ 4b. L'INDEX EST DEMANDÉ À CHAQUE TENTATIVE (il le FAUT) ═════════
+// 🩸 On ne peut plus « sauter » la requête quand la saisie égale le hash
+// communautaire : elle doit justement être refusée si l'instance impose le
+// sien. Donc l'index est demandé à chaque submit — la gate étant rare, c'est
+// négligeable, et le SW sert l'index en cache hors-ligne.
+{
+  t("🔒 l'index est demandé INCONDITIONNELLEMENT au submit (plus de court-circuit sur HASH_VALIDE)",
+    /const hashInstance = await _hashInstance\(\);/.test(GATE) &&
+    !/if \(hashed !== HASH_VALIDE\) hashInstance = await _hashInstance\(\);/.test(GATE));
+  t("🩸 le code communautaire n'ouvre QUE sans hash d'instance",
+    /const okCommunaute = \(!hashInstance && hashed === HASH_VALIDE\);/.test(GATE));
 }
 
 // ═════════ 5. LE SUCCÈS MÉMORISE CE QU'IL FAUT ═════════

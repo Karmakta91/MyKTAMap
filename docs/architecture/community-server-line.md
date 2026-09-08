@@ -85,9 +85,13 @@ photos restent locales et exportables).
   chaque nom. Les liaisons d'un index repris sont **reposées telles quelles** tant
   qu'aucune liaison locale n'est sélectionnée — sur une machine sans registre, un index
   rechargé pour corriger un tag serait redescendu SANS ses liaisons.
-- **Mot de passe d'instance (v1.90.6) — DEUX portes, aucune ne remplace l'autre** :
-  `config.accessHash` (SHA-256, validé `/^[0-9a-f]{64}$/` avant tout usage) ouvre la gate au même titre
-  que `HASH_VALIDE` hardcodé. 🔒 **Le niveau de sécurité ne change pas** : le hash est dans un fichier
+- **Mot de passe d'instance (v1.90.6, EXCLUSIF depuis v1.90.7)** :
+  `config.accessHash` (SHA-256, validé `/^[0-9a-f]{64}$/` avant tout usage), **quand il est publié, est le
+  SEUL qui ouvre** — le `HASH_VALIDE` communautaire ne vaut plus que sur une app sans `accessHash`.
+  🩸 La v1.90.6 acceptait les DEUX (either/or) : trou signalé par KARMA, le code communautaire étant
+  distribué largement, il aurait ouvert n'importe quelle instance privée. Enforcement en DEUX points —
+  refus au submit (`okCommunaute = !hashInstance && …`), et révocation au boot (`revaliderInstance` retire
+  un accès communautaire hérité dès que l'instance publie un hash). 🔒 **Le niveau de sécurité ne change pas** : le hash est dans un fichier
   **public**, brute-forçable hors ligne — exactement comme le hash communautaire, lisible sur GitHub.
   Barrière sociale, jamais une authentification, et le dire fait partie du contrat.
   - 🩸 **`isUnlocked()` ne peut PAS se contenter de comparer le stocké au hash publié** : sur un navigateur

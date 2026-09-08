@@ -1,8 +1,11 @@
 # Architecture MyKTAMap — Sécurité : gates, PIN, audit réseau, légal, licence
 
-> 🔑 **v1.90.6 — DEUX mots de passe ouvrent la gate.** Celui de la communauté (`HASH_VALIDE`, hardcodé,
-> inchangé) et, si l'instance en publie un, `data/index.json > config.accessHash`. Aucun ne remplace l'autre :
-> un club distribue le sien sans transmettre celui de l'auteur.
+> 🔑 **v1.90.6 (EXCLUSIF depuis v1.90.7) — le mot de passe d'instance, quand il existe, est le SEUL.**
+> `data/index.json > config.accessHash` ouvre la gate ; **tant qu'il est publié, le code communautaire
+> (`HASH_VALIDE`) n'ouvre plus cette instance.** 🩸 La v1.90.6 acceptait les deux — trou signalé par KARMA :
+> le code communautaire est distribué largement (il ouvre la prod qui n'héberge rien), il aurait donc ouvert
+> toute instance privée. Le refus est appliqué au submit ET au boot (révocation d'un accès communautaire
+> hérité). Un club distribue le sien ; le code de l'auteur n'entre pas.
 >
 > 🔒 **Le niveau de sécurité est IDENTIQUE, et il est faible — c'est assumé et écrit partout.** Le hash
 > d'instance vit dans un fichier public ; le hash communautaire est sur GitHub. Les deux se brute-forcent hors

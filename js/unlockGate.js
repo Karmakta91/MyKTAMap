@@ -138,15 +138,39 @@
     // le DIT. Sans ce parametre, la sureté reposait sur la discipline d un site
     // d appel situe a 1800 lignes de la -- et un futur appel de bonne foi
     // reverrouillerait l app a la premiere coupure reseau.
-    if (indexRepondu !== true) return;
+    if (indexRepondu !== true) return;   // hors-ligne / index absent : on ne touche à rien
     try {
-      const memo = localStorage.getItem(LS_UNLOCK_KIOSQUE);
-      if (!memo) return;
       const propre = (typeof hashPublie === "string") ? hashPublie.trim().toLowerCase() : null;
-      if (propre && RE_HASH.test(propre) && propre === memo) return;   // inchangé
-      localStorage.removeItem(LS_UNLOCK_KIOSQUE);
-      if (localStorage.getItem(LS_UNLOCK) === memo) localStorage.removeItem(LS_UNLOCK);
-      console.log("[UnlockGate] mot de passe d'instance changé ou retiré — ressaisie au prochain démarrage");
+      const valide = !!(propre && RE_HASH.test(propre));
+      const v = localStorage.getItem(LS_UNLOCK);
+      if (!v) return;   // pas déverrouillé : rien à révoquer
+
+      if (valide) {
+        // 🔒 L'instance impose un mot de passe : le SEUL accès valable est le
+        // sien. Tout autre déverrouillage mémorisé — le code communautaire
+        // « hérité » d'avant que l'instance ne pose son mot de passe, ou un
+        // ancien mot de passe d'instance — est RÉVOQUÉ. Sans ça, un accès
+        // communautaire acquis quand l'instance était ouverte y survivrait,
+        // rouvrant exactement le trou que le refus au submit vient de fermer.
+        if (v !== propre) {
+          localStorage.removeItem(LS_UNLOCK);
+          localStorage.removeItem(LS_UNLOCK_KIOSQUE);
+          console.log("[UnlockGate] accès révoqué : cette instance impose son propre mot de passe — ressaisie au prochain démarrage");
+        } else {
+          localStorage.setItem(LS_UNLOCK_KIOSQUE, propre);   // mémoire alignée sur l'accès en cours
+        }
+      } else {
+        // Pas (ou plus) de mot de passe d'instance : seul le code communautaire
+        // vaut désormais. Un accès entré via un mot de passe d'instance (mémoire
+        // présente) est révoqué — retirer le mot de passe ne doit pas laisser un
+        // accès dont le hash n'est plus le code communautaire.
+        const memo = localStorage.getItem(LS_UNLOCK_KIOSQUE);
+        if (memo) {
+          localStorage.removeItem(LS_UNLOCK_KIOSQUE);
+          if (v === memo && v !== HASH_VALIDE) localStorage.removeItem(LS_UNLOCK);
+          console.log("[UnlockGate] mot de passe d'instance retiré — ressaisie au prochain démarrage");
+        }
+      }
     } catch(e) {}
   }
 
@@ -327,13 +351,23 @@
       return;
     }
 
-    // 🔑 v1.90.6 — Le mot de passe de l'instance ouvre aussi, sans remplacer
-    // celui de la communauté. On ne demande l'index QU'EN CAS D'ÉCHEC du
-    // premier test : le chemin nominal ne coûte aucune requête.
-    let hashInstance = null;
-    if (hashed !== HASH_VALIDE) hashInstance = await _hashInstance();
-    const okCommunaute = (hashed === HASH_VALIDE);
+    // 🔑 v1.90.6 — QUAND UNE INSTANCE PUBLIE SON MOT DE PASSE, IL EST LE SEUL
+    // QUI OUVRE. 🩸 TROU DE SÉCURITÉ CORRIGÉ (KARMA) : la première version
+    // acceptait AUSSI le code communautaire. Or ce code est distribué
+    // largement — il ouvre la prod qui n'héberge rien. Quiconque le connaît
+    // aurait donc pu ouvrir n'importe quelle instance privée, et l'`accessHash`
+    // n'aurait rien protégé. Le code communautaire ne vaut plus que là où
+    // AUCUN mot de passe d'instance n'est publié.
+    //
+    // ⚠️ ON DEMANDE DONC L'INDEX À CHAQUE TENTATIVE : même une saisie qui égale
+    // le hash communautaire doit être REFUSÉE si l'instance impose le sien. La
+    // gate ne s'ouvre qu'à la 1ʳᵉ installation et après un reset — une requête
+    // y est négligeable. Hors-ligne, le Service Worker sert l'index en cache
+    // (network-first), donc le hash d'instance reste connu.
+    const hashInstance = await _hashInstance();
     const okInstance   = !!(hashInstance && hashed === hashInstance);
+    // Le code communautaire n'ouvre QUE si l'instance n'impose PAS le sien.
+    const okCommunaute = (!hashInstance && hashed === HASH_VALIDE);
 
     if (okCommunaute || okInstance) {
       // ✅ Succès

@@ -1,7 +1,7 @@
 {
-  "version": "v1.90.6",
+  "version": "v1.90.7",
   "released": "2026-09-08",
   "notes": [
-    "🔑 Une instance auto-hébergée peut définir son propre mot de passe d'accès. Ses visiteurs ouvrent alors l'app avec celui-ci ou avec le code communautaire — l'un n'empêche pas l'autre."
+    "🔒 Sur une installation qui définit son propre mot de passe d'accès, seul ce mot de passe ouvre l'application. Le code communautaire ne débloque plus une installation protégée."
   ]
 }
