@@ -1,7 +1,7 @@
 {
-  "version": "v1.90.10",
+  "version": "v1.90.11",
   "released": "2026-09-08",
   "notes": [
-    "🗺️ Dans la Vue OSM d'un plan multi-niveaux, un niveau actif (par exemple -1) pouvait ne pas s'afficher à l'ouverture — il fallait le décocher puis le recocher. Corrigé : tous les niveaux actifs apparaissent dès l'ouverture."
+    "🗺️ Après avoir chargé un nouveau plan et être revenu à l'accueil, sa Vue OSM fonctionne maintenant tout de suite — plus besoin de redémarrer l'application."
   ]
 }

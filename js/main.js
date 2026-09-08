@@ -1523,6 +1523,21 @@ function afficherLoader() {
   if (typeof window.refreshPlansList === "function") {
     window.refreshPlansList();
   }
+
+  // 🗺️ v1.90.11 (bug KARMA) — RAFRAÎCHIR AUSSI LE WIDGET OSM DE L'ACCUEIL.
+  // Symptôme : charger un NOUVEAU plan, y entrer, revenir au home → sa Vue OSM
+  // ne marchait pas depuis l'accueil tant qu'on n'avait pas redémarré l'app.
+  // Cause : le widget calcule sa liste de plans géoréférencés au `mount()`,
+  // qui ne tournait qu'au boot / au changement de langue / d'opt-in — JAMAIS au
+  // retour home. La géoref du plan est pourtant persistée dès son chargement
+  // (`_propagerGeorefVersKmzExport` → KmzExport.setCalibration), donc un simple
+  // re-mount la fait apparaître. Le commentaire du widget (« invalidé au mount,
+  // retour HOME = … ») supposait déjà ce câblage : il manquait.
+  if (window.OsmHomePreview && typeof window.OsmHomePreview.refresh === "function") {
+    try { window.OsmHomePreview.refresh(); } catch (e) {
+      console.warn("[Main] OsmHomePreview.refresh au retour home :", e);
+    }
+  }
 }
 
 // =========================

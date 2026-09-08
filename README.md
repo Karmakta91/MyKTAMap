@@ -12,8 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.90.10` (08/09/2026)
+## 📦 Version courante — `v1.90.11` (08/09/2026)
 
+> 🗺️ **v1.90.11 — La Vue OSM d'un plan tout juste chargé ne marchait qu'après un redémarrage** : bug KARMA — *« si je charge un nouveau plan, j'entre dedans, retour home ; pour que son OSM fonctionne depuis le home je dois restart l'appli complètement »*. 🩸 *Le widget OSM de l'accueil calcule sa liste de plans géoréférencés au `mount()`, qui ne tournait qu'au boot, au changement de langue ou d'opt-in — **jamais au retour à l'accueil**. La géoref du plan est pourtant persistée dès son chargement, donc un simple re-mount suffit. Un commentaire du widget supposait déjà ce câblage (« invalidé au mount, retour HOME = … ») : il manquait.* `afficherLoader()` appelle désormais `OsmHomePreview.refresh()`. Assertion + 1 sabotage, 1 rouge.
+>
 > 🗺️ **v1.90.10 — Un niveau actif manquait à l'ouverture de la Vue OSM** : bug KARMA — *« sur certain plan, à l'ouverture je ne vois pas le niveau -1 malgré qu'il est actif, obligé de couper et rallumer pour qu'il apparaisse »*. 🩸 *Bug d'**ordre**, pas de théorie : dans `osmView.js`, `_initVisibleLevels()` vivait à l'étape 9, mais les POI (6) et les tracés/itinéraire (8) étaient rendus **avant** — ils filtraient donc sur le `_visibleLevels` **hérité de la modale précédente** (état module, persistant). S'il ne contenait pas -1, ses POI et tracés étaient coupés ; zones et structures, rendues après l'init, s'affichaient — d'où « certain plan ». L'init est remontée avant le 1ᵉʳ rendu.* Une **assertion d'ordre** rougit si on la redescend. 1 sabotage, 1 rouge.
 >
 > 🔒 **v1.90.9 — Même une licence pro SERVEUR ne contourne plus le mot de passe d'instance** : question de KARMA — *« et donc si j'ai un fichier licence-pro.json sur le serveur ça bypass tout ? »*. **Oui, ça bypassait tout** — et c'était le trou. La v1.90.8 avait laissé la source `"server"` passer (sur ma reco), mais ce `/Licence-pro.json` est fetché pour **tous** les visiteurs : dès qu'il était là, le `accessHash` était **muet**, tout le monde entrait. 🩸 *Corrigé : quand une instance publie un mot de passe, `main.js` refuse le bypass **quelle que soit la source** — le mot de passe est l'accès, la licence n'accorde que le mode pro (après la saisie). Une instance SANS mot de passe laisse toujours la licence serveur bypasser (rien à garder).* 🍖 *J'avais recommandé de garder l'exception serveur en v1.90.8 ; c'était une erreur de ma part, KARMA l'a vue.* **Garde-fou** : matrice source × protection exécutée, dont « serveur + protégé → refusé ». 3 sabotages, 3 rouges.
@@ -552,6 +554,14 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.90.11 (08/09/2026) — La Vue OSM d'un plan tout juste chargé ne marchait qu'après un redémarrage
+
+- 🗺️ **Le bug (KARMA)** : *« si je charge un nouveau plan, j'entre dedans et retour home ; pour que son OSM fonctionne depuis le home je dois restart l'appli complètement »*.
+- 🩸 **Cause : un rafraîchissement jamais câblé.** Le widget OSM de l'accueil (`osmHomePreview.js`) calcule sa liste de plans géoréférencés dans `mount()`. `mount()` ne tournait qu'au boot, au changement de langue et à l'opt-in OSM — **aucun caller externe**, et surtout pas au retour à l'accueil. Un plan tout juste chargé n'entrait donc dans la liste qu'au redémarrage suivant.
+- ✅ **La donnée était déjà prête.** La géoref d'un plan est persistée dès son chargement (`_propagerGeorefVersKmzExport` → `KmzExport.setCalibration`, localStorage) — c'est bien pour ça qu'un redémarrage suffisait à la faire apparaître. Il ne manquait que le re-mount.
+- 🎯 **Le fix** : `afficherLoader()` (le retour à l'accueil) appelle désormais `OsmHomePreview.refresh()`, après `refreshPlansList()`. 🍖 *Le commentaire du widget disait déjà « cache invalidé au mount(), retour HOME = … » : l'auteur croyait le câblage en place, il ne l'était pas.*
+- 🧪 **Assertion** dans `check-osm-outils.js` : `afficherLoader()` doit appeler `OsmHomePreview.refresh()`. Le retirer rougit. 1 sabotage, 1 rouge.
 
 #### v1.90.10 (08/09/2026) — Un niveau actif manquait à l'ouverture de la Vue OSM
 

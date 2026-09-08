@@ -146,6 +146,20 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
       iStep6 > 0 && iInit > 0 && iInit < iStep6);
   }
 
+  // 🗺️ v1.90.11 (bug KARMA) — LE WIDGET OSM DE L'ACCUEIL SE RAFRAÎCHIT AU RETOUR
+  // HOME. Sans ça, un plan tout juste chargé (donc géoréférencé) n'apparaissait
+  // dans sa Vue OSM qu'après un redémarrage complet de l'app.
+  {
+    const MAIN = fs.readFileSync("js/main.js", "utf8");
+    const iAff = MAIN.indexOf("function afficherLoader()");
+    const iEnd = iAff >= 0 ? MAIN.indexOf("\n}", iAff) : -1;
+    const corps = iAff >= 0 && iEnd > iAff ? MAIN.slice(iAff, iEnd) : "";
+    t("🗺️ retour home : afficherLoader() rafraîchit le widget OSM",
+      /OsmHomePreview\.refresh\(\)/.test(corps));
+    t("🗺️ …et le widget expose bien refresh()",
+      /refresh:\s*refresh/.test(HOME) || /\brefresh\b[\s\S]{0,40}mount/.test(HOME));
+  }
+
   // 📌 Le bandeau se cale sur LE CONTENEUR DE LA CARTE, pas sur la fenetre :
   // en mode plan la barre d outils occupe le haut de la fenetre, un `top`
   // fixe recouvrirait ses boutons.
