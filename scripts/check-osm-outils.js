@@ -155,7 +155,13 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
     const iEnd = iAff >= 0 ? MAIN.indexOf("\n}", iAff) : -1;
     const corps = iAff >= 0 && iEnd > iAff ? MAIN.slice(iAff, iEnd) : "";
     t("🗺️ retour home : afficherLoader() rafraîchit le widget OSM",
-      /OsmHomePreview\.refresh\(\)/.test(corps));
+      /OsmHomePreview\.refresh\(/.test(corps));
+    // 🗺️ v1.90.12 — …en préférant le plan qu'on vient de quitter.
+    t("🗺️ retour home : le widget OSM s'ouvre sur le plan QUITTÉ (_currentLoadedPlanId)",
+      /OsmHomePreview\.refresh\(window\._currentLoadedPlanId/.test(corps));
+    t("🗺️ …et mount() honore ce plan préféré s'il est géoréférencé",
+      /preferId && plans\.find\(function\(p\) \{ return p\.id === preferId; \}\)/.test(HOME) &&
+      /if \(preferId && initialId === preferId\) _setLastSelected\(preferId\)/.test(HOME));
     t("🗺️ …et le widget expose bien refresh()",
       /refresh:\s*refresh/.test(HOME) || /\brefresh\b[\s\S]{0,40}mount/.test(HOME));
   }

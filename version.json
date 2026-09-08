@@ -1,7 +1,7 @@
 {
-  "version": "v1.90.11",
+  "version": "v1.90.12",
   "released": "2026-09-08",
   "notes": [
-    "🗺️ Après avoir chargé un nouveau plan et être revenu à l'accueil, sa Vue OSM fonctionne maintenant tout de suite — plus besoin de redémarrer l'application."
+    "🗺️ Au retour à l'accueil, la Vue OSM s'ouvre maintenant sur le plan que tu viens de quitter, plutôt que sur un autre."
   ]
 }

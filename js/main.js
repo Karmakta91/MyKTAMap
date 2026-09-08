@@ -1533,8 +1533,12 @@ function afficherLoader() {
   // (`_propagerGeorefVersKmzExport` → KmzExport.setCalibration), donc un simple
   // re-mount la fait apparaître. Le commentaire du widget (« invalidé au mount,
   // retour HOME = … ») supposait déjà ce câblage : il manquait.
+  // 🗺️ v1.90.12 — …et il s'ouvre sur LE PLAN QU'ON VIENT DE QUITTER (demande
+  // KARMA). `_currentLoadedPlanId` tient encore l'id à ce point (il n'est jamais
+  // remis à null au retour home). S'il n'est pas géoréférencé, le widget retombe
+  // proprement sur sa sélection précédente puis le 1ᵉʳ plan.
   if (window.OsmHomePreview && typeof window.OsmHomePreview.refresh === "function") {
-    try { window.OsmHomePreview.refresh(); } catch (e) {
+    try { window.OsmHomePreview.refresh(window._currentLoadedPlanId || null); } catch (e) {
       console.warn("[Main] OsmHomePreview.refresh au retour home :", e);
     }
   }

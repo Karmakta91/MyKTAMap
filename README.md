@@ -12,8 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.90.11` (08/09/2026)
+## 📦 Version courante — `v1.90.12` (08/09/2026)
 
+> 🗺️ **v1.90.12 — Au retour à l'accueil, la Vue OSM s'ouvre sur le plan qu'on vient de quitter** : demande KARMA dans la foulée de la v1.90.11. Le widget s'ouvrait sur sa **dernière sélection** (une clé qui lui est propre), pas sur le plan qu'on venait de fermer. `afficherLoader()` passe désormais `_currentLoadedPlanId` à `refresh(preferId)`, et `mount()` l'affiche en priorité s'il est géoréférencé (sinon repli propre), en le gravant comme sélection courante. 🍖 *Piège évité : le câblage `Promise.resolve(ready).then(mount)` passe la valeur résolue de la promesse en 1ᵉʳ argument — `mount` filtre donc `preferId` sur `typeof === "string"`, sinon cette valeur aurait été prise pour un planId.* Assertions + 2 sabotages, 2 rouges.
+>
 > 🗺️ **v1.90.11 — La Vue OSM d'un plan tout juste chargé ne marchait qu'après un redémarrage** : bug KARMA — *« si je charge un nouveau plan, j'entre dedans, retour home ; pour que son OSM fonctionne depuis le home je dois restart l'appli complètement »*. 🩸 *Le widget OSM de l'accueil calcule sa liste de plans géoréférencés au `mount()`, qui ne tournait qu'au boot, au changement de langue ou d'opt-in — **jamais au retour à l'accueil**. La géoref du plan est pourtant persistée dès son chargement, donc un simple re-mount suffit. Un commentaire du widget supposait déjà ce câblage (« invalidé au mount, retour HOME = … ») : il manquait.* `afficherLoader()` appelle désormais `OsmHomePreview.refresh()`. Assertion + 1 sabotage, 1 rouge.
 >
 > 🗺️ **v1.90.10 — Un niveau actif manquait à l'ouverture de la Vue OSM** : bug KARMA — *« sur certain plan, à l'ouverture je ne vois pas le niveau -1 malgré qu'il est actif, obligé de couper et rallumer pour qu'il apparaisse »*. 🩸 *Bug d'**ordre**, pas de théorie : dans `osmView.js`, `_initVisibleLevels()` vivait à l'étape 9, mais les POI (6) et les tracés/itinéraire (8) étaient rendus **avant** — ils filtraient donc sur le `_visibleLevels` **hérité de la modale précédente** (état module, persistant). S'il ne contenait pas -1, ses POI et tracés étaient coupés ; zones et structures, rendues après l'init, s'affichaient — d'où « certain plan ». L'init est remontée avant le 1ᵉʳ rendu.* Une **assertion d'ordre** rougit si on la redescend. 1 sabotage, 1 rouge.
@@ -554,6 +556,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.90.12 (08/09/2026) — Au retour à l'accueil, la Vue OSM s'ouvre sur le plan qu'on vient de quitter
+
+- 🗺️ **La demande (KARMA)** : *« au retour sur home, le plan chargé dans la Vue OSM doit être celui qu'on vient de quitter »*. Le widget s'ouvrait sur sa **dernière sélection interne** (`myktamap_osm_home_last_selected_plan`), pas sur le plan fermé.
+- 🎯 **Le fix** : `afficherLoader()` passe `window._currentLoadedPlanId` (jamais remis à null au retour home) à `OsmHomePreview.refresh(preferId)`. `mount(preferId)` l'affiche en priorité **s'il est géoréférencé** ; sinon il retombe proprement sur la sélection précédente puis le 1ᵉʳ plan de la liste. Le plan quitté devient la **sélection courante** (`_setLastSelected`), donc les re-montages suivants (langue, cache) le gardent.
+- 🍖 **Un piège de signature évité.** `mount` est aussi appelé par `Promise.resolve(ready).then(mount)` : la valeur résolue de la promesse serait passée comme `preferId`. `mount` filtre donc son argument sur `typeof === "string"` avant de s'en servir.
+- 🧪 **Assertions** dans `check-osm-outils.js` (le plan quitté est passé et honoré) ; `check-osm-defaut.js` corrigé pour reconnaître la nouvelle signature `mount(preferId)`. 2 sabotages, 2 rouges.
 
 #### v1.90.11 (08/09/2026) — La Vue OSM d'un plan tout juste chargé ne marchait qu'après un redémarrage
 

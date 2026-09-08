@@ -261,7 +261,8 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
 // MASQUE la colonne entière — il n'y a nulle part où l'afficher, et rien à
 // annoncer à quelqu'un qui a refusé.
 {
-  const iM = HOME.indexOf("function mount() {");
+  // 🩸 `function mount(` avec ou sans paramètre (v1.90.12 : mount(preferId)).
+  const iM = HOME.search(/function mount\s*\([^)]*\)\s*\{/);
   let fin = iM, prof = 0;
   for (let i = HOME.indexOf("{", iM); i < HOME.length; i++) {
     if (HOME[i] === "{") prof++;
