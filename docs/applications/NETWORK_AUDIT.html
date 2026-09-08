@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.90.12</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.90.13</strong> (9 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.90.13 (plantage de la Vue OSM au retour à l'accueil — correctif)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif d'un plantage interne : au retour à l'accueil, le widget OSM se reconstruit, et une image de plan qui finissait de charger juste après pouvait provoquer une erreur (<code>Cannot read null</code>) qui bloquait l'affichage. Cause purement interne (une image chargée après la destruction de sa carte) — aucun effet réseau.</p>
   <h3>v1.90.12 (au retour à l'accueil, la Vue OSM s'ouvre sur le plan qu'on vient de quitter)</h3>
   <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Détail d'affichage dans la suite du correctif v1.90.11 : au retour à l'accueil, le widget OSM s'ouvre désormais sur le plan que vous venez de quitter, au lieu de sa sélection précédente. Purement interne.</p>
   <h3>v1.90.11 (la Vue OSM d'un plan tout juste chargé marche sans redémarrer)</h3>

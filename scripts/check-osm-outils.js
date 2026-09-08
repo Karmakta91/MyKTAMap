@@ -164,6 +164,13 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
       /if \(preferId && initialId === preferId\) _setLastSelected\(preferId\)/.test(HOME));
     t("🗺️ …et le widget expose bien refresh()",
       /refresh:\s*refresh/.test(HOME) || /\brefresh\b[\s\S]{0,40}mount/.test(HOME));
+
+    // 🐛 v1.90.13 (crash KARMA) — L'overlay image roté ne doit pas crasher quand
+    // un `img.onload` tardif tape une carte déjà détruite (re-mount du widget).
+    // `_reset` doit court-circuiter si `_map` est null.
+    const ROT = fs.readFileSync("lib/leaflet-imageoverlay-rotated.js", "utf8");
+    t("🐛 rotated overlay : _reset() court-circuite si la carte est détruite (!map)",
+      /_reset: function\(\) \{[\s\S]{0,900}if \(!map \|\| !image \|\| !this\._rawImage\) return;/.test(ROT));
   }
 
   // 📌 Le bandeau se cale sur LE CONTENEUR DE LA CARTE, pas sur la fenetre :

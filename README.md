@@ -12,8 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.90.12` (08/09/2026)
+## 📦 Version courante — `v1.90.13` (09/09/2026)
 
+> 🐛 **v1.90.13 — La v1.90.12 a régressé : plantage de la Vue OSM au retour à l'accueil** : KARMA a collé l'erreur — `Cannot read properties of null (latLngToLayerPoint)` dans `leaflet-imageoverlay-rotated`. 🩸 *Cause racine : le plugin d'image rotée ne gardait pas `_reset()` contre `_map === null`. Un `img.onload` est **asynchrone** : il pouvait se déclencher APRÈS la destruction de la carte (le re-mount du widget appelle `_mapInstance.remove()`, qui met `_map` à null sur les overlays). La course était **latente** ; la v1.90.12, en sélectionnant au retour home un plan dont l'image n'était pas encore en cache, l'a rendue reproductible — d'où « ça marchait en .11, on a régressé ».* Un garde `!map` en tête de `_reset` suffit. Le comportement v1.90.12 (afficher le plan quitté) est **conservé** : c'était le crash le bloqueur, pas la sélection. ⚠️ *Correctif dans un fichier `lib/` — déjà patché localement (override `_animateZoom`, v1.39.6), la pratique est établie.* Assertion + 1 sabotage, 1 rouge.
+>
 > 🗺️ **v1.90.12 — Au retour à l'accueil, la Vue OSM s'ouvre sur le plan qu'on vient de quitter** : demande KARMA dans la foulée de la v1.90.11. Le widget s'ouvrait sur sa **dernière sélection** (une clé qui lui est propre), pas sur le plan qu'on venait de fermer. `afficherLoader()` passe désormais `_currentLoadedPlanId` à `refresh(preferId)`, et `mount()` l'affiche en priorité s'il est géoréférencé (sinon repli propre), en le gravant comme sélection courante. 🍖 *Piège évité : le câblage `Promise.resolve(ready).then(mount)` passe la valeur résolue de la promesse en 1ᵉʳ argument — `mount` filtre donc `preferId` sur `typeof === "string"`, sinon cette valeur aurait été prise pour un planId.* Assertions + 2 sabotages, 2 rouges.
 >
 > 🗺️ **v1.90.11 — La Vue OSM d'un plan tout juste chargé ne marchait qu'après un redémarrage** : bug KARMA — *« si je charge un nouveau plan, j'entre dedans, retour home ; pour que son OSM fonctionne depuis le home je dois restart l'appli complètement »*. 🩸 *Le widget OSM de l'accueil calcule sa liste de plans géoréférencés au `mount()`, qui ne tournait qu'au boot, au changement de langue ou d'opt-in — **jamais au retour à l'accueil**. La géoref du plan est pourtant persistée dès son chargement, donc un simple re-mount suffit. Un commentaire du widget supposait déjà ce câblage (« invalidé au mount, retour HOME = … ») : il manquait.* `afficherLoader()` appelle désormais `OsmHomePreview.refresh()`. Assertion + 1 sabotage, 1 rouge.
@@ -556,6 +558,15 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.90.13 (09/09/2026) — Plantage de la Vue OSM au retour à l'accueil (régression v1.90.12)
+
+- 🐛 **L'erreur, collée par KARMA** : `Cannot read properties of null (reading 'latLngToLayerPoint')` à `leaflet-imageoverlay-rotated.js:117` (`_reset`), déclenchée par un `HTMLImageElement.onload` (ligne 78).
+- 🩸 **Cause racine** : `_reset()` gardait `if (!image || !this._rawImage) return;` mais **pas** `!map`. L'`img.onload` est asynchrone : il peut se déclencher APRÈS que la carte a été détruite. Le widget OSM de l'accueil se reconstruit au retour home (`_mapInstance.remove()`), ce qui met `_map` à null sur les overlays encore vivants. Une image de plan finissant de charger juste après appelait alors `map.latLngToLayerPoint` sur `null`.
+- 🎯 **Pourquoi « ça marchait en .11 »** : la course était **latente**. En .11, le widget rouvrait sur sa dernière sélection — souvent un plan dont l'image était déjà en cache (chargement instantané, pas d'onload tardif). La v1.90.12 sélectionne le plan qu'on vient de quitter : si son image n'était pas encore en cache dans le widget, elle charge lentement → pending pendant le re-mount → crash reproductible.
+- 🔨 **Le fix** : `if (!map || !image || !this._rawImage) return;` en tête de `_reset`. Une image dont la carte a disparu ne fait plus rien. Le comportement v1.90.12 (afficher le plan quitté) est **conservé** — le crash était le bloqueur, pas la logique de sélection (l'id du plan quitté matche bien la liste des plans géoréférencés, vérifié).
+- ⚠️ **Correctif dans `lib/`**, hors du périmètre habituel (`js`/`css`/`index.html`/`sw.js`) — mais ce plugin est **déjà patché localement** (override `_animateZoom`, v1.39.6), la pratique est établie et le garde est ce qu'un mainteneur ferait.
+- 🧪 **Assertion** dans `check-osm-outils.js` : `_reset` doit garder `!map`. Le retirer rougit. 1 sabotage, 1 rouge.
 
 #### v1.90.12 (08/09/2026) — Au retour à l'accueil, la Vue OSM s'ouvre sur le plan qu'on vient de quitter
 
