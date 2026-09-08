@@ -218,6 +218,39 @@ t("🖼️ setLoaderPerfPreset survit en no-op (main.js l'appelle au changement 
     /if \(selTuilage\) \{/.test(HL));
 }
 
+// ───────── 8 bis. 🩸 LA DOC NE DOIT PLUS DÉCRIRE UN CONTRÔLE DISPARU ─────────
+// VÉCU, une heure après le retrait (KARMA, capture de sa propre doc) :
+//   « 🎚️ Découpage de l'image — 2 choix … Juste au-dessus du bouton
+//     ▶️ Charger ce plan, un bandeau 🖼️ Tuilage pour ce chargement : Auto
+//     montre le mode actif … (DEVENU FAUX) »
+// Six passages décrivaient encore un bandeau supprimé, dans deux langues.
+// 🩸 Une doc fausse coûte PLUS cher qu'une doc absente : elle envoie chercher
+// un contrôle qui n'existe pas, et l'utilisateur conclut que l'app est cassée.
+//
+// ⚠️ LIMITE ÉCRITE ET ASSUMÉE — et elle est SÉVÈRE. Ce contrôle ne connaît que
+// les tournures ci-dessous, celles qui ont réellement menti. Une NOUVELLE
+// phrase, tout aussi fausse, lui échapperait. Une première version tentait le
+// contraire — « chaque doc doit nommer le nouvel emplacement » — et j'ai
+// mesuré qu'elle était vraie PAR ACCIDENT : « v1.90.2 » et « ℹ️ Infos »
+// apparaissent ailleurs dans ces mêmes fichiers, donc les 4 sabotages
+// passaient au vert. Une assertion qu'on ne peut pas faire rougir ne protège
+// rien : elle a été retirée plutôt que gardée pour la façade.
+[["docs/applications/README_USER.md",
+  "un bandeau **🖼️ Tuilage pour ce chargement : Auto** montre le mode actif",
+  "doc utilisateur FR"],
+ ["docs/applications/README_USER.en.md",
+  "a strip reading **🖼️ Tiling for this load: Auto** shows the active mode",
+  "doc utilisateur EN"],
+ ["docs/TILING.md",
+  "Le sélecteur vit dans la **carte de chargement**",
+  "référence tuilage"],
+ ["docs/applications/AI_CONTEXT.md",
+  "Le sélecteur de tuilage est REPLIÉ par défaut",
+  "contexte IA"]].forEach(function (r) {
+  t("📄 " + r[2] + " : ne décrit plus le bandeau de l'écran de chargement",
+    fs.readFileSync(r[0], "utf8").indexOf(r[1]) < 0);
+});
+
 t("🖼️ côté plan (⚙️ Réglages), le preset reste en LECTURE SEULE (aucun troisième point)",
   UIC.indexOf("affichage read-only") >= 0 && !/id="cfg_perfPreset"/.test(UIC));
 

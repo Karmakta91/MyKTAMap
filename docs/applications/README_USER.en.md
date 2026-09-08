@@ -522,7 +522,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 2. **🛰️ Sensor-based options** *(since v1.85.2)* — the options that rely on a phone sensor: **🔋 Battery level** and **📳 Haptic vibration**. Each one can be turned off, and an option that is off displays nothing **and stops listening to the sensor**. When the system refuses the sensor — vibration on iPhone, for instance — the option stays **visible but greyed out, with the reason**, instead of vanishing with no explanation.
 
-> 🖼️ **Image tiling is no longer in this modal** *(since v1.85.4)*. It moved down into the **load card**, right above the **▶️ Load this map** button — because it is not a setting: it is **not remembered**, it goes back to **Auto** every time the app starts, and it only applies to the load you are about to trigger (when it is not on Auto, it replaces the preset stored for that map). Filed among the settings, it looked like a lasting preference.
+> 🖼️ **Image tiling is not in this modal** — and since v1.90.2 it is not on the loading screen either. It went through both without ever finding its place: in practice it only concerns maps **not split at generation time**, and on the others it changed nothing. It now lives in the map's **ℹ️ Info** panel, only for the maps it applies to, and it is finally **remembered** there.
 >
 > 🚀 **The Performance ULTRA toggles are gone too** *(since v1.85.3)*. They were displayed here but **saved nothing** — they are **per-map** settings: you set them in **⚙️ Settings**, once the map is open. See "🚀 Optimize your map" below.
 
@@ -555,20 +555,35 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 **Organization**: **everything is grouped in a single ⚙️ Configuration modal**, accessible from the loader header. The 🏗️ Generate a map button remains directly visible in the home (not in the Configuration modal) because it is a creation action, not a setting.
 
-### 🎚️ Image splitting — 2 choices *(since v1.86.0)*
+### 🎚️ Image splitting — the app decides *(since v1.90.2)*
 
-Right above the **▶️ Load this map** button, a strip reading **🖼️ Tiling for this load: Auto** shows the active mode. Click it to expand and change *(collapsed by default since v1.88.1: permanently expanded, it pushed the column over the footer when Windows display scaling is at 125%)*.
+**There is nothing to set here any more.** The *"🖼️ Tiling for this load"* strip that used to sit right above
+the **▶️ Load this map** button **has been removed**: the app automatically splits maps too large to be shown
+in one piece, which is already what it did for nearly all of them.
 
-| Button | What it does |
+> 🩸 **Why it went away.** It only mattered for very large maps **not split at generation time** ("V1"). On an
+> **already-split** map — today's common case, and the recommended method — "Disabled" **changed nothing**: the
+> map always uses its pieces. So it occupied the most visible spot of the loading screen for almost no effect.
+> And it was **not remembered**: it went back to "Auto" at every start — a setting that forgets itself is not a
+> setting.
+
+**Where it went**: into the map's **ℹ️ Info** panel, and **only for the maps it applies to** — if you do not see
+it, your map is already split and the setting would do nothing. There, it is **remembered for that map** and
+applies to every later load.
+
+| Choice | What it does |
 |---|---|
 | 🔄 **Auto** *(default)* | Automatically splits maps too large to be displayed in one piece. **This is the right choice in every case.** |
 | 💤 **Disabled** | No splitting: the whole image at once. Native quality on desktop, but ⚠️ **may crash your phone** on a very large map — a message warns you when it applies. |
 
-> 🩸 **There were 5 buttons before v1.86.0** (🌟 Quality, 🎯 Balanced, ⚡ Performance). They only tuned the splitting done **by the browser at load time**, which only concerns **older** maps. On a map **already split at generation** — today's common case — they changed **absolutely nothing**, while the app still claimed "Sharper. Recommended on desktop PC.". They were removed. An already-split map **always uses its pieces**: that is what makes it both smooth and sharp.
+> 🩸 **There were 5 buttons before v1.86.0** (🌟 Quality, 🎯 Balanced, ⚡ Performance). They only tuned the
+> splitting done **by the browser at load time**, which only concerns **older** maps. On a map **already split
+> at generation**, they changed **absolutely nothing**, while the app still claimed "Sharper. Recommended on
+> desktop PC.". They were removed.
 
-> 🩸 **And "Auto" protected you less than the others, even though it was the default.** It decided on **file weight** (60 MB) while the others decided on **pixel size**. A well-compressed 100-megapixel map weighs ~15 MB: "Auto" did not split it, and the app could crash on iPhone. Fixed: pixel size now decides.
-
-**This choice is not remembered**: it goes back to **Auto** every time the app starts, and only applies to the load you trigger. When it is not on Auto, it replaces the setting stored for that map.
+> 🩸 **And "Auto" protected you less than the others, even though it was the default.** It decided on **file
+> weight** (60 MB) while the others decided on **pixel size**. A well-compressed 100-megapixel map weighs
+> ~15 MB: "Auto" did not split it, and the app could crash on iPhone. Fixed in v1.86.0: pixel size now decides.
 
 ### 🎨 The interface in map mode
 
@@ -3262,7 +3277,11 @@ Each JSON layer of points (`puits.json`, `chatieres.json`, etc.) creates Leaflet
 
 ### 6. ⚡ Image splitting — Auto, unless you have a reason
 
-Right above the **▶️ Load this map** button, two choices *(five before v1.86.0)*:
+⚠️ **Since v1.90.2 this setting is no longer on the loading screen.** It lives in the map's **ℹ️ Info** panel,
+and **only for a map not split at generation time** — on a V2 map it would have no effect, so it is not shown.
+Good news: it is **remembered for that map** there, whereas the old selector went back to Auto at every start.
+
+Two choices *(five before v1.86.0)*:
 
 | Choice | When |
 |---|---|
@@ -3272,7 +3291,7 @@ Right above the **▶️ Load this map** button, two choices *(five before v1.86
 > 🩸 **What changed in v1.86.0, and why.** The 🌟 Quality / 🎯 Balanced / ⚡ Performance presets were **removed**: they only tuned the splitting done by the browser at load time, which only concerns **V1** maps. On a **V2** map — today's common case — they changed **nothing at all**.
 > And "Auto" decided on **file weight**, not pixel size: a well-compressed 100 Mpx map (~15 MB) **was not split** and could crash an iPhone, while "Quality" would have split it. The default was therefore the **least** protective mode. Fixed.
 
-> 💡 The chosen mode is still remembered **per map** by the app. The selector itself is **not**: it returns to Auto at every start and only applies to the load you trigger.
+> 💡 The choice is remembered **per map**: it applies to every later load until you change it. *(Before v1.90.2 the loader's selector was not remembered and went back to Auto at every start.)*
 
 ### 6 bis. 🚀 Performance ULTRA mode — for the really big maps that crash
 

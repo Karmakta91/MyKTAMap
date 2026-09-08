@@ -521,7 +521,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 2. **🛰️ Options via capteur** *(depuis v1.85.2)* — les options qui s'appuient sur un capteur du téléphone : **🔋 Niveau de batterie** et **📳 Vibration haptique**. Chacune se coupe, et une option coupée n'affiche rien **et n'écoute plus le capteur**. Quand le système refuse le capteur — la vibration sur iPhone, par exemple — l'option reste **affichée mais grisée, avec la raison**, plutôt que de disparaître sans explication.
 
-> 🖼️ **Le tuilage de l'image n'est plus dans cette modale** *(depuis v1.85.4)*. Il est descendu dans la **carte de chargement**, juste au-dessus du bouton **▶️ Charger ce plan** — parce que ce n'est pas un réglage : il n'est **pas mémorisé**, il revient sur **Auto** à chaque démarrage de l'app, et il ne vaut que pour le chargement que tu lances (s'il n'est pas sur Auto, il remplace le preset retenu pour ce plan). Rangé parmi les réglages, il passait pour une préférence durable.
+> 🖼️ **Le tuilage de l'image n'est pas dans cette modale** — et il n'est plus non plus sur l'écran de chargement *(depuis v1.90.2)*. Il était passé par les deux, sans jamais trouver sa place : il ne concerne en pratique que les plans **non découpés à la génération**, et sur les autres il ne changeait rien. Il vit désormais dans **ℹ️ Infos** du plan, seulement pour les plans concernés, et il y est enfin **mémorisé**.
 >
 > 🚀 **Les toggles Performance ULTRA non plus** *(depuis v1.85.3)*. Ils s'affichaient ici mais **ne sauvegardaient rien** — ce sont des réglages **par plan** : ils se règlent dans **⚙️ Réglages**, une fois le plan ouvert. Voir « 🚀 Optimiser ton plan » plus bas.
 
@@ -554,20 +554,36 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 **Organisation** : **tout est regroupé dans une seule modale ⚙️ Configuration**, accessible depuis le header du loader. Le bouton 🏗️ Générer un plan reste visible directement dans la home (pas dans la modale Configuration) car c'est une action de création, pas un réglage.
 
-### 🎚️ Découpage de l'image — 2 choix *(depuis v1.86.0)*
+### 🎚️ Découpage de l'image — l'app décide *(depuis v1.90.2)*
 
-Juste au-dessus du bouton **▶️ Charger ce plan**, un bandeau **🖼️ Tuilage pour ce chargement : Auto** montre le mode actif. Clique dessus pour le déplier et changer *(replié par défaut depuis la v1.88.1 : déplié en permanence, il faisait déborder la colonne sur le pied de page quand l'affichage de Windows est à 125 %)*.
+**Il n'y a plus rien à régler ici.** Le bandeau *« 🖼️ Tuilage pour ce chargement »*, qui vivait juste au-dessus
+du bouton **▶️ Charger ce plan**, **a été retiré** : l'app découpe automatiquement les plans trop grands pour
+être affichés d'un bloc, et c'était déjà ce qu'elle faisait pour la quasi-totalité d'entre eux.
 
-| Bouton | Ce qu'il fait |
+> 🩸 **Pourquoi il est parti.** Il ne servait qu'aux plans **non découpés à la génération** (« V1 ») et de très
+> grande taille. Sur un plan **déjà découpé** — le cas courant, et la méthode conseillée — « Désactivé »
+> **ne changeait rien** : le plan utilise toujours ses morceaux. Il occupait donc la place la plus visible de
+> l'écran de chargement pour un effet quasi nul. Et il n'était **pas mémorisé** : il repartait sur « Auto » à
+> chaque démarrage de l'app — un réglage qui s'oublie tout seul n'en est pas un.
+
+**Où il est passé** : dans **ℹ️ Infos** du plan, et **uniquement pour les plans que ça concerne** — s'il
+n'apparaît pas, c'est que votre plan est déjà découpé et que le réglage n'aurait aucun effet. Là, il est
+**mémorisé pour ce plan** et s'applique à tous ses chargements suivants.
+
+| Choix | Ce qu'il fait |
 |---|---|
 | 🔄 **Auto** *(défaut)* | Découpe automatiquement les plans trop grands pour être affichés d'un bloc. **C'est le bon choix dans tous les cas.** |
 | 💤 **Désactivé** | Aucun découpage : l'image entière d'un coup. Qualité native sur PC, mais ⚠️ **peut faire planter le téléphone** sur un très grand plan — un message vous prévient si c'est le cas. |
 
-> 🩸 **Il y avait 5 boutons avant la v1.86.0** (🌟 Qualité, 🎯 Équilibré, ⚡ Performance). Ils ne réglaient que le découpage fait **par le navigateur au chargement**, qui ne concerne que les plans **anciens**. Sur un plan **déjà découpé à la génération** — le cas courant aujourd'hui — ils ne changeaient **strictement rien**, alors que l'app affichait « Plus net. Recommandé sur PC desktop. ». Ils ont été retirés. Un plan déjà découpé **utilise toujours ses morceaux** : c'est ce qui le rend fluide et net à la fois.
+> 🩸 **Il y avait 5 boutons avant la v1.86.0** (🌟 Qualité, 🎯 Équilibré, ⚡ Performance). Ils ne réglaient que
+> le découpage fait **par le navigateur au chargement**, qui ne concerne que les plans **anciens**. Sur un plan
+> **déjà découpé à la génération**, ils ne changeaient **strictement rien**, alors que l'app affichait « Plus
+> net. Recommandé sur PC desktop. ». Ils ont été retirés.
 
-> 🩸 **Et « Auto » protégeait moins bien que les autres, alors que c'était le défaut.** Il se décidait sur le **poids du fichier** (60 Mo) quand les autres se décidaient sur la **taille en pixels**. Un plan de 100 millions de pixels bien compressé pèse ~15 Mo : « Auto » ne le découpait pas, et l'app pouvait planter sur iPhone. Corrigé : c'est désormais la taille en pixels qui décide.
-
-**Ce choix n'est pas mémorisé** : il revient sur **Auto** à chaque démarrage de l'app, et ne vaut que pour le chargement que vous lancez. S'il n'est pas sur Auto, il remplace le réglage retenu pour ce plan.
+> 🩸 **Et « Auto » protégeait moins bien que les autres, alors que c'était le défaut.** Il se décidait sur le
+> **poids du fichier** (60 Mo) quand les autres se décidaient sur la **taille en pixels**. Un plan de 100
+> millions de pixels bien compressé pèse ~15 Mo : « Auto » ne le découpait pas, et l'app pouvait planter sur
+> iPhone. Corrigé en v1.86.0 : c'est désormais la taille en pixels qui décide.
 
 ### 🎨 L'interface en mode carte
 
@@ -3270,7 +3286,12 @@ Chaque calque JSON de points (`puits.json`, `chatieres.json`, etc.) crée des ma
 
 ### 6. ⚡ Découpage de l'image — Auto, sauf raison contraire
 
-Juste au-dessus du bouton **▶️ Charger ce plan**, deux choix *(cinq avant la v1.86.0)* :
+⚠️ **Depuis la v1.90.2, ce réglage n'est plus sur l'écran de chargement.** Il vit dans **ℹ️ Infos** du plan,
+et **seulement pour un plan non découpé à la génération** — sur un plan V2 il n'aurait aucun effet, donc il ne
+s'affiche pas. Bonne nouvelle : il y est **mémorisé pour ce plan**, alors que l'ancien sélecteur repartait sur
+Auto à chaque démarrage.
+
+Deux choix *(cinq avant la v1.86.0)* :
 
 | Choix | Pour quel cas |
 |---|---|
@@ -3280,7 +3301,7 @@ Juste au-dessus du bouton **▶️ Charger ce plan**, deux choix *(cinq avant la
 > 🩸 **Ce qui a changé en v1.86.0, et pourquoi.** Les presets 🌟 Qualité / 🎯 Équilibré / ⚡ Performance ont été **retirés** : ils ne réglaient que le découpage fait par le navigateur au chargement, qui ne concerne que les plans **V1**. Sur un plan **V2** — le cas courant — ils ne changeaient **rien du tout**.
 > Et « Auto » se décidait sur le **poids du fichier**, pas sur la taille en pixels : un plan de 100 Mpx bien compressé (~15 Mo) **n'était pas découpé** et pouvait faire planter l'iPhone, alors que « Qualité » l'aurait découpé. Le défaut était donc le mode le **moins** protecteur. Corrigé.
 
-> 💡 Le choix retenu reste mémorisé **par plan** dans l'app. Le sélecteur, lui, n'est **pas** mémorisé : il revient sur Auto à chaque démarrage et ne s'applique qu'au chargement que tu lances.
+> 💡 Le choix est mémorisé **par plan** : il vaut pour tous ses chargements suivants, jusqu'à ce que tu le changes. *(Avant la v1.90.2, le sélecteur du chargeur ne l'était pas et repartait sur Auto à chaque démarrage.)*
 
 ### 6 bis. 🚀 Mode Performance ULTRA — pour les vrais gros plans qui crashent
 

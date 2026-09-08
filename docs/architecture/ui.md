@@ -1775,7 +1775,7 @@ Liste d'outils : **5 → 4** entrées (Carnet · Éditeur de données · Mes lia
 
 `.loader-grid` porte `min-height: 520px`, calibré en v1.79.0 sur le **min-content mesuré** des colonnes incompressibles — *« Actions compactée ~510 px, OSM ~315 px »*. **C'est une constante mesurée à la main : toute ligne ajoutée à la colonne Actions la périme en silence.**
 
-C'est exactement ce qui s'est produit : le bloc de tuilage, posé **déplié** dans la carte de chargement en v1.86.0, ajoutait **~207 px**. À 125 % de zoom (viewport 1229×691, sous les 820 px de la media query de compaction — qui ne le compactait pas) la colonne débordait **sur le footer**. Le bug « des % qui cassent le home », clos en v1.60.x, revenait.
+C'est exactement ce qui s'est produit : le bloc de tuilage, posé **déplié** dans la carte de chargement en v1.86.0, ajoutait **~207 px**. *(Ce bloc a été replié en v1.88.1 puis **retiré** en v1.90.2 — mais le cas reste le meilleur exemple du piège, et le filet `overflow-y` qui en est sorti protège la PROCHAINE addition, pas celle-là.)* À 125 % de zoom (viewport 1229×691, sous les 820 px de la media query de compaction — qui ne le compactait pas) la colonne débordait **sur le footer**. Le bug « des % qui cassent le home », clos en v1.60.x, revenait.
 
 Deux réponses, et la seconde compte plus que la première :
 1. le bloc est **replié par défaut** (`<details>`), ~40 px au lieu de ~207, la valeur courante restant lisible dans le résumé ;

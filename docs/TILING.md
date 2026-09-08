@@ -35,9 +35,28 @@ MyKTAMap en a **deux implémentations, très différentes**. Confondre les deux 
 
 ## 3. Les deux choix proposés à l'utilisateur *(depuis v1.86.0)*
 
-Le sélecteur vit dans la **carte de chargement**, juste au-dessus du bouton ▶️ Charger ce plan — parce qu'il modifie **le chargement qu'on lance**, ce n'est pas un réglage mémorisé.
+**Où il vit : `ℹ️ Infos` du plan, et NULLE PART ailleurs** *(depuis v1.90.2)*. Le contrôle ne s'affiche que si
+`plan.tiledV2 !== true` — sur un plan V2 il serait un interrupteur débranché (cf. le tableau ci-dessous : la
+colonne V2 ne contient que des tirets et un « ignoré »). Il est **mémorisé par plan**
+(`PlanRegistry.setPerfPreset`) et s'applique à tous les chargements suivants.
 
-🩸 **Replié par défaut depuis la v1.88.1.** Posé déplié, il ajoutait **~207 px** à une colonne dont le min-content mesurait ~510 px sous un plancher de grid de 520 px : à 125 % de zoom, elle débordait sur le footer. Le résumé porte la valeur courante (« 🖼️ Tuilage pour ce chargement : **Auto** »), donc on n'a pas besoin de déplier pour savoir. Détail et filet : `docs/architecture/ui.md`.
+⚠️ `tiledV2` n'est connu qu'après la **première ouverture** du plan, ou s'il est annoncé par l'`index.json`
+d'un serveur. Un plan jamais ouvert affiche donc le contrôle ; il disparaît de lui-même ensuite si le plan
+s'avère V2. Le défaut « Auto » ne casse rien entre-temps.
+
+🩸 **Historique du placement — trois emplacements en six versions.** ⚙️ Configuration jusqu'en v1.85.4 (il y
+passait pour une préférence durable alors qu'il n'était pas mémorisé) → carte de chargement en v1.85.4, replié
+en v1.88.1 (posé déplié il ajoutait **~207 px** à une colonne dont le min-content mesurait ~510 px sous un
+plancher de grid de 520 px : à 125 % de zoom elle débordait sur le footer — filet dans
+`docs/architecture/ui.md`) → **retiré** en v1.90.2, décision KARMA : *« on est en auto tout le temps, la
+majorité des plans sont en V2 et c'est le process conseillé, ne concernant que peu de cas je veux pas ce
+réglage ici »*. Le bon endroit pour un réglage qui ne concerne presque personne est la fiche du plan
+concerné, pas le chemin de tout le monde.
+
+🧰 `window.getLoaderPerfPreset()` **existe toujours** et renvoie `"auto"` en constante ; `setLoaderPerfPreset`
+est un no-op. `main.js` (changement de langue) et `homeLoader.js` (chaque chargement) les appellent : les
+retirer aurait cassé ces appels. Renvoyer `"auto"` fait retomber leurs lecteurs sur le preset **mémorisé du
+plan** — le comportement voulu.
 
 | | Effet sur un plan **V1** | Effet sur un plan **V2** |
 |---|---|---|

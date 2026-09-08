@@ -27,7 +27,7 @@ Accessible depuis :
 
 ---
 
-### 8. Mode tuilage — 2 choix depuis v1.86.0 (5 presets de 08/05/2026 à v1.85.4)
+### 8. Mode tuilage — 2 choix depuis v1.86.0, et plus aucun sélecteur au HOME depuis v1.90.2 (5 presets de 08/05/2026 à v1.85.4)
 
 > 🩸 **AUDIT v1.86.0 (demande KARMA) — CE QUE LES PRESETS FAISAIENT VRAIMENT.**
 > Ces presets réglaient le tuilage fait **par le navigateur au chargement**, qui n'existe que pour les plans **V1**. Sur un plan **V2**, `chargerImage` prend la branche tuiles *avant* eux et `_chargerImageV2OptionB` **ne reçoit aucun paramètre de preset** : `quality`, `balanced`, `performance` et `auto` y étaient **strictement identiques**. L'UI promettait pourtant « Plus net. Recommandé sur PC desktop. ».
