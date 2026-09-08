@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.90.1</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.90.2</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.90.2 (le tuilage n'est plus un réglage de l'écran de chargement)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Le sélecteur de découpage d'image quitte l'écran de chargement : l'application décide seule, comme elle le faisait déjà pour la quasi-totalité des plans. Le réglage reste accessible dans la fiche ℹ️ Infos des plans que ça concerne réellement. <strong>Changement d'interface uniquement</strong> : les mêmes fichiers sont demandés, aux mêmes adresses, sur votre serveur.</p>
   <h3>v1.90.1 (étiquettes venues du serveur + import de profil verrouillé en mode kiosque)</h3>
   <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Deux changements, tous deux <strong>dans le navigateur</strong> : (1) la liste de plans que sert <strong>votre propre serveur</strong> (<code>data/index.json</code>, lue à chaque démarrage depuis toujours) peut désormais porter des <strong>étiquettes</strong> par plan — c'est <strong>le même fichier, à la même adresse</strong>, avec un champ de plus ; les étiquettes que <strong>vous</strong> posez restent prioritaires et ne sont jamais écrasées. (2) Sur une instance configurée pour ne proposer <strong>que</strong> les plans de son serveur, l'<strong>import de profil est refusé</strong> — il pouvait rapporter des plans que le mode masque et, surtout, réécrire vos préférences d'affichage au point de <strong>vider la liste</strong>. L'<strong>export</strong> de profil reste entièrement disponible : vos données sortent quand vous le décidez.</p>
   <h3>v1.90.0 (télécharger un plan serveur depuis la liste)</h3>

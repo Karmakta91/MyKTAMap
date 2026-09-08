@@ -158,28 +158,68 @@ t("🌍 langue atteignable : ⚙️ Configuration de l'accueil",
 t("🌍 langue atteignable : écran de déverrouillage",
   fs.readFileSync("js/unlockGate.js", "utf8").indexOf("I18n.setLang(") >= 0);
 
-// ───────── 8. 🖼️ LE TUILAGE N'EST PAS UN RÉGLAGE ─────────
-// Il ne se mémorise NULLE PART : `getLoaderPerfPreset()` lit une classe CSS,
-// le markup naît sur "auto" à chaque démarrage, et quand il vaut ≠ auto il
-// écrase le preset mémorisé du plan qu'on ouvre. Le ranger parmi les réglages
-// le faisait passer pour une préférence durable. Sa place est contre le bouton
-// qui le déclenche. Il reste le SEUL point de réglage : côté plan le preset est
-// affiché en lecture seule.
+// ───────── 8. 🖼️ LE TUILAGE N'EST PLUS RÉGLABLE AU HOME ─────────
+// Décision KARMA (08/09/2026), après la v1.85.4 qui l'avait seulement DÉPLACÉ
+// dans la carte de chargement :
+//
+//   « enlève la possibilité de régler ce truc. On est en auto tout le temps.
+//     La majorité des plans sont en V2 et c'est le process conseillé. Ne
+//     concernant que peu de cas je veux pas ce réglage ici. On peut à la
+//     rigueur le mettre dans info, d'un plan pour lequel ça a une pertinence
+//     (V1). »
+//
+// 🩸 CE QU'IL FAISAIT VRAIMENT. Sur un plan tuilé V2 — le cas courant — la
+// branche tuiles est prise AVANT le preset : « Désactivé » n'y changeait rien,
+// il était seulement journalisé. Le contrôle ne pesait que sur les plans V1
+// au-dessus de 4096² px, et il occupait la place juste au-dessus du bouton
+// « Charger ce plan ». Il n'était pas mémorisé non plus : un réglage qui
+// repart à zéro à chaque démarrage n'en est pas un.
+//
+// Il n'est pas SUPPRIMÉ, il est DÉPLACÉ là où il a un sens : ℹ️ Infos, et
+// seulement pour un plan qui n'est pas tuilé V2. Il y est enfin mémorisé.
 t("🖼️ le groupe « Performance » a disparu de la config de l'accueil",
   IDX.indexOf('data-i18n="config.group.perf"') < 0);
-t("🖼️ le tuilage est DANS la carte de chargement (entre le choix du fichier et le bouton Charger)",
-  (function () {
-    const zip = IDX.indexOf('id="zipFile"');
-    const til = IDX.indexOf('id="loaderPerfSegmented"');
-    const btn = IDX.indexOf('id="loadPlanBtn"');
-    return zip > 0 && til > zip && btn > til;
-  })());
-t("🖼️ et il dit qu'il n'est pas mémorisé",
-  IDX.indexOf('data-i18n="home.perf.tilingHint"') >= 0 &&
-  JSON.parse(fs.readFileSync("lang/fr.json", "utf8"))["home.perf.tilingHint"].indexOf("Non mémorisé") >= 0);
-t("🖼️ côté plan, le preset reste en LECTURE SEULE (aucun second point de réglage)",
-  UIC.indexOf("affichage read-only") >= 0 && !/id="cfg_perfPreset"/.test(UIC));
 
+// 🩸 PLUS AUCUN POINT DE RÉGLAGE AU HOME — ni le contrôle, ni son câblage.
+// Laisser le second aurait produit un réglage fantôme : du code qui lit un
+// DOM absent, et une valeur qui a l'air de venir de quelque part.
+[["loaderPerfSegmented", "le sélecteur"],
+ ["loaderPerfDetails",   "son bloc dépliant"],
+ ["loaderPerfDesc",      "sa description"],
+ ["loaderPerfResume",    "son résumé"],
+ ["loaderPerfDebug",     "sa ligne debug"]].forEach(function (r) {
+  t("🖼️ absent du HOME : " + r[1] + " (#" + r[0] + ")", IDX.indexOf('id="' + r[0] + '"') < 0);
+});
+t("🖼️ …et son câblage aussi (pas de lecteur d'un DOM disparu)",
+  IDX.indexOf("updatePerfDebugLine") < 0 && IDX.indexOf(".kta-perf-btn") < 0);
+
+// 🩸 LES DEUX FONCTIONS RESTENT EXPOSÉES, ET RENVOIENT « auto ». `main.js` les
+// appelle au changement de langue, `homeLoader.js` lit la valeur à chaque
+// chargement de plan : les retirer aurait cassé ces appels. Renvoyer « auto »
+// fait retomber les lecteurs sur le preset MÉMORISÉ du plan — le but.
+t("🖼️ getLoaderPerfPreset survit et vaut toujours « auto »",
+  /function getLoaderPerfPreset\(\) \{ return "auto"; \}/.test(IDX) &&
+  /window\.getLoaderPerfPreset = getLoaderPerfPreset;/.test(IDX));
+t("🖼️ setLoaderPerfPreset survit en no-op (main.js l'appelle au changement de langue)",
+  /function setLoaderPerfPreset\(\)/.test(IDX) &&
+  /window\.setLoaderPerfPreset = setLoaderPerfPreset;/.test(IDX));
+
+// 🩸 ET IL EXISTE BIEN AILLEURS. Le retirer partout aurait ôté le seul moyen
+// de désactiver le tuilage sur un très gros plan V1 — un cas rare, mais réel.
+{
+  const HL = fs.readFileSync("js/homeLoader.js", "utf8");
+  t("🖼️ le réglage vit dans ℹ️ Infos", HL.indexOf('id="kta-plan-tiling-select"') >= 0);
+  t("🩸 …et SEULEMENT pour un plan non tuilé V2 (sinon : un interrupteur débranché)",
+    /if \(plan\.tiledV2 !== true\) \{/.test(HL));
+  t("🖼️ il est MÉMORISÉ pour ce plan (ce que le HOME ne savait pas faire)",
+    /PlanRegistry\.setPerfPreset\(plan\.id, selTuilage\.value\)/.test(HL));
+  t("🩸 son câblage tolère l'absence du sélecteur (sinon tout le reste de la modale meurt)",
+    /const selTuilage = document\.getElementById\("kta-plan-tiling-select"\);/.test(HL) &&
+    /if \(selTuilage\) \{/.test(HL));
+}
+
+t("🖼️ côté plan (⚙️ Réglages), le preset reste en LECTURE SEULE (aucun troisième point)",
+  UIC.indexOf("affichage read-only") >= 0 && !/id="cfg_perfPreset"/.test(UIC));
 
 console.log(ko === 0 ? "\n🎉 portée des réglages : le plan ne décide plus pour l'app"
                      : "\n⚠️ " + ko + " echec(s)");

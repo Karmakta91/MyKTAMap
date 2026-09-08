@@ -1,8 +1,7 @@
 {
-  "version": "v1.90.1",
+  "version": "v1.90.2",
   "released": "2026-09-08",
   "notes": [
-    "🏷️ Les plans proposés par un serveur peuvent arriver avec leurs étiquettes, pour les retrouver plus vite. Celles que tu poses toi-même restent prioritaires.",
-    "🔒 Sur une installation qui ne propose que des plans du serveur, l'import d'un profil est désormais refusé : il pouvait vider la liste des plans."
+    "🖼️ Le réglage de tuilage disparaît de l'écran de chargement : l'app décide toute seule, comme elle le faisait déjà pour la quasi-totalité des plans. Il reste disponible dans ℹ️ Infos pour les rares plans que ça concerne, et il y est enfin mémorisé."
   ]
 }

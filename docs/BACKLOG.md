@@ -141,6 +141,15 @@ révocation.
 - `kta-toast-error/info` : classes **concaténées** (`"kta-toast-" + type`) — NON supprimables sans inventaire des `type`
 - JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?), `getTrackerLevel` (« phase 2B » — abandonnée ?), scope `kta-ses-modal` inexistant dans sessionExporter:3495 (bug de scope bénin ?), ~13 exports d'API publique jamais consommés (API = contrat, gain faible risque non nul)
 
+### 🧹 Dette créée sciemment le 08/09/2026 — CSS du sélecteur de tuilage
+Le sélecteur de tuilage du HOME a été retiré (v1.90.2, décision KARMA : « on est en auto tout le temps »).
+**~43 lignes de `css/style.css` deviennent mortes** : `.kta-perf-details`, `-summary`, `-wrap`, `-segmented`,
+`-btn`, `-emoji`, `-label`, `-desc`, `-debug`, `-hint` (≈ lignes 6345 → 6545). Vérifié : **0 référence** dans
+`index.html` et `js/**`. ⚠️ Ne pas confondre avec `.kta-perf-ultra-*`, **bien vivantes** (bloc ULTRA du mode
+plan) — la confusion de préfixe est exactement le piège qui ferait sauter un bloc utile.
+Non supprimées à chaud : rien nʼa été ouvert dans un navigateur depuis une dizaine de releases, et une
+suppression CSS ne se falsifie pas — elle se constate à lʼœil. À faire au prochain passage visuel.
+
 ### 📌 Mort documenté — gardé exprès, ne pas supprimer sans arbitrage KARMA
 `_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, 49 l., rétro-compat v1.7.3) · wrappers compat exporter/measure · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)
 

@@ -148,13 +148,26 @@ t("🩸 déclencheur 2 : toutes les tuiles du premier rendu en ERREUR de chargem
 t("le premier rendu est capturé AVANT la boucle (currentLevel est réaffecté après)",
   /const premierRendu = \(state\.currentLevel === null\);/.test(CODE));
 
-// ───────── 5. l'UI ne propose plus que ce qui agit ─────────
+// ───────── 5. LE SEUL POINT DE RÉGLAGE DU TUILAGE ─────────
+// v1.86.0 avait réduit l'UI du HOME à 2 choix (Auto / Désactivé) ; v1.90.2 la
+// retire entièrement, sur décision KARMA : « on est en auto tout le temps, la
+// majorité des plans sont en V2 et c'est le process conseillé ».
+// 🩸 Le contrôle ne pesait que sur les plans V1 au-dessus de 4096² px : sur un
+// plan V2 la branche tuiles est prise AVANT lui, « Désactivé » n'y changeait
+// rien. Il vit maintenant dans ℹ️ Infos, MÉMORISÉ, et seulement là où il agit.
 {
-  const presets = (IDXC.match(/data-preset="([a-z]+)"/g) || []).map(s => s.split('"')[1]);
-  t("🩸 l'UI ne propose plus que 2 choix (les 3 presets V1 ne changeaient rien en V2) : " +
-    presets.join(", "),
-    presets.length === 2 && presets.indexOf("auto") >= 0 && presets.indexOf("off") >= 0);
-  t("Auto est le défaut affiché en premier", presets[0] === "auto");
+  const HL = fs.readFileSync("js/homeLoader.js", "utf8");
+  t("🩸 plus aucun sélecteur de preset au HOME",
+    (IDXC.match(/data-preset=/g) || []).length === 0);
+  t("🖼️ le réglage vit dans ℹ️ Infos, et nulle part ailleurs",
+    HL.indexOf('id="kta-plan-tiling-select"') >= 0);
+  t("🩸 …et SEULEMENT pour un plan non tuilé V2 (sinon : un interrupteur débranché)",
+    /if \(plan\.tiledV2 !== true\) \{/.test(HL));
+  const opts = (HL.match(/<option value="([a-z]+)"/g) || []).map(function (x) { return x.split('"')[1]; });
+  t("🖼️ il propose exactement Auto et Désactivé  [" + opts.join(", ") + "]",
+    opts.length === 2 && opts[0] === "auto" && opts[1] === "off");
+  t("🖼️ et il est MÉMORISÉ pour ce plan (l'ancien repartait à zéro à chaque démarrage)",
+    /PlanRegistry\.setPerfPreset\(plan\.id, selTuilage\.value\)/.test(HL));
   // 🩸 RÉTRO-COMPAT : un plan peut avoir « quality » mémorisé dans le registre.
   // Le code doit continuer de l'accepter, sinon le preset stocké devient invalide.
   ["js/main.js", "js/planRegistry.js"].forEach(function (f) {
@@ -303,86 +316,54 @@ t("⚠️ « off » sur une image > 4096² avertit l'utilisateur",
 }
 
 
-// ───────── 13. 🩸 ON APPELLE setLoaderPerfPreset (ReferenceError = invisible pour node -c) ─────────
-// VÉCU (v1.88.1) : en repliant le bloc de tuilage, j'ai ajouté à la fin de
+// ───────── 13. 🩸 LES DEUX FONCTIONS SURVIVANTES S'EXÉCUTENT ─────────
+// VÉCU (v1.88.1) : en repliant le bloc de tuilage, j'avais ajouté à la fin de
 // `setLoaderPerfPreset` un accès à `meta` — variable déclarée DANS le
 // `if (descEl) { … }` juste au-dessus. Hors portée : ReferenceError au premier
-// appel, donc tout le bloc perf du HOME cassé. `node -c` ne voit RIEN de ça,
-// et aucune assertion de chaîne non plus. La seule façon de l'attraper est
-// d'EXÉCUTER la fonction.
-// On extrait le morceau de script inline dont elle dépend (`_PERF_VALID` …
-// fin de la fonction), on le charge dans un vm avec des stubs DOM, et on
-// l'appelle sur chaque preset proposé.
+// appel, donc tout le bloc perf du HOME cassé. `node -c` ne voit RIEN de ça.
+// Le contrôle a disparu (v1.90.2) mais les deux fonctions restent exposées :
+// `main.js` appelle setLoaderPerfPreset au changement de langue, et
+// `homeLoader.js` lit getLoaderPerfPreset à chaque chargement de plan. On les
+// EXÉCUTE donc toujours — et on vérifie que « auto » est bien constant, sans
+// quoi les lecteurs cesseraient de retomber sur le preset mémorisé du plan.
 {
   const vm3 = require("vm");
-  const d = IDX.indexOf("const _PERF_VALID");
-  const iFn = IDX.indexOf("function setLoaderPerfPreset(", d);
-  let fin = -1;
-  if (iFn > 0) {
-    let prof = 0;
-    for (let k = IDX.indexOf("{", iFn); k < IDX.length; k++) {
-      if (IDX[k] === "{") prof++;
-      else if (IDX[k] === "}") { prof--; if (prof === 0) { fin = k + 1; break; } }
-    }
-  }
-  t("le bloc setLoaderPerfPreset est extractible d'index.html", d >= 0 && iFn > d && fin > iFn);
-
-  if (fin > iFn) {
-    const faits = [];
-    const elem = function (id) {
-      return { id: id, textContent: "", style: {}, dataset: {}, classList: { toggle: function () {} },
-               setAttribute: function () {}, forEach: function () {} };
-    };
-    const resume = elem("loaderPerfResume");
-    const win = {
-      console: { log: () => {}, warn: () => {} },
-      PERF_AUTO_META: { label: "Auto", description: "d1" },
-      PERF_OFF_META:  { label: "Désactivé", description: "d2" },
-      PERF_PRESETS:   { balanced: { label: "Équilibré", description: "d3" } },
-      I18n: { has: function () { return false; }, t: function (k) { return k; } },
-      APP_CONFIG: { debugMode: false }
-    };
+  const d = IDX.indexOf("function getLoaderPerfPreset()");
+  const f = IDX.indexOf("window.setLoaderPerfPreset = setLoaderPerfPreset;", d);
+  t("le bloc des deux fonctions est extractible d'index.html", d >= 0 && f > d);
+  if (d >= 0 && f > d) {
+    const win = { console: { log: () => {}, warn: () => {} } };
     win.window = win;
-    win.document = {
-      getElementById: function (id) { return id === "loaderPerfResume" ? resume : elem(id); },
-      querySelector:    function () { return null; },
-      querySelectorAll: function () { return { forEach: function () {} }; }
-    };
-    let erreur = null;
+    let erreur = null, vus = [];
     try {
       const ctx = vm3.createContext(win);
-      vm3.runInContext("var window = this; var document = this.document;" +
-                       "function updatePerfDebugLine(){}" +
-                       IDX.slice(d, fin) +
-                       ";this.__set = setLoaderPerfPreset;", ctx);
-      ["auto", "off"].forEach(function (p) { win.__set(p); faits.push(resume.textContent); });
+      // 🩸 On coupe EXACTEMENT à la fin de la dernière ligne cherchée. Un
+      // `+ 60` arbitraire emportait le début du code suivant et faisait échouer
+      // le parse sur une regex tronquée — le garde-fou rougissait pour une
+      // raison qui n'avait rien à voir avec ce qu'il teste.
+      const ANC = "window.setLoaderPerfPreset = setLoaderPerfPreset;";
+      vm3.runInContext("var window = this;" + IDX.slice(d, f + ANC.length), ctx);
+      vus = [win.getLoaderPerfPreset(), win.getLoaderPerfPreset("off")];
+      win.setLoaderPerfPreset("off");   // no-op : ne doit rien jeter
     } catch (e) { erreur = e; }
-
-    t("🩸 setLoaderPerfPreset s'EXÉCUTE sans ReferenceError" + (erreur ? " — " + erreur.message : ""),
+    t("🩸 les deux fonctions s'EXÉCUTENT sans ReferenceError" + (erreur ? " — " + erreur.message : ""),
       !erreur);
-    t("🖼️ le résumé du bloc replié porte la valeur courante  [" + faits.join(" / ") + "]",
-      faits.length === 2 && faits[0] === "Auto" && faits[1] === "Désactivé");
+    t("🖼️ getLoaderPerfPreset vaut « auto », quoi qu'on lui passe  [" + vus.join(", ") + "]",
+      vus.length === 2 && vus[0] === "auto" && vus[1] === "auto");
   }
 }
 
-// ───────── 14. 🖼️ LE BLOC DE TUILAGE NE DOIT PLUS FAIRE DÉBORDER LA COLONNE ─────────
-// 🩸 Posé déplié en v1.86.0, il ajoutait ~207 px à la colonne Actions — dont
-// le min-content mesuré en v1.79.0 vaut ~510 px, sous un plancher de grid de
-// 520 px. À 125 % de zoom (viewport 1229×691) la colonne débordait sur le
-// footer : le bug « des % qui cassent le home », déjà clos en v1.60.x.
+// ───────── 14. 🖼️ LA COLONNE ACTIONS NE DOIT PAS DÉBORDER ─────────
+// 🩸 Le bloc de tuilage, posé déplié en v1.86.0, ajoutait ~207 px à une colonne
+// dont le min-content vaut ~510 px sous un plancher de grid de 520 px : à 125 %
+// de zoom (viewport 1229×691) elle débordait sur le footer. Il a été replié
+// (v1.88.1) puis retiré (v1.90.2) — mais le FILET reste la vraie protection,
+// et il vaut pour la PROCHAINE addition, pas pour celle qu'on vient d'enlever.
 {
   const CSS = fs.readFileSync("css/style.css", "utf8");
-  t("🖼️ le bloc est repliable (details/summary)",
-    IDX.indexOf('<details class="kta-perf-details"') >= 0 &&
-    IDX.indexOf('class="kta-perf-summary"') >= 0);
-  t("🩸 …et REPLIÉ par défaut (pas d'attribut open)",
-    /<details class="kta-perf-details" id="loaderPerfDetails">/.test(IDX));
-  t("🖼️ la valeur courante reste lisible sans déplier",
-    IDX.indexOf('id="loaderPerfResume"') >= 0);
   t("🩸 FILET : la colonne Actions peut scroller en interne (robuste à la PROCHAINE addition)",
     /\.loader-col-actions #panelZip \{[\s\S]{0,200}overflow-y: auto;/.test(CSS));
 }
-
 
 // ───────── 15. 🧹 LES PLANS SERVEUR DISPARUS SONT ÉLAGUÉS ─────────
 // 🩸 VÉCU (KARMA) : « un plan serveur est embarqué dans l'export profil et

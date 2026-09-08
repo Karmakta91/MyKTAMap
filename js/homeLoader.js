@@ -1249,11 +1249,45 @@ function planRowHTML(plan) {
           rows.push({ label: _t("home.plans.info.keyPersistence"), value: storageLabel, mono: false });
         }
         rows.push({ label: _t("home.plans.info.keyMode"), value: modesLabel, mono: false });
-        if (plan.perfPreset) {
-          pushRow(_t("home.plans.info.keyPreset"), plan.perfPreset);
-        }
+        // 🖼️ v1.90.2 — le preset n'est plus une ligne de tableau en lecture
+        // seule : il est devenu un CONTRÔLE, plus bas, et seulement pour les
+        // plans que ça concerne (cf. `tuilageHtml`).
         pushRow(_t("home.plans.info.keyAddedAt"),    plan.addedAt    ? fmtDate(plan.addedAt)    : null);
         pushRow(_t("home.plans.info.keyLastOpened"), plan.lastOpened ? fmtDate(plan.lastOpened) : (plan.discovered ? _t("home.plans.info.neverOpened") : null));
+
+        // ═══ 🖼️ TUILAGE — LE SEUL POINT DE RÉGLAGE (v1.90.2, décision KARMA) ═══
+        // « enlève la possibilité de régler ce truc [au HOME]. On est en auto
+        //   tout le temps. […] On peut à la rigueur le mettre dans info, d'un
+        //   plan pour lequel ça a une pertinence (V1). »
+        //
+        // 🩸 IL NE S'AFFICHE QUE SI ÇA CHANGE QUELQUE CHOSE. Sur un plan tuilé
+        // V2 — le cas courant, et le process conseillé — la branche tuiles est
+        // prise AVANT le preset : « Désactivé » n'y a aucun effet, il est
+        // seulement journalisé. Proposer le réglage là aurait été proposer un
+        // interrupteur débranché.
+        // ⚠️ `tiledV2` n'est connu qu'une fois le plan ouvert une première fois
+        // (ou annoncé par l'index d'un serveur). Un plan jamais ouvert affiche
+        // donc le contrôle ; il disparaît de lui-même à la première ouverture
+        // si le plan s'avère V2. Assumé : le défaut « Auto » ne casse rien.
+        // 🩸 Et contrairement à l'ancien sélecteur du HOME, celui-ci est
+        // MÉMORISÉ pour ce plan — l'autre repartait à « Auto » à chaque
+        // démarrage, ce qui en faisait un réglage qui n'en était pas un.
+        let tuilageHtml = "";
+        if (plan.tiledV2 !== true) {
+          const _presetCur = (plan.perfPreset === "off") ? "off" : "auto";
+          tuilageHtml =
+            '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
+              '<div style="font-weight:600; margin-bottom:6px;">🖼️ ' + escapeHtml(_t("home.plans.info.tilingTitle")) + '</div>' +
+              '<select class="kta-cfg-input" id="kta-plan-tiling-select" style="width:100%;">' +
+                '<option value="auto"' + (_presetCur === "auto" ? " selected" : "") + '>' + escapeHtml(_t("home.perf.presetAuto")) + '</option>' +
+                '<option value="off"'  + (_presetCur === "off"  ? " selected" : "") + '>' + escapeHtml(_t("home.perf.presetOff"))  + '</option>' +
+              '</select>' +
+              '<div style="display:flex; align-items:center; gap:10px; margin-top:8px;">' +
+                '<span id="kta-plan-tiling-status" style="font-size:12px; color:#8892a4;"></span>' +
+              '</div>' +
+              '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.tilingHint")) + '</div>' +
+            '</div>';
+        }
 
         const tableHtml = rows.map(function(r) {
           const valStyle = r.mono ? ' style="font-family:monospace; font-size:11.5px; color:#c8d0e0;"' : '';
@@ -1351,6 +1385,7 @@ function planRowHTML(plan) {
                 '</div>' +
                 '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.tagsHint")) + '</div>' +
               '</div>' +
+              tuilageHtml +
               (dlHtml ? '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
                         dlHtml +
                         '<div id="kta-plan-dl-status" style="font-size:12px; margin-top:8px; min-height:16px;"></div>' +
@@ -1551,6 +1586,20 @@ function planRowHTML(plan) {
               if (titre) titre.textContent = _t("home.plans.info.title", { nom: window.PlanRegistry.displayName(plan.id) });
               window.refreshPlansList();
             }
+          });
+        }
+
+        // 🖼️ v1.90.2 — TUILAGE POUR CE PLAN. Enregistré au changement, sans
+        // bouton : deux valeurs, aucun risque de saisie à moitié faite.
+        // 🩸 Le `<select>` n'existe pas sur un plan V2 — d'où le test. Sans
+        // lui, `addEventListener` sur null jetait et tuait le câblage des tags
+        // et de la suppression, qui suivent dans la même fonction.
+        const selTuilage = document.getElementById("kta-plan-tiling-select");
+        if (selTuilage) {
+          selTuilage.addEventListener("change", function() {
+            const st = document.getElementById("kta-plan-tiling-status");
+            const ok = window.PlanRegistry.setPerfPreset(plan.id, selTuilage.value);
+            if (st) st.textContent = ok ? _t("home.plans.info.tilingSaved") : _t("home.plans.info.tilingErr");
           });
         }
 

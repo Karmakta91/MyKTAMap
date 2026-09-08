@@ -525,41 +525,6 @@
           </span>
         </div>
 
-        <!-- 🖼️ v1.85.4 (audit KARMA, suite) — LE TUILAGE EST ICI, PAS DANS
-             ⚙️ Configuration. Ce n'est pas un réglage : il ne se mémorise nulle
-             part (getLoaderPerfPreset lit une classe CSS), il revient à « Auto »
-             à chaque démarrage, et quand il vaut ≠ auto il ÉCRASE le preset
-             mémorisé du plan qu'on ouvre (homeLoader.js). C'est donc un
-             modificateur du chargement en cours — sa place est à côté du bouton
-             qui le déclenche. Il reste le SEUL point de réglage : côté plan, le
-             preset est affiché en lecture seule (interfaceConfig.js). -->
-          <details class="kta-perf-details" id="loaderPerfDetails">
-            <summary class="kta-perf-summary">
-              <span data-i18n="home.perf.tilingTitle">🖼️ Tuilage pour ce chargement</span>
-              <b id="loaderPerfResume">Auto</b>
-            </summary>
-            <div class="kta-perf-wrap">
-            <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" data-i18n-title="home.perf.tilingAria" aria-label="Mode performance">
-              <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
-                <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label" data-i18n="home.perf.presetAuto">Auto</span>
-              </button>
-              <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">💤</span><span class="kta-perf-label" data-i18n="home.perf.presetOff">Désactivé</span>
-              </button>
-              <!-- 🩸 v1.86.0 (audit tuilage) — LES PRESETS 🌟 QUALITÉ / 🎯 ÉQUILIBRÉ /
-                   ⚡ PERFORMANCE ONT ÉTÉ RETIRÉS DE L’UI. Ils ne réglaient que le tuilage
-                   fait par le NAVIGATEUR au chargement (V1). Sur un plan V2 — le cas
-                   courant — la branche tuiles est prise avant eux et ils ne changent
-                   STRICTEMENT RIEN ; en V1 ils ne se distinguaient qu’au-dessus de
-                   4096² px. Le code les accepte toujours (rétro-compat : un plan peut
-                   avoir « quality » mémorisé dans le registre), ils ne sont juste plus
-                   proposés. Reste ce qui a un sens : Auto (défaut) et Désactivé. -->
-            </div>
-            <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
-            <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>
-            <div class="kta-perf-hint" data-i18n="home.perf.tilingHint">Non mémorisé : revient à « Auto » au prochain démarrage.</div>
-            </div>
-          </details>
 
         <!-- Bouton principal Charger -->
         <div class="loaderActions">
@@ -1538,123 +1503,37 @@
   <script>
     window.addEventListener("load", function () {
       // ════════════════════════════════════════════════════════
-      // SEGMENTED CONTROL — MODE PERFORMANCE
+      // 🖼️ TUILAGE — PLUS DE RÉGLAGE ICI (v1.90.2, décision KARMA)
       // ════════════════════════════════════════════════════════
-      const _PERF_VALID = ["off", "auto", "quality", "balanced", "performance"];
-
-      function getLoaderPerfPreset() {
-        const active = document.querySelector("#loaderPerfSegmented .kta-perf-btn.active");
-        const v = active && active.dataset ? active.dataset.preset : "auto";
-        return (_PERF_VALID.indexOf(v) >= 0) ? v : "auto";
-      }
-
-      function setLoaderPerfPreset(preset) {
-        if (_PERF_VALID.indexOf(preset) < 0) preset = "auto";
-        const btns = document.querySelectorAll("#loaderPerfSegmented .kta-perf-btn");
-        btns.forEach(function(b) {
-          const isActive = (b.dataset.preset === preset);
-          b.classList.toggle("active", isActive);
-          b.setAttribute("aria-checked", isActive ? "true" : "false");
-        });
-        // Mettre à jour la description sous le segmented
-        const descEl = document.getElementById("loaderPerfDesc");
-        if (descEl) {
-          let meta = null;
-          if (preset === "off") {
-            meta = window.PERF_OFF_META;
-          } else if (preset === "auto") {
-            meta = window.PERF_AUTO_META;
-          } else if (window.PERF_PRESETS) {
-            meta = window.PERF_PRESETS[preset];
-          }
-          // i18n : la description vient des metas FR de tiling.js (PERF_*_META).
-          // On traduit au point d'affichage via I18n, en gardant la description
-          // FR de la meta comme fallback si la clé est absente / I18n indispo.
-          // 🐛 v1.68.1 (audit clés manquantes) : l'ancien garde `_tr !== _k`
-          // était MORT depuis l'humanisation H1 (t() ne retourne plus jamais
-          // la clé brute) → « Auto » humanisé écrasait la description FR.
-          // I18n.has() teste la présence réelle SANS warn ni humanisation.
-          const _frDesc = (meta && meta.description) ? meta.description : "";
-          const _k = "home.perf.desc." + preset;
-          if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(_k)) {
-            descEl.textContent = window.I18n.t(_k);
-          } else {
-            descEl.textContent = _frDesc;
-          }
-        }
-        // 🖼️ v1.88.1 — Le bloc est REPLIÉ par défaut (il coûtait ~207 px à une
-        // colonne qui débordait sur le footer à 125 % de zoom). La valeur
-        // courante s'affiche donc dans le résumé : on n'a pas besoin de
-        // déplier pour savoir sur quoi on est.
-        // 🩸 AUTONOME À DESSEIN : `meta` est déclaré DANS le `if (descEl)`
-        // ci-dessus. Le référencer ici serait une ReferenceError au runtime —
-        // que `node -c` ne voit pas, et qui casserait tout le bloc perf du HOME.
-        const resumeEl = document.getElementById("loaderPerfResume");
-        if (resumeEl) {
-          const _metaL = (preset === "off")  ? window.PERF_OFF_META
-                       : (preset === "auto") ? window.PERF_AUTO_META
-                       : (window.PERF_PRESETS ? window.PERF_PRESETS[preset] : null);
-          const _kL = "config.preset." + preset;
-          resumeEl.textContent = (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(_kL))
-            ? window.I18n.t(_kL)
-            : ((_metaL && _metaL.label) ? _metaL.label : preset);
-        }
-        // Mettre à jour la ligne debug (chiffres techniques)
-        updatePerfDebugLine();
-      }
-
-      function updatePerfDebugLine() {
-        const debugEl = document.getElementById("loaderPerfDebug");
-        if (!debugEl) return;
-        const isDebug = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
-        if (!isDebug || !window.PERF_PRESETS) {
-          debugEl.style.display = "none";
-          debugEl.textContent = "";
-          return;
-        }
-        const preset = getLoaderPerfPreset();
-
-        // Mode "off" : pas de tiling — afficher l'info correspondante
-        if (preset === "off") {
-          debugEl.textContent = "Aucun tiling — L.imageOverlay direct (image brute)";
-          debugEl.style.display = "block";
-          return;
-        }
-
-        // En mode auto on affiche les params qui SERAIENT utilisés si on tilait (= Équilibré)
-        const params = (preset === "auto")
-          ? window.PERF_PRESETS.balanced
-          : window.PERF_PRESETS[preset];
-        const seuil = (preset === "auto") ? "tile si > 60 Mo" : "tile si image > 4096²";
-        if (params) {
-          debugEl.textContent =
-            "MAX:" + params.maxWorkDim + " / TILE:" + params.tileSize +
-            " / Q:" + params.jpegQuality + " / " + seuil;
-          debugEl.style.display = "block";
-        } else {
-          debugEl.style.display = "none";
-        }
-      }
-
-      // Brancher les clics du segmented
-      document.querySelectorAll("#loaderPerfSegmented .kta-perf-btn").forEach(function(b) {
-        b.addEventListener("click", function() {
-          setLoaderPerfPreset(b.dataset.preset);
-        });
-      });
-
-      // Exposer pour que onLoadPlanClick et reSelectionnerZipPourPlan puissent lire la valeur
+      // « On est en auto tout le temps. La majorité des plans sont en V2 et
+      //   c'est le process conseillé. Ne concernant que peu de cas je veux pas
+      //   ce réglage ici. »
+      //
+      // 🩸 CE QUE LE SÉLECTEUR FAISAIT VRAIMENT. Sur un plan V2 — le cas
+      // courant — la branche tuiles est prise AVANT lui : « Désactivé » n'y
+      // changeait rien, il était seulement journalisé. Il ne pesait donc que
+      // sur les plans V1 au-dessus de 4096² px, et il occupait une place de
+      // choix juste au-dessus du bouton « Charger ce plan ».
+      //
+      // Le réglage n'est pas SUPPRIMÉ, il est DÉPLACÉ là où il a un sens :
+      // dans ℹ️ Infos, et seulement pour un plan qui n'est PAS tuilé V2
+      // (cf. homeLoader.js). Il y est en plus MÉMORISÉ par plan, ce que la
+      // carte de chargement ne savait pas faire.
+      //
+      // Les deux fonctions restent exposées : `main.js` les appelle au
+      // changement de langue, et `homeLoader.js` lit la valeur à chaque
+      // chargement de plan. Rendre « auto » constant fait retomber ces
+      // lecteurs sur le preset MÉMORISÉ du plan — le comportement voulu.
+      function getLoaderPerfPreset() { return "auto"; }
+      function setLoaderPerfPreset() { /* plus de contrôle à peindre */ }
       window.getLoaderPerfPreset = getLoaderPerfPreset;
       window.setLoaderPerfPreset = setLoaderPerfPreset;
 
-      // Initialisation : "auto" + description correspondante + ligne debug si
-      // applicable. 🐛 v1.68.1 : différée derrière la barrière I18n.init()
-      // (mémoïsée) — au window load, le fetch des dicos peut ne pas être fini
-      // → la description perf se rendait « humanisée » (« Auto »). Le premier
-      // rendu de la liste des plans (plus bas) attend la même barrière.
+      // 🩸 La barrière i18n reste : le premier rendu de la liste des plans,
+      // plus bas, l'attend. La supprimer avec le bloc perf aurait rendu la
+      // liste des plans dépendante d'un dico peut-être pas encore chargé.
       const _i18nReadyHome = (window.I18n && typeof window.I18n.init === "function")
         ? window.I18n.init() : Promise.resolve();
-      _i18nReadyHome.then(function() { setLoaderPerfPreset("auto"); });
 
       // ════════════════════════════════════════════════════════
       // BOUTON 🐛 LOGS DÉTAILLÉS (toggle debug mode)
@@ -1668,8 +1547,6 @@
         debugStateEl.textContent = on ? "ON" : "OFF";
         debugBtn.classList.toggle("active", on);
         debugBtn.setAttribute("aria-pressed", on ? "true" : "false");
-        // Le segmented suit l'état (affiche/cache la ligne debug)
-        updatePerfDebugLine();
       }
 
       if (debugBtn) {
