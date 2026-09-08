@@ -212,6 +212,76 @@ t("🔎 les tags filtrent la liste des plans",
 t("🔎 l'utilisateur peut toujours les éditer dans ℹ️ Infos",
   /PlanRegistry\.setTags\(plan\.id,/.test(HOME));
 
+// ═════════ 5. LE FILTRE PAR ÉTIQUETTE DES STATS DU PROFIL (v1.90.4) ═════════
+// Demande KARMA : « rajoute un graph de ce genre via les tags des plans
+// (possibilité de filtrer et exclure) ».
+//
+// 🩸 LA RÈGLE QUI SE TROMPE FACILEMENT : l'EXCLUSION L'EMPORTE sur
+// l'inclusion. Un plan tagué « gironde » ET « brouillon », avec gironde inclus
+// et brouillon exclu, doit être ÉCARTÉ. L'inverse ferait rentrer par une porte
+// ce qu'on vient de fermer par l'autre — et c'est précisément le cas d'usage
+// (« sors-moi l'atlas de mes stats »). Un `||` au lieu d'un `&&`, ou les deux
+// tests dans le mauvais ordre, et le filtre ment sans rien casser d'apparent.
+//
+// On EXÉCUTE la fonction extraite du vrai fichier sur ses cas limites.
+{
+  const HP = fs.readFileSync("js/homeProfile.js", "utf8");
+  const d = HP.indexOf("function _planRetenu(entree) {");
+  let code = null;
+  if (d >= 0) {
+    let prof = 0;
+    for (let i = HP.indexOf("{", d); i < HP.length; i++) {
+      if (HP[i] === "{") prof++;
+      else if (HP[i] === "}") { prof--; if (prof === 0) { code = HP.slice(d, i + 1); break; } }
+    }
+  }
+  t("🏷️ la règle de rétention est extractible", !!code);
+
+  if (code) {
+    const SANS = "\u0000sans-etiquette";
+    const jouer = (tags, filtre) => {
+      const sb = { SANS_TAG: SANS, _filtreTags: filtre };
+      vm.runInNewContext(code + "; resultat = _planRetenu({ tags: " + JSON.stringify(tags) + " });",
+        sb, { filename: "homeProfile.filtre.js" });
+      return sb.resultat;
+    };
+
+    t("sans filtre, tout est retenu", jouer(["gironde"], {}) === true);
+    t("inclure : seuls les plans qui portent l'étiquette",
+      jouer(["gironde"], { gironde: "in" }) === true &&
+      jouer(["paris"],   { gironde: "in" }) === false);
+    t("exclure : les plans qui la portent sortent",
+      jouer(["gironde"], { gironde: "out" }) === false &&
+      jouer(["paris"],   { gironde: "out" }) === true);
+    t("🩸 L'EXCLUSION L'EMPORTE sur l'inclusion (sinon « sors-moi l'atlas » ne marche pas)",
+      jouer(["gironde", "brouillon"], { gironde: "in", brouillon: "out" }) === false);
+    t("la casse est ignorée (« Gironde » et « gironde » sont la même étiquette)",
+      jouer(["Gironde"], { gironde: "in" }) === true);
+    t("un plan SANS étiquette a sa propre sentinelle, filtrable comme les autres",
+      jouer([], {}) === true &&
+      jouer([], { "\u0000sans-etiquette": "out" }) === false &&
+      jouer([], { gironde: "in" }) === false);
+
+    // 🩸 L'IMPASSE : si le filtre exclut tout, les chips doivent SURVIVRE.
+    // Sans elles, l'utilisateur n'a plus aucun moyen de revenir en arrière —
+    // le même piège que le flag kiosque qui cachait son propre remède.
+    t("🩸 filtre excluant tout : le bloc reste affiché (sinon aucun retour possible)",
+      /const filtreActif = Object\.keys\(_filtreTags\)\.length > 0;/.test(HP) &&
+      /activeSections\.length === 0 && !filtreActif\) return;/.test(HP));
+
+    // Le filtre ne doit RIEN persister : au retour dans la modale, des plans
+    // manquants sans explication passeraient pour une perte de données.
+    t("🩸 le filtre ne persiste nulle part (aucune clé de stockage)",
+      !/_filtreTags[\s\S]{0,200}localStorage/.test(HP));
+
+    t("tous les camemberts suivent le filtre, pas seulement celui des étiquettes",
+      /if \(_statsParPlan\.length\) breakdowns = _agregerFiltre\(\);/.test(HP));
+    t("un clic re-rend le bloc entier", /_renderProfilePies\(breakdowns, labels\);/.test(HP));
+    t("🩸 le clic est délégué au conteneur (les chips renaissent à chaque rendu)",
+      /piesContainer\.addEventListener\("click"/.test(HP));
+  }
+}
+
 console.log(ko === 0 ? "\n🎉 tags par l'index : l'index propose, l'utilisateur dispose"
                      : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

@@ -1,7 +1,7 @@
 {
-  "version": "v1.90.3",
+  "version": "v1.90.4",
   "released": "2026-09-08",
   "notes": [
-    "🏷️ Dans les statistiques du profil, les types que tu as créés toi-même s'affichaient sous leur identifiant interne (« cust-… ») au lieu de leur nom. Corrigé pour tous les plans ouverts au moins une fois."
+    "🏷️ Nouveau graphique « Plans par étiquette » dans les statistiques du profil, avec un filtre : un clic sur une étiquette ne garde que ces plans, un deuxième les exclut. Tous les graphiques suivent — pratique pour sortir un atlas et voir tes vraies statistiques."
   ]
 }

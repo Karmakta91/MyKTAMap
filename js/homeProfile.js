@@ -1872,6 +1872,9 @@
         // pas structurellement unique »). Afficher un nom plutôt qu'une clé
         // reste le bon choix même dans ce cas rare.
         const aggLabels = {};
+        // 🏷️ v1.90.4 — détail par plan (id, étiquettes, décomptes), conservé
+        // pour le filtre par étiquette. Vidé à chaque recalcul complet.
+        _statsParPlan.length = 0;
         const aggBreakdowns = {
           pointsByTag:   {},
           roadsByType:   {},
@@ -2044,6 +2047,16 @@
                 if (aggLabels[k] == null) aggLabels[k] = stats.labels[k];
               });
             }
+            // 🏷️ v1.90.4 — On GARDE le détail par plan, avec ses étiquettes.
+            // 🩸 Sans ça, chaque clic sur une chip de filtre relirait le
+            // localStorage de tous les plans — la boucle ci-dessus a un `await`
+            // par plan justement parce qu'elle est trop lourde pour le thread UI.
+            // Refiltrer doit être une opération de RAM, pas une relecture.
+            _statsParPlan.push({
+              id: plan.id,
+              tags: Array.isArray(plan.tags) ? plan.tags.slice() : [],
+              breakdowns: stats.breakdowns
+            });
           }
 
           // Append row au tbody (rendu progressif visible par l'user)
@@ -2108,6 +2121,53 @@
         _renderProfilePies(aggBreakdowns, aggLabels);
       }
 
+      // 🏷️ v1.90.4 (demande KARMA : « rajoute un graph de ce genre via les tags
+      // des plans, possibilité de filtrer et exclure »).
+      //
+      // Trois états par étiquette, et c'est ce qui rend « exclure » utile :
+      //   neutre  → l'étiquette ne dit rien
+      //   inclure → on ne garde QUE les plans qui la portent
+      //   exclure → on retire les plans qui la portent, quoi qu'il arrive
+      // 🩸 L'exclusion l'emporte toujours sur l'inclusion : un plan tagué
+      // « gironde » ET « brouillon », avec gironde inclus et brouillon exclu,
+      // est ÉCARTÉ. L'inverse ferait rentrer par une porte ce qu'on a fermé par
+      // l'autre — et c'est exactement le cas d'usage (« sors-moi l'atlas »).
+      //
+      // ⚠️ RAM uniquement, aucune clé de stockage : un filtre de consultation
+      // qui survivrait à la fermeture de la modale ferait croire, au retour,
+      // que des plans ont disparu.
+      const _statsParPlan = [];
+      const _filtreTags = {};        // tag minuscule → "in" | "out"
+      const SANS_TAG = "\u0000sans-etiquette";   // sentinelle : ne peut pas entrer en collision
+
+      function _planRetenu(entree) {
+        const tags = (entree.tags || []).map(function(t) { return String(t).toLowerCase(); });
+        const cles = tags.length ? tags : [SANS_TAG];
+        const inclus = Object.keys(_filtreTags).filter(function(k) { return _filtreTags[k] === "in"; });
+        const exclus = Object.keys(_filtreTags).filter(function(k) { return _filtreTags[k] === "out"; });
+        if (exclus.some(function(k) { return cles.indexOf(k) >= 0; })) return false;
+        if (inclus.length === 0) return true;
+        return inclus.some(function(k) { return cles.indexOf(k) >= 0; });
+      }
+
+      // Recalcule les 4 décomptes sur les seuls plans retenus, plus la
+      // répartition des PLANS par étiquette (un plan multi-étiquettes compte
+      // dans chacune : la somme des parts peut donc dépasser le nombre de
+      // plans, et c'est le comportement attendu d'un filtre).
+      function _agregerFiltre() {
+        const out = { pointsByTag: {}, roadsByType: {}, zonesByType: {}, structsByType: {}, plansByTag: {} };
+        _statsParPlan.forEach(function(e) {
+          if (!_planRetenu(e)) return;
+          ["pointsByTag", "roadsByType", "zonesByType", "structsByType"].forEach(function(k) {
+            _mergeBreakdown(out[k], (e.breakdowns || {})[k]);
+          });
+          const tags = (e.tags || []);
+          if (tags.length === 0) out.plansByTag[SANS_TAG] = (out.plansByTag[SANS_TAG] || 0) + 1;
+          else tags.forEach(function(t) { out.plansByTag[t] = (out.plansByTag[t] || 0) + 1; });
+        });
+        return out;
+      }
+
       // 🆕 v1.21.3 — Rend la section camemberts dans la modale Profil.
       // Construit ou met à jour le DOM #kta-profile-pies (après la table
       // "📊 Mes plans"). Une grille de 4 camemberts max (4 catégories) ;
@@ -2125,8 +2185,17 @@
                           : null;
         if (!renderPie) return;
 
+        const tr = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
+
+        // 🏷️ v1.90.4 — Les décomptes viennent désormais du FILTRE, pas de
+        // l'agrégat brut : sans filtre actif, `_agregerFiltre()` rend
+        // exactement le même total. On garde `breakdowns` en repli pour le cas
+        // où le détail par plan n'aurait pas été collecté (ancien chemin).
+        if (_statsParPlan.length) breakdowns = _agregerFiltre();
+
         // Une cat à afficher = breakdown non vide
         const sections = [
+          { key: "plansByTag",    category: "plantags",   label: "🏷️ " + tr("home.profile.pies.plansParTag") },
           { key: "pointsByTag",   category: "tags",       label: "📍 Points par tag" },
           { key: "roadsByType",   category: "traces",     label: "🛣️ Tracés par type" },
           { key: "zonesByType",   category: "zones",      label: "⬛ Zones par type" },
@@ -2136,7 +2205,13 @@
           const data = breakdowns[s.key] || {};
           return Object.keys(data).length > 0;
         });
-        if (activeSections.length === 0) return;  // rien à dessiner
+        // 🩸 v1.90.4 — L IMPASSE A EVITER : si le filtre exclut TOUT, les cinq
+        // sections sont vides. Sortir ici retirerait aussi les chips -- donc le
+        // seul moyen de revenir en arriere. L utilisateur se retrouverait devant
+        // un bloc disparu, persuade d avoir casse quelque chose. Meme piege que
+        // le flag kiosque qui cachait son propre remede (v1.90.1).
+        const filtreActif = Object.keys(_filtreTags).length > 0;
+        if (activeSections.length === 0 && !filtreActif) return;  // rien a dessiner
 
         // 🩸 v1.90.3 — QUAND ON NE SAIT PAS, ON LE DIT. Le nom d'un type
         // personnalisé n'est mémorisé qu'au chargement du plan : pour un plan
@@ -2162,13 +2237,76 @@
           return '<div class="kta-profile-pies-note">' + txt + '</div>';
         }
 
+        // 🏷️ v1.90.4 — La rangée de chips. Trois états, un clic pour passer au
+        // suivant : neutre → inclure → exclure → neutre. 🩸 Le libellé de chaque
+        // état est PORTÉ PAR LA CHIP (✓ / ✕), pas seulement par une couleur :
+        // un filtre qui ne se lit qu'à la teinte est illisible pour qui
+        // distingue mal les couleurs, et invisible sur une capture d'écran.
+        function _chipsFiltre() {
+          if (!_statsParPlan.length) return "";
+          const compte = {};
+          let sansTag = 0;
+          _statsParPlan.forEach(function(e) {
+            const tags = e.tags || [];
+            if (!tags.length) { sansTag++; return; }
+            tags.forEach(function(t) {
+              const k = String(t).toLowerCase();
+              compte[k] = (compte[k] || 0) + 1;
+            });
+          });
+          const cles = Object.keys(compte).sort(function(a, b) { return compte[b] - compte[a]; });
+          if (sansTag > 0) cles.push(SANS_TAG);
+          // Une seule étiquette (ou aucune) : le filtre n'a rien à trancher.
+          if (cles.length < 2) return "";
+
+          const retenus = _statsParPlan.filter(_planRetenu).length;
+          let h = '<div class="kta-profile-tagfilter">';
+          h += '<div class="kta-profile-tagfilter-aide">' +
+                 _echapper(tr("home.profile.pies.filtreAide")) + '</div>';
+          h += '<div class="kta-profile-tagfilter-chips">';
+          cles.forEach(function(k) {
+            const etat = _filtreTags[k] || "";
+            const nb = (k === SANS_TAG) ? sansTag : compte[k];
+            const nom = (k === SANS_TAG) ? tr("home.profile.pies.sansTag") : k;
+            const marque = (etat === "in") ? "✓ " : (etat === "out") ? "✕ " : "";
+            h += '<button type="button" class="kta-profile-tagchip' +
+                   (etat ? ' kta-profile-tagchip-' + etat : '') +
+                 '" data-tag="' + _echapper(k) + '">' +
+                   marque + _echapper(nom) + ' <span class="kta-profile-tagchip-n">' + nb + '</span>' +
+                 '</button>';
+          });
+          h += '</div>';
+          h += '<div class="kta-profile-tagfilter-etat">' +
+                 _echapper(tr("home.profile.pies.filtreEtat",
+                              { n: retenus, total: _statsParPlan.length })) + '</div>';
+          h += '</div>';
+          return h;
+        }
+
+        // 🩸 Autonome : `escapeHtml` n'est pas déclaré au niveau de ce module.
+        function _echapper(s2) {
+          return String(s2 == null ? "" : s2)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;");
+        }
+
         const piesContainer = document.createElement("div");
         piesContainer.id = "kta-profile-pies";
         piesContainer.className = "kta-profile-pies-wrap";
         let html = '<div class="kta-profile-pies-header">📊 Répartition par catégorie <span style="color:#8892a4; font-size:11px; font-weight:400;">(agrégée sur tes plans)</span></div>';
+        html += _chipsFiltre();
         html += '<div class="kta-profile-pies-grid">';
         activeSections.forEach(function(s) {
-          const data = breakdowns[s.key] || {};
+          let data = breakdowns[s.key] || {};
+          // 🩸 La sentinelle « sans étiquette » ne doit JAMAIS s'afficher telle
+          // quelle. On la traduit dans une COPIE : l'originale sert au filtre.
+          if (s.key === "plansByTag" && data[SANS_TAG] != null) {
+            const copie = {}; const nom = tr("home.profile.pies.sansTag");
+            Object.keys(data).forEach(function(k) {
+              copie[k === SANS_TAG ? nom : k] = data[k];
+            });
+            data = copie;
+          }
           html += '<div class="kta-profile-pies-card">' +
                     '<div class="kta-profile-pies-card-title">' + s.label + '</div>' +
                     // 🆕 v1.21.5-fix1 (KARMA "en stat général, on doit toujours
@@ -2183,6 +2321,23 @@
         html += '</div>';
         piesContainer.innerHTML = html;
         wrap.appendChild(piesContainer);
+
+        // 🏷️ v1.90.4 — Un clic fait tourner l'état de l'étiquette, puis on
+        // re-rend TOUT le bloc : les quatre autres camemberts se recalculent
+        // sur les plans retenus. C'est le sens de la demande — « exclure »
+        // n'a d'intérêt que s'il change les totaux qu'on regarde.
+        // 🩸 Délégation sur le conteneur : les chips sont recréées à chaque
+        // rendu, brancher chaque bouton laisserait des écouteurs orphelins.
+        piesContainer.addEventListener("click", function(ev) {
+          const btn = ev.target && ev.target.closest ? ev.target.closest("[data-tag]") : null;
+          if (!btn) return;
+          const k = btn.getAttribute("data-tag");
+          const cur = _filtreTags[k] || "";
+          if (cur === "")          _filtreTags[k] = "in";
+          else if (cur === "in")   _filtreTags[k] = "out";
+          else                     delete _filtreTags[k];
+          _renderProfilePies(breakdowns, labels);
+        });
       }
 
       // Init bandeau au boot du loader (différé pour laisser UserProfile.init())
