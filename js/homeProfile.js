@@ -1818,6 +1818,10 @@
         try {
           const stats = _computePlanStatsLive();
           localStorage.setItem("myktamap_plan_stats_v1_" + planId, JSON.stringify(stats));
+          // 🏷️ v1.90.5 — Et dans le dictionnaire DURABLE : le cache de stats est
+          // réécrit à chaque ouverture, mais il est aussi purgé et versionné.
+          // Les noms, eux, doivent survivre — ils ne dépendent d'aucune version.
+          _persisterNoms(stats.labels);
         } catch(e) {
           console.warn("[ProfileStats] Persist plan stats échec :", e);
         }
@@ -1871,7 +1875,9 @@
         // clé `cust-<ts36>-<rnd36>` (le module la dit lui-même « probabiliste,
         // pas structurellement unique »). Afficher un nom plutôt qu'une clé
         // reste le bon choix même dans ce cas rare.
-        const aggLabels = {};
+        // 🏷️ v1.90.5 — On PART du dictionnaire persistant : il porte tout ce qui
+        // a déjà été retrouvé, une fois pour toutes.
+        const aggLabels = _nomsPersistes();
         // 🏷️ v1.90.4 — détail par plan (id, étiquettes, décomptes), conservé
         // pour le filtre par étiquette. Vidé à chaque recalcul complet.
         _statsParPlan.length = 0;
@@ -2047,6 +2053,19 @@
                 if (aggLabels[k] == null) aggLabels[k] = stats.labels[k];
               });
             }
+            // 🏷️ v1.90.5 — La SESSION du plan porte aussi ses renommages, et
+            // elle est déjà en localStorage : c'est gratuit, on la lit toujours.
+            // (Elle ne contient PAS les types nés d'un import SIG, dont le nom
+            // vit dans le plan-config du ZIP — d'où la recherche à la demande.)
+            try {
+              const brut = localStorage.getItem("myktamap_session_v1_" + plan.id);
+              if (brut) {
+                const noms = _nomsDepuisLegende((JSON.parse(brut) || {}).customLegend);
+                Object.keys(noms).forEach(function(k) {
+                  if (aggLabels[k] == null) aggLabels[k] = noms[k];
+                });
+              }
+            } catch (e) {}
             // 🏷️ v1.90.4 — On GARDE le détail par plan, avec ses étiquettes.
             // 🩸 Sans ça, chaque clic sur une chip de filtre relirait le
             // localStorage de tous les plans — la boucle ci-dessus a un `await`
@@ -2054,6 +2073,10 @@
             // Refiltrer doit être une opération de RAM, pas une relecture.
             _statsParPlan.push({
               id: plan.id,
+              // `type` et `path` servent à retrouver le plan-config SANS ouvrir
+              // le plan, quand l'utilisateur demande les noms manquants.
+              type: plan.type,
+              path: plan.path || null,
               tags: Array.isArray(plan.tags) ? plan.tags.slice() : [],
               breakdowns: stats.breakdowns
             });
@@ -2136,6 +2159,46 @@
       // ⚠️ RAM uniquement, aucune clé de stockage : un filtre de consultation
       // qui survivrait à la fermeture de la modale ferait croire, au retour,
       // que des plans ont disparu.
+      // 🏷️ v1.90.5 — DICTIONNAIRE PERSISTANT DES NOMS DE TYPES PERSONNALISÉS.
+      // 🩸 VÉCU (KARMA) : la v1.90.3 mémorisait le nom au chargement du plan, ce
+      // qui ne réparait RIEN pour les plans déjà ouverts AVANT elle — leur cache
+      // de stats date d'avant et ne contient pas de `labels`. Le message disait
+      // vrai (« ouvre ces plans une fois ») mais imposait 20 ouvertures pour un
+      // affichage. Ce dictionnaire survit aux versions et se remplit par deux
+      // voies : le chargement d'un plan, et la recherche à la demande ci-dessous.
+      const LS_NOMS = "myktamap_legend_labels_v1";
+      function _nomsPersistes() {
+        try { return JSON.parse(localStorage.getItem(LS_NOMS) || "{}") || {}; }
+        catch (e) { return {}; }
+      }
+      function _persisterNoms(map) {
+        try {
+          const cur = _nomsPersistes();
+          Object.keys(map || {}).forEach(function(k) { if (map[k]) cur[k] = map[k]; });
+          localStorage.setItem(LS_NOMS, JSON.stringify(cur));
+        } catch (e) { console.warn("[ProfileStats] noms non persistés :", e); }
+      }
+
+      // Extrait les noms d'un bloc `customLegend` (plan-config ou session).
+      // Deux sources dans le même objet : `labels` (renommages) et
+      // `customEntries` (les types créés, dont le nom EST l'identité).
+      function _nomsDepuisLegende(cl) {
+        const out = {};
+        if (!cl || typeof cl !== "object") return out;
+        Object.keys(cl.labels || {}).forEach(function(k) {
+          // 🩸 On ne retient QUE les clés custom : un renommage de type built-in
+          // ne doit jamais s'imposer à un agrégat cross-plan (règle v1.21.5-fix1).
+          if (k.indexOf(".cust-") < 0) return;
+          const v = cl.labels[k];
+          if (v) out[k] = String(v).slice(0, 60);
+        });
+        (Array.isArray(cl.customEntries) ? cl.customEntries : []).forEach(function(e) {
+          if (!e || !e.id || !e.label || !e.category) return;
+          out[e.category + "." + e.id] = String(e.label).slice(0, 60);
+        });
+        return out;
+      }
+
       const _statsParPlan = [];
       const _filtreTags = {};        // tag minuscule → "in" | "out"
       const SANS_TAG = "\u0000sans-etiquette";   // sentinelle : ne peut pas entrer en collision
@@ -2219,6 +2282,8 @@
         // affichage possible. Sans cette note, l'utilisateur croit à un bug
         // permanent au lieu de comprendre qu'il lui suffit d'ouvrir le plan.
         // Même honnêteté que le message « aucun plan géoréférencé ».
+        // Un seul bouton pour tout le bloc, remis à zéro à chaque rendu.
+        let _boutonNomsPose = false;
         function _noteTypesNonResolus(data, categorie, labels) {
           const cat = (categorie === "roads") ? "traces"
                     : (categorie === "tags")  ? "icones"
@@ -2234,7 +2299,84 @@
           const tr = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
           const txt = String(tr("home.profile.pies.typesInconnus", { n: inconnus.length }))
             .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-          return '<div class="kta-profile-pies-note">' + txt + '</div>';
+          // Le bouton n'apparaît QU'UNE FOIS pour tout le bloc (il interroge
+          // tous les plans d'un coup) : le premier camembert qui a des types
+          // inconnus le porte.
+          let bouton = "";
+          if (!_boutonNomsPose) {
+            _boutonNomsPose = true;
+            const nbPlans = _statsParPlan.filter(function(e) {
+              return e.type === "server" || window.PlanRegistry;
+            }).length;
+            bouton = ' <button type="button" class="kta-profile-pies-fix">' +
+                       String(tr("home.profile.pies.retrouverNoms", { n: nbPlans }))
+                         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+                     '</button>';
+          }
+          return '<div class="kta-profile-pies-note">' + txt + bouton + '</div>';
+        }
+
+        // 🏷️ v1.90.5 — RETROUVER LES NOMS SANS OUVRIR LES PLANS.
+        // 🩸 VÉCU (KARMA, capture) : « toujours un souci ». La v1.90.3 ne
+        // réparait que les plans rouverts APRÈS elle — pour 20 plans déjà
+        // ouverts avant, il fallait les rouvrir un par un. Le message était
+        // exact et la corvée réelle.
+        //
+        // Le nom d'un type né d'un import SIG vit dans `plan.customLegend` du
+        // `plan-config.json`. Pour un plan SERVEUR c'est UNE requête vers votre
+        // propre serveur ; pour un plan local, une lecture du ZIP mémorisé.
+        //
+        // ⚠️ SUR DEMANDE, JAMAIS AUTOMATIQUE : 20 plans = 20 requêtes au
+        // chargement d'une fenêtre que l'utilisateur n'a peut-être pas ouverte
+        // pour ça. Le bouton dit combien de plans il va interroger — on ne
+        // déclenche pas du réseau dans le dos de quelqu'un.
+        async function _retrouverNoms(btn) {
+          const trb = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
+          const trouves = {};
+          let interroges = 0, echecs = 0;
+          for (const e of _statsParPlan) {
+            let cl = null;
+            try {
+              if (e.type === "server" && e.path) {
+                const dir = String(e.path).replace(/\/+$/, "");
+                const r = await fetch(dir + "/plan-config.json", { cache: "no-store" });
+                if (r.ok) {
+                  const cfg = await r.json();
+                  cl = cfg && cfg.plan ? cfg.plan.customLegend : null;
+                }
+                interroges++;
+              } else if (window.PlanRegistry && typeof window.PlanRegistry.getBlob === "function"
+                         && typeof window.JSZip !== "undefined") {
+                // 🩸 Le BLOB uniquement, jamais le FileSystemFileHandle : ce
+                // dernier peut réclamer une permission, donc une boîte de
+                // dialogue par plan. Un bouton ne doit pas se transformer en
+                // interrogatoire.
+                const blob = await window.PlanRegistry.getBlob(e.id);
+                if (blob) {
+                  const zip = await window.JSZip.loadAsync(blob);
+                  const ent = zip.file("plan-config.json") || zip.file("data/plan-config.json");
+                  if (ent) {
+                    const cfg = JSON.parse(await ent.async("string"));
+                    cl = cfg && cfg.plan ? cfg.plan.customLegend : null;
+                  }
+                  interroges++;
+                }
+              }
+            } catch (err) { echecs++; }
+            if (cl) Object.assign(trouves, _nomsDepuisLegende(cl));
+            // Laisse respirer le thread UI entre deux plans, comme la boucle
+            // d'agrégation : 20 lectures de ZIP d'affilée figeraient l'écran.
+            await new Promise(function(r2) { setTimeout(r2, 0); });
+          }
+          _persisterNoms(trouves);
+          const n = Object.keys(trouves).length;
+          if (btn) {
+            btn.textContent = n
+              ? trb("home.profile.pies.nomsTrouves", { n: n })
+              : trb("home.profile.pies.nomsAucun", { n: interroges, e: echecs });
+            btn.disabled = true;
+          }
+          if (n) _renderProfilePies(breakdowns, Object.assign({}, labels, trouves));
         }
 
         // 🏷️ v1.90.4 — La rangée de chips. Trois états, un clic pour passer au
@@ -2329,6 +2471,14 @@
         // 🩸 Délégation sur le conteneur : les chips sont recréées à chaque
         // rendu, brancher chaque bouton laisserait des écouteurs orphelins.
         piesContainer.addEventListener("click", function(ev) {
+          const fix = ev.target && ev.target.closest ? ev.target.closest(".kta-profile-pies-fix") : null;
+          if (fix) {
+            fix.disabled = true;
+            fix.textContent = (window.I18n && window.I18n.t)
+              ? window.I18n.t("home.profile.pies.nomsRecherche") : "…";
+            _retrouverNoms(fix);
+            return;
+          }
           const btn = ev.target && ev.target.closest ? ev.target.closest("[data-tag]") : null;
           if (!btn) return;
           const k = btn.getAttribute("data-tag");

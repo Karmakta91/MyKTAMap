@@ -282,6 +282,99 @@ t("🔎 l'utilisateur peut toujours les éditer dans ℹ️ Infos",
   }
 }
 
+// ═══ 6. RETROUVER LE NOM D'UN TYPE PERSONNALISÉ SANS OUVRIR LE PLAN (v1.90.5) ═══
+// VÉCU (KARMA, capture) : « toujours un souci ». La v1.90.3 mémorisait le nom
+// AU CHARGEMENT du plan — donc elle ne réparait rien pour les plans déjà
+// ouverts AVANT elle : leur cache de stats date d'avant et n'a pas de `labels`.
+// Le message disait vrai (« ouvre ces plans une fois ») mais imposait vingt
+// ouvertures pour un affichage.
+//
+// 🩸 CE QU'ON NE PEUT PAS FAIRE : aller lire les vingt plan-config au
+// chargement de la fenêtre. Vingt requêtes pour un widget que l'utilisateur
+// n'a peut-être pas ouvert pour ça. La recherche est donc SUR DEMANDE, et le
+// bouton annonce combien de plans il va lire — on ne déclenche pas du réseau
+// dans le dos de quelqu'un.
+{
+  const HP = fs.readFileSync("js/homeProfile.js", "utf8");
+
+  // — le dictionnaire DURABLE, indépendant du cache de stats —
+  t("🏷️ un dictionnaire de noms survit aux versions (clé dédiée)",
+    /const LS_NOMS = "myktamap_legend_labels_v1";/.test(HP));
+  t("il amorce l'agrégat", /const aggLabels = _nomsPersistes\(\);/.test(HP));
+  t("le chargement d'un plan l'alimente", /_persisterNoms\(stats\.labels\);/.test(HP));
+  t("🩸 …et il n'écrase jamais un nom déjà connu par une valeur vide",
+    /Object\.keys\(map \|\| \{\}\)\.forEach\(function\(k\) \{ if \(map\[k\]\) cur\[k\] = map\[k\]; \}\);/.test(HP));
+
+  // — l'extracteur de noms, EXÉCUTÉ sur les deux formes d'une légende —
+  const d = HP.indexOf("function _nomsDepuisLegende(cl) {");
+  let code = null;
+  if (d >= 0) {
+    let prof = 0;
+    for (let i = HP.indexOf("{", d); i < HP.length; i++) {
+      if (HP[i] === "{") prof++;
+      else if (HP[i] === "}") { prof--; if (prof === 0) { code = HP.slice(d, i + 1); break; } }
+    }
+  }
+  t("l'extracteur de noms est extractible", !!code);
+
+  if (code) {
+    const jouer = (cl) => {
+      const sb = { String: String, Array: Array, Object: Object };
+      vm.runInNewContext(code + "; resultat = _nomsDepuisLegende(" + JSON.stringify(cl) + ");",
+        sb, { filename: "homeProfile.noms.js" });
+      return sb.resultat;
+    };
+
+    // Un type né d'un import SIG vit dans `customEntries` : son NOM est son
+    // identité, il n'a pas de libellé par défaut derrière lui.
+    const r1 = jouer({ customEntries: [
+      { id: "cust-sig-structures-l-nm1", category: "structures", label: "Niveau -1" }
+    ] });
+    t("🏷️ un type créé (customEntries) donne son nom",
+      r1["structures.cust-sig-structures-l-nm1"] === "Niveau -1");
+
+    // Un RENOMMAGE vit dans `labels`, clé déjà préfixée par la catégorie.
+    const r2 = jouer({ labels: { "traces.cust-abc-1": "Ma galerie" } });
+    t("🏷️ un renommage (labels) aussi", r2["traces.cust-abc-1"] === "Ma galerie");
+
+    // 🩸 LA RÈGLE v1.21.5-fix1 : un renommage de type BUILT-IN ne doit JAMAIS
+    // entrer dans un dictionnaire cross-plan — il s'imposerait au total de
+    // tous les autres plans.
+    const r3 = jouer({ labels: { "traces.principal": "Route de surface" } });
+    t("🩸 un renommage de type BUILT-IN est ÉCARTÉ (sinon il pollue l'agrégat)",
+      Object.keys(r3).length === 0);
+
+    t("une légende absente ou vide ne casse rien",
+      Object.keys(jouer(null) || {}).length === 0 &&
+      Object.keys(jouer({}) || {}).length === 0);
+
+    // Une entrée incomplète ne doit pas produire une clé bancale.
+    const r4 = jouer({ customEntries: [{ id: "cust-x" }, { label: "sans id" }, null] });
+    t("une entrée incomplète est ignorée", Object.keys(r4).length === 0);
+  }
+
+  // — la recherche à la demande —
+  t("🔎 la recherche existe et lit le plan-config",
+    /async function _retrouverNoms\(btn\)/.test(HP) &&
+    /fetch\(dir \+ "\/plan-config\.json", \{ cache: "no-store" \}\)/.test(HP));
+  t("🩸 …et n'est JAMAIS automatique (déclenchée par un clic)",
+    /closest\("\.kta-profile-pies-fix"\)/.test(HP) &&
+    !/_retrouverNoms\(\)\s*;/.test(HP));
+  t("🩸 elle lit le BLOB local, jamais le handle (pas une boîte de dialogue par plan)",
+    /PlanRegistry\.getBlob\(e\.id\)/.test(HP) && !/ensureHandlePermission/.test(HP));
+  t("elle rend la main au thread UI entre deux plans",
+    /for \(const e of _statsParPlan\)[\s\S]{0,2200}await new Promise\(function\(r2\) \{ setTimeout\(r2, 0\); \}\);/.test(HP));
+  t("le bouton annonce combien de plans il va lire",
+    /home\.profile\.pies\.retrouverNoms/.test(HP) &&
+    /"home\.profile\.pies\.retrouverNoms": "[^"]*\{n\}/.test(fs.readFileSync("lang/fr.json", "utf8")));
+  t("🩸 un seul bouton pour tout le bloc, remis à zéro à chaque rendu",
+    /let _boutonNomsPose = false;/.test(HP) && /if \(!_boutonNomsPose\)/.test(HP));
+
+  // — la voie GRATUITE : la session est déjà en localStorage —
+  t("les renommages de la session sont lus sans rien demander",
+    /_nomsDepuisLegende\(\(JSON\.parse\(brut\) \|\| \{\}\)\.customLegend\)/.test(HP));
+}
+
 console.log(ko === 0 ? "\n🎉 tags par l'index : l'index propose, l'utilisateur dispose"
                      : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

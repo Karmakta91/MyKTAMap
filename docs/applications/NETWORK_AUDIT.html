@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.90.4</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.90.5</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,9 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.90.5 (bouton « Retrouver les noms » dans les statistiques)</h3>
+  <p>⚠️ <strong>Une requête, et seulement si vous cliquez.</strong> Les statistiques du profil peuvent afficher un type personnalisé par son identifiant, quand son nom n'a jamais été mémorisé. Un bouton <strong>« Retrouver les noms »</strong> va alors chercher ce nom dans le descriptif de chaque plan. Pour un plan hébergé sur <strong>votre propre serveur</strong>, cela demande son <code>plan-config.json</code> <strong>à ce serveur</strong> — le même fichier que celui déjà lu à l'ouverture du plan, à la même adresse. Pour un plan local, la lecture se fait <strong>dans le navigateur</strong>, sur l'archive déjà mémorisée.</p>
+  <p>> <strong>Rien ne part tant que vous ne cliquez pas</strong> : le bouton annonce le nombre de plans qu'il va lire, et il n'y a <strong>aucune requête automatique</strong> à l'ouverture de la fenêtre. Aucun tiers n'est contacté, aucune de vos données n'est envoyée — on <strong>lit</strong>, on n'envoie rien. Les noms trouvés sont gardés dans le stockage local de votre navigateur, donc l'opération ne se refait pas.</p>
   <h3>v1.90.4 (filtre par étiquette dans les statistiques du profil)</h3>
   <p><strong>100 % local</strong>, aucune requête nouvelle, aucun domaine, aucune donnée qui sort. Le nouveau graphique et son filtre travaillent sur des décomptes <strong>déjà calculés dans votre navigateur</strong>, et le filtre lui-même n'est <strong>écrit nulle part</strong> : il vit le temps où la fenêtre est ouverte.</p>
   <h3>v1.90.3 (les types personnalisés retrouvent leur nom dans les statistiques)</h3>
