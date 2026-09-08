@@ -355,6 +355,40 @@ async function _fraicheur() {
     liste.indexOf("./data/index.json") >= 0);
 }
 
+
+// ───────── 12. 💾 LE BOUTON HORS-LIGNE SUR LA LIGNE DE PLAN ─────────
+// Demande KARMA (« offline first oblige ») : télécharger un plan SERVEUR
+// directement depuis la liste du HOME, et le bouton devient « mettre à jour »
+// une fois le plan complet.
+// 🩸 Mêmes règles que la fiche ℹ️ Infos, pour les mêmes raisons : l'état vient
+// du CACHE RÉEL, et le bouton naît `hidden` — tant que l'état n'est pas lu, il
+// n'existe pas. Un cache purgé le fait repasser en « télécharger » tout seul.
+{
+  const HL2 = sansCommentaires(fs.readFileSync("js/homeLoader.js", "utf8"));
+  t("💾 le bouton n'est rendu que pour les plans SERVEUR",
+    /plan\.type === "server" \? `<button class="plan-row-btn kta-plan-row-dl"/.test(HL2));
+  t("🩸 …et il naît CACHÉ (pas de bouton fantôme avant de connaître l'état)",
+    /kta-plan-row-dl" data-off="\?" hidden/.test(HL2));
+  t("💾 les quatre états sont câblés",
+    /absent:\s*\{/.test(HL2) && /incomplet:\s*\{/.test(HL2) &&
+    /partiel:\s*\{/.test(HL2) && /complet:\s*\{/.test(HL2));
+  t("🩸 plan complet → le bouton devient « mettre à jour » (↻), pas un second téléchargement",
+    /complet:\s*\{ txt: "↻",\s*cle: "home\.plans\.offline\.rowUpdate"/.test(HL2));
+  t("🩸 l'état est RELU après chaque rendu de liste (jamais mémorisé)",
+    HL2.indexOf("_rafraichirBoutonsHorsLigne();") >= 0 &&
+    /etats = await window\.PlanOffline\.statuts\(ids\)/.test(HL2));
+  t("⚡ un SEUL caches.keys() pour toute la liste",
+    /async function statuts\(planIds\)/.test(sansCommentaires(fs.readFileSync("js/planOffline.js", "utf8"))));
+  t("🩸 le clic ne déclenche PAS le chargement du plan (stopPropagation)",
+    /ev\.stopPropagation\(\);/.test(HL2) && /_lancerHorsLigneLigne\(id, dlBtn\)/.test(HL2));
+  // 🩸 Le piège du jour, quatre fois : `plan` n'existe pas dans cette boucle,
+  // qui ne lie que `id`. Le référencer aurait été une ReferenceError au clic.
+  t("🩸 le handler passe l'`id` (seule variable liée par la boucle), pas `plan`",
+    HL2.indexOf("_lancerHorsLigneLigne(plan, dlBtn)") < 0);
+  t("🛟 après téléchargement, on RELIT le cache au lieu de croire le résultat",
+    /_rafraichirBoutonsHorsLigne\(\);[\s\S]{0,40}\}/.test(HL2));
+}
+
 // ───────── 9. 🩸 ON APPELLE LE HANDLER `fetch` DU SERVICE WORKER ─────────
 // VÉCU (v1.88.0 → corrigé en v1.88.2, signalé par KARMA depuis sa console) :
 // j'ai inséré la branche des sondes `_ktacheck` AVANT la ligne

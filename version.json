@@ -1,8 +1,7 @@
 {
-  "version": "v1.89.0",
+  "version": "v1.90.0",
   "released": "2026-09-08",
   "notes": [
-    "🌍 La Vue OSM de l’accueil affiche enfin les plans hébergés sur un serveur : leurs points, tracés et zones étaient invisibles.",
-    "🧹 L’installation est allégée d’environ 2 Mo : le plan de démonstration n’est plus téléchargé d’office."
+    "💾 Un plan hébergé sur un serveur se télécharge maintenant pour le hors-ligne d’un seul clic, depuis la liste de l’accueil. Une fois complet, le bouton devient « mettre à jour »."
   ]
 }

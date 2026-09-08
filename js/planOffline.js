@@ -105,11 +105,14 @@
 
   // ── Etat REEL, lu du cache ──────────────────────────────────────────
   // Retourne { etat: "absent" | "complet" | "incomplet", present, total, date }
-  async function statut(planId) {
+  // `clesDejaLues` : liste des caches deja obtenue par l appelant. Sert au
+  // batch `statuts()` — sans ca, afficher N plans dans la liste du HOME
+  // declencherait N appels a caches.keys() pour la meme information.
+  async function statut(planId, clesDejaLues) {
     const vide = { etat: "absent", present: 0, total: 0, date: null };
     if (!supporte() || !planId) return vide;
-    let cles;
-    try { cles = await caches.keys(); } catch (e) { return vide; }
+    let cles = clesDejaLues;
+    if (!cles) { try { cles = await caches.keys(); } catch (e) { return vide; } }
     const nom = nomCache(planId);
     if (cles.indexOf(nom) < 0) return vide;
 
@@ -296,6 +299,21 @@
     };
   }
 
+  // Etat de PLUSIEURS plans en une passe. Un seul caches.keys() pour tous —
+  // c est ce qui rend tenable l affichage d un bouton par ligne dans la liste
+  // du HOME, ou l on peut avoir vingt plans serveur.
+  // Retourne { <planId>: <statut> }.
+  async function statuts(planIds) {
+    const out = {};
+    if (!supporte() || !Array.isArray(planIds) || !planIds.length) return out;
+    let cles = [];
+    try { cles = await caches.keys(); } catch (e) { return out; }
+    await Promise.all(planIds.map(async function (id) {
+      try { out[id] = await statut(id, cles); } catch (e) { /* plan ignore */ }
+    }));
+    return out;
+  }
+
   async function supprimer(planId) {
     if (!supporte()) return false;
     const r = await caches.delete(nomCache(planId));
@@ -321,6 +339,7 @@
     nomCache:   nomCache,
     listerUrls: listerUrls,
     statut:     statut,
+    statuts:    statuts,
     precacher:  precacher,
     verifierMaj: verifierMaj,
     supprimer:  supprimer

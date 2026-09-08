@@ -21731,3 +21731,17 @@ body.kta-theme-light #kta-osm-mes-floater {
 .kta-jrn-fusion-barre .kta-btn[disabled] { opacity: .45; cursor: not-allowed; }
 .kta-jrn-coche { margin-right: 6px; font-size: 14px; }
 .kta-jrn-row-sel { border-color: rgba(140, 180, 255, 0.55) !important; }
+
+/* ═══════════════════════════════════
+   💾 v1.90.0 — BOUTON HORS-LIGNE SUR LA LIGNE DE PLAN (serveur uniquement)
+   Demande KARMA (« offline first oblige »). Trois couleurs pour trois états,
+   lus du CACHE RÉEL : neutre = à télécharger, vert = disponible (le bouton
+   devient « mettre à jour »), ambre = incomplet ou fichiers manquants.
+   Le bouton naît `hidden` : tant que l'état n'est pas lu, il n'existe pas —
+   pas de bouton fantôme.
+   ═══════════════════════════════════ */
+.plan-row-btn.kta-plan-row-dl { opacity: 0.75; }
+.plan-row-btn.kta-plan-row-dl:hover { opacity: 1; }
+.plan-row-btn.kta-dl-ok { color: #7bd88f; opacity: 1; }
+.plan-row-btn.kta-dl-partiel { color: #f4c542; opacity: 1; }
+.plan-row-btn.kta-plan-row-dl[disabled] { opacity: 0.45; cursor: progress; }

@@ -909,7 +909,81 @@
         return (fr !== undefined) ? fr : key;
       }
 
-      function planRowHTML(plan) {
+            // ══════════════════════════════════════════════════════════════
+      // 💾 v1.90.0 — BOUTON HORS-LIGNE SUR LA LIGNE (plans SERVEUR)
+      // ══════════════════════════════════════════════════════════════
+      // Demande KARMA : « offline first oblige, on doit avoir le bouton pour
+      // télécharger hors-ligne le plan serveur directement depuis le home ;
+      // si DL full, ça devient un bouton de mise à jour. »
+      //
+      // 🩸 L'ÉTAT VIENT DU CACHE RÉEL, jamais d'un drapeau — même règle que la
+      // fiche ℹ️ Infos. Le bouton naît donc CACHÉ (`hidden`) et n'apparaît
+      // qu'une fois l'état connu : si le cache est illisible, il reste absent
+      // plutôt que de mentir. Un cache purgé par le navigateur fait
+      // naturellement repasser le bouton en « télécharger ».
+      const _ETATS_DL = {
+        absent:    { txt: "⬇️", cle: "home.plans.offline.rowDl",       repli: "Rendre disponible hors-ligne" },
+        incomplet: { txt: "⬇️", cle: "home.plans.offline.rowResume",   repli: "Téléchargement incomplet — compléter" },
+        partiel:   { txt: "↻",  cle: "home.plans.offline.rowRetry",    repli: "Disponible, mais des fichiers manquent — réessayer" },
+        complet:   { txt: "↻",  cle: "home.plans.offline.rowUpdate",   repli: "Disponible hors-ligne — mettre à jour" }
+      };
+
+      function _peindreBoutonDl(btn, etat) {
+        const meta = _ETATS_DL[etat];
+        if (!meta) { btn.hidden = true; return; }
+        btn.textContent = meta.txt;
+        btn.title       = _homeT(meta.cle, meta.repli);
+        btn.dataset.off = etat;
+        btn.classList.toggle("kta-dl-ok", etat === "complet");
+        btn.classList.toggle("kta-dl-partiel", etat === "partiel" || etat === "incomplet");
+        btn.hidden = false;
+      }
+
+      // Un SEUL caches.keys() pour toute la liste (cf PlanOffline.statuts).
+      async function _rafraichirBoutonsHorsLigne() {
+        if (!window.PlanOffline || !window.PlanOffline.supporte()) return;
+        const btns = Array.from(document.querySelectorAll(".kta-plan-row-dl"));
+        if (!btns.length) return;
+        const ids = btns.map(function (b) {
+          const row = b.closest(".plan-row");
+          return row ? row.dataset.id : null;
+        }).filter(Boolean);
+        let etats = {};
+        try { etats = await window.PlanOffline.statuts(ids); } catch (e) { return; }
+        btns.forEach(function (b) {
+          const row = b.closest(".plan-row");
+          const st  = row && etats[row.dataset.id];
+          if (st) _peindreBoutonDl(b, st.etat);
+        });
+      }
+
+      // Téléchargement / mise à jour depuis la ligne. Le bouton porte sa propre
+      // progression : pas de modale, on reste dans la liste.
+      async function _lancerHorsLigneLigne(planId, btn) {
+        const plan = window.PlanRegistry && window.PlanRegistry.findById(planId);
+        if (!plan || plan.type !== "server" || !window.PlanOffline) return;
+        const avant = { txt: btn.textContent, title: btn.title };
+        btn.disabled = true;
+        btn.textContent = "…";
+        try {
+          const r = await window.PlanOffline.precacher(plan, function (p) {
+            const pct = p.total ? Math.round((p.fait / p.total) * 100) : 0;
+            btn.title = _homeT("home.plans.offline.rowProgress", "Téléchargement…") + " " + pct + " %";
+          });
+          if (r && r.echecs) {
+            console.warn("[Loader] hors-ligne : " + r.echecs + " fichier(s) introuvable(s) —", r.manquants);
+          }
+        } catch (e) {
+          console.warn("[Loader] hors-ligne échec :", e && e.message);
+          btn.textContent = avant.txt;
+          btn.title = avant.title;
+        }
+        btn.disabled = false;
+        // On RELIT le cache plutôt que de croire le résultat retourné.
+        _rafraichirBoutonsHorsLigne();
+      }
+
+function planRowHTML(plan) {
         let icon = plan.type === "server" ? "🌐" : "💾";
         // Badge de persistance (plans locaux) — différencier visuellement les
         // modes de stockage (blob/fsHandle/pick).
@@ -967,6 +1041,8 @@
             </div>
             <div class="plan-row-actions">
               <button class="plan-row-btn kta-plan-row-pin${plan.pinned ? " kta-actif" : ""}" title="${pinTitle}">${plan.pinned ? "⭐" : "☆"}</button>
+              ${plan.type === "server" ? `<button class="plan-row-btn kta-plan-row-dl" data-off="?" hidden
+                title="${_homeT("home.plans.offline.rowWait", "Vérification…")}">⏳</button>` : ""}
               <button class="plan-row-btn plan-row-info-btn" title="${_homeT("home.plans.infoBtnTitle", "Informations détaillées sur cette archive")}">ℹ️</button>
             </div>
           </div>
@@ -1673,6 +1749,10 @@
           }
         }
         _ktaMobileCollapsePlans();   // 📱 v1.68.0 : liste bornée sur mobile
+        // 💾 v1.90.0 — l'état hors-ligne des lignes est relu à CHAQUE rendu :
+        // il ne peut donc pas rester périmé après un téléchargement, une
+        // suppression depuis la fiche, ou une purge du navigateur.
+        _rafraichirBoutonsHorsLigne();
 
         // Brancher les listeners
         document.querySelectorAll(".plan-row").forEach(function(row) {
@@ -1680,6 +1760,14 @@
           // 🧹 v1.71.0 : plus de bouton ▶️ — la row entière est cliquable
           // (listener plus bas) et porte le title « Charger ce plan ».
           // 🏷️ v1.78.0 — toggle épinglage (⭐/☆), sans charger le plan
+          // 💾 v1.90.0 — bouton hors-ligne de la LIGNE (plans serveur).
+          const dlBtn = row.querySelector(".kta-plan-row-dl");
+          if (dlBtn) {
+            dlBtn.addEventListener("click", function (ev) {
+              ev.stopPropagation();   // ne pas déclencher le chargement du plan
+              _lancerHorsLigneLigne(id, dlBtn);   // 🩸 `plan` n'existe pas ici : la boucle ne lie que `id`
+            });
+          }
           const pinBtn = row.querySelector(".kta-plan-row-pin");
           if (pinBtn) {
             pinBtn.addEventListener("click", function(e) {
