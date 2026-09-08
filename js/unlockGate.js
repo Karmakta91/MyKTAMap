@@ -45,6 +45,29 @@
   const LS_ATTEMPTS = "myktamap_unlock_attempts"; // compteur tentatives échouées
   const MAX_ATTEMPTS = 5;
 
+  // 🔑 v1.90.6 (demande KARMA) — MOT DE PASSE PROPRE À UNE INSTANCE SERVEUR.
+  // Une instance auto-hébergée peut publier SON hash dans
+  // `data/index.json > config.accessHash`. Deux mots de passe ouvrent alors
+  // l'app : celui de la communauté (hardcodé ci-dessus, inchangé) et celui du
+  // déployeur. Aucun ne remplace l'autre — un kiosque n'a pas à distribuer le
+  // code communautaire à ses membres, et l'auteur n'a pas à connaître celui du
+  // kiosque.
+  //
+  // ⚠️ MÊME NIVEAU DE SÉCURITÉ QUE CI-DESSUS, PAS MOINS, PAS PLUS. Le hash est
+  // dans un fichier PUBLIC : n'importe qui peut le télécharger et le
+  // brute-forcer hors ligne. C'est exactement la situation du hash communautaire,
+  // lisible sur GitHub depuis toujours. Barrière SOCIALE, jamais une
+  // authentification — et ce serait mentir que de le présenter autrement.
+  //
+  // 🩸 CE QUI EST MÉMORISÉ, ET POURQUOI. Le hash accepté est écrit dans
+  // `LS_UNLOCK`, comme avant. Mais `isUnlocked()` compare à `HASH_VALIDE` : un
+  // utilisateur entré par le mot de passe du kiosque serait donc REVERROUILLÉ
+  // au premier démarrage hors-ligne, quand l'index n'est pas joignable. D'où
+  // cette seconde clé : elle se souvient du hash d'instance accepté, sans quoi
+  // la fonctionnalité serait inutilisable justement là où l'app sert le plus.
+  const LS_UNLOCK_KIOSQUE = "myktamap_unlock_instance_v1";
+  const RE_HASH = /^[0-9a-f]{64}$/;
+
   // État interne
   let _resolveGate = null;  // Promise resolver pour main.js qui attend
 
@@ -68,8 +91,63 @@
   // ÉTAT PUBLIC
   // =========================================================================
   function isUnlocked() {
-    try { return localStorage.getItem(LS_UNLOCK) === HASH_VALIDE; }
-    catch(e) { return false; }
+    try {
+      const v = localStorage.getItem(LS_UNLOCK);
+      if (v === HASH_VALIDE) return true;
+      // 🩸 Le hash d'instance mémorisé, lu SANS réseau : hors-ligne, c'est la
+      // seule chose qui empêche de reverrouiller quelqu'un qui est entré
+      // légitimement. La comparaison exige les deux valeurs non vides — sans
+      // ce garde, deux `null` seraient « égaux » et déverrouilleraient tout.
+      const k = localStorage.getItem(LS_UNLOCK_KIOSQUE);
+      return !!(v && k && RE_HASH.test(k) && v === k);
+    } catch(e) { return false; }
+  }
+
+  // Lit le hash publié par l'instance. Appelé UNIQUEMENT quand la gate
+  // s'ouvre — c'est-à-dire à la première installation ou après un reset — donc
+  // aucune requête ajoutée pour un utilisateur déjà déverrouillé.
+  // 🩸 On valide la FORME (64 hexa) avant de s'en servir : un `accessHash`
+  // fautif (mot de passe collé en clair, hash tronqué) ne doit pas devenir une
+  // valeur acceptée par comparaison de chaînes.
+  async function _hashInstance() {
+    try {
+      const r = await fetch("data/index.json", { cache: "no-store" });
+      if (!r.ok) return null;
+      const idx = await r.json();
+      const h = idx && idx.config ? idx.config.accessHash : null;
+      if (typeof h !== "string") return null;
+      const propre = h.trim().toLowerCase();
+      if (!RE_HASH.test(propre)) {
+        console.warn("[UnlockGate] config.accessHash ignoré : ce n'est pas un SHA-256 (64 hexa)");
+        return null;
+      }
+      return propre;
+    } catch(e) { return null; }
+  }
+
+  // 🔑 v1.90.6 — Le déployeur a changé son mot de passe : on oublie l'ancien,
+  // et l'utilisateur le ressaisira au PROCHAIN démarrage. On ne recharge pas la
+  // page en pleine session — couper quelqu'un au milieu de son relevé pour une
+  // rotation de mot de passe serait pire que le délai d'un boot.
+  // 🩸 Appelé UNIQUEMENT quand l'index a répondu : hors-ligne, on ne touche à
+  // rien, sinon une coupure réseau reverrouillerait l'app.
+  function revaliderInstance(hashPublie, indexRepondu) {
+    // 🩸 `null` VEUT DIRE DEUX CHOSES INCOMPATIBLES : « l index a repondu et le
+    // mot de passe a ete retire » (reverrouiller) et « l index est injoignable »
+    // (ne toucher a rien). La fonction ne peut pas les deviner, donc l appelant
+    // le DIT. Sans ce parametre, la sureté reposait sur la discipline d un site
+    // d appel situe a 1800 lignes de la -- et un futur appel de bonne foi
+    // reverrouillerait l app a la premiere coupure reseau.
+    if (indexRepondu !== true) return;
+    try {
+      const memo = localStorage.getItem(LS_UNLOCK_KIOSQUE);
+      if (!memo) return;
+      const propre = (typeof hashPublie === "string") ? hashPublie.trim().toLowerCase() : null;
+      if (propre && RE_HASH.test(propre) && propre === memo) return;   // inchangé
+      localStorage.removeItem(LS_UNLOCK_KIOSQUE);
+      if (localStorage.getItem(LS_UNLOCK) === memo) localStorage.removeItem(LS_UNLOCK);
+      console.log("[UnlockGate] mot de passe d'instance changé ou retiré — ressaisie au prochain démarrage");
+    } catch(e) {}
   }
 
   function _getAttempts() {
@@ -249,10 +327,23 @@
       return;
     }
 
-    if (hashed === HASH_VALIDE) {
+    // 🔑 v1.90.6 — Le mot de passe de l'instance ouvre aussi, sans remplacer
+    // celui de la communauté. On ne demande l'index QU'EN CAS D'ÉCHEC du
+    // premier test : le chemin nominal ne coûte aucune requête.
+    let hashInstance = null;
+    if (hashed !== HASH_VALIDE) hashInstance = await _hashInstance();
+    const okCommunaute = (hashed === HASH_VALIDE);
+    const okInstance   = !!(hashInstance && hashed === hashInstance);
+
+    if (okCommunaute || okInstance) {
       // ✅ Succès
       try {
-        localStorage.setItem(LS_UNLOCK, HASH_VALIDE);
+        localStorage.setItem(LS_UNLOCK, hashed);
+        // 🩸 Mémoriser le hash d'instance est ce qui rend l'accès utilisable
+        // HORS LIGNE : `isUnlocked()` n'a alors rien d'autre pour reconnaître
+        // un déverrouillage légitime.
+        if (okInstance) localStorage.setItem(LS_UNLOCK_KIOSQUE, hashInstance);
+        else            localStorage.removeItem(LS_UNLOCK_KIOSQUE);
         localStorage.removeItem(LS_ATTEMPTS);
       } catch(e) {}
       fb.innerHTML = '<div class="kta-unlock-success">' + t("gate.success") + '</div>';
@@ -446,7 +537,8 @@
     isLockedOut: isLockedOut,
     ouvrirGate:  ouvrirGate,
     lock:        lock,
-    markUnlockedViaLicensePro: markUnlockedViaLicensePro
+    markUnlockedViaLicensePro: markUnlockedViaLicensePro,
+    revaliderInstance: revaliderInstance   // 🔑 v1.90.6 (appelé par main.js)
   };
 
   console.log("[UnlockGate] Module chargé — unlock state :", isUnlocked());

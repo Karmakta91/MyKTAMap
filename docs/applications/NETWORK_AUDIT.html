@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.90.5</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.90.6</strong> (8 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,9 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.90.6 (mot de passe d'accès propre à une instance)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune donnée qui sort. Une instance auto-hébergée peut publier l'<strong>empreinte</strong> (SHA-256) d'un mot de passe dans son <code>data/index.json</code> — <strong>le même fichier, déjà lu à chaque démarrage</strong>. Ses visiteurs ouvrent alors l'app avec ce mot de passe <strong>ou</strong> avec le code communautaire. Côté réseau : <strong>aucune requête ajoutée pour qui est déjà entré</strong>, et une seule lecture de <code>data/index.json</code> — vers votre propre serveur — quand l'écran de code s'affiche et que le code communautaire n'a pas fonctionné. Le mot de passe lui-même n'est <strong>jamais</strong> transmis : c'est votre navigateur qui calcule l'empreinte et la compare, sur place.</p>
+  <p>> 🔒 <strong>Ce que ça vaut, dit franchement.</strong> <code>index.json</code> est <strong>public</strong> : l'empreinte l'est donc aussi, et quelqu'un de motivé peut tenter de retrouver le mot de passe hors ligne. C'est <strong>exactement</strong> la situation du code communautaire, dont l'empreinte est lisible sur GitHub depuis toujours — le niveau de protection ne baisse pas, <strong>mais il ne monte pas non plus</strong>. C'est une barrière <strong>sociale</strong>, <strong>jamais une authentification</strong>.</p>
   <h3>v1.90.5 (bouton « Retrouver les noms » dans les statistiques)</h3>
   <p>⚠️ <strong>Une requête, et seulement si vous cliquez.</strong> Les statistiques du profil peuvent afficher un type personnalisé par son identifiant, quand son nom n'a jamais été mémorisé. Un bouton <strong>« Retrouver les noms »</strong> va alors chercher ce nom dans le descriptif de chaque plan. Pour un plan hébergé sur <strong>votre propre serveur</strong>, cela demande son <code>plan-config.json</code> <strong>à ce serveur</strong> — le même fichier que celui déjà lu à l'ouverture du plan, à la même adresse. Pour un plan local, la lecture se fait <strong>dans le navigateur</strong>, sur l'archive déjà mémorisée.</p>
   <p>> <strong>Rien ne part tant que vous ne cliquez pas</strong> : le bouton annonce le nombre de plans qu'il va lire, et il n'y a <strong>aucune requête automatique</strong> à l'ouverture de la fenêtre. Aucun tiers n'est contacté, aucune de vos données n'est envoyée — on <strong>lit</strong>, on n'envoie rien. Les noms trouvés sont gardés dans le stockage local de votre navigateur, donc l'opération ne se refait pas.</p>

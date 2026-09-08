@@ -1,5 +1,18 @@
 # Architecture MyKTAMap — Sécurité : gates, PIN, audit réseau, légal, licence
 
+> 🔑 **v1.90.6 — DEUX mots de passe ouvrent la gate.** Celui de la communauté (`HASH_VALIDE`, hardcodé,
+> inchangé) et, si l'instance en publie un, `data/index.json > config.accessHash`. Aucun ne remplace l'autre :
+> un club distribue le sien sans transmettre celui de l'auteur.
+>
+> 🔒 **Le niveau de sécurité est IDENTIQUE, et il est faible — c'est assumé et écrit partout.** Le hash
+> d'instance vit dans un fichier public ; le hash communautaire est sur GitHub. Les deux se brute-forcent hors
+> ligne. Barrière **sociale** (« il faut connaître le code »), **jamais une authentification**. Le lockout à 5
+> tentatives et le stockage local restent inchangés, bypassables en console comme avant.
+>
+> 🩸 Détail d'implémentation qui n'est pas cosmétique : `isUnlocked()` exige les deux valeurs **non vides** et
+> la forme `/^[0-9a-f]{64}$/`. Sur un navigateur vierge, une comparaison naïve entre deux `null` aurait ouvert
+> l'app à tout le monde, sans la moindre erreur visible.
+
 > Référence détaillée extraite de l'ancien CLAUDE.md. Lue à la demande (pas auto-chargée).
 > Sections : §18, §36, §40, §43, §77
 

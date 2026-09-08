@@ -172,6 +172,24 @@
       <span><strong>serverPlansOnly</strong> — plans du serveur uniquement<br>
       <small>Masque l'import de plans (dropzone, « Ajouter un plan ») : les visiteurs consultent les plans du kiosque.
       Leurs données restent locales chez eux (sessions, notes, carnet, photos).</small></span></label>
+    <!-- 🔑 v1.90.6 — MOT DE PASSE PROPRE À L'INSTANCE. Le mot de passe saisi
+         ici ne quitte JAMAIS ce navigateur : seul son SHA-256 part dans
+         index.json, et le champ n'est ni pré-rempli ni relu à la reprise d'un
+         index existant — on ne peut pas retrouver un mot de passe depuis son
+         hash, et faire semblant du contraire serait pire que rien. -->
+    <div class="kta-ca-field" style="margin-top:10px;">
+      <label for="caAccessPwd">🔑 Mot de passe d'accès de cette instance <span style="color:#8892a4;">(optionnel)</span></label>
+      <input type="text" id="caAccessPwd" placeholder="laisser vide = seul le code communautaire ouvre l'app" maxlength="120"
+             autocomplete="off" spellcheck="false">
+      <div id="caAccessPwdEtat" style="font-size:12px; color:#8892a4; margin-top:4px;"></div>
+      <div style="font-size:11.5px; color:#8892a4; margin-top:4px; line-height:1.5;">
+        Tes visiteurs pourront ouvrir l'app avec CE mot de passe <strong>ou</strong> avec le code communautaire.
+        Seul le <strong>hash SHA-256</strong> part dans <code>index.json</code> — le mot de passe lui-même ne quitte pas ce navigateur.
+        ⚠️ <strong>Barrière sociale, pas une authentification</strong> : <code>index.json</code> est public, donc le hash aussi.
+        N'y mets rien que tu ne dirais pas à voix haute.
+      </div>
+    </div>
+
     <label class="kta-ca-flag"><input type="checkbox" id="caFlagNoGen">
       <span><strong>disableGenerator</strong> — sans Générateur<br>
       <small>Retire le Générateur de plans de la liste des outils.</small></span></label>
@@ -384,6 +402,17 @@
         $("caSubtitle").value        = c.subtitle || "";
         $("caFlagServerOnly").checked = c.serverPlansOnly === true;
         $("caFlagNoGen").checked      = c.disableGenerator === true;
+        // 🩸 On CONSERVE le hash repris tel quel, sans toucher au champ : un
+        // hash ne se remonte pas en mot de passe. Le champ reste vide, et
+        // taper dedans REMPLACE le hash — ce qui est le seul geste honnête.
+        _accessHash = (typeof c.accessHash === "string" && /^[0-9a-f]{64}$/.test(c.accessHash.trim().toLowerCase()))
+          ? c.accessHash.trim().toLowerCase() : "";
+        const _etatPwd = $("caAccessPwdEtat");
+        if (_etatPwd) {
+          _etatPwd.textContent = _accessHash
+            ? "🔑 mot de passe existant conservé (" + _accessHash.slice(0, 16) + "…) — tape ici pour le remplacer"
+            : "";
+        }
         _liaisonsReprises = (d.liaisons && Array.isArray(d.liaisons.links) && d.liaisons.links.length)
           ? d.liaisons : null;
         _statut($("caPlansStatus"),
@@ -397,6 +426,42 @@
     };
     r.readAsText(f);
   });
+
+  // 🔑 v1.90.6 — SHA-256 du mot de passe d'instance. Recalculé à la volée,
+  // jamais stocké : `_accessHash` ne contient QUE le hash, et la valeur tapée
+  // reste dans le champ, en RAM, le temps de l'onglet.
+  // 🩸 `crypto.subtle` n'existe qu'en contexte SÛR (https ou localhost). Un
+  // déployeur qui ouvre confadmin.html en `file://` ou en HTTP simple doit le
+  // SAVOIR : sans ce message, il croirait avoir posé un mot de passe et
+  // publierait un index sans hash.
+  let _accessHash = "";
+  async function _majAccessHash() {
+    const el = $("caAccessPwd"), etat = $("caAccessPwdEtat");
+    const v = (el && el.value ? el.value : "").trim();
+    if (!v) {
+      _accessHash = "";
+      if (etat) etat.textContent = "";
+      _renderOut();
+      return;
+    }
+    if (!window.crypto || !window.crypto.subtle) {
+      _accessHash = "";
+      if (etat) etat.textContent = "⚠️ Impossible de calculer le hash : ouvre cette page en HTTPS (ou depuis localhost). Le mot de passe ne sera PAS publié.";
+      _renderOut();
+      return;
+    }
+    try {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v));
+      _accessHash = Array.from(new Uint8Array(buf))
+        .map(function(b) { return b.toString(16).padStart(2, "0"); }).join("");
+      if (etat) etat.textContent = "✅ hash calculé : " + _accessHash.slice(0, 16) + "…";
+    } catch (e) {
+      _accessHash = "";
+      if (etat) etat.textContent = "⚠️ Calcul impossible : " + (e.message || e);
+    }
+    _renderOut();
+  }
+  $("caAccessPwd").addEventListener("input", function() { _majAccessHash(); });
 
   // ───────── 2. LIAISONS ─────────
   function _poserLiaisons(reg, origine) {
@@ -511,11 +576,12 @@
     const out = {};
     const so = $("caFlagServerOnly").checked, ng = $("caFlagNoGen").checked;
     const st = $("caSubtitle").value.trim();
-    if (so || ng || st) {
+    if (so || ng || st || _accessHash) {
       out.config = {};
       if (st) out.config.subtitle = st;
       if (so) out.config.serverPlansOnly = true;
       if (ng) out.config.disableGenerator = true;
+      if (_accessHash) out.config.accessHash = _accessHash;
     }
     out.plans = _plans.map(function(p) {
       const e = { id: p.id, path: "data/" + p.id, name: p.name };

@@ -27,7 +27,8 @@
    - lit vos ZIPs (localement, rien n'est envoyé) et pré-remplit la liste des plans ;
    - récupère vos liaisons (profil du navigateur ou export de profil) et **remappe les identifiants**
      vers ceux de votre instance — indispensable, les ids locaux n'existent que sur votre appareil ;
-   - propose sous-titre + les 2 réglages kiosque ;
+   - propose sous-titre, les 2 réglages kiosque, et un **mot de passe d'accès propre à votre instance**
+     (seul son **hash SHA-256** part dans le fichier — le mot de passe lui-même ne quitte pas votre navigateur) ;
    - permet de **taguer chaque plan** (colonne « Tags », séparés par des virgules) — ces étiquettes
      arrivent chez vos visiteurs et alimentent les chips-filtres de leur accueil ;
    - sait **reprendre un `index.json` déjà en ligne** (bouton « 📂 Reprendre un index.json existant ») :
@@ -43,7 +44,8 @@
   "config": {
     "subtitle": "Gironde",
     "serverPlansOnly": true,
-    "disableGenerator": true
+    "disableGenerator": true,
+    "accessHash": "89e39e…（SHA-256 du mot de passe, 64 caractères hexadécimaux）"
   },
   "plans": [
     { "id": "carrieres-nord", "path": "data/carrieres-nord", "name": "Carrières Nord",
@@ -68,6 +70,18 @@
   avec « afficher les plans du serveur » décoché, il **vidait l'accueil** — et la case pour le rétablir est
   justement masquée par le mode. L'**export** de profil, lui, reste ouvert : les données du visiteur lui
   appartiennent.
+- `accessHash` : SHA-256 d'un **mot de passe propre à votre instance**. Vos visiteurs peuvent alors ouvrir
+  l'app avec **ce** mot de passe **ou** avec le code communautaire — aucun des deux ne remplace l'autre.
+  Pratique pour un club : vous distribuez votre mot de passe à vos membres sans avoir à leur transmettre
+  celui de la communauté.
+  - 🔒 **Ce que ça vaut, exactement.** `index.json` est un fichier **public** : n'importe qui peut le
+    télécharger et tenter de retrouver le mot de passe hors ligne. C'est **exactement** la situation du code
+    communautaire, dont le hash est lisible sur GitHub depuis toujours — le niveau de protection ne baisse
+    donc pas, mais **il ne monte pas non plus**. C'est une barrière **sociale** (« il faut connaître le
+    code »), **jamais une authentification**. N'y mettez rien que vous ne diriez pas à voix haute.
+  - **Le changer** re-demande le mot de passe à vos visiteurs, **au démarrage suivant** — pas au milieu de
+    leur session. **Le retirer** de l'index re-demande aussi. En revanche, un visiteur **hors ligne** garde
+    son accès : une coupure réseau ne doit pas enfermer quelqu'un dehors.
 - ⚠️ Ces réglages **allègent l'interface**, ils ne « sécurisent » rien : MyKTAMap community n'est pas bridable, par principe.
 
 ## À savoir

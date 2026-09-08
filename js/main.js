@@ -149,6 +149,21 @@ async function _chargerIndexServeur() {
     const idx = await r.json();
     window.KIOSK_CONFIG = (idx && typeof idx.config === "object" && idx.config) ? idx.config : null;
     _appliquerConfigKiosque();
+
+    // 🔑 v1.90.6 — ROTATION DU MOT DE PASSE D INSTANCE. On n arrive ici QUE si
+    // l index a repondu : hors-ligne, ou si le fichier a disparu, la fonction
+    // n est pas appelee et le deverrouillage memorise survit. C est
+    // volontaire -- une coupure reseau ne doit pas reverrouiller l app.
+    // 🩸 Et c est APRES la gate dans l ordre du boot : le changement prend donc
+    // effet au PROCHAIN demarrage, pas en pleine session. Couper quelqu un au
+    // milieu de son releve pour une rotation de mot de passe serait pire que
+    // le delai d un boot.
+    if (window.UnlockGate && typeof window.UnlockGate.revaliderInstance === "function") {
+      // `true` : on n arrive ici QUE si le fetch a repondu 2xx. Un index
+      // injoignable sort plus haut et n appelle rien.
+      window.UnlockGate.revaliderInstance(
+        window.KIOSK_CONFIG ? window.KIOSK_CONFIG.accessHash : null, true);
+    }
     // 🌀 Liaisons fournies par l'instance : FUSION par id dans le registre
     // local (idempotent — rejouée à chaque boot, dédup par link.id). Une
     // liaison retirée côté serveur reste chez qui l'a déjà (assumé, doc).

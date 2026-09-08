@@ -31,6 +31,7 @@ pré-installe **ses plans** dans `data/` + un `data/index.json` enrichi (génér
 | Masquer l'import de plans | `index.json > config.serverPlansOnly` | v1.73.0 |
 | Masquer le Générateur | `index.json > config.disableGenerator` | v1.73.0 |
 | Étiquettes proposées par plan | `index.json > plans[].tags` (12 × 24 car.) | v1.90.1 |
+| Mot de passe d'accès de l'instance | `index.json > config.accessHash` (SHA-256) | v1.90.6 |
 
 **Règle des 2 flags** : `serverPlansOnly` et `disableGenerator` sont les DEUX SEULS
 flags de comportement kiosque. Tout flag supplémentaire = topo + décision KARMA
@@ -84,5 +85,31 @@ photos restent locales et exportables).
   chaque nom. Les liaisons d'un index repris sont **reposées telles quelles** tant
   qu'aucune liaison locale n'est sélectionnée — sur une machine sans registre, un index
   rechargé pour corriger un tag serait redescendu SANS ses liaisons.
+- **Mot de passe d'instance (v1.90.6) — DEUX portes, aucune ne remplace l'autre** :
+  `config.accessHash` (SHA-256, validé `/^[0-9a-f]{64}$/` avant tout usage) ouvre la gate au même titre
+  que `HASH_VALIDE` hardcodé. 🔒 **Le niveau de sécurité ne change pas** : le hash est dans un fichier
+  **public**, brute-forçable hors ligne — exactement comme le hash communautaire, lisible sur GitHub.
+  Barrière sociale, jamais une authentification, et le dire fait partie du contrat.
+  - 🩸 **`isUnlocked()` ne peut PAS se contenter de comparer le stocké au hash publié** : sur un navigateur
+    vierge les deux valent `null`, et l'app s'ouvrirait pour tout le monde. Le hash d'instance accepté est
+    donc mémorisé dans `myktamap_unlock_instance_v1`, et la comparaison exige les deux valeurs non vides
+    **et** la forme valide.
+  - 🩸 **Cette mémoire est ce qui rend l'accès utilisable HORS LIGNE** : sans elle, un visiteur entré par le
+    mot de passe de l'instance serait reverrouillé au premier démarrage sans réseau — soit précisément là où
+    l'app sert le plus.
+  - 🩸 **`revaliderInstance(hash, indexRepondu)` prend un second paramètre EXPRÈS.** `null` veut dire deux
+    choses incompatibles — « le déployeur a retiré le mot de passe » (reverrouiller) et « l'index est
+    injoignable » (ne rien toucher). La fonction ne peut pas les deviner : l'appelant le déclare. La
+    première version reposait sur la discipline d'un site d'appel distant de 1800 lignes, et un futur appel
+    de bonne foi aurait reverrouillé l'app à la première coupure réseau.
+  - ⏱️ **La rotation prend effet au démarrage SUIVANT** : la revalidation vit après la gate dans l'ordre du
+    boot, et couper quelqu'un au milieu de son relevé pour un changement de mot de passe serait pire que le
+    délai d'un boot.
+  - ⚡ **Zéro requête ajoutée pour qui est déjà entré** : l'index n'est demandé que depuis la saisie de la
+    gate, et seulement si le code communautaire a échoué.
+  - ⚙️ `confadmin.html` calcule le hash localement et n'écrit **jamais** le mot de passe ; à la reprise d'un
+    index existant le champ reste **vide** (un hash ne remonte pas en mot de passe) et le hash repris est
+    conservé tant qu'on ne tape rien. `crypto.subtle` exigeant un contexte sûr, une ouverture en `file://`
+    ou en HTTP simple est **signalée** au lieu de produire un index sans hash en silence.
 - Guide déployeur : `docs/applications/SELFHOST.md`. Licence CC BY-NC-SA 4.0 :
   un kiosque commercial nécessite un accord de l'auteur.

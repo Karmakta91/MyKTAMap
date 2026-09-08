@@ -1,7 +1,7 @@
 {
-  "version": "v1.90.5",
+  "version": "v1.90.6",
   "released": "2026-09-08",
   "notes": [
-    "🔎 Dans les statistiques du profil, un bouton « Retrouver les noms » va chercher le nom de tes types personnalisés directement dans tes plans, sans avoir à les ouvrir un par un. Les noms trouvés sont gardés pour toujours."
+    "🔑 Une instance auto-hébergée peut définir son propre mot de passe d'accès. Ses visiteurs ouvrent alors l'app avec celui-ci ou avec le code communautaire — l'un n'empêche pas l'autre."
   ]
 }
