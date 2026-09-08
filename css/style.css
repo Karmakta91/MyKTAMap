@@ -4970,6 +4970,37 @@ body.kta-theme-light .splash-license-detail-pro {
   min-height: 260px;
 }
 .kta-osm-home-loading,
+/* 🌍 v1.90.2 — Bandeau d'annonce du défaut OSM. Discret mais lisible : il dit
+   qu'un fond de carte tiers est désormais affiché sans qu'on l'ait demandé,
+   et il disparaît définitivement au premier « J'ai compris ». */
+.kta-osm-defaut-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 8px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(244, 197, 66, 0.35);
+  border-radius: 8px;
+  background: rgba(244, 197, 66, 0.08);
+  font-size: 12px;
+  line-height: 1.45;
+  color: #c8d0e0;
+}
+.kta-osm-defaut-txt { flex: 1 1 200px; }
+.kta-osm-defaut-ok {
+  flex: 0 0 auto;
+  padding: 5px 12px;
+  border: 1px solid rgba(140, 180, 255, 0.45);
+  border-radius: 6px;
+  background: transparent;
+  color: #8cb4ff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.kta-osm-defaut-ok:hover { background: rgba(140, 180, 255, 0.12); }
+
 .kta-osm-home-empty {
   display: flex;
   align-items: center;

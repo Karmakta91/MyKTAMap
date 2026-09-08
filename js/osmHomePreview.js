@@ -408,8 +408,18 @@
   // =========================
   // HELPERS — Opt-in & state
   // =========================
+  // 🌍 v1.90.2 — MÊME RÈGLE QUE `OsmView.isOptedIn` (osmView.js), et elle DOIT
+  // le rester : "0" = refus explicite → OFF ; absent ou "1" → ON. Voir le
+  // commentaire complet côté osmView.js.
   function _isOptedIn() {
-    try { return localStorage.getItem(LS_OPT_IN_KEY) === "1"; } catch(e) { return false; }
+    try { return localStorage.getItem(LS_OPT_IN_KEY) !== "0"; } catch(e) { return false; }
+  }
+
+  // 🩸 « Actif parce que jamais refusé » n'est PAS « actif parce que choisi ».
+  // Tant que la clé est absente, on doit l'annoncer : c'est un fond de carte
+  // servi par un tiers qui apparaît sans que personne ne l'ait demandé.
+  function _estActifParDefaut() {
+    try { return localStorage.getItem(LS_OPT_IN_KEY) === null; } catch(e) { return false; }
   }
   // 🧹 v1.77.0 (audit code mort) : _setOptedIn supprimé — jamais appelé,
   // l'opt-in réel s'écrit via OsmView.setOptedIn (Configuration HOME).
@@ -3243,6 +3253,38 @@
       initialId = plans[0].id;
     }
     _renderWidget(container, plans, initialId);
+    _afficherBandeauDefaut(container);
+  }
+
+  // 🌍 v1.90.2 — L'ANNONCE DU DÉFAUT. Elle ne s'affiche que tant que la clé
+  // d'opt-in est ABSENTE : cliquer « J'ai compris » écrit "1", ce qui
+  // transforme un accord implicite en accord EXPLICITE et fait disparaître le
+  // bandeau pour toujours. Refuser se fait au même endroit qu'avant
+  // (⚙️ Configuration), et écrit "0" — que plus rien ne réécrase.
+  // ⚠️ C'est une NOTIFICATION, pas un consentement préalable : les premières
+  // tuiles sont déjà demandées quand elle s'affiche. Assumé et écrit tel quel
+  // dans l'audit réseau — le mode est coupable d'un fond de carte, pas d'une
+  // fuite de données : aucune donnée du plan ne part, seules des coordonnées
+  // de tuiles sont demandées.
+  function _afficherBandeauDefaut(container) {
+    if (!_estActifParDefaut() || !container) return;
+    if (container.querySelector(".kta-osm-defaut-info")) return;
+    const t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k) { return k; };
+    const el = document.createElement("div");
+    el.className = "kta-osm-defaut-info";
+    el.innerHTML =
+      '<span class="kta-osm-defaut-txt"></span>' +
+      '<button type="button" class="kta-osm-defaut-ok"></button>';
+    // 🩸 textContent, jamais innerHTML, sur ce qui vient du dictionnaire.
+    el.querySelector(".kta-osm-defaut-txt").textContent = t("osm_home.defautOn.corps");
+    el.querySelector(".kta-osm-defaut-ok").textContent  = t("osm_home.defautOn.ok");
+    el.querySelector(".kta-osm-defaut-ok").addEventListener("click", function() {
+      if (window.OsmView && typeof window.OsmView.setOptedIn === "function") {
+        window.OsmView.setOptedIn(true);   // l'implicite devient explicite
+      }
+      el.remove();
+    });
+    container.insertBefore(el, container.firstChild);
   }
 
   function refresh() { mount(); }

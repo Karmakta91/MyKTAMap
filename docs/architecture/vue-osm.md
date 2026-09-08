@@ -1,5 +1,26 @@
 # Architecture MyKTAMap — Vue OSM (modale + widget HOME)
 
+> 🌍 **v1.90.2 — L'OPT-IN DEVIENT UN OPT-OUT.** Décision KARMA : *« active le mode OSM par défaut, dans 99 %
+> des cas ce mode est utilisé »*. `myktamap_osm_view_opt_in` est **tri-état** et c'est tout l'intérêt :
+> `"1"` accepté → ON · `"0"` **refusé explicitement → OFF, jamais réécrasé** · absent → **ON** (le changement).
+>
+> 🩸 **Ce n'est pas un réglage d'affichage.** Le widget du HOME monte une carte Leaflet dont le fond vient de
+> `tile.openstreetmap.org` : actif par défaut, **l'accueil contacte un tiers au chargement, sans clic**, pour
+> qui possède au moins un plan géoréférencé. C'est la seule requête sortante de l'app. Elle ne transporte
+> **aucune donnée de plan** — seulement les coordonnées des tuiles regardées.
+>
+> 🚨 **`isOptedIn` est DUPLIQUÉ** : `osmView.js` (modale) et `osmHomePreview.js` (widget). Les faire diverger
+> donne un widget affiché sans bouton dans la modale, ou l'inverse. `check-osm-defaut.js` **exécute les deux**
+> sur les 4 états de la clé et refuse qu'ils répondent différemment.
+>
+> 📣 **Le défaut s'annonce** : tant que la clé est absente, `_afficherBandeauDefaut` pose un bandeau dans le
+> widget ; le valider écrit `"1"` — l'implicite devient explicite. ⚠️ C'est une **notification**, pas un
+> consentement préalable : les premières tuiles sont déjà demandées quand il s'affiche. Assumé, et écrit tel
+> quel dans `NETWORK_AUDIT`.
+>
+> 🔒 **Restent prioritaires sur le défaut** : hors-ligne strict, incognito, hors-ligne réel, aucun plan
+> géoréférencé — testés dans `mount()` **après** l'opt-in, et le garde-fou tient cet ordre.
+
 > Référence détaillée de la roadmap Vue OSM (v1.39.0 → v1.43.8). Lue à la demande.
 > Sections : §1 vision · §2 modale `osmView.js` · §3 widget `osmHomePreview.js` · §4 sécurité · §5 pièges connus · §6 extension · §7 synergie Mode Secours · §8 cache OSM offline (v1.43.0 → v1.43.8)
 

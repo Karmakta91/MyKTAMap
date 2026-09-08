@@ -230,8 +230,29 @@
   // =========================
   // CONFIG / OPT-IN
   // =========================
+  // 🌍 v1.90.2 — LE DÉFAUT BASCULE À « ACTIF » (décision KARMA : « dans 99 %
+  // des cas ce mode est utilisé »).
+  //
+  // 🩸 LA CLÉ EST TRI-ÉTAT, ET C'EST TOUT L'INTÉRÊT :
+  //   "1"   → activé explicitement          → ON  (inchangé)
+  //   "0"   → REFUSÉ explicitement          → OFF (inchangé — on ne repasse
+  //           JAMAIS par-dessus un refus, c'est la seule règle non négociable
+  //           quand on retourne un défaut qui contacte un tiers)
+  //   absent → jamais touché                 → ON  (le changement)
+  //
+  // ⚠️ CE QUE ÇA CHANGE VRAIMENT : le widget OSM du HOME monte une carte
+  // Leaflet dont le fond vient de `tile.openstreetmap.org`. Actif par défaut,
+  // l'accueil contacte donc OpenStreetMap AU CHARGEMENT, sans clic — pour qui
+  // possède au moins un plan géoréférencé. Restent bloquants et prioritaires :
+  // mode hors-ligne strict, incognito, hors-ligne réel, aucun plan géoréf.
+  // Un bandeau ponctuel le dit à l'utilisateur la première fois
+  // (osmHomePreview.js) : un défaut qui contacte un tiers s'annonce.
+  //
+  // 🚨 LES DEUX LECTEURS DOIVENT RESTER IDENTIQUES (ici + osmHomePreview.js) :
+  // les faire diverger donnerait un widget affiché sans bouton dans la modale,
+  // ou l'inverse. `check-osm-defaut.js` les exécute tous les deux.
   function isOptedIn() {
-    try { return localStorage.getItem(LS_OPT_IN_KEY) === "1"; } catch(e) { return false; }
+    try { return localStorage.getItem(LS_OPT_IN_KEY) !== "0"; } catch(e) { return false; }
   }
   function setOptedIn(value) {
     try { localStorage.setItem(LS_OPT_IN_KEY, value ? "1" : "0"); } catch(e) {}

@@ -318,3 +318,15 @@ node scripts/check-tags-index.js || exit $?
 # est un piege. LA REGLE : ce qui est interdit l est AU GOULOT, pas sur un
 # bouton — la modale d import se declenche depuis au moins deux endroits.
 node scripts/check-kiosque-serveur.js || exit $?
+
+# DEFAUT OSM (decision KARMA du 08/09 : « active le mode OSM par defaut, dans
+# 99 % des cas ce mode est utilise »). Ce n est PAS un reglage ordinaire : le
+# widget OSM du HOME monte une carte dont le fond vient de
+# tile.openstreetmap.org. Actif par defaut, l accueil contacte donc un TIERS au
+# chargement, sans clic -- la seule chose que l app fasse sortir du navigateur.
+# TROIS INVARIANTS : un refus explicite ("0") n est JAMAIS reecrase (la faute
+# qu on ne rattrape pas apres un deploiement) ; les DEUX lecteurs (osmView =
+# modale, osmHomePreview = widget) repondent a l identique, sinon widget sans
+# bouton ou l inverse ; et le defaut S ANNONCE tant que la cle est absente.
+# On EXECUTE les deux lecteurs sur les 4 etats de la cle. 7 sabotages rougissent.
+node scripts/check-osm-defaut.js || exit $?
