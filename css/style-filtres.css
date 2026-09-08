@@ -229,6 +229,34 @@
   accent-color: #f4c542;
 }
 
+/* 🔄 v1.85.0 — ligne de calque de donnees : la case a cocher garde toute la
+   largeur, l action de rapatriement se pose a droite sans la retrecir. */
+.kta-fp-calque-ligne {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kta-fp-calque-ligne .kta-fp-row-cb {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.kta-fp-calque-ligne .kta-fp-row-cb > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kta-fp-calque-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+/* Un calque rapatrie est masque d office : le dire DANS son libelle, pour que
+   la case decochee ne passe pas pour un choix de l utilisateur. */
+.kta-fp-calque-remplace {
+  color: #ffb380;
+  font-style: normal;
+  font-size: 11px;
+}
+
 /* Section M-LVL : sous-blocs "Actif" + "Visibles" */
 .kta-fp-lvl-active,
 .kta-fp-lvl-visible {

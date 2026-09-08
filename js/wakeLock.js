@@ -50,6 +50,8 @@
 
   let _enabled  = false;   // pref user (peut être true sans active si caché)
   let _sentinel = null;    // WakeLockSentinel actif (null si pas acquis)
+  let _reprises = 0;       // reprises consécutives après un relâchement système
+  const MAX_REPRISES = 3;  // au-delà, on cesse d'insister et on attend un geste
   const _listeners = [];
 
   function isSupported() {
@@ -88,12 +90,28 @@
     if (_sentinel !== null) return true;  // déjà acquis
     try {
       _sentinel = await navigator.wakeLock.request("screen");
-      // Hook release event (browser peut release sans demande — ex: batterie
-      // critique, onglet caché). On reset notre sentinel pour permettre le
-      // re-acquire automatique au visibilitychange→visible.
+      _reprises = 0;   // acquisition réussie : le compteur de reprises repart
+      // Le navigateur peut relâcher sans qu'on demande (batterie critique,
+      // onglet caché, décision du système).
+      //
+      // 🩸 v1.85.2 — AVANT, on se contentait de vider le sentinel en comptant
+      // sur un `visibilitychange → visible` pour reprendre. Quand le système
+      // relâche le verrou TOUT SEUL, sans que l'onglet ait bougé, ce
+      // changement n'arrive JAMAIS : la préférence restait à `true`, la case
+      // cochée, et plus rien ne tenait l'écran. On reprend donc ici même,
+      // borné pour ne pas boucler contre un système qui refuse.
       _sentinel.addEventListener("release", function() {
         _sentinel = null;
         _notify();
+        if (!_enabled || document.hidden) return;
+        if (_reprises < MAX_REPRISES) {
+          _reprises++;
+          setTimeout(function() { if (_enabled && !isActive()) _acquire(); }, 400);
+        } else {
+          // Le système s'obstine : on cesse d'insister et on rend la main au
+          // prochain geste de l'utilisateur, qui vaut autorisation fraîche.
+          _reprendreAuPremierGeste();
+        }
       });
       _notify();
       return true;
@@ -114,26 +132,51 @@
     _notify();
   }
 
+  // 🩸 v1.85.2 — REND LE RESULTAT REEL. Avant, la fonction ne rendait rien :
+  // l appelant affichait « 🔆 Ecran maintenu allume » sans savoir si le verrou
+  // avait ete pose. Quand le navigateur refuse — pas de geste utilisateur,
+  // batterie faible, ou implementation qui accepte puis ignore — l app MENTAIT.
+  // C est ce mensonge qui a fait chercher la panne du mauvais cote.
   async function setEnabled(v) {
     const newVal = !!v;
-    if (newVal === _enabled) return;
+    if (newVal === _enabled) return isActive();
     _enabled = newVal;
     _writePref(newVal);
     if (newVal) {
-      await _acquire();
-    } else {
-      await _release();
+      const ok = await _acquire();
+      if (!ok) _reprendreAuPremierGeste();
+      return ok;
     }
+    await _release();
+    return false;
   }
 
+  // 🩸 v1.85.2 — LE VERROU FANTÔME (retour KARMA, iPhone 17 Pro en PWA).
+  // Symptôme : « je coche, ça marche ; je quitte l'app, je relance, la case
+  // est cochée mais ça ne marche plus ; je décoche/recoche et ça repart ».
+  //
+  // La case cochée prouve que la préférence est bien relue. Ce qui échoue,
+  // c'est le verrou posé AU BOOT, sans geste utilisateur : le système
+  // l'accepte — `request()` résout, on tient un sentinel, `isActive()` rend
+  // vrai — puis il l'IGNORE. Ni erreur, ni événement `release`. Rien ne
+  // permet de le distinguer d'un vrai verrou, et `_acquire()` sort d'ailleurs
+  // tout de suite (`if (_sentinel !== null) return true`) : le fantôme bloque
+  // à jamais toute reprise.
+  //
+  // Décocher/recocher répare parce que ça fait un RELÂCHEMENT puis une
+  // acquisition SOUS GESTE UTILISATEUR. On refait donc exactement ce geste,
+  // nous-mêmes, au premier contact avec l'écran — sans rien demander.
   async function init() {
     _enabled = _readPref();
-    if (_enabled && !document.hidden) {
-      // Tente d'acquire au boot. Si l'app vient juste de boot, document
-      // est visible → ok. Si caché ou si la pref demande user-gesture sur
-      // certains browsers, on retentera au visibilitychange→visible.
+    if (!_enabled) return;
+    if (!document.hidden) {
+      // On tente quand même : sur les plateformes qui l'acceptent vraiment,
+      // l'écran tient dès la première seconde, avant tout contact.
       await _acquire();
     }
+    // Puis on repose le verrou au premier geste, QU'IL AIT L'AIR TENU OU NON.
+    // `forcer: true` — un sentinel en main ne prouve rien ici.
+    _reprendreAuPremierGeste(true);
   }
 
   function onChange(cb) {
@@ -145,6 +188,37 @@
     };
   }
 
+  // ─── Reprise au PREMIER GESTE utilisateur ───
+  // 🩸 Un `wakeLock.request()` au boot peut etre refuse faute de geste
+  // utilisateur : au lancement a froid, personne ne bascule d onglet, donc le
+  // filet `visibilitychange` ne se declenche jamais et la preference reste
+  // lettre morte. Le premier tap sur l ecran sert de rattrapage. Une seule
+  // fois : le listener se retire des qu il a servi.
+  // `forcer` : on RELÂCHE avant de reprendre, même si un sentinel est en main.
+  // C'est le cas du retour d'un lancement à froid — cf. `_rearmerApresBoot`.
+  let _gesteArme = false;
+  function _reprendreAuPremierGeste(forcer) {
+    if (!_enabled) return;
+    if (!forcer && isActive()) return;
+    if (_gesteArme) return;              // un seul armement à la fois
+    _gesteArme = true;
+    const rattraper = async function () {
+      document.removeEventListener("pointerdown", rattraper, true);
+      document.removeEventListener("touchstart", rattraper, true);
+      _gesteArme = false;
+      if (!_enabled) return;
+      if (forcer) await _release();
+      const ok = await _acquire();
+      // 🩸 Un échec ne doit pas condamner la préférence : on se réarme pour
+      // le geste suivant. La version initiale retirait l'écouteur une fois
+      // pour toutes — un seul refus et l'option restait morte jusqu'au
+      // prochain décochage manuel.
+      if (!ok) _reprendreAuPremierGeste(false);
+    };
+    document.addEventListener("pointerdown", rattraper, true);
+    document.addEventListener("touchstart", rattraper, true);
+  }
+
   // ─── Re-acquire au retour visibility ───
   // Le wakeLock est auto-release par le browser quand l'onglet devient
   // caché. On le ré-acquire au retour si l'user l'avait activé.
@@ -154,9 +228,13 @@
       // pour cohérence (la release event fera le reset officiellement,
       // mais on est défensif au cas où il ne fire pas sur tous les browsers).
       _sentinel = null;
-    } else if (_enabled && !isActive()) {
-      // Onglet revenu visible + pref activée + plus de sentinel → re-acquire
-      _acquire();
+    } else if (_enabled) {
+      // Onglet revenu visible : le compteur de reprises repart, et on repose
+      // le verrou en FORÇANT — le retour d'arrière-plan est le même cas que
+      // le boot, un sentinel survivant peut être un fantôme.
+      _reprises = 0;
+      if (!isActive()) _acquire();
+      _reprendreAuPremierGeste(true);
     }
   });
 

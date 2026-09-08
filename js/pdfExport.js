@@ -30,6 +30,14 @@
 
   // Marges PDF en mm
   const PDF_MARGIN_MM     = 12;
+  // 🩸 RESTAUREE le 03/09/2026 — supprimee A TORT par le nettoyage de code mort
+  // du 09/08 (commit 9834504) alors qu elle est UTILISEE l.517. Consequence :
+  // toute generation PDF avec en-tete echouait sur
+  // « HEADER_HEIGHT_MM is not defined », et ce depuis pres d un mois - le smoke
+  // ne genere pas de PDF, aucun des 18 garde-fous ne lisait les identifiants.
+  // C est exactement le risque que documente docs/BACKLOG.md > « Lecon du faux
+  // fix » : un symbole qui n apparait qu une fois passe pour mort.
+  const HEADER_HEIGHT_MM  = 18;
   const FOOTER_HEIGHT_MM  = 55;
   // JPEG quality du canvas → image PDF (compromis taille / qualité)
   const JPEG_QUALITY      = 0.88;
@@ -138,11 +146,16 @@
       return;
     }
 
-    // Stats actuelles pour les compteurs (session uniquement)
-    const points     = (window.getEditorPoints  && window.getEditorPoints())  || [];
-    const roads      = (window.getRoads         && window.getRoads())         || [];
-    const zones      = (window.getZones         && window.getZones())         || [];
-    const structures = (window.getStructures    && window.getStructures())    || [];
+    // 🩸 v1.82.0 — CES COMPTEURS NE SONT PAS DÉCORATIFS : `_cbRow` DÉSACTIVE
+    // la case quand ils valent zéro. Comptés sur la seule session, ils mettaient
+    // donc l'export PDF d'un plan importé — dont tout le relevé vit dans un
+    // calque de données — dans l'impossibilité de sortir la moindre annotation.
+    // « L'export PDF n'exporte rien », signalé par KARMA : diagnostic exact.
+    const C = window.ktaAnnotationsCompletes || function () { return []; };
+    const points     = C("points");
+    const roads      = C("roads");
+    const zones      = C("zones");
+    const structures = C("structures");
 
     // Calques du plan (auto-listés comme dans l'export PNG avancé)
     const cfg          = window.PLAN_CONFIG || {};

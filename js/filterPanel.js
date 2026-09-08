@@ -493,18 +493,64 @@
     }
     const pc = window.PLAN_CONFIG;
     const cfg = (pc && Array.isArray(pc.dataLayers)) ? pc.dataLayers : [];
+    // 🔄 v1.85.0 — RAPATRIEMENT EN SESSION (cf. js/calqueSession.js).
+    // Un calque de données est en LECTURE SEULE et rendu UNE seule fois : pour
+    // y corriger quoi que ce soit il faut amener son contenu dans la session,
+    // là où `renderRoads`/`renderZones`/`renderStructures` savent redessiner.
+    // Cette section est le seul point de contrôle de la visibilité d'un calque
+    // — le verrou se pose donc ICI, et nulle part ailleurs, sinon deux
+    // contrôles se disputent le même état.
+    const CS = window.CalqueSession;
     let html = '<div class="kta-fp-list">';
     ids.forEach(function(id) {
       const visible = window.map && window.map.hasLayer(groups[id]);
       const lc = cfg.find(function(d) { return d.id === id; });
       const label = (lc && lc.label) || (id === "editor" ? window.I18n.t("filter.dataLayer.editor") : id);
-      html += '<label class="kta-fp-row-cb">' +
-                '<input type="checkbox" data-data-layer="' + _escAttr(id) + '"' + (visible ? " checked" : "") + '>' +
-                '<span>📊 ' + _escHtml(label) + '</span>' +
-              '</label>';
+      // Le calque « editor » EST la session : le rapatrier n'aurait aucun sens.
+      const rapatriable = !!(CS && lc && lc.file && id !== "editor");
+      const rapatrie    = !!(CS && CS.estRapatrie(id));
+      html += '<div class="kta-fp-calque-ligne">' +
+                '<label class="kta-fp-row-cb">' +
+                  '<input type="checkbox" data-data-layer="' + _escAttr(id) + '"' + (visible ? " checked" : "") + '>' +
+                  '<span>📊 ' + _escHtml(label) +
+                    (rapatrie ? ' <em class="kta-fp-calque-remplace">'
+                                + _escHtml(window.I18n.t("filter.calque.remplace")) + '</em>' : '') +
+                  '</span>' +
+                '</label>' +
+                // 💾 Exporter ne s'affiche que sur un calque rapatrié : c'est
+                // ce qui ferme la boucle vers le ZIP. Un fichier, à déposer sur
+                // la ligne de CE calque dans « Modifier un plan » — la ligne
+                // étant le calque, aucun doublon n'est possible.
+                (rapatrie
+                  ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-calque-btn" ' +
+                      'data-calque-exporter="' + _escAttr(id) + '" ' +
+                      'title="' + _escAttr(window.I18n.t("filter.calque.exporterTitle")) + '">' +
+                      _escHtml(window.I18n.t("filter.calque.exporter")) +
+                    '</button>'
+                  : '') +
+                (rapatriable
+                  ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-calque-btn" ' +
+                      (rapatrie ? 'data-calque-restituer="' : 'data-calque-rapatrier="') + _escAttr(id) + '" ' +
+                      'title="' + _escAttr(window.I18n.t(rapatrie ? "filter.calque.restituerTitle"
+                                                                 : "filter.calque.rapatrierTitle")) + '">' +
+                      _escHtml(window.I18n.t(rapatrie ? "filter.calque.restituer" : "filter.calque.rapatrier")) +
+                    '</button>'
+                  : '') +
+              '</div>';
     });
     html += '</div>';
     return html;
+  }
+
+  // 🔄 v1.85.0 — re-rend la SEULE section des calques. Un `ouvrir()` complet
+  // refermerait les `<details>` que l'utilisateur a repliés et perdrait sa
+  // position de défilement : après un rapatriement, on ne redessine que ce
+  // qui a changé.
+  function refreshDataLayers() {
+    if (!_modal) return;
+    const sec = _modal.querySelector("#kta-fp-sec-data .kta-fp-section-body");
+    if (!sec) return;
+    sec.innerHTML = _renderDataLayersSection();
   }
 
   function _renderLevelsSection() {
@@ -703,6 +749,23 @@
     overlay.addEventListener("click", function(e) {
       const t = e.target;
       if (!t || !t.matches) return;
+      // === Calques : rapatriement en session / restitution / export (v1.85.0) ===
+      // 🩸 ICI, et pas dans le listener `change` juste au-dessus : ce sont des
+      // <button>, et un bouton n’emet JAMAIS `change`. Places la-bas, ils
+      // etaient morts SILENCIEUSEMENT — aucune erreur console, juste rien au
+      // clic. C’est KARMA qui l’a vu a l’ecran, pas la relecture.
+      if (t.matches('[data-calque-rapatrier]')) {
+        _rapatrierCalque(t.getAttribute("data-calque-rapatrier"));
+        return;
+      }
+      if (t.matches('[data-calque-restituer]')) {
+        _restituerCalque(t.getAttribute("data-calque-restituer"));
+        return;
+      }
+      if (t.matches('[data-calque-exporter]')) {
+        _exporterCalque(t.getAttribute("data-calque-exporter"));
+        return;
+      }
       if (t.matches('[data-action="show-all"]') || t.matches('[data-action="hide-all"]')) {
         const wantShow = t.matches('[data-action="show-all"]');
         const setName  = t.getAttribute("data-set");
@@ -805,9 +868,114 @@
   }
 
   // ============================================================
+  // 🔄 v1.85.0 — RAPATRIEMENT D'UN CALQUE EN SESSION
+  // ============================================================
+  // ⚠️ ON ANNONCE LE COÛT AVANT. Mesuré le 04/09 sur les relevés Gironde :
+  // 225 octets par objet, donc ~1,1 Mo pour un relevé SIG de 5 000 objets —
+  // quand `localStorage` plafonne vers 5 Mo POUR TOUT LE DOMAINE et que
+  // `SessionPersist` re-sérialise la session entière à chaque sauvegarde.
+  // Découvrir ça au `QuotaExceededError`, c'est le découvrir une fois la
+  // session perdue. D'où la pesée, et l'occupation réelle dans le message.
+  function _fmtOctets(o) {
+    if (!Number.isFinite(o)) return "?";
+    return (o >= 1048576) ? (o / 1048576).toFixed(2) + " Mo"
+                          : Math.round(o / 1024) + " ko";
+  }
+
+  function _rapatrierCalque(id) {
+    const CS = window.CalqueSession;
+    if (!CS || !id) return;
+    CS.peser(id).then(function(p) {
+      if (!p) { alert(window.I18n.t("filter.calque.errPesee")); return; }
+      const occ = CS.occupationLocalStorage();
+      const msg = window.I18n.t("filter.calque.confirm", {
+        label:  p.label,
+        n:      p.objets,
+        poids:  _fmtOctets(p.octets),
+        occup:  (occ === null) ? "?" : _fmtOctets(occ)
+      });
+      if (!window.confirm(msg)) return;
+      CS.rapatrier(id).then(function(r) {
+        if (!r || !r.ok) {
+          alert(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }));
+          return;
+        }
+        refreshDataLayers();
+        _scheduleRoadsRecalc();
+        _updateStatus();
+        if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+          window.OOMGuard.showToast(window.I18n.t("filter.calque.okRapatrie", { n: r.total }), "info");
+        }
+      });
+    });
+  }
+
+  // 🩸 CE QUE LA RESTITUTION DÉTRUIT, EXACTEMENT (question KARMA, 05/09) :
+  // les objets qui portent la marque du calque — donc **tes corrections
+  // dessus**, y compris celles faites avec 🔄 Convertir (la conversion repart
+  // de l'objet d'origine, elle conserve la marque). Elle ne touche RIEN
+  // d'autre : les structures et tracés que tu as dessinés, ton itinéraire, tes
+  // points restent, parce qu'ils ne portent pas cette marque.
+  //
+  // Le travail perdu peut valoir des heures. On propose donc d'ABORD
+  // l'exporter — le fichier produit EST le calque corrigé, prêt à redonner au
+  // plan. Deux questions enchaînées plutôt qu'un `confirm` binaire : il faut
+  // trois issues (exporter puis restituer · restituer quand même · annuler),
+  // et un choix destructeur ne doit pas partager un bouton avec un choix sûr.
+  function _restituerCalque(id) {
+    const CS = window.CalqueSession;
+    if (!CS || !id) return;
+    const n = CS.compterCopie(id);
+    if (n <= 0) { _restituerVraiment(id); return; }   // rien à perdre
+
+    window.ktaConfirm(window.I18n.t("filter.calque.exportAvantMsg", { n: n }), {
+      titre:       window.I18n.t("filter.calque.exportAvantTitre"),
+      okLabel:     window.I18n.t("filter.calque.exportAvantOui"),
+      cancelLabel: window.I18n.t("filter.calque.exportAvantNon")
+    }).then(function (exporter) {
+      if (exporter) { _exporterCalque(id); _restituerVraiment(id); return; }
+      // Refus d'exporter → on redemande, et là le message dit ce qui se perd.
+      window.ktaConfirm(window.I18n.t("filter.calque.confirmRestituer", { n: n }), {
+        titre:       window.I18n.t("filter.calque.exportAvantTitre"),
+        okLabel:     window.I18n.t("filter.calque.restituerOk"),
+        cancelLabel: window.I18n.t("filter.calque.restituerAnnuler")
+      }).then(function (ok) { if (ok) _restituerVraiment(id); });
+    });
+  }
+
+  function _restituerVraiment(id) {
+    const CS = window.CalqueSession;
+    const r = CS.restituer(id);
+    if (!r || !r.ok) { alert(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" })); return; }
+    refreshDataLayers();
+    _scheduleRoadsRecalc();
+    _updateStatus();
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(window.I18n.t("filter.calque.okRestitue", { n: r.retires }), "info");
+    }
+  }
+
+  // 💾 Ferme la boucle vers le ZIP. Le message dit QUOI FAIRE du fichier —
+  // sans ça, l'utilisateur se retrouve avec un `.json` dans ses
+  // téléchargements et aucune idée de la ligne où le déposer.
+  function _exporterCalque(id) {
+    const CS = window.CalqueSession;
+    if (!CS || !id) return;
+    const r = CS.exporterCalque(id);
+    if (!r || !r.ok) { alert(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" })); return; }
+    // ⚠️ On ANNONCE les objets créés à la main qui ne sont PAS partis : ils
+    // n'appartiennent pas à ce calque, et les verser d'office serait décider
+    // à la place de l'utilisateur. Le taire lui ferait croire tout embarqué.
+    alert(window.I18n.t(r.horsCalque > 0 ? "filter.calque.exporteAvecReste"
+                                         : "filter.calque.exporte",
+                        { nom: r.nom, n: r.total, reste: r.horsCalque, id: id }));
+  }
+
+  // ============================================================
   // EXPORT
   // ============================================================
   window.FilterPanel = {
+    refresh:       refreshDataLayers,
     ouvrir:        ouvrir,
     fermer:        fermer,
     getState:      getState,

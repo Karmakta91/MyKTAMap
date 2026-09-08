@@ -12,9 +12,15 @@
 //
 // Permet de tracer des structures fermées et remplies représentant les
 // éléments physiques d'une carrière :
-//   - "pilier-1" : pilier de 1ère masse (orange entouré de noir)
-//   - "pilier-2" : pilier de 2e masse (jaune entouré de noir)
-//   - "mur"      : mur en pierre / béton (bleu foncé entouré de noir)
+//   - "pilier-1" : pilier de 1ère masse
+//   - "pilier-2" : pilier de 2e masse
+//   - "mur"      : mur en pierre / béton
+// ⚠️ Les couleurs NE SONT PLUS écrites ici — elles y étaient, et À L’ENVERS
+// (pilier-1 annoncé orange alors qu’il est jaune #f4c542, pilier-2 jaune
+// alors qu’il est orange #ff9933). Depuis la v1.76.1 la couleur n’est plus
+// une propriété du type : l’utilisateur la choisit dans ≡ Légende. La SOURCE
+// est `js/styleResolver.js` (table canonique), et `scripts/check-style-canon.js`
+// refuse toute réintroduction d’une table locale.
 //
 // Côté technique, ce module est un clone adapté de js/zones.js — la donnée
 // est très similaire (polygones avec sous-type + style associé), mais on
@@ -22,9 +28,14 @@
 // zone.json) pour bien découpler les 2 notions côté user et faciliter la
 // rétrocompat des KMZ anciens (= sans structure.json → array vide).
 //
-// Collision pathfinder : sera ajoutée en A1.b (les structures bloquent le
-// calcul d'itinéraire comme les zones "inaccessible"). Le DATA est déjà
-// prêt à recevoir cette logique.
+// 🩸 Collision pathfinder : ANNONCÉE en A1.b, JAMAIS IMPLÉMENTÉE — et cette
+// ligne a coûté un aller-retour de diagnostic à qui l’a crue. État RÉEL : le
+// Pathfinder construit son graphe UNIQUEMENT sur les `roads` (`getRoads` +
+// `getAllEmbeddedRoads`) ; les structures n’y sont NI ARÊTES NI OBSTACLES,
+// contrairement aux zones "inaccessible". Conséquence pratique : un relevé
+// entièrement rangé en structures n’a pas « un itinéraire médiocre », il n’en
+// a AUCUN — d’où `js/convertirObjet.js`, qui reclasse un vecteur en tracé.
+// Le DATA reste prêt à recevoir la logique si elle est un jour écrite.
 //
 // Multi-niveau : supporté de la même façon que zones (champ `level` tagé
 // au tracé si APP_CONFIG.multiLevel === true).
@@ -101,6 +112,203 @@ const STRUCT_CLOSE_TOLERANCE = 5;
 //     front-2 ORANGE comme pilier-2 (2e masse). Elles etaient inversees « par
 //     design » — c'etait une erreur : sur le terrain la coherence couleur/masse
 //     prime (un trait orange = 2e masse, un trait jaune = 1ere).
+
+// 🔍 v1.82.0 — LARGEUR DES FRONTS : UNE LARGEUR RÉELLE, PAS UN NOMBRE DE PIXELS.
+//
+// 🩸 Première version : des paliers fixes par zoom (10 / 7 / 5 / 3 / 2 px).
+// Ils marchaient sur le plan de test et n'ont RIEN changé sur un vrai relevé —
+// parce qu'ils ignoraient l'ÉCHELLE du plan. Or c'est elle qui décide de tout :
+// un front de taille mesure 1 à 2 m sur le terrain, donc sur un plan à
+// 1,4 px/m il doit faire 2 px, pas 10. Avec 17 000 galeries espacées de
+// quelques mètres, un trait de 10 px comble tout l'intervalle : la carte
+// devient un aplat, et aucun palier fixe ne peut le corriger.
+//
+// La largeur se calcule donc physiquement :
+//     pixels écran = largeur réelle (m) × échelle (px/m) × 2^zoom
+// En CRS.Simple, une unité plan vaut 2^zoom pixels écran — le facteur de zoom
+// est donc exact, pas approché.
+const FRONT_LARGEUR_M = 1.5;    // largeur physique typique d'un front de taille
+const FRONT_MIN_PX    = 1;      // plancher : un front invisible serait pire
+const FRONT_MAX_PX    = 14;     // plafond : au-delà c'est un pâté, pas un trait
+
+// 🩸 v1.82.0 — LA LOI EST PARTAGÉE AVEC L'EXPORT, ELLE NE PEUT PAS ÊTRE
+// RECOPIÉE. À l'écran le facteur d'agrandissement vaut 2^zoom ; à l'export
+// PNG/PDF il vaut la résolution choisie (1 = natif, 2 = HD). C'est le MÊME
+// nombre — des pixels rendus par pixel de plan — donc la même formule.
+// L'export appelle ceci via `window.ktaLargeurFrontPourRatio`.
+// 🩸 v1.83.0 — LE CŒUR DE LA LOI, en PIXELS PAR MÈTRE. Trois consommateurs,
+// une seule formule :
+//   • l'écran (mode plan) : px/m = APP_CONFIG.scale × 2^zoom
+//   • l'export PNG/PDF    : px/m = APP_CONFIG.scale × résolution
+//   • la Vue OSM          : px/m = 1 / résolution Web Mercator à cette latitude
+//
+// Les deux premiers passent par une échelle de PLAN ; la Vue OSM n'en a pas —
+// elle travaille en lat/lng. C'est pourquoi la loi se formule ici sur la seule
+// grandeur qu'ils partagent tous les trois : des pixels rendus par mètre de
+// terrain. Chaque contexte sait calculer la sienne, aucun ne recopie la règle.
+function _largeurFrontPourPxParMetre(pxParM) {
+  if (!Number.isFinite(pxParM) || pxParM <= 0) return null;
+  const px = FRONT_LARGEUR_M * pxParM;
+  return Math.max(FRONT_MIN_PX, Math.min(FRONT_MAX_PX, Math.round(px * 10) / 10));
+}
+window.ktaLargeurFrontPourPxParMetre = _largeurFrontPourPxParMetre;
+
+// Pixels par mètre d'une carte Leaflet en Web Mercator (la Vue OSM). La
+// résolution y dépend de la LATITUDE autant que du zoom — un même zoom
+// couvre 40 % de moins au nord de la France qu'à l'équateur. La calculer
+// plutôt que de tabler sur des paliers de zoom est ce qui rend la largeur
+// juste partout, et pas seulement là où on a réglé.
+window.ktaPxParMetreOsm = function (map) {
+  try {
+    if (!map || typeof map.getZoom !== "function") return null;
+    const lat = map.getCenter().lat;
+    const mpp = 156543.03392804097 * Math.cos(lat * Math.PI / 180) /
+                Math.pow(2, map.getZoom());
+    return (mpp > 0) ? (1 / mpp) : null;
+  } catch (e) { return null; }
+};
+
+function _largeurFrontPourRatio(ratio) {
+  if (!Number.isFinite(ratio) || ratio <= 0) ratio = 1;
+  // `APP_CONFIG.scale` est en px/m (cf. tracking.scale du plan-config).
+  const scale = (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0)
+    ? Number(window.APP_CONFIG.scale) : null;
+  // Pas d'échelle connue (plan sans calibrage) : on retombe sur les paliers
+  // d'avant, qui valaient mieux que rien.
+  if (!scale) {
+    const z = Math.log(ratio) / Math.LN2;
+    if (z >= 0)  return 10;
+    if (z >= -1) return 7;
+    if (z >= -2) return 5;
+    if (z >= -3) return 3;
+    return 2;
+  }
+  return _largeurFrontPourPxParMetre(scale * ratio);
+}
+window.ktaLargeurFrontPourRatio = _largeurFrontPourRatio;
+
+// Un tracé de galerie est plus fin qu'un front de taille, mais il suit la
+// même loi physique. Facteur unique, appliqué à l'écran comme à l'export.
+const FRONT_FACTEUR_TRACE = 0.6;
+window.ktaLargeurTracePourRatio = function (ratio) {
+  return Math.max(1, Math.round(_largeurFrontPourRatio(ratio) * FRONT_FACTEUR_TRACE * 10) / 10);
+};
+
+function _largeurFrontPourZoom(z) {
+  if (!Number.isFinite(z)) z = 0;
+  return _largeurFrontPourRatio(Math.pow(2, z));
+}
+
+// 🩸 v1.82.0 — LA LARGEUR SE PILOTE PAR `options.weight`, PAS PAR LE CSS.
+//
+// La première version posait une classe et une variable CSS. Elle n'a jamais
+// rien fait : la carte est rendue en CANVAS (`preferCanvas: true`, map.js:382),
+// et l'option `className` de Leaflet est documentée « Only for SVG renderer ».
+// Sur un canvas il n'y a aucun élément DOM à styler — le renderer peint avec
+// `ctx.lineWidth = options.weight`, RELU À CHAQUE FRAME.
+//
+// C'est justement ce qui rend la correction bon marché : il suffit de muter
+// `layer.options.weight` en place. Le redraw que le canvas déclenche déjà
+// seul au zoom reprend la nouvelle valeur — aucun `setStyle()`, aucun redraw
+// supplémentaire. 17 000 affectations de nombre coûtent moins d'une
+// milliseconde ; ce qui aurait été intenable, c'était `setStyle()`, pas
+// l'écriture.
+//
+// L'ORDRE DE GRANDEUR DU PROBLÈME, mesuré sur un relevé réel : à l'ouverture
+// (zoom -2), un trait de 10 px couvre 28,9 m AU SOL, pour des galeries dont le
+// segment médian fait 0,75 m. Chaque segment était peint comme un disque de
+// 29 m de diamètre — d'où l'aplat en « chapelet », le cap arrondi dépassant la
+// longueur du segment d'un facteur ~19.
+function majLargeurFronts() {
+  let z = 0;
+  try {
+    if (window.map && typeof window.map.getZoom === "function") z = window.map.getZoom();
+  } catch (e) { return; }
+
+  const wFront = _largeurFrontPourZoom(z);
+  const wTrace = window.ktaLargeurTracePourRatio(Math.pow(2, z));
+
+  // Les registres portent le layer sous la clé `polygon` — nom historique
+  // conservé pour `_filtreNiveauSurPolygonData`, les polylignes y sont aussi
+  // (cf. utils.js, commentaire du push).
+  const appliquer = function (arr, largeur) {
+    if (!Array.isArray(arr)) return 0;
+    let n = 0;
+    for (let i = 0; i < arr.length; i++) {
+      const e = arr[i]; if (!e) continue;
+      const lay = e.polygon || e.polyline || e.layer;
+      if (!lay || !lay.options) continue;
+      // Les surfaces gardent leur trait : un pilier est lu par son
+      // remplissage, pas par l'épaisseur de son contour.
+      if (lay.options.fill === true || lay._latlngs && Array.isArray(lay._latlngs[0])) continue;
+      if (e._wOrig === undefined) e._wOrig = lay.options.weight;
+      lay.options.weight = largeur;
+      n++;
+    }
+    return n;
+  };
+
+  appliquer(window._ktaDataStructurePolygons, wFront);
+  appliquer(window._ktaDataPolylines, wTrace);
+
+  // Structures de SESSION : pas de registre, on parcourt les layers rendus.
+  try {
+    if (Array.isArray(structureLayers)) {
+      structureLayers.forEach(function (l) {
+        if (l && l.options && l.options.fill !== true) l.options.weight = wFront;
+      });
+    }
+  } catch (e) {}
+
+  // Le canvas ne redessine pas de lui-même hors zoom/pan : on le force une
+  // fois, sinon le changement n'apparaît qu'au prochain mouvement.
+  try {
+    const r = window.map && window.map._renderer;
+    if (r && typeof r._redraw === "function") {
+      // 🩸 v1.82.0 (bis) — `_redrawBounds` DOIT ÊTRE NEUTRALISÉ D'ABORD.
+      // Lu dans `lib/leaflet/leaflet.js` (1.1.1) : `_redraw` clippe `_draw`
+      // sur ces bornes et saute tout layer qui ne les croise pas. Si une
+      // demande de redraw par layer est en attente (`_requestRedraw` les a
+      // posées), notre repeinture ne couvre que ce petit rectangle et le
+      // reste de la carte garde l'ancienne largeur. À null, `_clear` efface
+      // tout le canvas et `_draw` repeint sans clip.
+      r._redrawBounds = null;
+      r._redraw();
+    }
+  } catch (e) {}
+}
+window.majLargeurFronts = majLargeurFronts;
+
+// 🩸 v1.82.0 — LE BRANCHEMENT NE PEUT PAS DÉPENDRE DE `renderStructures`.
+// Il y était posé au départ, et ça ne marchait que pour les structures de
+// SESSION : un plan importé porte les siennes dans un DATALAYER, rendu par
+// `utils.js > ajouterPointsDepuisJSON`. Sur ces plans — précisément ceux qui
+// ont des milliers de fronts — `renderStructures` n'est jamais appelé, rien ne
+// branche le recalcul, et la largeur reste au défaut de 10 px.
+// D'où : un point d'entrée unique, appelable de partout et idempotent.
+// 🩸 v1.82.0 (bis) — LE DRAPEAU ÉTAIT GLOBAL, IL DOIT ÊTRE SUR LA MAP.
+// `window._ktaFrontZoomBound` survivait au changement de plan : la map est
+// recréée, la nouvelle n'a donc PLUS de listener `zoomend`, mais le drapeau
+// dit le contraire et le branchement est sauté. Résultat : la largeur ne se
+// recalcule plus au dézoom, seulement quand un re-rendu passe par ici.
+//
+// C'est exactement le symptôme décrit par KARMA : « je dois masquer tous les
+// niveaux, dézoomer, les réactiver, sinon ça ne prend pas ». Réactiver les
+// niveaux déclenche `renderStructures`, qui rappelle cette fonction, qui
+// recalcule à la volée — d'où un contournement qui marche et un dézoom seul
+// qui ne fait rien.
+//
+// Le dépôt avait DÉJÀ payé cette leçon : `_bindMarkerViewportHook` porte son
+// drapeau sur `map._mkmMarkerHookBound`, avec le commentaire « au plan switch
+// → nouvelle map → nouveau bind ». Même convention ici.
+window.brancherLargeurFronts = function () {
+  if (!window.map) { majLargeurFronts(); return; }
+  if (!window.map._ktaFrontZoomBound) {
+    window.map.on("zoomend", majLargeurFronts);
+    window.map._ktaFrontZoomBound = true;
+  }
+  majLargeurFronts();
+};
 
 const STRUCTURE_STYLE_PREVIEW = {
   weight:    3,
@@ -320,6 +528,10 @@ function fermerStructureEnCours() {
 // RENDU
 // =========================
 function renderStructures() {
+  // 🔍 v1.82.0 — largeur des fronts recalculee au zoom. Le binding est pose
+  // ICI, une seule fois, et non a chaque rendu : Leaflet dedoublonne les
+  // handlers identiques, mais une closure fraiche a chaque appel empilerait.
+  window.brancherLargeurFronts();
   // Vider les layers existants — .remove() détache où qu'ils soient
   structureLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
   structureLayers = [];
@@ -475,7 +687,18 @@ function renderStructures() {
           weight:    style.weight,
           opacity:   style.opacity,
           lineCap:   "round",
-          lineJoin:  "round"
+          lineJoin:  "round",
+          // 🔍 v1.82.0 — LARGEUR ADAPTÉE AU ZOOM (retour KARMA : « vu que nos
+          // vecteurs sont des fronts de taille, quand on dézoome la largeur
+          // des traits fait qu'on voit une grosse tache »).
+          // `weight` est en pixels ÉCRAN : il reste à 10 px quel que soit le
+          // zoom, donc en dézoomant les traits se rapprochent sans maigrir et
+          // finissent par fusionner. Sur un plan importé qui porte 10 000
+          // fronts, ça devient un aplat.
+          // La largeur est donc recalculée au zoomend et écrite dans
+          // `options.weight`, que le renderer canvas relit à chaque frame :
+          // une affectation de nombre par objet, au lieu d'un `setStyle` —
+          // ce qui serait intenable à ce volume.
         }).addTo(target);
       } else {
         // Structure fermée → polygone rempli avec stroke noir.
@@ -540,7 +763,9 @@ function renderStructures() {
           cibleClic,
           function() { return _structRef.description; },
           function(v) { _structRef.description = v; },
-          _structPopupTitle(s.type)
+          _structPopupTitle(s.type),
+          // 🔄 v1.82.0 — reclassement depuis la popup (cf. convertirObjet.js).
+          { convertir: { famille: "structures", obj: _structRef } }
         );
       }
     }

@@ -27,23 +27,30 @@ Accessible depuis :
 
 ---
 
-### 8. Mode performance — 5 presets DLSS-like (depuis 08/05/2026)
+### 8. Mode tuilage — 2 choix depuis v1.86.0, et plus aucun sélecteur au HOME depuis v1.90.2 (5 presets de 08/05/2026 à v1.85.4)
 
-Remplace l'ancienne checkbox boolean `perfMode` par un **segmented control 5 boutons** dans le loader.
+> 🩸 **AUDIT v1.86.0 (demande KARMA) — CE QUE LES PRESETS FAISAIENT VRAIMENT.**
+> Ces presets réglaient le tuilage fait **par le navigateur au chargement**, qui n'existe que pour les plans **V1**. Sur un plan **V2**, `chargerImage` prend la branche tuiles *avant* eux et `_chargerImageV2OptionB` **ne reçoit aucun paramètre de preset** : `quality`, `balanced`, `performance` et `auto` y étaient **strictement identiques**. L'UI promettait pourtant « Plus net. Recommandé sur PC desktop. ».
+> **Arbitrage KARMA** : *« un plan V2 doit obligatoirement profiter du mode tuile ; le fichier complet reste pour le dézip manuel mais en principe n'est pas utilisé »*. Les 3 presets quittent l'UI, `off` ne concerne plus que le V1.
+
+**UI (v1.86.0)** : segmented à **2 boutons** — 🔄 `auto` (défaut, à gauche) et 💤 `off`.
+**Code** : les 5 valeurs restent **acceptées** (`_PERF_VALID` dans `main.js`, `planRegistry.js`, `index.html`) — un plan peut avoir `"quality"` mémorisé dans le registre, il doit rester valide. `resoudrePerfPreset` sait toujours les traiter.
 
 **Table `PERF_PRESETS`** (dans `tiling.js`, exposée via `window.PERF_PRESETS`) :
 
-| Preset | `MAX_WORK_DIM` | `TILE_SIZE` | JPEG Q | Quand on tile |
-|---|---|---|---|---|
-| `off` | — | — | — | **JAMAIS** (rendu direct via `L.imageOverlay`, équivalent ancien `perfMode = false`) |
-| `auto` | (Équilibré quand tile) | — | — | si `fileSize > 60 Mo` (= `PERF_AUTO_TILE_THRESHOLD`) |
-| `quality` | 12288 | 1024 | 0.95 | si `imageW × imageH > 4096²` (= `tuilingNecessaire()`) |
-| `balanced` | 8192 | 1024 | 0.88 | idem |
-| `performance` | 6144 | 768 | 0.78 | idem |
+| Preset | `maxWorkDim` | `tileSize` | JPEG Q | Quand on tile | UI |
+|---|---|---|---|---|---|
+| `auto` | (Équilibré quand tile) | — | — | **v1.86.0** : `imageW × imageH > 4096²` **OU** `fileSize > 60 Mo` | ✅ défaut |
+| `off` | — | — | — | **JAMAIS** — et **ignoré sur un plan V2** depuis v1.86.0 | ✅ |
+| `quality` | 12288 | 1024 | 0.95 | si `imageW × imageH > 4096²` | ❌ retiré |
+| `balanced` | 8192 | 1024 | 0.88 | idem | ❌ retiré |
+| `performance` | 6144 | 768 | 0.78 | idem | ❌ retiré |
 
-→ `off` = aucun tiling, choix utilisateur explicite (⚠️ risque de crash Safari iOS pour images > 8192 px). Métadonnées dans `PERF_OFF_META`.
-→ `auto` = comportement v1 (tile uniquement sur fichier énorme).
-→ Modes explicites = on tile dès que techniquement nécessaire (sécurité GPU mobile), avec leurs params propres.
+🩸 **Le seuil d'`auto` était le bug le plus grave, et c'était le DÉFAUT.** Il tranchait sur le **poids fichier** (60 Mo) quand les presets explicites tranchaient sur la **surface** (4096² = 16,8 Mpx). Un JPEG de 100 Mpx pèse ~15 Mo → auto **ne tuilait pas**, texture géante, crash Safari iOS ; « Qualité » l'aurait tuilé. Le défaut était donc **le mode le moins protecteur**, l'inverse de ce que son nom promet. Pire : sur un plan **serveur**, `map.js` cherche le fichier dans `RUNTIME_ASSETS` (jamais rempli côté serveur) → `fileSize = null` → auto ne tuilait **jamais**, quelle que soit la taille. Depuis v1.86.0 la surface prime, le poids reste en second critère.
+
+⚠️ **Le tuilage V1 dégrade l'image**, contrairement au V2 : `_imageVersCanvasReduit` downscale à `maxWorkDim`, puis chaque tuile est **ré-upscalée** à sa taille en unités-plan et **ré-encodée en JPEG**. Double rééchantillonnage + perte. Et le total des tuiles fait toujours ≈ W×H pixels : le gain n'est pas la quantité de pixels, c'est d'éviter **une seule texture géante**. Le V2, lui, garde z=0 en résolution **native** et dispose de 4 niveaux + LRU — meilleur sur les deux tableaux.
+
+`tuilingNecessaire()` est exporté (`window.tuilingNecessaire`) mais **appelé nulle part** — dette connue, laissée en place.
 
 **Fonction centralisée** : `resoudrePerfPreset(preset, fileSize, W, H)` retourne `{tile: bool, params: {maxWorkDim, tileSize, jpegQuality} | null}`. Utilisée par `chargerImage()`.
 
@@ -289,8 +296,9 @@ if (pc && pc.plan && pc.plan.tiledV2 === true && pc.tiling) {
 
 - ✅ **Plans V1 (sans `tiledV2`)** : strictement identique à v148. Aucun changement de comportement.
 - ✅ **Multi-niveau + V2** : indépendants, fonctionnent ensemble. Une carrière multi-étages tuilée → les jonctions et le filtre niveau marchent par-dessus le tile rendering.
-- ✅ **PerfPreset** : pour les plans V1, les presets continuent de fonctionner. En mode V2, les presets sont ignorés sauf `"off"` qui force le **fallback baseImage direct** (cf §27.7 ci-dessous).
-- ⚠️ **Plans serveur V2** : pas supporté en v1. RUNTIME_ASSETS est rempli uniquement par les imports ZIP. Pour servir un V2 depuis `data/<plan>/tiles/`, il faudrait un résolveur de chemin HTTP. Future amélioration.
+- 🩸 **PerfPreset (revu en v1.86.0)** : pour les plans V1, les presets continuent de fonctionner. En mode V2 ils sont **tous ignorés, `off` compris** — un plan V2 tuile TOUJOURS (arbitrage KARMA). Le contournement `off → baseImage` de la v151 est supprimé : c'était le cas de crash Safari iOS offert en un clic, sans avertissement. Le `baseImage` reste dans le ZIP pour le dézip manuel et pour le **repli d'erreur** ci-dessous — pas comme mode.
+- 🌐 **Plans serveur V2 — SUPPORTÉ depuis v1.86.0** : `chargerPlanServeur` ne fait aucun `registerAsset`, donc `RUNTIME_ASSETS` restait vide et **toutes les tuiles étaient introuvables → carte blanche**, avec pour seul signal un `console.log`. `_resoudreUrlTuile` résout désormais en **HTTP** quand l'asset n'est pas en mémoire. La racine est dérivée du **dossier du `baseImage`** (`data/mon-plan/MonPlan.png` → tuiles attendues dans `data/mon-plan/tiles/z<N>/x<col>_y<row>.<ext>`), surchargeable par un `tiling.tilesDir` explicite dans le `plan-config.json`. ✅ **Déploiement (v1.86.1)** : il suffit de **dézipper le ZIP tel quel** dans `data/<nom>/`. `resolveServerPath` préfixe désormais tout chemin `data/…` par le dossier du plan (sauf s'il le contient déjà, ce qui préserve les déploiements réécrits à la main comme `data/test`) — avant, tout était résolu depuis la racine du site et **404**. Les tuiles suivent : racine dérivée du `baseImage` résolu → `data/<nom>/data/tiles/`. 🩸 Un plan LOCAL a son `baseImage` réécrit en `blob:` : il n'est jamais pris pour un plan serveur, l'import ZIP est strictement inchangé.
+- 🩸 **Repli d'erreur (v1.86.0)** — `_repliBaseImage()` affiche l'image entière si les tuiles sont réellement inatteignables. **Ce n'est pas un mode, c'est une récupération.** Deux déclencheurs : *(1)* aucune tuile résolue ; *(2)* **toutes** les tuiles du premier rendu en **erreur de chargement** — indispensable en mode serveur, où une URL HTTP « résout » toujours, même en 404, donc `added` ne dit plus rien. Une seule fois par chargement (`state.repliFait`), sinon chaque zoom empilerait un overlay plein format de plus.
 - ⚠️ **Modifier un plan V2** : si l'utilisateur modifie un plan déjà V2 sans toucher au checkbox, les tuiles sont **régénérées** (pas reportées). Slow mais correct. Décocher la checkbox = downgrade explicite V2 → V1.
 
 #### 27.7 Améliorations v151 (15/05/2026 suite)
@@ -1345,3 +1353,31 @@ fetch, zéro nouvelle permission).
 - ❌ Décider du format sur le MIME du fichier (un PNG peut être 100 % opaque → JPEG reste le bon choix poids).
 - ❌ Hardcoder une extension de tuile — TOUJOURS `ktaTileExt(manifest)`.
 - ❌ Migrer les plans V2 legacy au runtime — le fond est cuit dans leurs JPEG, seule la régénération (Modifier → recocher V2, baseImage du ZIP garde son alpha) le retire.
+
+---
+
+## 🧱 Tuilage V2 des plans SIG, et le ré-encodage qu'on ne faisait pour rien (v1.82.0)
+
+### Pourquoi un plan SIG est tuilé alors que son fond est un aplat
+
+La Vue OSM du **mode plan** (`osmView.js`) refuse tout plan non tuilé — pas par confort, pour une raison mesurée : avant la v1.39.10 elle chargeait l'image entière via `imageOverlay.rotated`, ce qui **saturait le GPU d'un iPhone**. Un plan issu d'un SIG est pourtant le meilleur candidat qui soit pour cet écran, son géoréférencement étant **calculé** et non saisi à la main. `sigImport.js > genererZipMyktamap` réutilise donc `_genererTuilesV2` du Générateur plutôt que d'écrire un second tuileur.
+
+**Dégradation assumée** : si le tuilage échoue, le plan sort en **V1** avec un `console.warn` — mieux vaut un plan utilisable en mode carte qu'aucun plan. L'utilisateur pourra le re-tuiler via « Modifier un plan ».
+
+### 10,4 s → 0,8 s : ne pas ré-encoder ce qui est identique
+
+Le fond d'un plan SIG est un **aplat uni** (`genererCanvasVierge`) : toutes ses tuiles pleines sont **le même octet**. Le tuileur les ré-encodait pourtant une par une. Le 4ᵉ paramètre de `_genererTuilesV2` dit « fond uni » et fait réutiliser l'encodage — **10,4 s → 0,8 s** sur un canvas de 10 000 × 11 680.
+
+### Le plafond de SURFACE du canvas
+
+Deux problèmes de même cause : un canvas 10 000 × 11 680 = **117 Mpx ≈ 467 Mo de RGBA**, et le pipeline en tient **deux** (le canvas, puis l'image re-décodée pour le tuilage). Près d'un gigaoctet pour un aplat — selon la machine, `toBlob` rend `null` **sans un mot**. S'y ajoute le plafond d'iOS Safari, autour de **16,7 Mpx** : l'ancien réglage par défaut (4 000 × 4 672 = 18,7 Mpx) le dépassait déjà, donc l'import SIG rendait un fond **vide sur iPhone** dans sa configuration de sortie de boîte. `dimensionsCanvas` borne désormais la surface et **prévient** au lieu de rogner en silence.
+
+---
+
+## 🏗️ « Afficher tous les niveaux au lancement » (v1.82.1)
+
+Le défaut de la v1.10.0 ouvrait un plan sur les **trois niveaux centraux** — tenable à trois ou quatre étages, absurde sur un relevé importé qui en porte **six ou sept** : la carte s'ouvrait sur une fraction du travail sans que rien n'indique que le reste existait.
+
+Case dans les réglages de performance du HOME, **cochée par défaut**. 🩸 Elle est rangée là parce que c'est un arbitrage de charge, mais **volontairement HORS du méta-bouton ULTRA** : afficher plus n'est pas optimiser, et « activer toutes les optimisations » ne doit jamais alourdir l'app.
+
+⚠️ Les niveaux **découverts** dans un calque de données (après le calcul initial) deviennent visibles eux aussi — sans quoi l'option n'aurait rien changé là où elle sert le plus.

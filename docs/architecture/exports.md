@@ -314,6 +314,77 @@ Le runtime Leaflet (`utils.js > ajouterPointsDepuisJSON`) ne doit jamais être o
 
 ---
 
+### 69. v1.82.0 — Les exports face à un plan IMPORTÉ (PNG + PDF)
+
+Le §45 ci-dessus a câblé les structures embarquées dans les pipelines canvas. Il
+supposait une chose qui n'est vraie que des plans **livrés avec l'app** : que le
+contenu d'un calque s'obtient par `fetch(layerCfg.file)`. Un plan **généré**
+(import SIG, import GPX) déclare `file: "sig.json"` mais ce fichier n'existe
+nulle part sur le serveur — il vit en **IndexedDB**. Le `fetch` tombait en 404,
+silencieusement (`console.warn`), et l'export ne sortait que le fond de plan.
+
+**Trois défauts empilés, tous sur le même plan :**
+
+| # | Défaut | Correction |
+|---|---|---|
+| 1 | Contenu des calques introuvable (`fetch` 404) | **Repli sur les registres en mémoire** (`getAllEmbedded*`), filtré par `layerId`. Repli seulement : quand le fichier existe, il fait foi. |
+| 2 | Compteurs des modales comptés sur la **seule session** | `window.ktaAnnotationsCompletes(famille)` — un seul point de vérité, utilisé par les deux modales |
+| 3 | Sous-types listés **en dur** (5 noms intégrés) | Comptage des types réellement présents + une ligne par type personnalisé, sous le libellé de sa légende |
+
+🩸 **Le défaut n°2 n'était pas cosmétique.** `_cbRow` (PDF) et `row`/`rowSub`
+(PNG) **désactivent** une case dont le compteur vaut zéro. Sur un plan dont tout
+le relevé vit dans un calque, les quatre cases d'annotation étaient donc grisées
+— l'export ne pouvait **rien** produire, sans qu'aucun message n'explique
+pourquoi. Un compteur qui pilote une interaction n'est plus un compteur.
+
+**`layerId` propagé** — pré-requis du repli n°1, sans quoi un plan à plusieurs
+calques verrait tout le contenu attribué au premier calque en défaut :
+`utils.js` pose `layerId` sur les entrées de `_ktaDataPolylines`,
+`_ktaDataStructurePolygons`, `_ktaDataPolygons` et `marker._ktaLayerId` (la
+source est `_layerInfo`, déjà résolu pour les favoris) ; `road.js` le déduit du
+`layerGroup` déjà mémorisé, et **renvoie une copie** — la route d'origine ne doit
+pas se voir greffer un champ au passage.
+
+**Effet de bord assumé** : les types personnalisés contournaient jusqu'ici les
+filtres de dessin (`if (type.startsWith("cust-")) return true`) faute d'avoir une
+case dans la modale. Ils en ont une maintenant, donc le contournement saute :
+`filtreX[type] !== false` reste permissif pour une clé absente. Idem pour les
+types de zone par calque — `_lireZoneTypesCochesCalque` retourne désormais
+`connus`, l'ensemble des types **proposés**, pour ne pas supprimer un type qui
+n'a jamais eu de case.
+
+#### 69.1 Largeur des traits : la loi physique, partagée avec l'écran
+
+Un front de taille sortait à `style.weight × scale` — une largeur décidée par la
+**légende**, pas par le **terrain**. Sur un relevé réel, 10 px de plan valent
+3,6 m au sol : les traits se touchent et la carte devient un aplat. Le rapport
+trait/écart ne dépend pas de la résolution choisie, donc **exporter plus grand
+n'y changeait rien**.
+
+`structures.js` expose la loi (`window.ktaLargeurFrontPourRatio` /
+`ktaLargeurTracePourRatio`) et `exporter.js` l'appelle. Le paramètre est un
+**ratio de pixels rendus par pixel de plan** : `2^zoom` à l'écran, `scale`
+(résolution) à l'export — deux noms du même nombre. Une seule formule, deux
+consommateurs, pas de table recopiée.
+
+```
+largeur_px = 1,5 m × APP_CONFIG.scale (px/m) × ratio     borné à [1, 14] px
+```
+
+Mesures sur le relevé de KARMA (2,764 px/m) : aperçu 1 px · export ½ 2,1 px ·
+natif **4,1 px** (contre 10 avant) · HD ×2 8,3 px.
+
+⚠️ **Plan non calibré** : `weight × scale` est conservé. Sans px/m aucune largeur
+réelle n'est calculable, et les paliers de zoom du repli écran donneraient un
+trait **plus épais** qu'avant dans l'aperçu. L'écran, lui, garde ses paliers : il
+n'a pas de résolution native à laquelle se référer.
+
+**Portée** : fronts (structures polylignes) partout ; tracés **embarqués**
+seulement — à l'écran `majLargeurFronts` n'ajuste que `_ktaDataPolylines`, et un
+export doit montrer ce que montre la carte.
+
+---
+
 ### 54. GpxIO — Import + Export GPX (depuis v1.14.0)
 
 Module `js/gpxIO.js` (~360 lignes IIFE) → `window.GpxIO = { exporter, parser, importer, verifierCalibrage, _appliquerImport }`.
@@ -711,3 +782,74 @@ const t = KmzExport.buildTransform(
 **ATTENTION** : `buildTransform` accepte 4 args distincts `(planA, planB, gpsA, gpsB)` où chaque arg est `{x, y}` ou `{lat, lng}`. NE PAS passer `calib.pointA` directement (qui contient les 4 champs mélangés).
 
 ---
+### 69.2 « Nommer et colorer les niveaux » : ce qui périme les entrées (v1.82.0)
+
+L'écran d'import SIG propose de renommer et recolorer les entrées de légende
+**avant** génération (`SigImport.previsualiserEntreesNiveaux`). Leur état vit
+dans `createConf.js > _sigPlanLegend`, et le pré-remplissage est gardé par un
+`if (!_sigPlanLegend)` — donc tout ce qui devrait le périmer doit le remettre à
+`null`, sinon l'éditeur ressert l'ancien contenu.
+
+L'id d'une entrée est **déterministe** (`_idNiveau` → `cust-sig-<cat>-n<niveau>`,
+pour qu'un ré-import du même fichier ne multiplie pas les entrées). Il encode
+donc la **catégorie** et le **niveau** : quatre choses le périment.
+
+| Ce qui change | Invalidait avant ? |
+|---|---|
+| Le **fichier** chargé | ❌ — *le bug signalé par KARMA* |
+| La colonne du **niveau** | ❌ |
+| La colonne des **types** | ❌ |
+| Un select de **routage** | ✅ |
+
+Les quatre passent désormais par `_sigImpInvaliderLegende(avecMessage)`.
+
+⚠️ **Une génération réussie n'invalide rien**, volontairement : régénérer le même
+fichier (autre largeur de canvas, autre couleur de fond) doit conserver les noms
+saisis. C'est le changement de **fichier** qui périme, pas l'export.
+
+🩸 **Piège d'ordre des listeners** : `majBtnLegende` remet l'état affiché à vide
+quand il n'y a plus d'entrées. L'invalidation de la colonne du niveau est donc
+attachée **après** lui — les listeners se déclenchent dans l'ordre
+d'attachement, et posée avant, son message était aussitôt effacé.
+
+---
+
+---
+
+### 69.3 Altitude réelle : KMZ oui, GPX non — et pourquoi (v1.83.0)
+
+Les profondeurs de niveaux existent depuis la v1.83.0. Les deux exports ne les
+traitent **pas** de la même façon, et l'asymétrie est délibérée.
+
+**KMZ — l'altitude est écrite.** `_coord` produisait `lng,lat,0` en dur : un
+relevé de carrière ouvert dans Google Earth **flottait sur les vignes**. Il se
+pose maintenant à sa profondeur.
+
+⚠️ **L'altitude seule ne suffit pas.** Par défaut KML est en `clampToGround` et
+l'ignore, et `<tessellate>1</tessellate>` force ce collage au sol. Toute
+géométrie porteuse d'altitude doit donc déclarer `relativeToGround` **et**
+renoncer au tessellate — les deux, sinon rien ne bouge. `_modeAltitude(alt)`
+émet l'un ou l'autre : à altitude nulle, le KML est **inchangé** pour les plans
+sans profondeurs.
+
+`relativeToGround` et non `absolute` : notre profondeur est mesurée **sous la
+surface**, pas depuis le niveau de la mer. L'altitude du terrain nous est
+inconnue, et l'inventer serait plus faux que zéro.
+
+Une **jonction** est posée au plus haut de ses deux étages : une `LineString`
+n'a qu'un mode d'altitude, on ne peut pas l'incliner.
+
+**GPX — pas de `<ele>`, et c'est le choix honnête.** En GPX, `<ele>` est
+l'altitude **au-dessus du niveau de la mer** : c'est ce que lisent les GPS et
+les logiciels de rando. Y écrire « -30 » pour une galerie à 30 m sous une
+colline à 100 m annoncerait un point à **30 m sous la mer** — une erreur de
+130 m, parfaitement plausible à l'œil, donc indétectable.
+
+Il faudrait l'altitude du terrain, que l'app ne connaît pas. La profondeur part
+donc dans la **`<desc>`** (« Niveau -2 · -35.0 m sous la surface »), lue par un
+humain et par rien d'autre.
+
+> C'est le même arbitrage que partout ailleurs ici : **on ne remplit pas un
+> champ normalisé avec une grandeur qui n'est pas la sienne.** Le jour où l'app
+> saura l'altitude du terrain (géoréf + modèle d'élévation), `<ele>` deviendra
+> calculable — pas avant.

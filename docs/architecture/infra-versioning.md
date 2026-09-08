@@ -578,7 +578,9 @@ documentées ici pour la doctrine.
 
 ---
 
-### 83. Suite de garde-fous pré-commit — état au 01/09/2026
+### 83. Suite de garde-fous pré-commit — état au 05/09/2026
+
+> ⚠️ **La table ci-dessous a compté 14 lignes pendant que le hook en câblait 22** — exactement le défaut que ce fichier existe pour éviter. Les **dix** manquants, tous BLOQUANTS, dans l'ordre où ils ont été ajoutés : `check-profile-histpdf` (transport des PDF du Mode Histoire), `check-icon-catalog` (une seule source pour les tags built-in), `check-lambert93` (la projection confrontée à ses propriétés définitoires, sans table recopiée), `check-constantes-orphelines` (une constante utilisée mais supprimée — le PDF est resté cassé un mois), `check-map-listeners` (une garde anti-doublon posée ailleurs que sur la map, qui a mordu deux fois), `check-tracking-defaults` (le seuil de podomètre recopié à une valeur impossible), `check-osm-etiquettes` (regroupement insensible à la casse, clic asymétrique), `check-calque-session` (le verrou sans sa copie, l'effacement qui rend le calque), `check-osm-outils` (symétrie des deux vues OSM, exclusion mutuelle des outils), `check-release-docs` (le guard `commit-msg`, hors pre-commit). **Total réel : 24.**
 
 `node -c` (syntaxe) est le SEUL filet natif du projet — chaque garde-fou ci-dessous est né d'un bug réel qui l'avait traversé. Tous branchés dans `.githooks/pre-commit`, **BLOQUANTS** sauf mention :
 
@@ -633,3 +635,32 @@ documentées ici pour la doctrine.
 - `git commit --amend` sur un commit de release déjà bumpé ne le redéclenche pas (HEAD porte déjà la nouvelle version) — le commit d'origine, lui, est passé par la porte.
 
 **Éprouvé en le falsifiant** (règle du §83) : 5 scénarios rejoués sur l'index réel — pas de bump (silence), bump nu (9 ❌), dérogation qui ne débloque PAS le noyau, noyau vert + dérogation (passe avec avertissement), release complète (vert). Le test a d'ailleurs sorti un vrai défaut : le contrôle du journal visait la **première mention** de « Journal des versions » (le sommaire, ligne 53) au lieu du **titre de section** — un README correct aurait été refusé.
+
+---
+
+## 📚 La bibliothèque de docs du mode Développeur — ce qui la garde honnête (06/09/2026)
+
+Le manifeste `DOCS` de `js/devMode.js` liste ce que la modale sert. `scripts/check-devmode-docs.js` le confronte au
+dépôt dans **les deux sens** : un chemin listé doit exister (un renommage oublié casse le commit), et une doc
+présente doit être listée.
+
+🩸 **Le second contrôle ne scannait que `docs/architecture/`.** Une doc déposée à la RACINE de `docs/` passait donc au
+vert tout en restant **invisible** en mode Développeur. Constaté sur `ETUDE_PODOMETRE.md` — et l'audit déclenché par
+la question de KARMA (« on n'a pas oublié d'ailleurs ? ») en a trouvé **trois autres**, absentes de longue date :
+`DESIGN_NAV_INTELLIGENTE.md`, `INSTALLATION_SELFHOST.md` et les deux audits i18n. 22 docs → 27.
+
+La racine est désormais couverte au même titre, avec une liste `HORS_BIBLIO` **explicite** : ce qui n'y est pas doit
+être une décision, jamais un oubli — même principe que la tolérance de `check-prefs-survival.js`. En sont exclues les
+docs déjà servies ailleurs dans l'app (README_USER → 📚 Documentation, AI_CONTEXT → 🤖 Aide IA, NETWORK_AUDIT → 🔒
+Audit réseau, CGU → écran légal) et l'historique daté de `docs/audits/`.
+
+**Deux détails qui comptent** :
+
+- Les docs ne sont **pas précachées** : la modale les lit en direct (`fetch(path, { cache: "no-store" })`) et **dit**
+  quand ça échoue — hors ligne, ou `docs/` non téléversé. Le repli silencieux est déjà traité : un serveur PWA qui
+  renvoie `index.html` en 200 pour un fichier absent est démasqué en testant si la réponse commence comme du HTML.
+- Le script de déploiement (`scripts/deploy/deploy.ps1`) téléverse `docs/` **en entier** : une nouvelle doc part donc
+  toute seule, sans geste supplémentaire.
+
+Un titre de la bibliothèque **porte sa date** quand la doc est un instantané (les audits i18n de juin 2026) : la
+bibliothèque ne doit pas faire passer une photo pour une référence courante.

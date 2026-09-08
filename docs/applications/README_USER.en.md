@@ -216,10 +216,10 @@ At startup, the application displays a **home screen** that groups together:
 
 > 🔄 **Re-importing a map you regenerated (since v1.73.1)** — if the ZIP you import has the **same name and same author** as a map already in your list but a **different version**, the app asks instead of stacking a duplicate:
 > - **🔄 Update** — the existing entry is replaced (name, version, size, stored archive). Your **session, notes and inter-map links are kept**. Photos are only replaced if the new ZIP contains some.
-> - **➕ Keep both** — previous behaviour: both versions live side by side in the list.
+> - **➕ Keep both** — both versions live side by side in the list.
 > - **Cancel** (or ✕ / Escape / click outside) — nothing is touched. This is always the default: no accidental overwrite.
 >
-> Good to know: a ZIP with **exactly the same name AND version** updates the existing entry without asking (historical behaviour). No question either for server maps, or when you re-select the file of a specific map from your list.
+> Good to know: a ZIP with **exactly the same name AND version** updates the existing entry without asking. No question either for server maps, or when you re-select the file of a specific map from your list.
 
 ### 🗺️ Convert a GIS file (QGIS…) into a map — since v1.75.0
 
@@ -232,8 +232,20 @@ Got data in a GIS package you want to use in MyKTAMap? Drop your export **straig
 **Your own naming is respected.** A GIS file has its own vocabulary (`CANALISATION`, `galerie_tech`, `ZH`…). A **mapping screen** lets you pick the column holding the type, then say what each value means in MyKTAMap. Obvious values are pre-filled — check them, nothing is forced. Listed values are **split by family**: those found on polygons offer zone types, never path types.
 
 > ⚠️ **Your file must use standard GPS coordinates (WGS84 / EPSG:4326).** In QGIS: *Export → Save Features As…* then pick **EPSG:4326** in the CRS field.
+
+> 📐 **Lambert 93 converted automatically (since v1.82.0)** — if your QGIS export uses **Lambert 93** (EPSG:2154, the official French system: coordinates in **metres** such as 650000 / 6860000, not degrees), the app **recognises and converts** it on its own. A banner tells you how many coordinates were reprojected: check that the resulting position matches your site before continuing. **Other** projections (UTM, Web Mercator…) are still rejected — re-export from QGIS as **EPSG:4326 (WGS84)** in that case.
+
+> 🗺️ **Quarry surveys: what the import can do since v1.82.0.**
+> 
+> - **One level per floor.** If your file has a level column (`niveau`, `level`, `etage`…), pick it under “Level column”: every object keeps its floor, and a preview shows you the breakdown **before** generating. Tick “One colour per level” so each floor gets its own shade — without it, six stacked floors blend together. You can **rename and recolour** each level with the 🏷️ button without leaving the screen. Since **v1.83.1**, everything you change there is **kept in the generated plan** — including types you rename, hide, recolour or add yourself. ⚠️ If the screen says the legend has been reset, a change in the mapping has invalidated your names: reopen 🏷️ before generating.
+> - **Every type goes where you want.** An object's shape in the file does not say what it is: a polygon may be a zone, a pillar, a wall — or a **working face**, if whoever drew it closed the outline. Each value can target any family in the dropdown.
+> - **The plan's height is computed**, you only give the width. That is what keeps the plan inside the frame: with free proportions, content overflowed. Past a certain size a warning appears (possible empty background on iPhone, or heavy generation) — it is **advice**, not a block.
+> 
+> ⚠️ **If you created a plan from a GPX or SIG file before v1.82.0**: its **scale was wrong** (a fixed value unrelated to the terrain), and so were the distances measured on it. Regenerate it from the source file to get correct measurements. Plans built from a scanned image are unaffected.
+
+
 >
-> A file in **Lambert 93** or another projection will be **refused**, with the number of offending coordinates and what to do. This is deliberate: accepting it silently would place your map thousands of kilometres away with nothing to warn you.
+> A file in **another** projection (UTM, Web Mercator…) will be **refused**, with the number of offending coordinates and what to do. This is deliberate: silently accepting coordinates we cannot interpret would place your site thousands of kilometres away, without the slightest warning. *(Lambert 93 itself is recognised and converted — see just above.)*
 
 **Good to know**: polygon holes (inner rings) are ignored — MyKTAMap has no zone with holes. Beyond 20,000 objects the import is refused: filter your layer in QGIS before exporting.
 
@@ -245,7 +257,7 @@ A **profile banner** is displayed at the top of the home screen, just below the 
 
 **What you see on the banner**:
 
-- **Avatar**: personal photo (square, ~64 px) OR colored auto-generated initial if no photo. The color of the initial is chosen deterministically (via djb2 hash of the nickname) from a palette of 10 colors of the chart — your avatar therefore remains visually stable from one session to the next as long as you do not change your nickname.
+- **Avatar**: personal photo (square, ~64 px) OR colored auto-generated initial if no photo. The color of the initial is chosen deterministically from a palette of 10 colors of the chart — your avatar therefore remains visually stable from one session to the next as long as you do not change your nickname.
 - **Nickname**: your alias (editable). Default "Cataphile" on first launch.
 - **🏅 Rank**: a **badge** (from *Tourist* to *Grandmaster*) computed from your **time spent** in the app, the **number of maps** explored and the **km of gallery** mapped. It shows as a **colored ring** around the photo + a **medal** in the corner + the **rank name under your nickname**. The breakdown (the 3 metrics + progress "X left for the next rank" + a score) is in the profile card. *(100% local and fun — it unlocks nothing, it's just for the joy of it.)*
 - **🏆 Achievements**: **38 achievements** to unlock. **8 families × 4 tiers** (🥉🥈🥇👑) — *Cartographer* (maps), *Surveyor* (georeferenced maps), *Deep walker* (km), *Cellar rat* (time), *Pin master* (POIs), *Tracer* (paths), *Zoner* (zones), *Builder* (structures) — **+ 6 one-shot « 🎉 Special »**: *Jack of all trades*, *Centurion* (score ≥ 100), *Mole* (used the tracker), *Multi-level caver*, *Underground marathon* (tracker session > 4 h), *Completionist* (all the rest). A **toast** notifies you on unlock, the **N/38** grid lives in the profile card. You can also show your **score** and your **number of achievements** in the home banner stats (🎨 *Banner stats* section).
@@ -277,7 +289,7 @@ Click on the profile banner → **👤 My profile** modal:
 
 - **✏️ Nickname**: type whatever you want (letters / numbers / space). Used only to personalize local display.
 - **📷 Photo**: choose an image from your gallery. The app **automatically compresses it** (512 px max long side, JPEG quality 88%) before IndexedDB storage to avoid saturating your browser quota.
-- **🗑️ Reset profile**: reset button (chart confirmation modal — no native system `confirm()`). Empties nickname + photo + counters.
+- **🗑️ Reset profile**: reset button (with confirmation). Empties nickname + photo + counters.
 
 #### 📊 Stats grid
 
@@ -288,7 +300,7 @@ The Profile modal displays **6 global stats cells**:
 | 🗂️ **N maps** | Number of maps in your registry (server + local) |
 | 💾 **N sessions** | Total number of saved sessions (per-map slots) |
 | ⭐ **N favorites** | Cumulative number of points marked as favorites, across all maps |
-| 📦 **N snapshots** | Number of session backup snapshots in IndexedDB (max 10 FIFO **per map** since v1.79.3 — before: 10 across all maps, an active map purged the others' history) |
+| 📦 **N snapshots** | Number of session backup snapshots in IndexedDB (max 10 **per map** — beyond that, the oldest are dropped) |
 | 📸 **N POI photos** | Number of photos attached to points + total size |
 | 💾 **N MB save** | **Actual size of MyKTAMap data** (localStorage with MyKTAMap prefix + 6 known IndexedDB stores). Excluding volatile PWA Cache (which is not user data). |
 
@@ -357,6 +369,16 @@ Your profile is included in the **Advanced Export** of sessions (🎨 Advanced t
 
 - A modal toast suggests a **reload** of the page so that the avatar and nickname are correctly updated everywhere in the UI (header, sidebar, etc.)
 
+**📄 History Mode PDFs travel too** *(since v1.81.0)*:
+
+The export window gains a **📄 History Mode PDFs** checkbox, **unchecked by default**. Tick it and your documents leave with the profile, then get **put back on import** with their original name and date. Without it, a re-imported profile arrived with your free notes but **no documents** — the 📖 Stories tab was half empty with nothing to explain why.
+
+> ⚠️ **Unchecked by default, for a good reason**: a single map can carry up to **100 MB** of PDFs. The estimated weight shows next to the checkbox and counts towards the window total — past the threshold, the app asks for confirmation before exporting.
+>
+> 💡 Re-importing the same profile twice does **not** create duplicates: each document takes its place back.
+
+> 🔒 **On an installation that only offers its own server's maps** *(since v1.90.1)* — the ones where the "Load a new map" block is missing —, **profile import is refused**, with a message saying why. Two reasons: it would bring back maps this installation does not offer, and above all it carries your display preferences — a profile where "show server maps" was unchecked **emptied the list**, leaving no visible setting to get it back. **Export** stays available: your logbook, sessions and notes are yours and leave whenever you want.
+
 **📦 Full profile with map archives** *(since v1.79.0)*:
 
 The profile export can now **bundle the ZIP archives of maps stored in the app**. In the export window, a "📦 Map archives" section lists your stored maps with their size: tick the ones to carry (nothing is ticked by default) — the export then becomes a **"full profile" `.zip` file** instead of the usual JSON. On import on another device, archives are **injected back and attached to their maps**: no more re-dropping ZIPs one by one.
@@ -378,11 +400,11 @@ If the author has provided you with a **`Licence-pro.json`** file (by mail, priv
 - **If a local license is active**: a **🗑️ Remove local license** button allows you to return to community mode. The license remains available in the original file if you want to re-import it later.
 - **If a server license is active** (instance deployed by an admin with `Licence-pro.json` at the server root): ✓ badge only, no button — it's the server administrator who decides.
 
-**File format**: minimum JSON `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. If the hash is missing or malformed (strict regex `MKTM-LIC-` + 32 hexadecimal characters), the file is refused with an error message.
+**File format**: minimum JSON `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. If the hash is missing or malformed (strict format `MKTM-LIC-` + 32 hexadecimal characters), the file is refused with an error message.
 
 **🆕 Access route on first load**: if you install MyKTAMap for the first time on a new device (= **community code** entry screen at boot), under the code form you will now find a second block separated by "or" with a **📂 Import my pro license** button. On click, `.json` file picker → you select your file → if OK the app enters **directly into pro mode** (no need to enter the community code). Useful for pro users discovering the app: no need to ask a third party for the community code, the pro license is a legitimate access channel in itself.
 
-> 🔒 **100% local**: the license file is read by the browser via `FileReader` then persisted in `localStorage`. It is **never sent to a server**, never transmitted. No network connection is added.
+> 🔒 **100% local**: the license file is read by the browser then kept in your local storage. It is **never sent to a server**, never transmitted. No network connection is added.
 
 > ⚖️ **Legal value**: the `MKTM-LIC-...` hash that appears in the file is **nominative** — linked to a specific contract between the author and the license holder. **Its reproduction or sharing with an unauthorized third party constitutes a contractual breach** (the author can enforce their rights). The browser-side mechanism remains cosmetic: it does not cryptographically verify the hash, the contract signature is what matters legally.
 
@@ -399,6 +421,27 @@ The application remembers all the maps you load, whether they come from the serv
 | ✅ | Local map **stored in the app** (instant reload, works offline) |
 | 🔐 | Local map with **permanent access granted** (Chrome/Edge desktop) |
 | 📁 | Local map without persistence — re-selection required at load |
+
+#### 💾 Making a server map available offline *(since v1.87.0)*
+
+A **local** map already lives in your browser: it works offline with no effort. A **server** map does not — and until now it only survived through the app's automatic cache, which **was not enough**:
+
+- the app only keeps a limited number of recent files, and **a large map exceeds that number on its own**: it evicted its own pieces while loading. Offline, you got no error — you got a map full of **holes**;
+- only the tiles you had **displayed** were kept — opening a map without zooming kept one level out of four;
+- and **every app update wiped it all**.
+
+Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** section offers to **download everything** — image, data and **every tile of every zoom level** — into a reserved space that **survives app updates**.
+
+| What you see | What it means |
+|---|---|
+| **Not downloaded** + ⬇️ button | Only what you displayed is kept, with no guarantee |
+| **✅ Available offline** + ↻ / 🗑️ | Everything is there. The download button **is gone** — it became "Update" |
+| **⚠️ Incomplete — n of N** + ⬇️ | Interrupted download, or files cleared by the browser: the button **comes back** to finish |
+| **✅ Available, but n not found** + ↻ *(since v1.87.1)* | The server did not provide some files declared by the map. The app **names them**: the map is usable, and you can fix your deployment then hit "Retry" |
+
+**🔎 And the app tells you when the server has changed** *(since v1.88.0)*. A downloaded map is served from your phone and never asks the server again — handy, but it could stay stale **with nothing to tell you**. When you open the info panel, the app now checks, file by file, whether anything moved on the server, and shows one of three verdicts: **⚠️ Update available**, **✓ Up to date**, or **Cannot check** (offline, or map downloaded before this version). *It never claims "up to date" without actually checking.*
+
+> 💡 **The state is read from the real cache, not from a remembered flag.** If the browser clears its storage, the app notices and offers the download again — instead of showing "available" over nothing and letting you find out underground.
 
 **Available actions** on each row (3 buttons):
 
@@ -418,7 +461,9 @@ The application remembers all the maps you load, whether they come from the serv
 - **🌐 Show server maps** — check/uncheck this toggle above the list to hide automatically discovered server maps (test1, test2, demos…) and only see your personal maps. **Preserved** between sessions (localStorage). Unchecking does not delete anything — re-checking → the maps reappear intact.
 - **🔎 Filter by name** *(since v1.78.0)* — a field above the list filters live as you type. Pure display filter, reset the next time you visit the home screen.
 - **⭐ Pin** *(since v1.78.0)* — each row's star moves the map **to the top of the list** (pinned maps keep the "last opened" order among themselves). Click again to unpin.
+- **🖼️ Tiling for this map** *(since v1.90.2)* — the selector that used to sit above the "Load this map" button **is gone**: the app decides on its own ("Auto"), which is what it already did for nearly every map. It only ever affected very large maps **not tiled at generation time (V1)**; on an already-tiled map, "Disabled" changed nothing. The setting now lives in **ℹ️ Info**, and **only for the maps it applies to** — and unlike the old one, it is **remembered** for that map instead of resetting on every start.
 - **🏷️ Tags** *(since v1.78.0)* — label your maps ("Paris 13", "GTech", "to finish"…) via **ℹ️ Info → Map tags** (free input, comma-separated — 12 max, 24 characters each). They show under the map name, and as soon as one map is tagged, a row of **filter chips** appears above the list: click one or more chips to only see those maps (a map matches if it carries **at least one** of the selected tags). Tags live **in the app** (not in the ZIP — they don't travel with a shared map) but follow the **profile export** and the 💾 list export.
+  - **🌐 Maps from a server can arrive already tagged** *(since v1.90.1)* — if the deployer filled in tags in their map list, those show up and filter exactly like yours, with nothing to do. **Yours always win**: as soon as you edit a map's tags, the server never touches them again, neither on the next start nor on any later one. And **clearing them is a choice**: empty the field and they will not grow back. To get the server's tags back, nothing special is needed — remove the map from the list and it will be rediscovered with them.
 
 > 💡 **Tip** — If you change PC or phone, export your list on the old device then import it on the new one to find all your maps in one click. Note: file access permissions are not portable (you will have to re-select local ZIPs the first time on the new device). When re-selecting, if you provide a ZIP in a different mode (e.g.: you had this map in V2 but the ZIP is V1), a warning message will clearly notify you before continuing.
 
@@ -473,25 +518,32 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 > **Order of sections in the modal (top to bottom, identical to UI)**:
 
-1. **🖼️ Image tiling (per map)** — 5-preset segmented control (see detail below), which chooses how the main image is split in memory at load. Stored **per map** (one map in Performance, another in Quality, etc.).
+1. **🌍 Application** — the **language selector** for the whole app (🇫🇷 Français · 🇬🇧 English · 🇪🇸 Español). *(since v1.85.4)* This is now the **only place** to change it while using the app: it left ⚙️ Settings in map mode, where it looked like it only concerned the open map — and where it offered to restart the app at the worst possible moment, deep underground. You can still pick it on the unlock screen, before going in.
 
-2. **🚀 Performance ULTRA mode (paths / markers)** — 7 optimization toggles that do **NOT** touch the image (already covered by Tiling above) but everything else (polylines, popups, intersections, auto-save, viewport culling, mobile zoom-out limit). **PER-PLAN setting**: enabling ULTRA on one plan no longer affects the others — each plan starts disabled until you opt in for it. See "🚀 Optimize your map" section below for details.
+2. **🛰️ Sensor-based options** *(since v1.85.2)* — the options that rely on a phone sensor: **🔋 Battery level** and **📳 Haptic vibration**. Each one can be turned off, and an option that is off displays nothing **and stops listening to the sensor**. When the system refuses the sensor — vibration on iPhone, for instance — the option stays **visible but greyed out, with the reason**, instead of vanishing with no explanation.
+
+> 🗺️ **OSM view is on by default** *(since v1.90.2)*. If you have at least one GPS-calibrated map, the home screen shows it on top of an OpenStreetMap background — and therefore **requests that background from `tile.openstreetmap.org` as soon as it loads**, with no click. **No data from your maps leaves the device**: only the coordinates of the tiles you are looking at are requested, everything else is drawn on top locally. A banner tells you the first time. To turn it off: the checkbox above. **If you had already unchecked it, it stays unchecked** — a refusal is never overridden. And nothing is sent in **strict offline mode**, in **incognito**, or if no map is calibrated.
+
+> 🖼️ **Image tiling is not in this modal** — and since v1.90.2 it is not on the loading screen either. It went through both without ever finding its place: in practice it only concerns maps **not split at generation time**, and on the others it changed nothing. It now lives in the map's **ℹ️ Info** panel, only for the maps it applies to, and it is finally **remembered** there.
+>
+> 🚀 **The Performance ULTRA toggles are gone too** *(since v1.85.3)*. They were displayed here but **saved nothing** — they are **per-map** settings: you set them in **⚙️ Settings**, once the map is open. See "🚀 Optimize your map" below.
 
 3. **🛠️ Developer Mode** *(since v1.76.3)* — replaces the old Debug section. **Password-protected** on first activation (with a responsibility warning). Once active: **🐛 Detailed logs** toggle, **📋 Show logs** button (the buffer, viewable even without a map loaded), and **📚 Technical documentation** — the whole project doc (architecture, backlog, maths…) readable in-app (online only). The logs setting in the map-mode ⚙️ Settings was removed: everything is driven from here.
 
 4. **🔒 Privacy & Audit** — section dedicated to transparency: live network journal, "What does the app do on the network?" doc, and "Strict offline mode" toggle. See dedicated section below.
 
 5. **🎨 Display** — interface toggles:
+   - **🔎 Icons that grow with zoom**, **📌 Anchor tool panels to their button**, **🧲 Snap while drawing** and its **radius** *(since v1.85.3)* — these four apply to **all your maps**. They used to live in ⚙️ Settings in map mode, where you changed them from one map without knowing you were changing them everywhere.
    - **🔆 Keep screen on** — prevents your screen from auto-sleeping while MyKTAMap is open (Wake Lock API). Useful on cataphile outings to avoid having to touch the phone every 30 sec. Auto re-acquire on return from background (visibilitychange). Toggle automatically hidden on browsers that don't support the API (Firefox notably). The same toggle is also accessible in **⚙️ Settings** in map mode (see dedicated section).
 
-> 🌍 **Application language**: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is located in **⚙️ Configuration**, in its own section **right after the Incognito block**. The change applies immediately, without reloading the app. *Good to know*: the **Documentation** (this guide) and the **welcome tutorial** exist in all **3 languages** — they follow your app language automatically, and the flag button at the top of the Documentation window lets you switch 🇫🇷 / 🇬🇧 / 🇪🇸 whenever you want. Only the **built-in Help** (the 📚 in the sidebar in map mode) remains French and English: in Spanish, it is displayed in **English by default**. On each language change, a message offers to **restart the app** for a fully clean switch (optional). 💡 In **incognito mode**, your interface language is now **kept** (all other data stays completely forgotten).
+> 🌍 **Application language**: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is in **⚙️ Configuration → 🌍 Application**, at the very top of the modal. The change applies immediately, without reloading the app. *Good to know*: the **Documentation** (this guide) and the **welcome tutorial** exist in all **3 languages** — they follow your app language automatically, and the flag button at the top of the Documentation window lets you switch 🇫🇷 / 🇬🇧 / 🇪🇸 whenever you want. Only the **built-in Help** (the 📚 in the sidebar in map mode) remains French and English: in Spanish, it is displayed in **English by default**. On each language change, a message offers to **restart the app** for a fully clean switch (optional). 💡 In **incognito mode**, your interface language is now **kept** (all other data stays completely forgotten).
 
 > 💡 The "Show circles at path intersections" option is **not in Configuration home** but in **⚙️ Settings in map mode** (per-plan). Each map now has its own setting — handy to disable circles only on your very dense maps without touching the others.
 
 6. **📚 Server maps** — **"🚫 Do not load server maps at startup"** checkbox:
    - **Disables auto-discovery** of the `data/index.json` file at app boot — the app will no longer query the server to list demo maps or public hosted maps.
    - **Hides the "🌐 Show server maps" toggle** of the home (becomes useless since there is nothing to show anymore).
-   - **Excludes `type === "server"` maps from aggregated stats** in the Profile modal → no longer skews the "Visited maps" count with maps you never use.
+   - **Excludes server maps from aggregated stats** in the Profile modal → no longer skews the "Visited maps" count with maps you never use.
    - **Reload required** for full effect (auto-discovery happens at splash, not during session).
    - **Default OFF** (absolute backward compatibility — the app continues to auto-discover server maps as long as you have not explicitly checked this box).
 
@@ -505,21 +557,35 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 **Organization**: **everything is grouped in a single ⚙️ Configuration modal**, accessible from the loader header. The 🏗️ Generate a map button remains directly visible in the home (not in the Configuration modal) because it is a creation action, not a setting.
 
-### 🎚️ Performance mode — 5 presets
+### 🎚️ Image splitting — the app decides *(since v1.90.2)*
 
-The **Performance mode** block in the loader lets you choose how to display your map, with 5 modes presented as a selector (in the style of DLSS in video games):
+**There is nothing to set here any more.** The *"🖼️ Tiling for this load"* strip that used to sit right above
+the **▶️ Load this map** button **has been removed**: the app automatically splits maps too large to be shown
+in one piece, which is already what it did for nearly all of them.
 
-| Button | For which case? |
+> 🩸 **Why it went away.** It only mattered for very large maps **not split at generation time** ("V1"). On an
+> **already-split** map — today's common case, and the recommended method — "Disabled" **changed nothing**: the
+> map always uses its pieces. So it occupied the most visible spot of the loading screen for almost no effect.
+> And it was **not remembered**: it went back to "Auto" at every start — a setting that forgets itself is not a
+> setting.
+
+**Where it went**: into the map's **ℹ️ Info** panel, and **only for the maps it applies to** — if you do not see
+it, your map is already split and the setting would do nothing. There, it is **remembered for that map** and
+applies to every later load.
+
+| Choice | What it does |
 |---|---|
-| 💤 **Disabled** | **No tiling at all.** Image displayed raw (native quality, but ⚠️ may crash on mobile for very large maps). Use only if you know your device can handle it. |
-| 🔄 **Auto** *(default)* | The app decides based on file size — activated if the map exceeds 60 MB. **Recommended for most cases.** |
-| 🌟 **Quality** | Very detailed maps to zoom deeply into. **Recommended on desktop PC** with enough RAM. Sharper image. |
-| 🎯 **Balanced** | Compromise between sharpness and smoothness. Reproduces the historical "Performance" mode of the app. |
-| ⚡ **Performance** | **Low mobile**, very heavy maps, field emergency. Slightly blurrier image but loads much faster. |
+| 🔄 **Auto** *(default)* | Automatically splits maps too large to be displayed in one piece. **This is the right choice in every case.** |
+| 💤 **Disabled** | No splitting: the whole image at once. Native quality on desktop, but ⚠️ **may crash your phone** on a very large map — a message warns you when it applies. |
 
-Click on a button before loading — the description under the selector changes to explain what it does.
+> 🩸 **There were 5 buttons before v1.86.0** (🌟 Quality, 🎯 Balanced, ⚡ Performance). They only tuned the
+> splitting done **by the browser at load time**, which only concerns **older** maps. On a map **already split
+> at generation**, they changed **absolutely nothing**, while the app still claimed "Sharper. Recommended on
+> desktop PC.". They were removed.
 
-**The setting is stored for each map**: if you load a map in "Performance", the next time you open it via 📚 My maps, it will open directly in "Performance". To change the setting of an already-stored map, re-import its ZIP by selecting another mode in the selector.
+> 🩸 **And "Auto" protected you less than the others, even though it was the default.** It decided on **file
+> weight** (60 MB) while the others decided on **pixel size**. A well-compressed 100-megapixel map weighs
+> ~15 MB: "Auto" did not split it, and the app could crash on iPhone. Fixed in v1.86.0: pixel size now decides.
 
 ### 🎨 The interface in map mode
 
@@ -615,7 +681,7 @@ In practice: you start at **A**, pass through **C**, then reach **B** → the ap
 
 **📖 The Stories tab — your plan notes and PDFs, gathered at last**
 
-**Story mode** (free note + PDF) used to be locked inside a plan's screen: to re-read your notes about a quarry, you had to load that quarry. The logbook's second tab, **📖 Stories**, gathers them **across all plans, without loading anything**:
+**Story mode** (free note + PDF) lives inside a plan's screen: to re-read your notes about a quarry, you have to load that quarry. The logbook's second tab, **📖 Stories**, gathers them **across all plans, without loading anything**:
 
 - the list shows every plan that has a note or a PDF, with an excerpt of the note;
 - opening a sheet shows the note **formatted** (Markdown) and lets you **edit it right there** — it is the very same note as in the plan's Story mode, not a copy;
@@ -626,7 +692,7 @@ In practice: you start at **A**, pass through **C**, then reach **B** → the ap
 - The logbook **starts empty**: it cannot reconstruct trips from before it existed, they were never recorded as such.
 - Everything is **strictly local** to your device (no upload, no account). Each trip can be deleted individually from its sheet.
 - Beyond **500 trips**, the oldest ones are removed automatically.
-- The logbook **is part of the profile export** since v1.74.0 (this doc claimed otherwise — corrected 2026-08-09): switching devices via the profile export does carry your outing history over.
+- The logbook **is part of the profile export** since v1.74.0: switching devices via the profile export does carry your outing history over.
 
 ---
 
@@ -762,17 +828,18 @@ The **⛶** button of the OSM view widget is now called **"Open OSM mode"**: the
 - it sits **in the « 🌍 OSM view » title line**, so it's available on the reduced home widget too;
 - it finds **a plan** (among your georeferenced plans) or **a point** (those plans' POIs) — type, click a result, the map flies to it with a marker;
 - **100% local**: the search reads your own plans, no internet address service is queried;
+- ⚠️ **A map you have never opened does not appear either, even if it is calibrated** *(clarified in v1.90.2)*. The calibration travels **inside the map**, but the app only reads it on the **first open**: before that, it cannot know. **Open each map once** and the calibrated ones will show up on their own. The OSM view empty message now says so, instead of claiming there is no georeferenced map, which was false in that case.
 - only **georeferenced** plans appear — a plan without GPS calibration is invisible in OSM mode (calibrate it via the Generator or Settings).
 
-**🗂️ Several plans at once (since v1.71.0)** — the "Displayed plans" panel of OSM mode lets you **stack your georeferenced plans**: ➕ to add one, ▲▼ to choose what goes above/below, a per-plan **opacity** slider, ✕ to remove. The plan marked ◉ is the "primary" one (the top selector's). All this management lives in a **dedicated modal** opened by the banner's **≡** button (nothing covers the map): **global display** switches, **tag filtering** (aggregated across displayed plans), and the plan stack. The old rows under the selector (opacity, checkboxes, tags) are gone from the widget — the map gains their height. Each row also carries **5 mini filter buttons of its own** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — the global display switches live in the same modal (Display section), the two levels combine. Perfect to show two neighbouring sectors on top of an overview plan, keeping e.g. only one's POIs and the other's image.
+**🗂️ Several plans at once (since v1.71.0)** — the "Displayed plans" panel of OSM mode lets you **stack your georeferenced plans**: ➕ to add one, ▲▼ to choose what goes above/below, a per-plan **opacity** slider, ✕ to remove. The plan marked ◉ is the "primary" one (the top selector's). All this management lives in a **dedicated modal** opened by the banner's **≡** button (nothing covers the map): **global display** switches, **tag filtering** (aggregated across displayed plans), and the plan stack. The old rows under the selector (opacity, checkboxes, tags) are gone from the widget — the map gains their height. Each row also carries **5 mini filter buttons of its own** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — the global display switches live in the same modal (Display section), the two levels combine. Perfect to show two neighbouring sectors on top of an overview plan, keeping e.g. only one's POIs and the other's image. **🏷️ And since v1.84.0, adding by LABEL**: under “Plans”, a row of chips lists the labels carried by **at least two** of your georeferenced plans (the ones you type in your library), with a “3/12” counter. One click **shows all** the plans of that label, a second click **removes them** — essential as soon as a split atlas produces twenty of them. Case is ignored (“Gironde” and “GIRONDE” are the same label), and past 3 displayed plans the app asks for confirmation, stating the count: plans then load **one by one**, filling the map progressively.
 
 On the first opening of the mode, a message reminds you that rendering full plans can be slower on mobile — and another one shows if you display **more than 3 plans** at once.
 
-> 👁️ **Layers hidden by default (since v1.73.1)** — a data layer shipped "unchecked" in a plan ZIP (so hidden when the map opens) used to be **completely invisible in OSM view**, with no way to show it. It is now rendered like the others: hide or show it with the existing filters (global and per-plan category chips, tag filter). The OSM view of the map screen is unaffected — it has always followed the layers actually displayed on your map.
+> 👁️ **Layers hidden by default (since v1.73.1)** — a data layer shipped "unchecked" in a plan ZIP (so hidden when the map opens) is rendered like the others: hide or show it with the existing filters (global and per-plan category chips, tag filter). The OSM view of the map screen is unaffected — it has always followed the layers actually displayed on your map.
 
-> 🔍 **Sharp when zooming (since v1.77.0)** — in the home screen's OSM preview, zooming on a plan automatically loads **more detailed tiles** (only the area you're looking at, V2-tiled plans). Before, the plan stayed blurry when zooming even though it was sharp in full-screen OSM mode. Nothing to configure, and no extra network requests: the tiles come from the plan file, already on your device.
+> 🔍 **Sharp when zooming (since v1.77.0)** — in the home screen's OSM preview, zooming on a plan automatically loads **more detailed tiles** (only the area you're looking at, V2-tiled plans). Nothing to configure, and no extra network requests: the tiles come from the plan file, already on your device.
 
-> 🎨 **Your colors everywhere (since v1.77.0)** — the legend colors you customize (≡ Legend → ✏️ Edit) now show up **on the OSM background too**: full-screen mode AND home preview, and with multiple plans each one keeps **its own** colors. Before, these views stuck to the original colors (a main gallery repainted red still showed green).
+> 🎨 **Your colors everywhere (since v1.77.0)** — the legend colors you customize (≡ Legend → ✏️ Edit) now show up **on the OSM background too**: full-screen mode AND home preview, and with multiple plans each one keeps **its own** colors.
 
 ## 📖 Story Mode — Free note + PDF for each plan
 
@@ -790,12 +857,12 @@ The note supports **Markdown**:
 
 ### 📚 Story (PDF) — **several documents per plan**
 
-You can now keep **up to 10 PDF documents per plan** (before: only one, and a new import overwrote the previous one). A 2019 report, a scanned paper map, a press article, a survey sheet: all in the same place.
+You can now keep **up to 10 PDF documents per plan**. A 2019 report, a scanned paper map, a press article, a survey sheet: all in the same place.
 
 - A **document list** appears above the viewer as soon as there is more than one; click a document to open it.
-- **📥 Import** adds a document (it no longer replaces anything). **🗑️ Remove** deletes the one being displayed.
-- The plan author can embed PDFs in the ZIP — **several since v1.71.0** (the Generator now accepts a list of files): they appear at the top of the list (📕), readable, not deletable (only the generator can change them). **New**: its presence no longer prevents you from adding your own documents — import used to be hidden on those plans.
-- Guardrails: **10 documents maximum** per plan, warning past **25 MB** total, refusal past **100 MB**. The space used now shows up in **Storage** (it was invisible until now).
+- **📥 Import** adds a document (it replaces nothing). **🗑️ Remove** deletes the one being displayed.
+- The plan author can embed PDFs in the ZIP — **several since v1.71.0** (the Generator now accepts a list of files): they appear at the top of the list (📕), readable, not deletable (only the generator can change them). Their presence does not prevent you from adding your own documents.
+- Guardrails: **10 documents maximum** per plan, warning past **25 MB** total, refusal past **100 MB**. The space used shows up in **Storage**.
 - On iPhone, an **↗️ Open in a tab** button kicks a document into native fullscreen if the inline view isn't available.
 - Your documents are also listed, added and deleted from **📔 My logbook → 📖 Stories**, without loading the plan.
 
@@ -894,6 +961,14 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 **🌀 My links**: on the **home screen**, the **"🌀 My links"** button lists all your links (across all plans): each side's status (⛔ if the plan is not on this device), **➜** button to jump straight to either point, **🗑️** to delete. If a plan's data is unreachable (server offline…), the app tells you clearly instead of showing "0 points".
 
+> 📐 **“Alignment gap” (since v1.81.0)** — each link can show a distance in metres. **This is not a distance to walk.** A portal's two ends mark the **same physical spot**, seen from two different plans: if both plans are properly georeferenced, those two ends should land at the exact same place on the world map. The gap shown measures how far they miss by — in other words, **how good your alignment is**. The smaller the figure, the better. This is the only place in the app that can tell you, because it takes **two** georeferences to reveal it.
+> 
+> - The figure only appears if **both** plans are georeferenced. Otherwise **nothing** is shown: the measurement is impossible, and writing “0” would suggest a perfect alignment.
+> - **No colours, no thresholds** — deliberately. A 20 m gap is huge in a small quarry and negligible across a 5 km network. You get the figure; you are the one who judges, with your own scale in mind.
+> - In **OSM View** (full screen → 🎚️ Filters → 🌀), the same measurement appears as a list sorted **worst first**: whatever needs realigning is at the top. Clicking an entry frames both ends of the link on the map.
+> - A gap that looks absurd almost always comes from **one of the two plans' georeferencing**, not from the link itself.
+
+
 **🕸️ Graph view**: in the same window, toggle **📋 List ⇄ 🕸️ Graph** — your library drawn as a **network**: each plan is a bubble (V2/M-LVL badges, link counter, golden ring on the current plan, grayed ⛔ if missing from this device), each border a line whose **thickness follows the number of links**. Plans without links sit in a strip at the bottom. **Click a bubble** to open the plan (arriving at its first portal), **click a line** to see that border's links in detail (the list filters itself), and **drag the bubbles** to arrange the view your way.
 
 **Use a link**: in the point's popup, a 🌀 line shows the destination plan and point → **➜** button → confirmation → the app **switches plan** (your current session is saved automatically), **switches to the arrival point's level** (multi-level plans) and drops you **right on it** (blue flash). If a tag filter hides the arrival point, a warning is shown — your filters are never modified.
@@ -902,7 +977,7 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 **🧭 Inter-plan route**: request a route to a point **on another plan** connected by a portal — from the **Route** modal ("🌐 Destination on another plan" button) or the **multi-plan search** (🧭 button on a distant result). The app compares available portals at **real cost**, shows the trip in steps ("① Reach 🌀 North well — 450 m · ② Cross · ③ Reach the room — 300 m · Total ≈ 750 m") and **draws the route on your plan**. Each plan's avoidances (zones, points, tags) are honored. If it's impossible (no portal, plan offline, destination cut off from the network…), a message tells you **exactly why**.
 
-**🚶 The trip follows your pace**: the summary button is "**🗺️ Let's go**" — it no longer teleports you. You **walk** your route (with "📍 I am here" stop validation and replanning on recalibration), and the crossing is offered when you are **at the portal**: floating "**🌀 Next portal (X m)**" button (dismissible — "📍 I am here" on the portal point brings it back), or the portal point's ➜ button. At each crossing, the rest is drawn automatically on the other side, all the way to the destination.
+**🚶 The trip follows your pace**: the summary button is "**🗺️ Let's go**" — it does not teleport you. You **walk** your route (with "📍 I am here" stop validation and replanning on recalibration), and the crossing is offered when you are **at the portal**: floating "**🌀 Next portal (X m)**" button (dismissible — "📍 I am here" on the portal point brings it back), or the portal point's ➜ button. At each crossing, the rest is drawn automatically on the other side, all the way to the destination.
 
 **🧭 Your stops first**: set your **waypoints** in the Route modal (curiosity X, Y…) then pick the distant destination — the trip goes through **all your stops in order, before the portal**.
 
@@ -912,7 +987,7 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 **↩️ Going back**: after taking a portal (or a multi-plan search jump), a floating **"↩️ Back: <plan>"** button appears at the bottom of the screen for 15 seconds — one click brings you back to the plan **and the exact view** you came from (level and zoom included). Jumps stack up: chain 3 portals, you can go back 3 times.
 
-**↩️ Discreet Back button**: if the button bothers you, two new controls on it — **[–]** shrinks it to a discreet **↩️ mini-chip** at the bottom right (it stays until it expires, one click re-expands it), **[✕]** closes it **and forgets the stacked returns** (since v1.73.0 — closing means giving up the return chain; before, the button came back on the next jump). Your [–] choice is remembered: once minimized, future returns arrive directly as a mini-chip.
+**↩️ Discreet Back button**: if the button bothers you, two new controls on it — **[–]** shrinks it to a discreet **↩️ mini-chip** at the bottom right (it stays until it expires, one click re-expands it), **[✕]** closes it **and forgets the stacked returns** (since v1.73.0 — closing means giving up the return chain). Your [–] choice is remembered: once minimized, future returns arrive directly as a mini-chip.
 
 **Good to know**:
 - A point can carry **several links** (a "hub" point).
@@ -934,23 +1009,27 @@ The app reads each plan's points (session + data layers) **in place**, showing p
 
 ## 🧭 Interface overview
 
-All tools are accessible from the **right side bar**, organized into 11 groups:
+All tools are accessible from the **right side bar**, organized into **13 groups**:
 
 | Group | Icon | What it's for |
 |---|---|---|
-| **Help / Docs / Legend** | 📚 | Help, documentation, icon legend |
+| **Favorites** | ⭐ | Your favorited points, one click away |
+| **Help / Docs / Legend** | 📚 | Help, documentation, AI Help, icon legend |
 | **Settings** | ⚙️ | Settings, scale calibration, debug *(direct click)* |
-| **Search** | 🔍 | Quickly find a point on the map *(direct click)* |
-| **Load / Import** | ⬇️ | Import a session, open the plan data editor, change map |
-| **Create / Modify map** | 🏗️ | Map generator *(direct click)* |
-| **Save** | ⬆️ | Save your session (3 modes), export the map as an image |
-| **Tracker** | 🧭 | **Full-screen menu**: start / stop tracking, recalibrate, My position, path lock, compass, route, replay, heatmap, emergency |
-| **Measure** | 📐 | Measure a distance, erase |
-| **Point editing** | ✏️ | Add your own points, erase |
-| **Paths** | 🛣️ | Draw main, secondary roads, paths, **calculate total distance** |
+| **Search** | 🔍 | Quickly find a point on the plan *(direct click)* |
+| **Load / Import** | ⬇️ | Import a session or a GPX, plan data editor |
+| **Save** | ⬆️ | Export your session, the plan as an image, or a printable PDF |
+| **History** | ⏪ | Undo (`Ctrl+Z`) / Redo (`Ctrl+Y`) |
+| **Tracker** | 🧭 | **Full-screen menu**: start / stop tracking, recalibrate, My position, path lock, route, replay, heatmap, Lost Mode, Rescue Mode |
+| **Measurement** | 📐 | Measure a distance or an area, clear |
+| **Point editing** | ✏️ | Add your own points *(direct click — ON/OFF switch)* |
+| **Paths** | 🛣️ | Draw main roads, secondary roads, paths, junctions, **compute the total distance** |
+| **Zones** | ⬛ | Draw backfill, collapse, water or inaccessible zones |
+| **Structures** | 🏛️ | Pillars, walls and working faces |
 
-> 💡 **"My annotations" layer** in the ≡ Filters modal (top right of the map, three horizontal bars button — custom MyKTAMap unified modal): this layer groups your added points and zones drawn during the session. Unchecking the box hides them, rechecking displays them again. **The route, measurement, tracker** are not affected (own lifecycle).
-| **Zones** | ⬛ | Draw backfill, collapse or water zones |
+> ⚠️ **The plan Generator is NOT in this bar.** Creating or editing a plan happens **from the home screen**, via the **🏗️ Generate a plan** button — creation actions live outside map mode.
+
+> 💡 **“My annotations” layer** in the ≡ Filters modal (top right of the map, three-bar button): it groups **everything you add** — points, paths, zones, structures. Unchecking it hides all your additions at once without deleting anything.
 
 **How it works:**
 
@@ -1278,7 +1357,7 @@ The **≡ three horizontal bars** button at the top right of the map opens the *
 
 **How it works:**
 
-- **Live update**: each toggle (checked/unchecked) applies the filter **immediately** on the map (200 ms anti-flicker debounce for dense maps).
+- **Live update**: each toggle (checked/unchecked) applies the filter **immediately** on the map.
 - **Accordion sections**: click on a section header to collapse/expand. All open by default.
 - **Quick buttons per section**: `👁️ All` and `🚫 None` to toggle all items at once.
 - **🔄 Show all button** (footer): resets all runtime filters (tags + types) to their neutral state (= everything visible). Does NOT touch the M-LVL toggles or the image/data layers — each kept independent.
@@ -1286,7 +1365,7 @@ The **≡ three horizontal bars** button at the top right of the map opens the *
 
 **Per-map persistence**:
 
-The tags + types filters are **saved in the map's session** (`SessionPersist`). If you enable "hide shafts" on map A, then switch to map B, then come back to A → your filters are **automatically restored**. Each map has its own filters.
+The tags + types filters are **saved in the map's session**. If you enable "hide shafts" on map A, then switch to map B, then come back to A → your filters are **automatically restored**. Each map has its own filters.
 
 **Bidirectional M-LVL synchronization**:
 
@@ -1517,7 +1596,7 @@ Operational tool to **methodically assign rescue teams** to search areas on a ca
 
 #### Workflow
 
-1. **List of scenarios** — You see all scenarios saved for this map (max 10, FIFO).
+1. **List of scenarios** — You see all scenarios saved for this map (max 10, the oldest are dropped).
 2. **➕ New scenario** — Lightweight stepper: Name + Context notes + Incident time.
 3. **Free-form editing** — 3 accordion sections:
    - **📝 Context**: name, incident time, notes (e.g.: "Marc left around 2pm to check East gallery…")
@@ -1581,16 +1660,16 @@ A scenario can now **sequence several phases** with a debrief intercalated betwe
 **✓ End a phase + debrief (Operator only)**:
 
 1. During the active phase, the Op Live footer displays a new **"✓ Phase ended"** amber button (visible only if multi-phase)
-2. **Auto-detection**: as soon as **all participating teams have marked their Exit step as `completedAt`**, the button turns **pulsing green** + an assistant toast informs you ("✅ All teams are out — the phase is ready to close"). The Op keeps the final decision.
+2. **Auto-detection**: as soon as **all participating teams have marked their Exit step as done**, the button turns **pulsing green** + an assistant toast informs you ("✅ All teams are out — the phase is ready to close"). The Op keeps the final decision.
 3. **Click "✓ Phase ended"** → debrief modal: free textarea (5000 chars max) to capture the lessons from the phase (teams returned, points found, priority zones to explore, constraints encountered). This debrief will be intercalated in the final report between each phase section.
-4. **Validate "✓ End the phase"** → the current phase is **archived** (deep clone, never overwritten, history preserved) + `phase.endedAt` is set
+4. **Validate "✓ End the phase"** → the current phase is **archived** (never overwritten, history preserved)
 5. **If a next phase exists** → automatic chaining to **"🚀 Start phase X+1?"** modal with summary of participating teams
 6. **You confirm** → the new phase starts, the steps of participating teams are **rebuilt from their CURRENT route** (so if you modified `entry/exit/intermediate` of a team between P1 and P2, the new steps take this into account)
-7. **If no next phase** → native `confirm()` "Stop the plan completely?" (equivalent to ⏹️ End the plan)
+7. **If no next phase** → a confirmation "Stop the plan completely?" (equivalent to ⏹️ End the plan)
 
 **🔍 History safeguards**:
 
-- `terminerPhase` **NEVER** deletes steps — it archives them in `s.execution.etapesArchive[phaseIdx]` as deep clone
+- Closing a phase **NEVER** deletes steps — they are archived as they are
 - A phase already started can no longer be deleted from the UI (safety net)
 - An active phase in the execution cannot be deleted (go through "✓ Phase ended" first)
 - The auto-detection toast does not repeat (single display per phase)
@@ -1724,7 +1803,7 @@ New **🚒 Firefighter Briefing** button in all Rescue Mode banners. Generates a
 
 The post-mission PDF report (generated via 📤 Report button) now includes a new "SURFACE BRIEFING" page with the same info. Useful for geographic debrief with firefighters or archiving the intervention file.
 
-#### 🏷️ OSM View tag filter fix
+#### 🏷️ OSM View tag filter
 
 The tag filter chips in the OSM View modal list **all tags present** in the plan, aligned with the OSM View Home widget.
 
@@ -1860,7 +1939,7 @@ For the rescuer on the field who follows their route:
 | 🟣 | Forced u-turn | Abandoned route, early return |
 | 🚨 | **Victim found** | **Absolute emergency** — triggers flashing red signal on the operator side |
 
-**Photos**: tap "📸 Photo (X/5)" → auto rear camera on mobile (`capture="environment"`) OR gallery. Max 5 photos per step, auto JPEG q85 compression max 1920px. Click a thumbnail → fullscreen viewer with swipe + zoom.
+**Photos**: tap "📸 Photo (X/5)" → auto rear camera on mobile OR gallery. Max 5 photos per step, auto JPEG q85 compression max 1920px. Click a thumbnail → fullscreen viewer with swipe + zoom.
 
 **Auto-save**: observations saved on textarea blur AND on step change. No need for "Save" button.
 
@@ -1903,7 +1982,7 @@ For the command center coordinating several teams in parallel:
 
 **"🚨 Take over" button** → switches to the Team Member view focused on this specific team. You become TEMPORARILY Alpha's team member to enter a detailed observation on their behalf (typical case: you are at the command post but you receive a radio call from Alpha who dictates their obs to you).
 
-**Easy return**: once in Team Member mode after "Take over", a **"👤 Back to Operator"** button appears in the footer. On click → return to the intact Operator overview (the `_previousRole` flags survive reload + plan switch).
+**Easy return**: once in Team Member mode after "Take over", a **"👤 Back to Operator"** button appears in the footer. On click → return to the intact Operator overview (going back stays possible after a reload or a map switch).
 
 **"🗺️ View global map" button**: hides the modal + renders the map overlay with all the zones + waypoints + routes of the teams in NATO colors.
 
@@ -1963,7 +2042,7 @@ At any time during execution AND after the plan stops, you can generate a report
 
 #### ⏱️ Global timer with fair pause
 
-The ⏱️ timer displayed at the top of each Live view is calculated from `startedAt` MINUS the cumulative pause time. You can pause with the **"⏸️ Pause"** button (the timer freezes) then resume with **"▶️ Resume"** — the pause duration is NOT counted.
+The ⏱️ timer displayed at the top of each Live view is calculated from the start time MINUS the cumulative pause time. You can pause with the **"⏸️ Pause"** button (the timer freezes) then resume with **"▶️ Resume"** — the pause duration is NOT counted.
 
 **Re-render 1×/second** without visual flash, without focus loss in the textarea observations during input. Allows keeping the real-time report accurate during long missions (h+).
 
@@ -2078,7 +2157,7 @@ Each action triggers a **discreet toast** at the bottom: `↩ Undone: Placement 
 ### What is NOT covered
 
 - ❌ **Photos** attached to points: their deletion remains **irreversible** (the blobs are erased from the local IndexedDB database, not restorable)
-- ❌ **Session imports**: an import that overwrites your session cannot be undone via Ctrl+Z (use the SessionPersist auto-save to recover)
+- ❌ **Session imports**: an import that overwrites your session cannot be undone via Ctrl+Z (use the automatic session save to recover)
 - ❌ **Tracker** (real-time sensor mode)
 - ❌ **Distance measurement** (= ephemeral tool, not a persistent mutation)
 
@@ -2086,7 +2165,7 @@ Each action triggers a **discreet toast** at the bottom: `↩ Undone: Placement 
 
 - **RAM only**: history is kept in volatile memory only, **lost on reload** of the page (this is intentional, to avoid bloating local storage).
 - **Reset on map change**: if you load another map, history is cleared (logical: you don't want to undo an action done on another map).
-- **Limit 50 actions**: beyond, the oldest are forgotten (FIFO).
+- **Limit 50 actions**: beyond, the oldest are forgotten.
 - **A new action erases the redo**: if you do 5 undos then place a new point, redo becomes impossible (history branch logic).
 
 ---
@@ -2174,7 +2253,7 @@ Handy for doing a session check-in with your partner at the exit, or for archivi
 3. The area is displayed at the bottom left, in m² (`⬛ Area: X m²`)
 4. Beyond 10,000 m², the app automatically displays in hectares (ha)
 
-> **How it works** : the app applies the Shoelace formula to map coordinates and converts to m² via the map's calibrated scale (`APP_CONFIG.scale` in px/m). Accuracy therefore depends on the initial map calibration (`📏 SCALE` in ⚙️ Settings).
+> **How it works** : the app converts the area to m² via the map's calibrated scale. Accuracy therefore depends on the initial map calibration (`📏 SCALE` in ⚙️ Settings).
 
 ### ❌ Clear the measurement
 
@@ -2226,23 +2305,35 @@ The new tag is added to your session and will use the default icon. To customize
 
 ### 🗑️ Clear the points
 
-Press **🗑️** (next to ✏️). A window opens with two options:
+Deletion happens **on the point itself**, not from the toolbar: click the marker → popup → **🗑️ Delete this point**.
 
-| Option | Effect |
+| What you want | How |
 |---|---|
-| **↩️ Last point** | Deletes the most recently added point |
-| **🗑️ All points** | Clears all manually added points (irreversible) |
-| Cancel | Closes the window without deleting anything |
+| Remove **one** point | Click the marker → **🗑️ Delete this point** |
+| Undo the deletion | `Ctrl+Z` (or ↩️ in the bar) |
+| Clear **everything** | ⚙️ **Clear session** — resets the plan (points, paths, zones, structures) |
 
-> You can remove several points one by one by successively clicking **🗑️ → ↩️ Last point**.
+> ℹ️ The 🗑️ button only shows on **your** points. Points coming from the plan itself or from a data layer are read-only: to remove one, first open its layer for editing from 🔍 **Filters**, then export the corrected layer.
 
-> ⚠️ **All points** only deletes the points that **you** added — the points of the original map remain intact.
+> 💡 There is **no** 🗑️ button next to ✏️: the Edition group is a plain switch (add mode ON/OFF).
 
 ### ✏️ Modify an existing point
 
 Click on a marker you added → the popup displays the **✏️ Modify** (blue) button. It opens the same window as for adding, **pre-filled** with the name, type, description and photos already attached (if applicable).
 
 You can change whatever you want then **💾 Save**. If you rename the point AND it has photos, the photos automatically follow (transparent internal migration).
+
+### 📌 Reposition a misplaced point
+
+Dropped a point roughly in the right place and want to fine-tune it? Click the marker → popup → **📌 Reposition**.
+
+The popup closes and a banner appears at the top: **“Click the new position for …”**. Your next click on the map moves the point there. A **Cancel** button is there if you change your mind, and nothing moves until you click.
+
+What the point **keeps**: its name, type, description, photos, level (it does not change floor), and its layer membership if you opened that layer for editing. Only its position changes.
+
+The move is **undoable** with ↩️ like any other action.
+
+> ℹ️ The button only shows on **your** points (session ones). A point coming from a data layer is read-only — to reposition it, first open its layer for editing from 🔍 Filters.
 
 ### 📸 Photos attached to points
 
@@ -2443,6 +2534,137 @@ Press **🧹** in the Structures group:
 
 ---
 
+## 🫧 An object's popup — note, convert, delete
+
+Clicking **a path, a zone or a structure you drew** opens a small popup. It is the same for all three families.
+
+| Item | What it's for |
+|---|---|
+| **Text area** | A free note, multi-line if you want — the state of a passage, an observation, a reminder |
+| **💾 Save note** | Saves the note. The popup closes on its own |
+| **🔄 Convert** | Changes the object's **type**, and if needed its **family** |
+| **🗑️ Delete** | Removes the object. Red, on its own row |
+
+### 🔄 Convert — change an object's type, or family
+
+The typical case: on a survey imported from GIS, a **working face** is in fact a **gallery**. As long as it stays a structure, it does not enter route calculation — the router only reads paths. Converting it into a path puts it in the graph.
+
+The dialog only offers targets **compatible with the object's shape**: a **line** (path, working face) can only become another line, a **closed surface** (zone, pillar, wall) another closed surface. You cannot turn a line into a polygon: there is nothing to close it with.
+
+The object keeps everything else — its geometry, its level, its note.
+
+### 🛰️ Options that use a sensor
+
+⚙️ **Settings** → **🛰️ Sensor-based options**. These settings rely on a phone sensor, and **each can be turned off entirely**: a disabled option shows nothing and listens to nothing.
+
+| Option | Default | What it does |
+|---|---|---|
+| **🔋 Battery level** | on | Shows the remaining charge at the top, warns below 20 %, 10 % and 5 %. Unticked: no icon **and** no sensor listening |
+| **📳 Haptic vibration** | **off** | Tactile feedback on some actions |
+
+> ℹ️ **Turning the battery off takes effect on the next launch.** The listening is set up at startup and there is no clean way to remove it mid-session — the app tells you rather than pretending.
+
+#### ⛔ “Sensor refused”
+
+If an option appears **greyed out** with “Sensor refused by iOS” or “by this device”, it is neither a bug nor an oversight: **your system does not give that sensor to web pages**. Apple provides neither vibration nor battery level to a website, even installed as an app.
+
+> 💡 These options used to be simply **hidden** — you could not tell whether they did not exist or whether the phone refused them. They now show up, with the reason.
+
+### 🏁 Your distance when the pedometer saw nothing
+
+With the phone in your pocket the pedometer counts almost nothing. But every **📍 I am here** you place on a point of the plan leaves a **timestamped marker**. The app links those markers **following your galleries** — the same computation as a route — and derives the distance actually walked between them.
+
+In practice: a marker at 12:00, one at 12:30, one at 13:00 → the app computes A→B→C through the galleries, not as the crow flies.
+
+#### 🏁 The last leg, the one that was lost
+
+A leg is only computed when the **next** marker arrives. So everything you walk **after your last marker** was counted by nobody.
+
+Since v1.85.2, when you tap **🏁 Close my outing**, the app asks **where you came out**. One tap on the map and the last leg joins the total. You can **Skip** if you are closing from home.
+
+#### What the record tells you about the number
+
+| What it says | What it means |
+|---|---|
+| *including 900 m computed through the galleries between 6 markers* | The path was rebuilt on your drawn paths — trustworthy |
+| *including 900 m as the crow flies between 6 markers (not refined)* | Straight lines between markers — **underestimated**, sometimes badly |
+
+> ⚠️ **What this computation cannot do**: it takes the **shortest** path between two markers, not necessarily yours. Back-and-forth, dead ends explored, hesitations — all underestimated. And with no “I am here” at all there is nothing to link: the distance stays the pedometer's.
+
+### ⏱️ How an outing's duration is counted
+
+A **field** outing is counted **from start to end**, not from the time the app was open. That is what you mean by “we were down there 3 hours”: the phone in your pocket counts, and so does the app going to sleep.
+
+The record also shows the **time the app was open**, right below. It is not a duplicate: it tells you what the measurement is worth. *3 hours of outing for 12 minutes of app* means a pedometer that saw almost nothing — treat the distance with caution.
+
+> ℹ️ A **desk work** session keeps the usage time: you leave a plan open all evening without looking at it, so the real duration would mean nothing.
+
+#### ✏️ Fixing a forgotten end
+
+If you did not tap **🏁 Close my outing** on the way out, the app does not know when you left: it takes the last moment it was alive — often when the phone put it to sleep. The duration is then underestimated.
+
+Open the outing's record → **✏️ Fix the end**, and enter the real time. The duration is recomputed at once.
+
+> ℹ️ The **app-open time** is never changed: it is a measurement, not a statement. And an end before the start is refused.
+
+### 🔁 An outing split in several — resume and merge
+
+If you leave MyKTAMap during an outing — to change music, to take a call — the phone may **unload the app** to free memory. Before v1.85.2, coming back started a **new** outing: one real outing showed up as two or three in the logbook, each with part of the counters.
+
+**It now resumes on its own.** On return, if the previous outing on the same plan was interrupted that way less than **45 minutes** ago, the app **continues** it instead of opening another. A message tells you.
+
+> ℹ️ An outing you closed **yourself** (🏁) is never re-joined. The app only resumes what was cut *against your will*.
+
+#### 🔗 Re-joining outings that were already split
+
+For older ones, or if the delay was exceeded: 📔 **My logbook** → **🔗 Merge outings** → tick the ones to join (at least 2) → **Merge**.
+
+| What gets joined | How |
+|---|---|
+| Duration, distance, steps, additions | Summed |
+| Total duration | From the **start of the first to the end of the last**, gaps included |
+| Notes | Stacked, separated by a rule |
+| Photos, tracks, levels | Joined |
+| Field / desk | If **a single** piece was field work, the whole thing is |
+
+> ⚠️ **Irreversible**: the original outings disappear from the logbook. The app asks for confirmation — it is the only action in the logbook that erases anything.
+
+### 🪟 Where tool panels open
+
+The **Paths**, **Zones** and **Structures** panels open **centred on screen**, like the Tracker and the Filters.
+
+> 🐛 **Why this changed (v1.85.1)** — they used to stick to the top of their button. The longer their list got — an imported plan adds one type per level — the further down they reached, until they ran past the bottom edge on a phone: the last buttons became unreachable.
+
+If you prefer the old behaviour, tick **🪟 Anchor tool panels to their button** in ⚙️ **Settings**. It is comfortable on a large screen, where space is not an issue — not advised on a phone.
+
+### 🎯 Convert several objects at once
+
+On an imported survey it is common to have **dozens** of mis-typed objects — every working face on a level that is in fact a gallery, for instance. Redoing them one by one would take forever.
+
+In the conversion dialog, click **🎯 Select several objects to convert**. The dialog steps aside and a banner appears:
+
+| Action | Effect |
+|---|---|
+| **Click an object** | Adds it to the selection (shown as a blue dashed outline) |
+| **Click a selected object again** | Removes it — to fix a mis-click without starting over |
+| **➕ All “type” on the displayed level** | Extends the selection to **every** object of the same type as the last one added |
+| **✅ Convert (N)** | Reopens the choice dialog, with the batch |
+| **Cancel** | Drops the selection |
+
+**⛔ Lines and closed surfaces don't mix.** If your selection is made of **lines** (paths, working faces), clicking a **zone** or a **pillar** is refused — and the banner tells you why. Same rule as for a single conversion: there is no common target, you cannot close a line.
+
+You **can** mix families as long as the shape matches: working faces (structures) and tracks (paths) are both lines, so you can convert them together into galleries.
+
+Objects that are **already** of the chosen type are simply left alone — the closing message says how many were converted and how many were already right.
+
+> 💡 The whole batch undoes with a **single** `Ctrl+Z`. It is not N conversions, it is one.
+
+### 🗑️ Delete
+
+**No confirmation dialog**: `Ctrl+Z` is the safety net, as for a point, and the message that appears reminds you. The button is **red and on its own row**, away from “Save”, so it is not clicked by accident.
+
+> ℹ️ These three actions only show on **your** objects. An object coming from a data layer opens a **read-only** popup: to fix or delete it, first open its layer for editing from 🔍 **Filters**, then export the corrected layer.
+
 ## 🏗️ Multi-level mode (multi-story underground quarries)
 
 Some underground quarries / galleries have **several physically stacked levels** (Glacière, Capucins, sites with stories). Multi-level mode lets you manage these maps correctly: each path/zone/point belongs to a level, and the pathfinder doesn't magically cross from one level to another through 2D visual intersections.
@@ -2603,7 +2825,7 @@ Precise selection of what you want to export:
 - 🛣️ **Paths** + boxes per type (main, secondary, trails)
 - ⬛ **Zones** + boxes per type (water, backfill, collapse, inaccessible)
 - 🏛️ **Structures** + boxes per type (pillars / wall / faces)
-- 🧭 **Tracker** *(optional)* — if checked, the box shows a real-time counter: *"timeline N evt · path M pts"*. On export includes: current position + traveled path + complete timeline + start timestamp. Re-import restores everything via `setTrackingTimeline` → your 🎬 replay is functional after re-import.
+- 🧭 **Tracker** *(optional)* — if checked, the box shows a real-time counter: *"timeline N evt · path M pts"*. On export includes: current position + traveled path + complete timeline + start timestamp. Re-import restores everything → your 🎬 replay is functional after re-import.
 - 👤 **User identity** — dedicated box to include your **profile** (nickname + photo + counters). Useful for migrating your visual identity to another device. On import, a modal toast suggests a reload so the profile banner is updated everywhere in the UI.
 
 **Output format** of choice:
@@ -2633,7 +2855,7 @@ Building a large map across **several sessions** and ending up with lots of file
 - A **preview** shows the totals and **warns** you if any point ids are duplicated (duplicates are kept as-is).
 - **Download** the result (a ZIP, or a direct `.json` if there is only one category), ready to drop into your map folder.
 
-Available **without an open map** from the home screen: **📊 Data editor → 🔗 Merge data layers** (it used to be a separate home button, now folded into the editor's sources to declutter the screen). **100% local**, no data sent.
+Available **without an open map** from the home screen: **📊 Data editor → 🔗 Merge data layers**. **100% local**, no data sent.
 
 ### 🖼️ Export to PNG/JPG
 
@@ -2684,8 +2906,8 @@ Press **⬆️ → 📤 Printable PDF**. Generates a print-ready PDF with header
 Like the advanced PNG export, you tick exactly what you want to include:
 
 - **📦 Session annotations** — Points / Paths / Zones / Structures (real-time counters based on your session)
-- **🖼️ Base image & layers** — "Base map image" checkbox + 1 checkbox per `imageLayers[]` of the map (image layers like legends, photo annotations, etc.). Pre-checked = current visibility on the map.
-- **📊 Data layers** — 1 checkbox per `dataLayers[]` of the map (wells, vehicles, paths, embedded structures, etc.). The `editor` layer appears with a special label "My annotations (= session layer)".
+- **🖼️ Base image & layers** — "Base map image" checkbox + 1 checkbox per image layer of the map (image layers like legends, photo annotations, etc.). Pre-checked = current visibility on the map.
+- **📊 Data layers** — 1 checkbox per data layer of the map (wells, vehicles, paths, embedded structures, etc.). Your own annotations layer appears with a special label "My annotations (= session layer)".
 - **🎨 Layout** — Header checkbox (title + metadata at top)
 - **📏 Quality** — Standard ×1 (default, recommended A3/A4) · HD ×2 (heavier file, recommended A0/A1) · Draft ×0.5
 
@@ -2980,7 +3202,7 @@ The 🧱 Convert to V2 checkbox appears in the form as soon as you have **upload
 
 #### 🎛️ Disable tiling on read (V2 → V1 raw)
 
-When loading a V2 map, you can choose **Performance mode: Disabled** in the loader's **⚙️ Configuration** modal. In this case, the runtime ignores the tiles and directly loads the **source image** (`baseImage` of the ZIP, kept intact) as a classic V1 map.
+When loading a V2 map, you can choose **Performance mode: Disabled** in the loader's **⚙️ Configuration** modal. In this case, the runtime ignores the tiles and directly loads the **source image** of the ZIP, kept intact, as a classic V1 map.
 
 Use cases:
 - Compare V2 vs V1 rendering on the same map
@@ -3056,27 +3278,31 @@ Each JSON layer of points (`puits.json`, `chatieres.json`, etc.) creates Leaflet
 
 **Tip**: separate your points into several data layers (e.g.: `puits.json`, `passages.json`, `electricite.json`) so the user can hide those that interest them less.
 
-### 6. ⚡ Performance mode — choose the right preset
+### 6. ⚡ Image splitting — Auto, unless you have a reason
 
-When loading a map, you can choose from 5 presets in the loader:
+⚠️ **Since v1.90.2 this setting is no longer on the loading screen.** It lives in the map's **ℹ️ Info** panel,
+and **only for a map not split at generation time** — on a V2 map it would have no effect, so it is not shown.
+Good news: it is **remembered for that map** there, whereas the old selector went back to Auto at every start.
 
-| Preset | For which case |
+Two choices *(five before v1.86.0)*:
+
+| Choice | When |
 |---|---|
-| **💤 Disabled** | Small map ≤ 4 000 px, powerful desktop. **Risk of crash on Safari iOS beyond 8 000 px** |
-| **🔄 Auto** (default) | Smart behavior — tiles if file > 60 MB. ✅ Good default choice |
-| **🌟 Quality** | High-definition images, full perf (desktop/laptop) |
-| **🎯 Balanced** | Good quality/perf compromise, recommended on most modern mobiles |
-| **⚡ Performance** | Old mobile, very large map, absolute priority to stability |
+| **🔄 Auto** (default) | Splits as soon as the image exceeds 4,096 × 4,096 px, or the file exceeds 60 MB. ✅ **The right choice unless you have a specific reason.** |
+| **💤 Disabled** | Small map on a powerful desktop, when you want native quality with no re-encoding. **⚠️ Risk of crash on Safari iOS beyond 8,000 px** — a message warns you. **No effect on an already-split map** (V2), which always uses its pieces. |
 
-> 💡 The preset is memorized **per map**: you can have one map in Performance mode for your old phone and another in Quality for your iPad.
+> 🩸 **What changed in v1.86.0, and why.** The 🌟 Quality / 🎯 Balanced / ⚡ Performance presets were **removed**: they only tuned the splitting done by the browser at load time, which only concerns **V1** maps. On a **V2** map — today's common case — they changed **nothing at all**.
+> And "Auto" decided on **file weight**, not pixel size: a well-compressed 100 Mpx map (~15 MB) **was not split** and could crash an iPhone, while "Quality" would have split it. The default was therefore the **least** protective mode. Fixed.
+
+> 💡 The choice is remembered **per map**: it applies to every later load until you change it. *(Before v1.90.2 the loader's selector was not remembered and went back to Auto at every start.)*
 
 ### 6 bis. 🚀 Performance ULTRA mode — for the really big maps that crash
 
 If despite Performance mode, your map still crashes (typically 4000+ × 2000+ pixel maps with many paths), open **⚙️ Settings → "🚀 Performance ULTRA mode" section** and enable the **🚀 ULTRA master toggle**. It enables 6 aggressive optimizations simultaneously.
 
 > 🆕 **Three things to know**:
-> - **PER-PLAN setting**: enabling ULTRA here only affects the open plan. Your other plans are no longer impacted (before, the setting was global and silently "followed" you on every plan). After the update, plans that had ULTRA start disabled again — re-enable it on the ones that need it.
-> - **Your session points are sacred**: POIs you add by hand (✏️) stay **always visible**, even with viewport culling on — only the thousands of data-layer points get lightened.
+> - **PER-PLAN setting**: enabling ULTRA here only affects the open plan. Your other plans are not impacted. After the update, plans that had ULTRA start disabled again — re-enable it on the ones that need it.
+> - **Your session points are sacred**: POIs you add by hand (✏️) stay **always visible**, even with the "Viewport culling" option on — only the thousands of data-layer points get lightened.
 > - **Message on load**: when optimizations are active on a plan, a message reminds you at load time — a "lightened" display (simplified paths, data popups off…) is not a bug.
 
 > ⚠️ These optims do **NOT** touch the image (already managed by the performance mode above). They target vector elements (paths, points, calculations).
@@ -3164,11 +3390,11 @@ Access the settings by clicking **⚙️**:
 
 ### 🧭 Tracking (map-specific)
 - **Initial tracker position**: X/Y start coordinates
-- **Step detection**: sensitivity (`stepThreshold`), step size (`stepLength`), anti-bounce cooldown
+- **Step detection**: sensitivity, step size, anti-bounce delay
 - **Scale (px/m)** with **🎯 Calibrate** button: computes the correct scale from a measured distance
 
 ### 🔍 Display
-- **Zoom-adaptive icons** (`scaledMarkers`) — *global preference*: the point icons (shafts, accesses, signage, etc.) keep a constant size relative to the map. On zoom-out, they shrink; on zoom-in, they grow. Reload required on toggle.
+- **Zoom-adaptive icons** — *global preference*: the point icons (shafts, accesses, signage, etc.) keep a constant size relative to the map. On zoom-out, they shrink; on zoom-in, they grow. Reload required on toggle.
 - **⚪ Show circles at path intersections (this map)** — *per-plan setting*: solid colored circle at the crossing of 2 paths (green × purple → yellow, etc.). Uncheck to visually clear very dense maps, or if the computation slows down rendering. **Immediate effect**, saved per map (another map keeps its own setting). 
 - **🧭 North calibration (this map)** — *per-plan setting*: useful when the TOP of the map is **not** the true North (aerial photo with arbitrary framing, cataphile map without aligned compass rose). Angle field [0,360[ in degrees or button **📐 Calibrate (2 clicks)** which opens a WYSIWYG picker: click first the SOUTH of the map, then the NORTH, a dashed Sud→Nord arrow appears and the angle is auto-computed. **Effect**: tracker icon rotation + walking direction adapt → the tracker points in the right direction RELATIVE TO THE MAP. The physical compass 🧭 keeps pointing to the real magnetic North (= expected behavior of a compass). **Saved per map**, **immediate effect** without reload. ↺ Reset button to return to default (0 = North toward top of map).
 
@@ -3199,7 +3425,7 @@ The calibration entered here is shared with the KMZ / GPX exports of the same ma
 - **🐛 Logs**: displays the captured debug logs
 - **Reset**: restores default values for THIS map (does not delete anything — different from **💥 Reset everything** in ⚙️ Configuration loader, which purges everything)
 
-> 💡 **Performance mode is only modified at map load** (5-preset selector in the loader → ⚙️ Configuration → 🖼️ Tiling). Settings just displays the current one.
+> 💡 **Performance mode is only modified at map load** (Auto / Disabled selector in the **load card**, right above the ▶️ Load this map button). Settings just displays the current one.
 
 > ⚠️ **To enable / modify the local access code (PIN / Face ID)**, you must go through **⚙️ Configuration on the home page** — the 🔐 Local access code section is NOT in ⚙️ Settings (by design — global critical setting, not per map).
 
@@ -3360,7 +3586,7 @@ You can also **pin** a specific version instead of `latest`:
 - **Port conflict**: if you already have another service on `8443` on the host, change the mapping: `-p 9443:8443` for example.
 - **No automatic updates**: you decide when to `docker pull`. For auto-update, check [Watchtower](https://github.com/containrrr/watchtower).
 
-> 🔒 **No data sent elsewhere**. The image bundles the vanilla app exactly as the official version, but served from your own hardware. It's even slightly more offline-friendly than production (no occasional fetch to `gstatic.com` for the connectivity ping — the `networkAudit.js` module stays active if you want to verify).
+> 🔒 **No data sent elsewhere**. The image bundles the vanilla app exactly as the official version, but served from your own hardware. It's even slightly more offline-friendly than production (no occasional fetch to `gstatic.com` for the connectivity ping — the network audit stays active if you want to verify).
 
 > 📖 **Never used Docker?** A dedicated step-by-step guide exists: **[`docs/applications/DOCKER_INSTALL.en.md`](DOCKER_INSTALL.en.md)** — Docker Desktop install (Windows/Mac/Linux), daemon startup, troubleshooting common errors (self-signed cert, port conflicts, WSL 2), Docker-free alternatives.
 

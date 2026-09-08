@@ -733,7 +733,15 @@
         author: opts.planAuthor || window.I18n.t("kmz.import.authorDefault"),
         imageWidth: finalW,
         imageHeight: finalH,
-        baseImage: baseFilename,
+        // 🩸 v1.88.4 — PRÉFIXE `data/` OBLIGATOIRE. Le fichier est écrit dans
+        // `data/` du ZIP, mais était déclaré ICI sans le préfixe. En import
+        // LOCAL ça passait : `findMatchingFile` retrouve l'asset par son NOM DE
+        // BASE, donc l'incohérence était invisible. En mode SERVEUR la résolution
+        // est stricte → 404 sur l'image et les calques (constat KARMA : ses plans
+        // `*_from_v2` échouaient, les plans du Générateur passaient).
+        // ⚠️ `kmzImport` avait déjà corrigé ce motif pour ses CALQUES en
+        // v1.21.0-fix5 — jamais pour son `baseImage`.
+        baseImage: "data/" + baseFilename,
         // v1.21.0-fix6 : georef si dispo (pattern aligné gpxImport)
         ...(_georef ? { georef: _georef } : {})
       },
@@ -747,9 +755,12 @@
         startX:        Math.round(finalW / 2),
         startY:        Math.round(finalH / 2),
         scale:         50,    // default raisonnable px/m (modifiable Réglages)
-        stepLength:    0.75,  // default raisonnable taille d'un pas (m)
-        stepThreshold: 1.2,
-        stepCooldown:  280
+        // 🩸 v1.82.0 — TROISIÈME COPIE DE LA MÊME TRIPLETTE FAUSSE, trouvée
+        // par le garde-fou qui venait de la corriger dans sigImport et
+        // gpxImport. `stepThreshold: 1.2` est comparé par `tracking.js` à la
+        // magnitude de `accelerationIncludingGravity`, qui vaut ~9,81
+        // téléphone posé : toujours vrai, donc ~3,6 pas/seconde à l'arrêt.
+        ...(window.KTA_TRACKING_USINE || { stepLength: 0.7, stepThreshold: 13, stepCooldown: 400 })
       },
       icons: {
         default: "icon/iconetrack.png",

@@ -47,6 +47,7 @@ if (!missingInEn.length && !missingInFr.length) console.log("✅ Parité fr/en O
 // ---- 2. Clés appelées ----
 const called = new Set();
 const concatPrefixes = new Set();  // 🆕 v1.79.2 — littéraux suivis d'un « + » (préfixes, pas des clés)
+const textOnlyKeys = new Set();    // 🆕 v1.85.4 — cles rendues en textContent (voir §5)
 const literalsInCode = new Set();  // 🆕 v1.79.2 — tout littéral à-point du source (canal orphelines seul)
 function stripComments(src) {
   // Retire commentaires bloc /* */, HTML <!-- -->, et ligne // (évite les
@@ -156,6 +157,12 @@ function scanFile(file) {
   // hors filet — l'attribut existe depuis v1.69 mais le scanner l'ignorait).
   const reAttr = /data-i18n(?:-html|-title|-placeholder)?\s*=\s*"([^"]+)"/g;
   while ((m = reAttr.exec(src)) !== null) called.add(m[1]);
+  // 🆕 v1.85.4 — MÊME BALAYAGE, CANAL SÉPARÉ : les attributs qui posent du
+  // TEXTE (textContent / valeur d'attribut), par opposition au seul
+  // `data-i18n-html` qui pose du HTML. La regex exige le `=` juste après le
+  // suffixe optionnel, donc `data-i18n-html="…"` ne peut pas matcher ici.
+  const reAttrTexte = /data-i18n(?:-title|-placeholder)?\s*=\s*"([^"]+)"/g;
+  while ((m = reAttrTexte.exec(src)) !== null) textOnlyKeys.add(m[1]);
   // 🆕 v1.79.2 — CANAL ORPHELINES UNIQUEMENT : tout littéral « à point »
   // présent dans le source (tables de clés `_SIG_CAT_I18N = {...}`, mappings
   // `"fn:boussole": "cheatsheet.tool.boussole"`, clés stockées puis
@@ -294,6 +301,38 @@ for (const code of EXTRA_LANGS) {
                 (ghost.length || pm.length ? "" : " — structure OK"));
   }
 }
+
+// ══════════ 5. 🩸 PAS DE HTML DANS UNE CLÉ RENDUE EN TEXTE ══════════
+// VÉCU (introduit en v1.85.3, corrigé en v1.85.4) : la mention « (s'applique à
+// tous tes plans) » avait été écrite DANS LA VALEUR DU DICO de trois libellés
+// de capteurs. Côté mode plan ces clés partent dans un template innerHTML —
+// rendu correct, donc invisible en relecture. Côté accueil elles sont posées
+// par `data-i18n`, donc en textContent : l'utilisateur a vu en clair
+// « 🔋 Niveau de batterie <em>(s'applique à tous tes plans)</em> », balises
+// comprises. Une même clé, deux canaux de rendu, un seul qui pardonne.
+//
+// LA RÈGLE : dès qu'une clé est atteinte par `data-i18n`, `data-i18n-title` ou
+// `data-i18n-placeholder` NE SERAIT-CE QU'UNE FOIS, sa valeur doit être du
+// texte nu — même si elle est aussi consommée en innerHTML ailleurs. Le
+// balisage se met dans le GABARIT, jamais dans le dictionnaire.
+// `data-i18n-html` est le seul canal qui autorise du HTML : il est exclu ici.
+const SAUT = String.fromCharCode(10);
+const htmlDansTexte = [];
+[...textOnlyKeys].forEach(function (k) {
+  [["fr", fr], ["en", en]].forEach(function (d) {
+    const v = d[1][k];
+    if (typeof v === "string" && /<[a-zA-Z/!]/.test(v)) htmlDansTexte.push(d[0] + " · " + k + " → " + v);
+  });
+});
+if (htmlDansTexte.length) {
+  blocking++;
+  console.error("❌ HTML dans une clé rendue en TEXTE (" + htmlDansTexte.length + ") — les balises " +
+                "s'afficheront en clair. Mets le balisage dans le gabarit, ou passe en data-i18n-html :" +
+                SAUT + "   " + htmlDansTexte.join(SAUT + "   "));
+} else {
+  console.log("✅ aucune clé rendue en texte ne contient de HTML (" + textOnlyKeys.size + " clés vérifiées)");
+}
+
 
 if (blocking) { console.error("\n❌ check-i18n : " + blocking + " problème(s) bloquant(s)."); process.exit(1); }
 console.log("\n✅ check-i18n : tout est cohérent.");

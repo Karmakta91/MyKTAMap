@@ -17,12 +17,19 @@
 //     - Liste des plans : `PlanRegistry.getAll()` (en mémoire)
 //     - Georef de chaque plan : `KmzExport.getCalibration(planId)` (LS session)
 //       Note : pas de fallback `PLAN_CONFIG.plan.georef` car PLAN_CONFIG est
-//       VIDE en HOME (aucun plan chargé). Donc les plans qui ont leur georef
-//       UNIQUEMENT dans le plan-config.json embedded (et JAMAIS saisie via
-//       Réglages map mode) ne seront pas listés ici. Limitation acceptable :
-//       l'user qui veut utiliser le widget HOME doit avoir saisi sa georef
-//       au moins 1 fois via Réglages map mode → propagée automatiquement
-//       en LS par `_propagerGeorefVersKmzExport` au prochain load du plan.
+//       VIDE en HOME (aucun plan chargé). Le géoréf embarqué dans le
+//       plan-config.json ne peut donc pas être lu ici.
+//
+//       🩸 v1.82.0 — CE MANQUE ÉTAIT ÉRIGÉ EN « LIMITATION ACCEPTABLE » :
+//       l'utilisateur devait avoir saisi sa géoréf au moins une fois en mode
+//       plan. C'était défendable tant que la géoréf se saisissait à la main.
+//       L'import SIG produit désormais des plans calés PAR CONSTRUCTION, que
+//       personne n'a de raison de ressaisir — et ils étaient précisément ceux
+//       qui manquaient à cette liste (signalé par KARMA).
+//       Le géoréf du plan est donc déposé dans le REGISTRE à son chargement
+//       (main.js), seul endroit que le HOME lit déjà, et `_listGeorefPlans`
+//       s'en sert en second recours. `osmView.js` lisait ses deux sources
+//       depuis la v1.39.2 ; le widget du HOME n'avait jamais suivi.
 //
 // CONTENU AFFICHÉ
 //   v1.40.0 : Tile layer OSM + markers pointA/pointB georef + ligne d'échelle
@@ -102,6 +109,15 @@
   let _showRoads       = true;
   let _showZones       = true;
   let _showStructures  = true;
+  // 🌀 v1.81.0 (dette D5) — liaisons inter-plans dessinées sur le fond OSM.
+  // OFF par défaut, contrairement aux 5 autres catégories : ce n'est pas un
+  // calque de contenu mais un OUTIL DE DIAGNOSTIC. L'arbitrage du 01/08 a
+  // enterré la traversée (le mode OSM n'a ni position courante ni « plan où tu
+  // es ») ; ce qui reste utile, c'est de VOIR l'écart entre les deux bouts d'un
+  // portail — deux points censés être au même endroit physique. Un écart
+  // important = un géoréférencement à revoir sur l'un des deux plans.
+  let _showPortails    = false;
+  let _portailsLayer   = null;  // L.layerGroup, reconstruit à chaque rendu
   let _selectedPlanId = null;
   let _isFullscreen  = false; // v1.40.2 — état overlay plein-viewport
   let _fsEscapeHandler = null; // ref pour cleanup au close()
@@ -251,6 +267,40 @@
     return "#8892a4";
   }
   // Helper résolution couleurs zone (stroke + fill, cascade complète)
+  // 🏛️ v1.82.0 — STYLE D'UNE STRUCTURE, types CUSTOM compris.
+  //
+  // 🩸 Le bug corrigé ici : le rendu faisait
+  //     STRUCT_STYLES_HOME[s.type] || STRUCT_STYLES_HOME["mur"]
+  // Un type custom (`cust-…`) n'est évidemment pas dans cette table locale —
+  // TOUTES les structures personnalisées retombaient donc sur le style « mur » :
+  // même couleur pour tous les niveaux, et forme de POLYGONE même pour un front
+  // de taille. Les tracés et les zones, eux, consultaient déjà la légende
+  // custom : les structures étaient les seules oubliées. Signalé par KARMA sur
+  // un plan importé où chaque niveau avait pourtant sa couleur.
+  //
+  // La forme vient de `entry.geometry` — même champ que celui lu par
+  // `structures.js > _isPolylineType`. Une seule source, pas d'heuristique.
+  function _styleStructHome(s, planId) {
+    const base = STRUCT_STYLES_HOME[s.type];
+    if (base) return Object.assign({}, base);
+    const ce = _entreeCustomDe(planId, s.type);
+    if (ce && (!ce.category || ce.category === "structures")) {
+      const ligne = (ce.geometry === "polyline");
+      const gabarit = Object.assign({}, STRUCT_STYLES_HOME[ligne ? "front-1" : "mur"]);
+      const c = ce.lineColor || ce.borderColor || ce.fillColor;
+      if (ligne) { if (c) gabarit.color = c; }
+      else {
+        if (ce.fillColor)   gabarit.fillColor = ce.fillColor;
+        if (ce.borderColor) gabarit.color     = ce.borderColor;
+        else if (c)         gabarit.color     = c;
+      }
+      gabarit.isPolyline = ligne;
+      return gabarit;
+    }
+    // Type inconnu ET absent de la légende : on garde le repli historique.
+    return Object.assign({}, STRUCT_STYLES_HOME["mur"]);
+  }
+
   function _resolveZoneColorsHome(z, planId) {
     if (z && (z.color || z.fillColor)) {
       return {
@@ -294,9 +344,15 @@
     }
     return { stroke: "#8892a4", fill: "#8892a4" };
   }
-  // 🆕 v1.40.13 — Tags built-in (aligné sur map.js > TAGS_BUILTIN). Utilisé
-  // pour extraire les icônes par défaut du ZIP si le plan-config n'override pas.
-  // Cohérence stricte avec map.js — si TAGS_BUILTIN change là-bas, sync ici.
+  // 🔁 v1.81.0 — FILET DE SECOURS, PLUS LA SOURCE. Le catalogue de référence
+  // est `window._ktaBuiltinIconUrls` (map.js > TAGS_BUILTIN), désormais exposé
+  // dès le chargement du script — donc lisible ici, sur un HOME où aucun plan
+  // n'est encore ouvert. Cette copie ne sert que si map.js n'a pas été chargé.
+  // 🩸 Elle a dérivé DEUX FOIS pendant qu'elle faisait autorité : `entree_plan`
+  // (v1.41.0) et `portail` (v1.59.0) n'y sont jamais arrivés, et un point
+  // portail s'affichait en Vue OSM comme un petit rond jaune au lieu de son
+  // icône vortex. Le commentaire qui disait « sync ici » n'a rien empêché :
+  // `scripts/check-icon-catalog.js` (pré-commit bloquant) confronte les deux.
   const TAGS_BUILTIN_HOME = {
     salle:    "icon/house.png",
     pa:       "icon/pa.png", pc: "icon/pc.png", pb: "icon/pb.png",
@@ -308,13 +364,43 @@
     elec:     "icon/elec.png", epure: "icon/epure.png",
     info:     "icon/info.png",
     chatiere: "icon/chatiere.png", passage: "icon/passage.png",
-    danger:   "icon/danger.png", plaque: "icon/plaque.png"
+    danger:   "icon/danger.png", plaque: "icon/plaque.png",
+    // 🔁 v1.81.0 — les 2 tags qui manquaient. Ils sont la RAISON de ce fix :
+    // absents ici, un point portail / entrée de plan tombait sur le
+    // circleMarker de secours en Vue OSM. Tenus alignés par
+    // `scripts/check-icon-catalog.js`.
+    portail:  "icon/portail.png",
+    entree_plan: 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">' +
+        '<circle cx="25" cy="25" r="23" fill="#f4c542" stroke="#1a1f2e" stroke-width="2.5"/>' +
+        '<rect x="17" y="13" width="16" height="26" fill="#1a1f2e" rx="1"/>' +
+        '<rect x="19" y="15" width="12" height="22" fill="#f4c542" rx="0.5"/>' +
+        '<circle cx="28.5" cy="26" r="1.5" fill="#1a1f2e"/>' +
+      '</svg>'
+    )
   };
   // 🆕 v1.40.13 — Tracker des blob URLs créés pour les icônes POI
   let _iconBlobUrls = [];
   // 🆕 v1.40.17 — Filtre par tag : null = pas de filtre (tout affiché),
   // Set<string> non-vide = ne montre que les POI dont le tag est dans le Set
   let _homeTagFilter = null;
+  // 🏔️ v1.82.0 — FILTRE PAR ÉTAGE (signalé par KARMA : « la gestion des
+  // niveaux est mal gérée, le cas de Citon est un exemple flagrant »).
+  // Il n'y en avait AUCUN : `level` ne servait que dans le popup d'un POI, et
+  // tous les niveaux étaient dessinés les uns sur les autres. Sur un relevé à
+  // sept niveaux dont un topo historique de 16 747 objets, la carte devenait
+  // illisible — le niveau du dessus masquant tout le reste.
+  // Même convention que le filtre par tag : `null` ou Set vide = tout afficher
+  // (aucun plan mono-niveau n'est impacté).
+  let _homeLevelFilter = null;
+
+  // Un objet sans `level` est considéré au niveau 0 : c'est la convention de
+  // l'app (cf. road.js), et un plan mono-niveau n'écrit pas ce champ.
+  function _niveauDe(o) { return (o && typeof o.level === "number") ? o.level : 0; }
+  function _passeNiveau(o) {
+    if (!_homeLevelFilter || _homeLevelFilter.size === 0) return true;
+    return _homeLevelFilter.has(_niveauDe(o));
+  }
   // 🆕 v1.40.18 — Marker "📍 Moi" (GPS device, 1 fix ponctuel, 0 stockage)
   let _myGpsMarkerHome         = null;
   let _myGpsAccuracyCircleHome = null;
@@ -322,8 +408,18 @@
   // =========================
   // HELPERS — Opt-in & state
   // =========================
+  // 🌍 v1.90.2 — MÊME RÈGLE QUE `OsmView.isOptedIn` (osmView.js), et elle DOIT
+  // le rester : "0" = refus explicite → OFF ; absent ou "1" → ON. Voir le
+  // commentaire complet côté osmView.js.
   function _isOptedIn() {
-    try { return localStorage.getItem(LS_OPT_IN_KEY) === "1"; } catch(e) { return false; }
+    try { return localStorage.getItem(LS_OPT_IN_KEY) !== "0"; } catch(e) { return false; }
+  }
+
+  // 🩸 « Actif parce que jamais refusé » n'est PAS « actif parce que choisi ».
+  // Tant que la clé est absente, on doit l'annoncer : c'est un fond de carte
+  // servi par un tiers qui apparaît sans que personne ne l'ait demandé.
+  function _estActifParDefaut() {
+    try { return localStorage.getItem(LS_OPT_IN_KEY) === null; } catch(e) { return false; }
   }
   // 🧹 v1.77.0 (audit code mort) : _setOptedIn supprimé — jamais appelé,
   // l'opt-in réel s'écrit via OsmView.setOptedIn (Configuration HOME).
@@ -398,9 +494,19 @@
     const out = [];
     for (const p of all) {
       if (!p || !p.id) continue;
-      const g = window.KmzExport.getCalibration(p.id);
+      // 🩸 v1.82.0 — DEUX SOURCES, comme `osmView.js` depuis la v1.39.2.
+      // Le localStorage porte la saisie de l'utilisateur et garde donc la
+      // priorité ; le registre porte le géoréf embarqué dans le plan, déposé
+      // à son chargement (cf. main.js > _propagerGeorefVersKmzExport). Sans
+      // ce second recours, un plan importé du SIG — calé par construction —
+      // n'apparaissait pas dans cette liste.
+      const g = window.KmzExport.getCalibration(p.id) || p.georef;
       if (_isValidGeoref(g)) {
-        out.push({ id: p.id, name: (window.PlanRegistry.displayName ? window.PlanRegistry.displayName(p) : (p.name || p.id)), georef: g, lastOpened: p.lastOpened || 0 });
+        // 🏷️ v1.84.0 — `tags` transporte les ÉTIQUETTES DE PLAN du registre
+        // (v1.78.0). Elles ne servaient nulle part ici : la pile ne savait
+        // ajouter qu’un plan à la fois, par son nom.
+        out.push({ id: p.id, name: (window.PlanRegistry.displayName ? window.PlanRegistry.displayName(p) : (p.name || p.id)), georef: g, lastOpened: p.lastOpened || 0,
+                   tags: Array.isArray(p.tags) ? p.tags : [] });
       }
     }
     out.sort(function(a, b) { return (b.lastOpened || 0) - (a.lastOpened || 0); });
@@ -481,13 +587,47 @@
       '</div>';
   }
 
+  // 🩸 v1.90.2 (KARMA : « à compléter, pour le cas où un plan n'a pas été
+  // chargé une fois ») — « AUCUN PLAN GÉORÉFÉRENCÉ » ÉTAIT UN MENSONGE DANS UN
+  // CAS SUR TROIS.
+  //
+  // `_listGeorefPlans` lit le géoréf à deux endroits : le localStorage (saisie
+  // manuelle) et `p.georef` du registre — mais ce dernier n'est écrit qu'au
+  // CHARGEMENT du plan (`main.js > _propagerGeorefVersKmzExport`). Un plan
+  // jamais ouvert peut donc être parfaitement calibré dans son propre
+  // `plan-config.json` et rester invisible ici. L'app affirmait « aucun plan
+  // géoréférencé » alors que la vraie phrase est « je n'ai pas encore regardé ».
+  //
+  // ⚠️ POURQUOI ON NE VA PAS LIRE LES PLANS POUR LE SAVOIR : il faudrait ouvrir
+  // chaque ZIP, ou — pour un plan serveur — demander son `plan-config.json` au
+  // réseau. Autant de requêtes que de plans, au chargement de l'accueil, pour
+  // remplir un widget que l'utilisateur n'a peut-être pas regardé. On préfère
+  // dire la vérité sur ce qu'on sait.
+  //
+  // Trois situations, trois messages :
+  //   A. bibliothèque vide            → « commence par charger un plan »
+  //   B. des plans, aucun jamais ouvert → « ouvre-les une fois »
+  //   C. des plans ouverts, aucun calé  → le message d'origine, + le compte
+  //      des plans jamais ouverts s'il en reste (leur calibration est inconnue,
+  //      pas absente : la nuance change ce que l'utilisateur doit faire)
   function _renderNoGeorefPlans(container) {
+    const tous = (window.PlanRegistry && typeof window.PlanRegistry.getAll === "function")
+      ? (window.PlanRegistry.getAll() || []) : [];
+    const jamaisOuverts = tous.filter(function(p) { return p && !p.lastOpened; }).length;
+
+    let cle = "nogeoref", extra = "";
+    if (tous.length === 0)                 cle = "noplan";
+    else if (jamaisOuverts === tous.length) cle = "jamaisouvert";
+    else if (jamaisOuverts > 0) {
+      extra = '<br><br>' + window.I18n.t("osm_home.nogeoref.reste", { n: jamaisOuverts });
+    }
+
     container.innerHTML =
       '<div class="kta-osm-home-empty">' +
-        '<div style="font-size:32px;">📍</div>' +
-        '<div><strong>' + window.I18n.t("osm_home.nogeoref.title") + '</strong></div>' +
+        '<div style="font-size:32px;">' + (cle === "nogeoref" ? "📍" : "📂") + '</div>' +
+        '<div><strong>' + window.I18n.t("osm_home." + cle + ".title") + '</strong></div>' +
         '<div style="max-width:300px; font-size:12px; line-height:1.6;">' +
-          window.I18n.t("osm_home.nogeoref.body") +
+          window.I18n.t("osm_home." + cle + ".body") + extra +
         '</div>' +
       '</div>';
   }
@@ -536,6 +676,21 @@
         // 🎚️ v1.71.0 (retour KARMA « un icône Filtre → modale dédiée, comme en
         // mode plan ») : toute la gestion multi-plans (priorités, opacités,
         // filtres par plan) vit dans une MODALE — zéro emprise sur la carte.
+        // 📏 v1.83.0 — mesurer ici (demande KARMA). Une mesure faite en vue OSM
+        // ne dépend d'AUCUN calibrage : les coordonnées sont déjà des lat/lng.
+        // Elle est donc structurellement plus fiable qu'en mode plan, où une
+        // échelle fausse a donné 480 m pour 1 644 réels sur un relevé importé.
+        '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeMesureBtn" type="button" ' +
+                'title="' + _escapeHtml(window.I18n.t("osm_mes.btnTitle")) + '">' +
+          '📏' +
+        '</button>' +
+        // 🎯 v1.85.0 — relever les coordonnees GPS de SURFACE d un point.
+        // Range a cote de la mesure : meme famille (des outils de lecture de
+        // la carte), et les deux arment le meme evenement `click`.
+        '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeCoordBtn" type="button" ' +
+                'title="' + _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">' +
+          '🎯' +
+        '</button>' +
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFiltersBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_mode.filters.btnTitle")) + '" ' +
                 'style="background: rgba(244,197,66,0.10); border-color: rgba(244,197,66,0.4); color: #f4c542;">' +
@@ -598,6 +753,20 @@
     const filtresBtn = container.querySelector("#ktaOsmHomeFiltersBtn");
     if (filtresBtn) {
       filtresBtn.addEventListener("click", _ouvrirModalFiltresOsm);
+    }
+    // 📏 v1.83.0 — bascule de l'outil de mesure. Le module se démonte de
+    // lui-même au second clic (`activer` appelle `desactiver` s'il est actif).
+    const coordBtn = container.querySelector("#ktaOsmHomeCoordBtn");
+    if (coordBtn) {
+      coordBtn.addEventListener("click", function () {
+        if (window.OsmCoords) window.OsmCoords.activer(_mapInstance);
+      });
+    }
+    const mesureBtn = container.querySelector("#ktaOsmHomeMesureBtn");
+    if (mesureBtn) {
+      mesureBtn.addEventListener("click", function () {
+        if (window.OsmMesure) window.OsmMesure.activer(_mapInstance);
+      });
     }
     // 🆕 v1.40.18 — Bouton "Ma position GPS"
     const myGpsBtn = container.querySelector("#ktaOsmHomeMyGpsBtn");
@@ -670,6 +839,8 @@
     _dataLayer   = L.layerGroup().addTo(_mapInstance); // 🆕 v1.40.4 (au dessus des tuiles)
     // 🔍 v1.77.0 — tuiles hi-res au zoom (débounce, cf bloc TUILES HI-RES)
     _mapInstance.on("zoomend moveend", _onCarteBougeHiRes);
+    // 📏 v1.83.0 — la largeur des fronts suit le zoom, comme en mode plan.
+    _mapInstance.on("zoomend", _majLargeurFrontsHome);
     _renderGeorefMarkers(georef);
     // 🐛 v1.40.40-41 — KARMA : « les tuiles OSM ne se chargent pas au boot ».
     // Cause racine : Leaflet calcule la taille du container AVANT que le DOM
@@ -723,8 +894,10 @@
         // 🆕 v1.40.6 — Render tuiles V2 EN PREMIER (sous les data layers)
         if (data.tilesOverview) _renderTilesOnMiniMap(data.tilesOverview, georef);
         _renderDataLayersOnMiniMap(data, georef);
+        _majLargeurFrontsHome();
         // 🎚️ v1.71.0 : les tags vivent dans la modale ≡ (guard si fermée)
         _renderModalTags();
+        _renderModalNiveaux();
         _appliquerOrdre();   // 🗂️ v1.71.0 — renormalise les zIndex de la pile
         _appliquerVisibilites();
       });
@@ -814,8 +987,126 @@
 
   // Extraction partielle ZIP : plan-config.json + chaque dataLayer JSON.
   // Cache RAM par planId. Returns null si extraction impossible.
+  // ══════════════════════════════════════════════════════════════════
+  // 🌐 v1.88.4 — CHARGEMENT D'UN PLAN **SERVEUR** POUR L'APERÇU
+  // ══════════════════════════════════════════════════════════════════
+  // 🩸 Constat KARMA : « le mode OSM HOME ne fonctionne pas sur un plan
+  // serveur, OK en mode plan ». Ce n'était pas une régression : tout
+  // `_loadPlanDataForPreview` passait par le ZIP (`PlanRegistry.getHandle()`
+  // ou `getBlob()`) — qu'un plan serveur n'a NI l'un NI l'autre. Le widget
+  // rendait donc, au mieux, les marqueurs de géoréf et rien d'autre.
+  //
+  // On reproduit ici la MÊME sortie `{ config, dataLayers, tilesOverview,
+  // iconUrls }`, mais en HTTP. Les chemins passent par `resolveServerPaths`,
+  // exactement comme au chargement réel — sinon l'aperçu et le mode plan
+  // divergeraient sur les mêmes fichiers.
+  // ⚠️ Les tuiles sont demandées à la racine **SONDÉE** (`ktaResoudreRacineTuiles`,
+  // tiling.js) : la deviner ferait rejouer ici le bug de la v1.88.3.
+  async function _loadPlanDataServeur(plan) {
+    const dir = String((plan && plan.path) || "").replace(/\/+$/, "");
+    if (!dir) return null;
+    let config;
+    try {
+      const r = await fetch(dir + "/plan-config.json");
+      if (!r.ok) { console.warn("[OsmHomePreview] plan-config serveur HTTP " + r.status); return null; }
+      config = await r.json();
+    } catch (e) {
+      console.warn("[OsmHomePreview] plan-config serveur illisible :", e && e.message);
+      return null;
+    }
+    if (typeof window.resolveServerPaths === "function") config = window.resolveServerPaths(config, dir);
+    config._baseDir = dir;
+
+    // ── Calques de données ──
+    const dataLayers = [];
+    for (const layerCfg of (Array.isArray(config.dataLayers) ? config.dataLayers : [])) {
+      if (!layerCfg || !layerCfg.file) continue;
+      try {
+        const rr = await fetch(layerCfg.file);
+        if (!rr.ok) { console.warn("[OsmHomePreview] calque HTTP " + rr.status + " :", layerCfg.file); continue; }
+        const json = await rr.json();
+        // Mêmes clés que la branche ZIP (cf normaliserPoints) : `data` pour le
+        // format embarqué, `editorPoints` pour un export de session.
+        const poiArray = Array.isArray(json.data)         ? json.data
+                       : Array.isArray(json.editorPoints) ? json.editorPoints
+                       : Array.isArray(json.points)       ? json.points
+                       : [];
+        dataLayers.push({
+          name:       layerCfg.label || layerCfg.id || layerCfg.file,
+          visible:    layerCfg.visible !== false,
+          points:     poiArray,
+          roads:      Array.isArray(json.roads)      ? json.roads      : [],
+          zones:      Array.isArray(json.zones)      ? json.zones      : [],
+          structures: Array.isArray(json.structures) ? json.structures : []
+        });
+      } catch (e) {
+        console.warn("[OsmHomePreview] calque serveur échec :", layerCfg.file, e && e.message);
+      }
+    }
+
+    // ── Aperçu tuilé V2 ──
+    let tilesOverview = null;
+    if (config.plan && config.plan.tiledV2 === true && config.tiling) {
+      try {
+        const racine = (typeof window.ktaResoudreRacineTuiles === "function")
+          ? await window.ktaResoudreRacineTuiles(config)
+          : null;
+        if (racine) {
+          const planW = config.plan.imageWidth  || 1;
+          const planH = config.plan.imageHeight || 1;
+          const z     = _chooseTileLevelForHome(config.tiling, planW, planH);
+          const scale = Math.pow(2, -z);
+          const tileSize = config.tiling.tileSize || 512;
+          const cols = Math.ceil(Math.ceil(planW / scale) / tileSize);
+          const rows = Math.ceil(Math.ceil(planH / scale) / tileSize);
+          const ext  = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(config.tiling) : "jpg";
+          const tiles = [];
+          // 🛟 Pas de blob URL ici : on pointe directement l'URL HTTP. Rien à
+          // révoquer, donc rien à fuir — et le Service Worker les met en cache.
+          for (let col = 0; col < cols; col++) {
+            for (let k = 1; k <= rows; k++) {
+              tiles.push({ col: col, k: k, url: racine + "/z" + z + "/x" + col + "_y" + (-k) + "." + ext });
+            }
+          }
+          tilesOverview = { tiles: tiles, planW: planW, planH: planH, z: z, scale: scale, tileSize: tileSize };
+        }
+      } catch (e) {
+        console.warn("[OsmHomePreview] aperçu tuilé serveur échec :", e && e.message);
+      }
+    }
+
+    // ── Icônes : déjà des URLs utilisables après resolveServerPaths ──
+    // (celles de l'app pointent la racine du site, les perso le dossier du
+    // plan — cf config.js > resoudreIconesPlanServeur). Rien à extraire.
+    const iconUrls = {};
+    if (config.icons) {
+      Object.keys(config.icons).forEach(function (tag) {
+        const u = config.icons[tag];
+        if (typeof u === "string" && u) iconUrls[tag] = u;
+      });
+    }
+
+    console.log("[OsmHomePreview] plan serveur chargé en HTTP :", plan.id,
+                "— " + dataLayers.length + " calque(s)" + (tilesOverview ? ", aperçu tuilé" : ""));
+    return { config: config, dataLayers: dataLayers, tilesOverview: tilesOverview, iconUrls: iconUrls };
+  }
+
   async function _loadPlanDataForPreview(planId) {
     if (_planDataCache[planId]) return _planDataCache[planId];
+
+    // 🌐 v1.89.0 — PLAN SERVEUR : pas de ZIP, on lit en HTTP.
+    // 🩸 Avant, la fonction sortait ici avec « ZIP non récupérable » (constat
+    // KARMA, console) : le widget n'affichait donc AUCUN calque pour un plan
+    // servi. Ce n'était pas une régression — le mode serveur n'avait jamais
+    // été câblé dans ce module, qui n'a aucun chemin HTTP.
+    const _plan = (window.PlanRegistry && typeof window.PlanRegistry.findById === "function")
+      ? window.PlanRegistry.findById(planId) : null;
+    if (_plan && _plan.type === "server") {
+      const dataSrv = await _loadPlanDataServeur(_plan);
+      if (dataSrv) _planDataCache[planId] = dataSrv;
+      return dataSrv;
+    }
+
     if (typeof window.JSZip === "undefined") {
       console.warn("[OsmHomePreview] JSZip indisponible, abandon data extraction");
       return null;
@@ -966,10 +1257,13 @@
         await _resolveIcon(tag, config.icons[tag]);
       }
     }
-    // 2. TAGS_BUILTIN_HOME (fallback non-overridé)
-    for (const tag in TAGS_BUILTIN_HOME) {
+    // 2. Catalogue built-in (fallback non-overridé). SOURCE UNIQUE =
+    //    `window._ktaBuiltinIconUrls` (map.js) ; la copie locale ne prend le
+    //    relais que si map.js n'est pas là. Voir le bandeau de TAGS_BUILTIN_HOME.
+    const CATALOGUE = window._ktaBuiltinIconUrls || TAGS_BUILTIN_HOME;
+    for (const tag in CATALOGUE) {
       if (iconUrls[tag]) continue; // déjà overridé par config.icons
-      await _resolveIcon(tag, TAGS_BUILTIN_HOME[tag]);
+      await _resolveIcon(tag, CATALOGUE[tag]);
     }
     // 3. Default fallback Leaflet marker (au cas où POI sans tag)
     if (!iconUrls.default) {
@@ -1015,6 +1309,100 @@
   // 🔧 v1.40.12 — Refactor : chaque catégorie va dans son propre sub-layerGroup
   // pour permettre les toggles individuels via add/removeLayer. Pattern aligné
   // sur osmView.js modale (5 layers indépendants par catégorie).
+  // =========================
+  // 📝 v1.81.0 — TRAVAIL DE SESSION EN VUE OSM
+  // =========================
+  // KARMA, 03/09 : « je ne vois pas mes points en OSM HOME » — ils étaient
+  // créés EN SESSION. La Vue OSM ne lisait que le ZIP (plan-config +
+  // dataLayers), donc tout le travail non exporté restait invisible. Le pire :
+  // la recherche cross-plan, elle, les trouvait déjà (`collectPointsForPlan`
+  // lit la session). Une carte qui n'affiche pas ce que la recherche trouve
+  // est indéfendable côté utilisateur.
+  //
+  // 🩸 POURQUOI LA LECTURE EST FAITE AU RENDU ET NON À L'EXTRACTION :
+  // `_planDataCache` n'est JAMAIS invalidé (il vit toute la durée de la page).
+  // Ranger la session dedans la figerait au premier affichage — on édite en
+  // mode plan, on revient au HOME, on voit l'état d'avant. Ici c'est un
+  // `getItem` + un `JSON.parse` par plan affiché : négligeable devant
+  // l'extraction ZIP, et toujours frais.
+  let _showSession = true;   // ON par défaut : c'est le travail en cours de
+                             // l'utilisateur, le masquer par défaut le ferait
+                             // chercher exactement comme aujourd'hui.
+
+  // Calque VIRTUEL bâti sur le slot de session du plan. `null` si rien.
+  // Le payload de SessionPersist porte déjà les 4 familles que la Vue OSM
+  // sait rendre, aux mêmes noms de champs — aucune conversion.
+  function _calqueSession(planId) {
+    if (!_showSession || !planId) return null;
+    if (!window.SessionPersist || typeof window.SessionPersist.getSaved !== "function") return null;
+    let p = null;
+    try { p = window.SessionPersist.getSaved(planId); } catch(e) { return null; }
+    if (!p) return null;
+    const pts  = Array.isArray(p.editorPoints) ? p.editorPoints : [];
+    const rds  = Array.isArray(p.roads)        ? p.roads        : [];
+    const zns  = Array.isArray(p.zones)        ? p.zones        : [];
+    const strs = Array.isArray(p.structures)   ? p.structures   : [];
+    if (!pts.length && !rds.length && !zns.length && !strs.length) return null;
+    return { name: window.I18n.t("osm_home.session.calque"), visible: true, estSession: true,
+             points: pts, roads: rds, zones: zns, structures: strs };
+  }
+
+  // LA liste de calques d'un plan = ceux du ZIP + celui de la session.
+  // Les 3 consommateurs de `dataLayers` passent par ici : le rendu, les chips
+  // de filtre par tag et l'index de recherche. En oublier un donnerait un
+  // point affiché dont le tag manque aux chips — donc masqué dès qu'un filtre
+  // est posé, sans que rien ne l'explique.
+  function _tousCalques(data, planId) {
+    const base = (data && Array.isArray(data.dataLayers)) ? data.dataLayers : [];
+    const s = _calqueSession(planId);
+    return s ? base.concat([s]) : base;
+  }
+
+  // 📏 v1.83.0 — MÊME LOI QUE LE MODE PLAN ET QUE LA MODALE OSM.
+  //
+  // Le widget HOME empile PLUSIEURS plans et s'ouvre très dézoomé : c'est
+  // l'endroit où des traits de largeur fixe fusionnent le plus vite. Sa table
+  // de styles « light » posait 4 px pour un front — réglé à la main, donc juste
+  // à un seul zoom.
+  //
+  // La loi est formulée en pixels par mètre (structures.js) : la Vue OSM n'a
+  // pas d'échelle de plan, mais elle sait sa résolution Web Mercator, laquelle
+  // dépend de la LATITUDE autant que du zoom.
+  //
+  // On mute `options.weight` en place — le renderer canvas le relit à chaque
+  // frame — puis une repeinture NON CLIPPÉE. Aucun `setStyle` : le widget peut
+  // porter plusieurs relevés de plusieurs milliers d'objets.
+  function _majLargeurFrontsHome() {
+    if (!_mapInstance || typeof window.ktaPxParMetreOsm !== "function") return;
+    const w = (typeof window.ktaLargeurFrontPourPxParMetre === "function")
+      ? window.ktaLargeurFrontPourPxParMetre(window.ktaPxParMetreOsm(_mapInstance))
+      : null;
+    if (!w) return;
+    const wTrace = Math.max(1, Math.round(w * 0.6 * 10) / 10);
+    const appliquer = function (grp, largeur) {
+      if (!grp || typeof grp.eachLayer !== "function") return;
+      grp.eachLayer(function (lay) {
+        // Les surfaces gardent leur trait : un pilier se lit à son
+        // remplissage, pas à l'épaisseur de son contour.
+        if (!lay || !lay.options || lay.options.fill === true) return;
+        lay.options.weight = largeur;
+      });
+    };
+    // Le plan principal ET chaque plan empilé : le widget est multi-plans,
+    // n'en traiter qu'un laisserait les autres en aplat.
+    appliquer(_dataLayer, w);
+    Object.keys(_extraLayers || {}).forEach(function (id) {
+      const g = _extraLayers[id];
+      if (!g) return;
+      appliquer(g.struct, w);
+      appliquer(g.roads, wTrace);
+    });
+    try {
+      const r = _mapInstance._renderer;
+      if (r && typeof r._redraw === "function") { r._redrawBounds = null; r._redraw(); }
+    } catch (e) {}
+  }
+
   function _renderDataLayersOnMiniMap(data, georef, cible, planIdPourPane) {
     // 🗂️ v1.71.0 — PARAMÉTRÉ : sans `cible`, rend dans les groupes MODULE du
     // plan principal (comportement historique, clear inclus). Avec `cible`
@@ -1068,7 +1456,7 @@
       return iconCache[tag];
     }
 
-    for (const layer of data.dataLayers) {
+    for (const layer of _tousCalques(data, planIdPourPane || _selectedPlanId)) {
       // 🐛 v1.73.1 (KARMA « un datalayer généré invisible n'est pas affichable
       // en Vue OSM ») : on ne skippe PLUS les calques `visible: false` du
       // plan-config. Cette visibilité est un DÉFAUT D'AFFICHAGE du mode plan
@@ -1086,6 +1474,7 @@
         if (!ll) continue;
         const tag  = (Array.isArray(p.tags) && p.tags[0]) || "default";
         // 🆕 v1.40.17 — Filtre par tag (skip si tag pas dans le Set actif)
+        if (!_passeNiveau(p)) continue;
         if (_homeTagFilter && _homeTagFilter.size > 0 && !_homeTagFilter.has(tag)) continue;
         const icon = _getOrBuildIcon(tag) || _getOrBuildIcon("default");
         // 🆕 v1.40.17 — Popup info : nom + tag + niveau (si M-LVL)
@@ -1102,6 +1491,13 @@
               (desc ? _escapeHtml(desc) : _escapeHtml(tag)) + lvlSfx +
             '</span>' +
             (desc ? '<br><span style="color:#8892a4; font-size:10.5px; opacity:0.75;">🏷️ ' + _escapeHtml(tag) + '</span>' : '') +
+            // 📝 v1.81.0 — dire d'où vient le point. La Vue OSM montre l'état
+            // ENREGISTRÉ des plans ; y mêler du travail non exporté sans le
+            // nommer créerait une confusion pire que son absence.
+            (layer.estSession
+              ? '<br><span style="color:#f4c542; font-size:10.5px;">📝 ' +
+                _escapeHtml(window.I18n.t("osm_home.session.badge")) + '</span>'
+              : '') +
           '</div>';
         let marker;
         if (icon) {
@@ -1137,6 +1533,7 @@
       // persister ». Inclut les types custom (cust-*) définis dans
       // LegendCustomization, à l'identique de la map principale.)
       for (const r of layer.roads) {
+        if (!_passeNiveau(r)) continue;
         if (!Array.isArray(r.points) || r.points.length < 2) continue;
         if (r.type === "itinerary") continue;
         const lls = _projectPoints(r.points, proj);
@@ -1152,6 +1549,7 @@
       // _resolveZoneColorsHome — couleurs natives ZONE_STYLES respectées
       // et custom legend persistée.)
       for (const z of layer.zones) {
+        if (!_passeNiveau(z)) continue;
         if (!Array.isArray(z.points) || z.points.length < 3) continue;
         const lls = _projectPoints(z.points, proj);
         if (lls.length < 3) continue;
@@ -1166,8 +1564,9 @@
 
       // Structures → structL (adaptatif polyline/polygon)
       for (const s of layer.structures) {
+        if (!_passeNiveau(s)) continue;
         if (!Array.isArray(s.points)) continue;
-        const style = Object.assign({}, STRUCT_STYLES_HOME[s.type] || STRUCT_STYLES_HOME["mur"]);
+        const style = _styleStructHome(s, planIdFx);
         // 🎨 v1.77.0 — couleurs overridées PAR PLAN par-dessus la variante
         // HOME locale (qui ne garde que weight/fillOpacity allégés). Fronts
         // (polyline) : le trait ; piliers/murs : remplissage + bordure.
@@ -1255,6 +1654,178 @@
   function _toggleRoads(visible)      { _showRoads      = !!visible; _appliquerVisibilites(); }
   function _toggleZones(visible)      { _showZones      = !!visible; _appliquerVisibilites(); }
   function _toggleStructures(visible) { _showStructures = !!visible; _appliquerVisibilites(); }
+  function _togglePortails(visible)   { _showPortails   = !!visible; _renderPortails(); }
+  // 📝 v1.81.0 — bascule du travail de session. Un `_reRenderDataTous()` complet
+  // est nécessaire : le calque session traverse le rendu, les chips de tag et
+  // l'index de recherche.
+  function _toggleSession(visible) {
+    _showSession = !!visible;
+    _reRenderDataTous();
+    _renderModalTags();   // les tags de session entrent ou sortent des chips
+    _renderModalNiveaux();
+  }
+
+  // =========================
+  // 🌀 LIAISONS INTER-PLANS SUR OSM (dette D5, v1.81.0)
+  // =========================
+  // À quoi ça sert : les deux bouts d'un portail désignent LE MÊME endroit
+  // physique, vu depuis deux plans. Projetés sur OSM via le géoréf de leur plan
+  // respectif, ils devraient donc se superposer. L'écart qui apparaît est une
+  // mesure directe de la qualité du calage — et c'est le seul endroit de l'app
+  // où on peut le VOIR, puisqu'il faut deux géoréfs pour le révéler.
+  //
+  // Contrainte non négociable : les DEUX plans doivent être affichés ET
+  // géoréférencés. Sans le géoréf du plan d'en face, un des bouts n'est pas
+  // plaçable — on saute la liaison au lieu d'inventer une position.
+  //
+  // Pas de seuil de couleur volontairement : 20 m d'écart, c'est énorme sur une
+  // petite carrière et négligeable sur un réseau de 5 km. On affiche le chiffre,
+  // l'utilisateur juge avec son échelle en tête.
+  function _plansAffichesAvecGeoref() {
+    const out = {};
+    const georefs = {};
+    _listGeorefPlans().forEach(function(p) { georefs[p.id] = p.georef; });
+    if (_selectedPlanId && georefs[_selectedPlanId]) out[_selectedPlanId] = georefs[_selectedPlanId];
+    Object.keys(_extraLayers).forEach(function(id) {
+      if (georefs[id]) out[id] = georefs[id];
+    });
+    return out;
+  }
+
+  function _renderPortails() {
+    if (!_mapInstance) return;
+    if (_portailsLayer) {
+      try { _mapInstance.removeLayer(_portailsLayer); } catch(e) {}
+      _portailsLayer = null;
+    }
+    if (!_showPortails) return;
+    if (!window.InterPlanLinks || typeof window.InterPlanLinks.getAllLinks !== "function") return;
+
+    let liens = [];
+    try { liens = window.InterPlanLinks.getAllLinks() || []; } catch(e) { return; }
+    if (!liens.length) return;
+
+    const affiches = _plansAffichesAvecGeoref();
+    const projections = {};
+    Object.keys(affiches).forEach(function(id) { projections[id] = _buildProjection(affiches[id]); });
+
+    const grp = L.layerGroup();
+    let tracees = 0;
+    liens.forEach(function(lk) {
+      if (!lk || !lk.a || !lk.b) return;
+      const pa = projections[lk.a.planId], pb = projections[lk.b.planId];
+      if (!pa || !pb) return;   // au moins un des deux plans n'est pas affiché/géoréf
+      const la = pa.planToLatLng(Number(lk.a.x) || 0, Number(lk.a.y) || 0);
+      const lb = pb.planToLatLng(Number(lk.b.x) || 0, Number(lk.b.y) || 0);
+      if (!la || !lb) return;
+
+      const ecartM = Math.round(la.distanceTo(lb));
+      L.polyline([la, lb], {
+        color: "#f4c542", weight: 2, opacity: 0.9, dashArray: "6,5",
+        interactive: true
+      }).bindPopup(
+        '<div style="font-size:13px;line-height:1.5;">' +
+          '<strong>🌀 ' + _escapeHtml(lk.a.nom || lk.a.pointId || "?") + '</strong> ↔ ' +
+          '<strong>' + _escapeHtml(lk.b.nom || lk.b.pointId || "?") + '</strong><br>' +
+          _escapeHtml(window.I18n.t("osm_home.portails.ecart")) + ' : <strong>' +
+          (window.formatDistance ? window.formatDistance(ecartM, 0) : (ecartM + " m")) + '</strong>' +
+        '</div>'
+      ).addTo(grp);
+
+      // Les deux bouts, pour voir LEQUEL est décalé (et pas seulement de combien).
+      [la, lb].forEach(function(pt) {
+        L.circleMarker(pt, {
+          radius: 4, color: "#f4c542", weight: 2, fillColor: "#1a1f2e", fillOpacity: 1
+        }).addTo(grp);
+      });
+      tracees++;
+    });
+
+    if (tracees) {
+      _portailsLayer = grp;
+      grp.addTo(_mapInstance);
+    }
+    console.log("[OsmHomePreview] portails tracés : " + tracees + "/" + liens.length +
+                " (les autres ont au moins un plan non affiché ou non géoréférencé)");
+  }
+
+  // 📐 v1.81.0 (D5) — CONTRÔLE QUALITÉ DU CALAGE (arbitrage KARMA du 03/09)
+  //
+  // Pourquoi une LISTE et pas seulement le calque : deux portails bien calés
+  // se superposent, donc la polyligne est de longueur nulle et le calque ne
+  // montre RIEN dans le cas nominal. Un outil dont le cas nominal est
+  // invisible se lit mal — l'utilisateur ne sait pas s'il fonctionne. La
+  // liste, elle, répond directement à « mes géoréfs sont-ils bons ? » : elle
+  // affiche le compte mesuré et classe du PIRE au meilleur, donc ce qui
+  // mérite un recalage est en première ligne.
+  //
+  // L'écart vient de `InterPlanLinks.ecartCalage` — fonction UNIQUE, jamais
+  // recopiée ici (leçon du bug des icônes portail du 02/09).
+  function _renderPortailsQualite() {
+    const cont = document.getElementById("ktaOsmPortailsQualite");
+    if (!cont) return;
+    if (!_showPortails) { cont.innerHTML = ""; return; }
+    if (!window.InterPlanLinks || typeof window.InterPlanLinks.ecartCalage !== "function") {
+      cont.innerHTML = ""; return;
+    }
+
+    let liens = [];
+    try { liens = window.InterPlanLinks.getAllLinks() || []; } catch(e) { liens = []; }
+    const affiches = _plansAffichesAvecGeoref();
+
+    // Mesurables = les deux plans AFFICHÉS dans la pile et géoréférencés.
+    // On ne liste pas les autres : un écart qu'on ne peut pas montrer sur la
+    // carte devant soi n'aide personne — il se lit dans 🌀 Mes liaisons.
+    const mesures = [];
+    liens.forEach(function(lk) {
+      if (!lk || !lk.a || !lk.b) return;
+      if (!affiches[lk.a.planId] || !affiches[lk.b.planId]) return;
+      const m = window.InterPlanLinks.ecartCalage(lk);
+      if (m === null || !isFinite(m)) return;
+      mesures.push({ lk: lk, m: m });
+    });
+    if (!mesures.length) {
+      cont.innerHTML = '<p class="kta-osm-qualite-vide">' +
+        _escapeHtml(window.I18n.t("osm_home.portails.qualiteVide")) + '</p>';
+      return;
+    }
+    mesures.sort(function(a, b) { return b.m - a.m; });   // le pire en tête
+
+    const fmt = function(m) {
+      return window.formatDistance ? window.formatDistance(m, 0) : (Math.round(m) + " m");
+    };
+    cont.innerHTML =
+      '<div class="kta-osm-qualite-titre">📐 ' +
+        _escapeHtml(window.I18n.t("osm_home.portails.qualiteTitre", { n: mesures.length })) +
+      '</div>' +
+      mesures.map(function(e, i) {
+        return '<button type="button" class="kta-osm-qualite-ligne" data-q="' + i + '">' +
+                 '<span class="kta-osm-qualite-noms">' +
+                   _escapeHtml(e.lk.a.pointNom || e.lk.a.nom || e.lk.a.pointId || "?") + ' ⇄ ' +
+                   _escapeHtml(e.lk.b.pointNom || e.lk.b.nom || e.lk.b.pointId || "?") +
+                 '</span>' +
+                 '<span class="kta-osm-qualite-val">' + _escapeHtml(fmt(e.m)) + '</span>' +
+               '</button>';
+      }).join("");
+
+    // Clic → on cadre les DEUX bouts. `fitBounds` plutôt qu'un centrage sur le
+    // milieu : avec un gros écart, se poser au milieu laisse les deux bouts
+    // hors champ — exactement les deux choses qu'on voulait voir.
+    cont.querySelectorAll("[data-q]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const e = mesures[parseInt(btn.getAttribute("data-q"), 10)];
+        if (!e || !_mapInstance) return;
+        const pa = _buildProjection(affiches[e.lk.a.planId]);
+        const pb = _buildProjection(affiches[e.lk.b.planId]);
+        if (!pa || !pb) return;
+        const la = pa.planToLatLng(Number(e.lk.a.x) || 0, Number(e.lk.a.y) || 0);
+        const lb = pb.planToLatLng(Number(e.lk.b.x) || 0, Number(e.lk.b.y) || 0);
+        if (!la || !lb) return;
+        try { _mapInstance.fitBounds(L.latLngBounds([la, lb]), { padding: [80, 80], maxZoom: 19 }); }
+        catch(err) { /* bornes dégénérées (écart nul) : Leaflet gère, on ignore */ }
+      });
+    });
+  }
 
   // 🆕 v1.40.21 — Bbox GPS du plan sélectionné (4 coins projetés via la georef).
   // Utilisée pour le garde-fou "GPS hors champ du plan" du bouton 📍 widget HOME.
@@ -1386,10 +1957,23 @@
 
   // 🆕 v1.40.17 — Énumération des tags présents dans les data layers
   // (avec compteur de POI par tag pour tri par fréquence).
-  function _collectAvailableTags(data) {
+  // Niveaux réellement présents dans un plan, toutes familles confondues.
+  // Sert à ne proposer que des chips qui montrent quelque chose : un niveau
+  // vide dans la liste ferait croire à un bug d'affichage quand on le coche.
+  function _collectNiveaux(data, planId) {
+    const set = new Set();
+    _tousCalques(data, planId).forEach(function (layer) {
+      ["points", "roads", "zones", "structures"].forEach(function (fam) {
+        (layer[fam] || []).forEach(function (o) { set.add(_niveauDe(o)); });
+      });
+    });
+    return set;
+  }
+
+  function _collectAvailableTags(data, planId) {
     const counts = {};
-    if (!data || !Array.isArray(data.dataLayers)) return counts;
-    for (const layer of data.dataLayers) {
+    if (!data) return counts;
+    for (const layer of _tousCalques(data, planId)) {
       if (!Array.isArray(layer.points)) continue;
       for (const p of layer.points) {
         const tag = (Array.isArray(p.tags) && p.tags[0]) || "default";
@@ -1822,11 +2406,22 @@
     }
   }
 
-  function _ajouterPlanOsm(planId) {
-    if (!planId || planId === _selectedPlanId || _extraLayers[planId]) return;
+  // 🗂️ v1.84.0 — L'AJOUT D'UN PLAN EST COUPÉ EN DEUX : le MONTAGE (synchrone,
+  // bon marché : on pousse dans la pile et on crée les layerGroups) et le
+  // CHARGEMENT DE SA DONNÉE (asynchrone, cher : extraction du ZIP).
+  //
+  // 🩸 POURQUOI : l'ajout par étiquette peut en demander vingt d'un coup.
+  // Appeler vingt fois `_ajouterPlanOsm` déclencherait vingt re-rendus du
+  // panneau ET vingt extractions de ZIP EN PARALLÈLE — exactement la charge
+  // que `_avertirMultiSiBesoin` existe pour signaler, mais concentrée sur une
+  // seule frame. Découpé, un lot monte tout d'un coup, rend UNE fois, puis
+  // charge les données EN SÉRIE : la carte se remplit progressivement au lieu
+  // de figer l'onglet.
+  function _monterPlanOsm(planId) {
+    if (!planId || planId === _selectedPlanId || _extraLayers[planId]) return null;
     const plans = _listGeorefPlans();
     const p = plans.find(function(x) { return x.id === planId; });
-    if (!p) return;
+    if (!p) return null;
 
     if (_stackOrder.indexOf(planId) === -1) _stackOrder.unshift(planId); // nouveau = au-dessus
     const g = {
@@ -1840,11 +2435,11 @@
     if (_showTiles) g.tiles.addTo(_mapInstance);
     _extraLayers[planId] = g;
     if (!(planId in _extraOpacity)) _extraOpacity[planId] = 0.5;
+    return { p: p, g: g };
+  }
 
-    _avertirMultiSiBesoin();
-    _renderMultiPanel();
-
-    _loadPlanDataForPreview(planId).then(function(data) {
+  function _chargerDataPlanOsm(planId, p, g) {
+    return _loadPlanDataForPreview(planId).then(function(data) {
       // Garde anti-race : retiré (ou devenu principal) pendant l'extraction ?
       if (!_extraLayers[planId] || _extraLayers[planId] !== g) return;
       if (!data) return;
@@ -1854,15 +2449,29 @@
                          _extraOpacity[planId], _zIndexPour(planId), pn ? pn.nom : null);
       }
       _renderDataLayersOnMiniMap(data, p.georef, g, planId);
+      _majLargeurFrontsHome();
       _appliquerOrdre();
       _appliquerVisibilites();
       _renderModalTags();   // 🐛 v1.72.2 : les tags du plan ajouté arrivent DÈS son extraction
+      _renderModalNiveaux();
     });
   }
 
-  function _retirerPlanOsm(planId) {
+  function _ajouterPlanOsm(planId) {
+    const m = _monterPlanOsm(planId);
+    if (!m) return;
+    _avertirMultiSiBesoin();
+    _renderMultiPanel();
+    _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
+    _chargerDataPlanOsm(planId, m.p, m.g);
+  }
+
+  // Démontage SANS re-rendu : le lot (retrait par étiquette) en enlève
+  // plusieurs et ne veut rendre qu'une fois. `_retirerPlanOsm` reste le
+  // chemin unitaire et garde son comportement d'origine.
+  function _demonterPlanOsm(planId) {
     const g = _extraLayers[planId];
-    if (!g) return;
+    if (!g) return false;
     try {
       if (_mapInstance) {
         if (_mapInstance.hasLayer(g.tiles)) _mapInstance.removeLayer(g.tiles);
@@ -1876,9 +2485,144 @@
     _retirerHiRes(planId); // 🔍 v1.77.0 — les hi-res, elles, sont éphémères
     // Pas de revoke des blob URLs BASELINE : elles vivent dans _planDataCache
     // (re-ajout gratuit) et peuvent servir au plan principal.
+    return true;
+  }
+
+  function _retirerPlanOsm(planId) {
+    if (!_demonterPlanOsm(planId)) return;
     _appliquerOrdre();
     _renderMultiPanel();
+    _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
     _renderModalTags();   // 🐛 v1.72.2 : retirer un plan retire aussi ses tags
+    _renderModalNiveaux();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 🏷️ v1.84.0 — AJOUTER LA PILE PAR ÉTIQUETTE DE PLAN
+  // ═══════════════════════════════════════════════════════════
+  // LE BESOIN (KARMA, 04/09) : un atlas départemental découpé produit des
+  // DIZAINES de plans du même secteur — « je veux voir d'un coup tous les
+  // plans étiquetés GIRONDE ». Les deux moitiés existaient depuis longtemps
+  // sans se parler : `plan.tags` (registre, v1.78.0, saisi depuis la
+  // bibliothèque) et la pile multi-plans (v1.71.0), dont le seul chemin
+  // d'ajout était un `<select>` UN PLAN À LA FOIS.
+  //
+  // ⚠️ NE PAS CONFONDRE avec la section « 🏷️ Filtrer par tag » juste au-dessus :
+  // celle-là filtre les POI *à l'intérieur* des plans affichés. Ici on choisit
+  // QUELS PLANS sont affichés. Deux notions homonymes dans la même modale —
+  // d'où un intitulé qui dit explicitement « étiquette de plan ».
+  //
+  // 🔠 Regroupement INSENSIBLE À LA CASSE : `PlanRegistry.setTags` dédoublonne
+  // par plan, pas entre plans. « Gironde » sur l'un et « GIRONDE » sur l'autre
+  // afficherait deux chips pour ce que l'utilisateur tient pour une seule
+  // étiquette — et chacune ne montrerait que la moitié de ses plans.
+  function _etiquettesDesPlans() {
+    const parTag = {};   // clé minuscule → { libelle, ids: [] }
+    _listGeorefPlans().forEach(function (p) {
+      (Array.isArray(p.tags) ? p.tags : []).forEach(function (t) {
+        const brut = String(t == null ? "" : t).trim();
+        if (!brut) return;
+        const cle = brut.toLowerCase();
+        if (!parTag[cle]) parTag[cle] = { libelle: brut, ids: [] };
+        if (parTag[cle].ids.indexOf(p.id) < 0) parTag[cle].ids.push(p.id);
+      });
+    });
+    return parTag;
+  }
+
+  function _renderMultiTags() {
+    const cont = document.getElementById("ktaOsmMultiTags");
+    const sect = document.getElementById("ktaOsmMultiTagsSect");
+    if (!cont) return;
+    const parTag = _etiquettesDesPlans();
+    // Une étiquette qui ne porte QU'UN plan n'apprend rien ici : le sélecteur
+    // juste en dessous fait déjà ce travail, et vingt chips à un plan
+    // noieraient les deux qui servent.
+    const cles = Object.keys(parTag)
+      .filter(function (c) { return parTag[c].ids.length >= 2; })
+      .sort(function (a, b) {
+        return parTag[b].ids.length - parTag[a].ids.length || a.localeCompare(b);
+      });
+    if (!cles.length) { cont.innerHTML = ""; if (sect) sect.style.display = "none"; return; }
+    if (sect) sect.style.display = "";
+    cont.innerHTML = cles.map(function (c) {
+      const e = parTag[c];
+      const dans = e.ids.filter(function (id) { return _stackOrder.indexOf(id) >= 0; }).length;
+      const tous = (dans === e.ids.length);
+      const cle18n = tous ? "osm_mode.multi.tagRetirerTitle" : "osm_mode.multi.tagAjouterTitle";
+      return '<button type="button" class="kta-osm-home-tag-chip' + (tous ? " active" : "") + '"' +
+             ' data-ptag="' + _escapeHtml(c) + '"' +
+             ' title="' + _escapeHtml(window.I18n.t(cle18n, { n: e.ids.length })) + '">' +
+             _escapeHtml(e.libelle) + ' <span>' + dans + '/' + e.ids.length + '</span></button>';
+    }).join("");
+    cont.querySelectorAll("[data-ptag]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        _basculerEtiquettePlans(b.getAttribute("data-ptag"));
+      });
+    });
+  }
+
+  // Un clic fait l'un OU l'autre selon ce qui manque : tant qu'un plan de
+  // l'étiquette n'est pas là, le chip AJOUTE ce qui manque ; quand ils y sont
+  // tous, il les RETIRE. Sans le retrait groupé, afficher vingt plans se
+  // défait en vingt clics sur des ✕ — ce n'est pas du confort, c'est ce qui
+  // rend la fonction utilisable deux fois de suite.
+  function _basculerEtiquettePlans(cle) {
+    const e = _etiquettesDesPlans()[cle];
+    if (!e) return;
+    const absents = e.ids.filter(function (id) { return _stackOrder.indexOf(id) < 0; });
+    if (absents.length) _ajouterPlansOsm(absents, e.libelle);
+    else _retirerPlansOsm(e.ids);
+  }
+
+  function _ajouterPlansOsm(ids, libelle) {
+    // ⚠️ ON DEMANDE AVANT, avec le compte. La pile n'a pas de cap dur
+    // (arbitrage KARMA 2:b) et `_avertirMultiSiBesoin` prévient APRÈS coup —
+    // sur un lot, « après coup » veut dire une fois les vingt plans montés,
+    // donc trop tard pour renoncer. Le seuil de la confirmation est CELUI DE
+    // L'AVERTISSEMENT EXISTANT (3), pas un nombre inventé ici.
+    const total = _stackOrder.length + ids.length;
+    if (ids.length >= 2 && total > 3) {
+      const ok = window.confirm(window.I18n.t("osm_mode.multi.tagConfirm",
+        { n: ids.length, tag: libelle || "", total: total }));
+      if (!ok) return;
+    }
+    const montes = [];
+    ids.forEach(function (id) {
+      const m = _monterPlanOsm(id);
+      if (m) montes.push({ id: id, p: m.p, g: m.g });
+    });
+    if (!montes.length) return;
+    _avertirMultiSiBesoin();
+    _renderMultiPanel();
+    _renderPortails();
+    // EN SÉRIE, jamais en parallèle : chaque chargement extrait un ZIP.
+    // Vingt extractions lancées ensemble figent l'onglet ; enchaînées, la
+    // carte se remplit plan par plan et reste manipulable.
+    montes.reduce(function (chaine, m) {
+      return chaine.then(function () { return _chargerDataPlanOsm(m.id, m.p, m.g); })
+                   .catch(function (e) {
+                     console.warn("[OsmHome] chargement du plan " + m.id + " échoué :", e);
+                   });
+    }, Promise.resolve());
+  }
+
+  function _retirerPlansOsm(ids) {
+    // Le plan PRINCIPAL ne se retire pas : il n'a même pas de ✕ dans le
+    // panneau, et `_renderMultiPanel` le remettrait dans la pile au rendu
+    // suivant (ceinture v1.72.2). Le chip repasse alors à « 1/N », ce qui est
+    // la vérité : il reste ce plan-là.
+    let n = 0;
+    ids.forEach(function (id) {
+      if (id === _selectedPlanId) return;
+      if (_demonterPlanOsm(id)) n++;
+    });
+    if (!n) return;
+    _appliquerOrdre();
+    _renderMultiPanel();
+    _renderPortails();
+    _renderModalTags();
+    _renderModalNiveaux();
   }
 
   // sens : -1 = monter (vers le dessus), +1 = descendre
@@ -1942,9 +2686,22 @@
           '<p class="kta-osm-filters-hint">' + _escapeHtml(window.I18n.t("osm_mode.filters.hint")) + '</p>' +
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.global")) + '</div>' +
           '<div class="kta-osm-multi-cats kta-osm-filters-globaux" id="ktaOsmFiltersGlobaux"></div>' +
+          // 📐 v1.81.0 (D5) — bloc « qualité du calage », rempli seulement
+          // quand le chip 🌀 est actif (cf. _renderPortailsQualite).
+          '<div class="kta-osm-qualite" id="ktaOsmPortailsQualite"></div>' +
+          // 🏔️ v1.82.0 — chips d'ÉTAGE. Vide et masqué sur un plan
+          // mono-niveau : afficher « niveau 0 » tout seul n'apprendrait rien.
+          '<div class="kta-osm-filters-sect" id="ktaOsmFiltersNivSect" style="display:none;">' +
+            _escapeHtml(window.I18n.t("osm_home.niveaux.titre")) + '</div>' +
+          '<div class="kta-osm-home-tagchips" id="ktaOsmFiltersNiveaux"></div>' +
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.tags")) + '</div>' +
           '<div class="kta-osm-home-tagchips kta-osm-filters-tags" id="ktaOsmFiltersTags"></div>' +
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.plans")) + '</div>' +
+          // 🏷️ v1.84.0 — ajout par ÉTIQUETTE DE PLAN. Masqué tant qu’aucune
+          // étiquette ne porte au moins deux plans (cf. `_renderMultiTags`).
+          '<div class="kta-osm-filters-sect" id="ktaOsmMultiTagsSect" style="display:none;">' +
+            _escapeHtml(window.I18n.t("osm_mode.multi.tagsTitre")) + '</div>' +
+          '<div class="kta-osm-home-tagchips" id="ktaOsmMultiTags"></div>' +
           '<select id="ktaOsmMultiAdd" class="kta-osm-filters-add"></select>' +
           '<div id="ktaOsmMultiRows"></div>' +
         '</div>' +
@@ -1963,6 +2720,7 @@
     }
     _renderModalGlobaux();
     _renderModalTags();
+    _renderModalNiveaux();
     _renderMultiPanel();
   }
 
@@ -1989,6 +2747,30 @@
              (etats[c[0]] ? " active" : "") + '" data-gcat="' + c[0] + '">' +
              c[1] + ' <span>' + _escapeHtml(window.I18n.t(c[2])) + '</span></button>';
     }).join("");
+    // 🌀 v1.81.0 (D5) — chip PORTAILS ajouté ICI et non dans `_CATS` : ce
+    // catalogue alimente aussi les filtres PAR PLAN, or un portail appartient à
+    // DEUX plans — le filtrer depuis la ligne d'un seul n'aurait pas de sens.
+    // Il n'apparaît que s'il existe au moins une liaison, sinon c'est un bouton
+    // qui ne peut rien montrer.
+    let nbLiens = 0;
+    try {
+      nbLiens = (window.InterPlanLinks && typeof window.InterPlanLinks.getAllLinks === "function")
+        ? (window.InterPlanLinks.getAllLinks() || []).length : 0;
+    } catch(e) { nbLiens = 0; }
+    if (nbLiens > 0) {
+      cont.innerHTML += '<button type="button" class="kta-osm-multi-cat kta-osm-cat-libelle' +
+        (_showPortails ? " active" : "") + '" data-gportails="1" ' +
+        'title="' + _escapeHtml(window.I18n.t("osm_home.portails.hint")) + '">🌀 <span>' +
+        _escapeHtml(window.I18n.t("osm_home.portails.label")) + '</span></button>';
+    }
+    // 📝 v1.81.0 — chip SESSION, hors `_CATS` lui aussi : le travail de
+    // session n'est pas une catégorie d'objets mais une ORIGINE de données,
+    // transversale aux POI, tracés, zones et structures.
+    cont.innerHTML += '<button type="button" class="kta-osm-multi-cat kta-osm-cat-libelle' +
+      (_showSession ? " active" : "") + '" data-gsession="1" ' +
+      'title="' + _escapeHtml(window.I18n.t("osm_home.session.hint")) + '">📝 <span>' +
+      _escapeHtml(window.I18n.t("osm_home.session.label")) + '</span></button>';
+
     cont.querySelectorAll("[data-gcat]").forEach(function(b) {
       b.addEventListener("click", function() {
         const cat = b.getAttribute("data-gcat");
@@ -1998,10 +2780,79 @@
         b.classList.toggle("active", nouveau);
       });
     });
+    const bp = cont.querySelector("[data-gportails]");
+    if (bp) bp.addEventListener("click", function() {
+      _togglePortails(!_showPortails);
+      bp.classList.toggle("active", _showPortails);
+      _renderPortailsQualite();
+    });
+    const bs = cont.querySelector("[data-gsession]");
+    if (bs) bs.addEventListener("click", function() {
+      _toggleSession(!_showSession);
+      bs.classList.toggle("active", _showSession);
+    });
+    _renderPortailsQualite();
   }
 
   // 🏷️ v1.71.0 (retour KARMA « on doit aussi pouvoir filtrer au tag ») — chips
   // tags dans la modale, agrégés sur TOUTE la pile (plus seulement le principal).
+  // 🏔️ v1.82.0 — chips de niveau, agrégés sur TOUTE la pile (comme les tags).
+  // Tri décroissant : +1 (l'historique, s'il est là) en tête, puis -1, -2…
+  // C'est l'ordre physique vu du dessus, celui qu'attend quelqu'un qui pense
+  // en niveaux.
+  function _renderModalNiveaux() {
+    const cont = document.getElementById("ktaOsmFiltersNiveaux");
+    const sect = document.getElementById("ktaOsmFiltersNivSect");
+    if (!cont) return;
+    const tous = new Set();
+    _stackOrder.forEach(function(id) {
+      const data = _planDataCache[id];
+      if (data) _collectNiveaux(data, id).forEach(function(n) { tous.add(n); });
+    });
+    const niveaux = Array.from(tous).sort(function(a, b) { return b - a; });
+    // Un seul niveau = rien à filtrer.
+    if (niveaux.length < 2) {
+      cont.innerHTML = "";
+      if (sect) sect.style.display = "none";
+      return;
+    }
+    if (sect) sect.style.display = "";
+    const tousActifs = !_homeLevelFilter || _homeLevelFilter.size === 0;
+    cont.innerHTML =
+      '<button type="button" class="kta-osm-home-tag-chip' + (tousActifs ? " active" : "") +
+        '" data-nivall="1">' + _escapeHtml(window.I18n.t("osm_home.niveaux.tous")) + '</button>' +
+      niveaux.map(function(n) {
+        const on = tousActifs || _homeLevelFilter.has(n);
+        return '<button type="button" class="kta-osm-home-tag-chip' + (on ? " active" : "") +
+               '" data-niv="' + n + '">' + (n > 0 ? "+" + n : n) + '</button>';
+      }).join("");
+
+    cont.querySelectorAll("[data-niv]").forEach(function(b) {
+      b.addEventListener("click", function() {
+        const n = parseInt(b.getAttribute("data-niv"), 10);
+        // Premier clic depuis « tout » : on ISOLE le niveau cliqué plutôt que de
+        // le retirer. Sur sept niveaux superposés, c'est le geste attendu — et
+        // retirer un seul niveau sur sept ne changerait quasiment rien à l'écran.
+        if (!_homeLevelFilter || _homeLevelFilter.size === 0) {
+          _homeLevelFilter = new Set([n]);
+        } else if (_homeLevelFilter.has(n)) {
+          _homeLevelFilter.delete(n);
+          if (_homeLevelFilter.size === 0) _homeLevelFilter = null;   // plus rien coché = tout
+        } else {
+          _homeLevelFilter.add(n);
+        }
+        _renderModalNiveaux();
+        _reRenderDataTous();
+      });
+    });
+    const ball = cont.querySelector("[data-nivall]");
+    if (ball) ball.addEventListener("click", function() {
+      _homeLevelFilter = null;
+      _renderModalNiveaux();
+      _reRenderDataTous();
+    });
+  }
+
   function _renderModalTags() {
     const cont = document.getElementById("ktaOsmFiltersTags");
     if (!cont) return;
@@ -2009,7 +2860,7 @@
     _stackOrder.forEach(function(id) {
       const data = _planDataCache[id];
       if (!data) return;
-      const c = _collectAvailableTags(data);
+      const c = _collectAvailableTags(data, id);
       Object.keys(c).forEach(function(t) { counts[t] = (counts[t] || 0) + c[t]; });
     });
     const tags = Object.keys(counts).sort(function(a, b) { return counts[b] - counts[a]; });
@@ -2038,6 +2889,7 @@
         }
         _reRenderDataTous();
         _renderModalTags();
+        _renderModalNiveaux();
       });
     });
   }
@@ -2049,6 +2901,7 @@
     const principal = plans.find(function(p) { return p.id === _selectedPlanId; });
     const dataP = _selectedPlanId ? _planDataCache[_selectedPlanId] : null;
     if (principal && dataP) _renderDataLayersOnMiniMap(dataP, principal.georef);
+    _majLargeurFrontsHome();
     _chaqueExtra(function(g, id) {
       const p = plans.find(function(x) { return x.id === id; });
       const data = _planDataCache[id];
@@ -2134,6 +2987,10 @@
         _appliquerVisibilites();
       });
     });
+    // 🏷️ v1.84.0 — les chips d’étiquette suivent l’état de la pile (« 3/12 »)
+    // : tout ce qui la modifie passe par ici, donc un seul point de rendu.
+    _renderMultiTags();
+
     rows.querySelectorAll("[data-op]").forEach(function(r) {
       r.addEventListener("input", function() {
         const id = r.getAttribute("data-op");
@@ -2180,8 +3037,8 @@
     plans.forEach(function(p) {
       chaine = chaine.then(function() {
         return _loadPlanDataForPreview(p.id).then(function(data) {
-          if (!data || !Array.isArray(data.dataLayers)) return;
-          data.dataLayers.forEach(function(layer) {
+          if (!data) return;
+          _tousCalques(data, p.id).forEach(function(layer) {
             (layer.points || []).forEach(function(pt) {
               if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return;
               index.push({
@@ -2389,6 +3246,9 @@
     _setOsmColumnVisible(true);
 
     // Cas 1 : pas opt-in OSM → masque la colonne (cf _setOsmColumnVisible)
+    // 🩸 LE SEUL CHEMIN SANS BANDEAU, et c'est voulu : `_renderOptInNeeded`
+    // MASQUE la colonne entière. Il n'y a rien où l'afficher, et il n'y a rien
+    // à annoncer — l'utilisateur a refusé, on respecte son refus en silence.
     if (!_isOptedIn()) {
       _renderOptInNeeded(container);
       return;
@@ -2396,11 +3256,13 @@
     // 🆕 v1.40.19 — Cas 1bis : strict offline → message dédié, bloque tout
     if (_isStrictOfflineOn()) {
       _renderStrictOffline(container);
+      _afficherBandeauDefaut(container);
       return;
     }
     // 🆕 v1.40.19 — Cas 1ter : incognito → idem (pas de leak metadata plan)
     if (_isIncognitoOn()) {
       _renderIncognito(container);
+      _afficherBandeauDefaut(container);
       return;
     }
     // Cas 2 : hors-ligne → message UNIQUEMENT si aucun cache OSM n'existe
@@ -2414,6 +3276,7 @@
       _refreshAnyCachePresent();
       if (!_anyCachePresent) {
         _renderOffline(container);
+        _afficherBandeauDefaut(container);
         return;
       }
     }
@@ -2421,6 +3284,7 @@
     const plans = _listGeorefPlans();
     if (plans.length === 0) {
       _renderNoGeorefPlans(container);
+      _afficherBandeauDefaut(container);
       return;
     }
     // Cas 4 : widget complet — choix initial = lastSelected OU lastOpened
@@ -2430,6 +3294,38 @@
       initialId = plans[0].id;
     }
     _renderWidget(container, plans, initialId);
+    _afficherBandeauDefaut(container);
+  }
+
+  // 🌍 v1.90.2 — L'ANNONCE DU DÉFAUT. Elle ne s'affiche que tant que la clé
+  // d'opt-in est ABSENTE : cliquer « J'ai compris » écrit "1", ce qui
+  // transforme un accord implicite en accord EXPLICITE et fait disparaître le
+  // bandeau pour toujours. Refuser se fait au même endroit qu'avant
+  // (⚙️ Configuration), et écrit "0" — que plus rien ne réécrase.
+  // ⚠️ C'est une NOTIFICATION, pas un consentement préalable : les premières
+  // tuiles sont déjà demandées quand elle s'affiche. Assumé et écrit tel quel
+  // dans l'audit réseau — le mode est coupable d'un fond de carte, pas d'une
+  // fuite de données : aucune donnée du plan ne part, seules des coordonnées
+  // de tuiles sont demandées.
+  function _afficherBandeauDefaut(container) {
+    if (!_estActifParDefaut() || !container) return;
+    if (container.querySelector(".kta-osm-defaut-info")) return;
+    const t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k) { return k; };
+    const el = document.createElement("div");
+    el.className = "kta-osm-defaut-info";
+    el.innerHTML =
+      '<span class="kta-osm-defaut-txt"></span>' +
+      '<button type="button" class="kta-osm-defaut-ok"></button>';
+    // 🩸 textContent, jamais innerHTML, sur ce qui vient du dictionnaire.
+    el.querySelector(".kta-osm-defaut-txt").textContent = t("osm_home.defautOn.corps");
+    el.querySelector(".kta-osm-defaut-ok").textContent  = t("osm_home.defautOn.ok");
+    el.querySelector(".kta-osm-defaut-ok").addEventListener("click", function() {
+      if (window.OsmView && typeof window.OsmView.setOptedIn === "function") {
+        window.OsmView.setOptedIn(true);   // l'implicite devient explicite
+      }
+      el.remove();
+    });
+    container.insertBefore(el, container.firstChild);
   }
 
   function refresh() { mount(); }
@@ -2462,6 +3358,7 @@
       if (iPrev !== -1) _stackOrder.splice(iPrev, 1);
     }
     _renderMultiPanel();
+    _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
     _saveLastSelected(planId);
     _renderGeorefMarkers(sel.georef);
     // 🆕 v1.43.3 — Si offline, vérifier si ce plan a des tuiles cachées.
@@ -2480,6 +3377,7 @@
       _renderDataLayersOnMiniMap(data, sel.georef);
       // 🎚️ v1.71.0 : tags en modale (guard si fermée) + parité pile
       _renderModalTags();
+      _renderModalNiveaux();
       _appliquerOrdre();
       _appliquerVisibilites();
     });

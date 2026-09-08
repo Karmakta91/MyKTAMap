@@ -28,6 +28,11 @@
    - récupère vos liaisons (profil du navigateur ou export de profil) et **remappe les identifiants**
      vers ceux de votre instance — indispensable, les ids locaux n'existent que sur votre appareil ;
    - propose sous-titre + les 2 réglages kiosque ;
+   - permet de **taguer chaque plan** (colonne « Tags », séparés par des virgules) — ces étiquettes
+     arrivent chez vos visiteurs et alimentent les chips-filtres de leur accueil ;
+   - sait **reprendre un `index.json` déjà en ligne** (bouton « 📂 Reprendre un index.json existant ») :
+     pour corriger un nom ou une étiquette, **inutile de redéposer vos ZIP** — les liaisons du fichier
+     repris sont conservées telles quelles ;
    - vous fait télécharger l'`index.json` final → déposez-le en `data/index.json`.
 4. **C'est en ligne.** Les visiteurs voient vos plans, votre sous-titre, vos liaisons.
 
@@ -42,7 +47,8 @@
   },
   "plans": [
     { "id": "carrieres-nord", "path": "data/carrieres-nord", "name": "Carrières Nord",
-      "version": "V2.1", "author": "Asso X", "multiLevel": true, "tiledV2": true }
+      "version": "V2.1", "author": "Asso X", "multiLevel": true, "tiledV2": true,
+      "tags": ["gironde", "carrière"] }
   ],
   "liaisons": { "version": 1, "links": [ /* généré par confadmin — ne pas écrire à la main */ ] }
 }
@@ -52,6 +58,16 @@
 - `subtitle` : remplace « Cartographie souterraine » (démarrage, accueil, en-tête des PDF exportés). Le nom MyKTAMap reste.
 - `serverPlansOnly` : masque l'import de plans (dropzone « Ajouter un plan ») et les réglages serveur devenus inutiles.
 - `disableGenerator` : masque le Générateur dans les Outils.
+- `plans[].tags` : étiquettes proposées pour ce plan (**12 max, 24 caractères chacune** ; au-delà, l'app
+  rogne). Elles s'affichent sous le nom du plan chez le visiteur et servent ses chips-filtres.
+  **L'index propose, l'utilisateur dispose** : dès qu'un visiteur édite les étiquettes d'un plan, les
+  vôtres ne l'écrasent plus jamais — et s'il vide le champ, elles ne repoussent pas. Vous restez maître
+  de celles que **vous** avez posées : les retirer de votre index les retire chez lui.
+- ⚠️ **`serverPlansOnly` refuse aussi l'import de profil** (depuis v1.90.1). Un profil rapporterait des
+  plans que votre instance ne propose pas, et surtout il transporte les préférences d'affichage : importé
+  avec « afficher les plans du serveur » décoché, il **vidait l'accueil** — et la case pour le rétablir est
+  justement masquée par le mode. L'**export** de profil, lui, reste ouvert : les données du visiteur lui
+  appartiennent.
 - ⚠️ Ces réglages **allègent l'interface**, ils ne « sécurisent » rien : MyKTAMap community n'est pas bridable, par principe.
 
 ## À savoir

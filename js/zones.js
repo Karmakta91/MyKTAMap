@@ -347,7 +347,9 @@ function renderZones() {
           polygon,
           function() { return _zoneRef.description; },
           function(v) { _zoneRef.description = v; },
-          _zonePopupTitle(zone.type)
+          _zonePopupTitle(zone.type),
+          // 🔄 v1.82.0 — reclassement depuis la popup (cf. convertirObjet.js).
+          { convertir: { famille: "zones", obj: _zoneRef } }
         );
       }
     }

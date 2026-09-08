@@ -1891,9 +1891,27 @@
 
   // Helper local — format court d'un niveau pour la preview équipes.
   // 0 → "RDC", >0 → "+N", <0 → "-N". Idempotent avec le chip card équipe.
+  // 🩸 v1.83.0 — LA PROFONDEUR ENTRE DANS LA FICHE DE SECOURS.
+  //
+  // Un niveau était rendu « -2 » ou « RDC ». C'est une COORDONNÉE INTERNE : elle
+  // ne dit rien à qui prépare une intervention. « -2 · -35 m » dit combien de
+  // corde, quel type d'équipe, quelle durée d'évacuation.
+  //
+  // C'est le seul usage des profondeurs qui ait un enjeu autre que le confort,
+  // et c'est pourquoi il passe par CE formateur : il est la source unique du
+  // relevé texte (`secours.txt.niveau`), du PDF et des cartes de scénario. Le
+  // brancher ici les sert tous les trois d'un coup — l'écrire trois fois aurait
+  // garanti qu'une des trois dérive.
+  //
+  // Silencieux si la profondeur n'est pas renseignée : une fiche de secours ne
+  // devine pas.
   function _formatLevelShort(level) {
-    if (level === 0) return "RDC";
-    return (level > 0 ? "+" : "") + level;
+    const base = (level === 0) ? "RDC" : ((level > 0 ? "+" : "") + level);
+    if (!Number.isInteger(level)) return base;
+    if (typeof window.getProfondeurNiveau !== "function") return base;
+    const z = window.getProfondeurNiveau(level);
+    if (!Number.isFinite(z)) return base;
+    return base + " · " + z.toFixed(0) + " m";
   }
 
   // 🆕 v1.23.4 — Modale de feedback post-import. Succès = vert + bouton

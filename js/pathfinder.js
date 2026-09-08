@@ -14,6 +14,10 @@
 //
 // API : window.Pathfinder
 //   - computeRoute(waypoints, opts) → { path, totalDistance, segmentCount, snappedPoints }
+//     path : [{x, y, level}] — `level` est l'entier du niveau quand il est
+//     UNIVOQUE, `null` sinon (nœud d'intersection multi-niveaux, ou milieu de
+//     jonction qui n'est à aucun étage mais ENTRE deux). Ajouté en v1.83.0 pour
+//     le profil en long : il était calculé puis jeté.
 //     waypoints : [{x, y}, ...] (≥ 2 points)
 //     opts.allowedTypes : ['principal', 'secondaire', 'chemin'] par défaut
 //   - resolvePointById(idOrName) → {x, y, source, point} | null
@@ -365,6 +369,26 @@
     graph.edges[b].push({ to: a, weight: weight });
   }
 
+  // Trace de diagnostic, uniquement en mode debug : une jonction dont la
+  // longueur change soudain mérite d'être visible quand on la cherche.
+  const _diagJonction = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
+
+  // Poids d'un segment, en pixels plan. Identique à la distance 2D SAUF pour
+  // une jonction dont les deux niveaux ont une profondeur renseignée.
+  function _poidsSegment(a, b, road) {
+    const plan = _dist(a, b);
+    if (!road || road.type !== "jonction") return plan;
+    if (typeof window.getProfondeurNiveau !== "function") return plan;
+    const zA = window.getProfondeurNiveau(road.fromLevel);
+    const zB = window.getProfondeurNiveau(road.toLevel);
+    if (zA === null || zB === null) return plan;   // non renseigné → inchangé
+    const echelle = (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0)
+      ? Number(window.APP_CONFIG.scale) : 0;
+    if (!echelle) return plan;                     // plan non calibré → inchangé
+    const denivPx = Math.abs(zB - zA) * echelle;
+    return Math.hypot(plan, denivPx);
+  }
+
   function _buildGraph(roads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones) {
     zonesInacc  = zonesInacc  || [];
     avoidPoints = avoidPoints || [];
@@ -424,7 +448,25 @@
         if (!_segmentBloqueParZoneInaccess(prevP, p, segLevel, zonesInacc) &&
             !_segmentBloqueParAvoidance(prevP, p, avoidPoints, avoidRadius) &&
             !_segmentBloqueParZoneInaccess(prevP, p, segLevel, avoidZones)) { // 🆕 zones à éviter (souple)
-          const w = _dist(prevP, p);
+          // 🩸 v1.83.0 — UNE JONCTION EST UN PUITS, PAS UN TRAIT.
+          // Son coût était sa longueur DANS LE PLAN : un puits dessiné sur
+          // 3 px entre deux étages distants de 12 m comptait pour 3 px. Les
+          // distances d'itinéraire multi-niveaux étaient donc sous-comptées,
+          // et Dijkstra préférait systématiquement le puits au détour à plat —
+          // parfois à tort.
+          //
+          // Avec des profondeurs saisies, la vraie longueur est l'hypoténuse.
+          // Le graphe travaille en PIXELS PLAN : le dénivelé est converti par
+          // l'échelle avant d'être combiné, sinon on additionnerait des mètres
+          // à des pixels.
+          //
+          // Sans profondeur renseignée — l'état de tout plan d'avant cette
+          // version — on retombe exactement sur l'ancien calcul.
+          const w = _poidsSegment(prevP, p, road);
+          if (_diagJonction && road.type === "jonction") {
+            console.log("[Pathfinder] jonction 3D : plan", _dist(prevP, p).toFixed(1),
+              "px → réel", w.toFixed(1), "px");
+          }
           _addEdge(graph, prevIdx, idx, w);
           graph.segments.push({
             a:        prevIdx,
@@ -812,8 +854,30 @@
         e.i18nParams = { a: (i + 1), b: (i + 2) };
         throw e;
       }
+      // 🩸 v1.83.0 — LE NIVEAU VOYAGE AVEC LE CHEMIN.
+      // Il était JETÉ : les nœuds du graphe le portent (`levels: Set`), mais
+      // le retour était un `{x, y}` plat. Aucun profil en long n'était donc
+      // calculable, faute de savoir à quelle profondeur passe chaque point.
+      //
+      // `levels` peut contenir plusieurs entrées (nœud fusionné à une
+      // intersection) ou « transit » (milieu d'une jonction, qui n'est à aucun
+      // étage — il est ENTRE deux). On ne rend un niveau que s'il est
+      // univoque : ailleurs, `null` dit honnêtement « indéterminé », et le
+      // profil interpole. C'est exactement ce qu'on veut d'un puits.
       const segPoints = result.nodeIndices.map(function(idx) {
-        return { x: graph.nodes[idx].x, y: graph.nodes[idx].y };
+        const n = graph.nodes[idx];
+        // ⚠️ Les niveaux ne sont PAS portés par le nœud : ils vivent dans le
+        // tableau parallèle `graph.nodeLevels[idx]` (Set<number|"transit">).
+        // Première rédaction : `n.levels` — toujours `undefined`, donc `null`
+        // partout, sans la moindre erreur. Le profil serait sorti plat.
+        const set = graph.nodeLevels && graph.nodeLevels[idx];
+        let lvl = null;
+        if (set && typeof set.forEach === "function") {
+          const nums = [];
+          set.forEach(function (v) { if (Number.isInteger(v)) nums.push(v); });
+          if (nums.length === 1) lvl = nums[0];
+        }
+        return { x: n.x, y: n.y, level: lvl };
       });
       if (i > 0) segPoints.shift();
       for (let k = 0; k < segPoints.length; k++) fullPath.push(segPoints[k]);
@@ -839,6 +903,10 @@
   //                    via SearchPoints.getAllPoints + filtre par tag)
   //   - avoidRadius  : px (defaut 100). Tout segment a moins de cette distance
   //                    d'un point d'evitement est exclu du graphe.
+  //   - respecterInaccessibles : false pour SUSPENDRE la contrainte dure des
+  //                    zones "inaccessible" (v1.82.0). Absent/true = comportement
+  //                    historique. Seule contrainte du moteur qui ne se relache
+  //                    jamais d'elle-meme, d'ou le besoin d'un interrupteur.
   //
   // ALGO 2 PASSES
   //   Passe 1 : avec zones inaccessibles (dur) + evitements (souple)
@@ -890,7 +958,21 @@
     }
 
     // 🚫 v169 (Karma_dev) : collecte des zones "inaccessibles" (contrainte dure).
-    const zonesInacc = _collecterZonesInaccessibles();
+    // 🆕 v1.82.0 — DÉBRAYABLE (demande KARMA). C'est la SEULE contrainte dure du
+    // moteur : jamais relâchée, même en passe 2. Sur un relevé importé encore
+    // incomplet, un polygone typé « inaccessible » par erreur ferme donc un
+    // passage qui existe, sans recours. La case de la modale itinéraire permet
+    // de le suspendre — cochée par défaut : le comportement sûr reste l'implicite,
+    // et le lever est un geste explicite de l'utilisateur qui connaît son terrain.
+    //
+    // ⚠️ Volontairement limité à `computeRoute`. `computeReachable` (Mode
+    // Secours / Perdu) garde les zones inaccessibles en toutes circonstances :
+    // une préférence de confort n'a pas à élargir un périmètre de secours.
+    const zonesInacc = (opts.respecterInaccessibles === false)
+      ? [] : _collecterZonesInaccessibles();
+    if (opts.respecterInaccessibles === false) {
+      console.log("[Pathfinder] zones inaccessibles IGNORÉES (choix utilisateur)");
+    }
     if (zonesInacc.length > 0) {
       console.log("[Pathfinder] " + zonesInacc.length + " zone(s) inaccessible(s) — contrainte dure");
     }

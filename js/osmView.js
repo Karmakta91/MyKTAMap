@@ -230,8 +230,29 @@
   // =========================
   // CONFIG / OPT-IN
   // =========================
+  // 🌍 v1.90.2 — LE DÉFAUT BASCULE À « ACTIF » (décision KARMA : « dans 99 %
+  // des cas ce mode est utilisé »).
+  //
+  // 🩸 LA CLÉ EST TRI-ÉTAT, ET C'EST TOUT L'INTÉRÊT :
+  //   "1"   → activé explicitement          → ON  (inchangé)
+  //   "0"   → REFUSÉ explicitement          → OFF (inchangé — on ne repasse
+  //           JAMAIS par-dessus un refus, c'est la seule règle non négociable
+  //           quand on retourne un défaut qui contacte un tiers)
+  //   absent → jamais touché                 → ON  (le changement)
+  //
+  // ⚠️ CE QUE ÇA CHANGE VRAIMENT : le widget OSM du HOME monte une carte
+  // Leaflet dont le fond vient de `tile.openstreetmap.org`. Actif par défaut,
+  // l'accueil contacte donc OpenStreetMap AU CHARGEMENT, sans clic — pour qui
+  // possède au moins un plan géoréférencé. Restent bloquants et prioritaires :
+  // mode hors-ligne strict, incognito, hors-ligne réel, aucun plan géoréf.
+  // Un bandeau ponctuel le dit à l'utilisateur la première fois
+  // (osmHomePreview.js) : un défaut qui contacte un tiers s'annonce.
+  //
+  // 🚨 LES DEUX LECTEURS DOIVENT RESTER IDENTIQUES (ici + osmHomePreview.js) :
+  // les faire diverger donnerait un widget affiché sans bouton dans la modale,
+  // ou l'inverse. `check-osm-defaut.js` les exécute tous les deux.
   function isOptedIn() {
-    try { return localStorage.getItem(LS_OPT_IN_KEY) === "1"; } catch(e) { return false; }
+    try { return localStorage.getItem(LS_OPT_IN_KEY) !== "0"; } catch(e) { return false; }
   }
   function setOptedIn(value) {
     try { localStorage.setItem(LS_OPT_IN_KEY, value ? "1" : "0"); } catch(e) {}
@@ -427,11 +448,56 @@
     return true;
   }
 
-  // 🆕 v1.39.16 — Cascade unifiée level (POI/Roads/Zones/Structures).
-  //   1. Si plan non multi-LVL → tout passe
-  //   2. Si _visibleLevels = Set non-vide → check membership
-  //   3. Sinon → fallback APP_CONFIG.activeLevel (mode mono historique v1.39.12)
-  // Sémantique items sans level : level = 0 (cohérent §51.4 Heatmap).
+
+  // 🩸 v1.83.0 — LA VUE OSM APPLIQUE LA MÊME LOI QUE LE MODE PLAN.
+  //
+  // En v1.82.0, une première tentative posait une variable CSS que personne
+  // ne lit (la Vue OSM est elle aussi en `preferCanvas`) : retirée. Le rendu
+  // restait acceptable parce que le repli des types custom tombe sur le
+  // gabarit « mur » (weight 2) — un HEUREUX ACCIDENT, consigné au backlog
+  // plutôt que corrigé à l'aveugle. KARMA : « en mode OSM c'était pas mal,
+  // mais ça reste encore limite ».
+  //
+  // La loi est maintenant formulée en PIXELS PAR MÈTRE (structures.js), donc
+  // utilisable ici : la Vue OSM n'a pas d'échelle de plan, mais elle sait sa
+  // résolution Web Mercator — laquelle dépend de la LATITUDE autant que du
+  // zoom. Un front de 1,5 m fait 1 px quand la carrière tient dans l'écran,
+  // 7 px quand on est dessus. Plus aucun palier réglé à la main.
+  //
+  // Même technique qu'en mode plan : on mute `options.weight` en place — le
+  // renderer canvas le relit à chaque frame — puis on force UNE repeinture
+  // non clippée. Aucun `setStyle`, intenable à ce volume.
+  function _majLargeurFrontsOsm() {
+    if (!_osmMap || !_structLayer) return;
+    if (typeof window.ktaPxParMetreOsm !== "function") return;
+    const pxm = window.ktaPxParMetreOsm(_osmMap);
+    const w = (typeof window.ktaLargeurFrontPourPxParMetre === "function")
+      ? window.ktaLargeurFrontPourPxParMetre(pxm) : null;
+    if (!w) return;
+    const wTrace = (typeof window.ktaLargeurTracePourRatio === "function")
+      ? Math.max(1, Math.round(w * 0.6 * 10) / 10) : w;
+    try {
+      _structLayer.eachLayer(function (lay) {
+        // Les surfaces gardent leur trait : un pilier se lit à son
+        // remplissage, pas à l'épaisseur de son contour.
+        if (!lay || !lay.options || lay.options.fill === true) return;
+        lay.options.weight = w;
+      });
+      if (_roadLayer && typeof _roadLayer.eachLayer === "function") {
+        _roadLayer.eachLayer(function (lay) {
+          if (!lay || !lay.options || lay.options.fill === true) return;
+          lay.options.weight = wTrace;
+        });
+      }
+    } catch (e) { return; }
+    // ⚠️ `_redrawBounds` d'abord : sinon `_draw` clippe sur une demande en
+    // attente et ne repeint qu'un rectangle (cf. gotchas.md).
+    try {
+      const r = _osmMap._renderer;
+      if (r && typeof r._redraw === "function") { r._redrawBounds = null; r._redraw(); }
+    } catch (e) {}
+  }
+
   function _isLevelAllowed(p) {
     const cfg = window.APP_CONFIG || {};
     if (!cfg.multiLevel) return true;
@@ -1322,7 +1388,11 @@
             color:   style.color,
             weight:  style.weight,
             opacity: style.opacity || 1,
-            interactive: false
+            interactive: false,
+            // 🔍 v1.82.0 — même classe qu'en mode plan : la largeur du trait
+            // est pilotée par la variable CSS `--kta-front-w`, recalculée au
+            // zoom. Sans ça, un plan portant des milliers de fronts devient un
+            // aplat dès qu'on s'éloigne.
           }).addTo(_structLayer);
         } else {
           L.polygon(latlngs, {
@@ -1357,6 +1427,9 @@
     if (_structVisible) {
       if (!_structLayer) _renderStructures();
       else if (!_osmMap.hasLayer(_structLayer)) _osmMap.addLayer(_structLayer);
+      // Première largeur posée dès que les structures existent : sans cet
+      // appel, elle n'arriverait qu'au premier geste de zoom.
+      _majLargeurFrontsOsm();
     } else if (_structLayer && _osmMap.hasLayer(_structLayer)) {
       _osmMap.removeLayer(_structLayer);
     }
@@ -1536,9 +1609,20 @@
   function _initVisibleLevels() {
     const cfg = window.APP_CONFIG || {};
     if (!cfg.multiLevel) { _visibleLevels = null; return; }
-    const active = cfg.activeLevel;
+    // 🏗️ v1.82.1 — LA MODALE SUIT CE QUE LA CARTE MONTRE.
+    // Elle s'ouvrait sur le SEUL niveau actif, quand la carte du dessous en
+    // affichait plusieurs : passer en Vue OSM faisait donc disparaître le
+    // reste du relevé, sans que ce soit demandé. On reprend `visibleLevels`,
+    // qui porte déjà le choix de l'utilisateur (et l'option « afficher tous
+    // les niveaux au lancement »). Repli sur le niveau actif si absent.
     _visibleLevels = new Set();
-    if (Number.isFinite(active)) _visibleLevels.add(active);
+    const vis = Array.isArray(cfg.visibleLevels) ? cfg.visibleLevels : null;
+    if (vis && vis.length) {
+      vis.forEach(function (n) { if (Number.isFinite(n)) _visibleLevels.add(n); });
+    }
+    if (_visibleLevels.size === 0 && Number.isFinite(cfg.activeLevel)) {
+      _visibleLevels.add(cfg.activeLevel);
+    }
   }
 
   // Toggle d'un niveau dans _visibleLevels + re-render des layers filtrés.
@@ -1561,6 +1645,9 @@
     if (_itiVisible)    _renderItinerary();
     if (_zoneVisible)   _renderZones();
     if (_structVisible) _renderStructures();
+    // Un re-rendu recrée les layers : la largeur du gabarit revient, il
+    // faut la reposer. Sinon elle ne serait juste qu'au prochain zoom.
+    _majLargeurFrontsOsm();
     if (_secoursVisible && _hasActiveSecoursScenario()) _renderSecoursLayer();
   }
 
@@ -1644,6 +1731,16 @@
                 : _isIncognitoOn() ? window.I18n.t("osm.btn.mygps.title.incognito")
                 : window.I18n.t("osm.btn.mygps.title.default")) +
             '">' + window.I18n.t("osm.btn.mygps") + '</button>' +
+          // 📏 v1.85.0 — la mesure, jusqu'ici reservee a la Vue OSM du HOME.
+          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-mesure" ' +
+            'style="font-size:12px; padding:5px 10px;" title="' +
+            _escapeHtml(window.I18n.t("osm_mes.btnTitle")) + '">📏</button>' +
+          // 📍 v1.85.0 — relever les coordonnees GPS DE SURFACE d'un point du
+          // releve. Trivial ici et penible en mode plan : la carte EST
+          // geographique, `e.latlng` est deja la reponse.
+          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-coords" ' +
+            'style="font-size:12px; padding:5px 10px;" title="' +
+            _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">🎯</button>' +
           // 🆕 v1.43.4 — Bouton "Cacher pour offline" placé juste après 📍 Moi
           // (KARMA : groupé avec les actions, AVANT les toggles d'affichage).
           // Télécharge les tuiles visibles + zoom ±1 dans IDB pour consultation
@@ -1764,6 +1861,21 @@
     const mygpsBtn = overlay.querySelector("#kta-osm-mygps");
     if (mygpsBtn) {
       mygpsBtn.addEventListener("click", _showMyGpsPositionOsm);
+    }
+    // 📏 + 📍 v1.85.0 — mesure et releve de coordonnees. Les deux modules
+    // basculent d'eux-memes au second clic (`activer` appelle `desactiver`
+    // s'il est deja actif), donc rien a garder ici.
+    const mesureBtn = overlay.querySelector("#kta-osm-mesure");
+    if (mesureBtn) {
+      mesureBtn.addEventListener("click", function () {
+        if (window.OsmMesure) window.OsmMesure.activer(_osmMap);
+      });
+    }
+    const coordsBtn = overlay.querySelector("#kta-osm-coords");
+    if (coordsBtn) {
+      coordsBtn.addEventListener("click", function () {
+        if (window.OsmCoords) window.OsmCoords.activer(_osmMap);
+      });
     }
     // 🆕 v1.39.14 — Toggles Roads + Iti
     const roadCb = overlay.querySelector("#kta-osm-road-toggle");
@@ -2142,6 +2254,10 @@
   // Throttle implicite via Leaflet (events firés une fois par cran de zoom/pan).
   function _onMoveEnd() {
     if (!_osmMap) return;
+    // 📏 v1.83.0 — la largeur des fronts suit le zoom. AVANT le retour
+    // anticipé ci-dessous : il ne concerne que le tuilage, et un plan non
+    // tuilé a exactement le même besoin.
+    _majLargeurFrontsOsm();
     const tiling = window.PLAN_CONFIG && window.PLAN_CONFIG.tiling;
     if (!tiling) return;
     const targetZ = _targetLevelForZoom(_osmMap.getZoom(), tiling);
@@ -2240,6 +2356,9 @@
     _renderLevelsBar();
     if (_zoneVisible)   _renderZones();
     if (_structVisible) _renderStructures();
+    // Un re-rendu recrée les layers : la largeur du gabarit revient, il
+    // faut la reposer. Sinon elle ne serait juste qu'au prochain zoom.
+    _majLargeurFrontsOsm();
 
     // 10) 🆕 v1.40.34 (Synergie A v2) — Layer Mode Secours auto-affiché si
     // un scénario est actif au moment de l'ouverture de la modale. Sinon
@@ -2402,6 +2521,13 @@
   }
 
   function close() {
+    // 🔍 Rendre la main au mode plan : la variable de largeur est partagee, et
+    // la laisser sur la valeur du zoom OSM donnerait au plan une largeur qui
+    // ne correspond pas au sien.
+    try {
+      if (typeof window.majLargeurFronts === "function") window.majLargeurFronts();
+      else document.documentElement.style.removeProperty("--kta-front-w");
+    } catch (e) {}
     // 🆕 v1.39.11 — Cleanup state niveau adaptatif + culling
     if (_osmMap && _moveEndHandler) {
       try { _osmMap.off("zoomend moveend", _moveEndHandler); } catch(e) {}

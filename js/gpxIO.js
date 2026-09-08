@@ -222,6 +222,41 @@
     }
     lines.push('  </metadata>');
 
+    // 🩸 v1.83.0 — POURQUOI IL N'Y A PAS DE `<ele>` ICI, ET POURQUOI C'EST
+    // LE CHOIX HONNÊTE.
+    //
+    // Les profondeurs des niveaux existent depuis la v1.83.0, et le KMZ les
+    // écrit désormais (en `relativeToGround`, qui veut dire exactement ce
+    // qu'on mesure : SOUS LA SURFACE). Le réflexe serait de faire pareil en
+    // GPX avec `<ele>`.
+    //
+    // Ce serait faux. En GPX, `<ele>` est l'altitude AU-DESSUS DU NIVEAU DE
+    // LA MER — c'est ce que lisent les GPS et les logiciels de rando. Y
+    // écrire « -30 » pour une galerie à 30 m sous une colline à 100 m
+    // annoncerait un point à 30 m SOUS la mer : une erreur de 130 m,
+    // parfaitement plausible à l'œil, donc indétectable.
+    //
+    // Il faudrait l'altitude du terrain, que l'app ne connaît pas. L'inventer
+    // serait pire que de l'omettre. La profondeur part donc dans la
+    // DESCRIPTION, où elle est lue par un humain et par rien d'autre.
+    //
+    // C'est le même arbitrage que partout ailleurs dans ce projet : on ne
+    // remplit pas un champ normalisé avec une grandeur qui n'est pas la
+    // sienne.
+    function _mentionProfondeur(level) {
+      if (!Number.isInteger(level)) return "";
+      if (typeof window.getProfondeurNiveau !== "function") return "";
+      const z = window.getProfondeurNiveau(level);
+      if (!Number.isFinite(z)) return "";
+      return "Niveau " + (level > 0 ? "+" + level : level) +
+             " · " + z.toFixed(1) + " m sous la surface";
+    }
+    function _descAvecProfondeur(desc, level) {
+      const m = _mentionProfondeur(level);
+      if (!m) return desc || "";
+      return desc ? (desc + " — " + m) : m;
+    }
+
     // Waypoints (= points editor + embedded)
     points.forEach(function(p) {
       if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
@@ -229,7 +264,8 @@
       if (!ll) return;
       lines.push('  <wpt lat="' + _fmtCoord(ll.lat) + '" lon="' + _fmtCoord(ll.lng) + '">');
       if (p.nom)         lines.push('    <name>' + _xmlEsc(p.nom) + '</name>');
-      if (p.description) lines.push('    <desc>' + _xmlEsc(p.description) + '</desc>');
+      const _dp = _descAvecProfondeur(p.description, p.level);
+      if (_dp) lines.push('    <desc>' + _xmlEsc(_dp) + '</desc>');
       if (Array.isArray(p.tags) && p.tags.length > 0) {
         // GPX <type> = tag principal
         lines.push('    <type>' + _xmlEsc(p.tags[0]) + '</type>');
@@ -250,8 +286,9 @@
       // v1.15.0 — ajout de <desc> sur les tracks (description du road) pour
       // roundtrip MyKTAMap. Avant ce fix, la description du tracé était
       // perdue à l'export GPX (seul le name était écrit).
-      if (r.description) {
-        lines.push('    <desc>' + _xmlEsc(r.description) + '</desc>');
+      const _dr = _descAvecProfondeur(r.description, r.level);
+      if (_dr) {
+        lines.push('    <desc>' + _xmlEsc(_dr) + '</desc>');
       }
       lines.push('    <type>' + _xmlEsc(r.type || "trace") + '</type>');
       if (Number.isInteger(r.level)) {

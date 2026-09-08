@@ -130,3 +130,39 @@
 - **`plan.histoirePdf`** (chaîne, historique) : TOUJOURS écrit = **premier élément** du tableau → une app antérieure à v1.71.0 lit au moins le premier document.
 - ⚠️ Lecteurs : préférer le tableau, replier sur la chaîne, **ne jamais concaténer les deux** (doublon garanti). `config.js` résout chaque entrée via `getRuntimeAssetUrl` ; `modeHistoire._getEmbeddedPdfUrls()` liste N entrées 📕 (ids `__embed__<i>`, non supprimables) ; `homeLoader._addPath` collecte chaque chemin (assets runtime ZIP).
 - Aucun PDF → les deux champs **absents** (rétrocompat stricte inchangée).
+
+---
+
+## 🆕 Champs ajoutés de la v1.83.0 à la v1.85.0
+
+### `plan.niveauxProfondeur` (v1.83.0) — plan-config.json
+
+```json
+"plan": { "niveauxProfondeur": { "0": 0, "-1": -5, "-2": -12, "1": null } }
+```
+
+Profondeur **sous la surface**, en mètres, par niveau. **Trois états, et la distinction porte du sens** :
+
+| État | Sens |
+|---|---|
+| clé **absente** | non renseigné — l'état de tout plan d'avant la v1.83.0, qu'on n'invente pas |
+| **nombre** | profondeur connue (négatif vers le bas) |
+| **`null`** | « sans profondeur » — le niveau existe mais n'a pas d'altitude |
+
+🩸 Le `null` n'est pas un trou de saisie : c'est le niveau que l'import SIG donne au **topo historique**. Ce n'est pas un étage physique au-dessus, c'est une **convention d'empilement** pour séparer deux relevés du même endroit. Lui donner une altitude fausserait tout profil en long qui le traverse.
+
+### `calquesSession` (v1.85.0) — payload de session
+
+```json
+"calquesSession": { "rapatries": ["sig"] }
+```
+
+Les ids des **calques de données rapatriés** dans la session (cf. `session-data.md`). Ne porte QUE la liste : les objets, eux, vivent déjà dans `roads` / `zones` / `structures` / `editorPoints`, marqués `_srcCalque`. **`null` tant que rien n'est rapatrié** → zéro octet dans `localStorage` pour qui ne s'en sert pas.
+
+### `_srcCalque` (v1.85.0) — marqueur d'objet, session UNIQUEMENT
+
+Porté par chaque objet copié depuis un calque. C'est lui qui rend le retour possible (on sait quoi retirer) et l'export capable de ne réémettre que le contenu du calque.
+
+⚠️ **Il est RETIRÉ à l'export** (`CalqueSession.exporterCalque`) : c'est un outil interne de session, il n'a rien à faire dans le ZIP d'un plan qu'on partage.
+
+🩸 **Rappel du piège de fond** : *roads* et *zones* n'ont toujours **pas d'`id`**. C'est la raison pour laquelle le rapatriement porte sur le **calque entier** et non objet par objet — une clé dérivée de la géométrie serait cassée en silence par le dédoublonneur de l'Éditeur de données, qui retire les sommets consécutifs identiques.

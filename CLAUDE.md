@@ -30,6 +30,10 @@
   - **Pas de ligne « Sources de vérité v1.X.Y »** (= dette technique inutile à l'user).
   - La doc technique détaillée vit dans `docs/architecture/<sujet>.md` + commit message + `NETWORK_AUDIT` pour le réseau, **PAS** dans `version.json`.
 - **Déploiement** : prod = **FTP manuel par KARMA**. Claude ne déploie/push-main JAMAIS.
+- **Merge sur `main`** (KARMA uniquement) : `powershell -ExecutionPolicy Bypass -File scripts\release\merge-main.ps1`
+  — vérifie l'arbre propre, la concordance des 3 sources de version, les garde-fous, l'écart avec le distant,
+  puis **demande de confirmer les marches 2-4 de la porte** (aucun script n'ouvre un navigateur), merge, tague et
+  publie. `-DryRun` montre tout sans rien toucher. FTP prod ensuite : `scripts\deploy\deploy.ps1`.
 - **🚦 Porte de release** : AVANT tout merge `main`, franchir **`docs/RELEASE_GATE.md`** (guards auto → smoke 12 pts sur dev → checkup ciblé → trempage). `main` = déployable. Dérogations possibles sur items non-🔒, **accordées par KARMA seul**, consignées avec motif/risque/rattrapage.
 
 ## 🚨 Garde-fous — NE JAMAIS
@@ -43,9 +47,9 @@
 **CSS** : charte dark (`#1a1f2e`→`#0a0d18`, texte `#e8eaf0`/`#c8d0e0`/`#8892a4`), accent `#f4c542`, interaction `#8cb4ff`. Préfixe **`kta-`**. Pas de Tailwind/SCSS. Z-index : 1100 titre · 5000 loader · 9999 splash · 99999 modales · 100001 sous-modales.
 **Coords** : TOUJOURS `convertCoord(x,y)` = `[imageHeight - y, x]`. Jamais `[y,x]` direct.
 **Distances** : TOUJOURS `window.formatDistance(distM, dec)`. Jamais `toFixed()+" m"`.
-**Icônes** : résolution unique `window._iconMap[tag]` / `getIconUrlForPoint`.
+**Icônes** : résolution unique `window._iconMap[tag]` / `getIconUrlForPoint` — vrai **pour un plan chargé**. Hors plan (HOME, Vue OSM multi-plans), la source est `window._ktaBuiltinIconUrls` (= `map.js > TAGS_BUILTIN`, exposé au **top-level**). **Jamais de copie locale du catalogue** : `scripts/check-icon-catalog.js` (pré-commit) la confronte à la source dans les deux sens.
 **Styles des types** (tracés/zones/structures) : TOUJOURS `window.ktaResolveStyle(cat, clé[, {flat:true}])` (`flat` = contexte sans motif SVG : canvas, KMZ, OSM) · pastille/camembert = `ktaSwatchColor` · icône HTML = `ktaTypeSwatchHtml`. **Jamais de table de couleurs locale** — `scripts/check-style-canon.js` (pré-commit bloquant) refuse toute réintroduction. 2 exceptions documentées : `emergencyMode.js`, `osmView.js`/`osmHomePreview.js`.
-**Textes user-facing** : migration progressive vers `window.I18n.t("module.section.element")` (dicos `lang/<code>.json`, FR = fallback universel). Appeler au rendu, jamais au load. Hors modules migrés, le FR inline reste OK. Détails + état migration : `docs/architecture/i18n.md`.
+**Textes user-facing** : migration progressive vers `window.I18n.t("module.section.element")` (dicos `lang/<code>.json`, FR = fallback universel). Appeler au rendu, jamais au load. Hors modules migrés, le FR inline reste OK. Détails + état migration : `docs/architecture/i18n.md`. **Jamais de HTML dans une clé rendue en texte** (`data-i18n`/`-title`/`-placeholder` = `textContent`) : le balisage va dans le gabarit, pas dans le dico — `scripts/check-i18n.js` §5 (bloquant, branché au pre-commit depuis v1.85.4).
 
 ## 🗺️ Où chercher (lis le bon fichier avant de coder)
 | Sujet | Référence |
@@ -56,6 +60,7 @@
 | Rendu Leaflet, icônes, calques, splash | `docs/architecture/rendering-leaflet.md` |
 | Plans : registre, loader, générateur | `docs/architecture/plans-loader.md` |
 | Perf, mémoire, OOM, tiling V2, ULTRA, batterie | `docs/architecture/perf-memory.md` |
+| **Tuilage** : V1 vs V2, 2 modes, déploiement + **hors-ligne** d'un plan serveur | **`docs/TILING.md`** |
 | Tracker, boussole, heading, navigation | `docs/architecture/tracking.md` |
 | Multi-niveau, pathfinding, itinéraire | `docs/architecture/multilevel-pathfinding.md` |
 | Exports PNG/PDF/KMZ/GPX + légende | `docs/architecture/exports.md` |

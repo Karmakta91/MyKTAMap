@@ -92,6 +92,18 @@ let _plannerMode       = "nouveau";
 // `config.plan.customLegend` du ZIP source.
 let _plannerPlanLegend = null;
 
+// 🏷️ v1.82.0 — état de légende propre à l'écran « Convertir depuis SIG ».
+// Séparé de `_plannerPlanLegend` : les deux écrans peuvent être utilisés dans
+// la même session, mélanger leurs états ferait fuiter les entrées de l'un
+// dans le plan de l'autre.
+let _sigPlanLegend = null;
+// 🏷️ v1.83.1 — une invalidation de légende à signaler jusqu'à la prochaine
+// édition. Un booléen plutôt qu'un texte posé dans le DOM : `_sigImpMajEtat
+// Legende` est rappelée par plusieurs chemins (changement de niveau, de
+// colonne, de routage) et écrasait le message aussitôt affiché — d'où l'ordre
+// d'attachement des listeners dont dépendait l'ancienne version.
+let _sigLegendeReset = false;
+
 // 🆕 v1.17.0 — Clé localStorage pour la persistance sticky du mode Simple/
 // Avancé du Générateur. Valeurs : "simple" (default) | "avance". Lu au boot
 // de la modale via _lirePlannerMode. Forcé à "avance" en mode Modifier
@@ -229,6 +241,19 @@ function afficherPlanner() {
               <em>${window.I18n.t("gen.mlvl.hint")}</em>
             </span>
           </label>
+
+          <!-- 📉 v1.83.0 (demande KARMA) : profondeur des niveaux, saisie a la
+               generation. Le plan-config porte alors une valeur d'ORIGINE qui
+               voyage avec le ZIP ; l'utilisateur peut la reprendre par plan
+               dans le menu M-LVL (la preference per-plan prime).
+               Visible seulement si multi-niveau est coche : sur un plan a un
+               seul etage, il n'y a rien a echelonner. -->
+          <div class="kta-planner-prof-row" id="pl_prof_row" style="display:none;">
+            <label class="kta-cfg-label">${window.I18n.t("gen.prof.niveau0")}</label>
+            <input class="kta-cfg-input" id="pl_prof0" type="number" step="0.5" value="-25">
+            <label class="kta-cfg-label">${window.I18n.t("gen.prof.pas")}</label>
+            <input class="kta-cfg-input" id="pl_profPas" type="number" step="0.5" min="0.5" value="5">
+          </div>
 
           <!-- Tiling V2 (depuis v149) : opt-in conversion en plan tuile.
                Visible UNIQUEMENT en mode "Modifier" (besoin du File source du V1)
@@ -758,6 +783,13 @@ function afficherPlanner() {
   // l'etat de la case pl_multiLevel. Cache si plan single-level (pas pertinent),
   // affiche si plan multi-niveau (l'user peut tagger chaque image layer).
   const mlCbBind = document.getElementById("pl_multiLevel");
+  // 📉 v1.83.0 — les champs de profondeur suivent la case multi-niveau.
+  const _majProfRow = function () {
+    const row = document.getElementById("pl_prof_row");
+    if (row) row.style.display = (mlCbBind && mlCbBind.checked) ? "" : "none";
+  };
+  if (mlCbBind) mlCbBind.addEventListener("change", _majProfRow);
+  _majProfRow();
   if (mlCbBind) {
     mlCbBind.addEventListener("change", function() {
       const show = mlCbBind.checked;
@@ -1305,7 +1337,16 @@ function _wizInit() {
 //   4. Au close : capture session courante → _plannerPlanLegend
 //   5. Restore la session originelle
 //   6. Refresh le status display
-function _ouvrirEditeurLegendePlan() {
+// 🏷️ v1.82.0 — `etat` optionnel : { get, set }. Sans lui, la fonction opère
+// sur `_plannerPlanLegend` comme avant (générateur de plans). Avec, elle
+// travaille sur l'état de l'appelant — c'est ce qui permet à l'écran
+// « Convertir depuis SIG » de rouvrir CE MÊME éditeur sur SES entrées.
+// KARMA : « légende custom via SIG, obligé de repasser ensuite en génération
+// normale pour renommer les entrées custom ». Écrire un second éditeur pour
+// ça aurait été la dette classique : deux UI pour le même geste.
+function _ouvrirEditeurLegendePlan(etat) {
+  const _lire  = (etat && etat.get) ? etat.get : function () { return _plannerPlanLegend; };
+  const _ecrire = (etat && etat.set) ? etat.set : function (v) { _plannerPlanLegend = v; };
   if (!window.LegendCustomization || typeof window.LegendCustomization.ouvrirEditeur !== "function") {
     alert(window.I18n.t("gen.legende.moduleIndispo"));
     return;
@@ -1323,7 +1364,7 @@ function _ouvrirEditeurLegendePlan() {
   if (typeof LC.suspendPersist === "function") LC.suspendPersist(true);
   // Étape 2 : charge le state du plan en cours d'édition dans la session
   if (typeof LC.loadSessionState === "function") {
-    try { LC.loadSessionState(_plannerPlanLegend || null); } catch(e) {
+    try { LC.loadSessionState(_lire() || null); } catch(e) {
       console.warn("[Planner] loadSessionState échec :", e);
     }
   }
@@ -1340,7 +1381,7 @@ function _ouvrirEditeurLegendePlan() {
       if (typeof LC.getSessionState === "function") {
         try { editedState = LC.getSessionState(); } catch(e) {}
       }
-      _plannerPlanLegend = _plannerLegendStateNormalize(editedState);
+      _ecrire(_plannerLegendStateNormalize(editedState));
       // Étape 5 : restore de la session originelle
       if (typeof LC.loadSessionState === "function") {
         try { LC.loadSessionState(savedSession || null); } catch(e) {
@@ -1557,6 +1598,22 @@ function _preRemplirFormulaire(config) {
   // du champ = false implicite (retro-compat plans v147 et avant).
   const mlEl = document.getElementById("pl_multiLevel");
   if (mlEl) mlEl.checked = (plan.multiLevel === true);
+  // 📉 v1.83.0 — relire les profondeurs d'un plan qu'on rouvre pour le
+  // modifier : on deduit le niveau 0 et le pas de la table enregistree,
+  // sinon le formulaire proposerait les defauts et ecraserait la saisie.
+  const _tblProf = plan.niveauxProfondeur;
+  if (_tblProf && typeof _tblProf === "object") {
+    const z0 = Number(_tblProf["0"]);
+    const zm1 = Number(_tblProf["-1"]);
+    if (Number.isFinite(z0)) {
+      const e0 = document.getElementById("pl_prof0");
+      if (e0) e0.value = z0;
+      if (Number.isFinite(zm1)) {
+        const ep = document.getElementById("pl_profPas");
+        if (ep) ep.value = Math.abs(z0 - zm1);
+      }
+    }
+  }
 
   // 🆕 v1.17.0 — Légende plan-level : pre-fill depuis plan.customLegend si
   // présent dans le ZIP source. Sinon null (= cascade défaut MKM). Refresh
@@ -2968,7 +3025,19 @@ function _detectContentBBox(img) {
 // Génère les tuiles V2 dans le ZIP fourni. Retourne { tilesCount, manifest, dims }
 // où dims = { width, height, cropOffset?: {x, y} } reflète la zone effective tuilée
 // (post-crop si auto-crop a été appliqué).
-async function _genererTuilesV2(imageFile, zip, onProgress) {
+// 🧱 `uniformSource` : l'appelant GARANTIT que l'image source est un aplat de
+// couleur unie (c'est le cas du fond vierge généré pour les imports GPX et SIG,
+// cf. GpxImport.genererCanvasVierge). Dans ce cas, toute tuile intérieure
+// PLEINE est strictement identique aux autres, à tous les niveaux de zoom, et
+// le JPEG est déterministe : on l'encode UNE fois et on réutilise les octets.
+// Mesuré sur un relevé réel : 71 % des tuiles à 4000 px de large, 88 % à 10000,
+// 90 % à 12000 — donc autant d'encodages identiques refaits pour rien.
+// ⚠️ À NE JAMAIS activer pour le générateur de plans classique : un vrai scan
+// n'a aucune tuile identique, et le cache y produirait un plan uniformément
+// gris. Le flag est explicite pour cette raison.
+async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
+  // Octets de la tuile pleine, encodés au plus une fois.
+  let _tuileUnieBuf = null;
   // Decode initial de l'image source (HTMLImageElement, pas de canvas)
   const imgUrl = URL.createObjectURL(imageFile);
   // 🆕 v1.43.26 — try/finally garantit que le blob URL est TOUJOURS revoké,
@@ -3013,7 +3082,11 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
   // marges transparentes sont invisibles au rendu et se compressent à ~0 en
   // WebP/PNG : le crop n'apporte rien ici. Inchangé pour les scans opaques
   // à marges blanches (comportement historique v149).
-  const bbox = hasAlpha ? null : _detectContentBBox(img);
+  // 🧱 v1.82.0 — sur une source UNIE, l auto-crop est du travail toujours jeté :
+  // il downscale l image entière puis parcourt 1,4 M de pixels pour conclure
+  // que « tout est du contenu » (un aplat n a pas de marge vide), et la bbox
+  // est rejetée. On saute.
+  const bbox = (hasAlpha || uniformSource) ? null : _detectContentBBox(img);
   if (hasAlpha) console.log("[Planner] Auto-crop : skip (source transparente — coords préservées)");
   const cropX = bbox ? bbox.x : 0;
   const cropY = bbox ? bbox.y : 0;
@@ -3097,6 +3170,18 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
           }));
         }
 
+        // 🧱 Tuile PLEINE d'une source unie : on réutilise les octets déjà
+        // encodés. Une tuile de bord (partielle) garde son encodage propre —
+        // elle contient de la transparence ou du fond, pas la même chose.
+        const estPleine = (sliceWidthLvl === TILING_V2_TILE_SIZE &&
+                           sliceHeightLvl === TILING_V2_TILE_SIZE && destY === 0);
+        if (uniformSource && estPleine && _tuileUnieBuf) {
+          zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, _tuileUnieBuf);
+          tilesDone++;
+          if (onProgress) onProgress(tilesDone, tilesTotal, z);
+          continue;
+        }
+
         // toBlob peut renvoyer null silencieusement si le canvas est dans un
         // état dégradé (OOM, contexte perdu). On wrap dans une Promise qui
         // throw si blob === null.
@@ -3117,6 +3202,11 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
 
         try {
           const arrBuf = await blob.arrayBuffer();
+          // Première tuile pleine d'une source unie : on garde ses octets.
+          // `slice()` pour détacher du buffer d'origine — JSZip conserve la
+          // référence, et réutiliser le même ArrayBuffer pour N entrées est
+          // sûr en lecture mais fragile si un jour il était transféré.
+          if (uniformSource && estPleine && !_tuileUnieBuf) _tuileUnieBuf = arrBuf.slice(0);
           zFolder.file("x" + col + "_y" + leafletY + "." + fmt.ext, arrBuf);
         } catch(zipErr) {
           throw new Error(window.I18n.t("gen.err.tuileZip", {
@@ -3597,6 +3687,18 @@ async function _genererZip() {
       baseImage: baseImageName, collisionImage: collisionName
     };
     if (multiLevel)     planObj.multiLevel = true;
+    // 📉 v1.83.0 — table des profondeurs, construite depuis le niveau 0 et le
+    // pas. On ne l'ecrit QUE si le multi-niveau est actif : sur un plan a un
+    // seul etage elle n'aurait aucun sens, et l'absence du champ garantit un
+    // JSON identique a celui des generateurs precedents.
+    if (multiLevel && typeof window.proposerProfondeurs === "function") {
+      const _z0 = parseFloat((document.getElementById("pl_prof0") || {}).value);
+      const _pas = parseFloat((document.getElementById("pl_profPas") || {}).value);
+      if (Number.isFinite(_z0) && Number.isFinite(_pas) && _pas > 0) {
+        // Meme range par defaut que le runtime (config.js > availableLevels).
+        planObj.niveauxProfondeur = window.proposerProfondeurs([-2, -1, 0, 1, 2], _z0, _pas);
+      }
+    }
     if (tilingManifest) planObj.tiledV2    = true;
 
     // 🧭 v1.37.0 — Calibration Nord. Embed UNIQUEMENT si ≠ 0 (rétrocompat
@@ -4804,6 +4906,30 @@ function _afficherImporterSig(prefilledFile) {
             <label class="kta-cfg-label">${T("gen.sig.colonneType")}</label>
             <select class="kta-cfg-input" id="kta-sig-imp-colonne"></select>
           </div>
+          <!-- 🏔️ v1.82.0 — COLONNE DU NIVEAU. Sans elle, un releve multi-etages
+               arrivait entierement a plat : ingest n avait qu un level unique pour
+               tout l import, et la case Plan multi-niveau ne faisait que poser un
+               drapeau dans le plan-config. -->
+          <div class="kta-planner-grille" style="margin-top:8px;">
+            <label class="kta-cfg-label">${T("gen.sig.colonneNiveau")}</label>
+            <select class="kta-cfg-input" id="kta-sig-imp-niveau"></select>
+          </div>
+          <div id="kta-sig-imp-niveau-apercu" style="margin-top:6px;"></div>
+          <!-- 🎨 v1.82.0 — une couleur par etage. Sans elle, six niveaux
+               superposes sortaient tous de la meme teinte : illisible, et le
+               multi-niveau perdait l essentiel de son interet. -->
+          <label class="kta-planner-check" style="margin-top:8px; display:flex; align-items:flex-start; gap:8px;">
+            <input type="checkbox" id="kta-sig-imp-couleurs-niveau" checked style="margin-top:3px;">
+            <span><strong>🎨 ${T("gen.sig.couleursNiveauTitre")}</strong><br>
+            <span style="color:#8892a4; font-size:11.5px;">${T("gen.sig.couleursNiveauHint")}</span></span>
+          </label>
+          <!-- 🏷️ v1.82.0 — renommer/recolorer SANS repasser par le générateur.
+               KARMA : « obligé de repasser ensuite en génération normale pour
+               renommer les entrées custom ». Le bouton ouvre LE MEME éditeur
+               que le générateur de plans, sur les entrées de cet import. -->
+          <button type="button" class="kta-planner-btn" id="kta-sig-imp-legende"
+                  style="margin-top:8px; display:none;">🏷️ ${T("gen.sig.legendeBtn")}</button>
+          <div id="kta-sig-imp-legende-etat" style="font-size:11.5px; color:#8892a4; margin-top:4px;"></div>
           <div id="kta-sig-imp-map-tables" style="margin-top:10px;"></div>
         </div>
 
@@ -4823,8 +4949,9 @@ function _afficherImporterSig(prefilledFile) {
             <label class="kta-cfg-label">${T("gen.vierge.largeur")}</label>
             <input class="kta-cfg-input" id="kta-sig-imp-w" type="number" min="500" max="12000" step="100" value="4000">
             <label class="kta-cfg-label">${T("gen.vierge.hauteur")}</label>
-            <input class="kta-cfg-input" id="kta-sig-imp-h" type="number" min="500" max="12000" step="100" value="4000">
+            <input class="kta-cfg-input" id="kta-sig-imp-h" readonly title="${T('gen.sig.hAuto')}" type="number" min="500" max="12000" step="100" value="4000">
           </div>
+          <div id="kta-sig-imp-canvas-alerte"></div>
 
           <div class="kta-cfg-label" style="margin-top:8px;">${T("gen.gpx.couleurCanvas")}</div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px;">
@@ -4843,7 +4970,14 @@ function _afficherImporterSig(prefilledFile) {
         </div>
 
       </div>
-      <div class="kta-aide-actions" style="padding:14px 18px; border-top:1px solid rgba(255,255,255,0.06); display:flex; gap:10px; justify-content:flex-end;">
+      <div class="kta-aide-actions" style="padding:14px 18px; border-top:1px solid rgba(255,255,255,0.06); display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+        <!-- 🏷️ v1.83.1 — L ETAT DE LA LEGENDE, REPETE AU RAS DU BOUTON.
+             Toucher un select de correspondance apres avoir renomme les entrees
+             efface la legende (_sigImpInvaliderLegende) ; le seul signal etait
+             une ligne grise de 11 px, a un ecran de distance du bouton. On
+             generait alors un plan aux libelles d usine en croyant garder les
+             siens (bug KARMA, 04/09). -->
+        <div id="kta-sig-imp-legende-recap" style="flex:1 1 220px; min-width:0; text-align:left; font-size:11.5px; line-height:1.35;"></div>
         <button class="kta-btn kta-btn-ghost" id="kta-sig-imp-annuler">${T("gen.btn.annuler")}</button>
         <button class="kta-btn kta-btn-primary" id="kta-sig-imp-generer" disabled>${T("gen.imp.genererBtn")}</button>
       </div>
@@ -4851,6 +4985,8 @@ function _afficherImporterSig(prefilledFile) {
   `;
   document.documentElement.appendChild(modal);
   _sigImportState = null;
+  _sigPlanLegend  = null;   // 🏷️ un nouvel import repart d'une légende vierge
+  _sigLegendeReset = false;
 
   const _close = function() { modal.remove(); _sigImportState = null; };
   document.getElementById("kta-sig-imp-close").addEventListener("click", _close);
@@ -4866,12 +5002,88 @@ function _afficherImporterSig(prefilledFile) {
     await _sigImpAnalyserFichier(file);
   });
   document.getElementById("kta-sig-imp-colonne").addEventListener("change", _sigImpRendreTables);
+  // Changer la colonne des types rebâtit tout le routage — donc les catégories
+  // des entrées. Le listener posé sur les selects ne suffit pas : ils sont
+  // recréés par `_sigImpRendreTables` sans qu'aucun n'ait « changé ».
+  document.getElementById("kta-sig-imp-colonne")
+    .addEventListener("change", function () { _sigImpInvaliderLegende(true); });
   document.getElementById("kta-sig-imp-generer").addEventListener("click", _sigImpGenerer);
 
   if (prefilledFile) {
     if (labelEl) labelEl.textContent = "📦 " + prefilledFile.name;
     setTimeout(function() { _sigImpAnalyserFichier(prefilledFile); }, 0);
   }
+}
+
+// 🩸 v1.82.0 — LES ENTRÉES DE LÉGENDE SONT LIÉES AU FICHIER *ET* AU MAPPING.
+// Leur id encode la catégorie et le niveau (`_idNiveau`), donc tout ce qui
+// change l'un ou l'autre les périme. Elles n'étaient remises à zéro qu'à
+// l'ouverture de la modale et au changement d'un select de routage — pas au
+// CHARGEMENT D'UN NOUVEAU FICHIER. Enchaîner deux carrières sans fermer la
+// modale montrait donc les niveaux de la précédente : « on dirait qu'il
+// récupère un cache de la précédente génération », signalé par KARMA.
+//
+// Une seule fonction pour les quatre points d'invalidation : le prochain
+// oubli sera une ligne à ajouter, pas un raisonnement à refaire.
+// ⚠️ Ne PAS invalider après une génération réussie : régénérer le même
+// fichier (autre largeur de canvas, autre couleur de fond) doit conserver
+// les noms saisis. C'est le changement de fichier qui périme, pas l'export.
+function _sigImpInvaliderLegende(avecMessage) {
+  if (_sigPlanLegend) {
+    _sigPlanLegend = null;
+    if (avecMessage) _sigLegendeReset = true;
+  }
+  // Nouveau fichier = ecran neuf : on efface aussi le signal precedent.
+  if (!avecMessage) _sigLegendeReset = false;
+  _sigImpMajEtatLegende();
+}
+
+// 🏷️ v1.83.1 — L ETAT DE LA LEGENDE, DIT EN COULEUR ET A DEUX ENDROITS.
+//
+// On ne DEVINE pas ce que l utilisateur voulait garder : remapper les entrees
+// sur les nouveaux ids apres un changement de routage reviendrait a leur
+// inventer un sens (un routage change la semantique d une entree, pas
+// seulement son identifiant) — le genre de code qui rend un mauvais nom sans
+// le dire. On rend l effacement impossible a rater, c est tout.
+function _sigImpMajEtatLegende() {
+  const btn   = document.getElementById("kta-sig-imp-legende");
+  const eta   = document.getElementById("kta-sig-imp-legende-etat");
+  const recap = document.getElementById("kta-sig-imp-legende-recap");
+  if (btn) {
+    const cleN  = (document.getElementById("kta-sig-imp-niveau") || {}).value || null;
+    const cases = document.getElementById("kta-sig-imp-couleurs-niveau");
+    btn.style.display = (_sigImportState && cleN && cases && cases.checked) ? "" : "none";
+  }
+  // Le MESSAGE, lui, ne depend PAS de la visibilite du bouton : les libelles et
+  // les couleurs des types built-in partent dans le plan meme si la couleur par
+  // niveau a ete decochee entre-temps. L annoncer seulement quand le bouton est
+  // la mentirait par omission.
+  let txt = "", couleur = "#8892a4";
+  if (_sigLegendeReset) {
+    txt = "⚠️ " + window.I18n.t("gen.sig.legendeReset");
+    couleur = "#ffb380";
+  } else {
+    const n = _sigImpCompterLegende(_sigPlanLegend);
+    if (n) { txt = "🏷️ " + window.I18n.t("gen.sig.legendeEdite", { n: n }); couleur = "#8cb4ff"; }
+  }
+  [eta, recap].forEach(function (el) {
+    if (!el) return;
+    el.textContent = txt;
+    el.style.color = couleur;
+  });
+}
+
+// Compte TOUT ce qui a ete personnalise, pas seulement les entrees : depuis que
+// libelles, masquages et couleurs voyagent aussi (cf. sigImport.js >
+// assemblerLegendePlan), n annoncer que les entrees sous-declarerait ce qui
+// part reellement dans le plan.
+function _sigImpCompterLegende(st) {
+  if (!st || typeof st !== "object") return 0;
+  const n = function (o) {
+    return (o && typeof o === "object" && !Array.isArray(o)) ? Object.keys(o).length : 0;
+  };
+  return (Array.isArray(st.customEntries) ? st.customEntries.length : 0)
+       + n(st.labels) + n(st.hidden) + n(st.colors) + n(st.borders);
 }
 
 async function _sigImpAnalyserFichier(file) {
@@ -4881,6 +5093,9 @@ async function _sigImpAnalyserFichier(file) {
   status.style.color = "#8cb4ff";
   status.textContent = T("gen.sig.analyse");
   btnGen.disabled = true;
+  // Nouveau fichier = nouvelle carrière : réinitialisation SILENCIEUSE. Un
+  // « légende réinitialisée » ici serait du bruit, tout l'écran est neuf.
+  _sigImpInvaliderLegende(false);
 
   if (!window.SigImport) {
     status.textContent = T("gen.sig.moduleNonCharge");
@@ -4893,6 +5108,19 @@ async function _sigImpAnalyserFichier(file) {
 
     // ── Refus CRS : message ACTIONNABLE, pas un simple « erreur ». ──
     const crs = window.SigImport.validerCrs(data);
+
+    // 📐 v1.82.0 — LAMBERT 93 : on convertit au lieu de renvoyer l'utilisateur
+    // dans QGIS. La conversion est ANNONCÉE (jamais silencieuse) et le compte
+    // de coordonnées reprojetées reste affiché dans le résumé : une
+    // reprojection déplace TOUT le fichier, ça ne se fait pas sans le dire.
+    let _sigReproj = 0;
+    if (!crs.ok && crs.code === "lambert93" && crs.convertible) {
+      _sigReproj = window.SigImport.reprojeterLambert93(data);
+      data.avertissements = data.avertissements || [];
+      // Marqueur porté par le résumé (cf. rendu plus bas) plutôt qu'une clé
+      // i18n figée : le compte doit apparaître dans le message.
+      crs.ok = true; crs.code = "lambert93-converti";
+    }
     if (!crs.ok) {
       _sigImportState = null;
       document.getElementById("kta-sig-imp-step-resume").style.display = "none";
@@ -4924,6 +5152,21 @@ async function _sigImpAnalyserFichier(file) {
              + '📍 ' + bounds.latMin.toFixed(5) + ', ' + bounds.lngMin.toFixed(5)
              + ' → ' + bounds.latMax.toFixed(5) + ', ' + bounds.lngMax.toFixed(5)
              + ' (Δ ' + dLat.toFixed(5) + '° × ' + dLng.toFixed(5) + '°)</div>';
+    // ⚠️ v1.82.0 — au-dela du seuil d alerte, on PREVIENT au lieu de refuser.
+    // Le refus sec a 20 000 bloquait un releve reel pour 3 % de depassement.
+    // Ce qui reste non mesure, c est le RENDU du plan une fois importe : on le
+    // dit franchement plutot que de decider a la place de l utilisateur.
+    const _nSig = (data.points||[]).length + (data.lignes||[]).length + (data.polygones||[]).length;
+    if (window.SigImport.WARN_FEATURES && _nSig > window.SigImport.WARN_FEATURES) {
+      html += '<div style="color:#ffb380; font-size:12px; margin-top:6px; padding:6px 8px;'
+            + ' background:rgba(255,179,128,0.08); border-left:3px solid rgba(255,179,128,0.55);'
+            + ' border-radius:3px;">⚠️ ' + T("gen.sig.beaucoupFeatures", { n: _nSig }) + '</div>';
+    }
+    if (_sigReproj > 0) {
+      html += '<div style="color:#8cb4ff; font-size:12px; margin-top:6px; padding:6px 8px;'
+            + ' background:rgba(140,180,255,0.08); border-left:3px solid rgba(140,180,255,0.5);'
+            + ' border-radius:3px;">📐 ' + T("gen.sig.l93Converti", { n: _sigReproj }) + '</div>';
+    }
     (data.avertissements || []).forEach(function(a) {
       html += '<div style="color:#ffb380; font-size:12px; margin-top:4px;">⚠️ ' + T(a) + '</div>';
     });
@@ -4938,6 +5181,98 @@ async function _sigImpAnalyserFichier(file) {
                + ' (' + c.nbDistinctes + ')' + (c.probableType ? ' ⭐' : '') + '</option>';
         }).join("");
     if (cols.length > 0 && cols[0].probableType) sel.value = cols[0].cle;
+
+    // Colonne du niveau. Pré-sélectionnée si une colonne s'appelle sans
+    // ambiguïté « niveau » / « level » / « etage » : c'est le cas des fichiers
+    // produits par `scripts/decouper-atlas.js`, et l'oubli coûte cher (tout
+    // l'import se retrouve sur un seul niveau sans que rien ne le signale).
+    const selN = document.getElementById("kta-sig-imp-niveau");
+    selN.innerHTML = '<option value="">' + T("gen.sig.niveauAucun") + '</option>'
+      + cols.map(function(c) {
+          return '<option value="' + _escAttrSig(c.cle) + '">' + _escHtmlSig(c.cle)
+               + ' (' + c.nbDistinctes + ')</option>';
+        }).join("");
+    const devine = cols.find(function(c) { return /^(niveau|level|etage|étage|lvl)$/i.test(c.cle); });
+    if (devine) selN.value = devine.cle;
+    selN.addEventListener("change", _sigImpApercuNiveaux);
+    _sigImpApercuNiveaux();
+
+    // 🏷️ Le bouton n'a de sens que si des entrées vont réellement être créées
+    // (colonne de niveau choisie ET couleurs par niveau cochées). Sinon il
+    // ouvrirait un éditeur vide.
+    // 🏷️ v1.83.1 — l'affichage de l'état vit maintenant dans
+    // `_sigImpMajEtatLegende` (module-level) : `_sigImpInvaliderLegende` doit
+    // pouvoir le rafraîchir, et le drapeau `_sigLegendeReset` a supprimé la
+    // dépendance à l'ORDRE d'attachement des listeners qu'avait l'ancienne
+    // version (le rafraîchissement effaçait le message qu'on venait de poser).
+    const majBtnLegende = _sigImpMajEtatLegende;
+    const selNiv = document.getElementById("kta-sig-imp-niveau");
+    const caseCol = document.getElementById("kta-sig-imp-couleurs-niveau");
+    if (caseCol) caseCol.addEventListener("change", majBtnLegende);
+    // Le niveau fait partie de l'id de chaque entrée : changer de colonne les
+    // périme aussi sûrement que changer le routage. (`_sigImpInvaliderLegende`
+    // rafraîchit l'affichage lui-même — un seul listener suffit désormais.)
+    if (selNiv) selNiv.addEventListener("change", function () { _sigImpInvaliderLegende(true); });
+    const btnLeg = document.getElementById("kta-sig-imp-legende");
+    if (btnLeg) btnLeg.addEventListener("click", function () {
+      const cleN = (document.getElementById("kta-sig-imp-niveau") || {}).value || null;
+      // L'utilisateur reprend la main sur la légende : le signal d'invalidation
+      // a fait son travail, il n'a plus lieu d'être affiché.
+      _sigLegendeReset = false;
+      // Pré-remplir à la PREMIÈRE ouverture avec ce qui SERA généré : sans ça,
+      // l'éditeur s'ouvrirait vide et il n'y aurait rien à renommer.
+      if (!_sigPlanLegend) {
+        // Le MÊME mapping que celui qui sera généré : sans lui, la
+        // prévisualisation retombe sur la famille naturelle des géométries.
+        const mp = _sigImpLireMapping();
+        const entrees = window.SigImport.previsualiserEntreesNiveaux(_sigImportState.data, {
+          cleNiveau: cleN, couleurParNiveau: true,
+          cleType: mp.cle, mapTraces: mp.mapTraces, mapZones: mp.mapZones
+        });
+        _sigPlanLegend = { schemaVersion: 1, labels: {}, hidden: {}, customEntries: entrees };
+      }
+      _ouvrirEditeurLegendePlan({
+        get: function () { return _sigPlanLegend; },
+        set: function (v) { _sigPlanLegend = v; majBtnLegende(); }
+      });
+    });
+    majBtnLegende();
+
+    // 📐 v1.82.0 — la hauteur du canvas n est plus saisie : elle decoule des
+    // proportions du terrain. On l affiche pour que l utilisateur sache ce
+    // qu il va obtenir, et on la recalcule des qu il change la largeur.
+    const majH = function () {
+      const eW = document.getElementById("kta-sig-imp-w");
+      const eH = document.getElementById("kta-sig-imp-h");
+      if (!eW || !eH || !_sigImportState) return;
+      const LW = parseInt(eW.value, 10) || 4000;
+      // Affiche les dimensions REELLES, plafond de surface compris : sinon on
+      // annoncerait une taille que la generation ne produira pas.
+      const d = window.SigImport.dimensionsCanvas(_sigImportState.bounds, LW);
+      eH.value = d.h;
+      // 🎚️ On PRÉVIENT, on ne bloque pas (arbitrage KARMA). La largeur n'est
+      // plus rognée : l'utilisateur obtient ce qu'il demande, en sachant ce
+      // qu'il risque.
+      const boite = document.getElementById("kta-sig-imp-canvas-alerte");
+      if (boite) {
+        if (!d.alerte) { boite.innerHTML = ""; }
+        else {
+          const grave = (d.alerte === "ram");
+          const cle = grave ? "gen.sig.canvasAlerteRam" : "gen.sig.canvasAlerteIos";
+          const col = grave ? "#ff8c8c" : "#ffb380";
+          boite.innerHTML = '<div style="color:' + col + '; font-size:12px; margin-top:6px;'
+            + ' padding:6px 8px; background:rgba(255,179,128,0.08);'
+            + ' border-left:3px solid ' + col + '; border-radius:3px;">'
+            + (grave ? "🛑 " : "⚠️ ")
+            + T(cle, { mpx: d.mpx.toFixed(1), conseil: Math.floor(Math.sqrt(
+                (window.SigImport.ALERTE_CANVAS_MPX_IOS * 1e6) * (LW / d.h))) })
+            + '</div>';
+        }
+      }
+    };
+    const eWl = document.getElementById("kta-sig-imp-w");
+    if (eWl) { eWl.addEventListener("input", majH); eWl.addEventListener("change", majH); }
+    majH();
     document.getElementById("kta-sig-imp-step-map").style.display = "";
     _sigImpRendreTables();
 
@@ -4957,12 +5292,72 @@ async function _sigImpAnalyserFichier(file) {
   }
 }
 
+// 🏛️ v1.82.0 (retour KARMA sur un vrai relevé) — un polygone SIG n'est pas
+// forcément une zone : dans une carrière, c'est très souvent un PILIER, donc
+// une STRUCTURE. Les deux familles sont proposées dans le même select, en
+// deux groupes ; le préfixe `struct:` dit à `SigImport.ingest` où ranger
+// l'objet. Idem pour les tracés : un front de taille est une structure en
+// polyligne (front-1 / front-2).
 const _SIG_TYPES = {
   points:    ["default", "pa", "pb", "pc", "pe", "ps", "salle", "chatiere", "passage", "danger", "info"],
   lignes:    ["chemin", "secondaire", "principal"],
   polygones: ["remblais", "eau", "effondrement", "inaccessible"]
 };
+// Structures proposées EN PLUS, par famille de géométrie.
+// 🔀 v1.82.0 — CHAQUE GÉOMÉTRIE PEUT VISER TOUTES LES FAMILLES. La géométrie
+// du fichier SIG ne dit pas ce que l'objet EST : un polygone peut être une
+// zone, un pilier, un mur — ou un FRONT DE TAILLE, si son auteur l'a dessiné
+// fermé (cas remonté par KARMA sur un relevé réel). Réciproquement une
+// polyligne peut porter le contour d'une zone.
+// Le préfixe (`struct:`, `zone:`, `trace:`) dit à `SigImport.ingest` dans
+// quelle famille ranger l'objet ; sans préfixe, il va dans la famille
+// naturelle de sa géométrie.
+const _SIG_TYPES_SUP = {
+  points:    [],
+  lignes:    ["struct:front-1", "struct:front-2", "struct:mur",
+              "zone:remblais", "zone:eau", "zone:effondrement", "zone:inaccessible"],
+  polygones: ["struct:pilier-1", "struct:pilier-2", "struct:mur",
+              "struct:front-1", "struct:front-2",
+              "trace:chemin", "trace:secondaire", "trace:principal"]
+};
 const _SIG_CAT_I18N = { points: "gen.sig.famPoints", lignes: "gen.sig.famLignes", polygones: "gen.sig.famZones" };
+
+// 🏔️ v1.82.0 — APERÇU DE LA RÉPARTITION PAR ÉTAGE, avant de générer.
+// Un import multi-niveaux qui retombe à plat ne se voyait qu'une fois le plan
+// ouvert, trop tard. Ici le compte par niveau s'affiche dès le choix de la
+// colonne — et la case « Plan multi-niveau » se coche toute seule, parce que
+// choisir une colonne de niveau ET oublier la case donne exactement le même
+// résultat qu'avant : un plan à plat.
+function _sigImpApercuNiveaux() {
+  const box = document.getElementById("kta-sig-imp-niveau-apercu");
+  const selN = document.getElementById("kta-sig-imp-niveau");
+  if (!box || !selN || !_sigImportState) return;
+  const cle = selN.value;
+  if (!cle) { box.innerHTML = ""; return; }
+  const T = function(k, p) { return window.I18n.t(k, p); };
+  const compte = {};
+  const scan = function(items) {
+    (items || []).forEach(function(it) {
+      const p = it.props || {};
+      let v = null;
+      for (const k in p) { if (k.toLowerCase() === cle.toLowerCase()) { v = p[k]; break; } }
+      const m = (v == null) ? null : /-?\d+/.exec(String(v));
+      const n = m ? parseInt(m[0], 10) : "?";
+      compte[n] = (compte[n] || 0) + 1;
+    });
+  };
+  const d = _sigImportState.data;
+  scan(d.points); scan(d.lignes); scan(d.polygones);
+  const cles = Object.keys(compte).sort(function(a, b) { return Number(b) - Number(a); });
+  if (!cles.length) { box.innerHTML = ""; return; }
+  box.innerHTML = '<div style="font-size:12px; color:#c8d0e0; padding:6px 8px;'
+    + ' background:rgba(140,180,255,0.08); border-left:3px solid rgba(140,180,255,0.5);'
+    + ' border-radius:3px;">🏔️ ' + T("gen.sig.niveauApercu", { n: cles.length }) + ' — '
+    + cles.map(function(k) { return k + ' : ' + compte[k]; }).join(' · ') + '</div>';
+  // Cocher le multi-niveau : sans lui le plan-config ne déclare pas les niveaux.
+  const mlvl = document.getElementById("kta-sig-imp-mlvl");
+  if (mlvl && cles.length > 1) mlvl.checked = true;
+}
 
 function _sigImpRendreTables() {
   const T   = function(k, p) { return window.I18n.t(k, p); };
@@ -4978,20 +5373,48 @@ function _sigImpRendreTables() {
     const vals = parFam[fam] || [];
     if (vals.length === 0) return;
     const propose = catPour[fam] ? window.SigImport.proposerMapping(vals, catPour[fam]) : {};
+    // Le pré-remplissage regarde AUSSI les structures : « pilier » doit tomber
+    // sur pilier-1 tout seul, sinon la nouveauté ne sert à personne.
+    if ((_SIG_TYPES_SUP[fam] || []).length) {
+      const ps = window.SigImport.proposerMapping(vals, "structures");
+      Object.keys(ps).forEach(function(v) { if (!propose[v] && ps[v]) propose[v] = ps[v]; });
+    }
     html += '<div style="margin-top:10px;"><div class="kta-cfg-label">' + T(_SIG_CAT_I18N[fam]) + '</div>';
     vals.forEach(function(v) {
       const sugg = propose[v] || "";
       html += '<div style="display:flex; align-items:center; gap:8px; margin-top:4px;">'
            +  '<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:#c0c8d8;" title="' + _escAttrSig(v) + '">' + _escHtmlSig(v) + '</span>'
            +  '<select class="kta-cfg-input" data-sig-fam="' + fam + '" data-sig-val="' + _escAttrSig(v) + '" style="flex:0 0 46%;">'
-           +  _SIG_TYPES[fam].map(function(t) {
-                return '<option value="' + t + '"' + (t === sugg ? " selected" : "") + '>' + t + '</option>';
-              }).join("")
+           +  (function() {
+                const opt = function(t) {
+                  // Le libellé montre le type, pas le préfixe technique.
+                  const lib = t.replace(/^(struct|zone|trace):/, "");
+                  return '<option value="' + t + '"' + (t === sugg ? " selected" : "") + '>' + lib + '</option>';
+                };
+                const zonesHtml = _SIG_TYPES[fam].map(opt).join("");
+                const st = _SIG_TYPES_SUP[fam] || [];
+                if (!st.length) return zonesHtml;
+                // Deux groupes nommés : sans eux, « pilier-1 » et « remblais »
+                // se retrouvent dans la même liste plate et rien ne dit qu'ils
+                // ne produisent pas le même genre d'objet.
+                return '<optgroup label="' + T("gen.sig.grpZones") + '">' + zonesHtml + '</optgroup>'
+                     + '<optgroup label="' + T("gen.sig.grpStructures") + '">' + st.map(opt).join("") + '</optgroup>';
+              })()
            +  '</select></div>';
     });
     html += '</div>';
   });
   box.innerHTML = html || '<div style="color:#8892a4; font-size:12px;">' + T("gen.sig.mapVide") + '</div>';
+
+  // 🩸 Changer le routage change les ID des entrées de légende : celles déjà
+  // éditées ne seraient plus retrouvées et l'utilisateur perdrait ses noms
+  // sans comprendre. On repart d'une légende vierge, et le bouton se
+  // réactualise pour le dire.
+  box.querySelectorAll("select[data-sig-fam]").forEach(function (s) {
+    s.addEventListener("change", function () {
+      _sigImpInvaliderLegende(true);
+    });
+  });
 }
 
 function _escHtmlSig(s) {
@@ -4999,6 +5422,24 @@ function _escHtmlSig(s) {
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 function _escAttrSig(s) { return _escHtmlSig(s).replace(/"/g, "&quot;"); }
+
+// 🏷️ v1.82.0 — LECTURE DU MAPPING, extraite pour être partagée.
+// La génération n'est plus seule à en avoir besoin : la prévisualisation des
+// entrées de légende doit rejouer EXACTEMENT le même routage, sinon elle
+// annonce des tracés et des zones là où l'utilisateur a demandé des
+// structures (bug remonté par KARMA).
+function _sigImpLireMapping() {
+  const cle = (document.getElementById("kta-sig-imp-colonne") || {}).value || null;
+  const mapTags = {}, mapTraces = {}, mapZones = {};
+  document.querySelectorAll("#kta-sig-imp-map-tables select[data-sig-fam]").forEach(function(s) {
+    const fam = s.getAttribute("data-sig-fam");
+    const val = s.getAttribute("data-sig-val");
+    if (fam === "points")         mapTags[val]   = s.value;
+    else if (fam === "lignes")    mapTraces[val] = s.value;
+    else if (fam === "polygones") mapZones[val]  = s.value;
+  });
+  return { cle: cle, mapTags: mapTags, mapTraces: mapTraces, mapZones: mapZones };
+}
 
 async function _sigImpGenerer() {
   const T      = function(k, p) { return window.I18n.t(k, p); };
@@ -5014,22 +5455,46 @@ async function _sigImpGenerer() {
   }
 
   // Relecture de l'écran de correspondance
-  const cle = document.getElementById("kta-sig-imp-colonne").value || null;
-  const mapTags = {}, mapTraces = {}, mapZones = {};
-  document.querySelectorAll("#kta-sig-imp-map-tables select[data-sig-fam]").forEach(function(s) {
-    const fam = s.getAttribute("data-sig-fam");
-    const val = s.getAttribute("data-sig-val");
-    if (fam === "points")         mapTags[val]   = s.value;
-    else if (fam === "lignes")    mapTraces[val] = s.value;
-    else if (fam === "polygones") mapZones[val]  = s.value;
-  });
+  const _m = _sigImpLireMapping();
+  const cle = _m.cle, mapTags = _m.mapTags, mapTraces = _m.mapTraces, mapZones = _m.mapZones;
 
   btnGen.disabled = true;
   btnGen.textContent = T("gen.sig.generation");
   status.style.color = "#8cb4ff";
   status.textContent = T("gen.sig.generation");
 
+  // Declare AVANT le try : le finally doit pouvoir le retirer, y compris
+  // quand la generation echoue. Declare a l interieur, il etait hors de
+  // portee et la popup restait a l ecran.
+  let v2Overlay = null;
   try {
+    // 📊 v1.82.0 — barre de progression du tuilage, calquée sur celle de
+    // l'import GPX (même overlay, mêmes clés i18n). Sans elle, la génération
+    // d'un gros plan est une attente muette de plusieurs secondes.
+    v2Overlay = document.createElement("div");
+    v2Overlay.id = "kta-sig-imp-v2-progress";
+    v2Overlay.className = "kta-modal-overlay";
+    v2Overlay.style.zIndex = "100000";
+    v2Overlay.innerHTML =
+      '<div class="kta-modal">' +
+        '<div class="kta-modal-icon">🧱</div>' +
+        '<div class="kta-modal-titre">' + T("gen.v2prog.titreImp") + '</div>' +
+        '<div class="kta-modal-texte">' +
+          '<div id="kta-sig-v2-progress-text" style="margin-bottom:10px;">' + T("gen.v2prog.init") + '</div>' +
+          '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
+            '<div id="kta-sig-v2-progress-bar" style="height:100%; width:0%; background:#8cb4ff; transition:width 0.2s;"></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(v2Overlay);
+    const onTilingProgress = function(done, total, currentZ) {
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      const txt = document.getElementById("kta-sig-v2-progress-text");
+      const bar = document.getElementById("kta-sig-v2-progress-bar");
+      if (txt) txt.textContent = T("gen.v2prog.niveau", { z: currentZ, done: done, total: total, pct: pct });
+      if (bar) bar.style.width = pct + "%";
+    };
+
     const result = await window.SigImport.genererZipMyktamap({
       normalise:    _sigImportState.data,
       bounds:       _sigImportState.bounds,
@@ -5037,11 +5502,28 @@ async function _sigImpGenerer() {
       planVersion:  (document.getElementById("kta-sig-imp-version").value || "v1").trim(),
       planAuthor:   (document.getElementById("kta-sig-imp-author").value || "").trim(),
       canvasWidth:  parseInt(document.getElementById("kta-sig-imp-w").value, 10) || 4000,
-      canvasHeight: parseInt(document.getElementById("kta-sig-imp-h").value, 10) || 4000,
+      // 🧹 v1.82.0 — `canvasHeight` RETIRÉ : `genererZipMyktamap` ne le lit plus
+      // depuis que la hauteur est déduite du terrain. Le passer entretenait
+      // l'illusion qu'il servait encore.
+      onProgress:   onTilingProgress,
       canvasColor:  (document.querySelector('input[name="sig_imp_color"]:checked') || {}).value || "sepia",
       multiLevel:   document.getElementById("kta-sig-imp-mlvl").checked,
       layerLabel:   name,
-      mapping: { cleType: cle, mapTags: mapTags, mapTraces: mapTraces, mapZones: mapZones }
+      mapping: { cleType: cle, mapTags: mapTags, mapTraces: mapTraces, mapZones: mapZones,
+                 // 🏔️ v1.82.0 — la colonne du niveau voyage avec le reste du mapping.
+                 cleNiveau: (document.getElementById("kta-sig-imp-niveau") || {}).value || null,
+                 // 🎨 v1.82.0 — types de legende par etage (case cochee par defaut).
+                 couleurParNiveau: !!(document.getElementById("kta-sig-imp-couleurs-niveau") || {}).checked,
+                 // 🏷️ Entrées renommées/recolorées par l'utilisateur, s'il
+                 // a ouvert l'éditeur. Sinon `ingest` les fabrique lui-même.
+                 customEntries: (_sigPlanLegend && _sigPlanLegend.customEntries) || null,
+                 // 🏷️ v1.83.1 — et l'état COMPLET, pour ce que `ingest` ne
+                 // regarde pas : libellés des types built-in, masquages,
+                 // couleurs, entrées ajoutées à la main. `customEntries`
+                 // ci-dessus reste : c'est par lui qu'`ingest` retrouve le
+                 // libellé édité d'une entrée par niveau, au moment où il la
+                 // fabrique. Les deux ne font pas le même travail.
+                 planLegend: _sigPlanLegend || null }
     });
 
     const url = URL.createObjectURL(result.blob);
@@ -5062,6 +5544,12 @@ async function _sigImpGenerer() {
       ? T(cleErr)
       : T("gen.sig.err.generique", { err: cleErr });
   } finally {
+    // 🩸 v1.82.0 — RETRAIT DE L OVERLAY DE PROGRESSION. Il etait cree mais
+    // jamais retire : le ZIP se telechargeait bien, et la popup "tuiles V2 en
+    // cours" restait figee a l ecran, donnant l impression que la generation
+    // n avait pas abouti. Dans le finally, donc retire aussi quand la
+    // generation echoue - sinon une erreur laissait l ecran bloque.
+    if (v2Overlay && v2Overlay.parentNode) v2Overlay.remove();
     btnGen.disabled = false;
     btnGen.textContent = T("gen.imp.genererBtn");
   }

@@ -45,6 +45,70 @@ window.KTA_POPUP_OPTS = {
 let iconeDefault, iconeTrack;
 
 // =========================
+// CATALOGUE DES TAGS BUILT-IN — SOURCE UNIQUE (v1.81.0)
+// =========================
+// 🩸 Pourquoi cette table est AU TOP-LEVEL et exposée immédiatement :
+// elle vivait à l'intérieur de `creerIcones()`, donc `window._ktaBuiltinIconUrls`
+// n'existait qu'APRÈS le chargement d'un plan. Le HOME, lui, s'affiche AVANT :
+// `js/osmHomePreview.js` ne pouvait pas la lire et en gardait une COPIE locale
+// (`TAGS_BUILTIN_HOME`) — copie qui a dérivé deux fois sans que rien ne le
+// signale : `entree_plan` (v1.41.0, pourtant conçu POUR la Vue OSM) et
+// `portail` (v1.59.0) manquaient. Résultat : en Vue OSM, un point portail
+// tombait sur le `circleMarker` de secours — un petit rond jaune à la place de
+// l'icône vortex. Le module le signalait… en `console.log`, noyé.
+// Un commentaire « sync ici » n'a rien empêché : `scripts/check-icon-catalog.js`
+// (pré-commit bloquant) confronte désormais les deux tables.
+
+
+// Tags par défaut : si le plan-config ne les déclare pas, on les ajoute quand même
+// (ils seront chargés depuis icon/<tag>.png si le PNG existe, sinon icône par défaut)
+// Permet d'utiliser ces tags sur des plans existants sans modifier leur plan-config.json
+const TAGS_BUILTIN = {
+  salle:    "icon/house.png",
+  pa:       "icon/pa.png",
+  pc:       "icon/pc.png",
+  pb:       "icon/pb.png",
+  pe:       "icon/pe.png",
+  ps:       "icon/ps.png",
+  peo:      "icon/peo.png",
+  pef:      "icon/pef.png",
+  eso:      "icon/eso.png",
+  esf:      "icon/esf.png",
+  cao:      "icon/cao.png",
+  caf:      "icon/caf.png",
+  vehicule: "icon/vehicule.png",
+  elec:     "icon/elec.png",
+  epure:    "icon/epure.png",
+  info:     "icon/info.png",
+  chatiere: "icon/chatiere.png",
+  passage:  "icon/passage.png",
+  danger:   "icon/danger.png",
+  plaque:   "icon/plaque.png",
+  // 🆕 v1.59.0 — Tag « portail » (liaisons inter-plan) : icône vortex dédiée.
+  // Choix UTILISATEUR : un point lié peut garder n'importe quel tag (aucun
+  // marquage visuel), ou prendre ce tag pour signaler visuellement le
+  // portail (l'ex-badge 🌀 overlay auto a été retiré en v1.59.0).
+  portail:  "icon/portail.png",
+  // 🆕 v1.41.0 D — Tag spécial "Point d'entrée du plan" (Vue OSM × Mode Secours).
+  //    Icône inline SVG vectorielle (porte stylisée jaune charte) → pas besoin
+  //    de fichier PNG. KARMA peut remplacer par "icon/entree.png" + ajouter au
+  //    sw.js ASSETS_TO_CACHE plus tard si besoin d'un design custom.
+  entree_plan: 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">' +
+      '<circle cx="25" cy="25" r="23" fill="#f4c542" stroke="#1a1f2e" stroke-width="2.5"/>' +
+      '<rect x="17" y="13" width="16" height="26" fill="#1a1f2e" rx="1"/>' +
+      '<rect x="19" y="15" width="12" height="22" fill="#f4c542" rx="0.5"/>' +
+      '<circle cx="28.5" cy="26" r="1.5" fill="#1a1f2e"/>' +
+    '</svg>'
+  )
+};
+
+// Exposée DÈS LE CHARGEMENT du script (et non plus depuis `creerIcones`) :
+// c'est ce qui permet au HOME — affiché avant tout plan — de résoudre les
+// icônes built-in sans en garder une copie.
+window._ktaBuiltinIconUrls = TAGS_BUILTIN;
+
+// =========================
 // ICÔNES
 // =========================
 function creerIcones(iconConfig) {
@@ -140,49 +204,6 @@ function creerIcones(iconConfig) {
     }
     window._iconMap[tag] = _mkIcon(url, 50, 50, 25, 25);
   });
-
-  // Tags par défaut : si le plan-config ne les déclare pas, on les ajoute quand même
-  // (ils seront chargés depuis icon/<tag>.png si le PNG existe, sinon icône par défaut)
-  // Permet d'utiliser ces tags sur des plans existants sans modifier leur plan-config.json
-  const TAGS_BUILTIN = {
-    salle:    "icon/house.png",
-    pa:       "icon/pa.png",
-    pc:       "icon/pc.png",
-    pb:       "icon/pb.png",
-    pe:       "icon/pe.png",
-    ps:       "icon/ps.png",
-    peo:      "icon/peo.png",
-    pef:      "icon/pef.png",
-    eso:      "icon/eso.png",
-    esf:      "icon/esf.png",
-    cao:      "icon/cao.png",
-    caf:      "icon/caf.png",
-    vehicule: "icon/vehicule.png",
-    elec:     "icon/elec.png",
-    epure:    "icon/epure.png",
-    info:     "icon/info.png",
-    chatiere: "icon/chatiere.png",
-    passage:  "icon/passage.png",
-    danger:   "icon/danger.png",
-    plaque:   "icon/plaque.png",
-    // 🆕 v1.59.0 — Tag « portail » (liaisons inter-plan) : icône vortex dédiée.
-    // Choix UTILISATEUR : un point lié peut garder n'importe quel tag (aucun
-    // marquage visuel), ou prendre ce tag pour signaler visuellement le
-    // portail (l'ex-badge 🌀 overlay auto a été retiré en v1.59.0).
-    portail:  "icon/portail.png",
-    // 🆕 v1.41.0 D — Tag spécial "Point d'entrée du plan" (Vue OSM × Mode Secours).
-    //    Icône inline SVG vectorielle (porte stylisée jaune charte) → pas besoin
-    //    de fichier PNG. KARMA peut remplacer par "icon/entree.png" + ajouter au
-    //    sw.js ASSETS_TO_CACHE plus tard si besoin d'un design custom.
-    entree_plan: 'data:image/svg+xml;utf8,' + encodeURIComponent(
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">' +
-        '<circle cx="25" cy="25" r="23" fill="#f4c542" stroke="#1a1f2e" stroke-width="2.5"/>' +
-        '<rect x="17" y="13" width="16" height="26" fill="#1a1f2e" rx="1"/>' +
-        '<rect x="19" y="15" width="12" height="22" fill="#f4c542" rx="0.5"/>' +
-        '<circle cx="28.5" cy="26" r="1.5" fill="#1a1f2e"/>' +
-      '</svg>'
-    )
-  };
   Object.keys(TAGS_BUILTIN).forEach(function(tag) {
     if (!window._iconMap[tag]) {
       window._iconMap[tag] = _mkIcon(TAGS_BUILTIN[tag], 50, 50, 25, 25);
@@ -194,7 +215,10 @@ function creerIcones(iconConfig) {
   // l'URL cassée gagnait sur l'icône intégrée (ex. la porte SVG inline
   // d'entree_plan) et la légende affichait une image morte. Les consommateurs
   // (≡ Légende) se replient sur cette table quand leur <img> échoue.
-  window._ktaBuiltinIconUrls = TAGS_BUILTIN;
+  // 🔁 v1.81.0 : l'affectation est REMONTÉE au top-level (cf. le bandeau
+  // « CATALOGUE DES TAGS BUILT-IN » en tête de fichier). Ici, elle n'aurait
+  // lieu qu'au chargement d'un plan — or le HOME s'affiche AVANT, et c'est
+  // lui qui en avait besoin.
 
   // Garantir que "default" est toujours présent dans _iconMap
   if (!window._iconMap.default) {

@@ -1302,3 +1302,330 @@ La note libre et le PDF d'un plan étaient **enfermés dans l'écran plan** : il
 - ❌ Rouvrir la base avec un numéro de version figé (`open(nom, 1)`) — c'est le bug n°1 ci-dessus, silencieux.
 - ❌ Écrire dans le store depuis un module tiers sans vérifier la présence de l'index `by_plan` (base encore en v1 → clé `planId` → écrasement).
 - ❌ Réintroduire « l'embarqué masque l'import ».
+
+---
+
+### 🔄 Reclasser un objet — changer de type, et au besoin de FAMILLE (v1.82.0)
+
+`js/convertirObjet.js` — bouton **🔄 Convertir** dans la popup d'un objet de
+session (tracé, zone, structure).
+
+**Pourquoi ce n'est pas cosmétique** : à l'import SIG, tout part en « front de
+taille » — globalement juste, la géométrie d'un fichier SIG ne disant pas ce que
+l'objet *est*. Mais le Pathfinder ne construit son graphe que sur les `roads`
+(cf. `multilevel-pathfinding.md`) : un plan dont tout le relevé est en structures
+n'a **aucun** itinéraire possible. Reclasser un vecteur est ce qui le fait
+exister.
+
+**La règle, énoncée par KARMA** : « un vecteur fermé = zone ou pilier, un vecteur
+non fermé = tracé ou front de taille ».
+
+```
+OUVERT  ⇄  tracés (galeries)  ⇄  structures polylignes (fronts)
+FERMÉ   ⇄  zones              ⇄  structures polygones (piliers, murs)
+```
+
+La traversée ouvert↔fermé est **refusée**. Ce n'est pas une convention : la
+frontière porte les **minimums de points** — un front peut n'avoir que 2 points,
+une zone en exige 3. L'autoriser obligerait à fermer ou ouvrir la géométrie,
+c'est-à-dire à **inventer de la donnée relevée sur le terrain**.
+
+L'« ouverture » se lit sur le **type**, pas sur la géométrie : les mêmes `points`
+se peignent en trait ou en surface selon lui. `isStructurePolylineType` sait déjà
+lire la géométrie déclarée dans la légende, types personnalisés compris — ce sont
+d'ailleurs les seuls d'un plan importé, sans eux la modale serait vide.
+
+**Conservés** : `points`, `level`, `description`. **Retirés** : `fromLevel` /
+`toLevel` (ils n'ont de sens que pour une jonction et feraient mentir les filtres
+de niveau). **Exclus des cibles** : `jonction` (deux niveaux qu'une conversion ne
+peut pas deviner) et `itinerary` (le trajet calculé, pas une donnée).
+
+🩸 **Le piège du lire-écrire-relire** : les trois listes sont lues d'un bloc AVANT
+toute écriture. Sinon un reclassement **dans la même famille** (front → pilier)
+retire l'objet, réécrit la liste, puis la relit — et le duplique ou le perd. On
+n'écrit ensuite que les familles réellement touchées : `setStructures` relance un
+rendu complet, ce qui coûte cher sur un relevé à 20 000 objets.
+
+Undo par `HistoryManager` (snapshot des trois familles avant l'opération).
+
+⚠️ **Session uniquement.** Un objet de calque de données n'est pas éditable en
+place. Le chemin est « Session → Conversion » pour rapatrier le calque, puis
+ici — c'est la manœuvre que KARMA avait déjà trouvée.
+
+**Prouvé** : 30 cas dans `check-api-surface.js`, module réellement chargé en VM.
+Falsifiés — retirer la règle ouvert/fermé fait tomber 2 cas, écrire avant de
+relire en fait tomber 1 (celui de la même famille).
+
+---
+
+### 🎯 Convertir EN LOT — sélection multiple (v1.85.0)
+
+KARMA, 05/09 : « sélectionner N vecteurs et les convertir d'un coup ». `js/selectionMulti.js` arme un mode de désignation
+sur la carte ; `KtaConvertir.convertirLot(items, familleCible, typeCible)` applique le lot.
+
+**🩸 La règle porte sur l'OUVERTURE, pas sur la famille.** Un tracé et un front de taille sont tous deux des **lignes** :
+les mélanger est légitime, et c'est LE cas utile — 40 fronts mal typés qui deviennent des galeries. Ce qu'on refuse, c'est
+de mêler une ligne et une surface fermée : aucune cible commune, on ne referme pas un trait. Resserrer la règle sur la
+famille tuerait la raison d'être de la feature **sans casser un seul test naïf** — d'où l'assertion dédiée.
+
+**Le refus est EXPLIQUÉ.** `_choisir()` rend `{ cible, refus }` : `refus` porte l'objet incompatible visé, pour pouvoir
+dire pourquoi. Un clic sans effet et sans mot se lit comme un bug de la carte — symptôme déjà payé sur les pickers en
+v1.28.0.
+
+**🩸 Le lot est UN geste.** Un instantané d'historique, **une** entrée, une écriture par famille *touchée*. Appeler
+`convertir()` N fois donnerait N re-rendus complets (`setRoads` reconstruit tout — coûteux à 20 000 objets) et N `Ctrl+Z`
+pour annuler. Les trois listes sont lues **avant** toute écriture, même piège que `convertir()` en v1.82.0. Zéro
+conversion ⇒ aucune écriture et aucune entrée d'historique : il n'y a rien à annuler.
+
+**Cibles du lot = UNION**, jamais intersection. Un type qui est la *source* de l'un peut être la *cible* d'un autre
+(« chemin » reste valable pour des fronts même si un chemin est dans la sélection). Les objets déjà du type choisi sont
+**sautés**, comptés à part, jamais en échec.
+
+**La surbrillance est un calque à part**, pas un `setStyle` sur les layers existants : il n'existe pas de registre
+objet → layer fiable pour les trois familles, et un re-render écraserait des styles modifiés à la main. Le calque est
+`interactive: false` — sinon il mangerait les clics qu'il aide à viser. Sa couleur est l'accent d'interaction de la charte
+(`#8cb4ff`) : ce n'est pas un style de *type*, c'est un état d'interface, et `check-style-canon.js` refuse toute table de
+couleurs locale.
+
+**➕ « Tous les \<type\> du niveau affiché »** n'est pas un confort : sans lui, désigner 200 objets un par un coûte autant
+qu'avant. On divise le nombre de *conversions*, pas celui des *clics*.
+
+**🧭 Dette adressée à moitié, sciemment.** `_pointInPolygon` vivait en **quatre** copies locales (`interface.js`,
+`pathfinder.js`, `secoursMode.js`…). Le module devient le **foyer canonique** (`window.ktaPointInPolygon`,
+`window.ktaDistPointSegment`) sans rouvrir les quatre : elles servent trois chemins de suppression qui fonctionnent, et on
+ne les touche pas dans une version non déployée. Migration au BACKLOG.
+
+**Garde-fou** : `scripts/check-selection-multi.js` — le cœur de la visée (`_choisir`) est exposé et éprouvé **sans
+Leaflet**. **8 sabotages** rougissent. Deux faiblesses du garde-fou lui-même ont été trouvées par cette falsification :
+les assertions déréférençaient `.cible.obj` sans garde (une régression rendant `null` faisait *planter* le script au lieu
+d'échouer lisiblement), et le contrôle `interactive: false` était satisfait par le **commentaire** qui explique la règle.
+
+---
+
+### 🗑️ Supprimer l'objet — même bulle, même référence (v1.85.0)
+
+KARMA, 05/09 : « rajoute, dans le truc pour convertir, un bouton supprimer ». Supprimer un tracé imposait de repasser par
+la barre latérale et son sélecteur, alors que la bulle tient déjà **la famille et l'objet lui-même** — c'est le seul
+endroit du code où les deux sont réunis. D'où `KtaConvertir.supprimer(famille, obj)`, voisine de `convertir()`.
+
+**🩸 L'identité est prise par RÉFÉRENCE, jamais par contenu.** `roads` et `zones` **n'ont pas d'`id`**
+(cf. `data-formats.md` : snapshot brut `{type, points, label?, level?}`), et deux tracés peuvent porter exactement le même
+type et la même géométrie — deux passages parallèles relevés à l'identique, ça arrive. Une recherche par égalité de contenu
+supprimerait le **sosie**, et le symptôme serait invisible : l'utilisateur verrait un objet en moins, au bon endroit.
+`indexOf(obj)` compare les références, et la bulle porte l'objet.
+
+**⚖️ Pas de confirmation.** C'est le parti-pris déjà tenu pour la suppression d'un POINT (`supprimerPointEditor`), qui
+s'appuie sur `Ctrl+Z`. Un second dialogue là où le premier n'en a pas serait incohérent. Deux conséquences assumées :
+le snapshot d'historique est **le seul filet** — sans lui l'objet serait perdu pour de bon —, et le toast **rappelle**
+l'annulation, sinon le filet existe sans que personne le sache. Le bouton vit dans sa **propre ligne rouge** :
+collé au « Sauver la note », il se cliquerait par accident.
+
+**🩸 La bulle est fermée avant tout.** Le setteur (`setRoads`…) relance un rendu complet de la famille : le layer qui
+porte la bulle est détruit. Sans fermeture explicite, la bulle reste à l'écran, accrochée à un layer mort.
+
+**🧹 Effet de bord réglé** : les accesseurs des trois familles vivaient **dans** `convertir()`. La suppression avait besoin
+des mêmes — les recopier aurait fait une 4ᵉ table. Hissés en `_lire(famille)` / `_ecrivain(famille)`, lus à chaque appel
+(`window.setRoads` peut ne pas exister au chargement du module).
+
+**Garde-fou** : `scripts/check-api-surface.js` — 14 assertions, dont le cas des **deux jumeaux** (même type, même
+géométrie : seul le visé doit partir). 4 sabotages rougissent : chercher par contenu, sauter le snapshot, accepter un
+objet absent, ne pas fermer la bulle.
+
+---
+
+## 🔄 Rapatrier un calque de données dans la session (v1.85.0)
+
+**Le besoin** (KARMA, 04/09) : corriger un front de taille en tracé sur un relevé de Bordeaux importé du SIG imposait **huit étapes** et deux allers-retours par des fichiers — Éditeur de données → export du calque → conversion en session → masquage manuel → réimport → correction → reconversion → réinjection.
+
+### 🩸 La cause est structurelle, pas ergonomique
+
+> « Un data layer est rendu **UNE seule fois** à l'import — on ne peut pas re-render comme `renderRoads`/`renderStructures` » — `utils.js`, registre des ghosts
+
+Les objets de **session** ont `renderRoads()` / `renderZones()` / `renderStructures()`, qui reconstruisent le rendu depuis l'état. Le calque, non. Tout le détour existait pour **amener la donnée là où un re-render existe** — `convertirObjet.js` l'assumait déjà : « ⚠️ SESSION UNIQUEMENT ».
+
+**Ce qui n'a pas été réécrit** : la transformation calque → session existe depuis longtemps (`sessionExporter.js > _exportConvData2Session`) et c'est un **pur remappage** (`roads` reste `roads`). Ce module la fait **en place**, et pose le verrou.
+
+### ⚖️ Pourquoi le calque ENTIER, et pas objet par objet
+
+Le rapatriement par objet serait ~5× plus léger en session. Il a été **écarté sur objection de KARMA**, et l'objection est décisive : il reporte la douleur sur la **reconstruction du ZIP**, où il faudrait retirer les originaux un par un.
+
+Or *roads* et *zones* **n'ont pas d'`id`** (`data-formats.md` : snapshot brut `{type, points, label?, level?}`). Il faudrait donc une clé dérivée de la **géométrie** — que `tabledit.dedup` **casserait en silence**, puisqu'il retire les sommets consécutifs identiques. *Une clé qu'un outil maison peut invalider sans le dire est une fausse solution.*
+
+Le calque entier donne **une seule source de vérité** : la reconstruction devient « ce fichier remplace ce calque ». Pas d'ids, pas de dédoublonnage, **pas de doublon possible par construction**.
+
+### 💰 Le coût, mesuré et annoncé AVANT
+
+| | |
+|---|---|
+| Poids en session | **225 o/objet** (mesuré sur les extraits Gironde) → ~**1,1 Mo** pour 5 000 objets |
+| Plafond `localStorage` | ~**5 Mo pour tout le domaine**, tous plans confondus |
+| Aggravant | `SessionPersist` **re-sérialise la session entière** à chaque sauvegarde |
+
+`peser(id)` lit le **vrai JSON** du calque (la moyenne de 225 o vaut pour un relevé Gironde, pas pour un calque de douze points) et `occupationLocalStorage()` somme les clés réelles. La confirmation donne les deux. **Aucune supposition sur le nombre de plans convertis en parallèle : l'app le mesure.**
+
+### 🔒 Le verrou d'affichage
+
+Règle KARMA : un calque rapatrié est **interdit d'affichage**, automatiquement, **déblocable en recochant sa case** (on affiche alors les deux volontairement, pour comparer avant/après).
+
+Il vit dans `filterPanel.js` — **seul point de contrôle** de la visibilité d'un calque. Le poser ailleurs ferait deux contrôles concurrents sur le même état.
+
+### 🩸 Les deux pièges, et pourquoi ils coûtent cher
+
+1. **« Effacer la session » RESTITUE les calques.** Le verrou vit dans la session. S'il survivait à l'effacement de la copie, le calque d'origine resterait masqué : l'utilisateur verrait **son relevé disparaître** et croirait le plan cassé. `sessionPersist.js > clear()` restitue d'abord — les deux tombent ensemble, jamais l'un sans l'autre.
+2. **Au chargement, le verrou ne s'applique QUE SI la copie est là.** Cas mortel : la sauvegarde saute sur quota (1,1 Mo, c'est *exactement* le seuil), on recharge, le verrou masque et la copie manque → **plan vide et muet**. `appliquerVerrous()` vérifie la présence avant de masquer, **libère** sinon, et le dit. Appelée en **fin** de restore (différé 250 ms), après les objets — sans eux elle ne peut pas juger.
+
+### 💾 Le retour vers le ZIP
+
+`exporterCalque(id)` produit **UN** fichier de la forme du calque d'origine. *Le convertisseur « session → data layer » ne pouvait pas servir : il éclate la sortie en `points.json` + `roads.json` + `zones.json` + `structure.json`, voire un fichier par type — **quatre fichiers ne remplacent pas une ligne**.*
+
+🎯 **Le protocole de remplacement prévu s'est révélé inutile.** Le Générateur le fait déjà : dans « Modifier un plan », chaque calque est **une ligne portant son id et son propre sélecteur de fichier**. Choisir le fichier corrigé sur cette ligne remplace son contenu — **la ligne EST le calque**.
+
+Trois règles dans l'export :
+- 🩸 **Les tableaux vides sont ÉCRITS, pas omis.** C'est un remplacement : `zones: []` est la seule façon de dire « j'ai tout supprimé ». Les omettre annulerait la suppression au rechargement.
+- 🧹 La marque interne **`_srcCalque` est retirée** — elle n'a rien à faire dans le ZIP d'un plan partagé.
+- ⚠️ Les objets **créés à la main** pendant la session ne partent pas (ils n'appartiennent pas au calque) mais sont **comptés et annoncés** : les verser d'office déciderait à la place de l'utilisateur, les taire lui ferait croire tout embarqué.
+
+Le nom du fichier vient de **l'id du calque**, pas du chemin : `dataLayers[].file` est résolu au chargement (`config.js > cloneAndResolvePlanConfig`) et vaut souvent une URL `blob:` sur un plan importé.
+
+### État persisté
+
+```json
+"calquesSession": { "rapatries": ["sig"] }
+```
+
+Rien de plus : les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque`. `null` tant que rien n'est rapatrié → **zéro octet** pour qui ne s'en sert pas.
+
+**Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — 63 assertions, le vrai module chargé dans un `vm`.
+
+---
+
+## 🔁 Reprise d'une sortie interrompue, et fusion (v1.85.2)
+
+Sortie terrain de KARMA, 06/09 : « j'ai plusieurs sorties détectées sur la même sortie car j'ai utilisé d'autres
+applis pour changer de musique ». Trois entrées au carnet pour une seule vraie sortie.
+
+**Le mécanisme** : quitter la PWA la fait décharger par iOS. La sortie, restée `encours`, est régularisée au boot
+suivant par le balayage et marquée **`closedBy: "crash"`**. Puis `onPlanLoaded` ouvrait **systématiquement** une
+sortie neuve — aucune reprise n'existait.
+
+**🩸 Le signal de reprise est `closedBy: "crash"`, pas un délai.** Ce marqueur ne se pose que lorsque l'app a été
+tuée *sous* l'utilisateur. Se fier au délai seul recollerait une sortie qu'il vient de clôturer à la main (🏁) :
+son geste serait annulé sans un mot. La fenêtre de 45 min n'est qu'une borne de bon sens par-dessus — l'écart réel
+est de quelques secondes, le dernier flush datant de moins de 30 s.
+
+**🩸 La baseline est RECONSTRUITE, jamais repartie de zéro.** Les compteurs d'une sortie sont des **différences**
+(`compte − baseline`) recalculées à chaque `_snapshot`, pas des accumulations : une baseline neuve remettrait tout
+à zéro et la reprise n'aurait que l'apparence de fonctionner. Mais la session est restaurée à l'identique au
+reboot, donc :
+
+```
+baseline = compte_actuel − déjà_en_banque
+```
+
+redonne **exactement** la baseline d'origine sans l'avoir stockée. Et si la session n'a PAS été restaurée à
+l'identique (l'utilisateur l'a effacée entre-temps), les gardes de ré-ancrage déjà présentes dans `_snapshot`
+empêchent les compteurs de partir en négatif.
+
+**🩸 La course.** La recherche d'un candidat est **asynchrone** (lecture IDB), la création de sortie est
+**synchrone**. Première rédaction : la tentative était placée avant, avec une garde « si `_cur` existe, on
+abandonne » — qui annulait la reprise **à tous les coups**, puisque la création synchrone posait `_cur` en
+premier. Mort-né, et vert au harnais si on n'avait testé que la règle de recherche. La sortie neuve est donc créée
+normalement, son id retenu, et **remplacée seulement si c'est toujours elle** : sans cette garde, une reprise
+arrivée en retard écraserait une sortie déjà repartie (changement de plan rapide). Elle n'a jamais touché IDB
+(premier flush à 30 s) : rien à nettoyer derrière elle.
+
+### 🔗 Fusion manuelle
+
+La reprise **empêche** le problème ; elle ne répare pas ce qui est déjà haché. `Journal.fusionner(ids)` recolle N
+sorties : durées, distances, pas et ajouts sommés ; notes empilées ; photos, tracés (retriés par temps) et niveaux
+réunis ; terrain domine sur bureau.
+
+**🩸 `wallMs` n'est PAS une somme** : c'est la durée du début de la première à la fin de la dernière, **trous
+compris**. La sommer donnerait une sortie plus courte que le temps qu'elle a réellement duré.
+
+**La plus ancienne sert de socle et garde son id** (une fiche ouverte, des références et l'ordre du carnet restent
+valides), et le résultat est **écrit avant** que les autres soient supprimées — l'inverse perdrait tout si
+l'écriture échouait. C'est le seul geste destructif d'une archive conçue *append-only*, donc il est confirmé.
+
+**Garde-fou** : `scripts/check-journal-reprise.js` — la règle de reprise est extraite du module et éprouvée sur
+huit cas avec un `list()` bouchonné. **7 sabotages** rougissent.
+
+---
+
+## 📌 Repositionner un POI de session (v1.85.0)
+
+KARMA, 05/09/2026 : « pour un POI modifiable de session, un bouton *repositionner* peut servir, si le POI a été mal mis ».
+
+La fiche d'un point savait déjà changer son **nom**, son **tag**, sa description et ses photos. Sa **position**, non — seul
+le Tableau permettait de retoucher X/Y, en aveugle, hors carte. `window.repositionnerPointEditor(id, x, y)`
+(`js/editor.js`) comble ce trou : la popup se ferme, un floater s'affiche, le prochain clic sur la carte déplace le point.
+
+### 🩸 Pourquoi `.kta-iti-floater` et pas un floater maison
+
+C'est le **septième** picker « clic carte » du code (Géoréf, départ tracker, itinéraire, évitement, KMZ, Mode perdu…), et
+la classe n'est **pas cosmétique** : `window._modeClicCarteActif()` (`js/utils.js`) la reconnaît, ce qui donne deux
+comportements gratuitement, tous deux issus de bugs déjà payés en v1.28.0 :
+
+1. **aucune popup d'annotation ne s'ouvre** pendant le mode (`map.on("popupopen")` la referme) — sinon viser un point
+   proche ouvrirait sa popup au lieu de consommer le clic ;
+2. **le clic est ré-émis en phase capture** sur le conteneur (`js/map.js`) — sinon un clic sur un marqueur, un tracé ou
+   une zone serait mangé par ce layer et « ne prendrait pas ».
+
+Renommer cette classe casserait le mode **en silence**. Le garde-fou l'assure.
+
+### ⚖️ Glisser-déposer écarté
+
+`draggable: true` sur le marqueur donnerait un seul geste, mais un `touchmove` démarré sur un marqueur devient un **drag
+au lieu d'un pan** : des POI déplacés par accident en manipulant la carte, symptôme silencieux sur une app terrain. Et le
+doigt cache la cible pendant le geste, alors qu'on repositionne justement pour gagner en précision. Le picker laisse
+zoomer et déplacer la carte le mode armé, puis viser.
+
+### 🩸 Les trois pièges
+
+| Piège | Ce qui casserait | La règle |
+|---|---|---|
+| **Conversion inverse** | `convertCoord(x,y) = [imageHeight - y, x]` ; inverser lat/lng ou oublier le `imageHeight -` déplace le point ailleurs que sous le doigt — et le marqueur se re-rend là, donc ça a l'air volontaire | `x = latlng.lng` · `y = imageHeight - latlng.lat` |
+| **Index périmé** | Entre l'armement et le clic, la session peut changer (suppression, effacement, rechargement) : un index figé déplacerait le **mauvais** point | le point est **re-cherché** au clic via `_indexPointSession()` |
+| **Reconstruction** | Rebâtir l'objet lui ferait perdre `_srcCalque` (→ doublon à la restauration du calque, cf. §Rapatrier) et son `level` (→ étage changé en douce sur un plan multi-niveau) | mutation **en place** de `pt.x` / `pt.y`, rien d'autre |
+
+### 🩸 Le picker COUPE les autres modes — `_modeClicCarteActif()` ne suffit pas
+
+Retour KARMA du 05/09 : en **mode ajout de point**, un clic repositionnait le point **et** ouvrait la fiche d'un point
+tout neuf. Le même clic était consommé deux fois. Deux raisons distinctes, et aucune n'est un défaut de la garde :
+
+1. `_modeClicCarteActif()` **exclut volontairement** `window.modeEdition` — son propre commentaire le dit : « y ajouter
+   un point peut ouvrir une popup de nommage légitime qu'il ne faut pas fermer » ;
+2. même quand la garde rend `true`, elle n'empêche que les **popups d'annotation**. `modeRoad` / `modeZone` /
+   `modeStructure` posent quand même leur sommet, `modeMesure` son jalon.
+
+Le picker coupe donc les modes lui-même, comme les six autres pickers (`_desactiverTousLesModes()` est appelé par la
+Géoréf, l'itinéraire, l'évitement, le KMZ…). Même remède qu'à la **v1.57.2** (« le bouton ajouter point est actif quand
+j'ouvre le plan ») : **le registre d'abord** — lui seul retire la surbrillance du bouton, sinon la sidebar mentirait —,
+**puis les six drapeaux en filet**, pour un mode jamais enregistré ou un état incohérent.
+
+### 🌀 Les liaisons inter-plan sont RECALÉES, pas purgées
+
+`InterPlanLinks` indexe un côté de liaison par `id:<id>` quand le point a un id — un point de session en a toujours un
+(`id === nom`). La liaison **survit** donc au déplacement. Mais le lien **stocke aussi** `side.x` / `side.y`, et ces
+coordonnées servent au tracé du lien à l'export KMZ (`planToGps(t, link.a.x, link.a.y)`) : sans recalage, le lien
+partirait de l'**ancienne** position dans le KMZ, sans un mot. D'où `InterPlanLinks.onPointMoved(planId, point, ancX,
+ancY)`, qui met à jour les deux champs. ⚠️ Il **recale**, il ne filtre pas : purger comme `onPointDeleted` détruirait une
+liaison à chaque déplacement.
+
+### 🧹 Effet de bord réglé au passage
+
+`modifierPointEditor`, `supprimerPointEditor` et le picker portaient chacun la même boucle « match exact `id`+coords,
+repli sur les coords seules » — trois copies. Extraite en `_indexPointSession(id, x, y)`.
+
+### Portée
+
+Le bouton vit dans `editRow` (`js/utils.js > buildPointPopupHtml`), gouverné par `showSessionActions` : il n'apparaît que
+sur les points de **session** — donc aussi sur les POI d'un calque ouvert à la modification, qui en sont devenus. Un point
+de calque non rapatrié reste en lecture seule. Le déplacement est enregistré dans l'historique (`editorPoints`), donc
+annulable par `Ctrl+Z`.
+
+**Garde-fou** : `scripts/check-repositionner.js` (pré-commit bloquant) — `js/editor.js` chargé dans un `vm`, conversion
+inverse refaite dans les deux sens, index périmé éprouvé sur **trois** index distincts, mutation en place, recalage des
+liaisons, démontage, ré-armement, annulation, et le repli sans géoréf ni dépendances. **7 sabotages de référence**
+rougissent — dont deux ont révélé que le test initial était faux : lat et lng valaient la même valeur (les inverser ne
+cassait rien) et le point visé retombait justement en index 0 (une tautologie).

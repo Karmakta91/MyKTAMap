@@ -48,6 +48,323 @@ function charger(fichier, nomGlobal, prealables) {
   return api;
 }
 
+// ───────── largeur des fronts : UNE loi, TROIS consommateurs (v1.83.0) ─────────
+// 📏 Le mode plan, l'export PNG/PDF et la Vue OSM doivent donner la MÊME
+// largeur à densité de pixels égale. Les deux premiers passent par l'échelle
+// du plan, la Vue OSM par sa résolution Web Mercator — mais la règle est la
+// même, et c'est ce qu'on vérifie ici. Trois copies dériveraient ; une seule
+// formule ne le peut pas.
+(function () {
+  const src = fs.readFileSync("js/structures.js", "utf8");
+  const a = src.indexOf("const FRONT_LARGEUR_M");
+  const b = src.indexOf("function majLargeurFronts()");
+  if (a < 0 || b < 0) { t("largeur fronts : bloc de la loi localisé", false); return; }
+  const win = { APP_CONFIG: { scale: 2.764 } };   // px/m d'un relevé réel
+  const ctx = vm.createContext({ window: win, Math: Math, Number: Number, console: { log(){} } });
+  try { vm.runInContext("var window = this.window;" + src.slice(a, b), ctx); }
+  catch (e) { t("largeur fronts : la loi s'évalue", false); return; }
+  t("largeur fronts : la loi s'évalue", true);
+  const map = function (z, lat) {
+    return { getZoom: function () { return z; }, getCenter: function () { return { lat: lat }; } };
+  };
+
+  // Résolution Web Mercator : valeur de référence connue, pas déduite du code.
+  t("px/m : équateur au zoom 0 = 1/156543 (valeur canonique)",
+    Math.abs(win.ktaPxParMetreOsm(map(0, 0)) - 1 / 156543.03392804097) < 1e-12);
+  const r45 = win.ktaPxParMetreOsm(map(10, 45)), r0 = win.ktaPxParMetreOsm(map(10, 0));
+  t("px/m : la LATITUDE compte — 45°N vaut 1/cos(45) fois l'équateur",
+    Math.abs(r45 / r0 - 1 / Math.cos(45 * Math.PI / 180)) < 1e-9);
+
+  // 🩸 LE test qui empêche les trois consommateurs de diverger — et il doit
+  // BALAYER PLUSIEURS DENSITÉS. Une première version n'en échantillonnait
+  // qu'une (2,764 px/m) : une copie qui aurait dérivé sur les BORNES, par
+  // exemple un plafond à 12 px au lieu de 14, passait au travers, puisque les
+  // deux chemins concordent partout entre les bornes. Falsifié, justement.
+  const DENSITES = [0.005, 0.5, 1, 2.764, 9, 12, 50, 500];
+  const divergentes = DENSITES.filter(function (d) {
+    // Même densité exprimée des deux façons : par le ratio du mode plan
+    // (échelle 2,764 px/m × ratio) et directement en px/m pour la Vue OSM.
+    return win.ktaLargeurFrontPourRatio(d / 2.764) !== win.ktaLargeurFrontPourPxParMetre(d);
+  });
+  t("largeur : plan et Vue OSM concordent sur " + DENSITES.length + " densités, bornes comprises",
+    divergentes.length === 0);
+  t("largeur : plus de pixels par mètre = trait plus large",
+    win.ktaLargeurFrontPourPxParMetre(10) > win.ktaLargeurFrontPourPxParMetre(1));
+  t("largeur : bornée à 14 px (au-delà c'est un pâté)",
+    win.ktaLargeurFrontPourPxParMetre(1000) === 14);
+  t("largeur : plancher à 1 px (invisible serait pire)",
+    win.ktaLargeurFrontPourPxParMetre(0.01) === 1);
+  t("largeur : densité nulle → null, aucune largeur inventée",
+    win.ktaLargeurFrontPourPxParMetre(0) === null);
+  t("px/m : sans carte → null", win.ktaPxParMetreOsm(null) === null);
+})();
+
+// ───────── osmMesure.js (v1.83.0) ─────────
+// 📏 MESURER EN VUE OSM. La math est confrontée à des VALEURS CONNUES, pas
+// à elle-même : un degré de latitude vaut ~111,2 km, un degré de longitude
+// à 45°N ~78,6 km. C'est la leçon de l'import SIG — 34 tests verts qui ne
+// prouvaient que la cohérence du code avec ses propres suppositions.
+(function () {
+  const OM = charger("js/osmMesure.js", "OsmMesure");
+  if (!OM) return;
+  const w = OM.__win;
+  // Leaflet n'est pas là : on fournit le strict nécessaire, dont un
+  // `distanceTo` géodésique INDÉPENDANT du code testé.
+  function LL(lat, lng) {
+    return { lat: lat, lng: lng, distanceTo: function (o) {
+      const R = 6371008.8, r = Math.PI / 180;
+      const dLat = (o.lat - lat) * r, dLng = (o.lng - lng) * r;
+      const a = Math.pow(Math.sin(dLat / 2), 2) +
+                Math.cos(lat * r) * Math.cos(o.lat * r) * Math.pow(Math.sin(dLng / 2), 2);
+      return 2 * R * Math.asin(Math.sqrt(a));
+    } };
+  }
+  w.L = { latLng: function (a, b) { return LL(a, b); } };
+
+  let d = OM._distance([LL(44, 0), LL(45, 0)]);
+  t("mesure OSM : 1° de latitude ≈ 111,2 km", Math.abs(d - 111195) < 200);
+  d = OM._distance([LL(45, 0), LL(45, 1)]);
+  t("mesure OSM : 1° de longitude à 45°N ≈ 78,6 km", Math.abs(d - 78626) < 400);
+  d = OM._distance([LL(44.8, -0.25), LL(44.801, -0.25), LL(44.802, -0.25)]);
+  t("mesure OSM : les segments se cumulent", Math.abs(d - 222.4) < 2);
+  t("mesure OSM : un seul point → 0", OM._distance([LL(44, 0)]) === 0);
+
+  const s = OM._surface([LL(44.80, -0.25), LL(44.80, -0.24), LL(44.81, -0.24), LL(44.81, -0.25)]);
+  const att = (0.01 * 111195) * (0.01 * 111195 * Math.cos(44.805 * Math.PI / 180));
+  t("mesure OSM : surface d'un carré de 0,01° (1 % près)", Math.abs(s - att) / att < 0.01);
+  const s2 = OM._surface([LL(44.81, -0.25), LL(44.81, -0.24), LL(44.80, -0.24), LL(44.80, -0.25)]);
+  t("mesure OSM : le sens de parcours ne change pas la surface", Math.abs(s - s2) < 1);
+  t("mesure OSM : moins de 3 points → surface nulle", OM._surface([LL(44, 0), LL(45, 0)]) === 0);
+})();
+
+// ───────── profondeurNiveaux.js (v1.83.0) ─────────
+// 📉 PROFIL EN LONG. Deux règles qui ne se devinent pas et qu'un rendu
+// « à peu près juste » masquerait :
+//   • un point de niveau INDÉTERMINÉ (milieu de jonction) s'interpole — c'est
+//     exactement ce qu'est un puits ;
+//   • un niveau SANS PROFONDEUR en bout de chemin ne s'extrapole PAS. Le cas
+//     du +1 que l'import SIG donne au topo historique : ce n'est pas un étage
+//     au-dessus, c'est une convention d'empilement. Inventer son altitude
+//     fausserait tout profil qui le traverse.
+(function () {
+  const PN = charger("js/profondeurNiveaux.js", "ProfondeurNiveaux");
+  if (!PN) return;
+  const w = PN.__win;
+  w.APP_CONFIG = { scale: 2 };            // 2 px/m
+  const TABLE = { "0": -25, "-1": -30, "-2": -35 };
+  w.getProfondeurNiveau = function (n) {
+    const v = TABLE[String(n)];
+    return (v === undefined) ? null : v;
+  };
+  const CP = PN.construireProfil;
+
+  let r = CP([{x:0,y:0,level:0},{x:20,y:0,level:0},{x:40,y:0,level:0}]);
+  t("profil : longueur convertie en mètres par l'échelle", Math.abs(r.longueur - 20) < 1e-9);
+  t("profil : à plat, aucun dénivelé", r.montee === 0 && r.descente === 0);
+
+  r = CP([{x:0,y:0,level:0},{x:10,y:0,level:null},{x:20,y:0,level:-1}]);
+  t("profil : le point de transit d'une jonction est INTERPOLÉ",
+    r.pts[1].z === -27.5 && r.pts[1].interpole === true);
+  t("profil : 5 m de descente comptés", Math.abs(r.descente - 5) < 1e-9 && r.montee === 0);
+  t("profil : zMin / zMax justes", r.zMin === -30 && r.zMax === -25);
+
+  r = CP([{x:0,y:0,level:0},{x:10,y:0,level:-1},{x:20,y:0,level:0}]);
+  t("profil : aller-retour = 5 m de descente ET 5 m de montée",
+    Math.abs(r.descente - 5) < 1e-9 && Math.abs(r.montee - 5) < 1e-9);
+
+  r = CP([{x:0,y:0,level:1},{x:10,y:0,level:0},{x:20,y:0,level:-1}]);
+  t("profil : un niveau SANS PROFONDEUR n'est pas extrapolé", r.pts[0].z === null);
+  t("profil : et le résultat se déclare incomplet", r.incomplet === true);
+
+  w.getProfondeurNiveau = function () { return null; };
+  r = CP([{x:0,y:0,level:0},{x:10,y:0,level:-1}]);
+  t("profil : aucune profondeur → incomplet, sans planter", r.incomplet === true && r.connus === 0);
+
+  w.APP_CONFIG = { scale: 0 };
+  t("profil : plan sans échelle → null, aucun mètre inventé",
+    CP([{x:0,y:0,level:0},{x:1,y:0,level:0}]) === null);
+  t("profil : chemin trop court → null", CP([{x:0,y:0,level:0}]) === null);
+})();
+
+// ───────── convertirObjet.js (v1.82.0) ─────────
+// 🔄 RECLASSER UN OBJET. L'enjeu n'est pas cosmétique : le Pathfinder ne
+// construit son graphe QUE sur les `roads`. Un relevé importé dont tout est
+// en structures n'a aucun itinéraire possible — convertir est ce qui le fait
+// exister. D'où des tests sur la RÈGLE (ouvert/fermé) autant que sur le
+// DÉPLACEMENT lui-même.
+(function () {
+  const CV = charger("js/convertirObjet.js", "KtaConvertir",
+    ["js/styleResolver.js", "js/legendCustomization.js"]);
+  if (!CV) return;
+  const w = CV.__win;
+  // `isStructurePolylineType` vit dans structures.js, qui exige un vrai
+  // Leaflet : on fournit la même règle que lui (built-in + géométrie de la
+  // légende), c'est ce que le module consomme.
+  w.isStructurePolylineType = function (t) {
+    if (t === "front-1" || t === "front-2") return true;
+    const e = w.LegendCustomization && w.LegendCustomization.findCustomEntry(t);
+    return !!(e && e.category === "structures" && e.geometry === "polyline");
+  };
+
+  t("convert : un tracé est OUVERT",    CV.estOuvert("roads", "principal") === true);
+  t("convert : une zone est FERMÉE",    CV.estOuvert("zones", "eau") === false);
+  t("convert : un front est OUVERT",    CV.estOuvert("structures", "front-1") === true);
+  t("convert : un pilier est FERMÉ",    CV.estOuvert("structures", "pilier-1") === false);
+
+  const dOuvert = CV.listerCibles("structures", "front-1");
+  const typesO = dOuvert.map(function (c) { return c.famille + ":" + c.type; });
+  t("convert : un front peut devenir un tracé (LE cas de KARMA)",
+    typesO.indexOf("roads:principal") >= 0);
+  t("convert : un front peut devenir l'autre front",  typesO.indexOf("structures:front-2") >= 0);
+  t("convert : un front ne peut PAS devenir une zone",
+    !typesO.some(function (s) { return s.indexOf("zones:") === 0; }));
+  t("convert : un front ne peut PAS devenir un pilier",
+    typesO.indexOf("structures:pilier-1") < 0);
+  t("convert : la source elle-même n'est pas proposée", typesO.indexOf("structures:front-1") < 0);
+  t("convert : `jonction` exclue (elle porte fromLevel/toLevel)",
+    typesO.indexOf("roads:jonction") < 0);
+  t("convert : `itinerary` exclu (c'est le trajet calculé)",
+    typesO.indexOf("roads:itinerary") < 0);
+
+  const dFerme = CV.listerCibles("zones", "eau");
+  const typesF = dFerme.map(function (c) { return c.famille + ":" + c.type; });
+  t("convert : une zone peut devenir un pilier",  typesF.indexOf("structures:pilier-1") >= 0);
+  t("convert : une zone ne peut PAS devenir un tracé",
+    !typesF.some(function (s) { return s.indexOf("roads:") === 0; }));
+  t("convert : une zone ne peut PAS devenir un front",
+    typesF.indexOf("structures:front-1") < 0);
+
+  // Un type CUSTOM polyligne doit être proposé : sur un plan importé, TOUS
+  // les types le sont — sans eux la modale serait quasi vide.
+  w.LegendCustomization.loadSessionState({
+    schemaVersion: 1, labels: {}, hidden: {}, customEntries: [
+      { id: "cust-sig-l", category: "structures", geometry: "polyline", label: "Galerie N+1", lineColor: "#8cb4ff" },
+      { id: "cust-sig-p", category: "structures", geometry: "polygon",  label: "Pilier N+1",  fillColor: "#8cb4ff" }
+    ]
+  });
+  const avecCustom = CV.listerCibles("structures", "front-1")
+    .map(function (c) { return c.type; });
+  t("convert : un type custom POLYLIGNE est proposé", avecCustom.indexOf("cust-sig-l") >= 0);
+  t("convert : un type custom POLYGONE ne l'est pas",  avecCustom.indexOf("cust-sig-p") < 0);
+  t("convert : le libellé de la légende est servi, pas l'id brut",
+    (CV.listerCibles("structures", "front-1").find(function (c) { return c.type === "cust-sig-l"; }) || {})
+      .label === "Galerie N+1");
+  w.LegendCustomization.loadSessionState(null);
+
+  // ── LE DÉPLACEMENT ──
+  const front = { type: "front-1", level: 2, description: "note", points: [{x:0,y:0},{x:9,y:9}] };
+  let R = [{ type: "principal", points: [] }], Z = [], S = [front];
+  w.getRoads = function () { return R; };  w.setRoads = function (v) { R = v; };
+  w.getZones = function () { return Z; };  w.setZones = function (v) { Z = v; };
+  w.getStructures = function () { return S; }; w.setStructures = function (v) { S = v; };
+
+  t("convert : l'opération réussit", CV.convertir("structures", front, "roads", "chemin") === true);
+  t("convert : l'objet a QUITTÉ les structures", S.length === 0);
+  t("convert : il est arrivé dans les tracés",   R.length === 2);
+  const arrive = R[1];
+  t("convert : le nouveau type est appliqué",    arrive.type === "chemin");
+  t("convert : le NIVEAU est conservé",          arrive.level === 2);
+  t("convert : la note est conservée",           arrive.description === "note");
+  t("convert : la géométrie est conservée",      arrive.points.length === 2 && arrive.points[1].x === 9);
+  t("convert : l'objet d'origine n'est pas muté", front.type === "front-1");
+
+  // Même famille : le piège du lire-écrire-relire. Une première rédaction
+  // écrivait la liste amputée PUIS la relisait pour ajouter — et perdait
+  // l'objet au lieu de le reclasser.
+  const pilier = { type: "pilier-1", level: 0, points: [{x:0,y:0},{x:1,y:0},{x:1,y:1}] };
+  S = [pilier];
+  t("convert : reclassement DANS la même famille", CV.convertir("structures", pilier, "structures", "mur") === true);
+  t("convert : l'objet n'a pas disparu", S.length === 1);
+  t("convert : il porte le nouveau type", S[0].type === "mur");
+
+  // Une jonction reclassée perd fromLevel/toLevel : ils n'ont de sens que
+  // pour elle, et les laisser traîner ferait mentir tout filtre de niveau.
+  const jonc = { type: "jonction", fromLevel: 0, toLevel: -1, level: 0, points: [{x:0,y:0},{x:2,y:2}] };
+  R = [jonc]; S = [];
+  CV.convertir("roads", jonc, "structures", "front-2");
+  t("convert : fromLevel/toLevel retirés au reclassement",
+    S.length === 1 && S[0].fromLevel === undefined && S[0].toLevel === undefined);
+
+  t("convert : un objet absent de sa famille est refusé",
+    CV.convertir("roads", { type: "x" }, "zones", "eau") === false);
+
+  // ── 🗑️ LA SUPPRESSION (KARMA, 05/09 : « rajoute, dans le truc pour
+  // convertir, un bouton supprimer ») ──
+  // Meme popup, meme reference directe sur l objet.
+  t("suppr : l'API est exposée", typeof CV.supprimer === "function");
+
+  const journal = { snap: 0, record: [], saves: 0 };
+  w.HistoryManager = {
+    captureState: function () { journal.snap++; return { s: journal.snap }; },
+    record: function (label, avant) { journal.record.push({ label: label, avant: avant }); }
+  };
+  w.SessionPersist = { save: function () { journal.saves++; } };
+
+  // 🩸 LE PIEGE CENTRAL : `roads` et `zones` n'ont PAS d'id (data-formats.md).
+  // Deux tracés peuvent porter EXACTEMENT le même type et la même géométrie.
+  // Une suppression qui chercherait par égalité de contenu retirerait le
+  // mauvais — et l'utilisateur ne verrait qu'un objet en moins, au bon
+  // endroit. Seule l'identité par RÉFÉRENCE tient, et la popup la porte.
+  const jumeauA = { type: "principal", points: [{ x: 1, y: 1 }, { x: 5, y: 5 }] };
+  const jumeauB = { type: "principal", points: [{ x: 1, y: 1 }, { x: 5, y: 5 }] };
+  const temoin  = { type: "chemin",    points: [{ x: 0, y: 0 }] };
+  R = [jumeauA, jumeauB, temoin];
+  Z = [{ type: "eau", points: [] }];
+  S = [{ type: "mur", points: [] }];
+
+  t("suppr : l'opération réussit", CV.supprimer("roads", jumeauB) === true);
+  t("suppr : un seul objet est parti", R.length === 2);
+  t("🩸 suppr : c'est le JUMEAU VISÉ qui part, pas son sosie (identité par référence)",
+    R[0] === jumeauA && R.indexOf(jumeauB) < 0);
+  t("suppr : le témoin de la même famille est intact", R.indexOf(temoin) >= 0);
+  t("suppr : les autres familles ne sont pas touchées", Z.length === 1 && S.length === 1);
+  t("🩸 suppr : un instantané est pris AVANT (sans lui l'objet serait perdu pour de bon)",
+    journal.snap === 1);
+  t("suppr : l'action est enregistrée dans l'historique", journal.record.length === 1);
+  t("suppr : la session est sauvegardée tout de suite", journal.saves === 1);
+
+  // Le marquage de calque ne protège pas l'objet : le retirer est légitime,
+  // c'est même le geste qu'on veut pouvoir faire sur un calque ouvert à la
+  // modification avant de l'exporter.
+  const duCalque = { type: "eau", points: [], _srcCalque: "sig" };
+  Z = [duCalque];
+  t("suppr : un objet venu d'un calque se supprime aussi",
+    CV.supprimer("zones", duCalque) === true && Z.length === 0);
+
+  // Refus propres : ni suppression fantôme, ni entrée d'historique fantôme.
+  const avantRefus = journal.record.length;
+  t("suppr : un objet absent de sa famille est refusé",
+    CV.supprimer("structures", { type: "mur" }) === false);
+  t("suppr : arguments vides refusés",
+    CV.supprimer("roads", null) === false && CV.supprimer(null, jumeauA) === false);
+  t("suppr : une famille inconnue est refusée", CV.supprimer("bidon", jumeauA) === false);
+  t("suppr : aucun refus n'a laissé d'entrée d'historique", journal.record.length === avantRefus);
+
+  // ── le câblage, que l'extraction ne voit pas ──
+  {
+    const U = fs.readFileSync("js/utils.js", "utf8");
+    t("câblage : le bouton Supprimer est dans la popup de l'objet",
+      U.indexOf("kta-note-popup-supprimer") >= 0);
+    t("câblage : il appelle bien KtaConvertir.supprimer",
+      /KtaConvertir\.supprimer\(opts\.convertir\.famille, opts\.convertir\.obj\)/.test(U));
+    // 🩸 Une action destructrice collée au « Sauver » se cliquerait par
+    // accident : elle vit dans sa propre ligne danger, comme pour un point.
+    t("🩸 câblage : le bouton est dans une ligne DANGER séparée",
+      /kta-popup-actions-danger[^']*'[\s\S]{0,220}kta-note-popup-supprimer/.test(U));
+    // 🩸 Le setteur relance un rendu complet : le layer qui porte la popup
+    // est detruit. Sans fermeture, la popup reste a l ecran, orpheline.
+    const iSup = U.indexOf("kta-note-popup-supprimer\");");
+    t("🩸 câblage : la popup est FERMÉE (sinon elle survit à son layer détruit)",
+      iSup > 0 && U.slice(iSup, iSup + 900).indexOf("closePopup") >= 0);
+    ["convert.btnSuppr", "convert.toastSuppr", "convert.histoireSuppr"].forEach(function (k) {
+      ["fr", "en", "es"].forEach(function (l) {
+        const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
+        t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);
+      });
+    });
+  }
+})();
+
 // ───────── userProfile.js ─────────
 const UP = charger("js/userProfile.js", "UserProfile");
 if (UP) {
@@ -180,6 +497,53 @@ if (LC) {
   t("l'entree plan sans collision reste listee", lst.some(function(e) { return e.id === "cust-planonly"; }));
   t("ordre historique conserve (plan d'abord)", lst[0].id === "cust-dup" && lst[1].id === "cust-planonly");
   LC.loadSessionState(null);
+  // 🖊️ v1.82.0 — RENOMMER / RECOLORER une entrée PLAN-LEVEL. Symétrique du
+  // tombstone ci-dessus, et resté en plan pendant tout ce temps :
+  // `updateCustomEntry` ne cherchait que dans la session et sortait sur
+  // `return false` sans rien dire. Les entrées d'un plan importé (un type par
+  // niveau, fabriqués par l'import SIG) étaient donc listées mais inertes.
+  // Vécu KARMA sur « +1 (historique) ».
+  (function () {
+    LC.loadSessionState(null);
+    LC.__win.PLAN_CONFIG = { plan: { customLegend: { labels: {}, hidden: {}, customEntries: [
+      { id: "cust-sig-structures-l-n1", category: "structures", geometry: "polyline",
+        label: "Structure +1", lineColor: "#8cb4ff" }
+    ] } } };
+    LC.loadPlanState();
+    const avant = LC.listCustomEntries("structures").find(function (e) { return e.id === "cust-sig-structures-l-n1"; });
+    t("plan-level : l'entrée est listée, source « plan »", !!avant && avant.source === "plan");
+    t("plan-level : renommer RETOURNE VRAI (le bug : c'était false)",
+      LC.updateCustomEntry("cust-sig-structures-l-n1", { label: "Topo historique" }) === true);
+    const apres = LC.listCustomEntries("structures").find(function (e) { return e.id === "cust-sig-structures-l-n1"; });
+    t("plan-level : le nouveau nom est servi", !!apres && apres.label === "Topo historique");
+    t("plan-level : l'entrée passe en source « session » (l'user l'a reprise)",
+      !!apres && apres.source === "session");
+    t("plan-level : une seule ligne, pas un doublon",
+      LC.listCustomEntries("structures").filter(function (e) { return e.id === "cust-sig-structures-l-n1"; }).length === 1);
+    t("plan-level : le résolveur sert le nom repris",
+      (LC.findCustomEntry("cust-sig-structures-l-n1") || {}).label === "Topo historique");
+    t("plan-level : la géométrie déclarée survit à la promotion",
+      (LC.findCustomEntry("cust-sig-structures-l-n1") || {}).geometry === "polyline");
+    t("plan-level : recolorer marche aussi (mêmes 3 couleurs, même chemin)",
+      LC.updateCustomEntry("cust-sig-structures-l-n1", { lineColor: "#ff0000" }) === true
+      && (LC.findCustomEntry("cust-sig-structures-l-n1") || {}).lineColor === "#ff0000");
+    t("plan-level : la modification voyage avec la session",
+      (LC.getSessionState().customEntries || []).some(function (e) {
+        return e.id === "cust-sig-structures-l-n1" && e.label === "Topo historique";
+      }));
+    LC.loadPlanState();   // recharger le plan ne doit pas ecraser la reprise
+    t("plan-level : survit au rechargement du plan",
+      (LC.findCustomEntry("cust-sig-structures-l-n1") || {}).label === "Topo historique");
+    LC.resetSession();
+    t("plan-level : resetSession rend le nom d'origine du plan",
+      (LC.findCustomEntry("cust-sig-structures-l-n1") || {}).label === "Structure +1");
+    t("plan-level : un id inconnu du plan ET de la session reste refusé",
+      LC.updateCustomEntry("cust-inexistant", { label: "x" }) === false);
+    LC.__win.PLAN_CONFIG = null;
+    LC.loadPlanState();
+    LC.loadSessionState(null);
+  })();
+
   LC.__win.PLAN_CONFIG = null;
   LC.loadPlanState();
 

@@ -1,8 +1,8 @@
 {
-  "version": "v1.80.0",
-  "released": "2026-09-01",
+  "version": "v1.90.2",
+  "released": "2026-09-08",
   "notes": [
-    "📚 La documentation utilisateur ET l’aide intégrée sont maintenant en espagnol : si tu utilises l’app en español, tout s’affiche dans ta langue.",
-    "❓ L’aide suit désormais la langue de l’app (son petit sélecteur de drapeaux disparaît) et deux fiches manquantes sont revenues : « Mode profil » et « Bibliothèque de plans »."
+    "🗺️ La Vue OSM (tes plans calibrés GPS au-dessus d'une carte du monde) est maintenant active par défaut. Le fond de carte vient d'OpenStreetMap, qui voit donc les zones que tu consultes — aucune donnée de tes plans ne sort. Si tu l'avais décochée, elle le reste.",
+    "🖼️ Le réglage de tuilage disparaît de l'écran de chargement : l'app décide toute seule. Il reste dans ℹ️ Infos pour les rares plans que ça concerne, et il y est enfin mémorisé."
   ]
 }

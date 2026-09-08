@@ -525,6 +525,7 @@
           </span>
         </div>
 
+
         <!-- Bouton principal Charger -->
         <div class="loaderActions">
           <button id="loadPlanBtn" type="button" data-i18n="home.add.load">▶️ Charger ce plan</button>
@@ -692,6 +693,37 @@
         <!-- ═══ GROUPE 2 : 🎨 Affichage ═══ -->
         <div class="kta-cfg-group-titre" data-i18n="config.group.affichage" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">🎨 Affichage</div>
 
+        <!-- ⚙️ v1.85.3 (audit KARMA) — QUATRE RÉGLAGES GLOBAUX RAPATRIÉS ICI
+             depuis la config du mode plan. Ils valent pour TOUS les plans :
+             les régler depuis un plan donnait l'impression du contraire. -->
+        <div class="kta-aide-section">
+          <label class="kta-perf-ultra-row">
+            <input type="checkbox" id="loaderScaledMarkers">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label" data-i18n="config.display.scaledMarkers.label"></span>
+              <span class="kta-perf-ultra-hint" data-i18n-html="config.display.scaledMarkers.hint"></span>
+            </span>
+          </label>
+          <label class="kta-perf-ultra-row" style="margin-top:10px;">
+            <input type="checkbox" id="loaderPanneauxAncres">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label" data-i18n="config.panneaux.label"></span>
+              <span class="kta-perf-ultra-hint" data-i18n-html="config.panneaux.hint"></span>
+            </span>
+          </label>
+          <label class="kta-perf-ultra-row" style="margin-top:10px;">
+            <input type="checkbox" id="loaderSnapDraw">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label" data-i18n="config.snapdraw.label"></span>
+              <span class="kta-perf-ultra-hint" data-i18n-html="config.snapdraw.hint"></span>
+            </span>
+          </label>
+          <div class="kta-cfg-row" style="margin-top:8px;">
+            <label class="kta-cfg-label" for="loaderSnapDrawPx" data-i18n="config.snapdraw.radiusLabel"></label>
+            <input class="kta-cfg-input" id="loaderSnapDrawPx" type="number" step="1" min="4" max="40">
+          </div>
+        </div>
+
         <!-- 🎨 Affichage : choix interface (depuis v1.8.1-refonte-8)
              Pareil que dans ⚙️ Réglages map mode pour cohérence — l'user
              peut basculer ici aussi sans avoir à charger un plan.
@@ -740,123 +772,48 @@
           </label>
         </div>
 
-        <!-- ═══ GROUPE 3 : 🚀 Performance ═══ -->
-        <div class="kta-cfg-group-titre" data-i18n="config.group.perf" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">🚀 Performance</div>
-
-        <!-- 🎚️ Réglages de performance (drawer ouvert par défaut dans la modale) -->
+        <!-- ═══ GROUPE 2 bis : 🛰️ Options via capteur (v1.85.2) ═══
+             Réglages d'APPAREIL, pas de plan : on les décide une fois, avant
+             de descendre. Ils existent aussi dans la modale du mode plan —
+             même état partagé (APP_CONFIG + app_user_prefs), aucune divergence
+             possible, comme pour le Wake Lock juste au-dessus.
+             ⚠️ Une option dont le capteur manque n'est PAS masquée : elle
+             s'affiche désactivée avec sa raison (cf. window.ktaCapteurRefuse). -->
+        <div class="kta-cfg-group-titre" data-i18n="config.group.capteurs" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;">🛰️ Options via capteur</div>
         <div class="kta-aide-section">
-
-          <!-- ─── Tiling : mode performance image, lié à l'import en cours ─── -->
-          <div class="kta-perf-wrap">
-            <div class="kta-perf-titre" data-i18n="home.perf.tilingTitle">🖼️ Tiling de l'image (par plan)</div>
-            <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" data-i18n-title="home.perf.tilingAria" aria-label="Mode performance">
-              <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">💤</span><span class="kta-perf-label" data-i18n="home.perf.presetOff">Désactivé</span>
-              </button>
-              <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
-                <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label" data-i18n="home.perf.presetAuto">Auto</span>
-              </button>
-              <button type="button" class="kta-perf-btn"        data-preset="quality"     role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">🌟</span><span class="kta-perf-label" data-i18n="home.perf.presetQuality">Qualité</span>
-              </button>
-              <button type="button" class="kta-perf-btn"        data-preset="balanced"    role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">🎯</span><span class="kta-perf-label" data-i18n="home.perf.presetBalanced">Équilibré</span>
-              </button>
-              <button type="button" class="kta-perf-btn"        data-preset="performance" role="radio" aria-checked="false">
-                <span class="kta-perf-emoji">⚡</span><span class="kta-perf-label" data-i18n="home.perf.presetPerformance">Performance</span>
-              </button>
-            </div>
-            <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
-            <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>
-          </div>
-
-          <hr class="kta-loader-perf-sep">
-
-          <!-- ─── Mode Performance ULTRA : toggles tracés/markers ─── -->
-          <div class="kta-perf-wrap">
-            <div class="kta-perf-titre" data-i18n="home.perf.ultraTitle">🚀 Mode Performance ULTRA (tracés / markers)</div>
-            <p class="kta-loader-perf-hint" data-i18n="home.perf.ultraIntro">
-              Pour les gros plans qui crashent. N'affecte PAS l'image (déjà gérée par le Tiling ci-dessus).
-              Préférence globale, conservée entre sessions.
-            </p>
-
-            <label class="kta-perf-ultra-row" data-i18n-title="home.perf.ultraMasterTitle" title="Active les 7 toggles ci-dessous en bloc">
-              <input type="checkbox" id="loader_perf_ultra">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.masterLabel">🚀 Mode ULTRA (active tout)</span>
-                <span class="kta-perf-ultra-hint" data-i18n="home.perf.masterHint">Préset : active les 7 optims ci-dessous en bloc.</span>
-              </span>
-            </label>
-
-            <div class="kta-loader-perf-divider"></div>
-
-            <label class="kta-perf-ultra-row">
-              <input type="checkbox" id="loader_perf_decim">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.decimLabel">🪜 Décimer les tracés au dézoom</span>
-                <span class="kta-perf-ultra-hint" data-i18n="home.perf.decimHint">Simplifie les polylines. Tracés moins lisses mais plus rapides.</span>
-              </span>
-            </label>
-
-            <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
-              <input type="checkbox" id="loader_perf_animOff">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.animOffLabel">⚡ Désactiver animations zoom/pan</span>
-                <span class="kta-perf-ultra-hint" data-i18n-html="home.perf.animOffHint">Transitions instantanées. <strong>Reload requis</strong>.</span>
-              </span>
-            </label>
-
-            <label class="kta-perf-ultra-row">
-              <input type="checkbox" id="loader_perf_noIntersect">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.noIntersectLabel">🎯 Désactiver cercles intersections (gros plans)</span>
-                <span class="kta-perf-ultra-hint" data-i18n="home.perf.noIntersectHint">Seuil 50 routes (vs 200). Pas de cercles aux carrefours au-delà.</span>
-              </span>
-            </label>
-
-            <label class="kta-perf-ultra-row">
-              <input type="checkbox" id="loader_perf_noTooltips">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.noTooltipsLabel">🚫 Désactiver popups sur calques données</span>
-                <span class="kta-perf-ultra-hint" data-i18n="home.perf.noTooltipsHint">Points session restent interactifs. Utilise 🔍 pour les data-layers.</span>
-              </span>
-            </label>
-
-            <label class="kta-perf-ultra-row">
-              <input type="checkbox" id="loader_perf_slowSave">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.slowSaveLabel">🐢 Auto-save lent (30s)</span>
-                <span class="kta-perf-ultra-hint" data-i18n="home.perf.slowSaveHint">Sauvegarde toutes les 30s au lieu de 1.5s. Risque ~30s de modifs en cas de crash.</span>
-              </span>
-            </label>
-
-            <label class="kta-perf-ultra-row">
-              <input type="checkbox" id="loader_perf_viewportCull">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.viewportCullLabel">👁️ Ne rendre que les tracés visibles</span>
-                <span class="kta-perf-ultra-hint" data-i18n="home.perf.viewportCullHint">Pop-in léger au pan, gros gain sur plans denses.</span>
-              </span>
-            </label>
-
-            <!-- 🆕 v1.9.2-hotfix-loader-zoom (KARMA "limiter le dezoom n'est
-                 present que dans la conf en mode carte, corrige pour qu'il
-                 soit aussi en mode home") : toggle mobileZoomLimit déplacé
-                 ici pour être accessible AVANT le chargement d'un plan.
-                 Utile : si l'user crash sur un gros plan au minZoom mobile,
-                 il peut désormais réactiver la limite depuis la home
-                 directement (au lieu d'avoir à charger un plan d'abord,
-                 risquer un crash, etc.). Cohérent avec le toggle map-mode
-                 dans interface.js _renderPerfUltraSection. -->
-            <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
-              <input type="checkbox" id="loader_perf_mobileZoomLimit">
-              <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label" data-i18n="home.perf.mobileZoomLabel">🛡️ Limiter le dézoom sur mobile (anti-crash mémoire)</span>
-                <span class="kta-perf-ultra-hint" data-i18n-html="home.perf.mobileZoomHint"><strong>Coché par défaut</strong>. Plafonne le dézoom max sur smartphone pour éviter le crash OOM. <strong>Décocher</strong> = autorise le même dézoom que sur PC (vue d'ensemble) mais risque de crash sur gros plans. <strong>Reload requis</strong>.</span>
-              </span>
-            </label>
-          </div>
+          <div style="font-size:11.5px; color:#8892a4; margin:2px 0 10px; line-height:1.5;" data-i18n-html="config.capteurs.intro">Ces options s'appuient sur un capteur du téléphone.</div>
+          <label class="kta-net-paranoia-toggle" id="loaderBatterieRow">
+            <input type="checkbox" id="loaderBatterieCb">
+            <span><strong data-i18n="config.batterie.label">🔋 Niveau de batterie</strong><br>
+              <span id="loaderBatterieHint" data-i18n-html="config.batterie.hint" style="font-size:11.5px;color:#8892a4;"></span></span>
+          </label>
+          <label class="kta-net-paranoia-toggle" id="loaderVibrationRow" style="margin-top:10px;">
+            <input type="checkbox" id="loaderVibrationCb">
+            <span><strong data-i18n="config.display.vibration.label">📳 Vibration haptique</strong><br>
+              <span id="loaderVibrationHint" data-i18n-html="config.display.vibration.hint" style="font-size:11.5px;color:#8892a4;"></span></span>
+          </label>
         </div>
 
+        <!-- ⚠️ v1.85.3 / v1.85.4 (audit KARMA) — LE GROUPE « 🚀 PERFORMANCE »
+             A DISPARU DE CET ÉCRAN, en deux temps et pour deux raisons
+             différentes :
+
+             • v1.85.3 — les toggles PERF ULTRA ne sauvegardaient RIEN ici :
+               `perfUltra.js > _persist()` sort sans écrire quand aucun plan
+               n'est chargé, ce qui est TOUJOURS le cas au HOME. On cochait,
+               l'interface répondait, le réglage mourait au plan suivant — qui
+               reconstruit son état depuis SA clé `myktamap_perf_toggles_v2_…`.
+               Ce sont des réglages PAR PLAN depuis la v1.59.0 : ils se règlent
+               dans ⚙️ Réglages une fois le plan ouvert. Les remettre ici avec
+               une persistance « défaut pour les prochains plans » ré-introduirait
+               le bug corrigé alors (cocher ULTRA sur un gros plan l'appliquait
+               silencieusement à TOUS).
+
+             • v1.85.4 — le sélecteur de TUILAGE est descendu dans la carte de
+               chargement, contre le bouton « Charger ce plan ». Il n'est pas
+               mémorisé et ne vaut que pour le chargement qu'on lance : le
+               ranger parmi les réglages le faisait passer pour une préférence
+               durable, ce qu'il n'a jamais été. -->
         <!-- ═══ GROUPE 4 : 🔒 Confidentialité & sécurité ═══ -->
         <div class="kta-cfg-group-titre" data-i18n="config.group.privacy" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">🔒 Confidentialité &amp; sécurité</div>
 
@@ -931,7 +888,7 @@
                georef-calibrés (cf js/osmView.js). -->
           <label class="kta-net-paranoia-toggle" style="margin-top:8px;">
             <input type="checkbox" id="loaderOsmOptInCb">
-            <span data-i18n-html="home.privacy.osmToggle"><strong>🗺️ Autoriser la Vue OSM (OpenStreetMap)</strong> — permet le mode "plan au-dessus d'OSM" pour les plans calibrés GPS. Contacte <code>tile.openstreetmap.org</code> quand la modale Vue OSM est ouverte. Préférence persistée (default OFF).</span>
+            <span data-i18n-html="home.privacy.osmToggle"><strong>🗺️ Vue OSM (OpenStreetMap)</strong> — affiche tes plans calibrés GPS au-dessus d'une carte du monde. Contacte <code>tile.openstreetmap.org</code> dès que le widget de l'accueil ou la modale Vue OSM s'affiche. <strong>Activé par défaut</strong> depuis la v1.90.2 ; décoché, il le reste (aucune mise à jour ne revient dessus).</span>
           </label>
         </div>
 
@@ -1235,6 +1192,32 @@
        de définition n'est pas strict mais reste lisible (cohérence avec
        le DOM dans la sidebar : Zones puis Structures). -->
   <script src="js/structures.js" defer></script>
+  <!-- 🔄 v1.82.0 : reclassement d'un objet de session (type et famille).
+       Chargé APRÈS road/zones/structures : il appelle leurs setteurs. Le
+       bouton vit dans la popup de note (utils.js), qui teste window.KtaConvertir
+       au clic — l'ordre exact n'est donc pas critique, mais rester derrière
+       ses trois familles évite de dépendre d'un hasard de chargement. -->
+  <script src="js/convertirObjet.js" defer></script>
+  <script src="js/selectionMulti.js" defer></script>
+  <!-- 🔄 v1.85.0 — rapatrier un calque de donnees dans la session, pour
+       pouvoir l editer (un calque est rendu UNE fois et n a pas de
+       re-render : cf. l en-tete du module). Doit charger AVANT
+       sessionPersist.js, qui appelle ses hooks getSessionState /
+       loadSessionState / appliquerVerrous, et avant filterPanel.js, qui
+       porte son interface. -->
+  <script src="js/calqueSession.js" defer></script>
+  <!-- 📉 v1.83.0 : profondeur des niveaux + profil en long. Après config.js
+       (dont il lit l'API de stockage) et pathfinder.js (dont il consomme le
+       niveau désormais rendu par computeRoute). -->
+  <script src="js/profondeurNiveaux.js" defer></script>
+  <!-- 📏 v1.83.0 : mesure dans la Vue OSM (distance géodésique + surface).
+       Indépendant de measure.js, qui travaille en pixels d'UN plan. -->
+  <script src="js/osmMesure.js" defer></script>
+  <!-- 📍 v1.85.0 — relever les coordonnees GPS DE SURFACE d un point du releve.
+       Meme famille que osmMesure : les deux n existent que dans la Vue OSM,
+       ou la carte est geographique et ou un clic donne deja du lat/lng. Les
+       deux arment le meme evenement `click` et se desarment mutuellement. -->
+  <script src="js/osmCoords.js" defer></script>
   <!-- 🆕 v1.9.3-B1 : module photos (backend IndexedDB pour les photos
        attachées aux POI). Self-contained, exposé via window.MyKTAMapPhotos.
        Init paresseuse (= IDB ouverte à la 1ère opération, pas au load). -->
@@ -1351,6 +1334,10 @@
   <script src="js/sigImport.js" defer></script>
   <script src="js/createConf.js" defer></script>
   <script src="js/planRegistry.js" defer></script>
+  <!-- 💾 v1.87.0 — Pre-cache hors-ligne dun plan serveur. Apres planRegistry
+       (il lit les entrees de plan) et apres tiling.js (il reutilise
+       ktaTuilesV2Urls pour enumerer les tuiles : un seul point de verite). -->
+  <script src="js/planOffline.js" defer></script>
   <!-- 🆕 v1.42.0 — Kill-switch anti-fuite (denylist.json côté serveur). Charge
        APRÈS planRegistry.js (dépend de window.PlanRegistry pour suppression). -->
   <script src="js/planDenylist.js" defer></script>
@@ -1516,106 +1503,37 @@
   <script>
     window.addEventListener("load", function () {
       // ════════════════════════════════════════════════════════
-      // SEGMENTED CONTROL — MODE PERFORMANCE
+      // 🖼️ TUILAGE — PLUS DE RÉGLAGE ICI (v1.90.2, décision KARMA)
       // ════════════════════════════════════════════════════════
-      const _PERF_VALID = ["off", "auto", "quality", "balanced", "performance"];
-
-      function getLoaderPerfPreset() {
-        const active = document.querySelector("#loaderPerfSegmented .kta-perf-btn.active");
-        const v = active && active.dataset ? active.dataset.preset : "auto";
-        return (_PERF_VALID.indexOf(v) >= 0) ? v : "auto";
-      }
-
-      function setLoaderPerfPreset(preset) {
-        if (_PERF_VALID.indexOf(preset) < 0) preset = "auto";
-        const btns = document.querySelectorAll("#loaderPerfSegmented .kta-perf-btn");
-        btns.forEach(function(b) {
-          const isActive = (b.dataset.preset === preset);
-          b.classList.toggle("active", isActive);
-          b.setAttribute("aria-checked", isActive ? "true" : "false");
-        });
-        // Mettre à jour la description sous le segmented
-        const descEl = document.getElementById("loaderPerfDesc");
-        if (descEl) {
-          let meta = null;
-          if (preset === "off") {
-            meta = window.PERF_OFF_META;
-          } else if (preset === "auto") {
-            meta = window.PERF_AUTO_META;
-          } else if (window.PERF_PRESETS) {
-            meta = window.PERF_PRESETS[preset];
-          }
-          // i18n : la description vient des metas FR de tiling.js (PERF_*_META).
-          // On traduit au point d'affichage via I18n, en gardant la description
-          // FR de la meta comme fallback si la clé est absente / I18n indispo.
-          // 🐛 v1.68.1 (audit clés manquantes) : l'ancien garde `_tr !== _k`
-          // était MORT depuis l'humanisation H1 (t() ne retourne plus jamais
-          // la clé brute) → « Auto » humanisé écrasait la description FR.
-          // I18n.has() teste la présence réelle SANS warn ni humanisation.
-          const _frDesc = (meta && meta.description) ? meta.description : "";
-          const _k = "home.perf.desc." + preset;
-          if (window.I18n && typeof window.I18n.has === "function" && window.I18n.has(_k)) {
-            descEl.textContent = window.I18n.t(_k);
-          } else {
-            descEl.textContent = _frDesc;
-          }
-        }
-        // Mettre à jour la ligne debug (chiffres techniques)
-        updatePerfDebugLine();
-      }
-
-      function updatePerfDebugLine() {
-        const debugEl = document.getElementById("loaderPerfDebug");
-        if (!debugEl) return;
-        const isDebug = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
-        if (!isDebug || !window.PERF_PRESETS) {
-          debugEl.style.display = "none";
-          debugEl.textContent = "";
-          return;
-        }
-        const preset = getLoaderPerfPreset();
-
-        // Mode "off" : pas de tiling — afficher l'info correspondante
-        if (preset === "off") {
-          debugEl.textContent = "Aucun tiling — L.imageOverlay direct (image brute)";
-          debugEl.style.display = "block";
-          return;
-        }
-
-        // En mode auto on affiche les params qui SERAIENT utilisés si on tilait (= Équilibré)
-        const params = (preset === "auto")
-          ? window.PERF_PRESETS.balanced
-          : window.PERF_PRESETS[preset];
-        const seuil = (preset === "auto") ? "tile si > 60 Mo" : "tile si image > 4096²";
-        if (params) {
-          debugEl.textContent =
-            "MAX:" + params.maxWorkDim + " / TILE:" + params.tileSize +
-            " / Q:" + params.jpegQuality + " / " + seuil;
-          debugEl.style.display = "block";
-        } else {
-          debugEl.style.display = "none";
-        }
-      }
-
-      // Brancher les clics du segmented
-      document.querySelectorAll("#loaderPerfSegmented .kta-perf-btn").forEach(function(b) {
-        b.addEventListener("click", function() {
-          setLoaderPerfPreset(b.dataset.preset);
-        });
-      });
-
-      // Exposer pour que onLoadPlanClick et reSelectionnerZipPourPlan puissent lire la valeur
+      // « On est en auto tout le temps. La majorité des plans sont en V2 et
+      //   c'est le process conseillé. Ne concernant que peu de cas je veux pas
+      //   ce réglage ici. »
+      //
+      // 🩸 CE QUE LE SÉLECTEUR FAISAIT VRAIMENT. Sur un plan V2 — le cas
+      // courant — la branche tuiles est prise AVANT lui : « Désactivé » n'y
+      // changeait rien, il était seulement journalisé. Il ne pesait donc que
+      // sur les plans V1 au-dessus de 4096² px, et il occupait une place de
+      // choix juste au-dessus du bouton « Charger ce plan ».
+      //
+      // Le réglage n'est pas SUPPRIMÉ, il est DÉPLACÉ là où il a un sens :
+      // dans ℹ️ Infos, et seulement pour un plan qui n'est PAS tuilé V2
+      // (cf. homeLoader.js). Il y est en plus MÉMORISÉ par plan, ce que la
+      // carte de chargement ne savait pas faire.
+      //
+      // Les deux fonctions restent exposées : `main.js` les appelle au
+      // changement de langue, et `homeLoader.js` lit la valeur à chaque
+      // chargement de plan. Rendre « auto » constant fait retomber ces
+      // lecteurs sur le preset MÉMORISÉ du plan — le comportement voulu.
+      function getLoaderPerfPreset() { return "auto"; }
+      function setLoaderPerfPreset() { /* plus de contrôle à peindre */ }
       window.getLoaderPerfPreset = getLoaderPerfPreset;
       window.setLoaderPerfPreset = setLoaderPerfPreset;
 
-      // Initialisation : "auto" + description correspondante + ligne debug si
-      // applicable. 🐛 v1.68.1 : différée derrière la barrière I18n.init()
-      // (mémoïsée) — au window load, le fetch des dicos peut ne pas être fini
-      // → la description perf se rendait « humanisée » (« Auto »). Le premier
-      // rendu de la liste des plans (plus bas) attend la même barrière.
+      // 🩸 La barrière i18n reste : le premier rendu de la liste des plans,
+      // plus bas, l'attend. La supprimer avec le bloc perf aurait rendu la
+      // liste des plans dépendante d'un dico peut-être pas encore chargé.
       const _i18nReadyHome = (window.I18n && typeof window.I18n.init === "function")
         ? window.I18n.init() : Promise.resolve();
-      _i18nReadyHome.then(function() { setLoaderPerfPreset("auto"); });
 
       // ════════════════════════════════════════════════════════
       // BOUTON 🐛 LOGS DÉTAILLÉS (toggle debug mode)
@@ -1629,8 +1547,6 @@
         debugStateEl.textContent = on ? "ON" : "OFF";
         debugBtn.classList.toggle("active", on);
         debugBtn.setAttribute("aria-pressed", on ? "true" : "false");
-        // Le segmented suit l'état (affiche/cache la ligne debug)
-        updatePerfDebugLine();
       }
 
       if (debugBtn) {

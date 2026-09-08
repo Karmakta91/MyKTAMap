@@ -1,7 +1,60 @@
 # Architecture MyKTAMap — Vue OSM (modale + widget HOME)
 
+> 🌍 **v1.90.2 — L'OPT-IN DEVIENT UN OPT-OUT.** Décision KARMA : *« active le mode OSM par défaut, dans 99 %
+> des cas ce mode est utilisé »*. `myktamap_osm_view_opt_in` est **tri-état** et c'est tout l'intérêt :
+> `"1"` accepté → ON · `"0"` **refusé explicitement → OFF, jamais réécrasé** · absent → **ON** (le changement).
+>
+> 🩸 **Ce n'est pas un réglage d'affichage.** Le widget du HOME monte une carte Leaflet dont le fond vient de
+> `tile.openstreetmap.org` : actif par défaut, **l'accueil contacte un tiers au chargement, sans clic**, pour
+> qui possède au moins un plan géoréférencé. C'est la seule requête sortante de l'app. Elle ne transporte
+> **aucune donnée de plan** — seulement les coordonnées des tuiles regardées.
+>
+> 🚨 **`isOptedIn` est DUPLIQUÉ** : `osmView.js` (modale) et `osmHomePreview.js` (widget). Les faire diverger
+> donne un widget affiché sans bouton dans la modale, ou l'inverse. `check-osm-defaut.js` **exécute les deux**
+> sur les 4 états de la clé et refuse qu'ils répondent différemment.
+>
+> 📣 **Le défaut s'annonce** : tant que la clé est absente, `_afficherBandeauDefaut` pose un bandeau dans le
+> widget ; le valider écrit `"1"` — l'implicite devient explicite. ⚠️ C'est une **notification**, pas un
+> consentement préalable : les premières tuiles sont déjà demandées quand il s'affiche. Assumé, et écrit tel
+> quel dans `NETWORK_AUDIT`.
+>
+> 🩸 **`_listGeorefPlans` NE VOIT QUE CE QUI A ÉTÉ OUVERT.** Elle lit le géoréf à deux endroits : le
+> localStorage (saisie manuelle) et `p.georef` du registre — mais ce dernier n'est écrit qu'au **chargement**
+> du plan (`main.js > _propagerGeorefVersKmzExport`). Un plan jamais ouvert peut donc être parfaitement calibré
+> dans son propre `plan-config.json` et rester invisible. Le message d'état distingue désormais **trois**
+> situations (v1.90.2, remarque KARMA) : bibliothèque vide · des plans mais aucun jamais ouvert · des plans
+> ouverts et aucun calé — ce dernier annonçant en plus le **nombre de plans jamais ouverts**, dont la
+> calibration est *inconnue*, pas absente.
+>
+> ⚠️ **On ne va pas la chercher pour le savoir** : il faudrait ouvrir chaque ZIP, ou demander au réseau le
+> `plan-config.json` de chaque plan serveur — autant de requêtes que de plans, au chargement de l'accueil, pour
+> un widget que l'utilisateur n'a peut-être pas regardé. On dit la vérité sur ce qu'on sait.
+>
+> 🚨 **Les clés de ces messages sont construites dynamiquement** (`"osm_home." + cle + ".title"`) :
+> `check-i18n` ne peut pas les voir. `check-osm-defaut.js` §7 **exécute** le rendu sur les trois scénarios et
+> confronte les clés demandées aux trois dictionnaires — sans quoi une faute de frappe sortirait un libellé
+> humanisé en production, sans un mot.
+>
+> 🔒 **Restent prioritaires sur le défaut** : hors-ligne strict, incognito, hors-ligne réel, aucun plan
+> géoréférencé — testés dans `mount()` **après** l'opt-in, et le garde-fou tient cet ordre.
+
 > Référence détaillée de la roadmap Vue OSM (v1.39.0 → v1.43.8). Lue à la demande.
 > Sections : §1 vision · §2 modale `osmView.js` · §3 widget `osmHomePreview.js` · §4 sécurité · §5 pièges connus · §6 extension · §7 synergie Mode Secours · §8 cache OSM offline (v1.43.0 → v1.43.8)
+
+---
+
+## 🌐 Le widget du HOME et les plans SERVEUR (v1.89.0)
+
+🩸 **Jusqu'ici, le widget ne rendait RIEN pour un plan servi.** `_loadPlanDataForPreview` passait **exclusivement** par le ZIP — `PlanRegistry.getHandle()` (FS Access) ou `getBlob()` (IndexedDB) — qu'un plan serveur n'a **ni l'un ni l'autre**. Symptôme en console : `[OsmHomePreview] ZIP non récupérable pour planId=server_… (FS handle absent + IDB blob purgé)`. **Ce n'était pas une régression** : ce module n'avait aucun chemin HTTP.
+
+`_loadPlanDataServeur(plan)` produit la **même** sortie `{ config, dataLayers, tilesOverview, iconUrls }`, en HTTP :
+
+- le `plan-config.json` passe par **`resolveServerPaths`**, exactement comme au chargement réel — sinon l'aperçu et le mode plan divergeraient sur les mêmes fichiers ;
+- les tuiles sont demandées à la racine **SONDÉE** (`ktaResoudreRacineTuiles`, `tiling.js`) : la deviner ici rejouerait le bug de la v1.88.3 ;
+- les icônes sont déjà des URLs utilisables après résolution — **rien à extraire** ;
+- 🛟 **aucune blob URL n'est créée** côté serveur : rien à révoquer, donc rien à fuir, contrairement à la voie ZIP qui doit gérer son cycle de vie (cf `_iconBlobUrls`).
+
+🛡️ Vérifié par `scripts/check-tiling.js` §18, qui **exécute** le chargeur dans un `vm` avec `fetch` stubé et contrôle que la branche serveur est prise **avant** la voie ZIP.
 
 ---
 
@@ -634,4 +687,325 @@ Clé IDB = "z/x/y" (slippy tilenames OSM, EPSG:3857)
 
 **👁️ Datalayers `visible: false` (fix v1.73.1)** : `_renderDataLayersOnMiniMap` **ne skippe plus** les calques marqués non visibles (`if (!layer.visible) continue` supprimé — il sautait le calque ENTIER, tracés et zones compris). Raison : `layer.visible` est un défaut d'affichage du **MODE PLAN**, retoggable là-bas via ⊞ Calques ; la Vue OSM n'ayant aucun toggle par calque, le skip = **zéro voie d'affichage**. L'affichage est désormais gouverné par les filtres existants (chips catégories globales + par plan, tags). Effet assumé : un calque volontairement masqué par défaut apparaît en Vue OSM. `layer.visible` reste **parsé** (si des toggles par calque arrivent un jour dans la modale ≡). ⚠️ La modale OSM du **mode plan** n'est pas concernée : elle lit les calques vivants de la carte, pas le plan-config.
 
+### 🏷️ Ajout de la pile PAR ÉTIQUETTE DE PLAN (v1.84.0)
+
+**Le trou comblé** : `plan.tags` existait depuis la v1.78.0 (registre, saisi depuis la bibliothèque, normalisé par `PlanRegistry.setTags` — 12 × 24 car.), la pile multi-plans depuis la v1.71.0. **Aucun lien** : `_listGeorefPlans` ne rapatriait même pas `tags`, et le seul chemin d'ajout était le `<select>` unitaire. Un atlas départemental découpé en vingt plans se montait donc en vingt gestes.
+
+**UI** — modale 🎚️ Plans & filtres, section `#ktaOsmMultiTagsSect` / `#ktaOsmMultiTags`, **au-dessus** du `<select>` (qui reste). Un chip par étiquette portée par **≥ 2** plans géoréférencés, libellé + compteur `dans/total`. Rendu par `_renderMultiTags()`, appelée depuis `_renderMultiPanel()` — **point de rendu unique** : tout ce qui modifie la pile passe déjà par là.
+
+⚠️ **Homonymie dans la même modale** : la section « 🏷️ Filtrer par tag » (`#ktaOsmFiltersTags`, `_renderModalTags`) filtre les **POI à l'intérieur** des plans affichés ; celle-ci choisit **quels plans** sont affichés. Deux notions, deux mots identiques — d'où l'intitulé explicite « étiquette de plan » (`osm_mode.multi.tagsTitre`).
+
+**Les trois règles non évidentes**
+
+| Règle | Pourquoi |
+|---|---|
+| Regroupement **insensible à la casse** (`_etiquettesDesPlans`, clé minuscule → `{libelle, ids}`) | `setTags` dédoublonne les étiquettes **d'un** plan, jamais **entre** plans. « Gironde » + « GIRONDE » = deux chips montrant chacun la moitié de leurs plans. Ne se voit que si on a tapé les deux orthographes |
+| Chip masqué à **1 seul plan** | Le `<select>` juste en dessous fait déjà ce travail ; vingt chips à un plan noieraient les deux qui servent |
+| Clic **asymétrique** (`_basculerEtiquettePlans`) : ajoute les **manquants**, ne retire que si **tous** présents | Ré-ajouter un plan déjà monté le dupliquerait dans `_stackOrder`. Et sans le retrait groupé, vingt plans se défont en vingt clics sur des ✕ |
+
+**Charge — deux garde-fous, PAS une mesure.** ⚠️ La pile n'a **jamais** été éprouvée à 5/10/20 plans réels : c'est une dette ouverte de la v1.84.0, à lever sur le terrain (un plan issu d'un atlas porte couramment 5 000 objets).
+
+1. `_ajouterPlansOsm` **confirme avant** si le lot fait ≥ 2 plans **et** ferait dépasser 3 dans la pile — le seuil est **celui de `_avertirMultiSiBesoin`** (arbitrage KARMA 2:b), pas un nombre inventé. Cet avertissement-là prévient *après* coup : sur un lot, ça veut dire une fois les vingt plans montés, donc trop tard pour renoncer.
+2. `_ajouterPlanOsm` est **coupé en deux** : `_monterPlanOsm` (synchrone — pousse dans `_stackOrder`, crée les `layerGroup`) et `_chargerDataPlanOsm` (asynchrone — `_loadPlanDataForPreview`, donc **extraction ZIP**). Un lot monte tout, rend **une** fois, puis enchaîne les chargements **en série** (`montes.reduce(...)`). Vingt extractions lancées ensemble figeraient l'onglet. Symétrique au retrait : `_demonterPlanOsm` (sans rendu) + `_retirerPlansOsm` (rendu unique).
+
+**Protection du principal** : `_retirerPlansOsm` saute `_selectedPlanId`. Sans ça, la ceinture v1.72.2 de `_renderMultiPanel` le remettrait dans la pile au rendu suivant — état incohérent entre le chip (« 0/12 ») et la carte. Le chip retombe donc à `1/12` après un retrait groupé, ce qui est la vérité.
+
+**Garde-fou** : `scripts/check-osm-etiquettes.js` (pré-commit **bloquant**), code **extrait** de `osmHomePreview.js` — 12 assertions de logique + 6 de câblage (le `tags` transporté, le conteneur, l'appel de rendu, la confirmation, la protection du principal, le `reduce` en série).
+
 **Reste au lot 3 (v1.72)** : croisement fin (filtres par plan ?, popups enrichis cross-plan), liaisons portails dessinées entre plans sur OSM.
+
+---
+
+## 🏷️ Icônes POI en Vue OSM : une seule source (v1.81.0)
+
+**Le bug.** En Vue OSM plein écran, un point portant le tag **`portail`** (l'icône
+vortex des liaisons inter-plans) s'affichait comme un **petit rond jaune de rayon 4**
+au lieu de son icône. Idem pour **`entree_plan`** — dont le commentaire d'origine dit
+pourtant « Vue OSM × Mode Secours ». Découvert par KARMA le 02/09/2026 en testant
+D5 : les icônes manquantes l'empêchaient de repérer ses portails sur la carte.
+
+**Pourquoi.** `js/osmHomePreview.js` dessine des plans qui **ne sont pas chargés** —
+il lit leur ZIP — sur un HOME affiché **avant** tout plan. Il ne peut donc pas passer
+par `window._iconMap`, qui est le résolveur du plan **courant**. Il en gardait donc une
+copie locale, `TAGS_BUILTIN_HOME`, avec ce commentaire :
+
+> « Cohérence stricte avec map.js — si `TAGS_BUILTIN` change là-bas, sync ici. »
+
+La sync a été oubliée **deux fois** : `entree_plan` (v1.41.0) et `portail` (v1.59.0).
+Quand un tag est inconnu, `_extractIcons` ne résout rien et le rendu tombe sur le
+`circleMarker` de secours. Le module le **savait** et l'écrivait —
+`⚠️ Tags POI sans icône : portail(N)` — mais en `console.log`, dégradé depuis
+`console.warn` en v1.40.15 : noyé dans le bruit, et invisible du smoke qui ne
+surveille que les erreurs.
+
+**Le piège qui a fait durer le bug.** `window._ktaBuiltinIconUrls` existait déjà
+(v1.76.0), mais l'affectation vivait **à l'intérieur de `creerIcones()`** : la globale
+n'apparaissait donc qu'**après le chargement d'un plan**. Sur le HOME, elle était
+`undefined`. La consommer telle quelle aurait donné un bug **intermittent** — icônes
+correctes si l'utilisateur avait déjà ouvert un plan dans la session, absentes sinon.
+C'est pire qu'une copie franche.
+
+**Le fix.** `TAGS_BUILTIN` est remontée au **top-level** de `js/map.js` et exposée
+immédiatement ; `osmHomePreview` lit `window._ktaBuiltinIconUrls || TAGS_BUILTIN_HOME`.
+La copie locale subsiste en **filet de secours** (si `map.js` n'était pas chargé) et
+n'est plus la source.
+
+**Verrou.** `scripts/check-icon-catalog.js` (pré-commit **bloquant**, falsifié 4×)
+confronte les deux tables **dans les deux sens**, vérifie que le HOME lit bien la
+globale, et que celle-ci est exposée **au top-level** (une ligne à la colonne 0 =
+hors de toute fonction — c'est tout l'enjeu). *Un commentaire « sync ici » n'a rien
+empêché pendant deux versions ; un test, si.*
+
+⚠️ **Ce qui est prouvé** : la globale est disponible sur le HOME avec ses 22 tags
+alors que `_iconMap` est encore vide (donc `creerIcones` n'a pas tourné), le fichier
+`icon/portail.png` existe et est précaché, et le smoke reste vert. **Ce qui ne l'est
+pas** : le rendu de l'icône sur un vrai point portail d'un plan géoréférencé — à
+valider par KARMA, c'est ce qui débloque le test de D5.
+
+---
+
+## 📐 Écart de calage des liaisons (D5, v1.81.0)
+
+**L'objection qui a façonné la feature.** Le premier jet dessinait une polyligne
+entre les deux bouts de chaque portail. KARMA a relevé le défaut le 02/09 : *deux
+portails correctement calés se superposent déjà*. La ligne est alors de longueur
+nulle et le calque **ne montre rien** dans le cas nominal — l'utilisateur ne sait
+même pas s'il fonctionne. Ce n'est donc pas un calque de contenu, c'est un
+**détecteur d'erreur de calage** : sa seule valeur est le cas raté.
+
+**Ce qui est livré** (arbitrage du 03/09 — contrôle qualité *et* affichage dans
+🌀 Mes liaisons) :
+
+| Où | Quoi |
+|---|---|
+| `InterPlanLinks.ecartCalage(link)` | le calcul, **fonction unique** |
+| 🌀 **Mes liaisons** (HOME) | un badge `📐 Écart de calage : N m` par ligne |
+| **Vue OSM** → 🎚️ Filtres → chip 🌀 | liste classée **du pire au meilleur**, clic = `fitBounds` sur les deux bouts |
+| **Vue OSM** (calque) | la polyligne dorée + les deux bouts, en complément |
+
+**Le calcul.** Les deux bouts d'un portail désignent le même endroit physique vu
+depuis deux plans. Projetés en GPS via le géoréf de **leur** plan respectif, ils
+devraient tomber au même point ; la distance qui les sépare mesure la qualité du
+calage. C'est la seule mesure de ce genre que l'app puisse produire — il faut
+**deux** géoréfs pour la révéler.
+
+`ecartCalage` retourne **`null`, jamais `0`**, quand la mesure est impossible
+(plan absent, pas de géoréf) : `0` voudrait dire « calage parfait », le contraire
+de « je ne sais pas ». Dans 🌀 Mes liaisons, une liaison non mesurable n'affiche
+**rien** — ni tiret ni « n/a » : la grande majorité des plans n'étant pas
+géoréférencée, une colonne vide partout ferait croire à un défaut.
+
+**Aucun seuil de couleur, volontairement.** 20 m d'écart, c'est énorme sur une
+petite carrière et négligeable sur un réseau de 5 km. Colorer reviendrait à juger
+à la place de l'utilisateur avec un seuil qui ignore son échelle. On donne le
+chiffre, il tranche.
+
+**Contrainte.** La liste OSM ne compte que les liaisons dont les **deux** plans
+sont affichés dans la pile *et* géoréférencés — un écart qu'on ne peut pas montrer
+sur la carte devant soi n'aide personne ; celui-là se lit dans 🌀 Mes liaisons.
+
+⚠️ **État de validation au 03/09.** `ecartCalage` et le badge de 🌀 Mes liaisons
+sont **prouvés au harnais** : sur deux plans calés à 33 m l'un de l'autre, l'API
+renvoie 33 m et le badge l'affiche ; une liaison dont un plan n'a pas de géoréf
+renvoie `null` et n'affiche rien. La **liste de la Vue OSM n'a PAS pu être
+exécutée** : le mode plein écran exige des plans réellement chargeables (ZIP), que
+le harnais ne sait pas fabriquer — le bouton 🎚️ n'existe qu'une fois ce mode
+ouvert. À valider sur un vrai jeu de plans géoréférencés.
+
+---
+
+## 📝 Le travail de session en Vue OSM (v1.81.0)
+
+**Le symptôme, remonté par KARMA le 03/09** : « je ne vois pas mes points en OSM
+HOME ». Ils étaient créés **en session**. `_loadPlanDataForPreview` ne lit que le
+**ZIP** (plan-config + dataLayers) : tout ce qui n'a pas été exporté restait
+invisible.
+
+**Ce qui rendait la situation intenable** : la **recherche cross-plan les trouvait
+déjà** — `InterPlanLinks.collectPointsForPlan` lit la session depuis toujours.
+Une carte qui n'affiche pas ce que la recherche renvoie est indéfendable. Le
+module lisait d'ailleurs *déjà* la session pour les **couleurs de légende**
+(`payload.customLegend`) : il allait chercher les couleurs, pas les objets qui les
+portent.
+
+**Le correctif.** Un **calque virtuel** bâti sur `SessionPersist.getSaved(planId)`
+— API qui existait déjà, aucune fonction nouvelle. Le payload porte exactement les
+4 familles que la Vue OSM sait rendre (`editorPoints`, `roads`, `zones`,
+`structures`), aux mêmes noms de champs : aucune conversion.
+
+🩸 **Pourquoi la lecture se fait au RENDU et non à l'extraction du ZIP** :
+`_planDataCache` **n'est jamais invalidé** — il vit toute la durée de la page. Y
+ranger la session la figerait au premier affichage : on édite en mode plan, on
+revient au HOME, on voit l'état d'avant. La lecture au rendu coûte un `getItem` +
+un `JSON.parse` par plan affiché, négligeable devant l'extraction ZIP, et elle est
+toujours fraîche.
+
+**Les trois consommateurs passent par `_tousCalques(data, planId)`** — le rendu,
+les chips de filtre par tag, et l'index de recherche du HOME. En oublier un
+donnerait un point affiché dont le tag manque aux chips : **masqué dès qu'un
+filtre est posé**, sans que rien ne l'explique.
+
+**Choix d'affichage** (arbitrage KARMA : les 4 familles, et un calque identifiable) :
+
+- chip global **📝 Session**, **ON par défaut** — le masquer par défaut ferait
+  chercher l'utilisateur exactement comme aujourd'hui ;
+- posé **hors de `_CATS`**, comme le chip 🌀 : la session n'est pas une catégorie
+  d'objets mais une **origine de données**, transversale aux 4 familles ;
+- le popup d'un POI de session porte « 📝 Session en cours — pas encore dans le
+  plan ». *La Vue OSM montre l'état **enregistré** des plans ; y mêler du travail
+  non exporté sans le nommer créerait une confusion pire que son absence.*
+
+**Limites connues** :
+
+- `getSaved` **rejette un payload dont la `version` diffère** de celle de
+  `sessionPersist.js` (1 aujourd'hui). Une vieille session ne s'affichera pas —
+  cohérent avec le reste de l'app, mais silencieux.
+- Si le ZIP d'un plan est irrécupérable, `_renderDataLayersOnMiniMap` n'est pas
+  appelé du tout : **sa session ne s'affiche pas non plus**. Le plan n'ayant ni
+  fond ni tuiles, l'afficher seul n'aurait pas de sens.
+- Pas de déduplication avec les dataLayers. Session et calques du plan sont deux
+  ensembles distincts ; le seul recouvrement possible vient d'un export « baked »
+  qui a figé la session dans le ZIP. `collectPointsForPlan` vit déjà avec ce cas
+  sans dédupliquer — on reste cohérent plutôt que d'inventer une règle ici.
+
+⚠️ **État de validation au 03/09.** `SessionPersist.getSaved` renvoie bien les 4
+familles au harnais (2 points, 1 tracé, 1 zone, 1 structure lus), les 4 clés i18n
+résolvent en fr/en/es, le smoke est vert et les 308 contrôles des garde-fous
+passent. **Le rendu n'a PAS pu être exécuté** : le widget OSM reste bloqué sur
+« ⏳ Préparation… » en headless — il lui faut une connectivité réelle pour les
+tuiles. C'est une limite du harnais, pas du correctif : **aucune** partie de la
+Vue OSM n'est testable automatiquement aujourd'hui. À valider sur l'appareil.
+
+---
+
+## 8. Le géoréf a TROIS sources, et le HOME n'en lisait qu'une (v1.82.0)
+
+| Source | Contenu | Lue par la modale (`osmView`) | Lue par le widget HOME |
+|---|---|---|---|
+| `PLAN_CONFIG.plan.georef` | géoréf embarqué dans le ZIP | ✅ depuis v1.39.2 | ❌ *impossible* — aucun plan chargé au HOME |
+| `KmzExport.getCalibration(id)` | saisie utilisateur (localStorage) | ✅ depuis v1.39.2 | ✅ |
+| `PlanRegistry` → `plan.georef` | **🆕 v1.82.0** — déposé au chargement | — | ✅ second recours |
+
+🩸 **Le même défaut avait été trouvé et corrigé d'un seul côté.** `osmView.js`
+a gagné sa cascade à deux sources en v1.39.2 (« je vois pas l'icône »). Le
+widget du HOME ne l'a jamais reçue, et son en-tête érigeait le manque en
+**« limitation acceptable »** : l'utilisateur n'avait qu'à saisir sa géoréf une
+fois en mode plan.
+
+C'était défendable tant qu'une géoréf se saisissait à la main. **L'import SIG
+l'a rendu faux** : il produit des plans calés *par construction*, dont personne
+n'a de raison de ressaisir les points — et c'étaient précisément ceux qui
+manquaient à la liste (signalé par KARMA : « les plans issus de SIG
+n'apparaissent pas dans la liste vue OSM »).
+
+**Correction.** Le HOME ne peut pas lire `PLAN_CONFIG`. Le registre, lui, il le
+lit déjà : `main.js > _propagerGeorefVersKmzExport` y dépose donc le géoréf du
+plan à son chargement, et `_listGeorefPlans` s'en sert en second recours.
+
+Priorité inchangée : **le localStorage d'abord**. Il porte la voix de
+l'utilisateur ; le registre ne porte que la donnée propre du plan.
+
+⚠️ **Ce qui reste hors d'atteinte** : un plan enregistré sans avoir jamais été
+chargé. En pratique un ZIP importé est chargé dans la foulée, donc le cas se
+limite aux plans serveur déclarés dans `data/index.json` — qui pourraient
+porter leur géoréf dans cette déclaration si le besoin se présente.
+
+---
+
+## 9. Mesurer en Vue OSM — distance + surface (v1.83.0)
+
+Bouton 📏 dans la barre du widget HOME. Clics successifs = sommets ; segment
+étiqueté à sa longueur, total et surface dans un bandeau flottant ; ↩ retire le
+dernier point, 🗑️ vide, ✕ quitte.
+
+🩸 **`measure.js` n'est pas réutilisable — et c'est une bonne nouvelle.** Le
+module du mode plan (442 lignes) est bâti sur `convertCoord` et
+`APP_CONFIG.scale` : il travaille en **pixels d'un plan**, divisés par une
+échelle calibrée. En Vue OSM il n'y a pas *un* plan (il y en a plusieurs
+empilés, chacun avec la sienne) et il n'y a **pas besoin d'échelle** : les
+coordonnées sont déjà des latitudes et des longitudes.
+
+> Une mesure faite ici est donc **structurellement plus fiable qu'en mode plan** :
+> elle ne dépend d'aucun calibrage. C'est exactement la source du bug vécu sur le
+> relevé SIG — 480 m annoncés contre 1 644 réels, parce que l'échelle du plan
+> était fausse. Ici, la question ne se pose pas.
+
+| Grandeur | Méthode | Précision |
+|---|---|---|
+| **Distance** | `L.latLng.distanceTo` — géodésique (Haversine, rayon moyen IUGG) | exacte au mètre sur nos ordres de grandeur |
+| **Surface** | projection **équirectangulaire locale** centrée sur le barycentre, longitude corrigée par `cos(latitude)`, puis **formule du lacet** | < 1 % sur quelques kilomètres |
+
+On ne prétend pas mieux sur la surface : une surface géodésique exacte
+demanderait une projection équivalente, et la précision gagnée serait très
+inférieure à celle d'un tracé fait à la main.
+
+**Prouvé contre des valeurs connues**, pas contre lui-même : 1° de latitude
+≈ 111,2 km, 1° de longitude à 45°N ≈ 78,6 km, un carré de 0,01° à 44,8°N.
+7 cas dans `check-api-surface.js`, avec un `distanceTo` de référence
+**indépendant du code testé**. Falsifiés : retirer la correction `cos(lat)` fait
+tomber la surface, retirer la valeur absolue fait tomber le sens de parcours.
+
+*C'est la leçon de l'import SIG — 34 tests verts qui ne prouvaient que la
+cohérence du code avec ses propres suppositions.*
+
+---
+
+## 10. Largeur des fronts : la Vue OSM applique la loi du mode plan (v1.83.0)
+
+KARMA : « en mode OSM c'était pas mal, mais on peut faire aussi bien qu'en mode
+plan, ça reste encore limite ».
+
+🩸 **Ce qui tenait lieu de solution était un accident.** Le commentaire posé en
+v1.82.0 le disait déjà : le rendu convenait parce que le repli des types
+personnalisés tombe sur le gabarit « mur » (`weight: 2`). Consigné au backlog
+plutôt que corrigé à l'aveugle — demander le `weight` au canon aurait ramené
+10 px et refait l'aplat.
+
+### Une loi, trois consommateurs
+
+La loi est désormais formulée sur la seule grandeur que les trois partagent :
+des **pixels rendus par mètre de terrain**.
+
+| Contexte | px/m |
+|---|---|
+| Écran, mode plan | `APP_CONFIG.scale × 2^zoom` |
+| Export PNG/PDF | `APP_CONFIG.scale × résolution` |
+| **Vue OSM** | `1 / résolution Web Mercator` |
+
+Les deux premiers passent par une échelle de plan ; **la Vue OSM n'en a pas** —
+elle travaille en lat/lng. D'où `window.ktaPxParMetreOsm(map)`, qui calcule la
+résolution Web Mercator du moment.
+
+⚠️ **La latitude compte autant que le zoom** : `156543,034 × cos(lat) / 2^zoom`.
+Un même zoom couvre ~40 % de moins au nord de la France qu'à l'équateur. La
+calculer, plutôt que de tabler sur des paliers de zoom réglés à la main, est ce
+qui rend la largeur juste **partout** et pas seulement là où on a réglé.
+
+### Ce que ça change, chiffré (44,8°N)
+
+| Zoom | m/px | Avant | Après |
+|---|---|---|---|
+| 15 | 3,39 | 6 px | **1 px** |
+| 16 | 1,69 | 6 px | **1 px** |
+| 17 | 0,85 | 6 px | **1,8 px** |
+| 18 | 0,42 | 6 px | **3,5 px** |
+| 19 | 0,21 | 6 px | **7,1 px** |
+
+Le `6` fixe était juste à **un seul** niveau de zoom. Il est six fois trop large
+là où la carrière tient dans l'écran — précisément là où l'aplat se forme.
+
+### Mise en œuvre
+
+Même technique qu'en mode plan : on **mute `options.weight` en place** (le
+renderer canvas le relit à chaque frame), puis une repeinture **non clippée**
+(`_redrawBounds = null` avant `_redraw()`, cf. `gotchas.md`). Aucun `setStyle`,
+intenable à ce volume.
+
+Reposée à chaque **re-rendu** en plus du `zoomend` : recréer les layers remet le
+`weight` du gabarit. Le widget HOME traite le plan principal **et chaque plan
+empilé** — n'en faire qu'un laisserait les autres en aplat.
+
+🛡️ **Prouvé, et le test lui-même a été corrigé après falsification** : il ne
+comparait les deux chemins qu'à **une seule densité**, si bien qu'une copie ayant
+dérivé sur les **bornes** (plafond à 12 px au lieu de 14) passait au travers. Il
+balaie désormais 8 densités, bornes comprises — et la dérive tombe.

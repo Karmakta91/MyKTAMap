@@ -780,3 +780,100 @@ Le test est structurel, pas heuristique : on regarde si l'entrée qui **précèd
 **API** : `getTrackingDistanceEstimeeM()` · `getTrackingDistanceTotaleM()` (= mesurée + estimée) · `getTrackingValidations()` (nombre de « 📍 Je suis ici », hors clics et portails — signal de terrain pour le Carnet).
 
 ⚠️ **`getTrackingDistanceM()` est volontairement INCHANGÉE** : mesuré et estimé ne se valent pas. Les consommateurs affichent le **total** en nommant la part estimée (modale Tracker, 📊 Stats globales, fiche du Carnet) ; `trackerReplay` reste sur la mesurée (il rejoue le tracé PDR, pas un trajet reconstruit).
+
+---
+
+## 👣 Les réglages de podomètre : une seule source, et pourquoi le seuil ne se choisit pas (v1.82.0)
+
+`tracking.js` détecte un pas ainsi :
+
+```js
+const acc = event.accelerationIncludingGravity;      // ⚠️ AVEC la gravité
+let magnitude = Math.sqrt(acc.x² + acc.y² + acc.z²);
+if (magnitude > APP_CONFIG.stepThreshold && (now - lastStepTime) > APP_CONFIG.stepCooldown) { … }
+```
+
+🩸 **`accelerationIncludingGravity` vaut déjà ~9,81 téléphone posé à plat.** Le
+seuil n'est donc pas « une sensibilité » qu'on règle au goût : toute valeur
+sous ~9,8 rend la condition **vraie en permanence**, et seul le cooldown limite
+encore le comptage.
+
+| Source | `stepLength` | `stepThreshold` | `stepCooldown` |
+|---|---|---|---|
+| **Usine** (`config.js > DEFAULT_CONFIG`) | 0.7 | **13** | **400** |
+| Générateur classique (`createConf.js`) | 0.7 | 13 | 400 |
+| ⚙️ Réglages — bornes de saisie | [0, 1.5] | **[10, 30]** | **[300, 3000]** |
+| ❌ `sigImport` / `gpxImport` / `kmzImport` **avant v1.82.0** | 0.75 | **1.2** | **280** |
+
+Les trois générateurs d'import portaient la même triplette, par copier-coller.
+Conséquence, **à l'arrêt complet** : un pas toutes les 280 ms ≈ 3,6 pas/s, à
+0,75 m le pas ≈ **2,7 m/s, soit près de 10 km/h de distance fantôme** — sur tout
+plan issu d'un import, et donc dans le Carnet, les statistiques et l'historique.
+Signalé par KARMA sur l'écran SIG.
+
+### Source unique
+
+`window.KTA_TRACKING_USINE` — copie **gelée** prise dans `config.js` avant toute
+mutation. ⚠️ `DEFAULT_CONFIG` porte mal son nom : il est réécrit à chaque
+chargement de plan pour que `resetConfig()` rende les valeurs *du plan courant*.
+Le lire depuis un générateur donnerait les réglages du plan ouvert à ce
+moment-là. Les générateurs écrivent donc :
+
+```js
+...(window.KTA_TRACKING_USINE || { stepLength: 0.7, stepThreshold: 13, stepCooldown: 400 })
+```
+
+🛡️ `scripts/check-tracking-defaults.js` (bloquant) confronte tout littéral de
+ces trois clés à `config.js`. Il couvre trois formes — littéral d'objet, valeur
+par défaut d'un champ de saisie, repli `??` — les trois falsifiées. C'est lui
+qui a trouvé la **troisième** copie (`kmzImport.js`), passée inaperçue.
+
+### Réparation des plans déjà produits
+
+Corriger les générateurs ne répare pas les plans **déjà générés** : leur
+plan-config porte la mauvaise valeur. `config.js > _reglagePodometre` la
+remplace au chargement, sur un critère qui n'est pas une opinion : **l'écran
+⚙️ Réglages borne lui-même ces champs**. Une valeur hors bornes ne peut donc pas
+être un choix de l'utilisateur — l'app ne lui permet pas de la saisir. C'est de
+la donnée corrompue, et elle repart à l'usine, avec un `console.warn`.
+
+Même raisonnement que le calibrage périmé (`main.js`) : on ne touche jamais une
+préférence valide, seulement ce qui est hors du possible.
+
+### 👣 Persistance des réglages — le défaut à trois occurrences (v1.82.0)
+
+Un réglage modifié dans ⚙️ Réglages était écrit dans `APP_CONFIG` **en mémoire**.
+`sauvegarderPrefsUtilisateur` ne le sauvait pas, et `buildAppConfigFromPlan` le
+réécrivait depuis le plan-config au chargement suivant. La valeur tenait
+jusqu'au reload, puis retombait — **sans rien dire**.
+
+| Version | Réglage perdu | Résolution |
+|---|---|---|
+| v1.75.0 | magnétisme (`snapDraw`) | pref **globale** |
+| v1.76.1 | échelle (`scale`) | pref **per-plan** (`setPlanScale`) |
+| **v1.82.0** | `stepLength`, `stepThreshold`, `stepCooldown`, `startX`, `startY` | pref **per-plan** (`setPlanTracking`) |
+
+Signalé par KARMA : « je modifie ces valeurs et applique, quand je quitte et
+reviens elles sont revenues par défaut ».
+
+**Per-plan, comme l'échelle** : un podomètre se règle sur la foulée de
+l'utilisateur *et* sur le terrain du plan. Le stocker globalement contaminerait
+tous les autres plans.
+
+**Un réglage per-plan a besoin de DEUX choses**, et l'oubli de l'une ou de
+l'autre produit exactement le même symptôme muet :
+
+1. un **écrivain** `setPlanX(planId, …)`, appelé par l'écran ⚙️ Réglages ;
+2. un **applicateur** `appliquerXPerPlan()`, appelé par `main.js` **une fois
+   l'id du plan connu** — ⚠️ jamais depuis `buildAppConfigFromPlan`, où l'on
+   lirait les prefs du plan **précédent**.
+
+Refus **sec** hors bornes, pas de clamp (même règle que `setPlanScale`) : une
+valeur hors bornes est un bug d'appelant, la corriger en silence le masquerait.
+Les bornes sont celles de l'écran de saisie.
+
+🛡️ `check-prefs-survival.js` couvre désormais les deux moitiés : pour chaque
+`appliquerXPerPlan` déclaré, il exige l'exposition, l'appel dans `main.js`,
+l'existence de l'écrivain et son appel depuis l'écran de réglages — plus la
+transmission effective des trois clés du podomètre. Les trois oublis possibles
+ont été falsifiés un par un.

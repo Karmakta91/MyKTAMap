@@ -84,6 +84,16 @@
 
   // 🚶 terrain / 🖥️ bureau — les records d'avant la distinction (aucun `type`)
   // sont traités comme du bureau : ils n'avaient pas de déplacement mesuré.
+  // ⏱️ La durée AFFICHÉE vient de `Journal.dureeMs()` — la règle vit là-bas et
+  // nulle part ailleurs. La recalculer ici ferait diverger le détail du total à
+  // la première retouche.
+  function _dureeAffichee(rec) {
+    if (window.Journal && typeof window.Journal.dureeMs === "function") {
+      return window.Journal.dureeMs(rec);
+    }
+    return Number(rec && rec.activeMs) || 0;
+  }
+
   function _estTerrain(rec) {
     return !!rec && rec.type === "terrain";
   }
@@ -169,10 +179,24 @@
                 (_estTerrain(rec) ? '🚶 ' + _esc(_t("jrn.type.terrain")) : '🖥️ ' + _esc(_t("jrn.type.bureau"))) +
               '</span>' +
               (rec.closedBy === "manual" ? ' <span class="kta-jrn-tag">' + _esc(_t("jrn.fiche.manuelle")) + '</span>' : '') +
+              // ✏️ Corriger la fin : sans ça, une sortie où l'on a oublié de
+              // clôturer porte pour fin le moment où iOS a tué l'app, pas celui
+              // où l'on est ressorti — durée sous-évaluée, sans recours.
+              ' <button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-jrn-fin-btn" ' +
+                'id="kta-jrn-fin">✏️ ' + _esc(_t("jrn.fin.corriger")) + '</button>' +
             '</div>' +
             '<div class="kta-jrn-metrics">' +
-              '<div class="kta-jrn-metric"><span class="kta-jrn-metric-val">' + _esc(_dur(rec.activeMs)) + '</span>' +
-                '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.duree")) + '</span></div>' +
+              // ⏱️ v1.85.2 — la durée de la SORTIE (début → fin) en premier ;
+              // le temps d'usage de l'app reste dit juste dessous, parce qu'il
+              // dit ce que vaut la mesure : 3 h de sortie pour 12 min d'app,
+              // c'est un podomètre qui n'a presque rien vu.
+              '<div class="kta-jrn-metric"><span class="kta-jrn-metric-val">' + _esc(_dur(_dureeAffichee(rec))) + '</span>' +
+                '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.duree")) +
+                  (_estTerrain(rec)
+                    ? ' ' + _esc(_t("jrn.metric.dontActif", { d: _dur(rec.activeMs) }))
+                    : '') +
+                  (rec.finManuelle ? ' ' + _esc(_t("jrn.metric.finCorrigee")) : '') +
+                '</span></div>' +
               // Une session bureau n'a pas de distance : afficher « 0 m » ferait
               // croire à un tracker en panne. On montre les photos à la place.
               (_estTerrain(rec)
@@ -181,8 +205,15 @@
                     // ici », podomètre muet) est dite, jamais fondue dans le total :
                     // l'user doit savoir ce que vaut le chiffre qu'il lit.
                     '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.distance")) +
+                      // 🩸 v1.85.2 — DIRE D OU VIENT LA PART ESTIMEE. « Calculee
+                      // sur les galeries » et « a vol d oiseau » n ont pas la
+                      // meme valeur : dans un labyrinthe l ecart est un facteur
+                      // 2 ou 3. `trackAffine` n existe QUE si l affinage reseau
+                      // a tourne — c est le marqueur, et il est deja stocke.
                       ((rec.distEstimeeM || 0) > 0
-                        ? ' ' + _esc(_t("jrn.section.dontEstime", { dist: _dist(rec.distEstimeeM) }))
+                        ? ' ' + _esc(_t(rec.trackAffine ? "jrn.section.dontReseau" : "jrn.section.dontVol",
+                                        { dist: _dist(rec.distEstimeeM),
+                                          n: Number(rec.validations) || 0 }))
                         : '') +
                     '</span></div>'
                 : '<div class="kta-jrn-metric"><span class="kta-jrn-metric-val">' +
@@ -224,6 +255,33 @@
 
       document.getElementById("kta-jrn-fiche-close").addEventListener("click", _fermerFiche);
       overlay.addEventListener("click", function(e) { if (e.target === overlay) _fermerFiche(); });
+
+      // ✏️ Corriger la fin de sortie.
+      // 🩸 On saisit une HEURE, pas une durée. Une durée obligerait à calculer
+      // de tête depuis une heure de départ qu'on ne voit pas ; l'heure de
+      // sortie, elle, on s'en souvient. Le champ est pré-rempli avec la fin
+      // actuelle, au format local du navigateur (`datetime-local`), et le
+      // module refuse une fin antérieure au départ.
+      const finBtn = document.getElementById("kta-jrn-fin");
+      if (finBtn) {
+        finBtn.addEventListener("click", function () {
+          const finMs = Date.parse(rec.endedAt || rec.updatedAt || 0) || Date.now();
+          // `datetime-local` veut du temps LOCAL sans fuseau : `toISOString()`
+          // rendrait de l'UTC et décalerait le champ de l'écart horaire.
+          const d = new Date(finMs - new Date(finMs).getTimezoneOffset() * 60000);
+          const val = d.toISOString().slice(0, 16);
+          const saisi = window.prompt(
+            _t("jrn.fin.invite", { debut: _fmtDate(rec.startedAtMs) }), val);
+          if (saisi === null) return;
+          const ms = Date.parse(saisi);
+          if (!Number.isFinite(ms)) { _toast(_t("jrn.fin.koFormat"), "warn"); return; }
+          window.Journal.setFin(rec.id, ms).then(function (maj) {
+            if (!maj) { _toast(_t("jrn.fin.koAvant"), "warn"); return; }
+            _toast(_t("jrn.fin.ok"), "info");
+            return _rafraichirListe().then(function () { ouvrirFiche(rec.id); });
+          });
+        });
+      }
 
       document.getElementById("kta-jrn-note-save").addEventListener("click", function() {
         const txt = document.getElementById("kta-jrn-note").value;
@@ -339,15 +397,31 @@
         : '');
   }
 
+  // ───────── 🔗 FUSION DE SORTIES (v1.85.2) ─────────
+  // KARMA, sortie terrain : une seule vraie sortie ressortait en TROIS au
+  // carnet, parce que quitter la PWA pour changer de musique la fait décharger
+  // par iOS et que le retour rouvrait une sortie neuve. La reprise automatique
+  // (`journal.js`) empêche désormais le problème — elle ne répare pas ce qui
+  // est déjà haché. D'où ce mode : cocher N sorties, les recoller en une.
+  let _modeFusion = false;
+  const _selFusion = {};       // id -> true
+
   function _ligne(r, idx) {
     const chips = _chipsAjouts(r);
     const terrain = _estTerrain(r);
+    // En mode fusion la ligne ne mène plus à la fiche : elle coche. On garde
+    // un <button> — la cible tactile et le style restent ceux de la liste.
+    const coche = _modeFusion
+      ? '<span class="kta-jrn-coche">' + (_selFusion[r.id] ? '☑️' : '⬜') + '</span>'
+      : '';
     return '<button type="button" class="kta-jrn-row' + (terrain ? '' : ' kta-jrn-row-bureau') +
-             '" data-i="' + idx + '">' +
+             (_modeFusion && _selFusion[r.id] ? ' kta-jrn-row-sel' : '') +
+             '" data-i="' + idx + '" data-id="' + _esc(r.id) + '">' +
+             coche +
              '<span class="kta-jrn-row-date">' + _esc(_fmtDate(r.startedAtMs)) + '</span>' +
              '<span class="kta-jrn-row-plan">' + (terrain ? '🚶' : '🖥️') + ' ' +
                _esc(r.planName || "?") + '</span>' +
-             '<span class="kta-jrn-row-meta">⏱️ ' + _esc(_dur(r.activeMs)) +
+             '<span class="kta-jrn-row-meta">⏱️ ' + _esc(_dur(_dureeAffichee(r))) +
                (terrain ? ' · 📏 ' + _esc(_dist(r.distM)) : '') +
                (chips.length ? ' · ' + _esc(chips.join(" ")) : '') + '</span>' +
              (r.note ? '<span class="kta-jrn-row-note">📝 ' +
@@ -403,9 +477,68 @@
     el.querySelectorAll(".kta-jrn-row").forEach(function(btn) {
       btn.addEventListener("click", function() {
         const r = rows[parseInt(btn.getAttribute("data-i"), 10)];
-        if (r) ouvrirFiche(r.id);
+        if (!r) return;
+        if (!_modeFusion) { ouvrirFiche(r.id); return; }
+        if (_selFusion[r.id]) delete _selFusion[r.id]; else _selFusion[r.id] = true;
+        _renderListe();
       });
     });
+    _renderBarreFusion();
+  }
+
+  // Barre d'actions, rendue SOUS la liste pour ne pas repousser les sorties
+  // hors de l'écran sur téléphone.
+  function _renderBarreFusion() {
+    const el = document.getElementById("kta-jrn-liste");
+    if (!el) return;
+    let barre = document.getElementById("kta-jrn-fusion-barre");
+    if (!barre) {
+      barre = document.createElement("div");
+      barre.id = "kta-jrn-fusion-barre";
+      barre.className = "kta-jrn-fusion-barre";
+      el.parentNode.insertBefore(barre, el.nextSibling);
+    }
+    const n = Object.keys(_selFusion).length;
+    if (!_modeFusion) {
+      barre.innerHTML = '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
+        'id="kta-jrn-fusion-on">🔗 ' + _esc(_t("jrn.fusion.entrer")) + '</button>';
+      document.getElementById("kta-jrn-fusion-on").addEventListener("click", function () {
+        _modeFusion = true; _renderListe();
+      });
+      return;
+    }
+    barre.innerHTML =
+      '<span class="kta-jrn-fusion-msg">' + _esc(_t("jrn.fusion.compte", { n: n })) + '</span>' +
+      '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="kta-jrn-fusion-go"' +
+        (n < 2 ? ' disabled' : '') + '>🔗 ' + _esc(_t("jrn.fusion.valider")) + '</button>' +
+      '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-jrn-fusion-off">' +
+        _esc(_t("jrn.fusion.annuler")) + '</button>';
+    document.getElementById("kta-jrn-fusion-off").addEventListener("click", function () {
+      _modeFusion = false;
+      Object.keys(_selFusion).forEach(function (k) { delete _selFusion[k]; });
+      _renderListe();
+    });
+    const go = document.getElementById("kta-jrn-fusion-go");
+    if (go && n >= 2) {
+      go.addEventListener("click", function () {
+        const ids = Object.keys(_selFusion);
+        // 🩸 La fusion SUPPRIME des enregistrements : on confirme. C'est le
+        // seul geste destructif du carnet, dont la raison d'être est d'être
+        // une archive append-only.
+        const demander = (typeof window.ktaConfirm === "function")
+          ? window.ktaConfirm(_t("jrn.fusion.confirm", { n: ids.length }))
+          : Promise.resolve(window.confirm(_t("jrn.fusion.confirm", { n: ids.length })));
+        demander.then(function (ok) {
+          if (!ok) return;
+          return window.Journal.fusionner(ids).then(function (rec) {
+            _modeFusion = false;
+            Object.keys(_selFusion).forEach(function (k) { delete _selFusion[k]; });
+            _toast(rec ? _t("jrn.fusion.ok", { n: ids.length }) : _t("jrn.fusion.ko"), rec ? "info" : "warn");
+            return _rafraichirListe();
+          });
+        });
+      });
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -516,6 +649,42 @@
           };
           const req = st.add(rec);
           req.onsuccess = function() { try { db.close(); } catch(e) {} resolve(rec); };
+          req.onerror   = function() { try { db.close(); } catch(e) {} reject(req.error); };
+        } catch(e) { try { db.close(); } catch(e2) {} reject(e); }
+      });
+    });
+  }
+
+  // 🆕 v1.81.0 (dette D1) — RESTAURATION d'un document venu d'un export de
+  // profil. Distinct de `_histAjouter` : celui-ci reçoit un File fraîchement
+  // choisi et forge un id ; ici on REPOSE un document existant en conservant
+  // son id, son nom et sa date d'origine — sans quoi un profil réimporté deux
+  // fois créerait des doublons, et les dates d'ajout seraient toutes écrasées
+  // par celle de l'import.
+  // `put` et non `add` : réimporter le même profil doit être IDEMPOTENT.
+  function _histRestaurer(doc) {
+    return _histOpen().then(function(db) {
+      if (!db) return Promise.reject(new Error("base indisponible"));
+      return new Promise(function(resolve, reject) {
+        try {
+          const st = db.transaction(HIST_STORE, "readwrite").objectStore(HIST_STORE);
+          if (!st.indexNames.contains(HIST_INDEX)) {
+            // Base encore en v1 (1 PDF par plan, keyPath planId) : y écrire un
+            // doc v2 écraserait le PDF existant. On laisse le Mode Histoire
+            // migrer d'abord — même garde que `_histAjouter`.
+            try { db.close(); } catch(e) {}
+            reject(new Error("v1"));
+            return;
+          }
+          const req = st.put({
+            id:      String(doc.id),
+            planId:  String(doc.planId),
+            blob:    doc.blob,
+            name:    doc.name || "histoire.pdf",
+            size:    doc.size || (doc.blob && doc.blob.size) || 0,
+            addedAt: doc.addedAt || Date.now()
+          });
+          req.onsuccess = function() { try { db.close(); } catch(e) {} resolve(true); };
           req.onerror   = function() { try { db.close(); } catch(e) {} reject(req.error); };
         } catch(e) { try { db.close(); } catch(e2) {} reject(e); }
       });
@@ -887,12 +1056,83 @@
   // Bouton « 🏁 Clôturer ma sortie » (modale Session de l'écran plan).
   // La clôture manuelle garde TOUJOURS la sortie (pas de seuil), puis en
   // rouvre une nouvelle — cf journal.js > cloturer().
+  // 📍 v1.85.2 — DEMANDER OU L ON EST AVANT DE CLOTURER.
+  //
+  // 🩸 LE TROU QUE CA FERME : la distance entre deux « 📍 Je suis ici » est
+  // comblee quand l ancre SUIVANTE arrive, en regardant en arriere. Apres le
+  // dernier repere, tout ce qui est marche jusqu a la sortie n est donc compte
+  // que par le podometre — c est-a-dire RIEN quand le telephone est en poche.
+  // Et `cloturer()` ne posait aucune ancre.
+  //
+  // 🩸 UNE HEURE N EST PAS UNE POSITION. Poser l ancre a la position tracker
+  // courante n ajouterait 0 m : si le podometre s est tu, on est
+  // encore affiche au dernier repere. Il FAUT demander ou l on est.
+  //
+  // On passe par `recalerTrackerSurPoint` — le meme chemin que « Je suis ici »
+  // sur un point, seul a alimenter la distance estimee. Un clic carte LIBRE
+  // (`src: "click"`) est volontairement exclu depuis le 16/08 parce qu il
+  // corrige le plus souvent une position fausse ; ici c est l inverse, la
+  // personne DECLARE ou elle est ressortie. Meme geste, sens oppose.
+  let _finPickHandler = null;
+  let _finPickFloater = null;
+
+  function _finPickFermer() {
+    if (window.map && _finPickHandler) { try { window.map.off("click", _finPickHandler); } catch (e) {} }
+    _finPickHandler = null;
+    if (_finPickFloater && _finPickFloater.parentNode) _finPickFloater.remove();
+    _finPickFloater = null;
+    try { if (window.map) window.map.getContainer().style.cursor = ""; } catch (e) {}
+  }
+
+  // Rend une promesse resolue quand la position est posee OU passee.
+  function _demanderPositionSortie() {
+    if (!window.map || typeof window.recalerTrackerSurPoint !== "function") {
+      return Promise.resolve(false);
+    }
+    return new Promise(function (resolve) {
+      _finPickFermer();
+      // `.kta-iti-floater` : reconnue par `_modeClicCarteActif()`, donc aucune
+      // popup d annotation n avale le clic et celui-ci est re-emis en phase
+      // capture. Huitieme picker du meme moule.
+      _finPickFloater = document.createElement("div");
+      _finPickFloater.id = "kta-jrn-fin-pick";
+      _finPickFloater.className = "kta-iti-floater";
+      _finPickFloater.innerHTML =
+        '<span class="kta-iti-floater-icon">🏁</span>' +
+        '<span class="kta-iti-floater-msg"></span>' +
+        '<button class="kta-btn kta-btn-ghost" id="kta-jrn-fin-skip" type="button"></button>';
+      _finPickFloater.querySelector(".kta-iti-floater-msg").textContent = _t("jrn.finPos.invite");
+      const skip = _finPickFloater.querySelector("#kta-jrn-fin-skip");
+      skip.textContent = _t("jrn.finPos.passer");
+      document.body.appendChild(_finPickFloater);
+      skip.addEventListener("click", function () { _finPickFermer(); resolve(false); });
+
+      _finPickHandler = function (e) {
+        if (!e || !e.latlng) return;
+        const x = e.latlng.lng;
+        const y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
+                    ? (window.APP_CONFIG.imageHeight - e.latlng.lat) : e.latlng.lat;
+        _finPickFermer();
+        try { window.recalerTrackerSurPoint(x, y, undefined); } catch (err) {
+          console.warn("[JournalUi] ancre de fin :", err && err.message);
+        }
+        resolve(true);
+      };
+      window.map.on("click", _finPickHandler);
+      try { window.map.getContainer().style.cursor = "crosshair"; } catch (e) {}
+    });
+  }
+
   function cloturerDepuisUi() {
     if (!window.Journal || !window.Journal.getCurrent()) {
       _toast(_t("jrn.err.aucuneSortie"), "warn");
       return Promise.resolve(null);
     }
-    return window.Journal.cloturer().then(function(rec) {
+    // La demande est FACULTATIVE : on ne bloque jamais une cloture. Qui ferme
+    // depuis le canape n a pas de position de sortie a donner.
+    return _demanderPositionSortie().then(function () {
+      return window.Journal.cloturer();
+    }).then(function(rec) {
       if (!rec) return null;
       _toast(_t("jrn.toast.cloturee"), "info");
       ouvrirFiche(rec.id);
@@ -903,7 +1143,19 @@
   window.JournalUi = {
     ouvrir:           ouvrir,
     ouvrirFiche:      ouvrirFiche,
-    cloturerDepuisUi: cloturerDepuisUi
+    cloturerDepuisUi: cloturerDepuisUi,
+    // 🆕 v1.81.0 (dette D1) — accès aux documents du Mode Histoire pour
+    // l'export/import de profil. Exposé ICI et pas réécrit dans
+    // `profileExportImport.js` : le schéma de cette base est DÉJÀ dupliqué
+    // entre `modeHistoire.js` et ce module, une 3ᵉ copie garantissait la
+    // dérive (c'est la leçon des 25 tables de styles). En particulier
+    // `_histOpen` porte un piège non évident — `indexedDB.open(nom)` SANS
+    // version CRÉE une base vide, ce qui casserait ensuite le Mode Histoire.
+    histoire: {
+      lister:    _histTousDocs,    // → [{id, planId, name, size, addedAt}] (sans blob)
+      getDoc:    _histGet,         // → l'enregistrement COMPLET, blob inclus
+      restaurer: _histRestaurer    // ← repose un doc exporté (idempotent)
+    }
   };
 
   console.log("[JournalUi] Module chargé");

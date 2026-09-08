@@ -170,6 +170,15 @@
                       ? window.LegendCustomization.getSessionState()
                       : null,
 
+      // 🔄 v1.85.0 — calques de donnees RAPATRIES en session (cf.
+      // js/calqueSession.js). Ne porte QUE la liste de leurs ids : les objets,
+      // eux, sont deja dans roads/zones/structures/editorPoints ci-dessus,
+      // marques par `_srcCalque`. `null` tant que rien n est rapatrie, donc
+      // zero octet dans localStorage pour qui ne s en sert pas.
+      calquesSession: (window.CalqueSession && window.CalqueSession.getSessionState)
+                        ? window.CalqueSession.getSessionState()
+                        : null,
+
       // 🆕 v1.21.2 (KARMA "on active dans la sauvegarde auto le tracking
       // comme ca la fonction [heatmap] devient pertinante") :
       // persistance de la timeline tracker GPS. Avant : RAM-only (perte
@@ -338,6 +347,8 @@
       // champs dans _gatherState mais pas dans le payload final.
       measureSurface: state.measureSurface || [],
       measureMode:    state.measureMode    || "distance",
+      // 🔄 v1.85.0 — verrou des calques rapatries (cf. js/calqueSession.js).
+      calquesSession: state.calquesSession || null,
       // 🆕 v1.16.0 step 2 : overrides légende (libellés + visibilité +
       // entrées custom). null si LegendCustomization n'a pas encore été
       // chargé ou si l'user n'a rien personnalisé — c'est OK, le restore
@@ -421,6 +432,18 @@
     if (_k) {
       try { localStorage.removeItem(_k); } catch(e) {}
     }
+    // 🔄 v1.85.0 — 🩸 LE VERROU TOMBE AVEC LA COPIE, JAMAIS L UN SANS L AUTRE.
+    // Effacer la session detruit les objets rapatries ; laisser le verrou
+    // masquerait alors le calque d origine, et l utilisateur verrait son
+    // releve disparaitre en croyant le plan casse. On libere, on reaffiche.
+    if (window.CalqueSession && typeof window.CalqueSession.listeRapatries === "function") {
+      try {
+        window.CalqueSession.listeRapatries().forEach(function(id) {
+          window.CalqueSession.restituer(id);
+        });
+        window.CalqueSession.loadSessionState(null);
+      } catch(e) { console.warn("[SessionPersist] liberation des calques :", e); }
+    }
     _lastHash = null;
     // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sans ça, si
     // l'user clique "🗑️ Effacer la session" dans la modale de feedback
@@ -446,6 +469,14 @@
       // C'était l'intermittence « un coup ça marche, l'autre non ».
       if (window.LegendCustomization && typeof window.LegendCustomization.loadSessionState === "function") {
         window.LegendCustomization.loadSessionState(payload.customLegend);
+      }
+
+      // 🔄 v1.85.0 — la LISTE des calques rapatries se charge ICI, mais les
+      // VERROUS ne s appliquent qu en FIN de restore : `appliquerVerrous`
+      // refuse de masquer un calque dont la copie de session est absente, et
+      // il lui faut donc les objets deja restaures pour en juger.
+      if (window.CalqueSession && typeof window.CalqueSession.loadSessionState === "function") {
+        window.CalqueSession.loadSessionState(payload.calquesSession);
       }
 
       // setEditorPoints redessine désormais en interne (depuis 09/05/2026, fix bug
@@ -594,6 +625,20 @@
             try { window.appliquerFiltreRuntime(); } catch(e) {}
           }
         }, 200);
+      }
+
+      // 🔄 v1.85.0 — VERROUS DES CALQUES RAPATRIES, une fois les objets la.
+      // 🩸 Piege paye d avance : un verrou pose SANS sa copie donnerait un
+      // plan vide et muet (cas reel : la sauvegarde a saute sur quota).
+      // `appliquerVerrous` verifie la presence avant de masquer, et libere
+      // en le disant. Differe comme les filtres runtime : les setters de la
+      // phase 2 (itineraires, +1500 ms) ne doivent pas rearmer un calque.
+      if (window.CalqueSession && typeof window.CalqueSession.appliquerVerrous === "function") {
+        setTimeout(function() {
+          try { window.CalqueSession.appliquerVerrous(); } catch(e) {
+            console.warn("[SessionPersist] verrous de calques :", e);
+          }
+        }, 250);
       }
 
       // Mettre à jour le hash courant pour que le prochain poll ne détecte pas

@@ -26,10 +26,11 @@ passe les gates (mdp communautaire, CGU, tutoriel, alerte, proposition PIN
 8. **❓ Aide intégrée** — hub peuplé (≥ 10 lignes : une modale vide serait « visible » donc verte au seul test de dimensions), **classes de typographie réellement servies** (`kta-aide-note` doit calculer 12px — sinon le bloc CSS n'est pas déployé et le texte perd taille et couleur *sans aucune erreur console*), ouverture d'une sous-modale de section
 
 > Les étapes 7 et 8 sont nées de trous constatés : ces deux écrans n'étaient
-> traversés par AUCUNE étape. L'Aide porte ~1 700 lignes de HTML en dur et a
-> encaissé coup sur coup une régression de langue (elle sortait en français
-> pour les hispanophones) et trois défauts de structure — invisibles ici tant
-> que le harnais ne l'ouvrait pas.
+> traversés par AUCUNE étape. L'Aide avait alors ~1 700 lignes de HTML en dur
+> (migrées dans les dicos `lang/` en v1.80.0) et a encaissé coup sur coup une
+> régression de langue (elle sortait en français pour les hispanophones) et
+> trois défauts de structure — invisibles ici tant que le harnais ne l'ouvrait
+> pas.
 
 **Échec (exit 1) sur** : toute erreur console, toute `pageerror`, tout
 `[I18n] Clé manquante`, tout 404 non listé dans le bruit toléré, toute
@@ -38,6 +39,24 @@ modale invisible, tout overlay résiduel.
 Le bruit toléré (liste courte et justifiée dans `smoke.js`) : `version.json`
 / `ping.html` / `live-config` (update-checker hors-ligne), `favicon`,
 `Licence-pro.json` (sonde pro : 404 = instance community, nominal).
+
+## Checkups ciblés (même dossier, lancés à la main)
+
+Le smoke boote **en français** et en **grande fenêtre** : deux angles morts
+structurels. Ces scripts les couvrent, chacun sur un axe précis.
+
+| Script | Axe couvert |
+|---|---|
+| `node checkup-langues.js` | parcours d'un utilisateur **espagnol** : Documentation et Aide en espagnol, aucun drapeau résiduel sur l'Aide, aucun titre de section resté en français |
+| `node checkup-home-scroll.js` | HOME en **petite fenêtre PC** (6 configs, 1280→1920 × 500→768) : le contenu déborde, mais la **molette** scrolle et le footer se rejoint |
+
+> ⚠️ `checkup-home-scroll.js` **abandonne** au lieu de conclure si un overlay
+> couvre encore la page. Le splash reste 3,5 s puis est *retiré du DOM* — et
+> comme il est en `position:fixed`, son `offsetParent` vaut `null`, donc
+> l'attendre par ce biais réussit **trop tôt**. La modale « Accès hors-ligne »
+> s'ouvre en plus dès que le service worker est bloqué. Les deux figent
+> `scrollHeight` et interceptent la molette : c'est ce qui avait fait croire à
+> un bug de scroll du HOME (dette D-home-mini, classée sans suite le 02/09).
 
 ## Quand le lancer
 

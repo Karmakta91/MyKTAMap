@@ -289,9 +289,37 @@
       .replace(/'/g, "&apos;");
   }
 
-  // Format coords lat/lng pour KML : "lng,lat,alt" (alt = 0)
-  function _coord(latlng) {
-    return latlng.lng.toFixed(8) + "," + latlng.lat.toFixed(8) + ",0";
+  // 🩸 v1.83.0 — L'ALTITUDE ÉTAIT ÉCRITE `0`, EN DUR. Un relevé de carrière
+  // exporté en KMZ se posait donc À LA SURFACE : ouvert dans Google Earth, il
+  // flottait sur les vignes au lieu d'être sous elles. Les profondeurs des
+  // niveaux existent depuis la v1.83.0 — il ne restait qu'à les écrire.
+  //
+  // ⚠️ Un `alt` non nul ne suffit PAS : par défaut KML est en `clampToGround`
+  // et l'ignore, et `<tessellate>1</tessellate>` force ce collage au sol. Toute
+  // géométrie qui porte une altitude doit donc déclarer `relativeToGround` ET
+  // renoncer au tessellate — les deux, sinon rien ne bouge.
+  //
+  // `relativeToGround` et non `absolute` : notre profondeur est mesurée SOUS
+  // LA SURFACE, pas depuis le niveau de la mer. L'altitude du terrain, nous ne
+  // la connaissons pas — et l'inventer serait plus faux que zéro.
+  function _coord(latlng, alt) {
+    const a = Number.isFinite(alt) ? alt : 0;
+    return latlng.lng.toFixed(8) + "," + latlng.lat.toFixed(8) + "," + a.toFixed(1);
+  }
+
+  // Altitude KML d'un niveau : sa profondeur (négative) ou 0 si non renseignée.
+  function _altNiveau(level) {
+    if (!Number.isInteger(level)) return 0;
+    if (typeof window.getProfondeurNiveau !== "function") return 0;
+    const z = window.getProfondeurNiveau(level);
+    return Number.isFinite(z) ? z : 0;
+  }
+
+  // Balises à poser sur une géométrie qui porte une altitude réelle. Vide
+  // quand tout est à 0 : on ne change pas le KML des plans sans profondeurs.
+  function _modeAltitude(alt) {
+    return (Number.isFinite(alt) && alt !== 0)
+      ? "<altitudeMode>relativeToGround</altitudeMode>" : "<tessellate>1</tessellate>";
   }
 
   // Convertit une color hex "#RRGGBB" + alpha [0..1] en format KML "AABBGGRR"
@@ -638,8 +666,13 @@
 
     function _emitLineString(road, styleId) {
       if (!road.points || road.points.length < 2) return "";
+      // Une jonction relie deux étages : on la pose au plus HAUT des deux,
+      // faute de pouvoir incliner une seule altitude sur toute la ligne.
+      const _altRoad = (road.type === "jonction")
+        ? Math.max(_altNiveau(road.fromLevel), _altNiveau(road.toLevel))
+        : _altNiveau(road.level);
       const coords = road.points
-        .map(function(p) { return _coord(planToGps(t, p.x, p.y)); })
+        .map(function(p) { return _coord(planToGps(t, p.x, p.y), _altRoad); })
         .join(" ");
       const nom = road.type === "itinerary" ? "🗺️ Itinéraire"
                 : road.type === "jonction"  ? "🪜 Jonction"
@@ -655,7 +688,7 @@
                desc +
                extData +
                '<styleUrl>#' + styleId + '</styleUrl>' +
-               '<LineString><tessellate>1</tessellate><coordinates>' + coords +
+               '<LineString>' + _modeAltitude(_altRoad) + '<coordinates>' + coords +
                '</coordinates></LineString>' +
              '</Placemark>';
     }
@@ -664,9 +697,10 @@
       if (!zone.points || zone.points.length < 3) return "";
       // KML : 1er point répété à la fin pour fermer le ring
       const ring = zone.points.slice();
+      const _altZone = _altNiveau(zone.level);
       ring.push(zone.points[0]);
       const coords = ring
-        .map(function(p) { return _coord(planToGps(t, p.x, p.y)); })
+        .map(function(p) { return _coord(planToGps(t, p.x, p.y), _altZone); })
         .join(" ");
       // 🆕 v1.9.3-A1.b.1 : nom lisible selon le type. Pour les structures
       // (pilier-1 / pilier-2 / mur), le mapping basique
@@ -686,7 +720,7 @@
                desc +
                extData +
                '<styleUrl>#' + styleId + '</styleUrl>' +
-               '<Polygon><outerBoundaryIs><LinearRing><coordinates>' +
+               '<Polygon>' + _modeAltitude(_altZone) + '<outerBoundaryIs><LinearRing><coordinates>' +
                coords + '</coordinates></LinearRing></outerBoundaryIs></Polygon>' +
              '</Placemark>';
     }

@@ -720,9 +720,32 @@ window.LegendCustomization = (function() {
     return false;
   }
 
+  // 🩸 v1.82.0 — RENOMMER OU RECOLORER UNE ENTRÉE DU *PLAN* NE FAISAIT RIEN.
+  // Cette fonction ne cherchait que dans `_sessionState.customEntries` et
+  // sortait sur `return false` sans rien dire. Or les entrées d'un plan
+  // IMPORTÉ vivent dans `_planState` : celles que l'import SIG fabrique par
+  // niveau y sont toutes. L'éditeur les LISTAIT (`listCustomEntries` émet les
+  // deux niveaux) mais aucune modification ne prenait — signalé par KARMA sur
+  // « +1 (historique) » : « ça ne fait rien, même sur le plan en cours ».
+  // Le renommage ET les trois couleurs passent par ici : les quatre étaient
+  // mortes sur une entrée de plan.
+  //
+  // `removeCustomEntry` avait déjà rencontré le problème et l'avait traité
+  // (pierre tombale, v1.77.0). Le mécanisme est donc déjà là et déjà dit : la
+  // SESSION se superpose au PLAN, et une entrée de session GAGNE sur celle du
+  // plan à id égal — c'est la règle de `listCustomEntries` comme de
+  // `findCustomEntry`. On promeut donc l'entrée du plan en session, patch
+  // appliqué. Elle passe alors en source « session », ce qui est exact :
+  // l'utilisateur l'a reprise. `resetSession` rend l'originale du plan.
   function updateCustomEntry(id, patch) {
-    const idx = _sessionState.customEntries.findIndex(function(e) { return e.id === id; });
-    if (idx < 0) return false;
+    let idx = _sessionState.customEntries.findIndex(function(e) { return e.id === id; });
+    if (idx < 0) {
+      const dePlan = _planState.customEntries.find(function(e) { return e.id === id; });
+      if (!dePlan) return false;
+      // Copie : le state du plan vient de PLAN_CONFIG, il ne se mute pas.
+      _sessionState.customEntries.push(Object.assign({}, dePlan));
+      idx = _sessionState.customEntries.length - 1;
+    }
     const e = _sessionState.customEntries[idx];
     if (patch.label != null)       e.label       = String(patch.label).trim() || e.label;
     if (patch.lineColor   !== undefined) e.lineColor   = patch.lineColor   || null;

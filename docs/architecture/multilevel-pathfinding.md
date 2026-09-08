@@ -465,3 +465,119 @@ C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne 
 
 - `InterPlanLinks.onPlanExit(ctx)` + `InterPlanRoute.onPlanExit(ctx)`, appelés côté boot/teardown : `afficherLoader()` → ctx `"home"` · `_libererRessourcesPlanPrecedent()` → ctx `"switch"`.
 - ⚠️ **Subtilités à ne pas casser** : ① côté liaison, le hook "switch" est **no-op si `_pendingTarget` existe** (= goTo en cours qui gère déjà bouton + pile ; sans ce garde, tout saut de portail perdrait son bouton Retour). ② côté route, la **chaîne multi-hop (`_pendingChain`) survit au "switch"** — c'est elle qui trace les legs aux arrivées ; elle n'est abandonnée qu'au retour HOME. ③ Tout NOUVEAU flottant de navigation doit s'enregistrer dans un de ces hooks (ou avoir un timer d'expiration).
+
+---
+
+## ⛔ Ce qui contraint réellement l'itinéraire — et la case pour le suspendre (v1.82.0)
+
+État établi en lisant `pathfinder.js`, parce que la question revient et que le
+code disait le contraire de ses propres commentaires.
+
+| Contrainte | Source | Nature | Réglable |
+|---|---|---|---|
+| Zones `inaccessible` | session + `_ktaDataPolygons` | **dure**, jamais relâchée | ✅ **depuis v1.82.0** |
+| Autres types de zones | idem | souple (relâchée en passe 2) | ✅ cases « 🚫 Préférences d'évitement » |
+| Points / tags à éviter | `SearchPoints` | souple | ✅ |
+| **Structures** (piliers, murs, fronts) | — | **aucune** | sans objet |
+
+🩸 **Les structures ne bloquent rien.** Aucune référence dans `pathfinder.js` :
+elles ne sont ni arêtes ni obstacles. Le commentaire de `utils.js` au-dessus de
+`getAllEmbeddedStructures` affirmait le contraire (« utilisé pour la collision
+pathfinder, les structures bloquent comme les zones inaccessibles ») — c'était
+faux depuis le début, et ça a coûté un aller-retour de diagnostic à KARMA.
+
+🩸 **Le graphe se construit UNIQUEMENT sur les `roads`** (`getRoads` +
+`getAllEmbeddedRoads`). Conséquence sur un plan importé dont tout le relevé est
+parti en structures : **aucun itinéraire n'est possible**, pas même dégradé.
+C'est ce qui motive le reclassement d'objet (cf. `session-data.md`).
+
+### La case « Respecter les zones inaccessibles »
+
+Les zones `inaccessible` étaient la **seule** contrainte que le moteur ne relâche
+jamais — même la passe 2 les garde. Sur un relevé encore incomplet, un polygone
+typé par erreur ferme donc un passage réel, sans recours.
+
+`computeRoute(waypoints, { respecterInaccessibles: false })` la suspend. Case
+dans la section « 🚫 Préférences d'évitement », **cochée par défaut**, persistée
+avec les autres préférences (`respecterInaccessibles !== false` : une préférence
+enregistrée avant cette version n'a pas le champ et garde le comportement
+historique).
+
+⚠️ **Volontairement limité à `computeRoute`.** `computeReachable` (Mode Secours /
+Perdu) garde les zones inaccessibles en toutes circonstances : une préférence de
+confort n'a pas à élargir un périmètre de secours. `interPlanRoute`,
+`secoursMode` et `sortieUrgence` ne passent pas l'option — ils héritent donc du
+comportement sûr, et c'est intentionnel.
+
+---
+
+## 📉 Profondeur des niveaux + profil en long (v1.83.0)
+
+Un niveau n'était qu'un **entier nu**. Aucune altitude nulle part dans le projet —
+`kmzExport.js` écrit même `alt = 0` en dur, et le GPX n'émet aucun `<ele>`.
+
+**Référence : la SURFACE**, négatif vers le bas (arbitrage KARMA). Niveau 0 à
+**-25 m** par défaut, pas de **5 m**. Une référence *relative au niveau 0* aurait
+suffi au profil — qui ne lit que des différences — mais celle-ci porte une
+information de plus, gratuitement : un cataphile sait qu'il est à 20 m sous la rue.
+
+### Trois états, et la distinction porte du sens
+
+| État | Signification |
+|---|---|
+| **absent** | non renseigné — l'état de **tout plan généré avant cette version** |
+| **nombre** | profondeur en mètres sous la surface |
+| **`null`** | **sans profondeur**, explicitement |
+
+⚠️ Le `null` n'est pas une coquetterie : l'import SIG range le **topo historique au
+niveau +1**, qui n'est pas un étage physique au-dessus mais une **convention
+d'empilement** pour séparer deux relevés du même endroit. Lui donner une altitude
+fausserait tout profil qui le traverse.
+
+Et les plans existants restent **non renseignés**, délibérément : on ne peut pas
+deviner la profondeur d'un plan ancien, et l'inventer changerait ses distances en
+silence (cf. jonctions 3D ci-dessous).
+
+### 🩸 Ce que le chantier a corrigé sans qu'on le cherche
+
+**1. Les jonctions étaient mesurées à plat.** `_addEdge` recevait `_dist(prevP, p)`
+— la distance **dans le plan** — pour tous les segments, jonctions comprises. Un
+puits dessiné sur 3 px entre deux étages distants de 12 m comptait pour **3 px**.
+Deux conséquences : les longueurs d'itinéraire multi-niveaux étaient
+**sous-comptées**, et Dijkstra préférait **systématiquement** le puits au détour à
+plat, parfois à tort.
+
+`_poidsSegment` calcule désormais l'hypoténuse. Le graphe travaille en **pixels
+plan** : le dénivelé est converti par l'échelle avant d'être combiné, sinon on
+additionnerait des mètres à des pixels. **Sans profondeur renseignée, on retombe au
+pixel près sur l'ancien calcul** — c'est ce qui rend le changement sans risque pour
+les plans existants.
+
+**2. `computeRoute` jetait le niveau.** Les nœuds le portent dans le tableau
+parallèle `graph.nodeLevels[i]` (`Set<number|"transit">`), mais le retour était un
+`{x, y}` plat. `path` porte maintenant `level` : l'entier quand il est **univoque**,
+`null` sinon — nœud d'intersection multi-niveaux, ou **milieu de jonction**, qui
+n'est à aucun étage mais **entre** deux.
+
+⚠️ Piège payé à l'écriture : les niveaux ne sont **pas** sur le nœud. Une première
+rédaction lisait `node.levels` — toujours `undefined`, donc `null` partout, **sans
+la moindre erreur**. Le profil serait sorti plat.
+
+### Le profil
+
+`ProfondeurNiveaux.construireProfil(path)` → distance cumulée, altitude, **dénivelé
+cumulé** (montée / descente), min/max.
+
+- Les points de niveau indéterminé sont **interpolés** entre les profondeurs connues
+  qui les encadrent — c'est exactement ce qu'est un puits.
+- Un trou **en bout de chemin** n'est pas interpolable : il reste `null` plutôt que
+  d'être extrapolé. C'est le cas du +1 historique, et c'est ce qui empêche le profil
+  de mentir.
+- Pas d'échelle calibrée → `null`, et l'écran le **dit** au lieu d'afficher un graphe
+  vide.
+
+Rendu **SVG** et non canvas : net à tout zoom, imprimable, repères de niveau
+sélectionnables — et une centaine de points au plus.
+
+**Prouvé** : 11 cas dans `check-api-surface.js`, falsifiés — retirer l'interpolation
+fait tomber le cas du puits, autoriser l'extrapolation fait tomber celui du +1.

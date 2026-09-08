@@ -3871,6 +3871,25 @@ html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
     margin-bottom: 16px;
   }
 
+  /* 🐛 v1.85.2 (capture KARMA) — UN TITRE DE GROUPE NE RESTE PAS SEUL EN BAS
+     DE COLONNE. `break-inside` protégeait les sections, mais rien n'empêchait
+     une coupure JUSTE APRÈS un titre : « 🔒 Confidentialité & sécurité »
+     s'affichait en bas à gauche pendant que son contenu commençait à droite.
+     Un titre orphelin est pire qu'un titre déplacé — il annonce un contenu
+     qui n'est pas là. `avoid-column` est la valeur propre au multi-colonnes ;
+     `avoid` et le legacy couvrent les moteurs qui ne la connaissent pas. */
+  /* ⚠️ LES DEUX CORPS. Le HOME a son propre conteneur, avec les MEMES titres :
+     scoper la règle sur un seul laissait le bug intact de l'autre côté (c'est
+     ce qui vient d'arriver). Toute modale qui coule en colonnes et réutilise
+     `.kta-cfg-group-titre` doit figurer ici. */
+  .kta-cfg-corps .kta-cfg-group-titre,
+  .kta-loader-config-corps .kta-cfg-group-titre {
+    break-after: avoid-column;
+    break-after: avoid;
+    page-break-after: avoid;
+    break-inside: avoid;
+  }
+
   /* Barre d'actions en bas : doit traverser les 2 colonnes en pleine largeur
      pour que les 4 boutons restent visibles d'un coup sans devoir scroller
      une colonne. En 4 colonnes pour exploiter l'espace dispo sur PC. */
@@ -4951,6 +4970,37 @@ body.kta-theme-light .splash-license-detail-pro {
   min-height: 260px;
 }
 .kta-osm-home-loading,
+/* 🌍 v1.90.2 — Bandeau d'annonce du défaut OSM. Discret mais lisible : il dit
+   qu'un fond de carte tiers est désormais affiché sans qu'on l'ait demandé,
+   et il disparaît définitivement au premier « J'ai compris ». */
+.kta-osm-defaut-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 8px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(244, 197, 66, 0.35);
+  border-radius: 8px;
+  background: rgba(244, 197, 66, 0.08);
+  font-size: 12px;
+  line-height: 1.45;
+  color: #c8d0e0;
+}
+.kta-osm-defaut-txt { flex: 1 1 200px; }
+.kta-osm-defaut-ok {
+  flex: 0 0 auto;
+  padding: 5px 12px;
+  border: 1px solid rgba(140, 180, 255, 0.45);
+  border-radius: 6px;
+  background: transparent;
+  color: #8cb4ff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.kta-osm-defaut-ok:hover { background: rgba(140, 180, 255, 0.12); }
+
 .kta-osm-home-empty {
   display: flex;
   align-items: center;
@@ -6482,6 +6532,57 @@ html.kta-theme-light .kta-cfg-group-titre {
   line-height: 1.4;
   padding: 0 2px;
   min-height: 1.4em;
+}
+
+/* 🖼️ v1.85.4 — Mention sous le tuilage, dans la carte de chargement : elle dit
+   que le choix N'EST PAS mémorisé. Plus discrète que .kta-perf-desc, qui porte
+   la description dynamique du preset (remplie en JS depuis les metas tiling). */
+/* ═══════════════════════════════════
+   🖼️ v1.88.1 — TUILAGE REPLIABLE DANS LA CARTE DE CHARGEMENT
+   🩸 Le bloc, posé là en v1.86.0, ajoutait ~207 px a la colonne Actions —
+   dont le min-content mesure ~510 px sous un plancher de grid de 520 px
+   (cf .loader-grid). A 125 % de zoom (viewport 1229x691) la colonne
+   debordait sur le footer : le bug « des % qui cassent le home », deja
+   clos en v1.60.x, revenait par ma faute.
+   Replie, il coute ~38 px au lieu de ~207. La valeur courante reste
+   visible dans le resume : on n a pas besoin de deplier pour savoir.
+   ═══════════════════════════════════ */
+.kta-perf-details {
+  margin-top: 14px;
+}
+.kta-perf-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  color: #c8d0e0;
+  font-size: 12.5px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;          /* Chrome/Safari : masque le triangle natif */
+}
+.kta-perf-summary::-webkit-details-marker { display: none; }
+.kta-perf-summary::after {
+  content: "▾";
+  margin-left: auto;
+  opacity: 0.6;
+  transition: transform 0.15s ease;
+}
+.kta-perf-details[open] > .kta-perf-summary::after { transform: rotate(180deg); }
+.kta-perf-summary b { color: #f4c542; font-weight: 600; }
+.kta-perf-summary:hover { border-color: rgba(140,180,255,0.45); }
+/* Deplie : le wrap perd sa marge propre, le resume la porte deja. */
+.kta-perf-details > .kta-perf-wrap { margin-top: 8px; }
+
+.kta-perf-hint {
+  font-size: 11px;
+  color: #8892a4;
+  line-height: 1.4;
+  padding: 0 2px;
+  opacity: 0.85;
 }
 
 .kta-perf-debug {
@@ -8101,6 +8202,32 @@ html.kta-theme-light .kta-legal-art { color: var(--kta-light-text-2, #38414f); }
    passe par le tag builtin « portail » et son icône dédiée icon/portail.png) */
 /* Modale création */
 .kta-ipl-boite { max-width: 520px !important; height: auto !important; max-height: 90vh !important; }
+/* 🖥️ v1.81.0 (KARMA, capture PC) — LE GESTIONNAIRE 🌀 Mes liaisons a besoin
+   de bien plus que les 520 px de la modale de création : chaque ligne porte
+   DEUX noms « plan · point » + l'écart de calage + 3 boutons. À 520 px les
+   noms tombaient en `text-overflow: ellipsis` (« Galeries techniques · CA… »)
+   et les deux côtés passaient à la ligne — la liste devenait illisible alors
+   que l'écran était vide à 80 %.
+   La modale de CRÉATION garde ses 520 px : c'est un formulaire court, et
+   l'étirer n'aurait fait qu'éparpiller ses champs. D'où la classe dédiée
+   `.kta-ipl-mgr-boite` posée sur le seul gestionnaire.
+   Paliers alignés sur ceux des autres modales à override (.kta-aide-modal-
+   boite & co, cf. « v1.9.2-fix13 »), mais plafonnés plus bas : une liste de
+   liaisons à 2 000 px étirerait les lignes en laissant 3 petits boutons
+   perdus à droite. `!important` obligatoire — la règle de base ci-dessus en
+   porte un. Mobile inchangé. */
+@media (min-width: 1024px) {
+  .kta-ipl-mgr-boite {
+    max-width: min(1000px, 94vw) !important;
+    width: min(1000px, 94vw) !important;
+  }
+}
+@media (min-width: 1440px) {
+  .kta-ipl-mgr-boite {
+    max-width: min(1240px, 92vw) !important;
+    width: min(1240px, 92vw) !important;
+  }
+}
 .kta-ipl-src {
   font-size: 12.5px;
   color: #8892a4;
@@ -8307,6 +8434,66 @@ html.kta-theme-light .kta-ipl-back-float {
 }
 .kta-ipl-mgr-absent { color: #8892a4; }
 .kta-ipl-mgr-arrow { color: #f4c542; flex: 0 0 auto; }
+/* 📐 v1.81.0 (D5) — écart de calage d'une liaison. Discret par construction :
+   c'est une mesure de diagnostic, pas le contenu de la ligne. Aucun seuil de
+   couleur — 20 m est énorme sur une petite carrière et négligeable sur un
+   réseau de 5 km ; colorer reviendrait à juger à la place de l'utilisateur
+   avec un seuil qui ignore son échelle. */
+/* 📐 v1.81.0 (D5) — contrôle qualité du calage, sous les chips de la Vue OSM.
+   Classé du PIRE au meilleur : ce qui mérite un recalage est en tête. Aucun
+   seuil de couleur, même raison que le badge de 🌀 Mes liaisons. */
+.kta-osm-qualite { margin: 6px 0 2px; }
+.kta-osm-qualite:empty { display: none; }
+.kta-osm-qualite-titre {
+  color: #c8d0e0;
+  font-size: 11.5px;
+  margin: 0 0 4px;
+}
+.kta-osm-qualite-vide {
+  color: #8892a4;
+  font-size: 11px;
+  margin: 4px 0 0;
+  line-height: 1.45;
+}
+.kta-osm-qualite-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 4px 8px;
+  margin-bottom: 3px;
+  background: rgba(244, 197, 66, 0.07);
+  border: 1px solid rgba(244, 197, 66, 0.18);
+  border-radius: 4px;
+  color: #e8eaf0;
+  font-size: 11.5px;
+  cursor: pointer;
+  text-align: left;
+}
+.kta-osm-qualite-ligne:hover { background: rgba(244, 197, 66, 0.14); }
+.kta-osm-qualite-noms {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kta-osm-qualite-val { flex: 0 0 auto; color: #f4c542; }
+html.kta-theme-light .kta-osm-qualite-titre,
+html.kta-theme-light .kta-osm-qualite-ligne { color: var(--kta-light-text, #1a1f2e); }
+
+.kta-ipl-mgr-ecart {
+  flex: 0 0 auto;
+  color: #8892a4;
+  font-size: 11.5px;
+  white-space: nowrap;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(244, 197, 66, 0.08);
+  border: 1px solid rgba(244, 197, 66, 0.18);
+}
+html.kta-theme-light .kta-ipl-mgr-ecart { color: var(--kta-light-text-2, #4a5568); }
 .kta-ipl-mgr-actions { flex: 0 0 auto; display: flex; gap: 4px; }
 html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); }
 
@@ -9552,6 +9739,13 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
   font-size: 13px;
   color: #c8d0e0;
   max-width: calc(100vw - 24px);
+  /* 🩸 v1.85.0 (KARMA « ca sort du cadre sur mobile ») : `max-width`
+     plafonne la BOITE, pas son CONTENU. Sans `flex-wrap`, un message non
+     coupable et des boutons incompressibles debordent de la boite, qui
+     deborde de l ecran. Invisible sur grand ecran, systematique sur
+     telephone. */
+  flex-wrap: wrap;
+  box-sizing: border-box;
 }
 
 .kta-iti-floater-icon {
@@ -9560,8 +9754,14 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
 }
 
 .kta-iti-floater-msg {
-  flex: 1;
-  white-space: nowrap;
+  flex: 1 1 auto;
+  /* Le message se COUPE plutot que de sortir du cadre. Une phrase sur deux
+     lignes reste lisible ; hors de l ecran, non. `min-width: 0` est
+     indispensable : sans lui un enfant flex refuse de descendre sous sa
+     largeur de contenu, et `flex-wrap` ne sert a rien. */
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
   color: #e8eaf0;
 }
 
@@ -20082,6 +20282,11 @@ html.kta-theme-light .kta-readme-modal-overlay *[style*="background: #1a1f2e"] {
 .kta-jrn-note-lab { display: block; font-size: 12px; color: #c8d0e0; margin-bottom: 4px; }
 .kta-jrn-note {
   width: 100%;
+  /* 🐛 v1.85.2 (capture KARMA) : sans ça, le champ DEBORDE du cadre à droite.
+     `width: 100%` + 20px de padding + 2px de bordure = 122 % du conteneur —
+     un <textarea> est en `content-box` par défaut, et le projet n'a aucun
+     reset global qui le rattraperait. */
+  box-sizing: border-box;
   padding: 8px 10px;
   font-size: 12.5px;
   font-family: inherit;
@@ -21197,6 +21402,23 @@ html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
    compactée reste ≤ ~515 px — re-mesurer si on ajoute un bloc à la colonne.
    Hauteur d'ÉCRAN seulement — aucune règle mobile (<1024 de large) touchée. */
 @media (min-width: 1024px) and (max-height: 820px) {
+  /* 🩸 v1.88.1 — FILET : la colonne Actions peut scroller EN INTERNE.
+     Jusqu ici elle etait « incompressible » et le plancher de 520 px de la
+     grid reposait sur une hauteur MESUREE A LA MAIN en v1.79.0 (~510 px).
+     Toute ligne ajoutee depuis perimait cette constante en silence — c est
+     exactement ce qui s est produit avec le bloc de tuilage (v1.86.0,
+     ~207 px) : debordement sur le footer a 125 % de zoom.
+     Le meme modele que la colonne des plans (flex + min-height:0 + scroll)
+     rend la colonne robuste a la PROCHAINE addition, au lieu de recalibrer
+     une constante a chaque fois. Le bouton « Charger ce plan » reste colle
+     en bas du contenu (margin-top:auto), donc atteignable au scroll. */
+  .loader-col-actions { min-height: 0; }
+  .loader-col-actions #panelZip {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .loader-col-actions .zip-drop-zone {
     padding: 12px 14px;
   }
@@ -21298,3 +21520,259 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   background: rgba(244, 197, 66, 0.18);
   color: #7a5c10;
 }
+
+/* 🔍 v1.82.0 — LARGEUR DES FRONTS DE TAILLE, PILOTÉE PAR LE ZOOM.
+   `weight` de Leaflet est en pixels ÉCRAN : un front garde 10 px à tous les
+   zooms, donc en dézoomant les traits se rapprochent sans maigrir et
+   fusionnent en aplat. Sur un plan importé portant 10 000 fronts, la carte
+   devient une tache (signalé par KARMA).
+   `!important` est nécessaire : Leaflet écrit `stroke-width` en attribut
+   inline sur chaque path, et un attribut de présentation perdrait face à
+   lui sans ça. La variable est mise à jour au zoomend — une écriture pour
+/* 🩸 v1.82.0 — LA VOIE CSS A ÉTÉ RETIRÉE, elle ne pouvait pas fonctionner.
+   La carte est rendue en CANVAS (`preferCanvas: true`, map.js:382), pas en
+   SVG. Or l'option `className` de Leaflet est documentée « Only for SVG
+   renderer » : sur un canvas il n'existe aucun élément DOM à styler, et le
+   renderer peint avec `ctx.lineWidth = options.weight`, relu à chaque frame.
+   Une règle `stroke-width` était donc un no-op complet — en mode plan ET en
+   Vue OSM. La largeur se pilote désormais par `options.weight`, muté en
+   place (cf. structures.js > majLargeurFronts). */
+
+/* ==============================================
+   🔄 v1.82.0 — Modale « Convertir cet objet »
+   ==============================================
+   Reclassement d'un objet de session d'un type (et d'une famille) à l'autre.
+   Réutilise la boîte de modale charte (.kta-readme-modal-*) ; seuls les
+   éléments propres au choix de type sont définis ici. */
+.kta-convert-boite { max-width: 460px; }
+.kta-convert-source {
+  font-size: 13px;
+  color: #e8eaf0;
+  margin: 0 0 4px;
+}
+.kta-convert-regle {
+  font-size: 12px;
+  color: #8892a4;
+  line-height: 1.45;
+  margin: 0 0 14px;
+}
+.kta-convert-groupe { margin-bottom: 14px; }
+.kta-convert-groupe-titre {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8cb4ff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.kta-convert-choix {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #d7dbe6;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.kta-convert-choix:hover {
+  background: rgba(140, 180, 255, 0.10);
+  border-color: rgba(140, 180, 255, 0.35);
+}
+.kta-convert-swatch {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-width: 22px;
+}
+.kta-convert-label { flex: 1 1 auto; }
+.kta-convert-vide {
+  font-size: 13px;
+  color: #8892a4;
+  font-style: italic;
+  margin: 8px 0;
+}
+/* Le bouton de la popup de note : discret à côté de « Sauver la note ». */
+.kta-note-popup-convertir {
+  background: rgba(140, 180, 255, 0.14);
+  border: 1px solid rgba(140, 180, 255, 0.30);
+  color: #c8d0e0;
+}
+.kta-note-popup-convertir:hover {
+  background: rgba(140, 180, 255, 0.24);
+}
+body.kta-theme-light .kta-convert-source { color: #1a1f2e; }
+body.kta-theme-light .kta-convert-choix {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.10);
+  color: #24304a;
+}
+body.kta-theme-light .kta-convert-choix:hover { background: rgba(60, 110, 200, 0.10); }
+
+/* ==============================================
+   📉 v1.83.0 — Profondeur des niveaux + profil en long
+   ============================================== */
+.kta-prof-boite, .kta-profil-boite { max-width: 520px; }
+.kta-prof-hint { font-size: 12px; color: #8892a4; line-height: 1.5; margin: 0 0 10px; }
+.kta-prof-propose { color: #8cb4ff; }
+.kta-prof-avert { color: #ffb380; margin-top: 12px; }
+.kta-prof-ligne {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; margin-bottom: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+.kta-prof-niv {
+  flex: 0 0 44px; font-weight: 700; font-size: 13px; color: #f4c542; text-align: center;
+}
+.kta-prof-val { flex: 0 0 90px; }
+.kta-prof-val:disabled { opacity: 0.35; }
+.kta-prof-unite { font-size: 12px; color: #8892a4; }
+.kta-prof-sans {
+  margin-left: auto; display: flex; align-items: center; gap: 5px;
+  font-size: 11.5px; color: #8892a4; cursor: pointer; white-space: nowrap;
+}
+.kta-prof-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+
+.kta-profil-chiffres {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  font-size: 12.5px; color: #c8d0e0; margin-bottom: 10px;
+}
+.kta-profil-chiffres b { color: #e8eaf0; }
+.kta-profil-monte b   { color: #7ee0a0; }
+.kta-profil-descend b { color: #ff9f6b; }
+.kta-profil-svg {
+  width: 100%; height: auto; display: block;
+  background: rgba(0, 0, 0, 0.22); border-radius: 8px;
+}
+.kta-profil-grille { stroke: rgba(255, 255, 255, 0.10); stroke-width: 1; }
+.kta-profil-tick   { fill: #8892a4; font-size: 9px; font-family: inherit; }
+.kta-profil-trace  {
+  fill: none; stroke: #8cb4ff; stroke-width: 2.2;
+  stroke-linejoin: round; stroke-linecap: round;
+}
+body.kta-theme-light .kta-prof-ligne { background: rgba(0, 0, 0, 0.03); border-color: rgba(0, 0, 0, 0.10); }
+body.kta-theme-light .kta-profil-svg { background: rgba(0, 0, 0, 0.05); }
+body.kta-theme-light .kta-profil-grille { stroke: rgba(0, 0, 0, 0.12); }
+body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }
+
+/* ==============================================
+   📏 v1.83.0 — Mesure dans la Vue OSM
+   ============================================== */
+#kta-osm-mes-floater {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  top: calc(12px + env(safe-area-inset-top, 0px));   /* repositionne sur la carte par JS */
+  z-index: 100002;                 /* au-dessus de la Vue OSM plein écran */
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, #1a1f2e 0%, #0f1320 100%);
+  border: 1px solid rgba(244, 197, 66, 0.45);
+  border-radius: 10px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+  font-size: 13px; color: #e8eaf0;
+  max-width: calc(100vw - 24px);
+  /* 🩸 Mobile : sans coupure, le contenu sort du cadre (cf. .kta-iti-floater). */
+  flex-wrap: wrap; box-sizing: border-box;
+}
+.kta-osm-mes-icone { font-size: 15px; }
+.kta-osm-mes-info  { font-weight: 600; white-space: normal; overflow-wrap: anywhere; min-width: 0; }
+/* Libellé de segment : lisible sur fond de carte clair comme sombre. */
+.kta-osm-mes-seg { background: none !important; border: none !important; }
+.kta-osm-mes-seg span {
+  display: inline-block; transform: translate(-50%, -50%);
+  padding: 1px 6px; border-radius: 6px;
+  background: rgba(26, 31, 46, 0.88);
+  border: 1px solid rgba(244, 197, 66, 0.5);
+  color: #f4c542; font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+/* 📍 v1.85.0 — releve de coordonnees GPS de surface. Meme gabarit que le
+   bandeau de mesure : les deux outils vivent au meme endroit de l ecran et
+   sont exclusifs, ils ne se chevaucheront jamais. */
+#kta-osm-coord-floater {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  top: calc(12px + env(safe-area-inset-top, 0px));   /* repositionne sur la carte par JS */
+  z-index: 100002;                 /* au-dessus de la Vue OSM plein ecran */
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, #1a1f2e 0%, #0f1320 100%);
+  border: 1px solid rgba(140, 180, 255, 0.45);
+  border-radius: 10px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+  font-size: 13px; color: #e8eaf0;
+  max-width: calc(100vw - 24px);
+  /* 🩸 Mobile : sans coupure, le contenu sort du cadre (cf. .kta-iti-floater). */
+  flex-wrap: wrap; box-sizing: border-box;
+}
+.kta-osm-coord-icone { font-size: 15px; }
+/* La coordonnee est faite pour etre LUE et RECOPIEE : chasse fixe, et
+   selectionnable a la souris meme sans passer par le bouton Copier. */
+.kta-osm-coord-info {
+  /* Coupable au besoin : une coordonnee sur deux lignes reste lisible et
+     recopiable, hors de l ecran non. */
+  font-weight: 600; white-space: normal; overflow-wrap: anywhere; min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px; color: #8cb4ff;
+  user-select: text; -webkit-user-select: text;
+}
+body.kta-theme-light #kta-osm-coord-floater {
+  background: #ffffff; color: #24304a; border-color: rgba(60, 110, 200, 0.5);
+}
+body.kta-theme-light .kta-osm-coord-info { color: #1c4fa8; }
+
+body.kta-theme-light #kta-osm-mes-floater {
+  background: #ffffff; color: #24304a; border-color: rgba(180, 140, 20, 0.5);
+}
+
+/* 📉 v1.83.0 — champs de profondeur du Générateur (sous la case multi-niveau) */
+.kta-planner-prof-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 8px 0 4px 26px; padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid rgba(244, 197, 66, 0.35);
+  border-radius: 0 6px 6px 0;
+}
+.kta-planner-prof-row .kta-cfg-input { width: 90px; }
+.kta-planner-prof-row .kta-cfg-label { font-size: 12px; margin: 0; }
+
+/* 🎯 v1.85.0 — bandeau de sélection multiple. Il hérite de .kta-iti-floater
+   (position, fond, ombre) : seul l'écart des boutons change, parce qu'il en
+   porte quatre là où les autres pickers en ont un. */
+.kta-selm-floater { gap: 8px; flex-wrap: wrap; max-width: min(94vw, 720px); }
+.kta-selm-floater .kta-btn { white-space: nowrap; }
+.kta-selm-floater #kta-selm-ok[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* Le bouton d'entrée en sélection multiple, dans la modale de conversion. */
+.kta-convert-multi { display: block; width: 100%; margin: 4px 0 12px; }
+
+/* 🔗 v1.85.2 — fusion de sorties dans le carnet. La barre vit SOUS la liste :
+   au-dessus, elle repousserait les sorties hors de l'écran sur téléphone. */
+.kta-jrn-fusion-barre {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 10px 0 2px; padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.10);
+}
+.kta-jrn-fusion-msg { flex: 1 1 auto; min-width: 0; font-size: 12px; color: #8892a4; }
+.kta-jrn-fusion-barre .kta-btn[disabled] { opacity: .45; cursor: not-allowed; }
+.kta-jrn-coche { margin-right: 6px; font-size: 14px; }
+.kta-jrn-row-sel { border-color: rgba(140, 180, 255, 0.55) !important; }
+
+/* ═══════════════════════════════════
+   💾 v1.90.0 — BOUTON HORS-LIGNE SUR LA LIGNE DE PLAN (serveur uniquement)
+   Demande KARMA (« offline first oblige »). Trois couleurs pour trois états,
+   lus du CACHE RÉEL : neutre = à télécharger, vert = disponible (le bouton
+   devient « mettre à jour »), ambre = incomplet ou fichiers manquants.
+   Le bouton naît `hidden` : tant que l'état n'est pas lu, il n'existe pas —
+   pas de bouton fantôme.
+   ═══════════════════════════════════ */
+.plan-row-btn.kta-plan-row-dl { opacity: 0.75; }
+.plan-row-btn.kta-plan-row-dl:hover { opacity: 1; }
+.plan-row-btn.kta-dl-ok { color: #7bd88f; opacity: 1; }
+.plan-row-btn.kta-dl-partiel { color: #f4c542; opacity: 1; }
+.plan-row-btn.kta-plan-row-dl[disabled] { opacity: 0.45; cursor: progress; }

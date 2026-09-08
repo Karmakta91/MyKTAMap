@@ -909,7 +909,81 @@
         return (fr !== undefined) ? fr : key;
       }
 
-      function planRowHTML(plan) {
+            // ══════════════════════════════════════════════════════════════
+      // 💾 v1.90.0 — BOUTON HORS-LIGNE SUR LA LIGNE (plans SERVEUR)
+      // ══════════════════════════════════════════════════════════════
+      // Demande KARMA : « offline first oblige, on doit avoir le bouton pour
+      // télécharger hors-ligne le plan serveur directement depuis le home ;
+      // si DL full, ça devient un bouton de mise à jour. »
+      //
+      // 🩸 L'ÉTAT VIENT DU CACHE RÉEL, jamais d'un drapeau — même règle que la
+      // fiche ℹ️ Infos. Le bouton naît donc CACHÉ (`hidden`) et n'apparaît
+      // qu'une fois l'état connu : si le cache est illisible, il reste absent
+      // plutôt que de mentir. Un cache purgé par le navigateur fait
+      // naturellement repasser le bouton en « télécharger ».
+      const _ETATS_DL = {
+        absent:    { txt: "⬇️", cle: "home.plans.offline.rowDl",       repli: "Rendre disponible hors-ligne" },
+        incomplet: { txt: "⬇️", cle: "home.plans.offline.rowResume",   repli: "Téléchargement incomplet — compléter" },
+        partiel:   { txt: "↻",  cle: "home.plans.offline.rowRetry",    repli: "Disponible, mais des fichiers manquent — réessayer" },
+        complet:   { txt: "↻",  cle: "home.plans.offline.rowUpdate",   repli: "Disponible hors-ligne — mettre à jour" }
+      };
+
+      function _peindreBoutonDl(btn, etat) {
+        const meta = _ETATS_DL[etat];
+        if (!meta) { btn.hidden = true; return; }
+        btn.textContent = meta.txt;
+        btn.title       = _homeT(meta.cle, meta.repli);
+        btn.dataset.off = etat;
+        btn.classList.toggle("kta-dl-ok", etat === "complet");
+        btn.classList.toggle("kta-dl-partiel", etat === "partiel" || etat === "incomplet");
+        btn.hidden = false;
+      }
+
+      // Un SEUL caches.keys() pour toute la liste (cf PlanOffline.statuts).
+      async function _rafraichirBoutonsHorsLigne() {
+        if (!window.PlanOffline || !window.PlanOffline.supporte()) return;
+        const btns = Array.from(document.querySelectorAll(".kta-plan-row-dl"));
+        if (!btns.length) return;
+        const ids = btns.map(function (b) {
+          const row = b.closest(".plan-row");
+          return row ? row.dataset.id : null;
+        }).filter(Boolean);
+        let etats = {};
+        try { etats = await window.PlanOffline.statuts(ids); } catch (e) { return; }
+        btns.forEach(function (b) {
+          const row = b.closest(".plan-row");
+          const st  = row && etats[row.dataset.id];
+          if (st) _peindreBoutonDl(b, st.etat);
+        });
+      }
+
+      // Téléchargement / mise à jour depuis la ligne. Le bouton porte sa propre
+      // progression : pas de modale, on reste dans la liste.
+      async function _lancerHorsLigneLigne(planId, btn) {
+        const plan = window.PlanRegistry && window.PlanRegistry.findById(planId);
+        if (!plan || plan.type !== "server" || !window.PlanOffline) return;
+        const avant = { txt: btn.textContent, title: btn.title };
+        btn.disabled = true;
+        btn.textContent = "…";
+        try {
+          const r = await window.PlanOffline.precacher(plan, function (p) {
+            const pct = p.total ? Math.round((p.fait / p.total) * 100) : 0;
+            btn.title = _homeT("home.plans.offline.rowProgress", "Téléchargement…") + " " + pct + " %";
+          });
+          if (r && r.echecs) {
+            console.warn("[Loader] hors-ligne : " + r.echecs + " fichier(s) introuvable(s) —", r.manquants);
+          }
+        } catch (e) {
+          console.warn("[Loader] hors-ligne échec :", e && e.message);
+          btn.textContent = avant.txt;
+          btn.title = avant.title;
+        }
+        btn.disabled = false;
+        // On RELIT le cache plutôt que de croire le résultat retourné.
+        _rafraichirBoutonsHorsLigne();
+      }
+
+function planRowHTML(plan) {
         let icon = plan.type === "server" ? "🌐" : "💾";
         // Badge de persistance (plans locaux) — différencier visuellement les
         // modes de stockage (blob/fsHandle/pick).
@@ -967,6 +1041,8 @@
             </div>
             <div class="plan-row-actions">
               <button class="plan-row-btn kta-plan-row-pin${plan.pinned ? " kta-actif" : ""}" title="${pinTitle}">${plan.pinned ? "⭐" : "☆"}</button>
+              ${plan.type === "server" ? `<button class="plan-row-btn kta-plan-row-dl" data-off="?" hidden
+                title="${_homeT("home.plans.offline.rowWait", "Vérification…")}">⏳</button>` : ""}
               <button class="plan-row-btn plan-row-info-btn" title="${_homeT("home.plans.infoBtnTitle", "Informations détaillées sur cette archive")}">ℹ️</button>
             </div>
           </div>
@@ -1173,11 +1249,45 @@
           rows.push({ label: _t("home.plans.info.keyPersistence"), value: storageLabel, mono: false });
         }
         rows.push({ label: _t("home.plans.info.keyMode"), value: modesLabel, mono: false });
-        if (plan.perfPreset) {
-          pushRow(_t("home.plans.info.keyPreset"), plan.perfPreset);
-        }
+        // 🖼️ v1.90.2 — le preset n'est plus une ligne de tableau en lecture
+        // seule : il est devenu un CONTRÔLE, plus bas, et seulement pour les
+        // plans que ça concerne (cf. `tuilageHtml`).
         pushRow(_t("home.plans.info.keyAddedAt"),    plan.addedAt    ? fmtDate(plan.addedAt)    : null);
         pushRow(_t("home.plans.info.keyLastOpened"), plan.lastOpened ? fmtDate(plan.lastOpened) : (plan.discovered ? _t("home.plans.info.neverOpened") : null));
+
+        // ═══ 🖼️ TUILAGE — LE SEUL POINT DE RÉGLAGE (v1.90.2, décision KARMA) ═══
+        // « enlève la possibilité de régler ce truc [au HOME]. On est en auto
+        //   tout le temps. […] On peut à la rigueur le mettre dans info, d'un
+        //   plan pour lequel ça a une pertinence (V1). »
+        //
+        // 🩸 IL NE S'AFFICHE QUE SI ÇA CHANGE QUELQUE CHOSE. Sur un plan tuilé
+        // V2 — le cas courant, et le process conseillé — la branche tuiles est
+        // prise AVANT le preset : « Désactivé » n'y a aucun effet, il est
+        // seulement journalisé. Proposer le réglage là aurait été proposer un
+        // interrupteur débranché.
+        // ⚠️ `tiledV2` n'est connu qu'une fois le plan ouvert une première fois
+        // (ou annoncé par l'index d'un serveur). Un plan jamais ouvert affiche
+        // donc le contrôle ; il disparaît de lui-même à la première ouverture
+        // si le plan s'avère V2. Assumé : le défaut « Auto » ne casse rien.
+        // 🩸 Et contrairement à l'ancien sélecteur du HOME, celui-ci est
+        // MÉMORISÉ pour ce plan — l'autre repartait à « Auto » à chaque
+        // démarrage, ce qui en faisait un réglage qui n'en était pas un.
+        let tuilageHtml = "";
+        if (plan.tiledV2 !== true) {
+          const _presetCur = (plan.perfPreset === "off") ? "off" : "auto";
+          tuilageHtml =
+            '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
+              '<div style="font-weight:600; margin-bottom:6px;">🖼️ ' + escapeHtml(_t("home.plans.info.tilingTitle")) + '</div>' +
+              '<select class="kta-cfg-input" id="kta-plan-tiling-select" style="width:100%;">' +
+                '<option value="auto"' + (_presetCur === "auto" ? " selected" : "") + '>' + escapeHtml(_t("home.perf.presetAuto")) + '</option>' +
+                '<option value="off"'  + (_presetCur === "off"  ? " selected" : "") + '>' + escapeHtml(_t("home.perf.presetOff"))  + '</option>' +
+              '</select>' +
+              '<div style="display:flex; align-items:center; gap:10px; margin-top:8px;">' +
+                '<span id="kta-plan-tiling-status" style="font-size:12px; color:#8892a4;"></span>' +
+              '</div>' +
+              '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.tilingHint")) + '</div>' +
+            '</div>';
+        }
 
         const tableHtml = rows.map(function(r) {
           const valStyle = r.mono ? ' style="font-family:monospace; font-size:11.5px; color:#c8d0e0;"' : '';
@@ -1213,6 +1323,27 @@
                      '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
                      escapeHtml(raison) + '</div>';
           }
+        }
+
+        // 💾 v1.87.0 — DISPONIBILITÉ HORS-LIGNE (plans SERVEUR uniquement).
+        // Un plan local vit déjà dans IndexedDB ; un plan serveur, non : il ne
+        // survivait que par le cache au vol du SW, plafonné à 800 entrées et
+        // purgé à chaque release. Cf js/planOffline.js pour le détail.
+        // ⚠️ L'état est rendu APRÈS coup, depuis le cache RÉEL (asynchrone) —
+        // jamais depuis un drapeau, sinon un cache purgé laisserait un bouton
+        // fantôme annonçant « disponible » sur du vide (exigence KARMA).
+        let offlineHtml = "";
+        if (plan.type === "server" && window.PlanOffline && window.PlanOffline.supporte()) {
+          offlineHtml =
+            '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
+              '<div style="font-weight:600; margin-bottom:6px;">💾 ' +
+                escapeHtml(_t("home.plans.offline.titre")) + '</div>' +
+              '<div id="kta-plan-offline-zone" style="min-height:28px;">' +
+                '<span style="font-size:12px; color:#8892a4;">⏳</span>' +
+              '</div>' +
+              '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' +
+                escapeHtml(_t("home.plans.offline.hint")) + '</div>' +
+            '</div>';
         }
 
         const modal = document.createElement("div");
@@ -1254,10 +1385,12 @@
                 '</div>' +
                 '<div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.tagsHint")) + '</div>' +
               '</div>' +
+              tuilageHtml +
               (dlHtml ? '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
                         dlHtml +
                         '<div id="kta-plan-dl-status" style="font-size:12px; margin-top:8px; min-height:16px;"></div>' +
                         '</div>' : '') +
+              offlineHtml +
               // 🧹 v1.78.0 (KARMA) — la suppression vit ICI, en fin de modale
               // (le ✕ de la liste est retiré : clic accidentel trop facile).
               '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
@@ -1276,6 +1409,148 @@
         // données associées (session, géoref, photos, backups) via
         // PlanRegistry.purgeAssociatedData ; le confirm LISTE ce qui part.
         // Carnet, récits (PDF/notes Histoire) et liaisons sont conservés.
+        // 💾 v1.87.0 — ZONE HORS-LIGNE : rendue depuis le CACHE RÉEL, à chaque
+        // ouverture de la fiche et après chaque action.
+        // 🩸 Trois états, et le bouton de téléchargement DISPARAÎT quand le plan
+        // est complet — il devient « mettre à jour ». Exigence KARMA : « ne plus
+        // afficher ce bouton une fois le plan téléchargé, éviter un bouton
+        // fantôme ; si cache perdu il revient ». C'est gratuit ici précisément
+        // parce qu'on ne mémorise AUCUN drapeau : une purge navigateur fait
+        // retomber l'état sur « absent » toute seule, et le bouton revient.
+        if (plan.type === "server" && window.PlanOffline && window.PlanOffline.supporte()) {
+          const _fmtQuand = function (iso) {
+            try { return new Date(iso).toLocaleString(); } catch (e) { return ""; }
+          };
+          const _bouton = function (id, cls, label) {
+            return '<button class="kta-btn ' + cls + ' kta-btn-small" id="' + id + '" ' +
+                   'style="margin:0 8px 6px 0;">' + escapeHtml(label) + '</button>';
+          };
+
+          const rendreOffline = async function () {
+            const zone = document.getElementById("kta-plan-offline-zone");
+            if (!zone) return;
+            let st;
+            try { st = await window.PlanOffline.statut(plan.id); }
+            catch (e) { zone.textContent = "⚠️ " + ((e && e.message) || "?"); return; }
+
+            let html = '<div style="font-size:12px; margin-bottom:8px;">';
+            if (st.etat === "complet") {
+              html += '<span style="color:#7bd88f;">' +
+                      escapeHtml(_t("home.plans.offline.complet", { n: st.total, date: _fmtQuand(st.date) })) +
+                      '</span>';
+            } else if (st.etat === "partiel") {
+              // 🩸 v1.87.1 — Le plan est utilisable : tout ce que le serveur a
+              // servi est là. Ce qui manque, il ne l'a pas. On le DIT au lieu
+              // de laisser un « incomplet » perpétuel (constat KARMA).
+              html += '<span style="color:#f4c542;">' +
+                      escapeHtml(_t("home.plans.offline.partiel", { n: st.manquants.length })) +
+                      '</span>';
+            } else if (st.etat === "incomplet") {
+              html += '<span style="color:#f4c542;">' +
+                      escapeHtml(_t("home.plans.offline.incomplet", { present: st.present, total: st.total })) +
+                      '</span>';
+            } else {
+              html += '<span style="color:#8892a4;">' + escapeHtml(_t("home.plans.offline.absent")) + '</span>';
+            }
+            html += '</div>';
+
+            // 🩸 On NOMME les fichiers manquants. « 9 sur 10 » sans dire lequel
+            // ne permet ni de comprendre ni de corriger le déploiement.
+            if (st.manquants && st.manquants.length) {
+              const apercu = st.manquants.slice(0, 5);
+              html += '<div style="font-size:11px; color:#8892a4; margin:-4px 0 8px; line-height:1.5;">' +
+                        escapeHtml(_t("home.plans.offline.manquantsTitre")) + '<br>' +
+                        apercu.map(function (u) {
+                          return '<span style="font-family:monospace; font-size:10.5px; color:#c8d0e0;">' +
+                                 escapeHtml(u) + '</span>';
+                        }).join('<br>') +
+                        (st.manquants.length > apercu.length
+                          ? '<br>' + escapeHtml(_t("home.plans.offline.manquantsPlus",
+                                                   { n: st.manquants.length - apercu.length }))
+                          : '') +
+                      '</div>';
+            }
+
+            if (st.etat === "complet") {
+              html += _bouton("kta-offline-maj", "kta-btn-ghost",  _t("home.plans.offline.btnMaj"));
+              html += _bouton("kta-offline-del", "kta-btn-danger", _t("home.plans.offline.btnRetirer"));
+            } else if (st.etat === "partiel") {
+              html += _bouton("kta-offline-maj", "kta-btn-ghost",  _t("home.plans.offline.btnReessayer"));
+              html += _bouton("kta-offline-del", "kta-btn-danger", _t("home.plans.offline.btnRetirer"));
+            } else if (st.etat === "incomplet") {
+              html += _bouton("kta-offline-dl",  "kta-btn-primary", _t("home.plans.offline.btnCompleter"));
+              html += _bouton("kta-offline-del", "kta-btn-danger",  _t("home.plans.offline.btnRetirer"));
+            } else {
+              html += _bouton("kta-offline-dl",  "kta-btn-primary", _t("home.plans.offline.btnTelecharger"));
+            }
+            zone.innerHTML = html;
+
+            const lancer = async function () {
+              zone.innerHTML = '<div style="font-size:12px; color:#8cb4ff;" id="kta-offline-prog">⏳</div>';
+              const prog = document.getElementById("kta-offline-prog");
+              try {
+                const r = await window.PlanOffline.precacher(plan, function (p2) {
+                  if (prog) prog.textContent = _t("home.plans.offline.progress", { fait: p2.fait, total: p2.total });
+                });
+                if (prog) {
+                  prog.textContent = r.echecs
+                    ? _t("home.plans.offline.erreurs", { n: r.echecs })
+                    : _t("home.plans.offline.fini", { ok: r.ok });
+                }
+              } catch (e) {
+                if (prog) prog.textContent = _t("home.plans.offline.echec", { msg: (e && e.message) || "?" });
+              }
+              // On re-lit le cache plutôt que de croire le résultat retourné.
+              setTimeout(rendreOffline, 1500);
+            };
+
+            const bDl  = document.getElementById("kta-offline-dl");
+            const bMaj = document.getElementById("kta-offline-maj");
+            const bDel = document.getElementById("kta-offline-del");
+            if (bDl)  bDl.addEventListener("click", lancer);
+            if (bMaj) bMaj.addEventListener("click", lancer);
+            if (bDel) bDel.addEventListener("click", function () {
+              const msg = _t("home.plans.offline.confirmRetirer");
+              const confirmer = (typeof window.ktaConfirm === "function")
+                ? window.ktaConfirm(msg, { okLabel: _t("home.plans.offline.btnRetirer") })
+                : Promise.resolve(confirm(msg));
+              confirmer.then(function (okc) {
+                if (!okc) return;
+                window.PlanOffline.supprimer(plan.id).then(rendreOffline);
+              });
+            });
+
+            // 🔎 v1.88.0 — FRAÎCHEUR. Un plan pré-téléchargé est servi depuis
+            // son cache dédié, que rien ne purge : il pouvait donc servir du
+            // contenu périmé INDÉFINIMENT, et rien ne le disait. On sonde le
+            // serveur en conditionnel (304 = inchangé) sur tout SAUF les
+            // tuiles, et on affiche le verdict.
+            // 🩸 On n'affiche « à jour » que si des sondes ont réellement
+            // abouti : sans preuve, on dit « impossible de vérifier ».
+            if (st.etat === "complet" || st.etat === "partiel") {
+              const ligne = document.createElement("div");
+              ligne.style.cssText = "font-size:11.5px; margin-top:8px; line-height:1.45; color:#8892a4;";
+              ligne.textContent = _t("home.plans.offline.majCheck");
+              zone.appendChild(ligne);
+              window.PlanOffline.verifierMaj(plan).then(function (v) {
+                if (!ligne.isConnected) return;   // fiche refermée entre-temps
+                if (v.etat === "maj") {
+                  ligne.style.color = "#f4c542";
+                  ligne.textContent = _t("home.plans.offline.majDispo", { n: v.changes.length });
+                } else if (v.etat === "ajour") {
+                  ligne.style.color = "#7bd88f";
+                  ligne.textContent = _t("home.plans.offline.majAjour", { n: v.verifies });
+                } else {
+                  ligne.textContent = _t("home.plans.offline.majInconnu");
+                }
+              }).catch(function () {
+                if (ligne.isConnected) ligne.textContent = _t("home.plans.offline.majInconnu");
+              });
+            }
+          };
+          rendreOffline();
+        }
+
         const btnRemove = document.getElementById("kta-plan-infos-remove");
         if (btnRemove) {
           btnRemove.addEventListener("click", function() {
@@ -1311,6 +1586,20 @@
               if (titre) titre.textContent = _t("home.plans.info.title", { nom: window.PlanRegistry.displayName(plan.id) });
               window.refreshPlansList();
             }
+          });
+        }
+
+        // 🖼️ v1.90.2 — TUILAGE POUR CE PLAN. Enregistré au changement, sans
+        // bouton : deux valeurs, aucun risque de saisie à moitié faite.
+        // 🩸 Le `<select>` n'existe pas sur un plan V2 — d'où le test. Sans
+        // lui, `addEventListener` sur null jetait et tuait le câblage des tags
+        // et de la suppression, qui suivent dans la même fonction.
+        const selTuilage = document.getElementById("kta-plan-tiling-select");
+        if (selTuilage) {
+          selTuilage.addEventListener("change", function() {
+            const st = document.getElementById("kta-plan-tiling-status");
+            const ok = window.PlanRegistry.setPerfPreset(plan.id, selTuilage.value);
+            if (st) st.textContent = ok ? _t("home.plans.info.tilingSaved") : _t("home.plans.info.tilingErr");
           });
         }
 
@@ -1509,6 +1798,10 @@
           }
         }
         _ktaMobileCollapsePlans();   // 📱 v1.68.0 : liste bornée sur mobile
+        // 💾 v1.90.0 — l'état hors-ligne des lignes est relu à CHAQUE rendu :
+        // il ne peut donc pas rester périmé après un téléchargement, une
+        // suppression depuis la fiche, ou une purge du navigateur.
+        _rafraichirBoutonsHorsLigne();
 
         // Brancher les listeners
         document.querySelectorAll(".plan-row").forEach(function(row) {
@@ -1516,6 +1809,14 @@
           // 🧹 v1.71.0 : plus de bouton ▶️ — la row entière est cliquable
           // (listener plus bas) et porte le title « Charger ce plan ».
           // 🏷️ v1.78.0 — toggle épinglage (⭐/☆), sans charger le plan
+          // 💾 v1.90.0 — bouton hors-ligne de la LIGNE (plans serveur).
+          const dlBtn = row.querySelector(".kta-plan-row-dl");
+          if (dlBtn) {
+            dlBtn.addEventListener("click", function (ev) {
+              ev.stopPropagation();   // ne pas déclencher le chargement du plan
+              _lancerHorsLigneLigne(id, dlBtn);   // 🩸 `plan` n'existe pas ici : la boucle ne lie que `id`
+            });
+          }
           const pinBtn = row.querySelector(".kta-plan-row-pin");
           if (pinBtn) {
             pinBtn.addEventListener("click", function(e) {

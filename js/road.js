@@ -1109,7 +1109,9 @@ function renderRoads() {
         ghost,
         function() { return _roadRef.description; },
         function(v) { _roadRef.description = v; },
-        _roadPopupTitle(road.type)
+        _roadPopupTitle(road.type),
+        // 🔄 v1.82.0 — reclassement depuis la popup (cf. convertirObjet.js).
+        { convertir: { famille: "roads", obj: _roadRef } }
       );
     }
 
@@ -1464,8 +1466,16 @@ window.getEmbeddedRoads = function() {
 // en perf de rendu, tout en gardant le calcul d'itineraire fonctionnel.
 // Sans ca, masquer le calque empechait le pathfinder de trouver un chemin
 // car il ne voyait plus le reseau de routes.
+// 🩸 v1.82.0 — expose aussi le CALQUE d'origine (cf. utils.js). L'export en a
+// besoin pour respecter les cases « calques » de sa modale. On renvoie une
+// copie : la route d'origine ne doit pas se voir greffer un champ au passage.
 window.getAllEmbeddedRoads = function() {
-  return _embeddedRoads.map(function(e) { return e.road; });
+  const groupes = window.dataLayerGroups || {};
+  return _embeddedRoads.map(function(e) {
+    let layerId = null;
+    for (const id in groupes) { if (groupes[id] === e.layer) { layerId = id; break; } }
+    return Object.assign({}, e.road, { layerId: layerId });
+  });
 };
 
 // =========================

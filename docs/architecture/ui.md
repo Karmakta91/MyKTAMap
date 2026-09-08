@@ -1771,8 +1771,23 @@ Liste d'outils : **5 → 4** entrées (Carnet · Éditeur de données · Mes lia
 
 **`.kta-no-osm`** (pas d'opt-in OSM) : `minmax(0,1fr) 300px` — la liste des plans devient la zone fluide.
 
+### 🩸 La hauteur de la colonne Actions est un budget, pas un acquis (v1.88.1)
+
+`.loader-grid` porte `min-height: 520px`, calibré en v1.79.0 sur le **min-content mesuré** des colonnes incompressibles — *« Actions compactée ~510 px, OSM ~315 px »*. **C'est une constante mesurée à la main : toute ligne ajoutée à la colonne Actions la périme en silence.**
+
+C'est exactement ce qui s'est produit : le bloc de tuilage, posé **déplié** dans la carte de chargement en v1.86.0, ajoutait **~207 px**. *(Ce bloc a été replié en v1.88.1 puis **retiré** en v1.90.2 — mais le cas reste le meilleur exemple du piège, et le filet `overflow-y` qui en est sorti protège la PROCHAINE addition, pas celle-là.)* À 125 % de zoom (viewport 1229×691, sous les 820 px de la media query de compaction — qui ne le compactait pas) la colonne débordait **sur le footer**. Le bug « des % qui cassent le home », clos en v1.60.x, revenait.
+
+Deux réponses, et la seconde compte plus que la première :
+1. le bloc est **replié par défaut** (`<details>`), ~40 px au lieu de ~207, la valeur courante restant lisible dans le résumé ;
+2. 🛡️ **la colonne Actions scrolle désormais en interne** (`min-height: 0` + `overflow-y: auto` sur `#panelZip`, sous la media query de compaction), comme le fait déjà la colonne des plans. **Le prochain ajout ne pourra plus déborder** — on cesse de dépendre d'une constante recalibrée à la main à chaque fois.
+
+⚠️ *Le bouton « Charger ce plan » reste collé en bas du contenu (`margin-top: auto`) : il est donc atteignable au scroll, pas perdu.*
+
+---
+
 **À NE PAS faire** :
 - ❌ Réintroduire des ratios `fr` ou des paliers de correction sur `.loader-grid` — les rails fixes sont LE fix.
+- ❌ Ajouter un bloc **déplié** dans la colonne Actions sans mesurer ce qu'il coûte — le plancher de 520 px ne pardonne pas.
 - ❌ Redonner une grille à `.kta-loader-top-row`.
 - ❌ Sortir la recherche du header pour la remettre dans une colonne.
 
@@ -1796,3 +1811,83 @@ Liste d'outils : **5 → 4** entrées (Carnet · Éditeur de données · Mes lia
 | Confirmations `.kta-modal-overlay` (ex. ❌ Effacer mesure) | Hors filet **par classe** (autre classe que `kta-readme-modal-overlay`) — rien à exclure explicitement. |
 
 ⚠️ **Piège** : toute nouvelle modale qui reprend la classe `kta-readme-modal-overlay` **coupera** les modes outils. Si c'est une modale de flux d'outil, l'ajouter à `IDS_EXCLUS` (elle doit alors porter un `id`).
+
+---
+
+### 96. Flyout de sidebar : borné au viewport VISIBLE, pas au viewport de mise en page (v1.82.0)
+
+Sur mobile, le panneau 🏛️ **Structures** descendait sous le bord de l'écran :
+« Fermer la structure en cours » et tout ce qui le suit restaient inatteignables.
+Signalé par KARMA sur un plan importé, dont la liste s'allonge d'un type par
+niveau — mais le défaut est général à tous les flyouts assez chargés.
+
+🩸 **`window.innerHeight` n'est pas ce que l'utilisateur voit.** Il mesure le
+viewport de **mise en page**, qui inclut la bande occupée par la barre d'URL du
+navigateur (iOS Safari notamment, où il correspond au *large viewport*, barre
+masquée). `_positionnerFlyout` en tirait un `max-height`, donc un panneau plus
+haut que l'écran réel.
+
+**Et le scroll interne n'y changeait rien** — c'est ce qui rend le symptôme
+déroutant. Le contenu défile jusqu'au **bas du panneau**, or ce bas est hors
+champ : les derniers boutons ne peuvent être atteints par aucun geste.
+
+**Correction** — `window.visualViewport` :
+
+| Grandeur | Avant | Après |
+|---|---|---|
+| Hauteur / largeur | `window.innerHeight` / `innerWidth` | `visualViewport.height` / `.width` |
+| Origine | implicite `0,0` | `+ visualViewport.offsetTop` / `.offsetLeft` |
+| Encoche / barre d'accueil | ignorées | `env(safe-area-inset-*)` retranchés |
+
+`offsetTop` dit de combien la zone visible est décalée dans le viewport de mise
+en page : c'est ce décalage qu'un élément `position: fixed` doit rattraper, ses
+coordonnées étant elles-mêmes exprimées dans le viewport de mise en page.
+
+Les insets sont lus par une **sonde CSS jetable** (un `div` `position: fixed`
+portant `top: env(safe-area-inset-top)`, dont on lit le style calculé) : c'est la
+seule façon d'obtenir un `env()` en JS. Cache invalidé sur changement de
+`innerWidth`, donc à la rotation.
+
+⚠️ **La barre d'URL mobile va et vient sans émettre de `resize`** — seul
+`visualViewport` le signale. Ses événements `resize` et `scroll` sont donc
+écoutés en plus des listeners existants, et **retirés dans `_fermerFlyout`** avec
+les autres.
+
+---
+
+### 97. Légende : la SESSION se superpose au PLAN — et `updateCustomEntry` l'ignorait (v1.82.0)
+
+`LegendCustomization` tient **deux** niveaux d'état :
+
+| | Source | Éditable |
+|---|---|---|
+| `_planState` | `PLAN_CONFIG.plan.customLegend` (le ZIP du plan) | non — le plan n'est modifiable que dans le Générateur |
+| `_sessionState` | `SessionPersist` | oui |
+
+La règle de résolution est constante et vaut partout : **à id égal, la session
+gagne**. `listCustomEntries` et `findCustomEntry` l'appliquent tous les deux.
+
+🩸 **`updateCustomEntry` ne cherchait que dans la session** et sortait sur un
+`return false` muet. Or les entrées d'un plan **importé** vivent dans
+`_planState` — celles que l'import SIG fabrique par niveau y sont toutes.
+L'éditeur les **listait** (les deux niveaux sont émis) mais **aucune
+modification ne prenait**. Signalé par KARMA sur « +1 (historique) » : « ça ne
+fait rien, même sur le plan en cours ».
+
+Le renommage **et les trois couleurs** (`lineColor`, `fillColor`,
+`borderColor`) passent par cette fonction : les quatre étaient mortes sur une
+entrée de plan.
+
+**`removeCustomEntry` avait déjà rencontré le problème** et l'avait traité en
+v1.77.0 (pierre tombale `removedPlan`, après un autre retour KARMA sur une
+entrée « Bas » insupprimable). Le mécanisme était donc là, et dit — la
+symétrique est simplement restée en plan.
+
+**Correction** : l'entrée du plan est **promue en session**, patch appliqué.
+Copie et non mutation — `_planState` vient de `PLAN_CONFIG`. Elle passe alors en
+source `"session"`, ce qui est exact : l'utilisateur l'a reprise. `resetSession`
+rend l'originale du plan.
+
+**Prouvé par falsification** : 12 cas ajoutés à `check-api-surface.js`, dont
+**7 tombent** quand on remet le `return false` (les 5 autres sont des témoins —
+listage, absence de doublon, `resetSession`, id inconnu).

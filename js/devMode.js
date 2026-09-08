@@ -37,8 +37,14 @@
   const DOCS = [
     { path: "README.md",                                     titre: "📖 README (journal du projet)" },
     { path: "docs/BACKLOG.md",                               titre: "📌 BACKLOG — sujets ouverts & dettes" },
+    { path: "docs/DESIGN_NAV_INTELLIGENTE.md",               titre: "🧭 Design — navigation intelligente" },
+    { path: "docs/ETUDE_PODOMETRE.md",                       titre: "👣 Étude — podomètre & mode poche" },
+    { path: "docs/INSTALLATION_SELFHOST.md",                 titre: "🛠️ Installation auto-hébergée" },
     { path: "docs/MATHS.md",                                 titre: "📐 Les maths de MyKTAMap" },
     { path: "docs/RELEASE_GATE.md",                          titre: "🚦 Porte de release" },
+    { path: "docs/TILING.md",                                titre: "🖼️ Le tuilage (V1 / V2, plans serveur)" },
+    { path: "docs/i18n-audit.md",                            titre: "🌍 Audit i18n — inventaire (juin 2026)" },
+    { path: "docs/i18n-hardcoded-audit.md",                  titre: "🌍 Audit i18n — FR en dur (juin 2026)" },
     { path: "docs/architecture/community-server-line.md",    titre: "🏛️ Frontière community / serveur" },
     { path: "docs/architecture/data-formats.md",             titre: "📦 Formats JSON" },
     { path: "docs/architecture/docker-selfhost.md",          titre: "🐳 Auto-hébergement Docker" },
@@ -273,6 +279,7 @@
           '</button>' +
           '<button class="loader-btn-secondary" type="button" id="kta-devmode-logs-show" style="width:100%; margin-top:8px;">' + t("home.debug.showLogs") + '</button>' +
           '<button class="loader-btn-secondary" type="button" id="kta-devmode-docs" style="width:100%; margin-top:8px;">📚 ' + t("devmode.docs.bouton") + '</button>' +
+          '<button class="loader-btn-secondary" type="button" id="kta-devmode-confadmin" style="width:100%; margin-top:8px;">🏗️ ' + t("devmode.confadmin") + '</button>' +
           '<p class="kta-loader-perf-hint" style="margin-top:8px;">' + t("devmode.hint") + '</p>'
         ) : (
           '<p class="kta-loader-perf-hint" style="margin-top:8px;">' + t("devmode.hintOff") + '</p>'
@@ -302,6 +309,12 @@
           if (typeof window.afficherLogsDebug === "function") window.afficherLogsDebug();
         });
         document.getElementById("kta-devmode-docs").addEventListener("click", ouvrirBibliotheque);
+        document.getElementById("kta-devmode-confadmin").addEventListener("click", function() {
+          // Page statique du repo, ouverte dans un onglet a part : elle a son
+          // propre cycle de vie et ne doit pas remplacer la session en cours.
+          try { window.open("confadmin.html", "_blank", "noopener"); }
+          catch (e) { console.warn("[DevMode] Ouverture confadmin.html :", e); }
+        });
       }
     };
     // 🐛 v3 du fix course i18n (le SMOKE a demasque la v2) : onChange ne

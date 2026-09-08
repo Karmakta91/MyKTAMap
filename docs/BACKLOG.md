@@ -20,6 +20,30 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 
 ---
 
+## 👣 Podometre / mode poche — ETUDE FAITE, decision en attente (06/09/2026)
+
+Demande KARMA : « recuperer les infos d un podometre pour une meilleure precision et pouvoir garder le telephone
+en poche, via une case a cocher ». **Etude complete : `docs/ETUDE_PODOMETRE.md`.**
+
+Les trois faits qui tranchent :
+
+- **Le podometre materiel du telephone est inaccessible depuis une page web**, sur aucune plateforme. Aucune
+  interface `StepCounter` n existe dans la Generic Sensor API — le comptage de pas y est cite comme cas d usage,
+  jamais standardise.
+- **Web Bluetooth n existe pas sur iOS** et Apple a annonce ne pas vouloir l implementer : un podometre externe est
+  illisible sur iPhone, quel qu il soit. **Ne rien acheter.**
+- 🩸 **Le vrai obstacle du telephone en poche n est pas le comptage, c est le CAP.** L app fait du dead-reckoning :
+  elle avance dans la direction de la BOUSSOLE, qui en poche donne l orientation de la poche. Aucun podometre ne
+  corrige ca. Le comptage, lui, est meilleur en poche qu en main.
+
+Ce qui reste faisable et rentable — et qui ne demande aucun materiel : le detecteur de pas actuel est un simple
+seuil sur franchissement, sans filtrage ni detection de pic, avec une longueur de pas CONSTANTE. C est cette
+derniere qui coute le plus de precision. Reco : **mesurer d abord** (enregistrer des traces reelles et compter a la
+main), corriger l algorithme, puis offrir un « mode poche » — pas un « utiliser le podometre », qui ne peut pas
+exister.
+
+⚠️ **Rien n a ete mesure dans cette etude** : tous les gains annonces sont raisonnes depuis le code, pas observes.
+
 ## 🆕 Sujets ouverts (demandes KARMA du 01/08/2026)
 
 ### 1. 🗺️ Import depuis SIG — « Convertir depuis SIG »
@@ -37,7 +61,7 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 
 **Formats** : GeoJSON ✅ (`JSON.parse`, zéro dép.) · KML/KMZ ✅ (parser écrit) · Shapefile ⚠️ (lib ~50 Ko à vendorer) · GeoPackage ❌ (SQLite → `sql.js` ~1 Mo WASM, hors périmètre offline).
 
-⚠️ **Piège CRS** : QGIS exporte souvent en **Lambert 93 (EPSG:2154)** — mètres, pas degrés. **Aucune lib de reprojection vendored** (`lib/` = leaflet, jszip, jspdf, html2canvas, imageoverlay-rotated). Détection triviale (coords hors `[-180,180]`/`[-90,90]`).
+⚠️ **Piège CRS** : QGIS exporte souvent en **Lambert 93 (EPSG:2154)** — mètres, pas degrés. **Aucune lib de reprojection vendored** — et il n’en faut pas : depuis la v1.82.0 la conique conforme de Lambert est écrite à la main dans `js/sigImport.js` (~50 lignes) et verrouillée par `scripts/check-lambert93.js`, qui la confronte à ses propriétés définitoires plutôt qu’à une table recopiée. Le reste de ce paragraphe décrit l’état d’AVANT (`lib/` = leaflet, jszip, jspdf, html2canvas, imageoverlay-rotated). Détection triviale (coords hors `[-180,180]`/`[-90,90]`).
 
 **Décisions tranchées le 01/08 (KARMA « GO RECO ») : `1:b 2:a 3:a`.**
 
@@ -58,7 +82,11 @@ Le 01/08/2026, un inventaire de dettes sourcé depuis la doc s'est révélé **f
 
 ⚠️ **`.json` est routé vers le panneau SIG** : extension ambiguë (config, session, calque…). C'est le parser qui tranche au contenu et refuse proprement (`sig.err.pasDuGeojson`). Si ça gêne un flux existant, router `.json` ailleurs.
 
-**Extensions possibles plus tard** : Shapefile (lib ~50 Ko), reprojection proj4 (~30 Ko) pour accepter le Lambert 93 au lieu de le refuser, import des styles SIG.
+**Extensions possibles plus tard** : Shapefile (lib ~50 Ko), import des styles SIG. ~~reprojection proj4~~ → **le Lambert 93 est LIVRÉ** (v1.82.0, sans proj4 : cf. ci-dessous).
+
+✅ **Lambert 93 (EPSG:2154) — LIVRÉ le 03/09/2026.** Un export QGIS français en L93 n'est plus refusé : il est **reconnu et converti**, la conversion étant **annoncée** avec le nombre de coordonnées reprojetées (la règle du module reste « jamais de correction silencieuse » — on ne refuse plus, mais on ne convertit pas en douce non plus). **Sans `proj4`** : ~30 Ko pour couvrir des milliers de CRS quand on en veut un seul, dans un projet offline-first sans bundler dont `lib/` est volontairement minimal. La conique conforme de Lambert tient en ~50 lignes dans `sigImport.js`. ⚠️ **Le message de refus des AUTRES projections a été corrigé** : il citait le Lambert 93 comme cause probable, ce qui est devenu faux. Verrouillé par `scripts/check-lambert93.js` (17ᵉ garde-fou, **falsifié 7×**).
+
+> 🎯 **Comment ce garde-fou est construit, et pourquoi c'est important** : il ne compare à **aucune table de référence**. Une table recopiée depuis un site web est elle-même une source d'erreur — si le chiffre est faux, le test valide le bug. Tout est déduit des **propriétés définitoires** de la projection : l'origine (3°E, 46,5°N) tombe *exactement* sur (700000, 6600000), le facteur d'échelle vaut *exactement* 1 sur les deux parallèles standard, l'échelle est identique dans toutes les directions (conformité), et l'aller-retour revient au point de départ. *L'aller-retour seul ne prouverait rien : deux fonctions fausses mais mutuellement inverses passeraient.*
 
 ---
 
@@ -113,29 +141,183 @@ révocation.
 - `kta-toast-error/info` : classes **concaténées** (`"kta-toast-" + type`) — NON supprimables sans inventaire des `type`
 - JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?), `getTrackerLevel` (« phase 2B » — abandonnée ?), scope `kta-ses-modal` inexistant dans sessionExporter:3495 (bug de scope bénin ?), ~13 exports d'API publique jamais consommés (API = contrat, gain faible risque non nul)
 
+### 🧹 Dette créée sciemment le 08/09/2026 — CSS du sélecteur de tuilage
+Le sélecteur de tuilage du HOME a été retiré (v1.90.2, décision KARMA : « on est en auto tout le temps »).
+**~43 lignes de `css/style.css` deviennent mortes** : `.kta-perf-details`, `-summary`, `-wrap`, `-segmented`,
+`-btn`, `-emoji`, `-label`, `-desc`, `-debug`, `-hint` (≈ lignes 6345 → 6545). Vérifié : **0 référence** dans
+`index.html` et `js/**`. ⚠️ Ne pas confondre avec `.kta-perf-ultra-*`, **bien vivantes** (bloc ULTRA du mode
+plan) — la confusion de préfixe est exactement le piège qui ferait sauter un bloc utile.
+Non supprimées à chaud : rien nʼa été ouvert dans un navigateur depuis une dizaine de releases, et une
+suppression CSS ne se falsifie pas — elle se constate à lʼœil. À faire au prochain passage visuel.
+
 ### 📌 Mort documenté — gardé exprès, ne pas supprimer sans arbitrage KARMA
 `_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, 49 l., rétro-compat v1.7.3) · wrappers compat exporter/measure · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)
 
 ### ✅ Résultats négatifs (hygiène confirmée, rien à faire)
-108 fichiers js/ = 108 script tags = 108 entrées précache (zéro orphelin) · précache SW 188/188 présents sur disque · les 4 CSS lazy parfaitement cloisonnés (0 duplication avec style.css) · 29/30 icônes référencées · 0 id HTML orphelin.
+112 fichiers js/ = 112 script tags = 112 entrées précache (recompté le 05/09/2026) (zéro orphelin) · précache SW 188/188 présents sur disque · les 4 CSS lazy parfaitement cloisonnés (0 duplication avec style.css) · 29/30 icônes référencées · 0 id HTML orphelin.
+
+## 🗺️ Atlas départementaux — découper un gros relevé en plans (03/09/2026)
+
+**Le cas réel** : KARMA a fourni un relevé KML de la Gironde — **171 Mo, 4,1 M de lignes, 245 504 Placemarks** (233 286 galeries, 13 685 polygones, 1 471 points) couvrant **65 × 72 km**. Arborescence : six dossiers `niveau1` à `niveau6` (galeries + piliers par étage), un **topo historique** (JP Cassou), et une couche **« Zone de carrière souterraine répertoriée »** de **1 471 emprises nommées**.
+
+🔒 **Le fichier ne doit JAMAIS partir sur git** — poids *et* sensibilité (localisation de carrières réelles, avec identifiants et nombre d'accès). Il était `untracked` **mais pas ignoré** : un `git add -A` l'aurait embarqué. Règle posée dans `.gitignore` sur la **racine** de `data/` (`*.kml`, `*.kmz`, `*.gpx`, `*.geojson`) — les 11 fichiers du plan de test restent suivis. Les sorties de découpage (`sorties-atlas/`) sont ignorées pour les mêmes raisons.
+
+### En l'état : l'app refuse, et c'est correct
+
+245 504 features contre `MAX_FEATURES = 60000` (refus dur ; `WARN_FEATURES = 20000` se contente d’avertir depuis la v1.82.0) : **4× la limite**. Même sans cette borne, 171 Mo de XML dans `DOMParser` font plusieurs Go de DOM. Et surtout : **un plan MyKTAMap est une carrière, pas un département.** Le refus n'est pas le problème — ce qui manquait, c'est la **sortie**.
+
+### ✅ Livré : `scripts/decouper-atlas.js`
+
+Outil de **préparation de données**, hors navigateur, hors build. Lit le KML **en flux** (ligne à ligne : 171 Mo d'UTF-8 font ~340 Mo de string V8) et écrit un **GeoJSON** par carrière.
+
+> 🎯 **Pourquoi du GeoJSON et pas un ZIP de plan** : l'app sait déjà faire le reste. Le fichier passe par > « Convertir depuis SIG », qui génère le **fond vierge calé** (`GpxImport.genererCanvasVierge`) et l'écran de > correspondance. Écrire ici un second générateur de ZIP serait une deuxième implémentation du même travail — la > dette classique de ce projet. **Bonus : ça fait passer l'import SIG sur des données réelles**, ce qu'il n'avait > jamais connu (cf. §1, la réserve qui traînait depuis la v1.7x).
+
+**🩸 Trois pièges du format, payés en les découvrant :**
+
+1. **Chaque emprise est un `<MultiGeometry>` : un `<Point>` de placement PUIS le `<Polygon>`.** Prendre le premier `<coordinates>` venu donne le point — une emprise d'un seul sommet, et **zéro galerie retenue**. Il faut viser `<outerBoundaryIs>`.
+2. **Le niveau vient du `<Folder>` englobant, pas du Placemark** — et le fichier ne contient pas que des niveaux. Après `niveau6` viennent le topo historique et les emprises : sans changer de contexte, **tout retombait en « -6 »**. Première extraction : 16 676 features au niveau -6 pour une carrière qui en déclare **4 étages**. Le chiffre absurde est ce qui a révélé le bug.
+3. **Les emprises ne sont pas du contenu de plan.** Ce sont les contours administratifs, y compris ceux des carrières voisines qui débordent dans la bbox. Les importer donnerait de fausses galeries épousant les limites de zone.
+
+**Deux relevés se superposent** — le structuré par étages et le topo historique. Sur `Citon_Graves_RD` : **3 890 features** pour les six niveaux réunis, **16 612** pour le seul historique. Les mélanger dépasse la limite ET superpose deux relevés du même endroit. D'où `--couches niveaux|historique|tout`, **défaut `niveaux`** : c'est celui qui porte l'information d'étage dont le multi-niveau de l'app a besoin.
+
+**Autres arbitrages** : une galerie est retenue **entière** dès qu'un de ses sommets tombe dans l'emprise (la découper produirait des tronçons orphelins et fausserait les longueurs) ; une **marge de 50 m** autour du contour évite de couper net des galeries au bord (`--marge`).
+
+### Résultat mesuré — `Citon_Graves_RD` (carrière témoin choisie par KARMA)
+
+| Étape | Mesure |
+|---|---|
+| Découpage de 171 Mo | **5,7 s**, 245 504 Placemarks lus |
+| Emprise | 11 005 sommets · 1 335 × 1 580 m · 4 étages · 50 accès |
+| Retenu (couche `niveaux`) | **3 890 features** — 1,56 Mo |
+| Parse par `sigImport` | **44 ms**, CRS validé WGS84 sur 28 447 coordonnées |
+| Colonnes détectées | `type` (galerie/pilier), `niveau` (-1 à -6), `couche` |
+| Ventilation par famille | lignes : 6 niveaux · polygones : 5 — l'écran de correspondance a ce qu'il lui faut |
+
+### Campagne d'extraction du 04/09 — 11 plans, et ce que l'atlas a appris
+
+**✅ vérifié — l'anatomie des emprises, mesurée** (script jetable, couche « Zone de carrière » seule) :
+
+| Mesure | Valeur |
+|---|---|
+| Placemarks d'emprise | **1 471** (1 479 contours : quelques `MultiGeometry` en portent plusieurs) |
+| … **sans nom** | **267** — extractibles via le repli « (sans nom) #N » de `--lister` |
+| … nommés | **1 212 contours** pour **1 157 noms distincts** |
+| Noms portés par plusieurs emprises | **34 — 2,9 % des noms**, 89 contours |
+| … dont exemplaires distants de **plus d'1 km** | **17 sur 34** |
+
+**✅ Au passage, un vieux diagnostic tombé : ces 267 anonymes SONT l’écart** que le backlog attribuait depuis le 03/09 à des « Placemarks sans `outerBoundaryIs` exploitable » (1 471 − 267 = 1 204). Rien n’est perdu, rien n’est à creuser : `--lister` les nomme « (sans nom) #N » et elles restent extractables. L’entrée a été **supprimée** de « Ce qui reste ouvert ».
+
+**🩸 Le nombre d'exemplaires ne dit RIEN — c'est l'ÉTENDUE qui départage.** `Grande_carrière_de_Latresne` compte **15 emprises mais tient dans 1,6 km** : c'est une grande carrière découpée en parcelles, et `--zone` seul y est correct. À l'inverse `Barreau_01` n'en a que **3, étalées sur 39,6 km**, et `Le_Puy_02` **2 sur 61,6 km**. Trier les homonymes par leur nombre trompe ; il faut regarder la dispersion.
+
+**Conséquence pour l'outil** : sur les 18 noms visés le 04/09, **4** portaient des homonymes dispersés (`Barreau_01` ×3/39,6 km · `Barreau_03` ×2/39,7 km · `Le_Château_02` ×2/21,5 km · `Salle_la_Mouleyre` ×2/0,3 km — cette dernière groupée, donc fusionnable telle quelle). `--autour/--rayon` n'est pas réservé au cas « Le Bourg » documenté dans l'en-tête : c'est le réflexe à avoir dès qu'un nom est générique.
+
+**🩸 Trois pièges de nommage payés le 04/09**
+
+1. **Les entités XML ne sont pas décodées.** L'apostrophe est écrite `&apos;` dans la source : la zone s'appelle littéralement `La_Grangeotte_Plantey_d&apos;oline`, et c'est **cette forme échappée** qu'il faut passer à `--zone` (vérifié : le script ne traite aucune entité). Passer l'apostrophe réelle ne trouve rien, sans que rien ne le dise.
+2. **Deux orthographes, deux sites différents** : `Lamothe_02` (underscore, 44.7355,-0.3775) et `Lamothe 02` (**espace**, 44.7848,-0.4772) sont deux carrières distantes de **8 km**. Chercher « Lamothe » sans regarder la position donne le mauvais site en silence.
+3. **Le nombre de sommets du contour n'est PAS un proxy du contenu.** `Le_Grand_Parc_02` déclare **1 290 sommets** d'emprise et ne contient que **51 features** ; `Le_Château_02`, à 500 m, en déclare 2 659 et en contient **1 416**. Or `--lister` trie par « sommets *(proxy de taille)* » : il met donc en tête des emprises potentiellement vides. **À corriger** — trier par contenu réel exigerait la passe 2 — **ou au minimum à dire** dans le libellé.
+
+**Le topo historique ne couvre pas le département** : **0** feature historique sur les 11 extraits du 04/09, contre 656 sur `Belllevue_Gardera_…`. Ne pas conclure d'un extrait sans historique que `--couches` a échoué.
+
+> ⚠️ **Leçon de méthode, pour le prochain script jetable sur ce KML.** Mon premier compteur d'homonymes ne réinitialisait pas le nom à chaque `<Placemark>` : les 267 emprises **anonymes** héritaient du nom de la précédente et fabriquaient de faux doublons — **180 homonymes annoncés au lieu de 34**, un facteur 5, et deux « ambiguïtés » soumises à KARMA qui n'existaient pas. `decouper-atlas.js`, lui, remet bien `buf = { nom: null }` sur `<Placemark` : l'outil est sain, c'est le harnais qui mentait. Sur ce fichier, **tout compteur ad hoc doit borner son état au Placemark**.
+
+### Ce qui reste ouvert
+
+- **Le seuil de pertinence** : surface **médiane 196 m²**, 1 181 zones sur 1 471 n'ont qu'un étage. La grande majorité de ces « carrières » sont des petits vides ou des accès — un plan pour 196 m² n'a pas de sens. Un traitement en masse demandera un seuil, ou un regroupement par proximité.
+- **`--lister` trie par un proxy trompeur** (✅ vérifié 04/09) : il classe les zones par le nombre de sommets du CONTOUR, qui ne prédit pas le contenu — `Le_Grand_Parc_02` déclare 1 290 sommets et ne renferme que **51 features**. Les têtes de liste peuvent donc être vides. Trier par contenu réel exigerait la passe 2 sur toutes les zones ; a minima, changer le libellé « proxy de taille ».
+- **Le sort des plans produits** : mêmes données sensibles que la source. Ils ne vont pas sur git.
+- **⚡ La pile multi-plans de la Vue OSM n'a PAS été mesurée** (dette ouverte par la v1.84.0, 04/09). L'ajout par étiquette permet d'en afficher vingt d'un clic, et un plan issu d'un atlas porte couramment **5 000 objets** — soit ~100 000 objets Leaflet dans une seule carte. Deux garde-fous posés **à la place** d'une mesure : confirmation au-delà de 3 plans (seuil de l'avertissement existant) et chargement **en série**. **À faire** : ouvrir 5, 10 puis 20 plans Gironde réels et relever mémoire + fluidité, puis décider si un cap dur s'impose. Tant que ce n'est pas fait, le chiffre « 3 » reste un arbitrage de 2026, pas une mesure.
+
+---
+
+## 💡 Pistes de features — évaluées le 03/09/2026
+
+> Demandées par KARMA (« que pourrions-nous envisager comme nouvelle feature ? »), classées par **valeur / effort**. **Seules les pistes ENCORE OUVERTES figurent ici** : la reprojection Lambert 93 (v1.82.0), la profondeur des niveaux et le profil en long (v1.83.0) et l’affichage des plans par étiquette (v1.84.0) sont livrés — leur histoire vit dans `README.md` et les commits, conformément à la règle de tête de ce fichier.
+> Chaque piste est **vérifiée contre le CODE** avant d’être proposée — c’est ce qui a évité d’en réinventer une déjà là : la **fusion de sessions** existe depuis longtemps (`sessionExporter.js` > `_fusionInputs`, `_fusionMerged`), **ne pas la reproposer**.
+
+| # | Piste | Valeur | Effort | État |
+|---|---|---|---|---|
+| 1 | **Import VisualTopo (`.tro`)** | la cible **spéléo** de `CLAUDE.md` n’a aucun format topo lisible | moyen | 🔜 à lancer |
+| 2 | **Shapefile** | complète le SIG, mais contournable (QGIS sait exporter en GeoJSON) | moyen | 💤 basse priorité |
+
+### 1. 🕳️ Import de formats topo spéléo — `.tro` d'abord
+
+**Le trou** : `CLAUDE.md` annonce la spéléo comme cible, mais l'app ne lit **aucun** format de topographie — ni VisualTopo, ni Therion, ni Compass, ni Survex (vérifié par `grep` le 03/09, **re-vérifié le 04/09** : `FORMATS_ACCEPTES = ".geojson,.json,.kml,.kmz"`, et l’`accept=` de `index.html` n’en connaît pas davantage : zéro occurrence). Un spéléo doit passer par QGIS pour faire entrer **son propre relevé**.
+
+**Pourquoi c'est abordable** : le socle est déjà là. `sigImport.js` a les parsers, l'écran de correspondance, et surtout `GpxImport.genererCanvasVierge` — la brique qui crée un plan **sans image de fond**. Un `.tro` est du texte tabulé (départ, arrivée, longueur, azimut, pente) ; le dérouler en coordonnées est de la trigonométrie simple, et ça produit des points + polylignes, soit exactement le modèle de données de l'app.
+
+⚠️ **À confirmer par KARMA avant de coder** : que VisualTopo soit bien le format le plus répandu chez les cataphiles et spéléos français — c'est une **supposition** de Claude, pas une mesure. Se tromper de format ferait livrer un parser que personne n'utilise.
+
+---
 
 ## 🔴 Dettes ouvertes
 
-### D-light-icons — 🎨 Thème clair PC : les émojis sortent du cadre à zoom 100 %, OK à 90 % — noté 09/08/2026
+> **Comment lire cette section.** Les dettes sont rangées par **qui doit agir**,
+> pas par numéro : c'est la seule question utile quand on ouvre ce fichier.
+> Une dette « bloquée sur KARMA » n'attend pas du code — elle attend une mesure
+> sur sa machine, parce que le harnais ne sait pas la reproduire.
+> Les entrées « aucune action » ne sont **pas** des dettes : ce sont des
+> décisions déjà prises, gardées ici pour qu'on ne les re-signale pas comme
+> des trous. Elles ne se soldent pas, elles se relisent.
+
+| # | Sujet | État | Qui débloque |
+|---|---|---|---|
+| **D-light-icons** | Thème clair PC : émojis hors cadre à zoom 100 % | 🔬 non reproduit au harnais | **KARMA** — capture DevTools |
+| **D3** | Toggle « Mes annotations » ne masque pas les roads | 🔬 mécanisme corroboré, non reproduit | **KARMA** — un `hasLayer()` sur un plan réel |
+| **D-confirm** | 55 `confirm()` natifs hors charte | 📋 politique arrêtée, pas un chantier | personne — migration au fil de l'eau |
+| **D0** | Magnétisme : rayon non plafonné en unités plan | ⚪ décision prise (v1.74.0) + désaccord consigné | aucune action |
+| **D4** | `<script>` inline d'`index.html` | ⚪ description périmée, re-mesurée le 31/08 | aucune action |
+| **D7** | Duplication ~2 fonctions (pickers géoréf ↔ tracker) | ⚪ seuil explicite non atteint | aucune action |
+| **D8** | `secoursPlan.groupes[].statut` | ⚪ faux positif : le champ est exploité | aucune action |
+
+---
+
+### 🟠 Bloquées sur KARMA — pas de code à écrire, une mesure à faire
+
+*Les deux sont **non reproductibles au harnais Playwright**. Les rouvrir sans
+mesure fraîche, c'est répéter le faux fix de la v1.77.0 (révoqué). Ce qui
+manque n'est pas du temps de dev, c'est une observation sur la machine où le
+symptôme apparaît.*
+
+#### D-light-icons — 🎨 Thème clair PC : les émojis sortent du cadre à zoom 100 %, OK à 90 % — noté 09/08/2026
 
 🔬 **hypothèse** — chez KARMA (Chrome FullHD, thème clair, wallpaper actif), les émojis en tête des boutons/titres de la colonne Actions (📦 Ajouter un plan, 🧰 Outils, 📔 Mon carnet, 🌀 Mes liaisons…) s'affichent **détachés du texte, à cheval sur le bord gauche** de leur conteneur. Disparaît à **zoom 90 %**. **NON REPRODUIT au harnais Playwright** malgré : clair + wallpaper simulé + 1920×937 + 1536×750 @ deviceScaleFactor 1.25 — émojis toujours inline dans les cadres, `text-indent: 0`. Vérifié aussi : CSS servi sur dev **bit-à-bit identique** au repo (hash), structure HTML = texte inline simple (« 📔 Mon carnet »). Pistes restantes pour la reprise : extension navigateur injectant du CSS sur les sites clairs (non écarté — test navigation privée pas fait), rendu Segoe UI Emoji à échelle fractionnaire (zoom 100 % sur scaling Windows 125 % = ratio effectif 1,25), largeur réelle de sa colonne au moment du bug. Cosmétique, contournement connu (zoom 90 %) — à reprendre avec une capture DevTools (Computed de `text-indent`/`display` sur un bouton touché).
 
-### D-home-mini — 🖥️ HOME PC : fenêtres < ~760 px de haut, footer coupé sans scroll — mesuré 09/08/2026
+#### D3 — 🗺️ Toggle « Mes annotations » ne masque pas les polylines roads
 
-✅ **vérifié (Playwright)** — la colonne « Ajouter un plan » (Actions) fait ~586 px incompressibles + header 164 : sous ~760 px de viewport, la grille dépasse et le bas (footer) est **coupé sans scroll possible** (`scrollHeight` ne grandit pas — un overflow caché quelque part avale le dépassement, le « scroll honnête » promis par le `min-height:min-content` de v1.77.0 ne se déclenche pas). Préexistant à v1.78 (Actions n'a pas bougé) ; le cas nominal FullHD est sain depuis le fix v1.79.0 des bornes de liste. À traiter si un user remonte le cas : compacter Actions sous 1366×768 OU trouver l'overflow qui avale le scroll.
+🔬 **hypothèse — mécanisme corroboré par le code le 31/08.** Le symptôme n'apparaît que sur certaines configs.
 
-### D-confirm — 🪟 confirm() natifs hors charte — ✅ **mesuré 31/08/2026 : 55 occurrences dans 17 fichiers**
+**Mécanisme suspecté** : [`road.js:722`](../js/road.js#L722) fait `return window.layerEditor || window.map`. Si `layerEditor` n'existe pas encore au moment de l'`addTo`, la road part sur la **map** — et le toggle, qui n'agit que sur `layerEditor`, **ne la reprendra jamais**. Le commentaire juste au-dessus (l. 716-719) documente lui-même le bug comme « Leaflet subtil non identifié » depuis le 09/05.
+
+**Ce qu'il faut avant tout code** (leçon du faux fix v1.77.0, révoqué) : sur un plan réel, chez KARMA, un tracé récalcitrant → `window.layerEditor.hasLayer(<layer>)`. S'il renvoie `false`, le mécanisme est confirmé et le fix est court. Sans cette mesure, on corrige à l'aveugle.
+
+---
+
+### 🟡 Sur la table — arbitrage ou avancement possible
+
+#### D-confirm — 🪟 confirm() natifs hors charte — ✅ **mesuré 31/08/2026 : 55 occurrences dans 17 fichiers**
 
 Relevé du 31/08 (`grep` sur `js/`) : **55** `confirm()` natifs restants, dont **`secoursMode.js` en porte 15 à lui seul** (de loin le premier contributeur — c'est là qu'un sweep aurait le plus d'effet, et le plus de risque). Suivent `refonteInterface` 5, `homeConfig` 5, `interfaceItineraire` 4, `memInspector` 3, `homeLoader` 3, puis une longue traîne à 2 et 1. En face, **7 fichiers** utilisent déjà `ktaConfirm`.
 
 `window.ktaConfirm` (utils.js, v1.76.2, Promise + charte) existe depuis le retour KARMA sur la popup de replanification d'itinéraire. Les natifs restants **migrent au fil de l'eau** quand on touche leur module — pas de sweep massif (risque de régression sur des flux critiques type suppression). Nouveaux usages : `ktaConfirm` obligatoire. Attention à la migration : `ktaConfirm` est **asynchrone** (le code qui suit un `if (!confirm(...)) return;` doit passer en `.then()`).
 
-### D0 — 🧲 Magnétisme C5 : rayon non plafonné en unités plan ✅ vérifié 01/08
+---
+
+### ⚪ Aucune action — décisions arrêtées, gardées pour mémoire
+
+*Ce ne sont pas des dettes. Elles restent écrites parce que chacune a déjà été
+re-signalée à tort au moins une fois : les effacer ferait repayer le
+diagnostic. **Ne rien coder ici sans un fait nouveau.***
+
+| # | Sujet | Preuve | Pourquoi on ne fait rien |
+|---|---|---|---|
+| D4 | `<script>` inline d'`index.html` — l'étiquette « monolithe » est **PÉRIMÉE**, re-mesurée le 31/08 | ✅ mesuré 31/08 | **305 lignes** d'inline sur 2 blocs, dans un fichier de 1 823. La v1.66.0 en a extrait 3 modules (`homeLoader`, `homeProfile`, `homeConfig`) : « monolithe » ne décrit plus l'objet. Reste de l'inline, mais ce n'est plus une dette prioritaire — **ne pas re-signaler sans re-mesurer** |
+| D7 | **Duplication ~2 fonctions** pickers géoréf ↔ picker départ tracker | ⚠️ doc seule — [`tracking.md`](architecture/tracking.md) | Seuil explicite : mutualiser **si une 3ᵉ cible apparaît**. Pas atteint → ne rien faire |
+| D8 | **`secoursPlan.groupes[].statut`** — ⚠️ signalé mort par la doc, **il est exploité** | ✅ vérifié (doc corrigée) | Aucune action. Gardé ici comme rappel que la doc mentait |
+
+La suivante est ici pour la même raison, mais elle demande plus qu'une ligne : c'est un **arbitrage de KARMA avec un désaccord de Claude consigné en face**. Elle ne se rouvre que si le symptôme décrit en dernier paragraphe se manifeste.
+
+#### D0 — 🧲 Magnétisme C5 : rayon non plafonné en unités plan ✅ vérifié 01/08
 
 **Symptôme constaté par KARMA** : magnétisme actif + cercles d'intersection actifs → un cercle apparaît alors que les deux tracés ne se touchent pas.
 
@@ -150,15 +332,6 @@ Relevé du 31/08 (`grep` sur `js/`) : **55** `confirm()` natifs restants, dont *
 > ⚠️ **Désaccord consigné (Claude)** : masquer les cercles supprime le *signal*, pas la *cause*. Dézoomé, le point reste déplacé jusqu'à ~100 unités plan de l'endroit cliqué — la géométrie du tracé est altérée sans que rien ne le montre, et ça se répercute sur le graphe d'itinéraire. Le correctif est un `Math.min(tolÉcran, ~15 unités plan)` d'une ligne dans `road.js > _snapSurSommetProche`, aligné sur `PROXIMITY_TOLERANCE` du pathfinder. **À reconsidérer si un tracé fait au magnétisme dézoomé se révèle déformé.**
 
 **Non traité** : les points déjà déplacés par un accrochage dézoomé. Ils sont dans les données, aucun moyen automatique de les distinguer d'un accrochage voulu.
-
-| # | Dette | Preuve | Impact |
-|---|---|---|---|
-| D1 | **PDF du Mode Histoire absents de l'export de profil** (IDB `myktamap_histoire_pdfs`, jusqu'à 100 Mo/plan) → l'onglet 📖 Récits arrive avec ses notes libres mais **sans les PDF** | ✅ vérifié 01/08 | Migration d'appareil incomplète. Décision : section optionnelle décochée par défaut, sur le modèle des photos ? |
-| D3 | **Toggle « Mes annotations » ne masque pas les polylines roads** sur certaines configs | 🔬 hypothèse — **mécanisme corroboré par le code le 31/08** | [`road.js:722`](../js/road.js#L722) : `return window.layerEditor \|\| window.map` — si `layerEditor` n'existe pas encore à l'`addTo`, la road part sur la map et **le toggle ne la reprendra jamais**. Le commentaire au-dessus (l. 716-719) documente lui-même le bug comme « Leaflet subtil non identifié » depuis le 09/05. **Diagnostiquer AVANT de fixer** (leçon du faux fix v1.77.0) : `window.layerEditor.hasLayer(<layer>)` sur les tracés récalcitrants, chez KARMA, sur un plan réel |
-| D4 | ~~`<script>` inline d'`index.html` = monolithe~~ — **description PÉRIMÉE, corrigée le 31/08** | ✅ mesuré 31/08 | **305 lignes** d'inline sur 2 blocs, dans un fichier de 1 823. La v1.66.0 en a extrait 3 modules (`homeLoader`, `homeProfile`, `homeConfig`) : « monolithe » ne décrit plus l'objet. Reste de l'inline, mais ce n'est plus une dette prioritaire — **ne pas re-signaler sans re-mesurer** |
-| D5 | **Vue OSM lot 3** — liaisons portails dessinées entre plans | ✅ vérifié (arbitré 01/08 : la traversée n'a pas de sens, seul l'affichage en a) | Intérêt réel = **diagnostic de géoréf** (l'écart entre les 2 bouts d'un portail révèle un mauvais calage). Coût principal = 6ᵉ catégorie dans le système de filtres |
-| D7 | **Duplication ~2 fonctions** pickers géoréf ↔ picker départ tracker | ⚠️ doc seule — [`tracking.md`](architecture/tracking.md) | Seuil explicite : mutualiser **si une 3ᵉ cible apparaît**. Pas atteint → ne rien faire |
-| D8 | **`secoursPlan.groupes[].statut`** — ⚠️ signalé mort par la doc, **il est exploité** | ✅ vérifié (doc corrigée) | Aucune action. Gardé ici comme rappel que la doc mentait |
 
 ## 🚫 Enterré volontairement — ne pas repayer
 
@@ -180,5 +353,8 @@ Signalées à tort (doc périmée), **elles sont faites** — vérifiées dans l
 - **Override de couleur des types built-in** (la demande d'origine du §2) — livré, couvert par `check-style-resolver.js` · *31/08*
 - **ex-D6 « constantes `ITI_*` dupliquées »** — absorbé par le résolveur comme prévu ; les `ITI_*` survivants sont des constantes de **vitesse / pause / clés localStorage**, aucune couleur · *31/08*
 - **`gpxIO.js` dans la migration des styles** — n'avait **rien** à migrer : le GPX n'a aucune notion de style · *31/08*
+- **D1 « les PDF du Mode Histoire ne voyagent pas » — SOLDÉE** (v1.81.0) : case **opt-in décochée par défaut** dans l'export de profil (un plan peut porter 100 Mo), restauration **idempotente** qui conserve id, nom et date d'origine. Lecture/écriture via `window.JournalUi.histoire` — le schéma IDB n'a **pas** été recopié une 3ᵉ fois. Aller-retour prouvé en navigateur (contenu binaire intact, réimport sans doublon) + `check-profile-histpdf.js` (15ᵉ garde-fou, **falsifié 4×**) · *02/09*
 - **D2 « contenus longs en espagnol » — SOLDÉE EN ENTIER** (v1.80.0) : ses 3 volets sont livrés — tutoriel (v1.79.4), doc user `README_USER.es.md` (3 501 lignes), et **Aide intégrée** (32 sections migrées du HTML en dur vers les dicos puis traduites ; `interfaceDocs.js` −1 738 lignes). Ajouter une 4ᵉ langue ne demande plus une ligne de code. Verrouillé par `check-aide-sections.js` (32 sections × 3 langues) et `checkup-langues.js` (parcours réel d un utilisateur espagnol) · *01/09*
 - **Onboarding multilingue (part de D2)** — tutoriel migré fr/en/es en v1.79.4 (68 clés dans `es.json`) · *31/08*
+- **D-home-mini « footer coupé sans scroll sous 760 px » — NON REPRODUITE, retirée** (v1.81.0) : rediagnostiquée sur **6 configurations** (1280→1920 × 500→768), footer déplié, 8 plans. Le contenu déborde (normal), **la molette scrolle** et le footer se rejoint **partout**. Deux postulats de la fiche d'origine étaient faux : la colonne Actions n'est pas « ~586 px incompressibles » (elle est **élastique** : 852 px à 1080 de haut, 520 px à 560), et `overflow-y:auto` sur `#planLoaderOverlay` date du **27/04** — donc antérieur à la mesure du 09/08, rien n'a été « réparé » entre-temps. 🩸 **Cause probable de la fausse mesure** : un overlay couvrait la page. Pendant le rediagnostic, **3 mesures successives** ont été faussées par le splash (retiré du DOM après 3,5 s, et `offsetParent` vaut `null` en `position:fixed` — donc l'attendre par `offsetParent` réussit trop tôt) puis par la modale `#kta-alert-modal` (« Accès hors-ligne », déclenchée quand le SW est bloqué). Les deux figent `scrollHeight` et mangent la molette : **exactement** le symptôme décrit. Comportement verrouillé par `scripts/smoke/checkup-home-scroll.js` (checkup de release, **falsifié 3×** : scroll cassé, modale laissée, splash non attendu) — il **refuse de conclure** si un overlay traîne, au lieu de rendre un faux vert · *02/09*
+- **D5 « liaisons portails sur OSM » — SOLDÉE, mais pas sous la forme prévue** (v1.81.0) : le premier jet dessinait une polyligne entre les deux bouts de chaque portail. **KARMA a cassé la prémisse le 02/09** : deux portails bien calés *se superposent déjà*, donc la ligne est de longueur nulle et le calque ne montre **rien** dans le cas nominal. D5 n'était pas un calque de contenu mais un **détecteur d'erreur de calage** — sa seule valeur est le cas raté. Arbitré le 03/09 : **contrôle qualité** (liste classée du pire au meilleur dans les filtres de la Vue OSM, clic = `fitBounds` sur les deux bouts) **+ badge `📐 Écart de calage` dans 🌀 Mes liaisons**, le calque restant en complément. Le calcul vit dans `InterPlanLinks.ecartCalage` — **fonction unique**, consommée par la Vue OSM et jamais recopiée (leçon du bug des icônes portail, la veille). Retourne **`null` et jamais `0`** quand la mesure est impossible : `0` dirait « calage parfait », le contraire de « je ne sais pas ». **Aucun seuil de couleur** — 20 m est énorme sur une petite carrière et négligeable sur un réseau de 5 km. ⚠️ **Prouvé au harnais** : API et badge (33 m mesurés sur deux plans calés à 33 m, `null` sans géoréf). **Non exécuté** : la liste de la Vue OSM — le plein écran exige des plans réellement chargeables, hors de portée du harnais. À valider sur de vrais plans · *03/09*

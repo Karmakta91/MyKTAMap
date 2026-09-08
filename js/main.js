@@ -132,7 +132,16 @@ let _importDemande = false;
 // config d'instance (sinon : sous-titre/flags morts pour ces users).
 async function _chargerIndexServeur() {
   try {
-    const r = await fetch("data/index.json");
+    // 🩸 v1.88.2 — `no-store` EXPLICITE. Le Service Worker sert deja ce fichier
+    // en network-first, mais ce fetch-ci part de la PAGE : quand le SW ne
+    // controle pas encore l onglet (tout premier chargement, SW en cours de
+    // mise a jour), c est le cache HTTP du navigateur qui repond. Or la conf
+    // Nginx documentee ne pose `no-cache` que sur sw.js / version.json /
+    // alert.json / Licence-pro.json : `data/**` tombe dans « le reste » et
+    // herite d une fraicheur heuristique. Un index modifie pouvait donc
+    // remonter perime (bug KARMA : « j ai refait un fichier index et ca ne
+    // semble pas bien remonter »).
+    const r = await fetch("data/index.json", { cache: "no-store" });
     if (!r.ok) {
       console.log("[Main] data/index.json absent — pas de config d'instance");
       return null;
@@ -160,6 +169,16 @@ async function _chargerIndexServeur() {
 // Application de `config` : sous-titre (splash + header loader — textContent
 // jamais innerHTML, + retrait de data-i18n pour survivre aux changements de
 // langue) et flags kiosque (= DÉCLUTTER UI, pas de la sécurité — assumé).
+// 🔒 v1.90.1 (bug KARMA) — LE VERROU KIOSQUE, EN UN SEUL POINT.
+// « en mode serveur, avec générateur et import désactivés, je peux importer
+//   un profil, et donc récupérer tous les ZIP ; et si ce profil a une
+//   préférence de mode serveur désactivé, ça casse tout. »
+// Masquer un bouton ne ferme pas une porte : tout ce qui doit être refusé en
+// kiosque interroge CE prédicat, jamais `KIOSK_CONFIG` à la main.
+window.ktaKiosqueServeurSeul = function() {
+  return !!(window.KIOSK_CONFIG && window.KIOSK_CONFIG.serverPlansOnly === true);
+};
+
 function _appliquerConfigKiosque() {
   const cfg = window.KIOSK_CONFIG || {};
   const st = (typeof cfg.subtitle === "string") ? cfg.subtitle.trim().slice(0, 80) : "";
@@ -187,6 +206,19 @@ function _appliquerConfigKiosque() {
       const sec = skipCb.closest(".kta-aide-section");
       if (sec) sec.style.display = "none";
     }
+    // 🩸 LES DEUX PRÉFÉRENCES QUI VIDENT UN KIOSQUE, ET DONT LES CASES SONT
+    // JUSTEMENT MASQUÉES ICI. « Ne pas charger les plans serveur » et
+    // « Afficher les plans serveur » suffisent chacune à ne RIEN afficher :
+    // plus de plans serveur, et pas d'import local pour compenser — écran
+    // vide, sans aucun réglage visible pour s'en sortir. Elles arrivent soit
+    // d'un import de profil (`myktamap_loader_show_server_plans` voyage dans
+    // la section préférences), soit d'un choix fait AVANT que l'instance ne
+    // devienne un kiosque. Un flag qui cache son propre remède est un piège :
+    // on remet les deux à leur valeur sûre.
+    try {
+      localStorage.setItem("myktamap_loader_show_server_plans", "true");
+      localStorage.setItem("myktamap_skip_server_plans_v1", "false");
+    } catch(e) {}
     console.log("[Main] Kiosque : serverPlansOnly actif (import masqué)");
   }
   if (cfg.disableGenerator === true) {
@@ -202,6 +234,9 @@ async function decouvrirPlansServeur(idxDeja) {
     const idx = idxDeja || await _chargerIndexServeur();
     if (!idx) return;
     const plans = Array.isArray(idx?.plans) ? idx.plans : [];
+    // 🩸 v1.88.2 — on retient les ids VUS dans l index pour elaguer ensuite
+    // les entrees du registre qui n y sont plus (cf bloc en fin de fonction).
+    const vus = [];
     console.log("[Main] index.json trouvé :", plans.length, "plan(s)");
 
     plans.forEach(function(entry) {
@@ -234,17 +269,85 @@ async function decouvrirPlansServeur(idxDeja) {
         type: "server",
         path: path,
         name: name,
-        version: version,
         author: author,
         discovered: true,
         addedAt: new Date().toISOString()
       };
+      // 🩸 v1.88.0 — LA VERSION NE PING-PONGAIT PLUS QU'ENTRE DEUX SOURCES QUI
+      // SE CONTREDISENT. `addOrUpdate` fait un Object.assign : au boot on
+      // écrivait celle de `index.json`, au chargement du plan celle du
+      // `plan-config.json`, et au boot suivant on revenait à la première. La
+      // ligne « Version » de la fiche ℹ️ Infos changeait donc selon la dernière
+      // action. Constaté dans le repo même : index.json dit « V1 », le
+      // plan-config du plan de test dit « V2 ».
+      // Pire : `entry.version || null` écrivait NULL quand index.json omet le
+      // champ — la version connue était EFFACÉE à chaque démarrage.
+      //
+      // Règle : le `plan-config.json` fait autorité (il est DANS le plan) ;
+      // `index.json` n'est qu'un indice d'affichage, utile avant le premier
+      // chargement. On n'écrase donc jamais une version d'origine « plan », et
+      // on n'écrit jamais `null`.
+      const _dejaLa = window.PlanRegistry.findById ? window.PlanRegistry.findById(id) : null;
+      if (version && !(_dejaLa && _dejaLa.versionSrc === "plan")) {
+        regEntry.version    = version;
+        regEntry.versionSrc = "index";
+      }
       // Ajout conditionnel des flags (sinon Object.assign dans addOrUpdate effacerait
       // un user-override explicite en multiLevel:false par setMultiLevel).
       if (multiLevel === true) regEntry.multiLevel = true;
       if (tiledV2    === true) regEntry.tiledV2    = true;
+      vus.push(id);
       window.PlanRegistry.addOrUpdate(regEntry);
+
+      // 🏷️ v1.90.1 — TAGS PROPOSÉS PAR L'INDEX (demande KARMA : pouvoir
+      // taguer un plan serveur depuis ConfAdmin, pour filtrer facilement).
+      // 🩸 L'INDEX PROPOSE, L'UTILISATEUR DISPOSE : on n'écrit que si le plan
+      // n'a pas de tags posés à la main. Sans ça, la découverte les
+      // réécrirait à CHAQUE boot et effacerait le travail de l'utilisateur —
+      // le ping-pong exact corrigé sur `version` en v1.88.0.
+      // La normalisation (trim, dédup, 12 max, 24 car.) reste dans
+      // `PlanRegistry.setTags` : un seul endroit pour toute l'app.
+      if (Array.isArray(entry && entry.tags) && entry.tags.length &&
+          !(_dejaLa && _dejaLa.tagsSrc === "user")) {
+        window.PlanRegistry.setTags(id, entry.tags, "index");
+      } else if (_dejaLa && _dejaLa.tagsSrc === "index" && _dejaLa.tags) {
+        // Le kiosque a RETIRÉ les tags de son index : ceux qu il avait posés
+        // s en vont avec. Il reste maître de ce qu il a lui-même proposé —
+        // et ne touche jamais à ce que l utilisateur a écrit (tagsSrc user).
+        window.PlanRegistry.setTags(id, [], "index");
+      }
     });
+
+    // 🩸 v1.88.2 — ÉLAGAGE DES PLANS SERVEUR DISPARUS (bug KARMA : « un plan
+    // serveur est embarqué dans l'export profil et affiché même s'il n'est
+    // plus présent côté serveur ; si je reset full, la liste remonte »).
+    // La découverte ne faisait QUE des addOrUpdate : rien ne retirait jamais
+    // une entrée. Un plan sorti de index.json restait donc dans le registre
+    // (localStorage), s'affichait dans « Mes plans », et partait dans l'export
+    // de profil — où il polluait l'instance d'en face.
+    //
+    // On ne retire QUE des entrées auto-découvertes (`discovered: true`) et de
+    // type serveur : un plan local importé, ou un plan serveur ajouté
+    // autrement, n'est jamais touché.
+    //
+    // 🛟 Ce code n'est atteint que si le fetch de index.json a RÉUSSI
+    // (`decouvrirPlansServeur` sort plus haut sinon) : un serveur injoignable
+    // ou hors-ligne ne peut donc pas vider la liste.
+    // ⚠️ On ne purge PAS les données associées (sessions, photos, géoréf) :
+    // si le plan revient sous le même id, elles se rattachent d'elles-mêmes.
+    try {
+      const connus = new Set(vus);
+      const aRetirer = (window.PlanRegistry.getAll() || []).filter(function (p) {
+        return p && p.type === "server" && p.discovered === true && !connus.has(p.id);
+      });
+      aRetirer.forEach(function (p) {
+        console.log("[Main] Plan serveur disparu de index.json — retiré du registre :", p.id);
+        window.PlanRegistry.remove(p.id);
+      });
+      if (aRetirer.length) console.log("[Main] Élagage serveur :", aRetirer.length, "entrée(s)");
+    } catch (e) {
+      console.warn("[Main] élagage des plans serveur :", e);
+    }
   } catch(e) {
     console.warn("[Main] Erreur auto-discovery serveur :", e);
   }
@@ -317,14 +420,27 @@ async function lancerApplication() {
     }
     // 🆕 v1.10.0 (KARMA "en mode M-LVL, fait en sorte que -1, 0, +1 soit
     // affiché par défaut") : si multi-niveau actif → on montre les 3
-    // niveaux centraux par défaut, filtrés par les niveaux effectivement
-    // disponibles dans availableLevels. Si single-level → [0] strict
-    // (retro-compat absolue, pas de comportement inattendu).
+    // 🏗️ v1.82.1 — TOUS LES NIVEAUX AU LANCEMENT (demande KARMA), réglable.
+    //
+    // Le défaut de v1.10.0 montrait les trois niveaux centraux (-1, 0, +1).
+    // Il tenait tant qu'un plan en comptait trois ou quatre. Un relevé importé
+    // du SIG en porte SIX ou SEPT : la carte s'ouvrait alors sur une fraction
+    // du travail, sans que rien n'indique que le reste existait.
+    //
+    // Décocher « Afficher tous les niveaux au lancement » (panneau Performance
+    // du HOME) rend l'ancien comportement. La case est là et pas ailleurs
+    // parce que c'est un arbitrage de CHARGE — mais elle est hors du méta
+    // ULTRA : afficher plus n'est pas optimiser.
     if (APP_CONFIG.multiLevel) {
-      const _candidats = [-1, 0, 1].filter(function(l) {
-        return APP_CONFIG.availableLevels.indexOf(l) >= 0;
-      });
-      APP_CONFIG.visibleLevels = _candidats.length > 0 ? _candidats : [0];
+      const _tous = !(window.PerfUltra && window.PerfUltra.get("tousNiveaux") === false);
+      if (_tous) {
+        APP_CONFIG.visibleLevels = APP_CONFIG.availableLevels.slice();
+      } else {
+        const _candidats = [-1, 0, 1].filter(function(l) {
+          return APP_CONFIG.availableLevels.indexOf(l) >= 0;
+        });
+        APP_CONFIG.visibleLevels = _candidats.length > 0 ? _candidats : [0];
+      }
     } else {
       APP_CONFIG.visibleLevels = [0];   // reset filtre : montre uniquement le niveau 0 au load
     }
@@ -416,6 +532,10 @@ async function lancerApplication() {
   // l'échelle) : appliquée ICI car _currentLoadedPlanId est enfin posé —
   // buildAppConfigFromPlan tourne trop tôt pour lire la bonne pref.
   if (typeof window.appliquerScalePerPlan === "function") window.appliquerScalePerPlan();
+  // 👣 v1.82.0 — même contrainte, même endroit : les réglages de podomètre
+  // per-plan se posent une fois l'id connu (cf. config.js).
+  if (typeof window.appliquerTrackingPerPlan === "function") window.appliquerTrackingPerPlan();
+  if (typeof window.appliquerSmartNavPerPlan === "function") window.appliquerSmartNavPerPlan();
 
   // Restauration de session si correspond au plan courant (et démarrage du polling auto-save)
   if (window.SessionPersist) {
@@ -678,6 +798,19 @@ window._etendreAvailableLevelsSiBesoin = function() {
       console.log("[Main] availableLevels auto-etendu :",
                   "items min/max =", minF, "/", maxF,
                   "→ availableLevels =", avail);
+      // 🏗️ v1.82.1 — LES NIVEAUX DÉCOUVERTS DOIVENT ÊTRE VISIBLES AUSSI.
+      // Sans ça, « Afficher tous les niveaux au lancement » ne portait que sur
+      // le range PAR DÉFAUT (-2..+2) : les niveaux d'un plan importé, trouvés
+      // ici même en lisant le calque de données APRÈS le calcul initial de
+      // `visibleLevels`, restaient masqués. Sur un relevé à six étages, l'option
+      // n'aurait donc rien changé là où elle sert le plus.
+      const _tousNiv = !(window.PerfUltra && window.PerfUltra.get("tousNiveaux") === false);
+      if (_tousNiv) {
+        window.APP_CONFIG.visibleLevels = avail.slice();
+        if (typeof window.appliquerFiltreNiveau === "function") {
+          try { window.appliquerFiltreNiveau(); } catch(e) {}
+        }
+      }
     }
     return extended;
   } catch(e) {
@@ -951,6 +1084,9 @@ async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
       path: planPath,
       name:    window.PLAN_CONFIG.plan.name    || (registryEntry && registryEntry.name) || planPath,
       version: window.PLAN_CONFIG.plan.version || (registryEntry && registryEntry.version) || null,
+      // 🩸 v1.88.0 — marque lorigine : le plan-config fait autorite, la
+      // decouverte via index.json ne doit plus lecraser au boot suivant.
+      versionSrc: window.PLAN_CONFIG.plan.version ? "plan" : undefined,
       author:  window.PLAN_CONFIG.plan.author  || (registryEntry && registryEntry.author)  || null,
       discovered: registryEntry?.discovered || false,
       perfPreset: APP_CONFIG.perfPreset
@@ -984,10 +1120,62 @@ function _propagerGeorefVersKmzExport(planId) {
     const georef = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.georef;
     if (!georef || !georef.pointA || !georef.pointB) return;
     if (!window.KmzExport || typeof window.KmzExport.setCalibration !== "function") return;
-    // Skip si un calibrage local existe déjà (l'user a saisi manuellement → on respecte)
-    if (window.KmzExport.getCalibration && window.KmzExport.getCalibration(planId)) return;
+    // Skip si un calibrage local existe déjà (l'user a saisi manuellement → on respecte).
+    //
+    // 🩸 v1.82.0 — SAUF S'IL EST STRUCTURELLEMENT PÉRIMÉ. Le planId est
+    // DÉTERMINISTE (slug nom+version) : régénérer un plan sous le même nom
+    // réutilise le même id, et l'ancien calibrage lui survit. Si les dimensions
+    // du plan ont changé entre-temps, ses coordonnées x/y désignent un canvas
+    // QUI N'EXISTE PLUS — `buildTransformCalib` calcule alors une longueur plan
+    // fausse, donc une échelle fausse.
+    //
+    // Symptôme vécu (KARMA, 03/09) : plan régénéré en 4000×4672, calibrage
+    // resté sur un 12000×14017. Les distances lues étaient justes (elles
+    // viennent de `tracking.scale`), mais la modale criait « Incohérence
+    // échelle critique, +246,9 % d'écart » — l'alerte comparait la bonne
+    // échelle à une déduction faite sur un géoréf mort. Elle avait tort, et
+    // rien ne permettait de le deviner.
+    //
+    // Un calibrage dont les points sortent du plan n'est pas une préférence
+    // utilisateur : c'est une donnée morte. On la remplace. Un calibrage
+    // manuel VALIDE, lui, a forcément ses points dans le plan — il est
+    // préservé, la règle d'origine tient.
+    const dejaLa = window.KmzExport.getCalibration && window.KmzExport.getCalibration(planId);
+    if (dejaLa) {
+      const W = window.PLAN_CONFIG.plan.imageWidth;
+      const H = window.PLAN_CONFIG.plan.imageHeight;
+      const dansLePlan = function (pt) {
+        return pt && Number.isFinite(pt.x) && Number.isFinite(pt.y)
+            && pt.x >= -1 && pt.x <= W + 1 && pt.y >= -1 && pt.y <= H + 1;
+      };
+      // Dimensions inconnues : on ne peut rien juger, on respecte l'existant.
+      if (!Number.isFinite(W) || !Number.isFinite(H)) return;
+      if (dansLePlan(dejaLa.pointA) && dansLePlan(dejaLa.pointB)) return;
+      console.warn("[Main] 🌐 Calibrage périmé pour planId=" + planId +
+                   " (points hors du plan " + W + "×" + H + ") → remplacé par plan.georef.");
+    }
     window.KmzExport.setCalibration(planId, georef);
     console.log("[Main] 🌐 Géoréférencement plan.georef propagé vers KmzExport (planId=" + planId + ")");
+
+    // 🩸 v1.82.0 — ET DANS LE REGISTRE, parce que le HOME ne peut pas lire
+    // `PLAN_CONFIG` : aucun plan n'y est chargé. Le widget OSM du HOME ne
+    // listait donc que les plans dont le géoréf avait atteint le
+    // localStorage — un plan importé du SIG, pourtant parfaitement calé par
+    // construction, restait invisible (signalé par KARMA).
+    //
+    // `osmView.js` (la modale, en mode plan) lit DEUX sources depuis la
+    // v1.39.2 : `PLAN_CONFIG.plan.georef` puis le localStorage. Le widget du
+    // HOME n'a jamais reçu l'équivalent, et son en-tête érigeait le manque en
+    // « limitation acceptable ». Elle ne l'est plus : l'import SIG produit
+    // des plans dont le géoréf est calculé, que l'utilisateur n'a aucune
+    // raison de ressaisir à la main.
+    //
+    // Le registre est le seul endroit que le HOME lit déjà. On y dépose donc
+    // le géoréf du plan — sa donnée propre, pas une préférence : le
+    // localStorage reste la voix de l'utilisateur, et garde la priorité.
+    if (window.PlanRegistry && typeof window.PlanRegistry.addOrUpdate === "function") {
+      window.PlanRegistry.addOrUpdate({ id: planId, georef: georef });
+    }
   } catch(e) {
     console.warn("[Main] _propagerGeorefVersKmzExport :", e);
   }
@@ -1708,6 +1896,28 @@ window.proposerRedemarrageLangue = function() {
   // ne pas bloquer le boot principal). Si des plans sont purgés → modale
   // orange affichée 1s après pour informer l'user. Cache hash dans le
   // registry pour éviter le re-hash au prochain boot.
+  // 🔆 v1.85.2 — SECOND FILET. ⚠️ Le module s initialise DEJA lui-meme en fin
+  // de fichier : cet appel n est pas ce qui repare quoi que ce soit (mon
+  // premier diagnostic, corrige le 07/09). Il vaut comme reprise plus tard
+  // dans le boot, quand l app est stabilisee. La vraie panne etait le VERROU
+  // FANTOME — cf. l en-tete de js/wakeLock.js.
+  // (ancien commentaire, faux, conserve pour memoire du raisonnement :)
+  // 🩸 v1.85.2 (KARMA « l option qui garde le tel allume ne fonctionne pas sur
+  // iPhone en PWA ») — `WakeLock.init()` n etait appele NULLE PART. Le module
+  // etait charge, les deux cases appelaient bien `setEnabled()`, mais la
+  // preference n etait JAMAIS relue au demarrage : `_enabled` restait false, le
+  // verrou n etait pas repris, et `isEnabled()` rendant false, la case
+  // s affichait DECOCHEE a chaque lancement.
+  //
+  // Pourquoi ca n a saute aux yeux que sur iPhone : sur PC on ne recharge pas,
+  // donc cocher la case marchait pour la session en cours. En PWA iOS, quitter
+  // l app pour une autre la fait decharger — chaque retour est un boot, donc
+  // chaque retour perdait le reglage. Meme famille que le bug `snapDraw` du
+  // 03/08 : une preference sauvegardee mais jamais relue.
+  if (window.WakeLock && typeof window.WakeLock.init === "function") {
+    window.WakeLock.init().catch(function () {});
+  }
+
   if (window.PlanDenylist && typeof window.PlanDenylist.init === "function") {
     window.PlanDenylist.init().then(function() {
       // Affiche la modale de notif si des plans ont été purgés au DERNIER boot
@@ -1739,12 +1949,17 @@ window.proposerRedemarrageLangue = function() {
   // 🆕 v1.21.3 (KARMA "rajoute une option — ne pas charger les plan serveur
   // au démarrage") : skip total si l'user a coché la pref dans ⚙️ Configuration
   // loader → section 📚 Plans serveur. Default OFF (rétrocompat).
-  const _skipServer = (typeof window._loaderSkipServerPlans === "function")
-                      && window._loaderSkipServerPlans();
   // 🛠️ v1.73.0 : la config d'instance (sous-titre, flags, liaisons kiosque)
   // est chargée MÊME si la pref skippe la discovery — seule l'inscription
   // des plans serveur est optionnelle.
+  // 🩸 v1.90.1 — ET ELLE EST CHARGÉE D'ABORD. La pref était lue AVANT
+  // l'index : le kiosque avait beau remettre `skip_server_plans` à false, la
+  // décision était déjà prise, et l'accueil restait vide pour CE démarrage —
+  // il aurait fallu relancer l'app pour voir ses plans. On lit l'index, puis
+  // la pref, une fois le kiosque appliqué.
   const _idxServeur = await _chargerIndexServeur();
+  const _skipServer = (typeof window._loaderSkipServerPlans === "function")
+                      && window._loaderSkipServerPlans();
   if (_skipServer) {
     console.log("[Main] Auto-discovery serveur SKIPPÉ (pref user : myktamap_skip_server_plans_v1)");
   } else if (_idxServeur) {

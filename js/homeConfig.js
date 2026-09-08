@@ -402,54 +402,12 @@
         _majBadgeAlert();
       }
 
-      // === SYNC TOGGLES PERF ULTRA dans le loader (drawer perf) ===
-      // À l'ouverture du loader, on synchronise les checkboxes avec l'état
-      // PerfUltra actuel. Au clic d'un toggle, on appelle PerfUltra.set() qui
-      // persiste + notify les modules consommateurs. Le master "ULTRA" est
-      // sync auto via isUltra() (coché si les 6 individuels le sont).
-      (function _initPerfUltraToggles() {
-        if (!window.PerfUltra) return;
-        const ultraEl = document.getElementById("loader_perf_ultra");
-        const map = {
-          "loader_perf_decim":           "decim",
-          "loader_perf_animOff":         "animOff",
-          "loader_perf_noIntersect":     "noIntersect",
-          "loader_perf_noTooltips":      "noTooltips",
-          "loader_perf_slowSave":        "slowSave",
-          "loader_perf_viewportCull":    "viewportCull",
-          // 🆕 v1.9.2-hotfix-loader-zoom : 7e toggle ajouté pour parité
-          // avec la modale Configuration in-map (cf. interface.js
-          // _bindPerfUltraToggles ligne ~1571).
-          "loader_perf_mobileZoomLimit": "mobileZoomLimit"
-        };
-        // Sync visuel initial
-        Object.keys(map).forEach(function(id) {
-          const el = document.getElementById(id);
-          if (el) el.checked = window.PerfUltra.get(map[id]);
-        });
-        if (ultraEl) ultraEl.checked = window.PerfUltra.isUltra();
-        // Bind master ULTRA
-        if (ultraEl) {
-          ultraEl.addEventListener("change", function() {
-            window.PerfUltra.setUltra(ultraEl.checked);
-            // Re-sync visuel des 6 toggles
-            Object.keys(map).forEach(function(id) {
-              const el = document.getElementById(id);
-              if (el) el.checked = window.PerfUltra.get(map[id]);
-            });
-          });
-        }
-        // Bind toggles individuels
-        Object.keys(map).forEach(function(id) {
-          const el = document.getElementById(id);
-          if (!el) return;
-          el.addEventListener("change", function() {
-            window.PerfUltra.set(map[id], el.checked);
-            // Re-sync visuel du master (coché si les 6 le sont)
-            if (ultraEl) ultraEl.checked = window.PerfUltra.isUltra();
-          });
-        });
-      })();
+      // ⚠️ v1.85.3 (audit KARMA) — LE CABLAGE DES TOGGLES PERF ULTRA A ETE
+      // RETIRE avec les cases correspondantes (cf. index.html). Il etait
+      // null-safe, donc inoffensif — mais c est precisement ce qui le rendait
+      // trompeur : du code qui a l air de brancher une interface qui n existe
+      // plus. Ces reglages sont PAR PLAN depuis la v1.59.0 et se reglent dans
+      // ⚙️ Reglages, une fois le plan ouvert.
 
       // === VERSION DANS LE FOOTER COPYRIGHT ===
       // - Le badge est TOUJOURS cliquable :
@@ -1135,6 +1093,103 @@
       // du home") : toggle Wake Lock dans Configuration home. Parité avec
       // ⚙️ Réglages map mode > 🔍 Affichage. Les 2 toggles pointent sur le
       // même window.WakeLock → state synchronisé entre les 2 modales.
+      // ⚙️ v1.85.3 (audit KARMA) — QUATRE RÉGLAGES GLOBAUX rapatriés du mode
+      // plan. Ils s'écrivent par le chemin CANONIQUE : c'est lui que
+      // `check-prefs-survival.js` inspecte pour vérifier qu'une préférence
+      // sauvegardée est bien relue au chargement d'un plan.
+      (function _initReglagesGlobaux() {
+        const cases = [
+          ["loaderScaledMarkers",  "scaledMarkers",  true],   // défaut ON  → test `!== false`
+          ["loaderPanneauxAncres", "panneauxAncres", false],  // défaut OFF → test `=== true`
+          ["loaderSnapDraw",       "snapDraw",       false]
+        ];
+        cases.forEach(function (row) {
+          const el = document.getElementById(row[0]);
+          if (!el) return;
+          const cfg = window.APP_CONFIG || {};
+          // 🩸 L'idiome DÉPEND du défaut : `!== false` pour un défaut ON,
+          // `=== true` pour un défaut OFF. Les confondre allume ou éteint
+          // l'option pour tout le monde au premier lancement.
+          el.checked = row[2] ? (cfg[row[1]] !== false) : (cfg[row[1]] === true);
+          el.addEventListener("change", function () {
+            if (!window.APP_CONFIG) window.APP_CONFIG = {};
+            window.APP_CONFIG[row[1]] = !!el.checked;
+            if (typeof window.sauvegarderPrefsUtilisateur === "function") {
+              window.sauvegarderPrefsUtilisateur();
+            }
+          });
+        });
+        const px = document.getElementById("loaderSnapDrawPx");
+        if (px) {
+          const cfg = window.APP_CONFIG || {};
+          px.value = Number.isFinite(Number(cfg.snapDrawPx)) ? Number(cfg.snapDrawPx) : 14;
+          px.addEventListener("change", function () {
+            const v = parseFloat(px.value);
+            // Hors bornes = saisie fautive, pas une préférence : on ignore et
+            // on remet la valeur en place plutôt que d'écrire n'importe quoi.
+            if (!Number.isFinite(v) || v < 4 || v > 40) {
+              px.value = (window.APP_CONFIG && window.APP_CONFIG.snapDrawPx) || 14;
+              return;
+            }
+            if (!window.APP_CONFIG) window.APP_CONFIG = {};
+            window.APP_CONFIG.snapDrawPx = v;
+            if (typeof window.sauvegarderPrefsUtilisateur === "function") {
+              window.sauvegarderPrefsUtilisateur();
+            }
+          });
+        }
+      })();
+
+      // 🛰️ v1.85.2 — Options via capteur, côté ACCUEIL (demande KARMA :
+      // « elles ont plus de pertinence en HOME »). Même état que la modale du
+      // mode plan — `APP_CONFIG` + `app_user_prefs` —, donc aucune divergence
+      // possible entre les deux écrans.
+      const batRowH = document.getElementById("loaderBatterieRow");
+      const batCbH  = document.getElementById("loaderBatterieCb");
+      if (batRowH && batCbH) {
+        if (typeof navigator.getBattery !== "function") {
+          // 🩸 Affiché et expliqué, jamais masqué : cacher la ligne laissait
+          // croire que l'option n'existe pas.
+          if (window.ktaCapteurRefuse) {
+            window.ktaCapteurRefuse(batRowH, batCbH, document.getElementById("loaderBatterieHint"));
+          }
+        } else {
+          batCbH.checked = !(window.APP_CONFIG && window.APP_CONFIG.batterieEnabled === false);
+          batCbH.addEventListener("change", function () {
+            if (!window.APP_CONFIG) window.APP_CONFIG = {};
+            window.APP_CONFIG.batterieEnabled = !!batCbH.checked;
+            if (typeof window.sauvegarderPrefsUtilisateur === "function") {
+              window.sauvegarderPrefsUtilisateur();
+            }
+            if (window.OOMGuard && typeof window.OOMGuard.showToast === "function" && window.I18n) {
+              window.OOMGuard.showToast(window.I18n.t(batCbH.checked
+                ? "config.batterie.toastOn" : "config.batterie.toastOff"), "info");
+            }
+          });
+        }
+      }
+
+      const vibRowH = document.getElementById("loaderVibrationRow");
+      const vibCbH  = document.getElementById("loaderVibrationCb");
+      if (vibRowH && vibCbH) {
+        const dispoH = !!(window.kta_vibrate && window.kta_vibrate.isSupported());
+        if (!dispoH) {
+          if (window.ktaCapteurRefuse) {
+            window.ktaCapteurRefuse(vibRowH, vibCbH, document.getElementById("loaderVibrationHint"));
+          }
+        } else {
+          vibCbH.checked = !!(window.APP_CONFIG && window.APP_CONFIG.vibrationEnabled === true);
+          vibCbH.addEventListener("change", function () {
+            if (!window.APP_CONFIG) window.APP_CONFIG = {};
+            window.APP_CONFIG.vibrationEnabled = !!vibCbH.checked;
+            if (typeof window.sauvegarderPrefsUtilisateur === "function") {
+              window.sauvegarderPrefsUtilisateur();
+            }
+            if (vibCbH.checked) { window.kta_vibrate.light(); }
+          });
+        }
+      }
+
       const loaderWlRow = document.getElementById("loaderWakeLockRow");
       const loaderWlCb  = document.getElementById("loaderWakeLockCb");
       if (loaderWlRow && loaderWlCb && window.WakeLock) {
@@ -1142,15 +1197,22 @@
           loaderWlRow.style.display = "";  // révèle (default = none)
           loaderWlCb.checked = window.WakeLock.isEnabled();
           loaderWlCb.addEventListener("change", function() {
-            window.WakeLock.setEnabled(loaderWlCb.checked);
-            if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            // 🩸 v1.85.2 — meme correctif qu en ⚙️ Parametres : on n annonce
+            // le verrou qu une fois qu il est REELLEMENT pose.
+            Promise.resolve(window.WakeLock.setEnabled(loaderWlCb.checked)).then(function (ok) {
+              if (!(window.OOMGuard && typeof window.OOMGuard.showToast === "function")) return;
+              const t = function (k, repli) {
+                return (window.I18n && window.I18n.t) ? window.I18n.t(k) : repli;
+              };
+              if (!loaderWlCb.checked) {
+                window.OOMGuard.showToast(t("config.display.wakelock.toastOff", "🔅 Mise en veille écran ré-activée"), "info");
+                return;
+              }
               window.OOMGuard.showToast(
-                loaderWlCb.checked
-                  ? "🔆 Écran maintenu allumé tant que l'app est ouverte"
-                  : "🔅 Mise en veille écran ré-activée",
-                "info"
-              );
-            }
+                ok ? t("config.display.wakelock.toastOn", "🔆 Écran maintenu allumé tant que l'app est ouverte")
+                   : t("config.display.wakelock.toastKo", "⚠️ Ton navigateur a refusé de garder l'écran allumé"),
+                ok ? "info" : "warn");
+            });
           });
           // Sync UI si le state change ailleurs (ex: toggle dans ⚙️ Réglages
           // map mode pendant que la home est ouverte en arrière-plan)

@@ -130,5 +130,60 @@ winI._setPlan(null);
 t("legende vide -> rien n'est cree", winI._absorber({ labels:{}, hidden:{}, colors:{}, customEntries:[] }) === null);
 t("legende absente -> rien n'est cree", winI._absorber(null) === null);
 
+// ───────── cote GENERATEUR SIG (sigImport.js > assemblerLegendePlan) ─────────
+// 🩸 v1.83.1 (bug KARMA, 04/09 : « j'avais modifie ma legende, elle n'a pas ete
+// emportee dans l'export »). L'ecran « Convertir depuis SIG » ouvre le MEME
+// editeur de legende que le Generateur, mais la generation du ZIP assemblait
+// `plan.customLegend` avec `labels: {}` et `hidden: {}` ECRITS EN DUR, sans
+// `colors` ni `borders`. Renommer un type built-in, en masquer un, en recolorer
+// un, ou ajouter une entree a la main : tout partait a la poubelle en silence.
+// Seules survivaient les entrees `cust-sig-…` fabriquees par niveau.
+//
+// Le contre-piege est de tout garder aveuglement : une entree `cust-sig-…` que
+// la generation courante n'a PAS produite vient d'un routage perime, et poserait
+// dans la legende un type qu'aucun objet ne porte. Les deux sens sont verrouilles.
+const si = fs.readFileSync("js/sigImport.js", "utf8");
+const winS = { console: { log() {}, warn() {} } };
+winS.window = winS;
+const ctxS = vm.createContext(winS);
+vm.runInContext(
+  "var window=this;\n" +
+  extraire(si, "const PREFIXE_AUTO_NIVEAU", ";") + "\n" +
+  extraire(si, "function assemblerLegendePlan", "\n  }") + "\n" +
+  "this._assembler = assemblerLegendePlan;", ctxS);
+
+const autoSig = [
+  { id: "cust-sig-traces-l-nm1",   category: "traces",     label: "Mon niveau -1",  lineColor: "#8cb4ff" },
+  { id: "cust-sig-structures-nm2", category: "structures", label: "Mes piliers -2", fillColor: "#7ee0a0" }
+];
+const editeSig = {
+  schemaVersion: 1,
+  labels:  { "traces.principal": "Grande galerie" },
+  hidden:  { "zones.remblais": true },
+  colors:  { "traces.secondaire": "#ff00ff" },
+  borders: { "zones.eau": "#0000ff" },
+  customEntries: autoSig.concat([
+    { id: "cust-mfz1x-ab12",    category: "structures", label: "Pilier historique", fillColor: "#ff0000" },
+    { id: "cust-sig-zones-nm9", category: "zones",      label: "Routage perime",    fillColor: "#00ff00" }
+  ])
+};
+const legSig = winS._assembler(editeSig, autoSig);
+t("SIG : les libelles des types built-in voyagent", legSig.labels["traces.principal"] === "Grande galerie");
+t("SIG : les masquages voyagent",                   legSig.hidden["zones.remblais"] === true);
+t("SIG : les couleurs voyagent",                    legSig.colors["traces.secondaire"] === "#ff00ff");
+t("SIG : les bordures voyagent",                    legSig.borders["zones.eau"] === "#0000ff");
+t("SIG : l'entree ajoutee a la main voyage",
+  legSig.customEntries.some(e => e.id === "cust-mfz1x-ab12"));
+t("SIG : le renommage des entrees par niveau voyage",
+  legSig.customEntries.some(e => e.id === "cust-sig-traces-l-nm1" && e.label === "Mon niveau -1"));
+t("SIG : une entree cust-sig- orpheline est ecartee",
+  !legSig.customEntries.some(e => e.id === "cust-sig-zones-nm9"));
+t("SIG : aucun doublon", new Set(legSig.customEntries.map(e => e.id)).size === legSig.customEntries.length);
+t("SIG : rien de personnalise -> pas de section customLegend",
+  winS._assembler(null, []) === null &&
+  winS._assembler({ labels:{}, hidden:{}, colors:{}, borders:{}, customEntries:[] }, []) === null);
+t("SIG : sans etat edite, les entrees par niveau partent quand meme",
+  (winS._assembler(null, autoSig) || {}).customEntries.length === 2);
+
 console.log(ko === 0 ? "\n🎉 round-trip complet OK" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

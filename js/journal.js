@@ -122,6 +122,19 @@
   // Delta de temps ignoré (veille machine / onglet suspendu) — cf homeProfile.
   const MAX_TICK_MS = 5 * 60 * 1000;
 
+  // 🩸 v1.85.2 (KARMA, sortie terrain) — REPRISE D UNE SORTIE INTERROMPUE.
+  // Quitter la PWA pour une autre appli (changer de musique, prendre un appel)
+  // la fait DECHARGER par iOS. Au retour, l app reboote et `onPlanLoaded`
+  // ouvrait systematiquement une NOUVELLE sortie : une seule vraie sortie
+  // ressortait en trois au carnet, chacune avec un bout des compteurs.
+  //
+  // Le signal de reprise n est PAS le delai seul, c est `closedBy: "crash"` —
+  // pose par le balayage sur une sortie restee `encours`, donc UNIQUEMENT
+  // quand l app a ete tuee sous l utilisateur. Une sortie cloturee a la main
+  // ou par un changement de plan n est jamais recollee : il l a terminee.
+  // Le delai n est qu une borne de bon sens par-dessus.
+  const REPRISE_MS = 45 * 60 * 1000;
+
   const MAX_TRACK_PTS = 1500;   // décimation du tracé archivé
   const MAX_SORTIES   = 500;    // garde-fou quota : purge FIFO au-delà
 
@@ -457,6 +470,53 @@
 
   // Appelé par main.js APRÈS SessionPersist.onPlanLoaded (baseline = état
   // restauré, sinon une session restaurée compterait comme des ajouts du jour).
+  // Cherche une sortie du MEME plan que l app peut reprendre. Rend le record
+  // ou null. Asynchrone : l appelant enchaine.
+  function _candidateReprise(planId) {
+    if (!planId) return Promise.resolve(null);
+    return list().then(function (all) {
+      const now = _now();
+      for (let i = 0; i < all.length; i++) {          // deja trie du + recent
+        const r = all[i];
+        if (!r || r.planId !== planId) continue;
+        if (r.status !== "close" || r.closedBy !== "crash") return null;
+        const finMs = Date.parse(r.endedAt || r.updatedAt || 0) || 0;
+        if (!finMs || (now - finMs) > REPRISE_MS) return null;
+        return r;
+      }
+      return null;
+    }).catch(function () { return null; });
+  }
+
+  // 🩸 RECONSTRUIT LA BASELINE D ORIGINE. Les compteurs d une sortie sont des
+  // DIFFERENCES (`compte - baseline`), recalculees a chaque snapshot — pas des
+  // accumulations. Reprendre avec une baseline neuve remettrait donc tout a
+  // zero et la reprise ne servirait a rien.
+  //
+  // Mais la session est restauree A L IDENTIQUE au reboot : le compte d ici
+  // vaut celui d avant le kill. Donc `baseline = compte_actuel - deja_en_banque`
+  // redonne EXACTEMENT la baseline d origine, sans l avoir stockee.
+  //
+  // Si la session n a PAS ete restauree a l identique (l utilisateur l a
+  // effacee entre-temps), les gardes de re-ancrage deja en place dans
+  // `_snapshot` empechent les compteurs de partir en negatif.
+  function _baselineDepuisReprise(rec) {
+    const c = _counts();
+    const a = rec.ajouts || {};
+    const b = {
+      points:     Math.max(0, (c.points     || 0) - (a.points     || 0)),
+      roads:      Math.max(0, (c.roads      || 0) - (a.roads      || 0)),
+      zones:      Math.max(0, (c.zones      || 0) - (a.zones      || 0)),
+      structures: Math.max(0, (c.structures || 0) - (a.structures || 0))
+    };
+    b.distM    = Math.max(0, _trackerDistM()         - (Number(rec.distM) || 0));
+    b.distEstM = Math.max(0, _trackerDistEstimeeM()  - (Number(rec.distEstimeeM) || 0));
+    const vNow = (typeof window.getTrackingValidations === "function")
+      ? (Number(window.getTrackingValidations()) || 0) : 0;
+    b.validations = Math.max(0, vNow - (Number(rec.validations) || 0));
+    return b;
+  }
+
   function onPlanLoaded(planId, planName) {
     if (!isEnabled()) return null;
     // Filet : une sortie encore ouverte (plan switch sans passer par le
@@ -502,6 +562,35 @@
     _lastTick = (document.visibilityState === "hidden") ? null : startMs;
     _startTimer();
     console.log("[Journal] Sortie ouverte :", _cur.id, "—", _cur.planName);
+
+    // 🔁 Reprise d'une sortie que l'app a perdue en étant tuée sous
+    // l'utilisateur. La recherche est ASYNCHRONE (lecture IDB) alors que tout
+    // ce qui précède est synchrone : on ne peut donc pas la placer avant, rien
+    // en aval ne doit attendre une promesse. La sortie neuve vient d'être
+    // ouverte, on retient son id et on la REMPLACE si une reprise arrive.
+    //
+    // 🩸 Sans garde sur cet id, une reprise arrivée en retard écraserait une
+    // sortie déjà repartie (changement de plan rapide) — et le travail fait
+    // entre-temps partirait avec. Elle n'a jamais touché IDB (1er flush à
+    // 30 s), donc il n'y a rien à nettoyer derrière elle.
+    const idNeuve = _cur.id;
+    _candidateReprise(planId).then(function (rec) {
+      if (!rec || !_cur || _cur.id !== idNeuve) return;
+      _cur = rec;
+      _cur.status   = "encours";
+      _cur.endedAt  = null;
+      _cur.closedBy = null;
+      _cur.reprises = (Number(rec.reprises) || 0) + 1;
+      _baseline = _baselineDepuisReprise(rec);
+      _photoIds = Array.isArray(rec.photoIds) ? rec.photoIds.slice() : [];
+      console.log("[Journal] 🔁 Sortie reprise :", rec.id,
+                  "· reprise n°" + _cur.reprises + " · la sortie neuve", idNeuve, "est abandonnee");
+      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        const msg = (window.I18n && window.I18n.t) ? window.I18n.t("journal.reprise.toast") : "🔁 Sortie reprise";
+        window.OOMGuard.showToast(msg, "info");
+      }
+    });
+
     return { id: _cur.id, startedAt: _cur.startedAt };
   }
 
@@ -601,7 +690,19 @@
     // ⚠️ L'affinage passe AVANT le test de pertinence : 30 m à vol d'oiseau
     // peuvent valoir 200 m de galeries. Juger la sortie sur la ligne droite puis
     // la jeter reproduirait EXACTEMENT le défaut que ce lot corrige.
-    return _affinerDistances(rec, baseDist, baseEst).then(function() {
+    // 🩸 v1.85.2 — `force` sur une CLOTURE MANUELLE. Le budget de sommets
+    // (20 000, cf. tracking.js) protege l archivage AUTOMATIQUE, qui doit
+    // rester invisible : au-dela, l affinage reseau est saute et le vol
+    // d oiseau conserve, SANS un mot. Sur un releve importe, c est
+    // systematique — le carnet affichait donc une distance a vol d oiseau en
+    // la presentant comme la distance parcourue.
+    //
+    // Une cloture manuelle n est pas ce cas : l utilisateur vient d appuyer
+    // sur « Cloturer », il attend un resultat, un calcul un peu long est
+    // legitime. On leve donc le plafond — le meme raisonnement que le bouton
+    // « 🧭 Affiner le trace ».
+    const optsAff = (reason === "manual") ? { force: true } : undefined;
+    return _affinerDistances(rec, baseDist, baseEst, optsAff).then(function() {
       return _finaliserSuite(rec, id, reason);
     });
   }
@@ -704,12 +805,12 @@
       all.forEach(function(r) {
         if ((r.type || TYPE_BUREAU) === TYPE_TERRAIN) {
           nbT++;
-          ms += Number(r.activeMs) || 0;
+          ms += dureeMs(r);
           m  += Number(r.distM)    || 0;
           if (r.planId) plans[r.planId] = 1;
         } else {
           nbB++;
-          bureauMs += Number(r.activeMs) || 0;
+          bureauMs += dureeMs(r);
         }
       });
       const terrain = all.filter(function(r) { return (r.type || TYPE_BUREAU) === TYPE_TERRAIN; });
@@ -775,6 +876,140 @@
 
   // ───────── EXPORT ─────────
 
+  // ───────── ⏱️ LA DUREE D UNE SORTIE (KARMA, v1.85.2) ─────────
+  // « On ne se base que sur le temps d ouverture de l app. Or on a une date de
+  // debut et une date de fin, ce qui permettrait un temps plus pertinent. »
+  //
+  // Les deux mesures existaient deja et cohabitent — c est leur USAGE qui etait
+  // faux, tout affichait `activeMs` :
+  //   • `activeMs` = temps ou l app etait OUVERTE ET VISIBLE, deltas > 5 min
+  //     ignores. Il dit combien de temps on s est SERVI de l app.
+  //   • `wallMs`   = fin - debut, trous compris. Il dit combien de temps la
+  //     SORTIE a dure.
+  //
+  // 🩸 LA REGLE DEPEND DU TYPE, et c est le coeur du sujet. Sur une sortie
+  // TERRAIN, « on est restes 3 h » est le temps reel : le telephone en poche ne
+  // compte pas, et l app tuee par iOS non plus. Sur du travail BUREAU, le temps
+  // reel n a aucun sens — on laisse un plan ouvert toute la soiree sans le
+  // regarder ; c est le temps d usage qui compte.
+  //
+  // Cette regle vit ICI et nulle part ailleurs : l affichage, les totaux et la
+  // fiche l appellent. La dupliquer dans l UI ferait diverger le detail du
+  // total a la premiere retouche.
+  function dureeMs(rec) {
+    if (!rec) return 0;
+    if (rec.type !== TYPE_TERRAIN) return Number(rec.activeMs) || 0;
+    const w = Number(rec.wallMs) || 0;
+    // Filet : une sortie dont la fin serait anterieure au debut (donnee
+    // corrompue) ne doit pas rendre une duree negative ni ecraser l actif.
+    return w > 0 ? w : (Number(rec.activeMs) || 0);
+  }
+
+  // ✏️ Corriger la fin apres coup. Sans ca, une sortie ou l on a oublie de
+  // cliquer « Cloturer » porte pour fin le dernier instant ou l app etait
+  // vivante — soit, en pratique, le moment ou iOS l a tuee, pas celui ou l on
+  // est ressorti. La duree reelle est alors sous-evaluee sans recours.
+  //
+  // 🩸 On NE TOUCHE PAS a `activeMs` : c est une mesure, pas une declaration.
+  // Seul `wallMs` est recalcule. Les deux restent lisibles cote a cote, et
+  // `finManuelle` dit que le chiffre vient de l utilisateur.
+  function setFin(id, quand) {
+    const ms = (quand instanceof Date) ? quand.getTime()
+             : (typeof quand === "number") ? quand
+             : Date.parse(quand);
+    if (!Number.isFinite(ms)) return Promise.resolve(null);
+    return get(id).then(function (rec) {
+      if (!rec) return null;
+      const debut = Number(rec.startedAtMs) || 0;
+      // Une fin AVANT le debut n a pas de sens : on refuse plutot que de
+      // stocker une duree negative que tout le reste devrait ensuite gerer.
+      if (!debut || ms <= debut) return null;
+      rec.endedAt     = new Date(ms).toISOString();
+      rec.wallMs      = ms - debut;
+      rec.finManuelle = true;
+      rec.updatedAt   = new Date().toISOString();
+      return _put(rec).then(function () { return rec; });
+    }).catch(function (e) {
+      console.warn("[Journal] setFin echoue :", e && e.message);
+      return null;
+    });
+  }
+
+  // ───────── FUSION MANUELLE (KARMA, v1.85.2) ─────────
+  // La reprise automatique EMPECHE le probleme ; elle ne repare pas les
+  // sorties deja hachees. D ou la fusion : l utilisateur designe N sorties du
+  // carnet, elles n en font plus qu une.
+  //
+  // 🩸 LA PLUS ANCIENNE SERT DE SOCLE et garde son id : la fiche eventuellement
+  // deja ouverte, les references et l ordre du carnet restent valides. Les
+  // autres sont supprimees APRES ecriture du resultat — jamais avant, sinon un
+  // echec d ecriture perdrait tout.
+  function fusionner(ids) {
+    if (!Array.isArray(ids) || ids.length < 2) return Promise.resolve(null);
+    return Promise.all(ids.map(function (id) { return get(id); })).then(function (recs) {
+      const liste = recs.filter(Boolean).filter(function (r) { return r.status === "close"; })
+        .sort(function (a, b) { return (a.startedAtMs || 0) - (b.startedAtMs || 0); });
+      if (liste.length < 2) return null;
+
+      const base = liste[0];
+      const fin = liste.reduce(function (m, r) {
+        const t = Date.parse(r.endedAt || r.updatedAt || 0) || 0;
+        return t > m ? t : m;
+      }, 0);
+
+      const somme = function (cle) {
+        return liste.reduce(function (s, r) { return s + (Number(r[cle]) || 0); }, 0);
+      };
+      base.activeMs     = somme("activeMs");
+      base.distM        = somme("distM");
+      base.distEstimeeM = somme("distEstimeeM");
+      base.validations  = somme("validations");
+      base.steps        = somme("steps");
+      base.ajouts = ["points", "roads", "zones", "structures", "photos"].reduce(function (o, k) {
+        o[k] = liste.reduce(function (s, r) { return s + (Number((r.ajouts || {})[k]) || 0); }, 0);
+        return o;
+      }, {});
+      // 🩸 `wallMs` n est PAS une somme : c est la duree reelle du debut a la
+      // fin, trous compris. La sommer donnerait une sortie plus courte que le
+      // temps qu elle a dure.
+      base.wallMs = Math.max(0, fin - (base.startedAtMs || 0));
+      base.endedAt = fin ? new Date(fin).toISOString() : base.endedAt;
+
+      const vus = {};
+      base.photoIds = liste.reduce(function (out, r) {
+        (r.photoIds || []).forEach(function (pid) { if (!vus[pid]) { vus[pid] = 1; out.push(pid); } });
+        return out;
+      }, []);
+      base.track = liste.reduce(function (out, r) { return out.concat(r.track || []); }, [])
+        .sort(function (a, b) { return (a && a.t || 0) - (b && b.t || 0); });
+      const nv = {};
+      base.levels = liste.reduce(function (out, r) {
+        (r.levels || []).forEach(function (l) { if (!(l in nv)) { nv[l] = 1; out.push(l); } });
+        return out;
+      }, []);
+      // Les notes ne se perdent pas : on les empile dans l ordre.
+      base.note = liste.map(function (r) { return String(r.note || "").trim(); })
+        .filter(Boolean).join("\n\n———\n\n");
+      // Terrain domine : si UN morceau etait du terrain, l ensemble l est.
+      if (!base.typeManuel) {
+        base.type = liste.some(function (r) { return r.type === TYPE_TERRAIN; }) ? TYPE_TERRAIN : TYPE_BUREAU;
+      }
+      base.fusionDe  = liste.map(function (r) { return r.id; });
+      base.updatedAt = new Date().toISOString();
+
+      return _put(base).then(function () {
+        const aJeter = liste.slice(1).map(function (r) { return r.id; });
+        return Promise.all(aJeter.map(remove)).then(function () {
+          console.log("[Journal] 🔗 " + liste.length + " sorties fusionnees dans", base.id);
+          return base;
+        });
+      });
+    }).catch(function (e) {
+      console.warn("[Journal] fusion echouee :", e && e.message);
+      return null;
+    });
+  }
+
   window.Journal = {
     onPlanLoaded: onPlanLoaded,
     onPlanUnload: onPlanUnload,
@@ -787,6 +1022,10 @@
     remove:       remove,
     setNote:      setNote,
     setType:      setType,
+    fusionner:    fusionner,     // 🔗 v1.85.2 — recoller des sorties hachees
+    dureeMs:      dureeMs,       // ⏱️ v1.85.2 — LA regle, une seule fois
+    setFin:       setFin,        // ✏️ v1.85.2 — corriger la fin oubliee
+    REPRISE_MS:   REPRISE_MS,
     affinerEnCours: affinerEnCours,
     stats:        stats,
     TYPE_TERRAIN: TYPE_TERRAIN,

@@ -50,6 +50,18 @@
   // c'est un méta-toggle qui active/désactive les autres en bloc.
   const TOGGLES = ["decim", "animOff", "noIntersect", "noTooltips", "slowSave", "viewportCull", "mobileZoomLimit"];
 
+  // 🏗️ v1.82.1 — « Afficher tous les niveaux au lancement » (demande KARMA).
+  // Rangé ICI parce que c'est un réglage de CHARGE : sur un relevé importé à
+  // six étages, tout afficher d'emblée multiplie ce que la carte doit peindre.
+  //
+  // ⚠️ VOLONTAIREMENT HORS DE `TOGGLES`, donc hors du méta-bouton ULTRA.
+  // La sémantique d'ULTRA est « active toutes les optimisations » ; or
+  // afficher plus de niveaux est exactement l'inverse. L'y inclure ferait
+  // qu'« activer tout » ALOURDIRAIT l'app — absurde, et personne ne le
+  // devinerait. Il se règle donc seul, et ON par défaut.
+  const HORS_ULTRA = ["tousNiveaux"];
+  const HORS_ULTRA_DEFAUT_TRUE = ["tousNiveaux"];
+
   // 🛡️ v173 : certains toggles sont ON par défaut (= sécurité activée par défaut).
   // `mobileZoomLimit` ON par défaut = limite mobile minZoom v172 active (anti-OOM).
   // Décocher = l'user assume le risque crash, traite mobile comme PC (= plus de
@@ -63,6 +75,9 @@
     const o = {};
     TOGGLES.forEach(function(k) {
       o[k] = DEFAULTS_TRUE.indexOf(k) >= 0;
+    });
+    HORS_ULTRA.forEach(function(k) {
+      o[k] = HORS_ULTRA_DEFAUT_TRUE.indexOf(k) >= 0;
     });
     return o;
   }

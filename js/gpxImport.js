@@ -316,7 +316,15 @@
         author:      opts.planAuthor  || window.I18n.t("gpx.import.authorDefault"),
         imageWidth:  finalW,
         imageHeight: finalH,
-        baseImage:   baseFilename,
+        // 🩸 v1.88.4 — PRÉFIXE `data/` OBLIGATOIRE. Le fichier est écrit dans
+        // `data/` du ZIP, mais était déclaré ICI sans le préfixe. En import
+        // LOCAL ça passait : `findMatchingFile` retrouve l'asset par son NOM DE
+        // BASE, donc l'incohérence était invisible. En mode SERVEUR la résolution
+        // est stricte → 404 sur l'image et les calques (constat KARMA : ses plans
+        // `*_from_v2` échouaient, les plans du Générateur passaient).
+        // ⚠️ `kmzImport` avait déjà corrigé ce motif pour ses CALQUES en
+        // v1.21.0-fix5 — jamais pour son `baseImage`.
+        baseImage:   "data/" + baseFilename,
         // Embarque le calibrage GPS dans le plan-config.json (cf v1.14.20
         // pattern plan.georef → propagation auto vers KmzExport au load
         // du plan via main.js > _propagerGeorefVersKmzExport).
@@ -331,10 +339,26 @@
       tracking: {
         startX:        Math.round(finalW / 2),
         startY:        Math.round(finalH / 2),
-        scale:         50,
-        stepLength:    0.75,
-        stepThreshold: 1.2,
-        stepCooldown:  280
+        // 📏 v1.82.0 — MÊME DÉFAUT QUE L'IMPORT SIG, corrigé au même endroit :
+        // l'échelle était figée à 50 px/m alors qu'elle dépend entièrement du
+        // canvas et de l'étendue GPS. Sur un tracé d'un kilomètre rendu sur
+        // 4000 px, la vraie valeur est de l'ordre de 4 px/m — soit un facteur
+        // dix. Toute distance lue sur le plan était donc fausse.
+        // `buildTransform` calcule DÉJÀ `metresParPixel` ; `scale` en est
+        // exactement l'inverse. La valeur était disponible, elle n'était pas lue.
+        // KARMA n'a signalé le symptôme que sur le SIG, mais le GPX produit des
+        // plans par le même chemin : le corriger d'un seul côté aurait laissé
+        // une moitié fausse en attendant qu'on la retrouve.
+        scale:         (transform && transform.metresParPixel > 0)
+                         ? Math.round((1 / transform.metresParPixel) * 1000) / 1000
+                         : 50,
+        // 🩸 v1.82.0 — RÉGLAGES DE PODOMÈTRE LUS À LA SOURCE, plus recopiés.
+        // Ils valaient `stepThreshold: 1.2` alors que l'usine dit 13. Or
+        // `tracking.js` compare ce seuil à `accelerationIncludingGravity`,
+        // qui vaut ~9,81 téléphone POSÉ : la condition était toujours vraie,
+        // et le cooldown de 280 ms fabriquait ~3,6 pas/seconde à l'arrêt.
+        // Tout plan produit ici comptait donc des kilomètres fantômes.
+        ...(window.KTA_TRACKING_USINE || { stepLength: 0.7, stepThreshold: 13, stepCooldown: 400 })
       },
       icons: {
         default: "icon/iconetrack.png",

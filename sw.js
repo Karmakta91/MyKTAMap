@@ -32,7 +32,22 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.80.0";
+const CACHE_NAME = "myktamap-cache-v1.90.2";
+
+// 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
+// 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
+//   1. le cache principal a un PLAFOND de MAX_DYNAMIC_ENTRIES (800) avec
+//      éviction FIFO. Un plan V2 de 20000×12000 fait 1275 tuiles — son SEUL
+//      niveau z=0 en fait 960. Il s'évinçait donc lui-même en se chargeant, et
+//      hors-ligne on obtenait une carte TROUÉE, pas une erreur ;
+//   2. `activate` supprime tout cache dont la clé ≠ CACHE_NAME → à chaque
+//      release, un plan « disponible hors-ligne » repartait à zéro.
+// Ces caches sont donc EXCLUS des deux mécanismes. Ils sont écrits depuis la
+// page (`js/planOffline.js` via l'API Cache), le SW ne fait que les préserver
+// et les servir.
+const PLAN_CACHE_PREFIX = "myktamap-plan-";
+function _estCachePlan(cle) { return typeof cle === "string" && cle.indexOf(PLAN_CACHE_PREFIX) === 0; }
+
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -173,6 +188,16 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.9.3-A1.a : module structures (piliers 1ère/2e masse + murs).
   // Doit être caché pour fonctionner offline comme le reste.
   "./js/structures.js",
+  // 🔄 v1.82.0 : reclassement d'un objet (front de taille → tracé, etc.).
+  // Sans lui en cache, le bouton « Convertir » serait mort hors ligne.
+  "./js/convertirObjet.js",
+  "./js/selectionMulti.js",
+  "./js/calqueSession.js",
+  // 📉 v1.83.0 : profondeur des niveaux + profil en long.
+  "./js/profondeurNiveaux.js",
+  // 📏 v1.83.0 : mesure dans la Vue OSM.
+  "./js/osmMesure.js",
+  "./js/osmCoords.js",
   // 🆕 v1.9.3-B1 : module photos (backend IndexedDB + compression).
   // Self-contained, exposé via window.MyKTAMapPhotos. Doit être caché
   // pour que l'attachement photo fonctionne offline.
@@ -324,16 +349,19 @@ const ASSETS_TO_CACHE = [
 
   // Données JSON
   "./data/index.json",
-  // 🆕 v1.9.3-A1.a : fichier structure.json (vide par défaut pour les
-  // plans de test livrés avec l'app — KARMA peut y dessiner ses piliers).
-  "./data/test/carriere.json",
-  "./data/test/puits.json",
-  "./data/test/chemin.json",
-  "./data/test/plan-config.json",
-  "./data/test/zone.json",
-  "./data/test/structure.json",
-  "./data/test/TestMAP.png",
-  "./data/test/collision.png",
+  // 🩸 v1.88.5 (demande KARMA) — LE PLAN DE DÉMO N'EST PLUS PRÉ-CACHÉ.
+  // Ses 8 fichiers pesaient ~2 Mo (dont 2,0 Mo pour TestMAP.png +
+  // collision.png), téléchargés à l'INSTALL par tout le monde — y compris
+  // ceux qui ne l'ouvriront jamais.
+  // 🍖 Et surtout, être pré-caché le rendait INÉVINÇABLE (cf _staticAssetUrls
+  // et l'éviction LRU) : tester le hors-ligne avec lui donnait un faux
+  // « ça marche », alors qu'un plan ajouté par l'utilisateur, lui, pouvait
+  // s'évincer tout seul. Ce faux témoin a masqué le vrai comportement
+  // jusqu'à la v1.87.0.
+  // Il se comporte désormais comme n'importe quel plan servi : mis en cache
+  // au premier chargement, évinçable, et pré-téléchargeable via 💾
+  // Disponibilité hors-ligne. `data/index.json` reste pré-caché — c'est le
+  // canal de configuration d'instance, et il est minuscule.
 
   // Icônes app / points
   "./icon/mkm-full.png",
@@ -504,7 +532,8 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys
-          .filter((key) => key !== CACHE_NAME)
+          // 💾 v1.87.0 : les caches de plan hors-ligne SURVIVENT au bump.
+          .filter((key) => key !== CACHE_NAME && !_estCachePlan(key))
           .map((key) => {
             console.log("[SW] Suppression ancien cache :", key);
             return caches.delete(key);
@@ -585,6 +614,16 @@ self.addEventListener("message", (event) => {
   // 🆕 v1.43.12 — Inspecteur Service Worker (cf js/swInspector.js).
   // Retourne la liste des assets attendus + critiques pour permettre
   // au client de comparer avec ce qui est vraiment en cache.
+  // 💾 v1.87.0 — La page vient d'écrire ou de supprimer un cache de plan
+  // hors-ligne : on invalide la mémoïsation pour que le prochain miss du cache
+  // principal aille bien y regarder (sinon jusqu'à 30 s de décalage).
+  if (data.type === "PLAN_CACHE_CHANGED") {
+    _planCachesMemo = null;
+    _planCachesMemoAt = 0;
+    console.log("[SW] Caches de plan : mémo invalidée");
+    return;
+  }
+
   if (data.type === "GET_EXPECTED_ASSETS") {
     if (event.ports && event.ports[0]) {
       event.ports[0].postMessage({
@@ -671,6 +710,35 @@ self.addEventListener("message", (event) => {
 // excluant les URLs précachées au install (qui doivent rester intouchables).
 const MAX_DYNAMIC_ENTRIES = 800;  // ~120 Mo si tiles ~150 KB en moyenne
 const _staticAssetUrls = new Set(); // populé au install ci-dessous
+
+// 💾 v1.87.0 — Lookup dans les caches de plan (après miss du cache principal).
+// Mémoïsé : `caches.keys()` à chaque requête non cachée serait du gaspillage.
+// La page invalide via postMessage PLAN_CACHE_CHANGED après un pré-cache ou
+// une suppression ; TTL de secours au cas où le message se perdrait.
+let _planCachesMemo = null;
+let _planCachesMemoAt = 0;
+const PLAN_CACHES_TTL = 30000;
+function _listerCachesPlan() {
+  const now = Date.now();
+  if (_planCachesMemo && (now - _planCachesMemoAt) < PLAN_CACHES_TTL) {
+    return Promise.resolve(_planCachesMemo);
+  }
+  return caches.keys().then(function(keys) {
+    _planCachesMemo = keys.filter(_estCachePlan);
+    _planCachesMemoAt = Date.now();
+    return _planCachesMemo;
+  }).catch(function() { return []; });
+}
+function _matchCachesPlan(request) {
+  return _listerCachesPlan().then(function(cles) {
+    if (!cles.length) return null;
+    return cles.reduce(function(p, cle) {
+      return p.then(function(r) {
+        return r || caches.open(cle).then(function(c) { return c.match(request); }).catch(function() { return null; });
+      });
+    }, Promise.resolve(null));
+  });
+}
 
 // Helper : normalise un URL ou request en une clé de comparaison
 function _cacheKeyOf(reqOrUrl) {
@@ -896,13 +964,39 @@ self.addEventListener("fetch", (event) => {
   const reqProtocol = (event.request.url || "").split(":")[0];
   if (reqProtocol !== "http" && reqProtocol !== "https") return;
 
+  // 🩸 v1.88.2 — `reqUrl` est declare ICI, en TETE du handler, et plus juste
+  // avant le test killsw. En v1.88.0 j ai insere la sonde `_ktacheck` AVANT
+  // cette declaration : `const` en zone morte temporelle -> ReferenceError a
+  // CHAQUE requete, donc handler fetch mort et cache hors-ligne contourne.
+  // Toute branche ajoutee plus bas doit pouvoir lire reqUrl sans y penser.
+  const reqUrl = event.request.url || "";
+
+  // 🔎 v1.88.0 — SONDES DE FRAÎCHEUR : RÉSEAU SEUL, JAMAIS DE CACHE.
+  // `planOffline.verifierMaj()` envoie des requêtes CONDITIONNELLES sur les
+  // fichiers d'un plan pré-téléchargé pour savoir s'ils ont changé côté
+  // serveur. 🩸 Sans cette sortie anticipée, la branche par défaut (cache-first)
+  // les servirait depuis le cache : la sonde n'atteindrait JAMAIS le serveur et
+  // répondrait toujours « rien n'a changé » — exactement le mensonge qu'elle
+  // est censée lever.
+  // Le marqueur est dans la query : il rend aussi la requête distincte pour le
+  // Cache API (pas de collision avec l'entrée réelle). On ne met RIEN en cache
+  // ici — sinon chaque vérification polluerait le cache de N entrées jetables,
+  // comptées dans le plafond de 800.
+  if (/[?&]_ktacheck=1(&|$)/.test(reqUrl)) {
+    event.respondWith(
+      fetch(event.request).catch(function() {
+        return new Response("", { status: 504, statusText: "Sonde impossible (hors-ligne)" });
+      })
+    );
+    return;
+  }
+
   // 🆘 hotfix20 — Bypass cache TOTAL pour /killsw.html (page de reset
   // d'urgence). Si on cachait cette page, le SW coincé servirait
   // l'ancienne version qui ne ferait pas le bon kill switch. Toujours
   // récupérer la dernière version depuis le serveur, JAMAIS cacher.
   // Le `network-only + no-store` garantit qu'elle est toujours fraîche
   // même si le SW est zombie ailleurs.
-  const reqUrl = event.request.url || "";
   if (/\/killsw\.html(\?|$)/.test(reqUrl)) {
     event.respondWith(
       fetch(event.request, { cache: "no-store" })
@@ -1119,7 +1213,11 @@ self.addEventListener("fetch", (event) => {
     // dans TOUS les caches existants — y compris d'anciens caches pas
     // encore supprimés par l'activate (qui est async). Sans ce scope,
     // le SW peut servir une entrée d'un ancien cache v1.43.x après bump.
-    caches.open(CACHE_NAME).then(function(c) { return c.match(event.request); }).then((cachedResponse) => {
+    caches.open(CACHE_NAME).then(function(c) { return c.match(event.request); })
+      // 💾 v1.87.0 : miss du cache principal → on regarde les caches de plan
+      // hors-ligne avant de sortir sur le réseau.
+      .then(function(r) { return r || _matchCachesPlan(event.request); })
+      .then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }

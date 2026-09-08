@@ -966,7 +966,12 @@
               // — Actions profil —
               '<div class="kta-profile-details-actions">' +
                 '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-details-export">' + _t("home.profile.exportBtn") + '</button>' +
-                '<button type="button" class="kta-btn kta-btn-secondary" id="kta-profile-details-import">' + _t("home.profile.importBtn") + '</button>' +
+                // 🔒 v1.90.1 — en kiosque `serverPlansOnly`, l'import est refusé
+                // (cf profileExportImport) : on ne l'affiche pas non plus. L'EXPORT
+                // reste — sauvegarder son carnet n'a jamais gêné personne.
+                ((typeof window.ktaKiosqueServeurSeul === "function" && window.ktaKiosqueServeurSeul())
+                  ? ""
+                  : '<button type="button" class="kta-btn kta-btn-secondary" id="kta-profile-details-import">' + _t("home.profile.importBtn") + '</button>') +
                 '<button type="button" class="kta-btn kta-btn-danger" id="kta-profile-details-reset">' + _t("home.profile.resetBtn") + '</button>' +
               '</div>' +
 
@@ -1121,10 +1126,15 @@
             alert(_t("home.profile.errExportModule"));
           }
         });
-        document.getElementById("kta-profile-details-import").addEventListener("click", function() {
-          const fileInput = document.getElementById("importListFile");
-          if (fileInput) fileInput.click();
-        });
+        // 🩸 Le bouton n'existe pas en kiosque : sans ce test, `addEventListener`
+        // sur null jetait et tuait TOUT le câblage de la modale qui suit.
+        const _btnImp = document.getElementById("kta-profile-details-import");
+        if (_btnImp) {
+          _btnImp.addEventListener("click", function() {
+            const fileInput = document.getElementById("importListFile");
+            if (fileInput) fileInput.click();
+          });
+        }
 
         // 🖼️ v1.74.0 — FOND D'ÉCRAN. L'aperçu montre l'image AVEC son voile,
         // exactement comme le vrai fond : sans ça on choisirait une image qui

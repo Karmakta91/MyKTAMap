@@ -789,16 +789,6 @@ function afficherConfig() {
   };
   const presetMeta = _PRESET_LABELS[c.perfPreset] || _PRESET_LABELS.auto;
 
-  // 🌍 v1.45.0 : sélecteur de langue GLOBALE de l'app (pilote I18n via la clé
-  // myktamap_app_lang, découplée du toggle local doc/onboarding). Options
-  // construites depuis I18n.available() → 1 seul endroit à éditer pour ajouter
-  // une langue. Fallback FR si I18n indispo (très improbable, chargé au boot).
-  const _curLang = (window.I18n && typeof window.I18n.getLang === "function") ? window.I18n.getLang() : "fr";
-  const _langOptions = ((window.I18n && window.I18n.available) ? window.I18n.available() : [{ code: "fr", label: "Français", flag: "🇫🇷" }])
-    .map(function(l) {
-      return '<option value="' + l.code + '"' + (l.code === _curLang ? ' selected' : '') + '>' +
-             (l.flag ? l.flag + ' ' : '') + l.label + '</option>';
-    }).join("");
 
   const modal = document.createElement("div");
   modal.id = "kta-cfg-modal";
@@ -840,18 +830,14 @@ function afficherConfig() {
           </div>
         </div>
 
-        <!-- 🌍 v1.45.0 : sélecteur de langue GLOBALE de l'app (= LE point d'entrée
-             du changement complet, ≠ toggle local doc/onboarding). Le change
-             handler appelle I18n.setLang() puis re-render la modale. -->
-        <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">${window.I18n.t("config.lang.titre")}</div>
-          <select class="kta-cfg-input" id="cfg_app_lang" style="width:100%;">
-            ${_langOptions}
-          </select>
-          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
-            ${window.I18n.t("config.lang.hint")}
-          </div>
-        </div>
+        <!-- 🌍 v1.85.4 (audit KARMA) — LE SÉLECTEUR DE LANGUE A QUITTÉ CET ÉCRAN.
+             I18n.setLang() persiste dans la clé myktamap_app_lang : c'est un
+             réglage GLOBAL, il n'a rien à faire dans la config d'UN plan. Pire,
+             il ouvre une modale « redémarrer l'app » — le plus mauvais moment
+             possible quand on est en cavité. Il reste atteignable à deux
+             endroits, tous deux hors plan : la Configuration de l'accueil
+             (#loaderAppLang) et l'écran de déverrouillage (unlockGate.js).
+             ⚠️ Zéro backtick ici : ce commentaire vit dans un template literal. -->
 
         <!-- ════════ 2. 📐 PLAN : ÉCHELLE & GÉOLOCALISATION ════════ -->
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.planCalib")}</div>
@@ -983,38 +969,21 @@ function afficherConfig() {
           </div>
           <div style="font-size:11px; color:#8892a4; margin:-2px 0 0; line-height:1.4;">${window.I18n.t("config.smartnav.headingHint")}</div>
 
-          <!-- 🧲 C5 v1.74.0 — magnétisme edit-time. Rangé ici (section Navigation)
-               mais INDÉPENDANT du toggle ci-dessus : il améliore la qualité du
-               graphe, donc il sert aussi aux itinéraires sans nav intelligente. -->
-          <label class="kta-perf-ultra-row" style="margin-top:14px;">
-            <input type="checkbox" id="cfg_snapDraw" ${c.snapDraw === true ? "checked" : ""}>
-            <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.snapdraw.label")}</span>
-              <span class="kta-perf-ultra-hint">
-                ${window.I18n.t("config.snapdraw.hint")}
-              </span>
-            </span>
-          </label>
-          <div class="kta-cfg-row">
-            <label class="kta-cfg-label">${window.I18n.t("config.snapdraw.radiusLabel")}</label>
-            <input class="kta-cfg-input" id="cfg_snapDrawPx" type="number" step="1" min="4" max="40" value="${Number.isFinite(c.snapDrawPx) ? c.snapDrawPx : 14}">
-          </div>
-          <div style="font-size:11px; color:#8892a4; margin:-2px 0 0; line-height:1.4;">${window.I18n.t("config.snapdraw.radiusHint")}</div>
         </div>
 
         <!-- ════════ 4. 🎨 AFFICHAGE ════════ -->
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.affichage")}</div>
 
+          <!-- ⚠️ v1.85.3 (audit KARMA) — QUATRE RÉGLAGES ONT QUITTÉ CET ÉCRAN :
+               taille des icônes au zoom, ancrage des panneaux, magnétisme au
+               dessin et son rayon. Ils sont GLOBAUX — une seule valeur pour
+               toute l'application — donc les modifier depuis un plan changeait
+               le comportement de TOUS les autres, sans que rien ne le dise.
+               Ils vivent désormais dans ⚙️ Configuration de l'ACCUEIL, où on
+               les décide une fois. Ce qui reste ici ne concerne que CE plan. -->
+
+
         <div class="kta-aide-section">
-          <label class="kta-perf-ultra-row kta-perf-ultra-row-danger" style="margin-top:0;">
-            <input type="checkbox" id="cfg_scaledMarkers" ${c.scaledMarkers !== false ? "checked" : ""}>
-            <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.scaledMarkers.label")}</span>
-              <span class="kta-perf-ultra-hint">
-                ${window.I18n.t("config.display.scaledMarkers.hint")}
-              </span>
-            </span>
-          </label>
           <!-- v1.9.2 to v1.36.2 : le toggle "Afficher les ronds aux
                intersections de tracés" REVIENT ici, mais cette fois en
                PER-PLAN (KARMA : enleve du home, met le dans la config du plan).
@@ -1060,28 +1029,13 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_wake_lock_row" style="margin-top:8px; display:none;">
             <input type="checkbox" id="cfg_wake_lock">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.wakelock.label")}</span>
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.wakelock.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
               <span class="kta-perf-ultra-hint">
                 ${window.I18n.t("config.display.wakelock.hint")}
               </span>
             </span>
           </label>
 
-          <!-- 🆕 v1.34.26 — Toggle vibration haptique. Visible UNIQUEMENT si
-               navigator.vibrate supporté (Android oui, iOS Safari NON par
-               choix d'Apple). Init en post-render via bindHandlers (auto-
-               masqué si pas supporté). Pref persistée dans app_user_prefs
-               (config.js l~104). Le helper window.kta_vibrate() check
-               APP_CONFIG.vibrationEnabled avant de vibrer. -->
-          <label class="kta-perf-ultra-row" id="cfg_vibration_row" style="margin-top:8px; display:none;">
-            <input type="checkbox" id="cfg_vibration" ${c.vibrationEnabled !== false ? "checked" : ""}>
-            <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.vibration.label")}</span>
-              <span class="kta-perf-ultra-hint">
-                ${window.I18n.t("config.display.vibration.hint")}
-              </span>
-            </span>
-          </label>
 
           <!-- 🆕 v1.34.0 E1 : toggle commandes vocales. Visible UNIQUEMENT si
                Web Speech API supportée (SpeechRecognition / webkitSpeechRecognition).
@@ -1104,6 +1058,41 @@ function afficherConfig() {
 
         ${_renderPerfUltraSection()}
 
+        <!-- ════════ 6. 🛰️ OPTIONS VIA CAPTEUR ════════ -->
+        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.capteurs")}</div>
+          <!-- 🛰️ v1.85.2 (KARMA) — RUBRIQUE « Options via capteur ».
+               La vibration vivait dans « Affichage », ce qu'elle n'est pas :
+               elle dépend d'un CAPTEUR, comme la batterie. Les deux sont
+               regroupées ici, et surtout : un capteur indisponible n'est plus
+               MASQUÉ mais AFFICHÉ, désactivé, avec la raison. Cacher la ligne
+               laissait croire que l'option n'existait pas — l'utilisateur ne
+               pouvait pas savoir que c'est son système qui refuse. -->
+          <div class="kta-aide-section" style="margin-top:16px;">
+            <div class="kta-aide-section-titre">${window.I18n.t("config.capteurs.titre")}</div>
+            <div style="font-size:11.5px; color:#8892a4; margin:2px 0 10px; line-height:1.5;">
+              ${window.I18n.t("config.capteurs.intro")}
+            </div>
+
+            <label class="kta-perf-ultra-row" id="cfg_batterie_row">
+              <input type="checkbox" id="cfg_batterie" ${c.batterieEnabled !== false ? "checked" : ""}>
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">${window.I18n.t("config.batterie.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
+                <span class="kta-perf-ultra-hint" id="cfg_batterie_hint">
+                  ${window.I18n.t("config.batterie.hint")}
+                </span>
+              </span>
+            </label>
+
+            <label class="kta-perf-ultra-row" id="cfg_vibration_row" style="margin-top:8px;">
+              <input type="checkbox" id="cfg_vibration" ${c.vibrationEnabled === true ? "checked" : ""}>
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">${window.I18n.t("config.display.vibration.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
+                <span class="kta-perf-ultra-hint" id="cfg_vibration_hint">
+                  ${window.I18n.t("config.display.vibration.hint")}
+                </span>
+              </span>
+            </label>
+          </div>
         <!-- ════════ 6. 🔒 CONFIDENTIALITÉ & SÉCURITÉ ════════ -->
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.privacy")}</div>
 
@@ -1219,29 +1208,6 @@ function afficherConfig() {
     });
   }
 
-  // 🌍 v1.45.0 — Sélecteur de langue GLOBALE de l'app. Au change : on bascule
-  // I18n (charge le dico cible + persiste myktamap_app_lang + notifie onChange)
-  // PUIS on re-render la modale Réglages pour refléter la nouvelle langue en
-  // live. Les textes sont figés dans l'innerHTML → un rebuild complet est le
-  // moyen le plus sûr. Les saisies non appliquées repartent des valeurs
-  // APP_CONFIG : acceptable (on choisit la langue avant d'éditer, en pratique).
-  const selAppLang = document.getElementById("cfg_app_lang");
-  if (selAppLang) {
-    selAppLang.addEventListener("change", function() {
-      const code = selAppLang.value;
-      const done = (window.I18n && typeof window.I18n.setLang === "function")
-        ? window.I18n.setLang(code)
-        : Promise.resolve();
-      Promise.resolve(done).then(function() {
-        const m = document.getElementById("kta-cfg-modal");
-        if (m) m.remove();   // retire la modale courante…
-        afficherConfig();    // …puis rebuild fraîche dans la nouvelle langue
-        // 🌍 v1.46.4 (KARMA) : proposer un redémarrage (bascule 100% propre).
-        if (typeof window.proposerRedemarrageLangue === "function") window.proposerRedemarrageLangue();
-      });
-    });
-  }
-
   // 🕵️ v1.31.8 F2 + 🆕 v1.31.9 — Bouton dynamique "Démarrer / Quitter
   // le mode incognito" selon l'état IncognitoMode.active.
   //   • Pas incognito → "Démarrer" → IncognitoMode.launch() ouvre nouvelle
@@ -1280,16 +1246,22 @@ function afficherConfig() {
       wlRow.style.display = "";  // révèle (default = none pour rétrocompat)
       wlCb.checked = window.WakeLock.isEnabled();
       wlCb.addEventListener("change", function() {
-        window.WakeLock.setEnabled(wlCb.checked);
-        // Feedback toast (optionnel, discret)
-        if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        // 🩸 v1.85.2 — ON ATTEND LE RESULTAT REEL avant de parler. L ancienne
+        // version annonçait « ecran maintenu allume » sans jamais verifier que
+        // le verrou avait ete pose : quand le navigateur refusait, l app
+        // mentait, et on cherchait la panne du mauvais cote (constate sur
+        // iPhone en PWA, 06/09).
+        Promise.resolve(window.WakeLock.setEnabled(wlCb.checked)).then(function (ok) {
+          if (!(window.OOMGuard && typeof window.OOMGuard.showToast === "function")) return;
+          if (!wlCb.checked) {
+            window.OOMGuard.showToast(window.I18n.t("config.display.wakelock.toastOff"), "info");
+            return;
+          }
           window.OOMGuard.showToast(
-            wlCb.checked
-              ? window.I18n.t("config.display.wakelock.toastOn")
-              : window.I18n.t("config.display.wakelock.toastOff"),
-            "info"
-          );
-        }
+            ok ? window.I18n.t("config.display.wakelock.toastOn")
+               : window.I18n.t("config.display.wakelock.toastKo"),
+            ok ? "info" : "warn");
+        });
       });
     } else {
       // API pas supportée → on garde le row caché (display:none par défaut
@@ -1426,40 +1398,67 @@ function afficherConfig() {
   // Visible UNIQUEMENT si navigator.vibrate est supporté (Android oui,
   // iOS Safari NON par choix d'Apple). Sync UI ↔ APP_CONFIG.vibrationEnabled
   // + persistence app_user_prefs.
+  // ⚠️ v1.85.3 (audit KARMA) — LE CABLAGE DE QUATRE REGLAGES GLOBAUX A ETE
+  // RETIRE D ICI avec leurs cases : taille des icones au zoom, ancrage des
+  // panneaux, magnetisme au dessin et son rayon. Ils se reglent desormais dans
+  // la ⚙️ Configuration de l ACCUEIL. Le laisser en place aurait ete inoffensif
+  // (les `getElementById` rendent null) mais trompeur : du code qui a l air de
+  // brancher une interface qui n existe plus.
+
+  // 🛰️ v1.85.2 — LES DEUX CAPTEURS, ET CE QU'ON DIT QUAND ILS SONT REFUSÉS.
+  //
+  // 🩸 AVANT, une option dont le capteur manquait était simplement MASQUÉE.
+  // Sur iPhone, la vibration disparaissait donc de la modale : impossible pour
+  // l'utilisateur de savoir si l'option n'existe pas, s'il l'a ratée, ou si
+  // son téléphone refuse. On l'affiche désormais désactivée, avec la raison.
+  // Le rendu « capteur refusé » vit dans utils.js — partagé avec la modale
+  // d'accueil, qui porte exactement les mêmes options.
+  const _capteurRefuse = window.ktaCapteurRefuse || function () {};
+  // ── 🔋 Batterie ──
+  const batRow = document.getElementById("cfg_batterie_row");
+  const batCb  = document.getElementById("cfg_batterie");
+  if (batRow && batCb) {
+    if (typeof navigator.getBattery !== "function") {
+      _capteurRefuse(batRow, batCb, document.getElementById("cfg_batterie_hint"));
+    } else {
+      batCb.checked = !(window.APP_CONFIG && window.APP_CONFIG.batterieEnabled === false);
+      batCb.addEventListener("change", function () {
+        if (!window.APP_CONFIG) window.APP_CONFIG = {};
+        window.APP_CONFIG.batterieEnabled = !!batCb.checked;
+        if (typeof window.sauvegarderPrefsUtilisateur === "function") {
+          window.sauvegarderPrefsUtilisateur();
+        }
+        // 🩸 Couper l'écoute demande un rechargement : `getBattery()` a déjà
+        // posé ses écouteurs sur le BatteryManager, et rien ne permet de les
+        // retirer proprement. On le DIT plutôt que de laisser croire que
+        // c'est immédiat.
+        if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+          window.OOMGuard.showToast(window.I18n.t(batCb.checked
+            ? "config.batterie.toastOn" : "config.batterie.toastOff"), "info");
+        }
+      });
+    }
+  }
+
+  // ── 📳 Vibration haptique ──
   const vibRow = document.getElementById("cfg_vibration_row");
   const vibCb  = document.getElementById("cfg_vibration");
-  if (vibRow && vibCb && window.kta_vibrate && window.kta_vibrate.isSupported()) {
-    vibRow.style.display = "";
-    vibCb.checked = (window.APP_CONFIG && window.APP_CONFIG.vibrationEnabled !== false);
-    vibCb.addEventListener("change", function() {
-      if (!window.APP_CONFIG) window.APP_CONFIG = {};
-      window.APP_CONFIG.vibrationEnabled = !!vibCb.checked;
-      // Persiste dans app_user_prefs (lu au boot par config.js l~104)
-      try {
-        const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
-        saved.vibrationEnabled = !!vibCb.checked;
-        localStorage.setItem("app_user_prefs", JSON.stringify(saved));
-      } catch(e) {
-        console.warn("[Vibration] save pref échec :", e);
-      }
-      // Si activé, petite vibration de confirmation pour que l'user sente
-      // que ça marche.
-      if (vibCb.checked) {
-        window.kta_vibrate.light();
-      }
-      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-        window.OOMGuard.showToast(
-          vibCb.checked
-            ? window.I18n.t("config.display.vibration.toastOn")
-            : window.I18n.t("config.display.vibration.toastOff"),
-          "info"
-        );
-      }
-    });
+  if (vibRow && vibCb) {
+    const dispo = !!(window.kta_vibrate && window.kta_vibrate.isSupported());
+    if (!dispo) {
+      _capteurRefuse(vibRow, vibCb, document.getElementById("cfg_vibration_hint"));
+    } else {
+      vibCb.checked = !!(window.APP_CONFIG && window.APP_CONFIG.vibrationEnabled === true);
+      vibCb.addEventListener("change", function() {
+        if (!window.APP_CONFIG) window.APP_CONFIG = {};
+        window.APP_CONFIG.vibrationEnabled = !!vibCb.checked;
+        if (typeof window.sauvegarderPrefsUtilisateur === "function") {
+          window.sauvegarderPrefsUtilisateur();
+        }
+        if (vibCb.checked) { window.kta_vibrate.light(); }
+      });
+    }
   }
-  // Si !isSupported() (iPhone Safari notamment) → row caché silencieusement,
-  // pas de message frustrant à l'user.
-
   // 🆕 v1.34.0 E1 : toggle "🎤 Commandes vocales (BETA)".
   // Visible UNIQUEMENT si Web Speech API supportée (SpeechRecognition
   // ou webkitSpeechRecognition). Sync UI ↔ state via window.VoiceCommand.
@@ -1561,32 +1560,56 @@ function appliquerConfig() {
   // 🛠️ v1.76.3 (2:b) — debugMode ne se règle plus ici : Mode Développeur
   // du HOME uniquement (devMode.js > setDebugMode global).
 
-  // 🔍 v174 : scaledMarkers (lu une fois à creerIcones + au hook zoom, reload requis)
-  const cbScaled = document.getElementById("cfg_scaledMarkers");
-  if (cbScaled) APP_CONFIG.scaledMarkers = !!cbScaled.checked;
 
-  // 🧭 Nav Intelligente C2 : toggle smartNav (pref globale, défaut OFF). Lu à
-  // chaud par tracking.js > avancer() — pas de reload requis.
-  const cbSmartNav = document.getElementById("cfg_smartNav");
-  if (cbSmartNav) APP_CONFIG.smartNav = !!cbSmartNav.checked;
-  // 🆕 v1.49.0 (Lot C) — tolérances réglables du verrou sur tracé (smartNav)
-  var inSnRadius = document.getElementById("cfg_smartNavRadius");
-  if (inSnRadius) { var snr = parseFloat(inSnRadius.value); if (Number.isFinite(snr) && snr > 0) APP_CONFIG.smartNavRadiusM = snr; }
-  var inSnHeading = document.getElementById("cfg_smartNavHeading");
-  if (inSnHeading) { var snh = parseFloat(inSnHeading.value); if (Number.isFinite(snh) && snh >= 0) APP_CONFIG.smartNavHeadingWeight = snh; }
-
-  // 🧲 C5 v1.74.0 — magnétisme edit-time (pref globale, défaut OFF). Lu à chaud
-  // par road.js > _snapSurSommetProche() au clic — pas de reload requis.
-  const cbSnapDraw = document.getElementById("cfg_snapDraw");
-  if (cbSnapDraw) APP_CONFIG.snapDraw = !!cbSnapDraw.checked;
-  var inSnapPx = document.getElementById("cfg_snapDrawPx");
-  if (inSnapPx) { var spx = parseFloat(inSnapPx.value); if (Number.isFinite(spx) && spx > 0) APP_CONFIG.snapDrawPx = spx; }
+  // 🧭 v1.85.3 — NAV INTELLIGENTE : DÉSORMAIS PAR PLAN (audit KARMA).
+  // Elle dépend de la qualité du réseau de tracés DU PLAN COURANT : l'activer
+  // sur un relevé bien tracé l'activait aussi sur un plan sans aucun tracé, où
+  // elle ne peut rien caler. « Afficher les ronds aux intersections », qui
+  // dépend du même réseau, était déjà par plan depuis la v1.36.2 — deux
+  // réglages de même nature, deux portées différentes.
+  //
+  // ⚠️ On n'écrit PLUS dans `app_user_prefs` : la valeur globale reste lue
+  // comme REPLI de migration par `getPlanSmartNav`, tant que le plan n'a pas
+  // la sienne. Rien n'est perdu pour qui l'avait déjà activée.
+  {
+    const patchSN = {};
+    const cbSmartNav = document.getElementById("cfg_smartNav");
+    if (cbSmartNav) patchSN.smartNav = !!cbSmartNav.checked;
+    const inSnRadius = document.getElementById("cfg_smartNavRadius");
+    if (inSnRadius) {
+      const snr = parseFloat(inSnRadius.value);
+      if (Number.isFinite(snr) && snr > 0) patchSN.smartNavRadiusM = snr;
+    }
+    const inSnHeading = document.getElementById("cfg_smartNavHeading");
+    if (inSnHeading) {
+      const snh = parseFloat(inSnHeading.value);
+      if (Number.isFinite(snh) && snh >= 0) patchSN.smartNavHeadingWeight = snh;
+    }
+    if (Object.keys(patchSN).length && typeof window.setPlanSmartNav === "function") {
+      window.setPlanSmartNav(null, patchSN);
+    }
+  }
 
   // 🆕 v1.9.2 : le handler de showRoadIntersections en mode carte a été retiré
   // (toggle exclusivement dans le ⚙️ Configuration du loader/home désormais).
   // La valeur reste lue depuis APP_CONFIG par road.js > renderRoads()
   // peu importe d'où elle a été modifiée.
 
+  // 👣 v1.82.0 — LES RÉGLAGES DE PODOMÈTRE SONT ENFIN PERSISTÉS. Ils ne
+  // l'étaient nulle part : écrits dans APP_CONFIG en mémoire, puis effacés
+  // par le rechargement du plan-config au load suivant. Per-plan, comme
+  // l'échelle juste au-dessus — un podomètre se règle sur la foulée ET sur
+  // le terrain. (Signalé par KARMA : « quand je quitte et reviens elles
+  // sont revenues par défaut ».)
+  if (typeof window.setPlanTracking === "function") {
+    window.setPlanTracking(null, {
+      stepLength:    APP_CONFIG.stepLength,
+      stepThreshold: APP_CONFIG.stepThreshold,
+      stepCooldown:  APP_CONFIG.stepCooldown,
+      startX:        APP_CONFIG.startX,
+      startY:        APP_CONFIG.startY
+    });
+  }
   if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
   // 🐛 v1.28.0 : ne replacer le tracker au départ QUE si la position initiale
   // (startX/startY) a explicitement changé. Pour tout autre réglage (toggle
@@ -1691,6 +1714,11 @@ function _ouvrirSelecteurNiveau(btnPastille) {
         '<p style="font-size:11.5px; color:#8892a4; margin:6px 0 0 0; line-height:1.5;">' +
           window.I18n.t("config.niveaux.warn") +
         '</p>' +
+        // 📉 v1.83.0 — accès à la saisie des profondeurs. Rangé ici parce
+        // qu'une profondeur EST une propriété du niveau : la chercher
+        // ailleurs que dans l'écran des niveaux serait une devinette.
+        '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-prof" type="button"' +
+          ' style="margin-top:10px;">📉 ' + window.I18n.t("prof.btn.saisir") + '</button>' +
       '</div>' +
     '</div>';
 
@@ -1704,6 +1732,13 @@ function _ouvrirSelecteurNiveau(btnPastille) {
   overlay.addEventListener("click", function(e) { if (e.target === overlay) _cleanup(); });
   document.addEventListener("keydown", _onKey);
   document.getElementById("kta-niv-close").addEventListener("click", _cleanup);
+  const btnProf = document.getElementById("kta-niv-prof");
+  if (btnProf) {
+    btnProf.addEventListener("click", function () {
+      _cleanup();
+      if (window.ProfondeurNiveaux) window.ProfondeurNiveaux.ouvrirSaisie();
+    });
+  }
 
   // v155 : segmented en mode nowrap (scroll horizontal si trop de niveaux).
   // Scroll vers le bouton actif pour qu'il soit visible a l'ouverture.

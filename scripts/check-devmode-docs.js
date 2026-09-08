@@ -29,14 +29,59 @@ t("manifest extrait (" + paths.length + " docs)", paths.length >= 20);
 const manquants = paths.filter(p => !fs.existsSync(p));
 t("tous les chemins du manifest existent dans le repo" + (manquants.length ? " — MANQUANTS : " + manquants.join(", ") : ""), manquants.length === 0);
 
-// (2) chaque .md d'architecture est dans le manifest
-const surDisque = fs.readdirSync("docs/architecture").filter(f => f.endsWith(".md")).map(f => "docs/architecture/" + f);
+// (2) chaque .md d'architecture EST dans le manifest
+// 🩸 06/09/2026 — ce contrôle ne scannait QUE `docs/architecture/`. Une étude
+// déposée à la RACINE de `docs/` passait donc au vert tout en étant absente de
+// la bibliothèque : invisible en mode Développeur, sans un mot. Constaté sur
+// `ETUDE_PODOMETRE.md`, et l'audit qui a suivi en a trouvé TROIS autres,
+// oubliées de longue date (DESIGN_NAV_INTELLIGENTE, INSTALLATION_SELFHOST et
+// les deux audits i18n). La racine est désormais couverte au même titre.
+//
+// Ce qui est HORS bibliothèque est listé explicitement : une omission doit
+// rester une DÉCISION, jamais un oubli. Même principe que la tolérance de
+// `check-prefs-survival.js`.
+const HORS_BIBLIO = new Set([
+  // Servies ailleurs dans l'app, les remettre ici ferait doublon :
+  "docs/applications/README_USER.md", "docs/applications/README_USER.en.md",
+  "docs/applications/README_USER.es.md",   // modale 📚 Documentation
+  "docs/applications/AI_CONTEXT.md",       // modale 🤖 Aide IA
+  "docs/applications/NETWORK_AUDIT.md",    // modale 🔒 Audit réseau
+  "docs/applications/CGU.md",              // écran légal
+  "docs/applications/SELFHOST.md", "docs/applications/DOCKER_INSTALL.md",
+  "docs/applications/DOCKER_INSTALL.en.md",
+  // Historique daté : consultable dans Git, pas une référence courante.
+  "docs/audits/INDEX.md"
+]);
+const surDisque = fs.readdirSync("docs/architecture").filter(f => f.endsWith(".md")).map(f => "docs/architecture/" + f)
+  .concat(fs.readdirSync("docs").filter(f => f.endsWith(".md")).map(f => "docs/" + f))
+  .filter(p => !HORS_BIBLIO.has(p) && !/^docs\/audits\/\d/.test(p));
 const oublies = surDisque.filter(p => paths.indexOf(p) === -1);
-t("aucun .md d'architecture oublié du manifest" + (oublies.length ? " — OUBLIÉS : " + oublies.join(", ") : ""), oublies.length === 0);
+t("aucune doc oubliée du manifest (docs/ + docs/architecture/)" + (oublies.length ? " — OUBLIÉS : " + oublies.join(", ") : ""), oublies.length === 0);
 
 // (3) hash mdp au format SHA-256
 const h = /DEV_HASH\s*=\s*"([0-9a-f]*)"/.exec(src);
 t("hash du mdp au format SHA-256 (64 hex)", !!h && h[1].length === 64);
+
+
+// ───────── 🏗️ v1.86.0 — bouton ConfAdmin (mode dev uniquement) ─────────
+// 🩸 confadmin.html n'était linké NULLE PART : il fallait taper l'URL à la
+// main. C'est l'outil qui génère le data/index.json d'un serveur kiosque.
+// Il vit derrière le mot de passe développeur — donc dans le bloc `actif`,
+// jamais dans la branche « mode dev éteint ».
+{
+  t("🏗️ la page ConfAdmin existe bien dans le repo", fs.existsSync("confadmin.html"));
+  t("🏗️ un bouton ConfAdmin est rendu", src.indexOf('id="kta-devmode-confadmin"') >= 0);
+  t("🏗️ il ouvre confadmin.html", /window\.open\("confadmin\.html"/.test(src));
+  // Le bouton et son handler doivent être DANS la branche `actif ?` : rendus
+  // hors mode dev, ils exposeraient l'outil à tout le monde (et le
+  // getElementById du handler planterait sur un bouton absent).
+  const iActif = src.indexOf("(actif ? (");
+  const iSinon = src.indexOf("        ) : (", iActif);
+  t("🩸 le bouton n'est rendu QUE si le mode dev est actif",
+    iActif > 0 && iSinon > iActif &&
+    src.indexOf('id="kta-devmode-confadmin"') > iActif &&
+    src.indexOf('id="kta-devmode-confadmin"') < iSinon);
+}
 
 console.log(ko === 0 ? "\n🎉 bibliothèque devMode : tout passe" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko ? 1 : 0);

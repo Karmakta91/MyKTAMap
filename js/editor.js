@@ -686,27 +686,160 @@ function afficherFormulaire(x, y, existingPoint) {
 // coords (fallback coords seules si l'id ne matche pas), puis ouvre
 // afficherFormulaire en mode édition. Si introuvable → warn console et
 // no-op (pas de modale d'erreur, c'est un cas marginal).
+// Index d'un point de session par id + coords. Match exact d'abord, repli sur
+// les coords seules : l'id d'un point SUIT SON NOM (`existingPoint.id = nom`
+// au save), il a donc pu changer depuis que la popup a ete construite. -1 si
+// absent.
+// Partage par les trois actions de la popup — modifier, repositionner,
+// supprimer — qui portaient chacune sa copie de cette boucle.
+function _indexPointSession(id, x, y) {
+  for (let i = 0; i < listePoints.length; i++) {
+    const p = listePoints[i];
+    if (String(p.id || "") === String(id) && p.x === x && p.y === y) return i;
+  }
+  for (let i = 0; i < listePoints.length; i++) {
+    if (listePoints[i].x === x && listePoints[i].y === y) return i;
+  }
+  return -1;
+}
+
+// =========================
+// 📌 REPOSITIONNER UN POINT DE SESSION (picker « clic carte »)
+// =========================
+// KARMA : « pour un POI modifiable de session, un bouton repositionner peut
+// servir, si le POI a ete mal mis ». Septieme picker du meme moule que ceux
+// de la Georef, du depart tracker, de l'itineraire, de l'evitement et du KMZ.
+//
+// 🩸 CE QUE LA CLASSE `.kta-iti-floater` APPORTE, et pourquoi on ne bricole
+// pas son propre floater : `_modeClicCarteActif()` (utils.js) la reconnait,
+// donc (a) aucune popup d'annotation ne s'ouvre pendant le mode — sinon le
+// clic serait mange par la popup du marqueur vise — et (b) le clic est
+// re-emis en phase CAPTURE (map.js) → il porte meme si on vise pile un autre
+// marqueur, un trace ou une zone. Deux bugs deja payes en v1.28.0 : les
+// heriter gratuitement vaut mieux que les repayer.
+//
+// 🩸 GLISSER-DEPOSER ECARTE : un `touchmove` demarre sur un marqueur devient
+// un drag au lieu d'un pan → des POI deplaces par accident en manipulant la
+// carte, symptome silencieux sur une app terrain. Ici rien ne bouge tant
+// qu'on n'a pas arme le mode, et le doigt ne cache pas la cible.
+let _repoActif   = false;
+let _repoHandler = null;
+
+function _repoDesactiver() {
+  if (!_repoActif) return;
+  _repoActif = false;
+  if (window.map && _repoHandler) { try { window.map.off("click", _repoHandler); } catch(e) {} }
+  _repoHandler = null;
+  const fl = document.getElementById("kta-repo-floater");
+  if (fl) fl.remove();
+}
+window.repositionnerAnnuler = _repoDesactiver;
+
+// Appele depuis le bouton « 📌 Repositionner » de la popup d'un point session
+// (cf. utils.js > buildPointPopupHtml).
+window.repositionnerPointEditor = function(id, x, y) {
+  if (typeof x !== "number" || typeof y !== "number") return;
+  if (!window.map) return;
+  if (_indexPointSession(id, x, y) === -1) {
+    console.warn("[Editor] Point a repositionner introuvable :", id, x, y);
+    return;
+  }
+  _repoDesactiver();   // annule un repositionnement deja arme
+
+  // 🩸 LES AUTRES MODES « CLIC CARTE » DOIVENT TOMBER AVANT D ARMER, sinon le
+  // meme clic est consomme DEUX FOIS. `_modeClicCarteActif()` (utils.js) ne
+  // suffit pas, pour deux raisons distinctes :
+  //   1. il EXCLUT VOLONTAIREMENT `modeEdition` — « y ajouter un point peut
+  //      ouvrir une popup de nommage legitime qu il ne faut pas fermer ». En
+  //      mode ajout, le clic repositionnait donc le point ET ouvrait la fiche
+  //      d un point tout neuf (KARMA, 05/09) ;
+  //   2. meme quand il rend vrai, il n empeche que les POPUPS d annotation :
+  //      `modeRoad` / `modeZone` / `modeStructure` posent quand meme leur
+  //      sommet, et `modeMesure` son jalon.
+  // Meme remede qu a la v1.57.2 (« le bouton ajouter point est actif quand
+  // j ouvre le plan ») : le registre des modes d abord — lui seul retire la
+  // surbrillance du bouton, sinon la sidebar mentirait —, puis les drapeaux
+  // en filet, pour un mode jamais enregistre ou un etat incoherent.
+  try { _desactiverTousLesModes(); } catch(e) {}
+  window.modeEdition   = false;
+  window.modeMesure    = false;
+  window.modeRecalage  = false;
+  window.modeRoad      = false;
+  window.modeZone      = false;
+  window.modeStructure = false;
+
+  try { window.map.closePopup(); } catch(e) {}
+
+  const nom = String(listePoints[_indexPointSession(id, x, y)].nom || id || "");
+  _repoActif = true;
+
+  _repoHandler = function(e) {
+    if (!e || !e.latlng) return;
+    // Chemin INVERSE de convertCoord(x, y) = [imageHeight - y, x].
+    const nx = e.latlng.lng;
+    const ny = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
+                 ? (window.APP_CONFIG.imageHeight - e.latlng.lat)
+                 : e.latlng.lat;
+    // 🩸 On RE-CHERCHE le point : entre l'armement et le clic, l'utilisateur a
+    // pu en supprimer un autre, vider la session ou recharger le plan — un
+    // index capture a l'armement serait perime et on deplacerait le mauvais.
+    const i = _indexPointSession(id, x, y);
+    if (i === -1) {
+      console.warn("[Editor] Point disparu pendant le repositionnement :", id);
+      _repoDesactiver();
+      return;
+    }
+    const pt = listePoints[i];
+    const avant = window.HistoryManager ? window.HistoryManager.captureState("editorPoints") : null;
+    const ancX = pt.x, ancY = pt.y;
+
+    // Mutation EN PLACE : le point garde tout le reste — son `level` (jamais
+    // reattribue au niveau affiche : un repositionnement ne teleporte pas un
+    // point d'etage en douce), ses photos, ses tags, et `_srcCalque` s'il
+    // vient d'un calque ouvert a la modification.
+    pt.x = Math.round(nx * 100) / 100;
+    pt.y = Math.round(ny * 100) / 100;
+
+    // Les liaisons inter-plan stockent les coords du point : sans ce recalage
+    // le lien partirait de l'ancienne position a l'export KMZ.
+    if (window.InterPlanLinks && typeof window.InterPlanLinks.onPointMoved === "function"
+        && window._currentLoadedPlanId) {
+      try { window.InterPlanLinks.onPointMoved(window._currentLoadedPlanId, pt, ancX, ancY); }
+      catch(err) { console.warn("[Editor] recalage liaisons inter-plan :", err); }
+    }
+
+    if (window.renderEditorPoints) window.renderEditorPoints();
+    if (window.HistoryManager && avant) {
+      window.HistoryManager.record(
+        window.I18n.t("editor.undo.movePoint", { nom: nom }), avant, "editorPoints");
+    }
+    _repoDesactiver();
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(window.I18n.t("editor.repo.done", { nom: nom }), "info");
+    }
+  };
+  window.map.on("click", _repoHandler);
+
+  const fl = document.createElement("div");
+  fl.id = "kta-repo-floater";
+  fl.className = "kta-iti-floater";
+  fl.innerHTML =
+    '<span class="kta-iti-floater-icon">📌</span>' +
+    '<span class="kta-iti-floater-msg"></span>' +
+    '<button class="kta-btn kta-btn-ghost" id="kta-repo-cancel" type="button"></button>';
+  // Le nom vient de l'utilisateur : on l'injecte en TEXTE, jamais en HTML.
+  fl.querySelector(".kta-iti-floater-msg").textContent =
+    window.I18n.t("editor.repo.floater", { nom: nom });
+  const btnAnn = fl.querySelector("#kta-repo-cancel");
+  btnAnn.textContent = window.I18n.t("editor.repo.cancel");
+  document.body.appendChild(fl);
+  btnAnn.addEventListener("click", _repoDesactiver);
+};
 window.modifierPointEditor = function(id, x, y) {
   if (typeof x !== "number" || typeof y !== "number") return;
 
-  let target = null;
-  // Match exact (id + coords)
-  for (let i = 0; i < listePoints.length; i++) {
-    const p = listePoints[i];
-    if (String(p.id || "") === String(id) && p.x === x && p.y === y) {
-      target = p;
-      break;
-    }
-  }
-  // Fallback : match par coords seules
-  if (!target) {
-    for (let i = 0; i < listePoints.length; i++) {
-      if (listePoints[i].x === x && listePoints[i].y === y) {
-        target = listePoints[i];
-        break;
-      }
-    }
-  }
+  const _idx = _indexPointSession(id, x, y);
+  const target = (_idx === -1) ? null : listePoints[_idx];
   if (!target) {
     console.warn("[Editor] Point à modifier introuvable :", id, x, y);
     return;
@@ -915,24 +1048,7 @@ window.setEditorPoints        = function(points) {
 window.supprimerPointEditor = function(id, x, y) {
   if (typeof x !== "number" || typeof y !== "number") return;
 
-  // Match exact (id + coords)
-  let idx = -1;
-  for (let i = 0; i < listePoints.length; i++) {
-    const p = listePoints[i];
-    if (String(p.id || "") === String(id) && p.x === x && p.y === y) {
-      idx = i;
-      break;
-    }
-  }
-  // Fallback : match par coords seules (au cas ou l'id a ete modifie)
-  if (idx === -1) {
-    for (let i = 0; i < listePoints.length; i++) {
-      if (listePoints[i].x === x && listePoints[i].y === y) {
-        idx = i;
-        break;
-      }
-    }
-  }
+  const idx = _indexPointSession(id, x, y);
   if (idx === -1) {
     console.warn("[Editor] Point a supprimer introuvable :", id, x, y);
     return;
