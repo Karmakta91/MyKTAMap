@@ -344,6 +344,34 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   });
 }
 
+// ═════════ 10. 🔑 INCOGNITO HÉRITE DE TOUS LES DÉVERROUILLAGES (v1.90.14) ═════════
+// 🩸 BUG KARMA : en incognito sur une instance à `accessHash`, la gate se
+// réaffichait. Le shim incognito relit le disque UNIQUEMENT pour les clés d'une
+// whitelist (pour ne pas re-demander le mot de passe à chaque fenêtre privée).
+// La v1.90.6 a ajouté `LS_UNLOCK_KIOSQUE` (mémoire du déverrouillage d'instance)
+// SANS l'ajouter à cette whitelist → `isUnlocked()` lisait le hash accepté mais
+// pas la mémoire d'instance → son test `v === k` échouait → re-saisie forcée.
+// On EXIGE que toute clé de déverrouillage lue par la gate soit whitelistée en
+// lecture disque côté incognito. Ajouter une 3ᵉ clé sans la whitelister rougira.
+{
+  const INCOG = fs.readFileSync("js/incognitoMode.js", "utf8");
+  const iWl = INCOG.indexOf("READ_DISK_WHITELIST");
+  const iFin = iWl >= 0 ? INCOG.indexOf("};", iWl) : -1;
+  const whitelist = (iWl >= 0 && iFin > iWl) ? INCOG.slice(iWl, iFin) : "";
+  t("la whitelist de lecture disque incognito est trouvable", whitelist.length > 0);
+
+  // Les clés de déverrouillage que `isUnlocked()` doit pouvoir relire.
+  [["LS_UNLOCK", /const LS_UNLOCK\s*=\s*"([^"]+)"/],
+   ["LS_UNLOCK_KIOSQUE", /const LS_UNLOCK_KIOSQUE\s*=\s*"([^"]+)"/]].forEach(function (r) {
+    const m = GATE.match(r[1]);
+    t("🔑 la clé " + r[0] + " est définie dans unlockGate.js", !!m);
+    if (m) {
+      t("🔑 …et incognito la relit du disque (sinon la gate se réaffiche en privé) : « " + m[1] + " »",
+        whitelist.indexOf('"' + m[1] + '"') >= 0);
+    }
+  });
+}
+
 console.log(ko === 0 ? "\n🎉 gate d'instance : deux mots de passe, et aucune promesse de trop"
                      : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

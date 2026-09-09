@@ -1,7 +1,7 @@
 {
-  "version": "v1.90.13",
+  "version": "v1.90.14",
   "released": "2026-09-09",
   "notes": [
-    "🐛 Correction d'un plantage de la Vue OSM au retour à l'accueil (une image de plan qui finissait de charger après la fermeture de la carte). La Vue OSM se rafraîchit désormais sans erreur, sur le plan que tu viens de quitter."
+    "🕵️ Sur une installation avec son propre mot de passe d'accès, lancer le mode Incognito ne redemande plus ce mot de passe : la session privée reconnaît que tu es déjà entré."
   ]
 }

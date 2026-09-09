@@ -282,7 +282,14 @@
     // de tentatives échouées est aussi whitelisté pour ne pas casser
     // l'anti-bruteforce cross-fenêtre (sinon attaque par boucle de tabs).
     var READ_DISK_WHITELIST = {
-      "myktamap_unlock_v1":       1, // UnlockGate — hash mdp community validé
+      "myktamap_unlock_v1":          1, // UnlockGate — hash mdp community validé
+      // 🔑 v1.90.14 (bug KARMA) — MÉMOIRE DU DÉVERROUILLAGE PAR MOT DE PASSE
+      // D'INSTANCE (v1.90.6). Sans elle en lecture disque, `isUnlocked()` en
+      // incognito lit bien le hash accepté (`myktamap_unlock_v1`, whitelisté)
+      // mais PAS cette mémoire → son test `v && k && v === k` échoue → la gate
+      // se réaffiche sur une instance à `accessHash`, forçant la re-saisie.
+      // Parité exacte avec le déverrouillage communautaire déjà hérité ci-dessus.
+      "myktamap_unlock_instance_v1": 1, // UnlockGate — hash mdp d'instance validé
       "myktamap_unlock_attempts": 1, // UnlockGate — compteur tentatives échouées
       "myktamap_app_lang":        1  // 🆕 v1.46.4 (KARMA) — langue d'interface :
       // persiste en incognito (lue au boot + write-through ci-dessus). Préférence

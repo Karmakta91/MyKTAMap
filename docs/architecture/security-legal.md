@@ -7,6 +7,12 @@
 > toute instance privée. Le refus est appliqué au submit ET au boot (révocation d'un accès communautaire
 > hérité). Un club distribue le sien ; le code de l'auteur n'entre pas.
 >
+> 🕵️ **v1.90.14 — Incognito hérite du déverrouillage d'instance.** Le shim incognito relit du disque une
+> `READ_DISK_WHITELIST` (les écritures restent shimées) pour ne pas re-demander le mot de passe à chaque
+> fenêtre privée. La mémoire `myktamap_unlock_instance_v1` (v1.90.6) manquait à cette liste : sur une instance
+> à `accessHash`, la gate se réaffichait en incognito. Ajoutée. `check-gate-instance.js` §10 exige désormais
+> que TOUTE clé de déverrouillage lue par la gate soit whitelistée en lecture incognito.
+>
 > 🔒 **v1.90.8 / v1.90.9 — AUCUNE licence pro ne contourne un `accessHash`.** Sur une instance protégée, ni
 > la licence importée par l'utilisateur (`"local"`, v1.90.8) ni celle servie par l'instance (`"server"`,
 > v1.90.9) n'ouvre la gate. 🩸 La licence serveur est fetchée pour TOUS les visiteurs : la laisser bypasser
