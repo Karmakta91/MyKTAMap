@@ -1,7 +1,7 @@
 {
-  "version": "v1.90.14",
-  "released": "2026-09-09",
+  "version": "v1.90.15",
+  "released": "2026-09-10",
   "notes": [
-    "🕵️ Sur une installation avec son propre mot de passe d'accès, lancer le mode Incognito ne redemande plus ce mot de passe : la session privée reconnaît que tu es déjà entré."
+    "🗺️ Correction : au retour à l'accueil, la Vue OSM se met de nouveau à jour et s'ouvre sur le plan que tu viens de quitter — un plan chargé pour la première fois y apparaît maintenant sans redémarrer l'application."
   ]
 }

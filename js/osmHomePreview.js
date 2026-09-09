@@ -3306,7 +3306,7 @@
     // Le plan quitté devient la sélection COURANTE : les re-montages suivants
     // (changement de langue, cache…) le garderont, jusqu'à ce que l'utilisateur
     // en choisisse un autre.
-    if (preferId && initialId === preferId) _setLastSelected(preferId);
+    if (preferId && initialId === preferId) _saveLastSelected(preferId);
     _renderWidget(container, plans, initialId);
     _afficherBandeauDefaut(container);
   }

@@ -159,9 +159,38 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
     // 🗺️ v1.90.12 — …en préférant le plan qu'on vient de quitter.
     t("🗺️ retour home : le widget OSM s'ouvre sur le plan QUITTÉ (_currentLoadedPlanId)",
       /OsmHomePreview\.refresh\(window\._currentLoadedPlanId/.test(corps));
-    t("🗺️ …et mount() honore ce plan préféré s'il est géoréférencé",
-      /preferId && plans\.find\(function\(p\) \{ return p\.id === preferId; \}\)/.test(HOME) &&
-      /if \(preferId && initialId === preferId\) _setLastSelected\(preferId\)/.test(HOME));
+
+    // 🩸 v1.90.15 (bug KARMA) — ON EXÉCUTE LE BLOC DE SÉLECTION, ON NE LE GREP
+    // PLUS. La v1.90.12 appelait `_setLastSelected(preferId)` — une fonction qui
+    // N'EXISTE PAS (le vrai nom est `_saveLastSelected`). `node -c` ne voit pas
+    // une ReferenceError, et l'ancienne assertion GREPAIT le texte de l'appel :
+    // elle était donc VERTE sur un `mount()` qui crashait à chaque retour home.
+    // Résultat vécu : la Vue OSM ne se rafraîchissait jamais (exception avalée
+    // par le try/catch d'afficherLoader). On extrait le bloc et on le JOUE : un
+    // nom de fonction inexistant lève ici, pas en silence chez l'utilisateur.
+    {
+      const iBloc = HOME.indexOf("let initialId = (preferId");
+      const iEnd  = HOME.indexOf("_renderWidget(container, plans, initialId);", iBloc);
+      const bloc  = (iBloc >= 0 && iEnd > iBloc) ? HOME.slice(iBloc, iEnd) : "";
+      t("🗺️ le bloc de sélection du plan préféré est extractible", bloc.length > 0);
+      if (bloc) {
+        let sauve = null, err = null, id = null;
+        const sb = {
+          preferId: "server_x",
+          plans: [{ id: "server_x" }, { id: "server_y" }],
+          _getLastSelectedFromLs: function () { return null; },
+          _saveLastSelected: function (v) { sauve = v; }
+        };
+        try {
+          vm.runInNewContext(bloc + "; resultat = initialId;", sb, { filename: "osmHome.select.js" });
+          id = sb.resultat;
+        } catch (e) { err = e.message; }
+        t("🗺️ …et il S'EXÉCUTE sans ReferenceError (fonction inexistante = crash silencieux du re-mount)" +
+          (err ? " — " + err : ""), !err);
+        t("🗺️ …choisit bien le plan préféré quand il est dans la liste", id === "server_x");
+        t("🗺️ …et le grave comme sélection courante (_saveLastSelected)", sauve === "server_x");
+      }
+    }
     t("🗺️ …et le widget expose bien refresh()",
       /refresh:\s*refresh/.test(HOME) || /\brefresh\b[\s\S]{0,40}mount/.test(HOME));
 
