@@ -2298,6 +2298,25 @@ function initInterface() {
       _historyUiSubBound = true;
       window.HistoryManager.onChange(function(state) {
         if (_syncHistoryUiRef) _syncHistoryUiRef(state);
+        // 🐛 v1.90.16 (bug KARMA) — Ctrl+Z jusqu'à VIDER le tracé en cours :
+        // `historyManager._applyState` remet alors `window.modeRoad` à null
+        // (l'outil est mort côté état — clic carte = rien), mais NE touche PAS
+        // au visuel du bouton → la pastille reste `kta-actif` : « allumé mais
+        // mort ». Les boutons de suppression (↩️/✂️) fermaient déjà le mode via
+        // `_fermerModeRoad` ; le raccourci clavier, non.
+        // On resynchronise ici : bouton actif + mode ÉTEINT = on ferme. C'est
+        // exact pour le tracé car `_applyState` RESTAURE `modeRoad` tant qu'il
+        // reste un tracé en cours (undo d'un point ≠ tout annuler) — donc
+        // `!window.modeRoad` signifie bien « tout a été annulé », jamais « en
+        // plein dessin ». `_fermerModeRoad` est sûr ici : son `desactiverFn` ne
+        // toggle QUE `if (window.modeRoad)`, il ne ré-armera pas l'outil.
+        // ⚠️ Volontairement road-only : zones/structures n'ont pas la même
+        // restauration de mode dans `_applyState` — les fermer sur `!modeZone`
+        // fermerait à tort en plein dessin. À traiter séparément si le cas se
+        // présente.
+        try {
+          if (_modesActifs["road"] && !window.modeRoad) _fermerModeRoad();
+        } catch (e) { /* resync best-effort */ }
       });
     }
   })();

@@ -343,3 +343,12 @@ node scripts/check-osm-defaut.js || exit $?
 # visiteur entre legitimement ; un accessHash fautif accepte par comparaison de
 # chaines. On EXECUTE isUnlocked et revaliderInstance. 10 sabotages rougissent.
 node scripts/check-gate-instance.js || exit $?
+
+# 🎯 v1.90.16 (bug KARMA du 10/09 : « Ctrl+Z jusqu a tout effacer, la pastille
+# du trace reste allumee mais l outil est mort »). Le raccourci clavier passe
+# par HistoryManager.undo -> _applyState (qui remet modeRoad a null au trace
+# vide) et NON par les boutons de suppression qui, eux, fermaient deja le mode.
+# La resync est branchee sur onChange. On EXECUTE le corps du callback extrait
+# du fichier reel (lecon v1.90.12 : un grep aurait valide un mauvais nom de
+# fonction, avale par le try/catch). 6 sabotages rougissent.
+node scripts/check-outils-dessin-sync.js || exit $?

@@ -1,7 +1,8 @@
 {
-  "version": "v1.90.15",
+  "version": "v1.90.16",
   "released": "2026-09-10",
   "notes": [
-    "🗺️ Correction : au retour à l'accueil, la Vue OSM se met de nouveau à jour et s'ouvre sur le plan que tu viens de quitter — un plan chargé pour la première fois y apparaît maintenant sans redémarrer l'application."
+    "🗺️ Correction : au retour à l'accueil, la Vue OSM se met de nouveau à jour et s'ouvre sur le plan que tu viens de quitter — un plan chargé pour la première fois y apparaît maintenant sans redémarrer l'application.",
+    "✏️ Correction : après avoir tout annulé (Ctrl+Z) sur un tracé en cours de dessin, le bouton de l'outil ne reste plus allumé alors qu'il est inactif."
   ]
 }
