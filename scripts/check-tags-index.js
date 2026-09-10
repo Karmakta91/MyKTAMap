@@ -212,6 +212,169 @@ t("🔎 les tags filtrent la liste des plans",
 t("🔎 l'utilisateur peut toujours les éditer dans ℹ️ Infos",
   /PlanRegistry\.setTags\(plan\.id,/.test(HOME));
 
+// ═════════ 5. LE FILTRE PAR ÉTIQUETTE DES STATS DU PROFIL (v1.90.4) ═════════
+// Demande KARMA : « rajoute un graph de ce genre via les tags des plans
+// (possibilité de filtrer et exclure) ».
+//
+// 🩸 LA RÈGLE QUI SE TROMPE FACILEMENT : l'EXCLUSION L'EMPORTE sur
+// l'inclusion. Un plan tagué « gironde » ET « brouillon », avec gironde inclus
+// et brouillon exclu, doit être ÉCARTÉ. L'inverse ferait rentrer par une porte
+// ce qu'on vient de fermer par l'autre — et c'est précisément le cas d'usage
+// (« sors-moi l'atlas de mes stats »). Un `||` au lieu d'un `&&`, ou les deux
+// tests dans le mauvais ordre, et le filtre ment sans rien casser d'apparent.
+//
+// On EXÉCUTE la fonction extraite du vrai fichier sur ses cas limites.
+{
+  const HP = fs.readFileSync("js/homeProfile.js", "utf8");
+  const d = HP.indexOf("function _planRetenu(entree) {");
+  let code = null;
+  if (d >= 0) {
+    let prof = 0;
+    for (let i = HP.indexOf("{", d); i < HP.length; i++) {
+      if (HP[i] === "{") prof++;
+      else if (HP[i] === "}") { prof--; if (prof === 0) { code = HP.slice(d, i + 1); break; } }
+    }
+  }
+  t("🏷️ la règle de rétention est extractible", !!code);
+
+  if (code) {
+    const SANS = "\u0000sans-etiquette";
+    const jouer = (tags, filtre) => {
+      const sb = { SANS_TAG: SANS, _filtreTags: filtre };
+      vm.runInNewContext(code + "; resultat = _planRetenu({ tags: " + JSON.stringify(tags) + " });",
+        sb, { filename: "homeProfile.filtre.js" });
+      return sb.resultat;
+    };
+
+    t("sans filtre, tout est retenu", jouer(["gironde"], {}) === true);
+    t("inclure : seuls les plans qui portent l'étiquette",
+      jouer(["gironde"], { gironde: "in" }) === true &&
+      jouer(["paris"],   { gironde: "in" }) === false);
+    t("exclure : les plans qui la portent sortent",
+      jouer(["gironde"], { gironde: "out" }) === false &&
+      jouer(["paris"],   { gironde: "out" }) === true);
+    t("🩸 L'EXCLUSION L'EMPORTE sur l'inclusion (sinon « sors-moi l'atlas » ne marche pas)",
+      jouer(["gironde", "brouillon"], { gironde: "in", brouillon: "out" }) === false);
+    t("la casse est ignorée (« Gironde » et « gironde » sont la même étiquette)",
+      jouer(["Gironde"], { gironde: "in" }) === true);
+    t("un plan SANS étiquette a sa propre sentinelle, filtrable comme les autres",
+      jouer([], {}) === true &&
+      jouer([], { "\u0000sans-etiquette": "out" }) === false &&
+      jouer([], { gironde: "in" }) === false);
+
+    // 🩸 L'IMPASSE : si le filtre exclut tout, les chips doivent SURVIVRE.
+    // Sans elles, l'utilisateur n'a plus aucun moyen de revenir en arrière —
+    // le même piège que le flag kiosque qui cachait son propre remède.
+    t("🩸 filtre excluant tout : le bloc reste affiché (sinon aucun retour possible)",
+      /const filtreActif = Object\.keys\(_filtreTags\)\.length > 0;/.test(HP) &&
+      /activeSections\.length === 0 && !filtreActif\) return;/.test(HP));
+
+    // Le filtre ne doit RIEN persister : au retour dans la modale, des plans
+    // manquants sans explication passeraient pour une perte de données.
+    t("🩸 le filtre ne persiste nulle part (aucune clé de stockage)",
+      !/_filtreTags[\s\S]{0,200}localStorage/.test(HP));
+
+    t("tous les camemberts suivent le filtre, pas seulement celui des étiquettes",
+      /if \(_statsParPlan\.length\) breakdowns = _agregerFiltre\(\);/.test(HP));
+    t("un clic re-rend le bloc entier", /_renderProfilePies\(breakdowns, labels\);/.test(HP));
+    t("🩸 le clic est délégué au conteneur (les chips renaissent à chaque rendu)",
+      /piesContainer\.addEventListener\("click"/.test(HP));
+  }
+}
+
+// ═══ 6. RETROUVER LE NOM D'UN TYPE PERSONNALISÉ SANS OUVRIR LE PLAN (v1.90.5) ═══
+// VÉCU (KARMA, capture) : « toujours un souci ». La v1.90.3 mémorisait le nom
+// AU CHARGEMENT du plan — donc elle ne réparait rien pour les plans déjà
+// ouverts AVANT elle : leur cache de stats date d'avant et n'a pas de `labels`.
+// Le message disait vrai (« ouvre ces plans une fois ») mais imposait vingt
+// ouvertures pour un affichage.
+//
+// 🩸 CE QU'ON NE PEUT PAS FAIRE : aller lire les vingt plan-config au
+// chargement de la fenêtre. Vingt requêtes pour un widget que l'utilisateur
+// n'a peut-être pas ouvert pour ça. La recherche est donc SUR DEMANDE, et le
+// bouton annonce combien de plans il va lire — on ne déclenche pas du réseau
+// dans le dos de quelqu'un.
+{
+  const HP = fs.readFileSync("js/homeProfile.js", "utf8");
+
+  // — le dictionnaire DURABLE, indépendant du cache de stats —
+  t("🏷️ un dictionnaire de noms survit aux versions (clé dédiée)",
+    /const LS_NOMS = "myktamap_legend_labels_v1";/.test(HP));
+  t("il amorce l'agrégat", /const aggLabels = _nomsPersistes\(\);/.test(HP));
+  t("le chargement d'un plan l'alimente", /_persisterNoms\(stats\.labels\);/.test(HP));
+  t("🩸 …et il n'écrase jamais un nom déjà connu par une valeur vide",
+    /Object\.keys\(map \|\| \{\}\)\.forEach\(function\(k\) \{ if \(map\[k\]\) cur\[k\] = map\[k\]; \}\);/.test(HP));
+
+  // — l'extracteur de noms, EXÉCUTÉ sur les deux formes d'une légende —
+  const d = HP.indexOf("function _nomsDepuisLegende(cl) {");
+  let code = null;
+  if (d >= 0) {
+    let prof = 0;
+    for (let i = HP.indexOf("{", d); i < HP.length; i++) {
+      if (HP[i] === "{") prof++;
+      else if (HP[i] === "}") { prof--; if (prof === 0) { code = HP.slice(d, i + 1); break; } }
+    }
+  }
+  t("l'extracteur de noms est extractible", !!code);
+
+  if (code) {
+    const jouer = (cl) => {
+      const sb = { String: String, Array: Array, Object: Object };
+      vm.runInNewContext(code + "; resultat = _nomsDepuisLegende(" + JSON.stringify(cl) + ");",
+        sb, { filename: "homeProfile.noms.js" });
+      return sb.resultat;
+    };
+
+    // Un type né d'un import SIG vit dans `customEntries` : son NOM est son
+    // identité, il n'a pas de libellé par défaut derrière lui.
+    const r1 = jouer({ customEntries: [
+      { id: "cust-sig-structures-l-nm1", category: "structures", label: "Niveau -1" }
+    ] });
+    t("🏷️ un type créé (customEntries) donne son nom",
+      r1["structures.cust-sig-structures-l-nm1"] === "Niveau -1");
+
+    // Un RENOMMAGE vit dans `labels`, clé déjà préfixée par la catégorie.
+    const r2 = jouer({ labels: { "traces.cust-abc-1": "Ma galerie" } });
+    t("🏷️ un renommage (labels) aussi", r2["traces.cust-abc-1"] === "Ma galerie");
+
+    // 🩸 LA RÈGLE v1.21.5-fix1 : un renommage de type BUILT-IN ne doit JAMAIS
+    // entrer dans un dictionnaire cross-plan — il s'imposerait au total de
+    // tous les autres plans.
+    const r3 = jouer({ labels: { "traces.principal": "Route de surface" } });
+    t("🩸 un renommage de type BUILT-IN est ÉCARTÉ (sinon il pollue l'agrégat)",
+      Object.keys(r3).length === 0);
+
+    t("une légende absente ou vide ne casse rien",
+      Object.keys(jouer(null) || {}).length === 0 &&
+      Object.keys(jouer({}) || {}).length === 0);
+
+    // Une entrée incomplète ne doit pas produire une clé bancale.
+    const r4 = jouer({ customEntries: [{ id: "cust-x" }, { label: "sans id" }, null] });
+    t("une entrée incomplète est ignorée", Object.keys(r4).length === 0);
+  }
+
+  // — la recherche à la demande —
+  t("🔎 la recherche existe et lit le plan-config",
+    /async function _retrouverNoms\(btn\)/.test(HP) &&
+    /fetch\(dir \+ "\/plan-config\.json", \{ cache: "no-store" \}\)/.test(HP));
+  t("🩸 …et n'est JAMAIS automatique (déclenchée par un clic)",
+    /closest\("\.kta-profile-pies-fix"\)/.test(HP) &&
+    !/_retrouverNoms\(\)\s*;/.test(HP));
+  t("🩸 elle lit le BLOB local, jamais le handle (pas une boîte de dialogue par plan)",
+    /PlanRegistry\.getBlob\(e\.id\)/.test(HP) && !/ensureHandlePermission/.test(HP));
+  t("elle rend la main au thread UI entre deux plans",
+    /for \(const e of _statsParPlan\)[\s\S]{0,2200}await new Promise\(function\(r2\) \{ setTimeout\(r2, 0\); \}\);/.test(HP));
+  t("le bouton annonce combien de plans il va lire",
+    /home\.profile\.pies\.retrouverNoms/.test(HP) &&
+    /"home\.profile\.pies\.retrouverNoms": "[^"]*\{n\}/.test(fs.readFileSync("lang/fr.json", "utf8")));
+  t("🩸 un seul bouton pour tout le bloc, remis à zéro à chaque rendu",
+    /let _boutonNomsPose = false;/.test(HP) && /if \(!_boutonNomsPose\)/.test(HP));
+
+  // — la voie GRATUITE : la session est déjà en localStorage —
+  t("les renommages de la session sont lus sans rien demander",
+    /_nomsDepuisLegende\(\(JSON\.parse\(brut\) \|\| \{\}\)\.customLegend\)/.test(HP));
+}
+
 console.log(ko === 0 ? "\n🎉 tags par l'index : l'index propose, l'utilisateur dispose"
                      : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

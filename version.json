@@ -1,8 +1,8 @@
 {
-  "version": "v1.90.2",
-  "released": "2026-09-08",
+  "version": "v1.90.17",
+  "released": "2026-09-10",
   "notes": [
-    "🗺️ La Vue OSM (tes plans calibrés GPS au-dessus d'une carte du monde) est maintenant active par défaut. Le fond de carte vient d'OpenStreetMap, qui voit donc les zones que tu consultes — aucune donnée de tes plans ne sort. Si tu l'avais décochée, elle le reste.",
-    "🖼️ Le réglage de tuilage disparaît de l'écran de chargement : l'app décide toute seule. Il reste dans ℹ️ Infos pour les rares plans que ça concerne, et il y est enfin mémorisé."
+    "🗺️ Correction : au retour à l'accueil, la Vue OSM se met de nouveau à jour et s'ouvre sur le plan que tu viens de quitter — un plan chargé pour la première fois y apparaît maintenant sans redémarrer l'application.",
+    "✏️ Correction : sur un tracé, une zone ou une structure en cours de dessin, annuler (Ctrl+Z) ne laisse plus le bouton de l'outil allumé à tort, et tu peux reprendre le dessin juste après l'annulation."
   ]
 }

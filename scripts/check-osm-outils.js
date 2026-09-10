@@ -130,6 +130,78 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
   const IDX  = fs.readFileSync("index.html", "utf8");
   const SW   = fs.readFileSync("sw.js", "utf8");
 
+  // 🏗️ v1.90.10 (bug KARMA) — L'INIT DES NIVEAUX PRÉCÈDE LE RENDU LEVEL-AWARE.
+  // À l'ouverture, le niveau -1 n'apparaissait pas alors qu'il était actif :
+  // `_initVisibleLevels()` était appelé APRÈS le rendu des POI/tracés, qui
+  // filtraient donc sur un `_visibleLevels` hérité de la modale précédente. Un
+  // seul appel, et il doit tomber AVANT le rendu des POI (étape 6 de la
+  // séquence). Cette assertion rougit si quelqu'un le redescend.
+  {
+    const nCall = (VIEW.match(/_initVisibleLevels\(\);/g) || []).length;
+    t("🏗️ Vue OSM : un seul appel à _initVisibleLevels()", nCall === 1);
+    const iStep6 = VIEW.indexOf("// 6) 🆕 v1.39.12 — Step 1 : POI session");
+    const iInit  = VIEW.indexOf("_initVisibleLevels();");
+    t("🏗️ Vue OSM : les niveaux sont initialisés AVANT le rendu des POI/tracés " +
+      "(sinon le niveau -1 manque à l'ouverture)",
+      iStep6 > 0 && iInit > 0 && iInit < iStep6);
+  }
+
+  // 🗺️ v1.90.11 (bug KARMA) — LE WIDGET OSM DE L'ACCUEIL SE RAFRAÎCHIT AU RETOUR
+  // HOME. Sans ça, un plan tout juste chargé (donc géoréférencé) n'apparaissait
+  // dans sa Vue OSM qu'après un redémarrage complet de l'app.
+  {
+    const MAIN = fs.readFileSync("js/main.js", "utf8");
+    const iAff = MAIN.indexOf("function afficherLoader()");
+    const iEnd = iAff >= 0 ? MAIN.indexOf("\n}", iAff) : -1;
+    const corps = iAff >= 0 && iEnd > iAff ? MAIN.slice(iAff, iEnd) : "";
+    t("🗺️ retour home : afficherLoader() rafraîchit le widget OSM",
+      /OsmHomePreview\.refresh\(/.test(corps));
+    // 🗺️ v1.90.12 — …en préférant le plan qu'on vient de quitter.
+    t("🗺️ retour home : le widget OSM s'ouvre sur le plan QUITTÉ (_currentLoadedPlanId)",
+      /OsmHomePreview\.refresh\(window\._currentLoadedPlanId/.test(corps));
+
+    // 🩸 v1.90.15 (bug KARMA) — ON EXÉCUTE LE BLOC DE SÉLECTION, ON NE LE GREP
+    // PLUS. La v1.90.12 appelait `_setLastSelected(preferId)` — une fonction qui
+    // N'EXISTE PAS (le vrai nom est `_saveLastSelected`). `node -c` ne voit pas
+    // une ReferenceError, et l'ancienne assertion GREPAIT le texte de l'appel :
+    // elle était donc VERTE sur un `mount()` qui crashait à chaque retour home.
+    // Résultat vécu : la Vue OSM ne se rafraîchissait jamais (exception avalée
+    // par le try/catch d'afficherLoader). On extrait le bloc et on le JOUE : un
+    // nom de fonction inexistant lève ici, pas en silence chez l'utilisateur.
+    {
+      const iBloc = HOME.indexOf("let initialId = (preferId");
+      const iEnd  = HOME.indexOf("_renderWidget(container, plans, initialId);", iBloc);
+      const bloc  = (iBloc >= 0 && iEnd > iBloc) ? HOME.slice(iBloc, iEnd) : "";
+      t("🗺️ le bloc de sélection du plan préféré est extractible", bloc.length > 0);
+      if (bloc) {
+        let sauve = null, err = null, id = null;
+        const sb = {
+          preferId: "server_x",
+          plans: [{ id: "server_x" }, { id: "server_y" }],
+          _getLastSelectedFromLs: function () { return null; },
+          _saveLastSelected: function (v) { sauve = v; }
+        };
+        try {
+          vm.runInNewContext(bloc + "; resultat = initialId;", sb, { filename: "osmHome.select.js" });
+          id = sb.resultat;
+        } catch (e) { err = e.message; }
+        t("🗺️ …et il S'EXÉCUTE sans ReferenceError (fonction inexistante = crash silencieux du re-mount)" +
+          (err ? " — " + err : ""), !err);
+        t("🗺️ …choisit bien le plan préféré quand il est dans la liste", id === "server_x");
+        t("🗺️ …et le grave comme sélection courante (_saveLastSelected)", sauve === "server_x");
+      }
+    }
+    t("🗺️ …et le widget expose bien refresh()",
+      /refresh:\s*refresh/.test(HOME) || /\brefresh\b[\s\S]{0,40}mount/.test(HOME));
+
+    // 🐛 v1.90.13 (crash KARMA) — L'overlay image roté ne doit pas crasher quand
+    // un `img.onload` tardif tape une carte déjà détruite (re-mount du widget).
+    // `_reset` doit court-circuiter si `_map` est null.
+    const ROT = fs.readFileSync("lib/leaflet-imageoverlay-rotated.js", "utf8");
+    t("🐛 rotated overlay : _reset() court-circuite si la carte est détruite (!map)",
+      /_reset: function\(\) \{[\s\S]{0,900}if \(!map \|\| !image \|\| !this\._rawImage\) return;/.test(ROT));
+  }
+
   // 📌 Le bandeau se cale sur LE CONTENEUR DE LA CARTE, pas sur la fenetre :
   // en mode plan la barre d outils occupe le haut de la fenetre, un `top`
   // fixe recouvrirait ses boutons.

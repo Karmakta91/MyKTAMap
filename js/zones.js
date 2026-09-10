@@ -451,6 +451,24 @@ window.getCurrentZone = function() {
   return currentZone || null;
 };
 
+// 🆕 v1.90.17 — Parité avec le tracé : préservation de currentZone à travers
+// undo/redo (cf road.js getCurrentRoadIndex/setCurrentRoadByIndex). Sans ça,
+// _applyState remettait modeZone à null au moindre Ctrl+Z (resetZones le wipe,
+// setZones remet currentZone = null) → outil mort dès le 1er undo, continuation
+// cassée, et pastille bloquée « allumée mais morte ». HistoryManager capture
+// désormais l'index de la zone en cours et le restaure après _applyState.
+window.getCurrentZoneIndex = function() {
+  if (!currentZone) return -1;
+  return zonesData.indexOf(currentZone);
+};
+window.setCurrentZoneByIndex = function(idx) {
+  if (typeof idx === "number" && idx >= 0 && idx < zonesData.length) {
+    currentZone = zonesData[idx];
+  } else {
+    currentZone = null;
+  }
+};
+
 // =========================
 // EXPORT GLOBAL
 // =========================

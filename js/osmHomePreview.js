@@ -3232,7 +3232,13 @@
   // =========================
   // API PUBLIQUE
   // =========================
-  function mount() {
+  function mount(preferId) {
+    // 🗺️ v1.90.12 — `preferId` : plan à afficher en priorité (le plan qu'on
+    // vient de quitter, passé par afficherLoader). 🩸 On EXIGE une chaîne : le
+    // câblage `Promise.resolve(ready).then(mount)` passe la valeur résolue de la
+    // promesse comme 1ᵉʳ argument — sans ce filtre, elle serait prise pour un
+    // planId et fausserait la sélection.
+    if (typeof preferId !== "string" || !preferId) preferId = null;
     const container = document.getElementById("ktaOsmHomeContent");
     if (!container) return; // pas en HOME, abort silencieux
 
@@ -3287,12 +3293,20 @@
       _afficherBandeauDefaut(container);
       return;
     }
-    // Cas 4 : widget complet — choix initial = lastSelected OU lastOpened
-    let initialId = _getLastSelectedFromLs();
+    // Cas 4 : widget complet — choix initial.
+    // 🗺️ v1.90.12 (bug KARMA : « au retour home, le plan de la Vue OSM doit être
+    // celui qu'on vient de quitter »). Priorité : le plan quitté (preferId) s'il
+    // est géoréférencé, sinon le dernier sélectionné dans le widget, sinon le
+    // 1ᵉʳ de la liste (= le plus récemment ouvert, liste triée desc).
+    let initialId = (preferId && plans.find(function(p) { return p.id === preferId; }))
+      ? preferId : _getLastSelectedFromLs();
     if (!initialId || !plans.find(function(p) { return p.id === initialId; })) {
-      // Fallback : 1er plan (= lastOpened car liste triée desc)
       initialId = plans[0].id;
     }
+    // Le plan quitté devient la sélection COURANTE : les re-montages suivants
+    // (changement de langue, cache…) le garderont, jusqu'à ce que l'utilisateur
+    // en choisisse un autre.
+    if (preferId && initialId === preferId) _saveLastSelected(preferId);
     _renderWidget(container, plans, initialId);
     _afficherBandeauDefaut(container);
   }
@@ -3328,7 +3342,7 @@
     container.insertBefore(el, container.firstChild);
   }
 
-  function refresh() { mount(); }
+  function refresh(preferId) { mount(preferId); }
 
   function selectPlan(planId) {
     if (!planId) return;

@@ -149,6 +149,21 @@ async function _chargerIndexServeur() {
     const idx = await r.json();
     window.KIOSK_CONFIG = (idx && typeof idx.config === "object" && idx.config) ? idx.config : null;
     _appliquerConfigKiosque();
+
+    // 🔑 v1.90.6 — ROTATION DU MOT DE PASSE D INSTANCE. On n arrive ici QUE si
+    // l index a repondu : hors-ligne, ou si le fichier a disparu, la fonction
+    // n est pas appelee et le deverrouillage memorise survit. C est
+    // volontaire -- une coupure reseau ne doit pas reverrouiller l app.
+    // 🩸 Et c est APRES la gate dans l ordre du boot : le changement prend donc
+    // effet au PROCHAIN demarrage, pas en pleine session. Couper quelqu un au
+    // milieu de son releve pour une rotation de mot de passe serait pire que
+    // le delai d un boot.
+    if (window.UnlockGate && typeof window.UnlockGate.revaliderInstance === "function") {
+      // `true` : on n arrive ici QUE si le fetch a repondu 2xx. Un index
+      // injoignable sort plus haut et n appelle rien.
+      window.UnlockGate.revaliderInstance(
+        window.KIOSK_CONFIG ? window.KIOSK_CONFIG.accessHash : null, true);
+    }
     // 🌀 Liaisons fournies par l'instance : FUSION par id dans le registre
     // local (idempotent — rejouée à chaque boot, dédup par link.id). Une
     // liaison retirée côté serveur reste chez qui l'a déjà (assumé, doc).
@@ -1508,6 +1523,25 @@ function afficherLoader() {
   if (typeof window.refreshPlansList === "function") {
     window.refreshPlansList();
   }
+
+  // 🗺️ v1.90.11 (bug KARMA) — RAFRAÎCHIR AUSSI LE WIDGET OSM DE L'ACCUEIL.
+  // Symptôme : charger un NOUVEAU plan, y entrer, revenir au home → sa Vue OSM
+  // ne marchait pas depuis l'accueil tant qu'on n'avait pas redémarré l'app.
+  // Cause : le widget calcule sa liste de plans géoréférencés au `mount()`,
+  // qui ne tournait qu'au boot / au changement de langue / d'opt-in — JAMAIS au
+  // retour home. La géoref du plan est pourtant persistée dès son chargement
+  // (`_propagerGeorefVersKmzExport` → KmzExport.setCalibration), donc un simple
+  // re-mount la fait apparaître. Le commentaire du widget (« invalidé au mount,
+  // retour HOME = … ») supposait déjà ce câblage : il manquait.
+  // 🗺️ v1.90.12 — …et il s'ouvre sur LE PLAN QU'ON VIENT DE QUITTER (demande
+  // KARMA). `_currentLoadedPlanId` tient encore l'id à ce point (il n'est jamais
+  // remis à null au retour home). S'il n'est pas géoréférencé, le widget retombe
+  // proprement sur sa sélection précédente puis le 1ᵉʳ plan.
+  if (window.OsmHomePreview && typeof window.OsmHomePreview.refresh === "function") {
+    try { window.OsmHomePreview.refresh(window._currentLoadedPlanId || null); } catch (e) {
+      console.warn("[Main] OsmHomePreview.refresh au retour home :", e);
+    }
+  }
 }
 
 // =========================
@@ -1807,7 +1841,34 @@ window.proposerRedemarrageLangue = function() {
     };
 
     const _proActive = await _proLicenseReady(2000);
-    if (_proActive) {
+
+    // 🔒 v1.90.9 (décision KARMA) — QUAND UNE INSTANCE PUBLIE UN MOT DE PASSE
+    // (`accessHash`), PLUS AUCUNE LICENCE PRO NE LE CONTOURNE — ni celle
+    // importée par l'utilisateur (source "local"), ni celle servie par
+    // l'instance (source "server"). Le mot de passe est LA porte d'accès ; la
+    // licence n'accorde que le MODE pro, pas l'accès.
+    //
+    // 🩸 POURQUOI ON A RETIRÉ L'EXCEPTION "server" (elle datait de la v1.90.8).
+    // Le `/Licence-pro.json` servi par l'instance est fetché pour TOUS les
+    // visiteurs : le laisser bypasser l'`accessHash` rendait le mot de passe
+    // MUET dès qu'une licence serveur était présente — quiconque ouvrait
+    // l'instance entrait. Or `accessHash` ET licence serveur ensemble n'ont
+    // qu'une lecture cohérente : le déployeur veut un accès filtré ET le mode
+    // pro. Le mode pro reste actif après la saisie du mot de passe ; seul le
+    // contournement de la gate est refusé.
+    //
+    // Cas inchangé : une instance pro SANS mot de passe → la licence bypasse
+    // toujours (pas d'`accessHash` → pas de gate à contourner).
+    let _proBypass = _proActive;
+    if (_proActive
+        && typeof window.UnlockGate.instanceRequiertMotDePasse === "function"
+        && await window.UnlockGate.instanceRequiertMotDePasse()) {
+      _proBypass = false;
+      console.log("[Main] Licence pro (toute source) ignorée pour le déverrouillage : " +
+                  "instance protégée par mot de passe → saisie requise");
+    }
+
+    if (_proBypass) {
       console.log("[Main] Licence pro active (source=" +
                   window.MyKTAMapProLicense.getSource() +
                   ") → bypass UnlockGate community");

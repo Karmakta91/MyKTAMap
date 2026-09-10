@@ -1,5 +1,34 @@
 # Architecture MyKTAMap — Sécurité : gates, PIN, audit réseau, légal, licence
 
+> 🔑 **v1.90.6 (EXCLUSIF depuis v1.90.7) — le mot de passe d'instance, quand il existe, est le SEUL.**
+> `data/index.json > config.accessHash` ouvre la gate ; **tant qu'il est publié, le code communautaire
+> (`HASH_VALIDE`) n'ouvre plus cette instance.** 🩸 La v1.90.6 acceptait les deux — trou signalé par KARMA :
+> le code communautaire est distribué largement (il ouvre la prod qui n'héberge rien), il aurait donc ouvert
+> toute instance privée. Le refus est appliqué au submit ET au boot (révocation d'un accès communautaire
+> hérité). Un club distribue le sien ; le code de l'auteur n'entre pas.
+>
+> 🕵️ **v1.90.14 — Incognito hérite du déverrouillage d'instance.** Le shim incognito relit du disque une
+> `READ_DISK_WHITELIST` (les écritures restent shimées) pour ne pas re-demander le mot de passe à chaque
+> fenêtre privée. La mémoire `myktamap_unlock_instance_v1` (v1.90.6) manquait à cette liste : sur une instance
+> à `accessHash`, la gate se réaffichait en incognito. Ajoutée. `check-gate-instance.js` §10 exige désormais
+> que TOUTE clé de déverrouillage lue par la gate soit whitelistée en lecture incognito.
+>
+> 🔒 **v1.90.8 / v1.90.9 — AUCUNE licence pro ne contourne un `accessHash`.** Sur une instance protégée, ni
+> la licence importée par l'utilisateur (`"local"`, v1.90.8) ni celle servie par l'instance (`"server"`,
+> v1.90.9) n'ouvre la gate. 🩸 La licence serveur est fetchée pour TOUS les visiteurs : la laisser bypasser
+> rendait le mot de passe muet. `main.js` refuse donc le bypass **quelle que soit la source** dès que
+> l'instance impose un mot de passe. Le mode pro s'active après la saisie ; la licence n'est pas une clé
+> d'accès. Seule une instance SANS mot de passe laisse la licence serveur bypasser (rien à garder).
+>
+> 🔒 **Le niveau de sécurité est IDENTIQUE, et il est faible — c'est assumé et écrit partout.** Le hash
+> d'instance vit dans un fichier public ; le hash communautaire est sur GitHub. Les deux se brute-forcent hors
+> ligne. Barrière **sociale** (« il faut connaître le code »), **jamais une authentification**. Le lockout à 5
+> tentatives et le stockage local restent inchangés, bypassables en console comme avant.
+>
+> 🩸 Détail d'implémentation qui n'est pas cosmétique : `isUnlocked()` exige les deux valeurs **non vides** et
+> la forme `/^[0-9a-f]{64}$/`. Sur un navigateur vierge, une comparaison naïve entre deux `null` aurait ouvert
+> l'app à tout le monde, sans la moindre erreur visible.
+
 > Référence détaillée extraite de l'ancien CLAUDE.md. Lue à la demande (pas auto-chargée).
 > Sections : §18, §36, §40, §43, §77
 

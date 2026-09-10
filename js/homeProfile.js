@@ -1769,9 +1769,43 @@
             zonesByType:   zonesByType,
             structsByType: structsByType
           },
+          // 🐛 v1.90.3 (bug KARMA) — LE NOM DES TYPES PERSONNALISÉS, MÉMORISÉ
+          // ICI PARCE QUE C'EST LE SEUL MOMENT OÙ ON LE CONNAÎT. Sur l'accueil
+          // aucun plan n'est chargé : `LegendCustomization` ne peut rien
+          // résoudre, et le nom d'un type né d'un import SIG vit dans le
+          // `plan-config.json` DU ZIP — hors de portée du localStorage. Les
+          // camemberts du profil affichaient donc « cust-sig-structures-l-nm2 ».
+          // Ici, le plan est ouvert : la cascade complète répond.
+          labels: _labelsCustomCourants(pointsByTag, roadsByType, zonesByType, structsByType),
           ts:     Date.now(),
           source: "live"
         };
+      }
+
+      // 🐛 v1.90.3 — Récolte le libellé des types `cust-…` PRÉSENTS dans les
+      // décomptes du plan courant. On n'en garde QUE les personnalisés : un
+      // type built-in doit rester au libellé par défaut dans un agrégat
+      // cross-plan (règle v1.21.5-fix1), sinon le renommage d'un plan A
+      // s'imposerait au total de tous les autres.
+      function _labelsCustomCourants(parTag, parTrace, parZone, parStruct) {
+        const out = {};
+        const LC = window.LegendCustomization;
+        if (!LC || typeof LC.getLabel !== "function") return out;
+        [["icones", parTag], ["traces", parTrace],
+         ["zones", parZone], ["structures", parStruct]].forEach(function(paire) {
+          const cat = paire[0];
+          Object.keys(paire[1] || {}).forEach(function(cle) {
+            if (cle.indexOf("cust-") !== 0) return;
+            try {
+              const lbl = LC.getLabel(cat, cle);
+              // 🩸 `getLabel` retombe sur la CLÉ quand il ne sait pas : la
+              // stocker telle quelle ferait croire à un nom résolu et
+              // masquerait le trou pour toujours.
+              if (lbl && lbl !== cle) out[cat + "." + cle] = String(lbl).slice(0, 60);
+            } catch(e) {}
+          });
+        });
+        return out;
       }
 
       // Persiste les stats COMPLÈTES du plan courant dans localStorage.
@@ -1784,6 +1818,10 @@
         try {
           const stats = _computePlanStatsLive();
           localStorage.setItem("myktamap_plan_stats_v1_" + planId, JSON.stringify(stats));
+          // 🏷️ v1.90.5 — Et dans le dictionnaire DURABLE : le cache de stats est
+          // réécrit à chaque ouverture, mais il est aussi purgé et versionné.
+          // Les noms, eux, doivent survivre — ils ne dépendent d'aucune version.
+          _persisterNoms(stats.labels);
         } catch(e) {
           console.warn("[ProfileStats] Persist plan stats échec :", e);
         }
@@ -1832,6 +1870,17 @@
         let totalDistM = 0, totalDistPxOrphan = 0, nbPxOrphan = 0;
         let nbAvecData = 0, nbPartial = 0;
         // 🆕 v1.21.3 : agrégation des breakdowns cross-plan pour les camemberts
+        // 🐛 v1.90.3 — dictionnaire cross-plan des noms de types personnalisés.
+        // Premier arrivé, premier servi : deux plans peuvent avoir forgé la même
+        // clé `cust-<ts36>-<rnd36>` (le module la dit lui-même « probabiliste,
+        // pas structurellement unique »). Afficher un nom plutôt qu'une clé
+        // reste le bon choix même dans ce cas rare.
+        // 🏷️ v1.90.5 — On PART du dictionnaire persistant : il porte tout ce qui
+        // a déjà été retrouvé, une fois pour toutes.
+        const aggLabels = _nomsPersistes();
+        // 🏷️ v1.90.4 — détail par plan (id, étiquettes, décomptes), conservé
+        // pour le filtre par étiquette. Vidé à chaque recalcul complet.
+        _statsParPlan.length = 0;
         const aggBreakdowns = {
           pointsByTag:   {},
           roadsByType:   {},
@@ -1999,6 +2048,38 @@
             _mergeBreakdown(aggBreakdowns.roadsByType,   stats.breakdowns.roadsByType);
             _mergeBreakdown(aggBreakdowns.zonesByType,   stats.breakdowns.zonesByType);
             _mergeBreakdown(aggBreakdowns.structsByType, stats.breakdowns.structsByType);
+            if (stats.labels) {
+              Object.keys(stats.labels).forEach(function(k) {
+                if (aggLabels[k] == null) aggLabels[k] = stats.labels[k];
+              });
+            }
+            // 🏷️ v1.90.5 — La SESSION du plan porte aussi ses renommages, et
+            // elle est déjà en localStorage : c'est gratuit, on la lit toujours.
+            // (Elle ne contient PAS les types nés d'un import SIG, dont le nom
+            // vit dans le plan-config du ZIP — d'où la recherche à la demande.)
+            try {
+              const brut = localStorage.getItem("myktamap_session_v1_" + plan.id);
+              if (brut) {
+                const noms = _nomsDepuisLegende((JSON.parse(brut) || {}).customLegend);
+                Object.keys(noms).forEach(function(k) {
+                  if (aggLabels[k] == null) aggLabels[k] = noms[k];
+                });
+              }
+            } catch (e) {}
+            // 🏷️ v1.90.4 — On GARDE le détail par plan, avec ses étiquettes.
+            // 🩸 Sans ça, chaque clic sur une chip de filtre relirait le
+            // localStorage de tous les plans — la boucle ci-dessus a un `await`
+            // par plan justement parce qu'elle est trop lourde pour le thread UI.
+            // Refiltrer doit être une opération de RAM, pas une relecture.
+            _statsParPlan.push({
+              id: plan.id,
+              // `type` et `path` servent à retrouver le plan-config SANS ouvrir
+              // le plan, quand l'utilisateur demande les noms manquants.
+              type: plan.type,
+              path: plan.path || null,
+              tags: Array.isArray(plan.tags) ? plan.tags.slice() : [],
+              breakdowns: stats.breakdowns
+            });
           }
 
           // Append row au tbody (rendu progressif visible par l'user)
@@ -2060,14 +2141,101 @@
         // agrégés cross-plan, après la table. Réutilise renderPieChart
         // exposé par window.StatsGlobales (= même rendu que la modale Stats
         // Globales d'un plan, mais agrégé sur tous les plans accessibles).
-        _renderProfilePies(aggBreakdowns);
+        _renderProfilePies(aggBreakdowns, aggLabels);
+      }
+
+      // 🏷️ v1.90.4 (demande KARMA : « rajoute un graph de ce genre via les tags
+      // des plans, possibilité de filtrer et exclure »).
+      //
+      // Trois états par étiquette, et c'est ce qui rend « exclure » utile :
+      //   neutre  → l'étiquette ne dit rien
+      //   inclure → on ne garde QUE les plans qui la portent
+      //   exclure → on retire les plans qui la portent, quoi qu'il arrive
+      // 🩸 L'exclusion l'emporte toujours sur l'inclusion : un plan tagué
+      // « gironde » ET « brouillon », avec gironde inclus et brouillon exclu,
+      // est ÉCARTÉ. L'inverse ferait rentrer par une porte ce qu'on a fermé par
+      // l'autre — et c'est exactement le cas d'usage (« sors-moi l'atlas »).
+      //
+      // ⚠️ RAM uniquement, aucune clé de stockage : un filtre de consultation
+      // qui survivrait à la fermeture de la modale ferait croire, au retour,
+      // que des plans ont disparu.
+      // 🏷️ v1.90.5 — DICTIONNAIRE PERSISTANT DES NOMS DE TYPES PERSONNALISÉS.
+      // 🩸 VÉCU (KARMA) : la v1.90.3 mémorisait le nom au chargement du plan, ce
+      // qui ne réparait RIEN pour les plans déjà ouverts AVANT elle — leur cache
+      // de stats date d'avant et ne contient pas de `labels`. Le message disait
+      // vrai (« ouvre ces plans une fois ») mais imposait 20 ouvertures pour un
+      // affichage. Ce dictionnaire survit aux versions et se remplit par deux
+      // voies : le chargement d'un plan, et la recherche à la demande ci-dessous.
+      const LS_NOMS = "myktamap_legend_labels_v1";
+      function _nomsPersistes() {
+        try { return JSON.parse(localStorage.getItem(LS_NOMS) || "{}") || {}; }
+        catch (e) { return {}; }
+      }
+      function _persisterNoms(map) {
+        try {
+          const cur = _nomsPersistes();
+          Object.keys(map || {}).forEach(function(k) { if (map[k]) cur[k] = map[k]; });
+          localStorage.setItem(LS_NOMS, JSON.stringify(cur));
+        } catch (e) { console.warn("[ProfileStats] noms non persistés :", e); }
+      }
+
+      // Extrait les noms d'un bloc `customLegend` (plan-config ou session).
+      // Deux sources dans le même objet : `labels` (renommages) et
+      // `customEntries` (les types créés, dont le nom EST l'identité).
+      function _nomsDepuisLegende(cl) {
+        const out = {};
+        if (!cl || typeof cl !== "object") return out;
+        Object.keys(cl.labels || {}).forEach(function(k) {
+          // 🩸 On ne retient QUE les clés custom : un renommage de type built-in
+          // ne doit jamais s'imposer à un agrégat cross-plan (règle v1.21.5-fix1).
+          if (k.indexOf(".cust-") < 0) return;
+          const v = cl.labels[k];
+          if (v) out[k] = String(v).slice(0, 60);
+        });
+        (Array.isArray(cl.customEntries) ? cl.customEntries : []).forEach(function(e) {
+          if (!e || !e.id || !e.label || !e.category) return;
+          out[e.category + "." + e.id] = String(e.label).slice(0, 60);
+        });
+        return out;
+      }
+
+      const _statsParPlan = [];
+      const _filtreTags = {};        // tag minuscule → "in" | "out"
+      const SANS_TAG = "\u0000sans-etiquette";   // sentinelle : ne peut pas entrer en collision
+
+      function _planRetenu(entree) {
+        const tags = (entree.tags || []).map(function(t) { return String(t).toLowerCase(); });
+        const cles = tags.length ? tags : [SANS_TAG];
+        const inclus = Object.keys(_filtreTags).filter(function(k) { return _filtreTags[k] === "in"; });
+        const exclus = Object.keys(_filtreTags).filter(function(k) { return _filtreTags[k] === "out"; });
+        if (exclus.some(function(k) { return cles.indexOf(k) >= 0; })) return false;
+        if (inclus.length === 0) return true;
+        return inclus.some(function(k) { return cles.indexOf(k) >= 0; });
+      }
+
+      // Recalcule les 4 décomptes sur les seuls plans retenus, plus la
+      // répartition des PLANS par étiquette (un plan multi-étiquettes compte
+      // dans chacune : la somme des parts peut donc dépasser le nombre de
+      // plans, et c'est le comportement attendu d'un filtre).
+      function _agregerFiltre() {
+        const out = { pointsByTag: {}, roadsByType: {}, zonesByType: {}, structsByType: {}, plansByTag: {} };
+        _statsParPlan.forEach(function(e) {
+          if (!_planRetenu(e)) return;
+          ["pointsByTag", "roadsByType", "zonesByType", "structsByType"].forEach(function(k) {
+            _mergeBreakdown(out[k], (e.breakdowns || {})[k]);
+          });
+          const tags = (e.tags || []);
+          if (tags.length === 0) out.plansByTag[SANS_TAG] = (out.plansByTag[SANS_TAG] || 0) + 1;
+          else tags.forEach(function(t) { out.plansByTag[t] = (out.plansByTag[t] || 0) + 1; });
+        });
+        return out;
       }
 
       // 🆕 v1.21.3 — Rend la section camemberts dans la modale Profil.
       // Construit ou met à jour le DOM #kta-profile-pies (après la table
       // "📊 Mes plans"). Une grille de 4 camemberts max (4 catégories) ;
       // chaque camembert n'apparaît QUE si sa catégorie a des données.
-      function _renderProfilePies(breakdowns) {
+      function _renderProfilePies(breakdowns, labels) {
         const wrap = document.getElementById("kta-profile-plansstats");
         if (!wrap) return;
         // Cleanup précédent (en cas de re-render)
@@ -2080,8 +2248,17 @@
                           : null;
         if (!renderPie) return;
 
+        const tr = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
+
+        // 🏷️ v1.90.4 — Les décomptes viennent désormais du FILTRE, pas de
+        // l'agrégat brut : sans filtre actif, `_agregerFiltre()` rend
+        // exactement le même total. On garde `breakdowns` en repli pour le cas
+        // où le détail par plan n'aurait pas été collecté (ancien chemin).
+        if (_statsParPlan.length) breakdowns = _agregerFiltre();
+
         // Une cat à afficher = breakdown non vide
         const sections = [
+          { key: "plansByTag",    category: "plantags",   label: "🏷️ " + tr("home.profile.pies.plansParTag") },
           { key: "pointsByTag",   category: "tags",       label: "📍 Points par tag" },
           { key: "roadsByType",   category: "traces",     label: "🛣️ Tracés par type" },
           { key: "zonesByType",   category: "zones",      label: "⬛ Zones par type" },
@@ -2091,15 +2268,187 @@
           const data = breakdowns[s.key] || {};
           return Object.keys(data).length > 0;
         });
-        if (activeSections.length === 0) return;  // rien à dessiner
+        // 🩸 v1.90.4 — L IMPASSE A EVITER : si le filtre exclut TOUT, les cinq
+        // sections sont vides. Sortir ici retirerait aussi les chips -- donc le
+        // seul moyen de revenir en arriere. L utilisateur se retrouverait devant
+        // un bloc disparu, persuade d avoir casse quelque chose. Meme piege que
+        // le flag kiosque qui cachait son propre remede (v1.90.1).
+        const filtreActif = Object.keys(_filtreTags).length > 0;
+        if (activeSections.length === 0 && !filtreActif) return;  // rien a dessiner
+
+        // 🩸 v1.90.3 — QUAND ON NE SAIT PAS, ON LE DIT. Le nom d'un type
+        // personnalisé n'est mémorisé qu'au chargement du plan : pour un plan
+        // jamais ouvert depuis cette version, la clé brute reste le seul
+        // affichage possible. Sans cette note, l'utilisateur croit à un bug
+        // permanent au lieu de comprendre qu'il lui suffit d'ouvrir le plan.
+        // Même honnêteté que le message « aucun plan géoréférencé ».
+        // Un seul bouton pour tout le bloc, remis à zéro à chaque rendu.
+        let _boutonNomsPose = false;
+        function _noteTypesNonResolus(data, categorie, labels) {
+          const cat = (categorie === "roads") ? "traces"
+                    : (categorie === "tags")  ? "icones"
+                    : categorie;
+          const inconnus = Object.keys(data || {}).filter(function(k) {
+            return k.indexOf("cust-") === 0 && !(labels && labels[cat + "." + k]);
+          });
+          if (inconnus.length === 0) return "";
+          // 🩸 AUTONOME À DESSEIN. `_t` et `escapeHtml` sont declares dans
+          // d autres fonctions de ce fichier, pas au niveau de l IIFE : les
+          // referencer ici serait une ReferenceError au runtime, que `node -c`
+          // ne voit pas. C est la faute exacte de `meta` en v1.88.1.
+          const tr = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
+          const txt = String(tr("home.profile.pies.typesInconnus", { n: inconnus.length }))
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          // Le bouton n'apparaît QU'UNE FOIS pour tout le bloc (il interroge
+          // tous les plans d'un coup) : le premier camembert qui a des types
+          // inconnus le porte.
+          let bouton = "";
+          if (!_boutonNomsPose) {
+            _boutonNomsPose = true;
+            const nbPlans = _statsParPlan.filter(function(e) {
+              return e.type === "server" || window.PlanRegistry;
+            }).length;
+            bouton = ' <button type="button" class="kta-profile-pies-fix">' +
+                       String(tr("home.profile.pies.retrouverNoms", { n: nbPlans }))
+                         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+                     '</button>';
+          }
+          return '<div class="kta-profile-pies-note">' + txt + bouton + '</div>';
+        }
+
+        // 🏷️ v1.90.5 — RETROUVER LES NOMS SANS OUVRIR LES PLANS.
+        // 🩸 VÉCU (KARMA, capture) : « toujours un souci ». La v1.90.3 ne
+        // réparait que les plans rouverts APRÈS elle — pour 20 plans déjà
+        // ouverts avant, il fallait les rouvrir un par un. Le message était
+        // exact et la corvée réelle.
+        //
+        // Le nom d'un type né d'un import SIG vit dans `plan.customLegend` du
+        // `plan-config.json`. Pour un plan SERVEUR c'est UNE requête vers votre
+        // propre serveur ; pour un plan local, une lecture du ZIP mémorisé.
+        //
+        // ⚠️ SUR DEMANDE, JAMAIS AUTOMATIQUE : 20 plans = 20 requêtes au
+        // chargement d'une fenêtre que l'utilisateur n'a peut-être pas ouverte
+        // pour ça. Le bouton dit combien de plans il va interroger — on ne
+        // déclenche pas du réseau dans le dos de quelqu'un.
+        async function _retrouverNoms(btn) {
+          const trb = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){ return k; };
+          const trouves = {};
+          let interroges = 0, echecs = 0;
+          for (const e of _statsParPlan) {
+            let cl = null;
+            try {
+              if (e.type === "server" && e.path) {
+                const dir = String(e.path).replace(/\/+$/, "");
+                const r = await fetch(dir + "/plan-config.json", { cache: "no-store" });
+                if (r.ok) {
+                  const cfg = await r.json();
+                  cl = cfg && cfg.plan ? cfg.plan.customLegend : null;
+                }
+                interroges++;
+              } else if (window.PlanRegistry && typeof window.PlanRegistry.getBlob === "function"
+                         && typeof window.JSZip !== "undefined") {
+                // 🩸 Le BLOB uniquement, jamais le FileSystemFileHandle : ce
+                // dernier peut réclamer une permission, donc une boîte de
+                // dialogue par plan. Un bouton ne doit pas se transformer en
+                // interrogatoire.
+                const blob = await window.PlanRegistry.getBlob(e.id);
+                if (blob) {
+                  const zip = await window.JSZip.loadAsync(blob);
+                  const ent = zip.file("plan-config.json") || zip.file("data/plan-config.json");
+                  if (ent) {
+                    const cfg = JSON.parse(await ent.async("string"));
+                    cl = cfg && cfg.plan ? cfg.plan.customLegend : null;
+                  }
+                  interroges++;
+                }
+              }
+            } catch (err) { echecs++; }
+            if (cl) Object.assign(trouves, _nomsDepuisLegende(cl));
+            // Laisse respirer le thread UI entre deux plans, comme la boucle
+            // d'agrégation : 20 lectures de ZIP d'affilée figeraient l'écran.
+            await new Promise(function(r2) { setTimeout(r2, 0); });
+          }
+          _persisterNoms(trouves);
+          const n = Object.keys(trouves).length;
+          if (btn) {
+            btn.textContent = n
+              ? trb("home.profile.pies.nomsTrouves", { n: n })
+              : trb("home.profile.pies.nomsAucun", { n: interroges, e: echecs });
+            btn.disabled = true;
+          }
+          if (n) _renderProfilePies(breakdowns, Object.assign({}, labels, trouves));
+        }
+
+        // 🏷️ v1.90.4 — La rangée de chips. Trois états, un clic pour passer au
+        // suivant : neutre → inclure → exclure → neutre. 🩸 Le libellé de chaque
+        // état est PORTÉ PAR LA CHIP (✓ / ✕), pas seulement par une couleur :
+        // un filtre qui ne se lit qu'à la teinte est illisible pour qui
+        // distingue mal les couleurs, et invisible sur une capture d'écran.
+        function _chipsFiltre() {
+          if (!_statsParPlan.length) return "";
+          const compte = {};
+          let sansTag = 0;
+          _statsParPlan.forEach(function(e) {
+            const tags = e.tags || [];
+            if (!tags.length) { sansTag++; return; }
+            tags.forEach(function(t) {
+              const k = String(t).toLowerCase();
+              compte[k] = (compte[k] || 0) + 1;
+            });
+          });
+          const cles = Object.keys(compte).sort(function(a, b) { return compte[b] - compte[a]; });
+          if (sansTag > 0) cles.push(SANS_TAG);
+          // Une seule étiquette (ou aucune) : le filtre n'a rien à trancher.
+          if (cles.length < 2) return "";
+
+          const retenus = _statsParPlan.filter(_planRetenu).length;
+          let h = '<div class="kta-profile-tagfilter">';
+          h += '<div class="kta-profile-tagfilter-aide">' +
+                 _echapper(tr("home.profile.pies.filtreAide")) + '</div>';
+          h += '<div class="kta-profile-tagfilter-chips">';
+          cles.forEach(function(k) {
+            const etat = _filtreTags[k] || "";
+            const nb = (k === SANS_TAG) ? sansTag : compte[k];
+            const nom = (k === SANS_TAG) ? tr("home.profile.pies.sansTag") : k;
+            const marque = (etat === "in") ? "✓ " : (etat === "out") ? "✕ " : "";
+            h += '<button type="button" class="kta-profile-tagchip' +
+                   (etat ? ' kta-profile-tagchip-' + etat : '') +
+                 '" data-tag="' + _echapper(k) + '">' +
+                   marque + _echapper(nom) + ' <span class="kta-profile-tagchip-n">' + nb + '</span>' +
+                 '</button>';
+          });
+          h += '</div>';
+          h += '<div class="kta-profile-tagfilter-etat">' +
+                 _echapper(tr("home.profile.pies.filtreEtat",
+                              { n: retenus, total: _statsParPlan.length })) + '</div>';
+          h += '</div>';
+          return h;
+        }
+
+        // 🩸 Autonome : `escapeHtml` n'est pas déclaré au niveau de ce module.
+        function _echapper(s2) {
+          return String(s2 == null ? "" : s2)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;");
+        }
 
         const piesContainer = document.createElement("div");
         piesContainer.id = "kta-profile-pies";
         piesContainer.className = "kta-profile-pies-wrap";
         let html = '<div class="kta-profile-pies-header">📊 Répartition par catégorie <span style="color:#8892a4; font-size:11px; font-weight:400;">(agrégée sur tes plans)</span></div>';
+        html += _chipsFiltre();
         html += '<div class="kta-profile-pies-grid">';
         activeSections.forEach(function(s) {
-          const data = breakdowns[s.key] || {};
+          let data = breakdowns[s.key] || {};
+          // 🩸 La sentinelle « sans étiquette » ne doit JAMAIS s'afficher telle
+          // quelle. On la traduit dans une COPIE : l'originale sert au filtre.
+          if (s.key === "plansByTag" && data[SANS_TAG] != null) {
+            const copie = {}; const nom = tr("home.profile.pies.sansTag");
+            Object.keys(data).forEach(function(k) {
+              copie[k === SANS_TAG ? nom : k] = data[k];
+            });
+            data = copie;
+          }
           html += '<div class="kta-profile-pies-card">' +
                     '<div class="kta-profile-pies-card-title">' + s.label + '</div>' +
                     // 🆕 v1.21.5-fix1 (KARMA "en stat général, on doit toujours
@@ -2107,12 +2456,38 @@
                     // cascade LegendCustomization (qui appliquerait le renommage
                     // local du plan A à l'agrégat cross-plan home). Cross-plan =
                     // labels par défaut cohérents partout.
-                    renderPie(data, s.category, 140, true) +
+                    renderPie(data, s.category, 140, true, labels || {}) +
+                    _noteTypesNonResolus(data, s.category, labels) +
                   '</div>';
         });
         html += '</div>';
         piesContainer.innerHTML = html;
         wrap.appendChild(piesContainer);
+
+        // 🏷️ v1.90.4 — Un clic fait tourner l'état de l'étiquette, puis on
+        // re-rend TOUT le bloc : les quatre autres camemberts se recalculent
+        // sur les plans retenus. C'est le sens de la demande — « exclure »
+        // n'a d'intérêt que s'il change les totaux qu'on regarde.
+        // 🩸 Délégation sur le conteneur : les chips sont recréées à chaque
+        // rendu, brancher chaque bouton laisserait des écouteurs orphelins.
+        piesContainer.addEventListener("click", function(ev) {
+          const fix = ev.target && ev.target.closest ? ev.target.closest(".kta-profile-pies-fix") : null;
+          if (fix) {
+            fix.disabled = true;
+            fix.textContent = (window.I18n && window.I18n.t)
+              ? window.I18n.t("home.profile.pies.nomsRecherche") : "…";
+            _retrouverNoms(fix);
+            return;
+          }
+          const btn = ev.target && ev.target.closest ? ev.target.closest("[data-tag]") : null;
+          if (!btn) return;
+          const k = btn.getAttribute("data-tag");
+          const cur = _filtreTags[k] || "";
+          if (cur === "")          _filtreTags[k] = "in";
+          else if (cur === "in")   _filtreTags[k] = "out";
+          else                     delete _filtreTags[k];
+          _renderProfilePies(breakdowns, labels);
+        });
       }
 
       // Init bandeau au boot du loader (différé pour laisser UserProfile.init())

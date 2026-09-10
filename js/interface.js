@@ -2298,6 +2298,24 @@ function initInterface() {
       _historyUiSubBound = true;
       window.HistoryManager.onChange(function(state) {
         if (_syncHistoryUiRef) _syncHistoryUiRef(state);
+        // 🐛 v1.90.16→17 (bug KARMA) — Ctrl+Z jusqu'à VIDER une forme en cours
+        // (tracé, zone OU structure) : `historyManager._applyState` remet alors
+        // le mode correspondant à null (l'outil est mort côté état — clic carte
+        // = rien), mais NE touche PAS au visuel du bouton → la pastille reste
+        // `kta-actif` : « allumé mais mort ». Les boutons de suppression (↩️/✂️)
+        // fermaient déjà le mode ; le raccourci clavier, non.
+        // On resynchronise ici : bouton actif + mode ÉTEINT = on ferme. C'est
+        // EXACT car `_applyState` RESTAURE le mode tant qu'il reste une forme en
+        // cours (undo d'un point ≠ tout annuler ; parité road/zone/structure
+        // depuis v1.90.17) — donc `!window.modeX` signifie bien « tout a été
+        // annulé », jamais « en plein dessin ». Chaque `_fermerModeX` est sûr :
+        // son `desactiverFn` ne toggle QUE `if (window.modeX)`, il ne ré-armera
+        // pas l'outil quand le mode est déjà null.
+        try {
+          if (_modesActifs["road"]      && !window.modeRoad)      _fermerModeRoad();
+          if (_modesActifs["zone"]      && !window.modeZone)      _fermerModeZone();
+          if (_modesActifs["structure"] && !window.modeStructure) _fermerModeStructure();
+        } catch (e) { /* resync best-effort */ }
       });
     }
   })();

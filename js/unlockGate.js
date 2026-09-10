@@ -45,8 +45,38 @@
   const LS_ATTEMPTS = "myktamap_unlock_attempts"; // compteur tentatives échouées
   const MAX_ATTEMPTS = 5;
 
+  // 🔑 v1.90.6 (demande KARMA) — MOT DE PASSE PROPRE À UNE INSTANCE SERVEUR.
+  // Une instance auto-hébergée peut publier SON hash dans
+  // `data/index.json > config.accessHash`. Deux mots de passe ouvrent alors
+  // l'app : celui de la communauté (hardcodé ci-dessus, inchangé) et celui du
+  // déployeur. Aucun ne remplace l'autre — un kiosque n'a pas à distribuer le
+  // code communautaire à ses membres, et l'auteur n'a pas à connaître celui du
+  // kiosque.
+  //
+  // ⚠️ MÊME NIVEAU DE SÉCURITÉ QUE CI-DESSUS, PAS MOINS, PAS PLUS. Le hash est
+  // dans un fichier PUBLIC : n'importe qui peut le télécharger et le
+  // brute-forcer hors ligne. C'est exactement la situation du hash communautaire,
+  // lisible sur GitHub depuis toujours. Barrière SOCIALE, jamais une
+  // authentification — et ce serait mentir que de le présenter autrement.
+  //
+  // 🩸 CE QUI EST MÉMORISÉ, ET POURQUOI. Le hash accepté est écrit dans
+  // `LS_UNLOCK`, comme avant. Mais `isUnlocked()` compare à `HASH_VALIDE` : un
+  // utilisateur entré par le mot de passe du kiosque serait donc REVERROUILLÉ
+  // au premier démarrage hors-ligne, quand l'index n'est pas joignable. D'où
+  // cette seconde clé : elle se souvient du hash d'instance accepté, sans quoi
+  // la fonctionnalité serait inutilisable justement là où l'app sert le plus.
+  const LS_UNLOCK_KIOSQUE = "myktamap_unlock_instance_v1";
+  const RE_HASH = /^[0-9a-f]{64}$/;
+
   // État interne
   let _resolveGate = null;  // Promise resolver pour main.js qui attend
+
+  // 🔒 v1.90.8 — Vrai quand la gate courante est montée sur une instance qui
+  // publie un `accessHash` valide. Sert à RETIRER le bloc « importer ma licence
+  // pro » de l'écran : sur une instance protégée, une licence importée par
+  // l'utilisateur ne doit pas être un contournement du mot de passe du
+  // déployeur. Remis à false à chaque (re)montage de la gate.
+  let _instanceProtegeeGate = false;
 
   // =========================================================================
   // HELPERS HASH (SubtleCrypto SHA-256)
@@ -68,8 +98,97 @@
   // ÉTAT PUBLIC
   // =========================================================================
   function isUnlocked() {
-    try { return localStorage.getItem(LS_UNLOCK) === HASH_VALIDE; }
-    catch(e) { return false; }
+    try {
+      const v = localStorage.getItem(LS_UNLOCK);
+      if (v === HASH_VALIDE) return true;
+      // 🩸 Le hash d'instance mémorisé, lu SANS réseau : hors-ligne, c'est la
+      // seule chose qui empêche de reverrouiller quelqu'un qui est entré
+      // légitimement. La comparaison exige les deux valeurs non vides — sans
+      // ce garde, deux `null` seraient « égaux » et déverrouilleraient tout.
+      const k = localStorage.getItem(LS_UNLOCK_KIOSQUE);
+      return !!(v && k && RE_HASH.test(k) && v === k);
+    } catch(e) { return false; }
+  }
+
+  // Lit le hash publié par l'instance. Appelé UNIQUEMENT quand la gate
+  // s'ouvre — c'est-à-dire à la première installation ou après un reset — donc
+  // aucune requête ajoutée pour un utilisateur déjà déverrouillé.
+  // 🩸 On valide la FORME (64 hexa) avant de s'en servir : un `accessHash`
+  // fautif (mot de passe collé en clair, hash tronqué) ne doit pas devenir une
+  // valeur acceptée par comparaison de chaînes.
+  async function _hashInstance() {
+    try {
+      const r = await fetch("data/index.json", { cache: "no-store" });
+      if (!r.ok) return null;
+      const idx = await r.json();
+      const h = idx && idx.config ? idx.config.accessHash : null;
+      if (typeof h !== "string") return null;
+      const propre = h.trim().toLowerCase();
+      if (!RE_HASH.test(propre)) {
+        console.warn("[UnlockGate] config.accessHash ignoré : ce n'est pas un SHA-256 (64 hexa)");
+        return null;
+      }
+      return propre;
+    } catch(e) { return null; }
+  }
+
+  // 🔒 v1.90.8 — L'instance impose-t-elle un mot de passe d'accès ? (accessHash
+  // publié et valide.) Async : demande l'index. Utilisé par main.js pour
+  // refuser le bypass d'une licence pro LOCALE, et par la gate pour masquer le
+  // bloc d'import. 🩸 Échec réseau → false : hors-ligne au 1ᵉʳ contact, on ne
+  // peut pas savoir, et fermer par défaut bloquerait un accès légitime — le
+  // Service Worker sert l'index en cache dès la 2ᵉ visite.
+  async function instanceRequiertMotDePasse() {
+    return !!(await _hashInstance());
+  }
+
+  // 🔑 v1.90.6 — Le déployeur a changé son mot de passe : on oublie l'ancien,
+  // et l'utilisateur le ressaisira au PROCHAIN démarrage. On ne recharge pas la
+  // page en pleine session — couper quelqu'un au milieu de son relevé pour une
+  // rotation de mot de passe serait pire que le délai d'un boot.
+  // 🩸 Appelé UNIQUEMENT quand l'index a répondu : hors-ligne, on ne touche à
+  // rien, sinon une coupure réseau reverrouillerait l'app.
+  function revaliderInstance(hashPublie, indexRepondu) {
+    // 🩸 `null` VEUT DIRE DEUX CHOSES INCOMPATIBLES : « l index a repondu et le
+    // mot de passe a ete retire » (reverrouiller) et « l index est injoignable »
+    // (ne toucher a rien). La fonction ne peut pas les deviner, donc l appelant
+    // le DIT. Sans ce parametre, la sureté reposait sur la discipline d un site
+    // d appel situe a 1800 lignes de la -- et un futur appel de bonne foi
+    // reverrouillerait l app a la premiere coupure reseau.
+    if (indexRepondu !== true) return;   // hors-ligne / index absent : on ne touche à rien
+    try {
+      const propre = (typeof hashPublie === "string") ? hashPublie.trim().toLowerCase() : null;
+      const valide = !!(propre && RE_HASH.test(propre));
+      const v = localStorage.getItem(LS_UNLOCK);
+      if (!v) return;   // pas déverrouillé : rien à révoquer
+
+      if (valide) {
+        // 🔒 L'instance impose un mot de passe : le SEUL accès valable est le
+        // sien. Tout autre déverrouillage mémorisé — le code communautaire
+        // « hérité » d'avant que l'instance ne pose son mot de passe, ou un
+        // ancien mot de passe d'instance — est RÉVOQUÉ. Sans ça, un accès
+        // communautaire acquis quand l'instance était ouverte y survivrait,
+        // rouvrant exactement le trou que le refus au submit vient de fermer.
+        if (v !== propre) {
+          localStorage.removeItem(LS_UNLOCK);
+          localStorage.removeItem(LS_UNLOCK_KIOSQUE);
+          console.log("[UnlockGate] accès révoqué : cette instance impose son propre mot de passe — ressaisie au prochain démarrage");
+        } else {
+          localStorage.setItem(LS_UNLOCK_KIOSQUE, propre);   // mémoire alignée sur l'accès en cours
+        }
+      } else {
+        // Pas (ou plus) de mot de passe d'instance : seul le code communautaire
+        // vaut désormais. Un accès entré via un mot de passe d'instance (mémoire
+        // présente) est révoqué — retirer le mot de passe ne doit pas laisser un
+        // accès dont le hash n'est plus le code communautaire.
+        const memo = localStorage.getItem(LS_UNLOCK_KIOSQUE);
+        if (memo) {
+          localStorage.removeItem(LS_UNLOCK_KIOSQUE);
+          if (v === memo && v !== HASH_VALIDE) localStorage.removeItem(LS_UNLOCK);
+          console.log("[UnlockGate] mot de passe d'instance retiré — ressaisie au prochain démarrage");
+        }
+      }
+    } catch(e) {}
   }
 
   function _getAttempts() {
@@ -249,10 +368,33 @@
       return;
     }
 
-    if (hashed === HASH_VALIDE) {
+    // 🔑 v1.90.6 — QUAND UNE INSTANCE PUBLIE SON MOT DE PASSE, IL EST LE SEUL
+    // QUI OUVRE. 🩸 TROU DE SÉCURITÉ CORRIGÉ (KARMA) : la première version
+    // acceptait AUSSI le code communautaire. Or ce code est distribué
+    // largement — il ouvre la prod qui n'héberge rien. Quiconque le connaît
+    // aurait donc pu ouvrir n'importe quelle instance privée, et l'`accessHash`
+    // n'aurait rien protégé. Le code communautaire ne vaut plus que là où
+    // AUCUN mot de passe d'instance n'est publié.
+    //
+    // ⚠️ ON DEMANDE DONC L'INDEX À CHAQUE TENTATIVE : même une saisie qui égale
+    // le hash communautaire doit être REFUSÉE si l'instance impose le sien. La
+    // gate ne s'ouvre qu'à la 1ʳᵉ installation et après un reset — une requête
+    // y est négligeable. Hors-ligne, le Service Worker sert l'index en cache
+    // (network-first), donc le hash d'instance reste connu.
+    const hashInstance = await _hashInstance();
+    const okInstance   = !!(hashInstance && hashed === hashInstance);
+    // Le code communautaire n'ouvre QUE si l'instance n'impose PAS le sien.
+    const okCommunaute = (!hashInstance && hashed === HASH_VALIDE);
+
+    if (okCommunaute || okInstance) {
       // ✅ Succès
       try {
-        localStorage.setItem(LS_UNLOCK, HASH_VALIDE);
+        localStorage.setItem(LS_UNLOCK, hashed);
+        // 🩸 Mémoriser le hash d'instance est ce qui rend l'accès utilisable
+        // HORS LIGNE : `isUnlocked()` n'a alors rien d'autre pour reconnaître
+        // un déverrouillage légitime.
+        if (okInstance) localStorage.setItem(LS_UNLOCK_KIOSQUE, hashInstance);
+        else            localStorage.removeItem(LS_UNLOCK_KIOSQUE);
         localStorage.removeItem(LS_ATTEMPTS);
       } catch(e) {}
       fb.innerHTML = '<div class="kta-unlock-success">' + t("gate.success") + '</div>';
@@ -348,6 +490,22 @@
       const btnDoc = overlay.querySelector("#kta-unlock-readme-btn");
       if (btnDoc) btnDoc.addEventListener("click", _ouvrirDocReadme);
 
+      // 🔒 v1.90.8 — INSTANCE PROTÉGÉE : on RETIRE le bloc « importer ma
+      // licence pro ». Async (une requête d'index), donc le bloc peut clignoter
+      // une fraction de seconde avant de disparaître — la gate est un écran
+      // rare (1ᵉʳ lancement / reset) et le SW sert l'index en cache, donc
+      // c'est instantané en pratique. Le flag `_instanceProtegeeGate` double
+      // ce retrait d'un refus au clic (ci-dessous) au cas où le bloc serait
+      // rendu autrement un jour.
+      _instanceProtegeeGate = false;
+      _hashInstance().then(function(h) {
+        if (!h) return;
+        _instanceProtegeeGate = true;
+        overlay.querySelectorAll(".kta-licence-community").forEach(function(el) {
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        });
+      }).catch(function() {});
+
       // 🆕 v1.28.5 — Voie alternative "Ou importer ma licence pro".
       // L'user clique sur le bouton → file picker .json → import via
       // MyKTAMapProLicense.importFile() (réutilise tout le pipeline de
@@ -374,6 +532,14 @@
           }
           window.MyKTAMapProLicense.importFile(file).then(function(result) {
             if (result && result.ok) {
+              // 🔒 v1.90.8 — Sur une instance protégée, la licence peut activer
+              // le mode pro, mais elle N'OUVRE PAS la gate : le mot de passe du
+              // déployeur reste requis. On ne pose donc PAS le flag unlock.
+              if (_instanceProtegeeGate) {
+                fb.innerHTML = '<div class="kta-unlock-error">' +
+                  t("gate.licence.instanceProtegee") + '</div>';
+                return;
+              }
               // Set le flag unlock (= bypass définitif pour les boots suivants).
               // Cohérent : détenir une licence pro = canal légitime, pas besoin
               // de re-saisir le code partagé à chaque reload.
@@ -446,7 +612,9 @@
     isLockedOut: isLockedOut,
     ouvrirGate:  ouvrirGate,
     lock:        lock,
-    markUnlockedViaLicensePro: markUnlockedViaLicensePro
+    markUnlockedViaLicensePro: markUnlockedViaLicensePro,
+    revaliderInstance: revaliderInstance,   // 🔑 v1.90.6 (appelé par main.js)
+    instanceRequiertMotDePasse: instanceRequiertMotDePasse   // 🔒 v1.90.8
   };
 
   console.log("[UnlockGate] Module chargé — unlock state :", isUnlocked());

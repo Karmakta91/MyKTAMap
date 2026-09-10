@@ -18721,6 +18721,72 @@ html.kta-theme-light .kta-profile-barstats-cb:hover {
   border-radius: 8px;
   padding: 10px 12px;
 }
+/* 🩸 v1.90.3 — Note des types personnalisés non résolus. Discrète : c'est une
+   explication, pas une alerte — le chiffre est juste, seul le NOM manque. */
+/* 🏷️ v1.90.4 — Filtre par étiquette des stats du profil. Les trois états se
+   lisent au SYMBOLE (✓ / ✕) autant qu'à la couleur : un filtre qui ne se
+   distingue qu'à la teinte est illisible pour qui les distingue mal. */
+.kta-profile-tagfilter { margin: 10px 0 4px; }
+.kta-profile-tagfilter-aide {
+  font-size: 11px; line-height: 1.45; color: #8892a4; margin-bottom: 6px;
+}
+.kta-profile-tagfilter-chips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.kta-profile-tagchip {
+  padding: 4px 9px;
+  border: 1px solid rgba(140, 180, 255, 0.28);
+  border-radius: 999px;
+  background: transparent;
+  color: #c8d0e0;
+  font-size: 11.5px;
+  cursor: pointer;
+  line-height: 1.3;
+}
+.kta-profile-tagchip:hover { border-color: rgba(140, 180, 255, 0.55); }
+.kta-profile-tagchip-n { color: #8892a4; font-size: 10.5px; }
+.kta-profile-tagchip-in {
+  border-color: rgba(244, 197, 66, 0.75);
+  background: rgba(244, 197, 66, 0.12);
+  color: #f4c542;
+}
+.kta-profile-tagchip-in .kta-profile-tagchip-n { color: #f4c542; }
+.kta-profile-tagchip-out {
+  border-color: rgba(136, 146, 164, 0.45);
+  background: rgba(136, 146, 164, 0.10);
+  color: #8892a4;
+  text-decoration: line-through;
+}
+.kta-profile-tagfilter-etat {
+  margin-top: 6px; font-size: 11px; color: #8892a4;
+}
+
+.kta-profile-pies-fix {
+  margin-left: 6px;
+  padding: 3px 9px;
+  border: 1px solid rgba(140, 180, 255, 0.45);
+  border-radius: 6px;
+  background: transparent;
+  color: #8cb4ff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kta-profile-pies-fix:hover:not(:disabled) { background: rgba(140, 180, 255, 0.12); }
+.kta-profile-pies-fix:disabled { color: #8892a4; border-color: rgba(136,146,164,0.35); cursor: default; }
+
+.kta-profile-pies-note {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-left: 2px solid rgba(244, 197, 66, 0.5);
+  background: rgba(244, 197, 66, 0.06);
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #8892a4;
+}
+
 .kta-profile-pies-card-title {
   font-size: 12.5px;
   font-weight: 600;

@@ -87,12 +87,15 @@
   // 1 snapshot). null/undefined → clone TOUT (cas multi-catégories : import
   // GPX, reset global, note popup cross-type).
   //
-  // currentRoadIndex est toujours inclus (juste un number, négligeable) mais
-  // n'est restauré au undo QUE si le snapshot contient aussi `roads` (cf
-  // _applyState) — sinon un undo "zones" ne doit pas toucher au tracé en cours.
+  // currentRoadIndex/currentZoneIndex/currentStructureIndex sont toujours
+  // inclus (3 numbers, négligeable) mais chacun n'est restauré au undo QUE si
+  // le snapshot contient aussi la catégorie correspondante (cf _applyState) —
+  // sinon un undo "zones" ne doit pas toucher au tracé en cours, etc.
   function _captureState(category) {
     const snap = {
-      currentRoadIndex: (window.getCurrentRoadIndex ? window.getCurrentRoadIndex() : -1)
+      currentRoadIndex:      (window.getCurrentRoadIndex ? window.getCurrentRoadIndex() : -1),
+      currentZoneIndex:      (window.getCurrentZoneIndex ? window.getCurrentZoneIndex() : -1),
+      currentStructureIndex: (window.getCurrentStructureIndex ? window.getCurrentStructureIndex() : -1)
     };
     const all = !category;
     if (all || category === "editorPoints") {
@@ -138,6 +141,19 @@
       const _savedModeRoad = (Array.isArray(s.roads) && typeof s.currentRoadIndex === "number" && s.currentRoadIndex >= 0)
         ? window.modeRoad
         : null;
+      // 🆕 v1.90.17 — Même préservation pour zones et structures (parité KARMA
+      // « même principe pour zone et structure »). resetZones/resetStructures
+      // wipent aussi modeZone/modeStructure → null ; sans restauration, un Ctrl+Z
+      // en plein dessin tuait l'outil (clic suivant avorté par
+      // `if (!window.modeZone) return`) ET laissait la pastille allumée. On
+      // snapshot le mode AVANT le reset, on ne le restaure QUE s'il restait une
+      // forme en cours (index >= 0) — au vide, garder null = sortir du mode.
+      const _savedModeZone = (Array.isArray(s.zones) && typeof s.currentZoneIndex === "number" && s.currentZoneIndex >= 0)
+        ? window.modeZone
+        : null;
+      const _savedModeStructure = (Array.isArray(s.structures) && typeof s.currentStructureIndex === "number" && s.currentStructureIndex >= 0)
+        ? window.modeStructure
+        : null;
       if (Array.isArray(s.roads)) {
         if (window.resetRoads) window.resetRoads();
         if (window.setRoads) window.setRoads(s.roads);
@@ -158,12 +174,29 @@
           && typeof s.currentRoadIndex === "number") {
         window.setCurrentRoadByIndex(s.currentRoadIndex);
       }
+      // 🆕 v1.90.17 — idem zones/structures (APRÈS setZones/setStructures qui
+      // ont remis currentZone/currentStructure = null).
+      if (Array.isArray(s.zones) && window.setCurrentZoneByIndex
+          && typeof s.currentZoneIndex === "number") {
+        window.setCurrentZoneByIndex(s.currentZoneIndex);
+      }
+      if (Array.isArray(s.structures) && window.setCurrentStructureByIndex
+          && typeof s.currentStructureIndex === "number") {
+        window.setCurrentStructureByIndex(s.currentStructureIndex);
+      }
       // 🐛 v1.37.2 — Restaure le mode road pour permettre la continuation
       // du tracé après undo. Skip si on annulait la création même d'une
       // nouvelle road (currentRoadIndex == -1 ou pas de roads dans snap) :
       // dans ce cas garder modeRoad = null est cohérent (sortir du mode).
+      // 🆕 v1.90.17 — même restauration pour zones/structures.
       if (_savedModeRoad) {
         window.modeRoad = _savedModeRoad;
+      }
+      if (_savedModeZone) {
+        window.modeZone = _savedModeZone;
+      }
+      if (_savedModeStructure) {
+        window.modeStructure = _savedModeStructure;
       }
     } catch(e) {
       console.warn("[HistoryManager] _applyState échoué :", e);

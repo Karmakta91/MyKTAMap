@@ -330,3 +330,25 @@ node scripts/check-kiosque-serveur.js || exit $?
 # bouton ou l inverse ; et le defaut S ANNONCE tant que la cle est absente.
 # On EXECUTE les deux lecteurs sur les 4 etats de la cle. 7 sabotages rougissent.
 node scripts/check-osm-defaut.js || exit $?
+
+# MOT DE PASSE D INSTANCE (demande KARMA du 08/09 : « un hash perso pour le mot
+# de passe de la gate, du coup soit le mdp lie au hash de la gate, soit celui
+# lie au hash dans le index.json »). Le niveau de securite ne bouge PAS : le
+# hash vit dans un fichier public, brute-forcable hors ligne, exactement comme
+# le hash communautaire lisible sur GitHub. Barriere sociale, jamais une
+# authentification -- et le dire fait partie du contrat, donc la doc est
+# verifiee elle aussi.
+# TROIS FAUTES SILENCIEUSES tenues ici : deux `null` qui s egalent sur un
+# navigateur vierge (app grande ouverte) ; le reverrouillage hors-ligne d un
+# visiteur entre legitimement ; un accessHash fautif accepte par comparaison de
+# chaines. On EXECUTE isUnlocked et revaliderInstance. 10 sabotages rougissent.
+node scripts/check-gate-instance.js || exit $?
+
+# 🎯 v1.90.16 (bug KARMA du 10/09 : « Ctrl+Z jusqu a tout effacer, la pastille
+# du trace reste allumee mais l outil est mort »). Le raccourci clavier passe
+# par HistoryManager.undo -> _applyState (qui remet modeRoad a null au trace
+# vide) et NON par les boutons de suppression qui, eux, fermaient deja le mode.
+# La resync est branchee sur onChange. On EXECUTE le corps du callback extrait
+# du fichier reel (lecon v1.90.12 : un grep aurait valide un mauvais nom de
+# fonction, avale par le try/catch). 6 sabotages rougissent.
+node scripts/check-outils-dessin-sync.js || exit $?
