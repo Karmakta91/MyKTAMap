@@ -869,6 +869,24 @@ window.getCurrentStructure = function() {
   return currentStructure || null;
 };
 
+// 🆕 v1.90.17 — Parité avec le tracé : préservation de currentStructure à
+// travers undo/redo (cf road.js getCurrentRoadIndex/setCurrentRoadByIndex).
+// Sans ça, _applyState remettait modeStructure à null au moindre Ctrl+Z
+// (resetStructures le wipe, setStructures remet currentStructure = null) →
+// outil mort dès le 1er undo, continuation cassée, pastille bloquée.
+// HistoryManager capture l'index de la structure en cours et le restaure.
+window.getCurrentStructureIndex = function() {
+  if (!currentStructure) return -1;
+  return structuresData.indexOf(currentStructure);
+};
+window.setCurrentStructureByIndex = function(idx) {
+  if (typeof idx === "number" && idx >= 0 && idx < structuresData.length) {
+    currentStructure = structuresData[idx];
+  } else {
+    currentStructure = null;
+  }
+};
+
 // =========================
 // EXPORT GLOBAL
 // =========================
