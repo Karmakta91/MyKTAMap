@@ -6370,20 +6370,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   word-break: break-word;
 }
 
-/* ==============================================
-   MODE PERFORMANCE — segmented control (loader)
-   ============================================== */
-.kta-perf-wrap {
-  margin-top: 14px;
-  padding: 10px 12px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 /* === Drawer "🎚️ Réglages de performance" (loader) === */
 /* Wrapper qui regroupe le Tiling + les toggles Perf ULTRA dans une seule box
    collapsible. Ouverte par défaut pour conserver la visibilité du Tiling. */
@@ -6425,11 +6411,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   padding: 4px 12px 12px 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
-/* Le premier .kta-perf-wrap à l'intérieur du drawer perd son margin-top pour
-   coller juste sous le bord du séparateur du drawer. */
-.kta-loader-perf-drawer-corps > .kta-perf-wrap:first-child {
-  margin-top: 10px;
-}
 /* Séparateur visuel entre Tiling et toggles ULTRA dans le drawer */
 .kta-loader-perf-sep {
   margin: 14px 0;
@@ -6456,144 +6437,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   font-weight: 600;
   color: #e8eaf0;
   user-select: none;
-}
-
-.kta-perf-segmented {
-  display: flex;
-  width: 100%;
-  background: rgba(0,0,0,0.18);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.kta-perf-btn {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 8px 4px;
-  background: rgba(255,255,255,0.04);
-  border: none;
-  border-right: 1px solid rgba(255,255,255,0.06);
-  color: #c8d0e0;
-  cursor: pointer;
-  font-family: inherit;
-  line-height: 1.2;
-  text-align: center;
-  transition: background 0.15s ease, color 0.15s ease;
-  user-select: none;
-}
-
-.kta-perf-btn:last-child {
-  border-right: none;
-}
-
-.kta-perf-btn:hover:not(.active) {
-  background: rgba(255,255,255,0.08);
-  color: #e8eaf0;
-}
-
-.kta-perf-btn.active {
-  background: #f4c542;
-  color: #1a1f2e;
-}
-
-.kta-perf-btn .kta-perf-emoji {
-  font-size: 18px;
-  line-height: 1;
-}
-
-.kta-perf-btn .kta-perf-label {
-  font-size: 11px;
-  font-weight: 500;
-  /* 🆕 v1.46.4 (audit M3) : les labels longs en ES (Desactivado/Equilibrado/
-     Rendimiento) étaient tronqués « Desact… » sur mobile (nowrap + ellipsis +
-     boutons étroits flex:1). On autorise le wrap + la coupure de mot si besoin
-     → le label complet reste lisible (2 lignes au pire). Desktop inchangé (les
-     boutons larges gardent une seule ligne, le wrap ne s'active qu'au manque
-     de place). align-items du flex garde les boutons à hauteur égale. */
-  white-space: normal;
-  overflow-wrap: anywhere;
-  max-width: 100%;
-}
-
-.kta-perf-btn.active .kta-perf-label {
-  font-weight: 700;
-}
-
-.kta-perf-desc {
-  font-size: 12px;
-  font-style: italic;
-  color: #8892a4;
-  line-height: 1.4;
-  padding: 0 2px;
-  min-height: 1.4em;
-}
-
-/* 🖼️ v1.85.4 — Mention sous le tuilage, dans la carte de chargement : elle dit
-   que le choix N'EST PAS mémorisé. Plus discrète que .kta-perf-desc, qui porte
-   la description dynamique du preset (remplie en JS depuis les metas tiling). */
-/* ═══════════════════════════════════
-   🖼️ v1.88.1 — TUILAGE REPLIABLE DANS LA CARTE DE CHARGEMENT
-   🩸 Le bloc, posé là en v1.86.0, ajoutait ~207 px a la colonne Actions —
-   dont le min-content mesure ~510 px sous un plancher de grid de 520 px
-   (cf .loader-grid). A 125 % de zoom (viewport 1229x691) la colonne
-   debordait sur le footer : le bug « des % qui cassent le home », deja
-   clos en v1.60.x, revenait par ma faute.
-   Replie, il coute ~38 px au lieu de ~207. La valeur courante reste
-   visible dans le resume : on n a pas besoin de deplier pour savoir.
-   ═══════════════════════════════════ */
-.kta-perf-details {
-  margin-top: 14px;
-}
-.kta-perf-summary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px;
-  background: rgba(255,255,255,0.03);
-  color: #c8d0e0;
-  font-size: 12.5px;
-  cursor: pointer;
-  user-select: none;
-  list-style: none;          /* Chrome/Safari : masque le triangle natif */
-}
-.kta-perf-summary::-webkit-details-marker { display: none; }
-.kta-perf-summary::after {
-  content: "▾";
-  margin-left: auto;
-  opacity: 0.6;
-  transition: transform 0.15s ease;
-}
-.kta-perf-details[open] > .kta-perf-summary::after { transform: rotate(180deg); }
-.kta-perf-summary b { color: #f4c542; font-weight: 600; }
-.kta-perf-summary:hover { border-color: rgba(140,180,255,0.45); }
-/* Deplie : le wrap perd sa marge propre, le resume la porte deja. */
-.kta-perf-details > .kta-perf-wrap { margin-top: 8px; }
-
-.kta-perf-hint {
-  font-size: 11px;
-  color: #8892a4;
-  line-height: 1.4;
-  padding: 0 2px;
-  opacity: 0.85;
-}
-
-.kta-perf-debug {
-  font-size: 10px;
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  color: rgba(244, 197, 66, 0.75);
-  padding: 4px 6px;
-  background: rgba(244, 197, 66, 0.06);
-  border: 1px solid rgba(244, 197, 66, 0.18);
-  border-radius: 4px;
-  word-break: break-word;
 }
 
 /* ==============================================
@@ -15486,22 +15329,6 @@ body.kta-theme-light .kta-aide-section-titre {
 body.kta-theme-light .kta-loader-perf-hint {
   color: var(--kta-light-text-muted);
 }
-body.kta-theme-light .kta-perf-btn {
-  background: rgba(0,0,0,0.04);
-  color: var(--kta-light-text);
-  border: 1px solid var(--kta-light-border);
-}
-body.kta-theme-light .kta-perf-btn:hover {
-  background: var(--kta-light-accent-bg);
-  border-color: var(--kta-light-accent);
-}
-body.kta-theme-light .kta-perf-btn.active {
-  background: #ffffff;
-  border-color: var(--kta-light-accent);
-  color: var(--kta-light-text);
-  box-shadow: inset 0 0 0 1px var(--kta-light-accent);
-}
-
 /* === Toggles checkbox (paranoia / legacy / showInter / themeLight) === */
 body.kta-theme-light .kta-net-paranoia-toggle {
   background: rgba(244, 197, 66, 0.06) !important;
@@ -15541,10 +15368,6 @@ body.kta-theme-light .kta-loader-config-corps * {
 body.kta-theme-light .kta-perf-titre {
   color: var(--kta-light-accent-hover) !important;
 }
-body.kta-theme-light .kta-perf-desc {
-  color: var(--kta-light-text-muted) !important;
-}
-
 /* === Modale Audit réseau (NetDoc + NetLog) === */
 body.kta-theme-light #loaderNetDocModal .kta-readme-modal-boite,
 body.kta-theme-light #loaderNetLogModal .kta-readme-modal-boite {
@@ -17005,23 +16828,6 @@ html.kta-theme-light .kta-loader-config-corps * {
 }
 html.kta-theme-light .kta-perf-titre {
   color: #d9a82e !important;
-}
-html.kta-theme-light .kta-perf-desc {
-  color: #6b6354 !important;
-}
-html.kta-theme-light .kta-perf-btn {
-  background: rgba(0,0,0,0.04) !important;
-  color: #2a2620 !important;
-  border: 1px solid rgba(0,0,0,0.12) !important;
-}
-html.kta-theme-light .kta-perf-btn:hover {
-  background: rgba(244,197,66,0.22) !important;
-  border-color: #f4c542 !important;
-}
-html.kta-theme-light .kta-perf-btn.active {
-  background: #ffffff !important;
-  border-color: #f4c542 !important;
-  box-shadow: inset 0 0 0 1px #f4c542 !important;
 }
 html.kta-theme-light .kta-net-paranoia-toggle {
   background: rgba(244, 197, 66, 0.06) !important;
