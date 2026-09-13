@@ -89,10 +89,40 @@
     };
   }
 
+  // 🚨 Q34/Q35 (audit ergonomie 13/09/2026) : un filtre actif n'était visible
+  // QUE dans le pied de la modale, et « Tout afficher » oubliait les niveaux
+  // en affirmant « Aucun filtre actif ». Sous terre, un POI masqué se lit
+  // « il n'existe pas ». Le bouton ≡ porte désormais une pastille avec le
+  // nombre de filtres actifs (tags / tracés / zones / structures / niveaux).
+  function _niveauxFiltres() {
+    const c = window.APP_CONFIG;
+    if (!c || c.multiLevel !== true) return false;
+    if (!Array.isArray(c.availableLevels) || !Array.isArray(c.visibleLevels)) return false;
+    return c.availableLevels.some(function(l) { return c.visibleLevels.indexOf(l) < 0; });
+  }
+  function _nbFiltresActifs() {
+    const f = window._ktaRuntimeFilters || {};
+    let n = 0;
+    if (f.tags        !== null && f.tags        !== undefined) n++;
+    if (f.roadTypes   !== null && f.roadTypes   !== undefined) n++;
+    if (f.zoneTypes   !== null && f.zoneTypes   !== undefined) n++;
+    if (f.structTypes !== null && f.structTypes !== undefined) n++;
+    if (_niveauxFiltres()) n++;
+    return n;
+  }
+  function majBadge() {
+    const a = document.querySelector(".kta-filter-ctrl a");
+    if (!a) return;
+    const n = _nbFiltresActifs();
+    a.classList.toggle("kta-filter-ctrl-actif", n > 0);
+    if (n > 0) a.setAttribute("data-count", String(n)); else a.removeAttribute("data-count");
+  }
+
   function _notify() {
     _listeners.forEach(function(cb) {
       try { cb(window._ktaRuntimeFilters); } catch(e) {}
     });
+    majBadge();
   }
 
   function _scheduleApply() {
@@ -800,6 +830,17 @@
         overlay.querySelectorAll('[data-data-layer]').forEach(function(cb) {
           if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event("change", { bubbles: true })); }
         });
+        // 🚨 Q35 : les NIVEAUX aussi (même chemin que « 👁️ Tous »). Avant, le
+        // seul bouton de réinitialisation laissait des étages masqués tout en
+        // affichant « Aucun filtre actif ».
+        if (_niveauxFiltres()) {
+          const avail = window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels)
+                        ? window.APP_CONFIG.availableLevels : [];
+          overlay.querySelectorAll('[data-lvl-visible]').forEach(function(cb) { cb.checked = true; });
+          if (window.APP_CONFIG) window.APP_CONFIG.visibleLevels = avail.slice();
+          if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
+          if (typeof window._onLevelChange === "function") window._onLevelChange("visible", avail);
+        }
         _refreshChipsState(overlay);
         _updateStatus();
       });
@@ -838,6 +879,8 @@
     if (f.roadTypes   !== null) active.push(window.I18n.t("filter.status.roads"));
     if (f.zoneTypes   !== null) active.push(window.I18n.t("filter.status.zones"));
     if (f.structTypes !== null) active.push(window.I18n.t("filter.status.structs"));
+    if (_niveauxFiltres())      active.push(window.I18n.t("filter.status.levels"));   // Q35
+    majBadge();
     if (active.length === 0) {
       el.textContent = window.I18n.t("filter.status.none");
       el.style.color = "#8892a4";
@@ -975,6 +1018,8 @@
   // EXPORT
   // ============================================================
   window.FilterPanel = {
+    majBadge:      majBadge,          // 🚨 Q34 : pastille sur ≡ (appelée aussi par le polling du footer)
+    nbActifs:      _nbFiltresActifs,
     refresh:       refreshDataLayers,
     ouvrir:        ouvrir,
     fermer:        fermer,

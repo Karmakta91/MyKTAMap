@@ -44,6 +44,33 @@
   const LS_UNLOCK   = "myktamap_unlock_v1";       // hash validé (= mdp accepté)
   const LS_ATTEMPTS = "myktamap_unlock_attempts"; // compteur tentatives échouées
   const MAX_ATTEMPTS = 5;
+  // 🔒 M2 (décision KARMA 13/09/2026, audit B7) : verrou TEMPORISÉ et escaladé
+  // (10 min → 1 h → 6 h → 24 h) à la place du verrou définitif. Palier et
+  // échéance persistés ; un code juste remet tout à zéro. Base de temps =
+  // horloge de l'appareil (cf pinLock.js, même règle).
+  const LS_LOCK        = "myktamap_unlock_lock_v1";   // { until, start, level }
+  const LOCK_DELAYS_MS = [10 * 60 * 1000, 60 * 60 * 1000, 6 * 3600 * 1000, 24 * 3600 * 1000];
+  let _lockTimer = null;
+  // ⏳ Durée lisible pour le compte à rebours du verrou.
+  function _fmtDuree(ms) {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    if (h > 0) return h + " h " + (m < 10 ? "0" + m : m) + " min";
+    if (m > 0) return m + " min " + (sec < 10 ? "0" + sec : sec) + " s";
+    return sec + " s";
+  }
+  function _getLock() {
+    try { const o = JSON.parse(localStorage.getItem(LS_LOCK) || "null"); return (o && typeof o === "object") ? o : null; }
+    catch(e) { return null; }
+  }
+  function _setLock(o) {
+    try { if (o) localStorage.setItem(LS_LOCK, JSON.stringify(o)); else localStorage.removeItem(LS_LOCK); } catch(e) {}
+  }
+  function getLockRemainingMs() {
+    const l = _getLock();
+    if (!l || !l.until) return 0;
+    return Math.max(0, l.until - Date.now());
+  }
 
   // 🔑 v1.90.6 (demande KARMA) — MOT DE PASSE PROPRE À UNE INSTANCE SERVEUR.
   // Une instance auto-hébergée peut publier SON hash dans
@@ -203,7 +230,11 @@
   }
 
   function isLockedOut() {
-    return _getAttempts() >= MAX_ATTEMPTS;
+    const l = _getLock();
+    if (!l || !l.until) return false;
+    const now = Date.now();
+    if (l.start && now < l.start) return true;   // horloge reculée → toujours verrouillé
+    return now < l.until;
   }
 
   // =========================================================================
@@ -304,7 +335,9 @@
     }
   }
 
-  // Bloque l'app dans l'état "lockout" : champ caché, message permanent.
+  // Verrou TEMPORISÉ (M2, 13/09/2026) : champ caché, compte à rebours ; à
+  // l'expiration la gate est remontée (_monterGate, la Promise survit — même
+  // mécanisme que le changement de langue). Toujours AUCUN bouton de reset :
   //
   // 🚨 v173 fix incohérence remontée KARMA : on ne propose AUCUN bouton de
   // reset depuis le lockout. Sinon l'user fait :
@@ -322,11 +355,25 @@
     const form = overlay.querySelector("#kta-unlock-form");
     const fb   = overlay.querySelector("#kta-unlock-feedback");
     if (form) form.style.display = "none";
+    // ⏳ M2 : compte à rebours ; à l'expiration, on remonte la gate.
+    if (_lockTimer) { clearInterval(_lockTimer); _lockTimer = null; }
+    _lockTimer = setInterval(function() {
+      if (!isLockedOut()) {
+        clearInterval(_lockTimer); _lockTimer = null;
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        _monterGate();
+        return;
+      }
+      const cd = overlay.querySelector("#kta-unlock-lock-countdown");
+      if (cd) cd.textContent = _fmtDuree(getLockRemainingMs());
+    }, 1000);
     if (fb) {
       fb.innerHTML =
         '<div class="kta-unlock-lockout">' +
           '<div class="kta-unlock-lockout-titre">' + t("gate.lockout.titre") + '</div>' +
           '<div class="kta-unlock-lockout-msg">' + t("gate.lockout.msg") + '</div>' +
+          '<p style="margin:8px 0 2px; font-size:12px; color:#a8b3c8;">' + t("gate.lockout.attente") + '</p>' +
+          '<div class="kta-unlock-lockout-countdown" id="kta-unlock-lock-countdown">' + _fmtDuree(getLockRemainingMs()) + '</div>' +
           '<div class="kta-unlock-lockout-hint">' +
             t("gate.lockout.hint") +
           '</div>' +
@@ -396,6 +443,7 @@
         if (okInstance) localStorage.setItem(LS_UNLOCK_KIOSQUE, hashInstance);
         else            localStorage.removeItem(LS_UNLOCK_KIOSQUE);
         localStorage.removeItem(LS_ATTEMPTS);
+        localStorage.removeItem(LS_LOCK);   // 🔒 M2 : palier remis à zéro
       } catch(e) {}
       fb.innerHTML = '<div class="kta-unlock-success">' + t("gate.success") + '</div>';
       // Petite pause pour que l'user voie la confirmation, puis on libère
@@ -418,10 +466,17 @@
       input.focus();
 
       if (attempts >= MAX_ATTEMPTS) {
-        // Lockout définitif (jusqu'au reset)
+        // 🔒 M2 : verrou TEMPORISÉ au palier suivant, compteur remis à zéro.
+        // La Promise n'est pas résolue ; à l'expiration la gate se remonte
+        // (même Promise, cf _afficherLockout) et un code juste la résout.
+        const prev  = _getLock();
+        const lvl   = (prev && prev.level) || 0;
+        const delai = LOCK_DELAYS_MS[Math.min(lvl, LOCK_DELAYS_MS.length - 1)];
+        const now   = Date.now();
+        _setLock({ until: now + delai, start: now, level: lvl + 1 });
+        _setAttempts(0);
+        console.warn("[UnlockGate] Verrou temporisé :", _fmtDuree(delai), "(palier", (lvl + 1) + ")");
         _afficherLockout(overlay);
-        // ⚠️ On ne résout PAS la Promise → main.js reste bloqué pour toujours
-        // jusqu'à ce que l'user clique sur reset (qui reload la page).
       } else {
         const reste = MAX_ATTEMPTS - attempts;
         fb.innerHTML =

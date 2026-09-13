@@ -612,7 +612,7 @@ applies to every later load.
 - **Unified left/right sidebars** — each side is a **single continuous vertical bar**:
   - **Left**: ⊞ Layers · − + Zoom · 🏗 Level · ≡ collapse · 📚 Doc · ⚙ Settings · ⬇ Load · ⬆ Save
   - **Right**: ≡ collapse · 🔍 Search · ✏️ Edition · 📐 Measurement · 🛣 Paths · ⬛ Zones · 🧭 Tracker
-  - **In landscape mobile**, sub-menus unfold **horizontally toward the inside of the screen** (more ergonomic on tablet/smartphone in landscape). Zoom +/- remains vertical (universal convention).
+  - **Tool panels**: since v1.85.1 they open **centred on screen** (Paths, Zones, Structures, like Tracker and Filters); the “🪟 Anchor tool panels to the button” option (⚙️ Configuration) restores anchoring.
 - **🧭 Orientation compass**:
   - In portrait: **bottom-left** above the footer
   - In landscape: **bottom-centered** (so as not to hide the side icons)
@@ -905,11 +905,13 @@ The **🚨** button in the top bar (between 📖 Story Mode and the battery 🔋
 
 The codes `caf` / `pef` / `esf` (closed cavages, shafts, stairs) are **excluded** since they're not traversable in practice. If you mark a POI as closed, the app will never suggest going there.
 
-If an exit is displayed with a **≈** badge (tilde), it means the pathfinder **could not compute a path** and fell back to **straight-line distance**. Beware: that exit may actually be unreachable (walls, isolated floor).
+If an exit shows the label **“Straight-line distance — route not verified”** (dashed card), the pathfinder **could not compute a path**: the distance is measured as the crow flies. Such exits are pushed under an **“Unconfirmed”** separator in the list, and if **no** exit has a verified route, a red banner says so first. Beware: such an exit may actually be unreachable (walls, isolated floor).
 
 ### Computation origin
 
-By default the app starts from your **current tracker position**. If the tracker isn't active (or you're free-exploring without tracking), an alternative modal offers a **click-on-the-map picker** to specify your starting point.
+The app starts from your **position at that very moment**, without asking, as soon as tracking is active **or** you have located yourself at least once since the plan was opened (“📍 I am here” on a point, recalibration on the map, arrival through a portal, or a restored session that contained a recalibration). The modal tells you where the computation starts from: *“from your position (tracking active)”*, *“from your last confirmed position, N min ago”* or *“from the point you tapped”*.
+
+**The only case where the app asks “Where are you?”**: you have **never** confirmed your position since the plan was opened (it still equals the plan's start point). A banner appears, you **tap your position on the map** (it works even when aiming at an existing marker), and the computation starts from there — that tap **also recalibrates tracking**, so “Draw the route”, “Go there” and the XL emergency screen share the same position. Before, in that case, the app silently computed from the plan entrance and presented it as your position.
 
 ### Multi-level native
 
@@ -1014,12 +1016,12 @@ The app reads each plan's points (session + data layers) **in place**, showing p
 
 ## 🧭 Interface overview
 
-All tools are accessible from the **right side bar**, organized into **13 groups**:
+The interface is organized into **13 groups** spread over the **two side bars** — left: ⭐ Favorites, 📚 Help, ⚙️ Settings, ⬇️ Load, ⬆️ Save, ⏪ History; right: 🔍 Search, 🧭 Tracker, 📐 Measurement, ✏️ Edit, 🛣️ Paths, ⬛ Zones, 🏛️ Structures:
 
 | Group | Icon | What it's for |
 |---|---|---|
 | **Favorites** | ⭐ | Your favorited points, one click away |
-| **Help / Docs / Legend** | 📚 | Help, documentation, AI Help, icon legend |
+| **Help / Documentation / Legend** | 📚 | Help, documentation, AI Help, icon legend |
 | **Settings** | ⚙️ | Settings, scale calibration, debug *(direct click)* |
 | **Search** | 🔍 | Quickly find a point on the plan *(direct click)* |
 | **Load / Import** | ⬇️ | Import a session or a GPX, plan data editor |
@@ -1047,7 +1049,7 @@ All tools are accessible from the **right side bar**, organized into **13 groups
 
 ### 🎨 Customise the legend (rename, hide, colours, custom types)
 
-Open **≡ Legend** (📚 Help / Doc / Legend group) then **✏️ Edit**. For each trace, zone or structure type:
+Open **≡ Legend** (📚 Help / Documentation / Legend group) then **✏️ Edit**. For each trace, zone or structure type:
 
 - **Rename**: type your own label (e.g. "Principal" → "Main gallery"). It shows everywhere: legend, popups, stats, filters.
 - **🎨 Change the colour** *(since v1.76.1)*: one colour square per row — and for **zones and pillars/walls, two squares**: fill and an **independent border**. The colour applies **everywhere** — map, image/PDF exports, KMZ, statistics, session report — immediately, no reload. A **↺** button restores both fill AND border. Details: with no border chosen, a zone derives it automatically (darker shade) and a pillar/wall keeps its black outline (the historical default); a recoloured *Inaccessible* zone loses its hatching (fixed pattern) in favour of a flat fill. **Custom entries** are edited the same way, live.
@@ -1063,26 +1065,9 @@ Everything is saved automatically in your session, **per plan**.
 
 ### 🔄 Quickly change map via the title
 
-The **current map title** displayed at the top of the screen is **clickable**: it opens a small drop-down menu with:
+The **current map title** at the top of the screen is **clickable**: it opens the **“🗂 Change map”** window — the current map's card (`● ACTIVE` badge), the **last 3 maps** opened, and a **📚 See all my maps** button back to the home screen. The **compass rose 🧭** left of the title goes straight to the home screen.
 
-- **📚 RECENT MAPS** — the last 3 maps you opened (excluding the current map)
-- **📚 All my maps…** — to return to the home screen with the full list
-
-When clicking on a map in the menu:
-
-- If your **session is empty** (no annotation, road, zone or measurement) → the map loads **directly** without confirmation
-- If you have **modifications in progress** → a window warns you with the **exact list** of what you will lose:
-  ```
-  ⚠️ Session in progress
-  You have unsaved changes:
-     • 5 points added
-     • 2 paths
-     • 1 zone
-  Loading « Test Map 1 » will cause you to lose these changes.
-  [Cancel]   [Load anyway]
-  ```
-
-> 💡 This function allows you to switch between your favorite maps in **2 clicks** without going back to the home screen. To close the menu without doing anything: click elsewhere or press **Esc**.
+When you pick a map, your current session is **saved automatically** (auto-save + snapshot) before switching: there is no “changes will be lost” warning any more. To close without doing anything: ✕, click outside or **Esc**.
 
 ---
 
@@ -1181,11 +1166,11 @@ The search covers:
 
 > All tracker buttons are in the **🧭 Tracker** group of the sidebar.
 
-### 🧭 Tracker side panel
+### 🧭 Tracker menu (full-screen modal)
 
-The **🧭 Tracker** button opens a **side panel (flyout)** adjacent to the main button. It's readable, visually stable, and all sub-actions are accessible without scrolling, even on mobile.
+The **🧭 Tracker** button opens a **full-screen modal of large tiles** (since v1.50.0), arranged in three sections: **Tracking**, **Tools**, **Emergency**. Each tile closes the modal as it acts.
 
-**Sub-actions available in the flyout** (fixed order):
+**Available tiles**:
 
 | Icon | Action |
 |---|---|
@@ -1199,8 +1184,11 @@ The **🧭 Tracker** button opens a **side panel (flyout)** adjacent to the main
 | **🔥** | Heatmap — see dedicated section |
 | **⛑️** | I'm lost — **SOLID RED button** (danger signal) |
 | **🚨** | XL Emergency Mode — **SOLID RED button** (danger signal) |
+| **🚨** | Rescue Mode — search plans (teams + zones), **RED background** |
 
-> 🚨 **The 2 emergency modes are deliberately placed at the END of the panel with a bright red background** to make them instantly visually identifiable. In a stressful situation, you know where to look.
+> 🚨 **The 3 emergency tiles (⛑️ I'm lost, 🚨 XL emergency mode, 🚨 Rescue Mode) form the Emergency section, at the bottom, on a bright red background.** The **🚨 Emergency exit** button (nearest exit) lives in the **top bar**, one tap away.
+
+> 🧭 **Bottom bar**: the 🧭 indicator shows **ON · 👣 steps · distance** live while tracking, and **a tap on it opens the Tracker menu**. When tracking starts, the warning dialog offers **🔆 Keep the screen on** (pre-ticked): a screen that goes off means lost steps. The **≡ Filters** button carries a badge with the number of active filters (levels included); when a map is reloaded, a message tells you if filters were restored. In **📊 Session details**, the first line says **“✅ Saved N s ago”** (red if saving fails).
 
 > 🆕 **In the field**:
 > - **🎯 My position**: recenter the map on your current position (handy after panning elsewhere).
@@ -2813,10 +2801,10 @@ If you enable the mode on an existing map:
 
 ### 📤 Export
 
-Press **⬆️ → 💾**. A modal opens with **3 tabs** to choose from:
+Press **⬆️ → 💾**. A modal opens with **5 tabs**: 🚀 Full · 🎨 Advanced · 🔄 Conversion · 🔗 Merge · 📡 External export:
 
 #### 🚀 Full
-Exports everything in a single `devmap-session` file (added points, paths, zones, structures).
+Exports everything in a single `.json` file (or `.zip` if you tick photos): added points, paths, zones, structures, measurements, tracking trail.
 Handy for saving your session and resuming it later.
 
 > 📌 Distance measurement is not included in Full mode.
@@ -2864,7 +2852,7 @@ Available **without an open map** from the home screen: **📊 Data editor → �
 
 ### 🖼️ Export to PNG/JPG
 
-Press **⬆️ → 🖼️ Map as image**. A modal opens with two modes:
+Press **⬆️ → 🖼️ Export the map as an image**. A modal opens with two modes:
 
 #### ⚡ Quick export
 Everything is included automatically: complete map, all visible layers, points, paths, zones, tracker position and path. PNG format original resolution. A single click on **Download**.
@@ -2949,7 +2937,7 @@ The generated PDF carries the signature `Generated by MyKTAMap · CC BY-NC-SA 4.
 
 ### 🌍 Export as geolocated KMZ (Google Earth, OsmAnd, Locus, Avenza)
 
-Press **⬆️ → 💾** then the **🌍 KMZ** tab. Generates a `.kmz` file that can be opened in any KML-compatible field mapping app.
+Press **⬆️ → 💾** then the **📡 External export** tab (KMZ). Generates a `.kmz` file that can be opened in any KML-compatible field mapping app.
 
 Typical use cases:
 - Visualize your map in **Google Earth** over satellite imagery
@@ -3013,9 +3001,9 @@ Your 2-point calibration is saved **per map** (localStorage). On the next export
 
 ### 📥 Import a session
 
-Press **⬇️ → 📥 Import a session** to open the import window. A modal displays:
+Press **⬇️ → 📥 Import**, then the **MyKTAMap session** card to open the import window. A modal displays:
 
-1. **Drag and drop** your `devmap-session.json` file into the area, or click to select it
+1. **Drag and drop** your `.json` file (or `.zip` with photos) into the area, or click to select it
 2. A **preview** displays: number of points added, number of paths, number of zones, number of measurement points
 3. A **warning** notifies you that the import will replace your current session — remember to export before if necessary
 4. Click **Import** to validate, or **Cancel** to close without changing anything
@@ -3062,7 +3050,7 @@ If a source contains several datasets, a **selector** appears (each with its ele
 
 ### 🗂️ Change map
 
-Press **⬇️ → 🗂️ Change map** to return to your map list (the **📚 My maps** home screen) and load another. Unexported data will be lost — **export your session before changing**.
+This button is **no longer in the ⬇️ menu**. To change map: tap the **compass rose 🧭** (home) or the **map title** (“Change map” window, see above) in the top bar. Your session is **saved automatically** before switching.
 
 From this screen, you can:
 
@@ -3358,7 +3346,7 @@ Very large maps can cause **silent memory kills** on iOS — the OS kills the ta
 
 ## 🤖 AI Help
 
-> Accessible via the **📚 Help / Doc / Legend → 🤖 AI Help** group.
+> Accessible via the **📚 Help / Documentation / Legend → 🤖 AI Help** group.
 
 Downloads a `.md` file that summarizes everything the app allows you to do (this doc + a FAQ + instructions for the AI). Give it to **any conversational AI** (ChatGPT, Claude, Gemini, Perplexity, Le Chat, Copilot, etc.) — it will be able to answer all your questions about MyKTAMap with precise context.
 
@@ -3377,7 +3365,7 @@ Downloads a `.md` file that summarizes everything the app allows you to do (this
 
 ## 🗺️ Legend
 
-> Accessible via the **📚 Help / Doc / Legend → 🗺️ Legend** group.
+> Accessible via the **📚 Help / Documentation / Legend → 🗺️ Legend** group.
 
 Displays the complete legend of icons and paths, grouped by category: **🕳️ Shafts**, **🪜 Access** (ladder shafts, stairs, cavages), **⚠️ Signage**, **🛣️ Paths** and **⬛ Zones**.
 
@@ -3408,12 +3396,12 @@ Access the settings by clicking **⚙️**:
 
 ### 🎬 Presentation mode
 
-- **🎬 Launch presentation mode**: button at the **top** of the Settings modal. Activates a full-screen mode without UI (for demos / projection), accessible with a single touch button.
+- **🎬 Enable presentation mode**: button at the **top** of the Settings modal. Activates a full-screen mode without UI (for demos / projection), accessible with a single touch button.
 - The **F** key is available as a PC shortcut.
 
 ### 🎯 Georeferencing pickers
 
-The 2-point pickers (GPS calibration for KMZ / GPX) are available in **⚙️ Settings → Georeferencing tab** (in addition to the **Export → 🌍 KMZ** modal):
+The 2-point pickers (GPS calibration for KMZ / GPX) are available in **⚙️ Settings → 🌐 GPS georeferencing section** (the modal scrolls, it has no tabs — in addition to the **📡 External export** tab of the Export modal):
 
 - **🔍 Search a point** on the map to auto-fill x/y
 - **📍 Map click** to directly point to a position
@@ -3499,9 +3487,9 @@ The lock screen appears automatically after the splash:
 
 ⚙️ Configuration → 🔐 Local access code → **🔓 Disable**. Confirmation by biometrics OR current code. The app no longer asks for a code at the next startup.
 
-### Lockout: 5 failed attempts
+### Temporary lock: 5 wrong codes
 
-For security reasons, after **5 incorrect codes in a row**, the app is locked **permanently** on a red screen with no exit button. The only way to recover access is to **💥 Reset everything** from the home screen (loss of the current session and unsaved maps).
+After **5 wrong codes in a row**, the app locks **temporarily**: 10 min the first time, then 1 h, 6 h and 24 h with each new run of 5 errors. A countdown is shown and the keypad comes back by itself when the delay ends; a correct code resets everything. There is **no reset button** on that screen and no code recovery if forgotten — if it is really lost, **💥 Reset everything** from the home screen remains (loss of the current session and unsaved maps). The delay follows the phone's clock.
 
 > Failed biometric attempts do **not** count toward the 5 attempts — the WebAuthn spec manages its own native lockout on the device side. You can cancel a Face ID by mistake without worrying about exhausting your tries.
 
@@ -3509,7 +3497,7 @@ For security reasons, after **5 incorrect codes in a row**, the app is locked **
 
 ## 🔧 Reset
 
-In case of a problem or to force an update, use **⚙️ → 🗑️ Reset**. This action unregisters the Service Worker, clears the cache and reloads the application.
+In case of a problem or to force an update, use **⚙️ Configuration (home page) → 💥 Reset everything**. This action unregisters the Service Worker, clears the cache and reloads the application.
 
 > ⚠️ Only perform this action with an Internet connection available. Without a network, the application will be unusable until the next full reload.
 
@@ -3617,7 +3605,7 @@ Choose **⚡ Performance** in the Performance mode selector before loading the m
 Press the active button (in green) again to deactivate it.
 
 **The application does not update after a new version**
-Use **⚙️ → 🔄 Force update** (soft update, keeps all your data). If insufficient: **⚙️ → 🗑️ Reset** (full purge, last resort). The soft update is fast thanks to a background pre-download.
+Use **⚙️ Configuration (home page) → 🔄 Force the update** (soft update, keeps all your data). If insufficient: **⚙️ Configuration → 💥 Reset everything** (full purge, last resort). The soft update is fast thanks to a background pre-download.
 
 **📡 App stuck after a soft update**
 If after an update the app remains stuck (loader without CSS, blank page, badly loaded assets), the most frequent cause is a **GitHub Pages edge CDN serving corrupted content** (bad MIME, truncated asset) for the current geographic area. First reflex before any reset: **disable your VPN if active and change networks** (4G ↔ Wi-Fi ↔ another Wi-Fi). Just switching IP/edge CDN is often enough to unblock.

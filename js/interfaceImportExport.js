@@ -735,7 +735,19 @@ function ouvrirImportSession() {
       });
     }
 
-    _restorerPhotos().then(function() {
+    // 🚨 B3 (audit ergonomie 13/09/2026) : un import REMPLACE tout (points,
+    // tracés, zones, structures, photos purgées en base) — sans snapshot,
+    // alors que sessionBackups.js listait « import qui écrase » parmi ses
+    // déclencheurs et que l'UI le promettait. Snapshot ATTENDU avant tout.
+    let _snapshotAvantImport = false;
+    const _snapAvant = (window.SessionBackups && typeof window.SessionBackups.snapshot === "function")
+      ? Promise.resolve().then(function() { return window.SessionBackups.snapshot("before-import-session"); })
+          .catch(function(e) { console.warn("[Import] snapshot avant import échoué :", e); return null; })
+      : Promise.resolve(null);
+    _snapAvant.then(function(snap) {
+      _snapshotAvantImport = !!snap;
+      return _restorerPhotos();
+    }).then(function() {
       try {
         if (window.setEditorPoints)    window.setEditorPoints(dataParsee.editorPoints || []);
         // 🆕 v1.48.0 (KARMA) : restaure la LÉGENDE CUSTOM de la session (labels +
@@ -823,6 +835,9 @@ function ouvrirImportSession() {
         _pendingPhotosToRestore = null;  // cleanup
         _pendingHistoirePdfToRestore = null;  // 🆕 v1.34.29
         fermer();
+        if (_snapshotAvantImport && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+          window.OOMGuard.showToast(window.I18n.t("impexp.session.toastSnapshot"), "info");
+        }
       } catch(err) {
         console.error(err);
         setErr(window.I18n.t("impexp.session.errImport", { msg: err.message || err }));

@@ -612,7 +612,15 @@ function _resetFlowConfirmation() {
           <li>${window.I18n.t("maint.reset_item_maps")}</li>
           <li>${window.I18n.t("maint.reset_item_session")}</li>
           <li>${window.I18n.t("maint.reset_item_prefs")}</li>
+          <li>${window.I18n.t("maint.reset_item_photos")}</li>
+          <li>${window.I18n.t("maint.reset_item_journal")}</li>
+          <li>${window.I18n.t("maint.reset_item_backups")}</li>
+          <li>${window.I18n.t("maint.reset_item_profile")}</li>
+          <li>${window.I18n.t("maint.reset_item_secours")}</li>
         </ul>
+        <div style="margin:6px 0 10px; text-align:left;">
+          <button type="button" class="kta-btn kta-btn-ghost" id="cache-export-profil" style="width:100%;">${window.I18n.t("maint.btn_export_profile_first")}</button>
+        </div>
         <strong>${window.I18n.t("maint.reset_offline_warning")}</strong>
 
         <div style="margin-top:14px; padding:10px 12px; background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.30); border-radius:6px; text-align:left; font-size:13px;">
@@ -631,6 +639,19 @@ function _resetFlowConfirmation() {
   document.documentElement.appendChild(overlay1);
 
   document.getElementById("cache-annuler-1").addEventListener("click", function () { overlay1.remove(); });
+  // 🚨 B4 (audit ergonomie 13/09/2026) : la modale listait 4 postes et en
+  // effaçait 9 (photos, carnet, backups, profil, PDF Histoire, photos Secours,
+  // tuiles OSM, hauts faits). La liste dit tout, et l'export de profil — qui
+  // sait sauver tout ça — est proposé AVANT, pas découvert après.
+  const _btnExportProfil = document.getElementById("cache-export-profil");
+  if (_btnExportProfil) {
+    _btnExportProfil.addEventListener("click", function () {
+      overlay1.remove();
+      if (window.ProfileExportImport && typeof window.ProfileExportImport.ouvrirExportModale === "function") {
+        window.ProfileExportImport.ouvrirExportModale();
+      }
+    });
+  }
   document.getElementById("cache-continuer-1").addEventListener("click", function () {
     overlay1.remove();
 

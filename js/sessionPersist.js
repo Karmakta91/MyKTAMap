@@ -374,6 +374,9 @@
       localStorage.setItem(_writeKey, JSON.stringify(payload));
       _lastHash = hash;
       _quotaWarned = false;  // reset si le save remarche après libération de place
+      _masquerBandeauStockage();   // 🚨 B5 : la sauvegarde remarche → le bandeau tombe
+      _lastSaveTs = Date.now();    // 🚨 Q46 : « enregistré il y a N s » dans 📊 Détails
+      _lastSaveKo = false;
       return true;
     } catch(e) {
       console.warn("[SessionPersist] save échoué :", e);
@@ -395,6 +398,12 @@
           "error"
         );
       }
+      // 🚨 B5 (audit ergonomie 13/09/2026) : le toast ne passait qu'UNE fois
+      // (10 s, remplaçable par n'importe quel autre) puis l'app échouait en
+      // silence pendant des heures. Bandeau PERSISTANT tant que le save échoue,
+      // avec le bouton d'export ; il tombe au premier save réussi.
+      if (isQuota) _afficherBandeauStockage();
+      _lastSaveKo = true;   // Q46 : l'écran de détails le dira en rouge
       return false;
     }
   }
@@ -418,12 +427,35 @@
     }
   }
 
-  function clear() {
+  // Compte ce que la session courante contient (pour une confirmation chiffrée).
+  // 🚨 Q46 (audit 13/09/2026) : rien ne disait jamais « c'est enregistré ».
+  // `savedAt` était écrit dans le payload et jamais affiché.
+  let _lastSaveTs = null;
+  let _lastSaveKo = false;
+  function getLastSaveInfo() {
+    let ts = _lastSaveTs;
+    if (!ts) {
+      try { const p = getSaved(); if (p && p.savedAt) ts = Date.parse(p.savedAt) || null; } catch(e) {}
+    }
+    return { ts: ts, ko: _lastSaveKo };
+  }
+
+  function _compterEtatCourant() {
+    const len = function(fn) {
+      try { const a = (typeof window[fn] === "function") ? window[fn]() : null; return Array.isArray(a) ? a.length : 0; }
+      catch(e) { return 0; }
+    };
+    return { pts: len("getEditorPoints"), roads: len("getRoads"), zones: len("getZones"), structs: len("getStructures") };
+  }
+
+  function clear(opts) {
     // 🆕 v1.16.0 step 4 : snapshot AVANT le wipe pour permettre de
     // revenir en arrière depuis 📦 Backups. Best effort — async IDB,
     // peut ne pas finir si l'user reload tout de suite. Le périodique
-    // 5 min couvre déjà la majorité des cas.
-    if (window.SessionBackups && typeof window.SessionBackups.snapshot === "function") {
+    // 5 min couvre déjà la majorité des cas. `opts.snapshotFait` (13/09/2026) :
+    // l'appelant l'a déjà pris ET attendu (modale de restauration).
+    if (!(opts && opts.snapshotFait) &&
+        window.SessionBackups && typeof window.SessionBackups.snapshot === "function") {
       try { window.SessionBackups.snapshot("before-clear-session"); } catch(e) {}
     }
     // 🆕 v1.16.1 : on efface UNIQUEMENT le slot du plan courant — les
@@ -450,6 +482,39 @@
     // pendant les 1500ms du setTimeout, l'itinéraire réapparaissait
     // après l'effacement (timing piège du restore différé).
     _annulerPhase2();
+  }
+
+  // Traducteur de portée MODULE (le `_t` de la modale de restauration est
+  // local à sa fonction — un ReferenceError ici serait avalé par le try et
+  // le bandeau ne s'afficherait jamais).
+  function _trModule(k, p) { return (window.I18n && window.I18n.t) ? window.I18n.t(k, p) : k; }
+
+  // ========== BANDEAU « SAUVEGARDE IMPOSSIBLE » (B5) ==========
+  function _afficherBandeauStockage() {
+    if (document.getElementById("kta-storage-banner")) return;
+    try {
+      const b = document.createElement("div");
+      b.id = "kta-storage-banner";
+      b.className = "kta-storage-banner";
+      b.setAttribute("role", "alert");
+      const txt = document.createElement("span");
+      txt.className = "kta-storage-banner-txt";
+      txt.textContent = _trModule("session.banner.storageFull");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "kta-btn kta-btn-primary kta-storage-banner-btn";
+      btn.textContent = _trModule("session.banner.exportBtn");
+      btn.addEventListener("click", function() {
+        if (typeof window.ouvrirExportSessionModal === "function") window.ouvrirExportSessionModal();
+      });
+      b.appendChild(txt);
+      b.appendChild(btn);
+      document.body.appendChild(b);
+    } catch(e) { console.warn("[SessionPersist] bandeau stockage :", e); }
+  }
+  function _masquerBandeauStockage() {
+    const b = document.getElementById("kta-storage-banner");
+    if (b) b.remove();
   }
 
   // ========== RESTORE ==========
@@ -542,6 +607,12 @@
               }
               if (window.setRoads) window.setRoads(current.concat(phaseDifferee));
               console.info("[SessionPersist] phase 2 : itinéraire restauré en mode différé");
+              // 🚨 Q12 (audit 13/09/2026) : le tracé revenait SANS ses étapes
+              // ① ② ③ ni ses ✓ — seule la réouverture de la modale les
+              // redessinait. On les redessine ici, depuis la road restaurée.
+              if (typeof window.itineraireRedessinerDepuisRoad === "function") {
+                try { window.itineraireRedessinerDepuisRoad(); } catch(e) { console.warn("[SessionPersist] étapes itinéraire :", e); }
+              }
             } catch(e) {
               console.warn("[SessionPersist] phase 2 échec restauration itinéraire :", e);
             }
@@ -623,6 +694,15 @@
         setTimeout(function() {
           if (typeof window.appliquerFiltreRuntime === "function") {
             try { window.appliquerFiltreRuntime(); } catch(e) {}
+          }
+          // 🚨 Q34 (audit 13/09/2026) : des filtres restaurés EN SILENCE au
+          // rechargement → « où sont passés mes points ? ». On le dit, et la
+          // pastille du bouton ≡ suit.
+          if (window.FilterPanel && typeof window.FilterPanel.majBadge === "function") {
+            try { window.FilterPanel.majBadge(); } catch(e) {}
+          }
+          if (_active.length > 0 && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(_trModule("session.toast.filtresRestaures", { n: _active.length }), "warn");
           }
         }, 200);
       }
@@ -745,10 +825,38 @@
     }
 
     modal.querySelector('[data-action="keep"]').addEventListener("click", fermer);
+    // 🚨 Q44 (audit ergonomie 13/09/2026) : « 🗑️ Effacer la session » agissait
+    // en 1 tap, sans confirmation, à côté de « Continuer » — avec des gants,
+    // un doigt qui glisse effaçait tout (y compris les calques rapatriés). La
+    // même destruction depuis ≡ Filtres avait DEUX confirmations. Désormais :
+    // confirmation chiffrée, snapshot ATTENDU, toast qui dit où le retrouver.
     modal.querySelector('[data-action="clear"]').addEventListener("click", function() {
-      _viderEtatCourant();
-      clear();
-      fermer();
+      const n = _compterEtatCourant();
+      const go = function() {
+        const snap = (window.SessionBackups && typeof window.SessionBackups.snapshot === "function")
+          ? Promise.resolve().then(function() { return window.SessionBackups.snapshot("before-clear-session"); })
+              .catch(function() { return null; })
+          : Promise.resolve(null);
+        snap.then(function(entry) {
+          _viderEtatCourant();
+          clear({ snapshotFait: true });
+          fermer();
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(_t(entry ? "session.toast.clearedSnap" : "session.toast.cleared"), "info");
+          }
+        });
+      };
+      if (typeof window.ktaConfirm === "function") {
+        const msg = (window.I18n && window.I18n.t)
+          ? window.I18n.t("session.confirm.clear", n) : "Effacer la session ?";
+        window.ktaConfirm(msg, {
+          titre:       _t("session.confirm.clearTitle"),
+          okLabel:     _t("session.btn.clear"),
+          cancelLabel: _t("session.btn.keep")
+        }).then(function(ok) { if (ok) go(); });
+      } else {
+        go();
+      }
     });
     // Click sur le backdrop = "Continuer" (pattern modal soft)
     modal.addEventListener("click", function(e) {
@@ -910,6 +1018,7 @@
     onPlanUnload: onPlanUnload,   // 🐛 v1.64.0 : figer la persistance au teardown
     save:         save,
     clear:        clear,
-    getSaved:     getSaved
+    getSaved:     getSaved,
+    getLastSaveInfo: getLastSaveInfo   // 🚨 Q46
   };
 })();

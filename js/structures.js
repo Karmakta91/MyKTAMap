@@ -458,36 +458,56 @@ function initStructures() {
 // =========================
 // ACTIVER / DÉSACTIVER UN TYPE
 // =========================
-function toggleStructureMode(type) {
-  // Si on change de type alors qu'une structure est en cours, on la perd
-  // (l'utilisateur doit explicitement fermer ou annuler)
-  if (currentStructure && window.modeStructure !== type) {
+// 🚨 Q24 (audit ergonomie 13/09/2026) : retaper la pastille ou changer de
+// type DÉTRUISAIT un pilier / mur en cours (≥ 3 sommets compris) sans un mot,
+// alors que le même geste VALIDE un front. Désormais, pour toutes les
+// structures : assez de points (front ≥ 2, polygone ≥ 3) → validée et
+// historisée ; sinon abandonnée avec toast + entrée d'historique (⏪ la rend).
+function _labelTypeStruct(k) {
+  if (["pilier-1", "pilier-2", "mur", "front-1", "front-2"].indexOf(k) >= 0) {
+    return window.I18n.t("struct.label." + k);
+  }
+  if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+    const e = window.LegendCustomization.findCustomEntry(k);
+    if (e) return e.label || k;
+  }
+  return k;
+}
+function _resoudreStructureEnCours() {
+  if (!currentStructure) return;
+  const avant = window.HistoryManager ? window.HistoryManager.captureState("structures") : null;
+  const label = _labelTypeStruct(currentStructure.type);
+  const toast = function(k, type) {
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(window.I18n.t(k, { type: label }), type);
+    }
+  };
+  const minPts = _isPolylineType(currentStructure.type) ? 2 : 3;
+  if (currentStructure.points.length >= minPts) {
+    // Assez de points → on la garde (= validation), on déréférence juste
+    // currentStructure pour qu'elle devienne « fermée » au prochain rendu.
+    currentStructure = null;
+    if (window.HistoryManager && avant) {
+      window.HistoryManager.record(window.I18n.t("struct.undo.close", { type: label }), avant, "structures");
+    }
+    toast("struct.toast.fermee", "info");
+  } else {
     const idx = structuresData.indexOf(currentStructure);
     if (idx >= 0) structuresData.splice(idx, 1);
     currentStructure = null;
+    if (window.HistoryManager && avant) {
+      window.HistoryManager.record(window.I18n.t("struct.undo.abandon", { type: label }), avant, "structures");
+    }
+    toast("struct.toast.abandon", "warn");
   }
+}
+function toggleStructureMode(type) {
+  // Changement de type ou désactivation du même type : la structure en cours
+  // est validée si elle a assez de points, abandonnée sinon.
+  if (currentStructure && window.modeStructure !== type) _resoudreStructureEnCours();
 
   if (window.modeStructure === type) {
-    // 🆕 v1.9.3-A1.b.2.5-fix (KARMA "on peut valider le front de taille
-    // en cliquant sur son icône, comme pour les tracés") :
-    // - Polyline (front) : re-clic = VALIDATION du front si assez de
-    //   points (2+). Comportement calqué sur toggleRoadMode dans road.js
-    //   où re-cliquer sur le type ferme la road en cours.
-    // - Polygon (pilier/mur) : re-clic = ANNULATION de la structure en
-    //   cours si pas encore fermée (comportement historique préservé).
-    if (currentStructure) {
-      if (_isPolylineType(currentStructure.type) && currentStructure.points.length >= 2) {
-        // Front avec assez de points → on le garde (= validation),
-        // on déréférence juste currentStructure pour qu'il devienne
-        // "fermé" (rendu en ligne continue au prochain renderStructures).
-        currentStructure = null;
-      } else {
-        // Polygon ou polyline avec < 2 pts → annule (= comportement classique)
-        const idx = structuresData.indexOf(currentStructure);
-        if (idx >= 0) structuresData.splice(idx, 1);
-        currentStructure = null;
-      }
-    }
+    if (currentStructure) _resoudreStructureEnCours();
     window.modeStructure = null;
   } else {
     window.modeStructure = type;

@@ -29,6 +29,25 @@ let stepCount = 0;
 // Si multiLevel = false → reste a 0 sans effet.
 let trackerLevel = 0;
 
+// 📍 POSITION CONFIRMÉE (audit ergonomie 13/09/2026, décision KARMA « à
+// l'instant T »). `position` vaut le DÉPART DU PLAN tant que l'utilisateur n'a
+// rien confirmé : rien ne distinguait « je suis ici » de « valeur par défaut »,
+// et Sortie d'urgence / « Y aller » calculaient depuis l'entrée du plan en la
+// présentant comme SA position. Le drapeau passe à vrai sur tout recalage
+// (clic carte, « 📍 Je suis ici », arrivée de portail, picker « Où es-tu ? »)
+// et retombe à faux au chargement d'un plan et au reset de position. Une
+// session restaurée le remet à vrai si sa timeline contient un recalage. La
+// date suit chaque pas appliqué : « il y a N min » = depuis le dernier
+// mouvement connu, pas depuis le dernier recalage. Lu par
+// getTrackingPositionEtat() ; les consommateurs : sortieUrgence.js,
+// interfaceItineraire.js (itineraireYAller), emergencyMode.js.
+let _positionConfirmee   = false;
+let _positionConfirmeeTs = null;
+function _marquerPositionConfirmee(ts) {
+  _positionConfirmee   = true;
+  _positionConfirmeeTs = (typeof ts === "number") ? ts : Date.now();
+}
+
 // =========================
 // INIT
 // =========================
@@ -42,6 +61,8 @@ function initTracking() {
   direction  = 0;
   tracking   = false;
   window.modeRecalage = false;
+  _positionConfirmee   = false;   // 📍 nouveau plan → rien de confirmé
+  _positionConfirmeeTs = null;
 
   // Vider l'ancien cache collision (les dimensions/scales peuvent différer)
   _collisionData   = null;
@@ -72,6 +93,7 @@ function initTracking() {
 
     position.x = x;
     position.y = y;
+    _marquerPositionConfirmee();   // 📍 l'utilisateur vient de se situer
     _navSegIdx = -1;  // 🧭 nav : recalage manuel → re-snapping neuf
 
     // 🏗️ Multi-niveau (v148) : recalage clic carte → tracker passe au niveau actif
@@ -277,7 +299,15 @@ function _appliquerFiltreNiveauSurTracker() {
   if (markerPosition._icon) markerPosition._icon.style.pointerEvents = visible ? "" : "none";
   // Le polyline (tracé parcouru) suit aussi le tracker level
   if (polyline) try { polyline.setStyle({ opacity: visible ? 1 : 0 }); } catch(e) {}
+  // 🚨 Q16 (audit 13/09/2026) : « ma position a disparu » — le marqueur passait
+  // en opacité 0 sans un mot quand son étage était décoché dans ≡ Filtres. On
+  // le dit, une fois par bascule visible → masqué.
+  if (!visible && !_trackerMasqueParNiveau && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+    window.OOMGuard.showToast(window.I18n.t("tracker.toast.masqueNiveau", { lvl: trackerLevel }), "warn");
+  }
+  _trackerMasqueParNiveau = !visible;
 }
+let _trackerMasqueParNiveau = false;
 
 // Expose pour interface.js → window.appliquerFiltreNiveau()
 window._applyLevelFilterToTracker = _appliquerFiltreNiveauSurTracker;
@@ -704,6 +734,7 @@ function _avancerRaster() {
   if (_stepApplied) {
     position.x = newX;
     position.y = newY;
+    if (_positionConfirmee) _positionConfirmeeTs = Date.now();   // 📍 dernier mouvement connu
   } else {
     console.log("[Tracking] Collision !");
   }
@@ -963,18 +994,32 @@ function stopTracking() {
 // =========================
 // PERMISSION IOS
 // =========================
+// 🚨 B2 (audit ergonomie 13/09/2026) : rend TOUJOURS une Promise<boolean>.
+// Avant, seule la branche « granted » existait — ni refus, ni catch — et
+// l'appelant démarrait le suivi sans attendre : sur iOS, refuser la demande
+// laissait la pastille ON et zéro pas à jamais, sans un mot. L'appelant
+// (interface.js > _doStart, compass.js > show) attend le résultat et
+// n'affiche « actif » que sur `true`.
 function requestPermission() {
-  if (typeof DeviceMotionEvent.requestPermission === 'function') {
-    DeviceMotionEvent.requestPermission().then(response => {
+  if (typeof DeviceMotionEvent !== "undefined" &&
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    return DeviceMotionEvent.requestPermission().then(function(response) {
       if (response === 'granted') {
         initOrientation();
         initMotion();
+        return true;
       }
+      console.warn("[Tracking] Permission capteurs refusée :", response);
+      return false;
+    }).catch(function(err) {
+      // Hors geste utilisateur, ou demande déjà tranchée : iOS rejette.
+      console.warn("[Tracking] Permission capteurs : demande échouée :", err);
+      return false;
     });
-  } else {
-    initOrientation();
-    initMotion();
   }
+  initOrientation();
+  initMotion();
+  return Promise.resolve(true);
 }
 
 // =========================
@@ -983,6 +1028,8 @@ function requestPermission() {
 function resetTrackingPosition() {
   position.x = APP_CONFIG.startX;
   position.y = APP_CONFIG.startY;
+  _positionConfirmee   = false;   // 📍 retour au départ du plan = plus rien de confirmé
+  _positionConfirmeeTs = null;
   _navSegIdx = -1;  // 🧭 nav : re-snapping neuf après reset de position
   stepCount = 0;
 
@@ -1052,6 +1099,14 @@ window.getPlanRelHeading = function() {
 window.getTrackingPosition = function() {
   // Position courante du tracker (en coords plan)
   return { x: position.x, y: position.y };
+};
+
+// 📍 État de la position : est-elle CONFIRMÉE par l'utilisateur (recalage) ou
+// vaut-elle encore le départ du plan ? `ts` = dernier mouvement connu (ms).
+// Règle « instant T » (KARMA 13/09/2026) : suiviActif OU confirmee → on part
+// de là sans question ; sinon c'est le SEUL cas où l'on demande « Où es-tu ? ».
+window.getTrackingPositionEtat = function() {
+  return { confirmee: _positionConfirmee, ts: _positionConfirmeeTs, suiviActif: tracking === true };
 };
 
 // 🆕 v1.9.2 : getter pour l'état "Play" du tracker. Utilisé par
@@ -1452,6 +1507,12 @@ function _rebuildTrailFromTimeline() {
   const last = _trackingTimeline[_trackingTimeline.length - 1];
   position.x = last.x;
   position.y = last.y;
+  // 📍 Une timeline qui contient un recalage prouve que l'utilisateur s'est
+  // situé au moins une fois : la position restaurée est « confirmée », datée
+  // du dernier point connu (l'écart s'affiche : « il y a N min »).
+  if (_trackingTimeline.some(function(e) { return e && e.type === "recalage"; })) {
+    _marquerPositionConfirmee(typeof last.t === "number" ? last.t : Date.now());
+  }
   try {
     // Leaflet accepte un tableau de tableaux de latlngs = polyline multi-segment.
     if (polyline) polyline.setLatLngs(segments);
@@ -1480,6 +1541,7 @@ window.recalerTrackerSurPoint = function(x, y, level, opts) {
   if (typeof x !== "number" || typeof y !== "number") return;
   position.x = x;
   position.y = y;
+  _marquerPositionConfirmee();   // 📍 « Je suis ici » / portail / picker « Où es-tu ? »
   _navSegIdx = -1;  // 🧭 nav : recalage sur point → re-snapping neuf
   if (polyline) polyline.setLatLngs([]);
   stepCount = 0;

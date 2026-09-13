@@ -14,6 +14,7 @@ YYYY-MM-DD_audit-<scope>-v<N>.raw.json    ← findings complets (machine-readabl
 
 | Date | Scope | Version auditée | Raw → Confirmés | Lien |
 |---|---|---|---|---|
+| 2026-09-13 | **Ergonomie** (persona ergonome, usage privé) : parcours × 8, heuristique × 6 zones, doc ↔ app, manques vs SIG grand public | v1.90.17 | ~130 → 96 UX + 36 doc + 22 manques (7 bloquants vérifiés à la main ; pas de `.raw.json` : audit par agents de lecture, pas workflow) | [`2026-09-13_audit-ergonomie-v1.md`](./2026-09-13_audit-ergonomie-v1.md) |
 | 2026-06-14 | i18n / mode langue (perf · UI · robustesse) | v1.46.3 | 20 → 20 (0 réfuté : 16 conf + 4 part) | [`2026-06-14_audit-i18n-langue-v1.md`](./2026-06-14_audit-i18n-langue-v1.md) |
 | 2026-06-09 | Modales (10 modules × 5 axes) v2 | v1.43.26 | 87 → 61 (70%) | [`2026-06-09_audit-modales-v2.md`](./2026-06-09_audit-modales-v2.md) |
 | 2026-06-08 | Modales (10 modules × 5 axes) v1 | v1.43.25 | 153 → 30 (20%) | ❌ perdu (avant compaction) — seuls les 10 critiques traités en v1.43.26 sont documentés dans `NETWORK_AUDIT.md` |

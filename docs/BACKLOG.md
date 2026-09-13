@@ -44,6 +44,24 @@ exister.
 
 ⚠️ **Rien n a ete mesure dans cette etude** : tous les gains annonces sont raisonnes depuis le code, pas observes.
 
+## 🧭 Audit ergonomie du 13/09/2026 — lots restants
+
+Rapport : `docs/audits/2026-09-13_audit-ergonomie-v1.md` (100 constats UX, 36 écarts doc, 22 manques). **Lot 1
+« Sécurité » livré le 13/09 (non versionné, en attente de bump)** : B1 position par défaut, B2 permission
+capteurs, Q3 tag `entree_plan`, Q4 vol d'oiseau, Q5 bouton 🚨, Q7/Q8 vocal, Q10 vibration urgence, Q21 chip muet.
+
+| Lot | Contenu | État |
+|---|---|---|
+| **2 — Filets de données (½ j)** | B3 snapshot avant import de session · B4 « Tout réinitialiser » liste 4 postes, en efface 9 · B6 Reset des Réglages sans confirmation · Q23 suppression de point hors historique · Q24/Q25 zone détruite au re-tap / bouton ✅ · Q44 « Effacer la session » à 1 tap · Q45 snapshot unitaire · Q47 export tracker-seule refusé · Q49 carnet sans interrupteur · Q58 effacer géoréf · Q59 générateur fermé au clic fond | ✅ **livré 13/09** (non versionné), verrouillé par `check-filets-donnees.js` |
+| **3 — Doc (½ j, sans code)** | D5 Vue OSM « opt-in » → « active par défaut » (**écart de confidentialité**) · D1 onglets Exporter · D3 « Changer de plan » · D2 menu Tracker flyout · D6 Reset dans ⚙️ · D11/D12 snapshots · D4/D16 · D10 côté des groupes · réglages fantômes Q60 (doc) | ✅ **livré 13/09** (non versionné). Reste : D21 fusion des 5 sections Secours du README, D18/D19 bulle POI et Détails de session non documentés, D27 recherche plein texte de la modale Doc, dead code `cfg_multiLevel` (Q60 code) |
+| **4 — État visible (½ j)** | Q34/Q35 filtres · Q11 footer tracker · Q12 étapes d'itinéraire après restore · Q46 « enregistré il y a » · Q16 tracker masqué par niveau · Q17 verrou suspendu · Q9 wake lock au démarrage | ✅ **livré 13/09** (non versionné), verrouillé par `check-etat-visible.js` |
+| **M2 — Lockout temporisé** | PIN (`pinLock.js`) **et** gate mot de passe (`unlockGate.js`) → temporisation escaladée 10 min → 1 h → 6 h → 24 h, compte à rebours, retour automatique. Base de temps tranchée : horloge de l'appareil (reculer l'horloge ne rouvre pas, l'avancer raccourcit — accepté, `security-legal.md` §36.3) | ✅ **codé 13/09** (non versionné) — à tester sur appareil : 5 codes faux → compte à rebours → retour du pavé |
+| **B5** | Stockage saturé : bandeau persistant + bouton 💾 Exporter tant que le save échoue | ✅ **livré 13/09** — non reproductible au harnais (quota), à valider en saturant le stockage d'un téléphone de test |
+| **L1-L4** | Mode terrain · point rapide · un seul modèle « ma sortie » · un seul écran de réglages — topo à part | 💤 |
+| **Stratégie doc** | une source / trois rendus + garde-fou pré-commit sur les libellés cités (§6.7 du rapport) | ⚖️ à trancher par KARMA |
+
+⚠️ Chaque constat porte un fichier:ligne dans le rapport, **vérifié au code le 13/09** (✅ vérifié) — sauf les [Supposition] marqués comme tels.
+
 ## 🆕 Sujets ouverts (demandes KARMA du 01/08/2026)
 
 ### 1. 🗺️ Import depuis SIG — « Convertir depuis SIG »

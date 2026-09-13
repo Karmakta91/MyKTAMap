@@ -877,3 +877,57 @@ Les bornes sont celles de l'écran de saisie.
 l'existence de l'écrivain et son appel depuis l'écran de réglages — plus la
 transmission effective des trois clés du podomètre. Les trois oublis possibles
 ont été falsifiés un par un.
+
+## 📍 Position confirmée & permission capteurs — règle « instant T » (13/09/2026)
+
+Issu de l'audit ergonomie (`docs/audits/2026-09-13_audit-ergonomie-v1.md`, bloquants B1 et B2), décision KARMA :
+*« le bouton sortie d'urgence doit prendre la position à l'instant T, bien sûr »*.
+
+### Le trou
+
+`getTrackingPosition()` renvoie **toujours** un objet : `position` est initialisée au départ du plan
+(`APP_CONFIG.startX/startY`) par `initTracking()`. Rien ne distinguait « l'utilisateur s'est situé » de
+« valeur par défaut ». Conséquences : `sortieUrgence.js > declencher()`, `interfaceItineraire.js >
+itineraireYAller()` et `emergencyMode.js` partaient de l'**entrée du plan** en la présentant comme la
+position de l'utilisateur, et la branche « pas de tracker → clique ta position » de la sortie d'urgence était
+**inatteignable** (et, ranimée telle quelle, finissait en cul-de-sac : « Tracer » re-testait le tracker).
+
+### Le drapeau
+
+`tracking.js` : `_positionConfirmee` (bool) + `_positionConfirmeeTs` (ms), posés par `_marquerPositionConfirmee()`.
+
+| Événement | Effet |
+|---|---|
+| clic carte en mode recalage · `recalerTrackerSurPoint` (« 📍 Je suis ici », arrivée de portail, reprise carnet, picker « Où es-tu ? ») | `confirmee = true`, `ts = now` |
+| pas appliqué (`_stepApplied`) | `ts = now` si déjà confirmée — « il y a N min » = depuis le **dernier mouvement connu**, pas depuis le dernier recalage |
+| `initTracking()` (chargement d'un plan) · `resetTrackingPosition()` (Reset des Réglages) | `confirmee = false` |
+| `_rebuildTrailFromTimeline()` (session restaurée) | `confirmee = true` **si** la timeline contient une entrée `type === "recalage"`, `ts` = `t` du dernier point |
+
+Lecture : `window.getTrackingPositionEtat()` → `{ confirmee, ts, suiviActif }`.
+
+### La règle, côté consommateurs
+
+- **Suivi actif OU confirmée → position du tracker à l'instant T, zéro question.** Pas de seuil de fraîcheur (décision KARMA « b : pas de seuil ») : l'écart s'affiche, l'utilisateur juge.
+- **Jamais confirmée → picker partagé** `utils.js > ktaDemanderPositionCarte(onPick, {icone, texte, recaler, onCancel})`. Floater `.kta-iti-floater` (donc reconnu par `_modeClicCarteActif()` : pas de popup parasite, clic ré-émis en capture par `map.js`, **le tap porte même sur un marqueur**), les autres modes clic-carte sont éteints avant d'armer (`window._desactiverTousLesModes`, exposé par `interface.js` à cette occasion). **Le tap recale le tracker** (`recalerTrackerSurPoint`) — donc confirme la position — puis rend la main.
+- `sortieUrgence.js` : `_lancer(origine, meta)` garde `meta.mode` (`suivi` / `confirmee` / `clic`) + `ts` pour la ligne d'état de la modale ; `_tracerIndex` passe `{ origine }` à `itineraireYAller`.
+- `itineraireYAller(x, y, nom, opts)` : `opts.origine` impose l'origine ; sans elle, même règle (picker si jamais confirmée).
+- `emergencyMode.js` (afficheur, pas de picker) : statut « position par défaut — jamais confirmée ».
+
+🪤 **Piège** : tout nouveau chemin qui écrit `position` sans passer par le clic recalage ni `recalerTrackerSurPoint`
+doit appeler `_marquerPositionConfirmee()`, sinon le picker s'ouvrira alors que l'utilisateur s'est situé.
+Les 4 points d'écriture actuels sont listés dans le tableau ci-dessus.
+
+### Permission capteurs (B2)
+
+`requestPermission()` rend une **`Promise<boolean>`** : `true` si les écouteurs sont attachés (ou si la
+plateforme n'exige pas de permission), `false` sur refus **ou** rejet (hors geste utilisateur, demande déjà
+tranchée). Avant : seule la branche `granted` existait, et `interface.js > _doStart` appelait `startTracking()`
+sans attendre — sur iOS, un refus laissait la pastille ON et zéro pas à jamais. Désormais `_doStart` attend ;
+sur `false` : rien n'est activé, modale chartée `ui.trackerWarn.refusTitre/refusTexte` (chemin de réactivation
+iOS). `compass.js > show()` affiche un toast (`compass.toast.capteursRefuses`) au lieu d'un « N 0° » muet.
+La commande vocale « démarre le tracker » appelle encore `startTracking()` directement (sans permission ni
+avertissement) — constat M5 de l'audit, hors lot 1.
+
+⚠️ **Non reproductible au harnais** : le refus iOS demande un appareil. À valider sur iPhone avant release.
+
+🛡️ **Garde-fou** : `scripts/check-position-confirmee.js` (pré-commit bloquant) vérifie les points d'écriture du drapeau, les deux remises à zéro, la règle dans `declencher()` et `itineraireYAller`, la transmission de l'origine par « Tracer », la Promise de `requestPermission` attendue par `_doStart`, la classe commune du floater et les clés i18n ×3. Falsifié 4× sur une copie mutée (`node scripts/check-position-confirmee.js <racine>`).

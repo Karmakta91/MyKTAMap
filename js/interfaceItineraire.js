@@ -182,12 +182,32 @@ function _confirmRemplacerItineraire(onConfirm) {
 
 // "🧭 Y aller" : depuis position tracker → ce point. Calcul direct + trace.
 // Si itineraire actif → confirme avant remplacement.
-window.itineraireYAller = function(x, y, nom) {
+// `opts.origine` {x, y} (13/09/2026) : origine imposée par l'appelant — la
+// Sortie d'urgence passe celle de SON calcul, sinon on re-testait le tracker.
+// Règle « instant T » (décision KARMA, audit ergonomie B1) : suivi actif OU
+// position confirmée → on part de la position du tracker sans question ;
+// jamais confirmée (= encore le départ du plan) → picker partagé « Où es-tu ? »
+// qui recale le tracker, puis on revient ici avec l'origine.
+window.itineraireYAller = function(x, y, nom, opts) {
   if (typeof x !== "number" || typeof y !== "number") return;
+  opts = opts || {};
+  const origineForcee = (opts.origine && typeof opts.origine.x === "number"
+                         && typeof opts.origine.y === "number") ? opts.origine : null;
+  if (!origineForcee) {
+    const etat = (typeof window.getTrackingPositionEtat === "function")
+      ? window.getTrackingPositionEtat() : null;
+    if (etat && !etat.suiviActif && !etat.confirmee &&
+        typeof window.ktaDemanderPositionCarte === "function") {
+      window.ktaDemanderPositionCarte(function(p) {
+        window.itineraireYAller(x, y, nom, { origine: p });
+      }, { icone: "🧭", texte: window.I18n.t("iti.pick.ouEsTu") });
+      return;
+    }
+  }
 
-  const pos = (typeof window.getTrackingPosition === "function")
+  const pos = origineForcee || ((typeof window.getTrackingPosition === "function")
     ? window.getTrackingPosition()
-    : null;
+    : null);
   if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
     alert(window.I18n.t("iti.err.trackerPos"));
     return;
@@ -597,6 +617,23 @@ function _redessinerWaypoints() {
   });
   _rafraichirListeWaypointsModale();
 }
+
+// 🚨 Q12 (audit ergonomie 13/09/2026) : après un rechargement, sessionPersist
+// restaurait le tracé cyan mais PAS les étapes ① ② ③ ni les ✓ des étapes
+// validées — elles ne revenaient qu'en rouvrant la modale. Reconstruit les
+// waypoints en RAM depuis la road « itinerary » restaurée (les flags `done`
+// sont persistés) et redessine les marqueurs. Appelé par sessionPersist.js
+// en fin de phase 2. Rend faux s'il n'y a rien à redessiner.
+window.itineraireRedessinerDepuisRoad = function() {
+  const road = (window.getRoads ? (window.getRoads() || []) : [])
+    .find(function(r) { return r && r.type === "itinerary" && !r._preview && Array.isArray(r.waypoints) && r.waypoints.length >= 2; });
+  if (!road) return false;
+  _itineraryWaypoints = road.waypoints.map(function(w) { return Object.assign({}, w); });
+  if (_itineraryMarkerLayer) _itineraryMarkerLayer.clearLayers();
+  _itineraryWaypoints.forEach(function(p, i) { _ajouterWaypointVisuel(p, i + 1); });
+  try { _majLabelDistanceItineraire(); } catch(e) {}
+  return true;
+};
 
 function _rafraichirListeWaypointsModale() {
   const cont = document.getElementById("kta-iti-waypoints-list");

@@ -612,7 +612,7 @@ n'apparaît pas, c'est que votre plan est déjà découpé et que le réglage n'
 - **Sidebars unifiées gauche/droite** — chaque côté est une **seule barre verticale continue** :
   - **Gauche** : ⊞ Layers · − + Zoom · 🏗 Niveau · ≡ collapse · 📚 Doc · ⚙ Réglages · ⬇ Charger · ⬆ Save
   - **Droite** : ≡ collapse · 🔍 Recherche · ✏️ Édition · 📐 Mesure · 🛣 Tracés · ⬛ Zones · 🧭 Tracker
-  - **En landscape mobile**, les sous-menus se déplient **horizontalement vers l'intérieur de l'écran** (plus ergonomique sur tablette/smartphone en paysage). Le zoom +/- reste vertical (convention universelle).
+  - **Panneaux d'outils** : depuis v1.85.1 ils s'ouvrent **centrés à l'écran** (Tracés, Zones, Structures, comme le Tracker et les Filtres) ; l'option « 🪟 Ancrer les panneaux d'outils au bouton » (⚙️ Configuration) restaure l'ancrage au bouton.
 - **🧭 Boussole d'orientation** :
   - En portrait : en **bas-gauche** au-dessus du footer
   - En landscape : en **bas-centrée** (pour ne pas cacher les icônes latérales)
@@ -822,7 +822,7 @@ Le toggle est **persistant** (survit aux reloads et fermetures d'onglet) jusqu'�
 
 ---
 
-## 🌍 Mode OSM — recherche intégrée (depuis v1.70.0)
+## 🌍 Vue OSM plein écran — recherche intégrée (depuis v1.70.0)
 
 Le bouton **⛶** du widget Vue OSM s'appelle désormais **« Ouvrir le mode OSM »** : la carte passe en plein écran. Une **barre de recherche** y apparaît :
 
@@ -885,12 +885,12 @@ Le bouton **🚨** dans la barre du haut (entre 📖 Mode Histoire et la batteri
 
 ### Comment ça marche
 
-1. Tape sur **🚨** dans la barre du haut **OU** dis « **sortie** » / « **comment sortir** » via la commande vocale 🎤.
+1. Tape sur **🚨** dans la barre du haut (bouton rouge, à part des compteurs) **OU** dis « **sortie** », « **où est la sortie** », « **comment sortir** » via la commande vocale 🎤.
 2. L'app scanne tous les POIs du plan ayant un tag de sortie ouverte :
    - `cao` → **C**avage **O**uvert
    - `peo` → **P**uits à **É**chelon **O**uvert
    - `eso` → **E**scalier de **S**ervice **O**uvert
-   - `entrée` → tout POI marqué comme entrée connue
+   - `entrée` → tout POI marqué comme entrée connue, **et** le tag intégré « 🚪 Point d'entrée du plan »
 3. Pour chaque candidate, l'app calcule le **vrai chemin navigable** via le pathfinder (gère les murs ET les jonctions inter-niveaux).
 4. Une modale compacte s'affiche avec :
    - La sortie la plus proche + sa distance + son niveau si multi-étages
@@ -901,11 +901,13 @@ Le bouton **🚨** dans la barre du haut (entre 📖 Mode Histoire et la batteri
 
 Les codes `caf` / `pef` / `esf` (cavages, puits, escaliers **fermés**) sont **exclus** car non-traversables en pratique. Si tu marques un POI comme fermé, l'app ne te suggérera jamais d'aller dedans.
 
-Si une sortie est affichée avec un badge **≈** (tilde), ça veut dire que le pathfinder **n'a pas pu calculer un chemin** et qu'on a fallback sur la **distance à vol d'oiseau**. Méfie-toi : cette sortie peut être inaccessible en pratique (murs, étage isolé).
+Si une sortie est affichée avec la mention **« Distance à vol d'oiseau — chemin non vérifié »** (carte en pointillés), ça veut dire que le pathfinder **n'a pas pu calculer un chemin** : la distance est mesurée en ligne droite. Ces sorties sont reléguées sous un séparateur **« Non confirmées »** dans la liste, et si **aucune** sortie n'a de chemin vérifié, un bandeau rouge te le dit avant tout. Méfie-toi : une telle sortie peut être inaccessible en pratique (murs, étage isolé).
 
 ### Origine du calcul
 
-Par défaut, l'app part de ta **position tracker actuelle**. Si le tracker n'est pas actif (ou si tu es en exploration libre sans tracking), une modale alternative te propose de **cliquer sur la carte** pour indiquer ta position de départ.
+L'app part de ta **position à l'instant T**, sans te poser de question, dès que le suivi est actif **ou** que tu t'es situé au moins une fois depuis l'ouverture du plan (« 📍 Je suis ici » sur un point, recalage sur la carte, arrivée par un portail, ou une session restaurée qui contenait un recalage). La modale te dit d'où part le calcul : *« depuis ta position (suivi actif) »*, *« depuis ta dernière position confirmée, il y a N min »* ou *« depuis le point que tu as tapé »*.
+
+**Un seul cas où l'app te demande « Où es-tu ? »** : tu n'as **jamais** confirmé ta position depuis l'ouverture du plan (elle vaut encore le point de départ du plan). Un bandeau apparaît, tu **tapes ta position sur la carte** (ça marche même en visant un repère existant), et le calcul part de là — ce tap **recale aussi le suivi**, donc « Tracer l'itinéraire », « Y aller » et l'écran Urgence XL partent de la même position. Avant, dans ce cas, l'app calculait en silence depuis l'entrée du plan en la présentant comme ta position.
 
 ### Multi-niveau natif
 
@@ -1013,12 +1015,12 @@ L'app lit les points (session + calques de données) de chaque plan **sur place*
 
 ## 🧭 Présentation de l'interface
 
-Tous les outils sont accessibles depuis la **barre latérale droite**, organisée en **13 groupes** :
+L'interface est organisée en **13 groupes** répartis sur les **deux barres latérales** — à gauche : ⭐ Favoris, 📚 Aide, ⚙️ Paramètres, ⬇️ Charger, ⬆️ Enregistrer, ⏪ Historique ; à droite : 🔍 Recherche, 🧭 Tracker, 📐 Mesure, ✏️ Édition, 🛣️ Tracés, ⬛ Zones, 🏛️ Structures :
 
 | Groupe | Icône | À quoi ça sert |
 |---|---|---|
 | **Favoris** | ⭐ | Tes points mis en favori, accessibles en un clic |
-| **Aide / Doc / Légende** | 📚 | Aide, documentation, Aide IA, légende des icônes |
+| **Aide / Documentation / Légende** | 📚 | Aide, documentation, Aide IA, légende des icônes |
 | **Paramètres** | ⚙️ | Réglages, calibrage de l'échelle, debug *(clic direct)* |
 | **Recherche** | 🔍 | Trouver rapidement un point sur le plan *(clic direct)* |
 | **Charger / Import** | ⬇️ | Importer une session ou un GPX, éditeur de données du plan |
@@ -1046,7 +1048,7 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 
 ### 🎨 Personnaliser la légende (renommer, masquer, couleurs, types custom)
 
-Ouvre **≡ Légende** (groupe 📚 Aide / Doc / Légende) puis **✏️ Modifier**. Pour chaque type de tracé, zone ou structure :
+Ouvre **≡ Légende** (groupe 📚 Aide / Documentation / Légende) puis **✏️ Modifier**. Pour chaque type de tracé, zone ou structure :
 
 - **Renommer** : tape ton libellé (ex. « Principal » → « Grande galerie »). Il s'affiche partout : légende, popups, stats, filtres.
 - **🎨 Changer la couleur** *(depuis v1.76.1)* : un carré de couleur par ligne — et pour les **zones et piliers/murs, deux carrés** : fond et **bordure indépendante**. La couleur s'applique **partout** — carte, exports image/PDF, KMZ, statistiques, rapport de session — immédiatement, sans recharger. Un bouton **↺** remet fond ET bordure d'origine. Détails : sans bordure choisie, une zone la dérive automatiquement (version plus foncée) et un pilier/mur garde son contour noir (le défaut historique) ; la zone *Inaccessible* recolorée perd ses hachures (motif fixe) au profit d'un aplat. Les **entrées personnalisées** se modifient de la même façon, à chaud.
@@ -1062,26 +1064,9 @@ Tout est sauvegardé automatiquement dans ta session, **par plan**.
 
 ### 🔄 Changer rapidement de plan via le titre
 
-Le **titre du plan en cours** affiché en haut de l'écran est **cliquable** : il ouvre un petit menu déroulant avec :
+Le **titre du plan en cours** affiché en haut de l'écran est **cliquable** : il ouvre la fenêtre **« 🗂 Changer de plan »** — carte du plan en cours (badge `● ACTIF`), les **3 derniers plans** ouverts, et un bouton **📚 Voir tous mes plans** qui ramène à l'accueil. La **rose des vents 🧭** à gauche du titre ramène directement à l'accueil.
 
-- **📚 PLANS RÉCENTS** — les 3 derniers plans que tu as ouverts (hors plan en cours)
-- **📚 Tous mes plans…** — pour revenir à l'écran d'accueil avec la liste complète
-
-Au clic sur un plan dans le menu :
-
-- Si ta **session est vierge** (aucune annotation, route, zone ou mesure) → le plan se charge **directement** sans confirmation
-- Si tu as **des modifications en cours** → une fenêtre t'avertit avec la **liste exacte** de ce que tu vas perdre :
-  ```
-  ⚠️ Session en cours
-  Vous avez des modifications non enregistrées :
-     • 5 points ajoutés
-     • 2 tracés
-     • 1 zone
-  Charger « Plan Test 1 » va vous faire perdre ces modifications.
-  [Annuler]   [Charger quand même]
-  ```
-
-> 💡 Cette fonction te permet de basculer entre tes plans favoris en **2 clics** sans repasser par l'écran d'accueil. Pour fermer le menu sans rien faire : clique ailleurs ou appuie sur **Échap**.
+Au clic sur un plan, ta session en cours est **sauvegardée automatiquement** (auto-save + snapshot) avant le changement : il n'y a plus d'avertissement « modifications perdues ». Fermer sans rien faire : ✕, clic à côté ou **Échap**.
 
 ---
 
@@ -1183,11 +1168,11 @@ La recherche couvre :
 
 > Tous les boutons du tracker se trouvent dans le groupe **🧭 Tracker** de la barre latérale.
 
-### 🧭 Panneau latéral Tracker
+### 🧭 Menu Tracker (modale plein écran)
 
-Le bouton **🧭 Tracker** ouvre un **panneau latéral (flyout)** adjacent au bouton principal. C'est lisible, stable visuellement, et toutes les sous-actions sont accessibles sans scroll, même sur mobile.
+Le bouton **🧭 Tracker** ouvre une **modale plein écran de grosses tuiles** (depuis v1.50.0), rangées en trois sections : **Suivi**, **Outils**, **Urgence**. Chaque tuile ferme la modale en agissant.
 
-**Sous-actions disponibles dans le flyout** (ordre fixe) :
+**Tuiles disponibles** :
 
 | Icône | Action |
 |---|---|
@@ -1201,8 +1186,11 @@ Le bouton **🧭 Tracker** ouvre un **panneau latéral (flyout)** adjacent au bo
 | **🔥** | Heatmap — voir section dédiée |
 | **⛑️** | Je suis perdu — **bouton à fond ROUGE** (signal danger) |
 | **🚨** | Mode urgence XL — **bouton à fond ROUGE** (signal danger) |
+| **🚨** | Mode Secours — plans de recherche (équipes + zones), **fond ROUGE** |
 
-> 🚨 **Les 2 modes urgence sont délibérément placés en FIN de panneau avec un fond rouge vif** pour les rendre instantanément identifiables visuellement. En situation de stress, tu sais où regarder.
+> 🚨 **Les 3 tuiles d'urgence (⛑️ Je suis perdu, 🚨 Mode urgence XL, 🚨 Mode Secours) forment la section Urgence, en bas, sur fond rouge vif.** Le bouton **🚨 Sortie d'urgence** (sortie la plus proche), lui, est dans la **barre du haut**, à 1 tap.
+
+> 🧭 **Barre du bas** : le voyant 🧭 affiche **ON · 👣 pas · distance** en direct pendant le suivi, et **un tap dessus ouvre le menu Tracker**. Au démarrage du suivi, la fenêtre d'avertissement propose **🔆 Garder l'écran allumé** (pré-coché) : un écran qui s'éteint, ce sont des pas perdus. Le bouton **≡ Filtres** porte une pastille avec le nombre de filtres actifs (niveaux compris) ; au rechargement d'un plan, un message te dit si des filtres ont été restaurés. Dans **📊 Détails de la session**, la première ligne dit **« ✅ Enregistré il y a N s »** (rouge si la sauvegarde échoue).
 
 > 🆕 **Sur le terrain** :
 > - **🎯 Ma position** : recentre la carte sur ta position courante (utile après avoir navigué ailleurs sur le plan).
@@ -2819,10 +2807,10 @@ Si tu actives le mode sur un plan existant :
 
 ### 📤 Exporter
 
-Appuyez sur **⬆️ → 💾**. Une modale s'ouvre avec **3 onglets** au choix :
+Appuyez sur **⬆️ → 💾**. Une modale s'ouvre avec **5 onglets** : 🚀 Full · 🎨 Avancé · 🔄 Conversion · 🔗 Fusion · 📡 Export externe :
 
 #### 🚀 Full
-Exporte tout en un seul fichier `devmap-session` (points ajoutés, tracés, zones, structures).
+Exporte tout en un seul fichier `.json` (ou `.zip` si tu coches les photos) : points ajoutés, tracés, zones, structures, mesures, tracé du suivi.
 Pratique pour sauvegarder ta session et la reprendre plus tard.
 
 > 📌 La mesure de distance n'est pas incluse en mode Full.
@@ -2870,7 +2858,7 @@ Accessible **sans plan ouvert** depuis l'accueil : **📊 Éditeur de données �
 
 ### 🖼️ Exporter en PNG/JPG
 
-Appuyez sur **⬆️ → 🖼️ Plan en image**. Une modale s'ouvre avec deux modes :
+Appuyez sur **⬆️ → 🖼️ Exporter le plan en image**. Une modale s'ouvre avec deux modes :
 
 #### ⚡ Export rapide
 Tout est inclus automatiquement : plan complet, tous les calques visibles, points, tracés, zones, position et chemin du tracker. Format PNG résolution originale. Un seul clic sur **Télécharger**.
@@ -2956,7 +2944,7 @@ Le PDF généré porte la signature `Généré par MyKTAMap · CC BY-NC-SA 4.0 �
 
 ### 🌍 Exporter en KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza)
 
-Appuyez sur **⬆️ → 💾** puis l'onglet **🌍 KMZ**. Génère un fichier `.kmz` ouvrable dans n'importe quelle appli de cartographie terrain compatible KML.
+Appuyez sur **⬆️ → 💾** puis l'onglet **📡 Export externe** (KMZ). Génère un fichier `.kmz` ouvrable dans n'importe quelle appli de cartographie terrain compatible KML.
 
 Cas d'usage typiques :
 - Visualiser ton plan dans **Google Earth** par-dessus l'imagerie satellite
@@ -3022,9 +3010,9 @@ Ton calibrage 2 points est sauvegardé **par plan** (localStorage). Au prochain 
 
 ### 📥 Importer une session
 
-Appuyez sur **⬇️ → 📥 Importer une session** pour ouvrir la fenêtre d'import. Une modale s'affiche :
+Appuyez sur **⬇️ → 📥 Importer**, carte **Session MyKTAMap** pour ouvrir la fenêtre d'import. Une modale s'affiche :
 
-1. **Glissez-déposez** votre fichier `devmap-session.json` dans la zone, ou cliquez pour le sélectionner
+1. **Glissez-déposez** votre fichier `.json` (ou `.zip` avec photos) dans la zone, ou cliquez pour le sélectionner
 2. Un **aperçu** s'affiche : nombre de points ajoutés, nombre de tracés, nombre de zones, nombre de points de mesure
 3. Un **avertissement** vous prévient que l'import remplacera votre session en cours — pensez à exporter avant si nécessaire
 4. Cliquez sur **Importer** pour valider, ou **Annuler** pour fermer sans rien changer
@@ -3071,7 +3059,7 @@ Bouton **💾 Sauvegarder** :
 
 ### 🗂️ Changer de plan
 
-Appuyez sur **⬇️ → 🗂️ Changer de plan** pour revenir à votre liste de plans (l'écran d'accueil **📚 Mes plans**) et en charger un autre. Les données non exportées seront perdues — **exportez votre session avant de changer**.
+Ce bouton **n'est plus dans le menu ⬇️**. Pour changer de plan : touche la **rose des vents 🧭** (accueil) ou le **titre du plan** (fenêtre « Changer de plan », cf. plus haut) dans la barre du haut. Ta session est **sauvegardée automatiquement** avant le changement.
 
 Depuis cet écran, vous pouvez :
 
@@ -3368,7 +3356,7 @@ Les plans très gros peuvent occasionner des **kills mémoire silencieux** sur i
 
 ## 🤖 Aide IA
 
-> Accessible via le groupe **📚 Aide / Doc / Légende → 🤖 Aide IA**.
+> Accessible via le groupe **📚 Aide / Documentation / Légende → 🤖 Aide IA**.
 
 Télécharge un fichier `.md` qui résume tout ce que l'app permet de faire (cette doc + une FAQ + des instructions pour l'IA). Donne-le à **n'importe quelle IA conversationnelle** (ChatGPT, Claude, Gemini, Perplexity, Le Chat, Copilot, etc.) — elle pourra répondre à toutes tes questions sur MyKTAMap avec un contexte précis.
 
@@ -3387,7 +3375,7 @@ Télécharge un fichier `.md` qui résume tout ce que l'app permet de faire (cet
 
 ## 🗺️ Légende
 
-> Accessible via le groupe **📚 Aide / Doc / Légende → 🗺️ Légende**.
+> Accessible via le groupe **📚 Aide / Documentation / Légende → 🗺️ Légende**.
 
 Affiche la légende complète des icônes et tracés, regroupés par catégorie : **🕳️ Puits**, **🪜 Accès** (puits à échelon, escaliers, cavages), **⚠️ Signalétique**, **🛣️ Tracés** et **⬛ Zones**.
 
@@ -3418,12 +3406,12 @@ Accédez aux paramètres en cliquant sur **⚙️** :
 
 ### 🎬 Mode présentation
 
-- **🎬 Lancer le mode présentation** : bouton en **haut** de la modale Réglages. Active un mode plein écran sans UI (pour démos / projection), accessible d'un seul bouton tactile.
+- **🎬 Activer le mode présentation** : bouton en **haut** de la modale Réglages. Active un mode plein écran sans UI (pour démos / projection), accessible d'un seul bouton tactile.
 - La touche **F** est disponible comme raccourci PC.
 
 ### 🎯 Pickers géoréférencement
 
-Les pickers 2-points (calibrage GPS pour KMZ / GPX) sont disponibles dans **⚙️ Réglages → onglet Géoréférencement** (en plus de la modale **Enregistrer session → 🌍 KMZ**) :
+Les pickers 2-points (calibrage GPS pour KMZ / GPX) sont disponibles dans **⚙️ Réglages → section 🌐 Géoréférencement GPS** (la modale se fait défiler, elle n'a pas d'onglets — en plus de l'onglet **📡 Export externe** de la modale Exporter) :
 
 - **🔍 Recherche d'un point** sur le plan pour auto-remplir x/y
 - **📍 Clic carte** pour pointer une position directement
@@ -3509,9 +3497,9 @@ L'écran de verrouillage apparaît automatiquement après le splash :
 
 ⚙️ Configuration → 🔐 Code d'accès local → **🔓 Désactiver**. Confirmation par biométrie OU code actuel. L'app ne demande plus de code au démarrage suivant.
 
-### Lockout : 5 tentatives ratées
+### Verrou temporaire : 5 codes faux
 
-Pour des raisons de sécurité, après **5 codes incorrects à la suite**, l'app est verrouillée **définitivement** sur un écran rouge sans bouton de sortie. La seule façon de récupérer l'accès est de **💥 Tout réinitialiser** depuis l'écran d'accueil (perte de la session en cours et des plans non mémorisés).
+Après **5 codes incorrects à la suite**, l'app se verrouille **temporairement** : 10 min la première fois, puis 1 h, 6 h et 24 h à chaque nouvelle série de 5 erreurs. Un compte à rebours s'affiche et le pavé revient tout seul à la fin du délai ; un code juste remet tout à zéro. Il n'y a **aucun bouton de reset** sur cet écran et aucune récupération du code en cas d'oubli — si tu l'as vraiment perdu, il reste **💥 Tout réinitialiser** depuis l'écran d'accueil (perte de la session en cours et des plans non mémorisés). Le délai suit l'horloge du téléphone.
 
 > Les biométries ratées ne comptent **pas** dans les 5 tentatives — la spec WebAuthn gère son propre lockout natif côté device. Tu peux annuler un Face ID par erreur sans craindre d'épuiser tes essais.
 
@@ -3519,7 +3507,7 @@ Pour des raisons de sécurité, après **5 codes incorrects à la suite**, l'app
 
 ## 🔧 Réinitialiser
 
-En cas de problème ou pour forcer une mise à jour, utilisez **⚙️ → 🗑️ Réinitialiser**. Cette action désinscrit le Service Worker, vide le cache et recharge l'application.
+En cas de problème ou pour forcer une mise à jour, utilisez **⚙️ Configuration (page d'accueil) → 💥 Tout réinitialiser**. Cette action désinscrit le Service Worker, vide le cache et recharge l'application.
 
 > ⚠️ Effectuez cette action uniquement avec une connexion Internet disponible. Sans réseau, l'application sera inutilisable jusqu'au prochain rechargement complet.
 
@@ -3627,7 +3615,7 @@ Choisissez **⚡ Performance** dans le sélecteur Mode performance avant de char
 Appuyez à nouveau sur le bouton actif (en vert) pour le désactiver.
 
 **L'application ne se met pas à jour après une nouvelle version**
-Utilisez **⚙️ → 🔄 Forcer la mise à jour** (mise à jour douce, conserve toutes vos données). Si insuffisant : **⚙️ → 🗑️ Réinitialiser** (purge totale, dernière option). La mise à jour douce est rapide grâce à un pré-téléchargement en arrière-plan.
+Utilisez **⚙️ Configuration (page d'accueil) → 🔄 Forcer la mise à jour** (mise à jour douce, conserve toutes vos données). Si insuffisant : **⚙️ Configuration → 💥 Tout réinitialiser** (purge totale, dernière option). La mise à jour douce est rapide grâce à un pré-téléchargement en arrière-plan.
 
 **📡 App bloquée après une mise à jour douce**
 Si après une mise à jour l'app reste coincée (loader sans CSS, page blanche, assets mal chargés), la cause la plus fréquente est un **edge CDN GitHub Pages qui sert un contenu corrompu** (mauvais MIME, asset tronqué) pour la zone géographique courante. Premier réflexe avant tout reset : **désactive ton VPN s'il est actif et change de réseau** (4G ↔ Wi-Fi ↔ autre Wi-Fi). Le simple fait de basculer d'IP/edge CDN suffit souvent à débloquer.

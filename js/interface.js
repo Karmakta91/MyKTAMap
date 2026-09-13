@@ -608,6 +608,10 @@ function afficherPopupChangerPlan() {
 // =========================
 const _modesActifs = {};
 
+// 📍 Exposé pour le picker partagé « Où es-tu ? » (utils.js >
+// ktaDemanderPositionCarte) : les modes clic-carte doivent tomber AVANT
+// d'armer un picker, et seul ce registre sait éteindre la surbrillance.
+window._desactiverTousLesModes = _desactiverTousLesModes;
 function _desactiverTousLesModes() {
   Object.values(_modesActifs).forEach(function(m) {
     try { m.desactiverFn(); } catch(e) {}
@@ -782,6 +786,15 @@ function _afficherAvertissementTracker(onConfirm) {
       '<div class="kta-readme-modal-corps">' +
         '<p>' + window.I18n.t("ui.trackerWarn.permission") + '</p>' +
         '<p class="kta-tracker-warn-note">' + window.I18n.t("ui.trackerWarn.limites") + '</p>' +
+        // 🚨 Q9 (audit 13/09/2026) : « Garder l'écran allumé » était OFF par
+        // défaut, rangé dans Affichage, jamais proposé. Un écran qui s'éteint
+        // = des pas perdus et un déverrouillage toutes les 30 s avec des gants.
+        // Proposé ICI, pré-coché, seulement si supporté et pas déjà activé.
+        ((window.WakeLock && typeof window.WakeLock.isSupported === "function" && window.WakeLock.isSupported()
+          && typeof window.WakeLock.isEnabled === "function" && !window.WakeLock.isEnabled())
+          ? '<label class="kta-tracker-warn-wake"><input type="checkbox" id="kta-tracker-warn-wake" checked> ' +
+              '<span>' + window.I18n.t("ui.trackerWarn.wakeLock") + '</span></label>'
+          : '') +
       '</div>' +
       '<div class="kta-tracker-warn-actions">' +
         '<button class="kta-btn kta-btn-ghost"   id="kta-tracker-warn-cancel" type="button">' + window.I18n.t("ui.btn.cancel") + '</button>' +
@@ -810,6 +823,11 @@ function _afficherAvertissementTracker(onConfirm) {
 
   document.getElementById("kta-tracker-warn-ok").addEventListener("click", function() {
     _trackerWarningAcknowledged = true;
+    // Q9 : wake lock demandé depuis le même geste utilisateur (requis par l'API).
+    const wakeCb = document.getElementById("kta-tracker-warn-wake");
+    if (wakeCb && wakeCb.checked && window.WakeLock && typeof window.WakeLock.setEnabled === "function") {
+      try { window.WakeLock.setEnabled(true); } catch(e) { console.warn("[Tracker] wake lock :", e); }
+    }
     _cleanup();
     // ⚠️ APPEL SYNCHRONE — voir commentaire d'en-tête. Pas de setTimeout ici.
     try { onConfirm(); } catch(e) { console.error("[Tracker] onConfirm threw:", e); }
@@ -1222,6 +1240,9 @@ function _ajouterSectionTracker(corps, titre, actions) {
   corps.appendChild(grid);
 }
 
+// 🚨 Q11 (audit 13/09/2026) : le chip 🧭 du footer promettait « cliquer pour
+// gérer » sans aucun gestionnaire. Exposé pour refonteInterface.js.
+window.ouvrirMenuTracker = function() { try { _ouvrirTrackerModal("tracker"); } catch(e) { console.warn("[Interface] menu tracker :", e); } };
 function _ouvrirTrackerModal(groupId) {
   // Cohérence "1 menu à la fois" : ferme flyout + accordéon éventuels.
   _fermerFlyout();
@@ -1888,6 +1909,12 @@ function _suspendreVerrou(ms) {
     _verrouInterval = setInterval(_majBadgeVerrou, 1000);
   }
   _afficherBadgeVerrou();
+  // 🚨 Q17 (audit 13/09/2026) : aucun retour hors la barre du bas, repliable.
+  if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+    window.OOMGuard.showToast(ms
+      ? window.I18n.t("tracker.verrou.toastSuspendu", { duree: Math.round(ms / 1000) >= 60 ? Math.round(ms / 60000) + " min" : Math.round(ms / 1000) + " s" })
+      : window.I18n.t("tracker.verrou.toastSuspenduInfini"), "warn");
+  }
   console.log("[Tracker] Verrou sur tracé suspendu" + (ms ? " (" + Math.round(ms / 1000) + "s)" : " (jusqu'à réactivation)"));
 }
 
@@ -1901,6 +1928,9 @@ function _reactiverVerrou() {
   _verrouFinTs = 0;
   var el = _verrouStatEl();
   if (el) { el.style.display = "none"; el.onclick = null; }
+  if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+    window.OOMGuard.showToast(window.I18n.t("tracker.verrou.toastReactive"), "info");   // Q17
+  }
   console.log("[Tracker] Verrou sur tracé réactivé");
 }
 
@@ -1963,6 +1993,18 @@ function initInterface() {
   // Reset état accordéons (au cas où on recharge un plan)
   Object.keys(_groupes).forEach(function(k) { delete _groupes[k]; });
   _groupeOuvert = null;
+
+  // 🚨 Q17 (audit 13/09/2026) : une suspension du verrou survivait au
+  // changement de plan alors que APP_CONFIG.smartNav est reconstruit depuis
+  // les préférences — le bouton 🔓 proposait de « réactiver » un verrou déjà
+  // actif. On oublie la suspension (sans toucher à smartNav, qui vient des
+  // prefs du nouveau plan).
+  if (_verrouSuspendu || _verrouTimer || _verrouInterval) {
+    if (_verrouTimer)    { clearTimeout(_verrouTimer);   _verrouTimer = null; }
+    if (_verrouInterval) { clearInterval(_verrouInterval); _verrouInterval = null; }
+    _verrouSuspendu = false;
+    _verrouFinTs = 0;
+  }
 
   // 🐛 v1.57.2 (KARMA « le bouton ajouter point est actif quand j'ouvre le
   // plan ») : RESET des MODES au chargement d'un plan. Les flags window.modeX
@@ -2356,8 +2398,26 @@ function initInterface() {
           // callback synchrone (le clic "J'ai compris" est un geste user
           // valide pour iOS requestPermission). Cf. commentaire d'en-tête de
           // _afficherAvertissementTracker.
+          // 🚨 B2 (audit ergonomie 13/09/2026) : on ATTEND la réponse de
+          // requestPermission (Promise<boolean> depuis cette date). Avant,
+          // startTracking() partait avant la permission : refuser la demande
+          // iOS laissait la pastille ON, l'icône ⏹️, et zéro pas à jamais.
+          // Sur refus : pas de démarrage, modale chartée avec le chemin de
+          // réactivation. L'appel reste dans le geste utilisateur (le clic
+          // « J'ai compris »), seule la SUITE est différée.
           const _doStart = function() {
-            requestPermission();
+            let perm;
+            try { perm = requestPermission(); } catch(e) { perm = true; }
+            Promise.resolve(perm).then(function(ok) {
+              if (ok === false) {
+                _alertCharte(window.I18n.t("ui.trackerWarn.refusTitre"),
+                             window.I18n.t("ui.trackerWarn.refusTexte"), "🚫");
+                return;
+              }
+              _doStartSuite();
+            });
+          };
+          const _doStartSuite = function() {
             startTracking();
             btnSub.innerHTML = "⏹️";
             // 🆕 v1.8.0 (fix KARMA) : on garde l'icône principale 🧭
@@ -3013,7 +3073,18 @@ _setGroupeModeActif("tracker", isTracking, null);
             return;
           }
           if (window.fermerZoneEnCours) {
+            // 🚨 Q25 (audit 13/09/2026) : ✅ fermait la zone SANS l'historiser
+            // et laissait l'outil armé (le tap suivant démarrait une nouvelle
+            // zone). Même chemin que la fermeture au clic sur le 1er sommet.
+            const _avantZ = window.HistoryManager ? window.HistoryManager.captureState("zones") : null;
+            const _typeZ  = window.modeZone;
             const ok = window.fermerZoneEnCours();
+            if (ok) {
+              if (window.HistoryManager && _avantZ) {
+                window.HistoryManager.record(window.I18n.t("history.action.closeZone", { type: _typeZ }), _avantZ, "zones");
+              }
+              if (typeof window._fermerModeZone === "function") window._fermerModeZone();
+            }
             if (!ok) {
               _alertCharte(
                 window.I18n.t("ui.zone.tooFewTitle"),
@@ -3175,7 +3246,16 @@ _setGroupeModeActif("tracker", isTracking, null);
             return;
           }
           if (window.fermerStructureEnCours) {
+            // 🚨 Q25 (audit 13/09/2026) : idem zones — historique + outil éteint.
+            const _avantS = window.HistoryManager ? window.HistoryManager.captureState("structures") : null;
+            const _typeS  = window.modeStructure;
             const ok = window.fermerStructureEnCours();
+            if (ok) {
+              if (window.HistoryManager && _avantS) {
+                window.HistoryManager.record(window.I18n.t("struct.undo.close", { type: _typeS }), _avantS, "structures");
+              }
+              if (typeof window._fermerModeStructure === "function") window._fermerModeStructure();
+            }
             if (!ok) {
               // 🆕 v1.9.3-A1.b.2 + fix2 : message adapté au type (front
               // = polyline 2pts min, pilier/mur = polygon 3pts min).

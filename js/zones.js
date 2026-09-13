@@ -168,23 +168,54 @@ function initZones() {
 // =========================
 // ACTIVER / DÉSACTIVER UN TYPE
 // =========================
-function toggleZoneMode(type) {
-  // Si on change de type alors qu'une zone est en cours, on la perd
-  // (l'utilisateur doit explicitement fermer ou annuler)
-  if (currentZone && window.modeZone !== type) {
-    // Retirer la zone non fermée
+// 🚨 Q24 (audit ergonomie 13/09/2026) : retaper la pastille ou changer de
+// type DÉTRUISAIT la zone en cours sans un mot ni historique, alors que le
+// même geste VALIDE un tracé. Désormais : ≥ 3 sommets → la zone est FERMÉE
+// (validée, historisée, comme le re-clic sur le 1er sommet) ; sinon elle est
+// abandonnée avec un toast et une entrée d'historique (⏪ la rend).
+function _labelTypeZone(type) {
+  if (window.LegendCustomization && String(type).startsWith("cust-")) {
+    const e = window.LegendCustomization.findCustomEntry(type);
+    return e ? e.label : type;
+  }
+  return (type === "eau" ? "Eau"
+        : type === "remblais" ? "Remblais"
+        : type === "effondrement" ? "Effondrement"
+        : type === "inaccessible" ? "Inaccessible"
+        : type);
+}
+function _resoudreZoneEnCours() {
+  if (!currentZone) return;
+  const avant = window.HistoryManager ? window.HistoryManager.captureState("zones") : null;
+  const label = _labelTypeZone(currentZone.type);
+  const toast = function(k, type) {
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(window.I18n.t(k, { type: label }), type);
+    }
+  };
+  if (currentZone.points.length >= 3) {
+    currentZone = null;
+    if (window.HistoryManager && avant) {
+      window.HistoryManager.record(window.I18n.t("history.action.closeZone", { type: label }), avant, "zones");
+    }
+    toast("zones.toast.fermee", "info");
+  } else {
     const idx = zonesData.indexOf(currentZone);
     if (idx >= 0) zonesData.splice(idx, 1);
     currentZone = null;
+    if (window.HistoryManager && avant) {
+      window.HistoryManager.record(window.I18n.t("history.action.abandonZone", { type: label }), avant, "zones");
+    }
+    toast("zones.toast.abandon", "warn");
   }
+}
+function toggleZoneMode(type) {
+  // Changement de type ou désactivation du même type : la zone en cours est
+  // fermée si elle est valide, abandonnée sinon (cf _resoudreZoneEnCours).
+  if (currentZone && window.modeZone !== type) _resoudreZoneEnCours();
 
   if (window.modeZone === type) {
-    // Désactivation du même type → annule la zone en cours si pas fermée
-    if (currentZone) {
-      const idx = zonesData.indexOf(currentZone);
-      if (idx >= 0) zonesData.splice(idx, 1);
-      currentZone = null;
-    }
+    if (currentZone) _resoudreZoneEnCours();
     window.modeZone = null;
   } else {
     window.modeZone = type;

@@ -558,7 +558,7 @@ Pulsa un botón antes de cargar — la descripción bajo el selector cambia para
 - **Barras laterales unificadas izquierda/derecha** — cada lado es una **única barra vertical continua**:
   - **Izquierda**: ⊞ Capas · − + Zoom · 🏗 Nivel · ≡ plegar · 📚 Doc · ⚙ Ajustes · ⬇ Cargar · ⬆ Guardar
   - **Derecha**: ≡ plegar · 🔍 Búsqueda · ✏️ Edición · 📐 Medición · 🛣 Trazados · ⬛ Zonas · 🧭 Rastreador
-  - **En horizontal en móvil**, los submenús se despliegan **horizontalmente hacia el interior de la pantalla** (más ergonómico en tableta/teléfono apaisado). El zoom +/− permanece vertical (convención universal).
+  - **Paneles de herramientas**: desde v1.85.1 se abren **centrados en pantalla** (Trazados, Zonas, Estructuras, como el Tracker y los Filtros); la opción « 🪟 Anclar los paneles de herramientas al botón » (⚙️ Configuración) restaura el anclaje.
 - **🧭 Brújula de orientación**:
   - En vertical: **abajo a la izquierda**, sobre el pie
   - En horizontal: **abajo centrada** (para no tapar los iconos laterales)
@@ -768,7 +768,7 @@ El interruptor es **persistente** (sobrevive a las recargas y al cierre de pesta
 
 ---
 
-## 🌍 Modo OSM — búsqueda integrada (desde v1.70.0)
+## 🌍 Vista OSM a pantalla completa — búsqueda integrada (desde v1.70.0)
 
 El botón **⛶** del widget Vista OSM se llama ahora **«Abrir el modo OSM»**: el mapa pasa a pantalla completa. Allí aparece una **barra de búsqueda**:
 
@@ -846,11 +846,13 @@ El botón **🚨** de la barra superior (entre 📖 Modo Historia y la batería 
 
 Los códigos `caf` / `pef` / `esf` (cavidades, pozos y escaleras **cerrados**) quedan **excluidos** por no ser transitables en la práctica. Si marcas un POI como cerrado, la app nunca te sugerirá ir hasta él.
 
-Si una salida se muestra con un distintivo **≈** (virgulilla), significa que el buscador de rutas **no ha podido calcular un camino** y se ha recurrido a la **distancia en línea recta**. Desconfía: esa salida puede ser inaccesible en la práctica (muros, planta aislada).
+Si una salida muestra la mención **« Distancia en línea recta — camino no verificado »** (tarjeta punteada), el pathfinder **no pudo calcular un camino**: la distancia se mide en línea recta. Esas salidas quedan bajo un separador **« No confirmadas »** en la lista, y si **ninguna** salida tiene camino verificado, un banner rojo lo dice antes de nada. Cuidado: esa salida puede ser inaccesible en la práctica (muros, nivel aislado).
 
 ### Origen del cálculo
 
-Por defecto, la app parte de tu **posición actual del rastreador**. Si el rastreador no está activo (o si estás en exploración libre sin seguimiento), una ventana alternativa te propone **pulsar en el mapa** para indicar tu posición de partida.
+La app parte de tu **posición en ese instante**, sin preguntar, en cuanto el seguimiento está activo **o** te has situado al menos una vez desde que abriste el plano (« 📍 Estoy aquí » en un punto, recalibración en el mapa, llegada por un portal, o una sesión restaurada que contenía una recalibración). La ventana te dice desde dónde parte el cálculo: *« desde tu posición (seguimiento activo) »*, *« desde tu última posición confirmada, hace N min »* o *« desde el punto que has tocado »*.
+
+**El único caso en que la app pregunta « ¿Dónde estás? »**: **nunca** has confirmado tu posición desde que abriste el plano (sigue siendo el punto de partida del plano). Aparece un banner, **tocas tu posición en el mapa** (funciona incluso apuntando a un marcador existente) y el cálculo parte de ahí — ese toque **también recalibra el seguimiento**, así que « Trazar la ruta », « Ir allí » y la pantalla de emergencia XL parten de la misma posición. Antes, en ese caso, la app calculaba en silencio desde la entrada del plano presentándola como tu posición.
 
 ### Multinivel nativo
 
@@ -958,12 +960,12 @@ La app lee los puntos (sesión + capas de datos) de cada plano **sobre la marcha
 
 ## 🧭 Presentación de la interfaz
 
-Todas las herramientas están accesibles desde la **barra lateral derecha**, organizada en **13 grupos**:
+La interfaz está organizada en **13 grupos** repartidos en las **dos barras laterales** — izquierda: ⭐ Favoritos, 📚 Ayuda, ⚙️ Ajustes, ⬇️ Cargar, ⬆️ Guardar, ⏪ Historial; derecha: 🔍 Búsqueda, 🧭 Rastreador, 📐 Medición, ✏️ Edición, 🛣️ Trazados, ⬛ Zonas, 🏛️ Estructuras:
 
 | Grupo | Icono | Para qué sirve |
 |---|---|---|
 | **Favoritos** | ⭐ | Tus puntos marcados como favoritos, a un clic |
-| **Ayuda / Doc / Leyenda** | 📚 | Ayuda, documentación, Ayuda IA, leyenda de iconos |
+| **Ayuda / Documentación / Leyenda** | 📚 | Ayuda, documentación, Ayuda IA, leyenda de iconos |
 | **Ajustes** | ⚙️ | Ajustes, calibración de la escala, depuración *(clic directo)* |
 | **Búsqueda** | 🔍 | Encontrar rápidamente un punto en el plano *(clic directo)* |
 | **Cargar / Importar** | ⬇️ | Importar una sesión o un GPX, editor de datos del plano |
@@ -991,7 +993,7 @@ Todas las herramientas están accesibles desde la **barra lateral derecha**, org
 
 ### 🎨 Personalizar la leyenda (renombrar, ocultar, colores, tipos personalizados)
 
-Abre **≡ Leyenda** (grupo 📚 Ayuda / Doc / Leyenda) y luego **✏️ Modificar**. Para cada tipo de trazado, zona o estructura:
+Abre **≡ Leyenda** (grupo 📚 Ayuda / Documentación / Leyenda) y luego **✏️ Modificar**. Para cada tipo de trazado, zona o estructura:
 
 - **Renombrar**: escribe tu propio nombre (p. ej. «Principal» → «Gran galería»). Se muestra en todas partes: leyenda, ventanas emergentes, estadísticas, filtros.
 - **🎨 Cambiar el color** *(desde v1.76.1)*: un cuadrado de color por línea — y para las **zonas y pilares/muros, dos cuadrados**: relleno y **borde independiente**. El color se aplica **en todas partes** — mapa, exportaciones de imagen/PDF, KMZ, estadísticas, informe de sesión — de inmediato, sin recargar. Un botón **↺** devuelve el relleno Y el borde originales. Detalles: si no eliges borde, una zona lo deriva automáticamente (versión más oscura) y un pilar/muro conserva su contorno negro (el valor histórico por defecto); la zona *Inaccesible* recoloreada pierde su trama (motivo fijo) a favor de un color liso. Las **entradas personalizadas** se modifican igual, en caliente.
@@ -1007,26 +1009,9 @@ Todo se guarda automáticamente en tu sesión, **por plano**.
 
 ### 🔄 Cambiar rápidamente de plano mediante el título
 
-El **título del plano en curso** que aparece en la parte superior de la pantalla es **pulsable**: abre un pequeño menú desplegable con:
+El **título del plano en curso** en la parte superior de la pantalla es **pulsable**: abre la ventana **«🗂 Cambiar de plano»** — tarjeta del plano en curso (distintivo `● ACTIVO`), los **3 últimos planos** abiertos y un botón **📚 Ver todos mis planos** que vuelve al inicio. La **rosa de los vientos 🧭** a la izquierda del título vuelve directamente al inicio.
 
-- **📚 PLANOS RECIENTES** — los 3 últimos planos que has abierto (excluido el actual)
-- **📚 Todos mis planos…** — para volver a la pantalla de inicio con la lista completa
-
-Al pulsar un plano del menú:
-
-- Si tu **sesión está vacía** (ninguna anotación, vía, zona ni medición) → el plano se carga **directamente**, sin confirmación
-- Si tienes **modificaciones en curso** → una ventana te avisa con la **lista exacta** de lo que vas a perder:
-  ```
-  ⚠️ Sesión en curso
-  Tienes modificaciones sin guardar:
-     • 5 puntos añadidos
-     • 2 trazados
-     • 1 zona
-  Cargar «Plan Test 1» te hará perder estas modificaciones.
-  [Cancelar]   [Cargar de todos modos]
-  ```
-
-> 💡 Esta función te permite alternar entre tus planos favoritos en **2 clics** sin pasar por la pantalla de inicio. Para cerrar el menú sin hacer nada: pulsa en otro sitio o presiona **Esc**.
+Al elegir un plano, tu sesión en curso se **guarda automáticamente** (autoguardado + snapshot) antes del cambio: ya no hay aviso de «cambios perdidos». Para cerrar sin hacer nada: ✕, pulsar fuera o **Esc**.
 
 ---
 
@@ -1128,11 +1113,11 @@ La búsqueda cubre:
 
 > Todos los botones del rastreador se encuentran en el grupo **🧭 Rastreador** de la barra lateral.
 
-### 🧭 Panel lateral del rastreador
+### 🧭 Menú Tracker (modal a pantalla completa)
 
-El botón **🧭 Rastreador** abre un **panel lateral** contiguo al botón principal. Es legible, visualmente estable, y todas las subacciones son accesibles sin desplazarse, incluso en móvil.
+El botón **🧭 Rastreador** abre un **modal a pantalla completa de fichas grandes** (desde v1.50.0), ordenadas en tres secciones: **Seguimiento**, **Herramientas**, **Emergencia**. Cada ficha cierra el modal al actuar.
 
-**Subacciones disponibles en el panel** (orden fijo):
+**Fichas disponibles**:
 
 | Icono | Acción |
 |---|---|
@@ -1146,8 +1131,11 @@ El botón **🧭 Rastreador** abre un **panel lateral** contiguo al botón princ
 | **🔥** | Mapa de calor — ver la sección dedicada |
 | **⛑️** | Estoy perdido — **botón de fondo ROJO** (señal de peligro) |
 | **🚨** | Modo emergencia XL — **botón de fondo ROJO** (señal de peligro) |
+| **🚨** | Modo Rescate — planes de búsqueda (equipos + zonas), **fondo ROJO** |
 
-> 🚨 **Los 2 modos de emergencia están deliberadamente situados al FINAL del panel con un fondo rojo intenso** para que sean identificables al instante. En situación de estrés, sabes dónde mirar.
+> 🚨 **Las 3 fichas de emergencia (⛑️ Estoy perdido, 🚨 Modo emergencia XL, 🚨 Modo Rescate) forman la sección Emergencia, abajo, sobre fondo rojo vivo.** El botón **🚨 Salida de emergencia** (salida más cercana) está en la **barra superior**, a un toque.
+
+> 🧭 **Barra inferior**: el indicador 🧭 muestra **ON · 👣 pasos · distancia** en directo durante el seguimiento, y **un toque abre el menú Tracker**. Al iniciar el seguimiento, la ventana de aviso propone **🔆 Mantener la pantalla encendida** (premarcado): una pantalla que se apaga son pasos perdidos. El botón **≡ Filtros** lleva una insignia con el número de filtros activos (niveles incluidos); al recargar un plano, un mensaje te dice si se han restaurado filtros. En **📊 Detalles de la sesión**, la primera línea dice **«✅ Guardado hace N s»** (en rojo si el guardado falla).
 
 > 🆕 **Sobre el terreno**:
 > - **🎯 Mi posición**: vuelve a centrar el mapa en tu posición actual (útil después de haber navegado por otra parte del plano).
@@ -2757,10 +2745,10 @@ Si activas el modo en un plano existente:
 
 ### 📤 Exportar
 
-Pulsa **⬆️ → 💾**. Se abre una ventana con **3 pestañas** a elegir:
+Pulsa **⬆️ → 💾**. Se abre una ventana con **5 pestañas**: 🚀 Completo · 🎨 Avanzado · 🔄 Conversión · 🔗 Fusión · 📡 Exportación externa:
 
 #### 🚀 Completa
-Exporta todo en un único archivo `devmap-session` (puntos añadidos, trazados, zonas, estructuras).
+Exporta todo en un único archivo `.json` (o `.zip` si marcas las fotos): puntos añadidos, trazados, zonas, estructuras, medidas, traza del seguimiento.
 Práctico para guardar tu sesión y retomarla más adelante.
 
 > 📌 La medición de distancia no se incluye en el modo Completa.
@@ -2808,7 +2796,7 @@ Accesible **sin ningún plano abierto** desde la pantalla de inicio: **📊 Edit
 
 ### 🖼️ Exportar a PNG/JPG
 
-Pulsa **⬆️ → 🖼️ Plano como imagen**. Se abre una ventana con dos modos:
+Pulsa **⬆️ → 🖼️ Exportar el mapa como imagen**. Se abre una ventana con dos modos:
 
 #### ⚡ Exportación rápida
 Todo se incluye automáticamente: plano completo, todas las capas visibles, puntos, trazados, zonas, posición y camino del rastreador. Formato PNG a resolución original. Un solo clic en **Descargar**.
@@ -2894,7 +2882,7 @@ El PDF generado lleva la firma `Généré par MyKTAMap · CC BY-NC-SA 4.0 · myk
 
 ### 🌍 Exportar a KMZ geolocalizado (Google Earth, OsmAnd, Locus, Avenza)
 
-Pulsa **⬆️ → 💾** y luego la pestaña **🌍 KMZ**. Genera un archivo `.kmz` que puede abrirse en cualquier aplicación de cartografía de campo compatible con KML.
+Pulsa **⬆️ → 💾** y luego la pestaña **📡 Exportación externa** (KMZ). Genera un archivo `.kmz` que puede abrirse en cualquier aplicación de cartografía de campo compatible con KML.
 Casos de uso típicos:
 - Visualizar tu plano en **Google Earth** sobre la imagen de satélite
 - Cargarlo en **OsmAnd / Locus / Avenza** para navegación de campo sin conexión
@@ -2959,9 +2947,9 @@ Tu calibrado de 2 puntos se guarda **por plano** (localStorage). En la siguiente
 
 ### 📥 Importar una sesión
 
-Pulsa **⬇️ → 📥 Importar una sesión** para abrir la ventana de importación. Se muestra una ventana:
+Pulsa **⬇️ → 📥 Importar**, tarjeta **Sesión MyKTAMap** para abrir la ventana de importación. Se muestra una ventana:
 
-1. **Arrastra y suelta** tu archivo `devmap-session.json` en la zona, o púlsala para seleccionarlo
+1. **Arrastra y suelta** tu archivo `.json` (o `.zip` con fotos) en la zona, o púlsala para seleccionarlo
 2. Aparece una **vista previa**: número de puntos añadidos, de trazados, de zonas y de puntos de medición
 3. Una **advertencia** te avisa de que la importación reemplazará tu sesión en curso — acuérdate de exportarla antes si hace falta
 4. Pulsa **Importar** para validar, o **Cancelar** para cerrar sin cambiar nada
@@ -3008,7 +2996,7 @@ Botón **💾 Guardar**:
 
 ### 🗂️ Cambiar de plano
 
-Pulsa **⬇️ → 🗂️ Cambiar de plano** para volver a tu lista de planos (la pantalla de inicio **📚 Mis planos**) y cargar otro. Los datos no exportados se perderán — **exporta tu sesión antes de cambiar**.
+Este botón **ya no está en el menú ⬇️**. Para cambiar de plano: toca la **rosa de los vientos 🧭** (inicio) o el **título del plano** (ventana «Cambiar de plano», ver arriba) en la barra superior. Tu sesión se **guarda automáticamente** antes del cambio.
 
 Desde esta pantalla puedes:
 
@@ -3300,7 +3288,7 @@ Los planos muy grandes pueden provocar **cierres silenciosos por memoria** en iO
 
 ## 🤖 Ayuda con IA
 
-> Accesible mediante el grupo **📚 Ayuda / Doc / Leyenda → 🤖 Ayuda con IA**.
+> Accesible mediante el grupo **📚 Ayuda / Documentación / Leyenda → 🤖 Ayuda con IA**.
 
 Descarga un archivo `.md` que resume todo lo que permite hacer la app (esta documentación + unas preguntas frecuentes + instrucciones para la IA). Dáselo a **cualquier IA conversacional** (ChatGPT, Claude, Gemini, Perplexity, Le Chat, Copilot, etc.) — podrá responder a todas tus preguntas sobre MyKTAMap con un contexto preciso.
 
@@ -3319,7 +3307,7 @@ Descarga un archivo `.md` que resume todo lo que permite hacer la app (esta docu
 
 ## 🗺️ Leyenda
 
-> Accesible mediante el grupo **📚 Ayuda / Doc / Leyenda → 🗺️ Leyenda**.
+> Accesible mediante el grupo **📚 Ayuda / Documentación / Leyenda → 🗺️ Leyenda**.
 
 Muestra la leyenda completa de los iconos y trazados, agrupados por categoría: **🕳️ Pozos**, **🪜 Accesos** (pozos con escalones, escaleras, cavidades), **⚠️ Señalización**, **🛣️ Trazados** y **⬛ Zonas**.
 
@@ -3350,12 +3338,12 @@ Accede a los parámetros pulsando **⚙️**:
 
 ### 🎬 Modo presentación
 
-- **🎬 Iniciar el modo presentación**: botón en la parte **superior** de la ventana de Ajustes. Activa un modo a pantalla completa sin interfaz (para demostraciones o proyecciones), accesible con un solo botón táctil.
+- **🎬 Activar el modo presentación**: botón en la parte **superior** de la ventana de Ajustes. Activa un modo a pantalla completa sin interfaz (para demostraciones o proyecciones), accesible con un solo botón táctil.
 - La tecla **F** está disponible como atajo en PC.
 
 ### 🎯 Selectores de georreferenciación
 
-Los selectores de 2 puntos (calibrado GPS para KMZ / GPX) están disponibles en **⚙️ Ajustes → pestaña Georreferenciación** (además de en la ventana **Guardar sesión → 🌍 KMZ**):
+Los selectores de 2 puntos (calibrado GPS para KMZ / GPX) están disponibles en **⚙️ Ajustes → sección 🌐 Georreferenciación GPS** (la ventana se desplaza, no tiene pestañas — además de la pestaña **📡 Exportación externa** de la ventana Exportar):
 
 - **🔍 Búsqueda de un punto** en el plano para autocompletar x/y
 - **📍 Clic en el mapa** para señalar una posición directamente
@@ -3441,9 +3429,9 @@ La pantalla de bloqueo aparece automáticamente después del splash:
 
 ⚙️ Configuración → 🔐 Código de acceso local → **🔓 Desactivar**. Confirmación por biometría O por el código actual. La app deja de pedir el código en el siguiente arranque.
 
-### Bloqueo: 5 intentos fallidos
+### Bloqueo temporal: 5 códigos erróneos
 
-Por motivos de seguridad, tras **5 códigos incorrectos seguidos**, la app queda bloqueada **definitivamente** en una pantalla roja sin botón de salida. La única forma de recuperar el acceso es **💥 Reiniciarlo todo** desde la pantalla de inicio (pérdida de la sesión en curso y de los planos no memorizados).
+Tras **5 códigos incorrectos seguidos**, la app se bloquea **temporalmente**: 10 min la primera vez, luego 1 h, 6 h y 24 h con cada nueva serie de 5 errores. Se muestra una cuenta atrás y el teclado vuelve solo al terminar el plazo; un código correcto lo reinicia todo. No hay **ningún botón de reinicio** en esa pantalla ni recuperación del código en caso de olvido — si de verdad lo has perdido, queda **💥 Reiniciarlo todo** desde la pantalla de inicio (pérdida de la sesión en curso y de los planos no memorizados). El plazo sigue el reloj del teléfono.
 
 > Los intentos biométricos fallidos **no** cuentan dentro de los 5 — la especificación WebAuthn gestiona su propio bloqueo nativo en el dispositivo. Puedes cancelar un Face ID por error sin temer agotar tus intentos.
 
@@ -3451,7 +3439,7 @@ Por motivos de seguridad, tras **5 códigos incorrectos seguidos**, la app queda
 
 ## 🔧 Reiniciar
 
-En caso de problema o para forzar una actualización, usa **⚙️ → 🗑️ Reiniciar**. Esta acción da de baja el Service Worker, vacía la caché y recarga la aplicación.
+En caso de problema o para forzar una actualización, usa **⚙️ Configuración (pantalla de inicio) → 💥 Reiniciar todo**. Esta acción da de baja el Service Worker, vacía la caché y recarga la aplicación.
 
 > ⚠️ Realiza esta acción únicamente con una conexión a Internet disponible. Sin red, la aplicación quedará inutilizable hasta la siguiente recarga completa.
 ---
@@ -3558,7 +3546,7 @@ Elige **⚡ Rendimiento** en el selector de Modo de rendimiento antes de cargar 
 Vuelve a pulsar el botón activo (en verde) para desactivarlo.
 
 **La aplicación no se actualiza tras una nueva versión**
-Usa **⚙️ → 🔄 Forzar la actualización** (actualización suave, conserva todos tus datos). Si no basta: **⚙️ → 🗑️ Reiniciar** (purga total, última opción). La actualización suave es rápida gracias a una descarga previa en segundo plano.
+Usa **⚙️ Configuración (pantalla de inicio) → 🔄 Forzar la actualización** (actualización suave, conserva todos tus datos). Si no basta: **⚙️ Configuración → 💥 Reiniciar todo** (purga total, última opción). La actualización suave es rápida gracias a una descarga previa en segundo plano.
 
 **📡 App bloqueada tras una actualización suave**
 Si después de una actualización la app se queda atascada (cargador sin CSS, página en blanco, recursos mal cargados), la causa más frecuente es un **nodo CDN de GitHub Pages que sirve contenido corrupto** (MIME incorrecto, recurso truncado) para la zona geográfica actual. Primer reflejo antes de cualquier reinicio: **desactiva tu VPN si está activo y cambia de red** (4G ↔ wifi ↔ otro wifi). El simple hecho de cambiar de IP o de nodo CDN suele bastar para desbloquearla.

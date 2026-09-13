@@ -484,6 +484,20 @@ function _bindCfgGeorefHandlers() {
   });
 
   btnClear.addEventListener("click", function() {
+    // 🚨 Q58 (audit 13/09/2026) : « 🗑️ Effacer » supprimait la calibration
+    // PERSISTÉE (deux points GPS relevés en surface, qui déverrouillent la Vue
+    // OSM et les exports KMZ/GPX) sans un mot. Si une calibration est
+    // enregistrée pour ce plan → confirmation ; sinon simple vidage des champs.
+    const _planIdClear = window._currentLoadedPlanId || "default";
+    let _persistee = false;
+    try { _persistee = !!localStorage.getItem("myktamap_kmz_calib_" + _planIdClear); } catch(e) {}
+    if (_persistee && typeof window.ktaConfirm === "function") {
+      window.ktaConfirm(window.I18n.t("config.georef.confirmClear")).then(function(ok) { if (ok) _executerClear(); });
+    } else {
+      _executerClear();
+    }
+  });
+  function _executerClear() {
     // 🆕 hotfix21 — Wipe x/y + coords combinés (au lieu des 4 inputs séparés).
     ["A_x","A_y","A_coords","B_x","B_y","B_coords","C_x","C_y","C_coords"].forEach(function(k) {
       const el = document.getElementById("cfg_kmz_" + k);
@@ -504,7 +518,7 @@ function _bindCfgGeorefHandlers() {
       localStorage.removeItem("myktamap_kmz_calib_" + planId);
     } catch(e) {}
     _setStatus(window.I18n.t("config.georef.cleared"), null);
-  });
+  }
 
   // 🆕 v1.21.0-fix1 : boutons 🔍 Chercher / 📍 Cliquer carte (parité UX
   // avec la modale 💾 Enregistrer > 📡 Export externe). Pattern identique
@@ -1096,6 +1110,17 @@ function afficherConfig() {
         <!-- ════════ 6. 🔒 CONFIDENTIALITÉ & SÉCURITÉ ════════ -->
         <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.privacy")}</div>
 
+        <!-- 📔 Q49 (audit 13/09/2026) : le carnet enregistrait chaque sortie
+             sans opt-in, et son interrupteur (Journal.setEnabled) n'était
+             câblé NULLE PART. Réglage global (tous plans). -->
+        <label class="kta-perf-ultra-row" id="cfg_journal_row" style="margin-bottom:10px;">
+          <input type="checkbox" id="cfg_journal" ${(window.Journal && typeof window.Journal.isEnabled === "function" && !window.Journal.isEnabled()) ? "" : "checked"}>
+          <span class="kta-perf-ultra-text">
+            <span class="kta-perf-ultra-label">${window.I18n.t("config.journal.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
+            <span class="kta-perf-ultra-hint">${window.I18n.t("config.journal.hint")}</span>
+          </span>
+        </label>
+
         <!-- 🕵️ v1.31.8 F2 + 🆕 v1.31.9 : Mode incognito — bouton qui
              ouvre une NOUVELLE fenêtre dans le même origin avec ?incognito=1
              (activate) OU close la fenêtre courante si déjà incognito (quit).
@@ -1459,6 +1484,16 @@ function afficherConfig() {
       });
     }
   }
+  // ── 📔 Carnet des sorties (Q49, audit 13/09/2026) ──
+  const jrnCb = document.getElementById("cfg_journal");
+  if (jrnCb && window.Journal && typeof window.Journal.setEnabled === "function") {
+    jrnCb.addEventListener("change", function() {
+      window.Journal.setEnabled(!!jrnCb.checked);
+      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast(window.I18n.t(jrnCb.checked ? "config.journal.toastOn" : "config.journal.toastOff"), "info");
+      }
+    });
+  }
   // 🆕 v1.34.0 E1 : toggle "🎤 Commandes vocales (BETA)".
   // Visible UNIQUEMENT si Web Speech API supportée (SpeechRecognition
   // ou webkitSpeechRecognition). Sync UI ↔ state via window.VoiceCommand.
@@ -1622,7 +1657,19 @@ function appliquerConfig() {
   if (window.fermerPanneau) window.fermerPanneau();
 }
 
+// 🚨 B6 (audit ergonomie 13/09/2026) : « Reset » agissait sans confirmation,
+// collé à « Appliquer », et effaçait le PARCOURS du tracker (polyline, pas,
+// timeline) en plus des réglages du plan. Confirmation chartée qui dit ce qui
+// part ; le bouton s'appelle désormais « ↺ Valeurs par défaut ».
 function resetConfig() {
+  const _go = function() { _resetConfigExecuter(); };
+  if (typeof window.ktaConfirm !== "function") { _go(); return; }
+  window.ktaConfirm(window.I18n.t("config.confirm.reset"), {
+    titre:   window.I18n.t("config.confirm.resetTitre"),
+    okLabel: window.I18n.t("config.actions.reset")
+  }).then(function(ok) { if (ok) _go(); });
+}
+function _resetConfigExecuter() {
   Object.assign(APP_CONFIG, DEFAULT_CONFIG);
   if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
   if (window.resetTrackingPosition) window.resetTrackingPosition();

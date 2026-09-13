@@ -61,10 +61,13 @@
     "peo",
     "eso"
   ];
-  // Tag "entrée" : un POI tagé "entrée" est aussi une sortie (un cataphile
-  // peut sortir par l'endroit d'où il est entré). Comparaison normalisée.
-  // À CONFIRMER : si le tag est aussi un code court (genre "ent"), updater ici.
-  const TAG_ENTREE = "entrée";
+  // Tags « entrée » : un POI marqué comme entrée est aussi une sortie (un
+  // cataphile peut ressortir par où il est entré). Le libellé libre `entrée`
+  // (avec ou sans accent) ET le tag INTÉGRÉ « Point d'entrée du plan »
+  // (`entree_plan`, map.js > TAGS_BUILTIN). 🚨 Q3 de l'audit ergonomie du
+  // 13/09/2026 : seul `entrée` était reconnu — un plan balisé avec l'outil
+  // prévu pour ça n'avait « aucune sortie identifiée ».
+  const TAGS_ENTREE = ["entrée", "entree", "entree_plan"];
 
   // ========== HELPERS ==========
   function _norm(s) {
@@ -76,7 +79,7 @@
   function _estUneSortie(point) {
     if (!point || !Array.isArray(point.tags) || point.tags.length === 0) return false;
     const tagsNorm = point.tags.map(_norm);
-    if (tagsNorm.indexOf(TAG_ENTREE) >= 0) return true;
+    if (tagsNorm.some(function(t) { return TAGS_ENTREE.indexOf(t) >= 0; })) return true;
     return tagsNorm.some(function(t) { return TYPES_SORTIE.indexOf(t) >= 0; });
   }
 
@@ -221,9 +224,27 @@
     if (e.key === "Escape" && _modal) _fermerModale();
   }
 
-  function _rendreContenuPrincipal(resultats, origine) {
+  // Ligne d'état sous le résultat : d'où part le calcul. Un ÉTAT, pas un
+  // avertissement — un avertissement dans une modale d'urgence est ignoré.
+  function _texteOrigine(meta) {
+    const mode = meta && meta.mode;
+    if (mode === "clic") return window.I18n.t("sortie.origine.clic");
+    if (mode === "confirmee") {
+      const ts = meta.ts;
+      if (typeof ts !== "number") return window.I18n.t("sortie.origine.confirmeeRecent");
+      const min = Math.round((Date.now() - ts) / 60000);
+      return (min < 1)
+        ? window.I18n.t("sortie.origine.confirmeeRecent")
+        : window.I18n.t("sortie.origine.confirmee", { min: min });
+    }
+    return window.I18n.t("sortie.origine.suivi");
+  }
+
+  function _rendreContenuPrincipal(resultats, origine, meta) {
     if (!resultats || resultats.length === 0) {
-      if (window.kta_vibrate) window.kta_vibrate.error();
+      // 🚨 classe urgence : vibre même si la préférence de confort est OFF
+      if (window.kta_vibrate && window.kta_vibrate.urgence) window.kta_vibrate.urgence.error();
+      else if (window.kta_vibrate) window.kta_vibrate.error();
       return (
         '<p class="kta-sortie-err">' +
           window.I18n.t("sortie.aucune.titre") +
@@ -234,30 +255,43 @@
       );
     }
 
-    if (window.kta_vibrate) window.kta_vibrate.medium();
+    if (window.kta_vibrate && window.kta_vibrate.urgence) window.kta_vibrate.urgence.medium();
+    else if (window.kta_vibrate) window.kta_vibrate.medium();
 
     const meilleure = resultats[0];
     const safeNom = String(meilleure.point.nom || window.I18n.t("sortie.item.sansNom"))
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const distTxt = _formatDist(meilleure.distPx);
-    const fallbackBadge = meilleure.fallback
-      ? ' <span class="kta-sortie-fallback" title="' + window.I18n.t("sortie.fallback.tooltip") + '">≈</span>'
+    // 🚨 Q4 (audit 13/09/2026) : une sortie « à vol d'oiseau » était présentée
+    // comme atteignable, avec un « ≈ » gris de 12 px expliqué dans un title
+    // invisible au doigt. Désormais en toutes lettres, et si AUCUNE sortie
+    // n'a de chemin vérifié (Pathfinder absent, réseau coupé), un bandeau
+    // le dit avant tout.
+    const fallbackTxt = meilleure.fallback
+      ? '<div class="kta-sortie-fallback-txt">⚠️ ' + window.I18n.t("sortie.fallback.label") + '</div>'
+      : '';
+    const tousFallback = resultats.every(function(r) { return r.fallback; });
+    const bandeau = tousFallback
+      ? '<div class="kta-sortie-bandeau">' + window.I18n.t("sortie.fallback.bandeau") + '</div>'
       : '';
     const levelTxt = (typeof meilleure.point.level === "number" && meilleure.point.level !== 0)
       ? ' <span class="kta-sortie-niveau">' + window.I18n.t("sortie.item.niveau", { level: meilleure.point.level }) + '</span>'
       : '';
 
-    // Cache pour le bouton "Tracer"
-    _lastResultats = { resultats: resultats, origine: origine };
+    // Cache pour le bouton "Tracer" (l'origine y est réutilisée telle quelle)
+    _lastResultats = { resultats: resultats, origine: origine, meta: meta || null };
 
     let html =
-      '<div class="kta-sortie-principal">' +
+      bandeau +
+      '<div class="kta-sortie-principal' + (meilleure.fallback ? ' kta-sortie-principal-fallback' : '') + '">' +
         '<div class="kta-sortie-icone">🚪</div>' +
         '<div class="kta-sortie-info">' +
           '<div class="kta-sortie-nom">' + safeNom + levelTxt + '</div>' +
-          '<div class="kta-sortie-dist">' + distTxt + fallbackBadge + '</div>' +
+          '<div class="kta-sortie-dist">' + distTxt + '</div>' +
+          fallbackTxt +
         '</div>' +
       '</div>' +
+      '<div class="kta-sortie-origine">' + _texteOrigine(meta) + '</div>' +
       '<div class="kta-sortie-actions">' +
         '<button type="button" class="kta-btn kta-btn-primary kta-sortie-btn-tracer" ' +
           'onclick="window.SortieUrgence._tracerMeilleure(); return false;">' +
@@ -277,12 +311,21 @@
           '</button>' +
           '<ul class="kta-sortie-alt-liste" id="kta-sortie-alt-liste" style="display:none;">'
       );
+      let sepPose = false;
       for (let i = 1; i < resultats.length; i++) {
         const r = resultats[i];
+        // Les non vérifiées sont déjà triées en fin de liste : un séparateur
+        // explicite les relègue visuellement (Q4).
+        if (r.fallback && !sepPose) {
+          html += '<li class="kta-sortie-alt-sep">' + window.I18n.t("sortie.fallback.sep") + '</li>';
+          sepPose = true;
+        }
         const n = String(r.point.nom || window.I18n.t("sortie.item.sansNomCourt"))
           .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         const d = _formatDist(r.distPx);
-        const fb = r.fallback ? ' <span class="kta-sortie-fallback">≈</span>' : '';
+        const fb = r.fallback
+          ? ' <span class="kta-sortie-fallback">≈ ' + window.I18n.t("sortie.fallback.court") + '</span>'
+          : '';
         const lv = (typeof r.point.level === "number" && r.point.level !== 0)
           ? ' <span class="kta-sortie-niveau">' + window.I18n.t("sortie.item.niveauCourt", { level: r.point.level }) + '</span>'
           : '';
@@ -311,7 +354,12 @@
     if (!r || !r.point) return;
     _fermerModale();
     if (typeof window.itineraireYAller === "function") {
-      window.itineraireYAller(r.point.x, r.point.y, r.point.nom || window.I18n.t("sortie.item.nomDefaut"));
+      // 🚨 B1 (audit 13/09/2026) : on passe l'ORIGINE du calcul. Sans ça,
+      // itineraireYAller re-testait la position du tracker — cul-de-sac dès
+      // que la sortie avait été calculée depuis un point tapé.
+      window.itineraireYAller(r.point.x, r.point.y,
+        r.point.nom || window.I18n.t("sortie.item.nomDefaut"),
+        { origine: _lastResultats.origine });
     } else {
       alert(window.I18n.t("sortie.erreur.itineraireIndispo"));
     }
@@ -326,35 +374,32 @@
   };
 
   // ========== ENTRÉES ==========
-  // Entrée principale : récupère position tracker, lance calcul, affiche.
-  // Si pas de tracker actif → propose mode picker (clic carte).
+  // Entrée principale — règle « instant T » (décision KARMA 13/09/2026) :
+  //   • suivi actif OU position confirmée depuis le chargement du plan → on
+  //     part de la position du tracker à l'instant T, SANS question ;
+  //   • jamais confirmée (= encore le départ du plan, ou après un reset) →
+  //     c'est le SEUL cas où l'on demande « Où es-tu ? », par le picker
+  //     partagé (1 tap sur la carte, qui recale aussi le tracker).
+  // 🚨 B1 de l'audit ergonomie : avant, getTrackingPosition() renvoyait
+  // TOUJOURS une position (le départ du plan) — la branche « pas de tracker »
+  // était morte, et la sortie la plus proche de l'ENTRÉE du plan était
+  // présentée comme la plus proche de l'utilisateur.
   function declencher() {
     const pos = (typeof window.getTrackingPosition === "function")
       ? window.getTrackingPosition()
       : null;
-    if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
-      _lancer(pos);
+    const etat = (typeof window.getTrackingPositionEtat === "function")
+      ? window.getTrackingPositionEtat()
+      : null;
+    const posOk = !!(pos && typeof pos.x === "number" && typeof pos.y === "number");
+    if (posOk && (!etat || etat.suiviActif || etat.confirmee)) {
+      _lancer(pos, {
+        mode: (etat && etat.suiviActif) ? "suivi" : "confirmee",
+        ts:   etat ? etat.ts : null
+      });
       return;
     }
-    // Pas de tracker : propose le picker
-    _ouvrirModale(
-      '<p class="kta-sortie-err">' +
-        window.I18n.t("sortie.noTracker.titre") +
-      '</p>' +
-      '<p style="font-size:13px; color:#c8d0e0; line-height:1.5;">' +
-        window.I18n.t("sortie.noTracker.detail") +
-      '</p>' +
-      '<div class="kta-sortie-actions" style="flex-direction:column; gap:8px;">' +
-        '<button type="button" class="kta-btn kta-btn-primary" ' +
-          'onclick="window.SortieUrgence._modePickerCarte(); return false;">' +
-          window.I18n.t("sortie.btn.cliquePosition") +
-        '</button>' +
-        '<button type="button" class="kta-btn kta-btn-ghost" ' +
-          'onclick="window.SortieUrgence._fermer(); return false;">' +
-          window.I18n.t("sortie.btn.annuler") +
-        '</button>' +
-      '</div>'
-    );
+    SU._modePickerCarte();
   }
 
   // Variante : déclenche depuis une position arbitraire (utilisée par la
@@ -364,10 +409,10 @@
       declencher();
       return;
     }
-    _lancer({ x: x, y: y });
+    _lancer({ x: x, y: y }, { mode: "clic" });
   }
 
-  async function _lancer(origine) {
+  async function _lancer(origine, meta) {
     _ouvrirModale(
       '<div class="kta-sortie-loader">' +
         '<div class="kta-sortie-spinner"></div>' +
@@ -383,7 +428,7 @@
       // On peut être interrompu si l'user ferme la modale entre temps
       if (!_modal) return;
       const corps = _modal.querySelector(".kta-sortie-urgence-corps");
-      if (corps) corps.innerHTML = _rendreContenuPrincipal(resultats, origine);
+      if (corps) corps.innerHTML = _rendreContenuPrincipal(resultats, origine, meta);
     });
   }
 
@@ -393,10 +438,19 @@
       alert(window.I18n.t("sortie.erreur.carteIndispo"));
       return;
     }
+    // Picker partagé (utils.js) : floater « Où es-tu ? » avec Annuler, clic
+    // capturé même sur un marqueur, et le tap RECALE le tracker (position
+    // confirmée pour la suite : « Tracer », Urgence XL, « Y aller »).
+    if (typeof window.ktaDemanderPositionCarte === "function") {
+      window.ktaDemanderPositionCarte(function(p) {
+        _lancer({ x: p.x, y: p.y }, { mode: "clic" });
+      }, { icone: "🚨", texte: window.I18n.t("sortie.pick.floater") });
+      return;
+    }
+    // Repli (helper absent) : ancien picker nu, sans floater.
     _isPicking = true;
-    // Affiche un toast discret pour guider l'user
-    if (typeof window._kta_showToast === "function") {
-      window._kta_showToast(window.I18n.t("sortie.toast.pickPosition"), "info");
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(window.I18n.t("sortie.toast.pickPosition"), "info");
     }
     _pickHandler = function(e) {
       _isPicking = false;
@@ -407,7 +461,7 @@
       // convertCoord inverse : x=lng, y=imgH-lat
       const x = ll.lng;
       const y = imgH - ll.lat;
-      _lancer({ x: x, y: y });
+      _lancer({ x: x, y: y }, { mode: "clic" });
     };
     window.map.on("click", _pickHandler);
   };

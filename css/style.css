@@ -1853,19 +1853,40 @@ body.kta-lost-click-mode .leaflet-container {
 }
 
 /* 🆕 v1.35.0 — Bouton 🚨 Mode Sortie d'urgence dans le header refonte
-   (entre 📖 et 🔋). Hover rouge pour signifier urgence. */
-.kta-refonte-counter-sortie {
+   (entre 📖 et 🔋).
+   🚨 Audit ergonomie 13/09/2026 (Q5) : c'était le PLUS PETIT bouton de
+   l'écran (36×24 px, padding 2 px et icône 11 px sous 480 px) pour la
+   fonction la plus vitale, coincé entre quatre chips identiques, rouge
+   seulement au survol — qui n'existe pas au doigt. Désormais : fond rouge
+   permanent, isolé des chips d'information, 44 px de large mini, et zone de
+   tap étendue à toute la hauteur du header (44 px) par un pseudo-élément —
+   sans grossir le header. La spécificité (.kta-refonte-header) l'emporte
+   sur la règle générique des chips ET sur son override ≤ 480 px. */
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie {
+  position: relative;
   cursor: pointer;
   user-select: none;
+  min-width: 44px;
+  min-height: 34px;
+  padding: 4px 12px;
+  margin-left: 6px;
+  background: rgba(255, 80, 80, 0.22);
+  border-color: rgba(255, 80, 80, 0.55);
   transition: background 0.15s ease;
 }
-.kta-refonte-counter-sortie:hover,
-.kta-refonte-counter-sortie:focus {
-  background: rgba(255, 80, 80, 0.18);
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie::after {
+  content: "";
+  position: absolute;
+  inset: -5px -3px;   /* zone de tap ≥ 44 px de haut dans un header de 44 px */
+}
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie:hover,
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie:focus,
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie:active {
+  background: rgba(255, 80, 80, 0.40);
   outline: none;
 }
-body.kta-refonte-v1 .kta-refonte-counter-sortie .kta-refonte-counter-icon {
-  font-size: 16px;
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie .kta-refonte-counter-icon {
+  font-size: 18px;
 }
 /* 🆕 v1.34.24 — Agrandir l'icône 📖 pour matcher la taille perçue des autres
    chips (📊 stats, 🔋 batterie). Sans cet override, l'emoji rendait à 12px
@@ -1939,6 +1960,43 @@ body.kta-refonte-v1 .kta-refonte-counter-histoire .kta-refonte-counter-icon {
   font-size: 12px;
   margin-left: 4px;
   cursor: help;
+}
+/* 🚨 Audit 13/09/2026 (Q4) : « à vol d'oiseau » en toutes lettres, sorties
+   non vérifiées reléguées sous un séparateur, bandeau si aucune n'a de chemin,
+   et ligne d'état « depuis où » sous le résultat (B1). */
+.kta-sortie-fallback-txt {
+  font-size: 12px;
+  color: #ffb3b3;
+  font-weight: 500;
+  margin-top: 4px;
+}
+.kta-sortie-principal-fallback {
+  border-style: dashed;
+}
+.kta-sortie-bandeau {
+  background: rgba(255, 80, 80, 0.14);
+  border: 1px solid rgba(255, 80, 80, 0.40);
+  color: #ffb3b3;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+.kta-sortie-origine {
+  font-size: 12px;
+  color: #8892a4;
+  margin: -6px 0 12px;
+}
+.kta-sortie-alt-sep {
+  list-style: none;
+  font-size: 11px;
+  color: #8892a4;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 0 4px;
+  margin-top: 6px;
+  border-top: 1px dashed rgba(136, 146, 164, 0.35);
 }
 .kta-sortie-niveau {
   display: inline-block;
@@ -21648,3 +21706,119 @@ body.kta-theme-light #kta-osm-mes-floater {
 .plan-row-btn.kta-dl-ok { color: #7bd88f; opacity: 1; }
 .plan-row-btn.kta-dl-partiel { color: #f4c542; opacity: 1; }
 .plan-row-btn.kta-plan-row-dl[disabled] { opacity: 0.45; cursor: progress; }
+
+/* 🚨 13/09/2026 — thème clair des nouveaux éléments de la Sortie d'urgence
+   (audit ergonomie Q4/B1). Sélecteur dual body/html : la modale est appendée
+   à documentElement (cf ui.md §90.4). */
+body.kta-theme-light .kta-sortie-origine,
+html.kta-theme-light .kta-sortie-origine,
+body.kta-theme-light .kta-sortie-alt-sep,
+html.kta-theme-light .kta-sortie-alt-sep {
+  color: #5a6478;
+}
+body.kta-theme-light .kta-sortie-fallback-txt,
+html.kta-theme-light .kta-sortie-fallback-txt,
+body.kta-theme-light .kta-sortie-bandeau,
+html.kta-theme-light .kta-sortie-bandeau {
+  color: #b3261e;
+}
+
+/* 🚨 B5 (audit ergonomie 13/09/2026) — bandeau PERSISTANT « sauvegarde
+   impossible » (stockage saturé). Sous le header (44 px), au-dessus de la
+   carte, sous les modales. Tombe au premier save réussi (sessionPersist.js). */
+.kta-storage-banner {
+  position: fixed;
+  top: 50px;
+  left: 8px;
+  right: 8px;
+  z-index: 1250;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #3a1414;
+  border: 1px solid rgba(255, 80, 80, 0.75);
+  color: #ffd6d6;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+.kta-storage-banner-txt { flex: 1; min-width: 0; }
+.kta-storage-banner-btn { flex-shrink: 0; min-height: 40px; }
+body.kta-theme-light .kta-storage-banner,
+html.kta-theme-light .kta-storage-banner {
+  background: #fde8e8;
+  color: #7a1010;
+  border-color: #c23c3c;
+}
+
+/* 🔒 M2 (13/09/2026) — compte à rebours des verrous temporisés (PIN + gate). */
+.kta-pin-gate-countdown,
+.kta-unlock-lockout-countdown {
+  font-size: 30px;
+  font-weight: 800;
+  color: #f4c542;
+  margin: 8px 0 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* 🚨 Q34 (audit ergonomie 13/09/2026) — pastille « N filtres actifs » sur le
+   bouton ≡ : un filtre armé était invisible depuis la carte, et restauré en
+   silence au rechargement. */
+.kta-filter-ctrl a { position: relative; }
+.kta-filter-ctrl a.kta-filter-ctrl-actif {
+  box-shadow: inset 0 0 0 2px #f4c542;
+}
+.kta-filter-ctrl a.kta-filter-ctrl-actif::after {
+  content: attr(data-count);
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #f4c542;
+  color: #1a1f2e;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+/* 🚨 Q9 — case « garder l'écran allumé » dans la modale de démarrage du tracker. */
+.kta-tracker-warn-wake {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0 2px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #c8d0e0;
+  cursor: pointer;
+}
+.kta-tracker-warn-wake input { margin-top: 3px; flex-shrink: 0; width: 18px; height: 18px; }
+body.kta-theme-light .kta-tracker-warn-wake,
+html.kta-theme-light .kta-tracker-warn-wake { color: #2a3142; }
+
+/* 🚨 Q46 — ligne « enregistré il y a » en tête de 📊 Détails de la session. */
+.kta-refonte-save-line {
+  font-size: 12px;
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(140, 180, 255, 0.08);
+  border: 1px solid rgba(140, 180, 255, 0.18);
+  color: #c8d0e0;
+}
+.kta-refonte-save-line.kta-refonte-save-ok    { color: #9be7a7; border-color: rgba(120, 220, 140, 0.35); }
+.kta-refonte-save-line.kta-refonte-save-ko    { color: #ffb3b3; border-color: rgba(255, 80, 80, 0.5); background: rgba(255, 80, 80, 0.12); font-weight: 600; }
+.kta-refonte-save-line.kta-refonte-save-never { color: #8892a4; }
+body.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ok,
+html.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ok { color: #1e7a34; }
+body.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ko,
+html.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ko { color: #b3261e; }

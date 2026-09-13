@@ -29,9 +29,14 @@
 //   - Fallback PIN automatique si WebAuthn indisponible ou refusé
 //
 // Lockout :
-//   - 5 tentatives PIN échouées consécutives → lockout définitif
+//   - 5 tentatives PIN échouées consécutives → verrou TEMPORISÉ, escaladé
+//     10 min → 1 h → 6 h → 24 h (décision KARMA 13/09/2026, audit B7 : le
+//     verrou définitif tuait l'app sous terre, hors réseau, plan compris)
 //   - Stocké en localStorage["myktamap_pin_v1"].attempts
-//   - Pour sortir du lockout : reset complet (= efface aussi localStorage)
+//   - Le verrou expire tout seul ; un code juste remet le compteur ET le
+//     palier à zéro. Base de temps = Date.now() (horloge de l'appareil) : reculer
+//     l'horloge sous le début du verrou ne l'ouvre pas, l'avancer le raccourcit —
+//     accepté et documenté (security-legal.md §36.3)
 //
 // API publique :
 //   window.MyKTAMapPinLock = {
@@ -49,6 +54,18 @@
 
   const STORAGE_KEY      = "myktamap_pin_v1";
   const MAX_ATTEMPTS     = 5;
+  // 🔒 M2 : paliers du verrou temporisé (ms). Palier = nombre de séries de
+  // MAX_ATTEMPTS erreurs consécutives sans code juste entre deux.
+  const LOCK_DELAYS_MS   = [10 * 60 * 1000, 60 * 60 * 1000, 6 * 3600 * 1000, 24 * 3600 * 1000];
+  let _lockTimer = null;   // compte à rebours de l'écran de verrou
+  // ⏳ Durée lisible pour le compte à rebours du verrou.
+  function _fmtDuree(ms) {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    if (h > 0) return h + " h " + (m < 10 ? "0" + m : m) + " min";
+    if (m > 0) return m + " min " + (sec < 10 ? "0" + sec : sec) + " s";
+    return sec + " s";
+  }
   const SALT_BYTES       = 16;
   const PIN_MIN          = 4;
   const PIN_MAX          = 6;
@@ -167,9 +184,24 @@
     return _unlocked;
   }
 
+  // 🔒 M2 : verrouillé = un `lockUntil` dans le futur. Horloge reculée sous
+  // le début du verrou → on reste verrouillé (contournement grossier écarté).
   function isLockedOut() {
     const state = _getState();
-    return !!(state && (state.attempts || 0) >= MAX_ATTEMPTS);
+    if (!state || !state.lockUntil) return false;
+    const now = Date.now();
+    if (state.lockStart && now < state.lockStart) return true;
+    return now < state.lockUntil;
+  }
+  function getLockRemainingMs() {
+    const state = _getState();
+    if (!state || !state.lockUntil) return 0;
+    return Math.max(0, state.lockUntil - Date.now());
+  }
+  function _msgVerrou() {
+    return window.I18n
+      ? window.I18n.t("pin.err.lockoutTemp", { duree: _fmtDuree(getLockRemainingMs()) })
+      : "pin.err.lockoutTemp";
   }
 
   function getRemainingAttempts() {
@@ -332,9 +364,9 @@
   function disable(pin) {
     if (!isEnabled()) return Promise.resolve(true);
 
-    // Si verrouillé out → seul reset complet possible
+    // Verrou temporisé actif → on attend la fin du délai
     if (isLockedOut()) {
-      return Promise.reject(new Error(window.I18n ? window.I18n.t("pin.err.lockoutReset") : "pin.err.lockoutReset"));
+      return Promise.reject(new Error(_msgVerrou()));
     }
 
     return unlock(pin).then(function(ok) {
@@ -354,7 +386,7 @@
       return Promise.resolve(true);
     }
     if (isLockedOut()) {
-      return Promise.reject(new Error(window.I18n ? window.I18n.t("pin.err.tooManyReset") : "pin.err.tooManyReset"));
+      return Promise.reject(new Error(_msgVerrou()));
     }
     const state = _getState();
     if (!state) {
@@ -363,14 +395,27 @@
     }
     return _hashPin(pin, state.salt).then(function(candidate) {
       if (candidate === state.hashedPin) {
-        // Reset compteur tentatives + flag unlocked
-        state.attempts = 0;
+        // Reset compteur tentatives + palier de verrou + flag unlocked
+        state.attempts  = 0;
+        state.lockLevel = 0;
+        delete state.lockUntil;
+        delete state.lockStart;
         _setState(state);
         _unlocked = true;
         return true;
       }
-      // Tentative ratée → incrémente compteur
+      // Tentative ratée → incrémente compteur ; à MAX_ATTEMPTS, verrou
+      // temporisé au palier suivant et compteur remis à zéro (M2).
       state.attempts = (state.attempts || 0) + 1;
+      if (state.attempts >= MAX_ATTEMPTS) {
+        const lvl   = state.lockLevel || 0;
+        const delai = LOCK_DELAYS_MS[Math.min(lvl, LOCK_DELAYS_MS.length - 1)];
+        state.lockLevel = lvl + 1;
+        state.lockStart = Date.now();
+        state.lockUntil = state.lockStart + delai;
+        state.attempts  = 0;
+        console.warn("[PinLock] Verrou temporisé :", _fmtDuree(delai), "(palier", state.lockLevel + ")");
+      }
       _setState(state);
       return false;
     });
@@ -463,9 +508,8 @@
         // Callback appelé quand unlock réussi (PIN ou biométrie)
         resolve(true);
       });
-      // En cas de lockout, le callback ne sera JAMAIS appelé →
-      // la Promise reste pending forever (comportement délibéré,
-      // cohérent avec UnlockGate).
+      // En cas de verrou temporisé, l'écran de verrou repasse au pavé à
+      // l'expiration et le callback finit par être appelé (M2, 13/09/2026).
     });
   }
 
@@ -482,7 +526,7 @@
   // natif ne marche pas toujours bien en PWA).
   function _afficherGateUI(onUnlock) {
     if (isLockedOut()) {
-      _afficherLockoutUI();
+      _afficherLockoutUI(onUnlock);
       return;
     }
 
@@ -601,7 +645,7 @@
           if (isLockedOut()) {
             overlay.remove();
             document.removeEventListener("keydown", _onKeyDown);
-            _afficherLockoutUI();
+            _afficherLockoutUI(onUnlock);
             return;
           }
           const rem = getRemainingAttempts();
@@ -718,38 +762,34 @@
     return '<button class="kta-pin-gate-key" data-digit="' + digit + '">' + digit + '</button>';
   }
 
-  // Screen lockout (5 tentatives échouées) — pas de bouton sortie
-  function _afficherLockoutUI() {
+  // Écran de verrou TEMPORISÉ (M2, 13/09/2026). Avant : « 5 codes incorrects →
+  // l'app est verrouillée définitivement », sans bouton de sortie, la Promise
+  // de la gate restant en attente pour toujours ; « réinstaller » ou
+  // « Instagram » sont impossibles à 30 m sous terre. Désormais : compte à
+  // rebours, et à l'expiration le pavé revient tout seul (`onUnlock` est
+  // repassé à _afficherGateUI, la Promise de ouvrirGate résout au bon code).
+  function _afficherLockoutUI(onUnlock) {
     const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
     // Cleanup une éventuelle gate précédente
     const old = document.getElementById("kta-pin-gate-overlay");
     if (old) old.remove();
+    if (_lockTimer) { clearInterval(_lockTimer); _lockTimer = null; }
 
     const overlay = document.createElement("div");
     overlay.id        = "kta-pin-gate-overlay";
     overlay.className = "kta-pin-gate-overlay kta-pin-gate-overlay-lockout";
-    // 🆕 v1.10.0-hotfix4 (KARMA "que la procédure soit bien plus bref :
-    // réinstaller complètement l'app, ou contacter l'auteur — Instagram
-    // @karma_kta / contact@myktamap.fr — qui ne pourra rien faire ne
-    // connaissant pas la clef côté serveur non stocké") :
-    // message simplifié au strict nécessaire. Pas d'instructions par
-    // device — l'user qui en arrive là sait probablement réinstaller
-    // une app, ou demande à l'auteur autrement.
     overlay.innerHTML =
       '<div class="kta-pin-gate-box kta-pin-gate-box-lockout">' +
-        '<div class="kta-pin-gate-icon">🚫</div>' +
+        '<div class="kta-pin-gate-icon">⏳</div>' +
         '<div class="kta-pin-gate-titre">' + t("pin.lockout.titre") + '</div>' +
         '<div class="kta-pin-gate-soustitre">' +
           t("pin.lockout.soustitre") +
         '</div>' +
         '<div class="kta-pin-gate-lockout-explication">' +
-          '<p><strong>' + t("pin.lockout.solutionsTitre") + '</strong></p>' +
-          '<ol style="text-align:left; margin:6px 0 10px 20px; padding:0; line-height:1.7;">' +
-            '<li>' + t("pin.lockout.solReinstall") + '</li>' +
-            '<li>' + t("pin.lockout.solContact") + '</li>' +
-          '</ol>' +
+          '<p>' + t("pin.lockout.attente") + '</p>' +
+          '<div class="kta-pin-gate-countdown" id="kta-pin-lock-countdown">' + _fmtDuree(getLockRemainingMs()) + '</div>' +
           '<p style="font-style:italic; color:#8892a4; margin-top:10px;">' +
-          t("pin.lockout.securityNote") + '</p>' +
+          t("pin.lockout.escalade") + '</p>' +
           // 🆕 v1.28.1 — Accès doc utilisateur même en lockout. Aide l'user
           // perdu à comprendre ce qu'est l'app avant de réinstaller / contacter.
           // Ouverture par-dessus le lockeur via z-index 100200 (cf css
@@ -769,7 +809,18 @@
         }
       });
     }
-    console.warn("[PinLock] LOCKOUT activé (5 tentatives échouées)");
+    // ⏳ Compte à rebours ; à l'expiration, retour au pavé (même callback).
+    _lockTimer = setInterval(function() {
+      if (!isLockedOut()) {
+        clearInterval(_lockTimer); _lockTimer = null;
+        overlay.remove();
+        _afficherGateUI(onUnlock);
+        return;
+      }
+      const cd = document.getElementById("kta-pin-lock-countdown");
+      if (cd) cd.textContent = _fmtDuree(getLockRemainingMs());
+    }, 1000);
+    console.warn("[PinLock] Verrou temporisé actif — reste", _fmtDuree(getLockRemainingMs()));
   }
 
   // ============================================================

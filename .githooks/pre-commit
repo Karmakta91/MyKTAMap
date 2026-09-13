@@ -352,3 +352,38 @@ node scripts/check-gate-instance.js || exit $?
 # du fichier reel (lecon v1.90.12 : un grep aurait valide un mauvais nom de
 # fonction, avale par le try/catch). 6 sabotages rougissent.
 node scripts/check-outils-dessin-sync.js || exit $?
+
+# 📍 Regle « instant T » (audit ergonomie 13/09/2026, decision KARMA) : la
+# position du tracker vaut le depart du plan tant que l utilisateur ne s est
+# pas situe. Sortie d urgence / « Y aller » partent de la position SANS
+# question si le suivi est actif ou la position confirmee ; sinon, et
+# seulement sinon, picker partage « Ou es-tu ? ». Le script verifie les
+# points d ecriture du drapeau, la reprise de l origine par « Tracer », la
+# Promise de requestPermission attendue par _doStart, et la classe commune
+# du floater. 4 falsifications rougissent.
+node scripts/check-position-confirmee.js || exit $?
+
+# 🛟 Filets de donnees (audit ergonomie 13/09/2026, lot 2 + decision M2) :
+# snapshot ATTENDU avant un import de session, confirmation chiffree avant
+# « Effacer la session », historique sur la suppression d un point, zone /
+# structure fermee (pas detruite) au re-tap, Reset des Reglages et effacement
+# du georef confirmes, carnet debrayable, generateur inerte au clic fond,
+# bandeau persistant si le stockage est sature, et verrou PIN / gate
+# TEMPORISE (echeance, compte a rebours, retour automatique) au lieu du
+# verrou definitif. 3 falsifications rougissent.
+node scripts/check-filets-donnees.js || exit $?
+
+# 👁️ Etat visible (audit ergonomie 13/09/2026, lot 4) : pastille de filtres
+# sur ≡ (niveaux compris), toast quand des filtres sont restaures, etapes de
+# l itineraire redessinees apres rechargement, « enregistre il y a » dans les
+# details de session, pas + distance dans le footer, toasts tracker masque /
+# verrou suspendu, wake lock propose au demarrage du suivi. 3 falsifications
+# rougissent.
+node scripts/check-etat-visible.js || exit $?
+
+# 🛡️ Perimetre de garantie de l audit reseau (controle KARMA 13/09/2026) :
+# les deux domaines officiels sont ecrits EN DUR aux deux endroits (modale
+# « Que fait l app sur le reseau ? » + page NETWORK_AUDIT.html/.md), jamais
+# derives de location.origin — une copie servie ailleurs doit se desavouer,
+# pas s adapter. 2 falsifications rougissent.
+node scripts/check-audit-domaine.js || exit $?

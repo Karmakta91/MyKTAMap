@@ -341,7 +341,9 @@ const CALQUE = {
   t("cablage : le restore applique les verrous APRES les objets",
     SP.indexOf("CalqueSession.appliquerVerrous") > SP.indexOf("CalqueSession.loadSessionState(payload"));
   t("🩸 cablage : effacer la session RESTITUE les calques (piege 1)",
-    /function clear\(\)[\s\S]{0,2000}CalqueSession\.listeRapatries[\s\S]{0,300}restituer\(/.test(SP));
+    // 13/09/2026 : clear(opts) — `opts.snapshotFait` évite un double snapshot
+    // quand la modale de restauration l'a déjà pris et attendu (audit Q44).
+    /function clear\((?:opts)?\)[\s\S]{0,2000}CalqueSession\.listeRapatries[\s\S]{0,300}restituer\(/.test(SP));
   // 🩸 UN <button> N'EMET JAMAIS `change`. Les trois actions ont d'abord ete
   // posees dans le listener `change` du panneau, avec les cases a cocher :
   // elles y etaient MORTES SILENCIEUSEMENT — aucune erreur console, juste
