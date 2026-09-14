@@ -1236,7 +1236,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
         '<button class="kta-popup-btn kta-popup-btn-delete" type="button" ' +
           'onclick="window.supprimerPointEditor(\'' + jsId + "'," + x + ',' + y + '); return false;" ' +
           'title="' + window.I18n.t("poi.deletePoint") + '">' +
-          '🗑️ Supprimer ce point' +
+          window.I18n.t("poi.deleteBtn") +
         '</button>' +
       '</div>'
     : '';
@@ -1303,12 +1303,12 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
              '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' +
                'onclick="window.recalerTrackerSurPoint(' + x + ',' + y + '); return false;" ' +
                'title="' + window.I18n.t("poi.iAmHere") + '">' +
-               '📍 Je suis ici' +
+               window.I18n.t("iti.wp.jeSuisIci") +
              '</button>' +
              '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' +
                'onclick="window.itineraireYAller(' + x + ',' + y + ",'" + jsName + "'); return false;\" " +
                'title="' + window.I18n.t("poi.goThere") + '">' +
-               '🧭 Y aller' +
+               window.I18n.t("poi.goThereBtn") +
              '</button>' +
              '<button class="kta-popup-btn kta-popup-btn-add" type="button" ' +
                'onclick="window.itineraireAjouterWaypoint(' + x + ',' + y + ",'" + jsName + "'); return false;\" " +

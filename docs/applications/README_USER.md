@@ -617,11 +617,15 @@ n'apparaît pas, c'est que votre plan est déjà découpé et que le réglage n'
   - En portrait : en **bas-gauche** au-dessus du footer
   - En landscape : en **bas-centrée** (pour ne pas cacher les icônes latérales)
 - **Boutons ≡ de réduction** en haut de chaque sidebar (▾ déployé, ▸/◂ replié) — gagne de la place sans arrêter les modes actifs
-- **Modale "Détails de la session"** : un clic sur les compteurs du header ouvre une vue d'ensemble :
-  - Tous tes points (avec tag, coordonnées, niveau si multi-niveau)
-  - Tracés groupés par type (Principal/Secondaire/Chemin/Jonction) avec compteur + distance totale par type
-  - Zones groupées par type
-  - Mesures actives (📐 mesure simple, 🗺️ itinéraire avec waypoints, 🧭 tracker)
+- **Modale "📊 Détails de la session"** : un clic sur les compteurs du header ouvre le **tableau de bord** du plan :
+  - En tête, **✅ Enregistré il y a N s** (rouge si la sauvegarde échoue)
+  - Stats agrégées, et répartition par niveau en multi-niveau
+  - Tous tes points (tag, coordonnées, niveau), les tracés par type avec distance, les zones, les structures, les photos
+  - Les autres mesures (📐 mesure, 🗺️ itinéraire et ses étapes, 🧭 suivi)
+  - **📔 Sortie en cours** : 🏁 Clôturer, 🧭 Affiner le tracé, ouvrir le carnet
+  - **⭐ Favoris** : exporter ceux de ce plan ou de tous, importer
+  - **📦 Backups récents** de ce plan : ↻ Restaurer, 📆 Snapshot maintenant, 🗑️ Tout vider — chaque suppression demande confirmation
+  - Le bouton **📊 Stats globales** (rapport copiable, CSV, PDF)
 - **Modale "Changer de plan" refondue** : carte highlight du plan en cours avec badge `● ACTIF`, liste des plans récents avec animation au survol, gros bouton bleu "📚 Voir tous mes plans" en bas
 - **Générateur de plan retiré du mode carte** : reste accessible **uniquement depuis la home** via 🏗️ Générer un plan (création hors du mode carte)
 
@@ -2544,6 +2548,23 @@ Un clic sur **un tracé, une zone ou une structure que tu as dessinés** ouvre u
 | **🔄 Convertir** | Change le **type** de l'objet, et au besoin sa **famille** |
 | **🗑️ Supprimer** | Retire l'objet. En rouge, sur sa propre ligne |
 
+### 📍 La bulle d'un point
+
+Un tap sur un **marqueur** (un point du plan ou un point que tu as ajouté) ouvre sa bulle : nom, type, note, et une rangée de boutons.
+
+| Bouton | À quoi ça sert |
+|---|---|
+| **📍 Je suis ici** | Recale le suivi sur ce point. C'est aussi ce qui **confirme ta position** : ensuite, 🚨 Sortie d'urgence et 🧭 Y aller partent de là sans rien demander |
+| **🧭 Y aller** | Calcule un itinéraire depuis ta position jusqu'à ce point |
+| **➕ Itinéraire** | Ajoute le point comme étape d'un itinéraire (en cours ou à créer) |
+| **☆ Favori** | Ajoute ou retire le point de ⭐ Favoris |
+| **🔊 Lire la note** | Lit la note à voix haute (synthèse vocale locale) |
+| **📋 GPS** | Coordonnées GPS copiables, si le plan est géoréférencé |
+| **📸 Miniatures** | Les photos attachées, tap = plein écran |
+| **🌀 Liaisons** | Les liaisons inter-plan qui partent de ce point |
+
+Sur **tes propres points** (ceux de ta session) s'ajoutent **✏️ Modifier**, **📌 Repositionner** (tape ensuite la nouvelle position sur la carte) et, sur sa propre ligne rouge, **🗑️ Supprimer** — annulable avec ⏪.
+
 ### 🔄 Convertir — changer un objet de type, ou de famille
 
 Le cas typique : sur un relevé importé du SIG, un **front de taille** est en fait une **galerie**. Tant qu'il reste une structure, il n'entre pas dans le calcul d'itinéraire — le calculateur ne lit que les tracés. Le convertir en tracé le fait entrer dans le graphe.
@@ -3353,6 +3374,10 @@ Les plans très gros peuvent occasionner des **kills mémoire silencieux** sur i
 - Preset **🎯 Équilibré** par défaut, **⚡ Performance** pour les vieux mobiles
 
 ---
+
+### 🔎 Chercher dans la documentation
+
+Cette documentation est longue. En haut de la modale 📖, un champ **🔎 Chercher** cherche dans **tout le texte** : les occurrences sont surlignées, **Entrée** ou ↓ passe à la suivante, le compteur indique « i / n », et les entrées du sommaire sans résultat s'estompent. Les accents ne comptent pas : « reglages » trouve « Réglages ». La recherche du hub ❓ Aide, elle, cherche dans les titres **et** le contenu des sections.
 
 ## 🤖 Aide IA
 

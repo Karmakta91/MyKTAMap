@@ -563,11 +563,15 @@ Pulsa un botón antes de cargar — la descripción bajo el selector cambia para
   - En vertical: **abajo a la izquierda**, sobre el pie
   - En horizontal: **abajo centrada** (para no tapar los iconos laterales)
 - **Botones ≡ de plegado** en la parte superior de cada barra lateral (▾ desplegado, ▸/◂ plegado) — gana espacio sin detener los modos activos
-- **Ventana «Detalles de la sesión»**: un clic en los contadores de la cabecera abre una vista de conjunto:
-  - Todos tus puntos (con etiqueta, coordenadas y nivel si es multinivel)
-  - Trazados agrupados por tipo (Principal/Secundario/Camino/Unión entre niveles) con contador + distancia total por tipo
-  - Zonas agrupadas por tipo
-  - Mediciones activas (📐 medición simple, 🗺️ itinerario con puntos de paso, 🧭 rastreador)
+- **Ventana «📊 Detalles de la sesión»**: un clic en los contadores de la cabecera abre el **panel de control** del plano:
+  - Arriba, **✅ Guardado hace N s** (en rojo si el guardado falla)
+  - Estadísticas agregadas, y reparto por nivel en multinivel
+  - Todos tus puntos (etiqueta, coordenadas, nivel), los trazados por tipo con distancia, las zonas, las estructuras, las fotos
+  - Las otras medidas (📐 medición, 🗺️ ruta y sus etapas, 🧭 seguimiento)
+  - **📔 Salida en curso**: 🏁 Cerrar, 🧭 Afinar la traza, abrir el cuaderno
+  - **⭐ Favoritos**: exportar los de este plano o de todos, importar
+  - **📦 Backups recientes** de este plano: ↻ Restaurar, 📆 Snapshot ahora, 🗑️ Vaciar todo — cada eliminación pide confirmación
+  - El botón **📊 Estadísticas globales** (informe copiable, CSV, PDF)
 - **Ventana «Cambiar de plano» renovada**: tarjeta destacada del plano en curso con distintivo `● ACTIVO`, lista de planos recientes con animación al pasar por encima, y un gran botón azul «📚 Ver todos mis planos» abajo
 - **Generador de planos retirado del modo mapa**: sigue accesible **únicamente desde la pantalla de inicio** mediante 🏗️ Generar un plano (la creación ocurre fuera del modo mapa)
 
@@ -2483,6 +2487,23 @@ Al hacer clic en **un trazado, una zona o una estructura que hayas dibujado** se
 | **🔄 Convertir** | Cambia el **tipo** del objeto y, si hace falta, su **familia** |
 | **🗑️ Eliminar** | Retira el objeto. En rojo, en su propia línea |
 
+### 📍 La ventana de un punto
+
+Un toque en un **marcador** (un punto del plano o uno que has añadido) abre su ventana: nombre, tipo, nota y una fila de botones.
+
+| Botón | Para qué sirve |
+|---|---|
+| **📍 Estoy aquí** | Recalibra el seguimiento en este punto. Es también lo que **confirma tu posición**: a partir de ahí, 🚨 Salida de emergencia y 🧭 Ir allí parten de aquí sin preguntar |
+| **🧭 Ir allí** | Calcula una ruta desde tu posición hasta este punto |
+| **➕ Ruta** | Añade el punto como etapa de una ruta (en curso o nueva) |
+| **☆ Favorito** | Añade o quita el punto de ⭐ Favoritos |
+| **🔊 Leer la nota** | Lee la nota en voz alta (síntesis de voz local) |
+| **📋 GPS** | Coordenadas GPS copiables, si el plano está georreferenciado |
+| **📸 Miniaturas** | Las fotos adjuntas, toque = pantalla completa |
+| **🌀 Enlaces** | Los enlaces entre planos que parten de este punto |
+
+En **tus propios puntos** (los de tu sesión) se añaden **✏️ Editar**, **📌 Reposicionar** (luego toca la nueva posición en el mapa) y, en su propia línea roja, **🗑️ Eliminar**, deshacible con ⏪.
+
 ### 🔄 Convertir: cambiar un objeto de tipo o de familia
 
 El caso típico: en un levantamiento importado del SIG, un **frente de explotación** es en realidad una **galería**. Mientras siga siendo una estructura, no entra en el cálculo de itinerarios: el calculador solo lee los trazados. Convertirlo en trazado lo mete en el grafo.
@@ -3285,6 +3306,10 @@ Los planos muy grandes pueden provocar **cierres silenciosos por memoria** en iO
 - Preajuste **🎯 Equilibrado** por defecto, **⚡ Rendimiento** para los móviles antiguos
 
 ---
+
+### 🔎 Buscar en la documentación
+
+Esta documentación es larga. Arriba de la ventana 📖, un campo **🔎 Buscar** busca en **todo el texto**: las apariciones se resaltan, **Intro** o ↓ pasa a la siguiente, el contador indica «i / n» y las entradas del índice sin resultado se atenúan. Los acentos no cuentan: «reglages» encuentra «Réglages». La búsqueda del hub ❓ Ayuda, por su parte, busca en los títulos **y** el contenido de las secciones.
 
 ## 🤖 Ayuda con IA
 

@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.91.1</strong> (14 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.91.2</strong> (14 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.91.2 (recherche plein texte de la documentation + docs bulle / Détails)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. La recherche parcourt le texte déjà chargé dans la modale (<code>docs/applications/README_USER*.md</code>, même origine, déjà déclaré) — rien n'est envoyé nulle part.</p>
   <h3>v1.91.1 (Vue OSM de l'accueil — l'ancien plan principal restait dans la pile)</h3>
   <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif de la pile de plans du widget OSM (règle de promotion du principal partagée, ligne fantôme retirable, purge des groupes morts). Les tuiles OSM ne sont demandées que pour les plans effectivement rendus, comme avant.</p>
   <h3>v1.91.0 (audit ergonomie — sécurité, filets de données, état visible, verrou temporisé)</h3>

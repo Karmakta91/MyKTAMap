@@ -617,11 +617,15 @@ applies to every later load.
   - In portrait: **bottom-left** above the footer
   - In landscape: **bottom-centered** (so as not to hide the side icons)
 - **≡ Reduction buttons** at the top of each sidebar (▾ deployed, ▸/◂ collapsed) — saves space without stopping active modes
-- **"Session details" modal**: a click on the header counters opens an overview:
-  - All your points (with tag, coordinates, level if multi-level)
-  - Paths grouped by type (Main/Secondary/Path/Junction) with counter + total distance per type
-  - Zones grouped by type
-  - Active measurements (📐 simple measurement, 🗺️ route with waypoints, 🧭 tracker)
+- **"📊 Session details" modal**: a click on the header counters opens the map's **dashboard**:
+  - At the top, **✅ Saved N s ago** (red if saving fails)
+  - Aggregated stats, and a per-level breakdown in multi-level
+  - All your points (tag, coordinates, level), paths by type with distance, zones, structures, photos
+  - Other measurements (📐 measurement, 🗺️ route and its steps, 🧭 tracking)
+  - **📔 Current outing**: 🏁 Close, 🧭 Refine the trail, open the logbook
+  - **⭐ Favorites**: export this map's or all, import
+  - **📦 Recent backups** of this map: ↻ Restore, 📆 Snapshot now, 🗑️ Clear all — every deletion asks for confirmation
+  - The **📊 Global stats** button (copyable report, CSV, PDF)
 - **Redesigned "Change map" modal**: highlight card of current map with `● ACTIVE` badge, list of recent maps with hover animation, large blue "📚 View all my maps" button at the bottom
 - **Map generator removed from map mode**: remains accessible **only from the home** via 🏗️ Generate a map (creation outside of map mode)
 
@@ -2538,6 +2542,23 @@ Clicking **a path, a zone or a structure you drew** opens a small popup. It is t
 | **🔄 Convert** | Changes the object's **type**, and if needed its **family** |
 | **🗑️ Delete** | Removes the object. Red, on its own row |
 
+### 📍 A point's popup
+
+A tap on a **marker** (a map point or one you added) opens its popup: name, type, note, and a row of buttons.
+
+| Button | What it does |
+|---|---|
+| **📍 I am here** | Recalibrates tracking on this point. It is also what **confirms your position**: from then on, 🚨 Emergency exit and 🧭 Go there start from here without asking |
+| **🧭 Go there** | Computes a route from your position to this point |
+| **➕ Route** | Adds the point as a step of a route (current or new) |
+| **☆ Favorite** | Adds or removes the point from ⭐ Favorites |
+| **🔊 Read the note** | Reads the note aloud (local speech synthesis) |
+| **📋 GPS** | Copyable GPS coordinates, if the map is georeferenced |
+| **📸 Thumbnails** | Attached photos, tap = full screen |
+| **🌀 Links** | Inter-map links leaving from this point |
+
+On **your own points** (your session's) you also get **✏️ Edit**, **📌 Reposition** (then tap the new position on the map) and, on its own red line, **🗑️ Delete** — undoable with ⏪.
+
 ### 🔄 Convert — change an object's type, or family
 
 The typical case: on a survey imported from GIS, a **working face** is in fact a **gallery**. As long as it stays a structure, it does not enter route calculation — the router only reads paths. Converting it into a path puts it in the graph.
@@ -3343,6 +3364,10 @@ Very large maps can cause **silent memory kills** on iOS — the OS kills the ta
 - **🎯 Balanced** preset by default, **⚡ Performance** for old mobiles
 
 ---
+
+### 🔎 Searching the documentation
+
+This documentation is long. At the top of the 📖 modal, a **🔎 Search** field searches **the whole text**: occurrences are highlighted, **Enter** or ↓ jumps to the next one, the counter shows “i / n”, and table-of-contents entries without a match fade out. Accents do not matter: “reglages” finds “Réglages”. The ❓ Help hub search, for its part, looks in the titles **and** the content of the sections.
 
 ## 🤖 AI Help
 

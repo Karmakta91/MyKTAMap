@@ -394,3 +394,10 @@ node scripts/check-audit-domaine.js || exit $?
 # sortent de la pile a la destruction de la carte. EXECUTE la regle et le
 # demontage extraits du fichier. 3 sabotages rougissent.
 node scripts/check-osm-pile.js || exit $?
+
+# 🔎 Recherche plein texte de la modale Documentation + hub d aide (audit
+# ergonomie D27, 14/09/2026) : normalisation 1:1 (accents retires, positions
+# preservees), occurrences non chevauchantes, hub titre OU contenu, libelles
+# de la bulle par le dictionnaire, docs bulle / Details / recherche x3.
+# EXECUTE les helpers extraits du fichier. 4 sabotages rougissent.
+node scripts/check-doc-recherche.js || exit $?

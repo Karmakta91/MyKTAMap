@@ -21822,3 +21822,35 @@ body.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ok,
 html.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ok { color: #1e7a34; }
 body.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ko,
 html.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ko { color: #b3261e; }
+
+/* 🔎 D27 (14/09/2026) — recherche plein texte de la modale Documentation. */
+.kta-readme-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(244, 197, 66, 0.18);
+  flex-shrink: 0;
+}
+.kta-readme-search {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: #e8eaf0;
+  font-size: 14px;
+}
+.kta-readme-search::placeholder { color: #8892a4; }
+.kta-readme-search-count { font-size: 12px; color: #8892a4; white-space: nowrap; min-width: 3.5em; text-align: right; }
+.kta-readme-search-next { min-height: 38px; min-width: 44px; padding: 0 10px; flex-shrink: 0; }
+mark.kta-doc-mark { background: #f4c542; color: #1a1f2e; padding: 0 1px; border-radius: 2px; }
+mark.kta-doc-mark.kta-doc-mark-current { outline: 2px solid #ff9933; outline-offset: 1px; }
+.kta-readme-toc-link.kta-readme-toc-dim { opacity: 0.35; }
+body.kta-theme-light .kta-readme-search,
+html.kta-theme-light .kta-readme-search { background: #fff; color: #1a1f2e; border-color: rgba(0, 0, 0, 0.2); }
+body.kta-theme-light .kta-readme-search-count,
+html.kta-theme-light .kta-readme-search-count { color: #5a6478; }
