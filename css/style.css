@@ -21910,3 +21910,30 @@ body.kta-theme-light .kta-cfg-globaux-liste dt,
 html.kta-theme-light .kta-cfg-globaux-liste dt { color: #5a6478; }
 body.kta-theme-light .kta-cfg-globaux-liste dd,
 html.kta-theme-light .kta-cfg-globaux-liste dd { color: #1a1f2e; }
+
+/* ❓ D35 (v1.94.0) — aide contextuelle : le bouton posé dans l'en-tête des
+   modales qui ont une section d'aide. Même gabarit que la croix voisine pour
+   que la ligne de titre reste régulière d'une modale à l'autre. */
+.kta-aide-ctx-btn {
+  background: none;
+  border: none;
+  color: #8892a4;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px 8px;
+  margin-right: 2px;
+  border-radius: 6px;
+  min-width: 34px;
+  min-height: 34px;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.kta-aide-ctx-btn:hover,
+.kta-aide-ctx-btn:focus-visible {
+  background: rgba(140, 180, 255, 0.14);
+  color: #8cb4ff;
+  outline: none;
+}
+body.kta-theme-light .kta-aide-ctx-btn,
+html.kta-theme-light .kta-aide-ctx-btn { color: #5a6478; }

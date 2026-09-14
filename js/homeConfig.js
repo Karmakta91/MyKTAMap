@@ -1140,6 +1140,23 @@
         }
       })();
 
+      // ❓ v1.94.0 — Aide contextuelle : le ❓ des modales se coupe ici.
+      // L'état visible est mis à jour TOUT DE SUITE (modales déjà ouvertes) :
+      // une case qui n'agit qu'à la prochaine ouverture passe pour inerte.
+      (function _initAideCtxHome() {
+        const cb = document.getElementById("loaderAideCtxCb");
+        if (!cb) return;
+        cb.checked = (typeof window.ktaAideContextuelleActive === "function")
+          ? window.ktaAideContextuelleActive() : true;
+        cb.addEventListener("change", function () {
+          try { localStorage.setItem("myktamap_aide_contextuelle", cb.checked ? "1" : "0"); } catch (e) {}
+          if (typeof window.ktaAideContextuelleRefresh === "function") window.ktaAideContextuelleRefresh();
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t(cb.checked ? "config.aidectx.toastOn" : "config.aidectx.toastOff"), "info");
+          }
+        });
+      })();
+
       // 📔 v1.92.0 — Carnet des sorties, réglage GLOBAL rapatrié du mode plan.
       // Le module est la source de vérité (clé dédiée, pas app_user_prefs) :
       // on lit et on écrit par lui, jamais en touchant localStorage ici.

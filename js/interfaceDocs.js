@@ -684,6 +684,121 @@ function _ouvrirReadmeModal(html, opts) {
 
 // AIDE — modale plein écran
 // =========================
+// =====================================================================
+// ❓ AIDE CONTEXTUELLE (D35 de l'audit ergonomie, 14/09/2026)
+// =====================================================================
+// 🩸 LE CONSTAT : l'aide intégrée compte 33 sections, une par grande fonction,
+// et AUCUNE modale n'y renvoie. Pour lire la bonne, il fallait quitter ce qu'on
+// faisait, ouvrir le groupe ❓ Aide de la barre, puis chercher — personne ne le
+// fait au milieu d'une tâche. Les infobulles `title`, elles, n'existent pas au
+// doigt.
+//
+// LA RÈGLE : toute modale qui a une section d'aide porte un ❓ dans sa ligne de
+// titre, et ce ❓ ouvre CETTE section. Le lien vit dans UNE table, confrontée au
+// code par `check-aide-contextuelle.js` : chaque id doit exister dans les
+// sources, chaque slug doit être une section réelle.
+//
+// 🎛️ DÉSACTIVABLE (KARMA) : « quelqu'un qui ne veut pas cette icône partout
+// pour toujours ». Réglage GLOBAL, dans ⚙️ Configuration de l'accueil →
+// 🎨 Affichage. Défaut ACTIVÉ : l'aide ne sert que si elle se voit, et celui
+// qui n'en veut pas la coupe une fois.
+//
+// POURQUOI UN OBSERVATEUR et pas un appel dans chaque modale : elles sont une
+// vingtaine, créées dans autant de fichiers, avec le même en-tête
+// `.kta-readme-modal-header`. Poser le bouton à l'ajout du nœud garde la règle
+// en UN endroit ; vingt appels dispersés auraient dérivé au premier oubli.
+
+const AIDE_CTX_LS = "myktamap_aide_contextuelle";   // "0" = coupée
+
+// id de la modale → slug de section d'aide. Les modales absentes n'ont pas de
+// section dédiée (itinéraire, niveaux, conversion…) : pas de bouton, plutôt
+// qu'un ❓ qui ouvrirait une page à côté du sujet.
+const AIDE_PAR_MODALE = {
+  "kta-cfg-modal":            "parametres",
+  "kta-refonte-session-modal": "stats-session",
+  "kta-export-modal":         "enregistrer",
+  "kta-import-modal":         "charger-import",
+  "kta-legende-modal":        "legende",
+  "kta-search-modal":         "recherche",
+  "kta-secours-modal":        "mode-secours",
+  "kta-histoire-modal":       "histoire",
+  "kta-heatmap-modal":        "tracker",
+  "kta-planner-modal":        "creer-modifier-plan",
+  "kta-jrn-modal":            "carnet",
+  "kta-osm-filters-modal":    "vue-osm",
+  "kta-profil-modal":         "profil",
+  "kta-plan-infos-modal":     "bibliotheque-plans"
+};
+
+function ktaAideContextuelleActive() {
+  try { return localStorage.getItem(AIDE_CTX_LS) !== "0"; } catch(e) { return true; }
+}
+
+// Ouvre DIRECTEMENT une section d'aide, sans passer par le hub. Rend false si
+// le slug est inconnu — l'appelant saura que le lien est mort au lieu d'ouvrir
+// une fenêtre vide.
+function ktaOuvrirAideSection(slug) {
+  if (!slug || AIDE_SECTIONS.indexOf(slug) < 0) {
+    console.warn("[Aide] section inconnue :", slug);
+    return false;
+  }
+  _aideOuvrirSousModal(_aideSection(slug));
+  return true;
+}
+
+function _aidePoserBouton(modal) {
+  if (!modal || !modal.id) return;
+  const slug = AIDE_PAR_MODALE[modal.id];
+  if (!slug || !ktaAideContextuelleActive()) return;
+  const head = modal.querySelector(".kta-readme-modal-header");
+  if (!head || head.querySelector(".kta-aide-ctx-btn")) return;
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "kta-aide-ctx-btn";
+  b.textContent = "❓";
+  const t = (window.I18n && window.I18n.t) ? window.I18n.t("aide.ctx.btn") : "Aide";
+  b.title = t; b.setAttribute("aria-label", t);
+  b.addEventListener("click", function(e) {
+    e.stopPropagation();
+    ktaOuvrirAideSection(slug);
+  });
+  // Juste avant la croix : c'est là que l'œil va, et l'ordre reste le même
+  // d'une modale à l'autre.
+  const croix = head.querySelector(".kta-panneau-close, .kta-readme-modal-close");
+  if (croix) head.insertBefore(b, croix); else head.appendChild(b);
+}
+
+// Le réglage a changé : on met à jour ce qui est DÉJÀ à l'écran, sinon la case
+// n'aurait d'effet qu'à la prochaine ouverture — et donnerait l'impression de
+// ne rien faire.
+function ktaAideContextuelleRefresh() {
+  const actif = ktaAideContextuelleActive();
+  Object.keys(AIDE_PAR_MODALE).forEach(function(id) {
+    const m = document.getElementById(id);
+    if (!m) return;
+    const b = m.querySelector(".kta-aide-ctx-btn");
+    if (actif && !b) _aidePoserBouton(m);
+    if (!actif && b) b.remove();
+  });
+}
+
+(function _aideCtxObserver() {
+  if (typeof MutationObserver !== "function" || !document.documentElement) return;
+  const obs = new MutationObserver(function(muts) {
+    for (const m of muts) {
+      for (const n of m.addedNodes) {
+        if (!n || n.nodeType !== 1) continue;
+        if (n.id && AIDE_PAR_MODALE[n.id]) _aidePoserBouton(n);
+      }
+    }
+  });
+  obs.observe(document.documentElement, { childList: true, subtree: true });
+})();
+
+window.ktaOuvrirAideSection       = ktaOuvrirAideSection;
+window.ktaAideContextuelleActive  = ktaAideContextuelleActive;
+window.ktaAideContextuelleRefresh = ktaAideContextuelleRefresh;
+
 function afficherAide() {
   const existing = document.getElementById("kta-aide-modal");
   if (existing) { existing.remove(); return; }

@@ -437,3 +437,10 @@ node scripts/check-journal-demarrage.js || exit $?
 # annonce par le tutoriel est COMPTE dans les deux ecrans d export.
 # 4 sabotages rougissent.
 node scripts/check-doc-vocabulaire.js || exit $?
+
+# ❓ Aide contextuelle (D35, 14/09/2026) : le bouton ❓ des modales renvoie a LA
+# section d aide du sujet. La table modale -> section est confrontee AU CODE
+# dans les deux sens (aucune table recopiee), le reglage est EXECUTE (defaut
+# ACTIVE, seul « 0 » coupe), et couper agit sur ce qui est deja a l ecran.
+# 5 sabotages rougissent.
+node scripts/check-aide-contextuelle.js || exit $?
