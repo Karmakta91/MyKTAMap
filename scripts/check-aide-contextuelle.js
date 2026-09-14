@@ -61,15 +61,30 @@ let table = {};
     const JS = fs.readdirSync(path.join(ROOT, "js")).filter(function (f) { return f.endsWith(".js"); })
       .map(function (f) { return lire("js/" + f); }).join("\n").split(src).join("");
 
-    const idsMorts = [], slugsMorts = [];
+    // 🩸 14/09/2026 — L'EXISTENCE DE L'ID NE SUFFIT PAS. Une modale sans
+    // en-tête reconnu n'aurait jamais reçu son ❓, sans un mot : c'est arrivé
+    // avec le menu Tracker, qui n'avait même pas d'id. On exige donc que le
+    // fichier qui crée la modale porte AUSSI une des deux familles d'en-tête.
+    const ENTETES = ["kta-readme-modal-header", "kta-tracker-modal-header"];
+    const fichiers = fs.readdirSync(path.join(ROOT, "js"))
+      .filter(function (f) { return f.endsWith(".js") && f !== "interfaceDocs.js"; })
+      .map(function (f) { return { nom: f, txt: lire("js/" + f) }; });
+
+    const idsMorts = [], slugsMorts = [], sansEntete = [];
     Object.keys(table).forEach(function (id) {
       if (JS.indexOf('"' + id + '"') < 0 && IDX.indexOf('"' + id + '"') < 0) idsMorts.push(id);
       if (sections.indexOf(table[id]) < 0) slugsMorts.push(id + " → " + table[id]);
+      const src = fichiers.filter(function (f) { return f.txt.indexOf('"' + id + '"') >= 0; })[0];
+      if (src && !ENTETES.some(function (h) { return src.txt.indexOf(h) >= 0; })) {
+        sansEntete.push(id + " (" + src.nom + ")");
+      }
     });
     t("🩸 chaque modale de la table EXISTE dans le code" + (idsMorts.length ? " — morts : " + idsMorts.join(", ") : ""),
       idsMorts.length === 0);
     t("🩸 chaque section visée EXISTE" + (slugsMorts.length ? " — morts : " + slugsMorts.join(", ") : ""),
       slugsMorts.length === 0);
+    t("🩸 chaque modale a un en-tête où poser le ❓" + (sansEntete.length ? " — sans en-tête : " + sansEntete.join(", ") : ""),
+      sansEntete.length === 0);
   }
 }
 
@@ -107,6 +122,8 @@ let table = {};
   t("🩸 rien n'est posé quand le réglage est coupé", /if \(!slug \|\| !ktaAideContextuelleActive\(\)\) return;/.test(p));
   t("le bouton n'est jamais posé deux fois", /head\.querySelector\("\.kta-aide-ctx-btn"\)/.test(p));
   t("il se place avant la croix (même ordre dans toutes les modales)", /head\.insertBefore\(b, croix\)/.test(p));
+  t("🩸 les DEUX familles d'en-tête sont acceptées (contenu et menu Tracker)",
+    /kta-readme-modal-header, \.kta-tracker-modal-header/.test(p) && /kta-tracker-modal-close/.test(p));
   t("il ouvre la section visée", /ktaOuvrirAideSection\(slug\)/.test(p));
   const r = DOCS.slice(DOCS.indexOf("function ktaAideContextuelleRefresh("), DOCS.indexOf("(function _aideCtxObserver()"));
   t("🩸 couper le réglage retire les ❓ DÉJÀ à l'écran (sinon la case paraît inerte)",

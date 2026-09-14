@@ -1265,6 +1265,9 @@ function _ouvrirTrackerModal(groupId) {
   box.className = "kta-tracker-modal-box";
 
   // --- Header ---
+  // 🏷️ 14/09/2026 — id posé pour l'aide contextuelle : sans lui, rien ne
+  // pouvait désigner cette modale (elle est créée à la volée, sans identité).
+  overlay.id = "kta-tracker-modal";
   const header = document.createElement("div");
   header.className = "kta-tracker-modal-header";
   const titleWrap = document.createElement("div");

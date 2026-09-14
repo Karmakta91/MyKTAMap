@@ -713,6 +713,17 @@ const AIDE_CTX_LS = "myktamap_aide_contextuelle";   // "0" = coupée
 // id de la modale → slug de section d'aide. Les modales absentes n'ont pas de
 // section dédiée (itinéraire, niveaux, conversion…) : pas de bouton, plutôt
 // qu'un ❓ qui ouvrirait une page à côté du sujet.
+//
+// 🩸 DEUX ERREURS CORRIGÉES LE JOUR MÊME, et ce qu'elles apprennent :
+//   • 🔥 Heatmap pointait vers l'aide « Tracker » (KARMA : « pas logique, il
+//     doit être avant, dans le modal tracker »). La heatmap est UNE TUILE du
+//     menu Tracker : le ❓ va sur le menu, en amont, pas sur une de ses sorties.
+//   • « kta-profil-modal » n'est PAS le profil de l'utilisateur : c'est le
+//     PROFIL EN LONG d'un trajet (`profondeurNiveaux.js`). Le ❓ aurait ouvert
+//     la page « Mode profil » — avatar et rangs — depuis un graphe d'altimétrie.
+//     Un id qui EXISTE ne prouve pas qu'il désigne le bon sujet ; seul un
+//     humain peut juger ce lien, et c'est pour ça qu'il vit dans une table
+//     courte et relue, pas dans une heuristique.
 const AIDE_PAR_MODALE = {
   "kta-cfg-modal":            "parametres",
   "kta-refonte-session-modal": "stats-session",
@@ -722,11 +733,11 @@ const AIDE_PAR_MODALE = {
   "kta-search-modal":         "recherche",
   "kta-secours-modal":        "mode-secours",
   "kta-histoire-modal":       "histoire",
-  "kta-heatmap-modal":        "tracker",
+  "kta-tracker-modal":        "menu-tracker",
   "kta-planner-modal":        "creer-modifier-plan",
   "kta-jrn-modal":            "carnet",
   "kta-osm-filters-modal":    "vue-osm",
-  "kta-profil-modal":         "profil",
+  "kta-profile-details-modal": "profil",
   "kta-plan-infos-modal":     "bibliotheque-plans"
 };
 
@@ -750,7 +761,10 @@ function _aidePoserBouton(modal) {
   if (!modal || !modal.id) return;
   const slug = AIDE_PAR_MODALE[modal.id];
   if (!slug || !ktaAideContextuelleActive()) return;
-  const head = modal.querySelector(".kta-readme-modal-header");
+  // Deux familles d'en-tête coexistent dans l'app : celle des modales de
+  // contenu et celle du menu Tracker. Les deux accueillent le ❓ au même
+  // endroit, juste avant la croix.
+  const head = modal.querySelector(".kta-readme-modal-header, .kta-tracker-modal-header");
   if (!head || head.querySelector(".kta-aide-ctx-btn")) return;
   const b = document.createElement("button");
   b.type = "button";
@@ -764,7 +778,7 @@ function _aidePoserBouton(modal) {
   });
   // Juste avant la croix : c'est là que l'œil va, et l'ordre reste le même
   // d'une modale à l'autre.
-  const croix = head.querySelector(".kta-panneau-close, .kta-readme-modal-close");
+  const croix = head.querySelector(".kta-panneau-close, .kta-readme-modal-close, .kta-tracker-modal-close");
   if (croix) head.insertBefore(b, croix); else head.appendChild(b);
 }
 
