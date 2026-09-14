@@ -35,14 +35,28 @@ function bloc(src, debut, fin) {
   verif(/function majBadge\(\)/.test(s) && /function _nbFiltresActifs\(\)/.test(s) && /function _niveauxFiltres\(\)/.test(s), "filtres : pastille (majBadge / nbActifs / niveaux) définie");
   const notify = bloc(s, "function _notify() {", "function _scheduleApply");
   verif(notify.includes("majBadge()"), "🩸 chaque changement de filtre met la pastille à jour (_notify)");
-  verif(/kta-filter-ctrl-actif/.test(s) && /setAttribute\("data-count"/.test(s), "pastille : classe + compteur sur le bouton ≡");
+  // 🔵 14/09/2026 (KARMA) : le chiffre est devenu un POINT. Il comptait les
+  // catégories filtrées, pas les objets masqués — il mesurait autre chose que
+  // ce qu'on lisait. On vérifie la classe, le marqueur, et qu'AUCUN compte
+  // n'est réécrit dans le DOM.
+  verif(/kta-filter-ctrl-actif/.test(s) && /setAttribute\("data-filtre-actif", "1"\)/.test(s),
+        "pastille : classe + marqueur sur le bouton ≡");
+  verif(!/setAttribute\("data-count"/.test(s), "🩸 le chiffre n'est pas revenu (il mesurait les catégories, pas les objets masqués)");
+  verif(/filter\.badge\.actifs/.test(s) && /filter\.badge\.aucun/.test(s),
+        "🩸 le compte reste lisible dans l'infobulle du bouton (rien n'est perdu, seul l'affichage change)");
   const status = bloc(s, "function _updateStatus() {", "function _onKey");
   verif(status.includes("_niveauxFiltres()") && status.includes("filter.status.levels"), "🩸 le statut compte les NIVEAUX (plus de « Aucun filtre actif » mensonger)");
   const reset = bloc(s, 'document.getElementById("kta-fp-reset-all")', "_refreshChipsState(overlay);");
   verif(reset.includes("visibleLevels = avail.slice()") && reset.includes("appliquerFiltreNiveau"), "🩸 « Tout afficher » remet aussi les niveaux");
   verif(/majBadge:\s*majBadge/.test(s), "FilterPanel.majBadge exposé");
   const css = lire("css/style.css");
-  verif(css.includes(".kta-filter-ctrl a.kta-filter-ctrl-actif::after") && css.includes("content: attr(data-count)"), "CSS : la pastille affiche le compteur");
+  {
+    // 🔵 La pastille est un POINT depuis le 14/09/2026 : plus de compteur à
+    // vérifier, mais une forme ronde et un contenu vide.
+    const bloc = css.slice(css.indexOf(".kta-filter-ctrl a.kta-filter-ctrl-actif::after"), css.indexOf(".kta-filter-ctrl a.kta-filter-ctrl-actif::after") + 500);
+    verif(/content: ""/.test(bloc) && /border-radius: 50%/.test(bloc) && !/attr\(data-count\)/.test(css),
+          "CSS : la pastille est un point plein (le compteur ne revient pas)");
+  }
 }
 
 // ---------- restauration : toast filtres + étapes d'itinéraire ----------

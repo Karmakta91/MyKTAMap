@@ -115,7 +115,20 @@
     if (!a) return;
     const n = _nbFiltresActifs();
     a.classList.toggle("kta-filter-ctrl-actif", n > 0);
-    if (n > 0) a.setAttribute("data-count", String(n)); else a.removeAttribute("data-count");
+    // 🔵 14/09/2026 (KARMA) — UN POINT, PAS UN CHIFFRE. `n` compte les
+    // CATÉGORIES filtrées (points, tracés, zones, structures, niveaux), pas
+    // les objets masqués : décocher un seul type ou vingt affichait « 1 ».
+    // Un chiffre qui ne mesure pas ce qu'on croit est pire que pas de chiffre.
+    // Le point dit « quelque chose est masqué », ce qui est exactement le
+    // besoin ; le compte reste disponible, dans l'infobulle.
+    if (n > 0) {
+      a.setAttribute("data-filtre-actif", "1");
+      a.setAttribute("title", window.I18n.t("filter.badge.actifs", { n: n }));
+    } else {
+      a.removeAttribute("data-filtre-actif");
+      a.setAttribute("title", window.I18n.t("filter.badge.aucun"));
+    }
+    a.removeAttribute("data-count");   // legacy : le chiffre ne revient pas par la bande
   }
 
   function _notify() {
