@@ -21935,5 +21935,15 @@ html.kta-theme-light .kta-cfg-globaux-liste dd { color: #1a1f2e; }
   color: #8cb4ff;
   outline: none;
 }
+/* 🐛 14/09/2026 (KARMA : « le ? est centré entre le titre tracker et la croix,
+   et non collé comme les autres à la croix ») — les deux en-têtes sont en
+   `space-between`, mais leurs titres ne se comportent pas pareil : celui des
+   modales de contenu porte `flex: 1` et mange l'espace libre, donc le ❓ et la
+   croix se retrouvent collés à droite. Le titre du menu Tracker, lui, occupe
+   sa largeur propre : avec trois enfants, l'espace se répartissait et plaçait
+   le ❓ au milieu. `margin-left: auto` lui rend la place de droite, sans
+   toucher au titre — le même résultat visuel partout. */
+.kta-tracker-modal-header .kta-aide-ctx-btn { margin-left: auto; }
+
 body.kta-theme-light .kta-aide-ctx-btn,
 html.kta-theme-light .kta-aide-ctx-btn { color: #5a6478; }

@@ -929,13 +929,16 @@ const AIDE_CATEGORIES = [
 ];
 
 // Une ligne cliquable du hub (titre + chevron).
-function _aideRow(titre, onClick) {
+function _aideRow(section, onClick) {
   const r = document.createElement("button");
   r.type = "button";
   r.className = "kta-aide-row";
   const t = document.createElement("span");
   t.className = "kta-aide-row-titre";
-  t.textContent = titre;
+  // Accepte une section (titre + raccourci) ou une simple chaîne (ligne
+  // « ⌨️ Raccourcis clavier », qui n'est pas une section).
+  if (typeof section === "string") t.textContent = section;
+  else _aidePoserTitre(t, section);
   const chev = document.createElement("span");
   chev.className = "kta-aide-row-chevron";
   chev.textContent = "›";
@@ -952,7 +955,25 @@ function _aideRow(titre, onClick) {
 function _aideSection(slug) {
   const t = window.I18n ? window.I18n.t("aide.sec." + slug + ".titre") : slug;
   const h = window.I18n ? window.I18n.t("aide.sec." + slug + ".html") : "";
-  return { slug: slug, titre: t, html: h };
+  // ⌨️ 14/09/2026 — le raccourci clavier a sa PROPRE clé, facultative. Avant,
+  // il était écrit dans le titre avec son `<span>` : posé en `textContent`, le
+  // balisage s'affichait en clair (« Recherche unifiée <span class=… »). Le
+  // titre est du texte, la mise en forme appartient au gabarit — règle CLAUDE.md.
+  const r = (window.I18n && window.I18n.has && window.I18n.has("aide.sec." + slug + ".raccourci"))
+    ? window.I18n.t("aide.sec." + slug + ".raccourci") : "";
+  return { slug: slug, titre: t, raccourci: r, html: h };
+}
+
+// Pose un titre de section : le texte, puis le raccourci en petit s'il existe.
+// Un seul endroit, appelé par le hub ET par la fiche — deux rendus divergeraient.
+function _aidePoserTitre(el, section) {
+  if (!el || !section) return;
+  el.textContent = section.titre || "";
+  if (!section.raccourci) return;
+  const s = document.createElement("span");
+  s.className = "kta-aide-mini";
+  s.textContent = " (" + section.raccourci + ")";
+  el.appendChild(s);
 }
 
 function _aideRendreHub(corps) {
@@ -1000,7 +1021,7 @@ function _aideRendreHub(corps) {
     ct.textContent = window.I18n ? window.I18n.t("aide.cat." + cat.cle) : cat.cle;
     hub.appendChild(ct);
     rows.forEach(function(s) {
-      const r = _aideRow(s.titre, function() { _aideOuvrirSousModal(s); });
+      const r = _aideRow(s, function() { _aideOuvrirSousModal(s); });
       // 🔎 D27 (14/09/2026) : la recherche ne filtrait que les 30 TITRES —
       // chercher « CSV » ou « wake lock » ne trouvait rien alors que les mots
       // sont dans le corps des sections. Titre + contenu (balises retirées),
@@ -1022,7 +1043,7 @@ function _aideRendreHub(corps) {
     ct.textContent = window.I18n ? window.I18n.t("aide.ui.other") : "";
     hub.appendChild(ct);
     orphans.forEach(function(s) {
-      const r = _aideRow(s.titre, function() { _aideOuvrirSousModal(s); });
+      const r = _aideRow(s, function() { _aideOuvrirSousModal(s); });
       // 🔎 D27 (14/09/2026) : la recherche ne filtrait que les 30 TITRES —
       // chercher « CSV » ou « wake lock » ne trouvait rien alors que les mots
       // sont dans le corps des sections. Titre + contenu (balises retirées),
@@ -1087,7 +1108,7 @@ function _aideOuvrirSousModal(section) {
     bloc.className = "kta-aide-section";
     const t = document.createElement("div");
     t.className = "kta-aide-section-titre";
-    t.textContent = section.titre || "";
+    _aidePoserTitre(t, section);
     bloc.appendChild(t);
     const c = document.createElement("div");
     c.innerHTML = section.html || "";

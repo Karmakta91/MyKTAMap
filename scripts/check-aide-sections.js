@@ -135,13 +135,36 @@ verif("couverture complète : " + Object.keys(vus).length + "/" + SECTIONS.lengt
 LANGS.forEach(function (c) {
   const attendues = {};
   UI.forEach(function (k) { attendues[k] = 1; });
-  SECTIONS.forEach(function (s) { attendues["aide.sec." + s + ".titre"] = 1; attendues["aide.sec." + s + ".html"] = 1; });
+  // ⌨️ `.raccourci` est FACULTATIF : seules les sections qui ont un raccourci
+  // clavier le portent. Il est accepté ici, jamais exigé.
+  SECTIONS.forEach(function (s) {
+    attendues["aide.sec." + s + ".titre"] = 1;
+    attendues["aide.sec." + s + ".html"] = 1;
+    attendues["aide.sec." + s + ".raccourci"] = 1;
+  });
   const orph = Object.keys(dicos[c]).filter(function (k) {
     return /^aide\./.test(k) && !attendues[k];
   });
   verif(c + " : aucune clé aide.* orpheline", orph.length === 0,
         c + " — clé(s) sans consommateur : " + orph.slice(0, 6).join(", ") +
         ". Une section retirée du module doit l'être des 3 dicos.");
+});
+
+// --- E. aucun balisage dans un titre -----------------------------------
+// 🩸 KARMA, 14/09/2026 : « Recherche unifiée <span class="kta-aide-mini">
+// (Ctrl+K)</span> » s'affichait tel quel. Les titres sont posés en
+// `textContent` — un `<span>` dans le dico se lit en clair à l'écran. La
+// mise en forme appartient au gabarit (`_aidePoserTitre`), le dico ne porte
+// que du texte.
+LANGS.forEach(function (c) {
+  const fautifs = SECTIONS.filter(function (s) {
+    const v = dicos[c]["aide.sec." + s + ".titre"];
+    return typeof v === "string" && /<[a-z/]/i.test(v);
+  });
+  verif(c + " : aucun titre de section ne contient de balisage", fautifs.length === 0,
+        c + " — titre(s) avec du HTML : " + fautifs.join(", ") +
+        ". Un titre est posé en textContent : le balisage s'afficherait en clair. " +
+        "Le raccourci clavier va dans « aide.sec.<slug>.raccourci », mis en forme par le gabarit.");
 });
 
 // --- verdict -----------------------------------------------------------
