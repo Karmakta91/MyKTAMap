@@ -658,6 +658,30 @@
   // =========================
   // RENDU UI — Widget complet (carte)
   // =========================
+  // 🗂️ 14/09/2026 — remet la pile à un seul plan : celui qu'on vient de
+  // quitter. Séparée de `mount` pour être EXÉCUTABLE par le garde-fou.
+  // Rend la pile obtenue (facilite le test et la lecture).
+  function _reinitialiserPileAuRetour(planId) {
+    _stackOrder.slice().forEach(function(id) {
+      if (id === planId) return;
+      const g = _extraLayers[id];
+      if (g) {
+        try {
+          if (_mapInstance) {
+            if (_mapInstance.hasLayer(g.tiles)) _mapInstance.removeLayer(g.tiles);
+            if (_mapInstance.hasLayer(g.data))  _mapInstance.removeLayer(g.data);
+          }
+          g.tiles.clearLayers(); g.data.clearLayers();
+        } catch(e) {}
+        delete _extraLayers[id];
+      }
+      try { _retirerHiRes(id); } catch(e) {}
+    });
+    _stackOrder.length = 0;
+    _stackOrder.push(planId);
+    return _stackOrder;
+  }
+
   function _renderWidget(container, plans, selectedId) {
     const sel = plans.find(function(p) { return p.id === selectedId; }) || plans[0];
     const _prevPrimary = _selectedPlanId;
@@ -2536,12 +2560,25 @@
   }
 
   function _retirerPlanOsm(planId) {
-    if (!_demonterPlanOsm(planId)) return;
-    _appliquerOrdre();
-    _renderMultiPanel();
-    _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
-    _renderModalTags();   // 🐛 v1.72.2 : retirer un plan retire aussi ses tags
-    _renderModalNiveaux();
+    // 🩸 14/09/2026 (KARMA : « je peux même pas les supprimer ») — UN CLIC SUR
+    // ✕ DOIT TOUJOURS FAIRE DISPARAÎTRE LA LIGNE. Deux durcissements :
+    //   • le retrait de la pile est VÉRIFIÉ après coup, quel que soit le
+    //     chemin pris par `_demonterPlanOsm` (groupe présent, fantôme, ou
+    //     échec silencieux d'un des deux) ;
+    //   • le re-rendu se fait même si un des rendus annexes jette. Avant, une
+    //     exception dans `_appliquerOrdre`, les portails, les tags ou les
+    //     niveaux laissait la liste à l'écran avec la ligne encore dedans —
+    //     du point de vue de l'utilisateur, le bouton ne marche pas.
+    const principal = (planId === _selectedPlanId);
+    try { _demonterPlanOsm(planId); } catch(e) { console.warn("[OsmHomePreview] démontage " + planId + " :", e); }
+    if (!principal) {
+      const i = _stackOrder.indexOf(planId);
+      if (i !== -1) _stackOrder.splice(i, 1);   // ceinture : la ligne s'en va
+    }
+    [_appliquerOrdre, _renderMultiPanel, _renderPortails, _renderModalTags, _renderModalNiveaux]
+      .forEach(function(fn) {
+        try { fn(); } catch(e) { console.warn("[OsmHomePreview] re-rendu après retrait :", e); }
+      });
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -3288,6 +3325,24 @@
     if (typeof preferId !== "string" || !preferId) preferId = null;
     const container = document.getElementById("ktaOsmHomeContent");
     if (!container) return; // pas en HOME, abort silencieux
+
+    // 🗂️ 14/09/2026 (KARMA, 2ᵉ passe) — AU RETOUR D'UN PLAN, LA PILE REPART DE
+    // ZÉRO. `preferId` n'est renseigné QUE par `main.js > refresh(planId)` au
+    // retour à l'accueil : c'est le signal sans ambiguïté « on vient de quitter
+    // un plan ». La règle voulue est alors « le seul plan en liste est celui
+    // qu'on vient de quitter ».
+    //
+    // 🩸 Pourquoi ici et pas seulement dans `_initMiniMap` : la purge de la
+    // v1.91.1 est suspendue à la RECRÉATION DE LA CARTE. Tout chemin de rendu
+    // qui n'y arrive pas — hors-ligne sans cache, incognito, strict offline,
+    // conteneur sans `#ktaOsmHomeMap` — laissait la pile intacte, avec des
+    // plans dont les couches appartenaient à une carte morte. Posée au point
+    // d'entrée, la règle ne dépend plus d'aucun de ces chemins.
+    //
+    // Les groupes de couches sont démontés au passage : ils appartiennent de
+    // toute façon à la carte qu'on s'apprête à détruire. `_extraOpacity` est
+    // conservé — une opacité réglée à la main survit à un re-ajout.
+    if (preferId) _reinitialiserPileAuRetour(preferId);
 
     // 🎨 v1.77.0 — cache des overrides de légende par plan invalidé à chaque
     // mount : un retour au HOME après des modifs de couleur en mode plan

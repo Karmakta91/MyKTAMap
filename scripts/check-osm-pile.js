@@ -97,6 +97,77 @@ function fonction(nom) {
     /Object\.keys\(_extraLayers\)\.forEach\(function\(id\) \{\n\s*delete _extraLayers\[id\];\n\s*const iX = _stackOrder\.indexOf\(id\);\n\s*if \(iX !== -1\) _stackOrder\.splice\(iX, 1\);/.test(bloc));
 }
 
+// ---------- 4. Au RETOUR d'un plan, la pile repart de zéro ----------
+// 🩸 KARMA, 14/09/2026 (2ᵉ passe) : « quand je charge un plan et le quitte, le
+// seul plan en liste doit être celui dernièrement chargé. Je peux même pas les
+// supprimer. » La purge de la v1.91.1 était suspendue à la RECRÉATION DE LA
+// CARTE (`_initMiniMap`) : tout chemin de rendu qui n'y arrive pas — hors-ligne
+// sans cache, incognito, strict offline, conteneur sans `#ktaOsmHomeMap` —
+// laissait la pile intacte, avec des plans dont les couches appartenaient à une
+// carte morte. La règle est désormais posée au POINT D'ENTRÉE du retour.
+{
+  const src = fonction("_reinitialiserPileAuRetour");
+  t("la règle _reinitialiserPileAuRetour est extractible", src.length > 0);
+  if (src) {
+    const run = function (pile, extras, planId) {
+      const faux = function () { return { tiles: { clearLayers() {} }, data: { clearLayers() {} } }; };
+      const ex = {};
+      extras.forEach(function (id) { ex[id] = faux(); });
+      const sb = { _stackOrder: pile.slice(), _extraLayers: ex, _mapInstance: null,
+                   _retirerHiRes: function () {}, resultat: null };
+      vm.runInNewContext(src + "\nresultat = _reinitialiserPileAuRetour(planId);",
+                         Object.assign(sb, { planId: planId }), { filename: "osmHome.retour.js" });
+      return { pile: sb._stackOrder, extras: Object.keys(sb._extraLayers) };
+    };
+    const eq = function (a, b) { return JSON.stringify(a) === JSON.stringify(b); };
+
+    const r1 = run(["A", "B", "C"], ["B", "C"], "D");
+    t("🩸 le cas de KARMA : pile [A,B,C] + 2 plans ajoutés, on quitte D → [D] seul",
+      eq(r1.pile, ["D"]) && r1.extras.length === 0);
+
+    const r2 = run(["A", "B"], ["B"], "A");
+    t("🩸 on quitte le plan qui était DÉJÀ principal → [A], et l'ajouté est démonté",
+      eq(r2.pile, ["A"]) && r2.extras.length === 0);
+
+    const r3 = run([], [], "D");
+    t("pile vide → [D] (le plan quitté entre toujours)", eq(r3.pile, ["D"]));
+
+    const r4 = run(["D"], [], "D");
+    t("déjà seul → inchangé, pas de doublon", eq(r4.pile, ["D"]));
+
+    const r5 = run(["A", "D", "B"], ["A", "B"], "D");
+    t("le plan quitté était au milieu de la pile → il reste seul", eq(r5.pile, ["D"]) && r5.extras.length === 0);
+  }
+
+  // Fenêtre large : les chemins de sortie anticipée (opt-in, offline…) sont
+  // répartis sur plusieurs dizaines de lignes après l'en-tête de mount().
+  const iM = HOME.indexOf("function mount(preferId)");
+  const m  = HOME.slice(iM, iM + 6000);
+  t("🩸 mount() applique la règle dès qu'un plan est passé (= retour depuis un plan)",
+    /if \(preferId\) _reinitialiserPileAuRetour\(preferId\);/.test(m));
+  t("🩸 …AVANT tout chemin de rendu anticipé (opt-in, offline, incognito…)",
+    (function () {
+      const a = m.indexOf("_reinitialiserPileAuRetour");
+      const b = m.indexOf("_isOptedIn()");
+      return a >= 0 && b > a;   // b introuvable (-1) = fenêtre trop courte : on échoue exprès
+    })());
+}
+
+// ---------- 5. Un clic sur ✕ fait TOUJOURS disparaître la ligne ----------
+// « Je peux même pas les supprimer. » Deux façons de rater : `_demonterPlanOsm`
+// qui rend false, et un rendu annexe qui jette avant le re-rendu de la liste.
+{
+  const src = fonction("_retirerPlanOsm");
+  t("_retirerPlanOsm est extractible", src.length > 0);
+  t("🩸 le retrait de la pile est VÉRIFIÉ après coup, quel que soit le chemin",
+    /const i = _stackOrder\.indexOf\(planId\);\n\s*if \(i !== -1\) _stackOrder\.splice\(i, 1\);\s*\/\/ ceinture/.test(src));
+  t("🩸 …et le principal, lui, n'est jamais retiré par ce chemin",
+    /const principal = \(planId === _selectedPlanId\);/.test(src) && /if \(!principal\) \{/.test(src));
+  t("🩸 un rendu annexe qui jette ne laisse plus la ligne à l'écran",
+    /\[_appliquerOrdre, _renderMultiPanel, _renderPortails, _renderModalTags, _renderModalNiveaux\]/.test(src)
+    && /try \{ fn\(\); \} catch/.test(src));
+}
+
 console.log("");
 if (echecs) { console.log("💥 pile OSM : " + echecs + " contrôle(s) en échec"); process.exit(1); }
 console.log("🎉 pile OSM : le plan quitté remplace l'ancien, et un fantôme se retire toujours");
