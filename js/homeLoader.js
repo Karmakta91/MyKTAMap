@@ -255,6 +255,20 @@
             || nomMinuscule.endsWith(".json");
       }
 
+      // 🗺️ GeoTIFF : un plan scanne puis cale dans QGIS. Meme lecon que le SIG
+      // en v1.75.2 — l'accueil est l'endroit evident ou deposer un fichier, et
+      // un .tif y tombait sur « le fichier doit etre une archive .zip ».
+      function _estGeoTiff(nomMinuscule) {
+        return nomMinuscule.endsWith(".tif") || nomMinuscule.endsWith(".tiff");
+      }
+
+      // Ouvre le Generateur avec le GeoTIFF pose (image + georef + echelle).
+      // Rend false si le module est absent, pour que l'appelant le DISE.
+      function _routerGeoTiff(f) {
+        if (typeof window.afficherImporterGeoTiff !== "function") return false;
+        return window.afficherImporterGeoTiff(f) !== false;
+      }
+
       zipFileInput.addEventListener("change", function () {
         const f = zipFileInput.files[0];
         if (!f) { zipFileName.textContent = ""; return; }
@@ -297,6 +311,15 @@
             window.afficherImporterSig(f);
           } else {
             setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.sigUnavailable") : "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG »."), true);
+          }
+          return;
+        }
+        if (_estGeoTiff(lower)) {
+          zipFileInput.value = "";
+          if (_routerGeoTiff(f)) {
+            zipFileName.textContent = "🗺️ " + f.name + ((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.tiffRoute") : " — ouverture du Générateur, géoréf lu dans le fichier…");
+          } else {
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.tiffUnavailable") : "Module GeoTIFF indisponible — ouvre 🏗️ Générer un plan et choisis l'image depuis là."), true);
           }
           return;
         }
@@ -347,6 +370,13 @@
             window.afficherImporterSig(f);
           } else {
             setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.sigUnavailable") : "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG »."), true);
+          }
+        } else if (_estGeoTiff(lower)) {
+          // 🗺️ GeoTIFF — même routage que la sélection par clic (cf. plus haut).
+          if (_routerGeoTiff(f)) {
+            zipFileName.textContent = "🗺️ " + f.name + ((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.tiffRoute") : " — ouverture du Générateur, géoréf lu dans le fichier…");
+          } else {
+            setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.tiffUnavailable") : "Module GeoTIFF indisponible — ouvre 🏗️ Générer un plan et choisis l'image depuis là."), true);
           }
         } else {
           setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("home.loader.badFileType") : "Le fichier doit être une archive .zip, un .kmz, un .gpx ou un fichier SIG (.geojson, .kml)"), true);

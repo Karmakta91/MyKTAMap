@@ -101,7 +101,15 @@ fichiers.forEach(function (n) {
   // garde-fou devenait aveugle au cas meme qui l a motive :
   //     const headerH = opts.incHeader ? HEADER_HEIGHT_MM : 0;
   // Decouvert en le falsifiant. Un garde-fou non falsifie ne garde rien.
-  const RE_PROP = /[{,]s*([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)s*:/g;
+  //
+  // 🩸 BIS — les `\s` de ce motif avaient perdu leur antislash (`[{,]s*...s*:`),
+  // ce qui exigeait un `s` LITTERAL : la regle « une cle d'objet compte comme
+  // declaration » ne s'appliquait donc JAMAIS. Le defaut est reste invisible
+  // tant qu'aucun module ne rangeait ses constantes dans un objet ; il a
+  // rougi au premier qui l'a fait (la table de tags de `js/tiffGeoref.js`).
+  // Verifie apres correction : le cas historique du ternaire est toujours
+  // attrape a l'identique, et les 116 fichiers restent verts.
+  const RE_PROP = /[{,]\s*([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)\s*:/g;
   while ((m = RE_PROP.exec(contenus[n])) !== null) declaresPartout.add(m[1]);
   const RE_PARAM = /function\s*[\w$]*\s*\(([^)]*)\)/g;
   while ((m = RE_PARAM.exec(contenus[n])) !== null) {

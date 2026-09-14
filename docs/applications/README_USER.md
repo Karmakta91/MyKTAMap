@@ -3105,6 +3105,22 @@ Depuis cet écran, vous pouvez :
 
 Appuyez sur **🏗️** pour ouvrir le générateur. Deux onglets disponibles :
 
+### 🗺️ Déposer un GeoTIFF *(depuis v1.93.0)*
+
+Si tu as calé ton plan dans **QGIS**, exporte-le en **GeoTIFF** (`.tif` / `.tiff`) : l'image **et** son calage voyagent dans le même fichier. Choisis-le comme image de plan — dans le Générateur ou directement depuis l'écran d'accueil — et l'app fait le reste :
+
+- elle **lit le calage écrit dans le fichier** et remplit le **géoréférencement GPS** toute seule ;
+- elle en déduit l'**échelle** (px/m) et l'**emprise** du plan, affichées dans le message de confirmation ;
+- elle convertit l'image en PNG pour la suite (aucun navigateur de bureau n'affiche un TIFF), puis le tuilage et le ZIP se déroulent comme d'habitude.
+
+**Tu n'as plus à ressaisir les deux points GPS** que tu venais de poser dans QGIS.
+
+> ✅ **Ce qui est lu** : compression **LZW, Deflate ou aucune** · **8 bits par canal** · **gris, RVB ou RVBA** · image **en bandes** · calage **nord en haut, sans rotation** · coordonnées en **Lambert 93, Web Mercator ou WGS84**.
+>
+> ❌ **Ce qui est refusé l'est toujours en clair**, avec ce qu'il faut changer à l'export : BigTIFF, image tuilée, canaux séparés, palette / CMJN / YCbCr, prédicteur inhabituel, calage tourné, système de coordonnées non géré. Un message te dit précisément quoi réexporter — l'app ne devine jamais à ta place.
+
+> 🔒 **100 % local** : le fichier est lu et converti **dans ton navigateur**. Aucun octet n'est envoyé nulle part.
+
 ### 📄 Nouveau plan
 
 Formulaire vierge. Renseignez :

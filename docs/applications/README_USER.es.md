@@ -3042,6 +3042,22 @@ Desde esta pantalla puedes:
 
 Pulsa **🏗️** para abrir el generador. Dos pestañas disponibles:
 
+### 🗺️ Soltar un GeoTIFF *(desde la v1.93.0)*
+
+Si has georreferenciado tu plano en **QGIS**, expórtalo como **GeoTIFF** (`.tif` / `.tiff`): la imagen **y** su georreferenciación viajan en el mismo archivo. Elígelo como imagen del plano — en el generador o directamente desde la pantalla de inicio — y la app hace el resto:
+
+- **lee la georreferenciación escrita en el archivo** y rellena la **calibración GPS** por sí sola;
+- deduce la **escala** (px/m) y la **extensión** del plano, que se muestran en el mensaje de confirmación;
+- convierte la imagen a PNG para el resto del proceso (ningún navegador de escritorio muestra un TIFF), y luego el teselado y el ZIP siguen como siempre.
+
+**Ya no tienes que volver a escribir los dos puntos GPS** que acababas de poner en QGIS.
+
+> ✅ **Lo que se lee**: compresión **LZW, Deflate o ninguna** · **8 bits por canal** · **gris, RGB o RGBA** · imagen **organizada en bandas** · georreferenciación **con el norte arriba, sin rotación** · coordenadas en **Lambert 93, Web Mercator o WGS84**.
+>
+> ❌ **Lo que se rechaza se nombra siempre**, con lo que hay que cambiar al exportar: BigTIFF, imagen teselada, canales separados, paleta / CMYK / YCbCr, predictor inusual, georreferenciación rotada, sistema de coordenadas no admitido. Un mensaje te dice exactamente qué reexportar — la app nunca adivina por ti.
+
+> 🔒 **100 % local**: el archivo se lee y se convierte **en tu navegador**. Ni un byte se envía a ninguna parte.
+
 ### 📄 Plano nuevo
 
 Formulario en blanco. Rellena:

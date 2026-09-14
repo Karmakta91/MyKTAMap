@@ -506,6 +506,29 @@ Cf `perf-memory.md §88` pour le contexte du sprint Pack RAM et la mesure d'impa
 ---
 
 
+## 🗺️ GeoTIFF — l'image et son calage dans le même fichier (v1.93.0)
+
+`js/tiffGeoref.js` · API `window.TiffGeoref = { estTiff, lire, EXT_ACCEPTEES, _interne }` · garde-fou `scripts/check-geotiff.js`.
+
+**Le problème** : un plan calé sous QGIS ressort en GeoTIFF. `accept="image/*"` laissait entrer le `.tif`, mais aucun navigateur de bureau ne décode le TIFF — et il fallait re-saisir deux points GPS déjà posés.
+
+**Ce que le module lit** :
+
+| Moitié | Tags / détail |
+|---|---|
+| Calage | `ModelPixelScale` (33550) + `ModelTiepoint` (33922), ou `ModelTransformation` (34264) ; EPSG par `GeoKeyDirectory` (34735) |
+| Pixels | LZW (prédicteur horizontal géré), Deflate, non compressé — puis ré-encodage PNG par le canvas |
+
+**Pourquoi aucune bibliothèque vendorée** (`geotiff.js` ≈ 300 Ko) : mesuré sur un corpus réel de 39 plans de carrières franciliens calés sous QGIS — LZW ×30 / aucune ×9, RVB 8/8/8 ×39, bandes ×39 (aucune tuilée), `PlanarConfig` 1 ×39, prédicteur 1 ×39, `Scale+Tiepoint` ×39, 2,2 Mpx au maximum. On lit ce sous-ensemble et **on refuse le reste en le nommant** : 33 raisons distinctes (`tiff.err.*`), chacune disant quoi réexporter.
+
+**Le calage se déduit exactement** : `Scale + Tiepoint` décrit une image nord en haut **sans rotation** — deux coins opposés la décrivent entièrement, ce qui est précisément ce que consomme `plan.georef` (similitude 2 points de `KmzExport.buildTransform`). Aucun `pointC` affine nécessaire, aucune approximation introduite. Un calage porteur d'une rotation est **refusé**, pas approché.
+
+**Reprojection** : `window.SigImport.L93` (Lambert 93) et `window.SigImport.WEBMERC` (Web Mercator, ajouté en v1.93.0 — 7 plans du corpus sortent en EPSG:3857, QGIS l'impose dès qu'on cale sur un fond de tuiles). ⚠️ **Aucune copie locale de ces maths** : une seule implémentation par projection dans le projet, verrouillée par son garde-fou.
+
+**Intégration** : `.tif/.tiff` explicites dans les `accept` (le type `image/*` seul ne les propose pas de façon fiable selon l'OS) ; le PNG converti est **ré-injecté dans le même input** via `DataTransfer`, donc `_lireImageDimensions`, le tuilage V2 et le ZIP reprennent **sans rien savoir du TIFF**.
+
+**Réseau** : nul. Lecture `FileReader` → `ArrayBuffer`, décodage en mémoire, encodage canvas. Aucun octet ne sort, aucune bibliothèque chargée.
+
 ## 🧙 Générateur — assistant pas-à-pas (v1.72.1)
 
 > Topo KARMA « installeur style Windows, évite les oublis » — décisions **1:a** (couche de présentation sur le form existant, PAS de réécriture) **2:a** (toggle « Tout afficher » conservé) **3:a** (barre d'étapes cliquable).

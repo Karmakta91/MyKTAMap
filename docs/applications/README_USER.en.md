@@ -3096,6 +3096,22 @@ From this screen, you can:
 
 Press **🏗️** to open the generator. Two tabs available:
 
+### 🗺️ Dropping a GeoTIFF *(since v1.93.0)*
+
+If you georeferenced your map in **QGIS**, export it as a **GeoTIFF** (`.tif` / `.tiff`): the image **and** its georeferencing travel in the same file. Pick it as the map image — in the generator or straight from the home screen — and the app does the rest:
+
+- it **reads the georeferencing written in the file** and fills in the **GPS calibration** by itself;
+- it derives the **scale** (px/m) and the map's **extent**, both shown in the confirmation message;
+- it converts the image to PNG for the rest of the flow (no desktop browser displays a TIFF), then tiling and ZIP proceed as usual.
+
+**You no longer have to re-enter the two GPS points** you had just set in QGIS.
+
+> ✅ **What is read**: **LZW, Deflate or no** compression · **8 bits per channel** · **greyscale, RGB or RGBA** · **strip-organised** image · **north-up, rotation-free** georeferencing · coordinates in **Lambert 93, Web Mercator or WGS84**.
+>
+> ❌ **Whatever is refused is always named**, with what to change on export: BigTIFF, tiled image, separate channels, palette / CMYK / YCbCr, unusual predictor, rotated georeferencing, unsupported coordinate system. A message tells you exactly what to re-export — the app never guesses for you.
+
+> 🔒 **100 % local**: the file is read and converted **in your browser**. Not one byte is sent anywhere.
+
 ### 📄 New map
 
 Blank form. Fill in:

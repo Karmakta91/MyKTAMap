@@ -1,8 +1,8 @@
 {
-  "version": "v1.92.0",
+  "version": "v1.93.0",
   "released": "2026-09-14",
   "notes": [
-    "⚙️ Réglages du plan refondus : plus de bouton « Appliquer », chaque réglage s'enregistre dès que tu le modifies, Échap ferme sans rien perdre, et chaque groupe dit s'il vaut pour ce plan ou pour tous tes plans. Le géoréférencement a sa propre fenêtre, et « Valeurs par défaut » ne touche plus que le plan en cours.",
-    "🏠 Les réglages de l'accueil (langue, thème, icônes, magnétisme…) se lisent désormais depuis le plan, avec un bouton pour aller les changer. Sur Firefox, « Garder l'écran allumé » et les commandes vocales restent visibles avec la raison de leur indisponibilité."
+    "🗺️ Dépose un plan GeoTIFF calé sous QGIS : l'app lit le calage écrit dans le fichier et pose le géoréférencement, l'échelle et l'emprise toute seule — plus besoin de ressaisir deux points GPS à la main. Si un fichier n'est pas lisible, l'app dit précisément pourquoi et quoi réexporter.",
+    "⚙️ Réglages du plan refondus : plus de bouton « Appliquer », chaque réglage s'enregistre dès que tu le modifies, Échap ferme sans rien perdre, et chaque groupe dit s'il vaut pour ce plan ou pour tous. Le géoréférencement a sa propre fenêtre, et « Valeurs par défaut » ne touche plus que le plan en cours."
   ]
 }

@@ -193,7 +193,7 @@ function afficherPlanner() {
             <input
               type="file"
               id="kta-planner-zip-input"
-              accept=".zip,.kmz,.gpx,.geojson,.json,.kml,application/zip,application/vnd.google-earth.kmz,application/gpx+xml,application/geo+json,application/vnd.google-earth.kml+xml"
+              accept=".zip,.kmz,.gpx,.geojson,.json,.kml,.tif,.tiff,application/zip,application/vnd.google-earth.kmz,application/gpx+xml,application/geo+json,application/vnd.google-earth.kml+xml,image/tiff"
               style="
                 position:absolute;
                 inset:0;
@@ -307,7 +307,10 @@ function afficherPlanner() {
             <div class="kta-planner-upload-ligne">
               <span class="kta-cfg-label">${window.I18n.t("gen.images.imagePlan")} <span class="kta-planner-req">*</span></span>
               <label class="kta-planner-upload-btn" for="pl_baseImage">${window.I18n.t("gen.btn.choisir")}</label>
-              <input type="file" id="pl_baseImage" accept="image/*" style="display:none">
+              <!-- 🗺️ .tif/.tiff explicites : le type image/* seul ne les
+                   propose pas de façon fiable selon l'OS, et un GeoTIFF calé
+                   est justement ce qu'on veut voir arriver ici. -->
+              <input type="file" id="pl_baseImage" accept="image/*,.tif,.tiff" style="display:none">
               <span class="kta-planner-upload-nom" id="pl_baseImage_nom">${window.I18n.t("gen.upload.aucunFichier")}</span>
             </div>
 
@@ -759,6 +762,115 @@ function afficherPlanner() {
     });
   }
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🗺️ GEOTIFF — déposer un .tif calé, ne PAS ressaisir le géoréf
+  // ═══════════════════════════════════════════════════════════════════════
+  // Un plan scanné puis calé dans QGIS ressort en GeoTIFF : l'image ET son
+  // calage dans le même fichier. Avant, l'utilisateur re-saisissait à la main
+  // les deux points GPS qu'il venait de poser dans QGIS — et aucun navigateur
+  // de bureau ne décodant le TIFF, l'image elle-même n'arrivait pas.
+  //
+  // ⚠️ CE HANDLER DOIT ÊTRE ENREGISTRÉ EN PREMIER. Au niveau de la cible, les
+  // écouteurs s'exécutent dans leur ordre d'enregistrement : en se plaçant
+  // avant `_bindUploadLabel` et avant l'auto-détection des dimensions, celui-ci
+  // peut couper la propagation (`stopImmediatePropagation`) pour que les
+  // handlers standards ne voient JAMAIS le .tif — `_lireImageDimensions`
+  // échouerait dessus et afficherait une erreur trompeuse.
+  //
+  // Une fois le TIFF converti en PNG, on le RÉ-INJECTE dans le même input et on
+  // relance l'événement (même technique que `_genererImageVierge`) : le flux
+  // existant — dimensions, tuilage V2, ZIP — reprend sans rien savoir du TIFF.
+  (function _bindGeoTiff() {
+    const input = document.getElementById("pl_baseImage");
+    if (!input) return;
+
+    input.addEventListener("change", function(ev) {
+      const f = ev.target.files && ev.target.files[0];
+      if (!f || !window.TiffGeoref || !window.TiffGeoref.estTiff(f)) return;
+      ev.stopImmediatePropagation();
+
+      const nomEl = document.getElementById("pl_baseImage_nom");
+      const setNom = function(txt) { if (nomEl) nomEl.textContent = txt; };
+      setNom(window.I18n.t("gen.tiff.lecture", { nom: f.name }));
+      _plannerErreur("");
+
+      window.TiffGeoref.lire(f).then(function(res) {
+        // ─── L'image : PNG ré-injecté comme un upload normal ───
+        const png = new File([res.blob], res.nomPng, { type: "image/png" });
+        try {
+          const dt = new DataTransfer();
+          dt.items.add(png);
+          input.files = dt.files;
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+        } catch(e) {
+          console.warn("[Planner GeoTIFF] DataTransfer a échoué :", e);
+          _plannerErreur(window.I18n.t("gen.tiff.errInjection", { err: (e.message || e) }));
+          return;
+        }
+
+        // ─── Le calage : les 6 champs du géoréf, remplis pour de bon ───
+        const fmt = (typeof window.formatGpsCoords === "function")
+                    ? window.formatGpsCoords
+                    : function(a, b) { return a + ", " + b; };
+        const g = res.georef;
+        let taillePlus = "";
+        const put = function(id, v) { const el = document.getElementById(id); if (el) el.value = v; };
+        put("pl_geo_A_x", g.pointA.x); put("pl_geo_A_y", g.pointA.y);
+        put("pl_geo_B_x", g.pointB.x); put("pl_geo_B_y", g.pointB.y);
+        put("pl_geo_A_coords", fmt(g.pointA.lat, g.pointA.lng));
+        put("pl_geo_B_coords", fmt(g.pointB.lat, g.pointB.lng));
+
+        // 📏 L'ÉCHELLE AUSSI — elle est DANS le fichier, ne pas la poser
+        // laissait le plan sortir avec le défaut d'usine (4,9 px/m) alors que
+        // son géoréf, lui, était juste. `calculerCoherenceEchelleGeoref`
+        // compare précisément les deux et affichait « Incohérence échelle
+        // critique, +73,6 % d'écart » sur un plan pourtant parfaitement calé :
+        // l'app dénonçait sa propre omission, et l'utilisateur ne pouvait pas
+        // savoir lequel des deux chiffres croire.
+        // `scale` est en PIXELS PAR MÈTRE (cf. `utils.js > scaleGps = 1 /
+        // metresParPixel`), d'où l'inverse. L'écart tombe à 0 % par construction.
+        // ⚠️ En EPSG:4326 l'unité est le degré : `metresParPixel` vaut alors
+        // `null` et on ne touche PAS au champ — écrire une échelle en degrés
+        // par pixel serait pire que le défaut.
+        if (res.metresParPixel > 0) {
+          const pxParM = 1 / res.metresParPixel;
+          // 3 décimales : au-delà, on affiche du bruit de virgule flottante
+          // dans un champ que l'utilisateur relit.
+          put("pl_scale", Math.round(pxParM * 1000) / 1000);
+        }
+        // 📐 Le calage d'un GeoTIFF est nord en haut, sans rotation : la
+        // similitude 2 points le décrit EXACTEMENT. Un point C hérité d'un
+        // plan précédent ne ferait qu'introduire une déformation — on le vide.
+        ["pl_geo_C_x", "pl_geo_C_y", "pl_geo_C_coords"].forEach(function(id) { put(id, ""); });
+
+        const taille = (res.largeurM && res.hauteurM)
+          ? window.I18n.t("gen.tiff.emprise", {
+              l: Math.round(res.largeurM), h: Math.round(res.hauteurM) })
+          : "";
+        if (res.metresParPixel > 0) {
+          taillePlus = window.I18n.t("gen.tiff.echelle",
+            { px: (Math.round((1 / res.metresParPixel) * 1000) / 1000) });
+        }
+        setNom(window.I18n.t("gen.tiff.ok", {
+          nom: res.nomPng, epsg: res.epsg || "?", emprise: taille + taillePlus }));
+        console.log("[Planner GeoTIFF]", f.name, res.width + "×" + res.height,
+                    "EPSG:" + res.epsg, res.compression, g);
+      }).catch(function(err) {
+        const cle = (err && err.message) || "tiff.err.inconnue";
+        // Les erreurs du module sont des CLÉS i18n. `detail` porte le fait
+        // concret (« JPEG », « EPSG:32631 ») — c'est lui qui rend le refus
+        // actionnable : l'utilisateur sait quoi changer dans QGIS.
+        const txt = (window.I18n && /^tiff\.err\./.test(cle))
+                    ? window.I18n.t(cle) : String(cle);
+        _plannerErreur(window.I18n.t("gen.tiff.refus", {
+          nom: f.name, raison: txt + (err && err.detail ? " (" + err.detail + ")" : "") }));
+        setNom(window.I18n.t("gen.upload.aucunFichier"));
+        try { input.value = ""; } catch(e2) {}
+        console.warn("[Planner GeoTIFF] refus :", cle, err && err.detail);
+      });
+    });
+  })();
+
   _bindUploadLabel("pl_baseImage", "pl_baseImage_nom");
   _bindUploadLabel("pl_collision", "pl_collision_nom");
   // 📖 v1.37.0 — PDF Histoire (générateur avancé). Sync nom uploaded +
@@ -927,6 +1039,30 @@ function afficherPlanner() {
         _afficherImporterSig(f);
       } else {
         _plannerZipStatus(window.I18n.t("gen.router.sigIndispo"), true);
+      }
+    } else if (window.TiffGeoref && window.TiffGeoref.estTiff(f)) {
+      // 🗺️ GEOTIFF DEPOSE SUR LA ZONE HABITUELLE. C'est le geste naturel —
+      // et sans cette branche il tombait dans le `else` ci-dessous, donc un
+      // « mauvaise extension » alors que la fonction existe deux champs plus bas.
+      //
+      // Un .tif n'ouvre PAS de panneau d'import (contrairement au KMZ/GPX/SIG,
+      // qui produisent un plan entier) : c'est une IMAGE DE FOND, qui plus est
+      // déjà calée. On l'injecte donc dans `pl_baseImage` et l'écouteur GeoTIFF
+      // fait le reste — décodage, PNG, remplissage du géoréf. Aucune logique
+      // dupliquée : un second chemin dériverait du premier.
+      //
+      // ⚠️ On ne force PAS `_plannerMode` : déposer un GeoTIFF en mode
+      // « Modifier » est légitime (remplacer le fond d'un plan existant).
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(f);
+        const base = document.getElementById("pl_baseImage");
+        base.files = dt.files;
+        base.dispatchEvent(new Event("change", { bubbles: true }));
+        _plannerZipStatus(window.I18n.t("gen.router.tiffRoute", { nom: f.name }), false);
+      } catch (e) {
+        console.warn("[Planner GeoTIFF] dépôt non routable :", e);
+        _plannerZipStatus(window.I18n.t("gen.tiff.errInjection", { err: (e.message || e) }), true);
       }
     } else {
       _plannerZipStatus(window.I18n.t("gen.router.badExt"), true);
@@ -5587,3 +5723,35 @@ async function _sigImpGenerer() {
 }
 
 window.afficherImporterSig = _afficherImporterSig;
+
+// 🗺️ GEOTIFF DEPOSE DEPUIS L'ACCUEIL — jumelle de `afficherImporterSig`.
+// L'accueil est l'endroit EVIDENT ou deposer un fichier (lecon v1.75.2 sur le
+// SIG : il y etait refuse, et la conversion n'etait atteignable que depuis le
+// Generateur). Un .tif y tombait sur « le fichier doit etre une archive .zip ».
+//
+// ⚠️ CE N'EST PAS UNE MODALE D'IMPORT. Le KMZ, le GPX et le SIG produisent un
+// PLAN ENTIER, donc chacun ouvre son ecran de conversion. Un GeoTIFF est une
+// IMAGE DE FOND deja calee : il n'y a rien a faire correspondre, rien a
+// choisir. On ouvre donc directement le Generateur avec l'image posee, le
+// georef et l'echelle remplis — il ne reste qu'a nommer le plan.
+function _afficherImporterGeoTiff(fichier) {
+  if (!fichier) return false;
+  // Le Generateur est un toggle : appele modale ouverte, il la FERME. On ne
+  // l'ouvre donc que s'il est absent.
+  if (!document.getElementById("kta-planner-modal") && typeof afficherPlanner === "function") {
+    afficherPlanner();
+  }
+  const base = document.getElementById("pl_baseImage");
+  if (!base) return false;
+  try {
+    const dt = new DataTransfer();
+    dt.items.add(fichier);
+    base.files = dt.files;
+    base.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  } catch (e) {
+    console.warn("[Planner GeoTIFF] injection depuis l'accueil impossible :", e);
+    return false;
+  }
+}
+window.afficherImporterGeoTiff = _afficherImporterGeoTiff;
