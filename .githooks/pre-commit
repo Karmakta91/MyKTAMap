@@ -387,3 +387,10 @@ node scripts/check-etat-visible.js || exit $?
 # derives de location.origin — une copie servie ailleurs doit se desavouer,
 # pas s adapter. 2 falsifications rougissent.
 node scripts/check-audit-domaine.js || exit $?
+
+# 🗂️ Pile de plans du widget OSM home (bug KARMA 14/09/2026) : le plan quitte
+# REMPLACE l ancien principal (regle unique partagee par le re-mount et le
+# dropdown), une ligne fantome se retire toujours d un ✕, les groupes morts
+# sortent de la pile a la destruction de la carte. EXECUTE la regle et le
+# demontage extraits du fichier. 3 sabotages rougissent.
+node scripts/check-osm-pile.js || exit $?

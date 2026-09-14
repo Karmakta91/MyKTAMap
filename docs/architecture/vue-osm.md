@@ -1009,3 +1009,14 @@ empilé** — n'en faire qu'un laisserait les autres en aplat.
 comparait les deux chemins qu'à **une seule densité**, si bien qu'une copie ayant
 dérivé sur les **bornes** (plafond à 12 px au lieu de 14) passait au travers. Il
 balaie désormais 8 densités, bornes comprises — et la dérive tombe.
+
+## 🗂️ Pile de plans du widget HOME : une seule règle de promotion (14/09/2026)
+
+Bug KARMA : *« je charge A, retour home → A ; je charge B, retour home → B, mais A reste dans la liste et refuse le ✕ »*.
+
+- `_stackOrder` (osmHomePreview.js) est une variable de **module** : elle survit au remontage du DOM. Le re-mount au retour home (`mount(preferId)` → `_renderWidget`, v1.90.12) ne faisait qu'`unshift` le nouveau principal ; seul `selectPlan` retirait l'ancien. → A restait en fantôme, sans couches (la carte est détruite au re-mount).
+- Le ✕ passe par `_demonterPlanOsm`, qui refusait tout id sans `_extraLayers[id]` — un ex-principal n'en a jamais eu. → inamovible.
+- **Règle unique** `_remplacerPrincipalDansPile(pile, prev, next)` (pure) : nouveau absent → prend la place de l'ancien principal (ou passe au-dessus s'il n'y en avait pas) ; nouveau déjà présent → l'ancien sort. Appelée par `_renderWidget` **et** `selectPlan`. Toute future promotion doit passer par elle.
+- `_demonterPlanOsm` retire une ligne fantôme de la pile (sauf le principal courant) et rend `true`.
+- `_initMiniMap`, quand elle détruit la carte, purge `_extraLayers` et sort ces ids de la pile : les plans ajoutés par « + » appartenaient à la carte morte et ne se ré-affichaient plus (fantômes silencieux). Effet assumé : après un aller-retour dans un plan, la pile se réduit au plan quitté ; `_extraOpacity` est gardé pour un re-ajout.
+- 🛡️ `scripts/check-osm-pile.js` **exécute** la règle et le démontage extraits du fichier (leçon v1.90.15 : un grep valide un fantôme).

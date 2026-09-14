@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.91.0</strong> (13 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.91.1</strong> (14 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.91.1 (Vue OSM de l'accueil — l'ancien plan principal restait dans la pile)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif de la pile de plans du widget OSM (règle de promotion du principal partagée, ligne fantôme retirable, purge des groupes morts). Les tuiles OSM ne sont demandées que pour les plans effectivement rendus, comme avant.</p>
   <h3>v1.91.0 (audit ergonomie — sécurité, filets de données, état visible, verrou temporisé)</h3>
   <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Contrôle du 13/09 : le bloc « 🛡️ Périmètre de garantie » cite <code>myktamap.fr</code> et <code>dev.myktamap.fr</code> <strong>en dur</strong> aux deux endroits (modale « Que fait l'app sur le réseau ? » et cette page), jamais dérivés de l'origine — une copie servie ailleurs se désavoue au lieu de s'adapter (verrouillé par <code>check-audit-domaine.js</code>). Le verrou temporisé du code d'accès et de la gate est calculé sur l'horloge de l'appareil, sans aucun appel. Rappel de transparence, déjà vrai avant cette version : la <strong>commande vocale</strong> (opt-in, désactivée par défaut) repose sur l'API de reconnaissance du navigateur, qui peut envoyer l'audio au service de son éditeur (Google pour Chrome, Apple pour Safari) — ce n'est pas un appel de l'app et il n'apparaît pas dans son journal ; l'app le dit désormais quand elle est hors ligne au lieu d'afficher « Erreur : network ». Les notes d'un point lues à voix haute (synthèse vocale) restent 100 % locales.</p>
   <h3>v1.90.17 (pastille bloquée après Ctrl+Z — étendu aux zones et structures)</h3>

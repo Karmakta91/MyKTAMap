@@ -147,6 +147,29 @@
   let _stackOrder   = [];
   let _extraLayers  = {};
   let _extraOpacity = {};
+
+  // 🐛 14/09/2026 (bug KARMA « plan A reste dans la liste OSM et impossible à
+  // supprimer ») — RÈGLE UNIQUE de promotion d'un principal dans la pile,
+  // partagée par selectPlan (dropdown) ET _renderWidget (re-mount au retour à
+  // l'accueil, v1.90.12). Avant, seul selectPlan retirait l'ancien principal :
+  // le re-mount posait le nouveau SANS enlever l'ancien, qui restait en
+  // fantôme — et comme il n'avait jamais eu de groupe extra, le ✕ le refusait.
+  //   - nouveau absent de la pile → il PREND LA PLACE de l'ancien principal
+  //     (ou passe au-dessus s'il n'y en avait pas) ;
+  //   - nouveau déjà dans la pile → l'ancien principal en SORT.
+  // Pure (n'agit que sur `pile`), donc exécutable par check-osm-pile.js.
+  function _remplacerPrincipalDansPile(pile, prev, next) {
+    if (!next) return pile;
+    if (pile.indexOf(next) === -1) {
+      const iPrev = (prev && prev !== next) ? pile.indexOf(prev) : -1;
+      if (iPrev !== -1) pile[iPrev] = next;
+      else pile.unshift(next);
+    } else if (prev && prev !== next) {
+      const iPrev = pile.indexOf(prev);
+      if (iPrev !== -1) pile.splice(iPrev, 1);
+    }
+    return pile;
+  }
   let _warnedMulti  = false;   // avertissement « > 3 plans » (1× par session)
 
   // 🗂️ v1.71.0 (retour KARMA) — visibilités PAR PLAN (tuiles + 4 catégories).
@@ -637,13 +660,17 @@
   // =========================
   function _renderWidget(container, plans, selectedId) {
     const sel = plans.find(function(p) { return p.id === selectedId; }) || plans[0];
+    const _prevPrimary = _selectedPlanId;
     _selectedPlanId = sel.id;
     // 🐛 v1.72.2 (KARMA) — CAUSE RACINE de « pas d'opacité pour le 1er plan »
     // et « tags du principal invisibles » : ce chemin initial ne passe PAS par
     // selectPlan → le principal n'entrait jamais dans _stackOrder → pas de
     // ligne ◉ dans la modale (donc pas de curseur), et _renderModalTags
     // (qui agrège sur la pile) ne voyait pas ses tags.
-    if (_stackOrder.indexOf(sel.id) === -1) _stackOrder.unshift(sel.id);
+    // 🐛 14/09/2026 : et l'ANCIEN principal doit en sortir — même règle que
+    // selectPlan (cf _remplacerPrincipalDansPile). Le simple unshift laissait
+    // le plan quitté précédemment en fantôme inamovible au 2ᵉ retour home.
+    _remplacerPrincipalDansPile(_stackOrder, _prevPrimary, sel.id);
 
     // HTML structure : bandeau (dropdown + ⛶) + mini-map + footer
     let optionsHtml = "";
@@ -806,6 +833,17 @@
       _mapInstance = null;
       _panesParPlan = {};   // v1.72.2 : les panes appartiennent à la carte détruite
       _markerLayer = null;
+      // 🐛 14/09/2026 : les groupes des plans AJOUTÉS (« + ») appartenaient à
+      // la carte détruite — ils ne se ré-affichent pas. On les sort de la pile
+      // plutôt que de lister des plans qui ne sont plus rendus (fantômes). Le
+      // principal est re-posé par _renderWidget ; les plans ajoutés par « + »
+      // sont à re-choisir après un retour à l'accueil (les opacités sont
+      // gardées dans _extraOpacity pour un re-ajout).
+      Object.keys(_extraLayers).forEach(function(id) {
+        delete _extraLayers[id];
+        const iX = _stackOrder.indexOf(id);
+        if (iX !== -1) _stackOrder.splice(iX, 1);
+      });
       _dataLayer   = null; // v1.40.4
       _tilesLayer  = null; // v1.40.6
       // 🆕 v1.40.12 — Reset sub-layers (parent _dataLayer recréé au render)
@@ -2471,7 +2509,16 @@
   // chemin unitaire et garde son comportement d'origine.
   function _demonterPlanOsm(planId) {
     const g = _extraLayers[planId];
-    if (!g) return false;
+    if (!g) {
+      // 🐛 14/09/2026 : une ligne FANTÔME (présente dans la pile sans groupe de
+      // couches — ex-principal laissé par un re-mount, ou groupe mort) doit
+      // rester RETIRABLE. Avant : `return false` → le ✕ ne faisait rien.
+      // Le principal courant, lui, ne se retire pas (pas de ✕ sur sa ligne).
+      const iF = _stackOrder.indexOf(planId);
+      if (iF === -1 || planId === _selectedPlanId) return false;
+      _stackOrder.splice(iF, 1);
+      return true;
+    }
     try {
       if (_mapInstance) {
         if (_mapInstance.hasLayer(g.tiles)) _mapInstance.removeLayer(g.tiles);
@@ -3363,14 +3410,7 @@
     const plans = _listGeorefPlans();
     const sel = plans.find(function(p) { return p.id === planId; });
     if (!sel) return;
-    if (_stackOrder.indexOf(planId) === -1) {
-      const iPrev = _prevPrimary ? _stackOrder.indexOf(_prevPrimary) : -1;
-      if (iPrev !== -1) _stackOrder[iPrev] = planId;
-      else _stackOrder.unshift(planId);
-    } else if (_prevPrimary && _prevPrimary !== planId) {
-      const iPrev = _stackOrder.indexOf(_prevPrimary);
-      if (iPrev !== -1) _stackOrder.splice(iPrev, 1);
-    }
+    _remplacerPrincipalDansPile(_stackOrder, _prevPrimary, planId);   // 14/09/2026 : règle unique
     _renderMultiPanel();
     _renderPortails();   // 🌀 D5 : la pile a changé → les liaisons traçables aussi
     _saveLastSelected(planId);

@@ -1,8 +1,7 @@
 {
-  "version": "v1.91.0",
-  "released": "2026-09-13",
+  "version": "v1.91.1",
+  "released": "2026-09-14",
   "notes": [
-    "🚨 Sortie d'urgence et « Y aller » partent de ta position du moment. Si tu ne t'es jamais situé sur ce plan, l'app te demande « Où es-tu ? » d'un tap sur la carte au lieu de calculer depuis l'entrée du plan. Le bouton 🚨 est plus gros, et une sortie sans chemin vérifié est dite « à vol d'oiseau » en toutes lettres.",
-    "🛟 Fini les pertes silencieuses : sauvegarde avant un import, confirmation avant d'effacer une session, un réglage ou un snapshot, zone conservée quand tu changes d'outil, bandeau si le stockage est plein. Le code d'accès ne bloque plus l'app pour toujours : 10 min d'attente, puis plus à chaque série d'erreurs. Filtres actifs visibles sur ≡, pas et distance dans la barre du bas."
+    "🗺️ Correction Vue OSM : après avoir ouvert un plan A puis un plan B, le plan A restait dans la liste « Plans affichés » de l'accueil et refusait de partir. Désormais le plan que tu viens de quitter remplace l'ancien, et une ligne qui n'affiche plus rien se retire toujours d'un ✕."
   ]
 }
