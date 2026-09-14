@@ -622,7 +622,7 @@ n'apparaît pas, c'est que votre plan est déjà découpé et que le réglage n'
   - Stats agrégées, et répartition par niveau en multi-niveau
   - Tous tes points (tag, coordonnées, niveau), les tracés par type avec distance, les zones, les structures, les photos
   - Les autres mesures (📐 mesure, 🗺️ itinéraire et ses étapes, 🧭 suivi)
-  - **📔 Sortie en cours** : 🏁 Clôturer, 🧭 Affiner le tracé, ouvrir le carnet
+  - **📔 Sortie en cours** : 🏁 Clôturer, 🧭 Affiner le tracé, ouvrir le carnet. **Si aucune sortie n'est en cours**, un bouton **📔 Démarrer une sortie** en ouvre une sur ce plan — il fonctionne même quand « Tenir un carnet de mes sorties » est décoché dans ⚙️ Réglages, et c'est alors le seul moyen d'en enregistrer une. Une seule sortie à la fois : tant qu'une tourne, le bouton laisse la place à 🏁 Clôturer.
   - **⭐ Favoris** : exporter ceux de ce plan ou de tous, importer
   - **📦 Backups récents** de ce plan : ↻ Restaurer, 📆 Snapshot maintenant, 🗑️ Tout vider — chaque suppression demande confirmation
   - Le bouton **📊 Stats globales** (rapport copiable, CSV, PDF)

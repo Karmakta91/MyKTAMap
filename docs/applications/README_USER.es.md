@@ -568,7 +568,7 @@ Pulsa un botón antes de cargar — la descripción bajo el selector cambia para
   - Estadísticas agregadas, y reparto por nivel en multinivel
   - Todos tus puntos (etiqueta, coordenadas, nivel), los trazados por tipo con distancia, las zonas, las estructuras, las fotos
   - Las otras medidas (📐 medición, 🗺️ ruta y sus etapas, 🧭 seguimiento)
-  - **📔 Salida en curso**: 🏁 Cerrar, 🧭 Afinar la traza, abrir el cuaderno
+  - **📔 Salida en curso**: 🏁 Cerrar, 🧭 Afinar la traza, abrir el cuaderno. **Si no hay ninguna salida en curso**, un botón **📔 Iniciar una salida** abre una en este plano — funciona aunque «Llevar un cuaderno de mis salidas» esté desmarcado en ⚙️ Ajustes, y entonces es la única forma de registrar una. Una sola salida a la vez: mientras haya una en curso, el botón deja paso a 🏁 Cerrar.
   - **⭐ Favoritos**: exportar los de este plano o de todos, importar
   - **📦 Backups recientes** de este plano: ↻ Restaurar, 📆 Snapshot ahora, 🗑️ Vaciar todo — cada eliminación pide confirmación
   - El botón **📊 Estadísticas globales** (informe copiable, CSV, PDF)

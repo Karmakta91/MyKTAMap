@@ -407,3 +407,9 @@ node scripts/check-doc-recherche.js || exit $?
 # EXECUTEES), portee par groupe, reset limite au plan, wake lock / vocal
 # affiches avec la raison, code mort retire. 4 sabotages rougissent.
 node scripts/check-reglages-immediats.js || exit $?
+
+# 📔 Ouverture MANUELLE d une sortie (demande KARMA 14/09/2026) : une seule
+# sortie a la fois (la sortie en cours n est JAMAIS ecrasee), un refus toujours
+# dit, et ca marche carnet decoche — c est justement son cas d usage. EXECUTE
+# la fonction extraite du fichier. 4 sabotages rougissent.
+node scripts/check-journal-demarrage.js || exit $?

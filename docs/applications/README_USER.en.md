@@ -622,7 +622,7 @@ applies to every later load.
   - Aggregated stats, and a per-level breakdown in multi-level
   - All your points (tag, coordinates, level), paths by type with distance, zones, structures, photos
   - Other measurements (📐 measurement, 🗺️ route and its steps, 🧭 tracking)
-  - **📔 Current outing**: 🏁 Close, 🧭 Refine the trail, open the logbook
+  - **📔 Current outing**: 🏁 Close, 🧭 Refine the trail, open the logbook. **If no outing is running**, a **📔 Start an outing** button opens one on this map — it works even when “Keep a logbook of my outings” is unticked in ⚙️ Settings, and it is then the only way to record one. One outing at a time: while one is running, the button gives way to 🏁 Close.
   - **⭐ Favorites**: export this map's or all, import
   - **📦 Recent backups** of this map: ↻ Restore, 📆 Snapshot now, 🗑️ Clear all — every deletion asks for confirmation
   - The **📊 Global stats** button (copyable report, CSV, PDF)

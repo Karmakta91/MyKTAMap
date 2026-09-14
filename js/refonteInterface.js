@@ -1757,8 +1757,13 @@
                     : '') +
                 '</div>';
       } else {
+        // 📔 14/09/2026 (KARMA) : sans sortie en cours, on DIT comment en ouvrir
+        // une. Avant, cette branche annonçait « aucune sortie » sans aucune
+        // action — le carnet décoché, il n'existait plus aucun moyen d'en
+        // enregistrer une, même volontairement.
         html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
-                  window.I18n.t("jrn.section.aucune") +
+                  window.I18n.t("jrn.section.aucune") + ' ' +
+                  window.I18n.t("jrn.section.aucuneHint") +
                 '</div>';
       }
       // 🧭 Affiner : recalcule distance ET tracé en suivant les galeries entre
@@ -1767,6 +1772,12 @@
       const nbAAffiner = (typeof window.getTrackingTronconsAAffiner === "function")
         ? window.getTrackingTronconsAAffiner() : 0;
       html += '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
+                // 📔 Démarrer : proposé UNIQUEMENT quand rien n'est en cours.
+                // Quand une sortie tourne, sa place est prise par 🏁 Clôturer —
+                // les deux côte à côte inviteraient à empiler des sorties.
+                (cur ? '' : '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="kta-refonte-session-carnet-demarrer" ' +
+                         'title="' + window.I18n.t("jrn.section.demarrerTitre") + '">' +
+                         '📔 ' + window.I18n.t("jrn.section.demarrer") + '</button>') +
                 (cur ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-carnet-cloture">' +
                          '🏁 ' + window.I18n.t("jrn.section.cloturer") + '</button>' : '') +
                 (cur ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
@@ -1869,6 +1880,30 @@
           _close();   // la fiche s'ouvre par-dessus : on ferme la modale Session d'abord
           window.JournalUi.cloturerDepuisUi();
         }
+      });
+    }
+    // 📔 14/09/2026 — Démarrage manuel. Le refus vient du module (source de
+    // vérité sur `_cur`), pas de l'état du bouton : la modale peut être
+    // ouverte depuis une minute et une sortie avoir démarré entre-temps.
+    const _btnCarnetDemarrer = document.getElementById("kta-refonte-session-carnet-demarrer");
+    if (_btnCarnetDemarrer) {
+      _btnCarnetDemarrer.addEventListener("click", function() {
+        const t = window.I18n.t;
+        const toast = function(msg, type) {
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(msg, type || "info");
+        };
+        if (!window.Journal || typeof window.Journal.demarrer !== "function") { toast(t("jrn.err.indispo"), "warn"); return; }
+        const r = window.Journal.demarrer();
+        if (!r || !r.ok) {
+          toast(t(r && r.raison === "sansPlan" ? "jrn.err.sansPlan" : "jrn.err.dejaEnCours"), "warn");
+          return;
+        }
+        toast(t("jrn.toast.demarree"), "info");
+        // Re-rendre la section : elle affiche désormais la sortie en cours,
+        // sa nature et ses boutons. Fermer puis rouvrir est le chemin le plus
+        // sûr (la modale est construite d'un bloc).
+        _close();
+        if (typeof _afficherModaleSessionDetail === "function") _afficherModaleSessionDetail();
       });
     }
     const _btnCarnetOuvrir = document.getElementById("kta-refonte-session-carnet-ouvrir");
