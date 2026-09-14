@@ -288,7 +288,7 @@ Trois réglages, et ils comptent :
 Clic sur le bandeau profil → modale **👤 Mon profil** :
 
 - **✏️ Surnom** : tape ce que tu veux (lettres / chiffres / espace). Sert uniquement à personnaliser l'affichage local.
-- **📷 Photo** : choisis une image depuis ta galerie. L'app la **compresse automatiquement** (512 px côté long max, JPEG qualité 88 %) avant stockage IndexedDB pour ne pas saturer ton quota navigateur.
+- **📷 Photo** : choisis une image depuis ta galerie. L'app la **compresse automatiquement** (512 px côté long max, JPEG qualité 88 %) avant de l'enregistrer sur ton appareil, pour ne pas saturer ton quota navigateur.
 - **🗑️ Reset profil** : bouton de remise à zéro (avec confirmation). Vide le surnom + photo + compteurs.
 
 #### 📊 Grid stats
@@ -300,9 +300,9 @@ La modale Profil affiche **6 cells de stats globales** :
 | 🗂️ **N plans** | Nombre de plans dans ton registre (serveur + locaux) |
 | 💾 **N sessions** | Nombre total de sessions sauvegardées (per-plan slots) |
 | ⭐ **N favoris** | Nombre cumulé de points marqués favoris, tous plans confondus |
-| 📦 **N snapshots** | Nombre de snapshots de session backups en IndexedDB (max 10 **par plan** — au-delà, les plus anciens sont effacés) |
+| 📦 **N snapshots** | Nombre de sauvegardes de session gardées sur cet appareil (max 10 **par plan** — au-delà, les plus anciens sont effacés) |
 | 📸 **N photos POI** | Nombre de photos attachées à des points + taille totale |
-| 💾 **N MB sauvegarde** | **Taille réelle des données MyKTAMap** (localStorage avec préfixe MyKTAMap + 6 stores IndexedDB connus). Hors Cache PWA volatile (qui n'est pas une donnée user). |
+| 💾 **N MB sauvegarde** | **Taille réelle des données MyKTAMap** (tout ce que MyKTAMap a enregistré dans ton navigateur). Hors Cache PWA volatile (qui n'est pas une donnée user). |
 
 #### 📊 Mes plans
 
@@ -356,8 +356,8 @@ Section **"🎨 Stats du bandeau accueil"** : **choisis quelles stats apparaisse
 
 La stat "Sauvegarde" (visible dans le bandeau home + dans la grid de la modale Profil) reflète la **taille réelle de tes données MyKTAMap** :
 
-- **Calcul ciblé MyKTAMap** : on additionne uniquement les entrées localStorage avec préfixe `myktamap_*` + les 6 stores IndexedDB connus de l'app (handles, blobs, backups, photos, etc.). Le Cache PWA volatile (qui contient le code JS/CSS de l'app et n'est PAS une donnée user) est **exclu** du calcul.
-- **Cache 30 s** : le calcul est cumulé puis mis en cache 30 secondes pour ne pas réinterroger IndexedDB en boucle quand tu ouvres/fermes des modales rapidement.
+- **Calcul ciblé MyKTAMap** : on additionne uniquement ce que MyKTAMap a écrit dans ton navigateur — les clés `myktamap_*` et les 6 bases locales de l'app (handles, blobs, backups, photos, etc.). Le Cache PWA volatile (qui contient le code JS/CSS de l'app et n'est PAS une donnée user) est **exclu** du calcul.
+- **Cache 30 s** : le calcul est cumulé puis mis en cache 30 secondes pour ne pas réinterroger le stockage en boucle quand tu ouvres/fermes des modales rapidement.
 - **Tooltip** : "Taille des données MyKTAMap (LS + IDB)" + précision "hors Cache PWA".
 
 Résultat : la valeur est **stable, prévisible, et reflète vraiment ce que tu as cartographié**.
@@ -387,7 +387,7 @@ L'export de profil peut désormais **embarquer les archives ZIP des plans mémor
 - En mode **Fusionner** à l'import, un plan qui a déjà son archive sur l'appareil **garde la sienne** ; en mode **Remplacer**, celle du profil gagne. Un échec de stockage (quota plein) est signalé **par plan**, le reste continue.
 - Les plans en « accès permanent au fichier » ou « re-sélection » n'apparaissent pas dans la liste : leur ZIP vit sur ton disque, pas dans l'app — il n'y a rien à embarquer.
 
-> 🔒 **100 % local** : ton surnom et ta photo restent dans ton navigateur (IndexedDB). Rien n'est envoyé à un serveur. L'export profil est explicite et contrôlé par toi.
+> 🔒 **100 % local** : ton surnom et ta photo restent dans ton navigateur. Rien n'est envoyé à un serveur. L'export profil est explicite et contrôlé par toi.
 
 #### 💼 Édition pro — importer une licence
 
@@ -455,7 +455,7 @@ Ouvre la fiche **ℹ️ Infos** d'un plan serveur : une section **💾 Disponibi
 
 **Filtres d'affichage & organisation** :
 
-- **🌐 Afficher les plans serveur** — cochez/décochez ce toggle au-dessus de la liste pour masquer les plans serveur découverts automatiquement (test1, test2, démos…) et ne voir que vos plans persos. **Préservé** entre les sessions (localStorage). Décocher ne supprime rien — recocher → les plans réapparaissent intacts.
+- **🌐 Afficher les plans serveur** — cochez/décochez ce toggle au-dessus de la liste pour masquer les plans serveur découverts automatiquement (test1, test2, démos…) et ne voir que vos plans persos. **Préservé** entre les sessions (sur cet appareil). Décocher ne supprime rien — recocher → les plans réapparaissent intacts.
 - **🔎 Filtrer par nom** *(depuis v1.78.0)* — un champ au-dessus de la liste filtre en direct pendant la frappe. Filtre d'affichage pur, remis à zéro au prochain passage sur l'accueil.
 - **⭐ Épingler** *(depuis v1.78.0)* — l'étoile de chaque ligne remonte le plan **en tête de liste** (les épinglés gardent entre eux le tri « dernier ouvert »). Re-clic pour désépingler.
 - **🖼️ Tuilage de ce plan** *(depuis v1.90.2)* — le sélecteur qui vivait au-dessus du bouton « Charger ce plan » **a disparu** : l'app décide seule (« Auto »), ce qu'elle faisait déjà pour la quasi-totalité des plans. Il n'agissait en réalité que sur les plans **non découpés à la génération (V1)** de très grande taille ; sur un plan déjà découpé, « Désactivé » ne changeait rien. Le réglage vit désormais dans **ℹ️ Infos**, et **uniquement pour les plans qu'il concerne** — et contrairement à l'ancien, il est **mémorisé** pour ce plan au lieu de repartir à zéro à chaque démarrage.
@@ -561,7 +561,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 8. **🔄 Mise à jour — Forcer la mise à jour douce** — re-télécharge la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans, ta session active, ton code communautaire ni ton PIN local. **Confirmation obligatoire avant déclenchement** (modale bleue qui détaille ce qui est préservé + besoin d'une connexion Internet active).
 
-9. **💥 Tout réinitialiser (reset complet)** — purge totale (cache + localStorage + IndexedDB + plans). Reset le code d'accès communautaire **ET** le PIN local si configuré. **Double confirmation requise.** Action irréversible.
+9. **💥 Tout réinitialiser (reset complet)** — purge totale : le cache, tout ce qui est enregistré dans ton navigateur, et tes plans. Reset le code d'accès communautaire **ET** le PIN local si configuré. **Double confirmation requise.** Action irréversible.
 
 **Organisation** : **tout est regroupé dans une seule modale ⚙️ Configuration**, accessible depuis le header du loader. Le bouton 🏗️ Générer un plan reste visible directement dans la home (pas dans la modale Configuration) car c'est une action de création, pas un réglage.
 
@@ -735,7 +735,7 @@ Si vous voyez cette fenêtre **régulièrement**, c'est le signe qu'il faut **r�
 
 MyKTAMap fonctionne **entièrement hors connexion** une fois le plan chargé une première fois.
 
-L'application utilise un **Service Worker** qui met en cache automatiquement tous les fichiers nécessaires (interface, images, données). Au premier chargement avec connexion Internet, tout est sauvegardé localement.
+L'application installe un **composant hors-ligne** (un « Service Worker ») qui met en cache automatiquement tous les fichiers nécessaires (interface, images, données). Au premier chargement avec connexion Internet, tout est sauvegardé localement.
 
 **Pour préparer une sortie hors connexion :**
 
@@ -805,7 +805,7 @@ Tu peux :
 Une fenêtre qui détaille :
 - Le modèle technique (PWA pure, pas de backend)
 - La **liste blanche** complète et nominative des URLs que l'app peut contacter
-- Comment vérifier toi-même via les DevTools de ton navigateur (F12 → Network)
+- Comment vérifier toi-même avec les outils de développement de ton navigateur (touche F12, onglet Réseau)
 - Comment la Content Security Policy (CSP) du serveur protège en plus
 
 Un bouton 📄 te permet d'ouvrir la **documentation complète** (`docs/NETWORK_AUDIT.md`) dans un nouvel onglet.
@@ -1455,7 +1455,7 @@ Le bouton **🗺️** dans le groupe **🧭 Tracker** ouvre la modale d'itinéra
 | 🚶 **Normale** | 5 km/h | Défaut, allure standard de marche cataphile |
 | 🏃 **Rapide** | 7 km/h | Allure soutenue, parcours connu, retour rapide |
 
-Le mode actif est affiché à côté du temps estimé dans le label bottomleft. Le choix est persisté entre sessions (localStorage). Tu peux changer de mode à tout moment via la modale, le temps se met à jour instantanément.
+Le mode actif est affiché à côté du temps estimé dans le label bottomleft. Le choix est persisté entre sessions (sur cet appareil). Tu peux changer de mode à tout moment via la modale, le temps se met à jour instantanément.
 
 **Mode navigation** — quand un itinéraire est déjà actif et que vous rouvrez **🗺️ Calculer un itinéraire**, la modale bascule en **mode navigation** :
 
@@ -1500,7 +1500,7 @@ Dans la modale itinéraire, une section repliable **🚫 Préférences d'évitem
 - ⛔ Zone = contrainte **dure par défaut** — relâchable depuis la v1.82.0 par la case « Respecter les zones inaccessibles » de la modale Itinéraire. Le Mode Secours et « Perdu », eux, les respectent toujours.
 - 🚫 Évitement = contrainte **souple** (fallback possible avec message)
 
-**Persistance** : tes préférences sont sauvegardées par plan (localStorage). Au prochain calcul sur le même plan, elles sont restaurées. Bouton **🗑️ Reset** pour tout effacer.
+**Persistance** : tes préférences sont sauvegardées par plan (sur cet appareil). Au prochain calcul sur le même plan, elles sont restaurées. Bouton **🗑️ Reset** pour tout effacer.
 
 ### ⛑️ Mode urgence — "Je suis perdu"
 
@@ -1526,7 +1526,7 @@ Le bouton **⛑️** orange dans le groupe **🧭 Tracker** ouvre le mode urgenc
    | 🚶 **Normale** *(défaut)* | 5 km/h | ~833 m | Allure standard de marche |
    | 🏃 **Rapide** | 7 km/h | ~1167 m | Parcours connu, marche soutenue |
 
-   Le choix est persisté entre sessions (localStorage). Si la zone est déjà affichée sur la carte, changer de preset la recalcule instantanément.
+   Le choix est persisté entre sessions (sur cet appareil). Si la zone est déjà affichée sur la carte, changer de preset la recalcule instantanément.
 
 4. **🔮 Indices visuels (optionnel mais très utile)** — texte libre, séparé par virgule ou retour ligne. Exemples : *"bidon eau, épure bélier, salle bleue, puits cassé, escalier descend"*. L'app cherche ces mots dans le **nom**, la **description** et les **tags** de tous les points du plan (calques et points session combinés).
 
@@ -2167,7 +2167,7 @@ Chaque action déclenche un **toast discret** en bas : `↩ Annulé : Pose du po
 
 ### Ce qui n'est PAS couvert
 
-- ❌ **Photos** attachées aux points : leur suppression reste **irréversible** (les blobs sont effacés de la base IndexedDB locale, pas restaurables)
+- ❌ **Photos** attachées aux points : leur suppression reste **irréversible** (les fichiers sont effacés du stockage local de ton navigateur, sans retour possible)
 - ❌ **Imports de session** : un import qui écrase ta session n'est pas annulable via Ctrl+Z (utilise la sauvegarde automatique de session pour récupérer)
 - ❌ **Tracker** (mode capteurs en temps réel)
 - ❌ **Mesure de distance** (= outil éphémère, pas une mutation persistante)
@@ -2382,7 +2382,7 @@ Tu peux attacher jusqu'à **5 photos par point** (limite anti-saturation stockag
 - À la création d'un nouveau plan via le générateur, bouton "📦 Importer un datalayer ZIP en un clic" → tu peux récupérer les points + photos exportés depuis un autre plan
 
 **Limites techniques** :
-- Stockage local navigateur (IndexedDB) — quota ~50-200 Mo selon le device. Un toast d'avertissement t'avertit si tu approches du quota
+- Stockage local du navigateur — quota ~50-200 Mo selon le device. Un toast d'avertissement t'avertit si tu approches du quota
 - Sur **iOS Safari standalone PWA**, le navigateur peut purger l'IDB en cas de manque d'espace ou de désinstall — exporte régulièrement tes plans + photos pour les sécuriser
 - En cas de reset complet de l'app (💥 Tout réinitialiser), **toutes les photos sont effacées** (cohérent avec le wipe complet)
 
@@ -3025,7 +3025,7 @@ Clic **Télécharger** → fichier `MyKTAMap_<NomDuPlan>_<date>.kmz` télécharg
 
 #### Persistance du calibrage
 
-Ton calibrage 2 points est sauvegardé **par plan** (localStorage). Au prochain export du même plan, les 8 champs sont déjà pré-remplis — tu ajustes si besoin et tu re-télécharges. Si tu changes de plan ou repars à zéro, tu n'as qu'à re-saisir.
+Ton calibrage 2 points est sauvegardé **par plan** (sur cet appareil). Au prochain export du même plan, les 8 champs sont déjà pré-remplis — tu ajustes si besoin et tu re-télécharges. Si tu changes de plan ou repars à zéro, tu n'as qu'à re-saisir.
 
 > ⚠️ **Limites de la précision** : la transformation est une **similarity 2D** (rotation + scale uniforme + translation). Sur des plans globalement plats et rigides, c'est suffisant. Sur des plans très étendus ou non-rigides (déformations locales), attends-toi à une légère dérive aux extrémités opposées au calibrage. Une version future pourra supporter 3+ points (least squares) pour plus de précision si besoin.
 
@@ -3185,7 +3185,7 @@ Dans la section **📊 Calques de données** du générateur, un encadré jaune 
 4. Le ZIP est parsé → des **calques data layer sont créés automatiquement** : `points` (points du copain), `roads` (tracés), `zones` (zones), `structure` (piliers/fronts). Si le ZIP contenait des photos, elles sont **gardées en mémoire** pour être embarquées au moment de la génération.
 5. Message vert "✅ N calque(s) créé(s) : points (X), roads (Y), zones (Z), structure (W) · 📸 M photos"
 6. Tu **📦 Générer le ZIP** comme d'habitude → le plan final contient tes calques d'origine (si Modifier) + les calques importés + le dossier `data/photos/` avec les blobs
-7. Au chargement de ce plan par n'importe quel utilisateur, les photos sont restaurées automatiquement dans IndexedDB et apparaissent dans les popups des markers
+7. Au chargement de ce plan par n'importe quel utilisateur, les photos sont restaurées automatiquement sur son appareil et apparaissent dans les popups des markers
 
 **Comportement** :
 - **Mode Nouveau** : les calques importés deviennent les calques data du plan (la liste UI est vidée et remplie avec les calques du ZIP)
@@ -3195,12 +3195,12 @@ Dans la section **📊 Calques de données** du générateur, un encadré jaune 
 
 ### 📸 Inclure les photos attachées au plan
 
-En mode **Modifier existant**, si le plan que tu charges a déjà des **photos attachées à ses points** (stockées en IndexedDB locale via l'éditeur), une case **📸 Inclure les photos attachées (N · X Mo)** apparaît dans la section "🖼️ Images principales" du formulaire.
+En mode **Modifier existant**, si le plan que tu charges a déjà des **photos attachées à ses points** (enregistrées sur ton appareil par l'éditeur), une case **📸 Inclure les photos attachées (N · X Mo)** apparaît dans la section "🖼️ Images principales" du formulaire.
 
 - **Cochée par défaut** : les photos IDB du plan sont embarquées dans le ZIP plan généré sous `data/photos/<photoId>.jpg`. Tu peux ainsi partager le plan complet (annotations + photos) à un autre appareil.
 - **Décochée** : le ZIP plan généré ne contient pas les photos. Plus léger en taille, mais l'utilisateur qui importe le ZIP ne récupèrera pas les photos.
 
-Au chargement de ce ZIP plan par n'importe quel autre utilisateur : les photos sont **restaurées automatiquement** dans IndexedDB sous le planId local + un toast discret "📸 N photos restaurées depuis le plan" confirme.
+Au chargement de ce ZIP plan par n'importe quel autre utilisateur : les photos sont **restaurées automatiquement** sur l'appareil, sous l'identifiant local du plan + un toast discret "📸 N photos restaurées depuis le plan" confirme.
 
 > ⚠️ Si tu décoches **ET** que tu as aussi importé un datalayer ZIP avec photos (cf. section précédente), seules les photos du datalayer importé seront embarquées. La case 📸 contrôle UNIQUEMENT les photos IDB du plan courant.
 
@@ -3386,7 +3386,7 @@ Si malgré le mode Performance, ton plan crashe encore (typiquement plans 4000+ 
 
 Les plans très gros peuvent occasionner des **kills mémoire silencieux** sur iOS — l'OS tue l'onglet sans prévenir pour récupérer de la RAM. L'app détecte ce kill au reboot et te montre un toast d'avertissement.
 
-> 📌 **Réflexe** : exporte ta session (📤 Exporter) tous les 10-15 minutes de travail intensif. L'auto-save localStorage protège déjà contre la plupart des cas, mais un export externe reste le plus sûr.
+> 📌 **Réflexe** : exporte ta session (📤 Exporter) tous les 10-15 minutes de travail intensif. La sauvegarde automatique sur cet appareil protège déjà contre la plupart des cas, mais un export externe reste le plus sûr.
 
 ### Récap rapide
 
@@ -3526,7 +3526,7 @@ Quand une nouvelle version est dispo, le badge **clignote en bleu** pour attirer
 
 Verrouille l'app à chaque démarrage avec un PIN 4-6 chiffres, **Face ID** ou **Touch ID** si ton appareil le supporte. 100 % local — aucun mot de passe n'est envoyé sur Internet, aucune récupération possible en cas d'oubli.
 
-> ⚠️ **C'est une barrière d'usage, pas un chiffrement des données.** Le verrouillage empêche l'ouverture normale de l'app, mais un attaquant motivé peut bypass via les DevTools. Les photos et sessions restent stockées en clair dans le navigateur. C'est exactement le même niveau de sécurité que le code d'accès communautaire existant — assumé honnêtement.
+> ⚠️ **C'est une barrière d'usage, pas un chiffrement des données.** Le verrouillage empêche l'ouverture normale de l'app, mais un attaquant motivé peut le contourner avec les outils de développement du navigateur. Les photos et sessions restent stockées en clair dans le navigateur. C'est exactement le même niveau de sécurité que le code d'accès communautaire existant — assumé honnêtement.
 
 ### Activer le PIN
 
@@ -3563,7 +3563,7 @@ Après **5 codes incorrects à la suite**, l'app se verrouille **temporairement*
 
 ## 🔧 Réinitialiser
 
-En cas de problème ou pour forcer une mise à jour, utilisez **⚙️ Configuration (page d'accueil) → 💥 Tout réinitialiser**. Cette action désinscrit le Service Worker, vide le cache et recharge l'application.
+En cas de problème ou pour forcer une mise à jour, utilisez **⚙️ Configuration (page d'accueil) → 💥 Tout réinitialiser**. Cette action retire le composant hors-ligne (Service Worker) et le Service Worker, vide le cache et recharge l'application.
 
 > ⚠️ Effectuez cette action uniquement avec une connexion Internet disponible. Sans réseau, l'application sera inutilisable jusqu'au prochain rechargement complet.
 

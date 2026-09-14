@@ -288,7 +288,7 @@ Three settings, and they matter:
 Click on the profile banner → **👤 My profile** modal:
 
 - **✏️ Nickname**: type whatever you want (letters / numbers / space). Used only to personalize local display.
-- **📷 Photo**: choose an image from your gallery. The app **automatically compresses it** (512 px max long side, JPEG quality 88%) before IndexedDB storage to avoid saturating your browser quota.
+- **📷 Photo**: choose an image from your gallery. The app **automatically compresses it** (512 px max long side, JPEG quality 88%) before saving it on your device, to avoid saturating your browser quota.
 - **🗑️ Reset profile**: reset button (with confirmation). Empties nickname + photo + counters.
 
 #### 📊 Stats grid
@@ -300,9 +300,9 @@ The Profile modal displays **6 global stats cells**:
 | 🗂️ **N maps** | Number of maps in your registry (server + local) |
 | 💾 **N sessions** | Total number of saved sessions (per-map slots) |
 | ⭐ **N favorites** | Cumulative number of points marked as favorites, across all maps |
-| 📦 **N snapshots** | Number of session backup snapshots in IndexedDB (max 10 **per map** — beyond that, the oldest are dropped) |
+| 📦 **N snapshots** | Number of session backups kept on this device (max 10 **per map** — beyond that, the oldest are dropped) |
 | 📸 **N POI photos** | Number of photos attached to points + total size |
-| 💾 **N MB save** | **Actual size of MyKTAMap data** (localStorage with MyKTAMap prefix + 6 known IndexedDB stores). Excluding volatile PWA Cache (which is not user data). |
+| 💾 **N MB save** | **Actual size of MyKTAMap data** (everything MyKTAMap has saved in your browser). Excluding volatile PWA Cache (which is not user data). |
 
 #### 📊 My maps
 
@@ -357,8 +357,8 @@ As you open your maps and their data layers load, the pie charts are automatical
 
 The "Storage" stat (visible in the home banner + in the Profile modal grid) reflects the **actual size of your MyKTAMap data**:
 
-- **MyKTAMap-targeted calculation**: we only sum up the localStorage entries prefixed `myktamap_*` + the 6 IndexedDB stores known to the app (handles, blobs, backups, photos, etc.). The volatile PWA Cache (which contains the app's JS/CSS code and is NOT user data) is **excluded** from the calculation.
-- **30s cache**: the calculation is cumulated then cached for 30 seconds to avoid re-querying IndexedDB in a loop when you quickly open/close modals.
+- **MyKTAMap-targeted calculation**: we only sum up what MyKTAMap wrote in your browser — the `myktamap_*` keys and the app's 6 local databases (handles, blobs, backups, photos, etc.). The volatile PWA Cache (which contains the app's JS/CSS code and is NOT user data) is **excluded** from the calculation.
+- **30s cache**: the calculation is cumulated then cached for 30 seconds to avoid re-querying storage in a loop when you quickly open/close modals.
 - **Tooltip**: "Size of MyKTAMap data (LS + IDB)" + clarification "excluding PWA Cache".
 
 Result: the value is **stable, predictable, and truly reflects what you have mapped**.
@@ -388,7 +388,7 @@ The profile export can now **bundle the ZIP archives of maps stored in the app**
 - In **Merge** mode on import, a map that already has its archive on the device **keeps its own**; in **Replace** mode, the profile's wins. A storage failure (quota full) is reported **per map**, the rest continues.
 - Maps in "permanent file access" or "re-selection" mode don't appear in the list: their ZIP lives on your disk, not in the app — there is nothing to bundle.
 
-> 🔒 **100% local**: your nickname and photo remain in your browser (IndexedDB). Nothing is sent to a server. The profile export is explicit and controlled by you.
+> 🔒 **100% local**: your nickname and photo remain in your browser. Nothing is sent to a server. The profile export is explicit and controlled by you.
 
 #### 💼 Pro edition — import a license
 
@@ -458,7 +458,7 @@ Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** secti
 
 **Display filters & organization**:
 
-- **🌐 Show server maps** — check/uncheck this toggle above the list to hide automatically discovered server maps (test1, test2, demos…) and only see your personal maps. **Preserved** between sessions (localStorage). Unchecking does not delete anything — re-checking → the maps reappear intact.
+- **🌐 Show server maps** — check/uncheck this toggle above the list to hide automatically discovered server maps (test1, test2, demos…) and only see your personal maps. **Preserved** between sessions (on this device). Unchecking does not delete anything — re-checking → the maps reappear intact.
 - **🔎 Filter by name** *(since v1.78.0)* — a field above the list filters live as you type. Pure display filter, reset the next time you visit the home screen.
 - **⭐ Pin** *(since v1.78.0)* — each row's star moves the map **to the top of the list** (pinned maps keep the "last opened" order among themselves). Click again to unpin.
 - **🖼️ Tiling for this map** *(since v1.90.2)* — the selector that used to sit above the "Load this map" button **is gone**: the app decides on its own ("Auto"), which is what it already did for nearly every map. It only ever affected very large maps **not tiled at generation time (V1)**; on an already-tiled map, "Disabled" changed nothing. The setting now lives in **ℹ️ Info**, and **only for the maps it applies to** — and unlike the old one, it is **remembered** for that map instead of resetting on every start.
@@ -562,7 +562,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 8. **🔄 Update — Force soft update** — re-downloads the latest version of the code (purges the PWA cache, keeps your data and your maps). Useful if you suspect that your app remains on an old version after a release. **Never** touches your maps, your active session, your community code or your local PIN. **Mandatory confirmation before triggering** (blue modal detailing what is preserved + need for active Internet connection).
 
-9. **💥 Reset everything (full reset)** — total purge (cache + localStorage + IndexedDB + maps). Resets the community access code **AND** the local PIN if configured. **Double confirmation required.** Irreversible action.
+9. **💥 Reset everything (full reset)** — total purge: the cache, everything saved in your browser, and your maps. Resets the community access code **AND** the local PIN if configured. **Double confirmation required.** Irreversible action.
 
 **Organization**: **everything is grouped in a single ⚙️ Configuration modal**, accessible from the loader header. The 🏗️ Generate a map button remains directly visible in the home (not in the Configuration modal) because it is a creation action, not a setting.
 
@@ -739,7 +739,7 @@ If you see this window **regularly**, it's a sign that you need to **reduce the 
 
 MyKTAMap works **entirely offline** once the map has been loaded for the first time.
 
-The application uses a **Service Worker** that automatically caches all necessary files (interface, images, data). On first load with an Internet connection, everything is saved locally.
+The application installs an **offline component** (a “Service Worker”) that automatically caches all necessary files (interface, images, data). On first load with an Internet connection, everything is saved locally.
 
 **To prepare for an offline outing:**
 
@@ -809,7 +809,7 @@ You can:
 A window detailing:
 - The technical model (pure PWA, no backend)
 - The complete and nominative **whitelist** of URLs the app can contact
-- How to check yourself via your browser's DevTools (F12 → Network)
+- How to check for yourself with your browser's developer tools (F12 key, Network tab)
 - How the server's Content Security Policy (CSP) additionally protects
 
 A 📄 button allows you to open the **complete documentation** (`docs/NETWORK_AUDIT.md`) in a new tab.
@@ -1445,7 +1445,7 @@ The **🗺️** button in the **🧭 Tracker** group opens the route modal. It c
 | 🚶 **Normal** | 5 km/h | Default, standard cataphile walking pace |
 | 🏃 **Fast** | 7 km/h | Sustained pace, known route, fast return |
 
-The active mode is displayed next to the estimated time in the bottomleft label. The choice is persisted between sessions (localStorage). You can switch modes at any time via the modal, the time updates instantly.
+The active mode is displayed next to the estimated time in the bottomleft label. The choice is persisted between sessions (on this device). You can switch modes at any time via the modal, the time updates instantly.
 
 **Navigation mode** — when a route is already active and you reopen **🗺️ Calculate a route**, the modal switches to **navigation mode**:
 
@@ -1490,7 +1490,7 @@ In the route modal, a collapsible section **🚫 Avoidance preferences (optional
 - ⛔ Zone = **hard** constraint (never relaxed even in fallback)
 - 🚫 Avoidance = **soft** constraint (fallback possible with message)
 
-**Persistence**: your preferences are saved per map (localStorage). On the next computation on the same map, they are restored. **🗑️ Reset** button to clear everything.
+**Persistence**: your preferences are saved per map (on this device). On the next computation on the same map, they are restored. **🗑️ Reset** button to clear everything.
 
 ### ⛑️ Emergency Mode — "I'm lost"
 
@@ -1516,7 +1516,7 @@ The orange **⛑️** button in the **🧭 Tracker** group opens emergency mode.
    | 🚶 **Normal** *(default)* | 5 km/h | ~833 m | Standard walking pace |
    | 🏃 **Fast** | 7 km/h | ~1167 m | Known route, sustained walking |
 
-   The choice is persisted between sessions (localStorage). If the area is already displayed on the map, switching presets recalculates it instantly.
+   The choice is persisted between sessions (on this device). If the area is already displayed on the map, switching presets recalculates it instantly.
 
 4. **🔮 Visual clues (optional but very useful)** — free text, separated by comma or line break. Examples: *"water can, ram engraving, blue room, broken shaft, descending stairs"*. The app searches these words in the **name**, **description** and **tags** of all the points of the map (layers and session points combined).
 
@@ -2161,7 +2161,7 @@ Each action triggers a **discreet toast** at the bottom: `↩ Undone: Placement 
 
 ### What is NOT covered
 
-- ❌ **Photos** attached to points: their deletion remains **irreversible** (the blobs are erased from the local IndexedDB database, not restorable)
+- ❌ **Photos** attached to points: their deletion remains **irreversible** (the files are erased from your browser's local storage, with no way back)
 - ❌ **Session imports**: an import that overwrites your session cannot be undone via Ctrl+Z (use the automatic session save to recover)
 - ❌ **Tracker** (real-time sensor mode)
 - ❌ **Distance measurement** (= ephemeral tool, not a persistent mutation)
@@ -2376,7 +2376,7 @@ You can attach up to **5 photos per point** (anti-saturation limit for browser s
 - When creating a new map via the generator, button "📦 Import a datalayer ZIP in one click" → you can recover the points + photos exported from another map
 
 **Technical limits**:
-- Browser local storage (IndexedDB) — quota ~50-200 MB depending on the device. A warning toast notifies you if you approach the quota
+- Browser local storage — quota ~50-200 MB depending on the device. A warning toast notifies you if you approach the quota
 - On **iOS Safari standalone PWA**, the browser may purge the IDB in case of lack of space or uninstall — regularly export your maps + photos to secure them
 - In case of a full reset of the app (💥 Reset everything), **all photos are deleted** (consistent with the full wipe)
 
@@ -3016,7 +3016,7 @@ Click **Download** → file `MyKTAMap_<MapName>_<date>.kmz` downloaded.
 
 #### Calibration persistence
 
-Your 2-point calibration is saved **per map** (localStorage). On the next export of the same map, the 8 fields are already pre-filled — adjust if needed and re-download. If you change maps or start over, you'll just need to re-enter it.
+Your 2-point calibration is saved **per map** (on this device). On the next export of the same map, the 8 fields are already pre-filled — adjust if needed and re-download. If you change maps or start over, you'll just need to re-enter it.
 
 > ⚠️ **Accuracy limits**: the transformation is a **2D similarity** (rotation + uniform scale + translation). On globally flat and rigid maps, it's sufficient. On very extensive or non-rigid maps (local deformations), expect a slight drift at the ends opposite to the calibration. A future version may support 3+ points (least squares) for more accuracy if needed.
 
@@ -3176,7 +3176,7 @@ In the **📊 Data layers** section of the generator, a golden yellow box offers
 4. The ZIP is parsed → **data layers are automatically created**: `points` (the friend's points), `roads` (paths), `zones` (zones), `structure` (pillars/faces). If the ZIP contained photos, they are **kept in memory** to be embedded at generation time.
 5. Green message "✅ N layer(s) created: points (X), roads (Y), zones (Z), structure (W) · 📸 M photos"
 6. You **📦 Generate the ZIP** as usual → the final map contains your original layers (if Modify) + the imported layers + the `data/photos/` folder with the blobs
-7. When this map is loaded by any user, the photos are automatically restored in IndexedDB and appear in the marker popups
+7. When this map is loaded by any user, the photos are automatically restored on their device and appear in the marker popups
 
 **Behavior**:
 - **New mode**: the imported layers become the map's data layers (the UI list is emptied and filled with the ZIP's layers)
@@ -3186,12 +3186,12 @@ In the **📊 Data layers** section of the generator, a golden yellow box offers
 
 ### 📸 Include photos attached to the map
 
-In **Modify existing** mode, if the map you load already has **photos attached to its points** (stored in local IndexedDB via the editor), a **📸 Include attached photos (N · X MB)** checkbox appears in the "🖼️ Main images" section of the form.
+In **Modify existing** mode, if the map you load already has **photos attached to its points** (saved on your device by the editor), a **📸 Include attached photos (N · X MB)** checkbox appears in the "🖼️ Main images" section of the form.
 
 - **Checked by default**: the map's IDB photos are embedded in the generated map ZIP under `data/photos/<photoId>.jpg`. You can thus share the complete map (annotations + photos) to another device.
 - **Unchecked**: the generated map ZIP does not contain the photos. Lighter in size, but the user who imports the ZIP will not retrieve the photos.
 
-When loading this map ZIP by any other user: the photos are **automatically restored** in IndexedDB under the local planId + a discreet toast "📸 N photos restored from the map" confirms.
+When loading this map ZIP by any other user: the photos are **automatically restored** on the device, under the map's local id + a discreet toast "📸 N photos restored from the map" confirms.
 
 > ⚠️ If you uncheck **AND** you have also imported a datalayer ZIP with photos (see previous section), only the imported datalayer's photos will be embedded. The 📸 checkbox controls ONLY the current map's IDB photos.
 
@@ -3516,7 +3516,7 @@ When a new version is available, the badge **flashes blue** to catch your attent
 
 Lock the app at every startup with a 4-6 digit PIN, **Face ID** or **Touch ID** if your device supports it. 100% local — no password is sent over the Internet, no recovery possible if forgotten.
 
-> ⚠️ **This is a usage barrier, not data encryption.** The lock prevents normal opening of the app, but a motivated attacker can bypass it via DevTools. Photos and sessions remain stored in clear in the browser. This is exactly the same security level as the existing community access code — honestly assumed.
+> ⚠️ **This is a usage barrier, not data encryption.** The lock prevents normal opening of the app, but a motivated attacker can bypass it with the browser's developer tools. Photos and sessions remain stored in clear in the browser. This is exactly the same security level as the existing community access code — honestly assumed.
 
 ### Enable the PIN
 
@@ -3553,7 +3553,7 @@ After **5 wrong codes in a row**, the app locks **temporarily**: 10 min the firs
 
 ## 🔧 Reset
 
-In case of a problem or to force an update, use **⚙️ Configuration (home page) → 💥 Reset everything**. This action unregisters the Service Worker, clears the cache and reloads the application.
+In case of a problem or to force an update, use **⚙️ Configuration (home page) → 💥 Reset everything**. This action removes the offline component (Service Worker) and unregisters the Service Worker, clears the cache and reloads the application.
 
 > ⚠️ Only perform this action with an Internet connection available. Without a network, the application will be unusable until the next full reload.
 

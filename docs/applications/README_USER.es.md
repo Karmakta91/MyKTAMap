@@ -287,7 +287,7 @@ Tres ajustes, y los tres cuentan:
 Clic en el panel de perfil → ventana **👤 Mi perfil**:
 
 - **✏️ Apodo**: escribe lo que quieras (letras / cifras / espacio). Sirve únicamente para personalizar la visualización local.
-- **📷 Foto**: elige una imagen de tu galería. La app la **comprime automáticamente** (512 px como máximo en el lado largo, JPEG calidad 88 %) antes de guardarla en IndexedDB, para no saturar tu cuota del navegador.
+- **📷 Foto**: elige una imagen de tu galería. La app la **comprime automáticamente** (512 px como máximo en el lado largo, JPEG calidad 88 %) antes de guardarla en tu dispositivo, para no saturar tu cuota del navegador.
 - **🗑️ Reiniciar perfil**: botón de puesta a cero (con confirmación). Vacía el apodo + la foto + los contadores.
 
 #### 📊 Cuadrícula de estadísticas
@@ -299,9 +299,9 @@ La ventana de Perfil muestra **6 celdas de estadísticas globales**:
 | 🗂️ **N planos** | Número de planos en tu registro (servidor + locales) |
 | 💾 **N sesiones** | Número total de sesiones guardadas (espacios por plano) |
 | ⭐ **N favoritos** | Número acumulado de puntos marcados como favoritos, en todos los planos |
-| 📦 **N copias** | Número de copias de seguridad de sesión en IndexedDB (máx. 10 **por plano** — por encima, los más antiguos se eliminan) |
+| 📦 **N copias** | Número de copias de seguridad de sesión guardadas en este dispositivo (máx. 10 **por plano** — por encima, los más antiguos se eliminan) |
 | 📸 **N fotos POI** | Número de fotos adjuntas a puntos + tamaño total |
-| 💾 **N MB de almacenamiento** | **Tamaño real de los datos de MyKTAMap** (localStorage con prefijo MyKTAMap + 6 almacenes IndexedDB conocidos). Excluye la caché PWA volátil (que no es un dato de usuario). |
+| 💾 **N MB de almacenamiento** | **Tamaño real de los datos de MyKTAMap** (todo lo que MyKTAMap ha guardado en tu navegador). Excluye la caché PWA volátil (que no es un dato de usuario). |
 
 #### 📊 Mis planos
 
@@ -355,8 +355,8 @@ Sección **«🎨 Estadísticas del panel de inicio»**: **elige qué estadísti
 
 La estadística «Almacenamiento» (visible en el panel de inicio + en la cuadrícula de la ventana de Perfil) refleja el **tamaño real de tus datos de MyKTAMap**:
 
-- **Cálculo acotado a MyKTAMap**: se suman únicamente las entradas de localStorage con prefijo `myktamap_*` + los 6 almacenes IndexedDB conocidos de la app (handles, blobs, copias de seguridad, fotos, etc.). La caché PWA volátil (que contiene el código JS/CSS de la app y NO es un dato de usuario) queda **excluida** del cálculo.
-- **Caché de 30 s**: el cálculo se acumula y luego se guarda en caché 30 segundos para no interrogar IndexedDB en bucle cuando abres y cierras ventanas rápidamente.
+- **Cálculo acotado a MyKTAMap**: se suma únicamente lo que MyKTAMap ha escrito en tu navegador — las claves `myktamap_*` y las 6 bases locales de la app (handles, blobs, copias de seguridad, fotos, etc.). La caché PWA volátil (que contiene el código JS/CSS de la app y NO es un dato de usuario) queda **excluida** del cálculo.
+- **Caché de 30 s**: el cálculo se acumula y luego se guarda en caché 30 segundos para no interrogar el almacenamiento en bucle cuando abres y cierras ventanas rápidamente.
 - **Descripción emergente**: «Tamaño de los datos de MyKTAMap (LS + IDB)» + la precisión «excluida la caché PWA».
 
 Resultado: el valor es **estable, previsible y refleja de verdad lo que has cartografiado**.
@@ -384,7 +384,7 @@ La exportación de perfil puede ahora **llevarse los archivos ZIP de los planos 
 - En modo **Fusionar** al importar, un plano que ya tiene su archivo en el dispositivo **conserva el suyo**; en modo **Reemplazar**, gana el del perfil. Un fallo de almacenamiento (cuota llena) se señala **por plano**, y el resto continúa.
 - Los planos en «acceso permanente al archivo» o «reselección» no aparecen en la lista: su ZIP vive en tu disco, no en la app — no hay nada que llevarse.
 
-> 🔒 **100 % local**: tu apodo y tu foto permanecen en tu navegador (IndexedDB). No se envía nada a ningún servidor. La exportación de perfil es explícita y la controlas tú.
+> 🔒 **100 % local**: tu apodo y tu foto permanecen en tu navegador. No se envía nada a ningún servidor. La exportación de perfil es explícita y la controlas tú.
 
 #### 💼 Edición pro — importar una licencia
 
@@ -431,7 +431,7 @@ La aplicación memoriza todos los planos que cargas, vengan del servidor o de tu
 
 **Filtros de visualización y organización**:
 
-- **🌐 Mostrar los planos de servidor** — marca o desmarca este interruptor encima de la lista para ocultar los planos de servidor descubiertos automáticamente (test1, test2, demos…) y ver solo tus planos personales. **Se conserva** entre sesiones (localStorage). Desmarcarlo no elimina nada — al volver a marcarlo, los planos reaparecen intactos.
+- **🌐 Mostrar los planos de servidor** — marca o desmarca este interruptor encima de la lista para ocultar los planos de servidor descubiertos automáticamente (test1, test2, demos…) y ver solo tus planos personales. **Se conserva** entre sesiones (en este dispositivo). Desmarcarlo no elimina nada — al volver a marcarlo, los planos reaparecen intactos.
 - **🔎 Filtrar por nombre** *(desde v1.78.0)* — un campo encima de la lista filtra en directo mientras escribes. Es un filtro de visualización puro, que se reinicia la próxima vez que pases por la pantalla de inicio.
 - **⭐ Fijar** *(desde v1.78.0)* — la estrella de cada fila sube el plano **al principio de la lista** (entre los fijados se mantiene el orden «último abierto»). Vuelve a pulsarla para desfijarlo.
 - **🏷️ Etiquetas** *(desde v1.78.0)* — pon etiquetas a tus planos («París 13», «GTech», «por terminar»…) mediante **ℹ️ Información → Etiquetas del plano** (escritura libre, separadas por comas — máximo 12 de 24 caracteres). Se muestran bajo el nombre del plano y, en cuanto un plano tiene etiqueta, aparece una fila de **fichas de filtro** encima de la lista: pulsa una o varias fichas para ver solo esos planos (un plano coincide si lleva **al menos una** de las etiquetas elegidas). Las etiquetas viven **en la app** (no en el ZIP — no viajan con un plano compartido) pero sí acompañan a la **exportación de perfil** y a la exportación 💾 de la lista.
@@ -523,7 +523,7 @@ En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del
 
 8. **🔄 Actualización — Forzar la actualización suave** — vuelve a descargar la última versión del código (purga de la caché PWA, conserva tus datos y tus planos). Útil si sospechas que tu app se ha quedado en una versión antigua tras una publicación. **Nunca** toca tus planos, tu sesión activa, tu código comunitario ni tu PIN local. **Confirmación obligatoria antes de lanzarla** (ventana azul que detalla lo que se preserva + necesidad de una conexión a Internet activa).
 
-9. **💥 Reiniciarlo todo (reinicio completo)** — purga total (caché + localStorage + IndexedDB + planos). Reinicia el código de acceso comunitario **Y** el PIN local si está configurado. **Se requiere doble confirmación.** Acción irreversible.
+9. **💥 Reiniciarlo todo (reinicio completo)** — purga total: la caché, todo lo guardado en tu navegador y tus planos. Reinicia el código de acceso comunitario **Y** el PIN local si está configurado. **Se requiere doble confirmación.** Acción irreversible.
 
 **Organización**: **todo está reunido en una única ventana ⚙️ Configuración**, accesible desde la cabecera del cargador. El botón 🏗️ Generar un plano permanece visible directamente en la pantalla de inicio (no en la ventana de Configuración) porque es una acción de creación, no un ajuste.
 
@@ -681,7 +681,7 @@ Si ves esta ventana **con frecuencia**, es señal de que hay que **reducir el mo
 
 MyKTAMap funciona **completamente sin conexión** una vez que el plano se ha cargado una primera vez.
 
-La aplicación utiliza un **Service Worker** que guarda automáticamente en caché todos los archivos necesarios (interfaz, imágenes, datos). En la primera carga con conexión a Internet, todo queda guardado localmente.
+La aplicación instala un **componente sin conexión** (un «Service Worker») que guarda automáticamente en caché todos los archivos necesarios (interfaz, imágenes, datos). En la primera carga con conexión a Internet, todo queda guardado localmente.
 
 **Para preparar una salida sin conexión:**
 
@@ -1395,7 +1395,7 @@ El botón **🗺️** del grupo **🧭 Rastreador** abre la ventana de itinerari
 | 🚶 **Normal** | 5 km/h | Por defecto, ritmo estándar de marcha bajo tierra |
 | 🏃 **Rápida** | 7 km/h | Ritmo sostenido, recorrido conocido, regreso rápido |
 
-El modo activo se muestra junto al tiempo estimado en la etiqueta inferior izquierda. La elección se conserva entre sesiones (localStorage). Puedes cambiar de modo en cualquier momento desde la ventana, y el tiempo se actualiza al instante.
+El modo activo se muestra junto al tiempo estimado en la etiqueta inferior izquierda. La elección se conserva entre sesiones (en este dispositivo). Puedes cambiar de modo en cualquier momento desde la ventana, y el tiempo se actualiza al instante.
 
 **Modo navegación** — cuando ya hay un itinerario activo y vuelves a abrir **🗺️ Calcular un itinerario**, la ventana pasa a **modo navegación**:
 
@@ -1440,7 +1440,7 @@ En la ventana de itinerario, una sección plegable **🚫 Preferencias de evitac
 - ⛔ Zona = restricción **estricta** (nunca se relaja, ni siquiera como último recurso)
 - 🚫 Evitación = restricción **flexible** (puede relajarse con un mensaje)
 
-**Persistencia**: tus preferencias se guardan por plano (localStorage). En el siguiente cálculo sobre el mismo plano, se restauran. Botón **🗑️ Reiniciar** para borrarlo todo.
+**Persistencia**: tus preferencias se guardan por plano (en este dispositivo). En el siguiente cálculo sobre el mismo plano, se restauran. Botón **🗑️ Reiniciar** para borrarlo todo.
 
 ### ⛑️ Modo emergencia — «Estoy perdido»
 
@@ -1466,7 +1466,7 @@ El botón **⛑️** naranja del grupo **🧭 Rastreador** abre el modo emergenc
    | 🚶 **Normal** *(por defecto)* | 5 km/h | ~833 m | Ritmo estándar de marcha |
    | 🏃 **Rápida** | 7 km/h | ~1167 m | Recorrido conocido, marcha sostenida |
 
-   La elección se conserva entre sesiones (localStorage). Si la zona ya está dibujada en el mapa, cambiar de preajuste la recalcula al instante.
+   La elección se conserva entre sesiones (en este dispositivo). Si la zona ya está dibujada en el mapa, cambiar de preajuste la recalcula al instante.
 
 4. **🔮 Indicios visuales (opcional pero muy útil)** — texto libre, separado por comas o saltos de línea. Ejemplos: *«bidón de agua, grabado del ariete, sala azul, pozo roto, escalera que baja»*. La app busca esas palabras en el **nombre**, la **descripción** y las **etiquetas** de todos los puntos del plano (capas y puntos de sesión combinados).
 
@@ -2107,7 +2107,7 @@ Cada acción dispara un **aviso discreto** en la parte inferior: `↩ Deshecho: 
 
 ### Lo que NO está cubierto
 
-- ❌ **Fotos** adjuntas a los puntos: su eliminación sigue siendo **irreversible** (los blobs se borran de la base IndexedDB local y no se pueden restaurar)
+- ❌ **Fotos** adjuntas a los puntos: su eliminación sigue siendo **irreversible** (los archivos se borran del almacenamiento local de tu navegador y no se pueden restaurar)
 - ❌ **Importaciones de sesión**: una importación que sobrescribe tu sesión no se puede deshacer con Ctrl+Z (usa el guardado automático de sesión para recuperarla)
 - ❌ **Rastreador** (modo de sensores en tiempo real)
 - ❌ **Medición de distancia** (= herramienta efímera, no una modificación persistente)
@@ -2322,8 +2322,8 @@ Puedes adjuntar hasta **5 fotos por punto** (límite para evitar saturar el alma
 - Al crear un plano nuevo mediante el generador, botón «📦 Importar una capa de datos ZIP con un clic» → puedes recuperar los puntos + fotos exportados desde otro plano
 
 **Límites técnicos**:
-- Almacenamiento local del navegador (IndexedDB) — cuota de ~50-200 MB según el dispositivo. Un aviso te advierte si te acercas a la cuota
-- En **PWA independiente de iOS Safari**, el navegador puede purgar la IndexedDB si falta espacio o si se desinstala — exporta regularmente tus planos + fotos para ponerlos a salvo
+- Almacenamiento local del navegador — cuota de ~50-200 MB según el dispositivo. Un aviso te advierte si te acercas a la cuota
+- En **PWA independiente de iOS Safari**, el navegador puede vaciar ese almacenamiento local si falta espacio o si se desinstala — exporta regularmente tus planos + fotos para ponerlos a salvo
 - En caso de reinicio completo de la app (💥 Reiniciarlo todo), **todas las fotos se borran** (coherente con el borrado total)
 
 ---
@@ -2962,7 +2962,7 @@ Pulsa **Descargar** → se descarga el archivo `MyKTAMap_<NombreDelPlano>_<fecha
 
 #### Persistencia del calibrado
 
-Tu calibrado de 2 puntos se guarda **por plano** (localStorage). En la siguiente exportación del mismo plano, los 8 campos ya vienen rellenados — los ajustas si hace falta y vuelves a descargar. Si cambias de plano o empiezas de cero, solo tienes que volver a introducirlos.
+Tu calibrado de 2 puntos se guarda **por plano** (en este dispositivo). En la siguiente exportación del mismo plano, los 8 campos ya vienen rellenados — los ajustas si hace falta y vuelves a descargar. Si cambias de plano o empiezas de cero, solo tienes que volver a introducirlos.
 
 > ⚠️ **Límites de la precisión**: la transformación es una **similitud 2D** (rotación + escala uniforme + traslación). En planos globalmente planos y rígidos, es suficiente. En planos muy extensos o no rígidos (deformaciones locales), cuenta con una ligera deriva en los extremos opuestos al calibrado. Una versión futura podrá admitir 3 o más puntos (mínimos cuadrados) para más precisión si hace falta.
 
@@ -3122,24 +3122,24 @@ En la sección **📊 Capas de datos** del generador, un recuadro amarillo dorad
 4. El ZIP se analiza → se **crean automáticamente capas de datos**: `points` (los puntos de tu amigo), `roads` (trazados), `zones` (zonas), `structure` (pilares/frentes). Si el ZIP contenía fotos, se **guardan en memoria** para incluirlas en el momento de la generación.
 5. Mensaje verde «✅ N capa(s) creada(s): points (X), roads (Y), zones (Z), structure (W) · 📸 M fotos»
 6. **📦 Generas el ZIP** como de costumbre → el plano final contiene tus capas originales (si es Modificar) + las capas importadas + la carpeta `data/photos/` con los blobs
-7. Al cargar ese plano cualquier usuario, las fotos se restauran automáticamente en IndexedDB y aparecen en las ventanas emergentes de los marcadores
+7. Al cargar ese plano cualquier usuario, las fotos se restauran automáticamente en su dispositivo y aparecen en las ventanas emergentes de los marcadores
 
 **Comportamiento**:
 - **Modo Nuevo**: las capas importadas pasan a ser las capas de datos del plano (la lista de la interfaz se vacía y se rellena con las capas del ZIP)
-- **Modo Modificar**: las capas existentes del plano de origen se **preservan**; las capas del ZIP importado se añaden con el **sufijo `_imported_<N>`** si hay conflicto de id (= nunca sobrescriben las capas originales). Las fotos de IndexedDB del plano actual se **fusionan** con las del ZIP (deduplicación por photoId).
+- **Modo Modificar**: las capas existentes del plano de origen se **preservan**; las capas del ZIP importado se añaden con el **sufijo `_imported_<N>`** si hay conflicto de id (= nunca sobrescriben las capas originales). Las fotos del plano actual guardadas en tu dispositivo se **fusionan** con las del ZIP (deduplicación por photoId).
 
 > 📸 **Formato del ZIP de capa de datos** esperado: es exactamente lo que produce la **Conversión sesión → capa de datos** cuando marcas «📸 Incluir las fotos adjuntas» (da igual la granularidad, Básica o Fina). Contiene `points.json` + `roads.json` + `zones.json` + `structure.json` (según lo que hubiera en la sesión de origen) + `photos/_index.json` + `photos/<photoId>.jpg`.
 
 ### 📸 Incluir las fotos adjuntas al plano
 
-En modo **Modificar uno existente**, si el plano que cargas ya tiene **fotos adjuntas a sus puntos** (guardadas en la IndexedDB local mediante el editor), aparece una casilla **📸 Incluir las fotos adjuntas (N · X MB)** en la sección «🖼️ Imágenes principales» del formulario.
+En modo **Modificar uno existente**, si el plano que cargas ya tiene **fotos adjuntas a sus puntos** (guardadas en tu dispositivo por el editor), aparece una casilla **📸 Incluir las fotos adjuntas (N · X MB)** en la sección «🖼️ Imágenes principales» del formulario.
 
-- **Marcada por defecto**: las fotos de IndexedDB del plano se incluyen en el ZIP generado bajo `data/photos/<photoId>.jpg`. Así puedes compartir el plano completo (anotaciones + fotos) con otro dispositivo.
+- **Marcada por defecto**: las fotos del plano guardadas en tu dispositivo se incluyen en el ZIP generado bajo `data/photos/<photoId>.jpg`. Así puedes compartir el plano completo (anotaciones + fotos) con otro dispositivo.
 - **Desmarcada**: el ZIP generado no contiene las fotos. Más ligero, pero quien importe el ZIP no recuperará las fotos.
 
-Al cargar ese ZIP cualquier otro usuario: las fotos se **restauran automáticamente** en IndexedDB bajo el planId local, y un aviso discreto «📸 N fotos restauradas desde el plano» lo confirma.
+Al cargar ese ZIP cualquier otro usuario: las fotos se **restauran automáticamente** en el dispositivo, con el identificador local del plano, y un aviso discreto «📸 N fotos restauradas desde el plano» lo confirma.
 
-> ⚠️ Si la desmarcas **Y** además has importado un ZIP de capa de datos con fotos (ver la sección anterior), solo se incluirán las fotos de la capa importada. La casilla 📸 controla ÚNICAMENTE las fotos de IndexedDB del plano actual.
+> ⚠️ Si la desmarcas **Y** además has importado un ZIP de capa de datos con fotos (ver la sección anterior), solo se incluirán las fotos de la capa importada. La casilla 📸 controla ÚNICAMENTE las fotos del plano actual guardadas en tu dispositivo.
 
 ### 🧱 Convertir a teselas V2 (rendimiento)
 
@@ -3318,7 +3318,7 @@ Si a pesar del modo Rendimiento tu plano sigue fallando (típicamente planos de 
 
 Los planos muy grandes pueden provocar **cierres silenciosos por memoria** en iOS — el sistema mata la pestaña sin avisar para recuperar RAM. La app detecta ese cierre al reiniciar y te muestra un aviso.
 
-> 📌 **Reflejo**: exporta tu sesión (📤 Exportar) cada 10-15 minutos de trabajo intensivo. El guardado automático en localStorage ya protege en la mayoría de los casos, pero una exportación externa sigue siendo lo más seguro.
+> 📌 **Reflejo**: exporta tu sesión (📤 Exportar) cada 10-15 minutos de trabajo intensivo. El guardado automático en este dispositivo ya protege en la mayoría de los casos, pero una exportación externa sigue siendo lo más seguro.
 
 ### Resumen rápido
 
@@ -3495,7 +3495,7 @@ Tras **5 códigos incorrectos seguidos**, la app se bloquea **temporalmente**: 1
 
 ## 🔧 Reiniciar
 
-En caso de problema o para forzar una actualización, usa **⚙️ Configuración (pantalla de inicio) → 💥 Reiniciar todo**. Esta acción da de baja el Service Worker, vacía la caché y recarga la aplicación.
+En caso de problema o para forzar una actualización, usa **⚙️ Configuración (pantalla de inicio) → 💥 Reiniciar todo**. Esta acción retira el componente sin conexión (Service Worker) y da de baja el Service Worker, vacía la caché y recarga la aplicación.
 
 > ⚠️ Realiza esta acción únicamente con una conexión a Internet disponible. Sin red, la aplicación quedará inutilizable hasta la siguiente recarga completa.
 ---
