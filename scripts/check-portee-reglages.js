@@ -78,7 +78,8 @@ t("🩸 aucun réglage GLOBAL n'est écrit depuis la config du mode plan" +
 [["loaderScaledMarkers", "taille des icônes au zoom"],
  ["loaderPanneauxAncres", "ancrage des panneaux"],
  ["loaderSnapDraw", "magnétisme au dessin"],
- ["loaderSnapDrawPx", "rayon du magnétisme"]].forEach(function (r) {
+ ["loaderSnapDrawPx", "rayon du magnétisme"],
+ ["loaderJournalCb", "carnet des sorties (v1.92.0)"]].forEach(function (r) {
   t("🩸 rapatrié et ATTEIGNABLE au HOME : " + r[1], IDX.indexOf('id="' + r[0] + '"') >= 0);
 });
 

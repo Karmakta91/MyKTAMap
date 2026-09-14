@@ -1855,21 +1855,19 @@ body.kta-lost-click-mode .leaflet-container {
 /* 🆕 v1.35.0 — Bouton 🚨 Mode Sortie d'urgence dans le header refonte
    (entre 📖 et 🔋).
    🚨 Audit ergonomie 13/09/2026 (Q5) : c'était le PLUS PETIT bouton de
-   l'écran (36×24 px, padding 2 px et icône 11 px sous 480 px) pour la
-   fonction la plus vitale, coincé entre quatre chips identiques, rouge
-   seulement au survol — qui n'existe pas au doigt. Désormais : fond rouge
-   permanent, isolé des chips d'information, 44 px de large mini, et zone de
-   tap étendue à toute la hauteur du header (44 px) par un pseudo-élément —
-   sans grossir le header. La spécificité (.kta-refonte-header) l'emporte
-   sur la règle générique des chips ET sur son override ≤ 480 px. */
+   l'écran pour la fonction la plus vitale, et rouge seulement au survol —
+   qui n'existe pas au doigt. Deux corrections SANS le grossir (KARMA,
+   14/09/2026 : « remets la taille comme avant, j'aime pas en gros ») :
+     • fond rouge PERMANENT — il se distingue des chips d'information sans
+       occuper un pixel de plus ;
+     • zone de tap étendue par un pseudo-élément — invisible, elle ne change
+       ni la taille du bouton ni celle du header, elle rattrape seulement le
+       doigt qui vise à côté.
+   La taille, elle, est redevenue celle des autres chips. */
 body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie {
   position: relative;
   cursor: pointer;
   user-select: none;
-  min-width: 44px;
-  min-height: 34px;
-  padding: 4px 12px;
-  margin-left: 6px;
   background: rgba(255, 80, 80, 0.22);
   border-color: rgba(255, 80, 80, 0.55);
   transition: background 0.15s ease;
@@ -1886,7 +1884,7 @@ body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie:active {
   outline: none;
 }
 body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie .kta-refonte-counter-icon {
-  font-size: 18px;
+  font-size: 16px;   /* comme les autres chips icône seule (v1.35.2) */
 }
 /* 🆕 v1.34.24 — Agrandir l'icône 📖 pour matcher la taille perçue des autres
    chips (📊 stats, 🔋 batterie). Sans cet override, l'emoji rendait à 12px

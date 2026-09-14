@@ -1140,6 +1140,28 @@
         }
       })();
 
+      // 📔 v1.92.0 — Carnet des sorties, réglage GLOBAL rapatrié du mode plan.
+      // Le module est la source de vérité (clé dédiée, pas app_user_prefs) :
+      // on lit et on écrit par lui, jamais en touchant localStorage ici.
+      (function _initCarnetHome() {
+        const cb = document.getElementById("loaderJournalCb");
+        if (!cb) return;
+        if (!window.Journal || typeof window.Journal.setEnabled !== "function") {
+          // Module absent : la case mentirait. On la retire plutôt que de la
+          // laisser cliquable sans effet.
+          const row = document.getElementById("loaderJournalRow");
+          if (row) row.style.display = "none";
+          return;
+        }
+        cb.checked = window.Journal.isEnabled();
+        cb.addEventListener("change", function () {
+          window.Journal.setEnabled(!!cb.checked);
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t(cb.checked ? "config.journal.toastOn" : "config.journal.toastOff"), "info");
+          }
+        });
+      })();
+
       // 🛰️ v1.85.2 — Options via capteur, côté ACCUEIL (demande KARMA :
       // « elles ont plus de pertinence en HOME »). Même état que la modale du
       // mode plan — `APP_CONFIG` + `app_user_prefs` —, donc aucune divergence

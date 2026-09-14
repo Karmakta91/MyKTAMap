@@ -127,6 +127,23 @@ node scripts/check-icon-catalog.js || exit $?
 # reprojeter un fichier mixte a moitie). BLOQUANT.
 node scripts/check-lambert93.js || exit $?
 
+# 🗺️ GeoTIFF : un plan cale dans QGIS ressort avec son georeferencement DANS
+# le fichier — l app le lit au lieu de faire ressaisir deux points GPS. Meme
+# methode que le Lambert 93 : le Web Mercator ajoute (7 des 39 plans reels de
+# KARMA sont en 3857) est verifie par ses PROPRIETES DEFINITOIRES, jamais par
+# une table recopiee. Cote lecteur, les fixtures TIFF sont construites octet
+# par octet, donc le resultat attendu est connu par construction.
+# Ce qui casse en SILENCE et que le script tient : le REPERE (inverser
+# sud-ouest/nord-est ne leve aucune erreur, le plan sort juste en miroir), le
+# PIXEL DE REFERENCE du tiepoint (QGIS y met presque toujours (0,0), donc le
+# terme peut disparaitre sans qu un fichier courant ne bronche), les
+# « metres » du 3857 qui n en sont pas (×1,52 en Ile-de-France), la bascule de
+# largeur du LZW (le decodeur a UNE ENTREE DE RETARD sur l encodeur), le
+# predicteur qui ne franchit jamais une fin de ligne, et les REFUS, qui
+# doivent NOMMER la caracteristique non lue — sinon ils n apprennent rien.
+# 9 sabotages de reference rougissent. BLOQUANT.
+node scripts/check-geotiff.js || exit $?
+
 # 🔤 Constantes MAJUSCULES utilisees mais jamais declarees. Ne des le 03/09 :
 # le nettoyage de code mort du 09/08 avait supprime `const HEADER_HEIGHT_MM`
 # de pdfExport.js alors qu elle etait utilisee 20 lignes plus bas - toute
@@ -413,3 +430,10 @@ node scripts/check-reglages-immediats.js || exit $?
 # dit, et ca marche carnet decoche — c est justement son cas d usage. EXECUTE
 # la fonction extraite du fichier. 4 sabotages rougissent.
 node scripts/check-journal-demarrage.js || exit $?
+
+# 📚 Vocabulaire de la doc (audit ergonomie D2 / D13, 14/09/2026) : « flyout » ne
+# designe que les groupes qui portent reellement useFlyout (lus dans
+# interface.js, AUCUNE table recopiee), et le nombre de styles de legende
+# annonce par le tutoriel est COMPTE dans les deux ecrans d export.
+# 4 sabotages rougissent.
+node scripts/check-doc-vocabulaire.js || exit $?

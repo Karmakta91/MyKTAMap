@@ -502,6 +502,10 @@ En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del
 5. **🎨 Visualización** — interruptores de interfaz:
    - **🔆 Mantener la pantalla encendida** — impide que tu pantalla se apague automáticamente mientras MyKTAMap esté abierta (Wake Lock API). Útil en salida para no tener que tocar el teléfono cada 30 segundos. Readquisición automática al volver de segundo plano (visibilitychange). El interruptor se oculta automáticamente en los navegadores que no admiten la API (Firefox en particular). El mismo interruptor está también accesible en **⚙️ Ajustes** en modo mapa (ver sección dedicada).
 
+> 📊 **Ver el estado de la memoria** — en esa misma ventana, un botón **«📊 Ver el estado de la memoria»** abre el **inspector**: lo que la app ocupa en tu dispositivo (claves de almacenamiento ordenadas por tamaño, bases de datos, caché de la aplicación, cuota del navegador) y lo que está cargado en ese momento. Un botón **📋 Copiar el informe** genera un texto listo para pegar al informar de un problema.
+
+> 📔 **Llevar un cuaderno de mis salidas** — cada plano que abres se convierte en una **salida** archivada en 📔 Mi cuaderno (duración, distancia, añadidos, fotos). Desmarcado, la app ya no abre nada por su cuenta y la salida en curso se detiene; lo que ya está en el cuaderno se conserva, y siempre puedes iniciar una cuando quieras desde **📊 Detalles de la sesión**. *(Ajuste trasladado aquí desde ⚙️ Ajustes del modo mapa en la v1.92.0: vale para todos tus planos, y el cuaderno se abre desde el inicio.)*
+
 > 🌍 **Idioma de la aplicación**: MyKTAMap está traducida a **3 idiomas — Français, English, Español**. El selector de idioma (bandera + nombre completo) se encuentra en **⚙️ Configuración**, en su propia sección **justo después del bloque Incógnito**. El cambio se aplica de inmediato, sin recargar la app. *A tener en cuenta*: la **Documentación** (esta guía) y el **tutorial de bienvenida** existen en los **3 idiomas** — siguen automáticamente el idioma de tu app, y el botón de bandera de la parte superior de la ventana de Documentación te deja cambiar a 🇫🇷 / 🇬🇧 / 🇪🇸 cuando quieras. Solo la **Ayuda integrada** (el 📚 de la barra lateral en modo mapa) sigue estando en francés e inglés: en español se muestra en **inglés por defecto**. En cada cambio de idioma, un mensaje te propone **reiniciar la app** para un cambio 100 % limpio (opcional). 💡 En **modo incógnito**, tu idioma de interfaz **se conserva** (los demás datos, en cambio, se olvidan por completo).
 
 > 💡 La opción «Mostrar los círculos en los cruces de trazados» **no está en la Configuración de la pantalla de inicio** sino en **⚙️ Ajustes en modo mapa** (por plano). Cada plano tiene ahora su propio ajuste — práctico para desactivar los círculos únicamente en tus planos muy densos sin tocar los demás.
@@ -780,6 +784,10 @@ El botón **⛶** del widget Vista OSM se llama ahora **«Abrir el modo OSM»**:
 - busca **un plano** (entre tus planos georreferenciados) o **un punto** (los POI de esos planos) — escribe, pulsa un resultado y el mapa vuela hasta él con un marcador;
 - **100 % local**: la búsqueda lee tus propios planos, no se consulta ninguna dirección de Internet;
 - solo aparecen los planos **georreferenciados** — un plano sin calibrado GPS es invisible en modo OSM (calíbralo mediante el Generador o los Ajustes).
+
+**📏 Medir en el mapa OSM** — en modo OSM, la herramienta de medición da una **distancia** y una **superficie** haciendo clic en el mapa. Una medición hecha aquí no depende de **ningún calibrado**: las coordenadas ya son geográficas, así que es más fiable que una medición hecha sobre el plano.
+
+**🎯 Coordenadas de superficie** — un clic en el mapa OSM da la **latitud y la longitud del punto situado justo encima**, copiables con un botón. Es lo que se transmite a un equipo que llega por la superficie.
 
 **🗂️ Varios planos a la vez (desde v1.71.0)** — el panel «Planos mostrados» del modo OSM permite **superponer tus planos georreferenciados**: ➕ para añadir uno, ▲▼ para elegir cuál va encima o debajo, un deslizador de **opacidad por plano** y ✕ para retirarlo. El plano marcado con ◉ es el «principal» (el del selector superior). Toda esta gestión vive en una **ventana dedicada** que se abre con el botón **≡** de la barra (nada tapa el mapa): ajustes de **visualización globales**, **filtro por etiqueta** (agregado sobre todos los planos mostrados) y la pila de planos. Las antiguas filas bajo el selector (opacidad, casillas, etiquetas) han desaparecido del widget — el mapa gana su altura. Cada línea lleva además **5 minibotones de filtrado propios del plano** (🖼️ imagen, 📍 POI, 🛣️ vías, 🌐 zonas, 🏛️ estructuras) — los ajustes globales de visualización viven en la misma ventana (sección Visualización), y ambos niveles se combinan. Ideal para mostrar dos sectores vecinos sobre un plano de conjunto, conservando por ejemplo solo los POI de uno y la imagen del otro. **🏷️ Y desde la v1.84.0, añadir por ETIQUETA**: bajo «Planos», una fila de chips enumera las etiquetas que llevan **al menos dos** de tus planos georreferenciados (las que escribes en tu biblioteca), con un contador «3/12». Un clic **muestra todos** los planos de la etiqueta, un segundo clic **los retira**: imprescindible en cuanto un atlas troceado produce veinte. No distingue mayúsculas («Gironde» y «GIRONDE» son la misma etiqueta) y, por encima de 3 planos mostrados, la app pide confirmación indicando el número: los planos se cargan luego **uno a uno**, y el mapa se llena progresivamente.
 
@@ -3307,6 +3315,10 @@ Los planos muy grandes pueden provocar **cierres silenciosos por memoria** en iO
 
 ---
 
+### 🎓 Volver a ver el tutorial
+
+El tutorial de bienvenida (27 fichas) **se puede repetir en cualquier momento**: abre **📖 Documentación** y toca el botón **🎓** de la línea de título, junto a las banderas de idioma. No hay que reinstalar ni reiniciar nada.
+
 ### 🔎 Buscar en la documentación
 
 Esta documentación es larga. Arriba de la ventana 📖, un campo **🔎 Buscar** busca en **todo el texto**: las apariciones se resaltan, **Intro** o ↓ pasa a la siguiente, el contador indica «i / n» y las entradas del índice sin resultado se atenúan. Los acentos no cuentan: «reglages» encuentra «Réglages». La búsqueda del hub ❓ Ayuda, por su parte, busca en los títulos **y** el contenido de las secciones.
@@ -3354,7 +3366,7 @@ Cada grupo lleva su **alcance** en el título — **📍 este plano** o **🌍 t
 
 ### 🌍 Aplicación *(🌍 todos los planos)*
 - **🎬 Activar el modo presentación**: pantalla completa sin interfaz (demostraciones / proyección). Tecla **F** en PC; salida con **F** / **Esc** o el botón flotante ✕.
-- **🏠 Ajustados desde el inicio** *(solo lectura)*: idioma, tema, iconos adaptativos al zoom, anclaje de paneles, imantación al dibujar. Su valor se lee aquí; el botón **🏠 Ir al inicio para cambiarlos** sale del plano (tu sesión se conserva) y te lleva a ⚙️ Configuración.
+- **🏠 Ajustados desde el inicio** *(solo lectura)*: idioma, tema, iconos adaptativos al zoom, anclaje de paneles, imantación al dibujar, **cuaderno de salidas**. Su valor se lee aquí; el botón **🏠 Ir al inicio para cambiarlos** sale del plano (tu sesión se conserva) y te lleva a ⚙️ Configuración.
 
 ### 📐 Plano: escala y geolocalización *(📍 este plano)*
 - **Escala (px/m)** con el botón **🎯 Calibrar** (ver más abajo). Una escala nula o negativa se rechaza.
@@ -3382,7 +3394,6 @@ Cada grupo lleva su **alcance** en el título — **📍 este plano** o **🌍 t
 - **🔋 Nivel de batería** y **📳 Vibración háptica**. Un sensor rechazado por el dispositivo (o por iOS) se muestra atenuado, con el motivo.
 
 ### 🔒 Privacidad y seguridad *(🌍 todos los planos)*
-- **📔 Llevar un cuaderno de mis salidas** *(todos los planos)*.
 - **🕵️ Modo incógnito**: abre una nueva ventana que no escribe nada en el dispositivo.
 
 ### 🛠️ Sistema y mantenimiento *(📍 este plano)*

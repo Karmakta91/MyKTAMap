@@ -810,9 +810,12 @@ function _renderCfgGlobauxLectureSeule() {
   let langue = "", theme = "";
   try { langue = String(window.I18n.getLang ? window.I18n.getLang() : "").toUpperCase(); } catch (e) {}
   try { theme = (window.ThemeManager && typeof window.ThemeManager.isLight === "function" && window.ThemeManager.isLight()) ? t("theme.name.light") : t("theme.name.dark"); } catch (e) {}
+  let carnet = "";
+  try { carnet = (window.Journal && typeof window.Journal.isEnabled === "function") ? (window.Journal.isEnabled() ? on : off) : ""; } catch (e) {}
   const lignes = [
     [t("home.lang.label"), langue],
     [t("config.globaux.theme"), theme],
+    [t("config.globaux.carnet"), carnet],
     [t("config.display.scaledMarkers.label"), c.scaledMarkers !== false ? on : off],
     [t("config.panneaux.label"), c.panneauxAncres === true ? on : off],
     [t("config.snapdraw.label"), c.snapDraw === true ? (on + " · " + (Number.isFinite(c.snapDrawPx) ? c.snapDrawPx : 12) + " px") : off]
@@ -1362,16 +1365,12 @@ function afficherConfig() {
         ${_cfgGroupeFin()}
         ${_cfgGroupeDebut("config.group.privacy", "global")}
 
-        <!-- 📔 Q49 (audit 13/09/2026) : le carnet enregistrait chaque sortie
-             sans opt-in, et son interrupteur (Journal.setEnabled) n'était
-             câblé NULLE PART. Réglage global (tous plans). -->
-        <label class="kta-perf-ultra-row" id="cfg_journal_row" style="margin-bottom:10px;">
-          <input type="checkbox" id="cfg_journal" ${(window.Journal && typeof window.Journal.isEnabled === "function" && !window.Journal.isEnabled()) ? "" : "checked"}>
-          <span class="kta-perf-ultra-text">
-            <span class="kta-perf-ultra-label">${window.I18n.t("config.journal.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
-            <span class="kta-perf-ultra-hint">${window.I18n.t("config.journal.hint")}</span>
-          </span>
-        </label>
+        <!-- 📔 Q49 (13/09/2026) puis v1.92.0 (L4) : le carnet s'enregistrait
+             sans opt-in ; son interrupteur, d'abord posé ici, VIT DÉSORMAIS
+             DANS ⚙️ CONFIGURATION DE L'ACCUEIL (décision KARMA : « c'est
+             général, et le carnet est accessible depuis le home »). Il reste
+             LISIBLE ici, dans « 🏠 Réglés depuis l'accueil », comme les quatre
+             réglages rapatriés en v1.85.3. -->
 
         <!-- 🕵️ v1.31.8 F2 + 🆕 v1.31.9 : Mode incognito — bouton qui
              ouvre une NOUVELLE fenêtre dans le même origin avec ?incognito=1
@@ -1740,16 +1739,6 @@ function afficherConfig() {
         if (vibCb.checked) { window.kta_vibrate.light(); }
       });
     }
-  }
-  // ── 📔 Carnet des sorties (Q49, audit 13/09/2026) ──
-  const jrnCb = document.getElementById("cfg_journal");
-  if (jrnCb && window.Journal && typeof window.Journal.setEnabled === "function") {
-    jrnCb.addEventListener("change", function() {
-      window.Journal.setEnabled(!!jrnCb.checked);
-      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-        window.OOMGuard.showToast(window.I18n.t(jrnCb.checked ? "config.journal.toastOn" : "config.journal.toastOff"), "info");
-      }
-    });
   }
   // 🆕 v1.34.0 E1 : toggle "🎤 Commandes vocales (BETA)".
   // Visible UNIQUEMENT si Web Speech API supportée (SpeechRecognition

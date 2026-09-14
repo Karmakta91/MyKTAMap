@@ -825,6 +825,22 @@
              cohérente avec le pattern des autres groupes (Perf, Debug, etc.).
              Le texte est injecté en JS pour rester DRY avec la modale Réglages
              carte (interfaceConfig.js). -->
+        <!-- 📔 v1.92.0 (audit ergonomie, décision KARMA 14/09/2026) — LE CARNET
+             SE RÈGLE ICI, PLUS DEPUIS UN PLAN. Il est GLOBAL (clé
+             myktamap_journal_enabled, valable pour tous les plans) et il
+             s'ouvre depuis l'accueil : le régler depuis un plan laissait croire
+             qu'on ne décidait que pour ce plan-là. Même raisonnement que les
+             quatre réglages rapatriés en v1.85.3. -->
+        <div class="kta-aide-section">
+          <label class="kta-perf-ultra-row" id="loaderJournalRow">
+            <input type="checkbox" id="loaderJournalCb">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label" data-i18n="config.journal.label"></span>
+              <span class="kta-perf-ultra-hint" data-i18n="config.journal.hint"></span>
+            </span>
+          </label>
+        </div>
+
         <div class="kta-aide-section" id="loaderIncognitoSection">
           <button class="kta-cfg-incognito-btn" type="button" id="loaderIncognitoBtn">
             <span style="font-size:18px;" id="loaderIncognitoIcon">🕵️</span>
@@ -1332,6 +1348,11 @@
        Après gpxImport : il réutilise sa génération de canvas vierge
        (window.GpxImport.genererCanvasVierge) au moment de l'appel. -->
   <script src="js/sigImport.js" defer></script>
+  <!-- 🗺️ GeoTIFF : lit le calage embarqué dans un .tif (QGIS) + décode ses
+       pixels. Après sigImport : il réutilise ses projections Lambert 93 et
+       Web Mercator (window.SigImport.L93 / .WEBMERC) au moment de l'appel.
+       Avant createConf : le Générateur s'y branche pour remplir le géoréf. -->
+  <script src="js/tiffGeoref.js" defer></script>
   <script src="js/createConf.js" defer></script>
   <script src="js/planRegistry.js" defer></script>
   <!-- 💾 v1.87.0 — Pre-cache hors-ligne dun plan serveur. Apres planRegistry

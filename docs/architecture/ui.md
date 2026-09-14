@@ -345,13 +345,13 @@ Toggle accessible depuis ⚙️ Réglages (mode carte) → groupe « 🎨 Affich
 
 | # | Groupe (clé) | Portée | Contenu |
 |---|---|---|---|
-| 1 | 🌍 `config.group.application` | 🌍 tous | 🎬 mode présentation · **🏠 Réglés depuis l'accueil** (lecture seule : langue, thème, icônes au zoom, panneaux ancrés, magnétisme ; bouton → `_retourLoaderAvecConfirm`) |
+| 1 | 🌍 `config.group.application` | 🌍 tous | 🎬 mode présentation · **🏠 Réglés depuis l'accueil** (lecture seule : langue, thème, icônes au zoom, panneaux ancrés, magnétisme, **carnet des sorties** ; bouton → `_retourLoaderAvecConfirm`) |
 | 2 | 📐 `config.group.planCalib` | 📍 ce plan | bandeau cohérence · échelle (`setPlanScale`) · Nord (`setPlanNorthOffset`) · **lanceur 🌐 Géoref** (`#cfg_georef_open`, état `#cfg_georef_etat`) → sous-modale `#kta-cfg-georef-modal` (enfant de `#kta-cfg-modal`, rendue par `_renderCfgGeorefSection`, handlers `_bindCfgGeorefHandlers` posés à l'ouverture) |
 | 3 | 📍 `config.group.navTracker` | 📍 ce plan | départ X/Y (+ pickers) · podomètre ×3 · nav intelligente ×3 |
 | 4 | 🎨 `config.group.affichage` | 📍/🌍 mixte (badge « selon la ligne », chaque ligne dit la sienne) | ronds (ce plan) · wake lock · vocal (tous plans) |
 | 5 | 🚀 `config.group.perf` | 📍 ce plan | toggles ULTRA + `tousNiveaux` (multi-niveau seulement, hors ULTRA) |
 | 6 | 🛰️ `config.group.capteurs` | 🌍 tous | batterie · vibration |
-| 7 | 🔒 `config.group.privacy` | 🌍 tous | carnet (tous plans) · incognito |
+| 7 | 🔒 `config.group.privacy` | 🌍 tous | incognito (le **carnet** s'est déplacé à l'accueil en v1.92.0 : `#loaderJournalCb`, câblé par `homeConfig.js`) |
 | 8 | 🛠️ `config.group.system` | 📍 ce plan (lecture seule) | preset perf en lecture seule |
 
 **Application immédiate** (`_bindReglagesImmediats`) : les 9 champs jadis lus par « Appliquer » (`cfg_scale`, `cfg_startX/Y`, `cfg_stepLength/Threshold/Cooldown`, `cfg_smartNav`, `cfg_smartNavRadius/Heading`) persistent au `change` via `setPlanScale` / `setPlanTracking` / `setPlanSmartNav`. Validation par `_cfgValider(id, brut)` (table `_CFG_BORNES`, exposée `window._ktaCfgValider`, **exécutée** par `scripts/check-reglages-immediats.js`) : hors bornes = rouge + toast, rien d'écrit. Départ X/Y : debounce 600 ms puis `resetTrackingPosition()` seulement si la paire a changé (`_cfgFlushDepart` à la fermeture). Les pickers et le calibrage d'échelle (`interfaceMaintenance.js`) émettent `change` sur le champ. `appliquerConfig` et `_validerReglagesTracking` **n'existent plus**.

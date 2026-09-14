@@ -540,6 +540,10 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
    - **🔎 Icônes qui grossissent au zoom**, **📌 Ancrer les panneaux d'outils au bouton**, **🧲 Magnétisme au dessin** et son **rayon** *(depuis v1.85.3)* — ces quatre-là valent pour **tous tes plans**. Ils vivaient dans ⚙️ Réglages du mode carte, où on les changeait depuis un plan sans savoir qu'on les changeait partout.
    - **🔆 Garder l'écran allumé** — empêche la mise en veille automatique de ton écran tant que MyKTAMap est ouvert (Wake Lock API). Utile en sortie cataphile pour ne pas avoir à toucher le tel toutes les 30 sec. Re-acquisition auto au retour d'arrière-plan (visibilitychange). Toggle masqué automatiquement sur les navigateurs qui ne supportent pas l'API (Firefox notamment). Le même toggle est aussi accessible dans **⚙️ Réglages** en mode carte (cf section dédiée).
 
+> 📊 **Voir l'état mémoire** — dans cette même modale, un bouton **« 📊 Voir l'état mémoire »** ouvre l'**inspecteur** : ce que l'app occupe sur ton appareil (clés de stockage triées par taille, bases de données, cache de l'application, quota du navigateur) et ce qui est chargé à l'instant. Un bouton **📋 Copier le rapport** produit un texte prêt à coller pour signaler un problème.
+
+> 📔 **Tenir un carnet de mes sorties** — chaque plan que tu ouvres devient une **sortie** archivée dans 📔 Mon carnet (durée, distance, ajouts, photos). Décoché, l'app n'ouvre plus rien toute seule et la sortie en cours s'arrête ; ce qui est déjà dans le carnet reste, et tu peux toujours en démarrer une à la demande depuis **📊 Détails de la session**. *(Réglage déplacé ici depuis ⚙️ Réglages du mode carte en v1.92.0 : il vaut pour tous tes plans, et le carnet s'ouvre depuis l'accueil.)*
+
 > 🌍 **Langue de l'application** : MyKTAMap est traduit en **3 langues — Français, English, Español**. Le sélecteur de langue (drapeau + nom complet) est dans **⚙️ Configuration → 🌍 Application**, tout en haut de la modale. Le changement s'applique tout de suite, sans recharger l'app. *À savoir* : la **Documentation** (ce guide) et le **tutoriel de bienvenue** existent dans les **3 langues** — ils suivent ta langue d'app automatiquement, et le bouton drapeau en haut de la fenêtre Documentation te laisse basculer 🇫🇷 / 🇬🇧 / 🇪🇸 quand tu veux. Seule l'**Aide intégrée** (le 📚 de la barre latérale en mode carte) reste en français et en anglais : en espagnol, elle s'affiche en **anglais par défaut**. À chaque changement de langue, un message te propose de **redémarrer l'app** pour une bascule 100 % propre (au choix). 💡 En **mode incognito**, ta langue d'interface est désormais **conservée** (les autres données restent, elles, totalement oubliées).
 
 > 💡 L'option « Afficher les ronds aux intersections de tracés » n'est **pas dans Configuration home** mais dans **⚙️ Réglages en mode carte** (per-plan). Chaque plan a maintenant son propre réglage — pratique pour désactiver les cercles uniquement sur tes plans très denses sans toucher les autres.
@@ -835,6 +839,10 @@ Le bouton **⛶** du widget Vue OSM s'appelle désormais **« Ouvrir le mode OSM
 - **100 % local** : la recherche lit vos propres plans, aucune adresse internet n'est interrogée ;
 - seuls les plans **géoréférencés** apparaissent — un plan sans calibrage GPS est invisible en mode OSM (calibrez-le via le Générateur ou les Réglages).
 - ⚠️ **Un plan jamais ouvert n'y apparaît pas non plus, même s'il est calibré** *(précisé en v1.90.2)*. La calibration voyage **dans le plan**, mais l'app ne la lit qu'à sa **première ouverture** : avant ça, elle ne peut pas savoir. **Ouvrez chaque plan une fois** et ceux qui sont calés apparaîtront tout seuls. Le message d'accueil de la Vue OSM le dit désormais au lieu d'annoncer « aucun plan géoréférencé », qui était faux dans ce cas.
+
+**📏 Mesurer sur la carte OSM** — en mode OSM, l'outil de mesure donne une **distance** et une **surface** en cliquant sur la carte. Une mesure faite ici ne dépend d'**aucun calibrage** : les coordonnées sont déjà géographiques, elle est donc plus fiable qu'une mesure faite sur le plan.
+
+**🎯 Coordonnées de surface** — un clic sur la carte OSM donne la **latitude et la longitude du point situé juste au-dessus**, copiables d'un bouton. C'est ce qu'on transmet à une équipe qui arrive par la surface.
 
 **🗂️ Plusieurs plans en même temps (depuis v1.71.0)** — le panneau « Plans affichés » du mode OSM permet de **superposer vos plans géoréférencés** : ➕ pour en ajouter un, ▲▼ pour choisir qui passe dessus/dessous, un curseur d'**opacité par plan**, ✕ pour retirer. Le plan marqué ◉ est le « principal » (celui du sélecteur du haut). Toute cette gestion vit dans une **modale dédiée** ouverte par le bouton **≡** du bandeau (rien ne masque la carte) : réglages d'**affichage globaux**, **filtre par tag** (agrégé sur tous les plans affichés), et la pile des plans. Les anciennes rangées sous le sélecteur (opacité, cases, tags) ont disparu du widget — la carte y gagne leur hauteur. Chaque ligne y porte aussi **5 mini-boutons de filtrage propres au plan** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — les réglages globaux d'affichage vivent dans la même modale (section Affichage), les deux niveaux se combinent. Idéal pour afficher deux secteurs voisins par-dessus un plan d'ensemble, en ne gardant par exemple que les POI de l'un et l'image de l'autre. **🏷️ Et depuis la v1.84.0, l'ajout par ÉTIQUETTE** : sous « Plans », une rangée de chips liste les étiquettes portées par **au moins deux** de tes plans géoréférencés (celles que tu saisis dans ta bibliothèque), avec un compteur « 3/12 ». Un clic **affiche tous** les plans de l'étiquette, un second clic **les retire** — indispensable dès qu'un atlas découpé en produit vingt. La casse est ignorée (« Gironde » et « GIRONDE » sont la même étiquette), et au-delà de 3 plans affichés l'app demande confirmation en annonçant le compte : les plans se chargent ensuite **un par un**, la carte se remplit progressivement.
 
@@ -1290,7 +1298,7 @@ timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type[,level]
 
 ### 🔥 Heatmap — densité de passage
 
-Le bouton **🔥 Heatmap** dans le flyout **🧭 Tracker** ouvre une modale qui dessine une **carte de densité** par-dessus ton plan. Pratique pour visualiser d'un coup d'œil les **zones les plus fréquentées** (passages clés) vs celles peu utilisées.
+Le bouton **🔥 Heatmap** dans le menu **🧭 Tracker** ouvre une modale qui dessine une **carte de densité** par-dessus ton plan. Pratique pour visualiser d'un coup d'œil les **zones les plus fréquentées** (passages clés) vs celles peu utilisées.
 
 > 📌 **Pertinence** : la heatmap s'appuie sur une interpolation le long des segments + une normalisation par histogramme + des filtres sur la timeline tracker, pour un rendu fidèle de la fréquentation réelle.
 
@@ -1597,7 +1605,7 @@ Outil opérationnel pour **assigner méthodiquement des équipes de secours** à
 
 #### Accès
 
-Bouton 🚨 dans le groupe **🧭 Tracker** (flyout urgences), à côté de ⛑️ Je suis perdu et 🚨 Panique. Fond rouge urgence cohérent.
+Bouton 🚨 dans le menu **🧭 Tracker** (section urgences, en bas), à côté de ⛑️ Je suis perdu et 🚨 Panique. Fond rouge urgence cohérent.
 
 #### Workflow
 
@@ -3375,6 +3383,10 @@ Les plans très gros peuvent occasionner des **kills mémoire silencieux** sur i
 
 ---
 
+### 🎓 Revoir le tutoriel
+
+Le tutoriel d'accueil (27 cartes) **se rejoue à tout moment** : ouvre **📖 Documentation** et touche le bouton **🎓** dans la ligne de titre, à côté des drapeaux de langue. Il n'y a rien à réinstaller ni à réinitialiser.
+
 ### 🔎 Chercher dans la documentation
 
 Cette documentation est longue. En haut de la modale 📖, un champ **🔎 Chercher** cherche dans **tout le texte** : les occurrences sont surlignées, **Entrée** ou ↓ passe à la suivante, le compteur indique « i / n », et les entrées du sommaire sans résultat s'estompent. Les accents ne comptent pas : « reglages » trouve « Réglages ». La recherche du hub ❓ Aide, elle, cherche dans les titres **et** le contenu des sections.
@@ -3422,7 +3434,7 @@ Chaque groupe porte sa **portée** dans son titre — **📍 ce plan** ou **🌍
 
 ### 🌍 Application *(🌍 tous les plans)*
 - **🎬 Activer le mode présentation** : plein écran sans interface (démos / projection). Touche **F** sur PC ; sortie par **F** / **Échap** ou le bouton flottant ✕.
-- **🏠 Réglés depuis l'accueil** *(lecture seule)* : langue, thème, icônes adaptatives au zoom, ancrage des panneaux, magnétisme au dessin. Leur valeur se lit ici ; le bouton **🏠 Aller à l'accueil pour les modifier** quitte le plan (ta session est conservée) et t'amène à ⚙️ Configuration.
+- **🏠 Réglés depuis l'accueil** *(lecture seule)* : langue, thème, icônes adaptatives au zoom, ancrage des panneaux, magnétisme au dessin, **carnet des sorties**. Leur valeur se lit ici ; le bouton **🏠 Aller à l'accueil pour les modifier** quitte le plan (ta session est conservée) et t'amène à ⚙️ Configuration.
 
 ### 📐 Plan : échelle & géolocalisation *(📍 ce plan)*
 - **Échelle (px/m)** avec bouton **🎯 Calibrer** (cf. plus bas). Une échelle nulle ou négative est refusée.
@@ -3450,7 +3462,6 @@ Chaque groupe porte sa **portée** dans son titre — **📍 ce plan** ou **🌍
 - **🔋 Niveau de batterie** et **📳 Vibration haptique**. Un capteur refusé par l'appareil (ou par iOS) s'affiche grisé, avec la raison.
 
 ### 🔒 Confidentialité & sécurité *(🌍 tous les plans)*
-- **📔 Tenir un carnet de mes sorties** *(tous les plans)*.
 - **🕵️ Mode incognito** : ouvre une nouvelle fenêtre qui n'écrit rien sur l'appareil.
 
 ### 🛠️ Système & maintenance *(📍 ce plan)*

@@ -55,3 +55,13 @@ scripts/i18n-orphelines.txt
 # tout nouvel audit offensif plutot que de compter sur l'attention au
 # moment du commit.
 /docs/architecture/audit-*.md
+
+# 🗃️ Dossier de travail local (donnees SIG lourdes : .gpkg, .tif georeferences,
+
+# exports intermediaires). AJOUTE LE 14/09/2026 apres un incident : un
+
+# `git add -A` y a embarque ~100 Mo de binaires. Un depot Git ne desenfle
+
+# jamais — un binaire pousse une fois y reste pour toujours.
+
+/tmp/

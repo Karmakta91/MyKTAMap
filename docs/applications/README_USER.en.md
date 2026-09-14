@@ -541,6 +541,10 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
    - **🔎 Icons that grow with zoom**, **📌 Anchor tool panels to their button**, **🧲 Snap while drawing** and its **radius** *(since v1.85.3)* — these four apply to **all your maps**. They used to live in ⚙️ Settings in map mode, where you changed them from one map without knowing you were changing them everywhere.
    - **🔆 Keep screen on** — prevents your screen from auto-sleeping while MyKTAMap is open (Wake Lock API). Useful on cataphile outings to avoid having to touch the phone every 30 sec. Auto re-acquire on return from background (visibilitychange). Toggle automatically hidden on browsers that don't support the API (Firefox notably). The same toggle is also accessible in **⚙️ Settings** in map mode (see dedicated section).
 
+> 📊 **See memory state** — in this same modal, a **“📊 See memory state”** button opens the **inspector**: what the app takes up on your device (storage keys sorted by size, databases, application cache, browser quota) and what is loaded right now. A **📋 Copy report** button produces text ready to paste when reporting a problem.
+
+> 📔 **Keep a logbook of my outings** — every map you open becomes an **outing** archived in 📔 My logbook (duration, distance, additions, photos). Unticked, the app no longer opens anything by itself and the current outing stops; what is already in the logbook stays, and you can still start one on demand from **📊 Session details**. *(Setting moved here from ⚙️ Settings in map mode in v1.92.0: it applies to all your maps, and the logbook opens from the home screen.)*
+
 > 🌍 **Application language**: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is in **⚙️ Configuration → 🌍 Application**, at the very top of the modal. The change applies immediately, without reloading the app. *Good to know*: the **Documentation** (this guide) and the **welcome tutorial** exist in all **3 languages** — they follow your app language automatically, and the flag button at the top of the Documentation window lets you switch 🇫🇷 / 🇬🇧 / 🇪🇸 whenever you want. Only the **built-in Help** (the 📚 in the sidebar in map mode) remains French and English: in Spanish, it is displayed in **English by default**. On each language change, a message offers to **restart the app** for a fully clean switch (optional). 💡 In **incognito mode**, your interface language is now **kept** (all other data stays completely forgotten).
 
 > 💡 The "Show circles at path intersections" option is **not in Configuration home** but in **⚙️ Settings in map mode** (per-plan). Each map now has its own setting — handy to disable circles only on your very dense maps without touching the others.
@@ -839,6 +843,10 @@ The **⛶** button of the OSM view widget is now called **"Open OSM mode"**: the
 - **100% local**: the search reads your own plans, no internet address service is queried;
 - ⚠️ **A map you have never opened does not appear either, even if it is calibrated** *(clarified in v1.90.2)*. The calibration travels **inside the map**, but the app only reads it on the **first open**: before that, it cannot know. **Open each map once** and the calibrated ones will show up on their own. The OSM view empty message now says so, instead of claiming there is no georeferenced map, which was false in that case.
 - only **georeferenced** plans appear — a plan without GPS calibration is invisible in OSM mode (calibrate it via the Generator or Settings).
+
+**📏 Measuring on the OSM map** — in OSM mode, the measuring tool gives a **distance** and an **area** by clicking on the map. A measurement made here depends on **no calibration**: the coordinates are already geographic, so it is more reliable than a measurement made on the plan.
+
+**🎯 Surface coordinates** — a click on the OSM map gives the **latitude and longitude of the point right above**, copyable with one button. That is what you pass to a team coming in from the surface.
 
 **🗂️ Several plans at once (since v1.71.0)** — the "Displayed plans" panel of OSM mode lets you **stack your georeferenced plans**: ➕ to add one, ▲▼ to choose what goes above/below, a per-plan **opacity** slider, ✕ to remove. The plan marked ◉ is the "primary" one (the top selector's). All this management lives in a **dedicated modal** opened by the banner's **≡** button (nothing covers the map): **global display** switches, **tag filtering** (aggregated across displayed plans), and the plan stack. The old rows under the selector (opacity, checkboxes, tags) are gone from the widget — the map gains their height. Each row also carries **5 mini filter buttons of its own** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — the global display switches live in the same modal (Display section), the two levels combine. Perfect to show two neighbouring sectors on top of an overview plan, keeping e.g. only one's POIs and the other's image. **🏷️ And since v1.84.0, adding by LABEL**: under “Plans”, a row of chips lists the labels carried by **at least two** of your georeferenced plans (the ones you type in your library), with a “3/12” counter. One click **shows all** the plans of that label, a second click **removes them** — essential as soon as a split atlas produces twenty of them. Case is ignored (“Gironde” and “GIRONDE” are the same label), and past 3 displayed plans the app asks for confirmation, stating the count: plans then load **one by one**, filling the map progressively.
 
@@ -1285,7 +1293,7 @@ timestamp_ms_epoch,delta_ms_since_start,x_map,y_map,type[,level]
 
 ### 🔥 Heatmap — passage density
 
-The **🔥 Heatmap** button in the **🧭 Tracker** flyout opens a modal that draws a **density map** over your map. Handy for visualizing at a glance the **most frequented areas** (key passages) vs those rarely used.
+The **🔥 Heatmap** button in the **🧭 Tracker** menu opens a modal that draws a **density map** over your map. Handy for visualizing at a glance the **most frequented areas** (key passages) vs those rarely used.
 
 > 📌 **Relevance**: the heatmap relies on interpolation along segments + histogram normalization + filters on the tracker timeline, for a faithful rendering of actual frequentation.
 
@@ -1589,7 +1597,7 @@ Operational tool to **methodically assign rescue teams** to search areas on a ca
 
 #### Access
 
-🚨 button in the **🧭 Tracker** group (emergency flyout), next to ⛑️ I'm lost and 🚨 Panic. Consistent red emergency background.
+🚨 button in the **🧭 Tracker** menu (emergency section, at the bottom), next to ⛑️ I'm lost and 🚨 Panic. Consistent red emergency background.
 
 #### Workflow
 
@@ -3365,6 +3373,10 @@ Very large maps can cause **silent memory kills** on iOS — the OS kills the ta
 
 ---
 
+### 🎓 Replaying the tutorial
+
+The welcome tutorial (27 cards) **can be replayed at any time**: open **📖 Documentation** and tap the **🎓** button in the title row, next to the language flags. Nothing to reinstall or reset.
+
 ### 🔎 Searching the documentation
 
 This documentation is long. At the top of the 📖 modal, a **🔎 Search** field searches **the whole text**: occurrences are highlighted, **Enter** or ↓ jumps to the next one, the counter shows “i / n”, and table-of-contents entries without a match fade out. Accents do not matter: “reglages” finds “Réglages”. The ❓ Help hub search, for its part, looks in the titles **and** the content of the sections.
@@ -3412,7 +3424,7 @@ Every group carries its **scope** in its title — **📍 this map** or **🌍 a
 
 ### 🌍 Application *(🌍 all maps)*
 - **🎬 Enable presentation mode**: full screen without UI (demos / projection). **F** key on PC; exit with **F** / **Esc** or the floating ✕ button.
-- **🏠 Set from the home screen** *(read-only)*: language, theme, zoom-scaled icons, anchored panels, snapping while drawing. Their value is shown here; the **🏠 Go to the home screen to change them** button leaves the map (your session is kept) and takes you to ⚙️ Configuration.
+- **🏠 Set from the home screen** *(read-only)*: language, theme, zoom-scaled icons, anchored panels, snapping while drawing, **outings logbook**. Their value is shown here; the **🏠 Go to the home screen to change them** button leaves the map (your session is kept) and takes you to ⚙️ Configuration.
 
 ### 📐 Map: scale & geolocation *(📍 this map)*
 - **Scale (px/m)** with the **🎯 Calibrate** button (see below). A zero or negative scale is refused.
@@ -3440,7 +3452,6 @@ Every group carries its **scope** in its title — **📍 this map** or **🌍 a
 - **🔋 Battery level** and **📳 Haptic vibration**. A sensor refused by the device (or by iOS) shows greyed out, with the reason.
 
 ### 🔒 Privacy & security *(🌍 all maps)*
-- **📔 Keep a logbook of my outings** *(all maps)*.
 - **🕵️ Incognito mode**: opens a new window that writes nothing on the device.
 
 ### 🛠️ System & maintenance *(📍 this map)*
