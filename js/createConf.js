@@ -843,6 +843,26 @@ function afficherPlanner() {
         // plan précédent ne ferait qu'introduire une déformation — on le vide.
         ["pl_geo_C_x", "pl_geo_C_y", "pl_geo_C_coords"].forEach(function(id) { put(id, ""); });
 
+        // 🐛 14/09/2026 (KARMA : « ça m'ouvre juste le générateur, sans
+        // préremplir ») — TOUT ÉTAIT REMPLI, RIEN N'ÉTAIT VISIBLE. Les six
+        // champs du géoréf ET l'échelle vivent dans des blocs
+        // `data-planner-advanced="1"`, que le CSS masque tant que le corps
+        // porte `data-planner-mode="simple"` — le mode par défaut au premier
+        // lancement, et le mode mémorisé de qui n'a jamais basculé. On écrivait
+        // donc dans des champs que personne ne pouvait voir.
+        //
+        // On bascule en Avancé, et ON LE DIT : changer l'écran sous les yeux de
+        // l'utilisateur sans un mot est le défaut qu'on corrige ailleurs.
+        // Bascule PONCTUELLE : `_appliquerPlannerMode` ne touche pas la
+        // préférence mémorisée (seul un clic sur le switcher l'écrit), donc le
+        // prochain plan sans GeoTIFF rouvrira en Simple comme avant.
+        let bascule = "";
+        const corpsPl = document.getElementById("kta-planner-corps");
+        if (corpsPl && corpsPl.getAttribute("data-planner-mode") === "simple") {
+          _appliquerPlannerMode("avance");
+          bascule = window.I18n.t("gen.tiff.modeAvance");
+        }
+
         const taille = (res.largeurM && res.hauteurM)
           ? window.I18n.t("gen.tiff.emprise", {
               l: Math.round(res.largeurM), h: Math.round(res.hauteurM) })
@@ -852,7 +872,7 @@ function afficherPlanner() {
             { px: (Math.round((1 / res.metresParPixel) * 1000) / 1000) });
         }
         setNom(window.I18n.t("gen.tiff.ok", {
-          nom: res.nomPng, epsg: res.epsg || "?", emprise: taille + taillePlus }));
+          nom: res.nomPng, epsg: res.epsg || "?", emprise: taille + taillePlus }) + bascule);
         console.log("[Planner GeoTIFF]", f.name, res.width + "×" + res.height,
                     "EPSG:" + res.epsg, res.compression, g);
       }).catch(function(err) {

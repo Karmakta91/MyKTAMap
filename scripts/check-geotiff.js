@@ -588,6 +588,53 @@ const remplace = (o, tag, valeurs, type) => {
       "muets → " + muets.join(", ") + ". Un libellé qui énumère les formats acceptés et " +
       "oublie celui qu'on vient d'ajouter fait conclure à l'utilisateur que ça ne marche pas.");
 
+    // ─────────────────────────────────────────────────────────────────────
+    // 🐛 L9. LE CALAGE LU DOIT ÊTRE VISIBLE (bug KARMA, 14/09/2026)
+    // ─────────────────────────────────────────────────────────────────────
+    // « Si je mets un tiff georef dans la fenêtre de chargement du home, ça
+    // m'ouvre juste le générateur, sans préremplir. » Reproduit au navigateur :
+    // TOUT était rempli — image, pointA/B, échelle 3,522 px/m, emprise — mais le
+    // Générateur s'ouvre en mode « simple », et le CSS masque alors tout bloc
+    // `data-planner-advanced="1"` : les six champs du géoréf ET l'échelle.
+    // Écrire dans des champs invisibles est indiscernable d'une panne.
+    {
+      const CC  = fs.readFileSync(path.join("js", "createConf.js"), "utf8").replace(/\r\n/g, "\n");
+      const CSS = fs.readFileSync(path.join("css", "style.css"), "utf8").replace(/\r\n/g, "\n");
+      const bloc = CC.slice(CC.indexOf("(function _bindGeoTiff()"),
+                            CC.indexOf('_bindUploadLabel("pl_baseImage"'));
+
+      verif("L9a. le mode simple masque les blocs avancés (la règle qui a causé le bug)",
+        /#kta-planner-corps\[data-planner-mode="simple"\] \[data-planner-advanced="1"\]/.test(CSS),
+        "La règle CSS a disparu : ce contrôle ne garde plus rien, il faut le revoir.");
+
+      verif("🩸 L9b. le géoréf ET l'échelle sont dans des blocs avancés",
+        (function () {
+          const iS = CC.indexOf('id="pl_scale"'), iG = CC.indexOf('id="pl_geo_A_x"');
+          return iS > 0 && iG > 0 &&
+                 CC.lastIndexOf('data-planner-advanced="1"', iS) > 0 &&
+                 CC.lastIndexOf('data-planner-advanced="1"', iG) > 0;
+        })(),
+        "Si ces champs cessaient d'être avancés, la bascule ci-dessous deviendrait inutile.");
+
+      verif("🩸 L9c. un GeoTIFF lu fait basculer le Générateur en Avancé",
+        /getAttribute\("data-planner-mode"\) === "simple"[\s\S]{0,240}_appliquerPlannerMode\("avance"\)/.test(bloc),
+        "Sans bascule, le calage est écrit dans des champs masqués : l'utilisateur voit un Générateur vide.");
+
+      verif("🩸 L9d. …et la bascule est DITE à l'utilisateur",
+        /gen\.tiff\.modeAvance/.test(bloc) && /\+ bascule\)/.test(bloc),
+        "Changer l'écran sous les yeux de quelqu'un sans un mot est le défaut qu'on corrige ailleurs.");
+
+      verif("L9e. la bascule reste ponctuelle (préférence mémorisée intacte)",
+        !/_ecrirePlannerMode/.test(bloc),
+        "Le mode choisi par l'utilisateur ne doit pas être réécrit par un dépôt de fichier.");
+
+      ["fr", "en", "es"].forEach(function (l) {
+        const d = JSON.parse(fs.readFileSync(path.join("lang", l + ".json"), "utf8"));
+        verif("L9f. i18n " + l + " : gen.tiff.modeAvance",
+              typeof d["gen.tiff.modeAvance"] === "string", "Clé manquante en " + l + ".");
+      });
+    }
+
     // --- verdict -----------------------------------------------------------
     if (!echecs.length) {
       console.log("\n🎉 GeoTIFF : Web Mercator conforme à ses propriétés définitoires, lecteur juste, refus nommés");

@@ -5220,6 +5220,7 @@
   "zones.toast.abandon": "⬛ Zona {type} abandonada: hacen falta al menos 3 vértices (⏪ para recuperarla)",
   "zones.toast.fermee": "⬛ Zona {type} cerrada",
   "gen.tiff.lecture": "⏳ Leyendo el GeoTIFF {nom}…",
+  "gen.tiff.modeAvance": " · cambiado al modo ⚙️ Avanzado para mostrarte la georreferenciación y la escala leídas del archivo",
   "gen.tiff.ok": "🗺️ {nom} — georreferenciado automáticamente (EPSG:{epsg}){emprise}",
   "gen.tiff.emprise": " · extensión {l} × {h} m",
   "gen.tiff.refus": "❌ GeoTIFF «{nom}»: {raison}",

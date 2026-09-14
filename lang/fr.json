@@ -5220,6 +5220,7 @@
   "zones.toast.abandon": "⬛ Zone {type} abandonnée : il faut au moins 3 sommets (⏪ pour la reprendre)",
   "zones.toast.fermee": "⬛ Zone {type} fermée",
   "gen.tiff.lecture": "⏳ Lecture du GeoTIFF {nom}…",
+  "gen.tiff.modeAvance": " · passé en mode ⚙️ Avancé pour te montrer le géoréférencement et l'échelle lus dans le fichier",
   "gen.tiff.ok": "🗺️ {nom} — calé automatiquement (EPSG:{epsg}){emprise}",
   "gen.tiff.emprise": " · emprise {l} × {h} m",
   "gen.tiff.refus": "❌ GeoTIFF « {nom} » : {raison}",
