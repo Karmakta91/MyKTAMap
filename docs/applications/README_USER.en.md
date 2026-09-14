@@ -288,7 +288,7 @@ Three settings, and they matter:
 Click on the profile banner → **👤 My profile** modal:
 
 - **✏️ Nickname**: type whatever you want (letters / numbers / space). Used only to personalize local display.
-- **📷 Photo**: choose an image from your gallery. The app **automatically compresses it** (512 px max long side, JPEG quality 88%) before IndexedDB storage to avoid saturating your browser quota.
+- **📷 Photo**: choose an image from your gallery. The app **automatically compresses it** (512 px max long side, JPEG quality 88%) before saving it on your device, to avoid saturating your browser quota.
 - **🗑️ Reset profile**: reset button (with confirmation). Empties nickname + photo + counters.
 
 #### 📊 Stats grid
@@ -300,9 +300,9 @@ The Profile modal displays **6 global stats cells**:
 | 🗂️ **N maps** | Number of maps in your registry (server + local) |
 | 💾 **N sessions** | Total number of saved sessions (per-map slots) |
 | ⭐ **N favorites** | Cumulative number of points marked as favorites, across all maps |
-| 📦 **N snapshots** | Number of session backup snapshots in IndexedDB (max 10 **per map** — beyond that, the oldest are dropped) |
+| 📦 **N snapshots** | Number of session backups kept on this device (max 10 **per map** — beyond that, the oldest are dropped) |
 | 📸 **N POI photos** | Number of photos attached to points + total size |
-| 💾 **N MB save** | **Actual size of MyKTAMap data** (localStorage with MyKTAMap prefix + 6 known IndexedDB stores). Excluding volatile PWA Cache (which is not user data). |
+| 💾 **N MB save** | **Actual size of MyKTAMap data** (everything MyKTAMap has saved in your browser). Excluding volatile PWA Cache (which is not user data). |
 
 #### 📊 My maps
 
@@ -357,8 +357,8 @@ As you open your maps and their data layers load, the pie charts are automatical
 
 The "Storage" stat (visible in the home banner + in the Profile modal grid) reflects the **actual size of your MyKTAMap data**:
 
-- **MyKTAMap-targeted calculation**: we only sum up the localStorage entries prefixed `myktamap_*` + the 6 IndexedDB stores known to the app (handles, blobs, backups, photos, etc.). The volatile PWA Cache (which contains the app's JS/CSS code and is NOT user data) is **excluded** from the calculation.
-- **30s cache**: the calculation is cumulated then cached for 30 seconds to avoid re-querying IndexedDB in a loop when you quickly open/close modals.
+- **MyKTAMap-targeted calculation**: we only sum up what MyKTAMap wrote in your browser — the `myktamap_*` keys and the app's 6 local databases (handles, blobs, backups, photos, etc.). The volatile PWA Cache (which contains the app's JS/CSS code and is NOT user data) is **excluded** from the calculation.
+- **30s cache**: the calculation is cumulated then cached for 30 seconds to avoid re-querying storage in a loop when you quickly open/close modals.
 - **Tooltip**: "Size of MyKTAMap data (LS + IDB)" + clarification "excluding PWA Cache".
 
 Result: the value is **stable, predictable, and truly reflects what you have mapped**.
@@ -388,7 +388,7 @@ The profile export can now **bundle the ZIP archives of maps stored in the app**
 - In **Merge** mode on import, a map that already has its archive on the device **keeps its own**; in **Replace** mode, the profile's wins. A storage failure (quota full) is reported **per map**, the rest continues.
 - Maps in "permanent file access" or "re-selection" mode don't appear in the list: their ZIP lives on your disk, not in the app — there is nothing to bundle.
 
-> 🔒 **100% local**: your nickname and photo remain in your browser (IndexedDB). Nothing is sent to a server. The profile export is explicit and controlled by you.
+> 🔒 **100% local**: your nickname and photo remain in your browser. Nothing is sent to a server. The profile export is explicit and controlled by you.
 
 #### 💼 Pro edition — import a license
 
@@ -458,7 +458,7 @@ Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** secti
 
 **Display filters & organization**:
 
-- **🌐 Show server maps** — check/uncheck this toggle above the list to hide automatically discovered server maps (test1, test2, demos…) and only see your personal maps. **Preserved** between sessions (localStorage). Unchecking does not delete anything — re-checking → the maps reappear intact.
+- **🌐 Show server maps** — check/uncheck this toggle above the list to hide automatically discovered server maps (test1, test2, demos…) and only see your personal maps. **Preserved** between sessions (on this device). Unchecking does not delete anything — re-checking → the maps reappear intact.
 - **🔎 Filter by name** *(since v1.78.0)* — a field above the list filters live as you type. Pure display filter, reset the next time you visit the home screen.
 - **⭐ Pin** *(since v1.78.0)* — each row's star moves the map **to the top of the list** (pinned maps keep the "last opened" order among themselves). Click again to unpin.
 - **🖼️ Tiling for this map** *(since v1.90.2)* — the selector that used to sit above the "Load this map" button **is gone**: the app decides on its own ("Auto"), which is what it already did for nearly every map. It only ever affected very large maps **not tiled at generation time (V1)**; on an already-tiled map, "Disabled" changed nothing. The setting now lives in **ℹ️ Info**, and **only for the maps it applies to** — and unlike the old one, it is **remembered** for that map instead of resetting on every start.
@@ -541,6 +541,12 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
    - **🔎 Icons that grow with zoom**, **📌 Anchor tool panels to their button**, **🧲 Snap while drawing** and its **radius** *(since v1.85.3)* — these four apply to **all your maps**. They used to live in ⚙️ Settings in map mode, where you changed them from one map without knowing you were changing them everywhere.
    - **🔆 Keep screen on** — prevents your screen from auto-sleeping while MyKTAMap is open (Wake Lock API). Useful on cataphile outings to avoid having to touch the phone every 30 sec. Auto re-acquire on return from background (visibilitychange). Toggle automatically hidden on browsers that don't support the API (Firefox notably). The same toggle is also accessible in **⚙️ Settings** in map mode (see dedicated section).
 
+> 📊 **See memory state** — in this same modal, a **“📊 See memory state”** button opens the **inspector**: what the app takes up on your device (storage keys sorted by size, databases, application cache, browser quota) and what is loaded right now. A **📋 Copy report** button produces text ready to paste when reporting a problem.
+
+> ❓ **Help button inside windows** — puts a small **❓** in the title row of windows that have a help page: ⚙️ Settings, 📊 Session details, 🧭 Tracker menu, ⬆️ Save, ⬇️ Load, ≡ Legend, 🔍 Search, 🚨 Rescue, 📖 History mode, 🏗️ Generator, 📔 Logbook, 🌍 OSM view, 👤 Profile, ℹ️ Map info. One tap opens **the right page directly**, without going through the ❓ Help group. Untick if you prefer an interface without this icon: it disappears at once, even from windows already open.
+
+> 📔 **Keep a logbook of my outings** — every map you open becomes an **outing** archived in 📔 My logbook (duration, distance, additions, photos). Unticked, the app no longer opens anything by itself and the current outing stops; what is already in the logbook stays, and you can still start one on demand from **📊 Session details**. *(Setting moved here from ⚙️ Settings in map mode in v1.92.0: it applies to all your maps, and the logbook opens from the home screen.)*
+
 > 🌍 **Application language**: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is in **⚙️ Configuration → 🌍 Application**, at the very top of the modal. The change applies immediately, without reloading the app. *Good to know*: the **Documentation** (this guide) and the **welcome tutorial** exist in all **3 languages** — they follow your app language automatically, and the flag button at the top of the Documentation window lets you switch 🇫🇷 / 🇬🇧 / 🇪🇸 whenever you want. Only the **built-in Help** (the 📚 in the sidebar in map mode) remains French and English: in Spanish, it is displayed in **English by default**. On each language change, a message offers to **restart the app** for a fully clean switch (optional). 💡 In **incognito mode**, your interface language is now **kept** (all other data stays completely forgotten).
 
 > 💡 The "Show circles at path intersections" option is **not in Configuration home** but in **⚙️ Settings in map mode** (per-plan). Each map now has its own setting — handy to disable circles only on your very dense maps without touching the others.
@@ -558,7 +564,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 8. **🔄 Update — Force soft update** — re-downloads the latest version of the code (purges the PWA cache, keeps your data and your maps). Useful if you suspect that your app remains on an old version after a release. **Never** touches your maps, your active session, your community code or your local PIN. **Mandatory confirmation before triggering** (blue modal detailing what is preserved + need for active Internet connection).
 
-9. **💥 Reset everything (full reset)** — total purge (cache + localStorage + IndexedDB + maps). Resets the community access code **AND** the local PIN if configured. **Double confirmation required.** Irreversible action.
+9. **💥 Reset everything (full reset)** — total purge: the cache, everything saved in your browser, and your maps. Resets the community access code **AND** the local PIN if configured. **Double confirmation required.** Irreversible action.
 
 **Organization**: **everything is grouped in a single ⚙️ Configuration modal**, accessible from the loader header. The 🏗️ Generate a map button remains directly visible in the home (not in the Configuration modal) because it is a creation action, not a setting.
 
@@ -612,16 +618,20 @@ applies to every later load.
 - **Unified left/right sidebars** — each side is a **single continuous vertical bar**:
   - **Left**: ⊞ Layers · − + Zoom · 🏗 Level · ≡ collapse · 📚 Doc · ⚙ Settings · ⬇ Load · ⬆ Save
   - **Right**: ≡ collapse · 🔍 Search · ✏️ Edition · 📐 Measurement · 🛣 Paths · ⬛ Zones · 🧭 Tracker
-  - **In landscape mobile**, sub-menus unfold **horizontally toward the inside of the screen** (more ergonomic on tablet/smartphone in landscape). Zoom +/- remains vertical (universal convention).
+  - **Tool panels**: since v1.85.1 they open **centred on screen** (Paths, Zones, Structures, like Tracker and Filters); the “🪟 Anchor tool panels to the button” option (⚙️ Configuration) restores anchoring.
 - **🧭 Orientation compass**:
   - In portrait: **bottom-left** above the footer
   - In landscape: **bottom-centered** (so as not to hide the side icons)
 - **≡ Reduction buttons** at the top of each sidebar (▾ deployed, ▸/◂ collapsed) — saves space without stopping active modes
-- **"Session details" modal**: a click on the header counters opens an overview:
-  - All your points (with tag, coordinates, level if multi-level)
-  - Paths grouped by type (Main/Secondary/Path/Junction) with counter + total distance per type
-  - Zones grouped by type
-  - Active measurements (📐 simple measurement, 🗺️ route with waypoints, 🧭 tracker)
+- **"📊 Session details" modal**: a click on the header counters opens the map's **dashboard**:
+  - At the top, **✅ Saved N s ago** (red if saving fails)
+  - Aggregated stats, and a per-level breakdown in multi-level
+  - All your points (tag, coordinates, level), paths by type with distance, zones, structures, photos
+  - Other measurements (📐 measurement, 🗺️ route and its steps, 🧭 tracking)
+  - **📔 Current outing**: 🏁 Close, 🧭 Refine the trail, open the logbook. **If no outing is running**, a **📔 Start an outing** button opens one on this map — it works even when “Keep a logbook of my outings” is unticked in ⚙️ Settings, and it is then the only way to record one. One outing at a time: while one is running, the button gives way to 🏁 Close.
+  - **⭐ Favorites**: export this map's or all, import
+  - **📦 Recent backups** of this map: ↻ Restore, 📆 Snapshot now, 🗑️ Clear all — every deletion asks for confirmation
+  - The **📊 Global stats** button (copyable report, CSV, PDF)
 - **Redesigned "Change map" modal**: highlight card of current map with `● ACTIVE` badge, list of recent maps with hover animation, large blue "📚 View all my maps" button at the bottom
 - **Map generator removed from map mode**: remains accessible **only from the home** via 🏗️ Generate a map (creation outside of map mode)
 
@@ -731,7 +741,7 @@ If you see this window **regularly**, it's a sign that you need to **reduce the 
 
 MyKTAMap works **entirely offline** once the map has been loaded for the first time.
 
-The application uses a **Service Worker** that automatically caches all necessary files (interface, images, data). On first load with an Internet connection, everything is saved locally.
+The application installs an **offline component** (a “Service Worker”) that automatically caches all necessary files (interface, images, data). On first load with an Internet connection, everything is saved locally.
 
 **To prepare for an offline outing:**
 
@@ -801,7 +811,7 @@ You can:
 A window detailing:
 - The technical model (pure PWA, no backend)
 - The complete and nominative **whitelist** of URLs the app can contact
-- How to check yourself via your browser's DevTools (F12 → Network)
+- How to check for yourself with your browser's developer tools (F12 key, Network tab)
 - How the server's Content Security Policy (CSP) additionally protects
 
 A 📄 button allows you to open the **complete documentation** (`docs/NETWORK_AUDIT.md`) in a new tab.
@@ -835,6 +845,10 @@ The **⛶** button of the OSM view widget is now called **"Open OSM mode"**: the
 - **100% local**: the search reads your own plans, no internet address service is queried;
 - ⚠️ **A map you have never opened does not appear either, even if it is calibrated** *(clarified in v1.90.2)*. The calibration travels **inside the map**, but the app only reads it on the **first open**: before that, it cannot know. **Open each map once** and the calibrated ones will show up on their own. The OSM view empty message now says so, instead of claiming there is no georeferenced map, which was false in that case.
 - only **georeferenced** plans appear — a plan without GPS calibration is invisible in OSM mode (calibrate it via the Generator or Settings).
+
+**📏 Measuring on the OSM map** — in OSM mode, the measuring tool gives a **distance** and an **area** by clicking on the map. A measurement made here depends on **no calibration**: the coordinates are already geographic, so it is more reliable than a measurement made on the plan.
+
+**🎯 Surface coordinates** — a click on the OSM map gives the **latitude and longitude of the point right above**, copyable with one button. That is what you pass to a team coming in from the surface.
 
 **🗂️ Several plans at once (since v1.71.0)** — the "Displayed plans" panel of OSM mode lets you **stack your georeferenced plans**: ➕ to add one, ▲▼ to choose what goes above/below, a per-plan **opacity** slider, ✕ to remove. The plan marked ◉ is the "primary" one (the top selector's). All this management lives in a **dedicated modal** opened by the banner's **≡** button (nothing covers the map): **global display** switches, **tag filtering** (aggregated across displayed plans), and the plan stack. The old rows under the selector (opacity, checkboxes, tags) are gone from the widget — the map gains their height. Each row also carries **5 mini filter buttons of its own** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — the global display switches live in the same modal (Display section), the two levels combine. Perfect to show two neighbouring sectors on top of an overview plan, keeping e.g. only one's POIs and the other's image. **🏷️ And since v1.84.0, adding by LABEL**: under “Plans”, a row of chips lists the labels carried by **at least two** of your georeferenced plans (the ones you type in your library), with a “3/12” counter. One click **shows all** the plans of that label, a second click **removes them** — essential as soon as a split atlas produces twenty of them. Case is ignored (“Gironde” and “GIRONDE” are the same label), and past 3 displayed plans the app asks for confirmation, stating the count: plans then load **one by one**, filling the map progressively.
 
@@ -883,6 +897,8 @@ In **anonymized** mode, note + PDF are intentionally omitted from the ZIP (may c
 
 ## 🚨 Emergency Exit Mode — Find the nearest exit
 
+> 🧭 This tool takes you back out. If you are rather trying to **locate yourself** (⛑️ I'm lost), need a **highly readable screen** (panic mode), or are **coordinating teams** (Rescue Mode), all of that lives further down, in the Rescue chapter.
+
 The **🚨** button in the top bar (between 📖 Story Mode and the battery 🔋) triggers route computation toward the **nearest exit** from your current position.
 
 **Use case**: you're underground, you want to get out **right now** with no thinking (injured, low battery, lamp failure, simply lost). You tap the button (or trigger it by voice), the app does the rest.
@@ -905,11 +921,13 @@ The **🚨** button in the top bar (between 📖 Story Mode and the battery 🔋
 
 The codes `caf` / `pef` / `esf` (closed cavages, shafts, stairs) are **excluded** since they're not traversable in practice. If you mark a POI as closed, the app will never suggest going there.
 
-If an exit is displayed with a **≈** badge (tilde), it means the pathfinder **could not compute a path** and fell back to **straight-line distance**. Beware: that exit may actually be unreachable (walls, isolated floor).
+If an exit shows the label **“Straight-line distance — route not verified”** (dashed card), the pathfinder **could not compute a path**: the distance is measured as the crow flies. Such exits are pushed under an **“Unconfirmed”** separator in the list, and if **no** exit has a verified route, a red banner says so first. Beware: such an exit may actually be unreachable (walls, isolated floor).
 
 ### Computation origin
 
-By default the app starts from your **current tracker position**. If the tracker isn't active (or you're free-exploring without tracking), an alternative modal offers a **click-on-the-map picker** to specify your starting point.
+The app starts from your **position at that very moment**, without asking, as soon as tracking is active **or** you have located yourself at least once since the plan was opened (“📍 I am here” on a point, recalibration on the map, arrival through a portal, or a restored session that contained a recalibration). The modal tells you where the computation starts from: *“from your position (tracking active)”*, *“from your last confirmed position, N min ago”* or *“from the point you tapped”*.
+
+**The only case where the app asks “Where are you?”**: you have **never** confirmed your position since the plan was opened (it still equals the plan's start point). A banner appears, you **tap your position on the map** (it works even when aiming at an existing marker), and the computation starts from there — that tap **also recalibrates tracking**, so “Draw the route”, “Go there” and the XL emergency screen share the same position. Before, in that case, the app silently computed from the plan entrance and presented it as your position.
 
 ### Multi-level native
 
@@ -1014,12 +1032,12 @@ The app reads each plan's points (session + data layers) **in place**, showing p
 
 ## 🧭 Interface overview
 
-All tools are accessible from the **right side bar**, organized into **13 groups**:
+The interface is organized into **13 groups** spread over the **two side bars** — left: ⭐ Favorites, 📚 Help, ⚙️ Settings, ⬇️ Load, ⬆️ Save, ⏪ History; right: 🔍 Search, 🧭 Tracker, 📐 Measurement, ✏️ Edit, 🛣️ Paths, ⬛ Zones, 🏛️ Structures:
 
 | Group | Icon | What it's for |
 |---|---|---|
 | **Favorites** | ⭐ | Your favorited points, one click away |
-| **Help / Docs / Legend** | 📚 | Help, documentation, AI Help, icon legend |
+| **Help / Documentation / Legend** | 📚 | Help, documentation, AI Help, icon legend |
 | **Settings** | ⚙️ | Settings, scale calibration, debug *(direct click)* |
 | **Search** | 🔍 | Quickly find a point on the plan *(direct click)* |
 | **Load / Import** | ⬇️ | Import a session or a GPX, plan data editor |
@@ -1047,7 +1065,7 @@ All tools are accessible from the **right side bar**, organized into **13 groups
 
 ### 🎨 Customise the legend (rename, hide, colours, custom types)
 
-Open **≡ Legend** (📚 Help / Doc / Legend group) then **✏️ Edit**. For each trace, zone or structure type:
+Open **≡ Legend** (📚 Help / Documentation / Legend group) then **✏️ Edit**. For each trace, zone or structure type:
 
 - **Rename**: type your own label (e.g. "Principal" → "Main gallery"). It shows everywhere: legend, popups, stats, filters.
 - **🎨 Change the colour** *(since v1.76.1)*: one colour square per row — and for **zones and pillars/walls, two squares**: fill and an **independent border**. The colour applies **everywhere** — map, image/PDF exports, KMZ, statistics, session report — immediately, no reload. A **↺** button restores both fill AND border. Details: with no border chosen, a zone derives it automatically (darker shade) and a pillar/wall keeps its black outline (the historical default); a recoloured *Inaccessible* zone loses its hatching (fixed pattern) in favour of a flat fill. **Custom entries** are edited the same way, live.
@@ -1063,26 +1081,9 @@ Everything is saved automatically in your session, **per plan**.
 
 ### 🔄 Quickly change map via the title
 
-The **current map title** displayed at the top of the screen is **clickable**: it opens a small drop-down menu with:
+The **current map title** at the top of the screen is **clickable**: it opens the **“🗂 Change map”** window — the current map's card (`● ACTIVE` badge), the **last 3 maps** opened, and a **📚 See all my maps** button back to the home screen. The **compass rose 🧭** left of the title goes straight to the home screen.
 
-- **📚 RECENT MAPS** — the last 3 maps you opened (excluding the current map)
-- **📚 All my maps…** — to return to the home screen with the full list
-
-When clicking on a map in the menu:
-
-- If your **session is empty** (no annotation, road, zone or measurement) → the map loads **directly** without confirmation
-- If you have **modifications in progress** → a window warns you with the **exact list** of what you will lose:
-  ```
-  ⚠️ Session in progress
-  You have unsaved changes:
-     • 5 points added
-     • 2 paths
-     • 1 zone
-  Loading « Test Map 1 » will cause you to lose these changes.
-  [Cancel]   [Load anyway]
-  ```
-
-> 💡 This function allows you to switch between your favorite maps in **2 clicks** without going back to the home screen. To close the menu without doing anything: click elsewhere or press **Esc**.
+When you pick a map, your current session is **saved automatically** (auto-save + snapshot) before switching: there is no “changes will be lost” warning any more. To close without doing anything: ✕, click outside or **Esc**.
 
 ---
 
@@ -1181,11 +1182,11 @@ The search covers:
 
 > All tracker buttons are in the **🧭 Tracker** group of the sidebar.
 
-### 🧭 Tracker side panel
+### 🧭 Tracker menu (full-screen modal)
 
-The **🧭 Tracker** button opens a **side panel (flyout)** adjacent to the main button. It's readable, visually stable, and all sub-actions are accessible without scrolling, even on mobile.
+The **🧭 Tracker** button opens a **full-screen modal of large tiles** (since v1.50.0), arranged in three sections: **Tracking**, **Tools**, **Emergency**. Each tile closes the modal as it acts.
 
-**Sub-actions available in the flyout** (fixed order):
+**Available tiles**:
 
 | Icon | Action |
 |---|---|
@@ -1199,8 +1200,11 @@ The **🧭 Tracker** button opens a **side panel (flyout)** adjacent to the main
 | **🔥** | Heatmap — see dedicated section |
 | **⛑️** | I'm lost — **SOLID RED button** (danger signal) |
 | **🚨** | XL Emergency Mode — **SOLID RED button** (danger signal) |
+| **🚨** | Rescue Mode — search plans (teams + zones), **RED background** |
 
-> 🚨 **The 2 emergency modes are deliberately placed at the END of the panel with a bright red background** to make them instantly visually identifiable. In a stressful situation, you know where to look.
+> 🚨 **The 3 emergency tiles (⛑️ I'm lost, 🚨 XL emergency mode, 🚨 Rescue Mode) form the Emergency section, at the bottom, on a bright red background.** The **🚨 Emergency exit** button (nearest exit) lives in the **top bar**, one tap away.
+
+> 🧭 **Bottom bar**: the 🧭 indicator shows **ON · 👣 steps · distance** live while tracking, and **a tap on it opens the Tracker menu**. When tracking starts, the warning dialog offers **🔆 Keep the screen on** (pre-ticked): a screen that goes off means lost steps. The **≡ Filters** button carries a badge with the number of active filters (levels included); when a map is reloaded, a message tells you if filters were restored. In **📊 Session details**, the first line says **“✅ Saved N s ago”** (red if saving fails).
 
 > 🆕 **In the field**:
 > - **🎯 My position**: recenter the map on your current position (handy after panning elsewhere).
@@ -1293,7 +1297,7 @@ timestamp_ms_epoch,delta_ms_since_start,x_map,y_map,type[,level]
 
 ### 🔥 Heatmap — passage density
 
-The **🔥 Heatmap** button in the **🧭 Tracker** flyout opens a modal that draws a **density map** over your map. Handy for visualizing at a glance the **most frequented areas** (key passages) vs those rarely used.
+The **🔥 Heatmap** button in the **🧭 Tracker** menu opens a modal that draws a **density map** over your map. Handy for visualizing at a glance the **most frequented areas** (key passages) vs those rarely used.
 
 > 📌 **Relevance**: the heatmap relies on interpolation along segments + histogram normalization + filters on the tracker timeline, for a faithful rendering of actual frequentation.
 
@@ -1445,7 +1449,7 @@ The **🗺️** button in the **🧭 Tracker** group opens the route modal. It c
 | 🚶 **Normal** | 5 km/h | Default, standard cataphile walking pace |
 | 🏃 **Fast** | 7 km/h | Sustained pace, known route, fast return |
 
-The active mode is displayed next to the estimated time in the bottomleft label. The choice is persisted between sessions (localStorage). You can switch modes at any time via the modal, the time updates instantly.
+The active mode is displayed next to the estimated time in the bottomleft label. The choice is persisted between sessions (on this device). You can switch modes at any time via the modal, the time updates instantly.
 
 **Navigation mode** — when a route is already active and you reopen **🗺️ Calculate a route**, the modal switches to **navigation mode**:
 
@@ -1490,7 +1494,18 @@ In the route modal, a collapsible section **🚫 Avoidance preferences (optional
 - ⛔ Zone = **hard** constraint (never relaxed even in fallback)
 - 🚫 Avoidance = **soft** constraint (fallback possible with message)
 
-**Persistence**: your preferences are saved per map (localStorage). On the next computation on the same map, they are restored. **🗑️ Reset** button to clear everything.
+**Persistence**: your preferences are saved per map (on this device). On the next computation on the same map, they are restored. **🗑️ Reset** button to clear everything.
+
+> 🧭 **Where to start, depending on your situation.** The pages below cover four different tools. Which one you need depends on what is happening to you:
+>
+> | Your situation | The tool | Where |
+> |---|---|---|
+> | I want **the nearest exit**, right now | 🚨 Emergency exit | "Emergency Exit Mode" section, above |
+> | **I no longer know where I am**, but I know where I have been | ⛑️ I'm lost | just below |
+> | I am panicking, I need a **screen readable at a glance** | 🚨 "Panic" emergency mode | right after |
+> | **I am coordinating teams** looking for someone | 🚨 Rescue Mode | the rest of this chapter |
+>
+> The four are independent. Rescue Mode is the only one that needs preparation: declared teams, assigned areas.
 
 ### ⛑️ Emergency Mode — "I'm lost"
 
@@ -1516,7 +1531,7 @@ The orange **⛑️** button in the **🧭 Tracker** group opens emergency mode.
    | 🚶 **Normal** *(default)* | 5 km/h | ~833 m | Standard walking pace |
    | 🏃 **Fast** | 7 km/h | ~1167 m | Known route, sustained walking |
 
-   The choice is persisted between sessions (localStorage). If the area is already displayed on the map, switching presets recalculates it instantly.
+   The choice is persisted between sessions (on this device). If the area is already displayed on the map, switching presets recalculates it instantly.
 
 4. **🔮 Visual clues (optional but very useful)** — free text, separated by comma or line break. Examples: *"water can, ram engraving, blue room, broken shaft, descending stairs"*. The app searches these words in the **name**, **description** and **tags** of all the points of the map (layers and session points combined).
 
@@ -1597,7 +1612,7 @@ Operational tool to **methodically assign rescue teams** to search areas on a ca
 
 #### Access
 
-🚨 button in the **🧭 Tracker** group (emergency flyout), next to ⛑️ I'm lost and 🚨 Panic. Consistent red emergency background.
+🚨 button in the **🧭 Tracker** menu (emergency section, at the bottom), next to ⛑️ I'm lost and 🚨 Panic. Consistent red emergency background.
 
 #### Workflow
 
@@ -1647,7 +1662,7 @@ The sections below detail the advanced features: cross-app integrations (KML, Lo
 
 ### 🚨 Rescue Mode — Multi-phases
 
-A scenario can now **sequence several phases** with a debrief intercalated between each. Typical field use case: *Phase 1 = one team sweeps ALL main passages without entering extraction chambers → team returns → debrief at command post → Phase 2 = X teams target the extraction chambers with the information brought back from Phase 1.*
+A scenario can **sequence several phases** with a debrief intercalated between each. Typical field use case: *Phase 1 = one team sweeps ALL main passages without entering extraction chambers → team returns → debrief at command post → Phase 2 = X teams target the extraction chambers with the information brought back from Phase 1.*
 
 > 💡 **If you don't use multi-phases**, change nothing: your scenario stays with **1 single implicit phase** and the behavior is strictly identical to previous behavior. No visual pollution (multi-phase badges and buttons only appear if you actually create 2+ phases).
 
@@ -1738,7 +1753,7 @@ On multi-level maps, conditional button **🏗️ Auto: 1 team per level (N)** i
 
 #### ⭐ Favorites in quick access
 
-In the mini-modal "📍 Choose a point", your map favorites now appear as clickable chips (max 8) ABOVE the autocomplete search. 1 click = waypoint applied (skip search + map click).
+In the mini-modal "📍 Choose a point", your map favorites appear as clickable chips (max 8) ABOVE the autocomplete search. 1 click = waypoint applied (skip search + map click).
 
 Especially useful for emergency scenarios where you want to quickly create several teams with the same 3-4 known access shafts.
 
@@ -1785,7 +1800,7 @@ Enter the GPS position of the rescue HQ, firefighter rendezvous point, or any su
 
 #### 🌍 OSM View accessible everywhere in Rescue Mode
 
-The **🌍 OSM View** button is now present in:
+The **🌍 OSM View** button is present in:
 - The Edit view (scenario banner)
 - All 3 Live views: 👤 Surface Operator, 🚨 Field Team, 🚑 Free Rescuer
 
@@ -1806,7 +1821,7 @@ New **🚒 Firefighter Briefing** button in all Rescue Mode banners. Generates a
 
 #### 📤 "Surface briefing" page in post-mission report
 
-The post-mission PDF report (generated via 📤 Report button) now includes a new "SURFACE BRIEFING" page with the same info. Useful for geographic debrief with firefighters or archiving the intervention file.
+The post-mission PDF report (generated via 📤 Report button) includes a "SURFACE BRIEFING" page with the same info. Useful for geographic debrief with firefighters or archiving the intervention file.
 
 #### 🏷️ OSM View tag filter
 
@@ -2161,7 +2176,7 @@ Each action triggers a **discreet toast** at the bottom: `↩ Undone: Placement 
 
 ### What is NOT covered
 
-- ❌ **Photos** attached to points: their deletion remains **irreversible** (the blobs are erased from the local IndexedDB database, not restorable)
+- ❌ **Photos** attached to points: their deletion remains **irreversible** (the files are erased from your browser's local storage, with no way back)
 - ❌ **Session imports**: an import that overwrites your session cannot be undone via Ctrl+Z (use the automatic session save to recover)
 - ❌ **Tracker** (real-time sensor mode)
 - ❌ **Distance measurement** (= ephemeral tool, not a persistent mutation)
@@ -2376,7 +2391,7 @@ You can attach up to **5 photos per point** (anti-saturation limit for browser s
 - When creating a new map via the generator, button "📦 Import a datalayer ZIP in one click" → you can recover the points + photos exported from another map
 
 **Technical limits**:
-- Browser local storage (IndexedDB) — quota ~50-200 MB depending on the device. A warning toast notifies you if you approach the quota
+- Browser local storage — quota ~50-200 MB depending on the device. A warning toast notifies you if you approach the quota
 - On **iOS Safari standalone PWA**, the browser may purge the IDB in case of lack of space or uninstall — regularly export your maps + photos to secure them
 - In case of a full reset of the app (💥 Reset everything), **all photos are deleted** (consistent with the full wipe)
 
@@ -2549,6 +2564,23 @@ Clicking **a path, a zone or a structure you drew** opens a small popup. It is t
 | **💾 Save note** | Saves the note. The popup closes on its own |
 | **🔄 Convert** | Changes the object's **type**, and if needed its **family** |
 | **🗑️ Delete** | Removes the object. Red, on its own row |
+
+### 📍 A point's popup
+
+A tap on a **marker** (a map point or one you added) opens its popup: name, type, note, and a row of buttons.
+
+| Button | What it does |
+|---|---|
+| **📍 I am here** | Recalibrates tracking on this point. It is also what **confirms your position**: from then on, 🚨 Emergency exit and 🧭 Go there start from here without asking |
+| **🧭 Go there** | Computes a route from your position to this point |
+| **➕ Route** | Adds the point as a step of a route (current or new) |
+| **☆ Favorite** | Adds or removes the point from ⭐ Favorites |
+| **🔊 Read the note** | Reads the note aloud (local speech synthesis) |
+| **📋 GPS** | Copyable GPS coordinates, if the map is georeferenced |
+| **📸 Thumbnails** | Attached photos, tap = full screen |
+| **🌀 Links** | Inter-map links leaving from this point |
+
+On **your own points** (your session's) you also get **✏️ Edit**, **📌 Reposition** (then tap the new position on the map) and, on its own red line, **🗑️ Delete** — undoable with ⏪.
 
 ### 🔄 Convert — change an object's type, or family
 
@@ -2813,10 +2845,10 @@ If you enable the mode on an existing map:
 
 ### 📤 Export
 
-Press **⬆️ → 💾**. A modal opens with **3 tabs** to choose from:
+Press **⬆️ → 💾**. A modal opens with **5 tabs**: 🚀 Full · 🎨 Advanced · 🔄 Conversion · 🔗 Merge · 📡 External export:
 
 #### 🚀 Full
-Exports everything in a single `devmap-session` file (added points, paths, zones, structures).
+Exports everything in a single `.json` file (or `.zip` if you tick photos): added points, paths, zones, structures, measurements, tracking trail.
 Handy for saving your session and resuming it later.
 
 > 📌 Distance measurement is not included in Full mode.
@@ -2864,7 +2896,7 @@ Available **without an open map** from the home screen: **📊 Data editor → �
 
 ### 🖼️ Export to PNG/JPG
 
-Press **⬆️ → 🖼️ Map as image**. A modal opens with two modes:
+Press **⬆️ → 🖼️ Export the map as an image**. A modal opens with two modes:
 
 #### ⚡ Quick export
 Everything is included automatically: complete map, all visible layers, points, paths, zones, tracker position and path. PNG format original resolution. A single click on **Download**.
@@ -2949,7 +2981,7 @@ The generated PDF carries the signature `Generated by MyKTAMap · CC BY-NC-SA 4.
 
 ### 🌍 Export as geolocated KMZ (Google Earth, OsmAnd, Locus, Avenza)
 
-Press **⬆️ → 💾** then the **🌍 KMZ** tab. Generates a `.kmz` file that can be opened in any KML-compatible field mapping app.
+Press **⬆️ → 💾** then the **📡 External export** tab (KMZ). Generates a `.kmz` file that can be opened in any KML-compatible field mapping app.
 
 Typical use cases:
 - Visualize your map in **Google Earth** over satellite imagery
@@ -2999,7 +3031,7 @@ Click **Download** → file `MyKTAMap_<MapName>_<date>.kmz` downloaded.
 
 #### Calibration persistence
 
-Your 2-point calibration is saved **per map** (localStorage). On the next export of the same map, the 8 fields are already pre-filled — adjust if needed and re-download. If you change maps or start over, you'll just need to re-enter it.
+Your 2-point calibration is saved **per map** (on this device). On the next export of the same map, the 8 fields are already pre-filled — adjust if needed and re-download. If you change maps or start over, you'll just need to re-enter it.
 
 > ⚠️ **Accuracy limits**: the transformation is a **2D similarity** (rotation + uniform scale + translation). On globally flat and rigid maps, it's sufficient. On very extensive or non-rigid maps (local deformations), expect a slight drift at the ends opposite to the calibration. A future version may support 3+ points (least squares) for more accuracy if needed.
 
@@ -3013,9 +3045,9 @@ Your 2-point calibration is saved **per map** (localStorage). On the next export
 
 ### 📥 Import a session
 
-Press **⬇️ → 📥 Import a session** to open the import window. A modal displays:
+Press **⬇️ → 📥 Import**, then the **MyKTAMap session** card to open the import window. A modal displays:
 
-1. **Drag and drop** your `devmap-session.json` file into the area, or click to select it
+1. **Drag and drop** your `.json` file (or `.zip` with photos) into the area, or click to select it
 2. A **preview** displays: number of points added, number of paths, number of zones, number of measurement points
 3. A **warning** notifies you that the import will replace your current session — remember to export before if necessary
 4. Click **Import** to validate, or **Cancel** to close without changing anything
@@ -3062,7 +3094,7 @@ If a source contains several datasets, a **selector** appears (each with its ele
 
 ### 🗂️ Change map
 
-Press **⬇️ → 🗂️ Change map** to return to your map list (the **📚 My maps** home screen) and load another. Unexported data will be lost — **export your session before changing**.
+This button is **no longer in the ⬇️ menu**. To change map: tap the **compass rose 🧭** (home) or the **map title** (“Change map” window, see above) in the top bar. Your session is **saved automatically** before switching.
 
 From this screen, you can:
 
@@ -3078,6 +3110,22 @@ From this screen, you can:
 > Accessible directly via the **🏗️** button in the sidebar (direct click, no sub-menu).
 
 Press **🏗️** to open the generator. Two tabs available:
+
+### 🗺️ Dropping a GeoTIFF *(since v1.93.0)*
+
+If you georeferenced your map in **QGIS**, export it as a **GeoTIFF** (`.tif` / `.tiff`): the image **and** its georeferencing travel in the same file. Pick it as the map image — in the generator or straight from the home screen — and the app does the rest:
+
+- it **reads the georeferencing written in the file** and fills in the **GPS calibration** by itself;
+- it derives the **scale** (px/m) and the map's **extent**, both shown in the confirmation message;
+- it converts the image to PNG for the rest of the flow (no desktop browser displays a TIFF), then tiling and ZIP proceed as usual.
+
+**You no longer have to re-enter the two GPS points** you had just set in QGIS.
+
+> ✅ **What is read**: **LZW, Deflate or no** compression · **8 bits per channel** · **greyscale, RGB or RGBA** · **strip-organised** image · **north-up, rotation-free** georeferencing · coordinates in **Lambert 93, Web Mercator or WGS84**.
+>
+> ❌ **Whatever is refused is always named**, with what to change on export: BigTIFF, tiled image, separate channels, palette / CMYK / YCbCr, unusual predictor, rotated georeferencing, unsupported coordinate system. A message tells you exactly what to re-export — the app never guesses for you.
+
+> 🔒 **100 % local**: the file is read and converted **in your browser**. Not one byte is sent anywhere.
 
 ### 📄 New map
 
@@ -3143,7 +3191,7 @@ In the **📊 Data layers** section of the generator, a golden yellow box offers
 4. The ZIP is parsed → **data layers are automatically created**: `points` (the friend's points), `roads` (paths), `zones` (zones), `structure` (pillars/faces). If the ZIP contained photos, they are **kept in memory** to be embedded at generation time.
 5. Green message "✅ N layer(s) created: points (X), roads (Y), zones (Z), structure (W) · 📸 M photos"
 6. You **📦 Generate the ZIP** as usual → the final map contains your original layers (if Modify) + the imported layers + the `data/photos/` folder with the blobs
-7. When this map is loaded by any user, the photos are automatically restored in IndexedDB and appear in the marker popups
+7. When this map is loaded by any user, the photos are automatically restored on their device and appear in the marker popups
 
 **Behavior**:
 - **New mode**: the imported layers become the map's data layers (the UI list is emptied and filled with the ZIP's layers)
@@ -3153,12 +3201,12 @@ In the **📊 Data layers** section of the generator, a golden yellow box offers
 
 ### 📸 Include photos attached to the map
 
-In **Modify existing** mode, if the map you load already has **photos attached to its points** (stored in local IndexedDB via the editor), a **📸 Include attached photos (N · X MB)** checkbox appears in the "🖼️ Main images" section of the form.
+In **Modify existing** mode, if the map you load already has **photos attached to its points** (saved on your device by the editor), a **📸 Include attached photos (N · X MB)** checkbox appears in the "🖼️ Main images" section of the form.
 
 - **Checked by default**: the map's IDB photos are embedded in the generated map ZIP under `data/photos/<photoId>.jpg`. You can thus share the complete map (annotations + photos) to another device.
 - **Unchecked**: the generated map ZIP does not contain the photos. Lighter in size, but the user who imports the ZIP will not retrieve the photos.
 
-When loading this map ZIP by any other user: the photos are **automatically restored** in IndexedDB under the local planId + a discreet toast "📸 N photos restored from the map" confirms.
+When loading this map ZIP by any other user: the photos are **automatically restored** on the device, under the map's local id + a discreet toast "📸 N photos restored from the map" confirms.
 
 > ⚠️ If you uncheck **AND** you have also imported a datalayer ZIP with photos (see previous section), only the imported datalayer's photos will be embedded. The 📸 checkbox controls ONLY the current map's IDB photos.
 
@@ -3337,7 +3385,7 @@ If despite Performance mode, your map still crashes (typically 4000+ × 2000+ pi
 
 - **iPhone PWA** (installed on home screen) handles large maps better than direct iPhone Safari
 - **Android Chrome** is generally more tolerant than iOS for memory
-- In case of crash: ⚙️ Settings → **🐛 Detailed logs** → ON to diagnose
+- In case of crash: ⚙️ Configuration (home) → **🛠️ Developer Mode** → detailed logs to diagnose
 
 ### 8. 💾 Regular saving
 
@@ -3356,9 +3404,17 @@ Very large maps can cause **silent memory kills** on iOS — the OS kills the ta
 
 ---
 
+### 🎓 Replaying the tutorial
+
+The welcome tutorial (27 cards) **can be replayed at any time**: open **📖 Documentation** and tap the **🎓** button in the title row, next to the language flags. Nothing to reinstall or reset.
+
+### 🔎 Searching the documentation
+
+This documentation is long. At the top of the 📖 modal, a **🔎 Search** field searches **the whole text**: occurrences are highlighted, **Enter** or ↓ jumps to the next one, the counter shows “i / n”, and table-of-contents entries without a match fade out. Accents do not matter: “reglages” finds “Réglages”. The ❓ Help hub search, for its part, looks in the titles **and** the content of the sections.
+
 ## 🤖 AI Help
 
-> Accessible via the **📚 Help / Doc / Legend → 🤖 AI Help** group.
+> Accessible via the **📚 Help / Documentation / Legend → 🤖 AI Help** group.
 
 Downloads a `.md` file that summarizes everything the app allows you to do (this doc + a FAQ + instructions for the AI). Give it to **any conversational AI** (ChatGPT, Claude, Gemini, Perplexity, Le Chat, Copilot, etc.) — it will be able to answer all your questions about MyKTAMap with precise context.
 
@@ -3377,7 +3433,7 @@ Downloads a `.md` file that summarizes everything the app allows you to do (this
 
 ## 🗺️ Legend
 
-> Accessible via the **📚 Help / Doc / Legend → 🗺️ Legend** group.
+> Accessible via the **📚 Help / Documentation / Legend → 🗺️ Legend** group.
 
 Displays the complete legend of icons and paths, grouped by category: **🕳️ Shafts**, **🪜 Access** (ladder shafts, stairs, cavages), **⚠️ Signage**, **🛣️ Paths** and **⬛ Zones**.
 
@@ -3387,50 +3443,54 @@ Displays the complete legend of icons and paths, grouped by category: **🕳️ 
 
 ## ⚙️ Settings (in map mode, per plan)
 
-> Accessible directly via the **⚙️** button in the side bar (direct click, no sub-menu).
+> Accessible directly via the **⚙️ Settings** button in the side bar (direct click, no sub-menu).
 >
-> This modal is focused **per map** (settings related to the currently opened map). For **global settings** (interface, PIN, reset, etc.), go through **⚙️ Configuration** on the home page — see the dedicated section above. The separation is intentional: Settings = what concerns THIS map, Configuration = what concerns the app.
+> This modal is focused **per map**. For **global settings** (language, theme, PIN, reset, zoom-scaled icons, snapping…), go through **⚙️ Configuration** on the home page — see the dedicated section above. The separation is intentional: Settings = what concerns THIS map, Configuration = what concerns the app.
 
-Access the settings by clicking **⚙️**:
+### ✓ Everything is saved as you change it
 
-### 🧭 Tracking (map-specific)
-- **Initial tracker position**: X/Y start coordinates
-- **Step detection**: sensitivity, step size, anti-bounce delay
-- **Scale (px/m)** with **🎯 Calibrate** button: computes the correct scale from a measured distance
+There is **no Apply button anymore** *(since v1.92.0)*: every field is saved as soon as you change it (a green flash confirms it). An **out-of-range** value turns red, a message states the bounds, and **nothing is written** — the previous value stays. Close with **Esc**, **✕** or **Close**: nothing is lost.
 
-### 🔍 Display
-- **Zoom-adaptive icons** — *global preference*: the point icons (shafts, accesses, signage, etc.) keep a constant size relative to the map. On zoom-out, they shrink; on zoom-in, they grow. Reload required on toggle.
-- **⚪ Show circles at path intersections (this map)** — *per-plan setting*: solid colored circle at the crossing of 2 paths (green × purple → yellow, etc.). Uncheck to visually clear very dense maps, or if the computation slows down rendering. **Immediate effect**, saved per map (another map keeps its own setting). 
-- **🧭 North calibration (this map)** — *per-plan setting*: useful when the TOP of the map is **not** the true North (aerial photo with arbitrary framing, cataphile map without aligned compass rose). Angle field [0,360[ in degrees or button **📐 Calibrate (2 clicks)** which opens a WYSIWYG picker: click first the SOUTH of the map, then the NORTH, a dashed Sud→Nord arrow appears and the angle is auto-computed. **Effect**: tracker icon rotation + walking direction adapt → the tracker points in the right direction RELATIVE TO THE MAP. The physical compass 🧭 keeps pointing to the real magnetic North (= expected behavior of a compass). **Saved per map**, **immediate effect** without reload. ↺ Reset button to return to default (0 = North toward top of map).
+Every group carries its **scope** in its title — **📍 this map** or **🌍 all maps** — and **collapses** with a tap on the title (choice remembered). On a phone, only the titles show at opening, except the first group.
 
-> 💡 **Map author**: to durably embed the North OR a **History PDF** in the map ZIP (cross-users), use the **advanced generator** (field "🧭 North orientation" in Tracking + optional "📖 History PDF" section). For a History PDF loaded only in your session (your browser), keep using the import button in the **📖 History Mode** modal (status bar).
-- **🔆 Keep screen on** — *global preference*: enables the Wake Lock API to prevent automatic screen sleep while the app is open. Auto re-acquisition on return from background. Hidden if the browser doesn't support the API. The same toggle is also available in **⚙️ Configuration** on the home page.
+### 🌍 Application *(🌍 all maps)*
+- **🎬 Enable presentation mode**: full screen without UI (demos / projection). **F** key on PC; exit with **F** / **Esc** or the floating ✕ button.
+- **🏠 Set from the home screen** *(read-only)*: language, theme, zoom-scaled icons, anchored panels, snapping while drawing, **outings logbook**. Their value is shown here; the **🏠 Go to the home screen to change them** button leaves the map (your session is kept) and takes you to ⚙️ Configuration.
 
-### 🎬 Presentation mode
+### 📐 Map: scale & geolocation *(📍 this map)*
+- **Scale (px/m)** with the **🎯 Calibrate** button (see below). A zero or negative scale is refused.
+- **🧭 North calibration**: useful when the TOP of the map is not true North. Angle field [0,360[ or **📐 Calibrate (2 clicks)** button (South then North on the map). Immediate effect on the tracker; the physical compass keeps pointing to true North. **↺ Reset** to go back to 0.
+- **🌐 GPS georeferencing**: the state shows in the group (“not georeferenced”, “✅ points A and B”, “A, B and C”, “B estimated”) and the **🌐 Open georeferencing…** button opens its **own window**: points A / B (+ optional C) with **🔍 Search a point**, **📍 Map click** and **🧭 Estimate B**, then **💾 Save** / **🗑️ Clear** (confirmation). The calibration entered here is shared with the map's KMZ / GPX exports and pre-fills 📡 External export.
 
-- **🎬 Launch presentation mode**: button at the **top** of the Settings modal. Activates a full-screen mode without UI (for demos / projection), accessible with a single touch button.
-- The **F** key is available as a PC shortcut.
+> 💡 **Map author**: to durably embed the North or a **History PDF** in the map ZIP (cross-users), use the **advanced generator**. For a History PDF loaded only in your session, use the import button of the **📖 History Mode** modal (status bar).
 
-### 🎯 Georeferencing pickers
+### 📍 Navigation & tracker *(📍 this map)*
+- **Initial tracker position**: X/Y, or **🔍 Pick via a point**, or **📍 Click on the map**. As soon as the start point changes, tracking **restarts from there** (the current trail is cleared) — a message says so.
+- **Step detection**: step length [0; 1.5 m], threshold [10; 30], delay [300; 3,000 ms]. Out of range, nothing is saved.
+- **🧭 Smart navigation** (snapping to paths): switch (a message confirms), lateral tolerance [1; 50 m], heading weight [0; 5].
 
-The 2-point pickers (GPS calibration for KMZ / GPX) are available in **⚙️ Settings → Georeferencing tab** (in addition to the **Export → 🌍 KMZ** modal):
+### 🎨 Display *(📍/🌍 per line)*
+- **⚪ Show circles at path intersections** *(this map)* — immediate effect, saved per map.
+- **🔆 Keep screen on** *(all maps)* — Wake Lock, re-acquired on return from background. Also in ⚙️ Configuration.
+- **🎤 Voice commands (BETA)** *(all maps)*.
+- If your browser does not support wake lock or voice (Firefox), the line stays **visible, greyed out, with the reason** — like the sensors below.
 
-- **🔍 Search a point** on the map to auto-fill x/y
-- **📍 Map click** to directly point to a position
-- Manual lat/lng GPS entry to finalize the calibration
+### 🚀 Performance *(📍 this map)*
+- **🚀 ULTRA mode** applies 7 optimizations at once, or one by one (path decimation, animations, circles, popups, slow auto-save, viewport-only rendering, mobile zoom-out limit). Details in the Performance section above.
+- On a **multi-level** map: **🏗️ Show every level at launch** (applied at the next map load).
 
-The calibration entered here is shared with the KMZ / GPX exports of the same map (per-map persistence via localStorage). Handy for validating your calibration **outside the export flow** (for example at the start of a field session).
+### 🛰️ Sensor options *(🌍 all maps)*
+- **🔋 Battery level** and **📳 Haptic vibration**. A sensor refused by the device (or by iOS) shows greyed out, with the reason.
 
-### 🛠️ Debug
-- **🐛 Detailed logs**: enables verbose mode (tracker sensor + tiling + detection logs). Useful for diagnosing a problem.
-- Display of the **performance mode** of the current map (💤 Disabled / 🔄 Auto / 🌟 Quality / 🎯 Balanced / ⚡ Performance) — read-only here, modifiable at the next map load via the loader selector.
+### 🔒 Privacy & security *(🌍 all maps)*
+- **🕵️ Incognito mode**: opens a new window that writes nothing on the device.
+
+### 🛠️ System & maintenance *(📍 this map)*
+- Display of the current map's **performance mode** — read-only here (it is chosen in ℹ️ Info, for a map without V2 tiling). Detailed logs live in ⚙️ Configuration (home) → 🛠️ Developer Mode.
 
 ### Actions
-- **Apply**: saves the changes
-- **🐛 Logs**: displays the captured debug logs
-- **Reset**: restores default values for THIS map (does not delete anything — different from **💥 Reset everything** in ⚙️ Configuration loader, which purges everything)
-
-> 💡 **Performance mode is only modified at map load** (Auto / Disabled selector in the **load card**, right above the ▶️ Load this map button). Settings just displays the current one.
+- **↺ Default values**: resets **THIS map's settings** (scale, pedometer, start point, smart navigation, North) to the map's values and puts tracking back at the start — **confirmation asked**. Home-screen settings do not move. Different from **💥 Reset everything** in ⚙️ Configuration, which purges everything.
+- **Close** (or Esc, or ✕) — nothing to validate.
 
 > ⚠️ **To enable / modify the local access code (PIN / Face ID)**, you must go through **⚙️ Configuration on the home page** — the 🔐 Local access code section is NOT in ⚙️ Settings (by design — global critical setting, not per map).
 
@@ -3442,8 +3502,7 @@ If the app gives you a distance different from reality (for example 100 m displa
 2. Open **⚙️ → 🎯 Calibrate**
 3. Enter the **displayed distance** (100) and the **real distance** (150)
 4. The new scale displays in real time
-5. Click **Apply** → the value is injected into the Scale field
-6. Click **Apply** in the Settings modal to validate
+5. Click **Apply** → the value is injected into the Scale field **and saved right away** (nothing left to validate)
 
 > The longer the distance you calibrate on, the more accurate the result will be.
 
@@ -3472,7 +3531,7 @@ When a new version is available, the badge **flashes blue** to catch your attent
 
 Lock the app at every startup with a 4-6 digit PIN, **Face ID** or **Touch ID** if your device supports it. 100% local — no password is sent over the Internet, no recovery possible if forgotten.
 
-> ⚠️ **This is a usage barrier, not data encryption.** The lock prevents normal opening of the app, but a motivated attacker can bypass it via DevTools. Photos and sessions remain stored in clear in the browser. This is exactly the same security level as the existing community access code — honestly assumed.
+> ⚠️ **This is a usage barrier, not data encryption.** The lock prevents normal opening of the app, but a motivated attacker can bypass it with the browser's developer tools. Photos and sessions remain stored in clear in the browser. This is exactly the same security level as the existing community access code — honestly assumed.
 
 ### Enable the PIN
 
@@ -3499,9 +3558,9 @@ The lock screen appears automatically after the splash:
 
 ⚙️ Configuration → 🔐 Local access code → **🔓 Disable**. Confirmation by biometrics OR current code. The app no longer asks for a code at the next startup.
 
-### Lockout: 5 failed attempts
+### Temporary lock: 5 wrong codes
 
-For security reasons, after **5 incorrect codes in a row**, the app is locked **permanently** on a red screen with no exit button. The only way to recover access is to **💥 Reset everything** from the home screen (loss of the current session and unsaved maps).
+After **5 wrong codes in a row**, the app locks **temporarily**: 10 min the first time, then 1 h, 6 h and 24 h with each new run of 5 errors. A countdown is shown and the keypad comes back by itself when the delay ends; a correct code resets everything. There is **no reset button** on that screen and no code recovery if forgotten — if it is really lost, **💥 Reset everything** from the home screen remains (loss of the current session and unsaved maps). The delay follows the phone's clock.
 
 > Failed biometric attempts do **not** count toward the 5 attempts — the WebAuthn spec manages its own native lockout on the device side. You can cancel a Face ID by mistake without worrying about exhausting your tries.
 
@@ -3509,7 +3568,7 @@ For security reasons, after **5 incorrect codes in a row**, the app is locked **
 
 ## 🔧 Reset
 
-In case of a problem or to force an update, use **⚙️ → 🗑️ Reset**. This action unregisters the Service Worker, clears the cache and reloads the application.
+In case of a problem or to force an update, use **⚙️ Configuration (home page) → 💥 Reset everything**. This action removes the offline component (Service Worker) and unregisters the Service Worker, clears the cache and reloads the application.
 
 > ⚠️ Only perform this action with an Internet connection available. Without a network, the application will be unusable until the next full reload.
 
@@ -3617,7 +3676,7 @@ Choose **⚡ Performance** in the Performance mode selector before loading the m
 Press the active button (in green) again to deactivate it.
 
 **The application does not update after a new version**
-Use **⚙️ → 🔄 Force update** (soft update, keeps all your data). If insufficient: **⚙️ → 🗑️ Reset** (full purge, last resort). The soft update is fast thanks to a background pre-download.
+Use **⚙️ Configuration (home page) → 🔄 Force the update** (soft update, keeps all your data). If insufficient: **⚙️ Configuration → 💥 Reset everything** (full purge, last resort). The soft update is fast thanks to a background pre-download.
 
 **📡 App stuck after a soft update**
 If after an update the app remains stuck (loader without CSS, blank page, badly loaded assets), the most frequent cause is a **GitHub Pages edge CDN serving corrupted content** (bad MIME, truncated asset) for the current geographic area. First reflex before any reset: **disable your VPN if active and change networks** (4G ↔ Wi-Fi ↔ another Wi-Fi). Just switching IP/edge CDN is often enough to unblock.

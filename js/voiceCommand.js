@@ -97,22 +97,34 @@
     _commands.push(cmd);
   }
 
+  // 🚨 Q7 (audit ergonomie 13/09/2026) : le PREMIER motif enregistré gagnait.
+  // « où est la sortie » / « trouve la sortie » ouvraient la RECHERCHE (« où
+  // est », « trouve »), « sortie d'urgence » ouvrait l'écran XL (« urgence »),
+  // « au secours » le planificateur d'équipes — sans erreur, puisque le
+  // système croyait avoir réussi. Désormais le motif le plus LONG gagne (le
+  // plus spécifique), puis la `priority` déclarée (commandes vitales), puis
+  // l'ordre d'enregistrement.
   function _matchCommand(transcript) {
     const text = String(transcript || "").toLowerCase().trim();
     if (!text) return null;
-    for (const cmd of _commands) {
+    let best = null;
+    _commands.forEach(function(cmd, order) {
+      const prio = cmd.priority || 0;
       for (const p of cmd.patterns) {
+        let matches = null, len = 0;
         if (typeof p === "string") {
-          if (text === p || text.indexOf(p) !== -1) {
-            return { cmd: cmd, matches: [text] };
-          }
+          if (text === p || text.indexOf(p) !== -1) { matches = [text]; len = p.length; }
         } else if (p instanceof RegExp) {
           const m = text.match(p);
-          if (m) return { cmd: cmd, matches: m };
+          if (m) { matches = m; len = (m[0] || "").length; }
+        }
+        if (!matches) continue;
+        if (!best || len > best.len || (len === best.len && prio > best.prio)) {
+          best = { cmd: cmd, matches: matches, len: len, prio: prio, order: order };
         }
       }
-    }
-    return null;
+    });
+    return best ? { cmd: best.cmd, matches: best.matches } : null;
   }
 
   // ============================================================
@@ -146,6 +158,9 @@
       if (event.error === "no-speech") msg = _t("voice.err.noSpeech");
       else if (event.error === "not-allowed") msg = _t("voice.err.notAllowed");
       else if (event.error === "audio-capture") msg = _t("voice.err.audioCapture");
+      // 🚨 Q8 (audit 13/09/2026) : sous terre, la reconnaissance Web Speech
+      // passe par un service distant → l'erreur est « network », affichée brute.
+      else if (event.error === "network") msg = _t("voice.err.offline");
       _updateLive(msg, "error");
       setTimeout(_hideLiveOverlay, 2500);
       _setListening(false);
@@ -168,6 +183,14 @@
     if (!_enabled) return;
     if (!SR) {
       console.warn("[VoiceCommand] SpeechRecognition non supporté");
+      return;
+    }
+    // 🚨 Q8 : hors ligne, on le dit tout de suite au lieu de laisser le
+    // moteur échouer en « network » 2 s plus tard.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      _showLiveOverlay();
+      _updateLive(_t("voice.err.offline"), "error");
+      setTimeout(_hideLiveOverlay, 2500);
       return;
     }
     if (!_recognition) _recognition = _initRecognition();
@@ -635,9 +658,10 @@
         "activer urgence", "activer l'urgence", "déclencher urgence",
         "déclenche urgence", "déclenche l'urgence", "ouvrir urgence",
         "ouvre l'urgence", "urgence", "alarme", "alerte", "sos",
-        "appelle à l'aide", "appel à l'aide"
+        "appelle à l'aide", "appel à l'aide", "au secours", "à l'aide"
       ],
       labelKey: "voice.cmd.emergency",
+      priority: 5,   // commande vitale : gagne les égalités de longueur
       handler:  function() {
         if (window.EmergencyMode && typeof window.EmergencyMode.activer === "function") {
           window.EmergencyMode.activer();
@@ -652,6 +676,7 @@
         "secours", "secourir"
       ],
       labelKey: "voice.cmd.rescue",
+      priority: 5,
       handler:  function() {
         if (window.SecoursMode && typeof window.SecoursMode.ouvrir === "function") {
           window.SecoursMode.ouvrir();
@@ -728,12 +753,16 @@
     // Patterns volontairement larges (urgence = user stressé).
     registerCommand({
       patterns: [
-        "sortie", "sortie urgence", "sortie d'urgence", "trouve la sortie",
-        "trouver la sortie", "ressortir", "je dois sortir", "comment sortir",
-        "où est la sortie", "ou est la sortie", "sors", "sortir d'ici",
-        "urgence", "au secours sortie", "issue", "issue de secours"
+        "sortie", "la sortie", "sortie urgence", "sortie d'urgence",
+        "sortie de secours", "trouve la sortie", "trouver la sortie",
+        "cherche la sortie", "chercher la sortie", "ressortir", "sortir",
+        "je dois sortir", "comment sortir", "où est la sortie",
+        "ou est la sortie", "sors", "sortir d'ici", "au secours sortie",
+        "issue", "issue de secours"
+        // « urgence » retiré : motif mort (l'écran XL le capturait avant).
       ],
       labelKey: "voice.cmd.exit",
+      priority: 10,   // LA commande vitale : gagne toute égalité
       handler:  function() {
         if (window.SortieUrgence && typeof window.SortieUrgence.declencher === "function") {
           window.SortieUrgence.declencher();

@@ -1064,9 +1064,25 @@ window.supprimerPointEditor = function(id, x, y) {
     } catch(e) { console.warn("[Editor] purge liaisons inter-plan :", e); }
   }
 
+  // 🚨 Q23 (audit ergonomie 13/09/2026) : la suppression n'écrivait RIEN dans
+  // l'historique — un ⏪ appliquait l'instantané précédent (pose d'un sommet…)
+  // et pouvait ressusciter le point EN annulant autre chose. Le commentaire
+  // de convertirObjet.js supposait pourtant ce filet. Désormais : snapshot
+  // avant, entrée d'historique, toast qui dit comment annuler (⏪, pas Ctrl+Z :
+  // un téléphone n'a pas de Ctrl).
+  const _avantSuppr = window.HistoryManager ? window.HistoryManager.captureState("editorPoints") : null;
+  const _nomSuppr   = String(listePoints[idx].nom || id || "");
+
   // Retire du tableau + re-render (renderEditorPoints clear le layerEditor + re-add)
   listePoints.splice(idx, 1);
   if (window.renderEditorPoints) window.renderEditorPoints();
+
+  if (window.HistoryManager && _avantSuppr) {
+    window.HistoryManager.record(window.I18n.t("editor.undo.deletePoint", { nom: _nomSuppr }), _avantSuppr, "editorPoints");
+  }
+  if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+    window.OOMGuard.showToast(window.I18n.t("editor.toast.pointSupprime", { nom: _nomSuppr }), "info");
+  }
 
   // Ferme la popup ouverte (sinon elle reste affichee a l'emplacement du marker
   // qui n'existe plus)

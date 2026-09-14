@@ -226,7 +226,18 @@
     // initial qui declenche show() est un geste utilisateur valide pour iOS
     // → requestPermission peut afficher la popup d'autorisation.
     if (typeof window.requestPermission === "function") {
-      try { window.requestPermission(); } catch(e) {}
+      try {
+        // 🚨 B2 (audit 13/09/2026) : un refus était avalé en silence et la
+        // rose affichait « N 0° » comme si on regardait le Nord.
+        const p = window.requestPermission();
+        if (p && typeof p.then === "function") {
+          p.then(function(ok) {
+            if (ok === false && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+              window.OOMGuard.showToast(window.I18n.t("compass.toast.capteursRefuses"), "warn");
+            }
+          });
+        }
+      } catch(e) {}
     }
     if (!_rafId) _tick();
   }

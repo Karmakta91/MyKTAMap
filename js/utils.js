@@ -551,16 +551,18 @@ window.ktaEstIos = function() {
   } catch (e) { return false; }
 };
 
-window.ktaCapteurRefuse = function(row, cb, hintEl) {
+window.ktaCapteurRefuse = function(row, cb, hintEl, cleRaison) {
   if (!row) return;
   row.style.display = "";
   row.style.opacity = "0.55";
   if (cb) { cb.checked = false; cb.disabled = true; }
   if (hintEl && window.I18n && window.I18n.t) {
     // Nommer iOS quand c est lui : la personne sait alors que ce n est ni son
-    // application ni son telephone qui est en cause.
-    hintEl.textContent = window.I18n.t(window.ktaEstIos()
-      ? "config.capteurs.refuseIos" : "config.capteurs.refuse");
+    // application ni son telephone qui est en cause. `cleRaison` (v1.92.0,
+    // Q61) : l'appelant peut nommer une autre cause — « non pris en charge par
+    // ce navigateur » pour le wake lock et le vocal (Firefox).
+    hintEl.textContent = window.I18n.t(cleRaison || (window.ktaEstIos()
+      ? "config.capteurs.refuseIos" : "config.capteurs.refuse"));
   }
 };
 
@@ -731,6 +733,90 @@ window._modeClicCarteActif = function() {
   } catch(_) {}
   return false;
 };
+
+// =========================
+// 📍 « OÙ ES-TU ? » — picker de position PARTAGÉ (audit ergonomie 13/09/2026)
+// =========================
+// Huitième picker « clic carte », et le premier partagé : Sortie d'urgence et
+// « Y aller » l'appellent quand la position du tracker n'a JAMAIS été
+// confirmée (= elle vaut encore le départ du plan, cf tracking.js >
+// getTrackingPositionEtat — règle « instant T » de KARMA : on ne demande
+// QUE dans ce cas). Un tap sur la carte RECALE le tracker par le même chemin
+// que « 📍 Je suis ici » (position confirmée, hooks itinéraire/portail
+// notifiés) puis rend la main à l'appelant avec la position.
+//
+// 🩸 Le floater porte la classe `.kta-iti-floater` : `_modeClicCarteActif()`
+// (ci-dessus) la reconnaît, donc aucune popup d'annotation ne mange le tap et
+// map.js le ré-émet en phase capture — il porte même sur un marqueur, ce qui
+// est LE cas nominal ici : on se situe en visant un repère connu. Le picker
+// Nord ne l'avait pas et perdait ces clics (audit, constat Q28).
+//
+// 🩸 Les autres modes clic-carte tombent AVANT d'armer (même remède que le
+// picker « Repositionner » d'editor.js) : sinon le même tap pose aussi un
+// sommet de tracé ou ouvre une fiche de point.
+let _posPickHandler = null;
+function _posPickOnKey(e) { if (e && e.key === "Escape") _posPickAnnuler(); }
+function _posPickAnnuler() {
+  if (window.map && _posPickHandler) { try { window.map.off("click", _posPickHandler); } catch(e) {} }
+  _posPickHandler = null;
+  const fl = document.getElementById("kta-pos-floater");
+  if (fl) fl.remove();
+  document.removeEventListener("keydown", _posPickOnKey);
+}
+window.ktaDemanderPositionCarte = function(onPick, opts) {
+  opts = opts || {};
+  if (!window.map || typeof onPick !== "function") return false;
+  _posPickAnnuler();
+  if (typeof window._desactiverTousLesModes === "function") {
+    try { window._desactiverTousLesModes(); } catch(e) {}
+  }
+  window.modeEdition   = false;
+  window.modeMesure    = false;
+  window.modeRecalage  = false;
+  window.modeRoad      = false;
+  window.modeZone      = false;
+  window.modeStructure = false;
+  try { window.map.closePopup(); } catch(e) {}
+
+  _posPickHandler = function(e) {
+    if (!e || !e.latlng) return;
+    // Chemin INVERSE de convertCoord(x, y) = [imageHeight - y, x].
+    const x = e.latlng.lng;
+    const y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
+                ? (window.APP_CONFIG.imageHeight - e.latlng.lat)
+                : e.latlng.lat;
+    _posPickAnnuler();
+    if (opts.recaler !== false && typeof window.recalerTrackerSurPoint === "function") {
+      try { window.recalerTrackerSurPoint(x, y); }
+      catch(err) { console.warn("[Utils] picker position : recalage échoué :", err); }
+    }
+    try { onPick({ x: x, y: y }); }
+    catch(err) { console.warn("[Utils] picker position : onPick échoué :", err); }
+  };
+  window.map.on("click", _posPickHandler);
+
+  const fl = document.createElement("div");
+  fl.id = "kta-pos-floater";
+  fl.className = "kta-iti-floater kta-pos-floater";
+  fl.innerHTML =
+    '<span class="kta-iti-floater-icon"></span>' +
+    '<span class="kta-iti-floater-msg"></span>' +
+    '<button class="kta-btn kta-btn-ghost" id="kta-pos-cancel" type="button"></button>';
+  fl.querySelector(".kta-iti-floater-icon").textContent = opts.icone || "📍";
+  fl.querySelector(".kta-iti-floater-msg").textContent =
+    opts.texte || window.I18n.t("pospick.floater");
+  const btnAnn = fl.querySelector("#kta-pos-cancel");
+  btnAnn.textContent = window.I18n.t("pospick.annuler");
+  btnAnn.addEventListener("click", function() {
+    _posPickAnnuler();
+    if (typeof opts.onCancel === "function") { try { opts.onCancel(); } catch(e) {} }
+  });
+  document.body.appendChild(fl);
+  document.addEventListener("keydown", _posPickOnKey);
+  return true;
+};
+window.ktaDemanderPositionCarte.annuler = _posPickAnnuler;
+window.ktaDemanderPositionCarte.estActif = function() { return !!_posPickHandler; };
 
 // Registre des ghost polylines installées sur le DATA LAYER (lectures
 // seules KMZ). Un data layer est rendu UNE seule fois à l'import — on
@@ -1152,7 +1238,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
         '<button class="kta-popup-btn kta-popup-btn-delete" type="button" ' +
           'onclick="window.supprimerPointEditor(\'' + jsId + "'," + x + ',' + y + '); return false;" ' +
           'title="' + window.I18n.t("poi.deletePoint") + '">' +
-          '🗑️ Supprimer ce point' +
+          window.I18n.t("poi.deleteBtn") +
         '</button>' +
       '</div>'
     : '';
@@ -1219,12 +1305,12 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
              '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' +
                'onclick="window.recalerTrackerSurPoint(' + x + ',' + y + '); return false;" ' +
                'title="' + window.I18n.t("poi.iAmHere") + '">' +
-               '📍 Je suis ici' +
+               window.I18n.t("iti.wp.jeSuisIci") +
              '</button>' +
              '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' +
                'onclick="window.itineraireYAller(' + x + ',' + y + ",'" + jsName + "'); return false;\" " +
                'title="' + window.I18n.t("poi.goThere") + '">' +
-               '🧭 Y aller' +
+               window.I18n.t("poi.goThereBtn") +
              '</button>' +
              '<button class="kta-popup-btn kta-popup-btn-add" type="button" ' +
                'onclick="window.itineraireAjouterWaypoint(' + x + ',' + y + ",'" + jsName + "'); return false;\" " +
@@ -1289,6 +1375,18 @@ window.kta_vibrate.error  = function() { return window.kta_vibrate([200, 100, 20
 window.kta_vibrate.isSupported = function() {
   return typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
 };
+// 🚨 Classe « urgence » (audit ergonomie 13/09/2026, décision KARMA) : les
+// retours de SÉCURITÉ — sortie trouvée, aucune sortie, alerte serveur de
+// niveau emergency — vibrent MÊME si la préférence de confort est OFF (défaut
+// depuis v1.85.2). La préférence garde tout le reste (waypoint, recalage,
+// validation). Seul le support matériel est encore respecté (iOS Safari n'a
+// pas navigator.vibrate). Consommateurs : sortieUrgence.js, alertChecker.js.
+window.kta_vibrate.urgence = function(pattern) {
+  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return false;
+  try { return navigator.vibrate(pattern); } catch(e) { return false; }
+};
+window.kta_vibrate.urgence.medium = function() { return window.kta_vibrate.urgence(100); };
+window.kta_vibrate.urgence.error  = function() { return window.kta_vibrate.urgence([200, 100, 200, 100, 200]); };
 
 // 🆕 v1.34.18 (E2 TTS) — Handler global pour le bouton 🔊 inline dans les
 // popups POI. Toggle play/stop via window.VoiceTts. Met à jour l'icône

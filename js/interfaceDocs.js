@@ -136,6 +136,31 @@ function _readmePathForLang(lang) {
     : "docs/applications/README_USER." + lang + ".md";
 }
 
+// 🔎 Recherche plein texte (audit ergonomie D27, 14/09/2026) — deux helpers
+// PURS, exposés pour `check-doc-recherche.js` qui les EXÉCUTE.
+// Normalisation 1:1 (même longueur en unités UTF-16) : minuscules, accents
+// retirés — « Réglages » se trouve avec « reglages », et les positions restent
+// celles du texte d'origine (indispensable pour surligner sans décaler).
+window.ktaDocNormaliser = function(s) {
+  let out = "";
+  for (const ch of String(s || "")) {
+    const b = ch.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    out += (b.length === 1) ? b : ch;
+  }
+  return out;
+};
+// Toutes les occurrences (non chevauchantes) de q dans texte → [[début, fin], …]
+// en indices du texte d'origine. Moins de 2 caractères utiles → rien.
+window.ktaDocTrouver = function(texte, q) {
+  const t = window.ktaDocNormaliser(texte);
+  const n = window.ktaDocNormaliser(q).trim();
+  const res = [];
+  if (n.length < 2) return res;
+  let i = t.indexOf(n);
+  while (i !== -1) { res.push([i, i + n.length]); i = t.indexOf(n, i + n.length); }
+  return res;
+};
+
 function afficherReadme(opts) {
   opts = opts || {};
   const existing = document.getElementById("kta-readme-modal");
@@ -278,6 +303,107 @@ function _setupReadmeNavigation() {
   }
 }
 
+// 🔎 Recherche plein texte de la modale Documentation (audit ergonomie D27,
+// 14/09/2026). Avant : 3 739 lignes, un sommaire caché sous 1 100 px, et
+// AUCUNE recherche — l'utilisateur mobile défilait 200 écrans ou abandonnait.
+// Ici : surlignage de toutes les occurrences, compteur « i / n », Entrée ou ↓
+// pour la suivante, et les entrées du sommaire sans résultat s'estompent.
+function _setupReadmeSearch() {
+  const input  = document.getElementById("kta-readme-search");
+  const count  = document.getElementById("kta-readme-search-count");
+  const next   = document.getElementById("kta-readme-search-next");
+  const corps  = document.querySelector("#kta-readme-modal .kta-readme-corps");
+  if (!input || !corps) return;
+  if (input._ktaDocSearchWired) return;   // la modale est recréée à chaque ouverture, mais on ne double jamais
+  input._ktaDocSearchWired = true;
+  let marks = [], cur = -1, timer = null;
+  const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
+
+  function demarquer() {
+    corps.querySelectorAll("mark.kta-doc-mark").forEach(function(m) {
+      const p = m.parentNode;
+      if (!p) return;
+      p.replaceChild(document.createTextNode(m.textContent), m);
+      p.normalize();
+    });
+    marks = []; cur = -1;
+    document.querySelectorAll("#kta-readme-toc-sidebar .kta-readme-toc-dim").forEach(function(a) {
+      a.classList.remove("kta-readme-toc-dim");
+    });
+    if (count) count.textContent = "";
+  }
+  function marquer(q) {
+    const walker = document.createTreeWalker(corps, NodeFilter.SHOW_TEXT, {
+      acceptNode: function(n) {
+        const p = n.parentNode;
+        if (!p || /^(SCRIPT|STYLE|MARK)$/.test(p.nodeName)) return NodeFilter.FILTER_REJECT;
+        return n.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+      }
+    });
+    const nodes = [];
+    let n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    nodes.forEach(function(node) {
+      const hits = window.ktaDocTrouver(node.nodeValue, q);
+      if (!hits.length) return;
+      const txt  = node.nodeValue;
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      hits.forEach(function(h) {
+        if (h[0] > last) frag.appendChild(document.createTextNode(txt.slice(last, h[0])));
+        const m = document.createElement("mark");
+        m.className = "kta-doc-mark";
+        m.textContent = txt.slice(h[0], h[1]);
+        frag.appendChild(m);
+        marks.push(m);
+        last = h[1];
+      });
+      if (last < txt.length) frag.appendChild(document.createTextNode(txt.slice(last)));
+      node.parentNode.replaceChild(frag, node);
+    });
+  }
+  function estomperSommaire() {
+    const sidebar = document.getElementById("kta-readme-toc-sidebar");
+    if (!sidebar) return;
+    sidebar.querySelectorAll(".kta-readme-toc-link").forEach(function(a) {
+      const id = (a.getAttribute("href") || "").slice(1);
+      const h  = id ? document.getElementById(id) : null;
+      if (!h) return;
+      const stop = a.classList.contains("kta-readme-toc-link-h2") ? /^H2$/ : /^H[23]$/;
+      let trouve = !!h.querySelector("mark.kta-doc-mark");
+      let e = h.nextElementSibling;
+      while (e && !trouve && !stop.test(e.tagName)) {
+        if (e.querySelector && e.querySelector("mark.kta-doc-mark")) trouve = true;
+        e = e.nextElementSibling;
+      }
+      a.classList.toggle("kta-readme-toc-dim", !trouve);
+    });
+  }
+  function aller(i) {
+    if (!marks.length) return;
+    if (cur >= 0 && marks[cur]) marks[cur].classList.remove("kta-doc-mark-current");
+    cur = ((i % marks.length) + marks.length) % marks.length;
+    const m = marks[cur];
+    m.classList.add("kta-doc-mark-current");
+    try { m.scrollIntoView({ block: "center", behavior: "smooth" }); } catch(e) { m.scrollIntoView(); }
+    if (count) count.textContent = t("docs.search.count", { i: cur + 1, n: marks.length });
+  }
+  function chercher() {
+    demarquer();
+    const q = input.value.trim();
+    if (q.length < 2) return;
+    marquer(q);
+    estomperSommaire();
+    if (!marks.length) { if (count) count.textContent = t("docs.search.none"); return; }
+    aller(0);
+  }
+  input.addEventListener("input", function() { clearTimeout(timer); timer = setTimeout(chercher, 160); });
+  input.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") { e.preventDefault(); if (marks.length) aller(cur + 1); else chercher(); }
+  });
+  if (next) next.addEventListener("click", function() { if (marks.length) aller(cur + 1); else chercher(); });
+}
+
 function _chargerReadme(fichier, opts) {
   opts = opts || {};
   _ouvrirReadmeModal("<p style='color:#8892a4; text-align:center; padding:20px;'>⏳ Chargement…</p>", opts);
@@ -293,6 +419,8 @@ function _chargerReadme(fichier, opts) {
       _construireSommaireReadme(corps);
       // Activation des comportements de navigation
       _setupReadmeNavigation();
+      // 🔎 D27 : recherche plein texte (surlignage + sommaire estompé)
+      _setupReadmeSearch();
     })
     .catch(function(err) {
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
@@ -453,6 +581,11 @@ function _ouvrirReadmeModal(html, opts) {
         ${btnOnboarding}
         <button class="kta-panneau-close" id="kta-readme-close">✕</button>
       </div>
+      <div class="kta-readme-search-bar">
+        <input type="search" id="kta-readme-search" class="kta-readme-search" autocomplete="off" placeholder="${window.I18n.t("docs.search.placeholder")}" aria-label="${window.I18n.t("docs.search.placeholder")}">
+        <span class="kta-readme-search-count" id="kta-readme-search-count" aria-live="polite"></span>
+        <button type="button" class="kta-btn kta-btn-ghost kta-readme-search-next" id="kta-readme-search-next" title="${window.I18n.t("docs.search.nextTitle")}" aria-label="${window.I18n.t("docs.search.nextTitle")}">↓</button>
+      </div>
       <div class="kta-readme-modal-layout" id="kta-readme-layout">
         <aside class="kta-readme-toc-sidebar" id="kta-readme-toc-sidebar"></aside>
         <div class="kta-readme-modal-corps" id="kta-readme-corps-scroll">
@@ -551,6 +684,135 @@ function _ouvrirReadmeModal(html, opts) {
 
 // AIDE — modale plein écran
 // =========================
+// =====================================================================
+// ❓ AIDE CONTEXTUELLE (D35 de l'audit ergonomie, 14/09/2026)
+// =====================================================================
+// 🩸 LE CONSTAT : l'aide intégrée compte 33 sections, une par grande fonction,
+// et AUCUNE modale n'y renvoie. Pour lire la bonne, il fallait quitter ce qu'on
+// faisait, ouvrir le groupe ❓ Aide de la barre, puis chercher — personne ne le
+// fait au milieu d'une tâche. Les infobulles `title`, elles, n'existent pas au
+// doigt.
+//
+// LA RÈGLE : toute modale qui a une section d'aide porte un ❓ dans sa ligne de
+// titre, et ce ❓ ouvre CETTE section. Le lien vit dans UNE table, confrontée au
+// code par `check-aide-contextuelle.js` : chaque id doit exister dans les
+// sources, chaque slug doit être une section réelle.
+//
+// 🎛️ DÉSACTIVABLE (KARMA) : « quelqu'un qui ne veut pas cette icône partout
+// pour toujours ». Réglage GLOBAL, dans ⚙️ Configuration de l'accueil →
+// 🎨 Affichage. Défaut ACTIVÉ : l'aide ne sert que si elle se voit, et celui
+// qui n'en veut pas la coupe une fois.
+//
+// POURQUOI UN OBSERVATEUR et pas un appel dans chaque modale : elles sont une
+// vingtaine, créées dans autant de fichiers, avec le même en-tête
+// `.kta-readme-modal-header`. Poser le bouton à l'ajout du nœud garde la règle
+// en UN endroit ; vingt appels dispersés auraient dérivé au premier oubli.
+
+const AIDE_CTX_LS = "myktamap_aide_contextuelle";   // "0" = coupée
+
+// id de la modale → slug de section d'aide. Les modales absentes n'ont pas de
+// section dédiée (itinéraire, niveaux, conversion…) : pas de bouton, plutôt
+// qu'un ❓ qui ouvrirait une page à côté du sujet.
+//
+// 🩸 DEUX ERREURS CORRIGÉES LE JOUR MÊME, et ce qu'elles apprennent :
+//   • 🔥 Heatmap pointait vers l'aide « Tracker » (KARMA : « pas logique, il
+//     doit être avant, dans le modal tracker »). La heatmap est UNE TUILE du
+//     menu Tracker : le ❓ va sur le menu, en amont, pas sur une de ses sorties.
+//   • « kta-profil-modal » n'est PAS le profil de l'utilisateur : c'est le
+//     PROFIL EN LONG d'un trajet (`profondeurNiveaux.js`). Le ❓ aurait ouvert
+//     la page « Mode profil » — avatar et rangs — depuis un graphe d'altimétrie.
+//     Un id qui EXISTE ne prouve pas qu'il désigne le bon sujet ; seul un
+//     humain peut juger ce lien, et c'est pour ça qu'il vit dans une table
+//     courte et relue, pas dans une heuristique.
+const AIDE_PAR_MODALE = {
+  "kta-cfg-modal":            "parametres",
+  "kta-refonte-session-modal": "stats-session",
+  "kta-export-modal":         "enregistrer",
+  "kta-import-modal":         "charger-import",
+  "kta-legende-modal":        "legende",
+  "kta-search-modal":         "recherche",
+  "kta-secours-modal":        "mode-secours",
+  "kta-histoire-modal":       "histoire",
+  "kta-tracker-modal":        "menu-tracker",
+  "kta-planner-modal":        "creer-modifier-plan",
+  "kta-jrn-modal":            "carnet",
+  "kta-osm-filters-modal":    "vue-osm",
+  "kta-profile-details-modal": "profil",
+  "kta-plan-infos-modal":     "bibliotheque-plans"
+};
+
+function ktaAideContextuelleActive() {
+  try { return localStorage.getItem(AIDE_CTX_LS) !== "0"; } catch(e) { return true; }
+}
+
+// Ouvre DIRECTEMENT une section d'aide, sans passer par le hub. Rend false si
+// le slug est inconnu — l'appelant saura que le lien est mort au lieu d'ouvrir
+// une fenêtre vide.
+function ktaOuvrirAideSection(slug) {
+  if (!slug || AIDE_SECTIONS.indexOf(slug) < 0) {
+    console.warn("[Aide] section inconnue :", slug);
+    return false;
+  }
+  _aideOuvrirSousModal(_aideSection(slug));
+  return true;
+}
+
+function _aidePoserBouton(modal) {
+  if (!modal || !modal.id) return;
+  const slug = AIDE_PAR_MODALE[modal.id];
+  if (!slug || !ktaAideContextuelleActive()) return;
+  // Deux familles d'en-tête coexistent dans l'app : celle des modales de
+  // contenu et celle du menu Tracker. Les deux accueillent le ❓ au même
+  // endroit, juste avant la croix.
+  const head = modal.querySelector(".kta-readme-modal-header, .kta-tracker-modal-header");
+  if (!head || head.querySelector(".kta-aide-ctx-btn")) return;
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "kta-aide-ctx-btn";
+  b.textContent = "❓";
+  const t = (window.I18n && window.I18n.t) ? window.I18n.t("aide.ctx.btn") : "Aide";
+  b.title = t; b.setAttribute("aria-label", t);
+  b.addEventListener("click", function(e) {
+    e.stopPropagation();
+    ktaOuvrirAideSection(slug);
+  });
+  // Juste avant la croix : c'est là que l'œil va, et l'ordre reste le même
+  // d'une modale à l'autre.
+  const croix = head.querySelector(".kta-panneau-close, .kta-readme-modal-close, .kta-tracker-modal-close");
+  if (croix) head.insertBefore(b, croix); else head.appendChild(b);
+}
+
+// Le réglage a changé : on met à jour ce qui est DÉJÀ à l'écran, sinon la case
+// n'aurait d'effet qu'à la prochaine ouverture — et donnerait l'impression de
+// ne rien faire.
+function ktaAideContextuelleRefresh() {
+  const actif = ktaAideContextuelleActive();
+  Object.keys(AIDE_PAR_MODALE).forEach(function(id) {
+    const m = document.getElementById(id);
+    if (!m) return;
+    const b = m.querySelector(".kta-aide-ctx-btn");
+    if (actif && !b) _aidePoserBouton(m);
+    if (!actif && b) b.remove();
+  });
+}
+
+(function _aideCtxObserver() {
+  if (typeof MutationObserver !== "function" || !document.documentElement) return;
+  const obs = new MutationObserver(function(muts) {
+    for (const m of muts) {
+      for (const n of m.addedNodes) {
+        if (!n || n.nodeType !== 1) continue;
+        if (n.id && AIDE_PAR_MODALE[n.id]) _aidePoserBouton(n);
+      }
+    }
+  });
+  obs.observe(document.documentElement, { childList: true, subtree: true });
+})();
+
+window.ktaOuvrirAideSection       = ktaOuvrirAideSection;
+window.ktaAideContextuelleActive  = ktaAideContextuelleActive;
+window.ktaAideContextuelleRefresh = ktaAideContextuelleRefresh;
+
 function afficherAide() {
   const existing = document.getElementById("kta-aide-modal");
   if (existing) { existing.remove(); return; }
@@ -667,13 +929,16 @@ const AIDE_CATEGORIES = [
 ];
 
 // Une ligne cliquable du hub (titre + chevron).
-function _aideRow(titre, onClick) {
+function _aideRow(section, onClick) {
   const r = document.createElement("button");
   r.type = "button";
   r.className = "kta-aide-row";
   const t = document.createElement("span");
   t.className = "kta-aide-row-titre";
-  t.textContent = titre;
+  // Accepte une section (titre + raccourci) ou une simple chaîne (ligne
+  // « ⌨️ Raccourcis clavier », qui n'est pas une section).
+  if (typeof section === "string") t.textContent = section;
+  else _aidePoserTitre(t, section);
   const chev = document.createElement("span");
   chev.className = "kta-aide-row-chevron";
   chev.textContent = "›";
@@ -690,7 +955,25 @@ function _aideRow(titre, onClick) {
 function _aideSection(slug) {
   const t = window.I18n ? window.I18n.t("aide.sec." + slug + ".titre") : slug;
   const h = window.I18n ? window.I18n.t("aide.sec." + slug + ".html") : "";
-  return { slug: slug, titre: t, html: h };
+  // ⌨️ 14/09/2026 — le raccourci clavier a sa PROPRE clé, facultative. Avant,
+  // il était écrit dans le titre avec son `<span>` : posé en `textContent`, le
+  // balisage s'affichait en clair (« Recherche unifiée <span class=… »). Le
+  // titre est du texte, la mise en forme appartient au gabarit — règle CLAUDE.md.
+  const r = (window.I18n && window.I18n.has && window.I18n.has("aide.sec." + slug + ".raccourci"))
+    ? window.I18n.t("aide.sec." + slug + ".raccourci") : "";
+  return { slug: slug, titre: t, raccourci: r, html: h };
+}
+
+// Pose un titre de section : le texte, puis le raccourci en petit s'il existe.
+// Un seul endroit, appelé par le hub ET par la fiche — deux rendus divergeraient.
+function _aidePoserTitre(el, section) {
+  if (!el || !section) return;
+  el.textContent = section.titre || "";
+  if (!section.raccourci) return;
+  const s = document.createElement("span");
+  s.className = "kta-aide-mini";
+  s.textContent = " (" + section.raccourci + ")";
+  el.appendChild(s);
 }
 
 function _aideRendreHub(corps) {
@@ -720,7 +1003,7 @@ function _aideRendreHub(corps) {
       window.ShortcutsCheatsheet.ouvrir();
     }
   });
-  cheatRow.dataset.aideTitre = libCheat.toLowerCase();
+  cheatRow.dataset.aideTitre = window.ktaDocNormaliser(libCheat);
   hub.appendChild(cheatRow);
 
   // Catégories + lignes
@@ -738,8 +1021,13 @@ function _aideRendreHub(corps) {
     ct.textContent = window.I18n ? window.I18n.t("aide.cat." + cat.cle) : cat.cle;
     hub.appendChild(ct);
     rows.forEach(function(s) {
-      const r = _aideRow(s.titre, function() { _aideOuvrirSousModal(s); });
-      r.dataset.aideTitre = s.titre.toLowerCase();
+      const r = _aideRow(s, function() { _aideOuvrirSousModal(s); });
+      // 🔎 D27 (14/09/2026) : la recherche ne filtrait que les 30 TITRES —
+      // chercher « CSV » ou « wake lock » ne trouvait rien alors que les mots
+      // sont dans le corps des sections. Titre + contenu (balises retirées),
+      // accents tolérés.
+      r.dataset.aideTitre = window.ktaDocNormaliser(s.titre);
+      r.dataset.aideTexte = window.ktaDocNormaliser(String(s.html || "").replace(/<[^>]+>/g, " "));
       hub.appendChild(r);
     });
   });
@@ -755,8 +1043,13 @@ function _aideRendreHub(corps) {
     ct.textContent = window.I18n ? window.I18n.t("aide.ui.other") : "";
     hub.appendChild(ct);
     orphans.forEach(function(s) {
-      const r = _aideRow(s.titre, function() { _aideOuvrirSousModal(s); });
-      r.dataset.aideTitre = s.titre.toLowerCase();
+      const r = _aideRow(s, function() { _aideOuvrirSousModal(s); });
+      // 🔎 D27 (14/09/2026) : la recherche ne filtrait que les 30 TITRES —
+      // chercher « CSV » ou « wake lock » ne trouvait rien alors que les mots
+      // sont dans le corps des sections. Titre + contenu (balises retirées),
+      // accents tolérés.
+      r.dataset.aideTitre = window.ktaDocNormaliser(s.titre);
+      r.dataset.aideTexte = window.ktaDocNormaliser(String(s.html || "").replace(/<[^>]+>/g, " "));
       hub.appendChild(r);
     });
   }
@@ -768,12 +1061,13 @@ function _aideRendreHub(corps) {
   empty.textContent = window.I18n ? window.I18n.t("aide.ui.empty") : "";
   corps.appendChild(empty);
 
-  // Filtrage par recherche (titre)
+  // Filtrage par recherche (titre + contenu, accents tolérés — D27)
   search.addEventListener("input", function() {
-    const q = search.value.trim().toLowerCase();
+    const q = window.ktaDocNormaliser(search.value.trim());
     let visibles = 0;
     hub.querySelectorAll(".kta-aide-row").forEach(function(r) {
-      const match = !q || (r.dataset.aideTitre || "").indexOf(q) >= 0;
+      const match = !q || (r.dataset.aideTitre || "").indexOf(q) >= 0
+                       || (r.dataset.aideTexte || "").indexOf(q) >= 0;
       r.style.display = match ? "" : "none";
       if (match) visibles++;
     });
@@ -814,7 +1108,7 @@ function _aideOuvrirSousModal(section) {
     bloc.className = "kta-aide-section";
     const t = document.createElement("div");
     t.className = "kta-aide-section-titre";
-    t.textContent = section.titre || "";
+    _aidePoserTitre(t, section);
     bloc.appendChild(t);
     const c = document.createElement("div");
     c.innerHTML = section.html || "";

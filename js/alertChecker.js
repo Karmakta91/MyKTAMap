@@ -212,7 +212,11 @@
     // qu'il va voir des alertes). Seulement quand l'app remonte une alerte
     // automatiquement (au boot ou sur poll). Pref + support gérés par helper.
     if (!fromManualClick && window.kta_vibrate) {
-      window.kta_vibrate.error();
+      // 🚨 13/09/2026 : une alerte de niveau emergency vibre MÊME si la
+      // préférence de confort est OFF (classe urgence, cf utils.js).
+      const critique = alertsAaffich.some(function(a) { return a && a.level === "emergency"; });
+      if (critique && window.kta_vibrate.urgence) window.kta_vibrate.urgence.error();
+      else window.kta_vibrate.error();
     }
 
     // Cas simple : 1 seule alerte → modale détail direct.

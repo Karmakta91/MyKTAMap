@@ -243,9 +243,16 @@
       if (posEl) posEl.textContent = _formatXY(pos);
       if (statusEl) {
         const trackingActif = !!(typeof window.getTrackingActif === "function" && window.getTrackingActif());
+        // 📍 B1 (audit 13/09/2026) : une position jamais confirmée est le
+        // DÉPART DU PLAN, pas « ta dernière position » — cet écran est un
+        // afficheur, il le dit au lieu de demander.
+        const etat = (typeof window.getTrackingPositionEtat === "function")
+          ? window.getTrackingPositionEtat() : null;
         statusEl.textContent = trackingActif
           ? window.I18n.t("emergency.status.trackerActif")
-          : window.I18n.t("emergency.status.dernierePosition");
+          : (etat && !etat.confirmee)
+            ? window.I18n.t("emergency.status.positionDefaut")
+            : window.I18n.t("emergency.status.dernierePosition");
       }
       // 🆕 v1.10.2 : auto-focus du minimap sur la position
       _updateMiniMap(pos);

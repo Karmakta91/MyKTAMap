@@ -832,6 +832,8 @@
         <div>✏️ ${t("export.full.points", { n: d.points.length, s: d.points.length > 1 ? "s" : "" })}</div>
         <div>🛣️ ${t("export.full.roads", { n: d.roads.length, s: d.roads.length > 1 ? "s" : "" })}</div>
         <div>⬛ ${t("export.full.zones", { n: d.zones.length, s: d.zones.length > 1 ? "s" : "" })}</div>
+        <div>🏛️ ${t("export.full.structures", { n: (d.structures || []).length, s: (d.structures || []).length > 1 ? "s" : "" })}</div>
+        <div>🧭 ${t("export.full.tracker", { n: (d.trackerTimeline || []).length, s: (d.trackerTimeline || []).length > 1 ? "s" : "" })}</div>
       </div>
 
       <div class="kta-ses-photos-section" id="full_photos_section" style="display:none;">
@@ -1933,9 +1935,13 @@
     // importé un PDF Histoire, c'est légitime à exporter.
     const noteLibre = _lireNoteLibreSession();
     const hasNoteLibre = !!(noteLibre && noteLibre.length > 0);
+    // 🚨 Q47 (audit 13/09/2026) : une sortie tracker-seule (on a marché, rien
+    // annoté) était refusée « session vide » — alors que sessionPersist.js a
+    // été corrigé pour ce cas précis en v1.28.0. Le tracé du suivi compte.
+    const trackerLen = (d.trackerTimeline || []).length;
     if (d.points.length === 0 && d.roads.length === 0 && d.zones.length === 0
         && (d.structures || []).length === 0 && mesureLen === 0 && mesureSurfLen === 0
-        && !hasNoteLibre) {
+        && trackerLen === 0 && !hasNoteLibre) {
       // Note : on ne peut pas check le PDF Histoire ici (async). On accepte
       // un cas edge : user qui n'aurait QUE un PDF Histoire (rien d'autre)
       // verrait "session vide". OK pour MVP (cas marginal).

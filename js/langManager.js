@@ -20,7 +20,8 @@
 // reste correct). Aucune régression possible : migré ou pas, ça marche.
 //
 // LANGUE ACTIVE : lue depuis `myktamap_app_lang` — la langue GLOBALE de l'app,
-// pilotée par le sélecteur de la modale ⚙️ Réglages (interfaceConfig.js).
+// pilotée par le sélecteur de ⚙️ Configuration de l'accueil (#loaderAppLang)
+// et par l'écran de déverrouillage — jamais depuis un plan (v1.85.4).
 // ⚠️ DÉCOUPLÉE de `myktamap_readme_lang` (clé de la doc + onboarding), qui ne
 // pilote QUE l'affichage local de ces deux contenus. Choix KARMA v1.45.0 :
 // « le changement de langue complet se fait via Configuration ; doc/onboarding
@@ -47,7 +48,7 @@
   "use strict";
 
   // Clé localStorage de la langue GLOBALE de l'app, pilotée par le sélecteur
-  // de ⚙️ Réglages. DISTINCTE de `myktamap_readme_lang` (doc + onboarding) :
+  // de ⚙️ Configuration de l'accueil (hors plan). DISTINCTE de `myktamap_readme_lang` (doc + onboarding) :
   // changer la langue de l'app n'impose PAS la langue de la doc et vice-versa.
   const LANG_STORAGE_KEY = "myktamap_app_lang";
 

@@ -100,6 +100,11 @@
       TOGGLES.forEach(function(k) {
         if (typeof parsed[k] === "boolean") out[k] = parsed[k];
       });
+      // 🩸 v1.92.0 (Q60) : les toggles HORS ULTRA n'étaient jamais RELUS —
+      // « tous les niveaux » repartait à true à chaque chargement.
+      HORS_ULTRA.forEach(function(k) {
+        if (typeof parsed[k] === "boolean") out[k] = parsed[k];
+      });
       return out;
     } catch(e) {
       console.warn("[PerfUltra] localStorage parse failed :", e);
@@ -157,7 +162,7 @@
 
   function set(key, value, opts) {
     _resolve();
-    if (TOGGLES.indexOf(key) < 0) {
+    if (TOGGLES.indexOf(key) < 0 && HORS_ULTRA.indexOf(key) < 0) {
       console.warn("[PerfUltra] toggle inconnu :", key);
       return false;
     }

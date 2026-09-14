@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.90.17</strong> (10 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.93.0</strong> (14 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -358,7 +358,7 @@
   </table>
 
   <p><code>&lt;origin&gt;</code> = le domaine sur lequel l'app est servie. Pour la prod c'est
-  <code>myktamap.fr</code> (ou <code>myktamap.fr</code> après le 15 juillet 2026).
+  <code>myktamap.fr</code>.
   Pour dev : <code>dev.myktamap.fr</code>. Sur ton réseau local en développement :
   <code>localhost</code> ou IP locale.</p>
 
@@ -377,10 +377,10 @@
   <ul>
     <li>Prod : <code>https://myktamap.fr/ping.html</code></li>
     <li>Dev : <code>https://dev.myktamap.fr/ping.html</code></li>
-    <li>Future prod : <code>https://myktamap.fr/ping.html</code></li>
   </ul>
 
   <p>L'URL est résolue dynamiquement via <code>location.origin + "/ping.html"</code>.
+  <p class="note">🔎 <strong>Contrôle du 13/09/2026 — aucune URL de service n'est codée en dur.</strong> Tous les appels de l'app (<code>version.json</code>, <code>alert.json</code>, <code>denylist.json</code>, <code>data/index.json</code>, <code>lang/*.json</code>, <code>ping.html</code>, licence pro) sont <strong>relatifs à l'origine qui sert l'app</strong> ; la seule cible externe écrite en dur est <code>tile.openstreetmap.org</code> (Vue OSM). C'est voulu : une copie servie ailleurs (self-host, kiosque, copie tierce) appelle <strong>sa propre</strong> origine et jamais <code>myktamap.fr</code> — elle ne reçoit ni nos alertes, ni notre liste de révocation, ni nos mises à jour, et nous ne recevons rien d'elle. La garantie ci-dessus ne vaut donc que pour le domaine officiel : elle porte sur le <strong>code servi</strong>, que seule la barre d'adresse permet de vérifier.</p>
   Le body attendu est exactement <code>"OK"</code>.</p>
 
   <p><strong>Pourquoi ce changement ?</strong> Plus aucun appel externe vers un service tiers,
@@ -1127,6 +1127,16 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.93.0 (prise en charge des GeoTIFF)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Le <code>.tif</code> est lu <strong>dans le navigateur</strong> (<code>FileReader</code> → <code>ArrayBuffer</code>), décodé en mémoire et ré-encodé en PNG par le canvas ; <strong>aucun octet du fichier ne quitte l'appareil</strong>, et aucune bibliothèque externe n'est chargée pour cela (pas de CDN, rien de vendoré). La reprojection Lambert 93 / Web Mercator → WGS84 est du calcul local. Un GeoTIFF <strong>géoréférence</strong> le plan : les fonctions qui demandent ensuite des tuiles OSM (Vue OSM) deviennent disponibles pour ce plan, exactement comme après un calage saisi à la main — c'est le seul effet réseau, indirect et inchangé.</p>
+  <h3>v1.92.0 (Réglages : application immédiate, portée explicite, géoref en sous-modale)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Les réglages restent dans <code>localStorage</code> (clés <code>myktamap_plan_prefs_&lt;plan&gt;</code>, <code>myktamap_perf_toggles_v2_&lt;plan&gt;</code>, <code>myktamap_kmz_calib_&lt;plan&gt;</code>, nouvelle clé d'interface <code>myktamap_cfg_groupes_v1</code> = groupes repliés). Le reset ne réécrit plus <code>app_user_prefs</code>.</p>
+  <h3>v1.91.2 (recherche plein texte de la documentation + docs bulle / Détails)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. La recherche parcourt le texte déjà chargé dans la modale (<code>docs/applications/README_USER*.md</code>, même origine, déjà déclaré) — rien n'est envoyé nulle part.</p>
+  <h3>v1.91.1 (Vue OSM de l'accueil — l'ancien plan principal restait dans la pile)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Correctif de la pile de plans du widget OSM (règle de promotion du principal partagée, ligne fantôme retirable, purge des groupes morts). Les tuiles OSM ne sont demandées que pour les plans effectivement rendus, comme avant.</p>
+  <h3>v1.91.0 (audit ergonomie — sécurité, filets de données, état visible, verrou temporisé)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Contrôle du 13/09 : le bloc « 🛡️ Périmètre de garantie » cite <code>myktamap.fr</code> et <code>dev.myktamap.fr</code> <strong>en dur</strong> aux deux endroits (modale « Que fait l'app sur le réseau ? » et cette page), jamais dérivés de l'origine — une copie servie ailleurs se désavoue au lieu de s'adapter (verrouillé par <code>check-audit-domaine.js</code>). Le verrou temporisé du code d'accès et de la gate est calculé sur l'horloge de l'appareil, sans aucun appel. Rappel de transparence, déjà vrai avant cette version : la <strong>commande vocale</strong> (opt-in, désactivée par défaut) repose sur l'API de reconnaissance du navigateur, qui peut envoyer l'audio au service de son éditeur (Google pour Chrome, Apple pour Safari) — ce n'est pas un appel de l'app et il n'apparaît pas dans son journal ; l'app le dit désormais quand elle est hors ligne au lieu d'afficher « Erreur : network ». Les notes d'un point lues à voix haute (synthèse vocale) restent 100 % locales.</p>
   <h3>v1.90.17 (pastille bloquée après Ctrl+Z — étendu aux zones et structures)</h3>
   <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Extension du correctif v1.90.16 (tracé) aux zones et aux structures : après avoir annulé (Ctrl+Z) une forme en cours de dessin, le bouton de l'outil restait « allumé » alors qu'il était inactif, et il devenait impossible de reprendre le dessin. Correctif d'interface pur. Aucun effet réseau.</p>
   <h3>v1.90.16 (le bouton d'un tracé restait allumé après un Ctrl+Z jusqu'au vide — correctif)</h3>

@@ -82,15 +82,16 @@ Mettre le résultat dans la const `HASH_VALIDE` de `unlockGate.js`. Au prochain 
 
 ⚠️ **Si on change le mdp** : il faut aussi changer la const `KTA_UNLOCK_PASSWORD_DISPLAY` dans `interface.js` (mdp en clair affiché dans la modale Reset). Ces 2 valeurs doivent rester synchronisées.
 
-#### 36.3 5 tentatives + lockout permanent
+#### 36.3 5 tentatives + verrou TEMPORISÉ (M2, décision KARMA 13/09/2026 — avant : lockout permanent)
 
-Compteur persisté en `localStorage["myktamap_unlock_attempts"]` (résiste au reload).
+Compteur persisté en `localStorage["myktamap_unlock_attempts"]` (résiste au reload), verrou dans `localStorage["myktamap_unlock_lock_v1"]` = `{ until, start, level }`.
 - Tentatives 1-4 : message rouge "❌ Code incorrect. Tentatives restantes : N"
-- Tentative 5+ : LOCKOUT permanent
-  - Champ saisie masqué
-  - Message "🚫 Trop de tentatives" + sous-texte "Accès verrouillé par sécurité." (ton pro depuis v1.26.3)
-  - **PAS de bouton reset** depuis le lockout — sinon bypass trivial (reset → modale Reset affiche le mdp → l'user note → re-saisit → contourne le lockout). L'user qui ne connaît pas le code DOIT désinstaller l'app manuellement (long-press icône / vider cache navigateur / `localStorage.clear()` en F12).
-  - Liens externes pour contacter l'auteur si l'user a légitimement perdu son accès : Instagram `@karma_kta` + `mailto:contact@myktamap.fr` (le simple lien vers `myktamap.fr` était trompeur — le site n'offre aucun canal de contact)
+- Tentative 5 : **verrou temporisé** au palier suivant — 10 min → 1 h → 6 h → 24 h (`LOCK_DELAYS_MS`), compteur remis à 0, palier +1
+  - Champ saisie masqué, "🚫 Trop de tentatives", **compte à rebours** (`_fmtDuree`), rappel de l'escalade
+  - À l'expiration : la gate est **remontée** (`_monterGate`, la Promise de `ouvrirGate()` survit — même mécanisme que le changement de langue) et un code juste la résout, palier et compteur remis à zéro
+  - **Toujours PAS de bouton reset** depuis le verrou (le bypass reset → modale Reset affiche le mdp → re-saisie reste vrai)
+  - **Base de temps** : horloge de l'appareil. Reculer l'horloge sous `start` laisse verrouillé ; l'avancer raccourcit le délai. Accepté : le verrou sert à ralentir un tiers qui a le téléphone en main, pas à résister à qui contrôle l'horloge — et le verrou **définitif** tuait l'app de son propriétaire sous terre, hors réseau, plan compris (audit ergonomie 13/09/2026, bloquant B7)
+  - Liens externes pour contacter l'auteur si l'user a légitimement perdu son accès : Instagram `@karma_kta` + `mailto:contact@myktamap.fr`
 
 #### 36.4 Position dans le flow `main.js > initApp`
 
@@ -103,7 +104,7 @@ if (window.UnlockGate && !window.UnlockGate.isUnlocked()) {
 ```
 - User authentifié (cas le plus fréquent = 2e boot+) : gate skip silencieusement, comportement v172 strictement préservé
 - 1ère installation : splash 4s → gate → saisie → unlock → loader
-- Lockout : `ouvrirGate()` ne résout JAMAIS la Promise → `await` reste bloqué pour toujours → l'app reste sur l'écran lockout
+- Verrou temporisé : `ouvrirGate()` ne résout pas pendant le délai ; à l'expiration la gate remonte et un code juste résout (M2, 13/09/2026)
 
 #### 36.5 Affichage du mdp dans la modale Reset
 
@@ -123,7 +124,7 @@ Permet à un user **déjà authentifié** de reset proprement sans perdre l'acc�
 
 - `isUnlocked()` → bool — lit `localStorage["myktamap_unlock_v1"]`
 - `isLockedOut()` → bool — true si attempts ≥ 5
-- `ouvrirGate()` → Promise — résout `true` à l'unlock, NE RÉSOUT JAMAIS en lockout
+- `ouvrirGate()` → Promise — résout `true` à l'unlock ; pendant un verrou temporisé, l'écran de verrou remonte la gate à l'expiration
 - `lock()` → void — retire les flags (utilitaire, pas appelé par défaut)
 
 #### 36.7 Workflow release / bump du mdp
@@ -331,9 +332,9 @@ Module `js/pinLock.js` (~450 lignes IIFE) → `window.MyKTAMapPinLock`.
 - `isEnabled() / isUnlocked() / isLockedOut() / getRemainingAttempts()` — état
 - `hasBiometric() / isBiometricSupported()` — biométrie
 - `enable(pin, useBiometric) / disable(pin) / unlock(pin) / unlockWithBiometric() / changePin(newPin) / reset()` — actions
-- `ouvrirGate()` — affiche la gate UI, résout au unlock (jamais en lockout)
+- `ouvrirGate()` — affiche la gate UI, résout au unlock ; verrou temporisé : `_afficherLockoutUI(onUnlock)` repasse au pavé à l'expiration
 
-**Lockout** : 5 tentatives PIN ratées consécutives → lockout définitif (compteur persisté). Pour sortir : reset complet (`localStorage.clear()` via 💥 Tout réinitialiser efface aussi `myktamap_pin_v1`). Une biométrie ratée n'incrémente PAS `attempts` (WebAuthn gère son propre lockout natif device).
+**Verrou temporisé (M2, 13/09/2026)** : 5 tentatives PIN ratées consécutives → `state.lockUntil = now + LOCK_DELAYS_MS[palier]` (10 min → 1 h → 6 h → 24 h), `state.lockLevel++`, `attempts = 0`. `isLockedOut()` = `lockUntil` dans le futur (ou horloge reculée sous `lockStart`). Compte à rebours à l'écran, retour automatique au pavé, un code juste efface `lockUntil` / `lockStart` et remet `lockLevel` à 0. Une biométrie ratée n'incrémente PAS `attempts` (WebAuthn gère son propre lockout natif).
 
 **Biométrie WebAuthn** (Face ID / Touch ID / Windows Hello) :
 - Détection via `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()`
@@ -589,7 +590,7 @@ Variant thème clair : passage sur les variables `--kta-light-*` (cf §53 ThemeM
   utilisées » pendant qu'on essaie d'importer une licence n'a aucun sens). Solution actuelle : le hint
   italique du bloc précise le contexte différent.
 - ❌ Permettre l'import depuis l'écran lockout — au-delà de 5 tentatives ratées du code communautaire,
-  la gate refuse tout (cohérent avec §36.3 doctrine lockout définitif). L'import est dispo UNIQUEMENT
+  la gate refuse tout (cohérent avec §36.3 — verrou temporisé depuis le 13/09/2026, pas d'import pendant le délai). L'import est dispo UNIQUEMENT
   sur la gate normale avant lockout. Volontaire : sinon bypass trivial du lockout.
 
 #### 77.11 Pour étendre

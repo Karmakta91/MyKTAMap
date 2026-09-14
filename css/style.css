@@ -1853,19 +1853,38 @@ body.kta-lost-click-mode .leaflet-container {
 }
 
 /* 🆕 v1.35.0 — Bouton 🚨 Mode Sortie d'urgence dans le header refonte
-   (entre 📖 et 🔋). Hover rouge pour signifier urgence. */
-.kta-refonte-counter-sortie {
+   (entre 📖 et 🔋).
+   🚨 Audit ergonomie 13/09/2026 (Q5) : c'était le PLUS PETIT bouton de
+   l'écran pour la fonction la plus vitale, et rouge seulement au survol —
+   qui n'existe pas au doigt. Deux corrections SANS le grossir (KARMA,
+   14/09/2026 : « remets la taille comme avant, j'aime pas en gros ») :
+     • fond rouge PERMANENT — il se distingue des chips d'information sans
+       occuper un pixel de plus ;
+     • zone de tap étendue par un pseudo-élément — invisible, elle ne change
+       ni la taille du bouton ni celle du header, elle rattrape seulement le
+       doigt qui vise à côté.
+   La taille, elle, est redevenue celle des autres chips. */
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie {
+  position: relative;
   cursor: pointer;
   user-select: none;
+  background: rgba(255, 80, 80, 0.22);
+  border-color: rgba(255, 80, 80, 0.55);
   transition: background 0.15s ease;
 }
-.kta-refonte-counter-sortie:hover,
-.kta-refonte-counter-sortie:focus {
-  background: rgba(255, 80, 80, 0.18);
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie::after {
+  content: "";
+  position: absolute;
+  inset: -5px -3px;   /* zone de tap ≥ 44 px de haut dans un header de 44 px */
+}
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie:hover,
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie:focus,
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie:active {
+  background: rgba(255, 80, 80, 0.40);
   outline: none;
 }
-body.kta-refonte-v1 .kta-refonte-counter-sortie .kta-refonte-counter-icon {
-  font-size: 16px;
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-sortie .kta-refonte-counter-icon {
+  font-size: 16px;   /* comme les autres chips icône seule (v1.35.2) */
 }
 /* 🆕 v1.34.24 — Agrandir l'icône 📖 pour matcher la taille perçue des autres
    chips (📊 stats, 🔋 batterie). Sans cet override, l'emoji rendait à 12px
@@ -1939,6 +1958,43 @@ body.kta-refonte-v1 .kta-refonte-counter-histoire .kta-refonte-counter-icon {
   font-size: 12px;
   margin-left: 4px;
   cursor: help;
+}
+/* 🚨 Audit 13/09/2026 (Q4) : « à vol d'oiseau » en toutes lettres, sorties
+   non vérifiées reléguées sous un séparateur, bandeau si aucune n'a de chemin,
+   et ligne d'état « depuis où » sous le résultat (B1). */
+.kta-sortie-fallback-txt {
+  font-size: 12px;
+  color: #ffb3b3;
+  font-weight: 500;
+  margin-top: 4px;
+}
+.kta-sortie-principal-fallback {
+  border-style: dashed;
+}
+.kta-sortie-bandeau {
+  background: rgba(255, 80, 80, 0.14);
+  border: 1px solid rgba(255, 80, 80, 0.40);
+  color: #ffb3b3;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+.kta-sortie-origine {
+  font-size: 12px;
+  color: #8892a4;
+  margin: -6px 0 12px;
+}
+.kta-sortie-alt-sep {
+  list-style: none;
+  font-size: 11px;
+  color: #8892a4;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 0 4px;
+  margin-top: 6px;
+  border-top: 1px dashed rgba(136, 146, 164, 0.35);
 }
 .kta-sortie-niveau {
   display: inline-block;
@@ -3901,7 +3957,9 @@ html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
        a été retiré de la modale ⚙️ Réglages en mode carte (action accessible
        uniquement depuis la modale ⚙️ Configuration du loader). Reste : Reset
        / Appliquer / 🐛 Logs. */
-    grid-template-columns: 1fr 1fr 1fr;
+    /* v1.92.0 (L4) : 2 colonnes — le bouton « Appliquer » n'existe plus,
+       tout s'enregistre à la modification. Reste : ↺ Valeurs par défaut / Fermer. */
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin-top: 16px;
     padding-top: 12px;
@@ -3915,7 +3973,7 @@ html.kta-theme-light .kta-readme-lang-tabs .kta-readme-lang-btn.active {
 @media (max-width: 1023px) {
   .kta-cfg-actions-bar {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;   /* v1.92.0 : Valeurs par défaut / Fermer */
     gap: 8px;
     margin-top: 12px;
     padding-top: 10px;
@@ -6370,20 +6428,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   word-break: break-word;
 }
 
-/* ==============================================
-   MODE PERFORMANCE — segmented control (loader)
-   ============================================== */
-.kta-perf-wrap {
-  margin-top: 14px;
-  padding: 10px 12px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 /* === Drawer "🎚️ Réglages de performance" (loader) === */
 /* Wrapper qui regroupe le Tiling + les toggles Perf ULTRA dans une seule box
    collapsible. Ouverte par défaut pour conserver la visibilité du Tiling. */
@@ -6425,11 +6469,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   padding: 4px 12px 12px 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
-/* Le premier .kta-perf-wrap à l'intérieur du drawer perd son margin-top pour
-   coller juste sous le bord du séparateur du drawer. */
-.kta-loader-perf-drawer-corps > .kta-perf-wrap:first-child {
-  margin-top: 10px;
-}
 /* Séparateur visuel entre Tiling et toggles ULTRA dans le drawer */
 .kta-loader-perf-sep {
   margin: 14px 0;
@@ -6456,144 +6495,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   font-weight: 600;
   color: #e8eaf0;
   user-select: none;
-}
-
-.kta-perf-segmented {
-  display: flex;
-  width: 100%;
-  background: rgba(0,0,0,0.18);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.kta-perf-btn {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 8px 4px;
-  background: rgba(255,255,255,0.04);
-  border: none;
-  border-right: 1px solid rgba(255,255,255,0.06);
-  color: #c8d0e0;
-  cursor: pointer;
-  font-family: inherit;
-  line-height: 1.2;
-  text-align: center;
-  transition: background 0.15s ease, color 0.15s ease;
-  user-select: none;
-}
-
-.kta-perf-btn:last-child {
-  border-right: none;
-}
-
-.kta-perf-btn:hover:not(.active) {
-  background: rgba(255,255,255,0.08);
-  color: #e8eaf0;
-}
-
-.kta-perf-btn.active {
-  background: #f4c542;
-  color: #1a1f2e;
-}
-
-.kta-perf-btn .kta-perf-emoji {
-  font-size: 18px;
-  line-height: 1;
-}
-
-.kta-perf-btn .kta-perf-label {
-  font-size: 11px;
-  font-weight: 500;
-  /* 🆕 v1.46.4 (audit M3) : les labels longs en ES (Desactivado/Equilibrado/
-     Rendimiento) étaient tronqués « Desact… » sur mobile (nowrap + ellipsis +
-     boutons étroits flex:1). On autorise le wrap + la coupure de mot si besoin
-     → le label complet reste lisible (2 lignes au pire). Desktop inchangé (les
-     boutons larges gardent une seule ligne, le wrap ne s'active qu'au manque
-     de place). align-items du flex garde les boutons à hauteur égale. */
-  white-space: normal;
-  overflow-wrap: anywhere;
-  max-width: 100%;
-}
-
-.kta-perf-btn.active .kta-perf-label {
-  font-weight: 700;
-}
-
-.kta-perf-desc {
-  font-size: 12px;
-  font-style: italic;
-  color: #8892a4;
-  line-height: 1.4;
-  padding: 0 2px;
-  min-height: 1.4em;
-}
-
-/* 🖼️ v1.85.4 — Mention sous le tuilage, dans la carte de chargement : elle dit
-   que le choix N'EST PAS mémorisé. Plus discrète que .kta-perf-desc, qui porte
-   la description dynamique du preset (remplie en JS depuis les metas tiling). */
-/* ═══════════════════════════════════
-   🖼️ v1.88.1 — TUILAGE REPLIABLE DANS LA CARTE DE CHARGEMENT
-   🩸 Le bloc, posé là en v1.86.0, ajoutait ~207 px a la colonne Actions —
-   dont le min-content mesure ~510 px sous un plancher de grid de 520 px
-   (cf .loader-grid). A 125 % de zoom (viewport 1229x691) la colonne
-   debordait sur le footer : le bug « des % qui cassent le home », deja
-   clos en v1.60.x, revenait par ma faute.
-   Replie, il coute ~38 px au lieu de ~207. La valeur courante reste
-   visible dans le resume : on n a pas besoin de deplier pour savoir.
-   ═══════════════════════════════════ */
-.kta-perf-details {
-  margin-top: 14px;
-}
-.kta-perf-summary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px;
-  background: rgba(255,255,255,0.03);
-  color: #c8d0e0;
-  font-size: 12.5px;
-  cursor: pointer;
-  user-select: none;
-  list-style: none;          /* Chrome/Safari : masque le triangle natif */
-}
-.kta-perf-summary::-webkit-details-marker { display: none; }
-.kta-perf-summary::after {
-  content: "▾";
-  margin-left: auto;
-  opacity: 0.6;
-  transition: transform 0.15s ease;
-}
-.kta-perf-details[open] > .kta-perf-summary::after { transform: rotate(180deg); }
-.kta-perf-summary b { color: #f4c542; font-weight: 600; }
-.kta-perf-summary:hover { border-color: rgba(140,180,255,0.45); }
-/* Deplie : le wrap perd sa marge propre, le resume la porte deja. */
-.kta-perf-details > .kta-perf-wrap { margin-top: 8px; }
-
-.kta-perf-hint {
-  font-size: 11px;
-  color: #8892a4;
-  line-height: 1.4;
-  padding: 0 2px;
-  opacity: 0.85;
-}
-
-.kta-perf-debug {
-  font-size: 10px;
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  color: rgba(244, 197, 66, 0.75);
-  padding: 4px 6px;
-  background: rgba(244, 197, 66, 0.06);
-  border: 1px solid rgba(244, 197, 66, 0.18);
-  border-radius: 4px;
-  word-break: break-word;
 }
 
 /* ==============================================
@@ -15486,22 +15387,6 @@ body.kta-theme-light .kta-aide-section-titre {
 body.kta-theme-light .kta-loader-perf-hint {
   color: var(--kta-light-text-muted);
 }
-body.kta-theme-light .kta-perf-btn {
-  background: rgba(0,0,0,0.04);
-  color: var(--kta-light-text);
-  border: 1px solid var(--kta-light-border);
-}
-body.kta-theme-light .kta-perf-btn:hover {
-  background: var(--kta-light-accent-bg);
-  border-color: var(--kta-light-accent);
-}
-body.kta-theme-light .kta-perf-btn.active {
-  background: #ffffff;
-  border-color: var(--kta-light-accent);
-  color: var(--kta-light-text);
-  box-shadow: inset 0 0 0 1px var(--kta-light-accent);
-}
-
 /* === Toggles checkbox (paranoia / legacy / showInter / themeLight) === */
 body.kta-theme-light .kta-net-paranoia-toggle {
   background: rgba(244, 197, 66, 0.06) !important;
@@ -15541,10 +15426,6 @@ body.kta-theme-light .kta-loader-config-corps * {
 body.kta-theme-light .kta-perf-titre {
   color: var(--kta-light-accent-hover) !important;
 }
-body.kta-theme-light .kta-perf-desc {
-  color: var(--kta-light-text-muted) !important;
-}
-
 /* === Modale Audit réseau (NetDoc + NetLog) === */
 body.kta-theme-light #loaderNetDocModal .kta-readme-modal-boite,
 body.kta-theme-light #loaderNetLogModal .kta-readme-modal-boite {
@@ -17005,23 +16886,6 @@ html.kta-theme-light .kta-loader-config-corps * {
 }
 html.kta-theme-light .kta-perf-titre {
   color: #d9a82e !important;
-}
-html.kta-theme-light .kta-perf-desc {
-  color: #6b6354 !important;
-}
-html.kta-theme-light .kta-perf-btn {
-  background: rgba(0,0,0,0.04) !important;
-  color: #2a2620 !important;
-  border: 1px solid rgba(0,0,0,0.12) !important;
-}
-html.kta-theme-light .kta-perf-btn:hover {
-  background: rgba(244,197,66,0.22) !important;
-  border-color: #f4c542 !important;
-}
-html.kta-theme-light .kta-perf-btn.active {
-  background: #ffffff !important;
-  border-color: #f4c542 !important;
-  box-shadow: inset 0 0 0 1px #f4c542 !important;
 }
 html.kta-theme-light .kta-net-paranoia-toggle {
   background: rgba(244, 197, 66, 0.06) !important;
@@ -21373,6 +21237,27 @@ body.kta-theme-light #planLoaderBox.kta-has-wall .loader-section-head * {
   opacity: 0.9;
 }
 .zip-drop-sig strong { color: #a8b3c8; font-weight: 600; }
+/* 🧹 14/09/2026 (KARMA : « ce passage très fouillis ») — les formats acceptés
+   étaient annoncés en UNE phrase, tirets et points médians mêlés. Une ligne
+   par format, alignée à gauche dans une zone par ailleurs centrée : l'œil
+   compare des débuts de ligne au lieu de relire une phrase. */
+.zip-drop-formats-titre {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #a8b3c8;
+}
+.zip-drop-format {
+  display: block;
+  text-align: left;
+  max-width: 34em;
+  margin: 0 auto;
+  padding-left: 10px;
+  text-indent: -10px;   /* le retour à la ligne s'aligne sous le texte */
+}
+.zip-drop-format::before { content: "· "; opacity: 0.6; }
+html.kta-theme-light .zip-drop-formats-titre { color: #3a4256; }
 html.kta-theme-light .zip-drop-sig { color: #5a6478; }
 html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
 
@@ -21842,3 +21727,246 @@ body.kta-theme-light #kta-osm-mes-floater {
 .plan-row-btn.kta-dl-ok { color: #7bd88f; opacity: 1; }
 .plan-row-btn.kta-dl-partiel { color: #f4c542; opacity: 1; }
 .plan-row-btn.kta-plan-row-dl[disabled] { opacity: 0.45; cursor: progress; }
+
+/* 🚨 13/09/2026 — thème clair des nouveaux éléments de la Sortie d'urgence
+   (audit ergonomie Q4/B1). Sélecteur dual body/html : la modale est appendée
+   à documentElement (cf ui.md §90.4). */
+body.kta-theme-light .kta-sortie-origine,
+html.kta-theme-light .kta-sortie-origine,
+body.kta-theme-light .kta-sortie-alt-sep,
+html.kta-theme-light .kta-sortie-alt-sep {
+  color: #5a6478;
+}
+body.kta-theme-light .kta-sortie-fallback-txt,
+html.kta-theme-light .kta-sortie-fallback-txt,
+body.kta-theme-light .kta-sortie-bandeau,
+html.kta-theme-light .kta-sortie-bandeau {
+  color: #b3261e;
+}
+
+/* 🚨 B5 (audit ergonomie 13/09/2026) — bandeau PERSISTANT « sauvegarde
+   impossible » (stockage saturé). Sous le header (44 px), au-dessus de la
+   carte, sous les modales. Tombe au premier save réussi (sessionPersist.js). */
+.kta-storage-banner {
+  position: fixed;
+  top: 50px;
+  left: 8px;
+  right: 8px;
+  z-index: 1250;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #3a1414;
+  border: 1px solid rgba(255, 80, 80, 0.75);
+  color: #ffd6d6;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+.kta-storage-banner-txt { flex: 1; min-width: 0; }
+.kta-storage-banner-btn { flex-shrink: 0; min-height: 40px; }
+body.kta-theme-light .kta-storage-banner,
+html.kta-theme-light .kta-storage-banner {
+  background: #fde8e8;
+  color: #7a1010;
+  border-color: #c23c3c;
+}
+
+/* 🔒 M2 (13/09/2026) — compte à rebours des verrous temporisés (PIN + gate). */
+.kta-pin-gate-countdown,
+.kta-unlock-lockout-countdown {
+  font-size: 30px;
+  font-weight: 800;
+  color: #f4c542;
+  margin: 8px 0 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* 🚨 Q34 (audit ergonomie 13/09/2026) — pastille « N filtres actifs » sur le
+   bouton ≡ : un filtre armé était invisible depuis la carte, et restauré en
+   silence au rechargement. */
+.kta-filter-ctrl a { position: relative; }
+.kta-filter-ctrl a.kta-filter-ctrl-actif {
+  box-shadow: inset 0 0 0 2px #f4c542;
+}
+/* 🔵 14/09/2026 (KARMA : « remplacer le chiffre par un point plein ») — la
+   pastille comptait les CATÉGORIES filtrées, pas les objets masqués : un seul
+   type décoché ou vingt affichaient « 1 ». Le point signale sans prétendre
+   mesurer ; le compte vit dans l'infobulle du bouton. */
+.kta-filter-ctrl a.kta-filter-ctrl-actif::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f4c542;
+  /* Liseré sombre : le point reste visible quand il tombe sur une zone claire
+     de la carte, sans ombre portée qui baverait au zoom. */
+  box-shadow: 0 0 0 2px #1a1f2e;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+html.kta-theme-light .kta-filter-ctrl a.kta-filter-ctrl-actif::after { box-shadow: 0 0 0 2px #f0e8d8; }
+
+/* 🚨 Q9 — case « garder l'écran allumé » dans la modale de démarrage du tracker. */
+.kta-tracker-warn-wake {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0 2px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #c8d0e0;
+  cursor: pointer;
+}
+.kta-tracker-warn-wake input { margin-top: 3px; flex-shrink: 0; width: 18px; height: 18px; }
+body.kta-theme-light .kta-tracker-warn-wake,
+html.kta-theme-light .kta-tracker-warn-wake { color: #2a3142; }
+
+/* 🚨 Q46 — ligne « enregistré il y a » en tête de 📊 Détails de la session. */
+.kta-refonte-save-line {
+  font-size: 12px;
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(140, 180, 255, 0.08);
+  border: 1px solid rgba(140, 180, 255, 0.18);
+  color: #c8d0e0;
+}
+.kta-refonte-save-line.kta-refonte-save-ok    { color: #9be7a7; border-color: rgba(120, 220, 140, 0.35); }
+.kta-refonte-save-line.kta-refonte-save-ko    { color: #ffb3b3; border-color: rgba(255, 80, 80, 0.5); background: rgba(255, 80, 80, 0.12); font-weight: 600; }
+.kta-refonte-save-line.kta-refonte-save-never { color: #8892a4; }
+body.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ok,
+html.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ok { color: #1e7a34; }
+body.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ko,
+html.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ko { color: #b3261e; }
+
+/* 🔎 D27 (14/09/2026) — recherche plein texte de la modale Documentation. */
+.kta-readme-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(244, 197, 66, 0.18);
+  flex-shrink: 0;
+}
+.kta-readme-search {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: #e8eaf0;
+  font-size: 14px;
+}
+.kta-readme-search::placeholder { color: #8892a4; }
+.kta-readme-search-count { font-size: 12px; color: #8892a4; white-space: nowrap; min-width: 3.5em; text-align: right; }
+.kta-readme-search-next { min-height: 38px; min-width: 44px; padding: 0 10px; flex-shrink: 0; }
+mark.kta-doc-mark { background: #f4c542; color: #1a1f2e; padding: 0 1px; border-radius: 2px; }
+mark.kta-doc-mark.kta-doc-mark-current { outline: 2px solid #ff9933; outline-offset: 1px; }
+.kta-readme-toc-link.kta-readme-toc-dim { opacity: 0.35; }
+body.kta-theme-light .kta-readme-search,
+html.kta-theme-light .kta-readme-search { background: #fff; color: #1a1f2e; border-color: rgba(0, 0, 0, 0.2); }
+body.kta-theme-light .kta-readme-search-count,
+html.kta-theme-light .kta-readme-search-count { color: #5a6478; }
+
+/* ⚙️ L4 (v1.92.0, audit ergonomie) — un seul écran de réglages : badges de portée, groupes repliables, champ enregistré /
+   hors bornes, globaux en lecture seule, état géoref, sous-modale géoref. */
+.kta-cfg-scope {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: none;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.kta-cfg-scope-plan   { color: #f4c542; border-color: rgba(244, 197, 66, 0.5);  background: rgba(244, 197, 66, 0.10); }
+.kta-cfg-scope-global { color: #8cb4ff; border-color: rgba(140, 180, 255, 0.5); background: rgba(140, 180, 255, 0.10); }
+.kta-cfg-scope-mixte  { color: #c8d0e0; border-color: rgba(200, 208, 224, 0.4); background: rgba(200, 208, 224, 0.08); }
+.kta-cfg-group-libelle { flex: 1 1 auto; }
+.kta-cfg-group-chevron { font-size: 12px; opacity: .8; transition: transform .18s ease; }
+.kta-cfg-group-titre:hover { opacity: 1 !important; }
+.kta-cfg-group-titre:focus-visible { outline: 2px solid #8cb4ff; outline-offset: 2px; border-radius: 4px; }
+.kta-cfg-group.kta-cfg-group-replie .kta-cfg-group-chevron { transform: rotate(-90deg); }
+.kta-cfg-group.kta-cfg-group-replie .kta-cfg-group-corps { display: none; }
+@keyframes kta-cfg-ok-flash {
+  0%   { box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.6); border-color: #4ade80; }
+  100% { box-shadow: none; }
+}
+input.kta-cfg-ok { animation: kta-cfg-ok-flash 1.2s ease-out; }
+input.kta-cfg-ko { border-color: #ff5b45 !important; box-shadow: 0 0 0 2px rgba(255, 91, 69, 0.4) !important; }
+.kta-cfg-globaux-hint { font-size: 11.5px; color: #8892a4; line-height: 1.5; margin: 2px 0 8px; }
+.kta-cfg-globaux-liste {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  margin: 0 0 10px;
+  font-size: 12.5px;
+}
+.kta-cfg-globaux-liste dt { color: #c8d0e0; margin: 0; }
+.kta-cfg-globaux-liste dd { color: #e8eaf0; font-weight: 600; margin: 0; text-align: right; white-space: nowrap; }
+.kta-cfg-georef-etat { font-size: 12px; color: #8892a4; line-height: 1.45; }
+.kta-cfg-georef-etat.kta-cfg-georef-etat-ok { color: #4ade80; }
+.kta-cfg-sub-overlay { z-index: 100001; background: rgba(5, 8, 15, 0.7); }
+.kta-cfg-sub-boite {
+  max-width: 560px !important;
+  width: min(560px, 96vw) !important;
+  height: auto !important;
+  max-height: 90vh !important;
+}
+.kta-cfg-sub-corps { columns: 1 !important; }
+body.kta-theme-light .kta-cfg-scope-plan,
+html.kta-theme-light .kta-cfg-scope-plan { color: #b8860b; }
+body.kta-theme-light .kta-cfg-scope-mixte,
+html.kta-theme-light .kta-cfg-scope-mixte { color: #5a6478; border-color: rgba(90, 100, 120, 0.4); }
+body.kta-theme-light .kta-cfg-globaux-liste dt,
+html.kta-theme-light .kta-cfg-globaux-liste dt { color: #5a6478; }
+body.kta-theme-light .kta-cfg-globaux-liste dd,
+html.kta-theme-light .kta-cfg-globaux-liste dd { color: #1a1f2e; }
+
+/* ❓ D35 (v1.94.0) — aide contextuelle : le bouton posé dans l'en-tête des
+   modales qui ont une section d'aide. Même gabarit que la croix voisine pour
+   que la ligne de titre reste régulière d'une modale à l'autre. */
+.kta-aide-ctx-btn {
+  background: none;
+  border: none;
+  color: #8892a4;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px 8px;
+  margin-right: 2px;
+  border-radius: 6px;
+  min-width: 34px;
+  min-height: 34px;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.kta-aide-ctx-btn:hover,
+.kta-aide-ctx-btn:focus-visible {
+  background: rgba(140, 180, 255, 0.14);
+  color: #8cb4ff;
+  outline: none;
+}
+/* 🐛 14/09/2026 (KARMA : « le ? est centré entre le titre tracker et la croix,
+   et non collé comme les autres à la croix ») — les deux en-têtes sont en
+   `space-between`, mais leurs titres ne se comportent pas pareil : celui des
+   modales de contenu porte `flex: 1` et mange l'espace libre, donc le ❓ et la
+   croix se retrouvent collés à droite. Le titre du menu Tracker, lui, occupe
+   sa largeur propre : avec trois enfants, l'espace se répartissait et plaçait
+   le ❓ au milieu. `margin-left: auto` lui rend la place de droite, sans
+   toucher au titre — le même résultat visuel partout. */
+.kta-tracker-modal-header .kta-aide-ctx-btn { margin-left: auto; }
+
+body.kta-theme-light .kta-aide-ctx-btn,
+html.kta-theme-light .kta-aide-ctx-btn { color: #5a6478; }

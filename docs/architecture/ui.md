@@ -98,7 +98,7 @@ Le module clé est `js/refonteInterface.js` (~900 lignes IIFE). Tout le CSS scop
 
 **Toggle accessible depuis 2 endroits** :
 - ⚙️ **Configuration du loader** (home) → section "🎨 Affichage" → `#loaderLegacyCb`
-- ⚙️ **Réglages map mode** (in-app) → section "🎨 Affichage" → `#kta-cfg-legacy-cb`
+- ~~⚙️ Réglages map mode → `#kta-cfg-legacy-cb`~~ — n'existe plus (vérifié v1.92.0 : aucune occurrence dans le repo) ; le choix d'interface se fait au HOME seulement.
 
 **Reload requis** au toggle : la classe `body.kta-refonte-v1` doit être appliquée au boot AVANT que Leaflet initialise ses positions (sinon décalages divers).
 
@@ -335,9 +335,32 @@ Pour l'Éditeur tableau (`tableEditor.js`), retrait du `width: 1100px` forcé da
 
 `APP_CONFIG.showRoadIntersections` (default true) persisté dans `localStorage > app_user_prefs`. Setter `window.setShowRoadIntersections(value)` qui persiste + appelle `renderRoads()` à chaud.
 
-Toggle accessible **uniquement** depuis ⚙️ Configuration du home → section « 🎨 Affichage » (KARMA a fait retirer le doublon de ⚙️ Réglages map mode pour ne pas surcharger les Réglages in-app focus PAR PLAN).
+Toggle accessible depuis ⚙️ Réglages (mode carte) → groupe « 🎨 Affichage », **par plan** depuis v1.36.2 (`#cfg_show_intersections` → `setPlanShowsIntersections`) ; il a été **retiré du HOME**. (Historique : la phrase inverse a été vraie entre v1.9.2 et v1.36.2.)
 
 > 🎛️ **v1.46.3 — Refonte ergo des modales config (HOME + PLAN)** : sections réorganisées par **groupes thématiques** (en-têtes `config.group.*` via `I18n.t`/`data-i18n`, **même ordre dans les 2 modales**) : 🌍 Application · 📐 Plan (échelle/Nord/géoréf **regroupés**) · 📍 Navigation · 🎨 Affichage · 🚀 Performance · 🔒 Confidentialité · 🛠️ Système. **Déplacement de blocs uniquement** (tous les `id`/handlers préservés : PLAN `cfg_*`, HOME `loader*`). Échelle (m/px) extraite de « Détection des pas » → groupe calibration (proximité géoréf, demande KARMA). Doublons en-tête/section retirés (Affichage, Mode Perf ULTRA). M-LVL (`_renderMultiLevelSection`) toujours dormant. Fusion tri-langue : `scripts/merge-i18n-frags3.js`.
+
+#### ⚙️ Modale Réglages (mode carte) — état v1.92.0 (L4, audit ergonomie)
+
+`js/interfaceConfig.js > afficherConfig()`. **Huit groupes**, chacun rendu par `_cfgGroupeDebut(cle, portee)` … `_cfgGroupeFin()` (`.kta-cfg-group` > titre `.kta-cfg-group-titre` cliquable avec badge de portée `.kta-cfg-scope-plan` / `-global` > `.kta-cfg-group-corps`) ; repli mémorisé dans `localStorage.myktamap_cfg_groupes_v1`, replié par défaut sur écran étroit sauf le premier groupe.
+
+| # | Groupe (clé) | Portée | Contenu |
+|---|---|---|---|
+| 1 | 🌍 `config.group.application` | 🌍 tous | 🎬 mode présentation · **🏠 Réglés depuis l'accueil** (lecture seule : langue, thème, icônes au zoom, panneaux ancrés, magnétisme, **carnet des sorties** ; bouton → `_retourLoaderAvecConfirm`) |
+| 2 | 📐 `config.group.planCalib` | 📍 ce plan | bandeau cohérence · échelle (`setPlanScale`) · Nord (`setPlanNorthOffset`) · **lanceur 🌐 Géoref** (`#cfg_georef_open`, état `#cfg_georef_etat`) → sous-modale `#kta-cfg-georef-modal` (enfant de `#kta-cfg-modal`, rendue par `_renderCfgGeorefSection`, handlers `_bindCfgGeorefHandlers` posés à l'ouverture) |
+| 3 | 📍 `config.group.navTracker` | 📍 ce plan | départ X/Y (+ pickers) · podomètre ×3 · nav intelligente ×3 |
+| 4 | 🎨 `config.group.affichage` | 📍/🌍 mixte (badge « selon la ligne », chaque ligne dit la sienne) | ronds (ce plan) · wake lock · vocal (tous plans) |
+| 5 | 🚀 `config.group.perf` | 📍 ce plan | toggles ULTRA + `tousNiveaux` (multi-niveau seulement, hors ULTRA) |
+| 6 | 🛰️ `config.group.capteurs` | 🌍 tous | batterie · vibration |
+| 7 | 🔒 `config.group.privacy` | 🌍 tous | incognito (le **carnet** s'est déplacé à l'accueil en v1.92.0 : `#loaderJournalCb`, câblé par `homeConfig.js`) |
+| 8 | 🛠️ `config.group.system` | 📍 ce plan (lecture seule) | preset perf en lecture seule |
+
+**Application immédiate** (`_bindReglagesImmediats`) : les 9 champs jadis lus par « Appliquer » (`cfg_scale`, `cfg_startX/Y`, `cfg_stepLength/Threshold/Cooldown`, `cfg_smartNav`, `cfg_smartNavRadius/Heading`) persistent au `change` via `setPlanScale` / `setPlanTracking` / `setPlanSmartNav`. Validation par `_cfgValider(id, brut)` (table `_CFG_BORNES`, exposée `window._ktaCfgValider`, **exécutée** par `scripts/check-reglages-immediats.js`) : hors bornes = rouge + toast, rien d'écrit. Départ X/Y : debounce 600 ms puis `resetTrackingPosition()` seulement si la paire a changé (`_cfgFlushDepart` à la fermeture). Les pickers et le calibrage d'échelle (`interfaceMaintenance.js`) émettent `change` sur le champ. `appliquerConfig` et `_validerReglagesTracking` **n'existent plus**.
+
+**Fermeture** : `_cfgFermer()` (croix, bouton `#kta-cfg-fermer`, clic hors modale, Échap via `_cfgInstallerFermeture`). Échap ignore la modale masquée par un picker, ferme d'abord la sous-modale géoref, et laisse la main à une autre `.kta-readme-modal-overlay` posée par-dessus (Niveaux, Jonction, calibrage).
+
+**Reset** (`_resetConfigExecuter`) : **ce plan seulement** — `resetPlanNorthOffset`, suppression de `myktamap_plan_prefs_<pid>`, valeurs du plan-config (bornes podomètre respectées, repli `DEFAULT_CONFIG`), `appliquerSmartNavPerPlan` (repli global), `resetTrackingPosition`. Plus aucun `sauvegarderPrefsUtilisateur()` ici : les globaux ne bougent pas.
+
+**Q61** : wake lock et vocal non supportés → `ktaCapteurRefuse(row, cb, hint, "config.capteurs.nonSupporte")` (4ᵉ paramètre = clé de raison), comme les capteurs.
 
 Bug fix bonus dans `buildAppConfigFromPlan` : ce setter reconstruisait `APP_CONFIG = { ...cfg }` SANS les prefs globales → `scaledMarkers` et `showRoadIntersections` étaient écrasés au plan switch. Restauration explicite depuis localStorage maintenue dans cfg.
 
@@ -1239,7 +1262,7 @@ KARMA quote :
 | 5 | `js/interfaceImportExport.js` | 732 | Export JSON + import multi-format |
 | 6 | `js/interfaceItineraire.js` | 1 588 | Itinéraire + Évitements (Lots 6+8 fusionnés) |
 | 7 | `js/interfaceMaintenance.js` | 716 | Calibrage + Reset + Mise à jour douce |
-| 9 | `js/interfaceConfig.js` | 1 485 | Modale Réglages + Perf ULTRA + M-LVL + Géoref |
+| 9 | `js/interfaceConfig.js` | ~2 350 | Modale Réglages (8 groupes, application immédiate, sous-modale Géoref) + Perf ULTRA + niveaux |
 
 (Le « Lot 8 » d'origine — Évitements — a été fusionné dans le Lot 6 car la cohérence
 fonctionnelle s'imposait : itinéraire et évitements partagent l'API `window.PathAvoidances`.)

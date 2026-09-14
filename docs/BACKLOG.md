@@ -44,6 +44,24 @@ exister.
 
 ⚠️ **Rien n a ete mesure dans cette etude** : tous les gains annonces sont raisonnes depuis le code, pas observes.
 
+## 🧭 Audit ergonomie du 13/09/2026 — lots restants
+
+Rapport : `docs/audits/2026-09-13_audit-ergonomie-v1.md` (100 constats UX, 36 écarts doc, 22 manques). **Lot 1
+« Sécurité » livré le 13/09 (non versionné, en attente de bump)** : B1 position par défaut, B2 permission
+capteurs, Q3 tag `entree_plan`, Q4 vol d'oiseau, Q5 bouton 🚨, Q7/Q8 vocal, Q10 vibration urgence, Q21 chip muet.
+
+| Lot | Contenu | État |
+|---|---|---|
+| **2 — Filets de données (½ j)** | B3 snapshot avant import de session · B4 « Tout réinitialiser » liste 4 postes, en efface 9 · B6 Reset des Réglages sans confirmation · Q23 suppression de point hors historique · Q24/Q25 zone détruite au re-tap / bouton ✅ · Q44 « Effacer la session » à 1 tap · Q45 snapshot unitaire · Q47 export tracker-seule refusé · Q49 carnet sans interrupteur · Q58 effacer géoréf · Q59 générateur fermé au clic fond | ✅ **livré 13/09** (non versionné), verrouillé par `check-filets-donnees.js` |
+| **3 — Doc (½ j, sans code)** | D5 Vue OSM « opt-in » → « active par défaut » (**écart de confidentialité**) · D1 onglets Exporter · D3 « Changer de plan » · D2 menu Tracker flyout · D6 Reset dans ⚙️ · D11/D12 snapshots · D4/D16 · D10 côté des groupes · réglages fantômes Q60 (doc) | ✅ **livré 13/09** (non versionné) ; D18/D19/D27 le 14/09 (v1.91.2) ; D2 (flyout Tracker), D9 (titre d'aide), D13 (styles de légende de l'export image), D20 (revoir le tutoriel), D29-34 (mesure OSM, coordonnées de surface, inspecteur mémoire) le 14/09. Q60 code soldé en v1.92.0. ~~D21~~ **traité le 14/09** en passe ciblée (option retenue) : encadré d'aiguillage en tête du chapitre Secours ×3 (quelle section lire selon la situation), renvoi depuis la Sortie d'urgence qui vit 600 lignes plus haut, et 12 formulations périmées (« désormais ») retirées. ⚠️ **Le rapport surestimait la redite** : les 3 vues Live ne sont décrites en détail qu'UNE fois chacune (lignes 1912, 1959, 2000 de la version fr), les autres occurrences sont des renvois légitimes. Aucune fusion de sections : les ancres sont préservées. **Reste, à trancher par KARMA** : D26 (jargon : IndexedDB ×13, Leaflet ×13, localStorage ×9…), ~~D35~~ **livré le 14/09** : ❓ dans l'en-tête de 14 fenêtres, ouvrant la section d'aide du sujet ; désactivable depuis ⚙️ Configuration de l'accueil (exigence KARMA). Table confrontée au code par `check-aide-contextuelle.js`. ~~D36~~ **clos le 14/09** : défaut réel mais injoignable (la langue ne se change plus depuis un plan depuis la v1.85.4, et le retour à l'accueil reconstruit l'interface) — consigné dans `docs/architecture/i18n.md` avec ce qui rouvrirait le sujet. **D26 jargon : passe ciblée faite le 14/09** — IndexedDB, localStorage, Service Worker et DevTools deviennent du langage courant là où ils n'étaient qu'une précision de rangement ; gardés là où ils sont le sujet (crédits des standards web, auto-hébergement HTTPS). ℹ️ D29-34 « aide profil 38 succès vs 32 » : **le rapport se trompait** — 8 familles × 4 paliers + 6 spéciaux = 38, la doc est juste. |
+| **4 — État visible (½ j)** | Q34/Q35 filtres · Q11 footer tracker · Q12 étapes d'itinéraire après restore · Q46 « enregistré il y a » · Q16 tracker masqué par niveau · Q17 verrou suspendu · Q9 wake lock au démarrage | ✅ **livré 13/09** (non versionné), verrouillé par `check-etat-visible.js` |
+| **M2 — Lockout temporisé** | PIN (`pinLock.js`) **et** gate mot de passe (`unlockGate.js`) → temporisation escaladée 10 min → 1 h → 6 h → 24 h, compte à rebours, retour automatique. Base de temps tranchée : horloge de l'appareil (reculer l'horloge ne rouvre pas, l'avancer raccourcit — accepté, `security-legal.md` §36.3) | ✅ **codé 13/09** (non versionné) — à tester sur appareil : 5 codes faux → compte à rebours → retour du pavé |
+| **B5** | Stockage saturé : bandeau persistant + bouton 💾 Exporter tant que le save échoue | ✅ **livré 13/09** — non reproductible au harnais (quota), à valider en saturant le stockage d'un téléphone de test |
+| **L1-L4** | Arbitrage KARMA 14/09/2026 : **L1 (mode terrain) et L2 (point rapide) écartés** — l'écran et la pose de point conviennent. **L4 ✅ livré le 14/09 (v1.92.0)** : application immédiate, portée par groupe, groupes repliables, globaux en lecture seule, géoref en sous-modale, reset par plan, Q60/Q61 soldés. **L3 (« ma sortie ») à concevoir ensemble** avant tout code : une *sortie* terrain se fait *dans* une *session* et se clôture sans la fermer — deux objets distincts, pas de fusion des mots ni des cycles de vie ; unification possible du seul *chemin* (export / import / clôture). | 🟡 |
+| **Stratégie doc** | une source / trois rendus + garde-fou pré-commit sur les libellés cités (§6.7 du rapport) | ⚖️ à trancher par KARMA |
+
+⚠️ Chaque constat porte un fichier:ligne dans le rapport, **vérifié au code le 13/09** (✅ vérifié) — sauf les [Supposition] marqués comme tels.
+
 ## 🆕 Sujets ouverts (demandes KARMA du 01/08/2026)
 
 ### 1. 🗺️ Import depuis SIG — « Convertir depuis SIG »
@@ -141,14 +159,22 @@ révocation.
 - `kta-toast-error/info` : classes **concaténées** (`"kta-toast-" + type`) — NON supprimables sans inventaire des `type`
 - JS : événement `kta:imgLayerCalibChange` (0 listener — extension volontaire ?), `getTrackerLevel` (« phase 2B » — abandonnée ?), scope `kta-ses-modal` inexistant dans sessionExporter:3495 (bug de scope bénin ?), ~13 exports d'API publique jamais consommés (API = contrat, gain faible risque non nul)
 
-### 🧹 Dette créée sciemment le 08/09/2026 — CSS du sélecteur de tuilage
-Le sélecteur de tuilage du HOME a été retiré (v1.90.2, décision KARMA : « on est en auto tout le temps »).
-**~43 lignes de `css/style.css` deviennent mortes** : `.kta-perf-details`, `-summary`, `-wrap`, `-segmented`,
-`-btn`, `-emoji`, `-label`, `-desc`, `-debug`, `-hint` (≈ lignes 6345 → 6545). Vérifié : **0 référence** dans
-`index.html` et `js/**`. ⚠️ Ne pas confondre avec `.kta-perf-ultra-*`, **bien vivantes** (bloc ULTRA du mode
-plan) — la confusion de préfixe est exactement le piège qui ferait sauter un bloc utile.
-Non supprimées à chaud : rien nʼa été ouvert dans un navigateur depuis une dizaine de releases, et une
-suppression CSS ne se falsifie pas — elle se constate à lʼœil. À faire au prochain passage visuel.
+### 🧹 Reste de CSS mort du loader — famille `.kta-loader-perf-drawer*` (13/09/2026)
+Le CSS du **sélecteur de tuilage** (`.kta-perf-wrap/-segmented/-btn/-emoji/-label/-desc/-details/-summary/-hint/-debug` + leurs surcharges thème clair) est **supprimé** (−194 lignes de `css/style.css`, commit dédié).
+✅ **vérifié 13/09** — 0 référence dans `index.html`/`js/**`, **agent externe repassé derrière** (coutures nettes,
+accolades équilibrées, familles vivantes intactes).
+
+⚠️ **Le piège de tête de fichier s'est confirmé sur cette entrée** : `.kta-perf-titre` (8 titres de la modale
+Config) est **VIVANTE** et était **entrelacée** dans le bloc — la liste d'origine de cette dette la citait comme
+morte par voisinage de préfixe. Un `delete` par plage de lignes l'aurait cassée. Retrait fait **sélecteur par
+sélecteur** (script à comptage d'accolades), pas par plage.
+
+**Reste ouvert (même acabit, laissé hors périmètre)** : la famille `.kta-loader-perf-drawer`, `-titre`,
+`-chevron`, `-corps`, `-sep`, `-divider` — le drawer repliable qui **enveloppait** le sélecteur — est **elle
+aussi morte** (✅ 0 réf dans `index.html`/`js/**` le 13/09). 🩸 **SEUL `.kta-loader-perf-hint` reste VIVANT**
+(6× `index.html` + 2× `js/devMode.js`) : à préserver absolument. ~40 lignes vers `css/style.css:6387-6452`.
+Même prudence : retrait sélecteur par sélecteur, jamais par plage. À faire au prochain passage visuel (une
+suppression CSS ne se falsifie pas, elle se constate à l'œil).
 
 ### 📌 Mort documenté — gardé exprès, ne pas supprimer sans arbitrage KARMA
 `_renderMultiLevelSection`/`_bindMultiLevelToggle` (interfaceConfig, 49 l., rétro-compat v1.7.3) · wrappers compat exporter/measure · `_proHashShort`/`_proSourceLabel` · dispatch `mktm:secours-scenario-mutated` (point d'extension pro) · `__ktaStyleCanon` (diagnostic) · `PERF_MODE_SIZE_BYTES` (alias rétro-compat) · `__MKTM_PRO_LICENSE__` (contrat d'en-tête) · branche mono-alerte d'alertChecker (**garde-fou réseau légitime** : une instance auto-hébergée peut servir l'ancien format) · `ktaCouperModesOutils` (console/debug)

@@ -1,8 +1,8 @@
 {
-  "version": "v1.90.17",
-  "released": "2026-09-10",
+  "version": "v1.93.0",
+  "released": "2026-09-14",
   "notes": [
-    "🗺️ Correction : au retour à l'accueil, la Vue OSM se met de nouveau à jour et s'ouvre sur le plan que tu viens de quitter — un plan chargé pour la première fois y apparaît maintenant sans redémarrer l'application.",
-    "✏️ Correction : sur un tracé, une zone ou une structure en cours de dessin, annuler (Ctrl+Z) ne laisse plus le bouton de l'outil allumé à tort, et tu peux reprendre le dessin juste après l'annulation."
+    "🗺️ Dépose un plan GeoTIFF calé sous QGIS : l'app lit le calage écrit dans le fichier et pose le géoréférencement, l'échelle et l'emprise toute seule — plus besoin de ressaisir deux points GPS à la main. Si un fichier n'est pas lisible, l'app dit précisément pourquoi et quoi réexporter.",
+    "⚙️ Réglages du plan refondus : plus de bouton « Appliquer », chaque réglage s'enregistre dès que tu le modifies, Échap ferme sans rien perdre, et chaque groupe dit s'il vaut pour ce plan ou pour tous. Le géoréférencement a sa propre fenêtre, et « Valeurs par défaut » ne touche plus que le plan en cours."
   ]
 }

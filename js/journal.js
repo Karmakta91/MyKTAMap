@@ -519,6 +519,33 @@
 
   function onPlanLoaded(planId, planName) {
     if (!isEnabled()) return null;
+    return _ouvrir(planId, planName, "auto");
+  }
+
+  // 📔 DÉMARRAGE MANUEL (demande KARMA, 14/09/2026) — « et si je veux en ouvrir
+  // une manuellement ? ».
+  //
+  // 🩸 Deux refus, jamais un clic sans effet :
+  //   • une sortie est DÉJÀ en cours → on ne la remplace pas en silence (ses
+  //     compteurs partent d'une baseline, l'écraser perdrait le travail déjà
+  //     compté) ; l'appelant reçoit la raison et le dit à l'utilisateur ;
+  //   • aucun plan chargé → une sortie appartient à un plan.
+  //
+  // Le carnet DÉSACTIVÉ n'est pas un refus : c'est même le cas d'usage. Qui a
+  // décoché « tenir un carnet » ne veut pas que chaque plan ouvert devienne une
+  // sortie — il peut vouloir en enregistrer une, décidée, ce soir-là. Le
+  // balayage de démarrage tourne donc désormais dans tous les cas (plus bas),
+  // sans quoi une sortie manuelle interrompue par un crash resterait « en
+  // cours » pour toujours.
+  function demarrer() {
+    if (_cur) return { ok: false, raison: "encours", id: _cur.id };
+    const planId = window._currentLoadedPlanId || null;
+    if (!planId) return { ok: false, raison: "sansPlan" };
+    const r = _ouvrir(planId, _planNameCourant(), "manuel");
+    return r ? { ok: true, id: r.id } : { ok: false, raison: "echec" };
+  }
+
+  function _ouvrir(planId, planName, origine) {
     // Filet : une sortie encore ouverte (plan switch sans passer par le
     // teardown, cas dégénéré) est clôturée avant d'en ouvrir une nouvelle.
     if (_cur) { try { _finaliser("auto"); } catch(e) {} }
@@ -557,6 +584,7 @@
       // déplacement réel. `typeManuel` = classement corrigé par l'user, figé.
       type:        TYPE_BUREAU,
       typeManuel:  false,
+      ouvertePar:  (origine === "manuel") ? "manuel" : "auto",
       appVersion:  (window.__MKM__ && window.__MKM__.build) || null
     };
     _lastTick = (document.visibilityState === "hidden") ? null : startMs;
@@ -735,6 +763,8 @@
   function cloturer() {
     if (!_cur) return Promise.resolve(null);
     const planId = _cur.planId, planName = _cur.planName;
+    // 🩸 La sortie suivante ne repart QUE si le carnet est actif : après une
+    // sortie démarrée à la main carnet décoché, clôturer doit s'arrêter là.
     return _finaliser("manual").then(function(rec) {
       onPlanLoaded(planId, planName);
       return rec;
@@ -1017,6 +1047,7 @@
     cloturer:     cloturer,
     flush:        flush,
     getCurrent:   getCurrent,
+    demarrer:     demarrer,     // 📔 ouverture MANUELLE (14/09/2026)
     list:         list,
     get:          get,
     remove:       remove,
@@ -1037,9 +1068,13 @@
 
   // Balayage différé : le boot a mieux à faire que d'ouvrir une IDB. 4 s après
   // le load, l'app est stabilisée (plan chargé ou HOME affiché).
-  if (isEnabled()) {
-    setTimeout(function() { _balayerEnCours(); }, 4000);
-  }
+  //
+  // 🩸 14/09/2026 : il ne tourne PLUS sous condition de `isEnabled()`. Il ne
+  // crée rien — il régularise ce qui traîne. Sous l'ancienne garde, une sortie
+  // interrompue par un crash puis le carnet décoché restait « en cours » à
+  // jamais, et le démarrage manuel (qui marche carnet décoché) créait le même
+  // orphelin.
+  setTimeout(function() { _balayerEnCours(); }, 4000);
 
   console.log("[Journal] Module chargé (DB " + DB_NAME + " v" + DB_VERSION + ")");
 })();

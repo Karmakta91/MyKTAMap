@@ -308,7 +308,12 @@
         if (window.SortieUrgence && typeof window.SortieUrgence.declencher === "function") {
           window.SortieUrgence.declencher();
         } else {
+          // 🚨 Q21 (audit 13/09/2026) : un tap qui ne fait RIEN sur le bouton
+          // le plus vital de l'app — l'utilisateur retape et perd du temps.
           console.warn("[Refonte] SortieUrgence indisponible");
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t("ui.refonte.sortie_indispo"), "error");
+          }
         }
       }
       sortieBtn.addEventListener("click", _openSortie);
@@ -473,6 +478,26 @@
   let _statusBarEl    = null;
   let _statusBarOpen  = true;  // ouverte par défaut
 
+  // Q46 : ligne « ✅ Enregistré il y a 3 s » / « ❌ dernière sauvegarde en échec ».
+  function _relatif(ms) {
+    const s = Math.max(0, Math.round(ms / 1000));
+    if (s < 60) return s + " s";
+    const m = Math.round(s / 60);
+    if (m < 60) return m + " min";
+    return Math.round(m / 60) + " h";
+  }
+  function _ligneDerniereSauvegarde() {
+    if (!window.SessionPersist || typeof window.SessionPersist.getLastSaveInfo !== "function") return "";
+    let info = null;
+    try { info = window.SessionPersist.getLastSaveInfo(); } catch(e) { return ""; }
+    if (!info) return "";
+    let txt, cls;
+    if (info.ko)       { txt = window.I18n.t("ui.refonte.save_ko");    cls = "kta-refonte-save-ko"; }
+    else if (info.ts)  { txt = window.I18n.t("ui.refonte.save_ok", { t: _relatif(Date.now() - info.ts) }); cls = "kta-refonte-save-ok"; }
+    else               { txt = window.I18n.t("ui.refonte.save_never"); cls = "kta-refonte-save-never"; }
+    return '<div class="kta-refonte-save-line ' + cls + '">' + txt + '</div>';
+  }
+
   function _creerStatusBar() {
     if (_statusBarEl || !document.body) return;
 
@@ -499,7 +524,9 @@
         // marche" de la stat itinéraire). Affiche ON (vert) ou OFF (rouge)
         // selon que le tracking GPS est actif ou non. Feedback KARMA :
         // "on met une boussole avec un ON vert et un OFF rouge".
-        '<span class="kta-refonte-stat kta-refonte-stat-tracker-off" id="kta-refonte-stat-tracker">' +
+        // 🚨 Q11 (audit 13/09/2026) : cliquable (ouvre le menu Tracker) et,
+        // quand le suivi est actif, affiche pas + distance en direct.
+        '<span class="kta-refonte-stat kta-refonte-stat-tracker-off kta-refonte-stat-clickable" id="kta-refonte-stat-tracker">' +
           '<span class="kta-refonte-stat-icon">🧭</span><span class="kta-refonte-stat-val">OFF</span>' +
         '</span>' +
         // 🆕 v1.49.0 — Compte-à-rebours « verrou sur tracé suspendu » (à côté du
@@ -532,6 +559,14 @@
     // en bottom-left qui faisait pareil avant la refonte). On ne déclenche
     // que si la stat n'est pas vide (= itinéraire actif), pour éviter
     // d'ouvrir la modale dans un état "rien à afficher" perturbant.
+    // 🚨 Q11 : le chip 🧭 ouvre le menu Tracker (Play/Stop, recalage…).
+    const trackerStat = document.getElementById("kta-refonte-stat-tracker");
+    if (trackerStat) {
+      trackerStat.addEventListener("click", function() {
+        if (typeof window.ouvrirMenuTracker === "function") window.ouvrirMenuTracker();
+      });
+    }
+
     const itiStat = document.getElementById("kta-refonte-stat-iti");
     if (itiStat) {
       itiStat.addEventListener("click", function() {
@@ -783,11 +818,28 @@
       // la retire au cas où elle traînerait d'un état antérieur.
       trackerEl.classList.remove("kta-refonte-stat-empty");
       if (valEl) {
-        valEl.textContent = trackerActif ? "ON" : "OFF";
+        // 🚨 Q11 : « ON · 👣 128 · 96 m » — pas et distance ne se lisaient
+        // qu'en rouvrant la modale Tracker, en instantané figé.
+        let txt = trackerActif ? "ON" : "OFF";
+        if (trackerActif) {
+          try {
+            const pas  = (typeof window.getStepCount === "function") ? (window.getStepCount() || 0) : 0;
+            const dist = (typeof window.getTrackingDistanceTotaleM === "function") ? (window.getTrackingDistanceTotaleM() || 0) : 0;
+            if (pas > 0 || dist > 0) {
+              txt += " · 👣 " + pas + " · " + (window.formatDistance ? window.formatDistance(dist, 0) : Math.round(dist) + " m");
+            }
+          } catch(e) {}
+        }
+        valEl.textContent = txt;
       }
       trackerEl.title = trackerActif
         ? window.I18n.t("ui.refonte.tracker_on_title")
         : window.I18n.t("ui.refonte.tracker_off_title");
+    }
+    // 🚨 Q34 : la pastille du bouton ≡ suit aussi les changements de niveaux
+    // faits ailleurs (sélecteur de niveau, bascule auto à une jonction).
+    if (window.FilterPanel && typeof window.FilterPanel.majBadge === "function") {
+      try { window.FilterPanel.majBadge(); } catch(e) {}
     }
   }
 
@@ -1441,6 +1493,10 @@
               '</div>' +
             '</div>';
 
+    // 🚨 Q46 (audit 13/09/2026) : « Enregistré il y a N s » en tête — rien ne
+    // le disait jamais, et l'utilisateur exportait « au cas où ».
+    html += _ligneDerniereSauvegarde();
+
     // 📍 Points
     html += '<div class="kta-refonte-session-section">';
     html += '<div class="kta-refonte-session-section-titre">📍 ' + window.I18n.t("ui.refonte.section_points_added") + ' <span class="kta-refonte-session-badge">' + points.length + '</span></div>';
@@ -1701,8 +1757,13 @@
                     : '') +
                 '</div>';
       } else {
+        // 📔 14/09/2026 (KARMA) : sans sortie en cours, on DIT comment en ouvrir
+        // une. Avant, cette branche annonçait « aucune sortie » sans aucune
+        // action — le carnet décoché, il n'existait plus aucun moyen d'en
+        // enregistrer une, même volontairement.
         html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
-                  window.I18n.t("jrn.section.aucune") +
+                  window.I18n.t("jrn.section.aucune") + ' ' +
+                  window.I18n.t("jrn.section.aucuneHint") +
                 '</div>';
       }
       // 🧭 Affiner : recalcule distance ET tracé en suivant les galeries entre
@@ -1711,6 +1772,12 @@
       const nbAAffiner = (typeof window.getTrackingTronconsAAffiner === "function")
         ? window.getTrackingTronconsAAffiner() : 0;
       html += '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
+                // 📔 Démarrer : proposé UNIQUEMENT quand rien n'est en cours.
+                // Quand une sortie tourne, sa place est prise par 🏁 Clôturer —
+                // les deux côte à côte inviteraient à empiler des sorties.
+                (cur ? '' : '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="kta-refonte-session-carnet-demarrer" ' +
+                         'title="' + window.I18n.t("jrn.section.demarrerTitre") + '">' +
+                         '📔 ' + window.I18n.t("jrn.section.demarrer") + '</button>') +
                 (cur ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-carnet-cloture">' +
                          '🏁 ' + window.I18n.t("jrn.section.cloturer") + '</button>' : '') +
                 (cur ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
@@ -1813,6 +1880,30 @@
           _close();   // la fiche s'ouvre par-dessus : on ferme la modale Session d'abord
           window.JournalUi.cloturerDepuisUi();
         }
+      });
+    }
+    // 📔 14/09/2026 — Démarrage manuel. Le refus vient du module (source de
+    // vérité sur `_cur`), pas de l'état du bouton : la modale peut être
+    // ouverte depuis une minute et une sortie avoir démarré entre-temps.
+    const _btnCarnetDemarrer = document.getElementById("kta-refonte-session-carnet-demarrer");
+    if (_btnCarnetDemarrer) {
+      _btnCarnetDemarrer.addEventListener("click", function() {
+        const t = window.I18n.t;
+        const toast = function(msg, type) {
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(msg, type || "info");
+        };
+        if (!window.Journal || typeof window.Journal.demarrer !== "function") { toast(t("jrn.err.indispo"), "warn"); return; }
+        const r = window.Journal.demarrer();
+        if (!r || !r.ok) {
+          toast(t(r && r.raison === "sansPlan" ? "jrn.err.sansPlan" : "jrn.err.dejaEnCours"), "warn");
+          return;
+        }
+        toast(t("jrn.toast.demarree"), "info");
+        // Re-rendre la section : elle affiche désormais la sortie en cours,
+        // sa nature et ses boutons. Fermer puis rouvrir est le chemin le plus
+        // sûr (la modale est construite d'un bloc).
+        _close();
+        if (typeof _afficherModaleSessionDetail === "function") _afficherModaleSessionDetail();
       });
     }
     const _btnCarnetOuvrir = document.getElementById("kta-refonte-session-carnet-ouvrir");
@@ -2058,7 +2149,7 @@
         listEl.querySelectorAll("[data-backup-restore]").forEach(function(btn) {
           btn.addEventListener("click", function() {
             const id = Number(btn.getAttribute("data-backup-restore"));
-            const ok = window.confirm(window.I18n.t("ui.refonte.confirm_restore"));
+            window.ktaConfirm(window.I18n.t("ui.refonte.confirm_restore")).then(function(ok) {
             if (!ok) return;
             window.SessionBackups.restore(id).then(function() {
               if (window.OOMGuard && window.OOMGuard.showToast) {
@@ -2066,15 +2157,26 @@
               }
               setTimeout(function() { location.reload(); }, 400);
             }).catch(function(err) {
-              alert(window.I18n.t("ui.refonte.alert_restore_fail", { err: (err && err.message ? err.message : err) }));
+              if (window.OOMGuard && window.OOMGuard.showToast) {
+                window.OOMGuard.showToast(window.I18n.t("ui.refonte.alert_restore_fail", { err: (err && err.message ? err.message : err) }), "error");
+              }
+            });
             });
           });
         });
         listEl.querySelectorAll("[data-backup-remove]").forEach(function(btn) {
           btn.addEventListener("click", function() {
             const id = Number(btn.getAttribute("data-backup-remove"));
-            window.SessionBackups.remove(id).then(function() {
-              _renderBackupsSection();  // refresh
+            // 🚨 Q45 (audit 13/09/2026) : la corbeille unitaire supprimait sans
+            // rien demander, collée au bouton Restaurer, alors que « Tout vider »
+            // confirmait. Un snapshot est le SEUL filet de la session.
+            window.ktaConfirm(window.I18n.t("ui.refonte.confirm_remove_snapshot"), {
+              okLabel: window.I18n.t("ui.refonte.btn_remove_snapshot_title")
+            }).then(function(ok) {
+              if (!ok) return;
+              window.SessionBackups.remove(id).then(function() {
+                _renderBackupsSection();  // refresh
+              });
             });
           });
         });
@@ -2107,13 +2209,14 @@
     const _btnClearBk = document.getElementById("kta-refonte-session-backups-clearall");
     if (_btnClearBk) {
       _btnClearBk.addEventListener("click", function() {
-        const ok = window.confirm(window.I18n.t("ui.refonte.confirm_clear_all"));
+        window.ktaConfirm(window.I18n.t("ui.refonte.confirm_clear_all")).then(function(ok) {
         if (!ok) return;
         window.SessionBackups.clearAll().then(function() {
           _renderBackupsSection();
           if (window.OOMGuard && window.OOMGuard.showToast) {
             window.OOMGuard.showToast(window.I18n.t("ui.refonte.toast_backups_cleared"), "info");
           }
+        });
         });
       });
     }

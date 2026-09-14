@@ -456,6 +456,50 @@
     return { versL93: versL93, versWgs84: versWgs84 };
   })();
 
+  // =========================================================================
+  // WEB MERCATOR (EPSG:3857) ⇄ WGS84
+  // =========================================================================
+  // Ajouté pour les GeoTIFF calés en 3857 (`js/tiffGeoref.js`) : sur un corpus
+  // réel de 39 plans calés sous QGIS, 7 sortent dans ce CRS — QGIS l'impose dès
+  // que le calage se fait sur un fond de tuiles web.
+  //
+  // C'est la projection la plus simple qui soit : Mercator SPHÉRIQUE, sur une
+  // sphère de rayon 6 378 137 m (le demi-grand axe de WGS84 utilisé comme si la
+  // Terre était ronde — c'est la définition même d'EPSG:3857, pas une
+  // approximation qu'on se permettrait ici). Ni excentricité, ni convergence.
+  //
+  // 🎯 TESTABLE SANS TABLE DE RÉFÉRENCE, comme le Lambert 93 : l'équateur tombe
+  // exactement sur y = 0, le méridien de Greenwich sur x = 0, un tour complet
+  // de longitude fait exactement 2πR, et la projection est conforme (échelle
+  // identique dans toutes les directions). `scripts/check-webmercator.js`
+  // vérifie ces propriétés — l'aller-retour seul ne prouverait rien.
+  const WEBMERC = (function () {
+    const R = 6378137.0;            // rayon de la sphère EPSG:3857
+    const D = Math.PI / 180;
+
+    function versMerc(lat, lng) {
+      // ⚠️ Le pôle projette à l'infini : la borne officielle du 3857 est
+      // ±85,051129°, au-delà de quoi la valeur n'a pas de sens cartographique.
+      const p = Math.max(-85.051129, Math.min(85.051129, lat)) * D;
+      // ⚠️ ln(tan(π/4 + φ/2)) est l'écriture de manuel, mais elle est FAUSSE
+      // EN VIRGULE FLOTTANTE à l'équateur : Math.tan(Math.PI/4) vaut
+      // 0,9999999999999999, donc y(0°) sortait à −7,1e-10 m au lieu de 0.
+      // L'identité atanh(sin φ) donne le même résultat et tombe sur 0 EXACT
+      // (ln(1/1)), ce que le garde-fou vérifie.
+      const s = Math.sin(p);
+      return { x: R * lng * D, y: R * 0.5 * Math.log((1 + s) / (1 - s)) };
+    }
+
+    function versWgs84(x, y) {
+      return {
+        lat: (2 * Math.atan(Math.exp(y / R)) - Math.PI / 2) / D,
+        lng: (x / R) / D
+      };
+    }
+
+    return { versMerc: versMerc, versWgs84: versWgs84, R: R };
+  })();
+
   // Enveloppe Lambert 93 du territoire métropolitain, LARGE à dessein : elle
   // sert à RECONNAÎTRE du L93, pas à valider une position. Un fichier qui y
   // tombe entièrement est du Lambert 93 avec une quasi-certitude — aucun autre
@@ -1432,6 +1476,10 @@
     detecterLambert93:  detecterLambert93,
     reprojeterLambert93: reprojeterLambert93,
     L93:                L93,
+    // 🌐 Web Mercator — exposé pour `js/tiffGeoref.js` (GeoTIFF calés en 3857)
+    // et pour `scripts/check-webmercator.js`. Aucune autre implémentation de
+    // cette projection ne doit apparaître dans le projet.
+    WEBMERC:            WEBMERC,
     calculerBounds:     calculerBounds,
     WARN_FEATURES:      WARN_FEATURES,
     ALERTE_CANVAS_MPX_IOS: ALERTE_CANVAS_MPX_IOS,

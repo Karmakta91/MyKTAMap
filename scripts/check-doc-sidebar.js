@@ -66,8 +66,8 @@ const DOCS = [
 // qu'on veut confronter. Un renommage devra passer par les deux.
 const ATTENDUS = {
   favoris:    { fr: "Favoris",            en: "Favorites",     es: "Favoritos" },
-  aide:       { fr: "Aide / Doc",         en: "Help / Docs",   es: "Ayuda / Doc" },
-  settings:   { fr: "Paramètres",         en: "Settings",      es: "Ajustes" },
+  aide:       { fr: "Aide / Documentation / Légende", en: "Help / Documentation / Legend", es: "Ayuda / Documentación / Leyenda" },   // = ui.group.aide (audit ergonomie D9, 13/09/2026)
+  settings:   { fr: "Réglages",           en: "Settings",      es: "Ajustes" },   // v1.92.0 (L4) : un seul mot, celui de la modale
   recherche:  { fr: "Recherche",          en: "Search",        es: "Búsqueda" },
   charger:    { fr: "Charger / Import",   en: "Load / Import", es: "Cargar / Importar" },
   save:       { fr: "Enregistrer",        en: "Save",          es: "Guardar" },

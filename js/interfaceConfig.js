@@ -13,7 +13,7 @@
 //
 // Plages d'origine (post-Lots 1-7) :
 //   689-1326  : PERF ULTRA + M-LVL section + GÉOREF (sections de la modale)
-//   1327-1669 : CONFIG modale (afficherConfig + appliquerConfig + resetConfig)
+//   CONFIG modale (afficherConfig + resetConfig — application immédiate depuis v1.92.0)
 //   1829-2228 : M-LVL modales et helpers (depuis v148)
 //   4226-4264 : M-LVL Leaflet control top-left (pastille niveau actif)
 //
@@ -24,7 +24,7 @@
 // continuer à fonctionner post-extraction (cf patches dans interface.js).
 //
 // 📋 API publique :
-//   - window.afficherConfig() / appliquerConfig() / resetConfig()
+//   - window.afficherConfig() / resetConfig()
 //   - window.appliquerFiltreNiveau()        Multi-niveau filtre
 //   - window.appliquerFiltreRuntime()       Filtre runtime tags
 //   - window._initLevelFilterControl()      Leaflet control niveau actif
@@ -65,6 +65,14 @@ function _renderPerfUltraSection() {
         </span>
       </label>`;
   }
+  // 🏗️ Q60 (audit 13/09/2026) : « Afficher tous les niveaux au lancement » était
+  // lu par main.js mais n'avait plus AUCUNE case depuis le retrait des toggles
+  // du HOME. Rendu ici, hors ULTRA, seulement pour un plan multi-niveau.
+  const rowNiveaux = (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true)
+    ? '<div style="border-top:1px solid rgba(255,255,255,0.08); margin:10px 0; padding-top:8px;"></div>' +
+      row("cfg_perf_tousNiveaux", window.I18n.t("config.perfultra.tousNiveaux.label"), s.tousNiveaux,
+          window.I18n.t("config.perfultra.tousNiveaux.hint"))
+    : "";
   return `
     <div class="kta-aide-section">
       <p style="font-size:11.5px; color:#8892a4; margin:0 0 10px 0; line-height:1.5;">
@@ -87,6 +95,7 @@ function _renderPerfUltraSection() {
             window.I18n.t("config.perfultra.viewportCull.hint"))}
       ${row("cfg_perf_mobileZoomLimit", window.I18n.t("config.perfultra.mobileZoomLimit.label"), s.mobileZoomLimit,
             window.I18n.t("config.perfultra.mobileZoomLimit.hint"), true)}
+      ${rowNiveaux}
     </div>`;
 }
 
@@ -99,7 +108,7 @@ function _bindPerfUltraToggles() {
       window.PerfUltra.setUltra(ultraEl.checked);
       // Re-render la section pour refléter les nouveaux états individuels
       const m = document.getElementById("kta-cfg-modal");
-      if (m) { m.remove(); afficherConfig(); }
+      if (m) { _cfgFermer(); afficherConfig(); }
     });
   }
   const map = {
@@ -109,7 +118,8 @@ function _bindPerfUltraToggles() {
     "cfg_perf_noTooltips":      "noTooltips",
     "cfg_perf_slowSave":        "slowSave",
     "cfg_perf_viewportCull":    "viewportCull",
-    "cfg_perf_mobileZoomLimit": "mobileZoomLimit"
+    "cfg_perf_mobileZoomLimit": "mobileZoomLimit",
+    "cfg_perf_tousNiveaux":     "tousNiveaux"      // hors ULTRA (PerfUltra.set l'accepte depuis v1.92.0)
   };
   Object.keys(map).forEach(function(id) {
     const el = document.getElementById(id);
@@ -122,68 +132,10 @@ function _bindPerfUltraToggles() {
   });
 }
 
-// =========================
-// 🏗️ MULTI-NIVEAU — section toggle dans Réglages (depuis v148)
-// =========================
-// Toggle "opt-in" par plan : quand activé, l'UI affiche un selecteur de
-// niveau dans le groupe Tracés + une sous-action 🪜 Jonction interniveau.
-// Quand désactivé (defaut), aucun changement visible → retro-compat absolue
-// avec les plans existants v147 et avant.
-// Le toggle ecrit dans PlanRegistry[planId].multiLevel (pas dans
-// localStorage global) → persistance par plan, comme perfPreset.
-function _renderMultiLevelSection() {
-  const planId = window._currentLoadedPlanId;
-  // Si on est dans le contexte d'un plan charge → on lit la valeur. Sinon
-  // (cas improbable, modale ouverte hors chargement) → false.
-  const enabled = !!(planId && window.PlanRegistry && typeof window.PlanRegistry.getMultiLevel === "function"
-    && window.PlanRegistry.getMultiLevel(planId));
-  return `
-    <div class="kta-aide-section">
-      <div class="kta-aide-section-titre">${window.I18n.t("config.mlvl.titre")}</div>
-      <p style="font-size:11.5px; color:#8892a4; margin:0 0 10px 0; line-height:1.5;">
-        ${window.I18n.t("config.mlvl.intro")}
-      </p>
-      <label class="kta-perf-ultra-row">
-        <input type="checkbox" id="cfg_multiLevel" ${enabled ? "checked" : ""}>
-        <span class="kta-perf-ultra-text">
-          <span class="kta-perf-ultra-label">${window.I18n.t("config.mlvl.toggle.label")}</span>
-          <span class="kta-perf-ultra-hint">${window.I18n.t("config.mlvl.toggle.hint")}</span>
-        </span>
-      </label>
-    </div>`;
-}
-
-// Binding du toggle multi-niveau apres render. Sauvegarde dans PlanRegistry,
-// applique au state runtime (APP_CONFIG.multiLevel) immediatement pour les
-// rerenders ne necessitant pas de reload.
-function _bindMultiLevelToggle() {
-  const el = document.getElementById("cfg_multiLevel");
-  if (!el) return;
-  el.addEventListener("change", function() {
-    const planId = window._currentLoadedPlanId;
-    if (!planId || !window.PlanRegistry || typeof window.PlanRegistry.setMultiLevel !== "function") {
-      console.warn("[Config] setMultiLevel indisponible (planId ou PlanRegistry manquant)");
-      return;
-    }
-    const newVal = !!el.checked;
-    window.PlanRegistry.setMultiLevel(planId, newVal);
-    // Applique au runtime immédiatement → permet aux re-renders (renderRoads,
-    // initInterface si re-appellé) de prendre le bon filtre. Le user verra le
-    // selecteur de niveau apparaitre/disparaitre seulement apres reload car
-    // initInterface() crée les sous-actions une seule fois au boot.
-    APP_CONFIG.multiLevel = newVal;
-    if (newVal) {
-      APP_CONFIG.activeLevel   = 0;
-      APP_CONFIG.visibleLevels = [0];
-      document.body.classList.add("kta-multilevel-active");
-    } else {
-      document.body.classList.remove("kta-multilevel-active");
-    }
-    window.APP_CONFIG = APP_CONFIG;
-    if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
-    console.log("[Config] multiLevel →", newVal, "(plan", planId + ")");
-  });
-}
+// 🏗️ Multi-niveau : plus aucune section ici depuis v1.7.3 (activation par le
+// générateur). Les fonctions mortes `_renderMultiLevelSection` /
+// `_bindMultiLevelToggle` (jamais appelées, `#cfg_multiLevel` jamais rendu)
+// ont été retirées en v1.92.0 (Q60, audit ergonomie) avec leurs 4 clés i18n.
 
 // =========================
 // 🌐 GÉORÉFÉRENCEMENT GPS — section de la modale ⚙️ Configuration
@@ -211,7 +163,6 @@ function _renderCfgGeorefSection() {
 
   return '' +
     '<div class="kta-aide-section">' +
-      '<div class="kta-aide-section-titre">' + window.I18n.t("config.georef.titre") + '</div>' +
       '<p style="font-size:12px; color:#8892a4; margin:4px 0 12px; line-height:1.5;">' +
         window.I18n.t("config.georef.intro") +
       '</p>' +
@@ -484,6 +435,20 @@ function _bindCfgGeorefHandlers() {
   });
 
   btnClear.addEventListener("click", function() {
+    // 🚨 Q58 (audit 13/09/2026) : « 🗑️ Effacer » supprimait la calibration
+    // PERSISTÉE (deux points GPS relevés en surface, qui déverrouillent la Vue
+    // OSM et les exports KMZ/GPX) sans un mot. Si une calibration est
+    // enregistrée pour ce plan → confirmation ; sinon simple vidage des champs.
+    const _planIdClear = window._currentLoadedPlanId || "default";
+    let _persistee = false;
+    try { _persistee = !!localStorage.getItem("myktamap_kmz_calib_" + _planIdClear); } catch(e) {}
+    if (_persistee && typeof window.ktaConfirm === "function") {
+      window.ktaConfirm(window.I18n.t("config.georef.confirmClear")).then(function(ok) { if (ok) _executerClear(); });
+    } else {
+      _executerClear();
+    }
+  });
+  function _executerClear() {
     // 🆕 hotfix21 — Wipe x/y + coords combinés (au lieu des 4 inputs séparés).
     ["A_x","A_y","A_coords","B_x","B_y","B_coords","C_x","C_y","C_coords"].forEach(function(k) {
       const el = document.getElementById("cfg_kmz_" + k);
@@ -504,7 +469,7 @@ function _bindCfgGeorefHandlers() {
       localStorage.removeItem("myktamap_kmz_calib_" + planId);
     } catch(e) {}
     _setStatus(window.I18n.t("config.georef.cleared"), null);
-  });
+  }
 
   // 🆕 v1.21.0-fix1 : boutons 🔍 Chercher / 📍 Cliquer carte (parité UX
   // avec la modale 💾 Enregistrer > 📡 Export externe). Pattern identique
@@ -585,13 +550,11 @@ function _cfgOuvrirRechercheGeoref(letter) {
 // Pattern identique à sessionExporter.js > _kmzActiverModeClic.
 let _cfgGeorefClickActive  = false;
 let _cfgGeorefClickHandler = null;
-let _cfgGeorefClickTarget  = null;
 
 function _cfgActiverModeClicGeoref(letter) {
   if (!window.map) return;
   _cfgDesactiverModeClicGeoref();  // annule un mode précédent éventuel
   _cfgGeorefClickActive = true;
-  _cfgGeorefClickTarget = letter;
   _cfgGeorefClickHandler = function(e) {
     const x = e.latlng.lng;
     const y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) ? (window.APP_CONFIG.imageHeight - e.latlng.lat) : e.latlng.lat;
@@ -631,7 +594,6 @@ function _cfgActiverModeClicGeoref(letter) {
 function _cfgDesactiverModeClicGeoref() {
   if (!_cfgGeorefClickActive) return;
   _cfgGeorefClickActive = false;
-  _cfgGeorefClickTarget = null;
   if (window.map && _cfgGeorefClickHandler) window.map.off("click", _cfgGeorefClickHandler);
   _cfgGeorefClickHandler = null;
   const fl = document.getElementById("kta-cfg-georef-click-floater");
@@ -690,6 +652,7 @@ function _cfgOuvrirRechercheStart() {
           const yEl = document.getElementById("cfg_startY");
           if (xEl && Number.isFinite(p.x)) xEl.value = Math.round(p.x);
           if (yEl && Number.isFinite(p.y)) yEl.value = Math.round(p.y);
+          _cfgSignalerChangement(xEl, yEl);
           res.style.display = "none";
         });
       });
@@ -711,6 +674,7 @@ function _cfgActiverModeClicStart() {
     const yEl = document.getElementById("cfg_startY");
     if (xEl) xEl.value = Math.round(x);
     if (yEl) yEl.value = Math.round(y);
+    _cfgSignalerChangement(xEl, yEl);
     _cfgDesactiverModeClicStart();
     const cfgModal = document.getElementById("kta-cfg-modal");
     if (cfgModal) cfgModal.style.display = "";
@@ -770,12 +734,309 @@ function _bindCfgTrackerStartHandlers() {
 }
 
 // =========================
+// ⚙️ L4 (audit ergonomie 13/09/2026, décision KARMA 14/09) — UN SEUL ÉCRAN,
+// PORTÉE EXPLICITE, APPLICATION IMMÉDIATE
+// =========================
+// 🩸 AVANT : 9 champs (échelle, départ X/Y, pas ×3, nav intelligente ×3)
+// n'étaient écrits qu'au bouton « Appliquer » tout en bas ; la croix et le
+// clic hors modale les perdaient en silence, Échap ne fermait rien. Tout le
+// reste était déjà immédiat. Le reset écrasait AUSSI les préférences globales
+// (app_user_prefs) depuis une modale « par plan ». Wake lock et vocal
+// disparaissaient sans message quand le navigateur ne les a pas.
+// ICI : chaque champ s'enregistre à la modification (bornes vérifiées champ
+// par champ — rouge + toast si hors bornes, rien n'est écrit), plus de bouton
+// Appliquer, Échap ferme, chaque groupe porte sa portée et se replie, les
+// globaux de l'accueil se LISENT ici avec le chemin pour les changer, le
+// géoréférencement a sa sous-modale, le reset ne touche que CE plan.
+
+const _CFG_STYLE_TITRE = "margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;display:flex;align-items:center;gap:8px;cursor:pointer;";
+const _CFG_LS_GROUPES  = "myktamap_cfg_groupes_v1";
+
+// Ouvre un groupe : titre cliquable (repli) + badge de portée + corps.
+function _cfgGroupeDebut(cle, portee, premier) {
+  const t = window.I18n.t;
+  // « mixte » : la portée change d'une ligne à l'autre — chaque ligne la dit.
+  const badge = portee === "plan"   ? '<span class="kta-cfg-scope kta-cfg-scope-plan">'   + t("config.scope.badgePlan")   + '</span>'
+              : portee === "global" ? '<span class="kta-cfg-scope kta-cfg-scope-global">' + t("config.scope.badgeGlobal") + '</span>'
+              : portee === "mixte"  ? '<span class="kta-cfg-scope kta-cfg-scope-mixte">'  + t("config.scope.badgeMixte")  + '</span>'
+              : "";
+  const style = premier ? _CFG_STYLE_TITRE.replace("18px 0 6px", "2px 0 6px") : _CFG_STYLE_TITRE;
+  return '<div class="kta-cfg-group" data-cfg-group="' + cle + '">' +
+         '<div class="kta-cfg-group-titre" role="button" tabindex="0" aria-expanded="true" style="' + style + '">' +
+           '<span class="kta-cfg-group-libelle">' + t(cle) + '</span>' + badge +
+           '<span class="kta-cfg-group-chevron" aria-hidden="true">▾</span>' +
+         '</div>' +
+         '<div class="kta-cfg-group-corps">';
+}
+function _cfgGroupeFin() { return '</div></div>'; }
+
+function _cfgLireGroupesReplies() {
+  try { return JSON.parse(localStorage.getItem(_CFG_LS_GROUPES) || "{}") || {}; } catch (e) { return {}; }
+}
+function _bindCfgGroupes(modal) {
+  const etat   = _cfgLireGroupesReplies();
+  const etroit = !!(window.matchMedia && window.matchMedia("(max-width: 1023px)").matches);
+  modal.querySelectorAll(".kta-cfg-group").forEach(function (g, i) {
+    const cle   = g.getAttribute("data-cfg-group");
+    const titre = g.querySelector(".kta-cfg-group-titre");
+    if (!titre) return;
+    // Défaut : tout ouvert en colonnes (PC) ; sur écran étroit, tout replié
+    // sauf le premier groupe. Le choix de l'utilisateur est mémorisé.
+    let replie = (typeof etat[cle] === "boolean") ? etat[cle] : (etroit && i > 0);
+    const poser = function () {
+      g.classList.toggle("kta-cfg-group-replie", replie);
+      titre.setAttribute("aria-expanded", replie ? "false" : "true");
+      titre.title = window.I18n.t(replie ? "config.groupes.deplier" : "config.groupes.replier");
+    };
+    poser();
+    const basculer = function () {
+      replie = !replie; poser();
+      const e = _cfgLireGroupesReplies(); e[cle] = replie;
+      try { localStorage.setItem(_CFG_LS_GROUPES, JSON.stringify(e)); } catch (err) {}
+    };
+    titre.addEventListener("click", basculer);
+    titre.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); basculer(); }
+    });
+  });
+}
+
+// 🌍 Les réglages de l'ACCUEIL, en lecture seule : on voit leur valeur d'ici,
+// et le chemin pour les changer — sans les rendre modifiables depuis un plan.
+function _renderCfgGlobauxLectureSeule() {
+  const t = window.I18n.t;
+  const c = window.APP_CONFIG || {};
+  const on = t("config.globaux.on"), off = t("config.globaux.off");
+  let langue = "", theme = "";
+  try { langue = String(window.I18n.getLang ? window.I18n.getLang() : "").toUpperCase(); } catch (e) {}
+  try { theme = (window.ThemeManager && typeof window.ThemeManager.isLight === "function" && window.ThemeManager.isLight()) ? t("theme.name.light") : t("theme.name.dark"); } catch (e) {}
+  let carnet = "";
+  try { carnet = (window.Journal && typeof window.Journal.isEnabled === "function") ? (window.Journal.isEnabled() ? on : off) : ""; } catch (e) {}
+  const lignes = [
+    [t("home.lang.label"), langue],
+    [t("config.globaux.theme"), theme],
+    [t("config.globaux.carnet"), carnet],
+    [t("config.display.scaledMarkers.label"), c.scaledMarkers !== false ? on : off],
+    [t("config.panneaux.label"), c.panneauxAncres === true ? on : off],
+    [t("config.snapdraw.label"), c.snapDraw === true ? (on + " · " + (Number.isFinite(c.snapDrawPx) ? c.snapDrawPx : 12) + " px") : off]
+  ];
+  return '<div class="kta-aide-section kta-cfg-globaux">' +
+    '<div class="kta-aide-section-titre">' + t("config.globaux.titre") + '</div>' +
+    '<div class="kta-cfg-globaux-hint">' + t("config.globaux.hint") + '</div>' +
+    '<dl class="kta-cfg-globaux-liste">' +
+      lignes.map(function (l) { return '<dt>' + l[0] + '</dt><dd>' + l[1] + '</dd>'; }).join("") +
+    '</dl>' +
+    '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_globaux_home">' + t("config.globaux.btn") + '</button>' +
+  '</div>';
+}
+
+// 🌐 Géoréférencement : un lanceur dans le groupe, le formulaire dans SA sous-modale.
+function _renderCfgGeorefLanceur() {
+  const t = window.I18n.t;
+  return '<div class="kta-aide-section" id="cfg_georef_lanceur">' +
+    '<div class="kta-aide-section-titre">' + t("config.georef.titre") + '</div>' +
+    '<div class="kta-cfg-georef-etat" id="cfg_georef_etat"></div>' +
+    '<button type="button" class="kta-btn" id="cfg_georef_open" style="width:100%; margin-top:8px;">' + t("config.georef.openBtn") + '</button>' +
+  '</div>';
+}
+function _cfgRafraichirEtatGeoref() {
+  const el = document.getElementById("cfg_georef_etat");
+  if (!el) return;
+  const t = window.I18n.t;
+  const pid = window._currentLoadedPlanId || "default";
+  let cal = null;
+  try { cal = (window.KmzExport && window.KmzExport.getCalibration) ? window.KmzExport.getCalibration(pid) : null; } catch (e) {}
+  const ok = !!(cal && cal.pointA && cal.pointB);
+  el.textContent = ok
+    ? t(cal.pointC ? "config.georef.etatCalibreC" : "config.georef.etatCalibre") + (cal.pointB.estimated ? " · " + t("config.georef.etatBEstime") : "")
+    : t("config.georef.etatNonCalibre");
+  el.classList.toggle("kta-cfg-georef-etat-ok", ok);
+}
+function _ouvrirSousModaleGeoref() {
+  const parent = document.getElementById("kta-cfg-modal");
+  if (!parent || document.getElementById("kta-cfg-georef-modal")) return;
+  const t = window.I18n.t;
+  const sub = document.createElement("div");
+  sub.id = "kta-cfg-georef-modal";
+  sub.className = "kta-readme-modal-overlay kta-cfg-sub-overlay";
+  sub.innerHTML =
+    '<div class="kta-readme-modal-boite kta-cfg-sub-boite">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">' + t("config.georef.titre") + '</span>' +
+        '<button class="kta-panneau-close" id="kta-cfg-georef-close" type="button" aria-label="' + t("config.actions.close") + '">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps kta-cfg-sub-corps">' + _renderCfgGeorefSection() + '</div>' +
+    '</div>';
+  // ENFANT de la modale Réglages : masquée avec elle pendant un « 📍 clic carte »,
+  // retirée avec elle au retour à l'accueil.
+  parent.appendChild(sub);
+  _bindCfgGeorefHandlers();
+  const fermer = function () { _cfgDesactiverModeClicGeoref(); sub.remove(); _cfgRafraichirEtatGeoref(); };
+  sub._ktaFermer = fermer;
+  document.getElementById("kta-cfg-georef-close").addEventListener("click", fermer);
+  sub.addEventListener("click", function (e) { if (e.target === sub) fermer(); });
+}
+function _bindCfgGeorefLanceur() {
+  const b = document.getElementById("cfg_georef_open");
+  if (b) b.addEventListener("click", _ouvrirSousModaleGeoref);
+  _cfgRafraichirEtatGeoref();
+}
+
+// ── Application immédiate ──
+// Bornes = celles des champs (et de PODO_BORNES côté config.js, qui refuse
+// aussi). PUR : « check-reglages-immediats.js » l'EXÉCUTE.
+const _CFG_BORNES = {
+  cfg_scale:           { min: 0,   max: Infinity, strict: true },   // > 0, jamais de clamp
+  cfg_startX:          { min: 0,   max: Infinity, entier: true },
+  cfg_startY:          { min: 0,   max: Infinity, entier: true },
+  cfg_stepLength:      { min: 0,   max: 1.5  },
+  cfg_stepThreshold:   { min: 10,  max: 30   },
+  cfg_stepCooldown:    { min: 300, max: 3000 },
+  cfg_smartNavRadius:  { min: 1,   max: 50   },
+  cfg_smartNavHeading: { min: 0,   max: 5    }
+};
+function _cfgValider(id, brut) {
+  const b = _CFG_BORNES[id];
+  if (!b) return { ok: false, v: NaN, min: NaN, max: NaN };
+  const v = b.entier ? parseInt(brut, 10) : parseFloat(brut);
+  const ok = Number.isFinite(v) && (b.strict ? v > b.min : v >= b.min) && v <= b.max;
+  return { ok: ok, v: v, min: b.min, max: b.max };
+}
+window._ktaCfgValider = _cfgValider;
+
+function _cfgToast(msg, type) {
+  if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(msg, type || "info");
+}
+function _cfgMarquerChamp(el, ok, r) {
+  if (!el) return;
+  el.classList.toggle("kta-cfg-ko", !ok);
+  el.classList.remove("kta-cfg-ok");
+  if (ok) {
+    void el.offsetWidth;   // relance l'animation « enregistré »
+    el.classList.add("kta-cfg-ok");
+    el.title = "";
+    return;
+  }
+  const msg = window.I18n.t("config.champ.horsBornes", { min: r.min, max: (r.max === Infinity ? "∞" : r.max) });
+  el.title = msg;
+  _cfgToast(msg, "warn");
+}
+function _cfgSignalerChangement() {
+  for (let i = 0; i < arguments.length; i++) {
+    const el = arguments[i];
+    if (el && typeof el.dispatchEvent === "function") el.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+}
+// Les trois réglages de podomètre partent ENSEMBLE, depuis APP_CONFIG (validés un à un).
+function _cfgAppliquerPodometre() {
+  if (typeof window.setPlanTracking !== "function") return;
+  window.setPlanTracking(null, {
+    stepLength:    APP_CONFIG.stepLength,
+    stepThreshold: APP_CONFIG.stepThreshold,
+    stepCooldown:  APP_CONFIG.stepCooldown
+  });
+}
+// Départ X/Y : les deux champs se règlent l'un après l'autre → 600 ms de calme
+// avant de replacer le suivi (UN reset, pas deux). Fermer la modale l'exécute.
+let _cfgDepartTimer = null, _cfgDepartFn = null;
+function _cfgAppliquerDepart() {
+  clearTimeout(_cfgDepartTimer);
+  _cfgDepartFn = function () {
+    _cfgDepartFn = null;
+    const rx = _cfgValider("cfg_startX", (document.getElementById("cfg_startX") || {}).value);
+    const ry = _cfgValider("cfg_startY", (document.getElementById("cfg_startY") || {}).value);
+    if (!rx.ok || !ry.ok) return;
+    if (APP_CONFIG.startX === rx.v && APP_CONFIG.startY === ry.v) return;
+    APP_CONFIG.startX = rx.v;
+    APP_CONFIG.startY = ry.v;
+    if (typeof window.setPlanTracking === "function") window.setPlanTracking(null, { startX: rx.v, startY: ry.v });
+    // 🐛 v1.28.0 conservé : le suivi n'est replacé QUE si le départ a changé.
+    if (typeof window.resetTrackingPosition === "function") window.resetTrackingPosition();
+    _cfgToast(window.I18n.t("config.tracker.departToast"), "info");
+  };
+  _cfgDepartTimer = setTimeout(function () { if (_cfgDepartFn) _cfgDepartFn(); }, 600);
+}
+function _cfgFlushDepart() {
+  clearTimeout(_cfgDepartTimer);
+  if (_cfgDepartFn) _cfgDepartFn();
+}
+function _bindReglagesImmediats() {
+  const on = function (id, fn) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", function () { fn(el); });
+  };
+  on("cfg_scale", function (el) {
+    const r = _cfgValider("cfg_scale", el.value); _cfgMarquerChamp(el, r.ok, r); if (!r.ok) return;
+    APP_CONFIG.scale = r.v;
+    if (typeof window.setPlanScale === "function") window.setPlanScale(null, r.v);
+  });
+  ["cfg_startX", "cfg_startY"].forEach(function (id) {
+    on(id, function (el) { const r = _cfgValider(id, el.value); _cfgMarquerChamp(el, r.ok, r); if (r.ok) _cfgAppliquerDepart(); });
+  });
+  [["cfg_stepLength", "stepLength"], ["cfg_stepThreshold", "stepThreshold"], ["cfg_stepCooldown", "stepCooldown"]].forEach(function (p) {
+    on(p[0], function (el) {
+      const r = _cfgValider(p[0], el.value); _cfgMarquerChamp(el, r.ok, r); if (!r.ok) return;
+      APP_CONFIG[p[1]] = r.v;
+      _cfgAppliquerPodometre();
+    });
+  });
+  on("cfg_smartNav", function (el) {
+    if (typeof window.setPlanSmartNav === "function") window.setPlanSmartNav(null, { smartNav: !!el.checked });
+    _cfgToast(window.I18n.t(el.checked ? "config.smartnav.toastOn" : "config.smartnav.toastOff"), "info");
+  });
+  [["cfg_smartNavRadius", "smartNavRadiusM"], ["cfg_smartNavHeading", "smartNavHeadingWeight"]].forEach(function (p) {
+    on(p[0], function (el) {
+      const r = _cfgValider(p[0], el.value); _cfgMarquerChamp(el, r.ok, r); if (!r.ok) return;
+      const patch = {}; patch[p[1]] = r.v;
+      if (typeof window.setPlanSmartNav === "function") window.setPlanSmartNav(null, patch);
+    });
+  });
+  const home = document.getElementById("cfg_globaux_home");
+  if (home) home.addEventListener("click", function () {
+    _cfgFermer();
+    if (typeof window._retourLoaderAvecConfirm === "function") window._retourLoaderAvecConfirm();
+    else if (typeof window.afficherLoader === "function") window.afficherLoader();
+  });
+}
+
+// ── Fermeture : croix, bouton Fermer, clic hors modale, Échap ──
+let _cfgKeyHandler = null;
+function _cfgFermer() {
+  _cfgFlushDepart();
+  if (_cfgKeyHandler) { document.removeEventListener("keydown", _cfgKeyHandler); _cfgKeyHandler = null; }
+  const m = document.getElementById("kta-cfg-modal");
+  if (m) m.remove();
+}
+function _cfgInstallerFermeture(modal) {
+  if (_cfgKeyHandler) document.removeEventListener("keydown", _cfgKeyHandler);
+  _cfgKeyHandler = function (e) {
+    if (e.key !== "Escape") return;
+    const m = document.getElementById("kta-cfg-modal");
+    if (!m) { document.removeEventListener("keydown", _cfgKeyHandler); _cfgKeyHandler = null; return; }
+    if (m.style.display === "none") return;                      // picker carte / Nord en cours
+    const sub = document.getElementById("kta-cfg-georef-modal");
+    if (sub) { e.preventDefault(); if (sub._ktaFermer) sub._ktaFermer(); else sub.remove(); return; }
+    // Une autre modale par-dessus (Niveaux, Jonction, calibrage échelle…) : Échap lui revient.
+    const dessus = document.querySelector(".kta-readme-modal-overlay:not(#kta-cfg-modal)");
+    if (dessus && !m.contains(dessus)) return;
+    e.preventDefault();
+    _cfgFermer();
+  };
+  document.addEventListener("keydown", _cfgKeyHandler);
+  const croix = document.getElementById("kta-cfg-close");
+  if (croix) croix.addEventListener("click", _cfgFermer);
+  const btn = document.getElementById("kta-cfg-fermer");
+  if (btn) btn.addEventListener("click", _cfgFermer);
+  modal.addEventListener("click", function (e) { if (e.target === modal) _cfgFermer(); });
+}
+
+// =========================
 
 // CONFIG — modale plein écran
 // =========================
 function afficherConfig() {
   const existing = document.getElementById("kta-cfg-modal");
-  if (existing) { existing.remove(); return; }
+  if (existing) { _cfgFermer(); return; }
 
   const c = APP_CONFIG;
 
@@ -811,7 +1072,7 @@ function afficherConfig() {
              ═══════════════════════════════════════════════════════════════ -->
 
         <!-- ════════ 1. 🌍 APPLICATION ════════ -->
-        <div class="kta-cfg-group-titre" style="margin:2px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.application")}</div>
+        ${_cfgGroupeDebut("config.group.application", "global", true)}
 
         <!-- 🆕 v1.21.0-fix3 (KARMA "met le mode présentation tout en haut") :
              Bouton "🎬 Activer le mode présentation" en TÊTE de la modale
@@ -830,6 +1091,8 @@ function afficherConfig() {
           </div>
         </div>
 
+        ${_renderCfgGlobauxLectureSeule()}
+
         <!-- 🌍 v1.85.4 (audit KARMA) — LE SÉLECTEUR DE LANGUE A QUITTÉ CET ÉCRAN.
              I18n.setLang() persiste dans la clé myktamap_app_lang : c'est un
              réglage GLOBAL, il n'a rien à faire dans la config d'UN plan. Pire,
@@ -840,7 +1103,8 @@ function afficherConfig() {
              ⚠️ Zéro backtick ici : ce commentaire vit dans un template literal. -->
 
         <!-- ════════ 2. 📐 PLAN : ÉCHELLE & GÉOLOCALISATION ════════ -->
-        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.planCalib")}</div>
+        ${_cfgGroupeFin()}
+        ${_cfgGroupeDebut("config.group.planCalib", "plan")}
 
         <!-- Bandeau cohérence échelle GPS — reste en tête de CE groupe -->
         ${(typeof window.renderBannerCoherenceEchelle === "function")
@@ -849,7 +1113,7 @@ function afficherConfig() {
 
         <!-- 📐 Échelle (m/px) + 🎯 calibrage — EXTRAIT de l'ancienne section
              "Détection des pas". Le bouton 🎯 ouvre ouvrirCalibrageEchelle().
-             L'input cfg_scale est inchangé (lu par appliquerConfig). -->
+             L'input cfg_scale s'enregistre à la modification (v1.92.0). -->
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("config.steps.scale")}</div>
           <div style="display:flex; gap:6px; align-items:center;">
@@ -895,10 +1159,11 @@ function afficherConfig() {
 
         <!-- 🌐 Géoréférencement GPS — DÉPLACÉ ici depuis la fin de la modale
              (rendu par _renderCfgGeorefSection, ids cfg_kmz_* inchangés). -->
-        ${_renderCfgGeorefSection()}
+        ${_renderCfgGeorefLanceur()}
 
         <!-- ════════ 3. 📍 NAVIGATION & TRACKER ════════ -->
-        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.navTracker")}</div>
+        ${_cfgGroupeFin()}
+        ${_cfgGroupeDebut("config.group.navTracker", "plan")}
 
         <!-- 🆕 v1.49.0 (Lot C) — prérequis échelle PX/M (demande KARMA) : position de
              départ, détection de pas et navigation intelligente dépendent tous de
@@ -972,7 +1237,8 @@ function afficherConfig() {
         </div>
 
         <!-- ════════ 4. 🎨 AFFICHAGE ════════ -->
-        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.affichage")}</div>
+        ${_cfgGroupeFin()}
+        ${_cfgGroupeDebut("config.group.affichage", "mixte")}
 
           <!-- ⚠️ v1.85.3 (audit KARMA) — QUATRE RÉGLAGES ONT QUITTÉ CET ÉCRAN :
                taille des icônes au zoom, ancrage des panneaux, magnétisme au
@@ -1030,7 +1296,7 @@ function afficherConfig() {
             <input type="checkbox" id="cfg_wake_lock">
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label">${window.I18n.t("config.display.wakelock.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
-              <span class="kta-perf-ultra-hint">
+              <span class="kta-perf-ultra-hint" id="cfg_wake_lock_hint">
                 ${window.I18n.t("config.display.wakelock.hint")}
               </span>
             </span>
@@ -1045,8 +1311,8 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_voice_row" style="margin-top:8px; display:none;">
             <input type="checkbox" id="cfg_voice">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.voice.label")}</span>
-              <span class="kta-perf-ultra-hint">
+              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.voice.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
+              <span class="kta-perf-ultra-hint" id="cfg_voice_hint">
                 ${window.I18n.t("config.display.voice.hint")}
               </span>
             </span>
@@ -1054,12 +1320,14 @@ function afficherConfig() {
         </div>
 
         <!-- ════════ 5. 🚀 PERFORMANCE ════════ -->
-        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.perf")}</div>
+        ${_cfgGroupeFin()}
+        ${_cfgGroupeDebut("config.group.perf", "plan")}
 
         ${_renderPerfUltraSection()}
 
         <!-- ════════ 6. 🛰️ OPTIONS VIA CAPTEUR ════════ -->
-        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.capteurs")}</div>
+        ${_cfgGroupeFin()}
+        ${_cfgGroupeDebut("config.group.capteurs", "global")}
           <!-- 🛰️ v1.85.2 (KARMA) — RUBRIQUE « Options via capteur ».
                La vibration vivait dans « Affichage », ce qu'elle n'est pas :
                elle dépend d'un CAPTEUR, comme la batterie. Les deux sont
@@ -1093,8 +1361,16 @@ function afficherConfig() {
               </span>
             </label>
           </div>
-        <!-- ════════ 6. 🔒 CONFIDENTIALITÉ & SÉCURITÉ ════════ -->
-        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.privacy")}</div>
+        <!-- ════════ 7. 🔒 CONFIDENTIALITÉ & SÉCURITÉ ════════ -->
+        ${_cfgGroupeFin()}
+        ${_cfgGroupeDebut("config.group.privacy", "global")}
+
+        <!-- 📔 Q49 (13/09/2026) puis v1.92.0 (L4) : le carnet s'enregistrait
+             sans opt-in ; son interrupteur, d'abord posé ici, VIT DÉSORMAIS
+             DANS ⚙️ CONFIGURATION DE L'ACCUEIL (décision KARMA : « c'est
+             général, et le carnet est accessible depuis le home »). Il reste
+             LISIBLE ici, dans « 🏠 Réglés depuis l'accueil », comme les quatre
+             réglages rapatriés en v1.85.3. -->
 
         <!-- 🕵️ v1.31.8 F2 + 🆕 v1.31.9 : Mode incognito — bouton qui
              ouvre une NOUVELLE fenêtre dans le même origin avec ?incognito=1
@@ -1122,8 +1398,9 @@ function afficherConfig() {
           </div>
         </div>`}
 
-        <!-- ════════ 7. 🛠️ SYSTÈME & MAINTENANCE ════════ -->
-        <div class="kta-cfg-group-titre" style="margin:18px 0 6px;font-size:12px;font-weight:700;letter-spacing:.04em;color:#f4c542;text-transform:uppercase;opacity:.85;">${window.I18n.t("config.group.system")}</div>
+        <!-- ════════ 8. 🛠️ SYSTÈME & MAINTENANCE ════════ -->
+        ${_cfgGroupeFin()}
+        ${_cfgGroupeDebut("config.group.system", "plan")}
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("config.debug.titre")}</div>
@@ -1153,9 +1430,10 @@ function afficherConfig() {
           Pour reset depuis la map : passer par 🗂️ titre cliquable → home → ⚙️
           Configuration → 💥 Tout réinitialiser.
         -->
+        ${_cfgGroupeFin()}
         <div class="kta-cfg-actions-bar">
-          <button class="kta-btn kta-btn-ghost"   onclick="resetConfig()">${window.I18n.t("config.actions.reset")}</button>
-          <button class="kta-btn kta-btn-primary"  onclick="appliquerConfig()">${window.I18n.t("config.actions.apply")}</button>
+          <button class="kta-btn kta-btn-ghost" type="button" onclick="resetConfig()">${window.I18n.t("config.actions.reset")}</button>
+          <button class="kta-btn kta-btn-primary" type="button" id="kta-cfg-fermer">${window.I18n.t("config.actions.close")}</button>
         </div>
 
       </div>
@@ -1163,8 +1441,11 @@ function afficherConfig() {
   `;
 
   document.documentElement.appendChild(modal);
-  document.getElementById("kta-cfg-close").addEventListener("click", function () { modal.remove(); });
-  modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
+  const _capteurRefuse = window.ktaCapteurRefuse || function () {};
+  _cfgInstallerFermeture(modal);
+  _bindCfgGroupes(modal);
+  _bindReglagesImmediats();
+  _bindCfgGeorefLanceur();
 
   // 🆕 v1.26.1 — Bind bouton "📋 Copier" du banner cohérence échelle (si affiché)
   if (typeof window.attacherBoutonCopierEchelleGps === "function") {
@@ -1180,7 +1461,7 @@ function afficherConfig() {
   // 🌐 Géoréférencement GPS. Sauve via KmzExport.setCalibration(planId, c)
   // → pré-rempli automatiquement à l'ouverture de la modale 📡 Export externe
   // (sessionExporter > _renderCalibrageCommun lit KmzExport.getCalibration).
-  _bindCfgGeorefHandlers();
+  // (v1.92.0 : les handlers géoref sont posés à l'ouverture de la sous-modale)
 
   // 🧭 Position initiale du tracker : boutons 🔍 via un point / 📍 cliquer carte.
   _bindCfgTrackerStartHandlers();
@@ -1195,8 +1476,7 @@ function afficherConfig() {
     btnPresentation.addEventListener("click", function() {
       // Ferme la modale Réglages AVANT d'activer le mode (sinon le mode
       // présentation laisse la modale ouverte par-dessus la carte).
-      const cfgModal = document.getElementById("kta-cfg-modal");
-      if (cfgModal) cfgModal.remove();
+      _cfgFermer();
       // Active après un micro-délai pour laisser le DOM se nettoyer.
       setTimeout(function() {
         if (window.PresentationMode && typeof window.PresentationMode.activate === "function") {
@@ -1241,8 +1521,8 @@ function afficherConfig() {
   // Sync UI ↔ state via window.WakeLock.isEnabled() + setEnabled().
   const wlRow = document.getElementById("cfg_wake_lock_row");
   const wlCb  = document.getElementById("cfg_wake_lock");
-  if (wlRow && wlCb && window.WakeLock) {
-    if (window.WakeLock.isSupported()) {
+  if (wlRow && wlCb) {
+    if (window.WakeLock && window.WakeLock.isSupported()) {
       wlRow.style.display = "";  // révèle (default = none pour rétrocompat)
       wlCb.checked = window.WakeLock.isEnabled();
       wlCb.addEventListener("change", function() {
@@ -1264,8 +1544,10 @@ function afficherConfig() {
         });
       });
     } else {
-      // API pas supportée → on garde le row caché (display:none par défaut
-      // dans le HTML). Pas de message UI (ne pas frustrer l'user Firefox).
+      // 🩸 Q61 (audit 13/09/2026) : AFFICHÉ, désactivé, avec la raison — comme
+      // batterie et vibration. Masquer laissait croire que l'option n'existe
+      // pas ; Firefox n'a pas l'API, l'utilisateur doit le savoir.
+      _capteurRefuse(wlRow, wlCb, document.getElementById("cfg_wake_lock_hint"), "config.capteurs.nonSupporte");
     }
   }
 
@@ -1413,7 +1695,6 @@ function afficherConfig() {
   // son téléphone refuse. On l'affiche désormais désactivée, avec la raison.
   // Le rendu « capteur refusé » vit dans utils.js — partagé avec la modale
   // d'accueil, qui porte exactement les mêmes options.
-  const _capteurRefuse = window.ktaCapteurRefuse || function () {};
   // ── 🔋 Batterie ──
   const batRow = document.getElementById("cfg_batterie_row");
   const batCb  = document.getElementById("cfg_batterie");
@@ -1466,8 +1747,8 @@ function afficherConfig() {
   // injecté/retiré au boot du module selon localStorage).
   const voiceRow = document.getElementById("cfg_voice_row");
   const voiceCb  = document.getElementById("cfg_voice");
-  if (voiceRow && voiceCb && window.VoiceCommand) {
-    if (window.VoiceCommand.isSupported()) {
+  if (voiceRow && voiceCb) {
+    if (window.VoiceCommand && window.VoiceCommand.isSupported()) {
       voiceRow.style.display = "";
       voiceCb.checked = window.VoiceCommand.isEnabled();
       voiceCb.addEventListener("change", function() {
@@ -1481,154 +1762,58 @@ function afficherConfig() {
           );
         }
       });
+    } else {
+      // 🩸 Q61 : même traitement que les capteurs — affiché, désactivé, raison nommée.
+      _capteurRefuse(voiceRow, voiceCb, document.getElementById("cfg_voice_hint"), "config.capteurs.nonSupporte");
     }
-    // Si !isSupported() → row caché silencieusement (cas Firefox).
   }
 
-  // 🏗️ Multi-niveau : section UI retirée v1.7.3 (KARMA) — activation
-  // uniquement via le générateur de plan désormais. Les fonctions
-  // _renderMultiLevelSection et _bindMultiLevelToggle restent définies
-  // dans le code pour rétro-compat (lecture) mais ne sont plus appelées.
-  // La cascade APP_CONFIG.multiLevel ← PlanRegistry[id].multiLevel ← PLAN_CONFIG.plan.multiLevel
-  // reste fonctionnelle (cf §26 CLAUDE.md) — un user qui avait toggle via
-  // Réglages avant v1.7.3 garde son état persisté en PlanRegistry.
+  // 🏗️ Multi-niveau : rien ici (activation par le générateur, cf. v1.7.3).
 }
 
-// 🆕 v1.49.0 — validation des réglages tracking bornés. Marque en rouge les
-// champs hors limites (encadré rouge) et retourne false. Demande KARMA :
-// « encadré rouge + refus d'appliquer » au lieu d'un clamp silencieux.
-function _validerReglagesTracking() {
-  var champs = [
-    { id: "cfg_stepLength",      min: 0,   max: 1.5  },
-    { id: "cfg_stepThreshold",   min: 10,  max: 30   },
-    { id: "cfg_stepCooldown",    min: 300, max: 3000 },
-    { id: "cfg_smartNavRadius",  min: 1,   max: 50   },
-    { id: "cfg_smartNavHeading", min: 0,   max: 5    },
-    { id: "cfg_snapDrawPx",      min: 4,   max: 40   }   // 🧲 C5 v1.74.0
-  ];
-  var ok = true;
-  champs.forEach(function(c) {
-    var el = document.getElementById(c.id);
-    if (!el) return;
-    var v = parseFloat(el.value);
-    var invalide = !Number.isFinite(v) || v < c.min || v > c.max;
-    el.style.borderColor = invalide ? "#ff5b45" : "";
-    el.style.boxShadow   = invalide ? "0 0 0 2px rgba(255,91,69,0.4)" : "";
-    if (invalide) ok = false;
-  });
-  return ok;
-}
+// ⚙️ v1.92.0 (L4) : `appliquerConfig` et son bouton n'existent plus — chaque
+// champ s'enregistre à la modification (cf. `_bindReglagesImmediats`).
 
-function appliquerConfig() {
-  // 🆕 v1.49.0 — gate : refuse d'appliquer si un réglage tracking est hors
-  // limites (champ encadré en rouge). Rien n'est sauvegardé, la modale reste
-  // ouverte (return AVANT le fermerPanneau de fin de fonction).
-  if (!_validerReglagesTracking()) {
-    alert(window.I18n.t("config.tracking.horsLimites"));
-    return;
-  }
-  // 🐛 v1.28.0 : on mémorise la position initiale AVANT écrasement pour ne
-  // réinitialiser la position du tracker QUE si startX/startY a réellement
-  // changé (cf plus bas). Sinon un simple toggle (smartNav…) ou un changement
-  // d'échelle replaçait le tracker au départ → perte de la position courante.
-  const _oldStartX = APP_CONFIG.startX;
-  const _oldStartY = APP_CONFIG.startY;
-
-  // 🎯 v1.76.1 (bug KARMA « l'échelle ne se sauvegarde plus ») — en réalité
-  // elle n'a JAMAIS été persistée : écrite en mémoire seulement, elle
-  // retombait sur le plan-config au chargement suivant. Désormais : pref
-  // per-plan (pattern northOffsetDeg). Valeur invalide (≤0/NaN) → on GARDE
-  // l'ancienne (refus, pas de clamp — même règle que startX/startY).
-  const _nouvelleEchelle = parseFloat(document.getElementById("cfg_scale").value);
-  if (Number.isFinite(_nouvelleEchelle) && _nouvelleEchelle > 0) {
-    APP_CONFIG.scale = _nouvelleEchelle;
-    if (typeof window.setPlanScale === "function") window.setPlanScale(null, _nouvelleEchelle);
-  }
-  // taille d'un pas — déjà validée [0 ; 1,5] par le gate _validerReglagesTracking
-  APP_CONFIG.stepLength    = parseFloat(document.getElementById("cfg_stepLength").value);
-  // 🐛 v1.28.0 (#3) : ne pas écraser startX/startY avec NaN si le champ est
-  // vidé (sinon le reset conditionnel placerait le tracker à NaN). On conserve
-  // l'ancienne valeur si la saisie est invalide.
-  const _sx = parseInt(document.getElementById("cfg_startX").value, 10);
-  const _sy = parseInt(document.getElementById("cfg_startY").value, 10);
-  if (Number.isFinite(_sx)) APP_CONFIG.startX = _sx;
-  if (Number.isFinite(_sy)) APP_CONFIG.startY = _sy;
-  // seuil de détection — déjà validé [10 ; 30] par le gate
-  APP_CONFIG.stepThreshold = parseFloat(document.getElementById("cfg_stepThreshold").value);
-  // cooldown — déjà validé [300 ; 3000] ms par le gate
-  APP_CONFIG.stepCooldown  = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
-  // 🛠️ v1.76.3 (2:b) — debugMode ne se règle plus ici : Mode Développeur
-  // du HOME uniquement (devMode.js > setDebugMode global).
-
-
-  // 🧭 v1.85.3 — NAV INTELLIGENTE : DÉSORMAIS PAR PLAN (audit KARMA).
-  // Elle dépend de la qualité du réseau de tracés DU PLAN COURANT : l'activer
-  // sur un relevé bien tracé l'activait aussi sur un plan sans aucun tracé, où
-  // elle ne peut rien caler. « Afficher les ronds aux intersections », qui
-  // dépend du même réseau, était déjà par plan depuis la v1.36.2 — deux
-  // réglages de même nature, deux portées différentes.
-  //
-  // ⚠️ On n'écrit PLUS dans `app_user_prefs` : la valeur globale reste lue
-  // comme REPLI de migration par `getPlanSmartNav`, tant que le plan n'a pas
-  // la sienne. Rien n'est perdu pour qui l'avait déjà activée.
-  {
-    const patchSN = {};
-    const cbSmartNav = document.getElementById("cfg_smartNav");
-    if (cbSmartNav) patchSN.smartNav = !!cbSmartNav.checked;
-    const inSnRadius = document.getElementById("cfg_smartNavRadius");
-    if (inSnRadius) {
-      const snr = parseFloat(inSnRadius.value);
-      if (Number.isFinite(snr) && snr > 0) patchSN.smartNavRadiusM = snr;
-    }
-    const inSnHeading = document.getElementById("cfg_smartNavHeading");
-    if (inSnHeading) {
-      const snh = parseFloat(inSnHeading.value);
-      if (Number.isFinite(snh) && snh >= 0) patchSN.smartNavHeadingWeight = snh;
-    }
-    if (Object.keys(patchSN).length && typeof window.setPlanSmartNav === "function") {
-      window.setPlanSmartNav(null, patchSN);
-    }
-  }
-
-  // 🆕 v1.9.2 : le handler de showRoadIntersections en mode carte a été retiré
-  // (toggle exclusivement dans le ⚙️ Configuration du loader/home désormais).
-  // La valeur reste lue depuis APP_CONFIG par road.js > renderRoads()
-  // peu importe d'où elle a été modifiée.
-
-  // 👣 v1.82.0 — LES RÉGLAGES DE PODOMÈTRE SONT ENFIN PERSISTÉS. Ils ne
-  // l'étaient nulle part : écrits dans APP_CONFIG en mémoire, puis effacés
-  // par le rechargement du plan-config au load suivant. Per-plan, comme
-  // l'échelle juste au-dessus — un podomètre se règle sur la foulée ET sur
-  // le terrain. (Signalé par KARMA : « quand je quitte et reviens elles
-  // sont revenues par défaut ».)
-  if (typeof window.setPlanTracking === "function") {
-    window.setPlanTracking(null, {
-      stepLength:    APP_CONFIG.stepLength,
-      stepThreshold: APP_CONFIG.stepThreshold,
-      stepCooldown:  APP_CONFIG.stepCooldown,
-      startX:        APP_CONFIG.startX,
-      startY:        APP_CONFIG.startY
-    });
-  }
-  if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
-  // 🐛 v1.28.0 : ne replacer le tracker au départ QUE si la position initiale
-  // (startX/startY) a explicitement changé. Pour tout autre réglage (toggle
-  // smartNav, échelle, seuil de pas…), on PRÉSERVE la position courante + le
-  // tracé. (Avant : reset systématique → le tracker sautait à l'origine.)
-  const _startChanged = (APP_CONFIG.startX !== _oldStartX) || (APP_CONFIG.startY !== _oldStartY);
-  if (window.resetTrackingPosition && _startChanged) window.resetTrackingPosition();
-  const modal = document.getElementById("kta-cfg-modal");
-  if (modal) modal.remove();
-  if (window.fermerPanneau) window.fermerPanneau();
-}
-
+// 🚨 B6 (audit ergonomie 13/09/2026) : « Reset » agissait sans confirmation,
+// collé à « Appliquer », et effaçait le PARCOURS du tracker (polyline, pas,
+// timeline) en plus des réglages du plan. Confirmation chartée qui dit ce qui
+// part ; le bouton s'appelle désormais « ↺ Valeurs par défaut ».
 function resetConfig() {
-  Object.assign(APP_CONFIG, DEFAULT_CONFIG);
-  if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
+  const _go = function() { _resetConfigExecuter(); };
+  if (typeof window.ktaConfirm !== "function") { _go(); return; }
+  window.ktaConfirm(window.I18n.t("config.confirm.reset"), {
+    titre:   window.I18n.t("config.confirm.resetTitre"),
+    okLabel: window.I18n.t("config.actions.reset")
+  }).then(function(ok) { if (ok) _go(); });
+}
+function _resetConfigExecuter() {
+  // 🩸 L4 (v1.92.0) : le reset ne touche que CE plan. AVANT :
+  // Object.assign(APP_CONFIG, DEFAULT_CONFIG) + sauvegarderPrefsUtilisateur()
+  // → les préférences GLOBALES (vibration, batterie, icônes au zoom,
+  // magnétisme…) repartaient aussi à l'usine, depuis une modale « par plan ».
+  // ICI : on retire les surcharges du plan (échelle, podomètre, départ, nav
+  // intelligente, ronds, Nord) et on revient aux valeurs DU PLAN (plan-config),
+  // pas à l'usine de l'app.
+  const pid = window._currentLoadedPlanId || "default";
+  const D   = window.DEFAULT_CONFIG || {};
+  const tr  = (window.PLAN_CONFIG && window.PLAN_CONFIG.tracking) || {};
+  const usine = function (k, min, max) {
+    const v = Number(tr[k] != null ? tr[k] : D[k]);
+    return (Number.isFinite(v) && (min == null || (v >= min && v <= max))) ? v : Number(D[k]);
+  };
+  if (typeof window.resetPlanNorthOffset === "function") window.resetPlanNorthOffset(null);
+  try { localStorage.removeItem("myktamap_plan_prefs_" + pid); } catch (e) {}
+  APP_CONFIG.scale         = usine("scale");
+  APP_CONFIG.stepLength    = usine("stepLength", 0, 1.5);
+  APP_CONFIG.stepThreshold = usine("stepThreshold", 10, 30);
+  APP_CONFIG.stepCooldown  = usine("stepCooldown", 300, 3000);
+  APP_CONFIG.startX        = usine("startX");
+  APP_CONFIG.startY        = usine("startY");
+  if (typeof window.appliquerSmartNavPerPlan === "function") window.appliquerSmartNavPerPlan();   // repli global
   if (window.resetTrackingPosition) window.resetTrackingPosition();
-  const modal = document.getElementById("kta-cfg-modal");
-  if (modal) modal.remove();
+  _cfgFermer();
   if (window.fermerPanneau) window.fermerPanneau();
+  _cfgToast(window.I18n.t("config.confirm.resetFait"), "info");
 }
 
 // =========================
@@ -2146,7 +2331,6 @@ function _initLevelFilterControl() {
 // 3 fonctions publiques classiques (étaient dans le bloc EXPORT
 // GLOBAL de interface.js, lignes 3294-3296 avant ce lot) :
 window.afficherConfig  = afficherConfig;
-window.appliquerConfig = appliquerConfig;
 window.resetConfig     = resetConfig;
 
 // 2 helpers privés rendus publics (appelés depuis interface.js

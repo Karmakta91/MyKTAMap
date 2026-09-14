@@ -287,7 +287,7 @@ Tres ajustes, y los tres cuentan:
 Clic en el panel de perfil → ventana **👤 Mi perfil**:
 
 - **✏️ Apodo**: escribe lo que quieras (letras / cifras / espacio). Sirve únicamente para personalizar la visualización local.
-- **📷 Foto**: elige una imagen de tu galería. La app la **comprime automáticamente** (512 px como máximo en el lado largo, JPEG calidad 88 %) antes de guardarla en IndexedDB, para no saturar tu cuota del navegador.
+- **📷 Foto**: elige una imagen de tu galería. La app la **comprime automáticamente** (512 px como máximo en el lado largo, JPEG calidad 88 %) antes de guardarla en tu dispositivo, para no saturar tu cuota del navegador.
 - **🗑️ Reiniciar perfil**: botón de puesta a cero (con confirmación). Vacía el apodo + la foto + los contadores.
 
 #### 📊 Cuadrícula de estadísticas
@@ -299,9 +299,9 @@ La ventana de Perfil muestra **6 celdas de estadísticas globales**:
 | 🗂️ **N planos** | Número de planos en tu registro (servidor + locales) |
 | 💾 **N sesiones** | Número total de sesiones guardadas (espacios por plano) |
 | ⭐ **N favoritos** | Número acumulado de puntos marcados como favoritos, en todos los planos |
-| 📦 **N copias** | Número de copias de seguridad de sesión en IndexedDB (máx. 10 **por plano** — por encima, los más antiguos se eliminan) |
+| 📦 **N copias** | Número de copias de seguridad de sesión guardadas en este dispositivo (máx. 10 **por plano** — por encima, los más antiguos se eliminan) |
 | 📸 **N fotos POI** | Número de fotos adjuntas a puntos + tamaño total |
-| 💾 **N MB de almacenamiento** | **Tamaño real de los datos de MyKTAMap** (localStorage con prefijo MyKTAMap + 6 almacenes IndexedDB conocidos). Excluye la caché PWA volátil (que no es un dato de usuario). |
+| 💾 **N MB de almacenamiento** | **Tamaño real de los datos de MyKTAMap** (todo lo que MyKTAMap ha guardado en tu navegador). Excluye la caché PWA volátil (que no es un dato de usuario). |
 
 #### 📊 Mis planos
 
@@ -355,8 +355,8 @@ Sección **«🎨 Estadísticas del panel de inicio»**: **elige qué estadísti
 
 La estadística «Almacenamiento» (visible en el panel de inicio + en la cuadrícula de la ventana de Perfil) refleja el **tamaño real de tus datos de MyKTAMap**:
 
-- **Cálculo acotado a MyKTAMap**: se suman únicamente las entradas de localStorage con prefijo `myktamap_*` + los 6 almacenes IndexedDB conocidos de la app (handles, blobs, copias de seguridad, fotos, etc.). La caché PWA volátil (que contiene el código JS/CSS de la app y NO es un dato de usuario) queda **excluida** del cálculo.
-- **Caché de 30 s**: el cálculo se acumula y luego se guarda en caché 30 segundos para no interrogar IndexedDB en bucle cuando abres y cierras ventanas rápidamente.
+- **Cálculo acotado a MyKTAMap**: se suma únicamente lo que MyKTAMap ha escrito en tu navegador — las claves `myktamap_*` y las 6 bases locales de la app (handles, blobs, copias de seguridad, fotos, etc.). La caché PWA volátil (que contiene el código JS/CSS de la app y NO es un dato de usuario) queda **excluida** del cálculo.
+- **Caché de 30 s**: el cálculo se acumula y luego se guarda en caché 30 segundos para no interrogar el almacenamiento en bucle cuando abres y cierras ventanas rápidamente.
 - **Descripción emergente**: «Tamaño de los datos de MyKTAMap (LS + IDB)» + la precisión «excluida la caché PWA».
 
 Resultado: el valor es **estable, previsible y refleja de verdad lo que has cartografiado**.
@@ -384,7 +384,7 @@ La exportación de perfil puede ahora **llevarse los archivos ZIP de los planos 
 - En modo **Fusionar** al importar, un plano que ya tiene su archivo en el dispositivo **conserva el suyo**; en modo **Reemplazar**, gana el del perfil. Un fallo de almacenamiento (cuota llena) se señala **por plano**, y el resto continúa.
 - Los planos en «acceso permanente al archivo» o «reselección» no aparecen en la lista: su ZIP vive en tu disco, no en la app — no hay nada que llevarse.
 
-> 🔒 **100 % local**: tu apodo y tu foto permanecen en tu navegador (IndexedDB). No se envía nada a ningún servidor. La exportación de perfil es explícita y la controlas tú.
+> 🔒 **100 % local**: tu apodo y tu foto permanecen en tu navegador. No se envía nada a ningún servidor. La exportación de perfil es explícita y la controlas tú.
 
 #### 💼 Edición pro — importar una licencia
 
@@ -431,7 +431,7 @@ La aplicación memoriza todos los planos que cargas, vengan del servidor o de tu
 
 **Filtros de visualización y organización**:
 
-- **🌐 Mostrar los planos de servidor** — marca o desmarca este interruptor encima de la lista para ocultar los planos de servidor descubiertos automáticamente (test1, test2, demos…) y ver solo tus planos personales. **Se conserva** entre sesiones (localStorage). Desmarcarlo no elimina nada — al volver a marcarlo, los planos reaparecen intactos.
+- **🌐 Mostrar los planos de servidor** — marca o desmarca este interruptor encima de la lista para ocultar los planos de servidor descubiertos automáticamente (test1, test2, demos…) y ver solo tus planos personales. **Se conserva** entre sesiones (en este dispositivo). Desmarcarlo no elimina nada — al volver a marcarlo, los planos reaparecen intactos.
 - **🔎 Filtrar por nombre** *(desde v1.78.0)* — un campo encima de la lista filtra en directo mientras escribes. Es un filtro de visualización puro, que se reinicia la próxima vez que pases por la pantalla de inicio.
 - **⭐ Fijar** *(desde v1.78.0)* — la estrella de cada fila sube el plano **al principio de la lista** (entre los fijados se mantiene el orden «último abierto»). Vuelve a pulsarla para desfijarlo.
 - **🏷️ Etiquetas** *(desde v1.78.0)* — pon etiquetas a tus planos («París 13», «GTech», «por terminar»…) mediante **ℹ️ Información → Etiquetas del plano** (escritura libre, separadas por comas — máximo 12 de 24 caracteres). Se muestran bajo el nombre del plano y, en cuanto un plano tiene etiqueta, aparece una fila de **fichas de filtro** encima de la lista: pulsa una o varias fichas para ver solo esos planos (un plano coincide si lleva **al menos una** de las etiquetas elegidas). Las etiquetas viven **en la app** (no en el ZIP — no viajan con un plano compartido) pero sí acompañan a la **exportación de perfil** y a la exportación 💾 de la lista.
@@ -502,6 +502,12 @@ En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del
 5. **🎨 Visualización** — interruptores de interfaz:
    - **🔆 Mantener la pantalla encendida** — impide que tu pantalla se apague automáticamente mientras MyKTAMap esté abierta (Wake Lock API). Útil en salida para no tener que tocar el teléfono cada 30 segundos. Readquisición automática al volver de segundo plano (visibilitychange). El interruptor se oculta automáticamente en los navegadores que no admiten la API (Firefox en particular). El mismo interruptor está también accesible en **⚙️ Ajustes** en modo mapa (ver sección dedicada).
 
+> 📊 **Ver el estado de la memoria** — en esa misma ventana, un botón **«📊 Ver el estado de la memoria»** abre el **inspector**: lo que la app ocupa en tu dispositivo (claves de almacenamiento ordenadas por tamaño, bases de datos, caché de la aplicación, cuota del navegador) y lo que está cargado en ese momento. Un botón **📋 Copiar el informe** genera un texto listo para pegar al informar de un problema.
+
+> ❓ **Botón de ayuda en las ventanas** — pone un pequeño **❓** en la línea de título de las ventanas que tienen una página de ayuda: ⚙️ Ajustes, 📊 Detalles de la sesión, 🧭 menú Rastreador, ⬆️ Guardar, ⬇️ Cargar, ≡ Leyenda, 🔍 Búsqueda, 🚨 Rescate, 📖 Modo Historia, 🏗️ Generador, 📔 Cuaderno, 🌍 Vista OSM, 👤 Perfil, ℹ️ Información del plano. Un toque abre **directamente la página correcta**, sin pasar por el grupo ❓ Ayuda. Desmárcalo si prefieres una interfaz sin ese icono: desaparece al instante, incluso de las ventanas ya abiertas.
+
+> 📔 **Llevar un cuaderno de mis salidas** — cada plano que abres se convierte en una **salida** archivada en 📔 Mi cuaderno (duración, distancia, añadidos, fotos). Desmarcado, la app ya no abre nada por su cuenta y la salida en curso se detiene; lo que ya está en el cuaderno se conserva, y siempre puedes iniciar una cuando quieras desde **📊 Detalles de la sesión**. *(Ajuste trasladado aquí desde ⚙️ Ajustes del modo mapa en la v1.92.0: vale para todos tus planos, y el cuaderno se abre desde el inicio.)*
+
 > 🌍 **Idioma de la aplicación**: MyKTAMap está traducida a **3 idiomas — Français, English, Español**. El selector de idioma (bandera + nombre completo) se encuentra en **⚙️ Configuración**, en su propia sección **justo después del bloque Incógnito**. El cambio se aplica de inmediato, sin recargar la app. *A tener en cuenta*: la **Documentación** (esta guía) y el **tutorial de bienvenida** existen en los **3 idiomas** — siguen automáticamente el idioma de tu app, y el botón de bandera de la parte superior de la ventana de Documentación te deja cambiar a 🇫🇷 / 🇬🇧 / 🇪🇸 cuando quieras. Solo la **Ayuda integrada** (el 📚 de la barra lateral en modo mapa) sigue estando en francés e inglés: en español se muestra en **inglés por defecto**. En cada cambio de idioma, un mensaje te propone **reiniciar la app** para un cambio 100 % limpio (opcional). 💡 En **modo incógnito**, tu idioma de interfaz **se conserva** (los demás datos, en cambio, se olvidan por completo).
 
 > 💡 La opción «Mostrar los círculos en los cruces de trazados» **no está en la Configuración de la pantalla de inicio** sino en **⚙️ Ajustes en modo mapa** (por plano). Cada plano tiene ahora su propio ajuste — práctico para desactivar los círculos únicamente en tus planos muy densos sin tocar los demás.
@@ -519,7 +525,7 @@ En la pantalla de inicio, un **botón ⚙️ Configuración** en la cabecera del
 
 8. **🔄 Actualización — Forzar la actualización suave** — vuelve a descargar la última versión del código (purga de la caché PWA, conserva tus datos y tus planos). Útil si sospechas que tu app se ha quedado en una versión antigua tras una publicación. **Nunca** toca tus planos, tu sesión activa, tu código comunitario ni tu PIN local. **Confirmación obligatoria antes de lanzarla** (ventana azul que detalla lo que se preserva + necesidad de una conexión a Internet activa).
 
-9. **💥 Reiniciarlo todo (reinicio completo)** — purga total (caché + localStorage + IndexedDB + planos). Reinicia el código de acceso comunitario **Y** el PIN local si está configurado. **Se requiere doble confirmación.** Acción irreversible.
+9. **💥 Reiniciarlo todo (reinicio completo)** — purga total: la caché, todo lo guardado en tu navegador y tus planos. Reinicia el código de acceso comunitario **Y** el PIN local si está configurado. **Se requiere doble confirmación.** Acción irreversible.
 
 **Organización**: **todo está reunido en una única ventana ⚙️ Configuración**, accesible desde la cabecera del cargador. El botón 🏗️ Generar un plano permanece visible directamente en la pantalla de inicio (no en la ventana de Configuración) porque es una acción de creación, no un ajuste.
 
@@ -558,16 +564,20 @@ Pulsa un botón antes de cargar — la descripción bajo el selector cambia para
 - **Barras laterales unificadas izquierda/derecha** — cada lado es una **única barra vertical continua**:
   - **Izquierda**: ⊞ Capas · − + Zoom · 🏗 Nivel · ≡ plegar · 📚 Doc · ⚙ Ajustes · ⬇ Cargar · ⬆ Guardar
   - **Derecha**: ≡ plegar · 🔍 Búsqueda · ✏️ Edición · 📐 Medición · 🛣 Trazados · ⬛ Zonas · 🧭 Rastreador
-  - **En horizontal en móvil**, los submenús se despliegan **horizontalmente hacia el interior de la pantalla** (más ergonómico en tableta/teléfono apaisado). El zoom +/− permanece vertical (convención universal).
+  - **Paneles de herramientas**: desde v1.85.1 se abren **centrados en pantalla** (Trazados, Zonas, Estructuras, como el Tracker y los Filtros); la opción « 🪟 Anclar los paneles de herramientas al botón » (⚙️ Configuración) restaura el anclaje.
 - **🧭 Brújula de orientación**:
   - En vertical: **abajo a la izquierda**, sobre el pie
   - En horizontal: **abajo centrada** (para no tapar los iconos laterales)
 - **Botones ≡ de plegado** en la parte superior de cada barra lateral (▾ desplegado, ▸/◂ plegado) — gana espacio sin detener los modos activos
-- **Ventana «Detalles de la sesión»**: un clic en los contadores de la cabecera abre una vista de conjunto:
-  - Todos tus puntos (con etiqueta, coordenadas y nivel si es multinivel)
-  - Trazados agrupados por tipo (Principal/Secundario/Camino/Unión entre niveles) con contador + distancia total por tipo
-  - Zonas agrupadas por tipo
-  - Mediciones activas (📐 medición simple, 🗺️ itinerario con puntos de paso, 🧭 rastreador)
+- **Ventana «📊 Detalles de la sesión»**: un clic en los contadores de la cabecera abre el **panel de control** del plano:
+  - Arriba, **✅ Guardado hace N s** (en rojo si el guardado falla)
+  - Estadísticas agregadas, y reparto por nivel en multinivel
+  - Todos tus puntos (etiqueta, coordenadas, nivel), los trazados por tipo con distancia, las zonas, las estructuras, las fotos
+  - Las otras medidas (📐 medición, 🗺️ ruta y sus etapas, 🧭 seguimiento)
+  - **📔 Salida en curso**: 🏁 Cerrar, 🧭 Afinar la traza, abrir el cuaderno. **Si no hay ninguna salida en curso**, un botón **📔 Iniciar una salida** abre una en este plano — funciona aunque «Llevar un cuaderno de mis salidas» esté desmarcado en ⚙️ Ajustes, y entonces es la única forma de registrar una. Una sola salida a la vez: mientras haya una en curso, el botón deja paso a 🏁 Cerrar.
+  - **⭐ Favoritos**: exportar los de este plano o de todos, importar
+  - **📦 Backups recientes** de este plano: ↻ Restaurar, 📆 Snapshot ahora, 🗑️ Vaciar todo — cada eliminación pide confirmación
+  - El botón **📊 Estadísticas globales** (informe copiable, CSV, PDF)
 - **Ventana «Cambiar de plano» renovada**: tarjeta destacada del plano en curso con distintivo `● ACTIVO`, lista de planos recientes con animación al pasar por encima, y un gran botón azul «📚 Ver todos mis planos» abajo
 - **Generador de planos retirado del modo mapa**: sigue accesible **únicamente desde la pantalla de inicio** mediante 🏗️ Generar un plano (la creación ocurre fuera del modo mapa)
 
@@ -673,7 +683,7 @@ Si ves esta ventana **con frecuencia**, es señal de que hay que **reducir el mo
 
 MyKTAMap funciona **completamente sin conexión** una vez que el plano se ha cargado una primera vez.
 
-La aplicación utiliza un **Service Worker** que guarda automáticamente en caché todos los archivos necesarios (interfaz, imágenes, datos). En la primera carga con conexión a Internet, todo queda guardado localmente.
+La aplicación instala un **componente sin conexión** (un «Service Worker») que guarda automáticamente en caché todos los archivos necesarios (interfaz, imágenes, datos). En la primera carga con conexión a Internet, todo queda guardado localmente.
 
 **Para preparar una salida sin conexión:**
 
@@ -768,7 +778,7 @@ El interruptor es **persistente** (sobrevive a las recargas y al cierre de pesta
 
 ---
 
-## 🌍 Modo OSM — búsqueda integrada (desde v1.70.0)
+## 🌍 Vista OSM a pantalla completa — búsqueda integrada (desde v1.70.0)
 
 El botón **⛶** del widget Vista OSM se llama ahora **«Abrir el modo OSM»**: el mapa pasa a pantalla completa. Allí aparece una **barra de búsqueda**:
 
@@ -776,6 +786,10 @@ El botón **⛶** del widget Vista OSM se llama ahora **«Abrir el modo OSM»**:
 - busca **un plano** (entre tus planos georreferenciados) o **un punto** (los POI de esos planos) — escribe, pulsa un resultado y el mapa vuela hasta él con un marcador;
 - **100 % local**: la búsqueda lee tus propios planos, no se consulta ninguna dirección de Internet;
 - solo aparecen los planos **georreferenciados** — un plano sin calibrado GPS es invisible en modo OSM (calíbralo mediante el Generador o los Ajustes).
+
+**📏 Medir en el mapa OSM** — en modo OSM, la herramienta de medición da una **distancia** y una **superficie** haciendo clic en el mapa. Una medición hecha aquí no depende de **ningún calibrado**: las coordenadas ya son geográficas, así que es más fiable que una medición hecha sobre el plano.
+
+**🎯 Coordenadas de superficie** — un clic en el mapa OSM da la **latitud y la longitud del punto situado justo encima**, copiables con un botón. Es lo que se transmite a un equipo que llega por la superficie.
 
 **🗂️ Varios planos a la vez (desde v1.71.0)** — el panel «Planos mostrados» del modo OSM permite **superponer tus planos georreferenciados**: ➕ para añadir uno, ▲▼ para elegir cuál va encima o debajo, un deslizador de **opacidad por plano** y ✕ para retirarlo. El plano marcado con ◉ es el «principal» (el del selector superior). Toda esta gestión vive en una **ventana dedicada** que se abre con el botón **≡** de la barra (nada tapa el mapa): ajustes de **visualización globales**, **filtro por etiqueta** (agregado sobre todos los planos mostrados) y la pila de planos. Las antiguas filas bajo el selector (opacidad, casillas, etiquetas) han desaparecido del widget — el mapa gana su altura. Cada línea lleva además **5 minibotones de filtrado propios del plano** (🖼️ imagen, 📍 POI, 🛣️ vías, 🌐 zonas, 🏛️ estructuras) — los ajustes globales de visualización viven en la misma ventana (sección Visualización), y ambos niveles se combinan. Ideal para mostrar dos sectores vecinos sobre un plano de conjunto, conservando por ejemplo solo los POI de uno y la imagen del otro. **🏷️ Y desde la v1.84.0, añadir por ETIQUETA**: bajo «Planos», una fila de chips enumera las etiquetas que llevan **al menos dos** de tus planos georreferenciados (las que escribes en tu biblioteca), con un contador «3/12». Un clic **muestra todos** los planos de la etiqueta, un segundo clic **los retira**: imprescindible en cuanto un atlas troceado produce veinte. No distingue mayúsculas («Gironde» y «GIRONDE» son la misma etiqueta) y, por encima de 3 planos mostrados, la app pide confirmación indicando el número: los planos se cargan luego **uno a uno**, y el mapa se llena progresivamente.
 
@@ -824,6 +838,8 @@ En modo **anonimizado**, la nota y los PDF se omiten deliberadamente del ZIP (pu
 
 ## 🚨 Modo Salida de emergencia — Encontrar la salida más cercana
 
+> 🧭 Esta herramienta te saca fuera. Si lo que buscas es **situarte** (⛑️ Estoy perdido), una **pantalla muy legible** (modo pánico) o **coordinar equipos** (Modo Rescate), todo eso está más abajo, en el capítulo de Rescate.
+
 El botón **🚨** de la barra superior (entre 📖 Modo Historia y la batería 🔋) lanza un cálculo de itinerario hacia la **salida más cercana** desde tu posición actual.
 
 **Caso de uso**: estás bajo tierra y quieres salir **ahora**, sin pensar (herido, batería que se agota, fallo de iluminación, o simplemente perdido). Pulsas el botón (o lo activas por voz) y la app hace el resto.
@@ -846,11 +862,13 @@ El botón **🚨** de la barra superior (entre 📖 Modo Historia y la batería 
 
 Los códigos `caf` / `pef` / `esf` (cavidades, pozos y escaleras **cerrados**) quedan **excluidos** por no ser transitables en la práctica. Si marcas un POI como cerrado, la app nunca te sugerirá ir hasta él.
 
-Si una salida se muestra con un distintivo **≈** (virgulilla), significa que el buscador de rutas **no ha podido calcular un camino** y se ha recurrido a la **distancia en línea recta**. Desconfía: esa salida puede ser inaccesible en la práctica (muros, planta aislada).
+Si una salida muestra la mención **« Distancia en línea recta — camino no verificado »** (tarjeta punteada), el pathfinder **no pudo calcular un camino**: la distancia se mide en línea recta. Esas salidas quedan bajo un separador **« No confirmadas »** en la lista, y si **ninguna** salida tiene camino verificado, un banner rojo lo dice antes de nada. Cuidado: esa salida puede ser inaccesible en la práctica (muros, nivel aislado).
 
 ### Origen del cálculo
 
-Por defecto, la app parte de tu **posición actual del rastreador**. Si el rastreador no está activo (o si estás en exploración libre sin seguimiento), una ventana alternativa te propone **pulsar en el mapa** para indicar tu posición de partida.
+La app parte de tu **posición en ese instante**, sin preguntar, en cuanto el seguimiento está activo **o** te has situado al menos una vez desde que abriste el plano (« 📍 Estoy aquí » en un punto, recalibración en el mapa, llegada por un portal, o una sesión restaurada que contenía una recalibración). La ventana te dice desde dónde parte el cálculo: *« desde tu posición (seguimiento activo) »*, *« desde tu última posición confirmada, hace N min »* o *« desde el punto que has tocado »*.
+
+**El único caso en que la app pregunta « ¿Dónde estás? »**: **nunca** has confirmado tu posición desde que abriste el plano (sigue siendo el punto de partida del plano). Aparece un banner, **tocas tu posición en el mapa** (funciona incluso apuntando a un marcador existente) y el cálculo parte de ahí — ese toque **también recalibra el seguimiento**, así que « Trazar la ruta », « Ir allí » y la pantalla de emergencia XL parten de la misma posición. Antes, en ese caso, la app calculaba en silencio desde la entrada del plano presentándola como tu posición.
 
 ### Multinivel nativo
 
@@ -958,12 +976,12 @@ La app lee los puntos (sesión + capas de datos) de cada plano **sobre la marcha
 
 ## 🧭 Presentación de la interfaz
 
-Todas las herramientas están accesibles desde la **barra lateral derecha**, organizada en **13 grupos**:
+La interfaz está organizada en **13 grupos** repartidos en las **dos barras laterales** — izquierda: ⭐ Favoritos, 📚 Ayuda, ⚙️ Ajustes, ⬇️ Cargar, ⬆️ Guardar, ⏪ Historial; derecha: 🔍 Búsqueda, 🧭 Rastreador, 📐 Medición, ✏️ Edición, 🛣️ Trazados, ⬛ Zonas, 🏛️ Estructuras:
 
 | Grupo | Icono | Para qué sirve |
 |---|---|---|
 | **Favoritos** | ⭐ | Tus puntos marcados como favoritos, a un clic |
-| **Ayuda / Doc / Leyenda** | 📚 | Ayuda, documentación, Ayuda IA, leyenda de iconos |
+| **Ayuda / Documentación / Leyenda** | 📚 | Ayuda, documentación, Ayuda IA, leyenda de iconos |
 | **Ajustes** | ⚙️ | Ajustes, calibración de la escala, depuración *(clic directo)* |
 | **Búsqueda** | 🔍 | Encontrar rápidamente un punto en el plano *(clic directo)* |
 | **Cargar / Importar** | ⬇️ | Importar una sesión o un GPX, editor de datos del plano |
@@ -991,7 +1009,7 @@ Todas las herramientas están accesibles desde la **barra lateral derecha**, org
 
 ### 🎨 Personalizar la leyenda (renombrar, ocultar, colores, tipos personalizados)
 
-Abre **≡ Leyenda** (grupo 📚 Ayuda / Doc / Leyenda) y luego **✏️ Modificar**. Para cada tipo de trazado, zona o estructura:
+Abre **≡ Leyenda** (grupo 📚 Ayuda / Documentación / Leyenda) y luego **✏️ Modificar**. Para cada tipo de trazado, zona o estructura:
 
 - **Renombrar**: escribe tu propio nombre (p. ej. «Principal» → «Gran galería»). Se muestra en todas partes: leyenda, ventanas emergentes, estadísticas, filtros.
 - **🎨 Cambiar el color** *(desde v1.76.1)*: un cuadrado de color por línea — y para las **zonas y pilares/muros, dos cuadrados**: relleno y **borde independiente**. El color se aplica **en todas partes** — mapa, exportaciones de imagen/PDF, KMZ, estadísticas, informe de sesión — de inmediato, sin recargar. Un botón **↺** devuelve el relleno Y el borde originales. Detalles: si no eliges borde, una zona lo deriva automáticamente (versión más oscura) y un pilar/muro conserva su contorno negro (el valor histórico por defecto); la zona *Inaccesible* recoloreada pierde su trama (motivo fijo) a favor de un color liso. Las **entradas personalizadas** se modifican igual, en caliente.
@@ -1007,26 +1025,9 @@ Todo se guarda automáticamente en tu sesión, **por plano**.
 
 ### 🔄 Cambiar rápidamente de plano mediante el título
 
-El **título del plano en curso** que aparece en la parte superior de la pantalla es **pulsable**: abre un pequeño menú desplegable con:
+El **título del plano en curso** en la parte superior de la pantalla es **pulsable**: abre la ventana **«🗂 Cambiar de plano»** — tarjeta del plano en curso (distintivo `● ACTIVO`), los **3 últimos planos** abiertos y un botón **📚 Ver todos mis planos** que vuelve al inicio. La **rosa de los vientos 🧭** a la izquierda del título vuelve directamente al inicio.
 
-- **📚 PLANOS RECIENTES** — los 3 últimos planos que has abierto (excluido el actual)
-- **📚 Todos mis planos…** — para volver a la pantalla de inicio con la lista completa
-
-Al pulsar un plano del menú:
-
-- Si tu **sesión está vacía** (ninguna anotación, vía, zona ni medición) → el plano se carga **directamente**, sin confirmación
-- Si tienes **modificaciones en curso** → una ventana te avisa con la **lista exacta** de lo que vas a perder:
-  ```
-  ⚠️ Sesión en curso
-  Tienes modificaciones sin guardar:
-     • 5 puntos añadidos
-     • 2 trazados
-     • 1 zona
-  Cargar «Plan Test 1» te hará perder estas modificaciones.
-  [Cancelar]   [Cargar de todos modos]
-  ```
-
-> 💡 Esta función te permite alternar entre tus planos favoritos en **2 clics** sin pasar por la pantalla de inicio. Para cerrar el menú sin hacer nada: pulsa en otro sitio o presiona **Esc**.
+Al elegir un plano, tu sesión en curso se **guarda automáticamente** (autoguardado + snapshot) antes del cambio: ya no hay aviso de «cambios perdidos». Para cerrar sin hacer nada: ✕, pulsar fuera o **Esc**.
 
 ---
 
@@ -1128,11 +1129,11 @@ La búsqueda cubre:
 
 > Todos los botones del rastreador se encuentran en el grupo **🧭 Rastreador** de la barra lateral.
 
-### 🧭 Panel lateral del rastreador
+### 🧭 Menú Tracker (modal a pantalla completa)
 
-El botón **🧭 Rastreador** abre un **panel lateral** contiguo al botón principal. Es legible, visualmente estable, y todas las subacciones son accesibles sin desplazarse, incluso en móvil.
+El botón **🧭 Rastreador** abre un **modal a pantalla completa de fichas grandes** (desde v1.50.0), ordenadas en tres secciones: **Seguimiento**, **Herramientas**, **Emergencia**. Cada ficha cierra el modal al actuar.
 
-**Subacciones disponibles en el panel** (orden fijo):
+**Fichas disponibles**:
 
 | Icono | Acción |
 |---|---|
@@ -1146,8 +1147,11 @@ El botón **🧭 Rastreador** abre un **panel lateral** contiguo al botón princ
 | **🔥** | Mapa de calor — ver la sección dedicada |
 | **⛑️** | Estoy perdido — **botón de fondo ROJO** (señal de peligro) |
 | **🚨** | Modo emergencia XL — **botón de fondo ROJO** (señal de peligro) |
+| **🚨** | Modo Rescate — planes de búsqueda (equipos + zonas), **fondo ROJO** |
 
-> 🚨 **Los 2 modos de emergencia están deliberadamente situados al FINAL del panel con un fondo rojo intenso** para que sean identificables al instante. En situación de estrés, sabes dónde mirar.
+> 🚨 **Las 3 fichas de emergencia (⛑️ Estoy perdido, 🚨 Modo emergencia XL, 🚨 Modo Rescate) forman la sección Emergencia, abajo, sobre fondo rojo vivo.** El botón **🚨 Salida de emergencia** (salida más cercana) está en la **barra superior**, a un toque.
+
+> 🧭 **Barra inferior**: el indicador 🧭 muestra **ON · 👣 pasos · distancia** en directo durante el seguimiento, y **un toque abre el menú Tracker**. Al iniciar el seguimiento, la ventana de aviso propone **🔆 Mantener la pantalla encendida** (premarcado): una pantalla que se apaga son pasos perdidos. El botón **≡ Filtros** lleva una insignia con el número de filtros activos (niveles incluidos); al recargar un plano, un mensaje te dice si se han restaurado filtros. En **📊 Detalles de la sesión**, la primera línea dice **«✅ Guardado hace N s»** (en rojo si el guardado falla).
 
 > 🆕 **Sobre el terreno**:
 > - **🎯 Mi posición**: vuelve a centrar el mapa en tu posición actual (útil después de haber navegado por otra parte del plano).
@@ -1337,7 +1341,7 @@ La sección 🏗️ multinivel de la ventana de Filtros **convive** con la pasti
 
 ### ⚙️ Ajustes del rastreador
 
-Accede a los ajustes mediante el botón **⚙️ Parámetros** de la barra lateral:
+Accede a los ajustes mediante el botón **⚙️ Ajustes** de la barra lateral:
 
 - **Escala (px/m)**: relación entre píxeles y metros reales — botón **🎯** al lado para calibrar
 - **Tamaño de un paso (m)**: longitud estimada de tu zancada (≈ 0,7 m)
@@ -1395,7 +1399,7 @@ El botón **🗺️** del grupo **🧭 Rastreador** abre la ventana de itinerari
 | 🚶 **Normal** | 5 km/h | Por defecto, ritmo estándar de marcha bajo tierra |
 | 🏃 **Rápida** | 7 km/h | Ritmo sostenido, recorrido conocido, regreso rápido |
 
-El modo activo se muestra junto al tiempo estimado en la etiqueta inferior izquierda. La elección se conserva entre sesiones (localStorage). Puedes cambiar de modo en cualquier momento desde la ventana, y el tiempo se actualiza al instante.
+El modo activo se muestra junto al tiempo estimado en la etiqueta inferior izquierda. La elección se conserva entre sesiones (en este dispositivo). Puedes cambiar de modo en cualquier momento desde la ventana, y el tiempo se actualiza al instante.
 
 **Modo navegación** — cuando ya hay un itinerario activo y vuelves a abrir **🗺️ Calcular un itinerario**, la ventana pasa a **modo navegación**:
 
@@ -1440,7 +1444,18 @@ En la ventana de itinerario, una sección plegable **🚫 Preferencias de evitac
 - ⛔ Zona = restricción **estricta** (nunca se relaja, ni siquiera como último recurso)
 - 🚫 Evitación = restricción **flexible** (puede relajarse con un mensaje)
 
-**Persistencia**: tus preferencias se guardan por plano (localStorage). En el siguiente cálculo sobre el mismo plano, se restauran. Botón **🗑️ Reiniciar** para borrarlo todo.
+**Persistencia**: tus preferencias se guardan por plano (en este dispositivo). En el siguiente cálculo sobre el mismo plano, se restauran. Botón **🗑️ Reiniciar** para borrarlo todo.
+
+> 🧭 **Por dónde empezar, según tu situación.** Las páginas siguientes cubren cuatro herramientas distintas. La que necesitas depende de lo que te esté pasando:
+>
+> | Tu situación | La herramienta | Dónde |
+> |---|---|---|
+> | Quiero **la salida más cercana**, ahora mismo | 🚨 Salida de emergencia | sección «Modo Salida de emergencia», más arriba |
+> | **Ya no sé dónde estoy**, pero sé por dónde he pasado | ⛑️ Estoy perdido | justo debajo |
+> | Estoy en pánico, necesito una **pantalla legible de un vistazo** | 🚨 Modo emergencia «pánico» | justo después |
+> | **Coordino equipos** que buscan a alguien | 🚨 Modo Rescate | el resto de este capítulo |
+>
+> Las cuatro son independientes. El Modo Rescate es el único que requiere preparación: equipos declarados, zonas asignadas.
 
 ### ⛑️ Modo emergencia — «Estoy perdido»
 
@@ -1466,7 +1481,7 @@ El botón **⛑️** naranja del grupo **🧭 Rastreador** abre el modo emergenc
    | 🚶 **Normal** *(por defecto)* | 5 km/h | ~833 m | Ritmo estándar de marcha |
    | 🏃 **Rápida** | 7 km/h | ~1167 m | Recorrido conocido, marcha sostenida |
 
-   La elección se conserva entre sesiones (localStorage). Si la zona ya está dibujada en el mapa, cambiar de preajuste la recalcula al instante.
+   La elección se conserva entre sesiones (en este dispositivo). Si la zona ya está dibujada en el mapa, cambiar de preajuste la recalcula al instante.
 
 4. **🔮 Indicios visuales (opcional pero muy útil)** — texto libre, separado por comas o saltos de línea. Ejemplos: *«bidón de agua, grabado del ariete, sala azul, pozo roto, escalera que baja»*. La app busca esas palabras en el **nombre**, la **descripción** y las **etiquetas** de todos los puntos del plano (capas y puntos de sesión combinados).
 
@@ -1592,7 +1607,7 @@ Las secciones siguientes detallan las funciones avanzadas: integraciones entre a
 
 ### 🚨 Modo Rescate — Multifase
 
-Un escenario puede ahora **secuenciar varias fases** con un debriefing intercalado entre cada una. Caso de uso típico sobre el terreno: *Fase 1 = un equipo barre TODAS las galerías de rodadura principales sin entrar en las cámaras de explotación → regreso del equipo → debriefing en el puesto de mando → Fase 2 = X equipos se centran en las cámaras de explotación con la información obtenida en la Fase 1.*
+Un escenario puede **secuenciar varias fases** con un debriefing intercalado entre cada una. Caso de uso típico sobre el terreno: *Fase 1 = un equipo barre TODAS las galerías de rodadura principales sin entrar en las cámaras de explotación → regreso del equipo → debriefing en el puesto de mando → Fase 2 = X equipos se centran en las cámaras de explotación con la información obtenida en la Fase 1.*
 
 > 💡 **Si no usas el modo multifase**, no cambies nada: tu escenario se queda con **una sola fase implícita** y el comportamiento es estrictamente idéntico al anterior. Ninguna contaminación visual (los distintivos y botones de multifase aparecen SOLO si creas efectivamente 2 fases o más).
 
@@ -1634,7 +1649,7 @@ Estas integraciones convierten el Modo Rescate en una herramienta completa de co
 
 #### 🌍 KML entre aplicaciones (Google Earth, OsmAnd, Avenza…)
 
-El KMZ exportado contiene ahora una carpeta raíz `🚨 Secours` perfectamente estructurada para las aplicaciones de terceros:
+El KMZ exportado contiene una carpeta raíz `🚨 Secours` perfectamente estructurada para las aplicaciones de terceros:
 
 ```
 📁 Rescate — Búsqueda de Marc 26/05
@@ -1730,7 +1745,7 @@ Indica la posición GPS del puesto de mando, del lugar de encuentro con los bomb
 
 #### 🌍 Vista OSM accesible en todo el Modo Rescate
 
-El botón **🌍 Vista OSM** está ahora presente en:
+El botón **🌍 Vista OSM** está presente en:
 - La vista de Edición (barra del escenario)
 - Las 3 vistas en directo: 👤 Operador de superficie, 🚨 Miembro de equipo, 🚑 Rescatador libre
 
@@ -2107,7 +2122,7 @@ Cada acción dispara un **aviso discreto** en la parte inferior: `↩ Deshecho: 
 
 ### Lo que NO está cubierto
 
-- ❌ **Fotos** adjuntas a los puntos: su eliminación sigue siendo **irreversible** (los blobs se borran de la base IndexedDB local y no se pueden restaurar)
+- ❌ **Fotos** adjuntas a los puntos: su eliminación sigue siendo **irreversible** (los archivos se borran del almacenamiento local de tu navegador y no se pueden restaurar)
 - ❌ **Importaciones de sesión**: una importación que sobrescribe tu sesión no se puede deshacer con Ctrl+Z (usa el guardado automático de sesión para recuperarla)
 - ❌ **Rastreador** (modo de sensores en tiempo real)
 - ❌ **Medición de distancia** (= herramienta efímera, no una modificación persistente)
@@ -2322,8 +2337,8 @@ Puedes adjuntar hasta **5 fotos por punto** (límite para evitar saturar el alma
 - Al crear un plano nuevo mediante el generador, botón «📦 Importar una capa de datos ZIP con un clic» → puedes recuperar los puntos + fotos exportados desde otro plano
 
 **Límites técnicos**:
-- Almacenamiento local del navegador (IndexedDB) — cuota de ~50-200 MB según el dispositivo. Un aviso te advierte si te acercas a la cuota
-- En **PWA independiente de iOS Safari**, el navegador puede purgar la IndexedDB si falta espacio o si se desinstala — exporta regularmente tus planos + fotos para ponerlos a salvo
+- Almacenamiento local del navegador — cuota de ~50-200 MB según el dispositivo. Un aviso te advierte si te acercas a la cuota
+- En **PWA independiente de iOS Safari**, el navegador puede vaciar ese almacenamiento local si falta espacio o si se desinstala — exporta regularmente tus planos + fotos para ponerlos a salvo
 - En caso de reinicio completo de la app (💥 Reiniciarlo todo), **todas las fotos se borran** (coherente con el borrado total)
 
 ---
@@ -2494,6 +2509,23 @@ Al hacer clic en **un trazado, una zona o una estructura que hayas dibujado** se
 | **💾 Guardar la nota** | Guarda la nota. La ventana se cierra sola |
 | **🔄 Convertir** | Cambia el **tipo** del objeto y, si hace falta, su **familia** |
 | **🗑️ Eliminar** | Retira el objeto. En rojo, en su propia línea |
+
+### 📍 La ventana de un punto
+
+Un toque en un **marcador** (un punto del plano o uno que has añadido) abre su ventana: nombre, tipo, nota y una fila de botones.
+
+| Botón | Para qué sirve |
+|---|---|
+| **📍 Estoy aquí** | Recalibra el seguimiento en este punto. Es también lo que **confirma tu posición**: a partir de ahí, 🚨 Salida de emergencia y 🧭 Ir allí parten de aquí sin preguntar |
+| **🧭 Ir allí** | Calcula una ruta desde tu posición hasta este punto |
+| **➕ Ruta** | Añade el punto como etapa de una ruta (en curso o nueva) |
+| **☆ Favorito** | Añade o quita el punto de ⭐ Favoritos |
+| **🔊 Leer la nota** | Lee la nota en voz alta (síntesis de voz local) |
+| **📋 GPS** | Coordenadas GPS copiables, si el plano está georreferenciado |
+| **📸 Miniaturas** | Las fotos adjuntas, toque = pantalla completa |
+| **🌀 Enlaces** | Los enlaces entre planos que parten de este punto |
+
+En **tus propios puntos** (los de tu sesión) se añaden **✏️ Editar**, **📌 Reposicionar** (luego toca la nueva posición en el mapa) y, en su propia línea roja, **🗑️ Eliminar**, deshacible con ⏪.
 
 ### 🔄 Convertir: cambiar un objeto de tipo o de familia
 
@@ -2757,10 +2789,10 @@ Si activas el modo en un plano existente:
 
 ### 📤 Exportar
 
-Pulsa **⬆️ → 💾**. Se abre una ventana con **3 pestañas** a elegir:
+Pulsa **⬆️ → 💾**. Se abre una ventana con **5 pestañas**: 🚀 Completo · 🎨 Avanzado · 🔄 Conversión · 🔗 Fusión · 📡 Exportación externa:
 
 #### 🚀 Completa
-Exporta todo en un único archivo `devmap-session` (puntos añadidos, trazados, zonas, estructuras).
+Exporta todo en un único archivo `.json` (o `.zip` si marcas las fotos): puntos añadidos, trazados, zonas, estructuras, medidas, traza del seguimiento.
 Práctico para guardar tu sesión y retomarla más adelante.
 
 > 📌 La medición de distancia no se incluye en el modo Completa.
@@ -2808,7 +2840,7 @@ Accesible **sin ningún plano abierto** desde la pantalla de inicio: **📊 Edit
 
 ### 🖼️ Exportar a PNG/JPG
 
-Pulsa **⬆️ → 🖼️ Plano como imagen**. Se abre una ventana con dos modos:
+Pulsa **⬆️ → 🖼️ Exportar el mapa como imagen**. Se abre una ventana con dos modos:
 
 #### ⚡ Exportación rápida
 Todo se incluye automáticamente: plano completo, todas las capas visibles, puntos, trazados, zonas, posición y camino del rastreador. Formato PNG a resolución original. Un solo clic en **Descargar**.
@@ -2894,7 +2926,7 @@ El PDF generado lleva la firma `Généré par MyKTAMap · CC BY-NC-SA 4.0 · myk
 
 ### 🌍 Exportar a KMZ geolocalizado (Google Earth, OsmAnd, Locus, Avenza)
 
-Pulsa **⬆️ → 💾** y luego la pestaña **🌍 KMZ**. Genera un archivo `.kmz` que puede abrirse en cualquier aplicación de cartografía de campo compatible con KML.
+Pulsa **⬆️ → 💾** y luego la pestaña **📡 Exportación externa** (KMZ). Genera un archivo `.kmz` que puede abrirse en cualquier aplicación de cartografía de campo compatible con KML.
 Casos de uso típicos:
 - Visualizar tu plano en **Google Earth** sobre la imagen de satélite
 - Cargarlo en **OsmAnd / Locus / Avenza** para navegación de campo sin conexión
@@ -2945,7 +2977,7 @@ Pulsa **Descargar** → se descarga el archivo `MyKTAMap_<NombreDelPlano>_<fecha
 
 #### Persistencia del calibrado
 
-Tu calibrado de 2 puntos se guarda **por plano** (localStorage). En la siguiente exportación del mismo plano, los 8 campos ya vienen rellenados — los ajustas si hace falta y vuelves a descargar. Si cambias de plano o empiezas de cero, solo tienes que volver a introducirlos.
+Tu calibrado de 2 puntos se guarda **por plano** (en este dispositivo). En la siguiente exportación del mismo plano, los 8 campos ya vienen rellenados — los ajustas si hace falta y vuelves a descargar. Si cambias de plano o empiezas de cero, solo tienes que volver a introducirlos.
 
 > ⚠️ **Límites de la precisión**: la transformación es una **similitud 2D** (rotación + escala uniforme + traslación). En planos globalmente planos y rígidos, es suficiente. En planos muy extensos o no rígidos (deformaciones locales), cuenta con una ligera deriva en los extremos opuestos al calibrado. Una versión futura podrá admitir 3 o más puntos (mínimos cuadrados) para más precisión si hace falta.
 
@@ -2959,9 +2991,9 @@ Tu calibrado de 2 puntos se guarda **por plano** (localStorage). En la siguiente
 
 ### 📥 Importar una sesión
 
-Pulsa **⬇️ → 📥 Importar una sesión** para abrir la ventana de importación. Se muestra una ventana:
+Pulsa **⬇️ → 📥 Importar**, tarjeta **Sesión MyKTAMap** para abrir la ventana de importación. Se muestra una ventana:
 
-1. **Arrastra y suelta** tu archivo `devmap-session.json` en la zona, o púlsala para seleccionarlo
+1. **Arrastra y suelta** tu archivo `.json` (o `.zip` con fotos) en la zona, o púlsala para seleccionarlo
 2. Aparece una **vista previa**: número de puntos añadidos, de trazados, de zonas y de puntos de medición
 3. Una **advertencia** te avisa de que la importación reemplazará tu sesión en curso — acuérdate de exportarla antes si hace falta
 4. Pulsa **Importar** para validar, o **Cancelar** para cerrar sin cambiar nada
@@ -3008,7 +3040,7 @@ Botón **💾 Guardar**:
 
 ### 🗂️ Cambiar de plano
 
-Pulsa **⬇️ → 🗂️ Cambiar de plano** para volver a tu lista de planos (la pantalla de inicio **📚 Mis planos**) y cargar otro. Los datos no exportados se perderán — **exporta tu sesión antes de cambiar**.
+Este botón **ya no está en el menú ⬇️**. Para cambiar de plano: toca la **rosa de los vientos 🧭** (inicio) o el **título del plano** (ventana «Cambiar de plano», ver arriba) en la barra superior. Tu sesión se **guarda automáticamente** antes del cambio.
 
 Desde esta pantalla puedes:
 
@@ -3024,6 +3056,22 @@ Desde esta pantalla puedes:
 > Accesible directamente mediante el botón **🏗️** de la barra lateral (clic directo, sin submenú).
 
 Pulsa **🏗️** para abrir el generador. Dos pestañas disponibles:
+
+### 🗺️ Soltar un GeoTIFF *(desde la v1.93.0)*
+
+Si has georreferenciado tu plano en **QGIS**, expórtalo como **GeoTIFF** (`.tif` / `.tiff`): la imagen **y** su georreferenciación viajan en el mismo archivo. Elígelo como imagen del plano — en el generador o directamente desde la pantalla de inicio — y la app hace el resto:
+
+- **lee la georreferenciación escrita en el archivo** y rellena la **calibración GPS** por sí sola;
+- deduce la **escala** (px/m) y la **extensión** del plano, que se muestran en el mensaje de confirmación;
+- convierte la imagen a PNG para el resto del proceso (ningún navegador de escritorio muestra un TIFF), y luego el teselado y el ZIP siguen como siempre.
+
+**Ya no tienes que volver a escribir los dos puntos GPS** que acababas de poner en QGIS.
+
+> ✅ **Lo que se lee**: compresión **LZW, Deflate o ninguna** · **8 bits por canal** · **gris, RGB o RGBA** · imagen **organizada en bandas** · georreferenciación **con el norte arriba, sin rotación** · coordenadas en **Lambert 93, Web Mercator o WGS84**.
+>
+> ❌ **Lo que se rechaza se nombra siempre**, con lo que hay que cambiar al exportar: BigTIFF, imagen teselada, canales separados, paleta / CMYK / YCbCr, predictor inusual, georreferenciación rotada, sistema de coordenadas no admitido. Un mensaje te dice exactamente qué reexportar — la app nunca adivina por ti.
+
+> 🔒 **100 % local**: el archivo se lee y se convierte **en tu navegador**. Ni un byte se envía a ninguna parte.
 
 ### 📄 Plano nuevo
 
@@ -3089,24 +3137,24 @@ En la sección **📊 Capas de datos** del generador, un recuadro amarillo dorad
 4. El ZIP se analiza → se **crean automáticamente capas de datos**: `points` (los puntos de tu amigo), `roads` (trazados), `zones` (zonas), `structure` (pilares/frentes). Si el ZIP contenía fotos, se **guardan en memoria** para incluirlas en el momento de la generación.
 5. Mensaje verde «✅ N capa(s) creada(s): points (X), roads (Y), zones (Z), structure (W) · 📸 M fotos»
 6. **📦 Generas el ZIP** como de costumbre → el plano final contiene tus capas originales (si es Modificar) + las capas importadas + la carpeta `data/photos/` con los blobs
-7. Al cargar ese plano cualquier usuario, las fotos se restauran automáticamente en IndexedDB y aparecen en las ventanas emergentes de los marcadores
+7. Al cargar ese plano cualquier usuario, las fotos se restauran automáticamente en su dispositivo y aparecen en las ventanas emergentes de los marcadores
 
 **Comportamiento**:
 - **Modo Nuevo**: las capas importadas pasan a ser las capas de datos del plano (la lista de la interfaz se vacía y se rellena con las capas del ZIP)
-- **Modo Modificar**: las capas existentes del plano de origen se **preservan**; las capas del ZIP importado se añaden con el **sufijo `_imported_<N>`** si hay conflicto de id (= nunca sobrescriben las capas originales). Las fotos de IndexedDB del plano actual se **fusionan** con las del ZIP (deduplicación por photoId).
+- **Modo Modificar**: las capas existentes del plano de origen se **preservan**; las capas del ZIP importado se añaden con el **sufijo `_imported_<N>`** si hay conflicto de id (= nunca sobrescriben las capas originales). Las fotos del plano actual guardadas en tu dispositivo se **fusionan** con las del ZIP (deduplicación por photoId).
 
 > 📸 **Formato del ZIP de capa de datos** esperado: es exactamente lo que produce la **Conversión sesión → capa de datos** cuando marcas «📸 Incluir las fotos adjuntas» (da igual la granularidad, Básica o Fina). Contiene `points.json` + `roads.json` + `zones.json` + `structure.json` (según lo que hubiera en la sesión de origen) + `photos/_index.json` + `photos/<photoId>.jpg`.
 
 ### 📸 Incluir las fotos adjuntas al plano
 
-En modo **Modificar uno existente**, si el plano que cargas ya tiene **fotos adjuntas a sus puntos** (guardadas en la IndexedDB local mediante el editor), aparece una casilla **📸 Incluir las fotos adjuntas (N · X MB)** en la sección «🖼️ Imágenes principales» del formulario.
+En modo **Modificar uno existente**, si el plano que cargas ya tiene **fotos adjuntas a sus puntos** (guardadas en tu dispositivo por el editor), aparece una casilla **📸 Incluir las fotos adjuntas (N · X MB)** en la sección «🖼️ Imágenes principales» del formulario.
 
-- **Marcada por defecto**: las fotos de IndexedDB del plano se incluyen en el ZIP generado bajo `data/photos/<photoId>.jpg`. Así puedes compartir el plano completo (anotaciones + fotos) con otro dispositivo.
+- **Marcada por defecto**: las fotos del plano guardadas en tu dispositivo se incluyen en el ZIP generado bajo `data/photos/<photoId>.jpg`. Así puedes compartir el plano completo (anotaciones + fotos) con otro dispositivo.
 - **Desmarcada**: el ZIP generado no contiene las fotos. Más ligero, pero quien importe el ZIP no recuperará las fotos.
 
-Al cargar ese ZIP cualquier otro usuario: las fotos se **restauran automáticamente** en IndexedDB bajo el planId local, y un aviso discreto «📸 N fotos restauradas desde el plano» lo confirma.
+Al cargar ese ZIP cualquier otro usuario: las fotos se **restauran automáticamente** en el dispositivo, con el identificador local del plano, y un aviso discreto «📸 N fotos restauradas desde el plano» lo confirma.
 
-> ⚠️ Si la desmarcas **Y** además has importado un ZIP de capa de datos con fotos (ver la sección anterior), solo se incluirán las fotos de la capa importada. La casilla 📸 controla ÚNICAMENTE las fotos de IndexedDB del plano actual.
+> ⚠️ Si la desmarcas **Y** además has importado un ZIP de capa de datos con fotos (ver la sección anterior), solo se incluirán las fotos de la capa importada. La casilla 📸 controla ÚNICAMENTE las fotos del plano actual guardadas en tu dispositivo.
 
 ### 🧱 Convertir a teselas V2 (rendimiento)
 
@@ -3279,13 +3327,13 @@ Si a pesar del modo Rendimiento tu plano sigue fallando (típicamente planos de 
 
 - El **iPhone en PWA** (instalada en la pantalla de inicio) gestiona mejor los planos grandes que el iPhone con Safari directamente
 - **Android Chrome** suele ser más tolerante que iOS con la memoria
-- En caso de fallo: ⚙️ Ajustes → **🐛 Registros detallados** → activado, para diagnosticar
+- En caso de fallo: ⚙️ Configuración (inicio) → **🛠️ Modo Desarrollador** → registros detallados para diagnosticar
 
 ### 8. 💾 Guardado regular
 
 Los planos muy grandes pueden provocar **cierres silenciosos por memoria** en iOS — el sistema mata la pestaña sin avisar para recuperar RAM. La app detecta ese cierre al reiniciar y te muestra un aviso.
 
-> 📌 **Reflejo**: exporta tu sesión (📤 Exportar) cada 10-15 minutos de trabajo intensivo. El guardado automático en localStorage ya protege en la mayoría de los casos, pero una exportación externa sigue siendo lo más seguro.
+> 📌 **Reflejo**: exporta tu sesión (📤 Exportar) cada 10-15 minutos de trabajo intensivo. El guardado automático en este dispositivo ya protege en la mayoría de los casos, pero una exportación externa sigue siendo lo más seguro.
 
 ### Resumen rápido
 
@@ -3298,9 +3346,17 @@ Los planos muy grandes pueden provocar **cierres silenciosos por memoria** en iO
 
 ---
 
+### 🎓 Volver a ver el tutorial
+
+El tutorial de bienvenida (27 fichas) **se puede repetir en cualquier momento**: abre **📖 Documentación** y toca el botón **🎓** de la línea de título, junto a las banderas de idioma. No hay que reinstalar ni reiniciar nada.
+
+### 🔎 Buscar en la documentación
+
+Esta documentación es larga. Arriba de la ventana 📖, un campo **🔎 Buscar** busca en **todo el texto**: las apariciones se resaltan, **Intro** o ↓ pasa a la siguiente, el contador indica «i / n» y las entradas del índice sin resultado se atenúan. Los acentos no cuentan: «reglages» encuentra «Réglages». La búsqueda del hub ❓ Ayuda, por su parte, busca en los títulos **y** el contenido de las secciones.
+
 ## 🤖 Ayuda con IA
 
-> Accesible mediante el grupo **📚 Ayuda / Doc / Leyenda → 🤖 Ayuda con IA**.
+> Accesible mediante el grupo **📚 Ayuda / Documentación / Leyenda → 🤖 Ayuda con IA**.
 
 Descarga un archivo `.md` que resume todo lo que permite hacer la app (esta documentación + unas preguntas frecuentes + instrucciones para la IA). Dáselo a **cualquier IA conversacional** (ChatGPT, Claude, Gemini, Perplexity, Le Chat, Copilot, etc.) — podrá responder a todas tus preguntas sobre MyKTAMap con un contexto preciso.
 
@@ -3319,7 +3375,7 @@ Descarga un archivo `.md` que resume todo lo que permite hacer la app (esta docu
 
 ## 🗺️ Leyenda
 
-> Accesible mediante el grupo **📚 Ayuda / Doc / Leyenda → 🗺️ Leyenda**.
+> Accesible mediante el grupo **📚 Ayuda / Documentación / Leyenda → 🗺️ Leyenda**.
 
 Muestra la leyenda completa de los iconos y trazados, agrupados por categoría: **🕳️ Pozos**, **🪜 Accesos** (pozos con escalones, escaleras, cavidades), **⚠️ Señalización**, **🛣️ Trazados** y **⬛ Zonas**.
 
@@ -3329,50 +3385,54 @@ Muestra la leyenda completa de los iconos y trazados, agrupados por categoría: 
 
 ## ⚙️ Ajustes (en modo mapa, por plano)
 
-> Accesible directamente mediante el botón **⚙️** de la barra lateral (clic directo, sin submenú).
+> Accesible directamente mediante el botón **⚙️ Ajustes** de la barra lateral (clic directo, sin submenú).
 >
-> Esta ventana se centra **en el plano** (ajustes ligados al plano abierto). Para los **ajustes globales** (interfaz, PIN, reinicio, etc.), pasa por **⚙️ Configuración** en la pantalla de inicio — ver la sección dedicada más arriba. La separación es intencionada: Ajustes = lo que concierne a ESTE plano, Configuración = lo que concierne a la app.
+> Esta ventana se centra **en el plano**. Para los **ajustes globales** (idioma, tema, PIN, reinicio, iconos según el zoom, imantación…), pasa por **⚙️ Configuración** en la pantalla de inicio — ver la sección dedicada más arriba. La separación es intencionada: Ajustes = lo que concierne a ESTE plano, Configuración = lo que concierne a la app.
 
-Accede a los parámetros pulsando **⚙️**:
+### ✓ Todo se guarda en cuanto lo cambias
 
-### 🧭 Seguimiento (específico del plano)
-- **Posición inicial del rastreador**: coordenadas de partida X/Y
-- **Detección de pasos**: sensibilidad, tamaño del paso, tiempo de espera antirrebote
-- **Escala (px/m)** con botón **🎯 Calibrar**: calcula la escala correcta a partir de una distancia medida
+**Ya no hay botón Aplicar** *(desde v1.92.0)*: cada campo se guarda en cuanto lo modificas (un destello verde lo confirma). Un valor **fuera de rango** se pone en rojo, un mensaje indica los límites y **no se escribe nada** — se conserva el valor anterior. Cierras con **Esc**, **✕** o **Cerrar**: no se pierde nada.
 
-### 🔍 Visualización
-- **Iconos adaptativos al zoom** — *preferencia global*: los iconos de los puntos (pozos, accesos, señalización, etc.) mantienen un tamaño constante en relación con el plano. Al alejar se encogen; al acercar, crecen. Requiere recargar al cambiarlo.
-- **⚪ Mostrar los círculos en los cruces de trazados (este plano)** — *ajuste por plano*: círculo relleno de color en el cruce de 2 trazados (verde × violeta → amarillo, etc.). Desmárcalo para despejar visualmente los planos muy densos, o si el cálculo ralentiza la visualización. **Efecto inmediato**, guardado por plano (otro plano conserva su propio ajuste).
-- **🧭 Calibración del Norte (este plano)** — *ajuste por plano*: útil cuando la PARTE SUPERIOR del plano **no es** el Norte verdadero (foto aérea con encuadre arbitrario, plano sin rosa de los vientos alineada). Campo de ángulo [0,360[ en grados o botón **📐 Calibrar (2 clics)** que abre un selector visual: pulsa primero el SUR del plano y después el NORTE, aparece una flecha discontinua Sur→Norte y el ángulo se calcula automáticamente. **Efecto**: la rotación del icono del rastreador y el sentido de la marcha se adaptan → el rastreador apunta en la dirección correcta RESPECTO AL PLANO. La brújula física 🧭 sigue apuntando al Norte magnético real (= el comportamiento esperado de una brújula). **Guardado por plano**, **efecto inmediato** sin recargar. Botón ↺ Reiniciar para volver al valor por defecto (0 = Norte hacia la parte superior del plano).
+Cada grupo lleva su **alcance** en el título — **📍 este plano** o **🌍 todos los planos** — y se **pliega** con un toque en el título (elección recordada). En el teléfono, al abrir solo se muestran los títulos, salvo el primer grupo.
 
-> 💡 **Para autores de planos**: para incluir de forma duradera el Norte o un **PDF de Historia** en el ZIP del plano (para todos los usuarios), pasa por el **generador avanzado** (campo «🧭 Orientación Norte» en Seguimiento + sección «📖 PDF de Historia» opcional). Para un PDF de Historia cargado solo del lado de la sesión (tu navegador), sigue usando el botón de importación de la ventana **📖 Modo Historia** (barra de estado).
-- **🔆 Mantener la pantalla encendida** — *preferencia global*: activa la Wake Lock API para impedir que la pantalla se apague automáticamente mientras la app está abierta. Readquisición automática al volver de segundo plano. Se oculta si el navegador no admite la API. El mismo interruptor está también disponible en **⚙️ Configuración**, en la pantalla de inicio.
+### 🌍 Aplicación *(🌍 todos los planos)*
+- **🎬 Activar el modo presentación**: pantalla completa sin interfaz (demostraciones / proyección). Tecla **F** en PC; salida con **F** / **Esc** o el botón flotante ✕.
+- **🏠 Ajustados desde el inicio** *(solo lectura)*: idioma, tema, iconos adaptativos al zoom, anclaje de paneles, imantación al dibujar, **cuaderno de salidas**. Su valor se lee aquí; el botón **🏠 Ir al inicio para cambiarlos** sale del plano (tu sesión se conserva) y te lleva a ⚙️ Configuración.
 
-### 🎬 Modo presentación
+### 📐 Plano: escala y geolocalización *(📍 este plano)*
+- **Escala (px/m)** con el botón **🎯 Calibrar** (ver más abajo). Una escala nula o negativa se rechaza.
+- **🧭 Calibración del Norte**: útil cuando la PARTE SUPERIOR del plano no es el Norte verdadero. Campo de ángulo [0,360[ o botón **📐 Calibrar (2 clics)** (Sur y luego Norte en el mapa). Efecto inmediato en el rastreador; la brújula física sigue apuntando al Norte real. **↺ Reiniciar** para volver a 0.
+- **🌐 Georreferenciación GPS**: el estado se muestra en el grupo («no georreferenciado», «✅ puntos A y B», «A, B y C», «B estimado») y el botón **🌐 Abrir la georreferenciación…** abre su **propia ventana**: puntos A / B (+ C opcional) con **🔍 Buscar un punto**, **📍 Pulsar en el mapa** y **🧭 Estimar B**, y después **💾 Guardar** / **🗑️ Borrar** (confirmación). El calibrado introducido aquí se comparte con las exportaciones KMZ / GPX del plano y rellena 📡 Exportación externa.
 
-- **🎬 Iniciar el modo presentación**: botón en la parte **superior** de la ventana de Ajustes. Activa un modo a pantalla completa sin interfaz (para demostraciones o proyecciones), accesible con un solo botón táctil.
-- La tecla **F** está disponible como atajo en PC.
+> 💡 **Autores de planos**: para incluir de forma duradera el Norte o un **PDF de Historia** en el ZIP del plano (para todos los usuarios), pasa por el **generador avanzado**. Para un PDF de Historia cargado solo en tu sesión, usa el botón de importación de la ventana **📖 Modo Historia** (barra de estado).
 
-### 🎯 Selectores de georreferenciación
+### 📍 Navegación y rastreador *(📍 este plano)*
+- **Posición inicial del rastreador**: X/Y, o **🔍 Elegir mediante un punto**, o **📍 Pulsar en el mapa**. En cuanto cambia el punto de partida, el seguimiento **vuelve a empezar ahí** (el recorrido en curso se borra) — un mensaje lo indica.
+- **Detección de pasos**: longitud del paso [0; 1,5 m], umbral [10; 30], espera [300; 3 000 ms]. Fuera de rango, no se guarda nada.
+- **🧭 Navegación inteligente** (ajuste a los trazados): interruptor (un mensaje lo confirma), tolerancia lateral [1; 50 m], peso del rumbo [0; 5].
 
-Los selectores de 2 puntos (calibrado GPS para KMZ / GPX) están disponibles en **⚙️ Ajustes → pestaña Georreferenciación** (además de en la ventana **Guardar sesión → 🌍 KMZ**):
+### 🎨 Visualización *(📍/🌍 según la línea)*
+- **⚪ Mostrar los círculos en los cruces de trazados** *(este plano)* — efecto inmediato, guardado por plano.
+- **🔆 Mantener la pantalla encendida** *(todos los planos)* — Wake Lock, readquirido al volver de segundo plano. También en ⚙️ Configuración.
+- **🎤 Comandos de voz (BETA)** *(todos los planos)*.
+- Si tu navegador no admite el wake lock o la voz (Firefox), la línea sigue **visible, atenuada, con el motivo** — como los sensores de abajo.
 
-- **🔍 Búsqueda de un punto** en el plano para autocompletar x/y
-- **📍 Clic en el mapa** para señalar una posición directamente
-- Introducción manual de lat/lng GPS para finalizar el calibrado
+### 🚀 Rendimiento *(📍 este plano)*
+- **🚀 Modo ULTRA** aplica 7 optimizaciones de golpe, o una a una (simplificación de trazados, animaciones, círculos, ventanas emergentes, guardado lento, dibujo solo de lo visible, límite de alejamiento en móvil). Detalle en la sección Rendimiento más arriba.
+- En un plano **multinivel**: **🏗️ Mostrar todos los niveles al iniciar** (se aplica en la próxima carga del plano).
 
-El calibrado introducido aquí se comparte con las exportaciones KMZ / GPX del mismo plano (persistencia por plano mediante localStorage). Práctico para validar tu calibrado **fuera del flujo de exportación** (por ejemplo al principio de una sesión de campo).
+### 🛰️ Opciones por sensor *(🌍 todos los planos)*
+- **🔋 Nivel de batería** y **📳 Vibración háptica**. Un sensor rechazado por el dispositivo (o por iOS) se muestra atenuado, con el motivo.
 
-### 🛠️ Depuración
-- **🐛 Registros detallados**: activa el modo detallado (registros de los sensores del rastreador + teselado + detecciones). Útil para diagnosticar un problema.
-- Muestra el **modo de rendimiento** del plano actual (💤 Desactivado / 🔄 Automático / 🌟 Calidad / 🎯 Equilibrado / ⚡ Rendimiento) — aquí es de solo lectura, modificable en la próxima carga del plano mediante el selector del cargador.
+### 🔒 Privacidad y seguridad *(🌍 todos los planos)*
+- **🕵️ Modo incógnito**: abre una nueva ventana que no escribe nada en el dispositivo.
+
+### 🛠️ Sistema y mantenimiento *(📍 este plano)*
+- Muestra el **modo de rendimiento** del plano actual — solo lectura aquí (se elige en ℹ️ Info, para un plano sin teselado V2). Los registros detallados viven en ⚙️ Configuración (inicio) → 🛠️ Modo Desarrollador.
 
 ### Acciones
-- **Aplicar**: guarda los cambios
-- **🐛 Registros**: muestra los registros de depuración capturados
-- **Reiniciar**: restablece los valores por defecto de ESTE plano (no borra nada — es distinto de **💥 Reiniciarlo todo** de la ⚙️ Configuración del cargador, que lo purga todo)
-
-> 💡 **El modo de rendimiento solo se cambia al cargar el plano** (selector de 5 preajustes en el cargador → ⚙️ Configuración → 🖼️ Teselado). Los Ajustes solo muestran el actual.
+- **↺ Valores por defecto**: restablece **los ajustes de ESTE plano** (escala, podómetro, punto de partida, navegación inteligente, Norte) a los valores del plano y devuelve el seguimiento a la partida — **se pide confirmación**. Los ajustes del inicio no se mueven. Distinto de **💥 Reiniciarlo todo** en ⚙️ Configuración, que lo purga todo.
+- **Cerrar** (o Esc, o ✕) — nada que validar.
 
 > ⚠️ **Para activar o modificar el código de acceso local (PIN / Face ID)** hay que pasar por la **⚙️ Configuración de la pantalla de inicio** — la sección 🔐 Código de acceso local NO está en ⚙️ Ajustes (por diseño: es un ajuste crítico global, no por plano).
 
@@ -3384,8 +3444,7 @@ Si la aplicación te da una distancia distinta de la real (por ejemplo 100 m mos
 2. Abre **⚙️ → 🎯 Calibrar**
 3. Introduce la **distancia mostrada** (100) y la **distancia real** (150)
 4. La nueva escala aparece en tiempo real
-5. Pulsa **Aplicar** → el valor se inyecta en el campo Escala
-6. Pulsa **Aplicar** en la ventana de Ajustes para validarlo
+5. Pulsa **Aplicar** → el valor se inyecta en el campo Escala **y se guarda al instante** (nada más que validar)
 
 > Cuanto mayor sea la distancia sobre la que calibres, más preciso será el resultado.
 
@@ -3441,9 +3500,9 @@ La pantalla de bloqueo aparece automáticamente después del splash:
 
 ⚙️ Configuración → 🔐 Código de acceso local → **🔓 Desactivar**. Confirmación por biometría O por el código actual. La app deja de pedir el código en el siguiente arranque.
 
-### Bloqueo: 5 intentos fallidos
+### Bloqueo temporal: 5 códigos erróneos
 
-Por motivos de seguridad, tras **5 códigos incorrectos seguidos**, la app queda bloqueada **definitivamente** en una pantalla roja sin botón de salida. La única forma de recuperar el acceso es **💥 Reiniciarlo todo** desde la pantalla de inicio (pérdida de la sesión en curso y de los planos no memorizados).
+Tras **5 códigos incorrectos seguidos**, la app se bloquea **temporalmente**: 10 min la primera vez, luego 1 h, 6 h y 24 h con cada nueva serie de 5 errores. Se muestra una cuenta atrás y el teclado vuelve solo al terminar el plazo; un código correcto lo reinicia todo. No hay **ningún botón de reinicio** en esa pantalla ni recuperación del código en caso de olvido — si de verdad lo has perdido, queda **💥 Reiniciarlo todo** desde la pantalla de inicio (pérdida de la sesión en curso y de los planos no memorizados). El plazo sigue el reloj del teléfono.
 
 > Los intentos biométricos fallidos **no** cuentan dentro de los 5 — la especificación WebAuthn gestiona su propio bloqueo nativo en el dispositivo. Puedes cancelar un Face ID por error sin temer agotar tus intentos.
 
@@ -3451,7 +3510,7 @@ Por motivos de seguridad, tras **5 códigos incorrectos seguidos**, la app queda
 
 ## 🔧 Reiniciar
 
-En caso de problema o para forzar una actualización, usa **⚙️ → 🗑️ Reiniciar**. Esta acción da de baja el Service Worker, vacía la caché y recarga la aplicación.
+En caso de problema o para forzar una actualización, usa **⚙️ Configuración (pantalla de inicio) → 💥 Reiniciar todo**. Esta acción retira el componente sin conexión (Service Worker) y da de baja el Service Worker, vacía la caché y recarga la aplicación.
 
 > ⚠️ Realiza esta acción únicamente con una conexión a Internet disponible. Sin red, la aplicación quedará inutilizable hasta la siguiente recarga completa.
 ---
@@ -3558,7 +3617,7 @@ Elige **⚡ Rendimiento** en el selector de Modo de rendimiento antes de cargar 
 Vuelve a pulsar el botón activo (en verde) para desactivarlo.
 
 **La aplicación no se actualiza tras una nueva versión**
-Usa **⚙️ → 🔄 Forzar la actualización** (actualización suave, conserva todos tus datos). Si no basta: **⚙️ → 🗑️ Reiniciar** (purga total, última opción). La actualización suave es rápida gracias a una descarga previa en segundo plano.
+Usa **⚙️ Configuración (pantalla de inicio) → 🔄 Forzar la actualización** (actualización suave, conserva todos tus datos). Si no basta: **⚙️ Configuración → 💥 Reiniciar todo** (purga total, última opción). La actualización suave es rápida gracias a una descarga previa en segundo plano.
 
 **📡 App bloqueada tras una actualización suave**
 Si después de una actualización la app se queda atascada (cargador sin CSS, página en blanco, recursos mal cargados), la causa más frecuente es un **nodo CDN de GitHub Pages que sirve contenido corrupto** (MIME incorrecto, recurso truncado) para la zona geográfica actual. Primer reflejo antes de cualquier reinicio: **desactiva tu VPN si está activo y cambia de red** (4G ↔ wifi ↔ otro wifi). El simple hecho de cambiar de IP o de nodo CDN suele bastar para desbloquearla.
