@@ -444,3 +444,10 @@ node scripts/check-doc-vocabulaire.js || exit $?
 # ACTIVE, seul « 0 » coupe), et couper agit sur ce qui est deja a l ecran.
 # 5 sabotages rougissent.
 node scripts/check-aide-contextuelle.js || exit $?
+
+# 🧱 Integrite structurelle d index.html (bug KARMA 14/09/2026 : « un truc est
+# casse »). Une retouche par index de caracteres avait RECOPIE 388 lignes au
+# milieu du document : le bloc « Concu avec Claude » du splash s affichait dans
+# la zone de depot, et les 1912 controles etaient au vert. Balises equilibrees,
+# aucun id en double, aucun repere structurant recopie, scripts existants.
+node scripts/check-html-integrite.js || exit $?

@@ -1178,7 +1178,7 @@
   "history.action.abandonZone": "Abandonner la zone {type} (moins de 3 sommets)",
   "history.redone": "↪ Refait : ",
   "history.undone": "↩ Annulé : ",
-  "home.add.drop": "Glisse un fichier ici, ou clique pour le choisir",
+  "home.add.drop": "Glisse un fichier ici",
   "home.add.dropSub": "ou clique pour sélectionner",
   "home.add.dropSig": "<span class=\"zip-drop-formats-titre\">Formats acceptés</span><span class=\"zip-drop-format\"><strong>.zip</strong> — un plan MyKTAMap</span><span class=\"zip-drop-format\"><strong>.kmz</strong> · <strong>.gpx</strong> — un relevé Google Earth ou GPS</span><span class=\"zip-drop-format\"><strong>.geojson</strong> · <strong>.kml</strong> · <strong>.json</strong> — un export SIG (QGIS…)</span><span class=\"zip-drop-format\"><strong>.tif</strong> · <strong>.tiff</strong> — un GeoTIFF déjà calé : géoréférencement et échelle lus dans le fichier</span>",
   "home.loader.sigUnavailable": "Module d'import SIG indisponible — ouvre 🏗️ Générer un plan et utilise « Convertir depuis un SIG ».",
