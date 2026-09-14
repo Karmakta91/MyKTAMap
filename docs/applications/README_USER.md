@@ -893,6 +893,8 @@ En mode **anonymisé**, note + PDF sont volontairement omis du ZIP (peuvent cont
 
 ## 🚨 Mode Sortie d'urgence — Trouver la sortie la plus proche
 
+> 🧭 Cet outil te ramène dehors. Si tu cherches plutôt à **te repérer** (⛑️ Je suis perdu), un **écran très lisible** (mode panique) ou à **coordonner des équipes** (Mode Secours), tout cela vit plus bas, dans le chapitre Secours.
+
 Le bouton **🚨** dans la barre du haut (entre 📖 Mode Histoire et la batterie 🔋) déclenche un calcul d'itinéraire vers la **sortie la plus proche** depuis ta position actuelle.
 
 **Cas d'usage** : tu es sous terre, tu veux ressortir **maintenant**, sans réfléchir (blessé·e, batterie qui tombe, panne d'éclairage, simplement perdu·e). Tu tapes sur le bouton (ou tu le déclenches à la voix), l'app fait le reste.
@@ -1504,6 +1506,17 @@ Dans la modale itinéraire, une section repliable **🚫 Préférences d'évitem
 
 **Persistance** : tes préférences sont sauvegardées par plan (sur cet appareil). Au prochain calcul sur le même plan, elles sont restaurées. Bouton **🗑️ Reset** pour tout effacer.
 
+> 🧭 **Par où commencer, selon ta situation.** Les pages qui suivent couvrent quatre outils différents. Celui dont tu as besoin dépend de ce qui t'arrive :
+>
+> | Ta situation | L'outil | Où |
+> |---|---|---|
+> | Je veux **la sortie la plus proche**, tout de suite | 🚨 Sortie d'urgence | section « Mode Sortie d'urgence », plus haut |
+> | **Je ne sais plus où je suis**, mais je sais par où je suis passé | ⛑️ Je suis perdu | juste en dessous |
+> | Je panique, j'ai besoin d'un **écran lisible en gros** | 🚨 Mode urgence « panique » | juste après |
+> | **Je coordonne des équipes** qui cherchent quelqu'un | 🚨 Mode Secours | le reste de ce chapitre |
+>
+> Les quatre sont indépendants. Le Mode Secours est le seul qui demande une préparation : équipes déclarées, zones assignées.
+
 ### ⛑️ Mode urgence — "Je suis perdu"
 
 Le bouton **⛑️** orange dans le groupe **🧭 Tracker** ouvre le mode urgence. Il estime la **zone probable où vous pouvez être maintenant** à partir de votre dernière position connue, du temps écoulé et d'**indices visuels** que vous observez autour de vous.
@@ -1655,7 +1668,7 @@ Les sections ci-dessous détaillent les fonctionnalités avancées : intégratio
 
 ### 🚨 Mode Secours — Multi-phases
 
-Un scénario peut désormais **séquencer plusieurs phases** avec debrief intercalé entre chaque. Cas d'usage terrain typique : *Phase 1 = une équipe balaye TOUS les roulages principaux sans entrer dans les chambres d'exploitation → retour de l'équipe → debrief au PC → Phase 2 = X équipes ciblent les chambres d'exploitation avec les infos remontées de Phase 1.*
+Un scénario peut **séquencer plusieurs phases** avec debrief intercalé entre chaque. Cas d'usage terrain typique : *Phase 1 = une équipe balaye TOUS les roulages principaux sans entrer dans les chambres d'exploitation → retour de l'équipe → debrief au PC → Phase 2 = X équipes ciblent les chambres d'exploitation avec les infos remontées de Phase 1.*
 
 > 💡 **Si tu n'utilises pas le multi-phases**, ne change rien : ton scénario reste avec **1 seule phase implicite** et le comportement est strictement identique au comportement précédent. Aucune pollution visuelle (badges et boutons multi-phases n'apparaissent QUE si tu crées effectivement 2+ phases).
 
@@ -1697,7 +1710,7 @@ Ces intégrations font du Mode Secours un outil de coordination opérationnelle 
 
 #### 🌍 KML cross-app (Google Earth, OsmAnd, Avenza…)
 
-Le KMZ exporté contient désormais un Folder racine `🚨 Secours` parfaitement structuré pour les apps tierces :
+Le KMZ exporté contient un Folder racine `🚨 Secours` parfaitement structuré pour les apps tierces :
 
 ```
 📁 Secours — Recherche Marc 26/05
@@ -1746,7 +1759,7 @@ Sur les plans multi-niveau, bouton conditionnel **🏗️ Auto : 1 équipe par n
 
 #### ⭐ Favoris en accès rapide
 
-Dans la mini-modale "📍 Choisir un point", tes favoris du plan apparaissent désormais en chips cliquables (max 8) AU-DESSUS de la recherche autocomplete. 1 clic = waypoint appliqué (skip search + clic carte).
+Dans la mini-modale "📍 Choisir un point", tes favoris du plan apparaissent en chips cliquables (max 8) AU-DESSUS de la recherche autocomplete. 1 clic = waypoint appliqué (skip search + clic carte).
 
 Particulièrement utile pour les scénarios urgence où tu veux créer rapidement plusieurs équipes avec les mêmes 3-4 puits d'accès connus.
 
@@ -1793,7 +1806,7 @@ Renseigne la position GPS du PC secours, du lieu de rendez-vous avec les pompier
 
 #### 🌍 Vue OSM accessible partout dans Mode Secours
 
-Le bouton **🌍 Vue OSM** est désormais présent dans :
+Le bouton **🌍 Vue OSM** est présent dans :
 - La vue Édition (bandeau scénario)
 - Les 3 vues Live : 👤 Opérateur surface, 🚨 Équipier, 🚑 Secouriste libre
 
@@ -1814,7 +1827,7 @@ Nouveau bouton **🚒 Briefing pompiers** dans tous les bandeaux Mode Secours. G
 
 #### 📤 Page « Briefing surface » dans le rapport post-mission
 
-Le rapport PDF post-mission (généré au bouton 📤 Rapport) inclut désormais une nouvelle page « BRIEFING SURFACE » avec les mêmes infos. Utile pour debrief géographique avec les pompiers ou archivage du dossier d'intervention.
+Le rapport PDF post-mission (généré au bouton 📤 Rapport) inclut une page « BRIEFING SURFACE » avec les mêmes infos. Utile pour debrief géographique avec les pompiers ou archivage du dossier d'intervention.
 
 #### 🏷️ Filtre tags Vue OSM
 
@@ -1822,7 +1835,7 @@ Les chips de filtre par tag de la modale Vue OSM listent **tous les tags présen
 
 #### 💾 Save Offline — Vue OSM hors-ligne
 
-Tu pars en sortie cataphile, ou tu te prépares à un Mode Secours dans une zone à cellular pourri ? Tu peux désormais **télécharger la carte OpenStreetMap autour de ton plan à l'avance**, et la consulter **sans Internet** une fois sur place.
+Tu pars en sortie cataphile, ou tu te prépares à un Mode Secours dans une zone à cellular pourri ? Tu peux **télécharger la carte OpenStreetMap autour de ton plan à l'avance**, et la consulter **sans Internet** une fois sur place.
 
 **À quoi ça sert** :
 
@@ -1835,7 +1848,7 @@ Tu pars en sortie cataphile, ou tu te prépares à un Mode Secours dans une zone
 Un bouton **💾 Save Offline** est disponible dans le bandeau de la Vue OSM. **Un clic suffit** :
 
 1. L'app télécharge les tuiles OpenStreetMap visibles autour de ton plan + quelques niveaux de zoom proches
-2. Le bandeau affiche après le téléchargement : **📦 N tuiles · X MB** (= ce qui est désormais dispo sur ton appareil)
+2. Le bandeau affiche après le téléchargement : **📦 N tuiles · X MB** (= ce qui est disponible sur ton appareil)
 3. Tu peux refaire un clic plus tard si tu zoomes sur une autre zone que tu veux aussi sauvegarder
 
 > 💡 **Max ~200 tuiles par clic** (~5-10 MB) : c'est une limite stricte pour respecter la politique d'usage OpenStreetMap (= service gratuit financé par les dons, donc pas d'abus). Si tu veux sauvegarder une zone très large, fais plusieurs clics en déplaçant la vue.

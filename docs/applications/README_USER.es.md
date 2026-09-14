@@ -838,6 +838,8 @@ En modo **anonimizado**, la nota y los PDF se omiten deliberadamente del ZIP (pu
 
 ## 🚨 Modo Salida de emergencia — Encontrar la salida más cercana
 
+> 🧭 Esta herramienta te saca fuera. Si lo que buscas es **situarte** (⛑️ Estoy perdido), una **pantalla muy legible** (modo pánico) o **coordinar equipos** (Modo Rescate), todo eso está más abajo, en el capítulo de Rescate.
+
 El botón **🚨** de la barra superior (entre 📖 Modo Historia y la batería 🔋) lanza un cálculo de itinerario hacia la **salida más cercana** desde tu posición actual.
 
 **Caso de uso**: estás bajo tierra y quieres salir **ahora**, sin pensar (herido, batería que se agota, fallo de iluminación, o simplemente perdido). Pulsas el botón (o lo activas por voz) y la app hace el resto.
@@ -1444,6 +1446,17 @@ En la ventana de itinerario, una sección plegable **🚫 Preferencias de evitac
 
 **Persistencia**: tus preferencias se guardan por plano (en este dispositivo). En el siguiente cálculo sobre el mismo plano, se restauran. Botón **🗑️ Reiniciar** para borrarlo todo.
 
+> 🧭 **Por dónde empezar, según tu situación.** Las páginas siguientes cubren cuatro herramientas distintas. La que necesitas depende de lo que te esté pasando:
+>
+> | Tu situación | La herramienta | Dónde |
+> |---|---|---|
+> | Quiero **la salida más cercana**, ahora mismo | 🚨 Salida de emergencia | sección «Modo Salida de emergencia», más arriba |
+> | **Ya no sé dónde estoy**, pero sé por dónde he pasado | ⛑️ Estoy perdido | justo debajo |
+> | Estoy en pánico, necesito una **pantalla legible de un vistazo** | 🚨 Modo emergencia «pánico» | justo después |
+> | **Coordino equipos** que buscan a alguien | 🚨 Modo Rescate | el resto de este capítulo |
+>
+> Las cuatro son independientes. El Modo Rescate es el único que requiere preparación: equipos declarados, zonas asignadas.
+
 ### ⛑️ Modo emergencia — «Estoy perdido»
 
 El botón **⛑️** naranja del grupo **🧭 Rastreador** abre el modo emergencia. Estima la **zona probable en la que puedes encontrarte ahora** a partir de tu última posición conocida, del tiempo transcurrido y de los **indicios visuales** que observas a tu alrededor.
@@ -1594,7 +1607,7 @@ Las secciones siguientes detallan las funciones avanzadas: integraciones entre a
 
 ### 🚨 Modo Rescate — Multifase
 
-Un escenario puede ahora **secuenciar varias fases** con un debriefing intercalado entre cada una. Caso de uso típico sobre el terreno: *Fase 1 = un equipo barre TODAS las galerías de rodadura principales sin entrar en las cámaras de explotación → regreso del equipo → debriefing en el puesto de mando → Fase 2 = X equipos se centran en las cámaras de explotación con la información obtenida en la Fase 1.*
+Un escenario puede **secuenciar varias fases** con un debriefing intercalado entre cada una. Caso de uso típico sobre el terreno: *Fase 1 = un equipo barre TODAS las galerías de rodadura principales sin entrar en las cámaras de explotación → regreso del equipo → debriefing en el puesto de mando → Fase 2 = X equipos se centran en las cámaras de explotación con la información obtenida en la Fase 1.*
 
 > 💡 **Si no usas el modo multifase**, no cambies nada: tu escenario se queda con **una sola fase implícita** y el comportamiento es estrictamente idéntico al anterior. Ninguna contaminación visual (los distintivos y botones de multifase aparecen SOLO si creas efectivamente 2 fases o más).
 
@@ -1636,7 +1649,7 @@ Estas integraciones convierten el Modo Rescate en una herramienta completa de co
 
 #### 🌍 KML entre aplicaciones (Google Earth, OsmAnd, Avenza…)
 
-El KMZ exportado contiene ahora una carpeta raíz `🚨 Secours` perfectamente estructurada para las aplicaciones de terceros:
+El KMZ exportado contiene una carpeta raíz `🚨 Secours` perfectamente estructurada para las aplicaciones de terceros:
 
 ```
 📁 Rescate — Búsqueda de Marc 26/05
@@ -1732,7 +1745,7 @@ Indica la posición GPS del puesto de mando, del lugar de encuentro con los bomb
 
 #### 🌍 Vista OSM accesible en todo el Modo Rescate
 
-El botón **🌍 Vista OSM** está ahora presente en:
+El botón **🌍 Vista OSM** está presente en:
 - La vista de Edición (barra del escenario)
 - Las 3 vistas en directo: 👤 Operador de superficie, 🚨 Miembro de equipo, 🚑 Rescatador libre
 

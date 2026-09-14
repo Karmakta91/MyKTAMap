@@ -897,6 +897,8 @@ In **anonymized** mode, note + PDF are intentionally omitted from the ZIP (may c
 
 ## 🚨 Emergency Exit Mode — Find the nearest exit
 
+> 🧭 This tool takes you back out. If you are rather trying to **locate yourself** (⛑️ I'm lost), need a **highly readable screen** (panic mode), or are **coordinating teams** (Rescue Mode), all of that lives further down, in the Rescue chapter.
+
 The **🚨** button in the top bar (between 📖 Story Mode and the battery 🔋) triggers route computation toward the **nearest exit** from your current position.
 
 **Use case**: you're underground, you want to get out **right now** with no thinking (injured, low battery, lamp failure, simply lost). You tap the button (or trigger it by voice), the app does the rest.
@@ -1494,6 +1496,17 @@ In the route modal, a collapsible section **🚫 Avoidance preferences (optional
 
 **Persistence**: your preferences are saved per map (on this device). On the next computation on the same map, they are restored. **🗑️ Reset** button to clear everything.
 
+> 🧭 **Where to start, depending on your situation.** The pages below cover four different tools. Which one you need depends on what is happening to you:
+>
+> | Your situation | The tool | Where |
+> |---|---|---|
+> | I want **the nearest exit**, right now | 🚨 Emergency exit | "Emergency Exit Mode" section, above |
+> | **I no longer know where I am**, but I know where I have been | ⛑️ I'm lost | just below |
+> | I am panicking, I need a **screen readable at a glance** | 🚨 "Panic" emergency mode | right after |
+> | **I am coordinating teams** looking for someone | 🚨 Rescue Mode | the rest of this chapter |
+>
+> The four are independent. Rescue Mode is the only one that needs preparation: declared teams, assigned areas.
+
 ### ⛑️ Emergency Mode — "I'm lost"
 
 The orange **⛑️** button in the **🧭 Tracker** group opens emergency mode. It estimates the **likely area where you may be right now** based on your last known position, the elapsed time and **visual clues** that you observe around you.
@@ -1649,7 +1662,7 @@ The sections below detail the advanced features: cross-app integrations (KML, Lo
 
 ### 🚨 Rescue Mode — Multi-phases
 
-A scenario can now **sequence several phases** with a debrief intercalated between each. Typical field use case: *Phase 1 = one team sweeps ALL main passages without entering extraction chambers → team returns → debrief at command post → Phase 2 = X teams target the extraction chambers with the information brought back from Phase 1.*
+A scenario can **sequence several phases** with a debrief intercalated between each. Typical field use case: *Phase 1 = one team sweeps ALL main passages without entering extraction chambers → team returns → debrief at command post → Phase 2 = X teams target the extraction chambers with the information brought back from Phase 1.*
 
 > 💡 **If you don't use multi-phases**, change nothing: your scenario stays with **1 single implicit phase** and the behavior is strictly identical to previous behavior. No visual pollution (multi-phase badges and buttons only appear if you actually create 2+ phases).
 
@@ -1740,7 +1753,7 @@ On multi-level maps, conditional button **🏗️ Auto: 1 team per level (N)** i
 
 #### ⭐ Favorites in quick access
 
-In the mini-modal "📍 Choose a point", your map favorites now appear as clickable chips (max 8) ABOVE the autocomplete search. 1 click = waypoint applied (skip search + map click).
+In the mini-modal "📍 Choose a point", your map favorites appear as clickable chips (max 8) ABOVE the autocomplete search. 1 click = waypoint applied (skip search + map click).
 
 Especially useful for emergency scenarios where you want to quickly create several teams with the same 3-4 known access shafts.
 
@@ -1787,7 +1800,7 @@ Enter the GPS position of the rescue HQ, firefighter rendezvous point, or any su
 
 #### 🌍 OSM View accessible everywhere in Rescue Mode
 
-The **🌍 OSM View** button is now present in:
+The **🌍 OSM View** button is present in:
 - The Edit view (scenario banner)
 - All 3 Live views: 👤 Surface Operator, 🚨 Field Team, 🚑 Free Rescuer
 
@@ -1808,7 +1821,7 @@ New **🚒 Firefighter Briefing** button in all Rescue Mode banners. Generates a
 
 #### 📤 "Surface briefing" page in post-mission report
 
-The post-mission PDF report (generated via 📤 Report button) now includes a new "SURFACE BRIEFING" page with the same info. Useful for geographic debrief with firefighters or archiving the intervention file.
+The post-mission PDF report (generated via 📤 Report button) includes a "SURFACE BRIEFING" page with the same info. Useful for geographic debrief with firefighters or archiving the intervention file.
 
 #### 🏷️ OSM View tag filter
 
