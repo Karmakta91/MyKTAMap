@@ -583,7 +583,7 @@ function afficherPopupChangerPlan() {
 // =========================
 // ⚙️ CONFIG (Réglages + Perf ULTRA + Multi-niveau + Géoref) — DÉPLACÉ (v1.31.0 P3 Lot 9)
 // =========================
-// `window.afficherConfig`, `window.appliquerConfig`, `window.resetConfig`,
+// `window.afficherConfig`, `window.resetConfig`,
 // `window.appliquerFiltreNiveau`, `window.appliquerFiltreRuntime`,
 // `window._initLevelFilterControl`, `window._ouvrirCreationJonction`
 // + leurs helpers internes (_renderPerfUltraSection,

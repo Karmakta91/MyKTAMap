@@ -1019,13 +1019,13 @@ L'app lit les points (session + calques de données) de chaque plan **sur place*
 
 ## 🧭 Présentation de l'interface
 
-L'interface est organisée en **13 groupes** répartis sur les **deux barres latérales** — à gauche : ⭐ Favoris, 📚 Aide, ⚙️ Paramètres, ⬇️ Charger, ⬆️ Enregistrer, ⏪ Historique ; à droite : 🔍 Recherche, 🧭 Tracker, 📐 Mesure, ✏️ Édition, 🛣️ Tracés, ⬛ Zones, 🏛️ Structures :
+L'interface est organisée en **13 groupes** répartis sur les **deux barres latérales** — à gauche : ⭐ Favoris, 📚 Aide, ⚙️ Réglages, ⬇️ Charger, ⬆️ Enregistrer, ⏪ Historique ; à droite : 🔍 Recherche, 🧭 Tracker, 📐 Mesure, ✏️ Édition, 🛣️ Tracés, ⬛ Zones, 🏛️ Structures :
 
 | Groupe | Icône | À quoi ça sert |
 |---|---|---|
 | **Favoris** | ⭐ | Tes points mis en favori, accessibles en un clic |
 | **Aide / Documentation / Légende** | 📚 | Aide, documentation, Aide IA, légende des icônes |
-| **Paramètres** | ⚙️ | Réglages, calibrage de l'échelle, debug *(clic direct)* |
+| **Réglages** | ⚙️ | Réglages du plan : échelle, Nord, géoréférencement, tracker, performance… *(clic direct)* |
 | **Recherche** | 🔍 | Trouver rapidement un point sur le plan *(clic direct)* |
 | **Charger / Import** | ⬇️ | Importer une session ou un GPX, éditeur de données du plan |
 | **Enregistrer** | ⬆️ | Exporter ta session, le plan en image, ou un PDF imprimable |
@@ -1389,7 +1389,7 @@ La section 🏗️ M-LVL de la modale Filtres **cohabite** avec la pastille M-LV
 
 ### ⚙️ Réglages du tracker
 
-Accédez aux réglages via le bouton **⚙️ Paramètres** de la barre latérale :
+Accédez aux réglages via le bouton **⚙️ Réglages** de la barre latérale :
 
 - **Échelle (px/m)** : rapport pixels/mètres réels — bouton **🎯** à côté pour calibrer
 - **Taille d'un pas (m)** : longueur estimée de votre foulée (≈ 0,7 m)
@@ -2575,7 +2575,7 @@ L'objet garde tout le reste — sa géométrie, son niveau, sa note.
 
 ### 🛰️ Les options qui utilisent un capteur
 
-⚙️ **Paramètres** → **🛰️ Options via capteur**. Ces réglages s'appuient sur un capteur du téléphone, et **chacun se coupe entièrement** : une option coupée n'affiche rien et n'écoute plus rien.
+⚙️ **Réglages** → **🛰️ Options via capteur**. Ces réglages s'appuient sur un capteur du téléphone, et **chacun se coupe entièrement** : une option coupée n'affiche rien et n'écoute plus rien.
 
 | Option | Par défaut | Ce que ça fait |
 |---|---|---|
@@ -2655,7 +2655,7 @@ Les panneaux **Tracés**, **Zones** et **Structures** s'ouvrent **centrés à l'
 
 > 🐛 **Pourquoi ça a changé (v1.85.1)** — ils étaient collés au haut de leur bouton. Plus leur liste s'allonge — un plan importé ajoute un type par niveau —, plus ils descendaient, jusqu'à passer sous le bas de l'écran sur téléphone : les derniers boutons devenaient inatteignables.
 
-Si tu préfères l'ancien affichage, coche **🪟 Ancrer les panneaux d'outils au bouton** dans ⚙️ **Paramètres**. C'est confortable sur grand écran, où la place ne manque pas — déconseillé sur téléphone.
+Si tu préfères l'ancien affichage, coche **🪟 Ancrer les panneaux d'outils au bouton** dans ⚙️ **Configuration** (page d'accueil). C'est confortable sur grand écran, où la place ne manque pas — déconseillé sur téléphone.
 
 ### 🎯 Convertir plusieurs objets d'un coup
 
@@ -3356,7 +3356,7 @@ Si malgré le mode Performance, ton plan crashe encore (typiquement plans 4000+ 
 
 - **iPhone PWA** (installé sur écran d'accueil) gère mieux les gros plans qu'iPhone Safari direct
 - **Android Chrome** est généralement plus tolérant qu'iOS pour la mémoire
-- En cas de crash : ⚙️ Réglages → **🐛 Logs détaillés** → ON pour diagnostiquer
+- En cas de crash : ⚙️ Configuration (accueil) → **🛠️ Mode Développeur** → logs détaillés pour diagnostiquer
 
 ### 8. 💾 Sauvegarde régulière
 
@@ -3410,50 +3410,55 @@ Affiche la légende complète des icônes et tracés, regroupés par catégorie 
 
 ## ⚙️ Réglages (en mode carte, par plan)
 
-> Accessible directement via le bouton **⚙️** de la barre latérale (clic direct, pas de sous-menu).
+> Accessible directement via le bouton **⚙️ Réglages** de la barre latérale (clic direct, pas de sous-menu).
 >
-> Cette modale est focus **par plan** (réglages liés à ce plan ouvert). Pour les **réglages globaux** (interface, PIN, reset, etc.), passe par **⚙️ Configuration** sur la page d'accueil — cf section dédiée plus haut. La séparation est volontaire : Réglages = ce qui concerne CE plan, Configuration = ce qui concerne l'app.
+> Cette modale est focus **par plan**. Pour les **réglages globaux** (langue, thème, PIN, reset, icônes au zoom, magnétisme…), passe par **⚙️ Configuration** sur la page d'accueil — cf section dédiée plus haut. La séparation est volontaire : Réglages = ce qui concerne CE plan, Configuration = ce qui concerne l'app.
 
-Accédez aux paramètres en cliquant sur **⚙️** :
+### ✓ Tout s'enregistre dès la modification
 
-### 🧭 Tracking (spécifique au plan)
-- **Position initiale du tracker** : coordonnées de départ X/Y
-- **Détection des pas** : sensibilité, taille du pas, délai anti-rebond
-- **Échelle (px/m)** avec bouton **🎯 Calibrer** : calcule l'échelle correcte à partir d'une distance mesurée
+Il n'y a **plus de bouton Appliquer** *(depuis v1.92.0)* : chaque champ s'enregistre dès que tu le modifies (un éclair vert le confirme). Une valeur **hors bornes** passe en rouge, un message dit les bornes, et **rien n'est écrit** — l'ancienne valeur reste. Tu fermes avec **Échap**, **✕** ou **Fermer** : rien n'est perdu.
 
-### 🔍 Affichage
-- **Icônes adaptatives au zoom** — *préférence globale* : les icônes des points (puits, accès, signalétique, etc.) gardent une taille relative au plan constante. Au dézoom, elles rétrécissent ; au zoom in, elles grossissent. Reload requis au toggle.
-- **⚪ Afficher les ronds aux intersections de tracés (ce plan)** — *réglage par plan* : cercle plein coloré au croisement de 2 tracés (vert × violet → jaune, etc.). Décocher pour aérer visuellement les plans très denses, ou si le calcul ralentit l'affichage. **Effet immédiat**, sauvegardé par plan (un autre plan garde son propre réglage).
-- **🧭 Calibration du Nord (ce plan)** — *réglage par plan* : utile quand le HAUT du plan **n'est pas** le Nord vrai (photo aérienne au cadrage arbitraire, plan cataphile sans rosace alignée). Champ angle [0,360[ en degrés ou bouton **📐 Calibrer (2 clics)** qui ouvre un picker WYSIWYG : clique d'abord le SUD du plan, puis le NORD, une flèche pointillée Sud→Nord s'affiche, et l'angle est calculé automatiquement. **Effet** : rotation icône tracker + sens de marche s'adaptent → le tracker pointe dans la bonne direction RELATIVE AU PLAN. La boussole physique 🧭 continue de pointer le vrai Nord magnétique (= comportement attendu d'une boussole). **Sauvegardé par plan**, **effet immédiat** sans reload. Bouton ↺ Reset pour revenir au default (0 = Nord vers le haut du plan).
+Chaque groupe porte sa **portée** dans son titre — **📍 ce plan** ou **🌍 tous les plans** — et se **replie** d'un tap sur le titre (choix mémorisé). Sur téléphone, seuls les titres s'affichent à l'ouverture, sauf le premier groupe.
 
-> 💡 **Auteur de plan** : pour embarquer durablement le Nord ou un **PDF Histoire** dans le ZIP du plan (cross-utilisateurs), passe par le **générateur avancé** (champ "🧭 Orientation Nord" dans Tracking + section "📖 PDF Histoire" optionnelle). Pour un PDF Histoire chargé juste côté session (ton navigateur), continue d'utiliser le bouton d'import de la modale **📖 Mode Histoire** (status bar).
-- **🔆 Garder l'écran allumé** — *préférence globale* : active la Wake Lock API pour empêcher la mise en veille automatique de l'écran tant que l'app est ouverte. Re-acquisition auto au retour d'arrière-plan. Masqué si le navigateur ne supporte pas l'API. Le même toggle est aussi disponible dans **⚙️ Configuration** sur la page d'accueil.
+### 🌍 Application
+- **🎬 Activer le mode présentation** : plein écran sans interface (démos / projection). Touche **F** sur PC ; sortie par **F** / **Échap** ou le bouton flottant ✕.
+- **🏠 Réglés depuis l'accueil** *(lecture seule)* : langue, thème, icônes adaptatives au zoom, ancrage des panneaux, magnétisme au dessin. Leur valeur se lit ici ; le bouton **🏠 Aller à l'accueil pour les modifier** quitte le plan (ta session est conservée) et t'amène à ⚙️ Configuration.
 
-### 🎬 Mode présentation
+### 📐 Plan : échelle & géolocalisation *(📍 ce plan)*
+- **Échelle (px/m)** avec bouton **🎯 Calibrer** (cf. plus bas). Une échelle nulle ou négative est refusée.
+- **🧭 Calibration du Nord** : utile quand le HAUT du plan n'est pas le Nord vrai. Champ angle [0,360[ ou bouton **📐 Calibrer (2 clics)** (Sud puis Nord sur la carte). Effet immédiat sur le tracker ; la boussole physique continue de pointer le vrai Nord. **↺ Reset** pour revenir à 0.
+- **🌐 Géoréférencement GPS** : l'état s'affiche dans le groupe (« non géoréférencé », « ✅ points A et B », « A, B et C », « B estimé ») et le bouton **🌐 Ouvrir le géoréférencement…** ouvre sa **propre fenêtre** : points A / B (+ C optionnel) avec **🔍 Chercher un point**, **📍 Cliquer carte** et **🧭 Estimer B**, puis **💾 Sauvegarder** / **🗑️ Effacer** (confirmation). Le calibrage saisi ici est partagé avec les exports KMZ / GPX du plan et pré-remplit 📡 Export externe.
 
-- **🎬 Activer le mode présentation** : bouton en **haut** de la modale Réglages. Active un mode plein écran sans UI (pour démos / projection), accessible d'un seul bouton tactile.
-- La touche **F** est disponible comme raccourci PC.
+> 💡 **Auteur de plan** : pour embarquer durablement le Nord ou un **PDF Histoire** dans le ZIP du plan (cross-utilisateurs), passe par le **générateur avancé**. Pour un PDF Histoire chargé côté session, utilise le bouton d'import de la modale **📖 Mode Histoire** (status bar).
 
-### 🎯 Pickers géoréférencement
+### 📍 Navigation & tracker *(📍 ce plan)*
+- **Position initiale du tracker** : X/Y, ou **🔍 Choisir via un point**, ou **📍 Cliquer sur la carte**. Dès que le point de départ change, le suivi **repart de là** (le parcours en cours est effacé) — un message le dit.
+- **Détection des pas** : longueur du pas [0 ; 1,5 m], seuil [10 ; 30], délai [300 ; 3 000 ms]. Hors bornes, rien n'est enregistré.
+- **🧭 Navigation intelligente** (calage sur les tracés) : interrupteur (un message confirme), tolérance latérale [1 ; 50 m], poids du cap [0 ; 5].
 
-Les pickers 2-points (calibrage GPS pour KMZ / GPX) sont disponibles dans **⚙️ Réglages → section 🌐 Géoréférencement GPS** (la modale se fait défiler, elle n'a pas d'onglets — en plus de l'onglet **📡 Export externe** de la modale Exporter) :
+### 🎨 Affichage
+- **⚪ Afficher les ronds aux intersections** *(ce plan)* — effet immédiat, sauvegardé par plan.
+- **🔆 Garder l'écran allumé** *(tous les plans)* — Wake Lock, ré-acquis au retour d'arrière-plan. Aussi dans ⚙️ Configuration.
+- **🎤 Commandes vocales (BETA)** *(tous les plans)*.
+- Si ton navigateur ne prend pas en charge le wake lock ou le vocal (Firefox), la ligne reste **visible, grisée, avec la raison** — comme les capteurs ci-dessous.
 
-- **🔍 Recherche d'un point** sur le plan pour auto-remplir x/y
-- **📍 Clic carte** pour pointer une position directement
-- Saisie manuelle lat/lng GPS pour finaliser le calibrage
+### 🚀 Performance *(📍 ce plan)*
+- **🚀 Mode ULTRA** applique 7 optimisations d'un coup, ou une à une (décimation des tracés, animations, cercles, popups, auto-save lent, rendu du visible, limite de dézoom mobile). Détail dans la section Performance plus haut.
+- Sur un plan **multi-niveau** : **🏗️ Afficher tous les niveaux au lancement** (pris en compte au prochain chargement du plan).
 
-Le calibrage saisi ici est partagé avec les exports KMZ / GPX du même plan (persistance par plan via localStorage). Pratique pour valider ton calibrage **hors flow d'export** (par exemple en début de session terrain).
+### 🛰️ Options via capteur *(🌍 tous les plans)*
+- **🔋 Niveau de batterie** et **📳 Vibration haptique**. Un capteur refusé par l'appareil (ou par iOS) s'affiche grisé, avec la raison.
 
-### 🛠️ Debug
-- **🐛 Logs détaillés** : active le verbose mode (logs capteurs tracker + tiling + détections). Utile pour diagnostiquer un problème.
-- Affichage du **mode performance** du plan en cours (💤 Désactivé / 🔄 Auto / 🌟 Qualité / 🎯 Équilibré / ⚡ Performance) — read-only ici, modifiable au prochain chargement du plan via le sélecteur du loader.
+### 🔒 Confidentialité & sécurité
+- **📔 Tenir un carnet de mes sorties** *(tous les plans)*.
+- **🕵️ Mode incognito** : ouvre une nouvelle fenêtre qui n'écrit rien sur l'appareil.
+
+### 🛠️ Système & maintenance
+- Affichage du **mode performance** du plan en cours — lecture seule ici (il se choisit dans ℹ️ Infos, pour un plan non tuilé V2). Les logs détaillés vivent dans ⚙️ Configuration (accueil) → 🛠️ Mode Développeur.
 
 ### Actions
-- **Appliquer** : sauvegarde les changements
-- **🐛 Logs** : affiche les journaux de débogage capturés
-- **Réinitialiser** : remet les valeurs par défaut pour CE plan (ne supprime rien — c'est différent de **💥 Tout réinitialiser** dans ⚙️ Configuration loader, qui purge tout)
-
-> 💡 **Le mode performance ne se modifie qu'au chargement du plan** (sélecteur Auto / Désactivé dans la **carte de chargement**, juste au-dessus du bouton ▶️ Charger ce plan). Réglages affiche juste celui en cours.
+- **↺ Valeurs par défaut** : remet **les réglages de CE plan** (échelle, podomètre, point de départ, navigation intelligente, Nord) aux valeurs du plan et replace le suivi au départ — **confirmation demandée**. Les réglages de l'accueil ne bougent pas. Différent de **💥 Tout réinitialiser** dans ⚙️ Configuration, qui purge tout.
+- **Fermer** (ou Échap, ou ✕) — rien à valider.
 
 > ⚠️ **Pour activer / modifier le code d'accès local (PIN / Face ID)**, il faut passer par **⚙️ Configuration sur la page d'accueil** — la section 🔐 Code d'accès local n'est PAS dans ⚙️ Réglages (par design — réglage critique global, pas par plan).
 
@@ -3465,8 +3470,7 @@ Si l'appli te donne une distance différente de la réalité (par exemple 100 m 
 2. Ouvre **⚙️ → 🎯 Calibrer**
 3. Saisis la **distance affichée** (100) et la **distance réelle** (150)
 4. La nouvelle échelle s'affiche en temps réel
-5. Clique **Appliquer** → la valeur est injectée dans le champ Échelle
-6. Clique **Appliquer** dans la modale Réglages pour valider
+5. Clique **Appliquer** → la valeur est injectée dans le champ Échelle **et enregistrée aussitôt** (plus rien à valider)
 
 > Plus tu calibres sur une longue distance, plus le résultat sera précis.
 

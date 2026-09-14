@@ -1329,7 +1329,7 @@ La sección 🏗️ multinivel de la ventana de Filtros **convive** con la pasti
 
 ### ⚙️ Ajustes del rastreador
 
-Accede a los ajustes mediante el botón **⚙️ Parámetros** de la barra lateral:
+Accede a los ajustes mediante el botón **⚙️ Ajustes** de la barra lateral:
 
 - **Escala (px/m)**: relación entre píxeles y metros reales — botón **🎯** al lado para calibrar
 - **Tamaño de un paso (m)**: longitud estimada de tu zancada (≈ 0,7 m)
@@ -3288,7 +3288,7 @@ Si a pesar del modo Rendimiento tu plano sigue fallando (típicamente planos de 
 
 - El **iPhone en PWA** (instalada en la pantalla de inicio) gestiona mejor los planos grandes que el iPhone con Safari directamente
 - **Android Chrome** suele ser más tolerante que iOS con la memoria
-- En caso de fallo: ⚙️ Ajustes → **🐛 Registros detallados** → activado, para diagnosticar
+- En caso de fallo: ⚙️ Configuración (inicio) → **🛠️ Modo Desarrollador** → registros detallados para diagnosticar
 
 ### 8. 💾 Guardado regular
 
@@ -3342,50 +3342,55 @@ Muestra la leyenda completa de los iconos y trazados, agrupados por categoría: 
 
 ## ⚙️ Ajustes (en modo mapa, por plano)
 
-> Accesible directamente mediante el botón **⚙️** de la barra lateral (clic directo, sin submenú).
+> Accesible directamente mediante el botón **⚙️ Ajustes** de la barra lateral (clic directo, sin submenú).
 >
-> Esta ventana se centra **en el plano** (ajustes ligados al plano abierto). Para los **ajustes globales** (interfaz, PIN, reinicio, etc.), pasa por **⚙️ Configuración** en la pantalla de inicio — ver la sección dedicada más arriba. La separación es intencionada: Ajustes = lo que concierne a ESTE plano, Configuración = lo que concierne a la app.
+> Esta ventana se centra **en el plano**. Para los **ajustes globales** (idioma, tema, PIN, reinicio, iconos según el zoom, imantación…), pasa por **⚙️ Configuración** en la pantalla de inicio — ver la sección dedicada más arriba. La separación es intencionada: Ajustes = lo que concierne a ESTE plano, Configuración = lo que concierne a la app.
 
-Accede a los parámetros pulsando **⚙️**:
+### ✓ Todo se guarda en cuanto lo cambias
 
-### 🧭 Seguimiento (específico del plano)
-- **Posición inicial del rastreador**: coordenadas de partida X/Y
-- **Detección de pasos**: sensibilidad, tamaño del paso, tiempo de espera antirrebote
-- **Escala (px/m)** con botón **🎯 Calibrar**: calcula la escala correcta a partir de una distancia medida
+**Ya no hay botón Aplicar** *(desde v1.92.0)*: cada campo se guarda en cuanto lo modificas (un destello verde lo confirma). Un valor **fuera de rango** se pone en rojo, un mensaje indica los límites y **no se escribe nada** — se conserva el valor anterior. Cierras con **Esc**, **✕** o **Cerrar**: no se pierde nada.
 
-### 🔍 Visualización
-- **Iconos adaptativos al zoom** — *preferencia global*: los iconos de los puntos (pozos, accesos, señalización, etc.) mantienen un tamaño constante en relación con el plano. Al alejar se encogen; al acercar, crecen. Requiere recargar al cambiarlo.
-- **⚪ Mostrar los círculos en los cruces de trazados (este plano)** — *ajuste por plano*: círculo relleno de color en el cruce de 2 trazados (verde × violeta → amarillo, etc.). Desmárcalo para despejar visualmente los planos muy densos, o si el cálculo ralentiza la visualización. **Efecto inmediato**, guardado por plano (otro plano conserva su propio ajuste).
-- **🧭 Calibración del Norte (este plano)** — *ajuste por plano*: útil cuando la PARTE SUPERIOR del plano **no es** el Norte verdadero (foto aérea con encuadre arbitrario, plano sin rosa de los vientos alineada). Campo de ángulo [0,360[ en grados o botón **📐 Calibrar (2 clics)** que abre un selector visual: pulsa primero el SUR del plano y después el NORTE, aparece una flecha discontinua Sur→Norte y el ángulo se calcula automáticamente. **Efecto**: la rotación del icono del rastreador y el sentido de la marcha se adaptan → el rastreador apunta en la dirección correcta RESPECTO AL PLANO. La brújula física 🧭 sigue apuntando al Norte magnético real (= el comportamiento esperado de una brújula). **Guardado por plano**, **efecto inmediato** sin recargar. Botón ↺ Reiniciar para volver al valor por defecto (0 = Norte hacia la parte superior del plano).
+Cada grupo lleva su **alcance** en el título — **📍 este plano** o **🌍 todos los planos** — y se **pliega** con un toque en el título (elección recordada). En el teléfono, al abrir solo se muestran los títulos, salvo el primer grupo.
 
-> 💡 **Para autores de planos**: para incluir de forma duradera el Norte o un **PDF de Historia** en el ZIP del plano (para todos los usuarios), pasa por el **generador avanzado** (campo «🧭 Orientación Norte» en Seguimiento + sección «📖 PDF de Historia» opcional). Para un PDF de Historia cargado solo del lado de la sesión (tu navegador), sigue usando el botón de importación de la ventana **📖 Modo Historia** (barra de estado).
-- **🔆 Mantener la pantalla encendida** — *preferencia global*: activa la Wake Lock API para impedir que la pantalla se apague automáticamente mientras la app está abierta. Readquisición automática al volver de segundo plano. Se oculta si el navegador no admite la API. El mismo interruptor está también disponible en **⚙️ Configuración**, en la pantalla de inicio.
+### 🌍 Aplicación
+- **🎬 Activar el modo presentación**: pantalla completa sin interfaz (demostraciones / proyección). Tecla **F** en PC; salida con **F** / **Esc** o el botón flotante ✕.
+- **🏠 Ajustados desde el inicio** *(solo lectura)*: idioma, tema, iconos adaptativos al zoom, anclaje de paneles, imantación al dibujar. Su valor se lee aquí; el botón **🏠 Ir al inicio para cambiarlos** sale del plano (tu sesión se conserva) y te lleva a ⚙️ Configuración.
 
-### 🎬 Modo presentación
+### 📐 Plano: escala y geolocalización *(📍 este plano)*
+- **Escala (px/m)** con el botón **🎯 Calibrar** (ver más abajo). Una escala nula o negativa se rechaza.
+- **🧭 Calibración del Norte**: útil cuando la PARTE SUPERIOR del plano no es el Norte verdadero. Campo de ángulo [0,360[ o botón **📐 Calibrar (2 clics)** (Sur y luego Norte en el mapa). Efecto inmediato en el rastreador; la brújula física sigue apuntando al Norte real. **↺ Reiniciar** para volver a 0.
+- **🌐 Georreferenciación GPS**: el estado se muestra en el grupo («no georreferenciado», «✅ puntos A y B», «A, B y C», «B estimado») y el botón **🌐 Abrir la georreferenciación…** abre su **propia ventana**: puntos A / B (+ C opcional) con **🔍 Buscar un punto**, **📍 Pulsar en el mapa** y **🧭 Estimar B**, y después **💾 Guardar** / **🗑️ Borrar** (confirmación). El calibrado introducido aquí se comparte con las exportaciones KMZ / GPX del plano y rellena 📡 Exportación externa.
 
-- **🎬 Activar el modo presentación**: botón en la parte **superior** de la ventana de Ajustes. Activa un modo a pantalla completa sin interfaz (para demostraciones o proyecciones), accesible con un solo botón táctil.
-- La tecla **F** está disponible como atajo en PC.
+> 💡 **Autores de planos**: para incluir de forma duradera el Norte o un **PDF de Historia** en el ZIP del plano (para todos los usuarios), pasa por el **generador avanzado**. Para un PDF de Historia cargado solo en tu sesión, usa el botón de importación de la ventana **📖 Modo Historia** (barra de estado).
 
-### 🎯 Selectores de georreferenciación
+### 📍 Navegación y rastreador *(📍 este plano)*
+- **Posición inicial del rastreador**: X/Y, o **🔍 Elegir mediante un punto**, o **📍 Pulsar en el mapa**. En cuanto cambia el punto de partida, el seguimiento **vuelve a empezar ahí** (el recorrido en curso se borra) — un mensaje lo indica.
+- **Detección de pasos**: longitud del paso [0; 1,5 m], umbral [10; 30], espera [300; 3 000 ms]. Fuera de rango, no se guarda nada.
+- **🧭 Navegación inteligente** (ajuste a los trazados): interruptor (un mensaje lo confirma), tolerancia lateral [1; 50 m], peso del rumbo [0; 5].
 
-Los selectores de 2 puntos (calibrado GPS para KMZ / GPX) están disponibles en **⚙️ Ajustes → sección 🌐 Georreferenciación GPS** (la ventana se desplaza, no tiene pestañas — además de la pestaña **📡 Exportación externa** de la ventana Exportar):
+### 🎨 Visualización
+- **⚪ Mostrar los círculos en los cruces de trazados** *(este plano)* — efecto inmediato, guardado por plano.
+- **🔆 Mantener la pantalla encendida** *(todos los planos)* — Wake Lock, readquirido al volver de segundo plano. También en ⚙️ Configuración.
+- **🎤 Comandos de voz (BETA)** *(todos los planos)*.
+- Si tu navegador no admite el wake lock o la voz (Firefox), la línea sigue **visible, atenuada, con el motivo** — como los sensores de abajo.
 
-- **🔍 Búsqueda de un punto** en el plano para autocompletar x/y
-- **📍 Clic en el mapa** para señalar una posición directamente
-- Introducción manual de lat/lng GPS para finalizar el calibrado
+### 🚀 Rendimiento *(📍 este plano)*
+- **🚀 Modo ULTRA** aplica 7 optimizaciones de golpe, o una a una (simplificación de trazados, animaciones, círculos, ventanas emergentes, guardado lento, dibujo solo de lo visible, límite de alejamiento en móvil). Detalle en la sección Rendimiento más arriba.
+- En un plano **multinivel**: **🏗️ Mostrar todos los niveles al iniciar** (se aplica en la próxima carga del plano).
 
-El calibrado introducido aquí se comparte con las exportaciones KMZ / GPX del mismo plano (persistencia por plano mediante localStorage). Práctico para validar tu calibrado **fuera del flujo de exportación** (por ejemplo al principio de una sesión de campo).
+### 🛰️ Opciones por sensor *(🌍 todos los planos)*
+- **🔋 Nivel de batería** y **📳 Vibración háptica**. Un sensor rechazado por el dispositivo (o por iOS) se muestra atenuado, con el motivo.
 
-### 🛠️ Depuración
-- **🐛 Registros detallados**: activa el modo detallado (registros de los sensores del rastreador + teselado + detecciones). Útil para diagnosticar un problema.
-- Muestra el **modo de rendimiento** del plano actual (💤 Desactivado / 🔄 Automático / 🌟 Calidad / 🎯 Equilibrado / ⚡ Rendimiento) — aquí es de solo lectura, modificable en la próxima carga del plano mediante el selector del cargador.
+### 🔒 Privacidad y seguridad
+- **📔 Llevar un cuaderno de mis salidas** *(todos los planos)*.
+- **🕵️ Modo incógnito**: abre una nueva ventana que no escribe nada en el dispositivo.
+
+### 🛠️ Sistema y mantenimiento
+- Muestra el **modo de rendimiento** del plano actual — solo lectura aquí (se elige en ℹ️ Info, para un plano sin teselado V2). Los registros detallados viven en ⚙️ Configuración (inicio) → 🛠️ Modo Desarrollador.
 
 ### Acciones
-- **Aplicar**: guarda los cambios
-- **🐛 Registros**: muestra los registros de depuración capturados
-- **Reiniciar**: restablece los valores por defecto de ESTE plano (no borra nada — es distinto de **💥 Reiniciarlo todo** de la ⚙️ Configuración del cargador, que lo purga todo)
-
-> 💡 **El modo de rendimiento solo se cambia al cargar el plano** (selector de 5 preajustes en el cargador → ⚙️ Configuración → 🖼️ Teselado). Los Ajustes solo muestran el actual.
+- **↺ Valores por defecto**: restablece **los ajustes de ESTE plano** (escala, podómetro, punto de partida, navegación inteligente, Norte) a los valores del plano y devuelve el seguimiento a la partida — **se pide confirmación**. Los ajustes del inicio no se mueven. Distinto de **💥 Reiniciarlo todo** en ⚙️ Configuración, que lo purga todo.
+- **Cerrar** (o Esc, o ✕) — nada que validar.
 
 > ⚠️ **Para activar o modificar el código de acceso local (PIN / Face ID)** hay que pasar por la **⚙️ Configuración de la pantalla de inicio** — la sección 🔐 Código de acceso local NO está en ⚙️ Ajustes (por diseño: es un ajuste crítico global, no por plano).
 
@@ -3397,8 +3402,7 @@ Si la aplicación te da una distancia distinta de la real (por ejemplo 100 m mos
 2. Abre **⚙️ → 🎯 Calibrar**
 3. Introduce la **distancia mostrada** (100) y la **distancia real** (150)
 4. La nueva escala aparece en tiempo real
-5. Pulsa **Aplicar** → el valor se inyecta en el campo Escala
-6. Pulsa **Aplicar** en la ventana de Ajustes para validarlo
+5. Pulsa **Aplicar** → el valor se inyecta en el campo Escala **y se guarda al instante** (nada más que validar)
 
 > Cuanto mayor sea la distancia sobre la que calibres, más preciso será el resultado.
 

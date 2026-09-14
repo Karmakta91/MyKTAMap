@@ -691,7 +691,7 @@ Helpers module-scope (avant `initInterface`) + 2 sous-actions dans le flyout �
 #### 77.3 Tolérances réglables + garde-fous (Lot C — `roadGraph.js`, `config.js`, `interfaceConfig.js`)
 
 - **Réglables à chaud** : `APP_CONFIG.smartNavRadiusM` (tolérance latérale, m, défaut 6 — lu par `_matchRadiusPx`) + `APP_CONFIG.smartNavHeadingWeight` (poids du cap aux croisements, px/°, défaut 0.7 — nouveau helper `_headingWeight()` remplace la constante `W_HEADING_PX_PER_DEG` à l'usage ; 0 = cap ignoré, « passe » les jonctions même mal orienté). Dans `DEFAULT_CONFIG`, persistés / restaurés (`app_user_prefs`), pas de reload requis. UI : section « Verrou sur tracé » de ⚙️ Réglages.
-- **Clamps** (`appliquerConfig`) : `stepLength` ∈ [0 ; 1.5] m · `stepThreshold` ∈ [10 ; 30] (magnitude `√(x²+y²+z²)` avec gravité ≈ 9.8 : sous ~10 = détection permanente, > ~30 = jamais déclenché) · `stepCooldown` ∈ [300 ; 3000] ms. Bornes `min/max` sur les inputs + clamp défensif à l'apply (`Number.isFinite` → fallback valeur courante).
+- **Clamps** (`_cfgValider`, à la saisie — plus de bouton Appliquer depuis v1.92.0) : `stepLength` ∈ [0 ; 1.5] m · `stepThreshold` ∈ [10 ; 30] (magnitude `√(x²+y²+z²)` avec gravité ≈ 9.8 : sous ~10 = détection permanente, > ~30 = jamais déclenché) · `stepCooldown` ∈ [300 ; 3000] ms. Bornes `min/max` sur les inputs + clamp défensif à l'apply (`Number.isFinite` → fallback valeur courante).
 - **Avertissements** ⚙️ Réglages → Navigation & Tracker : prérequis **échelle m/px** (bleu, en tête du groupe — position de départ, détection de pas et nav intelligente en dépendent) + « réglages experts » (ambre) sur Détection des pas et Verrou sur tracé.
 
 #### 77.4 Confidentialité

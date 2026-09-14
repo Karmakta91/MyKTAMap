@@ -156,7 +156,12 @@ function ouvrirCalibrageEchelle() {
       erreurEl.style.display = "block";
       return;
     }
-    if (champScale) champScale.value = nouveauScale.toFixed(3);
+    if (champScale) {
+      champScale.value = nouveauScale.toFixed(3);
+      // v1.92.0 (L4) : plus de bouton Appliquer dans Réglages — la valeur
+      // s'enregistre comme une saisie (change → setPlanScale).
+      champScale.dispatchEvent(new Event("change", { bubbles: true }));
+    }
     fermer();
   });
 

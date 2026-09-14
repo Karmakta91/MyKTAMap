@@ -1,8 +1,8 @@
 {
-  "version": "v1.91.2",
+  "version": "v1.92.0",
   "released": "2026-09-14",
   "notes": [
-    "🔎 La documentation se cherche enfin : un champ en haut de la modale 📖 surligne toutes les occurrences dans le texte, Entrée passe à la suivante, et les accents ne comptent pas. La recherche de l'aide cherche aussi dans le contenu des sections, plus seulement dans les titres.",
-    "📖 Deux oublis de doc comblés : les boutons de la bulle d'un point (Je suis ici, Y aller, Itinéraire, Favori, lecture de la note…) et tout ce que contient la modale 📊 Détails de la session."
+    "⚙️ Réglages du plan refondus : plus de bouton « Appliquer », chaque réglage s'enregistre dès que tu le modifies, Échap ferme sans rien perdre, et chaque groupe dit s'il vaut pour ce plan ou pour tous tes plans. Le géoréférencement a sa propre fenêtre, et « Valeurs par défaut » ne touche plus que le plan en cours.",
+    "🏠 Les réglages de l'accueil (langue, thème, icônes, magnétisme…) se lisent désormais depuis le plan, avec un bouton pour aller les changer. Sur Firefox, « Garder l'écran allumé » et les commandes vocales restent visibles avec la raison de leur indisponibilité."
   ]
 }

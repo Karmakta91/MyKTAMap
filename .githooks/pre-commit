@@ -401,3 +401,9 @@ node scripts/check-osm-pile.js || exit $?
 # de la bulle par le dictionnaire, docs bulle / Details / recherche x3.
 # EXECUTE les helpers extraits du fichier. 4 sabotages rougissent.
 node scripts/check-doc-recherche.js || exit $?
+
+# ⚙️ L4 (audit ergonomie, decision KARMA 14/09/2026) : la modale Reglages n a plus
+# de bouton Appliquer — chaque champ s enregistre a la modification (bornes
+# EXECUTEES), portee par groupe, reset limite au plan, wake lock / vocal
+# affiches avec la raison, code mort retire. 4 sabotages rougissent.
+node scripts/check-reglages-immediats.js || exit $?

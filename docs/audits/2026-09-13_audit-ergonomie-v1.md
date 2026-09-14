@@ -196,10 +196,12 @@ Légende : 🔴 sécurité · 🟠 perte de données · 🟡 friction quotidienn
 
 | # | Chantier | Constats absorbés |
 |---|---|---|
-| **L1 — Mode terrain** | Une bascule à 1 tap qui réduit l'écran à 5 gestes en cibles de 48 px : **Je suis ici · Play/Stop · Point rapide · Urgence (choix à 3 tuiles géantes) · Filtres**, le reste derrière « ⋯ ». Bandeau d'état unique. C'est la réponse au contexte « une main, gants, noir » ; aujourd'hui 18 icônes de 32 px encadrent la carte sur mobile. | T3, T7, P9, P17, P31, P35, P36, M8, M15, M16, M21 |
+| **L1 — Mode terrain** | Une bascule à 1 tap qui réduit l'écran à 5 gestes en cibles de 48 px : **Je suis ici · Play/Stop · Point rapide · Urgence (choix à 3 tuiles géantes) · Filtres**, le reste derrière « ⋯ ». Bandeau d'état unique. C'est la réponse au contexte « une main, gants, noir » ; aujourd'hui 18 icônes de 32 px encadrent la carte sur mobile. | T3, T7, M8, M15, M16, M21 |
 | **L2 — Point rapide + bulle allégée** | Tap = point avec le dernier tag, nom auto, grille d'icônes, « Ajouter et continuer », bulle réduite à 2 actions + « ⋯ ». Divise par deux le coût de chaque annotation. | M14, M15, M20, Q23 |
-| **L3 — Un seul modèle « ma sortie »** | Un vocabulaire (sortie / historique), un écran « Terminer ma sortie » = clôture + partage (fichier / image / PDF) + carnet, un import à une modale, premier lancement réduit (27 cartes → 6-8, PIN proposé au 3ᵉ lancement). | T6, Q54, Q55, M27, P1, P30 |
-| **L4 — Un seul écran de réglages avec portée explicite** | « Réglages » partout ; chaque ligne marquée « ce plan » / « tous les plans » ; les globaux visibles depuis le plan en lecture seule avec lien ; groupes repliés ; géoréférencement dans son propre écran ; application immédiate partout ; « Maintenance » replié. | M28, Q60, Q61, P33, P34 |
+| **L3 — Un seul modèle « ma sortie »** | Un vocabulaire (sortie / historique), un écran « Terminer ma sortie » = clôture + partage (fichier / image / PDF) + carnet, un import à une modale, premier lancement réduit (27 cartes → 6-8, PIN proposé au 3ᵉ lancement). | T6, Q54, Q55, M27 |
+| **L4 — Un seul écran de réglages avec portée explicite** | « Réglages » partout ; chaque ligne marquée « ce plan » / « tous les plans » ; les globaux visibles depuis le plan en lecture seule avec lien ; groupes repliés ; géoréférencement dans son propre écran ; application immédiate partout ; « Maintenance » replié. | M28, Q60, Q61 |
+
+> Correctif 14/09/2026 : les références « P… » citées à l'origine dans cette colonne ne correspondaient à aucune ligne du rapport (numérotation interne des agents, non reprise) ; elles ont été retirées. Arbitrage KARMA du 14/09 : L1 et L2 écartés (l'écran et la pose de point conviennent), L4 lancé, L3 à concevoir ensemble — une **sortie** terrain se fait *dans* une **session** et se clôture sans la fermer : deux objets distincts, à ne pas fusionner.
 
 ---
 

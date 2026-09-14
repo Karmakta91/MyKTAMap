@@ -173,6 +173,24 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
     });
     if (ouvert) {
       await modaleVisible("⚙️ Réglages", "#kta-cfg-modal");
+      // v1.92.0 (L4) : application immédiate — l'échelle saisie est persistée
+      // SANS bouton Appliquer (puis remise à sa valeur d'origine).
+      const persiste = await page.evaluate(function () {
+        const el = document.getElementById("cfg_scale"); if (!el) return "champ absent";
+        const avant = el.value;
+        el.value = "7.25"; el.dispatchEvent(new Event("change", { bubbles: true }));
+        const pid = window._currentLoadedPlanId || "default";
+        let prefs = {}; try { prefs = JSON.parse(localStorage.getItem("myktamap_plan_prefs_" + pid) || "{}"); } catch (e) {}
+        el.value = avant; el.dispatchEvent(new Event("change", { bubbles: true }));
+        return prefs.scale === 7.25 ? "ok" : "scale=" + JSON.stringify(prefs.scale);
+      });
+      if (persiste === "ok") ok("réglage immédiat : l'échelle est persistée à la saisie (sans Appliquer)");
+      else pb("reglages", "échelle non persistée à la saisie (" + persiste + ")");
+      // v1.92.0 (L4) : le géoréférencement vit dans SA sous-modale — on l'ouvre.
+      if (await page.locator("#cfg_georef_open").count() > 0) {
+        await page.locator("#cfg_georef_open").click();
+        await page.waitForTimeout(300);
+      } else pb("reglages", "bouton 🌐 Géoréférencement absent du groupe Plan");
       // le bouton du bug `saved` : présent = la section géoref s'est construite
       const estimer = await page.locator("#cfg_kmz_B_estimer").count();
       if (estimer > 0) ok("section géoref construite (bouton Estimer B présent)");

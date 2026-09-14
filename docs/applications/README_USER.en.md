@@ -3346,7 +3346,7 @@ If despite Performance mode, your map still crashes (typically 4000+ × 2000+ pi
 
 - **iPhone PWA** (installed on home screen) handles large maps better than direct iPhone Safari
 - **Android Chrome** is generally more tolerant than iOS for memory
-- In case of crash: ⚙️ Settings → **🐛 Detailed logs** → ON to diagnose
+- In case of crash: ⚙️ Configuration (home) → **🛠️ Developer Mode** → detailed logs to diagnose
 
 ### 8. 💾 Regular saving
 
@@ -3400,50 +3400,55 @@ Displays the complete legend of icons and paths, grouped by category: **🕳️ 
 
 ## ⚙️ Settings (in map mode, per plan)
 
-> Accessible directly via the **⚙️** button in the side bar (direct click, no sub-menu).
+> Accessible directly via the **⚙️ Settings** button in the side bar (direct click, no sub-menu).
 >
-> This modal is focused **per map** (settings related to the currently opened map). For **global settings** (interface, PIN, reset, etc.), go through **⚙️ Configuration** on the home page — see the dedicated section above. The separation is intentional: Settings = what concerns THIS map, Configuration = what concerns the app.
+> This modal is focused **per map**. For **global settings** (language, theme, PIN, reset, zoom-scaled icons, snapping…), go through **⚙️ Configuration** on the home page — see the dedicated section above. The separation is intentional: Settings = what concerns THIS map, Configuration = what concerns the app.
 
-Access the settings by clicking **⚙️**:
+### ✓ Everything is saved as you change it
 
-### 🧭 Tracking (map-specific)
-- **Initial tracker position**: X/Y start coordinates
-- **Step detection**: sensitivity, step size, anti-bounce delay
-- **Scale (px/m)** with **🎯 Calibrate** button: computes the correct scale from a measured distance
+There is **no Apply button anymore** *(since v1.92.0)*: every field is saved as soon as you change it (a green flash confirms it). An **out-of-range** value turns red, a message states the bounds, and **nothing is written** — the previous value stays. Close with **Esc**, **✕** or **Close**: nothing is lost.
 
-### 🔍 Display
-- **Zoom-adaptive icons** — *global preference*: the point icons (shafts, accesses, signage, etc.) keep a constant size relative to the map. On zoom-out, they shrink; on zoom-in, they grow. Reload required on toggle.
-- **⚪ Show circles at path intersections (this map)** — *per-plan setting*: solid colored circle at the crossing of 2 paths (green × purple → yellow, etc.). Uncheck to visually clear very dense maps, or if the computation slows down rendering. **Immediate effect**, saved per map (another map keeps its own setting). 
-- **🧭 North calibration (this map)** — *per-plan setting*: useful when the TOP of the map is **not** the true North (aerial photo with arbitrary framing, cataphile map without aligned compass rose). Angle field [0,360[ in degrees or button **📐 Calibrate (2 clicks)** which opens a WYSIWYG picker: click first the SOUTH of the map, then the NORTH, a dashed Sud→Nord arrow appears and the angle is auto-computed. **Effect**: tracker icon rotation + walking direction adapt → the tracker points in the right direction RELATIVE TO THE MAP. The physical compass 🧭 keeps pointing to the real magnetic North (= expected behavior of a compass). **Saved per map**, **immediate effect** without reload. ↺ Reset button to return to default (0 = North toward top of map).
+Every group carries its **scope** in its title — **📍 this map** or **🌍 all maps** — and **collapses** with a tap on the title (choice remembered). On a phone, only the titles show at opening, except the first group.
 
-> 💡 **Map author**: to durably embed the North OR a **History PDF** in the map ZIP (cross-users), use the **advanced generator** (field "🧭 North orientation" in Tracking + optional "📖 History PDF" section). For a History PDF loaded only in your session (your browser), keep using the import button in the **📖 History Mode** modal (status bar).
-- **🔆 Keep screen on** — *global preference*: enables the Wake Lock API to prevent automatic screen sleep while the app is open. Auto re-acquisition on return from background. Hidden if the browser doesn't support the API. The same toggle is also available in **⚙️ Configuration** on the home page.
+### 🌍 Application
+- **🎬 Enable presentation mode**: full screen without UI (demos / projection). **F** key on PC; exit with **F** / **Esc** or the floating ✕ button.
+- **🏠 Set from the home screen** *(read-only)*: language, theme, zoom-scaled icons, anchored panels, snapping while drawing. Their value is shown here; the **🏠 Go to the home screen to change them** button leaves the map (your session is kept) and takes you to ⚙️ Configuration.
 
-### 🎬 Presentation mode
+### 📐 Map: scale & geolocation *(📍 this map)*
+- **Scale (px/m)** with the **🎯 Calibrate** button (see below). A zero or negative scale is refused.
+- **🧭 North calibration**: useful when the TOP of the map is not true North. Angle field [0,360[ or **📐 Calibrate (2 clicks)** button (South then North on the map). Immediate effect on the tracker; the physical compass keeps pointing to true North. **↺ Reset** to go back to 0.
+- **🌐 GPS georeferencing**: the state shows in the group (“not georeferenced”, “✅ points A and B”, “A, B and C”, “B estimated”) and the **🌐 Open georeferencing…** button opens its **own window**: points A / B (+ optional C) with **🔍 Search a point**, **📍 Map click** and **🧭 Estimate B**, then **💾 Save** / **🗑️ Clear** (confirmation). The calibration entered here is shared with the map's KMZ / GPX exports and pre-fills 📡 External export.
 
-- **🎬 Enable presentation mode**: button at the **top** of the Settings modal. Activates a full-screen mode without UI (for demos / projection), accessible with a single touch button.
-- The **F** key is available as a PC shortcut.
+> 💡 **Map author**: to durably embed the North or a **History PDF** in the map ZIP (cross-users), use the **advanced generator**. For a History PDF loaded only in your session, use the import button of the **📖 History Mode** modal (status bar).
 
-### 🎯 Georeferencing pickers
+### 📍 Navigation & tracker *(📍 this map)*
+- **Initial tracker position**: X/Y, or **🔍 Pick via a point**, or **📍 Click on the map**. As soon as the start point changes, tracking **restarts from there** (the current trail is cleared) — a message says so.
+- **Step detection**: step length [0; 1.5 m], threshold [10; 30], delay [300; 3,000 ms]. Out of range, nothing is saved.
+- **🧭 Smart navigation** (snapping to paths): switch (a message confirms), lateral tolerance [1; 50 m], heading weight [0; 5].
 
-The 2-point pickers (GPS calibration for KMZ / GPX) are available in **⚙️ Settings → 🌐 GPS georeferencing section** (the modal scrolls, it has no tabs — in addition to the **📡 External export** tab of the Export modal):
+### 🎨 Display
+- **⚪ Show circles at path intersections** *(this map)* — immediate effect, saved per map.
+- **🔆 Keep screen on** *(all maps)* — Wake Lock, re-acquired on return from background. Also in ⚙️ Configuration.
+- **🎤 Voice commands (BETA)** *(all maps)*.
+- If your browser does not support wake lock or voice (Firefox), the line stays **visible, greyed out, with the reason** — like the sensors below.
 
-- **🔍 Search a point** on the map to auto-fill x/y
-- **📍 Map click** to directly point to a position
-- Manual lat/lng GPS entry to finalize the calibration
+### 🚀 Performance *(📍 this map)*
+- **🚀 ULTRA mode** applies 7 optimizations at once, or one by one (path decimation, animations, circles, popups, slow auto-save, viewport-only rendering, mobile zoom-out limit). Details in the Performance section above.
+- On a **multi-level** map: **🏗️ Show every level at launch** (applied at the next map load).
 
-The calibration entered here is shared with the KMZ / GPX exports of the same map (per-map persistence via localStorage). Handy for validating your calibration **outside the export flow** (for example at the start of a field session).
+### 🛰️ Sensor options *(🌍 all maps)*
+- **🔋 Battery level** and **📳 Haptic vibration**. A sensor refused by the device (or by iOS) shows greyed out, with the reason.
 
-### 🛠️ Debug
-- **🐛 Detailed logs**: enables verbose mode (tracker sensor + tiling + detection logs). Useful for diagnosing a problem.
-- Display of the **performance mode** of the current map (💤 Disabled / 🔄 Auto / 🌟 Quality / 🎯 Balanced / ⚡ Performance) — read-only here, modifiable at the next map load via the loader selector.
+### 🔒 Privacy & security
+- **📔 Keep a logbook of my outings** *(all maps)*.
+- **🕵️ Incognito mode**: opens a new window that writes nothing on the device.
+
+### 🛠️ System & maintenance
+- Display of the current map's **performance mode** — read-only here (it is chosen in ℹ️ Info, for a map without V2 tiling). Detailed logs live in ⚙️ Configuration (home) → 🛠️ Developer Mode.
 
 ### Actions
-- **Apply**: saves the changes
-- **🐛 Logs**: displays the captured debug logs
-- **Reset**: restores default values for THIS map (does not delete anything — different from **💥 Reset everything** in ⚙️ Configuration loader, which purges everything)
-
-> 💡 **Performance mode is only modified at map load** (Auto / Disabled selector in the **load card**, right above the ▶️ Load this map button). Settings just displays the current one.
+- **↺ Default values**: resets **THIS map's settings** (scale, pedometer, start point, smart navigation, North) to the map's values and puts tracking back at the start — **confirmation asked**. Home-screen settings do not move. Different from **💥 Reset everything** in ⚙️ Configuration, which purges everything.
+- **Close** (or Esc, or ✕) — nothing to validate.
 
 > ⚠️ **To enable / modify the local access code (PIN / Face ID)**, you must go through **⚙️ Configuration on the home page** — the 🔐 Local access code section is NOT in ⚙️ Settings (by design — global critical setting, not per map).
 
@@ -3455,8 +3460,7 @@ If the app gives you a distance different from reality (for example 100 m displa
 2. Open **⚙️ → 🎯 Calibrate**
 3. Enter the **displayed distance** (100) and the **real distance** (150)
 4. The new scale displays in real time
-5. Click **Apply** → the value is injected into the Scale field
-6. Click **Apply** in the Settings modal to validate
+5. Click **Apply** → the value is injected into the Scale field **and saved right away** (nothing left to validate)
 
 > The longer the distance you calibrate on, the more accurate the result will be.
 

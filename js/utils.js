@@ -551,16 +551,18 @@ window.ktaEstIos = function() {
   } catch (e) { return false; }
 };
 
-window.ktaCapteurRefuse = function(row, cb, hintEl) {
+window.ktaCapteurRefuse = function(row, cb, hintEl, cleRaison) {
   if (!row) return;
   row.style.display = "";
   row.style.opacity = "0.55";
   if (cb) { cb.checked = false; cb.disabled = true; }
   if (hintEl && window.I18n && window.I18n.t) {
     // Nommer iOS quand c est lui : la personne sait alors que ce n est ni son
-    // application ni son telephone qui est en cause.
-    hintEl.textContent = window.I18n.t(window.ktaEstIos()
-      ? "config.capteurs.refuseIos" : "config.capteurs.refuse");
+    // application ni son telephone qui est en cause. `cleRaison` (v1.92.0,
+    // Q61) : l'appelant peut nommer une autre cause — « non pris en charge par
+    // ce navigateur » pour le wake lock et le vocal (Firefox).
+    hintEl.textContent = window.I18n.t(cleRaison || (window.ktaEstIos()
+      ? "config.capteurs.refuseIos" : "config.capteurs.refuse"));
   }
 };
 
