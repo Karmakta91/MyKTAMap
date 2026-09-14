@@ -139,7 +139,7 @@ const UIC = lire("js/interfaceConfig.js");
     t("📖 " + l + " : plus de « Logs détaillés » promis dans ⚙️ Réglages", !/⚙️ (Réglages|Settings|Ajustes) → \*\*🐛/.test(d));
     const dico = JSON.parse(lire("lang/" + l + ".json"));
     t("🌍 " + l + " : clés nouvelles présentes, clés mortes retirées",
-      ["config.actions.close", "config.actions.immediatHint", "config.scope.badgePlan", "config.scope.badgeGlobal", "config.globaux.titre", "config.capteurs.nonSupporte", "config.champ.horsBornes", "config.georef.openBtn", "config.confirm.resetFait", "config.perfultra.tousNiveaux.label"].every(k => typeof dico[k] === "string") &&
+      ["config.actions.close", "config.scope.badgePlan", "config.scope.badgeGlobal", "config.globaux.titre", "config.capteurs.nonSupporte", "config.champ.horsBornes", "config.georef.openBtn", "config.confirm.resetFait", "config.perfultra.tousNiveaux.label"].every(k => typeof dico[k] === "string") &&
       ["config.actions.apply", "config.tracking.horsLimites", "config.mlvl.titre", "config.mlvl.toggle.label", "home.perf.tousNiveauxLabel"].every(k => dico[k] === undefined));
   }
   const fr = JSON.parse(lire("lang/fr.json"));

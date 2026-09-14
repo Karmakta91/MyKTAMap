@@ -98,7 +98,6 @@
   "convert.history": "Object conversion",
   "config.actions.reset": "↺ Default values",
   "config.actions.close": "Close",
-  "config.actions.immediatHint": "✓ Every setting is saved as soon as you change it — there is no Apply button anymore. Esc, ✕ or Close to leave.",
   "config.debug.perfMode": "Performance mode",
   "config.debug.perfModeHint": "Editable when loading the map",
   "config.debug.titre": "🛠️ Debug",

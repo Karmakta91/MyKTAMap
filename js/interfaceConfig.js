@@ -1057,7 +1057,6 @@ function afficherConfig() {
         <button class="kta-panneau-close" id="kta-cfg-close">✕</button>
       </div>
       <div class="kta-readme-modal-corps kta-cfg-corps">
-        <div class="kta-cfg-immediat-hint">${window.I18n.t("config.actions.immediatHint")}</div>
 
         <!-- ═══════════════════════════════════════════════════════════════
              🆕 Réorganisation ergonomique (groupes thématiques) — KARMA.

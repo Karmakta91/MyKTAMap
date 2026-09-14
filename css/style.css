@@ -21857,21 +21857,8 @@ html.kta-theme-light .kta-readme-search { background: #fff; color: #1a1f2e; bord
 body.kta-theme-light .kta-readme-search-count,
 html.kta-theme-light .kta-readme-search-count { color: #5a6478; }
 
-/* ⚙️ L4 (v1.92.0, audit ergonomie) — un seul écran de réglages : bandeau
-   « immédiat », badges de portée, groupes repliables, champ enregistré /
+/* ⚙️ L4 (v1.92.0, audit ergonomie) — un seul écran de réglages : badges de portée, groupes repliables, champ enregistré /
    hors bornes, globaux en lecture seule, état géoref, sous-modale géoref. */
-.kta-cfg-immediat-hint {
-  column-span: all;
-  -webkit-column-span: all;
-  font-size: 11.5px;
-  color: #a8c4ff;
-  margin: 0 0 8px;
-  padding: 6px 10px;
-  background: rgba(140, 180, 255, 0.08);
-  border: 1px solid rgba(140, 180, 255, 0.25);
-  border-radius: 6px;
-  line-height: 1.4;
-}
 .kta-cfg-scope {
   font-size: 10px;
   font-weight: 700;
@@ -21918,8 +21905,6 @@ input.kta-cfg-ko { border-color: #ff5b45 !important; box-shadow: 0 0 0 2px rgba(
 .kta-cfg-sub-corps { columns: 1 !important; }
 body.kta-theme-light .kta-cfg-scope-plan,
 html.kta-theme-light .kta-cfg-scope-plan { color: #b8860b; }
-body.kta-theme-light .kta-cfg-immediat-hint,
-html.kta-theme-light .kta-cfg-immediat-hint { color: #2a4a8a; }
 body.kta-theme-light .kta-cfg-globaux-liste dt,
 html.kta-theme-light .kta-cfg-globaux-liste dt { color: #5a6478; }
 body.kta-theme-light .kta-cfg-globaux-liste dd,

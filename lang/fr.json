@@ -98,7 +98,6 @@
   "convert.history": "Conversion d'un objet",
   "config.actions.reset": "↺ Valeurs par défaut",
   "config.actions.close": "Fermer",
-  "config.actions.immediatHint": "✓ Chaque réglage s'enregistre dès que tu le modifies — il n'y a plus de bouton Appliquer. Échap, ✕ ou Fermer pour quitter.",
   "config.debug.perfMode": "Mode performance",
   "config.debug.perfModeHint": "Modifiable au chargement du plan",
   "config.debug.titre": "🛠️ Debug",

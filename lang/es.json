@@ -98,7 +98,6 @@
   "convert.history": "Conversión de un objeto",
   "config.actions.reset": "↺ Valores por defecto",
   "config.actions.close": "Cerrar",
-  "config.actions.immediatHint": "✓ Cada ajuste se guarda en cuanto lo cambias — ya no hay botón Aplicar. Esc, ✕ o Cerrar para salir.",
   "config.debug.perfMode": "Modo rendimiento",
   "config.debug.perfModeHint": "Modificable al cargar el mapa",
   "config.debug.titre": "🛠️ Depuración",
