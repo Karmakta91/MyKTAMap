@@ -125,6 +125,7 @@
   "config.display.wakelock.label": "🔆 Keep screen on (Wake Lock)",
   "config.scope.tousPlans": "(applies to all your maps)",
   "config.scope.badgeGlobal": "🌍 all maps",
+  "config.scope.badgeMixte": "📍/🌍 per line",
   "config.scope.badgePlan": "📍 this map",
   "config.display.wakelock.toastOff": "🔅 Screen sleep re-enabled",
   "config.display.wakelock.toastOn": "🔆 Screen kept on while the app is open",

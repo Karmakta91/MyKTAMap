@@ -125,6 +125,7 @@
   "config.display.wakelock.label": "🔆 Mantener la pantalla encendida (Wake Lock)",
   "config.scope.tousPlans": "(se aplica a todos tus planos)",
   "config.scope.badgeGlobal": "🌍 todos los planos",
+  "config.scope.badgeMixte": "📍/🌍 según la línea",
   "config.scope.badgePlan": "📍 este plano",
   "config.display.wakelock.toastOff": "🔅 Suspensión de pantalla reactivada",
   "config.display.wakelock.toastOn": "🔆 Pantalla encendida mientras la app esté abierta",

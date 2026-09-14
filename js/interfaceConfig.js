@@ -755,8 +755,10 @@ const _CFG_LS_GROUPES  = "myktamap_cfg_groupes_v1";
 // Ouvre un groupe : titre cliquable (repli) + badge de portée + corps.
 function _cfgGroupeDebut(cle, portee, premier) {
   const t = window.I18n.t;
+  // « mixte » : la portée change d'une ligne à l'autre — chaque ligne la dit.
   const badge = portee === "plan"   ? '<span class="kta-cfg-scope kta-cfg-scope-plan">'   + t("config.scope.badgePlan")   + '</span>'
               : portee === "global" ? '<span class="kta-cfg-scope kta-cfg-scope-global">' + t("config.scope.badgeGlobal") + '</span>'
+              : portee === "mixte"  ? '<span class="kta-cfg-scope kta-cfg-scope-mixte">'  + t("config.scope.badgeMixte")  + '</span>'
               : "";
   const style = premier ? _CFG_STYLE_TITRE.replace("18px 0 6px", "2px 0 6px") : _CFG_STYLE_TITRE;
   return '<div class="kta-cfg-group" data-cfg-group="' + cle + '">' +
@@ -1067,7 +1069,7 @@ function afficherConfig() {
              ═══════════════════════════════════════════════════════════════ -->
 
         <!-- ════════ 1. 🌍 APPLICATION ════════ -->
-        ${_cfgGroupeDebut("config.group.application", null, true)}
+        ${_cfgGroupeDebut("config.group.application", "global", true)}
 
         <!-- 🆕 v1.21.0-fix3 (KARMA "met le mode présentation tout en haut") :
              Bouton "🎬 Activer le mode présentation" en TÊTE de la modale
@@ -1233,7 +1235,7 @@ function afficherConfig() {
 
         <!-- ════════ 4. 🎨 AFFICHAGE ════════ -->
         ${_cfgGroupeFin()}
-        ${_cfgGroupeDebut("config.group.affichage", null)}
+        ${_cfgGroupeDebut("config.group.affichage", "mixte")}
 
           <!-- ⚠️ v1.85.3 (audit KARMA) — QUATRE RÉGLAGES ONT QUITTÉ CET ÉCRAN :
                taille des icônes au zoom, ancrage des panneaux, magnétisme au
@@ -1358,7 +1360,7 @@ function afficherConfig() {
           </div>
         <!-- ════════ 7. 🔒 CONFIDENTIALITÉ & SÉCURITÉ ════════ -->
         ${_cfgGroupeFin()}
-        ${_cfgGroupeDebut("config.group.privacy", null)}
+        ${_cfgGroupeDebut("config.group.privacy", "global")}
 
         <!-- 📔 Q49 (audit 13/09/2026) : le carnet enregistrait chaque sortie
              sans opt-in, et son interrupteur (Journal.setEnabled) n'était
@@ -1399,7 +1401,7 @@ function afficherConfig() {
 
         <!-- ════════ 8. 🛠️ SYSTÈME & MAINTENANCE ════════ -->
         ${_cfgGroupeFin()}
-        ${_cfgGroupeDebut("config.group.system", null)}
+        ${_cfgGroupeDebut("config.group.system", "plan")}
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.I18n.t("config.debug.titre")}</div>

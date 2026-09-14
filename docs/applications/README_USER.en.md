@@ -3410,7 +3410,7 @@ There is **no Apply button anymore** *(since v1.92.0)*: every field is saved as 
 
 Every group carries its **scope** in its title — **📍 this map** or **🌍 all maps** — and **collapses** with a tap on the title (choice remembered). On a phone, only the titles show at opening, except the first group.
 
-### 🌍 Application
+### 🌍 Application *(🌍 all maps)*
 - **🎬 Enable presentation mode**: full screen without UI (demos / projection). **F** key on PC; exit with **F** / **Esc** or the floating ✕ button.
 - **🏠 Set from the home screen** *(read-only)*: language, theme, zoom-scaled icons, anchored panels, snapping while drawing. Their value is shown here; the **🏠 Go to the home screen to change them** button leaves the map (your session is kept) and takes you to ⚙️ Configuration.
 
@@ -3426,7 +3426,7 @@ Every group carries its **scope** in its title — **📍 this map** or **🌍 a
 - **Step detection**: step length [0; 1.5 m], threshold [10; 30], delay [300; 3,000 ms]. Out of range, nothing is saved.
 - **🧭 Smart navigation** (snapping to paths): switch (a message confirms), lateral tolerance [1; 50 m], heading weight [0; 5].
 
-### 🎨 Display
+### 🎨 Display *(📍/🌍 per line)*
 - **⚪ Show circles at path intersections** *(this map)* — immediate effect, saved per map.
 - **🔆 Keep screen on** *(all maps)* — Wake Lock, re-acquired on return from background. Also in ⚙️ Configuration.
 - **🎤 Voice commands (BETA)** *(all maps)*.
@@ -3439,11 +3439,11 @@ Every group carries its **scope** in its title — **📍 this map** or **🌍 a
 ### 🛰️ Sensor options *(🌍 all maps)*
 - **🔋 Battery level** and **📳 Haptic vibration**. A sensor refused by the device (or by iOS) shows greyed out, with the reason.
 
-### 🔒 Privacy & security
+### 🔒 Privacy & security *(🌍 all maps)*
 - **📔 Keep a logbook of my outings** *(all maps)*.
 - **🕵️ Incognito mode**: opens a new window that writes nothing on the device.
 
-### 🛠️ System & maintenance
+### 🛠️ System & maintenance *(📍 this map)*
 - Display of the current map's **performance mode** — read-only here (it is chosen in ℹ️ Info, for a map without V2 tiling). Detailed logs live in ⚙️ Configuration (home) → 🛠️ Developer Mode.
 
 ### Actions

@@ -3420,7 +3420,7 @@ Il n'y a **plus de bouton Appliquer** *(depuis v1.92.0)* : chaque champ s'enregi
 
 Chaque groupe porte sa **portée** dans son titre — **📍 ce plan** ou **🌍 tous les plans** — et se **replie** d'un tap sur le titre (choix mémorisé). Sur téléphone, seuls les titres s'affichent à l'ouverture, sauf le premier groupe.
 
-### 🌍 Application
+### 🌍 Application *(🌍 tous les plans)*
 - **🎬 Activer le mode présentation** : plein écran sans interface (démos / projection). Touche **F** sur PC ; sortie par **F** / **Échap** ou le bouton flottant ✕.
 - **🏠 Réglés depuis l'accueil** *(lecture seule)* : langue, thème, icônes adaptatives au zoom, ancrage des panneaux, magnétisme au dessin. Leur valeur se lit ici ; le bouton **🏠 Aller à l'accueil pour les modifier** quitte le plan (ta session est conservée) et t'amène à ⚙️ Configuration.
 
@@ -3436,7 +3436,7 @@ Chaque groupe porte sa **portée** dans son titre — **📍 ce plan** ou **🌍
 - **Détection des pas** : longueur du pas [0 ; 1,5 m], seuil [10 ; 30], délai [300 ; 3 000 ms]. Hors bornes, rien n'est enregistré.
 - **🧭 Navigation intelligente** (calage sur les tracés) : interrupteur (un message confirme), tolérance latérale [1 ; 50 m], poids du cap [0 ; 5].
 
-### 🎨 Affichage
+### 🎨 Affichage *(📍/🌍 selon la ligne)*
 - **⚪ Afficher les ronds aux intersections** *(ce plan)* — effet immédiat, sauvegardé par plan.
 - **🔆 Garder l'écran allumé** *(tous les plans)* — Wake Lock, ré-acquis au retour d'arrière-plan. Aussi dans ⚙️ Configuration.
 - **🎤 Commandes vocales (BETA)** *(tous les plans)*.
@@ -3449,11 +3449,11 @@ Chaque groupe porte sa **portée** dans son titre — **📍 ce plan** ou **🌍
 ### 🛰️ Options via capteur *(🌍 tous les plans)*
 - **🔋 Niveau de batterie** et **📳 Vibration haptique**. Un capteur refusé par l'appareil (ou par iOS) s'affiche grisé, avec la raison.
 
-### 🔒 Confidentialité & sécurité
+### 🔒 Confidentialité & sécurité *(🌍 tous les plans)*
 - **📔 Tenir un carnet de mes sorties** *(tous les plans)*.
 - **🕵️ Mode incognito** : ouvre une nouvelle fenêtre qui n'écrit rien sur l'appareil.
 
-### 🛠️ Système & maintenance
+### 🛠️ Système & maintenance *(📍 ce plan)*
 - Affichage du **mode performance** du plan en cours — lecture seule ici (il se choisit dans ℹ️ Infos, pour un plan non tuilé V2). Les logs détaillés vivent dans ⚙️ Configuration (accueil) → 🛠️ Mode Développeur.
 
 ### Actions

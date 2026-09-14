@@ -3352,7 +3352,7 @@ Muestra la leyenda completa de los iconos y trazados, agrupados por categoría: 
 
 Cada grupo lleva su **alcance** en el título — **📍 este plano** o **🌍 todos los planos** — y se **pliega** con un toque en el título (elección recordada). En el teléfono, al abrir solo se muestran los títulos, salvo el primer grupo.
 
-### 🌍 Aplicación
+### 🌍 Aplicación *(🌍 todos los planos)*
 - **🎬 Activar el modo presentación**: pantalla completa sin interfaz (demostraciones / proyección). Tecla **F** en PC; salida con **F** / **Esc** o el botón flotante ✕.
 - **🏠 Ajustados desde el inicio** *(solo lectura)*: idioma, tema, iconos adaptativos al zoom, anclaje de paneles, imantación al dibujar. Su valor se lee aquí; el botón **🏠 Ir al inicio para cambiarlos** sale del plano (tu sesión se conserva) y te lleva a ⚙️ Configuración.
 
@@ -3368,7 +3368,7 @@ Cada grupo lleva su **alcance** en el título — **📍 este plano** o **🌍 t
 - **Detección de pasos**: longitud del paso [0; 1,5 m], umbral [10; 30], espera [300; 3 000 ms]. Fuera de rango, no se guarda nada.
 - **🧭 Navegación inteligente** (ajuste a los trazados): interruptor (un mensaje lo confirma), tolerancia lateral [1; 50 m], peso del rumbo [0; 5].
 
-### 🎨 Visualización
+### 🎨 Visualización *(📍/🌍 según la línea)*
 - **⚪ Mostrar los círculos en los cruces de trazados** *(este plano)* — efecto inmediato, guardado por plano.
 - **🔆 Mantener la pantalla encendida** *(todos los planos)* — Wake Lock, readquirido al volver de segundo plano. También en ⚙️ Configuración.
 - **🎤 Comandos de voz (BETA)** *(todos los planos)*.
@@ -3381,11 +3381,11 @@ Cada grupo lleva su **alcance** en el título — **📍 este plano** o **🌍 t
 ### 🛰️ Opciones por sensor *(🌍 todos los planos)*
 - **🔋 Nivel de batería** y **📳 Vibración háptica**. Un sensor rechazado por el dispositivo (o por iOS) se muestra atenuado, con el motivo.
 
-### 🔒 Privacidad y seguridad
+### 🔒 Privacidad y seguridad *(🌍 todos los planos)*
 - **📔 Llevar un cuaderno de mis salidas** *(todos los planos)*.
 - **🕵️ Modo incógnito**: abre una nueva ventana que no escribe nada en el dispositivo.
 
-### 🛠️ Sistema y mantenimiento
+### 🛠️ Sistema y mantenimiento *(📍 este plano)*
 - Muestra el **modo de rendimiento** del plano actual — solo lectura aquí (se elige en ℹ️ Info, para un plano sin teselado V2). Los registros detallados viven en ⚙️ Configuración (inicio) → 🛠️ Modo Desarrollador.
 
 ### Acciones
