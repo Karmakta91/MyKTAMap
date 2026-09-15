@@ -30,8 +30,18 @@
 //      en JS : ça marche même quand un handler mange l'événement) ;
 //   3. après scroll, le footer est ENTIÈREMENT dans la viewport.
 //
-// ⚠️ Ne teste pas le rendu à zoom navigateur ≠ 100 %, ni le thème clair, ni la
-// colonne OSM (invisible au harnais : pas de réseau pour les tuiles).
+//   4. 📐 15/09/2026 — AVANT tout scroll : « Charger ce plan » (le bouton
+//      PRIMAIRE) est dans la partie VISIBLE de #panelZip, et à ≥ 800 px de
+//      haut #panelZip ne cache RIEN. C'est le trou exact par lequel deux
+//      ajouts de la semaine (+128 px) sont passés : le bouton partait dans
+//      le scroll interne du filet v1.88.1 et ce checkup disait OK, puisque
+//      la page, elle, ne débordait pas.
+//
+// ⚠️ Ne teste ni le thème clair, ni la colonne OSM (invisible au harnais :
+// pas de réseau pour les tuiles). Le zoom navigateur est émulé comme Chrome
+// le fait — viewport = fenêtre ÷ zoom et deviceScaleFactor = zoom — sur la
+// config « portable 1536×800 à 125 % » ; `body.style.zoom` ne déclencherait
+// ni les médias ni le bon viewport.
 //
 // Usage : node scripts/smoke/checkup-home-scroll.js
 // =====================================================================
@@ -59,18 +69,26 @@ const LS = {
   LS.myktamap_plans_registry_v1 = JSON.stringify({ plans: plans });
 })();
 
-// Largeur × hauteur. Les hauteurs < 768 sont le domaine de la dette.
+// Largeur × hauteur [× zoom]. Les hauteurs < 768 sont le domaine de la dette.
+// 1536×800 = portable 1080p à 125 % Windows : la config qui était à ZÉRO de
+// marge avant le 14/09/2026. Son zoom 125 % navigateur = 1229×640 à dsf 1,25.
 const CONFIGS = [
   [1366, 768], [1366, 600], [1366, 560],
-  [1600, 650], [1920, 700], [1280, 500]
+  [1600, 650], [1920, 700], [1280, 500],
+  [1536, 800], [1536, 800, 1.25]
 ];
 
 const echecs = [];
 
-async function testerConfig(nav, W, H) {
-  const ctx = await nav.newContext({ serviceWorkers: "block", viewport: { width: W, height: H } });
+async function testerConfig(nav, W, H, zoom) {
+  zoom = zoom || 1;
+  const ctx = await nav.newContext({
+    serviceWorkers: "block",
+    viewport: { width: Math.round(W / zoom), height: Math.round(H / zoom) },
+    deviceScaleFactor: zoom
+  });
   const p = await ctx.newPage();
-  const nom = W + "×" + H;
+  const nom = W + "×" + H + (zoom !== 1 ? " @" + Math.round(zoom * 100) + "%" : "");
   try {
     await p.addInitScript(function (ls) {
       for (const k in ls) localStorage.setItem(k, ls[k]);
@@ -108,6 +126,37 @@ async function testerConfig(nav, W, H) {
       return;
     }
 
+    // 📐 4 bis) LE BOUTON PRIMAIRE, AVANT TOUT SCROLL. #panelZip scrolle en
+    //    interne sous 821 px de haut (filet v1.88.1) : « Charger ce plan »
+    //    doit rester dans sa partie visible (il est épinglé en bas), et à
+    //    ≥ 800 px de haut rien ne doit être caché dedans.
+    const prim = await p.evaluate(function () {
+      const pz = document.getElementById("panelZip");
+      const b = document.getElementById("loadPlanBtn");
+      if (!pz || !b) return null;
+      const zr = pz.getBoundingClientRect(), br = b.getBoundingClientRect();
+      return {
+        caches: Math.max(0, pz.scrollHeight - pz.clientHeight),
+        dansPanel: br.top >= zr.top - 1 && br.bottom <= zr.bottom + 1,
+        btnBas: Math.round(br.bottom), panelBas: Math.round(zr.bottom)
+      };
+    });
+    if (!prim) {
+      echecs.push(nom + " : #panelZip ou #loadPlanBtn introuvable — le HOME n'a pas la structure attendue.");
+      return;
+    }
+    if (!prim.dansPanel) {
+      echecs.push(nom + " : « Charger ce plan » est HORS de la partie visible de #panelZip " +
+                  "(bas du bouton " + prim.btnBas + " px, bas visible du panel " + prim.panelBas + " px). " +
+                  "Le bouton primaire est parti dans le scroll interne : l'épinglage (sticky) a sauté.");
+    }
+    const hauteurCss = Math.round(H / zoom);
+    if (hauteurCss >= 800 && prim.caches > 0) {
+      echecs.push(nom + " : à " + hauteurCss + " px de haut, #panelZip cache encore " + prim.caches +
+                  " px. Un bloc a grossi dans la colonne Actions (formats, hints, Outils) : " +
+                  "à comprimer côté décoratif, pas à laisser scroller sur un écran de cette taille.");
+    }
+
     // 4) Scroll À LA MOLETTE. `scrollTop = n` en JS réussit même si un
     //    handler `wheel` mange l'événement — ça ne prouverait rien.
     await p.evaluate(function () {
@@ -143,10 +192,12 @@ async function testerConfig(nav, W, H) {
 
     const scrollOk = r.debord <= 1 || r.scrollTop > 0;
     console.log(
-      "  " + nom.padEnd(10) +
+      "  " + nom.padEnd(16) +
       " débord " + String(r.debord).padEnd(5) +
       " molette→ " + String(r.scrollTop).padEnd(5) +
-      " footer " + (r.footerEntier ? "atteint" : "COUPÉ (bas=" + r.footerBas + " / vp=" + r.vp + ")")
+      " footer " + (r.footerEntier ? "atteint" : "COUPÉ (bas=" + r.footerBas + " / vp=" + r.vp + ")").padEnd(9) +
+      " · primaire " + (prim.dansPanel ? "visible" : "CACHÉ") +
+      " · panelZip cache " + prim.caches + " px"
     );
 
     if (!scrollOk) {
@@ -169,7 +220,7 @@ async function testerConfig(nav, W, H) {
   let nav;
   try {
     nav = await chromium.launch().catch(function () { return chromium.launch({ channel: "chromium" }); });
-    for (const [W, H] of CONFIGS) await testerConfig(nav, W, H);
+    for (const [W, H, Z] of CONFIGS) await testerConfig(nav, W, H, Z);
   } catch (e) {
     console.error("\n❌ checkup impossible : " + e.message);
     if (nav) await nav.close();
@@ -180,11 +231,11 @@ async function testerConfig(nav, W, H) {
   server.close();
 
   if (!echecs.length) {
-    console.log("\n🎉 HOME scrollable et footer atteignable sur " + CONFIGS.length + " configurations");
+    console.log("\n🎉 HOME scrollable, footer atteignable et bouton primaire visible sur " + CONFIGS.length + " configurations");
     process.exit(0);
   }
   console.log("\n============================================================");
-  console.log("🛑 HOME — le pied de page devient inatteignable");
+  console.log("🛑 HOME — pied de page inatteignable ou bouton primaire caché");
   console.log("============================================================");
   echecs.forEach(function (a) { console.log("\n   • " + a); });
   console.log("");

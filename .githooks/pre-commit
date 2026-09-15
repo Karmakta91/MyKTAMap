@@ -458,3 +458,10 @@ node scripts/check-html-integrite.js || exit $?
 # place), verifie le traitement un par un, l entree retiree si le stockage
 # rate, et le bouton au-dessus de l acces permanent. 6 sabotages rougissent.
 node scripts/check-import-masse.js || exit $?
+
+# 📐 HOME PC (15/09/2026, KARMA : « on a encore un souci de zoom… ça fait
+# plusieurs fois qu on bosse sans résoudre ce problème ») : ce n était ni la
+# largeur ni le zoom. Orphelin pleine largeur, « Charger ce plan » épinglé en
+# bas du scroller, décoratif compressé sur écran bas, et AUCUNE nouvelle
+# largeur en px sur la colonne Actions. 9 sabotages rougissent.
+node scripts/check-home-layout.js || exit $?

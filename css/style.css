@@ -4885,11 +4885,13 @@ body.kta-theme-light .splash-license-detail-pro {
        Actions compactée sous 821 px de haut (média dédié en fin de bloc).
        Le corps se comprime donc SEUL de la hauteur du footer quand on le
        déplie — plus aucune constante calc(100vh - N) à recalibrer.
-       Le plancher 520px est le filet petites fenêtres : il couvre le
-       min-content mesuré des colonnes incompressibles (Actions compactée
-       ~510 px, OSM ~315 px) → aucune colonne ne peut déborder sur le
-       footer ; en dessous, la box dépasse 100dvh et l'overlay scrolle
-       honnêtement, fond compris (cf align-items:flex-start plus haut). */
+       Le plancher 520px est le filet petites fenêtres : en dessous, la box
+       dépasse 100dvh et l'overlay scrolle honnêtement, fond compris (cf
+       align-items:flex-start plus haut). 📐 15/09/2026 — il ne « couvre »
+       plus le min-content de la colonne Actions (l'ancien « ~510 px » était
+       une mesure à la main, périmée à chaque ajout) : sous 821 px de haut,
+       la colonne scrolle EN INTERNE et son bouton primaire est épinglé en
+       bas — cf le média (max-height: 820px) en fin de fichier. */
     min-height: 520px;
     grid-template-rows: minmax(0, 1fr);
     align-items: stretch;
@@ -20554,6 +20556,22 @@ html.kta-theme-light .loader-search-input::placeholder { color: #6a7488; }
   font-size: 12px;
   line-height: 1.3;
   border-radius: 10px;
+  /* 📐 15/09/2026 — un libellé plus long que la tuile se REPLIE au lieu de
+     l'élargir : `min-width: auto` (défaut grid) laissait le contenu dicter
+     la largeur minimale de la cellule. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* 📐 15/09/2026 (KARMA : « on a encore un souci de zoom ») — L'ORPHELIN.
+   Cinq outils dans deux colonnes : le dernier se retrouvait seul à droite
+   d'une cellule vide, avec son libellé sur deux lignes — à TOUT zoom, la
+   colonne faisant 300 px fixes depuis la v1.69.0. Un nombre impair d'outils
+   est la règle depuis l'import multiple, pas l'exception : le dernier d'une
+   liste impaire prend toute la largeur. La grille reste à deux colonnes
+   partout (mobile compris) — c'est ce qui rend cette règle juste : avec
+   `auto-fit` elle casserait dès qu'une tablette offrirait trois colonnes. */
+.loader-secondary-actions .loader-btn-secondary:nth-child(odd):last-child {
+  grid-column: 1 / -1;
 }
 
 /* Bandeau profil + Reprendre : mêmes tokens card */
@@ -21385,6 +21403,37 @@ html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
   .loader-col-actions .loader-tools-head {
     margin-top: 4px;
   }
+
+  /* 📐 15/09/2026 (audit agent + KARMA « ça fait plusieurs fois qu'on bosse
+     sans résoudre ce problème ») — LE BUDGET VERTICAL, STRUCTURELLEMENT.
+     Mesuré : la colonne Actions d'un portable 1080p à 125 % Windows
+     (1536×800) était à ZÉRO de marge ; la liste des formats (+71 px) puis la
+     3e rangée d'Outils (+57 px) ont fait passer « Charger ce plan » — le
+     bouton PRIMAIRE — dans le scroll interne du filet v1.88.1, sans aucun
+     indice visuel. « Si je dézoome ça rentre » : le dézoom rend la fenêtre
+     plus haute, rien d'autre. Trois règles, pour que le PROCHAIN ajout à la
+     colonne n'ait plus cet effet de bord :
+     a) le bouton primaire est ÉPINGLÉ en bas du scroller (#panelZip) — il ne
+        peut plus disparaître ; inerte quand rien ne scrolle ;
+     b) ce qui se comprime est DÉCORATIF : la liste des formats acceptés se
+        retire sur écran bas (elle reste dans la modale d'aide) ;
+     c) les tuiles Outils passent un cran plus bas (36 px : cible souris).
+     Aucune largeur en px n'est posée — ce bloc ne dépend pas du zoom. */
+  .loader-col-actions #panelZip .loaderActions {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    padding-top: 8px;
+    background: linear-gradient(to top, #161b2b 78%, rgba(22, 27, 43, 0));
+  }
+  html.kta-theme-light .loader-col-actions #panelZip .loaderActions {
+    background: linear-gradient(to top, #fdf8eb 78%, rgba(253, 248, 235, 0));
+  }
+  .loader-col-actions .zip-drop-sig { display: none; }
+  .loader-col-actions .loader-secondary-actions .loader-btn-secondary {
+    min-height: 36px;
+    padding: 6px;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -21996,6 +22045,23 @@ html.kta-theme-light .kta-aide-ctx-btn { color: #5a6478; }
 }
 .kta-impm-politique-titre { color: #8892a4; }
 .kta-impm-radio { display: flex; align-items: center; gap: 5px; cursor: pointer; min-height: 32px; }
+/* Case « Précharger le ZIP » (15/09/2026) : même cadre que la politique de
+   doublon, libellé + explication sur deux lignes. Cochée par défaut. */
+.kta-impm-precharger {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.kta-impm-precharger input { margin: 3px 0 0; flex: none; }
+.kta-impm-precharger-label { display: block; color: #e8eaf0; }
+.kta-impm-precharger-info { display: block; color: #8892a4; font-size: 11.5px; line-height: 1.4; margin-top: 2px; }
 .kta-impm-resume { font-size: 12.5px; color: #c8d0e0; margin-bottom: 8px; min-height: 18px; }
 .kta-impm-alerte {
   font-size: 12.5px;
