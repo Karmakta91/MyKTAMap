@@ -3059,7 +3059,7 @@ Pulsa **🏗️** para abrir el generador. Dos pestañas disponibles:
 
 ### 📦 Importar varios planos de una vez *(desde la v1.94.0)*
 
-El botón **📦 Importar varios planos**, en la pantalla de inicio justo encima de «Autorizar el acceso permanente», añade tantos archivos ZIP como quieras a tu lista — **sin abrir ninguno**. Luego abres el que quieras desde la lista.
+El botón **📦 Importar varios planos**, en la sección **🧰 Herramientas** de la pantalla de inicio, añade tantos archivos ZIP como quieras a tu lista — **sin abrir ninguno**. Luego abres el que quieras desde la lista.
 
 La pantalla se lee en tres tiempos:
 

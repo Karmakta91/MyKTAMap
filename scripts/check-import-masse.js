@@ -137,13 +137,34 @@ const SW   = lire("sw.js");
     /rafraichirListePlans|afficherLoader/.test(lan));
   t("la vue OSM de l'accueil est prévenue (les nouveaux plans géoréférencés y entrent)",
     /OsmHomePreview[\s\S]{0,80}refresh\(\)/.test(lan));
+  // 🩸 KARMA, 15/09/2026 : « ce bouton ne fonctionne pas ». Le bouton de fin
+  // restait DÉSACTIVÉ avec le libellé « Terminé », tout en gardant l'aspect
+  // plein d'un bouton actif. Un bouton qui invite à cliquer doit agir.
+  t("🩸 le bouton de fin d'import est RÉACTIVÉ (il ne reste pas mort à l'écran)",
+    /btn\.disabled = false;/.test(lan) && /dataset\.fini = "1"/.test(lan));
+  t("🩸 …et il FAIT quelque chose : il ferme, la liste étant déjà rafraîchie",
+    /dataset\.fini === "1"\) \{ _fermer\(\); return; \}/.test(M));
+  t("son libellé dit l'action, pas seulement l'état",
+    /impmasse\.btn\.voir/.test(M) && /impmasse\.btn\.fermerRien/.test(M));
 }
 
 // ---------- 6. Le bouton, le câblage, le chargement ----------
 {
   t("📦 le bouton existe au HOME", IDX.indexOf('id="loaderImportMasseBtn"') >= 0);
-  t("🩸 …AU-DESSUS de l'accès permanent (demande KARMA)",
-    IDX.indexOf('id="loaderImportMasseBtn"') < IDX.indexOf('id="fsAccessBtn"'));
+  // 🧰 15/09/2026 — KARMA a déplacé le bouton : « mets ce bouton dans OUTILS
+  // (car pas forcément utilisé bcp) ». Il était au-dessus de l'accès permanent,
+  // donc entre la zone de dépôt et « Charger ce plan » — deux gestes
+  // quotidiens encadrant un outil occasionnel. La règle CHANGE avec la
+  // décision : il doit vivre dans la section Outils, pas ailleurs.
+  t("🩸 …dans la section 🧰 Outils, avec les outils occasionnels",
+    (function () {
+      const iOutils = IDX.indexOf('data-i18n="home.tools.title"');
+      const iFin    = IDX.indexOf("</div><!-- /.loader-col-actions -->");
+      const iBtn    = IDX.indexOf('id="loaderImportMasseBtn"');
+      return iOutils > 0 && iBtn > iOutils && (iFin < 0 || iBtn < iFin);
+    })());
+  t("il porte le style commun des outils (pas un bloc à lui)",
+    /class="loader-btn-secondary"[^>]*id="loaderImportMasseBtn"/.test(IDX));
   t("il est câblé, et le DIT si le module manque",
     /loaderImportMasseBtn/.test(HOME) && /ImportMasse\.ouvrir\(\)/.test(HOME) && /impmasse\.indispo/.test(HOME));
   t("🩸 le module est chargé AVANT homeLoader, qui câble son bouton",

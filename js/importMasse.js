@@ -178,6 +178,13 @@
   // suivante et la précédente est relâchée. Vingt archives de 30 Mo chargées
   // ensemble feraient tomber un téléphone avant la cinquième.
   async function importer(plan, opts) {
+    // 🔒 Deuxième verrou, sur le chemin qui ÉCRIT. `ouvrir()` garde l'écran,
+    // celui-ci garde les données : un appel programmatique à `importer()`
+    // n'entre pas plus qu'un clic.
+    if (typeof window.ktaKiosqueServeurSeul === "function" && window.ktaKiosqueServeurSeul()) {
+      console.warn("[ImportMasse] import refusé : instance en mode plans serveur uniquement");
+      return { ajoutes: [], ignores: [], refuses: [], arrete: { apres: 0, motif: "impmasse.kiosque" } };
+    }
     opts = opts || {};
     const onProgres = typeof opts.onProgres === "function" ? opts.onProgres : function() {};
     const rapport = { ajoutes: [], ignores: [], refuses: [], arrete: null };
@@ -383,10 +390,32 @@
     if (window.OsmHomePreview && typeof window.OsmHomePreview.refresh === "function") {
       try { window.OsmHomePreview.refresh(); } catch(e) {}
     }
-    if (btn) { btn.disabled = true; btn.textContent = _t("impmasse.btn.fini"); }
+    // 🐛 15/09/2026 (KARMA : « ce bouton ne fonctionne pas ») — il restait
+    // DÉSACTIVÉ avec le libellé « Terminé », tout en gardant l'aspect plein
+    // d'un bouton actif : on clique, rien ne se passe, et rien ne dit pourquoi.
+    // Après un import réussi, l'action évidente est d'aller VOIR ses plans :
+    // le bouton devient donc actif et ferme la fenêtre, la liste derrière
+    // ayant déjà été rafraîchie.
+    if (btn) {
+      btn.disabled = false;
+      btn.dataset.fini = "1";
+      btn.textContent = _t(rapport.ajoutes.length ? "impmasse.btn.voir" : "impmasse.btn.fermerRien");
+    }
   }
 
   function ouvrir() {
+    // 🔒 15/09/2026 (KARMA) — LA PORTE, PAS SEULEMENT LE BOUTON. En kiosque
+    // « plans serveur uniquement », l'import local est refusé : le bouton est
+    // masqué plus bas (`main.js > _appliquerConfigKiosque`), mais un appel
+    // direct à `ImportMasse.ouvrir()` le contournerait. Même prédicat unique
+    // que le reste de l'app, jamais `KIOSK_CONFIG` lu à la main.
+    if (typeof window.ktaKiosqueServeurSeul === "function" && window.ktaKiosqueServeurSeul()) {
+      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast(_t("impmasse.kiosque"), "warn");
+      }
+      console.warn("[ImportMasse] refusé : instance en mode plans serveur uniquement");
+      return;
+    }
     _fermer();
     _fichiers = []; _plan = null; _politique = "ignorer";
     const ov = document.createElement("div");
@@ -429,7 +458,14 @@
     ov.addEventListener("click", function(e) { if (e.target === ov) _fermer(); });
     document.addEventListener("keydown", _esc2, true);
     document.getElementById("kta-impm-choisir").addEventListener("click", _choisirFichiers);
-    document.getElementById("kta-impm-lancer").addEventListener("click", _lancer);
+    // Un seul écouteur, deux rôles selon l'état : lancer, puis fermer. Poser
+    // un second écouteur à la fin laisserait le premier en place — et un clic
+    // relancerait l'import déjà fait.
+    document.getElementById("kta-impm-lancer").addEventListener("click", function() {
+      const b = _zone("kta-impm-lancer");
+      if (b && b.dataset.fini === "1") { _fermer(); return; }
+      _lancer();
+    });
     document.getElementById("kta-impm-input").addEventListener("change", async function(ev) {
       _fichiers = Array.from(ev.target.files || []);
       if (_fichiers.length) await _analyserEtAfficher();

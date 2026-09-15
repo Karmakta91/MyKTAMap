@@ -88,7 +88,19 @@ photos restent locales et exportables).
   vide, aucun moyen d'en sortir. La branche kiosque remet donc `show_server_plans` à true
   et `skip_server_plans_v1` à false, **et l'index est chargé AVANT que la pref de skip ne
   soit lue** (sinon le remède n'agissait qu'au démarrage suivant). ⚠️ Cela reste du
-  déclutter, pas de la sécurité : contournable en console, et c'est assumé.
+  déclutter, pas de la sécurité : contournable en console, et c'est assumé.
+- **Toute nouvelle porte d'entrée de plans doit être recensée ici (v1.94.0)** : l'import
+  multiple (`js/importMasse.js`) vit dans la section 🧰 Outils du HOME, donc **hors de
+  `#panelZip`** que la branche kiosque masque. Signalé par KARMA : « si en mode serveur on
+  a coupé l'import de plan, il ne doit pas être affiché (comme Ajouter un plan) ». Sans
+  traitement, un kiosque « plans serveur uniquement » masquait l'ajout d'UN plan mais
+  laissait entrer N plans d'un coup. Corrigé aux deux niveaux — bouton masqué dans
+  `_appliquerConfigKiosque`, et `ouvrir()` **et** `importer()` interrogent
+  `ktaKiosqueServeurSeul()` (le chemin qui ÉCRIT est gardé séparément de celui qui
+  affiche : un appel programmatique n'entre pas plus qu'un clic). 📌 Leçon générale : le
+  masquage de `#panelZip` ne couvre QUE la zone de dépôt, l'accès permanent et « Charger
+  ce plan » — un bouton posé ailleurs y échappe silencieusement. Vérifié par
+  `scripts/check-kiosque-serveur.js`.
 - **ConfAdmin sait REPRENDRE un `index.json` existant (v1.90.1)** : sans ça, éditer une
   étiquette sur un parc déjà en ligne obligeait à redéposer tous les ZIP et à retaper
   chaque nom. Les liaisons d'un index repris sont **reposées telles quelles** tant

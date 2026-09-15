@@ -149,6 +149,30 @@ const HPR  = fs.readFileSync("js/homeProfile.js", "utf8");
     /getElementById\("kta-profile-details-export"\)\.addEventListener/.test(HPR));
 }
 
+// ---------- 📦 Import multiple : une porte d'entrée de plus ----------
+// 🩸 KARMA, 15/09/2026 : « si en mode serveur on a coupé l'import de plan,
+// il ne doit pas être affiché (comme Ajouter un plan) ». Le bouton vit dans
+// les 🧰 Outils, donc HORS de `#panelZip` que le kiosque masque : sans
+// traitement, un kiosque « plans serveur uniquement » laissait entrer N
+// plans d'un coup. On vérifie les DEUX : le bouton masqué, ET le module qui
+// refuse — masquer un bouton ne ferme pas une porte.
+{
+  const IMP = fs.readFileSync("js/importMasse.js", "utf8").replace(/\r\n/g, "\n");
+  const app = MAIN.slice(MAIN.indexOf("function _appliquerConfigKiosque()"),
+                         MAIN.indexOf("function _appliquerConfigKiosque()") + 4000);
+  t("🔒 le bouton d'import multiple est masqué en kiosque",
+    /loaderImportMasseBtn[\s\S]{0,120}display = "none"/.test(app));
+  t("🩸 …et le module REFUSE de s'ouvrir (le masquage seul se contourne par un appel direct)",
+    /function ouvrir\(\) \{[\s\S]{0,600}ktaKiosqueServeurSeul\(\)/.test(IMP));
+  t("🩸 …y compris sur le chemin qui ÉCRIT (importer)",
+    /async function importer\([\s\S]{0,400}ktaKiosqueServeurSeul\(\)/.test(IMP));
+  t("le refus est DIT à l'utilisateur, pas seulement journalisé", /impmasse\.kiosque/.test(IMP));
+  ["fr", "en", "es"].forEach(function (l) {
+    const d = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
+    t("🌍 " + l + " : le texte du refus kiosque", typeof d["impmasse.kiosque"] === "string");
+  });
+}
+
 console.log(ko === 0 ? "\n🎉 kiosque serveur : ce qui est interdit l'est au goulot, pas sur un bouton"
                      : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

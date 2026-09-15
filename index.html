@@ -500,18 +500,6 @@
         </div>
         <div id="zipFileName"></div>
 
-        <!-- 📦 v1.94.0 (KARMA) — import multiple : N archives ajoutées à la
-             liste sans qu'aucune ne s'ouvre. Placé AU-DESSUS de l'accès
-             permanent, comme demandé : c'est une action, pas une option. -->
-        <div class="kta-impm-entree">
-          <button class="loader-btn-fs" id="loaderImportMasseBtn" type="button" data-i18n="impmasse.btn.ouvrir">
-            📦 Importer plusieurs plans
-          </button>
-          <span class="fs-access-info" data-i18n="impmasse.btn.ouvrirInfo">
-            Ajoute plusieurs ZIP à ta liste d'un coup, sans en ouvrir aucun.
-          </span>
-        </div>
-
         <!-- Options : 🔐 FS Access (Chrome/Edge desktop) -->
         <div id="fsAccessHint" class="fs-access-hint" style="display:none;">
           <button class="loader-btn-fs" id="fsAccessBtn" type="button" data-i18n="home.add.fsBtn">
@@ -561,6 +549,11 @@
             <button class="loader-btn-secondary" type="button" id="loaderTableEditorBtn" data-i18n="home.add.editData">📊 Éditeur de données</button>
             <button class="loader-btn-secondary" type="button" id="loaderLinksMgrBtn" data-i18n="home.add.linksMgr">🌀 Mes liaisons</button>
             <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn" data-i18n="home.add.generate">🏗️ Générer un plan</button>
+            <!-- 📦 v1.94.0 — import multiple. Il vit ICI, avec les outils
+                 occasionnels (KARMA : « pas forcément utilisé bcp ») et non
+                 dans « Ajouter un plan », où il s'intercalait entre la zone de
+                 dépôt et « Charger ce plan » — deux gestes quotidiens. -->
+            <button class="loader-btn-secondary" type="button" id="loaderImportMasseBtn" data-i18n="impmasse.btn.ouvrir">📦 Importer plusieurs plans</button>
           </div>
 
         </div><!-- /.loader-col-actions -->

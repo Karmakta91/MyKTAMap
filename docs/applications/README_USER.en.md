@@ -3113,7 +3113,7 @@ Press **🏗️** to open the generator. Two tabs available:
 
 ### 📦 Importing several maps at once *(since v1.94.0)*
 
-The **📦 Import several maps** button, on the home screen just above “Allow permanent access”, adds as many ZIP archives as you want to your list — **without opening any of them**. You then open the one you want, from the list.
+The **📦 Import several maps** button, in the **🧰 Tools** section of the home screen, adds as many ZIP archives as you want to your list — **without opening any of them**. You then open the one you want, from the list.
 
 The screen reads in three steps:
 

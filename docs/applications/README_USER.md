@@ -3122,7 +3122,7 @@ Appuyez sur **🏗️** pour ouvrir le générateur. Deux onglets disponibles :
 
 ### 📦 Importer plusieurs plans d'un coup *(depuis v1.94.0)*
 
-Le bouton **📦 Importer plusieurs plans**, sur l'accueil juste au-dessus de « Autoriser l'accès permanent », ajoute autant d'archives ZIP que tu veux à ta liste — **sans en ouvrir aucune**. Tu ouvriras celle que tu veux ensuite, depuis la liste.
+Le bouton **📦 Importer plusieurs plans**, dans la section **🧰 Outils** de l'accueil, ajoute autant d'archives ZIP que tu veux à ta liste — **sans en ouvrir aucune**. Tu ouvriras celle que tu veux ensuite, depuis la liste.
 
 L'écran se lit en trois temps :
 

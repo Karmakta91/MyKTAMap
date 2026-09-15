@@ -21975,7 +21975,9 @@ html.kta-theme-light .kta-aide-ctx-btn { color: #5a6478; }
    sans en ouvrir aucune. La liste montre CE QUI VA SE PASSER avant d'écrire
    quoi que ce soit — un import de vingt plans qui démarre sans annoncer son
    poids sature un téléphone à l'aveugle. */
-.kta-impm-entree { margin-top: 10px; }
+/* 📦 Le bouton d'import multiple a rejoint la section 🧰 Outils le
+   15/09/2026 : il prend le style commun des outils, il n'a plus de bloc
+   à lui. La règle qui lui donnait un cadre est retirée avec lui. */
 .kta-impm-boite { max-width: 720px !important; width: min(720px, 96vw) !important; }
 .kta-impm-corps { columns: 1 !important; }
 .kta-impm-intro { font-size: 13px; color: #c8d0e0; line-height: 1.55; margin: 0 0 12px; }

@@ -216,6 +216,13 @@ function _appliquerConfigKiosque() {
     }
     const filtres = document.querySelector(".loader-plans-filters");
     if (filtres) filtres.style.display = "none";
+    // 📦 v1.94.0 — L'IMPORT MULTIPLE EST UNE PORTE D'ENTRÉE, et il vit dans
+    // les 🧰 Outils, donc HORS de `#panelZip` : sans cette ligne, un kiosque
+    // « plans serveur uniquement » masquait l'ajout d'un plan mais laissait
+    // entrer N plans d'un coup (signalé par KARMA, 15/09/2026). Le module
+    // refuse AUSSI de s'ouvrir — masquer ne ferme pas une porte.
+    const impMasse = document.getElementById("loaderImportMasseBtn");
+    if (impMasse) impMasse.style.display = "none";
     const skipCb = document.getElementById("loaderSkipServerPlansCb");
     if (skipCb && skipCb.closest) {
       const sec = skipCb.closest(".kta-aide-section");
