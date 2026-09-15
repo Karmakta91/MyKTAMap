@@ -3111,6 +3111,24 @@ From this screen, you can:
 
 Press **🏗️** to open the generator. Two tabs available:
 
+### 📦 Importing several maps at once *(since v1.94.0)*
+
+The **📦 Import several maps** button, on the home screen just above “Allow permanent access”, adds as many ZIP archives as you want to your list — **without opening any of them**. You then open the one you want, from the list.
+
+The screen reads in three steps:
+
+1. **You choose** your files.
+2. **You see what will happen**, line by line: what will be added, what is already in your list, what is refused and why. The summary gives the total size, what will be copied into the app, and the space left.
+3. **You start.** Maps come in one by one, with the current name shown, then a summary: added, skipped, refused.
+
+**If a map is already in your list**, you choose once for the whole batch: leave it as is, replace it, or keep both. By default it is left as is — an import never overwrites anything unless you ask.
+
+> 💾 **Space is announced up front.** A browser's storage holds between 50 and 200 MB depending on the device. If your batch does not fit, the app refuses to start and tells you how much is missing. If space runs out along the way, it **stops right there**: the maps already added are kept, and the summary says where it stopped.
+>
+> 🔐 **On Chrome and Edge, nothing is copied.** The system file picker grants permanent access to each archive: your maps reopen from their original file, without taking up browser space. On phones, in Firefox and in Safari, archives are copied into the app.
+
+> 🔒 **100 % local**: everything is read and stored **in your browser**. Not one byte is sent anywhere, and it works offline.
+
 ### 🗺️ Dropping a GeoTIFF *(since v1.93.0)*
 
 If you georeferenced your map in **QGIS**, export it as a **GeoTIFF** (`.tif` / `.tiff`): the image **and** its georeferencing travel in the same file. Pick it as the map image — in the generator or straight from the home screen — and the app does the rest:

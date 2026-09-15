@@ -385,6 +385,16 @@
 
       // === FS ACCESS — sélection via showOpenFilePicker (handle persistable) ===
       const fsAccessHint = document.getElementById("fsAccessHint");
+      // 📦 v1.94.0 — import multiple. Le module vit à part : ce bouton ne fait
+      // que l'ouvrir, et le DIT si le module manque plutôt que de rester inerte.
+      const impMasseBtn = document.getElementById("loaderImportMasseBtn");
+      if (impMasseBtn) {
+        impMasseBtn.addEventListener("click", function() {
+          if (window.ImportMasse && typeof window.ImportMasse.ouvrir === "function") window.ImportMasse.ouvrir();
+          else setStatus(((window.I18n && window.I18n.t) ? window.I18n.t("impmasse.indispo") : "Module d indisponible"), true);
+        });
+      }
+
       const fsAccessBtn  = document.getElementById("fsAccessBtn");
       const storeBlobHint = document.getElementById("storeBlobHint");
       const storeBlobCb   = document.getElementById("storeBlobCb");

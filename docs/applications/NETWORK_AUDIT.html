@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.93.0</strong> (14 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.94.0</strong> (15 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.94.0 (import multiple de plans)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Les archives sont lues <strong>dans le navigateur</strong>, et rangées soit par une autorisation d'accès au fichier d'origine, soit par une copie dans le stockage local — les mêmes emplacements que l'ajout d'un plan à l'unité. Aucun octet n'est envoyé nulle part, et la fonction marche hors ligne.</p>
   <h3>v1.93.0 (prise en charge des GeoTIFF)</h3>
   <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle, aucune donnée qui sort. Le <code>.tif</code> est lu <strong>dans le navigateur</strong> (<code>FileReader</code> → <code>ArrayBuffer</code>), décodé en mémoire et ré-encodé en PNG par le canvas ; <strong>aucun octet du fichier ne quitte l'appareil</strong>, et aucune bibliothèque externe n'est chargée pour cela (pas de CDN, rien de vendoré). La reprojection Lambert 93 / Web Mercator → WGS84 est du calcul local. Un GeoTIFF <strong>géoréférence</strong> le plan : les fonctions qui demandent ensuite des tuiles OSM (Vue OSM) deviennent disponibles pour ce plan, exactement comme après un calage saisi à la main — c'est le seul effet réseau, indirect et inchangé.</p>
   <h3>v1.92.0 (Réglages : application immédiate, portée explicite, géoref en sous-modale)</h3>

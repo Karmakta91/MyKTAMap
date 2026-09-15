@@ -3120,6 +3120,24 @@ Depuis cet écran, vous pouvez :
 
 Appuyez sur **🏗️** pour ouvrir le générateur. Deux onglets disponibles :
 
+### 📦 Importer plusieurs plans d'un coup *(depuis v1.94.0)*
+
+Le bouton **📦 Importer plusieurs plans**, sur l'accueil juste au-dessus de « Autoriser l'accès permanent », ajoute autant d'archives ZIP que tu veux à ta liste — **sans en ouvrir aucune**. Tu ouvriras celle que tu veux ensuite, depuis la liste.
+
+L'écran se lit en trois temps :
+
+1. **Tu choisis** tes fichiers.
+2. **Tu vois ce qui va se passer**, ligne par ligne : ce qui sera ajouté, ce qui est déjà dans ta liste, ce qui est refusé et pourquoi. Le résumé donne le poids total, ce qui sera copié dans l'app, et la place restante.
+3. **Tu lances.** Les plans entrent un par un, avec le nom en cours affiché, puis un bilan : ajoutés, ignorés, refusés.
+
+**Si un plan est déjà dans ta liste**, tu choisis une fois pour tout le lot : le laisser tel quel, le remplacer, ou garder les deux. Par défaut il est laissé tel quel — un import n'écrase rien sans que tu le demandes.
+
+> 💾 **La place est annoncée avant.** Le stockage d'un navigateur tient entre 50 et 200 Mo selon l'appareil. Si ton lot ne rentre pas, l'app refuse de commencer et te dit combien il manque. Si la place s'épuise en cours de route, elle **s'arrête net** : les plans déjà ajoutés sont gardés, et le bilan dit où ça s'est arrêté.
+>
+> 🔐 **Sur Chrome et Edge, rien n'est copié.** Le sélecteur de fichiers du système donne une autorisation permanente sur chaque archive : tes plans rouvrent depuis leur fichier d'origine, sans occuper la place du navigateur. Sur téléphone, dans Firefox et dans Safari, les archives sont copiées dans l'app.
+
+> 🔒 **100 % local** : tout se lit et se range **dans ton navigateur**. Aucun octet n'est envoyé nulle part, et ça marche hors ligne.
+
 ### 🗺️ Déposer un GeoTIFF *(depuis v1.93.0)*
 
 Si tu as calé ton plan dans **QGIS**, exporte-le en **GeoTIFF** (`.tif` / `.tiff`) : l'image **et** son calage voyagent dans le même fichier. Choisis-le comme image de plan — dans le Générateur ou directement depuis l'écran d'accueil — et l'app fait le reste :

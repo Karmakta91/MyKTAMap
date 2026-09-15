@@ -21970,3 +21970,64 @@ html.kta-theme-light .kta-cfg-globaux-liste dd { color: #1a1f2e; }
 
 body.kta-theme-light .kta-aide-ctx-btn,
 html.kta-theme-light .kta-aide-ctx-btn { color: #5a6478; }
+
+/* 📦 v1.94.0 — Import multiple : l'écran qui ajoute N archives à la liste
+   sans en ouvrir aucune. La liste montre CE QUI VA SE PASSER avant d'écrire
+   quoi que ce soit — un import de vingt plans qui démarre sans annoncer son
+   poids sature un téléphone à l'aveugle. */
+.kta-impm-entree { margin-top: 10px; }
+.kta-impm-boite { max-width: 720px !important; width: min(720px, 96vw) !important; }
+.kta-impm-corps { columns: 1 !important; }
+.kta-impm-intro { font-size: 13px; color: #c8d0e0; line-height: 1.55; margin: 0 0 12px; }
+.kta-impm-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.kta-impm-politique {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 12.5px;
+}
+.kta-impm-politique-titre { color: #8892a4; }
+.kta-impm-radio { display: flex; align-items: center; gap: 5px; cursor: pointer; min-height: 32px; }
+.kta-impm-resume { font-size: 12.5px; color: #c8d0e0; margin-bottom: 8px; min-height: 18px; }
+.kta-impm-alerte {
+  font-size: 12.5px;
+  color: #ffd28a;
+  background: rgba(255, 180, 80, 0.1);
+  border: 1px solid rgba(255, 180, 80, 0.3);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  line-height: 1.45;
+}
+.kta-impm-liste { max-height: 46vh; overflow-y: auto; }
+.kta-impm-ligne {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 12.5px;
+}
+.kta-impm-nom { color: #e8eaf0; overflow-wrap: anywhere; }
+.kta-impm-ver { color: #8892a4; font-size: 11px; }
+.kta-impm-act { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
+.kta-impm-det { color: #8892a4; font-size: 11px; white-space: nowrap; }
+.kta-impm-ajouter .kta-impm-act,
+.kta-impm-ajoute  .kta-impm-act { color: #4ade80; }
+.kta-impm-remplacer .kta-impm-act,
+.kta-impm-doubler   .kta-impm-act { color: #f4c542; }
+.kta-impm-ignorer .kta-impm-act { color: #8892a4; }
+.kta-impm-refus   .kta-impm-act { color: #ff5b45; }
+.kta-impm-refus   .kta-impm-det { color: #ff9b8a; white-space: normal; }
+.kta-impm-prog { margin-top: 10px; font-size: 12.5px; color: #8cb4ff; }
+body.kta-theme-light .kta-impm-nom,
+html.kta-theme-light .kta-impm-nom { color: #1a1f2e; }
+body.kta-theme-light .kta-impm-intro,
+html.kta-theme-light .kta-impm-intro { color: #3a4256; }

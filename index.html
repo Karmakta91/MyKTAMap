@@ -500,6 +500,18 @@
         </div>
         <div id="zipFileName"></div>
 
+        <!-- 📦 v1.94.0 (KARMA) — import multiple : N archives ajoutées à la
+             liste sans qu'aucune ne s'ouvre. Placé AU-DESSUS de l'accès
+             permanent, comme demandé : c'est une action, pas une option. -->
+        <div class="kta-impm-entree">
+          <button class="loader-btn-fs" id="loaderImportMasseBtn" type="button" data-i18n="impmasse.btn.ouvrir">
+            📦 Importer plusieurs plans
+          </button>
+          <span class="fs-access-info" data-i18n="impmasse.btn.ouvrirInfo">
+            Ajoute plusieurs ZIP à ta liste d'un coup, sans en ouvrir aucun.
+          </span>
+        </div>
+
         <!-- Options : 🔐 FS Access (Chrome/Edge desktop) -->
         <div id="fsAccessHint" class="fs-access-hint" style="display:none;">
           <button class="loader-btn-fs" id="fsAccessBtn" type="button" data-i18n="home.add.fsBtn">
@@ -1528,6 +1540,9 @@
        chaque fichier garde son wrapper window.addEventListener("load")
        (les listeners se déclenchent dans l'ordre d'enregistrement).
        Reste inline ci-dessous : segmented control perf + debug (résiduel). -->
+  <!-- 📦 v1.94.0 — import multiple (enregistrer sans ouvrir). Chargé avant
+       homeLoader, qui câble son bouton. -->
+  <script src="js/importMasse.js"></script>
   <script src="js/homeLoader.js"></script>
   <script src="js/homeProfile.js"></script>
   <script src="js/homeConfig.js"></script>

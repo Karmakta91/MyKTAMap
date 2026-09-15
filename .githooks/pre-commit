@@ -451,3 +451,10 @@ node scripts/check-aide-contextuelle.js || exit $?
 # la zone de depot, et les 1912 controles etaient au vert. Balises equilibrees,
 # aucun id en double, aucun repere structurant recopie, scripts existants.
 node scripts/check-html-integrite.js || exit $?
+
+# 📦 Import multiple (v1.94.0, demande KARMA) : N archives ajoutees a la liste
+# SANS qu aucune ne s ouvre. Le point dur n est pas la boucle : jusqu ici,
+# ajouter un plan c etait l ouvrir. EXECUTE les deux decisions (doublons,
+# place), verifie le traitement un par un, l entree retiree si le stockage
+# rate, et le bouton au-dessus de l acces permanent. 6 sabotages rougissent.
+node scripts/check-import-masse.js || exit $?

@@ -506,6 +506,28 @@ Cf `perf-memory.md §88` pour le contexte du sprint Pack RAM et la mesure d'impa
 ---
 
 
+## 📦 Import multiple — enregistrer sans ouvrir (v1.94.0)
+
+`js/importMasse.js` · API `window.ImportMasse = { ouvrir, analyser, importer, _interne }` · garde-fou `scripts/check-import-masse.js`.
+
+**Le point dur n'était pas la boucle.** Jusqu'ici, AJOUTER UN PLAN C'ÉTAIT L'OUVRIR : `homeLoader > chargerZipFichier` puis `main > startImportedPlan` lisent le ZIP, posent les assets dans `RUNTIME_ASSETS`, écrivent l'entrée du registre, rangent le fichier **et** appellent `lancerApplication`. Aucun chemin « enregistre sans ouvrir » n'existait.
+
+| Étape | Ce qui se passe |
+|---|---|
+| `analyser(fichiers, politique)` | Denylist par fichier, lecture du seul `plan-config.json`, décision de doublon, plan de bataille. **N'écrit rien.** |
+| `importer(plan)` | Un fichier à la fois : `addOrUpdate`, puis `saveHandle` si autorisation permanente, sinon `saveBlob`. |
+
+**Deux décisions pures, exposées dans `_interne` et EXÉCUTÉES par le garde-fou** :
+
+- `_deciderDoublon(politique, idNaturel, idsExistants)` — la politique vaut pour TOUT le lot (vingt fichiers, ce serait vingt questions). Défaut « ignorer » : un import n'écrase rien sans demande. « doubler » cherche le premier suffixe libre, pour ne pas écraser un doublon d'un import précédent.
+- `_verdictPlace(aStocker, dispo, quota)` — marge `MARGE_QUOTA` de 15 % : un navigateur refuse bien avant son quota annoncé, et l'app doit garder de quoi écrire ses sessions après. `aStocker` vaut 0 quand tout le lot a une autorisation permanente.
+
+**Aucune décompression.** Un plan reste un ZIP, ses tuiles sortent à la demande au chargement (cf. `_extractLazyAsset`). Décompresser à l'import multiplierait le poids stocké par deux ou trois, pour rien.
+
+**Échec de rangement = entrée retirée.** Une entrée sans fichier serait une ligne morte dans la liste, impossible à ouvrir et indiscernable des autres. Sur quota épuisé, l'import s'arrête net et le rapport dit après combien de plans.
+
+**Réseau** : nul. Lecture locale, stockage local, aucune requête.
+
 ## 🗺️ GeoTIFF — l'image et son calage dans le même fichier (v1.93.0)
 
 `js/tiffGeoref.js` · API `window.TiffGeoref = { estTiff, lire, EXT_ACCEPTEES, _interne }` · garde-fou `scripts/check-geotiff.js`.

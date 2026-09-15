@@ -3057,6 +3057,24 @@ Desde esta pantalla puedes:
 
 Pulsa **🏗️** para abrir el generador. Dos pestañas disponibles:
 
+### 📦 Importar varios planos de una vez *(desde la v1.94.0)*
+
+El botón **📦 Importar varios planos**, en la pantalla de inicio justo encima de «Autorizar el acceso permanente», añade tantos archivos ZIP como quieras a tu lista — **sin abrir ninguno**. Luego abres el que quieras desde la lista.
+
+La pantalla se lee en tres tiempos:
+
+1. **Eliges** tus archivos.
+2. **Ves lo que va a pasar**, línea por línea: lo que se añadirá, lo que ya está en tu lista, lo que se rechaza y por qué. El resumen da el tamaño total, lo que se copiará en la app y el espacio restante.
+3. **Lanzas.** Los planos entran uno a uno, con el nombre en curso a la vista, y después un balance: añadidos, omitidos, rechazados.
+
+**Si un plano ya está en tu lista**, eliges una sola vez para todo el lote: dejarlo como está, reemplazarlo o conservar los dos. Por defecto se deja como está — una importación nunca sobrescribe nada sin que lo pidas.
+
+> 💾 **El espacio se anuncia antes.** El almacenamiento de un navegador ronda entre 50 y 200 MB según el dispositivo. Si tu lote no cabe, la app se niega a empezar y te dice cuánto falta. Si el espacio se agota por el camino, **se detiene ahí mismo**: los planos ya añadidos se conservan y el balance dice dónde se paró.
+>
+> 🔐 **En Chrome y Edge no se copia nada.** El selector de archivos del sistema concede un acceso permanente a cada archivo: tus planos se vuelven a abrir desde su archivo original, sin ocupar espacio del navegador. En el teléfono, en Firefox y en Safari, los archivos se copian en la app.
+
+> 🔒 **100 % local**: todo se lee y se guarda **en tu navegador**. Ni un byte se envía a ninguna parte, y funciona sin conexión.
+
 ### 🗺️ Soltar un GeoTIFF *(desde la v1.93.0)*
 
 Si has georreferenciado tu plano en **QGIS**, expórtalo como **GeoTIFF** (`.tif` / `.tiff`): la imagen **y** su georreferenciación viajan en el mismo archivo. Elígelo como imagen del plano — en el generador o directamente desde la pantalla de inicio — y la app hace el resto:
