@@ -151,7 +151,7 @@ Si un plan que **tu avais déjà importé** est révoqué par l'auteur APRÈS to
 
 L'application est protégée par un **mot de passe unique commun** à tous les utilisateurs autorisés. Le code te sera communiqué par l'auteur (forum, message direct, etc.).
 
-> 🌍 *(depuis v1.79.4)* En haut de cet écran, un sélecteur **FR · EN · ES** te permet de choisir ta langue **dès le premier lancement** (pré-sélectionnée d'après celle de ton navigateur) — l'écran se traduit immédiatement et toute l'app suit, tutoriel compris.
+> 🌍 En haut de cet écran, un sélecteur **FR · EN · ES** te permet de choisir ta langue **dès le premier lancement** (pré-sélectionnée d'après celle de ton navigateur) — l'écran se traduit immédiatement et toute l'app suit, tutoriel compris.
 
 **À la première installation** (ou après un reset complet) :
 1. Le splash s'affiche normalement (3,5 secondes)
@@ -214,15 +214,14 @@ Au démarrage, l'application affiche un **écran d'accueil** qui regroupe :
 2. **Cliquer sur un plan déjà connu** — dans **📚 Mes plans**, un clic relance directement un plan déjà ouvert (serveur 🌐 ou local 💾).
 3. **🏗️ Générer un plan** — bouton dédié dans la home pour créer un plan from scratch.
 
-> 🔄 **Réimporter un plan que tu as regénéré (depuis v1.73.1)** — si le ZIP que tu importes porte le **même nom et le même auteur** qu'un plan déjà dans ta liste mais une **version différente**, l'app te pose la question au lieu d'empiler un doublon :
+> 🔄 **Réimporter un plan que tu as regénéré* — si le ZIP que tu importes porte le **même nom et le même auteur** qu'un plan déjà dans ta liste mais une **version différente**, l'app te pose la question au lieu d'empiler un doublon :
 > - **🔄 Mettre à jour** — l'entrée existante est remplacée (nom, version, taille, archive mémorisée). Ta **session, tes notes et tes liaisons inter-plan sont conservées**. Les photos ne sont remplacées que si le nouveau ZIP en contient.
 > - **➕ Garder les deux** — les deux versions cohabitent dans la liste.
 > - **Annuler** (ou ✕ / Échap / clic à côté) — rien n'est touché. C'est toujours le choix par défaut : jamais d'écrasement accidentel.
 >
 > À savoir : si le ZIP a **exactement le même nom ET la même version**, il met à jour l'entrée existante sans rien demander. Aucune question non plus pour les plans serveur ni quand tu re-sélectionnes le fichier d'un plan précis depuis ta liste.
 
-### 🗺️ Convertir un fichier SIG (QGIS…) en plan — depuis v1.75.0
-
+### 🗺️ Convertir un fichier SIG (QGIS…) en plan
 Tu as des données dans un logiciel SIG et tu veux les exploiter dans MyKTAMap ? Dépose ton export **directement sur la zone « 📦 Charger un nouveau plan » de l'accueil** — celle où tu déposes déjà tes ZIP : l'app reconnaît le format et ouvre **« Convertir depuis un SIG »**. Ça marche aussi depuis la zone d'import du **🏗️ Générateur**.
 
 **Formats acceptés** : `.geojson`, `.json`, `.kml`, `.kmz` (vectoriel). Points, tracés et zones sont repris.
@@ -233,15 +232,15 @@ Tu as des données dans un logiciel SIG et tu veux les exploiter dans MyKTAMap ?
 
 > ⚠️ **Ton fichier doit être en coordonnées GPS classiques (WGS84 / EPSG:4326).** Dans QGIS : *Exporter → Enregistrer les entités sous…* puis choisis **EPSG:4326** dans le champ SCR.
 
-> 📐 **Lambert 93 converti automatiquement (depuis v1.82.0)** — si ton export QGIS est en **Lambert 93** (EPSG:2154, le système officiel français : des coordonnées en **mètres** comme 650000 / 6860000, pas en degrés), l'app le **reconnaît et le convertit** toute seule. Un bandeau te dit combien de coordonnées ont été reprojetées : vérifie que la position obtenue correspond bien à ton site avant de continuer. Les **autres** projections (UTM, Web Mercator…) restent refusées — réexporte alors depuis QGIS en **EPSG:4326 (WGS84)**.
+> 📐 **Lambert 93 converti automatiquement* — si ton export QGIS est en **Lambert 93** (EPSG:2154, le système officiel français : des coordonnées en **mètres** comme 650000 / 6860000, pas en degrés), l'app le **reconnaît et le convertit** toute seule. Un bandeau te dit combien de coordonnées ont été reprojetées : vérifie que la position obtenue correspond bien à ton site avant de continuer. Les **autres** projections (UTM, Web Mercator…) restent refusées — réexporte alors depuis QGIS en **EPSG:4326 (WGS84)**.
 
-> 🗺️ **Relevés de carrière : ce que l'import sait faire depuis la v1.82.0.**
+> 🗺️ **Relevés de carrière : ce que l'import sait faire**
 > 
-> - **Un niveau par étage.** Si ton fichier porte une colonne de niveau (`niveau`, `level`, `etage`…), choisis-la dans « Colonne du niveau » : chaque objet garde son étage, et un aperçu te montre la répartition **avant** de générer. Coche « Une couleur par niveau » pour que chaque étage ait sa teinte — sans ça, six étages superposés se confondent. Tu peux **renommer et recolorer** chaque niveau avec le bouton 🏷️ sans quitter l'écran. Depuis la **v1.83.1**, tout ce que tu changes là est **conservé dans le plan généré** — y compris les types que tu renommes, masques, recolores ou ajoutes toi-même. ⚠️ Si l'écran affiche « Légende réinitialisée », c'est qu'un changement de correspondance a périmé tes noms : rouvre 🏷️ avant de générer.
+> - **Un niveau par étage.** Si ton fichier porte une colonne de niveau (`niveau`, `level`, `etage`…), choisis-la dans « Colonne du niveau » : chaque objet garde son étage, et un aperçu te montre la répartition **avant** de générer. Coche « Une couleur par niveau » pour que chaque étage ait sa teinte — sans ça, six étages superposés se confondent. Tu peux **renommer et recolorer** chaque niveau avec le bouton 🏷️ sans quitter l'écran. Tout ce que tu changes là est **conservé dans le plan généré** — y compris les types que tu renommes, masques, recolores ou ajoutes toi-même. ⚠️ Si l'écran affiche « Légende réinitialisée », c'est qu'un changement de correspondance a périmé tes noms : rouvre 🏷️ avant de générer.
 > - **Chaque type va où tu veux.** La forme d'un objet dans le fichier ne dit pas ce qu'il est : un polygone peut être une zone, un pilier, un mur — ou un **front de taille**, si son auteur l'a dessiné fermé. Chaque valeur peut viser n'importe quelle famille dans le menu déroulant.
 > - **La hauteur du plan est calculée**, tu ne donnes que la largeur. C'est ce qui garantit que le plan ne sort pas du cadre : avec des proportions libres, le contenu débordait. Au-delà d'une certaine taille, un avertissement apparaît (fond vide possible sur iPhone, ou génération lourde) — c'est un **conseil**, pas un blocage.
 > 
-> ⚠️ **Si tu as créé un plan depuis un GPX ou un SIG avant la v1.82.0** : son **échelle était fausse** (une valeur fixe sans rapport avec le terrain), donc les distances mesurées dessus aussi. Régénère-le depuis le fichier d'origine pour repartir sur des mesures justes. Les plans faits à partir d'une image scannée ne sont pas concernés.
+> ⚠️ **Si tu as créé un plan depuis un GPX ou un SIG avec une ancienne version de l'app** : son **échelle était fausse** (une valeur fixe sans rapport avec le terrain), donc les distances mesurées dessus aussi. Régénère-le depuis le fichier d'origine pour repartir sur des mesures justes. Les plans faits à partir d'une image scannée ne sont pas concernés.
 
 
 >
@@ -267,7 +266,7 @@ Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le hea
 
 > 💡 **Charte light theme** : en mode clair, le fond du bandeau profil s'aligne sur les cards "Mes plans" pour une intégration visuelle propre.
 
-#### 🖼️ Fond d'écran de l'accueil (depuis v1.75.0)
+#### 🖼️ Fond d'écran de l'accueil
 
 Dans la modale **Profil** (clique le bandeau), tout en bas avant les boutons d'export, tu peux mettre **ta propre image en fond de l'écran d'accueil** à la place de la couleur du thème.
 
@@ -368,7 +367,7 @@ Ton profil est inclus dans l'**Export Avancé** des sessions (onglet 🎨 Avanc�
 
 - Un toast modal te suggère un **reload** de la page pour que l'avatar et le surnom soient correctement mis à jour partout dans l'UI (header, sidebar, etc.)
 
-**📄 Les PDF du Mode Histoire voyagent aussi** *(depuis v1.81.0)* :
+**📄 Les PDF du Mode Histoire voyagent aussi** :
 
 La fenêtre d'export gagne une case **📄 PDF du Mode Histoire**, **décochée par défaut**. Cochée, tes documents partent avec le profil et sont **remis en place à l'import**, avec leur nom et leur date d'origine. Sans elle, un profil réimporté arrivait avec tes notes libres mais **sans les documents** — l'onglet 📖 Récits était à moitié vide sans que rien ne l'explique.
 
@@ -376,16 +375,16 @@ La fenêtre d'export gagne une case **📄 PDF du Mode Histoire**, **décochée 
 >
 > 💡 Réimporter deux fois le même profil ne crée **pas** de doublons : chaque document reprend sa place.
 
-> 🔒 **Sur une installation qui ne propose que les plans de son serveur** *(depuis v1.90.1)* — celles où le bloc « Charger un nouveau plan » est absent —, l'**import de profil est refusé**, avec un message qui l'explique. Deux raisons : il rapporterait des plans que cette installation ne propose pas, et surtout il transporte vos préférences d'affichage — un profil où « afficher les plans du serveur » était décoché **vidait la liste**, sans laisser de réglage visible pour la retrouver. L'**export**, lui, reste disponible : votre carnet, vos sessions et vos notes vous appartiennent et sortent quand vous voulez.
+> 🔒 **Sur une installation qui ne propose que les plans de son serveur** — celles où le bloc « Charger un nouveau plan » est absent —, l'**import de profil est refusé**, avec un message qui l'explique. Deux raisons : il rapporterait des plans que cette installation ne propose pas, et surtout il transporte vos préférences d'affichage — un profil où « afficher les plans du serveur » était décoché **vidait la liste**, sans laisser de réglage visible pour la retrouver. L'**export**, lui, reste disponible : votre carnet, vos sessions et vos notes vous appartiennent et sortent quand vous voulez.
 
-**📦 Profil complet avec les archives de plans** *(depuis v1.79.0)* :
+**📦 Profil complet avec les archives de plans** :
 
 L'export de profil peut désormais **embarquer les archives ZIP des plans mémorisés dans l'app**. Dans la fenêtre d'export, une section « 📦 Archives de plans » liste tes plans mémorisés avec leur taille : coche ceux que tu veux emporter (rien n'est coché par défaut) — l'export devient alors un fichier **`.zip` « profil complet »** au lieu du JSON habituel. À l'import sur un autre appareil, les archives sont **réinjectées et rattachées à leurs plans** : plus besoin de re-déposer les ZIP un par un.
 
 - **Garde-fou de taille** : au-delà de ~50 Mo sur iPhone/iPad (Safari fragile sur les gros téléchargements) ou ~500 Mo ailleurs, un avertissement rouge demande une **confirmation explicite** — rien n'est bloqué, tu décides.
 - **Honnêteté sur l'éviction** : si le navigateur a supprimé une archive pour libérer de la place (le flag « mémorisé » peut survivre à l'éviction), l'export te **liste les plans concernés** au lieu de produire un zip silencieusement incomplet.
 - En mode **Fusionner** à l'import, un plan qui a déjà son archive sur l'appareil **garde la sienne** ; en mode **Remplacer**, celle du profil gagne. Un échec de stockage (quota plein) est signalé **par plan**, le reste continue.
-- Les plans en « accès permanent au fichier » ou « re-sélection » n'apparaissent pas dans la liste : leur ZIP vit sur ton disque, pas dans l'app — il n'y a rien à embarquer.
+- Les plans en « re-sélection » (et les anciennes entrées en « accès permanent au fichier ») n'apparaissent pas dans la liste : leur ZIP vit sur ton disque, pas dans l'app — il n'y a rien à embarquer.
 
 > 🔒 **100 % local** : ton surnom et ta photo restent dans ton navigateur. Rien n'est envoyé à un serveur. L'export profil est explicite et contrôlé par toi.
 
@@ -418,10 +417,10 @@ L'application mémorise tous les plans que vous chargez, qu'ils viennent du serv
 | 🌐 | Plan serveur (sous-dossier de `data/`) |
 | 💾 | Plan ZIP local |
 | ✅ | Plan local **mémorisé dans l'app** (rechargement instantané, fonctionne hors-ligne) |
-| 🔐 | Plan local avec **accès permanent autorisé** (Chrome/Edge desktop) |
+| 🔐 | Ancienne entrée en **accès permanent** (mécanisme retiré le 15/09/2026 — à sa prochaine re-sélection, le plan passe en ✅ mémorisé) |
 | 📁 | Plan local sans persistance — re-sélection requise au chargement |
 
-#### 💾 Rendre un plan serveur disponible hors-ligne *(depuis v1.87.0)*
+#### 💾 Rendre un plan serveur disponible hors-ligne
 
 Un plan **local** vit déjà dans ton navigateur : il fonctionne hors-ligne sans rien faire. Un plan **serveur**, non — et jusqu'ici il ne survivait que par le cache automatique de l'app, ce qui **ne suffisait pas** :
 
@@ -436,16 +435,16 @@ Ouvre la fiche **ℹ️ Infos** d'un plan serveur : une section **💾 Disponibi
 | **Non téléchargé** + bouton ⬇️ | Seul ce que tu as affiché est gardé, sans garantie |
 | **✅ Disponible hors-ligne** + ↻ / 🗑️ | Tout est là. Le bouton de téléchargement **a disparu** — il est devenu « Mettre à jour » |
 | **⚠️ Incomplet — n sur N** + ⬇️ | Téléchargement interrompu, ou fichiers effacés par le navigateur : le bouton **revient** pour compléter |
-| **✅ Disponible, mais n introuvable(s)** + ↻ *(depuis v1.87.1)* | Le serveur n'a pas fourni certains fichiers déclarés par le plan. L'app **te dit lesquels** : le plan est utilisable, et tu peux corriger ton déploiement puis « Réessayer » |
+| **✅ Disponible, mais n introuvable(s)** + ↻ | Le serveur n'a pas fourni certains fichiers déclarés par le plan. L'app **te dit lesquels** : le plan est utilisable, et tu peux corriger ton déploiement puis « Réessayer » |
 
-**🔎 Et l'app te dit si le serveur a changé** *(depuis v1.88.0)*. Un plan téléchargé est servi depuis ton téléphone, sans jamais redemander au serveur — pratique, mais il pouvait rester périmé **sans que rien ne le dise**. À l'ouverture de la fiche, l'app vérifie maintenant, fichier par fichier, si quelque chose a bougé côté serveur et affiche l'un des trois verdicts : **⚠️ Mise à jour disponible**, **✓ À jour**, ou **Impossible de vérifier** (hors-ligne, ou plan téléchargé avant cette version). *Elle ne dit jamais « à jour » sans avoir réellement vérifié.*
+**🔎 Et l'app te dit si le serveur a changé**. Un plan téléchargé est servi depuis ton téléphone, sans jamais redemander au serveur — pratique, mais il pouvait rester périmé **sans que rien ne le dise**. À l'ouverture de la fiche, l'app vérifie maintenant, fichier par fichier, si quelque chose a bougé côté serveur et affiche l'un des trois verdicts : **⚠️ Mise à jour disponible**, **✓ À jour**, ou **Impossible de vérifier** (hors-ligne, ou plan téléchargé avant cette version). *Elle ne dit jamais « à jour » sans avoir réellement vérifié.*
 
 > 💡 **L'état est lu du cache réel, pas d'une case mémorisée.** Si le navigateur fait le ménage dans son stockage, l'app le voit et te repropose le téléchargement — au lieu d'afficher « disponible » sur du vide et de te le faire découvrir en cavité.
 
 **Actions disponibles** sur chaque ligne :
 
-- **⭐/☆** — épingle/désépingle le plan en tête de liste *(depuis v1.78.0)*
-- **ℹ️** — ouvre une fenêtre **Infos détaillées** sur cette archive (id interne, nom, version, auteur, type, fichier source, taille, persistance, mode V1/V2/multi-niveau, préset performance, dates d'ajout et d'ouverture), le **✏️ renommage d'affichage** *(depuis v1.79.1 — nom local, 40 caractères max, pratique pour différencier deux plans homonymes ; champ vide = retour au nom d'origine ; le vrai nom du plan reste utilisé pour les vérifications de fichier)*, l'édition des **🏷️ tags**, et — en fin de fenêtre — le bouton **🗑️ Retirer de la liste** *(depuis v1.78.0, le ✕ des lignes a disparu : la suppression demande confirmation ici, fini le retrait accidentel)*. Retirer un plan n'efface pas le fichier ZIP sur votre disque, mais supprime l'archive éventuellement mémorisée dans l'app.
+- **⭐/☆** — épingle/désépingle le plan en tête de liste
+- **ℹ️** — ouvre une fenêtre **Infos détaillées** sur cette archive (id interne, nom, version, auteur, type, fichier source, taille, persistance, mode V1/V2/multi-niveau, préset performance, dates d'ajout et d'ouverture), le **✏️ renommage d'affichage** *(nom local, 40 caractères max, pratique pour différencier deux plans homonymes ; champ vide = retour au nom d'origine ; le vrai nom du plan reste utilisé pour les vérifications de fichier)*, l'édition des **🏷️ tags**, et — en fin de fenêtre — le bouton **🗑️ Retirer de la liste** *(le ✕ des lignes a disparu : la suppression demande confirmation ici, fini le retrait accidentel)*. Retirer un plan n'efface pas le fichier ZIP sur votre disque, mais supprime l'archive éventuellement mémorisée dans l'app.
 - **Clic sur la ligne** — charge le plan
 
 **Boutons en haut de la liste :**
@@ -456,34 +455,29 @@ Ouvre la fiche **ℹ️ Infos** d'un plan serveur : une section **💾 Disponibi
 **Filtres d'affichage & organisation** :
 
 - **🌐 Afficher les plans serveur** — cochez/décochez ce toggle au-dessus de la liste pour masquer les plans serveur découverts automatiquement (test1, test2, démos…) et ne voir que vos plans persos. **Préservé** entre les sessions (sur cet appareil). Décocher ne supprime rien — recocher → les plans réapparaissent intacts.
-- **🔎 Filtrer par nom** *(depuis v1.78.0)* — un champ au-dessus de la liste filtre en direct pendant la frappe. Filtre d'affichage pur, remis à zéro au prochain passage sur l'accueil.
-- **⭐ Épingler** *(depuis v1.78.0)* — l'étoile de chaque ligne remonte le plan **en tête de liste** (les épinglés gardent entre eux le tri « dernier ouvert »). Re-clic pour désépingler.
-- **🖼️ Tuilage de ce plan** *(depuis v1.90.2)* — le sélecteur qui vivait au-dessus du bouton « Charger ce plan » **a disparu** : l'app décide seule (« Auto »), ce qu'elle faisait déjà pour la quasi-totalité des plans. Il n'agissait en réalité que sur les plans **non découpés à la génération (V1)** de très grande taille ; sur un plan déjà découpé, « Désactivé » ne changeait rien. Le réglage vit désormais dans **ℹ️ Infos**, et **uniquement pour les plans qu'il concerne** — et contrairement à l'ancien, il est **mémorisé** pour ce plan au lieu de repartir à zéro à chaque démarrage.
-- **🔒 Sur une installation protégée, aucune licence pro n'ouvre à la place du mot de passe** *(v1.90.8–v1.90.9)* — si l'installation a défini son mot de passe, ni **ton propre** fichier de licence importé, ni la licence fournie **par l'installation elle-même**, ne déverrouille l'app : le mot de passe reste demandé. Ta licence peut activer le **mode pro**, mais l'accès passe par le mot de passe. (Une installation qui n'a **pas** de mot de passe, elle, s'ouvre toujours directement avec la licence.)
-- **🔑 Le mot de passe de l'instance à l'écran de code** *(depuis v1.90.6)* — si l'app t'est servie par une instance qui a défini **son** mot de passe (association, club), c'est **celui-là** qu'il te faut : sur une instance protégée, le code communautaire n'ouvre pas. Si le déployeur change ou retire son mot de passe, l'app te le redemande **au démarrage suivant** — mais **hors ligne, ton accès reste valable** : une coupure réseau ne t'enferme jamais dehors. ⚠️ *Comme le code communautaire, c'est une barrière **sociale**, pas une authentification : l'empreinte du mot de passe est dans un fichier public.*
-- **🔎 « Retrouver les noms »** *(depuis v1.90.5)* — si un camembert affiche encore un type personnalisé sous son identifiant (`cust-…`), un bouton apparaît sous le graphique. Il va chercher le nom **dans tes plans eux-mêmes**, sans que tu aies à les ouvrir un par un : pour un plan de ton serveur, il demande son descriptif à ce serveur ; pour un plan local, il lit l'archive déjà mémorisée. **Il annonce combien de plans il va lire, et ne part qu'au clic.** Les noms trouvés sont gardés **définitivement** — l'opération ne se refait pas, même après une mise à jour.
-- **🏷️ Filtrer tes statistiques par étiquette** *(depuis v1.90.4)* — au-dessus des camemberts du profil, une rangée d'étiquettes. **Un clic** ne garde que les plans qui la portent, **un deuxième** les exclut, **un troisième** revient à zéro. **Tous les camemberts suivent** — c'est là tout l'intérêt : sortir ton atlas départemental pour voir ce que tu as vraiment relevé ailleurs. Si un plan porte une étiquette incluse *et* une exclue, il est **écarté** : l'exclusion l'emporte toujours. Un nouveau camembert **« Plans par étiquette »** montre la répartition, avec une part « Sans étiquette » qui te dit ce qu'il te reste à taguer. Ce filtre n'est **pas mémorisé** : il repart à zéro chaque fois que tu rouvres la fenêtre.
-- **🏷️ Types personnalisés dans les statistiques** *(corrigé en v1.90.3)* — les camemberts du profil affichaient vos types personnels sous leur identifiant interne (`cust-…`) au lieu de leur nom. Leur nom vit **dans le plan** : l'app le mémorise à la **première ouverture** de celui-ci depuis cette version. Un plan jamais rouvert garde donc son identifiant, et une note sous le camembert vous le dit — ouvrez-le une fois, et son nom apparaît.
-- **🏷️ Tags** *(depuis v1.78.0)* — donnez des étiquettes à vos plans (« Paris 13 », « GTech », « à finir »…) via **ℹ️ Infos → Tags du plan** (saisie libre, séparées par des virgules — 12 max de 24 caractères). Elles s'affichent sous le nom du plan, et dès qu'un plan est tagué, une rangée de **chips-filtres** apparaît au-dessus de la liste : cliquez une ou plusieurs chips pour ne voir que ces plans (un plan matche s'il porte **au moins un** des tags choisis). Les tags vivent **dans l'app** (pas dans le ZIP — ils ne voyagent pas avec un plan partagé) mais suivent l'**export de profil** et l'export 💾 de la liste.
-  - **🌐 Les plans d'un serveur peuvent arriver déjà étiquetés** *(depuis v1.90.1)* — si le déployeur a rempli les étiquettes dans sa liste de plans, elles s'affichent et se filtrent comme les vôtres, sans rien faire. **Les vôtres restent prioritaires** : dès que vous éditez les étiquettes d'un plan, le serveur ne les touche plus jamais, ni au démarrage suivant ni aux suivants. Et **effacer est un choix** : si vous videz le champ, elles ne repousseront pas. Pour revenir aux étiquettes du serveur, il n'y a rien à faire de spécial — retirez le plan de la liste, il sera redécouvert avec.
+- **📁 Dossiers** — à droite du titre « 📚 Mes plans », un sélecteur **Tout | Dossiers** (toujours visible). En mode **Dossiers**, ta liste se range en sections que tu crées toi-même (➕ dans la ligne de titre) : « Gironde », « Calcaire », ce que tu veux, avec une **couleur** par dossier, reprise en pastille devant le nom du plan dans les deux modes. Un plan est dans **un seul** dossier ; les autres sont dans « Non classés », en dernier. Pour ranger : le bouton **📁** d'une ligne → « Déplacer vers… » (ça marche au doigt), **☑ Sélectionner** pour déplacer plusieurs plans d'un coup, ou **glisser** la ligne sur l'en-tête d'un dossier : à la souris sur PC, ou au doigt par un **appui long** (la ligne se soulève après une demi-seconde ; un doigt qui bouge tout de suite fait défiler la liste, comme d'habitude). Les en-têtes se replient ; ⋮ sur un en-tête = renommer, couleur, monter/descendre, supprimer (ses plans repassent en Non classés, **aucun plan n'est jamais supprimé**). **🏷️ Règle par étiquette** : dans ⋮, « inclut aussi les plans étiquetés… » range tout seul les plans qui portent l'étiquette, les prochains aussi — et en mode Tout, des chips cochées proposent « 📁 Créer un dossier depuis ces étiquettes ». Déplacer un plan à la main l'emporte toujours sur une règle. Les dossiers **voyagent avec ton profil** ; un serveur (ConfAdmin) peut en proposer : ceux-là ne se renomment ni ne se suppriment tant que le serveur les déclare, mais tu restes libre d'y déplacer ou d'en sortir un plan. L'import multiple 📦 propose « Ranger dans : » pour tout un lot. Le mode Tout est l'écran habituel, inchangé.
+- **🔎 Filtrer par nom** — un champ au-dessus de la liste filtre en direct pendant la frappe. Filtre d'affichage pur, remis à zéro au prochain passage sur l'accueil.
+- **⭐ Épingler** — l'étoile de chaque ligne remonte le plan **en tête de liste** (les épinglés gardent entre eux le tri « dernier ouvert »). Re-clic pour désépingler.
+- **🖼️ Tuilage de ce plan** — le sélecteur qui vivait au-dessus du bouton « Charger ce plan » **a disparu** : l'app décide seule (« Auto »), ce qu'elle faisait déjà pour la quasi-totalité des plans. Il n'agissait en réalité que sur les plans **non découpés à la génération (V1)** de très grande taille ; sur un plan déjà découpé, « Désactivé » ne changeait rien. Le réglage vit désormais dans **ℹ️ Infos**, et **uniquement pour les plans qu'il concerne** — et contrairement à l'ancien, il est **mémorisé** pour ce plan au lieu de repartir à zéro à chaque démarrage.
+- **🔒 Sur une installation protégée, aucune licence pro n'ouvre à la place du mot de passe** — si l'installation a défini son mot de passe, ni **ton propre** fichier de licence importé, ni la licence fournie **par l'installation elle-même**, ne déverrouille l'app : le mot de passe reste demandé. Ta licence peut activer le **mode pro**, mais l'accès passe par le mot de passe. (Une installation qui n'a **pas** de mot de passe, elle, s'ouvre toujours directement avec la licence.)
+- **🔑 Le mot de passe de l'instance à l'écran de code** — si l'app t'est servie par une instance qui a défini **son** mot de passe (association, club), c'est **celui-là** qu'il te faut : sur une instance protégée, le code communautaire n'ouvre pas. Si le déployeur change ou retire son mot de passe, l'app te le redemande **au démarrage suivant** — mais **hors ligne, ton accès reste valable** : une coupure réseau ne t'enferme jamais dehors. ⚠️ *Comme le code communautaire, c'est une barrière **sociale**, pas une authentification : l'empreinte du mot de passe est dans un fichier public.*
+- **🔎 « Retrouver les noms »** — si un camembert affiche encore un type personnalisé sous son identifiant (`cust-…`), un bouton apparaît sous le graphique. Il va chercher le nom **dans tes plans eux-mêmes**, sans que tu aies à les ouvrir un par un : pour un plan de ton serveur, il demande son descriptif à ce serveur ; pour un plan local, il lit l'archive déjà mémorisée. **Il annonce combien de plans il va lire, et ne part qu'au clic.** Les noms trouvés sont gardés **définitivement** — l'opération ne se refait pas, même après une mise à jour.
+- **🏷️ Filtrer tes statistiques par étiquette** — au-dessus des camemberts du profil, une rangée d'étiquettes. **Un clic** ne garde que les plans qui la portent, **un deuxième** les exclut, **un troisième** revient à zéro. **Tous les camemberts suivent** — c'est là tout l'intérêt : sortir ton atlas départemental pour voir ce que tu as vraiment relevé ailleurs. Si un plan porte une étiquette incluse *et* une exclue, il est **écarté** : l'exclusion l'emporte toujours. Un nouveau camembert **« Plans par étiquette »** montre la répartition, avec une part « Sans étiquette » qui te dit ce qu'il te reste à taguer. Ce filtre n'est **pas mémorisé** : il repart à zéro chaque fois que tu rouvres la fenêtre.
+- **🏷️ Types personnalisés dans les statistiques** — les camemberts du profil affichaient vos types personnels sous leur identifiant interne (`cust-…`) au lieu de leur nom. Leur nom vit **dans le plan** : l'app le mémorise à la **première ouverture** de celui-ci depuis cette version. Un plan jamais rouvert garde donc son identifiant, et une note sous le camembert vous le dit — ouvrez-le une fois, et son nom apparaît.
+- **🏷️ Tags** — donnez des étiquettes à vos plans (« Paris 13 », « GTech », « à finir »…) via **ℹ️ Infos → Tags du plan** (saisie libre, séparées par des virgules — 12 max de 24 caractères). Elles s'affichent sous le nom du plan, et dès qu'un plan est tagué, une rangée de **chips-filtres** apparaît au-dessus de la liste : cliquez une ou plusieurs chips pour ne voir que ces plans (un plan matche s'il porte **au moins un** des tags choisis). Les tags vivent **dans l'app** (un ZIP généré avec le champ **🏷️ Étiquettes** du Générateur les **propose** à l'import, sans jamais écraser celles que vous avez posées) mais suivent l'**export de profil** et l'export 💾 de la liste.
+  - **🌐 Les plans d'un serveur peuvent arriver déjà étiquetés** — si le déployeur a rempli les étiquettes dans sa liste de plans, elles s'affichent et se filtrent comme les vôtres, sans rien faire. **Les vôtres restent prioritaires** : dès que vous éditez les étiquettes d'un plan, le serveur ne les touche plus jamais, ni au démarrage suivant ni aux suivants. Et **effacer est un choix** : si vous videz le champ, elles ne repousseront pas. Pour revenir aux étiquettes du serveur, il n'y a rien à faire de spécial — retirez le plan de la liste, il sera redécouvert avec.
 
 > 💡 **Astuce** — Si vous changez de PC ou de téléphone, exportez votre liste sur l'ancien appareil puis importez-la sur le nouveau pour retrouver tous vos plans en un clic. Note : les autorisations d'accès aux fichiers ne sont pas portables (vous devrez re-sélectionner les ZIP locaux la première fois sur le nouvel appareil). À la re-sélection, si vous fournissez un ZIP dans un autre mode (ex: vous aviez ce plan en V2 mais le ZIP est un V1), un message d'avertissement vous le signale clairement avant de continuer.
 
 ### 🔐 Éviter de re-sélectionner le ZIP à chaque ouverture
 
-Selon votre plateforme, deux options de persistance s'affichent sous la zone d'import :
-
-#### Sur Chrome / Edge (PC)
-
-Cliquez sur **🔐 Autoriser l'accès permanent au fichier**. Le navigateur retient une référence vers votre ZIP. Aux prochaines ouvertures du plan depuis votre liste, le rechargement se fait en **0 ou 1 clic** (Chrome peut redemander une confirmation rapide après un redémarrage du navigateur).
-
-#### Sur mobile, Firefox, Safari
-
-L'option **💾 Mémoriser ce plan dans l'app** est **cochée par défaut**. Le ZIP est copié dans l'espace local du navigateur. Aux prochaines ouvertures :
+Par défaut, l'app **mémorise chaque plan au premier chargement** : le ZIP est copié dans l'espace local du navigateur, rien à cocher sur l'accueil. Le réglage vit dans **⚙️ Configuration de l'accueil → « 💾 Mémoriser le plan dans l'app au premier chargement »** (activé par défaut ; désactivé, le ZIP est redemandé à chaque ouverture). Aux prochaines ouvertures :
 
 - **0 clic**, le plan se charge directement
 - Fonctionne **hors-ligne** (le ZIP est dans le navigateur, pas besoin de retrouver le fichier)
 - Recommandé sur **mobile**
+
+> ℹ️ **Le bouton « 🔐 Autoriser l'accès permanent au fichier » (Chrome/Edge) a été retiré le 15/09/2026.** Il faisait doublon : le ZIP était de toute façon copié dans l'app, et la référence vers le fichier n'était jamais utilisée. Les plans qui l'avaient continuent de s'ouvrir ; à leur prochaine re-sélection, ils passent en « mémorisé ».
 
 > ⚠️ **Limites de stockage** :
 > - **iPhone (Safari classique)** : ~50 Mo, peut être effacé après inactivité prolongée
@@ -522,29 +516,29 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 > **Ordre des sections dans la modale (de haut en bas, identique au UI)** :
 
-1. **🌍 Application** — le **sélecteur de langue** de toute l'app (🇫🇷 Français · 🇬🇧 English · 🇪🇸 Español). *(depuis v1.85.4)* C'est désormais le **seul endroit** où on la change en cours d'usage : elle a quitté ⚙️ Réglages du mode carte, où elle laissait croire qu'elle ne concernait que le plan ouvert — et où elle proposait de redémarrer l'app au pire moment, en pleine cavité. Elle reste choisissable sur l'écran de déverrouillage, avant d'entrer.
+1. **🌍 Application** — le **sélecteur de langue** de toute l'app (🇫🇷 Français · 🇬🇧 English · 🇪🇸 Español). C'est désormais le **seul endroit** où on la change en cours d'usage : elle a quitté ⚙️ Réglages du mode carte, où elle laissait croire qu'elle ne concernait que le plan ouvert — et où elle proposait de redémarrer l'app au pire moment, en pleine cavité. Elle reste choisissable sur l'écran de déverrouillage, avant d'entrer.
 
-2. **🛰️ Options via capteur** *(depuis v1.85.2)* — les options qui s'appuient sur un capteur du téléphone : **🔋 Niveau de batterie** et **📳 Vibration haptique**. Chacune se coupe, et une option coupée n'affiche rien **et n'écoute plus le capteur**. Quand le système refuse le capteur — la vibration sur iPhone, par exemple — l'option reste **affichée mais grisée, avec la raison**, plutôt que de disparaître sans explication.
+2. **🛰️ Options via capteur** — les options qui s'appuient sur un capteur du téléphone : **🔋 Niveau de batterie** et **📳 Vibration haptique**. Chacune se coupe, et une option coupée n'affiche rien **et n'écoute plus le capteur**. Quand le système refuse le capteur — la vibration sur iPhone, par exemple — l'option reste **affichée mais grisée, avec la raison**, plutôt que de disparaître sans explication.
 
-> 🗺️ **La Vue OSM est active par défaut** *(depuis v1.90.2)*. Si tu as au moins un plan calibré GPS, l'accueil affiche ta carte au-dessus d'un fond OpenStreetMap — et **demande donc ce fond à `tile.openstreetmap.org` dès son chargement**, sans clic. **Aucune donnée de tes plans ne sort** : seules les coordonnées des tuiles que tu regardes sont demandées, le reste est dessiné par-dessus sur ton appareil. Un bandeau te le dit la première fois. Pour la couper : la case ci-dessus. **Si tu l'avais déjà décochée, elle le reste** — un refus n'est jamais réécrasé. Et rien ne part en **mode hors-ligne strict**, en **incognito**, ou si aucun plan n'est calibré.
+> 🗺️ **La Vue OSM est active par défaut**. Si tu as au moins un plan calibré GPS, l'accueil affiche ta carte au-dessus d'un fond OpenStreetMap — et **demande donc ce fond à `tile.openstreetmap.org` dès son chargement**, sans clic. **Aucune donnée de tes plans ne sort** : seules les coordonnées des tuiles que tu regardes sont demandées, le reste est dessiné par-dessus sur ton appareil. Un bandeau te le dit la première fois. Pour la couper : la case ci-dessus. **Si tu l'avais déjà décochée, elle le reste** — un refus n'est jamais réécrasé. Et rien ne part en **mode hors-ligne strict**, en **incognito**, ou si aucun plan n'est calibré.
 
-> 🖼️ **Le tuilage de l'image n'est pas dans cette modale** — et il n'est plus non plus sur l'écran de chargement *(depuis v1.90.2)*. Il était passé par les deux, sans jamais trouver sa place : il ne concerne en pratique que les plans **non découpés à la génération**, et sur les autres il ne changeait rien. Il vit désormais dans **ℹ️ Infos** du plan, seulement pour les plans concernés, et il y est enfin **mémorisé**.
+> 🖼️ **Le tuilage de l'image n'est pas dans cette modale** — et il n'est plus non plus sur l'écran de chargement. Il était passé par les deux, sans jamais trouver sa place : il ne concerne en pratique que les plans **non découpés à la génération**, et sur les autres il ne changeait rien. Il vit désormais dans **ℹ️ Infos** du plan, seulement pour les plans concernés, et il y est enfin **mémorisé**.
 >
-> 🚀 **Les toggles Performance ULTRA non plus** *(depuis v1.85.3)*. Ils s'affichaient ici mais **ne sauvegardaient rien** — ce sont des réglages **par plan** : ils se règlent dans **⚙️ Réglages**, une fois le plan ouvert. Voir « 🚀 Optimiser ton plan » plus bas.
+> 🚀 **Les toggles Performance ULTRA non plus**. Ils s'affichaient ici mais **ne sauvegardaient rien** — ce sont des réglages **par plan** : ils se règlent dans **⚙️ Réglages**, une fois le plan ouvert. Voir « 🚀 Optimiser ton plan » plus bas.
 
-3. **🛠️ Mode Développeur** *(depuis v1.76.3)* — remplace l'ancienne section Debug. Protégé par **mot de passe** à la première activation (avec avertissement de responsabilité). Une fois actif : toggle **🐛 Logs détaillés**, bouton **📋 Afficher les logs** (le buffer, consultable même sans plan chargé), et **📚 Documentation technique** — toute la doc du projet (architecture, backlog, maths…) lisible dans l'app (en ligne uniquement). Le réglage logs des ⚙️ Réglages en mode carte a été retiré : tout se pilote ici.
+3. **🛠️ Mode Développeur** — remplace l'ancienne section Debug. Protégé par **mot de passe** à la première activation (avec avertissement de responsabilité). Une fois actif : toggle **🐛 Logs détaillés**, bouton **📋 Afficher les logs** (le buffer, consultable même sans plan chargé), et **📚 Documentation technique** — toute la doc du projet (architecture, backlog, maths…) lisible dans l'app (en ligne uniquement). Le réglage logs des ⚙️ Réglages en mode carte a été retiré : tout se pilote ici.
 
 4. **🔒 Confidentialité & Audit** — section dédiée à la transparence : journal réseau live, doc « Que fait l'app sur le réseau ? », et toggle « Mode hors-ligne strict ». Voir section dédiée plus bas.
 
 5. **🎨 Affichage** — toggles d'interface :
-   - **🔎 Icônes qui grossissent au zoom**, **📌 Ancrer les panneaux d'outils au bouton**, **🧲 Magnétisme au dessin** et son **rayon** *(depuis v1.85.3)* — ces quatre-là valent pour **tous tes plans**. Ils vivaient dans ⚙️ Réglages du mode carte, où on les changeait depuis un plan sans savoir qu'on les changeait partout.
+   - **🔎 Icônes qui grossissent au zoom**, **📌 Ancrer les panneaux d'outils au bouton**, **🧲 Magnétisme au dessin** et son **rayon** — ces quatre-là valent pour **tous tes plans**. Ils vivaient dans ⚙️ Réglages du mode carte, où on les changeait depuis un plan sans savoir qu'on les changeait partout.
    - **🔆 Garder l'écran allumé** — empêche la mise en veille automatique de ton écran tant que MyKTAMap est ouvert (Wake Lock API). Utile en sortie cataphile pour ne pas avoir à toucher le tel toutes les 30 sec. Re-acquisition auto au retour d'arrière-plan (visibilitychange). Toggle masqué automatiquement sur les navigateurs qui ne supportent pas l'API (Firefox notamment). Le même toggle est aussi accessible dans **⚙️ Réglages** en mode carte (cf section dédiée).
 
 > 📊 **Voir l'état mémoire** — dans cette même modale, un bouton **« 📊 Voir l'état mémoire »** ouvre l'**inspecteur** : ce que l'app occupe sur ton appareil (clés de stockage triées par taille, bases de données, cache de l'application, quota du navigateur) et ce qui est chargé à l'instant. Un bouton **📋 Copier le rapport** produit un texte prêt à coller pour signaler un problème.
 
 > ❓ **Bouton d'aide dans les fenêtres** — pose un petit **❓** dans la ligne de titre des fenêtres qui ont une page d'aide : ⚙️ Réglages, 📊 Détails de la session, 🧭 menu Tracker, ⬆️ Enregistrer, ⬇️ Charger, ≡ Légende, 🔍 Recherche, 🚨 Secours, 📖 Mode Histoire, 🏗️ Générateur, 📔 Carnet, 🌍 Vue OSM, 👤 Profil, ℹ️ Infos du plan. Un appui ouvre **directement la bonne page**, sans passer par le groupe ❓ Aide. Décoche si tu préfères une interface sans cette icône : elle disparaît aussitôt, même des fenêtres déjà ouvertes.
 
-> 📔 **Tenir un carnet de mes sorties** — chaque plan que tu ouvres devient une **sortie** archivée dans 📔 Mon carnet (durée, distance, ajouts, photos). Décoché, l'app n'ouvre plus rien toute seule et la sortie en cours s'arrête ; ce qui est déjà dans le carnet reste, et tu peux toujours en démarrer une à la demande depuis **📊 Détails de la session**. *(Réglage déplacé ici depuis ⚙️ Réglages du mode carte en v1.92.0 : il vaut pour tous tes plans, et le carnet s'ouvre depuis l'accueil.)*
+> 📔 **Tenir un carnet de mes sorties** — chaque plan que tu ouvres devient une **sortie** archivée dans 📔 Mon carnet (durée, distance, ajouts, photos). Décoché, l'app n'ouvre plus rien toute seule et la sortie en cours s'arrête ; ce qui est déjà dans le carnet reste, et tu peux toujours en démarrer une à la demande depuis **📊 Détails de la session**. *(Réglage déplacé ici depuis ⚙️ Réglages du mode carte : il vaut pour tous tes plans, et le carnet s'ouvre depuis l'accueil.)*
 
 > 🌍 **Langue de l'application** : MyKTAMap est traduit en **3 langues — Français, English, Español**. Le sélecteur de langue (drapeau + nom complet) est dans **⚙️ Configuration → 🌍 Application**, tout en haut de la modale. Le changement s'applique tout de suite, sans recharger l'app. *À savoir* : la **Documentation** (ce guide) et le **tutoriel de bienvenue** existent dans les **3 langues** — ils suivent ta langue d'app automatiquement, et le bouton drapeau en haut de la fenêtre Documentation te laisse basculer 🇫🇷 / 🇬🇧 / 🇪🇸 quand tu veux. Seule l'**Aide intégrée** (le 📚 de la barre latérale en mode carte) reste en français et en anglais : en espagnol, elle s'affiche en **anglais par défaut**. À chaque changement de langue, un message te propose de **redémarrer l'app** pour une bascule 100 % propre (au choix). 💡 En **mode incognito**, ta langue d'interface est désormais **conservée** (les autres données restent, elles, totalement oubliées).
 
@@ -567,7 +561,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 **Organisation** : **tout est regroupé dans une seule modale ⚙️ Configuration**, accessible depuis le header du loader. Le bouton 🏗️ Générer un plan reste visible directement dans la home (pas dans la modale Configuration) car c'est une action de création, pas un réglage.
 
-### 🎚️ Découpage de l'image — l'app décide *(depuis v1.90.2)*
+### 🎚️ Découpage de l'image — l'app décide
 
 **Il n'y a plus rien à régler ici.** Le bandeau *« 🖼️ Tuilage pour ce chargement »*, qui vivait juste au-dessus
 du bouton **▶️ Charger ce plan**, **a été retiré** : l'app découpe automatiquement les plans trop grands pour
@@ -588,7 +582,7 @@ n'apparaît pas, c'est que votre plan est déjà découpé et que le réglage n'
 | 🔄 **Auto** *(défaut)* | Découpe automatiquement les plans trop grands pour être affichés d'un bloc. **C'est le bon choix dans tous les cas.** |
 | 💤 **Désactivé** | Aucun découpage : l'image entière d'un coup. Qualité native sur PC, mais ⚠️ **peut faire planter le téléphone** sur un très grand plan — un message vous prévient si c'est le cas. |
 
-> 🩸 **Il y avait 5 boutons avant la v1.86.0** (🌟 Qualité, 🎯 Équilibré, ⚡ Performance). Ils ne réglaient que
+> 🩸 **Il y avait 5 boutons auparavant** (🌟 Qualité, 🎯 Équilibré, ⚡ Performance). Ils ne réglaient que
 > le découpage fait **par le navigateur au chargement**, qui ne concerne que les plans **anciens**. Sur un plan
 > **déjà découpé à la génération**, ils ne changeaient **strictement rien**, alors que l'app affichait « Plus
 > net. Recommandé sur PC desktop. ». Ils ont été retirés.
@@ -596,7 +590,7 @@ n'apparaît pas, c'est que votre plan est déjà découpé et que le réglage n'
 > 🩸 **Et « Auto » protégeait moins bien que les autres, alors que c'était le défaut.** Il se décidait sur le
 > **poids du fichier** (60 Mo) quand les autres se décidaient sur la **taille en pixels**. Un plan de 100
 > millions de pixels bien compressé pèse ~15 Mo : « Auto » ne le découpait pas, et l'app pouvait planter sur
-> iPhone. Corrigé en v1.86.0 : c'est désormais la taille en pixels qui décide.
+> iPhone. Corrigé : c'est désormais la taille en pixels qui décide.
 
 ### 🎨 L'interface en mode carte
 
@@ -618,7 +612,7 @@ n'apparaît pas, c'est que votre plan est déjà découpé et que le réglage n'
 - **Sidebars unifiées gauche/droite** — chaque côté est une **seule barre verticale continue** :
   - **Gauche** : ⊞ Layers · − + Zoom · 🏗 Niveau · ≡ collapse · 📚 Doc · ⚙ Réglages · ⬇ Charger · ⬆ Save
   - **Droite** : ≡ collapse · 🔍 Recherche · ✏️ Édition · 📐 Mesure · 🛣 Tracés · ⬛ Zones · 🧭 Tracker
-  - **Panneaux d'outils** : depuis v1.85.1 ils s'ouvrent **centrés à l'écran** (Tracés, Zones, Structures, comme le Tracker et les Filtres) ; l'option « 🪟 Ancrer les panneaux d'outils au bouton » (⚙️ Configuration) restaure l'ancrage au bouton.
+  - **Panneaux d'outils** : ils s'ouvrent **centrés à l'écran** (Tracés, Zones, Structures, comme le Tracker et les Filtres) ; l'option « 🪟 Ancrer les panneaux d'outils au bouton » (⚙️ Configuration) restaure l'ancrage au bouton.
 - **🧭 Boussole d'orientation** :
   - En portrait : en **bas-gauche** au-dessus du footer
   - En landscape : en **bas-centrée** (pour ne pas cacher les icônes latérales)
@@ -705,13 +699,13 @@ Le **Mode Histoire** (note libre + PDF) vit dans l'écran d'un plan : pour relir
 - Le carnet **démarre vide** : il ne peut pas reconstituer les sorties d'avant son arrivée, elles n'ont jamais été enregistrées en tant que telles.
 - Tout est **strictement local** à votre appareil (aucun envoi, aucun compte). Chaque sortie est supprimable individuellement depuis sa fiche.
 - Au-delà de **500 sorties**, les plus anciennes sont effacées automatiquement.
-- Le carnet **est inclus dans l'export de profil** depuis v1.74.0 : changer d'appareil via l'export de profil transporte votre historique de sorties.
+- Le carnet **est inclus dans l'export de profil** : changer d'appareil via l'export de profil transporte votre historique de sorties.
 
-### 🧙 Générateur : assistant pas-à-pas (depuis v1.72.1)
+### 🧙 Générateur : assistant pas-à-pas
 
 Le **Générateur** (🏗️) vous guide désormais **étape par étape**, comme un installateur : chaque page ne montre qu'une chose (nom, image, calques…), les étapes optionnelles se **passent** d'un clic, et un **résumé final** vous montre ce qui est rempli, passé ou manquant — avec des avertissements utiles (ex. sans géoréférencement GPS, pas de Vue OSM ni d'export KMZ) **avant** de générer. Un ZIP importé pré-remplit toutes les étapes : vous ne faites que relire. Les habitués retrouvent l'ancien affichage complet via **🗒️ Tout afficher** (choix mémorisé).
 
-### 🔽 Pied de page repliable (depuis v1.71.0)
+### 🔽 Pied de page repliable
 
 La petite **flèche** sous l'écran d'accueil replie le pied de page (copyright, liens, crédits) pour gagner de la place — il n'en reste qu'une ligne minimale « © MyKTAMap · version ». Re-cliquez pour le déplier. Votre choix est mémorisé et voyage avec l'export de profil.
 
@@ -761,7 +755,7 @@ Si vous cliquez sur un plan dans votre liste et qu'une fenêtre **« ⚠️ Plan
 La fenêtre vous propose 3 actions :
 
 - **🔄 Réessayer** (plans serveur uniquement) — utile si le serveur était temporairement indisponible
-- **📁 Re-sélectionner le ZIP** (plans locaux) — ouvre votre explorateur de fichiers pour retrouver le ZIP. Si vous avez activé "Mémoriser ce plan dans l'app" ou "Accès permanent", la persistance sera **automatiquement restaurée** après la nouvelle sélection
+- **📁 Re-sélectionner le ZIP** (plans locaux) — ouvre votre explorateur de fichiers pour retrouver le ZIP. Si le plan était mémorisé (ou en ancien « Accès permanent »), la persistance sera **automatiquement restaurée** après la nouvelle sélection
 - **🗑️ Retirer de la liste** — si vous ne possédez plus le plan, supprimez son entrée de votre liste
 
 > 💡 **Conseil** : exportez régulièrement votre liste via 💾 (icône en haut à droite de **📚 Mes plans**) pour pouvoir la restaurer en cas de souci.
@@ -832,7 +826,7 @@ Le toggle est **persistant** (survit aux reloads et fermetures d'onglet) jusqu'�
 
 ---
 
-## 🌍 Vue OSM plein écran — recherche intégrée (depuis v1.70.0)
+## 🌍 Vue OSM plein écran — recherche intégrée
 
 Le bouton **⛶** du widget Vue OSM s'appelle désormais **« Ouvrir le mode OSM »** : la carte passe en plein écran. Une **barre de recherche** y apparaît :
 
@@ -840,21 +834,21 @@ Le bouton **⛶** du widget Vue OSM s'appelle désormais **« Ouvrir le mode OSM
 - elle cherche **un plan** (parmi vos plans géoréférencés) ou **un point** (les POI de ces plans) — taper, cliquer un résultat, la carte vole dessus avec un marqueur ;
 - **100 % local** : la recherche lit vos propres plans, aucune adresse internet n'est interrogée ;
 - seuls les plans **géoréférencés** apparaissent — un plan sans calibrage GPS est invisible en mode OSM (calibrez-le via le Générateur ou les Réglages).
-- ⚠️ **Un plan jamais ouvert n'y apparaît pas non plus, même s'il est calibré** *(précisé en v1.90.2)*. La calibration voyage **dans le plan**, mais l'app ne la lit qu'à sa **première ouverture** : avant ça, elle ne peut pas savoir. **Ouvrez chaque plan une fois** et ceux qui sont calés apparaîtront tout seuls. Le message d'accueil de la Vue OSM le dit désormais au lieu d'annoncer « aucun plan géoréférencé », qui était faux dans ce cas.
+- ⚠️ **Un plan jamais ouvert n'y apparaît pas non plus, même s'il est calibré**. La calibration voyage **dans le plan**, mais l'app ne la lit qu'à sa **première ouverture** : avant ça, elle ne peut pas savoir. **Ouvrez chaque plan une fois** et ceux qui sont calés apparaîtront tout seuls. Le message d'accueil de la Vue OSM le dit désormais au lieu d'annoncer « aucun plan géoréférencé », qui était faux dans ce cas.
 
 **📏 Mesurer sur la carte OSM** — en mode OSM, l'outil de mesure donne une **distance** et une **surface** en cliquant sur la carte. Une mesure faite ici ne dépend d'**aucun calibrage** : les coordonnées sont déjà géographiques, elle est donc plus fiable qu'une mesure faite sur le plan.
 
 **🎯 Coordonnées de surface** — un clic sur la carte OSM donne la **latitude et la longitude du point situé juste au-dessus**, copiables d'un bouton. C'est ce qu'on transmet à une équipe qui arrive par la surface.
 
-**🗂️ Plusieurs plans en même temps (depuis v1.71.0)** — le panneau « Plans affichés » du mode OSM permet de **superposer vos plans géoréférencés** : ➕ pour en ajouter un, ▲▼ pour choisir qui passe dessus/dessous, un curseur d'**opacité par plan**, ✕ pour retirer. Le plan marqué ◉ est le « principal » (celui du sélecteur du haut). Toute cette gestion vit dans une **modale dédiée** ouverte par le bouton **≡** du bandeau (rien ne masque la carte) : réglages d'**affichage globaux**, **filtre par tag** (agrégé sur tous les plans affichés), et la pile des plans. Les anciennes rangées sous le sélecteur (opacité, cases, tags) ont disparu du widget — la carte y gagne leur hauteur. Chaque ligne y porte aussi **5 mini-boutons de filtrage propres au plan** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — les réglages globaux d'affichage vivent dans la même modale (section Affichage), les deux niveaux se combinent. Idéal pour afficher deux secteurs voisins par-dessus un plan d'ensemble, en ne gardant par exemple que les POI de l'un et l'image de l'autre. **🏷️ Et depuis la v1.84.0, l'ajout par ÉTIQUETTE** : sous « Plans », une rangée de chips liste les étiquettes portées par **au moins deux** de tes plans géoréférencés (celles que tu saisis dans ta bibliothèque), avec un compteur « 3/12 ». Un clic **affiche tous** les plans de l'étiquette, un second clic **les retire** — indispensable dès qu'un atlas découpé en produit vingt. La casse est ignorée (« Gironde » et « GIRONDE » sont la même étiquette), et au-delà de 3 plans affichés l'app demande confirmation en annonçant le compte : les plans se chargent ensuite **un par un**, la carte se remplit progressivement.
+**🗂️ Plusieurs plans en même temps* — le panneau « Plans affichés » du mode OSM permet de **superposer vos plans géoréférencés** : ➕ pour en ajouter un, ▲▼ pour choisir qui passe dessus/dessous, un curseur d'**opacité par plan**, ✕ pour retirer. Le plan marqué ◉ est le « principal » (celui du sélecteur du haut). Toute cette gestion vit dans une **modale dédiée** ouverte par le bouton **≡** du bandeau (rien ne masque la carte) : réglages d'**affichage globaux**, **filtre par tag** (agrégé sur tous les plans affichés), et la pile des plans. Les anciennes rangées sous le sélecteur (opacité, cases, tags) ont disparu du widget — la carte y gagne leur hauteur. Chaque ligne y porte aussi **5 mini-boutons de filtrage propres au plan** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — les réglages globaux d'affichage vivent dans la même modale (section Affichage), les deux niveaux se combinent. Idéal pour afficher deux secteurs voisins par-dessus un plan d'ensemble, en ne gardant par exemple que les POI de l'un et l'image de l'autre. **🏷️ Et l'ajout par ÉTIQUETTE** : sous « Plans », une rangée de chips liste les étiquettes portées par **au moins deux** de tes plans géoréférencés (celles que tu saisis dans ta bibliothèque), avec un compteur « 3/12 ». Un clic **affiche tous** les plans de l'étiquette, un second clic **les retire** — indispensable dès qu'un atlas découpé en produit vingt. La casse est ignorée (« Gironde » et « GIRONDE » sont la même étiquette), et au-delà de 3 plans affichés l'app demande confirmation en annonçant le compte : les plans se chargent ensuite **un par un**, la carte se remplit progressivement.
 
 Au premier lancement du mode, un message rappelle que l'affichage de plans complets peut être plus lent sur mobile — et un second apparaît si vous affichez **plus de 3 plans** à la fois.
 
-> 👁️ **Calques masqués par défaut (depuis v1.73.1)** — un calque de données livré « décoché » dans le ZIP d'un plan (donc masqué à l'ouverture en mode carte) est rendu comme les autres : tu le masques ou l'affiches avec les filtres existants (chips de catégorie globaux et par plan, filtre par tag). La Vue OSM de l'écran plan n'est pas concernée — elle a toujours suivi les calques réellement affichés sur ta carte.
+> 👁️ **Calques masqués par défaut* — un calque de données livré « décoché » dans le ZIP d'un plan (donc masqué à l'ouverture en mode carte) est rendu comme les autres : tu le masques ou l'affiches avec les filtres existants (chips de catégorie globaux et par plan, filtre par tag). La Vue OSM de l'écran plan n'est pas concernée — elle a toujours suivi les calques réellement affichés sur ta carte.
 
-> 🔍 **Net au zoom (depuis v1.77.0)** — dans l'aperçu OSM de l'accueil, zoomer sur un plan charge automatiquement des **tuiles plus détaillées** (seulement la zone que tu regardes, plans tuilés V2). Rien à régler, et aucune requête réseau en plus : les tuiles viennent du fichier du plan, déjà sur ton appareil.
+> 🔍 **Net au zoom* — dans l'aperçu OSM de l'accueil, zoomer sur un plan charge automatiquement des **tuiles plus détaillées** (seulement la zone que tu regardes, plans tuilés V2). Rien à régler, et aucune requête réseau en plus : les tuiles viennent du fichier du plan, déjà sur ton appareil.
 
-> 🎨 **Tes couleurs partout (depuis v1.77.0)** — les couleurs de légende que tu personnalises (≡ Légende → ✏️ Modifier) s'affichent désormais **aussi sur le fond OSM** : mode plein écran ET aperçu de l'accueil, et en multi-plans chaque plan garde **ses propres** couleurs.
+> 🎨 **Tes couleurs partout* — les couleurs de légende que tu personnalises (≡ Légende → ✏️ Modifier) s'affichent désormais **aussi sur le fond OSM** : mode plein écran ET aperçu de l'accueil, et en multi-plans chaque plan garde **ses propres** couleurs.
 
 ## 📖 Mode Histoire — Note libre + PDF du plan
 
@@ -876,7 +870,7 @@ Tu peux maintenant garder **jusqu'à 10 documents PDF par plan**. Rapport de 201
 
 - Une **liste de documents** s'affiche au-dessus de la visionneuse dès qu'il y en a plusieurs ; clique un document pour l'ouvrir.
 - **📥 Importer** ajoute un document (il ne remplace rien). **🗑️ Retirer** supprime celui qui est affiché.
-- L'auteur du plan peut embarquer des PDF dans le ZIP — **plusieurs depuis v1.71.0** (le Générateur accepte maintenant une liste de fichiers) : ils apparaissent en tête de liste (📕), consultables, non supprimables (seul le générateur peut les changer). Leur présence ne t'empêche pas d'ajouter tes propres documents.
+- L'auteur du plan peut embarquer des PDF dans le ZIP — **plusieurs** (le Générateur accepte maintenant une liste de fichiers) : ils apparaissent en tête de liste (📕), consultables, non supprimables (seul le générateur peut les changer). Leur présence ne t'empêche pas d'ajouter tes propres documents.
 - Garde-fous : **10 documents maximum** par plan, avertissement au-delà de **25 Mo** cumulés, refus au-delà de **100 Mo**. L'espace occupé apparaît dans **Stockage**.
 - Sur iPhone, un bouton **↗️ Ouvrir dans un onglet** sort le document en plein écran natif si l'affichage intégré n'est pas dispo.
 - Tes documents sont aussi listés, ajoutables et supprimables depuis **📔 Mon carnet → 📖 Récits**, sans charger le plan.
@@ -958,7 +952,7 @@ Si ton plan est **calibré GPS** (cf. section "Exporter en KMZ géolocalisé" po
 ```
 📌 Nom du point
 [Description si présente]
-🌐 48.85661° N, 2.35222° E  📋
+🌐 48.85661° N, 2.35222° E 📋
 ```
 
 - Affiché juste après la description (ligne nouvelle).
@@ -983,7 +977,7 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 
 **🌀 Mes liaisons** : sur l'**accueil**, le bouton **« 🌀 Mes liaisons »** liste toutes tes liaisons (tous plans confondus) : état de chaque côté (⛔ si le plan n'est pas sur l'appareil), bouton **➜** pour aller directement à l'un des deux points, **🗑️** pour supprimer. Si les données d'un plan sont injoignables (serveur hors-ligne…), l'app te le dit clairement au lieu d'afficher « 0 points ».
 
-> 📐 **« Écart de calage » (depuis v1.81.0)** — chaque liaison peut afficher une distance en mètres. **Ce n'est pas une distance à parcourir.** Les deux bouts d'un portail désignent le **même endroit physique**, vu depuis deux plans différents : si tes deux plans sont bien géoréférencés, ces deux bouts devraient tomber exactement au même endroit sur la carte du monde. L'écart affiché mesure de combien ils ratent — autrement dit, **la qualité de ton calage**. Plus le chiffre est petit, mieux c'est. C'est le seul endroit de l'app qui peut te le dire, parce qu'il faut **deux** géoréférencements pour le révéler.
+> 📐 **« Écart de calage »* — chaque liaison peut afficher une distance en mètres. **Ce n'est pas une distance à parcourir.** Les deux bouts d'un portail désignent le **même endroit physique**, vu depuis deux plans différents : si tes deux plans sont bien géoréférencés, ces deux bouts devraient tomber exactement au même endroit sur la carte du monde. L'écart affiché mesure de combien ils ratent — autrement dit, **la qualité de ton calage**. Plus le chiffre est petit, mieux c'est. C'est le seul endroit de l'app qui peut te le dire, parce qu'il faut **deux** géoréférencements pour le révéler.
 > 
 > - Le chiffre n'apparaît que si **les deux** plans sont géoréférencés. Sinon **rien** ne s'affiche : la mesure est impossible, et écrire « 0 » te ferait croire à un calage parfait.
 > - **Aucune couleur, aucun seuil** — volontairement. 20 m d'écart, c'est énorme sur une petite carrière et négligeable sur un réseau de 5 km. Le chiffre t'est donné, c'est toi qui juges avec ton échelle en tête.
@@ -999,7 +993,7 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 
 **🧭 Itinéraire inter-plan** : demande un itinéraire vers un point **d'un autre plan** relié par un portail — depuis la modale **Itinéraire** (bouton « 🌐 Destination sur un autre plan ») ou la **recherche multi-plans** (bouton 🧭 sur un résultat distant). L'app compare les portails disponibles au **coût réel**, affiche le trajet en étapes (« ① Rejoindre 🌀 Puits nord — 450 m · ② Traverser · ③ Rejoindre la salle — 300 m · Total ≈ 750 m ») et **trace le trajet sur ton plan**. Les évitements (zones, points, tags) de **chaque plan** sont respectés. Si c'est impossible (aucun portail, plan hors-ligne, destination isolée du réseau…), un message t'explique **précisément pourquoi**.
 
-**🚶 Le trajet suit ton rythme** : le bouton du résumé s'appelle « **🗺️ C'est parti** » — il ne te téléporte pas. Tu **marches** ton trajet (avec la validation d'étapes « 📍 Je suis ici » et la replanification au recalage — **depuis v1.76.3 l'app demande confirmation** avant de recalculer, le calcul pouvant être long sur les grands plans), et la traversée se propose quand tu es **au portail** : bouton flottant « **🌀 Portail suivant (X m)** » (fermable — « 📍 Je suis ici » sur le point-portail le fait réapparaître), ou bouton ➜ du popup du point-portail. À chaque traversée, la suite se trace automatiquement de l'autre côté, jusqu'à destination.
+**🚶 Le trajet suit ton rythme** : le bouton du résumé s'appelle « **🗺️ C'est parti** » — il ne te téléporte pas. Tu **marches** ton trajet (avec la validation d'étapes « 📍 Je suis ici » et la replanification au recalage — **l'app demande confirmation** avant de recalculer, le calcul pouvant être long sur les grands plans), et la traversée se propose quand tu es **au portail** : bouton flottant « **🌀 Portail suivant (X m)** » (fermable — « 📍 Je suis ici » sur le point-portail le fait réapparaître), ou bouton ➜ du popup du point-portail. À chaque traversée, la suite se trace automatiquement de l'autre côté, jusqu'à destination.
 
 **🧭 Tes étapes d'abord** : pose tes **points de passage** dans la modale Itinéraire (curiosité X, Y…) puis choisis la destination distante — le trajet passe par **toutes tes étapes dans l'ordre, avant le portail**.
 
@@ -1009,7 +1003,7 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 
 **↩️ Revenir en arrière** : après un passage de portail (ou un saut de recherche multi-plans), un bouton flottant **« ↩️ Retour : <plan> »** apparaît en bas de l'écran pendant 15 secondes — un clic te ramène au plan **et à la vue exacte** d'où tu venais (niveau et zoom compris). Les sauts s'empilent : enchaîne 3 portails, tu peux faire 3 retours.
 
-**↩️ Bouton Retour discret** : si le bouton te gêne, deux nouvelles commandes dessus — **[–]** le réduit en **mini-pastille ↩️** discrète en bas à droite (elle reste jusqu'à son expiration, un clic la ré-agrandit), **[✕]** le ferme **et oublie les retours empilés** (depuis v1.73.0 — fermer, c'est renoncer à la chaîne de retours). Ton choix [–] est retenu : une fois réduit, les prochains retours arrivent directement en mini-pastille.
+**↩️ Bouton Retour discret** : si le bouton te gêne, deux nouvelles commandes dessus — **[–]** le réduit en **mini-pastille ↩️** discrète en bas à droite (elle reste jusqu'à son expiration, un clic la ré-agrandit), **[✕]** le ferme **et oublie les retours empilés** (fermer, c'est renoncer à la chaîne de retours). Ton choix [–] est retenu : une fois réduit, les prochains retours arrivent directement en mini-pastille.
 
 **Bon à savoir** :
 - Un point peut porter **plusieurs liaisons** (point « hub »).
@@ -1022,7 +1016,7 @@ Tu peux **lier un point d'un plan à un point d'un autre plan** — comme un « 
 
 Cherche un point dans **tous les plans de ta bibliothèque** d'un coup, sans les ouvrir un par un :
 
-- **Depuis l'accueil** : la **barre de recherche 🔎 en haut de l'écran**, au centre de l'en-tête. Depuis v1.72.1, **les résultats apparaissent en direct sous la barre** dès 2 caractères (plans + points, avec le badge du plan) — cliquer un résultat charge le plan et centre la carte. **Entrée** ou 🔎 ouvre la recherche complète. Sur mobile, la barre occupe la 2e ligne de l'en-tête.
+- **Depuis l'accueil** : la **barre de recherche 🔎 en haut de l'écran**, au centre de l'en-tête. **Les résultats apparaissent en direct sous la barre** dès 2 caractères (plans + points, avec le badge du plan) — cliquer un résultat charge le plan et centre la carte. **Entrée** ou 🔎 ouvre la recherche complète. Sur mobile, la barre occupe la 2e ligne de l'en-tête.
 - **Depuis la carte** : ouvre la recherche (Ctrl+K ou 🔍) → bouton **« 🌐 Chercher dans tous les plans »** en bas — ta saisie en cours est conservée.
 
 L'app lit les points (session + calques de données) de chaque plan **sur place**, avec la progression affichée (« Lecture 2/5 : Oise… »). Chaque résultat porte le **badge du plan** où il se trouve. Un clic : confirmation (si un plan est ouvert), chargement du bon plan, bascule sur le bon niveau et centrage sur le point — avec le bouton ↩️ Retour pour revenir.
@@ -1060,19 +1054,19 @@ L'interface est organisée en **13 groupes** répartis sur les **deux barres lat
 - **Toucher en dehors** du groupe ouvert le ferme automatiquement
 - **Sur mobile en paysage**, la barre devient scrollable verticalement si elle dépasse de l'écran
 
-> 🛡️ **Ouvrir une fenêtre coupe l'outil en cours (depuis v1.73.1)** — si tu es en **mesure, édition de points, tracé, zone, structure ou recalage** et que tu ouvres une modale par-dessus (Réglages, Filtres, Documentation, Mode Secours…), le mode se désarme tout seul. Avant, il restait actif derrière : en refermant, tes clics sur la carte partaient dans l'outil sans que rien ne le rappelle, et le bouton restait allumé sans effet. **Le tracker n'est jamais coupé** (il tourne en fond, ce n'est pas un mode de clic), et la fiche d'un point que tu viens de poser ne coupe pas l'édition — tu peux enchaîner tes points normalement.
+> 🛡️ **Ouvrir une fenêtre coupe l'outil en cours* — si tu es en **mesure, édition de points, tracé, zone, structure ou recalage** et que tu ouvres une modale par-dessus (Réglages, Filtres, Documentation, Mode Secours…), le mode se désarme tout seul. Avant, il restait actif derrière : en refermant, tes clics sur la carte partaient dans l'outil sans que rien ne le rappelle, et le bouton restait allumé sans effet. **Le tracker n'est jamais coupé** (il tourne en fond, ce n'est pas un mode de clic), et la fiche d'un point que tu viens de poser ne coupe pas l'édition — tu peux enchaîner tes points normalement.
 
 ### 🎨 Personnaliser la légende (renommer, masquer, couleurs, types custom)
 
 Ouvre **≡ Légende** (groupe 📚 Aide / Documentation / Légende) puis **✏️ Modifier**. Pour chaque type de tracé, zone ou structure :
 
 - **Renommer** : tape ton libellé (ex. « Principal » → « Grande galerie »). Il s'affiche partout : légende, popups, stats, filtres.
-- **🎨 Changer la couleur** *(depuis v1.76.1)* : un carré de couleur par ligne — et pour les **zones et piliers/murs, deux carrés** : fond et **bordure indépendante**. La couleur s'applique **partout** — carte, exports image/PDF, KMZ, statistiques, rapport de session — immédiatement, sans recharger. Un bouton **↺** remet fond ET bordure d'origine. Détails : sans bordure choisie, une zone la dérive automatiquement (version plus foncée) et un pilier/mur garde son contour noir (le défaut historique) ; la zone *Inaccessible* recolorée perd ses hachures (motif fixe) au profit d'un aplat. Les **entrées personnalisées** se modifient de la même façon, à chaud.
+- **🎨 Changer la couleur** : un carré de couleur par ligne — et pour les **zones et piliers/murs, deux carrés** : fond et **bordure indépendante**. La couleur s'applique **partout** — carte, exports image/PDF, KMZ, statistiques, rapport de session — immédiatement, sans recharger. Un bouton **↺** remet fond ET bordure d'origine. Détails : sans bordure choisie, une zone la dérive automatiquement (version plus foncée) et un pilier/mur garde son contour noir (le défaut historique) ; la zone *Inaccessible* recolorée perd ses hachures (motif fixe) au profit d'un aplat. Les **entrées personnalisées** se modifient de la même façon, à chaud.
 - **👁️ Masquer** : la case retire l'entrée **de la boîte de légende uniquement** — rien ne disparaît de la carte. Pour masquer des objets de la carte, c'est le panneau **🔍 Filtres**.
 - **➕ Ajouter une entrée custom** : crée tes propres types (tracé, zone, structure, icône) avec leur couleur. Ils deviennent dessinables depuis la barre latérale, et une icône custom est proposée dans l'éditeur de point.
 - **🗑️ Supprimer un type custom** : si des objets dessinés l'utilisent encore, l'app te préviens avec le décompte avant de confirmer.
 
-> 🧳 **Ta légende voyage avec tes exports** *(depuis v1.76.1)* : un calque de données exporté emporte la définition des types qu'il utilise, et le générateur la récupère à l'import (ce qui existe déjà dans le plan garde la priorité). Le JSON de session et le ZIP Avancé l'emportent aussi.
+> 🧳 **Ta légende voyage avec tes exports** : un calque de données exporté emporte la définition des types qu'il utilise, et le générateur la récupère à l'import (ce qui existe déjà dans le plan garde la priorité). Le JSON de session et le ZIP Avancé l'emportent aussi.
 >
 > ⚠️ **Bandeau « types orphelins »** : si des objets utilisent un type qui n'existe plus dans la légende (entrée supprimée, vieux calque), la modale ≡ Légende l'affiche en tête avec le compte — ces objets sortent en couleur de repli tant que tu n'as pas recréé ou réimporté l'entrée.
 
@@ -1151,15 +1145,15 @@ Les résultats sont **regroupés par catégorie** avec des en-têtes :
 ```
 📍 POINTS (12)
   ┌─────┐
-  │ icn │ PA1  Puits Aération
-  │     │   Puits · aeration · ouvert · x:4843 y:2002
+  │ icn │ PA1 Puits Aération
+  │ │ Puits · aeration · ouvert · x:4843 y:2002
   └─────┘
   ...
 
 🛣️ TRACÉS (3)
   ┌─────┐
-  │ 🛣️  │ Tracé Principal session #1
-  │     │   Session · Principal · Niv 0 · 8 pts
+  │ 🛣️ │ Tracé Principal session #1
+  │ │ Session · Principal · Niv 0 · 8 pts
   └─────┘
   ...
 
@@ -1186,7 +1180,7 @@ La recherche couvre :
 
 ### 🧭 Menu Tracker (modale plein écran)
 
-Le bouton **🧭 Tracker** ouvre une **modale plein écran de grosses tuiles** (depuis v1.50.0), rangées en trois sections : **Suivi**, **Outils**, **Urgence**. Chaque tuile ferme la modale en agissant.
+Le bouton **🧭 Tracker** ouvre une **modale plein écran de grosses tuiles**, rangées en trois sections : **Suivi**, **Outils**, **Urgence**. Chaque tuile ferme la modale en agissant.
 
 **Tuiles disponibles** :
 
@@ -1364,7 +1358,7 @@ Le bouton **≡ trois barres horizontales** en haut à droite de la carte ouvre 
 | 🖼️ **Calques d'image** | Image de base + calques additionnels (légende, signalétique, etc.) |
 | 📊 **Calques de données** | Les calques `puits`, `vehicule`, `cataphile`, `editor` (= Mes annotations), etc. |
 
-> 🔄 **Corriger un calque de données** *(depuis v1.85.0)* — un calque livré dans le ZIP du plan est en **lecture seule** : tu peux le masquer, pas l’éditer. Chaque ligne de la section **📊 Calques de données** porte donc un bouton **« 🔄 Modifier »** : son contenu passe dans ta session, où tous tes outils s’appliquent — en particulier **🔄 Convertir cet objet**, pour changer un front de taille en galerie sur un relevé importé. Le calque d’origine se **masque tout seul** (sa case affiche « en cours de modification — afficher quand même », que tu peux recocher pour comparer les deux). **« ↩️ Restaurer »** annule tout ; **« 💾 Exporter »** te rend un fichier corrigé à redonner au plan via 🏗️ Générateur → « Modifier un plan », en cliquant **« Choisir » sur la ligne de ce calque** — il REMPLACE l’ancien contenu, aucun doublon n’est possible.
+> 🔄 **Corriger un calque de données** — un calque livré dans le ZIP du plan est en **lecture seule** : tu peux le masquer, pas l’éditer. Chaque ligne de la section **📊 Calques de données** porte donc un bouton **« 🔄 Modifier »** : son contenu passe dans ta session, où tous tes outils s’appliquent — en particulier **🔄 Convertir cet objet**, pour changer un front de taille en galerie sur un relevé importé. Le calque d’origine se **masque tout seul** (sa case affiche « en cours de modification — afficher quand même », que tu peux recocher pour comparer les deux). **« ↩️ Restaurer »** annule tout ; **« 💾 Exporter »** te rend un fichier corrigé à redonner au plan via 🏗️ Générateur → « Modifier un plan », en cliquant **« Choisir » sur la ligne de ce calque** — il REMPLACE l’ancien contenu, aucun doublon n’est possible.
 >
 > ⚠️ **Ce que l’app t’annonce avant d’agir** : le poids que la copie prendra dans ta session (un gros relevé dépasse le mégaoctet, la limite du navigateur tourne autour de 5 Mo tous plans confondus) et la place déjà occupée. À l’export, elle te dit aussi combien d’objets **que tu as dessinés toi-même** ne partent pas — ils n’appartiennent pas à ce calque. Et « Effacer la session » **restaure** les calques ouverts à la modification : la copie et le masquage tombent ensemble.
 
@@ -1501,7 +1495,7 @@ Dans la modale itinéraire, une section repliable **🚫 Préférences d'évitem
 - ❌ Si même le fallback échoue (= vraie absence de chemin) → message d'erreur classique
 
 **Différence avec ⛔ Zone Inaccessible** :
-- ⛔ Zone = contrainte **dure par défaut** — relâchable depuis la v1.82.0 par la case « Respecter les zones inaccessibles » de la modale Itinéraire. Le Mode Secours et « Perdu », eux, les respectent toujours.
+- ⛔ Zone = contrainte **dure par défaut** — relâchable par la case « Respecter les zones inaccessibles » de la modale Itinéraire. Le Mode Secours et « Perdu », eux, les respectent toujours.
 - 🚫 Évitement = contrainte **souple** (fallback possible avec message)
 
 **Persistance** : tes préférences sont sauvegardées par plan (sur cet appareil). Au prochain calcul sur le même plan, elles sont restaurées. Bouton **🗑️ Reset** pour tout effacer.
@@ -1715,9 +1709,9 @@ Le KMZ exporté contient un Folder racine `🚨 Secours` parfaitement structuré
 ```
 📁 Secours — Recherche Marc 26/05
    ├── 📁 🚨 Équipe Alpha
-   │   ├── 📁 📍 Points (5)           ← toggle ON/OFF dans Google Earth
-   │   ├── 📁 ⬛ Zone de recherche
-   │   └── 📁 🗺️ Itinéraire
+   │ ├── 📁 📍 Points (5) ← toggle ON/OFF dans Google Earth
+   │ ├── 📁 ⬛ Zone de recherche
+   │ └── 📁 🗺️ Itinéraire
    └── 📁 🚨 Équipe Bravo (idem)
 ```
 
@@ -1796,7 +1790,7 @@ Nouveau tag built-in disponible dans la catégorie **🚨 Secours** de la légen
 Dans la fiche d'une équipe (Mode Secours → édition équipe), nouveau champ **📍 GPS surface** :
 
 ```
-📍 GPS surface : [48.8566, 2.3522        ]
+📍 GPS surface : [48.8566, 2.3522 ]
                   ↑ format : lat, lng (décimal WGS84)
 ```
 
@@ -1930,24 +1924,24 @@ Pour le secouriste sur le terrain qui suit son parcours :
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ 🚨 Équipe Alpha · Étape 3/5     ⏱️ 14h 23min         │
+│ 🚨 Équipe Alpha · Étape 3/5 ⏱️ 14h 23min │
 ├─────────────────────────────────────────────────────┤
-│  ✓ ━ ✓ ━ ↻ ━ ○ ━ ○                                  │ ← stepper
-│  cliquable, couleur statut par étape                │
+│ ✓ ━ ✓ ━ ↻ ━ ○ ━ ○ │ ← stepper
+│ cliquable, couleur statut par étape │
 ├─────────────────────────────────────────────────────┤
-│ 📍 ÉTAPE 3 — Puits aération Nord                    │
-│ Statut : 🟢 RAS                                      │
-│                                                      │
-│ 📝 Observations à cette étape :                     │
-│ [galerie centrale rien à signaler]                  │
-│                                                      │
-│ ⚡ Saisie rapide :                                  │
-│ [🟢 RAS] [🟡 Suspect] [⬛ Bloqué] [🔵 Indice]       │
-│ [🟠 Aide demandée] [🟣 Demi-tour] [🚨 Victime !]    │
-│                                                      │
-│ [📸 Photo (0/5)]  [🎯 Recentrer carte]              │
+│ 📍 ÉTAPE 3 — Puits aération Nord │
+│ Statut : 🟢 RAS │
+│ │
+│ 📝 Observations à cette étape : │
+│ [galerie centrale rien à signaler] │
+│ │
+│ ⚡ Saisie rapide : │
+│ [🟢 RAS] [🟡 Suspect] [⬛ Bloqué] [🔵 Indice] │
+│ [🟠 Aide demandée] [🟣 Demi-tour] [🚨 Victime !] │
+│ │
+│ [📸 Photo (0/5)] [🎯 Recentrer carte] │
 ├─────────────────────────────────────────────────────┤
-│ [← Étape précédente]  [Étape suivante →]            │
+│ [← Étape précédente] [Étape suivante →] │
 │ [⏸️ Pause] [📤 Rapport] [Voir édition] [⏹️ Terminer] │
 └─────────────────────────────────────────────────────┘
 ```
@@ -1977,24 +1971,24 @@ Pour le PC chef qui coordonne plusieurs équipes en parallèle :
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ 👤 Opérateur surface · 3 équipes  ⏱️ 02h 14min       │
+│ 👤 Opérateur surface · 3 équipes ⏱️ 02h 14min │
 ├─────────────────────────────────────────────────────┤
-│  ┌──────────────────┐  ┌──────────────────┐         │
-│  │ 🔴 Alpha    3/5  │  │ 🔵 Bravo    1/4  │         │
-│  │ ████████░░ 60%   │  │ ███░░░░░░░ 25%   │         │
-│  │ 🟢 RAS           │  │ 🟠 Aide demandée  │         │
-│  │ « RAS galerie    │  │ « Eau au sol,    │         │
-│  │ centrale »       │  │ niveau monte »   │         │
-│  │ ⏱️ 14:23         │  │ ⏱️ 14:18         │         │
-│  │ [👁️ Détails]     │  │ [👁️ Détails]     │         │
-│  │ [🚨 Prendre main]│  │ [🚨 Prendre main]│         │
-│  └──────────────────┘  └──────────────────┘         │
-│  ┌──────────────────┐                               │
-│  │ 🟢 Charlie  ✓T   │ ← équipe Terminée (grisée)    │
-│  └──────────────────┘                               │
+│ ┌──────────────────┐ ┌──────────────────┐ │
+│ │ 🔴 Alpha 3/5 │ │ 🔵 Bravo 1/4 │ │
+│ │ ████████░░ 60% │ │ ███░░░░░░░ 25% │ │
+│ │ 🟢 RAS │ │ 🟠 Aide demandée │ │
+│ │ « RAS galerie │ │ « Eau au sol, │ │
+│ │ centrale » │ │ niveau monte » │ │
+│ │ ⏱️ 14:23 │ │ ⏱️ 14:18 │ │
+│ │ [👁️ Détails] │ │ [👁️ Détails] │ │
+│ │ [🚨 Prendre main]│ │ [🚨 Prendre main]│ │
+│ └──────────────────┘ └──────────────────┘ │
+│ ┌──────────────────┐ │
+│ │ 🟢 Charlie ✓T │ ← équipe Terminée (grisée) │
+│ └──────────────────┘ │
 ├─────────────────────────────────────────────────────┤
-│ [⏸️ Pause] [🗺️ Carte globale] [📤 Rapport global]   │
-│ [Voir édition] [⏹️ Terminer le plan]                │
+│ [⏸️ Pause] [🗺️ Carte globale] [📤 Rapport global] │
+│ [Voir édition] [⏹️ Terminer le plan] │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -2018,21 +2012,21 @@ Pour le renfort ponctuel / la reconnaissance sans équipe pré-assignée :
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ 🚑 Secouriste libre · 12 notes  ⏱️ 01h 47min         │
+│ 🚑 Secouriste libre · 12 notes ⏱️ 01h 47min │
 ├─────────────────────────────────────────────────────┤
-│ 📝 Ajouter une note                                  │
-│ [galerie nord rien à signaler]                      │
-│ ⚡ Statut associé :                                 │
-│ [🟢 RAS] [🟡 Suspect] [⬛ Bloqué] [🔵 Indice]       │
-│ [🟠 Aide] [🟣 Demi-tour] [🚨 Victime !]             │
+│ 📝 Ajouter une note │
+│ [galerie nord rien à signaler] │
+│ ⚡ Statut associé : │
+│ [🟢 RAS] [🟡 Suspect] [⬛ Bloqué] [🔵 Indice] │
+│ [🟠 Aide] [🟣 Demi-tour] [🚨 Victime !] │
 ├─────────────────────────────────────────────────────┤
-│ 12. 🟢 RAS · ⏱️ 16:42:18                       [✕]  │
-│     « Croisement Est, RAS, on continue »            │
-│                                                      │
-│ 11. 🟡 Suspect · ⏱️ 16:38:05                   [✕]  │
-│     « Bruit d'eau qui coule, source ?? »            │
-│                                                      │
-│ ... (chronologique DESC)                            │
+│ 12. 🟢 RAS · ⏱️ 16:42:18 [✕] │
+│ « Croisement Est, RAS, on continue » │
+│ │
+│ 11. 🟡 Suspect · ⏱️ 16:38:05 [✕] │
+│ « Bruit d'eau qui coule, source ?? » │
+│ │
+│ ... (chronologique DESC) │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -2623,7 +2617,7 @@ Concrètement : repère à 12 h, repère à 12 h 30, repère à 13 h → l'app c
 
 Un tronçon n'est calculé qu'au moment où le repère **suivant** arrive. Donc tout ce que tu marches **après ton dernier repère** n'était compté par personne.
 
-Depuis la v1.85.2, quand tu appuies sur **🏁 Clôturer ma sortie**, l'app te demande **où tu es ressorti**. Un clic sur la carte, et le dernier trajet entre dans le total. Tu peux **Passer** si tu clôtures depuis chez toi.
+Quand tu appuies sur **🏁 Clôturer ma sortie**, l'app te demande **où tu es ressorti**. Un clic sur la carte, et le dernier trajet entre dans le total. Tu peux **Passer** si tu clôtures depuis chez toi.
 
 #### Ce que la fiche te dit du chiffre
 
@@ -2652,7 +2646,7 @@ Ouvre la fiche de la sortie → **✏️ Corriger la fin**, et saisis l'heure r�
 
 ### 🔁 Une sortie coupée en plusieurs — reprise et fusion
 
-Si tu quittes MyKTAMap pendant une sortie — changer de musique, prendre un appel — le téléphone peut **décharger l'app** pour libérer de la mémoire. Avant la v1.85.2, revenir dessus démarrait une **nouvelle** sortie : une seule vraie sortie ressortait en deux ou trois au carnet, chacune avec un bout des compteurs.
+Si tu quittes MyKTAMap pendant une sortie — changer de musique, prendre un appel — le téléphone peut **décharger l'app** pour libérer de la mémoire. Auparavant, revenir dessus démarrait une **nouvelle** sortie : une seule vraie sortie ressortait en deux ou trois au carnet, chacune avec un bout des compteurs.
 
 **Maintenant elle reprend toute seule.** Au retour, si la sortie précédente sur le même plan a été interrompue de cette façon il y a moins de **45 minutes**, l'app la **continue** au lieu d'en ouvrir une autre. Un message te le dit.
 
@@ -2676,7 +2670,7 @@ Pour celles d'avant, ou si le délai a été dépassé : 📔 **Mon carnet** →
 
 Les panneaux **Tracés**, **Zones** et **Structures** s'ouvrent **centrés à l'écran**, comme le Tracker et les Filtres.
 
-> 🐛 **Pourquoi ça a changé (v1.85.1)** — ils étaient collés au haut de leur bouton. Plus leur liste s'allonge — un plan importé ajoute un type par niveau —, plus ils descendaient, jusqu'à passer sous le bas de l'écran sur téléphone : les derniers boutons devenaient inatteignables.
+> 🐛 **Pourquoi ça a changé** — ils étaient collés au haut de leur bouton. Plus leur liste s'allonge — un plan importé ajoute un type par niveau —, plus ils descendaient, jusqu'à passer sous le bas de l'écran sur téléphone : les derniers boutons devenaient inatteignables.
 
 Si tu préfères l'ancien affichage, coche **🪟 Ancrer les panneaux d'outils au bouton** dans ⚙️ **Configuration** (page d'accueil). C'est confortable sur grand écran, où la place ne manque pas — déconseillé sur téléphone.
 
@@ -3008,7 +3002,7 @@ Pour chaque point (A et B), 3 méthodes au choix :
 
 > 💡 **Conseil** : choisis 2 points **éloignés** sur le plan (idéalement aux extrémités opposées) — plus la distance AB est grande, meilleure est la précision de la transformation. L'app refuse si AB fait moins de 50 px sur le plan ou moins de 1 mètre IRL.
 
-> 📐 **Point C (optionnel, depuis v1.73.0) — pour les plans déformés** : si ton plan est un **assemblage** qui se projette mal (étiré dans un sens, échelles différentes en X et Y), ajoute un **3e point** dans ⚙️ Réglages → Géoréférencement (ou dans le générateur) : l'app passe alors sur une transformation qui **corrige la déformation globale** — vue OSM, exports KMZ/GPX et Mode Secours en profitent tous. Choisis C **loin de la ligne A-B** (un C aligné n'apporte rien et est refusé). À savoir : ça corrige une déformation *d'ensemble* — si chaque morceau de l'assemblage a sa propre erreur, le résultat s'améliore mais ne peut pas être parfait partout. Laisse C vide si ton plan se projette déjà bien : rien ne change.
+> 📐 **Point C (optionnel) — pour les plans déformés** : si ton plan est un **assemblage** qui se projette mal (étiré dans un sens, échelles différentes en X et Y), ajoute un **3e point** dans ⚙️ Réglages → Géoréférencement (ou dans le générateur) : l'app passe alors sur une transformation qui **corrige la déformation globale** — vue OSM, exports KMZ/GPX et Mode Secours en profitent tous. Choisis C **loin de la ligne A-B** (un C aligné n'apporte rien et est refusé). À savoir : ça corrige une déformation *d'ensemble* — si chaque morceau de l'assemblage a sa propre erreur, le résultat s'améliore mais ne peut pas être parfait partout. Laisse C vide si ton plan se projette déjà bien : rien ne change.
 
 #### Aperçu live
 
@@ -3021,7 +3015,7 @@ Au fur et à mesure que tu remplis les champs, un bloc **🌐 Aperçu coins** s'
 
 Pareil que le mode Image Avancé : cases parent + sous-cases pour un contrôle précis.
 
-- 🖼️ **Image plan** (GroundOverlay) + slider **Opacité 0-100%** (défaut 60%) — permet de voir la cartographie satellite/OSM sous ton plan dans Google Earth. *(depuis v1.76.4)* Les images au-delà de ~8 000 px sont **automatiquement réduites** (Google Earth les tronquait en silence) — un plan tuilé V2 est recomposé depuis ses tuiles ; si la réduction est impossible, l'app te demande avant d'exporter.
+- 🖼️ **Image plan** (GroundOverlay) + slider **Opacité 0-100%** (défaut 60%) — permet de voir la cartographie satellite/OSM sous ton plan dans Google Earth. Les images au-delà de ~8 000 px sont **automatiquement réduites** (Google Earth les tronquait en silence) — un plan tuilé V2 est recomposé depuis ses tuiles ; si la réduction est impossible, l'app te demande avant d'exporter.
 - 📍 **Points** + sous-cases par tag avec icônes et compteurs (session + data layers)
 - 🛣️ **Tracés** + sous-cases Principaux / Secondaires / Chemins
 - ⬛ **Zones** + sous-cases Eau / Remblais / Effondrement / Inaccessible
@@ -3072,8 +3066,8 @@ Appuyez sur **⬇️ → 📊 Éditeur de données du plan** (en mode carte) **o
 1. **🗺️ Plan en cours** — liste les calques de données du plan ouvert (puits, accès, tracés, zones…). Choisissez-en un à éditer.
 2. **📦 Importer un ZIP** — récupère la liste des calques de données d'un plan complet (`.zip`).
 3. **📄 Importer un fichier JSON** — un seul fichier de données ou de session (glisser-déposer).
-4. **🔁 Convertir la résolution** *(depuis v1.76.2)* — outil autonome pour **migrer tes données d'un ancien scan vers un nouveau scan du même plan**. Donne les deux résolutions (saisie ou 📷 auto-détection depuis les images — même géantes), un ou plusieurs fichiers `.json`, et récupère-les convertis. Si le nouveau scan n'a pas les mêmes marges : ajoute un **repère commun** aux deux plans (le même pilier lu sur chacun) — la conversion se cale exactement dessus, avec rotation optionnelle ; **deux repères** et l'échelle + la rotation sont déduites toutes seules. Ce qui n'est pas dans le fichier (liaisons inter-plans, géoref, échelle du plan) reste à refaire sur le nouveau plan.
-5. **🧹 Dédoublonner les données** *(depuis v1.77.0)* — retire les **sommets identiques consécutifs** accumulés dans les tracés, zones, structures et mesures d'un fichier `.json` (calque de données ou session exportée) : un ancien bug du mode « clic carte » pouvait en empiler plusieurs par clic — invisibles à l'écran, mais ils gonflent les fichiers et les exports. Choisis un ou plusieurs fichiers, récupère-les nettoyés en `_dedup.json` avec le compte de ce qui a été retiré. Les points (POI) ne sont **jamais touchés** — deux points volontairement superposés restent distincts.
+4. **🔁 Convertir la résolution** — outil autonome pour **migrer tes données d'un ancien scan vers un nouveau scan du même plan**. Donne les deux résolutions (saisie ou 📷 auto-détection depuis les images — même géantes), un ou plusieurs fichiers `.json`, et récupère-les convertis. Si le nouveau scan n'a pas les mêmes marges : ajoute un **repère commun** aux deux plans (le même pilier lu sur chacun) — la conversion se cale exactement dessus, avec rotation optionnelle ; **deux repères** et l'échelle + la rotation sont déduites toutes seules. Ce qui n'est pas dans le fichier (liaisons inter-plans, géoref, échelle du plan) reste à refaire sur le nouveau plan.
+5. **🧹 Dédoublonner les données** — retire les **sommets identiques consécutifs** accumulés dans les tracés, zones, structures et mesures d'un fichier `.json` (calque de données ou session exportée) : un ancien bug du mode « clic carte » pouvait en empiler plusieurs par clic — invisibles à l'écran, mais ils gonflent les fichiers et les exports. Choisis un ou plusieurs fichiers, récupère-les nettoyés en `_dedup.json` avec le compte de ce qui a été retiré. Les points (POI) ne sont **jamais touchés** — deux points volontairement superposés restent distincts.
 
 Si une source contient plusieurs jeux de données, un **sélecteur** s'affiche (chacun avec son nombre d'éléments). Le tableau s'ouvre ensuite avec une colonne par champ détecté.
 
@@ -3120,7 +3114,7 @@ Depuis cet écran, vous pouvez :
 
 Appuyez sur **🏗️** pour ouvrir le générateur. Deux onglets disponibles :
 
-### 📦 Importer plusieurs plans d'un coup *(depuis v1.94.0)*
+### 📦 Importer plusieurs plans d'un coup
 
 Le bouton **📦 Importer plusieurs plans**, dans la section **🧰 Outils** de l'accueil, ajoute autant d'archives ZIP que tu veux à ta liste — **sans en ouvrir aucune**. Tu ouvriras celle que tu veux ensuite, depuis la liste.
 
@@ -3134,11 +3128,13 @@ L'écran se lit en trois temps :
 
 > 💾 **La place est annoncée avant.** Le stockage d'un navigateur tient entre 50 et 200 Mo selon l'appareil. Si ton lot ne rentre pas, l'app refuse de commencer et te dit combien il manque. Si la place s'épuise en cours de route, elle **s'arrête net** : les plans déjà ajoutés sont gardés, et le bilan dit où ça s'est arrêté.
 >
-> 🔐 **Sur Chrome et Edge, rien n'est copié.** Le sélecteur de fichiers du système donne une autorisation permanente sur chaque archive : tes plans rouvrent depuis leur fichier d'origine, sans occuper la place du navigateur. Sur téléphone, dans Firefox et dans Safari, les archives sont copiées dans l'app.
+> 📁 **« Ranger dans : »** — choisis le dossier de « Mes plans » qui recevra tout le lot (ou « ➕ Nouveau dossier… », nommé sur place). Par défaut, les plans arrivent en « Non classés ».
+>
+> 💾 **« Précharger le ZIP » (case cochée par défaut, elle suit le réglage « Mémoriser le plan dans l'app au premier chargement » de ⚙️ Configuration de l'accueil)** : l'app garde le fichier, et chaque plan importé **s'ouvre depuis la liste sans que tu aies à resélectionner son ZIP**. Décoche-la si tu veux seulement remplir ta liste sans rien ranger : rien n'est copié, la place n'est plus un sujet, et le ZIP te sera demandé à la première ouverture de chaque plan (comme pour un plan restauré depuis un profil).
 
 > 🔒 **100 % local** : tout se lit et se range **dans ton navigateur**. Aucun octet n'est envoyé nulle part, et ça marche hors ligne.
 
-### 🗺️ Déposer un GeoTIFF *(depuis v1.93.0)*
+### 🗺️ Déposer un GeoTIFF
 
 Si tu as calé ton plan dans **QGIS**, exporte-le en **GeoTIFF** (`.tif` / `.tiff`) : l'image **et** son calage voyagent dans le même fichier. Choisis-le comme image de plan — dans le Générateur ou directement depuis l'écran d'accueil — et l'app fait le reste :
 
@@ -3158,7 +3154,7 @@ Si tu as calé ton plan dans **QGIS**, exporte-le en **GeoTIFF** (`.tif` / `.tif
 
 Formulaire vierge. Renseignez :
 
-- **Informations** : nom, version, auteur
+- **Informations** : nom, version, auteur, **🏷️ étiquettes** (séparées par des virgules, 12 max de 24 caractères — même saisie que dans ℹ️ Infos). Elles voyagent dans le ZIP et sont **proposées** à qui l'importe : si tu as déjà posé tes propres étiquettes sur ce plan, elles restent les tiennes, même en réimportant une nouvelle version. Le champ existe aussi dans les conversions KMZ, GPX et SIG.
 - **Image principale** (obligatoire) — les **dimensions du plan sont auto-détectées** dès que vous choisissez votre fichier. Un encadré affiche les dimensions et la taille en Mo, avec des **avertissements rouges** si l'image dépasse 10 000 px de côté ou 30 Mo (risque de crash mémoire sur mobile / ZIP très lourd).
 - **Carte de collision** (optionnelle)
 
@@ -3360,22 +3356,22 @@ Chaque calque JSON de points (`puits.json`, `chatieres.json`, etc.) crée des ma
 
 ### 6. ⚡ Découpage de l'image — Auto, sauf raison contraire
 
-⚠️ **Depuis la v1.90.2, ce réglage n'est plus sur l'écran de chargement.** Il vit dans **ℹ️ Infos** du plan,
+⚠️ **Ce réglage n'est plus sur l'écran de chargement.** Il vit dans **ℹ️ Infos** du plan,
 et **seulement pour un plan non découpé à la génération** — sur un plan V2 il n'aurait aucun effet, donc il ne
 s'affiche pas. Bonne nouvelle : il y est **mémorisé pour ce plan**, alors que l'ancien sélecteur repartait sur
 Auto à chaque démarrage.
 
-Deux choix *(cinq avant la v1.86.0)* :
+Deux choix :
 
 | Choix | Pour quel cas |
 |---|---|
 | **🔄 Auto** (défaut) | Découpe dès que l'image dépasse 4 096 × 4 096 px, ou que le fichier dépasse 60 Mo. ✅ **Le bon choix, sauf raison précise.** |
 | **💤 Désactivé** | Petit plan sur desktop puissant, quand tu veux la qualité native sans aucun ré-encodage. **⚠️ Risque de plantage sur Safari iOS au-delà de 8 000 px** — un message te prévient. **Sans effet sur un plan déjà découpé** (V2), qui utilise toujours ses morceaux. |
 
-> 🩸 **Ce qui a changé en v1.86.0, et pourquoi.** Les presets 🌟 Qualité / 🎯 Équilibré / ⚡ Performance ont été **retirés** : ils ne réglaient que le découpage fait par le navigateur au chargement, qui ne concerne que les plans **V1**. Sur un plan **V2** — le cas courant — ils ne changeaient **rien du tout**.
+> 🩸 **Ce qui a changé, et pourquoi.** Les presets 🌟 Qualité / 🎯 Équilibré / ⚡ Performance ont été **retirés** : ils ne réglaient que le découpage fait par le navigateur au chargement, qui ne concerne que les plans **V1**. Sur un plan **V2** — le cas courant — ils ne changeaient **rien du tout**.
 > Et « Auto » se décidait sur le **poids du fichier**, pas sur la taille en pixels : un plan de 100 Mpx bien compressé (~15 Mo) **n'était pas découpé** et pouvait faire planter l'iPhone, alors que « Qualité » l'aurait découpé. Le défaut était donc le mode le **moins** protecteur. Corrigé.
 
-> 💡 Le choix est mémorisé **par plan** : il vaut pour tous ses chargements suivants, jusqu'à ce que tu le changes. *(Avant la v1.90.2, le sélecteur du chargeur ne l'était pas et repartait sur Auto à chaque démarrage.)*
+> 💡 Le choix est mémorisé **par plan** : il vaut pour tous ses chargements suivants, jusqu'à ce que tu le changes. *(Auparavant, le sélecteur du chargeur ne l'était pas et repartait sur Auto à chaque démarrage.)*
 
 ### 6 bis. 🚀 Mode Performance ULTRA — pour les vrais gros plans qui crashent
 
@@ -3477,7 +3473,7 @@ Affiche la légende complète des icônes et tracés, regroupés par catégorie 
 
 ### ✓ Tout s'enregistre dès la modification
 
-Il n'y a **plus de bouton Appliquer** *(depuis v1.92.0)* : chaque champ s'enregistre dès que tu le modifies (un éclair vert le confirme). Une valeur **hors bornes** passe en rouge, un message dit les bornes, et **rien n'est écrit** — l'ancienne valeur reste. Tu fermes avec **Échap**, **✕** ou **Fermer** : rien n'est perdu.
+Il n'y a **plus de bouton Appliquer** : chaque champ s'enregistre dès que tu le modifies (un éclair vert le confirme). Une valeur **hors bornes** passe en rouge, un message dit les bornes, et **rien n'est écrit** — l'ancienne valeur reste. Tu fermes avec **Échap**, **✕** ou **Fermer** : rien n'est perdu.
 
 Chaque groupe porte sa **portée** dans son titre — **📍 ce plan** ou **🌍 tous les plans** — et se **replie** d'un tap sur le titre (choix mémorisé). Sur téléphone, seuls les titres s'affichent à l'ouverture, sauf le premier groupe.
 

@@ -63,6 +63,10 @@ capteurs, Q3 tag `entree_plan`, Q4 vol d'oiseau, Q5 bouton 🚨, Q7/Q8 vocal, Q1
 
 ⚠️ Chaque constat porte un fichier:ligne dans le rapport, **vérifié au code le 13/09** (✅ vérifié) — sauf les [Supposition] marqués comme tels.
 
+## 📁 « Mes plans » à 50+ plans — mode Dossiers (étude du 16/09/2026, décision KARMA en attente)
+
+Étude : `docs/audits/2026-09-16_etude-dossiers-mes-plans.md`. Constat : à 50 plans, le bandeau de chips grandit avec le nombre d'étiquettes distinctes et mange la hauteur fixe de la colonne ; le filtre est un OU plat ; une étiquette qualifie, elle ne range pas. **Reco** : modèle hybride (dossiers manuels, règle par étiquette optionnelle) en deux marches, sélecteur TOUT / DOSSIERS dans la ligne de titre (0 px ajouté), tactile sans glisser (⋮ → Déplacer vers), glisser PC en plus. Contraintes KARMA : hauteur et place de chaque bloc inchangées ; sauvegardé dans le profil ; configurable depuis ConfAdmin (index.json `folders` + `folder` par plan, doctrine « l'index propose, l'utilisateur dispose ») ou par import de profil. **9 décisions numérotées** en fin d'étude. ✅ **Livré en v1.95.0 (16/09/2026), marches 1 et 2 dans la même release** : décisions 1-11 appliquées (C hybride, un plan par dossier, épinglés en tête de leur dossier, sélection multiple, couleur, règles par étiquette, « dossier depuis ces chips », dossier de destination de l'import multiple, dossiers de l'index verrouillés, `plansViewDefault` kiosque, sélecteur toujours visible). Reste ouvert (décision 3) : le dossier « 🌐 Serveur » automatique.
+
 ## 🆕 Sujets ouverts (demandes KARMA du 01/08/2026)
 
 ### 1. 🗺️ Import depuis SIG — « Convertir depuis SIG »

@@ -109,6 +109,19 @@ let _sigLegendeReset = false;
 // de la modale via _lirePlannerMode. Forcé à "avance" en mode Modifier
 // (impossible de simplifier l'édition d'un plan existant sans risquer de
 // perdre customs / dataLayers / imageLayers / icons custom).
+// 🏷️ 16/09/2026 — lit un champ d'étiquettes (virgules) et le normalise par
+// LA fonction de l'app (`PlanRegistry.normaliserTags` : trim, dédoublonnage
+// insensible à la casse, 12 max, 24 caractères). Utilisé par le Générateur
+// et ses trois convertisseurs KMZ / GPX / SIG : un seul chemin de sortie.
+function _lireTagsChamp(idChamp) {
+  const el = document.getElementById(idChamp);
+  const brut = String((el && el.value) || "").split(",");
+  if (window.PlanRegistry && typeof window.PlanRegistry.normaliserTags === "function") {
+    return window.PlanRegistry.normaliserTags(brut);
+  }
+  return brut.map(function(s) { return s.trim().slice(0, 24); }).filter(Boolean).slice(0, 12);
+}
+
 const PLANNER_MODE_LS_KEY = "myktamap_planner_mode";
 
 function _lirePlannerMode() {
@@ -221,6 +234,14 @@ function afficherPlanner() {
 
             <label class="kta-cfg-label">${window.I18n.t("gen.infos.auteur")}</label>
             <input class="kta-cfg-input" id="pl_author" type="text" placeholder="${window.I18n.t("gen.infos.auteurPlaceholder")}">
+
+            <!-- 🏷️ 16/09/2026 (KARMA : « affecter des tags directement à la
+                 génération ») — même saisie que ConfAdmin : virgules, 12 max,
+                 24 caractères. Écrit plan.tags dans plan-config.json ; le
+                 fichier PROPOSE, l'utilisateur qui l'ouvre DISPOSE. Absent =
+                 JSON identique à avant (rétro-compat). -->
+            <label class="kta-cfg-label">${window.I18n.t("gen.infos.tags")}</label>
+            <input class="kta-cfg-input" id="pl_tags" type="text" placeholder="${window.I18n.t("gen.infos.tagsPlaceholder")}" title="${window.I18n.t("gen.infos.tagsHint")}">
           </div>
 
           <!-- Dimensions auto-détectées : les inputs hidden restent ici (lus
@@ -1755,6 +1776,7 @@ function _preRemplirFormulaire(config) {
   sv("pl_name",    plan.name        || "");
   sv("pl_version", plan.version     || "");
   sv("pl_author",  plan.author      || "");
+  sv("pl_tags",    Array.isArray(plan.tags) ? plan.tags.join(", ") : "");   // 🏷️ 16/09/2026
   sv("pl_width",   plan.imageWidth  || "");
   sv("pl_height",  plan.imageHeight || "");
   sv("pl_startX",  t.startX        ?? 0);
@@ -3441,6 +3463,7 @@ async function _genererZip() {
   const name    = document.getElementById("pl_name").value.trim();
   const version = document.getElementById("pl_version").value.trim() || "V1";
   const author  = document.getElementById("pl_author").value.trim();
+  const tags    = _lireTagsChamp("pl_tags");   // 🏷️ 16/09/2026
   const width   = parseInt(document.getElementById("pl_width").value,  10);
   const height  = parseInt(document.getElementById("pl_height").value, 10);
   // 🏗️ Multi-niveau (depuis v148) : opt-in via checkbox dans le planner.
@@ -3874,6 +3897,9 @@ async function _genererZip() {
       baseImage: baseImageName, collisionImage: collisionName
     };
     if (multiLevel)     planObj.multiLevel = true;
+    // 🏷️ 16/09/2026 — étiquettes proposées : écrites SEULEMENT si saisies,
+    // sinon le champ est absent et le JSON reste identique à avant.
+    if (tags.length)    planObj.tags = tags;
     // 📉 v1.83.0 — table des profondeurs, construite depuis le niveau 0 et le
     // pas. On ne l'ecrit QUE si le multi-niveau est actif : sur un plan a un
     // seul etage elle n'aurait aucun sens, et l'absence du champ garantit un
@@ -4132,6 +4158,8 @@ function _afficherImporterKmz(prefilledFile) {
 
             <label class="kta-cfg-label">${window.I18n.t("gen.infos.auteur")}</label>
             <input class="kta-cfg-input" id="kta-kmz-imp-author" type="text" placeholder="${window.I18n.t("gen.kmz.auteurPlaceholder")}">
+            <label class="kta-cfg-label">${window.I18n.t("gen.infos.tags")}</label>
+            <input class="kta-cfg-input" id="kta-kmz-imp-tags" type="text" placeholder="${window.I18n.t("gen.infos.tagsPlaceholder")}" title="${window.I18n.t("gen.infos.tagsHint")}">
           </div>
 
           <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">${window.I18n.t("gen.kmz.typesInfo")}</p>
@@ -4593,6 +4621,7 @@ async function _kmzImpGenerer() {
         planName:          name,
         planVersion:       version,
         planAuthor:        author,
+        tags:              _lireTagsChamp("kta-kmz-imp-tags"),   // 🏷️ 16/09/2026
         baseImage:         state.overlay.hrefBlob,
         baseImageFilename: baseImageFilename,
         imageW:            state.imageW,
@@ -4726,6 +4755,8 @@ function _afficherImporterGpx(prefilledFile) {
 
             <label class="kta-cfg-label">${window.I18n.t("gen.infos.auteur")}</label>
             <input class="kta-cfg-input" id="kta-gpx-imp-author" type="text" placeholder="${window.I18n.t("gen.gpx.auteurPlaceholder")}">
+            <label class="kta-cfg-label">${window.I18n.t("gen.infos.tags")}</label>
+            <input class="kta-cfg-input" id="kta-gpx-imp-tags" type="text" placeholder="${window.I18n.t("gen.infos.tagsPlaceholder")}" title="${window.I18n.t("gen.infos.tagsHint")}">
           </div>
 
           <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">${window.I18n.t("gen.gpx.canvasInfo")}</p>
@@ -4995,6 +5026,7 @@ async function _gpxImpGenerer() {
       planName:         name,
       planVersion:      version,
       planAuthor:       author,
+      tags:             _lireTagsChamp("kta-gpx-imp-tags"),   // 🏷️ 16/09/2026
       parsed:           state.parsed,
       bounds:           state.bounds,
       canvasWidth:      w,
@@ -5129,6 +5161,8 @@ function _afficherImporterSig(prefilledFile) {
             <input class="kta-cfg-input" id="kta-sig-imp-version" type="text" placeholder="v1" value="v1">
             <label class="kta-cfg-label">${T("gen.infos.auteur")}</label>
             <input class="kta-cfg-input" id="kta-sig-imp-author" type="text" placeholder="${T("gen.gpx.auteurPlaceholder")}">
+            <label class="kta-cfg-label">${T("gen.infos.tags")}</label>
+            <input class="kta-cfg-input" id="kta-sig-imp-tags" type="text" placeholder="${T("gen.infos.tagsPlaceholder")}" title="${T("gen.infos.tagsHint")}">
           </div>
 
           <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">${T("gen.sig.canvasInfo")}</p>
@@ -5688,6 +5722,7 @@ async function _sigImpGenerer() {
       planName:     name,
       planVersion:  (document.getElementById("kta-sig-imp-version").value || "v1").trim(),
       planAuthor:   (document.getElementById("kta-sig-imp-author").value || "").trim(),
+      tags:         _lireTagsChamp("kta-sig-imp-tags"),   // 🏷️ 16/09/2026
       canvasWidth:  parseInt(document.getElementById("kta-sig-imp-w").value, 10) || 4000,
       // 🧹 v1.82.0 — `canvasHeight` RETIRÉ : `genererZipMyktamap` ne le lit plus
       // depuis que la hauteur est déduite du terrain. Le passer entretenait

@@ -24,7 +24,29 @@
 //   • `JSZip`                        — la lecture, pour le seul plan-config ;
 //   • `PlanRegistry.genLocalId`      — l'identité (nom + version) ;
 //   • `PlanRegistry.addOrUpdate`     — l'entrée dans la liste ;
-//   • `PlanRegistry.saveBlob` / `saveHandle` — le stockage et son quota.
+//   • `PlanRegistry.saveBlob`         — le stockage et son quota.
+//
+// 🩸 LE ZIP RANGÉ DOIT ÊTRE ANNONCÉ (KARMA, 15/09/2026 : « pas besoin de
+// sélectionner le zip si le plan a été ajouté à la liste »). Depuis v1.94.0
+// le fichier ÉTAIT rangé, mais l'entrée ne le DISAIT pas : pas de
+// `storedBlob`, le drapeau que `homeLoader` consulte en premier avant
+// d'ouvrir un plan local. La liste redemandait donc le ZIP à chaque
+// ouverture, et la copie en IndexedDB restait orpheline. Le drapeau est posé
+// après le rangement réussi, jamais avant.
+//
+// Le rangement est une OPTION, « Précharger le ZIP », dont le défaut suit le
+// réglage ⚙️ Configuration de l'accueil → « Mémoriser le plan dans l'app au
+// premier chargement » (activé par défaut). Décochée, seule l'entrée est écrite : la liste demande le fichier à la
+// première ouverture (chemin `reSelectionnerZipPourPlan`, le même qu'un plan
+// restauré depuis un profil), et la place n'est pas un sujet.
+//
+// 🩸 UN SEUL MÉCANISME : LA COPIE (15/09/2026, même soir). La v1.94.0 prenait
+// une « autorisation permanente » (référence disque, `saveHandle`) sur
+// Chrome/Edge pour ne rien copier. Retirée avec le bouton 🔐 de l'accueil :
+// à l'ouverture la copie passe avant la référence, et cette dernière ne
+// sert même pas de secours si la copie a été purgée. Deux mécanismes pour
+// un seul effet, c'est un de trop. Le sélecteur multiple est le champ
+// `<input type="file" multiple>` classique, partout.
 //
 // 🧠 CE QU'IL NE FAIT PAS, ET POURQUOI. Il ne décompresse pas les assets : un
 // plan est CONSERVÉ SOUS FORME DE ZIP (blob en IndexedDB, ou fichier d'origine
@@ -49,6 +71,31 @@
   const MARGE_QUOTA = 0.85;
 
   function _t(k, p) { return (window.I18n && window.I18n.t) ? window.I18n.t(k, p) : k; }
+  // Défaut de « Précharger » = le réglage de l'accueil (source de vérité
+  // unique, définie par homeLoader). Sans lui : vrai.
+  function _memoriserParDefaut() {
+    return (typeof window.ktaMemoriserPlanActif === "function") ? !!window.ktaMemoriserPlanActif() : true;
+  }
+  // 📁 marche 2 — dossier de destination : les dossiers du registre, Non
+  // classés (défaut), ou un nouveau dossier créé au lancement.
+  function _optionsDossiers() {
+    const PR = window.PlanRegistry;
+    const dossiers = (PR && PR.getFolders) ? PR.getFolders() : [];
+    return '<option value="">' + _esc(_t("impmasse.dossier.aucun")) + '</option>' +
+      dossiers.map(function(f) { return '<option value="' + _esc(f.id) + '">' + _esc(f.name) + '</option>'; }).join("") +
+      '<option value="__new__">' + _esc(_t("impmasse.dossier.nouveau")) + '</option>';
+  }
+  function _dossierCible() {
+    const PR = window.PlanRegistry;
+    const sel = _zone("kta-impm-dossier");
+    if (!sel || !PR || !PR.createFolder) return null;
+    if (sel.value === "__new__") {
+      const nom = String((_zone("kta-impm-dossier-nom") || {}).value || "").trim();
+      const f = nom ? PR.createFolder(nom, { src: "user" }) : null;
+      return f ? f.id : null;
+    }
+    return sel.value || null;
+  }
   function _esc(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
@@ -127,7 +174,9 @@
       version: plan.version ? String(plan.version) : "",
       author: plan.author ? String(plan.author) : null,
       multiLevel: plan.multiLevel === true,
-      tiledV2: plan.tiledV2 === true
+      tiledV2: plan.tiledV2 === true,
+      // 🏷️ 16/09/2026 — étiquettes proposées par le plan-config (Générateur).
+      tags: Array.isArray(plan.tags) ? plan.tags : []
     };
   }
 
@@ -143,8 +192,8 @@
 
     for (const f of fichiers) {
       // Le File lui-même reste sur la ligne : c'est lui qu'on rangera, sans
-      // relire le disque. `handle` n'est posé que par le sélecteur du système.
-      const ligne = { fichier: f.name, taille: f.size || 0, blob: f, handle: f.__ktaHandle || null };
+      // relire le disque.
+      const ligne = { fichier: f.name, taille: f.size || 0, blob: f };
       sortie.poidsTotal += ligne.taille;
       try {
         if (window.PlanDenylist && typeof window.PlanDenylist.isPlanDenied === "function") {
@@ -160,7 +209,7 @@
         else {
           sortie.nbAjouts++;
           idsSimules.push(dec.id);
-          sortie.aStocker += ligne.taille;   // corrigé plus bas si autorisation permanente
+          sortie.aStocker += ligne.taille;   // remis à 0 par l'écran si « précharger » est décoché
         }
       } catch (e) {
         ligne.action = "refus";
@@ -187,9 +236,20 @@
     }
     opts = opts || {};
     const onProgres = typeof opts.onProgres === "function" ? opts.onProgres : function() {};
+    // Précharger = ranger le ZIP (copie ou autorisation permanente). VRAI par
+    // défaut : c'est l'absence du drapeau qui faisait redemander le fichier.
+    const precharger = opts.precharger !== false;
     const rapport = { ajoutes: [], ignores: [], refuses: [], arrete: null };
     const aFaire = plan.lignes.filter(function(l) { return l.action !== "refus" && l.action !== "ignorer"; });
     let i = 0;
+
+    // Comme le chemin unitaire (`main > startImportedPlan`) : demander la
+    // persistance AVANT la première copie, sinon iOS et Chrome peuvent purger
+    // les blobs à la première pression sur l'espace. Une fois par lot.
+    if (precharger && aFaire.length
+        && typeof window.PlanRegistry.requestPersistentStorage === "function") {
+      try { await window.PlanRegistry.requestPersistentStorage(); } catch (e) {}
+    }
 
     for (const ligne of plan.lignes) {
       if (ligne.action === "refus")   { rapport.refuses.push(ligne); continue; }
@@ -211,22 +271,38 @@
         if (ligne.info.multiLevel) entree.multiLevel = true;
         if (ligne.info.tiledV2)    entree.tiledV2    = true;
         window.PlanRegistry.addOrUpdate(entree);
-
-        // Le rangement du fichier. Une autorisation permanente évite toute
-        // copie ; sinon le ZIP est recopié dans l'espace local. Sans l'un ni
-        // l'autre, l'entrée existerait mais le plan serait introuvable au
-        // prochain démarrage — on RETIRE alors l'entrée plutôt que de laisser
-        // une ligne morte dans la liste.
-        let range = false, motif = null;
-        if (ligne.handle && window.PlanRegistry.hasFsAccess()) {
-          try { await window.PlanRegistry.saveHandle(ligne.id, ligne.handle); range = true; }
-          catch (e) { motif = "impmasse.err.handle"; }
+        // 🏷️ 16/09/2026 — le ZIP PROPOSE ses étiquettes, même règle que
+        // `main > startImportedPlan` : jamais par-dessus des tags "user" ou
+        // "index" ; un ZIP sans tags retire ceux qu'un précédent proposait.
+        // 🏷️ début-tags-config
+        try {
+          const regTags = window.PlanRegistry.findById(ligne.id);
+          const proposes = Array.isArray(ligne.info.tags) && ligne.info.tags.length > 0;
+          const protege = !!(regTags && (regTags.tagsSrc === "user" || regTags.tagsSrc === "index"));
+          if (proposes && !protege) window.PlanRegistry.setTags(ligne.id, ligne.info.tags, "config");
+          else if (!proposes && regTags && regTags.tagsSrc === "config" && regTags.tags) window.PlanRegistry.setTags(ligne.id, [], "config");
+        } catch (eTags) { console.warn("[ImportMasse] tags du plan-config ignorés :", eTags); }
+        // 🏷️ fin-tags-config
+        // 📁 marche 2 — rangement demandé pour le lot (geste de l'utilisateur)
+        if (opts.dossier && window.PlanRegistry.setPlanFolder) {
+          try { window.PlanRegistry.setPlanFolder(ligne.id, opts.dossier, "user"); } catch (eDos) {}
         }
-        if (!range) {
+
+        // Le rangement du fichier, si l'utilisateur l'a demandé : le ZIP est
+        // copié dans l'espace local, puis l'entrée est RÉÉCRITE avec le
+        // drapeau que `homeLoader` lit (`storedBlob`) — sans lui, le fichier
+        // rangé n'est jamais retrouvé et la liste redemande le ZIP. Un
+        // rangement DEMANDÉ et raté retire l'entrée : une ligne « à
+        // re-sélectionner » alors que l'utilisateur a coché la copie serait
+        // une dégradation silencieuse.
+        ligne.stockage = "aucun";
+        if (precharger) {
           const r = await window.PlanRegistry.saveBlob(ligne.id, ligne.blob);
-          if (r && r.ok) range = true;
-          else {
-            motif = (r && r.error) || "impmasse.err.stockage";
+          if (r && r.ok) {
+            window.PlanRegistry.addOrUpdate({ id: ligne.id, storedBlob: true });
+            ligne.stockage = "copie";
+          } else {
+            const motif = (r && r.error) || "impmasse.err.stockage";
             // Place épuisée : on s'arrête NET. Continuer produirait une série
             // d'entrées mortes, et l'utilisateur ne saurait plus lesquelles
             // sont utilisables.
@@ -237,7 +313,6 @@
             return rapport;
           }
         }
-        ligne.stockage = ligne.handle ? "handle" : "copie";
         rapport.ajoutes.push(ligne);
       } catch (e) {
         ligne.raison = (e && e.message) || "impmasse.err.inconnue";
@@ -256,6 +331,7 @@
   let _fichiers = [];
   let _plan = null;
   let _politique = "ignorer";
+  let _precharger = _memoriserParDefaut();
 
   function _fermer() {
     const m = document.getElementById(MODAL_ID);
@@ -292,13 +368,15 @@
     _plan = await analyser(_fichiers, _politique);
     _rendreListe(_plan);
 
-    // Ce qui a une autorisation permanente ne sera pas copié : on le déduit
-    // du poids à stocker, sinon on refuserait un import qui tient très bien.
+    // Sans préchargement, rien n'est copié du tout : la place n'est pas un
+    // sujet, et le résumé le dit en clair plutôt que d'afficher « 0 o ».
     let aStocker = 0;
-    _plan.lignes.forEach(function(l) {
-      if (l.action === "refus" || l.action === "ignorer") return;
-      if (!l.handle) aStocker += l.taille;
-    });
+    if (_precharger) {
+      _plan.lignes.forEach(function(l) {
+        if (l.action === "refus" || l.action === "ignorer") return;
+        aStocker += l.taille;
+      });
+    }
     _plan.aStocker = aStocker;
 
     const place = await _placeDisponible();
@@ -307,7 +385,9 @@
 
     if (resume) {
       const parts = [_t("impmasse.resume.compte", { ajout: _plan.nbAjouts, ignore: _plan.nbIgnores, refus: _plan.nbRefus })];
-      parts.push(_t("impmasse.resume.poids", { total: _poids(_plan.poidsTotal), stocke: _poids(aStocker) }));
+      parts.push(_precharger
+        ? _t("impmasse.resume.poids", { total: _poids(_plan.poidsTotal), stocke: _poids(aStocker) })
+        : _t("impmasse.resume.poidsSansCopie", { total: _poids(_plan.poidsTotal) }));
       if (Number.isFinite(place.dispo) && place.dispo > 0) parts.push(_t("impmasse.resume.place", { dispo: _poids(place.dispo) }));
       resume.textContent = parts.join(" · ");
     }
@@ -324,32 +404,9 @@
     }
   }
 
-  async function _choisirFichiers() {
-    // Sur Chrome et Edge de bureau, le sélecteur du système rend des
-    // AUTORISATIONS PERMANENTES : rien n'est copié, les plans rouvrent depuis
-    // leur fichier d'origine. Partout ailleurs, on retombe sur le champ
-    // classique et les archives seront copiées dans l'espace local.
-    const peutHandle = !!(window.showOpenFilePicker && window.PlanRegistry && window.PlanRegistry.hasFsAccess());
-    if (peutHandle) {
-      try {
-        const handles = await window.showOpenFilePicker({
-          multiple: true,
-          types: [{ description: "MyKTAMap", accept: { "application/zip": [".zip"] } }]
-        });
-        const out = [];
-        for (const h of handles) {
-          const f = await h.getFile();
-          f.__ktaHandle = h;
-          out.push(f);
-        }
-        _fichiers = out;
-        await _analyserEtAfficher();
-        return;
-      } catch (e) {
-        if (e && e.name === "AbortError") return;   // l'utilisateur a renoncé
-        console.warn("[ImportMasse] sélecteur système indisponible :", e);
-      }
-    }
+  function _choisirFichiers() {
+    // Champ classique partout : le sélecteur système ne servait qu'à prendre
+    // des références disque, retirées (cf. en-tête).
     const inp = _zone("kta-impm-input");
     if (inp) inp.click();
   }
@@ -360,6 +417,8 @@
     if (btn) btn.disabled = true;
     if (prog) prog.style.display = "";
     const rapport = await importer(_plan, {
+      precharger: _precharger,
+      dossier: _dossierCible(),
       onProgres: function(p) {
         if (prog) prog.textContent = _t("impmasse.prog", { i: p.i, total: p.total, nom: p.nom });
       }
@@ -401,6 +460,12 @@
       btn.dataset.fini = "1";
       btn.textContent = _t(rapport.ajoutes.length ? "impmasse.btn.voir" : "impmasse.btn.fermerRien");
     }
+    // 🐛 16/09/2026 (KARMA : « on a le choix entre Fermer et Voir mes plans
+    // qui font la même chose ») — deux sorties pour un seul geste. Une fois
+    // l'import fini, le bouton principal EST la sortie : le « Fermer » de
+    // pied disparaît (le ✕ d'en-tête reste, comme partout).
+    const fermer = _zone("kta-impm-fermer");
+    if (fermer) fermer.style.display = "none";
   }
 
   function ouvrir() {
@@ -417,7 +482,7 @@
       return;
     }
     _fermer();
-    _fichiers = []; _plan = null; _politique = "ignorer";
+    _fichiers = []; _plan = null; _politique = "ignorer"; _precharger = _memoriserParDefaut();
     const ov = document.createElement("div");
     ov.id = MODAL_ID;
     ov.className = "kta-readme-modal-overlay";
@@ -441,6 +506,17 @@
                      (p === "ignorer" ? " checked" : "") + '> <span>' + _esc(_t("impmasse.politique." + p)) + '</span></label>';
             }).join("") +
           '</div>' +
+          // 📁 marche 2 — dossier de destination du lot (décision KARMA 6)
+          '<div class="kta-impm-politique" id="kta-impm-dossier-bloc">' +
+            '<span class="kta-impm-politique-titre">' + _esc(_t("impmasse.dossier.titre")) + '</span>' +
+            '<select class="kta-cfg-input kta-impm-dossier" id="kta-impm-dossier">' + _optionsDossiers() + '</select>' +
+            '<input type="text" class="kta-cfg-input kta-impm-dossier-nom" id="kta-impm-dossier-nom" maxlength="40" placeholder="' + _esc(_t("impmasse.dossier.nomPlaceholder")) + '" hidden>' +
+          '</div>' +
+          '<label class="kta-impm-precharger">' +
+            '<input type="checkbox" id="kta-impm-precharger"' + (_precharger ? ' checked' : '') + '>' +
+            '<span><span class="kta-impm-precharger-label">' + _esc(_t("impmasse.precharger.label")) + '</span>' +
+            '<span class="kta-impm-precharger-info">' + _esc(_t("impmasse.precharger.info")) + '</span></span>' +
+          '</label>' +
           '<div class="kta-impm-resume" id="kta-impm-resume"></div>' +
           '<div class="kta-impm-alerte" id="kta-impm-alerte" style="display:none;"></div>' +
           '<div class="kta-impm-liste" id="kta-impm-liste"></div>' +
@@ -458,6 +534,12 @@
     ov.addEventListener("click", function(e) { if (e.target === ov) _fermer(); });
     document.addEventListener("keydown", _esc2, true);
     document.getElementById("kta-impm-choisir").addEventListener("click", _choisirFichiers);
+    // 📁 « Nouveau dossier… » dévoile un champ de nom, sans quitter l'écran
+    const selDossier = document.getElementById("kta-impm-dossier");
+    if (selDossier) selDossier.addEventListener("change", function() {
+      const nomEl = document.getElementById("kta-impm-dossier-nom");
+      if (nomEl) { nomEl.hidden = (selDossier.value !== "__new__"); if (!nomEl.hidden) nomEl.focus(); }
+    });
     // Un seul écouteur, deux rôles selon l'état : lancer, puis fermer. Poser
     // un second écouteur à la fin laisserait le premier en place — et un clic
     // relancerait l'import déjà fait.
@@ -475,6 +557,12 @@
         _politique = r.value;
         if (_fichiers.length) await _analyserEtAfficher();
       });
+    });
+    // Le poids à copier et le verdict de place dépendent de l'option : on
+    // ré-analyse, comme pour la politique de doublon.
+    document.getElementById("kta-impm-precharger").addEventListener("change", async function(ev) {
+      _precharger = !!ev.target.checked;
+      if (_fichiers.length) await _analyserEtAfficher();
     });
   }
 

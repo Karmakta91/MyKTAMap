@@ -1389,6 +1389,9 @@
       dataLayers: [{ id: "sig", label: opts.layerLabel || "Import SIG", file: "data/sig.json", visible: true }]
     };
     if (opts.multiLevel === true) planConfig.plan.multiLevel = true;
+    // 🏷️ 16/09/2026 — étiquettes proposées par le Générateur (déjà normalisées
+    // par PlanRegistry.normaliserTags). Absentes = champ absent, JSON inchangé.
+    if (Array.isArray(opts.tags) && opts.tags.length) planConfig.plan.tags = opts.tags.slice(0, 12);
     // 📉 v1.83.0 — profondeurs proposées d'office sur un plan importé, avec
     // les mêmes défauts que le Générateur (niveau 0 à -25 m, pas de 5 m).
     //

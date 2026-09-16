@@ -170,7 +170,11 @@
         delete clone.fsHandleId;  // non portable
         return clone;
       });
-      return { plans: plans, lastPlanId: parsed.lastPlanId || null };
+      // 📁 16/09/2026 — les dossiers et le mode voyagent avec le registre
+      const out = { plans: plans, lastPlanId: parsed.lastPlanId || null };
+      if (Array.isArray(parsed.folders) && parsed.folders.length) out.folders = parsed.folders.map(function(f) { return Object.assign({}, f); });
+      if (parsed.plansView) out.plansView = parsed.plansView;
+      return out;
     } catch(e) {
       console.warn("[ProfileExportImport] registry collect échec :", e);
       return null;
@@ -818,14 +822,32 @@ photos: false, histoirePdfs: false, crashes: false
       try {
         const raw = localStorage.getItem("myktamap_plans");
         let store = _safeJsonParse(raw) || { version: 1, plans: [] };
+        // 📁 16/09/2026 — DOSSIERS : fusion par nom (casse ignorée, l'id local
+        // gagne) en mode Fusionner, remplacement en mode Remplacer ; le
+        // folderId des plans qui ARRIVENT est traduit. Les plans déjà présents
+        // ne sont pas touchés (règle anti-doublon ci-dessous) : leur rangement
+        // local gagne. Normalisation unique : PlanRegistry.fusionnerDossiers.
+        const fusion = (window.PlanRegistry && typeof window.PlanRegistry.fusionnerDossiers === "function")
+          ? window.PlanRegistry.fusionnerDossiers(store.folders, s.registry.folders, mode)
+          : { folders: (mode === "replace") ? [] : (store.folders || []), table: {} };
+        if (fusion.folders.length) store.folders = fusion.folders; else delete store.folders;
+        if (mode === "replace" && s.registry.plansView) store.plansView = s.registry.plansView;
+        const traduire = function(p) {
+          const c = Object.assign({}, p);
+          if (c.folderId) {
+            const reel = fusion.table[c.folderId];
+            if (reel) c.folderId = reel; else { delete c.folderId; delete c.folderSrc; }
+          }
+          return c;
+        };
         if (mode === "replace") {
-          store.plans = s.registry.plans.slice();
+          store.plans = s.registry.plans.map(traduire);
         } else {
           // merge anti-doublon sur id
           s.registry.plans.forEach(function(p) {
             if (!p || !p.id) return;
             const exists = store.plans.find(function(x) { return x.id === p.id; });
-            if (!exists) store.plans.push(p);
+            if (!exists) store.plans.push(traduire(p));
           });
         }
         if (s.registry.lastPlanId && !store.lastPlanId) store.lastPlanId = s.registry.lastPlanId;

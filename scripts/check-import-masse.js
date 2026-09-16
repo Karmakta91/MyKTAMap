@@ -19,6 +19,14 @@
 //      alors des plans existants sans que personne l'ait demandé.
 //   5. La marge de quota disparaît : on remplit jusqu'au refus du navigateur,
 //      donc on s'arrête au milieu au lieu de prévenir avant.
+//   6. Le ZIP est rangé mais l'entrée ne le DIT pas (v1.94.0, trouvé le
+//      15/09 : KARMA « pas besoin de sélectionner le zip si le plan a été
+//      ajouté à la liste »). Sans `storedBlob`, homeLoader redemande le
+//      fichier et la copie en IndexedDB est orpheline.
+//   7. La « référence disque » revient (`saveHandle`, `showOpenFilePicker`).
+//      Retirée le 15/09 avec le bouton 🔐 de l'accueil : à l'ouverture la
+//      copie passe avant elle, et elle ne sert même pas de secours. Deux
+//      mécanismes pour un seul effet.
 //
 // ON EXÉCUTE les deux décisions, extraites du fichier réel (leçon v1.90.15).
 // Usage : node scripts/check-import-masse.js [racine]
@@ -106,9 +114,18 @@ const SW   = lire("sw.js");
   t("🩸 aucun appel à startImportedPlan (ce serait ouvrir le plan)", !/startImportedPlan\s*\(/.test(sansCommentaires));
   t("🩸 aucun appel à lancerApplication ni à chargerZipFichier",
     !/lancerApplication\s*\(/.test(sansCommentaires) && !/chargerZipFichier\s*\(/.test(sansCommentaires));
-  t("le module écrit bien dans le registre et range le fichier",
-    /PlanRegistry\.addOrUpdate\(/.test(M) && /PlanRegistry\.saveBlob\(/.test(M) && /PlanRegistry\.saveHandle\(/.test(M));
+  t("le module écrit bien dans le registre et range le fichier (copie)",
+    /PlanRegistry\.addOrUpdate\(/.test(M) && /PlanRegistry\.saveBlob\(/.test(M));
+  t("🩸 aucune référence disque : ni saveHandle ni showOpenFilePicker (un seul mécanisme, la copie)",
+    !/saveHandle\s*\(/.test(sansCommentaires) && !/showOpenFilePicker/.test(sansCommentaires));
   t("le contrôle de blocage est appliqué par fichier", /PlanDenylist[\s\S]{0,120}isPlanDenied\(f\)/.test(M));
+  // 🩸 16/09/2026 — Chromium range un File PAR RÉFÉRENCE au disque : sans
+  // copie réelle, les plans importés meurent dès que leurs ZIP bougent.
+  const PR = lire("js/planRegistry.js");
+  t("🩸 PlanRegistry.saveBlob range une COPIE (File → arrayBuffer → Blob), jamais une référence disque",
+    /async function saveBlob\([\s\S]{0,1600}instanceof File[\s\S]{0,200}await blob\.arrayBuffer\(\)/.test(PR));
+  t("🩸 à l'ouverture, un blob mémorisé est SONDÉ avant d'être cru (sinon « archive illisible » au lieu de la re-sélection)",
+    /getBlob\(plan\.id\);[\s\S]{0,900}blob\.slice\(0, 4\)\.arrayBuffer\(\)[\s\S]{0,400}afficherModalePlanIntrouvable\(plan, "local-blob"\)/.test(HOME));
 }
 
 // ---------- 4. Un fichier à la fois, et rien de mort dans la liste ----------
@@ -130,6 +147,61 @@ const SW   = lire("sw.js");
     !/addOrUpdate\(/.test(ana) && !/saveBlob\(/.test(ana) && !/saveHandle\(/.test(ana));
 }
 
+// ---------- 6. Le ZIP rangé est RETROUVÉ par la liste (importer() exécuté) ----------
+// On EXÉCUTE importer() avec un registre factice : c'est la seule preuve que
+// le drapeau est posé sur l'entrée, et seulement après un rangement réussi.
+async function section6() {
+  const i = M.indexOf("async function importer(");
+  const j = M.indexOf("\n  }\n", i);
+  const src = (i >= 0 && j > i) ? M.slice(i, j + 4) : "";
+  t("importer() est extractible seule", src.length > 0);
+  if (!src) return;
+
+  function jouer(scenario) {
+    const journal = { entrees: {}, saveBlob: 0, saveHandle: 0, remove: 0, persist: 0 };
+    const reg = {
+      hasFsAccess: function () { return !!scenario.fs; },
+      addOrUpdate: function (p) { journal.entrees[p.id] = Object.assign(journal.entrees[p.id] || {}, p); },
+      remove: function (id) { journal.remove++; delete journal.entrees[id]; },
+      requestPersistentStorage: async function () { journal.persist++; },
+      saveHandle: async function () { journal.saveHandle++; return true; },
+      saveBlob: async function () { journal.saveBlob++; return scenario.blobOk === false ? { ok: false, error: "impmasse.err.stockage" } : { ok: true }; }
+    };
+    const sb = { window: { PlanRegistry: reg }, console: { warn: function () {} }, out: null };
+    const ligne = { id: "local_a", fichier: "a.zip", taille: 10, blob: {},
+                    info: { name: "A", version: "1" }, action: "ajouter" };
+    const plan = { lignes: [ligne] };
+    vm.runInNewContext(src + "\nout = importer(plan, opts);",
+      Object.assign(sb, { plan: plan, opts: scenario.opts || {} }), { filename: "impmasse.importer.js" });
+    return Promise.resolve(sb.out).then(function (rapport) { return { rapport: rapport, j: journal, ligne: ligne }; });
+  }
+
+  const a = await jouer({});
+  t("🩸 DÉFAUT (sans option) : le ZIP est copié ET l'entrée porte storedBlob — la liste le retrouve",
+    a.j.saveBlob === 1 && a.j.entrees.local_a && a.j.entrees.local_a.storedBlob === true && a.ligne.stockage === "copie");
+  t("…et la persistance du stockage est demandée avant la première copie", a.j.persist === 1);
+
+  const b = await jouer({ fs: true });
+  t("🩸 même avec le sélecteur système disponible (Chrome/Edge) : COPIE, jamais de référence disque",
+    b.j.saveBlob === 1 && b.j.saveHandle === 0 && b.j.entrees.local_a.storedBlob === true && !b.j.entrees.local_a.fsHandleId);
+
+  const c = await jouer({ fs: true, opts: { precharger: false } });
+  t("🩸 « Précharger » DÉCOCHÉ : pas de copie, l'entrée seule, aucun drapeau",
+    c.j.saveBlob === 0 && c.j.persist === 0 && c.j.entrees.local_a &&
+    !c.j.entrees.local_a.storedBlob && c.rapport.ajoutes.length === 1);
+
+  const d = await jouer({ blobOk: false });
+  t("🩸 copie ratée : l'entrée est RETIRÉE, aucun drapeau ne survit, l'import s'arrête",
+    d.j.remove === 1 && !d.j.entrees.local_a && d.rapport.arrete && d.rapport.ajoutes.length === 0);
+
+  t("🩸 la case « Précharger le ZIP » suit le réglage de l'accueil, VRAI par défaut",
+    /id="kta-impm-precharger"' \+ \(_precharger \? ' checked' : ''\)/.test(M) &&
+    /function _memoriserParDefaut\(\)[\s\S]{0,200}ktaMemoriserPlanActif[\s\S]{0,80}: true;/.test(M) &&
+    /_precharger = _memoriserParDefaut\(\)/.test(M));
+  t("l'écran transmet l'option à importer()", /precharger: _precharger/.test(M));
+  t("sans préchargement, le résumé ne parle pas de copie", /impmasse\.resume\.poidsSansCopie/.test(M));
+}
+
 // ---------- 5. Après l'import, on reste à l'accueil ----------
 {
   const lan = M.slice(M.indexOf("async function _lancer()"), M.indexOf("function ouvrir()"));
@@ -146,6 +218,9 @@ const SW   = lire("sw.js");
     /dataset\.fini === "1"\) \{ _fermer\(\); return; \}/.test(M));
   t("son libellé dit l'action, pas seulement l'état",
     /impmasse\.btn\.voir/.test(M) && /impmasse\.btn\.fermerRien/.test(M));
+  // 🐛 16/09/2026 (KARMA) : « Fermer » et « Voir mes plans » faisaient la même chose.
+  t("🩸 une fois l'import fini, UNE seule sortie en pied : le « Fermer » secondaire disparaît",
+    /_zone\("kta-impm-fermer"\)[\s\S]{0,80}style\.display = "none"/.test(lan));
 }
 
 // ---------- 6. Le bouton, le câblage, le chargement ----------
@@ -195,6 +270,8 @@ const SW   = lire("sw.js");
     (sansTexte.length ? " — sans texte : " + sansTexte.join(", ") : ""), sansTexte.length === 0);
 }
 
-console.log("");
-if (echecs) { console.log("💥 import multiple : " + echecs + " contrôle(s) en échec"); process.exit(1); }
-console.log("🎉 import multiple : N plans entrent dans la liste, aucun ne s'ouvre, et la place est annoncée avant");
+section6().catch(function (e) { t("🩸 section 6 : importer() s'exécute — " + e.message, false); }).then(function () {
+  console.log("");
+  if (echecs) { console.log("💥 import multiple : " + echecs + " contrôle(s) en échec"); process.exit(1); }
+  console.log("🎉 import multiple : N plans entrent dans la liste, aucun ne s'ouvre, le ZIP rangé est retrouvé, et la place est annoncée avant");
+});

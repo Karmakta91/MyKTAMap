@@ -6304,62 +6304,9 @@ html.kta-theme-light .kta-cfg-group-titre {
   vertical-align: top;
 }
 
-/* ═══════════════════════════════════════════════════
-   FS ACCESS — Sélection ZIP avec autorisation persistante
-   ═══════════════════════════════════════════════════ */
-
-.fs-access-hint {
-  margin-top: 10px;
-  padding: 10px 12px;
-  background: rgba(140,180,255,0.05);
-  border: 1px solid rgba(140,180,255,0.2);
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.loader-btn-fs {
-  width: 100%;
-  padding: 8px 12px;
-  background: linear-gradient(135deg, #2a3a5e 0%, #1d2745 100%);
-  border: 1px solid rgba(140,180,255,0.4);
-  border-radius: 5px;
-  color: #cfd6e4;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.loader-btn-fs:hover {
-  background: linear-gradient(135deg, #34466e 0%, #243152 100%);
-  border-color: rgba(140,180,255,0.6);
-  color: #e8eaf0;
-}
-
-.fs-access-info {
-  font-size: 11px;
-  color: #8892a4;
-  line-height: 1.4;
-}
-
-.loader-store-blob {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  color: #cfd6e4;
-  padding: 4px 0;
-}
-.loader-store-blob input[type="checkbox"] {
-  cursor: pointer;
-  width: 16px;
-  height: 16px;
-}
-.loader-store-blob:hover {
-  color: #e8eaf0;
-}
+/* 15/09/2026 : la persistance du ZIP n'a plus d'UI sur l'accueil (bouton 🔐
+   et case « Mémoriser » retirés) — c'est le réglage ⚙️ Configuration →
+   « Mémoriser le plan dans l'app au premier chargement ». */
 
 .plan-row-badge {
   display: inline-block;
@@ -6570,6 +6517,21 @@ html.kta-theme-light .kta-cfg-group-titre {
   /* Colonne droite explicite — sections secondaires (tracking + icônes + géoréf) */
   #kta-planner-corps > .kta-pl-col-right {
     grid-column: 2;
+  }
+  /* 🐛 15/09/2026 (KARMA : « en mode Avancé les réglages de tracking sont
+     au-dessus de Charger un fichier, ce qui n'a pas de sens ») — LE TROU.
+     Le switcher Simple/Avancé occupe la colonne 1 de la rangée 1, le bouton
+     🧙 Assistant la colonne 2 ; l'indication de mode (ce <p>) tombe en
+     colonne 1 de la rangée 2 et laisse la colonne 2 VIDE. `grid-auto-flow:
+     dense` fait exactement ce qu'on lui demande : il comble ce trou avec
+     la première section de colonne droite — le Tracking — qui se retrouve
+     ainsi AU-DESSUS de la zone de dépôt (pleine largeur, rangée 3). En mode
+     Simple le trou existe aussi, mais aucune section de droite n'est
+     visible pour le remplir : le bug n'apparaît qu'en Avancé. L'indication
+     prend toute la largeur : plus de trou, l'ordre des sections redevient
+     celui du DOM et de l'assistant (dépôt, identité, image… tracking). */
+  #kta-planner-corps > .kta-planner-mode-hint {
+    grid-column: 1 / -1;
   }
 }
 
@@ -8439,6 +8401,8 @@ html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); 
   /* ② Liste des plans bornée : 5 récents visibles, le reste déplié à la
      demande (bouton #kta-home-plans-more injecté par homeLoader.js) */
   #allPlansList.kta-collapsed > .plan-row:nth-of-type(n+6) { display: none; }
+  /* 📁 16/09/2026 — même borne, PAR dossier déplié en mode Dossiers */
+  .kta-plans-folder-rows.kta-collapsed > .plan-row:nth-of-type(n+6) { display: none; }
   #kta-home-plans-more {
     display: flex;
     align-items: center;
@@ -8456,8 +8420,6 @@ html.kta-theme-light .kta-ipl-mgr-side { color: var(--kta-light-text, #1a1f2e); 
   }
   #zipDropZone .zip-icon { font-size: 20px; }
   #zipDropZone br { display: none; }
-  /* 🔐 FS Access = Chrome/Edge DESKTOP uniquement — jamais utile au doigt */
-  #fsAccessHint { display: none !important; }
 
   /* ④ HOME v2 : l'accordéon Outils du lot A est supprimé — la grille 2×2
      (4 tuiles ~120 px de haut) reste visible en permanence. */
@@ -15354,7 +15316,6 @@ body.kta-theme-light .plan-card:hover {
 
 /* === Tous les boutons primaires du loader (id="loader…") === */
 body.kta-theme-light #loadPlanBtn,
-body.kta-theme-light #fsAccessBtn,
 body.kta-theme-light #importListBtn,
 body.kta-theme-light #exportListBtn,
 body.kta-theme-light #loaderPlannerBtn,
@@ -15370,8 +15331,7 @@ body.kta-theme-light #loaderShowLogsBtn {
   color: var(--kta-light-text) !important;
   border: 1px solid var(--kta-light-border-strong) !important;
 }
-body.kta-theme-light #loadPlanBtn:hover,
-body.kta-theme-light #fsAccessBtn:hover {
+body.kta-theme-light #loadPlanBtn:hover {
   background: var(--kta-light-accent-bg) !important;
   border-color: var(--kta-light-accent) !important;
 }
@@ -16489,20 +16449,6 @@ html.kta-theme-light #loaderPlannerBtn {
   padding: 11px 18px !important;
 }
 
-/* === Bouton "FS Access" (🔐 Autoriser l'accès permanent) === */
-html.kta-theme-light .loader-btn-fs {
-  background: rgba(140, 180, 255, 0.10) !important;
-  color: #0a4f6b !important;
-  border: 1px solid rgba(10, 79, 107, 0.30) !important;
-  border-radius: 8px !important;
-}
-html.kta-theme-light .loader-btn-fs:hover {
-  background: rgba(140, 180, 255, 0.20) !important;
-  border-color: rgba(10, 79, 107, 0.50) !important;
-}
-html.kta-theme-light .fs-access-info {
-  color: #6b6354 !important;
-}
 
 /* === Filtres "Afficher les plans serveur" === */
 html.kta-theme-light .loader-plans-filter-row {
@@ -16990,15 +16936,6 @@ body.kta-theme-light .loader-btn-resume strong {
 }
 
 /* === Autres .loader-btn-* non couverts précédemment === */
-body.kta-theme-light .loader-btn-fs {
-  background: rgba(0,0,0,0.05) !important;
-  color: var(--kta-light-text) !important;
-  border: 1px solid var(--kta-light-border-strong) !important;
-}
-body.kta-theme-light .loader-btn-fs:hover {
-  background: var(--kta-light-accent-bg) !important;
-  border-color: var(--kta-light-accent) !important;
-}
 body.kta-theme-light .loader-btn-secondary.loader-btn-danger {
   background: rgba(220, 50, 50, 0.10) !important;
   color: #b02020 !important;
@@ -21395,11 +21332,6 @@ html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
     font-size: 20px;
     margin-bottom: 4px;
   }
-  .loader-col-actions .fs-access-hint {
-    margin-top: 4px;
-    padding: 6px 10px;
-    gap: 4px;
-  }
   .loader-col-actions .loader-tools-head {
     margin-top: 4px;
   }
@@ -21463,6 +21395,91 @@ html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
   gap: 6px;
   margin: 4px 0 8px;
 }
+
+/* ═══ 📁 16/09/2026 — MODE DOSSIERS DE « MES PLANS » ═══
+   Contrainte : 0 px ajouté (sélecteur dans la ligne de titre, en-tête de
+   dossier = hauteur d'une ligne de plan). */
+.kta-plans-head-tools { display: flex; align-items: center; gap: 6px; }
+.kta-plans-view-switch { display: flex; gap: 2px; padding: 2px; border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+.kta-plans-view-btn { padding: 2px 9px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid transparent;
+  background: transparent; color: #8892a4; cursor: pointer; line-height: 1.5; transition: background 0.15s, color 0.15s; }
+.kta-plans-view-btn:hover { color: #e8eaf0; }
+.kta-plans-view-btn.kta-actif { background: #f4c542; color: #1a1f2e; }
+.kta-plans-head-btn { padding: 1px 7px; font-size: 12px; line-height: 1.6; border-radius: 6px; cursor: pointer;
+  background: rgba(140, 180, 255, 0.08); border: 1px solid rgba(140, 180, 255, 0.25); color: #c8d0e0; }
+.kta-plans-head-btn:hover { background: rgba(140, 180, 255, 0.16); color: #e8eaf0; }
+.kta-plans-head-btn.kta-actif { background: rgba(244, 197, 66, 0.2); border-color: rgba(244, 197, 66, 0.6); color: #f4c542; }
+.kta-plans-folder { display: flex; flex-direction: column; gap: 4px; }
+.kta-plans-folder-head { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px;
+  background: rgba(140, 180, 255, 0.06); border: 1px solid rgba(140, 180, 255, 0.18); border-radius: 6px;
+  cursor: pointer; user-select: none; font-size: 13px; font-weight: 600; color: #e8eaf0; }
+.kta-plans-folder-head:hover { background: rgba(140, 180, 255, 0.11); }
+.kta-plans-folder-head.kta-drop-cible, .kta-plans-folder-rows.kta-drop-cible { outline: 2px dashed #f4c542; outline-offset: -2px; background: rgba(244, 197, 66, 0.08); }
+.kta-plans-folder-caret { width: 12px; color: #8892a4; font-size: 12px; }
+.kta-plans-folder-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; display: inline-block; }
+.kta-plans-folder-dot-none { background: transparent; border: 1px dashed #8892a4; }
+.kta-plans-folder-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kta-plans-folder-count { font-size: 11px; font-weight: 600; color: #8892a4; padding: 0 6px; border-radius: 8px; background: rgba(255, 255, 255, 0.06); }
+.kta-plans-folder-lock { font-size: 12px; opacity: 0.8; }
+.kta-plans-folder-menu { padding: 0 6px; }
+.kta-plans-folder-rows { display: flex; flex-direction: column; gap: 4px; padding-left: 10px; min-height: 8px; }
+.kta-plans-folder-rows[hidden] { display: none; }   /* le display:flex primerait sur l'attribut hidden */
+.kta-plans-folder-unfiled .kta-plans-folder-head { background: rgba(255, 255, 255, 0.03); border-style: dashed; color: #c8d0e0; }
+.kta-plans-folder-empty { font-size: 11.5px; color: #8892a4; padding: 6px 8px; border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 6px; }
+.kta-plan-row-folder-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 6px; flex: none; vertical-align: middle;
+  background: var(--kta-dot, #8cb4ff); }
+.kta-plan-row-check { width: 16px; height: 16px; flex: none; border-radius: 4px; border: 1px solid rgba(140, 180, 255, 0.5); background: rgba(0, 0, 0, 0.2); }
+.kta-plan-row-check.kta-actif { background: #f4c542; border-color: #f4c542; box-shadow: inset 0 0 0 3px #1a1f2e; }
+.plan-row.kta-plan-row-selected { border-color: rgba(244, 197, 66, 0.6); background: rgba(244, 197, 66, 0.08); }
+.plan-row.kta-plan-row-dragging { opacity: 0.5; }
+/* 🐛 16/09 (KARMA, PWA : « l'appui prolongé surligne le texte en même temps ») —
+   un appui long sur une ligne ne doit jamais sélectionner du texte ni ouvrir
+   le menu de copie d'iOS : les lignes et en-têtes sont des boutons, pas du texte. */
+.plan-row, .kta-plans-folder-head { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* fantôme du glisser tactile (appui long) : suit le doigt, ne capte rien */
+.kta-plans-drag-ghost { position: fixed; left: 0; top: 0; z-index: 100003; pointer-events: none; opacity: 1; will-change: transform;
+  background: #1a1f2e; border-color: #f4c542; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); transform: translate(-9999px, -9999px); transition: none; }
+/* la ligne d'origine pendant un glisser tactile : une empreinte, pas un double (KARMA : « scintillement ») */
+.plan-row.kta-plan-row-empreinte { opacity: 0.12; border-style: dashed; transition: none; }
+.plan-row[draggable="true"] { cursor: pointer; }
+.kta-plans-select-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin: 0 0 4px; border-radius: 6px;
+  background: #22283a; border: 1px solid rgba(244, 197, 66, 0.45); font-size: 12px; color: #e8eaf0;
+  position: sticky; top: 0; z-index: 2; }   /* en tête de liste, collante : visible quel que soit le nombre de plans */
+.kta-plans-select-count { flex: 1 1 auto; }
+.kta-plans-sheet { max-width: 420px !important; width: min(420px, 96vw) !important; }
+.kta-plans-sheet-corps { columns: 1 !important; display: flex; flex-direction: column; gap: 6px; }
+.kta-plans-sheet-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 10px 12px; min-height: 40px;
+  border-radius: 8px; border: 1px solid rgba(140, 180, 255, 0.2); background: rgba(140, 180, 255, 0.06); color: #e8eaf0; font-size: 13px; cursor: pointer; }
+.kta-plans-sheet-item:hover { background: rgba(140, 180, 255, 0.14); }
+.kta-plans-sheet-new { display: flex; gap: 6px; margin-top: 4px; }
+.kta-plans-sheet-new .kta-cfg-input { flex: 1 1 auto; }
+.kta-plans-sheet-lock { font-size: 12px; color: #c8d0e0; background: rgba(140, 180, 255, 0.08); border-radius: 6px; padding: 8px 10px; margin: 0 0 8px; line-height: 1.45; }
+.kta-plans-sheet-err { font-size: 12px; color: #ffb380; }
+.kta-plans-swatches { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+.kta-plans-swatch { width: 26px; height: 26px; border-radius: 7px; border: 2px solid transparent; cursor: pointer; padding: 0; display: inline-block; }
+.kta-plans-swatch.kta-actif { border-color: #e8eaf0; box-shadow: 0 0 0 2px #1a1f2e; }
+.kta-plans-sheet-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.kta-plans-sheet-spacer { flex: 1 1 auto; }
+.kta-plans-folder-more { width: 100%; margin-top: 4px; }
+/* rangé par règle : contour DANS la pastille (ombre inset), rien ne déborde du titre en overflow:hidden */
+.kta-plan-row-folder-dot-rule { background: transparent; box-shadow: inset 0 0 0 2px var(--kta-dot, #8cb4ff); }
+.kta-plans-chip-folder { font-weight: 700; }
+.kta-plans-sheet-hint { font-size: 11.5px; color: #8892a4; line-height: 1.4; margin: -4px 0 8px; }
+.kta-impm-dossier { flex: 1 1 160px; max-width: 260px; }
+.kta-impm-dossier-nom { flex: 1 1 160px; max-width: 260px; }
+html.kta-theme-light .kta-plans-folder-head { background: rgba(140, 180, 255, 0.14); border-color: rgba(20, 30, 50, 0.18); color: #1a1f2e; }
+html.kta-theme-light .kta-plans-folder-unfiled .kta-plans-folder-head { background: rgba(0, 0, 0, 0.03); }
+html.kta-theme-light .kta-plans-folder-count { background: rgba(0, 0, 0, 0.06); color: #4a5568; }
+html.kta-theme-light .kta-plans-view-switch { background: rgba(0, 0, 0, 0.04); border-color: rgba(20, 30, 50, 0.14); }
+html.kta-theme-light .kta-plans-view-btn { color: #4a5568; }
+html.kta-theme-light .kta-plans-view-btn:hover { color: #1a1f2e; }
+html.kta-theme-light .kta-plans-head-btn { background: rgba(0, 0, 0, 0.04); border-color: rgba(20, 30, 50, 0.18); color: #1a1f2e; }
+html.kta-theme-light .kta-plans-sheet-item { background: rgba(0, 0, 0, 0.03); border-color: rgba(20, 30, 50, 0.18); color: #1a1f2e; }
+html.kta-theme-light .kta-plans-select-bar { color: #1a1f2e; background: #fdf8eb; }
+html.kta-theme-light .kta-plans-sheet-lock { color: #1a1f2e; }
+html.kta-theme-light .kta-plan-row-check.kta-actif { box-shadow: inset 0 0 0 3px #ffffff; }
+html.kta-theme-light .kta-plans-swatch.kta-actif { border-color: #1a1f2e; box-shadow: 0 0 0 2px #ffffff; }
 .kta-plan-row-tag {
   display: inline-block;
   margin-left: 6px;

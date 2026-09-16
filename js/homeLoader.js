@@ -49,8 +49,6 @@
       // null-safe). Si le bouton n'existe pas → handler skip.
       const confExBtn       = document.getElementById("loaderConfExempleBtn");
 
-      // Handle FS Access courant (si l'utilisateur a sélectionné via showOpenFilePicker)
-      let _currentFsHandle = null;
 
       // === HELPERS ===
       function setStatus(message, isError) {
@@ -239,9 +237,7 @@
       }
 
       // === DROP ZONE ZIP ===
-      zipDropZone.addEventListener("click", function (e) {
-        // Ne pas ouvrir le picker si l'utilisateur a cliqué sur le bouton FS Access
-        if (e.target.closest("#fsAccessHint")) return;
+      zipDropZone.addEventListener("click", function () {
         zipFileInput.click();
       });
       // 🗺️ v1.75.2 — extensions routées vers « Convertir depuis un SIG ».
@@ -324,8 +320,6 @@
           return;
         }
         zipFileName.textContent = "✅ " + f.name;
-        // Sélection via input classique : pas de handle FS
-        _currentFsHandle = null;
         // Note : pas d'auto-bascule de preset selon la taille — le mode "Auto" du
         // segmented control s'occupe naturellement des gros fichiers (> 60 Mo)
       });
@@ -341,8 +335,6 @@
           const dt = new DataTransfer(); dt.items.add(f);
           zipFileInput.files = dt.files;
           zipFileName.textContent = "✅ " + f.name;
-          // Drop : pas de handle FS
-          _currentFsHandle = null;
         } else if (lower.endsWith(".kmz")) {
           // v1.14.20-hotfix6 — route KMZ vers la modale d'import dédiée
           // (parse + reconstruction en ZIP MyKTAMap avec icônes/annotations
@@ -383,8 +375,6 @@
         }
       });
 
-      // === FS ACCESS — sélection via showOpenFilePicker (handle persistable) ===
-      const fsAccessHint = document.getElementById("fsAccessHint");
       // 📦 v1.94.0 — import multiple. Le module vit à part : ce bouton ne fait
       // que l'ouvrir, et le DIT si le module manque plutôt que de rester inerte.
       const impMasseBtn = document.getElementById("loaderImportMasseBtn");
@@ -395,46 +385,26 @@
         });
       }
 
-      const fsAccessBtn  = document.getElementById("fsAccessBtn");
-      const storeBlobHint = document.getElementById("storeBlobHint");
-      const storeBlobCb   = document.getElementById("storeBlobCb");
-      const storeBlobInfo = document.getElementById("storeBlobInfo");
-
-      // Choix de l'affichage selon la plateforme :
-      //  - FS Access dispo (Chrome/Edge desktop) → bouton 🔐 visible, store-blob masqué
-      //  - Sinon (mobile, Firefox, Safari) → store-blob visible, FS Access masqué
-      const fsOk = window.PlanRegistry && window.PlanRegistry.hasFsAccess();
-      if (fsOk && fsAccessHint) {
-        fsAccessHint.style.display = "block";
-      } else if (storeBlobHint) {
-        storeBlobHint.style.display = "block";
-      }
-
-      if (fsAccessBtn) {
-        fsAccessBtn.addEventListener("click", async function(e) {
-          const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
-          e.stopPropagation();
-          try {
-            const [handle] = await window.showOpenFilePicker({
-              types: [{ description: "Plan ZIP", accept: { "application/zip": [".zip"] } }],
-              excludeAcceptAllOption: false,
-              multiple: false
-            });
-            const file = await handle.getFile();
-            // Injecter dans l'input pour cohérence avec le flux de chargement existant
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            zipFileInput.files = dt.files;
-            zipFileName.textContent = _t("home.loader.persistentAccess", { file: file.name });
-            _currentFsHandle = handle;
-            setStatus(_t("home.loader.zipSelected"), false);
-          } catch(err) {
-            if (err && err.name !== "AbortError") {
-              setStatus(_t("home.loader.errSelection") + (err.message || err), true);
-            }
-          }
-        });
-      }
+      // 💾 UN SEUL MÉCANISME DE PERSISTANCE : la copie du ZIP dans l'app.
+      // 🩸 15/09/2026 (KARMA : « Autoriser l'accès permanent a l'air de servir
+      // à rien et faire doublon ») — exact. Sur Chrome/Edge le bouton 🔐 était
+      // affiché À LA PLACE de la case « Mémoriser », mais la case restait
+      // cochée sous le masque et `onLoadPlanClick` lit son état, pas sa
+      // visibilité : le ZIP était copié dans TOUS les cas, et la référence
+      // disque prise en plus n'était jamais lue (l'ouverture essaie la copie
+      // d'abord, et ne retombe pas sur la référence si la copie a été purgée).
+      // Le bouton et la prise de référence à l'ajout sont retirés ; la LECTURE
+      // des anciennes entrées `fsHandleId` reste (étape 2 de l'ouverture).
+      //
+      // Puis, même soir (KARMA : « ce truc à cocher alourdit pour rien le
+      // home ») : la case quitte l'ACCUEIL et devient le réglage ⚙️
+      // Configuration de l'accueil → « Mémoriser le plan dans l'app au premier
+      // chargement », ACTIVÉ par défaut. Cette fonction est la source de
+      // vérité unique : lue ici, par l'import multiple (défaut de la case
+      // « Précharger ») et par homeConfig (la case du réglage).
+      window.ktaMemoriserPlanActif = function () {
+        try { return localStorage.getItem("myktamap_memoriser_plan") !== "0"; } catch (e) { return true; }
+      };
 
       // === CHARGEMENT D'UN ZIP (utilisé par le bouton Charger ET les plans locaux du registre) ===
       // presetChoisi : "auto" | "quality" | "balanced" | "performance" (string)
@@ -673,9 +643,8 @@
             : "auto";
 
           const meta = {};
-          if (_currentFsHandle) meta.fsHandle = _currentFsHandle;
-          // Stockage du blob ZIP demandé (case cochée)
-          if (storeBlobCb && storeBlobCb.checked) meta.storeBlob = true;
+          // Copie du ZIP dans l'app selon le réglage de l'accueil (le seul mécanisme)
+          if (window.ktaMemoriserPlanActif()) meta.storeBlob = true;
 
           await chargerZipFichier(zipFile, presetChoisi, meta);
         } catch(err) {
@@ -1070,17 +1039,36 @@ function planRowHTML(plan) {
         const pinTitle = plan.pinned
           ? _homeT("home.plans.unpinTitle", "Désépingler ce plan")
           : _homeT("home.plans.pinTitle", "Épingler ce plan en tête de liste");
+        // 📁 16/09/2026 — dossier du plan : pastille de couleur devant le nom
+        // (dans les deux modes), case de sélection et bouton « Déplacer vers »
+        // (mode Dossiers seulement — le mode TOUT reste l'écran d'avant).
+        const _fid  = window.PlanRegistry.planFolderId ? window.PlanRegistry.planFolderId(plan) : null;
+        const _fold = _fid ? window.PlanRegistry.findFolder(_fid) : null;
+        const _parRegle = !!(_fold && window.PlanRegistry.planFolderByRule && window.PlanRegistry.planFolderByRule(plan));
+        // 🐛 16/09 (KARMA : « la pastille est coupée de quelques pixels ») — le
+        // titre est en overflow:hidden et la pastille en est le PREMIER item :
+        // l'ombre extérieure qui signalait « par règle » débordait à gauche et
+        // se faisait rogner. La couleur passe en variable CSS et le contour
+        // « règle » est dessiné À L'INTÉRIEUR de la pastille (ombre inset).
+        const dotHtml = _fold ? '<span class="kta-plan-row-folder-dot' + (_parRegle ? " kta-plan-row-folder-dot-rule" : "") + '" style="--kta-dot:' + escapeHtml(_fold.color || "#8cb4ff") + '" title="' + escapeHtml(_fold.name + (_parRegle ? " · " + _homeT("home.plans.folders.byRule", "par règle d'étiquette") : "")) + '"></span>' : "";
+        const enDossiers = (_plansVue === "folders");
+        const selectionnee = enDossiers && _plansSelectMode && _plansSelection.has(plan.id);
+        const caseHtml = (enDossiers && _plansSelectMode)
+          ? '<span class="kta-plan-row-check' + (selectionnee ? " kta-actif" : "") + '" aria-hidden="true"></span>' : "";
+        const moveBtn = enDossiers
+          ? '<button class="plan-row-btn kta-plan-row-move" title="' + _homeT("home.plans.folders.moveTo", "Déplacer vers…") + '">📁</button>' : "";
+        const glissable = (enDossiers && _plansDragOk()) ? ' draggable="true"' : "";
         return `
-          <div class="plan-row${plan.pinned ? " kta-plan-row-pinned" : ""}" data-id="${plan.id}" title="${_homeT("home.plans.loadBtnTitle", "Charger ce plan")}">
-            <span class="plan-row-icon">${icon}</span>
+          <div class="plan-row${plan.pinned ? " kta-plan-row-pinned" : ""}${selectionnee ? " kta-plan-row-selected" : ""}" data-id="${plan.id}"${glissable} title="${_homeT("home.plans.loadBtnTitle", "Charger ce plan")}">
+            ${caseHtml}<span class="plan-row-icon">${icon}</span>
             <div class="plan-row-info">
               <div class="plan-row-title">
-                <span class="plan-row-name-text">${escapeHtml(window.PlanRegistry.displayName(plan))}</span>
+                ${dotHtml}<span class="plan-row-name-text">${escapeHtml(window.PlanRegistry.displayName(plan))}</span>
               </div>
               <div class="plan-row-modes">${badgesMode}${badgeStorage}${tagsHtml}</div>
             </div>
             <div class="plan-row-actions">
-              <button class="plan-row-btn kta-plan-row-pin${plan.pinned ? " kta-actif" : ""}" title="${pinTitle}">${plan.pinned ? "⭐" : "☆"}</button>
+              ${moveBtn}<button class="plan-row-btn kta-plan-row-pin${plan.pinned ? " kta-actif" : ""}" title="${pinTitle}">${plan.pinned ? "⭐" : "☆"}</button>
               ${plan.type === "server" ? `<button class="plan-row-btn kta-plan-row-dl" data-off="?" hidden
                 title="${_homeT("home.plans.offline.rowWait", "Vérification…")}">⏳</button>` : ""}
               <button class="plan-row-btn plan-row-info-btn" title="${_homeT("home.plans.infoBtnTitle", "Informations détaillées sur cette archive")}">ℹ️</button>
@@ -1094,6 +1082,21 @@ function planRowHTML(plan) {
       // (remonte en tête), filtre par nom. Les filtres sont RAM only.
       let _plansNameFilter = "";     // minuscule, "" = pas de filtre
       let _plansTagFilter  = null;   // Set<string> (clés minuscules) | null
+      // 📁 16/09/2026 — mode Dossiers : état d'écran (le registre est la source
+      // du mode, des dossiers et des appartenances ; ici, seulement l'éphémère).
+      let _plansVue = "all";                 // "all" | "folders", relu à chaque rendu
+      let _plansSelectMode = false;          // sélection multiple (mode Dossiers)
+      const _plansSelection = new Set();     // ids sélectionnés
+      let _nonClassesReplie = false;         // repli de « Non classés » (RAM)
+      const SEUIL_GLISSER = 6;               // px depuis le pointerdown avant d'armer un glisser
+      let _dragArme = false, _dragOrigine = null, _dragPlanId = null;
+      function _plansDragOk() { return !!(window.matchMedia && window.matchMedia("(pointer: fine)").matches); }
+      function _lireVuePlans() {
+        const PR = window.PlanRegistry;
+        if (!PR || typeof PR.getPlansView !== "function") return "all";
+        if (PR.hasPlansViewChoice()) return PR.getPlansView();
+        return (window._ktaPlansViewParDefaut === "folders") ? "folders" : "all";   // kiosque, seulement si jamais choisi
+      }
 
       // 🌐 v170 : helpers de filtrage "Afficher plans serveur" (persisté localStorage)
       const LS_SHOW_SERVER = "myktamap_loader_show_server_plans";
@@ -1718,6 +1721,8 @@ function planRowHTML(plan) {
         if (!window.PlanRegistry) return;
         const all = window.PlanRegistry.getAll();
         const last = window.PlanRegistry.getLastOpened();
+        _plansVue = _lireVuePlans();   // 📁 16/09/2026
+        _majEnteteVuePlans();
 
         // Bouton Reprendre
         const resumeBox = document.getElementById("resumeBox");
@@ -1789,7 +1794,26 @@ function planRowHTML(plan) {
               const actif = _plansTagFilter && _plansTagFilter.has(k);
               return '<button type="button" class="kta-osm-home-tag-chip' + (actif ? " active" : "") +
                      '" data-tagkey="' + escapeHtml(k) + '">' + escapeHtml(tousTags[k]) + '</button>';
-            }).join("");
+            }).join("") +
+            // 🏷️ marche 2 — des chips cochées → « 📁 Dossier depuis ces étiquettes » :
+            // crée un dossier à RÈGLE (les plans étiquetés y entrent seuls, les
+            // prochains aussi) et bascule en mode Dossiers. Le pont entre
+            // l'existant et le nouveau, sans rien ranger à la main.
+            ((_plansTagFilter && _plansTagFilter.size)
+              ? '<button type="button" class="kta-osm-home-tag-chip kta-plans-chip-folder" id="loaderPlansChipFolder" title="' +
+                escapeHtml(_t("home.plans.folders.fromTags")) + '">📁+</button>' : "");
+            const chipDossier = document.getElementById("loaderPlansChipFolder");
+            if (chipDossier) chipDossier.addEventListener("click", function() {
+              const PR = window.PlanRegistry;
+              const libelles = Array.from(_plansTagFilter).map(function(k) { return tousTags[k] || k; });
+              const f = PR.createFolder(libelles.join(" · "), { src: "user", rule: { tags: libelles } });
+              if (!f) return;
+              PR.setFolderRule(f.id, libelles);
+              PR.setFolderCollapsed(f.id, false);
+              _plansTagFilter = null;
+              PR.setPlansView("folders");
+              window.refreshPlansList();
+            });
             chipsBox.querySelectorAll("[data-tagkey]").forEach(function(chip) {
               chip.addEventListener("click", function() {
                 const k = chip.dataset.tagkey;
@@ -1803,6 +1827,11 @@ function planRowHTML(plan) {
           }
         }
 
+        // 📁 16/09/2026 — en mode Dossiers le bandeau de chips disparaît (c'est
+        // lui qui déborde à 50 plans) et le filtre par étiquette ne s'applique
+        // pas ; le filtre par nom, lui, agit à l'intérieur des dossiers.
+        if (_plansVue === "folders" && chipsBox) { chipsBox.style.display = "none"; chipsBox.innerHTML = ""; }
+
         // 🏷️ v1.78.0 — filtres nom + tags (RAM only, sur la liste déjà
         // filtrée serveur). Tags : il suffit qu'UN tag du plan matche (OU).
         const visibles = filtered.filter(function(p) {
@@ -1811,7 +1840,7 @@ function planRowHTML(plan) {
           if (_plansNameFilter &&
               String(p.name || p.id).toLowerCase().indexOf(_plansNameFilter) === -1 &&
               String(p.displayName || "").toLowerCase().indexOf(_plansNameFilter) === -1) return false;
-          if (_plansTagFilter) {
+          if (_plansTagFilter && _plansVue !== "folders") {
             const tags = Array.isArray(p.tags) ? p.tags : [];
             if (!tags.some(function(tg) { return _plansTagFilter.has(tg.toLowerCase()); })) return false;
           }
@@ -1819,7 +1848,9 @@ function planRowHTML(plan) {
         });
 
         const allPlansList = document.getElementById("allPlansList");
-        if (allPlansList) {
+        if (allPlansList && _plansVue === "folders") {
+          _rendreDossiers(allPlansList, visibles);   // 📁 16/09/2026
+        } else if (allPlansList) {
           if (visibles.length === 0) {
             // Cas particulier : registre non vide mais filtres cachent tout
             // (serveurs masqués, nom ou tags sans correspondance).
@@ -1837,7 +1868,8 @@ function planRowHTML(plan) {
             allPlansList.innerHTML = sorted.map(planRowHTML).join("");
           }
         }
-        _ktaMobileCollapsePlans();   // 📱 v1.68.0 : liste bornée sur mobile
+        if (_plansVue === "folders") _ktaMobileCollapseDossiers();   // 📁 par dossier déplié
+        else _ktaMobileCollapsePlans();   // 📱 v1.68.0 : liste bornée sur mobile
         // 💾 v1.90.0 — l'état hors-ligne des lignes est relu à CHAQUE rendu :
         // il ne peut donc pas rester périmé après un téléchargement, une
         // suppression depuis la fiche, ou une purge du navigateur.
@@ -1880,10 +1912,477 @@ function planRowHTML(plan) {
             });
           }
           row.addEventListener("click", function() {
+            // 📁 en sélection multiple, un clic coche au lieu d'ouvrir
+            if (_plansVue === "folders" && _plansSelectMode) { _basculerSelection(id); return; }
             chargerPlanDuRegistre(id);
           });
+          const moveBtn = row.querySelector(".kta-plan-row-move");
+          if (moveBtn) moveBtn.addEventListener("click", function(e) { e.stopPropagation(); _ouvrirFeuilleDeplacer([id]); });
         });
+        if (_plansVue === "folders" && allPlansList) _brancherDossiers(allPlansList);
       };
+
+      // ═══════════════════════════════════════════════════════════════════
+      // 📁 16/09/2026 — MODE DOSSIERS DE « MES PLANS » (étude + décisions
+      // KARMA 1-11, docs/audits/2026-09-16_etude-dossiers-mes-plans.md).
+      // Contrainte stricte : « Mes plans » garde sa hauteur et sa place. Le
+      // sélecteur TOUT / DOSSIERS vit dans la ligne de titre (0 px ajouté),
+      // un en-tête de dossier a la hauteur d'une ligne de plan, replié par
+      // défaut. Tactile d'abord : tout se fait sans glisser (📁 Déplacer
+      // vers…, sélection multiple) ; le glisser est un raccourci PC, actif
+      // seulement pour un pointeur fin et après un seuil de déplacement.
+      // Le mode TOUT reste strictement l'écran d'avant (une pastille de
+      // couleur devant le nom des plans rangés, c'est tout).
+      // ═══════════════════════════════════════════════════════════════════
+      function _comparerPlans(a, b) {
+        if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
+        if (a.lastOpened && b.lastOpened) return b.lastOpened.localeCompare(a.lastOpened);
+        if (a.lastOpened) return -1;
+        if (b.lastOpened) return 1;
+        return (a.displayName || a.name || "").localeCompare(b.displayName || b.name || "");
+      }
+
+      // Ligne de titre : état du sélecteur, boutons ➕ / ☑ visibles seulement
+      // en mode Dossiers (rien n'est ajouté au mode TOUT).
+      function _majEnteteVuePlans() {
+        const sw = document.getElementById("loaderPlansViewSwitch");
+        if (sw) sw.querySelectorAll("[data-view]").forEach(function(b) {
+          b.classList.toggle("kta-actif", b.dataset.view === _plansVue);
+          b.setAttribute("aria-selected", b.dataset.view === _plansVue ? "true" : "false");
+        });
+        const enDossiers = (_plansVue === "folders");
+        const bNew = document.getElementById("loaderPlansFolderNew");
+        const bSel = document.getElementById("loaderPlansSelect");
+        if (bNew) bNew.hidden = !enDossiers;
+        if (bSel) { bSel.hidden = !enDossiers; bSel.classList.toggle("kta-actif", enDossiers && _plansSelectMode); }
+        if (!enDossiers && _plansSelectMode) { _plansSelectMode = false; _plansSelection.clear(); }
+      }
+
+      function _enteteDossierHTML(f, n, replie) {
+        const t = window.I18n.t;
+        const verrou = (f && f.src === "index")
+          ? '<span class="kta-plans-folder-lock" title="' + escapeHtml(t("home.plans.folders.lockedIndex")) + '">🌐</span>' : "";
+        const nom = f ? escapeHtml(f.name) : escapeHtml(t("home.plans.folders.unfiled"));
+        const dot = f ? '<span class="kta-plans-folder-dot" style="background:' + escapeHtml(f.color || "#8cb4ff") + '"></span>'
+                      : '<span class="kta-plans-folder-dot kta-plans-folder-dot-none"></span>';
+        const menu = f ? '<button type="button" class="plan-row-btn kta-plans-folder-menu" title="' + escapeHtml(t("home.plans.folders.menu")) + '">⋮</button>' : "";
+        return '<div class="kta-plans-folder-head' + (replie ? " kta-replie" : "") + '" data-folder="' + (f ? escapeHtml(f.id) : "") + '" role="button" tabindex="0">' +
+                 '<span class="kta-plans-folder-caret">' + (replie ? "▸" : "▾") + '</span>' + dot +
+                 '<span class="kta-plans-folder-name">' + nom + '</span>' +
+                 '<span class="kta-plans-folder-count">' + n + '</span>' + verrou + menu +
+               '</div>';
+      }
+
+      // Rendu du mode Dossiers : [dossier][lignes]… puis Non classés (dernier,
+      // seulement s'il n'est pas vide). Tri identique au mode TOUT, par dossier.
+      function _rendreDossiers(conteneur, visibles) {
+        const PR = window.PlanRegistry;
+        const t = window.I18n.t;
+        const parDossier = {};
+        const nonClasses = [];
+        visibles.forEach(function(p) {
+          const fid = PR.planFolderId(p);
+          if (fid) { (parDossier[fid] = parDossier[fid] || []).push(p); } else nonClasses.push(p);
+        });
+        let html = "";
+        PR.getFolders().forEach(function(f) {
+          const plans = (parDossier[f.id] || []).sort(_comparerPlans);
+          const replie = f.collapsed !== false;
+          html += '<div class="kta-plans-folder" data-folder="' + escapeHtml(f.id) + '">' +
+                    _enteteDossierHTML(f, plans.length, replie) +
+                    '<div class="kta-plans-folder-rows" data-folder="' + escapeHtml(f.id) + '"' + (replie ? ' hidden' : '') + '>' +
+                      (plans.length ? plans.map(planRowHTML).join("")
+                                    : '<div class="kta-plans-folder-empty">' + escapeHtml(t("home.plans.folders.empty")) + '</div>') +
+                    '</div>' +
+                  '</div>';
+        });
+        if (nonClasses.length) {
+          const plans = nonClasses.sort(_comparerPlans);
+          html += '<div class="kta-plans-folder kta-plans-folder-unfiled" data-folder="">' +
+                    _enteteDossierHTML(null, plans.length, _nonClassesReplie) +
+                    '<div class="kta-plans-folder-rows" data-folder=""' + (_nonClassesReplie ? ' hidden' : '') + '>' + plans.map(planRowHTML).join("") + '</div>' +
+                  '</div>';
+        }
+        if (!html) html = '<div class="loader-plans-empty">' + t("home.plans.emptyLocal") + '</div>';
+        if (_plansSelectMode) {
+          // 🐛 16/09 (KARMA : « j'avais pas vu le Déplacer vers en bas, selon le
+          // nombre de plans tu ne penses pas à défiler ») — la barre vit EN
+          // TÊTE de liste, collante, juste sous le ☑ qu'on vient de cliquer.
+          html = '<div class="kta-plans-select-bar" id="loaderPlansSelectBar">' +
+                   '<span class="kta-plans-select-count">' + escapeHtml(t("home.plans.folders.selected", { n: _plansSelection.size })) + '</span>' +
+                   '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="loaderPlansSelectMove"' + (_plansSelection.size ? "" : " disabled") + '>📁 ' + escapeHtml(t("home.plans.folders.moveTo")) + '</button>' +
+                   '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="loaderPlansSelectDone">' + escapeHtml(t("home.plans.folders.selectDone")) + '</button>' +
+                 '</div>' + html;
+        }
+        conteneur.innerHTML = html;
+      }
+
+      // Repli mobile PAR DOSSIER déplié (5 lignes puis « Tout le dossier (N) »),
+      // le pendant de _ktaMobileCollapsePlans pour le mode TOUT.
+      function _ktaMobileCollapseDossiers() {
+        // 🐛 16/09 (KARMA : « un bouton Tous mes plans persiste en mode Dossiers »)
+        // — le bouton global du mode TOUT vit HORS de #allPlansList (inséré
+        // après), donc le re-rendu ne l'emporte pas : on le retire ici, comme
+        // _ktaMobileCollapsePlans le fait de son côté.
+        const ancien = document.getElementById("kta-home-plans-more");
+        if (ancien) ancien.remove();
+        const liste = document.getElementById("allPlansList");
+        if (liste) liste.classList.remove("kta-collapsed");
+        if (!window.matchMedia || !window.matchMedia("(max-width: 640px)").matches) return;
+        const t = window.I18n.t;
+        document.querySelectorAll("#allPlansList .kta-plans-folder-rows:not([hidden])").forEach(function(rows) {
+          const n = rows.querySelectorAll(".plan-row").length;
+          if (n <= 5) return;
+          rows.classList.add("kta-collapsed");
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "loader-btn-secondary kta-plans-folder-more";
+          const maj = function() {
+            btn.textContent = rows.classList.contains("kta-collapsed")
+              ? "📚 " + t("home.plans.folders.all", { n: n }) : "▴ " + t("home.plans.folders.less");
+          };
+          btn.addEventListener("click", function() { rows.classList.toggle("kta-collapsed"); maj(); });
+          rows.appendChild(btn);
+          maj();
+        });
+      }
+
+      function _basculerSelection(id) {
+        if (_plansSelection.has(id)) _plansSelection.delete(id); else _plansSelection.add(id);
+        window.refreshPlansList();
+      }
+
+      // Écouteurs du mode Dossiers : en-têtes (repli, ⋮), barre de sélection,
+      // et le glisser PC. Appelé après chaque rendu (le HTML est reconstruit).
+      function _brancherDossiers(conteneur) {
+        const PR = window.PlanRegistry;
+        conteneur.querySelectorAll(".kta-plans-folder-head").forEach(function(head) {
+          const fid = head.dataset.folder || null;
+          const basculer = function() {
+            if (fid) { const f = PR.findFolder(fid); if (f) PR.setFolderCollapsed(fid, f.collapsed === false); }
+            else _nonClassesReplie = !_nonClassesReplie;
+            window.refreshPlansList();
+          };
+          head.addEventListener("click", function(e) {
+            if (e.target.closest(".kta-plans-folder-menu")) return;
+            basculer();
+          });
+          head.addEventListener("keydown", function(e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); basculer(); } });
+          const menu = head.querySelector(".kta-plans-folder-menu");
+          if (menu && fid) menu.addEventListener("click", function(e) { e.stopPropagation(); _ouvrirMenuDossier(fid); });
+          _brancherCibleDepot(head, fid);
+        });
+        conteneur.querySelectorAll(".kta-plans-folder-rows").forEach(function(rows) { _brancherCibleDepot(rows, rows.dataset.folder || null); });
+        const bMove = document.getElementById("loaderPlansSelectMove");
+        if (bMove) bMove.addEventListener("click", function() { _ouvrirFeuilleDeplacer(Array.from(_plansSelection)); });
+        const bDone = document.getElementById("loaderPlansSelectDone");
+        if (bDone) bDone.addEventListener("click", function() { _plansSelectMode = false; _plansSelection.clear(); window.refreshPlansList(); });
+        if (_plansDragOk()) _brancherGlisser(conteneur);
+        if (("ontouchstart" in window) || (navigator.maxTouchPoints > 0)) _brancherGlisserTactile(conteneur);
+      }
+
+      // ── Glisser TACTILE par appui long (16/09, KARMA : « sur mobile le
+      // glisser-déposer ne fonctionne pas ») ──
+      // 🩸 Le conflit à résoudre est le DÉFILEMENT : un doigt qui bouge tout
+      // de suite fait défiler la liste, comme partout. Un doigt qui reste
+      // APPUI_LONG ms sans bouger « soulève » la ligne (fantôme sous le doigt,
+      // petite vibration) ; à partir de là seulement, touchmove est
+      // preventDefault-é (le défilement s'arrête le temps du geste) et le
+      // dépôt se fait sur l'en-tête ou le corps d'un dossier, ou sur
+      // « Non classés ». Relâcher ailleurs = rien. Aucun re-rendu au survol.
+      const APPUI_LONG = 450, TOLERANCE_APPUI = 8;
+      let _tDrag = null;   // { id, ghost, cible }
+      function _brancherGlisserTactile(conteneur) {
+        conteneur.querySelectorAll(".plan-row").forEach(function(row) {
+          let timer = null, origine = null;
+          const annuler = function() { if (timer) { clearTimeout(timer); timer = null; } origine = null; };
+          row.addEventListener("touchstart", function(e) {
+            if (e.touches.length !== 1 || e.target.closest("button")) return;
+            const t0 = e.touches[0];
+            origine = { x: t0.clientX, y: t0.clientY };
+            timer = setTimeout(function() {
+              timer = null;
+              _soulever(row, t0.clientX, t0.clientY);
+            }, APPUI_LONG);
+          }, { passive: true });
+          row.addEventListener("touchmove", function(e) {
+            const t0 = e.touches[0];
+            if (_tDrag && _tDrag.id === row.dataset.id) {
+              e.preventDefault();                       // le geste est à nous : plus de défilement
+              _suivre(t0.clientX, t0.clientY);
+              return;
+            }
+            if (origine && (Math.abs(t0.clientX - origine.x) > TOLERANCE_APPUI || Math.abs(t0.clientY - origine.y) > TOLERANCE_APPUI)) annuler();   // c'est un défilement
+          }, { passive: false });
+          const fin = function() {
+            annuler();
+            if (_tDrag && _tDrag.id === row.dataset.id) _deposer();
+          };
+          row.addEventListener("touchend", fin);
+          row.addEventListener("touchcancel", function() { annuler(); if (_tDrag) _deposer(true); });
+          // un appui long ouvre le menu contextuel du navigateur et sélectionne du
+          // texte (KARMA, PWA : « ça surligne le texte en même temps ») : pas
+          // pendant le nôtre — le CSS user-select:none des lignes fait le gros du
+          // travail, ceci couvre les navigateurs qui démarrent quand même une sélection.
+          row.addEventListener("contextmenu", function(e) { if (timer || _tDrag) e.preventDefault(); });
+          row.addEventListener("selectstart", function(e) { if (timer || _tDrag) e.preventDefault(); });
+        });
+      }
+      // Le conteneur qui défile autour d'une ligne : la colonne sur PC
+      // (#myPlansBox en overflow), la page sur mobile.
+      function _trouverScroller(el) {
+        let n = el && el.parentElement;
+        while (n && n !== document.body) {
+          const cs = getComputedStyle(n);
+          if (/(auto|scroll)/.test(cs.overflowY) && n.scrollHeight > n.clientHeight + 4) return n;
+          n = n.parentElement;
+        }
+        return document.scrollingElement || document.documentElement;
+      }
+      function _soulever(row, x, y) {
+        const ghost = row.cloneNode(true);
+        ghost.className = "plan-row kta-plans-drag-ghost";
+        ghost.style.width = row.getBoundingClientRect().width + "px";
+        document.body.appendChild(ghost);
+        // 🐛 (KARMA : « scintillement, doublement de ce que je déplace ») — la
+        // ligne d'origine restait visible à 50 % sous le fantôme qui la
+        // recouvrait presque : elle devient une empreinte discrète.
+        row.classList.add("kta-plan-row-dragging", "kta-plan-row-empreinte");
+        _tDrag = { id: row.dataset.id, ghost: ghost, cible: null, x: x, y: y, scroller: _trouverScroller(row), raf: 0 };
+        _suivre(x, y);
+        _defilerAuxBords();
+        try { if (navigator.vibrate) navigator.vibrate(30); } catch (e) {}
+      }
+      // (KARMA : « tout en haut ça devrait défiler pour remonter la file, et
+      // inversement en bas ») — tant que le doigt reste près d'un bord du
+      // conteneur qui défile, on défile, et la cible sous le doigt est
+      // recalculée puisque le contenu bouge.
+      const ZONE_DEFIL = 72, VITESSE_DEFIL = 14;
+      function _defilerAuxBords() {
+        if (!_tDrag) return;
+        // pas avant que le doigt ait bougé : soulever une ligne près d'un bord
+        // ne doit pas faire partir la liste toute seule
+        if (!_tDrag.bouge) { _tDrag.raf = requestAnimationFrame(_defilerAuxBords); return; }
+        const sc = _tDrag.scroller;
+        const estPage = (sc === document.scrollingElement || sc === document.documentElement);
+        const haut = estPage ? 0 : sc.getBoundingClientRect().top;
+        const bas  = estPage ? window.innerHeight : sc.getBoundingClientRect().bottom;
+        let delta = 0;
+        if (_tDrag.y < haut + ZONE_DEFIL) delta = -Math.ceil(VITESSE_DEFIL * (1 - (_tDrag.y - haut) / ZONE_DEFIL));
+        else if (_tDrag.y > bas - ZONE_DEFIL) delta = Math.ceil(VITESSE_DEFIL * (1 - (bas - _tDrag.y) / ZONE_DEFIL));
+        // (KARMA : « si je glisse vers le bas je ne peux pas défiler après OSM, le
+        // plan n'a rien à faire glisser ici ») — on ne défile que tant que la
+        // liste « Mes plans » a encore quelque chose à montrer dans ce sens :
+        // jamais au-delà de sa fin, jamais au-dessus de son titre.
+        if (delta) {
+          const boite = document.getElementById("myPlansBox"), liste = document.getElementById("allPlansList");
+          if (delta > 0 && liste && liste.getBoundingClientRect().bottom <= bas) delta = 0;
+          if (delta < 0 && boite && boite.getBoundingClientRect().top >= haut) delta = 0;
+        }
+        if (delta) {
+          const avant = sc.scrollTop;
+          sc.scrollTop = avant + delta;
+          if (sc.scrollTop !== avant) _suivre(_tDrag.x, _tDrag.y);
+        }
+        _tDrag.raf = requestAnimationFrame(_defilerAuxBords);
+      }
+      function _suivre(x, y) {
+        if (!_tDrag) return;
+        if (_tDrag.x !== undefined && (x !== _tDrag.x || y !== _tDrag.y)) _tDrag.bouge = true;
+        _tDrag.x = x; _tDrag.y = y;
+        _tDrag.ghost.style.transform = "translate(" + Math.round(x - 24) + "px, " + Math.round(y - 20) + "px)";
+        const sous = document.elementFromPoint(x, y);
+        const cible = sous ? sous.closest(".kta-plans-folder-head, .kta-plans-folder-rows") : null;
+        if (cible !== _tDrag.cible) {
+          if (_tDrag.cible) _tDrag.cible.classList.remove("kta-drop-cible");
+          if (cible) cible.classList.add("kta-drop-cible");
+          _tDrag.cible = cible;
+        }
+      }
+      function _deposer(annule) {
+        if (!_tDrag) return;
+        const d = _tDrag; _tDrag = null;
+        if (d.raf) cancelAnimationFrame(d.raf);
+        d.ghost.remove();
+        if (d.cible) d.cible.classList.remove("kta-drop-cible");
+        const row = document.querySelector('.plan-row[data-id="' + d.id + '"]');
+        if (row) row.classList.remove("kta-plan-row-dragging", "kta-plan-row-empreinte");
+        if (annule || !d.cible) return;
+        const fid = d.cible.dataset.folder || null;
+        const ids = (_plansSelectMode && _plansSelection.has(d.id)) ? Array.from(_plansSelection) : [d.id];
+        _deplacerPlans(ids, fid);
+      }
+
+      // ── Glisser PC (pointeur fin uniquement) ──
+      // 🩸 La ligne reste ENTIÈREMENT cliquable : le glisser n'est armé qu'après
+      // SEUIL_GLISSER px depuis le pointerdown, sinon dragstart est annulé et
+      // le clic ouvre le plan comme avant. Aucun re-rendu pendant le survol :
+      // seule une classe sur la cible bouge ; on re-rend au dépôt.
+      function _brancherGlisser(conteneur) {
+        conteneur.querySelectorAll(".plan-row[draggable]").forEach(function(row) {
+          row.addEventListener("pointerdown", function(e) {
+            if (e.pointerType !== "mouse" && e.pointerType !== "pen") return;
+            _dragArme = false; _dragOrigine = { x: e.clientX, y: e.clientY };
+          });
+          row.addEventListener("pointermove", function(e) {
+            if (!_dragOrigine || _dragArme) return;
+            if (Math.abs(e.clientX - _dragOrigine.x) >= SEUIL_GLISSER || Math.abs(e.clientY - _dragOrigine.y) >= SEUIL_GLISSER) _dragArme = true;
+          });
+          row.addEventListener("pointerup", function() { _dragOrigine = null; });
+          row.addEventListener("dragstart", function(e) {
+            if (!_dragArme) { e.preventDefault(); return; }
+            _dragPlanId = row.dataset.id;
+            row.classList.add("kta-plan-row-dragging");
+            try { e.dataTransfer.setData("text/plain", _dragPlanId); e.dataTransfer.effectAllowed = "move"; } catch (err) {}
+          });
+          row.addEventListener("dragend", function() {
+            row.classList.remove("kta-plan-row-dragging");
+            _dragPlanId = null; _dragArme = false; _dragOrigine = null;
+            document.querySelectorAll(".kta-drop-cible").forEach(function(el) { el.classList.remove("kta-drop-cible"); });
+          });
+        });
+      }
+      function _brancherCibleDepot(el, fid) {
+        if (!_plansDragOk()) return;
+        el.addEventListener("dragover", function(e) {
+          if (!_dragPlanId) return;
+          e.preventDefault();
+          try { e.dataTransfer.dropEffect = "move"; } catch (err) {}
+          el.classList.add("kta-drop-cible");
+        });
+        el.addEventListener("dragleave", function() { el.classList.remove("kta-drop-cible"); });
+        el.addEventListener("drop", function(e) {
+          if (!_dragPlanId) return;
+          e.preventDefault();
+          el.classList.remove("kta-drop-cible");
+          // un plan sélectionné glissé emmène toute la sélection
+          const ids = (_plansSelectMode && _plansSelection.has(_dragPlanId)) ? Array.from(_plansSelection) : [_dragPlanId];
+          _deplacerPlans(ids, fid);
+        });
+      }
+
+      function _deplacerPlans(ids, fid) {
+        const PR = window.PlanRegistry;
+        let n = 0;
+        ids.forEach(function(id) { if (PR.setPlanFolder(id, fid || null, "user")) n++; });
+        if (fid) PR.setFolderCollapsed(fid, false);   // on voit où le plan est arrivé
+        _plansSelection.clear();
+        _plansSelectMode = false;                       // un déplacement clôt la sélection
+        window.refreshPlansList();
+        if (n && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+          window.OOMGuard.showToast(window.I18n.t("home.plans.folders.toastMoved", { n: n }), "info");
+        }
+      }
+
+      // ── Feuille « Déplacer vers… » (tactile et PC) ──
+      function _feuille(titre, corpsHtml, brancher) {
+        const ov = document.createElement("div");
+        ov.className = "kta-readme-modal-overlay kta-plans-sheet-overlay";
+        ov.style.zIndex = "100002";
+        ov.innerHTML = '<div class="kta-readme-modal-boite kta-plans-sheet">' +
+                         '<div class="kta-readme-modal-header"><span class="kta-readme-modal-titre">' + titre + '</span>' +
+                         '<button class="kta-panneau-close" type="button" data-close>✕</button></div>' +
+                         '<div class="kta-readme-modal-corps kta-plans-sheet-corps">' + corpsHtml + '</div></div>';
+        const fermer = function() { document.removeEventListener("keydown", surTouche); ov.remove(); };
+        const surTouche = function(e) { if (e.key === "Escape") { e.stopPropagation(); fermer(); } };
+        ov.addEventListener("click", function(e) { if (e.target === ov || e.target.hasAttribute("data-close")) fermer(); });
+        document.addEventListener("keydown", surTouche, true);
+        document.documentElement.appendChild(ov);
+        brancher(ov, fermer);
+        return ov;
+      }
+      function _swatchesHTML(actuelle) {
+        return '<div class="kta-plans-swatches">' + window.PlanRegistry.FOLDER_COLORS.map(function(c) {
+          return '<button type="button" class="kta-plans-swatch' + (c === actuelle ? " kta-actif" : "") + '" data-color="' + c + '" style="background:' + c + '"></button>';
+        }).join("") + '</div>';
+      }
+      function _ouvrirFeuilleDeplacer(ids) {
+        if (!ids || !ids.length) return;
+        const PR = window.PlanRegistry, t = window.I18n.t;
+        const lignes = PR.getFolders().map(function(f) {
+          return '<button type="button" class="kta-plans-sheet-item" data-fid="' + escapeHtml(f.id) + '">' +
+                   '<span class="kta-plans-folder-dot" style="background:' + escapeHtml(f.color || "#8cb4ff") + '"></span>' + escapeHtml(f.name) + '</button>';
+        }).join("");
+        const corps = '<button type="button" class="kta-plans-sheet-item" data-fid=""><span class="kta-plans-folder-dot kta-plans-folder-dot-none"></span>' + escapeHtml(t("home.plans.folders.unfiled")) + '</button>' +
+                      lignes +
+                      '<div class="kta-plans-sheet-new"><input type="text" class="kta-cfg-input" id="kta-plans-sheet-new-name" maxlength="40" placeholder="' + escapeHtml(t("home.plans.folders.newTitle")) + '">' +
+                      '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="kta-plans-sheet-new-ok">➕</button></div>';
+        _feuille(escapeHtml(t("home.plans.folders.moveTo")) + " · " + ids.length, corps, function(ov, fermer) {
+          ov.querySelectorAll("[data-fid]").forEach(function(b) {
+            b.addEventListener("click", function() { fermer(); _deplacerPlans(ids, b.dataset.fid || null); });
+          });
+          const inp = ov.querySelector("#kta-plans-sheet-new-name");
+          const creer = function() {
+            const f = PR.createFolder(inp.value, { src: "user" });
+            if (!f) { inp.focus(); return; }
+            fermer(); _deplacerPlans(ids, f.id);
+          };
+          ov.querySelector("#kta-plans-sheet-new-ok").addEventListener("click", creer);
+          inp.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); creer(); } });
+        });
+      }
+
+      // ── ➕ Nouveau dossier et ⋮ Options d'un dossier (même feuille) ──
+      function _ouvrirMenuDossier(fid) {
+        const PR = window.PlanRegistry, t = window.I18n.t;
+        const f = fid ? PR.findFolder(fid) : null;
+        const verrou = !!(f && f.src === "index");
+        const corps = (verrou ? '<p class="kta-plans-sheet-lock">🌐 ' + escapeHtml(t("home.plans.folders.lockedIndex")) + '</p>' : "") +
+          '<label class="kta-cfg-label">' + escapeHtml(t("home.plans.folders.name")) + '</label>' +
+          '<input type="text" class="kta-cfg-input" id="kta-plans-folder-name" maxlength="40" value="' + (f ? escapeHtml(f.name) : "") + '"' + (verrou ? " disabled" : "") + '>' +
+          '<div class="kta-plans-sheet-err" id="kta-plans-folder-err" hidden></div>' +
+          '<label class="kta-cfg-label">' + escapeHtml(t("home.plans.folders.color")) + '</label>' +
+          (verrou ? '<div class="kta-plans-swatches"><span class="kta-plans-swatch kta-actif" style="background:' + escapeHtml(f.color || "#8cb4ff") + '"></span></div>' : _swatchesHTML(f ? f.color : PR.FOLDER_COLORS[PR.getFolders().length % PR.FOLDER_COLORS.length])) +
+          // 🏷️ marche 2 — règle par étiquette (virgules) ; l'index est maître de la sienne
+          '<label class="kta-cfg-label">' + escapeHtml(t("home.plans.folders.rule")) + '</label>' +
+          '<input type="text" class="kta-cfg-input" id="kta-plans-folder-rule" maxlength="200" placeholder="' + escapeHtml(t("home.plans.folders.rulePlaceholder")) + '" value="' +
+            escapeHtml(f && f.rule && Array.isArray(f.rule.tags) ? f.rule.tags.join(", ") : "") + '"' + (verrou ? " disabled" : "") + '>' +
+          '<div class="kta-plans-sheet-hint">' + escapeHtml(t("home.plans.folders.ruleHint")) + '</div>' +
+          '<div class="kta-cfg-actions-bar kta-plans-sheet-actions">' +
+            (f ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" data-move="-1" title="' + escapeHtml(t("home.plans.folders.up")) + '">▲</button>' +
+                 '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" data-move="1" title="' + escapeHtml(t("home.plans.folders.down")) + '">▼</button>' +
+                 '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-plans-sheet-del" data-del' + (verrou ? " disabled" : "") + '>🗑️ ' + escapeHtml(t("home.plans.folders.delete")) + '</button>' : "") +
+            '<span class="kta-plans-sheet-spacer"></span>' +
+            (verrou ? "" : '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" data-ok>' + escapeHtml(t(f ? "config.actions.close" : "home.plans.folders.new")) + '</button>') +
+          '</div>';
+        _feuille(escapeHtml(f ? f.name : t("home.plans.folders.newTitle")), corps, function(ov, fermer) {
+          let couleur = f ? (f.color || "#8cb4ff") : null;
+          ov.querySelectorAll(".kta-plans-swatch[data-color]").forEach(function(s) {
+            s.addEventListener("click", function() {
+              couleur = s.dataset.color;
+              ov.querySelectorAll(".kta-plans-swatch").forEach(function(x) { x.classList.toggle("kta-actif", x === s); });
+              if (f) { PR.setFolderColor(f.id, couleur); window.refreshPlansList(); }
+            });
+          });
+          const inp = ov.querySelector("#kta-plans-folder-name");
+          const err = ov.querySelector("#kta-plans-folder-err");
+          const valider = function() {
+            if (verrou) { fermer(); return; }
+            const nom = String(inp.value || "").trim();
+            if (!nom) { inp.focus(); return; }
+            const dbl = PR.findFolderByName(nom);
+            if (dbl && (!f || dbl.id !== f.id)) { err.textContent = t("home.plans.folders.nameTaken"); err.hidden = false; return; }
+            const regle = String((ov.querySelector("#kta-plans-folder-rule") || {}).value || "").split(",");
+            if (f) { PR.renameFolder(f.id, nom); PR.setFolderRule(f.id, regle); }
+            else { const nf = PR.createFolder(nom, { src: "user", color: couleur || undefined, rule: { tags: regle } }); if (nf) PR.setFolderCollapsed(nf.id, false); }
+            fermer(); window.refreshPlansList();
+          };
+          const ok = ov.querySelector("[data-ok]");
+          if (ok) ok.addEventListener("click", valider);
+          if (inp && !verrou) { inp.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); valider(); } }); setTimeout(function() { inp.focus(); }, 30); }
+          ov.querySelectorAll("[data-move]").forEach(function(b) {
+            b.addEventListener("click", function() { PR.moveFolder(f.id, Number(b.dataset.move)); window.refreshPlansList(); });
+          });
+          const del = ov.querySelector("[data-del]");
+          if (del && !verrou) del.addEventListener("click", async function() {
+            const n = PR.getAll().filter(function(p) { return PR.planFolderId(p) === f.id; }).length;
+            const oui = await window.ktaConfirm(t("home.plans.folders.deleteConfirm", { nom: escapeHtml(f.name), n: n }), { okLabel: t("home.plans.folders.delete") });
+            if (!oui) return;
+            PR.deleteFolder(f.id); fermer(); window.refreshPlansList();
+          });
+        });
+      }
+
 
       // === CHARGER UN PLAN DEPUIS LE REGISTRE ===
       async function chargerPlanDuRegistre(id) {
@@ -1917,6 +2416,18 @@ function planRowHTML(plan) {
             try {
               const blob = await window.PlanRegistry.getBlob(plan.id);
               if (blob) {
+                // 🩸 16/09/2026 — un blob rangé PAR RÉFÉRENCE (imports d'avant
+                // la copie réelle, cf. PlanRegistry.saveBlob) a la bonne taille
+                // mais ne se lit plus si le fichier d'origine a bougé. On sonde
+                // 4 octets AVANT d'y croire : sinon on tombe sur « archive
+                // illisible » au lieu de la modale qui propose la re-sélection —
+                // laquelle range désormais une vraie copie, et guérit l'entrée.
+                try { await blob.slice(0, 4).arrayBuffer(); }
+                catch (eLect) {
+                  console.warn("[Loader] Blob mémorisé illisible (référence disque perdue) :", plan.id, eLect && eLect.name);
+                  afficherModalePlanIntrouvable(plan, "local-blob");
+                  return;
+                }
                 blobOk = true;
                 const file = new File([blob], plan.originalFilename || "plan.zip", { type: "application/zip" });
                 // Si l'utilisateur a fait un choix explicite (≠ "auto") → on l'applique en override.
@@ -2057,30 +2568,14 @@ function planRowHTML(plan) {
       }
 
       // === RE-SÉLECTION D'UN ZIP POUR UN PLAN LOCAL ===
-      // options = { restorePersistance: true } pour réactiver storeBlob/fsHandle si l'entrée originale les avait
+      // options = { restorePersistance: true } pour réactiver la copie si l'entrée originale l'avait
       async function reSelectionnerZipPourPlan(plan, options) {
         const _t = (window.I18n && window.I18n.t) ? window.I18n.t : function(k){return k;};
         options = options || {};
         let file = null;
-        let handle = null;
 
-        // Préférence : showOpenFilePicker (donne un handle persistable)
-        if (window.PlanRegistry.hasFsAccess()) {
-          try {
-            const [h] = await window.showOpenFilePicker({
-              types: [{ description: "Plan ZIP", accept: { "application/zip": [".zip"] } }],
-              excludeAcceptAllOption: false,
-              multiple: false
-            });
-            handle = h;
-            file = await handle.getFile();
-          } catch(e) {
-            // Annulation utilisateur ou erreur — fallback input file
-            if (e && e.name === "AbortError") return; // utilisateur a annulé
-          }
-        }
-
-        // Fallback input file classique
+        // 15/09/2026 : plus de sélecteur système ici (il ne servait qu'à prendre
+        // une référence disque, retirée — cf. l'accueil). Champ classique partout.
         if (!file) {
           file = await new Promise(function(resolve) {
             const input = document.createElement("input");
@@ -2162,11 +2657,11 @@ function planRowHTML(plan) {
 
         // Construire les meta — restaurer la persistance si demandé (option 4:a)
         const meta = { planId: plan.id };
-        if (handle) meta.fsHandle = handle;
         if (options.restorePersistance) {
-          // Restaurer storeBlob si l'entrée originale était mémorisée en IDB
-          if (plan.storedBlob) meta.storeBlob = true;
-          // Le fsHandle est déjà géré ci-dessus (handle est non-null si FS Access dispo + utilisateur a sélectionné via picker)
+          // Restaurer la copie si l'entrée était mémorisée. Une ancienne entrée
+          // en « accès permanent » (référence disque cassée, donc on est ici)
+          // MIGRE vers la copie : c'est désormais le seul mécanisme.
+          if (plan.storedBlob || plan.fsHandleId) meta.storeBlob = true;
         }
 
         try {
@@ -2222,6 +2717,24 @@ function planRowHTML(plan) {
           window.refreshPlansList();
         });
       }
+
+      // 📁 16/09/2026 — sélecteur TOUT / DOSSIERS (le mode est une préférence,
+      // mémorisée dans le registre), ➕ Nouveau dossier, ☑ Sélection.
+      const vueSwitch = document.getElementById("loaderPlansViewSwitch");
+      if (vueSwitch) vueSwitch.querySelectorAll("[data-view]").forEach(function(b) {
+        b.addEventListener("click", function() {
+          if (window.PlanRegistry && window.PlanRegistry.setPlansView) window.PlanRegistry.setPlansView(b.dataset.view);
+          window.refreshPlansList();
+        });
+      });
+      const bNewFolder = document.getElementById("loaderPlansFolderNew");
+      if (bNewFolder) bNewFolder.addEventListener("click", function() { _ouvrirMenuDossier(null); });
+      const bSelect = document.getElementById("loaderPlansSelect");
+      if (bSelect) bSelect.addEventListener("click", function() {
+        _plansSelectMode = !_plansSelectMode;
+        if (!_plansSelectMode) _plansSelection.clear();
+        window.refreshPlansList();
+      });
 
       // 🏷️ v1.78.0 — filtre par NOM (bind unique au boot, état RAM only :
       // un filtre est un geste de session, pas une préférence).

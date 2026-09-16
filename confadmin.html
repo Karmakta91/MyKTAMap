@@ -125,7 +125,7 @@
     <input type="file" id="caZipInput" accept=".zip" multiple style="display:none">
     <div id="caPlansStatus"></div>
     <table class="kta-ca-table" id="caPlansTable" style="display:none;">
-      <thead><tr><th></th><th>id (dossier)</th><th>Nom affiché</th><th>Version</th><th>Auteur</th><th>Tags</th><th>Badges</th><th></th></tr></thead>
+      <thead><tr><th></th><th>id (dossier)</th><th>Nom affiché</th><th>Version</th><th>Auteur</th><th>Tags</th><th>📁 Dossier</th><th>Badges</th><th></th></tr></thead>
       <tbody id="caPlansBody"></tbody>
     </table>
     <div class="kta-ca-actions">
@@ -140,6 +140,24 @@
 
   <!-- ═══ 2. LIAISONS ═══ -->
   <div class="kta-ca-card">
+    <!-- 📁 16/09/2026 — DOSSIERS DE « MES PLANS » (étude du même jour, décisions
+         KARMA 8-9). L'index déclare des dossiers et y range ses plans ; sur le
+         kiosque, un dossier déclaré est verrouillé (ni renommé ni supprimé par
+         l'utilisateur) tant qu'il l'est, et l'utilisateur garde le droit de
+         déplacer un plan — l'index propose, l'utilisateur dispose. -->
+    <h2>📁 1 bis. Dossiers de la liste</h2>
+    <p class="kta-ca-sub">Sections de « Mes plans » sur le kiosque. Chaque plan ci-dessus peut en rejoindre une (colonne « 📁 Dossier »).
+      Un utilisateur peut toujours déplacer un plan ; il ne peut pas renommer ni supprimer un dossier tant que l'index le déclare.</p>
+    <table class="kta-ca-table" id="caFoldersTable" style="display:none;">
+      <thead><tr><th></th><th>id</th><th>Nom</th><th>Couleur</th><th></th></tr></thead>
+      <tbody id="caFoldersBody"></tbody>
+    </table>
+    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <button class="kta-ca-btn" id="caFolderAdd" type="button">➕ Ajouter un dossier</button>
+      <label class="kta-ca-flag" style="margin:0;"><input type="checkbox" id="caFlagFoldersDefault">
+        <span>Ouvrir « Mes plans » en mode <strong>Dossiers</strong> par défaut <small>(seulement tant que l'utilisateur n'a pas choisi lui-même)</small></span></label>
+    </div>
+
     <h2>🌀 2. Liaisons inter-plan (portails)</h2>
     <p class="kta-ca-hint">Récupère tes liaisons depuis le profil de <strong>ce navigateur</strong> (ouvre cette page
     depuis ton instance MyKTAMap — même adresse — sinon le profil est introuvable) ou depuis un
@@ -221,7 +239,13 @@
   "use strict";
 
   // ───────── État ─────────
-  const _plans = [];        // { id, name, version, author, multiLevel, tiledV2, tags }
+  const _plans = [];        // { id, name, version, author, multiLevel, tiledV2, tags, folder }
+  const _folders = [];      // 📁 { id, name, color } — dossiers déclarés par l'index
+  const _FOLDER_COLORS = ["#8cb4ff", "#f4c542", "#7ed6a5", "#ff9f7a", "#c39bff", "#7fd8e6", "#ff7aa8", "#b8c4d6"];
+  function _slugDossier(nom) {
+    return String(nom || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32) || "dossier";
+  }
   let _liaisonsReprises = null; // liaisons d'un index.json rechargé (cf _construire)
   let _links = [];          // liaisons source (objets du registre, intacts)
   let _linksOrigine = "";   // libellé de provenance
@@ -289,7 +313,8 @@
       author:     plan.author || "",
       multiLevel: plan.multiLevel === true,
       tiledV2:    plan.tiledV2 === true || !!cfg.tiling,  // même détection que config.js
-      tags:       Array.isArray(plan.tags) ? plan.tags.join(", ") : ""
+      tags:       Array.isArray(plan.tags) ? plan.tags.join(", ") : "",
+      folder:     ""
     };
   }
 
@@ -323,6 +348,7 @@
         '<td><input type="text" data-f="name" data-i="' + i + '" value="' + _esc(p.name) + '"></td>' +
         '<td style="width:80px;"><input type="text" data-f="version" data-i="' + i + '" value="' + _esc(p.version) + '"></td>' +
         '<td style="width:110px;"><input type="text" data-f="author" data-i="' + i + '" value="' + _esc(p.author) + '"></td>' +
+        '<td style="width:150px;">' + _selectDossier(i, p.folder) + '</td>' +
         '<td style="width:170px;"><input type="text" data-f="tags" data-i="' + i + '" placeholder="gironde, carrière" title="Séparés par des virgules — 12 max, 24 caractères chacun" value="' + _esc(p.tags || "") + '"></td>' +
         "<td>" + (p.tiledV2 ? '<span class="kta-ca-badge">V2</span>' : "") +
                  (p.multiLevel ? '<span class="kta-ca-badge">Multi-LVL</span>' : "") + "</td>" +
@@ -337,6 +363,70 @@
     _plans[Number(e.target.getAttribute("data-i"))][f] = e.target.value;
     _renderMapping(); _renderOut();
   });
+  // 📁 la colonne Dossier est un <select> : événement change, pas input
+  $("caPlansBody").addEventListener("change", function(e) {
+    if (e.target.getAttribute("data-f") !== "folder") return;
+    _plans[Number(e.target.getAttribute("data-i"))].folder = e.target.value;
+    _renderOut();
+  });
+
+  // ── 📁 Dossiers déclarés par l'index ──
+  function _selectDossier(i, val) {
+    return '<select data-f="folder" data-i="' + i + '"><option value="">—</option>' +
+      _folders.map(function(d) { return '<option value="' + _esc(d.id) + '"' + (d.id === val ? " selected" : "") + '>' + _esc(d.name) + '</option>'; }).join("") +
+      '</select>';
+  }
+  function _renderFolders() {
+    const tb = $("caFoldersBody");
+    $("caFoldersTable").style.display = _folders.length ? "" : "none";
+    tb.innerHTML = "";
+    _folders.forEach(function(d, i) {
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td><button class="kta-ca-mv" data-fmv="-1" data-i="' + i + '" title="Monter">▲</button>' +
+        '<button class="kta-ca-mv" data-fmv="1" data-i="' + i + '" title="Descendre">▼</button></td>' +
+        '<td style="width:160px;"><input type="text" data-df="id" data-i="' + i + '" value="' + _esc(d.id) + '"></td>' +
+        '<td><input type="text" data-df="name" data-i="' + i + '" maxlength="40" value="' + _esc(d.name) + '"></td>' +
+        '<td style="width:120px;"><input type="color" data-df="color" data-i="' + i + '" value="' + _esc(d.color || "#8cb4ff") + '" style="width:44px; height:28px; padding:0; border:none; background:none; cursor:pointer;"></td>' +
+        '<td><button class="kta-ca-x" data-fx="' + i + '" title="Retirer le dossier (ses plans repassent sans dossier)">✕</button></td>';
+      tb.appendChild(tr);
+    });
+  }
+  $("caFoldersBody").addEventListener("input", function(e) {
+    const f = e.target.getAttribute("data-df");
+    if (!f) return;
+    const i = Number(e.target.getAttribute("data-i"));
+    const avant = _folders[i].id;
+    _folders[i][f] = e.target.value;
+    if (f === "id") {
+      // un id qui change entraîne les plans qui le référencent
+      const apres = _slugDossier(e.target.value);
+      _folders[i].id = apres;
+      _plans.forEach(function(p) { if (p.folder === avant) p.folder = apres; });
+    }
+    _renderPlans(); _renderOut();
+  });
+  $("caFoldersBody").addEventListener("click", function(e) {
+    const x = e.target.getAttribute("data-fx"), mv = e.target.getAttribute("data-fmv");
+    if (x != null) {
+      const id = _folders[Number(x)].id;
+      _folders.splice(Number(x), 1);
+      _plans.forEach(function(p) { if (p.folder === id) p.folder = ""; });
+    } else if (mv != null) {
+      const i = Number(e.target.getAttribute("data-i")), j = i + Number(mv);
+      if (j < 0 || j >= _folders.length) return;
+      const t = _folders[i]; _folders[i] = _folders[j]; _folders[j] = t;
+    } else return;
+    _renderFolders(); _renderPlans(); _renderOut();
+  });
+  $("caFolderAdd").addEventListener("click", function() {
+    const n = _folders.length + 1;
+    let id = "dossier_" + n, k = n;
+    while (_folders.some(function(d) { return d.id === id; })) id = "dossier_" + (++k);
+    _folders.push({ id: id, name: "Dossier " + n, color: _FOLDER_COLORS[_folders.length % _FOLDER_COLORS.length] });
+    _renderFolders(); _renderPlans(); _renderOut();
+  });
+  $("caFlagFoldersDefault").addEventListener("change", function() { _renderOut(); });
   $("caPlansBody").addEventListener("click", function(e) {
     const x = e.target.getAttribute("data-x"), mv = e.target.getAttribute("data-mv");
     if (x != null) { _plans.splice(Number(x), 1); }
@@ -394,9 +484,19 @@
             author:     x.author  ? String(x.author)  : "",
             multiLevel: x.multiLevel === true,
             tiledV2:    x.tiledV2 === true,
-            tags:       Array.isArray(x.tags) ? x.tags.join(", ") : ""
+            tags:       Array.isArray(x.tags) ? x.tags.join(", ") : "",
+            folder:     x.folder ? String(x.folder) : ""
           });
         });
+        // 📁 dossiers déclarés (et plans orphelins d'un dossier absent → sans dossier)
+        _folders.length = 0;
+        (Array.isArray(d.folders) ? d.folders : []).forEach(function(x) {
+          if (!x || !x.name) return;
+          _folders.push({ id: x.id ? String(x.id) : _slugDossier(x.name), name: String(x.name).slice(0, 40), color: x.color ? String(x.color) : _FOLDER_COLORS[_folders.length % _FOLDER_COLORS.length] });
+        });
+        _plans.forEach(function(p) { if (p.folder && !_folders.some(function(x) { return x.id === p.folder; })) p.folder = ""; });
+        $("caFlagFoldersDefault").checked = !!(d.config && d.config.plansViewDefault === "folders");
+        _renderFolders();
         const c = d.config || {};
         $("caSubtitle").value        = c.subtitle || "";
         $("caFlagServerOnly").checked = c.serverPlansOnly === true;
@@ -582,12 +682,25 @@
       if (ng) out.config.disableGenerator = true;
       if (_accessHash) out.config.accessHash = _accessHash;
     }
+    // 📁 décision KARMA 9 : mode Dossiers par défaut (seulement s'il y a des dossiers)
+    const fd = !!($("caFlagFoldersDefault") && $("caFlagFoldersDefault").checked) && _folders.length > 0;
+    if (fd) { out.config = out.config || {}; out.config.plansViewDefault = "folders"; }
+    // 📁 dossiers déclarés : seulement s'il y en a (index identique sinon)
+    const dossiersValides = _folders.filter(function(d) { return d.id && String(d.name || "").trim(); });
+    if (dossiersValides.length) {
+      out.folders = dossiersValides.map(function(d, i) {
+        const e = { id: d.id, name: String(d.name).trim().slice(0, 40), order: i };
+        if (d.color) e.color = d.color;
+        return e;
+      });
+    }
     out.plans = _plans.map(function(p) {
       const e = { id: p.id, path: "data/" + p.id, name: p.name };
       if (p.version) e.version = p.version;
       if (p.author)  e.author  = p.author;
       const tg = _normTags(p.tags);
       if (tg.length) e.tags = tg;
+      if (p.folder && dossiersValides.some(function(d) { return d.id === p.folder; })) e.folder = p.folder;
       if (p.multiLevel) e.multiLevel = true;
       if (p.tiledV2)    e.tiledV2    = true;
       return e;

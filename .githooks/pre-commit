@@ -144,6 +144,18 @@ node scripts/check-lambert93.js || exit $?
 # 9 sabotages de reference rougissent. BLOQUANT.
 node scripts/check-geotiff.js || exit $?
 
+# 🏷️ Étiquettes à la génération (16/09/2026) : UNE normalisation (exécutée),
+# la règle « le fichier propose, l utilisateur dispose » EXÉCUTÉE sur 7
+# scénarios dans main.js ET importMasse.js, les 4 écrivains de plan-config
+# couverts (Générateur, KMZ, GPX, SIG), plan.tags absent si vide. BLOQUANT.
+node scripts/check-plan-tags.js || exit $?
+
+# 📁 Dossiers de « Mes plans » (v1.95.0) : le registre est EXÉCUTÉ (bac à sable),
+# l index propose / l utilisateur dispose sur 7 scénarios, jamais deux Gironde,
+# jamais un plan perdu, règles par étiquette, glisser réservé au pointeur fin,
+# sélecteur dans la ligne de titre (0 px). BLOQUANT.
+node scripts/check-plan-folders.js || exit $?
+
 # 🔤 Constantes MAJUSCULES utilisees mais jamais declarees. Ne des le 03/09 :
 # le nettoyage de code mort du 09/08 avait supprime `const HEADER_HEIGHT_MM`
 # de pdfExport.js alors qu elle etait utilisee 20 lignes plus bas - toute

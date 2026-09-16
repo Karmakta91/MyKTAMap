@@ -431,6 +431,18 @@
           <div id="myPlansBox" style="display:none; margin-bottom:14px;">
             <div class="loader-section-head">
               <span data-i18n="home.plans.title">📚 Mes plans</span>
+              <!-- 📁 16/09/2026 — sélecteur TOUT / DOSSIERS dans la ligne de titre
+                   (0 px ajouté), TOUJOURS visible (KARMA : « sinon on ne pourra
+                   jamais créer le premier dossier »). ➕ et ☑ n'apparaissent
+                   qu'en mode Dossiers. -->
+              <div class="kta-plans-head-tools" id="loaderPlansHeadTools">
+                <button type="button" class="kta-plans-head-btn" id="loaderPlansFolderNew" hidden data-i18n-title="home.plans.folders.newTitle" title="Nouveau dossier">➕</button>
+                <button type="button" class="kta-plans-head-btn" id="loaderPlansSelect" hidden data-i18n-title="home.plans.folders.select" title="Sélectionner">☑</button>
+                <div class="kta-plans-view-switch" id="loaderPlansViewSwitch" role="tablist">
+                  <button type="button" class="kta-plans-view-btn" data-view="all" role="tab" data-i18n="home.plans.view.all">Tout</button>
+                  <button type="button" class="kta-plans-view-btn" data-view="folders" role="tab" data-i18n="home.plans.view.folders">Dossiers</button>
+                </div>
+              </div>
             </div>
 
             <!-- Filtres (v170) : toggle pour cacher les plans serveur (persisté localStorage) -->
@@ -499,31 +511,6 @@
           <input id="zipFile" type="file" accept=".zip,.kmz,.gpx,.geojson,.kml,.json,.tif,.tiff,application/zip,application/vnd.google-earth.kmz,application/gpx+xml,application/geo+json,application/vnd.google-earth.kml+xml,image/tiff">
         </div>
         <div id="zipFileName"></div>
-
-        <!-- Options : 🔐 FS Access (Chrome/Edge desktop) -->
-        <div id="fsAccessHint" class="fs-access-hint" style="display:none;">
-          <button class="loader-btn-fs" id="fsAccessBtn" type="button" data-i18n="home.add.fsBtn">
-            🔐 Autoriser l'accès permanent au fichier
-          </button>
-          <span class="fs-access-info" data-i18n="home.add.fsInfo">
-            Sur Chrome/Edge, autorise une fois et l'app pourra rouvrir ce ZIP en 1 clic ensuite.
-          </span>
-        </div>
-
-        <!-- Options : 💾 stockage app (mobile / Firefox / Safari)
-             v170 (suite) : coché par défaut. Sans ça, l'user devait re-sélectionner
-             le ZIP à chaque chargement sur mobile/Safari — comportement piège pour
-             un cas d'usage qu'on veut promouvoir (mémorisation = défaut sain). -->
-        <div id="storeBlobHint" class="fs-access-hint" style="display:none;">
-          <label class="loader-store-blob">
-            <input type="checkbox" id="storeBlobCb" checked>
-            <span data-i18n="home.add.storeLabel">💾 Mémoriser ce plan dans l'app</span>
-          </label>
-          <span class="fs-access-info" id="storeBlobInfo" data-i18n="home.add.storeInfo">
-            Le ZIP sera copié dans l'espace local du navigateur et rechargé en 1 clic.
-            Recommandé sur mobile.
-          </span>
-        </div>
 
 
         <!-- Bouton principal Charger -->
@@ -852,6 +839,18 @@
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label" data-i18n="config.journal.label"></span>
               <span class="kta-perf-ultra-hint" data-i18n="config.journal.hint"></span>
+            </span>
+          </label>
+          <!-- 💾 15/09/2026 (KARMA : « ce truc à cocher alourdit pour rien le
+               home ») — la case « Mémoriser ce plan dans l'app » quitte
+               l'accueil et devient ce réglage, ACTIVÉ par défaut. Source de
+               vérité : window.ktaMemoriserPlanActif() (homeLoader.js), lue
+               au chargement d'un plan et par l'import multiple. -->
+          <label class="kta-perf-ultra-row" style="margin-top:10px;">
+            <input type="checkbox" id="loaderMemoriserCb">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label" data-i18n="config.memoriser.label"></span>
+              <span class="kta-perf-ultra-hint" data-i18n="config.memoriser.hint"></span>
             </span>
           </label>
         </div>

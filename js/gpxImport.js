@@ -368,6 +368,9 @@
       dataLayers: []
     };
     if (opts.multiLevel === true) planConfig.plan.multiLevel = true;
+    // 🏷️ 16/09/2026 — étiquettes proposées par le Générateur (déjà normalisées
+    // par PlanRegistry.normaliserTags). Absentes = champ absent, JSON inchangé.
+    if (Array.isArray(opts.tags) && opts.tags.length) planConfig.plan.tags = opts.tags.slice(0, 12);
     if (tilingManifest)           planConfig.plan.tiledV2    = true;
     if (tilingManifest)           planConfig.tiling          = tilingManifest;
 

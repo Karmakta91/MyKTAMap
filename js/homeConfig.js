@@ -1157,6 +1157,22 @@
         });
       })();
 
+      // 💾 15/09/2026 — Mémoriser le plan dans l'app au premier chargement.
+      // Rapatrié de l'accueil (KARMA : « alourdit pour rien le home »). La
+      // source de vérité est `window.ktaMemoriserPlanActif()` (homeLoader) ;
+      // on écrit la même clé, jamais une copie locale de l'état.
+      (function _initMemoriserHome() {
+        const cb = document.getElementById("loaderMemoriserCb");
+        if (!cb) return;
+        cb.checked = (typeof window.ktaMemoriserPlanActif === "function") ? window.ktaMemoriserPlanActif() : true;
+        cb.addEventListener("change", function () {
+          try { localStorage.setItem("myktamap_memoriser_plan", cb.checked ? "1" : "0"); } catch (e) {}
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t(cb.checked ? "config.memoriser.toastOn" : "config.memoriser.toastOff"), "info");
+          }
+        });
+      })();
+
       // 📔 v1.92.0 — Carnet des sorties, réglage GLOBAL rapatrié du mode plan.
       // Le module est la source de vérité (clé dédiée, pas app_user_prefs) :
       // on lit et on écrit par lui, jamais en touchant localStorage ici.
