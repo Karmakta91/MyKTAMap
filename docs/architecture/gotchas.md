@@ -22,6 +22,19 @@ dataLayers: [{ file: "data/sig.json" }]          // ✅
 
 ---
 
+## 💾 IndexedDB range un `File` PAR RÉFÉRENCE au disque — jamais `put(file)` tel quel
+
+**Vécu le 16/09/2026** (KARMA, après un import multiple : *« ça marche uniquement pour le dernier plan chargé »*). Chromium ne copie pas un `File` issu d'un `<input type=file>` ou d'un dépôt quand on le range dans IndexedDB : il garde un **lien vers le fichier sur le disque**. `get()` rend ensuite un objet de la bonne taille, mais **sa lecture échoue** dès que l'original a été modifié (`NotReadableError`), déplacé ou supprimé (`NotFoundError`). Mesuré : plan1.zip modifié → illisible, plan2.zip supprimé → introuvable, plan3 intact → lisible. Le « dernier plan » marchait parce qu'il venait d'être rouvert, donc ré-enregistré depuis la mémoire.
+
+```js
+store.put(file, id);                                            // ❌ référence disque
+store.put(new Blob([await file.arrayBuffer()], { type }), id);  // ✅ copie détachée
+```
+
+🩹 **Un seul point d'entrée** : `PlanRegistry.saveBlob` matérialise la copie quand `blob instanceof File` (un Blob déjà en mémoire n'est pas recopié). À l'ouverture, `homeLoader` **sonde 4 octets** du blob avant d'y croire : un ancien blob-référence mort déclenche la modale « Données introuvables » → re-sélection → vraie copie. Garde-fou : `check-import-masse.js`. Preuve navigateur : `scripts/smoke/checkup-import-masse.js` (modifie et supprime les ZIP d'origine après l'import, puis relit).
+
+---
+
 ## 🕳️ Le « mangeur de blocs » — il revient dès qu'on nettoie les commentaires à la regex
 
 **Vécu deux fois** : `check-i18n` en v1.79.2, puis **mes propres garde-fous en v1.88.2**.

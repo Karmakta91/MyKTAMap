@@ -22,6 +22,12 @@
 //   ]
 // }
 //
+// 📁 16/09/2026 — DOSSIERS DE « MES PLANS » (étude docs/audits/2026-09-16_etude-dossiers-mes-plans.md) :
+//   folders:   [{ id, name, color, order, collapsed, src: "user"|"index" }]   ← absent tant qu'aucun dossier
+//   plansView: "all" | "folders"                                              ← absent = jamais choisi
+//   par plan : folderId (absent = Non classés), folderSrc: "user"|"index"
+//   Doctrine v1.90.1 étendue : l'index serveur PROPOSE, l'utilisateur DISPOSE.
+//
 // `perfPreset` (optionnel) : "auto" | "quality" | "balanced" | "performance"
 //   → choix de mode performance mémorisé pour CE plan (champ ajouté en v2).
 //   → absent = aucun choix mémorisé, le loader affichera "auto" par défaut.
@@ -214,6 +220,8 @@
     init();
     _data.plans = [];
     _data.lastPlanId = null;
+    delete _data.folders;      // 📁 16/09/2026 — les dossiers partent avec la liste
+    delete _data.plansView;
     _save();
   }
 
@@ -274,12 +282,18 @@
   // 🩸 Sans cette distinction, la découverte réécrirait les tags à CHAQUE boot
   // et effacerait ceux que l'utilisateur a posés — exactement le ping-pong
   // corrigé sur `version` en v1.88.0. L'index PROPOSE, l'utilisateur DISPOSE.
-  function setTags(id, tags, origine) {
-    init();
-    const p = findById(id);
-    if (!p) { console.warn("[PlanRegistry] setTags : plan introuvable", id); return false; }
+  // 🏷️ 16/09/2026 — troisième origine, "config" : les étiquettes écrites dans
+  // `plan-config.json > plan.tags` par le Générateur (champ 🏷️ Étiquettes) ou
+  // ses convertisseurs KMZ / GPX / SIG. Même doctrine que l'index : le FICHIER
+  // propose, l'utilisateur dispose, et l'index (le déployeur) passe avant le
+  // fichier sur un plan serveur. Cf. `main.js > startImportedPlan` et
+  // `importMasse.js > importer` pour l'application de la règle.
+  //
+  // La normalisation vit dans `normaliserTags` — UNE fonction pour l'app :
+  // ℹ️ Infos, l'index, le Générateur et ses trois convertisseurs y passent.
+  function normaliserTags(tags) {
     const vus = {};
-    const propres = (Array.isArray(tags) ? tags : [])
+    return (Array.isArray(tags) ? tags : [])
       .map(function(t2) { return String(t2 || "").trim().slice(0, 24); })
       .filter(function(t2) {
         if (!t2) return false;
@@ -289,9 +303,16 @@
         return true;
       })
       .slice(0, 12);
+  }
+
+  function setTags(id, tags, origine) {
+    init();
+    const p = findById(id);
+    if (!p) { console.warn("[PlanRegistry] setTags : plan introuvable", id); return false; }
+    const propres = normaliserTags(tags);
     if (propres.length) {
       p.tags = propres;
-      p.tagsSrc = (origine === "index") ? "index" : "user";
+      p.tagsSrc = (origine === "index" || origine === "config") ? origine : "user";
     } else {
       delete p.tags;
       // 🩸 VIDER EST UN CHOIX, PAS UNE ABSENCE. Si on effaçait aussi
@@ -299,7 +320,7 @@
       // REPROPOSERAIT ceux de l'index au démarrage suivant : l'utilisateur
       // effacerait, et ils reviendraient tout seuls. On garde donc la trace
       // du refus — seule une reprise en main par l'index la relâche.
-      if (origine === "index") delete p.tagsSrc;
+      if (origine === "index" || origine === "config") delete p.tagsSrc;
       else p.tagsSrc = "user";
     }
     _save();
@@ -420,7 +441,9 @@
         const clone = Object.assign({}, p);
         delete clone.fsHandleId;
         return clone;
-      })
+      }),
+      // 📁 16/09/2026 — les dossiers voyagent avec la liste (comme avec le profil)
+      folders: (_data.folders || []).map(function(f) { return Object.assign({}, f); })
     };
     const blob = new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -450,15 +473,27 @@
 
     init();
 
+    // 📁 16/09/2026 — les dossiers de la liste importée : fusion par nom
+    // (ou remplacement), et le folderId des plans qui arrivent est traduit.
+    const fusion = fusionnerDossiers(_data.folders, payload.folders, mode);
+    const traduire = function(p) {
+      if (p && p.folderId) {
+        const reel = fusion.table[p.folderId];
+        if (reel) p.folderId = reel; else { delete p.folderId; delete p.folderSrc; }
+      }
+      return p;
+    };
+    if (fusion.folders.length) _data.folders = fusion.folders; else delete _data.folders;
+
     if (mode === "replace") {
-      _data.plans = payload.plans.slice();
+      _data.plans = payload.plans.slice().map(traduire);
     } else {
       // merge : pour chaque plan importé, ajouter ou ignorer si id déjà présent
       payload.plans.forEach(function(p) {
         if (!p || !p.id) return;
         const existing = findById(p.id);
         if (!existing) {
-          _data.plans.push(p);
+          _data.plans.push(traduire(p));
         }
         // Si existe déjà, on ne touche pas (on garde notre version)
       });
@@ -483,6 +518,252 @@
       const duplicates = total - newOnes;
       return { ok: true, total: total, newOnes: newOnes, duplicates: duplicates };
     });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 📁 16/09/2026 — DOSSIERS DE « MES PLANS » (décisions KARMA 1-11 de
+  // l'étude du même jour). Un dossier = une section nommée ; un plan est
+  // dans UN dossier au plus (`folderId`), sinon « Non classés ».
+  // 🩸 MÊME DOCTRINE QUE LES ÉTIQUETTES (v1.90.1) : l'index serveur PROPOSE
+  // (`src`/`folderSrc` = "index"), l'utilisateur DISPOSE ("user"). Un
+  // dossier déclaré par l'index est VERROUILLÉ (ni renommé ni supprimé) tant
+  // que l'index le déclare — sinon il reviendrait au boot suivant, le
+  // ping-pong déjà corrigé sur `version` (v1.88.0). Il est LIBÉRÉ, jamais
+  // supprimé, le jour où l'index ne le déclare plus. Un plan déplacé à la
+  // main n'est jamais repris par l'index. Toute la normalisation vit ici :
+  // l'écran, la découverte, ConfAdmin et l'import de profil y passent.
+  // ═══════════════════════════════════════════════════════════════════
+  const FOLDER_NAME_MAX = 40;
+  const FOLDER_COLORS = ["#8cb4ff", "#f4c542", "#7ed6a5", "#ff9f7a", "#c39bff", "#7fd8e6", "#ff7aa8", "#b8c4d6"];
+
+  function _nomDossier(nom) { return String(nom || "").trim().replace(/\s+/g, " ").slice(0, FOLDER_NAME_MAX); }
+  // 🏷️ Marche 2 — RÈGLE PAR ÉTIQUETTE : un dossier peut « inclure aussi les
+  // plans étiquetés X ». Normalisée comme les étiquettes ; vide = pas de règle.
+  function _regleDossier(rule) {
+    const tags = normaliserTags(rule && rule.tags);
+    return tags.length ? { tags: tags } : null;
+  }
+  // Le dossier qu'une RÈGLE donnerait à ce plan (le premier dans l'ordre des
+  // dossiers), en respectant ses exclusions — jamais le rangement manuel.
+  function _dossierParRegle(p) {
+    if (!p) return null;
+    const tags = (Array.isArray(p.tags) ? p.tags : []).map(function(x) { return String(x).toLowerCase(); });
+    if (!tags.length) return null;
+    const excl = Array.isArray(p.folderExclude) ? p.folderExclude : [];
+    const f = getFolders().find(function(d) {
+      if (!d.rule || !Array.isArray(d.rule.tags) || excl.indexOf(d.id) >= 0) return false;
+      return d.rule.tags.some(function(rt) { return tags.indexOf(String(rt).toLowerCase()) >= 0; });
+    });
+    return f ? f.id : null;
+  }
+  function setFolderRule(id, tags) {
+    const f = findFolder(id);
+    if (!f || f.src === "index") return false;
+    const r = _regleDossier({ tags: tags });
+    if (r) f.rule = r; else delete f.rule;
+    _save(); return true;
+  }
+  function _slugDossier(nom) {
+    return String(nom).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32) || "dossier";
+  }
+  function getFolders() {
+    init();
+    return (_data.folders || []).slice().sort(function(a, b) {
+      return ((a.order || 0) - (b.order || 0)) || String(a.name).localeCompare(String(b.name));
+    });
+  }
+  function findFolder(id) {
+    init();
+    return (_data.folders || []).find(function(f) { return f.id === id; }) || null;
+  }
+  // Même nom, casse ignorée = même dossier. C'est la clé de fusion de l'import
+  // de profil et de l'index : jamais deux « Gironde ».
+  function findFolderByName(nom) {
+    init();
+    const k = _nomDossier(nom).toLowerCase();
+    if (!k) return null;
+    return (_data.folders || []).find(function(f) { return String(f.name).toLowerCase() === k; }) || null;
+  }
+  // Crée un dossier, ou rend celui qui porte déjà ce nom (ou cet id).
+  // opts : { id?, color?, order?, src? }. L'index reprend nom/couleur/ordre
+  // d'un dossier qu'il déclare ; un dossier "user" homonyme DEVIENT celui de
+  // l'index (verrouillé) plutôt que d'être doublé.
+  function createFolder(nom, opts) {
+    init();
+    opts = opts || {};
+    const name = _nomDossier(nom);
+    if (!name) return null;
+    const src = (opts.src === "index") ? "index" : "user";
+    if (!_data.folders) _data.folders = [];
+    let f = opts.id ? findFolder(String(opts.id)) : null;
+    if (!f) f = findFolderByName(name);
+    if (f) {
+      if (src === "index") {
+        f.src = "index";
+        f.name = name;
+        if (opts.color) f.color = String(opts.color).slice(0, 16);
+        if (Number.isFinite(opts.order)) f.order = opts.order;
+        const r = _regleDossier(opts.rule);
+        if (r) f.rule = r; else delete f.rule;   // l'index est maître de la règle qu'il déclare
+      }
+      _save();
+      return f;
+    }
+    const base = opts.id ? String(opts.id).slice(0, 48) : "f_" + _slugDossier(name);
+    let id = base, n = 2;
+    while (findFolder(id)) id = base + "_" + (n++);
+    const order = Number.isFinite(opts.order) ? opts.order
+      : _data.folders.reduce(function(m, x) { return Math.max(m, (x.order || 0) + 1); }, 0);
+    f = { id: id, name: name, color: opts.color ? String(opts.color).slice(0, 16) : FOLDER_COLORS[_data.folders.length % FOLDER_COLORS.length],
+          order: order, collapsed: true, src: src };
+    const regle = _regleDossier(opts.rule);
+    if (regle) f.rule = regle;
+    _data.folders.push(f);
+    _save();
+    return f;
+  }
+  function renameFolder(id, nom) {
+    const f = findFolder(id);
+    if (!f || f.src === "index") return false;
+    const name = _nomDossier(nom);
+    if (!name) return false;
+    const dbl = findFolderByName(name);
+    if (dbl && dbl.id !== id) return false;
+    f.name = name; _save(); return true;
+  }
+  function setFolderColor(id, color) {
+    const f = findFolder(id);
+    if (!f || f.src === "index") return false;
+    f.color = String(color || "").slice(0, 16); _save(); return true;
+  }
+  function setFolderCollapsed(id, collapsed) {
+    const f = findFolder(id);
+    if (!f) return false;
+    f.collapsed = !!collapsed; _save(); return true;
+  }
+  // Monter/descendre d'un cran (delta ±1). Renumérote tout : l'ordre est
+  // toujours dense, l'index peut ensuite imposer le sien.
+  function moveFolder(id, delta) {
+    const list = getFolders();
+    const i = list.findIndex(function(f) { return f.id === id; });
+    if (i < 0) return false;
+    const j = Math.max(0, Math.min(list.length - 1, i + (delta < 0 ? -1 : 1)));
+    if (j === i) return false;
+    const f = list.splice(i, 1)[0];
+    list.splice(j, 0, f);
+    list.forEach(function(x, k) { x.order = k; });
+    _save(); return true;
+  }
+  // Supprimer un dossier ne supprime JAMAIS un plan : ils repassent en
+  // Non classés. Refusé sur un dossier de l'index (il reviendrait).
+  function deleteFolder(id) {
+    init();
+    const f = findFolder(id);
+    if (!f || f.src === "index") return false;
+    _data.folders = _data.folders.filter(function(x) { return x.id !== id; });
+    _data.plans.forEach(function(p) {
+      if (p.folderId === id) { delete p.folderId; delete p.folderSrc; }
+      if (Array.isArray(p.folderExclude)) {
+        p.folderExclude = p.folderExclude.filter(function(x) { return x !== id; });
+        if (!p.folderExclude.length) delete p.folderExclude;
+      }
+    });
+    _save(); return true;
+  }
+  // Range un plan (folderId) ou le sort (null). origine "user" | "index".
+  // 🩸 L'index ne passe JAMAIS par-dessus un geste de l'utilisateur ; sortir
+  // un plan à la main est un CHOIX mémorisé (folderSrc "user" sans dossier),
+  // comme vider ses étiquettes — sinon l'index le rangerait à nouveau au boot.
+  function setPlanFolder(planId, folderId, origine) {
+    init();
+    const p = findById(planId);
+    if (!p) return false;
+    const src = (origine === "index") ? "index" : "user";
+    if (src === "index" && p.folderSrc === "user") return false;
+    if (folderId && !findFolder(folderId)) return false;
+    // 🏷️ Marche 2 — si une RÈGLE capture ce plan et que l'utilisateur le sort
+    // (ou le range ailleurs) à la main, on mémorise une EXCLUSION pour ce
+    // dossier : sinon la règle le reprendrait au rendu suivant. Le remettre à
+    // la main dans le dossier à règle lève l'exclusion.
+    if (src === "user") {
+      const parRegle = _dossierParRegle(p);
+      if (parRegle && parRegle !== folderId) {
+        p.folderExclude = (Array.isArray(p.folderExclude) ? p.folderExclude : []).concat(parRegle);
+      }
+      if (folderId && Array.isArray(p.folderExclude)) {
+        p.folderExclude = p.folderExclude.filter(function(x) { return x !== folderId; });
+        if (!p.folderExclude.length) delete p.folderExclude;
+      }
+    }
+    if (folderId) { p.folderId = folderId; p.folderSrc = src; }
+    else {
+      delete p.folderId;
+      if (src === "user") p.folderSrc = "user"; else delete p.folderSrc;
+    }
+    _save(); return true;
+  }
+  // Le dossier EFFECTIF d'un plan : un folderId orphelin (dossier disparu,
+  // profil partiel) vaut Non classés — jamais une erreur.
+  function planFolderId(p) {
+    if (p && p.folderId && findFolder(p.folderId)) return p.folderId;   // le rangement manuel prime
+    return _dossierParRegle(p);                                          // sinon la règle, sauf exclusion
+  }
+  // Vrai si le plan est dans son dossier PAR RÈGLE (pas rangé à la main).
+  function planFolderByRule(p) {
+    return !!(p && !(p.folderId && findFolder(p.folderId)) && _dossierParRegle(p));
+  }
+  function getPlansView() { init(); return _data.plansView === "folders" ? "folders" : "all"; }
+  function hasPlansViewChoice() { init(); return _data.plansView === "folders" || _data.plansView === "all"; }
+  function setPlansView(mode) { init(); _data.plansView = (mode === "folders") ? "folders" : "all"; _save(); return _data.plansView; }
+  // Dossiers déclarés par data/index.json (ConfAdmin). Rend la table
+  // { idDéclaré → idRéel } : un dossier "user" homonyme est repris sous SON
+  // id, la découverte doit donc traduire le `folder` de chaque plan.
+  // Un dossier "index" plus déclaré est LIBÉRÉ (src "user"), jamais supprimé.
+  function applyIndexFolders(liste) {
+    init();
+    const table = {};
+    (Array.isArray(liste) ? liste : []).forEach(function(d, i) {
+      if (!d || !d.name) return;
+      const f = createFolder(d.name, { id: d.id, color: d.color, order: Number.isFinite(d.order) ? d.order : i, src: "index", rule: d.rule });
+      if (f) table[String(d.id || f.id)] = f.id;
+    });
+    const gardes = {};
+    Object.keys(table).forEach(function(k) { gardes[table[k]] = true; });
+    (_data.folders || []).forEach(function(f) { if (f.src === "index" && !gardes[f.id]) f.src = "user"; });
+    _save();
+    return table;
+  }
+
+  // Fusion PURE de dossiers importés (liste .config ou profil) dans une liste
+  // locale — aucun accès à _data, aucune sauvegarde : l'appelant écrit.
+  // mode "replace" : les importés remplacent ; "merge" : même nom (casse
+  // ignorée) = même dossier, l'id local gagne. Rend { folders, table } où
+  // table = { idImporté → idRéel } pour remapper le folderId des plans qui
+  // arrivent. Un dossier importé arrive TOUJOURS "user" : le verrou "index"
+  // n'a de sens que si l'index LOCAL le redéclare à la prochaine découverte.
+  function fusionnerDossiers(locaux, importes, mode) {
+    const base = (mode === "replace") ? [] : (Array.isArray(locaux) ? locaux : []).map(function(f) { return Object.assign({}, f); });
+    const table = {};
+    (Array.isArray(importes) ? importes : []).forEach(function(imp) {
+      if (!imp || !imp.name) return;
+      const name = _nomDossier(imp.name);
+      if (!name) return;
+      const k = name.toLowerCase();
+      let f = base.find(function(x) { return String(x.name).toLowerCase() === k; });
+      if (!f) {
+        const souhaite = imp.id ? String(imp.id).slice(0, 48) : "f_" + _slugDossier(name);
+        let id = souhaite, n = 2;
+        while (base.some(function(x) { return x.id === id; })) id = souhaite + "_" + (n++);
+        f = { id: id, name: name, color: imp.color ? String(imp.color).slice(0, 16) : FOLDER_COLORS[base.length % FOLDER_COLORS.length],
+              order: Number.isFinite(imp.order) ? imp.order : base.length, collapsed: imp.collapsed !== false, src: "user" };
+        const regle = _regleDossier(imp.rule);
+        if (regle) f.rule = regle;
+        base.push(f);
+      }
+      if (imp.id) table[String(imp.id)] = f.id;
+    });
+    return { folders: base, table: table };
   }
 
   // ========== INDEXED DB POUR FILE SYSTEM HANDLES + BLOBS ZIP ==========
@@ -573,6 +854,23 @@
   // Retourne un objet { ok: true } ou { ok: false, error: "..." }
   async function saveBlob(id, blob) {
     if (!blob) return { ok: false, error: t("planreg.err.noFileShort") };
+    // 🩸 16/09/2026 — UNE COPIE, PAS UNE RÉFÉRENCE. Chromium range un `File`
+    // issu d'un sélecteur ou d'un dépôt PAR RÉFÉRENCE au fichier sur le
+    // disque : IndexedDB rend ensuite un objet de la bonne taille, mais sa
+    // LECTURE échoue dès que le fichier d'origine a été modifié, déplacé ou
+    // supprimé (NotReadableError / NotFoundError). Vécu par KARMA après un
+    // import multiple — « ça marche uniquement pour le dernier plan » : le
+    // seul qui venait d'être rouvert avait été ré-enregistré depuis la
+    // mémoire. Mesuré (Chromium) : plan1.zip modifié → illisible, plan2.zip
+    // supprimé → introuvable, plan3 intact → lisible. On lit donc le contenu
+    // et on range un Blob DÉTACHÉ du disque. Coût : le poids du ZIP en
+    // mémoire une fois, le temps de l'écriture — un chargement le lit
+    // entièrement de toute façon. Un Blob déjà en mémoire (export de profil,
+    // `new File([blob])` d'un blob rangé) n'est pas recopié.
+    if (typeof File !== "undefined" && blob instanceof File) {
+      try { blob = new Blob([await blob.arrayBuffer()], { type: blob.type || "application/zip" }); }
+      catch (e) { return { ok: false, error: (e && e.name) || t("planreg.err.unexpected") }; }
+    }
     const db = await _openIDB();
     if (!db) return { ok: false, error: t("planreg.err.idbUnavailable") };
 
@@ -657,6 +955,27 @@
     statsImport:          statsImport,
     genServerId:          genServerId,
     genLocalId:           genLocalId,
+    normaliserTags:       normaliserTags,
+    // 📁 16/09/2026 — dossiers de « Mes plans »
+    getFolders:           getFolders,
+    findFolder:           findFolder,
+    findFolderByName:     findFolderByName,
+    createFolder:         createFolder,
+    renameFolder:         renameFolder,
+    setFolderColor:       setFolderColor,
+    setFolderCollapsed:   setFolderCollapsed,
+    moveFolder:           moveFolder,
+    deleteFolder:         deleteFolder,
+    setPlanFolder:        setPlanFolder,
+    planFolderId:         planFolderId,
+    planFolderByRule:     planFolderByRule,   // 🏷️ marche 2
+    setFolderRule:        setFolderRule,      // 🏷️ marche 2
+    getPlansView:         getPlansView,
+    hasPlansViewChoice:   hasPlansViewChoice,
+    setPlansView:         setPlansView,
+    applyIndexFolders:    applyIndexFolders,
+    fusionnerDossiers:    fusionnerDossiers,
+    FOLDER_COLORS:        FOLDER_COLORS,
     saveHandle:           saveHandle,
     getHandle:            getHandle,
     removeHandle:         removeHandle,

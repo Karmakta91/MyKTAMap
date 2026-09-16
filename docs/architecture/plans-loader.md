@@ -76,7 +76,7 @@ Bouton `.plan-row-info-btn` dans `.plan-row-actions` (avant ▶️ Charger et �
 
 1 ligne de modif : `<input type="checkbox" id="storeBlobCb" checked>` (attribut HTML).
 
-Visible **uniquement** sur mobile / Firefox / Safari (sans File System Access API) — Chrome/Edge desktop a 🔐 FS Access à la place. Avant : décoché → user devait penser à cocher manuellement → ZIP non mémorisé → re-sélection à chaque chargement → UX piège.
+**Retirée de l'accueil le 15/09/2026** (KARMA : « alourdit pour rien le home ») : devenue le réglage ⚙️ Configuration de l'accueil → « Mémoriser le plan dans l'app au premier chargement » — clé `myktamap_memoriser_plan`, défaut activé, getter `window.ktaMemoriserPlanActif()` défini dans `homeLoader.js`, lu par `onLoadPlanClick` (`meta.storeBlob`) et par `importMasse` (défaut de « Précharger le ZIP »), case du réglage câblée dans `homeConfig.js`. Historique : masquée sur Chrome/Edge au profit du bouton 🔐 FS Access, mais cochée sous le masque, donc le ZIP était copié de toute façon et la référence disque jamais lue ; le bouton est retiré, cf. §import multiple « Un seul mécanisme ». Avant v170 : décoché → user devait penser à cocher manuellement → ZIP non mémorisé → re-sélection à chaque chargement → UX piège.
 
 #### 33.5 Réglages : responsive PC ≥ 1024px
 
@@ -505,6 +505,51 @@ Cf `perf-memory.md §88` pour le contexte du sprint Pack RAM et la mesure d'impa
 
 ---
 
+
+## 📦 Import multiple — enregistrer sans ouvrir (v1.94.0)
+
+`js/importMasse.js` · API `window.ImportMasse = { ouvrir, analyser, importer, _interne }` · garde-fou `scripts/check-import-masse.js`.
+
+**Le point dur n'était pas la boucle.** Jusqu'ici, AJOUTER UN PLAN C'ÉTAIT L'OUVRIR : `homeLoader > chargerZipFichier` puis `main > startImportedPlan` lisent le ZIP, posent les assets dans `RUNTIME_ASSETS`, écrivent l'entrée du registre, rangent le fichier **et** appellent `lancerApplication`. Aucun chemin « enregistre sans ouvrir » n'existait.
+
+| Étape | Ce qui se passe |
+|---|---|
+| `analyser(fichiers, politique)` | Denylist par fichier, lecture du seul `plan-config.json`, décision de doublon, plan de bataille. **N'écrit rien.** |
+| `importer(plan, { precharger })` | Un fichier à la fois : `addOrUpdate`, puis — si `precharger` (défaut **true**) — `saveBlob` et **réécriture de l'entrée avec le drapeau** `storedBlob`. `precharger: false` = entrée seule, rien rangé. |
+
+**Deux décisions pures, exposées dans `_interne` et EXÉCUTÉES par le garde-fou** :
+
+- `_deciderDoublon(politique, idNaturel, idsExistants)` — la politique vaut pour TOUT le lot (vingt fichiers, ce serait vingt questions). Défaut « ignorer » : un import n'écrase rien sans demande. « doubler » cherche le premier suffixe libre, pour ne pas écraser un doublon d'un import précédent.
+- `_verdictPlace(aStocker, dispo, quota)` — marge `MARGE_QUOTA` de 15 % : un navigateur refuse bien avant son quota annoncé, et l'app doit garder de quoi écrire ses sessions après. `aStocker` vaut 0 quand « Précharger le ZIP » est décoché.
+
+**Aucune décompression.** Un plan reste un ZIP, ses tuiles sortent à la demande au chargement (cf. `_extractLazyAsset`). Décompresser à l'import multiplierait le poids stocké par deux ou trois, pour rien.
+
+**Le ZIP rangé doit être ANNONCÉ (15/09/2026).** `homeLoader` n'ouvre un plan local qu'en lisant les drapeaux de l'entrée : `storedBlob` (étape 1, `getBlob`) puis `fsHandleId` (étape 2, `getHandle`, anciennes entrées seulement) ; sans eux, étape 3 = `reSelectionnerZipPourPlan`. La première v1.94.0 rangeait le fichier sans poser le drapeau : la liste redemandait le ZIP et le blob restait orphelin en IndexedDB. Le drapeau est posé **après** le rangement réussi, par un second `addOrUpdate` (merge), jamais avant. `requestPersistentStorage()` est demandé une fois par lot avant la première copie, comme `main > startImportedPlan`.
+
+**Un seul mécanisme : la copie (15/09/2026, même soir).** KARMA : *« Autoriser l'accès permanent a l'air de servir à rien et faire doublon »*. Exact : sur Chrome/Edge le bouton 🔐 masquait la case « Mémoriser » sans la décocher, donc le ZIP était copié dans tous les cas, et la référence disque (`fsHandleId`) n'était jamais lue — l'ouverture essaie la copie d'abord, et ne retombe pas sur la référence si la copie a été purgée (« Plan introuvable » direct). **Retirés** : le bouton et `_currentFsHandle` (accueil), `meta.fsHandle` (`startImportedPlan`), le sélecteur système et `saveHandle` (import multiple et re-sélection). **Conservés** : `PlanRegistry.saveHandle/getHandle/hasFsAccess/ensureHandlePermission` et l'étape 2 de l'ouverture, pour les entrées existantes ; à leur re-sélection, `restorePersistance` pose `storeBlob` si `storedBlob` OU `fsHandleId` → migration vers la copie. Garde-fou : `check-import-masse.js` refuse tout retour de `saveHandle` / `showOpenFilePicker` dans le module.
+
+**La copie doit être RÉELLE (16/09/2026).** KARMA : *« ça marche uniquement pour le dernier plan chargé »*. Chromium range un `File` de sélecteur/dépôt dans IndexedDB **par référence au disque** : l'objet rendu a la bonne taille mais sa lecture échoue dès que le ZIP d'origine a été modifié, déplacé ou supprimé. Le dernier plan marchait parce qu'il venait d'être rouvert, donc ré-enregistré depuis la mémoire. 🩹 `PlanRegistry.saveBlob` matérialise désormais `new Blob([await file.arrayBuffer()])` quand `blob instanceof File` — un seul point, qui couvre l'import unitaire, l'import multiple et la re-sélection. À l'ouverture, `homeLoader` sonde 4 octets du blob avant d'y croire : un ancien blob-référence mort → modale « Données introuvables » → re-sélection → vraie copie (l'entrée guérit). Détail : `docs/architecture/gotchas.md`. Preuve : `scripts/smoke/checkup-import-masse.js`.
+
+## 📁 Dossiers de « Mes plans » (v1.95.0)
+
+Étude et décisions : `docs/audits/2026-09-16_etude-dossiers-mes-plans.md` (§8-9). Garde-fou `scripts/check-plan-folders.js` (exécute le registre dans un bac à sable), smoke `scripts/smoke/checkup-plan-folders.js` (hauteur au pixel, index, mobile).
+
+**Données** (`js/planRegistry.js`, magasin `myktamap_plans`) : `folders: [{ id, name, color, order, collapsed, src: "user"|"index", rule?: { tags } }]`, `plansView: "all"|"folders"` (absent = jamais choisi), et par plan `folderId`, `folderSrc: "user"|"index"`, `folderExclude: [ids]`. Rien de ces clés n'existe tant qu'aucun dossier n'est créé : le mode Tout est l'écran d'avant. API : `getFolders / createFolder / renameFolder / setFolderColor / setFolderCollapsed / moveFolder / deleteFolder / setFolderRule / setPlanFolder / planFolderId / planFolderByRule / getPlansView / setPlansView / hasPlansViewChoice / applyIndexFolders / fusionnerDossiers`.
+
+**Trois règles, exécutées par le garde-fou** :
+1. **Manuel > règle > rien.** `planFolderId(p)` rend le `folderId` manuel s'il existe, sinon le premier dossier (dans l'ordre) dont la règle matche une étiquette du plan, sauf exclusion. Sortir à la main un plan capturé par une règle pose `folderExclude` ; le remettre à la main dans ce dossier la lève.
+2. **L'index propose, l'utilisateur dispose** (doctrine v1.90.1 des tags, 3e application). `setPlanFolder(id, fid, "index")` refuse un plan `folderSrc: "user"`. Un dossier `src: "index"` ne se renomme, ne se recolore, ne se supprime pas et sa règle n'est pas modifiable localement ; il se replie et se réordonne. `applyIndexFolders(liste)` crée/met à jour les déclarés (un dossier user homonyme est REPRIS sous son id local, verrouillé) et LIBÈRE (src user, jamais supprimé) ceux qui ne sont plus déclarés ; rend `{ idDéclaré → idRéel }` que `decouvrirPlansServeur` utilise pour `plans[].folder`.
+3. **Jamais deux « Gironde », jamais un plan perdu.** `createFolder` et `fusionnerDossiers` (pure, utilisée par l'import de liste `.config` et par `profileExportImport > applyProfile`) fusionnent par nom insensible à la casse, l'id local gagne, le `folderId` des plans importés est traduit ; un dossier importé arrive toujours `user`. `deleteFolder` renvoie les plans en Non classés et nettoie les exclusions. Un `folderId` orphelin vaut Non classés. `removeAll` efface aussi dossiers et mode.
+
+**Écran** (`js/homeLoader.js`) : sélecteur `#loaderPlansViewSwitch` dans `.loader-section-head` (0 px ajouté), ➕ et ☑ visibles seulement en mode Dossiers ; `refreshPlansList` lit `_lireVuePlans()` (registre, sinon défaut kiosque `window._ktaPlansViewParDefaut`), masque les chips et ignore le filtre par étiquette en mode Dossiers, rend `_rendreDossiers` (en-têtes ≤ 40 px, repliés par défaut, Non classés en dernier) puis `_brancherDossiers`. Tactile : feuille « Déplacer vers… » (`_ouvrirFeuilleDeplacer`), sélection multiple (`_plansSelectMode`, barre en pied de liste), ⋮/➕ = même feuille (`_ouvrirMenuDossier` : nom, couleur, règle, ordre, suppression via `ktaConfirm`). **Glisser** : `draggable` posé uniquement si `(pointer: fine)`, armé après `SEUIL_GLISSER` (6 px) depuis le `pointerdown`, sinon `dragstart` annulé et le clic ouvre le plan ; aucun re-rendu au survol, seulement au dépôt. **Glisser tactile** (`_brancherGlisserTactile`) : appui long `APPUI_LONG` (450 ms) immobile (`TOLERANCE_APPUI` 8 px, sinon c'est un défilement) → `_soulever` (fantôme `.kta-plans-drag-ghost` fixe sous le doigt, vibration) ; `touchmove` n'est `preventDefault`-é QUE pendant le geste (écouteur `passive: false`), cible par `elementFromPoint` (`.kta-plans-folder-head` / `-rows`), `_deposer` au `touchend`. La ligne d'origine devient une **empreinte** (`.kta-plan-row-empreinte`, opacité 0,12 — un double sous le fantôme donnait un scintillement) ; `_defilerAuxBords` (rAF, zone 72 px, vitesse ≤ 14 px/frame) fait défiler le conteneur trouvé par `_trouverScroller` (colonne PC ou overlay de l'accueil sur mobile) tant que le doigt reste près d'un bord, et recalcule la cible ; ne démarre qu'une fois le doigt bougé, et **borné à « Mes plans »** (jamais au-delà de la fin de `#allPlansList`, jamais au-dessus de `#myPlansBox` — KARMA : « le plan n'a rien à faire glisser après OSM ») ; arrêté au dépôt (`cancelAnimationFrame`). `user-select: none` + `-webkit-touch-callout: none` sur lignes et en-têtes, `selectstart` bloqué pendant le geste (PWA : l'appui long surlignait le texte). Repli mobile par dossier déplié (`_ktaMobileCollapseDossiers`, 5 lignes). Un plan capturé par règle porte `.kta-plan-row-folder-dot-rule`.
+
+**Serveur** : `index.json > folders[{ id, name, color, order, rule? }]` + `plans[].folder` + `config.plansViewDefault: "folders"` (appliqué par `_appliquerConfigKiosque` via `window._ktaPlansViewParDefaut`, seulement si `hasPlansViewChoice()` est faux). ConfAdmin : tableau « 📁 1 bis. Dossiers » + colonne « 📁 Dossier » + case « mode Dossiers par défaut ». **Import multiple** : sélecteur « Ranger dans : » (`_optionsDossiers`, `_dossierCible`) → `setPlanFolder(id, fid, "user")` par plan entré.
+
+**« Précharger le ZIP » — option, cochée par défaut.** Décochée (`opts.precharger === false`), seule l'entrée est écrite : ni copie ni autorisation, `aStocker = 0` (verdict de place trivialement OK), résumé `impmasse.resume.poidsSansCopie`. Le plan s'ouvre alors par re-sélection, exactement comme un plan restauré depuis un profil. Le garde-fou §6 EXÉCUTE `importer()` sur un registre factice pour prouver les cinq scénarios (défaut, handle, handle refusé, décoché, copie ratée).
+
+**Échec de rangement DEMANDÉ = entrée retirée.** Une ligne « à re-sélectionner » alors que l'utilisateur a coché la copie serait une dégradation silencieuse. Sur quota épuisé, l'import s'arrête net et le rapport dit après combien de plans.
+
+**Réseau** : nul. Lecture locale, stockage local, aucune requête.
 
 ## 🗺️ GeoTIFF — l'image et son calage dans le même fichier (v1.93.0)
 

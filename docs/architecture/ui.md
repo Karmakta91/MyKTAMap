@@ -1804,13 +1804,34 @@ Deux réponses, et la seconde compte plus que la première :
 1. le bloc est **replié par défaut** (`<details>`), ~40 px au lieu de ~207, la valeur courante restant lisible dans le résumé ;
 2. 🛡️ **la colonne Actions scrolle désormais en interne** (`min-height: 0` + `overflow-y: auto` sur `#panelZip`, sous la media query de compaction), comme le fait déjà la colonne des plans. **Le prochain ajout ne pourra plus déborder** — on cesse de dépendre d'une constante recalibrée à la main à chaque fois.
 
-⚠️ *Le bouton « Charger ce plan » reste collé en bas du contenu (`margin-top: auto`) : il est donc atteignable au scroll, pas perdu.*
+⚠️ *Le bouton « Charger ce plan » reste collé en bas du contenu (`margin-top: auto`) : il est donc atteignable au scroll, pas perdu.* → **Insuffisant, cf. ci-dessous : « atteignable au scroll » sans indice visuel = perdu pour l'utilisateur.**
+
+### 📐 Ce n'était ni la largeur ni le zoom (15/09/2026)
+
+KARMA : *« on a encore un souci de zoom, si je dézoome ça rentre bien. Ça fait plusieurs fois qu'on bosse sans résoudre ce problème. »* Audit par agent, mesures Playwright sur 13 configurations (1000 → 2400 px CSS, zooms 80 → 125 %, émulés comme Chrome le fait : viewport ÷ zoom + `deviceScaleFactor` = zoom) :
+
+- **La colonne Actions fait 300 px PARTOUT** (rail fixe v1.69.0), la grille Outils 270, chaque tuile 131 — identique à tout zoom. Le zoom ne change que la **hauteur** disponible.
+- **Horizontal** : cinq outils dans deux colonnes = un **orphelin arithmétique**, seul à droite d'une cellule vide, son libellé (« Importer plusieurs plans », 148 px pour 117 utiles) sur deux lignes.
+- **Vertical** : le portable 1080p à 125 % Windows (1536×800) était à **zéro de marge** ; la liste des formats (+71 px, 14/09) puis la 3ᵉ rangée d'Outils (+57 px, 15/09) ont fait passer « Charger ce plan » — le bouton **primaire** — dans le scroll interne du filet v1.88.1, **sans aucun indice visuel** (126 px cachés, mesurés). La grille Outils vit HORS de `#panelZip` : incompressible, elle pousse le filet.
+- **Onze passes en quatre mois** (chronologie dans le journal v1.94.0) avaient chacune posé **une constante à un endroit différent** — 300, 58→44, 520, 820, `.loader-tools-head` sur trois couches — sans jamais écrire l'invariant.
+
+**L'invariant, maintenant écrit et vérifié** (`scripts/check-home-layout.js`, pré-commit, 9 sabotages rougissent) :
+1. **Le dernier d'une liste impaire d'outils prend toute la largeur** (`:nth-child(odd):last-child { grid-column: 1 / -1 }`) ; les tuiles portent `min-width: 0` + `overflow-wrap` pour qu'un libellé se replie au lieu d'élargir sa cellule. La grille **reste à deux colonnes fixes partout** — c'est ce qui rend la règle de l'orphelin juste ; `repeat(auto-fit, …)` la casserait dès qu'une tablette offrirait trois colonnes (l'agent proposait `auto-fit`, écarté pour cette raison).
+2. **« Charger ce plan » est épinglé en bas du scroller** (`position: sticky; bottom: 0` dans le média `(max-height: 820px)`, fond dégradé assorti à la carte, variante thème clair). Il ne peut plus disparaître ; inerte quand rien ne scrolle.
+3. **Ce qui se comprime est décoratif** : sous 821 px de haut, la liste des formats acceptés se retire de la zone de dépôt (elle reste dans l'aide « Charger / importer »), et les tuiles Outils passent à 36 px (cible souris).
+4. 🩸 **Aucune nouvelle largeur en px** (`width`/`min-width`/`max-width`/`flex-basis`) sur `.loader-col-actions` ni `.loader-secondary-actions` — le rail de la grille est le seul fixe. C'est LA règle qui empêche le retour du bug.
+
+Le checkup de release `scripts/smoke/checkup-home-scroll.js` mesure désormais, **avant tout scroll**, que le bouton primaire est dans la partie visible de `#panelZip` et qu'à ≥ 800 px de haut rien n'y est caché — sur 8 configurations dont 1536×800 et son zoom 125 %. Rejoué sur le CSS d'avant : **primaire caché sur les 8**, 126 px à 1536×800. Il aurait dit OK la veille : il ne regardait que le scroll de la page.
+
+Résultat mesuré après : 0 px caché et primaire visible sur toutes les configurations ; 📦 sur une ligne pleine largeur de 400 px (mobile) à 2400 px.
 
 ---
 
 **À NE PAS faire** :
 - ❌ Réintroduire des ratios `fr` ou des paliers de correction sur `.loader-grid` — les rails fixes sont LE fix.
-- ❌ Ajouter un bloc **déplié** dans la colonne Actions sans mesurer ce qu'il coûte — le plancher de 520 px ne pardonne pas.
+- ❌ Ajouter un bloc **déplié** dans la colonne Actions sans mesurer ce qu'il coûte — rejouer `checkup-home-scroll.js` (il mesure le primaire et les pixels cachés).
+- ❌ Poser une **largeur en px** sur `.loader-col-actions` ou `.loader-secondary-actions` — chaque passe précédente a « réglé » le HOME ainsi, et chacune a périmé la suivante. `check-home-layout.js` refuse.
+- ❌ Passer la grille Outils en `auto-fit` — la règle de l'orphelin n'est juste que pour deux colonnes.
 - ❌ Redonner une grille à `.kta-loader-top-row`.
 - ❌ Sortir la recherche du header pour la remettre dans une colonne.
 

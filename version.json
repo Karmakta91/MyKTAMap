@@ -1,8 +1,9 @@
 {
-  "version": "v1.93.0",
-  "released": "2026-09-14",
+  "version": "v1.95.0",
+  "released": "2026-09-16",
   "notes": [
-    "🗺️ Dépose un plan GeoTIFF calé sous QGIS : l'app lit le calage écrit dans le fichier et pose le géoréférencement, l'échelle et l'emprise toute seule — plus besoin de ressaisir deux points GPS à la main. Si un fichier n'est pas lisible, l'app dit précisément pourquoi et quoi réexporter.",
-    "⚙️ Réglages du plan refondus : plus de bouton « Appliquer », chaque réglage s'enregistre dès que tu le modifies, Échap ferme sans rien perdre, et chaque groupe dit s'il vaut pour ce plan ou pour tous. Le géoréférencement a sa propre fenêtre, et « Valeurs par défaut » ne touche plus que le plan en cours."
+    "📦 Importe plusieurs plans d'un coup : dans 🧰 Outils, choisis autant d'archives ZIP que tu veux, elles entrent dans ta liste une par une sans qu'aucune ne s'ouvre, et tu peux les ranger directement dans un dossier.",
+    "📁 Mes plans passe en mode Dossiers : à droite du titre, choisis « Tout » (la liste habituelle) ou « Dossiers » et range tes plans dans des sections à toi, avec une couleur. Déplace un plan depuis son bouton 📁, plusieurs à la fois avec ☑, ou en le glissant sur PC. Un dossier peut aussi accueillir tout seul les plans qui portent une étiquette.",
+    "🏷️ Le Générateur permet de donner des étiquettes à un plan dès sa création, et un plan mémorisé reste lisible même si tu déplaces ou supprimes son ZIP d'origine."
   ]
 }

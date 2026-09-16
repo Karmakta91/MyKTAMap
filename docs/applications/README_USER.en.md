@@ -151,7 +151,7 @@ If a plan **you have already imported** is revoked by the author AFTER your impo
 
 The application is protected by a **single shared password** for all authorized users. The code will be communicated to you by the author (forum, direct message, etc.).
 
-> 🌍 *(since v1.79.4)* At the top of this screen, a **FR · EN · ES** selector lets you pick your language **from the very first launch** (pre-selected from your browser's) — the screen translates immediately and the whole app follows, tutorial included.
+> 🌍 At the top of this screen, a **FR · EN · ES** selector lets you pick your language **from the very first launch** (pre-selected from your browser's) — the screen translates immediately and the whole app follows, tutorial included.
 
 **On first installation** (or after a complete reset):
 1. The splash displays normally (3.5 seconds)
@@ -214,15 +214,14 @@ At startup, the application displays a **home screen** that groups together:
 2. **Click on a known map** — in **📚 My maps**, a click directly relaunches an already opened map (🌐 server or 💾 local).
 3. **🏗️ Generate a map** — dedicated button on the home page to create a map from scratch.
 
-> 🔄 **Re-importing a map you regenerated (since v1.73.1)** — if the ZIP you import has the **same name and same author** as a map already in your list but a **different version**, the app asks instead of stacking a duplicate:
+> 🔄 **Re-importing a map you regenerated* — if the ZIP you import has the **same name and same author** as a map already in your list but a **different version**, the app asks instead of stacking a duplicate:
 > - **🔄 Update** — the existing entry is replaced (name, version, size, stored archive). Your **session, notes and inter-map links are kept**. Photos are only replaced if the new ZIP contains some.
 > - **➕ Keep both** — both versions live side by side in the list.
 > - **Cancel** (or ✕ / Escape / click outside) — nothing is touched. This is always the default: no accidental overwrite.
 >
 > Good to know: a ZIP with **exactly the same name AND version** updates the existing entry without asking. No question either for server maps, or when you re-select the file of a specific map from your list.
 
-### 🗺️ Convert a GIS file (QGIS…) into a map — since v1.75.0
-
+### 🗺️ Convert a GIS file (QGIS…) into a map
 Got data in a GIS package you want to use in MyKTAMap? Drop your export **straight onto the "📦 Load a new map" area of the home screen** — the same one you already use for ZIPs: the app recognises the format and opens **"Convert from GIS"**. It also works from the **🏗️ Generator** import area.
 
 **Accepted formats**: `.geojson`, `.json`, `.kml`, `.kmz` (vector). Points, paths and zones are imported.
@@ -233,15 +232,15 @@ Got data in a GIS package you want to use in MyKTAMap? Drop your export **straig
 
 > ⚠️ **Your file must use standard GPS coordinates (WGS84 / EPSG:4326).** In QGIS: *Export → Save Features As…* then pick **EPSG:4326** in the CRS field.
 
-> 📐 **Lambert 93 converted automatically (since v1.82.0)** — if your QGIS export uses **Lambert 93** (EPSG:2154, the official French system: coordinates in **metres** such as 650000 / 6860000, not degrees), the app **recognises and converts** it on its own. A banner tells you how many coordinates were reprojected: check that the resulting position matches your site before continuing. **Other** projections (UTM, Web Mercator…) are still rejected — re-export from QGIS as **EPSG:4326 (WGS84)** in that case.
+> 📐 **Lambert 93 converted automatically* — if your QGIS export uses **Lambert 93** (EPSG:2154, the official French system: coordinates in **metres** such as 650000 / 6860000, not degrees), the app **recognises and converts** it on its own. A banner tells you how many coordinates were reprojected: check that the resulting position matches your site before continuing. **Other** projections (UTM, Web Mercator…) are still rejected — re-export from QGIS as **EPSG:4326 (WGS84)** in that case.
 
-> 🗺️ **Quarry surveys: what the import can do since v1.82.0.**
+> 🗺️ **Quarry surveys: what the import can do**
 > 
-> - **One level per floor.** If your file has a level column (`niveau`, `level`, `etage`…), pick it under “Level column”: every object keeps its floor, and a preview shows you the breakdown **before** generating. Tick “One colour per level” so each floor gets its own shade — without it, six stacked floors blend together. You can **rename and recolour** each level with the 🏷️ button without leaving the screen. Since **v1.83.1**, everything you change there is **kept in the generated plan** — including types you rename, hide, recolour or add yourself. ⚠️ If the screen says the legend has been reset, a change in the mapping has invalidated your names: reopen 🏷️ before generating.
+> - **One level per floor.** If your file has a level column (`niveau`, `level`, `etage`…), pick it under “Level column”: every object keeps its floor, and a preview shows you the breakdown **before** generating. Tick “One colour per level” so each floor gets its own shade — without it, six stacked floors blend together. You can **rename and recolour** each level with the 🏷️ button without leaving the screen. Everything you change there is **kept in the generated plan** — including types you rename, hide, recolour or add yourself. ⚠️ If the screen says the legend has been reset, a change in the mapping has invalidated your names: reopen 🏷️ before generating.
 > - **Every type goes where you want.** An object's shape in the file does not say what it is: a polygon may be a zone, a pillar, a wall — or a **working face**, if whoever drew it closed the outline. Each value can target any family in the dropdown.
 > - **The plan's height is computed**, you only give the width. That is what keeps the plan inside the frame: with free proportions, content overflowed. Past a certain size a warning appears (possible empty background on iPhone, or heavy generation) — it is **advice**, not a block.
 > 
-> ⚠️ **If you created a plan from a GPX or SIG file before v1.82.0**: its **scale was wrong** (a fixed value unrelated to the terrain), and so were the distances measured on it. Regenerate it from the source file to get correct measurements. Plans built from a scanned image are unaffected.
+> ⚠️ **If you created a plan from a GPX or SIG file with an older version of the app**: its **scale was wrong** (a fixed value unrelated to the terrain), and so were the distances measured on it. Regenerate it from the source file to get correct measurements. Plans built from a scanned image are unaffected.
 
 
 >
@@ -267,7 +266,7 @@ A **profile banner** is displayed at the top of the home screen, just below the 
 
 > 💡 **Light theme chart**: in light mode, the profile banner background aligns with the "My maps" cards for clean visual integration.
 
-#### 🖼️ Home wallpaper (since v1.75.0)
+#### 🖼️ Home wallpaper
 
 In the **Profile** modal (click the banner), at the very bottom before the export buttons, you can set **your own image as the home screen background** instead of the theme colour.
 
@@ -369,7 +368,7 @@ Your profile is included in the **Advanced Export** of sessions (🎨 Advanced t
 
 - A modal toast suggests a **reload** of the page so that the avatar and nickname are correctly updated everywhere in the UI (header, sidebar, etc.)
 
-**📄 History Mode PDFs travel too** *(since v1.81.0)*:
+**📄 History Mode PDFs travel too**:
 
 The export window gains a **📄 History Mode PDFs** checkbox, **unchecked by default**. Tick it and your documents leave with the profile, then get **put back on import** with their original name and date. Without it, a re-imported profile arrived with your free notes but **no documents** — the 📖 Stories tab was half empty with nothing to explain why.
 
@@ -377,16 +376,16 @@ The export window gains a **📄 History Mode PDFs** checkbox, **unchecked by de
 >
 > 💡 Re-importing the same profile twice does **not** create duplicates: each document takes its place back.
 
-> 🔒 **On an installation that only offers its own server's maps** *(since v1.90.1)* — the ones where the "Load a new map" block is missing —, **profile import is refused**, with a message saying why. Two reasons: it would bring back maps this installation does not offer, and above all it carries your display preferences — a profile where "show server maps" was unchecked **emptied the list**, leaving no visible setting to get it back. **Export** stays available: your logbook, sessions and notes are yours and leave whenever you want.
+> 🔒 **On an installation that only offers its own server's maps** — the ones where the "Load a new map" block is missing —, **profile import is refused**, with a message saying why. Two reasons: it would bring back maps this installation does not offer, and above all it carries your display preferences — a profile where "show server maps" was unchecked **emptied the list**, leaving no visible setting to get it back. **Export** stays available: your logbook, sessions and notes are yours and leave whenever you want.
 
-**📦 Full profile with map archives** *(since v1.79.0)*:
+**📦 Full profile with map archives**:
 
 The profile export can now **bundle the ZIP archives of maps stored in the app**. In the export window, a "📦 Map archives" section lists your stored maps with their size: tick the ones to carry (nothing is ticked by default) — the export then becomes a **"full profile" `.zip` file** instead of the usual JSON. On import on another device, archives are **injected back and attached to their maps**: no more re-dropping ZIPs one by one.
 
 - **Size guard**: beyond ~50 MB on iPhone/iPad (Safari is fragile with large downloads) or ~500 MB elsewhere, a red warning asks for an **explicit confirmation** — nothing is blocked, you decide.
 - **Honesty about eviction**: if the browser deleted an archive to free space (the "stored" flag can outlive the eviction), the export **lists the affected maps** instead of producing a silently incomplete zip.
 - In **Merge** mode on import, a map that already has its archive on the device **keeps its own**; in **Replace** mode, the profile's wins. A storage failure (quota full) is reported **per map**, the rest continues.
-- Maps in "permanent file access" or "re-selection" mode don't appear in the list: their ZIP lives on your disk, not in the app — there is nothing to bundle.
+- Maps in "re-selection" mode (and older entries in "permanent file access") don't appear in the list: their ZIP lives on your disk, not in the app — there is nothing to bundle.
 
 > 🔒 **100% local**: your nickname and photo remain in your browser. Nothing is sent to a server. The profile export is explicit and controlled by you.
 
@@ -419,10 +418,10 @@ The application remembers all the maps you load, whether they come from the serv
 | 🌐 | Server map (subfolder of `data/`) |
 | 💾 | Local ZIP map |
 | ✅ | Local map **stored in the app** (instant reload, works offline) |
-| 🔐 | Local map with **permanent access granted** (Chrome/Edge desktop) |
+| 🔐 | Older entry with **permanent access** (mechanism removed on 15/09/2026 — at its next re-selection the map becomes ✅ stored) |
 | 📁 | Local map without persistence — re-selection required at load |
 
-#### 💾 Making a server map available offline *(since v1.87.0)*
+#### 💾 Making a server map available offline
 
 A **local** map already lives in your browser: it works offline with no effort. A **server** map does not — and until now it only survived through the app's automatic cache, which **was not enough**:
 
@@ -437,9 +436,9 @@ Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** secti
 | **Not downloaded** + ⬇️ button | Only what you displayed is kept, with no guarantee |
 | **✅ Available offline** + ↻ / 🗑️ | Everything is there. The download button **is gone** — it became "Update" |
 | **⚠️ Incomplete — n of N** + ⬇️ | Interrupted download, or files cleared by the browser: the button **comes back** to finish |
-| **✅ Available, but n not found** + ↻ *(since v1.87.1)* | The server did not provide some files declared by the map. The app **names them**: the map is usable, and you can fix your deployment then hit "Retry" |
+| **✅ Available, but n not found** + ↻ | The server did not provide some files declared by the map. The app **names them**: the map is usable, and you can fix your deployment then hit "Retry" |
 
-**🔎 And the app tells you when the server has changed** *(since v1.88.0)*. A downloaded map is served from your phone and never asks the server again — handy, but it could stay stale **with nothing to tell you**. When you open the info panel, the app now checks, file by file, whether anything moved on the server, and shows one of three verdicts: **⚠️ Update available**, **✓ Up to date**, or **Cannot check** (offline, or map downloaded before this version). *It never claims "up to date" without actually checking.*
+**🔎 And the app tells you when the server has changed**. A downloaded map is served from your phone and never asks the server again — handy, but it could stay stale **with nothing to tell you**. When you open the info panel, the app now checks, file by file, whether anything moved on the server, and shows one of three verdicts: **⚠️ Update available**, **✓ Up to date**, or **Cannot check** (offline, or map downloaded before this version). *It never claims "up to date" without actually checking.*
 
 > 💡 **The state is read from the real cache, not from a remembered flag.** If the browser clears its storage, the app notices and offers the download again — instead of showing "available" over nothing and letting you find out underground.
 
@@ -447,9 +446,9 @@ Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** secti
 
 - **ℹ️** — opens a **Detailed info** window on this archive (internal id, name, version, author, type, source file, size, persistence, V1/V2/multi-level mode, performance preset, dates added and opened). Useful for checking what the app knows about the map without loading it.
 - **▶️** — loads the map
-- **⭐/☆** — pins/unpins the map to the top of the list *(since v1.78.0)*
-- **✏️ Rename display** *(since v1.79.1)* — in the ℹ️ Info window: a local display name (40 chars max) to tell two same-named maps apart; empty = back to the original name; the map's real name is still used for file checks.
-- **🗑️ Remove from list** now lives **at the end of the ℹ️ Info window** *(since v1.78.0, the row ✕ is gone: removal asks for confirmation there — no more accidental removal)*. Removing a map does not delete the ZIP file on your disk, but it does clear the archive possibly stored in the app.
+- **⭐/☆** — pins/unpins the map to the top of the list
+- **✏️ Rename display** — in the ℹ️ Info window: a local display name (40 chars max) to tell two same-named maps apart; empty = back to the original name; the map's real name is still used for file checks.
+- **🗑️ Remove from list** now lives **at the end of the ℹ️ Info window** *(the row ✕ is gone: removal asks for confirmation there — no more accidental removal)*. Removing a map does not delete the ZIP file on your disk, but it does clear the archive possibly stored in the app.
 
 **Buttons at the top of the list:**
 
@@ -459,36 +458,31 @@ Open a server map's **ℹ️ Info** panel: a **💾 Offline availability** secti
 **Display filters & organization**:
 
 - **🌐 Show server maps** — check/uncheck this toggle above the list to hide automatically discovered server maps (test1, test2, demos…) and only see your personal maps. **Preserved** between sessions (on this device). Unchecking does not delete anything — re-checking → the maps reappear intact.
-- **🔎 Filter by name** *(since v1.78.0)* — a field above the list filters live as you type. Pure display filter, reset the next time you visit the home screen.
-- **⭐ Pin** *(since v1.78.0)* — each row's star moves the map **to the top of the list** (pinned maps keep the "last opened" order among themselves). Click again to unpin.
-- **🖼️ Tiling for this map** *(since v1.90.2)* — the selector that used to sit above the "Load this map" button **is gone**: the app decides on its own ("Auto"), which is what it already did for nearly every map. It only ever affected very large maps **not tiled at generation time (V1)**; on an already-tiled map, "Disabled" changed nothing. The setting now lives in **ℹ️ Info**, and **only for the maps it applies to** — and unlike the old one, it is **remembered** for that map instead of resetting on every start.
-- **🔒 On a protected installation, no pro license opens it in place of the password** *(v1.90.8–v1.90.9)* — if the installation has set its password, neither **your own** imported license file nor the license served **by the installation itself** unlocks the app: the password is still required. Your license may enable **pro mode**, but access goes through the password. (An installation with **no** password still opens directly with the license.)
-- **🔑 The instance's password at the code screen** *(since v1.90.6)* — if the app is served to you by an instance that has set **its own** password (an association, a club), **that one** is what you need: on a protected instance, the community code does not open it. If the deployer changes or removes their password, the app asks again **on the next start** — but **offline, your access stays valid**: a network outage never locks you out. ⚠️ *Like the community code, this is a **social** barrier, not authentication: the password's fingerprint sits in a public file.*
-- **🔎 "Find the names"** *(since v1.90.5)* — if a chart still shows a custom type by its identifier (`cust-…`), a button appears under it. It looks the name up **inside your maps themselves**, so you do not have to open them one by one: for a map on your server it asks that server for its descriptor; for a local map it reads the archive already stored. **It states how many maps it will read, and only runs on click.** Names found are kept **for good** — the operation never has to be repeated, even after an update.
-- **🏷️ Filter your statistics by tag** *(since v1.90.4)* — above the profile pie charts, a row of tags. **One click** keeps only the maps carrying it, **a second** excludes them, **a third** resets. **All charts follow** — that is the whole point: take your county atlas out to see what you actually surveyed elsewhere. If a map carries both an included and an excluded tag, it is **dropped**: exclusion always wins. A new **"Maps per tag"** chart shows the split, with an "Untagged" slice telling you what is left to tag. This filter is **not remembered**: it resets every time you reopen the window.
-- **🏷️ Custom types in statistics** *(fixed in v1.90.3)* — the profile pie charts showed your own types by their internal identifier (`cust-…`) instead of their name. Their name lives **inside the map**: the app remembers it the **first time you open that map** from this version on. A map never reopened therefore keeps its identifier, and a note under the chart tells you so — open it once and the name appears.
-- **🏷️ Tags** *(since v1.78.0)* — label your maps ("Paris 13", "GTech", "to finish"…) via **ℹ️ Info → Map tags** (free input, comma-separated — 12 max, 24 characters each). They show under the map name, and as soon as one map is tagged, a row of **filter chips** appears above the list: click one or more chips to only see those maps (a map matches if it carries **at least one** of the selected tags). Tags live **in the app** (not in the ZIP — they don't travel with a shared map) but follow the **profile export** and the 💾 list export.
-  - **🌐 Maps from a server can arrive already tagged** *(since v1.90.1)* — if the deployer filled in tags in their map list, those show up and filter exactly like yours, with nothing to do. **Yours always win**: as soon as you edit a map's tags, the server never touches them again, neither on the next start nor on any later one. And **clearing them is a choice**: empty the field and they will not grow back. To get the server's tags back, nothing special is needed — remove the map from the list and it will be rediscovered with them.
+- **📁 Folders** — right of the "📚 My maps" title, an **All | Folders** switch (always visible). In **Folders** mode your list is arranged in sections you create yourself (➕ in the title row): "Gironde", "Limestone", whatever you like, with a **colour** per folder, shown as a dot before the map name in both modes. A map lives in **one** folder; the others sit in "Unfiled", last. To file a map: the **📁** button on a row → "Move to…" (works by touch), **☑ Select** to move several at once, or **drag** the row onto a folder header: with the mouse on PC, or by touch with a **long press** (the row lifts after half a second; a finger that moves right away scrolls the list, as usual). Headers collapse; ⋮ on a header = rename, colour, move up/down, delete (its maps go back to Unfiled, **no map is ever deleted**). **🏷️ Tag rule**: in ⋮, "also include maps tagged…" files on its own every map carrying the tag, future ones too — and in All mode, ticked chips offer "📁 Create a folder from these tags". Moving a map by hand always beats a rule. Folders **travel with your profile**; a server (ConfAdmin) can propose some: those cannot be renamed or deleted while the server declares them, but you stay free to move a map in or out. The 📦 multi-import offers "File into:" for a whole batch. All mode is the usual screen, unchanged.
+- **🔎 Filter by name** — a field above the list filters live as you type. Pure display filter, reset the next time you visit the home screen.
+- **⭐ Pin** — each row's star moves the map **to the top of the list** (pinned maps keep the "last opened" order among themselves). Click again to unpin.
+- **🖼️ Tiling for this map** — the selector that used to sit above the "Load this map" button **is gone**: the app decides on its own ("Auto"), which is what it already did for nearly every map. It only ever affected very large maps **not tiled at generation time (V1)**; on an already-tiled map, "Disabled" changed nothing. The setting now lives in **ℹ️ Info**, and **only for the maps it applies to** — and unlike the old one, it is **remembered** for that map instead of resetting on every start.
+- **🔒 On a protected installation, no pro license opens it in place of the password** — if the installation has set its password, neither **your own** imported license file nor the license served **by the installation itself** unlocks the app: the password is still required. Your license may enable **pro mode**, but access goes through the password. (An installation with **no** password still opens directly with the license.)
+- **🔑 The instance's password at the code screen** — if the app is served to you by an instance that has set **its own** password (an association, a club), **that one** is what you need: on a protected instance, the community code does not open it. If the deployer changes or removes their password, the app asks again **on the next start** — but **offline, your access stays valid**: a network outage never locks you out. ⚠️ *Like the community code, this is a **social** barrier, not authentication: the password's fingerprint sits in a public file.*
+- **🔎 "Find the names"** — if a chart still shows a custom type by its identifier (`cust-…`), a button appears under it. It looks the name up **inside your maps themselves**, so you do not have to open them one by one: for a map on your server it asks that server for its descriptor; for a local map it reads the archive already stored. **It states how many maps it will read, and only runs on click.** Names found are kept **for good** — the operation never has to be repeated, even after an update.
+- **🏷️ Filter your statistics by tag** — above the profile pie charts, a row of tags. **One click** keeps only the maps carrying it, **a second** excludes them, **a third** resets. **All charts follow** — that is the whole point: take your county atlas out to see what you actually surveyed elsewhere. If a map carries both an included and an excluded tag, it is **dropped**: exclusion always wins. A new **"Maps per tag"** chart shows the split, with an "Untagged" slice telling you what is left to tag. This filter is **not remembered**: it resets every time you reopen the window.
+- **🏷️ Custom types in statistics** — the profile pie charts showed your own types by their internal identifier (`cust-…`) instead of their name. Their name lives **inside the map**: the app remembers it the **first time you open that map** from this version on. A map never reopened therefore keeps its identifier, and a note under the chart tells you so — open it once and the name appears.
+- **🏷️ Tags** — label your maps ("Paris 13", "GTech", "to finish"…) via **ℹ️ Info → Map tags** (free input, comma-separated — 12 max, 24 characters each). They show under the map name, and as soon as one map is tagged, a row of **filter chips** appears above the list: click one or more chips to only see those maps (a map matches if it carries **at least one** of the selected tags). Tags live **in the app** (a ZIP generated with the Generator's **🏷️ Tags** field **proposes** them on import, never overwriting the ones you set) but follow the **profile export** and the 💾 list export.
+  - **🌐 Maps from a server can arrive already tagged** — if the deployer filled in tags in their map list, those show up and filter exactly like yours, with nothing to do. **Yours always win**: as soon as you edit a map's tags, the server never touches them again, neither on the next start nor on any later one. And **clearing them is a choice**: empty the field and they will not grow back. To get the server's tags back, nothing special is needed — remove the map from the list and it will be rediscovered with them.
 
 > 💡 **Tip** — If you change PC or phone, export your list on the old device then import it on the new one to find all your maps in one click. Note: file access permissions are not portable (you will have to re-select local ZIPs the first time on the new device). When re-selecting, if you provide a ZIP in a different mode (e.g.: you had this map in V2 but the ZIP is V1), a warning message will clearly notify you before continuing.
 
-> 📐 **Point C (optional, since v1.73.0) — for distorted maps**: if your map is an **assembly** that projects poorly (stretched one way, different X/Y scales), add a **3rd point** in ⚙️ Settings → Georeferencing (or in the generator): the app then switches to a transformation that **corrects the global distortion** — OSM view, KMZ/GPX exports and Rescue Mode all benefit. Pick C **far from the A-B line** (an aligned C adds nothing and is refused). Note: this corrects an *overall* distortion — if each piece of the assembly has its own error, the result improves but cannot be perfect everywhere. Leave C empty if your map already projects well: nothing changes.
+> 📐 **Point C (optional) — for distorted maps**: if your map is an **assembly** that projects poorly (stretched one way, different X/Y scales), add a **3rd point** in ⚙️ Settings → Georeferencing (or in the generator): the app then switches to a transformation that **corrects the global distortion** — OSM view, KMZ/GPX exports and Rescue Mode all benefit. Pick C **far from the A-B line** (an aligned C adds nothing and is refused). Note: this corrects an *overall* distortion — if each piece of the assembly has its own error, the result improves but cannot be perfect everywhere. Leave C empty if your map already projects well: nothing changes.
 
 ### 🔐 Avoid re-selecting the ZIP at each opening
 
-Depending on your platform, two persistence options appear under the import area:
-
-#### On Chrome / Edge (PC)
-
-Click on **🔐 Grant permanent access to the file**. The browser keeps a reference to your ZIP. On subsequent openings of the map from your list, reloading is done in **0 or 1 click** (Chrome may ask for quick confirmation again after a browser restart).
-
-#### On mobile, Firefox, Safari
-
-The **💾 Store this map in the app** option is **checked by default**. The ZIP is copied into the browser's local storage area. On subsequent openings:
+By default the app **stores each map on first load**: the ZIP is copied into the browser's local storage area, nothing to tick on the home screen. The setting lives in **⚙️ Home configuration → "💾 Store the map in the app on first load"** (on by default; when off, the ZIP is asked for at every opening). On subsequent openings:
 
 - **0 clicks**, the map loads directly
 - Works **offline** (the ZIP is in the browser, no need to find the file)
 - Recommended on **mobile**
+
+> ℹ️ **The "🔐 Grant permanent access to the file" button (Chrome/Edge) was removed on 15/09/2026.** It was redundant: the ZIP was copied into the app anyway, and the file reference was never used. Maps that had it still open; at their next re-selection they become "stored".
 
 > ⚠️ **Storage limits**:
 > - **iPhone (classic Safari)**: ~50 MB, may be erased after prolonged inactivity
@@ -523,29 +517,29 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 > **Order of sections in the modal (top to bottom, identical to UI)**:
 
-1. **🌍 Application** — the **language selector** for the whole app (🇫🇷 Français · 🇬🇧 English · 🇪🇸 Español). *(since v1.85.4)* This is now the **only place** to change it while using the app: it left ⚙️ Settings in map mode, where it looked like it only concerned the open map — and where it offered to restart the app at the worst possible moment, deep underground. You can still pick it on the unlock screen, before going in.
+1. **🌍 Application** — the **language selector** for the whole app (🇫🇷 Français · 🇬🇧 English · 🇪🇸 Español). This is now the **only place** to change it while using the app: it left ⚙️ Settings in map mode, where it looked like it only concerned the open map — and where it offered to restart the app at the worst possible moment, deep underground. You can still pick it on the unlock screen, before going in.
 
-2. **🛰️ Sensor-based options** *(since v1.85.2)* — the options that rely on a phone sensor: **🔋 Battery level** and **📳 Haptic vibration**. Each one can be turned off, and an option that is off displays nothing **and stops listening to the sensor**. When the system refuses the sensor — vibration on iPhone, for instance — the option stays **visible but greyed out, with the reason**, instead of vanishing with no explanation.
+2. **🛰️ Sensor-based options** — the options that rely on a phone sensor: **🔋 Battery level** and **📳 Haptic vibration**. Each one can be turned off, and an option that is off displays nothing **and stops listening to the sensor**. When the system refuses the sensor — vibration on iPhone, for instance — the option stays **visible but greyed out, with the reason**, instead of vanishing with no explanation.
 
-> 🗺️ **OSM view is on by default** *(since v1.90.2)*. If you have at least one GPS-calibrated map, the home screen shows it on top of an OpenStreetMap background — and therefore **requests that background from `tile.openstreetmap.org` as soon as it loads**, with no click. **No data from your maps leaves the device**: only the coordinates of the tiles you are looking at are requested, everything else is drawn on top locally. A banner tells you the first time. To turn it off: the checkbox above. **If you had already unchecked it, it stays unchecked** — a refusal is never overridden. And nothing is sent in **strict offline mode**, in **incognito**, or if no map is calibrated.
+> 🗺️ **OSM view is on by default**. If you have at least one GPS-calibrated map, the home screen shows it on top of an OpenStreetMap background — and therefore **requests that background from `tile.openstreetmap.org` as soon as it loads**, with no click. **No data from your maps leaves the device**: only the coordinates of the tiles you are looking at are requested, everything else is drawn on top locally. A banner tells you the first time. To turn it off: the checkbox above. **If you had already unchecked it, it stays unchecked** — a refusal is never overridden. And nothing is sent in **strict offline mode**, in **incognito**, or if no map is calibrated.
 
-> 🖼️ **Image tiling is not in this modal** — and since v1.90.2 it is not on the loading screen either. It went through both without ever finding its place: in practice it only concerns maps **not split at generation time**, and on the others it changed nothing. It now lives in the map's **ℹ️ Info** panel, only for the maps it applies to, and it is finally **remembered** there.
+> 🖼️ **Image tiling is not in this modal** — and it is not on the loading screen either. It went through both without ever finding its place: in practice it only concerns maps **not split at generation time**, and on the others it changed nothing. It now lives in the map's **ℹ️ Info** panel, only for the maps it applies to, and it is finally **remembered** there.
 >
-> 🚀 **The Performance ULTRA toggles are gone too** *(since v1.85.3)*. They were displayed here but **saved nothing** — they are **per-map** settings: you set them in **⚙️ Settings**, once the map is open. See "🚀 Optimize your map" below.
+> 🚀 **The Performance ULTRA toggles are gone too**. They were displayed here but **saved nothing** — they are **per-map** settings: you set them in **⚙️ Settings**, once the map is open. See "🚀 Optimize your map" below.
 
-3. **🛠️ Developer Mode** *(since v1.76.3)* — replaces the old Debug section. **Password-protected** on first activation (with a responsibility warning). Once active: **🐛 Detailed logs** toggle, **📋 Show logs** button (the buffer, viewable even without a map loaded), and **📚 Technical documentation** — the whole project doc (architecture, backlog, maths…) readable in-app (online only). The logs setting in the map-mode ⚙️ Settings was removed: everything is driven from here.
+3. **🛠️ Developer Mode** — replaces the old Debug section. **Password-protected** on first activation (with a responsibility warning). Once active: **🐛 Detailed logs** toggle, **📋 Show logs** button (the buffer, viewable even without a map loaded), and **📚 Technical documentation** — the whole project doc (architecture, backlog, maths…) readable in-app (online only). The logs setting in the map-mode ⚙️ Settings was removed: everything is driven from here.
 
 4. **🔒 Privacy & Audit** — section dedicated to transparency: live network journal, "What does the app do on the network?" doc, and "Strict offline mode" toggle. See dedicated section below.
 
 5. **🎨 Display** — interface toggles:
-   - **🔎 Icons that grow with zoom**, **📌 Anchor tool panels to their button**, **🧲 Snap while drawing** and its **radius** *(since v1.85.3)* — these four apply to **all your maps**. They used to live in ⚙️ Settings in map mode, where you changed them from one map without knowing you were changing them everywhere.
+   - **🔎 Icons that grow with zoom**, **📌 Anchor tool panels to their button**, **🧲 Snap while drawing** and its **radius** — these four apply to **all your maps**. They used to live in ⚙️ Settings in map mode, where you changed them from one map without knowing you were changing them everywhere.
    - **🔆 Keep screen on** — prevents your screen from auto-sleeping while MyKTAMap is open (Wake Lock API). Useful on cataphile outings to avoid having to touch the phone every 30 sec. Auto re-acquire on return from background (visibilitychange). Toggle automatically hidden on browsers that don't support the API (Firefox notably). The same toggle is also accessible in **⚙️ Settings** in map mode (see dedicated section).
 
 > 📊 **See memory state** — in this same modal, a **“📊 See memory state”** button opens the **inspector**: what the app takes up on your device (storage keys sorted by size, databases, application cache, browser quota) and what is loaded right now. A **📋 Copy report** button produces text ready to paste when reporting a problem.
 
 > ❓ **Help button inside windows** — puts a small **❓** in the title row of windows that have a help page: ⚙️ Settings, 📊 Session details, 🧭 Tracker menu, ⬆️ Save, ⬇️ Load, ≡ Legend, 🔍 Search, 🚨 Rescue, 📖 History mode, 🏗️ Generator, 📔 Logbook, 🌍 OSM view, 👤 Profile, ℹ️ Map info. One tap opens **the right page directly**, without going through the ❓ Help group. Untick if you prefer an interface without this icon: it disappears at once, even from windows already open.
 
-> 📔 **Keep a logbook of my outings** — every map you open becomes an **outing** archived in 📔 My logbook (duration, distance, additions, photos). Unticked, the app no longer opens anything by itself and the current outing stops; what is already in the logbook stays, and you can still start one on demand from **📊 Session details**. *(Setting moved here from ⚙️ Settings in map mode in v1.92.0: it applies to all your maps, and the logbook opens from the home screen.)*
+> 📔 **Keep a logbook of my outings** — every map you open becomes an **outing** archived in 📔 My logbook (duration, distance, additions, photos). Unticked, the app no longer opens anything by itself and the current outing stops; what is already in the logbook stays, and you can still start one on demand from **📊 Session details**. *(Setting moved here from ⚙️ Settings in map mode: it applies to all your maps, and the logbook opens from the home screen.)*
 
 > 🌍 **Application language**: MyKTAMap is translated into **3 languages — French, English, Spanish**. The language selector (flag + full name) is in **⚙️ Configuration → 🌍 Application**, at the very top of the modal. The change applies immediately, without reloading the app. *Good to know*: the **Documentation** (this guide) and the **welcome tutorial** exist in all **3 languages** — they follow your app language automatically, and the flag button at the top of the Documentation window lets you switch 🇫🇷 / 🇬🇧 / 🇪🇸 whenever you want. Only the **built-in Help** (the 📚 in the sidebar in map mode) remains French and English: in Spanish, it is displayed in **English by default**. On each language change, a message offers to **restart the app** for a fully clean switch (optional). 💡 In **incognito mode**, your interface language is now **kept** (all other data stays completely forgotten).
 
@@ -568,7 +562,7 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 
 **Organization**: **everything is grouped in a single ⚙️ Configuration modal**, accessible from the loader header. The 🏗️ Generate a map button remains directly visible in the home (not in the Configuration modal) because it is a creation action, not a setting.
 
-### 🎚️ Image splitting — the app decides *(since v1.90.2)*
+### 🎚️ Image splitting — the app decides
 
 **There is nothing to set here any more.** The *"🖼️ Tiling for this load"* strip that used to sit right above
 the **▶️ Load this map** button **has been removed**: the app automatically splits maps too large to be shown
@@ -589,14 +583,14 @@ applies to every later load.
 | 🔄 **Auto** *(default)* | Automatically splits maps too large to be displayed in one piece. **This is the right choice in every case.** |
 | 💤 **Disabled** | No splitting: the whole image at once. Native quality on desktop, but ⚠️ **may crash your phone** on a very large map — a message warns you when it applies. |
 
-> 🩸 **There were 5 buttons before v1.86.0** (🌟 Quality, 🎯 Balanced, ⚡ Performance). They only tuned the
+> 🩸 **There used to be 5 buttons** (🌟 Quality, 🎯 Balanced, ⚡ Performance). They only tuned the
 > splitting done **by the browser at load time**, which only concerns **older** maps. On a map **already split
 > at generation**, they changed **absolutely nothing**, while the app still claimed "Sharper. Recommended on
 > desktop PC.". They were removed.
 
 > 🩸 **And "Auto" protected you less than the others, even though it was the default.** It decided on **file
 > weight** (60 MB) while the others decided on **pixel size**. A well-compressed 100-megapixel map weighs
-> ~15 MB: "Auto" did not split it, and the app could crash on iPhone. Fixed in v1.86.0: pixel size now decides.
+> ~15 MB: "Auto" did not split it, and the app could crash on iPhone. Fixed: pixel size now decides.
 
 ### 🎨 The interface in map mode
 
@@ -618,7 +612,7 @@ applies to every later load.
 - **Unified left/right sidebars** — each side is a **single continuous vertical bar**:
   - **Left**: ⊞ Layers · − + Zoom · 🏗 Level · ≡ collapse · 📚 Doc · ⚙ Settings · ⬇ Load · ⬆ Save
   - **Right**: ≡ collapse · 🔍 Search · ✏️ Edition · 📐 Measurement · 🛣 Paths · ⬛ Zones · 🧭 Tracker
-  - **Tool panels**: since v1.85.1 they open **centred on screen** (Paths, Zones, Structures, like Tracker and Filters); the “🪟 Anchor tool panels to the button” option (⚙️ Configuration) restores anchoring.
+  - **Tool panels**: they open **centred on screen** (Paths, Zones, Structures, like Tracker and Filters); the “🪟 Anchor tool panels to the button” option (⚙️ Configuration) restores anchoring.
 - **🧭 Orientation compass**:
   - In portrait: **bottom-left** above the footer
   - In landscape: **bottom-centered** (so as not to hide the side icons)
@@ -707,15 +701,15 @@ In practice: you start at **A**, pass through **C**, then reach **B** → the ap
 - The logbook **starts empty**: it cannot reconstruct trips from before it existed, they were never recorded as such.
 - Everything is **strictly local** to your device (no upload, no account). Each trip can be deleted individually from its sheet.
 - Beyond **500 trips**, the oldest ones are removed automatically.
-- The logbook **is part of the profile export** since v1.74.0: switching devices via the profile export does carry your outing history over.
+- The logbook **is part of the profile export**: switching devices via the profile export does carry your outing history over.
 
 ---
 
-### 🧙 Generator: step-by-step wizard (since v1.72.1)
+### 🧙 Generator: step-by-step wizard
 
 The **Generator** (🏗️) now guides you **step by step**, like an installer: each page shows one thing (name, image, layers…), optional steps can be **skipped** in one click, and a **final summary** shows what's filled, skipped or missing — with useful warnings (e.g. no GPS georeferencing = no OSM view or KMZ export) **before** generating. An imported ZIP pre-fills every step: you just review. Power users can switch back to the old full view via **🗒️ Show all** (choice remembered).
 
-### 🔽 Collapsible footer (since v1.71.0)
+### 🔽 Collapsible footer
 
 The small **arrow** under the home screen collapses the footer (copyright, links, credits) to free up space — only a minimal « © MyKTAMap · version » line remains. Click again to expand. Your choice is remembered and travels with the profile export.
 
@@ -765,7 +759,7 @@ If you click on a map in your list and a **« ⚠️ Map not found »** window a
 The window offers you 3 actions:
 
 - **🔄 Retry** (server maps only) — useful if the server was temporarily unavailable
-- **📁 Re-select the ZIP** (local maps) — opens your file explorer to find the ZIP again. If you have enabled "Remember this map in the app" or "Permanent access", persistence will be **automatically restored** after the new selection
+- **📁 Re-select the ZIP** (local maps) — opens your file explorer to find the ZIP again. If the map was stored (or in the former "Permanent access"), persistence will be **automatically restored** after the new selection
 - **🗑️ Remove from list** — if you no longer have the map, delete its entry from your list
 
 > 💡 **Tip**: regularly export your list via 💾 (icon at the top right of **📚 My maps**) so you can restore it in case of trouble.
@@ -836,29 +830,29 @@ The toggle is **persistent** (survives reloads and tab closures) until you unche
 
 ---
 
-## 🌍 OSM mode — built-in search (since v1.70.0)
+## 🌍 OSM mode — built-in search
 
 The **⛶** button of the OSM view widget is now called **"Open OSM mode"**: the map goes full screen. A **search bar** shows up there:
 
 - it sits **in the « 🌍 OSM view » title line**, so it's available on the reduced home widget too;
 - it finds **a plan** (among your georeferenced plans) or **a point** (those plans' POIs) — type, click a result, the map flies to it with a marker;
 - **100% local**: the search reads your own plans, no internet address service is queried;
-- ⚠️ **A map you have never opened does not appear either, even if it is calibrated** *(clarified in v1.90.2)*. The calibration travels **inside the map**, but the app only reads it on the **first open**: before that, it cannot know. **Open each map once** and the calibrated ones will show up on their own. The OSM view empty message now says so, instead of claiming there is no georeferenced map, which was false in that case.
+- ⚠️ **A map you have never opened does not appear either, even if it is calibrated**. The calibration travels **inside the map**, but the app only reads it on the **first open**: before that, it cannot know. **Open each map once** and the calibrated ones will show up on their own. The OSM view empty message now says so, instead of claiming there is no georeferenced map, which was false in that case.
 - only **georeferenced** plans appear — a plan without GPS calibration is invisible in OSM mode (calibrate it via the Generator or Settings).
 
 **📏 Measuring on the OSM map** — in OSM mode, the measuring tool gives a **distance** and an **area** by clicking on the map. A measurement made here depends on **no calibration**: the coordinates are already geographic, so it is more reliable than a measurement made on the plan.
 
 **🎯 Surface coordinates** — a click on the OSM map gives the **latitude and longitude of the point right above**, copyable with one button. That is what you pass to a team coming in from the surface.
 
-**🗂️ Several plans at once (since v1.71.0)** — the "Displayed plans" panel of OSM mode lets you **stack your georeferenced plans**: ➕ to add one, ▲▼ to choose what goes above/below, a per-plan **opacity** slider, ✕ to remove. The plan marked ◉ is the "primary" one (the top selector's). All this management lives in a **dedicated modal** opened by the banner's **≡** button (nothing covers the map): **global display** switches, **tag filtering** (aggregated across displayed plans), and the plan stack. The old rows under the selector (opacity, checkboxes, tags) are gone from the widget — the map gains their height. Each row also carries **5 mini filter buttons of its own** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — the global display switches live in the same modal (Display section), the two levels combine. Perfect to show two neighbouring sectors on top of an overview plan, keeping e.g. only one's POIs and the other's image. **🏷️ And since v1.84.0, adding by LABEL**: under “Plans”, a row of chips lists the labels carried by **at least two** of your georeferenced plans (the ones you type in your library), with a “3/12” counter. One click **shows all** the plans of that label, a second click **removes them** — essential as soon as a split atlas produces twenty of them. Case is ignored (“Gironde” and “GIRONDE” are the same label), and past 3 displayed plans the app asks for confirmation, stating the count: plans then load **one by one**, filling the map progressively.
+**🗂️ Several plans at once* — the "Displayed plans" panel of OSM mode lets you **stack your georeferenced plans**: ➕ to add one, ▲▼ to choose what goes above/below, a per-plan **opacity** slider, ✕ to remove. The plan marked ◉ is the "primary" one (the top selector's). All this management lives in a **dedicated modal** opened by the banner's **≡** button (nothing covers the map): **global display** switches, **tag filtering** (aggregated across displayed plans), and the plan stack. The old rows under the selector (opacity, checkboxes, tags) are gone from the widget — the map gains their height. Each row also carries **5 mini filter buttons of its own** (🖼️ image, 📍 POI, 🛣️ routes, 🌐 zones, 🏛️ structures) — the global display switches live in the same modal (Display section), the two levels combine. Perfect to show two neighbouring sectors on top of an overview plan, keeping e.g. only one's POIs and the other's image. **🏷️ And adding by LABEL**: under “Plans”, a row of chips lists the labels carried by **at least two** of your georeferenced plans (the ones you type in your library), with a “3/12” counter. One click **shows all** the plans of that label, a second click **removes them** — essential as soon as a split atlas produces twenty of them. Case is ignored (“Gironde” and “GIRONDE” are the same label), and past 3 displayed plans the app asks for confirmation, stating the count: plans then load **one by one**, filling the map progressively.
 
 On the first opening of the mode, a message reminds you that rendering full plans can be slower on mobile — and another one shows if you display **more than 3 plans** at once.
 
-> 👁️ **Layers hidden by default (since v1.73.1)** — a data layer shipped "unchecked" in a plan ZIP (so hidden when the map opens) is rendered like the others: hide or show it with the existing filters (global and per-plan category chips, tag filter). The OSM view of the map screen is unaffected — it has always followed the layers actually displayed on your map.
+> 👁️ **Layers hidden by default* — a data layer shipped "unchecked" in a plan ZIP (so hidden when the map opens) is rendered like the others: hide or show it with the existing filters (global and per-plan category chips, tag filter). The OSM view of the map screen is unaffected — it has always followed the layers actually displayed on your map.
 
-> 🔍 **Sharp when zooming (since v1.77.0)** — in the home screen's OSM preview, zooming on a plan automatically loads **more detailed tiles** (only the area you're looking at, V2-tiled plans). Nothing to configure, and no extra network requests: the tiles come from the plan file, already on your device.
+> 🔍 **Sharp when zooming* — in the home screen's OSM preview, zooming on a plan automatically loads **more detailed tiles** (only the area you're looking at, V2-tiled plans). Nothing to configure, and no extra network requests: the tiles come from the plan file, already on your device.
 
-> 🎨 **Your colors everywhere (since v1.77.0)** — the legend colors you customize (≡ Legend → ✏️ Edit) now show up **on the OSM background too**: full-screen mode AND home preview, and with multiple plans each one keeps **its own** colors.
+> 🎨 **Your colors everywhere* — the legend colors you customize (≡ Legend → ✏️ Edit) now show up **on the OSM background too**: full-screen mode AND home preview, and with multiple plans each one keeps **its own** colors.
 
 ## 📖 Story Mode — Free note + PDF for each plan
 
@@ -880,7 +874,7 @@ You can now keep **up to 10 PDF documents per plan**. A 2019 report, a scanned p
 
 - A **document list** appears above the viewer as soon as there is more than one; click a document to open it.
 - **📥 Import** adds a document (it replaces nothing). **🗑️ Remove** deletes the one being displayed.
-- The plan author can embed PDFs in the ZIP — **several since v1.71.0** (the Generator now accepts a list of files): they appear at the top of the list (📕), readable, not deletable (only the generator can change them). Their presence does not prevent you from adding your own documents.
+- The plan author can embed PDFs in the ZIP — **several** (the Generator now accepts a list of files): they appear at the top of the list (📕), readable, not deletable (only the generator can change them). Their presence does not prevent you from adding your own documents.
 - Guardrails: **10 documents maximum** per plan, warning past **25 MB** total, refusal past **100 MB**. The space used shows up in **Storage**.
 - On iPhone, an **↗️ Open in a tab** button kicks a document into native fullscreen if the inline view isn't available.
 - Your documents are also listed, added and deleted from **📔 My logbook → 📖 Stories**, without loading the plan.
@@ -961,7 +955,7 @@ If your map is **GPS calibrated** (see "Export to geolocated KMZ" section for 2-
 
 📌 Point name
 [Description if present]
-🌐 48.85661° N, 2.35222° E  📋
+🌐 48.85661° N, 2.35222° E 📋
 - Displayed just after the description (new line).
 - **5-digit decimal** format (~1 m precision).
 - **📋** button: copies the coordinates to the clipboard (`lat, lng` format ready to paste into Google Maps, OsmAnd, location SMS, etc.).
@@ -984,7 +978,7 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 **🌀 My links**: on the **home screen**, the **"🌀 My links"** button lists all your links (across all plans): each side's status (⛔ if the plan is not on this device), **➜** button to jump straight to either point, **🗑️** to delete. If a plan's data is unreachable (server offline…), the app tells you clearly instead of showing "0 points".
 
-> 📐 **“Alignment gap” (since v1.81.0)** — each link can show a distance in metres. **This is not a distance to walk.** A portal's two ends mark the **same physical spot**, seen from two different plans: if both plans are properly georeferenced, those two ends should land at the exact same place on the world map. The gap shown measures how far they miss by — in other words, **how good your alignment is**. The smaller the figure, the better. This is the only place in the app that can tell you, because it takes **two** georeferences to reveal it.
+> 📐 **“Alignment gap”* — each link can show a distance in metres. **This is not a distance to walk.** A portal's two ends mark the **same physical spot**, seen from two different plans: if both plans are properly georeferenced, those two ends should land at the exact same place on the world map. The gap shown measures how far they miss by — in other words, **how good your alignment is**. The smaller the figure, the better. This is the only place in the app that can tell you, because it takes **two** georeferences to reveal it.
 > 
 > - The figure only appears if **both** plans are georeferenced. Otherwise **nothing** is shown: the measurement is impossible, and writing “0” would suggest a perfect alignment.
 > - **No colours, no thresholds** — deliberately. A 20 m gap is huge in a small quarry and negligible across a 5 km network. You get the figure; you are the one who judges, with your own scale in mind.
@@ -1010,7 +1004,7 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 **↩️ Going back**: after taking a portal (or a multi-plan search jump), a floating **"↩️ Back: <plan>"** button appears at the bottom of the screen for 15 seconds — one click brings you back to the plan **and the exact view** you came from (level and zoom included). Jumps stack up: chain 3 portals, you can go back 3 times.
 
-**↩️ Discreet Back button**: if the button bothers you, two new controls on it — **[–]** shrinks it to a discreet **↩️ mini-chip** at the bottom right (it stays until it expires, one click re-expands it), **[✕]** closes it **and forgets the stacked returns** (since v1.73.0 — closing means giving up the return chain). Your [–] choice is remembered: once minimized, future returns arrive directly as a mini-chip.
+**↩️ Discreet Back button**: if the button bothers you, two new controls on it — **[–]** shrinks it to a discreet **↩️ mini-chip** at the bottom right (it stays until it expires, one click re-expands it), **[✕]** closes it **and forgets the stacked returns** (closing means giving up the return chain). Your [–] choice is remembered: once minimized, future returns arrive directly as a mini-chip.
 
 **Good to know**:
 - A point can carry **several links** (a "hub" point).
@@ -1023,7 +1017,7 @@ You can **link a point on one plan to a point on another plan** — like a "port
 
 Search for a point across **every plan in your library** at once, without opening them one by one:
 
-- **From the home screen**: the **🔎 search bar at the top of the screen**, centered in the header. Since v1.72.1, **results show up live under the bar** from 2 characters (plans + points, with the plan badge) — clicking a result loads the plan and centers the map. **Enter** or 🔎 opens the full search. On mobile the bar takes the header's second line.
+- **From the home screen**: the **🔎 search bar at the top of the screen**, centered in the header. **Results show up live under the bar** from 2 characters (plans + points, with the plan badge) — clicking a result loads the plan and centers the map. **Enter** or 🔎 opens the full search. On mobile the bar takes the header's second line.
 - **From the map**: open the search (Ctrl+K or 🔍) → **"🌐 Search across all plans"** button at the bottom — your current input is kept.
 
 The app reads each plan's points (session + data layers) **in place**, showing progress ("Reading 2/5: Oise…"). Each result carries the **badge of the plan** it belongs to. One click: confirmation (if a plan is open), the right plan loads, the right level is selected and the view centers on the point — with the ↩️ Back button to return.
@@ -1061,19 +1055,19 @@ The interface is organized into **13 groups** spread over the **two side bars** 
 - **Touching outside** the open group closes it automatically
 - **On mobile in landscape**, the bar becomes vertically scrollable if it overflows the screen
 
-> 🛡️ **Opening a window cancels the active tool (since v1.73.1)** — if you are in **measure, point editing, path, zone, structure or recalibration** mode and you open a modal on top (Settings, Filters, Documentation, Rescue Mode…), the mode disarms itself. Before, it stayed armed behind: after closing, your map clicks went into the tool with nothing to remind you, and the button stayed lit without effect. **The tracker is never cancelled** (it runs in the background, it is not a click mode), and the form of a point you just placed does not cancel editing — you can chain your points normally.
+> 🛡️ **Opening a window cancels the active tool* — if you are in **measure, point editing, path, zone, structure or recalibration** mode and you open a modal on top (Settings, Filters, Documentation, Rescue Mode…), the mode disarms itself. Before, it stayed armed behind: after closing, your map clicks went into the tool with nothing to remind you, and the button stayed lit without effect. **The tracker is never cancelled** (it runs in the background, it is not a click mode), and the form of a point you just placed does not cancel editing — you can chain your points normally.
 
 ### 🎨 Customise the legend (rename, hide, colours, custom types)
 
 Open **≡ Legend** (📚 Help / Documentation / Legend group) then **✏️ Edit**. For each trace, zone or structure type:
 
 - **Rename**: type your own label (e.g. "Principal" → "Main gallery"). It shows everywhere: legend, popups, stats, filters.
-- **🎨 Change the colour** *(since v1.76.1)*: one colour square per row — and for **zones and pillars/walls, two squares**: fill and an **independent border**. The colour applies **everywhere** — map, image/PDF exports, KMZ, statistics, session report — immediately, no reload. A **↺** button restores both fill AND border. Details: with no border chosen, a zone derives it automatically (darker shade) and a pillar/wall keeps its black outline (the historical default); a recoloured *Inaccessible* zone loses its hatching (fixed pattern) in favour of a flat fill. **Custom entries** are edited the same way, live.
+- **🎨 Change the colour**: one colour square per row — and for **zones and pillars/walls, two squares**: fill and an **independent border**. The colour applies **everywhere** — map, image/PDF exports, KMZ, statistics, session report — immediately, no reload. A **↺** button restores both fill AND border. Details: with no border chosen, a zone derives it automatically (darker shade) and a pillar/wall keeps its black outline (the historical default); a recoloured *Inaccessible* zone loses its hatching (fixed pattern) in favour of a flat fill. **Custom entries** are edited the same way, live.
 - **👁️ Hide**: the checkbox removes the entry **from the legend box only** — nothing disappears from the map. To hide objects on the map, use the **🔍 Filters** panel.
 - **➕ Add a custom entry**: create your own types (trace, zone, structure, icon) with their colour. They become drawable from the sidebar, and a custom icon is offered in the point editor.
 - **🗑️ Delete a custom type**: if drawn objects still use it, the app warns you with the count before confirming.
 
-> 🧳 **Your legend travels with your exports** *(since v1.76.1)*: an exported data layer carries the definition of the types it uses, and the generator picks it up on import (whatever already exists in the plan keeps priority). The session JSON and the Advanced ZIP carry it too.
+> 🧳 **Your legend travels with your exports**: an exported data layer carries the definition of the types it uses, and the generator picks it up on import (whatever already exists in the plan keeps priority). The session JSON and the Advanced ZIP carry it too.
 >
 > ⚠️ **"Orphan types" banner**: if objects use a type that no longer exists in the legend (deleted entry, old layer), the ≡ Legend modal shows it at the top with the count — those objects render in fallback colours until you recreate or re-import the entry.
 
@@ -1151,15 +1145,15 @@ Results are **grouped by category** with headers:
 
 📍 POINTS (12)
   ┌─────┐
-  │ icn │ PA1  Ventilation Shaft
-  │     │   Shaft · ventilation · open · x:4843 y:2002
+  │ icn │ PA1 Ventilation Shaft
+  │ │ Shaft · ventilation · open · x:4843 y:2002
   └─────┘
   ...
 
 🛣️ PATHS (3)
   ┌─────┐
-  │ 🛣️  │ Main Path session #1
-  │     │   Session · Main · Lvl 0 · 8 pts
+  │ 🛣️ │ Main Path session #1
+  │ │ Session · Main · Lvl 0 · 8 pts
   └─────┘
   ...
 
@@ -1184,7 +1178,7 @@ The search covers:
 
 ### 🧭 Tracker menu (full-screen modal)
 
-The **🧭 Tracker** button opens a **full-screen modal of large tiles** (since v1.50.0), arranged in three sections: **Tracking**, **Tools**, **Emergency**. Each tile closes the modal as it acts.
+The **🧭 Tracker** button opens a **full-screen modal of large tiles**, arranged in three sections: **Tracking**, **Tools**, **Emergency**. Each tile closes the modal as it acts.
 
 **Available tiles**:
 
@@ -1709,9 +1703,9 @@ The exported KMZ now contains a root `🚨 Rescue` folder perfectly structured f
 ```
 📁 Rescue — Marc search 26/05
    ├── 📁 🚨 Alpha team
-   │   ├── 📁 📍 Points (5)           ← toggle ON/OFF in Google Earth
-   │   ├── 📁 ⬛ Search zone
-   │   └── 📁 🗺️ Route
+   │ ├── 📁 📍 Points (5) ← toggle ON/OFF in Google Earth
+   │ ├── 📁 ⬛ Search zone
+   │ └── 📁 🗺️ Route
    └── 📁 🚨 Bravo team (idem)
 ```
 
@@ -1790,7 +1784,7 @@ New built-in tag available in the **🚨 Rescue** category of the legend and POI
 In the team form (Rescue Mode → team edit), new **📍 Surface GPS** field:
 
 ```
-📍 Surface GPS: [48.8566, 2.3522        ]
+📍 Surface GPS: [48.8566, 2.3522 ]
                  ↑ format: lat, lng (decimal WGS84)
 ```
 
@@ -1924,25 +1918,25 @@ For the rescuer on the field who follows their route:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ 🚨 Alpha team · Step 3/5     ⏱️ 14h 23min            │
+│ 🚨 Alpha team · Step 3/5 ⏱️ 14h 23min │
 ├─────────────────────────────────────────────────────┤
-│  ✓ ━ ✓ ━ ↻ ━ ○ ━ ○                                  │ ← stepper
-│  clickable, status color per step                   │
+│ ✓ ━ ✓ ━ ↻ ━ ○ ━ ○ │ ← stepper
+│ clickable, status color per step │
 ├─────────────────────────────────────────────────────┤
-│ 📍 STEP 3 — North ventilation shaft                 │
-│ Status: 🟢 NTR                                       │
-│                                                      │
-│ 📝 Observations at this step:                       │
-│ [central gallery nothing to report]                 │
-│                                                      │
-│ ⚡ Quick input:                                     │
-│ [🟢 NTR] [🟡 Suspect] [⬛ Blocked] [🔵 Clue]        │
-│ [🟠 Help requested] [🟣 U-turn] [🚨 Victim!]        │
-│                                                      │
-│ [📸 Photo (0/5)]  [🎯 Recenter map]                 │
+│ 📍 STEP 3 — North ventilation shaft │
+│ Status: 🟢 NTR │
+│ │
+│ 📝 Observations at this step: │
+│ [central gallery nothing to report] │
+│ │
+│ ⚡ Quick input: │
+│ [🟢 NTR] [🟡 Suspect] [⬛ Blocked] [🔵 Clue] │
+│ [🟠 Help requested] [🟣 U-turn] [🚨 Victim!] │
+│ │
+│ [📸 Photo (0/5)] [🎯 Recenter map] │
 ├─────────────────────────────────────────────────────┤
-│ [← Previous step]  [Next step →]                    │
-│ [⏸️ Pause] [📤 Report] [View edit] [⏹️ End]          │
+│ [← Previous step] [Next step →] │
+│ [⏸️ Pause] [📤 Report] [View edit] [⏹️ End] │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -1971,24 +1965,24 @@ For the command center coordinating several teams in parallel:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ 👤 Surface operator · 3 teams  ⏱️ 02h 14min          │
+│ 👤 Surface operator · 3 teams ⏱️ 02h 14min │
 ├─────────────────────────────────────────────────────┤
-│  ┌──────────────────┐  ┌──────────────────┐         │
-│  │ 🔴 Alpha    3/5  │  │ 🔵 Bravo    1/4  │         │
-│  │ ████████░░ 60%   │  │ ███░░░░░░░ 25%   │         │
-│  │ 🟢 NTR           │  │ 🟠 Help requested │         │
-│  │ « NTR central    │  │ « Water on floor,│         │
-│  │ gallery »        │  │ level rising »   │         │
-│  │ ⏱️ 14:23         │  │ ⏱️ 14:18         │         │
-│  │ [👁️ Details]     │  │ [👁️ Details]     │         │
-│  │ [🚨 Take over]   │  │ [🚨 Take over]   │         │
-│  └──────────────────┘  └──────────────────┘         │
-│  ┌──────────────────┐                               │
-│  │ 🟢 Charlie  ✓D   │ ← team Done (grayed)          │
-│  └──────────────────┘                               │
+│ ┌──────────────────┐ ┌──────────────────┐ │
+│ │ 🔴 Alpha 3/5 │ │ 🔵 Bravo 1/4 │ │
+│ │ ████████░░ 60% │ │ ███░░░░░░░ 25% │ │
+│ │ 🟢 NTR │ │ 🟠 Help requested │ │
+│ │ « NTR central │ │ « Water on floor,│ │
+│ │ gallery » │ │ level rising » │ │
+│ │ ⏱️ 14:23 │ │ ⏱️ 14:18 │ │
+│ │ [👁️ Details] │ │ [👁️ Details] │ │
+│ │ [🚨 Take over] │ │ [🚨 Take over] │ │
+│ └──────────────────┘ └──────────────────┘ │
+│ ┌──────────────────┐ │
+│ │ 🟢 Charlie ✓D │ ← team Done (grayed) │
+│ └──────────────────┘ │
 ├─────────────────────────────────────────────────────┤
-│ [⏸️ Pause] [🗺️ Global map] [📤 Global report]       │
-│ [View edit] [⏹️ End the plan]                        │
+│ [⏸️ Pause] [🗺️ Global map] [📤 Global report] │
+│ [View edit] [⏹️ End the plan] │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -2012,21 +2006,21 @@ For the occasional reinforcement / reconnaissance without a pre-assigned team:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ 🚑 Free rescuer · 12 notes  ⏱️ 01h 47min             │
+│ 🚑 Free rescuer · 12 notes ⏱️ 01h 47min │
 ├─────────────────────────────────────────────────────┤
-│ 📝 Add a note                                        │
-│ [north gallery nothing to report]                   │
-│ ⚡ Associated status:                                │
-│ [🟢 NTR] [🟡 Suspect] [⬛ Blocked] [🔵 Clue]        │
-│ [🟠 Help] [🟣 U-turn] [🚨 Victim!]                  │
+│ 📝 Add a note │
+│ [north gallery nothing to report] │
+│ ⚡ Associated status: │
+│ [🟢 NTR] [🟡 Suspect] [⬛ Blocked] [🔵 Clue] │
+│ [🟠 Help] [🟣 U-turn] [🚨 Victim!] │
 ├─────────────────────────────────────────────────────┤
-│ 12. 🟢 NTR · ⏱️ 16:42:18                       [✕]  │
-│     « East crossing, NTR, we continue »             │
-│                                                      │
-│ 11. 🟡 Suspect · ⏱️ 16:38:05                   [✕]  │
-│     « Sound of running water, source?? »            │
-│                                                      │
-│ ... (chronological DESC)                            │
+│ 12. 🟢 NTR · ⏱️ 16:42:18 [✕] │
+│ « East crossing, NTR, we continue » │
+│ │
+│ 11. 🟡 Suspect · ⏱️ 16:38:05 [✕] │
+│ « Sound of running water, source?? » │
+│ │
+│ ... (chronological DESC) │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -2617,7 +2611,7 @@ In practice: a marker at 12:00, one at 12:30, one at 13:00 → the app computes 
 
 A leg is only computed when the **next** marker arrives. So everything you walk **after your last marker** was counted by nobody.
 
-Since v1.85.2, when you tap **🏁 Close my outing**, the app asks **where you came out**. One tap on the map and the last leg joins the total. You can **Skip** if you are closing from home.
+When you tap **🏁 Close my outing**, the app asks **where you came out**. One tap on the map and the last leg joins the total. You can **Skip** if you are closing from home.
 
 #### What the record tells you about the number
 
@@ -2646,7 +2640,7 @@ Open the outing's record → **✏️ Fix the end**, and enter the real time. Th
 
 ### 🔁 An outing split in several — resume and merge
 
-If you leave MyKTAMap during an outing — to change music, to take a call — the phone may **unload the app** to free memory. Before v1.85.2, coming back started a **new** outing: one real outing showed up as two or three in the logbook, each with part of the counters.
+If you leave MyKTAMap during an outing — to change music, to take a call — the phone may **unload the app** to free memory. Previously, coming back started a **new** outing: one real outing showed up as two or three in the logbook, each with part of the counters.
 
 **It now resumes on its own.** On return, if the previous outing on the same plan was interrupted that way less than **45 minutes** ago, the app **continues** it instead of opening another. A message tells you.
 
@@ -2670,7 +2664,7 @@ For older ones, or if the delay was exceeded: 📔 **My logbook** → **🔗 Mer
 
 The **Paths**, **Zones** and **Structures** panels open **centred on screen**, like the Tracker and the Filters.
 
-> 🐛 **Why this changed (v1.85.1)** — they used to stick to the top of their button. The longer their list got — an imported plan adds one type per level — the further down they reached, until they ran past the bottom edge on a phone: the last buttons became unreachable.
+> 🐛 **Why this changed** — they used to stick to the top of their button. The longer their list got — an imported plan adds one type per level — the further down they reached, until they ran past the bottom edge on a phone: the last buttons became unreachable.
 
 If you prefer the old behaviour, tick **🪟 Anchor tool panels to their button** in ⚙️ **Settings**. It is comfortable on a large screen, where space is not an issue — not advised on a phone.
 
@@ -3012,7 +3006,7 @@ As you fill in the fields, a **🌐 Corners preview** block displays with:
 
 Same as the Advanced Image mode: parent checkboxes + sub-checkboxes for precise control.
 
-- 🖼️ **Map image** (GroundOverlay) + **Opacity 0-100%** slider (default 60%) — lets you see satellite/OSM mapping under your map in Google Earth *(since v1.76.4)* Images beyond ~8,000 px are **automatically reduced** (Google Earth silently cropped them) — a V2-tiled map is recomposed from its tiles; if reduction is impossible, the app asks before exporting.
+- 🖼️ **Map image** (GroundOverlay) + **Opacity 0-100%** slider (default 60%) — lets you see satellite/OSM mapping under your map in Google Earth Images beyond ~8,000 px are **automatically reduced** (Google Earth silently cropped them) — a V2-tiled map is recomposed from its tiles; if reduction is impossible, the app asks before exporting.
 - 📍 **Points** + sub-checkboxes per tag with icons and counters (session + data layers)
 - 🛣️ **Paths** + sub-checkboxes Main / Secondary / Trails
 - ⬛ **Zones** + sub-checkboxes Water / Backfill / Collapse / Inaccessible
@@ -3063,8 +3057,8 @@ Press **⬇️ → 📊 Plan data editor** (in map mode) **or** the **📊 Data 
 1. **🗺️ Current plan** — lists the data layers of the open plan (shafts, accesses, paths, zones…). Pick one to edit.
 2. **📦 Import a ZIP** — retrieves the data layers from a full plan (`.zip`).
 3. **📄 Import a JSON file** — a single data or session file (drag and drop).
-4. **🔁 Convert resolution** *(since v1.76.2)* — standalone tool to **migrate your data from an old scan to a new scan of the same map**. Give both resolutions (typed or 📷 auto-detected from the images — even huge ones), one or more `.json` files, and get them back converted. If the new scan has different margins: add a **landmark common to both maps** (the same pillar read on each) — the conversion anchors exactly on it, with optional rotation; with **two landmarks**, scale and rotation are derived automatically. Whatever is not in the file (inter-map links, georeferencing, map scale) must be redone on the new map.
-5. **🧹 Deduplicate data** *(since v1.77.0)* — removes **consecutive identical vertices** accumulated in the roads, zones, structures and measurements of a `.json` file (data layer or exported session): an old "map click" mode bug could stack several per click — invisible on screen, but they bloat files and exports. Pick one or more files, get them back cleaned as `_dedup.json` with a count of what was removed. Points (POIs) are **never touched** — two deliberately overlapping points stay distinct.
+4. **🔁 Convert resolution** — standalone tool to **migrate your data from an old scan to a new scan of the same map**. Give both resolutions (typed or 📷 auto-detected from the images — even huge ones), one or more `.json` files, and get them back converted. If the new scan has different margins: add a **landmark common to both maps** (the same pillar read on each) — the conversion anchors exactly on it, with optional rotation; with **two landmarks**, scale and rotation are derived automatically. Whatever is not in the file (inter-map links, georeferencing, map scale) must be redone on the new map.
+5. **🧹 Deduplicate data** — removes **consecutive identical vertices** accumulated in the roads, zones, structures and measurements of a `.json` file (data layer or exported session): an old "map click" mode bug could stack several per click — invisible on screen, but they bloat files and exports. Pick one or more files, get them back cleaned as `_dedup.json` with a count of what was removed. Points (POIs) are **never touched** — two deliberately overlapping points stay distinct.
 
 If a source contains several datasets, a **selector** appears (each with its element count). The table then opens with one column per detected field.
 
@@ -3111,7 +3105,27 @@ From this screen, you can:
 
 Press **🏗️** to open the generator. Two tabs available:
 
-### 🗺️ Dropping a GeoTIFF *(since v1.93.0)*
+### 📦 Importing several maps at once
+
+The **📦 Import several maps** button, in the **🧰 Tools** section of the home screen, adds as many ZIP archives as you want to your list — **without opening any of them**. You then open the one you want, from the list.
+
+The screen reads in three steps:
+
+1. **You choose** your files.
+2. **You see what will happen**, line by line: what will be added, what is already in your list, what is refused and why. The summary gives the total size, what will be copied into the app, and the space left.
+3. **You start.** Maps come in one by one, with the current name shown, then a summary: added, skipped, refused.
+
+**If a map is already in your list**, you choose once for the whole batch: leave it as is, replace it, or keep both. By default it is left as is — an import never overwrites anything unless you ask.
+
+> 💾 **Space is announced up front.** A browser's storage holds between 50 and 200 MB depending on the device. If your batch does not fit, the app refuses to start and tells you how much is missing. If space runs out along the way, it **stops right there**: the maps already added are kept, and the summary says where it stopped.
+>
+> 📁 **"File into:"** — pick the "My maps" folder that receives the whole batch (or "➕ New folder…", named on the spot). By default, maps arrive as "Unfiled".
+>
+> 💾 **"Preload the ZIP" (checked by default, it follows the "Store the map in the app on first load" setting of ⚙️ Home configuration)**: the app keeps the file, and each imported map **opens from the list without you having to pick its ZIP again**. Uncheck it if you only want to fill your list without storing anything: nothing is copied, space is no longer a concern, and you will be asked for the ZIP the first time you open each map (as with a map restored from a profile).
+
+> 🔒 **100 % local**: everything is read and stored **in your browser**. Not one byte is sent anywhere, and it works offline.
+
+### 🗺️ Dropping a GeoTIFF
 
 If you georeferenced your map in **QGIS**, export it as a **GeoTIFF** (`.tif` / `.tiff`): the image **and** its georeferencing travel in the same file. Pick it as the map image — in the generator or straight from the home screen — and the app does the rest:
 
@@ -3131,7 +3145,7 @@ If you georeferenced your map in **QGIS**, export it as a **GeoTIFF** (`.tif` / 
 
 Blank form. Fill in:
 
-- **Information**: name, version, author
+- **Information**: name, version, author, **🏷️ tags** (comma-separated, 12 max, 24 characters each — the same input as in ℹ️ Info). They travel in the ZIP and are **proposed** to whoever imports it: if you already set your own tags on that map, yours stay, even when re-importing a new version. The field also exists in the KMZ, GPX and SIG conversions.
 - **Main image** (required) — the **map dimensions are auto-detected** as soon as you choose your file. A box displays the dimensions and size in MB, with **red warnings** if the image exceeds 10,000 px per side or 30 MB (memory crash risk on mobile / very heavy ZIP).
 - **Collision map** (optional)
 
@@ -3333,21 +3347,21 @@ Each JSON layer of points (`puits.json`, `chatieres.json`, etc.) creates Leaflet
 
 ### 6. ⚡ Image splitting — Auto, unless you have a reason
 
-⚠️ **Since v1.90.2 this setting is no longer on the loading screen.** It lives in the map's **ℹ️ Info** panel,
+⚠️ **This setting is no longer on the loading screen.** It lives in the map's **ℹ️ Info** panel,
 and **only for a map not split at generation time** — on a V2 map it would have no effect, so it is not shown.
 Good news: it is **remembered for that map** there, whereas the old selector went back to Auto at every start.
 
-Two choices *(five before v1.86.0)*:
+Two choices:
 
 | Choice | When |
 |---|---|
 | **🔄 Auto** (default) | Splits as soon as the image exceeds 4,096 × 4,096 px, or the file exceeds 60 MB. ✅ **The right choice unless you have a specific reason.** |
 | **💤 Disabled** | Small map on a powerful desktop, when you want native quality with no re-encoding. **⚠️ Risk of crash on Safari iOS beyond 8,000 px** — a message warns you. **No effect on an already-split map** (V2), which always uses its pieces. |
 
-> 🩸 **What changed in v1.86.0, and why.** The 🌟 Quality / 🎯 Balanced / ⚡ Performance presets were **removed**: they only tuned the splitting done by the browser at load time, which only concerns **V1** maps. On a **V2** map — today's common case — they changed **nothing at all**.
+> 🩸 **What changed, and why.** The 🌟 Quality / 🎯 Balanced / ⚡ Performance presets were **removed**: they only tuned the splitting done by the browser at load time, which only concerns **V1** maps. On a **V2** map — today's common case — they changed **nothing at all**.
 > And "Auto" decided on **file weight**, not pixel size: a well-compressed 100 Mpx map (~15 MB) **was not split** and could crash an iPhone, while "Quality" would have split it. The default was therefore the **least** protective mode. Fixed.
 
-> 💡 The choice is remembered **per map**: it applies to every later load until you change it. *(Before v1.90.2 the loader's selector was not remembered and went back to Auto at every start.)*
+> 💡 The choice is remembered **per map**: it applies to every later load until you change it. *(Previously the loader's selector was not remembered and went back to Auto at every start.)*
 
 ### 6 bis. 🚀 Performance ULTRA mode — for the really big maps that crash
 
@@ -3449,7 +3463,7 @@ Displays the complete legend of icons and paths, grouped by category: **🕳️ 
 
 ### ✓ Everything is saved as you change it
 
-There is **no Apply button anymore** *(since v1.92.0)*: every field is saved as soon as you change it (a green flash confirms it). An **out-of-range** value turns red, a message states the bounds, and **nothing is written** — the previous value stays. Close with **Esc**, **✕** or **Close**: nothing is lost.
+There is **no Apply button anymore**: every field is saved as soon as you change it (a green flash confirms it). An **out-of-range** value turns red, a message states the bounds, and **nothing is written** — the previous value stays. Close with **Esc**, **✕** or **Close**: nothing is lost.
 
 Every group carries its **scope** in its title — **📍 this map** or **🌍 all maps** — and **collapses** with a tap on the title (choice remembered). On a phone, only the titles show at opening, except the first group.
 

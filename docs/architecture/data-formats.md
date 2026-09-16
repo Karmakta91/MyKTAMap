@@ -15,6 +15,7 @@
     "name": "Test 1",
     "version": "V1",
     "author": "KARMA",
+    "tags": ["gironde", "carrière"],   // optionnel (16/09/2026) — PROPOSÉES à l'import : jamais par-dessus des tags posés à la main (tagsSrc "user") ni ceux de l'index serveur ("index")
     "imageWidth": 1044,
     "imageHeight": 610,
     "baseImage": "TestMAP.png",

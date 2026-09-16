@@ -216,6 +216,13 @@ function _appliquerConfigKiosque() {
     }
     const filtres = document.querySelector(".loader-plans-filters");
     if (filtres) filtres.style.display = "none";
+    // 📦 v1.94.0 — L'IMPORT MULTIPLE EST UNE PORTE D'ENTRÉE, et il vit dans
+    // les 🧰 Outils, donc HORS de `#panelZip` : sans cette ligne, un kiosque
+    // « plans serveur uniquement » masquait l'ajout d'un plan mais laissait
+    // entrer N plans d'un coup (signalé par KARMA, 15/09/2026). Le module
+    // refuse AUSSI de s'ouvrir — masquer ne ferme pas une porte.
+    const impMasse = document.getElementById("loaderImportMasseBtn");
+    if (impMasse) impMasse.style.display = "none";
     const skipCb = document.getElementById("loaderSkipServerPlansCb");
     if (skipCb && skipCb.closest) {
       const sec = skipCb.closest(".kta-aide-section");
@@ -241,6 +248,15 @@ function _appliquerConfigKiosque() {
     if (gen) gen.style.display = "none";
     console.log("[Main] Kiosque : disableGenerator actif");
   }
+  // 📁 16/09/2026 — mode par défaut de « Mes plans » imposé par le kiosque
+  // (décision KARMA 9), SEULEMENT si l'utilisateur n'a jamais choisi : son
+  // choix, une fois fait, prime toujours. On ne l'écrit pas dans le registre
+  // (ce serait un choix qu'il n'a pas fait) : homeLoader lit ce défaut.
+  if (cfg.plansViewDefault === "folders" || cfg.plansViewDefault === "all") {
+    window._ktaPlansViewParDefaut = cfg.plansViewDefault;
+    const dejaChoisi = !!(window.PlanRegistry && window.PlanRegistry.hasPlansViewChoice && window.PlanRegistry.hasPlansViewChoice());
+    console.log("[Main] Kiosque : plansViewDefault =", cfg.plansViewDefault, dejaChoisi ? "(ignoré : l'utilisateur a déjà choisi)" : "(appliqué)");
+  }
 }
 
 async function decouvrirPlansServeur(idxDeja) {
@@ -253,6 +269,15 @@ async function decouvrirPlansServeur(idxDeja) {
     // les entrees du registre qui n y sont plus (cf bloc en fin de fonction).
     const vus = [];
     console.log("[Main] index.json trouvé :", plans.length, "plan(s)");
+
+    // 📁 16/09/2026 — DOSSIERS DÉCLARÉS PAR L'INDEX (ConfAdmin). Même doctrine
+    // que les tags v1.90.1 : l'index PROPOSE, l'utilisateur DISPOSE. Un
+    // dossier déclaré est verrouillé (ni renommé ni supprimé localement) tant
+    // qu'il l'est, et LIBÉRÉ — jamais supprimé — quand l'index ne le déclare
+    // plus. La table traduit l'id déclaré vers l'id réel (un dossier local
+    // homonyme est repris sous son id). Index sans `folders` = tout libéré.
+    const tableDossiers = (window.PlanRegistry.applyIndexFolders)
+      ? window.PlanRegistry.applyIndexFolders(Array.isArray(idx.folders) ? idx.folders : []) : {};
 
     plans.forEach(function(entry) {
       // Format détaillé : { id, path, name, version?, author?, multiLevel?, tiledV2? }
@@ -311,8 +336,20 @@ async function decouvrirPlansServeur(idxDeja) {
       // un user-override explicite en multiLevel:false par setMultiLevel).
       if (multiLevel === true) regEntry.multiLevel = true;
       if (tiledV2    === true) regEntry.tiledV2    = true;
+      // 📁 le dossier proposé par l'index pour ce plan (appliqué après
+      // l'écriture de l'entrée, plus bas — setPlanFolder exige le plan).
+      const dossierIndex = (entry && entry.folder) ? (tableDossiers[String(entry.folder)] || null) : null;
       vus.push(id);
       window.PlanRegistry.addOrUpdate(regEntry);
+
+      // 📁 16/09/2026 — rangement proposé par l'index : jamais par-dessus un
+      // plan déplacé à la main (folderSrc "user", setPlanFolder refuse). Un
+      // plan que l'index ne range plus en sort seulement s'il y était par lui.
+      if (window.PlanRegistry.setPlanFolder) {
+        const _apres = window.PlanRegistry.findById(id);
+        if (dossierIndex) window.PlanRegistry.setPlanFolder(id, dossierIndex, "index");
+        else if (_apres && _apres.folderSrc === "index") window.PlanRegistry.setPlanFolder(id, null, "index");
+      }
 
       // 🏷️ v1.90.1 — TAGS PROPOSÉS PAR L'INDEX (demande KARMA : pouvoir
       // taguer un plan serveur depuis ConfAdmin, pour filtrer facilement).
@@ -1326,12 +1363,10 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     if (rawConfig.plan.multiLevel === true) entry.multiLevel = true;
     if (rawConfig.plan.tiledV2    === true) entry.tiledV2    = true;
 
-    // Si on a un FileSystemFileHandle, le persister
-    if (meta.fsHandle && window.PlanRegistry.hasFsAccess()) {
-      entry.fsHandleId = id;
-      try { await window.PlanRegistry.saveHandle(id, meta.fsHandle); }
-      catch(e) { console.warn("[Loader] Sauvegarde FS handle échouée :", e); }
-    }
+    // 15/09/2026 : plus de prise de référence disque (`meta.fsHandle`) — le
+    // bouton 🔐 de l'accueil est retiré, la copie du ZIP est le seul mécanisme.
+    // Les entrées existantes qui portent `fsHandleId` restent lues par
+    // `homeLoader` (étape 2 de l'ouverture) ; on n'en crée plus.
 
     // Si l'utilisateur a demandé de mémoriser le ZIP en local, le sauver en IDB
     if (meta.storeBlob && meta.zipFile) {
@@ -1364,6 +1399,30 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     }
 
     _enregistrerPlanCharge(entry);
+
+    // 🏷️ 16/09/2026 — ÉTIQUETTES PROPOSÉES PAR LE ZIP (demande KARMA :
+    // « affecter des tags directement à la génération »). Le plan-config peut
+    // porter `plan.tags` ; on les applique avec l'origine "config".
+    // 🩸 LE FICHIER PROPOSE, L'UTILISATEUR DISPOSE (décisions 1:a 2:a) :
+    //   • des tags posés à la main (tagsSrc "user") ne sont JAMAIS touchés,
+    //     même si une nouvelle version du ZIP en propose d'autres ;
+    //   • sur un plan serveur, l'index du déployeur ("index") passe avant ;
+    //   • un ZIP réimporté SANS tags retire ceux qu'un ZIP précédent avait
+    //     proposés ("config"), et seulement ceux-là.
+    // Absence du champ = rien ne change (rétro-compat totale).
+    // 🏷️ début-tags-config
+    try {
+      const _cfgTags = rawConfig.plan.tags;
+      const _reg = window.PlanRegistry.findById(id);
+      const _proposes = Array.isArray(_cfgTags) && _cfgTags.length > 0;
+      const _protege = !!(_reg && (_reg.tagsSrc === "user" || _reg.tagsSrc === "index"));
+      if (_proposes && !_protege) {
+        window.PlanRegistry.setTags(id, _cfgTags, "config");
+      } else if (!_proposes && _reg && _reg.tagsSrc === "config" && _reg.tags) {
+        window.PlanRegistry.setTags(id, [], "config");
+      }
+    } catch (eTags) { console.warn("[Loader] tags du plan-config ignorés :", eTags); }
+    // 🏷️ fin-tags-config
 
     // 🌐 v1.14.20 — Propagation du calibrage GPS embarqué dans le
     // plan-config.json vers KmzExport. Idempotent (skip si calibrage local
