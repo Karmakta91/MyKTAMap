@@ -39,6 +39,7 @@
     { path: "docs/BACKLOG.md",                               titre: "📌 BACKLOG — sujets ouverts & dettes" },
     { path: "docs/DESIGN_NAV_INTELLIGENTE.md",               titre: "🧭 Design — navigation intelligente" },
     { path: "docs/ETUDE_PODOMETRE.md",                       titre: "👣 Étude — podomètre & mode poche" },
+    { path: "docs/IA_POUR_LES_NULS.md",                      titre: "🤖 L'IA pour les nuls — méthode de travail avec une IA" },
     { path: "docs/INSTALLATION_SELFHOST.md",                 titre: "🛠️ Installation auto-hébergée" },
     { path: "docs/MATHS.md",                                 titre: "📐 Les maths de MyKTAMap" },
     { path: "docs/RELEASE_GATE.md",                          titre: "🚦 Porte de release" },

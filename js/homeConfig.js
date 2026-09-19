@@ -1173,6 +1173,16 @@
         });
       })();
 
+      // 🔕 17/09/2026 — niveau des notifications (Toutes / Essentielles / Silence).
+      // La source de vérité est OOMGuard (le goulot) ; ici on ne fait que lire
+      // et écrire par lui. Pas de toast de confirmation : ce serait ironique.
+      (function _initNotifsHome() {
+        const sel = document.getElementById("loaderNotifsSel");
+        if (!sel || !window.OOMGuard || typeof window.OOMGuard.niveauNotifs !== "function") return;
+        sel.value = window.OOMGuard.niveauNotifs();
+        sel.addEventListener("change", function () { window.OOMGuard.setNiveauNotifs(sel.value); });
+      })();
+
       // 📔 v1.92.0 — Carnet des sorties, réglage GLOBAL rapatrié du mode plan.
       // Le module est la source de vérité (clé dédiée, pas app_user_prefs) :
       // on lit et on écrit par lui, jamais en touchant localStorage ici.

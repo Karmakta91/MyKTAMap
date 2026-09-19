@@ -112,14 +112,15 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
     await p.waitForTimeout(200);
     const cree = await p.evaluate(function () { const f = window.PlanRegistry.findFolderByName("gironde"); return f ? { id: f.id, ouvert: f.collapsed === false } : null; });
     t("➕ crée le dossier « Gironde » (déplié) et il apparaît", !!cree && cree.ouvert && (await p.$$('.kta-plans-folder-head[data-folder="' + cree.id + '"]')).length === 1);
-    const p57 = await p.$('.plan-row[data-id="local_p57"] .kta-plan-row-move');
-    t("un plan non classé porte le bouton 📁 Déplacer vers", !!p57);
-    if (p57) {
-      await p57.click();
-      await p.click('.kta-plans-sheet-item[data-fid="' + cree.id + '"]');
-      await p.waitForTimeout(200);
-      t("📁 Déplacer vers → le plan est dans Gironde (origine user)", await p.evaluate(function (fid) { const pl = window.PlanRegistry.findById("local_p57"); return pl.folderId === fid && pl.folderSrc === "user"; }, cree.id));
-    }
+    // (KARMA, après v1.95.0) : plus de bouton 📁 par ligne — un seul plan se range par ☑ puis « Déplacer vers… », ou par glisser
+    t("aucun bouton 📁 « Déplacer vers » sur les lignes", (await p.$$(".kta-plan-row-move")).length === 0);
+    await p.click("#loaderPlansSelect");
+    await p.click('.plan-row[data-id="local_p57"]');
+    await p.click("#loaderPlansSelectMove");
+    await p.click('.kta-plans-sheet-item[data-fid="' + cree.id + '"]');
+    await p.waitForTimeout(200);
+    t("☑ un seul plan coché → Déplacer vers → il est dans Gironde (origine user), sélection close",
+      await p.evaluate(function (fid) { const pl = window.PlanRegistry.findById("local_p57"); return pl.folderId === fid && pl.folderSrc === "user" && !document.getElementById("loaderPlansSelectBar"); }, cree.id));
     // sélection multiple
     await p.click("#loaderPlansSelect");
     await p.click('.plan-row[data-id="local_p58"]');
@@ -140,21 +141,22 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
     t("« Déplacer 2 vers… » range les deux d'un coup et sort du mode sélection",
       await p.evaluate(function (fid) { return ["local_p58", "local_p59"].every(function (id) { return window.PlanRegistry.findById(id).folderId === fid; }) && !document.getElementById("loaderPlansSelectBar"); }, cree.id));
 
-    // 6. glisser PC : local_p60 (non classé) → en-tête Gironde
+    // 6. glisser PC (HTML5, à la souris) : local_p60 (non classé) → en-tête Gironde.
+    // 🐛 17/09 (KARMA : « sur PC le glisser ne marche plus ») — un mouvement LENT
+    // (petits pas) déclenchait dragstart avant mon seuil maison, qui l'annulait.
     const src = await p.$('.plan-row[data-id="local_p60"]');
     const dst = await p.$('.kta-plans-folder-head[data-folder="' + cree.id + '"]');
     if (src && dst) {
       const a = await src.boundingBox(), b = await dst.boundingBox();
       await p.mouse.move(a.x + 40, a.y + a.height / 2);
       await p.mouse.down();
-      await p.mouse.move(a.x + 44, a.y + a.height / 2 + 2);   // sous le seuil
-      await p.mouse.move(a.x + 60, a.y + a.height / 2 + 10, { steps: 4 });   // armé
-      await p.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 12 });
+      await p.mouse.move(a.x + 42, a.y + a.height / 2 + 1);                       // souris lente : 2 px
+      await p.mouse.move(a.x + 45, a.y + a.height / 2 + 3);                       // 5 px : Chrome démarre le glisser
+      await p.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 20 });
       await p.mouse.up();
       await p.waitForTimeout(300);
       const glisse = await p.evaluate(function (fid) { return window.PlanRegistry.findById("local_p60").folderId === fid; }, cree.id);
-      t("glisser PC : la ligne déposée sur l'en-tête rejoint le dossier" + (glisse ? "" : " (HTML5 DnD non simulé par cet automate : à vérifier à la main)"), glisse || true);
-      if (!glisse) console.log("   ℹ️ le glisser HTML5 n'a pas été reproduit par l'automate — contrôle manuel demandé dans le QCM");
+      t("🩸 glisser PC LENT : la ligne déposée sur l'en-tête rejoint le dossier", glisse);
     }
     // un clic simple ouvre toujours (le seuil protège) : on vérifie qu'un mousedown/up sans mouvement ne déclenche pas de dragstart
     const clicOk = await p.evaluate(function () { return typeof window.PLAN_CONFIG === "undefined" || !window.PLAN_CONFIG; });
@@ -214,6 +216,21 @@ const modeVue = function (p, v) { return p.click('#loaderPlansViewSwitch [data-v
       mob.visibles === 5 && mob.bouton && mob.draggable === 0);
     // 🐛 16/09 (KARMA) : le bouton « Tous mes plans (N) » du mode TOUT restait affiché sous les dossiers
     t("🩸 mobile : le bouton global « Tous mes plans » du mode TOUT ne survit PAS au passage en Dossiers", !mob.boutonGlobal);
+    // 🐛 18/09 (KARMA) : « Tout le dossier » puis cocher un plan en sélection → le dossier se refermait
+    await p.click("#loaderPlansSelect");
+    await p.click(".kta-plans-folder-rows:not([hidden]) .kta-plans-folder-more");
+    await p.waitForTimeout(150);
+    const avantCoche = await p.evaluate(function () { const rows = document.querySelector(".kta-plans-folder-rows:not([hidden])"); return Array.from(rows.querySelectorAll(".plan-row")).filter(function (r) { return r.getBoundingClientRect().height > 0; }).length; });
+    await p.click('.plan-row[data-id="local_p7"]');
+    await p.waitForTimeout(200);
+    const apresCoche = await p.evaluate(function () {
+      const rows = document.querySelector(".kta-plans-folder-rows:not([hidden])");
+      return { visibles: Array.from(rows.querySelectorAll(".plan-row")).filter(function (r) { return r.getBoundingClientRect().height > 0; }).length,
+               coche: !!document.querySelector('.plan-row[data-id="local_p7"].kta-plan-row-selected') };
+    });
+    t("🩸 mobile : « Tout le dossier » puis cocher un plan → le plan est coché ET le dossier RESTE déplié (" + avantCoche + " → " + apresCoche.visibles + " lignes)",
+      avantCoche === 8 && apresCoche.visibles === 8 && apresCoche.coche);
+    await p.click("#loaderPlansSelectDone");
 
     // 📱 glisser TACTILE par appui long (KARMA : « sur mobile le glisser-déposer ne fonctionne pas »)
     // local_p10 est « Non classés » ; on le dépose sur l'en-tête de « Grand ».

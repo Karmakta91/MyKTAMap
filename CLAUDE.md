@@ -78,6 +78,7 @@
 | Pièges connus & renommages | `docs/architecture/gotchas.md` |
 | **Ce qui reste à faire** (sujets ouverts, dettes, sujets enterrés) | **`docs/BACKLOG.md`** ← lire AVANT d'annoncer qu'une feature manque |
 | Porte de release : smoke test 12 pts, dérogations, relevé | `docs/RELEASE_GATE.md` |
+| **Méthode de travail avec l'IA** (rôles, hooks, garde-fous, porte, audits, doc, tokens) — guide transposable, à donner à un tiers ou à son IA | `docs/IA_POUR_LES_NULS.md` |
 
 ## 📝 Style KARMA
 - **Topo avant de coder** (choix numérotés + reco). Réponses courtes OK (`1:a 2:b`).

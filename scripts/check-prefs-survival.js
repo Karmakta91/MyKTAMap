@@ -80,10 +80,12 @@ PER_PLAN.forEach(function (p) {
 
 // Et le cas concret qui a mordu : les trois réglages de podomètre doivent
 // être écrits par l'écran de réglages. Sans ça, « Appliquer » ne persiste rien.
+// 👣 v1.96.0 (KARMA) : ils sont GLOBAUX — l'écrivain est setGlobalPodometre,
+// plus setPlanTracking (cf. scripts/check-podometre-global.js pour le reste).
 ["stepLength", "stepThreshold", "stepCooldown"].forEach(function (k) {
-  const bloc = iface.slice(iface.indexOf("setPlanTracking"));
-  t("réglage « " + k + " » transmis à setPlanTracking",
-    bloc.slice(0, 600).indexOf(k) >= 0);
+  const bloc = iface.slice(iface.indexOf("window.setGlobalPodometre({"));
+  t("réglage « " + k + " » transmis à setGlobalPodometre (global depuis v1.96.0)",
+    iface.indexOf("window.setGlobalPodometre({") >= 0 && bloc.slice(0, 400).indexOf(k) >= 0);
 });
 
 console.log(ko === 0 ? "\n🎉 tout passe" : "\n⚠️ " + ko + " pref(s) perdue(s) au chargement d'un plan");

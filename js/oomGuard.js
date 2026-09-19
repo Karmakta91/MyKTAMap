@@ -17,8 +17,24 @@
 //
 // API : window.OOMGuard
 //   - start()             : démarre l'heartbeat (à appeler après lancerApplication)
-//   - showToast(msg, type): notif courte, file d'attente derrière le splash
+//   - showToast(msg, type, opts): notif courte, file d'attente derrière le splash
+//       opts.important : survit au réglage « Silence » (batterie 10 %, capteurs refusés)
+//       opts.groupe    : les toasts d'un même groupe émis à quelques ms d'écart
+//                        (restauration au chargement) sortent en UN seul toast
+//   - toastAutorise(type, opts) : la même décision, pour un toast maison (osmView)
+//   - niveauNotifs() / setNiveauNotifs(n) : réglage « all » | « essential » | « silent »
 //   - flushPendingToasts(): vide la file (appelée depuis _splashEnd)
+//
+// 🔕 17/09/2026 (KARMA : « beaucoup de popups d'information inutiles ») —
+// UN SEUL GOULOT pour tous les toasts de l'app, et une décision PURE
+// (_decisionToast, exécutée par scripts/check-notifs.js) :
+//   • « all »       : tout, vibration sur warn/error (comportement d'avant) ;
+//   • « essential » : plus de toasts « info » (ils confirment un geste que
+//                     l'utilisateur vient de faire et voit à l'écran), les
+//                     « warn » restent, sans vibration ;
+//   • « silent »    : seuls les warn marqués important et les erreurs.
+// Les alertes serveur (alertChecker) et les modales qui demandent une décision
+// ne passent PAS par ici : hors de portée du réglage par construction.
 // =========================
 
 (function() {
@@ -73,21 +89,74 @@
     }, autoMs);
   }
 
-  function showToast(message, type) {
-    type = type || "warn";
+  // ── 🔕 Réglage des notifications ──
+  const NOTIFS_KEY = "myktamap_notifs";
+  const NOTIFS_NIVEAUX = ["all", "essential", "silent"];
+  // 🔕 Défaut « essential » (décision KARMA 17/09/2026) : sans réglage
+  // enregistré, les messages qui confirment un geste sont tus. « Toutes »
+  // reste un choix explicite dans ⚙️ Configuration.
+  const NOTIFS_DEFAUT = "essential";
+  function niveauNotifs() {
+    try { const v = localStorage.getItem(NOTIFS_KEY); return NOTIFS_NIVEAUX.indexOf(v) >= 0 ? v : NOTIFS_DEFAUT; }
+    catch (e) { return NOTIFS_DEFAUT; }
+  }
+  function setNiveauNotifs(n) {
+    if (NOTIFS_NIVEAUX.indexOf(n) < 0) return false;
+    try { localStorage.setItem(NOTIFS_KEY, n); } catch (e) {}
+    console.log("[OOMGuard] 🔕 notifications :", n);
+    return true;
+  }
+  // La décision, PURE : { afficher, vibrer }. Extraite et exécutée par le garde-fou.
+  function _decisionToast(niveau, type, opts) {
+    type = (type === "info" || type === "error") ? type : "warn";
+    const important = !!(opts && opts.important);
+    if (type === "error") return { afficher: true, vibrer: true };
+    if (type === "warn") {
+      if (niveau === "all")       return { afficher: true, vibrer: true };
+      if (niveau === "essential") return { afficher: true, vibrer: false };
+      return { afficher: important, vibrer: important };   // silent
+    }
+    return { afficher: niveau === "all", vibrer: false };   // info
+  }
+  function toastAutorise(type, opts) { return _decisionToast(niveauNotifs(), type, opts).afficher; }
+
+  // ── Regroupement : plusieurs toasts d'un même groupe à quelques ms d'écart
+  // (session, filtres, photos restaurés au chargement) sortent en UN seul ──
+  const GROUPE_FENETRE_MS = 1200;
+  const _groupes = {};
+  const POIDS = { info: 0, warn: 1, error: 2 };
+  function _grouper(groupe, message, type, opts) {
+    const g = _groupes[groupe] || (_groupes[groupe] = { items: [], timer: null });
+    g.items.push({ message: message, type: type, opts: opts });
+    clearTimeout(g.timer);
+    g.timer = setTimeout(function() {
+      const items = g.items; delete _groupes[groupe];
+      if (!items.length) return;
+      let type2 = "info", important = false;
+      items.forEach(function(it) { if (POIDS[it.type] > POIDS[type2]) type2 = it.type; if (it.opts && it.opts.important) important = true; });
+      _emettre(items.map(function(it) { return it.message; }).join(" · "), type2, { important: important });
+    }, GROUPE_FENETRE_MS);
+  }
+
+  function _emettre(message, type, opts) {
+    const d = _decisionToast(niveauNotifs(), type, opts);
+    if (!d.afficher) { console.log("[OOMGuard] 🔕 toast tu (" + type + ") :", message); return; }
     // Si le splash bloque encore l'écran, on met en file pour ne pas
     // afficher un toast invisible derrière le gradient sombre.
     if (!_splashGone) {
-      _toastQueue.push({ message: message, type: type });
+      _toastQueue.push({ message: message, type: type, vibrer: d.vibrer });
       return;
     }
     _renderToast(message, type);
-    // 🆕 v1.34.27 — Vibration haptique pour les toasts critiques (warn / error).
-    // Type "info" reste silencieux pour ne pas spammer (toasts informatifs
-    // peuvent être fréquents en debug). Pref + support gérés par kta_vibrate.
-    if (window.kta_vibrate && (type === "warn" || type === "error")) {
-      window.kta_vibrate.error();
-    }
+    // 🆕 v1.34.27 — Vibration haptique (warn / error) — depuis le 17/09 elle suit
+    // le réglage : en « Essentiel » un warn ne vibre plus. Pref + support : kta_vibrate.
+    if (d.vibrer && window.kta_vibrate) window.kta_vibrate.error();
+  }
+
+  function showToast(message, type, opts) {
+    type = type || "warn";
+    if (opts && opts.groupe) { _grouper(String(opts.groupe), message, type, opts); return; }
+    _emettre(message, type, opts);
   }
 
   function flushPendingToasts() {
@@ -115,6 +184,7 @@
       while (_toastQueue.length > 0) {
         const t = _toastQueue.shift();
         _renderToast(t.message, t.type);
+        if (t.vibrer && window.kta_vibrate) window.kta_vibrate.error();   // 🔕 vibration décidée à l'émission
         if (_toastQueue.length > 0) break; // un seul à la fois (le 2e replacerait le 1er)
       }
     }, 400);
@@ -445,6 +515,7 @@
       while (_toastQueue.length > 0) {
         const t = _toastQueue.shift();
         _renderToast(t.message, t.type);
+        if (t.vibrer && window.kta_vibrate) window.kta_vibrate.error();   // 🔕 vibration décidée à l'émission
         if (_toastQueue.length > 0) break;
       }
     }
@@ -465,6 +536,9 @@
   window.OOMGuard = {
     start:               start,
     showToast:           showToast,
+    toastAutorise:       toastAutorise,     // 🔕 pour les toasts maison (osmView)
+    niveauNotifs:        niveauNotifs,
+    setNiveauNotifs:     setNiveauNotifs,
     flushPendingToasts:  flushPendingToasts
   };
 })();

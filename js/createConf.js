@@ -477,14 +477,11 @@ function afficherPlanner() {
             <label class="kta-cfg-label">${window.I18n.t("gen.tracking.echelle")}</label>
             <input class="kta-cfg-input" id="pl_scale" type="number" step="0.1" value="4.9">
 
-            <label class="kta-cfg-label">${window.I18n.t("gen.tracking.taillePas")}</label>
-            <input class="kta-cfg-input" id="pl_stepLength" type="number" step="0.1" value="0.7">
-
-            <label class="kta-cfg-label">${window.I18n.t("gen.tracking.seuil")}</label>
-            <input class="kta-cfg-input" id="pl_stepThreshold" type="number" value="13">
-
-            <label class="kta-cfg-label">${window.I18n.t("gen.tracking.cooldown")}</label>
-            <input class="kta-cfg-input" id="pl_stepCooldown" type="number" value="400">
+            <!-- 👣 v1.96.0 (KARMA : « ces réglages n'ont rien à faire là ») — taille
+                 de pas, seuil et cooldown ne sont PLUS des champs du plan : ils
+                 sont ceux de la personne et de son téléphone, réglés une fois
+                 dans ⚙️ Réglages pour tous les plans. Le plan-config ne les
+                 porte plus ; s'il en porte (anciens plans), l'app les ignore. -->
 
             <!-- 🧭 v1.37.0 — Calibration Nord du plan. Embed dans
                  plan-config.json > plan.northOffsetDeg UNIQUEMENT si ≠ 0
@@ -1782,9 +1779,6 @@ function _preRemplirFormulaire(config) {
   sv("pl_startX",  t.startX        ?? 0);
   sv("pl_startY",  t.startY        ?? 0);
   sv("pl_scale",   t.scale         ?? 4.9);
-  sv("pl_stepLength",    t.stepLength    ?? 0.7);
-  sv("pl_stepThreshold", t.stepThreshold ?? 13);
-  sv("pl_stepCooldown",  t.stepCooldown  ?? 400);
   // 🧭 v1.37.0 — Pré-remplissage Nord depuis plan.northOffsetDeg (default 0
   // si champ absent → rétrocompat stricte plans v1.36.x).
   sv("pl_northOffset", (plan.northOffsetDeg != null && Number.isFinite(Number(plan.northOffsetDeg))) ? plan.northOffsetDeg : 0);
@@ -3755,10 +3749,9 @@ async function _genererZip() {
     const tracking = {
       startX:        parseInt(document.getElementById("pl_startX").value,        10) || 0,
       startY:        parseInt(document.getElementById("pl_startY").value,        10) || 0,
-      scale:         parseFloat(document.getElementById("pl_scale").value)           || 4.9,
-      stepLength:    parseFloat(document.getElementById("pl_stepLength").value)      || 0.7,
-      stepThreshold: parseFloat(document.getElementById("pl_stepThreshold").value)   || 13,
-      stepCooldown:  parseInt(document.getElementById("pl_stepCooldown").value,  10) || 400
+      scale:         parseFloat(document.getElementById("pl_scale").value)           || 4.9
+      // 👣 v1.96.0 — plus de stepLength / stepThreshold / stepCooldown : le plan
+      // ne dit pas la foulée. Le JSON produit n'a plus ces trois clés.
     };
 
     // ── Icônes ──

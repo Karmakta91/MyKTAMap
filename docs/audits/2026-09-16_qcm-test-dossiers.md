@@ -35,10 +35,10 @@
 - b) rien ne se passe
 - c) le dossier est créé mais replié
 
-**B3.** Sur une ligne de « Non classés », clique le bouton **📁**, puis « Gironde » dans la feuille. Le plan :
-- a) ✅ passe sous « Gironde », le compteur devient 1, une notification « 📁 1 plan(s) déplacé(s) » apparaît, et le dossier reste déplié
-- b) s'ouvre (la carte se charge)
-- c) disparaît de la liste
+**B3.** En mode Dossiers, les lignes de plans montrent :
+- a) ✅ ⭐ et ℹ️ seulement, comme en mode Tout — **aucun bouton 📁 par ligne** (on range par glisser, ou par ☑ en haut)
+- b) un bouton 📁 sur chaque ligne
+- c) plus aucun bouton
 
 **B4.** Clique ☑ : une barre « 0 sélectionné(s) · 📁 Déplacer vers… · Terminer » apparaît **en tête de liste** (elle reste visible quand tu défiles). Clique sur deux lignes de « Non classés », puis « 📁 Déplacer vers… », puis « Gironde ». Résultat :
 - a) le premier clic sur une ligne a ouvert le plan
@@ -92,8 +92,8 @@
 - a) ✅ ce plan est entré tout seul dans le dossier « test »
 - b) il reste en Non classés
 
-**D3.** Sur un plan du dossier « test » (rangé par règle), bouton 📁 → « Non classés ». Puis ⋮ sur « test » → vérifie que la règle « test » est toujours là.
-- a) ✅ le plan est sorti et **reste** en Non classés même si la règle est intacte (exclusion mémorisée) ; le remettre avec 📁 → « test » le fait revenir
+**D3.** Sur un plan du dossier « test » (rangé par règle) : ☑, coche-le, « Déplacer vers… » → « Non classés ». Puis ⋮ sur « test » → vérifie que la règle « test » est toujours là.
+- a) ✅ le plan est sorti et **reste** en Non classés même si la règle est intacte (exclusion mémorisée) ; le remettre (☑ → « Déplacer vers… » → « test », ou glisser) le fait revenir
 - b) le plan revient tout seul dans « test » au rendu suivant
 - c) la règle a été effacée
 

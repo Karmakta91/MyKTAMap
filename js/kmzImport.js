@@ -755,12 +755,8 @@
         startX:        Math.round(finalW / 2),
         startY:        Math.round(finalH / 2),
         scale:         50,    // default raisonnable px/m (modifiable Réglages)
-        // 🩸 v1.82.0 — TROISIÈME COPIE DE LA MÊME TRIPLETTE FAUSSE, trouvée
-        // par le garde-fou qui venait de la corriger dans sigImport et
-        // gpxImport. `stepThreshold: 1.2` est comparé par `tracking.js` à la
-        // magnitude de `accelerationIncludingGravity`, qui vaut ~9,81
-        // téléphone posé : toujours vrai, donc ~3,6 pas/seconde à l'arrêt.
-        ...(window.KTA_TRACKING_USINE || { stepLength: 0.7, stepThreshold: 13, stepCooldown: 400 })
+        // 👣 v1.96.0 — plus de stepLength / stepThreshold / stepCooldown ici : ces
+        // réglages sont ceux de la personne, globaux à l'appareil (⚙️ Réglages).
       },
       icons: {
         default: "icon/iconetrack.png",

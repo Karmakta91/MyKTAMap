@@ -166,7 +166,10 @@ function registre(lsInitial) {
     /<div class="loader-section-head"[^>]*>\s*<span data-i18n="home\.plans\.title">[\s\S]{0,1400}id="loaderPlansViewSwitch"[\s\S]{0,400}<\/div>\s*<\/div>\s*\n\s*<!-- Filtres/.test(IDX));
   t("🩸 le glisser n'existe que pour un pointeur fin (jamais au doigt)",
     /pointer: fine/.test(HOME) && /draggable/.test(HOME));
-  t("🩸 le glisser démarre après un seuil (un clic hésitant n'est pas un glisser)", /SEUIL_GLISSER|seuil/i.test(HOME) && /pointerdown/.test(HOME));
+  // 🐛 17/09 (KARMA : « sur PC le glisser ne marche plus ») — mon seuil de 6 px
+  // arrivait APRÈS celui de Chrome et annulait dragstart : plus de seuil maison.
+  t("🩸 le glisser souris s'en remet au seuil NATIF du navigateur (aucun preventDefault sur dragstart, aucun seuil maison)",
+    /addEventListener\("dragstart", function\(e\) \{\s*_dragPlanId = row\.dataset\.id;/.test(HOME) && !/SEUIL_GLISSER|_dragArme/.test(HOME));
   // 📱 16/09 (KARMA : « sur mobile le glisser-déposer ne fonctionne pas ») — appui long.
   t("📱 au doigt, le glisser passe par un APPUI LONG (timer), et le défilement n'est bloqué (preventDefault) QUE pendant le geste",
     /APPUI_LONG/.test(HOME) && /touchstart[\s\S]{0,400}setTimeout/.test(HOME) &&

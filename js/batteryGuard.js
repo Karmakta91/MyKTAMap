@@ -282,7 +282,7 @@
       const t = function(k, p) { return window.I18n ? window.I18n.t(k, p) : k; };
       const msg = t("battery.toast.warn10", { n: lvl });
       if (window.OOMGuard && window.OOMGuard.showToast) {
-        window.OOMGuard.showToast(msg, "warn");
+        window.OOMGuard.showToast(msg, "warn", { important: true });   // 🔕 survit au mode Silence
       } else {
         console.warn("[BatteryGuard] " + msg);
       }

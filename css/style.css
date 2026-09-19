@@ -21462,6 +21462,15 @@ html.kta-theme-light .zip-drop-sig strong { color: #3a4256; }
 .kta-plans-sheet-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .kta-plans-sheet-spacer { flex: 1 1 auto; }
 .kta-plans-folder-more { width: 100%; margin-top: 4px; }
+.kta-notifs-select { max-width: 200px; flex: none; margin-left: auto; }
+/* 🐛 19/09 (KARMA, mobile) : le sélecteur prenait 200 px à droite d'une ligne
+   de ~340 px, le texte s'étranglait en colonne d'un mot. Sous 640 px, la
+   ligne se replie : texte pleine largeur, sélecteur dessous, pleine largeur. */
+@media (max-width: 640px) {
+  .kta-notifs-row { flex-wrap: wrap; }
+  .kta-notifs-row .kta-perf-ultra-text { flex: 1 1 100%; }
+  .kta-notifs-select { flex: 1 1 100%; max-width: none; margin-left: 0; }
+}
 /* rangé par règle : contour DANS la pastille (ombre inset), rien ne déborde du titre en overflow:hidden */
 .kta-plan-row-folder-dot-rule { background: transparent; box-shadow: inset 0 0 0 2px var(--kta-dot, #8cb4ff); }
 .kta-plans-chip-folder { font-weight: 700; }

@@ -156,6 +156,18 @@ node scripts/check-plan-tags.js || exit $?
 # sélecteur dans la ligne de titre (0 px). BLOQUANT.
 node scripts/check-plan-folders.js || exit $?
 
+# 👣 Podomètre GLOBAL (v1.96.0) : config.js EXÉCUTÉ dans un bac à sable — les
+# clés podomètre d un plan-config sont ignorées meme presentes, le reglage
+# global prime, migration des prefs par plan sans perte, generateur et
+# convertisseurs n ecrivent plus ces cles. BLOQUANT.
+node scripts/check-podometre-global.js || exit $?
+
+# 🔕 Notifications (v1.96.0) : la decision Toutes / Essentielles / Silence est
+# EXECUTEE, un seul goulot (OOMGuard.showToast), l important et les erreurs
+# survivent, la vibration suit le reglage, restauration regroupee, alertes
+# serveur hors de portee par construction. BLOQUANT.
+node scripts/check-notifs.js || exit $?
+
 # 🔤 Constantes MAJUSCULES utilisees mais jamais declarees. Ne des le 03/09 :
 # le nettoyage de code mort du 09/08 avait supprime `const HEADER_HEIGHT_MM`
 # de pdfExport.js alors qu elle etait utilisee 20 lignes plus bas - toute

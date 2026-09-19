@@ -852,6 +852,7 @@ jusqu'au reload, puis retombait — **sans rien dire**.
 | v1.75.0 | magnétisme (`snapDraw`) | pref **globale** |
 | v1.76.1 | échelle (`scale`) | pref **per-plan** (`setPlanScale`) |
 | **v1.82.0** | `stepLength`, `stepThreshold`, `stepCooldown`, `startX`, `startY` | pref **per-plan** (`setPlanTracking`) |
+| **v1.96.0** | `stepLength`, `stepThreshold`, `stepCooldown` | pref **GLOBALE** (`setGlobalPodometre` → `app_user_prefs`) — décision KARMA 17/09/2026 : « ces réglages ne sont pas liés au plan ». Le plan-config ne les porte plus (Générateur, KMZ, GPX, SIG) et le chargeur les **ignore** s'ils sont présents ; la réparation v1.82.0 des valeurs impossibles n'a plus d'objet. Migration : la pref par plan du premier plan rouvert est promue en globale une fois, puis retirée des prefs du plan. `startX`/`startY` restent par plan. Garde-fou `check-podometre-global.js` (config.js exécuté en bac à sable). |
 
 Signalé par KARMA : « je modifie ces valeurs et applique, quand je quitte et
 reviens elles sont revenues par défaut ».
