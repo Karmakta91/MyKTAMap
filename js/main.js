@@ -734,7 +734,7 @@ async function lancerApplication() {
       });
       if (_optimsActives.length > 0 && window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast(
-          window.I18n.t("perf.toast.activeOnPlan", { n: _optimsActives.length }), "info");
+          window.I18n.t("perf.toast.activeOnPlan", { n: _optimsActives.length }), "info", { groupe: "chargement" });   // 🔕 regroupé au chargement
       }
     } catch(e) { console.warn("[Main] toast PerfUltra échec :", e); }
   }
@@ -1500,7 +1500,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
               && typeof window.OOMGuard.showToast === "function") {
             window.OOMGuard.showToast(
               "📸 " + restoredCount + " photo" + (restoredCount > 1 ? "s" : "") + " restaurée" + (restoredCount > 1 ? "s" : "") + " depuis le plan",
-              "info"
+              "info", { groupe: "chargement" }   // 🔕 regroupé avec les autres restaurations
             );
           }
         }

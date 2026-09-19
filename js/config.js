@@ -207,6 +207,10 @@ try {
   if ("snapDraw" in saved) APP_CONFIG.snapDraw = !!saved.snapDraw;
   if ("panneauxAncres" in saved) APP_CONFIG.panneauxAncres = !!saved.panneauxAncres;
   if (Number.isFinite(saved.snapDrawPx) && saved.snapDrawPx > 0) APP_CONFIG.snapDrawPx = saved.snapDrawPx;
+  // 👣 v1.96.0 — podomètre GLOBAL (taille de pas, seuil, cooldown) : la foulée
+  // est celle de la personne, le seuil et le cooldown ceux du téléphone —
+  // jamais une propriété du plan (décision KARMA 17/09/2026).
+  _appliquerPodometreGlobal(APP_CONFIG, saved);
 } catch(e) {}
 
 // =========================
@@ -396,17 +400,6 @@ function _normalizeAngleDeg(v) {
 // Réglage de podomètre lu dans un plan-config : repris tel quel s'il est
 // dans les bornes que l'écran ⚙️ Réglages autorise, remplacé par la valeur
 // d'usine sinon. Voir le pavé dans buildAppConfigFromPlan pour le pourquoi.
-function _reglagePodometre(valeur, cle, min, max) {
-  const n = Number(valeur ?? DEFAULT_CONFIG[cle]);
-  if (Number.isFinite(n) && n >= min && n <= max) return n;
-  const usine = TRACKING_USINE[cle];
-  if (Number.isFinite(n)) {
-    console.warn("[Config] 👣 " + cle + " = " + n + " hors des bornes [" + min +
-                 ", " + max + "] — plan généré avant le correctif du 03/09/2026. " +
-                 "Remplacé par la valeur d'usine (" + usine + ").");
-  }
-  return usine;
-}
 
 // =========================
 // CONSTRUCTION APP_CONFIG depuis un plan
@@ -424,7 +417,13 @@ function buildAppConfigFromPlan(planConfig) {
     // PRÉCÉDENT (fuite inter-plans). Il est appliqué par
     // appliquerScalePerPlan() dans lancerApplication, une fois l'id connu.
     scale:         Number(tracking.scale         ?? DEFAULT_CONFIG.scale),
-    stepLength:    Number(tracking.stepLength    ?? DEFAULT_CONFIG.stepLength),
+    // 👣 v1.96.0 — LE PLAN NE DIT PLUS LA FOULÉE. `tracking.stepLength`,
+    // `stepThreshold` et `stepCooldown` d'un plan-config sont IGNORÉS, même
+    // présents (anciens plans, générateurs d'avant) : ce sont des réglages de
+    // la personne et de son téléphone, globaux à l'appareil (`app_user_prefs`,
+    // appliqués plus bas). La réparation v1.82.0 des valeurs impossibles n'a
+    // plus d'objet : ce qui n'est pas lu ne peut plus nuire.
+    stepLength:    TRACKING_USINE.stepLength,
     startX:        Number(tracking.startX        ?? DEFAULT_CONFIG.startX),
     startY:        Number(tracking.startY        ?? DEFAULT_CONFIG.startY),
     // 🩸 v1.82.0 — RÉPARATION D'UN RÉGLAGE STRUCTURELLEMENT IMPOSSIBLE.
@@ -446,8 +445,8 @@ function buildAppConfigFromPlan(planConfig) {
     //
     // Même raisonnement que le calibrage périmé (main.js) : on ne touche
     // jamais une préférence valide, seulement ce qui est hors du possible.
-    stepThreshold: _reglagePodometre(tracking.stepThreshold, "stepThreshold", 10, 30),
-    stepCooldown:  _reglagePodometre(tracking.stepCooldown,  "stepCooldown", 300, 3000),
+    stepThreshold: TRACKING_USINE.stepThreshold,
+    stepCooldown:  TRACKING_USINE.stepCooldown,
     // Lit `debugMode` du plan-config en priorité, fallback sur l'ancien `motionDebug`
     // pour les plans pas encore migrés (rétro-compat zip terrains).
     debugMode:     Boolean(tracking.debugMode ?? tracking.motionDebug ?? DEFAULT_CONFIG.debugMode),
@@ -497,6 +496,7 @@ function buildAppConfigFromPlan(planConfig) {
     // La valeur globale reste lue plus bas comme REPLI de migration, via
     // `getPlanSmartNav`, appelé au chargement du plan.
     if (Number.isFinite(saved.snapDrawPx) && saved.snapDrawPx > 0) cfg.snapDrawPx = saved.snapDrawPx;
+    _appliquerPodometreGlobal(cfg, saved);   // 👣 v1.96.0
   } catch(e) {}
 
   // Fallback aux valeurs par défaut si absentes des prefs (= user a jamais
@@ -1033,6 +1033,57 @@ const PODO_BORNES = {
   startY:        { min: 0,   max: Infinity }
 };
 
+// 👣 v1.96.0 — les trois réglages de podomètre sont GLOBAUX (`app_user_prefs`).
+// Un seul écrivain (l'écran ⚙️ Réglages) et un seul lecteur (ci-dessous),
+// bornes de l'écran, refus sec hors bornes comme setPlanTracking.
+const PODO_CLES = ["stepLength", "stepThreshold", "stepCooldown"];
+function _appliquerPodometreGlobal(cible, saved) {
+  PODO_CLES.forEach(function (k) {
+    const v = Number(saved && saved[k]);
+    const b = PODO_BORNES[k];
+    if (Number.isFinite(v) && v >= b.min && v <= b.max) cible[k] = v;
+  });
+}
+function setGlobalPodometre(patch) {
+  if (!patch || typeof patch !== "object") return false;
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}"); } catch (e) { saved = {}; }
+  let n = 0;
+  PODO_CLES.forEach(function (k) {
+    if (!(k in patch)) return;
+    if (patch[k] === null) { delete saved[k]; if (window.APP_CONFIG) window.APP_CONFIG[k] = TRACKING_USINE[k]; n++; return; }   // retour à l'usine
+    const v = Number(patch[k]);
+    const b = PODO_BORNES[k];
+    if (!Number.isFinite(v) || v < b.min || v > b.max) return;
+    saved[k] = v;
+    if (window.APP_CONFIG) window.APP_CONFIG[k] = v;
+    n++;
+  });
+  if (!n) return false;
+  try { localStorage.setItem("app_user_prefs", JSON.stringify(saved)); } catch (e) {}
+  console.log("[Config] 👣 podomètre global →", n, "réglage(s) enregistré(s)");
+  return true;
+}
+// Migration v1.82.0 → v1.96.0 : les réglages saisis PAR PLAN deviennent le
+// réglage global, une seule fois (ceux du premier plan rouvert, en pratique
+// le dernier utilisé), puis sont retirés des prefs du plan. Ceux du fichier
+// plan-config ne migrent pas : ce n'est pas un choix de l'utilisateur.
+function _migrerPodometreParPlan(pid, prefs) {
+  const aMigrer = {};
+  let any = false;
+  PODO_CLES.forEach(function (k) { if (k in prefs) { aMigrer[k] = prefs[k]; delete prefs[k]; any = true; } });
+  if (!any) return false;
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}"); } catch (e) {}
+  const dejaGlobal = PODO_CLES.some(function (k) { return Number.isFinite(Number(saved[k])); });
+  if (!dejaGlobal) {
+    setGlobalPodometre(aMigrer);
+    console.log("[Config] 👣 podomètre : réglages du plan " + pid + " promus en réglage global (migration v1.96.0)");
+  }
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
+
 function setPlanTracking(planId, patch) {
   const pid = planId || window._currentLoadedPlanId || "default";
   if (!patch || typeof patch !== "object") return false;
@@ -1040,6 +1091,7 @@ function setPlanTracking(planId, patch) {
   let n = 0;
   Object.keys(PODO_BORNES).forEach(function (k) {
     if (!(k in patch)) return;
+    if (PODO_CLES.indexOf(k) >= 0) { console.warn("[Config] 👣 " + k + " est global depuis v1.96.0 : utiliser setGlobalPodometre"); return; }
     const v = Number(patch[k]);
     const b = PODO_BORNES[k];
     if (!Number.isFinite(v) || v < b.min || v > b.max) return;
@@ -1058,7 +1110,12 @@ function appliquerTrackingPerPlan() {
   const pid = window._currentLoadedPlanId || "default";
   const prefs = _readPlanPrefs(pid);
   if (!window.APP_CONFIG) return;
+  if (_migrerPodometreParPlan(pid, prefs)) {
+    // le global vient peut-être d'être posé : on le rejoue sur la config courante
+    try { _appliquerPodometreGlobal(window.APP_CONFIG, JSON.parse(localStorage.getItem("app_user_prefs") || "{}")); } catch (e) {}
+  }
   Object.keys(PODO_BORNES).forEach(function (k) {
+    if (PODO_CLES.indexOf(k) >= 0) return;   // 👣 global, jamais par plan
     const v = Number(prefs[k]);
     const b = PODO_BORNES[k];
     if (!Number.isFinite(v) || v < b.min || v > b.max) return;
@@ -1068,6 +1125,7 @@ function appliquerTrackingPerPlan() {
 }
 window.setPlanTracking         = setPlanTracking;
 window.appliquerTrackingPerPlan = appliquerTrackingPerPlan;
+window.setGlobalPodometre      = setGlobalPodometre;   // 👣 v1.96.0
 
 // 🧭 v1.85.3 — la nav intelligente suit la MEME contrainte : appliquee une fois
 // l id du plan connu, JAMAIS depuis buildAppConfigFromPlan ou l on lirait les

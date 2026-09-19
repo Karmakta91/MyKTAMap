@@ -706,6 +706,20 @@
               <span class="kta-perf-ultra-hint" data-i18n="config.aidectx.hint"></span>
             </span>
           </label>
+          <!-- 🔕 17/09/2026 (KARMA : « beaucoup de popups d'information inutiles ») —
+               niveau des notifications, un seul goulot (OOMGuard.showToast).
+               Les alertes serveur et les fenêtres de décision ne sont jamais coupées. -->
+          <div class="kta-perf-ultra-row kta-notifs-row" style="margin-top:10px;">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label" data-i18n="config.notifs.label"></span>
+              <span class="kta-perf-ultra-hint" data-i18n="config.notifs.hint"></span>
+            </span>
+            <select class="kta-cfg-input kta-notifs-select" id="loaderNotifsSel">
+              <option value="all" data-i18n="config.notifs.all"></option>
+              <option value="essential" data-i18n="config.notifs.essential"></option>
+              <option value="silent" data-i18n="config.notifs.silent"></option>
+            </select>
+          </div>
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderPanneauxAncres">
             <span class="kta-perf-ultra-text">

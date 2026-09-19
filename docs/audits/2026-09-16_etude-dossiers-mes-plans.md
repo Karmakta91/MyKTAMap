@@ -84,7 +84,7 @@ Le glisser-déposer natif n'existe pas au doigt, et la colonne scrolle : un glis
 | Replier / déplier | Clic sur l'en-tête | Tap sur l'en-tête |
 | Réordonner les dossiers | Glisser l'en-tête | ⋮ → « Monter / Descendre » |
 
-> ✏️ **Amendement du 16/09 (KARMA, sur mobile : « le glisser-déposer ne fonctionne pas »)** : le glisser existe aussi au doigt, par **appui long** (0,45 s immobile → la ligne se soulève, fantôme sous le doigt, vibration ; le défilement n'est bloqué que pendant le geste ; un doigt qui bouge avant fait défiler). « Déplacer vers… » reste la voie sans geste.
+> ✏️ **Amendement du 16/09 (KARMA, sur mobile : « le glisser-déposer ne fonctionne pas »)** : le glisser existe aussi au doigt, par **appui long** (0,45 s immobile → la ligne se soulève, fantôme sous le doigt, vibration ; le défilement n'est bloqué que pendant le geste ; un doigt qui bouge avant fait défiler). « Déplacer vers… » reste la voie sans geste — par la sélection ☑ uniquement : le bouton 📁 par ligne a été **retiré** après la v1.95.0 (KARMA : « le glisser-déposer ou le bouton de sélection en haut suffisent »).
 
 Règles qui évitent les pièges déjà rencontrés dans ce projet :
 

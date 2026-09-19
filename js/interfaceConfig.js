@@ -929,8 +929,9 @@ function _cfgSignalerChangement() {
 }
 // Les trois réglages de podomètre partent ENSEMBLE, depuis APP_CONFIG (validés un à un).
 function _cfgAppliquerPodometre() {
-  if (typeof window.setPlanTracking !== "function") return;
-  window.setPlanTracking(null, {
+  // 👣 v1.96.0 — GLOBAL : vaut pour tous les plans (décision KARMA 17/09/2026)
+  if (typeof window.setGlobalPodometre !== "function") return;
+  window.setGlobalPodometre({
     stepLength:    APP_CONFIG.stepLength,
     stepThreshold: APP_CONFIG.stepThreshold,
     stepCooldown:  APP_CONFIG.stepCooldown
@@ -1163,7 +1164,7 @@ function afficherConfig() {
 
         <!-- ════════ 3. 📍 NAVIGATION & TRACKER ════════ -->
         ${_cfgGroupeFin()}
-        ${_cfgGroupeDebut("config.group.navTracker", "plan")}
+        ${_cfgGroupeDebut("config.group.navTracker", "mixte")}   <!-- 👣 v1.96.0 : départ et nav = ce plan, détection des pas = tous les plans -->
 
         <!-- 🆕 v1.49.0 (Lot C) — prérequis échelle PX/M (demande KARMA) : position de
              départ, détection de pas et navigation intelligente dépendent tous de
@@ -1193,7 +1194,14 @@ function afficherConfig() {
         <!-- Détection des pas — SANS l'échelle (extraite en groupe 2).
              Les params de pas restent ici : longueur / seuil / cooldown. -->
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">${window.I18n.t("config.steps.titre")}</div>
+          <!-- 👣 v1.96.0 — portée GLOBALE, dite avec le MÊME badge que les groupes
+               (KARMA : « il me semblait que Détection des pas était appliqué à
+               tous les plans, or le groupe dit ce plan ») : le groupe passe en
+               « selon la ligne », et cette section porte son badge 🌍. -->
+          <div class="kta-aide-section-titre" style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <span>${window.I18n.t("config.steps.titre")}</span>
+            <span class="kta-cfg-scope kta-cfg-scope-global">${window.I18n.t("config.scope.badgeGlobal")}</span>
+          </div>
           <!-- 🆕 v1.49.0 (Lot C) — avertissement réglages experts (demande KARMA) -->
           <div style="margin:0 0 10px; padding:8px 10px; background:rgba(255,180,80,0.1); border:1px solid rgba(255,180,80,0.3); border-radius:6px; font-size:12px; color:#ffd28a; line-height:1.45;">
             ${window.I18n.t("config.tracker.expertWarn")}
@@ -1804,9 +1812,13 @@ function _resetConfigExecuter() {
   if (typeof window.resetPlanNorthOffset === "function") window.resetPlanNorthOffset(null);
   try { localStorage.removeItem("myktamap_plan_prefs_" + pid); } catch (e) {}
   APP_CONFIG.scale         = usine("scale");
-  APP_CONFIG.stepLength    = usine("stepLength", 0, 1.5);
-  APP_CONFIG.stepThreshold = usine("stepThreshold", 10, 30);
-  APP_CONFIG.stepCooldown  = usine("stepCooldown", 300, 3000);
+  // 👣 v1.96.0 — le podomètre revient à l'USINE de l'app (jamais aux valeurs du
+  // plan : le plan ne dit plus la foulée), et la pref globale est effacée.
+  const U = window.KTA_TRACKING_USINE || {};
+  APP_CONFIG.stepLength    = U.stepLength;
+  APP_CONFIG.stepThreshold = U.stepThreshold;
+  APP_CONFIG.stepCooldown  = U.stepCooldown;
+  if (typeof window.setGlobalPodometre === "function") window.setGlobalPodometre({ stepLength: null, stepThreshold: null, stepCooldown: null });
   APP_CONFIG.startX        = usine("startX");
   APP_CONFIG.startY        = usine("startY");
   if (typeof window.appliquerSmartNavPerPlan === "function") window.appliquerSmartNavPerPlan();   // repli global

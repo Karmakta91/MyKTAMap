@@ -29,8 +29,10 @@
     { "id": "editor", "label": "Mes ajouts", "file": "editor.json", "visible": true }
   ],
   "tracking": {
-    "startX": 345, "startY": 519, "scale": 4.9,
-    "stepLength": 0.7, "stepThreshold": 13, "stepCooldown": 400
+    "startX": 345, "startY": 519, "scale": 4.9
+    // ⚠️ v1.96.0 : "stepLength", "stepThreshold", "stepCooldown" ne sont PLUS écrits ni lus.
+    // La foulée est celle de la personne, le seuil et le cooldown ceux du téléphone :
+    // réglages GLOBAUX (app_user_prefs). S'ils sont présents dans un vieux plan-config, l'app les ignore.
   },
   "icons": {
     "default": "icon/iconetrack.png",

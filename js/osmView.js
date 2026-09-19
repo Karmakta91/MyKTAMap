@@ -2035,6 +2035,8 @@
   // on injecte une petite barre dans l'overlay osm-modal directement).
   function _toast(msg, durationMs) {
     durationMs = durationMs || 3500;
+    // 🔕 même réglage que le goulot central : un toast contextuel est une info
+    if (window.OOMGuard && typeof window.OOMGuard.toastAutorise === "function" && !window.OOMGuard.toastAutorise("info")) return;
     // 🐛 v1.77.0 (audit code mort → bug latent n°2) — ce toast visait
     // "kta-osm-modal", un id qui n'a JAMAIS existé (le vrai overlay est
     // kta-osm-view-overlay) : le toast contextuel de la modale OSM n'a

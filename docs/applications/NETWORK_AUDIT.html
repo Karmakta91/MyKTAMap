@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.95.0</strong> (16 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.96.0</strong> (17 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.96.0 (réglages du podomètre globaux)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle. Taille de pas, seuil et cooldown quittent le plan-config pour les préférences de ton navigateur (<code>localStorage</code>), qui voyagent dans l'export de profil que <strong>tu</strong> déclenches. Un ZIP généré contient donc trois clés de moins, rien de plus.</p>
   <h3>v1.95.0 (dossiers de « Mes plans », étiquettes à la génération)</h3>
   <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle. Les dossiers, leur mode et les appartenances vivent dans le registre de ton navigateur (<code>localStorage</code>), voyagent dans l'export de profil que <strong>tu</strong> déclenches, et — sur une instance auto-hébergée — peuvent être proposés par le <code>data/index.json</code> de ce serveur, un fichier que l'app lisait déjà. Les étiquettes saisies dans le Générateur sont écrites dans le ZIP que tu produis, rien d'autre. La copie d'un ZIP mémorisé est désormais une vraie copie (plus un lien vers le fichier du disque) : elle ne sort pas plus du navigateur qu'avant.</p>
   <h3>v1.94.0 (import multiple de plans)</h3>

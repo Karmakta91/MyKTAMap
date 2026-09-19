@@ -233,7 +233,7 @@
         if (p && typeof p.then === "function") {
           p.then(function(ok) {
             if (ok === false && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-              window.OOMGuard.showToast(window.I18n.t("compass.toast.capteursRefuses"), "warn");
+              window.OOMGuard.showToast(window.I18n.t("compass.toast.capteursRefuses"), "warn", { important: true });   // 🔕 sans capteurs, rien ne marche
             }
           });
         }

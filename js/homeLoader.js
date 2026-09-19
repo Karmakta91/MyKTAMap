@@ -1055,8 +1055,9 @@ function planRowHTML(plan) {
         const selectionnee = enDossiers && _plansSelectMode && _plansSelection.has(plan.id);
         const caseHtml = (enDossiers && _plansSelectMode)
           ? '<span class="kta-plan-row-check' + (selectionnee ? " kta-actif" : "") + '" aria-hidden="true"></span>' : "";
-        const moveBtn = enDossiers
-          ? '<button class="plan-row-btn kta-plan-row-move" title="' + _homeT("home.plans.folders.moveTo", "Déplacer vers…") + '">📁</button>' : "";
+        // (KARMA, après v1.95.0 : « enlève le bouton Déplacer vers sur chaque plan,
+        // le glisser-déposer ou le bouton de sélection en haut suffisent »)
+        const moveBtn = "";
         const glissable = (enDossiers && _plansDragOk()) ? ' draggable="true"' : "";
         return `
           <div class="plan-row${plan.pinned ? " kta-plan-row-pinned" : ""}${selectionnee ? " kta-plan-row-selected" : ""}" data-id="${plan.id}"${glissable} title="${_homeT("home.plans.loadBtnTitle", "Charger ce plan")}">
@@ -1088,8 +1089,8 @@ function planRowHTML(plan) {
       let _plansSelectMode = false;          // sélection multiple (mode Dossiers)
       const _plansSelection = new Set();     // ids sélectionnés
       let _nonClassesReplie = false;         // repli de « Non classés » (RAM)
-      const SEUIL_GLISSER = 6;               // px depuis le pointerdown avant d'armer un glisser
-      let _dragArme = false, _dragOrigine = null, _dragPlanId = null;
+      const _mobileDeplies = new Set();      // dossiers dépliés par « Tout le dossier » (mobile, session)
+      let _dragPlanId = null;                // id de la ligne en cours de glisser (souris)
       function _plansDragOk() { return !!(window.matchMedia && window.matchMedia("(pointer: fine)").matches); }
       function _lireVuePlans() {
         const PR = window.PlanRegistry;
@@ -1916,8 +1917,6 @@ function planRowHTML(plan) {
             if (_plansVue === "folders" && _plansSelectMode) { _basculerSelection(id); return; }
             chargerPlanDuRegistre(id);
           });
-          const moveBtn = row.querySelector(".kta-plan-row-move");
-          if (moveBtn) moveBtn.addEventListener("click", function(e) { e.stopPropagation(); _ouvrirFeuilleDeplacer([id]); });
         });
         if (_plansVue === "folders" && allPlansList) _brancherDossiers(allPlansList);
       };
@@ -2033,7 +2032,12 @@ function planRowHTML(plan) {
         document.querySelectorAll("#allPlansList .kta-plans-folder-rows:not([hidden])").forEach(function(rows) {
           const n = rows.querySelectorAll(".plan-row").length;
           if (n <= 5) return;
-          rows.classList.add("kta-collapsed");
+          // 🐛 18/09 (KARMA : « je fais Tout le dossier, je coche un plan, et ça se
+          // referme ») — cocher re-rend toute la liste, et ce repli se
+          // réappliquait sans se souvenir du déplié. L'état « déplié » vit le
+          // temps de la session, par dossier, et survit au rendu.
+          const cle = rows.dataset.folder || "__nc__";
+          if (!_mobileDeplies.has(cle)) rows.classList.add("kta-collapsed");
           const btn = document.createElement("button");
           btn.type = "button";
           btn.className = "loader-btn-secondary kta-plans-folder-more";
@@ -2041,7 +2045,11 @@ function planRowHTML(plan) {
             btn.textContent = rows.classList.contains("kta-collapsed")
               ? "📚 " + t("home.plans.folders.all", { n: n }) : "▴ " + t("home.plans.folders.less");
           };
-          btn.addEventListener("click", function() { rows.classList.toggle("kta-collapsed"); maj(); });
+          btn.addEventListener("click", function() {
+            rows.classList.toggle("kta-collapsed");
+            if (rows.classList.contains("kta-collapsed")) _mobileDeplies.delete(cle); else _mobileDeplies.add(cle);
+            maj();
+          });
           rows.appendChild(btn);
           maj();
         });
@@ -2214,30 +2222,26 @@ function planRowHTML(plan) {
       }
 
       // ── Glisser PC (pointeur fin uniquement) ──
-      // 🩸 La ligne reste ENTIÈREMENT cliquable : le glisser n'est armé qu'après
-      // SEUIL_GLISSER px depuis le pointerdown, sinon dragstart est annulé et
-      // le clic ouvre le plan comme avant. Aucun re-rendu pendant le survol :
-      // seule une classe sur la cible bouge ; on re-rend au dépôt.
+      // 🩸 La ligne reste ENTIÈREMENT cliquable : un clic ne déclenche jamais
+      // `dragstart` — c'est le navigateur qui n'émet ce dernier qu'après SON
+      // seuil de mouvement. Aucun re-rendu pendant le survol : seule une classe
+      // sur la cible bouge ; on re-rend au dépôt.
+      // 🐛 17/09 (KARMA : « sur PC le glisser ne marche plus ») — j'armais le
+      // glisser après mon propre seuil de 6 px mesuré sur pointermove, et
+      // j'annulais `dragstart` s'il arrivait avant : or Chrome déclenche le
+      // glisser natif après ~4 px, donc AVANT le mien dès que la souris est
+      // lente. Un mouvement vif passait, un mouvement posé était refusé. Le
+      // seuil natif suffit ; le mien est retiré.
       function _brancherGlisser(conteneur) {
         conteneur.querySelectorAll(".plan-row[draggable]").forEach(function(row) {
-          row.addEventListener("pointerdown", function(e) {
-            if (e.pointerType !== "mouse" && e.pointerType !== "pen") return;
-            _dragArme = false; _dragOrigine = { x: e.clientX, y: e.clientY };
-          });
-          row.addEventListener("pointermove", function(e) {
-            if (!_dragOrigine || _dragArme) return;
-            if (Math.abs(e.clientX - _dragOrigine.x) >= SEUIL_GLISSER || Math.abs(e.clientY - _dragOrigine.y) >= SEUIL_GLISSER) _dragArme = true;
-          });
-          row.addEventListener("pointerup", function() { _dragOrigine = null; });
           row.addEventListener("dragstart", function(e) {
-            if (!_dragArme) { e.preventDefault(); return; }
             _dragPlanId = row.dataset.id;
             row.classList.add("kta-plan-row-dragging");
             try { e.dataTransfer.setData("text/plain", _dragPlanId); e.dataTransfer.effectAllowed = "move"; } catch (err) {}
           });
           row.addEventListener("dragend", function() {
             row.classList.remove("kta-plan-row-dragging");
-            _dragPlanId = null; _dragArme = false; _dragOrigine = null;
+            _dragPlanId = null;
             document.querySelectorAll(".kta-drop-cible").forEach(function(el) { el.classList.remove("kta-drop-cible"); });
           });
         });

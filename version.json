@@ -1,9 +1,9 @@
 {
-  "version": "v1.95.0",
-  "released": "2026-09-16",
+  "version": "v1.96.0",
+  "released": "2026-09-17",
   "notes": [
-    "📦 Importe plusieurs plans d'un coup : dans 🧰 Outils, choisis autant d'archives ZIP que tu veux, elles entrent dans ta liste une par une sans qu'aucune ne s'ouvre, et tu peux les ranger directement dans un dossier.",
-    "📁 Mes plans passe en mode Dossiers : à droite du titre, choisis « Tout » (la liste habituelle) ou « Dossiers » et range tes plans dans des sections à toi, avec une couleur. Déplace un plan depuis son bouton 📁, plusieurs à la fois avec ☑, ou en le glissant sur PC. Un dossier peut aussi accueillir tout seul les plans qui portent une étiquette.",
-    "🏷️ Le Générateur permet de donner des étiquettes à un plan dès sa création, et un plan mémorisé reste lisible même si tu déplaces ou supprimes son ZIP d'origine."
+    "👣 Ta taille de pas, le seuil de détection et le cooldown sont maintenant des réglages à toi : réglés une fois dans ⚙️ Réglages, ils valent pour tous tes plans. Le Générateur ne les propose plus, un plan n'a pas de foulée.",
+    "📁 Dans Mes plans, le glisser d'un plan vers un dossier marche aussi en mouvement lent à la souris ; le bouton 📁 sur chaque ligne a été retiré, on range par glisser ou avec ☑ puis « Déplacer vers… ».",
+    "🔔 Un réglage « Notifications » dans ⚙️ Configuration de l'accueil : Toutes, Essentielles ou Silence (seulement l'important). Le réglage de départ est Essentielles : les petits messages qui confirment un geste que tu viens de faire ne s'affichent plus, sauf si tu choisis Toutes. Les alertes du serveur ne sont jamais coupées."
   ]
 }

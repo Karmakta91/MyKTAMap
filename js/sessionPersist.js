@@ -702,7 +702,7 @@
             try { window.FilterPanel.majBadge(); } catch(e) {}
           }
           if (_active.length > 0 && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-            window.OOMGuard.showToast(_trModule("session.toast.filtresRestaures", { n: _active.length }), "warn");
+            window.OOMGuard.showToast(_trModule("session.toast.filtresRestaures", { n: _active.length }), "warn", { groupe: "chargement" });   // 🔕 regroupé au chargement
           }
         }, 200);
       }
