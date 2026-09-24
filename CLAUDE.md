@@ -49,6 +49,7 @@
 **Distances** : TOUJOURS `window.formatDistance(distM, dec)`. Jamais `toFixed()+" m"`.
 **Icônes** : résolution unique `window._iconMap[tag]` / `getIconUrlForPoint` — vrai **pour un plan chargé**. Hors plan (HOME, Vue OSM multi-plans), la source est `window._ktaBuiltinIconUrls` (= `map.js > TAGS_BUILTIN`, exposé au **top-level**). **Jamais de copie locale du catalogue** : `scripts/check-icon-catalog.js` (pré-commit) la confronte à la source dans les deux sens.
 **Styles des types** (tracés/zones/structures) : TOUJOURS `window.ktaResolveStyle(cat, clé[, {flat:true}])` (`flat` = contexte sans motif SVG : canvas, KMZ, OSM) · pastille/camembert = `ktaSwatchColor` · icône HTML = `ktaTypeSwatchHtml`. **Jamais de table de couleurs locale** — `scripts/check-style-canon.js` (pré-commit bloquant) refuse toute réintroduction. 2 exceptions documentées : `emergencyMode.js`, `osmView.js`/`osmHomePreview.js`.
+**Rotation de la vue** (mode « plan orienté ») : la rotation vit sur le pane intercalaire `.kta-rotate-pane`, **jamais** sur un élément que Leaflet positionne en `transform` (map-pane, `.leaflet-marker-icon`, `.leaflet-popup`) — les propriétés individuelles (`rotate`) s'appliquent AVANT `transform` et feraient pivoter la translation elle-même (mesuré : 918 px d'erreur à 45°). Toute contre-rotation se pose sur un **enfant**. Un pane créé via `map.createPane()` atterrit hors rotation. Détails : `docs/architecture/tracking.md`.
 **Textes user-facing** : migration progressive vers `window.I18n.t("module.section.element")` (dicos `lang/<code>.json`, FR = fallback universel). Appeler au rendu, jamais au load. Hors modules migrés, le FR inline reste OK. Détails + état migration : `docs/architecture/i18n.md`. **Jamais de HTML dans une clé rendue en texte** (`data-i18n`/`-title`/`-placeholder` = `textContent`) : le balisage va dans le gabarit, pas dans le dico — `scripts/check-i18n.js` §5 (bloquant, branché au pre-commit depuis v1.85.4).
 
 ## 🗺️ Où chercher (lis le bon fichier avant de coder)
@@ -62,6 +63,7 @@
 | Perf, mémoire, OOM, tiling V2, ULTRA, batterie | `docs/architecture/perf-memory.md` |
 | **Tuilage** : V1 vs V2, 2 modes, déploiement + **hors-ligne** d'un plan serveur | **`docs/TILING.md`** |
 | Tracker, boussole, heading, navigation | `docs/architecture/tracking.md` |
+| **Mode « plan orienté »** (la carte tourne pendant le suivi) | `docs/architecture/tracking.md` §plan orienté · `js/mapBearing.js` |
 | Multi-niveau, pathfinding, itinéraire | `docs/architecture/multilevel-pathfinding.md` |
 | Exports PNG/PDF/KMZ/GPX + légende | `docs/architecture/exports.md` |
 | Refonte UI, thème, modales, filtres | `docs/architecture/ui.md` |

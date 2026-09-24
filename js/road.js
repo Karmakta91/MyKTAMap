@@ -890,8 +890,12 @@ function renderRoads() {
       const H = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
       // Conversion latlng Leaflet → coords plan : lat = H - y, lng = x
       // donc y = H - lat, x = lng. South = y max plan, North = y min plan.
-      const padW = (ne.lng - sw.lng) * 0.1;
-      const padH = (ne.lat - sw.lat) * 0.1;
+      // 🧭 v1.97.0 — quand la vue tourne (mode « plan orienté »), le viewport
+      // penché déborde son propre rectangle : sans marge élargie, des tracés
+      // disparaissent dans les coins (mesuré : dès 10° de rotation).
+      const _pad = (window.MapBearing ? window.MapBearing.padCull(0.1) : 0.1);
+      const padW = (ne.lng - sw.lng) * _pad;
+      const padH = (ne.lat - sw.lat) * _pad;
       _vpBox = {
         minX: sw.lng - padW,
         maxX: ne.lng + padW,
@@ -1226,8 +1230,10 @@ function _refreshRoadsViewportOnly() {
     const b = window.map.getBounds();
     const sw = b.getSouthWest(), ne = b.getNorthEast();
     const H = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
-    const padW = (ne.lng - sw.lng) * 0.1;
-    const padH = (ne.lat - sw.lat) * 0.1;
+    // 🧭 v1.97.0 — même marge élargie qu'en rendu complet si la vue tourne.
+    const _pad = (window.MapBearing ? window.MapBearing.padCull(0.1) : 0.1);
+    const padW = (ne.lng - sw.lng) * _pad;
+    const padH = (ne.lat - sw.lat) * _pad;
     _vpBox = {
       minX: sw.lng - padW,
       maxX: ne.lng + padW,

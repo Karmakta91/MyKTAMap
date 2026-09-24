@@ -22125,3 +22125,101 @@ body.kta-theme-light .kta-impm-nom,
 html.kta-theme-light .kta-impm-nom { color: #1a1f2e; }
 body.kta-theme-light .kta-impm-intro,
 html.kta-theme-light .kta-impm-intro { color: #3a4256; }
+
+/* ============================================================
+   🧭 v1.97.0 — Mode « plan orienté » (la carte tourne)
+   ============================================================
+   Le pane INTERCALAIRE porte la rotation de la vue. Il est inséré par
+   js/mapBearing.js entre `.leaflet-map-pane` et ses enfants : le map-pane
+   porte le `translate3d` de Leaflet, et une rotation posée sur le MÊME
+   élément ferait pivoter ce vecteur de translation (mesuré : 918 px
+   d'erreur à 45° après un simple pan). Taille nulle + position absolue,
+   comme les panes Leaflet : il ne participe à aucun layout.
+
+   `--kta-bearing` (posé sur le conteneur de la carte) porte l'angle courant.
+   Tout ce qui doit RESTER LISIBLE le contre-tourne.
+
+   ⚠️ La contre-rotation se pose sur un ENFANT, jamais sur l'élément que
+   Leaflet positionne (`.leaflet-marker-icon`, `.leaflet-popup`) : ces
+   éléments portent un `transform` de positionnement, et une rotation posée
+   dessus pivote la translation (même piège que le pane, et même leçon que
+   l'icône tracker en v158 → divIcon en v159).
+   ============================================================ */
+
+.kta-rotate-pane {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Contre-rotation : labels de mesure (l'enfant du divIcon) */
+.kta-bearing-on .kta-measure-seg-label,
+.kta-bearing-on .kta-measure-angle-label {
+  transform: rotate(calc(-1 * var(--kta-bearing, 0deg)));
+  transform-origin: 50% 50%;
+}
+
+/* Contre-rotation des popups. La bulle ET sa pointe pivotent autour du même
+   point — le bas, qui est l'ancrage sur le POI — donc la popup reste
+   accrochée au point tout en redevenant lisible.
+   La croix de fermeture, elle, est un FRERE du contenu dans la structure de
+   Leaflet : elle ne peut pas heriter de la contre-rotation. mapBearing.js
+   l'adopte dans le contenu a l'ouverture de la popup, et les regles
+   ci-dessous la replacent dans son nouveau parent. */
+.kta-bearing-on .leaflet-popup-content-wrapper,
+.kta-bearing-on .leaflet-popup-tip-container {
+  transform: rotate(calc(-1 * var(--kta-bearing, 0deg)));
+  transform-origin: 50% 100%;
+}
+.kta-bearing-on .leaflet-popup-content-wrapper {
+  position: relative;
+}
+.kta-bearing-on .leaflet-popup-content-wrapper > .leaflet-popup-close-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+/* Bouton « recentrer » — apparaît seulement si le suivi a été désarmé.
+   Hors du conteneur de la carte : il ne doit pas tourner avec elle. */
+.kta-bearing-recentrer {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--kta-statusbar-h, 52px) + env(safe-area-inset-bottom, 0px) + 14px);
+  z-index: 1100;
+  padding: 8px 16px;
+  border: 1px solid #f4c542;
+  border-radius: 20px;
+  background: rgba(26, 31, 46, 0.94);
+  color: #f4c542;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+.kta-bearing-recentrer:hover { background: rgba(38, 45, 66, 0.96); }
+
+body.kta-theme-light .kta-bearing-recentrer,
+html.kta-theme-light .kta-bearing-recentrer {
+  background: rgba(255, 255, 255, 0.96);
+  color: #8a6d00;
+}
+
+/* Accessibilité : certains utilisateurs ont le mal des transports avec une
+   carte qui pivote. On garde le mode (il reste utile) mais sans animation
+   d'appoint — la rotation elle-même est déjà amortie côté JS. */
+@media (prefers-reduced-motion: reduce) {
+  .kta-bearing-recentrer { transition: none; }
+}
+
+/* 🧭 v1.97.0 — Mode « plan orienté » : le pan est refait à la main (le drag
+   de Leaflet part de travers sous rotation), donc `dragging` est désactivé —
+   ce qui retire la classe `leaflet-touch-drag` et rend au navigateur le
+   droit de scroller la page au doigt. On le lui reprend ici, sinon le pan
+   manuel est inutilisable sur mobile. */
+.leaflet-container.kta-bearing-lock {
+  touch-action: none;
+}

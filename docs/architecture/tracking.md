@@ -932,3 +932,90 @@ avertissement) — constat M5 de l'audit, hors lot 1.
 ⚠️ **Non reproductible au harnais** : le refus iOS demande un appareil. À valider sur iPhone avant release.
 
 🛡️ **Garde-fou** : `scripts/check-position-confirmee.js` (pré-commit bloquant) vérifie les points d'écriture du drapeau, les deux remises à zéro, la règle dans `declencher()` et `itineraireYAller`, la transmission de l'origine par « Tracer », la Promise de `requestPermission` attendue par `_doStart`, la classe commune du floater et les clés i18n ×3. Falsifié 4× sur une copie mutée (`node scripts/check-position-confirmee.js <racine>`).
+
+---
+
+### 🧭 Mode « plan orienté » — la carte tourne, pas l'icône (`js/mapBearing.js`, v1.97.0)
+
+Pendant le tracking, au lieu de faire pivoter l'icône du tracker dans un plan fixe, on fait pivoter **toute la vue** pour que la direction de marche pointe vers le haut de l'écran (convention GPS auto, dite *heading-up*). **OFF par défaut**, activable par la tuile 🗺️ de la modale 🧭 Tracker, persisté dans `localStorage["myktamap_map_bearing_v1"]` (préférence d'appareil, pas de plan → rien à déclarer dans `config.js`).
+
+#### 🩸 Le piège qui a coûté la première implémentation
+
+Poser la rotation sur `.leaflet-map-pane` **semble marcher** — tant que la carte n'a jamais été panée. Mesuré au prototype : **414 px d'erreur à 30°, 918 px à 45°** dès que le pane porte un `translate3d` non nul.
+
+**Cause** : les propriétés CSS individuelles (`rotate`) s'appliquent **avant** `transform` (ordre spec : translate → rotate → scale → transform). Sur un élément que Leaflet positionne en `translate3d`, la rotation fait pivoter **le vecteur de translation lui-même**.
+
+**La parade** : un **pane intercalaire** `.kta-rotate-pane`, inséré entre le map-pane et ses enfants. Il ne porte aucun transform de Leaflet, donc sa rotation est pure. Mesuré : **0,00 px** d'écart sur 6 angles, après pan **et** après zoom animé. (C'est la structure qu'utilise aussi le plugin `leaflet-rotate` — on y arrive par le même chemin, sans patcher le cœur de Leaflet.)
+
+⚠️ **Le même piège vaut pour toute contre-rotation** : elle se pose sur un **enfant**, jamais sur `.leaflet-marker-icon` ni `.leaflet-popup`. Forcer `transform-origin: 50% 50%` **ne suffit pas** (436 px de dérive mesurés) — c'est exactement la leçon de l'icône tracker en v158 → `divIcon` en v159 (cf §28).
+
+⚠️ **`transform-origin` est exprimé en layerPoint** : il dérive à chaque pan/zoom (53 px d'erreur après un simple pan). D'où la réapplication branchée sur `move`/`zoom`, avec la garde portée **par la map** (`map._ktaBearingHooked`), jamais par `window` — la carte est remplacée à chaque plan chargé (cf `scripts/check-map-listeners.js`).
+
+#### Ce qui tourne, ce qui reste droit
+
+| Tourne | Reste droit |
+|---|---|
+| fond de plan, tuiles, tracés/zones/structures (canvas), **icônes POI** (décision KARMA), heatmap, calques calibrés | contrôles Leaflet (ils vivent hors du map-pane → **gratuit**), labels de mesure, contenu des popups (contre-rotation CSS via `--kta-bearing`) |
+
+**L'icône du tracker se règle toute seule** : elle porte déjà `rotate(+cap)` (§28) et la vue tourne de `-cap` → somme nulle, elle pointe vers le haut de l'écran, c'est-à-dire la direction de marche. Rien à neutraliser.
+
+#### Réglages du cap — pourquoi ils diffèrent de ceux de l'icône
+
+| | Icône tracker (§28) | Vue entière |
+|---|---|---|
+| Lissage | α = 0,25 | **α = 0,12** |
+| Seuil en marche | 2° | **2°** |
+| Seuil à l'arrêt | — | **15°** |
+| Vitesse | — | **90 °/s** (plafond) |
+
+Une icône de 30 px qui frémit se tolère ; un plan entier qui frémit donne la nausée — d'où le lissage plus mou et le plafond de vitesse.
+
+🩸 **Le gel à l'arrêt a été supprimé (retour terrain KARMA, 24/09/2026).** La v1 figeait la vue après 2,5 s sans pas détecté, pour empêcher le magnétomètre de la faire pivoter pendant une pause. Reproduit au harnais : en **tournant sur place sans avancer**, la vue restait bloquée **6,3 secondes** pendant que le cap faisait 140° ; avec des pas mal détectés, des gels de 1,8 s. Vu de l'utilisateur : « ça tourne, ça bugue et ça s'arrête, puis ça reprend ».
+
+Le défaut était de conception, pas d'implémentation : **on s'arrête précisément pour se réorienter** — c'est le moment où la rotation est la plus utile. À la place, deux seuils : on suit **toujours**, mais il faut une intention claire (15°) quand aucun pas n'a été détecté depuis 2,5 s. Mesuré : une rotation sur place de 90° est suivie à 7° près, et un magnétomètre bruité à ±8° ne fait pas bouger la vue d'un degré. Conséquence acceptée : à l'arrêt, la vue ne rejoint le cap qu'à moins de 15° près.
+
+⚠️ Ces quatre valeurs sont des **réglages de départ, pas des mesures de terrain**. Elles se règlent avec un retour de marche réelle (cf `docs/ETUDE_PODOMETRE.md` §2 sur la qualité du cap).
+
+#### Gestes sous rotation — un seul patch, sur le point d'entrée
+
+Leaflet convertit un geste sans connaître l'angle : jusqu'à **200 px d'écart à 90°** entre ce qu'on voit et ce qu'il calcule. Un clic sur un tracé tombait à côté, un clic dans le vide réveillait le tracé d'ailleurs.
+
+🩸 **On ne patche que `mouseEventToContainerPoint`**, le point d'entrée des gestes, qui rend le point « dé-tourné ». Tout ce qui lit un geste en dérive et devient juste : `mouseEventToLayerPoint`, `mouseEventToLatLng`, le hit-test du renderer canvas, les handlers `map.on("click")`, le pinch-zoom.
+
+Le premier essai patchait `containerPointToLayerPoint` — plus général, et **faux** : `L.Renderer._update()` s'en sert pour calculer le coin de son canvas, que le patch faisait alors *tourner* au lieu de l'agrandir. Les coins de l'écran cessaient d'être peints. Le checkup l'a vu (T9 au rouge) ; à l'œil, ça n'aurait été qu'un tracé qui s'arrête bizarrement, à cent lieues de sa cause.
+
+⚠️ Le patch vit sur le **prototype de `L.Map`**, donc il est vu par les 5 autres cartes de l'app (Vue OSM, minimap d'urgence, Secours, picker de calage, aperçu HOME). Il se retire de lui-même : hors carte principale, ou dès que l'angle est nul, il rend exactement ce que rendait Leaflet. Vérifié par le checkup (T12).
+
+`latLngToContainerPoint` n'est **pas** patché : seul l'`autoPan` des popups s'en sert, et le décalage y est sans conséquence.
+
+#### Pan et zoom pendant le mode
+
+Le drag de Leaflet déplace le map-pane d'un offset **écran** ; la rotation vivant sous ce pane, la carte partait de travers de l'angle courant (mesuré : doigt à 0° → carte à 45°). Plutôt que de patcher `L.Draggable` — partagé par les poignées, les marqueurs déplaçables et les autres cartes — `dragging` reste désactivé pendant le mode et **le pan est refait à la main** dans le bon repère : un doigt, pas d'inertie, deux doigts laissent la main au pinch-zoom. Un pan manuel désarme le suivi et fait apparaître 🎯 **Recentrer**.
+
+🩸 **Piège mobile** : `dragging.disable()` retire la classe `leaflet-touch-drag`, et le conteneur retombe alors en `touch-action: pan-x pan-y` — au doigt, le **navigateur** scrolle la page au lieu de laisser le pan manuel agir. La classe `kta-bearing-lock`, posée pendant le mode, lui rend `touch-action: none`. Invisible au clavier/souris : ça ne se voit qu'au doigt, ou dans le checkup.
+
+Le zoom reste celui de Leaflet mais **recentré** (`touchZoom/scrollWheelZoom/doubleClickZoom = "center"`) : il relit ces options à chaque geste, il suffit donc de les changer, sans détacher de handler.
+
+#### Frontières : on LIT l'état des autres modes
+
+Le mode s'éteint tout seul si : le tracking s'arrête, un mode « clic carte » est armé (`_modeClicCarteActif()` — dessin, mesure, recalage, pickers), ou un mode plein écran est ouvert (Mode perdu, Présentation, Secours, Urgence, Replay).
+
+🩸 Ces modes ne sont **pas** appelés à faire `suspend()`/`resume()` : chacun a ses retours anticipés et ses fermetures défensives (Secours appelle `fermer()` au début d'`ouvrir()`, Replay abandonne si la timeline fait moins de 2 points, Présentation sort si déjà active). Un couple suspend/resume posé là-dedans se déséquilibre au premier chemin oublié — et **une suspension jamais levée est invisible** : la carte cesse simplement de tourner, sans message. `MapBearing._modePleinEcranActif()` lit donc leur état, ce qui ne peut pas dériver. `suspend(raison)`/`resume(raison)` restent exposés pour un futur appelant sans état lisible, indexés **par raison** (et non par compteur) pour la même raison.
+
+Le redressement est **immédiat** (pas animé) quand le mode devient inapplicable : ce qui vient de le désactiver, c'est souvent un outil qui attend un clic — redresser en 2 s laisserait l'utilisateur cliquer pendant la rotation.
+
+#### Culling
+
+Le viewport penché déborde son propre rectangle : sans marge élargie, des tracés disparaissent dans les coins **dès 10°** de rotation. `MapBearing.padCull(base)` porte le padding de 0,1 à **0,45** quand la vue tourne — branché dans `road.js` (2 endroits) et `utils.js > _markerInViewportPadded` (qui couvre aussi les markers éditeur et data layers).
+
+Le **canvas du renderer** a le même défaut pour la même raison : dimensionné au viewport + 10 %, il ne couvre plus les coins une fois la vue tournée. `MapBearing` recalcule donc son `padding` **sur la taille réelle du viewport** — `(diagonale / petit côté − 1) / 2`, soit 0,36 en 1100×800 et jusqu'à **0,62 en portrait téléphone** — et seulement pendant le mode, car le canvas grandit d'autant : **×1,8 à ×3,5 en surface**. C'est le poste à surveiller côté mémoire sur gros plan tuilé (`OOMGuard`), et la raison pour laquelle ce padding n'est pas figé en permanence. Il passe par `map._renderer` (champ privé de Leaflet) et est restitué à l'arrêt.
+
+#### Garde-fou
+
+`node scripts/smoke/checkup-plan-oriente.js` — checkup de release, joue le mode dans l'app réelle sur le plan de test : état par défaut, **géométrie après pan** (le cas qui a cassé la 1re implémentation), contrôles droits, contre-rotation des textes sans dérive, redressement sous mode clic-carte et sous mode plein écran, culling élargi, et restitution complète à l'arrêt (vue droite, drag rendu, `pointer-events` rendus, choix utilisateur conservé). Il couvre aussi le clic sur un tracé à sa position visible (et l'absence de réponse de son ancien fantôme), le sens du pan, la non-contamination des autres cartes, et fige le correctif du gel : **tourner sur place sans avancer doit faire tourner la vue**, et un magnétomètre bruité à l'arrêt ne doit pas la faire dériver.
+
+⚠️ **Piège du harnais, tombé deux fois** : les écouteurs d'orientation sont attachés par `requestPermission()`, pas par `startTracking()`. Un test qui simule un événement `deviceorientation` sans l'avoir appelé ne fait rien — et passe au vert en mesurant son propre silence. Tout nouveau test de cap doit commencer par `await window.requestPermission()`.
+
+#### Non couvert en v1.97.0
+
+Contre-rotation des **tooltips** (ils ne servent qu'en Secours/OSM, hors carte principale), inertie du pan, et **validation terrain du confort de rotation** (le cap lui-même est tenu pour fiable hors zones très ferraillées — retour terrain KARMA).

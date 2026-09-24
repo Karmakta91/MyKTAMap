@@ -1226,6 +1226,10 @@
   <script src="js/imageLayerCalibration.js" defer></script>
   <!-- 🆕 v1.38.0 — UI Picker calage image layers (modale split-screen 2 minimaps Leaflet) -->
   <script src="js/imageLayerCalibrationPicker.js" defer></script>
+  <!-- 🧭 v1.97.0 — Mode « plan orienté » (la carte tourne pendant le suivi).
+       Chargé AVANT map.js et tracking.js, qui l'appellent : map.js pose le pane
+       de rotation à chaque plan, tracking.js lui pousse le cap et les pas. -->
+  <script src="js/mapBearing.js" defer></script>
   <script src="js/map.js" defer></script>
   <script src="js/tracking.js" defer></script>
   <script src="js/editor.js" defer></script>

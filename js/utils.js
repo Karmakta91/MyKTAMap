@@ -2039,7 +2039,10 @@ window._ktaDataLayerLoadToken = window._ktaDataLayerLoadToken || 0;
 function _markerInViewportPadded(marker, padFraction) {
   if (!window.map || !marker) return true;
   try {
-    const pad = (padFraction != null) ? padFraction : 0.1;
+    let pad = (padFraction != null) ? padFraction : 0.1;
+    // 🧭 v1.97.0 — vue tournée = viewport penché : on élargit, sinon des
+    // markers bien visibles dans les coins seraient retirés du DOM.
+    if (window.MapBearing) pad = window.MapBearing.padCull(pad);
     const b = window.map.getBounds().pad(pad);
     return b.contains(marker.getLatLng());
   } catch(e) { return true; }

@@ -394,6 +394,18 @@ async function initMapFromConfig() {
   window.map    = map;
   window.bounds = bounds;
 
+  // 🧭 v1.97.0 — Mode « plan orienté » (la carte tourne pendant le tracking).
+  // La carte est REMPLACÉE à chaque plan chargé : le pane de rotation et les
+  // hooks se reposent donc ici, et la garde vit sur l'instance (jamais sur
+  // `window`, cf scripts/check-map-listeners.js). Sans mode actif, `attachTo`
+  // ne fait que poser un listener qui ne coûte rien tant que l'angle est nul.
+  if (window.MapBearing) {
+    try {
+      window.MapBearing.reset();          // repart droit sur le nouveau plan
+      window.MapBearing.attachTo(map);
+    } catch(e) { console.warn("[Map] MapBearing :", e); }
+  }
+
   // 🐛 v1.28.0 : pas de popup d'annotation (point / tracé / zone / structure)
   // quand un mode « clic carte » est actif (dessin, mesure, recalage, ou un
   // picker de position : itinéraire / géoréf / départ tracker / évitement /

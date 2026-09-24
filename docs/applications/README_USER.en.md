@@ -53,6 +53,18 @@ The simulated movement module is **experimental**. It relies on the phone's iner
 
 **The tracker is a visual aid, not a reliable navigation system.**
 
+#### 🧭 "Oriented map" — the map turns with you
+
+In the 🧭 Tracker menu, the **🗺️ Oriented map** tile changes how the map behaves while tracking: instead of the icon spinning on a fixed map, **the map itself turns**, so that your walking direction always points to the top of the screen (like a car GPS).
+
+- **Off by default**, and your choice is remembered on this device.
+- It only turns **while tracking**: when you stop the tracker, the map goes back upright.
+- The map **follows you**: if you drag it aside to look elsewhere, a **🎯 Recenter** button appears to bring you back (it also appears without this mode, as soon as your position leaves the screen).
+- Text stays readable: measurements and point cards do not turn upside down with the map.
+- The map straightens by itself as soon as you pick a tool that needs a tap on the map (measure, draw, realign) or open a full-screen mode.
+
+⚠️ The rotation follows your compass: **near large metal masses** (rails, rebar, structures) it can become approximate — like the rest of the tracker.
+
 Always use **manual recalibration** (📍 button) as soon as you identify a known landmark on the map.
 
 **For any underground trip, always bring:**

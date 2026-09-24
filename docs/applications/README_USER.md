@@ -53,6 +53,18 @@ Le module de déplacement simulé est **expérimental**. Il repose sur les capte
 
 **Le tracker est une aide visuelle, pas un système de navigation fiable.**
 
+#### 🧭 « Plan orienté » — la carte tourne avec toi
+
+Dans le menu 🧭 Tracker, la tuile **🗺️ Plan orienté** change la façon dont la carte se comporte pendant le suivi : au lieu que l'icône pivote sur un plan fixe, **c'est la carte qui tourne**, pour que ta direction de marche pointe toujours vers le haut de l'écran (comme un GPS de voiture).
+
+- **Désactivé par défaut**, et ton choix est retenu sur cet appareil.
+- Ça ne tourne **que pendant le suivi** : à l'arrêt du tracker, la carte revient droite.
+- La carte **te suit** : si tu la déplaces à la main pour regarder ailleurs, un bouton **🎯 Recentrer** apparaît pour revenir sur toi (il apparaît aussi sans ce mode, dès que ta position sort de l'écran).
+- Les textes restent lisibles : les mesures et les fiches de points ne se retournent pas avec la carte.
+- La carte se remet droite toute seule dès que tu prends un outil qui demande de cliquer (mesure, dessin, recalage) ou que tu ouvres un mode plein écran.
+
+⚠️ La rotation suit ta boussole : **près de grandes masses métalliques** (rails, ferraillage, structures), elle peut devenir approximative — comme le reste du tracker.
+
 Utilisez toujours le **recalage manuel** (bouton 📍) dès que vous identifiez un repère connu sur le plan.
 
 **Pour toute sortie souterraine, emportez toujours :**
