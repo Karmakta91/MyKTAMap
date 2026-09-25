@@ -603,6 +603,75 @@ function inf(msg) { console.log("  •  " + msg); }
     if (!t14.transform) ok("aucune rotation n'a été introduite par ce chemin");
     else pb("la vue a tourné alors que le mode est désactivé : " + t14.transform);
 
+    // ── T15 — les tuiles hors écran sortent de la couche ───────────────
+    // 🩸 Régression v1.97.0 vue en terrain (iPhone, plan 16332 px, dézoom à
+    // fond) : des pans du fond restaient noirs alors que les logs disaient
+    // « 56 tuiles affichées, 0 manquante ». Le tuilage pose TOUTES les tuiles
+    // du niveau, même hors écran ; sous notre pane transformé, iOS doit
+    // composer tout ça en une couche et renonce à en peindre une partie.
+    // Ce test fige la parade : pendant le mode, les tuiles hors viewport
+    // quittent la carte — et reviennent à l'arrêt.
+    console.log("— T15 : tuiles hors écran pendant la rotation —");
+    const t15 = await page.evaluate(async function () {
+      const map = window.map;
+      // T14 a laissé le mode désactivé : sans ça, la vue ne tourne pas et on
+      // mesurerait l'absence de culling d'un mode… inactif.
+      window.MapBearing.setEnabled(true);
+      const c = map.getCenter();
+      const faux = [];
+      // 25 tuiles en grille : quelques-unes au centre, la plupart très loin.
+      for (let i = -2; i <= 2; i++) {
+        for (let j = -2; j <= 2; j++) {
+          const ov = L.imageOverlay(
+            "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+            [[c.lat + i * 4000, c.lng + j * 4000], [c.lat + (i + 1) * 4000, c.lng + (j + 1) * 4000]],
+            { interactive: false, pane: "tilePane" });
+          ov.addTo(map);
+          faux.push(ov);
+        }
+      }
+      // Une tuile volontairement HORS carte (comme si le filtre multi-niveau
+      // l'avait masquée) : elle ne doit jamais être réintégrée par le culling.
+      const masquee = L.imageOverlay(
+        "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+        [[c.lat, c.lng], [c.lat + 100, c.lng + 100]], { interactive: false, pane: "tilePane" });
+      faux.push(masquee);                       // dans activeOverlays, mais PAS sur la carte
+      window.__ancienState = window._tilingV2State;
+      window._tilingV2State = { activeOverlays: faux };
+
+      const surCarte = function () { return faux.filter(function (o) { return map.hasLayer(o); }).length; };
+      const avant = surCarte();
+      await window.__mb.viser(40);              // rotation → culling
+      await new Promise(function (r) { setTimeout(r, 700); });
+      const pendant = surCarte();
+      const bearingPendant = Math.round(window.MapBearing.getBearing());
+      const masqueeReintegree = map.hasLayer(masquee);
+
+      window.MapBearing.reset();                // vue droite → tout revient
+      await new Promise(function (r) { setTimeout(r, 500); });
+      const apres = surCarte();
+      const masqueeApres = map.hasLayer(masquee);
+
+      faux.forEach(function (o) { try { map.removeLayer(o); } catch (e) {} });
+      window._tilingV2State = window.__ancienState;
+      return { total: faux.length, avant: avant, pendant: pendant, apres: apres,
+               bearingPendant: bearingPendant,
+               masqueeReintegree: masqueeReintegree, masqueeApres: masqueeApres };
+    });
+    inf("tuiles sur la carte : " + t15.avant + " avant · " + t15.pendant + " pendant la rotation (vue à " +
+        t15.bearingPendant + "°) · " + t15.apres + " après");
+    if (!t15.bearingPendant) pb("la vue n'a pas tourné : le test ne prouve rien");
+    if (t15.pendant < t15.avant)
+      ok("les tuiles hors écran quittent la carte pendant la rotation (" +
+         (t15.avant - t15.pendant) + " retirées sur " + t15.total + ")");
+    else pb("aucune tuile retirée : la couche à composer reste entière");
+    if (t15.apres === t15.avant)
+      ok("toutes reviennent quand la vue se redresse");
+    else pb("des tuiles manquent après le retour à plat (" + t15.apres + " vs " + t15.avant + ")");
+    if (!t15.masqueeReintegree && !t15.masqueeApres)
+      ok("une tuile masquée par ailleurs (filtre multi-niveau) n'est jamais réintégrée");
+    else pb("le culling a réintégré une tuile qui devait rester masquée");
+
     console.log("— T6 : arrêt du tracking —");
     const t6 = await page.evaluate(function () {
       window.MapBearing.setEnabled(true);   // T14 l'avait désactivé

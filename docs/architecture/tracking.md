@@ -1010,6 +1010,18 @@ Le viewport penché déborde son propre rectangle : sans marge élargie, des tra
 
 Le **canvas du renderer** a le même défaut pour la même raison : dimensionné au viewport + 10 %, il ne couvre plus les coins une fois la vue tournée. `MapBearing` recalcule donc son `padding` **sur la taille réelle du viewport** — `(diagonale / petit côté − 1) / 2`, soit 0,36 en 1100×800 et jusqu'à **0,62 en portrait téléphone** — et seulement pendant le mode, car le canvas grandit d'autant : **×1,8 à ×3,5 en surface**. C'est le poste à surveiller côté mémoire sur gros plan tuilé (`OOMGuard`), et la raison pour laquelle ce padding n'est pas figé en permanence. Il passe par `map._renderer` (champ privé de Leaflet) et est restitué à l'arrêt.
 
+#### 🩸 Les tuiles manquantes au dézoom (régression v1.97.0, corrigée en v1.97.1)
+
+Signalé en terrain : sur un plan de 16332 px, **au dézoom à fond uniquement**, des pans entiers du fond restaient noirs. Les logs disaient pourtant `[Tiling V2] Niveau z=-2 — 56 tuiles affichées`, **sans aucune manquante** : tout était résolu, extrait et posé sur la carte. Le défaut n'était ni dans le ZIP, ni dans la génération, ni dans la résolution d'URL — il était au **rendu**, et il venait du pane de rotation.
+
+**Mécanisme** : le tuilage V2 met sur la carte **toutes** les tuiles du niveau, même hors écran (à z=-2 sur ce plan : 4083 × 3000 px de contenu pour un écran de 430 px). Sans rotation, le navigateur ne peint que la partie visible. Sous un pane transformé, iOS doit composer tout le sous-arbre en une couche et renonce à en peindre une partie au-delà de ses limites de texture. D'où les trois « uniquement » du signalement : **au dézoom à fond** (c'est le seul zoom où le niveau `minNativeZoom` est rendu), **sur les grands plans** (la surface), **mode actif** (la couche).
+
+**Parade** : pendant le mode, `MapBearing` retire de la carte les tuiles qui ne croisent pas le viewport élargi (35 %), et les y remet dès que la vue se redresse. Il ne réintègre **que** celles qu'il a retirées (drapeau `_ktaCulled` sur l'overlay) — une tuile masquée par le filtre multi-niveau doit le rester. Mesuré au harnais : 25 tuiles → 4 pendant la rotation, 25 au retour à plat.
+
+⚠️ **Non prouvé sur l'appareil** : le harnais est Chromium. Il démontre que la surface à composer est réduite d'un ordre de grandeur, pas que Safari s'en satisfait.
+
+🔎 **Trouvé au passage, non corrigé** : au tout premier rendu, `[Tiling V2] Niveau z=NaN — 0 tuiles affichées` — le tuilage s'initialise avant que la carte ait une vue. Ce rendu fantôme **consomme le drapeau « premier rendu »**, si bien que `attendusPremier` vaut 0 et que le repli de sécurité de v1.86.0 (« toutes les tuiles ont échoué → afficher l'image entière ») ne peut plus jamais se déclencher. Antérieur à ce chantier, à traiter à part.
+
 #### Garde-fou
 
 `node scripts/smoke/checkup-plan-oriente.js` — checkup de release, joue le mode dans l'app réelle sur le plan de test : état par défaut, **géométrie après pan** (le cas qui a cassé la 1re implémentation), contrôles droits, contre-rotation des textes sans dérive, redressement sous mode clic-carte et sous mode plein écran, culling élargi, et restitution complète à l'arrêt (vue droite, drag rendu, `pointer-events` rendus, choix utilisateur conservé). Il couvre aussi le clic sur un tracé à sa position visible (et l'absence de réponse de son ancien fantôme), le sens du pan, la non-contamination des autres cartes, et fige le correctif du gel : **tourner sur place sans avancer doit faire tourner la vue**, et un magnétomètre bruité à l'arrêt ne doit pas la faire dériver.

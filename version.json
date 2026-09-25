@@ -1,8 +1,7 @@
 {
-  "version": "v1.97.0",
-  "released": "2026-09-24",
+  "version": "v1.97.1",
+  "released": "2026-09-25",
   "notes": [
-    "🧭 Nouveau dans le menu Tracker : « Plan orienté ». Pendant le suivi, c'est la carte qui tourne pour que ta direction de marche pointe toujours vers le haut de l'écran, au lieu de l'icône qui pivote sur un plan fixe. À activer toi-même, la carte reste fixe par défaut.",
-    "Dans ce mode la carte suit ta position : si tu la déplaces à la main, un bouton « Recentrer » apparaît pour revenir sur toi."
+    "🧭 Correctif du mode « Plan orienté » : sur les grands plans, des morceaux du fond de carte pouvaient rester noirs quand on dézoomait à fond. Réparé."
   ]
 }

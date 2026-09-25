@@ -162,6 +162,7 @@
       cont.style.setProperty("--kta-bearing", _bearing + "deg");
       cont.classList.toggle("kta-bearing-on", Math.abs(_bearing) > 0.01);
     }
+    _cullerTuilesThrottle();
   }
   // Exposé : tracking.js le rappelle après un recentrage, road.js après un
   // re-rendu. Idempotent.
@@ -368,6 +369,69 @@
     } catch(e) {}
   }
 
+  // ===== Tuiles hors écran =====
+  // 🩸 RÉGRESSION v1.97.0, trouvée en terrain par KARMA (iPhone, plan 16332 px,
+  // dézoom à fond) : des pans entiers du fond restaient noirs, alors que les
+  // logs disaient « 56 tuiles affichées » sans aucune manquante — donc tout
+  // était résolu et posé sur la carte.
+  //
+  // Cause : le tuilage V2 met sur la carte TOUTES les tuiles du niveau, même
+  // hors écran (à z=-2 sur ce plan : 4083 × 3000 px de contenu pour un écran
+  // de 430 px). Sans rotation, le navigateur ne peint que la partie visible.
+  // Avec notre pane transformé, iOS doit composer le sous-arbre en une couche
+  // et renonce à en peindre une partie au-delà de ses limites de texture.
+  // D'où : uniquement en mode actif, uniquement sur les grands plans, et
+  // uniquement au zoom où le niveau le plus lourd est affiché.
+  //
+  // La parade : pendant le mode, on retire de la carte les tuiles qui ne
+  // croisent pas le viewport élargi. On ne remet QUE celles qu'on a retirées
+  // (drapeau `_ktaCulled`) — sans ça on rendrait visibles des tuiles que le
+  // filtre multi-niveau avait volontairement masquées.
+  const MARGE_TUILES = 0.35;        // viewport élargi : pas de pop-in au pan
+  let _cullEnCours = false;
+
+  function _cullerTuiles(forcerTout) {
+    const map = window.map;
+    const st = window._tilingV2State;
+    if (!map || !st || !Array.isArray(st.activeOverlays) || !st.activeOverlays.length) return;
+    const actif = !forcerTout && isActive() && Math.abs(_bearing) > 0.01;
+    let zone = null;
+    if (actif) {
+      try { zone = map.getBounds().pad(MARGE_TUILES); } catch(e) { return; }
+    }
+    let retirees = 0, rendues = 0;
+    st.activeOverlays.forEach(function(ov) {
+      if (!ov || typeof ov.getBounds !== "function") return;
+      let dedans = true;
+      if (zone) {
+        try { dedans = zone.intersects(ov.getBounds()); } catch(e) { dedans = true; }
+      }
+      const surCarte = map.hasLayer(ov);
+      if (!dedans && surCarte) {
+        try { map.removeLayer(ov); ov._ktaCulled = true; retirees++; } catch(e) {}
+      } else if (dedans && !surCarte && ov._ktaCulled) {
+        // Uniquement celles que NOUS avons retirées : une tuile absente pour
+        // une autre raison (filtre multi-niveau) doit le rester.
+        try { ov.addTo(map); ov._ktaCulled = false; rendues++; } catch(e) {}
+      }
+    });
+    if (retirees || rendues) {
+      console.log("[MapBearing] Tuiles hors écran : " + retirees + " retirée(s), " +
+                  rendues + " rendue(s) — " + st.activeOverlays.length + " au total");
+    }
+  }
+
+  // Le tuilage repose ses tuiles à chaque changement de niveau (zoomend) : on
+  // repasse derrière lui, après coup, et jamais plus d'une fois par frame.
+  function _cullerTuilesThrottle() {
+    if (_cullEnCours) return;
+    _cullEnCours = true;
+    requestAnimationFrame(function() {
+      _cullEnCours = false;
+      try { _cullerTuiles(false); } catch(e) {}
+    });
+  }
+
   // ===== Bouton « recentrer » =====
   // Apparaît seulement si l'utilisateur a désarmé le suivi (il a zoomé
   // ailleurs, ou un recentrage a été refusé). Retiré dès que le mode s'arrête.
@@ -412,6 +476,9 @@
     map.on("move zoom moveend zoomend viewreset", function() {
       if (Math.abs(_bearing) > 0.01) _appliquer();
     });
+    // Après le swap de niveau du tuilage (il repose toutes ses tuiles) et
+    // après chaque déplacement : on retire celles qui sont hors écran.
+    map.on("moveend zoomend", _cullerTuilesThrottle);
     // Un pan manuel (s'il redevient possible) désarme le suivi.
     // Vaut pour le drag natif de Leaflet (mode inactif) comme pour notre pan
     // manuel : dans les deux cas l'utilisateur vient de partir voir ailleurs.
@@ -562,6 +629,9 @@
     _bearing = 0; _cible = 0; _capLisse = null;
     _appliquer();
     _deverrouiller(window.map);
+    // La vue est droite : plus de couche de compositing, plus de raison de
+    // priver le fond de ses tuiles.
+    try { _cullerTuiles(true); } catch(e) {}
     _majBoutonRecentrer();
   }
 

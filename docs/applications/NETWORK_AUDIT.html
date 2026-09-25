@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.97.0</strong> (24 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.97.1</strong> (25 septembre 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -1127,6 +1127,8 @@
   </blockquote>
 
   <h2>📋 Historique des changements de ce document</h2>
+  <h3>v1.97.1 (correctif d'affichage du mode « plan orienté »)</h3>
+  <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle. Les tuiles hors écran sont simplement retirées de l'affichage pendant que la carte tourne : elles étaient déjà sur l'appareil, rien n'est téléchargé ni envoyé.</p>
   <h3>v1.97.0 (mode « plan orienté »)</h3>
   <p><strong>100 % local</strong>, aucun domaine nouveau, aucune requête nouvelle. Faire tourner la carte est un calcul d'affichage : la rotation vient de la boussole de ton appareil, <strong>déjà utilisée par le tracker</strong>, et rien n'en sort. Le choix d'activer le mode vit dans les préférences de ton navigateur (<code>localStorage</code>). Un fichier JavaScript de plus au précache (<code>js/mapBearing.js</code>).</p>
   <h3>v1.96.0 (réglages du podomètre globaux)</h3>
