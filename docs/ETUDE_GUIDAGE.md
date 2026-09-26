@@ -65,6 +65,9 @@ dessiné : il faut une logique de croisements.
    englobe la zone. À partir de **4 galeries**, un **schéma** du carrefour (rayons, la galerie à prendre en doré,
    l'arrivée en bas) s'affiche dans le bandeau, la feuille de route et l'écran XL (2:a). Un point nommé dans la
    zone ouvre la consigne : « à « … », tourner à gauche » (3:a).
+   Rayon de recherche du nom : **zone + 5 m, pas plus** (KARMA, 27/09/2026) — sur le plan réel, le point
+   « Carrefour Raspail » tombe à 7–9 m des croisements et n'est donc pas repris ; élargir risquerait d'annoncer
+   le nom d'une salle voisine, et un mauvais nom est pire que pas de nom.
 6. **Vocabulaire** : < 25° tout droit · 25–60° légèrement · 60–135° tourner · > 135° demi-tour. Deux sorties à
    moins de 35° l'une de l'autre → « prendre la branche de gauche / droite ».
 7. **Repère** : un point nommé à quelques mètres du carrefour enrichit la consigne (« au niveau de … »).
