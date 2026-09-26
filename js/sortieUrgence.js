@@ -37,6 +37,7 @@
 //   window.SortieUrgence.declencher()        — entrée principale
 //   window.SortieUrgence.declencherDepuis(x, y) — variante origine custom
 //   window.SortieUrgence.isActive()          — modale ouverte ?
+//   window.SortieUrgence.relancerDepuis(pos) — sorties les plus proches d'ici (guidage, écart)
 // =========================
 
 (function() {
@@ -271,9 +272,16 @@
       ? '<div class="kta-sortie-fallback-txt">⚠️ ' + window.I18n.t("sortie.fallback.label") + '</div>'
       : '';
     const tousFallback = resultats.every(function(r) { return r.fallback; });
-    const bandeau = tousFallback
-      ? '<div class="kta-sortie-bandeau">' + window.I18n.t("sortie.fallback.bandeau") + '</div>'
-      : '';
+    // 🪧 27/09/2026 (décision KARMA) — plan SANS AUCUN TRACÉ : on le dit en
+    // clair, avant tout. Le bandeau générique « aucun chemin vérifié » ne
+    // disait pas pourquoi, ni que le guidage n'aurait rien à indiquer.
+    const sansTrace = !!(window.Pathfinder && typeof window.Pathfinder.aDesTraces === "function" &&
+                         !window.Pathfinder.aDesTraces());
+    const bandeau = sansTrace
+      ? '<div class="kta-sortie-bandeau">' + window.I18n.t("guid.aucunTraceSortie") + '</div>'
+      : tousFallback
+        ? '<div class="kta-sortie-bandeau">' + window.I18n.t("sortie.fallback.bandeau") + '</div>'
+        : '';
     const levelTxt = (typeof meilleure.point.level === "number" && meilleure.point.level !== 0)
       ? ' <span class="kta-sortie-niveau">' + window.I18n.t("sortie.item.niveau", { level: meilleure.point.level }) + '</span>'
       : '';
@@ -357,9 +365,11 @@
       // 🚨 B1 (audit 13/09/2026) : on passe l'ORIGINE du calcul. Sans ça,
       // itineraireYAller re-testait la position du tracker — cul-de-sac dès
       // que la sortie avait été calculée depuis un point tapé.
+      // 🪧 urgence:true (guidage, décisions A/C/G) : bandeau de guidage sans
+      // croix, et un écart propose la sortie la plus proche d'ici.
       window.itineraireYAller(r.point.x, r.point.y,
         r.point.nom || window.I18n.t("sortie.item.nomDefaut"),
-        { origine: _lastResultats.origine });
+        { origine: _lastResultats.origine, urgence: true });
     } else {
       alert(window.I18n.t("sortie.erreur.itineraireIndispo"));
     }
@@ -467,6 +477,20 @@
   };
 
   SU._fermer = function() { _fermerModale(); };
+
+  // 🪧 27/09/2026 — Guidage, décision G : en sortie d'urgence, un écart ne
+  // relance pas le chemin vers la MÊME sortie mais vers la plus proche D'ICI
+  // — quelqu'un qui a dévié est peut-être plus près d'une autre. Même modale
+  // que le déclenchement : l'utilisateur confirme en touchant « Tracer ».
+  SU.relancerDepuis = function(pos) {
+    if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") { declencher(); return; }
+    const etat = (typeof window.getTrackingPositionEtat === "function")
+      ? window.getTrackingPositionEtat() : null;
+    _lancer({ x: pos.x, y: pos.y }, {
+      mode: (etat && etat.suiviActif) ? "suivi" : "confirmee",
+      ts:   etat ? etat.ts : null
+    });
+  };
 
   // ========== EXPORT ==========
   SU.declencher       = declencher;

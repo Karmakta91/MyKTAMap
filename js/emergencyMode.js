@@ -265,6 +265,25 @@
           '</div>' +
         '</div>' +
 
+        // 🪧 27/09/2026 — GUIDAGE (décision KARMA A). Cet écran RECOUVRE la
+        // carte, donc le bandeau « dans X m, tourner à gauche » : la
+        // prochaine consigne est reprise ici, en gros. Hors de la grille pour
+        // ne rien changer à sa disposition ; masqué quand il n'y a rien à dire.
+        // Les choix d'un écart (Recalculer / Je suis ici / Ignorer) vivent sur
+        // la carte : le bouton ramène à elle.
+        '<div class="kta-emergency-bloc kta-emergency-guidage" id="kta-em-guidage" style="display:none">' +
+          '<div class="kta-emergency-guidage-ligne">' +
+            '<span class="kta-emergency-guidage-icone" id="kta-em-guid-icone"></span>' +
+            '<div class="kta-emergency-guidage-textes">' +
+              '<div class="kta-emergency-guidage-principal" id="kta-em-guid-principal"></div>' +
+              '<div class="kta-emergency-sub" id="kta-em-guid-sous"></div>' +
+            '</div>' +
+          '</div>' +
+          '<button class="kta-emergency-guidage-choix" id="kta-em-guid-choix" type="button" style="display:none">' +
+            t("emergency.guidage.choix") +
+          '</button>' +
+        '</div>' +
+
         '<div class="kta-emergency-grid">' +
 
           // 📍 26/09/2026 (KARMA) — UNE SEULE POSITION, JAMAIS LES DEUX.
@@ -347,6 +366,10 @@
       valPos.style.cursor = "pointer";
       valPos.addEventListener("click", _copierPosition);
     }
+
+    // 🪧 Guidage : les choix d'un écart sont sur la carte → on y retourne.
+    const btnChoix = document.getElementById("kta-em-guid-choix");
+    if (btnChoix) btnChoix.addEventListener("click", desactiver);
 
     // 🔧 v1.13.0 : handlers de la toggle 🗺️ Itinéraire RETIRÉS (toggle
     // supprimée du HTML). L'itinéraire est toujours rendu dans la minimap
@@ -483,6 +506,9 @@
       if (cardEl) cardEl.textContent = window.I18n.t("emergency.heading.boussoleIndispo");
     }
 
+    // 🪧 Guidage — la consigne du bandeau, reprise en gros
+    _majGuidage();
+
     // 🧹 27/09/2026 : plus d'échelle ici (cf le gabarit). Les clés
     // `emergency.echelle.*` ont été retirées des trois dicos avec elle.
 
@@ -544,6 +570,31 @@
       }
       etatEl.textContent = partsEtat.join(" · ");
     }
+  }
+
+  // 🪧 27/09/2026 — lit l'état du bandeau de guidage (js/itiGuidage.js), qui
+  // continue de se calculer sous cet écran (pas du tracker + battement 1 s).
+  // On n'affiche que ce que le bandeau afficherait : mêmes règles, mêmes mots.
+  function _majGuidage() {
+    const bloc = document.getElementById("kta-em-guidage");
+    if (!bloc) return;
+    const st = (window.ItiGuidage && typeof window.ItiGuidage.etat === "function")
+      ? window.ItiGuidage.etat() : null;
+    if (!st || !st.visible) { bloc.style.display = "none"; return; }
+    bloc.style.display = "";
+    const alerte = (st.mode === "ecart" || st.mode === "demi");
+    bloc.classList.toggle("kta-emergency-guidage-alerte", alerte);
+    const ic = document.getElementById("kta-em-guid-icone");
+    if (ic) {
+      ic.textContent = st.icone || "";
+      ic.style.transform = (typeof st.fleche === "number") ? "rotate(" + st.fleche + "deg)" : "";
+    }
+    const pr = document.getElementById("kta-em-guid-principal");
+    if (pr) pr.textContent = st.principal || "";
+    const so = document.getElementById("kta-em-guid-sous");
+    if (so) { so.textContent = st.sous || ""; so.style.display = st.sous ? "" : "none"; }
+    const choix = document.getElementById("kta-em-guid-choix");
+    if (choix) choix.style.display = alerte ? "" : "none";
   }
 
   // ============================================================

@@ -22446,3 +22446,44 @@ body.kta-theme-light .kta-guid-bandeau.kta-guid-alerte-on { background: #fff4e8;
 }
 .kta-guid-nav:hover { opacity: 1; }
 .kta-guid-nav.kta-actif { opacity: 1; background: rgba(244, 197, 66, 0.18); }
+
+/* Guidage sur l'écran XL (lot 4, décision A) : la consigne du bandeau, en
+   gros — cet écran recouvre la carte. Les couleurs de fond / bordure viennent
+   de `.kta-emergency-dark|light .kta-emergency-bloc` ; seul l'accent change. */
+.kta-emergency-guidage { flex: 0 0 auto; gap: 8px; border-width: 2px; }
+.kta-emergency-dark  .kta-emergency-guidage { border-color: rgba(244, 197, 66, 0.7); }
+.kta-emergency-light .kta-emergency-guidage { border-color: rgba(184, 116, 11, 0.8); }
+.kta-emergency-guidage-ligne { display: flex; align-items: center; gap: 14px; }
+.kta-emergency-guidage-icone {
+  flex: 0 0 auto;
+  font-size: 40px;
+  line-height: 1;
+  width: 48px;
+  text-align: center;
+  display: inline-block;
+  color: #f4c542;
+  transition: transform 0.25s ease-out;
+}
+.kta-emergency-light .kta-emergency-guidage-icone { color: #b8740b; }
+.kta-emergency-guidage-textes { min-width: 0; }
+.kta-emergency-guidage-principal { font-size: 24px; font-weight: 700; line-height: 1.2; }
+.kta-emergency-guidage.kta-emergency-guidage-alerte { border-color: #ff9933; }
+.kta-emergency-guidage.kta-emergency-guidage-alerte .kta-emergency-guidage-icone { color: #ff9933; }
+.kta-emergency-guidage-choix {
+  min-height: 48px;   /* se touche avec des gants, comme le reste de cet écran */
+  border: 1.5px solid #ff9933;
+  border-radius: 10px;
+  background: rgba(255, 153, 51, 0.12);
+  color: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .kta-emergency-guidage-principal { font-size: 17px; }
+  .kta-emergency-guidage-icone { font-size: 28px; width: 34px; }
+  .kta-emergency-guidage-choix { min-height: 40px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kta-emergency-guidage-icone { transition: none; }
+}

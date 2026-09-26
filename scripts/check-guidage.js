@@ -86,7 +86,7 @@ async function bandeau() {
   let actif = true, iti = it.road;
   const ls = {};
   Object.assign(w, {
-    document: { body: { appendChild() {} }, createElement: fauxElement },
+    document: { body: { appendChild() {} }, createElement: () => (w.__bandeau = fauxElement()) },
     localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); } },
     getTrackingActif: () => actif,
     getTrackingPosition: () => pos,
@@ -145,6 +145,45 @@ async function bandeau() {
   e = aller(20, 500);
   t("sans nav intelligente : distances précédées de « ~ »", /~/.test(e.principal));
   t("sans nav intelligente : une suggestion faite, une seule", ls["myktamap_guidage_astuce_smartnav"] === "1");
+
+  // Urgence (lot 4, décisions C/G) : pas de croix, « Recalculer » vise la
+  // sortie la plus proche d'ICI (SortieUrgence.relancerDepuis)
+  w.APP_CONFIG.smartNav = true;
+  let relance = null;
+  w.SortieUrgence = { relancerDepuis: p => { relance = { x: p.x, y: p.y }; } };
+  iti = Object.assign({}, it.road, { urgence: true });
+  aller(20, 500); aller(400, 600);
+  aller(600, 500); aller(610, 500); e = aller(620, 500);
+  const actionsHtml = w.__bandeau.querySelector(".kta-guid-actions").innerHTML;
+  t("urgence : écart signalé", e.mode === "ecart" && e.urgence === true);
+  t("urgence : le bouton dit « sortie la plus proche d'ici »", /guid.btn.sortieProche/.test(actionsHtml));
+  t("urgence : pas de croix (décision C)", w.__bandeau.querySelector(".kta-guid-fermer").style.display === "none");
+  G.agir("recalculer");
+  t("urgence : « Recalculer » relance les sorties depuis la position actuelle",
+    relance && relance.x === 620 && relance.y === 500);
+  let replan = null;
+  w.itineraireReplanifierDepuis = (x, y) => { replan = [x, y]; };
+  iti = Object.assign({}, it.road);
+  aller(20, 500); aller(400, 600);
+  aller(600, 500); aller(610, 500); aller(620, 500);
+  G.agir("recalculer");
+  t("hors urgence : « Recalculer » replanifie l'itinéraire depuis ici", replan && replan[0] === 620);
+  t("hors urgence : la croix est là", w.__bandeau.querySelector(".kta-guid-fermer").style.display === "");
+
+  // Câblage (sources) : la sortie d'urgence marque son itinéraire, « Y aller »
+  // le porte sans question, la replanification le garde, l'écran XL lit l'état.
+  const src = f => fs.readFileSync(path.join(ROOT, f), "utf8");
+  const su = src("js/sortieUrgence.js"), ii = src("js/interfaceItineraire.js");
+  const em = src("js/emergencyMode.js"), tr = src("js/tracking.js");
+  t("câblage : la sortie d'urgence trace avec urgence: true", su.includes("origine: _lastResultats.origine, urgence: true"));
+  t("câblage : SortieUrgence.relancerDepuis existe", su.includes("SU.relancerDepuis = function"));
+  t("câblage : « Y aller » marque la road urgence", ii.includes("if (opts.urgence) newRoad.urgence = true;"));
+  t("câblage : « Y aller » ne demande pas de remplacer en urgence", ii.includes("if (existing && !opts.urgence)"));
+  t("câblage : la replanification garde l'urgence", ii.includes("if (road.urgence) newRoad.urgence = true;"));
+  t("câblage : l'écran XL lit ItiGuidage.etat() à chaque tick",
+    em.includes("    _majGuidage();") && em.includes("window.ItiGuidage.etat()"));
+  t("câblage : tracking.js nourrit le bandeau à chaque pas", tr.includes("window.ItiGuidage.onPosition(position)"));
+  w.APP_CONFIG.smartNav = false;
 
   // Mode navigation (lot 3) : carte orientée + écran allumé, réglages rendus
   const regl = { bearing: false, wake: true };

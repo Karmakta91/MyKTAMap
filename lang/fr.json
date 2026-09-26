@@ -2096,6 +2096,8 @@
   "guid.nav.toastOn": "🧭 Mode navigation : la carte tourne avec toi et l'écran reste allumé.",
   "guid.nav.toastOff": "🧭 Mode navigation quitté : tes réglages d'avant sont rétablis.",
   "guid.nav.toastFin": "🧭 Itinéraire terminé : mode navigation quitté, tes réglages d'avant sont rétablis.",
+  "guid.aucunTraceSortie": "⚠️ Ce plan n'a aucun tracé : pas de chemin à suivre ni de guidage. Les distances ci-dessous sont à vol d'oiseau.",
+  "emergency.guidage.choix": "Voir les choix sur la carte",
   "ui.subaction.guidage": "Guidage de l'itinéraire",
   "kmz.gen.enCoursToast": "⏳ Génération du KMZ en cours — sur un grand plan (collecte des tuiles), ça peut prendre plusieurs secondes. Le téléchargement partira tout seul.",
   "kmz.gen.enCours": "Génération du KMZ…",

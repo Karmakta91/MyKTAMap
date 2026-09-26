@@ -37,6 +37,7 @@
 //   window.ItiGuidage.etat()            — { visible, mode, icone, principal, sous, fleche, urgence }
 //   window.ItiGuidage.getPref() / setPref("auto" | "jamais")
 //   window.ItiGuidage.basculerNavigation() / navigationActive() — mode Navigation (lot 3)
+//   window.ItiGuidage.agir("recalculer" | "ici" | "ignorer") — boutons d'un écart
 //
 // Convention de cap : degrés, 0 = haut du plan, sens horaire (= tracking.js).
 // Un écart positif entre cap de sortie et cap d'entrée = virage à DROITE.
@@ -859,6 +860,7 @@
   G.getPref              = getPref;
   G.navigationActive     = function() { return !!_nav; };
   G.basculerNavigation   = basculerNavigation;           // bouton 🧭 du bandeau (lot 3)
+  G.agir                 = _action;                      // "recalculer" | "ici" | "ignorer" (boutons d'écart)
   G.setPref              = setPref;
 
   window.ItiGuidage = G;

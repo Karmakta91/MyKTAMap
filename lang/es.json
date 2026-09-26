@@ -2096,6 +2096,8 @@
   "guid.nav.toastOn": "🧭 Modo navegación: el mapa gira contigo y la pantalla sigue encendida.",
   "guid.nav.toastOff": "🧭 Has salido del modo navegación: se restablecen tus ajustes anteriores.",
   "guid.nav.toastFin": "🧭 Itinerario terminado: se sale del modo navegación y se restablecen tus ajustes anteriores.",
+  "guid.aucunTraceSortie": "⚠️ Este plano no tiene ningún trazado: no hay camino que seguir ni guiado. Las distancias de abajo son en línea recta.",
+  "emergency.guidage.choix": "Ver las opciones en el mapa",
   "ui.subaction.guidage": "Guiado del itinerario",
   "kmz.gen.enCoursToast": "⏳ Generación del KMZ en curso — en un plano grande (recogida de teselas) puede tardar varios segundos. La descarga empezará sola.",
   "kmz.gen.enCours": "Generando KMZ…",

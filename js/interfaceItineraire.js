@@ -288,6 +288,10 @@ window.itineraireYAller = function(x, y, nom, opts) {
         points:    result.path,
         waypoints: waypoints
       }, _champsGuidage(result));
+      // 🪧 Guidage lot 4 (décisions A/C/G) : un itinéraire de SORTIE
+      // D'URGENCE est marqué — bandeau sans croix, affiché même réglé sur
+      // « Jamais », et « Recalculer » y vise la sortie la plus proche.
+      if (opts.urgence) newRoad.urgence = true;
 
       // Remove ancien itineraire + add le nouveau
       const currentRoads = window.getRoads ? window.getRoads() : [];
@@ -315,9 +319,11 @@ window.itineraireYAller = function(x, y, nom, opts) {
   }
 
   // Check si itineraire actif → confirm
+  // 🪧 Sauf en sortie d'urgence : l'utilisateur vient de toucher « Tracer »
+  // vers une sortie — une question de plus à ce moment-là est de trop.
   const existing = (window.getRoads ? window.getRoads() : [])
     .find(function(r) { return r.type === "itinerary"; });
-  if (existing) {
+  if (existing && !opts.urgence) {
     _confirmRemplacerItineraire(_calculer);
   } else {
     _calculer();
@@ -956,6 +962,8 @@ async function _replanifierDepuis(px, py) {
       points:    result.path,
       waypoints: [origin].concat(etapes.map(function(w) { return Object.assign({}, w); }))
     }, _champsGuidage(result));
+    // 🪧 Une sortie d'urgence replanifiée reste une sortie d'urgence.
+    if (road.urgence) newRoad.urgence = true;
     const filtered = (window.getRoads ? window.getRoads() : [])
       .filter(function(r) { return r.type !== "itinerary"; });
     filtered.push(newRoad);

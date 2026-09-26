@@ -2096,6 +2096,8 @@
   "guid.nav.toastOn": "🧭 Navigation mode: the map turns with you and the screen stays on.",
   "guid.nav.toastOff": "🧭 Navigation mode left: your previous settings are restored.",
   "guid.nav.toastFin": "🧭 Itinerary over: navigation mode left, your previous settings are restored.",
+  "guid.aucunTraceSortie": "⚠️ This plan has no traced gallery: no path to follow and no guidance. The distances below are as the crow flies.",
+  "emergency.guidage.choix": "See the options on the map",
   "ui.subaction.guidage": "Itinerary guidance",
   "kmz.gen.enCoursToast": "⏳ KMZ generation in progress — on a large map (tile collection) it can take several seconds. The download will start by itself.",
   "kmz.gen.enCours": "Generating KMZ…",
