@@ -22304,3 +22304,50 @@ html.kta-theme-light .kta-bearing-recentrer {
 .leaflet-container.kta-bearing-lock {
   touch-action: none;
 }
+
+/* =====================================================================
+   🪧 GUIDAGE DE L'ITINÉRAIRE (27/09/2026) — js/itiGuidage.js
+   Étude et décisions : docs/ETUDE_GUIDAGE.md
+   ===================================================================== */
+
+/* Raccord à vol d'oiseau : pointillé, sans halo — ce n'est pas une galerie. */
+.kta-itinerary-raccord {
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* Alerte (raccord de plus de 50 m) : même orange que « Impossible d'éviter ». */
+.kta-guid-alerte {
+  color: #ff9933;
+  background: rgba(255, 153, 51, 0.10);
+  border-left: 3px solid #ff9933;
+  padding: 8px 10px;
+  margin: 6px 0;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+/* Feuille de route : sous-modale (elle s'ouvre par-dessus la modale Itinéraire). */
+.kta-guid-feuille-overlay { z-index: 100001; }
+.kta-guid-feuille-boite { max-width: 520px; }
+.kta-guid-feuille-resume { color: #c8d0e0; margin: 0 0 10px; font-size: 13px; }
+.kta-guid-feuille-note { color: #8892a4; font-size: 12px; margin: 10px 0 0; }
+.kta-guid-feuille-liste { list-style: none; margin: 0; padding: 0; }
+.kta-guid-feuille-ligne {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  color: #e8eaf0;
+  font-size: 14px;
+}
+.kta-guid-feuille-ligne:hover { background: rgba(140, 180, 255, 0.08); }
+.kta-guid-feuille-num { color: #8892a4; min-width: 1.6em; text-align: right; font-size: 12px; padding-top: 2px; }
+.kta-guid-feuille-icone { color: #f4c542; min-width: 1.4em; text-align: center; font-weight: 700; }
+.kta-guid-feuille-txt { flex: 1; }
+
+body.kta-theme-light .kta-guid-feuille-ligne { color: #1a1f2e; border-bottom-color: rgba(0, 0, 0, 0.08); }
+body.kta-theme-light .kta-guid-feuille-resume { color: #3a4254; }
+body.kta-theme-light .kta-guid-feuille-icone { color: #8a6d00; }

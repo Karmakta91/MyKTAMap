@@ -1047,6 +1047,30 @@ function renderRoads() {
     // 🆕 v1.31.2 (P9) — tracker les layers de cette road pour le refresh viewport.
     const _trackedLayers = [polyline];
 
+    // 🪧 Guidage (27/09/2026, décision KARMA K) — le trajet À VOL D'OISEAU
+    // entre une étape et le tracé où elle s'accroche. Il existait dans le
+    // calcul mais n'était ni dessiné ni compté : l'itinéraire commençait sur
+    // la galerie sans montrer qu'il fallait d'abord la rejoindre. Pointillé
+    // = « pas une galerie » : sur le JPG, rien ne dit ce qu'il y a entre deux.
+    if (road.type === "itinerary" && Array.isArray(road.raccords)) {
+      road.raccords.forEach(function(rc) {
+        if (!rc || !rc.de || !rc.vers || !(Number(rc.distPx) > 0.5)) return;
+        const pointille = L.polyline(
+          [convertCoord(rc.de.x, rc.de.y), convertCoord(rc.vers.x, rc.vers.y)],
+          Object.assign({}, style, {
+            renderer:    L.svg(),
+            className:   "kta-itinerary-raccord",
+            weight:      Math.max(2, Math.round((style.weight || 5) * 0.6)),
+            dashArray:   "4 8",
+            interactive: false
+          })
+        );
+        if (_isInViewport) pointille.addTo(target);
+        roadLayers.push(pointille);
+        _trackedLayers.push(pointille);
+      });
+    }
+
     // 📝 v1.16.0 step 1 — popup note au clic. Exclus itinéraire (éphémère)
     // et jonction (multi-niveau, gérée séparément). Reste : principal /
     // secondaire / chemin → éditables.

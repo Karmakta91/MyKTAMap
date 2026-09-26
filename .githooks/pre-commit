@@ -496,3 +496,12 @@ node scripts/check-import-masse.js || exit $?
 # bas du scroller, décoratif compressé sur écran bas, et AUCUNE nouvelle
 # largeur en px sur la colonne Actions. 9 sabotages rougissent.
 node scripts/check-home-layout.js || exit $?
+
+# 🪧 27/09/2026 — Guidage de l'itinéraire (js/itiGuidage.js + raccords /
+# carrefours de pathfinder.js). CHARGE les vrais modules sur des réseaux
+# FICTIFS et fige la logique « quand annoncer » de docs/ETUDE_GUIDAGE.md :
+# un croisement se dit même tout droit, le tremblement du dessin ne se dit
+# pas, un quadrillage de piliers ne parle pas tous les trois mètres, le
+# raccord à vol d'oiseau est compté et alerté au-delà de 50 m — et le chemin
+# ne part plus en arrière au départ (défaut du pathfinder révélé ici). BLOQUANT.
+node scripts/check-guidage.js || exit $?

@@ -746,6 +746,36 @@
     _addEdge(graph, newIdx, seg.a, dToA);
     _addEdge(graph, newIdx, seg.b, dToB);
 
+    // 🩸 27/09/2026 (révélé par le guidage) — LE CHEMIN PARTAIT EN ARRIÈRE.
+    // Le nœud virtuel n'était relié qu'aux DEUX EXTRÉMITÉS du segment. Or
+    // l'enrichissement a pu poser des nœuds de croisement ENTRE elles (sur
+    // l'arête d'origine, gardée). Départ à 20 px d'une extrémité, croisement
+    // au milieu : le chemin allait à l'extrémité puis revenait (+2×20 px de
+    // distance, un aller-retour invisible sur la carte, et un « demi-tour »
+    // annoncé au départ). On relie donc aussi le nœud virtuel aux nœuds
+    // posés sur son segment — le plus proche de chaque côté suffit.
+    // Multi-niveau : seul un nœud du MÊME niveau que le segment est relié —
+    // sinon deux étages superposés en x/y communiqueraient par ce raccourci.
+    const _mlOnV = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    const tV = bestProj.t;
+    let avant = null, apres = null;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const lenSq = dx * dx + dy * dy;
+    for (let k = 0; k < newIdx && lenSq > 1e-9 && seg.level !== "transit"; k++) {
+      if (k === seg.a || k === seg.b) continue;
+      if (_mlOnV && !(graph.nodeLevels && graph.nodeLevels[k] && graph.nodeLevels[k].has(seg.level))) continue;
+      const n = graph.nodes[k];
+      const tk = ((n.x - a.x) * dx + (n.y - a.y) * dy) / lenSq;
+      if (tk <= 0 || tk >= 1) continue;
+      const px = a.x + tk * dx, py = a.y + tk * dy;
+      if (Math.hypot(n.x - px, n.y - py) > SPATIAL_MERGE_THRESHOLD) continue;
+      if (tk < tV && (!avant || tk > avant.t)) avant = { idx: k, t: tk };
+      if (tk > tV && (!apres || tk < apres.t)) apres = { idx: k, t: tk };
+    }
+    const lenSeg = Math.sqrt(lenSq);
+    if (avant) _addEdge(graph, newIdx, avant.idx, (tV - avant.t) * lenSeg);
+    if (apres) _addEdge(graph, newIdx, apres.idx, (apres.t - tV) * lenSeg);
+
     return {
       nodeIdx:    newIdx,
       projection: { x: bestProj.x, y: bestProj.y },
@@ -889,8 +919,191 @@
       path:           fullPath,
       totalDistance:  totalDistance,
       segmentCount:   segmentCount,
-      snappedPoints:  snapResults.map(function(s) { return s.projection; })
+      snappedPoints:  snapResults.map(function(s) { return s.projection; }),
+      // 🪧 Guidage (27/09/2026) — deux champs AJOUTÉS, aucun champ existant ne
+      // change : `path` et `totalDistance` restent le seul trajet SUR tracé.
+      //   • raccords : le trajet à vol d'oiseau entre chaque waypoint et le
+      //     tracé où il s'accroche. Il existait (snapDist) mais était jeté —
+      //     l'itinéraire commençait sur la galerie sans dire qu'il fallait
+      //     d'abord la rejoindre (décision KARMA K : dessiné ET compté).
+      //   • carrefours : les nœuds du graphe SITUÉS SUR le chemin d'où partent
+      //     au moins 3 directions. Cherchés géométriquement : l'arête d'origine
+      //     restant dans le graphe quand un croisement est inséré, un chemin
+      //     qui passe tout droit peut ne pas traverser le nœud du croisement.
+      raccords: snapResults.map(function(s, i) {
+        const w = waypoints[i];
+        return {
+          index:  i,
+          role:   (i === 0) ? "depart" : (i === snapResults.length - 1 ? "arrivee" : "etape"),
+          label:  (w && w.label) ? String(w.label) : null,
+          de:     { x: w.x, y: w.y },
+          vers:   { x: s.projection.x, y: s.projection.y },
+          distPx: s.snapDist
+        };
+      }),
+      carrefours: _carrefoursSurChemin(graph, fullPath)
     };
+  }
+
+  // =========================
+  // 🪧 CARREFOURS LE LONG D'UN CHEMIN (guidage, 27/09/2026)
+  // =========================
+  // Rend [{x, y, sorties:[cap°]}] pour chaque nœud du graphe posé sur le
+  // chemin (≤ CARREFOUR_TOL_PX) d'où partent au moins 3 directions DISTINCTES.
+  // Cap en degrés, 0 = haut du plan, sens horaire (convention de tracking.js).
+  //
+  // « Distinctes » est le cœur de l'affaire : le graphe est bruité par
+  // construction (arête doublée A↔B à côté de A↔V↔B, sommets voisins d'un
+  // même tracé reliés par la proximité d'extrémités, tremblement du dessin à
+  // la main). Compter les voisins d'un nœud mentait sur un tracé tremblé.
+  // On regarde donc la GÉOMÉTRIE : un cercle de ~3 m autour du nœud, et
+  // chaque endroit où le réseau le traverse est une sortie. Les directions
+  // proches (SORTIE_ECART_DEG) se regroupent. Effet voulu : une amorce de
+  // moins de 3 m (défaut de dessin) n'atteint pas le cercle et ne compte pas.
+  const CARREFOUR_TOL_PX  = 3;
+  const SORTIE_ECART_DEG  = 25;
+  const GRILLE_CHEMIN_PX  = 24;
+
+  // Rayon du cercle de sortie : ~3 m, jamais moins de 8 px.
+  function _rayonSortiePx() {
+    const e = (window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0) ? Number(window.APP_CONFIG.scale) : 0;
+    return Math.max(8, 3 * e);
+  }
+
+  function _capDeg(a, b) {
+    const d = Math.atan2(b.x - a.x, -(b.y - a.y)) * 180 / Math.PI;
+    return (d + 360) % 360;
+  }
+
+  function _voisinsUniques(graph, idx) {
+    const vus = {};
+    const out = [];
+    const neigh = graph.edges[idx] || [];
+    for (let i = 0; i < neigh.length; i++) {
+      const v = neigh[i].to;
+      if (v === idx || vus[v]) continue;
+      vus[v] = 1;
+      out.push(v);
+    }
+    return out;
+  }
+
+  // Grille des arêtes du graphe (une seule fois par calcul de carrefours).
+  function _grilleAretes(graph, cell) {
+    const g = {};
+    for (let i = 0; i < graph.edges.length; i++) {
+      const vus = {};
+      const neigh = graph.edges[i] || [];
+      for (let k = 0; k < neigh.length; k++) {
+        const j = neigh[k].to;
+        if (j <= i || vus[j]) continue;
+        vus[j] = 1;
+        const a = graph.nodes[i], b = graph.nodes[j];
+        const x0 = Math.floor(Math.min(a.x, b.x) / cell), x1 = Math.floor(Math.max(a.x, b.x) / cell);
+        const y0 = Math.floor(Math.min(a.y, b.y) / cell), y1 = Math.floor(Math.max(a.y, b.y) / cell);
+        if ((x1 - x0 + 1) * (y1 - y0 + 1) > 4000) continue;   // arête aberrante : ignorée
+        for (let cx = x0; cx <= x1; cx++) {
+          for (let cy = y0; cy <= y1; cy++) {
+            const key = cx + "," + cy;
+            (g[key] || (g[key] = [])).push(i, j);
+          }
+        }
+      }
+    }
+    return g;
+  }
+
+  function _capsDeSortie(graph, idx, grille, cell, R) {
+    const c = graph.nodes[idx];
+    const caps = [];
+    const vus = {};
+    const cx0 = Math.floor((c.x - R) / cell), cx1 = Math.floor((c.x + R) / cell);
+    const cy0 = Math.floor((c.y - R) / cell), cy1 = Math.floor((c.y + R) / cell);
+    for (let cx = cx0; cx <= cx1; cx++) {
+      for (let cy = cy0; cy <= cy1; cy++) {
+        const lst = grille[cx + "," + cy];
+        if (!lst) continue;
+        for (let k = 0; k < lst.length; k += 2) {
+          const i = lst[k], j = lst[k + 1];
+          const key = i + "," + j;
+          if (vus[key]) continue;
+          vus[key] = 1;
+          // Intersections du segment [a, b] avec le cercle (c, R)
+          const a = graph.nodes[i], b = graph.nodes[j];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const fx = a.x - c.x, fy = a.y - c.y;
+          const A = dx * dx + dy * dy;
+          if (A < 1e-9) continue;
+          const B = 2 * (fx * dx + fy * dy);
+          const C = fx * fx + fy * fy - R * R;
+          const disc = B * B - 4 * A * C;
+          if (disc < 0) continue;
+          const r = Math.sqrt(disc);
+          [(-B - r) / (2 * A), (-B + r) / (2 * A)].forEach(function(t) {
+            if (t >= 0 && t <= 1) caps.push(_capDeg(c, { x: a.x + t * dx, y: a.y + t * dy }));
+          });
+        }
+      }
+    }
+    // Regroupement par angle, circulaire : le dernier groupe peut rejoindre
+    // le premier en passant par 0°. Moyenne VECTORIELLE (359° et 1° font 0°,
+    // pas 180°).
+    caps.sort(function(a, b) { return a - b; });
+    const groupes = [];
+    caps.forEach(function(c) {
+      const g = groupes[groupes.length - 1];
+      if (g && c - g[g.length - 1] <= SORTIE_ECART_DEG) g.push(c);
+      else groupes.push([c]);
+    });
+    if (groupes.length > 1 &&
+        groupes[0][0] + 360 - groupes[groupes.length - 1].slice(-1)[0] <= SORTIE_ECART_DEG) {
+      groupes[0] = groupes.pop().concat(groupes[0]);
+    }
+    return groupes.map(function(g) {
+      let sx = 0, sy = 0;
+      g.forEach(function(c) { sx += Math.sin(c * Math.PI / 180); sy += Math.cos(c * Math.PI / 180); });
+      return Math.round((Math.atan2(sx, sy) * 180 / Math.PI + 360) % 360);
+    });
+  }
+
+  function _carrefoursSurChemin(graph, path) {
+    if (!graph || !Array.isArray(path) || path.length < 2) return [];
+    // Grille des segments du chemin → test de proximité en O(1) par nœud
+    const grille = {};
+    function _cle(cx, cy) { return cx + "," + cy; }
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1], b = path[i];
+      const x0 = Math.floor((Math.min(a.x, b.x) - CARREFOUR_TOL_PX) / GRILLE_CHEMIN_PX);
+      const x1 = Math.floor((Math.max(a.x, b.x) + CARREFOUR_TOL_PX) / GRILLE_CHEMIN_PX);
+      const y0 = Math.floor((Math.min(a.y, b.y) - CARREFOUR_TOL_PX) / GRILLE_CHEMIN_PX);
+      const y1 = Math.floor((Math.max(a.y, b.y) + CARREFOUR_TOL_PX) / GRILLE_CHEMIN_PX);
+      for (let cx = x0; cx <= x1; cx++) {
+        for (let cy = y0; cy <= y1; cy++) {
+          const k = _cle(cx, cy);
+          (grille[k] || (grille[k] = [])).push(i);
+        }
+      }
+    }
+    const R = _rayonSortiePx();
+    const cellA = Math.max(16, 2 * R);
+    let grilleA = null;   // grille des arêtes : construite au premier candidat seulement
+    const out = [];
+    for (let idx = 0; idx < graph.nodes.length; idx++) {
+      const n = graph.nodes[idx];
+      const segs = grille[_cle(Math.floor(n.x / GRILLE_CHEMIN_PX), Math.floor(n.y / GRILLE_CHEMIN_PX))];
+      if (!segs) continue;
+      if (_voisinsUniques(graph, idx).length < 3) continue;
+      let proche = false;
+      for (let k = 0; k < segs.length && !proche; k++) {
+        const i = segs[k];
+        if (_projectOnSegment(n, path[i - 1], path[i]).dist <= CARREFOUR_TOL_PX) proche = true;
+      }
+      if (!proche) continue;
+      if (!grilleA) grilleA = _grilleAretes(graph, cellA);
+      const sorties = _capsDeSortie(graph, idx, grilleA, cellA, R);
+      if (sorties.length >= 3) out.push({ x: n.x, y: n.y, sorties: sorties });
+    }
+    return out;
   }
 
   // =========================
@@ -1389,10 +1602,24 @@
     return best;
   }
 
+  // 🪧 Guidage (27/09/2026) — le plan a-t-il au moins un tracé exploitable ?
+  // Sert à AVERTIR au lancement (modale, « Y aller », sortie d'urgence) plutôt
+  // qu'à laisser le calcul échouer sur un message technique. L'itinéraire
+  // lui-même ne compte pas : c'est un calcul, pas un tracé.
+  function aDesTraces() {
+    const s = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
+    const e = (typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || [])
+      : (typeof window.getEmbeddedRoads === "function") ? (window.getEmbeddedRoads() || []) : [];
+    return s.concat(e).some(function(r) {
+      return r && r.type !== "itinerary" && Array.isArray(r.points) && r.points.length >= 2;
+    });
+  }
+
   // =========================
   // EXPORT
   // =========================
   window.Pathfinder = {
+    aDesTraces:        aDesTraces,
     computeRoute:      computeRoute,
     computeRouteOnRoads: computeRouteOnRoads,   // 🆕 v1.60.0 (A6) — roads fournies (plan non chargé)
     computeReachable:  computeReachable,

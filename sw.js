@@ -308,6 +308,8 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.31.0 (P3 Lot 6) : Module extrait de interface.js — modale
   // Itinéraire + POPUP POI + LABEL DISTANCE + Presets + Évitements
   "./js/interfaceItineraire.js",
+  // 🪧 27/09/2026 : Guidage de l'itinéraire (consignes, feuille de route, bandeau)
+  "./js/itiGuidage.js",
   // 🆕 v1.31.0 (P3 Lot 7) : Module extrait de interface.js — calibrage
   // échelle + reset complet + mise à jour douce + helpers ping
   "./js/interfaceMaintenance.js",
