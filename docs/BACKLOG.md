@@ -71,6 +71,140 @@ capteurs, Q3 tag `entree_plan`, Q4 vol d'oiseau, Q5 bouton 🚨, Q7/Q8 vocal, Q1
 
 Étude : `docs/audits/2026-09-16_etude-dossiers-mes-plans.md`. Constat : à 50 plans, le bandeau de chips grandit avec le nombre d'étiquettes distinctes et mange la hauteur fixe de la colonne ; le filtre est un OU plat ; une étiquette qualifie, elle ne range pas. **Reco** : modèle hybride (dossiers manuels, règle par étiquette optionnelle) en deux marches, sélecteur TOUT / DOSSIERS dans la ligne de titre (0 px ajouté), tactile sans glisser (⋮ → Déplacer vers), glisser PC en plus. Contraintes KARMA : hauteur et place de chaque bloc inchangées ; sauvegardé dans le profil ; configurable depuis ConfAdmin (index.json `folders` + `folder` par plan, doctrine « l'index propose, l'utilisateur dispose ») ou par import de profil. **9 décisions numérotées** en fin d'étude. ✅ **Livré en v1.95.0 (16/09/2026), marches 1 et 2 dans la même release** : décisions 1-11 appliquées (C hybride, un plan par dossier, épinglés en tête de leur dossier, sélection multiple, couleur, règles par étiquette, « dossier depuis ces chips », dossier de destination de l'import multiple, dossiers de l'index verrouillés, `plansViewDefault` kiosque, sélecteur toujours visible). Reste ouvert (décision 3) : le dossier « 🌐 Serveur » automatique.
 
+## 🔎 Audit de dette invisible sur relevé lourd (26/09/2026) — ce qui RESTE
+
+Trois audits mesurés sur un vrai plan tuilé (16332×13820, 864 tuiles au niveau 0, 912 tracés). **Soldé en v1.97.6** : la fuite du handler `scroll` au changement de plan, l'éviction qui détruisait le hors-ligne, la résolution de tuiles ratée par trois consommateurs, et les quatre défauts de l'écran d'urgence XL. **Reste** :
+
+- 🟠 **Le tuilage pose 864 tuiles pour 6 visibles.** À l'ouverture : 864 overlays sur la carte, **6** réellement à l'écran (99,3 % hors champ), 880 requêtes, ~30 Mo, 2 940 abonnements Leaflet dont ~2 875 dus aux tuiles. Un aller-retour de zoom redemande **1 160 tuiles**. Latence d'un `panBy` : 2,00 ms avec, 0,70 ms sans les hors-écran (×2,9) — **pas un goulot sur desktop**, mais c'est le coût réseau, DOM et compositeur iOS. 🩸 *La parade existe déjà dans le dépôt (`mapBearing > _cullerTuiles`) mais n'est active qu'en mode tourné, au motif que « ce n'est pas un coût à faire porter à tout le monde » — or la mesure dit que **c'est le mode de base qui paie**.* → porter le culling dans `tiling.js > _renderNiveau` rendrait celui de `mapBearing` inutile : une implémentation au lieu de deux.
+- 🟠 **`viewportCull` et `decim` ne touchent pas les tracés d'un plan.** Les 895 polylines d'un relevé sont créées par `utils.js` et n'entrent **jamais** dans `roadsData`, sur quoi ces deux optimisations opèrent exclusivement. Mesuré, cull ON à z=0 : **895 polylines sur la carte, 38 seulement intersectent le viewport**. Deux des six réglages ULTRA sont donc des no-ops sur le cas pour lequel ils ont été écrits, et rien ne le dit à l'utilisateur qui coche la case.
+- 🟠 **Le LRU des tuiles ne libère rien**, pour deux raisons indépendantes : sur un plan **serveur** ses buckets restent vides (il ne se remplit que pour les assets porteurs d'un `file`, donc les ZIP) ; sur un plan **ZIP desktop**, `MAX_CACHED_LEVELS = 4` alors que le générateur produit exactement 4 niveaux — la condition d'éviction ne peut jamais être vraie. Ce qui libère réellement, c'est le `remove()` des overlays au swap. Le LRU n'agit que sur mobile (cap 2), où il n'a jamais été mesuré.
+- 🟡 **L'export image par défaut alloue 861 Mo de canvas** et produit un PNG de **182 Mo** (7,5 s d'encodage) : la résolution originale est pré-cochée, sans plafond ni avertissement, et le fond est obtenu en **retéléchargeant l'image de 42 Mo** alors que 30 Mo de tuiles sont déjà sur l'appareil. *[Déduit]* sur Safari iOS c'est le chemin `toBlob → null`.
+- 🟡 **21 requêtes 404 par ouverture de plan** — chiffré et instruit par l'audit icônes du 26/09 : voir la section **🎨 Icônes par défaut** ci-dessous.
+- 🟡 **Alpha : la transparence est inatteignable pour tout plan issu d'un scan.** Le format des tuiles est décidé à la génération d'après la source ; un JPEG n'ayant jamais d'alpha, ses tuiles seront **toujours** opaques, et **il n'existe aucun chemin de re-tuilage** d'un plan déjà généré. Superposé à OSM : à 100 % le plan masque totalement le fond, à 50 % les deux couches sont délavées à parts égales. Le rendu est correct **parce que l'opacité compense un fond opaque**, pas par transparence — ce que le vocabulaire (« superposition », « transparence des plans ») ne dit pas.
+- 🟡 **Le tick du mode urgence à l'arrêt** : 40 `setView` en 10 s, immobile, chacun déclenchant un parcours de toute la grille du niveau (864 itérations) — ~34 560 itérations en 10 s pour rien, sur l'écran ouvert quand la batterie est basse.
+
+## 📋 Sept copies locales du presse-papier (26/09/2026)
+
+`window.ktaCopierTexte(txt)` existe depuis la v1.97.10 (`utils.js`) : `navigator.clipboard` + repli
+`execCommand`, un seul endroit où corriger le jour où un navigateur change d'avis. Le mode urgence est
+son **premier** consommateur ; les sept autres gardent leur propre version, chacune avec son repli plus
+ou moins complet : `debug.js` · `homeConfig.js` · `interfaceDocs.js` (×2) · `lostMode.js` ·
+`memInspector.js` · `osmCoords.js` · `secoursMode.js`. Migration mécanique, sans changement visible —
+mais chaque site a son propre retour visuel (toast, texte in situ, `alert`), donc à faire **un par un**
+et en vérifiant le retour. ⚠️ Deux d'entre eux (`memInspector`, `debug`) servent au diagnostic : les
+casser rendrait un rapport de crash incopiable.
+
+## 🗑️ Supprimer un plan ne supprime pas ses documents d'histoire (26/09/2026)
+
+`PlanRegistry.purgeAssociatedData(planId)` nettoie session, géoréf, photos et sauvegardes — **mais pas la
+base `myktamap_histoire_pdfs`** (grep : aucune mention). Les documents PDF d'un plan supprimé survivent donc,
+et l'onglet 📖 Récits du Carnet les liste toujours, sous le nom du plan disparu (il sait le retrouver via les
+sorties du carnet). Vrai avant le 26/09 pour les PDF **importés** ; depuis, ça vaut aussi pour les **copies
+des documents livrés avec le plan**, donc le volume concerné augmente.
+
+À trancher : purger avec le plan (mais un utilisateur qui supprime un plan pour gagner de la place perd ses
+notes de lecture) ou laisser et l'assumer dans la doc. 📏 **À mesurer d'abord** : combien de Mo dorment en
+moyenne dans cette base.
+
+## 🎨 Vue OSM : les couleurs de la légende personnalisée ne l'atteignent pas (26/09/2026)
+
+Soldé pour le mode urgence XL en v1.97.7 ; **`osmView.js` / `osmHomePreview.js` portent le même trou**,
+pour la même raison : ce sont les deux exceptions qui gardent délibérément leur propre palette
+(`inaccessible` en orange uni sur fond OSM, parce que le motif hachuré SVG n'y est pas rendu), et
+garder sa palette a été implémenté comme « ne rien demander au canon ».
+
+Conséquence *[Probable — non mesuré sur la Vue OSM]* : une couleur choisie via ≡ Légende → ✏️ Modifier
+et les types `cust-…` n'y apparaissent pas comme sur la carte. La parade existe désormais et tient en
+un appel : `window.ktaAppliquerCouleurChoisie(cat, clé, style)` + repli `ktaResolveStyle(…, {flat:true})`
+pour les customs — exactement le `_styleMini` d'`emergencyMode.js`. ⚠️ À mesurer d'abord : le widget
+HOME résout ses overrides **par plan** (slots), ce n'est pas le même état que la session courante.
+
+## 🎨 Icônes par défaut — audit du 26/09/2026 (KARMA : étage 1 au backlog)
+
+Demande KARMA : *« on mélange plusieurs façons de faire (pour portail par exemple), je veux savoir
+où on en est, et éventuellement harmoniser (avoir des trucs vecto telles que portail, ou entrée
+plan) »*. Audit mesuré (agent, sans code). Arbitrage : **étage 1 → backlog** (merge `main` d'abord),
+étages 2 et 3 à re-expliquer avant décision.
+
+**Ce qui est innocenté** : le catalogue n'a **pas** dérivé, les 8 tables qui connaissent les tags sont
+synchrones au 26/09.
+
+### ✅ Étage 1 — SOLDÉ en v1.97.9 (26/09/2026)
+
+Les quatre points sont faits et mesurés : `entree_plan` (le Générateur écrivait le libellé de l'icône
+au lieu de sa valeur — trois filets : `dataset.ktaPath`, `ktaCheminIconePlausible` à la lecture, repli
+`onerror` généralisé dans `map.js`), les 21 sondes 404 (`iconsEmbarquees` déclaré par le Générateur →
+0 requête, mesuré), et `check-icon-catalog.js` étendu de 2 à **9 tables** + précache + 3 dicos
+(falsifié sur 5 axes). Détail : `README.md` § v1.97.9.
+
+⚠️ **Reste à faire côté DATA (KARMA seul)** : les `plan-config.json` déjà déployés gardent leur
+valeur fautive pour `entree_plan` et n'ont pas `iconsEmbarquees`. L'app les rattrape à l'ouverture (icône
+correcte, mais 21 sondes toujours là) ; **régénérer chaque plan** est le seul moyen de nettoyer le
+fichier et de supprimer les sondes.
+
+❌ **Non retenu — `sessionExporter.js > EMOJI_PAR_TAG`** : 18 clés dont aucune n'existe dans le
+catalogue (son commentaire dit « synchroniser avec TAGS_BUILTIN », ça ne l'a jamais été), donc **tous**
+les points anonymisés tombent sur le fallback 🎯. La brancher changerait les noms produits par l'export
+anonymisé (`🎯-1` → `🕳️-1`) : c'est un **format de sortie**, arbitrage KARMA, pas un bug à
+corriger en silence.
+
+### ⚖️ En attente d'arbitrage — étages 2 et 3
+
+- **Le 🌀 vs `portail.png` (étage 2, « 3:pas compris » — à re-présenter).** Le même objet métier a
+  deux visages : PNG vortex sur la carte, la légende, les filtres, la Vue OSM et les exports ;
+  **emoji 🌀** dans la liste des liaisons, la popup de création, le bouton HOME « Mes liaisons »,
+  l'itinéraire inter-plan (`ipr.result.step1` des 3 dicos) et le filtre OSM du HOME. Datable : le
+  commit qui a créé `icon/portail.png` (v1.59.0, `2f92f4f`, 02/09/2026) a retiré l'ancien badge 🌀 de
+  la carte mais laissé celui de toute la chaîne UI, antérieure.
+- **Résolveur canonique d'icônes, sur le modèle de `styleResolver.js` (étage 2).** Transposable terme
+  à terme : `ktaIcon(tag)` · `{raster:true}` = « ce contexte ne sait pas lire un SVG » (KMZ) ·
+  `ktaIconHtml(tag, taille)`. Bénéfice mesurable : la checklist `add-icon-tag` passe de **8 sites**
+  à **1**. ⚠️ **Étendre le check AVANT de migrer** : pendant la migration il existe N+1 tables, et
+  seul le check dit laquelle a bougé.
+- **Vectorisation (étage 3, « 4:pas compris » — à re-présenter).** Les 22 glyphes sont **déjà des
+  formes géométriques** (anneaux, triangles, échelles, escaliers) : 86 413 o de PNG pour ce qui
+  tiendrait en ~10-15 Ko *[Probable]*. Gain réel : **la netteté** (`map.js` pousse
+  `--kta-marker-scale` à 2× → un PNG de 50 px affiché à 100 px, soit ×4 à ×6 de pixels manquants
+  sur un écran DPR 2-3), la teinte dynamique (`peo`/`pef` et `eso`/`esf` sont le même glyphe en deux
+  couleurs) et zéro 404.
+  🔴 **Verrou dur avant toute vectorisation** : `kmzExport.js` écrit le blob dans
+  `files/icons/<tag>.png` **sans regarder son type**. Mesuré : un data-URI SVG y part sous un nom
+  `.png` → Google Earth ne le lit pas → **icône absente, sans message**. → rasteriser (canvas
+  128×128 → `toBlob("image/png")`, ~15 lignes) d'abord.
+  🔴 **Piège de migration invisible** : `utils.js:53` fait gagner `PLAN_CONFIG.icons[tag]` **avant**
+  le catalogue. Tout plan déjà déployé déclare `icon/pa.png` → si le catalogue bascule en `.svg`,
+  **les nouvelles icônes n'apparaîtront sur AUCUN plan existant**, et le symptôme sera « ça marche
+  chez moi sur un plan neuf ».
+  → ordre proposé : `portail` → `entree_plan` → les 5 lourds (`pe`, `pb`, `pa`, `info`, `elec` =
+  46,5 Ko à eux cinq) → les paires teintées. **À l'identique** : redessiner « en mieux » change ce
+  qu'on reconnaît sur son propre plan. Les 8 minuscules (`plaque` 373 o…) restent en PNG.
+
+### ❌ Non retenu
+
+- Unifier les ~194 emojis d'interface avec le catalogue : ce sont des icônes d'UI, pas des types de
+  points. Seule exception à traiter, le 🌀 (ci-dessus).
+- Mettre des glyphes dans le `<select>` de `editor.js:131` (le seul endroit où l'utilisateur choisit un
+  type **sans voir son icône**) : un `<option>` ne rend pas de HTML → sélecteur custom, chantier UI
+  séparé.
+
+### 🔍 Non vérifié par l'audit
+
+Rendu réel dans **Google Earth** (non installé — le MIME du blob est mesuré, pas le rendu) · chaîne
+d'export PNG/PDF **de bout en bout** avec un point `entree_plan` (la capacité canvas est mesurée
+isolément : `drawImage` OK, pixel `#f4c542` exact, canvas non tainted) · widget OSM du HOME sur un
+plan **ZIP** importé · poids réel d'un catalogue vectorisé (extrapolé des 333 o de `entree_plan`).
+
+## 🧭 Mode « plan orienté » — dettes ouvertes (v1.97.0 → v1.97.3, 26/09/2026)
+
+Le mode est livré et tenu par `scripts/smoke/checkup-plan-oriente.js` (37 contrôles). Restent :
+
+- 🔴 **`[Tiling V2] Niveau z=NaN` au premier rendu — un garde-fou désarmé, antérieur au mode.** Le tuilage s'initialise avant que la carte ait une vue : `_choisirNiveau(map.getZoom())` rend `NaN`, un rendu fantôme consomme le drapeau « premier rendu », `attendusPremier` reste à 0 — et le repli de sécurité de v1.86.0 (« toutes les tuiles ont échoué → afficher l'image entière ») **ne peut plus jamais se déclencher**. Vu dans les logs terrain du 25/09. Rien à voir avec la rotation : c'est le filet du tuilage qui est décroché.
+- 🔴 **Validation iOS/Safari inexistante.** Le harnais est Chromium ; deux régressions de ce chantier (tuiles noires en v1.97.0, 17 % d'écran vide en portrait en v1.97.1) n'ont été vues que par KARMA, sur son iPhone. Item ajouté à `docs/RELEASE_GATE.md`.
+- 🟠 **Pas d'indicateur de Nord à l'écran** — le manque ergonomique le plus visible quand la carte tourne. 🔎 Piste bon marché, à vérifier : `js/compass.js` monte sa rosace sur `document.body`, donc **hors rotation**, et la contre-tourne avec le cap monde ; le Nord du plan devrait donc s'y lire juste pendant le mode, offset de Nord compris. Si ça se vérifie au harnais, « l'indicateur » se réduit à afficher la rosace d'office à l'activation.
+- 🟡 **Contre-rotation des tooltips.** Non faite. ⚠️ La raison longtemps avancée (« ils ne servent qu'en Secours/OSM ») est **fausse** : `js/tableEditor.js:1245` en pose de permanents sur la carte principale. L'impact reste faible, la décision est à reprendre sur le bon fait.
+- 🟡 **Pan sans inertie.** Le pan du mode est refait à la main (le drag de Leaflet part de travers sous rotation) : un doigt, pas d'inertie. Le geste répond donc autrement que dans le reste de l'app.
+- ✅ ~~`prefers-reduced-motion` promet une accessibilité absente~~ — **soldé en v1.97.6** : la préférence agit désormais côté JS (la vue se pose au lieu de s'animer).
+
 ## 🆕 Sujets ouverts (demandes KARMA du 01/08/2026)
 
 ### 1. 🗺️ Import depuis SIG — « Convertir depuis SIG »

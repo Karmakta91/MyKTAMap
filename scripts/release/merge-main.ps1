@@ -60,13 +60,41 @@ if ($branche -eq "main") {
 Ok "branche de travail valide"
 
 # ───────── 2. arbre propre ─────────
+# 🩸 27/09/2026 (KARMA : « je peux pas merge main car il me dit que j'ai pas
+# commité index.json — normal, je ne veux plus que data/ soit livré chez nous »)
+# — `data/` EST UNE EXCEPTION, et c'est la règle du dépôt qui le dit.
+#
+# `data/` reçoit des relevés RÉELS de terrain et ne part jamais sur le dépôt
+# public (cf `.githooks/commit-msg` + `scripts/check-data-hors-git.js`, qui
+# REFUSENT tout fichier `data/` indexé). Le piège : `data/index.json` est, lui,
+# SUIVI par Git — il porte le relevé fictif de démonstration. Dès que KARMA
+# ouvre un vrai plan, ce fichier diverge localement… et l'arbre n'est donc
+# JAMAIS propre. Ce contrôle bloquait ainsi toute release, pour la seule raison
+# que la règle de confidentialité du dépôt était respectée.
+#
+# On distingue donc deux choses que le message d'erreur confondait :
+#   • du MOTEUR non commité (js/, css/, index.html, sw.js, docs, scripts…)
+#     → bloquant, c'est le sens de ce garde-fou : on ne merge pas un travail
+#       à moitié enregistré ;
+#   • `data/` qui diverge → NORMAL, et même souhaitable. Rien n'en sera
+#     commité (le hook s'en assure) et le merge ne touche pas ces fichiers :
+#     `main` gardera sa version publique du fichier.
+# On le signale quand même, pour que ce ne soit jamais une surprise silencieuse.
 Titre "2. Arbre de travail"
-$sale = (git status --porcelain)
-if ($sale) {
-  Write-Host $sale
+$saleTout  = @(git status --porcelain)
+$saleData  = @($saleTout | Where-Object { $_ -match '^..\s+"?data/' })
+$saleMoteur = @($saleTout | Where-Object { $_ -notmatch '^..\s+"?data/' })
+if ($saleMoteur.Count -gt 0) {
+  Write-Host ($saleMoteur -join "`n")
   Stop-Net "Des fichiers ne sont ni commités ni ignorés. Commite ou remise avant de merger."
 }
-Ok "arbre propre"
+if ($saleData.Count -gt 0) {
+  Info ("arbre propre hors data/ — " + $saleData.Count + " fichier(s) data/ divergent localement :")
+  Write-Host ($saleData -join "`n")
+  Info "NORMAL : data/ ne part jamais sur le dépôt (règle CLAUDE.md), le merge n'y touche pas."
+} else {
+  Ok "arbre propre"
+}
 
 # ───────── 3. les trois sources de version ─────────
 # 🔒 Marche 1 de la porte, volet JAMAIS dérogeable : si les trois divergent,

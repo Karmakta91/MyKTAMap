@@ -7459,10 +7459,10 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-dark .kta-emergency-value        { color: #f4c542; }
 .kta-emergency-dark .kta-emergency-sub          { color: #c8d0e0; }
 .kta-emergency-dark .kta-emergency-bloc         { background: rgba(255,255,255,0.04); border-color: rgba(244,197,66,0.25); }
-.kta-emergency-dark .kta-emergency-hint         { background: rgba(255,107,107,0.08); border-color: rgba(255,107,107,0.3); color: #ffb380; }
+.kta-emergency-dark .kta-emergency-copier-btn   { background: rgba(255,255,255,0.06); border-color: rgba(244,197,66,0.45); color: #e8eaf0; }
+.kta-emergency-dark .kta-emergency-copier-btn:hover { background: rgba(255,255,255,0.12); }
 .kta-emergency-dark .kta-emergency-exit-btn     { background: #f4c542; color: #0a0d18; border-color: #f4c542; }
 .kta-emergency-dark .kta-emergency-exit-btn:hover { background: #ffd860; }
-.kta-emergency-dark .kta-emergency-theme-btn    { background: rgba(255,255,255,0.08); color: #f4c542; }
 
 /* 🔆 THÈME CLAIR — lampe d'appoint, max brightness */
 .kta-emergency-light {
@@ -7474,15 +7474,23 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-light .kta-emergency-value        { color: #b8740b; }
 .kta-emergency-light .kta-emergency-sub          { color: #2c3848; }
 .kta-emergency-light .kta-emergency-bloc         { background: rgba(0,0,0,0.04); border-color: rgba(184,116,11,0.35); }
-.kta-emergency-light .kta-emergency-hint         { background: rgba(192,57,43,0.08); border-color: rgba(192,57,43,0.35); color: #c0392b; }
+.kta-emergency-light .kta-emergency-copier-btn   { background: rgba(0,0,0,0.05); border-color: rgba(184,116,11,0.5); color: #2c3848; }
+.kta-emergency-light .kta-emergency-copier-btn:hover { background: rgba(0,0,0,0.1); }
 .kta-emergency-light .kta-emergency-exit-btn     { background: #c0392b; color: #ffffff; border-color: #c0392b; }
 .kta-emergency-light .kta-emergency-exit-btn:hover { background: #a02818; }
-.kta-emergency-light .kta-emergency-theme-btn    { background: rgba(0,0,0,0.08); color: #b8740b; }
 
 /* Layout commun aux 2 thèmes */
+/* 🗺️ 26/09/2026 (KARMA « on gagne de la place pour pas avoir de scroll et
+   une map plus grande ») : la boîte se limite à la hauteur visible et la
+   grille absorbe le reste — la minimap grandit de tout ce que le bloc meta,
+   la note rouge et le second bloc de position ont libéré, sans jamais
+   repousser le bouton de sortie hors de l'écran (cf son `sticky`, v1.97.6).
+   `max-height` ne force rien : sur un grand écran la boîte reste à sa
+   hauteur naturelle. */
 .kta-emergency-box {
   width: 100%;
   max-width: 720px;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -7490,8 +7498,9 @@ html.kta-theme-light .kta-cfg-group-titre {
 
 .kta-emergency-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 4px;
 }
 
@@ -7502,35 +7511,59 @@ html.kta-theme-light .kta-cfg-group-titre {
   text-shadow: 0 0 12px rgba(255, 107, 107, 0.5);
 }
 
-.kta-emergency-theme-btn {
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 1.5px solid currentColor;
-  border-radius: 50%;
-  background: transparent;
-  font-size: 22px;
-  cursor: pointer;
-  transition: background 0.12s;
-  font-family: inherit;
+/* 🧹 26/09/2026 — `.kta-emergency-theme-btn` et `.kta-emergency-header-actions`
+   SUPPRIMÉS avec le bouton clair/sombre : le mode urgence suit le thème de
+   l'app (`ThemeManager`), il n'a plus de contrôle à lui. */
+
+/* Nom du plan, en sous-titre du header. Une ligne, coupée si le nom est long
+   — c'est un repère, pas une donnée à lire en entier. */
+.kta-emergency-plan-nom {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
-/* 🆕 v1.11.2-fix2 : header actions = container des contrôles à droite
-   du titre. Aligne le toggle "🗺️ Itinéraire" + le bouton thème côte à côte. */
-.kta-emergency-header-actions {
+.kta-emergency-header-main {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;   /* sinon l'ellipsis du nom de plan ne peut pas s'appliquer */
 }
 
-/* Toggle "🗺️ Itinéraire" — checkbox stylée façon chip cliquable.
-   En landscape mobile (cf media query plus haut), on réduit la taille pour
-   ne pas écraser l'espace du header (déjà compact). */
+/* Les puces d'état : échelle et état matériel, alignées à droite du titre.
+   Elles remplaçent le bloc « ÉCHELLE / PLAN / ÉTAT » qui mangeait une
+   pleine largeur de grille en bas de l'écran. */
+.kta-emergency-etats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.kta-emergency-chip {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+}
 
 .kta-emergency-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Une colonne partout (la position en pleine largeur, la minimap sous
+     elle) : depuis que le bloc meta et le bloc GPS ont disparu, une
+     deuxième colonne ne laisserait qu'un trou à côté de la position.
+     La 2ème piste `1fr` donne à la minimap toute la hauteur restante. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .kta-emergency-bloc {
@@ -7584,10 +7617,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   gap: 2px;
 }
 
-.kta-emergency-bloc-meta {
-  grid-column: 1 / -1;
-}
-
 .kta-emergency-label {
   font-size: 11px;
   font-weight: 700;
@@ -7612,6 +7641,39 @@ html.kta-theme-light .kta-cfg-group-titre {
   font-size: 12.5px;
   font-style: italic;
   margin-top: 2px;
+}
+
+/* 📋 Copier sa position pour l'envoyer dès qu'on capte.
+   🧹 27/09/2026 (KARMA « trop grand, prend une place inutile — profite de la
+   place restante dans l'alignement de la position, en mode carré ») : le bouton
+   était pleine largeur SOUS les chiffres et coûtait 48 px de hauteur à la
+   carte. Il partage maintenant leur ligne et occupe le vide à leur droite.
+   48 px de côté : au-dessus du minimum tactile (44 px), parce que cet écran se
+   touche avec des gants. Discret en couleur — le rouge et le jaune restent à la
+   donnée et à la sortie. */
+.kta-emergency-pos-ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.kta-emergency-pos-ligne .kta-emergency-value {
+  flex: 1;
+  min-width: 0;   /* sans ça, des chiffres longs poussent le bouton hors du bloc */
+}
+.kta-emergency-copier-btn {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  font-size: 21px;
+  line-height: 1;
+  border: 1.5px solid;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+  transition: background 0.12s;
 }
 
 /* Heading bloc — texte par-dessus le minimap, donc halo prononcé pour lisibilité */
@@ -7680,6 +7742,16 @@ html.kta-theme-light .kta-cfg-group-titre {
   z-index: 0;
   border-radius: inherit;
   overflow: hidden;  /* clip Leaflet tiles à l'arrondi */
+}
+
+/* 🧭 v1.97.6 — minimap orientée (mode « plan orienté » activé).
+   Le conteneur tourne : il doit donc déborder de sa boîte, sinon ses coins
+   se vident en diagonale. Le parent, lui, garde `overflow: hidden`, donc
+   rien ne dépasse à l'écran. 1,6× couvre la diagonale d'un carré (√2) avec
+   la marge d'un rectangle. */
+.kta-emergency-mini-map.kta-em-mini-map-tournee {
+  inset: -30%;
+  border-radius: 0;
 }
 
 /* 🔧 v1.10.2-fix4 (KARMA "affiche les roads c'est utile pour trouver son
@@ -7815,29 +7887,18 @@ html.kta-theme-light .kta-cfg-group-titre {
 }
 
 
-/* Meta bloc — lignes label / value */
-.kta-emergency-meta-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 14px;
-  padding: 4px 0;
-  border-bottom: 1px dashed rgba(127, 127, 127, 0.2);
-}
-.kta-emergency-meta-row:last-child { border-bottom: none; }
-.kta-emergency-meta-label { font-weight: 600; letter-spacing: 0.04em; }
-.kta-emergency-meta-value { font-family: "SF Mono", Monaco, Consolas, monospace; }
-
-/* Hint */
-.kta-emergency-hint {
-  font-size: 13px;
-  line-height: 1.5;
-  padding: 12px 16px;
-  border: 1.5px solid;
-  border-radius: 8px;
-}
-
 /* Bouton sortir — gros et visible */
+/* 🩸 v1.97.6 — LE SEUL BOUTON DE SORTIE D'UN ÉCRAN DE PANIQUE DEMANDAIT UN
+   SCROLL. Mesuré : bas du bouton à 853 px pour 844 de haut en 390×844, et
+   823 pour 800 en 1100×800 — sur les DEUX formats. La boîte déborde (le
+   « safe center » ci-dessus le prévoit et rend le scroll possible), mais
+   c'est précisément le bouton qu'il ne faut pas avoir à chercher.
+   `sticky` le colle au bas de la zone visible sans rien changer au flux
+   quand la boîte tient à l'écran. */
 .kta-emergency-exit-btn {
+  position: sticky;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  z-index: 2;
   padding: 18px 20px;
   font-size: 16px;
   font-weight: 800;
@@ -7852,7 +7913,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 
 /* Mobile compact : grille 1 colonne, heading bloc plus compact */
 @media (max-width: 540px) {
-  .kta-emergency-grid       { grid-template-columns: 1fr; }
   .kta-emergency-titre      { font-size: 19px; }
   .kta-emergency-value      { font-size: 26px; }
   .kta-emergency-pos-gps    { font-size: 18px; }
@@ -7860,6 +7920,18 @@ html.kta-theme-light .kta-cfg-group-titre {
   .kta-emergency-heading-card { font-size: 22px; }
   .kta-emergency-bloc-heading { min-height: 260px; }
   .kta-emergency-exit-btn   { padding: 16px; font-size: 14px; }
+}
+
+/* 📱 27/09/2026 — TRÈS PETIT ÉCRAN (320 px : iPhone SE 1re génération, et
+   tout téléphone en affichage zoomé). Mesuré avant cette règle : 50 px de
+   défilement, dont l'essentiel vient du PLANCHER de la mini-carte (260 px) et
+   non du bouton de copie. Le bouton de sortie restait atteignable (il est
+   collant), mais un écran de panique ne devrait rien faire défiler du tout. */
+@media (max-width: 360px) {
+  .kta-emergency-bloc-heading { min-height: 200px; }
+  .kta-emergency-copier-btn   { width: 44px; height: 44px; font-size: 19px; }
+  .kta-emergency-value        { font-size: 23px; }
+  .kta-emergency-pos-gps      { font-size: 16.5px; }
 }
 
 /* 🆕 v1.11.2-fix (KARMA "décalage en horizontal mode urgence") : layout
@@ -7870,7 +7942,12 @@ html.kta-theme-light .kta-cfg-group-titre {
 @media (max-height: 500px) and (orientation: landscape) {
   .kta-emergency-overlay    { padding: 8px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
   .kta-emergency-box        { max-width: none; gap: 8px; }
-  .kta-emergency-grid       { grid-template-columns: 1fr 1fr; gap: 8px; }
+  /* 🗺️ 26/09/2026 : position à gauche, minimap à droite sur TOUTE la
+     hauteur — en paysage bas, l'empilement vertical ne laissait que
+     160 px de carte. */
+  .kta-emergency-grid       { grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+                              grid-template-rows: minmax(0, 1fr); gap: 8px; }
+  .kta-emergency-bloc-heading { grid-column: 2 / 3; grid-row: 1; }
   .kta-emergency-titre      { font-size: 17px; }
   .kta-emergency-value      { font-size: 22px; }
   .kta-emergency-pos-gps    { font-size: 16px; }
@@ -7879,10 +7956,10 @@ html.kta-theme-light .kta-cfg-group-titre {
   .kta-emergency-bloc       { padding: 8px 10px; }
   .kta-emergency-bloc-heading { min-height: 160px; }
   .kta-emergency-exit-btn   { padding: 10px; font-size: 12px; }
+  .kta-emergency-copier-btn { width: 40px; height: 40px; font-size: 18px; }
   .kta-emergency-mini-map   { min-height: 140px; }
-  /* Toggle "🗺️ Itinéraire" réduit en landscape pour ne pas surcharger header */
-  .kta-emergency-header-actions { gap: 8px; }
-  .kta-emergency-theme-btn { width: 36px; height: 36px; font-size: 18px; }
+  .kta-emergency-chip       { font-size: 10.5px; }
+  .kta-emergency-plan-nom   { font-size: 12px; }
 }
 
 /* =====================================================================
@@ -22125,3 +22202,105 @@ body.kta-theme-light .kta-impm-nom,
 html.kta-theme-light .kta-impm-nom { color: #1a1f2e; }
 body.kta-theme-light .kta-impm-intro,
 html.kta-theme-light .kta-impm-intro { color: #3a4256; }
+
+/* ============================================================
+   🧭 v1.97.0 — Mode « plan orienté » (la carte tourne)
+   ============================================================
+   Le pane INTERCALAIRE porte la rotation de la vue. Il est inséré par
+   js/mapBearing.js entre `.leaflet-map-pane` et ses enfants : le map-pane
+   porte le `translate3d` de Leaflet, et une rotation posée sur le MÊME
+   élément ferait pivoter ce vecteur de translation (mesuré : 918 px
+   d'erreur à 45° après un simple pan). Taille nulle + position absolue,
+   comme les panes Leaflet : il ne participe à aucun layout.
+
+   `--kta-bearing` (posé sur le conteneur de la carte) porte l'angle courant.
+   Tout ce qui doit RESTER LISIBLE le contre-tourne.
+
+   ⚠️ La contre-rotation se pose sur un ENFANT, jamais sur l'élément que
+   Leaflet positionne (`.leaflet-marker-icon`, `.leaflet-popup`) : ces
+   éléments portent un `transform` de positionnement, et une rotation posée
+   dessus pivote la translation (même piège que le pane, et même leçon que
+   l'icône tracker en v158 → divIcon en v159).
+   ============================================================ */
+
+.kta-rotate-pane {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Contre-rotation : labels de mesure (l'enfant du divIcon) */
+.kta-bearing-on .kta-measure-seg-label,
+.kta-bearing-on .kta-measure-angle-label {
+  transform: rotate(calc(-1 * var(--kta-bearing, 0deg)));
+  transform-origin: 50% 50%;
+}
+
+/* Contre-rotation des popups. La bulle ET sa pointe pivotent autour du même
+   point — le bas, qui est l'ancrage sur le POI — donc la popup reste
+   accrochée au point tout en redevenant lisible.
+   La croix de fermeture, elle, est un FRERE du contenu dans la structure de
+   Leaflet : elle ne peut pas heriter de la contre-rotation. mapBearing.js
+   l'adopte dans le contenu a l'ouverture de la popup, et les regles
+   ci-dessous la replacent dans son nouveau parent. */
+.kta-bearing-on .leaflet-popup-content-wrapper,
+.kta-bearing-on .leaflet-popup-tip-container {
+  transform: rotate(calc(-1 * var(--kta-bearing, 0deg)));
+  transform-origin: 50% 100%;
+}
+.kta-bearing-on .leaflet-popup-content-wrapper {
+  position: relative;
+}
+.kta-bearing-on .leaflet-popup-content-wrapper > .leaflet-popup-close-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+/* Bouton « recentrer » — apparaît seulement si le suivi a été désarmé.
+   Hors du conteneur de la carte : il ne doit pas tourner avec elle. */
+.kta-bearing-recentrer {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--kta-statusbar-h, 52px) + env(safe-area-inset-bottom, 0px) + 14px);
+  z-index: 1100;
+  padding: 8px 16px;
+  border: 1px solid #f4c542;
+  border-radius: 20px;
+  background: rgba(26, 31, 46, 0.94);
+  color: #f4c542;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+.kta-bearing-recentrer:hover { background: rgba(38, 45, 66, 0.96); }
+
+body.kta-theme-light .kta-bearing-recentrer,
+html.kta-theme-light .kta-bearing-recentrer {
+  background: rgba(255, 255, 255, 0.96);
+  color: #8a6d00;
+}
+
+/* ♿ Accessibilité — `prefers-reduced-motion` est pris en charge CÔTÉ JS
+   (`js/mapBearing.js > _mouvementReduit`) : la vue se pose directement au
+   bon angle au lieu de s'animer. Ce bloc-ci ne contenait qu'un
+   `transition: none` sur un bouton qui n'en déclare aucune — un no-op qui
+   annonçait une prise en charge inexistante. La règle est donc ici pour la
+   seule chose qu'elle peut faire, et le commentaire ne promet plus rien
+   d'autre. */
+@media (prefers-reduced-motion: reduce) {
+  .kta-bearing-recentrer { transition: none; }
+}
+
+/* 🧭 v1.97.0 — Mode « plan orienté » : le pan est refait à la main (le drag
+   de Leaflet part de travers sous rotation), donc `dragging` est désactivé —
+   ce qui retire la classe `leaflet-touch-drag` et rend au navigateur le
+   droit de scroller la page au doigt. On le lui reprend ici, sinon le pan
+   manuel est inutilisable sur mobile. */
+.leaflet-container.kta-bearing-lock {
+  touch-action: none;
+}

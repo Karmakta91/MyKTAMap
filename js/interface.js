@@ -2467,6 +2467,29 @@ function initInterface() {
         }
       },
       {
+        // 🧭 v1.97.0 — Mode « plan orienté » : pendant le tracking, c'est la
+        // CARTE qui tourne pour que la marche pointe vers le haut de l'écran
+        // (convention GPS auto), au lieu de l'icône qui pivote sur un plan
+        // fixe. Réglage d'appareil, persisté, OFF par défaut. Le mode ne
+        // s'anime que tracking en cours — le toggle se pose donc à l'avance.
+        icone: "🗺️",
+        titre: window.I18n.t("ui.subaction.planOriente"),
+        section: "outils",
+        isActive: function() {
+          return !!(window.MapBearing && window.MapBearing.isEnabled());
+        },
+        onClick: function(btnSub) {
+          if (!window.MapBearing) return;
+          const actif = !window.MapBearing.isEnabled();
+          window.MapBearing.setEnabled(actif);
+          btnSub.classList.toggle("kta-actif", actif);
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(actif ? window.I18n.t("bearing.toastOn")
+                                            : window.I18n.t("bearing.toastOff"), "info");
+          }
+        }
+      },
+      {
         icone: "📍",
         titre: window.I18n.t("ui.subaction.recalage"),
         section: "suivi",

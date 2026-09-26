@@ -2040,7 +2040,12 @@ function _markerInViewportPadded(marker, padFraction) {
   if (!window.map || !marker) return true;
   try {
     const pad = (padFraction != null) ? padFraction : 0.1;
-    const b = window.map.getBounds().pad(pad);
+    // 🧭 v1.97.3 — sous rotation, `getBounds()` rend le rectangle NON tourné :
+    // des markers bien visibles au bord en sortaient. `zoneVisible()` rend
+    // l'empreinte réelle de l'écran ; hors mode, c'est `getBounds()`.
+    const base = (window.MapBearing && window.MapBearing.zoneVisible
+                  ? window.MapBearing.zoneVisible(0) : null) || window.map.getBounds();
+    const b = base.pad(pad);
     return b.contains(marker.getLatLng());
   } catch(e) { return true; }
 }
@@ -3230,3 +3235,49 @@ window.telechargerPlan = telechargerPlan;
 
   document.addEventListener("keydown", _onKeydown);
 })();
+
+// =====================================================================
+// 📋 window.ktaCopierTexte(txt) → Promise<boolean>
+// =====================================================================
+// 26/09/2026 — le presse-papier était recopié à la main dans SEPT modules
+// (`debug`, `homeConfig`, `interfaceDocs` ×2, `lostMode`, `memInspector`,
+// `osmCoords`, `secoursMode`), chacun avec son propre repli. Le mode urgence
+// devait être le huitième : il devient le premier consommateur d'un helper.
+//
+// ⚠️ LES DEUX CHEMINS SONT NÉCESSAIRES. `navigator.clipboard` exige un
+// contexte sécurisé (HTTPS ou localhost) ET un geste utilisateur : en HTTP
+// local — le mode de déploiement d'une instance de secours sur un réseau
+// isolé — il jette. `execCommand("copy")` est déprécié mais reste le seul
+// qui marche partout : on ne prive pas quelqu'un de ses coordonnées parce que
+// le navigateur fait la fine bouche.
+//
+// 📌 Les 7 sites existants ne sont PAS migrés ici (ce n'était pas la
+// demande) — consigné au BACKLOG.
+window.ktaCopierTexte = function (txt) {
+  const s = String(txt == null ? "" : txt);
+  if (!s) return Promise.resolve(false);
+  const repli = function () {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = s;
+      ta.setAttribute("readonly", "readonly");
+      // Hors flux ET hors écran : un textarea visible ferait sauter la vue sur
+      // mobile (le focus scrolle), et `opacity:0` seul reste dans le flux.
+      ta.style.cssText = "position:fixed;top:-1000px;left:-1000px;opacity:0;";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, s.length);   // iOS ignore select() seul
+      const ok = document.execCommand("copy");
+      ta.remove();
+      return !!ok;
+    } catch (e) { return false; }
+  };
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      return navigator.clipboard.writeText(s)
+        .then(function () { return true; })
+        .catch(function () { return repli(); });
+    }
+  } catch (e) { /* accès à navigator.clipboard lui-même peut jeter en iframe */ }
+  return Promise.resolve(repli());
+};

@@ -19,6 +19,15 @@
 //   1. EMBARQUÉ : plan-config.json > plan.histoirePdf = "data/histoire.pdf"
 //      → résolu via RUNTIME_ASSETS (extraction eager dans whitelist 2-pass
 //        d'extraireZip v1.34.10+). Le bouton "Importer" est CACHÉ.
+//      📕 26/09/2026 (KARMA « si j'ai intégré un PDF dans un zip à la
+//        génération, il ne remonte pas dans Mon Carnet > Récits ») : au
+//        chargement du plan, chaque document embarqué est COPIÉ dans l'IDB
+//        (`syncDocsEmbarques`). Il devient un document comme les autres —
+//        donc visible dans le Carnet, qui lit l'IDB SANS charger le plan, et
+//        **supprimable**. Le rouvrir depuis son plan le recrée : c'est le
+//        comportement demandé, et il dispense d'une liste de pierres
+//        tombales. L'affichage direct de l'embarqué reste en REPLI si la
+//        copie échoue (quota, navigation privée, fetch KO).
 //   2. IMPORTÉ EN SESSION (v1.34.20) : si plan n'a pas histoirePdf embarqué,
 //      l'user peut importer son propre PDF via file picker. Stocké en IDB
 //      `myktamap_histoire_pdfs` (1 PDF max par plan, remplaçable). Bouton
@@ -159,6 +168,94 @@
     }).catch(function() { return null; });
   }
 
+  // 📕 26/09/2026 — COPIE D'UN DOCUMENT LIVRÉ AVEC LE PLAN.
+  // Id DÉTERMINISTE (`embed_<planId>_<rang>`) + `put` : le plan peut être
+  // rechargé dix fois sans jamais créer de doublon, et une copie supprimée
+  // par l'utilisateur revient à la prochaine ouverture du plan.
+  const EMBED_DOC_PREFIX = "embed_";
+  function _idEmbed(planId, rang) {
+    return EMBED_DOC_PREFIX + String(planId) + "_" + rang;
+  }
+
+  function _idbPoser(rec) {
+    return _idbOpen().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        try {
+          const req = db.transaction(IDB_STORE, "readwrite").objectStore(IDB_STORE).put(rec);
+          req.onsuccess = function() { resolve(rec); };
+          req.onerror   = function() { reject(req.error); };
+        } catch(e) { reject(e); }
+      });
+    });
+  }
+
+  // Copie les documents embarqués du plan COURANT qui ne sont pas déjà en base.
+  // Appelée à la fin du chargement d'un plan (`main.js`), jamais bloquante :
+  // tout échec laisse l'affichage direct de l'embarqué prendre le relais.
+  function syncDocsEmbarques() {
+    const embarques = _getEmbeddedPdfUrls();
+    if (!embarques.length) return Promise.resolve(0);
+    const planId = _currentPlanId();
+    if (!planId || planId === "default") return Promise.resolve(0);
+
+    return _idbListe(planId).then(function(docs) {
+      const parRang = {};
+      let octets = 0;
+      docs.forEach(function(d) {
+        octets += Number(d.size) || 0;
+        if (d.embarque && d.embedIdx !== undefined && d.embedIdx !== null) parRang[d.embedIdx] = true;
+      });
+
+      // Un plan qui livrerait 30 documents ne doit pas remplir la base à lui
+      // seul : mêmes plafonds que pour un import manuel (nombre ET poids).
+      let places = MAX_DOCS_PAR_PLAN - docs.length;
+      const aFaire = [];
+      embarques.forEach(function(e, i) {
+        if (parRang[i]) return;              // déjà copié : on ne refetch MÊME PAS
+        if (places <= 0) return;
+        places--;
+        aFaire.push({ rang: i, url: e.url, name: e.name });
+      });
+      if (!aFaire.length) return 0;
+
+      let posees = 0;
+      return aFaire.reduce(function(chaine, item) {
+        return chaine.then(function() {
+          return fetch(item.url).then(function(r) {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r.blob();
+          }).then(function(blob) {
+            const taille = blob.size || 0;
+            if (octets + taille > MAX_TOTAL_BYTES) {
+              console.warn("[ModeHistoire] copie embarquée ignorée (plafond de poids) :", item.name);
+              return;
+            }
+            octets += taille;
+            return _idbPoser({
+              id:       _idEmbed(planId, item.rang),
+              planId:   String(planId),
+              blob:     blob,
+              name:     item.name || "histoire.pdf",
+              size:     taille,
+              addedAt:  Date.now(),
+              embarque: true,      // → libellé « livré avec le plan »
+              embedIdx: item.rang  // → sert à ne PAS afficher l'embarqué en double
+            }).then(function() { posees++; });
+          }).catch(function(e) {
+            // Rien de fatal : l'onglet Histoire affichera l'embarqué en direct.
+            console.warn("[ModeHistoire] copie de « " + item.name + " » impossible :", e);
+          });
+        });
+      }, Promise.resolve()).then(function() {
+        if (posees) console.log("[ModeHistoire] " + posees + " document(s) du plan copié(s) — visibles dans le Carnet");
+        return posees;
+      });
+    }).catch(function(e) {
+      console.warn("[ModeHistoire] synchro des documents embarqués échouée :", e);
+      return 0;
+    });
+  }
+
   function _idbAjouter(planId, blob, name) {
     return _idbOpen().then(function(db) {
       return new Promise(function(resolve, reject) {
@@ -278,7 +375,8 @@
       }
       _pdfBlobUrl = URL.createObjectURL(rec.blob);
       _sessionPdfMeta = { id: rec.id, name: rec.name, size: rec.size };
-      return { url: _pdfBlobUrl, name: rec.name, size: rec.size, id: rec.id };
+      return { url: _pdfBlobUrl, name: rec.name, size: rec.size, id: rec.id,
+               fourni: !!rec.embarque };
     });
   }
 
@@ -658,11 +756,23 @@
 
     _docsImportes().then(function(docs) {
       const liste = [];
+      // 📕 26/09/2026 — un document embarqué DÉJÀ COPIÉ en base ne doit pas
+      // apparaître deux fois : la copie le représente, et c'est elle qui est
+      // supprimable. L'entrée « embarquée » ci-dessous n'est plus qu'un REPLI,
+      // pour le cas où la copie n'a pas pu se faire.
+      const copies = {};
+      docs.forEach(function(d) {
+        if (d.embarque && d.embedIdx !== undefined && d.embedIdx !== null) copies[d.embedIdx] = true;
+      });
       embarques.forEach(function(e, i) {
+        if (copies[i]) return;
         liste.push({ id: EMBED_ID + i, name: (embarques.length > 1 ? "📕 " + e.name : window.I18n.t("histoire.pdf.embarque")),
                      size: 0, embarque: true, url: e.url, nomFichier: e.name });
       });
-      docs.forEach(function(d) { liste.push({ id: d.id, name: d.name, size: d.size, embarque: false }); });
+      docs.forEach(function(d) {
+        liste.push({ id: d.id, name: (d.embarque ? "📕 " + d.name : d.name),
+                     size: d.size, embarque: false });
+      });
 
       _renderDocsListe(liste);
 
@@ -694,9 +804,10 @@
       _urlDeDoc(sel.id).then(function(info) {
         if (!info) { _docSelectionne = null; _renderPdf({ force: true }); return; }
         if (meta) {
-          meta.textContent = window.I18n.t("histoire.pdf.meta", {
-            name: info.name, kb: Math.round((info.size || 0) / 1024)
-          });
+          meta.textContent = window.I18n.t(
+            info.fourni ? "histoire.pdf.metaFourni" : "histoire.pdf.meta", {
+              name: info.name, kb: Math.round((info.size || 0) / 1024)
+            });
         }
         _displayPdfInWrap(info.url, info.name);
       });
@@ -879,6 +990,9 @@
   MH.isOpen             = isOpen;
   MH._onPlanSwitch      = _onPlanSwitch;
   MH.importSessionData  = importSessionData;  // 🆕 v1.34.29
+
+  // 📕 26/09/2026 — appelée par `main.js` à la fin du chargement d'un plan.
+  MH.syncDocsEmbarques = syncDocsEmbarques;
 
   window.ModeHistoire = MH;
 

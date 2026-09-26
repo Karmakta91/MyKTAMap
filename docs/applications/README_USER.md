@@ -695,7 +695,7 @@ Le **Mode Histoire** (note libre + PDF) vit dans l'écran d'un plan : pour relir
 - la liste montre chaque plan ayant une note ou un PDF, avec un extrait de la note ;
 - ouvrir une fiche affiche la note **mise en forme** (Markdown) et permet de la **modifier sur place** — c'est bien la même note que dans le Mode Histoire du plan, pas une copie ;
 - les **documents PDF** du plan sont listés : clic pour ouvrir, 🗑️ pour supprimer, **➕ Ajouter un PDF** pour en joindre un nouveau — le tout sans charger le plan.
-- ⚠️ Un PDF **livré dans le ZIP du plan** n'apparaît pas ici : il faut charger le plan pour le consulter (Mode Histoire).
+- 📕 Un PDF **livré dans le ZIP du plan** apparaît ici aussi, dès que tu as ouvert ce plan **une fois** : l'app en garde une copie sur ton appareil. Tu peux la supprimer comme un document à toi ; rouvrir le plan la remet.
 
 **Bon à savoir :**
 - Le carnet **démarre vide** : il ne peut pas reconstituer les sorties d'avant son arrivée, elles n'ont jamais été enregistrées en tant que telles.
@@ -866,13 +866,16 @@ La note supporte le **Markdown** :
 - Clique sur **👁 Aperçu** pour revoir le rendu.
 - Tout MD que tu tapes (`**gras**`, `# Titre`, `- item`…) est interprété au rendu.
 
+> 🎨 **Icônes de tes plans (v1.97.9)** — si tu as généré des plans entre juin et septembre 2026, l'icône « Point d'entrée du plan » pouvait ne rien afficher : l'app la remplace maintenant par celle qu'elle embarque, et **régénérer le plan** répare le fichier pour de bon. Au passage, ouvrir un plan **régénéré** ne déclenche plus la vingtaine de requêtes inutiles qu'il fallait pour retrouver ses icônes.
+
 ### 📚 Histoire (PDF) — **plusieurs documents par plan**
 
 Tu peux maintenant garder **jusqu'à 10 documents PDF par plan**. Rapport de 2019, plan papier scanné, article de presse, relevé topo : tout tient au même endroit.
 
 - Une **liste de documents** s'affiche au-dessus de la visionneuse dès qu'il y en a plusieurs ; clique un document pour l'ouvrir.
 - **📥 Importer** ajoute un document (il ne remplace rien). **🗑️ Retirer** supprime celui qui est affiché.
-- L'auteur du plan peut embarquer des PDF dans le ZIP — **plusieurs** (le Générateur accepte maintenant une liste de fichiers) : ils apparaissent en tête de liste (📕), consultables, non supprimables (seul le générateur peut les changer). Leur présence ne t'empêche pas d'ajouter tes propres documents.
+- L'auteur du plan peut embarquer des PDF dans le ZIP — **plusieurs** (le Générateur accepte maintenant une liste de fichiers) : ils apparaissent en tête de liste (📕). Leur présence ne t'empêche pas d'ajouter tes propres documents.
+- 📕 **Ces documents du plan sont recopiés sur ton appareil** à la première ouverture : c'est ce qui les fait apparaître dans **📔 Mon carnet → 📖 Récits** sans charger le plan. Tu peux les **retirer** comme les tiens — et si tu rouvres le plan, ils reviennent (c'est le plan qui les fournit).
 - Garde-fous : **10 documents maximum** par plan, avertissement au-delà de **25 Mo** cumulés, refus au-delà de **100 Mo**. L'espace occupé apparaît dans **Stockage**.
 - Sur iPhone, un bouton **↗️ Ouvrir dans un onglet** sort le document en plein écran natif si l'affichage intégré n'est pas dispo.
 - Tes documents sont aussi listés, ajoutables et supprimables depuis **📔 Mon carnet → 📖 Récits**, sans charger le plan.
@@ -1216,6 +1219,19 @@ Appuyez sur **▶️** pour démarrer.
 **Au premier démarrage de la session**, une popup d'avertissement s'affiche pour rappeler que le tracker est un **module expérimental** : il sert à valider le calibrage / la détection de pas / la formule de heading, **pas à se localiser réellement**. Cliquez sur **« J'ai compris — Démarrer »** pour continuer (la popup ne réapparaîtra plus avant le prochain reload de la page). Sur Mobile, la demande de permission iOS / Android pour les capteurs s'affiche ensuite — acceptez-la.
 
 Une icône apparaît sur le plan à votre position de départ. Elle se déplace au fur et à mesure de votre marche, et un tracé enregistre votre chemin parcouru.
+
+
+> #### 🧭 « Plan orienté » — la carte tourne avec toi
+>
+> Dans le menu 🧭 Tracker, la tuile **🗺️ Plan orienté** change la façon dont la carte se comporte pendant le suivi : au lieu que l'icône pivote sur un plan fixe, **c'est la carte qui tourne**, pour que ta direction de marche pointe toujours vers le haut de l'écran (comme un GPS de voiture).
+>
+> - **Désactivé par défaut**, et ton choix est retenu sur cet appareil.
+> - Ça ne tourne **que pendant le suivi** : à l'arrêt du tracker, la carte revient droite.
+> - La carte **te suit** : si tu la déplaces à la main pour regarder ailleurs, un bouton **🎯 Recentrer** apparaît pour revenir sur toi (il apparaît aussi sans ce mode, dès que ta position sort de l'écran).
+> - Les textes restent lisibles : les mesures et les fiches de points ne se retournent pas avec la carte.
+> - La carte se remet droite toute seule dès que tu prends un outil qui demande de cliquer (mesure, dessin, recalage) ou que tu ouvres un mode plein écran.
+>
+> ⚠️ La rotation suit ta boussole : **près de grandes masses métalliques** (rails, ferraillage, structures), elle peut devenir approximative — comme le reste du tracker.
 
 > 🧭 **Icône directionnelle** : pendant le tracking actif, l'icône (cône bleu + dot blanc, style GPS) **tourne en temps réel pour pointer dans la direction de marche** — calculée depuis le heading du téléphone (même source que la boussole 🧭). Au repos (tracker arrêté ou recalage seul), l'icône pointe Nord (pose neutre). Smoothing intégré pour éviter le tremblement.
 
@@ -1590,14 +1606,17 @@ Le mode ⛑️ inclut un **bloc dépliable "📚 Bonnes pratiques"** en haut de 
 
 Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique" plein écran qui regroupe en un coup d'œil :
 
-- 📍 **Position XL** : coordonnées plan affichées en énorme caractères (lisible à un mètre du téléphone)
+- 📍 **Une seule position, en énorme** (lisible à un mètre du téléphone) : les coordonnées **GPS** si ton plan est géoréférencé — ce sont celles qu'on dicte à des secours — sinon la position **X / Y du plan**. Jamais les deux : le titre du bloc dit laquelle tu lis. Sous les chiffres, une ligne précise si c'est ta position suivie, ta dernière position connue, ou la **position de départ du plan jamais confirmée**.
 - 🧭 **Boussole géante** : cap (sens de marche) avec aiguille tournée en temps réel, mise à jour live via les capteurs d'orientation du téléphone
 - 🗺️ **Minimap auto-focus** : zoom serré (~20-50 m d'horizon) centré en permanence sur ta position. Affiche en arrière-plan les **roads / zones / structures du plan** — utile pour repérer chemins, sorties, dangers à proximité immédiate
-- ☑️ **Toggle 🗺️ Itinéraire** : checkbox dans l'en-tête. Par défaut **décochée** (protection anti-crash sur très gros plans). Coche-la pour réafficher ton itinéraire actif dans la minimap — rendu en **cyan vif + halo blanc** pour rester visible sur le fond zoomé serré. Préférence persistée entre 2 ouvertures du mode urgence.
-- 🔋 **Batterie** : le bloc 🔋 ÉTAT affiche le niveau de batterie en temps réel quand l'API est dispo (Chromium uniquement). Critique en mode panique — tu sais immédiatement combien de temps il te reste avant que le tel ne s'éteigne.
-- 🌗 **Thèmes** : sombre par défaut, clair en option (selon l'environnement extérieur — pénombre vs lumière vive)
+  Elle utilise les **couleurs de ta légende** : si tu as repeint un type ou créé tes propres types, tu les reconnais ici comme sur la carte.
+  Ton **itinéraire actif** y est toujours tracé (cyan vif + halo blanc, pour rester visible sur ce fond très zoomé), et la carte **s'oriente** comme la carte principale si tu as activé le mode « plan orienté ».
+- 📋 **« Copier ma position »** : un bouton carré **à droite des chiffres** (les chiffres eux-mêmes marchent aussi — c'est là que le doigt va d'abord). Il devient ✅ le temps de te confirmer la copie. Si ton plan est géoréférencé, il copie **les coordonnées seules** — `48.823328, 2.322915` — le format qui se colle tel quel dans un SMS, dans Google Maps ou dans Plans, sans rien avoir à nettoyer. Sinon il copie le **nom du plan et ta position X/Y**, qui ne parle qu'à quelqu'un qui a le même plan. À garder sous la main dès que tu captes un peu de réseau. ⚠️ *Le doute reste à l'écran, pas dans le message : si ta position n'a jamais été confirmée, la ligne sous les chiffres te le dit — dis-le aussi à qui tu écris.*
+- 🔋 **Une ligne d'état en haut à droite** : ton **niveau de batterie** (seulement si ton navigateur l'expose et si tu n'as pas décoché le réglage — sinon rien du tout, pas de « ? » ; critique ici : tu sais combien de temps il te reste avant que le téléphone s'éteigne), l'état du **tracker** et celui de la **boussole**. Le **nom du plan** est juste sous le titre 🚨. *L'échelle du plan n'y est plus (v1.97.11) : c'est un chiffre de calibrage, il se lit dans ⚙️ Réglages, pas quand on cherche où l'on est.*
+- 🌗 **Thème** : l'écran suit celui de l'app (sombre ou clair). Il n'y a plus de bouton dédié — un seul réglage, dans ⚙️ Réglages.
 - 🔋 **Wake Lock** : l'écran ne s'éteint pas automatiquement tant que le mode est actif (pas besoin de toucher le téléphone toutes les 30 sec pour le réveiller)
-- 📱 **Paysage** : la minimap se recadre correctement quand tu tournes le téléphone à l'horizontale ou inverses le portrait — fini les décalages au passage rotation.
+- 📱 **Paysage** : la minimap se recadre correctement quand tu tournes le téléphone, et la mise en page change — position à gauche, carte à droite sur toute la hauteur.
+- 🗺️ **Tout tient dans un écran** : plus rien à faire défiler, et **la carte prend toute la place gagnée** (mesuré : elle a doublé de hauteur sur un téléphone en portrait).
 
 **Quand l'utiliser ?**
 - Tu paniques à un croisement et tu as besoin de te re-orienter rapidement
@@ -1607,7 +1626,7 @@ Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique"
 
 **Permissions** : la première fois, le navigateur demande l'accès aux **capteurs d'orientation** du téléphone (pour la boussole). Accepte — sans ça, la boussole reste figée.
 
-**Sortie** : appuie sur le ✕ en haut à droite pour fermer le mode.
+**Sortie** : le gros bouton **↩️ SORTIR DU MODE URGENCE** en bas de l'écran — il reste collé en bas, tu n'as jamais à le chercher. Sur ordinateur, la touche **Échap** fait la même chose.
 
 ### 🚨 Mode Secours
 
@@ -2227,7 +2246,7 @@ L'app utilise l'**API Battery Status** standard du navigateur. Cette API n'est *
 | Safari iOS / macOS | ❌ Non (l'API a été retirée pour des raisons de privacy / fingerprinting) |
 | Firefox récent | ❌ Non (l'API a été désactivée par défaut) |
 
-> 🪫 **Si l'API n'est pas dispo** sur ton téléphone, la chip batterie est **simplement masquée** — aucun message d'erreur ne s'affiche. C'est normal sur iOS. Tu vois quand même le niveau dans le mode urgence si tu tiens à l'avoir en grand.
+> 🪫 **Si l'API n'est pas dispo** sur ton téléphone, la chip batterie est **simplement masquée** — aucun message d'erreur ne s'affiche. C'est normal sur iOS. **Le mode urgence 🚨 ne l'affiche pas non plus** (v1.97.11) : sans capteur il n'y a rien à montrer, et un « ? » à la place d'un niveau de batterie sur l'écran qu'on ouvre quand elle lâche ne rassure personne. Le reste de l'état (tracker, boussole) est intact. Même chose si tu décoches ⚙️ **🔋 Niveau de batterie**.
 
 ---
 

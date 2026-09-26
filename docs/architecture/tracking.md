@@ -932,3 +932,114 @@ avertissement) — constat M5 de l'audit, hors lot 1.
 ⚠️ **Non reproductible au harnais** : le refus iOS demande un appareil. À valider sur iPhone avant release.
 
 🛡️ **Garde-fou** : `scripts/check-position-confirmee.js` (pré-commit bloquant) vérifie les points d'écriture du drapeau, les deux remises à zéro, la règle dans `declencher()` et `itineraireYAller`, la transmission de l'origine par « Tracer », la Promise de `requestPermission` attendue par `_doStart`, la classe commune du floater et les clés i18n ×3. Falsifié 4× sur une copie mutée (`node scripts/check-position-confirmee.js <racine>`).
+
+---
+
+### 🧭 Mode « plan orienté » — la carte tourne, pas l'icône (`js/mapBearing.js`, v1.97.0)
+
+Pendant le tracking, au lieu de faire pivoter l'icône du tracker dans un plan fixe, on fait pivoter **toute la vue** pour que la direction de marche pointe vers le haut de l'écran (convention GPS auto, dite *heading-up*). **OFF par défaut**, activable par la tuile 🗺️ de la modale 🧭 Tracker, persisté dans `localStorage["myktamap_map_bearing_v1"]` (préférence d'appareil, pas de plan → rien à déclarer dans `config.js`).
+
+#### 🩸 Le piège qui a coûté la première implémentation
+
+Poser la rotation sur `.leaflet-map-pane` **semble marcher** — tant que la carte n'a jamais été panée. Mesuré au prototype : **414 px d'erreur à 30°, 918 px à 45°** dès que le pane porte un `translate3d` non nul.
+
+**Cause** : les propriétés CSS individuelles (`rotate`) s'appliquent **avant** `transform` (ordre spec : translate → rotate → scale → transform). Sur un élément que Leaflet positionne en `translate3d`, la rotation fait pivoter **le vecteur de translation lui-même**.
+
+**La parade** : un **pane intercalaire** `.kta-rotate-pane`, inséré entre le map-pane et ses enfants. Il ne porte aucun transform de Leaflet, donc sa rotation est pure. Mesuré : **0,00 px** d'écart sur 6 angles, après pan **et** après zoom animé. (C'est la structure qu'utilise aussi le plugin `leaflet-rotate` — on y arrive par le même chemin, sans patcher le cœur de Leaflet.)
+
+⚠️ **Le même piège vaut pour toute contre-rotation** : elle se pose sur un **enfant**, jamais sur `.leaflet-marker-icon` ni `.leaflet-popup`. Forcer `transform-origin: 50% 50%` **ne suffit pas** (436 px de dérive mesurés) — c'est exactement la leçon de l'icône tracker en v158 → `divIcon` en v159 (cf §28).
+
+⚠️ **`transform-origin` est exprimé en layerPoint** : il dérive à chaque pan/zoom (53 px d'erreur après un simple pan). D'où la réapplication branchée sur `move`/`zoom`, avec la garde portée **par la map** (`map._ktaBearingHooked`), jamais par `window` — la carte est remplacée à chaque plan chargé (cf `scripts/check-map-listeners.js`).
+
+#### Ce qui tourne, ce qui reste droit
+
+| Tourne | Reste droit |
+|---|---|
+| fond de plan, tuiles, tracés/zones/structures (canvas), **icônes POI** (décision KARMA), heatmap, calques calibrés | contrôles Leaflet (ils vivent hors du map-pane → **gratuit**), labels de mesure, contenu des popups (contre-rotation CSS via `--kta-bearing`) |
+
+**L'icône du tracker se règle toute seule** : elle porte déjà `rotate(+cap)` (§28) et la vue tourne de `-cap` → somme nulle, elle pointe vers le haut de l'écran, c'est-à-dire la direction de marche. Rien à neutraliser.
+
+#### Réglages du cap — pourquoi ils diffèrent de ceux de l'icône
+
+| | Icône tracker (§28) | Vue entière |
+|---|---|---|
+| Lissage | α = 0,25 | **α = 0,12** |
+| Seuil en marche | 2° | **2°** |
+| Seuil à l'arrêt | — | **15°** |
+| Vitesse | — | **90 °/s** (plafond) |
+
+Une icône de 30 px qui frémit se tolère ; un plan entier qui frémit donne la nausée — d'où le lissage plus mou et le plafond de vitesse.
+
+🩸 **Le gel à l'arrêt a été supprimé (retour terrain KARMA, 24/09/2026).** La v1 figeait la vue après 2,5 s sans pas détecté, pour empêcher le magnétomètre de la faire pivoter pendant une pause. Reproduit au harnais : en **tournant sur place sans avancer**, la vue restait bloquée **6,3 secondes** pendant que le cap faisait 140° ; avec des pas mal détectés, des gels de 1,8 s. Vu de l'utilisateur : « ça tourne, ça bugue et ça s'arrête, puis ça reprend ».
+
+Le défaut était de conception, pas d'implémentation : **on s'arrête précisément pour se réorienter** — c'est le moment où la rotation est la plus utile. À la place, deux seuils : on suit **toujours**, mais il faut une intention claire (15°) quand aucun pas n'a été détecté depuis 2,5 s. Mesuré : une rotation sur place de 90° est suivie à 7° près, et un magnétomètre bruité à ±8° ne fait pas bouger la vue d'un degré. Conséquence acceptée : à l'arrêt, la vue ne rejoint le cap qu'à moins de 15° près.
+
+⚠️ Ces quatre valeurs sont des **réglages de départ, pas des mesures de terrain**. Elles se règlent avec un retour de marche réelle (cf `docs/ETUDE_PODOMETRE.md` §2 sur la qualité du cap).
+
+#### Gestes sous rotation — un seul patch, sur le point d'entrée
+
+Leaflet convertit un geste sans connaître l'angle : jusqu'à **200 px d'écart à 90°** entre ce qu'on voit et ce qu'il calcule. Un clic sur un tracé tombait à côté, un clic dans le vide réveillait le tracé d'ailleurs.
+
+🩸 **On ne patche que `mouseEventToContainerPoint`**, le point d'entrée des gestes, qui rend le point « dé-tourné ». Tout ce qui lit un geste en dérive et devient juste : `mouseEventToLayerPoint`, `mouseEventToLatLng`, le hit-test du renderer canvas, les handlers `map.on("click")`, le pinch-zoom.
+
+Le premier essai patchait `containerPointToLayerPoint` — plus général, et **faux** : `L.Renderer._update()` s'en sert pour calculer le coin de son canvas, que le patch faisait alors *tourner* au lieu de l'agrandir. Les coins de l'écran cessaient d'être peints. Le checkup l'a vu (T9 au rouge) ; à l'œil, ça n'aurait été qu'un tracé qui s'arrête bizarrement, à cent lieues de sa cause.
+
+⚠️ Le patch vit sur le **prototype de `L.Map`**, donc il est vu par les 5 autres cartes de l'app (Vue OSM, minimap d'urgence, Secours, picker de calage, aperçu HOME). Il se retire de lui-même : hors carte principale, ou dès que l'angle est nul, il rend exactement ce que rendait Leaflet. Vérifié par le checkup (T12).
+
+`latLngToContainerPoint` n'est **pas** patché : seul l'`autoPan` des popups s'en sert, et le décalage y est sans conséquence.
+
+#### Pan et zoom pendant le mode
+
+Le drag de Leaflet déplace le map-pane d'un offset **écran** ; la rotation vivant sous ce pane, la carte partait de travers de l'angle courant (mesuré : doigt à 0° → carte à 45°). Plutôt que de patcher `L.Draggable` — partagé par les poignées, les marqueurs déplaçables et les autres cartes — `dragging` reste désactivé pendant le mode et **le pan est refait à la main** dans le bon repère : un doigt, pas d'inertie, deux doigts laissent la main au pinch-zoom. Un pan manuel désarme le suivi et fait apparaître 🎯 **Recentrer**.
+
+🩸 **Le bas-centre de l'écran est un carrefour** : `.kta-ipl-back-float` (« ↩️ Retour » d'un saut de portail, 84 px), `.kta-ipr-next-float` (74 px), `.kta-north-picker-overlay` (80 px) et les floaters d'outils y vivent déjà. 🎯 Recentrer ne fixe donc **aucune hauteur** : il mesure les flottants visibles et se place au-dessus du plus haut, un `MutationObserver` sur les enfants directs de `<html>` le replaçant quand ils vont et viennent. Tout nouveau flottant du bas s'ajoute à `FLOATERS_BAS` dans `mapBearing.js`.
+
+🩸 **Piège mobile** : `dragging.disable()` retire la classe `leaflet-touch-drag`, et le conteneur retombe alors en `touch-action: pan-x pan-y` — au doigt, le **navigateur** scrolle la page au lieu de laisser le pan manuel agir. La classe `kta-bearing-lock`, posée pendant le mode, lui rend `touch-action: none`. Invisible au clavier/souris : ça ne se voit qu'au doigt, ou dans le checkup.
+
+Le zoom reste **entièrement celui de Leaflet** : on ne touche plus à ses options.
+
+🩸 **Ces trois options ont valu `"center"` jusqu'en v1.97.4, et c'était un bug** (constat KARMA : « avec les boutons aucun problème, au doigt ça bugue »). Je les avais forcées **avant** de patcher `mouseEventToContainerPoint`, par crainte que le point visé soit mal converti sous rotation ; une fois le patch posé, la prudence n'avait plus d'objet, mais l'option est restée. Conséquence : le zoom se faisait au centre de l'écran au lieu de se faire entre les doigts, et pincer ailleurs faisait glisser toute la carte — **95 px mesurés**, contre 27 px une fois rendues à Leaflet.
+
+🩸 **Et le pan à un doigt volait le début du pincement** : entre la pose du premier doigt et celle du second, le premier glisse toujours de quelques pixels — assez pour franchir le seuil d'engagement de 6 px et déplacer la carte (21 unités mesurées) avant que Leaflet ne voie un geste à deux doigts. Le pan **restaure donc le centre** dès qu'un second doigt se pose.
+
+⚠️ **Le bon critère de test n'est pas « le point pincé ne bouge pas »** : Leaflet arrondit le zoom à l'entier, donc il bouge toujours un peu — 27 px, **mode désactivé compris**. On mesure l'écart au comportement de référence (T19), sinon on court après un zéro impossible.
+
+#### Frontières : on LIT l'état des autres modes
+
+Le mode s'éteint tout seul si : le tracking s'arrête, un mode « clic carte » est armé (`_modeClicCarteActif()` — dessin, mesure, recalage, pickers), ou un mode plein écran est ouvert (Mode perdu, Présentation, Secours, Urgence, Replay).
+
+🩸 Ces modes ne sont **pas** appelés à faire `suspend()`/`resume()` : chacun a ses retours anticipés et ses fermetures défensives (Secours appelle `fermer()` au début d'`ouvrir()`, Replay abandonne si la timeline fait moins de 2 points, Présentation sort si déjà active). Un couple suspend/resume posé là-dedans se déséquilibre au premier chemin oublié — et **une suspension jamais levée est invisible** : la carte cesse simplement de tourner, sans message. `MapBearing._modePleinEcranActif()` lit donc leur état, ce qui ne peut pas dériver. `suspend(raison)`/`resume(raison)` restent exposés pour un futur appelant sans état lisible, indexés **par raison** (et non par compteur) pour la même raison.
+
+Le redressement est **immédiat** (pas animé) quand le mode devient inapplicable : ce qui vient de le désactiver, c'est souvent un outil qui attend un clic — redresser en 2 s laisserait l'utilisateur cliquer pendant la rotation.
+
+#### Culling
+
+Le viewport penché déborde son propre rectangle : sans marge élargie, des tracés disparaissent dans les coins **dès 10°** de rotation. `MapBearing.padCull(base)` porte le padding de 0,1 à **0,45** quand la vue tourne — branché dans `road.js` (2 endroits) et `utils.js > _markerInViewportPadded` (qui couvre aussi les markers éditeur et data layers).
+
+Le **canvas du renderer** a le même défaut pour la même raison : dimensionné au viewport + 10 %, il ne couvre plus les coins une fois la vue tournée. `MapBearing` recalcule donc son `padding` **sur la taille réelle du viewport** — `(diagonale / petit côté − 1) / 2`, soit 0,36 en 1100×800 et jusqu'à **0,62 en portrait téléphone** — et seulement pendant le mode, car le canvas grandit d'autant : **×1,8 à ×3,5 en surface**. C'est le poste à surveiller côté mémoire sur gros plan tuilé (`OOMGuard`), et la raison pour laquelle ce padding n'est pas figé en permanence. Il passe par `map._renderer` (champ privé de Leaflet) et est restitué à l'arrêt.
+
+#### 🩸 Les tuiles manquantes au dézoom (régression v1.97.0, corrigée en v1.97.1)
+
+Signalé en terrain : sur un plan de 16332 px, **au dézoom à fond uniquement**, des pans entiers du fond restaient noirs. Les logs disaient pourtant `[Tiling V2] Niveau z=-2 — 56 tuiles affichées`, **sans aucune manquante** : tout était résolu, extrait et posé sur la carte. Le défaut n'était ni dans le ZIP, ni dans la génération, ni dans la résolution d'URL — il était au **rendu**, et il venait du pane de rotation.
+
+**Mécanisme** : le tuilage V2 met sur la carte **toutes** les tuiles du niveau, même hors écran (à z=-2 sur ce plan : 4083 × 3000 px de contenu pour un écran de 430 px). Sans rotation, le navigateur ne peint que la partie visible. Sous un pane transformé, iOS doit composer tout le sous-arbre en une couche et renonce à en peindre une partie au-delà de ses limites de texture. D'où les trois « uniquement » du signalement : **au dézoom à fond** (c'est le seul zoom où le niveau `minNativeZoom` est rendu), **sur les grands plans** (la surface), **mode actif** (la couche).
+
+**Parade** : pendant le mode, `MapBearing` retire de la carte les tuiles qui ne croisent pas la zone visible, et les y remet dès que la vue se redresse.
+
+🩸 **Et la marge de cette zone ne peut PAS être une constante (v1.97.3).** Trois marges cohabitaient ici ; la formule juste avait été dérivée **une seule fois**, pour le canvas du renderer, et deux constantes posées au doigt ailleurs (0,35 tuiles, 0,45 tracés/POI). Or la valeur requise vaut `(grand côté / petit côté − 1)/2` : **0,19** en 1100×800 — le format du checkup — mais **0,58** sur un iPhone en portrait. Mesuré sur 430×932 : **17,2 % de l'écran jamais peint** à 90°, et 112 points sur 200 pris au bord de l'écran tenus pour hors vue. `MapBearing.zoneVisible(pad)` rend donc la **boîte englobante des quatre coins réels** de la vue (coins du conteneur dé-tournés comme dans le patch des gestes) : exacte à tout format, moins chère qu'une marge élargie, et **identique à `getBounds()` hors rotation**. Consommée par `road.js` (×2) et `utils.js` ; `padCull` a disparu.
+
+🩸 **Le pan manuel doit reposer la contrainte de `maxBounds` (v1.97.3).** `panBy({animate:false})` passe par `_rawPanBy`, qui ne limite pas le centre : la vue s'échappait des limites du plan et le zoom suivant la ramenait d'un coup (150 unités mesurées après 60 pans). D'où `panInsideBounds` après chaque pan, comme le fait le drag natif. Il ne réintègre **que** celles qu'il a retirées (drapeau `_ktaCulled` sur l'overlay) — une tuile masquée par le filtre multi-niveau doit le rester. Mesuré au harnais : 25 tuiles → 4 pendant la rotation, 25 au retour à plat.
+
+⚠️ **Non prouvé sur l'appareil** : le harnais est Chromium. Il démontre que la surface à composer est réduite d'un ordre de grandeur, pas que Safari s'en satisfait.
+
+🔎 **Trouvé au passage, non corrigé** : au tout premier rendu, `[Tiling V2] Niveau z=NaN — 0 tuiles affichées` — le tuilage s'initialise avant que la carte ait une vue. Ce rendu fantôme **consomme le drapeau « premier rendu »**, si bien que `attendusPremier` vaut 0 et que le repli de sécurité de v1.86.0 (« toutes les tuiles ont échoué → afficher l'image entière ») ne peut plus jamais se déclencher. Antérieur à ce chantier, à traiter à part.
+
+#### Garde-fou
+
+`node scripts/smoke/checkup-plan-oriente.js` — checkup de release, joue le mode dans l'app réelle sur le plan de test : état par défaut, **géométrie après pan** (le cas qui a cassé la 1re implémentation), contrôles droits, contre-rotation des textes sans dérive, redressement sous mode clic-carte et sous mode plein écran, culling élargi, et restitution complète à l'arrêt (vue droite, drag rendu, `pointer-events` rendus, choix utilisateur conservé). Il couvre aussi le clic sur un tracé à sa position visible (et l'absence de réponse de son ancien fantôme), le sens du pan, la non-contamination des autres cartes, et fige le correctif du gel : **tourner sur place sans avancer doit faire tourner la vue**, et un magnétomètre bruité à l'arrêt ne doit pas la faire dériver.
+
+⚠️ **Piège du harnais, tombé deux fois** : les écouteurs d'orientation sont attachés par `requestPermission()`, pas par `startTracking()`. Un test qui simule un événement `deviceorientation` sans l'avoir appelé ne fait rien — et passe au vert en mesurant son propre silence. Tout nouveau test de cap doit commencer par `await window.requestPermission()`.
+
+#### Non couvert en v1.97.0
+
+Contre-rotation des **tooltips** (⚠️ `tableEditor.js:1245` en pose de **permanents sur la carte principale** — la raison longtemps avancée, « ils ne servent qu'en Secours/OSM », était fausse ; l'impact reste faible, mais la décision doit se reprendre sur ce fait), inertie du pan, **indicateur de Nord à l'écran** (le manque ergonomique le plus visible), **validation iOS/Safari** (le harnais est Chromium), et **validation terrain du confort de rotation** (le cap lui-même est tenu pour fiable hors zones très ferraillées — retour terrain KARMA).

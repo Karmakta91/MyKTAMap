@@ -697,7 +697,7 @@ In practice: you start at **A**, pass through **C**, then reach **B** → the ap
 - the list shows every plan that has a note or a PDF, with an excerpt of the note;
 - opening a sheet shows the note **formatted** (Markdown) and lets you **edit it right there** — it is the very same note as in the plan's Story mode, not a copy;
 - the plan's **PDF documents** are listed: click to open, 🗑️ to delete, **➕ Add a PDF** to attach a new one — all without loading the plan.
-- ⚠️ A PDF **shipped inside the plan's ZIP** does not appear here: you must load the plan to read it (Story mode).
+- 📕 A PDF **shipped inside the map's ZIP** shows up here too, as soon as you have opened that map **once**: the app keeps a copy on your device. You can delete it like one of your own documents; reopening the map brings it back.
 
 **Good to know:**
 - The logbook **starts empty**: it cannot reconstruct trips from before it existed, they were never recorded as such.
@@ -870,13 +870,16 @@ The note supports **Markdown**:
 - Tap **👁 Preview** to switch back to the rendered view.
 - Any MD you type (`**bold**`, `# Title`, `- item`…) is interpreted on render.
 
+> 🎨 **Your maps' icons (v1.97.9)** — if you generated maps between June and September 2026, the "Map entry point" icon could show nothing: the app now falls back to its own built-in one, and **regenerating the map** fixes the file for good. Also, opening a **regenerated** map no longer fires the twenty-odd useless requests it took to locate its icons.
+
 ### 📚 Story (PDF) — **several documents per plan**
 
 You can now keep **up to 10 PDF documents per plan**. A 2019 report, a scanned paper map, a press article, a survey sheet: all in the same place.
 
 - A **document list** appears above the viewer as soon as there is more than one; click a document to open it.
 - **📥 Import** adds a document (it replaces nothing). **🗑️ Remove** deletes the one being displayed.
-- The plan author can embed PDFs in the ZIP — **several** (the Generator now accepts a list of files): they appear at the top of the list (📕), readable, not deletable (only the generator can change them). Their presence does not prevent you from adding your own documents.
+- The map author can embed PDFs in the ZIP — **several** (the Generator now accepts a list of files): they appear at the top of the list (📕). Their presence does not prevent you from adding your own documents.
+- 📕 **Those map documents are copied onto your device** the first time you open the map: that is what makes them show up in **📔 My logbook → 📖 Stories** without loading anything. You can **remove** them like your own — and if you reopen the map, they come back (the map provides them).
 - Guardrails: **10 documents maximum** per plan, warning past **25 MB** total, refusal past **100 MB**. The space used shows up in **Storage**.
 - On iPhone, an **↗️ Open in a tab** button kicks a document into native fullscreen if the inline view isn't available.
 - Your documents are also listed, added and deleted from **📔 My logbook → 📖 Stories**, without loading the plan.
@@ -1214,6 +1217,19 @@ Press **▶️** to start.
 **On the first start of the session**, a warning popup appears to remind you that the tracker is an **experimental module**: it's used to validate the calibration / step detection / heading formula, **not to actually locate yourself**. Click **"Understood — Start"** to continue (the popup won't reappear before the next page reload). On Mobile, the iOS / Android permission request for sensors appears next — accept it.
 
 An icon appears on the map at your starting position. It moves as you walk, and a path records the route you've traveled.
+
+
+> #### 🧭 "Oriented map" — the map turns with you
+>
+> In the 🧭 Tracker menu, the **🗺️ Oriented map** tile changes how the map behaves while tracking: instead of the icon spinning on a fixed map, **the map itself turns**, so that your walking direction always points to the top of the screen (like a car GPS).
+>
+> - **Off by default**, and your choice is remembered on this device.
+> - It only turns **while tracking**: when you stop the tracker, the map goes back upright.
+> - The map **follows you**: if you drag it aside to look elsewhere, a **🎯 Recenter** button appears to bring you back (it also appears without this mode, as soon as your position leaves the screen).
+> - Text stays readable: measurements and point cards do not turn upside down with the map.
+> - The map straightens by itself as soon as you pick a tool that needs a tap on the map (measure, draw, realign) or open a full-screen mode.
+>
+> ⚠️ The rotation follows your compass: **near large metal masses** (rails, rebar, structures) it can become approximate — like the rest of the tracker.
 
 > 🧭 **Directional icon**: during active tracking, the icon (blue cone + white dot, GPS style) **rotates in real time to point in the walking direction** — calculated from the phone's heading (same source as the compass 🧭). At rest (tracker stopped or recalibration only), the icon points North (neutral pose). Built-in smoothing to avoid jitter.
 
@@ -1580,14 +1596,17 @@ The ⛑️ mode includes a **collapsible block "📚 Good practices"** at the to
 
 The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic" mode that gathers at a glance:
 
-- 📍 **XL Position**: map coordinates displayed in huge characters (readable from a meter away from the phone)
+- 📍 **One position only, huge** (readable from a meter away): **GPS** coordinates if your map is georeferenced — those are the ones you read out to rescuers — otherwise the **X / Y position on the map**. Never both: the block title tells you which one you are reading. Below the figures, a line states whether this is your tracked position, your last known position, or the **map's starting position, never confirmed**.
 - 🧭 **Giant compass**: heading (walking direction) with needle rotating in real time, updated live via the phone's orientation sensors
 - 🗺️ **Auto-focus minimap**: tight zoom (~20-50 m horizon) permanently centered on your position. Displays in the background the **roads / zones / structures of the map** — useful to spot paths, exits, dangers in the immediate vicinity
-- ☑️ **🗺️ Route toggle**: checkbox in the header. **Unchecked** by default (anti-crash protection on very large maps). Check it to redisplay your active route in the minimap — rendered in **bright cyan + white halo** to remain visible on the tight zoomed background. Preference persisted between 2 openings of emergency mode.
-- 🔋 **Battery**: the 🔋 STATUS block now displays the battery level in real time when the API is available (Chromium only). Critical in panic mode — you immediately know how much time you have left before the phone shuts down.
-- 🌗 **Themes**: dark by default, light optional (depending on the outside environment — dim vs bright light)
+  It uses **your legend's colours**: if you recoloured a type or created your own types, you recognise them here just like on the map.
+  Your **active route** is always drawn on it (bright cyan + white halo, to stay visible on that tightly zoomed background), and the map **rotates** like the main map if you enabled "oriented map" mode.
+- 📋 **“Copy my position”**: a square button **to the right of the figures** (tapping the figures works too — that is where your finger goes first). It turns into ✅ while it confirms the copy. If your map is georeferenced it copies **the coordinates alone** — `48.823328, 2.322915` — the format that pastes straight into a text message, Google Maps or Apple Maps with nothing to clean up. Otherwise it copies the **map name and your X/Y position**, which only means something to someone holding the same map. Worth having ready the moment you catch any signal. ⚠️ *The doubt stays on screen, not in the message: if your position was never confirmed, the line under the figures says so — say it too, to whoever you write.*
+- 🔋 **One status line at the top right**: your **battery level** (only if your browser exposes it and you have not unticked the setting — otherwise nothing at all, no “?”; critical here: you know how long you have before the phone shuts down), the **tracker** state and the **compass** state. The **map name** sits right under the 🚨 title. *The map scale is gone (v1.97.11): it is a calibration figure, it belongs in ⚙️ Settings, not on the screen where you are looking for yourself.*
+- 🌗 **Theme**: the screen follows the app's own (dark or light). There is no dedicated button any more — one setting, in ⚙️ Settings.
 - 🔋 **Wake Lock**: the screen does not turn off automatically while the mode is active (no need to touch the phone every 30 sec to wake it up)
-- 📱 **Landscape**: the minimap reframes correctly when you turn the phone horizontally or flip the portrait — no more shifts on rotation transition.
+- 📱 **Landscape**: the minimap reframes correctly when you turn the phone, and the layout changes — position on the left, map on the right over the full height.
+- 🗺️ **Everything fits on one screen**: nothing to scroll any more, and **the map takes all the room freed up** (measured: its height doubled on a phone in portrait).
 
 **When to use it?**
 - You panic at an intersection and need to re-orient yourself quickly
@@ -1597,7 +1616,7 @@ The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic
 
 **Permissions**: the first time, the browser requests access to the phone's **orientation sensors** (for the compass). Accept — without that, the compass stays frozen.
 
-**Exit**: press the ✕ at the top right to close the mode.
+**Exit**: the large **↩️ EXIT EMERGENCY MODE** button at the bottom of the screen — it stays stuck to the bottom, you never have to hunt for it. On a computer, the **Esc** key does the same.
 
 > ⚠️ As with all digital tools underground: **keep a physical compass** and a paper map in your pocket. The phone can fail, the magnetometer can be distorted by local metal, the tracker can drift. The 🚨 is a quick info reading aid, not a substitute for preparation.
 
@@ -2221,7 +2240,7 @@ The app uses the standard browser **Battery Status API**. This API is **no longe
 | Safari iOS / macOS | ❌ No (the API was removed for privacy / fingerprinting reasons) |
 | Recent Firefox | ❌ No (the API was disabled by default) |
 
-> 🪫 **If the API is not available** on your phone, the battery chip is **simply hidden** — no error message is displayed. This is normal on iOS. You still see the level in emergency mode if you want to have it in large size.
+> 🪫 **If the API is not available** on your phone, the battery chip is **simply hidden** — no error message is displayed. This is normal on iOS. **Emergency mode 🚨 does not show it either** (v1.97.11): with no sensor there is nothing to show, and a “?” where a battery level belongs — on the very screen you open when it dies — reassures nobody. The rest of the status (tracker, compass) is untouched. Same thing if you untick ⚙️ **🔋 Battery level**.
 
 ---
 

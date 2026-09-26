@@ -10,7 +10,13 @@
 // =========================
 // Bouton "panique" qui affiche un écran simplifié plein écran avec les infos
 // VITALES en GROS :
-//   - Position tracker (px du plan OU GPS lat/lng si calibrage KMZ dispo)
+//   - Position tracker : GPS lat/lng si le plan est calibré KMZ, sinon px du
+//     plan — UN SEUL des deux depuis le 26/09/2026 (KARMA)
+//   - 📋 Bouton COPIER la position (26/09/2026, KARMA « pour les envoyer si on
+//     trouve un point de réseau ») : GPS → « lat, lng » NU, le format qu'un
+//     SMS, une app de carte ou une équipe de secours comprennent sans rien
+//     retirer. Plan non géoréférencé → nom du plan + X/Y, qui ne sert qu'à
+//     quelqu'un qui a le MÊME plan, et c'est dit tel quel.
 //   - Heading boussole en temps réel (gros chiffres + flèche compas)
 //   - Échelle plan
 //   - Bouton "Sortir" gros et visible
@@ -65,6 +71,9 @@
   // identique mais le CSS anime toujours par le chemin court).
   let _compassUnwrapped = null;
   let _compassLastRaw   = null;
+  // 🩸 v1.97.6 — vrai seulement quand les rotors de la boussole ont été
+  // RÉELLEMENT posés (la minimap naît 100 ms après le premier tick).
+  let _rotorsPoses      = false;
 
   // 🆕 v1.10.2 (KARMA "afficher dans le carré de la boussole derrière,
   // l'endroit où on est localisé sur la carte en zoom max et auto focus") :
@@ -87,6 +96,37 @@
   function _formatXY(pos) {
     if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") return null;
     return Math.round(pos.x) + "  /  " + Math.round(pos.y);
+  }
+
+  // 🌍 Transform de calibrage KMZ du plan courant, ou null.
+  //
+  // 🐛 v1.21.1 (audit fix #1, critique sécurité) : avant on cherchait
+  // `calib.transform` qui n'est JAMAIS persisté par KmzExport.setCalibration
+  // (qui stocke uniquement {pointA, pointB}). Clone exact du bug fix4 dans
+  // gpxIO.js. Conséquence : le bloc GPS du mode urgence ÉTAIT TOUJOURS MASQUÉ,
+  // même pour un plan calibré. Pile la situation où l'user en a besoin
+  // (perdu en cata, secours à guider).
+  // Fix : construire le transform à la demande via KmzExport.buildTransform
+  // (pattern identique à gpxIO.js > _getTransform après v1.21.0-fix4).
+  //
+  // 📍 26/09/2026 : extrait de `_tick` sans changement de logique — le
+  // bloc position doit savoir s'il y a du GPS avant de choisir son label.
+  function _transformCalib() {
+    const planId = window._currentLoadedPlanId || "default";
+    const calib  = (window.KmzExport && typeof window.KmzExport.getCalibration === "function")
+                   ? window.KmzExport.getCalibration(planId) : null;
+    if (!calib || !calib.pointA || !calib.pointB
+        || typeof window.KmzExport.buildTransform !== "function") return null;
+    const pA = calib.pointA, pB = calib.pointB;
+    const _isNum = function(v) { return typeof v === "number" && Number.isFinite(v); };
+    if (!(_isNum(pA.x) && _isNum(pA.y) && _isNum(pA.lat) && _isNum(pA.lng)
+          && _isNum(pB.x) && _isNum(pB.y) && _isNum(pB.lat) && _isNum(pB.lng))) return null;
+    try {
+      return window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+    } catch(e) {
+      // Calibrage présent mais dégénéré (points colinéaires, etc.)
+      return null;
+    }
   }
 
   function _formatGPS(transform, pos) {
@@ -115,6 +155,76 @@
     };
   }
 
+  // 📋 26/09/2026 (KARMA : « on devrait avoir la possibilité de copier les
+  // coordonnées GPS de notre position, pour les envoyer si on trouve un point
+  // de réseau ») — CE QU'ON MET DANS LE PRESSE-PAPIER.
+  //
+  // ⚠️ Coordonnées NUES pour le GPS : « 48.823328, 2.322915 ». Pas d'heure, pas
+  // de cap, pas de nom de plan — c'est ce qui se colle tel quel dans un SMS,
+  // dans Google Maps ou dans Plans. Y ajouter du texte casse le collage dans
+  // une app de carte, et sur l'écran où on est perdu ce serait le pire moment
+  // pour découvrir qu'il faut nettoyer la chaîne à la main.
+  // Le doute sur la position (« jamais confirmée ») reste À L'ÉCRAN, sous les
+  // chiffres : il se dit à la personne, il ne se colle pas dans le message.
+  //
+  // Plan NON géoréférencé : un X/Y ne veut rien dire pour un tiers, mais tout
+  // pour un binôme qui a le même plan — on préfixe donc par le nom du plan.
+  function _texteACopier() {
+    const pos = (typeof window.getTrackingPosition === "function") ? window.getTrackingPosition() : null;
+    if (!pos) return null;
+    const t = _transformCalib();
+    if (t) {
+      const gps = (window.KmzExport && typeof window.KmzExport.planToGps === "function")
+        ? window.KmzExport.planToGps(t, pos.x, pos.y) : null;
+      if (gps && typeof gps.lat === "number" && typeof gps.lng === "number"
+          && Number.isFinite(gps.lat) && Number.isFinite(gps.lng)) {
+        return gps.lat.toFixed(6) + ", " + gps.lng.toFixed(6);
+      }
+    }
+    const xy = _formatXY(pos);
+    if (!xy) return null;
+    const nom = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "";
+    return (nom ? nom + " — " : "") + "X " + Math.round(pos.x) + " / Y " + Math.round(pos.y);
+  }
+
+  // Le retour tient dans le bouton lui-même : pas de toast à chercher, pas de
+  // modale à fermer. Deux secondes, puis il redevient ce qu'il était.
+  // 📋 27/09/2026 : le bouton est un CARRÉ, donc son contenu est un seul
+  // caractère — la phrase, elle, passe dans l'infobulle et dans `aria-label`,
+  // où un lecteur d'écran la lit. Un « ✅ Copié » complet ferait grandir le
+  // bouton, c'est-à-dire annulerait ce qu'on vient de gagner.
+  const _ICONE_COPIE = {
+    "emergency.copier":     "📋",
+    "emergency.copierOk":   "✅",
+    "emergency.copierKo":   "⚠️",
+    "emergency.copierRien": "—"
+  };
+  let _timerCopie = null;
+  function _copierPosition() {
+    const btn = document.getElementById("kta-em-copier");
+    const txt = _texteACopier();
+    const dire = function (cle) {
+      if (!btn) return;
+      btn.textContent = _ICONE_COPIE[cle] || _ICONE_COPIE["emergency.copier"];
+      btn.title = window.I18n.t(cle);
+      btn.setAttribute("aria-label", window.I18n.t(cle));
+      if (_timerCopie) clearTimeout(_timerCopie);
+      _timerCopie = setTimeout(function () {
+        const b = document.getElementById("kta-em-copier");
+        if (!b) return;
+        b.textContent = _ICONE_COPIE["emergency.copier"];
+        b.title = window.I18n.t("emergency.copier");
+        b.setAttribute("aria-label", window.I18n.t("emergency.copier"));
+      }, 2000);
+    };
+    if (!txt) { dire("emergency.copierRien"); return; }
+    if (typeof window.ktaCopierTexte !== "function") { dire("emergency.copierKo"); return; }
+    window.ktaCopierTexte(txt).then(function (ok) {
+      dire(ok ? "emergency.copierOk" : "emergency.copierKo");
+      if (ok) console.log("[Emergency] position copiée : " + txt);
+    });
+  }
+
   // ============================================================
   // UI
   // ============================================================
@@ -125,29 +235,61 @@
     overlay.className = "kta-emergency-overlay kta-emergency-" + _theme;
     overlay.innerHTML =
       '<div class="kta-emergency-box">' +
+        // 🧹 26/09/2026 (KARMA) — LE HEADER PORTE CE QUI ÉTAIT EN BAS.
+        //
+        // Le bloc « ÉCHELLE / PLAN / ÉTAT » occupait une pleine largeur de
+        // grille en bas de l'écran pour trois lignes qu'on ne lit qu'une
+        // fois : il devient deux puces dans le header, et le nom du plan
+        // devient le sous-titre. Place rendue à la minimap, qui est la
+        // seule chose qu'on regarde vraiment quand on est perdu.
+        //
+        // 🔧 v1.13.0 : toggle 🗺️ Itinéraire RETIRÉ. L'itinéraire actif est
+        // toujours affiché dans la minimap (anti-crash JPG géré séparément
+        // par _resolveMiniMapImageSource depuis v1.12.0).
+        // 🧹 26/09/2026 : le bouton clair/sombre aussi — il datait de
+        // l'époque où seul cet écran savait s'éclairer. `activer()` lit
+        // `ThemeManager.isLight()` depuis la v1.23.0 : le mode urgence suit
+        // le thème de l'app, il n'y a plus de second réglage à comprendre.
         '<div class="kta-emergency-header">' +
-          '<span class="kta-emergency-titre">' + t("emergency.header.titre") + '</span>' +
-          '<div class="kta-emergency-header-actions">' +
-            // 🔧 v1.13.0 : toggle 🗺️ Itinéraire RETIRÉ. L'itinéraire actif
-            // est toujours affiché dans la minimap (anti-crash JPG géré
-            // séparément par _resolveMiniMapImageSource depuis v1.12.0).
-            '<button class="kta-emergency-theme-btn" id="kta-emergency-theme" title="' + t("emergency.theme.toggleTitle") + '" type="button">' +
-              (_theme === "dark" ? "🔆" : "🌑") +
-            '</button>' +
+          '<div class="kta-emergency-header-main">' +
+            '<span class="kta-emergency-titre">' + t("emergency.header.titre") + '</span>' +
+            '<span class="kta-emergency-plan-nom" id="kta-em-plan">—</span>' +
+          '</div>' +
+          // 🧹 27/09/2026 (KARMA « enlève aussi px/m du mode XL ») — l'échelle
+          // est partie : c'est un chiffre de CALIBRAGE, il se lit une fois dans
+          // ⚙️ Réglages et ne sert à rien quand on cherche où l'on est. Les
+          // distances de l'app en dépendent déjà sans qu'on ait à les convertir
+          // à la main. Il ne reste que l'état du matériel, celui qui change.
+          '<div class="kta-emergency-etats">' +
+            '<span class="kta-emergency-chip" id="kta-em-etat">—</span>' +
           '</div>' +
         '</div>' +
 
         '<div class="kta-emergency-grid">' +
 
+          // 📍 26/09/2026 (KARMA) — UNE SEULE POSITION, JAMAIS LES DEUX.
+          // Plan calibré → le bloc affiche le GPS (les seules coordonnées
+          // transmissibles à des secours) ; plan non calibré → le X/Y du
+          // plan. Le label suit la donnée (cf `_tick`). Deux couples de
+          // chiffres à lire sur un écran fait pour être compris d'un coup
+          // d'œil, quand on n'en a qu'un à donner, c'était un de trop.
           '<div class="kta-emergency-bloc">' +
-            '<div class="kta-emergency-label">' + t("emergency.label.position") + '</div>' +
-            '<div class="kta-emergency-value kta-emergency-pos-xy" id="kta-em-pos-xy">— / —</div>' +
+            '<div class="kta-emergency-label" id="kta-em-pos-label">' + t("emergency.label.position") + '</div>' +
+            // 📋 27/09/2026 (KARMA « le bouton copier est trop grand et prend une
+            // place inutile, profite de la place restante dans l'alignement de la
+            // position GPS à droite, en mode carré ») — la valeur et le bouton
+            // partagent une ligne : le bouton occupe le vide à droite des
+            // chiffres au lieu de s'ajouter sous eux. Carré de 48 px — la cible
+            // reste au-dessus du minimum tactile (44 px), parce que cet écran se
+            // touche avec des gants, une main sale, parfois en tremblant.
+            '<div class="kta-emergency-pos-ligne">' +
+              '<div class="kta-emergency-value kta-emergency-pos-xy" id="kta-em-pos-xy" ' +
+                   'title="' + t("emergency.copier.title") + '">— / —</div>' +
+              '<button class="kta-emergency-copier-btn" id="kta-em-copier" type="button" ' +
+                      'title="' + t("emergency.copier") + '" ' +
+                      'aria-label="' + t("emergency.copier") + '">📋</button>' +
+            '</div>' +
             '<div class="kta-emergency-sub" id="kta-em-pos-status"></div>' +
-          '</div>' +
-
-          '<div class="kta-emergency-bloc" id="kta-em-bloc-gps" style="display:none;">' +
-            '<div class="kta-emergency-label">' + t("emergency.label.gps") + '</div>' +
-            '<div class="kta-emergency-value kta-emergency-pos-gps" id="kta-em-pos-gps">— / —</div>' +
           '</div>' +
 
           '<div class="kta-emergency-bloc kta-emergency-bloc-heading">' +
@@ -178,27 +320,14 @@
             '</div>' +
           '</div>' +
 
-          '<div class="kta-emergency-bloc kta-emergency-bloc-meta">' +
-            '<div class="kta-emergency-meta-row">' +
-              '<span class="kta-emergency-meta-label">' + t("emergency.label.echelle") + '</span>' +
-              '<span class="kta-emergency-meta-value" id="kta-em-echelle">—</span>' +
-            '</div>' +
-            '<div class="kta-emergency-meta-row">' +
-              '<span class="kta-emergency-meta-label">' + t("emergency.label.plan") + '</span>' +
-              '<span class="kta-emergency-meta-value" id="kta-em-plan">—</span>' +
-            '</div>' +
-            '<div class="kta-emergency-meta-row">' +
-              '<span class="kta-emergency-meta-label">' + t("emergency.label.etat") + '</span>' +
-              '<span class="kta-emergency-meta-value" id="kta-em-etat">—</span>' +
-            '</div>' +
-          '</div>' +
-
         '</div>' +
 
-        '<div class="kta-emergency-hint">' +
-          t("emergency.hint") +
-        '</div>' +
-
+        // 🧹 26/09/2026 (KARMA) — l'encart rouge « ce mode désactive
+        // l'interface principale… » est RETIRÉ : quatre lignes de conseils
+        // généraux au-dessus du seul bouton de sortie, sur un écran qu'on
+        // ouvre quand on est perdu. Ce qu'il faut faire quand on est perdu
+        // vit dans la doc (Aide → Mode Secours), pas en travers de l'écran
+        // qui doit répondre « où suis-je » en une seconde.
         '<button class="kta-emergency-exit-btn" id="kta-emergency-exit" type="button">' +
           t("emergency.exitBtn") +
         '</button>' +
@@ -210,9 +339,14 @@
   function _bindOverlay() {
     if (!_overlay) return;
     document.getElementById("kta-emergency-exit").addEventListener("click", desactiver);
-    document.getElementById("kta-emergency-theme").addEventListener("click", function() {
-      setTheme(_theme === "dark" ? "light" : "dark");
-    });
+    const btnCopie = document.getElementById("kta-em-copier");
+    if (btnCopie) btnCopie.addEventListener("click", _copierPosition);
+    // Les chiffres aussi : c'est là que le doigt va d'abord.
+    const valPos = document.getElementById("kta-em-pos-xy");
+    if (valPos) {
+      valPos.style.cursor = "pointer";
+      valPos.addEventListener("click", _copierPosition);
+    }
 
     // 🔧 v1.13.0 : handlers de la toggle 🗺️ Itinéraire RETIRÉS (toggle
     // supprimée du HTML). L'itinéraire est toujours rendu dans la minimap
@@ -235,12 +369,26 @@
   function _tick() {
     if (!_overlay) return;
 
-    // 📍 Position plan (X, Y)
+    // 📍 Position : GPS si le plan est calibré, X/Y du plan sinon.
+    // JAMAIS LES DEUX (26/09/2026, KARMA) — le label du bloc suit la donnée,
+    // et le sous-titre d'état (« position de départ », « tracker actif »…)
+    // reste sous les chiffres dans les deux cas : une coordonnée GPS calculée
+    // depuis une position jamais confirmée doit le dire, c'est celle-là qu'on
+    // dicte au téléphone.
     const pos = (typeof window.getTrackingPosition === "function") ? window.getTrackingPosition() : null;
     const posEl    = document.getElementById("kta-em-pos-xy");
+    const labelEl  = document.getElementById("kta-em-pos-label");
     const statusEl = document.getElementById("kta-em-pos-status");
+    const gpsTxt   = pos ? _formatGPS(_transformCalib(), pos) : null;
+    if (labelEl) {
+      labelEl.textContent = window.I18n.t(gpsTxt ? "emergency.label.gps" : "emergency.label.position");
+    }
+    // Les floats GPS sont plus longs que deux entiers : même bloc, taille adaptée.
+    if (posEl) posEl.classList.toggle("kta-emergency-pos-gps", !!gpsTxt);
     if (pos) {
-      if (posEl) posEl.textContent = _formatXY(pos);
+      // `_formatXY` peut rendre null (position non numérique) : sans ce repli
+      // le bloc affichait le texte « null ».
+      if (posEl) posEl.textContent = gpsTxt || _formatXY(pos) || "—  /  —";
       if (statusEl) {
         const trackingActif = !!(typeof window.getTrackingActif === "function" && window.getTrackingActif());
         // 📍 B1 (audit 13/09/2026) : une position jamais confirmée est le
@@ -261,47 +409,6 @@
       if (statusEl) statusEl.textContent = window.I18n.t("emergency.status.aucunePosition");
     }
 
-    // 🌍 GPS (si calibrage KMZ dispo pour ce plan)
-    // 🐛 v1.21.1 (audit fix #1, critique sécurité) : avant on cherchait
-    // `calib.transform` qui n'est JAMAIS persisté par KmzExport.setCalibration
-    // (qui stocke uniquement {pointA, pointB}). Clone exact du bug fix4 dans
-    // gpxIO.js. Conséquence : le bloc GPS du mode urgence ÉTAIT TOUJOURS MASQUÉ,
-    // même pour un plan calibré. Pile la situation où l'user en a besoin
-    // (perdu en cata, secours à guider).
-    // Fix : construire le transform à la demande via KmzExport.buildTransform
-    // (pattern identique à gpxIO.js > _getTransform après v1.21.0-fix4).
-    const blocGps = document.getElementById("kta-em-bloc-gps");
-    const gpsEl   = document.getElementById("kta-em-pos-gps");
-    if (pos && blocGps && gpsEl) {
-      const planId = window._currentLoadedPlanId || "default";
-      const calib  = (window.KmzExport && typeof window.KmzExport.getCalibration === "function")
-                     ? window.KmzExport.getCalibration(planId) : null;
-      let _emTransform = null;
-      if (calib && calib.pointA && calib.pointB
-          && typeof window.KmzExport.buildTransform === "function") {
-        const pA = calib.pointA, pB = calib.pointB;
-        const _isNum = function(v) { return typeof v === "number" && Number.isFinite(v); };
-        if (_isNum(pA.x) && _isNum(pA.y) && _isNum(pA.lat) && _isNum(pA.lng)
-            && _isNum(pB.x) && _isNum(pB.y) && _isNum(pB.lat) && _isNum(pB.lng)) {
-          try {
-            _emTransform = window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
-          } catch(e) {
-            // Calibrage présent mais dégénéré (points colinéaires, etc.)
-            _emTransform = null;
-          }
-        }
-      }
-      if (_emTransform) {
-        const gpsTxt = _formatGPS(_emTransform, pos);
-        if (gpsTxt) {
-          blocGps.style.display = "";
-          gpsEl.textContent = gpsTxt;
-        }
-      } else {
-        blocGps.style.display = "none";
-      }
-    }
-
     // 🧭 Heading (boussole)
     // 🧭 v1.37.0 — Bascule de getCurrentHeading() (Nord vrai) vers
     // getPlanRelHeading() (Nord plan = avec offset calibré). KARMA feedback
@@ -320,7 +427,16 @@
     if (typeof heading === "number" && !isNaN(heading)) {
       // Throttle DOM update à 1° près (sinon ça flicker au moindre mouvement)
       const rounded = Math.round(heading);
-      if (rounded !== _lastHeadingShown) {
+      // 🩸 v1.97.6 — LA BOUSSOLE CONTREDISAIT SON PROPRE TEXTE.
+      // Ce garde anti-scintillement s'armait au tout premier tick, alors que
+      // la minimap (créée 100 ms plus tard) n'existait pas encore : les
+      // rotors sortaient sur `if (!iconEl) return` et on ne repassait plus
+      // jamais ici. Mesuré, cap stable à 137° : point « Nord » à midi et
+      // triangle vers le haut, pendant que les chiffres affichaient
+      // « 137° SE ». Invisible en marchant — le moindre degré répare — et
+      // bien présent dans le cas qui compte : téléphone posé, cap figé,
+      // quelqu'un qui cherche à se repérer. D'où `|| !_rotorsPoses`.
+      if (rounded !== _lastHeadingShown || !_rotorsPoses) {
         _lastHeadingShown = rounded;
         const fmt = _formatHeading(heading);
         const numEl  = document.getElementById("kta-em-heading-num");
@@ -345,12 +461,20 @@
         // le point reste au sommet (12h). Face à l'Est, le N est à GAUCHE
         // dans la perspective de marche → rotation -90° (le point passe
         // à 9h). Etc. Cohérent boussole physique tenue dans la main.
-        _updateTrackerNorthRotor(-_compassUnwrapped);
+        // Minimap tournée : elle porte elle-même l'orientation, le point
+        // Nord n'a plus à contre-tourner (sinon il compenserait deux fois).
+        const okNord = _updateTrackerNorthRotor(
+          _minimapTourne() ? 0 : -_compassUnwrapped);
         // 🔧 v1.12.0-fix (KARMA "le triangle ne tourne plus dans la
         // direction où on va, comme icône tracker") : rotation +heading
         // pour que la pointe du triangle pointe la direction de marche
         // (même convention que l'icône tracker map principale).
-        _updateTrackerTriangleRotor(_compassUnwrapped);
+        // Le triangle, lui, ne change pas : son `+cap` annule le `-cap` du
+        // conteneur — même somme nulle que l'icône du tracker sur la carte
+        // principale, il pointe donc toujours la direction de marche.
+        const okTri = _updateTrackerTriangleRotor(_compassUnwrapped);
+        _rotorsPoses = okNord && okTri;
+        _appliquerRotationMinimap(_compassUnwrapped);
       }
     } else {
       const numEl  = document.getElementById("kta-em-heading-num");
@@ -359,14 +483,8 @@
       if (cardEl) cardEl.textContent = window.I18n.t("emergency.heading.boussoleIndispo");
     }
 
-    // 📏 Échelle (statique mais peut changer au plan switch)
-    const echEl = document.getElementById("kta-em-echelle");
-    if (echEl) {
-      const scale = window.APP_CONFIG && window.APP_CONFIG.scale;
-      echEl.textContent = (typeof scale === "number" && scale > 0)
-        ? window.I18n.t("emergency.echelle.unite", { scale: scale.toFixed(2) })
-        : window.I18n.t("emergency.echelle.nonCalibree");
-    }
+    // 🧹 27/09/2026 : plus d'échelle ici (cf le gabarit). Les clés
+    // `emergency.echelle.*` ont été retirées des trois dicos avec elle.
 
     // 🗂️ Plan
     const planEl = document.getElementById("kta-em-plan");
@@ -380,6 +498,40 @@
     const etatEl = document.getElementById("kta-em-etat");
     if (etatEl) {
       const partsEtat = [];
+      // 🔋 v1.97.6 — le bloc s'appelle « ÉTAT » et son commentaire promettait
+      // « batterie si dispo » depuis toujours : elle n'y a jamais été. Sur
+      // l'écran qu'on ouvre précisément quand la batterie lâche, c'était
+      // l'information manquante la plus criante — et la fonction qui la
+      // formate existe déjà. ⚠️ « si dispo » se vérifie avec `isAvailable()`,
+      // pas avec la véracité du libellé (cf le pavé ci-dessous).
+      try {
+        // 🚨 26/09/2026 (KARMA « enlève aussi l'indicateur batterie si capteur
+        // désactivé ou non disponible ») — `isAvailable()` D'ABORD.
+        //
+        // `formatLabel()` ne rend PAS une chaîne vide quand la batterie est
+        // hors service : il rend **« ? »**, et `getEmoji()` rend **🪢** (l'état
+        // « indispo » de la v1.11.1, pensé pour que la chip de l'en-tête montre
+        // son emplacement grisé en développement). Le test `if (bat)` était donc
+        // toujours vrai, et le bloc ÉTAT affichait « 🪢 ? » — sur Safari iOS,
+        // qui n'a pas l'API, et sur tout appareil dont l'utilisateur a
+        // décoché le réglage (`APP_CONFIG.batterieEnabled`). Un point
+        // d'interrogation à la place d'un niveau de batterie, sur l'écran qu'on
+        // ouvre quand la batterie lâche : moins qu'inutile, inquiétant.
+        // L'en-tête principal masque déjà sa chip dans ce cas (v1.12.0) ; cet
+        // écran-là ne l'avait jamais fait.
+        const dispoBat = !!(window.BatteryGuard
+          && typeof window.BatteryGuard.isAvailable === "function"
+          && window.BatteryGuard.isAvailable());
+        if (dispoBat && typeof window.BatteryGuard.formatLabel === "function") {
+          const bat = window.BatteryGuard.formatLabel();
+          // 🔋/🪢/⚡ selon le niveau et la charge : `formatLabel` ne rend que
+          // « 87% », l'icône était portée par le label du bloc meta (supprimé
+          // le 26/09/2026). Mesuré sans elle : la puce commençait par « 100% ».
+          const emo = (typeof window.BatteryGuard.getEmoji === "function")
+            ? window.BatteryGuard.getEmoji() : "";
+          if (bat) partsEtat.push(emo ? (emo + " " + bat) : bat);
+        }
+      } catch(e) {}
       if (typeof window.getTrackingActif === "function" && window.getTrackingActif()) {
         partsEtat.push(window.I18n.t("emergency.etat.trackerOn"));
       } else {
@@ -500,6 +652,10 @@
     _lastHeadingShown = null;
     _compassUnwrapped = null;
     _compassLastRaw   = null;
+    // La minimap est détruite : ses rotors n'existent plus, donc la prochaine
+    // ouverture doit à nouveau les poser (sinon le garde anti-scintillement
+    // s'armerait sur un affichage qui n'a pas eu lieu).
+    _rotorsPoses      = false;
     _releaseWakeLock();
     console.log("[Emergency] Désactivé");
   }
@@ -517,10 +673,9 @@
     _theme = theme;
     if (_overlay) {
       _overlay.classList.remove("kta-emergency-dark", "kta-emergency-light");
+      // 🧹 26/09/2026 : plus de bouton clair/sombre à rafraîchir — seule
+      // la classe de thème change.
       _overlay.classList.add("kta-emergency-" + theme);
-      // Update le bouton toggle
-      const btn = document.getElementById("kta-emergency-theme");
-      if (btn) btn.textContent = (theme === "dark" ? "🔆" : "🌑");
     }
   }
 
@@ -767,10 +922,24 @@
 
     // 🫥 v1.62.0 : extension d'après le manifest (webp/png = alpha, jpg = legacy)
     const _tileExt = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(manifest) : "jpg";
+    // 🩸 v1.97.6 — LA MINIMAP N'AVAIT AUCUN FOND SUR UN PLAN SERVEUR.
+    // `RUNTIME_ASSETS` ne contient que les assets d'un plan importé en ZIP ;
+    // sur un plan servi en HTTP — le modèle de déploiement de la prod — il
+    // est VIDE. Mesuré sur un relevé tuilé : 0 tuile, 0 requête réseau, un
+    // rectangle noir, et pas même la classe `kta-em-mini-map-noimg` pour le
+    // signaler. Au même instant, la carte principale en affichait 864.
+    // Le repli serveur existe depuis la v1.86.0 dans `tiling.js` ; cet écran
+    // ne l'avait jamais reçu.
+    const _racineSrv = (typeof window.ktaRacineTuilesServeur === "function")
+      ? window.ktaRacineTuilesServeur(window.PLAN_CONFIG) : null;
     function _resolveTileUrl(z, col, k) {
       const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + _tileExt;
       const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
-      if (!asset) return null;
+      if (!asset) {
+        return _racineSrv
+          ? (_racineSrv + "/z" + z + "/x" + col + "_y" + (-k) + "." + _tileExt)
+          : null;
+      }
       if (!asset.url && asset.file) {
         try {
           asset.url = URL.createObjectURL(asset.file);
@@ -1038,6 +1207,44 @@
     }
   }
 
+  // 🎨 26/09/2026 (KARMA : « en mode XL je vois qu'on ne récupère pas les
+  // couleurs définies en légende personnalisée ») — RÉSOLVEUR DE STYLE DU MINI.
+  //
+  // Cet écran garde sa palette vive : c'est une variante DÉLIBÉRÉE, relevée et
+  // documentée en tête de `styleResolver.js` (vert #27c97e au lieu de #00ff00,
+  // hachures de l'inaccessible remplacées par un aplat rouge — « le rouge
+  // plein dit déjà danger »). Mais garder sa palette ne voulait pas dire
+  // ignorer l'utilisateur, et c'est ce qui se passait :
+  //
+  //   • une couleur CHOISIE pour un type built-in (≡ Légende → ✏️ Modifier)
+  //     n'atteignait pas la mini-carte — elle atteint la carte, les exports,
+  //     le KMZ, les pastilles, mais pas l'écran qu'on ouvre quand on est
+  //     perdu ;
+  //   • un type CUSTOM (`cust-…`) n'était dans AUCUNE des trois tables
+  //     locales, donc il tombait sur le repli : une zone custom sortait en
+  //     **gris remblais**, une structure custom en **bleu mur**, un front
+  //     custom en **jaune front-1**. Sur un relevé qui utilise des types
+  //     personnalisés, la mini-carte montrait donc autre chose que la carte.
+  //
+  // On garde donc la base locale, on laisse le canon résoudre ce qu'elle ne
+  // connaît pas (à plat : pas de motif SVG ici), on impose le gabarit du mini
+  // (épaisseurs réduites, opacités poussées pour tenir sur un fond désaturé),
+  // puis on applique la couleur choisie via la MÊME fonction que la carte.
+  function _styleMini(cat, cle, base, gabarit) {
+    let s = null;
+    if (base) {
+      s = Object.assign({}, base);
+    } else if (typeof window.ktaResolveStyle === "function") {
+      const c = window.ktaResolveStyle(cat, cle, { flat: true });
+      if (c) s = Object.assign(c, gabarit || {});
+    }
+    if (!s) return null;
+    if (typeof window.ktaAppliquerCouleurChoisie === "function") {
+      s = window.ktaAppliquerCouleurChoisie(cat, cle, s) || s;
+    }
+    return s;
+  }
+
   // 🆕 v1.10.2-fix5 : ajoute les zones (eau / remblais / effondrement /
   // inaccessible) sur le minimap. Session + embedded. Couleurs cohérentes
   // avec zones.js > ZONE_STYLES, opacité bumpée pour rester lisible sur
@@ -1067,7 +1274,9 @@
     all.forEach(function(zone) {
       if (!zone || !Array.isArray(zone.points) || zone.points.length < 3) return;
       if (!filter(zone)) return;
-      const style = STYLES[zone.type] || STYLES.remblais;
+      const style = _styleMini("zones", zone.type, STYLES[zone.type],
+                               { weight: 1.5, opacity: 0.9, fillOpacity: 0.5 })
+                    || STYLES.remblais;
       const latlngs = zone.points.map(function(p) { return [imgH - p.y, p.x]; });
       try {
         const poly = L.polygon(latlngs, Object.assign({ interactive: false }, style));
@@ -1133,9 +1342,11 @@
       if (s.points.length < minPts) return;
       const latlngs = s.points.map(function(p) { return [imgH - p.y, p.x]; });
       try {
-        const style = line
-          ? (POLYLINE_STYLES[s.type] || POLYLINE_STYLES["front-1"])
-          : (POLYGON_STYLES[s.type] || POLYGON_STYLES["mur"]);
+        const style = _styleMini("structures", s.type,
+                        line ? POLYLINE_STYLES[s.type] : POLYGON_STYLES[s.type],
+                        line ? { weight: 3.5, opacity: 1 }
+                             : { weight: 1, opacity: 0.9, fillOpacity: 0.85 })
+                      || (line ? POLYLINE_STYLES["front-1"] : POLYGON_STYLES["mur"]);
         const layer = line
           ? L.polyline(latlngs, Object.assign({ interactive: false }, style))
           : L.polygon (latlngs, Object.assign({ interactive: false }, style));
@@ -1251,7 +1462,9 @@
         pts = pts.slice(0, Math.max(2, MAX_TOTAL_POINTS - totalPointsRendered));
       }
 
-      const style = STYLES[road.type] || STYLES.chemin;
+      const style = _styleMini("traces", road.type, STYLES[road.type],
+                               { weight: 2.5, opacity: 0.95 })
+                    || STYLES.chemin;
       const latlngs = pts.map(function(p) { return [imgH - p.y, p.x]; });
       try {
         // 🔧 v1.11.4-fix2 (KARMA "toujours pas itinéraire en mode urgence") :
@@ -1343,25 +1556,60 @@
   // querySelector. Si le marker n'est pas encore monté (pas de tracker
   // position connue), on no-op silencieusement — la prochaine itération
   // après pose du marker prendra le relais.
+  // Rend TRUE seulement si le rotor existait et a été posé : c'est ce
+  // booléen qui empêche le garde anti-scintillement de s'armer sur un
+  // affichage qui n'a pas eu lieu (cf le pavé dans _refresh).
   function _updateTrackerNorthRotor(angleDeg) {
-    if (!_miniTrackerMark) return;
+    if (!_miniTrackerMark) return false;
     const iconEl = _miniTrackerMark.getElement && _miniTrackerMark.getElement();
-    if (!iconEl) return;  // marker pas encore ajouté à la map (pas de pos)
+    if (!iconEl) return false;  // marker pas encore ajouté à la map (pas de pos)
     const rotor = iconEl.querySelector(".kta-em-mini-tracker-rotor");
-    if (!rotor) return;
+    if (!rotor) return false;
     rotor.style.transform = "rotate(" + angleDeg + "deg)";
+    return true;
   }
 
   // 🆕 v1.12.0-fix : tourne le rotor du triangle dans la direction de
   // marche (+heading). Cohérent avec l'icône tracker GPS de la map
   // principale (cône bleu qui tourne aussi avec le heading).
   function _updateTrackerTriangleRotor(angleDeg) {
-    if (!_miniTrackerMark) return;
+    if (!_miniTrackerMark) return false;
     const iconEl = _miniTrackerMark.getElement && _miniTrackerMark.getElement();
-    if (!iconEl) return;
+    if (!iconEl) return false;
     const rotor = iconEl.querySelector(".kta-em-mini-tracker-triangle-rotor");
-    if (!rotor) return;
+    if (!rotor) return false;
     rotor.style.transform = "rotate(" + angleDeg + "deg)";
+    return true;
+  }
+
+  // 🧭 v1.97.6 — LA MINIMAP S'ORIENTE, comme la carte principale.
+  //
+  // On ne passe PAS par `mapBearing` : il est câblé sur `window.map` d'un
+  // bout à l'autre, et c'est le module où une erreur n'affiche rien
+  // d'anormal, juste du faux. Ici le cas est beaucoup plus simple — la
+  // minimap se recentre sur la position à chaque tick, donc **le centre de
+  // rotation coïncide toujours avec l'utilisateur** ; elle n'a aucune
+  // interaction (`dragging:false`, couches non interactives) et personne n'y
+  // convertit un clic. Une rotation du CONTENEUR suffit donc, sans toucher
+  // à la moindre géométrie Leaflet.
+  //
+  // Même interrupteur que la carte principale (`MapBearing.isEnabled`) : qui
+  // ne veut pas de carte qui tourne n'en veut nulle part, et il n'y a pas
+  // deux réglages à comprendre.
+  function _minimapTourne() {
+    try { return !!(window.MapBearing && window.MapBearing.isEnabled()); }
+    catch(e) { return false; }
+  }
+  function _appliquerRotationMinimap(cap) {
+    const el = document.getElementById("kta-em-mini-map");
+    if (!el) return;
+    if (!_minimapTourne() || typeof cap !== "number" || isNaN(cap)) {
+      el.style.transform = "";
+      el.classList.remove("kta-em-mini-map-tournee");
+      return;
+    }
+    el.classList.add("kta-em-mini-map-tournee");
+    el.style.transform = "rotate(" + (-cap) + "deg)";
   }
 
   function _updateMiniMap(pos) {

@@ -885,7 +885,12 @@ function renderRoads() {
   let _vpBox = null;
   if (_viewportCull) {
     try {
-      const b = window.map.getBounds();
+      // 🧭 v1.97.3 — sous rotation, `getBounds()` rend le rectangle NON
+      // tourné de la vue : des tracés bien visibles au bord en sortaient.
+      // `zoneVisible()` rend l'empreinte réelle de l'écran ; hors mode, elle
+      // rend exactement `getBounds()`.
+      const b = (window.MapBearing && window.MapBearing.zoneVisible
+                 ? window.MapBearing.zoneVisible(0) : null) || window.map.getBounds();
       const sw = b.getSouthWest(), ne = b.getNorthEast();
       const H = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
       // Conversion latlng Leaflet → coords plan : lat = H - y, lng = x
@@ -1223,7 +1228,9 @@ function _refreshRoadsViewportOnly() {
   // renderRoads(). Padding 10% pour éviter le pop-in au pan.
   let _vpBox;
   try {
-    const b = window.map.getBounds();
+    // 🧭 v1.97.3 — même empreinte réelle qu'en rendu complet (cf renderRoads).
+    const b = (window.MapBearing && window.MapBearing.zoneVisible
+               ? window.MapBearing.zoneVisible(0) : null) || window.map.getBounds();
     const sw = b.getSouthWest(), ne = b.getNorthEast();
     const H = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
     const padW = (ne.lng - sw.lng) * 0.1;

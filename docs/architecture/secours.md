@@ -1,7 +1,162 @@
 # Architecture MyKTAMap — Mode Secours (toutes phases) + urgence
 
 > Référence détaillée extraite de l'ancien CLAUDE.md. Lue à la demande (pas auto-chargée).
-> Sections : §52, §65, §66, §67, §69, §73, §78
+> Sections : §52.0 (état courant de l'écran XL), §52, §65, §66, §67, §69, §73, §78
+
+---
+
+### 52.0 Écran urgence « XL » — état de l'écran au 26/09/2026 (refonte)
+
+> Les sections 52.x suivantes racontent l'historique. **Celle-ci décrit ce que
+> l'écran affiche aujourd'hui** : c'est elle qu'il faut lire avant d'y toucher.
+
+Demande KARMA, en trois temps : *« enlève la position en PX si on a la
+possibilité d'afficher de vraies coordonnées GPS (pas les deux donc) »* ·
+*« enlever en bas échelle / plan / état et regrouper en petite icône en haut,
+et enlever le bouton DARK/LIGHT qui était là à l'époque où toute l'appli ne
+l'était pas »* · *« comme ça on gagne de la place pour pas avoir de scroll et
+une map plus grande »*.
+
+#### Ce que l'écran contient désormais
+
+```
+┌─ header ─────────────────────────────────────────────┐
+│ 🚨 MODE URGENCE                                     │
+│ Nom du plan                  🔋 82% · 📍 Tracker ON │  #kta-em-etat
+├─ grid (1 colonne, 2 pistes) ────────────────────────┤
+│ 📍 POSITION (PLAN)  |  🌍 GPS (LAT / LNG)  ← UN SEUL  │  #kta-em-pos-label
+│ 9014 / 12338     |  48.823328 / 2.322915           │  #kta-em-pos-xy
+│ ⚠️ position de départ du plan, jamais confirmée     │  #kta-em-pos-status
+├─────────────────────────────────────────────┤
+│            minimap + 🧭 CAP (piste 1fr)            │  #kta-em-mini-map
+└─ ↩️ SORTIR (sticky bottom) ───────────────────────┘
+```
+
+#### Les trois règles à ne pas casser
+
+1. **Une seule position.** `_tick` appelle `_transformCalib()` — le calibrage
+   KMZ du plan, extrait de `_tick` à cette occasion — **avant** d'écrire le
+   bloc : s'il y a du GPS, le label devient `emergency.label.gps`, la valeur
+   prend la classe `.kta-emergency-pos-gps` (floats plus longs → police plus
+   petite) ; sinon on reste sur le X/Y. Il n'y a plus qu'un `id` de position
+   (`#kta-em-pos-xy`), plus de `#kta-em-bloc-gps`.
+   ⚠️ **Le sous-titre d'état reste sous les chiffres dans les deux cas.** Une
+   coordonnée GPS calculée depuis une position jamais confirmée doit le dire :
+   c'est celle-là qu'on dicte au téléphone. Tout plan géoréférencé en donne
+   (`main.js` recopie la géoréf dans le calibrage au chargement), donc en
+   pratique **le X/Y ne s'affiche que sur un plan non géoréférencé** — et un
+   test qui ne neutralise pas le calibrage ne mesure qu'une branche sur deux.
+
+2. **Les icônes de la puce d'état sont portées par le code, plus par un label.**
+   🔋/🪫/⚡ vient de `BatteryGuard.getEmoji()` (`formatLabel()` ne rend que
+   « 87% ») ; 📍 et 🧭 sont passés dans les valeurs des dicos
+   `emergency.etat.*`. Les clés `emergency.label.{echelle,plan,etat}`,
+   `emergency.theme.toggleTitle`, `emergency.hint` et `emergency.echelle.*` ont
+   été **supprimées des trois dicos**.
+   🧹 27/09/2026 — **l'échelle px/m est partie** (KARMA) : c'est un chiffre de
+   calibrage, il se lit une fois dans ⚙️ Réglages et n'apprend rien à qui
+   cherche où il est. Les distances de l'app en dépendent déjà sans conversion
+   manuelle. Il ne reste qu'une puce, celle de l'état du matériel — celui qui
+   change.
+
+3. **Les couleurs de la légende personnalisée atteignent la mini-carte.** Elle
+   garde sa palette vive (variante délibérée, cf en-tête de `styleResolver.js`)
+   mais chaque style passe par `_styleMini(cat, clé, base, gabarit)` :
+   base locale → sinon `ktaResolveStyle(cat, clé, {flat:true})` (donc les types
+   `cust-…`) → puis `ktaAppliquerCouleurChoisie`, **la même fonction que la
+   carte** — la règle « ce qu'une couleur repeint selon la géométrie » n'est pas
+   réécrite ici. Avant (26/09/2026) : un tracé repeint restait vert, une zone
+   custom sortait en **gris remblais**, une structure custom en **bleu mur**, un
+   front custom en **jaune front-1** — la mini-carte montrait autre chose que la
+   carte, sur l'écran où l'on cherche à reconnaître son propre relevé.
+   Couvert par `checkup-urgence-memoire.js` (contrôle C, falsifié : les trois
+   assertions tombent quand on neutralise le correctif).
+
+4. **`min-height: 100%`, PAS `max-height`, sur `.kta-emergency-box`.** C'est ce
+   qui donne à la grille (`flex: 1 1 auto`, piste 2 = `minmax(0, 1fr)`) de la
+   hauteur à distribuer. Première tentative mesurée avec `max-height: 100%` :
+   la boîte gardait sa hauteur naturelle, la grille n'avait **rien** à répartir
+   et la minimap restait à son plancher de 260 px avec **155 px d'écran vide
+   sous le bouton**.
+
+#### 🪢 Batterie : `isAvailable()` avant tout (26/09/2026)
+
+`BatteryGuard.formatLabel()` **ne rend pas une chaîne vide** quand la batterie est
+hors service : il rend **« ? »**, et `getEmoji()` rend 🪢 — c'est l'état
+« indispo » explicite de la v1.11.1, pensé pour que la chip de l'en-tête puisse
+montrer son emplacement grisé. Le test `if (bat)` de ce module était donc
+**toujours vrai**, et le bloc ÉTAT affichait « 🪢 ? » sur Safari iOS, sur
+Firefox, et sur tout appareil dont l'utilisateur a décoché
+`APP_CONFIG.batterieEnabled`.
+
+⚠️ **Régression de la v1.97.6**, quand la batterie est arrivée dans ce bloc : la
+chip de l'en-tête, elle, est masquée depuis la **v1.11.1-fix3** — sur la même
+demande de KARMA (*« enlève le fait de voir l'icône batterie si l'API pas dispo,
+cas iOS »*). La décision existait ; cet écran ne l'avait jamais reçue.
+
+La condition est `BatteryGuard.isAvailable()`, **jamais** la véracité du libellé.
+Couvert par `checkup-urgence-memoire.js` (bloc B) : sans capteur, l'état ne doit
+contenir ni « ? », ni « % », ni 🪢/🔋/⚡ — et doit garder le tracker et la
+boussole (masquer trop serait l'autre façon de se tromper).
+
+#### 📋 Copier sa position (26/09/2026)
+
+KARMA : *« on devrait avoir la possibilité de copier les coordonnées GPS de notre
+position, pour les envoyer si on trouve un point de réseau »*.
+
+- `_texteACopier()` — plan géoréférencé : **`lat, lng` NU**, six décimales.
+  ⚠️ Pas d'heure, pas de cap, pas de nom de plan : tout ajout casse le collage
+  dans une app de carte, et l'écran où l'on est perdu est le pire endroit pour
+  découvrir qu'il faut nettoyer une chaîne à la main. Plan non géoréférencé :
+  `<nom du plan> — X <x> / Y <y>`, qui ne sert qu'à quelqu'un ayant le même plan.
+- **Le doute ne se copie pas.** Le sous-titre « position de départ, jamais
+  confirmée » reste À L'ÉCRAN : il se dit à la personne, il n'a pas à partir
+  dans un message qu'un tiers lira hors contexte.
+- `window.ktaCopierTexte(txt)` (nouveau, `utils.js`) : `navigator.clipboard`
+  puis repli `execCommand`. Les **deux** chemins sont nécessaires — l'API
+  sécurisée n'existe pas sur une instance servie en **HTTP**, qui est
+  précisément le mode de déploiement d'un réseau isolé de secours. Le
+  presse-papier était recopié à la main dans **sept** modules ; celui-ci est le
+  premier consommateur du helper (migration des 7 autres au BACKLOG).
+- **Carré de 48 px à DROITE des chiffres**, dans leur ligne (`.kta-emergency-pos-ligne`,
+  la valeur en `flex: 1; min-width: 0`). 🧹 27/09/2026 (KARMA « trop grand, prend
+  une place inutile ») : il était pleine largeur SOUS les chiffres et coûtait
+  48 px de hauteur à la carte ; il occupe maintenant le vide à leur droite et
+  n'en coûte plus que douze. 48 px reste au-dessus du minimum tactile (44 px) —
+  cet écran se touche avec des gants. 40 px en paysage bas, 44 px sous 360 px de
+  large. Les chiffres sont cliquables aussi. Le bouton ne contient qu'UN
+  caractère (📋 → ✅ / ⚠️ / —) et la phrase vit dans `title` + `aria-label` :
+  un « ✅ Copié » complet le ferait grandir, donc annulerait le gain.
+- Coût mesuré : la mini-carte passe de 529 à **510 px** en 390×844 (486 avec
+  l'ancien bouton pleine largeur), bouton de sortie toujours à 820/844,
+  **0 px de débordement**. Vérifié aussi en 375×667 (309 px de carte), en
+  paysage 844×390 (271 px) et en **320×568**, où une media query à 360 px abaisse
+  le plancher de la carte à 200 px : **50 px de défilement → 0**. Les chiffres
+  GPS ne sont tronqués sur aucun de ces formats.
+- Couvert par `checkup-urgence-memoire.js` (bloc P) : taille de la cible,
+  **contenu réel du presse-papier** dans les deux branches (permission
+  `clipboard-read`), absence de débordement, et repli joué en rendant
+  `navigator.clipboard` inaccessible.
+
+#### Mesuré (Playwright, plan tuilé servi en HTTP, 3 formats × 2 branches)
+
+| Format | Minimap avant | Minimap après | Bas du bouton | Débordement |
+|---|---|---|---|---|
+| 390×844 (portrait) | 260 px | **529–538 px** | 820 / 844 | **0 px** |
+| 844×390 (paysage) | 160 px | **271 px** | 374 / 390 | **0 px** |
+| 1100×800 (desktop) | 320 px | **504–515 px** | 776 / 800 | **0 px** |
+
+En paysage bas, la grille passe à deux colonnes `minmax(0,1fr) minmax(0,1.35fr)`
+avec la minimap en `grid-column: 2` sur toute la hauteur — l'empilement
+vertical n'y laissait que 160 px de carte.
+
+Le thème n'a plus de bouton : `activer()` lit `ThemeManager.isLight()` depuis
+la v1.23.0, `setTheme()` reste exposé dans l'API publique mais ne rafraîchit
+plus rien d'autre que la classe de thème.
+
+`scripts/smoke/checkup-urgence-memoire.js` couvre l'écran (fond de minimap,
+boussole au premier affichage, bouton dans l'écran, batterie dans l'état,
+rotation de la minimap) — vert après la refonte.
 
 ---
 

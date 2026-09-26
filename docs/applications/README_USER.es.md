@@ -641,7 +641,7 @@ El **Modo Historia** (nota libre + PDF) vive en la pantalla de un plano: para re
 - la lista muestra cada plano que tenga una nota o un PDF, con un extracto de la nota;
 - abrir una ficha muestra la nota **con formato** (Markdown) y permite **modificarla in situ** — es exactamente la misma nota que la del Modo Historia del plano, no una copia;
 - los **documentos PDF** del plano aparecen enumerados: clic para abrir, 🗑️ para eliminar, **➕ Añadir un PDF** para adjuntar uno nuevo — todo ello sin cargar el plano.
-- ⚠️ Un PDF **incluido en el ZIP del plano** no aparece aquí: hay que cargar el plano para consultarlo (Modo Historia).
+- 📕 Un PDF **incluido en el ZIP del plano** aparece aquí también, en cuanto hayas abierto ese plano **una vez**: la app guarda una copia en tu dispositivo. Puedes borrarla como un documento tuyo; al reabrir el plano vuelve.
 
 **Conviene saber:**
 - El cuaderno **empieza vacío**: no puede reconstruir las salidas anteriores a su llegada, nunca se registraron como tales.
@@ -811,13 +811,16 @@ La nota admite **Markdown**:
 - Pulsa **👁 Vista previa** para volver a ver el resultado.
 - Todo el MD que escribas (`**negrita**`, `# Título`, `- elemento`…) se interpreta al mostrarlo.
 
+> 🎨 **Iconos de tus planos (v1.97.9)** — si generaste planos entre junio y septiembre de 2026, el icono « Punto de entrada del plano » podía no mostrarse: ahora la app usa el que lleva integrado, y **regenerar el plano** arregla el archivo definitivamente. Además, abrir un plano **regenerado** ya no lanza la veintena de peticiones inútiles que hacían falta para localizar sus iconos.
+
 ### 📚 Historia (PDF) — **varios documentos por plano**
 
 Ahora puedes guardar **hasta 10 documentos PDF por plano** (antes: uno solo, y una nueva importación sobrescribía el anterior). Informe de 2019, plano en papel escaneado, artículo de prensa, levantamiento topográfico: todo cabe en el mismo sitio.
 
 - Aparece una **lista de documentos** sobre el visor en cuanto hay varios; pulsa un documento para abrirlo.
 - **📥 Importar** añade un documento (ya no reemplaza nada). **🗑️ Retirar** elimina el que se está mostrando.
-- El autor del plano puede incluir PDF en el ZIP — **varios** (el Generador acepta ahora una lista de archivos): aparecen al principio de la lista (📕), consultables y no eliminables (solo el generador puede cambiarlos). **Novedad**: su presencia ya no te impide añadir tus propios documentos — antes, la importación quedaba oculta en esos planos.
+- El autor del plano puede incluir PDF en el ZIP — **varios** (el Generador acepta ahora una lista de archivos): aparecen al principio de la lista (📕). **Novedad**: su presencia ya no te impide añadir tus propios documentos — antes, la importación quedaba oculta en esos planos.
+- 📕 **Esos documentos del plano se copian en tu dispositivo** la primera vez que lo abres: es lo que hace que aparezcan en **📔 Mi cuaderno → 📖 Relatos** sin cargar nada. Puedes **retirarlos** como los tuyos — y si reabres el plano, vuelven (es el plano quien los aporta).
 - Salvaguardas: **10 documentos como máximo** por plano, advertencia por encima de **25 MB** acumulados, rechazo por encima de **100 MB**. El espacio ocupado aparece en **Almacenamiento**.
 - En iPhone, un botón **↗️ Abrir en una pestaña** saca el documento a pantalla completa nativa si la visualización integrada no está disponible.
 - Tus documentos también se enumeran, se añaden y se eliminan desde **📔 Mi cuaderno → 📖 Relatos**, sin cargar el plano.
@@ -1161,6 +1164,19 @@ Pulsa **▶️** para empezar.
 **En el primer arranque de la sesión**, aparece una ventana de advertencia para recordar que el rastreador es un **módulo experimental**: sirve para validar el calibrado / la detección de pasos / la fórmula del rumbo, **no para localizarse de verdad**. Pulsa **«Entendido — Iniciar»** para continuar (la ventana no volverá a aparecer hasta la siguiente recarga de la página). En móvil se muestra a continuación la solicitud de permiso de iOS / Android para los sensores — acéptala.
 
 Aparece un icono en el plano en tu posición de partida. Se desplaza a medida que caminas, y un trazado registra el camino recorrido.
+
+
+> #### 🧭 «Mapa orientado» — el mapa gira contigo
+>
+> En el menú 🧭 Rastreador, el mosaico **🗺️ Mapa orientado** cambia el comportamiento del mapa durante el seguimiento: en lugar de que el icono gire sobre un mapa fijo, **es el mapa el que gira**, para que tu dirección de marcha apunte siempre hacia la parte superior de la pantalla (como un GPS de coche).
+>
+> - **Desactivado por defecto**, y tu elección se recuerda en este dispositivo.
+> - Solo gira **durante el seguimiento**: al detener el rastreador, el mapa vuelve a su posición normal.
+> - El mapa **te sigue**: si lo desplazas a mano para mirar otra zona, aparece un botón **🎯 Recentrar** para volver sobre ti (también aparece sin este modo, en cuanto tu posición sale de la pantalla).
+> - Los textos siguen siendo legibles: las medidas y las fichas de puntos no se ponen del revés con el mapa.
+> - El mapa se endereza solo en cuanto eliges una herramienta que necesita tocar el mapa (medir, dibujar, recolocar) o abres un modo a pantalla completa.
+>
+> ⚠️ La rotación sigue tu brújula: **cerca de grandes masas metálicas** (raíles, armaduras, estructuras) puede volverse aproximada, como el resto del rastreador.
 
 > 🧭 **Icono direccional**: durante el seguimiento activo, el icono (cono azul + punto blanco, estilo GPS) **gira en tiempo real para apuntar en la dirección de la marcha** — calculada a partir del rumbo del teléfono (la misma fuente que la brújula 🧭). En reposo (rastreador detenido o solo reajuste), el icono apunta al Norte (posición neutra). Lleva suavizado integrado para evitar el temblor.
 
@@ -1530,14 +1546,17 @@ El modo ⛑️ incluye un **bloque desplegable «📚 Buenas prácticas»** en l
 
 El botón **🚨** rojo del grupo **🧭 Rastreador** abre un modo «pánico» a pantalla completa que reúne de un vistazo:
 
-- 📍 **Posición XL**: coordenadas del plano mostradas en caracteres enormes (legibles a un metro del teléfono)
+- 📍 **Una sola posición, enorme** (legible a un metro del teléfono): las coordenadas **GPS** si tu plano está georreferenciado — son las que se dictan a los equipos de rescate — y si no, la posición **X / Y del plano**. Nunca las dos: el título del bloque te dice cuál estás leyendo. Bajo las cifras, una línea indica si es tu posición seguida, tu última posición conocida o la **posición de partida del plano, nunca confirmada**.
 - 🧭 **Brújula gigante**: rumbo (sentido de la marcha) con aguja que gira en tiempo real, actualizada en vivo mediante los sensores de orientación del teléfono
 - 🗺️ **Minimapa con enfoque automático**: zoom cerrado (~20-50 m de horizonte) centrado permanentemente en tu posición. Muestra de fondo las **vías / zonas / estructuras del plano** — útil para localizar caminos, salidas y peligros en las inmediaciones
-- ☑️ **Interruptor 🗺️ Itinerario**: casilla en la cabecera. **Desmarcada** por defecto (protección anticaída en planos muy grandes). Márcala para volver a mostrar tu itinerario activo en el minimapa — dibujado en **cian intenso + halo blanco** para seguir siendo visible sobre el fondo muy ampliado. La preferencia se conserva entre dos aperturas del modo emergencia.
-- 🔋 **Batería**: el bloque 🔋 ESTADO muestra el nivel de batería en tiempo real cuando la API está disponible (solo Chromium). Crítico en modo pánico — sabes de inmediato cuánto tiempo te queda antes de que el teléfono se apague.
-- 🌗 **Temas**: oscuro por defecto, claro como opción (según el entorno exterior — penumbra o luz intensa)
+  Usa los **colores de tu leyenda**: si has recoloreado un tipo o creado tus propios tipos, los reconoces aquí igual que en el mapa.
+  Tu **itinerario activo** siempre aparece dibujado (cian intenso + halo blanco, para seguir viéndose sobre ese fondo tan ampliado), y el mapa **gira** como el principal si has activado el modo «plano orientado».
+- 📋 **« Copiar mi posición »**: un botón cuadrado **a la derecha de las cifras** (también sirve pulsar las cifras — ahí va el dedo primero). Se convierte en ✅ mientras confirma la copia. Si tu plano está georreferenciado copia **solo las coordenadas** — `48.823328, 2.322915` — el formato que se pega directamente en un SMS, en Google Maps o en Mapas, sin tener que limpiar nada. Si no, copia el **nombre del plano y tu posición X/Y**, que solo significa algo para quien tenga el mismo plano. Conviéne tenerlo a mano en cuanto tengas algo de cobertura. ⚠️ *La duda se queda en la pantalla, no en el mensaje: si tu posición nunca se ha confirmado, la línea bajo las cifras lo dice — díselo también a quien escribas.*
+- 🔋 **Una línea de estado arriba a la derecha**: tu **nivel de batería** (solo si tu navegador lo expone y no has desmarcado el ajuste — si no, nada en absoluto, ningún « ? »; crítico aquí: sabes cuánto te queda antes de que el teléfono se apague), el estado del **rastreador** y el de la **brújula**. El **nombre del plano** va justo bajo el título 🚨. *La escala del plano ya no aparece (v1.97.11): es una cifra de calibrado, se consulta en ⚙️ Configuración, no cuando buscas dónde estás.*
+- 🌗 **Tema**: la pantalla sigue el de la app (oscuro o claro). Ya no hay botón propio — un solo ajuste, en ⚙️ Configuración.
 - 🔋 **Wake Lock**: la pantalla no se apaga automáticamente mientras el modo esté activo (no hace falta tocar el teléfono cada 30 segundos para despertarlo)
-- 📱 **Horizontal**: el minimapa se reencuadra correctamente cuando giras el teléfono en apaisado o inviertes el vertical — se acabaron los desajustes al rotar.
+- 📱 **Horizontal**: el minimapa se reencuadra correctamente cuando giras el teléfono, y la disposición cambia — la posición a la izquierda y el mapa a la derecha a toda altura.
+- 🗺️ **Todo cabe en una pantalla**: ya no hay nada que desplazar, y **el mapa ocupa todo el espacio ganado** (medido: su altura se ha duplicado en un teléfono en vertical).
 
 **¿Cuándo usarlo?**
 - Estás en pánico en un cruce y necesitas reorientarte rápido
@@ -1547,7 +1566,7 @@ El botón **🚨** rojo del grupo **🧭 Rastreador** abre un modo «pánico» a
 
 **Permisos**: la primera vez, el navegador pide acceso a los **sensores de orientación** del teléfono (para la brújula). Acéptalo — sin eso, la brújula se queda congelada.
 
-**Salida**: pulsa la ✕ de arriba a la derecha para cerrar el modo.
+**Salida**: el botón grande **↩️ SALIR DEL MODO EMERGENCIA** al pie de la pantalla — queda fijado abajo, nunca tienes que buscarlo. En ordenador, la tecla **Esc** hace lo mismo.
 
 ### 🚨 Modo Rescate
 
@@ -2167,7 +2186,7 @@ La app usa la **API Battery Status** estándar del navegador. Esta API **ya no e
 | Safari iOS / macOS | ❌ No (la API se retiró por motivos de privacidad / huella digital) |
 | Firefox reciente | ❌ No (la API está desactivada por defecto) |
 
-> 🪫 **Si la API no está disponible** en tu teléfono, la ficha de batería **simplemente se oculta** — no se muestra ningún mensaje de error. Es normal en iOS. Aun así, ves el nivel en el modo emergencia si quieres tenerlo en grande.
+> 🪫 **Si la API no está disponible** en tu teléfono, la ficha de batería **simplemente se oculta** — no se muestra ningún mensaje de error. Es normal en iOS. **El modo emergencia 🚨 tampoco lo muestra** (v1.97.11): sin sensor no hay nada que mostrar, y un « ? » en lugar de un nivel de batería, en la pantalla que abres justo cuando se agota, no tranquiliza a nadie. El resto del estado (rastreador, brújula) queda intacto. Lo mismo si desmarcas ⚙️ **🔋 Nivel de batería**.
 
 ---
 

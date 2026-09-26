@@ -198,6 +198,17 @@ function _applyRotationToTrackerMarker() {
   // RELATIVE AU PLAN (= où l'user va vu de dessus sur la carte).
   const heading = _getPlanRelHeading();
 
+  // 🧭 v1.97.0 — Mode « plan orienté » : on pousse le cap AVANT le throttle
+  // 2° ci-dessous, qui ne concerne que l'icône. MapBearing a son propre
+  // lissage, volontairement plus mou (faire pivoter tout un plan n'a pas les
+  // mêmes contraintes que faire pivoter une icône de 30 px).
+  // À noter : quand le mode tourne, l'icône reçoit `rotate(+cap)` et la vue
+  // `rotate(-cap)` → somme nulle, l'icône pointe vers le haut de l'écran,
+  // c'est-à-dire la direction de marche. Rien à neutraliser ici.
+  if (window.MapBearing) {
+    try { window.MapBearing.onHeading(heading); } catch(e) {}
+  }
+
   // ===== 1. SMOOTHING EXPONENTIEL =====
   // smoothed = (1 - α) * smoothed_prev + α * heading
   // α = 0.25 : 75% historique + 25% nouvelle valeur = lissage modere.
@@ -859,6 +870,14 @@ function updateMap() {
     }
   }
 
+  // 🧭 v1.97.0 — Mode « plan orienté » : un pas vient d'être appliqué. Sert
+  // au recentrage (la vue suit le tracker) ET au gel à l'arrêt — sans pas
+  // récent, la vue cesse de pivoter, sinon le bruit du magnétomètre la ferait
+  // tourner toute seule pendant une pause.
+  if (window.MapBearing) {
+    try { window.MapBearing.onStep(latlng); } catch(e) {}
+  }
+
   // 🆕 v1.34.27 — Détection proximité waypoint iti (100px) → vibration
   // medium quand l'user atteint un waypoint actif de l'itinéraire. Pas
   // d'effet si pas d'iti ou pref vibration OFF.
@@ -980,6 +999,8 @@ function startTracking() {
   // (cas du clic Play apres que l'orientation a deja ete capte au moins une
   // fois). Sinon, l'event suivant deviceorientation s'en chargera.
   _applyRotationToTrackerMarker();
+  // 🧭 v1.97.0 — le mode « plan orienté » ne vit QUE pendant le tracking.
+  if (window.MapBearing) { try { window.MapBearing.onTrackingChange(true); } catch(e) {} }
   console.log("[Tracking] ON (level:", trackerLevel + ")");
 }
 
@@ -988,6 +1009,9 @@ function stopTracking() {
   _navSegIdx = -1;  // 🧭 nav : oublie le segment courant à l'arrêt
   // 🧭 v158 : reset rotation a 0° (icone pointe Nord = pose neutre).
   _resetRotationTrackerMarker();
+  // 🧭 v1.97.0 — arrêt du tracking = la vue revient droite, même si le
+  // toggle reste sur ON (il sera repris au prochain Play).
+  if (window.MapBearing) { try { window.MapBearing.onTrackingChange(false); } catch(e) {} }
   console.log("[Tracking] OFF");
 }
 
