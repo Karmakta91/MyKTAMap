@@ -38,6 +38,7 @@
     { path: "README.md",                                     titre: "📖 README (journal du projet)" },
     { path: "docs/BACKLOG.md",                               titre: "📌 BACKLOG — sujets ouverts & dettes" },
     { path: "docs/DESIGN_NAV_INTELLIGENTE.md",               titre: "🧭 Design — navigation intelligente" },
+    { path: "docs/ETUDE_GUIDAGE.md",                         titre: "🪧 Étude — guidage de l'itinéraire" },
     { path: "docs/ETUDE_PODOMETRE.md",                       titre: "👣 Étude — podomètre & mode poche" },
     { path: "docs/IA_POUR_LES_NULS.md",                      titre: "🤖 L'IA pour les nuls — méthode de travail avec une IA" },
     { path: "docs/INSTALLATION_SELFHOST.md",                 titre: "🛠️ Installation auto-hébergée" },
