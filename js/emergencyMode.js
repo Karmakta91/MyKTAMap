@@ -65,6 +65,9 @@
   // identique mais le CSS anime toujours par le chemin court).
   let _compassUnwrapped = null;
   let _compassLastRaw   = null;
+  // 🩸 v1.97.6 — vrai seulement quand les rotors de la boussole ont été
+  // RÉELLEMENT posés (la minimap naît 100 ms après le premier tick).
+  let _rotorsPoses      = false;
 
   // 🆕 v1.10.2 (KARMA "afficher dans le carré de la boussole derrière,
   // l'endroit où on est localisé sur la carte en zoom max et auto focus") :
@@ -320,7 +323,16 @@
     if (typeof heading === "number" && !isNaN(heading)) {
       // Throttle DOM update à 1° près (sinon ça flicker au moindre mouvement)
       const rounded = Math.round(heading);
-      if (rounded !== _lastHeadingShown) {
+      // 🩸 v1.97.6 — LA BOUSSOLE CONTREDISAIT SON PROPRE TEXTE.
+      // Ce garde anti-scintillement s'armait au tout premier tick, alors que
+      // la minimap (créée 100 ms plus tard) n'existait pas encore : les
+      // rotors sortaient sur `if (!iconEl) return` et on ne repassait plus
+      // jamais ici. Mesuré, cap stable à 137° : point « Nord » à midi et
+      // triangle vers le haut, pendant que les chiffres affichaient
+      // « 137° SE ». Invisible en marchant — le moindre degré répare — et
+      // bien présent dans le cas qui compte : téléphone posé, cap figé,
+      // quelqu'un qui cherche à se repérer. D'où `|| !_rotorsPoses`.
+      if (rounded !== _lastHeadingShown || !_rotorsPoses) {
         _lastHeadingShown = rounded;
         const fmt = _formatHeading(heading);
         const numEl  = document.getElementById("kta-em-heading-num");
@@ -345,12 +357,20 @@
         // le point reste au sommet (12h). Face à l'Est, le N est à GAUCHE
         // dans la perspective de marche → rotation -90° (le point passe
         // à 9h). Etc. Cohérent boussole physique tenue dans la main.
-        _updateTrackerNorthRotor(-_compassUnwrapped);
+        // Minimap tournée : elle porte elle-même l'orientation, le point
+        // Nord n'a plus à contre-tourner (sinon il compenserait deux fois).
+        const okNord = _updateTrackerNorthRotor(
+          _minimapTourne() ? 0 : -_compassUnwrapped);
         // 🔧 v1.12.0-fix (KARMA "le triangle ne tourne plus dans la
         // direction où on va, comme icône tracker") : rotation +heading
         // pour que la pointe du triangle pointe la direction de marche
         // (même convention que l'icône tracker map principale).
-        _updateTrackerTriangleRotor(_compassUnwrapped);
+        // Le triangle, lui, ne change pas : son `+cap` annule le `-cap` du
+        // conteneur — même somme nulle que l'icône du tracker sur la carte
+        // principale, il pointe donc toujours la direction de marche.
+        const okTri = _updateTrackerTriangleRotor(_compassUnwrapped);
+        _rotorsPoses = okNord && okTri;
+        _appliquerRotationMinimap(_compassUnwrapped);
       }
     } else {
       const numEl  = document.getElementById("kta-em-heading-num");
@@ -380,6 +400,17 @@
     const etatEl = document.getElementById("kta-em-etat");
     if (etatEl) {
       const partsEtat = [];
+      // 🔋 v1.97.6 — le bloc s'appelle « ÉTAT » et son commentaire promettait
+      // « batterie si dispo » depuis toujours : elle n'y a jamais été. Sur
+      // l'écran qu'on ouvre précisément quand la batterie lâche, c'était
+      // l'information manquante la plus criante — et la fonction qui la
+      // formate existe déjà.
+      try {
+        if (window.BatteryGuard && typeof window.BatteryGuard.formatLabel === "function") {
+          const bat = window.BatteryGuard.formatLabel();
+          if (bat) partsEtat.push(bat);
+        }
+      } catch(e) {}
       if (typeof window.getTrackingActif === "function" && window.getTrackingActif()) {
         partsEtat.push(window.I18n.t("emergency.etat.trackerOn"));
       } else {
@@ -500,6 +531,10 @@
     _lastHeadingShown = null;
     _compassUnwrapped = null;
     _compassLastRaw   = null;
+    // La minimap est détruite : ses rotors n'existent plus, donc la prochaine
+    // ouverture doit à nouveau les poser (sinon le garde anti-scintillement
+    // s'armerait sur un affichage qui n'a pas eu lieu).
+    _rotorsPoses      = false;
     _releaseWakeLock();
     console.log("[Emergency] Désactivé");
   }
@@ -767,10 +802,24 @@
 
     // 🫥 v1.62.0 : extension d'après le manifest (webp/png = alpha, jpg = legacy)
     const _tileExt = (typeof window.ktaTileExt === "function") ? window.ktaTileExt(manifest) : "jpg";
+    // 🩸 v1.97.6 — LA MINIMAP N'AVAIT AUCUN FOND SUR UN PLAN SERVEUR.
+    // `RUNTIME_ASSETS` ne contient que les assets d'un plan importé en ZIP ;
+    // sur un plan servi en HTTP — le modèle de déploiement de la prod — il
+    // est VIDE. Mesuré sur un relevé tuilé : 0 tuile, 0 requête réseau, un
+    // rectangle noir, et pas même la classe `kta-em-mini-map-noimg` pour le
+    // signaler. Au même instant, la carte principale en affichait 864.
+    // Le repli serveur existe depuis la v1.86.0 dans `tiling.js` ; cet écran
+    // ne l'avait jamais reçu.
+    const _racineSrv = (typeof window.ktaRacineTuilesServeur === "function")
+      ? window.ktaRacineTuilesServeur(window.PLAN_CONFIG) : null;
     function _resolveTileUrl(z, col, k) {
       const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + "." + _tileExt;
       const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
-      if (!asset) return null;
+      if (!asset) {
+        return _racineSrv
+          ? (_racineSrv + "/z" + z + "/x" + col + "_y" + (-k) + "." + _tileExt)
+          : null;
+      }
       if (!asset.url && asset.file) {
         try {
           asset.url = URL.createObjectURL(asset.file);
@@ -1343,25 +1392,60 @@
   // querySelector. Si le marker n'est pas encore monté (pas de tracker
   // position connue), on no-op silencieusement — la prochaine itération
   // après pose du marker prendra le relais.
+  // Rend TRUE seulement si le rotor existait et a été posé : c'est ce
+  // booléen qui empêche le garde anti-scintillement de s'armer sur un
+  // affichage qui n'a pas eu lieu (cf le pavé dans _refresh).
   function _updateTrackerNorthRotor(angleDeg) {
-    if (!_miniTrackerMark) return;
+    if (!_miniTrackerMark) return false;
     const iconEl = _miniTrackerMark.getElement && _miniTrackerMark.getElement();
-    if (!iconEl) return;  // marker pas encore ajouté à la map (pas de pos)
+    if (!iconEl) return false;  // marker pas encore ajouté à la map (pas de pos)
     const rotor = iconEl.querySelector(".kta-em-mini-tracker-rotor");
-    if (!rotor) return;
+    if (!rotor) return false;
     rotor.style.transform = "rotate(" + angleDeg + "deg)";
+    return true;
   }
 
   // 🆕 v1.12.0-fix : tourne le rotor du triangle dans la direction de
   // marche (+heading). Cohérent avec l'icône tracker GPS de la map
   // principale (cône bleu qui tourne aussi avec le heading).
   function _updateTrackerTriangleRotor(angleDeg) {
-    if (!_miniTrackerMark) return;
+    if (!_miniTrackerMark) return false;
     const iconEl = _miniTrackerMark.getElement && _miniTrackerMark.getElement();
-    if (!iconEl) return;
+    if (!iconEl) return false;
     const rotor = iconEl.querySelector(".kta-em-mini-tracker-triangle-rotor");
-    if (!rotor) return;
+    if (!rotor) return false;
     rotor.style.transform = "rotate(" + angleDeg + "deg)";
+    return true;
+  }
+
+  // 🧭 v1.97.6 — LA MINIMAP S'ORIENTE, comme la carte principale.
+  //
+  // On ne passe PAS par `mapBearing` : il est câblé sur `window.map` d'un
+  // bout à l'autre, et c'est le module où une erreur n'affiche rien
+  // d'anormal, juste du faux. Ici le cas est beaucoup plus simple — la
+  // minimap se recentre sur la position à chaque tick, donc **le centre de
+  // rotation coïncide toujours avec l'utilisateur** ; elle n'a aucune
+  // interaction (`dragging:false`, couches non interactives) et personne n'y
+  // convertit un clic. Une rotation du CONTENEUR suffit donc, sans toucher
+  // à la moindre géométrie Leaflet.
+  //
+  // Même interrupteur que la carte principale (`MapBearing.isEnabled`) : qui
+  // ne veut pas de carte qui tourne n'en veut nulle part, et il n'y a pas
+  // deux réglages à comprendre.
+  function _minimapTourne() {
+    try { return !!(window.MapBearing && window.MapBearing.isEnabled()); }
+    catch(e) { return false; }
+  }
+  function _appliquerRotationMinimap(cap) {
+    const el = document.getElementById("kta-em-mini-map");
+    if (!el) return;
+    if (!_minimapTourne() || typeof cap !== "number" || isNaN(cap)) {
+      el.style.transform = "";
+      el.classList.remove("kta-em-mini-map-tournee");
+      return;
+    }
+    el.classList.add("kta-em-mini-map-tournee");
+    el.style.transform = "rotate(" + (-cap) + "deg)";
   }
 
   function _updateMiniMap(pos) {

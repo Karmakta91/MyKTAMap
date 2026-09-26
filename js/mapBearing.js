@@ -203,7 +203,25 @@
     _rafId = requestAnimationFrame(_boucle);
   }
 
+  // 🩸 v1.97.6 — `prefers-reduced-motion` AGIT, au lieu d'être promis.
+  // Le bloc CSS qui prétendait prendre en charge le mal des transports ne
+  // posait qu'un `transition: none` sur un bouton qui n'en déclarait aucune :
+  // un no-op, pendant que la carte, elle, s'animait quoi qu'il arrive.
+  // Ici la préférence est relue à chaque fois (l'utilisateur peut la changer
+  // sans recharger) : la vue se pose directement au bon angle. Elle tourne
+  // donc toujours — ce qui est le but du mode — mais sans mouvement continu.
+  function _mouvementReduit() {
+    try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); }
+    catch(e) { return false; }
+  }
+
   function _animer() {
+    if (_mouvementReduit()) {
+      _stopAnim();
+      _bearing = _norm(_cible);
+      _appliquer();
+      return;
+    }
     if (_rafId !== null) return;
     _dernierTick = 0;
     _rafId = requestAnimationFrame(_boucle);

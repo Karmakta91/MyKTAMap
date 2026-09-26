@@ -3814,6 +3814,21 @@
       if (asset.file instanceof Blob) return asset.file;
       if (asset.url) { try { const r = await fetch(asset.url); if (r.ok) return await r.blob(); } catch (e) {} }
     }
+    // 🩸 v1.97.6 — LE REPLI HTTP VISAIT UN CHEMIN RELATIF, DONC LA RACINE DU
+    // SITE. Mesuré depuis la page : `fetch("data/tiles/z-3/x0_y-1.jpg")`
+    // résout en `/data/tiles/…` → 404, alors que `/data/<plan>/data/tiles/…`
+    // → 200. Sur un plan servi en HTTP, le superoverlay collectait donc ZÉRO
+    // tuile et repliait sur l'image basse définition — exactement la plainte
+    // qui avait motivé le superoverlay (« 4K c'est très flou »), revenue par
+    // une autre porte. La racine se demande à `tiling.js`, qui la sonde.
+    try {
+      const racine = (typeof window.ktaRacineTuilesServeur === "function")
+        ? window.ktaRacineTuilesServeur(window.PLAN_CONFIG) : null;
+      if (racine) {
+        const r = await fetch(racine + path.replace(/^data\/tiles/, ""));
+        if (r.ok) return await r.blob();
+      }
+    } catch (e) {}
     try { const r = await fetch(path); if (r.ok) return await r.blob(); } catch (e) {}
     return null;
   }

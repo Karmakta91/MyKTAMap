@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.97.5";
+const CACHE_NAME = "myktamap-cache-v1.97.6";
 
 // 💾 v1.87.0 — CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -713,7 +713,31 @@ self.addEventListener("message", (event) => {
 // déclenchant la purge OS qui détruit aussi les assets app critiques (cycle
 // CacheStorage+IDB atomique). Maintenant : on cap à MAX_DYNAMIC_ENTRIES en
 // excluant les URLs précachées au install (qui doivent rester intouchables).
-const MAX_DYNAMIC_ENTRIES = 800;  // ~120 Mo si tiles ~150 KB en moyenne
+const MAX_DYNAMIC_ENTRIES = 800;  // cap en ENTRÉES, appliqué aux seules tuiles
+
+// 🩸 v1.97.6 — L'ÉVICTION DÉTRUISAIT L'ACCÈS HORS-LIGNE DU PLAN QU'ELLE VENAIT
+// DE METTRE EN CACHE.
+//
+// Mesuré sur un relevé tuilé : ouvrir le plan met 1 066 entrées en cache ;
+// 30 s plus tard (le debounce ci-dessous) l'éviction FIFO en retire 136 —
+// dont `plan-config.json`, les quatre fichiers de données du plan et le
+// dictionnaire de langue, parce qu'ils sont arrivés AVANT les tuiles.
+// Vérifié dans les deux sens : rechargement hors-ligne AVANT l'éviction → le
+// plan s'ouvre, 864/864 tuiles ; APRÈS → il ne s'ouvre plus du tout, alors
+// que 750 de ses tuiles sont toujours là, inutiles.
+//
+// Le cap visait « ~120 Mo si tiles ~150 KB ». Taille réelle mesurée ici :
+// 38 Ko par tuile — 800 entrées valent donc ~30 Mo, soit 4× moins que son
+// propre objectif, ET moins qu'un seul plan.
+//
+// L'invariant qui manquait : **on n'évince jamais la clé de lecture d'un
+// contenu qu'on garde.** Une tuile perdue se retélécharge ou se remplace par
+// l'image de base ; un `plan-config.json` perdu rend tout le reste illisible.
+// Seules les tuiles sont donc évincables.
+function _estTuile(url) {
+  try { return /\/tiles\/z-?\d+\/x\d+_y-?\d+\.[a-z0-9]+$/i.test(new URL(url).pathname); }
+  catch (e) { return false; }
+}
 const _staticAssetUrls = new Set(); // populé au install ci-dessous
 
 // 💾 v1.87.0 — Lookup dans les caches de plan (après miss du cache principal).
@@ -765,15 +789,18 @@ function _scheduleEviction() {
   const _run = () => {
     _evictionScheduled = false;
     caches.open(CACHE_NAME).then((cache) => cache.keys().then((reqs) => {
-      // Filtre : ne touche qu'aux entrées DYNAMIQUES (pas précachées au install).
-      const dynamic = reqs.filter((r) => !_staticAssetUrls.has(_cacheKeyOf(r)));
+      // Filtre : entrées DYNAMIQUES (pas précachées au install) ET évinçables.
+      // Tout ce qui n'est pas une tuile est une clé de lecture : on n'y touche
+      // pas (cf le pavé sur MAX_DYNAMIC_ENTRIES).
+      const dynamic = reqs.filter((r) => !_staticAssetUrls.has(_cacheKeyOf(r)) && _estTuile(r.url));
       if (dynamic.length <= MAX_DYNAMIC_ENTRIES) return;
       // FIFO : delete les plus anciens (en début d'array = insertion plus
       // ancienne, c'est la sémantique Cache API standard).
       const toEvict = dynamic.length - MAX_DYNAMIC_ENTRIES + 50;  // +50 = buffer pour éviter le yo-yo
       const slice = dynamic.slice(0, toEvict);
       return Promise.all(slice.map((r) => cache.delete(r))).then(() => {
-        console.log("[SW] LRU eviction :", slice.length, "entrées (cache dynamique cap " + MAX_DYNAMIC_ENTRIES + ")");
+        console.log("[SW] LRU eviction :", slice.length, "tuile(s) (cap " + MAX_DYNAMIC_ENTRIES +
+                    ") — les fichiers de lecture des plans ne sont jamais évincés");
       });
     })).catch((e) => console.warn("[SW] LRU eviction erreur :", e));
   };

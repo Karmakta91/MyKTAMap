@@ -2389,10 +2389,30 @@
   // tiling.js → réutilise l'URL existante. Retourne null si tuile manquante.
   // ⚠️ asset.url est PARTAGÉ avec la map principale (tiling.js) — NE PAS
   // revoke à la fermeture de la modale OSM (casserait la map principale).
+  // 🩸 v1.97.6 — SUR UN PLAN SERVEUR, LE FOND N'ÉTAIT JAMAIS DESSINÉ.
+  // `RUNTIME_ASSETS` ne contient que les assets d'un plan importé en ZIP ;
+  // servi en HTTP — le modèle de déploiement de la prod — il est VIDE.
+  // Mesuré sur un relevé géoréférencé : 0 calque image, 0 requête de tuile,
+  // et les POI, tracés et zones qui flottent sur OSM **sans le plan**. Le
+  // seul signe était une ligne de log, elle-même masquée hors mode debug.
+  // Le repli serveur existe depuis la v1.86.0 (`ktaRacineTuilesServeur`, déjà
+  // partagée avec `planOffline`) ; cet écran ne l'avait jamais reçu — comme
+  // la minimap d'urgence et le superoverlay KMZ. La résolution des tuiles
+  // existait en double : deux consommateurs sur quatre l'avaient ratée.
+  function _racineTuilesServeur() {
+    try {
+      return (typeof window.ktaRacineTuilesServeur === "function")
+        ? window.ktaRacineTuilesServeur(window.PLAN_CONFIG) : null;
+    } catch(e) { return null; }
+  }
   function _resolveTileUrl(path) {
-    if (!window.RUNTIME_ASSETS) return null;
-    const asset = window.RUNTIME_ASSETS[path];
-    if (!asset) return null;
+    const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
+    if (!asset) {
+      // `path` vaut "data/tiles/z<N>/x<col>_y<-k>.<ext>" : la racine serveur
+      // remplace son préfixe "data/tiles".
+      const racine = _racineTuilesServeur();
+      return racine ? (racine + path.replace(/^data\/tiles/, "")) : null;
+    }
     if (!asset.url && asset.file) {
       try {
         asset.url = URL.createObjectURL(asset.file);

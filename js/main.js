@@ -1017,7 +1017,24 @@ function _libererRessourcesPlanPrecedent() {
   }
 
   // Map Leaflet : map.remove() détache tous les listeners/overlays/markers
+  //
+  // 🩸 v1.97.6 — …TOUS SAUF UN, et il retient tout le plan précédent.
+  // `L.Map._initContainer` fait `on(container, 'scroll', this._onScroll, this)`
+  // (leaflet-src.js:4201) et `remove()` ne le retire JAMAIS. Sur 20 handlers
+  // du conteneur, 19 partent, celui-là survit — et comme `<div id="map">` est
+  // PERMANENT dans index.html et réutilisé à chaque plan, sa closure épingle
+  // l'ancienne carte pour toujours.
+  // Mesuré sur 9 chargements : +1 `L.Map` vivante, +970 polylines,
+  // +11 641 `L.LatLng` et +2,43 Mo de heap PAR PLAN, sans aucun plafond.
+  // Ni l'OOMGuard ni l'inspecteur mémoire ne pouvaient le voir : aucun des
+  // deux ne lit `performance.memory` (l'un surveille les kills, l'autre le
+  // stockage).
   if (window.map) {
+    try {
+      if (L && L.DomEvent && window.map._container && window.map._onScroll) {
+        L.DomEvent.off(window.map._container, "scroll", window.map._onScroll, window.map);
+      }
+    } catch(e) {}
     try { window.map.remove(); } catch(e) {}
     window.map = null;
   }

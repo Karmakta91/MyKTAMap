@@ -7682,6 +7682,16 @@ html.kta-theme-light .kta-cfg-group-titre {
   overflow: hidden;  /* clip Leaflet tiles à l'arrondi */
 }
 
+/* 🧭 v1.97.6 — minimap orientée (mode « plan orienté » activé).
+   Le conteneur tourne : il doit donc déborder de sa boîte, sinon ses coins
+   se vident en diagonale. Le parent, lui, garde `overflow: hidden`, donc
+   rien ne dépasse à l'écran. 1,6× couvre la diagonale d'un carré (√2) avec
+   la marge d'un rectangle. */
+.kta-emergency-mini-map.kta-em-mini-map-tournee {
+  inset: -30%;
+  border-radius: 0;
+}
+
 /* 🔧 v1.10.2-fix4 (KARMA "affiche les roads c'est utile pour trouver son
    chemin") : filter appliqué UNIQUEMENT à l'image base du plan, pas à
    tout le minimap. Les polylines roads restent vives et lisibles. Cible
@@ -7837,7 +7847,17 @@ html.kta-theme-light .kta-cfg-group-titre {
 }
 
 /* Bouton sortir — gros et visible */
+/* 🩸 v1.97.6 — LE SEUL BOUTON DE SORTIE D'UN ÉCRAN DE PANIQUE DEMANDAIT UN
+   SCROLL. Mesuré : bas du bouton à 853 px pour 844 de haut en 390×844, et
+   823 pour 800 en 1100×800 — sur les DEUX formats. La boîte déborde (le
+   « safe center » ci-dessus le prévoit et rend le scroll possible), mais
+   c'est précisément le bouton qu'il ne faut pas avoir à chercher.
+   `sticky` le colle au bas de la zone visible sans rien changer au flux
+   quand la boîte tient à l'écran. */
 .kta-emergency-exit-btn {
+  position: sticky;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  z-index: 2;
   padding: 18px 20px;
   font-size: 16px;
   font-weight: 800;
@@ -22208,9 +22228,13 @@ html.kta-theme-light .kta-bearing-recentrer {
   color: #8a6d00;
 }
 
-/* Accessibilité : certains utilisateurs ont le mal des transports avec une
-   carte qui pivote. On garde le mode (il reste utile) mais sans animation
-   d'appoint — la rotation elle-même est déjà amortie côté JS. */
+/* ♿ Accessibilité — `prefers-reduced-motion` est pris en charge CÔTÉ JS
+   (`js/mapBearing.js > _mouvementReduit`) : la vue se pose directement au
+   bon angle au lieu de s'animer. Ce bloc-ci ne contenait qu'un
+   `transition: none` sur un bouton qui n'en déclare aucune — un no-op qui
+   annonçait une prise en charge inexistante. La règle est donc ici pour la
+   seule chose qu'elle peut faire, et le commentaire ne promet plus rien
+   d'autre. */
 @media (prefers-reduced-motion: reduce) {
   .kta-bearing-recentrer { transition: none; }
 }
