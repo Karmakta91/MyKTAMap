@@ -7643,18 +7643,32 @@ html.kta-theme-light .kta-cfg-group-titre {
   margin-top: 2px;
 }
 
-/* 📋 26/09/2026 — copier sa position pour l'envoyer dès qu'on capte.
-   Pleine largeur du bloc : la cible doit être grande, cet écran se touche avec
-   des gants. Discret en couleur (le rouge et le jaune sont réservés à la
-   donnée et à la sortie), franc en taille. */
+/* 📋 Copier sa position pour l'envoyer dès qu'on capte.
+   🧹 27/09/2026 (KARMA « trop grand, prend une place inutile — profite de la
+   place restante dans l'alignement de la position, en mode carré ») : le bouton
+   était pleine largeur SOUS les chiffres et coûtait 48 px de hauteur à la
+   carte. Il partage maintenant leur ligne et occupe le vide à leur droite.
+   48 px de côté : au-dessus du minimum tactile (44 px), parce que cet écran se
+   touche avec des gants. Discret en couleur — le rouge et le jaune restent à la
+   donnée et à la sortie. */
+.kta-emergency-pos-ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.kta-emergency-pos-ligne .kta-emergency-value {
+  flex: 1;
+  min-width: 0;   /* sans ça, des chiffres longs poussent le bouton hors du bloc */
+}
 .kta-emergency-copier-btn {
-  margin-top: 8px;
-  padding: 10px 12px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  font-size: 21px;
+  line-height: 1;
   border: 1.5px solid;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   font-family: inherit;
   background: transparent;
@@ -7908,6 +7922,18 @@ html.kta-theme-light .kta-cfg-group-titre {
   .kta-emergency-exit-btn   { padding: 16px; font-size: 14px; }
 }
 
+/* 📱 27/09/2026 — TRÈS PETIT ÉCRAN (320 px : iPhone SE 1re génération, et
+   tout téléphone en affichage zoomé). Mesuré avant cette règle : 50 px de
+   défilement, dont l'essentiel vient du PLANCHER de la mini-carte (260 px) et
+   non du bouton de copie. Le bouton de sortie restait atteignable (il est
+   collant), mais un écran de panique ne devrait rien faire défiler du tout. */
+@media (max-width: 360px) {
+  .kta-emergency-bloc-heading { min-height: 200px; }
+  .kta-emergency-copier-btn   { width: 44px; height: 44px; font-size: 19px; }
+  .kta-emergency-value        { font-size: 23px; }
+  .kta-emergency-pos-gps      { font-size: 16.5px; }
+}
+
 /* 🆕 v1.11.2-fix (KARMA "décalage en horizontal mode urgence") : layout
    landscape mobile dédié. Sur écran bas (≤ 500px haut) en landscape, on
    force 2 colonnes (sinon scroll vertical bloqué) + tailles réduites
@@ -7930,7 +7956,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   .kta-emergency-bloc       { padding: 8px 10px; }
   .kta-emergency-bloc-heading { min-height: 160px; }
   .kta-emergency-exit-btn   { padding: 10px; font-size: 12px; }
-  .kta-emergency-copier-btn { margin-top: 5px; padding: 7px 10px; font-size: 11.5px; }
+  .kta-emergency-copier-btn { width: 40px; height: 40px; font-size: 18px; }
   .kta-emergency-mini-map   { min-height: 140px; }
   .kta-emergency-chip       { font-size: 10.5px; }
   .kta-emergency-plan-nom   { font-size: 12px; }

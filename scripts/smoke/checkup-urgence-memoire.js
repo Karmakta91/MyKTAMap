@@ -246,14 +246,27 @@ function inf(m) { console.log("  •  " + m); }
       await new Promise(function (r) { setTimeout(r, 1200); });
       const btn = document.getElementById("kta-em-copier");
       if (!btn) { window.EmergencyMode.desactiver(); return { absent: true }; }
-      const h = Math.round(btn.getBoundingClientRect().height);
+      const rb = btn.getBoundingClientRect();
+      const h = Math.round(rb.height);
+      // 📐 27/09/2026 — le bouton doit être un CARRÉ dans la ligne des
+      // chiffres, pas une barre sous eux : c'est tout l'objet de la v1.97.12,
+      // et ç ne se voit que géométriquement.
+      const val = document.getElementById("kta-em-pos-xy");
+      const rv = val ? val.getBoundingClientRect() : null;
+      const geo2 = {
+        largeur: Math.round(rb.width),
+        carre: Math.abs(rb.width - rb.height) <= 2,
+        memeLigne: rv ? Math.abs((rb.top + rb.height / 2) - (rv.top + rv.height / 2)) < 12 : null,
+        aDroite: rv ? (rb.left >= rv.right - 1) : null,
+        chiffresTronques: val ? (val.scrollWidth > val.clientWidth + 1) : null
+      };
       btn.click();
       await new Promise(function (r) { setTimeout(r, 700); });
       const etat = btn.textContent.trim();
       const exit = document.getElementById("kta-emergency-exit");
       const ov = document.querySelector(".kta-emergency-overlay");
       const res = {
-        hauteur: h, etat: etat,
+        hauteur: h, etat: etat, geo2: geo2,
         sortieBas: exit ? Math.round(exit.getBoundingClientRect().bottom) : null,
         fenetre: window.innerHeight,
         debord: ov ? Math.max(0, ov.scrollHeight - ov.clientHeight) : null,
@@ -269,8 +282,15 @@ function inf(m) { console.log("  •  " + m); }
       });
       inf("bouton de " + p1.hauteur + " px · après clic : « " + p1.etat + " » · presse-papier : " +
           JSON.stringify(presse));
-      if (p1.hauteur >= 32) ok("la cible est assez grande pour un doigt ganté (" + p1.hauteur + " px)");
-      else pb("bouton de copie trop petit (" + p1.hauteur + " px)");
+      if (p1.hauteur >= 40) ok("la cible est assez grande pour un doigt ganté (" +
+                              p1.geo2.largeur + "×" + p1.hauteur + " px)");
+      else pb("bouton de copie trop petit (" + p1.geo2.largeur + "×" + p1.hauteur + " px)");
+      if (p1.geo2.carre && p1.geo2.memeLigne && p1.geo2.aDroite)
+        ok("c'est un carré posé à droite des chiffres, dans leur ligne — pas une barre sous eux");
+      else pb("le bouton n'est plus un carré aligné sur les chiffres : " + JSON.stringify(p1.geo2));
+      if (p1.geo2.chiffresTronques === false)
+        ok("les chiffres ne sont pas tronqués par le bouton");
+      else pb("le bouton tronque les chiffres de la position");
       // Plan géoréférencé → « lat, lng » NU : tout ajout casserait le collage
       // dans une app de carte. Sinon → nom du plan + X/Y, inutile à un tiers
       // mais exact pour un binôme qui a le même plan.

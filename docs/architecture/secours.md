@@ -118,11 +118,21 @@ position, pour les envoyer si on trouve un point de réseau »*.
   précisément le mode de déploiement d'un réseau isolé de secours. Le
   presse-papier était recopié à la main dans **sept** modules ; celui-ci est le
   premier consommateur du helper (migration des 7 autres au BACKLOG).
-- Cible de **40 px** de haut, pleine largeur du bloc (cet écran se touche avec
-  des gants) ; les chiffres sont cliquables aussi. Retour dans le bouton
-  lui-même pendant 2 s — pas de toast à chercher, pas de modale à fermer.
-- Coût mesuré : la mini-carte passe de 529 à **486 px** en 390×844, bouton de
-  sortie toujours à 820/844, **0 px de débordement**.
+- **Carré de 48 px à DROITE des chiffres**, dans leur ligne (`.kta-emergency-pos-ligne`,
+  la valeur en `flex: 1; min-width: 0`). 🧹 27/09/2026 (KARMA « trop grand, prend
+  une place inutile ») : il était pleine largeur SOUS les chiffres et coûtait
+  48 px de hauteur à la carte ; il occupe maintenant le vide à leur droite et
+  n'en coûte plus que douze. 48 px reste au-dessus du minimum tactile (44 px) —
+  cet écran se touche avec des gants. 40 px en paysage bas, 44 px sous 360 px de
+  large. Les chiffres sont cliquables aussi. Le bouton ne contient qu'UN
+  caractère (📋 → ✅ / ⚠️ / —) et la phrase vit dans `title` + `aria-label` :
+  un « ✅ Copié » complet le ferait grandir, donc annulerait le gain.
+- Coût mesuré : la mini-carte passe de 529 à **510 px** en 390×844 (486 avec
+  l'ancien bouton pleine largeur), bouton de sortie toujours à 820/844,
+  **0 px de débordement**. Vérifié aussi en 375×667 (309 px de carte), en
+  paysage 844×390 (271 px) et en **320×568**, où une media query à 360 px abaisse
+  le plancher de la carte à 200 px : **50 px de défilement → 0**. Les chiffres
+  GPS ne sont tronqués sur aucun de ces formats.
 - Couvert par `checkup-urgence-memoire.js` (bloc P) : taille de la cible,
   **contenu réel du presse-papier** dans les deux branches (permission
   `clipboard-read`), absence de débordement, et repli joué en rendant

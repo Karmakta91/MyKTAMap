@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.97.11` (27/09/2026)
+## 📦 Version courante — `v1.97.12` (27/09/2026)
+
+> 📐 **v1.97.12 — Un bouton ne doit pas coûter un cinquième de la carte** : KARMA — *« le bouton copier ma position du mode xl est trop grand et prend une place inutile, on profite de la place restante dans l'alignement de la position GPS à droite pour inclure ce bouton en mode carré et non toute longueur »*. 🩹 *Le bouton était pleine largeur **sous** les chiffres : 48 px de hauteur pris à la mini-carte pour une action qui tient dans un carré. Il partage maintenant leur ligne et occupe le vide à leur droite — carte **486 → 510 px** en 390×844.* 👆 *48 px de côté (44 en dessous de 360 px de large, 40 en paysage bas) : au-dessus du minimum tactile, parce que cet écran se touche avec des gants. Le bouton ne contient qu'un caractère — 📋 puis ✅ — et la phrase vit dans l'infobulle et `aria-label`, sinon il regrandirait.* 📱 *Trouvé en mesurant : en **320×568** l'écran demandait encore 50 px de défilement, à cause du plancher de la mini-carte et non du bouton — une media query à 360 px ramène ça à **0**.*
 
 > 🧹 **v1.97.11 — « ? » n'est pas un niveau de batterie, et une échelle n'est pas une information d'urgence** : KARMA — *« enlève aussi l'indicateur batterie (si capteur désactivé ou non disponible) mode urgence xl »*. 🩸 *`BatteryGuard.formatLabel()` ne rend pas une chaîne vide quand la batterie est hors service : il rend **« ? »**, et `getEmoji()` rend 🪢 — l'état « indispo » de la v1.11.1, prévu pour que la chip de l'en-tête montre son emplacement. Le test `if (bat)` était donc toujours vrai : le bloc ÉTAT affichait « 🪢 ? » sur Safari iOS, sur Firefox, et pour quiconque avait décoché le réglage.* ⚠️ ***Régression de ma v1.97.6**, celle qui a mis la batterie dans ce bloc. La chip de l'en-tête est masquée depuis la v1.11.1-fix3, sur la même demande de KARMA — la décision existait, cet écran ne l'avait jamais reçue.* 🩹 *La condition est `isAvailable()`, jamais la véracité du libellé. Le tracker et la boussole restent affichés : masquer trop aurait été l'autre façon de se tromper.*
 
@@ -473,6 +475,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.97.12 (27/09/2026) — Un bouton ne doit pas coûter un cinquième de la carte
+
+- 🎯 **Le retour (KARMA)** : *« le bouton copier ma position du mode xl est trop grand et prend une place inutile, on profite de la place restante dans l'alignement de la position GPS à droite pour inclure ce bouton en mode carré et non toute longueur »*. Vrai : la veille j'avais pris 48 px de hauteur à la mini-carte pour une action qui tient dans un carré, alors que toute la version précédente consistait à rendre de la place à cette carte.
+- 🩹 **La valeur et le bouton partagent une ligne** (`.kta-emergency-pos-ligne`, valeur en `flex: 1; min-width: 0` — sans ce `min-width`, des chiffres longs pousseraient le bouton hors du bloc). Le bouton occupe le vide à droite des chiffres, qui était perdu.
+- 👆 **48 px de côté** — 44 sous 360 px de large, 40 en paysage bas : au-dessus du minimum tactile de 44 px partout où c'est possible, parce que cet écran se touche avec des gants, une main sale, parfois en tremblant. Les chiffres restent cliquables (c'est là que le doigt va d'abord).
+- 📋 **Le bouton ne contient qu'UN caractère** (📋 → ✅ / ⚠️ / —) et la phrase passe dans `title` + `aria-label`, où un lecteur d'écran la lit. Un « ✅ Copié » complet dans un bouton carré le ferait regrandir — c'est-à-dire annulerait ce qu'on vient de gagner.
+- 📐 **Mesuré** : mini-carte **486 → 510 px** en 390×844, bouton de sortie toujours à 820/844, **0 px de débordement**. Bouton 48×48 sur la même ligne que les chiffres, à leur droite, chiffres **non tronqués** — vérifié aussi en 375×667 (carte 309 px) et en paysage 844×390 (271 px).
+- 📱 **Trouvé en mesurant, sans rapport avec la demande** : en **320×568** (iPhone SE de 1re génération, ou tout téléphone en affichage zoomé), l'écran demandait encore **50 px de défilement** — l'essentiel venant du plancher de la mini-carte (260 px), pas du bouton. Le bouton de sortie restait atteignable (il est collant depuis la v1.97.6), mais un écran de panique ne devrait rien faire défiler : une media query à 360 px abaisse le plancher à 200 px → **0 px**.
+- ✅ **Tests** : `checkup-urgence-memoire.js` vérifie désormais que le bouton est **carré**, **sur la ligne des chiffres et à leur droite**, et que les chiffres ne sont pas tronqués — en plus du contenu réel du presse-papier et du repli `execCommand`. 56 guards verts.
 
 #### v1.97.11 (27/09/2026) — « ? » n'est pas un niveau de batterie
 

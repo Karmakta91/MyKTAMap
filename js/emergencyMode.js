@@ -189,17 +189,32 @@
 
   // Le retour tient dans le bouton lui-même : pas de toast à chercher, pas de
   // modale à fermer. Deux secondes, puis il redevient ce qu'il était.
+  // 📋 27/09/2026 : le bouton est un CARRÉ, donc son contenu est un seul
+  // caractère — la phrase, elle, passe dans l'infobulle et dans `aria-label`,
+  // où un lecteur d'écran la lit. Un « ✅ Copié » complet ferait grandir le
+  // bouton, c'est-à-dire annulerait ce qu'on vient de gagner.
+  const _ICONE_COPIE = {
+    "emergency.copier":     "📋",
+    "emergency.copierOk":   "✅",
+    "emergency.copierKo":   "⚠️",
+    "emergency.copierRien": "—"
+  };
   let _timerCopie = null;
   function _copierPosition() {
     const btn = document.getElementById("kta-em-copier");
     const txt = _texteACopier();
     const dire = function (cle) {
       if (!btn) return;
-      btn.textContent = window.I18n.t(cle);
+      btn.textContent = _ICONE_COPIE[cle] || _ICONE_COPIE["emergency.copier"];
+      btn.title = window.I18n.t(cle);
+      btn.setAttribute("aria-label", window.I18n.t(cle));
       if (_timerCopie) clearTimeout(_timerCopie);
       _timerCopie = setTimeout(function () {
         const b = document.getElementById("kta-em-copier");
-        if (b) b.textContent = window.I18n.t("emergency.copier");
+        if (!b) return;
+        b.textContent = _ICONE_COPIE["emergency.copier"];
+        b.title = window.I18n.t("emergency.copier");
+        b.setAttribute("aria-label", window.I18n.t("emergency.copier"));
       }, 2000);
     };
     if (!txt) { dire("emergency.copierRien"); return; }
@@ -260,14 +275,21 @@
           // d'œil, quand on n'en a qu'un à donner, c'était un de trop.
           '<div class="kta-emergency-bloc">' +
             '<div class="kta-emergency-label" id="kta-em-pos-label">' + t("emergency.label.position") + '</div>' +
-            '<div class="kta-emergency-value kta-emergency-pos-xy" id="kta-em-pos-xy" ' +
-                 'title="' + t("emergency.copier.title") + '">— / —</div>' +
+            // 📋 27/09/2026 (KARMA « le bouton copier est trop grand et prend une
+            // place inutile, profite de la place restante dans l'alignement de la
+            // position GPS à droite, en mode carré ») — la valeur et le bouton
+            // partagent une ligne : le bouton occupe le vide à droite des
+            // chiffres au lieu de s'ajouter sous eux. Carré de 48 px — la cible
+            // reste au-dessus du minimum tactile (44 px), parce que cet écran se
+            // touche avec des gants, une main sale, parfois en tremblant.
+            '<div class="kta-emergency-pos-ligne">' +
+              '<div class="kta-emergency-value kta-emergency-pos-xy" id="kta-em-pos-xy" ' +
+                   'title="' + t("emergency.copier.title") + '">— / —</div>' +
+              '<button class="kta-emergency-copier-btn" id="kta-em-copier" type="button" ' +
+                      'title="' + t("emergency.copier") + '" ' +
+                      'aria-label="' + t("emergency.copier") + '">📋</button>' +
+            '</div>' +
             '<div class="kta-emergency-sub" id="kta-em-pos-status"></div>' +
-            // 📋 Un bouton PLEIN, pas une icône de 20 px : cet écran se touche
-            // avec des gants, une main sale, parfois en tremblant.
-            '<button class="kta-emergency-copier-btn" id="kta-em-copier" type="button">' +
-              t("emergency.copier") +
-            '</button>' +
           '</div>' +
 
           '<div class="kta-emergency-bloc kta-emergency-bloc-heading">' +
