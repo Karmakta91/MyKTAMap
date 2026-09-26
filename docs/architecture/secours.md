@@ -74,6 +74,35 @@ une map plus grande »*.
    et la minimap restait à son plancher de 260 px avec **155 px d'écran vide
    sous le bouton**.
 
+#### 📋 Copier sa position (26/09/2026)
+
+KARMA : *« on devrait avoir la possibilité de copier les coordonnées GPS de notre
+position, pour les envoyer si on trouve un point de réseau »*.
+
+- `_texteACopier()` — plan géoréférencé : **`lat, lng` NU**, six décimales.
+  ⚠️ Pas d'heure, pas de cap, pas de nom de plan : tout ajout casse le collage
+  dans une app de carte, et l'écran où l'on est perdu est le pire endroit pour
+  découvrir qu'il faut nettoyer une chaîne à la main. Plan non géoréférencé :
+  `<nom du plan> — X <x> / Y <y>`, qui ne sert qu'à quelqu'un ayant le même plan.
+- **Le doute ne se copie pas.** Le sous-titre « position de départ, jamais
+  confirmée » reste À L'ÉCRAN : il se dit à la personne, il n'a pas à partir
+  dans un message qu'un tiers lira hors contexte.
+- `window.ktaCopierTexte(txt)` (nouveau, `utils.js`) : `navigator.clipboard`
+  puis repli `execCommand`. Les **deux** chemins sont nécessaires — l'API
+  sécurisée n'existe pas sur une instance servie en **HTTP**, qui est
+  précisément le mode de déploiement d'un réseau isolé de secours. Le
+  presse-papier était recopié à la main dans **sept** modules ; celui-ci est le
+  premier consommateur du helper (migration des 7 autres au BACKLOG).
+- Cible de **40 px** de haut, pleine largeur du bloc (cet écran se touche avec
+  des gants) ; les chiffres sont cliquables aussi. Retour dans le bouton
+  lui-même pendant 2 s — pas de toast à chercher, pas de modale à fermer.
+- Coût mesuré : la mini-carte passe de 529 à **486 px** en 390×844, bouton de
+  sortie toujours à 820/844, **0 px de débordement**.
+- Couvert par `checkup-urgence-memoire.js` (bloc P) : taille de la cible,
+  **contenu réel du presse-papier** dans les deux branches (permission
+  `clipboard-read`), absence de débordement, et repli joué en rendant
+  `navigator.clipboard` inaccessible.
+
 #### Mesuré (Playwright, plan tuilé servi en HTTP, 3 formats × 2 branches)
 
 | Format | Minimap avant | Minimap après | Bas du bouton | Débordement |

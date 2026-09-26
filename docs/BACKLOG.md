@@ -83,6 +83,17 @@ Trois audits mesurés sur un vrai plan tuilé (16332×13820, 864 tuiles au nivea
 - 🟡 **Alpha : la transparence est inatteignable pour tout plan issu d'un scan.** Le format des tuiles est décidé à la génération d'après la source ; un JPEG n'ayant jamais d'alpha, ses tuiles seront **toujours** opaques, et **il n'existe aucun chemin de re-tuilage** d'un plan déjà généré. Superposé à OSM : à 100 % le plan masque totalement le fond, à 50 % les deux couches sont délavées à parts égales. Le rendu est correct **parce que l'opacité compense un fond opaque**, pas par transparence — ce que le vocabulaire (« superposition », « transparence des plans ») ne dit pas.
 - 🟡 **Le tick du mode urgence à l'arrêt** : 40 `setView` en 10 s, immobile, chacun déclenchant un parcours de toute la grille du niveau (864 itérations) — ~34 560 itérations en 10 s pour rien, sur l'écran ouvert quand la batterie est basse.
 
+## 📋 Sept copies locales du presse-papier (26/09/2026)
+
+`window.ktaCopierTexte(txt)` existe depuis la v1.97.10 (`utils.js`) : `navigator.clipboard` + repli
+`execCommand`, un seul endroit où corriger le jour où un navigateur change d'avis. Le mode urgence est
+son **premier** consommateur ; les sept autres gardent leur propre version, chacune avec son repli plus
+ou moins complet : `debug.js` · `homeConfig.js` · `interfaceDocs.js` (×2) · `lostMode.js` ·
+`memInspector.js` · `osmCoords.js` · `secoursMode.js`. Migration mécanique, sans changement visible —
+mais chaque site a son propre retour visuel (toast, texte in situ, `alert`), donc à faire **un par un**
+et en vérifiant le retour. ⚠️ Deux d'entre eux (`memInspector`, `debug`) servent au diagnostic : les
+casser rendrait un rapport de crash incopiable.
+
 ## 🗑️ Supprimer un plan ne supprime pas ses documents d'histoire (26/09/2026)
 
 `PlanRegistry.purgeAssociatedData(planId)` nettoie session, géoréf, photos et sauvegardes — **mais pas la

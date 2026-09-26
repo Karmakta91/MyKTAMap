@@ -70,7 +70,11 @@ function inf(m) { console.log("  •  " + m); }
     if (!/Executable doesn't exist/i.test(String((e && e.message) || ""))) throw e;
     nav = await chromium.launch({ channel: "chromium" });
   }
-  const page = await nav.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  // 📋 `clipboard-read` : sans cette permission, on ne pourrait PAS vérifier ce
+  // qui a été copié — seulement que le bouton dit l'avoir fait.
+  const ctx = await nav.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2,
+                                     permissions: ["clipboard-read", "clipboard-write"] });
+  const page = await ctx.newPage();
   await page.addInitScript(function (ls) {
     for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
     // Sans ça, `js/debug.js` masque les logs de l'app et on mesure son silence.
@@ -202,6 +206,83 @@ function inf(m) { console.log("  •  " + m); }
 
     if (u.miniTournee) ok("la minimap s'oriente quand le mode « plan orienté » est actif (" + u.miniTournee + ")");
     else pb("la minimap ne tourne pas alors que le mode est activé");
+
+    // ── P — copier sa position (26/09/2026) ───────────────────
+    // KARMA : « on devrait avoir la possibilité de copier les coordonnées GPS de
+    // notre position, pour les envoyer si on trouve un point de réseau ». Ce qui
+    // compte n'est pas que le bouton dise « copié » : c'est ce qu'il y a DANS le
+    // presse-papier, et que ce soit collable tel quel dans un SMS ou une carte.
+    console.log("— P : copier sa position —");
+    const p1 = await page.evaluate(async function () {
+      window.EmergencyMode.activer();
+      await new Promise(function (r) { setTimeout(r, 1200); });
+      const btn = document.getElementById("kta-em-copier");
+      if (!btn) { window.EmergencyMode.desactiver(); return { absent: true }; }
+      const h = Math.round(btn.getBoundingClientRect().height);
+      btn.click();
+      await new Promise(function (r) { setTimeout(r, 700); });
+      const etat = btn.textContent.trim();
+      const exit = document.getElementById("kta-emergency-exit");
+      const ov = document.querySelector(".kta-emergency-overlay");
+      const res = {
+        hauteur: h, etat: etat,
+        sortieBas: exit ? Math.round(exit.getBoundingClientRect().bottom) : null,
+        fenetre: window.innerHeight,
+        debord: ov ? Math.max(0, ov.scrollHeight - ov.clientHeight) : null,
+        geo: !!(document.getElementById("kta-em-pos-label") || {}).textContent.match(/GPS/)
+      };
+      window.EmergencyMode.desactiver();
+      return res;
+    });
+    if (p1.absent) pb("le bouton « copier ma position » n'existe pas");
+    else {
+      const presse = await page.evaluate(function () {
+        return navigator.clipboard.readText().catch(function () { return null; });
+      });
+      inf("bouton de " + p1.hauteur + " px · après clic : « " + p1.etat + " » · presse-papier : " +
+          JSON.stringify(presse));
+      if (p1.hauteur >= 32) ok("la cible est assez grande pour un doigt ganté (" + p1.hauteur + " px)");
+      else pb("bouton de copie trop petit (" + p1.hauteur + " px)");
+      // Plan géoréférencé → « lat, lng » NU : tout ajout casserait le collage
+      // dans une app de carte. Sinon → nom du plan + X/Y, inutile à un tiers
+      // mais exact pour un binôme qui a le même plan.
+      if (p1.geo) {
+        if (presse && /^-?\d+\.\d{6}, -?\d+\.\d{6}$/.test(presse))
+          ok("le presse-papier contient des coordonnées NUES, collables dans un SMS ou une carte");
+        else pb("presse-papier inattendu pour un plan géoréférencé : " + JSON.stringify(presse));
+      } else {
+        if (presse && /X \d+ \/ Y \d+/.test(presse))
+          ok("plan non géoréférencé : le presse-papier porte le plan et le X/Y");
+        else pb("presse-papier inattendu pour un plan non géoréférencé : " + JSON.stringify(presse));
+      }
+      if (p1.sortieBas !== null && p1.sortieBas <= p1.fenetre && p1.debord === 0)
+        ok("le bouton de copie n'a pas repoussé la sortie hors de l'écran (" +
+           p1.sortieBas + " ≤ " + p1.fenetre + ", 0 px de débordement)");
+      else pb("l'ajout du bouton fait déborder l'écran (sortie " + p1.sortieBas + "/" +
+              p1.fenetre + ", débordement " + p1.debord + ")");
+    }
+
+    // Le repli quand `navigator.clipboard` est inaccessible : c'est le cas
+    // d'une instance servie en HTTP (réseau isolé de secours), où l'API
+    // sécurisée n'existe pas. Sans repli, pas de coordonnées à transmettre.
+    const p2 = await page.evaluate(async function () {
+      try {
+        Object.defineProperty(navigator, "clipboard", {
+          get: function () { throw new Error("bloqué"); }, configurable: true
+        });
+      } catch (e) { return { impossible: true }; }
+      window.EmergencyMode.activer();
+      await new Promise(function (r) { setTimeout(r, 1000); });
+      const btn = document.getElementById("kta-em-copier");
+      if (btn) btn.click();
+      await new Promise(function (r) { setTimeout(r, 600); });
+      const t = btn ? btn.textContent.trim() : "";
+      window.EmergencyMode.desactiver();
+      return { etat: t };
+    });
+    if (p2.impossible) inf("navigator.clipboard non redéfinissable — repli non joué");
+    else if (/✅/.test(p2.etat)) ok("sans `navigator.clipboard`, le repli `execCommand` copie quand même");
+    else pb("le repli de copie ne fonctionne pas (bouton : « " + p2.etat + " »)");
 
     // ── C1 — les couleurs choisies en légende atteignent la mini-carte ──
     // On capture ce que le mini DEMANDE à Leaflet : c'est la décision de style

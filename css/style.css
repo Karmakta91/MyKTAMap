@@ -7459,6 +7459,8 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-dark .kta-emergency-value        { color: #f4c542; }
 .kta-emergency-dark .kta-emergency-sub          { color: #c8d0e0; }
 .kta-emergency-dark .kta-emergency-bloc         { background: rgba(255,255,255,0.04); border-color: rgba(244,197,66,0.25); }
+.kta-emergency-dark .kta-emergency-copier-btn   { background: rgba(255,255,255,0.06); border-color: rgba(244,197,66,0.45); color: #e8eaf0; }
+.kta-emergency-dark .kta-emergency-copier-btn:hover { background: rgba(255,255,255,0.12); }
 .kta-emergency-dark .kta-emergency-exit-btn     { background: #f4c542; color: #0a0d18; border-color: #f4c542; }
 .kta-emergency-dark .kta-emergency-exit-btn:hover { background: #ffd860; }
 
@@ -7472,6 +7474,8 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-light .kta-emergency-value        { color: #b8740b; }
 .kta-emergency-light .kta-emergency-sub          { color: #2c3848; }
 .kta-emergency-light .kta-emergency-bloc         { background: rgba(0,0,0,0.04); border-color: rgba(184,116,11,0.35); }
+.kta-emergency-light .kta-emergency-copier-btn   { background: rgba(0,0,0,0.05); border-color: rgba(184,116,11,0.5); color: #2c3848; }
+.kta-emergency-light .kta-emergency-copier-btn:hover { background: rgba(0,0,0,0.1); }
 .kta-emergency-light .kta-emergency-exit-btn     { background: #c0392b; color: #ffffff; border-color: #c0392b; }
 .kta-emergency-light .kta-emergency-exit-btn:hover { background: #a02818; }
 
@@ -7637,6 +7641,25 @@ html.kta-theme-light .kta-cfg-group-titre {
   font-size: 12.5px;
   font-style: italic;
   margin-top: 2px;
+}
+
+/* 📋 26/09/2026 — copier sa position pour l'envoyer dès qu'on capte.
+   Pleine largeur du bloc : la cible doit être grande, cet écran se touche avec
+   des gants. Discret en couleur (le rouge et le jaune sont réservés à la
+   donnée et à la sortie), franc en taille. */
+.kta-emergency-copier-btn {
+  margin-top: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 1.5px solid;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+  transition: background 0.12s;
 }
 
 /* Heading bloc — texte par-dessus le minimap, donc halo prononcé pour lisibilité */
@@ -7907,6 +7930,7 @@ html.kta-theme-light .kta-cfg-group-titre {
   .kta-emergency-bloc       { padding: 8px 10px; }
   .kta-emergency-bloc-heading { min-height: 160px; }
   .kta-emergency-exit-btn   { padding: 10px; font-size: 12px; }
+  .kta-emergency-copier-btn { margin-top: 5px; padding: 7px 10px; font-size: 11.5px; }
   .kta-emergency-mini-map   { min-height: 140px; }
   .kta-emergency-chip       { font-size: 10.5px; }
   .kta-emergency-plan-nom   { font-size: 12px; }

@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.97.9` (26/09/2026)
+## 📦 Version courante — `v1.97.10` (26/09/2026)
+
+> 📋 **v1.97.10 — Des coordonnées qu'on peut envoyer** : KARMA — *« en mode urgence XL on devrait avoir la possibilité de copier les coordonnées GPS de notre position (pour les envoyer si on trouve un point de réseau) »*. 📍 *Plan géoréférencé → **`lat, lng` nu** ; plan non géoréférencé → nom du plan + X/Y. Rien d'autre : une heure ou un cap ajoutés casseraient le collage dans une app de carte, et cet écran est le pire endroit pour découvrir qu'il faut nettoyer une chaîne à la main.* ⚠️ *Le doute (« position jamais confirmée ») reste À L'ÉCRAN — il se dit à la personne, il ne part pas dans un message qu'un tiers lira hors contexte.* 🛡️ *`window.ktaCopierTexte` (nouveau) garde les DEUX chemins : `navigator.clipboard` n'existe pas sur une instance servie en HTTP, qui est justement le déploiement d'un réseau isolé de secours.*
 
 > 🎨 **v1.97.9 — Audit des icônes, étage 1 : trois défauts, zéro refonte** : KARMA — *« on mélange plusieurs façons de faire (pour portail par exemple) »*, puis *« go étage 1 du backlog (on corrige les bugs actuels, pas de refonte en gros) »*. 🩸 *`entree_plan` était **cassée sur tout plan généré depuis le 13/06/2026** : un fix cosmétique de modale (v1.44.5) a remplacé le chemin de l'icône par son libellé d'affichage dans le `title` que la génération relisait — et régénérer ne réparait pas.* 🟢 ***21 sondes 404 par ouverture de plan** : le Générateur déclare enfin ce qu'il embarque (`iconsEmbarquees`) → **0 requête**, mesuré.* 🛡️ *`check-icon-catalog.js` passe de **2 tables à 9**, précache et trois dicos compris — falsifié sur 5 axes.* 🧹 *Deux défauts trouvés en chemin : le **smoke** était rouge dès que `data/` contenait un vrai relevé (il cherchait un plan par son nom) et le bouton ❓ d'aide **jetait une exception** sur ≡ Légende. Smoke VERT.*
 
@@ -469,6 +471,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.97.10 (26/09/2026) — Des coordonnées qu'on peut envoyer
+
+- 🎯 **La demande (KARMA)** : *« en mode urgence XL on devrait avoir la possibilité de copier les coordonnées GPS de notre position (pour les envoyer si on trouve un point de réseau) »*.
+- 📍 **Ce qui part dans le presse-papier, et rien d'autre.** Plan géoréférencé : `48.823328, 2.322915` — **coordonnées nues**, six décimales, le format qui se colle tel quel dans un SMS, Google Maps ou Plans. Plan non géoréférencé : `<nom du plan> — X 9014 / Y 12338`, qui ne veut rien dire pour un tiers mais tout pour un binôme ayant le même plan. ⚠️ *Pas d'heure, pas de cap, pas de mention de plan devant les coordonnées : tout ajout casse le collage dans une app de carte, et l'écran où l'on est perdu est le pire endroit pour découvrir qu'il faut nettoyer une chaîne à la main.*
+- ⚠️ **Le doute ne se copie pas.** Le sous-titre « position de départ du plan, jamais confirmée » reste À L'ÉCRAN. Il s'adresse à la personne qui lit, pas au destinataire d'un message qui n'aurait aucun moyen de le pondérer — et la doc utilisateur dit explicitement de le répéter à qui on écrit.
+- 🛡️ **`window.ktaCopierTexte(txt)`** (nouveau, `utils.js`) : `navigator.clipboard` puis repli `execCommand`. Les **deux** chemins sont nécessaires — l'API sécurisée exige HTTPS ou localhost, alors qu'une instance de secours sur réseau isolé se sert en **HTTP**. Le presse-papier était recopié à la main dans **sept** modules, chacun avec son propre repli ; celui-ci est le premier consommateur d'un helper unique (migration des sept autres au BACKLOG, à faire un par un : chacun a son propre retour visuel).
+- 👆 **Une cible de 40 px**, pleine largeur du bloc : cet écran se touche avec des gants, une main sale, parfois en tremblant — une icône de 20 px aurait été une fausse bonne idée. Les chiffres eux-mêmes sont cliquables (c'est là que le doigt va d'abord). Le retour tient **dans le bouton** pendant 2 s : pas de toast à chercher, pas de modale à fermer.
+- 📐 **Coût en place, mesuré** : la mini-carte passe de 529 à **486 px** en 390×844 (elle était à 260 px avant la v1.97.7), le bouton de sortie reste à 820/844 et le débordement reste à **0 px**. En paysage bas, le bouton se resserre pour ne pas manger la carte.
+- ✅ **Tests** : `checkup-urgence-memoire.js` gagne un bloc **P** qui vérifie le **contenu réel du presse-papier** (permission `clipboard-read`) dans les deux branches, la taille de la cible, l'absence de débordement, et **joue le repli** en rendant `navigator.clipboard` inaccessible — sans quoi on ne mesurerait que la promesse du bouton, pas la copie.
 
 #### v1.97.9 (26/09/2026) — Audit des icônes, étage 1
 

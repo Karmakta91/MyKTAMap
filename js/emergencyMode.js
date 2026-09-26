@@ -12,6 +12,11 @@
 // VITALES en GROS :
 //   - Position tracker : GPS lat/lng si le plan est calibré KMZ, sinon px du
 //     plan — UN SEUL des deux depuis le 26/09/2026 (KARMA)
+//   - 📋 Bouton COPIER la position (26/09/2026, KARMA « pour les envoyer si on
+//     trouve un point de réseau ») : GPS → « lat, lng » NU, le format qu'un
+//     SMS, une app de carte ou une équipe de secours comprennent sans rien
+//     retirer. Plan non géoréférencé → nom du plan + X/Y, qui ne sert qu'à
+//     quelqu'un qui a le MÊME plan, et c'est dit tel quel.
 //   - Heading boussole en temps réel (gros chiffres + flèche compas)
 //   - Échelle plan
 //   - Bouton "Sortir" gros et visible
@@ -150,6 +155,61 @@
     };
   }
 
+  // 📋 26/09/2026 (KARMA : « on devrait avoir la possibilité de copier les
+  // coordonnées GPS de notre position, pour les envoyer si on trouve un point
+  // de réseau ») — CE QU'ON MET DANS LE PRESSE-PAPIER.
+  //
+  // ⚠️ Coordonnées NUES pour le GPS : « 48.823328, 2.322915 ». Pas d'heure, pas
+  // de cap, pas de nom de plan — c'est ce qui se colle tel quel dans un SMS,
+  // dans Google Maps ou dans Plans. Y ajouter du texte casse le collage dans
+  // une app de carte, et sur l'écran où on est perdu ce serait le pire moment
+  // pour découvrir qu'il faut nettoyer la chaîne à la main.
+  // Le doute sur la position (« jamais confirmée ») reste À L'ÉCRAN, sous les
+  // chiffres : il se dit à la personne, il ne se colle pas dans le message.
+  //
+  // Plan NON géoréférencé : un X/Y ne veut rien dire pour un tiers, mais tout
+  // pour un binôme qui a le même plan — on préfixe donc par le nom du plan.
+  function _texteACopier() {
+    const pos = (typeof window.getTrackingPosition === "function") ? window.getTrackingPosition() : null;
+    if (!pos) return null;
+    const t = _transformCalib();
+    if (t) {
+      const gps = (window.KmzExport && typeof window.KmzExport.planToGps === "function")
+        ? window.KmzExport.planToGps(t, pos.x, pos.y) : null;
+      if (gps && typeof gps.lat === "number" && typeof gps.lng === "number"
+          && Number.isFinite(gps.lat) && Number.isFinite(gps.lng)) {
+        return gps.lat.toFixed(6) + ", " + gps.lng.toFixed(6);
+      }
+    }
+    const xy = _formatXY(pos);
+    if (!xy) return null;
+    const nom = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "";
+    return (nom ? nom + " — " : "") + "X " + Math.round(pos.x) + " / Y " + Math.round(pos.y);
+  }
+
+  // Le retour tient dans le bouton lui-même : pas de toast à chercher, pas de
+  // modale à fermer. Deux secondes, puis il redevient ce qu'il était.
+  let _timerCopie = null;
+  function _copierPosition() {
+    const btn = document.getElementById("kta-em-copier");
+    const txt = _texteACopier();
+    const dire = function (cle) {
+      if (!btn) return;
+      btn.textContent = window.I18n.t(cle);
+      if (_timerCopie) clearTimeout(_timerCopie);
+      _timerCopie = setTimeout(function () {
+        const b = document.getElementById("kta-em-copier");
+        if (b) b.textContent = window.I18n.t("emergency.copier");
+      }, 2000);
+    };
+    if (!txt) { dire("emergency.copierRien"); return; }
+    if (typeof window.ktaCopierTexte !== "function") { dire("emergency.copierKo"); return; }
+    window.ktaCopierTexte(txt).then(function (ok) {
+      dire(ok ? "emergency.copierOk" : "emergency.copierKo");
+      if (ok) console.log("[Emergency] position copiée : " + txt);
+    });
+  }
+
   // ============================================================
   // UI
   // ============================================================
@@ -196,8 +256,14 @@
           // d'œil, quand on n'en a qu'un à donner, c'était un de trop.
           '<div class="kta-emergency-bloc">' +
             '<div class="kta-emergency-label" id="kta-em-pos-label">' + t("emergency.label.position") + '</div>' +
-            '<div class="kta-emergency-value kta-emergency-pos-xy" id="kta-em-pos-xy">— / —</div>' +
+            '<div class="kta-emergency-value kta-emergency-pos-xy" id="kta-em-pos-xy" ' +
+                 'title="' + t("emergency.copier.title") + '">— / —</div>' +
             '<div class="kta-emergency-sub" id="kta-em-pos-status"></div>' +
+            // 📋 Un bouton PLEIN, pas une icône de 20 px : cet écran se touche
+            // avec des gants, une main sale, parfois en tremblant.
+            '<button class="kta-emergency-copier-btn" id="kta-em-copier" type="button">' +
+              t("emergency.copier") +
+            '</button>' +
           '</div>' +
 
           '<div class="kta-emergency-bloc kta-emergency-bloc-heading">' +
@@ -247,6 +313,14 @@
   function _bindOverlay() {
     if (!_overlay) return;
     document.getElementById("kta-emergency-exit").addEventListener("click", desactiver);
+    const btnCopie = document.getElementById("kta-em-copier");
+    if (btnCopie) btnCopie.addEventListener("click", _copierPosition);
+    // Les chiffres aussi : c'est là que le doigt va d'abord.
+    const valPos = document.getElementById("kta-em-pos-xy");
+    if (valPos) {
+      valPos.style.cursor = "pointer";
+      valPos.addEventListener("click", _copierPosition);
+    }
 
     // 🔧 v1.13.0 : handlers de la toggle 🗺️ Itinéraire RETIRÉS (toggle
     // supprimée du HTML). L'itinéraire est toujours rendu dans la minimap
