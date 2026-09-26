@@ -17,8 +17,8 @@
 //
 // Règles (cf l'étude, §« Logique quand annoncer ») :
 //   • un croisement se dit, même pour aller tout droit ;
-//   • un virage SANS croisement ne se dit que s'il est franc — le tracé ne
-//     montre pas toutes les ouvertures réelles (chambre à piliers) ;
+//   • un virage SANS croisement ne se dit pas : tant qu'il n'y a qu'un chemin,
+//     suivre la galerie suffit (retour KARMA, catacombes, 27/09/2026) ;
 //   • l'angle se mesure sur une fenêtre de quelques mètres, pas au segment
 //     voisin (le dessin à la main tremble) ;
 //   • les événements trop proches fusionnent en un seul ;
@@ -51,10 +51,6 @@
   // ---- Seuils (mètres / degrés) — à caler sur des plans réels (étude §Inconnues)
   const FENETRE_M        = 4;    // angle mesuré sur 4 m avant et après
   const FUSION_M         = 6;    // événements à moins de 6 m → un seul (zigzag du dessin)
-  // Virage SANS croisement : dit seulement s'il est franc. Calé sur un plan
-  // réel (27/09/2026) : à 50°, 9 consignes sur 15 étaient des coudes du
-  // dessin et des zigzags, sans aucun choix possible.
-  const VIRAGE_MIN_DEG   = 60;
   const TOUT_DROIT_DEG   = 25;
   const LEGER_DEG        = 60;
   const DEMI_TOUR_DEG    = 135;
@@ -179,28 +175,18 @@
     function capIn(s)  { return _capEntre(ch, s - W, s); }
     function capOut(s) { return _capEntre(ch, s, s + W); }
 
-    // 1) Candidats : croisements posés sur le trajet…
+    // 1) Candidats : les croisements posés sur le trajet, ET RIEN D'AUTRE.
+    // 🩸 27/09/2026 (retour KARMA sur les catacombes) — les virages francs du
+    // dessin SANS croisement étaient annoncés aussi (« le tracé ne montre pas
+    // toutes les ouvertures »). Sur un réseau de galeries, c'est du bruit :
+    // tant qu'il n'y a qu'un chemin, suivre la galerie suffit. Un virage ne se
+    // dit donc qu'à un croisement, là où il y a un choix à faire.
     const cands = [];
     (Array.isArray(road.carrefours) ? road.carrefours : []).forEach(function(c) {
       const pr = _projeter(ch, c);
       if (pr && pr.dist <= CARREFOUR_TOL_PX && pr.s > 0.5 && pr.s < L - 0.5) {
         cands.push({ s: pr.s, carrefour: c });
       }
-    });
-    // …et virages francs du dessin (maxima locaux, à une fenêtre près)
-    const virages = [];
-    for (let i = 1; i < road.points.length - 1; i++) {
-      const s = ch.cum[i];
-      const ci = capIn(s), co = capOut(s);
-      if (ci === null || co === null) continue;
-      const d = Math.abs(_norm180(co - ci));
-      if (d >= VIRAGE_MIN_DEG) virages.push({ s: s, angle: d });
-    }
-    virages.forEach(function(v) {
-      const dominant = virages.every(function(w) {
-        return w === v || Math.abs(w.s - v.s) > W || w.angle < v.angle || (w.angle === v.angle && w.s > v.s);
-      });
-      if (dominant) cands.push({ s: v.s, virage: v.angle });
     });
     cands.sort(function(a, b) { return a.s - b.s; });
 
@@ -226,14 +212,9 @@
       if (ci === null || co === null) return;
       const delta = _norm180(co - ci);
       const abs = Math.abs(delta);
-      const avecCarrefour = g.filter(function(c) { return c.carrefour; });
-      if (!avecCarrefour.length && abs < VIRAGE_MIN_DEG) return;   // simple coude du dessin
-
-      let rep = avecCarrefour.length ? avecCarrefour[0] : g.reduce(function(a, b) {
-        return (b.virage || 0) > (a.virage || 0) ? b : a;
-      });
+      const rep = g[0];
       const pt = _pointA(ch, rep.s);
-      const c = { s: rep.s, x: pt.x, y: pt.y, angle: Math.round(delta), carrefour: avecCarrefour.length > 0 };
+      const c = { s: rep.s, x: pt.x, y: pt.y, angle: Math.round(delta), carrefour: true };
       const cote = delta > 0 ? "droite" : "gauche";
 
       // « Faire demi-tour » seulement si le trajet REVIENT SUR LUI-MÊME (une

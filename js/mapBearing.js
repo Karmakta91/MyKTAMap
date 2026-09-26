@@ -409,8 +409,35 @@
   // les deux marges de culling ont commise, cf. `zoneVisible` —, et on ne
   // l'applique QUE pendant le mode : le canvas grandit d'autant (×1,8 à ×3,5
   // en surface), ce n'est pas un coût à faire porter à tout le monde.
+  //
+  // 🩸 27/09/2026 (KARMA « le tracé du chemin avance au dézoom en mode
+  // guidé ») — seul le renderer PAR DÉFAUT était élargi. L'itinéraire, lui,
+  // vit dans un renderer SVG À PART (halo néon, impossible sur canvas) : resté
+  // cadré sur le rectangle NON tourné, il coupait le trajet dans les coins, et
+  // la coupe changeait à chaque zoom — le tracé semblait avancer. On élargit
+  // donc TOUS les renderers de la carte, y compris ceux ajoutés pendant le mode
+  // (`_onRendererAjoute`).
   function _majPaddingRenderer(map, actif) {
-    const r = map && map._renderer;   // renderer par défaut (preferCanvas)
+    if (!map) return;
+    const vus = [];
+    if (map._renderer) vus.push(map._renderer);
+    try {
+      map.eachLayer(function(l) {
+        if (window.L && l instanceof L.Renderer && vus.indexOf(l) < 0) vus.push(l);
+      });
+    } catch(e) {}
+    vus.forEach(function(r) { _majPaddingUnRenderer(map, r, actif); });
+    if (actif) map.on("layeradd", _onRendererAjoute);
+    else map.off("layeradd", _onRendererAjoute);
+  }
+
+  function _onRendererAjoute(e) {
+    if (window.L && e && e.layer instanceof L.Renderer && isActive()) {
+      _majPaddingUnRenderer(window.map, e.layer, true);
+    }
+  }
+
+  function _majPaddingUnRenderer(map, r, actif) {
     if (!r || !r.options) return;
     if (actif) {
       if (r._ktaPadOrigine == null) r._ktaPadOrigine = r.options.padding;

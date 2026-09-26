@@ -844,6 +844,20 @@ function _scheduleIntersectionRender() {
   }, 350);
 }
 
+// 🪧 27/09/2026 — UN SEUL renderer SVG pour l'itinéraire et ses raccords, par
+// carte. Avant : un `L.svg()` NEUF par polyline et par renderRoads — autant
+// de <svg> empilés, et autant de renderers que le mode « plan orienté » ne
+// connaissait pas (cf mapBearing.js > _majPaddingRenderer : le trajet se
+// coupait dans les coins de la vue tournée et « avançait » au dézoom).
+// Rangé SUR la carte : un changement de plan crée une nouvelle carte, donc
+// un nouveau renderer, sans rien à purger.
+function _rendererItineraire() {
+  const m = window.map;
+  if (!m) return L.svg();
+  if (!m._ktaItiRenderer) m._ktaItiRenderer = L.svg();
+  return m._ktaItiRenderer;
+}
+
 function renderRoads() {
   // ⚠️ Chemin chaud : appelé à CHAQUE point pendant le dessin. Logger le
   // tableau roadsData complet ici (a) coûte une sérialisation sur les gros
@@ -1030,7 +1044,7 @@ function renderRoads() {
     if (road.type === "itinerary") {
       // Itineraire : SVG + className pour le filtre CSS drop-shadow (halo neon)
       const opts = Object.assign({}, style, {
-        renderer:  L.svg(),
+        renderer:  _rendererItineraire(),
         className: "kta-itinerary-polyline"
       });
       polyline = L.polyline(latlngs, opts);
@@ -1058,7 +1072,7 @@ function renderRoads() {
         const pointille = L.polyline(
           [convertCoord(rc.de.x, rc.de.y), convertCoord(rc.vers.x, rc.vers.y)],
           Object.assign({}, style, {
-            renderer:    L.svg(),
+            renderer:    _rendererItineraire(),
             className:   "kta-itinerary-raccord",
             weight:      Math.max(2, Math.round((style.weight || 5) * 0.6)),
             dashArray:   "4 8",

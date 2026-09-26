@@ -255,13 +255,13 @@ async function bandeau() {
     t("dessin tremblé : aucune consigne avant l'arrivée", sansArrivee(it.guide).length === 0);
   }
 
-  // 4) Coude franc SANS croisement → dit ; coude doux → tu
+  // 4) Coude SANS croisement → tu, même franc (retour KARMA, catacombes :
+  //    tant qu'il n'y a qu'un chemin, suivre la galerie suffit)
   {
     const w = bac([R("principal", [[0, 500], [300, 500], [300, 100]])]);
     const it = await itineraire(w, [20, 500], [300, 120]);
     const cs = sansArrivee(it.guide);
-    t("coude franc sans croisement : dit (le tracé ne montre pas toutes les ouvertures)",
-      cs.length === 1 && cs[0].type === "virage" && cs[0].cote === "gauche");
+    t("coude franc (90°) sans croisement : tu", cs.length === 0);
     const w2 = bac([R("principal", [[0, 500], [300, 500], [600, 380]])]);   // ~22°
     const it2 = await itineraire(w2, [20, 500], [590, 384]);
     t("coude doux sans croisement : tu", sansArrivee(it2.guide).length === 0);
@@ -282,23 +282,26 @@ async function bandeau() {
 
   // 5 bis) 🩸 Épingle par une galerie de liaison de 5 m (ouest → sud → est) :
   //   angle ≈ 180°, mais le trajet ne revient PAS sur lui-même → virage, pas
-  //   « demi-tour » (cas réel : la fusion en chaîne l'annonçait ainsi).
+  //   « demi-tour » (cas réel : la fusion en chaîne l'annonçait ainsi). Les
+  //   deux coins sont de vrais croisements (une galerie continue vers l'ouest).
   {
     const w = bac([
-      R("principal", [[400, 500], [200, 500]]),
+      R("principal", [[400, 500], [100, 500]]),
       R("principal", [[200, 500], [200, 520]]),
-      R("principal", [[200, 520], [400, 520]])
+      R("principal", [[100, 520], [400, 520]])
     ]);
     const it = await itineraire(w, [390, 500], [390, 520]);
     const cs = sansArrivee(it.guide);
     t("épingle : pas de « demi-tour »", !cs.some(c => c.type === "demiTour"));
     t("épingle : dite comme un virage à gauche", cs.length >= 1 && cs.every(c => c.type === "virage" && c.cote === "gauche"));
-    // Vrai aller-retour : étape au fond d'un cul-de-sac → demi-tour
+    // Aller-retour au fond d'un cul-de-sac (sans croisement) : c'est l'ÉTAPE
+    // qui se dit là, et le retour au croisement.
     const w2 = bac([R("principal", [[0, 500], [400, 500]]), R("principal", [[200, 500], [200, 380]])]);
     const r2 = await w2.Pathfinder.computeRoute([{ x: 20, y: 500 }, { x: 200, y: 380 }, { x: 380, y: 500 }], {});
     const g2 = w2.ItiGuidage.construire({ points: r2.path, raccords: r2.raccords, carrefours: r2.carrefours });
-    const demi = g2.consignes.find(c => c.type === "demiTour");
-    t("cul-de-sac : le vrai aller-retour est un « demi-tour »", !!demi && Math.abs(demi.y - 380) < 4);
+    const etape = g2.consignes.find(c => c.type === "etape");
+    t("cul-de-sac : l'étape est dite au fond", !!etape && Math.abs(etape.y - 380) < 4);
+    t("cul-de-sac : aucun virage inventé au fond", !g2.consignes.some(c => c.type === "virage" && c.y < 480));
   }
 
   // 6) Quadrillage serré (chambre à piliers, maille 2 m = 8 px) traversé en

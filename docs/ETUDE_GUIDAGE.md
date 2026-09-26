@@ -54,8 +54,10 @@ dessiné : il faut une logique de croisements.
    croisement. On retient donc les croisements du graphe **situés sur le tracé** de l'itinéraire.
 3. **Angle mesuré sur une fenêtre de quelques mètres** avant et après, pas sur le segment voisin (le dessin à
    la main tremble).
-4. **Virage sans croisement** : annoncé seulement s'il est franc (le tracé ne montre pas toutes les ouvertures
-   réelles, un virage marqué mérite donc d'être dit ; un simple coude du dessin, non).
+4. **Virage sans croisement : jamais annoncé** (retour KARMA du 27/09/2026 sur les catacombes). Tant qu'il n'y
+   a qu'un chemin, suivre la galerie suffit : seul un croisement, là où il y a un choix, produit une consigne
+   de virage. *(La première version annonçait les virages francs ; c'était une surinterprétation de
+   l'argument « chambre à piliers », qui visait « la 3e à gauche ».)*
 5. **Fusion** des événements trop proches (chambre à piliers dessinée en quadrillage) en un seul, dont l'angle
    se mesure de l'entrée de la grappe à sa sortie.
 6. **Vocabulaire** : < 25° tout droit · 25–60° légèrement · 60–135° tourner · > 135° demi-tour. Deux sorties à
