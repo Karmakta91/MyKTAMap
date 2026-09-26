@@ -213,15 +213,18 @@ Livré en 4 lots (`docs/ETUDE_GUIDAGE.md`, archi : `docs/architecture/tracking.m
   demi-tour) sont calés sur un plan réel **en simulation** (marche bruitée), pas sous terre. À mesurer :
   consignes parasites par km, justesse du « dans X m » avec et sans navigation intelligente.
 - 🟡 **Itinéraires non couverts** : Mode Secours (`secoursMode.js`) et inter-plans (`interPlanRoute.js`)
-  créent leurs roads sans `raccords` / `carrefours` → pas de pointillé, raccord non compté, bandeau sur
-  les seuls virages du dessin (aucun croisement connu). Brancher `_champsGuidage` si KARMA le veut.
+  créent leurs roads sans `raccords` / `carrefours` → pas de pointillé, raccord non compté, et le bandeau
+  n'y dit que l'arrivée (aucun croisement connu). Brancher `_champsGuidage` si KARMA le veut.
 - 🟡 **Voix / vibration** — écartées « pour le moment » (décision 4:a). `voiceTts.js` existe, en lecture
   manuelle par principe.
 - ⚪ **Performance du calcul d'itinéraire** — mesuré ~38 s en Node sur un réseau de ~9 000 points
   (enrichissement O(N²) + Dijkstra O(V²) du pathfinder, antérieurs au guidage). Le guidage lui-même : 1–2 ms.
   Pèse sur « Recalculer d'ici » et la sortie d'urgence sur les gros plans.
-- 📄 **Docs utilisateur à écrire au prochain bump** : `README_USER` ×3, Aide intégrée, `AI_CONTEXT`,
-  notes de version (fonctionnalité visible : bandeau, feuille de route, menu Tracker → Guidage).
+- 🟠 **Deux choix faits par Claude, à valider par KARMA** : en sortie d'urgence, le bandeau s'affiche même
+  réglé sur « Jamais », et « Y aller » ne demande plus de remplacer l'itinéraire en cours.
+- ⚪ **Tester sur appareil APRÈS un bump** : le service worker ne change de cache qu'au bump de `CACHE_NAME`.
+  Entre deux commits, un téléphone qui a déjà chargé l'app garde l'ancien JS — c'est ce qui a fait voir à
+  KARMA un « tourner à gauche » déjà corrigé (27/09/2026, coin de la rue de Lots).
 
 ## 🆕 Sujets ouverts (demandes KARMA du 01/08/2026)
 

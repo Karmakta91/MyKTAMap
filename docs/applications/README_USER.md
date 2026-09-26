@@ -1497,6 +1497,27 @@ Pendant une sortie réelle, le tracker peut dériver et le téléphone passe du 
 
 > 💡 En pratique : planifie ta sortie (moi → curiosité X → curiosité Y → sortie), marche, et à chaque point atteint touche **📍 Je suis ici** sur son popup. L'app coche, recalcule, et t'indique toujours le chemin depuis là où tu es vraiment.
 
+#### 🪧 Guidage — « Dans 40 m, tourner à gauche » (depuis v1.98.0)
+
+Quand le **tracker est actif** et qu'un **itinéraire est tracé** (depuis la modale, un « 🧭 Y aller » sur un point ou la sortie d'urgence), un **bandeau** apparaît tout seul en haut de la carte et te dit quoi faire :
+
+- **« Dans 40 m, tourner à gauche »**, **« Continuer sur 120 m »**, puis **« Maintenant : tourner à gauche »** à l'approche. En petit dessous, la consigne suivante (« Puis tourner à droite »).
+- **Seulement aux croisements** : tant qu'il n'y a qu'une galerie à suivre, le guidage se tait, même si elle tourne. Il ne dit jamais « la 3e à gauche » (les tracés ne montrent pas toutes les ouvertures réelles) : toujours une **distance**.
+- **Deux galeries proches** → « prendre la branche de gauche / de droite ». Au passage d'une jonction de niveau → « monter / descendre vers le niveau N ».
+- **Grands carrefours** : plusieurs croisements rapprochés (à 5 m ou moins l'un de l'autre) comptent comme **un seul carrefour**, avec **une seule consigne** donnée à son entrée. À partir de **4 galeries**, un **petit schéma** remplace la flèche : chaque galerie est un trait, celle d'où tu viens en pointillé en bas, **celle à prendre en doré**. Si un point nommé se trouve dans le carrefour, son nom ouvre la consigne.
+- **Hors tracé au départ** → « Rejoindre le tracé : ~12 m », avec une **flèche** qui pointe vers la galerie la plus proche, par rapport à ton téléphone.
+- **Distances** : nettes avec la **🧭 Navigation intelligente** (⚙️ Réglages → Navigation & tracker) ; sans elle, elles sont **approximatives** (« ~40 m », arrondies à 10 m), parce que la position vient du podomètre et dérive.
+
+**Tu t'écartes ou tu fais demi-tour ?** Le bandeau passe en orange (« Hors itinéraire ? » / « Demi-tour ? ») et propose **[Je suis ici]** (touche l'endroit où tu es, l'itinéraire se recalcule depuis là), **[Recalculer d'ici]** et **[Ignorer]** (plus d'alerte jusqu'à ton retour sur le chemin). Rien n'est recalculé sans toi : une dérive du podomètre ressemble à un écart.
+
+**Toucher le bandeau** ouvre la **🪧 Feuille de route** : toutes les consignes avec leurs distances (touche une ligne pour voir l'endroit). Elle est aussi accessible **sans tracker**, depuis la modale Itinéraire (bouton « 🪧 Feuille de route »), pour préparer une sortie.
+
+**La croix ✕** masque le bandeau **pour cet itinéraire** ; il revient au suivant. Pour le couper **pour de bon** : menu 🧭 Tracker → **🪧 Guidage de l'itinéraire**.
+
+**Trajet à vol d'oiseau** : si ton départ, une étape ou ton arrivée est à côté des galeries, le bout de trajet jusqu'à la plus proche est dessiné **en pointillé** et **compté** dans la distance (une étape hors tracé compte aller et retour). Au-delà de **50 m**, l'app te prévient : ce trajet n'est pas une galerie connue, vérifie ta position. Sur un plan **sans aucun tracé**, l'itinéraire ne peut pas être calculé : l'app le dit dès le lancement.
+
+> 🚨 **En sortie d'urgence**, le bandeau n'a **pas de croix** et s'affiche même si le guidage est coupé ; en cas d'écart, le bouton devient **« Sortie la plus proche d'ici »**. L'**écran d'urgence XL** reprend la consigne en gros.
+
 #### 🚫 Préférences d'évitement
 
 Dans la modale itinéraire, une section repliable **🚫 Préférences d'évitement (optionnel)** permet de définir des contraintes **souples** que le pathfinder essaiera de respecter :

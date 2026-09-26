@@ -1487,6 +1487,27 @@ During a real outing, the tracker can drift and the phone spends time locked in 
 
 > 💡 In practice: plan your outing (me → curiosity X → curiosity Y → exit), walk, and at each point you reach tap **📍 I am here** on its popup. The app checks it off, recalculates, and always shows the way from where you actually are.
 
+#### 🪧 Guidance — "In 40 m, turn left" (since v1.98.0)
+
+When the **tracker is on** and an **itinerary is drawn** (from the modal, a "🧭 Go there" on a point, or the emergency exit), a **banner** appears on its own at the top of the map and tells you what to do:
+
+- **"In 40 m, turn left"**, **"Continue for 120 m"**, then **"Now: turn left"** as you get close. Underneath, in small print, the next instruction ("Then turn right").
+- **Only at junctions**: as long as there is a single gallery to follow, guidance stays silent, even if it bends. It never says "the 3rd on the left" (traces do not show every real opening): always a **distance**.
+- **Two close galleries** → "take the left / right branch". When crossing a level link → "go up / down to level N".
+- **Big junctions**: several close junctions (5 m or less apart) count as **a single junction**, with **a single instruction** given at its entrance. From **4 galleries** on, a **small diagram** replaces the arrow: each gallery is a line, the one you come from dashed at the bottom, **the one to take in gold**. If a named point lies in the junction, its name opens the instruction.
+- **Off the trace at the start** → "Reach the trace: ~12 m", with an **arrow** pointing to the nearest gallery, relative to your phone.
+- **Distances**: sharp with **🧭 Smart navigation** (⚙️ Settings → Navigation & tracker); without it they are **approximate** ("~40 m", rounded to 10 m), because the position comes from the step counter and drifts.
+
+**Moving away or turning back?** The banner turns orange ("Off the itinerary?" / "Turning back?") and offers **[I am here]** (tap where you are, the itinerary is recomputed from there), **[Recompute from here]** and **[Ignore]** (no more alerts until you are back on the path). Nothing is recomputed without you: step-counter drift looks like a deviation.
+
+**Tapping the banner** opens the **🪧 Route sheet**: every instruction with its distance (tap a line to see the spot). It is also available **without the tracker**, from the Itinerary modal ("🪧 Route sheet" button), to prepare an outing.
+
+**The ✕** hides the banner **for this itinerary**; it comes back with the next one. To turn it off **for good**: 🧭 Tracker menu → **🪧 Itinerary guidance**.
+
+**As the crow flies**: if your start, a stop or your destination lies beside the galleries, the stretch to the nearest one is drawn **dashed** and **counted** in the distance (an off-trace stop counts there and back). Beyond **50 m**, the app warns you: that stretch is not a known gallery, check your position. On a plan **with no trace at all**, no itinerary can be computed: the app says so right away.
+
+> 🚨 **During an emergency exit**, the banner has **no ✕** and shows even if guidance is turned off; on a deviation, the button becomes **"Nearest exit from here"**. The **XL emergency screen** repeats the instruction in large print.
+
 #### 🚫 Avoidance preferences
 
 In the route modal, a collapsible section **🚫 Avoidance preferences (optional)** lets you set **soft** constraints that the pathfinder will try to respect:

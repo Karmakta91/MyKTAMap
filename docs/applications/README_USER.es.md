@@ -1437,6 +1437,27 @@ Durante una salida real, el rastreador puede derivar y el teléfono pasa tiempo 
 
 > 💡 En la práctica: planifica tu salida (yo → curiosidad X → curiosidad Y → salida), camina, y en cada punto alcanzado pulsa **📍 Estoy aquí** en su ventana emergente. La app marca, recalcula y te indica siempre el camino desde donde estás realmente.
 
+#### 🪧 Guiado — «En 40 m, girar a la izquierda» (desde v1.98.0)
+
+Cuando el **tracker está activo** y hay un **itinerario trazado** (desde el modal, un «🧭 Ir allí» en un punto o la salida de emergencia), aparece solo un **banner** en la parte superior del mapa que te dice qué hacer:
+
+- **«En 40 m, girar a la izquierda»**, **«Seguir durante 120 m»** y luego **«Ahora: girar a la izquierda»** al acercarte. Debajo, en pequeño, la indicación siguiente («Luego girar a la derecha»).
+- **Solo en los cruces**: mientras haya una sola galería que seguir, el guiado calla, aunque gire. Nunca dice «la 3.ª a la izquierda» (los trazados no muestran todas las aberturas reales): siempre una **distancia**.
+- **Dos galerías cercanas** → «tomar el ramal de la izquierda / de la derecha». Al pasar por una unión de nivel → «subir / bajar al nivel N».
+- **Grandes cruces**: varios cruces cercanos (a 5 m o menos uno de otro) cuentan como **un solo cruce**, con **una sola indicación** dada a su entrada. A partir de **4 galerías**, un **pequeño esquema** sustituye a la flecha: cada galería es un trazo, la de donde vienes discontinua abajo, **la que debes tomar en dorado**. Si hay un punto con nombre dentro del cruce, su nombre abre la indicación.
+- **Fuera del trazado al salir** → «Llegar al trazado: ~12 m», con una **flecha** que apunta a la galería más cercana, respecto a tu teléfono.
+- **Distancias**: precisas con la **🧭 Navegación inteligente** (⚙️ Ajustes → Navegación y tracker); sin ella son **aproximadas** («~40 m», redondeadas a 10 m), porque la posición viene del podómetro y deriva.
+
+**¿Te alejas o das media vuelta?** El banner se pone naranja («¿Fuera del itinerario?» / «¿Media vuelta?») y propone **[Estoy aquí]** (toca donde estás, el itinerario se recalcula desde ahí), **[Recalcular desde aquí]** e **[Ignorar]** (no más alertas hasta que vuelvas al camino). Nada se recalcula sin ti: una deriva del podómetro se parece a un desvío.
+
+**Tocar el banner** abre la **🪧 Hoja de ruta**: todas las indicaciones con sus distancias (toca una línea para ver el lugar). También está disponible **sin tracker**, desde el modal Itinerario (botón «🪧 Hoja de ruta»), para preparar una salida.
+
+**La ✕** oculta el banner **para este itinerario**; vuelve con el siguiente. Para desactivarlo **del todo**: menú 🧭 Tracker → **🪧 Guiado del itinerario**.
+
+**En línea recta**: si tu salida, una etapa o tu llegada está al lado de las galerías, el tramo hasta la más cercana se dibuja **discontinuo** y se **cuenta** en la distancia (una etapa fuera del trazado cuenta ida y vuelta). Más allá de **50 m**, la app te avisa: ese tramo no es una galería conocida, comprueba tu posición. En un plano **sin ningún trazado**, no se puede calcular el itinerario: la app lo dice desde el principio.
+
+> 🚨 **En la salida de emergencia**, el banner **no tiene ✕** y se muestra aunque el guiado esté desactivado; ante un desvío, el botón pasa a **«Salida más cercana desde aquí»**. La **pantalla de emergencia XL** repite la indicación en grande.
+
 #### 🚫 Preferencias de evitación
 
 En la ventana de itinerario, una sección plegable **🚫 Preferencias de evitación (opcional)** permite definir restricciones **flexibles** que el buscador de rutas intentará respetar:
