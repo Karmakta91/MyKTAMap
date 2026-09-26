@@ -40,6 +40,7 @@
 - `push main` / `push --force` / `reset --hard` → **bloqués en dur** (`.claude/hooks/guard-git.js`).
 - Toucher **`Chig_Dev`** (branche collaborateur) — bloqué en dur.
 - Éditer **`data/**`** (dont `plan-config.json`) = DATA pure. Claude bosse **uniquement sur le moteur** (`js/`, `css/`, `index.html`, `sw.js`). Bloqué (`deny`).
+- **Livrer `data/` sur Git** — JAMAIS. `data/` reçoit des **relevés réels de terrain** : ni les galeries, ni les entrées, ni le nom d'un réseau ne partent sur un dépôt public. Seul le **relevé fictif** y vit, et même lui ne se met à jour que **sur consigne explicite de KARMA**. 🛡️ `.githooks/commit-msg` + `scripts/check-data-hors-git.js` refusent tout fichier `data/` indexé (dérogation : ligne `Data-deroge: <motif>`, archivée dans l'historique). ⚠️ Le piège n'est pas le dossier d'un plan (non suivi) mais **`data/index.json`, qui EST suivi** : un `git commit -a` suffisait.
 - Changer les couleurs de la charte, supprimer un tag built-in, reset `localStorage`/IndexedDB sans avertir l'user.
 
 ## 🧭 Conventions

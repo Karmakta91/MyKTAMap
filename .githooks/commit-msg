@@ -25,4 +25,11 @@ fi
 # garde-fou, la règle des 4 axes de CLAUDE.md n'était vérifiée par RIEN :
 # AI_CONTEXT.md a raté la v1.73.0 entière. Un commit sans bump sort en
 # silence. BLOQUANT.
+# 🗺️ 26/09/2026 (consigne KARMA) — `data/` reçoit des relevés RÉELS de
+# terrain : ils ne partent jamais sur le dépôt public. La règle existait côté
+# ÉCRITURE (permission `deny` sur data/**) mais pas côté COMMIT — et c'est par
+# là que ça passait : `data/index.json` est suivi, il suffisait d'un `git
+# commit -a`. Dérogation explicite par `Data-deroge:`. BLOQUANT.
+node scripts/check-data-hors-git.js "$1" || exit $?
+
 node scripts/check-release-docs.js "$1" || exit $?
