@@ -2039,11 +2039,13 @@ window._ktaDataLayerLoadToken = window._ktaDataLayerLoadToken || 0;
 function _markerInViewportPadded(marker, padFraction) {
   if (!window.map || !marker) return true;
   try {
-    let pad = (padFraction != null) ? padFraction : 0.1;
-    // 🧭 v1.97.0 — vue tournée = viewport penché : on élargit, sinon des
-    // markers bien visibles dans les coins seraient retirés du DOM.
-    if (window.MapBearing) pad = window.MapBearing.padCull(pad);
-    const b = window.map.getBounds().pad(pad);
+    const pad = (padFraction != null) ? padFraction : 0.1;
+    // 🧭 v1.97.3 — sous rotation, `getBounds()` rend le rectangle NON tourné :
+    // des markers bien visibles au bord en sortaient. `zoneVisible()` rend
+    // l'empreinte réelle de l'écran ; hors mode, c'est `getBounds()`.
+    const base = (window.MapBearing && window.MapBearing.zoneVisible
+                  ? window.MapBearing.zoneVisible(0) : null) || window.map.getBounds();
+    const b = base.pad(pad);
     return b.contains(marker.getLatLng());
   } catch(e) { return true; }
 }

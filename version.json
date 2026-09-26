@@ -1,7 +1,8 @@
 {
-  "version": "v1.97.2",
+  "version": "v1.97.3",
   "released": "2026-09-26",
   "notes": [
-    "🎯 Le bouton « Recentrer » ne se superpose plus au bouton « Retour » après un saut de portail : il se place au-dessus, et reprend sa place quand l'autre disparaît."
+    "🗺️ Correctif du mode « Plan orienté » sur téléphone : des tuiles, des tracés et des points disparaîtaient le long des bords de l'écran quand la carte était tournée. Tout reste affiché, quel que soit le format de l'écran.",
+    "La carte ne sort plus des limites du plan quand on la déplace à la main dans ce mode (elle revenait d'un coup au zoom suivant)."
   ]
 }

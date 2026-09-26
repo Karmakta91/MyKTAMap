@@ -58,7 +58,8 @@
 // angle : jusqu'à 200 px d'écart à 90°. Deux méthodes sont donc adaptées
 // (`containerPointToLayerPoint` / `layerPointToContainerPoint`) — tout le
 // reste en dérive, y compris le hit-test du renderer canvas et les handlers
-// `map.on("click")`. Les marqueurs, eux, n'ont jamais eu besoin de rien : le
+// `map.on("click")`. (Une SEULE méthode est patchée : `mouseEventToContainer­Point`,
+// cf. le pavé qui l'entoure.) Les marqueurs, eux, n'ont jamais eu besoin de rien : le
 // navigateur fait leur hit-test et sait lire un transform.
 // Le pan, lui, est refait à la main pendant le mode : le drag de Leaflet
 // déplace le map-pane d'un offset ÉCRAN, ce qui envoie la carte de travers de
@@ -93,17 +94,30 @@
   const SEUIL_ARRET  = 15;    // ° — à l'arrêt, il faut une vraie intention
   const MARCHE_MS    = 2500;  // ms depuis le dernier pas → on se dit « en marche »
 
-  // Élargissement du culling quand la vue tourne. Le viewport tourné s'inscrit
-  // dans un disque de rayon = sa demi-diagonale : sans marge, des tracés
-  // disparaissent dans les coins (mesuré : dès 10°).
-  const PAD_CULL    = 0.45;
+  // 🩸 v1.97.3 — TROIS marges cohabitaient ici pour « le viewport tourné
+  // déborde son rectangle », et DEUX étaient fausses (0,45 pour les tracés,
+  // 0,35 pour les tuiles). La bonne valeur dépend du FORMAT de l'écran :
+  // (grand côté / petit côté − 1)/2 — soit 0,19 sur le 1100×800 du harnais,
+  // mais **0,58** sur un iPhone en portrait. Mes constantes tenaient au
+  // harnais et pas en main. Mesuré sur 430×932 : jusqu'à **17,2 % de l'écran
+  // jamais peint**, et 112 points sur 200 pris AU BORD de l'écran tenus pour
+  // « hors vue » — donc des tracés et des POI qui s'effacent le long des
+  // bords. Le checkup ne pouvait pas le voir : à son format, 0,35 suffit.
+  //
+  // On ne corrige donc pas les valeurs, on supprime le procédé : `zoneVisible`
+  // rend la boîte englobante des QUATRE COINS RÉELS de l'écran. Exacte quel
+  // que soit le format, et **moins chère** qu'une marge scalaire élargie
+  // (mesuré : 66-132 tuiles gardées, contre 180 avec un pad de 0,7).
+  //
+  // Hors rotation elle rend `map.getBounds()` : le comportement d'avant, au
+  // bit près, pour tous ses appelants (road.js, utils.js).
 
   let _enabled    = false;   // choix utilisateur (persisté)
   const _suspensions = new Set();   // raisons actives — cf suspend()/resume()
   let _bearing    = 0;       // angle réellement appliqué (deg)
   let _cible      = 0;       // angle visé (deg)
   let _capLisse   = null;    // cap lissé (deg, [0,360[)
-  let _dernierPas = 0;       // horodatage du dernier pas (gel à l'arrêt)
+  let _dernierPas = 0;       // horodatage du dernier pas (marche / arrêt)
   let _suiviArme  = true;    // le recentrage suit-il le tracker ?
   let _rafId      = null;
   let _dernierTick= 0;
@@ -164,8 +178,8 @@
     }
     _cullerTuilesThrottle();
   }
-  // Exposé : tracking.js le rappelle après un recentrage, road.js après un
-  // re-rendu. Idempotent.
+  // Exposé pour un appelant futur (aucun aujourd'hui), au même titre que
+  // `suspend`/`resume`. Idempotent.
   function reappliquer() { _appliquer(); }
 
   // ===== Boucle d'animation =====
@@ -201,9 +215,10 @@
   }
 
   // ===== Interactions =====
-  // La carte est VERROUILLÉE sur le tracker pendant le mode : un drag part de
-  // travers de l'angle courant (mesuré : doigt à 0° → la carte part à 45°),
-  // ce qui se lit comme un bug. Le zoom, lui, reste disponible mais recentré
+  // Ce qu'on verrouille, c'est le drag DE LEAFLET, pas le pan : il déplace le
+  // map-pane d'un offset écran et part donc de travers de l'angle courant
+  // (mesuré : doigt à 0° → la carte part à 45°). Le pan est refait à la main
+  // juste après (`_installerPanManuel`). Le zoom reste disponible mais recentré
   // (`'center'`) — Leaflet relit ces options à chaque geste, donc il suffit de
   // les changer, sans détacher les handlers.
   function _verrouiller(map) {
@@ -323,7 +338,16 @@
       const a = -_bearing * Math.PI / 180;
       const px = dx * Math.cos(a) - dy * Math.sin(a);
       const py = dx * Math.sin(a) + dy * Math.cos(a);
-      try { map.panBy([-px, -py], { animate: false }); } catch(err) {}
+      try {
+        map.panBy([-px, -py], { animate: false });
+        // 🩸 `panBy({animate:false})` passe par `_rawPanBy`, qui NE limite PAS
+        // le centre : pendant le mode, la vue s'échappait des `maxBounds` du
+        // plan (pourtant posés avec `maxBoundsViscosity: 1.0`), et le zoom
+        // suivant la ramenait d'un coup — mesuré : 150 unités de plan après
+        // 60 pans, ce qui se lit « au zoom, tout se décale ». Le drag natif de
+        // Leaflet, lui, applique la contrainte en continu ; on fait pareil.
+        if (map.options.maxBounds) map.panInsideBounds(map.options.maxBounds, { animate: false });
+      } catch(err) {}
       if (_suiviArme) { _suiviArme = false; _majBoutonRecentrer(); }
     }, { passive: true });
 
@@ -341,9 +365,11 @@
   // `padding`). Une fois la vue tournée, ce rectangle ne couvre plus les
   // coins de l'écran : les tracés s'y arrêtent net, dès ~10° de rotation.
   //
-  // Le padding qui couvre TOUS les angles vaut (diagonale / petit côté − 1)/2
-  // — 0,31 sur un écran large, 0,62 en portrait téléphone. On le calcule donc
-  // sur la taille réelle du viewport au lieu de figer une constante, et on ne
+  // Le padding qui couvre TOUS les angles vaut (diagonale / petit côté − 1)/2.
+  // Il CROÎT avec l'allongement de l'écran : 0,36 en 1100×800, 0,69 sur un
+  // téléphone en portrait. On le calcule donc sur la taille réelle du
+  // viewport au lieu de figer une constante — c'est exactement l'erreur que
+  // les deux marges de culling ont commise, cf. `zoneVisible` —, et on ne
   // l'applique QUE pendant le mode : le canvas grandit d'autant (×1,8 à ×3,5
   // en surface), ce n'est pas un coût à faire porter à tout le monde.
   function _majPaddingRenderer(map, actif) {
@@ -387,7 +413,7 @@
   // croisent pas le viewport élargi. On ne remet QUE celles qu'on a retirées
   // (drapeau `_ktaCulled`) — sans ça on rendrait visibles des tuiles que le
   // filtre multi-niveau avait volontairement masquées.
-  const MARGE_TUILES = 0.35;        // viewport élargi : pas de pop-in au pan
+  const MARGE_TUILES = 0.15;        // anti pop-in, AUTOUR de la zone exacte
   let _cullEnCours = false;
 
   function _cullerTuiles(forcerTout) {
@@ -397,7 +423,10 @@
     const actif = !forcerTout && isActive() && Math.abs(_bearing) > 0.01;
     let zone = null;
     if (actif) {
-      try { zone = map.getBounds().pad(MARGE_TUILES); } catch(e) { return; }
+      // Zone RÉELLE (coins de l'écran dé-tournés), pas le rectangle non
+      // tourné de `getBounds()` — c'est toute la différence.
+      zone = zoneVisible(MARGE_TUILES);
+      if (!zone) return;
     }
     let retirees = 0, rendues = 0;
     st.activeOverlays.forEach(function(ov) {
@@ -734,11 +763,34 @@
     }
   }
 
-  // Facteur d'élargissement du culling (roads + markers) : le viewport tourné
-  // déborde son propre rectangle.
-  function padCull(base) {
-    const b = (typeof base === "number") ? base : 0.1;
-    return isActive() && Math.abs(_bearing) > 0.01 ? Math.max(b, PAD_CULL) : b;
+  // Boîte englobante de ce que l'écran montre VRAIMENT. Voir le pavé sur les
+  // marges, plus haut : c'est lui qui explique pourquoi ceci n'est pas un
+  // facteur mais une mesure.
+  function zoneVisible(pad) {
+    const map = window.map;
+    if (!map) return null;
+    const marge = (typeof pad === "number") ? pad : 0;
+    let base = null;
+    try {
+      if (Math.abs(_bearing) <= 0.01) {
+        base = map.getBounds();
+      } else {
+        const s = map.getSize();
+        const c = s.divideBy(2);
+        const a = -_bearing * Math.PI / 180;
+        // Les 4 coins du conteneur, dé-tournés comme le fait le patch des
+        // gestes : on obtient les points de calque réellement aux coins.
+        [[0, 0], [s.x, 0], [s.x, s.y], [0, s.y]].forEach(function(p) {
+          const dx = p[0] - c.x, dy = p[1] - c.y;
+          const q = L.point(dx * Math.cos(a) - dy * Math.sin(a) + c.x,
+                            dx * Math.sin(a) + dy * Math.cos(a) + c.y);
+          const ll = map.containerPointToLatLng(q);
+          base = base ? base.extend(ll) : L.latLngBounds(ll, ll);
+        });
+      }
+    } catch(e) { return null; }
+    if (!base) return null;
+    return marge ? base.pad(marge) : base;
   }
 
   window.MapBearing = {
@@ -755,7 +807,7 @@
     reset:            reset,
     suspend:          suspend,
     resume:           resume,
-    padCull:          padCull
+    zoneVisible:      zoneVisible
   };
 
   _enabled = _lireEnabled();

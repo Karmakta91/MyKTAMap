@@ -885,17 +885,18 @@ function renderRoads() {
   let _vpBox = null;
   if (_viewportCull) {
     try {
-      const b = window.map.getBounds();
+      // 🧭 v1.97.3 — sous rotation, `getBounds()` rend le rectangle NON
+      // tourné de la vue : des tracés bien visibles au bord en sortaient.
+      // `zoneVisible()` rend l'empreinte réelle de l'écran ; hors mode, elle
+      // rend exactement `getBounds()`.
+      const b = (window.MapBearing && window.MapBearing.zoneVisible
+                 ? window.MapBearing.zoneVisible(0) : null) || window.map.getBounds();
       const sw = b.getSouthWest(), ne = b.getNorthEast();
       const H = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
       // Conversion latlng Leaflet → coords plan : lat = H - y, lng = x
       // donc y = H - lat, x = lng. South = y max plan, North = y min plan.
-      // 🧭 v1.97.0 — quand la vue tourne (mode « plan orienté »), le viewport
-      // penché déborde son propre rectangle : sans marge élargie, des tracés
-      // disparaissent dans les coins (mesuré : dès 10° de rotation).
-      const _pad = (window.MapBearing ? window.MapBearing.padCull(0.1) : 0.1);
-      const padW = (ne.lng - sw.lng) * _pad;
-      const padH = (ne.lat - sw.lat) * _pad;
+      const padW = (ne.lng - sw.lng) * 0.1;
+      const padH = (ne.lat - sw.lat) * 0.1;
       _vpBox = {
         minX: sw.lng - padW,
         maxX: ne.lng + padW,
@@ -1227,13 +1228,13 @@ function _refreshRoadsViewportOnly() {
   // renderRoads(). Padding 10% pour éviter le pop-in au pan.
   let _vpBox;
   try {
-    const b = window.map.getBounds();
+    // 🧭 v1.97.3 — même empreinte réelle qu'en rendu complet (cf renderRoads).
+    const b = (window.MapBearing && window.MapBearing.zoneVisible
+               ? window.MapBearing.zoneVisible(0) : null) || window.map.getBounds();
     const sw = b.getSouthWest(), ne = b.getNorthEast();
     const H = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
-    // 🧭 v1.97.0 — même marge élargie qu'en rendu complet si la vue tourne.
-    const _pad = (window.MapBearing ? window.MapBearing.padCull(0.1) : 0.1);
-    const padW = (ne.lng - sw.lng) * _pad;
-    const padH = (ne.lat - sw.lat) * _pad;
+    const padW = (ne.lng - sw.lng) * 0.1;
+    const padH = (ne.lat - sw.lat) * 0.1;
     _vpBox = {
       minX: sw.lng - padW,
       maxX: ne.lng + padW,

@@ -241,14 +241,42 @@ function inf(msg) { console.log("  •  " + msg); }
     else pb("la vue reste tournée (" + t5.apres.toFixed(1) + "°) sous le Mode perdu");
 
     // ── T7 — culling élargi (avant l'arrêt du tracking) ────────────────
-    console.log("— T7 : culling élargi quand la vue tourne —");
+    // 🩸 v1.97.3 — ce test portait sur `padCull`, un facteur d'élargissement
+    // scalaire. Il a été supprimé : une marge unique ne peut pas être juste à
+    // tous les formats d'écran (cf T17). Ce qui compte n'est pas la valeur
+    // d'un facteur, c'est que la zone retenue contienne VRAIMENT les quatre
+    // coins de l'écran.
+    console.log("— T7 : la zone de culling contient les 4 coins de l'écran —");
     const t7 = await page.evaluate(async function () {
       await window.__mb.viser(45);
-      const actif = window.MapBearing.padCull(0.1);
-      return { actif: actif, bearing: window.MapBearing.getBearing() };
+      const map = window.map;
+      const s = map.getSize(), cc = s.divideBy(2);
+      const a = -window.MapBearing.getBearing() * Math.PI / 180;
+      // Les latlng réellement affichés aux 4 coins (rotation inverse).
+      const coins = [[0, 0], [s.x, 0], [s.x, s.y], [0, s.y]].map(function (p) {
+        const dx = p[0] - cc.x, dy = p[1] - cc.y;
+        return map.containerPointToLatLng(L.point(
+          dx * Math.cos(a) - dy * Math.sin(a) + cc.x,
+          dx * Math.sin(a) + dy * Math.cos(a) + cc.y));
+      });
+      const zone = window.MapBearing.zoneVisible(0);
+      const brut = map.getBounds();
+      // Hors rotation, zoneVisible doit rendre exactement getBounds().
+      window.MapBearing.reset();
+      const zPlat = window.MapBearing.zoneVisible(0), bPlat = map.getBounds();
+      return {
+        bearing: Math.round(window.MapBearing.getBearing()),
+        parZone: coins.filter(function (ll) { return zone.contains(ll); }).length,
+        parGetBounds: coins.filter(function (ll) { return brut.contains(ll); }).length,
+        identiqueAPlat: zPlat.equals(bPlat)
+      };
     });
-    if (t7.actif > 0.4) ok("padding de culling élargi à " + t7.actif + " (vue à " + t7.bearing.toFixed(0) + "°)");
-    else pb("padding de culling non élargi : " + t7.actif);
+    if (t7.parZone === 4) ok("zoneVisible() contient les 4 coins réels de l'écran");
+    else pb("zoneVisible() en manque " + (4 - t7.parZone) + " sur 4");
+    inf("à titre de comparaison, getBounds() n'en contenait que " + t7.parGetBounds +
+        "/4 — c'est l'écart qui effaçait tracés et tuiles au bord");
+    if (t7.identiqueAPlat) ok("hors rotation, zoneVisible() rend exactement getBounds()");
+    else pb("zoneVisible() diverge de getBounds() alors que la vue est droite");
 
     // ── T10 — tourner SUR PLACE, et ne pas suivre le bruit ─────────────
     // 🩸 Retour terrain KARMA (24/09/2026) : « ça tourne, ça bugue et ça
@@ -483,6 +511,40 @@ function inf(msg) { console.log("  •  " + msg); }
       ok("le conteneur garde `touch-action: none` → le pan au doigt reste à nous");
     else pb("touch-action = « " + ta.touchAction + " » : au doigt, la page scrollerait");
 
+    // ── T18 — le pan manuel ne s'échappe pas des limites du plan ───────
+    // 🩸 `panBy({animate:false})` passe par `_rawPanBy`, qui NE limite PAS le
+    // centre : pendant le mode, la vue sortait des `maxBounds` (pourtant
+    // posés avec `maxBoundsViscosity: 1.0`) et le zoom suivant la ramenait
+    // d'un coup — ce qui se lit « au zoom, tout se décale ».
+    console.log("— T18 : le pan manuel reste dans les limites du plan —");
+    await page.evaluate(async function () {
+      window.map.setZoom(-4);                 // 1 px d'écran = beaucoup de plan
+      await new Promise(function (r) { setTimeout(r, 400); });
+      await window.__mb.viser(45);
+    });
+    for (let i = 0; i < 6; i++) {             // on pousse loin, vers un coin
+      await page.mouse.move(700, 500);
+      await page.mouse.down();
+      await page.mouse.move(250, 180, { steps: 8 });
+      await page.mouse.up();
+      await page.waitForTimeout(120);
+    }
+    const t18 = await page.evaluate(async function () {
+      const map = window.map;
+      const mb = map.options.maxBounds;
+      const avant = map.getCenter();
+      const dedans = mb ? mb.contains(avant) : null;
+      map.setZoom(map.getZoom());             // c'est CE zoom qui ramenait la vue
+      await new Promise(function (r) { setTimeout(r, 500); });
+      const apres = map.getCenter();
+      return { dedans: dedans,
+               saut: Math.round(Math.hypot(apres.lat - avant.lat, apres.lng - avant.lng)) };
+    });
+    if (t18.dedans) ok("après 6 pans vers un coin, la vue est restée dans les limites du plan");
+    else pb("la vue s'est échappée des maxBounds pendant le pan manuel");
+    if (t18.saut <= 5) ok("le zoom suivant ne la ramène pas d'un coup (saut " + t18.saut + " unités)");
+    else pb("le zoom a rattrapé la vue de " + t18.saut + " unités : la contrainte n'était pas appliquée");
+
     // ── T12 — les autres cartes de l'app ne sont PAS affectées ─────────
     // Le patch vit sur le prototype de L.Map : il est vu par la Vue OSM, la
     // minimap d'urgence, le Mode Secours, le picker de calage et l'aperçu
@@ -614,9 +676,12 @@ function inf(msg) { console.log("  •  " + msg); }
     console.log("— T15 : tuiles hors écran pendant la rotation —");
     const t15 = await page.evaluate(async function () {
       const map = window.map;
-      // T14 a laissé le mode désactivé : sans ça, la vue ne tourne pas et on
-      // mesurerait l'absence de culling d'un mode… inactif.
+      // T14 a laissé le mode désactivé et T18 la carte au zoom -4, où tout
+      // tient dans la vue : deux états hérités qui feraient mesurer autre
+      // chose que ce test.
       window.MapBearing.setEnabled(true);
+      map.setZoom(0);
+      await new Promise(function (r) { setTimeout(r, 400); });
       const c = map.getCenter();
       const faux = [];
       // 25 tuiles en grille : quelques-unes au centre, la plupart très loin.
@@ -742,6 +807,121 @@ function inf(msg) { console.log("  •  " + msg); }
     else pb("pointer-events des overlays resté à « " + t6.pointerEvents + " »");
     if (t6.enabledEncore) ok("le choix de l'utilisateur est conservé (repris au prochain Play)");
     else pb("le toggle a été perdu à l'arrêt du tracking");
+
+    // ── T17 — LE FORMAT PORTRAIT, que le reste du checkup ne voit pas ──
+    // 🩸 v1.97.3. Les marges de culling devaient valoir (grand côté / petit
+    // côté − 1)/2 : 0,19 au format de ce checkup (1100×800), mais **0,58**
+    // sur un téléphone en portrait. Les constantes posées en v1.97.1 (0,35 et
+    // 0,45) tenaient donc ici et pas en main — 17,2 % de l'écran jamais peint
+    // sur 430×932, signalé en terrain, invisible de tous les tests.
+    //
+    // Deux leçons, et ce bloc les applique toutes les deux :
+    //   1. un checkup qui ne tourne qu'à UN format ne voit pas les défauts
+    //      qui dépendent du format ;
+    //   2. compter les tuiles retirées ne prouve rien — « 25 → 4 » est vert
+    //      pour un culler juste comme pour un culler faux. On mesure donc ce
+    //      que l'utilisateur voit : la part d'écran que PLUS AUCUNE tuile ne
+    //      couvre.
+    console.log("— T17 : couverture de l'écran en PORTRAIT (430×932) —");
+    const portrait = await nav.newPage({ viewport: { width: 430, height: 932 } });
+    await portrait.addInitScript(function (ls) {
+      for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+    }, LS_PREGATES);
+    await portrait.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await portrait.waitForTimeout(2500);
+    await portrait.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+    });
+    await portrait.getByText("Relevé fictif de test", { exact: false }).first().click();
+    await portrait.waitForFunction(function () {
+      return !!window.PLAN_CONFIG && !!window.map && !!window.MapBearing;
+    }, null, { timeout: 20000 });
+    await portrait.waitForTimeout(2500);
+
+    const t17 = await portrait.evaluate(async function () {
+      const map = window.map;
+      map.setZoom(0);
+      await new Promise(function (r) { setTimeout(r, 400); });
+      const c = map.getCenter();
+      // Grille de tuiles. ⚠️ La TAILLE À L'ÉCRAN décide de ce que ce test
+      // peut voir : avec des tuiles de 512 px, une seule couvre la largeur
+      // d'un téléphone et la granularité masque le trou — le test passait au
+      // vert même sur le culling fautif de v1.97.1. À 128 px, la grille est
+      // assez fine pour que le manque se voie. Falsifié : remettre le
+      // `pad(0.35)` de v1.97.1 doit faire rougir ce test.
+      const T = 128, N = 8, faux = [];
+      for (let i = -N; i <= N; i++) {
+        for (let j = -N; j <= N; j++) {
+          const ov = L.imageOverlay(
+            "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+            [[c.lat + i * T, c.lng + j * T], [c.lat + (i + 1) * T, c.lng + (j + 1) * T]],
+            { interactive: false, pane: "tilePane" });
+          ov.addTo(map); faux.push(ov);
+        }
+      }
+      window._tilingV2State = { activeOverlays: faux };
+      window.MapBearing.setEnabled(true);
+      try { await window.requestPermission(); } catch (e) {}
+      if (!window.getTrackingActif()) window.startTracking();
+      const nomEv = ("ondeviceorientationabsolute" in window)
+                      ? "deviceorientationabsolute" : "deviceorientation";
+
+      // Part de l'écran que plus aucune tuile PRÉSENTE ne couvre. On teste
+      // contre les rectangles englobants, qui SURESTIMENT la couverture : un
+      // trou détecté ici est donc un vrai trou, jamais un artefact.
+      const mesurerVide = function () {
+        const rects = [];
+        faux.forEach(function (o) {
+          if (!map.hasLayer(o)) return;
+          const el = o.getElement && o.getElement();
+          if (!el) return;
+          const r = el.getBoundingClientRect();
+          if (r.width && r.height) rects.push(r);
+        });
+        let total = 0, vides = 0;
+        for (let y = 2; y < window.innerHeight; y += 10) {
+          for (let x = 2; x < window.innerWidth; x += 10) {
+            total++;
+            let couvert = false;
+            for (let k = 0; k < rects.length; k++) {
+              const r = rects[k];
+              if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) { couvert = true; break; }
+            }
+            if (!couvert) vides++;
+          }
+        }
+        return total ? Math.round(vides / total * 1000) / 10 : 0;
+      };
+
+      const releve = [];
+      for (const cap of [0, 45, 90, 135]) {
+        for (let i = 0; i < 70; i++) {
+          const ev = new Event(nomEv);
+          ev.alpha = ((360 - cap) % 360 + 360) % 360;
+          ev.beta = 0; ev.gamma = 0; ev.absolute = true;
+          window.dispatchEvent(ev);
+          window.MapBearing.onStep(map.getCenter());
+          await new Promise(function (r) { setTimeout(r, 20); });
+        }
+        await new Promise(function (r) { setTimeout(r, 400); });
+        releve.push({ cap: cap, vue: Math.round(window.MapBearing.getBearing()),
+                      vide: mesurerVide(),
+                      gardees: faux.filter(function (o) { return map.hasLayer(o); }).length });
+      }
+      return { releve: releve, total: faux.length };
+    });
+
+    let pireVide = 0, aTourne = false;
+    t17.releve.forEach(function (r) {
+      inf("cap " + r.cap + "° → vue " + r.vue + "° · " + r.vide + " % d'écran sans tuile · " +
+          r.gardees + "/" + t17.total + " tuiles gardées");
+      pireVide = Math.max(pireVide, r.vide);
+      if (r.vue !== 0) aTourne = true;
+    });
+    if (!aTourne) pb("la vue n'a jamais tourné en portrait : T17 ne prouve rien");
+    else if (pireVide <= 1) ok("aucun trou visible en portrait (pire cas " + pireVide + " %)");
+    else pb("il reste " + pireVide + " % d'écran sans tuile en portrait (c'était 17,2 % en v1.97.1)");
+    await portrait.close();
 
   } catch (e) {
     pb("exception du harnais : " + (e && e.message));

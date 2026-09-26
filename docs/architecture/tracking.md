@@ -1018,7 +1018,11 @@ Signalé en terrain : sur un plan de 16332 px, **au dézoom à fond uniquement**
 
 **Mécanisme** : le tuilage V2 met sur la carte **toutes** les tuiles du niveau, même hors écran (à z=-2 sur ce plan : 4083 × 3000 px de contenu pour un écran de 430 px). Sans rotation, le navigateur ne peint que la partie visible. Sous un pane transformé, iOS doit composer tout le sous-arbre en une couche et renonce à en peindre une partie au-delà de ses limites de texture. D'où les trois « uniquement » du signalement : **au dézoom à fond** (c'est le seul zoom où le niveau `minNativeZoom` est rendu), **sur les grands plans** (la surface), **mode actif** (la couche).
 
-**Parade** : pendant le mode, `MapBearing` retire de la carte les tuiles qui ne croisent pas le viewport élargi (35 %), et les y remet dès que la vue se redresse. Il ne réintègre **que** celles qu'il a retirées (drapeau `_ktaCulled` sur l'overlay) — une tuile masquée par le filtre multi-niveau doit le rester. Mesuré au harnais : 25 tuiles → 4 pendant la rotation, 25 au retour à plat.
+**Parade** : pendant le mode, `MapBearing` retire de la carte les tuiles qui ne croisent pas la zone visible, et les y remet dès que la vue se redresse.
+
+🩸 **Et la marge de cette zone ne peut PAS être une constante (v1.97.3).** Trois marges cohabitaient ici ; la formule juste avait été dérivée **une seule fois**, pour le canvas du renderer, et deux constantes posées au doigt ailleurs (0,35 tuiles, 0,45 tracés/POI). Or la valeur requise vaut `(grand côté / petit côté − 1)/2` : **0,19** en 1100×800 — le format du checkup — mais **0,58** sur un iPhone en portrait. Mesuré sur 430×932 : **17,2 % de l'écran jamais peint** à 90°, et 112 points sur 200 pris au bord de l'écran tenus pour hors vue. `MapBearing.zoneVisible(pad)` rend donc la **boîte englobante des quatre coins réels** de la vue (coins du conteneur dé-tournés comme dans le patch des gestes) : exacte à tout format, moins chère qu'une marge élargie, et **identique à `getBounds()` hors rotation**. Consommée par `road.js` (×2) et `utils.js` ; `padCull` a disparu.
+
+🩸 **Le pan manuel doit reposer la contrainte de `maxBounds` (v1.97.3).** `panBy({animate:false})` passe par `_rawPanBy`, qui ne limite pas le centre : la vue s'échappait des limites du plan et le zoom suivant la ramenait d'un coup (150 unités mesurées après 60 pans). D'où `panInsideBounds` après chaque pan, comme le fait le drag natif. Il ne réintègre **que** celles qu'il a retirées (drapeau `_ktaCulled` sur l'overlay) — une tuile masquée par le filtre multi-niveau doit le rester. Mesuré au harnais : 25 tuiles → 4 pendant la rotation, 25 au retour à plat.
 
 ⚠️ **Non prouvé sur l'appareil** : le harnais est Chromium. Il démontre que la surface à composer est réduite d'un ordre de grandeur, pas que Safari s'en satisfait.
 
@@ -1032,4 +1036,4 @@ Signalé en terrain : sur un plan de 16332 px, **au dézoom à fond uniquement**
 
 #### Non couvert en v1.97.0
 
-Contre-rotation des **tooltips** (ils ne servent qu'en Secours/OSM, hors carte principale), inertie du pan, et **validation terrain du confort de rotation** (le cap lui-même est tenu pour fiable hors zones très ferraillées — retour terrain KARMA).
+Contre-rotation des **tooltips** (⚠️ `tableEditor.js:1245` en pose de **permanents sur la carte principale** — la raison longtemps avancée, « ils ne servent qu'en Secours/OSM », était fausse ; l'impact reste faible, mais la décision doit se reprendre sur ce fait), inertie du pan, **indicateur de Nord à l'écran** (le manque ergonomique le plus visible), **validation iOS/Safari** (le harnais est Chromium), et **validation terrain du confort de rotation** (le cap lui-même est tenu pour fiable hors zones très ferraillées — retour terrain KARMA).

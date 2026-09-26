@@ -53,6 +53,18 @@ El módulo de desplazamiento simulado es **experimental**. Se basa en los sensor
 
 **El rastreador es una ayuda visual, no un sistema de navegación fiable.**
 
+#### 🧭 «Mapa orientado» — el mapa gira contigo
+
+En el menú 🧭 Rastreador, el mosaico **🗺️ Mapa orientado** cambia el comportamiento del mapa durante el seguimiento: en lugar de que el icono gire sobre un mapa fijo, **es el mapa el que gira**, para que tu dirección de marcha apunte siempre hacia la parte superior de la pantalla (como un GPS de coche).
+
+- **Desactivado por defecto**, y tu elección se recuerda en este dispositivo.
+- Solo gira **durante el seguimiento**: al detener el rastreador, el mapa vuelve a su posición normal.
+- El mapa **te sigue**: si lo desplazas a mano para mirar otra zona, aparece un botón **🎯 Recentrar** para volver sobre ti (también aparece sin este modo, en cuanto tu posición sale de la pantalla).
+- Los textos siguen siendo legibles: las medidas y las fichas de puntos no se ponen del revés con el mapa.
+- El mapa se endereza solo en cuanto eliges una herramienta que necesita tocar el mapa (medir, dibujar, recolocar) o abres un modo a pantalla completa.
+
+⚠️ La rotación sigue tu brújula: **cerca de grandes masas metálicas** (raíles, armaduras, estructuras) puede volverse aproximada, como el resto del rastreador.
+
 Utiliza siempre el **reajuste manual** (botón 📍) en cuanto identifiques un punto de referencia conocido en el plano.
 
 **Para cualquier salida subterránea, lleva siempre:**
