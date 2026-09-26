@@ -1612,7 +1612,7 @@ Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique"
   Elle utilise les **couleurs de ta légende** : si tu as repeint un type ou créé tes propres types, tu les reconnais ici comme sur la carte.
   Ton **itinéraire actif** y est toujours tracé (cyan vif + halo blanc, pour rester visible sur ce fond très zoomé), et la carte **s'oriente** comme la carte principale si tu as activé le mode « plan orienté ».
 - 📋 **« Copier ma position »** : un bouton sous les chiffres (les chiffres eux-mêmes marchent aussi). Si ton plan est géoréférencé, il copie **les coordonnées seules** — `48.823328, 2.322915` — le format qui se colle tel quel dans un SMS, dans Google Maps ou dans Plans, sans rien avoir à nettoyer. Sinon il copie le **nom du plan et ta position X/Y**, qui ne parle qu'à quelqu'un qui a le même plan. À garder sous la main dès que tu captes un peu de réseau. ⚠️ *Le doute reste à l'écran, pas dans le message : si ta position n'a jamais été confirmée, la ligne sous les chiffres te le dit — dis-le aussi à qui tu écris.*
-- 📏🔋 **Deux petites lignes en haut à droite** : l'échelle du plan, puis ton **niveau de batterie** (quand l'API est dispo — Chromium uniquement ; critique ici : tu sais combien de temps il te reste avant que le téléphone s'éteigne), l'état du **tracker** et celui de la **boussole**. Le **nom du plan** est juste sous le titre 🚨.
+- 🔋 **Une ligne d'état en haut à droite** : ton **niveau de batterie** (seulement si ton navigateur l'expose et si tu n'as pas décoché le réglage — sinon rien du tout, pas de « ? » ; critique ici : tu sais combien de temps il te reste avant que le téléphone s'éteigne), l'état du **tracker** et celui de la **boussole**. Le **nom du plan** est juste sous le titre 🚨. *L'échelle du plan n'y est plus (v1.97.11) : c'est un chiffre de calibrage, il se lit dans ⚙️ Réglages, pas quand on cherche où l'on est.*
 - 🌗 **Thème** : l'écran suit celui de l'app (sombre ou clair). Il n'y a plus de bouton dédié — un seul réglage, dans ⚙️ Réglages.
 - 🔋 **Wake Lock** : l'écran ne s'éteint pas automatiquement tant que le mode est actif (pas besoin de toucher le téléphone toutes les 30 sec pour le réveiller)
 - 📱 **Paysage** : la minimap se recadre correctement quand tu tournes le téléphone, et la mise en page change — position à gauche, carte à droite sur toute la hauteur.
@@ -2246,7 +2246,7 @@ L'app utilise l'**API Battery Status** standard du navigateur. Cette API n'est *
 | Safari iOS / macOS | ❌ Non (l'API a été retirée pour des raisons de privacy / fingerprinting) |
 | Firefox récent | ❌ Non (l'API a été désactivée par défaut) |
 
-> 🪫 **Si l'API n'est pas dispo** sur ton téléphone, la chip batterie est **simplement masquée** — aucun message d'erreur ne s'affiche. C'est normal sur iOS. Tu vois quand même le niveau dans le mode urgence si tu tiens à l'avoir en grand.
+> 🪫 **Si l'API n'est pas dispo** sur ton téléphone, la chip batterie est **simplement masquée** — aucun message d'erreur ne s'affiche. C'est normal sur iOS. **Le mode urgence 🚨 ne l'affiche pas non plus** (v1.97.11) : sans capteur il n'y a rien à montrer, et un « ? » à la place d'un niveau de batterie sur l'écran qu'on ouvre quand elle lâche ne rassure personne. Le reste de l'état (tracker, boussole) est intact. Même chose si tu décoches ⚙️ **🔋 Niveau de batterie**.
 
 ---
 

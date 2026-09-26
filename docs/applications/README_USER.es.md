@@ -1552,7 +1552,7 @@ El botón **🚨** rojo del grupo **🧭 Rastreador** abre un modo «pánico» a
   Usa los **colores de tu leyenda**: si has recoloreado un tipo o creado tus propios tipos, los reconoces aquí igual que en el mapa.
   Tu **itinerario activo** siempre aparece dibujado (cian intenso + halo blanco, para seguir viéndose sobre ese fondo tan ampliado), y el mapa **gira** como el principal si has activado el modo «plano orientado».
 - 📋 **« Copiar mi posición »**: un botón bajo las cifras (también sirve pulsar las cifras). Si tu plano está georreferenciado copia **solo las coordenadas** — `48.823328, 2.322915` — el formato que se pega directamente en un SMS, en Google Maps o en Mapas, sin tener que limpiar nada. Si no, copia el **nombre del plano y tu posición X/Y**, que solo significa algo para quien tenga el mismo plano. Conviéne tenerlo a mano en cuanto tengas algo de cobertura. ⚠️ *La duda se queda en la pantalla, no en el mensaje: si tu posición nunca se ha confirmado, la línea bajo las cifras lo dice — díselo también a quien escribas.*
-- 📏🔋 **Dos líneas pequeñas arriba a la derecha**: la escala del plano y luego tu **nivel de batería** (cuando la API está disponible — solo Chromium; crítico aquí: sabes cuánto te queda antes de que el teléfono se apague), el estado del **rastreador** y el de la **brújula**. El **nombre del plano** va justo bajo el título 🚨.
+- 🔋 **Una línea de estado arriba a la derecha**: tu **nivel de batería** (solo si tu navegador lo expone y no has desmarcado el ajuste — si no, nada en absoluto, ningún « ? »; crítico aquí: sabes cuánto te queda antes de que el teléfono se apague), el estado del **rastreador** y el de la **brújula**. El **nombre del plano** va justo bajo el título 🚨. *La escala del plano ya no aparece (v1.97.11): es una cifra de calibrado, se consulta en ⚙️ Configuración, no cuando buscas dónde estás.*
 - 🌗 **Tema**: la pantalla sigue el de la app (oscuro o claro). Ya no hay botón propio — un solo ajuste, en ⚙️ Configuración.
 - 🔋 **Wake Lock**: la pantalla no se apaga automáticamente mientras el modo esté activo (no hace falta tocar el teléfono cada 30 segundos para despertarlo)
 - 📱 **Horizontal**: el minimapa se reencuadra correctamente cuando giras el teléfono, y la disposición cambia — la posición a la izquierda y el mapa a la derecha a toda altura.
@@ -2186,7 +2186,7 @@ La app usa la **API Battery Status** estándar del navegador. Esta API **ya no e
 | Safari iOS / macOS | ❌ No (la API se retiró por motivos de privacidad / huella digital) |
 | Firefox reciente | ❌ No (la API está desactivada por defecto) |
 
-> 🪫 **Si la API no está disponible** en tu teléfono, la ficha de batería **simplemente se oculta** — no se muestra ningún mensaje de error. Es normal en iOS. Aun así, ves el nivel en el modo emergencia si quieres tenerlo en grande.
+> 🪫 **Si la API no está disponible** en tu teléfono, la ficha de batería **simplemente se oculta** — no se muestra ningún mensaje de error. Es normal en iOS. **El modo emergencia 🚨 tampoco lo muestra** (v1.97.11): sin sensor no hay nada que mostrar, y un « ? » en lugar de un nivel de batería, en la pantalla que abres justo cuando se agota, no tranquiliza a nadie. El resto del estado (rastreador, brújula) queda intacto. Lo mismo si desmarcas ⚙️ **🔋 Nivel de batería**.
 
 ---
 

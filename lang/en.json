@@ -378,8 +378,6 @@
   "emergency.copierKo": "⚠️ Copy failed",
   "emergency.copierOk": "✅ Copied",
   "emergency.copierRien": "— No position",
-  "emergency.echelle.nonCalibree": "not calibrated",
-  "emergency.echelle.unite": "{scale} px/m",
   "emergency.etat.boussoleKo": "🧭 Compass KO",
   "emergency.etat.boussoleOk": "🧭 Compass OK",
   "emergency.etat.trackerOff": "📍 Tracker OFF",

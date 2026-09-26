@@ -12,7 +12,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.97.10` (26/09/2026)
+## 📦 Version courante — `v1.97.11` (27/09/2026)
+
+> 🧹 **v1.97.11 — « ? » n'est pas un niveau de batterie, et une échelle n'est pas une information d'urgence** : KARMA — *« enlève aussi l'indicateur batterie (si capteur désactivé ou non disponible) mode urgence xl »*. 🩸 *`BatteryGuard.formatLabel()` ne rend pas une chaîne vide quand la batterie est hors service : il rend **« ? »**, et `getEmoji()` rend 🪢 — l'état « indispo » de la v1.11.1, prévu pour que la chip de l'en-tête montre son emplacement. Le test `if (bat)` était donc toujours vrai : le bloc ÉTAT affichait « 🪢 ? » sur Safari iOS, sur Firefox, et pour quiconque avait décoché le réglage.* ⚠️ ***Régression de ma v1.97.6**, celle qui a mis la batterie dans ce bloc. La chip de l'en-tête est masquée depuis la v1.11.1-fix3, sur la même demande de KARMA — la décision existait, cet écran ne l'avait jamais reçue.* 🩹 *La condition est `isAvailable()`, jamais la véracité du libellé. Le tracker et la boussole restent affichés : masquer trop aurait été l'autre façon de se tromper.*
 
 > 📋 **v1.97.10 — Des coordonnées qu'on peut envoyer** : KARMA — *« en mode urgence XL on devrait avoir la possibilité de copier les coordonnées GPS de notre position (pour les envoyer si on trouve un point de réseau) »*. 📍 *Plan géoréférencé → **`lat, lng` nu** ; plan non géoréférencé → nom du plan + X/Y. Rien d'autre : une heure ou un cap ajoutés casseraient le collage dans une app de carte, et cet écran est le pire endroit pour découvrir qu'il faut nettoyer une chaîne à la main.* ⚠️ *Le doute (« position jamais confirmée ») reste À L'ÉCRAN — il se dit à la personne, il ne part pas dans un message qu'un tiers lira hors contexte.* 🛡️ *`window.ktaCopierTexte` (nouveau) garde les DEUX chemins : `navigator.clipboard` n'existe pas sur une instance servie en HTTP, qui est justement le déploiement d'un réseau isolé de secours.*
 
@@ -471,6 +473,16 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.97.11 (27/09/2026) — « ? » n'est pas un niveau de batterie
+
+- 🎯 **Le signalement (KARMA)** : *« enlève aussi l'indicateur batterie (si capteur désactivé ou non disponible) mode urgence xl »*.
+- 🩸 **Le piège était dans l'API de `BatteryGuard`.** `formatLabel()` ne rend **pas** une chaîne vide quand la batterie est hors service : il rend `"?"`, et `getEmoji()` rend 🪢. C'est délibéré — l'état « indispo » explicite de la v1.11.1, créé pour que la chip de l'en-tête puisse afficher un emplacement grisé en développement. Conséquence : mon `if (bat)` de la v1.97.6 était **toujours vrai**, et le bloc « 🔋 ÉTAT » affichait « 🪢 ? » sur **Safari iOS** (pas d'API batterie), sur Firefox, et sur tout appareil où l'utilisateur avait décoché ⚙️ « 🔋 Niveau de batterie » (`APP_CONFIG.batterieEnabled`, qui coupe aussi l'écoute du capteur depuis la v1.85.2).
+- ⚠️ **C'est une régression de la v1.97.6**, celle qui a fait entrer la batterie dans ce bloc. La chip de l'en-tête, elle, est **masquée depuis la v1.11.1-fix3** — sur exactement la même demande de KARMA (*« enlève le fait de voir l'icône batterie si l'API pas dispo, cas iOS »*). La décision était prise depuis 86 versions ; l'écran d'urgence ne l'avait jamais reçue, et je ne suis pas allé la chercher avant d'ajouter la ligne.
+- 🩹 **La condition est `BatteryGuard.isAvailable()`**, jamais la véracité du libellé — un libellé qui vaut `"?"` est *vrai* au sens de JavaScript, et c'est tout le problème. ⚠️ *Le tracker et la boussole restent affichés : masquer tout l'état aurait été l'autre façon de se tromper, sur un écran dont ces deux lignes disent si les capteurs répondent.*
+- ✅ **Tests** : `checkup-urgence-memoire.js` gagne un bloc **B** — avec `isAvailable()` forcé à faux, l'état ne doit contenir ni `?`, ni `%`, ni 🪢/🔋/⚡, **et** doit garder « Tracker ». Mesuré : « 📍 Tracker OFF · 🧭 Boussole OK » sans capteur, « ⚡ 100% · … » avec. 56 guards verts.
+- 🧹 **Et l'échelle px/m quitte l'écran** (KARMA : *« enlève aussi px/m du mode XL »*) : c'est un chiffre de **calibrage**, qui se lit une fois dans ⚙️ Réglages et n'apprend rien à quelqu'un qui cherche où il est — les distances de l'app en dépendent déjà sans qu'on ait à les convertir à la main. Il ne reste qu'**une** puce en haut à droite, celle de l'état du matériel, c'est-à-dire la seule qui change. Deux clés i18n retirées des trois dicos.
+- 🐞 **Au passage** : trois commentaires de code portaient 🪲 (scarabée) au lieu de 🪢 (batterie faible) — U+1FAB2 vs U+1FAA2. Sans effet à l'écran, mais un commentaire qui décrit un insecte là où le code parle de batterie n'aide personne.
 
 #### v1.97.10 (26/09/2026) — Des coordonnées qu'on peut envoyer
 

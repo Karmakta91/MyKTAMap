@@ -21,7 +21,7 @@ une map plus grande »*.
 
 ```
 ┌─ header ─────────────────────────────────────────────┐
-│ 🚨 MODE URGENCE                       📏 4.07 px/m  │  #kta-em-echelle
+│ 🚨 MODE URGENCE                                     │
 │ Nom du plan                  🔋 82% · 📍 Tracker ON │  #kta-em-etat
 ├─ grid (1 colonne, 2 pistes) ────────────────────────┤
 │ 📍 POSITION (PLAN)  |  🌍 GPS (LAT / LNG)  ← UN SEUL  │  #kta-em-pos-label
@@ -47,12 +47,17 @@ une map plus grande »*.
    pratique **le X/Y ne s'affiche que sur un plan non géoréférencé** — et un
    test qui ne neutralise pas le calibrage ne mesure qu'une branche sur deux.
 
-2. **Les icônes des puces sont portées par le code, plus par un label.**
-   📏 est ajouté devant l'échelle dans `_tick` ; 🔋/🪲/⚡ vient de
-   `BatteryGuard.getEmoji()` (`formatLabel()` ne rend que « 87% ») ; 📍 et 🧭
-   sont passés dans les valeurs des dicos `emergency.etat.*`. Les clés
-   `emergency.label.{echelle,plan,etat}`, `emergency.theme.toggleTitle` et
-   `emergency.hint` ont été **supprimées des trois dicos**.
+2. **Les icônes de la puce d'état sont portées par le code, plus par un label.**
+   🔋/🪫/⚡ vient de `BatteryGuard.getEmoji()` (`formatLabel()` ne rend que
+   « 87% ») ; 📍 et 🧭 sont passés dans les valeurs des dicos
+   `emergency.etat.*`. Les clés `emergency.label.{echelle,plan,etat}`,
+   `emergency.theme.toggleTitle`, `emergency.hint` et `emergency.echelle.*` ont
+   été **supprimées des trois dicos**.
+   🧹 27/09/2026 — **l'échelle px/m est partie** (KARMA) : c'est un chiffre de
+   calibrage, il se lit une fois dans ⚙️ Réglages et n'apprend rien à qui
+   cherche où il est. Les distances de l'app en dépendent déjà sans conversion
+   manuelle. Il ne reste qu'une puce, celle de l'état du matériel — celui qui
+   change.
 
 3. **Les couleurs de la légende personnalisée atteignent la mini-carte.** Elle
    garde sa palette vive (variante délibérée, cf en-tête de `styleResolver.js`)
@@ -73,6 +78,26 @@ une map plus grande »*.
    la boîte gardait sa hauteur naturelle, la grille n'avait **rien** à répartir
    et la minimap restait à son plancher de 260 px avec **155 px d'écran vide
    sous le bouton**.
+
+#### 🪢 Batterie : `isAvailable()` avant tout (26/09/2026)
+
+`BatteryGuard.formatLabel()` **ne rend pas une chaîne vide** quand la batterie est
+hors service : il rend **« ? »**, et `getEmoji()` rend 🪢 — c'est l'état
+« indispo » explicite de la v1.11.1, pensé pour que la chip de l'en-tête puisse
+montrer son emplacement grisé. Le test `if (bat)` de ce module était donc
+**toujours vrai**, et le bloc ÉTAT affichait « 🪢 ? » sur Safari iOS, sur
+Firefox, et sur tout appareil dont l'utilisateur a décoché
+`APP_CONFIG.batterieEnabled`.
+
+⚠️ **Régression de la v1.97.6**, quand la batterie est arrivée dans ce bloc : la
+chip de l'en-tête, elle, est masquée depuis la **v1.11.1-fix3** — sur la même
+demande de KARMA (*« enlève le fait de voir l'icône batterie si l'API pas dispo,
+cas iOS »*). La décision existait ; cet écran ne l'avait jamais reçue.
+
+La condition est `BatteryGuard.isAvailable()`, **jamais** la véracité du libellé.
+Couvert par `checkup-urgence-memoire.js` (bloc B) : sans capteur, l'état ne doit
+contenir ni « ? », ni « % », ni 🪢/🔋/⚡ — et doit garder le tracker et la
+boussole (masquer trop serait l'autre façon de se tromper).
 
 #### 📋 Copier sa position (26/09/2026)
 

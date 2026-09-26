@@ -378,8 +378,6 @@
   "emergency.copierKo": "⚠️ Copie impossible",
   "emergency.copierOk": "✅ Copié",
   "emergency.copierRien": "— Aucune position",
-  "emergency.echelle.nonCalibree": "non calibrée",
-  "emergency.echelle.unite": "{scale} px/m",
   "emergency.etat.boussoleKo": "🧭 Boussole KO",
   "emergency.etat.boussoleOk": "🧭 Boussole OK",
   "emergency.etat.trackerOff": "📍 Tracker OFF",

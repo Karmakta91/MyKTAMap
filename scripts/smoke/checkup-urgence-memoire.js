@@ -204,6 +204,34 @@ function inf(m) { console.log("  •  " + m); }
     else inf("batterie absente de « ÉTAT » (" + u.etat + ") — l'API batterie n'existe pas partout, " +
              "non bloquant au harnais");
 
+    // ── B — batterie indisponible : RIEN, pas un « ? » ──────────────
+    // `formatLabel()` rend « ? » et `getEmoji()` rend 🪢 quand la batterie est
+    // hors service (état « indispo » de la v1.11.1, fait pour que la chip de
+    // l'en-tête montre son emplacement). Le bloc ÉTAT affichait donc « 🪢 ? »
+    // sur Safari iOS et sur tout appareil où l'utilisateur a décoché le
+    // réglage : un point d'interrogation à la place d'un niveau, sur l'écran
+    // qu'on ouvre quand la batterie lâche.
+    console.log("— B : batterie désactivée ou indisponible —");
+    const bat = await page.evaluate(async function () {
+      const vrai = window.BatteryGuard.isAvailable;
+      window.BatteryGuard.isAvailable = function () { return false; };
+      window.EmergencyMode.activer();
+      await new Promise(function (r) { setTimeout(r, 1200); });
+      const txt = (document.getElementById("kta-em-etat") || {}).textContent || "";
+      window.EmergencyMode.desactiver();
+      window.BatteryGuard.isAvailable = vrai;
+      return txt;
+    });
+    inf("« ÉTAT » sans capteur : " + JSON.stringify(bat));
+    if (!/[?%]/.test(bat) && bat.indexOf("🪢") < 0 && bat.indexOf("🔋") < 0
+        && bat.indexOf("⚡") < 0) {
+      ok("aucun indicateur de batterie quand le capteur est désactivé ou absent");
+    } else {
+      pb("un reste d'indicateur de batterie subsiste sans capteur : " + JSON.stringify(bat));
+    }
+    if (/Tracker/.test(bat)) ok("le reste de l'état (tracker, boussole) est intact");
+    else pb("l'état a perdu le tracker en même temps que la batterie : " + JSON.stringify(bat));
+
     if (u.miniTournee) ok("la minimap s'oriente quand le mode « plan orienté » est actif (" + u.miniTournee + ")");
     else pb("la minimap ne tourne pas alors que le mode est activé");
 

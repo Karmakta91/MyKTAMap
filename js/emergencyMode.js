@@ -240,8 +240,12 @@
             '<span class="kta-emergency-titre">' + t("emergency.header.titre") + '</span>' +
             '<span class="kta-emergency-plan-nom" id="kta-em-plan">—</span>' +
           '</div>' +
+          // 🧹 27/09/2026 (KARMA « enlève aussi px/m du mode XL ») — l'échelle
+          // est partie : c'est un chiffre de CALIBRAGE, il se lit une fois dans
+          // ⚙️ Réglages et ne sert à rien quand on cherche où l'on est. Les
+          // distances de l'app en dépendent déjà sans qu'on ait à les convertir
+          // à la main. Il ne reste que l'état du matériel, celui qui change.
           '<div class="kta-emergency-etats">' +
-            '<span class="kta-emergency-chip" id="kta-em-echelle">—</span>' +
             '<span class="kta-emergency-chip" id="kta-em-etat">—</span>' +
           '</div>' +
         '</div>' +
@@ -457,16 +461,8 @@
       if (cardEl) cardEl.textContent = window.I18n.t("emergency.heading.boussoleIndispo");
     }
 
-    // 📏 Échelle (statique mais peut changer au plan switch)
-    const echEl = document.getElementById("kta-em-echelle");
-    if (echEl) {
-      const scale = window.APP_CONFIG && window.APP_CONFIG.scale;
-      // 📏 L'icône était portée par le label du bloc meta, disparu le
-      // 26/09/2026 : la puce la porte elle-même.
-      echEl.textContent = "📏 " + ((typeof scale === "number" && scale > 0)
-        ? window.I18n.t("emergency.echelle.unite", { scale: scale.toFixed(2) })
-        : window.I18n.t("emergency.echelle.nonCalibree"));
-    }
+    // 🧹 27/09/2026 : plus d'échelle ici (cf le gabarit). Les clés
+    // `emergency.echelle.*` ont été retirées des trois dicos avec elle.
 
     // 🗂️ Plan
     const planEl = document.getElementById("kta-em-plan");
@@ -484,11 +480,29 @@
       // « batterie si dispo » depuis toujours : elle n'y a jamais été. Sur
       // l'écran qu'on ouvre précisément quand la batterie lâche, c'était
       // l'information manquante la plus criante — et la fonction qui la
-      // formate existe déjà.
+      // formate existe déjà. ⚠️ « si dispo » se vérifie avec `isAvailable()`,
+      // pas avec la véracité du libellé (cf le pavé ci-dessous).
       try {
-        if (window.BatteryGuard && typeof window.BatteryGuard.formatLabel === "function") {
+        // 🚨 26/09/2026 (KARMA « enlève aussi l'indicateur batterie si capteur
+        // désactivé ou non disponible ») — `isAvailable()` D'ABORD.
+        //
+        // `formatLabel()` ne rend PAS une chaîne vide quand la batterie est
+        // hors service : il rend **« ? »**, et `getEmoji()` rend **🪢** (l'état
+        // « indispo » de la v1.11.1, pensé pour que la chip de l'en-tête montre
+        // son emplacement grisé en développement). Le test `if (bat)` était donc
+        // toujours vrai, et le bloc ÉTAT affichait « 🪢 ? » — sur Safari iOS,
+        // qui n'a pas l'API, et sur tout appareil dont l'utilisateur a
+        // décoché le réglage (`APP_CONFIG.batterieEnabled`). Un point
+        // d'interrogation à la place d'un niveau de batterie, sur l'écran qu'on
+        // ouvre quand la batterie lâche : moins qu'inutile, inquiétant.
+        // L'en-tête principal masque déjà sa chip dans ce cas (v1.12.0) ; cet
+        // écran-là ne l'avait jamais fait.
+        const dispoBat = !!(window.BatteryGuard
+          && typeof window.BatteryGuard.isAvailable === "function"
+          && window.BatteryGuard.isAvailable());
+        if (dispoBat && typeof window.BatteryGuard.formatLabel === "function") {
           const bat = window.BatteryGuard.formatLabel();
-          // 🔋/🪲/⚡ selon le niveau et la charge : `formatLabel` ne rend que
+          // 🔋/🪢/⚡ selon le niveau et la charge : `formatLabel` ne rend que
           // « 87% », l'icône était portée par le label du bloc meta (supprimé
           // le 26/09/2026). Mesuré sans elle : la puce commençait par « 100% ».
           const emo = (typeof window.BatteryGuard.getEmoji === "function")

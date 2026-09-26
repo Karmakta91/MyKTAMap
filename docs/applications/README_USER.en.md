@@ -1602,7 +1602,7 @@ The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic
   It uses **your legend's colours**: if you recoloured a type or created your own types, you recognise them here just like on the map.
   Your **active route** is always drawn on it (bright cyan + white halo, to stay visible on that tightly zoomed background), and the map **rotates** like the main map if you enabled "oriented map" mode.
 - 📋 **“Copy my position”**: a button under the figures (tapping the figures works too). If your map is georeferenced it copies **the coordinates alone** — `48.823328, 2.322915` — the format that pastes straight into a text message, Google Maps or Apple Maps with nothing to clean up. Otherwise it copies the **map name and your X/Y position**, which only means something to someone holding the same map. Worth having ready the moment you catch any signal. ⚠️ *The doubt stays on screen, not in the message: if your position was never confirmed, the line under the figures says so — say it too, to whoever you write.*
-- 📏🔋 **Two small lines at the top right**: the map scale, then your **battery level** (when the API is available — Chromium only; critical here: you know how long you have before the phone shuts down), the **tracker** state and the **compass** state. The **map name** sits right under the 🚨 title.
+- 🔋 **One status line at the top right**: your **battery level** (only if your browser exposes it and you have not unticked the setting — otherwise nothing at all, no “?”; critical here: you know how long you have before the phone shuts down), the **tracker** state and the **compass** state. The **map name** sits right under the 🚨 title. *The map scale is gone (v1.97.11): it is a calibration figure, it belongs in ⚙️ Settings, not on the screen where you are looking for yourself.*
 - 🌗 **Theme**: the screen follows the app's own (dark or light). There is no dedicated button any more — one setting, in ⚙️ Settings.
 - 🔋 **Wake Lock**: the screen does not turn off automatically while the mode is active (no need to touch the phone every 30 sec to wake it up)
 - 📱 **Landscape**: the minimap reframes correctly when you turn the phone, and the layout changes — position on the left, map on the right over the full height.
@@ -2240,7 +2240,7 @@ The app uses the standard browser **Battery Status API**. This API is **no longe
 | Safari iOS / macOS | ❌ No (the API was removed for privacy / fingerprinting reasons) |
 | Recent Firefox | ❌ No (the API was disabled by default) |
 
-> 🪫 **If the API is not available** on your phone, the battery chip is **simply hidden** — no error message is displayed. This is normal on iOS. You still see the level in emergency mode if you want to have it in large size.
+> 🪫 **If the API is not available** on your phone, the battery chip is **simply hidden** — no error message is displayed. This is normal on iOS. **Emergency mode 🚨 does not show it either** (v1.97.11): with no sensor there is nothing to show, and a “?” where a battery level belongs — on the very screen you open when it dies — reassures nobody. The rest of the status (tracker, compass) is untouched. Same thing if you untick ⚙️ **🔋 Battery level**.
 
 ---
 
