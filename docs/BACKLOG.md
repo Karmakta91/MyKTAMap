@@ -79,9 +79,120 @@ Trois audits mesurés sur un vrai plan tuilé (16332×13820, 864 tuiles au nivea
 - 🟠 **`viewportCull` et `decim` ne touchent pas les tracés d'un plan.** Les 895 polylines d'un relevé sont créées par `utils.js` et n'entrent **jamais** dans `roadsData`, sur quoi ces deux optimisations opèrent exclusivement. Mesuré, cull ON à z=0 : **895 polylines sur la carte, 38 seulement intersectent le viewport**. Deux des six réglages ULTRA sont donc des no-ops sur le cas pour lequel ils ont été écrits, et rien ne le dit à l'utilisateur qui coche la case.
 - 🟠 **Le LRU des tuiles ne libère rien**, pour deux raisons indépendantes : sur un plan **serveur** ses buckets restent vides (il ne se remplit que pour les assets porteurs d'un `file`, donc les ZIP) ; sur un plan **ZIP desktop**, `MAX_CACHED_LEVELS = 4` alors que le générateur produit exactement 4 niveaux — la condition d'éviction ne peut jamais être vraie. Ce qui libère réellement, c'est le `remove()` des overlays au swap. Le LRU n'agit que sur mobile (cap 2), où il n'a jamais été mesuré.
 - 🟡 **L'export image par défaut alloue 861 Mo de canvas** et produit un PNG de **182 Mo** (7,5 s d'encodage) : la résolution originale est pré-cochée, sans plafond ni avertissement, et le fond est obtenu en **retéléchargeant l'image de 42 Mo** alors que 30 Mo de tuiles sont déjà sur l'appareil. *[Déduit]* sur Safari iOS c'est le chemin `toBlob → null`.
-- 🟡 **20 requêtes 404 par ouverture de plan** : le `plan-config` déclare 20 icônes, le dossier `icon/` livré est vide. Le repli built-in fonctionne parfaitement et **personne n'est averti** — mais c'est 20 allers-retours à chaque changement de plan.
+- 🟡 **21 requêtes 404 par ouverture de plan** — chiffré et instruit par l'audit icônes du 26/09 : voir la section **🎨 Icônes par défaut** ci-dessous.
 - 🟡 **Alpha : la transparence est inatteignable pour tout plan issu d'un scan.** Le format des tuiles est décidé à la génération d'après la source ; un JPEG n'ayant jamais d'alpha, ses tuiles seront **toujours** opaques, et **il n'existe aucun chemin de re-tuilage** d'un plan déjà généré. Superposé à OSM : à 100 % le plan masque totalement le fond, à 50 % les deux couches sont délavées à parts égales. Le rendu est correct **parce que l'opacité compense un fond opaque**, pas par transparence — ce que le vocabulaire (« superposition », « transparence des plans ») ne dit pas.
 - 🟡 **Le tick du mode urgence à l'arrêt** : 40 `setView` en 10 s, immobile, chacun déclenchant un parcours de toute la grille du niveau (864 itérations) — ~34 560 itérations en 10 s pour rien, sur l'écran ouvert quand la batterie est basse.
+
+## 🎨 Vue OSM : les couleurs de la légende personnalisée ne l'atteignent pas (26/09/2026)
+
+Soldé pour le mode urgence XL en v1.97.7 ; **`osmView.js` / `osmHomePreview.js` portent le même trou**,
+pour la même raison : ce sont les deux exceptions qui gardent délibérément leur propre palette
+(`inaccessible` en orange uni sur fond OSM, parce que le motif hachuré SVG n'y est pas rendu), et
+garder sa palette a été implémenté comme « ne rien demander au canon ».
+
+Conséquence *[Probable — non mesuré sur la Vue OSM]* : une couleur choisie via ≡ Légende → ✏️ Modifier
+et les types `cust-…` n'y apparaissent pas comme sur la carte. La parade existe désormais et tient en
+un appel : `window.ktaAppliquerCouleurChoisie(cat, clé, style)` + repli `ktaResolveStyle(…, {flat:true})`
+pour les customs — exactement le `_styleMini` d'`emergencyMode.js`. ⚠️ À mesurer d'abord : le widget
+HOME résout ses overrides **par plan** (slots), ce n'est pas le même état que la session courante.
+
+## 🎨 Icônes par défaut — audit du 26/09/2026 (KARMA : étage 1 au backlog)
+
+Demande KARMA : *« on mélange plusieurs façons de faire (pour portail par exemple), je veux savoir
+où on en est, et éventuellement harmoniser (avoir des trucs vecto telles que portail, ou entrée
+plan) »*. Audit mesuré (agent, sans code). Arbitrage : **étage 1 → backlog** (merge `main` d'abord),
+étages 2 et 3 à re-expliquer avant décision.
+
+**Ce qui est innocenté** : le catalogue n'a **pas** dérivé, les 8 tables qui connaissent les tags sont
+synchrones au 26/09.
+
+### 🔴 À faire — étage 1 (aucun changement visuel, ~1 séance)
+
+- 🩸 **`entree_plan` est cassée sur un plan généré depuis le 13/06/2026.** Le générateur écrit
+  dans le `plan-config.json` le **libellé d'affichage** de l'icône
+  (`"Icône SVG intégrée à l'application"`) à la place du data-URI — régression `f7ef68b` (v1.44.5),
+  un fix cosmétique de débordement de modale qui a remplacé `title="${defaultPath}"` par un texte, et
+  la génération relit ce `title` comme chemin. Mesuré : `getIconUrlForPoint` rend
+  `data/<plan>/data/Icône SVG intégrée à l'application`, marqueur à `naturalWidth = 0` + un 404 par
+  marqueur. **Régénérer le plan ne répare pas** (le mode Modifier relit la même chaîne).
+  ⚠️ Seule la légende s'en sort : elle a un repli `onerror → _ktaBuiltinIconUrls`
+  (`interfaceLegende.js`), posé à **un seul endroit** en v1.76.0. Carte, filtres, favoris, recherche
+  et exports n'en ont pas.
+  → 3 maillons : stocker le vrai chemin hors du `title` (générateur) · refuser comme chemin une
+  valeur sans `/` ni extension (`config.js`) · **généraliser le repli `onerror` dans `map.js > _mkIcon`**
+  (un point, et carte + filtres + favoris + recherche sont couverts). Les `plan-config.json` déjà
+  déployés vivent dans `data/` → **rattrapage par KARMA seul**.
+- 🟠 **21 sondes 404 par ouverture de plan.** `config.js > resoudreIconesPlanServeur` interroge le
+  serveur pour chaque icône en `icon/…` afin de savoir si elle vit dans le ZIP du plan ou à la racine
+  de l'app ; un plan généré en déclare 21 et livre un dossier `icon/` **vide**
+  (`createConf.js` n'y écrit que les fichiers téléversés par l'utilisateur). Coût mesuré : **29,9 ms**
+  en localhost, **188 ms** à 150 ms de RTT, en `await` **avant** le rendu des marqueurs. Rejoué à
+  chaque ouverture (retour HOME + réouverture = 42) et **+21 à chaque téléchargement hors-ligne**
+  (`planOffline.js`). Exports, HOME et Vue OSM ne sondent pas.
+  → le générateur SAIT ce qu'il embarque : qu'il écrive la liste dans le `plan-config`
+  (champ présent → zéro sonde ; absent → comportement actuel, rétro-compat totale).
+  ⚠️ **Ne pas** revenir au critère « est-ce dans un catalogue ? » : c'est ce qui a cassé `iconetrack`
+  en v1.86.2.
+- 🛡️ **6 des 8 tables de tags ne sont gardées par rien.** `check-icon-catalog.js` ne confronte que
+  `map.js > TAGS_BUILTIN` ↔ `osmHomePreview.js > TAGS_BUILTIN_HOME`. Non gardées :
+  `createConf.js > PLANNER_DEFAULT_ICONS` · `editor.js > EDITOR_TAG_LABELS` ·
+  `interfaceLegende.js > LEGENDE_LABELS` + `GROUPES` (×2) · `exporter.js > GROUPES_ICONES` ·
+  `legendCustomization.js > DEFAULT_LABELS.icones` · `sw.js > ASSETS_TO_CACHE` · `editor.tag.*` /
+  `legendui.label.*` des 3 dicos. C'est exactement le service que `check-style-canon.js` rend aux
+  couleurs (~80 lignes à ajouter à un script existant, zéro risque runtime). Ajouter aussi
+  « chaque tag du catalogue a une entrée dans `ASSETS_TO_CACHE` » : un oubli = icône absente
+  hors-ligne, **invisible en dev**.
+- 🟡 **`sessionExporter.js > EMOJI_PAR_TAG` est totalement orpheline** : 18 clés
+  (`aeration`, `siphon`, `lampe`, `echelle`…) dont **aucune n'existe dans le catalogue**, alors que son
+  commentaire dit « ⚠️ Synchroniser avec `TAGS_BUILTIN` ». Conséquence : **tous** les points
+  anonymisés tombent sur le fallback 🎯. La brancher change les noms de sortie
+  (`🎯-1` → `🕳️-1`) → **arbitrage KARMA** (c'est un format d'export).
+
+### ⚖️ En attente d'arbitrage — étages 2 et 3
+
+- **Le 🌀 vs `portail.png` (étage 2, « 3:pas compris » — à re-présenter).** Le même objet métier a
+  deux visages : PNG vortex sur la carte, la légende, les filtres, la Vue OSM et les exports ;
+  **emoji 🌀** dans la liste des liaisons, la popup de création, le bouton HOME « Mes liaisons »,
+  l'itinéraire inter-plan (`ipr.result.step1` des 3 dicos) et le filtre OSM du HOME. Datable : le
+  commit qui a créé `icon/portail.png` (v1.59.0, `2f92f4f`, 02/09/2026) a retiré l'ancien badge 🌀 de
+  la carte mais laissé celui de toute la chaîne UI, antérieure.
+- **Résolveur canonique d'icônes, sur le modèle de `styleResolver.js` (étage 2).** Transposable terme
+  à terme : `ktaIcon(tag)` · `{raster:true}` = « ce contexte ne sait pas lire un SVG » (KMZ) ·
+  `ktaIconHtml(tag, taille)`. Bénéfice mesurable : la checklist `add-icon-tag` passe de **8 sites**
+  à **1**. ⚠️ **Étendre le check AVANT de migrer** : pendant la migration il existe N+1 tables, et
+  seul le check dit laquelle a bougé.
+- **Vectorisation (étage 3, « 4:pas compris » — à re-présenter).** Les 22 glyphes sont **déjà des
+  formes géométriques** (anneaux, triangles, échelles, escaliers) : 86 413 o de PNG pour ce qui
+  tiendrait en ~10-15 Ko *[Probable]*. Gain réel : **la netteté** (`map.js` pousse
+  `--kta-marker-scale` à 2× → un PNG de 50 px affiché à 100 px, soit ×4 à ×6 de pixels manquants
+  sur un écran DPR 2-3), la teinte dynamique (`peo`/`pef` et `eso`/`esf` sont le même glyphe en deux
+  couleurs) et zéro 404.
+  🔴 **Verrou dur avant toute vectorisation** : `kmzExport.js` écrit le blob dans
+  `files/icons/<tag>.png` **sans regarder son type**. Mesuré : un data-URI SVG y part sous un nom
+  `.png` → Google Earth ne le lit pas → **icône absente, sans message**. → rasteriser (canvas
+  128×128 → `toBlob("image/png")`, ~15 lignes) d'abord.
+  🔴 **Piège de migration invisible** : `utils.js:53` fait gagner `PLAN_CONFIG.icons[tag]` **avant**
+  le catalogue. Tout plan déjà déployé déclare `icon/pa.png` → si le catalogue bascule en `.svg`,
+  **les nouvelles icônes n'apparaîtront sur AUCUN plan existant**, et le symptôme sera « ça marche
+  chez moi sur un plan neuf ».
+  → ordre proposé : `portail` → `entree_plan` → les 5 lourds (`pe`, `pb`, `pa`, `info`, `elec` =
+  46,5 Ko à eux cinq) → les paires teintées. **À l'identique** : redessiner « en mieux » change ce
+  qu'on reconnaît sur son propre plan. Les 8 minuscules (`plaque` 373 o…) restent en PNG.
+
+### ❌ Non retenu
+
+- Unifier les ~194 emojis d'interface avec le catalogue : ce sont des icônes d'UI, pas des types de
+  points. Seule exception à traiter, le 🌀 (ci-dessus).
+- Mettre des glyphes dans le `<select>` de `editor.js:131` (le seul endroit où l'utilisateur choisit un
+  type **sans voir son icône**) : un `<option>` ne rend pas de HTML → sélecteur custom, chantier UI
+  séparé.
+
+### 🔍 Non vérifié par l'audit
+
+Rendu réel dans **Google Earth** (non installé — le MIME du blob est mesuré, pas le rendu) · chaîne
+d'export PNG/PDF **de bout en bout** avec un point `entree_plan` (la capacité canvas est mesurée
+isolément : `drawImage` OK, pixel `#f4c542` exact, canvas non tainted) · widget OSM du HOME sur un
+plan **ZIP** importé · poids réel d'un catalogue vectorisé (extrapolé des 333 o de `entree_plan`).
 
 ## 🧭 Mode « plan orienté » — dettes ouvertes (v1.97.0 → v1.97.3, 26/09/2026)
 

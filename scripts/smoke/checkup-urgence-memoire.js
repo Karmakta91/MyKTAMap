@@ -22,6 +22,14 @@
 //      bouton de sortie était coupé, et le bloc « 🔋 ÉTAT » ne montrait pas
 //      la batterie. Sur l'écran qu'on ouvre quand on est perdu.
 //
+//   3. LES COULEURS DE LA LÉGENDE PERSONNALISÉE, ignorées par la mini-carte.
+//      Cet écran garde délibérément sa palette vive (variante documentée en
+//      tête de `styleResolver.js`) — mais il ignorait aussi les couleurs
+//      CHOISIES par l'utilisateur, et ne connaissait aucun type `cust-…` :
+//      une zone custom sortait en gris remblais, un tracé custom en jaune
+//      chemin. La mini-carte montrait donc autre chose que la carte, sur
+//      l'écran où l'on cherche à reconnaître son propre relevé.
+//
 // Usage : node scripts/smoke/checkup-urgence-memoire.js
 // =====================================================================
 "use strict";
@@ -195,6 +203,80 @@ function inf(m) { console.log("  •  " + m); }
     if (u.miniTournee) ok("la minimap s'oriente quand le mode « plan orienté » est actif (" + u.miniTournee + ")");
     else pb("la minimap ne tourne pas alors que le mode est activé");
 
+    // ── C1 — les couleurs choisies en légende atteignent la mini-carte ──
+    // On capture ce que le mini DEMANDE à Leaflet : c'est la décision de style
+    // qu'on veut mesurer, pas le pixel (le renderer peut être un canvas).
+    console.log("— C : couleurs de la légende personnalisée dans la mini-carte —");
+    const c = await page.evaluate(async function () {
+      const LC = window.LegendCustomization;
+      if (!LC) return { absent: true };
+      LC.setColor("traces", "principal", "#ff00ff");
+      LC.setColor("zones", "eau", "#00ff88");
+      const ent = LC.addCustomEntry({ category: "traces", label: "CheckupCustom",
+                                      geometry: "polyline", lineColor: "#123456" });
+      const idCust = ent && (ent.id || ent);
+      const pts = [{ x: 200, y: 200 }, { x: 400, y: 400 }, { x: 600, y: 300 }];
+      const pousse = function (getter, obj) {
+        try {
+          const arr = window[getter] && window[getter]();
+          if (Array.isArray(arr)) { arr.push(obj); return true; }
+        } catch (e) {}
+        return false;
+      };
+      const injecte = pousse("getRoads", { type: "principal", points: pts })
+                    && pousse("getZones", { type: "eau", points: pts })
+                    && (!!idCust && pousse("getRoads", { type: idCust, points: pts }));
+
+      const vus = [];
+      const oL = L.polyline, oP = L.polygon;
+      let capture = false;
+      L.polyline = function (ll, o) {
+        if (capture && o) vus.push({ g: "line", color: o.color });
+        return oL.apply(this, arguments);
+      };
+      L.polygon = function (ll, o) {
+        if (capture && o) vus.push({ g: "poly", fill: o.fillColor });
+        return oP.apply(this, arguments);
+      };
+      capture = true;
+      window.EmergencyMode.activer();
+      await new Promise(function (r) { setTimeout(r, 2500); });
+      capture = false;
+      window.EmergencyMode.desactiver();
+      L.polyline = oL; L.polygon = oP;
+
+      const ligne = function (h) {
+        return vus.some(function (v) { return v.g === "line" && String(v.color).toLowerCase() === h; });
+      };
+      const fond = function (h) {
+        return vus.some(function (v) { return v.g === "poly" && String(v.fill).toLowerCase() === h; });
+      };
+      return {
+        injecte: injecte, total: vus.length,
+        traceChoisi: ligne("#ff00ff"), traceBase: ligne("#27c97e"),
+        customChoisi: ligne("#123456"), customRepli: ligne("#f4c542"),
+        zoneChoisie: fond("#00ff88"), zoneBase: fond("#60a5fa")
+      };
+    });
+
+    if (c.absent) inf("LegendCustomization indisponible — contrôle non joué");
+    else if (!c.injecte) pb("les objets de test n'ont pas pu être injectés : ce contrôle ne prouve rien");
+    else {
+      inf(c.total + " forme(s) capturée(s)");
+      if (c.traceChoisi && !c.traceBase)
+        ok("un tracé built-in repeint par l'utilisateur sort à sa couleur (#ff00ff)");
+      else pb("le tracé repeint sort encore à la couleur de base (choisi=" +
+              c.traceChoisi + ", base=" + c.traceBase + ")");
+      if (c.zoneChoisie && !c.zoneBase)
+        ok("une zone repeinte sort à sa couleur (#00ff88)");
+      else pb("la zone repeinte sort encore à la couleur de base (choisi=" +
+              c.zoneChoisie + ", base=" + c.zoneBase + ")");
+      if (c.customChoisi && !c.customRepli)
+        ok("un type CUSTOM est reconnu (#123456) au lieu du repli de catégorie");
+      else pb("le type custom retombe sur le repli (custom=" + c.customChoisi +
+              ", repli=" + c.customRepli + ")");
+    }
+
   } catch (e) {
     pb("exception du harnais : " + (e && e.message));
   } finally {
@@ -208,6 +290,7 @@ function inf(m) { console.log("  •  " + m); }
     problemes.forEach(function (p) { console.log("   • " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — fuite au plan switch fermée, écran d'urgence lisible et complet.");
+  console.log("🎉 CHECKUP VERT — fuite au plan switch fermée, écran d'urgence lisible, complet,\n" +
+              "   et fidèle aux couleurs choisies en légende.");
   process.exit(0);
 })();

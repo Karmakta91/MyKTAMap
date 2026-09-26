@@ -66,6 +66,13 @@
 //   Les types CUSTOM (`cust-*`) sont résolus via LegendCustomization.
 //
 // window.ktaStyleBuiltins(categorie) → string[]  (clés built-in de la catégorie)
+//
+// window.ktaAppliquerCouleurChoisie(categorie, cle, style) → style
+//   Applique à un style DÉJÀ CONSTRUIT la couleur que l'utilisateur a choisie
+//   pour ce type (≡ Légende → ✏️ Modifier), selon la géométrie de la
+//   catégorie. Réservé aux deux écrans à palette délibérément différente
+//   ci-dessus : ils gardent leur base vive, mais un choix de l'utilisateur
+//   doit les atteindre comme il atteint la carte.
 // =====================================================================
 
 (function() {
@@ -330,6 +337,17 @@
 
   window.ktaResolveStyle    = ktaResolveStyle;
   window.ktaStyleBuiltins   = ktaStyleBuiltins;
+  // 🎨 26/09/2026 — exposee pour les DEUX écrans qui gardent délibérément
+  // leur propre palette (`emergencyMode.js`, `osmView.js`) : sans ça, une
+  // couleur choisie par l'utilisateur ne les atteignait pas, et la seule
+  // façon de la respecter aurait été de RECOPIER ici la règle « ce qu'une
+  // couleur repeint selon la géométrie » — soit exactement la duplication
+  // que ce module existe pour éliminer.
+  window.ktaAppliquerCouleurChoisie = function(categorie, cle, style) {
+    if (!style) return style;
+    try { return _appliquerOverride(categorie, cle, style); }
+    catch(e) { return style; }
+  };
   // 🎨 v1.77.0 — dérivation bordure↔remplissage du canon, exposée pour que
   // le widget OSM HOME (qui résout ses overrides PAR PLAN depuis les slots
   // SessionPersist, hors état live) garde la même relation visuelle.

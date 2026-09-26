@@ -1543,14 +1543,16 @@ El modo ⛑️ incluye un **bloque desplegable «📚 Buenas prácticas»** en l
 
 El botón **🚨** rojo del grupo **🧭 Rastreador** abre un modo «pánico» a pantalla completa que reúne de un vistazo:
 
-- 📍 **Posición XL**: coordenadas del plano mostradas en caracteres enormes (legibles a un metro del teléfono)
+- 📍 **Una sola posición, enorme** (legible a un metro del teléfono): las coordenadas **GPS** si tu plano está georreferenciado — son las que se dictan a los equipos de rescate — y si no, la posición **X / Y del plano**. Nunca las dos: el título del bloque te dice cuál estás leyendo. Bajo las cifras, una línea indica si es tu posición seguida, tu última posición conocida o la **posición de partida del plano, nunca confirmada**.
 - 🧭 **Brújula gigante**: rumbo (sentido de la marcha) con aguja que gira en tiempo real, actualizada en vivo mediante los sensores de orientación del teléfono
 - 🗺️ **Minimapa con enfoque automático**: zoom cerrado (~20-50 m de horizonte) centrado permanentemente en tu posición. Muestra de fondo las **vías / zonas / estructuras del plano** — útil para localizar caminos, salidas y peligros en las inmediaciones
-- ☑️ **Interruptor 🗺️ Itinerario**: casilla en la cabecera. **Desmarcada** por defecto (protección anticaída en planos muy grandes). Márcala para volver a mostrar tu itinerario activo en el minimapa — dibujado en **cian intenso + halo blanco** para seguir siendo visible sobre el fondo muy ampliado. La preferencia se conserva entre dos aperturas del modo emergencia.
-- 🔋 **Batería**: el bloque 🔋 ESTADO muestra el nivel de batería en tiempo real cuando la API está disponible (solo Chromium). Crítico en modo pánico — sabes de inmediato cuánto tiempo te queda antes de que el teléfono se apague.
-- 🌗 **Temas**: oscuro por defecto, claro como opción (según el entorno exterior — penumbra o luz intensa)
+  Usa los **colores de tu leyenda**: si has recoloreado un tipo o creado tus propios tipos, los reconoces aquí igual que en el mapa.
+  Tu **itinerario activo** siempre aparece dibujado (cian intenso + halo blanco, para seguir viéndose sobre ese fondo tan ampliado), y el mapa **gira** como el principal si has activado el modo «plano orientado».
+- 📏🔋 **Dos líneas pequeñas arriba a la derecha**: la escala del plano y luego tu **nivel de batería** (cuando la API está disponible — solo Chromium; crítico aquí: sabes cuánto te queda antes de que el teléfono se apague), el estado del **rastreador** y el de la **brújula**. El **nombre del plano** va justo bajo el título 🚨.
+- 🌗 **Tema**: la pantalla sigue el de la app (oscuro o claro). Ya no hay botón propio — un solo ajuste, en ⚙️ Configuración.
 - 🔋 **Wake Lock**: la pantalla no se apaga automáticamente mientras el modo esté activo (no hace falta tocar el teléfono cada 30 segundos para despertarlo)
-- 📱 **Horizontal**: el minimapa se reencuadra correctamente cuando giras el teléfono en apaisado o inviertes el vertical — se acabaron los desajustes al rotar.
+- 📱 **Horizontal**: el minimapa se reencuadra correctamente cuando giras el teléfono, y la disposición cambia — la posición a la izquierda y el mapa a la derecha a toda altura.
+- 🗺️ **Todo cabe en una pantalla**: ya no hay nada que desplazar, y **el mapa ocupa todo el espacio ganado** (medido: su altura se ha duplicado en un teléfono en vertical).
 
 **¿Cuándo usarlo?**
 - Estás en pánico en un cruce y necesitas reorientarte rápido
@@ -1560,7 +1562,7 @@ El botón **🚨** rojo del grupo **🧭 Rastreador** abre un modo «pánico» a
 
 **Permisos**: la primera vez, el navegador pide acceso a los **sensores de orientación** del teléfono (para la brújula). Acéptalo — sin eso, la brújula se queda congelada.
 
-**Salida**: pulsa la ✕ de arriba a la derecha para cerrar el modo.
+**Salida**: el botón grande **↩️ SALIR DEL MODO EMERGENCIA** al pie de la pantalla — queda fijado abajo, nunca tienes que buscarlo. En ordenador, la tecla **Esc** hace lo mismo.
 
 ### 🚨 Modo Rescate
 

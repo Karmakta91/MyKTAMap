@@ -7459,10 +7459,8 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-dark .kta-emergency-value        { color: #f4c542; }
 .kta-emergency-dark .kta-emergency-sub          { color: #c8d0e0; }
 .kta-emergency-dark .kta-emergency-bloc         { background: rgba(255,255,255,0.04); border-color: rgba(244,197,66,0.25); }
-.kta-emergency-dark .kta-emergency-hint         { background: rgba(255,107,107,0.08); border-color: rgba(255,107,107,0.3); color: #ffb380; }
 .kta-emergency-dark .kta-emergency-exit-btn     { background: #f4c542; color: #0a0d18; border-color: #f4c542; }
 .kta-emergency-dark .kta-emergency-exit-btn:hover { background: #ffd860; }
-.kta-emergency-dark .kta-emergency-theme-btn    { background: rgba(255,255,255,0.08); color: #f4c542; }
 
 /* 🔆 THÈME CLAIR — lampe d'appoint, max brightness */
 .kta-emergency-light {
@@ -7474,15 +7472,21 @@ html.kta-theme-light .kta-cfg-group-titre {
 .kta-emergency-light .kta-emergency-value        { color: #b8740b; }
 .kta-emergency-light .kta-emergency-sub          { color: #2c3848; }
 .kta-emergency-light .kta-emergency-bloc         { background: rgba(0,0,0,0.04); border-color: rgba(184,116,11,0.35); }
-.kta-emergency-light .kta-emergency-hint         { background: rgba(192,57,43,0.08); border-color: rgba(192,57,43,0.35); color: #c0392b; }
 .kta-emergency-light .kta-emergency-exit-btn     { background: #c0392b; color: #ffffff; border-color: #c0392b; }
 .kta-emergency-light .kta-emergency-exit-btn:hover { background: #a02818; }
-.kta-emergency-light .kta-emergency-theme-btn    { background: rgba(0,0,0,0.08); color: #b8740b; }
 
 /* Layout commun aux 2 thèmes */
+/* 🗺️ 26/09/2026 (KARMA « on gagne de la place pour pas avoir de scroll et
+   une map plus grande ») : la boîte se limite à la hauteur visible et la
+   grille absorbe le reste — la minimap grandit de tout ce que le bloc meta,
+   la note rouge et le second bloc de position ont libéré, sans jamais
+   repousser le bouton de sortie hors de l'écran (cf son `sticky`, v1.97.6).
+   `max-height` ne force rien : sur un grand écran la boîte reste à sa
+   hauteur naturelle. */
 .kta-emergency-box {
   width: 100%;
   max-width: 720px;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -7490,8 +7494,9 @@ html.kta-theme-light .kta-cfg-group-titre {
 
 .kta-emergency-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 4px;
 }
 
@@ -7502,35 +7507,59 @@ html.kta-theme-light .kta-cfg-group-titre {
   text-shadow: 0 0 12px rgba(255, 107, 107, 0.5);
 }
 
-.kta-emergency-theme-btn {
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 1.5px solid currentColor;
-  border-radius: 50%;
-  background: transparent;
-  font-size: 22px;
-  cursor: pointer;
-  transition: background 0.12s;
-  font-family: inherit;
+/* 🧹 26/09/2026 — `.kta-emergency-theme-btn` et `.kta-emergency-header-actions`
+   SUPPRIMÉS avec le bouton clair/sombre : le mode urgence suit le thème de
+   l'app (`ThemeManager`), il n'a plus de contrôle à lui. */
+
+/* Nom du plan, en sous-titre du header. Une ligne, coupée si le nom est long
+   — c'est un repère, pas une donnée à lire en entier. */
+.kta-emergency-plan-nom {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
-/* 🆕 v1.11.2-fix2 : header actions = container des contrôles à droite
-   du titre. Aligne le toggle "🗺️ Itinéraire" + le bouton thème côte à côte. */
-.kta-emergency-header-actions {
+.kta-emergency-header-main {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;   /* sinon l'ellipsis du nom de plan ne peut pas s'appliquer */
 }
 
-/* Toggle "🗺️ Itinéraire" — checkbox stylée façon chip cliquable.
-   En landscape mobile (cf media query plus haut), on réduit la taille pour
-   ne pas écraser l'espace du header (déjà compact). */
+/* Les puces d'état : échelle et état matériel, alignées à droite du titre.
+   Elles remplaçent le bloc « ÉCHELLE / PLAN / ÉTAT » qui mangeait une
+   pleine largeur de grille en bas de l'écran. */
+.kta-emergency-etats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.kta-emergency-chip {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+}
 
 .kta-emergency-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Une colonne partout (la position en pleine largeur, la minimap sous
+     elle) : depuis que le bloc meta et le bloc GPS ont disparu, une
+     deuxième colonne ne laisserait qu'un trou à côté de la position.
+     La 2ème piste `1fr` donne à la minimap toute la hauteur restante. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .kta-emergency-bloc {
@@ -7582,10 +7611,6 @@ html.kta-theme-light .kta-cfg-group-titre {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-}
-
-.kta-emergency-bloc-meta {
-  grid-column: 1 / -1;
 }
 
 .kta-emergency-label {
@@ -7825,27 +7850,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 }
 
 
-/* Meta bloc — lignes label / value */
-.kta-emergency-meta-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 14px;
-  padding: 4px 0;
-  border-bottom: 1px dashed rgba(127, 127, 127, 0.2);
-}
-.kta-emergency-meta-row:last-child { border-bottom: none; }
-.kta-emergency-meta-label { font-weight: 600; letter-spacing: 0.04em; }
-.kta-emergency-meta-value { font-family: "SF Mono", Monaco, Consolas, monospace; }
-
-/* Hint */
-.kta-emergency-hint {
-  font-size: 13px;
-  line-height: 1.5;
-  padding: 12px 16px;
-  border: 1.5px solid;
-  border-radius: 8px;
-}
-
 /* Bouton sortir — gros et visible */
 /* 🩸 v1.97.6 — LE SEUL BOUTON DE SORTIE D'UN ÉCRAN DE PANIQUE DEMANDAIT UN
    SCROLL. Mesuré : bas du bouton à 853 px pour 844 de haut en 390×844, et
@@ -7872,7 +7876,6 @@ html.kta-theme-light .kta-cfg-group-titre {
 
 /* Mobile compact : grille 1 colonne, heading bloc plus compact */
 @media (max-width: 540px) {
-  .kta-emergency-grid       { grid-template-columns: 1fr; }
   .kta-emergency-titre      { font-size: 19px; }
   .kta-emergency-value      { font-size: 26px; }
   .kta-emergency-pos-gps    { font-size: 18px; }
@@ -7890,7 +7893,12 @@ html.kta-theme-light .kta-cfg-group-titre {
 @media (max-height: 500px) and (orientation: landscape) {
   .kta-emergency-overlay    { padding: 8px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
   .kta-emergency-box        { max-width: none; gap: 8px; }
-  .kta-emergency-grid       { grid-template-columns: 1fr 1fr; gap: 8px; }
+  /* 🗺️ 26/09/2026 : position à gauche, minimap à droite sur TOUTE la
+     hauteur — en paysage bas, l'empilement vertical ne laissait que
+     160 px de carte. */
+  .kta-emergency-grid       { grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+                              grid-template-rows: minmax(0, 1fr); gap: 8px; }
+  .kta-emergency-bloc-heading { grid-column: 2 / 3; grid-row: 1; }
   .kta-emergency-titre      { font-size: 17px; }
   .kta-emergency-value      { font-size: 22px; }
   .kta-emergency-pos-gps    { font-size: 16px; }
@@ -7900,9 +7908,8 @@ html.kta-theme-light .kta-cfg-group-titre {
   .kta-emergency-bloc-heading { min-height: 160px; }
   .kta-emergency-exit-btn   { padding: 10px; font-size: 12px; }
   .kta-emergency-mini-map   { min-height: 140px; }
-  /* Toggle "🗺️ Itinéraire" réduit en landscape pour ne pas surcharger header */
-  .kta-emergency-header-actions { gap: 8px; }
-  .kta-emergency-theme-btn { width: 36px; height: 36px; font-size: 18px; }
+  .kta-emergency-chip       { font-size: 10.5px; }
+  .kta-emergency-plan-nom   { font-size: 12px; }
 }
 
 /* =====================================================================

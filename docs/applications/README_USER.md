@@ -1603,14 +1603,16 @@ Le mode ⛑️ inclut un **bloc dépliable "📚 Bonnes pratiques"** en haut de 
 
 Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique" plein écran qui regroupe en un coup d'œil :
 
-- 📍 **Position XL** : coordonnées plan affichées en énorme caractères (lisible à un mètre du téléphone)
+- 📍 **Une seule position, en énorme** (lisible à un mètre du téléphone) : les coordonnées **GPS** si ton plan est géoréférencé — ce sont celles qu'on dicte à des secours — sinon la position **X / Y du plan**. Jamais les deux : le titre du bloc dit laquelle tu lis. Sous les chiffres, une ligne précise si c'est ta position suivie, ta dernière position connue, ou la **position de départ du plan jamais confirmée**.
 - 🧭 **Boussole géante** : cap (sens de marche) avec aiguille tournée en temps réel, mise à jour live via les capteurs d'orientation du téléphone
 - 🗺️ **Minimap auto-focus** : zoom serré (~20-50 m d'horizon) centré en permanence sur ta position. Affiche en arrière-plan les **roads / zones / structures du plan** — utile pour repérer chemins, sorties, dangers à proximité immédiate
-- ☑️ **Toggle 🗺️ Itinéraire** : checkbox dans l'en-tête. Par défaut **décochée** (protection anti-crash sur très gros plans). Coche-la pour réafficher ton itinéraire actif dans la minimap — rendu en **cyan vif + halo blanc** pour rester visible sur le fond zoomé serré. Préférence persistée entre 2 ouvertures du mode urgence.
-- 🔋 **Batterie** : le bloc 🔋 ÉTAT affiche le niveau de batterie en temps réel quand l'API est dispo (Chromium uniquement). Critique en mode panique — tu sais immédiatement combien de temps il te reste avant que le tel ne s'éteigne.
-- 🌗 **Thèmes** : sombre par défaut, clair en option (selon l'environnement extérieur — pénombre vs lumière vive)
+  Elle utilise les **couleurs de ta légende** : si tu as repeint un type ou créé tes propres types, tu les reconnais ici comme sur la carte.
+  Ton **itinéraire actif** y est toujours tracé (cyan vif + halo blanc, pour rester visible sur ce fond très zoomé), et la carte **s'oriente** comme la carte principale si tu as activé le mode « plan orienté ».
+- 📏🔋 **Deux petites lignes en haut à droite** : l'échelle du plan, puis ton **niveau de batterie** (quand l'API est dispo — Chromium uniquement ; critique ici : tu sais combien de temps il te reste avant que le téléphone s'éteigne), l'état du **tracker** et celui de la **boussole**. Le **nom du plan** est juste sous le titre 🚨.
+- 🌗 **Thème** : l'écran suit celui de l'app (sombre ou clair). Il n'y a plus de bouton dédié — un seul réglage, dans ⚙️ Réglages.
 - 🔋 **Wake Lock** : l'écran ne s'éteint pas automatiquement tant que le mode est actif (pas besoin de toucher le téléphone toutes les 30 sec pour le réveiller)
-- 📱 **Paysage** : la minimap se recadre correctement quand tu tournes le téléphone à l'horizontale ou inverses le portrait — fini les décalages au passage rotation.
+- 📱 **Paysage** : la minimap se recadre correctement quand tu tournes le téléphone, et la mise en page change — position à gauche, carte à droite sur toute la hauteur.
+- 🗺️ **Tout tient dans un écran** : plus rien à faire défiler, et **la carte prend toute la place gagnée** (mesuré : elle a doublé de hauteur sur un téléphone en portrait).
 
 **Quand l'utiliser ?**
 - Tu paniques à un croisement et tu as besoin de te re-orienter rapidement
@@ -1620,7 +1622,7 @@ Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique"
 
 **Permissions** : la première fois, le navigateur demande l'accès aux **capteurs d'orientation** du téléphone (pour la boussole). Accepte — sans ça, la boussole reste figée.
 
-**Sortie** : appuie sur le ✕ en haut à droite pour fermer le mode.
+**Sortie** : le gros bouton **↩️ SORTIR DU MODE URGENCE** en bas de l'écran — il reste collé en bas, tu n'as jamais à le chercher. Sur ordinateur, la touche **Échap** fait la même chose.
 
 ### 🚨 Mode Secours
 

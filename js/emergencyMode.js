@@ -10,7 +10,8 @@
 // =========================
 // Bouton "panique" qui affiche un écran simplifié plein écran avec les infos
 // VITALES en GROS :
-//   - Position tracker (px du plan OU GPS lat/lng si calibrage KMZ dispo)
+//   - Position tracker : GPS lat/lng si le plan est calibré KMZ, sinon px du
+//     plan — UN SEUL des deux depuis le 26/09/2026 (KARMA)
 //   - Heading boussole en temps réel (gros chiffres + flèche compas)
 //   - Échelle plan
 //   - Bouton "Sortir" gros et visible
@@ -92,6 +93,37 @@
     return Math.round(pos.x) + "  /  " + Math.round(pos.y);
   }
 
+  // 🌍 Transform de calibrage KMZ du plan courant, ou null.
+  //
+  // 🐛 v1.21.1 (audit fix #1, critique sécurité) : avant on cherchait
+  // `calib.transform` qui n'est JAMAIS persisté par KmzExport.setCalibration
+  // (qui stocke uniquement {pointA, pointB}). Clone exact du bug fix4 dans
+  // gpxIO.js. Conséquence : le bloc GPS du mode urgence ÉTAIT TOUJOURS MASQUÉ,
+  // même pour un plan calibré. Pile la situation où l'user en a besoin
+  // (perdu en cata, secours à guider).
+  // Fix : construire le transform à la demande via KmzExport.buildTransform
+  // (pattern identique à gpxIO.js > _getTransform après v1.21.0-fix4).
+  //
+  // 📍 26/09/2026 : extrait de `_tick` sans changement de logique — le
+  // bloc position doit savoir s'il y a du GPS avant de choisir son label.
+  function _transformCalib() {
+    const planId = window._currentLoadedPlanId || "default";
+    const calib  = (window.KmzExport && typeof window.KmzExport.getCalibration === "function")
+                   ? window.KmzExport.getCalibration(planId) : null;
+    if (!calib || !calib.pointA || !calib.pointB
+        || typeof window.KmzExport.buildTransform !== "function") return null;
+    const pA = calib.pointA, pB = calib.pointB;
+    const _isNum = function(v) { return typeof v === "number" && Number.isFinite(v); };
+    if (!(_isNum(pA.x) && _isNum(pA.y) && _isNum(pA.lat) && _isNum(pA.lng)
+          && _isNum(pB.x) && _isNum(pB.y) && _isNum(pB.lat) && _isNum(pB.lng))) return null;
+    try {
+      return window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
+    } catch(e) {
+      // Calibrage présent mais dégénéré (points colinéaires, etc.)
+      return null;
+    }
+  }
+
   function _formatGPS(transform, pos) {
     if (!transform || !pos) return null;
     if (!window.KmzExport || typeof window.KmzExport.planToGps !== "function") return null;
@@ -128,29 +160,44 @@
     overlay.className = "kta-emergency-overlay kta-emergency-" + _theme;
     overlay.innerHTML =
       '<div class="kta-emergency-box">' +
+        // 🧹 26/09/2026 (KARMA) — LE HEADER PORTE CE QUI ÉTAIT EN BAS.
+        //
+        // Le bloc « ÉCHELLE / PLAN / ÉTAT » occupait une pleine largeur de
+        // grille en bas de l'écran pour trois lignes qu'on ne lit qu'une
+        // fois : il devient deux puces dans le header, et le nom du plan
+        // devient le sous-titre. Place rendue à la minimap, qui est la
+        // seule chose qu'on regarde vraiment quand on est perdu.
+        //
+        // 🔧 v1.13.0 : toggle 🗺️ Itinéraire RETIRÉ. L'itinéraire actif est
+        // toujours affiché dans la minimap (anti-crash JPG géré séparément
+        // par _resolveMiniMapImageSource depuis v1.12.0).
+        // 🧹 26/09/2026 : le bouton clair/sombre aussi — il datait de
+        // l'époque où seul cet écran savait s'éclairer. `activer()` lit
+        // `ThemeManager.isLight()` depuis la v1.23.0 : le mode urgence suit
+        // le thème de l'app, il n'y a plus de second réglage à comprendre.
         '<div class="kta-emergency-header">' +
-          '<span class="kta-emergency-titre">' + t("emergency.header.titre") + '</span>' +
-          '<div class="kta-emergency-header-actions">' +
-            // 🔧 v1.13.0 : toggle 🗺️ Itinéraire RETIRÉ. L'itinéraire actif
-            // est toujours affiché dans la minimap (anti-crash JPG géré
-            // séparément par _resolveMiniMapImageSource depuis v1.12.0).
-            '<button class="kta-emergency-theme-btn" id="kta-emergency-theme" title="' + t("emergency.theme.toggleTitle") + '" type="button">' +
-              (_theme === "dark" ? "🔆" : "🌑") +
-            '</button>' +
+          '<div class="kta-emergency-header-main">' +
+            '<span class="kta-emergency-titre">' + t("emergency.header.titre") + '</span>' +
+            '<span class="kta-emergency-plan-nom" id="kta-em-plan">—</span>' +
+          '</div>' +
+          '<div class="kta-emergency-etats">' +
+            '<span class="kta-emergency-chip" id="kta-em-echelle">—</span>' +
+            '<span class="kta-emergency-chip" id="kta-em-etat">—</span>' +
           '</div>' +
         '</div>' +
 
         '<div class="kta-emergency-grid">' +
 
+          // 📍 26/09/2026 (KARMA) — UNE SEULE POSITION, JAMAIS LES DEUX.
+          // Plan calibré → le bloc affiche le GPS (les seules coordonnées
+          // transmissibles à des secours) ; plan non calibré → le X/Y du
+          // plan. Le label suit la donnée (cf `_tick`). Deux couples de
+          // chiffres à lire sur un écran fait pour être compris d'un coup
+          // d'œil, quand on n'en a qu'un à donner, c'était un de trop.
           '<div class="kta-emergency-bloc">' +
-            '<div class="kta-emergency-label">' + t("emergency.label.position") + '</div>' +
+            '<div class="kta-emergency-label" id="kta-em-pos-label">' + t("emergency.label.position") + '</div>' +
             '<div class="kta-emergency-value kta-emergency-pos-xy" id="kta-em-pos-xy">— / —</div>' +
             '<div class="kta-emergency-sub" id="kta-em-pos-status"></div>' +
-          '</div>' +
-
-          '<div class="kta-emergency-bloc" id="kta-em-bloc-gps" style="display:none;">' +
-            '<div class="kta-emergency-label">' + t("emergency.label.gps") + '</div>' +
-            '<div class="kta-emergency-value kta-emergency-pos-gps" id="kta-em-pos-gps">— / —</div>' +
           '</div>' +
 
           '<div class="kta-emergency-bloc kta-emergency-bloc-heading">' +
@@ -181,27 +228,14 @@
             '</div>' +
           '</div>' +
 
-          '<div class="kta-emergency-bloc kta-emergency-bloc-meta">' +
-            '<div class="kta-emergency-meta-row">' +
-              '<span class="kta-emergency-meta-label">' + t("emergency.label.echelle") + '</span>' +
-              '<span class="kta-emergency-meta-value" id="kta-em-echelle">—</span>' +
-            '</div>' +
-            '<div class="kta-emergency-meta-row">' +
-              '<span class="kta-emergency-meta-label">' + t("emergency.label.plan") + '</span>' +
-              '<span class="kta-emergency-meta-value" id="kta-em-plan">—</span>' +
-            '</div>' +
-            '<div class="kta-emergency-meta-row">' +
-              '<span class="kta-emergency-meta-label">' + t("emergency.label.etat") + '</span>' +
-              '<span class="kta-emergency-meta-value" id="kta-em-etat">—</span>' +
-            '</div>' +
-          '</div>' +
-
         '</div>' +
 
-        '<div class="kta-emergency-hint">' +
-          t("emergency.hint") +
-        '</div>' +
-
+        // 🧹 26/09/2026 (KARMA) — l'encart rouge « ce mode désactive
+        // l'interface principale… » est RETIRÉ : quatre lignes de conseils
+        // généraux au-dessus du seul bouton de sortie, sur un écran qu'on
+        // ouvre quand on est perdu. Ce qu'il faut faire quand on est perdu
+        // vit dans la doc (Aide → Mode Secours), pas en travers de l'écran
+        // qui doit répondre « où suis-je » en une seconde.
         '<button class="kta-emergency-exit-btn" id="kta-emergency-exit" type="button">' +
           t("emergency.exitBtn") +
         '</button>' +
@@ -213,9 +247,6 @@
   function _bindOverlay() {
     if (!_overlay) return;
     document.getElementById("kta-emergency-exit").addEventListener("click", desactiver);
-    document.getElementById("kta-emergency-theme").addEventListener("click", function() {
-      setTheme(_theme === "dark" ? "light" : "dark");
-    });
 
     // 🔧 v1.13.0 : handlers de la toggle 🗺️ Itinéraire RETIRÉS (toggle
     // supprimée du HTML). L'itinéraire est toujours rendu dans la minimap
@@ -238,12 +269,26 @@
   function _tick() {
     if (!_overlay) return;
 
-    // 📍 Position plan (X, Y)
+    // 📍 Position : GPS si le plan est calibré, X/Y du plan sinon.
+    // JAMAIS LES DEUX (26/09/2026, KARMA) — le label du bloc suit la donnée,
+    // et le sous-titre d'état (« position de départ », « tracker actif »…)
+    // reste sous les chiffres dans les deux cas : une coordonnée GPS calculée
+    // depuis une position jamais confirmée doit le dire, c'est celle-là qu'on
+    // dicte au téléphone.
     const pos = (typeof window.getTrackingPosition === "function") ? window.getTrackingPosition() : null;
     const posEl    = document.getElementById("kta-em-pos-xy");
+    const labelEl  = document.getElementById("kta-em-pos-label");
     const statusEl = document.getElementById("kta-em-pos-status");
+    const gpsTxt   = pos ? _formatGPS(_transformCalib(), pos) : null;
+    if (labelEl) {
+      labelEl.textContent = window.I18n.t(gpsTxt ? "emergency.label.gps" : "emergency.label.position");
+    }
+    // Les floats GPS sont plus longs que deux entiers : même bloc, taille adaptée.
+    if (posEl) posEl.classList.toggle("kta-emergency-pos-gps", !!gpsTxt);
     if (pos) {
-      if (posEl) posEl.textContent = _formatXY(pos);
+      // `_formatXY` peut rendre null (position non numérique) : sans ce repli
+      // le bloc affichait le texte « null ».
+      if (posEl) posEl.textContent = gpsTxt || _formatXY(pos) || "—  /  —";
       if (statusEl) {
         const trackingActif = !!(typeof window.getTrackingActif === "function" && window.getTrackingActif());
         // 📍 B1 (audit 13/09/2026) : une position jamais confirmée est le
@@ -262,47 +307,6 @@
     } else {
       if (posEl) posEl.textContent = "—  /  —";
       if (statusEl) statusEl.textContent = window.I18n.t("emergency.status.aucunePosition");
-    }
-
-    // 🌍 GPS (si calibrage KMZ dispo pour ce plan)
-    // 🐛 v1.21.1 (audit fix #1, critique sécurité) : avant on cherchait
-    // `calib.transform` qui n'est JAMAIS persisté par KmzExport.setCalibration
-    // (qui stocke uniquement {pointA, pointB}). Clone exact du bug fix4 dans
-    // gpxIO.js. Conséquence : le bloc GPS du mode urgence ÉTAIT TOUJOURS MASQUÉ,
-    // même pour un plan calibré. Pile la situation où l'user en a besoin
-    // (perdu en cata, secours à guider).
-    // Fix : construire le transform à la demande via KmzExport.buildTransform
-    // (pattern identique à gpxIO.js > _getTransform après v1.21.0-fix4).
-    const blocGps = document.getElementById("kta-em-bloc-gps");
-    const gpsEl   = document.getElementById("kta-em-pos-gps");
-    if (pos && blocGps && gpsEl) {
-      const planId = window._currentLoadedPlanId || "default";
-      const calib  = (window.KmzExport && typeof window.KmzExport.getCalibration === "function")
-                     ? window.KmzExport.getCalibration(planId) : null;
-      let _emTransform = null;
-      if (calib && calib.pointA && calib.pointB
-          && typeof window.KmzExport.buildTransform === "function") {
-        const pA = calib.pointA, pB = calib.pointB;
-        const _isNum = function(v) { return typeof v === "number" && Number.isFinite(v); };
-        if (_isNum(pA.x) && _isNum(pA.y) && _isNum(pA.lat) && _isNum(pA.lng)
-            && _isNum(pB.x) && _isNum(pB.y) && _isNum(pB.lat) && _isNum(pB.lng)) {
-          try {
-            _emTransform = window.KmzExport.buildTransformCalib(calib);   // 📐 v1.73.0 : pointC optionnel propagé (affine)
-          } catch(e) {
-            // Calibrage présent mais dégénéré (points colinéaires, etc.)
-            _emTransform = null;
-          }
-        }
-      }
-      if (_emTransform) {
-        const gpsTxt = _formatGPS(_emTransform, pos);
-        if (gpsTxt) {
-          blocGps.style.display = "";
-          gpsEl.textContent = gpsTxt;
-        }
-      } else {
-        blocGps.style.display = "none";
-      }
     }
 
     // 🧭 Heading (boussole)
@@ -383,9 +387,11 @@
     const echEl = document.getElementById("kta-em-echelle");
     if (echEl) {
       const scale = window.APP_CONFIG && window.APP_CONFIG.scale;
-      echEl.textContent = (typeof scale === "number" && scale > 0)
+      // 📏 L'icône était portée par le label du bloc meta, disparu le
+      // 26/09/2026 : la puce la porte elle-même.
+      echEl.textContent = "📏 " + ((typeof scale === "number" && scale > 0)
         ? window.I18n.t("emergency.echelle.unite", { scale: scale.toFixed(2) })
-        : window.I18n.t("emergency.echelle.nonCalibree");
+        : window.I18n.t("emergency.echelle.nonCalibree"));
     }
 
     // 🗂️ Plan
@@ -408,7 +414,12 @@
       try {
         if (window.BatteryGuard && typeof window.BatteryGuard.formatLabel === "function") {
           const bat = window.BatteryGuard.formatLabel();
-          if (bat) partsEtat.push(bat);
+          // 🔋/🪲/⚡ selon le niveau et la charge : `formatLabel` ne rend que
+          // « 87% », l'icône était portée par le label du bloc meta (supprimé
+          // le 26/09/2026). Mesuré sans elle : la puce commençait par « 100% ».
+          const emo = (typeof window.BatteryGuard.getEmoji === "function")
+            ? window.BatteryGuard.getEmoji() : "";
+          if (bat) partsEtat.push(emo ? (emo + " " + bat) : bat);
         }
       } catch(e) {}
       if (typeof window.getTrackingActif === "function" && window.getTrackingActif()) {
@@ -552,10 +563,9 @@
     _theme = theme;
     if (_overlay) {
       _overlay.classList.remove("kta-emergency-dark", "kta-emergency-light");
+      // 🧹 26/09/2026 : plus de bouton clair/sombre à rafraîchir — seule
+      // la classe de thème change.
       _overlay.classList.add("kta-emergency-" + theme);
-      // Update le bouton toggle
-      const btn = document.getElementById("kta-emergency-theme");
-      if (btn) btn.textContent = (theme === "dark" ? "🔆" : "🌑");
     }
   }
 
@@ -1087,6 +1097,44 @@
     }
   }
 
+  // 🎨 26/09/2026 (KARMA : « en mode XL je vois qu'on ne récupère pas les
+  // couleurs définies en légende personnalisée ») — RÉSOLVEUR DE STYLE DU MINI.
+  //
+  // Cet écran garde sa palette vive : c'est une variante DÉLIBÉRÉE, relevée et
+  // documentée en tête de `styleResolver.js` (vert #27c97e au lieu de #00ff00,
+  // hachures de l'inaccessible remplacées par un aplat rouge — « le rouge
+  // plein dit déjà danger »). Mais garder sa palette ne voulait pas dire
+  // ignorer l'utilisateur, et c'est ce qui se passait :
+  //
+  //   • une couleur CHOISIE pour un type built-in (≡ Légende → ✏️ Modifier)
+  //     n'atteignait pas la mini-carte — elle atteint la carte, les exports,
+  //     le KMZ, les pastilles, mais pas l'écran qu'on ouvre quand on est
+  //     perdu ;
+  //   • un type CUSTOM (`cust-…`) n'était dans AUCUNE des trois tables
+  //     locales, donc il tombait sur le repli : une zone custom sortait en
+  //     **gris remblais**, une structure custom en **bleu mur**, un front
+  //     custom en **jaune front-1**. Sur un relevé qui utilise des types
+  //     personnalisés, la mini-carte montrait donc autre chose que la carte.
+  //
+  // On garde donc la base locale, on laisse le canon résoudre ce qu'elle ne
+  // connaît pas (à plat : pas de motif SVG ici), on impose le gabarit du mini
+  // (épaisseurs réduites, opacités poussées pour tenir sur un fond désaturé),
+  // puis on applique la couleur choisie via la MÊME fonction que la carte.
+  function _styleMini(cat, cle, base, gabarit) {
+    let s = null;
+    if (base) {
+      s = Object.assign({}, base);
+    } else if (typeof window.ktaResolveStyle === "function") {
+      const c = window.ktaResolveStyle(cat, cle, { flat: true });
+      if (c) s = Object.assign(c, gabarit || {});
+    }
+    if (!s) return null;
+    if (typeof window.ktaAppliquerCouleurChoisie === "function") {
+      s = window.ktaAppliquerCouleurChoisie(cat, cle, s) || s;
+    }
+    return s;
+  }
+
   // 🆕 v1.10.2-fix5 : ajoute les zones (eau / remblais / effondrement /
   // inaccessible) sur le minimap. Session + embedded. Couleurs cohérentes
   // avec zones.js > ZONE_STYLES, opacité bumpée pour rester lisible sur
@@ -1116,7 +1164,9 @@
     all.forEach(function(zone) {
       if (!zone || !Array.isArray(zone.points) || zone.points.length < 3) return;
       if (!filter(zone)) return;
-      const style = STYLES[zone.type] || STYLES.remblais;
+      const style = _styleMini("zones", zone.type, STYLES[zone.type],
+                               { weight: 1.5, opacity: 0.9, fillOpacity: 0.5 })
+                    || STYLES.remblais;
       const latlngs = zone.points.map(function(p) { return [imgH - p.y, p.x]; });
       try {
         const poly = L.polygon(latlngs, Object.assign({ interactive: false }, style));
@@ -1182,9 +1232,11 @@
       if (s.points.length < minPts) return;
       const latlngs = s.points.map(function(p) { return [imgH - p.y, p.x]; });
       try {
-        const style = line
-          ? (POLYLINE_STYLES[s.type] || POLYLINE_STYLES["front-1"])
-          : (POLYGON_STYLES[s.type] || POLYGON_STYLES["mur"]);
+        const style = _styleMini("structures", s.type,
+                        line ? POLYLINE_STYLES[s.type] : POLYGON_STYLES[s.type],
+                        line ? { weight: 3.5, opacity: 1 }
+                             : { weight: 1, opacity: 0.9, fillOpacity: 0.85 })
+                      || (line ? POLYLINE_STYLES["front-1"] : POLYGON_STYLES["mur"]);
         const layer = line
           ? L.polyline(latlngs, Object.assign({ interactive: false }, style))
           : L.polygon (latlngs, Object.assign({ interactive: false }, style));
@@ -1300,7 +1352,9 @@
         pts = pts.slice(0, Math.max(2, MAX_TOTAL_POINTS - totalPointsRendered));
       }
 
-      const style = STYLES[road.type] || STYLES.chemin;
+      const style = _styleMini("traces", road.type, STYLES[road.type],
+                               { weight: 2.5, opacity: 0.95 })
+                    || STYLES.chemin;
       const latlngs = pts.map(function(p) { return [imgH - p.y, p.x]; });
       try {
         // 🔧 v1.11.4-fix2 (KARMA "toujours pas itinéraire en mode urgence") :

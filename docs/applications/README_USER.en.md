@@ -1593,14 +1593,16 @@ The ⛑️ mode includes a **collapsible block "📚 Good practices"** at the to
 
 The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic" mode that gathers at a glance:
 
-- 📍 **XL Position**: map coordinates displayed in huge characters (readable from a meter away from the phone)
+- 📍 **One position only, huge** (readable from a meter away): **GPS** coordinates if your map is georeferenced — those are the ones you read out to rescuers — otherwise the **X / Y position on the map**. Never both: the block title tells you which one you are reading. Below the figures, a line states whether this is your tracked position, your last known position, or the **map's starting position, never confirmed**.
 - 🧭 **Giant compass**: heading (walking direction) with needle rotating in real time, updated live via the phone's orientation sensors
 - 🗺️ **Auto-focus minimap**: tight zoom (~20-50 m horizon) permanently centered on your position. Displays in the background the **roads / zones / structures of the map** — useful to spot paths, exits, dangers in the immediate vicinity
-- ☑️ **🗺️ Route toggle**: checkbox in the header. **Unchecked** by default (anti-crash protection on very large maps). Check it to redisplay your active route in the minimap — rendered in **bright cyan + white halo** to remain visible on the tight zoomed background. Preference persisted between 2 openings of emergency mode.
-- 🔋 **Battery**: the 🔋 STATUS block now displays the battery level in real time when the API is available (Chromium only). Critical in panic mode — you immediately know how much time you have left before the phone shuts down.
-- 🌗 **Themes**: dark by default, light optional (depending on the outside environment — dim vs bright light)
+  It uses **your legend's colours**: if you recoloured a type or created your own types, you recognise them here just like on the map.
+  Your **active route** is always drawn on it (bright cyan + white halo, to stay visible on that tightly zoomed background), and the map **rotates** like the main map if you enabled "oriented map" mode.
+- 📏🔋 **Two small lines at the top right**: the map scale, then your **battery level** (when the API is available — Chromium only; critical here: you know how long you have before the phone shuts down), the **tracker** state and the **compass** state. The **map name** sits right under the 🚨 title.
+- 🌗 **Theme**: the screen follows the app's own (dark or light). There is no dedicated button any more — one setting, in ⚙️ Settings.
 - 🔋 **Wake Lock**: the screen does not turn off automatically while the mode is active (no need to touch the phone every 30 sec to wake it up)
-- 📱 **Landscape**: the minimap reframes correctly when you turn the phone horizontally or flip the portrait — no more shifts on rotation transition.
+- 📱 **Landscape**: the minimap reframes correctly when you turn the phone, and the layout changes — position on the left, map on the right over the full height.
+- 🗺️ **Everything fits on one screen**: nothing to scroll any more, and **the map takes all the room freed up** (measured: its height doubled on a phone in portrait).
 
 **When to use it?**
 - You panic at an intersection and need to re-orient yourself quickly
@@ -1610,7 +1612,7 @@ The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic
 
 **Permissions**: the first time, the browser requests access to the phone's **orientation sensors** (for the compass). Accept — without that, the compass stays frozen.
 
-**Exit**: press the ✕ at the top right to close the mode.
+**Exit**: the large **↩️ EXIT EMERGENCY MODE** button at the bottom of the screen — it stays stuck to the bottom, you never have to hunt for it. On a computer, the **Esc** key does the same.
 
 > ⚠️ As with all digital tools underground: **keep a physical compass** and a paper map in your pocket. The phone can fail, the magnetometer can be distorted by local metal, the tracker can drift. The 🚨 is a quick info reading aid, not a substitute for preparation.
 
