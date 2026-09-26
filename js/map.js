@@ -140,13 +140,20 @@ function creerIcones(iconConfig) {
   // qui lisaient `options.iconUrl` (utils.js > getIconUrlForPoint,
   // sessionExporter, exporter, etc.). Avec divIcon, options.iconUrl
   // n'existe pas → on doit fallback sur _kta_iconUrl.
-  function _mkIcon(url, w, h, ax, ay) {
+  function _mkIcon(url, w, h, ax, ay, tag) {
     if (!url) return makeDefaultIcon();
     let ic;
     if (_useScaled) {
       ic = L.divIcon({
         // L'<img> enfant reçoit le transform: scale(...) CSS (cf style.css)
-        html:       '<img src="' + url + '" alt="" class="kta-marker-img" draggable="false">',
+        // 🎨 26/09/2026 (audit icônes, étage 1) — `data-kta-tag` sert au REPLI
+        // (cf `_installerRepliIcones` plus bas) : le filet posé en v1.76.0 ne
+        // couvrait que ≡ Légende, alors que la carte, les filtres, les favoris
+        // et la recherche lisent la même cascade et peuvent donc hériter du même
+        // chemin mort. Mesuré sur un plan réel : seule la légende s'en sortait.
+        html:       '<img src="' + url + '" alt=""' +
+                    (tag ? ' data-kta-tag="' + String(tag).replace(/"/g, "&quot;") + '"' : "") +
+                    ' class="kta-marker-img" draggable="false">',
         className:  "kta-marker-divicon",
         iconSize:   [w, h],
         iconAnchor: [ax, ay]
@@ -156,6 +163,44 @@ function creerIcones(iconConfig) {
     }
     ic._kta_iconUrl = url;  // backup pour les consumers (cf commentaire ci-dessus)
     return ic;
+  }
+
+  // 🎨 26/09/2026 — REPLI D'UNE ICÔNE MORTE, pour toute la carte.
+  // Délégation en phase de CAPTURE sur le document : l'événement `error` d'une
+  // <img> ne bulle pas, et les marqueurs sont créés/détruits en permanence par
+  // Leaflet — un listener par image serait à la fois coûteux et fragile. Une
+  // seule tentative par image (`dataset.ktaReplied`), sinon une boucle si le
+  // repli échoue aussi. Même logique que `interfaceLegende.js`, un seul endroit
+  // de plus à maintenir, et tous les consommateurs de `_iconMap` couverts.
+  // ⚠️ Ne couvre pas le mode `scaledMarkers: false` (L.icon natif, pas de
+  // `data-kta-tag` possible) : c'est un réglage de secours mémoire, et le vrai
+  // correctif est en amont (`config.js`, `createConf.js`).
+  // ⚠️ Drapeau GLOBAL, pas local : `creerIcones` est rappelée à chaque plan
+  // chargé, une garde locale aurait donc posé un listener par plan — la fuite
+  // exacte qu'on vient de fermer ailleurs (v1.97.6).
+  function _installerRepliIcones() {
+    if (window._ktaRepliIconesInstalle) return;
+    window._ktaRepliIconesInstalle = true;
+    document.addEventListener("error", function(ev) {
+      const img = ev.target;
+      if (!img || img.tagName !== "IMG" || !img.classList) return;
+      if (!img.classList.contains("kta-marker-img")) return;
+      if (img.dataset.ktaReplied) return;
+      const tag = img.getAttribute("data-kta-tag");
+      const repli = tag && window._ktaBuiltinIconUrls && window._ktaBuiltinIconUrls[tag];
+      if (repli && img.src !== repli) {
+        img.dataset.ktaReplied = "1";
+        console.warn("[Map] 🎨 icône « " + tag + " » introuvable — repli sur le catalogue de l'app");
+        img.src = repli;
+        return;
+      }
+      // Pas de repli connu pour ce tag (icône personnalisée d'un plan, type
+      // custom) : on ne remplace PAS par l'icône par défaut — un marqueur qui
+      // change de sens serait pire qu'un marqueur discret. Même choix que
+      // ≡ Légende depuis la v1.76.0.
+      img.dataset.ktaReplied = "1";
+      img.style.opacity = "0.3";
+    }, true);
   }
 
   function makeDefaultIcon() {
@@ -202,13 +247,14 @@ function creerIcones(iconConfig) {
       window._iconMap[tag] = makeDefaultIcon();
       return;
     }
-    window._iconMap[tag] = _mkIcon(url, 50, 50, 25, 25);
+    window._iconMap[tag] = _mkIcon(url, 50, 50, 25, 25, tag);
   });
   Object.keys(TAGS_BUILTIN).forEach(function(tag) {
     if (!window._iconMap[tag]) {
-      window._iconMap[tag] = _mkIcon(TAGS_BUILTIN[tag], 50, 50, 25, 25);
+      window._iconMap[tag] = _mkIcon(TAGS_BUILTIN[tag], 50, 50, 25, 25, tag);
     }
   });
+  _installerRepliIcones();
   // 🐛 v1.76.0 — URLs built-in exposées comme FILET DE SECOURS. Un plan peut
   // déclarer un de ces tags dans son plan-config.json > icons avec un chemin
   // mort ; comme PLAN_CONFIG.icons est lu EN PREMIER par toute la cascade,

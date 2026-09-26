@@ -2086,6 +2086,30 @@ function _ajouterIconRow(tag, defaultPath, file, isSysteme) {
   const row  = document.createElement("div");
   row.className    = "kta-planner-icon-row";
   row.dataset.rowId = id;
+  // 🎨 26/09/2026 (audit icônes, étage 1) — LE CHEMIN NE VOYAGE PLUS DANS
+  // UN LIBELLÉ D'AFFICHAGE.
+  //
+  // 🚨 La génération relisait `pathSpan.title` comme chemin de l'icône. Or
+  // depuis la v1.44.5 (`f7ef68b`, fix cosmétique d'une modale qui débordait)
+  // ce `title` vaut, pour une icône SVG intégrée, le texte « Icône SVG
+  // intégrée à l'application » — qui partait donc dans le `plan-config.json`
+  // à la place du data-URI, et cassait `entree_plan` sur tout plan généré
+  // depuis cette date. Régénérer ne réparait pas : le mode Modifier relisait
+  // la même chaîne et la reposait à l'identique.
+  //
+  // Le chemin vit maintenant dans un attribut de données, que rien n'affiche
+  // et que personne n'a de raison de « rendre lisible ». Une valeur qui n'est
+  // pas un chemin (plan déjà corrompu relu en mode Modifier) n'est PAS reprise :
+  // la ligne repart du catalogue, ce qui répare le plan à la régénération.
+  const _pathPlausible = (typeof window.ktaCheminIconePlausible === "function")
+    ? window.ktaCheminIconePlausible(defaultPath)
+    : (typeof defaultPath === "string" && /^(data:|blob:)|\.(png|jpe?g|svg|webp|gif|bmp|ico|avif)$/i.test(defaultPath));
+  const _pathReel = _pathPlausible ? defaultPath : (PLANNER_DEFAULT_ICONS[tag] || "");
+  if (_pathReel) row.dataset.ktaPath = _pathReel;
+  if (defaultPath && !_pathPlausible) {
+    console.warn("[Generateur] 🎨 icône « " + tag + " » : valeur illisible dans le plan-config (" +
+                 JSON.stringify(defaultPath) + ") — la ligne repart du catalogue de l'app.");
+  }
 
   // 🐛 v1.44.5 — Les icônes built-in SVG inline (ex: entree_plan, cf
   // PLANNER_DEFAULT_ICONS) ont un `defaultPath` = data:image/svg+xml;...
@@ -2094,14 +2118,14 @@ function _ajouterIconRow(tag, defaultPath, file, isSysteme) {
   // flex item) débordait et élargissait toute la modale du générateur.
   // Fix : on affiche un label court "🔗 icône intégrée (SVG)" au lieu de la
   // data URL géante (le <img src> garde la data URL pour la preview).
-  const _isDataUrl = typeof defaultPath === "string" && defaultPath.indexOf("data:") === 0;
+  const _isDataUrl = typeof _pathReel === "string" && _pathReel.indexOf("data:") === 0;
   const _pathLabel = file ? file.name
-                    : (_isDataUrl ? window.I18n.t("gen.icons.svgLabel") : (defaultPath || "—"));
-  const _pathTitle = _isDataUrl ? window.I18n.t("gen.icons.svgTitle") : (defaultPath || "");
+                    : (_isDataUrl ? window.I18n.t("gen.icons.svgLabel") : (_pathReel || "—"));
+  const _pathTitle = _isDataUrl ? window.I18n.t("gen.icons.svgTitle") : (_pathReel || "");
 
   row.innerHTML = `
     <div class="kta-planner-icon-thumb" id="${id}_thumb">
-      <img src="${defaultPath || ''}" alt="${tag}"
+      <img src="${_pathReel || ''}" alt="${tag}"
         style="width:28px;height:28px;object-fit:contain;display:block;"
         onerror="this.style.opacity='0.2'">
     </div>
@@ -2133,6 +2157,7 @@ function _ajouterIconRow(tag, defaultPath, file, isSysteme) {
     const f = fileInput.files[0];
     if (!f) return;
     row._customFile = f;
+    row.dataset.ktaPath = "icon/" + f.name;   // 🎨 26/09/2026 : la source de vérité
     label.textContent = "✅ " + f.name;
     pathSpan.textContent = f.name;
     pathSpan.title = f.name;
@@ -3755,7 +3780,13 @@ async function _genererZip() {
     };
 
     // ── Icônes ──
+    // 🎨 26/09/2026 (audit icônes, étage 1) : le chemin vient de
+    // `row.dataset.ktaPath`, pas du `title` d'affichage — cf le commentaire de
+    // `_ajouterIconRow`. Et on TIENT LA LISTE de ce qu'on met vraiment dans le
+    // ZIP (`iconsEmbarquees`) : sans elle, l'app doit sonder le serveur pour
+    // chaque icône à chaque ouverture du plan (21 x 404 mesurées).
     const icons = {};
+    const iconsEmbarquees = [];
     for (const row of document.querySelectorAll(".kta-planner-icon-row")) {
       const tagEl = row.querySelector("[id$='_tag']");
       if (!tagEl) continue;
@@ -3766,15 +3797,17 @@ async function _genererZip() {
       if (row._customFile) {
         iconPath = "icon/" + row._customFile.name;
         iconFolder.file(row._customFile.name, await _lireFichier(row._customFile));
+        iconsEmbarquees.push(iconPath);
       } else {
-        const pathEl = row.querySelector("[id$='_path']");
-        const p      = pathEl ? (pathEl.title || pathEl.textContent.trim()) : "";
+        const p = row.dataset.ktaPath || "";
         if (p && p !== "—") {
           iconPath = p;
-          // Essayer de l'inclure depuis les assets originaux
+          // Reprise d'un asset du ZIP d'origine (mode Modifier) : s'il est
+          // effectivement recopié, il est EMBARQUÉ — il faut le dire.
           const nom = p.split("/").pop();
           if (_plannerOrigAssets[nom]) {
             iconFolder.file(nom, await _lireFichier(_plannerOrigAssets[nom]));
+            if (p.indexOf("icon/") === 0) iconsEmbarquees.push(p);
           }
         } else {
           iconPath = PLANNER_DEFAULT_ICONS[tag] || ("icon/" + tag + ".png");
@@ -4040,6 +4073,12 @@ async function _genererZip() {
       tracking,
       icons
     };
+    // 🎨 26/09/2026 — CE QUE CE ZIP EMBARQUE VRAIMENT sous `icon/`.
+    // Le champ est écrit **même vide** : c'est sa PRÉSENCE qui dit à l'app
+    // « inutile de sonder le serveur ». Un tableau vide = « aucune icône
+    // propre au plan », ce qui est le cas de la grande majorité des plans et
+    // valait 21 requêtes 404 à chaque ouverture.
+    planConfigObj.iconsEmbarquees = Array.from(new Set(iconsEmbarquees));
     if (tilingManifest) planConfigObj.tiling = tilingManifest;
 
     zip.file("plan-config.json", JSON.stringify(planConfigObj, null, 2));

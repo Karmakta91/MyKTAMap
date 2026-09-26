@@ -811,6 +811,8 @@ La nota admite **Markdown**:
 - Pulsa **👁 Vista previa** para volver a ver el resultado.
 - Todo el MD que escribas (`**negrita**`, `# Título`, `- elemento`…) se interpreta al mostrarlo.
 
+> 🎨 **Iconos de tus planos (v1.97.9)** — si generaste planos entre junio y septiembre de 2026, el icono « Punto de entrada del plano » podía no mostrarse: ahora la app usa el que lleva integrado, y **regenerar el plano** arregla el archivo definitivamente. Además, abrir un plano **regenerado** ya no lanza la veintena de peticiones inútiles que hacían falta para localizar sus iconos.
+
 ### 📚 Historia (PDF) — **varios documentos por plano**
 
 Ahora puedes guardar **hasta 10 documentos PDF por plano** (antes: uno solo, y una nueva importación sobrescribía el anterior). Informe de 2019, plano en papel escaneado, artículo de prensa, levantamiento topográfico: todo cabe en el mismo sitio.

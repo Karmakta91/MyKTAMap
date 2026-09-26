@@ -650,6 +650,53 @@ function resolveServerPath(p, baseDir) {
   return base + "/" + p;
 }
 
+// 🎨 26/09/2026 (audit icônes, étage 1) — UNE VALEUR D'ICÔNE QUI N'EST PAS
+// UN CHEMIN N'EN DEVIENT PAS UN.
+//
+// 🚨 Mesuré : un plan généré depuis le 13/06/2026 écrit dans son
+// `plan-config.json` la chaîne **« Icône SVG intégrée à l'application »** pour
+// `entree_plan` — le LIBELLÉ d'affichage de la ligne du générateur, à la place
+// du data-URI (cause réelle corrigée dans `createConf.js`, même date). Cette
+// chaîne n'a pas de `/`, donc la règle de rétro-compat « nom nu = `<plan>/data/`
+// » juste au-dessus en faisait un chemin : `data/<plan>/data/Icône SVG intégrée
+// à l'application`. Comme `PLAN_CONFIG.icons` gagne sur le catalogue dans TOUTE
+// la cascade (`utils.js`), l'URL morte écrasait l'icône intégrée : marqueur à
+// `naturalWidth = 0` sur la carte, les filtres, les favoris, la recherche et les
+// exports — et un 404 par marqueur.
+//
+// Le critère n'est pas une opinion : une valeur d'icône est soit un data-URI,
+// soit un fichier, donc elle FINIT par une extension d'image. Tout le reste est
+// de la donnée corrompue, et la meilleure chose à en faire est de l'ignorer —
+// le catalogue built-in reprend alors la main tout seul.
+// ⚠️ On ne touche PAS au fichier du plan : seule la config en mémoire est
+// nettoyée, et le warn dit lequel régénérer.
+function ktaCheminIconePlausible(v) {
+  if (typeof v !== "string") return false;
+  const s = v.trim();
+  if (!s) return false;
+  if (s.indexOf("data:") === 0 || s.indexOf("blob:") === 0) return true;
+  return /\.(png|jpe?g|svg|webp|gif|bmp|ico|avif)$/i.test(s);
+}
+window.ktaCheminIconePlausible = ktaCheminIconePlausible;
+
+function nettoyerIconesConfig(config, ou) {
+  if (!config || !config.icons || typeof config.icons !== "object") return config;
+  const morts = [];
+  Object.keys(config.icons).forEach(function(k) {
+    if (!ktaCheminIconePlausible(config.icons[k])) {
+      morts.push(k + " = " + JSON.stringify(config.icons[k]));
+      delete config.icons[k];
+    }
+  });
+  if (morts.length) {
+    console.warn("[Config] 🎨 " + morts.length + " icône(s) au chemin impossible ignorée(s)" +
+                 (ou ? " (" + ou + ")" : "") + " — le catalogue de l'app reprend la main. " +
+                 "Régénère ce plan pour nettoyer son plan-config : " + morts.join(" · "));
+  }
+  return config;
+}
+window.ktaNettoyerIconesConfig = nettoyerIconesConfig;
+
 function resolveServerPaths(config, baseDir) {
   if (!baseDir || baseDir === "data") return config; // racine = pas de réécriture
   if (config.plan?.baseImage)      config.plan.baseImage      = resolveServerPath(config.plan.baseImage, baseDir);
@@ -663,6 +710,9 @@ function resolveServerPaths(config, baseDir) {
   // traitement (chemin laissé tel quel → racine du site), ce qui marchait
   // pour les icônes de l'app et condamnait les icônes personnalisées.
   if (config.icons && typeof config.icons === "object") {
+    // 🎨 26/09/2026 : d'abord jeter ce qui n'est pas un chemin, sinon on
+    // fabrique une URL bien formée vers un fichier qui n'existera jamais.
+    nettoyerIconesConfig(config, "plan serveur " + baseDir);
     Object.keys(config.icons).forEach(function(k) {
       if (typeof config.icons[k] === "string") {
         config.icons[k] = resolveServerPath(config.icons[k], baseDir);
@@ -698,6 +748,38 @@ async function resoudreIconesPlanServeur(config, baseDir) {
     return typeof v === "string" && v.indexOf("icon/") === 0;
   });
   if (!cles.length) return config;
+
+  // 🟢 26/09/2026 (audit icônes, étage 1) — 21 SONDES 404 PAR OUVERTURE.
+  //
+  // Mesuré sur un relevé réel : le `plan-config` déclare 21 icônes en `icon/…`
+  // et le dossier `icon/` livré dans le ZIP est **vide** — le générateur n'y
+  // écrit que les fichiers que l'auteur a téléversés, alors qu'il déclare tout
+  // le catalogue. Les 21 sondes tombaient donc en 404, le repli à la racine
+  // faisait son travail, et personne n'était averti : **29,9 ms en localhost,
+  // 188 ms à 150 ms de RTT**, en `await` AVANT le rendu des marqueurs, rejouées
+  // à chaque changement de plan (et à chaque téléchargement hors-ligne).
+  //
+  // Le générateur SAIT ce qu'il embarque : depuis cette version il l'ÉCRIT
+  // (`iconsEmbarquees`, cf `createConf.js`). Quand le champ est là, on ne sonde
+  // plus rien — on réécrit les seules icônes déclarées et on laisse les autres
+  // à la racine. Champ absent = plan déjà déployé → comportement inchangé.
+  //
+  // ⚠️ NE PAS remplacer ça par « est-ce dans un catalogue ? » : c'est
+  // exactement ce qui a cassé `icon/iconetrack.png` en v1.86.2. La différence,
+  // ici, est qu'on ne devine pas — c'est le producteur du ZIP qui déclare.
+  if (Array.isArray(config.iconsEmbarquees)) {
+    const dansZip = {};
+    config.iconsEmbarquees.forEach(function (p) {
+      if (typeof p === "string" && p) dansZip[p] = true;
+    });
+    let n = 0;
+    cles.forEach(function (k) {
+      if (dansZip[config.icons[k]]) { config.icons[k] = base + "/" + config.icons[k]; n++; }
+    });
+    console.log("[Config] Icônes : " + n + " propre(s) au plan, 0 requête de sondage " +
+                "(le plan déclare ce qu'il embarque)");
+    return config;
+  }
   await Promise.all(cles.map(async function (k) {
     const local = base + "/" + config.icons[k];
     try {

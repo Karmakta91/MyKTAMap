@@ -870,6 +870,8 @@ The note supports **Markdown**:
 - Tap **👁 Preview** to switch back to the rendered view.
 - Any MD you type (`**bold**`, `# Title`, `- item`…) is interpreted on render.
 
+> 🎨 **Your maps' icons (v1.97.9)** — if you generated maps between June and September 2026, the "Map entry point" icon could show nothing: the app now falls back to its own built-in one, and **regenerating the map** fixes the file for good. Also, opening a **regenerated** map no longer fires the twenty-odd useless requests it took to locate its icons.
+
 ### 📚 Story (PDF) — **several documents per plan**
 
 You can now keep **up to 10 PDF documents per plan**. A 2019 report, a scanned paper map, a press article, a survey sheet: all in the same place.

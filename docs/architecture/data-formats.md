@@ -38,8 +38,23 @@
     "default": "icon/iconetrack.png",
     "track":   "icon/iconetrack.png",
     "pa":      "icon/pa.png"
-    // Les tags listés dans TAGS_BUILTIN sont auto-résolus
-  }
+    // Les tags listés dans TAGS_BUILTIN sont auto-résolus.
+    // ⚠️ v1.97.9 : une valeur qui n'est ni `data:`/`blob:` ni un fichier à
+    // extension d'image est IGNORÉE au chargement (le catalogue reprend la
+    // main) — un plan généré entre le 13/06 et le 26/09/2026 a pu recevoir le
+    // LIBELLÉ « Icône SVG intégrée à l'application » pour `entree_plan`.
+  },
+  "iconsEmbarquees": ["icon/ma-icone-perso.png"]
+  // 🆕 v1.97.9 — CE QUE LE ZIP CONTIENT VRAIMENT sous `icon/`, écrit par le
+  // Générateur, **même vide** : c'est sa PRÉSENCE qui dit à l'app de ne pas
+  // sonder le serveur. Sans lui, `resoudreIconesPlanServeur` envoie une
+  // requête par icône déclarée en `icon/…` à chaque ouverture du plan
+  // (21 × 404 mesurées sur un relevé réel, ~188 ms à 150 ms de RTT, en
+  // `await` avant le rendu des marqueurs) — parce que `icon/` est ambigu :
+  // racine de l'app pour les icônes livrées, dossier du plan pour les
+  // personnalisées. Absent = plan déjà déployé → sondage, comme avant.
+  // ⚠️ NE PAS remplacer le sondage par « est-ce dans un catalogue ? » :
+  // c'est ce qui a cassé `icon/iconetrack.png` en v1.86.2.
 }
 ```
 

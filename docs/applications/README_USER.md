@@ -866,6 +866,8 @@ La note supporte le **Markdown** :
 - Clique sur **👁 Aperçu** pour revoir le rendu.
 - Tout MD que tu tapes (`**gras**`, `# Titre`, `- item`…) est interprété au rendu.
 
+> 🎨 **Icônes de tes plans (v1.97.9)** — si tu as généré des plans entre juin et septembre 2026, l'icône « Point d'entrée du plan » pouvait ne rien afficher : l'app la remplace maintenant par celle qu'elle embarque, et **régénérer le plan** répare le fichier pour de bon. Au passage, ouvrir un plan **régénéré** ne déclenche plus la vingtaine de requêtes inutiles qu'il fallait pour retrouver ses icônes.
+
 ### 📚 Histoire (PDF) — **plusieurs documents par plan**
 
 Tu peux maintenant garder **jusqu'à 10 documents PDF par plan**. Rapport de 2019, plan papier scanné, article de presse, relevé topo : tout tient au même endroit.

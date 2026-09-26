@@ -18,10 +18,28 @@
 "use strict";
 
 const path = require("path");
+const fs = require("fs");
 const { chromium } = require("playwright");
 
 const PORT = 8123;
 const BASE = "http://127.0.0.1:" + PORT;
+
+// 🗺️ 26/09/2026 — LE SMOKE NE CHERCHE PLUS UN PLAN PAR SON NOM.
+// `data/` reçoit des relevés réels et ne part jamais sur le dépôt : dès que
+// KARMA y met un vrai plan, « Relevé fictif de test » n'est plus dans
+// `data/index.json` et le smoke était ROUGE pour cette seule raison — deux
+// faux échecs sur un harnais qui garde la porte de release. Il ouvre
+// désormais le relevé fictif s'il est là, le PREMIER plan de l'index sinon,
+// et le DIT (les mêmes checkups font ainsi depuis le 26/09).
+function planDeTest() {
+  try {
+    const idx = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "data", "index.json"), "utf8"));
+    const plans = (idx && idx.plans) || [];
+    const fictif = plans.find(function (p) { return /fictif/i.test(p.name || ""); });
+    return { nom: (fictif || plans[0] || {}).name || "Relevé fictif de test", fictif: !!fictif };
+  } catch (e) { return { nom: "Relevé fictif de test", fictif: true }; }
+}
+const PLAN = planDeTest();
 
 // Clés localStorage pré-posées pour passer les gates (valeurs lues dans le
 // code : unlockGate.HASH_VALIDE, legalGate, tutorial).
@@ -46,6 +64,15 @@ const BRUIT_TOLERE = [
 ];
 function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test(txt); }); }
 
+// 🎨 26/09/2026 — LE SONDAGE DES ICÔNES D'UN PLAN N'EST PAS UN DÉFAUT
+// D'ASSET. `config.js > resoudreIconesPlanServeur` demande au serveur si
+// chaque icône `icon/…` vit dans le dossier du plan ; pour un plan généré
+// AVANT la v1.97.9 (qui déclare `iconsEmbarquees`), la réponse est 404 et le
+// repli à la racine fait son travail. Ce n'est pas un fichier manquant mais
+// une question posée — on les compte et on dit quoi faire, au lieu de rougir.
+const RX_SONDE_ICONE = /\/data\/[^/]+\/icon\/[^/]+$/;
+const sondesIcones = [];
+
 (async function main() {
   const server = require("./server.js");
   // Playwright ≥ 1.49 lance par défaut le « headless shell », un binaire DISTINCT
@@ -65,7 +92,10 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
   const page = await contexte.newPage();
 
   page.on("response", function (r) {
-    if (r.status() === 404 && !estBruit(r.url())) pb("404", r.url().replace(BASE, ""));
+    if (r.status() !== 404 || estBruit(r.url())) return;
+    const u = r.url().replace(BASE, "");
+    if (RX_SONDE_ICONE.test(u)) { sondesIcones.push(u); return; }
+    pb("404", u);
   });
   page.on("console", function (m) {
     const txt = m.text();
@@ -121,8 +151,10 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
       const encore = await page.locator("#kta-alert-modal").isVisible().catch(function () { return false; });
       if (encore) pb("boot", "la modale Alertes ne se ferme pas"); else ok("modale Alertes fermée (annonce au boot)");
     }
-    const planListe = await page.getByText("Relevé fictif de test", { exact: false }).first().isVisible().catch(function () { return false; });
-    if (planListe) ok("liste des plans peuplée (Relevé fictif de test)"); else pb("boot", "plan de test absent de la liste");
+    const planListe = await page.getByText(PLAN.nom, { exact: false }).first().isVisible().catch(function () { return false; });
+    if (planListe) ok("liste des plans peuplée (" + PLAN.nom + ")");
+    else pb("boot", "aucun plan ouvrable dans data/index.json (cherché : " + PLAN.nom + ")");
+    if (!PLAN.fictif) console.log("  •  ⚠️ le relevé fictif n'est pas dans data/index.json — smoke sur « " + PLAN.nom + " »");
 
     // ─────────────────── 2. ⚙️ CONFIGURATION (HOME) ──────────────────
     console.log("— 2. ⚙️ Configuration HOME —");
@@ -158,8 +190,8 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
     else ok("tous les overlays fermés");
 
     // ───────────────────── 4. CHARGER LE PLAN DE TEST ─────────────────────
-    console.log("— 4. Chargement du plan Relevé fictif de test —");
-    await page.getByText("Relevé fictif de test", { exact: false }).first().click();
+    console.log("— 4. Chargement du plan " + PLAN.nom + " —");
+    await page.getByText(PLAN.nom, { exact: false }).first().click();
     await page.waitForFunction(function () { return !!window.PLAN_CONFIG && !!document.getElementById("map"); }, null, { timeout: 15000 })
       .then(function () { ok("plan chargé (PLAN_CONFIG posé, #map présent)"); })
       .catch(function () { pb("plan", "le plan ne s'est pas chargé en 15 s"); });
@@ -321,6 +353,11 @@ function estBruit(txt) { return BRUIT_TOLERE.some(function (re) { return re.test
   }
 
   console.log("");
+  if (sondesIcones.length) {
+    console.log("•  ℹ️ " + sondesIcones.length + " sondage(s) d'icône en 404 — NORMAL pour un plan généré " +
+                "avant la v1.97.9 : son plan-config ne déclare pas ce qu'il embarque, l'app doit donc " +
+                "demander. Régénère le plan pour les faire disparaître.");
+  }
   if (problemes.length) {
     console.log("⚠️ SMOKE ROUGE — " + problemes.length + " problème(s) :");
     problemes.forEach(function (p) { console.log("   " + p); });

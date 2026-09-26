@@ -36,8 +36,33 @@
 //      tout le sujet : à l'intérieur de `creerIcones()`, elle n'existait
 //      qu'après le chargement d'un plan — trop tard pour le HOME.
 //
+// 🎨 26/09/2026 (audit icônes, étage 1) — IL NE GARDAIT QUE 2 TABLES SUR 8.
+// L'audit a mesuré que **six** autres tables connaissent les tags built-in et
+// que rien ne les confrontait : l'invariant ne tenait que par discipline. Or
+// c'est exactement par là que `portail` s'est perdu en v1.81.0. Ajouté :
+//   E1. les 4 tables « tag → valeur » : `createConf > PLANNER_DEFAULT_ICONS`,
+//       `editor > EDITOR_TAG_LABELS`, `interfaceLegende > LEGENDE_LABELS`,
+//       `legendCustomization > DEFAULT_LABELS.icones` ;
+//   E2. les 3 structures de GROUPES (qui décident de l'ordre et des
+//       catégories) : `interfaceLegende > GROUPES` et `GROUPES2`,
+//       `exporter > GROUPES_ICONES`. Un tag absent d'un groupe **disparaît**
+//       de la légende ou de l'export sans erreur ;
+//   E3. le PRÉCACHE : chaque icône PNG du catalogue doit être dans
+//       `sw.js > ASSETS_TO_CACHE` **et exister sur le disque**. Un oubli = une
+//       icône absente hors-ligne, invisible en développement ;
+//   E4. les dictionnaires : `editor.tag.<tag>` et `legendui.label.<tag>` dans
+//       les TROIS langues — sans quoi l'utilisateur lit la clé brute.
+//
+// 📌 Ce qui n'est PAS vérifié ici, volontairement :
+// `sessionExporter.js > EMOJI_PAR_TAG` (18 clés dont **aucune** n'existe dans
+// le catalogue, alors que son commentaire dit « synchroniser avec
+// TAGS_BUILTIN »). Le brancher changerait les noms produits par l'export
+// anonymisé (`🎯-1` → autre chose) : c'est un format de sortie, donc un
+// arbitrage KARMA, pas un bug à corriger en silence. Consigné au BACKLOG.
+//
 // ⚠️ Contrôle STATIQUE : il compare des listes de CLÉS. Il ne dit pas qu'un
-// fichier `icon/<tag>.png` existe ni qu'il s'affiche — ça, c'est le smoke.
+// fichier `icon/<tag>.png` s'affiche — ça, c'est le smoke. Il vérifie en
+// revanche qu'il EXISTE (E3).
 // =====================================================================
 
 const fs = require("fs");
@@ -138,9 +163,176 @@ verif(
   "d'un plan — or le HOME s'affiche AVANT, et c'est lui qui en a besoin."
 );
 
+// =====================================================================
+// E. LES SIX AUTRES TABLES (26/09/2026)
+// =====================================================================
+// Toutes ces structures dérivent du même catalogue et aucune n'était gardée.
+// On vérifie l'INCLUSION dans les deux sens : un tag oublié = une
+// fonctionnalité muette, un tag inventé = une promesse que la carte ne tient
+// pas. Les seules clés tolérées en plus sont `default` et `track`, qui ne sont
+// pas des tags de POI mais les deux icônes de service.
+const HORS_CATALOGUE = ["default", "track"];
+
+function lireFichier(chemin) {
+  try { return fs.readFileSync(chemin, "utf8"); }
+  catch (e) {
+    console.error("❌ [check-icon-catalog] " + chemin + " illisible : " + e.message);
+    process.exit(2);
+  }
+}
+
+// Corps d'un littéral borné par ses délimiteurs (accolades ou crochets).
+function corpsLitteral(src, declaration, ou, ouvre, ferme) {
+  const i = src.indexOf(declaration);
+  if (i < 0) {
+    console.error("❌ [check-icon-catalog] `" + declaration + "` introuvable dans " + ou +
+                  " — renommée ou supprimée. Mets ce garde-fou à jour AVANT de committer.");
+    process.exit(2);
+  }
+  const debut = src.indexOf(ouvre, i);
+  let n = 0, fin = -1;
+  for (let k = debut; k < src.length; k++) {
+    if (src[k] === ouvre) n++;
+    else if (src[k] === ferme) { n--; if (n === 0) { fin = k; break; } }
+  }
+  if (fin < 0) {
+    console.error("❌ [check-icon-catalog] littéral non refemé pour `" + declaration + "` dans " + ou);
+    process.exit(2);
+  }
+  return src.slice(debut + 1, fin);
+}
+
+// Clés d'un objet, y compris les clés citées ("pilier-1") — `extraireCles`
+// ci-dessus ne lit que les identifiants nus, ce qui suffit à TAGS_BUILTIN.
+function clesObjet(src, declaration, ou) {
+  const corps = corpsLitteral(src, declaration, ou, "{", "}");
+  const out = new Set();
+  corps.split(/\r?\n/).forEach(function (ligne) {
+    const nu = ligne.trim();
+    if (!nu || nu.startsWith("//")) return;
+    const re = /(^|[,{]\s*)(?:"([^"]+)"|'([^']+)'|([A-Za-z_][A-Za-z0-9_]*))\s*:/g;
+    let m;
+    while ((m = re.exec(nu)) !== null) out.add(m[2] || m[3] || m[4]);
+  });
+  return out;
+}
+
+// Tags cités dans les `cles: […]` d'une structure de groupes.
+function tagsDeGroupes(src, declaration, ou) {
+  const corps = corpsLitteral(src, declaration, ou, "[", "]");
+  const out = new Set();
+  const re = /cles\s*:\s*\[([^\]]*)\]/g;
+  let m;
+  while ((m = re.exec(corps)) !== null) {
+    (m[1].match(/"([^"]+)"|'([^']+)'/g) || []).forEach(function (s) {
+      out.add(s.replace(/["']/g, ""));
+    });
+  }
+  if (!out.size) {
+    console.error("❌ [check-icon-catalog] aucun `cles: […]` dans `" + declaration + "` (" + ou +
+                  ") — structure changée, ce contrôle ne prouverait plus rien.");
+    process.exit(2);
+  }
+  return out;
+}
+
+function confronter(nom, cles, aideOubli) {
+  const oublies = [...clesMap].filter(function (t) { return !cles.has(t); });
+  const inventes = [...cles].filter(function (t) {
+    return !clesMap.has(t) && HORS_CATALOGUE.indexOf(t) < 0;
+  });
+  verif(nom + " connaît les " + clesMap.size + " tags du catalogue",
+        oublies.length === 0,
+        "Tags du catalogue absents de " + nom + " : " + oublies.join(", ") + ". " + aideOubli);
+  verif(nom + " n'invente aucun tag",
+        inventes.length === 0,
+        "Tags inconnus du catalogue dans " + nom + " : " + inventes.join(", ") +
+        ". Cette table promet un type que la carte ne sait pas rendre.");
+}
+
+const GEN = "js/createConf.js", ED = "js/editor.js", LEG = "js/interfaceLegende.js",
+      EXP = "js/exporter.js", LC = "js/legendCustomization.js", SW = "sw.js";
+const gsrc = lireFichier(GEN), esrc = lireFichier(ED), lsrc = lireFichier(LEG),
+      xsrc = lireFichier(EXP), csrc = lireFichier(LC), swsrc = lireFichier(SW);
+
+// --- E1. les tables « tag → valeur » ------------------------------------
+confronter("`PLANNER_DEFAULT_ICONS` (" + GEN + ")",
+  clesObjet(gsrc, "const PLANNER_DEFAULT_ICONS = {", GEN),
+  "Le Générateur ne proposerait pas ce tag, et un plan généré n'aurait pas son icône.");
+confronter("`EDITOR_TAG_LABELS` (" + ED + ")",
+  clesObjet(esrc, "const EDITOR_TAG_LABELS = {", ED),
+  "L'éditeur de point ne proposerait pas ce type — aucun point ne pourrait le porter.");
+confronter("`LEGENDE_LABELS` (" + LEG + ")",
+  clesObjet(lsrc, "LEGENDE_LABELS = {", LEG),
+  "≡ Légende afficherait la clé brute au lieu du libellé (bug réel de la v1.76.0).");
+confronter("`DEFAULT_LABELS.icones` (" + LC + ")",
+  clesObjet(csrc.slice(csrc.indexOf("const DEFAULT_LABELS = {")), "icones: {", LC),
+  "La légende personnalisable afficherait la clé brute dès que LegendCustomization est chargé — c'est-à-dire toujours.");
+
+// --- E2. les groupes (ordre et catégories de la légende / de l'export) ---
+confronter("`GROUPES` (" + LEG + ")",  tagsDeGroupes(lsrc, "const GROUPES = [", LEG),
+  "Ce tag n'apparaîtrait dans AUCUN groupe de ≡ Légende : invisible, sans erreur.");
+confronter("`GROUPES2` (" + LEG + ")", tagsDeGroupes(lsrc, "const GROUPES2 = [", LEG),
+  "Même effet dans la seconde vue de la légende.");
+confronter("`GROUPES_ICONES` (" + EXP + ")", tagsDeGroupes(xsrc, "const GROUPES_ICONES = [", EXP),
+  "Le tag manquerait à la légende des exports PNG/PDF — un relevé imprimé sans sa clef de lecture.");
+
+// --- E3. le précache du Service Worker + l'existence du fichier ----------
+// Un oubli ici ne se voit pas en développement : l'icône se charge depuis le
+// réseau. Elle manque **hors-ligne**, c'est-à-dire sous terre.
+const corpsCat = corpsLitteral(msrc, "const TAGS_BUILTIN = {", MAP, "{", "}");
+const valeurs = {};
+(corpsCat.match(/([A-Za-z_][A-Za-z0-9_]*)\s*:\s*"([^"]*)"/g) || []).forEach(function (s) {
+  const m = /([A-Za-z_][A-Za-z0-9_]*)\s*:\s*"([^"]*)"/.exec(s);
+  if (m) valeurs[m[1]] = m[2];
+});
+const precache = new Set((swsrc.match(/["']\.?\/?icon\/[^"']+["']/g) || []).map(function (s) {
+  return s.replace(/["']/g, "").replace(/^\.?\//, "");
+}));
+const nonPrecachees = [], nonExistantes = [], nonLisibles = [];
+[...clesMap].forEach(function (t) {
+  const v = valeurs[t];
+  if (v === undefined) { nonLisibles.push(t); return; }          // valeur non extractible
+  if (/^(data:|blob:|https?:)/.test(v)) return;                   // rien à précacher
+  if (!precache.has(v)) nonPrecachees.push(t + " (" + v + ")");
+  if (!fs.existsSync(v)) nonExistantes.push(t + " (" + v + ")");
+});
+verif("chaque icône de fichier du catalogue est précachée par " + SW,
+  nonPrecachees.length === 0,
+  "Absentes de `ASSETS_TO_CACHE` : " + nonPrecachees.join(", ") +
+  ". Invisible en développement (le réseau répond) et manquante HORS-LIGNE, " +
+  "c'est-à-dire sous terre — le seul endroit qui compte.");
+verif("chaque icône de fichier du catalogue existe sur le disque",
+  nonExistantes.length === 0,
+  "Fichiers déclarés mais absents : " + nonExistantes.join(", ") + ".");
+if (nonLisibles.length) {
+  console.log("   ℹ️ valeur non extractible statiquement (donc hors E3) : " + nonLisibles.join(", "));
+}
+
+// --- E4. les trois dictionnaires -----------------------------------------
+["fr", "en", "es"].forEach(function (lg) {
+  const chemin = "lang/" + lg + ".json";
+  let dico;
+  try { dico = JSON.parse(lireFichier(chemin)); }
+  catch (e) {
+    console.error("❌ [check-icon-catalog] " + chemin + " n'est pas du JSON valide : " + e.message);
+    process.exit(2);
+  }
+  const manquantes = [];
+  [...clesMap].forEach(function (t) {
+    if (!(("editor.tag." + t) in dico))      manquantes.push("editor.tag." + t);
+    if (!(("legendui.label." + t) in dico))  manquantes.push("legendui.label." + t);
+  });
+  verif(chemin + " a les libellés des " + clesMap.size + " tags",
+    manquantes.length === 0,
+    "Clés absentes de " + chemin + " : " + manquantes.join(", ") +
+    ". L'utilisateur lirait la clé brute — exactement le défaut corrigé en v1.76.0.");
+});
+
 // --- verdict -------------------------------------------------------------
 if (!echecs.length) {
-  console.log("\n🎉 Catalogue d'icônes cohérent : " + clesMap.size + " tags, une seule source");
+  console.log("\n🎉 Catalogue d'icônes cohérent : " + clesMap.size + " tags, " +
+              "9 tables confrontées, précache et 3 dicos compris");
   process.exit(0);
 }
 console.log("\n============================================================");

@@ -118,47 +118,24 @@ plan) »*. Audit mesuré (agent, sans code). Arbitrage : **étage 1 → backlog*
 **Ce qui est innocenté** : le catalogue n'a **pas** dérivé, les 8 tables qui connaissent les tags sont
 synchrones au 26/09.
 
-### 🔴 À faire — étage 1 (aucun changement visuel, ~1 séance)
+### ✅ Étage 1 — SOLDÉ en v1.97.9 (26/09/2026)
 
-- 🩸 **`entree_plan` est cassée sur un plan généré depuis le 13/06/2026.** Le générateur écrit
-  dans le `plan-config.json` le **libellé d'affichage** de l'icône
-  (`"Icône SVG intégrée à l'application"`) à la place du data-URI — régression `f7ef68b` (v1.44.5),
-  un fix cosmétique de débordement de modale qui a remplacé `title="${defaultPath}"` par un texte, et
-  la génération relit ce `title` comme chemin. Mesuré : `getIconUrlForPoint` rend
-  `data/<plan>/data/Icône SVG intégrée à l'application`, marqueur à `naturalWidth = 0` + un 404 par
-  marqueur. **Régénérer le plan ne répare pas** (le mode Modifier relit la même chaîne).
-  ⚠️ Seule la légende s'en sort : elle a un repli `onerror → _ktaBuiltinIconUrls`
-  (`interfaceLegende.js`), posé à **un seul endroit** en v1.76.0. Carte, filtres, favoris, recherche
-  et exports n'en ont pas.
-  → 3 maillons : stocker le vrai chemin hors du `title` (générateur) · refuser comme chemin une
-  valeur sans `/` ni extension (`config.js`) · **généraliser le repli `onerror` dans `map.js > _mkIcon`**
-  (un point, et carte + filtres + favoris + recherche sont couverts). Les `plan-config.json` déjà
-  déployés vivent dans `data/` → **rattrapage par KARMA seul**.
-- 🟠 **21 sondes 404 par ouverture de plan.** `config.js > resoudreIconesPlanServeur` interroge le
-  serveur pour chaque icône en `icon/…` afin de savoir si elle vit dans le ZIP du plan ou à la racine
-  de l'app ; un plan généré en déclare 21 et livre un dossier `icon/` **vide**
-  (`createConf.js` n'y écrit que les fichiers téléversés par l'utilisateur). Coût mesuré : **29,9 ms**
-  en localhost, **188 ms** à 150 ms de RTT, en `await` **avant** le rendu des marqueurs. Rejoué à
-  chaque ouverture (retour HOME + réouverture = 42) et **+21 à chaque téléchargement hors-ligne**
-  (`planOffline.js`). Exports, HOME et Vue OSM ne sondent pas.
-  → le générateur SAIT ce qu'il embarque : qu'il écrive la liste dans le `plan-config`
-  (champ présent → zéro sonde ; absent → comportement actuel, rétro-compat totale).
-  ⚠️ **Ne pas** revenir au critère « est-ce dans un catalogue ? » : c'est ce qui a cassé `iconetrack`
-  en v1.86.2.
-- 🛡️ **6 des 8 tables de tags ne sont gardées par rien.** `check-icon-catalog.js` ne confronte que
-  `map.js > TAGS_BUILTIN` ↔ `osmHomePreview.js > TAGS_BUILTIN_HOME`. Non gardées :
-  `createConf.js > PLANNER_DEFAULT_ICONS` · `editor.js > EDITOR_TAG_LABELS` ·
-  `interfaceLegende.js > LEGENDE_LABELS` + `GROUPES` (×2) · `exporter.js > GROUPES_ICONES` ·
-  `legendCustomization.js > DEFAULT_LABELS.icones` · `sw.js > ASSETS_TO_CACHE` · `editor.tag.*` /
-  `legendui.label.*` des 3 dicos. C'est exactement le service que `check-style-canon.js` rend aux
-  couleurs (~80 lignes à ajouter à un script existant, zéro risque runtime). Ajouter aussi
-  « chaque tag du catalogue a une entrée dans `ASSETS_TO_CACHE` » : un oubli = icône absente
-  hors-ligne, **invisible en dev**.
-- 🟡 **`sessionExporter.js > EMOJI_PAR_TAG` est totalement orpheline** : 18 clés
-  (`aeration`, `siphon`, `lampe`, `echelle`…) dont **aucune n'existe dans le catalogue**, alors que son
-  commentaire dit « ⚠️ Synchroniser avec `TAGS_BUILTIN` ». Conséquence : **tous** les points
-  anonymisés tombent sur le fallback 🎯. La brancher change les noms de sortie
-  (`🎯-1` → `🕳️-1`) → **arbitrage KARMA** (c'est un format d'export).
+Les quatre points sont faits et mesurés : `entree_plan` (le Générateur écrivait le libellé de l'icône
+au lieu de sa valeur — trois filets : `dataset.ktaPath`, `ktaCheminIconePlausible` à la lecture, repli
+`onerror` généralisé dans `map.js`), les 21 sondes 404 (`iconsEmbarquees` déclaré par le Générateur →
+0 requête, mesuré), et `check-icon-catalog.js` étendu de 2 à **9 tables** + précache + 3 dicos
+(falsifié sur 5 axes). Détail : `README.md` § v1.97.9.
+
+⚠️ **Reste à faire côté DATA (KARMA seul)** : les `plan-config.json` déjà déployés gardent leur
+valeur fautive pour `entree_plan` et n'ont pas `iconsEmbarquees`. L'app les rattrape à l'ouverture (icône
+correcte, mais 21 sondes toujours là) ; **régénérer chaque plan** est le seul moyen de nettoyer le
+fichier et de supprimer les sondes.
+
+❌ **Non retenu — `sessionExporter.js > EMOJI_PAR_TAG`** : 18 clés dont aucune n'existe dans le
+catalogue (son commentaire dit « synchroniser avec TAGS_BUILTIN », ça ne l'a jamais été), donc **tous**
+les points anonymisés tombent sur le fallback 🎯. La brancher changerait les noms produits par l'export
+anonymisé (`🎯-1` → `🕳️-1`) : c'est un **format de sortie**, arbitrage KARMA, pas un bug à
+corriger en silence.
 
 ### ⚖️ En attente d'arbitrage — étages 2 et 3
 

@@ -1,8 +1,8 @@
 {
-  "version": "v1.97.8",
+  "version": "v1.97.9",
   "released": "2026-09-26",
   "notes": [
     "🧭 Nouveau dans le menu Tracker : « Plan orienté ». Pendant le suivi, c'est la carte qui tourne pour que ta direction de marche pointe toujours vers le haut de l'écran, au lieu de l'icône qui pivote sur un plan fixe. À activer toi-même : la carte reste fixe par défaut, et un bouton « Recentrer » te ramène sur toi si tu déplaces la carte à la main.",
-    "🚨 L'écran d'urgence XL est plus lisible : une seule position (les coordonnées GPS si ton plan est géoréférencé), l'échelle et l'état en petit tout en haut, une carte deux fois plus grande et tes couleurs de légende respectées. 📖 Et les PDF livrés avec un plan apparaissent enfin dans « Mon carnet »."
+    "🚨 L'écran d'urgence XL est plus lisible : une seule position (les coordonnées GPS si ton plan est géoréférencé), une carte deux fois plus grande et tes couleurs de légende respectées. 📖 Les PDF livrés avec un plan apparaissent enfin dans « Mon carnet », et 🎨 l'icône « Point d'entrée du plan » s'affiche à nouveau sur les plans générés cet été."
   ]
 }

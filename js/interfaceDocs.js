@@ -779,7 +779,17 @@ function _aidePoserBouton(modal) {
   // Juste avant la croix : c'est là que l'œil va, et l'ordre reste le même
   // d'une modale à l'autre.
   const croix = head.querySelector(".kta-panneau-close, .kta-readme-modal-close, .kta-tracker-modal-close");
-  if (croix) head.insertBefore(b, croix); else head.appendChild(b);
+  // 🚨 26/09/2026 — `querySelector` cherche en PROFONDEUR : dans plusieurs
+  // en-têtes la croix est imbriquée dans un conteneur d'actions, et
+  // `head.insertBefore(b, croix)` jetait alors un `NotFoundError` (« the node
+  // before which the new node is to be inserted is not a child of this node »).
+  // L'exception partait d'un MutationObserver, donc **hors de tout try**, et
+  // laissait la modale sans son bouton ❓ : constaté sur ≡ Légende par le
+  // smoke, une fois celui-ci réparé (il s'arrêtait avant d'y arriver).
+  // On insère dans le parent RÉEL de la croix : même place à l'œil, plus
+  // d'hypothèse sur la profondeur du gabarit.
+  if (croix && croix.parentNode) croix.parentNode.insertBefore(b, croix);
+  else head.appendChild(b);
 }
 
 // Le réglage a changé : on met à jour ce qui est DÉJÀ à l'écran, sinon la case
