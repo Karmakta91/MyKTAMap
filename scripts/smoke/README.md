@@ -49,6 +49,7 @@ structurels. Ces scripts les couvrent, chacun sur un axe précis.
 |---|---|
 | `node checkup-langues.js` | parcours d'un utilisateur **espagnol** : Documentation et Aide en espagnol, aucun drapeau résiduel sur l'Aide, aucun titre de section resté en français |
 | `node checkup-home-scroll.js` | HOME en **petite fenêtre PC** (6 configs, 1280→1920 × 500→768) : le contenu déborde, mais la **molette** scrolle et le footer se rejoint |
+| `node checkup-guidage.js` | **Guidage de l'itinéraire** en **taille téléphone** (390×844) : bandeau sous l'en-tête et entre les colonnes de boutons, raccord en pointillé, feuille de route, avancée le long du trajet sans fausse alerte, écart, écran XL, mode Navigation, urgence sans croix. Captures dans `$GUID_SHOTS` (défaut : dossier temporaire) |
 
 > ⚠️ `checkup-home-scroll.js` **abandonne** au lieu de conclure si un overlay
 > couvre encore la page. Le splash reste 3,5 s puis est *retiré du DOM* — et

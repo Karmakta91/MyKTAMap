@@ -280,6 +280,27 @@ async function bandeau() {
     t("fourche : « prendre la branche de gauche »", cs[0] && cs[0].type === "branche" && cs[0].cote === "gauche");
   }
 
+  // 5 bis) 🩸 Épingle par une galerie de liaison de 5 m (ouest → sud → est) :
+  //   angle ≈ 180°, mais le trajet ne revient PAS sur lui-même → virage, pas
+  //   « demi-tour » (cas réel : la fusion en chaîne l'annonçait ainsi).
+  {
+    const w = bac([
+      R("principal", [[400, 500], [200, 500]]),
+      R("principal", [[200, 500], [200, 520]]),
+      R("principal", [[200, 520], [400, 520]])
+    ]);
+    const it = await itineraire(w, [390, 500], [390, 520]);
+    const cs = sansArrivee(it.guide);
+    t("épingle : pas de « demi-tour »", !cs.some(c => c.type === "demiTour"));
+    t("épingle : dite comme un virage à gauche", cs.length >= 1 && cs.every(c => c.type === "virage" && c.cote === "gauche"));
+    // Vrai aller-retour : étape au fond d'un cul-de-sac → demi-tour
+    const w2 = bac([R("principal", [[0, 500], [400, 500]]), R("principal", [[200, 500], [200, 380]])]);
+    const r2 = await w2.Pathfinder.computeRoute([{ x: 20, y: 500 }, { x: 200, y: 380 }, { x: 380, y: 500 }], {});
+    const g2 = w2.ItiGuidage.construire({ points: r2.path, raccords: r2.raccords, carrefours: r2.carrefours });
+    const demi = g2.consignes.find(c => c.type === "demiTour");
+    t("cul-de-sac : le vrai aller-retour est un « demi-tour »", !!demi && Math.abs(demi.y - 380) < 4);
+  }
+
   // 6) Quadrillage serré (chambre à piliers, maille 2 m = 8 px) traversé en
   //    ligne droite : la fusion empêche une consigne à chaque maille.
   {

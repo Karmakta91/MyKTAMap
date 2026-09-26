@@ -204,11 +204,15 @@
     });
     cands.sort(function(a, b) { return a.s - b.s; });
 
-    // 2) Grappes : tout ce qui se suit à moins de FUSION_M ne fait qu'un
+    // 2) Grappes : ce qui tient dans FUSION_M À PARTIR DU PREMIER événement ne
+    // fait qu'un. 🩸 Pas « à moins de FUSION_M du précédent » : en chaîne, une
+    // grappe s'étirait sans limite (11 m mesurés sur un plan réel) et deux
+    // virages à gauche successifs, mesurés de l'entrée à la sortie, devenaient
+    // un « demi-tour ».
     const grappes = [];
     cands.forEach(function(c) {
       const g = grappes[grappes.length - 1];
-      if (g && c.s - g[g.length - 1].s <= fusionPx) g.push(c);
+      if (g && c.s - g[0].s <= fusionPx) g.push(c);
       else grappes.push([c]);
     });
 
@@ -232,14 +236,20 @@
       const c = { s: rep.s, x: pt.x, y: pt.y, angle: Math.round(delta), carrefour: avecCarrefour.length > 0 };
       const cote = delta > 0 ? "droite" : "gauche";
 
+      // « Faire demi-tour » seulement si le trajet REVIENT SUR LUI-MÊME (une
+      // fenêtre avant et une fenêtre après se superposent). Un virage en
+      // épingle par une galerie de liaison a le même angle mais part ailleurs :
+      // c'est un virage.
+      const replie = Math.hypot(_pointA(ch, sIn - W).x - _pointA(ch, sOut + W).x,
+                                _pointA(ch, sIn - W).y - _pointA(ch, sOut + W).y) < W * 0.5;
       if (abs < TOUT_DROIT_DEG) {
         c.type = "toutDroit";
-      } else if (abs > DEMI_TOUR_DEG) {
+      } else if (abs > DEMI_TOUR_DEG && replie) {
         c.type = "demiTour";
       } else {
         c.type = "virage";
         c.cote = cote;
-        c.force = abs < LEGER_DEG ? "leger" : "franc";
+        c.force = abs < LEGER_DEG ? "leger" : "franc";   // > 135° sans repli = virage franc aussi
       }
 
       // Ambiguïté : une autre sortie trop proche de celle qu'on prend
@@ -556,8 +566,12 @@
             '<span class="kta-guid-sous"></span>' +
           '</span>' +
         '</button>' +
-        '<button type="button" class="kta-guid-nav">🧭</button>' +
-        '<button type="button" class="kta-guid-fermer">✕</button>' +
+        // 🧭 et ✕ EMPILÉS : côte à côte ils prenaient 80 px sur un téléphone
+        // et la consigne s'étalait sur 4 lignes (capture 390 px, 27/09/2026).
+        '<span class="kta-guid-boutons">' +
+          '<button type="button" class="kta-guid-nav">🧭</button>' +
+          '<button type="button" class="kta-guid-fermer">✕</button>' +
+        '</span>' +
       '</div>' +
       '<div class="kta-guid-actions"></div>';
     _el.style.display = "none";
