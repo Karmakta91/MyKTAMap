@@ -1043,3 +1043,52 @@ Signalé en terrain : sur un plan de 16332 px, **au dézoom à fond uniquement**
 #### Non couvert en v1.97.0
 
 Contre-rotation des **tooltips** (⚠️ `tableEditor.js:1245` en pose de **permanents sur la carte principale** — la raison longtemps avancée, « ils ne servent qu'en Secours/OSM », était fausse ; l'impact reste faible, mais la décision doit se reprendre sur ce fait), inertie du pan, **indicateur de Nord à l'écran** (le manque ergonomique le plus visible), **validation iOS/Safari** (le harnais est Chromium), et **validation terrain du confort de rotation** (le cap lui-même est tenu pour fiable hors zones très ferraillées — retour terrain KARMA).
+
+---
+
+## 🪧 Guidage de l'itinéraire — « dans X m, tourner à gauche » (27/09/2026)
+
+Étude et décisions KARMA : **`docs/ETUDE_GUIDAGE.md`** (fait foi). Module : `js/itiGuidage.js`.
+Filets : `scripts/check-guidage.js` (pré-commit, réseaux fictifs) · `scripts/smoke/checkup-guidage.js`
+(navigateur, taille téléphone, à la main).
+
+### Chaîne
+
+`pathfinder.js > _computeRouteInterne` rend deux champs **en plus** (aucun champ existant ne change) :
+- `raccords[]` — `{ role: depart|etape|arrivee, label, de, vers, distPx }` : le trajet à vol d'oiseau entre
+  chaque waypoint et son point d'accroche. Recopié sur la road `itinerary` (les 3 créations de
+  `interfaceItineraire.js` passent par `_champsGuidage`), **dessiné** en pointillé (`road.js`,
+  `.kta-itinerary-raccord`) et **compté** (`_distanceItineraireMeters`, ×2 pour une étape).
+- `carrefours[]` — `{ x, y, sorties: [cap°] }` : nœuds **posés sur le trajet** d'où partent ≥ 3 directions.
+
+`ItiGuidage.construire(road)` → consignes (`virage` léger/franc · `branche` · `toutDroit` · `demiTour` ·
+`niveau` · `etape` · `arrivee`), chacune à son abscisse curviligne `s`. 1–2 ms sur un trajet réel.
+
+`tracking.js > updateMap` → `ItiGuidage.onPosition(position)` à chaque pas / recalage, + un battement d'1 s
+(apparition / disparition). Les consignes ne sont recalculées que si la road change.
+
+### 🩸 Pièges rencontrés — à ne pas réintroduire
+
+| Piège | Pourquoi | Garde |
+|---|---|---|
+| Détecter un croisement par les **nœuds traversés** | L'enrichissement garde l'arête d'origine A↔B à côté de A↔X↔B : un chemin qui passe **tout droit** peut enjamber le nœud X | recherche géométrique `_carrefoursSurChemin` (nœuds à ≤ 3 px du trajet) |
+| Compter les **voisins** d'un nœud | Arêtes doublées + liens de proximité entre sommets d'un même tracé + tremblement : un tracé tremblé devenait un croisement à chaque sommet | **cercle de ~3 m** : chaque traversée du réseau = une sortie ; une amorce < 3 m ne compte pas |
+| Départ accroché sur un segment portant un nœud de croisement | Le nœud virtuel n'était relié qu'aux extrémités → **aller-retour** au départ (+2× le recul, « demi-tour » annoncé) | `_insertVirtualNode` relie aussi les nœuds posés sur le segment (même niveau). Profite à `computeReachable` |
+| Fusion **en chaîne** | Une grappe s'étirait sans limite (11 m mesurés) ; deux virages à gauche = « demi-tour » | grappe ≤ `FUSION_M` depuis son **premier** événement ; `demiTour` seulement si le trajet se replie |
+
+### Seuils (calés sur un plan réel local, 27/09/2026)
+
+`FENETRE_M 4` (angle mesuré sur 4 m) · `FUSION_M 6` · `VIRAGE_MIN_DEG 60` (sans croisement, seul un virage
+franc se dit : à 50°, 9 consignes sur 15 étaient des coudes) · présence sur le trajet 3 m / 8 m, écart 6 m /
+15 m, demi-tour 10 m ×3 / 20 m ×5 (avec / sans navigation intelligente : sans, 10 m donnaient 3 faux
+demi-tours en 350 m sous 4 m de bruit).
+
+### Frontières
+
+- **Urgence** : `road.urgence = true` (posé par la sortie d'urgence via `itineraireYAller(…, { urgence })`,
+  gardé par la replanification) → pas de croix, affiché même réglé sur « Jamais », « Recalculer » =
+  `SortieUrgence.relancerDepuis(pos)`. L'écran XL lit `ItiGuidage.etat()` dans son `_tick`.
+- **Mode Navigation** : écrit `MapBearing.setEnabled` / `WakeLock.setEnabled` (réglages persistés) et les
+  rend à la sortie, **sauf** si l'utilisateur les a changés entre-temps.
+- **Non couverts** : itinéraires du Mode Secours (`secoursMode.js`) et inter-plans (`interPlanRoute.js`) —
+  ils créent leurs roads sans `raccords` / `carrefours` (cf `docs/BACKLOG.md`).

@@ -205,6 +205,24 @@ Le mode est livré et tenu par `scripts/smoke/checkup-plan-oriente.js` (37 contr
 - 🟡 **Pan sans inertie.** Le pan du mode est refait à la main (le drag de Leaflet part de travers sous rotation) : un doigt, pas d'inertie. Le geste répond donc autrement que dans le reste de l'app.
 - ✅ ~~`prefers-reduced-motion` promet une accessibilité absente~~ — **soldé en v1.97.6** : la préférence agit désormais côté JS (la vue se pose au lieu de s'animer).
 
+## 🪧 Guidage de l'itinéraire — ce qui reste (27/09/2026)
+
+Livré en 4 lots (`docs/ETUDE_GUIDAGE.md`, archi : `docs/architecture/tracking.md` §Guidage). Reste :
+
+- 🟠 **Validation terrain** — les seuils (`itiGuidage.js` : fusion 6 m, virage sans croisement ≥ 60°, écart,
+  demi-tour) sont calés sur un plan réel **en simulation** (marche bruitée), pas sous terre. À mesurer :
+  consignes parasites par km, justesse du « dans X m » avec et sans navigation intelligente.
+- 🟡 **Itinéraires non couverts** : Mode Secours (`secoursMode.js`) et inter-plans (`interPlanRoute.js`)
+  créent leurs roads sans `raccords` / `carrefours` → pas de pointillé, raccord non compté, bandeau sur
+  les seuls virages du dessin (aucun croisement connu). Brancher `_champsGuidage` si KARMA le veut.
+- 🟡 **Voix / vibration** — écartées « pour le moment » (décision 4:a). `voiceTts.js` existe, en lecture
+  manuelle par principe.
+- ⚪ **Performance du calcul d'itinéraire** — mesuré ~38 s en Node sur un réseau de ~9 000 points
+  (enrichissement O(N²) + Dijkstra O(V²) du pathfinder, antérieurs au guidage). Le guidage lui-même : 1–2 ms.
+  Pèse sur « Recalculer d'ici » et la sortie d'urgence sur les gros plans.
+- 📄 **Docs utilisateur à écrire au prochain bump** : `README_USER` ×3, Aide intégrée, `AI_CONTEXT`,
+  notes de version (fonctionnalité visible : bandeau, feuille de route, menu Tracker → Guidage, mode Navigation).
+
 ## 🆕 Sujets ouverts (demandes KARMA du 01/08/2026)
 
 ### 1. 🗺️ Import depuis SIG — « Convertir depuis SIG »
