@@ -35,11 +35,15 @@ unique : **aucun guard n'exécute l'app dans un navigateur**. La porte comble ce
 ## 🤖 Le script qui tient la porte (depuis le 07/09/2026)
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scriptselease\merge-main.ps1
+powershell -ExecutionPolicy Bypass -File scripts\release\merge-main.ps1
 ```
 
 Il enchaîne ce qui est **vérifiable par une machine** et refuse d'aller plus loin au premier échec : arbre de
-travail propre, branche légitime (jamais `Chig_Dev`, jamais `main`), **concordance des trois sources de version**
+travail propre **hors `data/`** (27/09/2026 — `data/index.json` est suivi par Git et diverge dès qu'un vrai
+relevé est ouvert : exiger un arbre propre au sens strict rendait toute release impossible **parce que la
+règle de confidentialité du dépôt était respectée**. Les fichiers `data/` divergents sont listés, pas
+bloquants — rien n'en sera commité, `check-data-hors-git.js` s'en charge, et le merge ne les touche pas),
+branche légitime (jamais `Chig_Dev`, jamais `main`), **concordance des trois sources de version**
 (volet 🔒 de la marche 1), suite complète des garde-fous, `main` local à jour vis-à-vis du distant. Puis il montre
 ce qui va partir, merge en `--no-ff`, pose le tag de version et publie — chaque étape vérifiée, un merge en conflit
 étant annulé et la branche de travail restaurée.
