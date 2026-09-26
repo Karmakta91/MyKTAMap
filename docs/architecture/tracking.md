@@ -996,7 +996,13 @@ Le drag de Leaflet déplace le map-pane d'un offset **écran** ; la rotation viv
 
 🩸 **Piège mobile** : `dragging.disable()` retire la classe `leaflet-touch-drag`, et le conteneur retombe alors en `touch-action: pan-x pan-y` — au doigt, le **navigateur** scrolle la page au lieu de laisser le pan manuel agir. La classe `kta-bearing-lock`, posée pendant le mode, lui rend `touch-action: none`. Invisible au clavier/souris : ça ne se voit qu'au doigt, ou dans le checkup.
 
-Le zoom reste celui de Leaflet mais **recentré** (`touchZoom/scrollWheelZoom/doubleClickZoom = "center"`) : il relit ces options à chaque geste, il suffit donc de les changer, sans détacher de handler.
+Le zoom reste **entièrement celui de Leaflet** : on ne touche plus à ses options.
+
+🩸 **Ces trois options ont valu `"center"` jusqu'en v1.97.4, et c'était un bug** (constat KARMA : « avec les boutons aucun problème, au doigt ça bugue »). Je les avais forcées **avant** de patcher `mouseEventToContainerPoint`, par crainte que le point visé soit mal converti sous rotation ; une fois le patch posé, la prudence n'avait plus d'objet, mais l'option est restée. Conséquence : le zoom se faisait au centre de l'écran au lieu de se faire entre les doigts, et pincer ailleurs faisait glisser toute la carte — **95 px mesurés**, contre 27 px une fois rendues à Leaflet.
+
+🩸 **Et le pan à un doigt volait le début du pincement** : entre la pose du premier doigt et celle du second, le premier glisse toujours de quelques pixels — assez pour franchir le seuil d'engagement de 6 px et déplacer la carte (21 unités mesurées) avant que Leaflet ne voie un geste à deux doigts. Le pan **restaure donc le centre** dès qu'un second doigt se pose.
+
+⚠️ **Le bon critère de test n'est pas « le point pincé ne bouge pas »** : Leaflet arrondit le zoom à l'entier, donc il bouge toujours un peu — 27 px, **mode désactivé compris**. On mesure l'écart au comportement de référence (T19), sinon on court après un zéro impossible.
 
 #### Frontières : on LIT l'état des autres modes
 

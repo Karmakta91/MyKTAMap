@@ -35,7 +35,10 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const fs = require("fs");
+const path = require("path");
 const server = require("./server.js");
+
 
 const BASE = "http://127.0.0.1:8123";
 const LS_PREGATES = {
@@ -46,6 +49,23 @@ const LS_PREGATES = {
   "myktamap_tutorial_seen_v1": "1"
 };
 
+// 🩸 Le checkup ouvrait « Relevé fictif de test » par son nom. Quand
+// `data/index.json` pointe ailleurs — ce qui arrive dès qu'on pose un plan
+// réel en local pour enquêter — tout le harnais tombe en timeout opaque.
+// On lit donc l'index, et on ouvre ce qui y est, en le disant.
+function planAOuvrir() {
+  try {
+    const idx = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "data", "index.json"), "utf8"));
+    const plans = (idx && idx.plans) || [];
+    const fictif = plans.find(function (p) { return /fictif/i.test(p.name || ""); });
+    return { nom: (fictif || plans[0] || {}).name || "Relevé fictif de test",
+             fictif: !!fictif };
+  } catch (e) {
+    return { nom: "Relevé fictif de test", fictif: true };
+  }
+}
+
+const PLAN = planAOuvrir();
 const problemes = [];
 function pb(msg) { problemes.push(msg); console.log("  ❌ " + msg); }
 function ok(msg)  { console.log("  ✅ " + msg); }
@@ -71,12 +91,17 @@ function inf(msg) { console.log("  •  " + msg); }
       const b = document.getElementById("kta-alert-ok");
       if (b) b.click();
     });
-    await page.getByText("Relevé fictif de test", { exact: false }).first().click();
+    await page.getByText(PLAN.nom, { exact: false }).first().click();
     await page.waitForFunction(function () {
       return !!window.PLAN_CONFIG && !!window.map && !!window.MapBearing;
     }, null, { timeout: 20000 });
     await page.waitForTimeout(2500);
-    ok("plan de test chargé, MapBearing présent");
+    ok("plan chargé (« " + PLAN.nom + " »), MapBearing présent");
+    if (!PLAN.fictif) {
+      inf("⚠️ le relevé fictif n'est pas dans data/index.json — ce checkup tourne " +
+          "sur « " + PLAN.nom + " ». Les autres harnais du dépôt, eux, le cherchent par son nom " +
+          "et tomberont en timeout tant que l'index pointe ailleurs.");
+    }
 
     // Helpers injectés : mesure de la position écran d'un latlng, et
     // prédiction par le modèle (rotation du containerPoint autour du centre).
@@ -832,7 +857,7 @@ function inf(msg) { console.log("  •  " + msg); }
     await portrait.evaluate(function () {
       const b = document.getElementById("kta-alert-ok"); if (b) b.click();
     });
-    await portrait.getByText("Relevé fictif de test", { exact: false }).first().click();
+    await portrait.getByText(PLAN.nom, { exact: false }).first().click();
     await portrait.waitForFunction(function () {
       return !!window.PLAN_CONFIG && !!window.map && !!window.MapBearing;
     }, null, { timeout: 20000 });
@@ -922,6 +947,112 @@ function inf(msg) { console.log("  •  " + msg); }
     else if (pireVide <= 1) ok("aucun trou visible en portrait (pire cas " + pireVide + " %)");
     else pb("il reste " + pireVide + " % d'écran sans tuile en portrait (c'était 17,2 % en v1.97.1)");
     await portrait.close();
+
+    // ── T19 — le dézoom AU DOIGT ─────────────────────────────────────
+    // 🩸 Constat KARMA : « avec les boutons zoom/dézoom aucun problème, mais
+    // au doigt ça bugue ». Deux causes, toutes deux dans ce module :
+    //   • `touchZoom = "center"`, que _verrouiller imposait « par prudence » :
+    //     le zoom se faisait au centre de l'écran et non entre les doigts, donc
+    //     pincer ailleurs faisait glisser toute la carte (95 px mesurés) ;
+    //   • le pan à un doigt volait le début du geste — entre la pose du 1er
+    //     doigt et celle du 2e, il bouge toujours un peu (21 unités mesurées).
+    //
+    // ⚠️ Le critère n'est PAS « le point pincé ne bouge pas » : Leaflet arrondit
+    // le zoom à l'entier, donc il bouge toujours un peu, mode ou pas. On mesure
+    // l'ÉCART AU COMPORTEMENT DE RÉFÉRENCE, mode désactivé. Sans ce contrôle on
+    // courrait après un zéro impossible.
+    console.log("— T19 : dézoom au doigt, comparé au mode désactivé —");
+    const tactile = await nav.newPage({
+      viewport: { width: 430, height: 932 }, deviceScaleFactor: 3,
+      hasTouch: true, isMobile: true
+    });
+    await tactile.addInitScript(function (ls) {
+      for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+    }, LS_PREGATES);
+    await tactile.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await tactile.waitForTimeout(2500);
+    await tactile.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
+    await tactile.getByText(PLAN.nom, { exact: false }).first().click();
+    await tactile.waitForFunction(function () {
+      return !!window.PLAN_CONFIG && !!window.map && !!window.MapBearing;
+    }, null, { timeout: 60000 });
+    await tactile.waitForTimeout(4000);
+
+    const cdp = await tactile.context().newCDPSession(tactile);
+    const PX = 215, PY = 700;                      // volontairement hors centre
+    const pincer = async function () {
+      const d0 = 160, d1 = 70;
+      const env = function (type, pts) {
+        return cdp.send("Input.dispatchTouchEvent", {
+          type: type,
+          touchPoints: pts.map(function (p) {
+            return { x: p[0], y: p[1], radiusX: 12, radiusY: 12, force: 1 };
+          })
+        });
+      };
+      await env("touchStart", [[PX - d0 / 2, PY], [PX + d0 / 2, PY]]);
+      for (let i = 1; i <= 8; i++) {
+        const d = d0 + (d1 - d0) * (i / 8);
+        await env("touchMove", [[PX - d / 2, PY], [PX + d / 2, PY]]);
+        await tactile.waitForTimeout(40);
+      }
+      await env("touchEnd", []);
+      await tactile.waitForTimeout(700);
+    };
+    // Glissement du contenu situé sous les doigts, pour un pincement donné.
+    const glissement = async function (modeActif) {
+      await tactile.evaluate(async function (actif) {
+        window.MapBearing.setEnabled(actif);
+        if (actif) {
+          try { await window.requestPermission(); } catch (e) {}
+          if (!window.getTrackingActif()) window.startTracking();
+          const nom = ("ondeviceorientationabsolute" in window)
+                        ? "deviceorientationabsolute" : "deviceorientation";
+          for (let i = 0; i < 70; i++) {
+            const ev = new Event(nom);
+            ev.alpha = 315; ev.beta = 0; ev.gamma = 0; ev.absolute = true;
+            window.dispatchEvent(ev);
+            window.MapBearing.onStep(window.map.getCenter());
+            await new Promise(function (r) { setTimeout(r, 20); });
+          }
+        }
+        window.map.setZoom(0);
+        await new Promise(function (r) { setTimeout(r, 700); });
+      }, modeActif);
+      const av = await tactile.evaluate(function (xy) {
+        const map = window.map, cr = map.getContainer().getBoundingClientRect();
+        const cc = map.getSize().divideBy(2);
+        const a = -window.MapBearing.getBearing() * Math.PI / 180;
+        const dx = (xy[0] - cr.left) - cc.x, dy = (xy[1] - cr.top) - cc.y;
+        const p = L.point(dx * Math.cos(a) - dy * Math.sin(a) + cc.x,
+                          dx * Math.sin(a) + dy * Math.cos(a) + cc.y);
+        const ll = map.containerPointToLatLng(p);
+        return { lat: ll.lat, lng: ll.lng, vue: Math.round(window.MapBearing.getBearing()) };
+      }, [PX, PY]);
+      await pincer();
+      return tactile.evaluate(function (d) {
+        const map = window.map, cr = map.getContainer().getBoundingClientRect();
+        const cc = map.getSize().divideBy(2);
+        const p = map.latLngToContainerPoint(L.latLng(d.lat, d.lng));
+        const a = window.MapBearing.getBearing() * Math.PI / 180;
+        const dx = p.x - cc.x, dy = p.y - cc.y;
+        const x = cr.left + dx * Math.cos(a) - dy * Math.sin(a) + cc.x;
+        const y = cr.top + dx * Math.sin(a) + dy * Math.cos(a) + cc.y;
+        return { px: Math.round(Math.hypot(x - d.px, y - d.py)), vue: d.vue };
+      }, { lat: av.lat, lng: av.lng, px: PX, py: PY, vue: av.vue });
+    };
+
+    const modeOn = await glissement(true);
+    const modeOff = await glissement(false);
+    inf("mode actif (vue à " + modeOn.vue + "°) : " + modeOn.px + " px · " +
+        "référence mode désactivé : " + modeOff.px + " px");
+    if (!modeOn.vue) pb("la vue n'a pas tourné : T19 ne prouve rien");
+    else if (Math.abs(modeOn.px - modeOff.px) <= 12)
+      ok("le dézoom au doigt se comporte comme sans le mode (écart " +
+         Math.abs(modeOn.px - modeOff.px) + " px)");
+    else pb("le mode dégrade le dézoom au doigt de " +
+            (modeOn.px - modeOff.px) + " px (c'était +68 px avec touchZoom=center)");
+    await tactile.close();
 
   } catch (e) {
     pb("exception du harnais : " + (e && e.message));

@@ -223,12 +223,7 @@
   // les changer, sans détacher les handlers.
   function _verrouiller(map) {
     if (!map || _interactionsSauvees) return;
-    _interactionsSauvees = {
-      dragging:        map.dragging && map.dragging.enabled(),
-      touchZoom:       map.options.touchZoom,
-      scrollWheelZoom: map.options.scrollWheelZoom,
-      doubleClickZoom: map.options.doubleClickZoom
-    };
+    _interactionsSauvees = { dragging: map.dragging && map.dragging.enabled() };
     try { if (map.dragging) map.dragging.disable(); } catch(e) {}
     // 🩸 `dragging.disable()` retire la classe `leaflet-touch-drag`, et le
     // conteneur retombe alors en `touch-action: pan-x pan-y` : au doigt, le
@@ -237,9 +232,17 @@
     const cont0 = map.getContainer();
     if (cont0) cont0.classList.add("kta-bearing-lock");
     _majPaddingRenderer(map, true);
-    map.options.touchZoom       = "center";
-    map.options.scrollWheelZoom = "center";
-    map.options.doubleClickZoom = "center";
+    // 🩸 v1.97.4 — ces trois options valaient `"center"` : par prudence, je
+    // forçais le zoom sur le centre de l'écran, de peur que le point visé
+    // soit mal converti sous rotation. La peur n'avait plus lieu d'être une
+    // fois `mouseEventToContainerPoint` patché — et le prix était lourd :
+    // pincer ailleurs qu'au centre faisait glisser toute la carte.
+    // Mesuré, dézoom au doigt hors centre : **95 px** de glissement avec
+    // `"center"`, contre 27 px en rendant le zoom à Leaflet (puis ~0 une fois
+    // le vol de geste corrigé ci-dessous). D'où le constat de KARMA : les
+    // boutons +/− allaient bien, le doigt non.
+    // On ne touche donc plus à ces options : Leaflet zoome entre les doigts,
+    // et le patch des gestes lui donne les bons points.
     // Les vecteurs restent cliquables : les conversions écran↔carte sont
     // adaptées à la rotation (cf _installerPatchConversions).
     _installerPanManuel(map);
@@ -248,6 +251,7 @@
   function _deverrouiller(map) {
     if (!map || !_interactionsSauvees) { _interactionsSauvees = null; return; }
     try { if (map.dragging && _interactionsSauvees.dragging) map.dragging.enable(); } catch(e) {}
+    // (les options de zoom ne sont plus touchées depuis v1.97.4)
     const cont1 = map.getContainer();
     if (cont1) cont1.classList.remove("kta-bearing-lock");
     _majPaddingRenderer(map, false);
@@ -317,12 +321,27 @@
     const cont = map.getContainer();
     if (!cont) return;
     const doigts = new Set();
-    let depart = null, engage = false;
+    let depart = null, engage = false, centreAvant = null;
 
     cont.addEventListener("pointerdown", function(e) {
       doigts.add(e.pointerId);
-      if (!isActive() || doigts.size > 1) { depart = null; engage = false; return; }
+      if (doigts.size > 1) {
+        // 🩸 v1.97.4 — UN PINCH COMMENCE, et il commence toujours mal : entre
+        // la pose du premier doigt et celle du second, le premier bouge de
+        // quelques pixels. Mon pan s'engageait (seuil 6 px) et déplaçait la
+        // carte AVANT que Leaflet ne voie le geste à deux doigts — mesuré :
+        // 21 unités de plan volées sur un simple début de pincement. On rend
+        // donc ce qu'on a pris, et on laisse le pinch travailler sur la vue
+        // que l'utilisateur voyait en posant les doigts.
+        if (engage && centreAvant) {
+          try { map.setView(centreAvant, map.getZoom(), { animate: false }); } catch(err) {}
+        }
+        depart = null; engage = false; centreAvant = null;
+        return;
+      }
+      if (!isActive()) { depart = null; return; }
       depart = { x: e.clientX, y: e.clientY };
+      centreAvant = map.getCenter();
     }, { passive: true });
 
     cont.addEventListener("pointermove", function(e) {
@@ -353,7 +372,7 @@
 
     const fin = function(e) {
       doigts.delete(e.pointerId);
-      depart = null; engage = false;
+      depart = null; engage = false; centreAvant = null;
     };
     cont.addEventListener("pointerup", fin, { passive: true });
     cont.addEventListener("pointercancel", fin, { passive: true });
