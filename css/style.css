@@ -22400,19 +22400,12 @@ body.kta-theme-light .kta-guid-feuille-icone { color: #8a6d00; }
 .kta-guid-textes { display: flex; flex-direction: column; min-width: 0; }
 .kta-guid-principal { font-size: 15px; font-weight: 700; line-height: 1.25; }
 .kta-guid-sous { font-size: 12.5px; color: #c8d0e0; line-height: 1.3; margin-top: 2px; }
-/* Colonne de droite : 🧭 au-dessus, ✕ en dessous. */
-.kta-guid-boutons {
-  flex: 0 0 38px;
-  display: flex;
-  flex-direction: column;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-}
 .kta-guid-fermer {
-  flex: 1 1 auto;
-  min-height: 34px;
+  flex: 0 0 38px;
   width: 38px;
   background: none;
   border: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
   color: #8892a4;
   font-size: 16px;
   cursor: pointer;
@@ -22440,20 +22433,6 @@ body.kta-theme-light .kta-guid-bandeau { background: rgba(255, 255, 255, 0.97); 
 body.kta-theme-light .kta-guid-sous { color: #3a4254; }
 body.kta-theme-light .kta-guid-icone { color: #8a6d00; }
 body.kta-theme-light .kta-guid-bandeau.kta-guid-alerte-on { background: #fff4e8; }
-
-/* Mode navigation (lot 3) : bouton 🧭 du bandeau, doré quand il est actif. */
-.kta-guid-nav {
-  flex: 1 1 auto;
-  min-height: 34px;
-  width: 38px;
-  background: none;
-  border: 0;
-  font-size: 18px;
-  cursor: pointer;
-  opacity: 0.6;
-}
-.kta-guid-nav:hover { opacity: 1; }
-.kta-guid-nav.kta-actif { opacity: 1; background: rgba(244, 197, 66, 0.18); }
 
 /* Guidage sur l'écran XL (lot 4, décision A) : la consigne du bandeau, en
    gros — cet écran recouvre la carte. Les couleurs de fond / bordure viennent

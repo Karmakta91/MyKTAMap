@@ -72,7 +72,7 @@ dessiné : il faut une logique de croisements.
 |---|---|
 | 1 | Moteur de consignes + feuille de route statique (modale Itinéraire) ; raccords à vol d'oiseau dessinés et comptés ; alertes 50 m et « aucun tracé ». |
 | 2 | Bandeau en direct : avancement, pré-annonce, « maintenant », écart / demi-tour et leurs actions, réglage Auto / Jamais. |
-| 3 | Mode Navigation : plan orienté + écran allumé, restaurés à la sortie. |
+| 3 | ~~Mode Navigation : plan orienté + écran allumé, restaurés à la sortie.~~ **Livré puis retiré le 27/09/2026 (KARMA 3:a)** : un bouton 🧭 sans libellé, doublon de « Plan orienté » (menu Tracker) et de l'écran allumé (Réglages) — son utilité n'était pas lisible. |
 | 4 | Urgence : sortie d'urgence (pas de croix, écart → sortie la plus proche) + consigne sur l'écran XL. |
 
 ## Inconnues qu'on ne lèvera que sur le terrain

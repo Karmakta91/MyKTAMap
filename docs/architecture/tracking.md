@@ -1089,7 +1089,8 @@ demi-tours en 350 m sous 4 m de bruit).
 - **Urgence** : `road.urgence = true` (posé par la sortie d'urgence via `itineraireYAller(…, { urgence })`,
   gardé par la replanification) → pas de croix, affiché même réglé sur « Jamais », « Recalculer » =
   `SortieUrgence.relancerDepuis(pos)`. L'écran XL lit `ItiGuidage.etat()` dans son `_tick`.
-- **Mode Navigation** : écrit `MapBearing.setEnabled` / `WakeLock.setEnabled` (réglages persistés) et les
-  rend à la sortie, **sauf** si l'utilisateur les a changés entre-temps.
+- **Pas de « mode Navigation »** : livré puis retiré le 27/09/2026 (KARMA 3:a). Le guidage ne touche NI
+  `MapBearing` NI `WakeLock` : « Plan orienté » (menu Tracker) et l'écran allumé (Réglages) restent les seuls
+  interrupteurs — un doublon sans libellé dans le bandeau n'était pas lisible.
 - **Non couverts** : itinéraires du Mode Secours (`secoursMode.js`) et inter-plans (`interPlanRoute.js`) —
   ils créent leurs roads sans `raccords` / `carrefours` (cf `docs/BACKLOG.md`).

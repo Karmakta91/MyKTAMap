@@ -221,7 +221,7 @@ Livré en 4 lots (`docs/ETUDE_GUIDAGE.md`, archi : `docs/architecture/tracking.m
   (enrichissement O(N²) + Dijkstra O(V²) du pathfinder, antérieurs au guidage). Le guidage lui-même : 1–2 ms.
   Pèse sur « Recalculer d'ici » et la sortie d'urgence sur les gros plans.
 - 📄 **Docs utilisateur à écrire au prochain bump** : `README_USER` ×3, Aide intégrée, `AI_CONTEXT`,
-  notes de version (fonctionnalité visible : bandeau, feuille de route, menu Tracker → Guidage, mode Navigation).
+  notes de version (fonctionnalité visible : bandeau, feuille de route, menu Tracker → Guidage).
 
 ## 🆕 Sujets ouverts (demandes KARMA du 01/08/2026)
 

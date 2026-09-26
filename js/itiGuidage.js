@@ -36,7 +36,6 @@
 //   window.ItiGuidage.rafraichir()      — recalcule l'affichage du bandeau
 //   window.ItiGuidage.etat()            — { visible, mode, icone, principal, sous, fleche, urgence }
 //   window.ItiGuidage.getPref() / setPref("auto" | "jamais")
-//   window.ItiGuidage.basculerNavigation() / navigationActive() — mode Navigation (lot 3)
 //   window.ItiGuidage.agir("recalculer" | "ici" | "ignorer") — boutons d'un écart
 //
 // Convention de cap : degrés, 0 = haut du plan, sens horaire (= tracking.js).
@@ -547,12 +546,7 @@
             '<span class="kta-guid-sous"></span>' +
           '</span>' +
         '</button>' +
-        // 🧭 et ✕ EMPILÉS : côte à côte ils prenaient 80 px sur un téléphone
-        // et la consigne s'étalait sur 4 lignes (capture 390 px, 27/09/2026).
-        '<span class="kta-guid-boutons">' +
-          '<button type="button" class="kta-guid-nav">🧭</button>' +
-          '<button type="button" class="kta-guid-fermer">✕</button>' +
-        '</span>' +
+        '<button type="button" class="kta-guid-fermer">✕</button>' +
       '</div>' +
       '<div class="kta-guid-actions"></div>';
     _el.style.display = "none";
@@ -560,7 +554,6 @@
     _el.querySelector(".kta-guid-corps").addEventListener("click", function() {
       if (_road) ouvrirFeuilleDeRoute(_road);
     });
-    _el.querySelector(".kta-guid-nav").addEventListener("click", basculerNavigation);
     _el.querySelector(".kta-guid-fermer").addEventListener("click", function() {
       _masquePour = _road;
       _cacher();
@@ -725,7 +718,7 @@
       fleche: fleche, urgence: urgence
     };
 
-    const cle = [r.mode, icone, principal, sous, fleche, urgence, !!_nav,
+    const cle = [r.mode, icone, principal, sous, fleche, urgence,
                  actions.map(function(a) { return a.id; }).join()].join("|");
     el.style.display = "";
     if (cle === _dernierRendu) return;
@@ -740,10 +733,6 @@
     const sEl = el.querySelector(".kta-guid-sous");
     sEl.textContent = sous;
     sEl.style.display = sous ? "" : "none";
-    const nav = el.querySelector(".kta-guid-nav");
-    nav.classList.toggle("kta-actif", !!_nav);
-    nav.title = _t(_nav ? "guid.nav.quitter" : "guid.nav.entrer");
-    nav.setAttribute("aria-label", nav.title);
     const corps = el.querySelector(".kta-guid-corps");
     corps.title = _t("guid.bandeau.ouvrir");
     const fermer = el.querySelector(".kta-guid-fermer");
@@ -760,9 +749,6 @@
   function _maj(posForcee) {
     const road = _roadActive();
     if (road !== _road) _reinitialiser(road);
-    // Itinéraire terminé ou effacé → le mode Navigation rend les réglages.
-    // (Une replanification recrée la road : le trajet continue, le mode aussi.)
-    if (!road && _nav) _quitterNavigation(false);
     const urgence = !!(road && road.urgence);
     // En sortie d'urgence le guidage s'affiche même réglé sur « Jamais » :
     // c'est l'utilisateur qui vient de demander le chemin vers la sortie.
@@ -784,41 +770,6 @@
         _toast(_t("guid.astuce.smartNav"), "info");
       }
     }
-  }
-
-  // =========================
-  // 🧭 MODE NAVIGATION (lot 3)
-  // =========================
-  // Un geste : carte orientée (js/mapBearing.js) + écran toujours allumé
-  // (js/wakeLock.js). Ce sont deux RÉGLAGES persistés de l'utilisateur : on
-  // note leur valeur à l'entrée et on la rend à la sortie — sauf s'il les a
-  // changés lui-même entre-temps (on ne défait pas son geste).
-  let _nav = null;   // null | { bearingAvant, wakeAvant }
-
-  function _entrerNavigation() {
-    const MB = window.MapBearing, WL = window.WakeLock;
-    _nav = {
-      bearingAvant: !!(MB && MB.isEnabled && MB.isEnabled()),
-      wakeAvant:    !!(WL && WL.isEnabled && WL.isEnabled())
-    };
-    try { if (MB && MB.setEnabled && !_nav.bearingAvant) MB.setEnabled(true); } catch(e) {}
-    try { if (WL && WL.setEnabled && WL.isSupported && WL.isSupported() && !_nav.wakeAvant) WL.setEnabled(true); } catch(e) {}
-    _toast(_t("guid.nav.toastOn"), "info");
-  }
-
-  function _quitterNavigation(parLUtilisateur) {
-    if (!_nav) return;
-    const MB = window.MapBearing, WL = window.WakeLock;
-    try { if (MB && MB.setEnabled && !_nav.bearingAvant && MB.isEnabled()) MB.setEnabled(false); } catch(e) {}
-    try { if (WL && WL.setEnabled && !_nav.wakeAvant && WL.isEnabled()) WL.setEnabled(false); } catch(e) {}
-    _nav = null;
-    _toast(_t(parLUtilisateur ? "guid.nav.toastOff" : "guid.nav.toastFin"), "info");
-  }
-
-  function basculerNavigation() {
-    if (_nav) _quitterNavigation(true); else _entrerNavigation();
-    _dernierRendu = "";
-    _maj();
   }
 
   function onPosition(pos) {
@@ -853,8 +804,6 @@
   G.rafraichir           = function() { _maj(); };
   G.etat                 = function() { return Object.assign({}, _etat); };   // lu par l'écran XL
   G.getPref              = getPref;
-  G.navigationActive     = function() { return !!_nav; };
-  G.basculerNavigation   = basculerNavigation;           // bouton 🧭 du bandeau (lot 3)
   G.agir                 = _action;                      // "recalculer" | "ici" | "ignorer" (boutons d'écart)
   G.setPref              = setPref;
 

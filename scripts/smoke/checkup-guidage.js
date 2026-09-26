@@ -22,7 +22,6 @@
 //   G4. avancer le long du trajet → la distance restante baisse / la consigne change
 //   G5. s'écarter → « Hors itinéraire ? » + 3 boutons
 //   G6. écran XL → la consigne y est reprise
-//   G7. mode Navigation → carte orientée activée puis rendue
 //   G8. itinéraire d'urgence → pas de croix
 //   G9. suivi arrêté → bandeau masqué
 //   + zéro erreur console / pageerror / clé i18n manquante
@@ -220,18 +219,6 @@ function inf(msg) { console.log("  •  " + msg); }
     await shot("g6-xl");
     await page.evaluate(function () { window.EmergencyMode.desactiver(); });
     await page.waitForTimeout(300);
-
-    // G7 — mode Navigation
-    const g7 = await page.evaluate(function () {
-      const avant = window.MapBearing.isEnabled();
-      window.ItiGuidage.agir("ignorer");
-      window.ItiGuidage.basculerNavigation();
-      const pendant = window.MapBearing.isEnabled();
-      window.ItiGuidage.basculerNavigation();
-      return { avant: avant, pendant: pendant, apres: window.MapBearing.isEnabled() };
-    });
-    if (!g7.pendant || g7.apres !== g7.avant) pb("G7 : mode Navigation (" + JSON.stringify(g7) + ")");
-    else ok("G7 : mode Navigation — carte orientée activée puis rendue (" + g7.avant + ")");
 
     // G8 — urgence : pas de croix
     const g8 = await page.evaluate(function () {

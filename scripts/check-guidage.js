@@ -184,36 +184,6 @@ async function bandeau() {
     em.includes("    _majGuidage();") && em.includes("window.ItiGuidage.etat()"));
   t("câblage : tracking.js nourrit le bandeau à chaque pas", tr.includes("window.ItiGuidage.onPosition(position)"));
   w.APP_CONFIG.smartNav = false;
-
-  // Mode navigation (lot 3) : carte orientée + écran allumé, réglages rendus
-  const regl = { bearing: false, wake: true };
-  w.MapBearing = { isEnabled: () => regl.bearing, setEnabled: v => { regl.bearing = !!v; } };
-  w.WakeLock = { isSupported: () => true, isEnabled: () => regl.wake, setEnabled: v => { regl.wake = !!v; } };
-  t("navigation : inactive au départ", G.navigationActive() === false);
-  // Même fonction que le bouton 🧭 du bandeau.
-  const clicNav = G.basculerNavigation;
-  t("navigation : bascule exposée", typeof clicNav === "function");
-  if (clicNav) {
-    clicNav();
-    t("navigation : carte orientée activée", regl.bearing === true);
-    t("navigation : écran allumé laissé tel quel (déjà actif)", regl.wake === true);
-    clicNav();
-    t("navigation : à la sortie, carte orientée rendue à OFF", regl.bearing === false);
-    t("navigation : à la sortie, l'écran allumé reste (réglage d'avant)", regl.wake === true);
-    clicNav();
-    regl.bearing = true;                        // l'utilisateur ne touche à rien…
-    const iti0 = iti; iti = null; G.rafraichir();
-    t("navigation : itinéraire effacé → mode quitté", G.navigationActive() === false);
-    t("navigation : … et la carte orientée rendue", regl.bearing === false);
-    iti = Object.assign({}, iti0);
-    // La carte orientée était DÉJÀ active avant : le mode n'y touche pas.
-    // L'utilisateur la coupe en route → elle doit rester coupée à la sortie
-    // (rétablir « l'avant » la rallumerait : ce serait défaire son geste).
-    regl.bearing = true;
-    clicNav(); regl.bearing = false;
-    clicNav();
-    t("navigation : un réglage changé par l'utilisateur n'est pas défait", regl.bearing === false);
-  }
 }
 
 (async function main() {
