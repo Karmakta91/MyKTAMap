@@ -447,6 +447,52 @@
   // automatique — le bouton est le seul chemin de retour, et il apparaît quand
   // l'utilisateur s'est éloigné (pan manuel) ou quand sa position sort de
   // l'écran en marchant.
+  // 🩸 Le bas-centre de l'écran est un carrefour : le bouton « ↩️ Retour »
+  // d'un saut de portail y vit (84 px), comme « portail suivant » (74 px), le
+  // picker de Nord (80 px) et les floaters d'outils. Se poser en dur à une
+  // hauteur fixe, c'est se superposer à l'un d'eux tôt ou tard — signalé par
+  // KARMA sur le bouton Retour.
+  // On ne fige donc aucune hauteur : on mesure ce qui est là et on se place
+  // au-dessus. Ajouter un flottant à cette liste suffira pour le suivant.
+  const FLOATERS_BAS = ["#kta-ipl-back-float", ".kta-ipr-next-float",
+                        ".kta-iti-floater", ".kta-north-picker-overlay",
+                        ".kta-supp-trace-floater"];
+
+  function _placerBoutonRecentrer() {
+    if (!_btnRecentrer) return;
+    let sommet = null;              // bord supérieur le plus haut trouvé
+    FLOATERS_BAS.forEach(function(sel) {
+      let els;
+      try { els = document.querySelectorAll(sel); } catch(e) { return; }
+      els.forEach(function(el) {
+        if (el === _btnRecentrer) return;
+        let r;
+        try { r = el.getBoundingClientRect(); } catch(e) { return; }
+        if (!r || r.height === 0 || r.width === 0) return;          // masqué
+        if (r.bottom < window.innerHeight * 0.4) return;            // pas en bas
+        if (sommet === null || r.top < sommet) sommet = r.top;
+      });
+    });
+    if (sommet === null) { _btnRecentrer.style.bottom = ""; return; }
+    // 10 px d'air au-dessus du flottant le plus haut.
+    _btnRecentrer.style.bottom = Math.max(0, Math.round(window.innerHeight - sommet + 10)) + "px";
+  }
+
+  // Les flottants apparaissent et disparaissent tout seuls (le Retour a son
+  // propre minuteur) : on observe les enfants directs de <html>, là où ils
+  // sont posés. childList sans subtree = quasi gratuit, et seulement tant que
+  // notre bouton existe.
+  let _observateurFloaters = null;
+  function _observerFloaters(actif) {
+    if (actif && !_observateurFloaters && typeof MutationObserver === "function") {
+      _observateurFloaters = new MutationObserver(function() { _placerBoutonRecentrer(); });
+      _observateurFloaters.observe(document.documentElement, { childList: true });
+    } else if (!actif && _observateurFloaters) {
+      try { _observateurFloaters.disconnect(); } catch(e) {}
+      _observateurFloaters = null;
+    }
+  }
+
   function _majBoutonRecentrer() {
     const doitEtreLa = _trackingActif() && !_suiviArme;
     if (doitEtreLa && !_btnRecentrer) {
@@ -460,10 +506,13 @@
         recentrer();
       });
       document.body.appendChild(_btnRecentrer);
+      _observerFloaters(true);
     } else if (!doitEtreLa && _btnRecentrer) {
       try { _btnRecentrer.remove(); } catch(e) {}
       _btnRecentrer = null;
+      _observerFloaters(false);
     }
+    _placerBoutonRecentrer();
   }
 
   // ===== Hooks carte =====

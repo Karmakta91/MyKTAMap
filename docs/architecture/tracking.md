@@ -992,6 +992,8 @@ Le premier essai patchait `containerPointToLayerPoint` — plus général, et **
 
 Le drag de Leaflet déplace le map-pane d'un offset **écran** ; la rotation vivant sous ce pane, la carte partait de travers de l'angle courant (mesuré : doigt à 0° → carte à 45°). Plutôt que de patcher `L.Draggable` — partagé par les poignées, les marqueurs déplaçables et les autres cartes — `dragging` reste désactivé pendant le mode et **le pan est refait à la main** dans le bon repère : un doigt, pas d'inertie, deux doigts laissent la main au pinch-zoom. Un pan manuel désarme le suivi et fait apparaître 🎯 **Recentrer**.
 
+🩸 **Le bas-centre de l'écran est un carrefour** : `.kta-ipl-back-float` (« ↩️ Retour » d'un saut de portail, 84 px), `.kta-ipr-next-float` (74 px), `.kta-north-picker-overlay` (80 px) et les floaters d'outils y vivent déjà. 🎯 Recentrer ne fixe donc **aucune hauteur** : il mesure les flottants visibles et se place au-dessus du plus haut, un `MutationObserver` sur les enfants directs de `<html>` le replaçant quand ils vont et viennent. Tout nouveau flottant du bas s'ajoute à `FLOATERS_BAS` dans `mapBearing.js`.
+
 🩸 **Piège mobile** : `dragging.disable()` retire la classe `leaflet-touch-drag`, et le conteneur retombe alors en `touch-action: pan-x pan-y` — au doigt, le **navigateur** scrolle la page au lieu de laisser le pan manuel agir. La classe `kta-bearing-lock`, posée pendant le mode, lui rend `touch-action: none`. Invisible au clavier/souris : ça ne se voit qu'au doigt, ou dans le checkup.
 
 Le zoom reste celui de Leaflet mais **recentré** (`touchZoom/scrollWheelZoom/doubleClickZoom = "center"`) : il relit ces options à chaque geste, il suffit donc de les changer, sans détacher de handler.

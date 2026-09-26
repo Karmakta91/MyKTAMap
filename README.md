@@ -12,7 +12,10 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v1.97.1` (25/09/2026)
+## 📦 Version courante — `v1.97.2` (26/09/2026)
+
+> 🎯 **v1.97.2 — Le bas de l'écran est un carrefour** : KARMA — *« le bouton Recentrer se superpose au bouton Retour quand on prend un portail »*. 🩸 *Les deux étaient centrés à ~84 px du bas. Et ils ne sont pas seuls : « portail suivant » (74 px), le picker de Nord (80 px) et les floaters d'outils partagent la même zone — figer une hauteur de plus, c'était programmer la prochaine collision.* 🩹 *🎯 Recentrer ne fixe plus aucune hauteur : il **mesure** les flottants présents et se place au-dessus du plus haut, puis reprend sa place quand ils disparaissent (observateur sur les enfants de `<html>`, là où ils sont posés). Ajouter un flottant à la liste suffira pour le suivant.* 🛡️ *`checkup-plan-oriente.js` T16 : 66 px seul → 137 px avec le Retour → 66 px après, sans chevauchement.*
+>
 
 > 🧭 **v1.97.1 — Les tuiles qui manquaient au dézoom, sous rotation** : KARMA, sur iPhone, plan de 16332 px — *« si je dézoome à fond, uniquement à fond, j'ai des tuiles manquantes »*. 🩸 *Les logs disaient pourtant « 56 tuiles affichées » **sans aucune manquante** : tout était résolu et posé sur la carte. Le défaut n'était donc ni dans le ZIP ni dans la génération, mais au **rendu** — et il venait de v1.97.0.* 🩹 *Le tuilage V2 met sur la carte TOUTES les tuiles du niveau, même hors écran (4083 × 3000 px de contenu pour un écran de 430 px). Sans rotation, le navigateur ne peint que le visible ; sous le pane transformé du mode, iOS doit composer le sous-arbre en une couche et renonce à en peindre une partie. D'où les trois « uniquement » : à fond, sur les grands plans, mode actif. Pendant le mode, les tuiles hors viewport quittent donc la carte (25 → 4 au harnais) et reviennent dès que la vue se redresse — sans jamais réintégrer une tuile que le filtre multi-niveau avait masquée.* 🛡️ *Figé par `checkup-plan-oriente.js` T15.*
 >
@@ -591,6 +594,13 @@ Docs applicatives (in-app) : `docs/applications/README_USER.md` (+ `.en`) · `do
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v1.97.2 (26/09/2026) — Le bas de l'écran est un carrefour
+
+- 🎯 **Le signalement (KARMA)** : *« le bouton “Recentrer” en mode tracker actif se superpose au bouton “Retour” quand on prend un portail »*.
+- 🩸 **Le vrai défaut n'était pas la collision, mais la méthode** : j'avais posé 🎯 Recentrer à une hauteur **fixe** (`bottom: statusbar + 14px`), comme `.kta-ipl-back-float` à 84 px. Or quatre autres flottants habitent ce bas d'écran centré : « portail suivant » (74 px), le picker de Nord (80 px), le floater d'outils et celui de suppression de tracé. Une hauteur fixe de plus, c'est la prochaine collision programmée.
+- 🩹 **La parade** : le bouton ne fixe plus de hauteur. Il **mesure** les flottants présents (liste de sélecteurs, filtrée sur ceux réellement visibles et réellement en bas d'écran) et se place 10 px au-dessus du plus haut ; sans flottant, il reprend sa place naturelle. Comme ces flottants vont et viennent seuls (le Retour a son propre minuteur de 15 s), un `MutationObserver` sur les **enfants directs de `<html>`** — là où `interPlanLinks` les pose — déclenche le replacement. `childList` sans `subtree`, et seulement tant que le bouton existe.
+- 🛡️ **Test T16** : bouton seul à 66 px du bas → 137 px quand le Retour apparaît → 66 px après sa disparition, et aucun recouvrement des rectangles à aucun moment.
 
 #### v1.97.1 (25/09/2026) — Les tuiles qui manquaient au dézoom, sous rotation
 

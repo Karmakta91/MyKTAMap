@@ -672,6 +672,55 @@ function inf(msg) { console.log("  •  " + msg); }
       ok("une tuile masquée par ailleurs (filtre multi-niveau) n'est jamais réintégrée");
     else pb("le culling a réintégré une tuile qui devait rester masquée");
 
+    // ── T16 — 🎯 Recentrer ne recouvre aucun flottant du bas ───────────
+    // 🩸 Signalé par KARMA : après un saut de portail, le bouton « ↩️ Retour »
+    // et 🎯 Recentrer se superposaient — tous deux centrés, tous deux à ~84 px
+    // du bas. Trois autres flottants partagent cette zone.
+    console.log("— T16 : cohabitation avec les flottants du bas —");
+    const t16 = await page.evaluate(async function () {
+      // On fait apparaître le bouton Recentrer (tracker actif + suivi désarmé)
+      if (!window.getTrackingActif()) window.startTracking();
+      window.map.fire("dragstart");
+      await new Promise(function (r) { setTimeout(r, 300); });
+      const seul = document.querySelector(".kta-bearing-recentrer");
+      const rSeul = seul ? seul.getBoundingClientRect() : null;
+
+      // …puis le bouton « Retour » d'un saut de portail, à sa vraie place.
+      const faux = document.createElement("div");
+      faux.id = "kta-ipl-back-float";
+      faux.style.cssText = "position:fixed;bottom:84px;left:50%;transform:translateX(-50%);" +
+                           "z-index:1300;padding:10px 18px;background:#1a1f2e;border:1px solid #f4c542";
+      faux.textContent = "↩️ Retour : Plan précédent";
+      document.documentElement.appendChild(faux);
+      await new Promise(function (r) { setTimeout(r, 400); });   // MutationObserver
+
+      const btn = document.querySelector(".kta-bearing-recentrer");
+      const r1 = btn ? btn.getBoundingClientRect() : null;
+      const r2 = faux.getBoundingClientRect();
+      const chevauche = !!(r1 && !(r1.bottom <= r2.top || r1.top >= r2.bottom ||
+                                   r1.right <= r2.left || r1.left >= r2.right));
+      faux.remove();
+      await new Promise(function (r) { setTimeout(r, 400); });
+      const rApres = btn ? btn.getBoundingClientRect() : null;
+      return {
+        avant: rSeul ? Math.round(window.innerHeight - rSeul.bottom) : null,
+        pendant: r1 ? Math.round(window.innerHeight - r1.bottom) : null,
+        apres: rApres ? Math.round(window.innerHeight - rApres.bottom) : null,
+        chevauche: chevauche, visible: !!btn
+      };
+    });
+    if (!t16.visible) { pb("le bouton Recentrer n'est pas apparu : T16 ne prouve rien"); }
+    else {
+      inf("distance au bas de l'écran : " + t16.avant + " px seul · " + t16.pendant +
+          " px avec le Retour · " + t16.apres + " px après sa disparition");
+      if (!t16.chevauche) ok("🎯 Recentrer ne recouvre pas le bouton « ↩️ Retour »");
+      else pb("les deux boutons se superposent encore");
+      if (t16.pendant > t16.avant) ok("il s'est bien écarté pour lui laisser la place");
+      else pb("aucun décalage appliqué (" + t16.avant + " → " + t16.pendant + ")");
+      if (Math.abs(t16.apres - t16.avant) <= 2) ok("il reprend sa place quand le Retour disparaît");
+      else pb("il reste décalé après la disparition du Retour (" + t16.apres + " vs " + t16.avant + ")");
+    }
+
     console.log("— T6 : arrêt du tracking —");
     const t6 = await page.evaluate(function () {
       window.MapBearing.setEnabled(true);   // T14 l'avait désactivé

@@ -1,7 +1,7 @@
 {
-  "version": "v1.97.1",
-  "released": "2026-09-25",
+  "version": "v1.97.2",
+  "released": "2026-09-26",
   "notes": [
-    "🧭 Correctif du mode « Plan orienté » : sur les grands plans, des morceaux du fond de carte pouvaient rester noirs quand on dézoomait à fond. Réparé."
+    "🎯 Le bouton « Recentrer » ne se superpose plus au bouton « Retour » après un saut de portail : il se place au-dessus, et reprend sa place quand l'autre disparaît."
   ]
 }
