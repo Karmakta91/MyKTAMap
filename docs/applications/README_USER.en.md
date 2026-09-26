@@ -697,7 +697,7 @@ In practice: you start at **A**, pass through **C**, then reach **B** → the ap
 - the list shows every plan that has a note or a PDF, with an excerpt of the note;
 - opening a sheet shows the note **formatted** (Markdown) and lets you **edit it right there** — it is the very same note as in the plan's Story mode, not a copy;
 - the plan's **PDF documents** are listed: click to open, 🗑️ to delete, **➕ Add a PDF** to attach a new one — all without loading the plan.
-- ⚠️ A PDF **shipped inside the plan's ZIP** does not appear here: you must load the plan to read it (Story mode).
+- 📕 A PDF **shipped inside the map's ZIP** shows up here too, as soon as you have opened that map **once**: the app keeps a copy on your device. You can delete it like one of your own documents; reopening the map brings it back.
 
 **Good to know:**
 - The logbook **starts empty**: it cannot reconstruct trips from before it existed, they were never recorded as such.
@@ -876,7 +876,8 @@ You can now keep **up to 10 PDF documents per plan**. A 2019 report, a scanned p
 
 - A **document list** appears above the viewer as soon as there is more than one; click a document to open it.
 - **📥 Import** adds a document (it replaces nothing). **🗑️ Remove** deletes the one being displayed.
-- The plan author can embed PDFs in the ZIP — **several** (the Generator now accepts a list of files): they appear at the top of the list (📕), readable, not deletable (only the generator can change them). Their presence does not prevent you from adding your own documents.
+- The map author can embed PDFs in the ZIP — **several** (the Generator now accepts a list of files): they appear at the top of the list (📕). Their presence does not prevent you from adding your own documents.
+- 📕 **Those map documents are copied onto your device** the first time you open the map: that is what makes them show up in **📔 My logbook → 📖 Stories** without loading anything. You can **remove** them like your own — and if you reopen the map, they come back (the map provides them).
 - Guardrails: **10 documents maximum** per plan, warning past **25 MB** total, refusal past **100 MB**. The space used shows up in **Storage**.
 - On iPhone, an **↗️ Open in a tab** button kicks a document into native fullscreen if the inline view isn't available.
 - Your documents are also listed, added and deleted from **📔 My logbook → 📖 Stories**, without loading the plan.

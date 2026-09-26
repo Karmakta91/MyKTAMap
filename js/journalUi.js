@@ -546,9 +546,15 @@
   // ═══════════════════════════════════════════════════════════
   // Sources lues DIRECTEMENT, sans charger le plan (c'était tout l'intérêt) :
   //   • note libre  → localStorage `myktamap_note_libre_<planId>` (modeHistoire.js)
-  //   • PDF importé → IDB `myktamap_histoire_pdfs`, store `pdfs`, keyPath planId
-  // Le PDF EMBARQUÉ dans le ZIP (`plan-config.json > plan.histoirePdf`) n'est PAS
-  // listable ici : il faut le plan chargé pour résoudre son chemin runtime.
+  //   • documents   → IDB `myktamap_histoire_pdfs`, store `pdfs`
+  // 📕 26/09/2026 — un PDF LIVRÉ DANS LE ZIP remonte désormais ici, et rien
+  // n'a changé dans ce fichier pour ça : `modeHistoire.js > syncDocsEmbarques`
+  // en dépose une COPIE dans la même base au chargement du plan (id
+  // déterministe `embed_<planId>_<rang>`, donc pas de doublon), et le Carnet la
+  // voit comme un document ordinaire — supprimable, recréée si l'utilisateur
+  // rouvre le plan. C'était la seule façon de tenir la promesse de cet onglet
+  // (« sans charger le plan ») : le chemin runtime d'un embarqué n'existe QUE
+  // pendant que son plan est chargé.
   const NOTE_PREFIX = "myktamap_note_libre_";
   const HIST_DB     = "myktamap_histoire_pdfs";
   const HIST_STORE  = "pdfs";

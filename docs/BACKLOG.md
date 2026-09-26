@@ -83,6 +83,18 @@ Trois audits mesurés sur un vrai plan tuilé (16332×13820, 864 tuiles au nivea
 - 🟡 **Alpha : la transparence est inatteignable pour tout plan issu d'un scan.** Le format des tuiles est décidé à la génération d'après la source ; un JPEG n'ayant jamais d'alpha, ses tuiles seront **toujours** opaques, et **il n'existe aucun chemin de re-tuilage** d'un plan déjà généré. Superposé à OSM : à 100 % le plan masque totalement le fond, à 50 % les deux couches sont délavées à parts égales. Le rendu est correct **parce que l'opacité compense un fond opaque**, pas par transparence — ce que le vocabulaire (« superposition », « transparence des plans ») ne dit pas.
 - 🟡 **Le tick du mode urgence à l'arrêt** : 40 `setView` en 10 s, immobile, chacun déclenchant un parcours de toute la grille du niveau (864 itérations) — ~34 560 itérations en 10 s pour rien, sur l'écran ouvert quand la batterie est basse.
 
+## 🗑️ Supprimer un plan ne supprime pas ses documents d'histoire (26/09/2026)
+
+`PlanRegistry.purgeAssociatedData(planId)` nettoie session, géoréf, photos et sauvegardes — **mais pas la
+base `myktamap_histoire_pdfs`** (grep : aucune mention). Les documents PDF d'un plan supprimé survivent donc,
+et l'onglet 📖 Récits du Carnet les liste toujours, sous le nom du plan disparu (il sait le retrouver via les
+sorties du carnet). Vrai avant le 26/09 pour les PDF **importés** ; depuis, ça vaut aussi pour les **copies
+des documents livrés avec le plan**, donc le volume concerné augmente.
+
+À trancher : purger avec le plan (mais un utilisateur qui supprime un plan pour gagner de la place perd ses
+notes de lecture) ou laisser et l'assumer dans la doc. 📏 **À mesurer d'abord** : combien de Mo dorment en
+moyenne dans cette base.
+
 ## 🎨 Vue OSM : les couleurs de la légende personnalisée ne l'atteignent pas (26/09/2026)
 
 Soldé pour le mode urgence XL en v1.97.7 ; **`osmView.js` / `osmHomePreview.js` portent le même trou**,

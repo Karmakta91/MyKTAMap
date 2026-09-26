@@ -641,7 +641,7 @@ El **Modo Historia** (nota libre + PDF) vive en la pantalla de un plano: para re
 - la lista muestra cada plano que tenga una nota o un PDF, con un extracto de la nota;
 - abrir una ficha muestra la nota **con formato** (Markdown) y permite **modificarla in situ** — es exactamente la misma nota que la del Modo Historia del plano, no una copia;
 - los **documentos PDF** del plano aparecen enumerados: clic para abrir, 🗑️ para eliminar, **➕ Añadir un PDF** para adjuntar uno nuevo — todo ello sin cargar el plano.
-- ⚠️ Un PDF **incluido en el ZIP del plano** no aparece aquí: hay que cargar el plano para consultarlo (Modo Historia).
+- 📕 Un PDF **incluido en el ZIP del plano** aparece aquí también, en cuanto hayas abierto ese plano **una vez**: la app guarda una copia en tu dispositivo. Puedes borrarla como un documento tuyo; al reabrir el plano vuelve.
 
 **Conviene saber:**
 - El cuaderno **empieza vacío**: no puede reconstruir las salidas anteriores a su llegada, nunca se registraron como tales.
@@ -817,7 +817,8 @@ Ahora puedes guardar **hasta 10 documentos PDF por plano** (antes: uno solo, y u
 
 - Aparece una **lista de documentos** sobre el visor en cuanto hay varios; pulsa un documento para abrirlo.
 - **📥 Importar** añade un documento (ya no reemplaza nada). **🗑️ Retirar** elimina el que se está mostrando.
-- El autor del plano puede incluir PDF en el ZIP — **varios** (el Generador acepta ahora una lista de archivos): aparecen al principio de la lista (📕), consultables y no eliminables (solo el generador puede cambiarlos). **Novedad**: su presencia ya no te impide añadir tus propios documentos — antes, la importación quedaba oculta en esos planos.
+- El autor del plano puede incluir PDF en el ZIP — **varios** (el Generador acepta ahora una lista de archivos): aparecen al principio de la lista (📕). **Novedad**: su presencia ya no te impide añadir tus propios documentos — antes, la importación quedaba oculta en esos planos.
+- 📕 **Esos documentos del plano se copian en tu dispositivo** la primera vez que lo abres: es lo que hace que aparezcan en **📔 Mi cuaderno → 📖 Relatos** sin cargar nada. Puedes **retirarlos** como los tuyos — y si reabres el plano, vuelven (es el plano quien los aporta).
 - Salvaguardas: **10 documentos como máximo** por plano, advertencia por encima de **25 MB** acumulados, rechazo por encima de **100 MB**. El espacio ocupado aparece en **Almacenamiento**.
 - En iPhone, un botón **↗️ Abrir en una pestaña** saca el documento a pantalla completa nativa si la visualización integrada no está disponible.
 - Tus documentos también se enumeran, se añaden y se eliminan desde **📔 Mi cuaderno → 📖 Relatos**, sin cargar el plano.

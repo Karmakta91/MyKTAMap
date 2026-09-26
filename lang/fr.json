@@ -1153,6 +1153,7 @@
   "histoire.pdf.ios.info": "📱 Sur iOS, le PDF s'ouvre dans l'app PDF de ton appareil.",
   "histoire.pdf.ios.open": "📥 Ouvrir le PDF",
   "histoire.pdf.meta": "📥 {name} · {kb} Ko (session)",
+  "histoire.pdf.metaFourni": "📕 {name} · {kb} Ko (livré avec le plan)",
   "histoire.pdf.openTab": "↗️ Ouvrir dans un onglet",
   "histoire.pdf.openTab.title": "Ouvrir le PDF dans un nouvel onglet (plein écran)",
   "histoire.pdf.remove": "🗑️ Retirer",

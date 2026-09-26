@@ -745,6 +745,21 @@ async function lancerApplication() {
   // affiche les chiffres réels même pour les plans non chargés. Defer 800ms
   // pour laisser les data layers async (rAF batch dans utils.js) finir leur
   // ajout aux registries _ktaDataMarkers/Polylines/Polygons/Structure.
+  // 📕 26/09/2026 (KARMA « un PDF intégré au zip ne remonte pas dans Mon
+  // Carnet ») — les documents livrés avec le plan sont copiés dans la base du
+  // Mode Histoire, qui est la seule source que le Carnet sache lire sans
+  // charger de plan. Différé : c'est une recopie de fichier, elle n'a aucune
+  // raison de retarder l'affichage de la carte. Idempotent, donc sans effet
+  // aux chargements suivants — sauf si l'utilisateur a supprimé la copie,
+  // auquel cas rouvrir le plan la remet (comportement demandé).
+  if (window.ModeHistoire && typeof window.ModeHistoire.syncDocsEmbarques === "function") {
+    setTimeout(function() {
+      try { window.ModeHistoire.syncDocsEmbarques(); } catch(e) {
+        console.warn("[Main] synchro des documents du plan échouée :", e);
+      }
+    }, 1200);
+  }
+
   if (typeof window._persisterStatsPlanCourant === "function") {
     setTimeout(function() {
       try { window._persisterStatsPlanCourant(); } catch(e) {

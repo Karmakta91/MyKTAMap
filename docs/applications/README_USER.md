@@ -695,7 +695,7 @@ Le **Mode Histoire** (note libre + PDF) vit dans l'écran d'un plan : pour relir
 - la liste montre chaque plan ayant une note ou un PDF, avec un extrait de la note ;
 - ouvrir une fiche affiche la note **mise en forme** (Markdown) et permet de la **modifier sur place** — c'est bien la même note que dans le Mode Histoire du plan, pas une copie ;
 - les **documents PDF** du plan sont listés : clic pour ouvrir, 🗑️ pour supprimer, **➕ Ajouter un PDF** pour en joindre un nouveau — le tout sans charger le plan.
-- ⚠️ Un PDF **livré dans le ZIP du plan** n'apparaît pas ici : il faut charger le plan pour le consulter (Mode Histoire).
+- 📕 Un PDF **livré dans le ZIP du plan** apparaît ici aussi, dès que tu as ouvert ce plan **une fois** : l'app en garde une copie sur ton appareil. Tu peux la supprimer comme un document à toi ; rouvrir le plan la remet.
 
 **Bon à savoir :**
 - Le carnet **démarre vide** : il ne peut pas reconstituer les sorties d'avant son arrivée, elles n'ont jamais été enregistrées en tant que telles.
@@ -872,7 +872,8 @@ Tu peux maintenant garder **jusqu'à 10 documents PDF par plan**. Rapport de 201
 
 - Une **liste de documents** s'affiche au-dessus de la visionneuse dès qu'il y en a plusieurs ; clique un document pour l'ouvrir.
 - **📥 Importer** ajoute un document (il ne remplace rien). **🗑️ Retirer** supprime celui qui est affiché.
-- L'auteur du plan peut embarquer des PDF dans le ZIP — **plusieurs** (le Générateur accepte maintenant une liste de fichiers) : ils apparaissent en tête de liste (📕), consultables, non supprimables (seul le générateur peut les changer). Leur présence ne t'empêche pas d'ajouter tes propres documents.
+- L'auteur du plan peut embarquer des PDF dans le ZIP — **plusieurs** (le Générateur accepte maintenant une liste de fichiers) : ils apparaissent en tête de liste (📕). Leur présence ne t'empêche pas d'ajouter tes propres documents.
+- 📕 **Ces documents du plan sont recopiés sur ton appareil** à la première ouverture : c'est ce qui les fait apparaître dans **📔 Mon carnet → 📖 Récits** sans charger le plan. Tu peux les **retirer** comme les tiens — et si tu rouvres le plan, ils reviennent (c'est le plan qui les fournit).
 - Garde-fous : **10 documents maximum** par plan, avertissement au-delà de **25 Mo** cumulés, refus au-delà de **100 Mo**. L'espace occupé apparaît dans **Stockage**.
 - Sur iPhone, un bouton **↗️ Ouvrir dans un onglet** sort le document en plein écran natif si l'affichage intégré n'est pas dispo.
 - Tes documents sont aussi listés, ajoutables et supprimables depuis **📔 Mon carnet → 📖 Récits**, sans charger le plan.
